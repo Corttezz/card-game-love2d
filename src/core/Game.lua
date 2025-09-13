@@ -8,6 +8,7 @@ local DeckManager = require("src.systems.DeckManager")
 local EffectSystem = require("src.systems.EffectSystem")
 local RunManager = require("src.systems.RunManager")
 local CombatAnimationSystem = require("src.systems.CombatAnimationSystem")
+local EconomySystem = require("src.systems.EconomySystem")
 local Config = require("src.core.Config")
 
 local Game = {}
@@ -38,6 +39,9 @@ function Game:new()
     instance.runManager = RunManager:new()
     instance.combatAnimationSystem = CombatAnimationSystem:new()
     
+    -- Sistema de economia e loja
+    instance.economySystem = EconomySystem:new()
+    
     -- Sistema de classes (Slay the Spire style)
     instance.selectedClass = nil
     instance.isRunMode = false
@@ -46,12 +50,17 @@ function Game:new()
 end
 
 function Game:initializeDeck()
-    -- Usa cache de áudio para melhor performance
-    if not deckStartSoundCache then
-        deckStartSoundCache = love.audio.newSource("audio/deckStart.mp3", "static")
-        deckStartSoundCache:setVolume(Config.Audio.DECK_START_VOLUME)
+    -- Usa o sistema de áudio global se disponível
+    if _G.audioSystem and _G.audioSystem:isAudioAvailable() then
+        _G.audioSystem:playSound("deckStart")
+    else
+        -- Fallback para sistema antigo
+        if not deckStartSoundCache then
+            deckStartSoundCache = love.audio.newSource("audio/deckStart.mp3", "static")
+            deckStartSoundCache:setVolume(Config.Audio.DECK_START_VOLUME)
+        end
+        deckStartSoundCache:play()
     end
-    deckStartSoundCache:play()
     
     if self.isRunMode and self.runManager:hasActiveRun() then
         -- Modo Slay the Spire: usa deck dinâmico da corrida
@@ -85,6 +94,10 @@ function Game:startGame()
     self.jokerSlots = {}
     -- Removido: self.damageMultiplier = 1 (não é mais necessário)
     
+    -- Reseta economia para nova run
+    self.economySystem:resetForNewRun()
+    self.economySystem.currentGold = 10 -- Ouro inicial
+    
     -- Inicializa o deck com as cartas
     self:initializeDeck()
     
@@ -94,6 +107,7 @@ function Game:startGame()
     end
     
     self:addMessage("Jogo iniciado! Boa sorte!", "success")
+    self:addMessage("Ouro inicial: " .. self.economySystem.currentGold, "info")
 end
 
 function Game:drawCard()
@@ -136,6 +150,18 @@ function Game:playCard(card)
             end
         else
             self:addMessage("Sem slots disponíveis para jokers!", "error")
+        end
+    elseif card.type == "effect" then
+        -- Cartas de efeito executam seu efeito e são descartadas
+        card.passive(self) -- Executa efeito especial
+        self:addMessage("Efeito ativado: " .. card.name, "success")
+        
+        -- Remove a carta de efeito da mão atual
+        for i, handCard in ipairs(self.hand) do
+            if handCard == card then
+                table.remove(self.hand, i)
+                break
+            end
         end
     end
 end
@@ -341,6 +367,16 @@ function Game:playSelectedCards()
         return
     end
     
+    -- Remove as cartas da mão IMEDIATAMENTE quando a animação começa
+    for _, card in ipairs(self.selectedCards) do
+        for i, handCard in ipairs(self.hand) do
+            if handCard == card then
+                table.remove(self.hand, i)
+                break
+            end
+        end
+    end
+    
     -- Inicia animação de combate
     self.combatAnimationSystem:startCombat(
         self.selectedCards,
@@ -393,23 +429,21 @@ function Game:processCardInCombat(card)
         else
             self:addMessage("Todos os slots de joker estão ocupados!", "warning")
         end
+        
+    elseif card.type == "effect" then
+        -- Cartas de efeito executam seu efeito e são descartadas
+        card.passive(self) -- Executa efeito especial
+        self:addMessage("Efeito ativado: " .. card.name, "success")
+        
+        result.effect = true
     end
     
     return result
 end
 
 function Game:onCombatAnimationComplete()
-    -- Remove as cartas usadas da mão
-    for _, card in ipairs(self.selectedCards) do
-        for i, handCard in ipairs(self.hand) do
-            if handCard == card then
-                table.remove(self.hand, i)
-                break
-            end
-        end
-    end
-
-    -- Limpa a seleção e muda para o turno do inimigo
+    -- Cartas já foram removidas da mão em playSelectedCards()
+    -- Apenas limpa a seleção e muda para o turno do inimigo
     self.selectedCards = {}
     self.turn = "enemy"
     
@@ -465,6 +499,14 @@ function Game:nextPhase()
     self.currentPhase = self.currentPhase + 1
     self.score = self.score + Config.Game.BASE_SCORE_PER_PHASE * self.currentPhase
     
+    -- Ganha ouro por vencer a batalha
+    local healthLost = self.player.maxHealth - self.player.health
+    local goldEarned = self.economySystem:earnBattleGold(self.currentPhase, healthLost, self.currentPhase)
+    self:addMessage("Ganhou " .. goldEarned .. " ouro!", "success")
+    
+    -- Reseta a mana máxima para o valor base (remove efeitos de cartas de fase anterior)
+    self.player:resetMaxMana()
+    
     -- Limpa a mão atual e reembaralha o deck para o próximo andar
     self:resetHandAndDeck()
     
@@ -508,18 +550,32 @@ end
 
 -- Toca som de seleção de carta
 function Game:playCardSelectSound()
-    if not cardSelectSoundCache then
-        cardSelectSoundCache = love.audio.newSource("audio/clickselect2-92097.mp3", "static")
-        cardSelectSoundCache:setVolume(Config.Audio.CLICK_SELECT_VOLUME)
+    -- Usa o sistema de áudio global se disponível
+    if _G.audioSystem and _G.audioSystem:isAudioAvailable() then
+        _G.audioSystem:playSound("cardSelect")
+    else
+        -- Fallback para sistema antigo
+        if not cardSelectSoundCache then
+            cardSelectSoundCache = love.audio.newSource("audio/clickselect2-92097.mp3", "static")
+            cardSelectSoundCache:setVolume(Config.Audio.CLICK_SELECT_VOLUME)
+        end
+        
+        -- Garante que o som seja tocado corretamente
+        if cardSelectSoundCache then
+            -- Para o som anterior se estiver tocando
+            cardSelectSoundCache:stop()
+            -- Toca o som
+            cardSelectSoundCache:play()
+        end
     end
-    
-    -- Garante que o som seja tocado corretamente
-    if cardSelectSoundCache then
-        -- Para o som anterior se estiver tocando
-        cardSelectSoundCache:stop()
-        -- Toca o som
-        cardSelectSoundCache:play()
-    end
+end
+
+-- Método para alternar o menu (usado pela TopBar)
+function Game:toggleMenu()
+    -- Por enquanto, apenas imprime uma mensagem
+    -- Pode ser expandido para mostrar um menu de configurações
+    self:addMessage("Menu de configurações em desenvolvimento", "info")
+    print("[Game] Menu toggled - configurações em desenvolvimento")
 end
 
 return Game

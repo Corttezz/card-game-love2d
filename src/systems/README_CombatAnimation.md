@@ -239,3 +239,7 @@ Total: 33 de Dano!
 ---
 
 **O Sistema de Animação de Combate transforma cada jogada em um momento cinematográfico épico, elevando a experiência do jogo a um nível AAA!** 🎬⚔️✨
+
+
+
+

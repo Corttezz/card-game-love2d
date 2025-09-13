@@ -66,7 +66,11 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
     local panelWidth = math.min(320, math.max(250, screenWidth * 0.25))
     local panelHeight = 0
     local padding = math.max(10, math.min(20, screenWidth * 0.01))
-    local lineHeight = math.max(16, math.min(24, screenHeight * 0.02))
+    
+    -- Usa fonte fixa para consistência
+    local displayFont = FontManager.getFont(16)
+    love.graphics.setFont(displayFont)
+    local lineHeight = displayFont:getHeight()
     local maxTextWidth = panelWidth - padding * 2
     
     -- Função para calcular altura do texto com quebra de linha
@@ -83,7 +87,7 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
         
         for i, word in ipairs(words) do
             local testLine = currentLine .. (currentLine == "" and "" or " ") .. word
-            if love.graphics.getFont():getWidth(testLine) > maxWidth then
+            if displayFont:getWidth(testLine) > maxWidth then
                 if currentLine == "" then
                     -- Palavra muito longa, força quebra
                     lines = lines + 1
@@ -328,6 +332,10 @@ end
 function CardInfoDisplay:drawWrappedText(text, x, y, maxWidth, lineHeight)
     if not text then return end
     
+    -- Garante que a fonte está configurada
+    local displayFont = FontManager.getFont(16)
+    love.graphics.setFont(displayFont)
+    
     local words = {}
     for word in text:gmatch("%S+") do
         table.insert(words, word)
@@ -338,7 +346,7 @@ function CardInfoDisplay:drawWrappedText(text, x, y, maxWidth, lineHeight)
     
     for i, word in ipairs(words) do
         local testLine = currentLine .. (currentLine == "" and "" or " ") .. word
-        if love.graphics.getFont():getWidth(testLine) > maxWidth then
+        if displayFont:getWidth(testLine) > maxWidth then
             if currentLine == "" then
                 -- Palavra muito longa, força quebra
                 love.graphics.print(word, x, currentY)

@@ -66,6 +66,55 @@ function EffectSystem:processEffect(effect, card, currentValue)
     return currentValue, nil
 end
 
+-- Processa efeitos de cartas de efeito
+function EffectSystem:processEffectCard(game, effect)
+    local effectType = effect.type
+    local effectValue = effect.value or 0
+    
+    -- Cura instantânea
+    if effectType == "instant_heal" then
+        game.player:heal(effectValue)
+        game:addMessage("Curou " .. effectValue .. " HP!", "success")
+        return true
+        
+    -- Restaura mana
+    elseif effectType == "restore_mana" then
+        game.player.mana = game.player.mana + effectValue
+        game:addMessage("Restaurou " .. effectValue .. " mana!", "info")
+        return true
+        
+    -- Aumenta mana máxima para a fase atual
+    elseif effectType == "increase_max_mana" then
+        game.player.maxMana = game.player.maxMana + effectValue
+        game.player.mana = game.player.mana + effectValue -- Também adiciona à mana atual
+        game:addMessage("Mana máxima aumentada em " .. effectValue .. "!", "success")
+        return true
+        
+    -- Adiciona armadura
+    elseif effectType == "add_armor" then
+        game.player:addArmor(effectValue)
+        game:addMessage("Ganhou " .. effectValue .. " de armadura!", "info")
+        return true
+        
+    -- Dano mágico
+    elseif effectType == "magic_damage" then
+        game.enemy:takeDamage(effectValue)
+        game.score = game.score + effectValue
+        game:addMessage("Dano mágico: " .. effectValue, "success")
+        return true
+        
+    -- Compra cartas
+    elseif effectType == "draw_cards" then
+        for i = 1, effectValue do
+            game:drawCard()
+        end
+        game:addMessage("Comprou " .. effectValue .. " cartas!", "info")
+        return true
+    end
+    
+    return false
+end
+
 -- Aplica efeitos de "trigger" (quando algo acontece)
 function EffectSystem:applyTriggerEffects(game, triggerType, context)
     for _, joker in ipairs(game.jokerSlots) do

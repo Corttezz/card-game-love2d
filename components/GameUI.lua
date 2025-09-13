@@ -17,15 +17,15 @@ function GameUI:new()
     instance.animationTime = 0
     
     -- Botão de voltar ao menu
-    local buttonWidth = Config.Utils.getResponsiveSize(0.12, 120, "width")
-    local buttonHeight = Config.Utils.getResponsiveSize(0.05, 40, "height")
-    local buttonX = Config.Utils.getResponsiveSize(0.02, 20, "width")
-    local buttonY = Config.Utils.getResponsiveSize(0.02, 20, "height")
+    -- local buttonWidth = Config.Utils.getResponsiveSize(0.12, 120, "width")
+    -- local buttonHeight = Config.Utils.getResponsiveSize(0.05, 40, "height")
+    -- local buttonX = Config.Utils.getResponsiveSize(0.02, 20, "width")
+    -- local buttonY = Config.Utils.getResponsiveSize(0.02, 20, "height")
     
-    instance.backToMenuButton = Button:new(
-        buttonX, buttonY, buttonWidth, buttonHeight,
-        "← Menu", function() end, Theme.Colors.ERROR, 16
-    )
+    -- instance.backToMenuButton = Button:new(
+    --     buttonX, buttonY, buttonWidth, buttonHeight,
+    --     "← Menu", function() end, Theme.Colors.ERROR, 16
+    -- )
     
     -- Cria slots de joker
     instance.jokerSlots = {}
@@ -60,7 +60,7 @@ function GameUI:update(dt)
     self:updatePositions()
     
     -- Atualiza botão
-    self.backToMenuButton:update(dt)
+    --self.backToMenuButton:update(dt)
     
     -- Atualiza slots de joker
     for _, slot in ipairs(self.jokerSlots) do
@@ -84,9 +84,9 @@ function GameUI:updatePositions()
     local buttonX = Config.Utils.getResponsiveSize(0.02, 20, "width")
     local buttonY = Config.Utils.getResponsiveSize(0.02, 20, "height")
     
-    self.backToMenuButton:setPosition(buttonX, buttonY)
-    self.backToMenuButton.width = buttonWidth
-    self.backToMenuButton.height = buttonHeight
+    -- self.backToMenuButton:setPosition(buttonX, buttonY)
+    -- self.backToMenuButton.width = buttonWidth
+    -- self.backToMenuButton.height = buttonHeight
     
     -- Atualiza posições dos slots de joker
     local slotSize = Config.Utils.getResponsiveSize(0.06, 60, "width") -- Slots menores
@@ -107,7 +107,7 @@ function GameUI:draw(game)
     if not self.visible then return end
     
     -- Desenha o botão de voltar ao menu
-    self.backToMenuButton:draw()
+    --self.backToMenuButton:draw()
     
     -- Desenha informações do jogo no topo
     --self:drawGameInfo(game)
@@ -250,9 +250,9 @@ end
 --     -- Esta função foi substituída pelo sistema de barras dos HudPanels
 -- end
 
-function GameUI:isBackToMenuClicked(x, y)
-    return self.backToMenuButton.hover
-end
+-- function GameUI:isBackToMenuClicked(x, y)
+--     return self.backToMenuButton.hover
+-- end
 
 function GameUI:show()
     self.visible = true

@@ -48,35 +48,38 @@ function BackgroundConfig.loadBackground(backgroundKey)
 end
 
 -- Função para desenhar um background
-function BackgroundConfig.drawBackground(background, config, width, height)
+function BackgroundConfig.drawBackground(background, config, width, height, offsetX, offsetY)
     if not background or not config then
         return false
     end
     
+    offsetX = offsetX or 0
+    offsetY = offsetY or 0
+    
     local bgWidth = background:getWidth()
     local bgHeight = background:getHeight()
     local scale = 1
-    local drawX = 0
-    local drawY = 0
+    local drawX = offsetX
+    local drawY = offsetY
     
     -- Calcula escala baseada no modo
     if config.scaleMode == "cover" then
         local scaleX = width / bgWidth
         local scaleY = height / bgHeight
         scale = math.max(scaleX, scaleY) -- Cobre toda a tela
-        drawX = (width - bgWidth * scale) / 2
-        drawY = (height - bgHeight * scale) / 2
+        drawX = offsetX + (width - bgWidth * scale) / 2
+        drawY = offsetY + (height - bgHeight * scale) / 2
     elseif config.scaleMode == "contain" then
         local scaleX = width / bgWidth
         local scaleY = height / bgHeight
         scale = math.min(scaleX, scaleY) -- Contém na tela
-        drawX = (width - bgWidth * scale) / 2
-        drawY = (height - bgHeight * scale) / 2
+        drawX = offsetX + (width - bgWidth * scale) / 2
+        drawY = offsetY + (height - bgHeight * scale) / 2
     elseif config.scaleMode == "stretch" then
         scale = 1
-        drawX = 0
-        drawY = 0
-        love.graphics.draw(background, 0, 0, 0, width / bgWidth, height / bgHeight)
+        drawX = offsetX
+        drawY = offsetY
+        love.graphics.draw(background, offsetX, offsetY, 0, width / bgWidth, height / bgHeight)
         return true
     end
     
@@ -109,3 +112,4 @@ function BackgroundConfig.listBackgrounds()
 end
 
 return BackgroundConfig
+

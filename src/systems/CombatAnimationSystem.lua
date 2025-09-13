@@ -51,7 +51,13 @@ function CombatAnimationSystem:new()
 end
 
 function CombatAnimationSystem:loadAudioFiles()
-    -- Carrega arquivos de áudio com tratamento de erro
+    -- Usa o sistema de áudio global se disponível
+    if _G.audioSystem and _G.audioSystem:isAudioAvailable() then
+        print("[CombatAnimation] Usando sistema de áudio global")
+        return
+    end
+    
+    -- Fallback: carrega arquivos de áudio com tratamento de erro
     local audioFiles = {
         cardSelect = "audio/clickselect2-92097.mp3",
         swordSound = "audio/sword-sound-260274.mp3",
@@ -80,6 +86,13 @@ function CombatAnimationSystem:loadAudioFiles()
 end
 
 function CombatAnimationSystem:playSound(soundName)
+    -- Usa o sistema de áudio global se disponível
+    if _G.audioSystem and _G.audioSystem:isAudioAvailable() then
+        _G.audioSystem:playSound(soundName)
+        return
+    end
+    
+    -- Fallback para sistema local
     local sound = self.audioCache[soundName]
     if sound then
         -- Tenta tocar com proteção para WSL2/sistemas sem áudio

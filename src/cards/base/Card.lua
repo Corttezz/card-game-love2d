@@ -121,18 +121,23 @@ function Card:updateMouse(mx, my, dt, isHovered)
         self.isHovered = true
         self.targetScale = Config.Cards.HOVER_SCALE -- Aumenta o tamanho usando Config
         if not wasHovered then
-            -- Usa cache de áudio para melhor performance
-            if not hoverSoundCache then
-                hoverSoundCache = love.audio.newSource("audio/hoverCard.wav", "static")
-                hoverSoundCache:setVolume(Config.Audio.HOVER_VOLUME)
-            end
-            
-            -- Garante que o som seja tocado corretamente
-            if hoverSoundCache then
-                -- Para o som anterior se estiver tocando
-                hoverSoundCache:stop()
-                -- Toca o som
-                hoverSoundCache:play()
+            -- Usa o sistema de áudio global se disponível
+            if _G.audioSystem and _G.audioSystem:isAudioAvailable() then
+                _G.audioSystem:playSound("hoverCard")
+            else
+                -- Fallback para sistema antigo
+                if not hoverSoundCache then
+                    hoverSoundCache = love.audio.newSource("audio/hoverCard.wav", "static")
+                    hoverSoundCache:setVolume(Config.Audio.HOVER_VOLUME)
+                end
+                
+                -- Garante que o som seja tocado corretamente
+                if hoverSoundCache then
+                    -- Para o som anterior se estiver tocando
+                    hoverSoundCache:stop()
+                    -- Toca o som
+                    hoverSoundCache:play()
+                end
             end
         end
 

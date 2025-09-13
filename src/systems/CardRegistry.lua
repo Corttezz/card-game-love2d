@@ -52,7 +52,7 @@ function CardRegistry:getStarterDeckForClass(classId)
         },
         mage = {
             "mage_zap", "mage_dualcast", "mage_ball_lightning", "defense_001",
-            "attack_001", "attack_002", "joker_001", "warrior_defend"
+            "attack_001", "attack_002", "joker_001", "warrior_defend", "effect_healing_potion", "effect_mana_crystal"
         },
         rogue = {
             "rogue_strike", "rogue_defend", "rogue_survivor", "rogue_neutralize",

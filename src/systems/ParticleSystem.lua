@@ -18,7 +18,7 @@ function Particle:new(x, y, vx, vy, life, color, size)
     instance.color = color or {1, 1, 1, 1}
     instance.size = size or 2
     instance.rotation = 0
-    instance.rotationSpeed = (math.random() - 0.5) * 10
+    instance.rotationSpeed = 0 -- Sem rotação
     instance.gravity = 0
     instance.friction = 0.98
     instance.alpha = 1
@@ -38,8 +38,7 @@ function Particle:update(dt)
     self.vx = self.vx * self.friction
     self.vy = self.vy * self.friction
     
-    -- Atualiza rotação
-    self.rotation = self.rotation + self.rotationSpeed * dt
+    -- Rotação removida - partículas não rotacionam mais
     
     -- Atualiza vida
     self.life = self.life - dt
@@ -71,9 +70,9 @@ function Particle:draw()
     
     love.graphics.push()
     love.graphics.translate(self.x, self.y)
-    love.graphics.rotate(self.rotation)
+    -- Sem rotação
     
-    -- Desenha partícula como quadrado rotacionado
+    -- Desenha partícula como quadrado sem rotação
     love.graphics.rectangle("fill", -self.size/2, -self.size/2, self.size, self.size)
     
     love.graphics.pop()

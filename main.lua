@@ -4,23 +4,27 @@ local Menu = require("components.Menu")
 local GameUI = require("components.GameUI")
 local CardRewardScreen = require("components.CardRewardScreen")
 local ClassSelectionScreen = require("components.ClassSelectionScreen")
+local TopBar = require("components.TopBar")
 local Config = require("src.core.Config")
 local FontManager = require("src.ui.FontManager")
 local Theme = require("src.ui.Theme")
 local BackgroundConfig = require("src.core.BackgroundConfig")
 local SmokeSystem = require("src.systems.SmokeSystem")
 local SmokeConfig = require("src.config.SmokeConfig")
+local AudioSystem = require("src.systems.AudioSystem")
 
 local game
 local menu
 local gameUI
 local cardRewardScreen
 local classSelectionScreen
+local topBar
 local hoverCard = nil -- Armazena a carta que está em hover
 local playButton
 local currentState = "menu" -- menu, classSelection, playing, gameOver, victory, cardReward
 local gameBackground -- Cache da imagem de background
 local smokeSystem -- Sistema de partículas de smoke
+local audioSystem -- Sistema de áudio
 
 -- Função para iniciar o jogo com classe selecionada
 local function startGame(classId)
@@ -59,30 +63,40 @@ end
 
 -- Função para mostrar recompensas de cartas após vitória
 local function showCardRewards()
-    local rewards = game:completeBattle()
+    currentState = "cardReward"
     
-    if rewards and rewards.cardRewards then
-        currentState = "cardReward"
-        
-        cardRewardScreen:show(
-            rewards.cardRewards,
-            -- Callback quando carta é selecionada
-            function(cardId)
-                game:addCardToRun(cardId)
-                continueAfterReward()
-            end,
-            -- Callback quando recompensa é pulada
-            function()
-                continueAfterReward()
-            end
-        )
-    else
-        -- Fallback: continua normalmente
-        continueAfterReward()
-    end
+    -- Usa a nova interface de loja integrada
+    cardRewardScreen:show(game, 
+        function(offer) -- onCardPurchased
+            print("Card purchased:", offer.name)
+        end,
+        function() -- onSkipped
+            continueAfterReward()
+        end
+    )
 end
 
 function love.load()
+    -- Inicializa o sistema de áudio primeiro
+    audioSystem = AudioSystem:new()
+    audioSystem:printStatus()
+    
+    -- Torna o sistema de áudio global para outros módulos
+    _G.audioSystem = audioSystem
+    
+    -- Carrega música de fundo e sons se áudio estiver disponível
+    if audioSystem:isAudioAvailable() then
+        audioSystem:loadBackgroundMusic("audio/music.mp3")
+        audioSystem:playBackgroundMusic()
+        
+        -- Carrega sons do jogo
+        audioSystem:loadSound("hoverCard", "audio/hoverCard.wav", Config.Audio.HOVER_VOLUME)
+        audioSystem:loadSound("cardSelect", "audio/clickselect2-92097.mp3", Config.Audio.CLICK_SELECT_VOLUME)
+        audioSystem:loadSound("deckStart", "audio/deckStart.mp3", Config.Audio.DECK_START_VOLUME)
+        audioSystem:loadSound("swordSound", "audio/sword-sound-260274.mp3", 0.7)
+        audioSystem:loadSound("armorSound", "audio/punching-light-armour-87442.mp3", 0.7)
+    end
+    
     -- Inicializa o menu
     menu = Menu:new()
     menu:setPlayCallback(function()
@@ -111,8 +125,14 @@ function love.load()
     -- Inicializa tela de seleção de classe
     classSelectionScreen = ClassSelectionScreen:new()
     
+    -- Inicializa barra superior
+    topBar = TopBar:new()
+    
     -- Inicializa o jogo (mas não inicia ainda)
     game = Game:new()
+    
+    -- Configura a barra superior com o jogo
+    topBar:setGame(game)
     
     -- Cria o botão de jogar cartas usando Config
     local buttonWidth = Config.Utils.getResponsiveSize(Config.UI.PLAY_BUTTON_WIDTH_RATIO, 180, "width")
@@ -178,12 +198,18 @@ function drawGame()
     -- Usa o sistema de backgrounds configurável
     local bgConfig = BackgroundConfig.getConfig("GAMEPLAY")
     if gameBackground and bgConfig then
-        BackgroundConfig.drawBackground(gameBackground, bgConfig, width, height)
+        -- Empurra o background para baixo considerando a barra superior
+        local topBarHeight = topBar.height or 80
+        BackgroundConfig.drawBackground(gameBackground, bgConfig, width, height - topBarHeight, 0, topBarHeight)
     else
         -- Fallback: gradiente original se a imagem não carregar
-        local bgColors = Theme.Gradients.BACKGROUND_MAIN(0, 0, width, height)
-        Theme.Utils.drawVerticalGradient(0, 0, width, height, bgColors)
+        local topBarHeight = topBar.height or 80
+        local bgColors = Theme.Gradients.BACKGROUND_MAIN(0, topBarHeight, width, height - topBarHeight)
+        Theme.Utils.drawVerticalGradient(0, topBarHeight, width, height - topBarHeight, bgColors)
     end
+    
+    -- Desenha a barra superior
+    topBar:draw()
     
     -- Desenha a interface do jogo
     gameUI:draw(game)
@@ -462,6 +488,7 @@ function updateGame(dt)
     -- Atualiza botão e interface
     playButton:update(dt)
     gameUI:update(dt)
+    topBar:update(dt)
     
     -- Atualiza sistema de mensagens
     if game.messageSystem then
@@ -482,12 +509,13 @@ function love.keypressed(key)
         end
     elseif currentState == "playing" then
         -- Teclas do jogo
-    if key == "space" then
+        if key == "space" then
             game:drawCard()
-            local hoverSound = love.audio.newSource("audio/hoverCard.wav", "static")
-        hoverSound:setVolume(0.1)
-        love.audio.play(hoverSound) 
-    elseif key == "r" then
+            -- Usa o sistema de áudio para tocar som de hover
+            if audioSystem then
+                audioSystem:playSound("hoverCard")
+            end
+        elseif key == "r" then
             game:startGame()
         elseif key == "f" then
             -- Alterna entre fullscreen e janela
@@ -557,12 +585,17 @@ function love.mousepressed(x, y, button)
 end
 
 function handleGameMousePressed(x, y, button)
+    -- Verifica clique na barra superior primeiro
+    if topBar:mousepressed(x, y, button) then
+        return
+    end
+    
     if button == 1 then
         -- Verifica clique no botão de voltar ao menu
-        if gameUI:isBackToMenuClicked(x, y) then
-            returnToMenu()
-            return
-        end
+        -- if gameUI:isBackToMenuClicked(x, y) then
+        --     returnToMenu()
+        --     return
+        -- end
         
         -- Verifica clique no botão "Jogar Cartas"
         local buttonWidth = Config.Utils.getResponsiveSize(Config.UI.PLAY_BUTTON_WIDTH_RATIO, 180, "width")
@@ -585,6 +618,11 @@ function handleGameMousePressed(x, y, button)
 end
 
 function handleGameMouseReleased(x, y, button)
+    -- Verifica clique na barra superior primeiro
+    if topBar:mousereleased(x, y, button) then
+        return
+    end
+    
     if button == 1 then
         playButton:mousereleased(x, y, button)
     end

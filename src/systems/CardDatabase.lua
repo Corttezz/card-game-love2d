@@ -131,6 +131,48 @@ function CardDatabase:loadData()
                         }
                     }
                 },
+                -- dobrea defesa
+                joker_002 = {
+                    id = "joker_002",
+                    name = "God of the Abyss",
+                    type = "joker",
+                    subtype = "triangle",
+                    cost = 2,
+                    attack = 0,
+                    defense = 0,
+                    description = "Dobra o dano de todas as cartas de ataque.",
+                    image = "assets/jokers/joker1.png",
+                    rarity = "legendary",
+                    effects = {
+                        {
+                            type = "defense_multiplier",
+                            target = "defense",
+                            value = 2.0,
+                            description = "Dobra defesa de cartas de defesa"
+                        }
+                    }
+                },
+                -- outro joker com outro efeito -- aumenta cura
+                joker_003 = {
+                    id = "joker_003",
+                    name = "God of the Abyss",
+                    type = "joker",
+                    subtype = "triangle",
+                    cost = 2,
+                    attack = 0,
+                    defense = 0,
+                    description = "Aumenta a cura em 3.",
+                    image = "assets/jokers/joker1.png",
+                    rarity = "legendary",
+                    effects = {
+                        {
+                            type = "heal_multiplier",
+                            target = "heal",
+                            value = 2.0,
+                            description = "Aumenta a cura em 3"
+                        }
+                    }
+                },
 
                 -- ===== CARTAS UNCOMMON DO GUERREIRO =====
                 warrior_flame_barrier = {
@@ -985,6 +1027,48 @@ function CardDatabase:loadData()
                     rarity = "rare",
                     class = "rogue",
                     effects = {}
+                },
+                
+                -- ===== CARTAS DE EFEITO =====
+                effect_healing_potion = {
+                    id = "effect_healing_potion",
+                    name = "Potion of Healing",
+                    type = "effect",
+                    subtype = "potion",
+                    cost = 1,
+                    attack = 0,
+                    defense = 0,
+                    description = "Cura 15 HP instantaneamente.",
+                    image = "assets/cards/effect/potionOfHealing.png",
+                    rarity = "common",
+                    class = "mage",
+                    effects = {
+                        {
+                            type = "instant_heal",
+                            value = 15,
+                            description = "Cura 15 HP"
+                        }
+                    }
+                },
+                effect_mana_crystal = {
+                    id = "effect_mana_crystal",
+                    name = "Mana Crystal",
+                    type = "effect",
+                    subtype = "crystal",
+                    cost = 1,
+                    attack = 0,
+                    defense = 0,
+                    description = "Aumenta a mana máxima em 3 para esta fase.",
+                    image = "assets/cards/effect/manaCrystal.png",
+                    rarity = "common",
+                    class = "mage",
+                    effects = {
+                        {
+                            type = "increase_max_mana",
+                            value = 3,
+                            description = "Mana máxima +3"
+                        }
+                    }
                 }
             }
         }
@@ -1007,6 +1091,18 @@ function CardDatabase:loadData()
                     cards = {
                         {id = "attack_001", quantity = 3},
                         {id = "defense_001", quantity = 3},
+                        {id = "joker_001", quantity = 1}
+                    }
+                },
+                mage = {
+                    name = "Deck Mago",
+                    description = "Deck focado em magia e efeitos especiais",
+                    cards = {
+                        {id = "mage_zap", quantity = 2},
+                        {id = "mage_dualcast", quantity = 1},
+                        {id = "mage_ball_lightning", quantity = 2},
+                        {id = "effect_healing_potion", quantity = 1},
+                        {id = "effect_mana_crystal", quantity = 1},
                         {id = "joker_001", quantity = 1}
                     }
                 }
@@ -1096,6 +1192,7 @@ function CardDatabase:createCardInstance(cardData)
     local AttackCard = require("src.cards.types.AttackCard")
     local DefenseCard = require("src.cards.types.DefenseCard") 
     local JokerCard = require("src.cards.types.JokerCard")
+    local EffectCard = require("src.cards.types.EffectCard")
     
     if cardData.type == "attack" then
         local cardInstance = AttackCard:new(
@@ -1139,6 +1236,23 @@ function CardDatabase:createCardInstance(cardData)
         jokerInstance.effects = cardData.effects
         
         return jokerInstance
+    elseif cardData.type == "effect" then
+        -- Para cartas de efeito, criamos a função de efeito baseada nos dados
+        local effectFunction = self:createEffectFunction(cardData.effects)
+        local effectInstance = EffectCard:new(
+            cardData.name,
+            cardData.cost,
+            effectFunction,
+            cardData.subtype,
+            cardData.image
+        )
+        
+        -- Adiciona dados adicionais para o novo sistema
+        effectInstance.description = cardData.description
+        effectInstance.rarity = cardData.rarity
+        effectInstance.effects = cardData.effects
+        
+        return effectInstance
     end
     
     error("Tipo de carta desconhecido: " .. tostring(cardData.type))
@@ -1148,8 +1262,14 @@ end
 function CardDatabase:createEffectFunction(effects)
     return function(game)
         for _, effect in ipairs(effects or {}) do
-            if effect.description then
-                game:addMessage(effect.description, "info")
+            -- Para cartas de efeito, usa o EffectSystem para processar
+            if game.effectSystem and game.effectSystem:processEffectCard(game, effect) then
+                -- Efeito processado com sucesso
+            else
+                -- Fallback: apenas mostra mensagem
+                if effect.description then
+                    game:addMessage(effect.description, "info")
+                end
             end
         end
     end

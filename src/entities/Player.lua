@@ -10,6 +10,7 @@ function Player:new()
     instance.armor = 0 -- Armadura inicial
     instance.mana = Config.Game.PLAYER_MAX_MANA -- Mana inicial
     instance.maxMana = Config.Game.PLAYER_MAX_MANA -- Mana máxima
+    instance.baseMaxMana = Config.Game.PLAYER_MAX_MANA -- Mana máxima base (não modificada)
     instance.maxArmor = Config.Game.PLAYER_MAX_ARMOR -- Armadura máxima
     return instance
 end
@@ -34,6 +35,14 @@ end
 
 function Player:restoreMana()
     self.mana = self.maxMana
+end
+
+function Player:resetMaxMana()
+    self.maxMana = self.baseMaxMana
+    -- Se a mana atual for maior que a nova máxima, ajusta
+    if self.mana > self.maxMana then
+        self.mana = self.maxMana
+    end
 end
 
 function Player:spendMana(cost)
