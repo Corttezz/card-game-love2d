@@ -4,7 +4,7 @@ local CardInfoDisplay = require("src.ui.CardInfoDisplay")
 local Card = {}
 Card.__index = Card
 
--- Cache de áudio para hover e seleção (evita criar a cada frame)
+-- Cache de áudio para hover e seleção (evita criar a cada frame) 
 local hoverSoundCache = nil
 local clickSelectSoundCache = nil
 
