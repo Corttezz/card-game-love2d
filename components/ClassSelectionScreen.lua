@@ -5,7 +5,18 @@ local Button = require("components.Button")
 local Config = require("src.core.Config")
 local FontManager = require("src.ui.FontManager")
 local Theme = require("src.ui.Theme")
+local Palette = require("src.ui.Palette")
+local PixelCanvas = require("src.ui.PixelCanvas")
+local SceneBackground = require("src.ui.SceneBackground")
 local CardRegistry = require("src.systems.CardRegistry")
+local Debug = require("src.core.Debug")
+local I18n = require("src.i18n.I18n")
+
+local CLASS_ICONS = {
+    warrior = "sword_short",
+    mage    = "orb",
+    rogue   = "dagger",
+}
 
 local ClassSelectionScreen = {}
 ClassSelectionScreen.__index = ClassSelectionScreen
@@ -29,11 +40,6 @@ end
 
 function ClassSelectionScreen:createClassButtons()
     local classes = self.cardRegistry:getAllClasses()
-    print("ClassSelectionScreen: Creating buttons for classes:")
-    for classId, classInfo in pairs(classes) do
-        print("  - " .. classId .. ": " .. tostring(classInfo.name) .. " (color: " .. tostring(classInfo.color and "valid" or "nil") .. ")")
-    end
-    
     local centerX = love.graphics.getWidth() / 2
     local startY = love.graphics.getHeight() * 0.4
     local buttonWidth = Config.Utils.getResponsiveSize(Config.UI.BUTTON_WIDTH_RATIO, 300, "width")
@@ -42,7 +48,6 @@ function ClassSelectionScreen:createClassButtons()
     
     local classIndex = 1
     for classId, classInfo in pairs(classes) do
-        print("Creating button for class: " .. classId)
         local button = Button:new(
             centerX - buttonWidth / 2,
             startY + (classIndex - 1) * spacing,
@@ -51,27 +56,38 @@ function ClassSelectionScreen:createClassButtons()
             classInfo.name:upper(),
             function() self:selectClass(classId) end,
             classInfo.color or Theme.Colors.PRIMARY,
-            22
+            16
         )
-        
+        button:setIcon(CLASS_ICONS[classId] or "scroll")
+
         self.buttons[classId] = button
         classIndex = classIndex + 1
     end
-    
+
     -- Botão voltar ao menu
     local backButtonWidth = Config.Utils.getResponsiveSize(Config.UI.BUTTON_WIDTH_RATIO, 200, "width")
     local backButtonHeight = Config.Utils.getResponsiveSize(Config.UI.BUTTON_HEIGHT_RATIO, 50, "height")
-    
+
     self.buttons.back = Button:new(
         centerX - backButtonWidth / 2,
         startY + (classIndex - 1) * spacing + 50,
         backButtonWidth,
         backButtonHeight,
-        "VOLTAR AO MENU",
+        I18n.t("class_select.back"),
         function() self:goBackToMenu() end,
         Theme.Colors.WARNING,
-        18
+        12
     )
+    self.buttons.back:setIcon("arrow_left")
+
+    -- Recria botões ao trocar idioma (textos mudam)
+    if not self._localeListenerWired then
+        self._localeListenerWired = true
+        I18n.onLocaleChanged(function()
+            self.buttons = {}
+            self:createClassButtons()
+        end)
+    end
 end
 
 function ClassSelectionScreen:updatePositions()
@@ -106,13 +122,11 @@ function ClassSelectionScreen:updatePositions()
 end
 
 function ClassSelectionScreen:selectClass(classId)
-    print("ClassSelectionScreen: selectClass called with classId: " .. tostring(classId))
     self.selectedClass = classId
     if self.onClassSelected then
-        print("Calling onClassSelected callback...")
         self.onClassSelected(classId)
     else
-        print("WARNING: onClassSelected callback is nil!")
+        Debug.warn("onClassSelected callback nil em selectClass(" .. tostring(classId) .. ")")
     end
 end
 
@@ -123,23 +137,9 @@ function ClassSelectionScreen:goBackToMenu()
 end
 
 function ClassSelectionScreen:show(onClassSelected, onBackToMenu)
-    print("ClassSelectionScreen: show() called")
-    print("  - onClassSelected: " .. tostring(onClassSelected))
-    print("  - onBackToMenu: " .. tostring(onBackToMenu))
-    
     self.visible = true
     self.onClassSelected = onClassSelected
     self.onBackToMenu = onBackToMenu
-    
-    local buttonCount = 0
-    for classId, button in pairs(self.buttons) do
-        buttonCount = buttonCount + 1
-    end
-    print("  - Buttons created: " .. tostring(buttonCount))
-    for classId, button in pairs(self.buttons) do
-        print("    * " .. classId .. ": " .. tostring(button.text))
-    end
-    
     self:updatePositions()
 end
 
@@ -149,104 +149,86 @@ end
 
 function ClassSelectionScreen:update(dt)
     if not self.visible then return end
-    
-    -- Debug: verifica se está sendo chamada
-    if not self.updateCalled then
-        print("ClassSelectionScreen: update() called for the first time")
-        self.updateCalled = true
-    end
-    
-    -- CRÍTICO: Atualiza o estado de hover dos botões
-    for classId, button in pairs(self.buttons) do
+
+    for _, button in pairs(self.buttons) do
         button:update(dt)
-    end
-    
-    -- Atualiza posições se a tela mudou de tamanho
-    if love.graphics.getWidth() ~= self.lastWidth or love.graphics.getHeight() ~= self.lastHeight then
-        self:updatePositions()
-        self.lastWidth = love.graphics.getWidth()
-        self.lastHeight = love.graphics.getHeight()
     end
 end
 
 function ClassSelectionScreen:draw()
     if not self.visible then return end
-    
-    -- Debug: verifica se está sendo chamada
-    if not self.drawCalled then
-        print("ClassSelectionScreen: draw() called for the first time")
-        self.drawCalled = true
-    end
-    
+
     local width = love.graphics.getWidth()
     local height = love.graphics.getHeight()
-    
-    -- Fundo com gradiente
-    local bgColors = {
-        {0.1, 0.1, 0.2, 1},
-        {0.05, 0.05, 0.1, 1}
-    }
-    Theme.Utils.drawVerticalGradient(0, 0, width, height, bgColors)
-    
-    -- Título
+
+    -- Fundo: cena PNG (classSelection → fallback menu → fallback gradiente)
+    if not SceneBackground.draw("classSelection", width, height, 0.45) then
+        if not SceneBackground.draw("menu", width, height, 0.55) then
+            local bgColors = {
+                {0.1, 0.1, 0.2, 1},
+                {0.05, 0.05, 0.1, 1}
+            }
+            Theme.Utils.drawVerticalGradient(0, 0, width, height, bgColors)
+        end
+    end
+
     self:drawTitle()
-    
-    -- Descrição
     self:drawDescription()
-    
-    -- Botões das classes
+
     for _, button in pairs(self.buttons) do
         button:draw()
     end
 end
 
 function ClassSelectionScreen:drawTitle()
-    local titleFont = FontManager.getResponsiveFont(Config.UI.TITLE_FONT_RATIO, 48)
+    local titleFont = FontManager.getResponsiveFont(Config.UI.TITLE_FONT_RATIO, 24)
     love.graphics.setFont(titleFont)
-    
-    local title = "ESCOLHA SUA CLASSE"
-    local titleX = love.graphics.getWidth() / 2 - titleFont:getWidth(title) / 2
-    local titleY = love.graphics.getHeight() * 0.15
-    
-    -- Sombra
-    love.graphics.setColor(0, 0, 0, 0.8)
-    love.graphics.print(title, titleX + 3, titleY + 3)
-    
-    -- Título principal
-    love.graphics.setColor(Theme.Colors.ACCENT)
+
+    local title = I18n.t("class_select.title")
+    local width = love.graphics.getWidth()
+    local titleX = math.floor(width / 2 - titleFont:getWidth(title) / 2)
+    local titleY = math.floor(love.graphics.getHeight() * 0.10)
+
+    -- Banner pixel: ink fill + dual outline gold
+    local padX, padY = 20, 10
+    local bw = titleFont:getWidth(title) + padX * 2
+    local bh = titleFont:getHeight() + padY * 2
+    local bx, by = titleX - padX, titleY - padY
+    PixelCanvas.rect(bx, by, bw, bh, Palette.PANEL_FILL)
+    PixelCanvas.rectOutline(bx, by, bw, bh, Palette.PANEL_OUTLINE)
+    PixelCanvas.rectOutline(bx + 3, by + 3, bw - 6, bh - 6, Palette.PANEL_OUTLINE_INNER)
+
+    -- Título
+    Palette.set(Palette.INK)
+    love.graphics.print(title, titleX + 1, titleY + 1)
+    Palette.set(Palette.AGED_GOLD_LIGHT)
     love.graphics.print(title, titleX, titleY)
 end
 
 function ClassSelectionScreen:drawDescription()
-    local descFont = FontManager.getResponsiveFont(Config.UI.INSTRUCTION_FONT_RATIO, 16)
+    local descFont = FontManager.getResponsiveFont(Config.UI.INSTRUCTION_FONT_RATIO, 10)
     love.graphics.setFont(descFont)
-    
-    local description = "Cada classe tem um estilo de jogo único e cartas específicas"
-    local descX = love.graphics.getWidth() / 2 - descFont:getWidth(description) / 2
-    local descY = love.graphics.getHeight() * 0.25
-    
-    love.graphics.setColor(Theme.Colors.TEXT_SECONDARY)
+
+    local description = I18n.t("class_select.description")
+    local descX = math.floor(love.graphics.getWidth() / 2 - descFont:getWidth(description) / 2)
+    local descY = math.floor(love.graphics.getHeight() * 0.22)
+
+    Palette.set(Palette.INK)
+    love.graphics.print(description, descX + 1, descY + 1)
+    Palette.set(Palette.PARCHMENT_LIGHT)
     love.graphics.print(description, descX, descY)
 end
 
 function ClassSelectionScreen:mousepressed(x, y, button)
     if not self.visible then return end
-    
-    print("ClassSelectionScreen: mousepressed at (" .. x .. ", " .. y .. ") with button " .. button)
-    
-    for classId, btn in pairs(self.buttons) do
-        print("  - Checking button: " .. classId .. " at (" .. btn.x .. ", " .. btn.y .. ") size (" .. btn.width .. "x" .. btn.height .. ")")
+    for _, btn in pairs(self.buttons) do
         btn:mousepressed(x, y, button)
     end
 end
 
 function ClassSelectionScreen:mousereleased(x, y, button)
     if not self.visible then return end
-    
-    print("ClassSelectionScreen: mousereleased at (" .. x .. ", " .. y .. ") with button " .. button)
-    
-    for classId, btn in pairs(self.buttons) do
-        print("  - Checking button: " .. classId .. " at (" .. btn.x .. ", " .. btn.y .. ") size (" .. btn.width .. "x" .. btn.height .. ")")
+    for _, btn in pairs(self.buttons) do
         btn:mousereleased(x, y, button)
     end
 end

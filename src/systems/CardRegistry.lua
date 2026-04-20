@@ -1,11 +1,12 @@
 -- src/systems/CardRegistry.lua
--- Sistema centralizado para gestão de cartas e classes
--- Elimina duplicação entre ClassSystem e CardDatabase
+-- Sistema centralizado para gestão de cartas e classes.
+-- Consolida consultas por classe/raridade, starter decks e rolagem de raridade.
 
 local CardRegistry = {}
 CardRegistry.__index = CardRegistry
 
 local CardDatabase = require("src.systems.CardDatabase")
+local I18n = require("src.i18n.I18n")
 
 function CardRegistry:new()
     local instance = setmetatable({}, CardRegistry)
@@ -110,14 +111,14 @@ function CardRegistry:isClassCard(cardId, classId)
            not cardData.class
 end
 
--- Informações das classes (mantém compatibilidade)
+-- Informações das classes (nome/descricao traduzidos via I18n).
 function CardRegistry:getClassInfo(classId)
     local classes = {
         warrior = {
             id = "warrior",
-            name = "Guerreiro",
-            description = "Especialista em combate corpo a corpo e resistência",
-            color = {0.8, 0.2, 0.2, 1.0}, -- RGBA com alpha
+            name = I18n.t("classes.warrior.name"),
+            description = I18n.t("classes.warrior.desc"),
+            color = {0.8, 0.2, 0.2, 1.0},
             avatar = "assets/classes/warrior.png",
             traits = {
                 strength_focus = true,
@@ -127,9 +128,9 @@ function CardRegistry:getClassInfo(classId)
         },
         mage = {
             id = "mage",
-            name = "Mago",
-            description = "Mestre das artes arcanas e manipulação elemental", 
-            color = {0.2, 0.2, 0.8, 1.0}, -- RGBA com alpha
+            name = I18n.t("classes.mage.name"),
+            description = I18n.t("classes.mage.desc"),
+            color = {0.2, 0.2, 0.8, 1.0},
             avatar = "assets/classes/mage.png",
             traits = {
                 orb_mechanic = true,
@@ -139,9 +140,9 @@ function CardRegistry:getClassInfo(classId)
         },
         rogue = {
             id = "rogue",
-            name = "Ladino",
-            description = "Assassino ágil especializado em venenos e precisão",
-            color = {0.2, 0.8, 0.2, 1.0}, -- RGBA com alpha
+            name = I18n.t("classes.rogue.name"),
+            description = I18n.t("classes.rogue.desc"),
+            color = {0.2, 0.8, 0.2, 1.0},
             avatar = "assets/classes/rogue.png",
             traits = {
                 poison_synergy = true,
@@ -150,7 +151,7 @@ function CardRegistry:getClassInfo(classId)
             }
         }
     }
-    
+
     return classes[classId]
 end
 

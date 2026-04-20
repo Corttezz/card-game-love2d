@@ -4,25 +4,28 @@
 local RunManager = {}
 RunManager.__index = RunManager
 
-local ClassSystem = require("src.systems.ClassSystem")
+local CardRegistry = require("src.systems.CardRegistry")
 local CardDatabase = require("src.systems.CardDatabase")
 
 function RunManager:new()
     local instance = setmetatable({}, RunManager)
-    instance.classSystem = ClassSystem:new()
+    instance.cardRegistry = CardRegistry:new()
     instance.cardDatabase = CardDatabase:new()
-    
+
     -- Estado da corrida atual
     instance.currentRun = nil
     instance.isRunActive = false
-    
+
     return instance
 end
 
 -- Inicia uma nova corrida com a classe selecionada
 function RunManager:startNewRun(classId)
-    local selectedClass = self.classSystem:selectClass(classId)
-    
+    local selectedClass = self.cardRegistry:getClassInfo(classId)
+    if not selectedClass then
+        error("Classe nao encontrada: " .. tostring(classId))
+    end
+
     self.currentRun = {
         classId = classId,
         className = selectedClass.name,
@@ -60,8 +63,7 @@ end
 
 -- Inicializa deck com cartas starter da classe
 function RunManager:initializeStarterDeck(classId)
-    local starterCards = self.classSystem:getStarterDeck(classId)
-    
+    local starterCards = self.cardRegistry:getStarterDeckForClass(classId)
     for _, cardId in ipairs(starterCards) do
         table.insert(self.currentRun.currentDeck, cardId)
     end
@@ -114,7 +116,7 @@ function RunManager:completeBattle()
     self.currentRun.currentFloor = self.currentRun.currentFloor + 1
     
     -- Gera 3 cartas de recompensa (padrão Slay the Spire)
-    local cardRewards = self.classSystem:generateCardRewards(3)
+    local cardRewards = self.cardRegistry:generateCardRewards(self.currentRun.classId, 3)
     
     return {
         cardRewards = cardRewards,
@@ -197,29 +199,85 @@ function RunManager:analyzeDeckComposition()
     return composition
 end
 
--- Salva estado da corrida (para implementar save/load)
-function RunManager:saveRun()
-    if not self.currentRun then return nil end
-    
-    -- Por enquanto retorna os dados, futuramente salvaria em arquivo
-    return {
-        version = "1.0",
-        runData = self.currentRun,
-        timestamp = love.timer.getTime()
-    }
+-- Serializa valor Lua para string executável via `return`.
+-- Suporta number, boolean, string, table (keys string ou number).
+local function serialize(o, indent)
+    indent = indent or ""
+    local t = type(o)
+    if t == "number" or t == "boolean" then
+        return tostring(o)
+    elseif t == "string" then
+        return string.format("%q", o)
+    elseif t == "table" then
+        local parts = { "{\n" }
+        local next_indent = indent .. "  "
+        for k, v in pairs(o) do
+            local keyStr
+            if type(k) == "string" and k:match("^[%a_][%w_]*$") then
+                keyStr = k .. " = "
+            else
+                keyStr = "[" .. (type(k) == "string" and string.format("%q", k) or tostring(k)) .. "] = "
+            end
+            parts[#parts + 1] = next_indent .. keyStr .. serialize(v, next_indent) .. ",\n"
+        end
+        parts[#parts + 1] = indent .. "}"
+        return table.concat(parts)
+    end
+    return "nil"
 end
 
--- Carrega estado de uma corrida
-function RunManager:loadRun(saveData)
-    if not saveData or not saveData.runData then return false end
-    
-    self.currentRun = saveData.runData
-    self.isRunActive = true
-    
-    -- Reseleciona a classe
-    self.classSystem:selectClass(self.currentRun.classId)
-    
+local SAVE_FILE = "run.save.lua"
+
+-- Salva a corrida atual em disco (love.filesystem — grava no save directory do jogador).
+-- Retorna true se gravou, false/err caso contrário.
+function RunManager:saveRun()
+    if not self.currentRun then return false, "sem run ativa" end
+
+    local payload = {
+        version = "1.0",
+        savedAt = os.time(),
+        runData = self.currentRun,
+    }
+
+    local ok, err = love.filesystem.write(SAVE_FILE, "return " .. serialize(payload))
+    if not ok then
+        print("[RunManager] falha ao salvar:", err)
+        return false, err
+    end
     return true
+end
+
+-- Carrega do arquivo salvo. Retorna true se restaurou com sucesso.
+function RunManager:loadRun()
+    if not love.filesystem.getInfo(SAVE_FILE) then return false, "nenhum save" end
+
+    local chunk, err = love.filesystem.load(SAVE_FILE)
+    if not chunk then
+        print("[RunManager] falha ao carregar save:", err)
+        return false, err
+    end
+
+    local ok, payload = pcall(chunk)
+    if not ok or type(payload) ~= "table" or not payload.runData then
+        print("[RunManager] save corrompido")
+        return false, "save corrompido"
+    end
+
+    self.currentRun = payload.runData
+    self.isRunActive = true
+    return true
+end
+
+-- Remove o arquivo de save (ex: ao concluir/abandonar run).
+function RunManager:deleteSave()
+    if love.filesystem.getInfo(SAVE_FILE) then
+        love.filesystem.remove(SAVE_FILE)
+    end
+end
+
+-- Informa se existe um save gravado.
+function RunManager:hasSavedRun()
+    return love.filesystem.getInfo(SAVE_FILE) ~= nil
 end
 
 -- Termina a corrida atual
@@ -255,7 +313,7 @@ end
 -- Retorna informações da classe atual
 function RunManager:getCurrentClassInfo()
     if not self.currentRun then return nil end
-    return self.classSystem:getCurrentClass()
+    return self.cardRegistry:getClassInfo(self.currentRun.classId)
 end
 
 return RunManager

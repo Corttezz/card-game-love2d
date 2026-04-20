@@ -4,6 +4,8 @@ local Menu = require("components.Menu")
 local GameUI = require("components.GameUI")
 local CardRewardScreen = require("components.CardRewardScreen")
 local ClassSelectionScreen = require("components.ClassSelectionScreen")
+local CollectionScreen = require("components.CollectionScreen")
+local SettingsMenu = require("components.SettingsMenu")
 local TopBar = require("components.TopBar")
 local Config = require("src.core.Config")
 local FontManager = require("src.ui.FontManager")
@@ -12,16 +14,22 @@ local BackgroundConfig = require("src.core.BackgroundConfig")
 local SmokeSystem = require("src.systems.SmokeSystem")
 local SmokeConfig = require("src.config.SmokeConfig")
 local AudioSystem = require("src.systems.AudioSystem")
+local SceneBackground = require("src.ui.SceneBackground")
+local PixelBackground = require("src.ui.PixelBackground")
+local CRTShader = require("src.ui.CRTShader")
+local I18n = require("src.i18n.I18n")
 
 local game
 local menu
 local gameUI
 local cardRewardScreen
 local classSelectionScreen
+local collectionScreen
+local settingsMenu
 local topBar
 local hoverCard = nil -- Armazena a carta que está em hover
 local playButton
-local currentState = "menu" -- menu, classSelection, playing, gameOver, victory, cardReward
+local currentState = "menu" -- menu, classSelection, playing, gameOver, victory, cardReward, collection
 local gameBackground -- Cache da imagem de background
 local smokeSystem -- Sistema de partículas de smoke
 local audioSystem -- Sistema de áudio
@@ -77,6 +85,15 @@ local function showCardRewards()
 end
 
 function love.load()
+    -- I18n primeiro: carrega locale salvo (default pt_BR) antes de qualquer
+    -- modulo que use I18n.t na inicializacao (Menu, CardRegistry, etc.)
+    I18n.init()
+
+    -- Re-aplica titulo da janela quando idioma mudar
+    I18n.onLocaleChanged(function()
+        love.window.setTitle(I18n.t("window_title"))
+    end)
+
     -- Inicializa o sistema de áudio primeiro
     audioSystem = AudioSystem:new()
     audioSystem:printStatus()
@@ -115,24 +132,49 @@ function love.load()
         )
         menu:hide()
     end)
-    
+    menu:setCollectionCallback(function()
+        currentState = "collection"
+        menu:hide()
+        collectionScreen:show(function()
+            currentState = "menu"
+            menu:show()
+        end)
+    end)
+    menu:setSettingsCallback(function()
+        settingsMenu:toggle()
+    end)
+
     -- Inicializa a interface do jogo
     gameUI = GameUI:new()
-    
+
     -- Inicializa tela de recompensas
     cardRewardScreen = CardRewardScreen:new()
-    
+
     -- Inicializa tela de seleção de classe
     classSelectionScreen = ClassSelectionScreen:new()
-    
+
+    -- Inicializa tela de coleção
+    collectionScreen = CollectionScreen:new()
+
+    -- Inicializa overlay de configurações
+    settingsMenu = SettingsMenu:new()
+
     -- Inicializa barra superior
     topBar = TopBar:new()
-    
+
     -- Inicializa o jogo (mas não inicia ainda)
     game = Game:new()
-    
+
     -- Configura a barra superior com o jogo
     topBar:setGame(game)
+
+    -- Wire: ícone de config na TopBar -> toggle do settingsMenu.
+    -- TopBar chama game:toggleMenu() que chama game.onToggleSettings.
+    game.onToggleSettings = function() settingsMenu:toggle() end
+
+    -- Pós-processamento CRT (scanlines, wave, aberração cromática). Balatro-style.
+    -- Settings → "CRT Shader" liga/desliga via CRTShader.toggle().
+    CRTShader.load()
     
     -- Cria o botão de jogar cartas usando Config
     local buttonWidth = Config.Utils.getResponsiveSize(Config.UI.PLAY_BUTTON_WIDTH_RATIO, 180, "width")
@@ -140,11 +182,17 @@ function love.load()
     local buttonX = Config.Utils.getRelativePosition(Config.UI.PLAY_BUTTON_X_RATIO, love.graphics.getWidth()) - buttonWidth / 2
     local buttonY = Config.Utils.getRelativePosition(Config.UI.PLAY_BUTTON_Y_RATIO, love.graphics.getHeight()) - buttonHeight / 2
     
-    playButton = Button:new(buttonX, buttonY, buttonWidth, buttonHeight, "Jogar Cartas", function()
+    playButton = Button:new(buttonX, buttonY, buttonWidth, buttonHeight, I18n.t("play_button.label"), function()
         if game.turn == "player" then
             game:playSelectedCards()
         end
     end, Theme.Colors.SUCCESS, 18)
+    -- Atualiza texto do botao quando idioma mudar
+    I18n.onLocaleChanged(function()
+        if playButton and playButton.text ~= nil then
+            playButton.text = I18n.t("play_button.label")
+        end
+    end)
     
     -- Carrega o background do jogo uma vez
     gameBackground = BackgroundConfig.loadBackground("GAMEPLAY")
@@ -156,7 +204,7 @@ function love.load()
     SmokeConfig.applyToSystem(smokeSystem, "default")
     
     -- Configura a janela
-    love.window.setTitle("Card Game - Um jogo de cartas estratégico")
+    love.window.setTitle(I18n.t("window_title"))
 end
 
 function updatePlayButtonPosition()
@@ -174,6 +222,10 @@ function updatePlayButtonPosition()
 end
 
 function love.draw()
+    -- Abre a cena CRT: tudo que for desenhado até endScene() vai pro canvas
+    -- de pós-processamento e depois é redesenhado com o shader aplicado.
+    CRTShader.beginScene()
+
     if currentState == "menu" then
         menu:draw()
     elseif currentState == "classSelection" then
@@ -183,29 +235,36 @@ function love.draw()
     elseif currentState == "cardReward" then
         drawGame() -- Desenha o jogo por trás
         cardRewardScreen:draw() -- Overlay da recompensa
+    elseif currentState == "collection" then
+        collectionScreen:draw()
     elseif currentState == "gameOver" then
         drawGameOver()
     elseif currentState == "victory" then
         drawVictory()
     end
+
+    -- Overlay de settings (modal) ainda DENTRO da cena CRT — assim o shader
+    -- cobre o overlay também.
+    if settingsMenu then settingsMenu:draw() end
+
+    CRTShader.endScene()
 end
 
 function drawGame()
-    -- Background do jogo com imagem step1.png
+    -- Background do jogo: tenta PNG gerado (scenes/gameplay.png); fallback pro
+    -- BackgroundConfig legado com step1.png; fallback final pro gradiente.
     local width = love.graphics.getWidth()
     local height = love.graphics.getHeight()
-    
-    -- Usa o sistema de backgrounds configurável
-    local bgConfig = BackgroundConfig.getConfig("GAMEPLAY")
-    if gameBackground and bgConfig then
-        -- Empurra o background para baixo considerando a barra superior
-        local topBarHeight = topBar.height or 80
-        BackgroundConfig.drawBackground(gameBackground, bgConfig, width, height - topBarHeight, 0, topBarHeight)
-    else
-        -- Fallback: gradiente original se a imagem não carregar
-        local topBarHeight = topBar.height or 80
-        local bgColors = Theme.Gradients.BACKGROUND_MAIN(0, topBarHeight, width, height - topBarHeight)
-        Theme.Utils.drawVerticalGradient(0, topBarHeight, width, height - topBarHeight, bgColors)
+    local topBarHeight = topBar.height or 80
+
+    if not SceneBackground.draw("gameplay", width, height - topBarHeight, 0.30) then
+        local bgConfig = BackgroundConfig.getConfig("GAMEPLAY")
+        if gameBackground and bgConfig then
+            BackgroundConfig.drawBackground(gameBackground, bgConfig, width, height - topBarHeight, 0, topBarHeight)
+        else
+            local bgColors = Theme.Gradients.BACKGROUND_MAIN(0, topBarHeight, width, height - topBarHeight)
+            Theme.Utils.drawVerticalGradient(0, topBarHeight, width, height - topBarHeight, bgColors)
+        end
     end
     
     -- Desenha a barra superior
@@ -328,30 +387,30 @@ function drawGameOver()
     -- Título
     local titleFont = FontManager.getResponsiveFont(Config.UI.TITLE_FONT_RATIO, 48)
     love.graphics.setFont(titleFont)
-    local title = "GAME OVER"
+    local title = I18n.t("game_over.title")
     local titleWidth = titleFont:getWidth(title)
-    
+
     love.graphics.setColor(Theme.Colors.ERROR)
     love.graphics.print(title, centerX - titleWidth / 2, centerY - height * 0.167)
-    
+
     -- Pontuação final
     local scoreFont = FontManager.getResponsiveFont(Config.UI.SCORE_FONT_RATIO, 24)
     love.graphics.setFont(scoreFont)
-    local scoreText = "Pontuação Final: " .. game.score
+    local scoreText = I18n.t("game_over.final_score", { score = game.score })
     local scoreWidth = scoreFont:getWidth(scoreText)
-    
+
     love.graphics.setColor(Theme.Colors.TEXT_PRIMARY)
     love.graphics.print(scoreText, centerX - scoreWidth / 2, centerY - height * 0.083)
-    
+
     -- Instruções
     local instructionFont = FontManager.getResponsiveFont(Config.UI.INSTRUCTION_FONT_RATIO, 18)
     love.graphics.setFont(instructionFont)
-    local instruction = "Pressione R para tentar novamente ou ESC para voltar ao menu"
+    local instruction = I18n.t("game_over.instructions")
     local instructionWidth = instructionFont:getWidth(instruction)
-    
+
     love.graphics.setColor(Theme.Colors.TEXT_SECONDARY)
     love.graphics.print(instruction, centerX - instructionWidth / 2, centerY + height * 0.083)
-    
+
     -- Reseta fonte
     love.graphics.setFont(love.graphics.newFont())
 end
@@ -374,30 +433,30 @@ function drawVictory()
     -- Título
     local titleFont = FontManager.getResponsiveFont(Config.UI.TITLE_FONT_RATIO, 48)
     love.graphics.setFont(titleFont)
-    local title = "VITÓRIA!"
+    local title = I18n.t("victory.title")
     local titleWidth = titleFont:getWidth(title)
-    
+
     love.graphics.setColor(Theme.Colors.SUCCESS)
     love.graphics.print(title, centerX - titleWidth / 2, centerY - height * 0.167)
-    
+
     -- Pontuação final
     local scoreFont = FontManager.getResponsiveFont(Config.UI.SCORE_FONT_RATIO, 24)
     love.graphics.setFont(scoreFont)
-    local scoreText = "Pontuação Final: " .. game.score
+    local scoreText = I18n.t("victory.final_score", { score = game.score })
     local scoreWidth = scoreFont:getWidth(scoreText)
-    
+
     love.graphics.setColor(Theme.Colors.TEXT_PRIMARY)
     love.graphics.print(scoreText, centerX - scoreWidth / 2, centerY - height * 0.083)
-    
+
     -- Instruções
     local instructionFont = FontManager.getResponsiveFont(Config.UI.INSTRUCTION_FONT_RATIO, 18)
     love.graphics.setFont(instructionFont)
-    local instruction = "Pressione ESPAÇO para jogar novamente ou ESC para voltar ao menu"
+    local instruction = I18n.t("victory.instructions")
     local instructionWidth = instructionFont:getWidth(instruction)
-    
+
     love.graphics.setColor(Theme.Colors.TEXT_SECONDARY)
     love.graphics.print(instruction, centerX - instructionWidth / 2, centerY + height * 0.083)
-    
+
     -- Reseta fonte
     love.graphics.setFont(love.graphics.newFont())
 end
@@ -411,7 +470,28 @@ function love.update(dt)
         classSelectionScreen:update(dt)
     elseif currentState == "cardReward" then
         cardRewardScreen:update(dt)
+    elseif currentState == "collection" then
+        collectionScreen:update(dt)
     end
+
+    if settingsMenu then settingsMenu:update(dt) end
+end
+
+-- Reposiciona UI e invalida caches quando a janela muda (fullscreen, drag de borda).
+function love.resize(w, h)
+    FontManager.clearCache()
+    if menu and menu.updatePositions then menu:updatePositions() end
+    if classSelectionScreen and classSelectionScreen.updatePositions then
+        classSelectionScreen:updatePositions()
+    end
+    if cardRewardScreen and cardRewardScreen.updateLayout then
+        cardRewardScreen:updateLayout()
+    end
+    if topBar and topBar.resize then topBar:resize() end
+    if settingsMenu and settingsMenu.rebuild and settingsMenu.visible then
+        settingsMenu:rebuild()
+    end
+    updatePlayButtonPosition()
 end
 
 function updateCardPositions()
@@ -502,6 +582,22 @@ function updateGame(dt)
 end
 
 function love.keypressed(key)
+    -- Settings overlay consome teclas primeiro (modal)
+    if settingsMenu and settingsMenu.keypressed and settingsMenu:isVisible() then
+        if settingsMenu:keypressed(key) then return end
+    end
+
+    -- Collection absorve teclas quando visível
+    if currentState == "collection" then
+        if collectionScreen.keypressed then collectionScreen:keypressed(key) end
+        if key == "escape" then
+            currentState = "menu"
+            collectionScreen:hide()
+            menu:show()
+        end
+        return
+    end
+
     if currentState == "menu" then
         -- Teclas do menu
         if key == "escape" then
@@ -561,6 +657,11 @@ function love.keypressed(key)
 end
 
 function love.mousereleased(x, y, button)
+    -- Settings modal consome primeiro
+    if settingsMenu and settingsMenu:isVisible() then
+        if settingsMenu:mousereleased(x, y, button) then return end
+    end
+
     if currentState == "menu" then
         menu:mousereleased(x, y, button)
     elseif currentState == "classSelection" then
@@ -569,10 +670,17 @@ function love.mousereleased(x, y, button)
         handleGameMouseReleased(x, y, button)
     elseif currentState == "cardReward" then
         cardRewardScreen:mousereleased(x, y, button)
+    elseif currentState == "collection" then
+        if collectionScreen.mousereleased then collectionScreen:mousereleased(x, y, button) end
     end
 end
 
 function love.mousepressed(x, y, button)
+    -- Settings modal consome primeiro
+    if settingsMenu and settingsMenu:isVisible() then
+        if settingsMenu:mousepressed(x, y, button) then return end
+    end
+
     if currentState == "menu" then
         menu:mousepressed(x, y, button)
     elseif currentState == "classSelection" then
@@ -581,6 +689,14 @@ function love.mousepressed(x, y, button)
         handleGameMousePressed(x, y, button)
     elseif currentState == "cardReward" then
         cardRewardScreen:mousepressed(x, y, button)
+    elseif currentState == "collection" then
+        collectionScreen:mousepressed(x, y, button)
+    end
+end
+
+function love.wheelmoved(dx, dy)
+    if currentState == "collection" and collectionScreen.wheelmoved then
+        collectionScreen:wheelmoved(dx, dy)
     end
 end
 

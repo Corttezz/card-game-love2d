@@ -1,41 +1,48 @@
 -- src/Theme.lua
--- Sistema de design profissional para o jogo
+-- Sistema de design profissional — paleta grimório sépia (alinhada com Palette.lua).
+-- Todas as cores derivam dos tons PARCHMENT / INK / BLOOD / STEEL / AGED_GOLD / MOSS / RUST.
+
+local Palette = require("src.ui.Palette")
 
 local Theme = {}
 
--- Paleta de cores principal (Dark Fantasy)
+-- Helper: copia {r,g,b,a} e aplica alpha opcional
+local function rgba(c, a)
+    return { c[1], c[2], c[3], a or c[4] or 1 }
+end
+
 Theme.Colors = {
-    -- Cores base
-    PRIMARY = {0.1, 0.1, 0.15, 1},      -- Azul escuro profundo
-    SECONDARY = {0.15, 0.15, 0.2, 1},   -- Azul escuro médio
-    ACCENT = {0.8, 0.6, 0.2, 1},        -- Dourado
-    ACCENT_SECONDARY = {0.6, 0.4, 0.8, 1}, -- Roxo
-    
-    -- Cores de estado
-    SUCCESS = {0.2, 0.8, 0.4, 1},       -- Verde
-    WARNING = {0.9, 0.7, 0.2, 1},       -- Amarelo
-    ERROR = {0.8, 0.3, 0.3, 1},         -- Vermelho
-    INFO = {0.3, 0.7, 0.9, 1},          -- Azul claro
-    
+    -- Cores base (grimório dark)
+    PRIMARY   = rgba(Palette.INK, 1),              -- Preto tinta (fundo principal)
+    SECONDARY = rgba(Palette.TAROT_NAVY_DARK, 1),  -- Navy escuro (paineis)
+    ACCENT    = rgba(Palette.AGED_GOLD, 1),        -- Dourado envelhecido
+    ACCENT_SECONDARY = rgba(Palette.BLOOD, 1),     -- Vermelho sangue (alt)
+
+    -- Cores de estado (grimório, não neon)
+    SUCCESS = rgba(Palette.MOSS, 1),               -- Verde musgo
+    WARNING = rgba(Palette.RUST, 1),               -- Laranja ferrugem
+    ERROR   = rgba(Palette.BLOOD, 1),              -- Vermelho sangue
+    INFO    = rgba(Palette.STEEL, 1),              -- Aço azulado
+
     -- Cores de texto
-    TEXT_PRIMARY = {0.95, 0.95, 0.95, 1},   -- Branco
-    TEXT_SECONDARY = {0.7, 0.7, 0.7, 1},    -- Cinza claro
-    TEXT_DISABLED = {0.5, 0.5, 0.5, 1},     -- Cinza médio
-    
+    TEXT_PRIMARY   = rgba(Palette.PARCHMENT_LIGHT, 1),  -- Bone white
+    TEXT_SECONDARY = rgba(Palette.PARCHMENT, 1),        -- Bege envelhecido
+    TEXT_DISABLED  = rgba(Palette.PARCHMENT_DARK, 1),   -- Marrom escuro
+
     -- Cores de interface
-    UI_BACKGROUND = {0.08, 0.08, 0.12, 0.95}, -- Fundo UI
-    UI_BORDER = {0.3, 0.3, 0.4, 1},      -- Borda UI
-    UI_HIGHLIGHT = {0.2, 0.2, 0.3, 1},  -- Destaque UI
-    
+    UI_BACKGROUND = rgba(Palette.INK, 0.92),   -- Fundo UI semi-transparente
+    UI_BORDER     = rgba(Palette.AGED_GOLD, 1),
+    UI_HIGHLIGHT  = rgba(Palette.TAROT_NAVY, 1),
+
     -- Cores de cartas
-    CARD_ATTACK = {0.8, 0.2, 0.2, 1},   -- Vermelho para ataque
-    CARD_DEFENSE = {0.2, 0.6, 0.8, 1},  -- Azul para defesa
-    CARD_JOKER = {0.8, 0.6, 0.2, 1},    -- Dourado para joker
-    
-    -- Cores de barras
-    HEALTH_BAR = {0.8, 0.2, 0.2, 1},    -- Barra de vida
-    ARMOR_BAR = {0.8, 0.8, 0.2, 1},     -- Barra de armadura
-    MANA_BAR = {0.3, 0.6, 0.9, 1},      -- Barra de mana
+    CARD_ATTACK  = rgba(Palette.BLOOD, 1),
+    CARD_DEFENSE = rgba(Palette.STEEL, 1),
+    CARD_JOKER   = rgba(Palette.AGED_GOLD, 1),
+
+    -- Cores de barras (HUD)
+    HEALTH_BAR = rgba(Palette.BLOOD, 1),
+    ARMOR_BAR  = rgba(Palette.STEEL_LIGHT, 1),
+    MANA_BAR   = rgba(Palette.AGED_GOLD, 1),
 }
 
 -- Gradientes profissionais

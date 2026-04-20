@@ -1,10 +1,14 @@
 local Config = require("src.core.Config")
 local CardInfoDisplay = require("src.ui.CardInfoDisplay")
+local ImageCache = require("src.ui.ImageCache")
+local HoloShader = require("src.ui.HoloShader")
+local CardAnimationLayer = require("src.ui.card.CardAnimationLayer")
+local CardArt = require("src.ui.CardArt")
 
 local Card = {}
 Card.__index = Card
 
--- Cache de áudio para hover e seleção (evita criar a cada frame) 
+-- Cache de áudio para hover e seleção (evita criar a cada frame)
 local hoverSoundCache = nil
 local clickSelectSoundCache = nil
 
@@ -19,23 +23,8 @@ function Card:new(name, cost, attack, defense, passive, type, subtype, imagePath
     instance.type = type
     instance.subtype = subtype
     
-    -- Validação do caminho da imagem
-    if not imagePath or imagePath == "" then
-        print("WARNING: Carta '" .. (name or "unnamed") .. "' tem caminho de imagem inválido: " .. tostring(imagePath))
-        -- Usa uma imagem padrão como fallback
-        imagePath = "assets/cards/attack/theRock.png"
-    end
-    
-    -- Tenta carregar a imagem com tratamento de erro
-    local success, image = pcall(love.graphics.newImage, imagePath)
-    if success then
-        instance.image = image
-    else
-        print("ERROR: Não foi possível carregar imagem para carta '" .. (name or "unnamed") .. "': " .. tostring(imagePath))
-        print("Erro: " .. tostring(image))
-        -- Usa uma imagem padrão como fallback
-        instance.image = love.graphics.newImage("assets/cards/attack/theRock.png")
-    end
+    -- Carrega imagem via cache (fallback automático em caso de erro)
+    instance.image = ImageCache.get(imagePath)
 
     -- Propriedades para hover e animação usando Config
     instance.x = 0 -- Posição X
@@ -59,31 +48,11 @@ function Card:new(name, cost, attack, defense, passive, type, subtype, imagePath
         showDescription = true
     })
     
-    -- Carrega ícones para ataque, defesa e mana
-    local success, attackIcon = pcall(love.graphics.newImage, "assets/icons/attack.png")
-    if success then
-        instance.attackIcon = attackIcon
-    else
-        print("ERROR: Não foi possível carregar ícone de ataque")
-        instance.attackIcon = nil
-    end
-    
-    local success, manaIcon = pcall(love.graphics.newImage, "assets/icons/mana.png")
-    if success then
-        instance.manaIcon = manaIcon
-    else
-        print("ERROR: Não foi possível carregar ícone de mana")
-        instance.manaIcon = nil
-    end
-    
-    local success, armorIcon = pcall(love.graphics.newImage, "assets/icons/armor.png")
-    if success then
-        instance.armorIcon = armorIcon
-    else
-        print("ERROR: Não foi possível carregar ícone de armadura")
-        instance.armorIcon = nil
-    end
-    
+    -- Ícones compartilhados entre todas as cartas (cache global)
+    instance.attackIcon = ImageCache.get("assets/icons/attack.png")
+    instance.manaIcon = ImageCache.get("assets/icons/mana.png")
+    instance.armorIcon = ImageCache.get("assets/icons/armor.png")
+
     return instance
 end
 
@@ -332,9 +301,26 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
     local drawX = -((self.image:getWidth() * scaleX) / 2)
     local drawY = -((self.image:getHeight() * scaleY) / 2)
     
-    -- Desenha a carta com escala dinâmica para efeito 3D
-    love.graphics.draw(self.image, drawX, drawY, 0, scaleX, scaleY)
-    
+    -- Desenha a carta com escala dinâmica; aplica HoloShader para holo/glow
+    local fx = self.visualEffect
+    if fx == "holo" then
+        HoloShader.draw(self.image, drawX, drawY, 0.75, 0, scaleX, scaleY)
+    elseif fx == "glow" then
+        HoloShader.draw(self.image, drawX, drawY, 0.35, 0, scaleX, scaleY)
+    else
+        love.graphics.draw(self.image, drawX, drawY, 0, scaleX, scaleY)
+    end
+
+    -- Animation layer (halo, embers, drip, flash, ring...) — pós-canvas,
+    -- herda o tilt 3D via push/pop.
+    if CardAnimationLayer.isEnabled() then
+        if not self._cachedArt then
+            local okA, a = pcall(CardArt.resolve, self)
+            self._cachedArt = okA and a or { bgPattern = nil }
+        end
+        CardAnimationLayer.draw(self, self._cachedArt, drawX, drawY, scaleX, scaleY)
+    end
+
     -- Restaura transformações
     love.graphics.pop()
 

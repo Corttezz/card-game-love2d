@@ -4,6 +4,7 @@
 local HudPanel = require("src.ui.HudPanel")
 local FontManager = require("src.ui.FontManager")
 local Config = require("src.core.Config")
+local I18n = require("src.i18n.I18n")
 
 local HudEnemyPanel = {}
 HudEnemyPanel.__index = HudEnemyPanel
@@ -35,26 +36,12 @@ function HudEnemyPanel:new(x, y, width, height)
 end
 
 function HudEnemyPanel:loadIcons()
-    -- Carrega ícones com tratamento de erro
-    local iconPaths = {
-        attack = "assets/icons/attack.png"
-    }
-    
-    for iconName, path in pairs(iconPaths) do
-        local success, icon = pcall(love.graphics.newImage, path)
-        if success then
-            self.icons[iconName] = icon
-            print("HudEnemyPanel: Ícone carregado:", iconName)
-        else
-            print("HudEnemyPanel: Erro ao carregar ícone:", iconName, path)
-        end
-    end
-    
-    -- Cria ícones programaticamente se não existirem
+    local ImageCache = require("src.ui.ImageCache")
+    self.icons.attack = ImageCache.get("assets/icons/attack.png")
+
     if not self.icons.health then
         self.icons.health = self:createHealthIcon()
     end
-    
     if not self.icons.skull then
         self.icons.skull = self:createSkullIcon()
     end
@@ -231,7 +218,7 @@ function HudEnemyPanel:drawEnemyInfo(enemy, currentPhase, startY)
     love.graphics.rectangle("line", infoX, currentY, infoWidth, infoHeight, 6, 6)
     
     -- Dano do inimigo
-    local damageText = "DANO: " .. (enemy.damage or 0)
+    local damageText = I18n.t("hud.damage") .. (enemy.damage or 0)
     self:drawText(damageText, infoX + 8, currentY + 6, infoFont, self.textColor)
     
     -- Ícone de ataque
@@ -245,7 +232,7 @@ function HudEnemyPanel:drawEnemyInfo(enemy, currentPhase, startY)
     end
     
     -- Fase atual
-    local phaseText = "FASE: " .. currentPhase
+    local phaseText = I18n.t("hud.phase") .. currentPhase
     local phaseWidth = infoFont:getWidth(phaseText)
     self:drawText(phaseText, infoX + infoWidth - phaseWidth - 8, currentY + 6, infoFont, self.textColor)
     
@@ -271,10 +258,11 @@ function HudEnemyPanel:drawThreatLevel(phase, x, y)
     local threatFont = FontManager.getResponsiveFont(0.014, 11, "height")
     love.graphics.setFont(threatFont)
     love.graphics.setColor(self.textColor[1], self.textColor[2], self.textColor[3], 0.8)
-    love.graphics.print("AMEAÇA:", x, y)
-    
+    local threatLabel = I18n.t("hud.threat_label")
+    love.graphics.print(threatLabel, x, y)
+
     -- Pontos indicadores de nível
-    local startX = x + threatFont:getWidth("AMEAÇA: ") + 4
+    local startX = x + threatFont:getWidth(threatLabel .. " ") + 4
     for i = 1, 5 do
         if i <= threatLevel then
             love.graphics.setColor(threatColor)

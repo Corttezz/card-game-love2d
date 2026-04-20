@@ -61,9 +61,10 @@ Config.Game = {
 
 -- Configurações das Cartas
 Config.Cards = {
-    -- Escalas
-    BASE_SCALE = 0.20,
-    HOVER_SCALE = 0.22,
+    -- Escalas (alvo: cartas procedurais são 96×144 → base 1.33 ≈ 128×192 na tela,
+    -- preservando o mesmo espaço ocupado pelo layout legado de 64×96×2.0).
+    BASE_SCALE = 1.333,
+    HOVER_SCALE = 1.466,
     
     -- Animações
     SCALE_ANIMATION_SPEED = 10,

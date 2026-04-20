@@ -299,11 +299,14 @@ end
 -- Termina a corrida atual
 function Game:endCurrentRun(victory)
     if not self.isRunMode then return nil end
-    
+
     local finalStats = self.runManager:endRun(victory)
     self.isRunMode = false
     self.selectedClass = nil
-    
+
+    -- Limpa save em disco (run encerrada).
+    if self.runManager.deleteSave then self.runManager:deleteSave() end
+
     return finalStats
 end
 
@@ -319,7 +322,7 @@ end
 
 -- Retorna todas as classes disponíveis
 function Game:getAvailableClasses()
-    return self.runManager.classSystem:getAllClasses()
+    return self.runManager.cardRegistry:getAllClasses()
 end
 
 function Game:isCardSelected(card)
@@ -393,27 +396,29 @@ end
 
 function Game:processCardInCombat(card)
     local result = {}
-    
+
     if card.type == "attack" then
-        local damage = card.attack -- Dano base da carta
-        
-        -- Aplica efeitos dos jokers ativos
+        local damage = card.attack
         damage = self:applyJokerEffects(card, damage)
-        
+
         self.enemy:takeDamage(damage)
         self.score = self.score + damage
-        
+
+        -- Triggers on-attack (ex: lifesteal de jokers)
+        self.effectSystem:applyTriggerEffects(self, "attack", { target = self.enemy })
+
         result.damage = damage
         self:addMessage("Dano: " .. damage, "success")
-        
+
     elseif card.type == "defense" then
-        local defense = card.defense -- Defesa base da carta
-        
-        -- Aplica efeitos dos jokers ativos
+        local defense = card.defense
         defense = self:applyJokerEffects(card, defense)
-        
+
         self.player:addArmor(defense)
-        
+
+        -- Triggers on-defend (ex: reflexo de dano)
+        self.effectSystem:applyTriggerEffects(self, "defend", { target = self.enemy })
+
         result.defense = defense
         self:addMessage("Bloqueio: +" .. defense, "info")
         
@@ -461,11 +466,14 @@ function Game:enemyTurn()
     -- Volta para o turno do jogador e restaura mana
     self.turn = "player"
     self.player:restoreMana()
-    
+
     -- Compra uma carta no início do turno
     if #self.deck > 0 then
         self:drawCard()
     end
+
+    -- Triggers turn_start (regen, dano por turno) após tudo estabelecer
+    self.effectSystem:applyTriggerEffects(self, "turn_start", {})
 end
 
 function Game:isPhaseCleared()
@@ -570,12 +578,13 @@ function Game:playCardSelectSound()
     end
 end
 
--- Método para alternar o menu (usado pela TopBar)
+-- Alterna o menu de configurações. O handler real é injetado por main.lua.
 function Game:toggleMenu()
-    -- Por enquanto, apenas imprime uma mensagem
-    -- Pode ser expandido para mostrar um menu de configurações
-    self:addMessage("Menu de configurações em desenvolvimento", "info")
-    print("[Game] Menu toggled - configurações em desenvolvimento")
+    if self.onToggleSettings then
+        self.onToggleSettings()
+    else
+        self:addMessage("Menu de configuracoes indisponivel", "warning")
+    end
 end
 
 return Game

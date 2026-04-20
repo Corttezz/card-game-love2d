@@ -1,0 +1,14 @@
+- [New Card Creation](new_card_creation.md) — Guia completo pra criar cartas/jokers novos. Todo o debugging visual consolidado. LER PRIMEIRO antes de tocar em visual.
+- [Project Overview](project_overview.md) — Card game (Lua + LÖVE2D 11.5) inspirado em Slay the Spire + Balatro, UI em PT-BR
+- [Architecture Map](architecture.md) — state machine em main.lua, Game.lua como orquestrador, sistemas em src/systems
+- [Pixel Art System](pixel_art_system.md) — arte 100% procedural (Palette → CardFrame → CRTShader), Balatro-style
+- [UI Pixel Chrome](ui_pixel_system.md) — botões/menus/modais pixel, fonte Press Start 2P bundled, estados de Button, Palette.BUTTON_*
+- [Sprite Design Queue](sprite_design_queue.md) — fila de sprites a desenhar via pixel-mcp (PNG > matriz), workflow e paleta
+- [Gameplay Systems](gameplay_systems.md) — turnos, deck modes (classic vs run), tipos de carta, efeitos data-driven
+- [Combat Animation](combat_animation.md) — Balatro-style: cartas voam ao centro, isBlocking() pausa lógica do jogo
+- [Audio System](audio_system.md) — WSL2-aware, _G.audioSystem global, fallback gracioso
+- [UI and Rendering](ui_rendering.md) — Card 3D hover/tilt, HudManager, FontManager, ImageCache (legado: ver pixel_art_system.md)
+- [Conventions](conventions.md) — OOP via metatables, PT-BR, Config responsivo, Palette, print() como logger
+- [Known Gaps](known_gaps.md) — efeitos de carta não implementados, save sem UI, menu "Sobre" placeholder
+- [Card Database Notes](card_database.md) — loader fino (~170 LOC) que merge src/data/cards/*.lua
+- [Run Instructions](run_instructions.md) — love . no root, atalhos de teclado, localização dos CLAUDE.md e docs

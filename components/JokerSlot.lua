@@ -6,6 +6,7 @@ JokerSlot.__index = JokerSlot
 
 local Theme = require("src.ui.Theme")
 local VisualEffects = require("src.ui.VisualEffects")
+local FontManager = require("src.ui.FontManager")
 
 function JokerSlot:new(x, y, size)
     local instance = setmetatable({}, JokerSlot)
@@ -92,21 +93,10 @@ end
 
 function JokerSlot:drawEmptySlot()
     local halfSize = self.size / 2
-    
+
     -- Background com transparência (sem bordas)
     love.graphics.setColor(0.1, 0.1, 0.15, 0.3)
     love.graphics.rectangle("fill", -halfSize, -halfSize, self.size, self.size, 40, 40)
-    
-    -- Símbolo de "+" minimalista
-    local plusFont = love.graphics.newFont(20)
-    love.graphics.setFont(plusFont)
-    love.graphics.setColor(0.5, 0.5, 0.6, 0.8)
-    
-    
-    -- Texto "VAZIO" com tipografia clean
-    local emptyFont = love.graphics.newFont(8)
-    love.graphics.setFont(emptyFont)
-    love.graphics.setColor(0.4, 0.4, 0.5, 0.7)    
 end
 
 

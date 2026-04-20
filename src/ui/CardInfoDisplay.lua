@@ -6,6 +6,7 @@ CardInfoDisplay.__index = CardInfoDisplay
 
 local Config = require("src.core.Config")
 local FontManager = require("src.ui.FontManager")
+local I18n = require("src.i18n.I18n")
 
 function CardInfoDisplay:new()
     local instance = setmetatable({}, CardInfoDisplay)
@@ -104,10 +105,11 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
         return lines * lineHeight
     end
     
-    -- Calcula altura necessária com quebra de linha
-    if showDescription and cardInstance.description then
+    -- Calcula altura necessária com quebra de linha (usa descrição localizada)
+    local _localizedDescForHeight = I18n.cardDesc(cardInstance)
+    if showDescription and _localizedDescForHeight and _localizedDescForHeight ~= "" then
         panelHeight = panelHeight + lineHeight + 10 -- Nome
-        local descHeight = calculateTextHeight(cardInstance.description, maxTextWidth)
+        local descHeight = calculateTextHeight(_localizedDescForHeight, maxTextWidth)
         panelHeight = panelHeight + descHeight + 10 -- Descrição com quebra de linha
         if showRarity and cardInstance.rarity then
             panelHeight = panelHeight + lineHeight + 10 -- Raridade
@@ -161,31 +163,33 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
     local textX = panelX + padding
     
     -- Nome da carta (sempre visível)
+    local localizedName = I18n.cardName(cardInstance)
+    local localizedDesc = I18n.cardDesc(cardInstance)
     love.graphics.setColor(1, 1, 1, 1) -- Nome em branco
-    love.graphics.print(cardInstance.name, textX, currentY)
+    love.graphics.print(localizedName, textX, currentY)
     currentY = currentY + lineHeight + 10
-    
+
     -- Descrição (se habilitado)
-    if showDescription and cardInstance.description then
+    if showDescription and localizedDesc and localizedDesc ~= "" then
         -- Calcula altura da descrição com quebra de linha
-        local descHeight = calculateTextHeight(cardInstance.description, maxTextWidth)
-        
+        local descHeight = calculateTextHeight(localizedDesc, maxTextWidth)
+
         -- Área de descrição com fundo mais claro
         love.graphics.setColor(0.3, 0.3, 0.35, 0.9)
         love.graphics.rectangle("fill", textX - 5, currentY - 5, panelWidth - padding * 2 + 10, descHeight + 10, 5, 5)
-        
+
         -- Texto da descrição com quebra de linha
         love.graphics.setColor(0.9, 0.9, 0.9, 1)
-        self:drawWrappedText(cardInstance.description, textX, currentY, maxTextWidth, lineHeight)
+        self:drawWrappedText(localizedDesc, textX, currentY, maxTextWidth, lineHeight)
         currentY = currentY + descHeight + 15
     end
-    
+
     -- Raridade (se habilitado)
     if showRarity and cardInstance.rarity then
         local rarityColor = self.rarityColors[cardInstance.rarity] or {1, 1, 1}
-        
-        -- Calcula largura necessária para o texto da raridade
-        local rarityText = cardInstance.rarity:upper()
+
+        -- Calcula largura necessária para o texto da raridade (traduzido + caps)
+        local rarityText = (I18n.t("rarity." .. cardInstance.rarity, nil, cardInstance.rarity)):upper()
         local textWidth = love.graphics.getFont():getWidth(rarityText)
         
         -- Largura responsiva baseada no texto + padding
@@ -275,7 +279,8 @@ function CardInfoDisplay:drawRarity(cardInstance, x, y, options)
     
     local rarityColor = self.rarityColors[cardInstance.rarity] or {1, 1, 1}
     love.graphics.setColor(rarityColor[1], rarityColor[2], rarityColor[3], 1)
-    love.graphics.print("RARIDADE: " .. cardInstance.rarity:upper(), x + 10, y)
+    local rarityWord = (I18n.t("rarity." .. cardInstance.rarity, nil, cardInstance.rarity)):upper()
+    love.graphics.print(I18n.t("card_info.rarity_label") .. rarityWord, x + 10, y)
 end
 
 -- Desenha apenas as estatísticas da carta
@@ -322,10 +327,10 @@ end
 -- Desenha apenas o nome da carta
 function CardInfoDisplay:drawName(cardInstance, x, y, options)
     if not cardInstance or not cardInstance.name then return end
-    
+
     local textColor = options and options.textColor or self.textColor
     love.graphics.setColor(textColor[1], textColor[2], textColor[3], textColor[4])
-    love.graphics.print(cardInstance.name, x + 10, y)
+    love.graphics.print(I18n.cardName(cardInstance), x + 10, y)
 end
 
 -- Função para desenhar texto com quebra de linha

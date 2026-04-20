@@ -35,23 +35,10 @@ function HudPlayerPanel:new(x, y, width, height)
 end
 
 function HudPlayerPanel:loadIcons()
-    -- Carrega ícones com tratamento de erro
-    local iconPaths = {
-        armor = "assets/icons/armor.png",
-        mana = "assets/icons/mana.png"
-    }
-    
-    for iconName, path in pairs(iconPaths) do
-        local success, icon = pcall(love.graphics.newImage, path)
-        if success then
-            self.icons[iconName] = icon
-            print("HudPlayerPanel: Ícone carregado:", iconName)
-        else
-            print("HudPlayerPanel: Erro ao carregar ícone:", iconName, path)
-        end
-    end
-    
-    -- Cria ícone de health programaticamente se não existir
+    local ImageCache = require("src.ui.ImageCache")
+    self.icons.armor = ImageCache.get("assets/icons/armor.png")
+    self.icons.mana = ImageCache.get("assets/icons/mana.png")
+
     if not self.icons.health then
         self.icons.health = self:createHealthIcon()
     end

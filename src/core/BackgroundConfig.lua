@@ -32,17 +32,16 @@ BackgroundConfig.BACKGROUNDS = {
 function BackgroundConfig.loadBackground(backgroundKey)
     local config = BackgroundConfig.BACKGROUNDS[backgroundKey]
     if not config then
-        print("ERRO: Background não encontrado:", backgroundKey)
+        print("ERRO: Background nao encontrado:", backgroundKey)
         return nil
     end
-    
+
+    -- Tenta carregar sem usar ImageCache (fallback do cache aponta pra theRock, não é apropriado aqui)
     local success, image = pcall(love.graphics.newImage, config.path)
     if success then
-        print("Background carregado com sucesso:", config.path)
         return image
     else
-        print("ERRO: Não foi possível carregar o background:", config.path)
-        print("Erro:", image)
+        print("ERRO: Nao foi possivel carregar background:", config.path)
         return nil
     end
 end

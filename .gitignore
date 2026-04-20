@@ -1,0 +1,12 @@
+# Claude Code state
+.claude/
+.agents/
+skills-lock.json
+NEXT_SESSION.md
+
+# Windows/WSL metadata
+*:Zone.Identifier
+
+# OS
+.DS_Store
+Thumbs.db

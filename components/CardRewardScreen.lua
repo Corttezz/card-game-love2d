@@ -7,11 +7,15 @@ CardRewardScreen.__index = CardRewardScreen
 local Config = require("src.core.Config")
 local FontManager = require("src.ui.FontManager")
 local Theme = require("src.ui.Theme")
+local Palette = require("src.ui.Palette")
+local PixelCanvas = require("src.ui.PixelCanvas")
 local VisualEffects = require("src.ui.VisualEffects")
+local SceneBackground = require("src.ui.SceneBackground")
 local Button = require("components.Button")
 local CardDatabase = require("src.systems.CardDatabase")
 local CardInfoDisplay = require("src.ui.CardInfoDisplay")
 local ShopSystem = require("src.systems.ShopSystem")
+local I18n = require("src.i18n.I18n")
 
 function CardRewardScreen:new()
     local instance = setmetatable({}, CardRewardScreen)
@@ -145,21 +149,22 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped)
     -- Cria botão de pular
     self.skipButton = Button:new(
         self.skipButtonX, self.skipButtonY, 160, 40,
-        "Continuar",
+        I18n.t("reward.continue"),
         function()
             self:hide()
             if self.onSkipped then
                 self.onSkipped()
             end
-        end
+        end, nil, 12
     )
-    
+    self.skipButton:setIcon("arrow_right")
+
     -- Cria botão de refresh
     local refreshCost = self.shopSystem:getRefreshCost()
     print("[CardRewardScreen] Creating refresh button at:", self.skipButtonX + 180, self.skipButtonY, "cost:", refreshCost)
     self.refreshButton = Button:new(
-        self.skipButtonX + 180, self.skipButtonY, 160, 40,
-        "Refresh ($" .. refreshCost .. ")",
+        self.skipButtonX + 180, self.skipButtonY, 180, 40,
+        I18n.t("reward.refresh", { n = refreshCost }),
         function()
             local currentRefreshCost = self.shopSystem:getRefreshCost()
             print("[CardRewardScreen] Refresh clicked! Cost:", currentRefreshCost, "Can afford:", self.game.economySystem:canAfford(currentRefreshCost))
@@ -186,11 +191,11 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped)
                 
                 -- Atualiza texto do botão
                 local newCost = self.shopSystem:getRefreshCost()
-                self.refreshButton.text = "Refresh ($" .. newCost .. ")"
-                
-                self.game:addMessage("Loja atualizada!", "info")
+                self.refreshButton.text = I18n.t("reward.refresh", { n = newCost })
+
+                self.game:addMessage(I18n.t("reward.shop_refreshed"), "info")
             else
-                self.game:addMessage("Ouro insuficiente para refresh!", "error")
+                self.game:addMessage(I18n.t("reward.refresh_fail"), "error")
             end
         end
     )
@@ -303,19 +308,14 @@ function CardRewardScreen:createOfferButtons()
         -- Botão invisível sobre a oferta para capturar cliques
         local button = Button:new(
             pos.x, pos.y, self.cardWidth, self.cardHeight,
-            "", -- Sem texto, será desenhado customizado
+            "",
             function()
                 print("[CardRewardScreen] Offer", i, "clicked:", offer.name)
                 self:showPurchaseConfirmation(offer)
             end
         )
-        
-        -- Personaliza o botão para ser completamente transparente
-        button.baseColor = {0, 0, 0, 0}
-        button.hoverColor = {0, 0, 0, 0}
-        button.pressColor = {0, 0, 0, 0}
-        button.disabledColor = {0, 0, 0, 0}
-        
+        button:setVariant("invisible")
+
         table.insert(self.cardButtons, button)
         print("[CardRewardScreen] Created button", i, "for", offer.name, "at", pos.x, pos.y, "size", self.cardWidth, self.cardHeight)
     end
@@ -328,20 +328,21 @@ function CardRewardScreen:purchaseOffer(offer, offerId)
     
     -- Verifica se tem ouro suficiente
     if not self.game.economySystem:canAfford(offer.cost) then
-        self.game:addMessage("Ouro insuficiente!", "error")
+        self.game:addMessage(I18n.t("reward.insufficient_gold"), "error")
         return
     end
-    
+
     -- Gasta o ouro
     if self.game.economySystem:spendGold(offer.cost, offer.type, offer.id) then
+        local offerName = offer.type == "card" and I18n.cardName({ id = offer.id, name = offer.name }) or offer.name
         if offer.type == "card" then
             -- Adiciona carta ao deck
             self.game:addCardToRun(offer.id)
-            self.game:addMessage("Comprou: " .. offer.name, "success")
+            self.game:addMessage(I18n.t("reward.bought", { name = offerName }), "success")
         elseif offer.type == "upgrade" then
             -- Aplica upgrade
             self:applyUpgrade(offer)
-            self.game:addMessage("Comprou: " .. offer.name, "success")
+            self.game:addMessage(I18n.t("reward.bought", { name = offerName }), "success")
         end
         
         -- Marca a oferta como comprada (não remove da lista)
@@ -375,34 +376,29 @@ function CardRewardScreen:showPurchaseConfirmation(offer)
     
     -- Botão de confirmar
     self.confirmButton = Button:new(
-        modalX + modalWidth / 2 - 160, modalY + modalHeight - 60, 140, 40,
-        "Comprar ($" .. offer.cost .. ")",
+        modalX + modalWidth / 2 - 160, modalY + modalHeight - 60, 150, 40,
+        I18n.t("reward.buy", { n = offer.cost }),
         function()
             self:confirmPurchase()
-        end
+        end, nil, 10
     )
-    
+    self.confirmButton:setIcon("check")
+
+    -- Se não pode pagar, desabilita visualmente o confirmar
+    local canAfford = self.game and self.game.economySystem:canAfford(offer.cost)
+    if not canAfford then
+        self.confirmButton:setEnabled(false)
+    end
+
     -- Botão de cancelar
     self.cancelButton = Button:new(
-        modalX + modalWidth / 2 + 20, modalY + modalHeight - 60, 140, 40,
-        "Cancelar",
+        modalX + modalWidth / 2 + 20, modalY + modalHeight - 60, 150, 40,
+        I18n.t("reward.cancel"),
         function()
             self:cancelPurchase()
-        end
+        end, nil, 12
     )
-    
-    -- Configura cores dos botões
-    local canAfford = self.game and self.game.economySystem:canAfford(offer.cost)
-    if canAfford then
-        self.confirmButton.baseColor = {0.2, 0.7, 0.2, 0.8}
-        self.confirmButton.hoverColor = {0.3, 0.8, 0.3, 0.9}
-    else
-        self.confirmButton.baseColor = {0.5, 0.2, 0.2, 0.8}
-        self.confirmButton.hoverColor = {0.6, 0.3, 0.3, 0.9}
-    end
-    
-    self.cancelButton.baseColor = {0.6, 0.6, 0.6, 0.8}
-    self.cancelButton.hoverColor = {0.7, 0.7, 0.7, 0.9}
+    self.cancelButton:setIcon("x_close")
 end
 
 function CardRewardScreen:confirmPurchase()
@@ -429,13 +425,13 @@ function CardRewardScreen:applyUpgrade(upgrade)
         self.game.player.mana = self.game.player.mana + upgrade.value
     elseif upgrade.effect == "increase_card_draw" then
         -- Implementar sistema de cartas extras por turno
-        self.game:addMessage("Cartas extras por turno: +" .. upgrade.value, "info")
+        self.game:addMessage(I18n.t("reward.extra_draw", { n = upgrade.value }), "info")
     elseif upgrade.effect == "increase_attack_damage" then
         -- Implementar bônus de dano global
-        self.game:addMessage("Dano de ataque: +" .. upgrade.value, "info")
+        self.game:addMessage(I18n.t("reward.atk_bonus", { n = upgrade.value }), "info")
     elseif upgrade.effect == "increase_defense" then
         -- Implementar bônus de defesa global
-        self.game:addMessage("Defesa: +" .. upgrade.value, "info")
+        self.game:addMessage(I18n.t("reward.def_bonus", { n = upgrade.value }), "info")
     end
 end
 
@@ -543,10 +539,13 @@ end
 
 function CardRewardScreen:draw()
     if not self.visible then return end
-    
-    -- Fundo escurecido
-    love.graphics.setColor(0, 0, 0, 0.7)
-    love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+
+    local w, h = love.graphics.getDimensions()
+    -- Fundo: cena altar de recompensas + overlay escuro denso (é overlay modal)
+    if not SceneBackground.draw("cardReward", w, h, 0.65) then
+        love.graphics.setColor(0, 0, 0, 0.7)
+        love.graphics.rectangle("fill", 0, 0, w, h)
+    end
     
     -- Título da loja
     self:drawTitle()
@@ -610,186 +609,143 @@ end
 function CardRewardScreen:drawTitle()
     local screenWidth = love.graphics.getWidth()
     local screenHeight = love.graphics.getHeight()
-    
-    local titleFont = FontManager.getFont(24)
+
+    local titleFont = FontManager.getFont(16)
     love.graphics.setFont(titleFont)
-    
-    local title = "LOJA"
+
+    local title = I18n.t("reward.shop_title")
     local titleWidth = titleFont:getWidth(title)
-    local titleX = (screenWidth - titleWidth) / 2
-    local titleY = screenHeight * 0.1
-    
-    -- Fundo do título
-    love.graphics.setColor(0.1, 0.1, 0.2, 0.8)
-    love.graphics.rectangle("fill", titleX - 20, titleY - 10, titleWidth + 40, 40, 10)
-    
-    -- Título
-    love.graphics.setColor(1, 1, 1, 1)
+    local titleX = math.floor((screenWidth - titleWidth) / 2)
+    local titleY = math.floor(screenHeight * 0.1)
+
+    -- Banner pixel do título
+    local padX, padY = 20, 8
+    local bx, by = titleX - padX, titleY - padY
+    local bw, bh = titleWidth + padX * 2, titleFont:getHeight() + padY * 2
+    PixelCanvas.rect(bx, by, bw, bh, Palette.PANEL_FILL)
+    PixelCanvas.rectOutline(bx, by, bw, bh, Palette.PANEL_OUTLINE)
+    PixelCanvas.rectOutline(bx + 2, by + 2, bw - 4, bh - 4, Palette.PANEL_OUTLINE_INNER)
+
+    Palette.set(Palette.AGED_GOLD_LIGHT)
     love.graphics.print(title, titleX, titleY)
-    
+
     -- Ouro atual
     if self.game and self.game.economySystem then
-        local goldText = "Ouro: $" .. self.game.economySystem.currentGold
-        local goldFont = FontManager.getFont(16)
+        local goldText = I18n.t("reward.gold_label", { n = self.game.economySystem.currentGold })
+        local goldFont = FontManager.getFont(10)
         love.graphics.setFont(goldFont)
         local goldWidth = goldFont:getWidth(goldText)
-        love.graphics.print(goldText, (screenWidth - goldWidth) / 2, titleY + 30)
+        Palette.set(Palette.PARCHMENT_LIGHT)
+        love.graphics.print(goldText,
+            math.floor((screenWidth - goldWidth) / 2),
+            titleY + bh)
     end
 end
 
 function CardRewardScreen:drawOffer(offer, x, y, index)
     local canAfford = self.game and self.game.economySystem:canAfford(offer.cost)
-    
-    -- Background da oferta
-    if canAfford then
-        love.graphics.setColor(0.2, 0.2, 0.3, 0.9)
-    else
-        love.graphics.setColor(0.3, 0.2, 0.2, 0.9)
-    end
-    love.graphics.rectangle("fill", x, y, self.cardWidth, self.cardHeight, 10)
-    
-    -- Borda da oferta
-    if canAfford then
-        love.graphics.setColor(0.3, 0.6, 0.9, 1)
-    else
-        love.graphics.setColor(0.8, 0.2, 0.2, 1)
-    end
-    love.graphics.rectangle("line", x, y, self.cardWidth, self.cardHeight, 10)
-    
-    -- Nome do item
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.setFont(FontManager.getFont(12))
-    love.graphics.printf(offer.name, x + 10, y + 10, self.cardWidth - 20, "center")
-    
+    local w, h = self.cardWidth, self.cardHeight
+
+    -- Fundo pixel (sem cantos arredondados)
+    PixelCanvas.rect(math.floor(x), math.floor(y), math.floor(w), math.floor(h), Palette.PANEL_FILL)
+    PixelCanvas.rectOutline(math.floor(x), math.floor(y), math.floor(w), math.floor(h),
+        canAfford and Palette.AGED_GOLD or Palette.BLOOD)
+
+    -- Nome (cards traduzidos via I18n; upgrades mantêm o nome literal da oferta)
+    local displayName = offer.type == "card" and I18n.cardName({ id = offer.id, name = offer.name }) or offer.name
+    local displayDesc = offer.type == "card" and I18n.cardDesc({ id = offer.id, description = offer.description }) or offer.description
+    Palette.set(Palette.PARCHMENT_LIGHT)
+    love.graphics.setFont(FontManager.getFont(10))
+    love.graphics.printf(displayName, x + 8, y + 12, w - 16, "center")
+
     -- Descrição
-    love.graphics.setColor(0.8, 0.8, 0.8, 1)
-    love.graphics.printf(offer.description, x + 10, y + 30, self.cardWidth - 20, "center")
-    
+    Palette.set(Palette.PARCHMENT)
+    love.graphics.setFont(FontManager.getFont(8))
+    love.graphics.printf(displayDesc, x + 8, y + 36, w - 16, "center")
+
     -- Preço
-    if canAfford then
-        love.graphics.setColor(1, 1, 0.2, 1) -- Amarelo se pode comprar
-    else
-        love.graphics.setColor(0.8, 0.2, 0.2, 1) -- Vermelho se não pode
-    end
-    love.graphics.printf("$" .. offer.cost, x + 10, y + self.cardHeight - 30, self.cardWidth - 20, "center")
-    
-    -- Cor da raridade (se for carta)
+    Palette.set(canAfford and Palette.AGED_GOLD_LIGHT or Palette.BLOOD)
+    love.graphics.setFont(FontManager.getFont(10))
+    love.graphics.printf("$" .. offer.cost, x + 8, y + h - 24, w - 16, "center")
+
+    -- Faixa de raridade no topo
     if offer.type == "card" and offer.rarity then
-        local rarityColors = {
-            common = {0.7, 0.7, 0.7, 1},
-            uncommon = {0.2, 0.8, 0.2, 1},
-            rare = {0.2, 0.2, 0.8, 1},
-            legendary = {0.8, 0.2, 0.8, 1}
-        }
-        local rarityColor = rarityColors[offer.rarity] or {1, 1, 1, 1}
-        love.graphics.setColor(rarityColor)
-        love.graphics.rectangle("fill", x + 10, y + 5, self.cardWidth - 20, 3)
+        Palette.set(Palette.forRarity(offer.rarity))
+        love.graphics.rectangle("fill", math.floor(x + 6), math.floor(y + 4), math.floor(w - 12), 3)
     end
 end
 
 function CardRewardScreen:drawPriceOverlay(cardInstance, x, y, index)
-    -- Usa a referência da oferta armazenada na carta
     local offer = cardInstance.shopOffer
-    
     if not offer or offer.purchased then return end
-    
+
     local canAfford = self.game and self.game.economySystem:canAfford(offer.cost)
-    
-    -- Fundo do preço
-    if canAfford then
-        love.graphics.setColor(0.1, 0.1, 0.2, 0.8)
-    else
-        love.graphics.setColor(0.2, 0.1, 0.1, 0.8)
-    end
-    love.graphics.rectangle("fill", x + 5, y + self.cardHeight - 255, self.cardWidth - 10, 20, 5)
-    
-    -- Borda do preço
-    if canAfford then
-        love.graphics.setColor(0.3, 0.6, 0.9, 1)
-    else
-        love.graphics.setColor(0.8, 0.2, 0.2, 1)
-    end
-    love.graphics.rectangle("line", x + 5, y + self.cardHeight - 255, self.cardWidth - 10, 20, 5)
-    
-    -- Texto do preço
-    if canAfford then
-        love.graphics.setColor(1, 1, 0.2, 1) -- Amarelo se pode comprar
-    else
-        love.graphics.setColor(0.8, 0.2, 0.2, 1) -- Vermelho se não pode
-    end
-    love.graphics.setFont(FontManager.getFont(12))
-    love.graphics.printf("$" .. offer.cost, x + 5, y + self.cardHeight - 250, self.cardWidth - 10, "center")
+    local w = math.floor(self.cardWidth) - 10
+    local bx, by = math.floor(x + 5), math.floor(y + self.cardHeight - 255)
+
+    PixelCanvas.rect(bx, by, w, 20, Palette.PANEL_FILL)
+    PixelCanvas.rectOutline(bx, by, w, 20, canAfford and Palette.AGED_GOLD or Palette.BLOOD)
+
+    Palette.set(canAfford and Palette.AGED_GOLD_LIGHT or Palette.BLOOD)
+    love.graphics.setFont(FontManager.getFont(10))
+    love.graphics.printf("$" .. offer.cost, bx, by + 5, w, "center")
 end
 
 function CardRewardScreen:drawPurchaseConfirmation()
     if not self.selectedOffer then return end
-    
+
     local screenWidth = love.graphics.getWidth()
     local screenHeight = love.graphics.getHeight()
-    
-    -- Overlay escuro mais forte para indicar que o fundo está desabilitado
-    love.graphics.setColor(0, 0, 0, 0.9)
+
+    -- Overlay escuro global
+    love.graphics.setColor(0, 0, 0, 0.85)
     love.graphics.rectangle("fill", 0, 0, screenWidth, screenHeight)
-    
-    -- Modal
-    local modalWidth = 400
-    local modalHeight = 200
-    local modalX = (screenWidth - modalWidth) / 2
-    local modalY = (screenHeight - modalHeight) / 2
-    
-    -- Fundo do modal
-    love.graphics.setColor(0.15, 0.15, 0.2, 0.95)
-    love.graphics.rectangle("fill", modalX, modalY, modalWidth, modalHeight, 15)
-    
-    -- Borda do modal
+
+    local modalW, modalH = 420, 220
+    local modalX = math.floor((screenWidth - modalW) / 2)
+    local modalY = math.floor((screenHeight - modalH) / 2)
     local canAfford = self.game and self.game.economySystem:canAfford(self.selectedOffer.cost)
-    if canAfford then
-        love.graphics.setColor(0.3, 0.6, 0.9, 1)
-    else
-        love.graphics.setColor(0.8, 0.3, 0.3, 1)
-    end
-    love.graphics.setLineWidth(3)
-    love.graphics.rectangle("line", modalX, modalY, modalWidth, modalHeight, 15)
-    
+
+    -- Modal pixel: ink fill + dual outline
+    PixelCanvas.rect(modalX, modalY, modalW, modalH, Palette.PANEL_FILL)
+    PixelCanvas.rectOutline(modalX, modalY, modalW, modalH,
+        canAfford and Palette.AGED_GOLD or Palette.BLOOD)
+    PixelCanvas.rectOutline(modalX + 2, modalY + 2, modalW - 4, modalH - 4, Palette.AGED_GOLD_DARK)
+
     -- Título
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.setFont(FontManager.getFont(18))
-    love.graphics.printf("Confirmar Compra", modalX, modalY + 20, modalWidth, "center")
-    
-    -- Nome do item
-    love.graphics.setFont(FontManager.getFont(16))
-    love.graphics.printf(self.selectedOffer.name, modalX, modalY + 50, modalWidth, "center")
-    
+    Palette.set(Palette.AGED_GOLD_LIGHT)
+    love.graphics.setFont(FontManager.getFont(14))
+    love.graphics.printf(I18n.t("reward.confirm_title"), modalX, modalY + 20, modalW, "center")
+
+    Palette.set(Palette.PARCHMENT_LIGHT)
+    love.graphics.setFont(FontManager.getFont(12))
+    local confName = self.selectedOffer.type == "card"
+        and I18n.cardName({ id = self.selectedOffer.id, name = self.selectedOffer.name })
+        or self.selectedOffer.name
+    love.graphics.printf(confName, modalX, modalY + 54, modalW, "center")
+
     -- Preço
-    if canAfford then
-        love.graphics.setColor(1, 1, 0.2, 1) -- Amarelo se pode comprar
-    else
-        love.graphics.setColor(0.8, 0.3, 0.3, 1) -- Vermelho se não pode
-    end
-    love.graphics.setFont(FontManager.getFont(20))
-    love.graphics.printf("$" .. self.selectedOffer.cost, modalX, modalY + 80, modalWidth, "center")
-    
-    -- Status do ouro
+    Palette.set(canAfford and Palette.AGED_GOLD_LIGHT or Palette.BLOOD)
+    love.graphics.setFont(FontManager.getFont(16))
+    love.graphics.printf("$" .. self.selectedOffer.cost, modalX, modalY + 84, modalW, "center")
+
+    -- Status
+    love.graphics.setFont(FontManager.getFont(8))
     if not canAfford then
-        love.graphics.setColor(0.8, 0.3, 0.3, 1)
-        love.graphics.setFont(FontManager.getFont(12))
-        love.graphics.printf("Ouro insuficiente!", modalX, modalY + 110, modalWidth, "center")
+        Palette.set(Palette.BLOOD)
+        love.graphics.printf(I18n.t("reward.insufficient_gold"), modalX, modalY + 120, modalW, "center")
     else
-        love.graphics.setColor(0.8, 0.8, 0.8, 1)
-        love.graphics.setFont(FontManager.getFont(12))
+        Palette.set(Palette.PARCHMENT)
         local currentGold = self.game.economySystem.currentGold
-        local remainingGold = currentGold - self.selectedOffer.cost
-        love.graphics.printf("Ouro atual: $" .. currentGold .. " → $" .. remainingGold, modalX, modalY + 110, modalWidth, "center")
+        local remaining = currentGold - self.selectedOffer.cost
+        love.graphics.printf(I18n.t("reward.gold_transition", { from = currentGold, to = remaining }),
+            modalX, modalY + 120, modalW, "center")
     end
-    
-    -- Botões
-    if self.confirmButton then
-        self.confirmButton:draw()
-    end
-    
-    if self.cancelButton then
-        self.cancelButton:draw()
-    end
+
+    if self.confirmButton then self.confirmButton:draw() end
+    if self.cancelButton  then self.cancelButton:draw()  end
+
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 function CardRewardScreen:drawInstructions()
@@ -799,7 +755,7 @@ function CardRewardScreen:drawInstructions()
     local instructionFont = FontManager.getFont(14)
     love.graphics.setFont(instructionFont)
     
-    local instructions = "Clique em uma carta/upgrade para ver confirmação de compra | Refresh para novas opções | Continuar para prosseguir"
+    local instructions = I18n.t("reward.instructions")
     local instructionWidth = instructionFont:getWidth(instructions)
     local instructionX = (screenWidth - instructionWidth) / 2
     local instructionY = screenHeight - 40

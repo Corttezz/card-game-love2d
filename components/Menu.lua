@@ -2,6 +2,10 @@ local Button = require("components.Button")
 local Config = require("src.core.Config")
 local FontManager = require("src.ui.FontManager")
 local Theme = require("src.ui.Theme")
+local PixelBackground = require("src.ui.PixelBackground")
+local PixelCanvas = require("src.ui.PixelCanvas")
+local Palette = require("src.ui.Palette")
+local I18n = require("src.i18n.I18n")
 
 local Menu = {}
 Menu.__index = Menu
@@ -10,14 +14,20 @@ function Menu:new()
     local instance = setmetatable({}, Menu)
     instance.buttons = {}
     instance.visible = true
-    instance.title = "jogo"
-    instance.subtitle = "jogo"
-    
+
     -- Cria os botões do menu
     instance:createButtons()
-    
+
+    -- Re-cria botões quando trocar idioma (textos mudam)
+    I18n.onLocaleChanged(function()
+        if instance.visible ~= nil then instance:createButtons() end
+    end)
+
     return instance
 end
+
+function Menu:_title()    return I18n.t("menu.title") end
+function Menu:_subtitle() return I18n.t("menu.subtitle") end
 
 function Menu:createButtons()
     -- Usa coordenadas relativas à resolução da tela
@@ -33,47 +43,53 @@ function Menu:createButtons()
         startY,
         buttonWidth,
         buttonHeight,
-        "JOGAR",
+        I18n.t("menu.play"),
         function() self:onPlayClick() end,
         Theme.Colors.SUCCESS,
         24
     )
-    
-    -- Botão Configurações
-    self.buttons.settings = Button:new(
+
+    -- Botão Coleção
+    self.buttons.collection = Button:new(
         centerX - buttonWidth / 2,
         startY + spacing,
         buttonWidth,
         buttonHeight,
-        "CONFIGURAÇÕES",
-        function() self:onSettingsClick() end,
-        Theme.Colors.WARNING,
+        I18n.t("menu.collection"),
+        function() self:onCollectionClick() end,
+        Theme.Colors.ACCENT or Theme.Colors.INFO,
         20
     )
-    
-    -- Botão Sobre
-    self.buttons.about = Button:new(
+
+    -- Botão Configurações
+    self.buttons.settings = Button:new(
         centerX - buttonWidth / 2,
         startY + spacing * 2,
         buttonWidth,
         buttonHeight,
-        "SOBRE",
-        function() self:onAboutClick() end,
-        Theme.Colors.INFO,
+        I18n.t("menu.settings"),
+        function() self:onSettingsClick() end,
+        Theme.Colors.WARNING,
         20
     )
-    
+
     -- Botão Sair
     self.buttons.quit = Button:new(
         centerX - buttonWidth / 2,
         startY + spacing * 3,
         buttonWidth,
         buttonHeight,
-        "SAIR",
+        I18n.t("menu.quit"),
         function() self:onQuitClick() end,
         Theme.Colors.ERROR,
         20
     )
+
+    -- Ícones pixel em cada botão (deixa o Button fazer auto-scale pela altura)
+    self.buttons.play:setIcon("play_triangle")
+    self.buttons.collection:setIcon("scroll")
+    self.buttons.settings:setIcon("gear")
+    self.buttons.quit:setIcon("x_close")
 end
 
 function Menu:updatePositions()
@@ -91,18 +107,18 @@ function Menu:updatePositions()
         self.buttons.play.height = buttonHeight
     end
     
+    if self.buttons.collection then
+        self.buttons.collection:setPosition(centerX - buttonWidth / 2, startY + spacing)
+        self.buttons.collection.width = buttonWidth
+        self.buttons.collection.height = buttonHeight
+    end
+
     if self.buttons.settings then
-        self.buttons.settings:setPosition(centerX - buttonWidth / 2, startY + spacing)
+        self.buttons.settings:setPosition(centerX - buttonWidth / 2, startY + spacing * 2)
         self.buttons.settings.width = buttonWidth
         self.buttons.settings.height = buttonHeight
     end
-    
-    if self.buttons.about then
-        self.buttons.about:setPosition(centerX - buttonWidth / 2, startY + spacing * 2)
-        self.buttons.about.width = buttonWidth
-        self.buttons.about.height = buttonHeight
-    end
-    
+
     if self.buttons.quit then
         self.buttons.quit:setPosition(centerX - buttonWidth / 2, startY + spacing * 3)
         self.buttons.quit.width = buttonWidth
@@ -112,11 +128,7 @@ end
 
 function Menu:update(dt)
     if not self.visible then return end
-    
-    -- Atualiza posições dos botões a cada frame
-    self:updatePositions()
-    
-    -- Atualiza todos os botões
+
     for _, button in pairs(self.buttons) do
         button:update(dt)
     end
@@ -132,13 +144,14 @@ function Menu:draw()
     self:drawTitle()
     
     -- Subtítulo
-    love.graphics.setColor(1, 1, 1, 0.8)
-    local subtitleFont = FontManager.getResponsiveFont(Config.UI.SUBTITLE_FONT_RATIO, 18)
+    Palette.set(Palette.PARCHMENT)
+    local subtitleFont = FontManager.getResponsiveFont(Config.UI.SUBTITLE_FONT_RATIO, 14)
     love.graphics.setFont(subtitleFont)
-    local subtitleWidth = subtitleFont:getWidth(self.subtitle)
-    love.graphics.print(self.subtitle, 
-        love.graphics.getWidth() / 2 - subtitleWidth / 2, 
-        love.graphics.getHeight() * 0.42)
+    local subtitle = self:_subtitle()
+    local subtitleWidth = subtitleFont:getWidth(subtitle)
+    love.graphics.print(subtitle,
+        math.floor(love.graphics.getWidth() / 2 - subtitleWidth / 2),
+        math.floor(love.graphics.getHeight() * 0.42))
     
     -- Desenha todos os botões
     for _, button in pairs(self.buttons) do
@@ -155,82 +168,76 @@ end
 function Menu:drawBackground()
     local width = love.graphics.getWidth()
     local height = love.graphics.getHeight()
-    
-    -- Gradiente de fundo principal
-    local bgColors = Theme.Gradients.BACKGROUND_MAIN(0, 0, width, height)
-    Theme.Utils.drawVerticalGradient(0, 0, width, height, bgColors)
-    
-    -- Padrão de fundo sutil com partículas
-    love.graphics.setColor(0.1, 0.1, 0.15, 0.1)
-    for i = 0, width, 80 do
-        for j = 0, height, 80 do
-            local alpha = 0.1 + math.sin(love.timer.getTime() + i * 0.01 + j * 0.01) * 0.05
-            love.graphics.setColor(0.2, 0.3, 0.4, alpha)
-            love.graphics.circle("fill", i, j, 2)
-        end
+
+    -- Tenta usar PNG gerado (scene_menu.png); fallback pra voidStars procedural.
+    local BackgroundLoader = require("src.ui.card.BackgroundLoader")
+    local SceneBackground = require("src.ui.SceneBackground")
+    if SceneBackground.draw("menu", width, height) then
+        -- Overlay grimório pulsante dourado sutil
+        local pulse = 0.04 + math.sin(love.timer.getTime() * 0.5) * 0.02
+        love.graphics.setColor(Palette.AGED_GOLD[1], Palette.AGED_GOLD[2], Palette.AGED_GOLD[3], pulse)
+        love.graphics.rectangle("fill", 0, 0, width, height)
+        love.graphics.setColor(1, 1, 1, 1)
+        return
     end
-    
-    -- Linhas de energia sutis
-    love.graphics.setColor(0.1, 0.2, 0.3, 0.1)
-    love.graphics.setLineWidth(1)
-    for i = 0, width, 120 do
-        love.graphics.line(i, 0, i + 60, height)
-    end
+
+    -- Fallback: voidStars + overlay ink (sem magenta)
+    local bg = PixelBackground.voidStars(width, height)
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(bg, 0, 0)
+    love.graphics.setColor(Palette.INK[1], Palette.INK[2], Palette.INK[3], 0.45)
+    love.graphics.rectangle("fill", 0, 0, width, height)
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 function Menu:drawTitle()
-    local titleFont = FontManager.getResponsiveFont(Config.UI.TITLE_FONT_RATIO, 48)
+    local titleFont = FontManager.getResponsiveFont(Config.UI.TITLE_FONT_RATIO, 40)
     love.graphics.setFont(titleFont)
-    
-    -- Efeito de brilho no título
-    local glowIntensity = 0.5 + math.sin(love.timer.getTime() * 2) * 0.2
-    
-    -- Sombra do título
-    love.graphics.setColor(0, 0, 0, 0.8)
-    love.graphics.print(self.title, 
-        love.graphics.getWidth() / 2 - titleFont:getWidth(self.title) / 2 + 3, 
-        love.graphics.getHeight() * 0.25 + 3)
-    
-    -- Título principal com brilho
-    local titleColor = Theme.Utils.interpolateColor(
-        Theme.Colors.ACCENT, 
-        {1, 1, 1, 1}, 
-        glowIntensity * 0.3
-    )
-    
-    love.graphics.setColor(titleColor)
-    love.graphics.print(self.title, 
-        love.graphics.getWidth() / 2 - titleFont:getWidth(self.title) / 2, 
-        love.graphics.getHeight() * 0.25)
-    
-    -- Borda brilhante
-    love.graphics.setColor(Theme.Colors.ACCENT)
-    love.graphics.setLineWidth(3)
-    love.graphics.rectangle("line", 
-        love.graphics.getWidth() / 2 - titleFont:getWidth(self.title) / 2 - 15, 
-        love.graphics.getHeight() * 0.23, 
-        titleFont:getWidth(self.title) + 30, 
-        titleFont:getHeight() + 30,
-        8, 8
-    )
+
+    local width = love.graphics.getWidth()
+    local height = love.graphics.getHeight()
+    local title = self:_title()
+    local tw = titleFont:getWidth(title)
+    local th = titleFont:getHeight(title)
+    local tx = math.floor(width / 2 - tw / 2)
+    local ty = math.floor(height * 0.22)
+
+    -- Banner pixel: ink fill + borda dourada dupla via PixelCanvas
+    local padX, padY = 28, 12
+    local bx, by = tx - padX, ty - padY
+    local bw, bh = tw + padX * 2, th + padY * 2
+    PixelCanvas.rect(bx, by, bw, bh, Palette.PANEL_FILL)
+    PixelCanvas.rectOutline(bx, by, bw, bh, Palette.PANEL_OUTLINE)
+    PixelCanvas.rectOutline(bx + 3, by + 3, bw - 6, bh - 6, Palette.PANEL_OUTLINE_INNER)
+
+    -- Sombra de texto pixel (offset 2px)
+    Palette.set(Palette.INK)
+    love.graphics.print(title, tx + 2, ty + 2)
+
+    -- Título com leve pulsação dourada
+    local pulse = 0.85 + math.sin(love.timer.getTime() * 1.2) * 0.15
+    love.graphics.setColor(Palette.AGED_GOLD_LIGHT[1] * pulse,
+                           Palette.AGED_GOLD_LIGHT[2] * pulse,
+                           Palette.AGED_GOLD_LIGHT[3] * pulse, 1)
+    love.graphics.print(title, tx, ty)
 end
 
 function Menu:drawInstructions()
-    love.graphics.setColor(Theme.Colors.TEXT_SECONDARY)
-    local instructionFont = FontManager.getResponsiveFont(Config.UI.INSTRUCTION_FONT_RATIO, 14)
+    Palette.set(Palette.PARCHMENT_DARK)
+    local instructionFont = FontManager.getResponsiveFont(Config.UI.INSTRUCTION_FONT_RATIO, 10)
     love.graphics.setFont(instructionFont)
-    
+
     local instructions = {
-        "Use o MOUSE para selecionar cartas",
-        "ESPACO para comprar cartas",
-        "R para reiniciar o jogo",
-        "Jokers são cartas passivas que ficam ativas"
+        I18n.t("menu.instr_mouse"),
+        I18n.t("menu.instr_space"),
+        I18n.t("menu.instr_restart"),
+        I18n.t("menu.instr_jokers"),
     }
-    
-    local y = love.graphics.getHeight() * 0.8
+
+    local y = math.floor(love.graphics.getHeight() * 0.88)
     for i, instruction in ipairs(instructions) do
-        local x = love.graphics.getWidth() / 2 - instructionFont:getWidth(instruction) / 2
-        love.graphics.print(instruction, x, y + (i - 1) * 20)
+        local x = math.floor(love.graphics.getWidth() / 2 - instructionFont:getWidth(instruction) / 2)
+        love.graphics.print(instruction, x, y + (i - 1) * (instructionFont:getHeight() + 4))
     end
 end
 
@@ -242,14 +249,23 @@ function Menu:onPlayClick()
 end
 
 function Menu:onSettingsClick()
-    -- TODO: Implementar menu de configurações
-    print("Configurações - Em desenvolvimento")
+    if self.onSettingsCallback then
+        self.onSettingsCallback()
+    else
+        print("Configurações - callback não definido")
+    end
 end
 
-function Menu:onAboutClick()
-    -- TODO: Implementar tela sobre
-    print("Sobre - Em desenvolvimento")
+function Menu:onCollectionClick()
+    if self.onCollectionCallback then
+        self.onCollectionCallback()
+    else
+        print("Coleção - callback não definido")
+    end
 end
+
+function Menu:setCollectionCallback(cb) self.onCollectionCallback = cb end
+function Menu:setSettingsCallback(cb) self.onSettingsCallback = cb end
 
 function Menu:onQuitClick()
     love.event.quit()

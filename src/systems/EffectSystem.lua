@@ -1,194 +1,193 @@
 -- src/systems/EffectSystem.lua
--- Sistema modular de efeitos de cartas
+-- Sistema modular de efeitos de cartas.
+-- Dois domínios:
+--   1. Efeitos *contínuos* de jokers — modificam o dano/defesa/heal de cartas jogadas.
+--   2. Efeitos de *trigger* — disparam em eventos ("attack", "defend", "turn_start").
+-- Todos os efeitos são data-driven: leem `card.effects` (já injetado por CardDatabase:createCardInstance).
 
 local EffectSystem = {}
 EffectSystem.__index = EffectSystem
 
+local I18n = require("src.i18n.I18n")
+-- Helper local: mensagem traduzida via messages.<key>, com vars injetadas.
+local function msg(key, vars) return I18n.t("messages." .. key, vars) end
+
 function EffectSystem:new()
-    local instance = setmetatable({}, EffectSystem)
-    return instance
+    return setmetatable({}, EffectSystem)
 end
 
--- Aplica efeitos de jokers baseado nos dados da carta
+-- ==============================================================================
+-- Efeitos contínuos de jokers (chamados ao jogar uma carta de ataque/defesa).
+-- ==============================================================================
+
 function EffectSystem:applyJokerEffects(game, card, baseValue)
     local finalValue = baseValue
-    local effectsApplied = {}
-    
-    -- Percorre todos os jokers ativos
+    local msgs = {}
+
     for _, joker in ipairs(game.jokerSlots) do
-        local jokerData = self:getCardData(joker)
-        
-        if jokerData and jokerData.effects then
-            for _, effect in ipairs(jokerData.effects) do
-                local newValue, effectMsg = self:processEffect(effect, card, finalValue)
+        if joker.effects then
+            for _, effect in ipairs(joker.effects) do
+                local newValue, msg = self:processEffect(effect, card, finalValue)
                 if newValue ~= finalValue then
                     finalValue = newValue
-                    if effectMsg then
-                        table.insert(effectsApplied, effectMsg)
-                    end
+                    if msg then table.insert(msgs, msg) end
                 end
             end
         end
     end
-    
-    -- Mostra mensagens dos efeitos aplicados
-    for _, effectMsg in ipairs(effectsApplied) do
-        game:addMessage(effectMsg, "info")
+
+    for _, msg in ipairs(msgs) do
+        game:addMessage(msg, "info")
     end
-    
     return finalValue
 end
 
--- Processa um efeito específico
+-- Retorna (novoValor, mensagem?) para um efeito aplicado a uma carta específica.
 function EffectSystem:processEffect(effect, card, currentValue)
-    local effectType = effect.type
-    local effectValue = effect.value or 1
-    local effectTarget = effect.target
-    
-    -- Multipliers de dano
-    if effectType == "damage_multiplier" and effectTarget == "attack" and card.type == "attack" then
-        return currentValue * effectValue, "Dano multiplicado por " .. effectValue
-        
-    -- Multipliers de defesa  
-    elseif effectType == "defense_multiplier" and effectTarget == "defense" and card.type == "defense" then
-        return currentValue * effectValue, "Defesa multiplicada por " .. effectValue
-        
-    -- Bonus fixo de dano
-    elseif effectType == "damage_bonus" and card.type == "attack" then
-        return currentValue + effectValue, "+" .. effectValue .. " dano bônus"
-        
-    -- Bonus fixo de defesa
-    elseif effectType == "defense_bonus" and card.type == "defense" then
-        return currentValue + effectValue, "+" .. effectValue .. " defesa bônus"
+    local t = effect.type
+    local v = effect.value or 1
+    local target = effect.target
+
+    if t == "damage_multiplier" and target == "attack" and card.type == "attack" then
+        return currentValue * v, msg("dmg_multiplier", { value = v })
+
+    elseif t == "defense_multiplier" and target == "defense" and card.type == "defense" then
+        return currentValue * v, msg("def_multiplier", { value = v })
+
+    elseif t == "damage_bonus" and card.type == "attack" then
+        return currentValue + v, msg("dmg_bonus", { value = v })
+
+    elseif t == "defense_bonus" and card.type == "defense" then
+        return currentValue + v, msg("def_bonus", { value = v })
     end
-    
-    -- Efeito não aplicável para esta carta
+
     return currentValue, nil
 end
 
--- Processa efeitos de cartas de efeito
+-- ==============================================================================
+-- Efeitos de cartas de efeito (potions/utilitárias) — jogadas, consumidas.
+-- ==============================================================================
+
 function EffectSystem:processEffectCard(game, effect)
-    local effectType = effect.type
-    local effectValue = effect.value or 0
-    
-    -- Cura instantânea
-    if effectType == "instant_heal" then
-        game.player:heal(effectValue)
-        game:addMessage("Curou " .. effectValue .. " HP!", "success")
+    local t = effect.type
+    local v = effect.value or 0
+
+    if t == "instant_heal" then
+        local amount = self:applyHealMultiplier(game, v)
+        game.player:heal(amount)
+        game:addMessage(msg("healed", { value = amount }), "success")
         return true
-        
-    -- Restaura mana
-    elseif effectType == "restore_mana" then
-        game.player.mana = game.player.mana + effectValue
-        game:addMessage("Restaurou " .. effectValue .. " mana!", "info")
+
+    elseif t == "restore_mana" then
+        game.player.mana = math.min(game.player.maxMana, game.player.mana + v)
+        game:addMessage(msg("mana_restored", { value = v }), "info")
         return true
-        
-    -- Aumenta mana máxima para a fase atual
-    elseif effectType == "increase_max_mana" then
-        game.player.maxMana = game.player.maxMana + effectValue
-        game.player.mana = game.player.mana + effectValue -- Também adiciona à mana atual
-        game:addMessage("Mana máxima aumentada em " .. effectValue .. "!", "success")
+
+    elseif t == "increase_max_mana" then
+        game.player.maxMana = game.player.maxMana + v
+        game.player.mana = game.player.mana + v
+        game:addMessage(msg("max_mana_up", { value = v }), "success")
         return true
-        
-    -- Adiciona armadura
-    elseif effectType == "add_armor" then
-        game.player:addArmor(effectValue)
-        game:addMessage("Ganhou " .. effectValue .. " de armadura!", "info")
+
+    elseif t == "add_armor" then
+        game.player:addArmor(v)
+        game:addMessage(msg("armor_up", { value = v }), "info")
         return true
-        
-    -- Dano mágico
-    elseif effectType == "magic_damage" then
-        game.enemy:takeDamage(effectValue)
-        game.score = game.score + effectValue
-        game:addMessage("Dano mágico: " .. effectValue, "success")
+
+    elseif t == "magic_damage" then
+        game.enemy:takeDamage(v)
+        game.score = game.score + v
+        game:addMessage(msg("magic_damage", { value = v }), "success")
         return true
-        
-    -- Compra cartas
-    elseif effectType == "draw_cards" then
-        for i = 1, effectValue do
-            game:drawCard()
+
+    elseif t == "draw_cards" then
+        for i = 1, v do game:drawCard() end
+        game:addMessage(msg("drew_cards", { value = v }), "info")
+        return true
+
+    elseif t == "apply_debuff" then
+        -- value é o nome do debuff (ex: "weak", "vulnerable", "poison"), stacks é duração.
+        local debuff = { name = effect.value or "debuff", duration = effect.stacks or 1 }
+        game.enemy:addStatusEffect(debuff)
+        game:addMessage(msg("debuff_applied", { name = debuff.name, duration = debuff.duration }), "warning")
+        return true
+
+    elseif t == "discard_cards" then
+        -- Descarta N cartas aleatórias da mão.
+        for _ = 1, v do
+            if #game.hand > 0 then
+                table.remove(game.hand, love.math.random(#game.hand))
+            end
         end
-        game:addMessage("Comprou " .. effectValue .. " cartas!", "info")
+        game:addMessage(msg("discarded", { value = v }), "info")
         return true
     end
-    
+
+    -- Tipos conhecidos mas não implementados (orbes, força, etc.) — loga e retorna false
+    -- para que o fallback exiba a descrição.
+    if t == "channel_orb" or t == "evoke_orb" or t == "strength_scaling"
+        or t == "exhaust" or t == "innate" then
+        return false
+    end
+
     return false
 end
 
--- Aplica efeitos de "trigger" (quando algo acontece)
+-- Aplica multiplicadores de heal vindos de jokers (heal_multiplier).
+function EffectSystem:applyHealMultiplier(game, amount)
+    local final = amount
+    for _, joker in ipairs(game.jokerSlots or {}) do
+        if joker.effects then
+            for _, effect in ipairs(joker.effects) do
+                if effect.type == "heal_multiplier" then
+                    final = final * (effect.value or 1)
+                end
+            end
+        end
+    end
+    return final
+end
+
+-- ==============================================================================
+-- Efeitos de trigger — disparados pelo Game em eventos específicos.
+-- triggerType: "attack" | "defend" | "turn_start"
+-- context: tabela opcional com dados do evento (ex: {target = enemy}).
+-- ==============================================================================
+
 function EffectSystem:applyTriggerEffects(game, triggerType, context)
-    for _, joker in ipairs(game.jokerSlots) do
-        local jokerData = self:getCardData(joker)
-        
-        if jokerData and jokerData.effects then
-            for _, effect in ipairs(jokerData.effects) do
+    for _, joker in ipairs(game.jokerSlots or {}) do
+        if joker.effects then
+            for _, effect in ipairs(joker.effects) do
                 self:processTriggerEffect(game, effect, triggerType, context)
             end
         end
     end
 end
 
--- Processa efeitos de trigger específicos
 function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
-    local effectType = effect.type
-    local effectValue = effect.value or 0
-    
-    -- Cura quando ataca
-    if effectType == "on_attack_heal" and triggerType == "attack" then
-        game.player:heal(effectValue)
-        game:addMessage("Curou " .. effectValue .. " HP!", "success")
-        
-    -- Dano quando defende
-    elseif effectType == "on_defend_damage" and triggerType == "defend" then
+    local t = effect.type
+    local v = effect.value or 0
+
+    if t == "on_attack_heal" and triggerType == "attack" then
+        local amount = self:applyHealMultiplier(game, v)
+        game.player:heal(amount)
+        game:addMessage(msg("lifesteal", { value = amount }), "success")
+
+    elseif t == "on_defend_damage" and triggerType == "defend" then
         if context and context.target then
-            context.target:takeDamage(effectValue)
-            game:addMessage("Dano reflexivo: " .. effectValue, "warning")
+            context.target:takeDamage(v)
+            game:addMessage(msg("reflect", { value = v }), "warning")
         end
-        
-    -- Regeneração por turno
-    elseif effectType == "regen_per_turn" and triggerType == "turn_start" then
-        game.player:heal(effectValue)
-        game:addMessage("Regenerou " .. effectValue .. " HP", "success")
-        
-    -- Dano por turno
-    elseif effectType == "damage_per_turn" and triggerType == "turn_start" then
-        game.player:takeDamage(effectValue)
-        game:addMessage("Perdeu " .. effectValue .. " HP", "warning")
-    end
-end
 
--- Busca dados da carta (placeholder - seria integrado com CardDatabase)
-function EffectSystem:getCardData(card)
-    -- Esta função seria integrada com o CardDatabase
-    -- Por enquanto, retorna dados mock baseados no nome
-    if card.name == "God of the Abyss" then
-        return {
-            effects = {
-                {type = "damage_multiplier", target = "attack", value = 2.0}
-            }
-        }
-    elseif card.name == "Shield Master" then
-        return {
-            effects = {
-                {type = "defense_multiplier", target = "defense", value = 1.5}
-            }
-        }
-    elseif card.name == "Vampire Lord" then
-        return {
-            effects = {
-                {type = "on_attack_heal", value = 3}
-            }
-        }
-    end
-    
-    return nil
-end
+    elseif t == "regen_per_turn" and triggerType == "turn_start" then
+        local amount = self:applyHealMultiplier(game, v)
+        game.player:heal(amount)
+        game:addMessage(msg("regen", { value = amount }), "success")
 
--- Registra novos tipos de efeitos (extensibilidade)
-function EffectSystem:registerEffect(effectType, processor)
-    -- Permite adicionar novos efeitos dinamicamente
-    -- Útil para mods ou expansões
+    elseif t == "damage_per_turn" and triggerType == "turn_start" then
+        game.player:takeDamage(v)
+        game:addMessage(msg("penalty", { value = v }), "warning")
+    end
 end
 
 return EffectSystem
-
