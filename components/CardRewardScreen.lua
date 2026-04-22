@@ -337,6 +337,17 @@ function CardRewardScreen:purchaseOffer(offer, offerId)
     if self.game.economySystem:spendGold(offer.cost, offer.type, offer.id) then
         local offerName = offer.type == "card" and I18n.cardName({ id = offer.id, name = offer.name }) or offer.name
         if offer.type == "card" then
+            -- Feedback visual: carta dissolve pra indicar "absorvida no deck".
+            -- Palette "booster" = roxo/magenta, diferente do exhaust vermelho.
+            if offer.cardInstance and offer.cardInstance.start_dissolve then
+                local DissolveShader = require("src.ui.DissolveShader")
+                offer.cardInstance:start_dissolve(
+                    DissolveShader.palette("booster"),
+                    true,  -- silent (purchaseConfirm sfx já toca)
+                    0.8,   -- timeFac
+                    true   -- noJuice
+                )
+            end
             -- Adiciona carta ao deck
             self.game:addCardToRun(offer.id)
             self.game:addMessage(I18n.t("reward.bought", { name = offerName }), "success")

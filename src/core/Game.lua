@@ -623,6 +623,12 @@ function Game:enemyTurn()
         Sfx.play("enemyAttack")
         self.player:takeDamage(damage)
         self:addMessage("Inimigo causou " .. damage .. " de dano!", "warning")
+        -- Feedback visceral: screen shake proporcional ao dano (clamped).
+        -- Igual ao que CombatSequence faz quando player bate no inimigo.
+        if _G.triggerShake then
+            local intensity = math.min(14, 4 + damage * 0.25)
+            _G.triggerShake(intensity, 0.22)
+        end
     end
 
     -- Fim do turno do inimigo: processa poison DoT, decrementa duration de debuffs.
