@@ -68,6 +68,35 @@ local function artSlotBounds(card)
     return 5, top, w - 10, bottom - top
 end
 
+-- Inset shadow pra dar profundidade ao art slot: cria impressão de que o bg
+-- está RECESSED abaixo das bandas de header/footer. Inspirado no `emboss`+
+-- `darken` do Balatro (engine/ui.lua:749 + functions/misc_functions.lua:851).
+--
+-- Técnica: 2 linhas de INK com alpha decrescente DENTRO do art slot, adjacentes
+-- às bandas elevadas. Light cai de cima → shadow mais forte no TOPO (header
+-- projeta sombra pra baixo) e um pouco no bottom. Left/right recebem shadow
+-- sutil (1px) pra completar o bevel.
+local function drawRecessShadow(ax, ay, aw, ah)
+    -- TOP: shadow cast pelo header (2 rows descendo em intensidade)
+    Palette.set(Palette.INK, 0.32)
+    love.graphics.rectangle("fill", ax, ay,     aw, 1)
+    Palette.set(Palette.INK, 0.16)
+    love.graphics.rectangle("fill", ax, ay + 1, aw, 1)
+
+    -- BOTTOM: shadow do footer (mais sutil — luz vem de cima)
+    Palette.set(Palette.INK, 0.22)
+    love.graphics.rectangle("fill", ax, ay + ah - 1, aw, 1)
+    Palette.set(Palette.INK, 0.10)
+    love.graphics.rectangle("fill", ax, ay + ah - 2, aw, 1)
+
+    -- LEFT + RIGHT: 1px shadow pra completar o "poço"
+    Palette.set(Palette.INK, 0.14)
+    love.graphics.rectangle("fill", ax,          ay + 1, 1, ah - 2)
+    love.graphics.rectangle("fill", ax + aw - 1, ay + 1, 1, ah - 2)
+
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
 local function renderStandard(card, w, h)
     local rarity = card.rarity or "common"
     local art    = CardArt.resolve(card)
@@ -81,6 +110,9 @@ local function renderStandard(card, w, h)
     if autoDec and autoDec ~= art.decoration then
         CardDecoration.draw(ax, ay, aw, ah, autoDec, art.accent)
     end
+
+    -- Depth: inset shadow antes da borda externa (art slot "afunda")
+    drawRecessShadow(ax, ay, aw, ah)
 
     CardBorder.draw(w, h, card.type, rarity, card.id)
     CardHeader.draw(w, name, rarity)
@@ -103,6 +135,9 @@ local function renderJoker(card, w, h)
     if autoDec and autoDec ~= (art.decoration or "flash") then
         CardDecoration.draw(ax, ay, aw, ah, autoDec, art.accent)
     end
+
+    -- Mesmo inset shadow do standard pra dar profundidade
+    drawRecessShadow(ax, ay, aw, ah)
 
     JokerBorder.draw(w, h, rarity)
     JokerHeader.draw(w, name, rarity)
