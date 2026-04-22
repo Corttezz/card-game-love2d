@@ -85,4 +85,26 @@ function FontManager.getCacheStats()
     return { totalFonts = count, cacheSize = count }
 end
 
+-- Desenha `text` em (x, y) com outline preto offset pra legibilidade em qualquer fundo.
+-- - color: {r,g,b,a} do texto principal (default branco).
+-- - outlineAlpha: alpha do outline preto (default 0.9).
+-- - diagonals: se true, usa 8-offset (mais bold); se false/nil, 4-offset padrão.
+-- Assume que a fonte correta já foi setada via setFont — a função não troca fonte.
+local OUTLINE_OFFSETS_4 = { { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 } }
+local OUTLINE_OFFSETS_8 = { { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 }, { 1, 1 }, { -1, -1 }, { 1, -1 }, { -1, 1 } }
+function FontManager.drawWithOutline(text, x, y, color, outlineAlpha, diagonals)
+    local offsets = diagonals and OUTLINE_OFFSETS_8 or OUTLINE_OFFSETS_4
+    local alpha = outlineAlpha or 0.9
+    love.graphics.setColor(0, 0, 0, alpha)
+    for _, o in ipairs(offsets) do
+        love.graphics.print(text, x + o[1], y + o[2])
+    end
+    if color then
+        love.graphics.setColor(color[1], color[2], color[3], color[4] or 1)
+    else
+        love.graphics.setColor(1, 1, 1, 1)
+    end
+    love.graphics.print(text, x, y)
+end
+
 return FontManager

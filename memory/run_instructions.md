@@ -6,10 +6,20 @@ originSessionId: e544765f-309d-4fc7-89e3-58b3dabfa059
 ---
 **Executar:** `love .` a partir de `/home/cortez/projects/card-game-love2d/`. O `conf.lua` está na raiz e define a janela (1024×768, resizable).
 
+**Smoke tests (rápidos, sem abrir janela visual):**
+- `love . smoke_tags` — valida TagSystem (22 checks)
+- `love . smoke_effects` — valida efeitos Fase 2 (25 checks)
+- `love . smoke_combos` — valida ComboSystem (13 checks)
+- `love . smoke_map` — valida MapManager (9 checks)
+- `love . smoke_acts` — valida ActSystem e curvas (21 checks)
+- `love . smoke_discard` — valida pilha de descarte + reshuffle (12 checks)
+- `love . smoke_all` — roda todos em sequência (102 checks, ~5s)
+- `love . validate_cards` — audita catálogo de cartas (tags/effects/rarity)
+- `love . preview_cards` — renderiza PNGs de amostra em `~/.local/share/love/card-game/`
+
 **Ambiente atual:** Linux 6.6 / WSL2. Som no WSL2 pode estar indisponível — cheque o banner `=== STATUS DO ÁUDIO ===` no console logo no load.
 
 **Atalhos de teclado (durante gameplay):**
-- `space` — compra uma carta do deck (toca hoverCard sfx).
 - `r` — reinicia o jogo chamando `game:startGame()`.
 - `f` — toggle fullscreen + `FontManager.clearCache()`.
 - `esc` — volta ao menu (`returnToMenu()`).

@@ -55,40 +55,6 @@ function DeckManager:getAvailableDecks()
     return self.availableDecks
 end
 
--- Cria um deck personalizado (futuro)
-function DeckManager:createCustomDeck(name, description, cardList)
-    -- Funcionalidade para criar decks personalizados
-    -- Seria implementada no futuro
-    local customDeck = {
-        name = name,
-        description = description,
-        cards = cardList,
-        custom = true
-    }
-    
-    -- Validar deck
-    local totalCards = 0
-    for _, cardEntry in ipairs(cardList) do
-        if not self.cardDatabase:getCard(cardEntry.id) then
-            return false, "Carta inválida: " .. cardEntry.id
-        end
-        totalCards = totalCards + (cardEntry.quantity or 1)
-    end
-    
-    if totalCards < 5 then
-        return false, "Deck muito pequeno (mínimo 5 cartas)"
-    end
-    
-    return true, customDeck
-end
-
--- Salva deck personalizado (futuro)
-function DeckManager:saveCustomDeck(deckData)
-    -- Salvaria em arquivo JSON customizado
-    -- Por enquanto apenas retorna sucesso
-    return true
-end
-
 -- Retorna estatísticas de um deck
 function DeckManager:getDeckStats(deckId)
     local deck = self.cardDatabase:getDeck(deckId)
@@ -137,41 +103,6 @@ function DeckManager:getDeckStats(deckId)
     stats.averageCost = stats.totalCards > 0 and (totalCost / stats.totalCards) or 0
     
     return stats
-end
-
--- Sugere melhorias para um deck
-function DeckManager:suggestDeckImprovements(deckId)
-    local stats = self:getDeckStats(deckId)
-    if not stats then return {} end
-    
-    local suggestions = {}
-    
-    -- Muito focado em ataque
-    if stats.attackCards > (stats.totalCards * 0.7) then
-        table.insert(suggestions, "Considere adicionar mais cartas defensivas para balanceamento")
-    end
-    
-    -- Muito defensivo
-    if stats.defenseCards > (stats.totalCards * 0.7) then
-        table.insert(suggestions, "Adicione mais cartas de ataque para terminar combates")
-    end
-    
-    -- Sem jokers
-    if stats.jokerCards == 0 then
-        table.insert(suggestions, "Jokers oferecem efeitos passivos poderosos")
-    end
-    
-    -- Custo muito alto
-    if stats.averageCost > 3 then
-        table.insert(suggestions, "Deck com custo alto - considere cartas mais baratas")
-    end
-    
-    -- Deck muito pequeno
-    if stats.totalCards < 8 then
-        table.insert(suggestions, "Deck pequeno - adicione mais cartas para consistência")
-    end
-    
-    return suggestions
 end
 
 return DeckManager

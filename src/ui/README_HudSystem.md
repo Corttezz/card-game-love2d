@@ -1,355 +1,134 @@
-# Sistema de HUD - Documentação
+# HUD de Batalha — Arquitetura
 
-## 📖 **Visão Geral**
+## Visão geral
 
-O **Sistema de HUD** é uma implementação moderna e componetizada para exibir informações de vida, armadura, mana do jogador e dados do inimigo (vida, dano, fase). O sistema foi projetado com estética moderna inspirada em CSS, utilizando gradientes, bordas arredondadas, efeitos de glow e animações sutis.
+Redesign STS + Balatro (fev/2026): painéis de canto com gradientes foram substituídos por chrome minimalista.
+O HUD se divide em **três blocos**, cada um com propósito e localização espacial clara:
 
-## ✨ **Características**
+1. **HudPlayerPanel** — stats do jogador, canto inferior esquerdo (flat sepia).
+2. **ManaOrb** — mana do jogador, canto inferior direito, estilo Balatro.
+3. **EnemyHud** — HP / intent / status effects **ancorados no sprite do inimigo** (Slay the Spire).
 
-- **Design Moderno**: Inspirado em CSS com bordas arredondadas, gradientes e efeitos de vidro
-- **Componetizado**: Sistema modular e reutilizável
-- **Responsivo**: Se adapta automaticamente a diferentes resoluções
-- **Animações Sutis**: Efeitos de glow, pulso e partículas
-- **Performance Otimizada**: Renderização eficiente com cache de recursos
-- **Temático**: Cores específicas para jogador (verde) e inimigo (vermelho)
-- **Ícones Dinâmicos**: Ícones carregados de arquivos ou criados programaticamente
+Não há mais "painel de inimigo" no canto da tela. O que o jogador precisa saber sobre o inimigo fica *no inimigo*.
 
-## 🏗️ **Arquitetura**
-
-### **Componentes Principais**
-
-1. **HudPanel** - Classe base para todos os painéis
-2. **HudPlayerPanel** - Painel específico para o jogador
-3. **HudEnemyPanel** - Painel específico para o inimigo
-4. **HudManager** - Gerenciador que coordena todos os painéis
-
-### **Hierarquia**
+## Arquitetura
 
 ```
-HudManager
-├── HudPlayerPanel (extends HudPanel)
-└── HudEnemyPanel (extends HudPanel)
+HudManager              ← src/ui/HudManager.lua
+├── HudPlayerPanel      ← src/ui/HudPlayerPanel.lua  (bottom-left)
+└── ManaOrb             ← src/ui/ManaOrb.lua          (bottom-right)
+
+EnemyHud                ← src/ui/EnemyHud.lua
+                           (não é HudPanel; desenhado direto em main.lua
+                            logo após EnemyRenderer.draw)
 ```
 
-## 📁 **Estrutura de Arquivos**
+## Fluxo de draw em `main.lua` (gameplay)
 
 ```
-src/ui/
-├── HudPanel.lua           ← Classe base
-├── HudPlayerPanel.lua     ← Painel do jogador
-├── HudEnemyPanel.lua      ← Painel do inimigo
-├── HudManager.lua         ← Gerenciador principal
-└── README_HudSystem.md    ← Esta documentação
-
-components/
-└── GameUI.lua             ← Integração com o sistema existente
+1. Background
+2. TopBar                                      (gold, deck, settings)
+3. drawJokersAsCards()                         (Balatro jokers no topo)
+4. bbox = EnemyRenderer.draw(game, cx, cy)     (sprite animado + partículas)
+5. EnemyHud.draw(game, bbox, cx, cy)           (HP bar, intent, status pills)
+6. GameUI:draw(game)
+   └── HudManager:draw(game)
+       ├── HudPlayerPanel:draw(game.player)
+       └── ManaOrb:draw(game.player)
+7. Cartas na mão
+8. Botão Jogar
+9. Animação de combate (overlay)
+10. CRT shader (opcional)
 ```
 
-## 🎨 **Design Visual**
+## Componentes
 
-### **HudPlayerPanel (Jogador)**
-- **Posição**: Canto inferior esquerdo
-- **Tema**: Verde (vida/crescimento)
-- **Cores**:
-  - Background: Verde escuro translúcido
-  - Borda: Verde médio com efeito de glow
-  - Texto: Verde muito claro
-- **Informações**:
-  - Vida (barra vermelha)
-  - Armadura (barra azul acinzentada)
-  - Mana (barra azul)
+### HudPlayerPanel (`src/ui/HudPlayerPanel.lua`)
 
-### **HudEnemyPanel (Inimigo)**
-- **Posição**: Canto inferior direito
-- **Tema**: Vermelho (perigo/agressão)
-- **Cores**:
-  - Background: Vermelho escuro translúcido
-  - Borda: Vermelho médio com efeito de glow
-  - Texto: Vermelho muito claro
-- **Informações**:
-  - Vida (barra vermelha)
-  - Dano (texto com ícone)
-  - Fase atual
-  - Nível de ameaça (indicador visual)
+- **Tamanho:** 200×72 px (fixo; antes era 28%×18% responsivo = ~280×140).
+- **Paleta:** `Palette.PARCHMENT_DARK` bg + `Palette.INK` outline + `Palette.AGED_GOLD_DARK` borda interna (consistente com cartas/UI sepia do resto do jogo).
+- **Layout:**
+  - Label "HERÓI" dourado no topo (11pt).
+  - HP grande (24pt) com `hp` principal + `/max` menor ao lado.
+  - Barra HP fina (8px) abaixo — vermelho `BLOOD`, vira `HP_BAR_LOW` laranja quando `hp < 30%`.
+  - Badge armor circular `STEEL` à direita, visível só quando `armor > 0`, halo pulsante (sin(t*3)).
+- **Damage flash:** overlay vermelho 0.35 α quando `player.health` cai; decai em 3/s.
 
-### **Efeitos Visuais**
+### ManaOrb (`src/ui/ManaOrb.lua`)
 
-1. **Sombras**: Offset de 4px para profundidade
-2. **Gradientes**: Verticais para backgrounds
-3. **Glow**: Bordas com efeito de brilho pulsante
-4. **Partículas**: Energia temática circulando os painéis
-5. **Glass Effect**: Overlay translúcido no topo
+- **Formato:** círculo r=40 no canto inferior direito.
+- **Visual:** fundo escuro `{0.05, 0.08, 0.18}` + círculo interno azul `{0.20, 0.42, 0.92}` cujo raio é `r * (0.55 + 0.25 * mana%)` — quanto mais mana, mais "cheio". Highlight lunar branco pequeno no quadrante sup-esq pra dar volume 3D.
+- **Moldura:** `AGED_GOLD_DARK` outline 3px + `AGED_GOLD` interno 1px + `INK` 2px externo.
+- **Halo pulsante:** `{0.30, 0.55, 0.95, 0.25}` respirando em `sin(t*2.5)`. Fica 0.35 intensidade quando `mana==0` (lembra ao jogador que acabou).
+- **Flash:** vermelho 0.5 α quando mana cai (gasto, decai 4/s), azul-verde 0.35 quando sobe (ganho, decai 2/s).
+- **Tipografia:** número atual 32pt bold com outline preto 6-offset (legível sobre azul) + `/max` 18pt azul claro abaixo, centralizados verticalmente como bloco.
 
-## 🚀 **Uso**
+### EnemyHud (`src/ui/EnemyHud.lua`)
 
-### **Integração Básica**
+Renderiza **três sub-elementos** ancorados no sprite do inimigo:
 
+**`drawIntent(enemy, cx, topY)` — acima do sprite:**
+- Box compacto horizontal: ícone espada 24px (via IconLoader) + número de dano à direita em vermelho blood (22pt).
+- Pulsa em `sin(t*3) * 0.08` de alpha vermelho — telegrafia ataque iminente.
+- Ajusta automaticamente por `enemy:hasStatus("weak")` → dano × 0.75.
+
+**`drawHpBar(enemy, cx, groundY, spriteWidth)` — sob o sprite:**
+- Width adaptativa: `max(160, min(260, spriteWidth + 40))`.
+- Altura 10px, track escura + fill vermelho `BLOOD` + highlight 3px no topo + outline `INK`.
+- Número `HP / max` acima da barra (13pt) com outline preto 4-offset — legível sobre qualquer background do ato.
+
+**`drawStatusEffects(enemy, cx, groundY)` — abaixo do HP bar:**
+- Pills circulares r=16 (badge 32×32), spacing 8px, centralizadas em `cx`.
+- Cada pill tem halo colorido exterior + fundo escuro + outline colorido + ícone central (22px).
+- Mapeamento `name → icon`:
+  - `poison` → `potion_red` (verde)
+  - `weak` → `skull` (roxo)
+  - `vulnerable` → `eye` (laranja)
+  - `burn` → `flame` (vermelho)
+  - `strength` → `sword_short` (vermelho escuro)
+- Fallback: inicial maiúscula da letra colorida no centro.
+- Stacks > 1: contador em círculo preto no canto inf-dir do badge (8px radius, outline `INK`).
+
+## EnemyRenderer (integração)
+
+`EnemyRenderer.draw(game, cx, cy)` agora retorna:
 ```lua
--- No GameUI ou main
-local HudManager = require("src.ui.HudManager")
-
--- Inicialização
-local hudManager = HudManager:new()
-
--- No update loop
-hudManager:update(dt)
-
--- No draw loop
-hudManager:draw(game) -- game contém player e enemy
+{ cx = cx, topY = drawY, bottomY = cy, width = iw*scale, height = ih*scale }
 ```
+ou `false` se o sprite ainda não está em disco (no-op gracioso).
 
-### **Configuração de Posições**
+`EnemyHud.draw` aceita esse table e usa as coordenadas pra ancorar seus três sub-elementos. Se `bbox == false`, cai em fallback com posição default.
 
-As posições são calculadas automaticamente baseadas na resolução:
+## Regra ouro: icons PNG de 64×64
 
+O projeto tem ícones em duas origens:
+- **Matrix** (fallback, 16×16) — `scale = 1` desenha 16px, scale=2 desenha 32px etc.
+- **PNG** (`assets/sprites/icons/*.png`, **64×64**) — precisa scale **fracional** se o target < 64.
+
+Usar sempre:
 ```lua
--- Jogador (inferior esquerdo)
-playerPanel.x = 2% da largura da tela
-playerPanel.y = altura da tela - altura do painel - 2%
-
--- Inimigo (inferior direito)
-enemyPanel.x = largura da tela - largura do painel - 2%
-enemyPanel.y = altura da tela - altura do painel - 2%
-```
-
-### **Personalização de Cores**
-
-```lua
--- Exemplo de customização
-local customPanel = HudPanel:new(x, y, width, height, {
-    backgroundColor = {0.1, 0.1, 0.1, 0.9},
-    borderColor = {0.5, 0.5, 0.5, 0.8},
-    accentColor = {1.0, 1.0, 0.0, 1.0}, -- Amarelo
-    textColor = {1, 1, 1, 1}
-})
-```
-
-## 🔧 **API Reference**
-
-### **HudManager**
-
-```lua
--- Construtor
-HudManager:new()
-
--- Métodos principais
-hudManager:update(dt)
-hudManager:draw(game)
-hudManager:show()
-hudManager:hide()
-
--- Getters
-hudManager:getPlayerPanel()
-hudManager:getEnemyPanel()
-```
-
-### **HudPanel (Base)**
-
-```lua
--- Construtor
-HudPanel:new(x, y, width, height, options)
-
--- Métodos de desenho
-panel:drawBackground()
-panel:drawStatusBar(label, current, max, x, y, width, height, color)
-panel:drawText(text, x, y, font, color)
-panel:drawIcon(icon, x, y, scale, color)
-
--- Métodos de configuração
-panel:setPosition(x, y)
-panel:setSize(width, height)
-panel:update(dt)
-```
-
-### **HudPlayerPanel**
-
-```lua
--- Construtor
-HudPlayerPanel:new(x, y, width, height)
-
--- Métodos específicos
-panel:draw(player)
-panel:updatePosition()
-panel:getHealthPercentage(player)
-panel:getArmorPercentage(player)
-panel:getManaPercentage(player)
-```
-
-### **HudEnemyPanel**
-
-```lua
--- Construtor
-HudEnemyPanel:new(x, y, width, height)
-
--- Métodos específicos
-panel:draw(enemy, currentPhase)
-panel:updatePosition()
-panel:getHealthPercentage(enemy)
-panel:drawThreatLevel(phase, x, y)
-```
-
-## 📊 **Barras de Status**
-
-### **Características**
-
-- **Background**: Escuro com transparência
-- **Gradiente**: Horizontal da cor base para cor clara
-- **Highlight**: Brilho branco no topo
-- **Bordas**: Arredondadas com efeito de glow
-- **Números**: Formato "atual/máximo"
-- **Animações**: Pulso sutil em barras preenchidas
-
-### **Cores das Barras**
-
-- **Vida**: Vermelho `{0.8, 0.3, 0.3, 1.0}`
-- **Armadura**: Azul acinzentado `{0.6, 0.6, 0.8, 1.0}`
-- **Mana**: Azul `{0.3, 0.5, 0.9, 1.0}`
-
-## 🎭 **Ícones**
-
-### **Sistema de Ícones**
-
-O sistema tenta carregar ícones de arquivos PNG e, se não encontrar, cria ícones programaticamente:
-
-```lua
--- Ícones carregados de arquivo
-assets/icons/
-├── armor.png
-├── attack.png
-└── mana.png
-
--- Ícones criados programaticamente
-- health (coração)
-- skull (caveira para inimigo)
-```
-
-### **Criação de Ícones Personalizados**
-
-```lua
-function Panel:createCustomIcon()
-    local size = 32
-    local canvas = love.graphics.newCanvas(size, size)
-    
-    love.graphics.setCanvas(canvas)
-    love.graphics.clear()
-    
-    -- Desenhar seu ícone aqui
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.circle("fill", size/2, size/2, size/4)
-    
-    love.graphics.setCanvas()
-    return canvas
+local scale
+if iconH <= target then
+    scale = math.max(1, math.floor(target / iconH))
+else
+    scale = target / iconH    -- fracional (nearest filter mantém pixel sharp)
 end
 ```
 
-## 🔄 **Responsividade**
+Sem isso, `math.floor(20/64) = 0 → max(1, 0) = 1` e o icon desenha 64×64 raw, cobrindo todo o badge.
 
-### **Sistema Responsivo**
+## Preview tool
 
-- **Posições**: Baseadas em percentuais da tela
-- **Tamanhos**: Calculados dinamicamente
-- **Fontes**: Escalas responsivas via FontManager
-- **Espaçamentos**: Proporcionais ao tamanho da tela
+`tools/preview_battle_hud.lua` renderiza um frame simulado de batalha em PNG pra iterar o visual sem precisar jogar:
 
-### **Breakpoints**
-
-```lua
--- Tamanhos responsivos
-width = Config.Utils.getResponsiveSize(0.28, 280, "width")   -- 28% da largura
-height = Config.Utils.getResponsiveSize(0.18, 140, "height") -- 18% da altura
+```bash
+love . preview_battle_hud
+# saída: ~/.local/share/love/card-game/preview_battle_hud.png
 ```
 
-## ⚡ **Performance**
+Fake state editável no próprio arquivo (HP, mana, armor, status effects do inimigo).
 
-### **Otimizações**
+## Arquivos legados
 
-- **Cache de ícones**: Carregados uma vez na inicialização
-- **Update seletivo**: Apenas quando visível
-- **Desenho eficiente**: Uso mínimo de love.graphics calls
-- **Partículas limitadas**: Máximo 3-5 partículas por painel
-
-### **Monitoramento**
-
-```lua
--- Para debug de performance
-local startTime = love.timer.getTime()
-hudManager:draw(game)
-local endTime = love.timer.getTime()
-print("HUD render time:", (endTime - startTime) * 1000, "ms")
-```
-
-## 🎯 **Casos de Uso**
-
-### **Jogos de Cartas**
-- Informações essenciais sempre visíveis
-- Feedback visual de recursos (mana, vida)
-- Estado do inimigo para estratégia
-
-### **RPGs**
-- Barras de status tradicionais
-- Informações de combate
-- Progressão visual
-
-### **Jogos de Estratégia**
-- Estado dos recursos
-- Informações do oponente
-- Feedback de ações
-
-## 🛠️ **Customização Avançada**
-
-### **Temas Personalizados**
-
-```lua
--- Tema noturno
-local nightTheme = {
-    backgroundColor = {0.02, 0.02, 0.05, 0.98},
-    borderColor = {0.1, 0.1, 0.3, 0.9},
-    accentColor = {0.3, 0.3, 0.8, 1.0},
-    textColor = {0.8, 0.8, 1.0, 1.0}
-}
-
--- Tema dourado
-local goldTheme = {
-    backgroundColor = {0.1, 0.08, 0.02, 0.95},
-    borderColor = {0.8, 0.6, 0.2, 0.8},
-    accentColor = {1.0, 0.8, 0.2, 1.0},
-    textColor = {1.0, 0.9, 0.7, 1.0}
-}
-```
-
-### **Animações Personalizadas**
-
-```lua
--- Override do método de partículas
-function CustomPanel:drawParticleEffects()
-    -- Suas animações personalizadas aqui
-end
-```
-
-## 🔧 **Troubleshooting**
-
-### **Problemas Comuns**
-
-1. **Ícones não aparecem**
-   - Verifique se os arquivos PNG existem
-   - Ícones programáticos são criados automaticamente
-
-2. **Posicionamento incorreto**
-   - Chame `updatePosition()` após mudanças de resolução
-   - Verifique cálculos responsivos
-
-3. **Performance baixa**
-   - Reduza número de partículas
-   - Desative efeitos desnecessários
-
-4. **Cores incorretas**
-   - Verifique valores RGBA (0-1)
-   - Confirme reset de cor após operações
-
----
-
-**O Sistema de HUD oferece uma interface moderna, componetizada e altamente customizável para jogos que precisam de feedback visual elegante e profissional!** 🎮✨
-
-
-
-
+- `src/ui/HudPanel.lua` — classe base antiga com gradientes de 20 passos, glass overlay, glow multi-camada. Não é usada por nenhum componente ativo depois do redesign. Mantida por enquanto pra não quebrar imports que eventualmente existam, mas pode ser removida em limpeza futura.
+- `src/ui/HudEnemyPanel.lua` — **removido**. Toda a informação que ele exibia agora está em `EnemyHud`.

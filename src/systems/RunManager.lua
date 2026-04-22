@@ -29,23 +29,33 @@ function RunManager:startNewRun(classId)
     self.currentRun = {
         classId = classId,
         className = selectedClass.name,
-        
+
         -- Deck dinâmico que cresce durante o jogo
         currentDeck = {},
-        
+
         -- Progresso
         currentFloor = 1,
         battlesWon = 0,
         cardsAdded = 0,
-        
+
+        -- Estrutura de atos (Fase 4/5): actNumber + floorInAct + endlessMode
+        actNumber = 1,
+        floorInAct = 1,
+        endlessMode = false,
+
+        -- Nodes: pendingNodes = lista de 2-3 escolhas ativas; currentNode = o escolhido
+        pendingNodes = nil,
+        currentNode = nil,
+        mapHistory = {}, -- array de { actNumber, floorInAct, type } escolhidos
+
         -- Estatísticas
         totalDamageDealt = 0,
         totalDamageTaken = 0,
         cardsPlayed = 0,
-        
+
         -- Histórico de cartas adicionadas
         cardHistory = {},
-        
+
         -- Estado do jogador (pode ser expandido)
         playerState = {
             maxHealth = 100,
@@ -111,19 +121,83 @@ end
 -- Completa uma batalha e gera recompensas
 function RunManager:completeBattle()
     if not self.currentRun then return nil end
-    
+
     self.currentRun.battlesWon = self.currentRun.battlesWon + 1
     self.currentRun.currentFloor = self.currentRun.currentFloor + 1
-    
+
     -- Gera 3 cartas de recompensa (padrão Slay the Spire)
     local cardRewards = self.cardRegistry:generateCardRewards(self.currentRun.classId, 3)
-    
+
     return {
         cardRewards = cardRewards,
         gold = love.math.random(10, 25),
         floor = self.currentRun.currentFloor,
         canSkipReward = true -- Opção de pular recompensa
     }
+end
+
+-- ===== Fase 4: map/nodes =====
+
+-- Gera pendingNodes para o proximo andar dentro do ato.
+-- floorsPerAct: Fase 5 tornara dinamico; por ora usa o default do MapManager.
+function RunManager:generateNextNodes(numNodes)
+    if not self.currentRun then return nil end
+    local MapManager = require("src.systems.MapManager")
+    local act = self.currentRun.actNumber or 1
+    local floorInAct = self.currentRun.floorInAct or 1
+    self.currentRun.pendingNodes = MapManager.generate(floorInAct, act, numNodes or 3)
+    return self.currentRun.pendingNodes
+end
+
+-- Confirma a escolha de um node e avanca floorInAct. Se ultrapassar floorsPerAct,
+-- incrementa actNumber e zera floorInAct. Endless e disparado pelo ActSystem (Fase 5).
+function RunManager:chooseNode(index)
+    if not self.currentRun or not self.currentRun.pendingNodes then return nil end
+    local node = self.currentRun.pendingNodes[index]
+    if not node then return nil end
+
+    self.currentRun.currentNode = node
+    self.currentRun.pendingNodes = nil
+    table.insert(self.currentRun.mapHistory, {
+        actNumber = self.currentRun.actNumber,
+        floorInAct = self.currentRun.floorInAct,
+        type = node.type,
+    })
+
+    return node
+end
+
+-- Avanca floorInAct apos resolver um node (batalha vencida, loja saida, etc).
+-- Retorna "act_complete" se cruzou para novo ato, "endless_start" se saiu do ultimo,
+-- "advanced" caso normal.
+function RunManager:advanceFloorInAct(totalActs)
+    totalActs = totalActs or 3
+    if not self.currentRun then return "advanced" end
+    local MapManager = require("src.systems.MapManager")
+
+    self.currentRun.floorInAct = self.currentRun.floorInAct + 1
+    self.currentRun.currentFloor = self.currentRun.currentFloor + 1
+
+    if self.currentRun.floorInAct > MapManager.FLOORS_PER_ACT then
+        if self.currentRun.actNumber >= totalActs then
+            self.currentRun.endlessMode = true
+            self.currentRun.floorInAct = 1
+            self.currentRun.actNumber = totalActs + 1 -- "ato endless"
+            return "endless_start"
+        end
+        self.currentRun.actNumber = self.currentRun.actNumber + 1
+        self.currentRun.floorInAct = 1
+        return "act_complete"
+    end
+    return "advanced"
+end
+
+function RunManager:getCurrentNode()
+    return self.currentRun and self.currentRun.currentNode
+end
+
+function RunManager:getPendingNodes()
+    return self.currentRun and self.currentRun.pendingNodes
 end
 
 -- Converte deck para instâncias de cartas jogáveis

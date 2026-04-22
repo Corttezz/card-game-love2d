@@ -164,6 +164,16 @@ return {
         unknown                     = "Unknown effect",
     },
 
+    status = {
+        poison     = { name = "Poison",     desc = "Deals {stacks} damage at end of turn. Loses 1 stack per turn." },
+        weak       = { name = "Weak",       desc = "Damage dealt reduced by 25% for {duration} turn(s)." },
+        vulnerable = { name = "Vulnerable", desc = "Takes 50% more damage from attacks for {duration} turn(s)." },
+        strength   = { name = "Strength",   desc = "Attacks deal +{stacks} additional damage while active." },
+        dexterity  = { name = "Dexterity",  desc = "Defense cards gain +{stacks} additional block." },
+        focus      = { name = "Focus",      desc = "Generic buff applied for {duration} turn(s)." },
+        burn       = { name = "Burn",       desc = "Deals {stacks} fire damage per turn." },
+    },
+
     messages = {
         dmg_multiplier   = "Damage x{value}",
         def_multiplier   = "Defense x{value}",

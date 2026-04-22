@@ -20,6 +20,19 @@ Card game estratégico em Lua + **LÖVE2D 11.3**, inspirado em **Slay the Spire*
 card-game-love2d/
 ├── main.lua                    # Entry point: state machine (menu / classSelection / playing / cardReward / gameOver / victory); love.resize reposiciona tudo
 ├── conf.lua                    # LÖVE config 11.5 (janela, módulos)
+├── engine/                     # Infra genérica reutilizável (portada do Balatro)
+│   ├── Event.lua               # Classe Event (trigger=after/immediate/condition/ease)
+│   ├── EventManager.lua        # Fila global de eventos temporais, _G.EventManager
+│   ├── Easing.lua              # Funções de easing + lookup por nome
+│   └── Moveable.lua            # Mixin juice_up() + T/VT opcional
+├── shaders/                    # GLSL (LÖVE 11.x format)
+│   ├── crt.glsl, holo.glsl, card_perspective.glsl  # Pré-existentes
+│   ├── dissolve.glsl           # ⚠️ Portado de Balatro (reescrever antes de shippar)
+│   ├── flash.glsl              # ⚠️ Idem
+│   └── booster.glsl            # ⚠️ Idem (iridescente pra seals/packs)
+├── src/scenes/                 # Scenes extraídas de main.lua (padrão init(deps) + update/draw/input)
+│   ├── GameplayScene.lua       # Estado "playing": combate + mão + jokers + drag/reorder
+│   └── EndScreens.lua          # drawGameOver + drawVictory
 ├── components/                 # UI de alto nível (telas, widgets)
 │   ├── Menu.lua                # Menu principal
 │   ├── ClassSelectionScreen.lua# Seleção de classe (warrior/mage/rogue)
@@ -28,7 +41,7 @@ card-game-love2d/
 │   ├── TopBar.lua              # Barra superior (ouro, deck, ícone config)
 │   ├── SettingsMenu.lua        # Overlay modal: volume (music/sfx/master) + fullscreen
 │   ├── JokerSlot.lua           # Slot visual de joker ativo
-│   └── Button.lua              # Widget de botão (usa FontManager)
+│   └── Button.lua              # Widget botão: clean (Balatro-inspired, default) | ornate | invisible
 ├── src/
 │   ├── core/
 │   │   ├── Game.lua            # Orquestrador (turnos, deck, combate, hooks de settings)
@@ -54,24 +67,31 @@ card-game-love2d/
 │   │   ├── DeckManager.lua     # Modo clássico: decks estáticos
 │   │   ├── RunManager.lua      # Modo Slay the Spire + save/load via love.filesystem
 │   │   ├── EffectSystem.lua    # Efeitos data-driven (jokers, effect cards, triggers)
-│   │   ├── CombatAnimationSystem.lua # Cartas voam ao centro (Balatro-style)
+│   │   ├── CombatSequence.lua  # Combate via EventManager (substitui CombatAnimationSystem)
+│   │   ├── ScreenShake.lua     # Shake global (_G.triggerShake via .install())
+│   │   ├── CardParticles.lua   # Partículas attach-to-card (dissolve/materialize)
+│   │   ├── CardRevealSequence.lua # Orquestrador pack-opening (explode + materialize)
 │   │   ├── EconomySystem.lua   # Ouro, juros tipo TFT
 │   │   ├── ShopSystem.lua      # Ofertas da loja (cartas + upgrades + refresh)
 │   │   ├── AudioSystem.lua     # Áudio robusto (detecta WSL2, fallbacks)
+│   │   ├── Sfx.lua             # Wrapper thin: Sfx.play("name") ao invés do guard repetido
 │   │   ├── MessageSystem.lua   # Toasts in-game com fade
 │   │   ├── ParticleSystem.lua  # Partículas genéricas
 │   │   ├── SmokeSystem.lua     # Smoke atmosférico (4 presets)
 │   │   └── Timer.lua           # Timer simples
 │   ├── ui/
 │   │   ├── Theme.lua           # Paleta de cores + utilitários (gradient, interpolate)
-│   │   ├── FontManager.lua     # Cache de fontes + fontes responsivas
+│   │   ├── FontManager.lua     # Cache de fontes + drawWithOutline helper
 │   │   ├── ImageCache.lua      # Cache global de imagens (evita carregar PNGs múltiplas vezes)
-│   │   ├── HudManager.lua      # Orquestra HudPlayerPanel + HudEnemyPanel
-│   │   ├── HudPanel.lua        # Base para painéis de HUD
-│   │   ├── HudPlayerPanel.lua  # Painel inferior esquerdo (HP/Armor/Mana)
-│   │   ├── HudEnemyPanel.lua   # Painel inferior direito (HP/Damage/Phase)
+│   │   ├── IconLoader.lua      # Resolve nome → PNG (64×64) OU matriz 16×16, + computeScale helper
+│   │   ├── HudManager.lua      # Orquestra HudPlayerPanel + ManaOrb + PlayerBuffPills
+│   │   ├── HudPlayerPanel.lua  # Painel inferior esquerdo flat sepia (HP + Armor shield PNG)
+│   │   ├── ManaOrb.lua         # Orb circular Balatro-style (mana) canto inferior direito
+│   │   ├── PlayerBuffPills.lua # Row horizontal de pills de buff (strength/dexterity/focus)
+│   │   ├── EnemyHud.lua        # HP bar + intent icon + status pills ancorados no sprite
+│   │   ├── StatusPill.lua      # Componente único de pill circular (usado por EnemyHud + PlayerBuffPills)
+│   │   ├── StatusTooltip.lua   # Tooltip global sépia com explicação de status effects
 │   │   ├── CardInfoDisplay.lua # Tooltip de carta no hover
-│   │   ├── VisualEffects.lua   # Glass rectangles, glow, partículas
 │   │   └── Animation.lua       # Easing helpers
 │   └── config/
 │       └── SmokeConfig.lua     # Presets de smoke (default/subtle/atmospheric/intense)
@@ -91,15 +111,25 @@ card-game-love2d/
 
 ---
 
-## 3. State machine (main.lua)
+## 3. State machine (main.lua) — pós-redesign
 
 `currentState` transita entre:
 
 ```
-menu → classSelection → playing ⇄ cardReward
-                          ↓
+menu → classSelection → playing
+                         ↓ (enemy dies)
+                       cardReward (overlay)
+                         ↓ (skip ou comprou)
+                       mapSelection
+                         ↓ (escolhe node)
+                    ┌────┴─────────────────┐
+         playing (battle) │ rest │ event │ shop
+                           (back to mapSelection)
+                         ↓
                     gameOver | victory → menu
 ```
+
+**States novos:** `mapSelection` (MapScreen), `rest` (RestScreen), `event` (EventScreen). O state `cardReward` agora serve tanto recompensa de batalha quanto loja (SHOP node).
 
 - **menu**: `Menu:draw()` — botões Jogar / Configurações / Sobre / Sair (últimos dois só imprimem "em desenvolvimento").
 - **classSelection**: `ClassSelectionScreen` — escolhe `warrior`, `mage`, ou `rogue` → `startGame(classId)`.
@@ -109,7 +139,6 @@ menu → classSelection → playing ⇄ cardReward
 
 ### Inputs (gameplay)
 - Mouse: hover/select cartas, clica "Jogar Cartas", clica config na TopBar.
-- `space`: compra carta do deck (+ som hoverCard).
 - `r`: reinicia via `game:startGame()`.
 - `f`: toggle fullscreen + `FontManager.clearCache()`.
 - `1/2/3/4`: presets de smoke (subtle/default/atmospheric/intense). `0`: limpa smoke.
@@ -117,20 +146,32 @@ menu → classSelection → playing ⇄ cardReward
 
 ---
 
-## 4. Loop de gameplay (Game.lua)
+## 4. Loop de gameplay (Game.lua) — pós-redesign
 
-1. `Game:startGame()` reseta player/enemy/economia, chama `initializeDeck()` (usa RunManager se `isRunMode`, senão DeckManager com `"starter"`), embaralha, compra `Config.Game.INITIAL_HAND_SIZE` (3) cartas.
-2. Jogador hover/seleciona cartas — `Game:selectCard(card)` debita mana via `player:spendMana(cost)`. Desselecionar devolve mana.
-3. `Game:playSelectedCards()` → remove cartas da mão **imediatamente** → `combatAnimationSystem:startCombat(...)` com callbacks:
-   - `onCardProcessed(card)` → `Game:processCardInCombat(card)` aplica dano/defesa/efeito/joker. Efeitos de joker passam por `EffectSystem:applyJokerEffects(game, card, baseValue)`.
-   - `onComplete()` → limpa seleção, `turn = "enemy"`.
-4. Enquanto `combatAnimationSystem:isBlocking()`, `updateGame` não dispara enemy turn, game over, victory nem próxima fase.
-5. `Game:enemyTurn()` — `enemy:performAttack()`, `player:takeDamage(dmg)`, `player:restoreMana()`, `drawCard()`, volta `turn = "player"`.
-6. Se `game:isPhaseCleared()` (enemy.health ≤ 0):
-   - Run mode: `showCardRewards()` → CardRewardScreen.
-   - Classic: `game:nextPhase()` direto.
-7. `nextPhase()` incrementa fase, ganha ouro via `economySystem:earnBattleGold()`, reseta max mana, reembaralha deck, cura a cada `HEALTH_RESTORE_INTERVAL` (3) fases, cria enemy escalado.
-8. Vitória: `currentPhase > VICTORY_PHASES` (10). Game over: `player:isAlive() == false`.
+1. `Game:startGame()` reseta player/enemy/economia, chama `initializeDeck()` (usa RunManager → starter de **2 cartas**), embaralha, **promove cartas `innate` pro topo**, compra `Config.Game.INITIAL_HAND_SIZE=4` cartas.
+2. Jogador hover/seleciona cartas — `Game:selectCard(card)` debita mana.
+3. `Game:playSelectedCards()` → constrói **`turnContext`** (tagCounts, activeCombos, snapshot) → `ComboSystem.detect/announce` → remove cartas da mão → `combatAnimationSystem:startCombat(...)`.
+4. Para cada carta: `processCardInCombat(card, turnContext)`:
+   - **Attack path**: `damage = card.attack` → `applyCardEffects` (strength_scaling/multi_hit) → `+player.strength` → `ComboSystem.applyToCardValue` → `applyJokerEffects` → floor. Depois processa `card.effects` secundários (`apply_debuff`, etc.).
+   - **Defense path**: idem com `player.dexterity`.
+   - **Joker/Effect**: passive roda; joker vai pros slots.
+5. `onCombatAnimationComplete` → `ComboSystem.applyOnceEffects` (heal/debuff/evoke) → `turn = "enemy"`.
+6. `Game:enemyTurn()`:
+   - `performAttack` (considera `weak`)
+   - `takeDamage` aplica no player
+   - `enemy:onTurnEnd()` → poison DoT + decrementa durations de debuffs
+   - `player:restoreMana`, `player:onTurnStart` (decrementa buffs), `drawCard`
+   - `applyTriggerEffects("turn_start")` → regen/DoT do player
+7. Se `game:isPhaseCleared()` (enemy.health ≤ 0):
+   - Run mode: `showCardRewards()` → `continueAfterReward` → `showMapSelection` → escolha → dispatch
+   - Classic: `game:nextPhase()` direto
+8. `nextPhase()`:
+   - Processa `_exhaustedThisBattle` (remove permanentemente cartas com `exhaust=true` da run)
+   - Ganha ouro, reseta mana
+   - Usa `ActSystem.getEnemyStats(actNumber, floorInAct, nodeType)` para stats do próximo inimigo
+   - Cura inter-ato 30-40% quando cruza para novo ato
+9. **Vitória**: `actNumber >= 3` AND `floorInAct >= 8` AND `currentNode.type == "boss"` AND enemy morto. Após vencer, opção de entrar em endless.
+10. **Endless**: `endlessMode = true` trava checkVictory; scaling `1.18^floorsInEndless`.
 
 ---
 
@@ -138,33 +179,57 @@ menu → classSelection → playing ⇄ cardReward
 
 Convivem no mesmo `Game`:
 
-| | **Classic (legacy)** | **Run mode (Slay the Spire)** |
+| | **Classic (legacy)** | **Run mode (default)** |
 |---|---|---|
-| Trigger | Default quando não há `startNewRun` | `game:startNewRun("warrior")` — vindo da ClassSelectionScreen |
-| Deck source | `DeckManager` → `CardDatabase:buildDeckCards("starter")` | `RunManager.currentDeck` (lista de IDs) |
-| Deck cresce? | Não | Sim, via `game:addCardToRun(cardId)` após recompensa |
-| Classes | Ignoradas | Warrior / Mage / Rogue têm pools por raridade (CardRegistry) |
-| Recompensas | Vai direto pra próxima fase | Tela CardRewardScreen (ShopSystem gera ofertas) |
-| Fim | `endCurrentRun(victory)` ou nunca | Stats completas salvas via `RunManager:endRun` |
+| Trigger | Default sem `startNewRun` | `game:startNewRun("warrior")` (via ClassSelectionScreen) |
+| Deck source | `DeckManager` → `"starter"` | `RunManager.currentRun.currentDeck` (IDs) |
+| Starter | Deck estático | **2 cartas** (1 attack + 1 defense) |
+| Deck cresce? | Não | Sim, via map nodes (battle/event/shop/forge) |
+| Classes | Ignoradas | warrior/mage/rogue com pool próprio |
+| Progressão | Cap `VICTORY_PHASES=24` | **3 atos × 8 andares + endless** |
+| Mapa | Nenhum | MapManager gera 2-3 node choices |
+| Save/load | Não | `run.save.lua` via `love.filesystem` |
 
 Flag: `game.isRunMode` + `runManager:hasActiveRun()`.
 
 ---
 
-## 6. Tipos de carta
+## 6. Tipos de carta + Tags + Effects (pós-redesign)
 
-Todas herdam de `src/cards/base/Card.lua` (render 3D Balatro-style, hover, shadows, tooltip):
+Todas herdam de `src/cards/base/Card.lua`. Toda carta tem **`tags = {}`** (array de strings do catálogo em `TagSystem.CATALOG`).
 
-- **`attack`** — `AttackCard`: `card.attack` dano ao inimigo; efeitos de joker são multiplicadores/bônus via `EffectSystem`.
-- **`defense`** — `DefenseCard`: `card.defense` vira armor do player (limitado a `maxArmor=50`).
-- **`joker`** — `JokerCard`: ao jogar vai pro `game.jokerSlots` (máx 3) e executa `card.passive(game)`. Permanece ativo pelo resto da run aplicando efeitos continuamente.
-- **`effect`** — `EffectCard`: executa `card.passive(game)` (via `EffectSystem:processEffectCard`) e é descartada. Tipos: `instant_heal`, `restore_mana`, `increase_max_mana`, `add_armor`, `magic_damage`, `draw_cards`.
+- **`attack`** — dano ao inimigo. Pipeline completo: `applyCardEffects` → `+player.strength` → `ComboSystem.applyToCardValue` → `applyJokerEffects`.
+- **`defense`** — armor ao player (cap 50, zerado por batalha). Mesmo pipeline com `dexterity`.
+- **`joker`** — slots (máx 3), `card.passive(game)` roda 1x, `card.effects` ficam ativos pelo resto da run.
+- **`effect`** — `processEffectCard` executa, carta descartada.
 
-Jokers/efeitos com dados **data-driven** (array `effects = { {type, target, value}, ... }`). Tipos conhecidos em EffectSystem:
-- Continuous (joker): `damage_multiplier`, `defense_multiplier`, `damage_bonus`, `defense_bonus`
-- Trigger: `on_attack_heal`, `on_defend_damage`, `regen_per_turn`, `damage_per_turn`
+**Tipos de effect processados** (fontes: `EffectSystem.processEffect` / `processEffectCard` / `applyCardEffects` / `processTriggerEffect`):
+- **Continuous jokers**: `damage_multiplier`, `defense_multiplier`, `damage_bonus`, `defense_bonus`, `heal_multiplier`
+- **Card self-effects**: `strength_scaling`, `dexterity_scaling`, `multi_hit`, `damage_bonus_self`
+- **Effect cards / passives**: `instant_heal`, `restore_mana`, `increase_max_mana`, `add_armor`, `magic_damage`, `aoe_magic_damage`, `draw_cards`, `discard_cards`, `apply_debuff`, `apply_buff`, `gain_strength`, `gain_dexterity`, `channel_orb`, `evoke_orb`, `evoke_all_orbs`, `mystery`
+- **Flags**: `exhaust`, `innate`, `retain`
+- **Triggers**: `on_attack_heal`, `on_defend_damage`, `regen_per_turn`, `damage_per_turn`
 
-Ver `src/systems/CardDatabase.lua` para ~80+ cartas hard-coded. **Não há JSON externo ainda** apesar do comentário "sistema de banco de dados baseado em JSON" — é tudo Lua puro no `loadData()`.
+Ver `memory/gameplay_systems.md` para referência completa.
+
+## 6b. Tags e Combos
+
+Catálogo em `src/systems/TagSystem.lua` (`TagSystem.CATALOG`), categorias: archetype, mechanic, element, role.
+
+**ComboSystem** detecta sinergias entre cartas do MESMO turno via `turnContext.tagCounts`:
+- `strike_combo` — 2+ `strike` → dano ×1.4
+- `triple_strike` — 3+ `strike` → +6 dano
+- `defend_wall` — 2+ `defend` → defesa ×1.4
+- `poison_stack` — 2+ `poison` → aplica poison extra
+- `channel_burst` — 3+ `channel` → evoca 1 orb
+- `cycle_motion` — `draw` + `discard` → +3 dano
+- `finisher_chain` — `strike` + `finisher` → ×1.3
+- `lifesteal_burst` — `strike` + `lifesteal` → +4 HP
+- `magic_focus` — 2+ `magic` → ×1.5
+- `thorn_reflex` — `defend` + `thorn` → +4 defesa
+- `armor_tower` — 2+ `armor` → +6 defesa
+
+Combos compõem: `10 dmg` × `strike_combo 1.4` + `triple_strike 6` × `joker 2.0` = `52`. Ver `memory/combo_rules.md` para adicionar regra nova.
 
 ---
 
@@ -193,8 +258,14 @@ Máquina de estados: `idle → cards_flying → processing → damage_dealing �
 ### EconomySystem + ShopSystem
 `economySystem.currentGold` inicia em 10 na run. `earnBattleGold(phase, healthLost, consecutiveWins)` gera ouro + juros estilo TFT (10% do cofre, máx 50). Shop gera ofertas (70% cartas, 30% upgrades) com raridade 70%/25%/5% (common/uncommon/rare). `rollRarity` da shop é diferente do `CardRegistry:rollRarity()` (37/37/25/1 legendary).
 
-### HUD
-`HudManager` orquestra `HudPlayerPanel` (canto inferior esquerdo, verde) e `HudEnemyPanel` (canto inferior direito, vermelho). `GameUI.lua` só delega pro `HudManager` — suas funções antigas `drawPlayerInfo/drawEnemyInfo` foram removidas. Salva/restaura estado de gráficos explicitamente após draw.
+### HUD (redesign STS + Balatro)
+`HudManager` orquestra `HudPlayerPanel` (flat sepia com shield PNG pro armor), `PlayerBuffPills` (row acima do painel com strength/dexterity/focus), e `ManaOrb` (canto inf-direito Balatro-style). Stats do inimigo ficam ancoradas **no sprite** via `EnemyHud` (HP bar sob os pés, intent icon custom acima, status pills circulares com ícones PixelLab), chamado em `main.lua` após `EnemyRenderer.draw(game, cx, cy)` que retorna o bbox.
+
+**Tooltips** de status effects via `src/ui/StatusTooltip.lua` — singleton global, show() agenda, draw() chamado no final do frame de gameplay. Hover em qualquer pill (inimigo ou jogador) dispara tooltip com `status.<name>.name` + `status.<name>.desc` (interpolando `{stacks}`/`{duration}`) a partir do i18n.
+
+Ícones customizados PixelLab em `assets/sprites/icons/`: `armor_shield`, `intent_attack`, `intent_defense`, `status_poison`, `status_weak`, `status_vulnerable`, `status_strength`, `status_dexterity`.
+
+O painel do canto de inimigo (antigo `HudEnemyPanel`) foi aposentado. `GameUI.lua` só delega pro `HudManager`. Ver [`memory/ui_rendering.md`](memory/ui_rendering.md) e [`tools/preview_battle_hud.lua`](tools/preview_battle_hud.lua).
 
 ### Smoke
 `SmokeSystem` spawna partículas que sobem lentamente. 4 presets em `SmokeConfig`. Pode ser alterado em runtime via teclas 1-4.
@@ -208,15 +279,21 @@ Máquina de estados: `idle → cards_flying → processing → damage_dealing �
 - **Posicionamento responsivo:** sempre `Config.Utils.getResponsiveSize(ratio, maxSize, dimension)` ou `love.graphics.getWidth()/getHeight()` direto — nunca hard-code coordenadas.
 - **Fontes:** use `FontManager.getResponsiveFont(ratio, maxSize)` ou `FontManager.getFont(size)` para aproveitar cache. Ao trocar resolução, chame `FontManager.clearCache()`.
 - **Cores:** sempre de `Theme.Colors` — evite hex/RGB literais fora de Theme.
-- **Áudio:** sempre pelo `_G.audioSystem`. O fallback direto via `love.audio.newSource` cacheado ainda existe em alguns arquivos (`Game.lua`, `Card.lua`, `JokerCard.lua`) como legado — não adicione novos.
+- **Áudio:** use `Sfx.play("name")` de `src/systems/Sfx.lua` (wrapper pro `_G.audioSystem`). Os fallbacks legados com `love.audio.newSource` direto foram removidos — não reintroduzir.
 - **`print()` é o "logger" do projeto** — há muitos `print` de debug. Não remova em massa sem checar.
 - **Efeitos de cartas** são **data-driven** via `effects = {...}` no CardDatabase. Evite `if card.name == "X"` — use o array `effects`.
+- **Sequências temporais usam `_G.EventManager`** (ex: `EventManager.after(0.3, function() ... end)`) — evita state machines ad-hoc. Ver `memory/engine_layer.md`.
+- **Juice visual** (kick de scale/rot em objetos) via `Moveable.juice_up(obj, 0.3, 0.1)` ou `obj:juice_up(...)` se já tiver o método. Card já compõe — use nos momentos "algo aconteceu".
+- **Card FX** (dissolve/materialize/explode/flip) já disponíveis: `card:start_dissolve(...)`, `card:start_materialize(...)`, `card:explode(...)`, `card:flip(...)`. Sequências prontas em `src/systems/CardRevealSequence.lua`. Ver `memory/card_fx_pipeline.md`.
+- **Copyright shaders**: `shaders/dissolve.glsl`, `flash.glsl`, `booster.glsl` foram **portados** do Balatro. Uso pessoal/estudo ok; reescreva a matemática antes de distribuir o jogo.
 
 ### Anti-patterns observados (a evitar ao editar)
-- `src/MessageSystem.lua` é duplicata antiga de `src/systems/MessageSystem.lua`. O código novo usa o de `systems/`. Não duplique.
-- `ClassSystem.lua` está marcado DEPRECATED — apenas delega pro `CardRegistry`. Prefira `CardRegistry` para novas features.
-- `EffectSystem:getCardData` tem mocks hard-coded por `card.name == "God of the Abyss"` — isso é legado; o fluxo preferido é via `joker.effects` já no CardDatabase. Ao tocar aqui, leia o bloco todo.
-- Cartas procuram imagens em `assets/cards/attack/theRock.png` como fallback quando a imagem falha — muitas cartas do CardDatabase reusam `theRock.png` mesmo sem ser "rock" (por falta de artes).
+- `src/ui/HudPanel.lua` e `src/ui/VisualEffects.lua` foram removidos no refactor de Abril/2026 (eram legado). Não recriar.
+- **Cartas não devem ter `effects = {}` sem tags significativas.** Starter/básicas OK. Rode `love . validate_cards` antes de commitar.
+- **Nunca condicione por `card.name`** — use `card.effects` + `card.tags` (data-driven).
+- Cartas procuram imagens em `assets/cards/attack/theRock.png` como fallback — muitas cartas ainda reusam por falta de arte (não é estilo, é débito).
+- Ao adicionar novo tipo de effect: implemente em `EffectSystem` + adicione em `PROCESSED_EFFECT_TYPES` de `tools/validate_cards.lua`.
+- Ao adicionar nova tag: só use após incluir em `TagSystem.CATALOG`.
 
 ---
 
@@ -264,15 +341,23 @@ No `love.load` em `main.lua`: `audioSystem:loadSound("nome", "audio/arquivo.mp3"
 
 ---
 
-## 12. Status e lacunas conhecidas
+## 12. Status e lacunas conhecidas (pós-redesign)
 
-- Menu "Sobre" ainda é placeholder (o de Configurações já foi implementado via `SettingsMenu`).
-- Muitas cartas do Slay the Spire estão **declaradas mas com `effects = {}`** — não fazem nada além do dano base.
-- Tipos de efeito `channel_orb`, `evoke_orb`, `strength_scaling`, `exhaust`, `innate` são declarados em cartas mas ainda não processados (loga descrição).
-- Save/load persistente funcional no `RunManager`, mas ainda não há botão "Continuar" no menu principal que chame `loadRun()`.
-- `CardRewardScreen` ainda tem `print()` de debug (não limpos ainda).
+- ✅ Efeitos `channel_orb`/`evoke_orb`/`strength_scaling`/`exhaust`/`innate`/`mystery` **implementados** (Fase 2).
+- ✅ Sistema de **tags** + **combos** ativos (Fases 1 e 3).
+- ✅ **MapManager** com node choices (Fase 4), **ActSystem** com 3 atos + endless (Fase 5).
+- ✅ **RestScreen** + **EventScreen** (Fase 6). Shop reusa CardRewardScreen.
+- ✅ Starter deck de **2 cartas** (Fase 5). Rebalance nas 96 cartas (Fase 7).
 
-Para detalhes mais longos sobre cada lacuna, veja [`memory/known_gaps.md`](memory/known_gaps.md).
+Pendente:
+- Menu "Sobre" ainda é placeholder.
+- 12 cartas ainda com `effects = {}` (intencionalmente — são âncoras de tag starter/básicas).
+- Save/load existe mas sem botão "Continuar" no menu.
+- Upgrade visual de cartas forjadas (o contador é salvo em `run.upgraded[id]` mas render não mostra).
+- Alguns eventos narrativos avançados (trocas complexas Slay-style) não mapeados.
+- HUD legacy com gradientes 20-step (não é do redesign de gameplay).
+
+Ver [`memory/known_gaps.md`](memory/known_gaps.md) para lista completa e contexto.
 
 ---
 
@@ -280,19 +365,24 @@ Para detalhes mais longos sobre cada lacuna, veja [`memory/known_gaps.md`](memor
 
 O diretório `memory/` na raiz do projeto guarda notas persistentes que complementam este arquivo. Use-as quando precisar de profundidade além do resumo acima. Cada arquivo tem frontmatter (`name`, `description`, `type`).
 
-- [`memory/MEMORY.md`](memory/MEMORY.md) — índice de uma linha por arquivo.
-- [`memory/project_overview.md`](memory/project_overview.md) — identidade, stack, inspirações e idioma.
-- [`memory/architecture.md`](memory/architecture.md) — mapa detalhado das camadas (core/systems/ui/components/pixel art).
-- [`memory/pixel_art_system.md`](memory/pixel_art_system.md) — pipeline procedural Balatro-style (Palette → CardFrame → CRTShader).
-- [`memory/ui_pixel_system.md`](memory/ui_pixel_system.md) — chrome de UI pixel: Button reescrito em PixelCanvas, fonte Press Start 2P em `assets/fonts/pixel.ttf`, Palette.BUTTON_*, 6 ícones novos (gear/x_close/arrow_left/arrow_right/play_triangle/check).
-- [`memory/gameplay_systems.md`](memory/gameplay_systems.md) — turnos, dois modos de deck, tipos de carta, tabela de efeitos suportados vs. declarados.
-- [`memory/combat_animation.md`](memory/combat_animation.md) — fases `idle → cards_flying → processing → damage_dealing → complete` e contrato do `isBlocking()`.
-- [`memory/audio_system.md`](memory/audio_system.md) — `_G.audioSystem`, detecção WSL2, fallback pcall e regra de ouro para tocar sons.
-- [`memory/ui_rendering.md`](memory/ui_rendering.md) — renderização 3D Balatro (Card.lua), HudManager, Theme, FontManager.
-- [`memory/conventions.md`](memory/conventions.md) — regras de estilo: OOP via metatables, PT-BR, Config responsivo, Palette, zero-dep.
-- [`memory/known_gaps.md`](memory/known_gaps.md) — lista de legado e incompleto para não "consertar" acidentalmente.
-- [`memory/card_database.md`](memory/card_database.md) — estrutura de uma carta, classes (warrior/mage/rogue), raridades e imagens existentes.
-- [`memory/run_instructions.md`](memory/run_instructions.md) — como rodar, atalhos de teclado e localização de docs.
+- [`memory/MEMORY.md`](memory/MEMORY.md) — índice.
+- [`memory/project_overview.md`](memory/project_overview.md) — identidade, stack, inspirações.
+- [`memory/architecture.md`](memory/architecture.md) — mapa detalhado das camadas (core/systems/components/ui/pixel art).
+- [`memory/gameplay_systems.md`](memory/gameplay_systems.md) — turnos, turnContext, efeitos processados, dois modos de deck.
+- [`memory/tag_system.md`](memory/tag_system.md) — catálogo canônico de tags.
+- [`memory/combo_rules.md`](memory/combo_rules.md) — 11 regras ativas do ComboSystem.
+- [`memory/run_progression.md`](memory/run_progression.md) — atos, nodes, flow entre batalhas, endless.
+- [`memory/balance_curves.md`](memory/balance_curves.md) — HP/dano/gold/raridade por ato.
+- [`memory/archetypes.md`](memory/archetypes.md) — 10 builds viáveis + cartas-âncora.
+- [`memory/card_database.md`](memory/card_database.md) — schema de carta pós-redesign.
+- [`memory/pixel_art_system.md`](memory/pixel_art_system.md) — pipeline procedural.
+- [`memory/ui_pixel_system.md`](memory/ui_pixel_system.md) — chrome de UI pixel.
+- [`memory/combat_animation.md`](memory/combat_animation.md) — fases + `isBlocking()`.
+- [`memory/audio_system.md`](memory/audio_system.md) — `_G.audioSystem`, WSL2.
+- [`memory/ui_rendering.md`](memory/ui_rendering.md) — Card 3D, HudManager.
+- [`memory/conventions.md`](memory/conventions.md) — OOP via metatables, PT-BR, Config.
+- [`memory/known_gaps.md`](memory/known_gaps.md) — o que é intencional vs pendente.
+- [`memory/run_instructions.md`](memory/run_instructions.md) — como rodar, smoke tests, atalhos.
 
 **Developer guide visual:** [`src/ui/README_PixelArt.md`](src/ui/README_PixelArt.md) — tutorial completo de como adicionar cartas, ícones, patterns e tunar estética.
 

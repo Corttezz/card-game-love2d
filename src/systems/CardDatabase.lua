@@ -133,6 +133,13 @@ function CardDatabase:createCardInstance(cd)
     instance.rarity = cd.rarity
     instance.effects = cd.effects
     instance.class = cd.class
+    -- Normaliza tags na criacao: carrega do card-data ou deriva do tipo.
+    -- TagSystem.getCardTags ja faz merge com tag implicita e remove duplicados.
+    local TagSystem = require("src.systems.TagSystem")
+    instance.tags = TagSystem.getCardTags(cd)
+    -- Flags opcionais de cartas especiais (preenchidos no pass de rebalance da Fase 7).
+    instance.innate = cd.innate
+    instance.retain = cd.retain
 
     -- Substitui imagem pela arte procedural pixel-perfect.
     -- Mantém o fallback original se CardFrame falhar (ex: em ambiente sem love).

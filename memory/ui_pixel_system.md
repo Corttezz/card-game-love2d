@@ -116,7 +116,7 @@ Acesso via `IconLoader.get(name)` → `handle.draw(x, y, scale)`. Auto-fallback:
 | `components/CardRewardScreen.lua` | modal, offers e purchase confirmation 100% pixel |
 
 **Fora do escopo atual** (próxima passada, ver `known_gaps.md`):
-- `src/ui/HudPanel.lua`, `HudPlayerPanel.lua`, `HudEnemyPanel.lua` (ainda com gradientes 20-step e glow borders).
+- `src/ui/HudPanel.lua` (legado — não é mais base de componentes ativos; `HudPlayerPanel.lua` foi reescrito flat em 2026-02 e `HudEnemyPanel.lua` foi removido. Enemy stats agora ancoradas no sprite via `EnemyHud.lua`).
 - `src/ui/CardInfoDisplay.lua` (tooltip com alphas).
 - `src/systems/MessageSystem.lua` (toasts).
 - `src/ui/VisualEffects.lua` (helpers de gradient/glow — não usar em chrome).

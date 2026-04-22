@@ -44,61 +44,65 @@ function CardRegistry:getClassCardPool(classId)
     }
 end
 
--- Retorna deck inicial para uma classe
+-- Retorna deck inicial para uma classe.
+-- Fase 5: deck minimo de 2 cartas (1 attack + 1 defense da classe). O resto e
+-- construido via recompensas/loja/eventos. Cada batalha puxa as 2 cartas direto
+-- na mao inicial (INITIAL_HAND_SIZE=4 garante folga mesmo com deck curto).
 function CardRegistry:getStarterDeckForClass(classId)
     local starterDecks = {
-        warrior = {
-            "warrior_strike", "warrior_defend", "warrior_bash", "warrior_iron_wave",
-            "warrior_heavy_blade", "attack_001", "defense_001", "attack_002"
-        },
-        mage = {
-            "mage_zap", "mage_dualcast", "mage_ball_lightning", "defense_001",
-            "attack_001", "attack_002", "joker_001", "warrior_defend", "effect_healing_potion", "effect_mana_crystal"
-        },
-        rogue = {
-            "rogue_strike", "rogue_defend", "rogue_survivor", "rogue_neutralize",
-            "rogue_backstab", "attack_001", "defense_001", "attack_002"
-        }
+        warrior = { "warrior_strike", "warrior_defend" },
+        mage    = { "mage_zap",       "defense_001" },
+        rogue   = { "rogue_strike",   "rogue_defend" },
     }
-    
-    return starterDecks[classId] or {}
+    return starterDecks[classId] or { "attack_001", "defense_001" }
 end
 
--- Gera recompensas de cartas para uma classe
-function CardRegistry:generateCardRewards(classId, numCards)
+-- Gera recompensas de cartas para uma classe.
+-- opts.rarityWeights: pesos customizados (Fase 5 passa do ActSystem).
+-- opts.minRarity: "uncommon"/"rare" para forcar piso (elites/bosses).
+function CardRegistry:generateCardRewards(classId, numCards, opts)
+    opts = opts or {}
     local rewards = {}
     local cardPool = self:getClassCardPool(classId)
-    
-    for i = 1, numCards or 3 do
-        -- Distribuição de raridade (similar ao Slay the Spire)
-        local rarity = self:rollRarity()
+
+    local minRarity = opts.minRarity
+    local minOrder = { common = 1, uncommon = 2, rare = 3, legendary = 4 }
+
+    for _ = 1, numCards or 3 do
+        local rarity = self:rollRarity(opts.rarityWeights)
+        -- Aplica piso minimo (se especificado)
+        if minRarity and (minOrder[rarity] or 0) < (minOrder[minRarity] or 0) then
+            rarity = minRarity
+        end
         local availableCards = cardPool[rarity]
-        
         if availableCards and #availableCards > 0 then
             local randomCard = availableCards[love.math.random(#availableCards)]
             table.insert(rewards, {
                 cardId = randomCard,
-                rarity = rarity
+                rarity = rarity,
             })
         end
     end
-    
+
     return rewards
 end
 
--- Sistema de raridade (probabilidades do Slay the Spire + legendary)
-function CardRegistry:rollRarity()
-    local roll = love.math.random()
-    
-    if roll <= 0.37 then
-        return "common"
-    elseif roll <= 0.37 + 0.37 then
-        return "uncommon" 
-    elseif roll <= 0.37 + 0.37 + 0.25 then
-        return "rare"
-    else
-        return "legendary"  -- 1% chance (0.01)
+-- Sistema de raridade com pesos customizaveis (Fase 5 via ActSystem).
+-- weights: { common=N, uncommon=N, rare=N, legendary=N } (qualquer escala, sao normalizados)
+-- Se omitido, usa defaults proximo do Slay (37/37/25/1).
+function CardRegistry:rollRarity(weights)
+    weights = weights or { common = 37, uncommon = 37, rare = 25, legendary = 1 }
+    local total = 0
+    for _, w in pairs(weights) do total = total + w end
+    if total <= 0 then return "common" end
+
+    local roll = love.math.random() * total
+    local acc = 0
+    for _, rarity in ipairs({ "common", "uncommon", "rare", "legendary" }) do
+        acc = acc + (weights[rarity] or 0)
+        if roll <= acc then return rarity end
     end
+    return "common"
 end
 
 -- Verifica se uma carta pertence a uma classe

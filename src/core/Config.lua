@@ -31,33 +31,89 @@ Config.UI = {
 
 -- Configurações do Jogo
 Config.Game = {
-    -- Cartas iniciais
-    INITIAL_HAND_SIZE = 3,
+    -- Cartas iniciais (Fase 5: hand maior pra compensar deck pequeno de 2 cartas)
+    INITIAL_HAND_SIZE = 4,
     MAX_JOKER_SLOTS = 3,
-    
-    -- Fases
-    VICTORY_PHASES = 10,
-    HEALTH_RESTORE_INTERVAL = 3, -- Restaura vida a cada 3 fases
-    
-    -- Inimigos
+
+    -- Fases: Fase 5 trocou o cap de 10 por estrutura de atos (ver Config.Acts).
+    -- VICTORY_PHASES mantido por retrocompatibilidade (usado no modo classic sem run).
+    VICTORY_PHASES = 24, -- 3 atos x 8 andares
+    HEALTH_RESTORE_INTERVAL = 3,
+
+    -- Fallback de inimigos (modo classic sem run). Run mode usa Config.Acts.
     ENEMY_BASE_HEALTH = 18,
     ENEMY_BASE_DAMAGE = 5,
-    ENEMY_HEALTH_SCALING = 15,  -- +15 HP por fase
-    ENEMY_DAMAGE_SCALING = 3,   -- +3 dano por fase
-    
-    -- Jogador
-    PLAYER_MAX_HEALTH = 100,
+    ENEMY_HEALTH_SCALING = 15,
+    ENEMY_DAMAGE_SCALING = 3,
+
+    -- Jogador: Fase 5 reduziu HP inicial (60 vs 100). Deck pequeno + curva mais
+    -- apertada cria pressao pra tomar decisoes boas nas escolhas de nos.
+    PLAYER_MAX_HEALTH = 60,
     PLAYER_MAX_ARMOR = 50,
     PLAYER_MAX_MANA = 3,
     PLAYER_HEALTH_RESTORE = 20,
-    
+
     -- Pontuação
     BASE_SCORE_PER_PHASE = 100,
-    
+
     -- Sistema de mensagens
     MAX_MESSAGES = 5,
     MESSAGE_DURATION = 3.0,
 }
+
+-- ===== Fase 5: Atos, curvas de dificuldade e endless =====
+--
+-- Cada ato tem floors (qtd de andares), fórmulas de HP/dano por andar, boss
+-- com stats especificos, pesos de raridade na geracao de ofertas, e cura inter-ato.
+--
+-- As fórmulas recebem `f` = floorInAct (1..floors). Boss e evaluado com f=floors.
+-- Scaling e rate de cura documentados em memory/balance_curves.md.
+
+-- Curvas calibradas para deck pequeno (starter=2, cresce ~1 por andar).
+-- Meta: floor normal ato 1 cai em 2-3 turnos; boss ato 1 em 6-10 turnos;
+-- floor normal ato 3 em 4-5 turnos; boss ato 3 em 8-12 turnos.
+Config.Acts = {
+    {
+        number = 1, name = "Catacumbas", floors = 8,
+        enemyHP    = function(f) return 8 + f * 6 end,    -- f=1: 14, f=8: 56
+        enemyDmg   = function(f) return 3 + f * 1.2 end,  -- f=1: 4, f=8: 12
+        bossHP = 140, bossDmg = 14,
+        eliteHPMul = 1.6, eliteDmgMul = 1.3,
+        rarityWeights = { common = 70, uncommon = 25, rare = 5,  legendary = 0 },
+        interActHeal = 0.30,
+    },
+    {
+        number = 2, name = "Torre de Pedra", floors = 8,
+        enemyHP    = function(f) return 60 + f * 10 end,  -- f=1: 70, f=8: 140
+        enemyDmg   = function(f) return 9 + f * 1.5 end,  -- f=1: 10, f=8: 21
+        bossHP = 300, bossDmg = 22,
+        eliteHPMul = 1.6, eliteDmgMul = 1.3,
+        rarityWeights = { common = 40, uncommon = 45, rare = 14, legendary = 1 },
+        interActHeal = 0.40,
+    },
+    {
+        number = 3, name = "Abismo", floors = 8,
+        enemyHP    = function(f) return 150 + f * 15 end, -- f=1: 165, f=8: 270
+        enemyDmg   = function(f) return 18 + f * 2.5 end, -- f=1: 20, f=8: 38
+        bossHP = 500, bossDmg = 32,
+        eliteHPMul = 1.7, eliteDmgMul = 1.4,
+        rarityWeights = { common = 15, uncommon = 45, rare = 32, legendary = 8 },
+        interActHeal = 0.40,
+    },
+}
+
+Config.Endless = {
+    -- HP e dano crescem exponencial apos o ato 3. O contador de endless comeca
+    -- em floorInAct=1 com actNumber=4 (ver RunManager:advanceFloorInAct).
+    scalingMultiplier = 1.18, -- HP e dmg *= 1.18 por andar
+    -- Raridades favorecem o alto-nivel mas comum ainda aparece (sem tirar o "floor" de oferta).
+    rarityWeights = { common = 10, uncommon = 35, rare = 45, legendary = 10 },
+    -- Interactos virtuais: endless nao tem "atos", mas cura simbolica a cada 5 andares.
+    healEveryNFloors = 5, healPercent = 0.20,
+}
+
+-- Total de atos (excluindo endless). Usado por RunManager:advanceFloorInAct.
+Config.TotalActs = 3
 
 -- Configurações das Cartas
 Config.Cards = {
@@ -115,6 +171,39 @@ Config.Cards = {
     RARITY_BORDER_THICKNESS = 3,
     RARITY_BORDER_PULSE_RANGE = 0.4,
     RARITY_BORDER_ANIMATION_SPEED = 1.5,
+
+    -- ===== Polish (Balatro-like) =====
+    CORNER_CUT = 3,              -- stepped cut dos cantos no canvas lógico (96×144)
+    HOVER_BOB_AMOUNT = 1.5,      -- ±px vertical da micro-oscilação ao hover
+    HOVER_BOB_SPEED = 2.5,       -- freq em rad/s
+    SCALE_EASE_K = 12,           -- exp decay pro scale (antes era lerp linear 10*dt)
+    VEL_TILT_GAIN = 0.0003,      -- quanto a velocidade X converte em tilt (clamped)
+    VEL_TILT_MAX = 0.15,
+    VEL_TILT_DAMP = 8,           -- exp decay do tilt quando a carta pára
+    DRAG_THRESHOLD_PX = 6,       -- distância que promove mouse-down a drag
+    DRAG_SCALE_BOOST = 0.08,     -- +8% scale na carta enquanto arrastada
+
+    -- ===== Ambient tilt (cartas ociosas respiram — Balatro) =====
+    -- Só aplica quando NÃO hovered. Senóide defasada por seed aleatório
+    -- pra cartas da mão não oscilarem em sync.
+    AMBIENT_TILT_SPEED = 1.4,    -- freq em rad/s (devagar, orgânico)
+    AMBIENT_TILT_AMOUNT = 0.02,  -- amplitude em radianos (~1.1°, sutil)
+
+    -- ===== Floating / Shadow (Balatro-accurate) =====
+    BASE_LIFT = 3,               -- carta flutua sempre ~3px acima da mesa (idle)
+    SHADOW_MAX_HORIZ_OFFSET = 20,-- deslocamento máx horizontal da sombra (carta nas bordas)
+    SHADOW_BASE_OFFSET_Y = 6,    -- deslocamento vertical base da sombra
+    SHADOW_PRESS_SHIFT = 14,     -- deslocamento extra baseado em tilt (press): press direita → sombra esquerda
+    SHADOW_ALPHA = 0.50,         -- opacidade da sombra (não preta pura)
+
+    -- ===== Press-hover (shear 3D fake, só usado como fallback se shader falhar) =====
+    PRESS_SHEAR_STRENGTH = 0.10, -- intensidade do shear baseado em tilt
+
+    -- ===== Perspective warp (Balatro-accurate via vertex shader) =====
+    MESH_COLS = 8,               -- tessellation horizontal
+    MESH_ROWS = 12,              -- tessellation vertical
+    PRESS_WARP_STRENGTH = 0.25,  -- amplitude do warp (tunável pelo shader)
+    HOVER_STRENGTH_EASE_K = 14,  -- ease-out exp pra hoverStrength (0..1)
 }
 
 -- Configurações de Áudio
@@ -122,6 +211,35 @@ Config.Audio = {
     HOVER_VOLUME = 0.03,
     DECK_START_VOLUME = 0.1,
     CLICK_SELECT_VOLUME = 0.2,
+
+    -- SFX gerados via ElevenLabs (audio/sfx/)
+    CARD_PLAY_ATTACK_VOLUME = 0.55,
+    CARD_PLAY_DEFENSE_VOLUME = 0.55,
+    CARD_DRAW_VOLUME = 0.35,
+    CARD_EXHAUST_VOLUME = 0.5,
+    COMBO_TRIGGER_VOLUME = 0.65,
+    JOKER_ACTIVATE_VOLUME = 0.55,
+    ORB_CHANNEL_VOLUME = 0.5,
+    ORB_EVOKE_VOLUME = 0.6,
+    DEBUFF_APPLIED_VOLUME = 0.5,
+    STRENGTH_GAIN_VOLUME = 0.55,
+    POISON_TICK_VOLUME = 0.45,
+    ENEMY_ATTACK_VOLUME = 0.6,
+    ENEMY_DEATH_VOLUME = 0.65,
+    BUTTON_CLICK_VOLUME = 0.4,
+    MENU_OPEN_VOLUME = 0.45,
+    MENU_CLOSE_VOLUME = 0.4,
+    MENU_HOVER_VOLUME = 0.15,
+    COLLECTION_FLIP_VOLUME = 0.5,
+    PURCHASE_CONFIRM_VOLUME = 0.6,
+    PURCHASE_DENY_VOLUME = 0.4,
+    BATTLE_VICTORY_VOLUME = 0.6,
+    GOLD_GAIN_VOLUME = 0.55,
+    NODE_SELECT_VOLUME = 0.45,
+    REST_COMPLETE_VOLUME = 0.55,
+    ACT_COMPLETE_VOLUME = 0.7,
+    RUN_VICTORY_VOLUME = 0.75,
+    RUN_DEFEAT_VOLUME = 0.65,
 }
 
 -- Configurações de Performance

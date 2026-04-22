@@ -212,6 +212,79 @@ local function drawDamage(w, h, seed)
     end
 end
 
+-- ===== Rarity corner brackets (substitui filete colorido full-perimeter) =====
+-- Desenha 4 brackets em L nos cantos do art slot (offset interno 9,9).
+-- Complexidade escala por raridade:
+--   uncommon  → L simples 5×5 verde MOSS
+--   rare      → L 7×7 BLOOD + curl pixel + gem central
+--   legendary → L 8×8 AGED_GOLD c/ borda interna AGED_GOLD_LIGHT + gem dupla + 2 sparkles
+-- common/basic não desenha (cartas limpas).
+local function drawCorner(ox, oy, dx, dy, size, mainColor, highlightColor, gem, sparkle)
+    -- L-bracket: arm horizontal e vertical de comprimento `size`, com outline INK
+    -- Arm horizontal (size px)
+    for i = 0, size - 1 do
+        PixelCanvas.pixel(ox + dx * i, oy, mainColor)
+    end
+    -- Arm vertical
+    for i = 0, size - 1 do
+        PixelCanvas.pixel(ox, oy + dy * i, mainColor)
+    end
+    -- Cantos arredondados (notch INK no inner corner)
+    PixelCanvas.pixel(ox + dx, oy + dy, Palette.INK)
+    -- Highlight 1px ao longo do bracket externo (relevo)
+    if highlightColor then
+        for i = 1, size - 2 do
+            PixelCanvas.pixel(ox + dx * i, oy - dy, highlightColor)
+            PixelCanvas.pixel(ox - dx, oy + dy * i, highlightColor)
+        end
+    end
+    -- Gema no joelho do L (1 pixel central)
+    if gem then
+        PixelCanvas.pixel(ox + dx, oy, gem)
+        PixelCanvas.pixel(ox, oy + dy, gem)
+    end
+    -- Sparkle: 2 pixels diagonais distantes
+    if sparkle then
+        PixelCanvas.pixel(ox + dx * (size + 1), oy + dy * (size + 1), sparkle)
+        PixelCanvas.pixel(ox + dx * (size + 2), oy + dy * (size + 2), Palette.AGED_GOLD)
+    end
+end
+
+local function drawRarityCorners(w, h, rarity, seed)
+    if rarity == "common" or rarity == "basic" or not rarity then return end
+    -- INSET 13: dentro do filete dourado, fora dos corner_flourish (PNG 18×18)
+    local INSET = 13
+    local x1, y1 = INSET, INSET
+    local x2, y2 = w - 1 - INSET, INSET
+    local x3, y3 = INSET, h - 1 - INSET
+    local x4, y4 = w - 1 - INSET, h - 1 - INSET
+
+    if rarity == "uncommon" then
+        -- L 8px MOSS + highlight GREEN_BRIGHT (mais visível)
+        local s = 8
+        drawCorner(x1, y1,  1,  1, s, Palette.MOSS, Palette.GREEN_BRIGHT, nil, nil)
+        drawCorner(x2, y2, -1,  1, s, Palette.MOSS, Palette.GREEN_BRIGHT, nil, nil)
+        drawCorner(x3, y3,  1, -1, s, Palette.MOSS, Palette.GREEN_BRIGHT, nil, nil)
+        drawCorner(x4, y4, -1, -1, s, Palette.MOSS, Palette.GREEN_BRIGHT, nil, nil)
+
+    elseif rarity == "rare" then
+        -- L 10px BLOOD + highlight BLOOD_DARK + gem central AGED_GOLD
+        local s = 10
+        drawCorner(x1, y1,  1,  1, s, Palette.BLOOD, Palette.BLOOD_DARK, Palette.AGED_GOLD, nil)
+        drawCorner(x2, y2, -1,  1, s, Palette.BLOOD, Palette.BLOOD_DARK, Palette.AGED_GOLD, nil)
+        drawCorner(x3, y3,  1, -1, s, Palette.BLOOD, Palette.BLOOD_DARK, Palette.AGED_GOLD, nil)
+        drawCorner(x4, y4, -1, -1, s, Palette.BLOOD, Palette.BLOOD_DARK, Palette.AGED_GOLD, nil)
+
+    elseif rarity == "legendary" then
+        -- L 12px AGED_GOLD + highlight AGED_GOLD_LIGHT + gem PARCHMENT + sparkle
+        local s = 12
+        drawCorner(x1, y1,  1,  1, s, Palette.AGED_GOLD, Palette.AGED_GOLD_LIGHT, Palette.PARCHMENT_LIGHT, Palette.AGED_GOLD_LIGHT)
+        drawCorner(x2, y2, -1,  1, s, Palette.AGED_GOLD, Palette.AGED_GOLD_LIGHT, Palette.PARCHMENT_LIGHT, Palette.AGED_GOLD_LIGHT)
+        drawCorner(x3, y3,  1, -1, s, Palette.AGED_GOLD, Palette.AGED_GOLD_LIGHT, Palette.PARCHMENT_LIGHT, Palette.AGED_GOLD_LIGHT)
+        drawCorner(x4, y4, -1, -1, s, Palette.AGED_GOLD, Palette.AGED_GOLD_LIGHT, Palette.PARCHMENT_LIGHT, Palette.AGED_GOLD_LIGHT)
+    end
+end
+
 -- ===== Bolts variados (1-2 por lado, posição variável) =====
 local function drawAsymmetricBolts(w, h, seed)
     -- Top: 1 ou 2 bolts em posição variável
@@ -332,15 +405,10 @@ function CardBorder.draw(w, h, cardType, rarity, cardId)
         love.graphics.setColor(1, 1, 1, 1)
     end
 
-    -- RARITY: filete interno MOVIDO pra dentro (9,9) pra não cortar o knotwork dos PNGs
-    if rarity == "rare" then
-        PixelCanvas.rectOutline(9, 9, w - 18, h - 18, rarityColor)
-    elseif rarity == "legendary" then
-        PixelCanvas.rectOutline(9, 9, w - 18, h - 18, Palette.AGED_GOLD_LIGHT)
-        PixelCanvas.rectOutline(10, 10, w - 20, h - 20, Palette.AGED_GOLD)
-    elseif rarity == "uncommon" then
-        PixelCanvas.rectOutline(9, 9, w - 18, h - 18, Palette.MOSS)
-    end
+    -- RARITY: substitui o filete interno por CORNER-PIECES ornamentais.
+    -- Cada raridade tem brackets em L nos 4 cantos com complexidade crescente.
+    -- (Não desenha nada para common/basic — cartas comuns ficam clean.)
+    drawRarityCorners(w, h, rarity, seed)
 end
 
 return CardBorder

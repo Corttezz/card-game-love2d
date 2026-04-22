@@ -13,7 +13,9 @@ local SceneBackground = require("src.ui.SceneBackground")
 local CardDatabase = require("src.systems.CardDatabase")
 local CardAnimationLayer = require("src.ui.card.CardAnimationLayer")
 local CardArt      = require("src.ui.CardArt")
+local CardMesh     = require("src.ui.CardMesh")
 local I18n         = require("src.i18n.I18n")
+local Sfx          = require("src.systems.Sfx")
 
 local CollectionScreen = {}
 CollectionScreen.__index = CollectionScreen
@@ -91,6 +93,8 @@ function CollectionScreen:_buildInstances()
 end
 
 function CollectionScreen:_applyFilter()
+    -- Trocar filtro reseta a ordem manual (usuário volta pra sort padrão)
+    self._hasManualOrder = false
     self.filtered = {}
     for _, inst in ipairs(self.cardInstances) do
         local match = false
@@ -155,20 +159,26 @@ function CollectionScreen:update(dt)
     else
         self.inspectAnim = math.max(0, self.inspectAnim - dt * 8)
     end
-    -- No modal não processa hover do grid
-    if self.inspectedCard then
+    -- No modal ou durante drag, não processa hover do grid
+    if self.inspectedCard or self._draggingIdx then
         self.hoverCard = nil
         return
     end
     local mx, my = love.mouse.getPosition()
+    local prevHover = self.hoverCard and self.hoverCard.instance or nil
     self.hoverCard = nil
     for i, inst in ipairs(self.filtered) do
         local x, y = cardRect(i)
         y = y - self.scrollY
         if mx >= x and mx <= x + CARD_W and my >= y and my <= y + CARD_H then
-            self.hoverCard = { instance = inst, x = x, y = y }
+            self.hoverCard = { instance = inst, x = x, y = y, index = i }
             break
         end
+    end
+    -- Tick sutil quando o card em hover muda
+    local newHover = self.hoverCard and self.hoverCard.instance or nil
+    if newHover and newHover ~= prevHover then
+        Sfx.play("menuHover")
     end
 end
 
@@ -183,10 +193,13 @@ function CollectionScreen:keypressed(key)
     -- Modal de inspeção consome ESC primeiro
     if self.inspectedCard then
         if key == "escape" or key == "space" or key == "return" then
+            Sfx.play("menuClose")
             self.inspectedCard = nil
         elseif key == "left" or key == "a" then
+            Sfx.play("collectionFlip")
             self:_inspectNeighbor(-1)
         elseif key == "right" or key == "d" then
+            Sfx.play("collectionFlip")
             self:_inspectNeighbor(1)
         end
         return
@@ -228,16 +241,19 @@ function CollectionScreen:mousepressed(x, y, button)
             local arrowY = h / 2 - 30
             -- Esquerda
             if x >= 20 and x <= 100 and y >= arrowY and y <= arrowY + 60 then
+                Sfx.play("collectionFlip")
                 self:_inspectNeighbor(-1)
                 return
             end
             -- Direita
             if x >= w - 100 and x <= w - 20 and y >= arrowY and y <= arrowY + 60 then
+                Sfx.play("collectionFlip")
                 self:_inspectNeighbor(1)
                 return
             end
             -- Clique em qualquer outro lugar fecha
             if x < cardX or x > cardX + cardW + 320 or y < cardY - 20 or y > cardY + cardH + 20 then
+                Sfx.play("menuClose")
                 self.inspectedCard = nil
             end
             return
@@ -250,6 +266,7 @@ function CollectionScreen:mousepressed(x, y, button)
         for _, f in ipairs(FILTERS) do
             local w = font:getWidth(filterLabel(f)) + 20
             if x >= tabX and x <= tabX + w and y >= tabY and y <= tabY + 28 then
+                Sfx.play("buttonClick")
                 self.filter = f.id
                 self.scrollY = 0
                 self:_applyFilter()
@@ -257,17 +274,82 @@ function CollectionScreen:mousepressed(x, y, button)
             end
             tabX = tabX + w + 8
         end
-        -- Clique numa carta → modal de inspeção
+        -- Carta na grid: inicia dragPending (click + drag unificados; resolve em release)
         for i, inst in ipairs(self.filtered) do
             local cx, cy = cardRect(i)
             cy = cy - self.scrollY
             if x >= cx and x <= cx + CARD_W and y >= cy and y <= cy + CARD_H then
-                self.inspectedCard = inst
-                self.inspectAnim = 0
+                self._dragPendingIdx = i
+                self._dragStartMX = x
+                self._dragStartMY = y
+                self._dragOffsetX = cx - x
+                self._dragOffsetY = cy - y
+                self._draggingIdx = nil -- promovido em mousemoved se cruzar threshold
                 return
             end
         end
     end
+end
+
+-- ===== Drag helpers =====
+
+-- Computa o índice 1..#filtered pra onde uma carta cairia, baseado em (mx, my).
+-- Ignora zonas fora da grid (retorna nil quando clampa pros extremos óbvios).
+function CollectionScreen:_computeDropIndex(mx, my)
+    local total = #self.filtered
+    if total <= 1 then return 1 end
+    local w = love.graphics.getWidth()
+    local totalW = COLS * CARD_W + (COLS - 1) * GAP_X
+    local ox = (w - totalW) / 2
+    local oy = TOP_OFFSET
+    -- Clamp col/row pra dentro da grid (considerando scroll)
+    local col = math.floor((mx - ox + GAP_X / 2) / (CARD_W + GAP_X))
+    col = math.max(0, math.min(COLS - 1, col))
+    local row = math.floor((my - oy + self.scrollY + GAP_Y / 2) / (CARD_H + GAP_Y))
+    row = math.max(0, row)
+    local idx = row * COLS + col + 1
+    return math.max(1, math.min(total, idx))
+end
+
+function CollectionScreen:mousemoved(x, y, dx, dy)
+    if not self.visible or self.inspectedCard then return end
+    if self._dragPendingIdx and not self._draggingIdx then
+        local Config = require("src.core.Config")
+        local threshold = (Config.Cards and Config.Cards.DRAG_THRESHOLD_PX) or 6
+        local distX = x - self._dragStartMX
+        local distY = y - self._dragStartMY
+        if (distX * distX + distY * distY) > (threshold * threshold) then
+            self._draggingIdx = self._dragPendingIdx
+        end
+    end
+end
+
+function CollectionScreen:mousereleased(x, y, button)
+    if not self.visible then return end
+    if button ~= 1 then return end
+
+    -- Drag ativo → reorder (session-only via manualOrder)
+    if self._draggingIdx then
+        local dropIdx = self:_computeDropIndex(x, y)
+        if dropIdx ~= self._draggingIdx then
+            local inst = table.remove(self.filtered, self._draggingIdx)
+            table.insert(self.filtered, dropIdx, inst)
+            Sfx.play("collectionFlip")
+            -- Salva a ordem manual atual (vive enquanto a coleção está aberta)
+            self._hasManualOrder = true
+        end
+    elseif self._dragPendingIdx then
+        -- Só click (sem drag) → abre modal de inspeção, como era antes
+        local inst = self.filtered[self._dragPendingIdx]
+        if inst then
+            Sfx.play("collectionFlip")
+            self.inspectedCard = inst
+            self.inspectAnim = 0
+        end
+    end
+
+    self._dragPendingIdx = nil
+    self._draggingIdx = nil
 end
 
 -- ===== Render =====
@@ -335,19 +417,80 @@ local function drawTitleAndFilters(self)
     end
 end
 
-local function drawCardMini(instance, x, y)
+-- Desenha card mini no grid com perspective warp (mesh+shader) + sombra direcional.
+-- Luz fixa acima do centro da tela → sombra cai pro lado oposto à posição + press.
+--   mouseUV: vec2 [-1,1] relativa ao centro da carta (0,0 = sem press)
+--   hoverStrength: 0..1 (usa pro warp + pro offset tilt da sombra)
+local function drawCardMini(instance, x, y, hoverScale, alpha, mouseUV, hoverStrength)
     if not instance.image then return end
-    love.graphics.setColor(1, 1, 1, 1)
-    local scale = CARD_W / instance.image:getWidth()
-    local px, py = math.floor(x), math.floor(y)
-    love.graphics.draw(instance.image, px, py, 0, scale, scale)
+    hoverScale = hoverScale or 1
+    alpha = alpha or 1
+    mouseUV = mouseUV or { 0, 0 }
+    hoverStrength = hoverStrength or 0
 
-    -- Icon animations por cima (sparkle/drip/shine/etc — por tipo do ícone)
+    local baseScale = CARD_W / instance.image:getWidth()
+    local drawScale = baseScale * hoverScale
+    local drawW = instance.image:getWidth() * drawScale
+    local drawH = instance.image:getHeight() * drawScale
+    -- Lift visual quando hover (carta sobe em direção ao cursor)
+    local lift = (hoverScale - 1) * 30
+    local cx = x + CARD_W / 2
+    local cy = y + CARD_H / 2 - lift
+
+    -- Sombra direcional (luz acima do centro + press shift oposto)
+    local Config = require("src.core.Config")
+    local screenW = love.graphics.getWidth()
+    local dirX = (cx - screenW / 2) / (screenW / 2)
+    if dirX > 1 then dirX = 1 elseif dirX < -1 then dirX = -1 end
+    local shadowMaxX = (Config.Cards and Config.Cards.SHADOW_MAX_HORIZ_OFFSET) or 20
+    local shadowBaseY = (Config.Cards and Config.Cards.SHADOW_BASE_OFFSET_Y) or 6
+    local shadowPressShift = (Config.Cards and Config.Cards.SHADOW_PRESS_SHIFT) or 14
+    local shadowBaseAlpha = (Config.Cards and Config.Cards.SHADOW_ALPHA) or 0.50
+    local baseLift = (Config.Cards and Config.Cards.BASE_LIFT) or 3
+
+    local shadowDx = -dirX * shadowMaxX - mouseUV[1] * shadowPressShift * hoverStrength
+    local shadowDy = shadowBaseY + (baseLift + lift) * 0.5
+                   - mouseUV[2] * shadowPressShift * hoverStrength * 0.7
+    local shAlpha = shadowBaseAlpha * alpha + (hoverScale - 1) * 0.4
+    if shAlpha > 0.85 then shAlpha = 0.85 end
+
+    local px = math.floor(cx - drawW / 2)
+    local py = math.floor(cy - drawH / 2)
+
+    -- Desenha sombra (pode usar mesh pra acompanhar warp)
+    local shader = CardMesh.getShader()
+    local timeNow = love.timer.getTime()
+    if shader then
+        local mesh = CardMesh.getMesh(instance.image:getWidth(), instance.image:getHeight())
+        mesh:setTexture(instance.image)
+        love.graphics.setShader(shader)
+        CardMesh.setUniforms(shader, mouseUV, hoverStrength, timeNow, instance.image)
+        -- Sombra primeiro (tint preto + offset)
+        love.graphics.setColor(0, 0, 0, shAlpha)
+        love.graphics.draw(mesh,
+            px + shadowDx, py + shadowDy,
+            0, drawScale, drawScale)
+        -- Card principal
+        love.graphics.setColor(1, 1, 1, alpha)
+        love.graphics.draw(mesh, px, py, 0, drawScale, drawScale)
+        love.graphics.setShader()
+    else
+        -- Fallback sem shader: desenho direto
+        love.graphics.setColor(0, 0, 0, shAlpha)
+        love.graphics.draw(instance.image,
+            math.floor(px + shadowDx), math.floor(py + shadowDy),
+            0, drawScale, drawScale)
+        love.graphics.setColor(1, 1, 1, alpha)
+        love.graphics.draw(instance.image, px, py, 0, drawScale, drawScale)
+    end
+
+    -- Icon animations por cima
     if not instance._cachedArt then
         local ok, a = pcall(CardArt.resolve, instance)
         instance._cachedArt = ok and a or { bgPattern = nil }
     end
-    CardAnimationLayer.draw(instance, instance._cachedArt, px, py, scale, scale)
+    CardAnimationLayer.draw(instance, instance._cachedArt, px, py, drawScale, drawScale)
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 local function drawHoverTooltip(self)
@@ -455,14 +598,47 @@ local function drawInspectModal(self)
     local cardX = (width - cardW) / 2 - 140  -- desloca pra esquerda pra caber painel
     local cardY = (height - cardH) / 2
 
-    -- Sombra da carta
-    love.graphics.setColor(0, 0, 0, 0.6 * anim)
-    love.graphics.rectangle("fill", cardX + 10, cardY + 14, cardW, cardH, 6, 6)
-
-    -- Render da carta (estática) + icon animations por cima
+    -- Render da carta com perspective warp + sombra direcional
     if inst.image then
-        love.graphics.setColor(1, 1, 1, anim)
-        love.graphics.draw(inst.image, cardX, cardY, 0, scale, scale)
+        local mx, my = love.mouse.getPosition()
+        -- mouseUV relativo ao centro da carta grande
+        local cx = cardX + cardW / 2
+        local cy = cardY + cardH / 2
+        local uvx = (mx - cx) / (cardW / 2)
+        local uvy = (my - cy) / (cardH / 2)
+        if uvx > 1 then uvx = 1 elseif uvx < -1 then uvx = -1 end
+        if uvy > 1 then uvy = 1 elseif uvy < -1 then uvy = -1 end
+        local uvInside = math.abs(uvx) < 1.05 and math.abs(uvy) < 1.05
+        local mouseUV = uvInside and { uvx, uvy } or { 0, 0 }
+        local hoverStrength = uvInside and anim or 0
+
+        -- Sombra: cai oposta à posição do card na tela + oposta ao press
+        local shadowPressShift = 40 -- modal é grande, offset maior fica natural
+        local dirX = (cx - width / 2) / (width / 2)
+        if dirX > 1 then dirX = 1 elseif dirX < -1 then dirX = -1 end
+        local shDx = -dirX * 30 - uvx * shadowPressShift * hoverStrength
+        local shDy = 16 - uvy * shadowPressShift * hoverStrength * 0.7
+
+        local shader = CardMesh.getShader()
+        local timeNow = love.timer.getTime()
+        if shader then
+            local mesh = CardMesh.getMesh(inst.image:getWidth(), inst.image:getHeight())
+            mesh:setTexture(inst.image)
+            love.graphics.setShader(shader)
+            CardMesh.setUniforms(shader, mouseUV, hoverStrength, timeNow, inst.image)
+            -- Sombra
+            love.graphics.setColor(0, 0, 0, 0.55 * anim)
+            love.graphics.draw(mesh, cardX + shDx, cardY + shDy, 0, scale, scale)
+            -- Card
+            love.graphics.setColor(1, 1, 1, anim)
+            love.graphics.draw(mesh, cardX, cardY, 0, scale, scale)
+            love.graphics.setShader()
+        else
+            love.graphics.setColor(0, 0, 0, 0.55 * anim)
+            love.graphics.draw(inst.image, cardX + shDx, cardY + shDy, 0, scale, scale)
+            love.graphics.setColor(1, 1, 1, anim)
+            love.graphics.draw(inst.image, cardX, cardY, 0, scale, scale)
+        end
 
         -- Animações do ícone (shine/drip/sparkle/etc) no modal de zoom
         if not inst._cachedArt then
@@ -583,18 +759,84 @@ function CollectionScreen:draw()
     drawBackground()
     drawTitleAndFilters(self)
 
-    -- Grid com clip pra não vazar pro topo/rodapé
     local width, height = love.graphics.getDimensions()
+    local dt = love.timer.getDelta()
+    local mx, my = love.mouse.getPosition()
+
+    -- self.hoverCard atualizado em update(); usa .index pra identificar
+    local hoveringIdx = self.hoverCard and self.hoverCard.index or nil
+
+    -- Interpola posições + hover scales de cada card
+    self._cardAnim = self._cardAnim or {}
+    local ease = 1 - math.exp(-18 * dt)
+    for i, inst in ipairs(self.filtered) do
+        local anim = self._cardAnim[inst] or { rx = 0, ry = 0, hs = 1.0, inited = false }
+        local tx, ty = cardRect(i)
+        ty = ty - self.scrollY
+        if not anim.inited then
+            anim.rx = tx; anim.ry = ty; anim.inited = true
+        end
+        -- Target = slot position (ou mouse se dragging)
+        if self._draggingIdx == i then
+            anim.rx = mx + (self._dragOffsetX or 0)
+            anim.ry = my + (self._dragOffsetY or 0)
+        else
+            anim.rx = anim.rx + (tx - anim.rx) * ease
+            anim.ry = anim.ry + (ty - anim.ry) * ease
+        end
+        -- Hover scale target
+        local targetHs = (i == hoveringIdx) and 1.08 or 1.0
+        if self._draggingIdx == i then targetHs = 1.10 end
+        anim.hs = anim.hs + (targetHs - anim.hs) * ease
+        self._cardAnim[inst] = anim
+    end
+
+    -- Computa mouseUV relativo à carta em hover (pra passar pro shader warp)
+    local function computeMouseUV(anim)
+        local cx = anim.rx + CARD_W / 2
+        local cy = anim.ry + CARD_H / 2
+        local uvx = (mx - cx) / (CARD_W / 2)
+        local uvy = (my - cy) / (CARD_H / 2)
+        if uvx > 1 then uvx = 1 elseif uvx < -1 then uvx = -1 end
+        if uvy > 1 then uvy = 1 elseif uvy < -1 then uvy = -1 end
+        return { uvx, uvy }
+    end
+
+    -- hoverStrength = proporção do warp. Só o card em hover tem warp.
+    local hoverStrFromScale = function(hs) return math.max(0, math.min(1, (hs - 1.0) / 0.08)) end
+
+    -- Grid com clip (cards não-draged + não-hovered primeiro)
     love.graphics.setScissor(0, TOP_OFFSET, width, height - TOP_OFFSET - BOTTOM_PAD)
     for i, inst in ipairs(self.filtered) do
-        local x, y = cardRect(i)
-        y = y - self.scrollY
-        -- skip cartas totalmente off-screen (otimização)
-        if y + CARD_H >= TOP_OFFSET and y <= height - BOTTOM_PAD then
-            drawCardMini(inst, x, y)
+        if i ~= self._draggingIdx and i ~= hoveringIdx then
+            local anim = self._cardAnim[inst]
+            if anim and anim.ry + CARD_H >= TOP_OFFSET and anim.ry <= height - BOTTOM_PAD then
+                -- Cards não-hover: sem warp (mouseUV zero, hoverStrength zero)
+                drawCardMini(inst, anim.rx, anim.ry, anim.hs, 1, { 0, 0 }, 0)
+            end
         end
     end
     love.graphics.setScissor()
+
+    -- Hovered card por cima com warp ativo
+    if hoveringIdx then
+        local inst = self.filtered[hoveringIdx]
+        local anim = self._cardAnim[inst]
+        if anim then
+            local uv = computeMouseUV(anim)
+            local str = hoverStrFromScale(anim.hs)
+            drawCardMini(inst, anim.rx, anim.ry, anim.hs, 1, uv, str)
+        end
+    end
+
+    -- Drag card por cima — mouse sempre no centro (carta segue mouse), sem warp adicional
+    if self._draggingIdx then
+        local inst = self.filtered[self._draggingIdx]
+        local anim = self._cardAnim[inst]
+        if anim and inst then
+            drawCardMini(inst, anim.rx, anim.ry, anim.hs, 0.95, { 0, 0 }, 0)
+        end
+    end
 
     -- Hover tooltip por cima (fora do scissor, apenas quando modal não está ativo)
     if not self.inspectedCard and self.inspectAnim < 0.1 then

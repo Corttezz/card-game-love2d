@@ -107,4 +107,4 @@ A chrome de UI (botões, menus, settings, topbar, modais) tem o próprio design 
 - Paleta semântica: `Palette.BUTTON_FILL/FILL_HOVER/FILL_PRESSED/FILL_DISABLED`, `BUTTON_OUTLINE_HI/LO`, `BUTTON_TEXT/TEXT_INVERT/TEXT_DISABLED`, `PANEL_FILL/OUTLINE/OUTLINE_INNER`. Nunca hardcodar RGB em chrome.
 - 6 ícones novos em `PixelIcons.lua` (matriz 16×16): `gear`, `x_close`, `arrow_left`, `arrow_right`, `play_triangle`, `check`. Auto-fallback PNG via IconLoader.
 - Proibido em chrome: `rectangle(..., rx, ry)`, gradientes, alpha blending de sombra, `setLineWidth > 1`.
-- HUD (HudPanel/HudPlayerPanel/HudEnemyPanel/CardInfoDisplay) ainda não foi convertido — ver `known_gaps.md` item 10.
+- HUD passou por redesign STS/Balatro em 2026-02: `HudPlayerPanel.lua` flat sepia + `ManaOrb.lua` + `EnemyHud.lua` ancorado no sprite. `HudEnemyPanel.lua` removido; `HudPanel.lua` base ficou orfã. `CardInfoDisplay.lua` ainda pendente — ver `known_gaps.md` item 8.

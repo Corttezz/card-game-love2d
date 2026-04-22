@@ -30,6 +30,6 @@ originSessionId: e544765f-309d-4fc7-89e3-58b3dabfa059
 - `armorSound` (0.7)
 - Música: `audio/music.mp3` com loop
 
-**Regra de ouro:** `if _G.audioSystem and _G.audioSystem:isAudioAvailable() then _G.audioSystem:playSound("nome") end`. Nunca chame `love.audio.newSource` direto em código novo. Código antigo em `Game.lua`, `Card.lua`, `JokerCard.lua`, `CombatAnimationSystem.lua` ainda tem fallbacks locais — preservar mas não replicar.
+**Regra de ouro (pós-refactor Abril/2026):** use `Sfx.play("nome")` de `src/systems/Sfx.lua`. Wrapper thin sobre `_G.audioSystem:playSound` — AudioSystem já é no-op gracioso quando áudio não disponível. Os fallbacks legados com `love.audio.newSource` direto em `Game.lua` e `Card.lua` foram **removidos**. `CombatAnimationSystem.lua` ainda tem seu próprio `self:playSound` wrapper local (cache de Source objects) mantido como código isolado; preferir `Sfx.play` pra código novo.
 
-**How to apply:** Adicionar novo som = (1) colocar arquivo em `audio/`, (2) registrar via `audioSystem:loadSound` no `love.load` em `main.lua`, (3) chamar `_G.audioSystem:playSound("nome")` onde precisar. Volumes default em `Config.Audio`.
+**How to apply:** Adicionar novo som = (1) colocar arquivo em `audio/` ou `audio/sfx/`, (2) registrar via `audioSystem:loadSound` no `love.load` em `main.lua`, (3) `Sfx.play("nome")` onde precisar. Volumes default em `Config.Audio`.

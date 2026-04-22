@@ -101,15 +101,45 @@ local function drawScrollEnd(x, y, h, dir)
     PixelCanvas.pixel(x + dir * 4, y + mid, Palette.AGED_GOLD_LIGHT)
 end
 
-local function drawDiamond(cx, cy)
-    PixelCanvas.pixel(cx, cy - 1, Palette.AGED_GOLD_LIGHT)
-    PixelCanvas.pixel(cx - 1, cy, Palette.AGED_GOLD)
-    PixelCanvas.pixel(cx, cy, Palette.AGED_GOLD_LIGHT)
-    PixelCanvas.pixel(cx + 1, cy, Palette.AGED_GOLD)
-    PixelCanvas.pixel(cx, cy + 1, Palette.AGED_GOLD_DARK)
+-- Gema facetada 3×5: luz vem do topo-esquerda, sombra no bottom-right.
+-- (Evita pillow shading — hue shift vertical dá volume real.)
+local function drawGem(cx, cy)
+    -- Top: highlight ponta
+    PixelCanvas.pixel(cx,     cy - 2, Palette.AGED_GOLD_LIGHT)
+    -- Upper faceta (mais clara)
+    PixelCanvas.pixel(cx - 1, cy - 1, Palette.AGED_GOLD_LIGHT)
+    PixelCanvas.pixel(cx,     cy - 1, Palette.PARCHMENT_LIGHT)   -- sparkle
+    PixelCanvas.pixel(cx + 1, cy - 1, Palette.AGED_GOLD)
+    -- Linha central (cor principal)
+    PixelCanvas.pixel(cx - 1, cy,     Palette.AGED_GOLD)
+    PixelCanvas.pixel(cx,     cy,     Palette.AGED_GOLD_LIGHT)
+    PixelCanvas.pixel(cx + 1, cy,     Palette.AGED_GOLD_DARK)
+    -- Lower faceta (mais escura — sombra light top-left)
+    PixelCanvas.pixel(cx - 1, cy + 1, Palette.AGED_GOLD_DARK)
+    PixelCanvas.pixel(cx,     cy + 1, Palette.AGED_GOLD)
+    PixelCanvas.pixel(cx + 1, cy + 1, Palette.AGED_GOLD_DARK)
+    -- Bottom: ponta sombra
+    PixelCanvas.pixel(cx,     cy + 2, Palette.INK)
 end
 
--- Disco 7×7 atrás do glifo (destaca o ícone de stat)
+-- L-bracket 3×3 em cada canto — substitui os 4 dots antigos que não liam a 1x.
+-- dx,dy: direção do L (-1,-1 top-left / +1,-1 top-right / etc).
+local function drawCornerBracket(x, y, dx, dy)
+    -- Linha principal (3px em cada direção) — cor principal dourada
+    for i = 0, 2 do
+        PixelCanvas.pixel(x + dx * i, y,        Palette.AGED_GOLD)
+        PixelCanvas.pixel(x,          y + dy * i, Palette.AGED_GOLD)
+    end
+    -- Junção com highlight
+    PixelCanvas.pixel(x, y, Palette.AGED_GOLD_LIGHT)
+    -- Faíscas nas pontas (dá "peso" visual)
+    PixelCanvas.pixel(x + dx * 2, y, Palette.AGED_GOLD_LIGHT)
+    PixelCanvas.pixel(x, y + dy * 2, Palette.AGED_GOLD_LIGHT)
+end
+
+-- Disco 7×7 atrás do glifo. Luz top-left: rim mais claro nos pixels do canto
+-- superior-esquerdo, INK no resto. Centro recebe "lift" do typeColor com
+-- highlight no quadrante NW e shadow no quadrante SE (volume real, não pillow).
 local function drawGlyphDisc(cx, cy, typeColor)
     local disc = {
         "  XXX  ",
@@ -124,18 +154,33 @@ local function drawGlyphDisc(cx, cy, typeColor)
         local line = disc[row]
         for col = 1, #line do
             if line:sub(col, col) == "X" then
-                PixelCanvas.pixel(cx + col - 4, cy + row - 4, typeColor)
+                local px = cx + col - 4
+                local py = cy + row - 4
+                -- Quadrante NW = highlight (lighten), SE = shadow (darken)
+                local dx, dy = px - cx, py - cy
+                local color
+                if dx < 0 and dy < 0 then
+                    color = Palette.lighten(typeColor, 0.35)
+                elseif dx > 0 and dy > 0 then
+                    color = Palette.darken(typeColor, 0.55)
+                else
+                    color = typeColor
+                end
+                PixelCanvas.pixel(px, py, color)
             end
         end
     end
-    -- Rim escuro
-    local rim = { {0,-3},{1,-3},{-1,-3},{2,-2},{-2,-2},{3,-1},{-3,-1},{3,0},{-3,0},
-                  {3,1},{-3,1},{2,2},{-2,2},{1,3},{0,3},{-1,3} }
-    for _, p in ipairs(rim) do
+    -- Rim direcional: top-left = AGED_GOLD_LIGHT (luz), bottom-right = INK (sombra)
+    local rimNW = { {0,-3},{1,-3},{-1,-3},{2,-2},{-2,-2},{3,-1},{-3,-1},{-3,0},{-3,1},{-2,2} }
+    local rimSE = { {3,0},{3,1},{2,2},{0,3},{-1,3},{1,3} }
+    for _, p in ipairs(rimNW) do
+        PixelCanvas.pixel(cx + p[1], cy + p[2], Palette.AGED_GOLD)
+    end
+    for _, p in ipairs(rimSE) do
         PixelCanvas.pixel(cx + p[1], cy + p[2], Palette.INK)
     end
-    -- Shine top-left
-    PixelCanvas.pixel(cx - 1, cy - 1, Palette.AGED_GOLD_LIGHT)
+    -- Shine: ponto branco top-left (catchlight)
+    PixelCanvas.pixel(cx - 1, cy - 1, Palette.PARCHMENT_LIGHT)
 end
 
 function CardStatsFooter.draw(w, h, card)
@@ -150,27 +195,46 @@ function CardStatsFooter.draw(w, h, card)
     -- Sombra externa embaixo do banner
     PixelCanvas.rect(bx, by + bh, bw, 1, { 0, 0, 0, 0.7 })
 
-    -- Banner ink
-    PixelCanvas.rect(bx, by, bw, bh, Palette.INK)
-    -- Faixa tipo-colorida na metade
-    PixelCanvas.rect(bx + 1, by + math.floor(bh / 2) - 1, bw - 2, 2, typeColor)
-    PixelCanvas.hline(bx + 1, by + 1, bw - 2, Palette.AGED_GOLD_DARK)
+    -- ===== FUNDO COM 2 TONS DE INK (vertical gradient sutil) =====
+    -- Top half: ink levemente clareado (mistura com parchment_dark)
+    -- Bottom half: ink puro (mais escuro) — dá sensação de profundidade
+    -- vinda da iluminação top-left, sem padrão visual concorrente.
+    local inkTop    = Palette.lerp(Palette.INK, Palette.PARCHMENT_DARK, 0.18)
+    local inkBottom = Palette.INK
+    PixelCanvas.rect(bx, by,                 bw, math.floor(bh / 2), inkTop)
+    PixelCanvas.rect(bx, by + math.floor(bh / 2), bw, math.ceil(bh / 2), inkBottom)
+
+    -- ===== TYPE-STRIPE com hue shifting (3 rows: highlight/main/shadow) =====
+    -- Luz vinda de cima: row superior = lighten, row central = cor pura,
+    -- row inferior = darken. Dá relevo real à faixa colorida.
+    local stripeY = by + math.floor(bh / 2) - 1
+    PixelCanvas.hline(bx + 1, stripeY,     bw - 2, Palette.lighten(typeColor, 0.25))
+    PixelCanvas.hline(bx + 1, stripeY + 1, bw - 2, typeColor)
+    PixelCanvas.hline(bx + 1, stripeY + 2, bw - 2, Palette.darken(typeColor, 0.55))
+
+    -- ===== BEVEL DIRECIONAL (luz top-left, sombra bottom-right) =====
+    -- Substitui o "pillow shading" antigo (rectOutline uniforme).
+    -- Borda externa
+    PixelCanvas.hline(bx, by, bw, Palette.AGED_GOLD_LIGHT)         -- top: highlight
+    PixelCanvas.vline(bx, by, bh, Palette.AGED_GOLD)               -- left: gold
+    PixelCanvas.hline(bx, by + bh - 1, bw, Palette.AGED_GOLD_DARK) -- bottom: shadow
+    PixelCanvas.vline(bx + bw - 1, by, bh, Palette.AGED_GOLD_DARK) -- right: shadow
+    -- Borda interna (1px dentro)
+    PixelCanvas.hline(bx + 1, by + 1, bw - 2, Palette.AGED_GOLD)
+    PixelCanvas.vline(bx + 1, by + 1, bh - 2, Palette.AGED_GOLD_DARK)
     PixelCanvas.hline(bx + 1, by + bh - 2, bw - 2, { 0, 0, 0, 0.8 })
+    PixelCanvas.vline(bx + bw - 2, by + 1, bh - 2, Palette.INK)
 
-    -- Borda dourada
-    PixelCanvas.rectOutline(bx, by, bw, bh, Palette.AGED_GOLD)
-    -- Borda interna dark (relevo)
-    PixelCanvas.rectOutline(bx + 1, by + 1, bw - 2, bh - 2, Palette.AGED_GOLD_DARK)
+    -- ===== CORNER BRACKETS (substitui os 4 dots antigos) =====
+    -- L-shaped 3px em cada canto, dão "moldura" de placa metálica.
+    drawCornerBracket(bx + 2,        by + 2,         1,  1)  -- top-left
+    drawCornerBracket(bx + bw - 3,   by + 2,        -1,  1)  -- top-right
+    drawCornerBracket(bx + 2,        by + bh - 3,    1, -1)  -- bottom-left
+    drawCornerBracket(bx + bw - 3,   by + bh - 3,   -1, -1)  -- bottom-right
 
-    -- Detalhes nos cantos do footer (small flourish 2×2 dourados)
-    PixelCanvas.pixel(bx + 2, by + 2, Palette.AGED_GOLD_LIGHT)
-    PixelCanvas.pixel(bx + bw - 3, by + 2, Palette.AGED_GOLD_LIGHT)
-    PixelCanvas.pixel(bx + 2, by + bh - 3, Palette.AGED_GOLD_LIGHT)
-    PixelCanvas.pixel(bx + bw - 3, by + bh - 3, Palette.AGED_GOLD_LIGHT)
-
-    -- Diamonds separadores (meio do banner)
-    drawDiamond(bx + 5, by + math.floor(bh / 2))
-    drawDiamond(bx + bw - 6, by + math.floor(bh / 2))
+    -- Gemas facetadas separadoras (meio do banner — substitui diamonds antigos)
+    drawGem(bx + 7,        by + math.floor(bh / 2))
+    drawGem(bx + bw - 8,   by + math.floor(bh / 2))
 
     -- Label à esquerda — BOLD multi-pass pra legibilidade (fonte 10)
     local font = PixelFont.get(10)

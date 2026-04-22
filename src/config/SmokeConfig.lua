@@ -3,20 +3,20 @@
 
 local SmokeConfig = {}
 
--- Configurações padrão (smokes médias e distribuídas)
+-- Configurações padrão (visível mas não distrai — ambiência de arena de combate)
 SmokeConfig.DEFAULT = {
-    maxParticles = 4,            -- Número máximo de partículas (muito reduzido)
-    spawnRate = 2.0,             -- Taxa de spawn (segundos) - Mais lento
-    minScale = 1.2,              -- Escala mínima (reduzida)
-    maxScale = 2.0,              -- Escala máxima (reduzida)
-    minOpacity = 0.02,           -- Opacidade mínima (muito sutil)
-    maxOpacity = 0.08,           -- Opacidade máxima (ainda sutil)
-    minSpeed = 15,               -- Velocidade mínima (pixels/segundo) - Reduzida
-    maxSpeed = 25,               -- Velocidade máxima (pixels/segundo) - Reduzida
-    windEffect = 0.3,            -- Efeito de vento (pixels/segundo) - Reduzido
-    fadeInTime = 1.5,            -- Tempo para aparecer (segundos) - Mais lento
-    centerZone = 1.0,            -- Zona da tela (100% - toda a tela)
-    maxOffscreenDistance = 200   -- Distância máxima fora da tela
+    maxParticles = 6,            -- subiu de 4 para dar presença
+    spawnRate = 1.5,             -- spawn mais frequente
+    minScale = 1.4,
+    maxScale = 2.2,
+    minOpacity = 0.10,           -- subiu de 0.02 (quase invisível) para 0.10
+    maxOpacity = 0.22,           -- subiu de 0.08
+    minSpeed = 18,
+    maxSpeed = 28,
+    windEffect = 0.4,
+    fadeInTime = 1.3,
+    centerZone = 1.0,
+    maxOffscreenDistance = 200
 }
 
 -- Configuração para efeito mais intenso
@@ -67,17 +67,46 @@ SmokeConfig.ATMOSPHERIC = {
     maxOffscreenDistance = 180
 }
 
+-- Presets por ato: cor/densidade tematica (aplicado via ActSystem no futuro)
+SmokeConfig.ACT_1_CATACUMBS = {
+    maxParticles = 7, spawnRate = 1.4,
+    minScale = 1.3, maxScale = 2.0,
+    minOpacity = 0.12, maxOpacity = 0.25,
+    minSpeed = 15, maxSpeed = 22,
+    windEffect = 0.3, fadeInTime = 1.4,
+    centerZone = 1.0, maxOffscreenDistance = 200,
+    tint = {0.70, 0.65, 0.55}, -- sepia pesado
+}
+
+SmokeConfig.ACT_2_TOWER = {
+    maxParticles = 5, spawnRate = 1.8,
+    minScale = 1.5, maxScale = 2.4,
+    minOpacity = 0.08, maxOpacity = 0.18,
+    minSpeed = 22, maxSpeed = 34,
+    windEffect = 0.6, fadeInTime = 1.0,
+    centerZone = 1.0, maxOffscreenDistance = 220,
+    tint = {0.55, 0.50, 0.70}, -- violeta/pedra mistica
+}
+
+SmokeConfig.ACT_3_ABYSS = {
+    maxParticles = 8, spawnRate = 1.0,
+    minScale = 1.7, maxScale = 2.8,
+    minOpacity = 0.15, maxOpacity = 0.35,
+    minSpeed = 12, maxSpeed = 20,
+    windEffect = 0.2, fadeInTime = 1.6,
+    centerZone = 1.0, maxOffscreenDistance = 260,
+    tint = {0.30, 0.20, 0.45}, -- abismal violeta
+}
+
 -- Função para obter configuração
 function SmokeConfig.getConfig(preset)
-    if preset == "intense" then
-        return SmokeConfig.INTENSE
-    elseif preset == "subtle" then
-        return SmokeConfig.SUBTLE
-    elseif preset == "atmospheric" then
-        return SmokeConfig.ATMOSPHERIC
-    else
-        return SmokeConfig.DEFAULT
-    end
+    if preset == "intense" then return SmokeConfig.INTENSE
+    elseif preset == "subtle" then return SmokeConfig.SUBTLE
+    elseif preset == "atmospheric" then return SmokeConfig.ATMOSPHERIC
+    elseif preset == "act1" then return SmokeConfig.ACT_1_CATACUMBS
+    elseif preset == "act2" then return SmokeConfig.ACT_2_TOWER
+    elseif preset == "act3" then return SmokeConfig.ACT_3_ABYSS
+    else return SmokeConfig.DEFAULT end
 end
 
 -- Função para aplicar configuração ao sistema

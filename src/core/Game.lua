@@ -1,22 +1,19 @@
-local AttackCard = require("src.cards.types.AttackCard")
-local DefenseCard = require("src.cards.types.DefenseCard")
-local JokerCard = require("src.cards.types.JokerCard")
 local Player = require("src.entities.Player")
 local Enemy = require("src.entities.Enemy")
 local MessageSystem = require("src.systems.MessageSystem")
 local DeckManager = require("src.systems.DeckManager")
 local EffectSystem = require("src.systems.EffectSystem")
 local RunManager = require("src.systems.RunManager")
-local CombatAnimationSystem = require("src.systems.CombatAnimationSystem")
+local CombatSequence = require("src.systems.CombatSequence")
 local EconomySystem = require("src.systems.EconomySystem")
+local TagSystem = require("src.systems.TagSystem")
+local ComboSystem = require("src.systems.ComboSystem")
+local ActSystem = require("src.systems.ActSystem")
 local Config = require("src.core.Config")
+local Sfx = require("src.systems.Sfx")
 
 local Game = {}
 Game.__index = Game
-
--- Cache de áudio para melhor performance
-local deckStartSoundCache = nil
-local cardSelectSoundCache = nil
 
 function Game:new()
     local instance = setmetatable({}, Game)
@@ -32,12 +29,29 @@ function Game:new()
     instance.maxJokerSlots = Config.Game.MAX_JOKER_SLOTS -- Máximo de slots de joker
     instance.score = 0
     instance.messageSystem = MessageSystem:new()
-    
+    -- IDs de cartas com `exhaust=true` jogadas nesta batalha. Removidas do
+    -- deck da run quando a batalha termina (nextPhase).
+    instance._exhaustedThisBattle = {}
+    -- Pilha de descarte. Cartas jogadas (exceto joker/exhaust) entram aqui
+    -- e sao reembaralhadas no deck quando drawCard encontra deck vazio.
+    instance.discard = {}
+    -- Atraso após morte do inimigo até abrir cardReward. Dá tempo da death
+    -- anim (~0.7s) tocar visivelmente. Setado em processCardInCombat quando
+    -- enemy.health <= 0; main.lua updateGame só chama showCardRewards quando
+    -- esse timer expira.
+    instance._deathPauseTimer = 0
+    -- Flag idempotencia pra _onEnemyDeath: evita disparar anim/sfx duplicado
+    -- se tanto processCardInCombat quanto enemyTurn detectam morte no mesmo tick.
+    -- Resetado em startGame/nextPhase pra proxima batalha disparar normalmente.
+    instance._deathHandled = false
+
     -- Novos sistemas
     instance.deckManager = DeckManager:new()
     instance.effectSystem = EffectSystem:new()
     instance.runManager = RunManager:new()
-    instance.combatAnimationSystem = CombatAnimationSystem:new()
+    -- Nome do campo mantido pra compat com main.lua/GameUI. A classe é nova
+    -- (CombatSequence via EventManager; antiga CombatAnimationSystem deletada).
+    instance.combatAnimationSystem = CombatSequence:new()
     
     -- Sistema de economia e loja
     instance.economySystem = EconomySystem:new()
@@ -50,17 +64,7 @@ function Game:new()
 end
 
 function Game:initializeDeck()
-    -- Usa o sistema de áudio global se disponível
-    if _G.audioSystem and _G.audioSystem:isAudioAvailable() then
-        _G.audioSystem:playSound("deckStart")
-    else
-        -- Fallback para sistema antigo
-        if not deckStartSoundCache then
-            deckStartSoundCache = love.audio.newSource("audio/deckStart.mp3", "static")
-            deckStartSoundCache:setVolume(Config.Audio.DECK_START_VOLUME)
-        end
-        deckStartSoundCache:play()
-    end
+    Sfx.play("deckStart")
     
     if self.isRunMode and self.runManager:hasActiveRun() then
         -- Modo Slay the Spire: usa deck dinâmico da corrida
@@ -88,88 +92,107 @@ function Game:startGame()
     self.score = 0
     self.player = Player:new()
     self.enemy = Enemy:new(Config.Game.ENEMY_BASE_HEALTH, Config.Game.ENEMY_BASE_DAMAGE)
+    -- Sprite do inimigo inicial (ato 1, floor 1, battle comum).
+    local EnemyRendererModule = require("src.ui.EnemyRenderer")
+    self.enemy.spriteId = EnemyRendererModule.resolveSpriteId(1, "battle")
     self.turn = "player"
     self.hand = {}
     self.selectedCards = {}
     self.jokerSlots = {}
-    -- Removido: self.damageMultiplier = 1 (não é mais necessário)
-    
-    -- Reseta economia para nova run
+    self.discard = {}
+    self._exhaustedThisBattle = {}
+    self._deathHandled = false
+    self._deathPauseTimer = 0
+
     self.economySystem:resetForNewRun()
-    self.economySystem.currentGold = 10 -- Ouro inicial
-    
-    -- Inicializa o deck com as cartas
+    self.economySystem.currentGold = 10
+
     self:initializeDeck()
-    
-    -- Puxa cartas iniciais para a mão
+
+    -- Reordena o deck para que cartas com flag `innate` fiquem no topo e sejam
+    -- compradas primeiro na mao inicial. Em Slay, innate = sempre comeca na mao.
+    self:promoteInnateCardsToTop()
+
     for i = 1, Config.Game.INITIAL_HAND_SIZE do
         self:drawCard()
     end
-    
+
     self:addMessage("Jogo iniciado! Boa sorte!", "success")
     self:addMessage("Ouro inicial: " .. self.economySystem.currentGold, "info")
 end
 
+-- Move cartas com `innate=true` para o topo do deck (ordem preservada entre elas).
+-- Chamado apos shuffleDeck para garantir que innate sejam as primeiras compradas.
+function Game:promoteInnateCardsToTop()
+    local innates = {}
+    local rest = {}
+    for _, c in ipairs(self.deck) do
+        if c.innate then
+            table.insert(innates, c)
+        else
+            table.insert(rest, c)
+        end
+    end
+    self.deck = {}
+    for _, c in ipairs(innates) do table.insert(self.deck, c) end
+    for _, c in ipairs(rest) do table.insert(self.deck, c) end
+end
+
 function Game:drawCard()
+    -- Se o deck esvaziou mas ha discard, reembaralha (Slay-style). Sem isso,
+    -- starter de 2 cartas trava o jogador no turno 2.
+    if #self.deck == 0 and #self.discard > 0 then
+        for _, c in ipairs(self.discard) do
+            table.insert(self.deck, c)
+        end
+        self.discard = {}
+        self:shuffleDeck()
+        self:addMessage("Descarte reembaralhado no deck", "info")
+    end
     if #self.deck > 0 then
-        local card = table.remove(self.deck, 1) -- Remove a primeira carta do deck
+        local card = table.remove(self.deck, 1)
+        -- Reset estado visual residual. cancelDissolveAnim zera dissolve E mata
+        -- os eventos pendentes (ease de 0→1) — sem isso, a carta recém-sacada
+        -- vê o ease continuar e some visualmente. Ver Card:cancelDissolveAnim.
+        if card.cancelDissolveAnim then
+            card:cancelDissolveAnim()
+        else
+            card.dissolve = 0
+            card._removed = false
+        end
+        card._flip = 0
+        card.isHovered = false
         table.insert(self.hand, card)
     end
 end
 
-function Game:playCard(card)
-    if card.type == "attack" then
-        local damage = card.attack -- Dano base da carta
-        
-        -- Aplica efeitos dos jokers ativos
-        damage = self:applyJokerEffects(card, damage)
-        
-        self.enemy:takeDamage(damage)
-        self.score = self.score + damage
-    elseif card.type == "defense" then
-        local defense = card.defense -- Defesa base da carta
-        
-        -- Aplica efeitos dos jokers ativos
-        defense = self:applyJokerEffects(card, defense)
-        
-        self.player:addArmor(defense)
-    elseif card.type == "joker" then
-        -- Jokers vão para slots passivos (mão de cima)
-        if #self.jokerSlots < self.maxJokerSlots then
-            table.insert(self.jokerSlots, card)
-            
-            card.passive(self) -- Executa efeito especial
-            self:addMessage("Joker ativado: " .. card.name, "success")
-            
-            -- Remove o joker da mão atual
-            for i, handCard in ipairs(self.hand) do
-                if handCard == card then
-                    table.remove(self.hand, i)
-                    break
-                end
-            end
-        else
-            self:addMessage("Sem slots disponíveis para jokers!", "error")
-        end
-    elseif card.type == "effect" then
-        -- Cartas de efeito executam seu efeito e são descartadas
-        card.passive(self) -- Executa efeito especial
-        self:addMessage("Efeito ativado: " .. card.name, "success")
-        
-        -- Remove a carta de efeito da mão atual
-        for i, handCard in ipairs(self.hand) do
-            if handCard == card then
-                table.remove(self.hand, i)
-                break
-            end
-        end
+-- Draw de inicio de turno. Regra:
+--   - Normal: compra 1 (+ bonus de jokers futuro).
+--   - Emergencia: se a mao esta vazia, compra 3. Evita "compra-joga" quando o
+--     deck inteiro cabe num unico turno.
+-- Jokers podem futuramente somar em `bonus` via turn_start trigger; por ora 0.
+function Game:drawForTurn()
+    local emergencyActive = (#self.hand == 0)
+    local baseDraw = emergencyActive and 3 or 1
+    local bonus = 0 -- placeholder para efeitos/joker que adicionem compras
+    local total = baseDraw + bonus
+
+    if emergencyActive then
+        self:addMessage("Recarga: +3 cartas", "info")
     end
+
+    for _ = 1, total do
+        self:drawCard()
+    end
+
+    if total > 0 then Sfx.play("cardDraw") end
 end
 
--- Aplica efeitos dos jokers ativos a uma carta
-function Game:applyJokerEffects(card, baseValue)
-    -- Novo sistema: usa EffectSystem para aplicar efeitos
-    return self.effectSystem:applyJokerEffects(self, card, baseValue)
+-- Aplica efeitos dos jokers ativos a uma carta.
+-- turnContext (opcional) carrega info agregada do turno (tagCounts, activeCombos,
+-- allSelectedCards). ComboSystem (Fase 3) usa isso para amplificar antes dos jokers.
+function Game:applyJokerEffects(card, baseValue, turnContext)
+    return self.effectSystem:applyJokerEffects(self, card, baseValue, turnContext)
 end
 
 -- Novos métodos para gerenciamento de decks
@@ -355,9 +378,12 @@ function Game:selectCard(card)
         -- Seleciona a carta se tiver mana suficiente
         if self.player:spendMana(card.cost) then
             table.insert(self.selectedCards, card)
-            
+
             -- Toca som de seleção
             self:playCardSelectSound()
+
+            -- Juice kick: feedback instantâneo de clique.
+            if card.juice_up then card:juice_up(0.15, 0.05) end
         else
             self:addMessage("Mana insuficiente!", "error")
         end
@@ -369,17 +395,47 @@ function Game:playSelectedCards()
         self:addMessage("Selecione cartas para jogar!", "warning")
         return
     end
-    
-    -- Remove as cartas da mão IMEDIATAMENTE quando a animação começa
-    for _, card in ipairs(self.selectedCards) do
+
+    -- Snapshot das cartas selecionadas (selectedCards e limpo em onCombatAnimationComplete).
+    -- turnContext e construido UMA VEZ antes da animacao iniciar. Fase 3 (ComboSystem)
+    -- vai enriquecer com activeCombos; por ora ja carrega tagCounts para debug.
+    local snapshot = {}
+    for _, c in ipairs(self.selectedCards) do table.insert(snapshot, c) end
+
+    local turnContext = {
+        allSelectedCards = snapshot,
+        tagCounts = TagSystem.countAllTags(snapshot),
+        cardsProcessed = {},
+        turnNumber = self.turnCount or 0,
+        activeCombos = {},
+    }
+    -- Detecta combos e anuncia no feed de mensagens uma vez por turno.
+    ComboSystem.detect(turnContext)
+    ComboSystem.announce(self, turnContext)
+    self._currentTurnContext = turnContext
+
+    -- Remove as cartas da mão IMEDIATAMENTE quando a animação começa.
+    -- Juice kick escalonado via EventManager: cartas estouram de 60ms em 60ms
+    -- conforme voam pro centro (sensação de "combo sendo lançado").
+    local EM = _G.EventManager
+    local Ev = _G.Event
+    for idx, card in ipairs(self.selectedCards) do
         for i, handCard in ipairs(self.hand) do
             if handCard == card then
                 table.remove(self.hand, i)
                 break
             end
         end
+        if EM and Ev and card.juice_up then
+            EM.add(Ev:new({
+                trigger = "after",
+                delay = (idx - 1) * 0.06,
+                blocking = false, -- paralelo: cada carta juice no seu tempo
+                func = function() card:juice_up(0.35, 0.12); return true end,
+            }))
+        end
     end
-    
+
     -- Inicia animação de combate
     self.combatAnimationSystem:startCombat(
         self.selectedCards,
@@ -388,36 +444,76 @@ function Game:playSelectedCards()
             self:onCombatAnimationComplete()
         end,
         function(card)
-            -- Callback para processar cada carta
-            return self:processCardInCombat(card)
+            -- Callback para processar cada carta (com contexto do turno)
+            return self:processCardInCombat(card, turnContext)
         end
     )
 end
 
-function Game:processCardInCombat(card)
+function Game:processCardInCombat(card, turnContext)
     local result = {}
+    turnContext = turnContext or self._currentTurnContext
+
+    -- Pipeline unificado attack/defense: 5 passos idênticos antes de aplicar no alvo.
+    local function computeCardValue(baseValue, statBonus)
+        local v = self.effectSystem:applyCardEffects(self, card, baseValue)
+        v = v + (statBonus or 0)
+        v = ComboSystem.applyToCardValue(card, v, turnContext)
+        v = self:applyJokerEffects(card, v, turnContext)
+        return math.floor(v)
+    end
+
+    -- Efeitos secundários da carta (apply_debuff, heal, etc.) — excluem tipos que
+    -- já foram consumidos em applyCardEffects acima.
+    local function processAdditionalEffects()
+        if not card.effects then return end
+        for _, effect in ipairs(card.effects) do
+            local t = effect.type
+            if t ~= "strength_scaling" and t ~= "dexterity_scaling"
+                and t ~= "multi_hit" and t ~= "damage_bonus_self" then
+                self.effectSystem:processEffectCard(self, effect)
+            end
+        end
+    end
 
     if card.type == "attack" then
-        local damage = card.attack
-        damage = self:applyJokerEffects(card, damage)
+        -- Guard: inimigo ja morto nao recebe mais dano (evita "batendo no cadaver"
+        -- quando o player encadeia multiplas cartas de ataque e a primeira ja mata).
+        -- Retorna vazio pra CombatAnimationSystem nao spawnar damage number nem shake.
+        if self.enemy.health <= 0 then
+            if turnContext then table.insert(turnContext.cardsProcessed, card) end
+            if card.type ~= "joker" and not card.exhaust then
+                table.insert(self.discard, card)
+            end
+            return result
+        end
 
+        local damage = computeCardValue(card.attack, self.player.strength)
+
+        local wasAlive = self.enemy.health > 0
         self.enemy:takeDamage(damage)
         self.score = self.score + damage
 
+        -- Dispara death pipeline (anim + sfx + pausa) se a carta foi fatal.
+        if wasAlive and self.enemy.health <= 0 then
+            self:_onEnemyDeath()
+        end
+
         -- Triggers on-attack (ex: lifesteal de jokers)
-        self.effectSystem:applyTriggerEffects(self, "attack", { target = self.enemy })
+        self.effectSystem:applyTriggerEffects(self, "attack", { target = self.enemy, turnContext = turnContext })
+        processAdditionalEffects()
 
         result.damage = damage
         self:addMessage("Dano: " .. damage, "success")
 
     elseif card.type == "defense" then
-        local defense = card.defense
-        defense = self:applyJokerEffects(card, defense)
+        local defense = computeCardValue(card.defense, self.player.dexterity)
 
         self.player:addArmor(defense)
 
         -- Triggers on-defend (ex: reflexo de dano)
-        self.effectSystem:applyTriggerEffects(self, "defend", { target = self.enemy })
+        self.effectSystem:applyTriggerEffects(self, "defend", { target = self.enemy, turnContext = turnContext })
+        processAdditionalEffects()
 
         result.defense = defense
         self:addMessage("Bloqueio: +" .. defense, "info")
@@ -439,41 +535,127 @@ function Game:processCardInCombat(card)
         -- Cartas de efeito executam seu efeito e são descartadas
         card.passive(self) -- Executa efeito especial
         self:addMessage("Efeito ativado: " .. card.name, "success")
-        
+
         result.effect = true
     end
-    
+
+    if turnContext then
+        table.insert(turnContext.cardsProcessed, card)
+    end
+
+    -- Exhaust: pula o descarte (Slay-style) E agenda remocao permanente
+    -- da run ao final da batalha. Tratamos aqui antes do push pro discard.
+    if card.exhaust and card.id then
+        table.insert(self._exhaustedThisBattle, card.id)
+        self:addMessage("Exaurido: " .. (card.name or card.id), "warning")
+        Sfx.play("cardExhaust")
+    end
+
+    -- Descarte: cartas jogadas vao pra pilha de discard, exceto jokers (ficam
+    -- em jokerSlots) e exhaust (somem da batalha e sao removidas da run).
+    if card.type ~= "joker" and not card.exhaust then
+        table.insert(self.discard, card)
+    end
+
     return result
 end
 
 function Game:onCombatAnimationComplete()
+    -- Aplica efeitos de combo do tipo "once" (apply_debuff, heal, evoke_on_combo)
+    -- apos todas as cartas terem sido processadas.
+    if self._currentTurnContext then
+        ComboSystem.applyOnceEffects(self, self._currentTurnContext)
+    end
+    self._currentTurnContext = nil
+
     -- Cartas já foram removidas da mão em playSelectedCards()
-    -- Apenas limpa a seleção e muda para o turno do inimigo
     self.selectedCards = {}
     self.turn = "enemy"
-    
-    -- Removido: self.damageMultiplier = 1 (jokers agora têm efeitos eternos)
 end
 
 function Game:enemyTurn()
+    -- Bug fix: inimigo morto NÃO ataca. Antes não havia check, e enemyTurn
+    -- rodava no mesmo frame que isPhaseCleared detectava morte → dano fantasma.
+    if not self.enemy:isAlive() then
+        -- Devolve turn pro jogador formalmente, mas isPhaseCleared vai cuidar
+        -- de transicionar pra cardReward no próximo frame.
+        self.turn = "player"
+        return
+    end
+
     -- Inimigo ataca o jogador
     local damage = self.enemy:performAttack()
     if damage > 0 then
+        Sfx.play("enemyAttack")
         self.player:takeDamage(damage)
         self:addMessage("Inimigo causou " .. damage .. " de dano!", "warning")
     end
 
-    -- Volta para o turno do jogador e restaura mana
+    -- Fim do turno do inimigo: processa poison DoT, decrementa duration de debuffs.
+    local poisonDmg = self.enemy:onTurnEnd()
+    if poisonDmg and poisonDmg > 0 then
+        Sfx.play("poisonTick")
+        self:addMessage("Veneno: " .. poisonDmg .. " de dano ao inimigo", "success")
+    end
+
     self.turn = "player"
+
+    -- Short-circuit: se o inimigo morreu durante o turno (poison, trigger, etc.),
+    -- pula restoreMana/drawForTurn/turn_start triggers. O turn_start aplica efeitos
+    -- como damage_per_turn que dariam dano fantasma no jogador apos o inimigo ja
+    -- estar morto. Tambem dispara death pipeline (anim + pausa) que antes so
+    -- acontecia em processCardInCombat (kill via ataque).
+    if not self.enemy:isAlive() then
+        self:_onEnemyDeath()
+        return
+    end
+
     self.player:restoreMana()
 
-    -- Compra uma carta no início do turno
-    if #self.deck > 0 then
-        self:drawCard()
-    end
+    -- Decrementa buffs do jogador (durations per-turno)
+    if self.player.onTurnStart then self.player:onTurnStart() end
+
+    -- Compra do inicio do turno: 1 normal, 3 se a mao estiver vazia (emergencia).
+    self:drawForTurn()
 
     -- Triggers turn_start (regen, dano por turno) após tudo estabelecer
     self.effectSystem:applyTriggerEffects(self, "turn_start", {})
+end
+
+-- Centraliza efeitos colaterais de morte do inimigo (anim + sfx + pausa).
+-- Chamado tanto por processCardInCombat (kill via ataque) quanto por enemyTurn
+-- (kill via poison DoT). Idempotente: se ja rodou nesta morte, nao duplica.
+function Game:_onEnemyDeath()
+    if self._deathHandled then return end
+    self._deathHandled = true
+
+    local okER, EnemyRenderer = pcall(require, "src.ui.EnemyRenderer")
+    if okER and EnemyRenderer.triggerDeath then
+        EnemyRenderer.triggerDeath(self.enemy.spriteId)
+    end
+    if _G.triggerShake then _G.triggerShake(18, 0.4) end
+    Sfx.play("enemyDeath")
+    self._deathPauseTimer = 1.1
+
+    -- Aftershock coreografado via EventManager: 2 tremores menores pós-morte
+    -- (sensação de corpo caindo). Exemplo canônico de sequência temporal
+    -- sem state machine dedicada.
+    local EM = _G.EventManager
+    if EM and _G.triggerShake then
+        EM.after(0.22, function() _G.triggerShake(8, 0.18) end)
+        EM.after(0.42, function() _G.triggerShake(4, 0.12) end)
+    end
+
+    -- Juice celebratório nos jokers ativos (quando tiverem card:juice_up).
+    if EM and self.jokerSlots then
+        for i, joker in ipairs(self.jokerSlots) do
+            if joker and joker.juice_up then
+                EM.after((i - 1) * 0.08, function()
+                    joker:juice_up(0.25, 0.08)
+                end)
+            end
+        end
+    end
 end
 
 function Game:isPhaseCleared()
@@ -481,54 +663,93 @@ function Game:isPhaseCleared()
 end
 
 function Game:resetHandAndDeck()
-    -- Limpa a mão atual
     self.hand = {}
     self.selectedCards = {}
-    
-    -- Se estiver em modo run, sincroniza o deck com o deck da corrida
+    self.discard = {} -- limpa descarte entre batalhas
+
+    -- Transient stats sao per-battle: zera strength/dexterity/orbs/buffs/armor.
+    if self.player.resetTransientStats then
+        self.player:resetTransientStats()
+    end
+
     if self.isRunMode and self.runManager:hasActiveRun() then
         self:synchronizeRunDeck()
     end
-    
-    -- Reembaralha o deck para o próximo andar
+
     self:shuffleDeck()
-    
-    -- Compra cartas iniciais para a nova fase
+    self:promoteInnateCardsToTop()
+
     for i = 1, Config.Game.INITIAL_HAND_SIZE do
         if #self.deck > 0 then
             self:drawCard()
         end
     end
-    
+
     self:addMessage("Mão limpa e deck reembaralhado para o próximo andar!", "info")
 end
 
 function Game:nextPhase()
+    -- Processa exhaust pendente: remove as cartas exauridas da run.
+    if self.isRunMode and self.runManager:hasActiveRun() and #self._exhaustedThisBattle > 0 then
+        for _, id in ipairs(self._exhaustedThisBattle) do
+            self.runManager:removeCardFromDeck(id)
+        end
+    end
+    self._exhaustedThisBattle = {}
+    self._deathHandled = false
+    self._deathPauseTimer = 0
+
     self.currentPhase = self.currentPhase + 1
     self.score = self.score + Config.Game.BASE_SCORE_PER_PHASE * self.currentPhase
-    
-    -- Ganha ouro por vencer a batalha
+
     local healthLost = self.player.maxHealth - self.player.health
     local goldEarned = self.economySystem:earnBattleGold(self.currentPhase, healthLost, self.currentPhase)
     self:addMessage("Ganhou " .. goldEarned .. " ouro!", "success")
-    
-    -- Reseta a mana máxima para o valor base (remove efeitos de cartas de fase anterior)
+    if goldEarned > 0 then Sfx.play("goldGain") end
+
     self.player:resetMaxMana()
-    
-    -- Limpa a mão atual e reembaralha o deck para o próximo andar
     self:resetHandAndDeck()
-    
-    -- Cria o próximo inimigo com vida e dano maiores usando Config
-    local newHealth = Config.Game.ENEMY_BASE_HEALTH + (self.currentPhase - 1) * Config.Game.ENEMY_HEALTH_SCALING
-    local newDamage = Config.Game.ENEMY_BASE_DAMAGE + (self.currentPhase - 1) * Config.Game.ENEMY_DAMAGE_SCALING
-    self.enemy = Enemy:new(newHealth, newDamage)
-    
-    -- Restaura vida do jogador a cada X fases usando Config
-    if self.currentPhase % Config.Game.HEALTH_RESTORE_INTERVAL == 0 then
-        self.player.health = math.min(self.player.health + Config.Game.PLAYER_HEALTH_RESTORE, self.player.maxHealth)
-        self:addMessage("Vida restaurada! +" .. Config.Game.PLAYER_HEALTH_RESTORE .. " HP", "success")
+
+    -- Stats do inimigo baseadas no ato + node atual (Fase 5 via ActSystem).
+    -- Em run mode: usa runManager.currentRun (actNumber, floorInAct, currentNode).
+    -- Em classic mode (sem run): fallback para curva linear antiga.
+    if self.isRunMode and self.runManager:hasActiveRun() then
+        local run = self.runManager.currentRun
+        local nodeType = (run.currentNode and run.currentNode.type) or "battle"
+        local stats = ActSystem.getEnemyStats(run.actNumber, run.floorInAct, nodeType)
+        self.enemy = Enemy:new(stats.health, stats.damage)
+        -- Sprite do inimigo: mapeado por ato. EnemyRenderer resolve fallback.
+        local EnemyRenderer = require("src.ui.EnemyRenderer")
+        self.enemy.spriteId = EnemyRenderer.resolveSpriteId(run.actNumber, nodeType)
+        -- Log com nome do ato
+        self:addMessage(ActSystem.getActName(run.actNumber, run.floorInAct)
+            .. " — andar " .. run.floorInAct .. " (" .. nodeType .. ")", "info")
+    else
+        local newHealth = Config.Game.ENEMY_BASE_HEALTH + (self.currentPhase - 1) * Config.Game.ENEMY_HEALTH_SCALING
+        local newDamage = Config.Game.ENEMY_BASE_DAMAGE + (self.currentPhase - 1) * Config.Game.ENEMY_DAMAGE_SCALING
+        self.enemy = Enemy:new(newHealth, newDamage)
     end
-    
+
+    -- Cura intra-ato (modo classic) OU cura inter-ato (run mode, quando floorInAct=1
+    -- e actNumber > 1: significa que acabou de cruzar pro novo ato).
+    if self.isRunMode and self.runManager:hasActiveRun() then
+        local run = self.runManager.currentRun
+        if run.floorInAct == 1 and run.actNumber > 1 then
+            local pct = ActSystem.getInterActHealPercent(run.actNumber - 1)
+            if pct and pct > 0 then
+                local heal = math.floor(self.player.maxHealth * pct)
+                self.player:heal(heal)
+                self:addMessage("Transicao de ato: +" .. heal .. " HP", "success")
+            end
+            Sfx.play("actComplete")
+        end
+    else
+        if self.currentPhase % Config.Game.HEALTH_RESTORE_INTERVAL == 0 then
+            self.player.health = math.min(self.player.health + Config.Game.PLAYER_HEALTH_RESTORE, self.player.maxHealth)
+            self:addMessage("Vida restaurada! +" .. Config.Game.PLAYER_HEALTH_RESTORE .. " HP", "success")
+        end
+    end
+
     self:addMessage("Fase " .. self.currentPhase .. " iniciada!", "info")
 end
 
@@ -548,7 +769,24 @@ function Game:checkGameOver()
 end
 
 function Game:checkVictory()
-    -- Vitória após X fases usando Config
+    -- Em run mode: vitoria so acontece ao matar boss do ato final (nao endless).
+    -- A transicao pra endless e disparada em advanceFloorInAct; checkVictory so
+    -- retorna true na primeira vez que o player bate o boss do ultimo ato.
+    if self.isRunMode and self.runManager:hasActiveRun() then
+        local run = self.runManager.currentRun
+        if run.endlessMode then return false end
+        local totalActs = Config.TotalActs or 3
+        local MapManager = require("src.systems.MapManager")
+        if run.actNumber >= totalActs
+            and run.floorInAct >= MapManager.FLOORS_PER_ACT
+            and run.currentNode and run.currentNode.type == "boss"
+            and self:isPhaseCleared() then
+            self.gameState = "victory"
+            return true
+        end
+        return false
+    end
+    -- Fallback classic
     if self.currentPhase > Config.Game.VICTORY_PHASES then
         self.gameState = "victory"
         return true
@@ -556,26 +794,10 @@ function Game:checkVictory()
     return false
 end
 
--- Toca som de seleção de carta
+-- Toca som de seleção de carta. Wrapper thin via Sfx.play (AudioSystem é no-op
+-- se áudio não disponível).
 function Game:playCardSelectSound()
-    -- Usa o sistema de áudio global se disponível
-    if _G.audioSystem and _G.audioSystem:isAudioAvailable() then
-        _G.audioSystem:playSound("cardSelect")
-    else
-        -- Fallback para sistema antigo
-        if not cardSelectSoundCache then
-            cardSelectSoundCache = love.audio.newSource("audio/clickselect2-92097.mp3", "static")
-            cardSelectSoundCache:setVolume(Config.Audio.CLICK_SELECT_VOLUME)
-        end
-        
-        -- Garante que o som seja tocado corretamente
-        if cardSelectSoundCache then
-            -- Para o som anterior se estiver tocando
-            cardSelectSoundCache:stop()
-            -- Toca o som
-            cardSelectSoundCache:play()
-        end
-    end
+    Sfx.play("cardSelect")
 end
 
 -- Alterna o menu de configurações. O handler real é injetado por main.lua.

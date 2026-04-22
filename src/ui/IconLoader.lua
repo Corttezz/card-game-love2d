@@ -70,4 +70,17 @@ function IconLoader.clearCache()
     handleCache = {}
 end
 
+-- Calcula o scale pra desenhar um ícone `iconH` px de altura cabendo em `targetSize` px.
+-- - Se source é menor/igual ao target: usa inteiro pra manter pixel art sharp.
+-- - Se source é maior: scale fracional (nearest filter mantém qualidade).
+-- PNGs do projeto são tipicamente 64×64; a maioria dos targets é < 64, então cai no
+-- branch fracional. Matrix icons são 16×16 e ganham scale inteiro.
+function IconLoader.computeScale(iconH, targetSize)
+    if iconH <= targetSize then
+        return math.max(1, math.floor(targetSize / iconH))
+    else
+        return targetSize / iconH
+    end
+end
+
 return IconLoader

@@ -180,6 +180,19 @@ return {
         unknown                     = "Efeito desconhecido",
     },
 
+    -- ======== STATUS EFFECTS (tooltips na HUD) ========
+    -- name: label curto mostrado no header do tooltip
+    -- desc: explicação da mecânica, suporta interpolação {stacks}/{duration}
+    status = {
+        poison     = { name = "Veneno",     desc = "Causa {stacks} de dano no fim de cada turno. Perde 1 stack por turno." },
+        weak       = { name = "Fraco",      desc = "Dano infligido reduzido em 25%. Dura {duration} turno(s)." },
+        vulnerable = { name = "Vulnerável", desc = "Recebe 50% mais dano de ataques. Dura {duration} turno(s)." },
+        strength   = { name = "Força",      desc = "Ataques causam +{stacks} de dano adicional enquanto ativo." },
+        dexterity  = { name = "Destreza",   desc = "Cartas de defesa ganham +{stacks} de bloqueio adicional." },
+        focus      = { name = "Foco",       desc = "Buff genérico aplicado por {duration} turno(s)." },
+        burn       = { name = "Queimadura", desc = "Causa {stacks} de dano de fogo por turno." },
+    },
+
     -- ======== MENSAGENS IN-GAME (toasts do EffectSystem) ========
     messages = {
         dmg_multiplier   = "Dano x{value}",

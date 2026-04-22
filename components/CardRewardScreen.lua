@@ -9,13 +9,13 @@ local FontManager = require("src.ui.FontManager")
 local Theme = require("src.ui.Theme")
 local Palette = require("src.ui.Palette")
 local PixelCanvas = require("src.ui.PixelCanvas")
-local VisualEffects = require("src.ui.VisualEffects")
 local SceneBackground = require("src.ui.SceneBackground")
 local Button = require("components.Button")
 local CardDatabase = require("src.systems.CardDatabase")
 local CardInfoDisplay = require("src.ui.CardInfoDisplay")
 local ShopSystem = require("src.systems.ShopSystem")
 local I18n = require("src.i18n.I18n")
+local Sfx = require("src.systems.Sfx")
 
 function CardRewardScreen:new()
     local instance = setmetatable({}, CardRewardScreen)
@@ -171,6 +171,7 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped)
             
             if self.game.economySystem:canAfford(currentRefreshCost) then
                 self.game.economySystem:spendGold(currentRefreshCost, "refresh", "shop")
+                Sfx.play("purchaseDeny")
                 self.shopSystem:refreshOffers()
                 self.shopOffers = self.shopSystem:getCurrentOffers()
                 
@@ -344,6 +345,7 @@ function CardRewardScreen:purchaseOffer(offer, offerId)
             self:applyUpgrade(offer)
             self.game:addMessage(I18n.t("reward.bought", { name = offerName }), "success")
         end
+        Sfx.play("purchaseConfirm")
         
         -- Marca a oferta como comprada (não remove da lista)
         offer.purchased = true

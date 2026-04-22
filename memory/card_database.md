@@ -1,65 +1,99 @@
 ---
 name: Card Database Notes
-description: CardDatabase é loader fino (~170 LOC) que merge src/data/cards/{basic,warrior,mage,rogue}.lua; theRock.png é placeholder comum
+description: Schema de carta pós-redesign (tags + effects processados), starter deck de 2 cartas, como adicionar conteúdo
 type: project
-originSessionId: e544765f-309d-4fc7-89e3-58b3dabfa059
 ---
-`src/systems/CardDatabase.lua` agora tem ~170 LOC — é só um **loader**. Os dados foram movidos para módulos separados:
 
-- `src/data/cards/basic.lua` — cartas sem classe (attack_001/002, defense_001, warrior_seeing_red/rage/second_wind/spot_weakness, joker_001/002/003).
-- `src/data/cards/warrior.lua` — common/uncommon/rare do Guerreiro.
-- `src/data/cards/mage.lua` — common/uncommon/rare do Mago + `effect_healing_potion`, `effect_mana_crystal`.
-- `src/data/cards/rogue.lua` — common/uncommon/rare do Ladino.
-- `src/data/decks.lua` — decks predefinidos (starter, warrior, mage).
+# Card Database
 
-Cada módulo retorna uma tabela `{id = {...}, ...}`. `CardDatabase:loadData()` faz merge no primeiro `new()`.
+96 cartas em 4 módulos merged por `CardDatabase:loadData()`. Dados são Lua puro; `CardDatabase` é um loader fino que expõe queries.
 
-**Armadilhas:**
-- `cardData` e `deckData` são **upvalues no escopo do módulo** (singleton). Chamar `CardDatabase:new()` várias vezes não duplica dados.
-- `createCardInstance(cd)` injeta `id`, `description`, `rarity`, `effects`, `class` na instância **depois** do constructor — sem isso, tooltip fica vazio e `EffectSystem` não aplica efeitos.
+## Módulos
 
-**Estrutura de uma carta:**
+- `src/data/cards/basic.lua` — 7 cartas (basics + 5 jokers lendários compartilhados).
+- `src/data/cards/warrior.lua` — 23 cartas (armor stack / strength / thorns / exhaust).
+- `src/data/cards/mage.lua` — 32 cartas (channel / evoke / magic / heal).
+- `src/data/cards/rogue.lua` — 27 cartas (poison / discard / exhaust / draw).
+- `src/data/decks.lua` — decks predefinidos (modo classic).
+
+## Schema da carta (pós-redesign)
+
 ```lua
-id = "warrior_strike", -- = chave na tabela cards
-name = "Golpe",        -- PT-BR, mostrado no tooltip
-type = "attack",        -- attack | defense | joker | effect
-subtype = "common",     -- metadata livre
-cost = 1,               -- mana
-attack = 6, defense = 0,
-description = "...",
-image = "assets/cards/attack/theRock.png",
-rarity = "common",      -- common | uncommon | rare | legendary | basic
-class = "warrior",      -- warrior | mage | rogue | nil (básica)
-effects = { ... }       -- array de {type, value, target, stacks, description}
+my_card_id = {
+    id          = "my_card_id",             -- único, prefixado por classe
+    name        = "Nome Visivel",           -- PT-BR
+    type        = "attack",                  -- attack | defense | joker | effect
+    subtype     = "common",                  -- metadata livre
+    cost        = 1,                         -- mana
+    attack      = 8, defense = 0,            -- stats base
+    description = "...",                     -- tooltip
+    image       = "assets/cards/.../png",    -- fallback: theRock.png
+    rarity      = "common",                  -- common | uncommon | rare | legendary
+    class       = "warrior",                 -- warrior | mage | rogue | basic
+    tags        = { "strike", "strength" },  -- Fase 1 (TagSystem)
+    innate      = false,                     -- opcional; Fase 2
+    retain      = false,                     -- opcional
+    effects     = { ... },                    -- data-driven
+}
 ```
 
-**Classes e pools (CardRegistry):**
-- **warrior** — starter: `warrior_strike`, `warrior_defend`, `warrior_bash`, `warrior_iron_wave`, `warrior_heavy_blade`, `attack_001`, `defense_001`, `attack_002` (8 cartas). Pool tem common/uncommon/rare pesadas em ataque + bloqueio.
-- **mage** — starter: `mage_zap`, `mage_dualcast`, `mage_ball_lightning` + básicas + 2 effect cards (`effect_healing_potion`, `effect_mana_crystal`) + joker_001. Muitos efeitos de orbe declarados mas não implementados.
-- **rogue** — starter: `rogue_strike`, `rogue_defend`, `rogue_survivor`, `rogue_neutralize`, `rogue_backstab` + básicas.
+## Tags implícitas
 
-**Raridades (`CardRegistry:rollRarity`):** 37% common / 37% uncommon / 25% rare / 1% legendary. (Na loja `ShopSystem:rollRarity` usa 70/25/5 — diferente.)
+`TagSystem.getCardTags` deriva automaticamente: `attack→strike`, `defense→defend`, `joker→passive`, `effect→utility`. Não precisa declarar — se a carta só precisa da implícita, pode omitir `tags`.
 
-**Jokers notáveis:**
-- `joker_001` "God of the Abyss" — `damage_multiplier: 2.0` em ataques.
-- `joker_002` "God of the Abyss" (sic, nome duplicado) — `defense_multiplier: 2.0`.
-- `joker_003` "God of the Abyss" (sic) — `heal_multiplier: 2.0`. Agora processado pelo EffectSystem (multiplica `instant_heal`, `on_attack_heal`, `regen_per_turn`).
+## Tipos de effect processados
 
-**Effect cards:**
-- `effect_healing_potion` — `instant_heal: value 20`
-- `effect_mana_crystal` — `restore_mana: value 2`
+Ver lista completa em `memory/gameplay_systems.md`. Novo tipo requer:
+1. Implementação em `src/systems/EffectSystem.lua`
+2. Atualização do dict `PROCESSED_EFFECT_TYPES` em `tools/validate_cards.lua`
+3. `love . validate_cards` deve passar com 0 unknown types
 
-**Decks estáticos (modo classic):** `"starter"`, `"warrior"`, `"mage"` (formato `{cards = {{id=..., quantity=...}, ...}}`). `DeckManager:setCurrentDeck("starter")` é o default.
+## Injeção em runtime
 
-**Imagens disponíveis:**
-- `assets/cards/attack/`: bloodSword, rage, secondWind, seeingRed, theRock (+ deck.png)
+`CardDatabase:createCardInstance(cd)` copia para a instância:
+- `id`, `description`, `rarity`, `effects`, `class`
+- `tags` (normalizadas via TagSystem)
+- `innate`, `retain` (flags)
+- `image` substituída por canvas procedural do `CardFrame.render` se possível
+- `visualEffect` (nil | "shine" | "glow" | "holo") baseado em rarity
+
+## Starter decks (CardRegistry)
+
+**Fase 5:** cada classe começa com **2 cartas**:
+```lua
+warrior = { "warrior_strike", "warrior_defend" }
+mage    = { "mage_zap",       "defense_001" }
+rogue   = { "rogue_strike",   "rogue_defend" }
+```
+Deck cresce via map nodes (rewards/shop/event/forge).
+
+## Raridade (CardRegistry:rollRarity)
+
+Default 37/37/25/1 (common/uncommon/rare/legendary). Aceita `weights` customizados via arg — `ActSystem.getRarityWeights(actNumber)` passa pesos por ato (70/25/5/0 no ato 1, crescendo até 10/35/45/10 em endless).
+
+`generateCardRewards(classId, numCards, { rarityWeights, minRarity })` — `minRarity` força piso (uncommon+ em elites, rare+ em bosses).
+
+## Jokers (pool básico)
+
+- `joker_001` Deus do Abismo — `damage_multiplier: 2.0`
+- `joker_002` Guardião do Escudo — `defense_multiplier: 2.0`
+- `joker_003` Senhor Vampiro — `on_attack_heal: 3`
+- `joker_004` Bobo da Corte — rare (placeholder damage_bonus)
+- `joker_005` Chapéu do Bufão — rare (`damage_bonus: +2`)
+
+## Imagens disponíveis
+
+- `assets/cards/attack/`: bloodSword, rage, secondWind, seeingRed, theRock
 - `assets/cards/defense/`: ironShield
 - `assets/cards/effect/`: manaCrystal, potionOfHealing
 - `assets/jokers/`: joker1
+- `assets/sprites/icons/`: 33+ PNGs via IconLoader
 
-Quase todas as cartas novas apontam pra `theRock.png` como placeholder. Se der erro ao carregar, o Card.lua também usa `theRock.png` como fallback final.
+Muitas cartas novas ainda apontam pra `theRock.png` como placeholder (não é estilo — é falta de arte; ver `memory/sprite_design_queue.md`).
 
-**How to apply:**
-- Ao adicionar carta: edite o arquivo correto em `src/data/cards/` (basic/warrior/mage/rogue). Se for de classe específica, setar `class = "warrior"|"mage"|"rogue"` — o CardRegistry pool filtra automaticamente.
-- Para incluir no starter deck: também adicionar o ID em `CardRegistry:getStarterDeckForClass`.
-- Antes de buscar "por que essa carta não faz X", cheque se `card.effects` tem um `type` que o EffectSystem suporta (ver `memory/gameplay_systems.md`).
+## How to apply
+
+- Ao adicionar carta: edite arquivo correto em `src/data/cards/`. Se classe-específica, setar `class = "warrior"|"mage"|"rogue"`.
+- Starter deck: ajustar `CardRegistry:getStarterDeckForClass`.
+- Se carta "não faz X": checar `card.effects[].type` contra lista processada em `memory/gameplay_systems.md`.
+- Depois de qualquer mudança: `love . validate_cards` + `love . smoke_all`.

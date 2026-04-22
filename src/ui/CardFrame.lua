@@ -53,10 +53,18 @@ end
 local function artSlotBounds(card)
     local w, h = CardFrame.WIDTH, CardFrame.HEIGHT
     -- Slot cola direto no header e no footer (sem gap vertical).
-    -- Header height é adaptativo por carta (18 padrão, 24 se nome precisar wrap).
-    local headerH = CardHeader.computeHeight(card, w)
+    -- Joker e card padrão usam header/footer DIFERENTES com alturas próprias —
+    -- usar a altura errada cria gap visual ("arte cortada abaixo do título").
+    local headerH, footerH
+    if card.type == "joker" then
+        headerH = JokerHeader.HEIGHT       -- 16 (não 18 do CardHeader)
+        footerH = JokerFooter.HEIGHT       -- 16 (não 20 do CardStatsFooter)
+    else
+        headerH = CardHeader.computeHeight(card, w)  -- 18 single ou 24 wrap
+        footerH = CardStatsFooter.HEIGHT             -- 20
+    end
     local top    = headerH
-    local bottom = h - CardStatsFooter.HEIGHT
+    local bottom = h - footerH
     return 5, top, w - 10, bottom - top
 end
 
@@ -75,7 +83,7 @@ local function renderStandard(card, w, h)
     end
 
     CardBorder.draw(w, h, card.type, rarity, card.id)
-    CardHeader.draw(w, name)
+    CardHeader.draw(w, name, rarity)
     CardCostBadge.draw(card.cost or 0)
     CardRaritySeal.draw(w, rarity)
     CardStatsFooter.draw(w, h, card)
@@ -89,9 +97,15 @@ local function renderJoker(card, w, h)
     local ax, ay, aw, ah = artSlotBounds(card)
     CardArtSlot.draw(ax, ay, aw, ah, art, "tarot")
     CardDecoration.draw(ax, ay, aw, ah, art.decoration or "flash", art.accent)
+    -- Aplica decoração auto pelo bg pattern (mesmo comportamento de renderStandard)
+    -- — ex: joker_001 tem bg=abyss → abyss_tendrils por cima do tarot card.
+    local autoDec = CardDecoration.autoForBackground(art.bgPattern)
+    if autoDec and autoDec ~= (art.decoration or "flash") then
+        CardDecoration.draw(ax, ay, aw, ah, autoDec, art.accent)
+    end
 
     JokerBorder.draw(w, h, rarity)
-    JokerHeader.draw(w, name)
+    JokerHeader.draw(w, name, rarity)
     CardCostBadge.draw(card.cost or 0)
     JokerSeal.draw(w, rarity)
     JokerFooter.draw(w, h)
@@ -123,6 +137,26 @@ function CardFrame.render(card)
     else
         renderStandard(card, w, h)
     end
+
+    -- Stepped pixel-art corner cut (3px em L) — aplicado por último pra recortar
+    -- tudo: base + texture + borda + header + footer + seals. setBlendMode("replace")
+    -- sobrescreve alpha pra 0, criando transparência real nos cantos.
+    local CORNER_CUT = 3
+    love.graphics.setBlendMode("replace")
+    love.graphics.setColor(0, 0, 0, 0)
+    for i = 0, CORNER_CUT - 1 do
+        local rowLen = CORNER_CUT - i
+        -- top-left
+        love.graphics.rectangle("fill", 0, i, rowLen, 1)
+        -- top-right
+        love.graphics.rectangle("fill", w - rowLen, i, rowLen, 1)
+        -- bottom-left
+        love.graphics.rectangle("fill", 0, h - 1 - i, rowLen, 1)
+        -- bottom-right
+        love.graphics.rectangle("fill", w - rowLen, h - 1 - i, rowLen, 1)
+    end
+    love.graphics.setBlendMode("alpha")
+    love.graphics.setColor(1, 1, 1, 1)
 
     PixelCanvas.endDraw()
 

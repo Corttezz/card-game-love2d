@@ -1,60 +1,77 @@
 ---
 name: Known Gaps and Tech Debt
-description: Lacunas conhecidas (atualizado pós-refactor fases 1-5) — cartas com effects={} sem efeito gameplay, orbes/strength_scaling ainda não implementados
+description: Lacunas conhecidas após redesign completo (fases 1-8); o que é intencional vs pendente
 type: project
-originSessionId: e544765f-309d-4fc7-89e3-58b3dabfa059
 ---
 
-Pontos que já existem no código mas **não estão completos**. Tratar como "conhecido" — não criar tickets sem confirmar com o dev.
+# Known Gaps
 
 **Why:** evita a LLM "corrigir" coisas intencionalmente deixadas pela metade.
 
-**How to apply:** antes de tocar nesses itens, cheque se há pedido explícito. Ao encontrar comentário TODO ou função comentada, respeite a intenção.
+**How to apply:** antes de tocar nesses itens, cheque se há pedido explícito. Ao encontrar comentário TODO, respeite a intenção.
 
 ---
 
-**1. Cartas Slay the Spire com `effects = {}`** — muitas cartas (mage_blizzard, warrior_berserk, rogue_envenom, etc.) têm descrições prometendo mecânicas que não foram implementadas. Só dano/defesa base funciona. Não assuma que "faz o que a descrição diz".
+## Ainda abertos (pós-redesign)
 
-**2. Tipos de efeito declarados mas não processados:**
-- `channel_orb` / `evoke_orb` (orbes do mago) — sem sistema de orbes.
-- `strength_scaling` — sem stat Força no Player.
-- `exhaust` / `innate` — mecânicas de deck não implementadas.
-- `EffectSystem:processEffectCard` reconhece os tipos e retorna `false` para eles (não causa erro).
+**1. Cartas ainda com `effects = {}`** — 12 cartas (starter/básicas): `warrior_strike`, `warrior_defend`, `rogue_strike`, `rogue_defend`, `attack_001`, `defense_001`, etc. Isso é **intencional**: são âncoras de tag (`#strike` / `#defend`) sem efeito adicional, balanceadas por combos. Rodar `love . validate_cards` para ver lista atualizada.
 
-**3. `Game:isRunMode` setado por `startNewRun` mas nunca resetado em `gameOver`** — se jogador morre e volta ao menu via escape, `isRunMode` continua true até novo run. `returnToMenu()` resseta o jogo via `Game:new()` então OK, mas fluxos alternativos podem vazar estado.
+**2. Fallback de imagem `theRock.png`** usado em muitas cartas — não é estilo, é falta de arte. Pipeline de sprite via pixel-mcp está em `memory/sprite_design_queue.md`. Ao gerar PNGs, substituir campo `image` no `src/data/cards/*.lua`.
 
-**4. Fallback de imagem `theRock.png`** usado em quase todas as cartas novas — não é "estilo", é falta de arte. Ao criar PNG novo, substitua o campo `image` no `src/data/cards/*.lua`.
+**3. Save/load persistente existe mas não há UI** — `RunManager:saveRun/loadRun/hasSavedRun/deleteSave` gravam `run.save.lua`. Ainda não há botão "Continuar" no menu principal.
 
-**5. `JokerSlot:drawEmptySlot` é quase vazio** — só renderiza um rect translúcido; o "+" e texto "VAZIO" foram removidos intencionalmente.
+**4. `Game:isRunMode` setado por `startNewRun` mas pode vazar entre runs** — `returnToMenu()` reseta via `Game:new()` então OK no fluxo normal, mas atenção ao adicionar transições novas.
 
-**6. Save/load persistente existe mas não há UI** — `RunManager:saveRun/loadRun/hasSavedRun/deleteSave` gravam em `run.save.lua` no save dir do love. Ainda não há botão "Continuar" no menu principal que chame `loadRun()`.
+**5. `conf.lua` com `t.modules.touch = false`** — iOS deployment não está configurado.
 
-**7. `conf.lua` com `t.modules.touch = false`** — iOS deployment não está configurado. A skill `love2d-gamedev` tem doc em `references/ios/` para quando quiser.
+**6. `Menu:onAboutClick`** continua placeholder.
 
-**8. `Menu:onAboutClick`** continua placeholder (só imprime "em desenvolvimento"). Configurações (`onSettingsClick`) ainda é placeholder pois o acesso real é pela TopBar.
+**7. `CardRewardScreen` ainda tem muitos `print` de debug.**
 
-**9. `CardRewardScreen` tem muitos `print` de debug** — não foram limpos junto com os outros (tamanho do arquivo grande demais, cuidado).
+**8. HUD legacy FULL CLEANUP** — ✅ `HudPlayerPanel.lua` reescrito flat/sepia; ✅ `HudEnemyPanel.lua` removido; ✅ `ManaOrb.lua` adicionado; ✅ `StatusPill.lua` extraído (fonte única); ✅ `HudPanel.lua` + `VisualEffects.lua` removidos no refactor Abril/2026. **Pendente:** `CardInfoDisplay.lua`, `MessageSystem.lua` ainda com estilo visual legacy (gradients/glow).
 
-**10. HUD ainda com gradientes 20-step e glow borders** — `src/ui/HudPanel.lua`, `HudPlayerPanel.lua`, `HudEnemyPanel.lua`, `CardInfoDisplay.lua`, `MessageSystem.lua` ainda usam `VisualEffects.Utils.drawRadialGradient` / `drawCircleWithGlow` / `rectangle(..., rx, ry)`. **Fora** do chrome de UI pixel atual (que cobriu Button/Menu/Settings/ClassSelection/TopBar/CardReward). Próxima passada mapeia essas 5 superfícies pra `PixelCanvas.rect` + `dither25` + `Palette.BUTTON_*`/`PANEL_*`. Ver `memory/ui_pixel_system.md` seção 6.
+**9. ClassSelection "class cards" são só Buttons** — visual rico ainda não extraído em `components/ClassCard.lua`.
 
-**11. ClassSelection "class cards" são só Buttons** — hoje cada classe (warrior/mage/rogue) aparece como um botão com texto + ícone de arma. Visual mais rico (arte de fundo, descrição, ícone grande) está fora de escopo. Quando for atacar, extrair `components/ClassCard.lua` componente dedicado, não customizar Button.
+**10. Forge (Rest) usa IDs crus no label** — mostra `warrior_strike +1` em vez de `Golpe +1`. I18n/lookup por cardData.name fica pendente.
+
+**11. Events não processa "perder HP"** — `apply.function` pode causar dano direto, mas alguns eventos complexos (Slay-style "troca carta pelo vizinho") não estão mapeados.
+
+**12. `damage_per_turn` no player não é disparado pelo Game** — existe em `processTriggerEffect` mas `applyTriggerEffects("turn_start")` só roda no fim do enemy turn, então DoT do player vem só a cada 2 turnos lógicos. Provavelmente está ok, mas revisar se virar bug.
+
+**13. Efeitos de combo que dependem de orbs** — `channel_burst` pop o mais antigo. Se player não tem orbs, é no-op silencioso. Aceitável.
+
+**14. Joker draw_extra (joker_004) virou damage_bonus** — mecânica de "compra extra por turno" não tem hook próprio ainda (`on_turn_start_draw`). Por ora jokers que tinham `draw_extra` foram convertidos para `draw_cards` ou `damage_bonus`.
+
+**15. `rogue_envenom` aproximado** — no design, deveria aplicar 1 poison por ataque via trigger `on_attack_debuff`. Trigger ainda não existe; efeito mapeado como `damage_bonus +1` temporariamente.
+
+**16. Ícones de mini_boss e boss** — `NODE_META` usa `skull_crowned` pra ambos. Visualmente idênticos; diferenciar via cor/label.
 
 ---
 
-## Resolvidos no refactor recente (fases 1-5)
+## Resolvidos pelo redesign (fases 1-7)
+
+- ✅ **Tags** (Fase 1): toda carta tem tags normalizadas via `TagSystem`.
+- ✅ **channel_orb / evoke_orb** (Fase 2): implementados em `EffectSystem` + `Player.orbs` (slots, addOrb/popOldestOrb) + `_evokeOrbEffect` (lightning/ice/dark/fire/holy).
+- ✅ **strength_scaling / dexterity_scaling** (Fase 2): Player tem `strength`/`dexterity`; `applyCardEffects` soma no damage path.
+- ✅ **exhaust** (Fase 2): remove carta permanentemente da run ao final da batalha via `_exhaustedThisBattle`.
+- ✅ **innate** (Fase 2): cartas com `innate=true` são promovidas ao topo do deck em `Game:promoteInnateCardsToTop`.
+- ✅ **mystery** (Fase 2): sorteia de pool fixo.
+- ✅ **poison DoT** (Fase 2): processado em `Enemy:onTurnEnd` (duration em turnos, stacks).
+- ✅ **weak / vulnerable** (Fase 2): reduzem/amplificam em `Enemy:performAttack`/`takeDamage`.
+- ✅ **ComboSystem** (Fase 3): 11 regras ativas, tag-aware, compõe com jokers.
+- ✅ **Mapa/Nodes** (Fase 4): `MapManager` gera escolhas tipadas; `MapScreen` UI; state `mapSelection`.
+- ✅ **Atos + Endless** (Fase 5): 3 atos × 8 andares, bosses fixos, endless exponencial.
+- ✅ **Rest / Event** (Fase 6): telas dedicadas; pool de 10 eventos.
+- ✅ **Starter deck de 2 cartas** (Fase 5): warrior/mage/rogue começam com 1 attack + 1 defense.
+- ✅ **Rebalance massivo** (Fase 7): 96 cartas com tags, effects coerentes, números contra curva.
+- ✅ **Discard pile + reshuffle** (fix pós-Fase 7): cartas jogadas vão pra `game.discard`; quando o deck esvazia, reembaralha. Fix crítico pra starter de 2 cartas funcionar.
+
+---
+
+## Resolvidos em refactors anteriores (fases iniciais)
 
 - ✅ `ClassSystem.lua` removido — `RunManager` usa `CardRegistry` direto.
 - ✅ `src/MessageSystem.lua` duplicata removida.
-- ✅ `src/systems/SmokeSystemExample.lua` + `src/ui/CardInfoDisplayExample.lua` removidos.
-- ✅ `components/JokerCard.lua` removido (órfão, nunca foi require'd).
-- ✅ `EffectSystem:getCardData` mocks removidos — lê `joker.effects` direto.
-- ✅ `EffectSystem:applyTriggerEffects` wired em `Game:processCardInCombat` (attack/defend) e `enemyTurn` (turn_start).
-- ✅ `apply_debuff`, `discard_cards`, `heal_multiplier` agora processados.
-- ✅ Performance: `ImageCache` para ícones; `FontManager` em lugar de `newFont` espalhado.
-- ✅ `love.resize(w, h)` implementado — reposiciona tudo e invalida cache.
-- ✅ `GameUI` sem funções comentadas (drawPlayerInfo/drawEnemyInfo etc.).
-- ✅ Menu principal com título "CARD GAME" (era "jogo" literal minúsculo).
-- ✅ `conf.lua` versão 11.3 → 11.5.
-- ✅ Arquivos `:Zone.Identifier` removidos.
+- ✅ `EffectSystem:getCardData` mocks removidos.
 - ✅ Saves persistem em `run.save.lua` via `love.filesystem`.
-- ✅ `SettingsMenu` overlay (volume música/SFX/master + fullscreen toggle) acessível pelo ícone da TopBar.
+- ✅ `SettingsMenu` overlay acessível pela TopBar.

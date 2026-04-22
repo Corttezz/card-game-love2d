@@ -5,8 +5,8 @@ local JokerSlot = {}
 JokerSlot.__index = JokerSlot
 
 local Theme = require("src.ui.Theme")
-local VisualEffects = require("src.ui.VisualEffects")
 local FontManager = require("src.ui.FontManager")
+local Moveable = require("engine.Moveable")
 
 function JokerSlot:new(x, y, size)
     local instance = setmetatable({}, JokerSlot)
@@ -21,8 +21,16 @@ function JokerSlot:new(x, y, size)
     instance.scale = 1
     instance.targetScale = 1
     instance.pulseIntensity = 0
-    
+
+    -- Juice: slot pulsa quando joker é colocado, quando é ativado em combate.
+    Moveable.initJuice(instance)
+
     return instance
+end
+
+-- Proxy pro Moveable.juice_up.
+function JokerSlot:juice_up(scale_mod, rot_mod)
+    Moveable.juice_up(self, scale_mod, rot_mod)
 end
 
 function JokerSlot:update(dt)
@@ -46,9 +54,15 @@ function JokerSlot:update(dt)
         self.pulseIntensity = 0
     end
     
-    -- Animações suaves
-    self.glowIntensity = self.glowIntensity + (self.targetGlow - self.glowIntensity) * 8 * dt
-    self.scale = self.scale + (self.targetScale - self.scale) * 10 * dt
+    -- Animações suaves via exp decay (consistente com Card e resto do jogo).
+    -- ease = 1 - exp(-k*dt) é mais estável que lerp*dt em frame drops.
+    local glowEase = 1 - math.exp(-8 * dt)
+    self.glowIntensity = self.glowIntensity + (self.targetGlow - self.glowIntensity) * glowEase
+    local scaleEase = 1 - math.exp(-10 * dt)
+    self.scale = self.scale + (self.targetScale - self.scale) * scaleEase
+
+    -- Juice decay (kick de setJoker ou ativação)
+    Moveable.updateJuice(self, dt)
 end
 
 function JokerSlot:draw()
@@ -57,7 +71,10 @@ function JokerSlot:draw()
     
     love.graphics.push()
     love.graphics.translate(centerX, centerY)
-    love.graphics.scale(self.scale, self.scale)
+    -- Scale combinado: hover (self.scale) × juice (Moveable kick multiplicativo)
+    local finalScale = self.scale * Moveable.scaleFactor(self)
+    love.graphics.scale(finalScale, finalScale)
+    love.graphics.rotate(Moveable.rotOffset(self))
     
     if self.joker then
         self:drawOccupiedSlot()
@@ -102,7 +119,8 @@ end
 
 function JokerSlot:setJoker(joker)
     self.joker = joker
-    
+    -- Pop celebratório quando joker entra no slot.
+    Moveable.juice_up(self, 0.4, 0.12)
 end
 
 function JokerSlot:removeJoker()

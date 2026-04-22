@@ -50,6 +50,58 @@ local function drawRotatedSprite(img, rot, x, y, w, h)
     end
 end
 
+-- ===== Rarity corner brackets (igual CardBorder mas com paleta tarot) =====
+local function drawCorner(ox, oy, dx, dy, size, mainColor, highlightColor, gem, sparkle)
+    for i = 0, size - 1 do
+        PixelCanvas.pixel(ox + dx * i, oy, mainColor)
+        PixelCanvas.pixel(ox, oy + dy * i, mainColor)
+    end
+    PixelCanvas.pixel(ox + dx, oy + dy, Palette.INK)
+    if highlightColor then
+        for i = 1, size - 2 do
+            PixelCanvas.pixel(ox + dx * i, oy - dy, highlightColor)
+            PixelCanvas.pixel(ox - dx, oy + dy * i, highlightColor)
+        end
+    end
+    if gem then
+        PixelCanvas.pixel(ox + dx, oy, gem)
+        PixelCanvas.pixel(ox, oy + dy, gem)
+    end
+    if sparkle then
+        PixelCanvas.pixel(ox + dx * (size + 1), oy + dy * (size + 1), sparkle)
+        PixelCanvas.pixel(ox + dx * (size + 2), oy + dy * (size + 2), Palette.TAROT_GOLD)
+    end
+end
+
+local function drawRarityCorners(w, h, rarity)
+    if rarity == "common" or rarity == "basic" or not rarity then return end
+    local INSET = 13
+    local x1, y1 = INSET, INSET
+    local x2, y2 = w - 1 - INSET, INSET
+    local x3, y3 = INSET, h - 1 - INSET
+    local x4, y4 = w - 1 - INSET, h - 1 - INSET
+
+    if rarity == "uncommon" then
+        local s = 8
+        drawCorner(x1, y1,  1,  1, s, Palette.MOSS, Palette.GREEN_BRIGHT, nil, nil)
+        drawCorner(x2, y2, -1,  1, s, Palette.MOSS, Palette.GREEN_BRIGHT, nil, nil)
+        drawCorner(x3, y3,  1, -1, s, Palette.MOSS, Palette.GREEN_BRIGHT, nil, nil)
+        drawCorner(x4, y4, -1, -1, s, Palette.MOSS, Palette.GREEN_BRIGHT, nil, nil)
+    elseif rarity == "rare" then
+        local s = 10
+        drawCorner(x1, y1,  1,  1, s, Palette.BLOOD, Palette.BLOOD_DARK, Palette.TAROT_GOLD, nil)
+        drawCorner(x2, y2, -1,  1, s, Palette.BLOOD, Palette.BLOOD_DARK, Palette.TAROT_GOLD, nil)
+        drawCorner(x3, y3,  1, -1, s, Palette.BLOOD, Palette.BLOOD_DARK, Palette.TAROT_GOLD, nil)
+        drawCorner(x4, y4, -1, -1, s, Palette.BLOOD, Palette.BLOOD_DARK, Palette.TAROT_GOLD, nil)
+    elseif rarity == "legendary" then
+        local s = 12
+        drawCorner(x1, y1,  1,  1, s, Palette.TAROT_GOLD, Palette.AGED_GOLD_LIGHT, Palette.TAROT_CREAM, Palette.AGED_GOLD_LIGHT)
+        drawCorner(x2, y2, -1,  1, s, Palette.TAROT_GOLD, Palette.AGED_GOLD_LIGHT, Palette.TAROT_CREAM, Palette.AGED_GOLD_LIGHT)
+        drawCorner(x3, y3,  1, -1, s, Palette.TAROT_GOLD, Palette.AGED_GOLD_LIGHT, Palette.TAROT_CREAM, Palette.AGED_GOLD_LIGHT)
+        drawCorner(x4, y4, -1, -1, s, Palette.TAROT_GOLD, Palette.AGED_GOLD_LIGHT, Palette.TAROT_CREAM, Palette.AGED_GOLD_LIGHT)
+    end
+end
+
 function JokerBorder.draw(w, h, rarity)
     local sprites = loadSprites()
 
@@ -122,12 +174,8 @@ function JokerBorder.draw(w, h, rarity)
         love.graphics.setColor(1, 1, 1, 1)
     end
 
-    -- Rarity extras (filete interno além da borda principal, não cortando knotwork)
-    if rarity == "legendary" then
-        PixelCanvas.rectOutline(9, 9, w - 18, h - 18, Palette.AGED_GOLD_LIGHT)
-    elseif rarity == "rare" then
-        PixelCanvas.rectOutline(9, 9, w - 18, h - 18, Palette.BLOOD)
-    end
+    -- Rarity: substitui filete interno por corner brackets ornamentais
+    drawRarityCorners(w, h, rarity)
 end
 
 return JokerBorder

@@ -93,6 +93,56 @@ function PixelCanvas.rectFramed(x, y, w, h, fill, outline)
     PixelCanvas.rectOutline(x, y, w, h, outline)
 end
 
+-- Retângulo sólido com cantos "cortados" (stepped corners) — silhueta arredondada
+-- em pixel art. radius=1 tira 1 pixel de cada canto (plus shape), radius=2 tira
+-- 2 pixels, etc. Até 3px fica legal; mais que isso vira losango.
+--
+-- Implementado como 2 retângulos sobrepostos (horizontal + vertical bar):
+--   ████  ← y+r..y+h-r: largura total
+--   ██████
+--   ██████ ← y+0..y+r: largura w-2r
+--   ████
+function PixelCanvas.rectRounded(x, y, w, h, radius, color)
+    Palette.set(color)
+    x, y, w, h = math.floor(x), math.floor(y), math.floor(w), math.floor(h)
+    radius = math.max(0, math.min(math.floor(radius or 0), math.floor(math.min(w, h) / 2)))
+    if radius <= 0 then
+        love.graphics.rectangle("fill", x, y, w, h)
+        return
+    end
+    -- Barra horizontal central (cobre altura total exceto os "cantos" de radius px)
+    love.graphics.rectangle("fill", x, y + radius, w, h - 2 * radius)
+    -- Barra vertical central (cobre largura total exceto os "cantos")
+    love.graphics.rectangle("fill", x + radius, y, w - 2 * radius, h)
+    -- Não precisa preencher cantos — as duas barras já cobrem o centro e as bordas.
+    -- Resultado: canto cortado quadradinho (stepped), look pixel-perfect.
+end
+
+-- Outline com cantos cortados (pair com rectRounded).
+function PixelCanvas.rectRoundedOutline(x, y, w, h, radius, color)
+    Palette.set(color)
+    x, y, w, h = math.floor(x), math.floor(y), math.floor(w), math.floor(h)
+    radius = math.max(0, math.min(math.floor(radius or 0), math.floor(math.min(w, h) / 2)))
+    if radius <= 0 then
+        PixelCanvas.rectOutline(x, y, w, h, color)
+        return
+    end
+    -- Top e bottom (horizontais), encolhidos pelos cantos
+    love.graphics.rectangle("fill", x + radius, y, w - 2 * radius, 1)
+    love.graphics.rectangle("fill", x + radius, y + h - 1, w - 2 * radius, 1)
+    -- Left e right (verticais), encolhidos
+    love.graphics.rectangle("fill", x, y + radius, 1, h - 2 * radius)
+    love.graphics.rectangle("fill", x + w - 1, y + radius, 1, h - 2 * radius)
+    -- Pixels diagonais nos cantos (dá o "step" visual)
+    for i = 1, radius - 1 do
+        -- Corners: cada pixel mais interno do canto é ainda parte do border.
+        love.graphics.rectangle("fill", x + radius - i, y + i,             1, 1) -- top-left diag
+        love.graphics.rectangle("fill", x + w - radius + i - 1, y + i,     1, 1) -- top-right
+        love.graphics.rectangle("fill", x + radius - i, y + h - i - 1,     1, 1) -- bottom-left
+        love.graphics.rectangle("fill", x + w - radius + i - 1, y + h - i - 1, 1, 1) -- bot-right
+    end
+end
+
 -- Linha reta (horizontal ou vertical apenas, pra garantir pixel-perfect).
 function PixelCanvas.hline(x, y, len, color)
     PixelCanvas.rect(x, y, len, 1, color)

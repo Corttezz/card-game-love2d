@@ -4,13 +4,25 @@ description: Workflow e contrato visual usados para gerar 54 sprites (33 icons +
 type: project
 ---
 
-## ⚠️ STATUS: LEVA INICIAL CONCLUÍDA (2026-04-18)
+## ⚠️ STATUS: LEVA INICIAL CONCLUÍDA (2026-04-18) + HUD PASS (2026-04-21)
 
-**Gerados e aprovados:**
+**Gerados e aprovados (leva inicial):**
 - 33 ícones (64×64) em `assets/sprites/icons/`
 - 17 backgrounds (64×64, lineless) em `assets/sprites/backgrounds/patterns/`
 - 4 jokers chibi (48px, 4-direções) em `assets/sprites/characters/joker_*_dir/rotations/`
 - 1 style reference (`assets/sprites/_style_reference.png`) — espada ornamentada
+
+**HUD polish pass (2026-04-21)** — 8 ícones adicionais 64×64 em `assets/sprites/icons/`:
+- `armor_shield.png` — heraldic kite shield com gold trim (usado no badge de armor do HudPlayerPanel)
+- `intent_attack.png` — monster claw/fang dripping red (EnemyHud intent box, substitui sword_short)
+- `intent_defense.png` — crossed steel gauntlets (futuro, pra quando enemy.nextIntent=defense)
+- `status_poison.png` — green poison droplet com skull hint (EnemyHud status pill)
+- `status_weak.png` — broken down-arrow com cracked muscle (idem)
+- `status_vulnerable.png` — cracked red target (idem)
+- `status_strength.png` — flexing muscular arm com aura (EnemyHud + PlayerBuffPills)
+- `status_dexterity.png` — feather com wind swirl (PlayerBuffPills)
+
+Esses 8 usaram `create_map_object` (basic mode, sem style reference) com `medium detail` / `single color outline` / `medium shading` / `view=side`. Todos vieram em qualidade aprovável em primeira tentativa.
 
 **Contrato visual fixo** (reutilizar pra novas gerações):
 - `view=side`, `outline=single color outline`, `shading=detailed shading`, `detail=high detail`, 64×64

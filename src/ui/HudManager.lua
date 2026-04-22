@@ -2,73 +2,70 @@
 -- Gerenciador principal para todos os painéis de HUD
 
 local HudPlayerPanel = require("src.ui.HudPlayerPanel")
-local HudEnemyPanel = require("src.ui.HudEnemyPanel")
+local ManaOrb = require("src.ui.ManaOrb")
+local PlayerBuffPills = require("src.ui.PlayerBuffPills")
 
 local HudManager = {}
 HudManager.__index = HudManager
 
 function HudManager:new()
     local instance = setmetatable({}, HudManager)
-    
-    -- Inicializa os painéis
+
+    -- Painéis ativos. Enemy panel foi aposentado — HP/intent agora ficam
+    -- ancorados no sprite do inimigo via EnemyHud (chamado em main.lua).
     instance.playerPanel = HudPlayerPanel:new()
-    instance.enemyPanel = HudEnemyPanel:new()
-    
-    -- Estado geral
+    instance.manaOrb = ManaOrb:new()
+    instance.playerBuffPills = PlayerBuffPills:new()
+
     instance.visible = true
     instance.animationTime = 0
-    
-    -- Configurações de layout
+
     instance:updateLayout()
-    
+
     return instance
 end
 
 function HudManager:update(dt)
     if not self.visible then return end
-    
+
     self.animationTime = self.animationTime + dt
-    
-    -- Atualiza layout responsivo
     self:updateLayout()
-    
-    -- Atualiza painéis
+
     self.playerPanel:update(dt)
-    self.enemyPanel:update(dt)
+    self.manaOrb:update(dt)
+    self.playerBuffPills:update(dt)
 end
 
 function HudManager:updateLayout()
-    -- Atualiza posições dos painéis baseado na resolução atual
     self.playerPanel:updatePosition()
-    self.enemyPanel:updatePosition()
+    self.manaOrb:updatePosition()
 end
 
 function HudManager:draw(game)
     if not self.visible or not game then return end
-    
-    -- Salva completamente o estado dos gráficos antes do HUD
+
     local oldR, oldG, oldB, oldA = love.graphics.getColor()
     local oldFont = love.graphics.getFont()
     local oldLineWidth = love.graphics.getLineWidth()
     local oldCanvas = love.graphics.getCanvas()
-    
-    -- Desenha painel do jogador
+
     if game.player then
         self.playerPanel:draw(game.player)
-    end
-    
-    -- Desenha painel do inimigo
-    if game.enemy then
-        self.enemyPanel:draw(game.enemy, game.currentPhase)
+        -- Pills de buff ficam logo acima do player panel (row horizontal).
+        -- Passa coords do panel pra alinhamento.
+        self.playerBuffPills:draw(
+            game.player,
+            self.playerPanel.x,
+            self.playerPanel.y,
+            self.playerPanel.width
+        )
+        self.manaOrb:draw(game.player)
     end
 
-    -- Força o reset completo do estado dos gráficos após o HUD
     love.graphics.setColor(oldR, oldG, oldB, oldA)
     love.graphics.setFont(oldFont)
     love.graphics.setLineWidth(oldLineWidth)
     love.graphics.setCanvas(oldCanvas)
-    
-    -- Reset adicional para garantir estado limpo
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.setLineWidth(1)
 end
