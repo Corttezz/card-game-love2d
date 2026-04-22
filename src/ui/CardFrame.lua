@@ -68,35 +68,50 @@ local function artSlotBounds(card)
     return 5, top, w - 10, bottom - top
 end
 
+-- Inset por raridade: painel sólido do banner PNG não preenche a largura
+-- inteira em todas as raridades. Rare é quase full-width (bar vermelho grosso),
+-- mas common/uncommon/legendary têm ornamentos curly nas pontas que não
+-- projetam sombra. Inset é quantos pixels encolher a sombra top em cada lado.
+local BANNER_SHADOW_INSET = {
+    common    = 3,  -- curly ends nas 2 pontas do banner azul/gold
+    uncommon  = 3,  -- flourishes verdes, painel central menor
+    rare      = 0,  -- barra vermelha quase full-width → shadow match
+    legendary = 3,  -- painel azul+gold com ornamentos nas pontas
+}
+
 -- Inset shadow pra dar profundidade ao art slot: cria impressão de que o bg
 -- está RECESSED abaixo das bandas de header/footer. Inspirado no `emboss`+
 -- `darken` do Balatro (engine/ui.lua:749 + functions/misc_functions.lua:851).
 --
--- TOP shadow: só no range horizontal da banner do título (x=15..81 em w=96).
---   Fora disso não tem nada pra projetar sombra — os lados do header só têm
---   o parchment base + cost badge/rarity seal (discos pequenos no canto).
+-- TOP shadow: só no range horizontal da banner do título, ajustado por
+--   raridade via BANNER_SHADOW_INSET (painel sólido varia de largura).
 -- BOTTOM shadow: full width — footer é quase edge-to-edge (x=1..95).
--- LEFT/RIGHT shadow: 1px coluna — CardBorder casta sombra nas laterais.
-local function drawRecessShadow(ax, ay, aw, ah, bannerX, bannerW)
-    -- TOP: sombra SÓ sob a banner (coords passadas pelo caller — varia entre
-    -- CardHeader standard (bx=15) e JokerHeader (bx=13). Fora desse range não
-    -- tem nada projetando sombra (os cantos têm cost badge / rarity seal que
-    -- são discos pequenos e não casam como uma banda saliente).
-    Palette.set(Palette.INK, 0.32)
-    love.graphics.rectangle("fill", bannerX, ay,     bannerW, 1)
-    Palette.set(Palette.INK, 0.16)
-    love.graphics.rectangle("fill", bannerX, ay + 1, bannerW, 1)
+-- LEFT/RIGHT shadow: 1-2px coluna — CardBorder projeta sombra lateral.
+local function drawRecessShadow(ax, ay, aw, ah, bannerX, bannerW, rarity)
+    -- TOP: sombra sob a banner com inset por raridade
+    local inset = BANNER_SHADOW_INSET[rarity or "common"] or 0
+    local tx = bannerX + inset
+    local tw = bannerW - inset * 2
+    Palette.set(Palette.INK, 0.38)
+    love.graphics.rectangle("fill", tx, ay,     tw, 1)
+    Palette.set(Palette.INK, 0.20)
+    love.graphics.rectangle("fill", tx, ay + 1, tw, 1)
 
     -- BOTTOM: footer é full-width, shadow cobre o art slot inteiro.
-    Palette.set(Palette.INK, 0.22)
+    -- Alphas subidos pra ficar visível (antes 0.22/0.10, agora 0.32/0.16).
+    Palette.set(Palette.INK, 0.32)
     love.graphics.rectangle("fill", ax, ay + ah - 1, aw, 1)
-    Palette.set(Palette.INK, 0.10)
+    Palette.set(Palette.INK, 0.16)
     love.graphics.rectangle("fill", ax, ay + ah - 2, aw, 1)
 
-    -- LEFT + RIGHT: 1px coluna pra completar o "poço" (border externa projeta).
-    Palette.set(Palette.INK, 0.14)
-    love.graphics.rectangle("fill", ax,          ay + 1, 1, ah - 2)
-    love.graphics.rectangle("fill", ax + aw - 1, ay + 1, 1, ah - 2)
+    -- LEFT + RIGHT: 2px de profundidade (antes 1px com alpha 0.14 — invisível).
+    -- Border externa casta sombra rightward no left edge, leftward no right.
+    Palette.set(Palette.INK, 0.26)
+    love.graphics.rectangle("fill", ax,          ay + 2, 1, ah - 4)
+    love.graphics.rectangle("fill", ax + aw - 1, ay + 2, 1, ah - 4)
+    Palette.set(Palette.INK, 0.12)
+    love.graphics.rectangle("fill", ax + 1,      ay + 2, 1, ah - 4)
+    love.graphics.rectangle("fill", ax + aw - 2, ay + 2, 1, ah - 4)
 
     love.graphics.setColor(1, 1, 1, 1)
 end
@@ -117,7 +132,7 @@ local function renderStandard(card, w, h)
 
     -- Depth: inset shadow antes da borda externa (art slot "afunda").
     -- Banner coords sincronizadas com CardHeader.draw: bx=15, bw=w-30.
-    drawRecessShadow(ax, ay, aw, ah, 15, w - 30)
+    drawRecessShadow(ax, ay, aw, ah, 15, w - 30, rarity)
 
     CardBorder.draw(w, h, card.type, rarity, card.id)
     CardHeader.draw(w, name, rarity)
@@ -143,7 +158,7 @@ local function renderJoker(card, w, h)
 
     -- Mesmo inset shadow do standard pra dar profundidade.
     -- JokerHeader usa bx=13, bw=w-26 (diferente do standard).
-    drawRecessShadow(ax, ay, aw, ah, 13, w - 26)
+    drawRecessShadow(ax, ay, aw, ah, 13, w - 26, rarity)
 
     JokerBorder.draw(w, h, rarity)
     JokerHeader.draw(w, name, rarity)
