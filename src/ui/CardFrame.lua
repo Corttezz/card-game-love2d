@@ -72,24 +72,28 @@ end
 -- está RECESSED abaixo das bandas de header/footer. Inspirado no `emboss`+
 -- `darken` do Balatro (engine/ui.lua:749 + functions/misc_functions.lua:851).
 --
--- Técnica: 2 linhas de INK com alpha decrescente DENTRO do art slot, adjacentes
--- às bandas elevadas. Light cai de cima → shadow mais forte no TOPO (header
--- projeta sombra pra baixo) e um pouco no bottom. Left/right recebem shadow
--- sutil (1px) pra completar o bevel.
-local function drawRecessShadow(ax, ay, aw, ah)
-    -- TOP: shadow cast pelo header (2 rows descendo em intensidade)
+-- TOP shadow: só no range horizontal da banner do título (x=15..81 em w=96).
+--   Fora disso não tem nada pra projetar sombra — os lados do header só têm
+--   o parchment base + cost badge/rarity seal (discos pequenos no canto).
+-- BOTTOM shadow: full width — footer é quase edge-to-edge (x=1..95).
+-- LEFT/RIGHT shadow: 1px coluna — CardBorder casta sombra nas laterais.
+local function drawRecessShadow(ax, ay, aw, ah, bannerX, bannerW)
+    -- TOP: sombra SÓ sob a banner (coords passadas pelo caller — varia entre
+    -- CardHeader standard (bx=15) e JokerHeader (bx=13). Fora desse range não
+    -- tem nada projetando sombra (os cantos têm cost badge / rarity seal que
+    -- são discos pequenos e não casam como uma banda saliente).
     Palette.set(Palette.INK, 0.32)
-    love.graphics.rectangle("fill", ax, ay,     aw, 1)
+    love.graphics.rectangle("fill", bannerX, ay,     bannerW, 1)
     Palette.set(Palette.INK, 0.16)
-    love.graphics.rectangle("fill", ax, ay + 1, aw, 1)
+    love.graphics.rectangle("fill", bannerX, ay + 1, bannerW, 1)
 
-    -- BOTTOM: shadow do footer (mais sutil — luz vem de cima)
+    -- BOTTOM: footer é full-width, shadow cobre o art slot inteiro.
     Palette.set(Palette.INK, 0.22)
     love.graphics.rectangle("fill", ax, ay + ah - 1, aw, 1)
     Palette.set(Palette.INK, 0.10)
     love.graphics.rectangle("fill", ax, ay + ah - 2, aw, 1)
 
-    -- LEFT + RIGHT: 1px shadow pra completar o "poço"
+    -- LEFT + RIGHT: 1px coluna pra completar o "poço" (border externa projeta).
     Palette.set(Palette.INK, 0.14)
     love.graphics.rectangle("fill", ax,          ay + 1, 1, ah - 2)
     love.graphics.rectangle("fill", ax + aw - 1, ay + 1, 1, ah - 2)
@@ -111,8 +115,9 @@ local function renderStandard(card, w, h)
         CardDecoration.draw(ax, ay, aw, ah, autoDec, art.accent)
     end
 
-    -- Depth: inset shadow antes da borda externa (art slot "afunda")
-    drawRecessShadow(ax, ay, aw, ah)
+    -- Depth: inset shadow antes da borda externa (art slot "afunda").
+    -- Banner coords sincronizadas com CardHeader.draw: bx=15, bw=w-30.
+    drawRecessShadow(ax, ay, aw, ah, 15, w - 30)
 
     CardBorder.draw(w, h, card.type, rarity, card.id)
     CardHeader.draw(w, name, rarity)
@@ -136,8 +141,9 @@ local function renderJoker(card, w, h)
         CardDecoration.draw(ax, ay, aw, ah, autoDec, art.accent)
     end
 
-    -- Mesmo inset shadow do standard pra dar profundidade
-    drawRecessShadow(ax, ay, aw, ah)
+    -- Mesmo inset shadow do standard pra dar profundidade.
+    -- JokerHeader usa bx=13, bw=w-26 (diferente do standard).
+    drawRecessShadow(ax, ay, aw, ah, 13, w - 26)
 
     JokerBorder.draw(w, h, rarity)
     JokerHeader.draw(w, name, rarity)
