@@ -655,6 +655,13 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
                         - tiltNormY * pressShift * (self.hoverStrength or 0) * 0.7
     local shadowAlpha = Config.Cards.SHADOW_ALPHA + (self.isDragging and 0.15 or 0) + liftTotal * 0.003
     if shadowAlpha > 0.85 then shadowAlpha = 0.85 end
+    -- CRÍTICO: sombra DEVE fade junto com dissolve. Sem isso, durante materialize
+    -- (dissolve 1→0) a sombra chega antes da carta; durante start_dissolve (0→1)
+    -- a sombra fica pairando depois da carta queimar. Visualmente, sombra e carta
+    -- têm que ser uma coisa só.
+    if self.dissolve and self.dissolve > 0.001 then
+        shadowAlpha = shadowAlpha * (1 - self.dissolve)
+    end
 
     -- *** Carta Principal ***
     love.graphics.setColor(1, 1, 1, 1)
