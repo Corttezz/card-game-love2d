@@ -25,14 +25,15 @@ function HudManager:new()
     return instance
 end
 
-function HudManager:update(dt)
+function HudManager:update(dt, game)
     if not self.visible then return end
 
     self.animationTime = self.animationTime + dt
     self:updateLayout()
 
-    self.playerPanel:update(dt)
-    self.manaOrb:update(dt)
+    local player = game and game.player or nil
+    self.playerPanel:update(dt, player)
+    self.manaOrb:update(dt, player)
     self.playerBuffPills:update(dt)
 end
 

@@ -34,7 +34,7 @@ function GameUI:createJokerSlots()
     end
 end
 
-function GameUI:update(dt)
+function GameUI:update(dt, game)
     if not self.visible then return end
 
     self.animationTime = self.animationTime + dt
@@ -43,7 +43,7 @@ function GameUI:update(dt)
         slot:update(dt)
     end
 
-    self.hudManager:update(dt)
+    self.hudManager:update(dt, game)
     ParticleSystem.Manager:update(dt)
 end
 

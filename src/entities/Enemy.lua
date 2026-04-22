@@ -1,4 +1,5 @@
 local Config = require("src.core.Config")
+local ValueEasing = require("src.ui.ValueEasing")
 
 local Enemy = {}
 Enemy.__index = Enemy
@@ -17,6 +18,8 @@ function Enemy:new(health, damage)
     -- Semantica: duration e em TURNOS (nao segundos). O decremento acontece
     -- em onTurnEnd (apos turno do inimigo), nao em update(dt).
     instance.statusEffects = {}
+    -- Valores eased pra display suave de HP/armor (ValueEasing.tick)
+    instance.disp = {}
     return instance
 end
 
@@ -56,6 +59,10 @@ function Enemy:update(dt)
     if self.attackCooldown > 0 then
         self.attackCooldown = self.attackCooldown - dt
     end
+    -- Ease HP/armor display pra "number ticker" suave quando dano chega.
+    self.disp = self.disp or {}
+    ValueEasing.tick(self.disp, "health", self.health or 0, dt, 9)
+    ValueEasing.tick(self.disp, "armor", self.armor or 0, dt, 12)
     -- NOTA: decremento de duracao de statusEffects nao e mais feito aqui (era em dt,
     -- o que fazia poison sumir em segundos). Agora e por turno via onTurnEnd.
 end

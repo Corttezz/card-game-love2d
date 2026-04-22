@@ -8,6 +8,7 @@ local IconLoader  = require("src.ui.IconLoader")
 local PixelCanvas = require("src.ui.PixelCanvas")
 local Palette     = require("src.ui.Palette")
 local I18n        = require("src.i18n.I18n")
+local ValueEasing = require("src.ui.ValueEasing")
 
 local TopBar = {}
 TopBar.__index = TopBar
@@ -31,6 +32,9 @@ function TopBar:new()
     instance.configRotation = 0
     instance.isConfigHovered = false
 
+    -- Valores eased pra display de gold/deck suavemente mutando.
+    instance.disp = {}
+
     return instance
 end
 
@@ -38,7 +42,7 @@ function TopBar:setGame(game)
     self.game = game
 end
 
-function TopBar:update(dt)
+function TopBar:update(dt, game)
     if not self.visible then return end
 
     local mx, my = love.mouse.getPosition()
@@ -50,6 +54,13 @@ function TopBar:update(dt)
     else
         self.configHoverTime = 0
         self.configRotation = 0
+    end
+
+    -- Ease gold toward real (ease_dollars-style do Balatro). Counter sobe/desce
+    -- suave em vez de saltar quando ganhar/gastar ouro.
+    local g = game or self.game
+    if g and g.economySystem then
+        ValueEasing.tick(self.disp, "gold", g.economySystem.currentGold or 0, dt, 6)
     end
 end
 
@@ -89,7 +100,9 @@ function TopBar:drawGameInfo()
 
         Palette.set(Palette.AGED_GOLD_LIGHT)
         love.graphics.setFont(FontManager.getFont(12))
-        local goldText = "$" .. self.game.economySystem.currentGold
+        -- Display eased pra counter Balatro-style (sobe/desce número suave)
+        local goldDisp = math.floor((self.disp.gold or self.game.economySystem.currentGold or 0) + 0.001)
+        local goldText = "$" .. goldDisp
         love.graphics.print(goldText, coinX + 50, centerY - 10)
 
         local interestGold = self.game.economySystem:calculateInterest()

@@ -6,6 +6,7 @@
 local FontManager = require("src.ui.FontManager")
 local Palette = require("src.ui.Palette")
 local Config = require("src.core.Config")
+local ValueEasing = require("src.ui.ValueEasing")
 
 local ManaOrb = {}
 ManaOrb.__index = ManaOrb
@@ -21,13 +22,19 @@ function ManaOrb:new()
     instance.lastMana = nil
     instance.spendFlash = 0 -- 0..1, flash rápido quando mana cai
     instance.gainFlash = 0  -- 0..1, flash suave quando restaura
+    instance.disp = {}       -- tabela de display values eased (ValueEasing)
     return instance
 end
 
-function ManaOrb:update(dt)
+function ManaOrb:update(dt, player)
     self.animTime = self.animTime + dt
     if self.spendFlash > 0 then self.spendFlash = math.max(0, self.spendFlash - dt * 4) end
     if self.gainFlash > 0 then self.gainFlash = math.max(0, self.gainFlash - dt * 2) end
+    -- Ease display do valor de mana toward real. Orb renderiza disp pra
+    -- feedback visual suave (Balatro ease_mana style).
+    if player then
+        ValueEasing.tick(self.disp, "mana", player.mana or 0, dt, 12)
+    end
 end
 
 function ManaOrb:updatePosition()
@@ -45,18 +52,21 @@ end
 
 function ManaOrb:draw(player)
     if not player then return end
-    local cur = player.mana or 0
+    -- Valor real pra detecção de flash (evento instantâneo) e valor eased
+    -- pra exibição numérica + preenchimento do orb.
+    local actual = player.mana or 0
+    local cur = self.disp.mana or actual
     local maxMana = player.maxMana or 3
 
-    -- Detecta mudanças pra flash
+    -- Detecta mudanças pra flash (baseado no REAL, não no eased)
     if self.lastMana ~= nil then
-        if cur < self.lastMana then
+        if actual < self.lastMana then
             self.spendFlash = 1
-        elseif cur > self.lastMana then
+        elseif actual > self.lastMana then
             self.gainFlash = 1
         end
     end
-    self.lastMana = cur
+    self.lastMana = actual
 
     local cx, cy = self.x, self.y
     local r = self.radius
@@ -115,7 +125,7 @@ function ManaOrb:draw(player)
     local bigFont = FontManager.getResponsiveFont(0.04, 26)
     local smallFont = FontManager.getResponsiveFont(0.025, 14)
 
-    local curTxt = tostring(cur)
+    local curTxt = tostring(math.floor(cur + 0.001))
     love.graphics.setFont(bigFont)
     local bw = bigFont:getWidth(curTxt)
     local bh = bigFont:getHeight()

@@ -40,7 +40,10 @@ function EnemyHud.drawHpBar(enemy, cx, groundY, spriteWidth, barYOverride)
     local x = math.floor(cx - barW / 2)
     local y = barYOverride or math.floor(groundY + 10)
 
-    local hp = enemy.health or 0
+    -- Usa valor eased (enemy.disp.health) pra feedback Balatro-style.
+    -- Enemy:update(dt) tickDa o easing. Fallback ao real se disp não existe.
+    local hpReal = enemy.health or 0
+    local hp = math.floor(((enemy.disp and enemy.disp.health) or hpReal) + 0.001)
     local maxHp = enemy.maxHealth or 1
     local pct = math.max(0, math.min(1, hp / maxHp))
 

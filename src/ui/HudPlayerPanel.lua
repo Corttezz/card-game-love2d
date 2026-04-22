@@ -8,6 +8,7 @@ local Palette = require("src.ui.Palette")
 local Config = require("src.core.Config")
 local ImageCache = require("src.ui.ImageCache")
 local IconLoader = require("src.ui.IconLoader")
+local ValueEasing = require("src.ui.ValueEasing")
 
 local HudPlayerPanel = {}
 HudPlayerPanel.__index = HudPlayerPanel
@@ -28,13 +29,19 @@ function HudPlayerPanel:new()
     instance.armorIcon = ImageCache.get("assets/icons/armor.png")
     instance.lastHp = nil
     instance.damageFlash = 0 -- 0..1, decai em update
+    instance.disp = {}       -- valores eased (health, armor) pra smooth display
     return instance
 end
 
-function HudPlayerPanel:update(dt)
+function HudPlayerPanel:update(dt, player)
     self.animTime = self.animTime + dt
     if self.damageFlash > 0 then
         self.damageFlash = math.max(0, self.damageFlash - dt * 3)
+    end
+    -- Ease HP/armor pra number ticker feedback (Balatro-style)
+    if player then
+        ValueEasing.tick(self.disp, "health", player.health or 0, dt, 9)
+        ValueEasing.tick(self.disp, "armor", player.armor or 0, dt, 12)
     end
 end
 
@@ -97,15 +104,18 @@ function HudPlayerPanel:draw(player)
     love.graphics.print("HERÓI", x + PAD, y + 4)
 
     -- ===== HP: número grande + barra =====
+    -- Display usa valor eased (disp.health) pra number "conta" suave quando
+    -- dano chega. Gameplay pipeline usa player.health real.
     local hp = player.health or 0
+    local hpDisp = math.floor((self.disp.health or hp) + 0.001)
     local maxHp = player.maxHealth or 100
-    local hpPct = math.max(0, math.min(1, hp / maxHp))
+    local hpPct = math.max(0, math.min(1, hpDisp / maxHp))
     local barColor = hpPct < 0.3 and HP_BAR_LOW or HP_BAR_COLOR
 
     -- Número HP grande (estilo Balatro)
     local hpFont = FontManager.getResponsiveFont(0.035, 24)
     love.graphics.setFont(hpFont)
-    local hpText = tostring(hp)
+    local hpText = tostring(hpDisp)
     local maxText = "/" .. maxHp
     local hpTextW = hpFont:getWidth(hpText)
     -- Sombra
@@ -140,7 +150,8 @@ function HudPlayerPanel:draw(player)
     -- ===== ARMOR BADGE (só aparece quando > 0) =====
     -- Usa o shield PNG custom gerado via PixelLab (assets/sprites/icons/armor_shield.png).
     -- Número de armor fica centralizado no shield, com outline preto pra legibilidade.
-    local armor = player.armor or 0
+    -- Display eased pra number ticker suave quando armor ganha/perde.
+    local armor = math.floor((self.disp.armor or player.armor or 0) + 0.001)
     if armor > 0 then
         local badgeCx = x + w - PAD - 22
         local badgeCy = y + h / 2 + 4

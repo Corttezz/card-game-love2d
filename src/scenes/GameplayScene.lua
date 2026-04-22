@@ -279,8 +279,8 @@ function GameplayScene.update(dt)
     end
 
     playButton:update(dt)
-    gameUI:update(dt)
-    topBar:update(dt)
+    gameUI:update(dt, game)
+    topBar:update(dt, game)
 
     if game.messageSystem then game.messageSystem:update(dt) end
     if game.enemy then game.enemy:update(dt) end
