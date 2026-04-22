@@ -113,8 +113,9 @@ function Game:startGame()
     -- compradas primeiro na mao inicial. Em Slay, innate = sempre comeca na mao.
     self:promoteInnateCardsToTop()
 
+    -- Stagger no draw inicial pra entrada ficar elegante em vez de pop-in.
     for i = 1, Config.Game.INITIAL_HAND_SIZE do
-        self:drawCard()
+        self:drawCard((i - 1) * 0.08)
     end
 
     self:addMessage("Jogo iniciado! Boa sorte!", "success")
@@ -138,7 +139,18 @@ function Game:promoteInnateCardsToTop()
     for _, c in ipairs(rest) do table.insert(self.deck, c) end
 end
 
-function Game:drawCard()
+-- Coordenadas visuais da pilha de deck (canto inferior direito).
+-- Cartas novas começam aqui visualmente antes de voar pro slot na mão.
+function Game:getDeckOrigin()
+    if not love.graphics then return 0, 0 end  -- guard pra testes sem love
+    local w, h = love.graphics.getWidth(), love.graphics.getHeight()
+    return w * 0.92, h * 0.82
+end
+
+-- staggerDelay: segundos antes de iniciar a materialização visual. Usado por
+-- callers que sacam múltiplas cartas pra criar cascata (Balatro-style).
+-- nil ou 0 = materializa imediato.
+function Game:drawCard(staggerDelay)
     -- Se o deck esvaziou mas ha discard, reembaralha (Slay-style). Sem isso,
     -- starter de 2 cartas trava o jogador no turno 2.
     if #self.deck == 0 and #self.discard > 0 then
@@ -162,6 +174,28 @@ function Game:drawCard()
         end
         card._flip = 0
         card.isHovered = false
+
+        -- ===== Animação de draw (Balatro-style) =====
+        -- Carta começa invisível na posição do deck (canto inf. direito),
+        -- depois materializa com partículas e voa pro slot. setTargetPos do
+        -- GameplayScene (chamado todo frame) ease renderX→slot.
+        local EM = _G.EventManager
+        if EM and card.setRenderPos then
+            local dx, dy = self:getDeckOrigin()
+            card:setRenderPos(dx, dy)  -- snap visual + target no deck
+            card.dissolve = 1            -- invisível
+            local delay = staggerDelay or 0
+            EM.after(delay, function()
+                if card.start_materialize then
+                    card:start_materialize(nil, true, 0.35)
+                else
+                    card.dissolve = 0
+                end
+                local Sfx = require("src.systems.Sfx")
+                pcall(Sfx.play, "cardDraw")
+            end)
+        end
+
         table.insert(self.hand, card)
     end
 end
@@ -181,11 +215,11 @@ function Game:drawForTurn()
         self:addMessage("Recarga: +3 cartas", "info")
     end
 
-    for _ = 1, total do
-        self:drawCard()
+    -- Stagger entre cartas pra criar cascata Balatro-style (~80ms entre cada).
+    -- drawCard agenda o materialize via EventManager.after com esse delay.
+    for i = 1, total do
+        self:drawCard((i - 1) * 0.08)
     end
-
-    if total > 0 then Sfx.play("cardDraw") end
 end
 
 -- Aplica efeitos dos jokers ativos a uma carta.
@@ -681,7 +715,7 @@ function Game:resetHandAndDeck()
 
     for i = 1, Config.Game.INITIAL_HAND_SIZE do
         if #self.deck > 0 then
-            self:drawCard()
+            self:drawCard((i - 1) * 0.08)  -- stagger pra cascata visual
         end
     end
 

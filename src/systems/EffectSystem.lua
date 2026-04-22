@@ -137,7 +137,7 @@ function EffectSystem:processEffectCard(game, effect)
         return true
 
     elseif t == "draw_cards" then
-        for i = 1, v do game:drawCard() end
+        for i = 1, v do game:drawCard((i - 1) * 0.08) end
         game:addMessage(msg("drew_cards", { value = v }), "info")
         return true
 
