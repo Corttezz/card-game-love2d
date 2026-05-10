@@ -133,6 +133,11 @@ function CollectionScreen:isVisible()
     return self.visible
 end
 
+-- gridOrigin/cardRect calculam dinamicamente da window size a cada frame, então
+-- o CollectionScreen já é responsivo sem cache de layout. resize() é stub
+-- pra contrato uniforme com outras overlay screens.
+function CollectionScreen:resize() end
+
 -- ===== Layout helpers =====
 
 local function gridOrigin()
@@ -175,10 +180,13 @@ function CollectionScreen:update(dt)
             break
         end
     end
-    -- Tick sutil quando o card em hover muda
+    -- Tick sutil quando o card em hover muda. Hover de carta usa hoverCard
+    -- (sound de carta), não menuHover (sound de UI). Pitch random pra evitar
+    -- fadiga ao percorrer a grid rápido. SEM baseVolume — usa Config.Audio.HOVER_VOLUME
+    -- (=0.03) carregado em main.lua, ficando baixinho como esperado.
     local newHover = self.hoverCard and self.hoverCard.instance or nil
     if newHover and newHover ~= prevHover then
-        Sfx.play("menuHover")
+        Sfx.playWithVariation("hoverCard", 0.95, 0.18)
     end
 end
 

@@ -1,3 +1,5 @@
+- ⚠️ [Balatro Fidelity Directive](balatro_fidelity_directive.md) — **LER ANTES DE QUALQUER UI/UX**. Sempre seguir Balatro source `/home/cortez/projects/balatro-source/`, não inventar minimal viable.
+- ⚠️ [Resize Pattern](resize_pattern.md) — **LER ANTES DE CRIAR OVERLAY SCREEN**. Toda tela com positions cacheadas DEVE ter resize(). Centralização: usar (container.w - totalW)/2, NÃO padding fixo. Checklist anti-bug.
 - [New Card Creation](new_card_creation.md) — Guia completo pra criar cartas/jokers novos. LER PRIMEIRO antes de tocar em visual.
 - [Project Overview](project_overview.md) — Card game Lua/LÖVE2D 11.5, Slay-Spire + Balatro, PT-BR
 - [Architecture Map](architecture.md) — state machine, Game.lua orquestrador, sistemas (TagSystem/ComboSystem/MapManager/ActSystem)
@@ -10,8 +12,12 @@
 - [Pixel Art System](pixel_art_system.md) — arte procedural (Palette → CardFrame → CRTShader)
 - [UI Pixel Chrome](ui_pixel_system.md) — botões/menus pixel, Press Start 2P
 - [Sprite Design Queue](sprite_design_queue.md) — fila de sprites via pixel-mcp
+- [PixelLab Queue: Pack Sleeves](pixellab_queue_packs.md) — prompts prontos pros 5 sleeves de booster + banner. Aguarda MCP reconectar.
 - [Combat Animation](combat_animation.md) — Balatro-style, isBlocking() pausa jogo
-- [Audio System](audio_system.md) — WSL2-aware, _G.audioSystem
+- [Boot Sequence](boot_sequence.md) — BootScene (loading + splash 3s) + Menu animado com intro stagger e música menuMusic
+- [Audio System](audio_system.md) — AudioManager (Balatro port), polifonia, grupos, crossfade, settings persistidos
+- [Save System](save_system.md) — SaveManager + Migrations (atomic write, versioning); RunManager delega tudo
+- [Particles Unified](particles_unified.md) — ParticlesManager + Particles (Balatro port). CardParticles é shim. SmokeSystem segue independente.
 - [UI and Rendering](ui_rendering.md) — Card 3D hover/tilt, HudManager, Font/Image cache
 - [Conventions](conventions.md) — OOP via metatables, PT-BR, Config responsivo
 - [Known Gaps](known_gaps.md) — o que é intencional vs pendente pós-redesign

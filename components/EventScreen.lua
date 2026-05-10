@@ -39,6 +39,10 @@ end
 
 function EventScreen:isVisible() return self.visible end
 
+function EventScreen:resize()
+    if self.visible then self:buildButtons() end
+end
+
 function EventScreen:buildButtons()
     self.buttons = {}
     if not self.event then return end

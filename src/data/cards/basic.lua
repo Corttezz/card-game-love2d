@@ -137,10 +137,7 @@ return {
         rarity = "rare", class = "basic",
         tags = { "draw", "cycle" },
         effects = {
-            { type = "regen_per_turn", value = 0, description = "proxy" }, -- placeholder
-            { type = "damage_bonus", value = 0 },
-            -- Draw extra no turno: processado como trigger turn_start via draw_cards
-            -- TODO(fase 8): adicionar trigger on_turn_start_draw. Por ora, +1 dano global.
+            { type = "on_turn_start_draw", value = 1, description = "+1 carta por turno" },
         },
     },
     joker_005 = {

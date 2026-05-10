@@ -42,6 +42,16 @@ end
 
 function RestScreen:isVisible() return self.visible end
 
+-- Resize handler: rebuilda os botões usando sw/sh atuais (cada modo tem o seu).
+function RestScreen:resize()
+    if not self.visible then return end
+    if self.mode == "forge" and self.buildForgeButtons then
+        self:buildForgeButtons()
+    else
+        self:buildChooseButtons()
+    end
+end
+
 function RestScreen:buildChooseButtons()
     self.buttons = {}
     local sw = love.graphics.getWidth()
@@ -118,13 +128,19 @@ function RestScreen:enterForgeMode()
 end
 
 function RestScreen:doForge(cardId)
-    local run = self.game.runManager.currentRun
-    if not run then return end
-    run.upgraded = run.upgraded or {}
-    run.upgraded[cardId] = (run.upgraded[cardId] or 0) + 1
-    self.resultText = "Forjou: " .. cardId .. " (+" .. run.upgraded[cardId] .. ")"
+    if not self.game or not self.game.runManager then return end
+    local newLvl = self.game.runManager:upgradeCard(cardId)
+    if not newLvl then
+        -- Cap atingido — feedback ao jogador, sem consumir o nó (caller decide).
+        self.resultText = "Já no nível máximo: " .. cardId
+        self.resultTimer = 1.0
+        self.buttons = {}
+        return
+    end
+    self.resultText = "Forjou: " .. cardId .. " (+" .. newLvl .. ")"
     self.resultTimer = 1.5
     self.buttons = {}
+    Sfx.play("restComplete")
 end
 
 function RestScreen:update(dt)

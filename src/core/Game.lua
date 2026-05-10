@@ -6,11 +6,13 @@ local EffectSystem = require("src.systems.EffectSystem")
 local RunManager = require("src.systems.RunManager")
 local CombatSequence = require("src.systems.CombatSequence")
 local EconomySystem = require("src.systems.EconomySystem")
+local ShopSystem = require("src.systems.ShopSystem")
 local TagSystem = require("src.systems.TagSystem")
 local ComboSystem = require("src.systems.ComboSystem")
 local ActSystem = require("src.systems.ActSystem")
 local Config = require("src.core.Config")
 local Sfx = require("src.systems.Sfx")
+local Debug = require("src.core.Debug")
 
 local Game = {}
 Game.__index = Game
@@ -53,13 +55,16 @@ function Game:new()
     -- (CombatSequence via EventManager; antiga CombatAnimationSystem deletada).
     instance.combatAnimationSystem = CombatSequence:new()
     
-    -- Sistema de economia e loja
+    -- Sistema de economia e loja. ShopSystem é singleton-na-run: criado uma
+    -- vez aqui e injetado em CardRewardScreen. Evita re-init de pools por
+    -- raridade a cada open/refresh.
     instance.economySystem = EconomySystem:new()
-    
+    instance.shopSystem = ShopSystem:new()
+
     -- Sistema de classes (Slay the Spire style)
     instance.selectedClass = nil
     instance.isRunMode = false
-    
+
     return instance
 end
 
@@ -108,6 +113,12 @@ function Game:startGame()
     self.economySystem.currentGold = 10
 
     self:initializeDeck()
+    -- Cartas com edition "negative" no deck adicionam slots de joker (Fase 3.2).
+    self:recomputeMaxJokerSlots()
+
+    -- Restaura jokers da run (em saves antigos vinham de currentDeck → migrados
+    -- pelo RunManager:_migrateJokersFromDeck). Em runs novas, jokers={} vazio.
+    self:_syncJokersFromRun()
 
     -- Reordena o deck para que cartas com flag `innate` fiquem no topo e sejam
     -- compradas primeiro na mao inicial. Em Slay, innate = sempre comeca na mao.
@@ -159,7 +170,10 @@ function Game:drawCard(staggerDelay)
         end
         self.discard = {}
         self:shuffleDeck()
+        -- Innate sempre fica no topo: shuffleDeck embaralhou junto, então re-promover.
+        self:promoteInnateCardsToTop()
         self:addMessage("Descarte reembaralhado no deck", "info")
+        Sfx.play("deckStart") -- reusa SFX de embaralhamento inicial
     end
     if #self.deck > 0 then
         local card = table.remove(self.deck, 1)
@@ -192,7 +206,9 @@ function Game:drawCard(staggerDelay)
                     card.dissolve = 0
                 end
                 local Sfx = require("src.systems.Sfx")
-                pcall(Sfx.play, "cardDraw")
+                -- Pitch variado por carta drawn pra evitar fadiga (sequência de
+                -- 4-5 draws no início de cada turno seria muito repetitiva).
+                pcall(Sfx.playWithVariation, "cardDraw", 1.0, 0.15)
             end)
         end
 
@@ -208,11 +224,17 @@ end
 function Game:drawForTurn()
     local emergencyActive = (#self.hand == 0)
     local baseDraw = emergencyActive and 3 or 1
-    local bonus = 0 -- placeholder para efeitos/joker que adicionem compras
-    local total = baseDraw + bonus
+    -- Blue Seal acumula compras extras quando cartas com seal são jogadas.
+    -- Consumido aqui (uma vez por turno) e zerado.
+    local sealBonus = self._sealDrawBonus or 0
+    self._sealDrawBonus = 0
+    local total = baseDraw + sealBonus
 
     if emergencyActive then
         self:addMessage("Recarga: +3 cartas", "info")
+    end
+    if sealBonus > 0 then
+        self:addMessage("+" .. sealBonus .. " cartas (Blue Seal)", "info")
     end
 
     -- Stagger entre cartas pra criar cascata Balatro-style (~80ms entre cada).
@@ -287,14 +309,21 @@ function Game:completeBattle()
 end
 
 -- Adiciona uma carta ao deck da corrida
-function Game:addCardToRun(cardId)
-    if not self.isRunMode then 
+-- meta opcional: { edition, seal } pra cartas que vêm de packs com modifiers.
+function Game:addCardToRun(cardId, meta)
+    if not self.isRunMode then
         self:addMessage("Erro: Não está em modo de corrida!", "error")
-        return false 
+        return false
     end
-    
-    
-    local success = self.runManager:addCardToDeck(cardId)
+
+    -- Bifurca jokers: nunca entram no deck. Vão direto para jokerSlots
+    -- + currentRun.jokers (padrão Balatro G.jokers).
+    local cardData = self.deckManager.cardDatabase:getCard(cardId)
+    if cardData and cardData.type == "joker" then
+        return self:addJokerToRun(cardId, meta)
+    end
+
+    local success = self.runManager:addCardToDeck(cardId, meta)
     
     if success then
         local cardData = self.deckManager.cardDatabase:getCard(cardId)
@@ -320,12 +349,76 @@ function Game:addCardToRun(cardId)
     end
 end
 
+-- True se o jogo aceita um joker novo agora (slots não cheios). Caller
+-- (CardRewardScreen) usa pra decidir se mostra/permite a compra.
+function Game:canAcceptJoker()
+    return #self.jokerSlots < self.maxJokerSlots
+end
+
+-- Adiciona um joker direto aos slots passivos (sem passar pelo deck/hand).
+-- Cumpre o invariante "joker é jogado uma vez e fica no slot pelo resto da run".
+-- meta opcional: { edition, seal } vinda de Buffoon packs.
+function Game:addJokerToRun(cardId, meta)
+    if not self.isRunMode then
+        self:addMessage("Erro: Não está em modo de corrida!", "error")
+        return false
+    end
+
+    local cardData = self.deckManager.cardDatabase:getCard(cardId)
+    if not cardData or cardData.type ~= "joker" then
+        Debug.warn("[Game:addJokerToRun] cardId não é joker: " .. tostring(cardId))
+        return false
+    end
+
+    -- Verifica capacidade. Caller deve pre-checar via Game:canAcceptJoker antes
+    -- de gastar gold, pois daqui não sabemos o preço pago.
+    if #self.jokerSlots >= self.maxJokerSlots then
+        self:addMessage("Slots de joker cheios — venda um primeiro", "warning")
+        return false
+    end
+
+    local instance = self.deckManager.cardDatabase:createCardInstance(cardData)
+    if meta then
+        if meta.edition then instance.edition = meta.edition end
+        if meta.seal then instance.seal = meta.seal end
+    end
+
+    table.insert(self.jokerSlots, instance)
+    self.runManager:addJokerToRun(cardId, meta)
+
+    -- Passive one-shot ao adquirir (ex: maxMana++). Mecânicas continuas vêm
+    -- via applyJokerEffects/applyTriggerEffects iterando jokerSlots.
+    if instance.passive then
+        instance.passive(self)
+    end
+
+    self:addMessage("Joker ativado: " .. (cardData.name or cardId), "success")
+    Sfx.play("jokerActivate")
+    return true
+end
+
+-- Reconstrói jokerSlots a partir de runManager.currentRun.jokers. Usado em
+-- startGame para popular slots após load de save antigo. Não reaplica passive
+-- (efeitos persistentes como maxMana já estão no playerState salvo).
+function Game:_syncJokersFromRun()
+    if not self.isRunMode or not self.runManager:hasActiveRun() then return end
+    local run = self.runManager.currentRun
+    if not run.jokers or #run.jokers == 0 then return end
+    if #self.jokerSlots > 0 then return end -- já populado, não duplicar
+
+    local instances = self.runManager:buildJokerInstances()
+    for _, inst in ipairs(instances) do
+        table.insert(self.jokerSlots, inst)
+    end
+    Debug.log("[Game] jokerSlots restaurados da run: " .. #self.jokerSlots)
+end
+
 -- Sincroniza o deck jogável com o deck da corrida
 function Game:synchronizeRunDeck()
     if self.isRunMode and self.runManager:hasActiveRun() then
         -- Reconstrói o deck jogável a partir do deck da corrida
         self.deck = self.runManager:buildPlayableDeck()
-        
+
         -- Força a atualização do estado do jogo
         if self.gameState == "playing" then
             -- Se estamos jogando, mantém a mão atual mas adiciona as novas possibilidades
@@ -405,6 +498,8 @@ function Game:selectCard(card)
             if selected == card then
                 table.remove(self.selectedCards, i)
                 self.player.mana = self.player.mana + card.cost -- Devolve mana
+                -- F12.3: faltava som no deselect. Pitch baixo pra diferenciar de select.
+                Sfx.playWithVariation("cardSelect", 0.85, 0.10)
                 break
             end
         end
@@ -418,6 +513,9 @@ function Game:selectCard(card)
 
             -- Juice kick: feedback instantâneo de clique.
             if card.juice_up then card:juice_up(0.15, 0.05) end
+            -- Jiggle micro Balatro-style (engine/ui.lua:990): cada seleção
+            -- empurra leve energia no acumulador, dando sensação de peso à ação.
+            if _G.jiggleScreen then _G.jiggleScreen(0.25) end
         else
             self:addMessage("Mana insuficiente!", "error")
         end
@@ -484,17 +582,84 @@ function Game:playSelectedCards()
     )
 end
 
+-- ===== Editions (Fase 3.2) =====
+-- Aplica modifiers de edition no valor já calculado. Foil é flat; Holo/Polychrome
+-- são multiplicativos; Negative não muda o valor (o efeito é +1 slot de joker,
+-- aplicado em recomputeMaxJokerSlots).
+local EDITION_FLAT = { foil = 5 }
+local EDITION_MULT = { holo = 1.2, polychrome = 1.5 }
+
+local function applyEditionToValue(value, card)
+    if not card or not card.edition then return value end
+    local flat = EDITION_FLAT[card.edition]
+    if flat then value = value + flat end
+    local mult = EDITION_MULT[card.edition]
+    if mult then value = value * mult end
+    return value
+end
+
+-- ===== Seals (Fase 3.3) =====
+-- Red: ×2 valor (retrigger via mult). Outros são side-effect post-play.
+local SEAL_VALUE_MULT = { Red = 2.0 }
+
+local function applySealToValue(value, card)
+    if not card or not card.seal then return value end
+    local mult = SEAL_VALUE_MULT[card.seal]
+    if mult then return value * mult end
+    return value
+end
+
+-- Conta cartas Negative no deck atual e ajusta maxJokerSlots = base + N.
+-- Chamar após startGame, addCardToRun, e qualquer mudança de deck.
+function Game:recomputeMaxJokerSlots()
+    local base = Config.Game.MAX_JOKER_SLOTS or 3
+    local negCount = 0
+    for _, card in ipairs(self.deck or {}) do
+        if card and card.edition == "negative" then
+            negCount = negCount + 1
+        end
+    end
+    -- Inclui também cartas na mão (em jogo elas existem como instâncias).
+    for _, card in ipairs(self.hand or {}) do
+        if card and card.edition == "negative" then
+            negCount = negCount + 1
+        end
+    end
+    self.maxJokerSlots = base + negCount
+end
+
 function Game:processCardInCombat(card, turnContext)
     local result = {}
     turnContext = turnContext or self._currentTurnContext
 
-    -- Pipeline unificado attack/defense: 5 passos idênticos antes de aplicar no alvo.
+    -- Pipeline unificado attack/defense: effects → stat → combo → jokers → edition → seal.
     local function computeCardValue(baseValue, statBonus)
         local v = self.effectSystem:applyCardEffects(self, card, baseValue)
         v = v + (statBonus or 0)
         v = ComboSystem.applyToCardValue(card, v, turnContext)
         v = self:applyJokerEffects(card, v, turnContext)
+        v = applyEditionToValue(v, card)
+        v = applySealToValue(v, card)
         return math.floor(v)
+    end
+
+    -- Side-effects de seal (não envolvem valor da carta): ouro, orbs, draw extra.
+    local function applySealSideEffects()
+        if not card.seal then return end
+        if card.seal == "Gold" then
+            if self.economySystem and self.economySystem.earnGold then
+                self.economySystem:earnGold(3, "seal_gold")
+                self:addMessage("+3 ouro (Gold Seal)", "info")
+            end
+        elseif card.seal == "Purple" then
+            if self.player and self.player.addOrb then
+                self.player:addOrb({ type = "lightning", value = 1 })
+                self:addMessage("Orb! (Purple Seal)", "info")
+            end
+        elseif card.seal == "Blue" then
+            -- Marca pra puxar 1 carta extra no próximo drawForTurn.
+            self._sealDrawBonus = (self._sealDrawBonus or 0) + 1
+        end
     end
 
     -- Efeitos secundários da carta (apply_debuff, heal, etc.) — excluem tipos que
@@ -528,14 +693,21 @@ function Game:processCardInCombat(card, turnContext)
         self.enemy:takeDamage(damage)
         self.score = self.score + damage
 
+        -- Floating damage number ancorado na carta (Fase 6.1).
+        local FloatingText = require("src.ui.FloatingText")
+        FloatingText.atCard(card, "-" .. tostring(damage), { kind = "damage" })
+
         -- Dispara death pipeline (anim + sfx + pausa) se a carta foi fatal.
         if wasAlive and self.enemy.health <= 0 then
             self:_onEnemyDeath()
         end
 
-        -- Triggers on-attack (ex: lifesteal de jokers)
-        self.effectSystem:applyTriggerEffects(self, "attack", { target = self.enemy, turnContext = turnContext })
+        -- Triggers on-attack (ex: lifesteal de jokers, on_attack_debuff em cartas)
+        self.effectSystem:applyTriggerEffects(self, "attack", {
+            target = self.enemy, turnContext = turnContext, sourceCard = card,
+        })
         processAdditionalEffects()
+        applySealSideEffects()
 
         result.damage = damage
         self:addMessage("Dano: " .. damage, "success")
@@ -545,21 +717,37 @@ function Game:processCardInCombat(card, turnContext)
 
         self.player:addArmor(defense)
 
-        -- Triggers on-defend (ex: reflexo de dano)
-        self.effectSystem:applyTriggerEffects(self, "defend", { target = self.enemy, turnContext = turnContext })
+        -- Floating armor number (Fase 6.1).
+        local FloatingText = require("src.ui.FloatingText")
+        FloatingText.atCard(card, "+" .. tostring(defense), { kind = "armor" })
+
+        -- Triggers on-defend (ex: reflexo de dano em jokers e em defense cards
+        -- como Barreira de Fogo via context.sourceCard).
+        self.effectSystem:applyTriggerEffects(self, "defend", {
+            target = self.enemy, turnContext = turnContext, sourceCard = card,
+        })
         processAdditionalEffects()
+        applySealSideEffects()
 
         result.defense = defense
         self:addMessage("Bloqueio: +" .. defense, "info")
         
     elseif card.type == "joker" then
-        -- Jokers vão para slots passivos (mão de cima)
+        -- Joker chegou via hand: leak arquitetural. Pós-Fase joker-split,
+        -- jokers devem ser adquiridos via Game:addJokerToRun direto, nunca
+        -- entrar no deck/hand. Aceita defensivamente pra não travar a run,
+        -- mas alerta no log pra detectar regressão.
+        Debug.warn("[Game] Joker chegou via hand (leak arquitetural): " .. tostring(card.id))
         if #self.jokerSlots < self.maxJokerSlots then
             table.insert(self.jokerSlots, card)
-            
-            card.passive(self) -- Executa efeito especial
+            -- Espelha no run state para persistir ao salvar.
+            if self.isRunMode and card.id then
+                self.runManager:addJokerToRun(card.id, { edition = card.edition, seal = card.seal })
+            end
+
+            if card.passive then card.passive(self) end
             self:addMessage("Joker ativado: " .. card.name, "success")
-            
+
             result.joker = true
         else
             self:addMessage("Todos os slots de joker estão ocupados!", "warning")
@@ -620,7 +808,10 @@ function Game:enemyTurn()
     -- Inimigo ataca o jogador
     local damage = self.enemy:performAttack()
     if damage > 0 then
-        Sfx.play("enemyAttack")
+        -- Pitch escalado pela magnitude do dano: ataques pesados soam mais graves
+        -- (Balatro engine/sound_manager.lua pattern). Cap entre 0.7 e 1.05.
+        local atkPitch = math.max(0.7, math.min(1.05, 1.1 - damage * 0.012))
+        Sfx.playWithVariation("enemyAttack", atkPitch, 0.08)
         self.player:takeDamage(damage)
         self:addMessage("Inimigo causou " .. damage .. " de dano!", "warning")
         -- Feedback visceral: screen shake proporcional ao dano (clamped).
@@ -634,7 +825,9 @@ function Game:enemyTurn()
     -- Fim do turno do inimigo: processa poison DoT, decrementa duration de debuffs.
     local poisonDmg = self.enemy:onTurnEnd()
     if poisonDmg and poisonDmg > 0 then
-        Sfx.play("poisonTick")
+        -- Pitch random pra poison "chiar" diferente cada tick (DoT acumula
+        -- vários ticks numa run; sem variação fica monótono).
+        Sfx.playWithVariation("poisonTick", 1.0, 0.2)
         self:addMessage("Veneno: " .. poisonDmg .. " de dano ao inimigo", "success")
     end
 
@@ -674,6 +867,10 @@ function Game:_onEnemyDeath()
         EnemyRenderer.triggerDeath(self.enemy.spriteId)
     end
     if _G.triggerShake then _G.triggerShake(18, 0.4) end
+    -- Jiggle Balatro-style empilha energia (decay 5/s) — som mais "vivo" que
+    -- random pulse do triggerShake legacy. Compõe naturalmente com o shake
+    -- intensity-based pra impacto cumulativo no boss death (Fase 6.4).
+    if _G.jiggleScreen then _G.jiggleScreen(1.5) end
     Sfx.play("enemyDeath")
     self._deathPauseTimer = 1.1
 
@@ -700,6 +897,47 @@ end
 
 function Game:isPhaseCleared()
     return self.enemy.health <= 0
+end
+
+-- Constrói lista de sources de ouro pra RoundEvalScreen (Fase 9 — cash out
+-- estilo Balatro `evaluate_round`). Cada source tem label + dollars + color.
+-- Chamado por main.lua após `_deathPauseTimer` expirar, antes de showCardRewards.
+function Game:_buildRoundEvalSources()
+    local sources = {}
+
+    -- 1) Vitória: recompensa base por derrotar inimigo.
+    table.insert(sources, {
+        label = "Vitória",
+        dollars = 5,
+        color = {1, 0.85, 0.30, 1},
+    })
+
+    -- 2) HP cheio: bônus se não perdeu nenhum HP na batalha.
+    if self.player and self.player.health == self.player.maxHealth then
+        table.insert(sources, {
+            label = "HP cheio",
+            dollars = 3,
+            color = {0.4, 0.95, 0.5, 1},
+        })
+    end
+
+    -- 3) Juros: 10% do gold atual (cap $5). Balatro caps at $25, escalamos.
+    if self.economySystem then
+        local gold = self.economySystem.currentGold or 0
+        local interest = math.min(math.floor(gold / 5), 5)
+        if interest > 0 then
+            table.insert(sources, {
+                label = "Juros (1$ a cada 5$)",
+                dollars = interest,
+                color = {0.95, 0.85, 0.30, 1},
+            })
+        end
+    end
+
+    -- 4) Vitórias consecutivas (futuro: reads from EconomySystem.consecutiveWins).
+    -- Por ora pulamos.
+
+    return sources
 end
 
 function Game:resetHandAndDeck()
@@ -837,7 +1075,9 @@ end
 -- Toca som de seleção de carta. Wrapper thin via Sfx.play (AudioSystem é no-op
 -- se áudio não disponível).
 function Game:playCardSelectSound()
-    Sfx.play("cardSelect")
+    -- Pitch random: usuário clica em várias cartas em sequência ao montar play,
+    -- sem variação soa staccato robótico.
+    Sfx.playWithVariation("cardSelect", 1.0, 0.12)
 end
 
 -- Alterna o menu de configurações. O handler real é injetado por main.lua.

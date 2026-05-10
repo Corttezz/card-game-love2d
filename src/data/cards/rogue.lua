@@ -150,8 +150,8 @@ return {
     rogue_bouncing_flask = {
         id = "rogue_bouncing_flask", name = "Frasco Ricochete",
         type = "attack", subtype = "skill",
-        cost = 2, attack = 3, defense = 0,
-        description = "3 de dano + Veneno 3x (2t).",
+        cost = 2, attack = 6, defense = 0,
+        description = "6 de dano + Veneno 3x (2t).",
         image = "assets/cards/attack/bloodSword.png",
         rarity = "uncommon", class = "rogue",
         tags = { "strike", "poison", "debuff" },
@@ -200,8 +200,8 @@ return {
     rogue_venom_fang = {
         id = "rogue_venom_fang", name = "Presa Venenosa",
         type = "attack", subtype = "skill",
-        cost = 1, attack = 3, defense = 0,
-        description = "3 de dano + Veneno (3 stacks).",
+        cost = 1, attack = 5, defense = 0,
+        description = "5 de dano + Veneno (3 stacks).",
         image = "assets/cards/attack/bloodSword.png",
         rarity = "uncommon", class = "rogue",
         tags = { "strike", "poison", "debuff" },
@@ -296,9 +296,8 @@ return {
         rarity = "rare", class = "rogue",
         tags = { "poison", "debuff", "scaling" },
         effects = {
-            -- Via on_attack_heal reaproveitado? Precisa trigger dedicado on_attack_debuff.
-            -- Fase 8 refinara; por ora +1 dano como aproximacao.
-            { type = "damage_bonus", target = "attack", value = 1 },
+            { type = "on_attack_debuff", debuffName = "poison", stacks = 1, duration = 2,
+              description = "Aplica 1 Veneno ao atacar" },
         },
     },
     rogue_storm_of_steel = {

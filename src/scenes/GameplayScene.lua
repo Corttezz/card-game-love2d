@@ -13,7 +13,6 @@ local FontManager      = require("src.ui.FontManager")
 local SceneLayer       = require("src.ui.SceneLayer")
 local EnemyRenderer    = require("src.ui.EnemyRenderer")
 local EnemyHud         = require("src.ui.EnemyHud")
-local ParticleSystem   = require("src.systems.ParticleSystem")
 local Sfx              = require("src.systems.Sfx")
 local SmokeConfig      = require("src.config.SmokeConfig")
 
@@ -65,7 +64,12 @@ local function updateCardPositions()
     local cardY = height * 0.8
 
     for i, card in ipairs(game.hand) do
-        card.x = card.renderX ~= 0 and card.renderX or (cardStartX + (i - 1) * cardSpacing)
+        local layoutX = cardStartX + (i - 1) * cardSpacing
+        -- Posição "home" estática: usada pelo bbox de hover (não acompanha o
+        -- lift visual de hoverCard pra cardY-130, evitando flicker bistável).
+        card.layoutX = layoutX
+        card.layoutY = cardY
+        card.x = card.renderX ~= 0 and card.renderX or layoutX
         card.y = card.renderY ~= 0 and card.renderY or cardY
     end
 end
@@ -102,10 +106,9 @@ local function drawJokersAsCards()
     -- Sistema de combate desenha por cima
     game.combatAnimationSystem:draw()
 
-    -- Partículas globais (burst de combate, joker ativado)
-    if ParticleSystem and ParticleSystem.Manager then
-        ParticleSystem.Manager:draw()
-    end
+    -- Partículas (burst de combate, joker, card-attached) são desenhadas
+    -- centralmente em main.lua via CardParticles.draw() no fim do frame.
+    -- Não chamar daqui — geraria double-draw.
 
     -- Tooltips (status effects / buffs) por cima de tudo
     require("src.ui.StatusTooltip").draw()
@@ -223,9 +226,7 @@ function GameplayScene.update(dt)
 
     game.combatAnimationSystem:update(dt)
 
-    if ParticleSystem and ParticleSystem.Manager then
-        ParticleSystem.Manager:update(dt)
-    end
+    -- Partículas são tickadas centralmente em main.lua via CardParticles.update.
 
     EnemyRenderer.update(dt)
     SceneLayer.update(dt)

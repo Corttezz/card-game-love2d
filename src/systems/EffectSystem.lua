@@ -72,6 +72,13 @@ end
 -- Bonus aditivo a ataques baseado em player.strength. Usado como efeito NA
 -- PROPRIA CARTA (card.effects, nao joker). Chamado pelo Game ao resolver ataque.
 -- Retorna (novoValor, mensagem?) para consumo pelo Game:processCardInCombat.
+--
+-- IMPORTANTE: strength_scaling/dexterity_scaling são FLAG-ONLY aqui — Strength
+-- e Dexterity do player já são adicionados em Game:processCardInCombat via o
+-- parâmetro statBonus de computeCardValue. Antes da Fase 2 do refactor de
+-- balance, este branch também somava → strength entrava 2x para cartas que
+-- declaravam o effect. Mantemos o effect declarado nas cartas (semântica útil
+-- para tooltip/UI/validate_cards) mas não dobramos a aplicação.
 function EffectSystem:applyCardEffects(game, card, baseValue)
     local finalValue = baseValue
     if not card.effects or type(card.effects) ~= "table" then
@@ -81,13 +88,7 @@ function EffectSystem:applyCardEffects(game, card, baseValue)
         local t = effect.type
         local v = effect.value or 1
 
-        if t == "strength_scaling" and card.type == "attack" then
-            finalValue = finalValue + (game.player.strength or 0)
-
-        elseif t == "dexterity_scaling" and card.type == "defense" then
-            finalValue = finalValue + (game.player.dexterity or 0)
-
-        elseif t == "damage_bonus_self" and card.type == "attack" then
+        if t == "damage_bonus_self" and card.type == "attack" then
             -- Bonus aditivo local da propria carta (ex: "10 + 2 por combo")
             finalValue = finalValue + v
 
@@ -96,6 +97,7 @@ function EffectSystem:applyCardEffects(game, card, baseValue)
             -- animacao/feel sera refinado quando integrarmos com CombatAnimationSystem.
             finalValue = finalValue * math.max(1, v)
         end
+        -- strength_scaling/dexterity_scaling: flag-only, ver comentário acima.
     end
     return finalValue
 end
@@ -310,11 +312,21 @@ end
 -- ==============================================================================
 
 function EffectSystem:applyTriggerEffects(game, triggerType, context)
+    -- 1) Triggers de jokers ativos (ex: lifesteal, regen).
     for _, joker in ipairs(game.jokerSlots or {}) do
         if joker.effects then
             for _, effect in ipairs(joker.effects) do
                 self:processTriggerEffect(game, effect, triggerType, context)
             end
+        end
+    end
+
+    -- 2) Triggers da carta sendo jogada (passada pelo Game via context.sourceCard).
+    -- Ex: defense card "Barreira de Fogo" tem on_defend_damage → reflete dano.
+    -- Sem isso, triggers em cartas non-joker seriam silenciosamente no-op.
+    if context and context.sourceCard and context.sourceCard.effects then
+        for _, effect in ipairs(context.sourceCard.effects) do
+            self:processTriggerEffect(game, effect, triggerType, context)
         end
     end
 end
@@ -342,6 +354,28 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
     elseif t == "damage_per_turn" and triggerType == "turn_start" then
         game.player:takeDamage(v)
         game:addMessage(msg("penalty", { value = v }), "warning")
+
+    elseif t == "on_turn_start_draw" and triggerType == "turn_start" then
+        -- Joker que compra cartas extra no início do turno (ex: joker_004
+        -- "Bobo da Corte", mage_creative_ai). value = quantas cartas.
+        local n = math.max(1, v)
+        for i = 1, n do
+            game:drawCard((i - 1) * 0.06)
+        end
+        game:addMessage("Compra extra: +" .. n, "info")
+
+    elseif t == "on_attack_debuff" and triggerType == "attack" then
+        -- Joker que aplica debuff a cada ataque (ex: rogue_envenom poison-on-hit).
+        -- effect.debuffName = "poison"/"weak"/"vulnerable"
+        if context and context.target and context.target.addStatusEffect then
+            context.target:addStatusEffect({
+                name = effect.debuffName or "poison",
+                stacks = effect.stacks or 1,
+                duration = effect.duration or 2,
+            })
+            game:addMessage("Aplicou " .. (effect.debuffName or "poison"), "warning")
+            Sfx.play("debuffApplied")
+        end
     end
 end
 

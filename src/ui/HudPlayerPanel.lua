@@ -168,8 +168,12 @@ function HudPlayerPanel:draw(player)
             local iconH = (shield.size and shield.size.h) or 64
             local iconW = (shield.size and shield.size.w) or 64
             local scale = IconLoader.computeScale(iconH, targetSize)
+            -- Ambient drift Balatro-style: shield bobs ±1px Y em sin lento (1.2 rad/s)
+            -- pra não ficar congelado quando armor está ativo. Reduced motion zera.
+            local rm = _G.gameSettings and _G.gameSettings.reducedMotion
+            local bob = rm and 0 or math.floor(math.sin(self.animTime * 1.2) * 1)
             local ix = math.floor(badgeCx - (iconW * scale) / 2)
-            local iy = math.floor(badgeCy - (iconH * scale) / 2)
+            local iy = math.floor(badgeCy - (iconH * scale) / 2) + bob
             shield.draw(ix, iy, scale)
         else
             -- Fallback: disco steel antigo (caso o PNG não carregue)

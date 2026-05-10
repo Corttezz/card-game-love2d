@@ -1,7 +1,6 @@
 -- components/GameUI.lua
 local JokerSlot = require("components.JokerSlot")
 local Config = require("src.core.Config")
-local ParticleSystem = require("src.systems.ParticleSystem")
 local HudManager = require("src.ui.HudManager")
 
 local GameUI = {}
@@ -44,7 +43,6 @@ function GameUI:update(dt, game)
     end
 
     self.hudManager:update(dt, game)
-    ParticleSystem.Manager:update(dt)
 end
 
 function GameUI:updatePositions()
@@ -67,7 +65,6 @@ function GameUI:draw(game)
     if not self.visible then return end
 
     self.hudManager:draw(game)
-    ParticleSystem.Manager:draw()
 end
 
 function GameUI:show()

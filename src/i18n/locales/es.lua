@@ -2,6 +2,11 @@
 -- Espanol locale.
 
 return {
+    boot = {
+        loading         = "CARGANDO...",
+        skip_hint       = "Pulsa cualquier tecla para saltar",
+    },
+
     menu = {
         title           = "GRIMORIO",
         subtitle        = "Cartas arcanas. Decisiones fatales.",

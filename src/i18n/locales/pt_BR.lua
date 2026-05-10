@@ -2,6 +2,11 @@
 -- Locale base: portugues (BR). Sincronizado com as strings originais do jogo.
 
 return {
+    boot = {
+        loading         = "CARREGANDO...",
+        skip_hint       = "Pressione qualquer tecla para pular",
+    },
+
     menu = {
         title           = "GRIMOIRE",
         subtitle        = "Cartas arcanas. Decisoes fatais.",
@@ -16,16 +21,17 @@ return {
     },
 
     settings = {
-        title       = "CONFIGURACOES",
-        music       = "Musica",
-        sfx         = "Efeitos",
-        master      = "Master",
-        fullscreen  = "Fullscreen",
-        crt_shader  = "CRT Shader",
-        language    = "Idioma",
-        on          = "LIGADO",
-        off         = "DESLIGADO",
-        close       = "FECHAR",
+        title           = "CONFIGURACOES",
+        music           = "Musica",
+        sfx             = "Efeitos",
+        master          = "Master",
+        fullscreen      = "Fullscreen",
+        crt_shader      = "CRT Shader",
+        reduced_motion  = "Movimento reduzido",
+        language        = "Idioma",
+        on              = "LIGADO",
+        off             = "DESLIGADO",
+        close           = "FECHAR",
     },
 
     class_select = {
@@ -94,6 +100,9 @@ return {
         continue           = "Continuar",
         refresh            = "Refresh (${n})",
         buy                = "Comprar (${n})",
+        buy_and_use        = "Usar (${n})",
+        open_pack          = "Abrir (${n})",
+        select_card        = "Selecionar",
         cancel             = "Cancelar",
         confirm_title      = "Confirmar Compra",
         insufficient_gold  = "Ouro insuficiente!",

@@ -2,6 +2,11 @@
 -- English locale (fallback global p/ qualquer chave ausente em outros locales).
 
 return {
+    boot = {
+        loading         = "LOADING...",
+        skip_hint       = "Press any key to skip",
+    },
+
     menu = {
         title           = "GRIMOIRE",
         subtitle        = "Arcane cards. Fatal choices.",
@@ -22,6 +27,7 @@ return {
         master      = "Master",
         fullscreen  = "Fullscreen",
         crt_shader  = "CRT Shader",
+        reduced_motion = "Reduced motion",
         language    = "Language",
         on          = "ON",
         off         = "OFF",
@@ -85,6 +91,9 @@ return {
         continue           = "Continue",
         refresh            = "Refresh (${n})",
         buy                = "Buy (${n})",
+        buy_and_use        = "Use (${n})",
+        open_pack          = "Open (${n})",
+        select_card        = "Select",
         cancel             = "Cancel",
         confirm_title      = "Confirm Purchase",
         insufficient_gold  = "Not enough gold!",

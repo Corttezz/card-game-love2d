@@ -42,13 +42,15 @@ function M.run()
     local dmg = 10 + g.player.strength
     check("ataque base 10 + strength 3 = 13", dmg == 13)
 
-    -- 2. strength_scaling via applyCardEffects (self-effect da carta)
+    -- 2. strength_scaling é flag-only após o fix de double-application (Abril/2026):
+    -- applyCardEffects não soma strength (Game:processCardInCombat já passa via statBonus).
+    -- Antes desse fix, declarar strength_scaling causava aplicação dupla.
     local g2 = makeMockGame()
     g2.player.strength = 5
     local scalingCard = { type = "attack", attack = 10, effects = { { type = "strength_scaling" } } }
     local base = 10
     base = ES:applyCardEffects(g2, scalingCard, base)
-    check("strength_scaling adiciona 5 ao base", base == 15)
+    check("strength_scaling é flag-only (não duplica strength)", base == 10)
 
     -- 3. multi_hit multiplica valor base
     local g3 = makeMockGame()

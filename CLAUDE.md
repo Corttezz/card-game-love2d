@@ -27,9 +27,13 @@ card-game-love2d/
 │   └── Moveable.lua            # Mixin juice_up() + T/VT opcional
 ├── shaders/                    # GLSL (LÖVE 11.x format)
 │   ├── crt.glsl, holo.glsl, card_perspective.glsl  # Pré-existentes
-│   ├── dissolve.glsl           # ⚠️ Portado de Balatro (reescrever antes de shippar)
-│   ├── flash.glsl              # ⚠️ Idem
-│   └── booster.glsl            # ⚠️ Idem (iridescente pra seals/packs)
+│   ├── dissolve.glsl           # Próprio (value noise + FBM + threshold animado)
+│   ├── flash.glsl              # Próprio (full-screen white + ring radial)
+│   ├── booster.glsl            # Próprio (iridescente azul-prata pra packs)
+│   ├── holo.glsl               # Próprio (rare/legendary — multi-banda + sweep + sparkle)
+│   ├── foil.glsl               # Próprio (edition Foil — metálico frio sem rainbow)
+│   ├── polychrome.glsl         # Próprio (edition Polychrome — hue cycle saturado)
+│   └── negative.glsl           # Próprio (edition Negative — invertido + halo)
 ├── src/scenes/                 # Scenes extraídas de main.lua (padrão init(deps) + update/draw/input)
 │   ├── GameplayScene.lua       # Estado "playing": combate + mão + jokers + drag/reorder
 │   └── EndScreens.lua          # drawGameOver + drawVictory
@@ -285,12 +289,15 @@ O painel do canto de inimigo (antigo `HudEnemyPanel`) foi aposentado. `GameUI.lu
 - **Sequências temporais usam `_G.EventManager`** (ex: `EventManager.after(0.3, function() ... end)`) — evita state machines ad-hoc. Ver `memory/engine_layer.md`.
 - **Juice visual** (kick de scale/rot em objetos) via `Moveable.juice_up(obj, 0.3, 0.1)` ou `obj:juice_up(...)` se já tiver o método. Card já compõe — use nos momentos "algo aconteceu".
 - **Card FX** (dissolve/materialize/explode/flip) já disponíveis: `card:start_dissolve(...)`, `card:start_materialize(...)`, `card:explode(...)`, `card:flip(...)`. Sequências prontas em `src/systems/CardRevealSequence.lua`. Ver `memory/card_fx_pipeline.md`.
-- **Copyright shaders**: `shaders/dissolve.glsl`, `flash.glsl`, `booster.glsl` foram **portados** do Balatro. Uso pessoal/estudo ok; reescreva a matemática antes de distribuir o jogo.
+- **Shaders**: `shaders/dissolve.glsl`, `flash.glsl`, `booster.glsl`, `holo.glsl` foram **reescritos do zero** (Fase 2 do refactor Balatro, Abril/2026) com matemática própria — value noise hash-based + FBM + multi-banda iridescente. Copyright-safe. Novos: `foil.glsl`, `polychrome.glsl`, `negative.glsl` pra editions (Fase 3).
 
 ### Anti-patterns observados (a evitar ao editar)
 - `src/ui/HudPanel.lua` e `src/ui/VisualEffects.lua` foram removidos no refactor de Abril/2026 (eram legado). Não recriar.
 - **Cartas não devem ter `effects = {}` sem tags significativas.** Starter/básicas OK. Rode `love . validate_cards` antes de commitar.
 - **Nunca condicione por `card.name`** — use `card.effects` + `card.tags` (data-driven).
+- **Jokers nunca passam por `addCardToRun`/`currentDeck` direto** — sempre via `Game:addJokerToRun` (ou via `addCardToRun` que bifurca). Joker é separado de hand/deck (padrão Balatro G.jokers); persistido em `runManager.currentRun.jokers`. Romper esse invariante reabre o bug "mesmo joker pode ser jogado várias vezes".
+- **Strength/Dexterity são adicionados em Game:processCardInCombat via `statBonus`** — não duplicar no `EffectSystem:applyCardEffects`. O effect `strength_scaling`/`dexterity_scaling` é flag-only (semântica para tooltip/validador).
+- **Triggers em cartas non-joker** funcionam via `context.sourceCard` em `applyTriggerEffects`. Para fazer uma defense card refletir, adicione `{ type="on_defend_damage", value=N }` ao `effects` da carta — o trigger fica visível em jokerSlots E em sourceCard.
 - Cartas procuram imagens em `assets/cards/attack/theRock.png` como fallback — muitas cartas ainda reusam por falta de arte (não é estilo, é débito).
 - Ao adicionar novo tipo de effect: implemente em `EffectSystem` + adicione em `PROCESSED_EFFECT_TYPES` de `tools/validate_cards.lua`.
 - Ao adicionar nova tag: só use após incluir em `TagSystem.CATALOG`.

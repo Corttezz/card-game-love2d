@@ -1,24 +1,23 @@
 // shaders/dissolve.glsl
-// Dissolve / materialize mask para cartas. Substitui a textura por um campo
-// de noise "queimando" da borda pro centro (dissolve) ou do centro pra borda
-// (materialize, via dissolve=1→0). Opcional: burn colors colorem a borda da
-// queima — tipo "chamas em papel".
+// Dissolve / materialize com value noise FBM + threshold animado + edge glow.
+// Implementação própria — não derivada do código do Balatro.
 //
-// PORTED FROM: resources/shaders/dissolve.fs do Balatro 1.0.1o (adaptado
-// pra LÖVE 11.5 sem os prefixos MY_HIGHP_OR_MEDIUMP e sem o path vertex/hover).
-// ⚠️  Este código é copyright LocalThunk/Playstack. Uso: estudo pessoal.
-//     Antes de shippar o jogo, reescreva a matemática de raiz ou substitua
-//     por um dissolve próprio (noise texture + threshold é suficiente).
+// Algoritmo:
+//   1) Calcula UV centralizado (0..1) e distância radial pra centro.
+//   2) FBM (4 oitavas de value noise hash-based) lentamente animado em time.
+//   3) threshold = dissolve com bias radial (cantos saem antes do centro).
+//   4) Pixels com noise < threshold são "queimados" (alpha=0).
+//   5) Banda fina ao redor do threshold recebe burn_colour_1/2 (chama).
+//   6) Tint global em direção a burn_colour_2 conforme dissolve cresce.
 //
-// Uniforms:
-//   dissolve       (number, 0..1)  — 0 opaco, 1 sumiu. 0.5 = metade queimada.
-//   time           (number)        — tempo em segundos (pra campo animado)
-//   texture_details(vec4)          — (pos.x, pos.y, size.x, size.y) do quad do atlas.
-//                                    Pra textura inteira: (0, 0, w, h).
-//   image_details  (vec2)          — (image.w, image.h) em pixels
-//   burn_colour_1  (vec4, opcional) — cor da borda queimada (ex: laranja)
-//   burn_colour_2  (vec4, opcional) — cor secundária (ex: vermelho escuro)
-//   shadow         (bool)          — se true, tudo vira sombra preta
+// Uniforms expostos (compat com src/ui/DissolveShader.lua):
+//   dissolve        (number, 0..1)  — 0 visível, 1 sumiu.
+//   time            (number)        — segundos (fonte de animação)
+//   texture_details (vec4)          — (off_x, off_y, w, h) em pixels do quad
+//   image_details   (vec2)          — (image.w, image.h) — não usado, mantido p/ compat
+//   shadow          (bool)          — true → tudo vira sombra preta semitransparente
+//   burn_colour_1   (vec4)          — cor primária da chama (banda interna)
+//   burn_colour_2   (vec4)          — cor secundária (banda externa)
 
 extern number dissolve;
 extern number time;
@@ -28,70 +27,101 @@ extern bool shadow;
 extern vec4 burn_colour_1;
 extern vec4 burn_colour_2;
 
-vec4 dissolve_mask(vec4 tex, vec2 texture_coords, vec2 uv) {
-    if (dissolve < 0.001) {
-        return vec4(shadow ? vec3(0.0, 0.0, 0.0) : tex.xyz, shadow ? tex.a * 0.3 : tex.a);
-    }
-
-    // smoothstep → remapeia dissolve pra saturar melhor nas bordas 0 e 1
-    float adjusted_dissolve = (dissolve * dissolve * (3.0 - 2.0 * dissolve)) * 1.02 - 0.01;
-
-    float t = time * 10.0 + 2003.0;
-    vec2 floored_uv = (floor((uv * texture_details.ba))) / max(texture_details.b, texture_details.a);
-    vec2 uv_scaled_centered = (floored_uv - 0.5) * 2.3 * max(texture_details.b, texture_details.a);
-
-    // 3 campos senoidais combinados → noise orgânico que parece papel queimando
-    vec2 field_part1 = uv_scaled_centered + 50.0 * vec2(sin(-t / 143.6340), cos(-t / 99.4324));
-    vec2 field_part2 = uv_scaled_centered + 50.0 * vec2(cos( t / 53.1532),  cos( t / 61.4532));
-    vec2 field_part3 = uv_scaled_centered + 50.0 * vec2(sin(-t / 87.53218), sin(-t / 49.0000));
-
-    float field = (1.0 + (
-        cos(length(field_part1) / 19.483)
-        + sin(length(field_part2) / 33.155) * cos(field_part2.y / 15.73)
-        + cos(length(field_part3) / 27.193) * sin(field_part3.x / 21.92)
-    )) / 2.0;
-
-    vec2 borders = vec2(0.2, 0.8);
-
-    // res é o valor do campo naquele pixel. A borda dissolve primeiro
-    // (penalty nos 4 cantos quando dissolve cresce)
-    float res = (0.5 + 0.5 * cos((adjusted_dissolve) / 82.612 + (field - 0.5) * 3.14))
-        - (floored_uv.x > borders.y ? (floored_uv.x - borders.y) * (5.0 + 5.0 * dissolve) : 0.0) * (dissolve)
-        - (floored_uv.y > borders.y ? (floored_uv.y - borders.y) * (5.0 + 5.0 * dissolve) : 0.0) * (dissolve)
-        - (floored_uv.x < borders.x ? (borders.x - floored_uv.x) * (5.0 + 5.0 * dissolve) : 0.0) * (dissolve)
-        - (floored_uv.y < borders.x ? (borders.x - floored_uv.y) * (5.0 + 5.0 * dissolve) : 0.0) * (dissolve);
-
-    // Burn colors: banda colorida na frente da dissolução (chamas na borda)
-    if (tex.a > 0.01 && burn_colour_1.a > 0.01 && !shadow
-        && res < adjusted_dissolve + 0.8 * (0.5 - abs(adjusted_dissolve - 0.5))
-        && res > adjusted_dissolve) {
-        if (!shadow
-            && res < adjusted_dissolve + 0.5 * (0.5 - abs(adjusted_dissolve - 0.5))
-            && res > adjusted_dissolve) {
-            tex.rgba = burn_colour_1.rgba;
-        } else if (burn_colour_2.a > 0.01) {
-            tex.rgba = burn_colour_2.rgba;
-        }
-    }
-
-    return vec4(
-        shadow ? vec3(0.0, 0.0, 0.0) : tex.xyz,
-        res > adjusted_dissolve ? (shadow ? tex.a * 0.3 : tex.a) : 0.0
-    );
+// Hash 2D → escalar [0..1). Sem dependência de textura de noise.
+float dh21(vec2 p) {
+    p = fract(p * vec2(127.1, 311.7));
+    p += dot(p, p + 41.32);
+    return fract(p.x * p.y);
 }
 
-vec4 effect(vec4 colour, Image texture, vec2 texture_coords, vec2 screen_coords) {
-    vec4 tex = Texel(texture, texture_coords);
-    vec2 uv = (((texture_coords) * (image_details)) - texture_details.xy * texture_details.ba) / texture_details.ba;
+// Value noise com smoothstep nas células (bilinear suave).
+float vnoise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    float a = dh21(i);
+    float b = dh21(i + vec2(1.0, 0.0));
+    float c = dh21(i + vec2(0.0, 1.0));
+    float d = dh21(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
 
-    // Tint da textura em direção à burn color enquanto dissolve cresce
-    if (!shadow && dissolve > 0.01) {
-        if (burn_colour_2.a > 0.01) {
-            tex.rgb = tex.rgb * (1.0 - 0.6 * dissolve) + 0.6 * burn_colour_2.rgb * dissolve;
-        } else if (burn_colour_1.a > 0.01) {
-            tex.rgb = tex.rgb * (1.0 - 0.6 * dissolve) + 0.6 * burn_colour_1.rgb * dissolve;
-        }
+// FBM: 4 oitavas, peso decrescente, freq dobrando.
+float fbm(vec2 p) {
+    float v = 0.0;
+    float amp = 0.55;
+    for (int i = 0; i < 4; i++) {
+        v += amp * vnoise(p);
+        p = p * 2.07 + vec2(11.3, 7.7);
+        amp *= 0.5;
+    }
+    return clamp(v, 0.0, 1.0);
+}
+
+vec4 effect(vec4 colour, Image tex, vec2 tc, vec2 sc) {
+    vec4 px = Texel(tex, tc);
+
+    // Curto-circuito quando totalmente visível.
+    if (dissolve < 0.001) {
+        if (shadow) return vec4(0.0, 0.0, 0.0, px.a * 0.3);
+        return px * colour;
     }
 
-    return dissolve_mask(tex, texture_coords, uv);
+    // UV normalizado (0..1) dentro do quad mesmo se for atlas region.
+    vec2 quadSize = max(texture_details.zw, vec2(1.0));
+    vec2 uv = (tc * image_details - texture_details.xy) / quadSize;
+    uv = clamp(uv, 0.0, 1.0);
+
+    // Distância radial 0..~0.71 → bias pra cantos (sai antes).
+    vec2 cuv = uv - 0.5;
+    float radial = length(cuv) * 1.42;  // ~1 nos cantos
+
+    // Campo FBM lentamente animado. Coords escaladas pra granularidade média.
+    vec2 nuv = uv * 5.5 + vec2(time * 0.07, time * 0.045);
+    float n = fbm(nuv);
+
+    // Pequena ondulação extra pra borda mais "viva" (não copia 3-sines do Balatro).
+    n += 0.08 * sin(uv.x * 9.0 + time * 0.6) * cos(uv.y * 7.0 - time * 0.5);
+    n = clamp(n, 0.0, 1.0);
+
+    // Threshold com bias: dissolve efetivo cresce mais nas bordas.
+    // Quando dissolve=1, threshold sempre > n: tudo sumiu.
+    float biased = dissolve + (radial - 0.5) * 0.35 * dissolve;
+    float threshold = biased;
+
+    // Banda de queima: largura proporcional, mas mínima fixa pra não sumir
+    // visualmente quando dissolve está em 0.95+.
+    float band = 0.10 + 0.06 * (1.0 - abs(dissolve - 0.5) * 2.0);
+
+    // Mask binária com smoothstep curto pra antialiasing nas bordas pixel-art-friendly.
+    float mask = smoothstep(threshold - 0.01, threshold + 0.01, n);
+
+    // Modo sombra: cor preta semitransparente, ainda mascarada.
+    if (shadow) {
+        return vec4(0.0, 0.0, 0.0, px.a * mask * 0.3);
+    }
+
+    // Tint global em direção à cor secundária (suave, mais forte conforme dissolve).
+    vec3 base = px.rgb;
+    if (burn_colour_2.a > 0.01) {
+        base = mix(base, burn_colour_2.rgb, dissolve * 0.45 * burn_colour_2.a);
+    } else if (burn_colour_1.a > 0.01) {
+        base = mix(base, burn_colour_1.rgb, dissolve * 0.35 * burn_colour_1.a);
+    }
+
+    // Banda colorida na frente do front da queima.
+    // 0..1 dentro da banda, 0 fora.
+    float bandT = clamp((n - threshold) / band, 0.0, 1.0);
+    float bandIntensity = (1.0 - bandT) * (1.0 - bandT);  // mais forte na borda
+
+    if (burn_colour_1.a > 0.01 && mask > 0.01 && bandIntensity > 0.01) {
+        // Mix das duas cores: c1 na borda mais quente, c2 no anel externo.
+        vec3 burnRgb = burn_colour_1.rgb;
+        if (burn_colour_2.a > 0.01) {
+            burnRgb = mix(burn_colour_1.rgb, burn_colour_2.rgb, bandT);
+        }
+        base = mix(base, burnRgb, bandIntensity * burn_colour_1.a);
+    }
+
+    return vec4(base, px.a * mask) * colour;
 }

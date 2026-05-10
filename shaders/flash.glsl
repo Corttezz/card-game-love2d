@@ -1,30 +1,41 @@
 // shaders/flash.glsl
-// Flash branco pixelado — usado em impactos, buffs aplicados, booster opening.
-// Overlay que escurece p/ branco total no pico e some.
+// Flash branco fullscreen com pulse radial opcional. Implementação própria.
 //
-// PORTED FROM: resources/shaders/flash.fs do Balatro 1.0.1o.
-// ⚠️  Copyright LocalThunk/Playstack. Uso: estudo pessoal. Substitua antes de shippar.
+// Modos:
+//   • mid_flash > 0 → overlay branco; intensidade 0..1 controla opacidade.
+//   • Pulse radial sutil cresce do centro pra borda usando time como animador.
 //
 // Uniforms:
-//   time      (number) — segundos desde o início do flash
-//   mid_flash (number, 0..1) — intensidade (0 desligado; 1 pico)
+//   time      (number) — segundos desde o início (alimenta a animação radial)
+//   mid_flash (number, 0..1) — intensidade global do flash (envelope externo)
 
 extern number time;
 extern number mid_flash;
 
-#define PIXEL_SIZE_FAC 700.0
+vec4 effect(vec4 colour, Image texture, vec2 tc, vec2 sc) {
+    if (mid_flash <= 0.001) discard;
 
-vec4 effect(vec4 colour, Image texture, vec2 texture_coords, vec2 screen_coords) {
-    // Pixeliza baseado no tamanho da tela (look "16-bit flash")
-    number pixel_size = length(love_ScreenSize.xy) / PIXEL_SIZE_FAC;
-    vec2 uv = (floor(screen_coords.xy * (1.0 / pixel_size)) * pixel_size
-        - 0.5 * love_ScreenSize.xy) / length(love_ScreenSize.xy);
+    // UV centralizado pixel-perfect com aspect compensado.
+    vec2 res = love_ScreenSize.xy;
+    vec2 uv = (sc - 0.5 * res) / max(res.x, res.y);
+    float r = length(uv);
 
-    // Crescimento do branco do centro pra borda em 2 pulsos
-    float mid_white = min(1.0,
-        (time > 2.5 ? max(0.0, sqrt(time - 2.5) - 60.0 * length(uv)) : 0.0)
-        + (time > 11.0 ? max(0.0, (time - 11.0) * (time - 11.0) - 5.0 * length(uv)) : 0.0)
-    );
+    // Pulse radial: anel branco que expande conforme time cresce, com soft edge.
+    // Funciona como "ring expanding" sobreposto ao flash global.
+    float ring = 0.0;
+    if (time > 0.0) {
+        float ringR = clamp(time * 0.55, 0.0, 0.9);
+        float thick = 0.18;
+        ring = smoothstep(ringR + thick, ringR, r) * (1.0 - smoothstep(ringR + 2.0 * thick, ringR + thick, r));
+        ring *= 0.5;
+    }
 
-    return vec4(1.0, 1.0, 1.0, mid_flash * mid_white);
+    // Vinheta inversa: centro mais branco que borda no flash inicial.
+    float center = 1.0 - smoothstep(0.0, 0.7, r);
+
+    // Mistura final.
+    float a = mid_flash * (0.55 + 0.45 * center) + ring * mid_flash;
+    a = clamp(a, 0.0, 1.0);
+
+    return vec4(1.0, 1.0, 1.0, a);
 }

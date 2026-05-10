@@ -103,7 +103,9 @@ return {
         image = "assets/cards/attack/theRock.png",
         rarity = "uncommon", class = "warrior",
         tags = { "defend", "armor", "thorn", "fire" },
-        effects = {},
+        effects = {
+            { type = "on_defend_damage", value = 4, description = "Reflete 4 ao defender" },
+        },
     },
     warrior_ghostly_armor = {
         id = "warrior_ghostly_armor", name = "Armadura Fantasma",
@@ -220,7 +222,7 @@ return {
         id = "warrior_demon_form", name = "Forma Demoniaca",
         type = "joker", subtype = "power",
         cost = 3, attack = 0, defense = 0,
-        description = "+3 dano em ataques. Aplica 2 Vulneravel ao jogar.",
+        description = "+3 dano em todas as cartas de ataque.",
         image = "assets/cards/attack/theRock.png",
         rarity = "rare", class = "warrior",
         tags = { "strength", "strike", "finisher" },

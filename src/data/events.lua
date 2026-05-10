@@ -40,12 +40,17 @@ Events.POOL = {
               apply = function(game)
                   local deck = game.runManager.currentRun.currentDeck
                   if #deck == 0 then return "Voce nao tem cartas no deck." end
-                  local picked = deck[love.math.random(#deck)]
-                  -- marca a carta com upgrade (flag persistente na run)
-                  game.runManager.currentRun.upgraded = game.runManager.currentRun.upgraded or {}
-                  game.runManager.currentRun.upgraded[picked] =
-                      (game.runManager.currentRun.upgraded[picked] or 0) + 1
-                  return "Carta '" .. picked .. "' forjada!"
+                  -- Tenta até 5 vezes pegar uma carta que ainda não bateu o cap;
+                  -- senão cancela com mensagem (evita silenciosamente "fritar" o evento).
+                  for _ = 1, 5 do
+                      local entry = deck[love.math.random(#deck)]
+                      local picked = type(entry) == "table" and entry.id or entry
+                      local lvl = game.runManager:upgradeCard(picked)
+                      if lvl then
+                          return "Carta '" .. picked .. "' forjada (+" .. lvl .. ")!"
+                      end
+                  end
+                  return "Todas as cartas escolhidas ja estao no maximo."
               end },
             { label = "Ignorar",
               apply = function() return "A bigorna apaga." end },

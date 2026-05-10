@@ -68,6 +68,10 @@ function MapScreen:new()
     instance.hoverIndex = nil
     instance.panelRects = {}
     instance.title = "Escolha o proximo caminho"
+    -- Fade-out animation: ao escolher node, outros ease alpha → 0.25 em 0.28s
+    -- antes do callback disparar (Balatro decision-feedback pattern).
+    instance.chosenIdx = nil
+    instance.dimOthers = 0  -- 0 (todos full) → 1 (não-escolhidos a 25%)
     return instance
 end
 
@@ -76,6 +80,8 @@ function MapScreen:show(nodes, onNodeChosen, titleOverride)
     self.nodes = nodes or {}
     self.onNodeChosen = onNodeChosen
     self.title = titleOverride or self.title
+    self.chosenIdx = nil
+    self.dimOthers = 0
     self:updateLayout()
 end
 
@@ -242,7 +248,7 @@ function MapScreen:draw()
     local tw = titleFont:getWidth(self.title)
     love.graphics.print(self.title, math.floor((sw - tw) / 2), math.floor(sh * 0.025))
 
-    -- Painéis
+    -- Painéis (com dim ease nos não-escolhidos quando dimOthers > 0)
     for i, r in ipairs(self.panelRects) do
         local node = self.nodes[i]
         if node then
@@ -280,6 +286,15 @@ function MapScreen:draw()
             end
 
             drawPanelOverlay(node, i, r, isHover)
+
+            -- Dim overlay sobre nodes NÃO-escolhidos enquanto a transição roda.
+            -- Desenhado por cima de tudo que esse panel pintou, simulando "o
+            -- jogador escolheu, esses caminhos ficam pra trás" (Balatro feel).
+            if self.chosenIdx and self.chosenIdx ~= i and (self.dimOthers or 0) > 0 then
+                love.graphics.setColor(0, 0, 0, 0.65 * self.dimOthers)
+                love.graphics.rectangle("fill", r.x, r.y, r.w, r.h)
+                love.graphics.setColor(1, 1, 1, 1)
+            end
         end
     end
 
@@ -296,12 +311,14 @@ end
 
 function MapScreen:mousepressed(x, y, button)
     if not self.visible or button ~= 1 then return end
+    -- Bloqueia segundo clique enquanto a transição de saída roda.
+    if self.chosenIdx then return true end
     for i, r in ipairs(self.panelRects) do
         if x >= r.x and x < r.x + r.w and y >= r.y and y < r.y + r.h then
             local node = self.nodes[i]
             if node and self.onNodeChosen then
                 Sfx.play("nodeSelect")
-                self.onNodeChosen(node, i)
+                self:_chooseNode(node, i)
             end
             return true
         end
@@ -309,15 +326,32 @@ function MapScreen:mousepressed(x, y, button)
     return false
 end
 
+-- Marca o node escolhido, ease alpha dos outros pra 0.25, e dispara callback
+-- após 0.28s. Replica decision-feedback Balatro: o jogador VÊ a escolha "afundar"
+-- antes do flow seguir, em vez de cortar abrupto.
+function MapScreen:_chooseNode(node, idx)
+    self.chosenIdx = idx
+    local EM = _G.EventManager
+    if EM and EM.parallelEase then
+        EM.parallelEase(self, "dimOthers", 1, 0.28, "smooth", "map_choose")
+        EM.parallel(0.30, function()
+            if self.onNodeChosen then self.onNodeChosen(node, idx) end
+        end, "map_choose")
+    else
+        if self.onNodeChosen then self.onNodeChosen(node, idx) end
+    end
+end
+
 function MapScreen:mousereleased(x, y, button) return false end
 
 function MapScreen:keypressed(key)
+    if self.chosenIdx then return end -- bloqueia keyboard durante transição
     if key == "1" or key == "2" or key == "3" or key == "4" then
         local i = tonumber(key)
         local node = self.nodes[i]
         if node and self.onNodeChosen then
             Sfx.play("nodeSelect")
-            self.onNodeChosen(node, i)
+            self:_chooseNode(node, i)
             return true
         end
     end

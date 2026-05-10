@@ -42,7 +42,8 @@ Sem esse sufixo, o pixellab gera com cores aleatórias e quebra a coerência sé
 
 | Nome | Quem usa | Composição |
 |---|---|---|
-| **menu.png** | `Menu:draw` | Splash do menu principal |
+| **menu.png** | `Menu:draw` | Grimoire em altar com velas, parede de pedra rachada |
+| **splash.png** | `BootScene.drawBackground` | Câmara ritual com runas douradas + feixe de luz central (Balatro splash) |
 | **gameplay.png** | Fallback do `SceneLayer` | Arena genérica de combate |
 | **classSelection.png** | `ClassSelectionScreen` | Tela de escolha de classe |
 | **cardReward.png** | `CardRewardScreen` | Recompensa de carta / shop |

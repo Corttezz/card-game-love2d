@@ -75,6 +75,16 @@ function EconomySystem:canAfford(amount)
     return self.currentGold >= amount
 end
 
+-- Ganho avulso (eventos, seal Gold, jokers que dão ouro). Não é battle gold —
+-- não compõe stats de "ganho por batalha".
+function EconomySystem:earnGold(amount, source)
+    amount = amount or 0
+    if amount <= 0 then return 0 end
+    self.currentGold = self.currentGold + amount
+    self.totalGoldEarned = self.totalGoldEarned + amount
+    return amount
+end
+
 -- Retorna estatísticas da economia
 function EconomySystem:getStats()
     return {

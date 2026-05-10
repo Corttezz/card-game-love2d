@@ -31,10 +31,12 @@ local PROCESSED_EFFECT_TYPES = {
     exhaust = true, innate = true, retain = true,
     -- triggers (jokers)
     on_attack_heal = true, on_defend_damage = true,
+    on_attack_debuff = true, on_turn_start_draw = true,
     regen_per_turn = true, damage_per_turn = true,
     heal_multiplier = true,
-    -- combo-aware (fase 3)
-    tag_observer_multiplier = true, tag_stack_bonus = true,
+    -- Removidos: tag_observer_multiplier / tag_stack_bonus (declarados em
+    -- versão anterior do plano combo-aware mas nunca implementados em
+    -- EffectSystem). Reintroduzir só quando algum joker realmente precisar.
 }
 
 function M.run()

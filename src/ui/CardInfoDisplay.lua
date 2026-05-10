@@ -130,23 +130,34 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
     
     panelHeight = panelHeight + padding * 2
     
-    -- Posiciona o painel ACIMA da carta (centralizado horizontalmente com offset para direita)
-    local panelX = x - panelWidth / 2 + 70  -- Offset de 30px para a direita
-    local panelY = y - panelHeight + 20
-    
-    -- Verifica se o painel cabe na tela e ajusta se necessário
-    
+    -- Smart positioning: tooltip ABAIXO da carta por default (Balatro-style),
+    -- com fallback ACIMA se cair fora da tela. Considera altura do price
+    -- medalhão (32px halo) pra não colidir.
+    --
+    -- Cardheight estimado pelas dimensões da carta (instância sabe).
+    local approxCardH = 0
+    if cardInstance.image then
+        approxCardH = cardInstance.image:getHeight() * (cardInstance.currentScale or 1)
+    end
+    local priceMedalSafezone = 8  -- spacing após bottom da carta
+    local panelX = x - panelWidth / 2 + 70  -- offset legado pra direita
+    local panelY = y + approxCardH + priceMedalSafezone
+
     -- Ajusta posição horizontal se o painel sair da tela
     if panelX < 10 then
         panelX = 10
     elseif panelX + panelWidth > screenWidth - 10 then
         panelX = screenWidth - panelWidth - 10
     end
-    
-    -- Ajusta posição vertical se o painel sair da tela
-    if panelY < 10 then
-        -- Se não cabe acima, coloca abaixo da carta
-        panelY = y + 100
+
+    -- Se não cabe abaixo (passa do bottom da tela), tenta acima.
+    local screenHeight = love.graphics.getHeight()
+    if panelY + panelHeight > screenHeight - 10 then
+        panelY = y - panelHeight - priceMedalSafezone
+        -- Se também não cabe acima, força no bottom da tela.
+        if panelY < 10 then
+            panelY = screenHeight - panelHeight - 10
+        end
     end
     
     -- Desenha o painel de fundo (estilo Balatro)

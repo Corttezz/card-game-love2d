@@ -23,7 +23,8 @@ type: project
    - **`MapManager`** (novo, Fase 4) — gera nodes tipados (BATTLE/ELITE/BOSS/SHOP/REST/EVENT)
    - **`ActSystem`** (novo, Fase 5) — curvas de HP/dano por ato/floor/nodeType + endless
    - `EffectSystem` (expandido) — strength/orbs/exhaust/innate/mystery/apply_buff
-   - `CombatAnimationSystem`, `EconomySystem`, `ShopSystem`, `AudioSystem`, `ParticleSystem`, `SmokeSystem`, `MessageSystem`, `DeckManager`, `CardDatabase`, `CardRegistry`
+   - **`CombatSequence`** (substituiu `CombatAnimationSystem` deletado em Fase 7) — combate via EventManager, não state machine ad-hoc
+   - `EconomySystem`, `ShopSystem` (singleton em `Game.shopSystem` desde Abril/2026), `AudioSystem`, `ParticleSystem`, `SmokeSystem`, `MessageSystem`, `DeckManager`, `CardDatabase`, `CardRegistry`
 5. **UI**: `HudManager` + `HudPlayerPanel` + `ManaOrb` + `PlayerBuffPills` + `EnemyHud` + `StatusPill` (shared) + `StatusTooltip`, `CardInfoDisplay`, `Theme`/`Palette`, `FontManager` (com `drawWithOutline`), `ImageCache`, `IconLoader` (com `computeScale`).
 6. **Components (telas)**: `Menu`, `ClassSelectionScreen`, `CardRewardScreen`, `MapScreen`, `RestScreen`, `EventScreen`, `TopBar`, `GameUI`, `Button`, `SettingsMenu`, `JokerSlot`, `CollectionScreen`.
 7. **Debug**: `src/core/Debug.lua` — logger condicional.
@@ -60,7 +61,7 @@ menu → classSelection → playing
 - `Game.onToggleSettings` — callback injetado por main.lua, chamado pelo ícone de config.
 - Jokers ativos desenhados em `main.lua:drawJokersAsCards()`.
 - `love.resize` invalida `FontManager.clearCache()` e chama `updatePositions` em todas as telas.
-- `RunManager.currentRun` agora tem `actNumber`, `floorInAct`, `endlessMode`, `pendingNodes`, `currentNode`, `mapHistory`, `upgraded`.
+- `RunManager.currentRun` tem `actNumber`, `floorInAct`, `endlessMode`, `pendingNodes`, `currentNode`, `mapHistory`. Campo `upgraded` está reservado mas **ainda não preenchido pelo código** — será populado pelo sistema de upgrade/forge planejado (Fase 3 do refactor Balatro).
 
 ## How to apply
 

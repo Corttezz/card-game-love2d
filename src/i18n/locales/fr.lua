@@ -2,6 +2,11 @@
 -- Francais locale.
 
 return {
+    boot = {
+        loading         = "CHARGEMENT...",
+        skip_hint       = "Appuyez sur une touche pour passer",
+    },
+
     menu = {
         title           = "GRIMOIRE",
         subtitle        = "Cartes arcanes. Choix fatals.",

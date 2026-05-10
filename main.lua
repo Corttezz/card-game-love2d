@@ -22,7 +22,8 @@ local ParticleSystem = require("src.systems.ParticleSystem")
 local EnemyRenderer = require("src.ui.EnemyRenderer")
 local EnemyHud = require("src.ui.EnemyHud")
 local SceneLayer = require("src.ui.SceneLayer")
-local AudioSystem = require("src.systems.AudioSystem")
+local AudioManager = require("engine.AudioManager")
+local SaveManager  = require("engine.SaveManager")
 local SceneBackground = require("src.ui.SceneBackground")
 local PixelBackground = require("src.ui.PixelBackground")
 local CRTShader = require("src.ui.CRTShader")
@@ -33,10 +34,19 @@ local Event = require("engine.Event")
 local DissolveShader = require("src.ui.DissolveShader")
 local FlashShader = require("src.ui.FlashShader")
 local BoosterShader = require("src.ui.BoosterShader")
+local FoilShader = require("src.ui.FoilShader")
+local PolychromeShader = require("src.ui.PolychromeShader")
+local NegativeShader = require("src.ui.NegativeShader")
+local Debug = require("src.core.Debug")
+local PackOpenScreen = require("components.PackOpenScreen")
+local BoosterPackSystem = require("src.systems.BoosterPackSystem")
+local FloatingText = require("src.ui.FloatingText")
+local RoundEvalScreen = require("components.RoundEvalScreen")
 local CardParticles = require("src.systems.CardParticles")
 local ScreenShake = require("src.systems.ScreenShake")
 local EndScreens = require("src.scenes.EndScreens")
 local GameplayScene = require("src.scenes.GameplayScene")
+local BootScene = require("src.scenes.BootScene")
 
 local game
 local menu
@@ -49,9 +59,11 @@ local topBar
 local mapScreen
 local restScreen
 local eventScreen
+local packOpenScreen
+local roundEvalScreen
 -- hoverCard agora é state interno da GameplayScene
 local playButton
-local currentState = "menu" -- menu, classSelection, playing, gameOver, victory, cardReward, collection, mapSelection
+local currentState = "boot" -- boot (splash), menu, classSelection, playing, gameOver, victory, cardReward, collection, mapSelection, rest, event
 
 -- Screen shake agora vive em src/systems/ScreenShake.lua.
 -- _G.triggerShake é registrado em love.load via ScreenShake.install() pra
@@ -63,6 +75,9 @@ local audioSystem -- Sistema de áudio
 -- Função para iniciar o jogo com classe selecionada
 local function startGame(classId)
     currentState = "playing"
+
+    -- Flash de transição (Fase 6.5) — passa pra batalha com piscada branca.
+    if FlashShader and FlashShader.trigger then FlashShader.trigger(0.5, 0.4) end
 
     -- Inicia corrida com a classe selecionada
     game:startNewRun(classId)
@@ -81,9 +96,11 @@ end
 local function returnToMenu()
     if currentState ~= "menu" then Sfx.play("menuClose") end
     currentState = "menu"
-    game = Game:new() -- Reseta o jogo
+    game = Game:new() -- Reseta o jogo (cria novo ShopSystem com pools resetados)
+    if cardRewardScreen then cardRewardScreen.shopSystem = game.shopSystem end
     gameUI:hide()
     menu:show()
+    if menu.enterWithIntro then menu:enterWithIntro() end
 end
 
 -- Forward-declares para mutual recursion map <-> reward
@@ -122,6 +139,11 @@ local function onNodeChosen(node, index)
     if t == BT.BATTLE or t == BT.ELITE or t == BT.MINI_BOSS or t == BT.BOSS then
         mapScreen:hide()
         currentState = "playing"
+        -- Flash branco na transição mapa → batalha (Fase 6.5). Boss/elite mais forte.
+        if FlashShader and FlashShader.trigger then
+            local intensity = (t == BT.BOSS or t == BT.MINI_BOSS) and 0.7 or 0.4
+            FlashShader.trigger(intensity, 0.45)
+        end
         game:nextPhase()
         applyActSmoke()
 
@@ -150,17 +172,18 @@ local function onNodeChosen(node, index)
         end)
 
     elseif t == BT.SHOP then
-        -- Reusa CardRewardScreen como shop. Atualmente ela ja oferece compra
-        -- com gold via ShopSystem.
+        -- Reusa CardRewardScreen como shop em modo "shop":
+        -- 4 cartas + 1 voucher + 2 packs + reroll exponencial + skip +3g.
         mapScreen:hide()
         currentState = "cardReward"
         cardRewardScreen:show(game,
             function(offer)
-                print("Shop: comprou", offer.name)
+                Debug.log("Shop: comprou", offer.name)
             end,
             function()
                 skipBattleAndShowMap()
-            end
+            end,
+            "shop"
         )
     else
         mapScreen:hide()
@@ -199,22 +222,44 @@ local function continueAfterReward()
     end
 end
 
--- Função para mostrar recompensas de cartas após vitória
-local function showCardRewards()
-    currentState = "cardReward"
+-- Forward-declares para mutual recursion roundEval ↔ cardReward.
+local showRoundEval
+local showCardRewards
 
-    -- enemyDeath ja tocou em Game:processCardInCombat no instante da morte.
-    -- Tocar aqui novamente causava o som duplicado.
+-- Mostra a tela de Round Eval (cash out estilo Balatro). Triggered após
+-- batalha vencida em modo run, antes da loja. Sources construídas por
+-- Game:_buildRoundEvalSources. Click "Resgatar" → showCardRewards.
+showRoundEval = function()
+    currentState = "roundEval"
+
+    if FlashShader and FlashShader.trigger then FlashShader.trigger(0.4, 0.35) end
     Sfx.play("battleVictory")
 
-    -- Usa a nova interface de loja integrada
+    local sources = game:_buildRoundEvalSources()
+    roundEvalScreen:show(game, sources, function()
+        showCardRewards()
+    end)
+end
+
+-- Função para mostrar recompensas de cartas após vitória
+showCardRewards = function()
+    currentState = "cardReward"
+
+    -- Flash branco curto pra transição playing → recompensa (Fase 6.5).
+    if FlashShader and FlashShader.trigger then FlashShader.trigger(0.4, 0.35) end
+
+    -- F12.2: battleVictory já toca em showRoundEval (antes deste fluxo). Remover
+    -- aqui evita som duplicado quando jogador clica Resgatar e abre cardReward.
+
+    -- Modo "rewards" pós-batalha: 3 cartas, sem reroll, skip = continuar.
     cardRewardScreen:show(game,
-        function(offer) -- onCardPurchased
-            print("Card purchased:", offer.name)
+        function(offer)
+            Debug.log("Card purchased:", offer.name)
         end,
-        function() -- onSkipped
+        function()
             continueAfterReward()
-        end
+        end,
+        "rewards"
     )
 end
 
@@ -315,6 +360,51 @@ function love.load(loveArgs)
         return
     end
 
+    -- Smoke test: upgrade pipeline + editions + seals (Fase 3 do refactor Balatro).
+    --   love . smoke_upgrades
+    if loveArgs and loveArgs[1] == "smoke_upgrades" then
+        local ok = require("tools.smoke_upgrades").run()
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
+    -- Smoke test: ShopSystem modes + booster packs + reroll (Fase 4 do refactor Balatro).
+    --   love . smoke_shop
+    if loveArgs and loveArgs[1] == "smoke_shop" then
+        local ok = require("tools.smoke_shop").run()
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
+    -- Smoke test: BoosterPackSystem + persistência por cópia (Fase 5).
+    --   love . smoke_packs
+    if loveArgs and loveArgs[1] == "smoke_packs" then
+        local ok = require("tools.smoke_packs").run()
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
+    -- Screenshot tool: pack opening cinemático (Fase 7). Phase 0..4.
+    --   love . screenshot_packopen 4
+    if loveArgs and loveArgs[1] == "screenshot_packopen" then
+        require("tools.screenshot_packopen").run(loveArgs[2])
+        return
+    end
+
+    -- Screenshot tool: shop em modo "shop" (Fase 8 do refactor Balatro).
+    --   love . screenshot_shop 1
+    if loveArgs and loveArgs[1] == "screenshot_shop" then
+        require("tools.screenshot_shop").run(loveArgs[2])
+        return
+    end
+
+    -- Screenshot tool: round eval / cash out (Fase 9). Phase 0..3.
+    --   love . screenshot_round_eval 3
+    if loveArgs and loveArgs[1] == "screenshot_round_eval" then
+        require("tools.screenshot_round_eval").run(loveArgs[2])
+        return
+    end
+
     -- Validacao do catalogo de cartas (Fase 7).
     --   love . validate_cards
     if loveArgs and loveArgs[1] == "validate_cards" then
@@ -332,7 +422,10 @@ function love.load(loveArgs)
         local okM = require("tools.smoke_map").run()
         local okA = require("tools.smoke_acts").run()
         local okD = require("tools.smoke_discard").run()
-        local ok = okT and okE and okC and okM and okA and okD
+        local okU = require("tools.smoke_upgrades").run()
+        local okS = require("tools.smoke_shop").run()
+        local okP = require("tools.smoke_packs").run()
+        local ok = okT and okE and okC and okM and okA and okD and okU and okS and okP
         print(ok and "\n== ALL GREEN ==" or "\n== SOME FAILED ==")
         love.event.quit(ok and 0 or 1)
         return
@@ -347,12 +440,31 @@ function love.load(loveArgs)
         love.window.setTitle(I18n.t("window_title"))
     end)
 
-    -- Inicializa o sistema de áudio primeiro
-    audioSystem = AudioSystem:new()
+    -- Carrega settings persistidos (volumes, fullscreen, CRT, locale).
+    -- Se nao existir, retorna defaults (DEFAULT_SETTINGS no SaveManager).
+    local persistedSettings = SaveManager.loadSettings()
+
+    -- Aplica fullscreen ANTES de inicializar UI (evita reflow desnecessário).
+    if persistedSettings.fullscreen then
+        love.window.setFullscreen(true)
+    end
+
+    -- Inicializa o sistema de áudio com volumes do save.
+    audioSystem = AudioManager:new({
+        masterVolume = persistedSettings.masterVolume,
+        musicVolume  = persistedSettings.musicVolume,
+        sfxVolume    = persistedSettings.sfxVolume,
+    })
     audioSystem:printStatus()
-    
+
     -- Torna o sistema de áudio global para outros módulos
     _G.audioSystem = audioSystem
+    _G.persistedSettings = persistedSettings
+
+    -- Settings runtime que outros sistemas leem (ScreenShake, Moveable.juice_up,
+    -- Card ambient_tilt). Bind direto em persistedSettings: mudanças no
+    -- SettingsMenu refletem aqui automaticamente sem proxy.
+    _G.gameSettings = persistedSettings
 
     -- Fila de eventos temporais (engine/EventManager). Sistemas podem
     -- agendar sequências via _G.EventManager.addEvent{...} sem passar ctx.
@@ -361,9 +473,14 @@ function love.load(loveArgs)
     
     -- Carrega música de fundo e sons se áudio estiver disponível
     if audioSystem:isAudioAvailable() then
-        -- Música de fundo desativada temporariamente — reativar descomentando as 2 linhas:
-        -- audioSystem:loadBackgroundMusic("audio/music.mp3")
-        -- audioSystem:playBackgroundMusic()
+        -- Música do menu (loop, streaming). Tocada via Sfx.playMusic("menuMusic")
+        -- após o splash terminar (ver components/Menu.lua:enterWithIntro).
+        audioSystem:loadSound("menuMusic", "audio/music.mp3", {
+            volume = 0.6,
+            group  = "music",
+            stream = true,
+            loop   = true,
+        })
 
         -- Carrega sons do jogo
         audioSystem:loadSound("hoverCard", "audio/hoverCard.wav", Config.Audio.HOVER_VOLUME)
@@ -400,6 +517,17 @@ function love.load(loveArgs)
         audioSystem:loadSound("actComplete", "audio/sfx/act-complete.mp3", Config.Audio.ACT_COMPLETE_VOLUME)
         audioSystem:loadSound("runVictory", "audio/sfx/run-victory.mp3", Config.Audio.RUN_VICTORY_VOLUME)
         audioSystem:loadSound("runDefeat", "audio/sfx/run-defeat.mp3", Config.Audio.RUN_DEFEAT_VOLUME)
+
+        -- F11.4: SFX dedicados pra Round Eval / Pack Open / Shop (substituem
+        -- usos repetidos de cardSelect/deckStart/purchaseConfirm).
+        audioSystem:loadSound("coinClink",     "audio/sfx/coin-clink.mp3",       0.55)
+        audioSystem:loadSound("coinTotalThud", "audio/sfx/coin-total-thud.mp3",  0.65)
+        audioSystem:loadSound("cashOutChime",  "audio/sfx/cash-out-chime.mp3",   0.75)
+        audioSystem:loadSound("packSealBreak", "audio/sfx/pack-seal-break.mp3",  0.70)
+        audioSystem:loadSound("packCardReveal","audio/sfx/pack-card-reveal.mp3", 0.55)
+        audioSystem:loadSound("packCardPick",  "audio/sfx/pack-card-pick.mp3",   0.65)
+        audioSystem:loadSound("shopOpen",      "audio/sfx/shop-open.mp3",        0.65)
+        audioSystem:loadSound("shopReroll",    "audio/sfx/shop-reroll.mp3",      0.60)
     end
     
     -- Inicializa o menu
@@ -438,8 +566,12 @@ function love.load(loveArgs)
     -- Inicializa a interface do jogo
     gameUI = GameUI:new()
 
-    -- Inicializa tela de recompensas
-    cardRewardScreen = CardRewardScreen:new()
+    -- Inicializa o jogo primeiro (donos dos sistemas singleton: ShopSystem,
+    -- EconomySystem, etc). Telas que dependem deles são criadas depois.
+    game = Game:new()
+
+    -- Inicializa tela de recompensas (recebe ShopSystem singleton do Game).
+    cardRewardScreen = CardRewardScreen:new(game.shopSystem)
 
     -- Inicializa tela de seleção de classe
     classSelectionScreen = ClassSelectionScreen:new()
@@ -460,8 +592,34 @@ function love.load(loveArgs)
     restScreen = RestScreen:new()
     eventScreen = EventScreen:new()
 
-    -- Inicializa o jogo (mas não inicia ainda)
-    game = Game:new()
+    -- Pack opening cinemático (Fase 5 do refactor Balatro). Overlay sobre
+    -- cardReward state — não é state próprio.
+    packOpenScreen = PackOpenScreen:new()
+
+    -- Round Eval / Cash Out screen (Fase 9 do refactor Balatro). State próprio
+    -- "roundEval" entre playing → cardReward em modo run.
+    roundEvalScreen = RoundEvalScreen:new()
+
+    -- API global pra ser chamada pela CardRewardScreen quando jogador compra
+    -- um booster pack. Padrão Balatro (UI_definitions.lua:1629+): a loja
+    -- desliza pra fora da tela enquanto o pack toma o foco. Quando o pack
+    -- fecha, a loja volta — sem backdrop preto sobreposto.
+    _G.openBoosterPack = function(pack, onComplete)
+        if not packOpenScreen or not packOpenScreen.show then return end
+
+        -- 1) Loja sai de cena.
+        if cardRewardScreen and cardRewardScreen.slideOut then
+            cardRewardScreen:slideOut()
+        end
+
+        -- 2) Pack abre passando callback que faz slideIn + onComplete original.
+        packOpenScreen:show(pack, function(selected)
+            if cardRewardScreen and cardRewardScreen.slideIn then
+                cardRewardScreen:slideIn()
+            end
+            if onComplete then onComplete(selected) end
+        end)
+    end
 
     -- Configura a barra superior com o jogo
     topBar:setGame(game)
@@ -473,12 +631,17 @@ function love.load(loveArgs)
     -- Pós-processamento CRT (scanlines, wave, aberração cromática). Balatro-style.
     -- Settings → "CRT Shader" liga/desliga via CRTShader.toggle().
     CRTShader.load()
+    if persistedSettings.crtShader == false then CRTShader.setEnabled(false) end
 
-    -- FX pipeline portado do Balatro (ver memory/card_fx_pipeline.md):
-    -- Dissolve para exhaust/destroy, Flash pra impactos, Booster pra seals.
+    -- FX pipeline (shaders próprios, copyright-safe — Fase 2 do refactor Balatro).
+    -- Dissolve: exhaust/destroy. Flash: impactos. Booster: pacotes selados.
+    -- Foil/Polychrome/Negative: editions de carta (Fase 3).
     DissolveShader.load()
     FlashShader.load()
     BoosterShader.load()
+    FoilShader.load()
+    PolychromeShader.load()
+    NegativeShader.load()
 
     -- Screen shake como sistema → registra _G.triggerShake pra back-compat.
     ScreenShake.install()
@@ -524,12 +687,24 @@ function love.load(loveArgs)
         setCurrentState = function(name) currentState = name end,
         onPhaseCleared  = function()
             if game:isInRunMode() then
-                showCardRewards()
+                -- Run mode: passa por Round Eval (cash out) primeiro;
+                -- ao Resgatar, cai em showCardRewards.
+                showRoundEval()
             else
                 game:nextPhase()
             end
         end,
         onReturnToMenu = function() returnToMenu() end,
+    })
+
+    -- Inicia BootScene (splash/loading). Quando termina, troca pra menu e
+    -- dispara intro animado + música.
+    BootScene.init({
+        onComplete = function()
+            currentState = "menu"
+            menu:show()
+            if menu.enterWithIntro then menu:enterWithIntro() end
+        end,
     })
 end
 
@@ -540,12 +715,16 @@ function love.update(dt)
     -- Infra global (antes do dispatch de estado): event queue, particles,
     -- flash fade, screen shake decay.
     EventManager.update(dt)
+    FloatingText.update(dt)
+    if audioSystem then audioSystem:update(dt) end
     CardParticles.update(dt)
     FlashShader.update(dt)
     ScreenShake.update(dt)
 
     -- Dispatch por estado.
-    if currentState == "menu" then
+    if currentState == "boot" then
+        BootScene.update(dt)
+    elseif currentState == "menu" then
         menu:update(dt)
     elseif currentState == "playing" then
         GameplayScene.update(dt)
@@ -553,6 +732,11 @@ function love.update(dt)
         classSelectionScreen:update(dt)
     elseif currentState == "cardReward" then
         cardRewardScreen:update(dt)
+        if packOpenScreen and packOpenScreen:isVisible() then
+            packOpenScreen:update(dt)
+        end
+    elseif currentState == "roundEval" then
+        roundEvalScreen:update(dt)
     elseif currentState == "mapSelection" then
         mapScreen:update(dt)
     elseif currentState == "rest" then
@@ -575,7 +759,9 @@ function love.draw()
     -- Screen shake (sistema dedicado). Pair com .pop() no fim do love.draw.
     ScreenShake.push()
 
-    if currentState == "menu" then
+    if currentState == "boot" then
+        BootScene.draw()
+    elseif currentState == "menu" then
         menu:draw()
     elseif currentState == "classSelection" then
         classSelectionScreen:draw()
@@ -584,6 +770,13 @@ function love.draw()
     elseif currentState == "cardReward" then
         GameplayScene.draw() -- Desenha o jogo por trás
         cardRewardScreen:draw() -- Overlay da recompensa
+        -- Pack opening (Fase 5) é overlay SOBRE a loja — desenha por último.
+        if packOpenScreen and packOpenScreen:isVisible() then
+            packOpenScreen:draw()
+        end
+    elseif currentState == "roundEval" then
+        GameplayScene.draw()       -- gameplay congelado por trás
+        roundEvalScreen:draw()     -- overlay de cash out
     elseif currentState == "mapSelection" then
         GameplayScene.draw()
         mapScreen:draw()
@@ -601,10 +794,27 @@ function love.draw()
         EndScreens.drawVictory(game)
     end
 
+    -- HUD top bar SEMPRE visível em estados gameplay-adjacentes (Balatro pattern:
+    -- moeda + deck count visíveis em loja, mapa, rest, event, roundEval).
+    -- Desenhado APÓS overlays pra não ser dimmed pelos backdrops dessas telas.
+    -- topBar:draw() já checa self.game e self.visible internamente.
+    if topBar and (currentState == "playing"
+                   or currentState == "cardReward"
+                   or currentState == "roundEval"
+                   or currentState == "mapSelection"
+                   or currentState == "rest"
+                   or currentState == "event") then
+        topBar:draw()
+    end
+
     -- Partículas atachadas a cartas (dissolve/materialize/explode).
     -- Desenhadas APÓS as cartas mas DENTRO do shake + CRT scene, assim
     -- seguem o warp do pós-processamento.
     CardParticles.draw()
+
+    -- Floating text (números de dano/cura/ouro). Acima das partículas, mas
+    -- dentro do shake pra acompanhar o jiggle.
+    FloatingText.draw()
 
     -- Flash overlay fullscreen (se FlashShader.trigger foi chamado).
     FlashShader.draw()
@@ -627,13 +837,28 @@ end
 -- ficam congelados nas dimensões do boot.
 function love.resize(w, h)
     FontManager.clearCache()
+    -- Cada overlay/menu tem chance de recalcular layout. Padrão obrigatório:
+    -- TODA tela com positions cacheadas (cardPositions, button rects, panel
+    -- bounds) DEVE expor resize() ou updateLayout() e tratar o caso "ainda
+    -- não visível" silenciosamente. Doc: memory/resize_pattern.md.
     if menu and menu.updatePositions then menu:updatePositions() end
     if classSelectionScreen and classSelectionScreen.updatePositions then
         classSelectionScreen:updatePositions()
     end
     if cardRewardScreen and cardRewardScreen.updateLayout then
         cardRewardScreen:updateLayout()
+        -- Rebuild buttons pra refletir as novas cardPositions imediatamente
+        -- (sem precisar esperar o detector de resize no update()).
+        if #(cardRewardScreen.shopOffers or {}) > 0 then
+            if cardRewardScreen.createCardInstances then cardRewardScreen:createCardInstances() end
+            if cardRewardScreen.createOfferButtons then cardRewardScreen:createOfferButtons() end
+        end
     end
+    if packOpenScreen and packOpenScreen.resize then packOpenScreen:resize() end
+    if restScreen and restScreen.resize then restScreen:resize() end
+    if eventScreen and eventScreen.resize then eventScreen:resize() end
+    if roundEvalScreen and roundEvalScreen.resize then roundEvalScreen:resize() end
+    if collectionScreen and collectionScreen.resize then collectionScreen:resize() end
     if mapScreen and mapScreen.resize then mapScreen:resize() end
     if topBar and topBar.resize then topBar:resize() end
     if settingsMenu and settingsMenu.rebuild and settingsMenu.visible then
@@ -643,9 +868,25 @@ function love.resize(w, h)
 end
 
 function love.keypressed(key)
+    -- Boot/splash: qualquer tecla pula direto pro menu.
+    if currentState == "boot" then
+        BootScene.keypressed(key)
+        return
+    end
+
     -- Settings overlay consome teclas primeiro (modal)
     if settingsMenu and settingsMenu.keypressed and settingsMenu:isVisible() then
         if settingsMenu:keypressed(key) then return end
+    end
+
+    -- Pack opening absorve teclas (escape fecha) enquanto visível.
+    if packOpenScreen and packOpenScreen:isVisible() then
+        if packOpenScreen:keypressed(key) then return end
+    end
+
+    -- Round Eval absorve teclas (enter/space = Resgatar) enquanto visível.
+    if roundEvalScreen and roundEvalScreen:isVisible() then
+        if roundEvalScreen:keypressed(key) then return end
     end
 
     -- Collection absorve teclas quando visível
@@ -655,6 +896,7 @@ function love.keypressed(key)
             currentState = "menu"
             collectionScreen:hide()
             menu:show()
+            if menu.enterWithIntro then menu:enterWithIntro() end
         end
         return
     end
@@ -714,7 +956,12 @@ function love.mousereleased(x, y, button)
     elseif currentState == "playing" then
         GameplayScene.mousereleased(x, y, button)
     elseif currentState == "cardReward" then
+        if packOpenScreen and packOpenScreen:isVisible() then
+            if packOpenScreen:mousereleased(x, y, button) then return end
+        end
         cardRewardScreen:mousereleased(x, y, button)
+    elseif currentState == "roundEval" then
+        roundEvalScreen:mousereleased(x, y, button)
     elseif currentState == "mapSelection" then
         mapScreen:mousereleased(x, y, button)
     elseif currentState == "rest" then
@@ -727,6 +974,12 @@ function love.mousereleased(x, y, button)
 end
 
 function love.mousepressed(x, y, button)
+    -- Boot/splash: clique pula direto pro menu.
+    if currentState == "boot" then
+        BootScene.mousepressed(x, y, button)
+        return
+    end
+
     -- Settings modal consome primeiro
     if settingsMenu and settingsMenu:isVisible() then
         if settingsMenu:mousepressed(x, y, button) then return end
@@ -739,7 +992,13 @@ function love.mousepressed(x, y, button)
     elseif currentState == "playing" then
         GameplayScene.mousepressed(x, y, button)
     elseif currentState == "cardReward" then
+        -- Pack overlay tem prioridade — consome cliques se visível.
+        if packOpenScreen and packOpenScreen:isVisible() then
+            if packOpenScreen:mousepressed(x, y, button) then return end
+        end
         cardRewardScreen:mousepressed(x, y, button)
+    elseif currentState == "roundEval" then
+        roundEvalScreen:mousepressed(x, y, button)
     elseif currentState == "mapSelection" then
         mapScreen:mousepressed(x, y, button)
     elseif currentState == "rest" then

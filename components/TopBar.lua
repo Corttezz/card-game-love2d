@@ -60,7 +60,17 @@ function TopBar:update(dt, game)
     -- suave em vez de saltar quando ganhar/gastar ouro.
     local g = game or self.game
     if g and g.economySystem then
-        ValueEasing.tick(self.disp, "gold", g.economySystem.currentGold or 0, dt, 6)
+        local realGold = g.economySystem.currentGold or 0
+        -- Detecta delta de gold (ganho/gasto) e dispara micro-jiggle Balatro-style
+        -- (engine/ui.lua:990 pattern: cada evento monetário empurra o accumulator).
+        -- Skip primeiro frame onde _lastGold é nil pra não jigglar no boot.
+        if self._lastGold and self._lastGold ~= realGold and _G.jiggleScreen then
+            local delta = math.abs(realGold - self._lastGold)
+            local amt = math.min(0.6, 0.05 + delta * 0.02) -- cap pra não enjoar em ganhos grandes
+            _G.jiggleScreen(amt)
+        end
+        self._lastGold = realGold
+        ValueEasing.tick(self.disp, "gold", realGold, dt, 6)
     end
 end
 
@@ -96,7 +106,15 @@ function TopBar:drawGameInfo()
         local coinY = centerY - 22
 
         love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.draw(self.coinIcon, coinX, coinY, 0, iconScale, iconScale)
+        -- Ambient pulse Balatro-style (engine/text.lua:228 pulse pattern):
+        -- ícone ondula scale ±3% em sin lento (0.7 rad/s) pra não ficar estático.
+        -- Reduced motion zera a oscilação.
+        local rm = _G.gameSettings and _G.gameSettings.reducedMotion
+        local pulse = rm and 1 or (1 + math.sin(love.timer.getTime() * 0.7) * 0.03)
+        local cw, ch = self.coinIcon:getWidth(), self.coinIcon:getHeight()
+        local scaledIcon = iconScale * pulse
+        love.graphics.draw(self.coinIcon, coinX + cw * iconScale * 0.5, coinY + ch * iconScale * 0.5, 0,
+                           scaledIcon, scaledIcon, cw / 2, ch / 2)
 
         Palette.set(Palette.AGED_GOLD_LIGHT)
         love.graphics.setFont(FontManager.getFont(12))

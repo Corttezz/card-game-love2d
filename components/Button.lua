@@ -83,7 +83,16 @@ function Button:update(dt)
         Debug.trace("Button '" .. (self.text or "?") .. "' hover -> " .. tostring(self.hover))
         if self.hover then
             self._hoverTime = 0
-            Sfx.play("menuHover")
+            -- Variant "invisible" = button invisível sobre uma carta (CardRewardScreen,
+            -- pack open). NÃO toca menuHover — a carta já toca hoverCard, evita som duplo.
+            if self.variant ~= "invisible" then
+                -- Pitch random pra evitar fadiga auditiva ao hoverar vários botões
+                -- em sequência (Balatro engine/text.lua:201 pattern).
+                Sfx.playWithVariation("menuHover", 1.0, 0.12)
+            end
+            -- Hover-enter juice (Balatro card.lua:4307): kick sutil de scale
+            -- pra carta/botão "saltar" ao mouse passar.
+            Moveable.juice_up(self, 0.05, 0.03)
         end
     end
     if self.hover then self._hoverTime = (self._hoverTime or 0) + (dt or 0) end
@@ -103,7 +112,66 @@ end
 -- Retorna {fill, fillHi, fillLo, border, text, textShadow, shadow} pro estado atual.
 --   fillHi = emboss top/left (highlight)
 --   fillLo = emboss bottom/right (sombra interna)
+-- ColorScheme override: Button:setColorScheme("green" | "red") aplica paleta
+-- alternativa pra mini-buttons (Buy verde / Cancel vermelho Balatro-style).
+-- Mantém comportamento de hover/pressed mas troca fill/border/text por cores
+-- semânticas em vez do dourado padrão.
+local SCHEMES = {
+    green = {
+        fill       = {0.20, 0.55, 0.25, 1},     -- verde grimório
+        fillHi     = {0.45, 0.78, 0.40, 1},
+        fillLo     = {0.10, 0.32, 0.15, 1},
+        border     = {0.05, 0.18, 0.08, 1},
+        text       = {1, 1, 1, 1},
+        textShadow = {0.05, 0.18, 0.08, 1},
+        shadow     = {0, 0, 0, 0.55},
+        hoverFill  = {0.30, 0.72, 0.35, 1},
+    },
+    red = {
+        fill       = {0.55, 0.18, 0.18, 1},     -- crimson
+        fillHi     = {0.78, 0.32, 0.32, 1},
+        fillLo     = {0.32, 0.06, 0.06, 1},
+        border     = {0.18, 0.04, 0.04, 1},
+        text       = {1, 1, 1, 1},
+        textShadow = {0.18, 0.04, 0.04, 1},
+        shadow     = {0, 0, 0, 0.55},
+        hoverFill  = {0.72, 0.28, 0.28, 1},
+    },
+}
+
 local function stateColors(btn)
+    -- Color scheme override (verde/vermelho mini-buttons).
+    if btn.colorScheme and SCHEMES[btn.colorScheme] then
+        local sc = SCHEMES[btn.colorScheme]
+        if btn.disabled or btn._consumed then
+            return {
+                fill = Palette.BUTTON_FILL_DISABLED,
+                fillHi = Palette.STEEL_LIGHT, fillLo = Palette.STEEL,
+                border = Palette.BUTTON_OUTLINE_DISABLED,
+                text = Palette.BUTTON_TEXT_DISABLED,
+                textShadow = nil, shadow = sc.shadow,
+            }
+        elseif btn.pressed and btn.hover then
+            return {
+                fill = sc.fillLo, fillHi = sc.fill, fillLo = sc.fillHi,
+                border = sc.border, text = sc.text,
+                textShadow = sc.textShadow, shadow = nil,
+            }
+        elseif btn.hover then
+            return {
+                fill = sc.hoverFill, fillHi = sc.fillHi, fillLo = sc.fillLo,
+                border = sc.border, text = sc.text,
+                textShadow = sc.textShadow, shadow = sc.shadow,
+            }
+        else
+            return {
+                fill = sc.fill, fillHi = sc.fillHi, fillLo = sc.fillLo,
+                border = sc.border, text = sc.text,
+                textShadow = sc.textShadow, shadow = sc.shadow,
+            }
+        end
+    end
+
     if btn.disabled or btn._consumed then
         return {
             fill       = Palette.BUTTON_FILL_DISABLED,
@@ -210,10 +278,23 @@ function Button:_drawClean()
     end
 
     -- ===== SHADOW (drop shadow abaixo + direita) =====
-    if c.shadow and not self.disabled then
-        local sdx, sdy = 3, 3
-        PixelCanvas.rectRounded(x + sdx, y + sdy, w, h, r, { c.shadow[1], c.shadow[2], c.shadow[3], 0.45 })
+    -- Parallax: shadow distance encolhe quando pressed (Balatro engine/ui.lua:683-686).
+    -- Default 3,3; press com hover → 0,0 (visualmente "afunda" no fundo).
+    -- O fill do botão também se desloca +1,+1 pra completar a sensação de press.
+    -- Aplicamos x/y nudge ao botão inteiro (fill+emboss+border+icon+text), mas
+    -- mantemos a sombra nas coords originais — assim a sombra "fica pra trás"
+    -- enquanto o botão afunda.
+    local pressing = self.pressed and self.hover and not self.disabled
+    local shadowDist = pressing and 0 or 3
+    local fillNudge = pressing and 1 or 0
+
+    if c.shadow and not self.disabled and shadowDist > 0 then
+        PixelCanvas.rectRounded(x + shadowDist, y + shadowDist, w, h, r, { c.shadow[1], c.shadow[2], c.shadow[3], 0.45 })
     end
+
+    -- Aplica nudge a TODO o resto do botão somando ao x/y locais.
+    x = x + fillNudge
+    y = y + fillNudge
 
     -- ===== FILL principal =====
     PixelCanvas.rectRounded(x, y, w, h, r, c.fill)
@@ -375,33 +456,50 @@ end
 
 -- ============ input ============
 
+-- Retorna true quando o button consumiu o clique (pressed=true). Callers
+-- usam esse return pra short-circuit e EVITAR fallthrough indesejado (ex:
+-- CardRewardScreen mousepressed limpava selection se nada consumisse — sem
+-- esse return, click no buy mini-button caía na desseleção e o onClick
+-- nunca disparava no mousereleased subsequente).
 function Button:mousepressed(mx, my, buttonId)
-    if not self.visible or self.disabled or self._consumed then return end
+    if not self.visible or self.disabled or self._consumed then return false end
     if buttonId == 1 and self.hover then
         self.pressed = true
+        return true
     end
+    return false
 end
 
 function Button:mousereleased(mx, my, buttonId)
-    if not self.visible or self.disabled or self._consumed then return end
+    if not self.visible or self.disabled or self._consumed then return false end
     if buttonId == 1 and self.pressed then
         if self.onClick then
             Debug.log("Button clicked: " .. (self.text or "?"))
-            Sfx.play("buttonClick")
+            Sfx.playWithVariation("buttonClick", 1.0, 0.08)
             Moveable.juice_up(self, 0.22, 0.05)
+            -- Jiggle global no click (Balatro engine/ui.lua:990): empurra o
+            -- screen-shake accumulator pra leve tremor de feedback tátil.
+            if _G.jiggleScreen then _G.jiggleScreen(0.3) end
             if self.onePress then self._consumed = true end
             self.onClick()
         else
             Debug.warn("Button sem onClick: " .. (self.text or "?"))
         end
+        self.pressed = false
+        return true
     end
     self.pressed = false
+    return false
 end
 
 -- ============ API ============
 
 function Button:setEnabled(enabled)  self.disabled = not enabled end
 function Button:setVisible(visible)  self.visible = visible end
+-- Aplica esquema de cores semântico ("green" | "red" | nil = padrão dourado).
+-- Usado em mini-buttons compactos onde a cor comunica a ação (Buy = verde,
+-- Cancel = vermelho).
+function Button:setColorScheme(scheme) self.colorScheme = scheme end
 function Button:setText(newText)     self.text = newText or "" end
 function Button:setPosition(nx, ny)
     self.x = math.floor(nx)

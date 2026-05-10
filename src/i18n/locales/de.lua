@@ -2,6 +2,11 @@
 -- Deutsch locale. Alguns labels abreviados pra caber no botao pixel.
 
 return {
+    boot = {
+        loading         = "LADEN...",
+        skip_hint       = "Beliebige Taste zum Uberspringen",
+    },
+
     menu = {
         title           = "GRIMOIRE",
         subtitle        = "Arkane Karten. Fatale Wahlen.",

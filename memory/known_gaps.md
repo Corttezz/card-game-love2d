@@ -26,7 +26,7 @@ type: project
 
 **6. `Menu:onAboutClick`** continua placeholder.
 
-**7. `CardRewardScreen` ainda tem muitos `print` de debug.**
+**7. ~~`CardRewardScreen` ainda tem muitos `print` de debug~~** — ✅ resolvido na Fase 0 do refactor Balatro (Abril/2026). Prints viraram `Debug.log/trace/err`.
 
 **8. HUD legacy FULL CLEANUP** — ✅ `HudPlayerPanel.lua` reescrito flat/sepia; ✅ `HudEnemyPanel.lua` removido; ✅ `ManaOrb.lua` adicionado; ✅ `StatusPill.lua` extraído (fonte única); ✅ `HudPanel.lua` + `VisualEffects.lua` removidos no refactor Abril/2026. **Pendente:** `CardInfoDisplay.lua`, `MessageSystem.lua` ainda com estilo visual legacy (gradients/glow).
 
@@ -40,13 +40,36 @@ type: project
 
 **13. Efeitos de combo que dependem de orbs** — `channel_burst` pop o mais antigo. Se player não tem orbs, é no-op silencioso. Aceitável.
 
-**14. Joker draw_extra (joker_004) virou damage_bonus** — mecânica de "compra extra por turno" não tem hook próprio ainda (`on_turn_start_draw`). Por ora jokers que tinham `draw_extra` foram convertidos para `draw_cards` ou `damage_bonus`.
+**14. ~~Joker draw_extra (joker_004) virou damage_bonus~~** — ✅ resolvido na auditoria de gameplay (Abril/2026). Trigger `on_turn_start_draw` implementado em `EffectSystem:processTriggerEffect`; `joker_004` "Bobo da Corte" e `mage_creative_ai` "IA Criativa" agora compram +1 carta por turno conforme descrição.
 
-**15. `rogue_envenom` aproximado** — no design, deveria aplicar 1 poison por ataque via trigger `on_attack_debuff`. Trigger ainda não existe; efeito mapeado como `damage_bonus +1` temporariamente.
+**15. ~~`rogue_envenom` aproximado~~** — ✅ resolvido na auditoria de gameplay (Abril/2026). Trigger `on_attack_debuff` implementado; `rogue_envenom` agora aplica 1 stack de poison (duration 2) a cada ataque conforme descrição.
 
 **16. Ícones de mini_boss e boss** — `NODE_META` usa `skull_crowned` pra ambos. Visualmente idênticos; diferenciar via cor/label.
 
+**17. Editions/Seals existem mas não há fonte de spawn ainda** — Fase 3 implementou pipeline completo (`card.edition`/`card.seal` + shaders + gameplay + render). Falta: tarots/spectrals que aplicam editions, e booster packs Standard que sorteiam edition+seal aleatoriamente. Será fechado na Fase 5 (Booster Pack opening).
+
+**18. Forge mostra IDs crus** — `RestScreen.enterForgeMode` lista `warrior_strike +1` em vez de `Golpe +1`. Botões precisam de `I18n.cardName({id=cardId})` lookup. (Era item 10, agora destacado pra fechar quando refinar UX da forge cinematic em Fase 3.4 polish.)
+
+**19. Forge não tem cinemática (dissolve+materialize)** — funcionalmente upgrada via `RunManager:upgradeCard`, mas a animação Balatro-style (carta entra → +N flutua → juice + sfx) ainda não está implementada. Reutilizar `CardRevealSequence`.
+
+**20. Tarots/Spectrals/Planets ainda não existem** — Fase 5 adicionou `BoosterPackSystem` que gera Standard (cards normais + edition/seal) e Buffoon (jokers). Arcana/Celestial/Spectral packs caem em fallback genérico hoje. Fica pendente: (a) `src/data/cards/tarots.lua` com 6+ tarots que aplicam edition/seal em carta selecionada, (b) inventory em `run.tarots` (max 2), (c) UI de "usar tarot" que pede pra escolher carta do deck. Quando feito, atualizar `BoosterPackSystem.poolForKind` pra Arcana → tarots, Celestial → planets, Spectral → spectrals.
+
+**21. Shop polish remanescente após F8 reformulation** — Layout principal está fiel ao Balatro source (2 rows: cards | vouchers+packs, reroll em column à esquerda). Polish ainda faltando:
+- Voucher mostra `$G` em vez de `$6` quando localize cifrão pega errado. Verificar `I18n.t("$")` ou trocar pra hardcoded "$".
+- Nomes dos packs ("Pacote Espectral" etc) ficam flutuando entre rows sem fundo de slot — desenhar background sutil no slot do pack.
+- Sleeves PixelLab estão um pouco pequenos comparados ao voucher card. Aumentar scale ou diminuir voucher.
+- Skip button "Pular" está embaixo no centro mas seria mais Balatro ele junto do reroll na column esquerda (button stack vertical: Next Round vermelho + Reroll verde). "Next Round" do Balatro é o equivalente ao "Continuar/Pular" nosso.
+
 ---
+
+## Resolvidos pela auditoria de gameplay (Abril/2026)
+
+- ✅ **Joker architecture**: jokers nunca mais entram em `currentDeck`/hand. Adquiridos via novo `Game:addJokerToRun` → `runManager.currentRun.jokers` (separado de `currentDeck`, padrão Balatro G.jokers). `addCardToRun` bifurca por `cardData.type`. Migration runtime em `RunManager:_migrateJokersFromDeck` cuida de saves antigos. Bug "mesmo joker jogado várias vezes" resolvido.
+- ✅ **Strength/Dexterity dupla aplicação**: `applyCardEffects` antes somava `player.strength` quando o card declarava `strength_scaling`, E `Game:processCardInCombat` somava de novo via `statBonus`. Removidos os branches de `applyCardEffects`; o effect agora é flag-only (semântica para tooltips/validador).
+- ✅ **Tipos de efeito órfãos**: `tag_observer_multiplier`/`tag_stack_bonus` removidos do `validate_cards.lua` (declarados em fase futura mas nunca implementados).
+- ✅ **Triggers em cartas non-joker**: `applyTriggerEffects` agora também itera `context.sourceCard.effects` além de jokerSlots. Permite `warrior_flame_barrier` com `on_defend_damage` realmente refletir, sem precisar virar joker.
+- ✅ **Cartas que mentiam**: `joker_004` (no-op), `warrior_flame_barrier` (effects vazio mas descrição prometia reflect), `mage_creative_ai` (instant draw em joker), `rogue_envenom` (damage_bonus em vez de poison). Todas honram a descrição agora.
+- ✅ **Stat outliers**: `rogue_bouncing_flask` (atk 3→6), `rogue_venom_fang` (3→5), `mage_zap` (5→6), `mage_blizzard` (cost 1→2), `mage_meteor_strike` (atk 20→24).
 
 ## Resolvidos pelo redesign (fases 1-7)
 

@@ -6,8 +6,8 @@ return {
     mage_zap = {
         id = "mage_zap", name = "Descarga",
         type = "attack", subtype = "common",
-        cost = 1, attack = 5, defense = 0,
-        description = "5 de dano. Canaliza 1 Raio (3 pot).",
+        cost = 1, attack = 6, defense = 0,
+        description = "6 de dano. Canaliza 1 Raio (3 pot).",
         image = "assets/cards/attack/theRock.png",
         rarity = "common", class = "mage",
         tags = { "strike", "channel", "lightning" },
@@ -139,7 +139,7 @@ return {
     mage_blizzard = {
         id = "mage_blizzard", name = "Nevasca",
         type = "attack", subtype = "skill",
-        cost = 1, attack = 0, defense = 0,
+        cost = 2, attack = 0, defense = 0,
         description = "Dano magico 10. Canaliza Gelo.",
         image = "assets/cards/attack/theRock.png",
         rarity = "uncommon", class = "mage",
@@ -273,7 +273,7 @@ return {
         rarity = "rare", class = "mage",
         tags = { "draw", "cycle", "magic" },
         effects = {
-            { type = "draw_cards", value = 1 },
+            { type = "on_turn_start_draw", value = 1, description = "+1 carta por turno" },
         },
     },
     mage_echo_form = {
@@ -330,8 +330,8 @@ return {
     mage_meteor_strike = {
         id = "mage_meteor_strike", name = "Chuva de Meteoros",
         type = "attack", subtype = "skill",
-        cost = 3, attack = 20, defense = 0,
-        description = "20 de dano. Canaliza 3 orbs de Fogo.",
+        cost = 3, attack = 24, defense = 0,
+        description = "24 de dano. Canaliza 3 orbs de Fogo.",
         image = "assets/cards/attack/theRock.png",
         rarity = "rare", class = "mage",
         tags = { "strike", "aoe", "fire", "channel", "finisher" },

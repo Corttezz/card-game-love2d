@@ -107,8 +107,12 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
 
         -- ========== Fase 2: impacto ==========
         local impactAt = leaveAt + self.timings.preFlight + self.timings.flightDuration
+        local pitchIdx = idx  -- captura pra closure (combo cascade pitch)
         scheduleAt(impactAt, function()
-            self:_playImpactSfx(card)
+            -- Pitch crescente por carta no combo (Fase 6.2). 1ª carta = 0.95,
+            -- cada próxima +0.06 → última carta de combo grande mais aguda. Cap em 1.4.
+            local pitch = math.min(1.4, 0.95 + (pitchIdx - 1) * 0.06)
+            self:_playImpactSfx(card, pitch)
             self:_spawnImpactParticles(card, targetX + cardW / 2, targetY + cardH / 2)
             local result = onCardProcessed and onCardProcessed(card) or {}
             self:_handleResult(card, result, targetX + cardW / 2, targetY + cardH / 2)
@@ -163,36 +167,35 @@ end
 -- IMPACT HANDLERS
 -- ============================================================================
 
-function CombatSequence:_playImpactSfx(card)
+function CombatSequence:_playImpactSfx(card, pitch)
     local t = card.type
+    local opts = pitch and { pitch = pitch } or nil
     if t == "attack" then
-        Sfx.play("swordSound")
+        Sfx.play("swordSound", opts)
     elseif t == "defense" then
-        Sfx.play("armorSound")
+        Sfx.play("armorSound", opts)
     elseif t == "joker" then
-        Sfx.play("jokerActivate")
+        Sfx.play("jokerActivate", opts)
     else
-        Sfx.play("cardSelect")
+        Sfx.play("cardSelect", opts)
     end
 end
 
 function CombatSequence:_spawnImpactParticles(card, cx, cy)
     local ok, ParticleSystem = pcall(require, "src.systems.ParticleSystem")
     if not ok or not ParticleSystem then return end
-    local PM = ParticleSystem.Manager
-    if not PM then return end
 
+    -- Presets já registram a instância no ParticlesManager (spawn). Caller só
+    -- precisa invocar — o retorno é a instância pra opcional :fade/:remove.
     local t = card.type
-    if t == "attack" and ParticleSystem.Presets.DAMAGE_EFFECT then
-        PM:addEmitter(ParticleSystem.Presets.DAMAGE_EFFECT(cx, cy))
-    elseif t == "defense" and ParticleSystem.Presets.CARD_PLAYED then
-        local e = ParticleSystem.Presets.CARD_PLAYED(cx, cy)
-        e.particleColor = {0.4, 0.7, 1.0, 1}
-        e.spread = math.pi * 2
-        e.direction = 0
-        PM:addEmitter(e)
-    elseif t == "joker" and ParticleSystem.Presets.JOKER_ACTIVATED then
-        PM:addEmitter(ParticleSystem.Presets.JOKER_ACTIVATED(cx, cy))
+    if t == "attack" then
+        ParticleSystem.Presets.DAMAGE_EFFECT(cx, cy)
+    elseif t == "defense" then
+        local p = ParticleSystem.Presets.CARD_PLAYED(cx, cy)
+        -- Tinge de azul claro pra defesa (override da paleta padrão).
+        if p then p.colours = { {0.4, 0.7, 1.0, 1} } end
+    elseif t == "joker" then
+        ParticleSystem.Presets.JOKER_ACTIVATED(cx, cy)
     end
 end
 

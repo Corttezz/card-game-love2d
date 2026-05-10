@@ -66,6 +66,40 @@ function EventManager.ease(tbl, key, ease_to, duration, easingType, queueName)
     }), queueName)
 end
 
+-- Versões NÃO-BLOQUEANTES dos helpers acima. Use quando várias animações
+-- devem rodar em PARALELO (tempos absolutos a partir de agora) em vez de
+-- sequencial (tempos relativos ao evento anterior).
+--
+-- Ex: para uma sequência de splash onde várias coisas acontecem em momentos
+-- absolutos diferentes (t=0.10, t=0.50, t=1.20):
+--   EventManager.parallel(0.10, fn1, "splash")
+--   EventManager.parallel(0.50, fn2, "splash")
+--   EventManager.parallel(1.20, fn3, "splash")
+-- Todas começam a contar tempo agora; cada uma dispara quando seu delay
+-- absoluto vence, sem esperar a anterior completar.
+function EventManager.parallel(delay, fn, queueName)
+    return EventManager.add(Event:new({
+        trigger = "after",
+        delay = delay,
+        func = function() fn(); return true end,
+        blocking = false,
+    }), queueName)
+end
+
+function EventManager.parallelEase(tbl, key, ease_to, duration, easingType, queueName)
+    return EventManager.add(Event:new({
+        trigger = "ease",
+        delay = duration,
+        ease = {
+            ref_table = tbl,
+            ref_value = key,
+            ease_to = ease_to,
+            type = easingType or "smooth",
+        },
+        blocking = false,
+    }), queueName)
+end
+
 -- Limpa todos os eventos de uma queue (ou todas se nil).
 function EventManager.clear(queueName)
     if queueName then

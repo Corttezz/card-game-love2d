@@ -8,6 +8,7 @@ local PixelCanvas = require("src.ui.PixelCanvas")
 local Palette     = require("src.ui.Palette")
 local CRTShader   = require("src.ui.CRTShader")
 local I18n        = require("src.i18n.I18n")
+local SaveManager = require("engine.SaveManager")
 
 local SettingsMenu = {}
 SettingsMenu.__index = SettingsMenu
@@ -35,9 +36,9 @@ end
 function SettingsMenu:rebuild()
     self.buttons = {}
     local W, H = love.graphics.getWidth(), love.graphics.getHeight()
-    -- Painel maior pra acomodar a linha extra de idioma (6 rows agora).
+    -- Painel maior pra acomodar a linha extra de reduced motion (7 rows agora).
     local panelW = math.min(520, math.floor(W * 0.65))
-    local panelH = math.min(480, math.floor(H * 0.78))
+    local panelH = math.min(530, math.floor(H * 0.82))
     local panelX = math.floor((W - panelW) / 2)
     local panelY = math.floor((H - panelH) / 2)
     self._panel = { x = panelX, y = panelY, w = panelW, h = panelH }
@@ -63,6 +64,7 @@ function SettingsMenu:rebuild()
             FontManager.clearCache()
             if love.resize then love.resize(love.graphics.getWidth(), love.graphics.getHeight()) end
             self:rebuild()
+            self:_persist()
         end, nil, 10
     )
     fsBtn:setIcon(fsOn and "check" or "x_close")
@@ -76,15 +78,30 @@ function SettingsMenu:rebuild()
         function()
             CRTShader.toggle()
             self:rebuild()
+            self:_persist()
         end, nil, 10
     )
     crtBtn:setIcon(crtOn and "check" or "x_close")
     table.insert(self.buttons, crtBtn)
 
-    -- Linha 6: seletor de idioma (dropdown). Click no botao alterna lista.
+    -- Linha 6: Reduced motion toggle (acessibilidade Balatro-style)
+    local rmOn = _G.gameSettings and _G.gameSettings.reducedMotion or false
+    local rmBtn = Button:new(
+        rowX, rowY + gap * 5, 140, btnH,
+        rmOn and I18n.t("settings.on") or I18n.t("settings.off"),
+        function()
+            _G.gameSettings.reducedMotion = not rmOn
+            self:rebuild()
+            self:_persist()
+        end, nil, 10
+    )
+    rmBtn:setIcon(rmOn and "check" or "x_close")
+    table.insert(self.buttons, rmBtn)
+
+    -- Linha 7: seletor de idioma (dropdown). Click no botao alterna lista.
     local langBtnW = 140
     local langBtnX = rowX
-    local langBtnY = rowY + gap * 5
+    local langBtnY = rowY + gap * 6
     local langBtn = Button:new(
         langBtnX, langBtnY, langBtnW, btnH,
         I18n.getLabel(I18n.getLocale()),
@@ -140,6 +157,7 @@ function SettingsMenu:_selectLanguage(code)
     if I18n.setLocale(code) then
         -- rebuild reconstroi os botoes com labels traduzidos
         self:rebuild()
+        self:_persist()
     end
 end
 
@@ -167,6 +185,22 @@ function SettingsMenu:_adjust(kind, delta)
     if kind == "music" then a:setMusicVolume(new)
     elseif kind == "sfx" then a:setSFXVolume(new)
     else a:setVolume(new) end
+    self:_persist()
+end
+
+-- Snapshot current settings → SaveManager. Chamado em qualquer mudança.
+function SettingsMenu:_persist()
+    local a = _G.audioSystem
+    SaveManager.saveSettings({
+        masterVolume  = a and a.volume or 1.0,
+        musicVolume   = a and a.musicVolume or 0.3,
+        sfxVolume     = a and a.sfxVolume or 0.7,
+        fullscreen    = love.window.getFullscreen(),
+        crtShader     = CRTShader.isEnabled(),
+        reducedMotion = _G.gameSettings and _G.gameSettings.reducedMotion or false,
+        screenshake   = _G.gameSettings and _G.gameSettings.screenshake or 1.0,
+        locale        = I18n.getLocale(),
+    })
 end
 
 function SettingsMenu:update(dt)
@@ -209,9 +243,10 @@ function SettingsMenu:draw()
     self:_drawRow(I18n.t("settings.music"),  _G.audioSystem and _G.audioSystem.musicVolume or 0, p.x + 24, p.y + 76)
     self:_drawRow(I18n.t("settings.sfx"),    _G.audioSystem and _G.audioSystem.sfxVolume or 0,   p.x + 24, p.y + 76 + gap)
     self:_drawRow(I18n.t("settings.master"), _G.audioSystem and _G.audioSystem.volume or 0,      p.x + 24, p.y + 76 + gap * 2)
-    self:_drawLabel(I18n.t("settings.fullscreen"), p.x + 24, p.y + 76 + gap * 3)
-    self:_drawLabel(I18n.t("settings.crt_shader"), p.x + 24, p.y + 76 + gap * 4)
-    self:_drawLabel(I18n.t("settings.language"),   p.x + 24, p.y + 76 + gap * 5)
+    self:_drawLabel(I18n.t("settings.fullscreen"),     p.x + 24, p.y + 76 + gap * 3)
+    self:_drawLabel(I18n.t("settings.crt_shader"),     p.x + 24, p.y + 76 + gap * 4)
+    self:_drawLabel(I18n.t("settings.reduced_motion"), p.x + 24, p.y + 76 + gap * 5)
+    self:_drawLabel(I18n.t("settings.language"),       p.x + 24, p.y + 76 + gap * 6)
 
     for _, b in ipairs(self.buttons) do b:draw() end
 

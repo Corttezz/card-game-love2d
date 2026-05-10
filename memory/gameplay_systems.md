@@ -47,8 +47,19 @@ A mão inicial do floor (`startGame` / `resetHandAndDeck`) continua usando `draw
 
 - `attack` — dano ao enemy, passa por todo pipeline de cima.
 - `defense` — armor ao player (cap `PLAYER_MAX_ARMOR=50`, zerado por batalha em `resetTransientStats`).
-- `joker` — adiciona a `game.jokerSlots` (máx 3), roda `card.passive(game)` uma vez; `card.effects` ficam ativos pelo resto da run em `applyJokerEffects` / `applyTriggerEffects`.
+- `joker` — **NÃO entram em `currentDeck`/hand**. Adquiridos via `Game:addJokerToRun(id, meta)` → vão direto para `game.jokerSlots` (máx 3) E persistem em `runManager.currentRun.jokers` (run-scoped). `card.passive(game)` roda uma vez no acquire; `card.effects` ficam ativos pelo resto da run via `applyJokerEffects`/`applyTriggerEffects`. Padrão Balatro G.jokers separado de G.hand. `addCardToRun` bifurca: se `cardData.type=="joker"` roteia para `addJokerToRun`.
 - `effect` — `card.passive(game)` roda e carta é descartada.
+
+### Triggers (jokers + cartas)
+
+`EffectSystem:applyTriggerEffects(triggerType, context)` itera **(1)** todos os jokerSlots e **(2)** `context.sourceCard.effects` (carta sendo jogada). Isso permite triggers como `on_defend_damage` em cartas defense (ex: `warrior_flame_barrier`) sem precisar virar joker.
+
+Tipos de trigger reconhecidos:
+- `on_attack_heal` (lifesteal)
+- `on_defend_damage` (reflect)
+- `on_attack_debuff` (poison-on-hit; `effect.debuffName/stacks/duration`)
+- `on_turn_start_draw` (joker que compra cartas extra; `effect.value`)
+- `regen_per_turn`, `damage_per_turn` (turn_start)
 
 ## Efeitos processados (EffectSystem)
 

@@ -79,6 +79,14 @@ function EnemyHud.drawHpBar(enemy, cx, groundY, spriteWidth, barYOverride)
     local tw = font:getWidth(txt)
     local tx = math.floor(cx - tw / 2)
     local ty = y - font:getHeight() - 1
+    -- Quiver Balatro-style: HP crítico (< 25%) faz o número tremer randomicamente.
+    -- Replica engine/text.lua:198 do Balatro, mas inline (sem DynaText) pra
+    -- minimizar overhead num path quente. Intensidade escala com proximidade da morte.
+    if pct < 0.25 and pct > 0 then
+        local intensity = (0.25 - pct) / 0.25  -- 0..1 conforme HP cai
+        tx = tx + (math.random() - 0.5) * 2 * intensity
+        ty = ty + (math.random() - 0.5) * 2 * intensity
+    end
     -- Outline pra garantir legibilidade sobre o sprite
     FontManager.drawWithOutline(txt, tx, ty, { 1, 1, 1, 1 }, 0.9)
 
