@@ -991,6 +991,14 @@ in-engine é a prova fim-a-fim real (pega até desalinhamento de
 transform); (c) heurística tem teto — os últimos 5% são polyline manual
 mesmo, e tudo bem (400px/bioma, determinístico, versionado).
 
+**Ciclo 55 (entregue — sol não oclui nuvem, 06/Jul):** feedback: "no
+bioma 6 não faz sentido nuvem passar atrás do sol" — correto: sol é
+astro DISTANTE, nuvem passa na FRENTE. Removida a regra da ilha
+oclusora ≥600px do extrator (existia só pro sol do dusk); componente
+solto de qualquer tamanho agora é descartado do front. Nuvem cruza o
+sol por cima e continua cortada pelos morros. REGRA DE CAMADAS do céu:
+astro assado (sol/lua) < nuvem móvel < silhueta de montanha.
+
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
 14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY
 21. Aguardar feedback do usuário jogando (viagem/blends/interiores em MOTION

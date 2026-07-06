@@ -229,11 +229,9 @@ def extract(bid):
     for x in range(w):
         for y in range(col_top[x], h):
             final[y][x] = True
-    for c in comps:
-        if not c["mass"] and len(c["px"]) >= 600:
-            for x, y in c["px"]:
-                final[y][x] = True
-        # senao: fragmento solto -> descartado
+    # v8 (feedback bioma 6): ILHA FLUTUANTE (sol do dusk) NAO oclui mais —
+    # sol e astro distante, nuvem passa NA FRENTE dele. Componente solto
+    # de qualquer tamanho e descartado do front.
 
     front = im.copy()
     fp = front.load()
