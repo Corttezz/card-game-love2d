@@ -1248,7 +1248,8 @@ local function drawMountainsFrontOf(g, x, w, camZ, bid, alpha)
     if not img then return false end
     local iw, ih = img:getWidth(), img:getHeight()
     local sx, yTop, tileW, off = stripTransform(g, x, w, camZ, iw, ih)
-    love.graphics.setColor(1, 1, 1, alpha)
+    if _G.WR_TINT then love.graphics.setColor(1, 0, 0, alpha)
+    else love.graphics.setColor(1, 1, 1, alpha) end
     drawStripTiles(img, x, sx, yTop, tileW, off)
     return true
 end

@@ -20,6 +20,24 @@ DCAP = {"fields": 32, "highlands": 64, "frost": 64, "abyss": 18, "dusk": 12}
 # limiar de "textura" (busy) por bioma: neve lisa do frost tem contraste
 # sutil — limiar 26 nao enxerga as faces ao lado da agulha do cume
 BUSY_T = {"fields": 26, "highlands": 26, "frost": 12, "abyss": 26, "dusk": 26}
+# CORRECOES MANUAIS (v7): segmentos de elevacao do cume onde NENHUMA
+# heuristica separa (V entre picos: flood desce comendo a face de tras,
+# que e lisa demais pro detector). Lidos do dump numerico do front +
+# grid sobre a arte. Aplicados como top = min(top, lerp(p0, p1)).
+RIDGE_RAISE = {
+    "highlands": [
+        ((104, 37), (116, 40)),
+        ((143, 25), (163, 35)),
+        ((165, 35), (178, 27)),
+        ((209, 14), (233, 34)),
+        ((276, 36), (292, 38)),
+    ],
+}
+# rebaixamento manual: platô de sobre-oclusão em céu aberto (nuvem
+# sumindo antes da encosta). top = max(top, lerp).
+RIDGE_CLEAR = {
+    "fields": [((58, 45), (88, 34))],
+}
 BIOMES = ["fields", "highlands", "abyss", "frost", "dusk"]  # marsh: sem overlay (nevoa)
 
 def extract(bid):
@@ -187,13 +205,29 @@ def extract(bid):
     final = [[False]*w for _ in range(h)]
     tops = mass_tops()
     dcap = DCAP[bid]
+    col_top = [h]*w
     for x in range(w):
         top = tops[x]
         # detalhe só ergue a silhueta ATÉ o teto do bioma — acima disso é
         # objeto flutuante (sol/nuvem assada), não face comida
         if detail_top[x] < top and top - detail_top[x] <= dcap:
             top = detail_top[x]
-        for y in range(top, h):
+        col_top[x] = top
+    # polylines manuais por bioma (V entre picos)
+    for (x0, y0), (x1, y1) in RIDGE_RAISE.get(bid, []):
+        for x in range(x0, x1 + 1):
+            t = (x - x0) / max(1, x1 - x0)
+            yy = round(y0 + (y1 - y0) * t)
+            if yy < col_top[x]:
+                col_top[x] = yy
+    for (x0, y0), (x1, y1) in RIDGE_CLEAR.get(bid, []):
+        for x in range(x0, x1 + 1):
+            t = (x - x0) / max(1, x1 - x0)
+            yy = round(y0 + (y1 - y0) * t)
+            if yy > col_top[x]:
+                col_top[x] = yy
+    for x in range(w):
+        for y in range(col_top[x], h):
             final[y][x] = True
     for c in comps:
         if not c["mass"] and len(c["px"]) >= 600:

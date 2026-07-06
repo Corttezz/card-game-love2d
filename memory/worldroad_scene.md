@@ -972,6 +972,25 @@ WorldRoad.rawBiome) + Game:nextPhase calcula act efetivo no endless
 Instalador reutilizável: tools espelhado em scratchpad/install_enemy.py
 (baixa ZIP, crop por UNIÃO de bboxes +2px, instala idle/hurt/death).
 
+**Ciclo 54 (entregue — auditoria por pixel + polylines manuais, 06/Jul):**
+feedback (print bioma 2): "quebrado em alguns biomas, teste todos os
+pixels possíveis". FERRAMENTAS DE AUDITORIA definitivas: (1) TINT
+vermelho da camada frontal in-engine (_G.WR_TINT em drawMountainsFrontOf)
+— revelou CUNHAS azuis descobertas nos "V entre picos" do highlands que
+overlay 3× não mostrava; (2) dump numérico do topo do front por coluna
+(compara com grid de coordenadas sobre a arte); (3) GRADE DENSA de
+nuvens forçadas (33 posições × 3 alturas × 5 biomas via PIL). CAUSA das
+cunhas: no V entre dois picos o flood desce comendo a face de TRÁS
+(lisa → detector de textura cego; DCAP não ajuda porque o topo da massa
+ali é o fundo do V). FIX: RIDGE_RAISE — polylines manuais por bioma
+lidas do dump+grid (highlands: 5 segmentos) aplicadas como
+min(auto, lerp); RIDGE_CLEAR — inverso (max) pra platô de sobre-oclusão
+em céu aberto (fields x58-88). LIÇÕES: (a) overlay em zoom baixo
+engana — auditar com NÚMEROS por coluna + zoom 5-6× com grid; (b) tint
+in-engine é a prova fim-a-fim real (pega até desalinhamento de
+transform); (c) heurística tem teto — os últimos 5% são polyline manual
+mesmo, e tudo bem (400px/bioma, determinístico, versionado).
+
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
 14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY
 21. Aguardar feedback do usuário jogando (viagem/blends/interiores em MOTION
