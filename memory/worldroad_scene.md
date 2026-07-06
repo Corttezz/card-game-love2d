@@ -1029,10 +1029,16 @@ mudança no espelho exige captura dos 6, não só dos 3 primeiros.
 Sequela (feedback: "linha preta em baixo nos _front"): as camadas
 _front carregavam o MESMO rodapé chapado (100% opaco) e desenham
 DEPOIS do espelho — re-pintavam a faixa preta por cima do reflexo.
-Fix nos ASSETS: rodapé FOOT_JUNK zerado (alpha 0) nos 4 fronts
-afetados (scratchpad/clear_front_footer.py) + extrator ensina o corte
-(FOOT_JUNK em tools/extract_mountains_front.py, MESMA tabela do
-MIRROR_JUNK — manter as duas em sincronia ao regenerar).
+Sequela 2 (feedback: "não é só o front, o normal também tem — algumas
+gerações vieram assim"): solução DEFINITIVA foi CROPAR o rodapé fora
+dos PNGs (scratchpad/crop_strip_footer.py): fields 112→104,
+highlands 101→87, abyss 105→98, marsh 112→111, dusk 112→100 (frost já
+era limpo). Base e front cortados JUNTOS — precisam de dimensões
+idênticas pro stripTransform compartilhado alinhar a oclusão. Com os
+assets limpos, MIRROR_JUNK e FOOT_JUNK foram REMOVIDOS do código
+(espelho volta a ser o strip inteiro, sem quad). Se regenerar um strip
+no PixelLab: medir rodapé (measure_footer.py) → cropar base+front
+juntos (crop_strip_footer.py) → rodar o extrator.
 
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
 14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY

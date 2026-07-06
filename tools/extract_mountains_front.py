@@ -38,12 +38,11 @@ RIDGE_RAISE = {
 RIDGE_CLEAR = {
     "fields": [((58, 45), (88, 34))],
 }
-# rodapé chapado do strip (degradê pra preto) — o espelho in-engine
-# (MIRROR_JUNK no WorldRoad.lua, MESMA tabela) cobre essas linhas no
-# strip base; a front NÃO pode re-pintá-las por cima do reflexo
-# (feedback: "linha preta em baixo"). Medido por variância de linha
-# (scratchpad/measure_footer.py).
-FOOT_JUNK = {"fields": 8, "highlands": 14, "abyss": 7, "frost": 0, "dusk": 12}
+# NOTA (Jul/2026): o rodapé chapado que degradava pra preto foi CROPADO
+# dos strips base na fonte (scratchpad/crop_strip_footer.py) — se algum
+# strip for REGENERADO pelo PixelLab, medir o rodapé de novo
+# (scratchpad/measure_footer.py) e cropar base+front juntos antes de rodar
+# este extrator (as dimensões dos dois PNGs precisam ser idênticas).
 BIOMES = ["fields", "highlands", "abyss", "frost", "dusk"]  # marsh: sem overlay (nevoa)
 
 def extract(bid):
@@ -242,10 +241,9 @@ def extract(bid):
     front = im.copy()
     fp = front.load()
     kept = 0
-    cut = h - FOOT_JUNK.get(bid, 0)   # rodapé chapado: sempre transparente
     for y in range(h):
         for x in range(w):
-            if final[y][x] and y < cut:
+            if final[y][x]:
                 kept += 1
             else:
                 r, g, b, _ = fp[x, y]
