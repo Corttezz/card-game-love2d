@@ -1126,6 +1126,32 @@ local function drawClouds(g, x, y, w)
     end
 end
 
+-- v6.1: texturas de gradiente reutilizáveis — rampa de alpha de 256
+-- passos (invisível a olho) que mata o banding das faixas de rects
+-- (névoa de distância, vinhetas). Cor final = textura * setColor, então
+-- a MESMA textura serve pra qualquer cor/alpha. Deliberadamente Image
+-- (caminho GL mais batido do projeto) e não Mesh — o driver NVIDIA da
+-- máquina é frágil (histórico 0xC00000FD).
+local _gradV, _gradH
+local function gradTex()
+    if not _gradV then
+        local n = 256
+        local idv = love.image.newImageData(1, n)
+        for i = 0, n - 1 do
+            idv:setPixel(0, i, 1, 1, 1, 1 - i / (n - 1))   -- alpha 1 topo -> 0 base
+        end
+        _gradV = love.graphics.newImage(idv)
+        _gradV:setFilter("linear", "linear")
+        local idh = love.image.newImageData(n, 1)
+        for i = 0, n - 1 do
+            idh:setPixel(i, 0, 1, 1, 1, 1 - i / (n - 1))   -- alpha 1 esq -> 0 dir
+        end
+        _gradH = love.graphics.newImage(idh)
+        _gradH:setFilter("linear", "linear")
+    end
+    return _gradV, _gradH
+end
+
 local function ridge(seed, i)
     return math.sin(i * 0.7 + seed) * 0.5 + math.sin(i * 0.23 + seed * 2.3) * 0.35
          + math.sin(i * 1.7 + seed * 0.7) * 0.15
@@ -2014,16 +2040,20 @@ local function drawCrestFog(g, x, w)
     -- da crista desce até os cantos da tela, e a névoa seguindo ela pintava
     -- a "borda do mundo" POR CIMA das árvores laterais (feedback dusk)
     local fogLimitY = g.crestApexY + (g.bottomY - g.crestApexY) * 0.22
+    local gv = gradTex()
+    local halfW = w * 0.30
     for sx = 0, w - 1, 6 do
         local cy = g.crestYAt(x + sx)
         -- ciclo 33: também limita HORIZONTAL (a curva é rasa no topo e o
         -- clamp por altura sozinho deixava a névoa alcançar ~0.6w)
-        if cy < fogLimitY and math.abs((x + sx) - g.cx) < w * 0.30 then
-            for band = 0, 3 do
-                love.graphics.setColor(fog[1], fog[2], fog[3],
-                    (fog[4] or 0.5) * 0.42 * (1 - band / 4))
-                love.graphics.rectangle("fill", x + sx, cy + band * 4, 6, 4)
-            end
+        local dx = math.abs((x + sx) - g.cx)
+        if cy < fogLimitY and dx < halfW then
+            -- v6.1: gradiente por textura + fade horizontal suave (o corte
+            -- seco em 0.30w era um degrau vertical visível)
+            local fade = 1 - (dx / halfW) ^ 2
+            love.graphics.setColor(fog[1], fog[2], fog[3],
+                (fog[4] or 0.5) * 0.42 * fade)
+            love.graphics.draw(gv, x + sx, cy, 0, 6, 16 / 256)
         end
     end
 end
@@ -2278,11 +2308,12 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     do
         local fogc = envColor("fog")
         local bandH = math.floor(h * 0.11)
-        for i = 0, bandH, 2 do
-            local a = (1 - math.abs(i / bandH * 2 - 1)) * 0.26
-            love.graphics.setColor(fogc[1], fogc[2], fogc[3], a)
-            love.graphics.rectangle("fill", x, g.crestApexY - bandH + i + 6, w, 2)
-        end
+        local gv = gradTex()
+        local cyF = g.crestApexY - bandH * 0.5 + 6   -- pico da bruma no centro da banda
+        love.graphics.setColor(fogc[1], fogc[2], fogc[3], 0.26)
+        -- metade de cima (alpha cresce até o centro) + metade de baixo
+        love.graphics.draw(gv, x, cyF, 0, w, -bandH * 0.5 / 256)
+        love.graphics.draw(gv, x, cyF, 0, w, bandH * 0.5 / 256)
         love.graphics.setColor(1, 1, 1, 1)
     end
 
@@ -2346,21 +2377,18 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     drawForkMarks(g, x, w, WorldRoad._camZ)
     drawEncounterFront(g, x, w, WorldRoad._camZ)
 
-    -- vinheta inferior (mesma linguagem das outras scenes)
+    -- vinheta inferior (mesma linguagem das outras scenes) — gradiente
+    -- por textura (v6.1: sem degraus de rect)
     local gradH = math.floor(h * 0.20)
-    for i = 0, gradH do
-        love.graphics.setColor(0, 0, 0, (i / gradH) * 0.32)
-        love.graphics.rectangle("fill", x, g.bottomY - gradH + i, w, 1)
-    end
+    local gv, gh2 = gradTex()
+    love.graphics.setColor(0, 0, 0, 0.32)
+    love.graphics.draw(gv, x, g.bottomY, 0, w, -gradH / 256)
 
     -- vinheta LATERAL sutil (enquadramento cinematográfico — foco no centro)
     local vw = math.floor(w * 0.055)
-    for i = 0, vw, 3 do
-        local a = (1 - i / vw) * 0.16
-        love.graphics.setColor(0, 0, 0, a)
-        love.graphics.rectangle("fill", x + i, y, 3, h)
-        love.graphics.rectangle("fill", x + w - i - 3, y, 3, h)
-    end
+    love.graphics.setColor(0, 0, 0, 0.16)
+    love.graphics.draw(gh2, x, y, 0, vw / 256, h)
+    love.graphics.draw(gh2, x + w, y, 0, -vw / 256, h)
 
     love.graphics.setColor(1, 1, 1, 1)
 end

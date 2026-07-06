@@ -117,6 +117,31 @@ function M.run(mode)
         WorldRoad.draw(0, topBarH, width, height - topBarH, nil)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
+    elseif mode == "all" then
+        -- TODOS os 6 biomas em UM processo (protocolo anti-wedge do driver:
+        -- 1 contexto GL, não 6 — ver memory nvidia-driver-love-crash).
+        -- Salva worldroad_full1.png .. worldroad_full6.png no save dir.
+        local topBarH = 80
+        for bio = 1, 6 do
+            love.graphics.clear(0, 0, 0, 1)
+            WorldRoad.clearCache()
+            WorldRoad.setBiome(bio)
+            WorldRoad._camZ = 5.5
+            for _ = 1, 30 do WorldRoad.update(1 / 30) end
+            WorldRoad._blend = nil
+            WorldRoad._prevBiomeIndex = nil
+            WorldRoad.draw(0, topBarH, width, height - topBarH, bio)
+            love.graphics.setColor(0.1, 0.08, 0.06, 1)
+            love.graphics.rectangle("fill", 0, 0, width, topBarH)
+            local path = "worldroad_full" .. bio .. ".png"
+            love.graphics.captureScreenshot(function(imageData)
+                imageData:encode("png", path)
+                print("[screenshot] salvo em save-dir: " .. path)
+            end)
+            love.graphics.present()
+        end
+        love.event.quit()
+        return
     elseif mode == "full" or (mode and mode:match("^full%d$")) then
         -- Um bioma em tela cheia (proporção real de gameplay, com topbar fake)
         -- "full" = bioma 1; "full5" = bioma 5, etc.
