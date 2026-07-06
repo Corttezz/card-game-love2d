@@ -13,6 +13,13 @@ SRC = r"E:\dev\projects\card-game-love2d\assets\sprites\world"
 OUT_PROOF = r"C:\Users\corte\AppData\Roaming\LOVE\card-game\ridge_proof.png"
 
 TOL = {"fields": 26, "highlands": 36, "frost": 34, "abyss": 28, "dusk": 34}
+# teto de elevação do cume-detalhe sobre o flood (px): biomas de céu limpo
+# aguentam recuperação profunda (frost); céu cheio de nuvem assada/raio de
+# sol precisa de teto baixo senão vira mesa/perna (abyss/dusk)
+DCAP = {"fields": 32, "highlands": 64, "frost": 64, "abyss": 18, "dusk": 12}
+# limiar de "textura" (busy) por bioma: neve lisa do frost tem contraste
+# sutil — limiar 26 nao enxerga as faces ao lado da agulha do cume
+BUSY_T = {"fields": 26, "highlands": 26, "frost": 12, "abyss": 26, "dusk": 26}
 BIOMES = ["fields", "highlands", "abyss", "frost", "dusk"]  # marsh: sem overlay (nevoa)
 
 def extract(bid):
@@ -76,7 +83,7 @@ def extract(bid):
 
     # componentes do front bruto
     seen = [[False]*w for _ in range(h)]
-    final = [[False]*w for _ in range(h)]
+    comps = []
     for y0 in range(h):
         for x0 in range(w):
             if raw[y0][x0] and not seen[y0][x0]:
@@ -93,20 +100,106 @@ def extract(bid):
                         if 0 <= nx < w and 0 <= ny < h and raw[ny][nx] and not seen[ny][nx]:
                             seen[ny][nx] = True
                             q2.append((nx, ny))
-                if touches_bottom:
-                    # massa do chao: preenche do topo da massa ate a base
-                    # por coluna (silhueta solida — neve incluida)
-                    tops = {}
-                    for x, y in comp:
-                        if x not in tops or y < tops[x]:
-                            tops[x] = y
-                    for x, yt in tops.items():
-                        for y in range(yt, h):
-                            final[y][x] = True
-                elif len(comp) >= 600:
-                    for x, y in comp:
-                        final[y][x] = True
-                # senao: fragmento solto -> descartado
+                comps.append({"px": comp, "mass": touches_bottom})
+
+    # FUSÃO (feedback biomas 2/6): componente pairando ate 12px ACIMA da
+    # massa (pico solto pela nevoa; sol furado pelas listras do horizonte)
+    # funde na massa antes do preenchimento — vira silhueta solida junto
+    GAP = 12
+    def mass_tops():
+        tops = [h] * w
+        for c in comps:
+            if c["mass"]:
+                for x, y in c["px"]:
+                    if y < tops[x]:
+                        tops[x] = y
+        return tops
+    for _ in range(3):  # cascata: pico gruda, próximo gruda no pico...
+        tops = mass_tops()
+        changed = False
+        for c in comps:
+            if not c["mass"] and len(c["px"]) >= 40:
+                # migalha <40px NAO funde: fill-down dela viraria pilar
+                # fino que morde nuvem no ceu aberto
+                for x, y in c["px"]:
+                    if y <= tops[x] and tops[x] - y <= GAP:
+                        c["mass"] = True
+                        changed = True
+                        break
+        if not changed:
+            break
+
+    # CUME POR DETALHE (v6 — faces da MESMA COR do céu, ex. gelo do frost,
+    # neve pêssego do fields): céu é LISO, montanha é TEXTURIZADA.
+    # busy = contraste local 3×3 > 26; cume-detalhe = 1º y com busy
+    # persistente na vertical (≥3 busy nas próximas 6 linhas — filtra as
+    # listras horizontais de 1px do céu do dusk). Ridge final = o MAIS
+    # ALTO entre flood e detalhe (over-occlusão em nuvem assada/raios de
+    # sol = nuvem móvel passa atrás deles — aceitável).
+    lum = [[(mp[x, y][0]*3 + mp[x, y][1]*6 + mp[x, y][2]) // 10
+            for x in range(w)] for y in range(h)]
+    busy = [[False]*w for _ in range(h)]
+    for y in range(1, h-1):
+        for x in range(1, w-1):
+            lo = hi = lum[y][x]
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    v = lum[y+dy][x+dx]
+                    if v < lo: lo = v
+                    if v > hi: hi = v
+            busy[y][x] = (hi - lo) > BUSY_T[bid]
+    detail_top = [h]*w
+    for x in range(w):
+        for y in range(h - 6):
+            if busy[y][x]:
+                cnt = 0
+                for k in range(1, 7):
+                    if busy[y+k][x]:
+                        cnt += 1
+                if cnt >= 3:
+                    detail_top[x] = y
+                    break
+    # mediana janela-5 nas colunas (mata coluna solta de ruído)
+    dt2 = detail_top[:]
+    for x in range(2, w-2):
+        win = sorted(detail_top[x-2:x+3])
+        dt2[x] = win[2]
+    detail_top = dt2
+    # CONSISTÊNCIA DE LINHA (v6.1): cume real é contínuo; pilar de raio de
+    # sol/borda de nuvem assada é degrau isolado. detail_top[x] só vale se
+    # ≥6 das 12 colunas vizinhas (±6) concordam em ±7px — senão rebaixa
+    # pro nível dos vizinhos concordantes (2 passadas).
+    for _ in range(2):
+        dt3 = detail_top[:]
+        for x in range(w):
+            agree = 0
+            neigh = []
+            for k in range(-6, 7):
+                if k == 0 or not (0 <= x+k < w):
+                    continue
+                neigh.append(detail_top[x+k])
+                if abs(detail_top[x+k] - detail_top[x]) <= 7:
+                    agree += 1
+            if agree < 6 and neigh:
+                dt3[x] = sorted(neigh)[len(neigh)//2]
+        detail_top = dt3
+
+    final = [[False]*w for _ in range(h)]
+    tops = mass_tops()
+    dcap = DCAP[bid]
+    for x in range(w):
+        top = tops[x]
+        # detalhe só ergue a silhueta ATÉ o teto do bioma — acima disso é
+        # objeto flutuante (sol/nuvem assada), não face comida
+        if detail_top[x] < top and top - detail_top[x] <= dcap:
+            top = detail_top[x]
+        for y in range(top, h):
+            final[y][x] = True
+    for c in comps:
+        if not c["mass"] and len(c["px"]) >= 600:
+            for x, y in c["px"]:
+                final[y][x] = True
+        # senao: fragmento solto -> descartado
 
     front = im.copy()
     fp = front.load()

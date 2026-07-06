@@ -918,6 +918,60 @@ que importa é a SILHUETA (borda superior), não a classificação
 pixel-a-pixel — preencher pra baixo elimina toda classe de buraco
 interno. Validado: prova magenta 5 biomas + full1 + wide_full4.
 
+**Ciclo 51 (entregue — revisão dos 6 biomas + fusão de componentes, 06/Jul):**
+pedido: "revise todos biomas". Varredura full1-6 + wide_full1-6 achou 2
+falhas na oclusão: (a) highlands — pico roxo grande DESCONECTADO da massa
+pela névoa da base → descartado → nuvem passava na frente; (b) dusk —
+listras horizontais do horizonte atravessam o disco do sol → flood
+entrava por elas → sol furado, nuvem visível sobre o disco. FIX v5.1 do
+extrator: FUSÃO — componente ≥40px pairando até 12px acima da massa
+funde nela antes do fill-down (pico gruda, sol gruda nos morros);
+migalha <40px NÃO funde (fill-down dela virava pilar fino que mordia
+nuvem no céu aberto — visto no fields/abyss na 1ª tentativa). Cascata de
+3 passes (pico gruda em pico). Validação: prova magenta 5 biomas + zoom
+3× in-engine nos 2 casos (nuvem cortada na diagonal da encosta; nuvem
+sumindo na borda do sol). Modo novo na ferramenta:
+enemy<N>_<spriteId> — monstro plantado na estrada do bioma N (validou
+winter_monarch/mire_hag/eclipse_queen nos cenários endless).
+
+**Ciclo 52 (entregue — oclusão FINAL, cume por detalhe, 06/Jul):**
+feedback com print (fields): "ainda tá acontecendo, só a parte escura
+funcionou" — causa REAL mais profunda que buraco: faces iluminadas
+(neve pêssego do fields, gelo pálido do frost, rims do abyss/dusk) têm
+A MESMA COR do céu — flood por cor não separa em NENHUMA tolerância
+(varredura tol 16/22/28 provou: ou come a face, ou trava o céu inteiro
+como oclusor). Solução v6 do extrator: CUME POR DETALHE — céu é LISO,
+montanha é TEXTURIZADA. busy = contraste local 3×3 > limiar POR BIOMA
+(frost 12 — neve suave; resto 26); cume-detalhe = 1º y com busy
+persistente na vertical (≥3 das 6 linhas seguintes — filtra listra de
+1px do céu do dusk); mediana-5 + CONSISTÊNCIA DE LINHA (±6 colunas
+concordando em ±7px, senão rebaixa — mata pilar de raio de sol/borda de
+nuvem assada); TETO DE ELEVAÇÃO por bioma sobre o flood (DCAP: frost/
+highlands 64 céu limpo, fields 32, abyss 18, dusk 12 céu cheio de
+objeto assado — teto alto ali vira mesa/perna sob o sol). Ridge final =
+min(flood+fusão, detalhe com teto). FERRAMENTA DE PROVA nova: nuvem
+FORÇADA colada na encosta via PIL (composite base+nuvem+front) — pega o
+que a prova magenta não mostra (front é invisível sobre a própria arte).
+LIÇÃO: validação de oclusão exige teste com o OBJETO OCLUÍDO presente.
+NOTA: assets carregam no boot do LÖVE — feedback "ainda quebrado" com
+timestamps próximos pode ser sessão antiga do jogo (pedir restart).
+
+**Ciclo 53 (entregue — roster endless COMPLETO, 06/Jul):** 9 monstros
+novos (v3 low top-down, 96/96/128px, idle 4f/hurt 6f/death 7f south):
+- Frost (4): frost_wight a2509e76 / glacier_knight 2387dbb6 /
+  winter_monarch 5b9aedb4
+- Marsh (5): bog_ghoul f8255189 / mire_hag 452bc0b9 / rot_colossus
+  40ffec96 (death falhou 1x "heavy load" — retry ok, lição do c40
+  confirmada: SEMPRE checar failed jobs no get_character)
+- Dusk (6): dusk_shade 3b418a1f (hurt/death perderam slot na 1ª onda —
+  re-enfileirar anims que caíram no cap 8) / blood_duke f923a367 /
+  eclipse_queen 33a1713d
+Fiação: ENEMY_ROSTER[4..6] + resolveSpriteId wrap %6 (espelha
+WorldRoad.rawBiome) + Game:nextPhase calcula act efetivo no endless
+(4 + floor((currentFloor-25)/8)) + galeria do demo com 12 monstros.
+Instalador reutilizável: tools espelhado em scratchpad/install_enemy.py
+(baixa ZIP, crop por UNIÃO de bboxes +2px, instala idle/hurt/death).
+
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
 14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY
 21. Aguardar feedback do usuário jogando (viagem/blends/interiores em MOTION

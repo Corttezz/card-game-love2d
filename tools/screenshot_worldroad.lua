@@ -131,6 +131,38 @@ function M.run(mode)
         WorldRoad.draw(0, topBarH, width, height - topBarH, bio)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
+    elseif mode and mode:match("^enemy%d_") then
+        -- Monstro PLANTADO na estrada do bioma: "enemy4_winter_monarch"
+        -- (valida roster endless no cenário certo, com HUD desligado)
+        local bio = tonumber(mode:match("^enemy(%d)_"))
+        local sid = mode:match("^enemy%d_(.+)$")
+        local EnemyRenderer = require("src.ui.EnemyRenderer")
+        local I18n = require("src.i18n.I18n")
+        I18n.init()
+        local Game = require("src.core.Game")
+        local game = Game:new()
+        game:startNewRun("warrior")
+        game:startGame()
+        _G.game = game
+        game.enemy.spriteId = sid
+        game.enemy.isBoss = (sid == "winter_monarch" or sid == "rot_colossus"
+            or sid == "eclipse_queen")
+        local topBarH = 80
+        WorldRoad.clearCache()
+        WorldRoad.setBiome(bio)
+        WorldRoad._camZ = 6
+        for _ = 1, 30 do
+            WorldRoad.update(1 / 30)
+            EnemyRenderer.update(1 / 30)
+        end
+        WorldRoad._blend = nil
+        WorldRoad._prevBiomeIndex = nil
+        WorldRoad.draw(0, topBarH, width, height - topBarH, bio)
+        local cx, cy = WorldRoad.getRoadAnchor(WorldRoad.BATTLE_REL,
+            0, topBarH, width, height - topBarH)
+        EnemyRenderer.draw(game, cx, cy)
+        love.graphics.setColor(0.1, 0.08, 0.06, 1)
+        love.graphics.rectangle("fill", 0, 0, width, topBarH)
     elseif mode == "travel" then
         -- Meio de uma viagem: herói andando + poeira + inimigo vindo lá de trás
         local EnemyRenderer = require("src.ui.EnemyRenderer")
