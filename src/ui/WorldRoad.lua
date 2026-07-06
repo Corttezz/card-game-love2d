@@ -2501,7 +2501,11 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     -- alpha oscilando devagar (polycount: raios estáticos modelados batem
     -- radial blur em 2D). Intensidade acompanha o glow do bioma.
     do
-        local rayK = CASTLE_GLOW_K[rawBiome().id] or 0.8
+        -- rays só onde fazem sentido: com o sol assado NO HORIZONTE
+        -- (abyss/dusk) raio descendo do zênite contradiz a luz da cena
+        local RAY_K = { fields = 1, highlands = 1, abyss = 0,
+                        frost = 1, marsh = 0.8, dusk = 0 }
+        local rayK = RAY_K[rawBiome().id] or 0.8
         local crest = g.crestYAt(g.cx)
         love.graphics.setBlendMode("add")
         for i = 1, 2 do
@@ -2511,12 +2515,15 @@ function WorldRoad.draw(x, y, w, h, actNumber)
             local topX = g.cx + dir * w * 0.045
             local botX = g.cx + dir * w * 0.15
             local rayW = w * 0.035
-            love.graphics.setColor(1, 0.92, 0.72, a)
-            love.graphics.polygon("fill",
-                topX - rayW * 0.35, y,
-                topX + rayW * 0.35, y,
-                botX + rayW, crest,
-                botX - rayW, crest)
+            -- 2 camadas aninhadas (larga fraca + estreita) = borda suave
+            for _, lay in ipairs({ { 1.0, 0.5 }, { 0.55, 0.5 } }) do
+                love.graphics.setColor(1, 0.92, 0.72, a * lay[2])
+                love.graphics.polygon("fill",
+                    topX - rayW * 0.35 * lay[1], y,
+                    topX + rayW * 0.35 * lay[1], y,
+                    botX + rayW * lay[1], crest,
+                    botX - rayW * lay[1], crest)
+            end
         end
         love.graphics.setBlendMode("alpha")
     end
@@ -2585,6 +2592,51 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     drawLandmarkFront(g, x, w, WorldRoad._camZ)
     drawForkMarks(g, x, w, WorldRoad._camZ)
     drawEncounterFront(g, x, w, WorldRoad._camZ)
+
+    -- v6.7: MOLDURA DE VEGETAÇÃO — silhuetas quase-pretas nos cantos
+    -- inferiores (framing da referência: planos escuros emoldurando e
+    -- empurrando o olho pro centro). Reusa os sprites de árvore do bioma.
+    do
+        local b = rawBiome()
+        local fr = getSprite("tree", 0, b.id) or getSprite("pine", 0, b.id)
+        if fr then
+            local iw2, ih2 = fr:getWidth(), fr:getHeight()
+            -- CAP de escala 4.5×: sprite pequeno escalado 10× virava massa
+            -- de mega-pixels serrilhados (abyss). Massa vem de 3 CÓPIAS
+            -- sobrepostas por canto, não de uma cópia gigante.
+            local fs = math.min((h * 0.55) / ih2, 4.5)
+            local bobF = math.sin(WorldRoad._time * 0.5) * 2
+            love.graphics.setColor(0.05, 0.045, 0.06, 0.94)
+            for ci = 0, 2 do
+                local cs = fs * (1 - ci * 0.18)
+                local ox = ci * iw2 * fs * 0.34
+                local oy = ci * ih2 * fs * 0.10
+                -- canto esquerdo (cluster descendo a diagonal)
+                love.graphics.draw(fr,
+                    math.floor(x - iw2 * cs * 0.42 + ox),
+                    math.floor(g.bottomY - ih2 * cs * 0.62 + oy + bobF),
+                    0.05, cs, cs)
+                -- canto direito (espelhado)
+                love.graphics.draw(fr,
+                    math.floor(x + w + iw2 * cs * 0.42 - ox),
+                    math.floor(g.bottomY - ih2 * cs * 0.58 + oy - bobF),
+                    -0.05, -cs, cs)
+            end
+        end
+    end
+
+    -- v6.7: GRADE POR ESTADO — véu multiplicativo sutil ligado ao momento
+    -- (viagem esquenta, encounter esfria pro vermelho) — eco barato do
+    -- ease_background_colour do Balatro
+    if WorldRoad._travel then
+        local enc = WorldRoad._encounter
+        if enc then
+            love.graphics.setColor(0.55, 0.1, 0.1, 0.045)
+        else
+            love.graphics.setColor(0.9, 0.62, 0.25, 0.04)
+        end
+        love.graphics.rectangle("fill", x, y, w, h)
+    end
 
     -- vinheta inferior (mesma linguagem das outras scenes) — gradiente
     -- por textura (v6.1: sem degraus de rect)
