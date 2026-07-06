@@ -905,6 +905,19 @@ estrada do abyss é MUITO mais escura na verdade (real do gameplay; a
 ferramenta é que mentia). LIÇÃO: modo de validação que passa parâmetro
 fixo≠estado configurado gera dupla-verdade — sempre ecoar o parâmetro.
 
+**Ciclo 50 (entregue — v5.8.1 silhueta SÓLIDA, 06/Jul):** feedback com
+print: "apenas a parte mais escura funcionou" — neve clara ≈ céu pálido
+era marcada como céu pelo flood e virava BURACO na camada frontal (nuvem
+aparecia POR CIMA da neve). Fix no extrator (agora versionado em
+tools/extract_mountains_front.py): após flood+abertura, componentes do
+front são classificados — massa CONECTADA AO CHÃO é preenchida coluna a
+coluna do cume até a base (silhueta sólida, neve incluída); ilha grande
+≥600px (sol do dusk) mantida como está; fragmento solto descartado
+(nuvem passa na frente — ok pra picos distantes). LIÇÃO: pra OCLUSÃO o
+que importa é a SILHUETA (borda superior), não a classificação
+pixel-a-pixel — preencher pra baixo elimina toda classe de buraco
+interno. Validado: prova magenta 5 biomas + full1 + wide_full4.
+
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
 14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY
 21. Aguardar feedback do usuário jogando (viagem/blends/interiores em MOTION
