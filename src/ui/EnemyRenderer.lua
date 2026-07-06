@@ -347,10 +347,10 @@ end
 local ENEMY_ROSTER = {
     [1] = { battle = "cursed_scarecrow", elite = "harvest_reaper",
             mini_boss = "harvest_reaper", boss = "carrion_king" },
-    [2] = { battle = "stone_golem", elite = "stone_golem",
-            mini_boss = "stone_golem", boss = "stone_golem" },
-    [3] = { battle = "abyss_wraith", elite = "abyss_wraith",
-            mini_boss = "abyss_wraith", boss = "abyss_wraith" },
+    [2] = { battle = "moon_gargoyle", elite = "rune_golem",
+            mini_boss = "rune_golem", boss = "tower_lich" },
+    [3] = { battle = "ember_imp", elite = "obsidian_sentinel",
+            mini_boss = "obsidian_sentinel", boss = "abyss_tyrant" },
 }
 
 function EnemyRenderer.resolveSpriteId(actNumber, nodeType)

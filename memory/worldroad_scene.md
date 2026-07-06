@@ -751,6 +751,21 @@ UUIDs (expiram? characters persistem na conta): scarecrow 7c8af239,
 reaper 5404a43d, king 4251fb01. PENDENTE: rosters atos 2-3 + biomas
 endless (mesma receita).
 
+**Ciclo 40 (entregue — ROSTER COMPLETO atos 1-3, 06/Jul):** 9 monstros
+novos (identidade grimório, v3 low top-down, idle/hurt/death south):
+- Ato 1: cursed_scarecrow / harvest_reaper / carrion_king
+- Ato 2: moon_gargoyle / rune_golem / tower_lich (UUIDs 57d8e618/
+  b4ec75e9/b02615b3)
+- Ato 3: ember_imp / obsidian_sentinel / abyss_tyrant (49602e59/
+  aecd31c5/6bcb0c1e)
+ENEMY_ROSTER completo por ato×nodeType. Lições novas: (a) fila do
+PixelLab Tier 1 = 8 jobs — enfileirar em ondas; (b) animação PODE falhar
+("Generation failed") — checar failed jobs no get_character e re-disparar
+(morte do tirano falhou 1x, retry ok); (c) frames de retry vêm no canvas
+original — recortar separadamente. Legado (grave_slime/stone_golem/
+abyss_wraith) mantido como fallback. PENDENTE: monstros específicos dos
+biomas endless (frost/marsh/dusk) — roster hoje repete ato 3 no endless.
+
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
 14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY
 21. Aguardar feedback do usuário jogando (viagem/blends/interiores em MOTION
