@@ -1153,43 +1153,45 @@ local function drawStripTiles(img, x, sx, yTop, tileW, off)
     end
 end
 
--- v5.9.2 (feedback): abaixo da base do strip, espelha SÓ A FAIXA DE
--- TERRENO (floresta/base) em ping-pong descendo — "o fundo continua o
--- fundo": nunca chega no céu invertido. O quad pula as últimas 46
--- linhas do PNG (rodapé degrada pra preto — c47).
-local MIRROR_SKIP = 46
-local MIRROR_BAND = 26   -- altura (px de fonte) da faixa de terreno refletida
-local function drawStripMirrorBelow(img, x, sx, yTop, tileW, off, bottomY)
+-- v5.9.4 (feedback): abaixo do strip, o PRÓPRIO strip INTEIRO de cabeça
+-- pra baixo, emendado na última linha de ARTE BOA — "é como se fosse uma
+-- continuação da parte debaixo do principal mas de cabeça para baixo".
+-- Vários PNGs terminam num rodapé chapado que degrada pra preto; espelhar
+-- a partir dele dobrava a faixa preta (biomas 2/3/6 ficavam com canto
+-- preto gordo). O reflexo pula essas linhas na FONTE e cobre o rodapé
+-- do strip real — a linha do seam é idêntica nos dois lados. Alturas
+-- medidas por variância de linha (scratchpad/measure_footer.py).
+local MIRROR_JUNK = {
+    fields = 8, highlands = 14, abyss = 7, frost = 0, marsh = 1, dusk = 12,
+}
+local function drawStripMirrorBelow(img, x, sx, yTop, tileW, off, bottomY, bid)
     local iw, ih = img:getWidth(), img:getHeight()
-    local qh = math.min(MIRROR_BAND, ih - MIRROR_SKIP - 2)
-    if qh <= 4 then return yTop + ih * sx end
+    local gh = ih - (MIRROR_JUNK[bid] or 0)   -- altura da arte boa
+    if gh <= 4 then return end
     WorldRoad._quadCache = WorldRoad._quadCache or {}
     local key = tostring(img) .. "_mb"
     local q = WorldRoad._quadCache[key]
     if not q then
-        q = love.graphics.newQuad(0, ih - MIRROR_SKIP - qh, iw, qh, iw, ih)
+        q = love.graphics.newQuad(0, 0, iw, gh, iw, ih)
         WorldRoad._quadCache[key] = q
     end
-    -- v5.9.3 (feedback bioma 5): espelho começa no fim REAL do strip —
-    -- começar na emenda do pulo SOBRESCREVIA as últimas linhas de arte
-    -- verdadeira (árvores/névoa do marsh viravam padrão espelhado)
-    local seamY = math.floor(yTop + ih * sx)
-    local bandH = qh * sx
+    local goodH = gh * sx
+    local seamY = math.floor(yTop + goodH)    -- fim da arte boa
     local b = 0
     local yb = seamY
-    while yb < bottomY and b < 24 do
-        local flipped = (b % 2 == 0)   -- ping-pong: emenda sempre casa
+    while yb < bottomY and b < 6 do
+        local flipped = (b % 2 == 0)   -- 1º bloco: espelho; depois ping-pong
         for k = -1, 2 do
             local tx = x - off + k * tileW
             local dx = (k % 2 == 0) and math.floor(tx) or math.floor(tx + tileW)
             local sxx = (k % 2 == 0) and sx or -sx
             if flipped then
-                love.graphics.draw(img, q, dx, yb + bandH, 0, sxx, -sx)
+                love.graphics.draw(img, q, dx, yb + goodH, 0, sxx, -sx)
             else
                 love.graphics.draw(img, q, dx, yb, 0, sxx, sx)
             end
         end
-        yb = yb + bandH
+        yb = yb + goodH
         b = b + 1
     end
     return yb
@@ -1210,10 +1212,9 @@ local function drawMountainsOf(g, x, w, camZ, bid, alpha)
         local sx, yTop, tileW, off = stripTransform(g, x, w, camZ, iw, ih)
         love.graphics.setColor(1, 1, 1, alpha)
         drawStripTiles(img, x, sx, yTop, tileW, off)
-        -- v5.9.2 (feedback): faixa de TERRENO do strip espelhada em
-        -- ping-pong até o fim do frame — o fundo continua fundo (nunca
-        -- mostra céu invertido)
-        drawStripMirrorBelow(img, x, sx, yTop, tileW, off, g.bottomY)
+        -- v5.9.4 (feedback): strip inteiro espelhado verticalmente abaixo
+        -- da última linha de arte boa — continuação de cabeça pra baixo
+        drawStripMirrorBelow(img, x, sx, yTop, tileW, off, g.bottomY, bid)
         return true
     end
     return false

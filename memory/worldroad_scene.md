@@ -1013,10 +1013,19 @@ _quadCache novo (limpo no clearCache). v5.9.3 (feedback: "bioma 5
 ficou zoado"): o seam começava em `yTop + (ih-46)*sx` — 46 linhas-fonte
 ANTES do fim do strip — SOBRESCREVENDO arte real (árvores/névoa do
 marsh viravam padrão Rorschach espelhado). Fix: `seamY = floor(yTop +
-ih*sx)` (fim REAL do strip; o quad continua pulando o rodapé degradado
-como FONTE, mas o desenho começa onde a arte acaba). Validado nos SEIS
-biomas em wide (mir5_w1..w6) — lição: mudança no espelho exige captura
-dos 6, não só dos 3 primeiros.
+ih*sx)` (fim REAL do strip). v5.9.4 (feedback: "é como se fosse uma
+continuação da parte debaixo do principal mas de cabeça para baixo"):
+faixinha ping-pong ABANDONADA — agora é o STRIP INTEIRO espelhado
+verticalmente abaixo do seam (reflexo verdadeiro). Pegadinha: vários
+PNGs terminam num rodapé chapado que degrada pra preto; espelhar da
+última linha bruta DOBRAVA a faixa preta (canto preto gordo nos biomas
+2/3/6). Solução: MIRROR_JUNK por bioma (medido por variância de linha,
+scratchpad/measure_footer.py: fields 8, highlands 14, abyss 7, frost 0,
+marsh 1, dusk 12) — o reflexo pula essas linhas na fonte E cobre o
+rodapé do strip real, seam idêntico nos dois lados. Marsh junk=1 é o
+que protege a arte de árvores/névoa dele (o Rorschach do v5.9.2 era
+skip 46 fixo). Validado nos SEIS biomas em wide (mir7_w1..w6) — lição:
+mudança no espelho exige captura dos 6, não só dos 3 primeiros.
 
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
 14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY
