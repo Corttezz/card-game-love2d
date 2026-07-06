@@ -1574,13 +1574,24 @@ local function getGroundTexture(bid)
         local c = rng:random() < 0.5 and dark or light
         data:setPixel(rng:random(0, tw - 1), rng:random(0, th - 1), c[1], c[2], c[3], 1)
     end
-    -- acentos do bioma (florzinhas/cristais/brasas espalhados MUITO esparsos)
-    for _ = 1, 9 do
+    -- acentos do bioma (florzinhas/cristais/brasas espalhados esparsos)
+    -- v6.5: 9→16 (a referência tem flores pontuais espalhadas no gramado)
+    for _ = 1, 16 do
         local ax, ay = rng:random(1, tw - 2), rng:random(1, th - 2)
         data:setPixel(ax, ay, accentDim[1], accentDim[2], accentDim[3], 1)
         if rng:random() < 0.5 then
             data:setPixel(ax + 1, ay, accentDim[1] * 1.15, accentDim[2] * 1.15, accentDim[3] * 1.1, 1)
         end
+    end
+    -- v6.5: LÂMINAS de capim — pares verticais claros de 2px (dão fio à
+    -- grama; sem eles a textura é só manchas)
+    for _ = 1, 26 do
+        local bx2, by2 = rng:random(0, tw - 1), rng:random(1, th - 1)
+        data:setPixel(bx2, by2,
+            math.min(1, light[1] * 1.08), math.min(1, light[2] * 1.08), light[3], 1)
+        data:setPixel(bx2, by2 - 1,
+            math.min(1, light[1] * 1.16), math.min(1, light[2] * 1.16),
+            math.min(1, light[3] * 1.05), 1)
     end
     local img = love.graphics.newImage(data)
     img:setFilter("nearest", "nearest")
@@ -1664,6 +1675,23 @@ local function drawDome(g, x, y, w)
     -- gramado liam como "bolas sem sentido" e, quando passavam sob uma
     -- árvore, como sombra flutuante descolada dela. Nuvem de background
     -- distante não projeta sombra no chão do primeiro plano.
+
+    -- v6.5: FAIXA DE LUZ na crista — o alto do morro pega o sol; a luz
+    -- morre descendo pro primeiro plano. Segue a CURVA da crista (colunas)
+    -- e usa gradiente por textura (sem banding). Aditiva e bem sutil.
+    do
+        local gv = gradTex()
+        local bandH2 = (g.bottomY - g.crestApexY) * 0.30
+        love.graphics.setBlendMode("add")
+        love.graphics.setColor(1, 0.95, 0.80, 0.06)
+        for sxx = 0, w - 1, 6 do
+            local cyv = g.crestYAt(x + sxx)
+            if cyv < g.bottomY then
+                love.graphics.draw(gv, x + sxx, cyv + 1, 0, 6, bandH2 / 256)
+            end
+        end
+        love.graphics.setBlendMode("alpha")
+    end
 
     -- v5.6: TAMPA LISA da silhueta — arco exato do círculo por cima da
     -- borda da textura (as fatias escadinham; o arco esconde os degraus
@@ -1961,6 +1989,32 @@ local function drawRoad(g, x, w, camZ)
                                       or (xL - 5 - math.floor(hash(rowId * 29) * 8 * g.persp(t)))
                 love.graphics.setColor(roadA[1] * 1.25, roadA[2] * 1.22, roadA[3] * 1.15, 0.9 * aMul)
                 love.graphics.rectangle("fill", px2, math.floor(g.latY(px2 - cx, t)), ps, math.max(step, ps - 1))
+            end
+
+            -- v6.5: DITHER de transição terra↔grama — salpicos dos dois
+            -- lados da borda (denso perto, esparso longe). A emenda vira
+            -- meio-tom orgânico em vez de linha serrada dura.
+            if newRow then
+                local ga2 = envColor("grassA")
+                for k = 1, 3 do
+                    local hh = hash(rowId * 53 + k * 7)
+                    local dd = math.floor(hh * hh * 12 * g.persp(t)) + 2
+                    local sz2 = math.max(1, math.floor(2 * g.persp(t)))
+                    local sideK = (hash(rowId * 59 + k) > 0.5) and 1 or -1
+                    -- terra salpicada na grama (fora da borda)
+                    local bx = sideK > 0 and (xR + dd) or (xL - dd - sz2)
+                    love.graphics.setColor(roadA[1], roadA[2], roadA[3],
+                        (1 - hh * 0.6) * 0.5 * aMul)
+                    love.graphics.rectangle("fill", bx,
+                        math.floor(g.latY(bx - cx, t)), sz2, sz2)
+                    -- grama salpicada na terra (dentro da borda)
+                    local gx2 = sideK > 0 and (xR - 2 - dd) or (xL + dd)
+                    if gx2 > xL + 2 and gx2 < xR - 2 - sz2 then
+                        love.graphics.setColor(ga2[1], ga2[2], ga2[3], 0.32 * aMul)
+                        love.graphics.rectangle("fill", gx2,
+                            math.floor(g.latY(gx2 - cx, t)), sz2, sz2)
+                    end
+                end
             end
 
             -- GRAMA INVADINDO a estrada (v5.4, feedback): fiapos verdes
