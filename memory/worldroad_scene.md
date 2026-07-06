@@ -696,6 +696,28 @@ brilho). REGRA FINAL DA SAGA (c28→c36): NENHUM efeito luminoso desenha
 depois dos props — árvore oclui tudo que é do campo (névoa, partícula,
 critter, luz). Só vinhetas (escuras) e UI ficam na frente.
 
+**Ciclo 37 (entregue — v5 A ENCRUZILHADA, 06/Jul):** escolha de caminho
+IN-WORLD substitui o MapScreen na estrada. WorldRoad ganhou:
+- showFork(nodes, onChosen) / isForkActive / forkHitTest / forkMousePressed;
+  constantes FORK_REL=10, MARK_REL=17.5, ARRIVE_REL=7.5, FORK_SPREAD=0.15.
+- drawRoad refatorado: paintRow(cxRow, halfMul, aMul, decorate, bright) —
+  fileiras com rel>FORK_REL pintam 1x POR BRAÇO (offset smoothstep, largura
+  0.78, hover 1.14 de brilho). Braços não escolhidos: alpha→0 no converge.
+- Marcos: landmark_<battle|elite|rest|shop|event|chest>.png (PixelLab,
+  LANDMARK_FOR_TYPE/LANDMARK_SIZE), pill com label sempre + desc no hover,
+  glow no chão, bob. Desenhados DEPOIS dos props (UI interativa — exceção
+  consciente à regra "nada sobre árvores"). markBoxes = hitboxes frame-fresh.
+- Convergência: clique → braço escolhido easa pro centro enquanto camZ
+  avança MARK_REL→ARRIVE_REL (2.4s) → _landmark plantado no centro (desliza
+  na próxima viagem, some em rel<-3) → onChosen(node, idx).
+- Integração main.lua: showMapSelection usa fork quando SCENE_MODE=worldroad
+  (MapScreen = fallback); estado mapSelection roteia update/draw
+  (GameplayScene.drawWorldOnly — mundo sem inimigo/mão)/mouse/teclas 1-3.
+- Validação: modos "fork" e "fork2" (meio da convergência) no
+  screenshot_worldroad. validate_cards verde.
+Assets: 6 landmarks em assets/sprites/world/ (cabana, fogueira, tenda
+mística, estandarte, obelisco, baú — baú reservado pra node treasure futuro).
+
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
 14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY
 21. Aguardar feedback do usuário jogando (viagem/blends/interiores em MOTION

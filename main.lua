@@ -206,8 +206,18 @@ showMapSelection = function()
         game.runManager:generateNextNodes(3)
     end
     local pending = game.runManager:getPendingNodes()
-    mapScreen:show(pending, onNodeChosen, "Escolha o proximo caminho")
-    currentState = "mapSelection"
+    -- v5 (A Encruzilhada): na estrada, a escolha acontece NO MUNDO — a
+    -- estrada se bifurca e cada braço tem um marco. MapScreen vira fallback
+    -- (cena não-worldroad ou falha ao montar o fork).
+    local GameplayScene = require("src.scenes.GameplayScene")
+    local WorldRoad = require("src.ui.WorldRoad")
+    if GameplayScene.SCENE_MODE == "worldroad"
+       and WorldRoad.showFork(pending, onNodeChosen) then
+        currentState = "mapSelection"
+    else
+        mapScreen:show(pending, onNodeChosen, "Escolha o proximo caminho")
+        currentState = "mapSelection"
+    end
 end
 
 -- Continua o jogo após escolher/pular recompensa.
@@ -767,7 +777,12 @@ function love.update(dt)
     elseif currentState == "roundEval" then
         roundEvalScreen:update(dt)
     elseif currentState == "mapSelection" then
-        mapScreen:update(dt)
+        local WorldRoad = require("src.ui.WorldRoad")
+        if WorldRoad.isForkActive() then
+            WorldRoad.update(dt)
+        else
+            mapScreen:update(dt)
+        end
     elseif currentState == "rest" then
         restScreen:update(dt)
     elseif currentState == "event" then
@@ -807,8 +822,14 @@ function love.draw()
         GameplayScene.draw()       -- gameplay congelado por trás
         roundEvalScreen:draw()     -- overlay de cash out
     elseif currentState == "mapSelection" then
-        GameplayScene.draw()
-        mapScreen:draw()
+        local WorldRoad = require("src.ui.WorldRoad")
+        if WorldRoad.isForkActive() then
+            -- Encruzilhada: só o mundo (sem inimigo morto/mão/HUD de batalha)
+            GameplayScene.drawWorldOnly()
+        else
+            GameplayScene.draw()
+            mapScreen:draw()
+        end
     elseif currentState == "rest" then
         GameplayScene.draw()
         restScreen:draw()
@@ -931,6 +952,18 @@ function love.keypressed(key)
     end
 
     if currentState == "mapSelection" then
+        local WorldRoad = require("src.ui.WorldRoad")
+        if WorldRoad.isForkActive() then
+            -- atalhos 1-3 escolhem o braço (usa o centro da hitbox do marco)
+            local n = tonumber(key)
+            local f = WorldRoad._fork
+            if n and f and f.markBoxes and f.markBoxes[n] then
+                local b = f.markBoxes[n]
+                WorldRoad.forkMousePressed((b.x1 + b.x2) / 2, (b.y1 + b.y2) / 2)
+            end
+            if key == "escape" then returnToMenu() end
+            return
+        end
         if mapScreen:keypressed(key) then return end
         if key == "escape" then returnToMenu() end
         return
@@ -1029,7 +1062,12 @@ function love.mousepressed(x, y, button)
     elseif currentState == "roundEval" then
         roundEvalScreen:mousepressed(x, y, button)
     elseif currentState == "mapSelection" then
-        mapScreen:mousepressed(x, y, button)
+        local WorldRoad = require("src.ui.WorldRoad")
+        if WorldRoad.isForkActive() then
+            WorldRoad.forkMousePressed(x, y)
+        else
+            mapScreen:mousepressed(x, y, button)
+        end
     elseif currentState == "rest" then
         restScreen:mousepressed(x, y, button)
     elseif currentState == "event" then

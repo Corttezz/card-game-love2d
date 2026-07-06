@@ -35,6 +35,42 @@ function M.run(mode)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, 80)
         EnemyRenderer.draw(game, math.floor(width / 2), math.floor(height * 0.68))
+    elseif mode == "fork" or mode == "fork2" then
+        -- A ENCRUZILHADA (v5): estrada bifurcada com 3 marcos + hover no 2.
+        -- "fork2" captura o MEIO da convergência (braço escolhido virando
+        -- a estrada central).
+        local topBarH = 80
+        WorldRoad.clearCache()
+        WorldRoad.setBiome(1)
+        WorldRoad._camZ = 5.5
+        for _ = 1, 30 do WorldRoad.update(1 / 30) end
+        WorldRoad.showFork({
+            { type = "battle", label = "Batalha", desc = "Um inimigo bloqueia a estrada" },
+            { type = "rest",   label = "Descanso", desc = "Fogueira acolhedora" },
+            { type = "shop",   label = "Loja", desc = "Um mercador acena" },
+        }, function() end)
+        -- alguns frames pra animIn assentar + registrar markBoxes (precisa
+        -- de draw pra calcular as hitboxes)
+        for _ = 1, 20 do
+            WorldRoad.update(1 / 30)
+            WorldRoad.draw(0, topBarH, width, height - topBarH, 1)
+        end
+        if WorldRoad._fork then WorldRoad._fork.hover = 2 end
+        if mode == "fork2" then
+            local f = WorldRoad._fork
+            local b = f and f.markBoxes and f.markBoxes[3]
+            if b then
+                WorldRoad.forkMousePressed((b.x1 + b.x2) / 2, (b.y1 + b.y2) / 2)
+            end
+            for _ = 1, 36 do   -- ~1.2s: meio da convergência
+                WorldRoad.update(1 / 30)
+                WorldRoad.draw(0, topBarH, width, height - topBarH, 1)
+            end
+        end
+        love.graphics.clear(0, 0, 0, 1)
+        WorldRoad.draw(0, topBarH, width, height - topBarH, 1)
+        love.graphics.setColor(0.1, 0.08, 0.06, 1)
+        love.graphics.rectangle("fill", 0, 0, width, topBarH)
     elseif mode == "blend6" then
         -- Reproduz a chegada no bioma 6 vindo do 5: blend de crossfade
         -- ATIVO + viagem + encounter (condição real de gameplay que os

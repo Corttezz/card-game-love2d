@@ -28,6 +28,7 @@
 -- Plano: docs/plan/worldroad-sphere-v4.md · Memória: memory/worldroad_scene.md
 
 local biomesData = require("src.data.biomes")
+local Sfx = require("src.systems.Sfx")
 
 local WorldRoad = {}
 
@@ -754,6 +755,38 @@ function WorldRoad.update(dt)
 
     if #WorldRoad._props == 0 then populate() end
 
+    -- FORK (v5): entrada + hover + convergência
+    local f = WorldRoad._fork
+    if f then
+        f.animIn = math.min(1, (f.animIn or 0) + dt * 2.2)
+        if f.chosenPulse and f.chosenPulse > 0 then
+            f.chosenPulse = math.max(0, f.chosenPulse - dt)
+        end
+        local c = f.converge
+        if c then
+            c.t = c.t + dt
+            local k = math.min(1, c.t / c.duration)
+            c.k = easeInOutCubic(k)
+            WorldRoad._camZ = c.z0 + c.dist * c.k
+            if k >= 1 then
+                local node = f.nodes[f.chosen]
+                local key = node and LANDMARK_FOR_TYPE[tostring(node.type)]
+                if key then
+                    WorldRoad._landmark = {
+                        key = key, z = f.markZ,
+                        size = LANDMARK_SIZE[key] or 2.0,
+                    }
+                end
+                local cb, idx = f.onChosen, f.chosen
+                WorldRoad._fork = nil
+                if cb then cb(node, idx) end
+            end
+        else
+            local mx, my = love.mouse.getPosition()
+            f.hover = WorldRoad.forkHitTest(mx, my)
+        end
+    end
+
     local bl = WorldRoad._blend
     if bl then
         bl.t = bl.t + dt
@@ -1453,8 +1486,115 @@ local function getRoadTile(bid)
 end
 local RD_V_DENSITY = 5.2   -- texels por unidade de mundo (rolagem da terra)
 
+-- ============================================================================
+-- FORK — A ENCRUZILHADA (v5): a estrada se bifurca em 2-3 braços e cada
+-- braço tem um MARCO (landmark PixelLab) dizendo o que o caminho é.
+-- Substitui o MapScreen quando estamos na estrada. Contrato: showFork(nodes,
+-- onChosen) → clique num braço → convergência (braço vira a estrada central
+-- enquanto a câmera avança) → onChosen(node, index).
+-- ============================================================================
+local FORK_REL    = 10    -- onde a estrada se divide
+local MARK_REL    = 17.5  -- onde os marcos ficam
+local ARRIVE_REL  = 7.5   -- rel do marco ao fim da convergência (chegada)
+local FORK_SPREAD = 0.15  -- afastamento lateral máximo por direção (fração de w)
+
+local LANDMARK_FOR_TYPE = {
+    battle = "landmark_battle", elite = "landmark_elite",
+    mini_boss = "landmark_battle", boss = "landmark_battle",
+    rest = "landmark_rest", shop = "landmark_shop",
+    event = "landmark_event", treasure = "landmark_chest",
+}
+local LANDMARK_SIZE = {
+    landmark_battle = 2.3, landmark_elite = 2.7, landmark_rest = 2.2,
+    landmark_shop = 3.2, landmark_event = 3.1, landmark_chest = 1.8,
+}
+
+local landmarkCache = {}
+local function getLandmark(key)
+    if landmarkCache[key] ~= nil then return landmarkCache[key] or nil end
+    local img = tryLoadPng(key)
+    landmarkCache[key] = img or false
+    return img
+end
+
+function WorldRoad.showFork(nodes, onChosen)
+    if not nodes or #nodes == 0 then return false end
+    local n = math.min(3, #nodes)
+    local dirs = (n == 1) and { 0 } or (n == 2) and { -1, 1 } or { -1, 0, 1 }
+    WorldRoad._fork = {
+        nodes = nodes, n = n, dirs = dirs,
+        animIn = 0, hover = nil, chosen = nil, converge = nil,
+        onChosen = onChosen,
+        markZ = WorldRoad._camZ + MARK_REL,
+        markBoxes = {},
+    }
+    return true
+end
+
+function WorldRoad.isForkActive()
+    return WorldRoad._fork ~= nil
+end
+
+-- offset lateral (px) do braço i na profundidade rel
+local function forkOffset(f, i, rel, w)
+    local k = (rel - FORK_REL) / (MARK_REL - FORK_REL)
+    k = math.min(1, math.max(0, k))
+    k = k * k * (3 - 2 * k)                     -- smoothstep
+    local off = f.dirs[i] * FORK_SPREAD * w * k * f.animIn
+    if f.converge then
+        local c = f.converge.k or 0
+        if i == f.chosen then off = off * (1 - c)       -- escolhido → centro
+        else off = off * (1 + c * 2.5) end              -- outros → cone
+    end
+    return off
+end
+
+-- alpha do braço i (não escolhidos somem durante a convergência)
+local function forkAlpha(f, i)
+    if not f.converge or i == f.chosen then return 1 end
+    return math.max(0, 1 - (f.converge.k or 0) * 1.6)
+end
+
+function WorldRoad.forkHitTest(mx, my)
+    local f = WorldRoad._fork
+    if not f then return nil end
+    for i = 1, f.n do
+        local b = f.markBoxes[i]
+        if b and mx >= b.x1 and mx <= b.x2 and my >= b.y1 and my <= b.y2 then
+            return i
+        end
+    end
+    return nil
+end
+
+function WorldRoad.forkMousePressed(mx, my)
+    local f = WorldRoad._fork
+    if not f then return false end
+    if f.converge then return true end          -- consome, mas ignora
+    local i = WorldRoad.forkHitTest(mx, my)
+    if i then
+        f.chosen = i
+        f.hover = i
+        f.converge = { t = 0, k = 0, duration = 2.4,
+                       z0 = WorldRoad._camZ, dist = MARK_REL - ARRIVE_REL }
+        Sfx.play("cardSelect")
+        local node = f.nodes[i]
+        if node then
+            local key = LANDMARK_FOR_TYPE[tostring(node.type)]
+            local img = key and getLandmark(key)
+            if img then
+                -- juice visual: o marco "responde" à escolha
+                f.chosenPulse = 0.35
+            end
+        end
+    end
+    return true                                  -- fork ativo consome cliques
+end
+
 -- Estrada de terra: faixa do castelo (crista) até a base — tile rolando em
 -- modo-7 (quando existe) + manchas orgânicas + sulcos + pedrinhas + bordas.
+-- v5: quando o fork está ativo, fileiras além de FORK_REL pintam UMA VEZ POR
+-- BRAÇO (centro deslocado + largura menor) — a estrada literalmente se abre.
 local function drawRoad(g, x, w, camZ)
     local roadA = envColor("roadA")
     local roadB = envColor("roadB")
@@ -1462,10 +1602,8 @@ local function drawRoad(g, x, w, camZ)
     local cx = g.cx
     local crest = g.crestYAt(cx)
     local groundH = g.bottomY - crest
+    local fork = WorldRoad._fork
 
-    -- CAMINHO DE TERRA natural (feedback: nada de "calçada"/cone perfeito):
-    -- centro serpenteia organicamente, largura ondula, bordas irregulares,
-    -- tom varia em manchas + pedrinhas espalhadas. Cores vêm do bioma.
     local step = 2
     local function hash(n)
         local v = math.sin(n * 12.9898) * 43758.5453
@@ -1476,29 +1614,12 @@ local function drawRoad(g, x, w, camZ)
         local t = sy / groundH
         local rel = REL_CREST * (1 - t ^ (1 / T_POW))
         local worldZ = camZ + rel
-        local yy = crest + sy
 
-        -- CAMINHO RETO (feedback: o serpenteio parecia torto/aleatório).
-        -- Naturalidade vem das BORDAS: variação SUAVE de baixa frequência
-        -- (senos contínuos em worldZ — nada de jitter por fileira)
-        local cxRow = cx
-
-        -- largura: na ESFERA o caminho NÃO converge pra um ponto — ele some
-        -- POR CIMA da curva ainda largo (referência: topo ≈ 30% da base).
-        -- Curva própria da estrada, não a persp de objetos.
-        local half = ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15))
-
-        -- bordas orgânicas contínuas, escaladas pela mesma curva
+        local half0 = ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15))
         local edgeAmp = 5 * (0.30 + 0.70 * t)
         local eL = (math.sin(worldZ * 0.55) * 0.6 + math.sin(worldZ * 0.21 + 1.4) * 0.4) * edgeAmp
         local eR = (math.sin(worldZ * 0.47 + 3.1) * 0.6 + math.sin(worldZ * 0.17 + 4.2) * 0.4) * edgeAmp
         local rowId = math.floor(worldZ * 2.3)
-        local xL = math.floor(cxRow - half + eL)
-        local xR = math.floor(cxRow + half + eR)
-
-        -- BASE em FATIAS DE LATITUDE: cada segmento de 16px deita no arco
-        -- REAL da esfera (latY) — mata a "curvatura contrária" do campo
-        -- próximo (fileiras retas achatavam a curva perto da tela)
         local blend = hash(math.floor(worldZ / 1.9) * 3 + math.floor(t * 5))
         local m = 0.92 + hash(rowId) * 0.10
         local tile = getRoadTile(rawBiome().id)
@@ -1516,86 +1637,206 @@ local function drawRoad(g, x, w, camZ)
             hs = 4.4 * (0.35 + 0.65 * t)
             uOff = hash(math.floor(worldZ / 2.5) * 13) * tw
         end
-        local SEG = 16
-        for segX = xL, xR - 1, SEG do
-            local segW = math.min(SEG, xR - segX)
-            local dxMid = (segX + segW / 2) - cx
-            local segY = math.floor(g.latY(dxMid, t))
-            if tile then
-                WorldRoad._roadQuad:setViewport((segX - cx) / hs + uOff, v,
-                    segW / hs, dv, tw, th)
-                local tm = 0.9 + blend * 0.16
-                love.graphics.setColor(tm, tm, tm, 1)
-                -- ciclo 31: overdraw de 1.5px — fatias vizinhas em latitudes
-                -- que arredondam 3px de distância deixavam FRESTA de 1px
-                -- onde a grama vazava ("pixels estranhos" diagonais)
-                love.graphics.draw(tile, WorldRoad._roadQuad, segX, segY, 0,
-                    hs, (step + 1.5) / dv)
-            else
-                love.graphics.setColor(
-                    (roadA[1] + (roadB[1] - roadA[1]) * blend) * m,
-                    (roadA[2] + (roadB[2] - roadA[2]) * blend) * m,
-                    (roadA[3] + (roadB[3] - roadA[3]) * blend) * m, 1)
-                love.graphics.rectangle("fill", segX, segY, segW, step + 1.5)
-            end
-        end
-
-        -- pedrinhas/torrões (na latitude do ponto). CICLO 29: desenha UMA
-        -- vez por rowId — redesenhar a cada fileira de 2px com xL/xR
-        -- mudando fazia a pedrinha "deslizar" e virar risco diagonal
-        -- ("pixels estranhos no caminho", pior perto da câmera onde o
-        -- mesmo rowId cobre muitas fileiras)
         local newRow = rowId ~= lastDecoRow
-        if newRow then
-            lastDecoRow = rowId
-            for k = 1, 2 do
-                local hpos = hash(rowId * 31 + k * 17)
-                if hpos > 0.35 then
-                    local px2 = xL + math.floor(hpos * (xR - xL))
-                    local sz = math.max(2, math.floor((1 + hash(rowId + k) * 2) * (0.4 + 0.6 * t) * 2))
-                    if hash(rowId * 3 + k) > 0.5 then
-                        love.graphics.setColor(roadEdge[1], roadEdge[2], roadEdge[3], 0.5)
-                    else
-                        love.graphics.setColor(roadA[1] * 1.2, roadA[2] * 1.2, roadA[3] * 1.15, 0.6)
-                    end
-                    love.graphics.rectangle("fill", px2,
-                        math.floor(g.latY(px2 - cx, t)), sz, sz)
+        if newRow then lastDecoRow = rowId end
+
+        -- pinta UMA fileira da estrada com centro/largura/alpha/brilho dados
+        local function paintRow(cxRow, halfMul, aMul, decorate, bright)
+            local half = half0 * halfMul
+            local xL = math.floor(cxRow - half + eL)
+            local xR = math.floor(cxRow + half + eR)
+
+            local SEG = 16
+            for segX = xL, xR - 1, SEG do
+                local segW = math.min(SEG, xR - segX)
+                local dxMid = (segX + segW / 2) - cx
+                local segY = math.floor(g.latY(dxMid, t))
+                if tile then
+                    WorldRoad._roadQuad:setViewport((segX - cx) / hs + uOff, v,
+                        segW / hs, dv, tw, th)
+                    local tm = (0.9 + blend * 0.16) * bright
+                    love.graphics.setColor(tm, tm, tm, aMul)
+                    -- ciclo 31: overdraw de 1.5px (mata fresta entre latitudes)
+                    love.graphics.draw(tile, WorldRoad._roadQuad, segX, segY, 0,
+                        hs, (step + 1.5) / dv)
+                else
+                    love.graphics.setColor(
+                        (roadA[1] + (roadB[1] - roadA[1]) * blend) * m * bright,
+                        (roadA[2] + (roadB[2] - roadA[2]) * blend) * m * bright,
+                        (roadA[3] + (roadB[3] - roadA[3]) * blend) * m * bright, aMul)
+                    love.graphics.rectangle("fill", segX, segY, segW, step + 1.5)
                 end
             end
+
+            if not decorate then return end
+
+            -- pedrinhas/torrões (ciclo 29: 1x por rowId)
+            if newRow then
+                for k = 1, 2 do
+                    local hpos = hash(rowId * 31 + k * 17)
+                    if hpos > 0.35 then
+                        local px2 = xL + math.floor(hpos * (xR - xL))
+                        local sz = math.max(2, math.floor((1 + hash(rowId + k) * 2) * (0.4 + 0.6 * t) * 2))
+                        if hash(rowId * 3 + k) > 0.5 then
+                            love.graphics.setColor(roadEdge[1], roadEdge[2], roadEdge[3], 0.5 * aMul)
+                        else
+                            love.graphics.setColor(roadA[1] * 1.2, roadA[2] * 1.2, roadA[3] * 1.15, 0.6 * aMul)
+                        end
+                        love.graphics.rectangle("fill", px2,
+                            math.floor(g.latY(px2 - cx, t)), sz, sz)
+                    end
+                end
+            end
+
+            -- SULCOS de desgaste (na latitude)
+            if t > 0.45 then
+                local rutA = (t - 0.45) * 0.5
+                local rutW = math.max(1, math.floor(2 * g.persp(t)))
+                love.graphics.setColor(roadEdge[1], roadEdge[2], roadEdge[3], rutA * 0.5 * aMul)
+                local rdx = half * 0.42
+                love.graphics.rectangle("fill", math.floor(cxRow - rdx),
+                    math.floor(g.latY(cxRow - rdx - cx, t)), rutW, step)
+                love.graphics.rectangle("fill", math.floor(cxRow + rdx),
+                    math.floor(g.latY(cxRow + rdx - cx, t)), rutW, step)
+            end
+
+            -- bordas quebradas + pedrinha da transição
+            local yL = math.floor(g.latY(xL - cx, t))
+            local yR = math.floor(g.latY(xR - cx, t))
+            if hash(rowId * 5 + 2) > 0.25 then
+                love.graphics.setColor(roadEdge[1], roadEdge[2], roadEdge[3], 0.85 * aMul)
+                love.graphics.rectangle("fill", xL - 2, yL, 2, step)
+            end
+            if hash(rowId * 11 + 4) > 0.25 then
+                love.graphics.setColor(roadEdge[1], roadEdge[2], roadEdge[3], 0.85 * aMul)
+                love.graphics.rectangle("fill", xR, yR, 2, step)
+            end
+            if newRow and hash(rowId * 17 + 9) > 0.72 then
+                local ps = math.max(2, math.floor(3.5 * g.persp(t)))
+                local side = hash(rowId * 23 + 3) > 0.5 and 1 or -1
+                local px2 = side > 0 and (xR + 3 + math.floor(hash(rowId * 29) * 8 * g.persp(t)))
+                                      or (xL - 5 - math.floor(hash(rowId * 29) * 8 * g.persp(t)))
+                love.graphics.setColor(roadA[1] * 1.25, roadA[2] * 1.22, roadA[3] * 1.15, 0.9 * aMul)
+                love.graphics.rectangle("fill", px2, math.floor(g.latY(px2 - cx, t)), ps, math.max(step, ps - 1))
+            end
         end
 
-        -- SULCOS de desgaste (na latitude)
-        if t > 0.45 then
-            local rutA = (t - 0.45) * 0.5
-            local rutW = math.max(1, math.floor(2 * g.persp(t)))
-            love.graphics.setColor(roadEdge[1], roadEdge[2], roadEdge[3], rutA * 0.5)
-            local rdx = half * 0.42
-            love.graphics.rectangle("fill", math.floor(cxRow - rdx),
-                math.floor(g.latY(-rdx, t)), rutW, step)
-            love.graphics.rectangle("fill", math.floor(cxRow + rdx),
-                math.floor(g.latY(rdx, t)), rutW, step)
-        end
-
-        -- bordas quebradas + pedrinhas da transição (na latitude das bordas)
-        local yL = math.floor(g.latY(xL - cx, t))
-        local yR = math.floor(g.latY(xR - cx, t))
-        if hash(rowId * 5 + 2) > 0.25 then
-            love.graphics.setColor(roadEdge[1], roadEdge[2], roadEdge[3], 0.85)
-            love.graphics.rectangle("fill", xL - 2, yL, 2, step)
-        end
-        if hash(rowId * 11 + 4) > 0.25 then
-            love.graphics.setColor(roadEdge[1], roadEdge[2], roadEdge[3], 0.85)
-            love.graphics.rectangle("fill", xR, yR, 2, step)
-        end
-        if newRow and hash(rowId * 17 + 9) > 0.72 then
-            local ps = math.max(2, math.floor(3.5 * g.persp(t)))
-            local side = hash(rowId * 23 + 3) > 0.5 and 1 or -1
-            local px2 = side > 0 and (xR + 3 + math.floor(hash(rowId * 29) * 8 * g.persp(t)))
-                                  or (xL - 5 - math.floor(hash(rowId * 29) * 8 * g.persp(t)))
-            love.graphics.setColor(roadA[1] * 1.25, roadA[2] * 1.22, roadA[3] * 1.15, 0.9)
-            love.graphics.rectangle("fill", px2, math.floor(g.latY(px2 - cx, t)), ps, math.max(step, ps - 1))
+        if fork and rel > FORK_REL then
+            for i = 1, fork.n do
+                local aMul = forkAlpha(fork, i)
+                if aMul > 0.02 then
+                    local bright = (fork.hover == i and not fork.converge) and 1.14 or 1
+                    paintRow(cx + forkOffset(fork, i, rel, w),
+                        fork.n > 1 and 0.78 or 1, aMul, i == 1, bright)
+                end
+            end
+        else
+            paintRow(cx, 1, 1, true, 1)
         end
     end
+end
+
+-- Marcos do fork: sprites na boca de cada braço + pill com nome (hover:
+-- glow + descrição). Boxes de hit são registradas aqui (frame-fresh).
+local function drawForkMarks(g, x, w, camZ)
+    local f = WorldRoad._fork
+    if not f then return end
+    local FontManager = require("src.ui.FontManager")
+    for i = 1, f.n do
+        local node = f.nodes[i]
+        local key = node and LANDMARK_FOR_TYPE[tostring(node.type)] or "landmark_battle"
+        local img = getLandmark(key or "landmark_battle")
+        local rel = f.markZ - camZ
+        local t = g.tOf(rel)
+        local aMul = forkAlpha(f, i)
+        if img and t and aMul > 0.02 then
+            local offX = forkOffset(f, i, rel, w)
+            local px = g.cx + offX
+            local py = g.latY(offX, t)
+            local iw, ih = img:getWidth(), img:getHeight()
+            local size = LANDMARK_SIZE[key] or 2.0
+            local s = g.scaleAt(size, t, ih)
+            -- entrada: cresce com animIn; escolha: pulso
+            s = s * (0.7 + 0.3 * f.animIn)
+            if f.chosen == i and f.chosenPulse and f.chosenPulse > 0 then
+                s = s * (1 + f.chosenPulse * 0.25)
+            end
+            local hovered = (f.hover == i and not f.converge)
+
+            -- glow no chão sob o marco (hover: mais forte, na cor do bioma)
+            local acc = rawBiome().accent or { 0.9, 0.75, 0.4 }
+            love.graphics.setColor(acc[1], acc[2], acc[3],
+                (hovered and 0.30 or 0.12) * aMul)
+            love.graphics.ellipse("fill", px, py, iw * s * 0.7, 7 * g.persp(t) + 3)
+            -- sombra
+            love.graphics.setColor(0, 0, 0, 0.22 * aMul)
+            love.graphics.ellipse("fill", px, py - 1, iw * s * 0.30, math.max(2, 4 * g.persp(t)))
+
+            local bob = hovered and math.sin(WorldRoad._time * 4) * 2 or 0
+            local br = hovered and 1.12 or 1
+            love.graphics.setColor(br, br, br, aMul)
+            love.graphics.draw(img, math.floor(px - iw * s / 2),
+                math.floor(py - ih * s + bob), 0, s, s)
+
+            -- hitbox generosa (marco + respiro)
+            local grow = 14
+            f.markBoxes[i] = {
+                x1 = px - iw * s / 2 - grow, y1 = py - ih * s - grow - 16,
+                x2 = px + iw * s / 2 + grow, y2 = py + grow,
+            }
+
+            -- PILL com o nome (sempre); hover adiciona a descrição
+            if not f.converge then
+                local label = (node and node.label) or "?"
+                local font = FontManager.getFont(13)
+                love.graphics.setFont(font)
+                local tw2 = font:getWidth(label)
+                local pw, ph = tw2 + 16, 20
+                local pxc = px - pw / 2
+                local pyc = py - ih * s - 26 + bob
+                love.graphics.setColor(0.09, 0.07, 0.05, 0.88 * aMul)
+                love.graphics.rectangle("fill", pxc, pyc, pw, ph, 6, 6)
+                love.graphics.setColor(0.55, 0.44, 0.24, 0.9 * aMul)
+                love.graphics.rectangle("line", pxc, pyc, pw, ph, 6, 6)
+                love.graphics.setColor(0.92, 0.82, 0.58, aMul)
+                love.graphics.print(label, math.floor(pxc + 8), math.floor(pyc + 3))
+                if hovered and node and node.desc then
+                    local font2 = FontManager.getFont(11)
+                    love.graphics.setFont(font2)
+                    local dw = font2:getWidth(node.desc)
+                    local dx2 = px - dw / 2 - 8
+                    local dy2 = pyc - 22
+                    love.graphics.setColor(0.09, 0.07, 0.05, 0.82 * aMul)
+                    love.graphics.rectangle("fill", dx2, dy2, dw + 16, 18, 5, 5)
+                    love.graphics.setColor(0.85, 0.78, 0.62, aMul)
+                    love.graphics.print(node.desc, math.floor(dx2 + 8), math.floor(dy2 + 3))
+                end
+            end
+        else
+            f.markBoxes[i] = nil
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- Marco "onde chegamos" (pós-convergência): fica plantado no centro da
+-- estrada e desliza naturalmente quando a próxima viagem acontecer.
+local function drawLandmarkFront(g, x, w, camZ)
+    local lm = WorldRoad._landmark
+    if not lm then return end
+    local rel = lm.z - camZ
+    if rel < -3 then WorldRoad._landmark = nil; return end
+    local t = g.tOf(rel)
+    if not t then return end
+    local img = getLandmark(lm.key)
+    if not img then return end
+    local iw, ih = img:getWidth(), img:getHeight()
+    local s = g.scaleAt(lm.size or 2.0, t, ih)
+    local py = g.crestApexY + (g.bottomY - g.crestApexY) * t
+    love.graphics.setColor(0, 0, 0, 0.22)
+    love.graphics.ellipse("fill", g.cx, py - 1, iw * s * 0.30, math.max(2, 4 * g.persp(t)))
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(img, math.floor(g.cx - iw * s / 2), math.floor(py - ih * s), 0, s, s)
 end
 
 -- Props do lado de cá da crista (crescem descendo o domo)
@@ -1884,6 +2125,11 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     end
 
     drawProps(g, x, w, WorldRoad._camZ)
+    -- fork/landmark DEPOIS dos props: marcos e pills são UI interativa —
+    -- precisam ser legíveis por cima das copas (exceção consciente à regra
+    -- "nada desenha sobre árvores", que vale pra efeitos de campo)
+    drawLandmarkFront(g, x, w, WorldRoad._camZ)
+    drawForkMarks(g, x, w, WorldRoad._camZ)
     drawEncounterFront(g, x, w, WorldRoad._camZ)
 
     -- vinheta inferior (mesma linguagem das outras scenes)
@@ -1912,6 +2158,8 @@ function WorldRoad.clearCache()
     WorldRoad._blend = nil
     WorldRoad._prevBiomeIndex = nil
     WorldRoad._encounter = nil
+    WorldRoad._fork = nil
+    WorldRoad._landmark = nil
 end
 
 return WorldRoad

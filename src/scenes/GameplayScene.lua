@@ -124,6 +124,22 @@ local function drawJokersAsCards()
     require("src.ui.StatusTooltip").draw()
 end
 
+-- v5 (Encruzilhada): desenha SÓ o mundo (estrada + fork), sem inimigo, HUD
+-- ou mão — usado pelo estado mapSelection quando a escolha acontece in-world.
+function GameplayScene.drawWorldOnly()
+    local width = love.graphics.getWidth()
+    local height = love.graphics.getHeight()
+    local topBarHeight = topBar.height or 80
+    local currentAct = 1
+    local run = game and game.runManager and game.runManager.currentRun
+    if run then currentAct = run.actNumber or 1 end
+    local biomeIdx = currentAct
+    if run and run.endlessMode then
+        biomeIdx = 4 + math.floor(math.max(0, (run.currentFloor or 25) - 25) / 8)
+    end
+    WorldRoad.draw(0, topBarHeight, width, height - topBarHeight, biomeIdx)
+end
+
 function GameplayScene.draw()
     local width = love.graphics.getWidth()
     local height = love.graphics.getHeight()
