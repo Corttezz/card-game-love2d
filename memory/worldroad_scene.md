@@ -851,6 +851,19 @@ domo não cobre); (3) castelo: refW = min(w, h×1.5). Validação nova:
 prefixo wide_ no screenshot (1914×1011) — REGRA: layout de céu/bg
 valida nos DOIS aspectos (full<N> e wide_full<N>).
 
+**Ciclo 47 (entregue — v5.6 bordas da esfera + faixas laterais, 06/Jul):**
+(1) "Retângulos na curvatura": fatias de 32px da textura do domo
+escadinhavam na borda visível → SEG adaptativo (8px onde t<0.3, 32 no
+corpo) + tampa lisa (arc exato do círculo, lw3, cor grassA, largura
+total, 256 segmentos) + circle fill com 256 segmentos. (2) Faixas
+preta/roxa nas extremidades largas: eram TRÊS camadas chapadas
+empilhadas + o RODAPÉ do PNG das montanhas (últimas fileiras degradam
+pra preto). Fix: gradiente hillsNear→grassA×0.82 começando 46px DENTRO
+do strip (cobre o rodapé preto) e alvo = tom do topo do domo (funde com
+a silhueta). Validado wide_full2 com zoom + full2 normal sem regressão.
+Se a região ainda incomodar: opção futura = franja de silhuetas de
+pinheiro descendo até a borda do domo.
+
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
 14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY
 21. Aguardar feedback do usuário jogando (viagem/blends/interiores em MOTION

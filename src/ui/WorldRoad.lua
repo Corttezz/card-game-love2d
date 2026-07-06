@@ -1138,15 +1138,32 @@ local function drawMountainsOf(g, x, w, camZ, bid, alpha)
                 love.graphics.draw(img, math.floor(tx + tileW), yTop, 0, -sx, sx)
             end
         end
-        -- v5.5: abaixo da base do strip, continua a FLORESTA DISTANTE
-        -- (hillsNear) até o fundo — nas extremidades de telas largas o domo
-        -- não cobre e sobrava a faixa escura do fundo de segurança
-        local hn = (BIOME_BY_ID[bid] or rawBiome()).hillsNear
-        if hn then
-            local stripBase = yTop + ih * sx
-            love.graphics.setColor(hn[1], hn[2], hn[3], alpha)
-            love.graphics.rectangle("fill", x, stripBase - 2, w,
-                math.max(0, g.bottomY - stripBase + 2))
+        -- v5.6: abaixo da base do strip, GRADIENTE floresta→tom do domo
+        -- (a versão flat empilhava faixas preta/roxa visíveis nas
+        -- extremidades de telas largas — bandas chapadas denunciam camadas)
+        local b2 = BIOME_BY_ID[bid] or rawBiome()
+        local hn, ga2 = b2.hillsNear, b2.grassA
+        if hn and ga2 then
+            -- alvo = tom do TOPO do domo ×0.82 (funde com a silhueta da
+            -- esfera; alvo escuro fazia banda preta — feedback telas largas)
+            local tr, tg, tb = ga2[1] * 0.82, ga2[2] * 0.82, ga2[3] * 0.82
+            -- -46: cobre o RODAPÉ do PNG (últimas fileiras do strip
+            -- degradam pra preto e faziam banda — feedback telas largas)
+            local stripBase = yTop + ih * sx - 46
+            local totalH = math.max(0, g.bottomY - stripBase)
+            local gradH = math.min(totalH, 140)
+            for i = 0, gradH - 1, 2 do
+                local k = i / gradH
+                love.graphics.setColor(
+                    hn[1] + (tr - hn[1]) * k,
+                    hn[2] + (tg - hn[2]) * k,
+                    hn[3] + (tb - hn[3]) * k, alpha)
+                love.graphics.rectangle("fill", x, stripBase + i, w, 2)
+            end
+            if totalH > gradH then
+                love.graphics.setColor(tr, tg, tb, alpha)
+                love.graphics.rectangle("fill", x, stripBase + gradH, w, totalH - gradH)
+            end
         end
         return true
     end
@@ -1437,7 +1454,6 @@ local function drawDomeTexOf(g, x, w, bid, alpha)
     local domeTop = g.crestApexY
     local H = g.bottomY - domeTop
     local step = 3
-    local SEG = 32
     for sy = 0, H - 1, step do
         local t = sy / H
         local tn = math.min(1, (sy + step) / H)
@@ -1447,6 +1463,11 @@ local function drawDomeTexOf(g, x, w, bid, alpha)
         local dv = math.min(20, math.max(0.05, (rel - relNext) * GROUND_V_DENSITY))
         local v = (worldZ * GROUND_V_DENSITY) % GROUND_TEX_H
         local hs = GROUND_TEX_SCALE * (0.44 + 1.06 * t)
+        -- v5.6: SEG adaptativo — perto da CRISTA (t<0.3), onde a borda da
+        -- esfera é visível, fatias de 8px (curva lisa); no corpo, 32px.
+        -- Fatias de 32px na borda viravam "retângulos" (feedback: "não é
+        -- um círculo perfeito, tem partes retas").
+        local SEG = (t < 0.3) and 8 or 32
         for segX = x, x + w - 1, SEG do
             local segW = math.min(SEG, x + w - segX)
             local dxMid = (segX + segW / 2) - g.cx
@@ -1473,7 +1494,7 @@ local function drawDome(g, x, y, w)
     -- da esfera", visível em todos os biomas). Escuro, vira sombra de
     -- borda — natural numa esfera.
     love.graphics.setColor(grassB[1] * 0.78, grassB[2] * 0.78, grassB[3] * 0.78, 1)
-    love.graphics.circle("fill", g.cx, g.crestApexY + g.R, g.R)
+    love.graphics.circle("fill", g.cx, g.crestApexY + g.R, g.R, 256)
 
     -- textura rolando (crossfade entre biomas durante o blend)
     local bl = WorldRoad._blend
@@ -1489,6 +1510,18 @@ local function drawDome(g, x, y, w)
     -- gramado liam como "bolas sem sentido" e, quando passavam sob uma
     -- árvore, como sombra flutuante descolada dela. Nuvem de background
     -- distante não projeta sombra no chão do primeiro plano.
+
+    -- v5.6: TAMPA LISA da silhueta — arco exato do círculo por cima da
+    -- borda da textura (as fatias escadinham; o arco esconde os degraus
+    -- com uma curva contínua na cor do topo do domo). Largura total.
+    do
+        local phiEdge = math.asin(math.min(1, (w / 2) / g.R))
+        love.graphics.setColor(grassA[1], grassA[2], grassA[3], 1)
+        love.graphics.setLineWidth(3)
+        love.graphics.arc("line", "open", g.cx, g.crestApexY + g.R, g.R - 1,
+            -math.pi / 2 - phiEdge, -math.pi / 2 + phiEdge, 256)
+        love.graphics.setLineWidth(1)
+    end
 
     -- luz sutil da crista (banda clara fina na curva — SEM pontinhos).
     -- ciclo 32: era circle() COMPLETO — o arco descia pelas laterais POR
