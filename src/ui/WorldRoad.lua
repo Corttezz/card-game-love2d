@@ -2302,6 +2302,27 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     drawMountainsFront(g, x, w, WorldRoad._camZ)
     drawBirds(g, x, y, w)
 
+    -- v6.2: PERSPECTIVA ATMOSFÉRICA — véu na cor da névoa sobre TODO o
+    -- plano distante (strip+espelho+nuvens+picos+pássaros), mais forte
+    -- perto do horizonte e sumindo no zênite. O longe perde contraste e
+    -- puxa pra cor do céu; castelo/props desenham DEPOIS e ficam nítidos.
+    do
+        local fogc = envColor("fog")
+        local gv = gradTex()
+        local hazeBot = g.crestApexY + 10
+        love.graphics.setColor(fogc[1], fogc[2], fogc[3], 0.16)
+        love.graphics.draw(gv, x, hazeBot, 0, w, -(hazeBot - y) / 256)
+        -- bordas: a crista desce até os cantos — a faixa entre o ápice e a
+        -- curva local também é plano distante (o domo só cobre o centro)
+        for sx = 0, w - 1, 6 do
+            local cy = g.crestYAt(x + sx)
+            if cy > hazeBot then
+                love.graphics.rectangle("fill", x + sx, hazeBot, 6, cy - hazeBot)
+            end
+        end
+        love.graphics.setColor(1, 1, 1, 1)
+    end
+
     -- NÉVOA DE DISTÂNCIA (v5.4): banda de bruma entre as montanhas e o
     -- mundo — separa os planos (feedback: "neblina entre montanhas e
     -- floresta"). O castelo desenha DEPOIS: mais perto, fura a bruma.
