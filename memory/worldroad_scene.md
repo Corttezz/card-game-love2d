@@ -796,6 +796,19 @@ inimigo DESCE A CURVA e tudo assenta na estrada torta. REGRA: qualquer
 alcança = vazamento (fields 1719px, abyss 1756px, frost 1705px). Ameias
 perdem os vãos (aceitável na escala do jogo).
 
+**Ciclo 43 (entregue — v5.3, 06/Jul):** (1) "quebra fininha" na junção
+do fork: braços agora COMEÇAM em 100% da largura e afinam com o mesmo
+smoothstep do offset (hm = 1-0.22k). (2) Borda serrada estilo ref APK:
+jitter em blocos por rowId (±7px×profundidade) nas bordas xL/xR — degraus
+de tijolo, não linha lisa; combinado com o meandro. (3) CASTELOS
+definitivo: validação por composição sobre MAGENTA revelou o que fundo
+claro escondia (abyss comido no lado esquerdo inteiro!). Fixes: ESPELHO
+simétrico (transparente ganha o pixel espelhado — castelos são
+simétricos; abyss +3697px) + veias finas por linha (vão ≤20px).
+LIÇÃO DE PIPELINE: transparência de sprite SÓ se valida compondo sobre
+cor contrastante (magenta) — fundo branco/preto esconde vazamento.
+castles_magenta2.png = sheet de prova.
+
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
 14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY
 21. Aguardar feedback do usuário jogando (viagem/blends/interiores em MOTION

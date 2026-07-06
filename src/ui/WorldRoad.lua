@@ -1665,8 +1665,14 @@ local function drawRoad(g, x, w, camZ)
         -- pinta UMA fileira da estrada com centro/largura/alpha/brilho dados
         local function paintRow(cxRow, halfMul, aMul, decorate, bright)
             local half = half0 * halfMul
-            local xL = math.floor(cxRow - half + eL)
-            local xR = math.floor(cxRow + half + eR)
+            -- BORDA SERRADA (ref APK do usuário): degraus irregulares por
+            -- faixa de mundo (rowId) — tijolos "saltando" da borda em
+            -- escadinha, não linha lisa. É isso que faz parecer caminho real.
+            local jag = 14 * (0.35 + 0.65 * t)
+            local jL = (hash(rowId * 13 + 7) - 0.5) * jag
+            local jR = (hash(rowId * 19 + 3) - 0.5) * jag
+            local xL = math.floor(cxRow - half + eL + jL)
+            local xR = math.floor(cxRow + half + eR + jR)
 
             local SEG = 16
             for segX = xL, xR - 1, SEG do
@@ -1748,12 +1754,18 @@ local function drawRoad(g, x, w, camZ)
         local wob = roadWobble(worldZ, t, w)
 
         if fork and rel > FORK_REL then
+            -- largura do braço COMEÇA em 100% no ponto do fork e afina
+            -- conforme os braços se separam (fix: "quebra fininha" na junção)
+            local kk = (rel - FORK_REL) / (MARK_REL - FORK_REL)
+            kk = math.min(1, math.max(0, kk))
+            kk = kk * kk * (3 - 2 * kk)
+            local hm = (fork.n > 1) and (1 - 0.22 * kk) or 1
             for i = 1, fork.n do
                 local aMul = forkAlpha(fork, i)
                 if aMul > 0.02 then
                     local bright = (fork.hover == i and not fork.converge) and 1.14 or 1
                     paintRow(cx + wob * 0.5 + forkOffset(fork, i, rel, w),
-                        fork.n > 1 and 0.78 or 1, aMul, i == 1, bright)
+                        hm, aMul, i == 1, bright)
                 end
             end
         else
