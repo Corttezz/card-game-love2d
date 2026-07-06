@@ -1040,6 +1040,11 @@ assets limpos, MIRROR_JUNK e FOOT_JUNK foram REMOVIDOS do código
 no PixelLab: medir rodapé (measure_footer.py) → cropar base+front
 juntos (crop_strip_footer.py) → rodar o extrator.
 
+**v5.10 (feedback nuvens):** cloud_1.png APAGADA do jogo (usuário não
+gostou dela) — todas as nuvens usam variant 0 (cloud_0). Menos nuvens
+(near 6→4, far 5→3) e banda mais alta: near yr 0.07..0.40 (era
+0.10..0.60), far yr 0.05..0.25 (era 0.06..0.34).
+
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
 14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY
 21. Aguardar feedback do usuário jogando (viagem/blends/interiores em MOTION

@@ -676,30 +676,30 @@ local function populate()
         zt = zt + 0.95 + WorldRoad._rng:random() * 0.4
     end
     -- v5.8 (feedback): nuvens SEMPRE pequenas e ao fundo — nada de bolha
-    -- gigante colada na câmera. Banda 0.06..0.60 do céu (as mais baixas
-    -- cruzam os picos e a camada mountains_front as oclui), drift lento
-    -- + bob senoidal (phase) pra não ficarem estáticas.
+    -- gigante colada na câmera. Drift lento + bob senoidal (phase) pra
+    -- não ficarem estáticas. v5.10 (feedback): menos nuvens, banda mais
+    -- ALTA no céu, e só cloud_0 (cloud_1 foi apagada do jogo).
     WorldRoad._clouds = {}
-    for i = 1, 6 do
+    for _ = 1, 4 do
         table.insert(WorldRoad._clouds, {
             xr = WorldRoad._rng:random(),
-            yr = 0.10 + WorldRoad._rng:random() * 0.50,
+            yr = 0.07 + WorldRoad._rng:random() * 0.33,
             speed = 1.6 + WorldRoad._rng:random() * 1.8,
             scale = 0.85 + WorldRoad._rng:random() * 0.55,
             phase = WorldRoad._rng:random() * 6.28,
-            variant = i % 2,
+            variant = 0,
         })
     end
     -- camada DISTANTE de nuvens (menores e mais lentas ainda —
     -- segunda profundidade no céu = fundo mais rico sem poluir)
-    for i = 1, 5 do
+    for _ = 1, 3 do
         table.insert(WorldRoad._clouds, {
             xr = WorldRoad._rng:random(),
-            yr = 0.06 + WorldRoad._rng:random() * 0.28,
+            yr = 0.05 + WorldRoad._rng:random() * 0.20,
             speed = 0.7 + WorldRoad._rng:random() * 0.9,
             scale = 0.45 + WorldRoad._rng:random() * 0.30,
             phase = WorldRoad._rng:random() * 6.28,
-            variant = i % 2,
+            variant = 0,
             far = true,
         })
     end
