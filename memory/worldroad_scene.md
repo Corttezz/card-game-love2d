@@ -1026,6 +1026,13 @@ rodapé do strip real, seam idêntico nos dois lados. Marsh junk=1 é o
 que protege a arte de árvores/névoa dele (o Rorschach do v5.9.2 era
 skip 46 fixo). Validado nos SEIS biomas em wide (mir7_w1..w6) — lição:
 mudança no espelho exige captura dos 6, não só dos 3 primeiros.
+Sequela (feedback: "linha preta em baixo nos _front"): as camadas
+_front carregavam o MESMO rodapé chapado (100% opaco) e desenham
+DEPOIS do espelho — re-pintavam a faixa preta por cima do reflexo.
+Fix nos ASSETS: rodapé FOOT_JUNK zerado (alpha 0) nos 4 fronts
+afetados (scratchpad/clear_front_footer.py) + extrator ensina o corte
+(FOOT_JUNK em tools/extract_mountains_front.py, MESMA tabela do
+MIRROR_JUNK — manter as duas em sincronia ao regenerar).
 
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
 14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY
