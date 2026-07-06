@@ -12,7 +12,7 @@ from collections import deque
 SRC = r"E:\dev\projects\card-game-love2d\assets\sprites\world"
 OUT_PROOF = r"C:\Users\corte\AppData\Roaming\LOVE\card-game\ridge_proof.png"
 
-TOL = {"fields": 26, "highlands": 36, "frost": 34, "abyss": 28, "dusk": 34}
+TOL = {"fields": 16, "highlands": 36, "frost": 34, "abyss": 28, "dusk": 34}
 # teto de elevação do cume-detalhe sobre o flood (px): biomas de céu limpo
 # aguentam recuperação profunda (frost); céu cheio de nuvem assada/raio de
 # sol precisa de teto baixo senão vira mesa/perna (abyss/dusk)
