@@ -733,6 +733,24 @@ validar, camZ=92% do segmento). (3) CANTOS PRETOS (telas largas): rect
 full-frame na cor grassB×0.78 ANTES de tudo no WorldRoad.draw — pixel
 não coberto mostra terra do bioma, nunca preto.
 
+**Ciclo 39 (entregue — roster v5 Ato 1, 06/Jul):** monstros do zero,
+identidade grimório: cursed_scarecrow (comum), harvest_reaper (elite/
+mini-boss), carrion_king (boss) — create_character v3 (96/96/128px,
+low top-down) + animações template (breathing-idle→idle 4f,
+taking-punch→hurt 6f, falling-back-death→death 7f, south only).
+PIPELINE NOVO: ZIP do PixelLab mudou (aninhado sob <name>/, pastas SEM
+hash: animating/taking_a_punch/falling_backward) — install manual via
+bash inline (install_enemy_animation.sh desatualizado). Pós-processo:
+crop pela UNIÃO dos bboxes de todos os frames (corte idêntico = sem
+jitter) + 2px respiro. EnemyRenderer: (1) ENEMY_ROSTER data-driven
+ato×nodeType (atos 2-3 ainda legado); (2) escala ADAPTATIVA
+targetHeight/ih float (o piso max(4,...) era pra sprites de 50px e
+virava kaiju com canvas 176+; legado ih<=80 mantém piso); (3)
+enemy.isBoss agora É setado em Game:nextPhase (boss/mini_boss → 330px).
+UUIDs (expiram? characters persistem na conta): scarecrow 7c8af239,
+reaper 5404a43d, king 4251fb01. PENDENTE: rosters atos 2-3 + biomas
+endless (mesma receita).
+
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
 14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY
 21. Aguardar feedback do usuário jogando (viagem/blends/interiores em MOTION

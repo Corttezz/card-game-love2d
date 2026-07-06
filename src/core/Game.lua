@@ -996,9 +996,11 @@ function Game:nextPhase()
         local nodeType = (run.currentNode and run.currentNode.type) or "battle"
         local stats = ActSystem.getEnemyStats(run.actNumber, run.floorInAct, nodeType)
         self.enemy = Enemy:new(stats.health, stats.damage)
-        -- Sprite do inimigo: mapeado por ato. EnemyRenderer resolve fallback.
+        -- Sprite do inimigo: roster por ato × tipo de node (v5).
         local EnemyRenderer = require("src.ui.EnemyRenderer")
         self.enemy.spriteId = EnemyRenderer.resolveSpriteId(run.actNumber, nodeType)
+        -- isBoss nunca era setado (só lido) — bosses agora rendem maiores
+        self.enemy.isBoss = (nodeType == "boss" or nodeType == "mini_boss")
         -- Log com nome do ato
         self:addMessage(ActSystem.getActName(run.actNumber, run.floorInAct)
             .. " — andar " .. run.floorInAct .. " (" .. nodeType .. ")", "info")

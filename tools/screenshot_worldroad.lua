@@ -95,7 +95,7 @@ function M.run(mode)
         for _ = 1, 30 do WorldRoad.update(1 / 30) end
         WorldRoad.setBiome(6)                      -- dispara o blend (2.2s)
         WorldRoad.travel({
-            encounter = EnemyRenderer.getEncounterBillboard({ spriteId = "grave_slime" }),
+            encounter = EnemyRenderer.getEncounterBillboard({ spriteId = "cursed_scarecrow" }),
         })
         for _ = 1, 34 do                            -- ~1.1s: meio do blend
             WorldRoad.update(1 / 30)
@@ -125,7 +125,7 @@ function M.run(mode)
         WorldRoad._camZ = 5.5
         for _ = 1, 30 do WorldRoad.update(1 / 30) end
         WorldRoad.travel({
-            encounter = EnemyRenderer.getEncounterBillboard({ spriteId = "grave_slime" }),
+            encounter = EnemyRenderer.getEncounterBillboard({ spriteId = "cursed_scarecrow" }),
         })
         -- avança até ~65% da viagem (inimigo já emergiu da crista e cresce).
         -- draw a cada tick pra _heroScreenPos existir e a poeira spawnar.

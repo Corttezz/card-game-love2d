@@ -230,11 +230,13 @@ function EnemyRenderer.draw(game, cx, cy)
         iw, ih = staticImg:getWidth(), staticImg:getHeight()
     end
 
-    -- Escala alvo (inteira, nearest). 250 normal / 330 boss — reduzido em
-    -- Jul/2026 (feedback: inimigo grande demais em relação ao mundo-domo).
+    -- Escala alvo. 250 normal / 330 boss. v5: escala ADAPTATIVA (float) —
+    -- o piso max(4,...) era pros sprites antigos de ~50px; o roster novo
+    -- tem 150-220px de conteúdo e virava gigante com scale 4.
     local targetHeight = 250
     if game.enemy and game.enemy.isBoss then targetHeight = 330 end
-    local scale = math.max(4, math.floor(targetHeight / ih))
+    local scale = targetHeight / ih
+    if ih <= 80 then scale = math.max(4, math.floor(scale)) end -- roster legado
 
     -- =========================================================
     -- CAMADAS VISUAIS (aplicadas em ordem)
@@ -328,22 +330,33 @@ function EnemyRenderer.getEncounterBillboard(enemy)
     if not img then return nil end
     local ih = img:getHeight()
     local targetHeight = enemy.isBoss and 330 or 250
+    local ts = targetHeight / ih
+    if ih <= 80 then ts = math.max(4, math.floor(ts)) end -- roster legado
     return {
         img = img,
         iw = img:getWidth(),
         ih = ih,
-        targetScale = math.max(4, math.floor(targetHeight / ih)),
+        targetScale = ts,
     }
 end
 
+-- ROSTER v5 (data-driven): monstro por CONTEXTO — ato × tipo de node.
+-- battle = comum; elite/mini_boss = elite do ato; boss = chefe do ato.
+-- Atos 2-3 ainda usam o roster antigo até seus batches PixelLab ficarem
+-- prontos (mesma estrutura, só trocar os ids aqui).
+local ENEMY_ROSTER = {
+    [1] = { battle = "cursed_scarecrow", elite = "harvest_reaper",
+            mini_boss = "harvest_reaper", boss = "carrion_king" },
+    [2] = { battle = "stone_golem", elite = "stone_golem",
+            mini_boss = "stone_golem", boss = "stone_golem" },
+    [3] = { battle = "abyss_wraith", elite = "abyss_wraith",
+            mini_boss = "abyss_wraith", boss = "abyss_wraith" },
+}
+
 function EnemyRenderer.resolveSpriteId(actNumber, nodeType)
     local effectiveAct = math.min(actNumber or 1, 3)
-    local map = {
-        [1] = "grave_slime",
-        [2] = "stone_golem",
-        [3] = "abyss_wraith",
-    }
-    return map[effectiveAct]
+    local roster = ENEMY_ROSTER[effectiveAct] or ENEMY_ROSTER[1]
+    return roster[nodeType or "battle"] or roster.battle
 end
 
 return EnemyRenderer
