@@ -64,12 +64,18 @@ local DEFAULT_PRESET = GrassField.PRESETS.fields
 local CELL_W, CELL_H = 8, 16
 local N_THIN, N_BROAD = 6, 2   -- variantes finas + largas (junco/folha)
 local FLOWER_CELL = N_THIN + N_BROAD           -- índice da célula de flor
-local atlasImg, quads
+-- MOITAS (v7.4, cobertura 100%): células de 16×16 com 8-10 lâminas
+-- pré-assadas + base quase sólida — 1 sprite cobre ~5× mais chão que uma
+-- lâmina, viabilizando o tapete contínuo sem explodir a contagem
+local N_CLUMP = 6
+local CLUMP_W = 16
+local atlasImg, quads, clumpQuads
 
 local function bakeAtlas()
     if atlasImg then return end
     local n = N_THIN + N_BROAD + 1
-    local id = love.image.newImageData(CELL_W * n, CELL_H)
+    local atlasW = CELL_W * n + CLUMP_W * N_CLUMP
+    local id = love.image.newImageData(atlasW, CELL_H)
     local function put(cell, x, y, lum)
         if x >= 0 and x < CELL_W and y >= 0 and y < CELL_H then
             id:setPixel(cell * CELL_W + x, y, lum, lum, lum, 1)
@@ -118,12 +124,50 @@ local function bakeAtlas()
             end
         end
     end
+    -- MOITAS: 2 fileiras da base quase sólidas (chão DE capim — é o que
+    -- garante o tapete contínuo entre fileiras) + 8-10 lâminas variadas
+    -- com brilho individual (profundidade interna baked)
+    local clumpX0 = CELL_W * n
+    for cv = 0, N_CLUMP - 1 do
+        local rng = love.math.newRandomGenerator(3000 + cv * 71)
+        local xo = clumpX0 + cv * CLUMP_W
+        for x = 0, CLUMP_W - 1 do
+            for y = CELL_H - 2, CELL_H - 1 do
+                if rng:random() < 0.88 then
+                    local lum = 0.34 + rng:random() * 0.14
+                    id:setPixel(xo + x, y, lum, lum, lum, 1)
+                end
+            end
+        end
+        for _ = 1, 8 + rng:random(0, 2) do
+            local bx = rng:random(1, CLUMP_W - 2)
+            local len = 6 + rng:random(0, 8)
+            local curve = (rng:random() * 2 - 1) * 3.0
+            local bright = 0.72 + rng:random() * 0.38   -- lâmina clara/escura
+            for i = 0, len - 1 do
+                local fy = i / math.max(1, len - 1)
+                local y = (CELL_H - 1) - i
+                local x = math.floor(bx + curve * fy * fy + 0.5)
+                if x >= 0 and x < CLUMP_W and y >= 0 then
+                    local lum = (0.44 + 0.16 * math.min(1, fy * 2.5)) * bright
+                    if fy > 0.8 then lum = 0.95 * bright end
+                    id:setPixel(xo + x, y, math.min(1, lum), math.min(1, lum),
+                        math.min(1, lum), 1)
+                end
+            end
+        end
+    end
     atlasImg = love.graphics.newImage(id)
     atlasImg:setFilter("nearest", "nearest")
     quads = {}
     for i = 0, n - 1 do
         quads[i] = love.graphics.newQuad(i * CELL_W, 0, CELL_W, CELL_H,
-            CELL_W * n, CELL_H)
+            atlasW, CELL_H)
+    end
+    clumpQuads = {}
+    for i = 0, N_CLUMP - 1 do
+        clumpQuads[i] = love.graphics.newQuad(clumpX0 + i * CLUMP_W, 0,
+            CLUMP_W, CELL_H, atlasW, CELL_H)
     end
 end
 
@@ -180,7 +224,7 @@ local SLOTS = 12           -- tentativas de tufo por célula (6 por lado)
 function GrassField.draw(ctx)
     bakeAtlas()
     if not batch then
-        batch = love.graphics.newSpriteBatch(atlasImg, 4096, "stream")
+        batch = love.graphics.newSpriteBatch(atlasImg, 8192, "stream")
     end
     batch:clear()
 
@@ -198,19 +242,84 @@ function GrassField.draw(ctx)
 
     local first = math.floor(camZ / Z_CELL)
     local last = math.floor((camZ + ctx.relCrest - 0.8) / Z_CELL)
+
+    -- ========================================================================
+    -- PASSE A (v7.4): TAPETE 100% — fileiras de MOITAS de trás pra frente
+    -- (painter: cada fileira cobre o chão da anterior; a base quase sólida
+    -- da moita garante continuidade). LOD em ESPAÇO DE TELA: só desenha
+    -- fileira quando o Y na tela avançou ~40% da altura da moita — no
+    -- longe (fileiras comprimidas) pula quase todas de graça. No longe as
+    -- moitas também ESTICAM na horizontal (detalhe é sub-pixel; menos
+    -- sprites pra cobrir a mesma largura).
+    -- ========================================================================
+    local lastRowY = -1e9
+    for ci = last, first, -1 do
+        local z = ci * Z_CELL
+        local rel = z - camZ
+        local t = g.tOf(rel)
+        if t and t > 0.03 then
+            local persp = g.persp(t)
+            local scale = (0.26 + persp * 1.75) * P.heightK
+            local ch = scale * CELL_H
+            local rowY = g.latY(0, t)
+            if ch >= 2 and rowY - lastRowY >= ch * 0.40 then
+                lastRowY = rowY
+                local roadC = ctx.roadCenter(z, t)
+                local half = ctx.roadHalf(t)
+                -- clearance maior no fork (braços varrem a faixa central)
+                local clear = (ctx.forkActive
+                    and rel > (ctx.forkRel or 10) - 1.5)
+                    and (half + w * 0.17) or (half * 0.90)
+                local stretch = (t < 0.25) and (1 + (0.25 - t) * 6) or 1
+                local step = math.max(3, 12 * scale * stretch * 0.72)
+                local x0 = g.cx - w * 0.53
+                for k = 0, math.floor((w * 1.06) / step) do
+                    local hk = hash(ci * 3 + 1, k * 11 + 2)
+                    local pxX = x0 + k * step + (hk - 0.5) * step * 0.9
+                    if math.abs(pxX - roadC) > clear
+                       and math.abs(pxX - g.cx) < w * 0.53 then
+                        local base = g.latY(pxX - g.cx, t)
+                        local nx = (pxX - ctx.x) / w
+                        local lean = windAt(nx, z, t0, P, hk)
+                            * (0.5 + hk * 0.5)
+                        local ht = hash(ci * 19, k * 7 + 3)
+                        local c = (ht < 0.30) and cDark
+                            or ((ht < 0.62) and cMid or cLight)
+                        local dryK = hash(ci * 5 + 2, k * 3 + 1) * 0.30
+                        batch:setColor(
+                            math.min(1, c[1] * (1 + dryK * 0.30)),
+                            c[2] * (1 - dryK * 0.06),
+                            c[3] * (1 - dryK * 0.35), 1)
+                        local q = clumpQuads[math.floor(hk * N_CLUMP)
+                            % N_CLUMP]
+                        local flip = (hash(ci, k) < 0.5) and 1 or -1
+                        batch:add(q, math.floor(pxX), math.floor(base + 1),
+                            0, scale * stretch * flip,
+                            scale * (1 - math.abs(lean) * 0.12),
+                            CLUMP_W / 2, CELL_H, lean * 0.5, 0)
+                    end
+                end
+            end
+        end
+    end
+
+    -- ========================================================================
+    -- PASSE B: ACENTOS — lâminas individuais + juncos + flores POR CIMA do
+    -- tapete (movimento fino visível, flick, inércia — a "vida" da grama)
+    -- ========================================================================
     for ci = first, last do
         -- MANCHAS de crescimento: grama real cresce em patches, não em
         -- distribuição uniforme — modulação espacial lenta da densidade
         local patch = 0.5 + 0.5 * math.sin(ci * 0.31)
         for slot = 0, SLOTS - 1 do
             local h1 = hash(ci, slot * 7 + 1)
-            if h1 < (0.62 + 0.36 * patch) * P.density then
+            -- acento é TEMPERO (o tapete do passe A já cobre o chão):
+            -- densidade menor, e só onde a lâmina individual é legível
+            if h1 < (0.34 + 0.24 * patch) * P.density then
                 local z = ci * Z_CELL + h1 * Z_CELL
                 local rel = z - camZ
                 local t = g.tOf(rel)
-                -- cobre até quase a CRISTA (t→0): no longe as lâminas são
-                -- minúsculas (1-3px) — campo cheio em toda a esfera
-                if t and t > 0.035 then
+                if t and t > 0.18 then
                     -- fork: os braços da estrada varrem a faixa central —
                     -- capim some do trecho bifurcado enquanto o fork existe
                     if not (ctx.forkActive and rel > (ctx.forkRel or 10) - 1.5) then
