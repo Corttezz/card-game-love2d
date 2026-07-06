@@ -1152,32 +1152,9 @@ local function gradTex()
     return _gradV, _gradH
 end
 
--- v6.4: glow radial gerado 1x (falloff (1-d²)² — luz suave sem shader).
-local _glowImg
-local function glowTex()
-    if not _glowImg then
-        local n = 128
-        local id = love.image.newImageData(n, n)
-        local c = (n - 1) / 2
-        for yy = 0, n - 1 do
-            for xx = 0, n - 1 do
-                local d = math.sqrt((xx - c) ^ 2 + (yy - c) ^ 2) / c
-                local a = math.max(0, 1 - d * d)
-                id:setPixel(xx, yy, 1, 1, 1, a * a)
-            end
-        end
-        _glowImg = love.graphics.newImage(id)
-        _glowImg:setFilter("linear", "linear")
-    end
-    return _glowImg
-end
-
--- v6.4: intensidade do glow das janelas por bioma (forte nos escuros,
--- discreto nos claros — luz acesa de dia existe, mas não domina)
-local CASTLE_GLOW_K = {
-    fields = 0.45, highlands = 0.85, abyss = 1.0,
-    frost = 0.5, marsh = 0.9, dusk = 1.0,
-}
+-- (v7: glowTex/CASTLE_GLOW_K REMOVIDOS — glow radial translúcido em cena
+-- pixel art lia como "mancha transparente de cor estranha", feedback direto.
+-- Luz em pixel art se DESENHA na paleta, não se sobrepõe com alpha.)
 
 -- v6.3: direção da luz da cena = posição do astro do bioma. Sombras de
 -- contato deslocam CONTRA o sol (coerência global barata, mesma ideia do
@@ -1369,43 +1346,12 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha)
             iw * s * 0.28, 4 + 7 * progress)
     end
 
-    -- v6.3: RIM LIGHT — cópia aditiva na cor do astro deslocada 2px em
-    -- direção ao sol POR BAIXO do sprite: sobra um contorno de luz de
-    -- 1-2px na borda iluminada (rim barato, sem shader)
-    local cel = (BIOME_BY_ID[bid] or rawBiome()).celestial
-    if cel then
-        local sunX = x + cel.xr * w
-        local rdx = math.max(-1, math.min(1, (sunX - cx) / (w * 0.4)))
-        local sc = cel.color
-        love.graphics.setBlendMode("add")
-        love.graphics.setColor(sc[1], sc[2], sc[3], 0.28 * alpha)
-        love.graphics.draw(img, math.floor(cx - iw * s / 2 + rdx * 2),
-            math.floor(baseY - ih * s - 1), 0, s, s)
-        love.graphics.setBlendMode("alpha")
-    end
-
+    -- (v7: rim light aditivo e glow das janelas REMOVIDOS — cópia aditiva
+    -- e halos translúcidos sobre sprite pixel art viravam franja/mancha de
+    -- cor estranha. As janelas acesas já estão DESENHADAS no sprite.)
     love.graphics.setColor(1, 1, 1, alpha)
     love.graphics.draw(img, math.floor(cx - iw * s / 2),
         math.floor(baseY - ih * s), 0, s, s)
-
-    -- v6.4: LUZ DAS JANELAS — glow aditivo quente pulsando sobre o corpo
-    -- do castelo + um foco menor no portão (as janelas acesas do sprite
-    -- ganham halo de verdade; intensidade por bioma)
-    if alpha >= 1 then
-        local gk = CASTLE_GLOW_K[bid] or 0.8
-        local gi = glowTex()
-        local pulse = 0.86 + 0.14 * math.sin(WorldRoad._time * 1.7)
-        love.graphics.setBlendMode("add")
-        local gw = iw * s * 1.25
-        love.graphics.setColor(1.0, 0.72, 0.38, 0.11 * gk * pulse)
-        love.graphics.draw(gi, cx - gw / 2, baseY - ih * s * 0.52 - gw / 2,
-            0, gw / 128, gw / 128)
-        local gw2 = iw * s * 0.55
-        love.graphics.setColor(1.0, 0.62, 0.26, 0.18 * gk * pulse)
-        love.graphics.draw(gi, cx - gw2 / 2, baseY - ih * s * 0.10 - gw2 / 2,
-            0, gw2 / 128, gw2 / 128)
-        love.graphics.setBlendMode("alpha")
-    end
 
     -- topo do castelo (pra fumaça da chaminé) — só no passe principal
     if alpha >= 1 then
@@ -1430,16 +1376,20 @@ local function drawCastle(g, x, w, camZ)
     end
 
     -- fumaça da chaminé (atrás do domo, junto com o castelo)
-    -- v6.6: halo suave + núcleo pixel (quadrado chapado lia como protótipo)
-    local gi = glowTex()
+    -- v7: puff = AGLOMERADO de pixels chunky (3 quadrados desencontrados) —
+    -- forma gráfica desenhada, sem halo translúcido (feedback: halos leem
+    -- como mancha em pixel art)
     for _, sp in ipairs(WorldRoad._smoke) do
-        local a = math.min(1, sp.life / 1.4) * 0.30
-        local d = sp.size * 2.6
-        love.graphics.setColor(0.78, 0.75, 0.70, a * 0.55)
-        love.graphics.draw(gi, sp.x - d / 2, sp.y - d / 2, 0, d / 128, d / 128)
+        local a = math.min(1, sp.life / 1.4) * 0.42
+        local sz = sp.size
         love.graphics.setColor(0.80, 0.77, 0.72, a)
-        love.graphics.rectangle("fill", math.floor(sp.x - sp.size / 2),
-            math.floor(sp.y - sp.size / 2), sp.size, sp.size)
+        love.graphics.rectangle("fill", math.floor(sp.x - sz / 2),
+            math.floor(sp.y - sz / 2), sz, sz)
+        love.graphics.setColor(0.74, 0.71, 0.66, a * 0.85)
+        love.graphics.rectangle("fill", math.floor(sp.x - sz * 0.9),
+            math.floor(sp.y - sz * 0.1), math.max(1, sz * 0.6), math.max(1, sz * 0.6))
+        love.graphics.rectangle("fill", math.floor(sp.x + sz * 0.35),
+            math.floor(sp.y - sz * 0.7), math.max(1, sz * 0.55), math.max(1, sz * 0.55))
     end
 end
 
@@ -1681,22 +1631,10 @@ local function drawDome(g, x, y, w)
     -- árvore, como sombra flutuante descolada dela. Nuvem de background
     -- distante não projeta sombra no chão do primeiro plano.
 
-    -- v6.5: FAIXA DE LUZ na crista — o alto do morro pega o sol; a luz
-    -- morre descendo pro primeiro plano. Segue a CURVA da crista (colunas)
-    -- e usa gradiente por textura (sem banding). Aditiva e bem sutil.
-    do
-        local gv = gradTex()
-        local bandH2 = (g.bottomY - g.crestApexY) * 0.30
-        love.graphics.setBlendMode("add")
-        love.graphics.setColor(1, 0.95, 0.80, 0.06)
-        for sxx = 0, w - 1, 6 do
-            local cyv = g.crestYAt(x + sxx)
-            if cyv < g.bottomY then
-                love.graphics.draw(gv, x + sxx, cyv + 1, 0, 6, bandH2 / 256)
-            end
-        end
-        love.graphics.setBlendMode("alpha")
-    end
+    -- (v7: "faixa de luz aditiva" da crista REMOVIDA — véu amarelado
+    -- translúcido sobre o gramado lia como mancha, não como sol. Luz em
+    -- pixel art se desenha na paleta — o realce da crista fica por conta
+    -- do arco claro opaco lá embaixo.)
 
     -- v5.6: TAMPA LISA da silhueta — arco exato do círculo por cima da
     -- borda da textura (as fatias escadinham; o arco esconde os degraus
@@ -1725,6 +1663,129 @@ local function drawDome(g, x, y, w)
     love.graphics.arc("line", "open", g.cx, g.crestApexY + g.R, g.R - 2,
         -math.pi / 2 - phiMax, -math.pi / 2 + phiMax)
     love.graphics.setLineWidth(1)
+end
+
+-- ============================================================================
+-- v7: DETALHE DE TERRENO EM PIXEL NATIVO (feedback: "pense em algo que
+-- combine com nosso 3D — pequenos relevos, gramas, matos que façam sentido
+-- com o terreno"). NADA translúcido, NADA de asset avulso: tufos de capim e
+-- dobras de relevo DESENHADOS na família de cor do gramado do bioma,
+-- ancorados no mundo (rolam com o domo) e seguindo a latitude da esfera.
+-- ============================================================================
+local function drawTerrainDetail(g, x, w, camZ)
+    local gA = envColor("grassA")
+    local gB = envColor("grassB")
+    local b = rawBiome()
+    local acc = b.accent or { 0.7, 0.6, 0.3 }
+    -- família de tons do próprio gramado — contraste FORTE (em paleta
+    -- escura como o fields, ×1.2 sumia; a leitura vem das pontas claras)
+    local dark  = { gB[1] * 0.70, gB[2] * 0.70, gB[3] * 0.70 }
+    local light = { math.min(1, gA[1] * 1.45), math.min(1, gA[2] * 1.40),
+                    math.min(1, gA[3] * 1.25) }
+
+    -- ---- LOMBADAS DE RELEVO: arcos que LEVANTAM do chão seguindo a
+    -- latitude da esfera — aresta clara em cima (pega luz), vinco escuro
+    -- embaixo (sombra). Relevo desenhado na linguagem do nosso 3D.
+    local CELL_R = 3.1
+    for ci = math.floor(camZ / CELL_R),
+             math.floor((camZ + REL_CREST) / CELL_R) do
+        local h1 = ((ci * 40787) % 1021) / 1021
+        if h1 < 0.5 then
+            local z = ci * CELL_R + h1 * 2.2
+            local rel = z - camZ
+            local t = g.tOf(rel)
+            if t and t > 0.16 and t < 0.9 then
+                local h2 = ((ci * 69497) % 1013) / 1013
+                local side = (ci % 2 == 0) and -1 or 1
+                local roadC = g.cx + roadWobble(z, t, w)
+                local half = ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15))
+                -- centro da lombada: da margem da estrada pro campo aberto
+                local cxr = roadC + side * (half + w * (0.03 + h2 * 0.22)
+                    * (0.35 + 0.65 * t))
+                local halfW = w * (0.04 + h2 * 0.06) * (0.35 + 0.65 * t)
+                local px2 = math.max(1, math.floor(2 * g.persp(t) + 0.5))
+                local bump = math.max(2, math.floor(4 * g.persp(t) + 0.5))
+                for dxx = -halfW, halfW, 3 do
+                    -- perfil de morrinho: centro sobe `bump`, pontas assentam
+                    local edge = 1 - (math.abs(dxx) / halfW) ^ 2
+                    if edge > 0.2 then
+                        local yy = math.floor(g.latY(cxr + dxx - g.cx, t)
+                            - bump * edge)
+                        love.graphics.setColor(light[1], light[2], light[3], 1)
+                        love.graphics.rectangle("fill", math.floor(cxr + dxx),
+                            yy, 3, math.max(1, px2))
+                        love.graphics.setColor(dark[1], dark[2], dark[3], 1)
+                        love.graphics.rectangle("fill", math.floor(cxr + dxx),
+                            yy + px2, 3, px2)
+                    end
+                end
+            end
+        end
+    end
+
+    -- ---- TUFOS DE CAPIM: lâminas verticais de pixel na cor do gramado,
+    -- espalhados no CAMPO INTEIRO (não só nas cunhas) — o "mato" que dá
+    -- vida ao tapete. Escala com a perspectiva, some longe (sub-pixel).
+    -- Densidade ALTA (a referência tem centenas de detalhes, não dezenas).
+    local CELL = 0.32
+    for ci = math.floor(camZ / CELL),
+             math.floor((camZ + REL_CREST - 3) / CELL) do
+        for slot = 0, 3 do
+            local h1 = ((ci * 92821 + slot * 68917) % 1009) / 1009
+            if h1 < 0.62 then
+                local z = ci * CELL + h1 * 0.3
+                local rel = z - camZ
+                local t = g.tOf(rel)
+                if t and t > 0.14 then
+                    local h2 = ((ci * 45989 + slot * 7919) % 997) / 997
+                    local h3 = ((ci * 31013 + slot * 8009) % 991) / 991
+                    local side = (slot % 2 == 0) and -1 or 1
+                    local roadC = g.cx + roadWobble(z, t, w)
+                    local half = ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15))
+                    local pxX = roadC + side * (half + w * (0.012 + h2 * 0.34)
+                        * (0.35 + 0.65 * t))
+                    if math.abs(pxX - g.cx) < w * 0.5 then
+                        local base = math.floor(g.latY(pxX - g.cx, t))
+                        local persp = g.persp(t)
+                        -- largura CHUNKY: 1px só no longe; 2-3px no campo
+                        -- (1px em tela cheia é invisível)
+                        local px2 = (t < 0.3) and 1 or ((t < 0.6) and 2 or 3)
+                        local nb = 3 + math.floor(h3 * 3)
+                        for bi = 0, nb - 1 do
+                            local hb = ((ci * 7 + slot * 3 + bi * 11) % 7) / 7
+                            local bh = math.max(2, math.floor(
+                                (4 + hb * 6) * (0.30 + persp * 1.9)))
+                            local bx = math.floor(pxX + (bi - nb / 2)
+                                * (px2 + 1) + hb * 2)
+                            -- alternância escuro/claro: em paleta escura a
+                            -- leitura vem das lâminas CLARAS (metade delas)
+                            local c = (bi % 2 == 1) and light or dark
+                            love.graphics.setColor(c[1], c[2], c[3], 1)
+                            love.graphics.rectangle("fill", bx,
+                                base - bh, px2, bh)
+                        end
+                        -- ~25% dos tufos têm flor/broto na cor de acento do
+                        -- bioma (dourado no fields, brasa no abyss, cristal
+                        -- no frost...) — o "mato vivo" da referência
+                        if h3 > 0.75 and t > 0.3 then
+                            local fx2 = math.floor(pxX + h2 * 3 - 1)
+                            local fy2 = base - math.floor(
+                                (5 + h2 * 4) * (0.30 + persp * 1.9))
+                            love.graphics.setColor(acc[1], acc[2], acc[3], 1)
+                            love.graphics.rectangle("fill", fx2, fy2, px2, px2)
+                            love.graphics.setColor(
+                                math.min(1, acc[1] * 1.3),
+                                math.min(1, acc[2] * 1.3),
+                                math.min(1, acc[3] * 1.2), 1)
+                            love.graphics.rectangle("fill", fx2, fy2 - 1,
+                                px2, 1)
+                        end
+                    end
+                end
+            end
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 -- TREELINE DA CRISTA (referência print 1): fileira de silhuetas de árvore
@@ -2497,41 +2558,16 @@ function WorldRoad.draw(x, y, w, h, actNumber)
         love.graphics.setColor(1, 1, 1, 1)
     end
 
-    -- v6.6: GOD RAYS — 2 feixes aditivos descendo do céu atrás do castelo,
-    -- alpha oscilando devagar (polycount: raios estáticos modelados batem
-    -- radial blur em 2D). Intensidade acompanha o glow do bioma.
-    do
-        -- rays só onde fazem sentido: com o sol assado NO HORIZONTE
-        -- (abyss/dusk) raio descendo do zênite contradiz a luz da cena
-        local RAY_K = { fields = 1, highlands = 1, abyss = 0,
-                        frost = 1, marsh = 0.8, dusk = 0 }
-        local rayK = RAY_K[rawBiome().id] or 0.8
-        local crest = g.crestYAt(g.cx)
-        love.graphics.setBlendMode("add")
-        for i = 1, 2 do
-            local osc = 0.5 + 0.5 * math.sin(WorldRoad._time * 0.3 + i * 2.1)
-            local a = (0.028 + 0.034 * osc) * rayK
-            local dir = (i == 1) and -1 or 1
-            local topX = g.cx + dir * w * 0.045
-            local botX = g.cx + dir * w * 0.15
-            local rayW = w * 0.035
-            -- 2 camadas aninhadas (larga fraca + estreita) = borda suave
-            for _, lay in ipairs({ { 1.0, 0.5 }, { 0.55, 0.5 } }) do
-                love.graphics.setColor(1, 0.92, 0.72, a * lay[2])
-                love.graphics.polygon("fill",
-                    topX - rayW * 0.35 * lay[1], y,
-                    topX + rayW * 0.35 * lay[1], y,
-                    botX + rayW * lay[1], crest,
-                    botX - rayW * lay[1], crest)
-            end
-        end
-        love.graphics.setBlendMode("alpha")
-    end
+    -- (v7: GOD RAYS REMOVIDOS — polígonos translúcidos aditivos sobre a
+    -- cena pixel art liam como "luz de pixel transparente de cor estranha"
+    -- (feedback direto). Se voltarem um dia, têm que ser DESENHADOS:
+    -- feixes em dither de pixels na paleta, não polígono com alpha.)
 
     drawCastle(g, x, w, WorldRoad._camZ)
     drawEncounterBehind(g, x, w, WorldRoad._camZ)
     drawPropsBehind(g, x, w, WorldRoad._camZ)
     drawDome(g, x, y, w)
+    drawTerrainDetail(g, x, w, WorldRoad._camZ)  -- v7: capim + relevo em pixel
     drawRoad(g, x, w, WorldRoad._camZ)
 
     -- ciclo 36: critters e partículas ambientais ANTES dos props — pontos
