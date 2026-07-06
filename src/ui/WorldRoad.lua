@@ -1120,18 +1120,33 @@ local function drawMountainsOf(g, x, w, camZ, bid, alpha)
     local img = getSprite("mountains", 0, bid)
     if img then
         local iw, ih = img:getWidth(), img:getHeight()
-        local sx = w / iw
-        local yTop = math.floor(g.crestApexY - ih * sx + 70)
+        -- v5.5 (feedback telas largas): escala por ORÇAMENTO DE ALTURA
+        -- (fração do céu), não por largura — em monitor grande o strip
+        -- escalado por w cobria lua/nuvens e vazava a banda escura no topo.
+        local skyH = g.crestApexY - g.y
+        local sx = math.max((skyH * 0.72) / ih, w / (iw * 3))
+        local yTop = math.floor(g.crestApexY - ih * sx + math.min(70, ih * sx * 0.22))
         local tileW = iw * sx
         local off = (camZ * 2.5 * sx) % (tileW * 2)
         love.graphics.setColor(1, 1, 1, alpha)
-        for k = -1, 2 do
+        local nTiles = math.ceil(w / tileW) + 2
+        for k = -1, nTiles do
             local tx = x - off + k * tileW
             if (k % 2 == 0) then
                 love.graphics.draw(img, math.floor(tx), yTop, 0, sx, sx)
             else
                 love.graphics.draw(img, math.floor(tx + tileW), yTop, 0, -sx, sx)
             end
+        end
+        -- v5.5: abaixo da base do strip, continua a FLORESTA DISTANTE
+        -- (hillsNear) até o fundo — nas extremidades de telas largas o domo
+        -- não cobre e sobrava a faixa escura do fundo de segurança
+        local hn = (BIOME_BY_ID[bid] or rawBiome()).hillsNear
+        if hn then
+            local stripBase = yTop + ih * sx
+            love.graphics.setColor(hn[1], hn[2], hn[3], alpha)
+            love.graphics.rectangle("fill", x, stripBase - 2, w,
+                math.max(0, g.bottomY - stripBase + 2))
         end
         return true
     end
@@ -1154,17 +1169,16 @@ local function drawMountains(g, x, w, camZ)
 
     local img = getSprite("mountains", 0)
     if img then
-        -- strip PixelLab com parallax horizontal. Base estendida ~70px abaixo
-        -- do ápice da crista: o domo desce nas laterais (sag ≈ 0.058w) e a
-        -- base do strip precisa ficar coberta em TODA a largura.
+        -- fallback genérico: mesma regra de altura do drawMountainsOf (v5.5)
         local iw, ih = img:getWidth(), img:getHeight()
-        local sx = w / iw
-        local yTop = math.floor(g.crestApexY - ih * sx + 70)
+        local skyH = g.crestApexY - g.y
+        local sx = math.max((skyH * 0.72) / ih, w / (iw * 3))
+        local yTop = math.floor(g.crestApexY - ih * sx + math.min(70, ih * sx * 0.22))
         local tileW = iw * sx
-        -- parallax com tiles ESPELHADOS alternados (esconde a costura do wrap)
         local off = (camZ * 2.5 * sx) % (tileW * 2)
         love.graphics.setColor(1, 1, 1, 1)
-        for k = -1, 2 do
+        local nTiles = math.ceil(w / tileW) + 2
+        for k = -1, nTiles do
             local tx = x - off + k * tileW
             if (k % 2 == 0) then
                 love.graphics.draw(img, math.floor(tx), yTop, 0, sx, sx)
@@ -1199,7 +1213,10 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha)
     -- 1.0 → 4.2 ao longo do trecho (antes 1.0→2.5, "nem dava pra ver o
     -- portão"). Crescimento acelera no fim (progress^1.4): os últimos
     -- andares são a chegada dramática, portão dominante.
-    local baseScale = (w * 0.155) / iw
+    -- v5.5: escala pelo MENOR entre largura e altura×1.5 — em tela larga o
+    -- castelo escalado por w ficava gigante e cortado no topo
+    local refW = math.min(w, g.h * 1.5)
+    local baseScale = (refW * 0.155) / iw
     local s = baseScale * (1.0 + (progress ^ 1.4) * 3.2)
     local cx = g.cx
     -- afundamento DIMINUI chegando: no fim só 3% da altura fica atrás da

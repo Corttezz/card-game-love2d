@@ -10,6 +10,12 @@ local WorldRoad = require("src.ui.WorldRoad")
 function M.run(mode)
     require("src.ui.PixelCanvas").enableNearest()
 
+    -- prefixo "wide_": valida em aspect de monitor grande (1914x1011)
+    if mode and mode:match("^wide_") then
+        love.window.setMode(1914, 1011)
+        mode = mode:gsub("^wide_", "")
+    end
+
     local width, height = love.graphics.getDimensions()
 
     love.graphics.clear(0, 0, 0, 1)

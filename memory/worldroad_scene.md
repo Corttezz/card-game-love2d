@@ -839,6 +839,18 @@ progress) — castelo assenta no terreno. Descartado do feedback: refazer
 camadas (temos), parallax extra (mundo-esfera já dá profundidade via
 persp), "estrada reta" (meandro v5.2 já resolvera).
 
+**Ciclo 46 (entregue — v5.5 telas largas, 06/Jul):** feedback: "em tela
+cheia os detalhes do céu não aparecem + fundo preto em alguns biomas".
+Causa: montanhas escalavam por LARGURA (sx = w/iw) — em monitor largo o
+strip ficava gigante, cobria lua/nuvens e o topo (transparente) expunha
+o fundo de segurança escuro. Castelo idem (baseScale por w → cortado).
+Fixes: (1) montanhas por ORÇAMENTO DE ALTURA: sx = max(0.72×skyH/ih,
+w/(3iw)) + tiling adaptativo (nTiles = ceil(w/tileW)+2, espelhado);
+(2) faixa hillsNear da base do strip até o fundo (extremidades onde o
+domo não cobre); (3) castelo: refW = min(w, h×1.5). Validação nova:
+prefixo wide_ no screenshot (1914×1011) — REGRA: layout de céu/bg
+valida nos DOIS aspectos (full<N> e wide_full<N>).
+
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
 14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY
 21. Aguardar feedback do usuário jogando (viagem/blends/interiores em MOTION
