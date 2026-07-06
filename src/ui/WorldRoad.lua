@@ -1153,6 +1153,35 @@ local function drawStripTiles(img, x, sx, yTop, tileW, off)
     end
 end
 
+-- v5.9 (feedback): abaixo da base do strip, ESPELHO VERTICAL do próprio
+-- background (mesma lógica do espelho lateral) — preenche a faixa entre
+-- o strip e o domo com arte em vez de degradê chapado. O quad pula as
+-- últimas 46 linhas do PNG (rodapé degrada pra preto — c47).
+local MIRROR_SKIP = 46
+local function drawStripMirrorBelow(img, x, sx, yTop, tileW, off)
+    local iw, ih = img:getWidth(), img:getHeight()
+    local qh = ih - MIRROR_SKIP
+    if qh <= 4 then return yTop + ih * sx end
+    WorldRoad._quadCache = WorldRoad._quadCache or {}
+    local key = tostring(img) .. "_mq"
+    local q = WorldRoad._quadCache[key]
+    if not q then
+        q = love.graphics.newQuad(0, 0, iw, qh, iw, ih)
+        WorldRoad._quadCache[key] = q
+    end
+    local seamY = math.floor(yTop + (ih - MIRROR_SKIP) * sx)
+    local y0 = seamY + qh * sx
+    for k = -1, 2 do
+        local tx = x - off + k * tileW
+        if (k % 2 == 0) then
+            love.graphics.draw(img, q, math.floor(tx), y0, 0, sx, -sx)
+        else
+            love.graphics.draw(img, q, math.floor(tx + tileW), y0, 0, -sx, -sx)
+        end
+    end
+    return y0
+end
+
 -- Desenha montanhas de UM bioma com alpha (usado pro crossfade no blend)
 local function drawMountainsOf(g, x, w, camZ, bid, alpha)
     if _G.WR_DEBUG then print("[WR] mountainsOf bid=" .. tostring(bid) .. " a=" .. alpha) end
@@ -1168,31 +1197,26 @@ local function drawMountainsOf(g, x, w, camZ, bid, alpha)
         local sx, yTop, tileW, off = stripTransform(g, x, w, camZ, iw, ih)
         love.graphics.setColor(1, 1, 1, alpha)
         drawStripTiles(img, x, sx, yTop, tileW, off)
-        -- v5.6: abaixo da base do strip, GRADIENTE floresta→tom do domo
-        -- (a versão flat empilhava faixas preta/roxa visíveis nas
-        -- extremidades de telas largas — bandas chapadas denunciam camadas)
+        -- v5.9 (feedback): a faixa abaixo do strip é preenchida com o
+        -- ESPELHO VERTICAL do próprio background (substitui o degradê
+        -- chapado do c47). O espelho FADE pro tom do domo ~110px abaixo
+        -- da emenda — só preenche a parte necessária; deixar o espelho
+        -- inteiro revelava o céu invertido como faixas nos cantos largos
+        drawStripMirrorBelow(img, x, sx, yTop, tileW, off)
+        local seamY = math.floor(yTop + (ih - MIRROR_SKIP) * sx)
         local b2 = BIOME_BY_ID[bid] or rawBiome()
-        local hn, ga2 = b2.hillsNear, b2.grassA
-        if hn and ga2 then
-            -- alvo = tom do TOPO do domo ×0.82 (funde com a silhueta da
-            -- esfera; alvo escuro fazia banda preta — feedback telas largas)
+        local ga2 = b2.grassA
+        if ga2 then
             local tr, tg, tb = ga2[1] * 0.82, ga2[2] * 0.82, ga2[3] * 0.82
-            -- -46: cobre o RODAPÉ do PNG (últimas fileiras do strip
-            -- degradam pra preto e faziam banda — feedback telas largas)
-            local stripBase = yTop + ih * sx - 46
-            local totalH = math.max(0, g.bottomY - stripBase)
-            local gradH = math.min(totalH, 140)
-            for i = 0, gradH - 1, 2 do
-                local k = i / gradH
-                love.graphics.setColor(
-                    hn[1] + (tr - hn[1]) * k,
-                    hn[2] + (tg - hn[2]) * k,
-                    hn[3] + (tb - hn[3]) * k, alpha)
-                love.graphics.rectangle("fill", x, stripBase + i, w, 2)
+            local fadeH = 110
+            for i = 0, fadeH - 1, 2 do
+                love.graphics.setColor(tr, tg, tb, alpha * (i / fadeH))
+                love.graphics.rectangle("fill", x, seamY + i, w, 2)
             end
-            if totalH > gradH then
+            if g.bottomY > seamY + fadeH then
                 love.graphics.setColor(tr, tg, tb, alpha)
-                love.graphics.rectangle("fill", x, stripBase + gradH, w, totalH - gradH)
+                love.graphics.rectangle("fill", x, seamY + fadeH, w,
+                    g.bottomY - seamY - fadeH)
             end
         end
         return true
@@ -2361,6 +2385,7 @@ end
 
 function WorldRoad.clearCache()
     WorldRoad._spriteCache = {}
+    WorldRoad._quadCache = {}
     WorldRoad._props = {}
     WorldRoad._clouds = {}
     WorldRoad._blend = nil

@@ -999,6 +999,16 @@ solto de qualquer tamanho agora é descartado do front. Nuvem cruza o
 sol por cima e continua cortada pelos morros. REGRA DE CAMADAS do céu:
 astro assado (sol/lua) < nuvem móvel < silhueta de montanha.
 
+**Ciclo 56 (entregue — espelho vertical sob o strip, 06/Jul):** feedback:
+"o background é espelhado no lado, espelhe também embaixo pra preencher".
+drawStripMirrorBelow: espelho vertical do próprio PNG abaixo da base
+(quad pula as 46 linhas do rodapé degradado — emenda limpa), substituindo
+o degradê chapado do c47. FADE pro tom do domo (grassA×0.82) em ~110px
+abaixo da emenda: espelho INTEIRO revelava o céu invertido como faixas
+coloridas nos cantos largos + banda preta da floresta espelhada — só a
+faixa necessária, esmaecendo. _quadCache novo (limpo no clearCache).
+Validado wide_full2/wide_full3 (cantos com arte, sem bandas).
+
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
 14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY
 21. Aguardar feedback do usuário jogando (viagem/blends/interiores em MOTION
