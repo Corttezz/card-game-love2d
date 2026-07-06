@@ -11,6 +11,9 @@
 local Config           = require("src.core.Config")
 local FontManager      = require("src.ui.FontManager")
 local SceneLayer       = require("src.ui.SceneLayer")
+local SceneBackground  = require("src.ui.SceneBackground")
+local InteriorFX       = require("src.ui.InteriorFX")
+local WorldRoad        = require("src.ui.WorldRoad")
 local EnemyRenderer    = require("src.ui.EnemyRenderer")
 local EnemyHud         = require("src.ui.EnemyHud")
 local Sfx              = require("src.systems.Sfx")
@@ -18,11 +21,18 @@ local SmokeConfig      = require("src.config.SmokeConfig")
 
 local GameplayScene = {}
 
+-- Modo de cenário: "worldroad" (mundo rolante, estilo Path of Kings) ou
+-- "scene" (SceneLayer com PNG estático por ato — comportamento antigo).
+GameplayScene.SCENE_MODE = "worldroad"
+
 -- Refs externas (setadas em init)
 local game, playButton, topBar, gameUI, smokeSystem
 local setCurrentState, onPhaseCleared, onReturnToMenu
 -- State interno
 local hoverCard = nil
+local lastFloorKey = nil   -- detecta troca de andar → dispara viagem na estrada
+local lastInterior = nil   -- detecta estrada→interior → fade de entrada
+local interiorFade = 0     -- alpha do fade preto (1 → 0 em ~0.9s)
 
 function GameplayScene.init(deps)
     game           = deps.game
@@ -121,18 +131,57 @@ function GameplayScene.draw()
 
     -- Cenário em camadas (BG_FAR + BG_MID + FG_PROPS) com parallax
     local currentAct = 1
-    if game and game.runManager and game.runManager.currentRun then
-        currentAct = game.runManager.currentRun.actNumber or 1
+    local run = game and game.runManager and game.runManager.currentRun
+    if run then currentAct = run.actNumber or 1 end
+
+    -- PROGRESSÃO DE CENÁRIO (feedback Jul/2026): batalha comum acontece na
+    -- ESTRADA (mundo-esfera); boss/mini_boss/elite acontecem DENTRO do
+    -- castelo (interior PixelLab por ato) — chegou no marco, entrou.
+    local nodeType = run and run.currentNode and run.currentNode.type
+    local interior = GameplayScene.SCENE_MODE == "worldroad"
+        and (nodeType == "boss" or nodeType == "mini_boss" or nodeType == "elite")
+
+    if interior then
+        local hallAct = math.min(3, currentAct)
+        local drawn = SceneBackground.draw("castle_hall_" .. hallAct,
+            width, height, 0.15)
+        if not drawn then
+            -- interior ainda não gerado: cai pro SceneLayer do ato
+            SceneLayer.draw(0, topBarHeight, width, height - topBarHeight, currentAct)
+        else
+            -- tochas/brasas vivas do hall (glow pulsante + partículas)
+            InteriorFX.draw(hallAct)
+        end
+    elseif GameplayScene.SCENE_MODE == "worldroad" then
+        -- Endless: biomas extras (4+) ciclam a cada 8 andares via currentFloor
+        local biomeIdx = currentAct
+        if run and run.endlessMode then
+            biomeIdx = 4 + math.floor(math.max(0, (run.currentFloor or 25) - 25) / 8)
+        end
+        WorldRoad.draw(0, topBarHeight, width, height - topBarHeight, biomeIdx)
+    else
+        SceneLayer.draw(0, topBarHeight, width, height - topBarHeight, currentAct)
     end
-    SceneLayer.draw(0, topBarHeight, width, height - topBarHeight, currentAct)
 
     topBar:draw()
 
-    -- Inimigo como sprite + HP bar ancorada
-    local enemyCx = math.floor(width / 2)
-    local enemyCy = math.floor(height * 0.68)
-    local enemyBbox = EnemyRenderer.draw(game, enemyCx, enemyCy)
-    EnemyHud.draw(game, enemyBbox, enemyCx, enemyCy)
+    -- Inimigo como sprite + HP bar ancorada. Durante a viagem na estrada o
+    -- inimigo vem "lá de trás" como billboard do WorldRoad — o EnemyRenderer
+    -- assume no handoff (fim da viagem), já PLANTADO na superfície da estrada.
+    local traveling = GameplayScene.SCENE_MODE == "worldroad"
+        and not interior and WorldRoad.isTraveling()
+    if not traveling then
+        local enemyCx, enemyCy
+        if GameplayScene.SCENE_MODE == "worldroad" and not interior then
+            enemyCx, enemyCy = WorldRoad.getRoadAnchor(WorldRoad.BATTLE_REL,
+                0, topBarHeight, width, height - topBarHeight)
+        else
+            enemyCx = math.floor(width / 2)
+            enemyCy = math.floor(height * 0.68)
+        end
+        local enemyBbox = EnemyRenderer.draw(game, enemyCx, enemyCy)
+        EnemyHud.draw(game, enemyBbox, enemyCx, enemyCy)
+    end
 
     gameUI:draw(game)
 
@@ -215,6 +264,14 @@ function GameplayScene.draw()
     if game.messageSystem then game.messageSystem:draw() end
 
     drawJokersAsCards()
+
+    -- fade de entrada no castelo (estrada→interior): tela revela do preto
+    if interiorFade > 0 then
+        local a = interiorFade * interiorFade   -- ease-out (rápido no fim)
+        love.graphics.setColor(0, 0, 0, a)
+        love.graphics.rectangle("fill", 0, 0, width, height)
+        love.graphics.setColor(1, 1, 1, 1)
+    end
 end
 
 -- ============================================================================
@@ -229,7 +286,54 @@ function GameplayScene.update(dt)
     -- Partículas são tickadas centralmente em main.lua via CardParticles.update.
 
     EnemyRenderer.update(dt)
-    SceneLayer.update(dt)
+    -- FX de interior (tochas) tickam quando o node atual é de castelo;
+    -- transição estrada↔interior dispara fade de entrada (portão)
+    do
+        local runU = game.runManager and game.runManager.currentRun
+        local ntU = runU and runU.currentNode and runU.currentNode.type
+        local isInt = ntU == "boss" or ntU == "mini_boss" or ntU == "elite"
+        if isInt then
+            InteriorFX.update(dt, math.min(3, (runU and runU.actNumber) or 1))
+        end
+        if lastInterior ~= nil and isInt ~= lastInterior then
+            interiorFade = 1
+            if isInt then InteriorFX.clear() end
+        end
+        lastInterior = isInt
+        if interiorFade > 0 then
+            interiorFade = math.max(0, interiorFade - dt / 0.9)
+        end
+    end
+    if GameplayScene.SCENE_MODE == "worldroad" then
+        WorldRoad.update(dt)
+        -- Troca de andar/fase → herói "anda" até o próximo encontro:
+        -- o mundo rola pra frente (técnica Path of Kings)
+        local floorKey
+        if game.runManager and game.runManager.currentRun then
+            local run = game.runManager.currentRun
+            floorKey = (run.actNumber or 1) .. ":" .. (run.floorInAct or 1)
+        else
+            floorKey = "classic:" .. (game.currentPhase or 1)
+        end
+        if lastFloorKey ~= nil and floorKey ~= lastFloorKey
+           and not WorldRoad.isTraveling() then
+            -- nodes de interior (boss/elite): sem viagem na estrada — a
+            -- batalha começa direto dentro do castelo
+            local run2 = game.runManager and game.runManager.currentRun
+            local nt = run2 and run2.currentNode and run2.currentNode.type
+            if not (nt == "boss" or nt == "mini_boss" or nt == "elite") then
+                -- o novo inimigo já existe (nextPhase rodou) → vem lá de trás;
+                -- na chegada, quicadas de aterrissagem (juice)
+                WorldRoad.travel({
+                    encounter = EnemyRenderer.getEncounterBillboard(game.enemy),
+                    onComplete = function() EnemyRenderer.triggerArrival() end,
+                })
+            end
+        end
+        lastFloorKey = floorKey
+    else
+        SceneLayer.update(dt)
+    end
 
     -- Transições de estado (game over / victory). Retorna true se mudou
     -- (caller deve fazer early return pra não rodar resto do frame).

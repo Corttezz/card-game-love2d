@@ -84,6 +84,7 @@ card-game-love2d/
 │   │   ├── SmokeSystem.lua     # Smoke atmosférico (4 presets)
 │   │   └── Timer.lua           # Timer simples
 │   ├── ui/
+│   │   ├── WorldRoad.lua       # Circle Land: mundo-domo que gira (inimigo emerge da curva, castelo cresce) — memory/worldroad_scene.md
 │   │   ├── Theme.lua           # Paleta de cores + utilitários (gradient, interpolate)
 │   │   ├── FontManager.lua     # Cache de fontes + drawWithOutline helper
 │   │   ├── ImageCache.lua      # Cache global de imagens (evita carregar PNGs múltiplas vezes)

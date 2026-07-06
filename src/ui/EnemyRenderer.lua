@@ -110,6 +110,20 @@ function EnemyRenderer.clearCache()
     ambientParticles = {}
 end
 
+-- Juice de CHEGADA (fim da viagem na estrada): o inimigo "assenta" com
+-- duas quicadas rápidas em vez de aparecer num corte seco.
+local arrivalT = 0
+function EnemyRenderer.triggerArrival()
+    arrivalT = 0.55
+end
+
+function EnemyRenderer.getArrivalOffset()
+    if arrivalT <= 0 then return 0 end
+    local k = arrivalT / 0.55
+    -- duas quicadas decrescentes (abs(sin) com envelope k²)
+    return -math.abs(math.sin(k * math.pi * 2.2)) * 14 * k * k
+end
+
 function EnemyRenderer.triggerHurt()
     -- Guard: nao sobrescrever death anim com hurt. A death e "terminal" —
     -- uma vez acionada, nao volta pra hurt/idle. Sem esse guard, o hurt
@@ -148,6 +162,7 @@ end
 function EnemyRenderer.update(dt)
     if currentAnim then currentAnim:update(dt) end
     if hurtTime > 0 then hurtTime = math.max(0, hurtTime - dt) end
+    if arrivalT > 0 then arrivalT = math.max(0, arrivalT - dt) end
 
     -- Spawn partículas ambientais a cada ~0.35s
     ambientSpawnTimer = ambientSpawnTimer - dt
@@ -215,10 +230,10 @@ function EnemyRenderer.draw(game, cx, cy)
         iw, ih = staticImg:getWidth(), staticImg:getHeight()
     end
 
-    -- Escala alvo (inteira, nearest). Sprite precisa ser grande o bastante pra
-    -- competir com o detalhe da scene. 320+ pra normal, 420+ pra boss.
-    local targetHeight = 320
-    if game.enemy and game.enemy.isBoss then targetHeight = 420 end
+    -- Escala alvo (inteira, nearest). 250 normal / 330 boss — reduzido em
+    -- Jul/2026 (feedback: inimigo grande demais em relação ao mundo-domo).
+    local targetHeight = 250
+    if game.enemy and game.enemy.isBoss then targetHeight = 330 end
     local scale = math.max(4, math.floor(targetHeight / ih))
 
     -- =========================================================
@@ -234,18 +249,17 @@ function EnemyRenderer.draw(game, cx, cy)
         love.graphics.rectangle("fill", math.floor(p.x), math.floor(p.y), p.size, p.size)
     end
 
-    -- (4) Idle bounce (±2px vertical, sempre ativo)
-    local bounce = math.floor(math.sin(t * 1.6) * 2)
+    -- (4) Idle bounce (±1px vertical — respiração; ±2 parecia flutuar)
+    local bounce = math.floor(math.sin(t * 1.6) * 1)
     -- (5) Micro tremor (±1px horizontal)
     local jitter = math.floor(math.sin(t * 13.1) * 0.5 + math.cos(t * 17.3) * 0.5)
 
     local drawX = cx - (iw * scale) / 2 + jitter
-    local drawY = cy - ih * scale + bounce
+    local drawY = cy - ih * scale + bounce + EnemyRenderer.getArrivalOffset()
 
-    -- (1) Sombra elíptica no chão (squash leve com o bounce pra parecer que responde)
-    local shadowSquash = 1 + (bounce / 40) -- quando sobe, sombra fica menor
-    love.graphics.setColor(0, 0, 0, 0.45)
-    love.graphics.ellipse("fill", cx, cy, iw * scale * 0.35 / shadowSquash, 8 / shadowSquash)
+    -- (1) Sombra elíptica REMOVIDA (2026-07): com o WorldRoad o inimigo fica
+    -- plantado na estrada (cy = superfície real do chão via getRoadAnchor);
+    -- a sombra flutuante dava impressão de levitar.
 
     -- (6) Pulse de tint (cor varia ±6% lentamente, respiração sutil)
     local pulse = 0.94 + (math.sin(t * 1.1) * 0.5 + 0.5) * 0.06
@@ -301,6 +315,24 @@ function EnemyRenderer.draw(game, cx, cy)
         bottomY = cy,
         width = iw * scale,
         height = ih * scale,
+    }
+end
+
+-- Billboard leve pro WorldRoad: o inimigo que vem "lá de trás" na estrada
+-- durante a viagem. Retorna { img, iw, ih, targetScale } ou nil.
+-- targetScale = mesma escala que draw() usa na batalha (handoff sem pulo).
+function EnemyRenderer.getEncounterBillboard(enemy)
+    if not enemy or not enemy.spriteId then return nil end
+    local sprites = loadStatic(enemy.spriteId)
+    local img = sprites and (sprites.south or sprites.east or sprites.west or sprites.north)
+    if not img then return nil end
+    local ih = img:getHeight()
+    local targetHeight = enemy.isBoss and 330 or 250
+    return {
+        img = img,
+        iw = img:getWidth(),
+        ih = ih,
+        targetScale = math.max(4, math.floor(targetHeight / ih)),
     }
 end
 

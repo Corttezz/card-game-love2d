@@ -25,4 +25,5 @@
 - [Run Instructions](run_instructions.md) — love . no root, atalhos, smoke tests
 - [Enemy Pipeline](enemy_pipeline.md) — pixellab create_character + animate_character + install, como adicionar novo inimigo
 - [Scene Pipeline](scene_pipeline.md) — cenários full-res 400×256 via create_map_object + overlays animados (tochas/cristais/parallax); anti-pattern: tileset procedural
+- [WorldRoad](worldroad_scene.md) — mundo rolante estilo Path of Kings (estrada em perspectiva, props em Z, viagem entre andares); SCENE_MODE em GameplayScene; contrato PNG pra arte PixelLab
 - [Backgrounds Catalog](backgrounds_catalog.md) — inventário COMPLETO (scenes/path/patterns/map_nodes/tilesets) + padrões obrigatórios pra gerar novos mantendo coerência visual

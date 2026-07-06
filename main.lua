@@ -290,6 +290,29 @@ function love.load(loveArgs)
         return
     end
 
+    -- Captura o WorldRoad (mundo rolante): 3 biomas ou "full" (1 bioma inteiro).
+    --   love . screenshot_worldroad [full]
+    if loveArgs and loveArgs[1] == "screenshot_worldroad" then
+        require("tools.screenshot_worldroad").run(loveArgs[2])
+        return
+    end
+
+    -- Demo interativo do WorldRoad (SPACE=viagem, 1-6=bioma, E=encounter,
+    -- V=vista, R=reset) OU tour automático com keyframes:
+    --   love . demo_worldroad          (interativo)
+    --   love . demo_worldroad tour     (captura 6 keyframes e sai)
+    if loveArgs and loveArgs[1] == "demo_worldroad" then
+        require("tools.demo_worldroad").run(loveArgs[2])
+        return
+    end
+
+    -- Quickstart: pula menu/seleção e cai DIRETO na batalha (validação).
+    --   love . play [warrior|mage|rogue]
+    local autoPlayClass = nil
+    if loveArgs and loveArgs[1] == "play" then
+        autoPlayClass = loveArgs[2] or "warrior"
+    end
+
     -- Captura 3 screenshots da animação death (early/mid/late).
     --   love . screenshot_death
     if loveArgs and loveArgs[1] == "screenshot_death" then
@@ -706,6 +729,12 @@ function love.load(loveArgs)
             if menu.enterWithIntro then menu:enterWithIntro() end
         end,
     })
+
+    -- Quickstart `love . play <classe>`: pula boot/menu e entra na batalha.
+    if autoPlayClass then
+        print("[quickstart] entrando direto na batalha com " .. autoPlayClass)
+        startGame(autoPlayClass)
+    end
 end
 
 -- updatePlayButtonPosition foi pra GameplayScene. Chamado aqui pra resize.
