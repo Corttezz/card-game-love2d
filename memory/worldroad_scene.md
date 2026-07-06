@@ -766,6 +766,23 @@ original — recortar separadamente. Legado (grave_slime/stone_golem/
 abyss_wraith) mantido como fallback. PENDENTE: monstros específicos dos
 biomas endless (frost/marsh/dusk) — roster hoje repete ato 3 no endless.
 
+**Ciclo 41 (entregue — 5 fixes do feedback do fork, 06/Jul):**
+(1) CRASH ao escolher caminho: LANDMARK_FOR_TYPE/SIZE/getLandmark eram
+locais declarados DEPOIS de WorldRoad.update no arquivo → nil dentro do
+update. Movidos pra antes. LIÇÃO LUA: local declarado abaixo não existe
+pra função definida acima — sempre declarar tabelas compartilhadas no
+topo da seção que as usa primeiro. (2) Estrada "muito certinha": meandro
+orgânico no centro (2 senos worldZ*0.14/0.047, amp 0.024w×(0.3+0.7t));
+fork usa wob×0.5. (3) Marcos MAIORES que árvores (são lugares): shop
+5.2, event 5.0, elite 4.4, rest 3.6, battle 3.4, chest 2.6. (4) Árvores
+nos caminhos do fork: supressão por corredor (|pxX-centro do braço| <
+half+0.045w some enquanto fork ativo) + emersão pausada no fork.
+(5) Castelos transparentes in-game: vazamentos internos CONECTADOS à
+borda por canais finos (remoção de fundo da geração comeu parede) — fix:
+preencher transparente cercado por opaco nos 4 sentidos (R=40) — fields
+3283px!, abyss 3835px, frost 1983px. fork2 agora atravessa a convergência
+completa (85 ticks) = prova onChosen sem crash.
+
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
 14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY
 21. Aguardar feedback do usuário jogando (viagem/blends/interiores em MOTION

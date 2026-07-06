@@ -750,6 +750,27 @@ local function easeInOutCubic(t)
     return 1 + f * f * f / 2
 end
 
+-- MARCOS DO FORK (declarados ANTES do update — bug ciclo 41: eram locais
+-- do fim do arquivo e update() não os enxergava → crash ao escolher).
+-- Tamanhos GRANDES (feedback: "são realmente lugares, maiores que árvores")
+local LANDMARK_FOR_TYPE = {
+    battle = "landmark_battle", elite = "landmark_elite",
+    mini_boss = "landmark_battle", boss = "landmark_battle",
+    rest = "landmark_rest", shop = "landmark_shop",
+    event = "landmark_event", treasure = "landmark_chest",
+}
+local LANDMARK_SIZE = {
+    landmark_battle = 3.4, landmark_elite = 4.4, landmark_rest = 3.6,
+    landmark_shop = 5.2, landmark_event = 5.0, landmark_chest = 2.6,
+}
+local landmarkCache = {}
+local function getLandmark(key)
+    if landmarkCache[key] ~= nil then return landmarkCache[key] or nil end
+    local img = tryLoadPng(key)
+    landmarkCache[key] = img or false
+    return img
+end
+
 function WorldRoad.update(dt)
     WorldRoad._time = WorldRoad._time + dt
 
@@ -1236,6 +1257,9 @@ end
 -- domo, com a base afundada — o domo tampa a parte de baixo do corpo, igual
 -- ao monstro. Antes eles simplesmente pipocavam ao cruzar a crista.
 local function drawPropsBehind(g, x, w, camZ)
+    -- durante o fork os marcos ocupam a faixa central — emersão pausa
+    -- (câmera parada; ninguém percebe e nada nasce em cima dos marcos)
+    if WorldRoad._fork then return end
     for _, p in ipairs(WorldRoad._props) do
         local rel = p.z - camZ
         if rel > REL_CREST and rel <= REL_CREST + EMERGE_BAND then
@@ -1500,25 +1524,6 @@ local MARK_REL    = 17.5  -- onde os marcos ficam
 local ARRIVE_REL  = 7.5   -- rel do marco ao fim da convergência (chegada)
 local FORK_SPREAD = 0.15  -- afastamento lateral máximo por direção (fração de w)
 
-local LANDMARK_FOR_TYPE = {
-    battle = "landmark_battle", elite = "landmark_elite",
-    mini_boss = "landmark_battle", boss = "landmark_battle",
-    rest = "landmark_rest", shop = "landmark_shop",
-    event = "landmark_event", treasure = "landmark_chest",
-}
-local LANDMARK_SIZE = {
-    landmark_battle = 2.3, landmark_elite = 2.7, landmark_rest = 2.2,
-    landmark_shop = 3.2, landmark_event = 3.1, landmark_chest = 1.8,
-}
-
-local landmarkCache = {}
-local function getLandmark(key)
-    if landmarkCache[key] ~= nil then return landmarkCache[key] or nil end
-    local img = tryLoadPng(key)
-    landmarkCache[key] = img or false
-    return img
-end
-
 function WorldRoad.showFork(nodes, onChosen)
     if not nodes or #nodes == 0 then return false end
     local n = math.min(3, #nodes)
@@ -1723,17 +1728,25 @@ local function drawRoad(g, x, w, camZ)
             end
         end
 
+        -- MEANDRO ORGÂNICO (feedback v5: "estrada muito certinha, parece
+        -- artificial"): o CENTRO serpenteia suave em baixa frequência —
+        -- torta e imperfeita como estrada de terra de verdade (ref APK).
+        -- Amplitude cresce chegando perto (longe a serpentina comprime).
+        local wob = (math.sin(worldZ * 0.14) * 0.6
+            + math.sin(worldZ * 0.047 + 2.1) * 0.4)
+            * w * 0.024 * (0.30 + 0.70 * t)
+
         if fork and rel > FORK_REL then
             for i = 1, fork.n do
                 local aMul = forkAlpha(fork, i)
                 if aMul > 0.02 then
                     local bright = (fork.hover == i and not fork.converge) and 1.14 or 1
-                    paintRow(cx + forkOffset(fork, i, rel, w),
+                    paintRow(cx + wob * 0.5 + forkOffset(fork, i, rel, w),
                         fork.n > 1 and 0.78 or 1, aMul, i == 1, bright)
                 end
             end
         else
-            paintRow(cx, 1, 1, true, 1)
+            paintRow(cx + wob, 1, 1, true, 1)
         end
     end
 end
@@ -1900,6 +1913,23 @@ local function drawProps(g, x, w, camZ)
             local sy = g.latY(pxX - g.cx, t) + over * g.h * 0.20
 
             local img = getSprite(p.kind, p.variant, p.bid)
+
+            -- CORREDOR DO FORK (feedback: "árvores não podem ocupar os
+            -- caminhos"): com a estrada bifurcada, props que caem sobre
+            -- QUALQUER braço somem enquanto o fork existe
+            if img and WorldRoad._fork and rel > FORK_REL - 1.5 then
+                local f2 = WorldRoad._fork
+                local halfCorr = ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15))
+                    * (f2.n > 1 and 0.78 or 1)
+                for bi = 1, f2.n do
+                    local bc = g.cx + forkOffset(f2, bi, rel, w)
+                    if math.abs(pxX - bc) < halfCorr + w * 0.045 then
+                        img = nil
+                        break
+                    end
+                end
+            end
+
             if img then
                 local iw, ih = img:getWidth(), img:getHeight()
                 local size = (KIND_SIZE[p.kind] or 1.0) * (p.big or 1)

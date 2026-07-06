@@ -74,8 +74,8 @@ function M.run(mode)
             if b then
                 WorldRoad.forkMousePressed((b.x1 + b.x2) / 2, (b.y1 + b.y2) / 2)
             end
-            for _ = 1, 36 do   -- ~1.2s: meio da convergência
-                WorldRoad.update(1 / 30)
+            for _ = 1, 85 do   -- atravessa a convergência INTEIRA (2.4s)
+                WorldRoad.update(1 / 30)   -- exercita onChosen + _landmark
                 WorldRoad.draw(0, topBarH, width, height - topBarH, 1)
             end
         end
