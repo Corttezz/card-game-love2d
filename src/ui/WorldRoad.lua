@@ -1152,6 +1152,15 @@ local function gradTex()
     return _gradV, _gradH
 end
 
+-- v6.3: direção da luz da cena = posição do astro do bioma. Sombras de
+-- contato deslocam CONTRA o sol (coerência global barata, mesma ideia do
+-- shadow_parrallax do Balatro). Retorna deslocamento normalizado [-1,1].
+local function sunShadowDir(g, x, w, px)
+    local cel = rawBiome().celestial
+    local sunX = cel and (x + cel.xr * w) or g.cx
+    return math.max(-1, math.min(1, (px - sunX) / (w * 0.5)))
+end
+
 local function ridge(seed, i)
     return math.sin(i * 0.7 + seed) * 0.5 + math.sin(i * 0.23 + seed * 2.3) * 0.35
          + math.sin(i * 1.7 + seed * 0.7) * 0.15
@@ -1325,6 +1334,27 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha)
         love.graphics.setColor(ra[1] * 0.92, ra[2] * 0.92, ra[3] * 0.92, 0.85)
         love.graphics.ellipse("fill", cx, crest2 + 2,
             iw * s * 0.34, 5 + 9 * progress)
+        -- v6.3: sombra direcional do castelo (contra o sol do bioma)
+        local shd = sunShadowDir(g, x, w, cx)
+        love.graphics.setColor(0, 0, 0, 0.15)
+        love.graphics.ellipse("fill", cx + shd * iw * s * 0.20
+            + (shd == 0 and iw * s * 0.10 or 0), crest2 + 3,
+            iw * s * 0.28, 4 + 7 * progress)
+    end
+
+    -- v6.3: RIM LIGHT — cópia aditiva na cor do astro deslocada 2px em
+    -- direção ao sol POR BAIXO do sprite: sobra um contorno de luz de
+    -- 1-2px na borda iluminada (rim barato, sem shader)
+    local cel = (BIOME_BY_ID[bid] or rawBiome()).celestial
+    if cel then
+        local sunX = x + cel.xr * w
+        local rdx = math.max(-1, math.min(1, (sunX - cx) / (w * 0.4)))
+        local sc = cel.color
+        love.graphics.setBlendMode("add")
+        love.graphics.setColor(sc[1], sc[2], sc[3], 0.28 * alpha)
+        love.graphics.draw(img, math.floor(cx - iw * s / 2 + rdx * 2),
+            math.floor(baseY - ih * s - 1), 0, s, s)
+        love.graphics.setBlendMode("alpha")
     end
 
     love.graphics.setColor(1, 1, 1, alpha)
@@ -1959,9 +1989,11 @@ local function drawForkMarks(g, x, w, camZ)
             love.graphics.setColor(acc[1], acc[2], acc[3],
                 (hovered and 0.30 or 0.12) * aMul)
             love.graphics.ellipse("fill", px, py, iw * s * 0.7, 7 * g.persp(t) + 3)
-            -- sombra
+            -- sombra (v6.3: direcional contra o sol)
             love.graphics.setColor(0, 0, 0, 0.22 * aMul)
-            love.graphics.ellipse("fill", px, py - 1, iw * s * 0.30, math.max(2, 4 * g.persp(t)))
+            love.graphics.ellipse("fill",
+                px + sunShadowDir(g, x, w, px) * iw * s * 0.14,
+                py - 1, iw * s * 0.30, math.max(2, 4 * g.persp(t)))
 
             local bob = hovered and math.sin(WorldRoad._time * 4) * 2 or 0
             local br = hovered and 1.12 or 1
@@ -2026,7 +2058,9 @@ local function drawLandmarkFront(g, x, w, camZ)
     local py = g.crestApexY + (g.bottomY - g.crestApexY) * t
     local lx = g.cx + roadWobble(lm.z, t, w)   -- segue a curva da estrada
     love.graphics.setColor(0, 0, 0, 0.22)
-    love.graphics.ellipse("fill", lx, py - 1, iw * s * 0.30, math.max(2, 4 * g.persp(t)))
+    love.graphics.ellipse("fill",
+        lx + sunShadowDir(g, x, w, lx) * iw * s * 0.14,
+        py - 1, iw * s * 0.30, math.max(2, 4 * g.persp(t)))
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.draw(img, math.floor(lx - iw * s / 2), math.floor(py - ih * s), 0, s, s)
 end
@@ -2138,8 +2172,11 @@ local function drawProps(g, x, w, camZ)
                         local cimg = getSprite(p.kind, cvar, p.bid)
                         if cimg then
                             love.graphics.setColor(0, 0, 0, 0.16)
-                            love.graphics.ellipse("fill", cx2, cy2 - 1,
-                                cimg:getWidth() * cs * 0.22,
+                            love.graphics.ellipse("fill",
+                                cx2 + sunShadowDir(g, x, w, cx2)
+                                    * cimg:getWidth() * cs * 0.16,
+                                cy2 - 1,
+                                cimg:getWidth() * cs * 0.24,
                                 math.max(2, 4 * g.persp(t)))
                             love.graphics.setColor(0.88, 0.88, 0.88, 1)
                             love.graphics.draw(cimg,
@@ -2167,7 +2204,9 @@ local function drawProps(g, x, w, camZ)
                             local fy = g.latY(fx - g.cx, ft)
                             local fs = g.scaleAt((KIND_SIZE.fence or 1) * (p.big or 1), ft, ih)
                             love.graphics.setColor(0, 0, 0, 0.18)
-                            love.graphics.ellipse("fill", fx, fy - 1, iw * fs * 0.3, 3)
+                            love.graphics.ellipse("fill",
+                                fx + sunShadowDir(g, x, w, fx) * iw * fs * 0.14,
+                                fy - 1, iw * fs * 0.3, 3)
                             love.graphics.setColor(0.94, 0.94, 0.94, 1)
                             love.graphics.draw(img, math.floor(fx), math.floor(fy),
                                 0, fs, fs, iw / 2, ih)
@@ -2181,9 +2220,11 @@ local function drawProps(g, x, w, camZ)
                 -- sobrava pros lados (embaixo de ar) e lia como flutuação;
                 -- sombra abraça o TRONCO, não a copa
                 local aFade = math.min(1, 0.72 + t * 1.1)
+                -- v6.3: sombra desloca CONTRA o sol do bioma (direcional)
+                local shd = sunShadowDir(g, x, w, pxX)
                 love.graphics.setColor(0, 0, 0, 0.20 * aFade)
-                love.graphics.ellipse("fill", pxX, sy - 1,
-                    iw * s * 0.22, math.max(2, 4 * g.persp(t)))
+                love.graphics.ellipse("fill", pxX + shd * iw * s * 0.16, sy - 1,
+                    iw * s * 0.24, math.max(2, 4 * g.persp(t)))
 
                 -- BALANÇO de vento (vegetação viva): rotação sutil no pivô
                 -- da base, fase única por prop (p.z)
