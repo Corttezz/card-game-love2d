@@ -1120,17 +1120,18 @@ local function drawMountainsOf(g, x, w, camZ, bid, alpha)
     local img = getSprite("mountains", 0, bid)
     if img then
         local iw, ih = img:getWidth(), img:getHeight()
-        -- v5.5 (feedback telas largas): escala por ORÇAMENTO DE ALTURA
-        -- (fração do céu), não por largura — em monitor grande o strip
-        -- escalado por w cobria lua/nuvens e vazava a banda escura no topo.
-        local skyH = g.crestApexY - g.y
-        local sx = math.max((skyH * 0.72) / ih, w / (iw * 3))
+        -- v5.7 (feedback): o background é GIGANTE — uma peça em escala COVER
+        -- (máximo entre largura e a altura que alcança o topo do frame)
+        -- preenchendo o céu inteiro com a arte do PNG (nada de céu chapado
+        -- "fake" + sol duplicado de tiling). Nuvens/pássaros agora desenham
+        -- POR CIMA dele (reordenado no draw). Só largura vazava o céu
+        -- procedural em 4:3 (faixa roxa/listra no full3).
+        local sx = math.max(w / iw, (g.crestApexY - g.y + 70) / ih)
         local yTop = math.floor(g.crestApexY - ih * sx + math.min(70, ih * sx * 0.22))
         local tileW = iw * sx
         local off = (camZ * 2.5 * sx) % (tileW * 2)
         love.graphics.setColor(1, 1, 1, alpha)
-        local nTiles = math.ceil(w / tileW) + 2
-        for k = -1, nTiles do
+        for k = -1, 2 do
             local tx = x - off + k * tileW
             if (k % 2 == 0) then
                 love.graphics.draw(img, math.floor(tx), yTop, 0, sx, sx)
@@ -1186,16 +1187,14 @@ local function drawMountains(g, x, w, camZ)
 
     local img = getSprite("mountains", 0)
     if img then
-        -- fallback genérico: mesma regra de altura do drawMountainsOf (v5.5)
+        -- fallback genérico: mesma regra GIGANTE/cover do drawMountainsOf (v5.7)
         local iw, ih = img:getWidth(), img:getHeight()
-        local skyH = g.crestApexY - g.y
-        local sx = math.max((skyH * 0.72) / ih, w / (iw * 3))
+        local sx = math.max(w / iw, (g.crestApexY - g.y + 70) / ih)
         local yTop = math.floor(g.crestApexY - ih * sx + math.min(70, ih * sx * 0.22))
         local tileW = iw * sx
         local off = (camZ * 2.5 * sx) % (tileW * 2)
         love.graphics.setColor(1, 1, 1, 1)
-        local nTiles = math.ceil(w / tileW) + 2
-        for k = -1, nTiles do
+        for k = -1, 2 do
             local tx = x - off + k * tileW
             if (k % 2 == 0) then
                 love.graphics.draw(img, math.floor(tx), yTop, 0, sx, sx)
@@ -2213,9 +2212,11 @@ function WorldRoad.draw(x, y, w, h, actNumber)
 
     drawSky(g, x, y, w)
     drawCelestial(g, x, y, w)
+    drawMountains(g, x, w, WorldRoad._camZ)
+    -- v5.7: nuvens e pássaros POR CIMA do background gigante (feedback:
+    -- "as nuvens precisam estar acima do background, não do céu fake")
     drawClouds(g, x, y, w)
     drawBirds(g, x, y, w)
-    drawMountains(g, x, w, WorldRoad._camZ)
 
     -- NÉVOA DE DISTÂNCIA (v5.4): banda de bruma entre as montanhas e o
     -- mundo — separa os planos (feedback: "neblina entre montanhas e

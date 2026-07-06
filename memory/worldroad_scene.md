@@ -864,6 +864,22 @@ a silhueta). Validado wide_full2 com zoom + full2 normal sem regressão.
 Se a região ainda incomodar: opção futura = franja de silhuetas de
 pinheiro descendo até a borda do domo.
 
+**Ciclo 48 (entregue — v5.7 background GIGANTE, 06/Jul):** feedback direto:
+"esse seu fake eu não gostei — o próprio background deve ser grande o
+suficiente pra ocupar toda a tela; nuvens acima do BACKGROUND, não do céu
+fake" (print abyss ultrawide: céu chapado + sol DUPLICADO do tiling).
+Reversão da v5.5: (1) montanhas em escala COVER —
+`sx = max(w/iw, (crestApexY - g.y + 70)/ih)` — uma peça domina o frame
+nos DOIS aspectos (ultrawide: largura ganha, 1 sol; 4:3: altura ganha,
+crop lateral centrado). Primeira tentativa só por largura vazou o céu
+procedural em 4:3 (faixa roxa+listra no full3) → daí o max(). (2) Ordem
+do draw: drawClouds/drawBirds movidos pra DEPOIS de drawMountains —
+nuvens e pássaros vivem SOBRE a arte do bioma; drawCelestial fica atrás
+(o sol/lua ASSADO no PNG assume o papel em quase todo bioma). Gradiente
+de rodapé do c47 mantido. Validado full1/3/5/6 + wide_full3 (ws_c50/51).
+LIÇÃO: "céu procedural + strip baixo" lê como FAKE — o jogador quer a
+ARTE preenchendo; procedural só pode aparecer se indistinguível dela.
+
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
 14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY
 21. Aguardar feedback do usuário jogando (viagem/blends/interiores em MOTION
