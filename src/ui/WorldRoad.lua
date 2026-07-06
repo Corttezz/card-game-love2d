@@ -737,11 +737,23 @@ function WorldRoad.isTraveling()
 end
 
 -- Âncora na estrada (centro) pro rel dado — usada pelo inimigo de batalha.
+-- MEANDRO da estrada (v5.2, feedback: "caminho retinho, precisa de
+-- imperfeições"): 3 senos em frequências diferentes — curvas largas +
+-- ondulação local. Depende do worldZ ABSOLUTO: objetos ancorados numa
+-- posição do mundo veem o mesmo desvio que a fileira da estrada ali.
+local function roadWobble(worldZ, t, w)
+    return (math.sin(worldZ * 0.11) * 0.5
+        + math.sin(worldZ * 0.30 + 2.1) * 0.32
+        + math.sin(worldZ * 0.71 + 0.7) * 0.18)
+        * w * 0.045 * (0.28 + 0.72 * t)
+end
+
 function WorldRoad.getRoadAnchor(rel, x, y, w, h)
     local g = domeGeom(x, y, w, h)
     local t = g.tOf(rel) or 0
     local sy = g.crestApexY + (g.bottomY - g.crestApexY) * t
-    return math.floor(g.cx), math.floor(sy)
+    local wob = roadWobble(WorldRoad._camZ + rel, t, w)
+    return math.floor(g.cx + wob), math.floor(sy)
 end
 
 local function easeInOutCubic(t)
@@ -1238,7 +1250,7 @@ local function drawEncounterBehind(g, x, w, camZ)
 
     -- 0 = acabou de aparecer (todo atrás), 1 = na crista
     local em = 1 - (rel - REL_CREST) / EMERGE_BAND
-    local cx = g.cx
+    local cx = g.cx + roadWobble(e.z, 0, w)
     local crest = g.crestYAt(cx)
     -- escala CONTÍNUA com o mundo: mesma persp-normalização do passe frontal
     -- em t=0 (antes era 0.5 fixo → o inimigo ENCOLHIA de repente ao cruzar a
@@ -1526,6 +1538,9 @@ local FORK_SPREAD = 0.15  -- afastamento lateral máximo por direção (fração
 
 function WorldRoad.showFork(nodes, onChosen)
     if not nodes or #nodes == 0 then return false end
+    -- nova encruzilhada = deixamos o lugar anterior pra trás (feedback:
+    -- "depois que seleciona, a opção continua aparecendo na tela")
+    WorldRoad._landmark = nil
     local n = math.min(3, #nodes)
     local dirs = (n == 1) and { 0 } or (n == 2) and { -1, 1 } or { -1, 0, 1 }
     WorldRoad._fork = {
@@ -1728,13 +1743,9 @@ local function drawRoad(g, x, w, camZ)
             end
         end
 
-        -- MEANDRO ORGÂNICO (feedback v5: "estrada muito certinha, parece
-        -- artificial"): o CENTRO serpenteia suave em baixa frequência —
-        -- torta e imperfeita como estrada de terra de verdade (ref APK).
-        -- Amplitude cresce chegando perto (longe a serpentina comprime).
-        local wob = (math.sin(worldZ * 0.14) * 0.6
-            + math.sin(worldZ * 0.047 + 2.1) * 0.4)
-            * w * 0.024 * (0.30 + 0.70 * t)
+        -- MEANDRO ORGÂNICO: centro serpenteia (roadWobble compartilhado
+        -- com TODAS as âncoras — inimigo, marcos, chegada seguem a curva)
+        local wob = roadWobble(worldZ, t, w)
 
         if fork and rel > FORK_REL then
             for i = 1, fork.n do
@@ -1766,6 +1777,7 @@ local function drawForkMarks(g, x, w, camZ)
         local aMul = forkAlpha(f, i)
         if img and t and aMul > 0.02 then
             local offX = forkOffset(f, i, rel, w)
+                + roadWobble(camZ + rel, t, w) * 0.5
             local px = g.cx + offX
             local py = g.latY(offX, t)
             local iw, ih = img:getWidth(), img:getHeight()
@@ -1848,10 +1860,11 @@ local function drawLandmarkFront(g, x, w, camZ)
     local iw, ih = img:getWidth(), img:getHeight()
     local s = g.scaleAt(lm.size or 2.0, t, ih)
     local py = g.crestApexY + (g.bottomY - g.crestApexY) * t
+    local lx = g.cx + roadWobble(lm.z, t, w)   -- segue a curva da estrada
     love.graphics.setColor(0, 0, 0, 0.22)
-    love.graphics.ellipse("fill", g.cx, py - 1, iw * s * 0.30, math.max(2, 4 * g.persp(t)))
+    love.graphics.ellipse("fill", lx, py - 1, iw * s * 0.30, math.max(2, 4 * g.persp(t)))
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.draw(img, math.floor(g.cx - iw * s / 2), math.floor(py - ih * s), 0, s, s)
+    love.graphics.draw(img, math.floor(lx - iw * s / 2), math.floor(py - ih * s), 0, s, s)
 end
 
 -- Props do lado de cá da crista (crescem descendo o domo)
@@ -2082,7 +2095,7 @@ local function drawEncounterFront(g, x, w, camZ)
     local t = g.tOf(rel)
     if not t then return end
 
-    local cx = g.cx
+    local cx = g.cx + roadWobble(e.z, t, w)   -- inimigo desce a curva
     local sy = g.crestApexY + (g.bottomY - g.crestApexY) * t
     -- escala pela MESMA perspectiva do mundo, normalizada pro handoff:
     -- persp(t)/persp(tBattle) = 1.0 exato no BATTLE_REL (sem pulo)

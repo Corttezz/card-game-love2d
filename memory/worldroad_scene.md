@@ -783,6 +783,19 @@ preencher transparente cercado por opaco nos 4 sentidos (R=40) — fields
 3283px!, abyss 3835px, frost 1983px. fork2 agora atravessa a convergência
 completa (85 ticks) = prova onChosen sem crash.
 
+**Ciclo 42 (entregue — v5.2, 06/Jul):** (1) marco escolhido persistia na
+tela quando a PRÓXIMA encruzilhada abria → showFork limpa _landmark
+("deixamos o lugar pra trás"). (2) Estrada torta DE VERDADE: roadWobble()
+compartilhado (3 senos worldZ*0.11/0.30/0.71, amp 0.045w×(0.28+0.72t),
+depende do worldZ ABSOLUTO) usado por drawRoad + getRoadAnchor +
+drawForkMarks (×0.5) + drawLandmarkFront + encounterFront/Behind — o
+inimigo DESCE A CURVA e tudo assenta na estrada torta. REGRA: qualquer
+âncora "no centro da estrada" passa por roadWobble, nunca g.cx puro.
+(3) Castelos: vazamento via canais finos (ameias) escapava do fill 4-dir
+→ método EROSÃO (r=2) + flood da borda + dilate r=3; o que o flood não
+alcança = vazamento (fields 1719px, abyss 1756px, frost 1705px). Ameias
+perdem os vãos (aceitável na escala do jogo).
+
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
 14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY
 21. Aguardar feedback do usuário jogando (viagem/blends/interiores em MOTION
