@@ -165,6 +165,15 @@ local MONSTER_ROSTER = {
     { id = "ember_imp",         label = "Diabrete de Brasa  (Ato 3 - comum)" },
     { id = "obsidian_sentinel", label = "Sentinela de Obsidiana  (Ato 3 - elite)" },
     { id = "abyss_tyrant",      label = "Tirano do Abismo  (Ato 3 - BOSS)", boss = true },
+    { id = "frost_wight",       label = "Morto-Gelido  (Endless Gelo - comum)" },
+    { id = "glacier_knight",    label = "Cavaleiro da Geleira  (Endless Gelo - elite)" },
+    { id = "winter_monarch",    label = "Monarca do Inverno  (Endless Gelo - BOSS)", boss = true },
+    { id = "bog_ghoul",         label = "Carnical do Brejo  (Endless Pantano - comum)" },
+    { id = "mire_hag",          label = "Bruxa do Lamacal  (Endless Pantano - elite)" },
+    { id = "rot_colossus",      label = "Colosso da Podridao  (Endless Pantano - BOSS)", boss = true },
+    { id = "dusk_shade",        label = "Sombra do Crepusculo  (Endless Anoitecer - comum)" },
+    { id = "blood_duke",        label = "Duque de Sangue  (Endless Anoitecer - elite)" },
+    { id = "eclipse_queen",     label = "Rainha do Eclipse  (Endless Anoitecer - BOSS)", boss = true },
 }
 
 local function runInteractive()

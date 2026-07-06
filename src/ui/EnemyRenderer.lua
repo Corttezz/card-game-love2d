@@ -344,10 +344,10 @@ function EnemyRenderer.getEncounterBillboard(enemy)
     }
 end
 
--- ROSTER v5 (data-driven): monstro por CONTEXTO — ato × tipo de node.
+-- ROSTER v5 (data-driven): monstro por CONTEXTO — ato/bioma × tipo de node.
 -- battle = comum; elite/mini_boss = elite do ato; boss = chefe do ato.
--- Atos 2-3 ainda usam o roster antigo até seus batches PixelLab ficarem
--- prontos (mesma estrutura, só trocar os ids aqui).
+-- 4-6 = biomas endless (frost/marsh/dusk), casados com o visual do
+-- WorldRoad (que também embrulha o índice módulo 6).
 local ENEMY_ROSTER = {
     [1] = { battle = "cursed_scarecrow", elite = "harvest_reaper",
             mini_boss = "harvest_reaper", boss = "carrion_king" },
@@ -355,10 +355,17 @@ local ENEMY_ROSTER = {
             mini_boss = "rune_golem", boss = "tower_lich" },
     [3] = { battle = "ember_imp", elite = "obsidian_sentinel",
             mini_boss = "obsidian_sentinel", boss = "abyss_tyrant" },
+    [4] = { battle = "frost_wight", elite = "glacier_knight",
+            mini_boss = "glacier_knight", boss = "winter_monarch" },
+    [5] = { battle = "bog_ghoul", elite = "mire_hag",
+            mini_boss = "mire_hag", boss = "rot_colossus" },
+    [6] = { battle = "dusk_shade", elite = "blood_duke",
+            mini_boss = "blood_duke", boss = "eclipse_queen" },
 }
 
 function EnemyRenderer.resolveSpriteId(actNumber, nodeType)
-    local effectiveAct = math.min(actNumber or 1, 3)
+    -- mesmo wrap do WorldRoad.rawBiome: endless cicla 4,5,6,1,2,3,...
+    local effectiveAct = (((actNumber or 1) - 1) % 6) + 1
     local roster = ENEMY_ROSTER[effectiveAct] or ENEMY_ROSTER[1]
     return roster[nodeType or "battle"] or roster.battle
 end

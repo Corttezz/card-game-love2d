@@ -471,6 +471,8 @@ local function getSprite(kind, variant, bid)
         key = (bid or rawBiome().id) .. "_castle"
     elseif kind == "mountains" then
         key = (bid or rawBiome().id) .. "_mountains"
+    elseif kind == "mountains_front" then
+        key = (bid or rawBiome().id) .. "_mountains_front"
     else
         key = (bid or rawBiome().id) .. "_" .. kind .. "_" .. variant
     end
@@ -490,8 +492,9 @@ local function getSprite(kind, variant, bid)
             img = makeCloud(variant, rng)
         elseif kind == "castle" then
             img = makeCastle(b, rng)
-        elseif kind == "mountains" then
+        elseif kind == "mountains" or kind == "mountains_front" then
             img = false   -- sem fallback de imagem; drawMountains desenha ridge
+            -- (mountains_front sem PNG = bioma sem oclusão de nuvem, ex. marsh)
         else
             img = MAKERS[kind](b, variant, rng)
         end
@@ -672,24 +675,30 @@ local function populate()
         end
         zt = zt + 0.95 + WorldRoad._rng:random() * 0.4
     end
+    -- v5.8 (feedback): nuvens SEMPRE pequenas e ao fundo — nada de bolha
+    -- gigante colada na câmera. Banda 0.06..0.60 do céu (as mais baixas
+    -- cruzam os picos e a camada mountains_front as oclui), drift lento
+    -- + bob senoidal (phase) pra não ficarem estáticas.
     WorldRoad._clouds = {}
     for i = 1, 6 do
         table.insert(WorldRoad._clouds, {
             xr = WorldRoad._rng:random(),
-            yr = 0.08 + WorldRoad._rng:random() * 0.55,
-            speed = 2.5 + WorldRoad._rng:random() * 3,
-            scale = 1.4 + WorldRoad._rng:random() * 1.8,
+            yr = 0.10 + WorldRoad._rng:random() * 0.50,
+            speed = 1.6 + WorldRoad._rng:random() * 1.8,
+            scale = 0.85 + WorldRoad._rng:random() * 0.55,
+            phase = WorldRoad._rng:random() * 6.28,
             variant = i % 2,
         })
     end
-    -- camada DISTANTE de nuvens (pequenas, lentas, mais transparentes —
+    -- camada DISTANTE de nuvens (menores e mais lentas ainda —
     -- segunda profundidade no céu = fundo mais rico sem poluir)
-    for i = 1, 4 do
+    for i = 1, 5 do
         table.insert(WorldRoad._clouds, {
             xr = WorldRoad._rng:random(),
-            yr = 0.05 + WorldRoad._rng:random() * 0.30,
-            speed = 0.9 + WorldRoad._rng:random() * 1.2,
-            scale = 0.7 + WorldRoad._rng:random() * 0.5,
+            yr = 0.06 + WorldRoad._rng:random() * 0.28,
+            speed = 0.7 + WorldRoad._rng:random() * 0.9,
+            scale = 0.45 + WorldRoad._rng:random() * 0.30,
+            phase = WorldRoad._rng:random() * 6.28,
             variant = i % 2,
             far = true,
         })
@@ -1099,13 +1108,20 @@ end
 
 local function drawClouds(g, x, y, w)
     local tint = envColor("cloud")
+    -- escala acompanha (raiz da) largura da tela: no ultrawide o strip é
+    -- gigante — nuvem em px fixo sumiria; no 4:3 não estoura
+    local sw = math.sqrt(w / 1024)
     for _, c in ipairs(WorldRoad._clouds) do
         local img = getSprite("cloud", c.variant)
         if img then
-            local a = math.min(1, (tint[4] or 0.5) + 0.35) * (c.far and 0.55 or 1)
+            local a = math.min(1, (tint[4] or 0.5) + 0.35) * (c.far and 0.7 or 1)
+            local s = c.scale * sw
+            -- bob vertical suave (v5.8): mesma ideia do sway das árvores —
+            -- viva, mas sem sair do lugar
+            local bob = math.sin(WorldRoad._time * 0.35 + (c.phase or 0)) * 2.5
             love.graphics.setColor(1, 1, 1, a)
             love.graphics.draw(img, math.floor(x + c.xr * w),
-                math.floor(y + c.yr * (g.crestApexY - y) * 0.8), 0, c.scale, c.scale)
+                math.floor(y + c.yr * (g.crestApexY - y) * 0.8 + bob), 0, s, s)
         end
     end
 end
@@ -1115,8 +1131,31 @@ local function ridge(seed, i)
          + math.sin(i * 1.7 + seed * 0.7) * 0.15
 end
 
+-- Transform do strip gigante (v5.7): escala COVER + tiling espelhado.
+-- COMPARTILHADO entre o strip base e a camada frontal (mountains_front) —
+-- as duas precisam alinhar pixel-perfect pra oclusão de nuvem funcionar.
+local function stripTransform(g, x, w, camZ, iw, ih)
+    local sx = math.max(w / iw, (g.crestApexY - g.y + 70) / ih)
+    local yTop = math.floor(g.crestApexY - ih * sx + math.min(70, ih * sx * 0.22))
+    local tileW = iw * sx
+    local off = (camZ * 2.5 * sx) % (tileW * 2)
+    return sx, yTop, tileW, off
+end
+
+local function drawStripTiles(img, x, sx, yTop, tileW, off)
+    for k = -1, 2 do
+        local tx = x - off + k * tileW
+        if (k % 2 == 0) then
+            love.graphics.draw(img, math.floor(tx), yTop, 0, sx, sx)
+        else
+            love.graphics.draw(img, math.floor(tx + tileW), yTop, 0, -sx, sx)
+        end
+    end
+end
+
 -- Desenha montanhas de UM bioma com alpha (usado pro crossfade no blend)
 local function drawMountainsOf(g, x, w, camZ, bid, alpha)
+    if _G.WR_DEBUG then print("[WR] mountainsOf bid=" .. tostring(bid) .. " a=" .. alpha) end
     local img = getSprite("mountains", 0, bid)
     if img then
         local iw, ih = img:getWidth(), img:getHeight()
@@ -1126,19 +1165,9 @@ local function drawMountainsOf(g, x, w, camZ, bid, alpha)
         -- "fake" + sol duplicado de tiling). Nuvens/pássaros agora desenham
         -- POR CIMA dele (reordenado no draw). Só largura vazava o céu
         -- procedural em 4:3 (faixa roxa/listra no full3).
-        local sx = math.max(w / iw, (g.crestApexY - g.y + 70) / ih)
-        local yTop = math.floor(g.crestApexY - ih * sx + math.min(70, ih * sx * 0.22))
-        local tileW = iw * sx
-        local off = (camZ * 2.5 * sx) % (tileW * 2)
+        local sx, yTop, tileW, off = stripTransform(g, x, w, camZ, iw, ih)
         love.graphics.setColor(1, 1, 1, alpha)
-        for k = -1, 2 do
-            local tx = x - off + k * tileW
-            if (k % 2 == 0) then
-                love.graphics.draw(img, math.floor(tx), yTop, 0, sx, sx)
-            else
-                love.graphics.draw(img, math.floor(tx + tileW), yTop, 0, -sx, sx)
-            end
-        end
+        drawStripTiles(img, x, sx, yTop, tileW, off)
         -- v5.6: abaixo da base do strip, GRADIENTE floresta→tom do domo
         -- (a versão flat empilhava faixas preta/roxa visíveis nas
         -- extremidades de telas largas — bandas chapadas denunciam camadas)
@@ -1189,19 +1218,9 @@ local function drawMountains(g, x, w, camZ)
     if img then
         -- fallback genérico: mesma regra GIGANTE/cover do drawMountainsOf (v5.7)
         local iw, ih = img:getWidth(), img:getHeight()
-        local sx = math.max(w / iw, (g.crestApexY - g.y + 70) / ih)
-        local yTop = math.floor(g.crestApexY - ih * sx + math.min(70, ih * sx * 0.22))
-        local tileW = iw * sx
-        local off = (camZ * 2.5 * sx) % (tileW * 2)
+        local sx, yTop, tileW, off = stripTransform(g, x, w, camZ, iw, ih)
         love.graphics.setColor(1, 1, 1, 1)
-        for k = -1, 2 do
-            local tx = x - off + k * tileW
-            if (k % 2 == 0) then
-                love.graphics.draw(img, math.floor(tx), yTop, 0, sx, sx)
-            else
-                love.graphics.draw(img, math.floor(tx + tileW), yTop, 0, -sx, sx)
-            end
-        end
+        drawStripTiles(img, x, sx, yTop, tileW, off)
     else
         -- fallback: 2 camadas de silhueta
         for layer = 1, 2 do
@@ -1216,6 +1235,32 @@ local function drawMountains(g, x, w, camZ)
                 love.graphics.rectangle("fill", x + sx, g.crestApexY - hgt, 4, hgt + 20)
             end
         end
+    end
+end
+
+-- CAMADA FRONTAL das montanhas (v5.8): a silhueta extraída do próprio
+-- strip (<bid>_mountains_front.png, céu transparente) redesenhada por cima
+-- das nuvens com o MESMO transform — nuvem em movimento passa ATRÁS dos
+-- picos sem stencil. Bioma sem PNG frontal (marsh) = sem oclusão.
+local function drawMountainsFrontOf(g, x, w, camZ, bid, alpha)
+    local img = getSprite("mountains_front", 0, bid)
+    if _G.WR_DEBUG then print("[WR] frontOf bid=" .. tostring(bid) .. " a=" .. alpha .. " img=" .. tostring(img ~= nil and img ~= false)) end
+    if not img then return false end
+    local iw, ih = img:getWidth(), img:getHeight()
+    local sx, yTop, tileW, off = stripTransform(g, x, w, camZ, iw, ih)
+    love.graphics.setColor(1, 1, 1, alpha)
+    drawStripTiles(img, x, sx, yTop, tileW, off)
+    return true
+end
+
+local function drawMountainsFront(g, x, w, camZ)
+    local bl = WorldRoad._blend
+    if bl and WorldRoad._prevBiomeIndex then
+        local t = math.min(1, bl.t / bl.duration)
+        drawMountainsFrontOf(g, x, w, camZ, rawBiome().id, 1)
+        drawMountainsFrontOf(g, x, w, camZ, rawBiome(WorldRoad._prevBiomeIndex).id, 1 - t)
+    else
+        drawMountainsFrontOf(g, x, w, camZ, rawBiome().id, 1)
     end
 end
 
@@ -2213,9 +2258,11 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     drawSky(g, x, y, w)
     drawCelestial(g, x, y, w)
     drawMountains(g, x, w, WorldRoad._camZ)
-    -- v5.7: nuvens e pássaros POR CIMA do background gigante (feedback:
-    -- "as nuvens precisam estar acima do background, não do céu fake")
+    -- v5.8: nuvens ENTRE o céu do strip e a silhueta frontal das montanhas
+    -- (feedback: "as nuvens passam atrás das montanhas") — a camada
+    -- mountains_front redesenha só os picos por cima delas.
     drawClouds(g, x, y, w)
+    drawMountainsFront(g, x, w, WorldRoad._camZ)
     drawBirds(g, x, y, w)
 
     -- NÉVOA DE DISTÂNCIA (v5.4): banda de bruma entre as montanhas e o

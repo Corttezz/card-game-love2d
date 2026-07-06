@@ -880,6 +880,31 @@ de rodapé do c47 mantido. Validado full1/3/5/6 + wide_full3 (ws_c50/51).
 LIÇÃO: "céu procedural + strip baixo" lê como FAKE — o jogador quer a
 ARTE preenchendo; procedural só pode aparecer se indistinguível dela.
 
+**Ciclo 49 (entregue — v5.8 nuvens atrás das montanhas + camadas, 06/Jul):**
+feedback: "nuvens passando atrás das montanhas do background; nuvens
+sempre pequenas e ao fundo; animação nelas". (1) CAMADA FRONTAL:
+<bid>_mountains_front.png = silhueta extraída do próprio strip
+(scratchpad/extract_ridge.py: flood do céu pelo topo com tolerância
+vizinho-a-vizinho POR BIOMA {fields 26, highlands 36, frost 34, abyss 28,
+dusk 34} + mediana 3×3 + abertura morfológica h±2/v±1 + re-flood +
+de-speckle <25px), desenhada DEPOIS das nuvens com o MESMO transform
+(stripTransform/drawStripTiles compartilhados) — oclusão real sem stencil.
+Marsh = névoa por design, insegmentável → SEM overlay (fallback
+gracioso: getSprite retorna false). Ilhas tipo o sol do dusk PODEM ficar
+na frente (nuvem passa atrás do sol — bonito). Prova magenta 3× por
+bioma antes de instalar. (2) NUVENS: escala 0.85-1.4 near / 0.45-0.75
+far (era até 3.2 — "gigantes e próximas"), banda alta (yr ≤0.60), drift
+mais lento, bob senoidal 2.5px (0.35Hz, phase própria), escala ×
+sqrt(w/1024) pros dois aspectos. (3) BUG DA FERRAMENTA descoberto:
+full<N>/gate<N> passavam actNumber=1 no draw → setBiome(1) criava blend
+INVERTIDO t=0 cujo prev (bioma pedido, alpha 1) cobria tudo — DOIS bugs
+se cancelando; a camada frontal expôs (picos do fields sobre o dusk).
+Fix: passar o bioma certo + _blend=nil pós-warmup (igual modo endless).
+CONSEQUÊNCIA: paletas "validadas" antes eram meio-blend com fields — a
+estrada do abyss é MUITO mais escura na verdade (real do gameplay; a
+ferramenta é que mentia). LIÇÃO: modo de validação que passa parâmetro
+fixo≠estado configurado gera dupla-verdade — sempre ecoar o parâmetro.
+
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
 14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY
 21. Aguardar feedback do usuário jogando (viagem/blends/interiores em MOTION

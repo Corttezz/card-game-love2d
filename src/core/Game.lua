@@ -997,8 +997,14 @@ function Game:nextPhase()
         local stats = ActSystem.getEnemyStats(run.actNumber, run.floorInAct, nodeType)
         self.enemy = Enemy:new(stats.health, stats.damage)
         -- Sprite do inimigo: roster por ato × tipo de node (v5).
+        -- Endless: bioma 4+ a cada 8 andares (mesma fórmula do
+        -- GameplayScene/WorldRoad — monstro casa com o cenário).
+        local spriteAct = run.actNumber
+        if run.endlessMode then
+            spriteAct = 4 + math.floor(math.max(0, (run.currentFloor or 25) - 25) / 8)
+        end
         local EnemyRenderer = require("src.ui.EnemyRenderer")
-        self.enemy.spriteId = EnemyRenderer.resolveSpriteId(run.actNumber, nodeType)
+        self.enemy.spriteId = EnemyRenderer.resolveSpriteId(spriteAct, nodeType)
         -- isBoss nunca era setado (só lido) — bosses agora rendem maiores
         self.enemy.isBoss = (nodeType == "boss" or nodeType == "mini_boss")
         -- Log com nome do ato
