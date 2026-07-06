@@ -1430,9 +1430,14 @@ local function drawCastle(g, x, w, camZ)
     end
 
     -- fumaça da chaminé (atrás do domo, junto com o castelo)
+    -- v6.6: halo suave + núcleo pixel (quadrado chapado lia como protótipo)
+    local gi = glowTex()
     for _, sp in ipairs(WorldRoad._smoke) do
-        local a = math.min(1, sp.life / 1.4) * 0.34
-        love.graphics.setColor(0.76, 0.73, 0.68, a)
+        local a = math.min(1, sp.life / 1.4) * 0.30
+        local d = sp.size * 2.6
+        love.graphics.setColor(0.78, 0.75, 0.70, a * 0.55)
+        love.graphics.draw(gi, sp.x - d / 2, sp.y - d / 2, 0, d / 128, d / 128)
+        love.graphics.setColor(0.80, 0.77, 0.72, a)
         love.graphics.rectangle("fill", math.floor(sp.x - sp.size / 2),
             math.floor(sp.y - sp.size / 2), sp.size, sp.size)
     end
@@ -2434,6 +2439,18 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     love.graphics.setColor(gb0[1] * 0.78, gb0[2] * 0.78, gb0[3] * 0.78, 1)
     love.graphics.rectangle("fill", x, y, w, h)
 
+    -- v6.6: ROOM SWAY (padrão update_canvas_juice do Balatro) — a cena
+    -- inteira respira: rotação/drift imperceptíveis + zoom de 0.6% pra
+    -- cobrir as bordas. Tira o "still frame" sem o jogador perceber o quê.
+    love.graphics.push()
+    local swCx, swCy = x + w / 2, y + h / 2
+    love.graphics.translate(
+        swCx + math.sin(WorldRoad._time * 0.23) * 1.5,
+        swCy + math.cos(WorldRoad._time * 0.19) * 1.1)
+    love.graphics.rotate(0.0012 * math.sin(WorldRoad._time * 0.3))
+    love.graphics.scale(1.006, 1.006)
+    love.graphics.translate(-swCx, -swCy)
+
     drawSky(g, x, y, w)
     drawCelestial(g, x, y, w)
     drawMountains(g, x, w, WorldRoad._camZ)
@@ -2478,6 +2495,30 @@ function WorldRoad.draw(x, y, w, h, actNumber)
         love.graphics.draw(gv, x, cyF, 0, w, -bandH * 0.5 / 256)
         love.graphics.draw(gv, x, cyF, 0, w, bandH * 0.5 / 256)
         love.graphics.setColor(1, 1, 1, 1)
+    end
+
+    -- v6.6: GOD RAYS — 2 feixes aditivos descendo do céu atrás do castelo,
+    -- alpha oscilando devagar (polycount: raios estáticos modelados batem
+    -- radial blur em 2D). Intensidade acompanha o glow do bioma.
+    do
+        local rayK = CASTLE_GLOW_K[rawBiome().id] or 0.8
+        local crest = g.crestYAt(g.cx)
+        love.graphics.setBlendMode("add")
+        for i = 1, 2 do
+            local osc = 0.5 + 0.5 * math.sin(WorldRoad._time * 0.3 + i * 2.1)
+            local a = (0.028 + 0.034 * osc) * rayK
+            local dir = (i == 1) and -1 or 1
+            local topX = g.cx + dir * w * 0.045
+            local botX = g.cx + dir * w * 0.15
+            local rayW = w * 0.035
+            love.graphics.setColor(1, 0.92, 0.72, a)
+            love.graphics.polygon("fill",
+                topX - rayW * 0.35, y,
+                topX + rayW * 0.35, y,
+                botX + rayW, crest,
+                botX - rayW, crest)
+        end
+        love.graphics.setBlendMode("alpha")
     end
 
     drawCastle(g, x, w, WorldRoad._camZ)
@@ -2533,6 +2574,11 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     end
 
     drawProps(g, x, w, WorldRoad._camZ)
+
+    -- v6.6: fim do room sway — fork/pills/vinhetas ficam FIXOS (UI
+    -- interativa balançando desalinharia os hitboxes do mouse)
+    love.graphics.pop()
+
     -- fork/landmark DEPOIS dos props: marcos e pills são UI interativa —
     -- precisam ser legíveis por cima das copas (exceção consciente à regra
     -- "nada desenha sobre árvores", que vale pra efeitos de campo)
