@@ -1170,7 +1170,10 @@ local function drawStripMirrorBelow(img, x, sx, yTop, tileW, off, bottomY)
         q = love.graphics.newQuad(0, ih - MIRROR_SKIP - qh, iw, qh, iw, ih)
         WorldRoad._quadCache[key] = q
     end
-    local seamY = math.floor(yTop + (ih - MIRROR_SKIP) * sx)
+    -- v5.9.3 (feedback bioma 5): espelho começa no fim REAL do strip —
+    -- começar na emenda do pulo SOBRESCREVIA as últimas linhas de arte
+    -- verdadeira (árvores/névoa do marsh viravam padrão espelhado)
+    local seamY = math.floor(yTop + ih * sx)
     local bandH = qh * sx
     local b = 0
     local yb = seamY

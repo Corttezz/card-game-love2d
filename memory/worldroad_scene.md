@@ -1009,7 +1009,14 @@ fundo continue o fundo") → versão final espelha SÓ A FAIXA DE TERRENO
 (26px de fonte acima do rodapé pulado) em PING-PONG descendo até o fim
 do frame — floresta espelha floresta, montanha espelha montanha, nunca
 chega no céu. Emendas sempre casam (alternância flip/normal).
-_quadCache novo (limpo no clearCache). Validado wide_full1/2/3.
+_quadCache novo (limpo no clearCache). v5.9.3 (feedback: "bioma 5
+ficou zoado"): o seam começava em `yTop + (ih-46)*sx` — 46 linhas-fonte
+ANTES do fim do strip — SOBRESCREVENDO arte real (árvores/névoa do
+marsh viravam padrão Rorschach espelhado). Fix: `seamY = floor(yTop +
+ih*sx)` (fim REAL do strip; o quad continua pulando o rodapé degradado
+como FONTE, mas o desenho começa onde a arte acaba). Validado nos SEIS
+biomas em wide (mir5_w1..w6) — lição: mudança no espelho exige captura
+dos 6, não só dos 3 primeiros.
 
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
 14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY
