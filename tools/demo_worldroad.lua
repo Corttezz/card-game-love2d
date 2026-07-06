@@ -153,10 +153,34 @@ end
 -- ============================================================================
 -- INTERATIVO
 -- ============================================================================
+-- GALERIA DE MONSTROS (tecla M): roster completo v5, idle rodando no
+-- cenário real; setas trocam, H = hurt, K = morte, J = revive.
+local MONSTER_ROSTER = {
+    { id = "cursed_scarecrow",  label = "Espantalho Maldito  (Ato 1 - comum)" },
+    { id = "harvest_reaper",    label = "Ceifador da Colheita  (Ato 1 - elite)" },
+    { id = "carrion_king",      label = "Rei Carnica  (Ato 1 - BOSS)", boss = true },
+    { id = "moon_gargoyle",     label = "Gargula da Lua  (Ato 2 - comum)" },
+    { id = "rune_golem",        label = "Golem de Runas  (Ato 2 - elite)" },
+    { id = "tower_lich",        label = "Lich da Torre  (Ato 2 - BOSS)", boss = true },
+    { id = "ember_imp",         label = "Diabrete de Brasa  (Ato 3 - comum)" },
+    { id = "obsidian_sentinel", label = "Sentinela de Obsidiana  (Ato 3 - elite)" },
+    { id = "abyss_tyrant",      label = "Tirano do Abismo  (Ato 3 - BOSS)", boss = true },
+}
+
 local function runInteractive()
     setupGame()
     WorldRoad.setBiome(1)
     WorldRoad._camZ = 6
+
+    local gallery = false
+    local gIdx = 1
+
+    local function applyGalleryMonster()
+        local e = MONSTER_ROSTER[gIdx]
+        game.enemy.spriteId = e.id
+        game.enemy.isBoss = e.boss or false
+        EnemyRenderer.clearCache()   -- reseta anim (revive) e troca sprite
+    end
 
     love.update = function(dt)
         WorldRoad.update(dt)
@@ -166,13 +190,63 @@ local function runInteractive()
     love.draw = function()
         drawBattleFrame(true)
         love.graphics.setColor(1, 1, 1, 0.85)
-        love.graphics.print(
-            "SPACE viagem+encounter | 1-6 bioma | V vista | R reset | ESC sair",
-            12, love.graphics.getHeight() - 24)
+        if gallery then
+            local e = MONSTER_ROSTER[gIdx]
+            local FontManager = require("src.ui.FontManager")
+            love.graphics.setFont(FontManager.getFont(16))
+            love.graphics.setColor(0.08, 0.06, 0.05, 0.85)
+            local label = gIdx .. "/" .. #MONSTER_ROSTER .. "  " .. e.label
+            local fw = love.graphics.getFont():getWidth(label)
+            love.graphics.rectangle("fill",
+                (love.graphics.getWidth() - fw) / 2 - 12, 96, fw + 24, 26, 7, 7)
+            love.graphics.setColor(0.95, 0.85, 0.6, 1)
+            love.graphics.print(label, (love.graphics.getWidth() - fw) / 2, 100)
+            love.graphics.setColor(1, 1, 1, 0.85)
+            love.graphics.setFont(FontManager.getFont(12))
+            love.graphics.print(
+                "GALERIA: setas troca monstro | H dano | K morte | J revive | 1-6 bioma | M sair da galeria",
+                12, love.graphics.getHeight() - 24)
+        else
+            love.graphics.print(
+                "SPACE viagem+encounter | 1-6 bioma | V vista | R reset | M galeria de monstros | ESC sair",
+                12, love.graphics.getHeight() - 24)
+        end
         love.graphics.setColor(1, 1, 1, 1)
     end
 
     love.keypressed = function(key)
+        if key == "m" then
+            gallery = not gallery
+            if gallery then
+                applyGalleryMonster()
+            else
+                -- restaura o inimigo do contexto atual da run
+                game.enemy.spriteId = EnemyRenderer.resolveSpriteId(1, "battle")
+                game.enemy.isBoss = false
+                EnemyRenderer.clearCache()
+            end
+            return
+        end
+        if gallery then
+            if key == "right" or key == "d" then
+                gIdx = gIdx % #MONSTER_ROSTER + 1
+                applyGalleryMonster()
+            elseif key == "left" or key == "a" then
+                gIdx = (gIdx - 2) % #MONSTER_ROSTER + 1
+                applyGalleryMonster()
+            elseif key == "h" then
+                EnemyRenderer.triggerHurt()
+            elseif key == "k" then
+                EnemyRenderer.triggerDeath(game.enemy.spriteId)
+            elseif key == "j" then
+                applyGalleryMonster()
+            elseif key == "escape" then
+                love.event.quit()
+            elseif tonumber(key) and tonumber(key) >= 1 and tonumber(key) <= 6 then
+                WorldRoad.setBiome(tonumber(key))
+            end
+            return
+        end
         if key == "space" and not WorldRoad.isTraveling() then
             WorldRoad.travel({ encounter = EnemyRenderer.getEncounterBillboard(game.enemy) })
         elseif key == "v" then
