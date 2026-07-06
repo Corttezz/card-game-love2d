@@ -1097,12 +1097,14 @@ castelo com halo suave (glowTex 2.6× + core pixel); **room sway Balatro**
 1.006/pop — termina ANTES de fork marks/pills (hitboxes de mouse ficam
 fora do sway).
 
-**v6.7 (1f638d1) — enquadramento cinematográfico:** framing de árvore nos
-cantos inferiores (3 cópias em cluster, escala cap 4.5×, silhueta
-0.05/0.045/0.06 alpha 0.94, bob lento, espelhada à direita); state grade
+**v6.7 (1f638d1) — enquadramento cinematográfico:** state grade
 full-frame (travel+encounter = vermelho 0.045; travel normal = âmbar
-0.04). Cap de escala existe porque sprite pequeno a 10× virava mega-pixel
-(visto no abyss na 1ª tentativa).
+0.04). ⚠️ O framing de árvores-silhueta nos cantos foi **REMOVIDO no
+v6.8.1** — feedback direto do usuário ("oq diabos é essas coisas pretas
+nos cantos"): silhueta chapada de sprite reusado lia como mancha preta,
+não como folhagem. NÃO reintroduzir como estava; se a moldura da
+referência voltar, precisa de sprite de folhagem DETALHADO dedicado
+(PixelLab, primeiro plano, com cor/textura), nunca tint quase-preto.
 
 **v6.8 — validação integral:** full1-6 (modo all) + travel + fork +
 blend6 revisados: pills do fork legíveis sobre o framing, blend atravessa

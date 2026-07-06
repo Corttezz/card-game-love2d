@@ -2593,37 +2593,10 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     drawForkMarks(g, x, w, WorldRoad._camZ)
     drawEncounterFront(g, x, w, WorldRoad._camZ)
 
-    -- v6.7: MOLDURA DE VEGETAÇÃO — silhuetas quase-pretas nos cantos
-    -- inferiores (framing da referência: planos escuros emoldurando e
-    -- empurrando o olho pro centro). Reusa os sprites de árvore do bioma.
-    do
-        local b = rawBiome()
-        local fr = getSprite("tree", 0, b.id) or getSprite("pine", 0, b.id)
-        if fr then
-            local iw2, ih2 = fr:getWidth(), fr:getHeight()
-            -- CAP de escala 4.5×: sprite pequeno escalado 10× virava massa
-            -- de mega-pixels serrilhados (abyss). Massa vem de 3 CÓPIAS
-            -- sobrepostas por canto, não de uma cópia gigante.
-            local fs = math.min((h * 0.55) / ih2, 4.5)
-            local bobF = math.sin(WorldRoad._time * 0.5) * 2
-            love.graphics.setColor(0.05, 0.045, 0.06, 0.94)
-            for ci = 0, 2 do
-                local cs = fs * (1 - ci * 0.18)
-                local ox = ci * iw2 * fs * 0.34
-                local oy = ci * ih2 * fs * 0.10
-                -- canto esquerdo (cluster descendo a diagonal)
-                love.graphics.draw(fr,
-                    math.floor(x - iw2 * cs * 0.42 + ox),
-                    math.floor(g.bottomY - ih2 * cs * 0.62 + oy + bobF),
-                    0.05, cs, cs)
-                -- canto direito (espelhado)
-                love.graphics.draw(fr,
-                    math.floor(x + w + iw2 * cs * 0.42 - ox),
-                    math.floor(g.bottomY - ih2 * cs * 0.58 + oy - bobF),
-                    -0.05, -cs, cs)
-            end
-        end
-    end
+    -- (v6.8.1: moldura de silhuetas de árvore nos cantos REMOVIDA — lia como
+    -- "manchas pretas", não como folhagem. Se voltar, tem que ser com sprite
+    -- de folhagem DETALHADO dedicado, nunca silhueta chapada. Feedback direto
+    -- do usuário — não reintroduzir como estava.)
 
     -- v6.7: GRADE POR ESTADO — véu multiplicativo sutil ligado ao momento
     -- (viagem esquenta, encounter esfria pro vermelho) — eco barato do
