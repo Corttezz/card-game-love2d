@@ -809,6 +809,21 @@ LIÇÃO DE PIPELINE: transparência de sprite SÓ se valida compondo sobre
 cor contrastante (magenta) — fundo branco/preto esconde vazamento.
 castles_magenta2.png = sheet de prova.
 
+**Ciclo 44 (entregue — castelo abismo v6 + regras de geração, 06/Jul):**
+5 tentativas de castelo escuro ensinaram o padrão: (a) descrição
+"black/obsidian/dark charcoal" → gerador ASSA backdrop dramático (lua,
+montanhas, halo) e a remoção de fundo COME fileiras da parede (tom
+confunde com céu) → paredes fatiadas; (b) reconstrução espelho+veias não
+salva sprite muito comido (fendas de 1px viram slits na escala do
+portão). REGRAS DE OURO da geração de castelo: (1) paleta de TOM MÉDIO
+("weathered dark crimson-brown", nunca preto puro); (2) "sprite alone
+floating on fully transparent background with generous empty margin";
+(3) prova magenta AMPLIADA 3x (1px de fenda invisível em 1x!) ANTES de
+instalar; (4) validar in-engine na escala do PORTÃO (gate<N>), não só
+distância. v6 veio PERFEITO de primeira com essas regras (fundo creme
+chapado, alto contraste, 0 furos). Galeria de monstros no demo: tecla M
+(setas/H/K/J/1-6).
+
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
 14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY
 21. Aguardar feedback do usuário jogando (viagem/blends/interiores em MOTION

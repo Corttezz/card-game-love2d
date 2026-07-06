@@ -35,12 +35,12 @@ function M.run(mode)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, 80)
         EnemyRenderer.draw(game, math.floor(width / 2), math.floor(height * 0.68))
-    elseif mode == "gate" then
+    elseif mode == "gate" or (mode and mode:match("^gate%d$")) then
         -- FIM DE TRECHO: castelo grande com o portão visível (validação da
-        -- curva de aproximação v5). camZ a 92% do segmento.
+        -- curva de aproximação v5). camZ a 92% do segmento. "gate3" = bioma 3.
         local topBarH = 80
         WorldRoad.clearCache()
-        WorldRoad.setBiome(1)
+        WorldRoad.setBiome(tonumber(mode:match("%d")) or 1)
         local segLen = WorldRoad.TRAVEL_DISTANCE * 8
         WorldRoad._camZ = segLen * 0.92
         for _ = 1, 30 do WorldRoad.update(1 / 30) end
