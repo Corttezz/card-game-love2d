@@ -79,7 +79,8 @@ local function bakeAtlas()
     for v = 0, N_THIN - 1 do
         local rng = love.math.newRandomGenerator(1000 + v * 37)
         local len = 9 + rng:random(0, 5)                 -- 9-14 px
-        local curve = (rng:random() * 2 - 1) * 2.6       -- dobra própria
+        local curve = (rng:random() * 2 - 1) * 3.4       -- dobra própria
+        -- (±3.4: do quase-reto ao bem vergado — silhuetas variadas)
         for i = 0, len - 1 do
             local fy = i / (len - 1)                     -- 0 raiz → 1 ponta
             local y = (CELL_H - 1) - i
@@ -134,17 +135,32 @@ local batch
 -- ATRAVESSA o campo e o mundo rolando faz o vento "fluir" na viagem.
 -- Retorna lean normalizado [-1..1]-ish (multiplicado por windAmp).
 -- ----------------------------------------------------------------------------
-local function windAt(nx, wz, t, P)
+-- pers ∈ [0,1]: PERSONALIDADE da lâmina — relógio próprio (frequência e
+-- fase individuais). Vizinhas nunca dançam em bloco (GoT: params por
+-- lâmina; paper Real Time Animated Grass: variação dentro do cluster).
+local function windAt(nx, wz, t, P, pers)
     local ph = nx * 5.2 + wz * 0.14
-    -- (1) frente de rajada viajante: vales calmos, cristas fortes
-    local front = math.sin(ph * 0.85 - t * P.gustSpeed)
-    local gust = front > 0 and front * front or 0
-    -- (2) brisa local: 2 senos dessincronizados por posição
-    local breeze = math.sin(t * 1.35 + ph * 3.1) * 0.30
-                 + math.sin(t * 0.53 + ph * 1.7) * 0.20
-    -- (3) jitter de ponta: tremor rápido, cresce dentro da rajada
-    local jitter = math.sin(t * 6.1 + ph * 12.7) * 0.10 * (0.35 + gust)
-    return (breeze + gust * P.gustAmp + jitter) * P.windAmp * P.dir
+    -- (1) DUAS frentes de rajada com velocidades INCOMENSURÁVEIS — a
+    -- interferência nunca se repete (versão barata do "noise de magnitude
+    -- viajante" do Ghost of Tsushima)
+    local f1 = math.sin(ph * 0.85 - t * P.gustSpeed)
+    local f2 = math.sin(ph * 0.41 - t * P.gustSpeed * 0.737 + 2.4)
+    local gust = (f1 > 0 and f1 * f1 or 0) * 0.70
+               + (f2 > 0 and f2 * f2 or 0) * 0.50
+    -- (2) brisa local no TEMPO PRÓPRIO da lâmina
+    local tb = t * (1 + (pers or 0) * 0.45) + (pers or 0) * 7.9
+    local breeze = math.sin(tb * 1.35 + ph * 3.1) * 0.30
+                 + math.sin(tb * 0.53 + ph * 1.7) * 0.20
+    -- (3) REDEMOINHOS: alta frequência espacial transversal (vorticles
+    -- do GoT em 2D) — tremores localizados que giram pelo campo
+    local curl = math.sin(ph * 9.3 + t * 2.6)
+               * math.sin(ph * 3.7 - t * 1.9) * 0.12
+    -- (4) jitter de ponta: tremor rápido, cresce dentro da rajada
+    local jitter = math.sin(tb * 6.1 + ph * 12.7) * 0.10 * (0.35 + gust)
+    -- (5) o vento RESPIRA: intensidade global deriva em ~20s
+    local wander = 0.72 + 0.28 * math.sin(t * 0.083 + ph * 0.11)
+    return (breeze + gust * P.gustAmp + curl + jitter)
+           * P.windAmp * P.dir * wander
 end
 GrassField.windAt = windAt   -- exposto pra outros sistemas (props, futuro)
 
@@ -159,7 +175,7 @@ end
 -- DRAW: popula o batch (mundo-ancorado, determinístico) e desenha.
 -- ----------------------------------------------------------------------------
 local Z_CELL = 0.26        -- passo de célula em z (mundo)
-local SLOTS = 10           -- tentativas de tufo por célula (5 por lado)
+local SLOTS = 12           -- tentativas de tufo por célula (6 por lado)
 
 function GrassField.draw(ctx)
     bakeAtlas()
@@ -188,7 +204,7 @@ function GrassField.draw(ctx)
         local patch = 0.5 + 0.5 * math.sin(ci * 0.31)
         for slot = 0, SLOTS - 1 do
             local h1 = hash(ci, slot * 7 + 1)
-            if h1 < (0.55 + 0.40 * patch) * P.density then
+            if h1 < (0.62 + 0.36 * patch) * P.density then
                 local z = ci * Z_CELL + h1 * Z_CELL
                 local rel = z - camZ
                 local t = g.tOf(rel)
@@ -215,25 +231,44 @@ function GrassField.draw(ctx)
                         -- 3-6 no campo — cada uma com flexibilidade,
                         -- variante, fase e tom próprios
                         local nb = (t < 0.22) and (2 + math.floor(h3 * 2))
-                            or (3 + math.floor(h3 * 4))
+                            or (4 + math.floor(h3 * 4))
                         -- escala MAIS perspectiva: minúscula na crista,
                         -- graúda no primeiro plano
                         local scale = (0.22 + persp * 1.85) * P.heightK
                         if scale * CELL_H >= 1.6 then
+                            -- FLICK do tufo: impulso raro e curto (bicho/
+                            -- lufada pontual) — sacode e assenta
+                            local fe = math.sin(t0 * 0.37 + h3 * 41)
+                            local flick = (fe > 0.92)
+                                and ((fe - 0.92) / 0.08)
+                                    * math.sin(t0 * 11 + h3 * 9) * 0.45
+                                or 0
+                            -- tom SECO/VIÇOSO por tufo (campos reais têm
+                            -- manchas amareladas — GoT: variação por área)
+                            local dryK = hash(ci * 7, slot * 3 + 9) * 0.30
                             for bi = 0, nb - 1 do
                                 local hb = hash(ci * 31 + slot, bi * 17 + 3)
                                 local hv = hash(ci * 53 + bi, slot * 19 + 7)
-                                local vquad = (hv < P.broad)
+                                local broad = hv < P.broad
+                                local vquad = broad
                                     and (N_THIN + math.floor(hb * N_BROAD))
                                     or math.floor(hv * N_THIN)
                                 local s = scale * (0.72 + hb * 0.55)
                                 local bx = pxX + (bi - nb / 2)
                                     * (1.6 + persp * 2.2) + hb * 3
                                 -- física: raiz fixa, ponta balança;
-                                -- flexível ∝ altura; encurta ao dobrar
+                                -- flexível ∝ altura; encurta ao dobrar.
+                                -- Junco largo tem INÉRCIA: relógio mais
+                                -- lento e balanço mais fundo (peso real)
                                 local flex = 0.55 + hb * 0.75
-                                local lean = windAt(nx, z, t0 + hb * 0.6, P)
-                                    * flex
+                                local lean
+                                if broad then
+                                    lean = windAt(nx, z, t0 * 0.62, P,
+                                        hb * 0.4) * flex * 1.30
+                                else
+                                    lean = windAt(nx, z, t0, P, hb) * flex
+                                end
+                                lean = lean + flick * flex
                                 local kx = lean * 0.55
                                 local sy = s * (1 - math.abs(lean) * 0.16)
                                 -- tom em 3 níveis por lâmina (sombra /
@@ -242,7 +277,11 @@ function GrassField.draw(ctx)
                                 local ht = hash(ci * 17 + bi, slot * 23 + 2)
                                 local c = (ht < 0.25) and cDark
                                     or ((ht < 0.55) and cMid or cLight)
-                                batch:setColor(c[1], c[2], c[3], 1)
+                                -- seco puxa pro amarelo (R sobe, B cai)
+                                batch:setColor(
+                                    math.min(1, c[1] * (1 + dryK * 0.30)),
+                                    c[2] * (1 - dryK * 0.06),
+                                    c[3] * (1 - dryK * 0.35), 1)
                                 batch:add(quads[vquad],
                                     math.floor(bx), math.floor(base + 1),
                                     0, s, sy, CELL_W / 2, CELL_H, kx, 0)
