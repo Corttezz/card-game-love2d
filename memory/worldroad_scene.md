@@ -1003,11 +1003,13 @@ astro assado (sol/lua) < nuvem móvel < silhueta de montanha.
 "o background é espelhado no lado, espelhe também embaixo pra preencher".
 drawStripMirrorBelow: espelho vertical do próprio PNG abaixo da base
 (quad pula as 46 linhas do rodapé degradado — emenda limpa), substituindo
-o degradê chapado do c47. v5.9.1 (feedback seguinte: "espelhe para baixo
-também agora"): fade REMOVIDO — espelho vertical completo; o reflexo
-do céu/floresta nos cantos largos lê como LAGO no horizonte. Abaixo do
-fim do espelho (janelas extremas): flat grassA×0.82. _quadCache novo
-(limpo no clearCache). Validado wide_full1/2/3.
+o degradê chapado do c47. v5.9.2 (iterado com o usuário): espelho
+completo mostrava CÉU INVERTIDO no fundo ("precisa inverter para que o
+fundo continue o fundo") → versão final espelha SÓ A FAIXA DE TERRENO
+(26px de fonte acima do rodapé pulado) em PING-PONG descendo até o fim
+do frame — floresta espelha floresta, montanha espelha montanha, nunca
+chega no céu. Emendas sempre casam (alternância flip/normal).
+_quadCache novo (limpo no clearCache). Validado wide_full1/2/3.
 
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
 14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY
