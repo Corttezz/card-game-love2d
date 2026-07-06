@@ -159,7 +159,7 @@ end
 -- DRAW: popula o batch (mundo-ancorado, determinístico) e desenha.
 -- ----------------------------------------------------------------------------
 local Z_CELL = 0.26        -- passo de célula em z (mundo)
-local SLOTS = 6            -- tentativas de tufo por célula (3 por lado)
+local SLOTS = 10           -- tentativas de tufo por célula (5 por lado)
 
 function GrassField.draw(ctx)
     bakeAtlas()
@@ -176,18 +176,25 @@ function GrassField.draw(ctx)
     local cLight = ctx.colors.light
     local cMid = ctx.colors.mid
     local cAcc = ctx.colors.accent
+    -- 3º tom (sombra): lâminas na sombra das vizinhas — profundidade de
+    -- moita real (2 tons alternados liam como padrão artificial)
+    local cDark = { cMid[1] * 0.68, cMid[2] * 0.68, cMid[3] * 0.68 }
 
     local first = math.floor(camZ / Z_CELL)
-    local last = math.floor((camZ + ctx.relCrest - 2.5) / Z_CELL)
+    local last = math.floor((camZ + ctx.relCrest - 0.8) / Z_CELL)
     for ci = first, last do
+        -- MANCHAS de crescimento: grama real cresce em patches, não em
+        -- distribuição uniforme — modulação espacial lenta da densidade
+        local patch = 0.5 + 0.5 * math.sin(ci * 0.31)
         for slot = 0, SLOTS - 1 do
             local h1 = hash(ci, slot * 7 + 1)
-            if h1 < 0.58 * P.density then
+            if h1 < (0.55 + 0.40 * patch) * P.density then
                 local z = ci * Z_CELL + h1 * Z_CELL
                 local rel = z - camZ
                 local t = g.tOf(rel)
-                -- t<0.12: sub-pixel, não desenha (o longe é textura)
-                if t and t > 0.12 then
+                -- cobre até quase a CRISTA (t→0): no longe as lâminas são
+                -- minúsculas (1-3px) — campo cheio em toda a esfera
+                if t and t > 0.035 then
                     -- fork: os braços da estrada varrem a faixa central —
                     -- capim some do trecho bifurcado enquanto o fork existe
                     if not (ctx.forkActive and rel > (ctx.forkRel or 10) - 1.5) then
@@ -197,18 +204,22 @@ function GrassField.draw(ctx)
                     local roadC = ctx.roadCenter(z, t)
                     local half = ctx.roadHalf(t)
                     -- da beira da estrada (levemente POR CIMA da borda —
-                    -- grama invade o caminho) até o campo aberto
+                    -- grama invade o caminho) até a LARGURA TODA do campo
                     local pxX = roadC + side * (half * 0.94
-                        + w * (0.004 + h2 * 0.40) * (0.35 + 0.65 * t))
+                        + w * (0.004 + h2 * 0.52) * (0.45 + 0.55 * t))
                     if math.abs(pxX - g.cx) < w * 0.52 then
                         local base = g.latY(pxX - g.cx, t)
                         local persp = g.persp(t)
                         local nx = (pxX - ctx.x) / w
-                        -- TUFO: 3-6 lâminas, cada uma com flexibilidade,
+                        -- TUFO: menos lâminas no longe (vira pontinho),
+                        -- 3-6 no campo — cada uma com flexibilidade,
                         -- variante, fase e tom próprios
-                        local nb = 3 + math.floor(h3 * 4)
-                        local scale = (0.55 + persp * 1.55) * P.heightK
-                        if scale * CELL_H >= 2 then
+                        local nb = (t < 0.22) and (2 + math.floor(h3 * 2))
+                            or (3 + math.floor(h3 * 4))
+                        -- escala MAIS perspectiva: minúscula na crista,
+                        -- graúda no primeiro plano
+                        local scale = (0.22 + persp * 1.85) * P.heightK
+                        if scale * CELL_H >= 1.6 then
                             for bi = 0, nb - 1 do
                                 local hb = hash(ci * 31 + slot, bi * 17 + 3)
                                 local hv = hash(ci * 53 + bi, slot * 19 + 7)
@@ -225,9 +236,12 @@ function GrassField.draw(ctx)
                                     * flex
                                 local kx = lean * 0.55
                                 local sy = s * (1 - math.abs(lean) * 0.16)
-                                -- tom: alterna meia-luz/luz (leitura em
-                                -- qualquer paleta); raiz→ponta vem do atlas
-                                local c = (bi % 2 == 0) and cMid or cLight
+                                -- tom em 3 níveis por lâmina (sombra /
+                                -- meia-luz / luz) — moita com profundidade;
+                                -- o gradiente raiz→ponta vem do atlas
+                                local ht = hash(ci * 17 + bi, slot * 23 + 2)
+                                local c = (ht < 0.25) and cDark
+                                    or ((ht < 0.55) and cMid or cLight)
                                 batch:setColor(c[1], c[2], c[3], 1)
                                 batch:add(quads[vquad],
                                     math.floor(bx), math.floor(base + 1),

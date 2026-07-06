@@ -1799,6 +1799,11 @@ local function drawGrass(g, x, w, camZ)
     local gA = envColor("grassA")
     local b = rawBiome()
     local acc = b.accent or { 0.7, 0.6, 0.3 }
+    -- boost ADAPTATIVO da ponta clara: em paleta escura (fields ~0.16 de
+    -- luminância) o ×1.42 fixo sumia no fundo — quanto mais escuro o
+    -- gramado, mais clara a ponta (senão o campo alto parece vazio)
+    local lum = (gA[1] + gA[2] + gA[3]) / 3
+    local lk = 1.30 + math.max(0, 0.42 - lum) * 1.6
     GrassField.draw({
         x = x, w = w,
         time = WorldRoad._time,
@@ -1810,9 +1815,10 @@ local function drawGrass(g, x, w, camZ)
             return ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15))
         end,
         colors = {
-            mid   = { gA[1] * 0.92, gA[2] * 0.92, gA[3] * 0.92 },
-            light = { math.min(1, gA[1] * 1.42), math.min(1, gA[2] * 1.38),
-                      math.min(1, gA[3] * 1.22) },
+            mid   = { gA[1] * 0.98, gA[2] * 0.98, gA[3] * 0.98 },
+            light = { math.min(1, gA[1] * lk),
+                      math.min(1, gA[2] * lk * 0.97),
+                      math.min(1, gA[3] * lk * 0.88) },
             accent = acc,
         },
         biomeId = b.id,
