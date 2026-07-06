@@ -1152,6 +1152,33 @@ local function gradTex()
     return _gradV, _gradH
 end
 
+-- v6.4: glow radial gerado 1x (falloff (1-d²)² — luz suave sem shader).
+local _glowImg
+local function glowTex()
+    if not _glowImg then
+        local n = 128
+        local id = love.image.newImageData(n, n)
+        local c = (n - 1) / 2
+        for yy = 0, n - 1 do
+            for xx = 0, n - 1 do
+                local d = math.sqrt((xx - c) ^ 2 + (yy - c) ^ 2) / c
+                local a = math.max(0, 1 - d * d)
+                id:setPixel(xx, yy, 1, 1, 1, a * a)
+            end
+        end
+        _glowImg = love.graphics.newImage(id)
+        _glowImg:setFilter("linear", "linear")
+    end
+    return _glowImg
+end
+
+-- v6.4: intensidade do glow das janelas por bioma (forte nos escuros,
+-- discreto nos claros — luz acesa de dia existe, mas não domina)
+local CASTLE_GLOW_K = {
+    fields = 0.45, highlands = 0.85, abyss = 1.0,
+    frost = 0.5, marsh = 0.9, dusk = 1.0,
+}
+
 -- v6.3: direção da luz da cena = posição do astro do bioma. Sombras de
 -- contato deslocam CONTRA o sol (coerência global barata, mesma ideia do
 -- shadow_parrallax do Balatro). Retorna deslocamento normalizado [-1,1].
@@ -1360,6 +1387,26 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha)
     love.graphics.setColor(1, 1, 1, alpha)
     love.graphics.draw(img, math.floor(cx - iw * s / 2),
         math.floor(baseY - ih * s), 0, s, s)
+
+    -- v6.4: LUZ DAS JANELAS — glow aditivo quente pulsando sobre o corpo
+    -- do castelo + um foco menor no portão (as janelas acesas do sprite
+    -- ganham halo de verdade; intensidade por bioma)
+    if alpha >= 1 then
+        local gk = CASTLE_GLOW_K[bid] or 0.8
+        local gi = glowTex()
+        local pulse = 0.86 + 0.14 * math.sin(WorldRoad._time * 1.7)
+        love.graphics.setBlendMode("add")
+        local gw = iw * s * 1.25
+        love.graphics.setColor(1.0, 0.72, 0.38, 0.11 * gk * pulse)
+        love.graphics.draw(gi, cx - gw / 2, baseY - ih * s * 0.52 - gw / 2,
+            0, gw / 128, gw / 128)
+        local gw2 = iw * s * 0.55
+        love.graphics.setColor(1.0, 0.62, 0.26, 0.18 * gk * pulse)
+        love.graphics.draw(gi, cx - gw2 / 2, baseY - ih * s * 0.10 - gw2 / 2,
+            0, gw2 / 128, gw2 / 128)
+        love.graphics.setBlendMode("alpha")
+    end
+
     -- topo do castelo (pra fumaça da chaminé) — só no passe principal
     if alpha >= 1 then
         WorldRoad._castleTop = {
