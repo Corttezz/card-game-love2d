@@ -1205,6 +1205,17 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha)
     -- afundamento DIMINUI chegando: no fim só 3% da altura fica atrás da
     -- crista — o PORTÃO (base do sprite) sobe e fica totalmente visível
     local baseY = g.crestYAt(cx) + ih * s * (0.03 + 0.20 * (1 - progress))
+    -- PÁTIO de terra no pé do castelo (v5.4, feedback "castelo parece
+    -- colado"): elipse na cor da estrada onde ela encontra o portão —
+    -- o castelo assenta num terreno batido, não numa grama lisa
+    if alpha >= 1 then
+        local ra = envColor("roadA")
+        local crest2 = g.crestYAt(cx)
+        love.graphics.setColor(ra[1] * 0.92, ra[2] * 0.92, ra[3] * 0.92, 0.85)
+        love.graphics.ellipse("fill", cx, crest2 + 2,
+            iw * s * 0.34, 5 + 9 * progress)
+    end
+
     love.graphics.setColor(1, 1, 1, alpha)
     love.graphics.draw(img, math.floor(cx - iw * s / 2),
         math.floor(baseY - ih * s), 0, s, s)
@@ -1747,6 +1758,20 @@ local function drawRoad(g, x, w, camZ)
                 love.graphics.setColor(roadA[1] * 1.25, roadA[2] * 1.22, roadA[3] * 1.15, 0.9 * aMul)
                 love.graphics.rectangle("fill", px2, math.floor(g.latY(px2 - cx, t)), ps, math.max(step, ps - 1))
             end
+
+            -- GRAMA INVADINDO a estrada (v5.4, feedback): fiapos verdes
+            -- entrando pelas bordas — transição orgânica terra↔gramado
+            if newRow and hash(rowId * 41 + 5) > 0.45 then
+                local ga = envColor("grassA")
+                local gs = hash(rowId * 43 + 1) > 0.5 and 1 or -1
+                local gx = gs > 0 and (xR - 2 - math.floor(hash(rowId * 47) * 6))
+                                   or (xL + math.floor(hash(rowId * 47) * 6))
+                local gy = math.floor(g.latY(gx - cx, t))
+                local gsz = math.max(1, math.floor(2 * g.persp(t)))
+                love.graphics.setColor(ga[1] * 1.3, ga[2] * 1.3, ga[3] * 1.15, 0.85 * aMul)
+                love.graphics.rectangle("fill", gx, gy, gsz + 1, gsz)
+                love.graphics.rectangle("fill", gx + gs, gy - gsz, gsz, gsz)
+            end
         end
 
         -- MEANDRO ORGÂNICO: centro serpenteia (roadWobble compartilhado
@@ -2040,6 +2065,10 @@ local function drawProps(g, x, w, camZ)
                     -- PixelLab às vezes têm a raiz cortada reta na borda do
                     -- canvas; afundar esconde o corte (raiz "sai do chão")
                     sink2 = ih * s * 0.04
+                elseif p.kind == "tuft" or p.kind == "flowers" then
+                    -- v5.4: capim/flores balançam mais rápido e mais soltos
+                    -- que árvores (massa menor) — "grama balançando"
+                    rot = math.sin(WorldRoad._time * 2.3 + p.z * 1.4) * 0.055
                 end
 
                 -- perspectiva atmosférica + LUZ DO BIOMA: props tomam banho
@@ -2137,6 +2166,21 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     drawClouds(g, x, y, w)
     drawBirds(g, x, y, w)
     drawMountains(g, x, w, WorldRoad._camZ)
+
+    -- NÉVOA DE DISTÂNCIA (v5.4): banda de bruma entre as montanhas e o
+    -- mundo — separa os planos (feedback: "neblina entre montanhas e
+    -- floresta"). O castelo desenha DEPOIS: mais perto, fura a bruma.
+    do
+        local fogc = envColor("fog")
+        local bandH = math.floor(h * 0.11)
+        for i = 0, bandH, 2 do
+            local a = (1 - math.abs(i / bandH * 2 - 1)) * 0.26
+            love.graphics.setColor(fogc[1], fogc[2], fogc[3], a)
+            love.graphics.rectangle("fill", x, g.crestApexY - bandH + i + 6, w, 2)
+        end
+        love.graphics.setColor(1, 1, 1, 1)
+    end
+
     drawCastle(g, x, w, WorldRoad._camZ)
     drawEncounterBehind(g, x, w, WorldRoad._camZ)
     drawPropsBehind(g, x, w, WorldRoad._camZ)

@@ -824,6 +824,21 @@ distância. v6 veio PERFEITO de primeira com essas regras (fundo creme
 chapado, alto contraste, 0 furos). Galeria de monstros no demo: tecla M
 (setas/H/K/J/1-6).
 
+**Ciclo 45 (entregue — v5.4 atmosfera, 06/Jul):** triagem do feedback de
+IA externa (via print estático, sem código): 60% JÁ EXISTIA e só aparece
+em movimento (vento, partículas por bioma, pássaros, critters, fumaça,
+12+ camadas, meandro) — print parado não prova vida. Adotado o que era
+novo: (1) NÉVOA DE DISTÂNCIA — banda de bruma (fog do bioma, α pico 0.26)
+entre montanhas e mundo, castelo desenha depois e fura; (2) GRAMA
+INVADINDO a estrada — fiapos verdes nas bordas por rowId (55%);
+(3) tufos/flores BALANÇAM (rot 0.055, 2.3Hz — mais soltos que árvores);
+(4) sombra rasteira do inimigo DE VOLTA (0.42×largura, achatada, colada
+nos pés — remoção antiga jogou fora a âncora junto com o bug de offset);
+(5) PÁTIO de terra batida no pé do castelo (elipse roadA, cresce com
+progress) — castelo assenta no terreno. Descartado do feedback: refazer
+camadas (temos), parallax extra (mundo-esfera já dá profundidade via
+persp), "estrada reta" (meandro v5.2 já resolvera).
+
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
 14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY
 21. Aguardar feedback do usuário jogando (viagem/blends/interiores em MOTION

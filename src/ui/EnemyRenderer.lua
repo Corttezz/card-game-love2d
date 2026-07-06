@@ -259,9 +259,13 @@ function EnemyRenderer.draw(game, cx, cy)
     local drawX = cx - (iw * scale) / 2 + jitter
     local drawY = cy - ih * scale + bounce + EnemyRenderer.getArrivalOffset()
 
-    -- (1) Sombra elíptica REMOVIDA (2026-07): com o WorldRoad o inimigo fica
-    -- plantado na estrada (cy = superfície real do chão via getRoadAnchor);
-    -- a sombra flutuante dava impressão de levitar.
+    -- (1) Sombra RASTEIRA no chão (v5.4): larga e achatada, colada nos pés
+    -- (cy = superfície real via getRoadAnchor) — ancora o monstro no chão.
+    -- A versão antiga flutuava por causa de offset; o problema era o offset,
+    -- não a sombra. Sem ela o inimigo parece adesivo (feedback).
+    love.graphics.setColor(0, 0, 0, 0.30)
+    love.graphics.ellipse("fill", cx + jitter * 0.5, cy - 1,
+        iw * scale * 0.42, math.max(4, iw * scale * 0.055))
 
     -- (6) Pulse de tint (cor varia ±6% lentamente, respiração sutil)
     local pulse = 0.94 + (math.sin(t * 1.1) * 0.5 + 0.5) * 0.06
