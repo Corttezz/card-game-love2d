@@ -117,6 +117,33 @@ function M.run(mode)
         WorldRoad.draw(0, topBarH, width, height - topBarH, nil)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
+    elseif mode == "grass" then
+        -- VALIDAÇÃO DE VENTO (v7.1): mesmo bioma em 2 instantes (Δ1.1s) —
+        -- diff das capturas prova que as lâminas do GrassField balançam.
+        local topBarH = 80
+        WorldRoad.clearCache()
+        WorldRoad.setBiome(1)
+        WorldRoad._camZ = 5.5
+        for _ = 1, 30 do WorldRoad.update(1 / 30) end
+        WorldRoad._blend = nil
+        WorldRoad._prevBiomeIndex = nil
+        for shot = 1, 2 do
+            love.graphics.clear(0, 0, 0, 1)
+            WorldRoad.draw(0, topBarH, width, height - topBarH, 1)
+            love.graphics.setColor(0.1, 0.08, 0.06, 1)
+            love.graphics.rectangle("fill", 0, 0, width, topBarH)
+            local path = "worldroad_grass" .. shot .. ".png"
+            love.graphics.captureScreenshot(function(imageData)
+                imageData:encode("png", path)
+                print("[screenshot] salvo em save-dir: " .. path)
+            end)
+            love.graphics.present()
+            if shot == 1 then
+                for _ = 1, 33 do WorldRoad.update(1 / 30) end
+            end
+        end
+        love.event.quit()
+        return
     elseif mode == "all" then
         -- TODOS os 6 biomas em UM processo (protocolo anti-wedge do driver:
         -- 1 contexto GL, não 6 — ver memory nvidia-driver-love-crash).

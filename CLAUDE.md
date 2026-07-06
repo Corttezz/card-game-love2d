@@ -24,7 +24,8 @@ card-game-love2d/
 │   ├── Event.lua               # Classe Event (trigger=after/immediate/condition/ease)
 │   ├── EventManager.lua        # Fila global de eventos temporais, _G.EventManager
 │   ├── Easing.lua              # Funções de easing + lookup por nome
-│   └── Moveable.lua            # Mixin juice_up() + T/VT opcional
+│   ├── Moveable.lua            # Mixin juice_up() + T/VT opcional
+│   └── GrassField.lua          # Motor de vegetação rasteira (SpriteBatch, vento 3 camadas, presets por bioma) — base do cenário WorldRoad
 ├── shaders/                    # GLSL (LÖVE 11.x format)
 │   ├── crt.glsl, holo.glsl, card_perspective.glsl  # Pré-existentes
 │   ├── dissolve.glsl           # Próprio (value noise + FBM + threshold animado)

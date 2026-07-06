@@ -1675,8 +1675,6 @@ end
 local function drawTerrainDetail(g, x, w, camZ)
     local gA = envColor("grassA")
     local gB = envColor("grassB")
-    local b = rawBiome()
-    local acc = b.accent or { 0.7, 0.6, 0.3 }
     -- família de tons do próprio gramado — contraste FORTE (em paleta
     -- escura como o fields, ×1.2 sumia; a leitura vem das pontas claras)
     local dark  = { gB[1] * 0.70, gB[2] * 0.70, gB[3] * 0.70 }
@@ -1723,68 +1721,9 @@ local function drawTerrainDetail(g, x, w, camZ)
         end
     end
 
-    -- ---- TUFOS DE CAPIM: lâminas verticais de pixel na cor do gramado,
-    -- espalhados no CAMPO INTEIRO (não só nas cunhas) — o "mato" que dá
-    -- vida ao tapete. Escala com a perspectiva, some longe (sub-pixel).
-    -- Densidade ALTA (a referência tem centenas de detalhes, não dezenas).
-    local CELL = 0.32
-    for ci = math.floor(camZ / CELL),
-             math.floor((camZ + REL_CREST - 3) / CELL) do
-        for slot = 0, 3 do
-            local h1 = ((ci * 92821 + slot * 68917) % 1009) / 1009
-            if h1 < 0.62 then
-                local z = ci * CELL + h1 * 0.3
-                local rel = z - camZ
-                local t = g.tOf(rel)
-                if t and t > 0.14 then
-                    local h2 = ((ci * 45989 + slot * 7919) % 997) / 997
-                    local h3 = ((ci * 31013 + slot * 8009) % 991) / 991
-                    local side = (slot % 2 == 0) and -1 or 1
-                    local roadC = g.cx + roadWobble(z, t, w)
-                    local half = ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15))
-                    local pxX = roadC + side * (half + w * (0.012 + h2 * 0.34)
-                        * (0.35 + 0.65 * t))
-                    if math.abs(pxX - g.cx) < w * 0.5 then
-                        local base = math.floor(g.latY(pxX - g.cx, t))
-                        local persp = g.persp(t)
-                        -- largura CHUNKY: 1px só no longe; 2-3px no campo
-                        -- (1px em tela cheia é invisível)
-                        local px2 = (t < 0.3) and 1 or ((t < 0.6) and 2 or 3)
-                        local nb = 3 + math.floor(h3 * 3)
-                        for bi = 0, nb - 1 do
-                            local hb = ((ci * 7 + slot * 3 + bi * 11) % 7) / 7
-                            local bh = math.max(2, math.floor(
-                                (4 + hb * 6) * (0.30 + persp * 1.9)))
-                            local bx = math.floor(pxX + (bi - nb / 2)
-                                * (px2 + 1) + hb * 2)
-                            -- alternância escuro/claro: em paleta escura a
-                            -- leitura vem das lâminas CLARAS (metade delas)
-                            local c = (bi % 2 == 1) and light or dark
-                            love.graphics.setColor(c[1], c[2], c[3], 1)
-                            love.graphics.rectangle("fill", bx,
-                                base - bh, px2, bh)
-                        end
-                        -- ~25% dos tufos têm flor/broto na cor de acento do
-                        -- bioma (dourado no fields, brasa no abyss, cristal
-                        -- no frost...) — o "mato vivo" da referência
-                        if h3 > 0.75 and t > 0.3 then
-                            local fx2 = math.floor(pxX + h2 * 3 - 1)
-                            local fy2 = base - math.floor(
-                                (5 + h2 * 4) * (0.30 + persp * 1.9))
-                            love.graphics.setColor(acc[1], acc[2], acc[3], 1)
-                            love.graphics.rectangle("fill", fx2, fy2, px2, px2)
-                            love.graphics.setColor(
-                                math.min(1, acc[1] * 1.3),
-                                math.min(1, acc[2] * 1.3),
-                                math.min(1, acc[3] * 1.2), 1)
-                            love.graphics.rectangle("fill", fx2, fy2 - 1,
-                                px2, 1)
-                        end
-                    end
-                end
-            end
-        end
-    end
+    -- (v7.1: os tufos estáticos que ficavam aqui foram PROMOVIDOS ao motor
+    -- dedicado engine/GrassField.lua — lâminas individuais com física de
+    -- vento, chamado via drawGrass depois da estrada.)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
@@ -1844,6 +1783,43 @@ local FORK_REL    = 10    -- onde a estrada se divide
 local MARK_REL    = 17.5  -- onde os marcos ficam
 local ARRIVE_REL  = 7.5   -- rel do marco ao fim da convergência (chegada)
 local FORK_SPREAD = 0.15  -- afastamento lateral máximo por direção (fração de w)
+
+-- ============================================================================
+-- v7.1: GRAMA VIVA — engine/GrassField.lua (motor dedicado de vegetação:
+-- lâminas individuais, vento em 3 camadas, presets por bioma). Cores vêm
+-- do envColor (lerpam no crossfade); geometria/estrada são INJETADAS — o
+-- motor não conhece o WorldRoad. Desenhada DEPOIS da estrada: as lâminas
+-- da margem invadem levemente a borda do caminho, como na referência.
+-- Definida AQUI (depois de FORK_REL — local declarado abaixo é nil pra
+-- função de cima, lição do ciclo 41).
+-- ============================================================================
+local GrassField = require("engine.GrassField")
+
+local function drawGrass(g, x, w, camZ)
+    local gA = envColor("grassA")
+    local b = rawBiome()
+    local acc = b.accent or { 0.7, 0.6, 0.3 }
+    GrassField.draw({
+        x = x, w = w,
+        time = WorldRoad._time,
+        camZ = camZ,
+        geom = g,
+        relCrest = REL_CREST,
+        roadCenter = function(z, t) return g.cx + roadWobble(z, t, w) end,
+        roadHalf = function(t)
+            return ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15))
+        end,
+        colors = {
+            mid   = { gA[1] * 0.92, gA[2] * 0.92, gA[3] * 0.92 },
+            light = { math.min(1, gA[1] * 1.42), math.min(1, gA[2] * 1.38),
+                      math.min(1, gA[3] * 1.22) },
+            accent = acc,
+        },
+        biomeId = b.id,
+        forkActive = WorldRoad._fork ~= nil,
+        forkRel = FORK_REL,
+    })
+end
 
 function WorldRoad.showFork(nodes, onChosen)
     if not nodes or #nodes == 0 then return false end
@@ -2567,8 +2543,9 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     drawEncounterBehind(g, x, w, WorldRoad._camZ)
     drawPropsBehind(g, x, w, WorldRoad._camZ)
     drawDome(g, x, y, w)
-    drawTerrainDetail(g, x, w, WorldRoad._camZ)  -- v7: capim + relevo em pixel
+    drawTerrainDetail(g, x, w, WorldRoad._camZ)  -- v7: lombadas de relevo
     drawRoad(g, x, w, WorldRoad._camZ)
+    drawGrass(g, x, w, WorldRoad._camZ)          -- v7.1: motor de grama viva
 
     -- ciclo 36: critters e partículas ambientais ANTES dos props — pontos
     -- brilhantes (folha dourada, vagalume) por cima das copas escuras liam
@@ -2666,6 +2643,7 @@ end
 function WorldRoad.clearCache()
     WorldRoad._spriteCache = {}
     WorldRoad._quadCache = {}
+    require("engine.GrassField").clearCache()
     WorldRoad._props = {}
     WorldRoad._clouds = {}
     WorldRoad._blend = nil

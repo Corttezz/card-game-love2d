@@ -1120,6 +1120,48 @@ memory global nvidia-driver-love-crash).
 transição estrada↔grama; lanterna + props animados (fogueira/bandeiras
 via animate_object); passe de luz canvas add→multiply caseiro.
 
+## ⭐ v7.1 — GrassField: motor dedicado de grama (Jul/06)
+
+Pedido explícito do usuário: "engine só pra grama... física, movimentação
+fluida... populado no terreno todo... base pra tudo". Contexto: o v7
+anterior REVERTEU duas abordagens rejeitadas — (a) assets PixelLab
+avulsos enfiados no terreno ("não faz o menor sentido"), (b) luzes
+translúcidas do v6 (god rays/glows/rim/faixa de crista — "pixel
+transparente de cores estranhas"). REGRA APRENDIDA: luz e detalhe em
+pixel art se DESENHAM na paleta (opaco); véu com alpha lê como mancha.
+
+**engine/GrassField.lua** (novo, reutilizável, não conhece o WorldRoad):
+- Lâminas individuais num SpriteBatch (atlas 9 células 8×16 em TONS DE
+  CINZA: corpo 0.60, raiz 0.45, ponta 1.0 → 1 tint por lâmina produz o
+  gradiente raiz-escura→ponta-clara; 6 finas + 2 largas/junco + 1 flor).
+- VENTO em 3 camadas (padrão Guerrilla/Horizon adaptado a 2D): frente de
+  rajada viajante (sin(fase espacial − t·gustSpeed), vales calmos) +
+  brisa local (2 senos por posição) + jitter de ponta (cresce na rajada).
+- Física da lâmina: cisalhamento kx com PIVÔ NA RAIZ (base fixa, ponta
+  desloca kx·altura — GPU Gems cap.7) + encurtamento sy∝|lean|
+  (projeção 2D do dobrar, truque do fórum Defold) + flexibilidade por
+  lâmina (hash) — nunca movem em bloco.
+- População ESTATELESS mundo-ancorada (hash por célula z×slot, sem
+  spawn/reciclagem), margem da estrada→campo aberto, some no fork,
+  invade de leve a borda do caminho (half*0.94).
+- PRESETS por bioma (densidade/altura/vento/junco/flor): fields brisa
+  1.0; highlands vento forte de montanha; abyss restolho ar-parado 0.55;
+  frost tundra rala 0.5; marsh juncos altos 1.15/1.30 broad 0.30; dusk
+  trigo dourado flor 0.12. CORES não ficam no preset — vêm do envColor
+  do chamador (lerpam de graça no crossfade de bioma).
+- WorldRoad: drawGrass injeta geom/roadCenter/roadHalf/cores; chamado
+  DEPOIS de drawRoad; definido DEPOIS de FORK_REL (lição ciclo 41).
+  drawTerrainDetail mantém só as lombadas de relevo (arcos latitude,
+  aresta clara + vinco escuro). clearCache limpa o GrassField.
+- VALIDAÇÃO DE MOVIMENTO: modo `grass` no screenshot tool — 2 capturas
+  do mesmo frame com Δ1.1s no MESMO processo; diff provou lâminas
+  balançando (90k px alterados, tufos fixos no lugar = vento, não ruído).
+- Perf: ~2-4k batch:add/frame (1 draw call), ~20k sin/frame — folga.
+
+Backlog natural do motor: dobra interativa (inimigo/herói passando),
+sombra de rajada (escurecer levemente onde gust>0.7 — DESENHADO, não
+véu), wind dir global por bioma no update dos props (hoje só a grama).
+
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
 14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY
 21. Aguardar feedback do usuário jogando (viagem/blends/interiores em MOTION
