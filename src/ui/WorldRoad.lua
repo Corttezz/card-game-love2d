@@ -1197,27 +1197,16 @@ local function drawMountainsOf(g, x, w, camZ, bid, alpha)
         local sx, yTop, tileW, off = stripTransform(g, x, w, camZ, iw, ih)
         love.graphics.setColor(1, 1, 1, alpha)
         drawStripTiles(img, x, sx, yTop, tileW, off)
-        -- v5.9 (feedback): a faixa abaixo do strip é preenchida com o
-        -- ESPELHO VERTICAL do próprio background (substitui o degradê
-        -- chapado do c47). O espelho FADE pro tom do domo ~110px abaixo
-        -- da emenda — só preenche a parte necessária; deixar o espelho
-        -- inteiro revelava o céu invertido como faixas nos cantos largos
-        drawStripMirrorBelow(img, x, sx, yTop, tileW, off)
-        local seamY = math.floor(yTop + (ih - MIRROR_SKIP) * sx)
+        -- v5.9.1 (feedback): a faixa abaixo do strip é preenchida com o
+        -- ESPELHO VERTICAL COMPLETO do próprio background (mesma lógica
+        -- do espelho lateral, sem fade) — substitui o degradê do c47
+        local mirrorBottom = drawStripMirrorBelow(img, x, sx, yTop, tileW, off)
+        -- abaixo do espelho (janela extrema): tom do topo do domo
         local b2 = BIOME_BY_ID[bid] or rawBiome()
         local ga2 = b2.grassA
-        if ga2 then
-            local tr, tg, tb = ga2[1] * 0.82, ga2[2] * 0.82, ga2[3] * 0.82
-            local fadeH = 110
-            for i = 0, fadeH - 1, 2 do
-                love.graphics.setColor(tr, tg, tb, alpha * (i / fadeH))
-                love.graphics.rectangle("fill", x, seamY + i, w, 2)
-            end
-            if g.bottomY > seamY + fadeH then
-                love.graphics.setColor(tr, tg, tb, alpha)
-                love.graphics.rectangle("fill", x, seamY + fadeH, w,
-                    g.bottomY - seamY - fadeH)
-            end
+        if ga2 and g.bottomY > mirrorBottom then
+            love.graphics.setColor(ga2[1] * 0.82, ga2[2] * 0.82, ga2[3] * 0.82, alpha)
+            love.graphics.rectangle("fill", x, mirrorBottom, w, g.bottomY - mirrorBottom)
         end
         return true
     end
