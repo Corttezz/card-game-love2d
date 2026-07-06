@@ -1,5 +1,32 @@
 # WorldRoad Visual v6 — do protótipo à cena rica
 
+> **STATUS (Jul/06/2026): CONCLUÍDO — v6.1 a v6.8 entregues** (commits
+> d1a009f → 1f638d1 + docs). Escopo executado com adaptações descobertas
+> em campo, anotadas por passo abaixo. Detalhe completo em
+> `memory/worldroad_scene.md` (seção "v6 — Overhaul visual").
+>
+> - Passo 1 → ✅ re-escopado (v6.1): drawSky/drawCelestial são INVISÍVEIS
+>   (strip cover cobre o céu) — virou suavização de banding do que aparece
+>   (vinhetas + névoa em gradiente contínuo via gradTex).
+> - Passo 2 → ✅ v6.2 (haze atmosférico sobre a crista).
+> - Passo 3 → ✅ v6.3 (sunShadowDir em todas as sombras + rim light do
+>   castelo).
+> - Passo 4 → ✅ parcial v6.4: glows aditivos das janelas/portão via
+>   glowTex + CASTLE_GLOW_K (canvas multiply completo ficou no backlog —
+>   custo/risco > ganho pro estado atual).
+> - Passo 5 → ✅ parcial v6.5: dither estrada↔grama + grama multi-tom +
+>   banda de luz na crista (sombra de nuvem FBM DESCARTADA — regra do
+>   ciclo 26: nuvem distante não projeta sombra no primeiro plano).
+> - Passo 6 → ✅ v6.6: god rays com RAY_K por bioma + fumaça suave + room
+>   sway Balatro (partículas por bioma já existiam dos ciclos 1-12).
+> - Passo 7 → ✅ v6.7: framing de árvores nos cantos + state grade
+>   (vinheta via gradTex ficou no passo 1; palette snap descartado).
+> - Passo 8 → ✅ v6.8: full1-6 + travel/fork/blend6 revisados, docs
+>   sincronizados.
+>
+> Backlog remanescente: canvas de luz multiply, moonshine/flux/anim8
+> vendorizados, tileset Wang estrada↔grama, lanterna/props animados.
+
 Objetivo: tirar a "cara de protótipo" da cena de mundo (WorldRoad) e aproximá-la
 da referência (cena pixel-art rica: vegetação densa, iluminação quente
 localizada, props detalhados, profundidade atmosférica, moldura escura).

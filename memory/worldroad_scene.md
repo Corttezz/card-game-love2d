@@ -1045,6 +1045,79 @@ gostou dela) — todas as nuvens usam variant 0 (cloud_0). Menos nuvens
 (near 6→4, far 5→3) e banda mais alta: near yr 0.07..0.40 (era
 0.10..0.60), far yr 0.05..0.25 (era 0.06..0.34).
 
+## ⭐ v6 — Overhaul visual "sair da cara de protótipo" (Jul/06, autônomo)
+
+Plano: `docs/plan/worldroad-visual-v6.md` (pesquisa: fóruns LÖVE, source do
+Balatro em E:\dev\projects\balatro-source\, PixelLab MCP — resumo em
+memory/research_libs_pixellab.md). 7 passos entregues, cada um validado com
+captura dos 6 biomas (modo `all` do screenshot tool = 1 processo GL) +
+travel/fork/blend6. Commits d1a009f → 1f638d1.
+
+**Infra nova (helpers no WorldRoad.lua):**
+- `gradTex()` — `_gradV` (1×256, alpha 1→0 vertical) e `_gradH` (256×1
+  horizontal), filtro LINEAR. **Deliberadamente Image, não Mesh** (driver
+  NVIDIA histórico 0xC00000FD — Image é o caminho GL já provado). Escalar
+  y por `px/256`; alpha negativo no scale = gradiente invertido.
+- `glowTex()` — 128×128 radial `(1-d²)²` pra glows aditivos.
+- `sunShadowDir(g, x, w, px)` — offset horizontal normalizado [-1,1] da
+  sombra AFASTANDO do celestial do bioma (`cel.xr`); fallback g.cx.
+
+**v6.1 (d1a009f) — suavização de banding:** vinheta inferior (gv preto
+0.32) + laterais (gh 0.16); banda de névoa do horizonte redesenhada com
+gradiente contínuo (era 20 rects); crest fog por coluna com fade
+horizontal `1-(dx/halfW)²`. DESCOBERTA: drawSky/drawCelestial são
+INVISÍVEIS (strip cover cobre o céu todo) — re-escopo do passo pra
+suavizar o que APARECE, não o céu procedural.
+
+**v6.2 (56ac929) — haze atmosférico:** wash de gradiente (cor fog, alpha
+0.16) da crista pra cima + colunas nas extremidades até crestYAt —
+separação tonal longe/perto (perspectiva aérea de verdade).
+
+**v6.3 (a246f1e) — luz global coerente:** `sunShadowDir` aplicado em TODAS
+as sombras (props 0.16, companheiras, cercas 0.14, marcos do fork 0.14,
+landmark 0.14, castelo 0.20) — sombras apontam pro lado oposto do sol do
+bioma. Castelo ganha RIM LIGHT aditivo (cópia deslocada 2px na direção do
+sol, cor do celestial, alpha 0.28) antes do draw principal.
+
+**v6.4 (06815f9) — janelas acesas:** `CASTLE_GLOW_K` por bioma (fields
+0.45 … abyss/dusk 1.0); glow de corpo (1.25×iw, âmbar 0.11×gk) + glow de
+portão (0.55×iw, laranja 0.18×gk), pulso `0.86+0.14sin(1.7t)`. Só quando
+castelo 100% opaco (não vaza no crossfade).
+
+**v6.5 (95b35e7) — chão rico:** dither nas bordas da estrada (3 iterações
+de px estrada-fora + grama-dentro por rowId novo — mata a linha dura);
+grama com 16 acentos + 26 pares de lâminas claras no tile; banda de luz
+na crista do domo (aditivo 0.06, 30% da altura, por coluna).
+
+**v6.6 (c194d9a) — vida ambiente:** god rays (2 raios, 2 polígonos
+aninhados soft-edge, aditivo ~0.03-0.06 oscilando) gated por `RAY_K`
+(abyss/dusk = 0 — sol no horizonte não faz raio de cima); fumaça do
+castelo com halo suave (glowTex 2.6× + core pixel); **room sway Balatro**
+(update_canvas_juice): push/translate senoidal ±1.5px/rotate 0.0012/scale
+1.006/pop — termina ANTES de fork marks/pills (hitboxes de mouse ficam
+fora do sway).
+
+**v6.7 (1f638d1) — enquadramento cinematográfico:** framing de árvore nos
+cantos inferiores (3 cópias em cluster, escala cap 4.5×, silhueta
+0.05/0.045/0.06 alpha 0.94, bob lento, espelhada à direita); state grade
+full-frame (travel+encounter = vermelho 0.045; travel normal = âmbar
+0.04). Cap de escala existe porque sprite pequeno a 10× virava mega-pixel
+(visto no abyss na 1ª tentativa).
+
+**v6.8 — validação integral:** full1-6 (modo all) + travel + fork +
+blend6 revisados: pills do fork legíveis sobre o framing, blend atravessa
+as camadas novas sem rasgo, espelho sem emenda. LIÇÃO DE PROCESSO (falso
+wedge): burst de captura com o jogo do usuário aberto reproduziu 0xC00000FD
+até no trivial — NÃO era driver envenenado; resolveu sozinho quando ele
+fechou o jogo. Protocolo: checar `Get-Process love,lovec` antes de
+capturar, re-testar trivial após ~1min antes de alarmar (detalhe no
+memory global nvidia-driver-love-crash).
+
+**Backlog v6 (documentado, não pedido):** vendorizar moonshine/flux/anim8
+(veredito ADOTAR em research_libs_pixellab); tileset Wang PixelLab pra
+transição estrada↔grama; lanterna + props animados (fogueira/bandeiras
+via animate_object); passe de luz canvas add→multiply caseiro.
+
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
 14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY
 21. Aguardar feedback do usuário jogando (viagem/blends/interiores em MOTION
