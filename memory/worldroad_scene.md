@@ -718,6 +718,21 @@ IN-WORLD substitui o MapScreen na estrada. WorldRoad ganhou:
 Assets: 6 landmarks em assets/sprites/world/ (cabana, fogueira, tenda
 mística, estandarte, obelisco, baú — baú reservado pra node treasure futuro).
 
+**Ciclo 38 (entregue — castelos v2 + chegada no portão + cantos, 06/Jul):**
+(1) 6 castelos RE-GERADOS 220px (era ~130): centrados, simétricos, portão
+frontal GRANDE, sem elementos extras. Batalha de prompts: highlands v1
+veio com nuvens, abyss v1/v2 lavado+disco, dusk v1/v2 com halo — v3 com
+"sprite isolated on transparent background, no halo no disc no moon"
+resolveu (dusk/highlands); abyss precisou de cirurgia PIL (remoção do
+disco creme por cor na metade superior). De-speckle: componentes
+conectados <25px fora do corpo principal = fragmentos → removidos
+(fields 1451px!, abyss 1061px). (2) APROXIMAÇÃO: escala 1.0→4.2
+(progress^1.4, era 1.0→2.5 linear) + afundamento 26%→3% no fim — no
+último andar o PORTÃO domina o quadro (modo "gate" no screenshot pra
+validar, camZ=92% do segmento). (3) CANTOS PRETOS (telas largas): rect
+full-frame na cor grassB×0.78 ANTES de tudo no WorldRoad.draw — pixel
+não coberto mostra terra do bioma, nunca preto.
+
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
 14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY
 21. Aguardar feedback do usuário jogando (viagem/blends/interiores em MOTION

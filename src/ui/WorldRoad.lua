@@ -1162,14 +1162,16 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha)
     local img = getSprite("castle", 0, bid)
     if not img then return false end
     local iw, ih = img:getWidth(), img:getHeight()
-    -- escala 1.0 → 2.5 (referência: castelo cresce conforme chega perto).
-    -- Base maior (0.17w): o castelo domina a crista e o inimigo emerge
-    -- visivelmente ABAIXO dele (como no print 2 da referência).
-    local baseScale = (w * 0.17) / iw
-    local s = baseScale * (1.0 + progress * 1.5)
+    -- APROXIMAÇÃO (feedback v5): o castelo se aproxima de verdade — escala
+    -- 1.0 → 4.2 ao longo do trecho (antes 1.0→2.5, "nem dava pra ver o
+    -- portão"). Crescimento acelera no fim (progress^1.4): os últimos
+    -- andares são a chegada dramática, portão dominante.
+    local baseScale = (w * 0.155) / iw
+    local s = baseScale * (1.0 + (progress ^ 1.4) * 3.2)
     local cx = g.cx
-    -- base do castelo SEMPRE abaixo da crista (o domo oculta o pé)
-    local baseY = g.crestYAt(cx) + ih * s * (0.16 + 0.10 * (1 - progress))
+    -- afundamento DIMINUI chegando: no fim só 3% da altura fica atrás da
+    -- crista — o PORTÃO (base do sprite) sobe e fica totalmente visível
+    local baseY = g.crestYAt(cx) + ih * s * (0.03 + 0.20 * (1 - progress))
     love.graphics.setColor(1, 1, 1, alpha)
     love.graphics.draw(img, math.floor(cx - iw * s / 2),
         math.floor(baseY - ih * s), 0, s, s)
@@ -2066,6 +2068,14 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     if actNumber then WorldRoad.setBiome(actNumber) end
 
     local g = domeGeom(x, y, w, h)
+
+    -- FUNDO DE SEGURANÇA (feedback telas largas): pinta a área inteira na
+    -- cor escura do terreno ANTES de tudo — qualquer pixel que as camadas
+    -- não cobrirem (cantos extremos além da curvatura, aspect ratios
+    -- largos) mostra terra do bioma em vez de PRETO.
+    local gb0 = envColor("grassB")
+    love.graphics.setColor(gb0[1] * 0.78, gb0[2] * 0.78, gb0[3] * 0.78, 1)
+    love.graphics.rectangle("fill", x, y, w, h)
 
     drawSky(g, x, y, w)
     drawCelestial(g, x, y, w)
