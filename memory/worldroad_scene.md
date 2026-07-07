@@ -1078,11 +1078,15 @@ as sombras (props 0.16, companheiras, cercas 0.14, marcos do fork 0.14,
 landmark 0.14, castelo 0.20) — sombras apontam pro lado oposto do sol do
 bioma. Castelo ganha RIM LIGHT aditivo (cópia deslocada 2px na direção do
 sol, cor do celestial, alpha 0.28) antes do draw principal.
+⚠️ **REMOVIDO no v7**: cópia aditiva sobre sprite pixel art virava
+franja/mancha de cor. Só o `sunShadowDir` (sombras direcionais) sobreviveu.
 
 **v6.4 (06815f9) — janelas acesas:** `CASTLE_GLOW_K` por bioma (fields
 0.45 … abyss/dusk 1.0); glow de corpo (1.25×iw, âmbar 0.11×gk) + glow de
 portão (0.55×iw, laranja 0.18×gk), pulso `0.86+0.14sin(1.7t)`. Só quando
 castelo 100% opaco (não vaza no crossfade).
+⚠️ **REMOVIDO no v7** junto com o rim light (halos translúcidos manchavam
+o sprite — as janelas acesas já estão DESENHADAS no PNG do castelo).
 
 **v6.5 (95b35e7) — chão rico:** dither nas bordas da estrada (3 iterações
 de px estrada-fora + grama-dentro por rowId novo — mata a linha dura);
@@ -1179,6 +1183,16 @@ pixel art se DESENHAM na paleta (opaco); véu com alpha lê como mancha.
 - v7.4.6 3 ALTURAS ponderadas pela distância da estrada (rasteira na
   beira → alta na parede de floresta; |lf| estático decide o tier =
   nunca muda em movimento; hMul SÓ na altura — largura cobre o chão).
+
+**v7.5 (f6db66e, Jul/07) — fatias intercaladas com as árvores:**
+`GrassField.draw()` aceita janela de profundidade (`relFrom`/`relTo`) e o
+WorldRoad intercala fatias de capim entre os props (painter real: capim
+na frente do pé da árvore COBRE o pé). Cuidados que a fatia exige:
+detecção de câmera-em-movimento por FRAME via `ctx.time` (por chamada
+daria "parado" da 2ª fatia em diante); poda do rowCache 1×/frame com a
+janela COMPLETA da câmera; range de células limitado à janela da fatia
+(sem isso: 17ms/frame); ctx construído 1×/frame e reutilizado entre as
+fatias (~200 alocações/frame de tabela+closures a menos).
 
 Backlog natural do motor: dobra interativa (inimigo/herói passando),
 sombra de rajada (escurecer levemente onde gust>0.7 — DESENHADO, não
