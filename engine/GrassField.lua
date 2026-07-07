@@ -173,6 +173,9 @@ end
 
 local batch
 local rowCache = {}   -- estáticos por fileira do tapete (podado por janela)
+-- diagnóstico (prova magenta + log de LOD): cacheado no load — os.getenv
+-- por moita custava 7.8k chamadas C/frame
+local GF_DEBUG = os.getenv("GF_DEBUG")
 
 -- ----------------------------------------------------------------------------
 -- VENTO em 3 camadas. Fase espacial vem da POSIÇÃO DE MUNDO (nx = fração
@@ -242,8 +245,12 @@ function GrassField.draw(ctx)
     -- moita real (2 tons alternados liam como padrão artificial)
     local cDark = { cMid[1] * 0.68, cMid[2] * 0.68, cMid[3] * 0.68 }
 
+    -- até QUASE a crista (-0.05, não -0.8): o corte antigo deixava uma
+    -- faixa careca que a geometria da esfera AMPLIFICA nas laterais
+    -- (t 0..0.03 = ~15px no centro, 40-100px nas bordas em tela larga —
+    -- "o final da esfera sem grama", feedback com print ultrawide)
     local first = math.floor(camZ / Z_CELL)
-    local last = math.floor((camZ + ctx.relCrest - 0.8) / Z_CELL)
+    local last = math.floor((camZ + ctx.relCrest - 0.05) / Z_CELL)
 
     -- ========================================================================
     -- PASSE A (v7.4): TAPETE 100% — fileiras de MOITAS de trás pra frente
@@ -272,7 +279,7 @@ function GrassField.draw(ctx)
         local z = ci * Z_CELL
         local rel = z - camZ
         local t = g.tOf(rel)
-        if t and t > 0.03 then
+        if t and t > 0.002 then
             local persp = g.persp(t)
             local scale = (0.26 + persp * 1.75) * P.heightK
             local ch = scale * CELL_H
@@ -281,6 +288,11 @@ function GrassField.draw(ctx)
                 local dy = t2 and (g.latY(0, t2) - g.latY(0, t)) or ch
                 local M = 1
                 while dy * M < ch * 0.30 and M < 64 do M = M * 2 end
+                if GF_DEBUG then
+                    print(string.format(
+                        "ci=%d rel=%.2f t=%.4f dy=%.2f ch=%.2f M=%d draw=%s",
+                        ci, rel, t, dy, ch, M, tostring(ci % M == 0)))
+                end
                 if ci % M == 0 then
                     -- estáticos da fileira (mundo-fixos): calcula 1x
                     local rc = rowCache[ci]
@@ -356,7 +368,10 @@ function GrassField.draw(ctx)
                             local w1 = wsamples[s0 + WSTEP] or w0
                             local lean = (w0 + (w1 - w0) * f)
                                 * (0.5 + e.hk * 0.5)
-                            if e.key ~= lastKey then
+                            if GF_DEBUG then
+                                batch:setColor(1, 0, 1, 1)   -- prova magenta
+                                lastKey = -1
+                            elseif e.key ~= lastKey then
                                 lastKey = e.key
                                 local c = (e.tone == 3) and cDark
                                     or ((e.tone == 2) and cMid or cLight)
