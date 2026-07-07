@@ -355,8 +355,9 @@ function GameplayScene.update(dt)
             else
                 floorIn = ((game.currentPhase or 1) - 1) % 8 + 1
             end
+            -- piso 0.62 ("pode começar um pouco mais escuro", Jul/07)
             local prog = math.min(1, math.max(0, (floorIn - 1) / 7)) ^ 1.35
-            WorldRoad.setTimeOfDay(0.5 + 0.5 * prog)
+            WorldRoad.setTimeOfDay(0.62 + 0.38 * prog)
         end
         WorldRoad.update(dt)
         -- Troca de andar/fase → herói "anda" até o próximo encontro:
