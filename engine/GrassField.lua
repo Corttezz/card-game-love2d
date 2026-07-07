@@ -174,6 +174,8 @@ end
 local batch
 local rowCache = {}   -- estáticos por fileira do tapete (podado por janela)
 local lastCamZ        -- detecta câmera em movimento (broto desligado)
+local lastTime        -- frame atual (múltiplas chamadas/frame — v7.5)
+local camMovingFrame = false
 -- diagnóstico (prova magenta + log de LOD): cacheado no load — os.getenv
 -- por moita custava 7.8k chamadas C/frame
 local GF_DEBUG = os.getenv("GF_DEBUG")
@@ -262,13 +264,36 @@ function GrassField.draw(ctx)
     -- faixa careca que a geometria da esfera AMPLIFICA nas laterais
     -- (t 0..0.03 = ~15px no centro, 40-100px nas bordas em tela larga —
     -- "o final da esfera sem grama", feedback com print ultrawide)
-    -- câmera em movimento? (viagem/convergência — broto desligado)
-    local camMoving = lastCamZ ~= nil
-        and math.abs(camZ - lastCamZ) > 1e-4
-    lastCamZ = camZ
+    -- v7.5: JANELA de profundidade — o WorldRoad chama draw() várias
+    -- vezes por frame, intercalando fatias de grama entre as árvores
+    -- (painter real: capim na frente do pé da árvore COBRE o pé)
+    local relFrom = ctx.relFrom or -1
+    local relTo = ctx.relTo or (ctx.relCrest + 2)
 
-    local first = math.floor(camZ / Z_CELL)
-    local last = math.floor((camZ + ctx.relCrest - 0.05) / Z_CELL)
+    -- câmera em movimento? (viagem/convergência — broto desligado).
+    -- Detecção POR FRAME (ctx.time): com múltiplas chamadas por frame,
+    -- comparar camZ por chamada daria "parado" da 2ª fatia em diante
+    if ctx.time ~= lastTime then
+        camMovingFrame = lastCamZ ~= nil
+            and math.abs(camZ - lastCamZ) > 1e-4
+        lastCamZ = camZ
+        lastTime = ctx.time
+        -- poda do cache 1x por frame (janela COMPLETA da câmera — as
+        -- fatias usam janelas parciais e podariam fileiras vivas)
+        local wf = math.floor(camZ / Z_CELL)
+        local wl = math.floor((camZ + ctx.relCrest) / Z_CELL)
+        for kci in pairs(rowCache) do
+            if kci < wf or kci > wl then rowCache[kci] = nil end
+        end
+    end
+    local camMoving = camMovingFrame
+
+    -- v7.5 (perf): range de células LIMITADO à janela da fatia — sem
+    -- isso cada uma das ~dezenas de fatias/frame varria o campo inteiro
+    -- (17ms/frame; com o corte, volta ao custo de ~1 passada)
+    local first = math.floor((camZ + math.max(0, relFrom)) / Z_CELL)
+    local last = math.floor(
+        (camZ + math.min(ctx.relCrest - 0.05, relTo)) / Z_CELL)
 
     -- ========================================================================
     -- PASSE A (v7.4): TAPETE 100% — fileiras de MOITAS de trás pra frente
@@ -287,15 +312,12 @@ function GrassField.draw(ctx)
     -- grossa com lerp (espacialmente suave; a moita só modula amplitude —
     -- personalidade fina fica nos ACENTOS). Corte medido: ~4.0→~1.5ms.
     local NK = 96                       -- moitas por fileira (fração fixa)
-    -- poda do cache: fileiras fora da janela da câmera
-    for kci in pairs(rowCache) do
-        if kci < first or kci > last then rowCache[kci] = nil end
-    end
+    -- (poda do cache movida pro bloco 1x-por-frame lá em cima — v7.5)
     for ci = last, first, -1 do
         local z = ci * Z_CELL
         local rel = z - camZ
         local t = g.tOf(rel)
-        if t and t > 0.002 then
+        if t and t > 0.002 and rel > relFrom and rel <= relTo then
             local persp = g.persp(t)
             local scale = (0.26 + persp * 1.75) * P.heightK
             local ch = scale * CELL_H
@@ -499,7 +521,7 @@ function GrassField.draw(ctx)
     -- "infinitamente longe": o mundo rolando não a move). O inimigo
     -- emergindo é desenhado ANTES do domo → sobe POR TRÁS do capim.
     -- ========================================================================
-    do
+    if relTo > ctx.relCrest then
         local scaleC = (0.26 + g.persp(0.01) * 1.75) * P.heightK
         local stepC = math.max(6, 12 * scaleC * 0.7)
         local roadC = ctx.roadCenter(camZ + ctx.relCrest - 0.2, 0.01)
@@ -549,7 +571,7 @@ function GrassField.draw(ctx)
                 local z = ci * Z_CELL + h1 * Z_CELL
                 local rel = z - camZ
                 local t = g.tOf(rel)
-                if t and t > 0.18 then
+                if t and t > 0.18 and rel > relFrom and rel <= relTo then
                     local h2 = hash(ci, slot * 13 + 5)
                     local h3 = hash(ci, slot * 29 + 11)
                     local side = (slot % 2 == 0) and -1 or 1

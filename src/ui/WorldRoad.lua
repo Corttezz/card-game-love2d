@@ -1832,51 +1832,65 @@ end
 -- ============================================================================
 local GrassField = require("engine.GrassField")
 
-local function drawGrass(g, x, w, camZ)
-    local gA = envColor("grassA")
-    local b = rawBiome()
-    local acc = b.accent or { 0.7, 0.6, 0.3 }
-    -- boost ADAPTATIVO da ponta clara: em paleta escura (fields ~0.16 de
-    -- luminância) o ×1.42 fixo sumia no fundo — quanto mais escuro o
-    -- gramado, mais clara a ponta (senão o campo alto parece vazio)
-    local lum = (gA[1] + gA[2] + gA[3]) / 3
-    local lk = 1.30 + math.max(0, 0.42 - lum) * 1.6
-    GrassField.draw({
-        x = x, w = w,
-        time = WorldRoad._time,
-        camZ = camZ,
-        geom = g,
-        relCrest = REL_CREST,
-        roadCenter = function(z, t) return g.cx + roadWobble(z, t, w) end,
-        roadHalf = function(t)
-            return ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15))
-        end,
-        -- encruzilhada: centros de CADA braço naquela profundidade (nil =
-        -- estrada única) + fator de largura dos braços (0.78 com 2-3)
-        roadCenters = function(z, t)
-            local f = WorldRoad._fork
-            if not f then return nil end
-            local rel = z - WorldRoad._camZ
-            if rel <= FORK_REL - 1.5 then return nil end
-            local wob = roadWobble(z, t, w) * 0.5
-            local cs = {}
-            for i = 1, f.n do
-                cs[i] = g.cx + forkOffset(f, i, rel, w) + wob
-            end
-            return cs, (f.n > 1 and 0.78 or 1)
-        end,
-        colors = {
-            mid   = { gA[1] * 0.98, gA[2] * 0.98, gA[3] * 0.98 },
-            light = { math.min(1, gA[1] * lk),
-                      math.min(1, gA[2] * lk * 0.97),
-                      math.min(1, gA[3] * lk * 0.88) },
-            accent = acc,
-        },
-        biomeId = b.id,
-        forkActive = WorldRoad._fork ~= nil,
-        forkRel = FORK_REL,
-        castleGapHalf = WorldRoad._castleBaseHalf,
-    })
+-- relFrom/relTo (v7.5): janela de profundidade — o drawProps intercala
+-- fatias de grama entre as árvores (capim na frente do pé cobre o pé).
+-- O ctx é construído 1x POR FRAME e reutilizado entre as fatias:
+-- reconstruir tabela+closures por fatia dava ~200 alocações/frame (GC)
+local _grassCtx, _grassCtxFrame, _grassFork
+local function drawGrass(g, x, w, camZ, relFrom, relTo)
+    if _grassCtxFrame ~= WorldRoad._time then
+        _grassCtxFrame = WorldRoad._time
+        local gA = envColor("grassA")
+        local b = rawBiome()
+        local acc = b.accent or { 0.7, 0.6, 0.3 }
+        -- boost ADAPTATIVO da ponta clara: em paleta escura (fields ~0.16
+        -- de luminância) o ×1.42 fixo sumia no fundo
+        local lum = (gA[1] + gA[2] + gA[3]) / 3
+        local lk = 1.30 + math.max(0, 0.42 - lum) * 1.6
+        _grassFork = { cs = {} }
+        _grassCtx = {
+            x = x, w = w,
+            time = WorldRoad._time,
+            camZ = camZ,
+            geom = g,
+            relCrest = REL_CREST,
+            roadCenter = function(z, t)
+                return g.cx + roadWobble(z, t, w)
+            end,
+            roadHalf = function(t)
+                return ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15))
+            end,
+            -- encruzilhada: centros de CADA braço naquela profundidade
+            -- (nil = estrada única) + fator de largura (0.78 com 2-3)
+            roadCenters = function(z, t)
+                local f = WorldRoad._fork
+                if not f then return nil end
+                local rel = z - WorldRoad._camZ
+                if rel <= FORK_REL - 1.5 then return nil end
+                local wob = roadWobble(z, t, w) * 0.5
+                local cs = _grassFork.cs
+                for i = 1, f.n do
+                    cs[i] = g.cx + forkOffset(f, i, rel, w) + wob
+                end
+                for i = f.n + 1, #cs do cs[i] = nil end
+                return cs, (f.n > 1 and 0.78 or 1)
+            end,
+            colors = {
+                mid   = { gA[1] * 0.98, gA[2] * 0.98, gA[3] * 0.98 },
+                light = { math.min(1, gA[1] * lk),
+                          math.min(1, gA[2] * lk * 0.97),
+                          math.min(1, gA[3] * lk * 0.88) },
+                accent = acc,
+            },
+            biomeId = b.id,
+            forkActive = WorldRoad._fork ~= nil,
+            forkRel = FORK_REL,
+            castleGapHalf = WorldRoad._castleBaseHalf,
+        }
+    end
+    _grassCtx.relFrom = relFrom
+    _grassCtx.relTo = relTo
+    GrassField.draw(_grassCtx)
 end
 
 -- alpha do braço i (não escolhidos somem durante a convergência)
@@ -2273,11 +2287,25 @@ local function drawProps(g, x, w, camZ)
         else nearPass[#nearPass + 1] = p end
     end
 
+    -- v7.5: GRAMA INTERCALADA por profundidade — antes de cada prop,
+    -- descarrega a fatia de capim mais distante que ele (painter real:
+    -- capim na frente do pé da árvore COBRE o pé; atrás, fica atrás).
+    -- Quantizado em 0.35 z-units: árvores quase na mesma profundidade
+    -- compartilham 1 flush (menos overhead por fatia)
+    local grassRel = REL_CREST + 2
+    local function flushGrassTo(relLow)
+        if relLow < grassRel - 0.35 or relLow <= -1 then
+            drawGrass(g, x, w, camZ, relLow, grassRel)
+            grassRel = relLow
+        end
+    end
+
     local function drawList(list)
     for _, p in ipairs(list) do
         local rel = p.z - camZ
         local t = g.tOf(rel)
         if t and t >= 0 then
+            flushGrassTo(rel)
             -- CUNHA (ciclo 21, ref APK): zona permitida = triângulo que vai
             -- da lateral do castelo (crista) até o CANTO de baixo da tela.
             -- inner cresce com t → na base só os cantos extremos têm props;
@@ -2463,6 +2491,7 @@ local function drawProps(g, x, w, camZ)
     drawCrestFog(g, x, w)
     drawList(farPass)
     drawList(nearPass)
+    flushGrassTo(-1)   -- fatia final: capim mais perto que todos os props
 end
 
 -- Encounter na frente do domo (cruzou a crista, desce a estrada crescendo)
@@ -2568,7 +2597,8 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     drawDome(g, x, y, w)
     drawTerrainDetail(g, x, w, WorldRoad._camZ)  -- v7: lombadas de relevo
     drawRoad(g, x, w, WorldRoad._camZ)
-    drawGrass(g, x, w, WorldRoad._camZ)          -- v7.1: motor de grama viva
+    -- (v7.5: drawGrass agora é chamado DENTRO de drawProps, em fatias de
+    -- profundidade intercaladas com as árvores — painter real)
 
     -- ciclo 36: critters e partículas ambientais ANTES dos props — pontos
     -- brilhantes (folha dourada, vagalume) por cima das copas escuras liam
