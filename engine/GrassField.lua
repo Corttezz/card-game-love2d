@@ -172,6 +172,7 @@ local function bakeAtlas()
 end
 
 local batch
+local rowCache = {}   -- estáticos por fileira do tapete (podado por janela)
 
 -- ----------------------------------------------------------------------------
 -- VENTO em 3 camadas. Fase espacial vem da POSIÇÃO DE MUNDO (nx = fração
@@ -222,6 +223,7 @@ local Z_CELL = 0.26        -- passo de célula em z (mundo)
 local SLOTS = 12           -- tentativas de tufo por célula (6 por lado)
 
 function GrassField.draw(ctx)
+    if GrassField.disabled then return end   -- A/B de benchmark
     bakeAtlas()
     if not batch then
         batch = love.graphics.newSpriteBatch(atlasImg, 8192, "stream")
@@ -253,12 +255,19 @@ function GrassField.draw(ctx)
     -- sprites pra cobrir a mesma largura).
     -- ========================================================================
     -- TUDO ancorado no MUNDO (v7.4.1 — feedback: "movimentando pra frente
-    -- fica estranho"): a versão anterior selecionava fileiras em espaço de
-    -- tela relativo (re-embaralhava a seleção a cada frame de viagem) e
-    -- espaçava as moitas por passo dependente da profundidade (a moita
-    -- DESLIZAVA de lado ao se aproximar). Agora: decimação por potência de
-    -- 2 fixa por fileira + moita em fração FIXA da largura.
+    -- fica estranho"): decimação por potência de 2 fixa por fileira +
+    -- moita em fração FIXA da largura (nada re-embaralha nem desliza).
+    -- v7.4.2 (perf): dados estáticos por fileira em CACHE (os 6 hashes por
+    -- moita custavam 1 sin cada, TODO frame) + vento amostrado em grade
+    -- grossa com lerp (espacialmente suave; a moita só modula amplitude —
+    -- personalidade fina fica nos ACENTOS). Corte medido: ~4.0→~1.5ms.
     local NK = 96                       -- moitas por fileira (fração fixa)
+    -- poda do cache: fileiras fora da janela da câmera
+    for kci in pairs(rowCache) do
+        if kci < first or kci > last then rowCache[kci] = nil end
+    end
+    local WSTEP = 8                     -- passo da grade de vento (moitas)
+    local wsamples = {}
     for ci = last, first, -1 do
         local z = ci * Z_CELL
         local rel = z - camZ
@@ -268,67 +277,98 @@ function GrassField.draw(ctx)
             local scale = (0.26 + persp * 1.75) * P.heightK
             local ch = scale * CELL_H
             if ch >= 2 then
-                -- espaçamento na tela até a fileira vizinha mais próxima
                 local t2 = g.tOf(rel - Z_CELL)
                 local dy = t2 and (g.latY(0, t2) - g.latY(0, t)) or ch
-                -- decimação ESTÁVEL: M só depende da profundidade e ci é
-                -- fixo no mundo → cada fileira mantém identidade ao se
-                -- aproximar; quando M cai (8→4→2→1) as fileiras novas
-                -- entram exatamente onde as vizinhas já se sobrepõem
                 local M = 1
                 while dy * M < ch * 0.30 and M < 64 do M = M * 2 end
                 if ci % M == 0 then
+                    -- estáticos da fileira (mundo-fixos): calcula 1x
+                    local rc = rowCache[ci]
+                    if not rc then
+                        rc = { order = {} }
+                        for k = 0, NK - 1 do
+                            local hk = hash(ci * 3 + 1, k * 11 + 2)
+                            local ht = hash(ci * 19, k * 7 + 3)
+                            -- seco QUANTIZADO em 3 níveis (permite agrupar
+                            -- por cor: 3 tons × 3 secos = 9 baldes/fileira)
+                            local dq = math.floor(
+                                hash(ci * 5 + 2, k * 3 + 1) * 2.999)
+                            local dryK = dq * 0.15
+                            local tone = (ht < 0.30) and 3
+                                or ((ht < 0.62) and 2 or 1)
+                            rc[k] = {
+                                hk = hk,
+                                lf = (k + (hk - 0.5) * 0.9) / NK - 0.5,
+                                tone = tone,
+                                key = tone * 4 + dq,
+                                dr = 1 + dryK * 0.30,
+                                dg = 1 - dryK * 0.06,
+                                db = 1 - dryK * 0.35,
+                                q = clumpQuads[math.floor(hk * N_CLUMP)
+                                    % N_CLUMP],
+                                flip = (hash(ci, k) < 0.5) and 1 or -1,
+                                dz = (hash(ci * 13 + 4, k * 17 + 6) - 0.5)
+                                    * 0.9,
+                            }
+                            rc.order[k + 1] = k
+                        end
+                        -- ordem por COR (dentro da fileira a profundidade
+                        -- é a mesma — pintar por balde não muda a imagem):
+                        -- setColor só quando o balde troca (~9/fileira em
+                        -- vez de 96) — chamada C é o custo dominante
+                        table.sort(rc.order, function(a, b)
+                            return rc[a].key < rc[b].key
+                        end)
+                        rowCache[ci] = rc
+                    end
                     local roadC = ctx.roadCenter(z, t)
                     local half = ctx.roadHalf(t)
                     local clear = (ctx.forkActive
                         and rel > (ctx.forkRel or 10) - 1.5)
                         and (half + w * 0.17) or (half * 0.90)
-                    -- deriva perspectiva SUAVE pra fora (contínua em t —
-                    -- nada de salto) + stretch horizontal pra fechar vãos
-                    -- no longe (moita natural < espaçamento da grade)
                     local spread = 0.92 + 0.14 * t
-                    local spacing = (w * 1.06 * spread) / NK
+                    local spanW = w * 1.06 * spread
+                    local spacing = spanW / NK
                     local baseW = 12 * scale
                     local sxK = math.max(1, spacing / math.max(1, baseW)
                         * 1.25)
-                    for k = 0, NK - 1 do
-                        local hk = hash(ci * 3 + 1, k * 11 + 2)
-                        local lf = (k + (hk - 0.5) * 0.9) / NK - 0.5
-                        local pxX = g.cx + lf * w * 1.06 * spread
+                    -- grade de vento da fileira (13 amostras + lerp)
+                    for si = 0, NK, WSTEP do
+                        local sx2 = g.cx + (si / NK - 0.5) * spanW
+                        wsamples[si] = windAt((sx2 - ctx.x) / w, z, t0, P, 0)
+                    end
+                    local lastKey = -1
+                    for oi = 1, NK do
+                        local k = rc.order[oi]
+                        local e = rc[k]
+                        local pxX = g.cx + e.lf * spanW
                         local dRoad = math.abs(pxX - roadC) - clear
                         if dRoad > 0 and math.abs(pxX - g.cx) < w * 0.53 then
-                            -- jitter de PROFUNDIDADE fixo por moita (quebra
-                            -- as "fileiras de plantação" sem perder a
-                            -- ancoragem: zk é do mundo, não da tela)
-                            local hz = hash(ci * 13 + 4, k * 17 + 6)
-                            local zk = z + (hz - 0.5) * Z_CELL * M * 0.9
+                            local zk = z + e.dz * Z_CELL * M
                             local tk = g.tOf(zk - camZ) or t
                             local perspK = g.persp(tk)
                             local sK = (0.26 + perspK * 1.75) * P.heightK
-                                * (0.80 + hk * 0.45)   -- altura varia
+                                * (0.80 + e.hk * 0.45)
                             local base = g.latY(pxX - g.cx, tk)
-                            local nx = (pxX - ctx.x) / w
-                            local lean = windAt(nx, zk, t0, P, hk)
-                                * (0.5 + hk * 0.5)
-                            local ht = hash(ci * 19, k * 7 + 3)
-                            local c = (ht < 0.30) and cDark
-                                or ((ht < 0.62) and cMid or cLight)
-                            local dryK = hash(ci * 5 + 2, k * 3 + 1) * 0.30
-                            batch:setColor(
-                                math.min(1, c[1] * (1 + dryK * 0.30)),
-                                c[2] * (1 - dryK * 0.06),
-                                c[3] * (1 - dryK * 0.35), 1)
-                            local q = clumpQuads[math.floor(hk * N_CLUMP)
-                                % N_CLUMP]
-                            local flip = (hash(ci, k) < 0.5) and 1 or -1
-                            -- beira da estrada: encolhe SUAVE em vez de
-                            -- sumir de repente (o meandro muda o roadC
-                            -- conforme a fileira anda — pop visível)
+                            local s0 = k - (k % WSTEP)
+                            local f = (k - s0) / WSTEP
+                            local w0 = wsamples[s0]
+                            local w1 = wsamples[s0 + WSTEP] or w0
+                            local lean = (w0 + (w1 - w0) * f)
+                                * (0.5 + e.hk * 0.5)
+                            if e.key ~= lastKey then
+                                lastKey = e.key
+                                local c = (e.tone == 3) and cDark
+                                    or ((e.tone == 2) and cMid or cLight)
+                                batch:setColor(
+                                    math.min(1, c[1] * e.dr),
+                                    c[2] * e.dg, c[3] * e.db, 1)
+                            end
                             local edgeK = math.min(1,
                                 dRoad / (6 + 14 * perspK))
-                            batch:add(q, math.floor(pxX),
+                            batch:add(e.q, math.floor(pxX),
                                 math.floor(base + 1), 0,
-                                sK * sxK * flip,
+                                sK * sxK * e.flip,
                                 sK * (1 - math.abs(lean) * 0.12)
                                     * (0.35 + 0.65 * edgeK),
                                 CLUMP_W / 2, CELL_H, lean * 0.5, 0)
@@ -452,11 +492,13 @@ function GrassField.draw(ctx)
 
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.draw(batch)
+    GrassField._lastCount = batch:getCount()   -- instrumentação (bench)
 end
 
 -- limpa recursos GPU (troca de resolução etc.)
 function GrassField.clearCache()
-    atlasImg, quads, batch = nil, nil, nil
+    atlasImg, quads, clumpQuads, batch = nil, nil, nil, nil
+    rowCache = {}
 end
 
 return GrassField

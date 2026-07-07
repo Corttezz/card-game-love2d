@@ -117,6 +117,35 @@ function M.run(mode)
         WorldRoad.draw(0, topBarH, width, height - topBarH, nil)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
+    elseif mode == "bench" or mode == "bench0" then
+        -- BENCHMARK de CPU (v7.4): 200 frames de VIAGEM simulada (camZ
+        -- avançando = pior caso do tapete de grama). Mede update+draw sem
+        -- present (CPU puro; GPU com 7k sprites pequenos é trivial).
+        local topBarH = 80
+        WorldRoad.clearCache()
+        WorldRoad.setBiome(1)
+        WorldRoad._camZ = 5.5
+        for _ = 1, 30 do WorldRoad.update(1 / 30) end
+        WorldRoad._blend = nil
+        WorldRoad._prevBiomeIndex = nil
+        WorldRoad.draw(0, topBarH, width, height - topBarH, 1)  -- aquece caches
+        local GrassField = require("engine.GrassField")
+        GrassField.disabled = (mode == "bench0")   -- A/B: sem grama
+        local N = 200
+        local tStart = love.timer.getTime()
+        for _ = 1, N do
+            WorldRoad.update(1 / 60)
+            WorldRoad._camZ = WorldRoad._camZ + 0.045   -- ritmo de viagem
+            love.graphics.clear(0, 0, 0, 1)
+            WorldRoad.draw(0, topBarH, width, height - topBarH, 1)
+        end
+        local ms = (love.timer.getTime() - tStart) / N * 1000
+        local stats = love.graphics.getStats()
+        print(string.format(
+            "[bench] %.2f ms/frame CPU (update+draw) | sprites de grama: %d | drawcalls: %d",
+            ms, GrassField._lastCount or -1, stats.drawcalls))
+        love.event.quit()
+        return
     elseif mode == "grass" then
         -- VALIDAÇÃO DE VENTO (v7.1): mesmo bioma em 2 instantes (Δ1.1s) —
         -- diff das capturas prova que as lâminas do GrassField balançam.
