@@ -117,6 +117,37 @@ function M.run(mode)
         WorldRoad.draw(0, topBarH, width, height - topBarH, nil)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
+    elseif mode == "grassanim" then
+        -- SEQUÊNCIA TEMPORAL (v7.4.x): 24 frames consecutivos com câmera
+        -- PARADA — análise numérica de ondas/bandas coerentes no gramado
+        -- (diff por linha frame a frame localiza artefato de movimento)
+        local topBarH = 80
+        WorldRoad.clearCache()
+        WorldRoad.setBiome(1)
+        WorldRoad._camZ = 5.5
+        WorldRoad._blend = nil
+        WorldRoad._prevBiomeIndex = nil
+        -- warmup COM draw: o cache de fileiras (e o broto de entrada) só
+        -- existe quando desenha — sem isso a captura mede o broto, não o
+        -- regime (lição: a 1ª análise mediu a animação de entrada)
+        for _ = 1, 90 do
+            WorldRoad.update(1 / 30)
+            love.graphics.clear(0, 0, 0, 1)
+            WorldRoad.draw(0, topBarH, width, height - topBarH, 1)
+        end
+        for i = 1, 24 do
+            WorldRoad.update(1 / 30)
+            love.graphics.clear(0, 0, 0, 1)
+            WorldRoad.draw(0, topBarH, width, height - topBarH, 1)
+            local path = string.format("ga_%02d.png", i)
+            love.graphics.captureScreenshot(function(imageData)
+                imageData:encode("png", path)
+            end)
+            love.graphics.present()
+        end
+        print("[screenshot] 24 frames ga_XX.png salvos")
+        love.event.quit()
+        return
     elseif mode == "bench" or mode == "bench0" then
         -- BENCHMARK de CPU (v7.4): 200 frames de VIAGEM simulada (camZ
         -- avançando = pior caso do tapete de grama). Mede update+draw sem

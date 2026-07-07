@@ -219,6 +219,22 @@ local function windAt(nx, wz, t, P, pers)
 end
 GrassField.windAt = windAt   -- exposto pra outros sistemas (props, futuro)
 
+-- v7.4.11: vento CALMO pro TAPETE — SEM frentes de rajada. Medição de 24
+-- frames estáticos provou: a rajada coerente fazia o tapete inteiro dar
+-- seus degraus de 1px EM MASSA (total de pixels mudando pulsava 692→10k→
+-- 4.6k) = a "onda escurecendo o campo" dos feedbacks. Num tapete denso a
+-- resposta é binária (pixel liga/desliga em sincronia) — qualquer frente
+-- coerente vira artefato. Rajada fica pros ACENTOS (altos, esparsos,
+-- fases próprias), onde lê como vento de verdade.
+local function windCalm(nx, wz, t, P)
+    local ph = nx * 5.2 + wz * 0.14
+    local breeze = math.sin(t * 1.35 + ph * 3.1) * 0.30
+                 + math.sin(t * 0.53 + ph * 1.7) * 0.20
+    local curl = math.sin(ph * 9.3 + t * 2.6)
+               * math.sin(ph * 3.7 - t * 1.9) * 0.12
+    return (breeze * 0.6 + curl) * P.windAmp * P.dir
+end
+
 -- hash determinístico [0,1) — população estateless (mundo-ancorada, sem
 -- spawn/reciclagem: as lâminas "existem" onde a janela da câmera olha)
 local function hash(a, b)
@@ -395,10 +411,11 @@ function GrassField.draw(ctx)
                     local baseW = 12 * scale
                     local sxK = math.max(1, spacing / math.max(1, baseW)
                         * 1.25)
-                    -- grade de vento da fileira (13 amostras + lerp)
+                    -- grade de vento da fileira (13 amostras + lerp) —
+                    -- CALMO: sem rajada no tapete (v7.4.11)
                     for si = 0, NK, WSTEP do
                         local sx2 = g.cx + (si / NK - 0.5) * spanW
-                        wsamples[si] = windAt((sx2 - ctx.x) / w, z, t0, P, 0)
+                        wsamples[si] = windCalm((sx2 - ctx.x) / w, z, t0, P)
                     end
                     local lastKey = -1
                     for oi = 1, NK do
@@ -426,7 +443,7 @@ function GrassField.draw(ctx)
                             local lean = (w0 + (w1 - w0) * f)
                                 * (0.5 + e.hk * 0.5)
                                 + math.sin(t0 * (1.1 + e.hk)
-                                    + e.hk * 21) * 0.09 * P.windAmp
+                                    + e.hk * 21) * 0.13 * P.windAmp
                             if GF_DEBUG then
                                 batch:setColor(1, 0, 1, 1)   -- prova magenta
                                 lastKey = -1
