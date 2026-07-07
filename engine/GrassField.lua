@@ -191,9 +191,15 @@ local function windAt(nx, wz, t, P, pers)
     local ph = nx * 5.2 + wz * 0.14
     -- (1) DUAS frentes de rajada com velocidades INCOMENSURÁVEIS — a
     -- interferência nunca se repete (versão barata do "noise de magnitude
-    -- viajante" do Ghost of Tsushima)
-    local f1 = math.sin(ph * 0.85 - t * P.gustSpeed)
-    local f2 = math.sin(ph * 0.41 - t * P.gustSpeed * 0.737 + 2.4)
+    -- viajante" do Ghost of Tsushima).
+    -- v7.4.9: fases espaciais DIAGONAIS E CRUZADAS (uma ↘, outra ↗) —
+    -- com a fase dominada por wz a frente virava LINHA HORIZONTAL
+    -- subindo pela tela (feedback: "uma linha de pixels atravessa o
+    -- gramado até o fim da esfera")
+    local phA = nx * 7.5 + wz * 0.23
+    local phB = nx * 3.2 - wz * 0.31 + 1.7
+    local f1 = math.sin(phA * 0.85 - t * P.gustSpeed)
+    local f2 = math.sin(phB * 0.41 - t * P.gustSpeed * 0.737 + 2.4)
     local gust = (f1 > 0 and f1 * f1 or 0) * 0.70
                + (f2 > 0 and f2 * f2 or 0) * 0.50
     -- (2) brisa local no TEMPO PRÓPRIO da lâmina
@@ -413,8 +419,14 @@ function GrassField.draw(ctx)
                             local f = (k - s0) / WSTEP
                             local w0 = wsamples[s0]
                             local w1 = wsamples[s0 + WSTEP] or w0
+                            -- v7.4.9: FASE PESSOAL por moita (1 sin) — a
+                            -- grade por fileira dava só amplitude
+                            -- individual e a fileira inteira dobrava em
+                            -- sincronia ("clareia tudo em conjunto")
                             local lean = (w0 + (w1 - w0) * f)
                                 * (0.5 + e.hk * 0.5)
+                                + math.sin(t0 * (1.1 + e.hk)
+                                    + e.hk * 21) * 0.09 * P.windAmp
                             if GF_DEBUG then
                                 batch:setColor(1, 0, 1, 1)   -- prova magenta
                                 lastKey = -1
