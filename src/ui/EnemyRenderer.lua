@@ -488,17 +488,30 @@ end
 -- targetScale = mesma escala que draw() usa na batalha (handoff sem pulo).
 function EnemyRenderer.getEncounterBillboard(enemy)
     if not enemy or not enemy.spriteId then return nil end
-    local sprites = loadStatic(enemy.spriteId)
-    local img = sprites and (sprites.south or sprites.east or sprites.west or sprites.north)
-    if not img then return nil end
-    local ih = img:getHeight()
+    -- v8.4: o billboard usa a ANIMAÇÃO idle (mesmo canvas da batalha) —
+    -- o south.png estático tinha margens DIFERENTES dos frames (por isso
+    -- o monstro "continuava flutuando enquanto vinha" mesmo com footPad)
+    -- e vinha parado ("estático vindo é estranho — deixa animando").
+    local anim = SpriteAnimation.new(enemy.spriteId, "idle", "south",
+        IDLE_FPS, { loop = true })
+    local img, iw, ih
+    if anim then
+        iw, ih = anim:getSize()
+    else
+        local sprites = loadStatic(enemy.spriteId)
+        img = sprites and (sprites.south or sprites.east
+            or sprites.west or sprites.north)
+        if not img then return nil end
+        iw, ih = img:getWidth(), img:getHeight()
+    end
     local targetHeight = enemy.isBoss and 330 or 250
     local ts = targetHeight / ih
     if ih <= 80 then ts = math.max(4, math.floor(ts)) end -- roster legado
     local offX, footPad = contentOffsets(enemy.spriteId)
     return {
-        img = img,
-        iw = img:getWidth(),
+        anim = anim,                 -- v8.4: vem ANDANDO vivo (idle)
+        img = img,                   -- fallback (roster sem anim)
+        iw = iw,
         ih = ih,
         targetScale = ts,
         spriteId = enemy.spriteId,   -- LightEngine v1.2: emissivos na viagem

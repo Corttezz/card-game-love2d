@@ -70,25 +70,67 @@ end
 --       footPad (px de canvas transparente ABAIXO do conteúdo — a sombra
 --       ancora no PÉ DO CONTEÚDO, senão nasce com um vão)
 -- ----------------------------------------------------------------------------
--- v8.3 ("silhueta arredondada — a sombra seguia o corpo perfeito"):
--- SMEAR de 3 passadas deslocadas com alpha dividido — detalhes finos
--- (dedos, palhas, dentes) se FUNDEM em massas arredondadas e a borda
--- ganha penumbra de 1 degrau. Alpha por passada calibrado pra que a
--- sobreposição central recomponha ~o alpha alvo: aP = 1-(1-A)^(1/3).
+-- v8.3 ("silhueta arredondada"): SMEAR de 3 passadas deslocadas funde
+-- detalhes finos em massas arredondadas.
+-- v8.4 ("não quero camadas de cor — uma cor direta"): as passadas
+-- desenham a silhueta OPACA num canvas scratch ⅓-res com blend
+-- "lighten" (máximo — sobreposição NÃO acumula) e o canvas compõe UMA
+-- vez em preto com o alpha do frame: união arredondada, COR ÚNICA,
+-- borda quantizada no pixel lógico. Também elimina o escurecimento
+-- duplo onde sombras de árvores vizinhas se cruzam. Zero stencil.
 local SMEAR = { { -1, 0 }, { 0.7, -0.5 }, { 0.35, 0.55 } }
-local function passAlpha(A)
-    return 1 - (1 - math.min(0.95, A)) ^ (1 / 3)
+local SCALE = 3
+local scratch, batching, batchPrev, selfBatch
+
+local function ensureScratch()
+    local W, H = love.graphics.getDimensions()
+    local cw, ch = math.ceil(W / SCALE), math.ceil(H / SCALE)
+    if not scratch or scratch:getWidth() ~= cw
+       or scratch:getHeight() ~= ch then
+        scratch = love.graphics.newCanvas(cw, ch, { format = "rgba8" })
+        scratch:setFilter("nearest", "nearest")
+    end
+end
+
+function ShadowEngine.beginBatch()
+    if not ShadowEngine.isActive() or batching then return end
+    ensureScratch()
+    batchPrev = love.graphics.getCanvas()
+    love.graphics.push("all")
+    love.graphics.origin()
+    love.graphics.setScissor()
+    love.graphics.setCanvas(scratch)
+    love.graphics.clear(0, 0, 0, 0)
+    -- "lighten" (max por canal) exige premultiplied: branco opaco
+    -- sobreposto continua branco opaco — a união fica CHAPADA
+    love.graphics.setBlendMode("lighten", "premultiplied")
+    love.graphics.scale(1 / SCALE)
+    batching = true
+end
+
+function ShadowEngine.endBatch()
+    if not batching then return end
+    batching = false
+    love.graphics.pop()
+    love.graphics.setCanvas(batchPrev)
+    love.graphics.setBlendMode("alpha", "premultiplied")
+    love.graphics.setColor(0, 0, 0, frame.alpha)
+    love.graphics.draw(scratch, 0, 0, 0, SCALE, SCALE)
+    love.graphics.setBlendMode("alpha")
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 function ShadowEngine.sprite(img, feetX, feetY, s, opts)
     if not img or not ShadowEngine.isActive() then return false end
     opts = opts or {}
+    local solo = not batching
+    if solo then ShadowEngine.beginBatch() end
     local iw, ih = img:getWidth(), img:getHeight()
     local shd = tipShift(feetX)
     -- raio do borrão ∝ largura na tela (monstro grande borra mais)
     local d = math.max(1.5, iw * s * 0.035)
-    local aP = passAlpha(frame.alpha * (opts.alphaK or 1))
-    love.graphics.setColor(0, 0, 0, aP)
+    -- branco opaco no scratch (lighten: sobrepor não escurece)
+    love.graphics.setColor(1, 1, 1, 1)
     -- draw args: offset(-ox,-oy) → shear → scale → translate.
     -- oy nos pés DO CONTEÚDO: topo do sprite tem y local negativo →
     -- shear kx desloca a ponta ⇒ pra LONGE do sol pede kx = -shd·K.
@@ -103,7 +145,7 @@ function ShadowEngine.sprite(img, feetX, feetY, s, opts)
             iw / 2, ih - (opts.footPad or 0),
             -shd * 0.78, 0)
     end
-    love.graphics.setColor(1, 1, 1, 1)
+    if solo then ShadowEngine.endBatch() end
     return true
 end
 
@@ -115,13 +157,14 @@ end
 -- (interiores → elipse legada do chamador).
 -- opts: alphaK, lenK, smear (raio do borrão em px de tela)
 -- ----------------------------------------------------------------------------
-local silTint = { 0, 0, 0, 0.26 }
+local silTint = { 1, 1, 1, 1 }   -- branco opaco: a COR vem do composite
 function ShadowEngine.silhouette(feetX, feetY, opts, drawFn)
     if not ShadowEngine.isActive() then return false end
     opts = opts or {}
+    local solo = not batching
+    if solo then ShadowEngine.beginBatch() end
     local shd = tipShift(feetX)
     local d = opts.smear or 4
-    silTint[4] = passAlpha(frame.alpha * (opts.alphaK or 1))
     for pi = 1, #SMEAR do
         love.graphics.push()
         love.graphics.translate(
@@ -136,7 +179,7 @@ function ShadowEngine.silhouette(feetX, feetY, opts, drawFn)
         drawFn(silTint)
         love.graphics.pop()
     end
-    love.graphics.setColor(1, 1, 1, 1)
+    if solo then ShadowEngine.endBatch() end
     return true
 end
 
@@ -156,11 +199,16 @@ function ShadowEngine.queue(img, feetX, feetY, s, opts)
 end
 
 function ShadowEngine.flush()
+    if #squeue == 0 then return end
+    -- UM batch pra fila inteira: sombras vizinhas que se cruzam viram
+    -- união chapada (uma cor), não escurecimento duplo (v8.4)
+    ShadowEngine.beginBatch()
     for i = 1, #squeue do
         local q = squeue[i]
         ShadowEngine.sprite(q.img, q.x, q.y, q.s, q.o)
         squeue[i] = nil
     end
+    ShadowEngine.endBatch()
 end
 
 return ShadowEngine

@@ -902,6 +902,13 @@ function WorldRoad.update(dt)
 
     if #WorldRoad._props == 0 then populate() end
 
+    -- v8.4: o monstro vem ANDANDO vivo (idle animada no billboard —
+    -- "estático vindo é estranho")
+    local encA = WorldRoad._encounter
+    if encA and encA.anim and WorldRoad._travel then
+        encA.anim:update(dt)
+    end
+
     -- FORK (v5): entrada + hover + convergência
     local f = WorldRoad._fork
     if f then
@@ -1575,9 +1582,15 @@ local function drawEncounterBehind(g, x, w, camZ)
     -- pés afundados: sobe conforme emerge
     local feetY = crest + e.ih * s * (1 - em) * 0.95
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.draw(e.img, math.floor(cx - e.iw * s / 2),
-        math.floor(feetY - e.ih * s) + math.floor((e.footPad or 0) * s),
-        0, s, s)
+    local bx0 = math.floor(cx - e.iw * s / 2)
+    local by0 = math.floor(feetY - e.ih * s)
+        + math.floor((e.footPad or 0) * s)
+    -- v8.4: emergindo também animado
+    if e.anim then
+        e.anim:draw(bx0, by0, s)
+    else
+        love.graphics.draw(e.img, bx0, by0, 0, s, s)
+    end
 end
 
 -- PROPS EMERGINDO da curvatura (ciclo 23, feedback): árvores e itens na
@@ -2727,21 +2740,45 @@ local function drawEncounterFront(g, x, w, camZ)
     -- canvas fazia o monstro "surgir flutuando lá do fundo")
     cx = cx - math.floor((e.offX or 0) * s)
     local footY = math.floor((e.footPad or 0) * s)
-    -- v8: sombra projetada do monstro que vem vindo pela estrada
-    ShadowEngine.sprite(e.img, cx, sy - 1, s,
-        { alphaK = 0.9, footPad = e.footPad })
-    love.graphics.setColor(1, 1, 1, 1)
     local dx0 = math.floor(cx - e.iw * s / 2)
     local dy0 = math.floor(sy - e.ih * s) + footY
-    love.graphics.draw(e.img, dx0, dy0, 0, s, s)
+    -- v8/8.4: sombra projetada do monstro que vem vindo (frame da anim)
+    if e.anim then
+        ShadowEngine.silhouette(cx, sy - 1, { smear = e.iw * s * 0.035 },
+            function(tint)
+                e.anim:draw(-(e.iw * s) / 2, -(e.ih * s) + footY, s, tint)
+            end)
+    else
+        ShadowEngine.sprite(e.img, cx, sy - 1, s,
+            { alphaK = 0.9, footPad = e.footPad })
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+    -- v8.4: vem ANDANDO vivo (idle animada; fallback estático)
+    if e.anim then
+        e.anim:draw(dx0, dy0, s)
+    else
+        love.graphics.draw(e.img, dx0, dy0, 0, s, s)
+    end
 
     -- LightEngine v1.1: o inimigo descendo a estrada oclui luzes atrás
     -- dele (janelas do castelo de onde ele saiu)
     local oxT, oyT = love.graphics.transformPoint(dx0, dy0)
-    LightEngine.submitOccluder({
-        z = rel, img = e.img, x = oxT, y = oyT, sx = s, sy = s,
-        bx = oxT, by = oyT, w = e.iw * s, h = e.ih * s,
-    })
+    if e.anim then
+        LightEngine.submitOccluder({
+            z = rel, bx = oxT, by = oyT, w = e.iw * s, h = e.ih * s,
+            fn = function()
+                -- SpriteAnimation:draw ignora setColor — repassa via
+                -- getColor (mesmo padrão do occluder do EnemyRenderer)
+                local r, g2, b, a = love.graphics.getColor()
+                e.anim:draw(oxT, oyT, s, { r, g2, b, a })
+            end,
+        })
+    else
+        LightEngine.submitOccluder({
+            z = rel, img = e.img, x = oxT, y = oyT, sx = s, sy = s,
+            bx = oxT, by = oyT, w = e.iw * s, h = e.ih * s,
+        })
+    end
 
     -- LightEngine v1.2: emissivos do monstro (olhos/chamas) brilhando
     -- desde longe — "algo vem vindo na estrada" (dados por spriteId)
