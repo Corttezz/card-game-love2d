@@ -47,8 +47,11 @@ local biomes = {
         rock = { 0.38, 0.35, 0.30 }, rockDark = { 0.24, 0.22, 0.19 },
         landmark = { 0.35, 0.32, 0.28 }, landmarkDark = { 0.22, 0.20, 0.17 },
         propDensity = 1.15,
+        -- v9 LuminaireEngine: 3 luminárias por bioma, rate ↑ ("hoje custa
+        -- aparecer uma") — kinds/luz definidos em engine/LuminaireEngine.lua
         propWeights = { tree = 3, bush = 3, flowers = 2, fence = 0.45,
-                        sign = 0.5, rock = 1, stump = 0.8, lantern = 0.4 },
+                        sign = 0.5, rock = 1, stump = 0.8,
+                        lantern = 1.1, firepit = 0.8, shrine = 0.5 },
     },
 
     -- Ato 2 — Colinas da Torre: azul-violeta frio, pinheiros e monólitos
@@ -87,7 +90,7 @@ local biomes = {
         propDensity = 1.0,
         propWeights = { pine = 3, rock = 2.5, ruin = 1, bush = 1,
                         sign = 0.4, deadtree = 0.6, flowers = 0.8,
-                        brazier = 0.4 },
+                        brazier = 0.9, runestone = 0.7, lantern = 0.6 },
     },
 
     -- Ato 3 — Estrada do Abismo: vermelho-âmbar infernal, terra morta
@@ -126,7 +129,8 @@ local biomes = {
         landmark = { 0.28, 0.16, 0.14 }, landmarkDark = { 0.16, 0.09, 0.08 },
         propDensity = 1.0,
         propWeights = { deadtree = 3, rock = 2.5, ruin = 1.2, stump = 0.6,
-                        bush = 0.8, flowers = 0.7, brazier = 0.55 },
+                        bush = 0.8, flowers = 0.7,
+                        brazier = 1.0, torch = 0.8, fissure = 0.6 },
     },
 
     -- Endless 1 — Geleira Espectral: aço gelado, pinheiros escuros
@@ -165,7 +169,8 @@ local biomes = {
         landmark = { 0.38, 0.40, 0.45 }, landmarkDark = { 0.23, 0.25, 0.29 },
         propDensity = 0.9,
         propWeights = { pine = 3, rock = 3, deadtree = 1, stump = 0.6,
-                        flowers = 0.6, brazier = 0.3 },
+                        flowers = 0.6,
+                        brazier = 0.8, crystal = 0.8, lantern = 0.6 },
     },
 
     -- Endless 2 — Pântano da Podridão: verde-veneno turvo
@@ -203,7 +208,8 @@ local biomes = {
         landmark = { 0.27, 0.28, 0.20 }, landmarkDark = { 0.16, 0.17, 0.12 },
         propDensity = 1.3,
         propWeights = { deadtree = 2.5, bush = 3.5, flowers = 1.5, stump = 1,
-                        rock = 0.7, lantern = 0.35 },
+                        rock = 0.7,
+                        lantern = 0.9, mushroom = 1.0, totem = 0.6 },
     },
 
     -- Endless 3 — Campos do Crepúsculo: âmbar dourado, fim de jornada
@@ -241,7 +247,8 @@ local biomes = {
         landmark = { 0.42, 0.36, 0.28 }, landmarkDark = { 0.26, 0.22, 0.17 },
         propDensity = 1.15,
         propWeights = { tree = 3, flowers = 2.5, fence = 0.45, bush = 2,
-                        sign = 0.5, rock = 0.8, lantern = 0.55 },
+                        sign = 0.5, rock = 0.8,
+                        lantern = 1.1, firepit = 0.8, shrine = 0.5 },
     },
 }
 

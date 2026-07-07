@@ -31,6 +31,7 @@ local biomesData = require("src.data.biomes")
 local Sfx = require("src.systems.Sfx")
 local LightEngine = require("engine.LightEngine")
 local ShadowEngine = require("engine.ShadowEngine")
+local LuminaireEngine = require("engine.LuminaireEngine")
 local Config = require("src.core.Config")
 local EnemyEmissives = require("src.data.enemy_emissives")
 
@@ -74,12 +75,15 @@ local KIND_SIZE = {
     tuft = 0.5, lantern = 1.9, brazier = 1.25,
 }
 
--- LightEngine v1: âncora da chama {xr, yr} relativa ao sprite (fração da
--- largura/altura, y do TOPO) — onde a micro-luz do núcleo nasce
-local FLAME_ANCHOR = {
-    lantern = { 0.78, 0.46 },
-    brazier = { 0.50, 0.20 },
-}
+-- v9: luminárias têm tamanho POR BIOMA no catálogo do LuminaireEngine
+-- (lanterna do pântano ≠ cogumelo); resto cai no KIND_SIZE global
+local function kindSize(kind, bid)
+    local d = bid and LuminaireEngine.def(bid, kind)
+    return d and d.size or KIND_SIZE[kind] or 1.0
+end
+
+-- v9: âncora de chama, cor, raio e flicker das luminárias migraram pro
+-- LuminaireEngine (catálogo por bioma) — ver engine/LuminaireEngine.lua
 
 -- Índice id → dados crus do bioma
 local BIOME_BY_ID = {}
@@ -245,6 +249,17 @@ local function tryLoadPng(name)
     if not ok or not img then return nil end
     img:setFilter("nearest", "nearest")
     return img
+end
+
+-- v9: caminho do PNG da luminária (mesma cascata variant → 0 do getSprite)
+-- — o LuminaireEngine escaneia o arquivo pra achar a chama/margens
+local function luminairePath(bid, kind, variant)
+    local p1 = "assets/sprites/world/" .. bid .. "_" .. kind .. "_"
+        .. variant .. ".png"
+    if love.filesystem.getInfo(p1) then return p1 end
+    local p0 = "assets/sprites/world/" .. bid .. "_" .. kind .. "_0.png"
+    if love.filesystem.getInfo(p0) then return p0 end
+    return nil
 end
 
 local function px(data, x, y, c, w, h)
@@ -556,6 +571,29 @@ local function makeBrazier(b, variant, rng)
     return toImage(data)
 end
 
+-- v9: fallback procedural GENÉRICO pra kind de luminária sem PNG nem maker
+-- próprio (firepit/shrine/runestone/torch/fissure/crystal/mushroom/totem):
+-- pedestal na paleta do bioma + glow assado 3 degraus na COR do catálogo
+local function makeLuminaireGeneric(b, kind, variant, rng)
+    local def = LuminaireEngine.def(b.id, kind)
+    local c = def and def.light.color or { 1.0, 0.6, 0.25 }
+    local w, h = 20, 34
+    local data = love.image.newImageData(w, h)
+    local rock, rockD = b.rock, b.rockDark
+    fillRect(data, 6, 16, 13, h - 1, rock, w, h)
+    vline(data, 13, 16, h - 1, rockD, w, h)
+    fillRect(data, 4, 13, 15, 15, rock, w, h)
+    blob(data, 9.5, 9, 5, 4.5,
+        { c[1] * 0.85, c[2] * 0.85, c[3] * 0.85 }, w, h, rng)
+    blob(data, 9.5, 9, 3, 3, c, w, h, rng)
+    local hi = { math.min(1, c[1] + 0.4), math.min(1, c[2] + 0.4),
+                 math.min(1, c[3] + 0.4) }
+    px(data, 9, 8, hi, w, h)
+    px(data, 10, 8, hi, w, h)
+    outline(data, w, h, rockD)
+    return toImage(data)
+end
+
 local MAKERS = {
     tree = makeTree, pine = makePine, deadtree = makeDeadTree,
     bush = makeBush, rock = makeRock, stump = makeStump,
@@ -597,8 +635,11 @@ local function getSprite(kind, variant, bid)
         elseif kind == "mountains" or kind == "mountains_front" then
             img = false   -- sem fallback de imagem; drawMountains desenha ridge
             -- (mountains_front sem PNG = bioma sem oclusão de nuvem, ex. marsh)
-        else
+        elseif MAKERS[kind] then
             img = MAKERS[kind](b, variant, rng)
+        else
+            -- v9: kind de luminária novo sem maker dedicado
+            img = makeLuminaireGeneric(b, kind, variant, rng)
         end
     end
     WorldRoad._spriteCache[key] = img
@@ -627,16 +668,23 @@ local TREE_KIND = { fields = "tree", highlands = "pine", abyss = "deadtree",
 -- ciclo 22 (feedback): "árvores muitas vezes, o resto poucas" — árvores
 -- pesam ×3.5 no sorteio, todo o resto ×0.5 (tufo quase some: 2.5→0.7)
 local TREEISH = { tree = true, pine = true, deadtree = true }
+-- v9: luminária NÃO leva a pena ×0.5 dos props raros (o ×0.5 esmagava o
+-- rate — "hoje custa aparecer uma"); árvore segue dominante (×3.5)
+local function kindMult(kind)
+    if TREEISH[kind] then return 3.5 end
+    if LuminaireEngine.isLuminaire(kind) then return 1.0 end
+    return 0.5
+end
 local function pickKind(b, rng)
     local total = 0
     for kind, wgt in pairs(b.propWeights) do
-        total = total + wgt * (TREEISH[kind] and 3.5 or 0.5)
+        total = total + wgt * kindMult(kind)
     end
     total = total + 0.7
     local r = rng:random() * total
     if r > total - 0.7 then return "tuft" end
     for kind, wgt in pairs(b.propWeights) do
-        r = r - wgt * (TREEISH[kind] and 3.5 or 0.5)
+        r = r - wgt * kindMult(kind)
         if r <= 0 then return kind end
     end
     return TREE_KIND[b.id] or "tree"
@@ -647,6 +695,24 @@ local function rollProp(p, z, forcedSide)
     local rng = WorldRoad._rng
     p.z = z
     p.kind = pickKind(b, rng)
+    -- v9: CADÊNCIA MÍNIMA de luminária — estrada real tem poste em
+    -- intervalo; se passaram >12 unidades de mundo sem emissor, o próximo
+    -- prop VIRA luminária (sorteada pelos pesos do catálogo do bioma)
+    local lumCat = LuminaireEngine.catalog(b.id)
+    if next(lumCat) then
+        if LuminaireEngine.isLuminaire(p.kind) then
+            WorldRoad._lastLumZ = z
+        elseif z - (WorldRoad._lastLumZ or -1e9) > 12 then
+            local tot = 0
+            for _, d in pairs(lumCat) do tot = tot + (d.weight or 0.5) end
+            local r2 = rng:random() * tot
+            for kind, d in pairs(lumCat) do
+                r2 = r2 - (d.weight or 0.5)
+                if r2 <= 0 then p.kind = kind; break end
+            end
+            WorldRoad._lastLumZ = z
+        end
+    end
     -- LADO: populate agora spawna nos DOIS lados por passo (ciclo 21 —
     -- cunhas cheias e simétricas por construção). O saldo _sideBal fica
     -- pros spawns avulsos durante a viagem.
@@ -660,7 +726,10 @@ local function rollProp(p, z, forcedSide)
         p.side = rng:random() < pLeft and -1 or 1
         WorldRoad._sideBal = bal + p.side * (SIDE_W[p.kind] or 0.35)
     end
-    local lane = KIND_LANE[p.kind] or KIND_LANE.default
+    -- v9: luminária tem lane do catálogo por bioma (cogumelo entra no mato,
+    -- lampião cola na estrada — a poça de luz precisa alcançar o caminho)
+    local ldef = LuminaireEngine.def(b.id, p.kind)
+    local lane = (ldef and ldef.lane) or KIND_LANE[p.kind] or KIND_LANE.default
     p.lane = lane[1] + rng:random() * (lane[2] - lane[1])
     p.variant = rng:random(0, 2)
     p.bid = b.id
@@ -1621,7 +1690,7 @@ local function drawPropsBehind(g, x, w, camZ)
             -- distância HORIZONTAL do centro, como o inimigo na estrada.
             if crest and img and math.abs(pxX - g.cx) < w * 0.26 then
                 local iw, ih = img:getWidth(), img:getHeight()
-                local size = (KIND_SIZE[p.kind] or 1.0) * (p.big or 1)
+                local size = kindSize(p.kind, p.bid) * (p.big or 1)
                 local s = g.scaleAt(size, 0, ih)
                 local sink = (1 - em) * ih * s
                 -- companheiras de cluster emergem junto (senão pipocam)
@@ -2523,8 +2592,20 @@ local function drawProps(g, x, w, camZ)
 
             if img then
                 local iw, ih = img:getWidth(), img:getHeight()
-                local size = (KIND_SIZE[p.kind] or 1.0) * (p.big or 1)
+                local size = kindSize(p.kind, p.bid) * (p.big or 1)
                 local s = g.scaleAt(size, t, ih)
+
+                -- LuminaireEngine v9: centragem POR CONTEÚDO (offX/footPad
+                -- do canvas) — lição dos monstros: margem do PixelLab
+                -- descentra o prop e deixa o pé flutuando
+                local lumDef = LuminaireEngine.def(p.bid, p.kind)
+                local lumAnc, lumSink = nil, 0
+                if lumDef then
+                    lumAnc = LuminaireEngine.anchor(p.bid, p.kind, p.variant,
+                        luminairePath(p.bid, p.kind, p.variant))
+                    pxX = pxX - (lumAnc.offX or 0) * s
+                    lumSink = (lumAnc.footPad or 0) * s
+                end
 
                 -- CLUSTER natural (feedback: "muito solto"): árvores vêm em
                 -- grupos de 2-3, companheiras menores atrás/ao lado — como
@@ -2593,7 +2674,8 @@ local function drawProps(g, x, w, camZ)
                 -- o tapete mais próximo cobria). Fallback: elipse legada.
                 local aFade = math.min(1, 0.72 + t * 1.1)
                 if not ShadowEngine.queue(img, pxX, sy - 1, s,
-                    { alphaK = aFade }) then
+                    { alphaK = aFade,
+                      footPad = lumAnc and lumAnc.footPad or 0 }) then
                     local shd = sunShadowDir(g, x, w, pxX)
                     love.graphics.setColor(0, 0, 0, 0.20 * aFade)
                     love.graphics.ellipse("fill",
@@ -2604,7 +2686,8 @@ local function drawProps(g, x, w, camZ)
                 -- BALANÇO de vento (vegetação viva): rotação sutil no pivô
                 -- da base, fase única por prop (p.z)
                 local rot = 0
-                local sink2 = 0
+                -- v9: luminária AFUNDA o footPad (pé do conteúdo no chão)
+                local sink2 = lumSink
                 if p.kind == "tree" or p.kind == "pine"
                    or p.kind == "deadtree" or p.kind == "bush" then
                     rot = math.sin(WorldRoad._time * 1.15 + p.z * 0.7) * 0.018
@@ -2652,32 +2735,22 @@ local function drawProps(g, x, w, camZ)
                     })
                 end
 
-                -- LightEngine v1: prop emissor → núcleo (micro na chama) +
-                -- POÇA de luz no chão (posterizada + dither, flicker noise).
-                -- Raio ∝ altura do sprite NA TELA (revisão: raio escala com
-                -- persp — lanterna no horizonte tem poça minúscula).
-                local fl = FLAME_ANCHOR[p.kind]
-                if fl then
-                    local Lc = p.kind == "lantern" and Config.Lighting.LANTERN
-                        or Config.Lighting.BRAZIER
+                -- LuminaireEngine v9: prop emissor → o MOTOR cuida do núcleo
+                -- na chama + poça de chão + estilo de flicker por bioma.
+                -- Âncora da chama detectada por conteúdo (pixel mais claro).
+                -- Brasas desenham AQUI, no slot de profundidade do prop
+                -- (REGRA DE PROFUNDIDADE: fagulha atrás da árvore da frente).
+                if lumDef then
                     local sh2 = ih * s
-                    local fx = pxX + (fl[1] - 0.5) * iw * s
-                    local fy = sy - sh2 * (1 - fl[2])
+                    local fx = pxX + ((lumAnc.ax or 0.5) - 0.5) * iw * s
+                    local fy = sy + sink2 - sh2 * (1 - (lumAnc.ay or 0.3))
                     local fxT, fyT = love.graphics.transformPoint(fx, fy)
-                    LightEngine.submitMicro(fxT, fyT, Lc.coreK * sh2,
-                        Lc.color, 0.9, rel)
-                    -- poça de chão só PERTO (t alto) — de longe o prop vive
-                    -- entre copas e a poça ditherizava a silhueta das árvores
-                    if t >= Config.Lighting.POOL_MIN_T then
-                        local gxT, gyT = love.graphics.transformPoint(pxX, sy)
-                        LightEngine.submit({
-                            x = gxT, y = gyT,
-                            radius = Lc.radiusK * sh2,
-                            color = Lc.color, intensity = Lc.intensity,
-                            dither = true, flicker = "fire", seed = p.z,
-                            z = rel,
-                        })
-                    end
+                    local gxT, gyT = love.graphics.transformPoint(pxX, sy)
+                    LuminaireEngine.submit(p.bid, p.kind, {
+                        fx = fxT, fy = fyT, gx = gxT, gy = gyT,
+                        sh = sh2, t = t, rel = rel, seed = p.z,
+                    })
+                    LuminaireEngine.drawEmbers(p.bid, p.kind, fx, fy, sh2, p.z)
                 end
 
                 -- AVES pousadas na cerca: 2 pixels escuros no trilho de cima;

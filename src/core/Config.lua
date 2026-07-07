@@ -246,16 +246,9 @@ Config.Audio = {
 -- do WorldRoad. O motor em si vive em engine/LightEngine.lua; a cor ambiente
 -- por bioma vive em src/data/biomes.lua (campo lightAmbient).
 Config.Lighting = {
-    -- raios em FRAÇÃO da altura do sprite emissor na tela (∝ perspectiva).
-    -- POOL_MIN_T: poça de chão só quando o prop está no terço de baixo da
-    -- perspectiva (t ≥ 0.42) — lanterna DISTANTE (no meio das copas) mantém
-    -- só o núcleo; a poça grande sobre folhagem virava xadrez de dither
-    -- na silhueta das árvores (lição F-1 aplicada na prática).
-    POOL_MIN_T = 0.42,
-    LANTERN = { radiusK = 1.35, coreK = 0.4,
-                color = { 1.00, 0.62, 0.25 }, intensity = 0.85 },
-    BRAZIER = { radiusK = 1.60, coreK = 0.5,
-                color = { 1.00, 0.55, 0.20 }, intensity = 0.85 },
+    -- v9: LANTERN/BRAZIER/POOL_MIN_T migraram pro LuminaireEngine
+    -- (engine/LuminaireEngine.lua) — luz de prop decorativo agora é
+    -- catálogo POR BIOMA com 2-3 tipos cada.
     -- janelas do castelo: micro-luzes POR janela (raio ∝ largura do castelo);
     -- âncoras default {xr, yr} relativas ao sprite — biomes.lua pode
     -- sobrescrever com lightWindows

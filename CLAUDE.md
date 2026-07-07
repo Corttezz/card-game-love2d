@@ -27,7 +27,8 @@ card-game-love2d/
 │   ├── Moveable.lua            # Mixin juice_up() + T/VT opcional
 │   ├── GrassField.lua          # Motor de vegetação rasteira (SpriteBatch, vento 3 camadas, presets por bioma) — base do cenário WorldRoad
 │   ├── LightEngine.lua         # Motor de iluminação 2D do WorldRoad (lightmap ¼ multiply-only, micro-luzes, zero stencil) — memory/lighting_engine.md
-│   └── ShadowEngine.lua        # Motor de sombras projetadas de silhueta (direção pelo sol, comprimento pelo horário, fila pós-grama) — memory/shadow_engine.md
+│   ├── ShadowEngine.lua        # Motor de sombras projetadas de silhueta (direção pelo sol, comprimento pelo horário, fila pós-grama) — memory/shadow_engine.md
+│   └── LuminaireEngine.lua     # Motor de props emissores de luz (catálogo 2-3 luminárias/bioma, âncora de chama por conteúdo, cadência de spawn, brasas) — memory/luminaire_engine.md
 ├── shaders/                    # GLSL (LÖVE 11.x format)
 │   ├── crt.glsl, holo.glsl, card_perspective.glsl  # Pré-existentes
 │   ├── dissolve.glsl           # Próprio (value noise + FBM + threshold animado)
