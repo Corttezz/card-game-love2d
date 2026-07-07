@@ -310,9 +310,32 @@ function GrassField.draw(ctx)
                             local dryK = dq * 0.15
                             local tone = (ht < 0.30) and 3
                                 or ((ht < 0.62) and 2 or 1)
+                            local lf = (k + (hk - 0.5) * 0.9) / NK - 0.5
+                            -- v7.4.6: 3 ALTURAS com sorteio PONDERADO pela
+                            -- distância da estrada (rasteira na beira do
+                            -- caminho → alta na parede de floresta; pesos
+                            -- deslizam, sorteio continua aleatório).
+                            -- |lf| é estático → o tier NUNCA muda em
+                            -- movimento (threshold dinâmico faria a moita
+                            -- trocar de altura no meio da viagem)
+                            local df = math.min(1, math.max(0,
+                                (math.abs(lf) - 0.055) / 0.30))
+                            local pSmall = 0.62 - 0.47 * df
+                            local pTall = 0.08 + 0.57 * df
+                            local hr = hash(ci * 41 + 8, k * 23 + 5)
+                            local hr2 = hash(ci * 43 + 2, k * 31 + 9)
+                            local hMul
+                            if hr < pSmall then
+                                hMul = 0.42 + hr2 * 0.22      -- bem pequena
+                            elseif hr > 1 - pTall then
+                                hMul = 1.30 + hr2 * 0.50      -- bem alta
+                            else
+                                hMul = 0.82 + hr2 * 0.34      -- média
+                            end
                             rc[k] = {
                                 hk = hk,
-                                lf = (k + (hk - 0.5) * 0.9) / NK - 0.5,
+                                lf = lf,
+                                hMul = hMul,
                                 tone = tone,
                                 key = tone * 4 + dq,
                                 dr = 1 + dryK * 0.30,
@@ -365,7 +388,6 @@ function GrassField.draw(ctx)
                             local tk = g.tOf(zk - camZ) or t
                             local perspK = g.persp(tk)
                             local sK = (0.26 + perspK * 1.75) * P.heightK
-                                * (0.80 + e.hk * 0.45)
                             local base = g.latY(pxX - g.cx, tk)
                             local s0 = k - (k % WSTEP)
                             local f = (k - s0) / WSTEP
@@ -394,10 +416,12 @@ function GrassField.draw(ctx)
                                 gk = math.min(1, age / (0.6 + e.hk * 0.7))
                                 gk = gk * gk * (3 - 2 * gk)
                             end
+                            -- hMul só na ALTURA: rasteira estreita
+                            -- furaria o tapete (largura cobre o chão)
                             batch:add(e.q, math.floor(pxX),
                                 math.floor(base + 1), 0,
                                 sK * sxK * e.flip,
-                                sK * (1 - math.abs(lean) * 0.12)
+                                sK * e.hMul * (1 - math.abs(lean) * 0.12)
                                     * (0.35 + 0.65 * edgeK) * gk,
                                 CLUMP_W / 2, CELL_H, lean * 0.5, 0)
                         end
@@ -490,8 +514,22 @@ function GrassField.draw(ctx)
                         -- tem o mesmo "vir vindo" gradual das árvores)
                         local ramp = math.min(1, (t - 0.18) / 0.10)
                         ramp = ramp * ramp * (3 - 2 * ramp)
+                        -- v7.4.6: tier de altura ponderado pela distância
+                        -- da estrada (h2 É a distância do sorteio lateral)
+                        local dfA = math.min(1, h2 * 1.8)
+                        local pSmallA = 0.62 - 0.47 * dfA
+                        local pTallA = 0.08 + 0.57 * dfA
+                        local hrA = hash(ci * 47 + 6, slot * 37 + 13)
+                        local hMulA
+                        if hrA < pSmallA then
+                            hMulA = 0.45 + h3 * 0.2
+                        elseif hrA > 1 - pTallA then
+                            hMulA = 1.30 + h3 * 0.5
+                        else
+                            hMulA = 0.82 + h3 * 0.34
+                        end
                         local scale = (0.22 + persp * 1.85) * P.heightK
-                            * ramp
+                            * ramp * hMulA
                         if scale * CELL_H >= 1.6 then
                             -- FLICK do tufo: impulso raro e curto (bicho/
                             -- lufada pontual) — sacode e assenta

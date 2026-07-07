@@ -1158,6 +1158,28 @@ pixel art se DESENHAM na paleta (opaco); véu com alpha lê como mancha.
   balançando (90k px alterados, tufos fixos no lugar = vento, não ruído).
 - Perf: ~2-4k batch:add/frame (1 draw call), ~20k sin/frame — folga.
 
+**Evolução v7.2→v7.4.6 (mesma noite, feedbacks em sequência):**
+- v7.2 campo cheio até a crista + contraste adaptativo por luminância;
+- v7.3 vento v2 (2 frentes incomensuráveis + vorticles + respiração
+  ~20s + relógio por lâmina + inércia de junco + flicks + seco/viçoso);
+- v7.4 TAPETE 100% (moitas 16×16 pré-assadas, fileiras far→near com LOD
+  em espaço de tela) — "quero 100% em tudo";
+- v7.4.1 ancoragem 100% MUNDO (decimação ci%M potência de 2 + fração
+  fixa de largura + jitter z por moita) — "movimento fica estranho";
+- v7.4.2 perf: bench A/B no screenshot tool (cena 4.5ms sem grama,
+  7.6ms com; 60fps ok), rowCache, vento em grade 13 amostras+lerp,
+  baldes de cor;
+- v7.4.3 tapete até t>0.002 (corte 0.03 deixava careca AMPLIFICADA nas
+  laterais pela geometria — prova magenta + log LOD, gated GF_DEBUG);
+- v7.4.4 FRANJA DA CRISTA (moitas sentadas na curva do horizonte,
+  estáticas, pulam castelo/estrada; inimigo emerge POR TRÁS do capim);
+- v7.4.5 nascimento natural: broto com stagger (rc.born), jitter z FIXO
+  (era ×M — pulava na troca de LOD), rampa espacial dos acentos
+  (t 0.18→0.28) — "grama brotava do nada";
+- v7.4.6 3 ALTURAS ponderadas pela distância da estrada (rasteira na
+  beira → alta na parede de floresta; |lf| estático decide o tier =
+  nunca muda em movimento; hMul SÓ na altura — largura cobre o chão).
+
 Backlog natural do motor: dobra interativa (inimigo/herói passando),
 sombra de rajada (escurecer levemente onde gust>0.7 — DESENHADO, não
 véu), wind dir global por bioma no update dos props (hoje só a grama).
