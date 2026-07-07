@@ -449,11 +449,19 @@ function GrassField.draw(ctx)
                                 gk = gk * gk * (3 - 2 * gk)
                             end
                             -- hMul só na ALTURA: rasteira estreita
-                            -- furaria o tapete (largura cobre o chão)
+                            -- furaria o tapete (largura cobre o chão).
+                            -- v7.4.10: SEM encurtamento por |lean| no
+                            -- tapete — a mudança de escala re-amostrava o
+                            -- sprite (nearest) e as fileiras ESCURAS da
+                            -- base ganhavam/perdiam 1px em ONDA coerente
+                            -- com a rajada ("varredura escurecendo a base
+                            -- das gramas linha por linha", 2º feedback).
+                            -- O balanço fica só no cisalhamento (kx), que
+                            -- desloca pixels sem re-amostrar altura.
                             batch:add(e.q, math.floor(pxX),
                                 math.floor(base + 1), 0,
                                 sK * sxK * e.flip,
-                                sK * e.hMul * (1 - math.abs(lean) * 0.12)
+                                sK * e.hMul
                                     * (0.35 + 0.65 * edgeK) * gk,
                                 CLUMP_W / 2, CELL_H, lean * 0.5, 0)
                         end
