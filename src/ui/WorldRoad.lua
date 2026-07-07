@@ -736,13 +736,20 @@ local function rollProp(p, z, forcedSide)
     p.z = z
     p.kind = pickKind(b, rng)
     -- v9: CADÊNCIA MÍNIMA de luminária — estrada real tem poste em
-    -- intervalo; se passaram >9 unidades de mundo sem emissor, o próximo
+    -- intervalo; se passaram >7 unidades de mundo sem emissor, o próximo
     -- prop VIRA luminária (sorteada pelos pesos do catálogo do bioma)
     local lumCat = LuminaireEngine.catalog(b.id)
     if next(lumCat) then
         if LuminaireEngine.isLuminaire(p.kind) then
-            WorldRoad._lastLumZ = z
-        elseif z - (WorldRoad._lastLumZ or -1e9) > 9 then
+            -- v9.2: ESPAÇAMENTO mínimo — 3 postes aglomerados em poucas
+            -- unidades liam como depósito de poste; perto demais do
+            -- último emissor, o sorteio vira árvore do bioma
+            if z - (WorldRoad._lastLumZ or -1e9) < 5 then
+                p.kind = TREE_KIND[b.id] or "tree"
+            else
+                WorldRoad._lastLumZ = z
+            end
+        elseif z - (WorldRoad._lastLumZ or -1e9) > 7 then
             local tot = 0
             for _, d in pairs(lumCat) do tot = tot + (d.weight or 0.5) end
             local r2 = rng:random() * tot
@@ -854,6 +861,10 @@ end
 local function populate()
     WorldRoad._props = {}
     WorldRoad._sideBal = 0
+    -- v9.2: cursor de cadência de luminária ZERA na repopulação — o valor
+    -- do trecho anterior (z alto) fazia o espaçamento mínimo demitir toda
+    -- luminária do bioma novo (marsh nascia sem NENHUM emissor)
+    WorldRoad._lastLumZ = nil
     local b = rawBiome()
     local z = 0.5
     while z < REL_CREST + EMERGE_BAND do
@@ -1720,6 +1731,13 @@ local function drawPropsBehind(g, x, w, camZ)
             local em = 1 - (rel - REL_CREST) / EMERGE_BAND
             -- mesma fórmula da cunha em t=0 → continuidade ao cruzar
             local pxX = g.cx + p.side * w * (0.11 + p.lane * 0.38)
+            -- v9.2: roadside emerge já colado na borda da estrada (mesma
+            -- fórmula do drawProps em t=0 — sem pulo ao cruzar a crista)
+            local edef = LuminaireEngine.def(p.bid, p.kind)
+            if edef and edef.roadside then
+                pxX = g.cx + p.side * (ROAD_HALF * w * 0.30)
+                    * (1.05 + p.lane * 1.2)
+            end
             local crest = g.crestYAt(pxX)
             local img = getSprite(p.kind, p.variant, p.bid)
             -- ciclo 30/33: emersão SÓ na faixa central do horizonte. O
@@ -2608,6 +2626,17 @@ local function drawProps(g, x, w, camZ)
             local over = math.max(0, -rel)
             local inner = 0.11 + 0.38 * t + over * 0.16
             local lateral = p.side * w * (inner + p.lane * 0.38)
+            -- v9.2 (feedback: "postes têm que ficar na borda da estrada,
+            -- não longe"): luminária ROADSIDE ancora na meia-largura REAL
+            -- da estrada (mesma fórmula do corredor do fork), não na cunha
+            -- das árvores — o poste ilumina o caminho, o braço pende
+            -- por cima dele
+            local rdef = LuminaireEngine.def(p.bid, p.kind)
+            if rdef and rdef.roadside then
+                local halfR = ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15))
+                lateral = p.side * (halfR * (1.05 + p.lane * 1.2)
+                    + over * w * 0.16)
+            end
             local pxX = g.cx + lateral
             -- Y pela LATITUDE real da esfera (não lerp pro fundo plano)
             local sy = g.latY(pxX - g.cx, t) + over * g.h * 0.20
@@ -2809,6 +2838,11 @@ local function drawProps(g, x, w, camZ)
                     LuminaireEngine.submit(p.bid, p.kind, {
                         fx = fxT, fy = fyT, gx = gxT, gy = gyT,
                         sh = sh2, t = t, rel = rel, seed = p.z,
+                        -- v9.2: poça ∝ altura da CHAMA sobre o chão, com
+                        -- teto de 30% da área (poste gigante ditherizava
+                        -- o céu com um disco do tamanho do sprite)
+                        flameH = math.max(8, gyT - fyT),
+                        capR = g.h * 0.30,
                     })
                     LuminaireEngine.drawEmbers(p.bid, p.kind, fx, fy, sh2, p.z)
                 end
@@ -3185,6 +3219,7 @@ function WorldRoad.clearCache()
     WorldRoad._blend = nil
     WorldRoad._prevBiomeIndex = nil
     WorldRoad._encounter = nil
+    WorldRoad._lastLumZ = nil
     WorldRoad._fork = nil
     WorldRoad._landmark = nil
 end

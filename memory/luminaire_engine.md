@@ -64,7 +64,18 @@ re-medir ocioso; orçamento 16.6). Anchor scan é 1× por (bid,kind,variant).
   (`lumFlip`) pra apontar SEMPRE pra estrada: prop à esquerda → braço à
   direita. Espelho propaga: offX·flip, ax'=1-ax, ShadowEngine flip.
 - Postes 2.3→**3.0**; braseiros de pilar 1.5-1.6; totem 2.0.
-- Cadência 12→**9** unidades (frost/dusk ainda sorteavam telas vazias).
+- Cadência 12→**7** unidades + espaçamento MÍNIMO 5 (aglomerado de 3
+  postes vira árvore) + `_lastLumZ` ZERA no populate (persistia do trecho
+  anterior e a demoção engolia TODO emissor do bioma novo).
+- **roadside** no catálogo (postes/braseiros/tochas/santuários/totem):
+  ancora na meia-largura REAL da estrada (`ROAD_HALF·(0.30+0.70t^1.15)
+  ·(1.05+lane·1.2)`), não na cunha das árvores (0.11+0.38t ficava no
+  canto da tela). Mesmo override no caminho de EMERSÃO (sem pulo na
+  crista). Postes de madeira size 3.0→**4.2** (árvore=4.6).
+- Poça/núcleo escalam com a ALTURA DA CHAMA (`flameH = gy−fy`) com teto
+  30% da área — poste 4.2 gerava poça do tamanho do sprite que
+  DITHERIZAVA O CÉU (disco subia acima do horizonte).
+- dusk lantern face corrigido: arte aponta DIREITA (+1), não esquerda.
 - **FOGO ANIMADO**: PixelLab `animate_object` FUNCIONA em map objects
   (mode v3, 8 frames+ref=9, ~6min/job, 8 slots). Frames em
   `assets/sprites/world/anim/<bid>_<kind>_<v>/0..8.png`; WorldRoad troca

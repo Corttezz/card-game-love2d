@@ -54,7 +54,7 @@ local CATALOG = {
     -- Campos Arruinados: âmbar de fazenda — lampião, fogueira de beira de
     -- estrada, santuário de vela (mundo rural que ainda acende as luzes)
     fields = {
-        lantern = { size = 3.0, face = 1,
+        lantern = { size = 4.2, face = 1, roadside = true,
             lane = { 0.0, 0.08 }, anchor = { 0.78, 0.46 },
             weight = 1.1,
             light = { color = FIRE_AMBER, radiusK = 1.35, coreK = 0.40,
@@ -64,7 +64,7 @@ local CATALOG = {
             light = { color = FIRE_ORANGE, radiusK = 1.70, coreK = 0.55,
                       intensity = 0.90, flicker = "fire" },
             embers = { color = { 1.0, 0.70, 0.30 }, count = 3 } },
-        shrine = { size = 1.6, lane = { 0.03, 0.15 }, anchor = { 0.50, 0.42 },
+        shrine = { size = 1.6, roadside = true, lane = { 0.03, 0.15 }, anchor = { 0.50, 0.42 },
             weight = 0.5,
             light = { color = { 1.00, 0.75, 0.40 }, radiusK = 0.90,
                       coreK = 0.30, intensity = 0.65, flicker = "pulse" } },
@@ -74,7 +74,7 @@ local CATALOG = {
     -- monólitos, runas acesas na pedra, e um lampião de ferro quente de
     -- viajante (único calor da noite fria)
     highlands = {
-        brazier = { size = 1.50, lane = { 0.01, 0.12 }, anchor = { 0.50, 0.20 },
+        brazier = { size = 1.50, roadside = true, lane = { 0.01, 0.12 }, anchor = { 0.50, 0.20 },
             weight = 0.9,
             light = { color = { 0.55, 0.70, 1.00 }, radiusK = 1.60,
                       coreK = 0.50, intensity = 0.85, flicker = "fire" },
@@ -85,7 +85,7 @@ local CATALOG = {
                       coreK = 0.35, intensity = 0.70, flicker = "wisp" } },
         -- lanterna de FERRO de viajante apoiada no chão (arte PixelLab veio
         -- assim e ficou ótima — luminária baixa, não poste)
-        lantern = { size = 0.9, lane = { 0.0, 0.08 }, anchor = { 0.50, 0.42 },
+        lantern = { size = 0.9, roadside = true, lane = { 0.0, 0.08 }, anchor = { 0.50, 0.42 },
             weight = 0.6,
             light = { color = { 0.95, 0.72, 0.42 }, radiusK = 1.30,
                       coreK = 0.40, intensity = 0.80, flicker = "fire" } },
@@ -94,12 +94,12 @@ local CATALOG = {
     -- Estrada do Abismo: inferno — braseiro de pilar rugindo (referência),
     -- tocha de estaca carbonizada, fissura de brasa no chão
     abyss = {
-        brazier = { size = 1.60, lane = { 0.01, 0.12 }, anchor = { 0.50, 0.18 },
+        brazier = { size = 1.60, roadside = true, lane = { 0.01, 0.12 }, anchor = { 0.50, 0.18 },
             weight = 1.0,
             light = { color = { 1.00, 0.45, 0.12 }, radiusK = 1.80,
                       coreK = 0.60, intensity = 0.95, flicker = "fire" },
             embers = { color = { 1.00, 0.55, 0.18 }, count = 4 } },
-        torch = { size = 1.4, lane = { 0.0, 0.10 }, anchor = { 0.50, 0.16 },
+        torch = { size = 1.4, roadside = true, lane = { 0.0, 0.10 }, anchor = { 0.50, 0.16 },
             weight = 0.8,
             light = { color = { 1.00, 0.55, 0.20 }, radiusK = 1.20,
                       coreK = 0.45, intensity = 0.85, flicker = "fire" },
@@ -113,7 +113,7 @@ local CATALOG = {
     -- Geleira Espectral: o braseiro QUENTE é o único calor do bioma
     -- (contraste); cristal de gelo e lanterna de pedra são a luz fria local
     frost = {
-        brazier = { size = 1.50, lane = { 0.01, 0.12 }, anchor = { 0.50, 0.20 },
+        brazier = { size = 1.50, roadside = true, lane = { 0.01, 0.12 }, anchor = { 0.50, 0.20 },
             weight = 0.8,
             light = { color = { 1.00, 0.58, 0.22 }, radiusK = 1.60,
                       coreK = 0.50, intensity = 0.90, flicker = "fire" },
@@ -122,7 +122,7 @@ local CATALOG = {
             weight = 0.8,
             light = { color = { 0.62, 0.85, 1.00 }, radiusK = 1.10,
                       coreK = 0.35, intensity = 0.70, flicker = "shimmer" } },
-        lantern = { size = 1.6, lane = { 0.0, 0.08 }, anchor = { 0.50, 0.38 },
+        lantern = { size = 1.6, roadside = true, lane = { 0.0, 0.08 }, anchor = { 0.50, 0.38 },
             weight = 0.6,
             light = { color = { 1.00, 0.68, 0.32 }, radiusK = 1.25,
                       coreK = 0.40, intensity = 0.80, flicker = "fire" } },
@@ -131,7 +131,7 @@ local CATALOG = {
     -- Pântano da Podridão: bruxaria — lampião torto de fogo-fátuo VERDE,
     -- cogumelos bioluminescentes, totem musgoso com chama espectral
     marsh = {
-        lantern = { size = 3.0, face = 1,
+        lantern = { size = 4.2, face = 1, roadside = true,
             lane = { 0.0, 0.08 }, anchor = { 0.78, 0.46 },
             weight = 0.9,
             light = { color = { 0.55, 0.95, 0.45 }, radiusK = 1.35,
@@ -140,7 +140,7 @@ local CATALOG = {
             weight = 1.0,
             light = { color = { 0.45, 0.90, 0.60 }, radiusK = 0.80,
                       coreK = 0.30, intensity = 0.60, flicker = "pulse" } },
-        totem = { size = 2.0, lane = { 0.02, 0.20 }, anchor = { 0.50, 0.18 },
+        totem = { size = 2.0, roadside = true, lane = { 0.02, 0.20 }, anchor = { 0.50, 0.18 },
             weight = 0.6,
             light = { color = { 0.62, 0.88, 0.50 }, radiusK = 1.20,
                       coreK = 0.40, intensity = 0.75, flicker = "wisp" } },
@@ -149,7 +149,7 @@ local CATALOG = {
     -- Campos do Crepúsculo: golden hour eterna — lampião dourado
     -- (referência), fogueira de colheita, santuário de velas no trigo
     dusk = {
-        lantern = { size = 3.0, face = -1,
+        lantern = { size = 4.2, face = 1, roadside = true,
             lane = { 0.0, 0.08 }, anchor = { 0.78, 0.46 },
             weight = 1.1,
             light = { color = { 1.00, 0.72, 0.30 }, radiusK = 1.40,
@@ -159,7 +159,7 @@ local CATALOG = {
             light = { color = FIRE_ORANGE, radiusK = 1.80, coreK = 0.60,
                       intensity = 0.90, flicker = "fire" },
             embers = { color = { 1.0, 0.72, 0.32 }, count = 3 } },
-        shrine = { size = 1.6, lane = { 0.03, 0.15 }, anchor = { 0.50, 0.42 },
+        shrine = { size = 1.6, roadside = true, lane = { 0.03, 0.15 }, anchor = { 0.50, 0.42 },
             weight = 0.5,
             light = { color = { 1.00, 0.78, 0.45 }, radiusK = 0.95,
                       coreK = 0.30, intensity = 0.70, flicker = "pulse" } },
@@ -274,12 +274,18 @@ function LuminaireEngine.submit(bid, kind, a)
         inten = inten * (0.88 + 0.12 * n)
         flicker = nil
     end
-    LightEngine.submitMicro(a.fx, a.fy, L.coreK * a.sh, L.color,
+    -- v9.2: núcleo e poça escalam com a ALTURA DA CHAMA acima do chão
+    -- (a.flameH), não com o sprite inteiro — poste 4.2 de mundo tinha
+    -- sh enorme e a poça virava um disco que ditherizava o CÉU. capR
+    -- (do chamador, ~30% da área) é o teto absoluto.
+    local base = a.flameH or a.sh
+    LightEngine.submitMicro(a.fx, a.fy,
+        math.min(L.coreK * base, (a.capR or 1e9) * 0.5), L.color,
         0.9 * (inten / L.intensity), a.rel)
     if a.t >= LuminaireEngine.POOL_MIN_T then
         LightEngine.submit({
             x = a.gx, y = a.gy,
-            radius = radK * a.sh,
+            radius = math.min(radK * base, a.capR or 1e9),
             color = L.color, intensity = inten,
             dither = true, flicker = flicker, seed = a.seed,
             z = a.rel,
