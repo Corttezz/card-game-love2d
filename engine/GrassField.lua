@@ -173,6 +173,7 @@ end
 
 local batch
 local rowCache = {}   -- estáticos por fileira do tapete (podado por janela)
+local lastCamZ        -- detecta câmera em movimento (broto desligado)
 -- diagnóstico (prova magenta + log de LOD): cacheado no load — os.getenv
 -- por moita custava 7.8k chamadas C/frame
 local GF_DEBUG = os.getenv("GF_DEBUG")
@@ -249,6 +250,11 @@ function GrassField.draw(ctx)
     -- faixa careca que a geometria da esfera AMPLIFICA nas laterais
     -- (t 0..0.03 = ~15px no centro, 40-100px nas bordas em tela larga —
     -- "o final da esfera sem grama", feedback com print ultrawide)
+    -- câmera em movimento? (viagem/convergência — broto desligado)
+    local camMoving = lastCamZ ~= nil
+        and math.abs(camZ - lastCamZ) > 1e-4
+    lastCamZ = camZ
+
     local first = math.floor(camZ / Z_CELL)
     local last = math.floor((camZ + ctx.relCrest - 0.05) / Z_CELL)
 
@@ -297,9 +303,16 @@ function GrassField.draw(ctx)
                     -- estáticos da fileira (mundo-fixos): calcula 1x
                     local rc = rowCache[ci]
                     if not rc then
-                        -- born: fileira recém-promovida pelo LOD BROTA do
-                        -- chão (v7.4.5) em vez de popar em tamanho cheio
-                        rc = { order = {}, born = t0 }
+                        -- born: fileira recém-criada BROTA do chão (v7.4.5)
+                        -- — mas SÓ com a câmera parada (entrada de cena).
+                        -- v7.4.7 (feedback: "no demo, viajando, o fundo
+                        -- fica liso"): em viagem o LOD promove fileiras
+                        -- SEM PARAR no terço final — todas mid-broto =
+                        -- careca permanente. Em movimento a fileira nova
+                        -- entra em tamanho cheio (nasce atrás das
+                        -- vizinhas sobrepostas — o pop é invisível).
+                        rc = { order = {},
+                               born = camMoving and -1e9 or t0 }
                         for k = 0, NK - 1 do
                             local hk = hash(ci * 3 + 1, k * 11 + 2)
                             local ht = hash(ci * 19, k * 7 + 3)
@@ -609,6 +622,7 @@ end
 function GrassField.clearCache()
     atlasImg, quads, clumpQuads, batch = nil, nil, nil, nil
     rowCache = {}
+    lastCamZ = nil
 end
 
 return GrassField
