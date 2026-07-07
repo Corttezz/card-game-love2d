@@ -43,8 +43,10 @@ local frame = {
 function ShadowEngine.setFrame(sunX, w, tod, luma)
     frame.sunX = sunX or 0
     frame.w = math.max(1, w or 1)
-    -- sol alto (dia) = sombra curta; sol rasante (anoitecer) = comprida
-    frame.len = 0.34 + 0.30 * math.max(0, math.min(1, tod or 1))
+    -- sol alto (dia) = sombra curta; sol rasante (anoitecer) = comprida.
+    -- v8.1 (feedback: "sem distorção, fiel demais; pode ser maior"):
+    -- 0.34-0.64 → 0.55-1.00 — a sombra ESTICA de verdade
+    frame.len = 0.55 + 0.45 * math.max(0, math.min(1, tod or 1))
     -- ambiente escuro = luz difusa = sombra mais suave (nunca some:
     -- piso 0.15 mantém o objeto ancorado no chão)
     local l = math.max(0, math.min(1, luma or 1))
@@ -81,7 +83,7 @@ function ShadowEngine.sprite(img, feetX, feetY, s, opts)
         s * (opts.flip or 1),
         -s * frame.len * (opts.lenK or 1),
         iw / 2, ih,
-        -shd * 0.55, 0)
+        -shd * 0.78, 0)
     love.graphics.setColor(1, 1, 1, 1)
     return true
 end
@@ -102,7 +104,7 @@ function ShadowEngine.begin(feetX, feetY, opts)
     -- ordem de emissão translate→shear→scale ⇒ no ponto aplica scale
     -- ANTES do shear: y já flipado (positivo abaixo dos pés) → ponta
     -- pra longe do sol pede kx = +shd·K (sinal oposto ao .sprite)
-    love.graphics.shear(shd * 0.55, 0)
+    love.graphics.shear(shd * 0.78, 0)
     love.graphics.scale(1, -frame.len * (opts.lenK or 1))
     beginTint[4] = frame.alpha * (opts.alphaK or 1)
     love.graphics.setColor(beginTint)

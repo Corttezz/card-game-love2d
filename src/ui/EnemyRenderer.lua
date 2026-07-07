@@ -209,6 +209,55 @@ function EnemyRenderer.update(dt)
     end
 end
 
+-- v8.1: CENTRALIZAÇÃO POR CONTEÚDO — o crop de instalação usa a UNIÃO
+-- dos bboxes de TODAS as animações (a death caindo pro lado estica o
+-- canvas), então o idle de alguns monstros fica descentrado no canvas
+-- (medido: obsidian_sentinel −19px, glacier_knight −20px, frost_wight
+-- −10px — feedback "muito à esquerda"). Offset do centro do conteúdo
+-- do 1º frame idle, cacheado por id, aplicado no cx do draw.
+local centerOff = {}
+local function contentOffsetX(id)
+    local c = centerOff[id]
+    if c ~= nil then return c end
+    local off = 0
+    local imgPath
+    local fdir = "assets/sprites/characters/enemies/" .. id
+        .. "/animations/idle/south"
+    local info = love.filesystem.getInfo(fdir)
+    if info and info.type == "directory" then
+        local files = love.filesystem.getDirectoryItems(fdir)
+        table.sort(files)
+        for _, f in ipairs(files) do
+            if f:match("%.png$") then imgPath = fdir .. "/" .. f; break end
+        end
+    end
+    if not imgPath then
+        local p2 = "assets/sprites/characters/enemies/" .. id .. "/south.png"
+        if love.filesystem.getInfo(p2) then imgPath = p2 end
+    end
+    if imgPath then
+        local ok, data = pcall(love.image.newImageData, imgPath)
+        if ok and data then
+            local wpx, hpx = data:getWidth(), data:getHeight()
+            local minX, maxX = wpx, -1
+            for yy = 0, hpx - 1, 2 do   -- passo 2: bbox horizontal não muda
+                for xx = 0, wpx - 1 do
+                    local _, _, _, a = data:getPixel(xx, yy)
+                    if a > 0.1 then
+                        if xx < minX then minX = xx end
+                        if xx > maxX then maxX = xx end
+                    end
+                end
+            end
+            if maxX >= minX then
+                off = (minX + maxX) / 2 - wpx / 2
+            end
+        end
+    end
+    centerOff[id] = off
+    return off
+end
+
 -- Spawn de particula ambiental na posicao correta (chamado em draw)
 local function tickAmbientSpawn(cx, cy, dt_hint)
     if not currentEnemyId then return end
@@ -259,6 +308,10 @@ function EnemyRenderer.draw(game, cx, cy)
     if game.enemy and game.enemy.isBoss then targetHeight = 330 end
     local scale = targetHeight / ih
     if ih <= 80 then scale = math.max(4, math.floor(scale)) end -- roster legado
+
+    -- v8.1: corrige o descentramento do conteúdo no canvas — desloca o
+    -- centro visual pro cx pedido (sombra/HUD/emissivos seguem juntos)
+    cx = cx - math.floor(contentOffsetX(id) * scale)
 
     -- =========================================================
     -- CAMADAS VISUAIS (aplicadas em ordem)

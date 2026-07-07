@@ -44,6 +44,17 @@ imediato (`.sprite`/`.begin`).
   cobriria o campo — backlog se pedirem).
 - **Cartas: intocadas** (linguagem própria, aprovada).
 
+## v8.1 (feedback)
+- "Sem distorção, fiel demais; pode ser maior" → len 0.34-0.64 →
+  **0.55-1.00** e shear 0.55 → **0.78** — a sombra estica de verdade.
+- "Monstros muito à esquerda" (obsidian_sentinel, glacier_knight):
+  NÃO era sombra — o crop de instalação usa a UNIÃO dos bboxes de todas
+  as anims e a death caindo pro lado descentra o idle no canvas (medido:
+  −19/−20/−10px). Fix: `contentOffsetX(id)` no EnemyRenderer — offset do
+  centro do conteúdo do 1º frame idle (ImageData 1x, cache por id),
+  aplicado no cx (sombra/HUD/emissivos seguem juntos). Checar SEMPRE
+  centralização por CONTEÚDO ao instalar monstro novo.
+
 ## Custo
 Bench 13.48ms/frame total da cena (luz+sombra+tapete somados; orçamento
 16.6 — margem ok mas ficar de olho ao adicionar camadas novas).
