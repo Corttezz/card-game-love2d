@@ -30,6 +30,7 @@
 local biomesData = require("src.data.biomes")
 local Sfx = require("src.systems.Sfx")
 local LightEngine = require("engine.LightEngine")
+local ShadowEngine = require("engine.ShadowEngine")
 local Config = require("src.core.Config")
 local EnemyEmissives = require("src.data.enemy_emissives")
 
@@ -2323,11 +2324,14 @@ local function drawForkMarks(g, x, w, camZ)
             love.graphics.setColor(acc[1], acc[2], acc[3],
                 (hovered and 0.30 or 0.12) * aMul)
             love.graphics.ellipse("fill", px, py, iw * s * 0.7, 7 * g.persp(t) + 3)
-            -- sombra (v6.3: direcional contra o sol)
-            love.graphics.setColor(0, 0, 0, 0.22 * aMul)
-            love.graphics.ellipse("fill",
-                px + sunShadowDir(g, x, w, px) * iw * s * 0.14,
-                py - 1, iw * s * 0.30, math.max(2, 4 * g.persp(t)))
+            -- v8: sombra projetada da silhueta do marco
+            if not ShadowEngine.sprite(img, px, py - 1, s,
+                { alphaK = aMul }) then
+                love.graphics.setColor(0, 0, 0, 0.22 * aMul)
+                love.graphics.ellipse("fill",
+                    px + sunShadowDir(g, x, w, px) * iw * s * 0.14,
+                    py - 1, iw * s * 0.30, math.max(2, 4 * g.persp(t)))
+            end
 
             local bob = hovered and math.sin(WorldRoad._time * 4) * 2 or 0
             local br = hovered and 1.12 or 1
@@ -2391,11 +2395,14 @@ local function drawLandmarkFront(g, x, w, camZ)
     local s = g.scaleAt(lm.size or 2.0, t, ih)
     local py = g.crestApexY + (g.bottomY - g.crestApexY) * t
     local lx = g.cx + roadWobble(lm.z, t, w)   -- segue a curva da estrada
-    love.graphics.setColor(0, 0, 0, 0.22)
-    love.graphics.ellipse("fill",
-        lx + sunShadowDir(g, x, w, lx) * iw * s * 0.14,
-        py - 1, iw * s * 0.30, math.max(2, 4 * g.persp(t)))
-    love.graphics.setColor(1, 1, 1, 1)
+    -- v8: sombra projetada da silhueta do landmark
+    if not ShadowEngine.sprite(img, lx, py - 1, s) then
+        love.graphics.setColor(0, 0, 0, 0.22)
+        love.graphics.ellipse("fill",
+            lx + sunShadowDir(g, x, w, lx) * iw * s * 0.14,
+            py - 1, iw * s * 0.30, math.max(2, 4 * g.persp(t)))
+        love.graphics.setColor(1, 1, 1, 1)
+    end
     love.graphics.draw(img, math.floor(lx - iw * s / 2), math.floor(py - ih * s), 0, s, s)
 end
 
@@ -2519,13 +2526,9 @@ local function drawProps(g, x, w, camZ)
                         local cvar = (p.variant + ci) % 3
                         local cimg = getSprite(p.kind, cvar, p.bid)
                         if cimg then
-                            love.graphics.setColor(0, 0, 0, 0.16)
-                            love.graphics.ellipse("fill",
-                                cx2 + sunShadowDir(g, x, w, cx2)
-                                    * cimg:getWidth() * cs * 0.16,
-                                cy2 - 1,
-                                cimg:getWidth() * cs * 0.24,
-                                math.max(2, 4 * g.persp(t)))
+                            -- v8: sombra projetada da companheira
+                            ShadowEngine.queue(cimg, cx2, cy2 - 1, cs,
+                                { alphaK = 0.8 })
                             love.graphics.setColor(0.88, 0.88, 0.88, 1)
                             love.graphics.draw(cimg,
                                 math.floor(cx2 - cimg:getWidth() * cs / 2),
@@ -2551,10 +2554,9 @@ local function drawProps(g, x, w, camZ)
                             local fx = g.cx + flat
                             local fy = g.latY(fx - g.cx, ft)
                             local fs = g.scaleAt((KIND_SIZE.fence or 1) * (p.big or 1), ft, ih)
-                            love.graphics.setColor(0, 0, 0, 0.18)
-                            love.graphics.ellipse("fill",
-                                fx + sunShadowDir(g, x, w, fx) * iw * fs * 0.14,
-                                fy - 1, iw * fs * 0.3, 3)
+                            -- v8: sombra projetada do segmento de cerca
+                            ShadowEngine.queue(img, fx, fy - 1, fs,
+                                { alphaK = 0.85 })
                             love.graphics.setColor(0.94, 0.94, 0.94, 1)
                             love.graphics.draw(img, math.floor(fx), math.floor(fy),
                                 0, fs, fs, iw / 2, ih)
@@ -2562,17 +2564,21 @@ local function drawProps(g, x, w, camZ)
                     end
                 end
 
-                -- SOMBRA elíptica sob o prop (ancora no chão — sem ela o
-                -- prop parece adesivo flutuando na esfera)
-                -- ciclo 26: 0.34→0.22 — elipse na largura da copa inteira
-                -- sobrava pros lados (embaixo de ar) e lia como flutuação;
-                -- sombra abraça o TRONCO, não a copa
+                -- v8: SOMBRA PROJETADA da silhueta (ShadowEngine) —
+                -- substitui a elipse "círculo nos pés": a própria forma
+                -- do sprite deitada no chão, cisalhada pra longe do sol,
+                -- comprimento pelo horário. ENFILEIRADA: desenha depois
+                -- de props+grama (a sombra cai SOBRE a grama — imediata,
+                -- o tapete mais próximo cobria). Fallback: elipse legada.
                 local aFade = math.min(1, 0.72 + t * 1.1)
-                -- v6.3: sombra desloca CONTRA o sol do bioma (direcional)
-                local shd = sunShadowDir(g, x, w, pxX)
-                love.graphics.setColor(0, 0, 0, 0.20 * aFade)
-                love.graphics.ellipse("fill", pxX + shd * iw * s * 0.16, sy - 1,
-                    iw * s * 0.24, math.max(2, 4 * g.persp(t)))
+                if not ShadowEngine.queue(img, pxX, sy - 1, s,
+                    { alphaK = aFade }) then
+                    local shd = sunShadowDir(g, x, w, pxX)
+                    love.graphics.setColor(0, 0, 0, 0.20 * aFade)
+                    love.graphics.ellipse("fill",
+                        pxX + shd * iw * s * 0.16, sy - 1,
+                        iw * s * 0.24, math.max(2, 4 * g.persp(t)))
+                end
 
                 -- BALANÇO de vento (vegetação viva): rotação sutil no pivô
                 -- da base, fase única por prop (p.z)
@@ -2692,6 +2698,9 @@ local function drawProps(g, x, w, camZ)
     drawList(farPass)
     drawList(nearPass)
     flushGrassTo(-1)   -- fatia final: capim mais perto que todos os props
+    -- v8: sombras enfileiradas caem SOBRE o campo completo (grama + pés
+    -- de quem estiver dentro delas — como sombra real)
+    ShadowEngine.flush()
 end
 
 -- Encounter na frente do domo (cruzou a crista, desce a estrada crescendo)
@@ -2710,6 +2719,8 @@ local function drawEncounterFront(g, x, w, camZ)
     local tBattle = g.tOf(WorldRoad.BATTLE_REL) or 0.3
     local k = math.min(1.02, g.persp(t) / math.max(0.01, g.persp(tBattle)))
     local s = e.targetScale * k
+    -- v8: sombra projetada do monstro que vem vindo pela estrada
+    ShadowEngine.sprite(e.img, cx, sy - 1, s, { alphaK = 0.9 })
     love.graphics.setColor(1, 1, 1, 1)
     local dx0 = math.floor(cx - e.iw * s / 2)
     local dy0 = math.floor(sy - e.ih * s)
@@ -2748,6 +2759,15 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     -- GameplayScene/tools), pra iluminar também o inimigo plantado e
     -- deixar HUD/pills de fora.
     LightEngine.beginFrame(currentLightAmbient())
+
+    -- ShadowEngine v1: frame de sombra — direção pelo astro do bioma,
+    -- comprimento pelo horário (tod), opacidade pela luminância da luz
+    do
+        local cel = rawBiome().celestial
+        local sunX = cel and (x + cel.xr * w) or g.cx
+        ShadowEngine.setFrame(sunX, w, WorldRoad._timeOfDay,
+            LightEngine.ambientLuma())
+    end
 
     -- FUNDO DE SEGURANÇA (feedback telas largas): pinta a área inteira na
     -- cor escura do terreno ANTES de tudo — qualquer pixel que as camadas

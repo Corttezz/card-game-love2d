@@ -281,13 +281,36 @@ function EnemyRenderer.draw(game, cx, cy)
     local drawX = cx - (iw * scale) / 2 + jitter
     local drawY = cy - ih * scale + bounce + EnemyRenderer.getArrivalOffset()
 
-    -- (1) Sombra RASTEIRA no chão (v5.4): larga e achatada, colada nos pés
-    -- (cy = superfície real via getRoadAnchor) — ancora o monstro no chão.
-    -- A versão antiga flutuava por causa de offset; o problema era o offset,
-    -- não a sombra. Sem ela o inimigo parece adesivo (feedback).
-    love.graphics.setColor(0, 0, 0, 0.30)
-    love.graphics.ellipse("fill", cx + jitter * 0.5, cy - 1,
-        iw * scale * 0.42, math.max(4, iw * scale * 0.055))
+    -- (1) v8: SOMBRA PROJETADA da silhueta (ShadowEngine) — a própria
+    -- forma do monstro (frame ATUAL da animação: a sombra respira e ataca
+    -- junto) deitada pro primeiro plano, cisalhada pra longe do sol do
+    -- bioma, comprimento pelo horário. Nos INTERIORES (sem frame de
+    -- sombra do WorldRoad) cai na elipse rasteira legada — luz de tocha
+    -- não tem direção única.
+    do
+        local ShadowEngine = require("engine.ShadowEngine")
+        local tint = ShadowEngine.begin(cx + jitter * 0.5, cy - 1)
+        if tint then
+            local sx0 = -(iw * scale) / 2
+            local sy0 = -(ih * scale)
+            if hasAnim then
+                -- SpriteAnimation:draw ignora setColor sem tint explícito
+                currentAnim:draw(sx0, sy0, scale, tint)
+            else
+                local sprites = loadStatic(id)
+                local staticImg = sprites and (sprites.south or sprites.east
+                    or sprites.west or sprites.north)
+                if staticImg then
+                    love.graphics.draw(staticImg, sx0, sy0, 0, scale, scale)
+                end
+            end
+            ShadowEngine.finish()
+        else
+            love.graphics.setColor(0, 0, 0, 0.30)
+            love.graphics.ellipse("fill", cx + jitter * 0.5, cy - 1,
+                iw * scale * 0.42, math.max(4, iw * scale * 0.055))
+        end
+    end
 
     -- (6) Pulse de tint (cor varia ±6% lentamente, respiração sutil)
     local pulse = 0.94 + (math.sin(t * 1.1) * 0.5 + 0.5) * 0.06
