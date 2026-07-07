@@ -29,6 +29,8 @@
 
 local biomesData = require("src.data.biomes")
 local Sfx = require("src.systems.Sfx")
+local LightEngine = require("engine.LightEngine")
+local Config = require("src.core.Config")
 
 local WorldRoad = {}
 
@@ -67,7 +69,14 @@ local SEGMENT_LEN = WorldRoad.TRAVEL_DISTANCE * 8   -- 8 andares por bioma/trech
 local KIND_SIZE = {
     tree = 4.6, pine = 5.0, deadtree = 4.2, fence = 1.55, sign = 1.7,
     bush = 1.35, rock = 1.05, flowers = 0.7, stump = 0.9, ruin = 2.9,
-    tuft = 0.5,
+    tuft = 0.5, lantern = 1.9, brazier = 1.25,
+}
+
+-- LightEngine v1: âncora da chama {xr, yr} relativa ao sprite (fração da
+-- largura/altura, y do TOPO) — onde a micro-luz do núcleo nasce
+local FLAME_ANCHOR = {
+    lantern = { 0.78, 0.46 },
+    brazier = { 0.50, 0.20 },
 }
 
 -- Índice id → dados crus do bioma
@@ -77,6 +86,8 @@ for _, b in ipairs(biomesData) do BIOME_BY_ID[b.id] = b end
 local ENV_FIELDS = {
     "skyTop", "skyHorizon", "cloud", "hillsFar", "hillsNear",
     "grassA", "grassB", "roadA", "roadB", "roadEdge", "fog",
+    -- (lightAmbient saiu daqui: o ambiente de luz agora é computado por
+    -- currentLightAmbient() — lerp dia/noite pelo timeOfDay + blend de bioma)
 }
 
 -- ============================================================================
@@ -103,6 +114,48 @@ WorldRoad._blend = nil
 local function rawBiome(idx)
     local n = #biomesData
     return biomesData[(((idx or WorldRoad._biomeIndex) - 1) % n) + 1]
+end
+
+-- ============================================================================
+-- F6.1: ENTARDECER PROGRESSIVO POR ANDAR (LightEngine)
+-- ============================================================================
+-- timeOfDay 0 = dia (andar 1 do ato) → 1 = anoitecer (andar do boss).
+-- GameplayScene seta o alvo por floorInAct; a transição EASE durante a
+-- viagem (o mundo escurece enquanto você anda, não num corte).
+WorldRoad._timeOfDay = 1          -- default: mood cheio (tools/validação)
+WorldRoad._timeOfDayTarget = 1
+
+function WorldRoad.setTimeOfDay(t, instant)
+    t = math.max(0, math.min(1, t or 1))
+    WorldRoad._timeOfDayTarget = t
+    if instant then WorldRoad._timeOfDay = t end
+end
+
+local function lerpColor3(a, b, t)
+    return { a[1] + (b[1] - a[1]) * t,
+             a[2] + (b[2] - a[2]) * t,
+             a[3] + (b[3] - a[3]) * t }
+end
+
+local function biomeLightAmbient(b, tod)
+    local day = b.lightDay or b.lightAmbient or { 1, 1, 1 }
+    local night = b.lightNight or b.lightAmbient or { 1, 1, 1 }
+    return lerpColor3(day, night, tod)
+end
+
+-- Ambiente de luz do frame: lerp dia→noite pelo timeOfDay, com crossfade
+-- de bioma pelo MESMO relógio do blend (smoothstep, igual ao envColor).
+local function currentLightAmbient()
+    local tod = WorldRoad._timeOfDay
+    local cur = biomeLightAmbient(rawBiome(), tod)
+    local bl = WorldRoad._blend
+    if bl and WorldRoad._prevBiomeIndex then
+        local t = math.min(1, bl.t / bl.duration)
+        t = t * t * (3 - 2 * t)
+        local prev = biomeLightAmbient(rawBiome(WorldRoad._prevBiomeIndex), tod)
+        return lerpColor3(prev, cur, t)
+    end
+    return cur
 end
 
 local function copyColor(c) return { c[1], c[2], c[3], c[4] } end
@@ -455,11 +508,58 @@ local function makeCloud(variant, rng)
     return toImage(data)
 end
 
+-- LightEngine v1: poste com lanterna acesa — o GLOW é ASSADO na arte (ramp
+-- quente de 3 degraus concêntricos no vidro), regra "luz se desenha na
+-- paleta". A poça de luz no chão vem do LightEngine (submit no drawProps).
+local function makeLantern(b, variant, rng)
+    local w, h = 20, 46
+    local data = love.image.newImageData(w, h)
+    local wood = b.trunk
+    local woodD = { wood[1] * 0.7, wood[2] * 0.7, wood[3] * 0.7 }
+    -- poste + braço + gancho
+    fillRect(data, 8, 12, 10, h - 1, wood, w, h)
+    vline(data, 10, 12, h - 1, woodD, w, h)
+    fillRect(data, 8, 10, 17, 11, wood, w, h)
+    px(data, 16, 12, woodD, w, h)
+    px(data, 16, 13, woodD, w, h)
+    -- corpo da lanterna pendurada (moldura escura)
+    fillRect(data, 12, 14, 19, 28, { 0.16, 0.12, 0.09 }, w, h)
+    -- vidro com glow assado: 3 degraus quentes (externo → núcleo)
+    fillRect(data, 13, 16, 18, 26, { 1.0, 0.55, 0.18 }, w, h)
+    fillRect(data, 14, 18, 17, 24, { 1.0, 0.78, 0.35 }, w, h)
+    fillRect(data, 15, 20, 16, 22, { 1.0, 0.93, 0.70 }, w, h)
+    hline(data, 13, 18, 15, { 0.22, 0.16, 0.11 }, w, h)
+    hline(data, 13, 18, 27, { 0.22, 0.16, 0.11 }, w, h)
+    outline(data, w, h, woodD)
+    return toImage(data)
+end
+
+-- LightEngine v1: braseiro de pedra com fogo assado no topo (mesma regra)
+local function makeBrazier(b, variant, rng)
+    local w, h = 18, 30
+    local data = love.image.newImageData(w, h)
+    local rock, rockD = b.rock, b.rockDark
+    -- pilar + boca/tigela
+    fillRect(data, 5, 12, 12, h - 1, rock, w, h)
+    vline(data, 12, 12, h - 1, rockD, w, h)
+    hline(data, 5, 12, 13, rockD, w, h)
+    fillRect(data, 3, 9, 14, 11, rock, w, h)
+    hline(data, 3, 14, 11, rockD, w, h)
+    -- chama assada (ramp 3 degraus quentes)
+    blob(data, 8.5, 6, 4, 4, { 1.0, 0.45, 0.12 }, w, h, rng)
+    blob(data, 8.5, 6, 2.6, 2.8, { 1.0, 0.72, 0.25 }, w, h, rng)
+    px(data, 8, 5, { 1.0, 0.92, 0.60 }, w, h)
+    px(data, 9, 5, { 1.0, 0.92, 0.60 }, w, h)
+    outline(data, w, h, rockD)
+    return toImage(data)
+end
+
 local MAKERS = {
     tree = makeTree, pine = makePine, deadtree = makeDeadTree,
     bush = makeBush, rock = makeRock, stump = makeStump,
     fence = makeFence, sign = makeSign, flowers = makeFlowers,
     ruin = makeRuin, tuft = makeTuft,
+    lantern = makeLantern, brazier = makeBrazier,
 }
 
 -- getSprite: nuvens/tijolos são neutros (sem bid); resto por bioma.
@@ -513,6 +613,8 @@ end
 local KIND_LANE = {
     fence = { 0.02, 0.14 }, sign = { 0.03, 0.18 },
     flowers = { 0.0, 0.85 }, tuft = { 0.0, 1.0 },
+    -- emissores vivem na BEIRA da estrada (a poça de luz alcança o caminho)
+    lantern = { 0.0, 0.08 }, brazier = { 0.01, 0.12 },
     default = { 0.05, 1.0 },
 }
 
@@ -829,6 +931,21 @@ function WorldRoad.update(dt)
         end
     end
 
+    LightEngine.update(dt)   -- relógio dos flickers (noise das chamas)
+
+    -- F6.1: ease do tempo do dia (escurece durante a viagem, sem corte)
+    do
+        local tod, tgt = WorldRoad._timeOfDay, WorldRoad._timeOfDayTarget
+        if tod ~= tgt then
+            local step = 0.30 * dt
+            if math.abs(tgt - tod) <= step then
+                WorldRoad._timeOfDay = tgt
+            else
+                WorldRoad._timeOfDay = tod + (tgt > tod and step or -step)
+            end
+        end
+    end
+
     local bl = WorldRoad._blend
     if bl then
         bl.t = bl.t + dt
@@ -953,11 +1070,27 @@ function WorldRoad.update(dt)
         end
     end
 
-    -- CRITTERS: borboletas/vagalumes rasantes sobre a grama (vida no chão)
-    if #WorldRoad._critters < 6 and WorldRoad._rng:random() < 0.02 then
+    -- CRITTERS: borboletas/vagalumes rasantes sobre a grama (vida no chão).
+    -- LightEngine v1: ambiente ESCURO ganha MAIS vagalumes (cap 14) — eles
+    -- são fonte de luz agora, não só detalhe. Gate por LUMINÂNCIA (F6.1:
+    -- fields ao anoitecer também acende vagalumes, como na referência)
+    local glowBio = LightEngine.ambientLuma() < 0.75
+    local crCap = glowBio and 14 or 6
+    local crRate = glowBio and 0.05 or 0.02
+    if #WorldRoad._critters < crCap and WorldRoad._rng:random() < crRate then
+        -- Spawn nas FAIXAS DE VEGETAÇÃO laterais (feedback: vagalume no
+        -- meio da estrada lia como poste; ele vive no mato). ~12% ainda
+        -- nascem em qualquer lugar — um ou outro cruzando o caminho é vivo.
+        local xr
+        if WorldRoad._rng:random() < 0.12 then
+            xr = 0.06 + WorldRoad._rng:random() * 0.88
+        else
+            local side = WorldRoad._rng:random() < 0.5 and -1 or 1
+            xr = 0.5 + side * (0.17 + WorldRoad._rng:random() * 0.30)
+        end
         table.insert(WorldRoad._critters, {
-            xr = 0.06 + WorldRoad._rng:random() * 0.88,
-            yr = 0.55 + WorldRoad._rng:random() * 0.34,
+            xr = xr,
+            yr = 0.42 + WorldRoad._rng:random() * 0.48,
             phase = WorldRoad._rng:random() * 6.28,
             drift = (WorldRoad._rng:random() - 0.5) * 0.014,
             life = 12 + WorldRoad._rng:random() * 10,
@@ -1364,6 +1497,25 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha)
         -- v7.4.4: meia-largura da base (a franja de crista do GrassField
         -- pula esse vão — senão capim brota na frente do portão)
         WorldRoad._castleBaseHalf = iw * s * 0.44
+
+        -- LightEngine v1: micro-luzes POR JANELA (revisão F-1/F-7: a pedra
+        -- escurece com o ambiente; só o entorno imediato das janelas volta.
+        -- NUNCA uma luz única cobrindo o sprite — vira "adesivo diurno").
+        local LW = Config.Lighting.WINDOW
+        local bio = BIOME_BY_ID[bid]
+        local wins = (bio and bio.lightWindows) or LW.anchors
+        -- cor da luz segue a JANELA PINTADA no castelo do bioma (marsh é
+        -- verde, abyss é brasa) — luz laranja em castelo verde denuncia
+        local wcol = (bio and bio.lightWindowColor) or LW.color
+        for wi, a in ipairs(wins) do
+            local wx = cx - iw * s / 2 + a[1] * iw * s
+            local wy = baseY - ih * s + a[2] * ih * s
+            local tx, ty = love.graphics.transformPoint(wx, wy)
+            -- z=999: o castelo é o objeto mais FUNDO — qualquer silhueta
+            -- (árvore, inimigo) na frente oclui a luz das janelas
+            LightEngine.submitMicro(tx, ty, LW.radiusK * iw * s,
+                wcol, LW.intensity, 999)
+        end
     end
     return true
 end
@@ -2453,6 +2605,52 @@ local function drawProps(g, x, w, camZ)
                 love.graphics.draw(img, math.floor(pxX), math.floor(sy + sink2),
                     rot, s, s, iw / 2, ih)
 
+                -- LightEngine v1.1: vegetação OCLUI luz vinda de trás
+                -- (silhueta no lightmap — janelas do castelo/poças fundas
+                -- não vazam por cima da copa; lanterna na FRENTE ainda
+                -- ilumina a árvore). Pedido do usuário: "só aparece a
+                -- porcentagem do corpo que estiver pra fora".
+                if p.kind == "tree" or p.kind == "pine"
+                   or p.kind == "deadtree" or p.kind == "bush" then
+                    local oxT, oyT = love.graphics.transformPoint(
+                        pxX, sy + sink2)
+                    LightEngine.submitOccluder({
+                        z = rel,
+                        img = img, x = oxT, y = oyT, rot = rot,
+                        sx = s, sy = s, ox = iw / 2, oy = ih,
+                        bx = oxT - iw * s / 2, by = oyT - ih * s,
+                        w = iw * s, h = ih * s,
+                    })
+                end
+
+                -- LightEngine v1: prop emissor → núcleo (micro na chama) +
+                -- POÇA de luz no chão (posterizada + dither, flicker noise).
+                -- Raio ∝ altura do sprite NA TELA (revisão: raio escala com
+                -- persp — lanterna no horizonte tem poça minúscula).
+                local fl = FLAME_ANCHOR[p.kind]
+                if fl then
+                    local Lc = p.kind == "lantern" and Config.Lighting.LANTERN
+                        or Config.Lighting.BRAZIER
+                    local sh2 = ih * s
+                    local fx = pxX + (fl[1] - 0.5) * iw * s
+                    local fy = sy - sh2 * (1 - fl[2])
+                    local fxT, fyT = love.graphics.transformPoint(fx, fy)
+                    LightEngine.submitMicro(fxT, fyT, Lc.coreK * sh2,
+                        Lc.color, 0.9, rel)
+                    -- poça de chão só PERTO (t alto) — de longe o prop vive
+                    -- entre copas e a poça ditherizava a silhueta das árvores
+                    if t >= Config.Lighting.POOL_MIN_T then
+                        local gxT, gyT = love.graphics.transformPoint(pxX, sy)
+                        LightEngine.submit({
+                            x = gxT, y = gyT,
+                            radius = Lc.radiusK * sh2,
+                            color = Lc.color, intensity = Lc.intensity,
+                            dither = true, flicker = "fire", seed = p.z,
+                            z = rel,
+                        })
+                    end
+                end
+
                 -- AVES pousadas na cerca: 2 pixels escuros no trilho de cima;
                 -- decolam em arco quando você chega perto (rel < 6.5)
                 if p.kind == "fence" and p.perched and not p.flown then
@@ -2511,14 +2709,30 @@ local function drawEncounterFront(g, x, w, camZ)
     local k = math.min(1.02, g.persp(t) / math.max(0.01, g.persp(tBattle)))
     local s = e.targetScale * k
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.draw(e.img, math.floor(cx - e.iw * s / 2),
-        math.floor(sy - e.ih * s), 0, s, s)
+    local dx0 = math.floor(cx - e.iw * s / 2)
+    local dy0 = math.floor(sy - e.ih * s)
+    love.graphics.draw(e.img, dx0, dy0, 0, s, s)
+
+    -- LightEngine v1.1: o inimigo descendo a estrada oclui luzes atrás
+    -- dele (janelas do castelo de onde ele saiu)
+    local oxT, oyT = love.graphics.transformPoint(dx0, dy0)
+    LightEngine.submitOccluder({
+        z = rel, img = e.img, x = oxT, y = oyT, sx = s, sy = s,
+        bx = oxT, by = oyT, w = e.iw * s, h = e.ih * s,
+    })
 end
 
 function WorldRoad.draw(x, y, w, h, actNumber)
     if actNumber then WorldRoad.setBiome(actNumber) end
 
     local g = domeGeom(x, y, w, h)
+
+    -- LightEngine v1: abre o frame de luz com o ambiente do bioma (lerp
+    -- dia→noite pelo timeOfDay + crossfade de bioma). As fontes se
+    -- registram durante o draw; o composite roda FORA (drawLightComposite —
+    -- GameplayScene/tools), pra iluminar também o inimigo plantado e
+    -- deixar HUD/pills de fora.
+    LightEngine.beginFrame(currentLightAmbient())
 
     -- FUNDO DE SEGURANÇA (feedback telas largas): pinta a área inteira na
     -- cor escura do terreno ANTES de tudo — qualquer pixel que as camadas
@@ -2609,19 +2823,30 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     do
         local b = rawBiome()
         local acc = b.accent or { 0.8, 0.7, 0.4 }
-        local glow = (b.id == "abyss" or b.id == "marsh" or b.id == "highlands")
+        -- LightEngine v1: vagalume por LUMINÂNCIA do ambiente — qualquer
+        -- bioma escurecido (inclusive fields ao anoitecer, F6.1) acende;
+        -- de dia vira borboleta
+        local glow = LightEngine.ambientLuma() < 0.75
         for _, cr in ipairs(WorldRoad._critters) do
             local cxr = x + cr.xr * w
             local cyy = g.latY(cxr - g.cx, cr.yr)
                 - 14 - math.sin(WorldRoad._time * 3.1 + cr.phase) * 6
             local a = math.min(1, cr.life / 2)
             if glow then
-                -- vagalume: ponto que pisca com halo
+                -- vagalume: ponto que pisca com halo (escala com a
+                -- profundidade — longe é faísca, perto é pirilampo)
+                local depth = 0.45 + 0.55 * cr.yr
                 local blink = 0.5 + 0.5 * math.sin(WorldRoad._time * 2.2 + cr.phase * 3)
-                love.graphics.setColor(acc[1], acc[2], acc[3], 0.20 * blink * a)
-                love.graphics.circle("fill", cxr, cyy, 5)
+                love.graphics.setColor(acc[1], acc[2], acc[3], 0.16 * blink * a)
+                love.graphics.circle("fill", cxr, cyy, 4 * depth + 1)
                 love.graphics.setColor(acc[1] * 1.2, acc[2] * 1.2, acc[3] * 1.1, 0.9 * blink * a)
                 love.graphics.rectangle("fill", math.floor(cxr), math.floor(cyy), 2, 2)
+                -- LightEngine v1: micro-luz = de-escurecimento local (o
+                -- "glow real" do vagalume no lightmap; revisão F-6)
+                local fx2, fy2 = love.graphics.transformPoint(cxr, cyy)
+                LightEngine.submitMicro(fx2, fy2,
+                    Config.Lighting.FIREFLY.radius * depth, acc,
+                    Config.Lighting.FIREFLY.intensity * blink * a)
             else
                 -- borboleta: 2px com "asa" alternando
                 local flap = math.sin(WorldRoad._time * 11 + cr.phase) > 0
@@ -2644,6 +2869,13 @@ function WorldRoad.draw(x, y, w, h, actNumber)
         love.graphics.setColor(a.color[1] * flicker, a.color[2] * flicker,
             a.color[3] * flicker, 0.8)
         love.graphics.rectangle("fill", math.floor(ax), math.floor(ay), a.size, a.size)
+        -- LightEngine v1: brasa é emissiva — micro-luz pra não apagar no
+        -- multiply (revisão F-3: micro-luz, não boost de cor)
+        if a.style == "ember" then
+            local ex, ey = love.graphics.transformPoint(ax, ay)
+            LightEngine.submitMicro(ex, ey, Config.Lighting.EMBER.radius,
+                a.color, Config.Lighting.EMBER.intensity * flicker)
+        end
     end
 
     drawProps(g, x, w, WorldRoad._camZ)
@@ -2652,11 +2884,11 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     -- interativa balançando desalinharia os hitboxes do mouse)
     love.graphics.pop()
 
-    -- fork/landmark DEPOIS dos props: marcos e pills são UI interativa —
-    -- precisam ser legíveis por cima das copas (exceção consciente à regra
-    -- "nada desenha sobre árvores", que vale pra efeitos de campo)
+    -- landmark/encounter DEPOIS dos props: objetos de mundo que precisam
+    -- ficar por cima das copas. (LightEngine v1: drawForkMarks saiu daqui —
+    -- marks/pills são UI in-world e agora desenham em drawForkOverlay,
+    -- DEPOIS do composite de luz, pra não escurecerem — revisão F-10.)
     drawLandmarkFront(g, x, w, WorldRoad._camZ)
-    drawForkMarks(g, x, w, WorldRoad._camZ)
     drawEncounterFront(g, x, w, WorldRoad._camZ)
 
     -- (v6.8.1: moldura de silhuetas de árvore nos cantos REMOVIDA — lia como
@@ -2691,6 +2923,32 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     love.graphics.draw(gh2, x + w, y, 0, -vw / 256, h)
 
     love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- ============================================================================
+-- LightEngine v1: overlays pós-mundo (ordem: draw → [inimigo] →
+-- drawLightComposite → drawForkOverlay → HUD). Ver docs/plan/lighting-engine-v1.md
+-- ============================================================================
+
+-- Composite multiply do lightmap sobre a cena. Chamar DEPOIS do mundo (e do
+-- inimigo plantado) e ANTES de qualquer UI. Guard interno: sem beginFrame
+-- neste frame (interiores/caminho esquecido) é no-op — nunca escurece à toa.
+function WorldRoad.drawLightComposite(x, y, w, h)
+    LightEngine.composite(x, y, w, h)
+end
+
+-- Marks + pills da encruzilhada: UI in-world, desenha DEPOIS do composite
+-- (legibilidade). Também registra os markBoxes do hit-test do mouse — todo
+-- caminho interativo com fork PRECISA chamar isto todo frame.
+function WorldRoad.drawForkOverlay(x, y, w, h)
+    local g = domeGeom(x, y, w, h)
+    drawForkMarks(g, x, w, WorldRoad._camZ)
+end
+
+-- Conveniência: composite + fork overlay na ordem certa.
+function WorldRoad.drawOverlays(x, y, w, h)
+    WorldRoad.drawLightComposite(x, y, w, h)
+    WorldRoad.drawForkOverlay(x, y, w, h)
 end
 
 function WorldRoad.clearCache()

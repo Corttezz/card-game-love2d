@@ -30,6 +30,8 @@ local DEFAULT_SETTINGS = {
     -- reducedMotion: true desliga juice_up + ambient tilt + screen shake.
     screenshake   = 1.0,
     reducedMotion = false,
+    -- LightEngine (cena WorldRoad): false = frame idêntico ao pré-motor
+    lighting      = true,
 }
 
 SaveManager.PATHS = PATHS

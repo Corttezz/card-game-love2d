@@ -6,9 +6,32 @@
 local M = {}
 
 local WorldRoad = require("src.ui.WorldRoad")
+local LightEngine = require("engine.LightEngine")
+
+-- LightEngine v1: overlays (composite multiply + fork marks) — mesma ordem
+-- do GameplayScene. Helper local pra manter os modos legíveis.
+local function overlays(x, y, w, h)
+    WorldRoad.drawOverlays(x, y, w, h)
+end
 
 function M.run(mode)
     require("src.ui.PixelCanvas").enableNearest()
+
+    -- prefixo "nolight_": baseline A/B com o motor de luz DESLIGADO
+    if mode and mode:match("^nolight_") then
+        LightEngine.setEnabled(false)
+        mode = mode:gsub("^nolight_", "")
+    end
+
+    -- prefixos F6.1: "day_" = andar 1 (dia), "mid_" = meio do ato.
+    -- Default = 1 (anoitecer/boss — mood cheio, o look validado).
+    if mode and mode:match("^day_") then
+        WorldRoad.setTimeOfDay(0, true)
+        mode = mode:gsub("^day_", "")
+    elseif mode and mode:match("^mid_") then
+        WorldRoad.setTimeOfDay(0.5, true)
+        mode = mode:gsub("^mid_", "")
+    end
 
     -- prefixo "wide_": valida em aspect de monitor grande (1914x1011)
     if mode and mode:match("^wide_") then
@@ -57,6 +80,7 @@ function M.run(mode)
         WorldRoad._blend = nil
         WorldRoad._prevBiomeIndex = nil
         WorldRoad.draw(0, topBarH, width, height - topBarH, bio)
+        overlays(0, topBarH, width, height - topBarH)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
     elseif mode == "fork" or mode == "fork2" then
@@ -78,6 +102,7 @@ function M.run(mode)
         for _ = 1, 20 do
             WorldRoad.update(1 / 30)
             WorldRoad.draw(0, topBarH, width, height - topBarH, 1)
+            overlays(0, topBarH, width, height - topBarH)
         end
         if WorldRoad._fork then WorldRoad._fork.hover = 2 end
         if mode == "fork2" then
@@ -89,10 +114,12 @@ function M.run(mode)
             for _ = 1, 85 do   -- atravessa a convergência INTEIRA (2.4s)
                 WorldRoad.update(1 / 30)   -- exercita onChosen + _landmark
                 WorldRoad.draw(0, topBarH, width, height - topBarH, 1)
+                overlays(0, topBarH, width, height - topBarH)
             end
         end
         love.graphics.clear(0, 0, 0, 1)
         WorldRoad.draw(0, topBarH, width, height - topBarH, 1)
+        overlays(0, topBarH, width, height - topBarH)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
     elseif mode == "blend6" then
@@ -115,6 +142,7 @@ function M.run(mode)
         end
         love.graphics.clear(0, 0, 0, 1)
         WorldRoad.draw(0, topBarH, width, height - topBarH, nil)
+        overlays(0, topBarH, width, height - topBarH)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
     elseif mode == "grassanim" then
@@ -169,6 +197,7 @@ function M.run(mode)
             WorldRoad._camZ = WorldRoad._camZ + 0.045   -- ritmo de viagem
             love.graphics.clear(0, 0, 0, 1)
             WorldRoad.draw(0, topBarH, width, height - topBarH, 1)
+            overlays(0, topBarH, width, height - topBarH)
         end
         local ms = (love.timer.getTime() - tStart) / N * 1000
         local stats = love.graphics.getStats()
@@ -218,6 +247,7 @@ function M.run(mode)
             WorldRoad._blend = nil
             WorldRoad._prevBiomeIndex = nil
             WorldRoad.draw(0, topBarH, width, height - topBarH, bio)
+            overlays(0, topBarH, width, height - topBarH)
             love.graphics.setColor(0.1, 0.08, 0.06, 1)
             love.graphics.rectangle("fill", 0, 0, width, topBarH)
             local path = "worldroad_full" .. bio .. ".png"
@@ -241,6 +271,7 @@ function M.run(mode)
         WorldRoad._blend = nil
         WorldRoad._prevBiomeIndex = nil
         WorldRoad.draw(0, topBarH, width, height - topBarH, bio)
+        overlays(0, topBarH, width, height - topBarH)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
     elseif mode and mode:match("^enemy%d_") then
@@ -273,6 +304,7 @@ function M.run(mode)
         local cx, cy = WorldRoad.getRoadAnchor(WorldRoad.BATTLE_REL,
             0, topBarH, width, height - topBarH)
         EnemyRenderer.draw(game, cx, cy)
+        overlays(0, topBarH, width, height - topBarH)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
     elseif mode == "travel" then
@@ -294,6 +326,7 @@ function M.run(mode)
         end
         love.graphics.clear(0, 0, 0, 1)
         WorldRoad.draw(0, topBarH, width, height - topBarH, 1)
+        overlays(0, topBarH, width, height - topBarH)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
     elseif mode == "endless" then
@@ -308,6 +341,7 @@ function M.run(mode)
             for _ = 1, 30 do WorldRoad.update(1 / 30) end
             WorldRoad._blend = nil
             WorldRoad.draw(0, (i - 1) * panelH, width, panelH, act)
+            overlays(0, (i - 1) * panelH, width, panelH)
         end
     else
         local panelH = math.floor(height / 3)
@@ -322,6 +356,7 @@ function M.run(mode)
             if act == 2 then WorldRoad.travel({ distance = 10, duration = 3 }) ; WorldRoad.update(0.5) end
 
             WorldRoad.draw(0, (act - 1) * panelH, width, panelH, act)
+            overlays(0, (act - 1) * panelH, width, panelH)
         end
     end
 

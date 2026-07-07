@@ -242,6 +242,30 @@ Config.Audio = {
     RUN_DEFEAT_VOLUME = 0.65,
 }
 
+-- LightEngine v1 (docs/plan/lighting-engine-v1.md) — tuning das fontes de luz
+-- do WorldRoad. O motor em si vive em engine/LightEngine.lua; a cor ambiente
+-- por bioma vive em src/data/biomes.lua (campo lightAmbient).
+Config.Lighting = {
+    -- raios em FRAÇÃO da altura do sprite emissor na tela (∝ perspectiva).
+    -- POOL_MIN_T: poça de chão só quando o prop está no terço de baixo da
+    -- perspectiva (t ≥ 0.42) — lanterna DISTANTE (no meio das copas) mantém
+    -- só o núcleo; a poça grande sobre folhagem virava xadrez de dither
+    -- na silhueta das árvores (lição F-1 aplicada na prática).
+    POOL_MIN_T = 0.42,
+    LANTERN = { radiusK = 1.35, coreK = 0.4,
+                color = { 1.00, 0.62, 0.25 }, intensity = 0.85 },
+    BRAZIER = { radiusK = 1.60, coreK = 0.5,
+                color = { 1.00, 0.55, 0.20 }, intensity = 0.85 },
+    -- janelas do castelo: micro-luzes POR janela (raio ∝ largura do castelo);
+    -- âncoras default {xr, yr} relativas ao sprite — biomes.lua pode
+    -- sobrescrever com lightWindows
+    WINDOW  = { radiusK = 0.16, color = { 1.00, 0.72, 0.35 }, intensity = 0.55,
+                anchors = { { 0.36, 0.52 }, { 0.64, 0.52 }, { 0.50, 0.82 } } },
+    -- tímido: vagalume é detalhe, não farol (feedback Jul/2026)
+    FIREFLY = { radius = 6, intensity = 0.45 },
+    EMBER   = { radius = 6, intensity = 0.45 },
+}
+
 -- Configurações de Performance
 Config.Performance = {
     -- Cache de recursos

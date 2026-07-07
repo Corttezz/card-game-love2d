@@ -22,6 +22,7 @@ local M = {}
 local WorldRoad = require("src.ui.WorldRoad")
 local EnemyRenderer = require("src.ui.EnemyRenderer")
 local EnemyHud = require("src.ui.EnemyHud")
+local LightEngine = require("engine.LightEngine")
 
 local game, topBar, gameUI
 
@@ -44,21 +45,26 @@ local function setupGame()
     _G.topBar, _G.gameUI = topBar, gameUI
 end
 
--- Frame de batalha completo (mesma composição do GameplayScene)
+-- Frame de batalha completo (mesma composição do GameplayScene).
+-- LightEngine v1: mundo → inimigo → composite/fork overlay → HUD/UI
 local function drawBattleFrame(showEnemy)
     local width, height = love.graphics.getDimensions()
     local topBarH = topBar.height or 80
 
     love.graphics.clear(0, 0, 0, 1)
     WorldRoad.draw(0, topBarH, width, height - topBarH, nil)
-    topBar:draw()
 
+    local bbox, cx, cy
     if showEnemy and not WorldRoad.isTraveling() then
-        local cx, cy = WorldRoad.getRoadAnchor(WorldRoad.BATTLE_REL,
+        cx, cy = WorldRoad.getRoadAnchor(WorldRoad.BATTLE_REL,
             0, topBarH, width, height - topBarH)
-        local bbox = EnemyRenderer.draw(game, cx, cy)
-        EnemyHud.draw(game, bbox, cx, cy)
+        bbox = EnemyRenderer.draw(game, cx, cy)
     end
+
+    WorldRoad.drawOverlays(0, topBarH, width, height - topBarH)
+
+    topBar:draw()
+    if bbox then EnemyHud.draw(game, bbox, cx, cy) end
 
     gameUI:draw(game)
 end
@@ -217,7 +223,13 @@ local function runInteractive()
                 12, love.graphics.getHeight() - 24)
         else
             love.graphics.print(
-                "SPACE viagem+encounter | 1-6 bioma | V vista | R reset | M galeria de monstros | ESC sair",
+                "SPACE viagem+encounter | 1-6 bioma | V vista | R reset | M galeria"
+                .. " | L luz " .. (LightEngine.isEnabled() and "ON" or "OFF")
+                .. " | O/P ambiente "
+                .. string.format("%.2f", LightEngine.debugAmbientScale)
+                .. " | T hora "
+                .. string.format("%.2f", WorldRoad._timeOfDay or 1)
+                .. " | ESC sair",
                 12, love.graphics.getHeight() - 24)
         end
         love.graphics.setColor(1, 1, 1, 1)
@@ -258,6 +270,22 @@ local function runInteractive()
         end
         if key == "space" and not WorldRoad.isTraveling() then
             WorldRoad.travel({ encounter = EnemyRenderer.getEncounterBillboard(game.enemy) })
+        elseif key == "l" then
+            -- LightEngine v1: toggle do motor (validação A/B ao vivo)
+            LightEngine.setEnabled(not LightEngine.isEnabled())
+        elseif key == "o" then
+            -- calibração: escurece o ambiente (debug — não persiste)
+            LightEngine.debugAmbientScale =
+                math.max(0.30, LightEngine.debugAmbientScale - 0.05)
+        elseif key == "p" then
+            LightEngine.debugAmbientScale =
+                math.min(1.30, LightEngine.debugAmbientScale + 0.05)
+        elseif key == "t" then
+            -- F6.1: cicla o tempo do dia (dia → tarde → anoitecer), com
+            -- a transição ease real do jogo
+            local cur = WorldRoad._timeOfDayTarget or 1
+            local nxt = cur >= 1 and 0 or (cur >= 0.5 and 1 or 0.5)
+            WorldRoad.setTimeOfDay(nxt)
         elseif key == "v" then
             WorldRoad._camZ = WorldRoad.TRAVEL_DISTANCE * 8 * 0.92
             WorldRoad._props = {}

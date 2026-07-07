@@ -138,6 +138,9 @@ function GameplayScene.drawWorldOnly()
         biomeIdx = 4 + math.floor(math.max(0, (run.currentFloor or 25) - 25) / 8)
     end
     WorldRoad.draw(0, topBarHeight, width, height - topBarHeight, biomeIdx)
+    -- LightEngine v1: luz + fork overlay (marks/pills DEPOIS do composite —
+    -- este é o caminho do estado mapSelection, onde o fork está ativo)
+    WorldRoad.drawOverlays(0, topBarHeight, width, height - topBarHeight)
 end
 
 function GameplayScene.draw()
@@ -186,8 +189,8 @@ function GameplayScene.draw()
     -- assume no handoff (fim da viagem), já PLANTADO na superfície da estrada.
     local traveling = GameplayScene.SCENE_MODE == "worldroad"
         and not interior and WorldRoad.isTraveling()
+    local enemyBbox, enemyCx, enemyCy
     if not traveling then
-        local enemyCx, enemyCy
         if GameplayScene.SCENE_MODE == "worldroad" and not interior then
             enemyCx, enemyCy = WorldRoad.getRoadAnchor(WorldRoad.BATTLE_REL,
                 0, topBarHeight, width, height - topBarHeight)
@@ -195,7 +198,17 @@ function GameplayScene.draw()
             enemyCx = math.floor(width / 2)
             enemyCy = math.floor(height * 0.68)
         end
-        local enemyBbox = EnemyRenderer.draw(game, enemyCx, enemyCy)
+        enemyBbox = EnemyRenderer.draw(game, enemyCx, enemyCy)
+    end
+
+    -- LightEngine v1: composite multiply do lightmap sobre mundo+inimigo,
+    -- ANTES de qualquer UI (EnemyHud/gameUI/mão ficam fora da luz). O fork
+    -- overlay (pills) vem junto, DEPOIS do composite (revisão F-10).
+    if GameplayScene.SCENE_MODE == "worldroad" and not interior then
+        WorldRoad.drawOverlays(0, topBarHeight, width, height - topBarHeight)
+    end
+
+    if not traveling then
         EnemyHud.draw(game, enemyBbox, enemyCx, enemyCy)
     end
 
@@ -328,6 +341,20 @@ function GameplayScene.update(dt)
         end
     end
     if GameplayScene.SCENE_MODE == "worldroad" then
+        -- F6.1: entardecer progressivo por andar — dia no andar 1 do ato,
+        -- anoitecer chegando ao boss (curva ^1.35: o dia dura mais, o
+        -- crepúsculo chega no fim). A transição ease durante a viagem.
+        do
+            local runT = game.runManager and game.runManager.currentRun
+            local floorIn
+            if runT then
+                floorIn = runT.floorInAct or 1
+            else
+                floorIn = ((game.currentPhase or 1) - 1) % 8 + 1
+            end
+            local tod = math.min(1, math.max(0, (floorIn - 1) / 7)) ^ 1.35
+            WorldRoad.setTimeOfDay(tod)
+        end
         WorldRoad.update(dt)
         -- Troca de andar/fase → herói "anda" até o próximo encontro:
         -- o mundo rola pra frente (técnica Path of Kings)

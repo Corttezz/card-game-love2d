@@ -27,6 +27,7 @@ return {
         master      = "Master",
         fullscreen  = "Plein Ecran",
         crt_shader  = "Shader CRT",
+        lighting  = "Eclairage",
         language    = "Langue",
         on          = "ON",
         off         = "OFF",

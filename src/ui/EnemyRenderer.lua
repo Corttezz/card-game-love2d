@@ -14,6 +14,7 @@
 -- Todas as camadas são baratas (trig + draw) e combinadas criam sensação de "vida".
 
 local SpriteAnimation = require("src.ui.SpriteAnimation")
+local LightEngine = require("engine.LightEngine")
 
 local EnemyRenderer = {}
 
@@ -309,6 +310,37 @@ function EnemyRenderer.draw(game, cx, cy)
             if staticImg then
                 love.graphics.draw(staticImg, drawX, drawY, 0, scale, scale)
             end
+        end
+    end
+
+    -- LightEngine v1.1: o corpo do inimigo OCLUI luzes atrás dele (janelas
+    -- do castelo, poças mais fundas) — silhueta pixel-perfeita no lightmap.
+    -- z = BATTLE_REL (posição do inimigo na estrada); no-op sem frame de luz
+    -- (interiores). Lanterna mais PRÓXIMA que ele continua iluminando-o.
+    do
+        local oxT, oyT = love.graphics.transformPoint(drawX, drawY)
+        local animRef = hasAnim and currentAnim or nil
+        local staticRef = nil
+        if not animRef then
+            local sprites = loadStatic(id)
+            staticRef = sprites and (sprites.south or sprites.east
+                or sprites.west or sprites.north)
+        end
+        if animRef or staticRef then
+            LightEngine.submitOccluder({
+                z = 9,   -- WorldRoad.BATTLE_REL (sem require circular)
+                bx = oxT, by = oyT, w = iw * scale, h = ih * scale,
+                fn = function()
+                    if animRef then
+                        -- SpriteAnimation:draw ignora setColor sem tint —
+                        -- repassa a cor ambiente que o engine deixou setada
+                        local r, g, b = love.graphics.getColor()
+                        animRef:draw(oxT, oyT, scale, { r, g, b, 1 })
+                    else
+                        love.graphics.draw(staticRef, oxT, oyT, 0, scale, scale)
+                    end
+                end,
+            })
         end
     end
 

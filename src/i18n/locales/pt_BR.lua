@@ -27,6 +27,7 @@ return {
         master          = "Master",
         fullscreen      = "Fullscreen",
         crt_shader      = "CRT Shader",
+        lighting  = "Iluminacao",
         reduced_motion  = "Movimento reduzido",
         language        = "Idioma",
         on              = "LIGADO",
