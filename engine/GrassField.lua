@@ -390,9 +390,14 @@ function GrassField.draw(ctx)
                     end
                     local roadC = ctx.roadCenter(z, t)
                     local half = ctx.roadHalf(t)
-                    local clear = (ctx.forkActive
-                        and rel > (ctx.forkRel or 10) - 1.5)
-                        and (half + w * 0.17) or (half * 0.90)
+                    -- v7.4.15: na encruzilhada valida contra CADA braço —
+                    -- a clareira única (half + 0.17w) deixava o miolo
+                    -- entre os caminhos e o entorno carecas
+                    local centers, armK
+                    if ctx.roadCenters then
+                        centers, armK = ctx.roadCenters(z, t)
+                    end
+                    local clear = half * 0.90 * (centers and (armK or 1) or 1)
                     local spread = 0.92 + 0.14 * t
                     local spanW = w * 1.06 * spread
                     local spacing = spanW / NK
@@ -404,7 +409,17 @@ function GrassField.draw(ctx)
                         local k = rc.order[oi]
                         local e = rc[k]
                         local pxX = g.cx + e.lf * spanW
-                        local dRoad = math.abs(pxX - roadC) - clear
+                        local dRoad
+                        if centers then
+                            dRoad = 1e9
+                            for a = 1, #centers do
+                                local dd = math.abs(pxX - centers[a])
+                                if dd < dRoad then dRoad = dd end
+                            end
+                            dRoad = dRoad - clear
+                        else
+                            dRoad = math.abs(pxX - roadC) - clear
+                        end
                         if dRoad > 0 and math.abs(pxX - g.cx) < w * 0.53 then
                             -- jitter FIXO (×3, não ×M): atrelado ao M, a
                             -- moita dava um pulo de profundidade quando o
@@ -535,9 +550,6 @@ function GrassField.draw(ctx)
                 local rel = z - camZ
                 local t = g.tOf(rel)
                 if t and t > 0.18 then
-                    -- fork: os braços da estrada varrem a faixa central —
-                    -- capim some do trecho bifurcado enquanto o fork existe
-                    if not (ctx.forkActive and rel > (ctx.forkRel or 10) - 1.5) then
                     local h2 = hash(ci, slot * 13 + 5)
                     local h3 = hash(ci, slot * 29 + 11)
                     local side = (slot % 2 == 0) and -1 or 1
@@ -547,7 +559,23 @@ function GrassField.draw(ctx)
                     -- grama invade o caminho) até a LARGURA TODA do campo
                     local pxX = roadC + side * (half * 0.94
                         + w * (0.004 + h2 * 0.52) * (0.45 + 0.55 * t))
-                    if math.abs(pxX - g.cx) < w * 0.52 then
+                    -- v7.4.15: na encruzilhada o acento só some se cair
+                    -- DENTRO de um braço (antes: sumia da região inteira)
+                    local armBlock = false
+                    if ctx.roadCenters then
+                        local cs, aK = ctx.roadCenters(z, t)
+                        if cs then
+                            local ha = half * 0.94 * (aK or 1)
+                            for a = 1, #cs do
+                                if math.abs(pxX - cs[a]) < ha then
+                                    armBlock = true
+                                    break
+                                end
+                            end
+                        end
+                    end
+                    if not armBlock
+                       and math.abs(pxX - g.cx) < w * 0.52 then
                         local base = g.latY(pxX - g.cx, t)
                         local persp = g.persp(t)
                         local nx = (pxX - ctx.x) / w
@@ -644,7 +672,6 @@ function GrassField.draw(ctx)
                                     CELL_W / 2, CELL_H, lean * 0.55, 0)
                             end
                         end
-                    end
                     end
                 end
             end

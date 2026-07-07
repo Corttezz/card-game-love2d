@@ -1787,50 +1787,6 @@ local MARK_REL    = 17.5  -- onde os marcos ficam
 local ARRIVE_REL  = 7.5   -- rel do marco ao fim da convergência (chegada)
 local FORK_SPREAD = 0.15  -- afastamento lateral máximo por direção (fração de w)
 
--- ============================================================================
--- v7.1: GRAMA VIVA — engine/GrassField.lua (motor dedicado de vegetação:
--- lâminas individuais, vento em 3 camadas, presets por bioma). Cores vêm
--- do envColor (lerpam no crossfade); geometria/estrada são INJETADAS — o
--- motor não conhece o WorldRoad. Desenhada DEPOIS da estrada: as lâminas
--- da margem invadem levemente a borda do caminho, como na referência.
--- Definida AQUI (depois de FORK_REL — local declarado abaixo é nil pra
--- função de cima, lição do ciclo 41).
--- ============================================================================
-local GrassField = require("engine.GrassField")
-
-local function drawGrass(g, x, w, camZ)
-    local gA = envColor("grassA")
-    local b = rawBiome()
-    local acc = b.accent or { 0.7, 0.6, 0.3 }
-    -- boost ADAPTATIVO da ponta clara: em paleta escura (fields ~0.16 de
-    -- luminância) o ×1.42 fixo sumia no fundo — quanto mais escuro o
-    -- gramado, mais clara a ponta (senão o campo alto parece vazio)
-    local lum = (gA[1] + gA[2] + gA[3]) / 3
-    local lk = 1.30 + math.max(0, 0.42 - lum) * 1.6
-    GrassField.draw({
-        x = x, w = w,
-        time = WorldRoad._time,
-        camZ = camZ,
-        geom = g,
-        relCrest = REL_CREST,
-        roadCenter = function(z, t) return g.cx + roadWobble(z, t, w) end,
-        roadHalf = function(t)
-            return ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15))
-        end,
-        colors = {
-            mid   = { gA[1] * 0.98, gA[2] * 0.98, gA[3] * 0.98 },
-            light = { math.min(1, gA[1] * lk),
-                      math.min(1, gA[2] * lk * 0.97),
-                      math.min(1, gA[3] * lk * 0.88) },
-            accent = acc,
-        },
-        biomeId = b.id,
-        forkActive = WorldRoad._fork ~= nil,
-        forkRel = FORK_REL,
-        castleGapHalf = WorldRoad._castleBaseHalf,
-    })
-end
-
 function WorldRoad.showFork(nodes, onChosen)
     if not nodes or #nodes == 0 then return false end
     -- nova encruzilhada = deixamos o lugar anterior pra trás (feedback:
@@ -1864,6 +1820,63 @@ local function forkOffset(f, i, rel, w)
         else off = off * (1 + c * 2.5) end              -- outros → cone
     end
     return off
+end
+
+-- ============================================================================
+-- v7.1: GRAMA VIVA — engine/GrassField.lua (motor dedicado de vegetação).
+-- Cores vêm do envColor (lerpam no crossfade); geometria/estrada INJETADAS.
+-- Desenhada DEPOIS da estrada (margem invade a borda do caminho).
+-- Definida DEPOIS de forkOffset (local abaixo = nil pra função de cima,
+-- lição do ciclo 41): na encruzilhada o capim respeita CADA braço em vez
+-- de abrir um clarão único ("sem grama demais entre e em volta deles").
+-- ============================================================================
+local GrassField = require("engine.GrassField")
+
+local function drawGrass(g, x, w, camZ)
+    local gA = envColor("grassA")
+    local b = rawBiome()
+    local acc = b.accent or { 0.7, 0.6, 0.3 }
+    -- boost ADAPTATIVO da ponta clara: em paleta escura (fields ~0.16 de
+    -- luminância) o ×1.42 fixo sumia no fundo — quanto mais escuro o
+    -- gramado, mais clara a ponta (senão o campo alto parece vazio)
+    local lum = (gA[1] + gA[2] + gA[3]) / 3
+    local lk = 1.30 + math.max(0, 0.42 - lum) * 1.6
+    GrassField.draw({
+        x = x, w = w,
+        time = WorldRoad._time,
+        camZ = camZ,
+        geom = g,
+        relCrest = REL_CREST,
+        roadCenter = function(z, t) return g.cx + roadWobble(z, t, w) end,
+        roadHalf = function(t)
+            return ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15))
+        end,
+        -- encruzilhada: centros de CADA braço naquela profundidade (nil =
+        -- estrada única) + fator de largura dos braços (0.78 com 2-3)
+        roadCenters = function(z, t)
+            local f = WorldRoad._fork
+            if not f then return nil end
+            local rel = z - WorldRoad._camZ
+            if rel <= FORK_REL - 1.5 then return nil end
+            local wob = roadWobble(z, t, w) * 0.5
+            local cs = {}
+            for i = 1, f.n do
+                cs[i] = g.cx + forkOffset(f, i, rel, w) + wob
+            end
+            return cs, (f.n > 1 and 0.78 or 1)
+        end,
+        colors = {
+            mid   = { gA[1] * 0.98, gA[2] * 0.98, gA[3] * 0.98 },
+            light = { math.min(1, gA[1] * lk),
+                      math.min(1, gA[2] * lk * 0.97),
+                      math.min(1, gA[3] * lk * 0.88) },
+            accent = acc,
+        },
+        biomeId = b.id,
+        forkActive = WorldRoad._fork ~= nil,
+        forkRel = FORK_REL,
+        castleGapHalf = WorldRoad._castleBaseHalf,
+    })
 end
 
 -- alpha do braço i (não escolhidos somem durante a convergência)
