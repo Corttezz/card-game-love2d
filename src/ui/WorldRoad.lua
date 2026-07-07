@@ -833,12 +833,16 @@ function WorldRoad.travel(opts)
         duration = opts.duration or WorldRoad.TRAVEL_DURATION,
         onComplete = opts.onComplete,
     }
-    if opts.encounter and opts.encounter.img then
+    -- v8.4.1: aceita anim OU img — o billboard animado tem img=nil e o
+    -- filtro por .img fazia o encounter virar NIL ("o monstro sumiu da
+    -- viagem, só aparece no final"). Copia também os campos novos.
+    if opts.encounter and (opts.encounter.img or opts.encounter.anim) then
         local e = opts.encounter
         WorldRoad._encounter = {
-            img = e.img, iw = e.iw, ih = e.ih,
+            anim = e.anim, img = e.img, iw = e.iw, ih = e.ih,
             targetScale = e.targetScale or 4,
             spriteId = e.spriteId,
+            offX = e.offX, footPad = e.footPad,
             z = WorldRoad._camZ + dist + WorldRoad.BATTLE_REL,
         }
     else
