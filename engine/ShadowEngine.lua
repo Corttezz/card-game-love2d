@@ -66,7 +66,9 @@ end
 -- ----------------------------------------------------------------------------
 -- Sombra de um SPRITE estático (props do mundo: árvores, marcos, encounter).
 -- feetX/feetY = âncora dos pés no chão; s = escala do dono na cena.
--- opts: alphaK (0..1), lenK, flip (espelho do dono: ±1)
+-- opts: alphaK (0..1), lenK, flip (espelho do dono: ±1),
+--       footPad (px de canvas transparente ABAIXO do conteúdo — a sombra
+--       ancora no PÉ DO CONTEÚDO, senão nasce com um vão)
 -- ----------------------------------------------------------------------------
 function ShadowEngine.sprite(img, feetX, feetY, s, opts)
     if not img or not ShadowEngine.isActive() then return false end
@@ -75,14 +77,16 @@ function ShadowEngine.sprite(img, feetX, feetY, s, opts)
     local shd = tipShift(feetX)
     love.graphics.setColor(0, 0, 0, frame.alpha * (opts.alphaK or 1))
     -- draw args: offset(-ox,-oy) → shear → scale → translate.
-    -- oy=ih (pés): topo do sprite tem y local -ih → shear kx desloca a
-    -- ponta em -kx·ih·s ⇒ ponta pra LONGE do sol pede kx = -shd·K.
+    -- oy nos pés DO CONTEÚDO: topo do sprite tem y local negativo →
+    -- shear kx desloca a ponta ⇒ pra LONGE do sol pede kx = -shd·K.
     -- sy NEGATIVO espelha verticalmente (sombra desce dos pés pro
     -- primeiro plano).
+    -- v8.2 ("mais gorda"): sombra 18% mais larga que o dono — massa no
+    -- chão sem perder a leitura da silhueta
     love.graphics.draw(img, math.floor(feetX), math.floor(feetY), 0,
-        s * (opts.flip or 1),
+        s * 1.18 * (opts.flip or 1),
         -s * frame.len * (opts.lenK or 1),
-        iw / 2, ih,
+        iw / 2, ih - (opts.footPad or 0),
         -shd * 0.78, 0)
     love.graphics.setColor(1, 1, 1, 1)
     return true
@@ -105,7 +109,7 @@ function ShadowEngine.begin(feetX, feetY, opts)
     -- ANTES do shear: y já flipado (positivo abaixo dos pés) → ponta
     -- pra longe do sol pede kx = +shd·K (sinal oposto ao .sprite)
     love.graphics.shear(shd * 0.78, 0)
-    love.graphics.scale(1, -frame.len * (opts.lenK or 1))
+    love.graphics.scale(1.18, -frame.len * (opts.lenK or 1))   -- v8.2: gorda
     beginTint[4] = frame.alpha * (opts.alphaK or 1)
     love.graphics.setColor(beginTint)
     return beginTint

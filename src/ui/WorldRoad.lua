@@ -1569,11 +1569,15 @@ local function drawEncounterBehind(g, x, w, camZ)
     -- crista e ficava maior que árvore — quebrava a esfera)
     local tBattle = g.tOf(WorldRoad.BATTLE_REL) or 0.3
     local s = e.targetScale * (g.persp(0) / math.max(0.01, g.persp(tBattle)))
+    -- v8.2: centro por conteúdo + pé cravado (consistente com o passe
+    -- frontal — sem pulo ao cruzar a crista)
+    cx = cx - math.floor((e.offX or 0) * s)
     -- pés afundados: sobe conforme emerge
     local feetY = crest + e.ih * s * (1 - em) * 0.95
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.draw(e.img, math.floor(cx - e.iw * s / 2),
-        math.floor(feetY - e.ih * s), 0, s, s)
+        math.floor(feetY - e.ih * s) + math.floor((e.footPad or 0) * s),
+        0, s, s)
 end
 
 -- PROPS EMERGINDO da curvatura (ciclo 23, feedback): árvores e itens na
@@ -2719,11 +2723,16 @@ local function drawEncounterFront(g, x, w, camZ)
     local tBattle = g.tOf(WorldRoad.BATTLE_REL) or 0.3
     local k = math.min(1.02, g.persp(t) / math.max(0.01, g.persp(tBattle)))
     local s = e.targetScale * k
+    -- v8.2: centro por conteúdo + pé cravado no chão (a margem embaixo do
+    -- canvas fazia o monstro "surgir flutuando lá do fundo")
+    cx = cx - math.floor((e.offX or 0) * s)
+    local footY = math.floor((e.footPad or 0) * s)
     -- v8: sombra projetada do monstro que vem vindo pela estrada
-    ShadowEngine.sprite(e.img, cx, sy - 1, s, { alphaK = 0.9 })
+    ShadowEngine.sprite(e.img, cx, sy - 1, s,
+        { alphaK = 0.9, footPad = e.footPad })
     love.graphics.setColor(1, 1, 1, 1)
     local dx0 = math.floor(cx - e.iw * s / 2)
-    local dy0 = math.floor(sy - e.ih * s)
+    local dy0 = math.floor(sy - e.ih * s) + footY
     love.graphics.draw(e.img, dx0, dy0, 0, s, s)
 
     -- LightEngine v1.1: o inimigo descendo a estrada oclui luzes atrás

@@ -222,10 +222,10 @@ end
 -- −10px — feedback "muito à esquerda"). Offset do centro do conteúdo
 -- do 1º frame idle, cacheado por id, aplicado no cx do draw.
 local centerOff = {}
-local function contentOffsetX(id)
+local function contentOffsets(id)
     local c = centerOff[id]
-    if c ~= nil then return c end
-    local off = 0
+    if c ~= nil then return c.off, c.pad end
+    local off, pad = 0, 0
     local imgPath
     local fdir = "assets/sprites/characters/enemies/" .. id
         .. "/animations/idle/south"
@@ -245,23 +245,30 @@ local function contentOffsetX(id)
         local ok, data = pcall(love.image.newImageData, imgPath)
         if ok and data then
             local wpx, hpx = data:getWidth(), data:getHeight()
-            local minX, maxX = wpx, -1
-            for yy = 0, hpx - 1, 2 do   -- passo 2: bbox horizontal não muda
+            local minX, maxX, maxY = wpx, -1, -1
+            for yy = 0, hpx - 1 do
                 for xx = 0, wpx - 1 do
                     local _, _, _, a = data:getPixel(xx, yy)
                     if a > 0.1 then
                         if xx < minX then minX = xx end
                         if xx > maxX then maxX = xx end
+                        if yy > maxY then maxY = yy end
                     end
                 end
             end
             if maxX >= minX then
                 off = (minX + maxX) / 2 - wpx / 2
+                -- v8.2: MARGEM DE PÉ — todo o roster tem 2-12px de canvas
+                -- transparente ABAIXO do conteúdo (medido; espantalho 9px
+                -- ≈ 25px na tela) → o monstro "flutuava". pad crava o pé
+                -- do CONTEÚDO no chão. Quem flutua por design (espectros)
+                -- flutua NA ARTE, não por acidente de canvas.
+                pad = (hpx - 1) - maxY
             end
         end
     end
-    centerOff[id] = off
-    return off
+    centerOff[id] = { off = off, pad = pad }
+    return off, pad
 end
 
 -- Spawn de particula ambiental na posicao correta (chamado em draw)
@@ -315,9 +322,12 @@ function EnemyRenderer.draw(game, cx, cy)
     local scale = targetHeight / ih
     if ih <= 80 then scale = math.max(4, math.floor(scale)) end -- roster legado
 
-    -- v8.1: corrige o descentramento do conteúdo no canvas — desloca o
-    -- centro visual pro cx pedido (sombra/HUD/emissivos seguem juntos)
-    cx = cx - math.floor(contentOffsetX(id) * scale)
+    -- v8.1/8.2: corrige descentramento E margem de pé do canvas — centro
+    -- visual no cx pedido e pé do CONTEÚDO cravado em cy (sombra, HUD e
+    -- emissivos seguem juntos)
+    local offX, footPad = contentOffsets(id)
+    cx = cx - math.floor(offX * scale)
+    local footY = math.floor(footPad * scale)
 
     -- =========================================================
     -- CAMADAS VISUAIS (aplicadas em ordem)
@@ -339,6 +349,7 @@ function EnemyRenderer.draw(game, cx, cy)
 
     local drawX = cx - (iw * scale) / 2 + jitter
     local drawY = cy - ih * scale + bounce + EnemyRenderer.getArrivalOffset()
+        + footY   -- v8.2: pé do conteúdo NO chão (margem do canvas fora)
 
     -- (1) v8: SOMBRA PROJETADA da silhueta (ShadowEngine) — a própria
     -- forma do monstro (frame ATUAL da animação: a sombra respira e ataca
@@ -351,7 +362,9 @@ function EnemyRenderer.draw(game, cx, cy)
         local tint = ShadowEngine.begin(cx + jitter * 0.5, cy - 1)
         if tint then
             local sx0 = -(iw * scale) / 2
-            local sy0 = -(ih * scale)
+            -- +footY: a sombra ancora no PÉ DO CONTEÚDO (a margem
+            -- transparente do canvas criava um vão entre pé e sombra)
+            local sy0 = -(ih * scale) + footY
             if hasAnim then
                 -- SpriteAnimation:draw ignora setColor sem tint explícito
                 currentAnim:draw(sx0, sy0, scale, tint)
@@ -480,12 +493,17 @@ function EnemyRenderer.getEncounterBillboard(enemy)
     local targetHeight = enemy.isBoss and 330 or 250
     local ts = targetHeight / ih
     if ih <= 80 then ts = math.max(4, math.floor(ts)) end -- roster legado
+    local offX, footPad = contentOffsets(enemy.spriteId)
     return {
         img = img,
         iw = img:getWidth(),
         ih = ih,
         targetScale = ts,
         spriteId = enemy.spriteId,   -- LightEngine v1.2: emissivos na viagem
+        -- v8.2: o billboard da viagem também crava o pé no chão e centra
+        -- por conteúdo (o espantalho "já surgia flutuando lá do fundo")
+        offX = offX,
+        footPad = footPad,
     }
 end
 
