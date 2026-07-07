@@ -31,6 +31,7 @@ local biomesData = require("src.data.biomes")
 local Sfx = require("src.systems.Sfx")
 local LightEngine = require("engine.LightEngine")
 local Config = require("src.core.Config")
+local EnemyEmissives = require("src.data.enemy_emissives")
 
 local WorldRoad = {}
 
@@ -836,6 +837,7 @@ function WorldRoad.travel(opts)
         WorldRoad._encounter = {
             img = e.img, iw = e.iw, ih = e.ih,
             targetScale = e.targetScale or 4,
+            spriteId = e.spriteId,
             z = WorldRoad._camZ + dist + WorldRoad.BATTLE_REL,
         }
     else
@@ -2720,6 +2722,19 @@ local function drawEncounterFront(g, x, w, camZ)
         z = rel, img = e.img, x = oxT, y = oyT, sx = s, sy = s,
         bx = oxT, by = oyT, w = e.iw * s, h = e.ih * s,
     })
+
+    -- LightEngine v1.2: emissivos do monstro (olhos/chamas) brilhando
+    -- desde longe — "algo vem vindo na estrada" (dados por spriteId)
+    local anchors = e.spriteId and EnemyEmissives[e.spriteId]
+    if anchors then
+        for ai, a in ipairs(anchors) do
+            local pulse = 0.86 + 0.14 * math.sin(WorldRoad._time * 1.3 + ai * 2.1)
+            LightEngine.submitMicro(
+                oxT + a.xr * e.iw * s, oyT + a.yr * e.ih * s,
+                a.r * e.ih * s, a.color,
+                (a.intensity or 0.35) * 0.8 * pulse, rel)
+        end
+    end
 end
 
 function WorldRoad.draw(x, y, w, h, actNumber)

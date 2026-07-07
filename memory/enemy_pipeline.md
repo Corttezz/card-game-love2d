@@ -239,3 +239,25 @@ Ver `assets/sprites/characters/enemies/` — atualmente:
 - `abyss_wraith` — ato 3 (idle 4f × 4dir)
 
 Nenhum deles tem `hurt`/`death` ainda — quando gerar, seguir este guia.
+
+## Emissivos do monstro (LightEngine) — PASSO OBRIGATÓRIO pra inimigo novo
+
+Todo monstro novo ganha micro-luzes nos pixels que a ARTE pintou como
+emissivos (olhos, chamas, cristais, runas — nunca dourado/palha/osso):
+
+1. `python3 tools/extract_enemy_emissives.py <enemy_id>` — detector de
+   clusters saturados+claros; imprime candidatos no formato Lua.
+2. **Revisar a folha anotada** (`tools/preview_out/enemy_emissives_sheet.png`)
+   — o detector confunde dourado/palha com emissivo (falsos positivos do
+   espantalho: ombros e mãos de palha). Olhos escuros de caveira NÃO ganham
+   luz; skull sem glow pintado fica SEM entrada (ex.: harvest_reaper).
+3. Adicionar a entrada revisada em `src/data/enemy_emissives.lua`
+   (xr/yr relativos ao frame idle 0; r em fração da altura; intensity
+   default 0.35 — 0.5 só pra núcleos/orbes; SUTIL é a regra).
+4. Validar: `love . screenshot_worldroad enemy<N>_<id>` no bioma certo
+   (cor-sobre-cor some — ex.: bog_ghoul verde no marsh precisou 0.50).
+
+Runtime: EnemyRenderer.submitEmissives (pulso lento dessincronizado, apaga
+na morte, mesma z da silhueta-oclusora) + billboard da viagem em
+WorldRoad.drawEncounterFront ("olhos vindo na estrada"). Ver
+memory/lighting_engine.md.

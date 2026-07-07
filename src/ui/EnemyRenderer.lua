@@ -15,6 +15,27 @@
 
 local SpriteAnimation = require("src.ui.SpriteAnimation")
 local LightEngine = require("engine.LightEngine")
+local EnemyEmissives = require("src.data.enemy_emissives")
+
+-- LightEngine v1.2: micro-luzes dos pixels EMISSIVOS do monstro (olhos,
+-- chamas, cristais — src/data/enemy_emissives.lua). Pulso lento por âncora
+-- (fases dessincronizadas), some na morte. sx/sy = topo-esq do sprite na
+-- TELA (já transformado); z = profundidade na estrada (rel).
+local function submitEmissives(spriteId, sx, sy, iw, ih, scale, z, boost)
+    local anchors = EnemyEmissives[spriteId]
+    if not anchors or #anchors == 0 then return end
+    local t = love.timer.getTime()
+    for ai, a in ipairs(anchors) do
+        local pulse = 0.86 + 0.14 * math.sin(t * 1.3 + ai * 2.1)
+        LightEngine.submitMicro(
+            sx + a.xr * iw * scale,
+            sy + a.yr * ih * scale,
+            a.r * ih * scale,
+            a.color,
+            (a.intensity or 0.35) * pulse * (boost or 1),
+            z)
+    end
+end
 
 local EnemyRenderer = {}
 
@@ -313,6 +334,15 @@ function EnemyRenderer.draw(game, cx, cy)
         end
     end
 
+    -- LightEngine v1.2: emissivos do monstro (olhos/chamas/cristais) —
+    -- mesma z do corpo: a silhueta oclui a luz de trás, e o tie-break do
+    -- engine desenha a luz DEPOIS da silhueta no mesmo plano (visível).
+    -- Morte apaga os emissivos (o corpo "desliga").
+    if currentAnimName ~= "death" then
+        local exT, eyT = love.graphics.transformPoint(drawX, drawY)
+        submitEmissives(id, exT, eyT, iw, ih, scale, 9)
+    end
+
     -- LightEngine v1.1: o corpo do inimigo OCLUI luzes atrás dele (janelas
     -- do castelo, poças mais fundas) — silhueta pixel-perfeita no lightmap.
     -- z = BATTLE_REL (posição do inimigo na estrada); no-op sem frame de luz
@@ -373,6 +403,7 @@ function EnemyRenderer.getEncounterBillboard(enemy)
         iw = img:getWidth(),
         ih = ih,
         targetScale = ts,
+        spriteId = enemy.spriteId,   -- LightEngine v1.2: emissivos na viagem
     }
 end
 

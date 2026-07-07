@@ -53,6 +53,17 @@ Calibração fina: teclas O/P no demo alteram LightEngine.debugAmbientScale ao v
 `docs/plan/lighting-engine-v1-mockup.png` (simulação offline do pipeline sobre captura
 real do `screenshot_worldroad enemy1_cursed_scarecrow`).
 
+## Emissivos por monstro (v1.2 — Jul/2026)
+Todos os 21 inimigos revisados pixel-a-pixel: micro-luzes nos emissivos que
+a ARTE pintou (olhos do espantalho, orbe do tower_lich, runas do rune_golem,
+fornalha do abyss_tyrant, olho vermelho único do abyss_wraith...). Dados em
+`src/data/enemy_emissives.lua`; pipeline padrão pra monstro novo em
+memory/enemy_pipeline.md (extrator + revisão da folha anotada). Runtime:
+EnemyRenderer (pulso lento, apaga na morte, mesma z da silhueta — tie-break
+do engine desenha luz depois do oclusor no mesmo plano) + billboard da
+viagem (drawEncounterFront). harvest_reaper ficou SEM luz de propósito
+(skull de osso sem glow pintado — restraint é parte do padrão).
+
 ## Calibração por feedback do usuário (Jul/2026)
 - **Vagalumes**: "só no meio da estrada, luz grande demais" → spawn nas FAIXAS
   DE VEGETAÇÃO laterais (xr 0.03-0.33 ∪ 0.67-0.97; só 12% livres), faixa de
