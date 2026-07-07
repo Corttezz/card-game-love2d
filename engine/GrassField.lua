@@ -457,12 +457,18 @@ function GrassField.draw(ctx)
                             -- das gramas linha por linha", 2º feedback).
                             -- O balanço fica só no cisalhamento (kx), que
                             -- desloca pixels sem re-amostrar altura.
+                            -- v7.4.13: kx × flip — a escala negativa do
+                            -- espelho invertia TAMBÉM o cisalhamento:
+                            -- metade das moitas dobrava pro lado oposto
+                            -- do próprio lean ("um conjunto se mexe pra
+                            -- esquerda, outro pra diagonal direita")
                             batch:add(e.q, math.floor(pxX),
                                 math.floor(base + 1), 0,
                                 sK * sxK * e.flip,
                                 sK * e.hMul
                                     * (0.35 + 0.65 * edgeK) * gk,
-                                CLUMP_W / 2, CELL_H, lean * 0.5, 0)
+                                CLUMP_W / 2, CELL_H,
+                                lean * 0.5 * e.flip, 0)
                         end
                     end
                 end
@@ -502,10 +508,11 @@ function GrassField.draw(ctx)
                     local c = (ht < 0.45) and cDark or cMid
                     batch:setColor(c[1], c[2], c[3], 1)
                     local sC = scaleC * (0.75 + hk * 0.5)
+                    local flipC = (ht < 0.5) and 1 or -1
                     batch:add(clumpQuads[math.floor(hk * N_CLUMP) % N_CLUMP],
                         math.floor(px), math.floor(cy + 3), 0,
-                        sC * ((ht < 0.5) and 1 or -1), sC,
-                        CLUMP_W / 2, CELL_H, lean * 0.5, 0)
+                        sC * flipC, sC,
+                        CLUMP_W / 2, CELL_H, lean * 0.5 * flipC, 0)
                 end
             end
         end
