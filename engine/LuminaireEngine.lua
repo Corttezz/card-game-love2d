@@ -269,63 +269,48 @@ function LuminaireEngine.submit(bid, kind, a)
     -- v9.2 (feedback: "lâmpada longe fica estática; TODAS deviam pulsar"):
     -- amplitude do flicker AMPLA (fr swing largo) — o halo "expande e fica
     -- pequenininho" de forma visível a qualquer distância.
+    -- flicker GENTIL (a versão anterior "piscava rápido demais"): a mesma
+    -- respiração suave que a poça de chão tinha — é ELA que o usuário
+    -- gostou. fi = intensidade, fr = raio (expande/encolhe devagar).
     local fi, fr = 1, 1
     if L.flicker == "fire" then
-        local n = love.math.noise(time * 1.8, seed) * 0.7
-            + love.math.noise(time * 8.0, seed + 37.2) * 0.3
-        fi = 0.72 + 0.28 * n
-        fr = 0.70 + 0.55 * n
+        local n = love.math.noise(time * 1.4, seed) * 0.75
+            + love.math.noise(time * 4.0, seed + 37.2) * 0.25
+        fi = 0.86 + 0.14 * n
+        fr = 0.88 + 0.18 * n
     elseif L.flicker == "wisp" then
         local n = love.math.noise(time * 0.7, seed) * 0.65
             + love.math.noise(time * 2.1, seed + 53.7) * 0.35
-        fi = 0.62 + 0.48 * n
-        fr = 0.72 + 0.45 * n
+        fi = 0.72 + 0.28 * n
+        fr = 0.84 + 0.22 * n
     elseif L.flicker == "shimmer" then
-        local n = love.math.noise(time * 6.0, seed)
-        fi = 0.78 + 0.22 * n
-        fr = 0.86 + 0.24 * n
+        local n = love.math.noise(time * 3.0, seed)
+        fi = 0.84 + 0.16 * n
+        fr = 0.92 + 0.12 * n
     elseif L.flicker == "pulse" then
-        local s = 0.5 + 0.5 * math.sin(time * 1.7 + seed)
-        fi = 0.72 + 0.28 * s
-        fr = 0.80 + 0.30 * s
+        local s = 0.5 + 0.5 * math.sin(time * 1.4 + seed)
+        fi = 0.80 + 0.20 * s
+        fr = 0.90 + 0.14 * s
     end
-    local inten, radK = L.intensity * fi, L.radiusK * fr
-    -- v9.2: núcleo e poça escalam com a ALTURA DA CHAMA acima do chão
-    -- (a.flameH), não com o sprite inteiro — poste 4.2 de mundo tinha
-    -- sh enorme e a poça virava um disco que ditherizava o CÉU. capR
-    -- (do chamador, ~30% da área) é o teto absoluto.
+    -- v9.2 (feedback: "o brilho bom que estava no PÉ deve ir pra CIMA, na
+    -- lâmpada; e escalar com a distância"): UMA luz suave (mesmo shader
+    -- da antiga poça — posterizada + dither) centrada NA CHAMA (a.fx/a.fy),
+    -- não no chão. O raio escala com a ALTURA DA CHAMA na tela (a.flameH:
+    -- longe = pequena, perto = grande — some a sensação de "tamanho fixo").
+    -- Sem halo micro duro e sem poça no chão.
     local base = a.flameH or a.sh
-    -- glow da lâmpada RESPIRA visível em QUALQUER distância: piso de ~9px
-    -- (senão longe vira um dot estático) + swing de fr amplo. Escala também
-    -- com a altura na tela (a.sh) pra crescer nas de perto.
-    local microR = (L.coreK * base + 9 + 0.03 * (a.sh or 0)) * fr
+    LightEngine.submit({
+        x = a.fx, y = a.fy,
+        radius = math.min(L.radiusK * base * fr, (a.capR or 1e9)),
+        color = L.color, intensity = L.intensity * fi,
+        dither = true, ditherAmt = 0.5, levels = 6,
+        seed = a.seed, z = a.rel,
+    })
+    -- núcleo quente pequeno no centro da chama (hotspot), escala com base,
+    -- SEM piso — longe encolhe junto (nada de dot fixo)
     LightEngine.submitMicro(a.fx, a.fy,
-        math.min(microR, (a.capR or 1e9) * 0.6), L.color,
-        0.9 * fi, a.rel)
-    if a.t >= LuminaireEngine.POOL_MIN_T then
-        -- v9.2 (feedback: poste LONGE já joga poça cheia no chão): a poça
-        -- entra GRADUAL com a proximidade — quase nada em POOL_MIN_T,
-        -- cheia só no terço da frente (t≈0.85). Antes era binário (0.42
-        -- ligava tudo), então poste na dobra da esfera já tinha poça
-        -- direta e "fixa no pixel". Rampa suaviza raio E intensidade.
-        local prox = (a.t - LuminaireEngine.POOL_MIN_T)
-            / (0.88 - LuminaireEngine.POOL_MIN_T)
-        prox = math.max(0, math.min(1, prox))
-        prox = prox * prox   -- ease-in: cresce devagar longe
-        LightEngine.submit({
-            x = a.gx, y = a.gy,
-            radius = math.min(radK * base * (0.45 + 0.55 * prox),
-                a.capR or 1e9),
-            color = L.color, intensity = inten * (0.25 + 0.75 * prox),
-            -- v9.2: poça mais NATURAL no chão — 6 degraus (gradiente fino)
-            -- + dither de amplitude 0.5 (o xadrez de 4px lia como grade;
-            -- comprimir o Bayer pro centro suaviza sem reintroduzir banda).
-            -- flicker=nil: a modulação já foi aplicada em inten/radK aqui.
-            dither = true, ditherAmt = 0.5, levels = 6,
-            seed = a.seed,
-            z = a.rel,
-        })
-    end
+        math.min(L.coreK * base * 0.6 * fr, (a.capR or 1e9) * 0.4),
+        L.color, 0.9 * fi, a.rel)
 end
 
 -- ----------------------------------------------------------------------------
