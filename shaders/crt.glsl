@@ -22,9 +22,13 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
         return Texel(tex, uv) * color;
     }
 
-    // ====== DISTORTION (horizontal wave) — amplitude reduzida pra tela não "tremer" ======
-    float wave = sin((uv.y + time * 1.5) * 18.0) * 0.0006 * strength;
-    uv.x += wave;
+    // ====== DISTORTION (horizontal wave) — REMOVIDA (Jul/2026) ======
+    // A onda deslocava uv.x em BANDAS horizontais que viajavam
+    // verticalmente pela tela (fase = uv.y + time). Em pixel art nearest,
+    // ~1px de shift numa banda que sobe lê como "linha varrendo o
+    // gramado, escurecendo/clareando fileiras" — 4 rodadas de caça no
+    // GrassField até isolar que era PÓS-PROCESSAMENTO (as capturas de
+    // validação não passam pelo CRT). Não reintroduzir em cena pixel art.
 
     // ====== CHROMATIC ABERRATION (RGB shift) — sutil ======
     float caOffset = 0.0008 * strength;
