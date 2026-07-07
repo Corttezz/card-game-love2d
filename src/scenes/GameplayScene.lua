@@ -275,7 +275,14 @@ function GameplayScene.draw()
         draggingCard.targetScale = savedScale
     end
 
-    if smokeSystem then smokeSystem:draw() end
+    -- v7.4.14: fumaça ambiente SÓ nos interiores de castelo — na ESTRADA
+    -- aberta os fiapos translúcidos gigantes (escala 2×, cruzando a tela)
+    -- liam como "3 linhas subindo e descendo" (feedback; o demo não roda
+    -- smoke e ficava bom; CRT on/off não mudava = era isto). Véu
+    -- translúcido sobre a cena pixel art é anti-pattern do projeto.
+    local roadOutdoor = GameplayScene.SCENE_MODE == "worldroad"
+        and not lastInterior
+    if smokeSystem and not roadOutdoor then smokeSystem:draw() end
     playButton:draw()
     if game.messageSystem then game.messageSystem:draw() end
 
@@ -380,7 +387,12 @@ function GameplayScene.update(dt)
         game:enemyTurn()
     end
 
-    if smokeSystem then smokeSystem:update(dt) end
+    -- fumaça só ticka onde é desenhada (interior/legacy) — na estrada
+    -- partículas acumuladas apareceriam de uma vez ao entrar no castelo
+    if smokeSystem and not (GameplayScene.SCENE_MODE == "worldroad"
+        and not lastInterior) then
+        smokeSystem:update(dt)
+    end
 
     updateCardPositions()
 
