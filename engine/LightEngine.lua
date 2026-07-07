@@ -159,6 +159,7 @@ function LightEngine.submit(spec)
         color = spec.color or { 1, 1, 1 },
         i = inten,
         dither = spec.dither and 1 or 0,
+        ditherAmt = spec.ditherAmt or 1.0,
         levels = spec.levels or 4,
         -- profundidade (rel de mundo): luzes mais FUNDAS são desenhadas
         -- primeiro e podem ser ocluídas por silhuetas mais próximas.
@@ -302,6 +303,7 @@ function LightEngine.composite(x, y, w, h)
                 love.graphics.setShader(shader)
                 shader:send("levels", e.levels)
                 shader:send("useDither", e.dither)
+                shader:send("ditherAmt", e.ditherAmt)
                 shader:send("intensity", e.i)
                 love.graphics.setColor(e.color[1], e.color[2], e.color[3], 1)
                 local sc = (e.r * 2 / S) / ww

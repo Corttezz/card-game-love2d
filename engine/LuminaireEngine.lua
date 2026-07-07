@@ -287,7 +287,11 @@ function LuminaireEngine.submit(bid, kind, a)
             x = a.gx, y = a.gy,
             radius = math.min(radK * base, a.capR or 1e9),
             color = L.color, intensity = inten,
-            dither = true, flicker = flicker, seed = a.seed,
+            -- v9.2: poça mais NATURAL no chão — 6 degraus (gradiente fino)
+            -- + dither de amplitude 0.5 (o xadrez de 4px lia como grade;
+            -- comprimir o Bayer pro centro suaviza sem reintroduzir banda)
+            dither = true, ditherAmt = 0.5, levels = 6,
+            flicker = flicker, seed = a.seed,
             z = a.rel,
         })
     end

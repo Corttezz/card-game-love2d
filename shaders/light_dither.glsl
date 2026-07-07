@@ -8,6 +8,8 @@
 
 extern number levels;      // degraus de posterização (4 = poça; 2 = pequena)
 extern number useDither;   // 1.0 = Bayer (só poças de chão); 0.0 = sem dither
+extern number ditherAmt;   // amplitude do Bayer (1=cheio; <1 comprime pro
+                           // centro → xadrez mais suave/natural no chão)
 extern number intensity;   // multiplicador 0..1 aplicado ANTES da posterização
 
 float bayer4(vec2 sc) {
@@ -37,7 +39,10 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 sc) {
     float i = clamp(1.0 - dot(p, p), 0.0, 1.0);
     i = i * i;                                   // falloff (1-d²)²
     i = i * intensity;
-    float thr = mix(0.5, bayer4(sc), useDither);
+    // Bayer comprimido pro centro por ditherAmt: reduz o contraste entre
+    // células vizinhas (xadrez menos gritante), mantendo a quebra de banda
+    float b = 0.5 + (bayer4(sc) - 0.5) * ditherAmt;
+    float thr = mix(0.5, b, useDither);
     i = floor(i * levels + thr) / levels;        // quantiza (+ dither)
     if (i <= 0.0) discard;
     return vec4(color.rgb * i, 1.0);
