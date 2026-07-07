@@ -257,31 +257,43 @@ function LuminaireEngine.submit(bid, kind, a)
     local def = LuminaireEngine.def(bid, kind)
     if not def then return end
     local L = def.light
-    local inten, radK = L.intensity, L.radiusK
-    local flicker = L.flicker
     local time = love.timer.getTime()
     local seed = (a.seed or 0) % 1000
-    if flicker == "wisp" then
-        -- respiração lenta errante (fogo-fátuo): 2 noises lentos compostos
+    -- v9.2 (feedback: "a luz da lâmpada tem que se mexer, não ficar
+    -- estática"): o flicker é calculado AQUI pra TODOS os tipos e aplicado
+    -- tanto na micro-luz (glow da lâmpada) quanto na poça — antes o "fire"
+    -- só modulava a poça (dentro do LightEngine) e o núcleo ficava fixo.
+    -- fi = multiplicador de intensidade; fr = de raio (a luz "expande e
+    -- fica pequenininha"). Passamos flicker=nil pro LightEngine pra não
+    -- aplicar de novo (dupla modulação).
+    local fi, fr = 1, 1
+    if L.flicker == "fire" then
+        local n = love.math.noise(time * 1.8, seed) * 0.7
+            + love.math.noise(time * 8.0, seed + 37.2) * 0.3
+        fi = 0.82 + 0.18 * n
+        fr = 0.84 + 0.30 * n
+    elseif L.flicker == "wisp" then
         local n = love.math.noise(time * 0.7, seed) * 0.65
             + love.math.noise(time * 2.1, seed + 53.7) * 0.35
-        inten = inten * (0.70 + 0.40 * n)
-        radK = radK * (0.90 + 0.16 * n)
-        flicker = nil
-    elseif flicker == "shimmer" then
-        -- cintilação rápida e RASA (cristal): brilho quase fixo que faísca
+        fi = 0.70 + 0.40 * n
+        fr = 0.86 + 0.24 * n
+    elseif L.flicker == "shimmer" then
         local n = love.math.noise(time * 6.0, seed)
-        inten = inten * (0.88 + 0.12 * n)
-        flicker = nil
+        fi = 0.86 + 0.14 * n
+        fr = 0.94 + 0.10 * n
+    elseif L.flicker == "pulse" then
+        fi = 0.86 + 0.14 * math.sin(time * 1.7 + seed)
     end
+    local inten, radK = L.intensity * fi, L.radiusK * fr
     -- v9.2: núcleo e poça escalam com a ALTURA DA CHAMA acima do chão
     -- (a.flameH), não com o sprite inteiro — poste 4.2 de mundo tinha
     -- sh enorme e a poça virava um disco que ditherizava o CÉU. capR
     -- (do chamador, ~30% da área) é o teto absoluto.
     local base = a.flameH or a.sh
+    -- glow da lâmpada RESPIRA (raio×fr): expande e encolhe com a chama
     LightEngine.submitMicro(a.fx, a.fy,
-        math.min(L.coreK * base, (a.capR or 1e9) * 0.5), L.color,
-        0.9 * (inten / L.intensity), a.rel)
+        math.min(L.coreK * base * fr, (a.capR or 1e9) * 0.5), L.color,
+        0.9 * fi, a.rel)
     if a.t >= LuminaireEngine.POOL_MIN_T then
         -- v9.2 (feedback: poste LONGE já joga poça cheia no chão): a poça
         -- entra GRADUAL com a proximidade — quase nada em POOL_MIN_T,
@@ -299,9 +311,10 @@ function LuminaireEngine.submit(bid, kind, a)
             color = L.color, intensity = inten * (0.25 + 0.75 * prox),
             -- v9.2: poça mais NATURAL no chão — 6 degraus (gradiente fino)
             -- + dither de amplitude 0.5 (o xadrez de 4px lia como grade;
-            -- comprimir o Bayer pro centro suaviza sem reintroduzir banda)
+            -- comprimir o Bayer pro centro suaviza sem reintroduzir banda).
+            -- flicker=nil: a modulação já foi aplicada em inten/radK aqui.
             dither = true, ditherAmt = 0.5, levels = 6,
-            flicker = flicker, seed = a.seed,
+            seed = a.seed,
             z = a.rel,
         })
     end

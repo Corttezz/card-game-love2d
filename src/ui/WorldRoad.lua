@@ -1774,7 +1774,7 @@ local function drawPropsBehind(g, x, w, camZ)
                     if lumFlip < 0 then ax = 1 - ax end
                     local fx = px2 + (ax - 0.5) * iw * s
                     local fxT, fyT = love.graphics.transformPoint(fx, flameTopY)
-                    local gxT, gyT = love.graphics.transformPoint(px2, baseY)
+                    local gxT, gyT = love.graphics.transformPoint(fx, baseY)
                     LuminaireEngine.submit(p.bid, p.kind, {
                         fx = fxT, fy = fyT, gx = gxT, gy = gyT,
                         sh = ih * s, t = 0, rel = rel, seed = p.z,
@@ -2879,7 +2879,11 @@ local function drawProps(g, x, w, camZ)
                     local fx = pxX + (ax - 0.5) * iw * s
                     local fy = sy + sink2 - sh2 * (1 - (lumAnc.ay or 0.3))
                     local fxT, fyT = love.graphics.transformPoint(fx, fy)
-                    local gxT, gyT = love.graphics.transformPoint(pxX, sy)
+                    -- v9.2 (feedback: "poça no pé da madeira não faz
+                    -- sentido"): a luz no chão cai EMBAIXO DA CHAMA (fx),
+                    -- não na raiz do poste (pxX) — a lâmpada fica no braço,
+                    -- deslocada pro lado
+                    local gxT, gyT = love.graphics.transformPoint(fx, sy)
                     LuminaireEngine.submit(p.bid, p.kind, {
                         fx = fxT, fy = fyT, gx = gxT, gy = gyT,
                         sh = sh2, t = t, rel = rel, seed = p.z,
