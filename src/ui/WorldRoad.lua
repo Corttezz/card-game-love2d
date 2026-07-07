@@ -1361,6 +1361,9 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha)
             s = s,
             progress = progress,
         }
+        -- v7.4.4: meia-largura da base (a franja de crista do GrassField
+        -- pula esse vão — senão capim brota na frente do portão)
+        WorldRoad._castleBaseHalf = iw * s * 0.44
     end
     return true
 end
@@ -1824,6 +1827,7 @@ local function drawGrass(g, x, w, camZ)
         biomeId = b.id,
         forkActive = WorldRoad._fork ~= nil,
         forkRel = FORK_REL,
+        castleGapHalf = WorldRoad._castleBaseHalf,
     })
 end
 

@@ -395,6 +395,42 @@ function GrassField.draw(ctx)
     end
 
     -- ========================================================================
+    -- PASSE A2 (v7.4.4): FRANJA DA CRISTA — fileira de moitas sentadas NA
+    -- curva do horizonte, silhueta contra o céu ("o fim do mundo tem
+    -- capim"). Mata de vez a careca da borda, que a geometria da esfera
+    -- amplifica nas laterais. ESTÁTICA como a treeline (anel
+    -- "infinitamente longe": o mundo rolando não a move). O inimigo
+    -- emergindo é desenhado ANTES do domo → sobe POR TRÁS do capim.
+    -- ========================================================================
+    do
+        local scaleC = (0.26 + g.persp(0.01) * 1.75) * P.heightK
+        local stepC = math.max(6, 12 * scaleC * 0.7)
+        local roadC = ctx.roadCenter(camZ + ctx.relCrest - 0.2, 0.01)
+        local halfC = ctx.roadHalf(0.01)
+        local cgap = ctx.castleGapHalf or 0
+        for k = 0, math.floor(w / stepC) do
+            local hk = hash(k * 13 + 7, 91)
+            local px = ctx.x + k * stepC + (hk - 0.5) * stepC
+            if math.abs(px - roadC) > halfC + 4
+               and math.abs(px - g.cx) > cgap then
+                local cy = g.crestYAt(px)
+                if cy < g.bottomY - 6 then
+                    local lean = windAt((px - ctx.x) / w,
+                        camZ + ctx.relCrest, t0, P, hk) * (0.5 + hk * 0.5)
+                    local ht = hash(k * 29 + 3, 57)
+                    local c = (ht < 0.45) and cDark or cMid
+                    batch:setColor(c[1], c[2], c[3], 1)
+                    local sC = scaleC * (0.75 + hk * 0.5)
+                    batch:add(clumpQuads[math.floor(hk * N_CLUMP) % N_CLUMP],
+                        math.floor(px), math.floor(cy + 3), 0,
+                        sC * ((ht < 0.5) and 1 or -1), sC,
+                        CLUMP_W / 2, CELL_H, lean * 0.5, 0)
+                end
+            end
+        end
+    end
+
+    -- ========================================================================
     -- PASSE B: ACENTOS — lâminas individuais + juncos + flores POR CIMA do
     -- tapete (movimento fino visível, flick, inércia — a "vida" da grama)
     -- ========================================================================
