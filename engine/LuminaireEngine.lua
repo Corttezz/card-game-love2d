@@ -266,23 +266,28 @@ function LuminaireEngine.submit(bid, kind, a)
     -- fi = multiplicador de intensidade; fr = de raio (a luz "expande e
     -- fica pequenininha"). Passamos flicker=nil pro LightEngine pra não
     -- aplicar de novo (dupla modulação).
+    -- v9.2 (feedback: "lâmpada longe fica estática; TODAS deviam pulsar"):
+    -- amplitude do flicker AMPLA (fr swing largo) — o halo "expande e fica
+    -- pequenininho" de forma visível a qualquer distância.
     local fi, fr = 1, 1
     if L.flicker == "fire" then
         local n = love.math.noise(time * 1.8, seed) * 0.7
             + love.math.noise(time * 8.0, seed + 37.2) * 0.3
-        fi = 0.82 + 0.18 * n
-        fr = 0.84 + 0.30 * n
+        fi = 0.72 + 0.28 * n
+        fr = 0.70 + 0.55 * n
     elseif L.flicker == "wisp" then
         local n = love.math.noise(time * 0.7, seed) * 0.65
             + love.math.noise(time * 2.1, seed + 53.7) * 0.35
-        fi = 0.70 + 0.40 * n
-        fr = 0.86 + 0.24 * n
+        fi = 0.62 + 0.48 * n
+        fr = 0.72 + 0.45 * n
     elseif L.flicker == "shimmer" then
         local n = love.math.noise(time * 6.0, seed)
-        fi = 0.86 + 0.14 * n
-        fr = 0.94 + 0.10 * n
+        fi = 0.78 + 0.22 * n
+        fr = 0.86 + 0.24 * n
     elseif L.flicker == "pulse" then
-        fi = 0.86 + 0.14 * math.sin(time * 1.7 + seed)
+        local s = 0.5 + 0.5 * math.sin(time * 1.7 + seed)
+        fi = 0.72 + 0.28 * s
+        fr = 0.80 + 0.30 * s
     end
     local inten, radK = L.intensity * fi, L.radiusK * fr
     -- v9.2: núcleo e poça escalam com a ALTURA DA CHAMA acima do chão
@@ -290,9 +295,12 @@ function LuminaireEngine.submit(bid, kind, a)
     -- sh enorme e a poça virava um disco que ditherizava o CÉU. capR
     -- (do chamador, ~30% da área) é o teto absoluto.
     local base = a.flameH or a.sh
-    -- glow da lâmpada RESPIRA (raio×fr): expande e encolhe com a chama
+    -- glow da lâmpada RESPIRA visível em QUALQUER distância: piso de ~9px
+    -- (senão longe vira um dot estático) + swing de fr amplo. Escala também
+    -- com a altura na tela (a.sh) pra crescer nas de perto.
+    local microR = (L.coreK * base + 9 + 0.03 * (a.sh or 0)) * fr
     LightEngine.submitMicro(a.fx, a.fy,
-        math.min(L.coreK * base * fr, (a.capR or 1e9) * 0.5), L.color,
+        math.min(microR, (a.capR or 1e9) * 0.6), L.color,
         0.9 * fi, a.rel)
     if a.t >= LuminaireEngine.POOL_MIN_T then
         -- v9.2 (feedback: poste LONGE já joga poça cheia no chão): a poça
