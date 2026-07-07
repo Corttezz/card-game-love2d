@@ -359,25 +359,27 @@ function EnemyRenderer.draw(game, cx, cy)
     -- não tem direção única.
     do
         local ShadowEngine = require("engine.ShadowEngine")
-        local tint = ShadowEngine.begin(cx + jitter * 0.5, cy - 1)
-        if tint then
-            local sx0 = -(iw * scale) / 2
-            -- +footY: a sombra ancora no PÉ DO CONTEÚDO (a margem
-            -- transparente do canvas criava um vão entre pé e sombra)
-            local sy0 = -(ih * scale) + footY
-            if hasAnim then
-                -- SpriteAnimation:draw ignora setColor sem tint explícito
-                currentAnim:draw(sx0, sy0, scale, tint)
-            else
-                local sprites = loadStatic(id)
-                local staticImg = sprites and (sprites.south or sprites.east
-                    or sprites.west or sprites.north)
-                if staticImg then
-                    love.graphics.draw(staticImg, sx0, sy0, 0, scale, scale)
+        local sx0 = -(iw * scale) / 2
+        -- +footY: a sombra ancora no PÉ DO CONTEÚDO (a margem
+        -- transparente do canvas criava um vão entre pé e sombra)
+        local sy0 = -(ih * scale) + footY
+        local drawn = ShadowEngine.silhouette(cx + jitter * 0.5, cy - 1,
+            { smear = iw * scale * 0.035 },
+            function(tint)
+                if hasAnim then
+                    -- SpriteAnimation:draw ignora setColor sem tint
+                    currentAnim:draw(sx0, sy0, scale, tint)
+                else
+                    local sprites = loadStatic(id)
+                    local staticImg = sprites and (sprites.south
+                        or sprites.east or sprites.west or sprites.north)
+                    if staticImg then
+                        love.graphics.draw(staticImg, sx0, sy0, 0,
+                            scale, scale)
+                    end
                 end
-            end
-            ShadowEngine.finish()
-        else
+            end)
+        if not drawn then
             love.graphics.setColor(0, 0, 0, 0.30)
             love.graphics.ellipse("fill", cx + jitter * 0.5, cy - 1,
                 iw * scale * 0.42, math.max(4, iw * scale * 0.055))

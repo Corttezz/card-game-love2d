@@ -70,54 +70,74 @@ end
 --       footPad (px de canvas transparente ABAIXO do conteúdo — a sombra
 --       ancora no PÉ DO CONTEÚDO, senão nasce com um vão)
 -- ----------------------------------------------------------------------------
+-- v8.3 ("silhueta arredondada — a sombra seguia o corpo perfeito"):
+-- SMEAR de 3 passadas deslocadas com alpha dividido — detalhes finos
+-- (dedos, palhas, dentes) se FUNDEM em massas arredondadas e a borda
+-- ganha penumbra de 1 degrau. Alpha por passada calibrado pra que a
+-- sobreposição central recomponha ~o alpha alvo: aP = 1-(1-A)^(1/3).
+local SMEAR = { { -1, 0 }, { 0.7, -0.5 }, { 0.35, 0.55 } }
+local function passAlpha(A)
+    return 1 - (1 - math.min(0.95, A)) ^ (1 / 3)
+end
+
 function ShadowEngine.sprite(img, feetX, feetY, s, opts)
     if not img or not ShadowEngine.isActive() then return false end
     opts = opts or {}
     local iw, ih = img:getWidth(), img:getHeight()
     local shd = tipShift(feetX)
-    love.graphics.setColor(0, 0, 0, frame.alpha * (opts.alphaK or 1))
+    -- raio do borrão ∝ largura na tela (monstro grande borra mais)
+    local d = math.max(1.5, iw * s * 0.035)
+    local aP = passAlpha(frame.alpha * (opts.alphaK or 1))
+    love.graphics.setColor(0, 0, 0, aP)
     -- draw args: offset(-ox,-oy) → shear → scale → translate.
     -- oy nos pés DO CONTEÚDO: topo do sprite tem y local negativo →
     -- shear kx desloca a ponta ⇒ pra LONGE do sol pede kx = -shd·K.
     -- sy NEGATIVO espelha verticalmente (sombra desce dos pés pro
-    -- primeiro plano).
-    -- v8.2 ("mais gorda"): sombra 18% mais larga que o dono — massa no
-    -- chão sem perder a leitura da silhueta
-    love.graphics.draw(img, math.floor(feetX), math.floor(feetY), 0,
-        s * 1.18 * (opts.flip or 1),
-        -s * frame.len * (opts.lenK or 1),
-        iw / 2, ih - (opts.footPad or 0),
-        -shd * 0.78, 0)
+    -- primeiro plano). ×1.18: "mais gorda" (v8.2).
+    for pi = 1, #SMEAR do
+        love.graphics.draw(img,
+            math.floor(feetX + SMEAR[pi][1] * d),
+            math.floor(feetY + SMEAR[pi][2] * d * 0.5), 0,
+            s * 1.18 * (opts.flip or 1),
+            -s * frame.len * (opts.lenK or 1),
+            iw / 2, ih - (opts.footPad or 0),
+            -shd * 0.78, 0)
+    end
     love.graphics.setColor(1, 1, 1, 1)
     return true
 end
 
 -- ----------------------------------------------------------------------------
--- Sombra de um DRAW arbitrário (animação do inimigo): abre o transform
--- projetado nos pés e devolve o tint preto; o chamador desenha a MESMA
--- silhueta que desenharia em pé, relativa à origem (pés em 0,0), e fecha
--- com finish(). Retorna nil quando inativo (interiores → elipse legada).
+-- Sombra de um DRAW arbitrário (animação do inimigo): o motor monta o
+-- transform projetado nos pés e chama drawFn(tint) UMA VEZ POR PASSADA
+-- do smear (v8.3) — o chamador desenha a silhueta relativa à origem
+-- (pés em 0,0) com o tint recebido. Retorna false quando inativo
+-- (interiores → elipse legada do chamador).
+-- opts: alphaK, lenK, smear (raio do borrão em px de tela)
 -- ----------------------------------------------------------------------------
-local beginTint = { 0, 0, 0, 0.26 }
-function ShadowEngine.begin(feetX, feetY, opts)
-    if not ShadowEngine.isActive() then return nil end
+local silTint = { 0, 0, 0, 0.26 }
+function ShadowEngine.silhouette(feetX, feetY, opts, drawFn)
+    if not ShadowEngine.isActive() then return false end
     opts = opts or {}
     local shd = tipShift(feetX)
-    love.graphics.push()
-    love.graphics.translate(math.floor(feetX), math.floor(feetY))
-    -- ordem de emissão translate→shear→scale ⇒ no ponto aplica scale
-    -- ANTES do shear: y já flipado (positivo abaixo dos pés) → ponta
-    -- pra longe do sol pede kx = +shd·K (sinal oposto ao .sprite)
-    love.graphics.shear(shd * 0.78, 0)
-    love.graphics.scale(1.18, -frame.len * (opts.lenK or 1))   -- v8.2: gorda
-    beginTint[4] = frame.alpha * (opts.alphaK or 1)
-    love.graphics.setColor(beginTint)
-    return beginTint
-end
-
-function ShadowEngine.finish()
-    love.graphics.pop()
+    local d = opts.smear or 4
+    silTint[4] = passAlpha(frame.alpha * (opts.alphaK or 1))
+    for pi = 1, #SMEAR do
+        love.graphics.push()
+        love.graphics.translate(
+            math.floor(feetX + SMEAR[pi][1] * d),
+            math.floor(feetY + SMEAR[pi][2] * d * 0.5))
+        -- ordem de emissão translate→shear→scale ⇒ no ponto aplica scale
+        -- ANTES do shear: y já flipado (positivo abaixo dos pés) → ponta
+        -- pra longe do sol pede kx = +shd·K (sinal oposto ao .sprite)
+        love.graphics.shear(shd * 0.78, 0)
+        love.graphics.scale(1.18, -frame.len * (opts.lenK or 1))
+        love.graphics.setColor(silTint)
+        drawFn(silTint)
+        love.graphics.pop()
+    end
     love.graphics.setColor(1, 1, 1, 1)
+    return true
 end
 
 -- ----------------------------------------------------------------------------

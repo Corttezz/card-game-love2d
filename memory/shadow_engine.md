@@ -55,6 +55,14 @@ imediato (`.sprite`/`.begin`).
   aplicado no cx (sombra/HUD/emissivos seguem juntos). Checar SEMPRE
   centralização por CONTEÚDO ao instalar monstro novo.
 
+## v8.3 (feedback: "silhueta ainda segue o corpo perfeito — arredonda")
+SMEAR de 3 passadas deslocadas (raio ∝ largura na tela, `iw·s·0.035`)
+com alpha por passada `1−(1−A)^(1/3)` — o centro sobreposto recompõe o
+alpha alvo e a borda vira penumbra; dedos/palhas/detalhes se FUNDEM em
+massas arredondadas. `begin/finish` virou `silhouette(feetX, feetY,
+opts, drawFn)` — o motor chama o drawFn 1× por passada (anim do
+inimigo idem). Custo: 3× draws de sombra (~300 draws/frame, trivial).
+
 ## Custo
 Bench 13.48ms/frame total da cena (luz+sombra+tapete somados; orçamento
 16.6 — margem ok mas ficar de olho ao adicionar camadas novas).
