@@ -49,8 +49,8 @@ local biomes = {
         propDensity = 1.15,
         -- v9 LuminaireEngine: 3 luminárias por bioma, rate ↑ ("hoje custa
         -- aparecer uma") — kinds/luz definidos em engine/LuminaireEngine.lua
-        propWeights = { tree = 3, bush = 3, flowers = 2, fence = 0.45,
-                        sign = 0.5, rock = 1, stump = 0.8,
+        -- cerca/placa removidas do bioma 1 (pedido do usuário)
+        propWeights = { tree = 3, bush = 3, flowers = 2, rock = 1, stump = 0.8,
                         lantern = 1.1, firepit = 0.8, shrine = 0.5 },
     },
 
