@@ -35,7 +35,7 @@ local LuminaireEngine = {}
 
 -- poça de chão só quando o prop está perto (t alto) — de longe vive entre
 -- copas e o dither da poça quebrava a silhueta das árvores (lição F-1)
-LuminaireEngine.POOL_MIN_T = 0.42
+LuminaireEngine.POOL_MIN_T = 0.50
 
 -- ----------------------------------------------------------------------------
 -- CATÁLOGO por bioma. Campos por tipo:
@@ -283,10 +283,20 @@ function LuminaireEngine.submit(bid, kind, a)
         math.min(L.coreK * base, (a.capR or 1e9) * 0.5), L.color,
         0.9 * (inten / L.intensity), a.rel)
     if a.t >= LuminaireEngine.POOL_MIN_T then
+        -- v9.2 (feedback: poste LONGE já joga poça cheia no chão): a poça
+        -- entra GRADUAL com a proximidade — quase nada em POOL_MIN_T,
+        -- cheia só no terço da frente (t≈0.85). Antes era binário (0.42
+        -- ligava tudo), então poste na dobra da esfera já tinha poça
+        -- direta e "fixa no pixel". Rampa suaviza raio E intensidade.
+        local prox = (a.t - LuminaireEngine.POOL_MIN_T)
+            / (0.88 - LuminaireEngine.POOL_MIN_T)
+        prox = math.max(0, math.min(1, prox))
+        prox = prox * prox   -- ease-in: cresce devagar longe
         LightEngine.submit({
             x = a.gx, y = a.gy,
-            radius = math.min(radK * base, a.capR or 1e9),
-            color = L.color, intensity = inten,
+            radius = math.min(radK * base * (0.45 + 0.55 * prox),
+                a.capR or 1e9),
+            color = L.color, intensity = inten * (0.25 + 0.75 * prox),
             -- v9.2: poça mais NATURAL no chão — 6 degraus (gradiente fino)
             -- + dither de amplitude 0.5 (o xadrez de 4px lia como grade;
             -- comprimir o Bayer pro centro suaviza sem reintroduzir banda)
