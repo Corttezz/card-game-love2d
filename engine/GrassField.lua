@@ -219,21 +219,11 @@ local function windAt(nx, wz, t, P, pers)
 end
 GrassField.windAt = windAt   -- exposto pra outros sistemas (props, futuro)
 
--- v7.4.11: vento CALMO pro TAPETE — SEM frentes de rajada. Medição de 24
--- frames estáticos provou: a rajada coerente fazia o tapete inteiro dar
--- seus degraus de 1px EM MASSA (total de pixels mudando pulsava 692→10k→
--- 4.6k) = a "onda escurecendo o campo" dos feedbacks. Num tapete denso a
--- resposta é binária (pixel liga/desliga em sincronia) — qualquer frente
--- coerente vira artefato. Rajada fica pros ACENTOS (altos, esparsos,
--- fases próprias), onde lê como vento de verdade.
-local function windCalm(nx, wz, t, P)
-    local ph = nx * 5.2 + wz * 0.14
-    local breeze = math.sin(t * 1.35 + ph * 3.1) * 0.30
-                 + math.sin(t * 0.53 + ph * 1.7) * 0.20
-    local curl = math.sin(ph * 9.3 + t * 2.6)
-               * math.sin(ph * 3.7 - t * 1.9) * 0.12
-    return (breeze * 0.6 + curl) * P.windAmp * P.dir
-end
+-- (v7.4.12: windCalm REMOVIDO — até a "brisa calma" era um campo espacial
+-- compartilhado: a fase variava tão devagar em profundidade que fileiras
+-- vizinhas respiravam em sincronia = a "linha seguindo padrão" do 4º
+-- feedback. O tapete agora usa osciladores 100% INDEPENDENTES por moita:
+-- nenhum termo compartilhado entre duas moitas quaisquer.)
 
 -- hash determinístico [0,1) — população estateless (mundo-ancorada, sem
 -- spawn/reciclagem: as lâminas "existem" onde a janela da câmera olha)
@@ -301,8 +291,6 @@ function GrassField.draw(ctx)
     for kci in pairs(rowCache) do
         if kci < first or kci > last then rowCache[kci] = nil end
     end
-    local WSTEP = 8                     -- passo da grade de vento (moitas)
-    local wsamples = {}
     for ci = last, first, -1 do
         local z = ci * Z_CELL
         local rel = z - camZ
@@ -411,12 +399,6 @@ function GrassField.draw(ctx)
                     local baseW = 12 * scale
                     local sxK = math.max(1, spacing / math.max(1, baseW)
                         * 1.25)
-                    -- grade de vento da fileira (13 amostras + lerp) —
-                    -- CALMO: sem rajada no tapete (v7.4.11)
-                    for si = 0, NK, WSTEP do
-                        local sx2 = g.cx + (si / NK - 0.5) * spanW
-                        wsamples[si] = windCalm((sx2 - ctx.x) / w, z, t0, P)
-                    end
                     local lastKey = -1
                     for oi = 1, NK do
                         local k = rc.order[oi]
@@ -432,18 +414,18 @@ function GrassField.draw(ctx)
                             local perspK = g.persp(tk)
                             local sK = (0.26 + perspK * 1.75) * P.heightK
                             local base = g.latY(pxX - g.cx, tk)
-                            local s0 = k - (k % WSTEP)
-                            local f = (k - s0) / WSTEP
-                            local w0 = wsamples[s0]
-                            local w1 = wsamples[s0 + WSTEP] or w0
-                            -- v7.4.9: FASE PESSOAL por moita (1 sin) — a
-                            -- grade por fileira dava só amplitude
-                            -- individual e a fileira inteira dobrava em
-                            -- sincronia ("clareia tudo em conjunto")
-                            local lean = (w0 + (w1 - w0) * f)
-                                * (0.5 + e.hk * 0.5)
-                                + math.sin(t0 * (1.1 + e.hk)
-                                    + e.hk * 21) * 0.13 * P.windAmp
+                            -- v7.4.12 (pedido direto: "randomize tudo,
+                            -- nada faz a mesma coisa ao mesmo tempo"):
+                            -- oscilador INDEPENDENTE por moita — 2 senos
+                            -- em frequências próprias + fase própria +
+                            -- amplitude própria. ZERO termo compartilhado
+                            -- entre moitas = impossível formar linha.
+                            local lean = (math.sin(t0 * (0.85 + e.hk * 1.35)
+                                    + e.hk * 37) * 0.72
+                                + math.sin(t0 * (1.9 + e.hk * 2.2)
+                                    + e.dz * 53) * 0.28)
+                                * (0.14 + math.abs(e.dz) * 0.26)
+                                * P.windAmp * P.dir
                             if GF_DEBUG then
                                 batch:setColor(1, 0, 1, 1)   -- prova magenta
                                 lastKey = -1
@@ -509,8 +491,13 @@ function GrassField.draw(ctx)
                and math.abs(px - g.cx) > cgap then
                 local cy = g.crestYAt(px)
                 if cy < g.bottomY - 6 then
-                    local lean = windAt((px - ctx.x) / w,
-                        camZ + ctx.relCrest, t0, P, hk) * (0.5 + hk * 0.5)
+                    -- v7.4.12: oscilador independente também aqui — a
+                    -- franja é literalmente uma LINHA; com vento
+                    -- compartilhado ela pulsava em conjunto na crista
+                    local lean = (math.sin(t0 * (0.85 + hk * 1.35)
+                            + hk * 41) * 0.7
+                        + math.sin(t0 * (2.0 + hk * 1.7) + hk * 91) * 0.3)
+                        * (0.15 + hk * 0.2) * P.windAmp * P.dir
                     local ht = hash(k * 29 + 3, 57)
                     local c = (ht < 0.45) and cDark or cMid
                     batch:setColor(c[1], c[2], c[3], 1)
