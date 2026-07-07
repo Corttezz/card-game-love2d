@@ -33,6 +33,14 @@ function M.run(mode)
         mode = mode:gsub("^mid_", "")
     end
 
+    -- prefixo "dark_": cenário BEM escuro (revisão de emissivos/olhos —
+    -- ambiente a 55% do noturno; é onde luz mal posicionada aparece)
+    if mode and mode:match("^dark_") then
+        LightEngine.debugAmbientScale = 0.55
+        WorldRoad.setTimeOfDay(1, true)
+        mode = mode:gsub("^dark_", "")
+    end
+
     -- prefixo "wide_": valida em aspect de monitor grande (1914x1011)
     if mode and mode:match("^wide_") then
         love.window.setMode(1914, 1011)

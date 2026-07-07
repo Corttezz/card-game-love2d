@@ -35,18 +35,20 @@ return {
           intensity = 0.40 },                                               -- olho dir
     },
     carrion_king = {
-        { xr = 0.435, yr = 0.24, r = 0.045, color = { 1.00, 0.60, 0.15 } }, -- olho esq
-        { xr = 0.545, yr = 0.24, r = 0.045, color = { 1.00, 0.60, 0.15 } }, -- olho dir
+        { xr = 0.435, yr = 0.24, r = 0.045, color = { 1.00, 0.60, 0.15 },
+          intensity = 0.45 },                                               -- olho esq
+        { xr = 0.545, yr = 0.24, r = 0.045, color = { 1.00, 0.60, 0.15 },
+          intensity = 0.45 },                                               -- olho dir
         { xr = 0.446, yr = 0.464, r = 0.090, color = { 0.93, 0.62, 0.18 },
           intensity = 0.45 },                                               -- coração da caixa torácica
         { xr = 0.461, yr = 0.568, r = 0.050, color = { 0.96, 0.72, 0.30 },
           intensity = 0.25 },                                               -- amuleto do cinto
     },
     grave_slime = {
-        { xr = 0.40, yr = 0.28, r = 0.045, color = { 0.60, 0.95, 0.40 },
-          intensity = 0.35 },                                               -- olho esq (órbita)
-        { xr = 0.56, yr = 0.28, r = 0.045, color = { 0.60, 0.95, 0.40 },
-          intensity = 0.35 },                                               -- olho dir (órbita)
+        -- a caveira tem UMA órbita grande — luz única centrada nela
+        -- (dois olhos criavam brilho nas bordas do crânio, lia estranho)
+        { xr = 0.50, yr = 0.26, r = 0.060, color = { 0.60, 0.95, 0.40 },
+          intensity = 0.40 },                                               -- órbita ciclope
         { xr = 0.50, yr = 0.60, r = 0.110, color = { 0.95, 0.25, 0.20 },
           intensity = 0.30 },                                               -- núcleo vermelho
     },
@@ -63,8 +65,10 @@ return {
 
     -- Ato 2 ------------------------------------------------------------
     moon_gargoyle = {
-        { xr = 0.42, yr = 0.45, r = 0.050, color = { 0.75, 0.45, 1.00 } },  -- olho esq
-        { xr = 0.53, yr = 0.45, r = 0.050, color = { 0.75, 0.45, 1.00 } },  -- olho dir
+        { xr = 0.428, yr = 0.400, r = 0.045, color = { 0.75, 0.45, 1.00 },
+          intensity = 0.50 },                                               -- olho esq (medido)
+        { xr = 0.578, yr = 0.400, r = 0.045, color = { 0.75, 0.45, 1.00 },
+          intensity = 0.50 },                                               -- olho dir (medido)
     },
     rune_golem = {
         { xr = 0.422, yr = 0.478, r = 0.110, color = { 0.76, 0.20, 0.94 },
@@ -124,7 +128,12 @@ return {
         { xr = 0.749, yr = 0.469, r = 0.065, color = { 0.94, 0.43, 0.04 } },-- fissura ombro dir
     },
     abyss_wraith = {
-        { xr = 0.52, yr = 0.235, r = 0.040, color = { 1.00, 0.20, 0.15 } }, -- olho vermelho único
+        -- dois olhos MEDIDOS (1px cada); raio pequeno — raio 0.04 tingia
+        -- a caveira branca inteira de rosa ("lugar estranho")
+        { xr = 0.461, yr = 0.250, r = 0.028, color = { 1.00, 0.20, 0.15 },
+          intensity = 0.45 },                                               -- olho esq
+        { xr = 0.526, yr = 0.250, r = 0.028, color = { 1.00, 0.20, 0.15 },
+          intensity = 0.45 },                                               -- olho dir
     },
 
     -- Endless: Frost ----------------------------------------------------
@@ -138,6 +147,8 @@ return {
     },
     glacier_knight = {
         { xr = 0.49, yr = 0.18, r = 0.055, color = { 0.45, 0.85, 1.00 } },  -- fresta do visor
+        { xr = 0.448, yr = 0.818, r = 0.060, color = { 0.62, 0.85, 1.00 },
+          intensity = 0.22 },                                               -- lâmina de gelo (glint)
     },
     winter_monarch = {
         { xr = 0.156, yr = 0.178, r = 0.090, color = { 0.48, 0.76, 0.95 },
@@ -154,17 +165,18 @@ return {
     bog_ghoul = {
         -- intensidade acima do padrão: verde-sobre-verde some no ambiente
         -- do marsh (revisão visual Jul/2026)
-        { xr = 0.42, yr = 0.245, r = 0.045, color = { 0.50, 0.95, 0.55 },
-          intensity = 0.50 },                                               -- olho esq
-        { xr = 0.52, yr = 0.245, r = 0.045, color = { 0.50, 0.95, 0.55 },
-          intensity = 0.50 },                                               -- olho dir
+        { xr = 0.410, yr = 0.245, r = 0.045, color = { 0.50, 0.95, 0.55 },
+          intensity = 0.55 },                                               -- olho esq (medido)
+        { xr = 0.505, yr = 0.255, r = 0.045, color = { 0.50, 0.95, 0.55 },
+          intensity = 0.55 },                                               -- olho dir (medido)
     },
     mire_hag = {
-        { xr = 0.485, yr = 0.32, r = 0.040, color = { 0.85, 0.50, 0.90 },
-          intensity = 0.30 },                                               -- olho esq
-        { xr = 0.545, yr = 0.32, r = 0.040, color = { 0.85, 0.50, 0.90 },
-          intensity = 0.30 },                                               -- olho dir
-        { xr = 0.655, yr = 0.444, r = 0.060, color = { 0.89, 0.79, 0.23 } },-- poção na mão
+        { xr = 0.487, yr = 0.315, r = 0.040, color = { 0.55, 0.95, 0.45 },
+          intensity = 0.45 },                                               -- olho esq (verde-bruxa)
+        { xr = 0.541, yr = 0.315, r = 0.040, color = { 0.55, 0.95, 0.45 },
+          intensity = 0.45 },                                               -- olho dir
+        { xr = 0.655, yr = 0.444, r = 0.060, color = { 0.89, 0.79, 0.23 },
+          intensity = 0.45 },                                               -- poção na mão
     },
     rot_colossus = {
         { xr = 0.42, yr = 0.28, r = 0.050, color = { 0.30, 0.90, 0.95 } },  -- olho esq
@@ -197,8 +209,10 @@ return {
         { xr = 0.495, yr = 0.205, r = 0.045, color = { 0.74, 0.59, 0.91 } },-- gema da coroa
         { xr = 0.599, yr = 0.269, r = 0.050, color = { 0.88, 0.26, 0.60 } },-- gema do rosto
         { xr = 0.561, yr = 0.600, r = 0.045, color = { 0.64, 0.74, 0.91 },
-          intensity = 0.28 },                                               -- mão esq
+          intensity = 0.35 },                                               -- mão esq
         { xr = 0.409, yr = 0.619, r = 0.045, color = { 0.59, 0.67, 0.88 },
-          intensity = 0.28 },                                               -- mão dir
+          intensity = 0.35 },                                               -- mão dir
+        { xr = 0.510, yr = 0.410, r = 0.045, color = { 0.64, 0.74, 0.91 },
+          intensity = 0.30 },                                               -- gema do peito (medida)
     },
 }

@@ -2738,8 +2738,10 @@ local function drawEncounterFront(g, x, w, camZ)
     -- desde longe — "algo vem vindo na estrada" (dados por spriteId)
     local anchors = e.spriteId and EnemyEmissives[e.spriteId]
     if anchors then
+        -- pulso em FASE ÚNICA: olhos pulsam juntos (fase por âncora fazia
+        -- um olho apagar enquanto o outro acendia — feedback Jul/2026)
+        local pulse = 0.90 + 0.10 * math.sin(WorldRoad._time * 1.1)
         for ai, a in ipairs(anchors) do
-            local pulse = 0.86 + 0.14 * math.sin(WorldRoad._time * 1.3 + ai * 2.1)
             LightEngine.submitMicro(
                 oxT + a.xr * e.iw * s, oyT + a.yr * e.ih * s,
                 a.r * e.ih * s, a.color,

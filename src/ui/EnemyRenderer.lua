@@ -25,8 +25,14 @@ local function submitEmissives(spriteId, sx, sy, iw, ih, scale, z, boost)
     local anchors = EnemyEmissives[spriteId]
     if not anchors or #anchors == 0 then return end
     local t = love.timer.getTime()
+    -- fase POR MONSTRO (hash do id): a criatura "respira" como um todo.
+    -- Fase por âncora deixava um olho a 72% e o outro a 100% no mesmo
+    -- frame — lia como "só um olho aceso" (feedback Jul/2026). O offset
+    -- por âncora é mínimo (0.3 rad), só pra não ficar mecânico.
+    local seed = 0
+    for i = 1, #spriteId do seed = (seed + spriteId:byte(i)) % 97 end
     for ai, a in ipairs(anchors) do
-        local pulse = 0.86 + 0.14 * math.sin(t * 1.3 + ai * 2.1)
+        local pulse = 0.90 + 0.10 * math.sin(t * 1.1 + seed + ai * 0.3)
         LightEngine.submitMicro(
             sx + a.xr * iw * scale,
             sy + a.yr * ih * scale,

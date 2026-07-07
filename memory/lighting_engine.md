@@ -63,7 +63,16 @@ EnemyRenderer (pulso lento, apaga na morte, mesma z da silhueta — tie-break
 do engine desenha luz depois do oclusor no mesmo plano) + billboard da
 viagem (drawEncounterFront).
 **REGRA DO USUÁRIO (Jul/2026): TODO monstro tem OLHOS emitindo luz na cor
-dos olhos** — inclusive órbitas escuras de caveira/visor (cor coerente com
+dos olhos**. Revisão 1-por-1 NO ESCURO (prefixo `dark_` do screenshot tool,
+ambiente a 55%) achou e corrigiu: (a) pulso POR ÂNCORA deixava um olho a 72%
+e outro a 100% no mesmo frame — "só um olho aceso"; agora fase POR MONSTRO
+(olhos pulsam juntos, offset 0.3 rad entre âncoras); (b) raio grande sobre
+caveira branca TINGE o osso (wraith rosa) — olho pequeno = raio ≤0.03;
+(c) órbita única (grave_slime ciclope) ganha UMA luz central, não duas;
+(d) cor do olho deve CONTRASTAR com o rosto e o bioma (mire_hag: violeta em
+rosto lilás lavava → verde-bruxa; bog_ghoul verde precisou 0.55 no marsh);
+(e) monstro grande com 1 luz só = "poucas partes" (glacier_knight ganhou
+glint na lâmina, medido: cluster 220px em 0.448/0.818) — inclusive órbitas escuras de caveira/visor (cor coerente com
 o monstro: reaper=brasa, monarch=ciano, rune_golem=violeta...). A exceção
 de contenção do harvest_reaper foi REVOGADA por esse pedido. Posições de
 olho são MEDIDAS por pixel (scan numérico), não lidas de zoom com grade —
