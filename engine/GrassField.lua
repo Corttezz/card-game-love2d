@@ -297,7 +297,9 @@ function GrassField.draw(ctx)
                     -- estáticos da fileira (mundo-fixos): calcula 1x
                     local rc = rowCache[ci]
                     if not rc then
-                        rc = { order = {} }
+                        -- born: fileira recém-promovida pelo LOD BROTA do
+                        -- chão (v7.4.5) em vez de popar em tamanho cheio
+                        rc = { order = {}, born = t0 }
                         for k = 0, NK - 1 do
                             local hk = hash(ci * 3 + 1, k * 11 + 2)
                             local ht = hash(ci * 19, k * 7 + 3)
@@ -356,7 +358,10 @@ function GrassField.draw(ctx)
                         local pxX = g.cx + e.lf * spanW
                         local dRoad = math.abs(pxX - roadC) - clear
                         if dRoad > 0 and math.abs(pxX - g.cx) < w * 0.53 then
-                            local zk = z + e.dz * Z_CELL * M
+                            -- jitter FIXO (×3, não ×M): atrelado ao M, a
+                            -- moita dava um pulo de profundidade quando o
+                            -- LOD trocava de nível durante a viagem
+                            local zk = z + e.dz * Z_CELL * 3
                             local tk = g.tOf(zk - camZ) or t
                             local perspK = g.persp(tk)
                             local sK = (0.26 + perspK * 1.75) * P.heightK
@@ -381,11 +386,19 @@ function GrassField.draw(ctx)
                             end
                             local edgeK = math.min(1,
                                 dRoad / (6 + 14 * perspK))
+                            -- BROTO com stagger por moita: cresce do chão
+                            -- em ~0.6-1.3s (calmo, "nascendo de verdade")
+                            local age = t0 - rc.born
+                            local gk = 1
+                            if age < 1.4 then
+                                gk = math.min(1, age / (0.6 + e.hk * 0.7))
+                                gk = gk * gk * (3 - 2 * gk)
+                            end
                             batch:add(e.q, math.floor(pxX),
                                 math.floor(base + 1), 0,
                                 sK * sxK * e.flip,
                                 sK * (1 - math.abs(lean) * 0.12)
-                                    * (0.35 + 0.65 * edgeK),
+                                    * (0.35 + 0.65 * edgeK) * gk,
                                 CLUMP_W / 2, CELL_H, lean * 0.5, 0)
                         end
                     end
@@ -469,8 +482,16 @@ function GrassField.draw(ctx)
                         local nb = (t < 0.22) and (2 + math.floor(h3 * 2))
                             or (4 + math.floor(h3 * 4))
                         -- escala MAIS perspectiva: minúscula na crista,
-                        -- graúda no primeiro plano
+                        -- graúda no primeiro plano.
+                        -- v7.4.5: rampa ESPACIAL de nascimento — o acento
+                        -- CRESCE conforme se aproxima (t 0.18→0.28) em vez
+                        -- de popar em tamanho cheio numa linha fixa da
+                        -- tela (feedback: "grama surgindo do nada"; agora
+                        -- tem o mesmo "vir vindo" gradual das árvores)
+                        local ramp = math.min(1, (t - 0.18) / 0.10)
+                        ramp = ramp * ramp * (3 - 2 * ramp)
                         local scale = (0.22 + persp * 1.85) * P.heightK
+                            * ramp
                         if scale * CELL_H >= 1.6 then
                             -- FLICK do tufo: impulso raro e curto (bicho/
                             -- lufada pontual) — sacode e assenta
