@@ -1740,6 +1740,50 @@ local function drawPropsBehind(g, x, w, camZ)
             end
             local crest = g.crestYAt(pxX)
             local img = getSprite(p.kind, p.variant, p.bid)
+            -- v9.2: LUMINÁRIA emergindo — mesma lógica do drawProps (flip
+            -- pro braço apontar pra estrada + frame animado + luz acesa).
+            -- Antes emergia com sprite cru, sem flip nem chama.
+            if edef and crest and img and math.abs(pxX - g.cx) < w * 0.26 then
+                local lumAnc = LuminaireEngine.anchor(p.bid, p.kind, p.variant,
+                    luminairePath(p.bid, p.kind, p.variant))
+                local lumFlip = 1
+                if edef.face and edef.face ~= 0 then
+                    local want = p.side < 0 and 1 or -1
+                    lumFlip = (want == edef.face) and 1 or -1
+                end
+                local fr = luminaireFrames(p.bid, p.kind, p.variant)
+                if fr then
+                    local ph = (p.z * 7.31) % #fr
+                    img = fr[1 + math.floor((WorldRoad._time * 10 + ph) % #fr)]
+                end
+                local iw, ih = img:getWidth(), img:getHeight()
+                local size = kindSize(p.kind, p.bid) * (p.big or 1)
+                local s = g.scaleAt(size, 0, ih)
+                local px2 = pxX - (lumAnc.offX or 0) * s * lumFlip
+                local sink = (1 - em) * ih * s
+                local baseY = crest + sink   -- pé (afunda no domo)
+                love.graphics.setColor(0.7, 0.7, 0.7, 1)
+                love.graphics.draw(img, math.floor(px2), math.floor(baseY),
+                    0, s * lumFlip, s, iw / 2, ih)
+                -- luz: núcleo na chama (poça só quando t alto → aqui não).
+                -- só quando o topo já saiu do domo (senão a chama fica
+                -- ENTERRADA e vaza luz por baixo do horizonte)
+                local flameTopY = baseY - ih * s * (1 - (lumAnc.ay or 0.3))
+                if flameTopY > crest - ih * s and flameTopY < baseY then
+                    local ax = lumAnc.ax or 0.5
+                    if lumFlip < 0 then ax = 1 - ax end
+                    local fx = px2 + (ax - 0.5) * iw * s
+                    local fxT, fyT = love.graphics.transformPoint(fx, flameTopY)
+                    local gxT, gyT = love.graphics.transformPoint(px2, baseY)
+                    LuminaireEngine.submit(p.bid, p.kind, {
+                        fx = fxT, fy = fyT, gx = gxT, gy = gyT,
+                        sh = ih * s, t = 0, rel = rel, seed = p.z,
+                        flameH = math.max(8, gyT - fyT), capR = g.h * 0.30,
+                    })
+                end
+                love.graphics.setColor(1, 1, 1, 1)
+                goto continue_emerge
+            end
             -- ciclo 30/33: emersão SÓ na faixa central do horizonte. O
             -- clamp por crestYAt (c30) era raso demais — a curva dip é
             -- pequena perto do topo e árvores a 0.4w ainda emergiam nas
@@ -1774,6 +1818,7 @@ local function drawPropsBehind(g, x, w, camZ)
                     math.floor(crest + sink - ih * s), 0, s, s)
             end
         end
+        ::continue_emerge::
     end
     love.graphics.setColor(1, 1, 1, 1)
 end
