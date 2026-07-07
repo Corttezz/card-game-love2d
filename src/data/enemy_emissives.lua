@@ -27,8 +27,12 @@ return {
           intensity = 0.25 },                                               -- sorriso
     },
     harvest_reaper = {
-        -- sem glow pintado na arte (skull de osso, palha não é emissivo).
-        -- candidato a ganhar olhos de brasa numa re-arte futura.
+        -- REGRA (Jul/2026): todo monstro tem OLHOS emitindo na cor deles —
+        -- órbitas escuras de caveira ganham brasa (posição medida no osso)
+        { xr = 0.445, yr = 0.170, r = 0.042, color = { 1.00, 0.55, 0.15 },
+          intensity = 0.40 },                                               -- olho esq
+        { xr = 0.503, yr = 0.170, r = 0.042, color = { 1.00, 0.55, 0.15 },
+          intensity = 0.40 },                                               -- olho dir
     },
     carrion_king = {
         { xr = 0.435, yr = 0.24, r = 0.045, color = { 1.00, 0.60, 0.15 } }, -- olho esq
@@ -39,6 +43,10 @@ return {
           intensity = 0.25 },                                               -- amuleto do cinto
     },
     grave_slime = {
+        { xr = 0.40, yr = 0.28, r = 0.045, color = { 0.60, 0.95, 0.40 },
+          intensity = 0.35 },                                               -- olho esq (órbita)
+        { xr = 0.56, yr = 0.28, r = 0.045, color = { 0.60, 0.95, 0.40 },
+          intensity = 0.35 },                                               -- olho dir (órbita)
         { xr = 0.50, yr = 0.60, r = 0.110, color = { 0.95, 0.25, 0.20 },
           intensity = 0.30 },                                               -- núcleo vermelho
     },
@@ -47,6 +55,10 @@ return {
           intensity = 0.45 },                                               -- cabeça-fornalha
         { xr = 0.450, yr = 0.394, r = 0.060, color = { 0.88, 0.61, 0.22 },
           intensity = 0.30 },                                               -- fissura do peito
+        { xr = 0.462, yr = 0.215, r = 0.040, color = { 1.00, 0.75, 0.25 },
+          intensity = 0.40 },                                               -- olho esq
+        { xr = 0.527, yr = 0.215, r = 0.040, color = { 1.00, 0.75, 0.25 },
+          intensity = 0.40 },                                               -- olho dir
     },
 
     -- Ato 2 ------------------------------------------------------------
@@ -60,11 +72,18 @@ return {
         { xr = 0.161, yr = 0.452, r = 0.070, color = { 0.78, 0.27, 0.93 } },-- runa ombro esq
         { xr = 0.689, yr = 0.456, r = 0.070, color = { 0.81, 0.24, 0.97 } },-- runa ombro dir
         { xr = 0.336, yr = 0.265, r = 0.070, color = { 0.83, 0.24, 0.94 } },-- runa do elmo
+        { xr = 0.490, yr = 0.255, r = 0.038, color = { 0.80, 0.30, 0.95 },
+          intensity = 0.45 },                                               -- olho esq (visor)
+        { xr = 0.535, yr = 0.255, r = 0.038, color = { 0.80, 0.30, 0.95 },
+          intensity = 0.45 },                                               -- olho dir (visor)
     },
     tower_lich = {
         { xr = 0.190, yr = 0.240, r = 0.090, color = { 0.62, 0.81, 0.92 },
           intensity = 0.50 },                                               -- orbe do cajado
-        { xr = 0.476, yr = 0.261, r = 0.050, color = { 0.38, 0.83, 0.95 } },-- olhos
+        { xr = 0.455, yr = 0.260, r = 0.040, color = { 0.38, 0.83, 0.95 },
+          intensity = 0.45 },                                               -- olho esq
+        { xr = 0.495, yr = 0.260, r = 0.040, color = { 0.38, 0.83, 0.95 },
+          intensity = 0.45 },                                               -- olho dir
         { xr = 0.467, yr = 0.463, r = 0.045, color = { 0.44, 0.77, 0.91 },
           intensity = 0.25 },                                               -- broche do peito
     },
@@ -77,6 +96,10 @@ return {
         { xr = 0.36, yr = 0.54, r = 0.065, color = { 0.95, 0.45, 0.06 } },  -- bola de fogo
         { xr = 0.554, yr = 0.474, r = 0.075, color = { 0.92, 0.42, 0.05 },
           intensity = 0.30 },                                               -- fissuras do peito
+        { xr = 0.390, yr = 0.424, r = 0.040, color = { 1.00, 0.25, 0.10 },
+          intensity = 0.45 },                                               -- olho esq
+        { xr = 0.530, yr = 0.420, r = 0.040, color = { 1.00, 0.25, 0.10 },
+          intensity = 0.45 },                                               -- olho dir
     },
     obsidian_sentinel = {
         { xr = 0.175, yr = 0.347, r = 0.070, color = { 0.93, 0.40, 0.04 } },-- ombro esq
@@ -85,8 +108,16 @@ return {
           intensity = 0.45 },                                               -- magma do torso
         { xr = 0.340, yr = 0.710, r = 0.080, color = { 0.88, 0.45, 0.02 },
           intensity = 0.30 },                                               -- magma da saia
+        { xr = 0.475, yr = 0.315, r = 0.038, color = { 1.00, 0.45, 0.12 },
+          intensity = 0.45 },                                               -- olho esq (visor)
+        { xr = 0.515, yr = 0.315, r = 0.038, color = { 1.00, 0.45, 0.12 },
+          intensity = 0.45 },                                               -- olho dir (visor)
     },
     abyss_tyrant = {
+        { xr = 0.451, yr = 0.258, r = 0.042, color = { 1.00, 0.75, 0.15 },
+          intensity = 0.45 },                                               -- olho esq
+        { xr = 0.534, yr = 0.259, r = 0.042, color = { 1.00, 0.75, 0.15 },
+          intensity = 0.45 },                                               -- olho dir
         { xr = 0.496, yr = 0.621, r = 0.100, color = { 0.96, 0.51, 0.10 },
           intensity = 0.50 },                                               -- fornalha do peito
         { xr = 0.244, yr = 0.467, r = 0.065, color = { 0.95, 0.44, 0.03 } },-- fissura ombro esq
@@ -98,8 +129,10 @@ return {
 
     -- Endless: Frost ----------------------------------------------------
     frost_wight = {
-        { xr = 0.47, yr = 0.17, r = 0.060, color = { 0.62, 0.80, 0.93 },
-          intensity = 0.25 },                                               -- rosto espectral
+        { xr = 0.43, yr = 0.21, r = 0.042, color = { 0.62, 0.85, 1.00 },
+          intensity = 0.45 },                                               -- olho esq (medido)
+        { xr = 0.49, yr = 0.21, r = 0.042, color = { 0.62, 0.85, 1.00 },
+          intensity = 0.45 },                                               -- olho dir
         { xr = 0.435, yr = 0.347, r = 0.070, color = { 0.62, 0.77, 0.90 },
           intensity = 0.25 },                                               -- cristal do peito
     },
@@ -111,6 +144,10 @@ return {
           intensity = 0.50 },                                               -- orbe do cajado
         { xr = 0.644, yr = 0.317, r = 0.055, color = { 0.63, 0.80, 0.92 },
           intensity = 0.25 },                                               -- cristal do ombro
+        { xr = 0.425, yr = 0.238, r = 0.040, color = { 0.55, 0.85, 1.00 },
+          intensity = 0.45 },                                               -- olho esq
+        { xr = 0.468, yr = 0.238, r = 0.040, color = { 0.55, 0.85, 1.00 },
+          intensity = 0.45 },                                               -- olho dir
     },
 
     -- Endless: Marsh ----------------------------------------------------
@@ -140,7 +177,10 @@ return {
 
     -- Endless: Dusk -----------------------------------------------------
     dusk_shade = {
-        { xr = 0.59, yr = 0.21, r = 0.065, color = { 0.70, 0.64, 0.90 } },  -- rosto/capuz
+        { xr = 0.339, yr = 0.198, r = 0.038, color = { 0.92, 0.90, 1.00 },
+          intensity = 0.50 },                                               -- olho esq (medido)
+        { xr = 0.411, yr = 0.198, r = 0.038, color = { 0.92, 0.90, 1.00 },
+          intensity = 0.50 },                                               -- olho dir
         { xr = 0.595, yr = 0.473, r = 0.075, color = { 0.72, 0.65, 0.91 } },-- mão espectral
         { xr = 0.372, yr = 0.128, r = 0.055, color = { 0.64, 0.64, 0.88 },
           intensity = 0.25 },                                               -- fiapo de fumaça
@@ -150,6 +190,10 @@ return {
         { xr = 0.535, yr = 0.15, r = 0.040, color = { 1.00, 0.20, 0.15 } }, -- olho dir
     },
     eclipse_queen = {
+        { xr = 0.414, yr = 0.263, r = 0.036, color = { 0.95, 0.35, 0.65 },
+          intensity = 0.45 },                                               -- olho esq
+        { xr = 0.472, yr = 0.272, r = 0.036, color = { 0.95, 0.35, 0.65 },
+          intensity = 0.45 },                                               -- olho dir
         { xr = 0.495, yr = 0.205, r = 0.045, color = { 0.74, 0.59, 0.91 } },-- gema da coroa
         { xr = 0.599, yr = 0.269, r = 0.050, color = { 0.88, 0.26, 0.60 } },-- gema do rosto
         { xr = 0.561, yr = 0.600, r = 0.045, color = { 0.64, 0.74, 0.91 },

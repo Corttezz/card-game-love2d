@@ -61,8 +61,14 @@ fornalha do abyss_tyrant, olho vermelho único do abyss_wraith...). Dados em
 memory/enemy_pipeline.md (extrator + revisão da folha anotada). Runtime:
 EnemyRenderer (pulso lento, apaga na morte, mesma z da silhueta — tie-break
 do engine desenha luz depois do oclusor no mesmo plano) + billboard da
-viagem (drawEncounterFront). harvest_reaper ficou SEM luz de propósito
-(skull de osso sem glow pintado — restraint é parte do padrão).
+viagem (drawEncounterFront).
+**REGRA DO USUÁRIO (Jul/2026): TODO monstro tem OLHOS emitindo luz na cor
+dos olhos** — inclusive órbitas escuras de caveira/visor (cor coerente com
+o monstro: reaper=brasa, monarch=ciano, rune_golem=violeta...). A exceção
+de contenção do harvest_reaper foi REVOGADA por esse pedido. Posições de
+olho são MEDIDAS por pixel (scan numérico), não lidas de zoom com grade —
+células com padding enganam a leitura visual (frost_wight: zoom dizia
+x=0.23, medição deu 0.46).
 
 ## Calibração por feedback do usuário (Jul/2026)
 - **Vagalumes**: "só no meio da estrada, luz grande demais" → spawn nas FAIXAS

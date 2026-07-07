@@ -249,8 +249,10 @@ emissivos (olhos, chamas, cristais, runas — nunca dourado/palha/osso):
    clusters saturados+claros; imprime candidatos no formato Lua.
 2. **Revisar a folha anotada** (`tools/preview_out/enemy_emissives_sheet.png`)
    — o detector confunde dourado/palha com emissivo (falsos positivos do
-   espantalho: ombros e mãos de palha). Olhos escuros de caveira NÃO ganham
-   luz; skull sem glow pintado fica SEM entrada (ex.: harvest_reaper).
+   espantalho: ombros e mãos de palha).
+   REGRA (pedido do usuário, Jul/2026): TODO monstro tem OLHOS emitindo na
+   cor deles — órbita escura de caveira/visor ganha cor coerente (brasa,
+   ciano, violeta...). Medir a posição por scan de pixel (não por zoom).
 3. Adicionar a entrada revisada em `src/data/enemy_emissives.lua`
    (xr/yr relativos ao frame idle 0; r em fração da altura; intensity
    default 0.35 — 0.5 só pra núcleos/orbes; SUTIL é a regra).
