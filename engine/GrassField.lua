@@ -292,8 +292,11 @@ function GrassField.draw(ctx)
             if ch >= 2 then
                 local t2 = g.tOf(rel - Z_CELL)
                 local dy = t2 and (g.latY(0, t2) - g.latY(0, t)) or ch
+                -- v7.4.8: folga calculada pro PIOR CASO (moita rasteira,
+                -- 0.60×) — com 0.30 o vão entre fileiras ficava mais alto
+                -- que a rasteira e o chão vazava ("mais buracos")
                 local M = 1
-                while dy * M < ch * 0.30 and M < 64 do M = M * 2 end
+                while dy * M < ch * 0.22 and M < 64 do M = M * 2 end
                 if GF_DEBUG then
                     print(string.format(
                         "ci=%d rel=%.2f t=%.4f dy=%.2f ch=%.2f M=%d draw=%s",
@@ -337,13 +340,17 @@ function GrassField.draw(ctx)
                             local pTall = 0.08 + 0.57 * df
                             local hr = hash(ci * 41 + 8, k * 23 + 5)
                             local hr2 = hash(ci * 43 + 2, k * 31 + 9)
+                            -- piso da rasteira = 0.60: abaixo disso ela
+                            -- fica mais baixa que o vão entre fileiras e
+                            -- fura o tapete (altura muda SÓ pra cima da
+                            -- linha de cobertura, nunca pra baixo dela)
                             local hMul
                             if hr < pSmall then
-                                hMul = 0.42 + hr2 * 0.22      -- bem pequena
+                                hMul = 0.60 + hr2 * 0.18      -- bem pequena
                             elseif hr > 1 - pTall then
                                 hMul = 1.30 + hr2 * 0.50      -- bem alta
                             else
-                                hMul = 0.82 + hr2 * 0.34      -- média
+                                hMul = 0.88 + hr2 * 0.30      -- média
                             end
                             rc[k] = {
                                 hk = hk,
