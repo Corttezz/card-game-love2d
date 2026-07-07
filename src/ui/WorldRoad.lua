@@ -251,6 +251,46 @@ local function tryLoadPng(name)
     return img
 end
 
+-- v9.1: FRAMES de animação da luminária (só o fogo/lâmpada mexe, corpo
+-- estático — PixelLab animate_object). Layout:
+--   assets/sprites/world/anim/<bid>_<kind>_<variant>/0.png..N.png
+-- Sem pasta → luminária fica com o PNG estático (glow assado + flicker
+-- de luz seguem funcionando).
+local lumFramesCache = {}
+local function luminaireFrames(bid, kind, variant)
+    local key = bid .. "_" .. kind .. "_" .. variant
+    local hit = lumFramesCache[key]
+    if hit ~= nil then return hit or nil end
+    local dir = "assets/sprites/world/anim/" .. key
+    local info = love.filesystem.getInfo(dir)
+    if not info or info.type ~= "directory" then
+        local f0 = nil
+        if variant ~= 0 then f0 = luminaireFrames(bid, kind, 0) end
+        lumFramesCache[key] = f0 or false
+        return f0
+    end
+    local files = love.filesystem.getDirectoryItems(dir)
+    table.sort(files, function(a, b)
+        local na = tonumber(a:match("^(%d+)"))
+        local nb = tonumber(b:match("^(%d+)"))
+        if na and nb then return na < nb end
+        return a < b
+    end)
+    local frames = {}
+    for _, f in ipairs(files) do
+        if f:match("%.png$") then
+            local ok, im = pcall(love.graphics.newImage, dir .. "/" .. f)
+            if ok and im then
+                im:setFilter("nearest", "nearest")
+                frames[#frames + 1] = im
+            end
+        end
+    end
+    local res = #frames > 1 and frames or false
+    lumFramesCache[key] = res
+    return res or nil
+end
+
 -- v9: caminho do PNG da luminária (mesma cascata variant → 0 do getSprite)
 -- — o LuminaireEngine escaneia o arquivo pra achar a chama/margens
 local function luminairePath(bid, kind, variant)
@@ -696,13 +736,13 @@ local function rollProp(p, z, forcedSide)
     p.z = z
     p.kind = pickKind(b, rng)
     -- v9: CADÊNCIA MÍNIMA de luminária — estrada real tem poste em
-    -- intervalo; se passaram >12 unidades de mundo sem emissor, o próximo
+    -- intervalo; se passaram >9 unidades de mundo sem emissor, o próximo
     -- prop VIRA luminária (sorteada pelos pesos do catálogo do bioma)
     local lumCat = LuminaireEngine.catalog(b.id)
     if next(lumCat) then
         if LuminaireEngine.isLuminaire(p.kind) then
             WorldRoad._lastLumZ = z
-        elseif z - (WorldRoad._lastLumZ or -1e9) > 12 then
+        elseif z - (WorldRoad._lastLumZ or -1e9) > 9 then
             local tot = 0
             for _, d in pairs(lumCat) do tot = tot + (d.weight or 0.5) end
             local r2 = rng:random() * tot
@@ -2599,12 +2639,30 @@ local function drawProps(g, x, w, camZ)
                 -- do canvas) — lição dos monstros: margem do PixelLab
                 -- descentra o prop e deixa o pé flutuando
                 local lumDef = LuminaireEngine.def(p.bid, p.kind)
-                local lumAnc, lumSink = nil, 0
+                local lumAnc, lumSink, lumFlip = nil, 0, 1
                 if lumDef then
                     lumAnc = LuminaireEngine.anchor(p.bid, p.kind, p.variant,
                         luminairePath(p.bid, p.kind, p.variant))
-                    pxX = pxX - (lumAnc.offX or 0) * s
+                    -- v9.1 (feedback: "todos apontados pro mesmo lugar"):
+                    -- o braço do poste aponta SEMPRE pra estrada — prop à
+                    -- esquerda quer braço pra direita e vice-versa; espelha
+                    -- quando a arte nasceu virada pro lado errado
+                    if lumDef.face and lumDef.face ~= 0 then
+                        local want = p.side < 0 and 1 or -1
+                        lumFlip = (want == lumDef.face) and 1 or -1
+                    end
+                    pxX = pxX - (lumAnc.offX or 0) * s * lumFlip
                     lumSink = (lumAnc.footPad or 0) * s
+                    -- v9.1: fogo ANIMADO (frames PixelLab, corpo estático).
+                    -- Fase própria por prop (p.z) — nada pisca em uníssono
+                    -- (doutrina "randomize tudo"). Sombra segue o frame.
+                    local fr = luminaireFrames(p.bid, p.kind, p.variant)
+                    if fr then
+                        local ph = (p.z * 7.31) % #fr
+                        img = fr[1 + math.floor(
+                            (WorldRoad._time * 10 + ph) % #fr)]
+                        iw, ih = img:getWidth(), img:getHeight()
+                    end
                 end
 
                 -- CLUSTER natural (feedback: "muito solto"): árvores vêm em
@@ -2674,7 +2732,7 @@ local function drawProps(g, x, w, camZ)
                 -- o tapete mais próximo cobria). Fallback: elipse legada.
                 local aFade = math.min(1, 0.72 + t * 1.1)
                 if not ShadowEngine.queue(img, pxX, sy - 1, s,
-                    { alphaK = aFade,
+                    { alphaK = aFade, flip = lumFlip,
                       footPad = lumAnc and lumAnc.footPad or 0 }) then
                     local shd = sunShadowDir(g, x, w, pxX)
                     love.graphics.setColor(0, 0, 0, 0.20 * aFade)
@@ -2715,7 +2773,7 @@ local function drawProps(g, x, w, camZ)
                     aFade * ((1 - mixK) + mixK * math.min(1.6, lt[3] * 1.9)),
                     1)
                 love.graphics.draw(img, math.floor(pxX), math.floor(sy + sink2),
-                    rot, s, s, iw / 2, ih)
+                    rot, s * lumFlip, s, iw / 2, ih)
 
                 -- LightEngine v1.1: vegetação OCLUI luz vinda de trás
                 -- (silhueta no lightmap — janelas do castelo/poças fundas
@@ -2742,7 +2800,9 @@ local function drawProps(g, x, w, camZ)
                 -- (REGRA DE PROFUNDIDADE: fagulha atrás da árvore da frente).
                 if lumDef then
                     local sh2 = ih * s
-                    local fx = pxX + ((lumAnc.ax or 0.5) - 0.5) * iw * s
+                    local ax = lumAnc.ax or 0.5
+                    if lumFlip < 0 then ax = 1 - ax end
+                    local fx = pxX + (ax - 0.5) * iw * s
                     local fy = sy + sink2 - sh2 * (1 - (lumAnc.ay or 0.3))
                     local fxT, fyT = love.graphics.transformPoint(fx, fy)
                     local gxT, gyT = love.graphics.transformPoint(pxX, sy)
@@ -3114,6 +3174,7 @@ end
 function WorldRoad.clearCache()
     WorldRoad._spriteCache = {}
     WorldRoad._quadCache = {}
+    lumFramesCache = {}
     require("engine.GrassField").clearCache()
     WorldRoad._props = {}
     WorldRoad._clouds = {}

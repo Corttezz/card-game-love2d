@@ -54,7 +54,8 @@ local CATALOG = {
     -- Campos Arruinados: âmbar de fazenda — lampião, fogueira de beira de
     -- estrada, santuário de vela (mundo rural que ainda acende as luzes)
     fields = {
-        lantern = { size = 2.3, lane = { 0.0, 0.08 }, anchor = { 0.78, 0.46 },
+        lantern = { size = 3.0, face = 1,
+            lane = { 0.0, 0.08 }, anchor = { 0.78, 0.46 },
             weight = 1.1,
             light = { color = FIRE_AMBER, radiusK = 1.35, coreK = 0.40,
                       intensity = 0.85, flicker = "fire" } },
@@ -130,7 +131,8 @@ local CATALOG = {
     -- Pântano da Podridão: bruxaria — lampião torto de fogo-fátuo VERDE,
     -- cogumelos bioluminescentes, totem musgoso com chama espectral
     marsh = {
-        lantern = { size = 2.3, lane = { 0.0, 0.08 }, anchor = { 0.78, 0.46 },
+        lantern = { size = 3.0, face = 1,
+            lane = { 0.0, 0.08 }, anchor = { 0.78, 0.46 },
             weight = 0.9,
             light = { color = { 0.55, 0.95, 0.45 }, radiusK = 1.35,
                       coreK = 0.40, intensity = 0.80, flicker = "wisp" } },
@@ -147,7 +149,8 @@ local CATALOG = {
     -- Campos do Crepúsculo: golden hour eterna — lampião dourado
     -- (referência), fogueira de colheita, santuário de velas no trigo
     dusk = {
-        lantern = { size = 2.3, lane = { 0.0, 0.08 }, anchor = { 0.78, 0.46 },
+        lantern = { size = 3.0, face = -1,
+            lane = { 0.0, 0.08 }, anchor = { 0.78, 0.46 },
             weight = 1.1,
             light = { color = { 1.00, 0.72, 0.30 }, radiusK = 1.40,
                       coreK = 0.40, intensity = 0.85, flicker = "fire" } },

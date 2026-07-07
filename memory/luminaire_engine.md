@@ -58,8 +58,30 @@ Ele é dono de:
 Bench travel 15.61 ms/frame (com o jogo do usuário rodando em paralelo —
 re-medir ocioso; orçamento 16.6). Anchor scan é 1× por (bid,kind,variant).
 
+## v9.1 (feedback: postes maiores + braço pra estrada + fogo animado)
+- **face** no catálogo (+1/-1 = direção do braço NA ARTE; nil = simétrico):
+  fields/marsh lantern face=1, dusk face=-1. WorldRoad espelha
+  (`lumFlip`) pra apontar SEMPRE pra estrada: prop à esquerda → braço à
+  direita. Espelho propaga: offX·flip, ax'=1-ax, ShadowEngine flip.
+- Postes 2.3→**3.0**; braseiros de pilar 1.5-1.6; totem 2.0.
+- Cadência 12→**9** unidades (frost/dusk ainda sorteavam telas vazias).
+- **FOGO ANIMADO**: PixelLab `animate_object` FUNCIONA em map objects
+  (mode v3, 8 frames+ref=9, ~6min/job, 8 slots). Frames em
+  `assets/sprites/world/anim/<bid>_<kind>_<v>/0..8.png`; WorldRoad troca
+  o img do prop por frame (`_time*10 + fase própria por p.z` — nada
+  pisca em uníssono); sombra projetada segue o frame; frame0 == base PNG
+  (keep_first_frame) → âncoras/scan continuam válidos.
+- **VALIDAR ATIVIDADE dos frames** (lição dupla!): somar px de diff RGB
+  entre frame0 e 1..8. PEGADINHA Pillow≥10: `getbbox()` em diff RGBA usa
+  `alpha_only=True` por DEFAULT — animação de brilho (RGB puro, alfa
+  igual) mede como MORTA; varrer os pixels, não confiar no bbox. v3 às
+  vezes anima fraco de verdade (13px marsh lantern → regen "growing and
+  shrinking, pulsing bright and dim" = 1365px). Saudável: 130-3000px.
+  shrine×2/runestone usam frames PROCEDURAIS (pulso de brilho pra BAIXO
+  no núcleo ≥78% do pico — pra cima clampa em 255 e nada muda). Modo
+  `lumanim<N>` no screenshot tool prova movimento em cena.
+
 ## Pendências/afinações futuras
 - Variantes _1/_2 por kind (hoje tudo variant 0).
-- Chama ANIMADA por spritesheet (hoje glow assado + flicker de luz).
 - fields_lantern standalone (b63b61ef) ficou sem uso — regen 19703fde é o
   poste oficial.

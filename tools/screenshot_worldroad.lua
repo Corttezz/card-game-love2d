@@ -184,6 +184,51 @@ function M.run(mode)
         print("[screenshot] 24 frames ga_XX.png salvos")
         love.event.quit()
         return
+    elseif mode and mode:match("^lumanim%d$") then
+        -- v9.1: PROVA do fogo animado das luminárias — converte os props
+        -- do bioma em luminárias (ciclo pelo catálogo) e salva 2 instantes
+        -- (lum_a/lum_b.png); diff das duas mostra SÓ chama/lâmpada mexendo
+        local LuminaireEngine = require("engine.LuminaireEngine")
+        local bio = tonumber(mode:match("%d")) or 1
+        local topBarH = 80
+        WorldRoad.clearCache()
+        WorldRoad.setBiome(bio)
+        WorldRoad._camZ = 5.5
+        WorldRoad._blend = nil
+        WorldRoad._prevBiomeIndex = nil
+        WorldRoad.update(1 / 30)
+        local kinds = {}
+        local bid = require("src.data.biomes")[bio].id
+        for kind in pairs(LuminaireEngine.catalog(bid)) do
+            kinds[#kinds + 1] = kind
+        end
+        table.sort(kinds)
+        local ki = 0
+        for _, p in ipairs(WorldRoad._props) do
+            if p.kind ~= "tuft" and p.kind ~= "fence" then
+                ki = ki + 1
+                p.kind = kinds[(ki % #kinds) + 1]
+                p.variant = 0
+                p.cluster = nil
+                p.big = 1
+            end
+        end
+        for _ = 1, 30 do WorldRoad.update(1 / 30) end
+        for fi, name in ipairs({ "lum_a.png", "lum_b.png" }) do
+            if fi == 2 then
+                for _ = 1, 5 do WorldRoad.update(1 / 30) end
+            end
+            love.graphics.clear(0, 0, 0, 1)
+            WorldRoad.draw(0, topBarH, width, height - topBarH, bio)
+            overlays(0, topBarH, width, height - topBarH)
+            love.graphics.captureScreenshot(function(imageData)
+                imageData:encode("png", name)
+                print("[screenshot] salvo: " .. name)
+            end)
+            love.graphics.present()
+        end
+        love.event.quit()
+        return
     elseif mode == "bench" or mode == "bench0" then
         -- BENCHMARK de CPU (v7.4): 200 frames de VIAGEM simulada (camZ
         -- avançando = pior caso do tapete de grama). Mede update+draw sem
