@@ -2900,9 +2900,13 @@ local function drawEncounterFront(g, x, w, camZ)
     -- LightEngine v1.1: o inimigo descendo a estrada oclui luzes atrás
     -- dele (janelas do castelo de onde ele saiu)
     local oxT, oyT = love.graphics.transformPoint(dx0, dy0)
+    -- v9.2: z com VIÉS +6 (mesma correção do EnemyRenderer) — o corpo só
+    -- oclui luz bem mais funda (castelo); poça de luminária que ele cruza
+    -- na viagem continua iluminando-o (sem o viés ele APAGAVA ao passar
+    -- por braseiro, estrobando com o flicker)
     if e.anim then
         LightEngine.submitOccluder({
-            z = rel, bx = oxT, by = oyT, w = e.iw * s, h = e.ih * s,
+            z = rel + 6, bx = oxT, by = oyT, w = e.iw * s, h = e.ih * s,
             fn = function()
                 -- SpriteAnimation:draw ignora setColor — repassa via
                 -- getColor (mesmo padrão do occluder do EnemyRenderer)
@@ -2912,7 +2916,7 @@ local function drawEncounterFront(g, x, w, camZ)
         })
     else
         LightEngine.submitOccluder({
-            z = rel, img = e.img, x = oxT, y = oyT, sx = s, sy = s,
+            z = rel + 6, img = e.img, x = oxT, y = oyT, sx = s, sy = s,
             bx = oxT, by = oyT, w = e.iw * s, h = e.ih * s,
         })
     end

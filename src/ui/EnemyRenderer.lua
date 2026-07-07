@@ -442,8 +442,14 @@ function EnemyRenderer.draw(game, cx, cy)
 
     -- LightEngine v1.1: o corpo do inimigo OCLUI luzes atrás dele (janelas
     -- do castelo, poças mais fundas) — silhueta pixel-perfeita no lightmap.
-    -- z = BATTLE_REL (posição do inimigo na estrada); no-op sem frame de luz
-    -- (interiores). Lanterna mais PRÓXIMA que ele continua iluminando-o.
+    -- No-op sem frame de luz (interiores). Lanterna mais PRÓXIMA que ele
+    -- continua iluminando-o.
+    -- v9.2 (bug: "monstro fica todo escuro em alguns momentos"): z tem
+    -- VIÉS +6 — o corpo só oclui luz BEM mais funda (janelas do castelo,
+    -- rel ~26). Poça de luminária logo atrás (rel 9-15) voltou a
+    -- iluminá-lo: sem o viés, a silhueta apagava a poça e o monstro
+    -- virava um buraco preto DENTRO da área iluminada, estrobando com o
+    -- flicker do fogo (a poça cresce/encolhe sobre ele).
     do
         local oxT, oyT = love.graphics.transformPoint(drawX, drawY)
         local animRef = hasAnim and currentAnim or nil
@@ -455,7 +461,7 @@ function EnemyRenderer.draw(game, cx, cy)
         end
         if animRef or staticRef then
             LightEngine.submitOccluder({
-                z = 9,   -- WorldRoad.BATTLE_REL (sem require circular)
+                z = 9 + 6,   -- BATTLE_REL + viés (sem require circular)
                 bx = oxT, by = oyT, w = iw * scale, h = ih * scale,
                 fn = function()
                     if animRef then
