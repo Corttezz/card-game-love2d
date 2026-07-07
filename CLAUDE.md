@@ -25,13 +25,15 @@ card-game-love2d/
 │   ├── EventManager.lua        # Fila global de eventos temporais, _G.EventManager
 │   ├── Easing.lua              # Funções de easing + lookup por nome
 │   ├── Moveable.lua            # Mixin juice_up() + T/VT opcional
-│   └── GrassField.lua          # Motor de vegetação rasteira (SpriteBatch, vento 3 camadas, presets por bioma) — base do cenário WorldRoad
+│   ├── GrassField.lua          # Motor de vegetação rasteira (SpriteBatch, vento 3 camadas, presets por bioma) — base do cenário WorldRoad
+│   └── LightEngine.lua         # Motor de iluminação 2D do WorldRoad (lightmap ¼ multiply-only, micro-luzes, zero stencil) — memory/lighting_engine.md
 ├── shaders/                    # GLSL (LÖVE 11.x format)
 │   ├── crt.glsl, holo.glsl, card_perspective.glsl  # Pré-existentes
 │   ├── dissolve.glsl           # Próprio (value noise + FBM + threshold animado)
 │   ├── flash.glsl              # Próprio (full-screen white + ring radial)
 │   ├── booster.glsl            # Próprio (iridescente azul-prata pra packs)
 │   ├── holo.glsl               # Próprio (rare/legendary — multi-banda + sweep + sparkle)
+│   ├── light_dither.glsl       # Próprio (LightEngine — falloff posterizado + dither Bayer 4×4)
 │   ├── foil.glsl               # Próprio (edition Foil — metálico frio sem rainbow)
 │   ├── polychrome.glsl         # Próprio (edition Polychrome — hue cycle saturado)
 │   └── negative.glsl           # Próprio (edition Negative — invertido + halo)
