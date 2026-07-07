@@ -296,6 +296,7 @@ O painel do canto de inimigo (antigo `HudEnemyPanel`) foi aposentado. `GameUI.lu
 - **Shaders**: `shaders/dissolve.glsl`, `flash.glsl`, `booster.glsl`, `holo.glsl` foram **reescritos do zero** (Fase 2 do refactor Balatro, Abril/2026) com matemática própria — value noise hash-based + FBM + multi-banda iridescente. Copyright-safe. Novos: `foil.glsl`, `polychrome.glsl`, `negative.glsl` pra editions (Fase 3).
 
 ### Anti-patterns observados (a evitar ao editar)
+- **REGRA DE PROFUNDIDADE do WorldRoad (lei do projeto, pedido explícito Jul/2026):** TODO elemento novo da cena entra no painter **intercalado por profundidade (`rel`)** — nunca em "camada global por tipo". O padrão é o do v7.5: `drawProps` descarrega fatias de grama entre as árvores (`flushGrassTo` → janelas `relFrom`/`relTo` do GrassField); um elemento na frente do pé de uma árvore desenha DEPOIS dela; atrás, ANTES. Vale pra pedra, animal, efeito, personagem — e também na LUZ (`LightEngine.submitOccluder` com `z`). Elemento desenhado em camada plana por cima do campo é bug, não estilo.
 - `src/ui/HudPanel.lua` e `src/ui/VisualEffects.lua` foram removidos no refactor de Abril/2026 (eram legado). Não recriar.
 - **Cartas não devem ter `effects = {}` sem tags significativas.** Starter/básicas OK. Rode `love . validate_cards` antes de commitar.
 - **Nunca condicione por `card.name`** — use `card.effects` + `card.tags` (data-driven).

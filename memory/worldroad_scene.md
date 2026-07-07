@@ -1194,6 +1194,15 @@ janela COMPLETA da câmera; range de células limitado à janela da fatia
 (sem isso: 17ms/frame); ctx construído 1×/frame e reutilizado entre as
 fatias (~200 alocações/frame de tabela+closures a menos).
 
+⭐ **REGRA GERAL (pedido explícito do usuário, Jul/07): essa lógica vale
+pra TODO elemento futuro da cena.** Qualquer coisa nova que viva no campo
+(pedra, animal, personagem, efeito, prop) entra no painter INTERCALADO
+por profundidade (`rel`) — nunca em camada global por tipo. Na frente do
+pé de uma árvore = desenha depois dela; atrás = antes. Inclui a grama
+(janelas `relFrom`/`relTo`) e a luz (`LightEngine.submitOccluder` com
+`z`). Elemento em camada plana por cima do campo é BUG, não estilo.
+(Também registrado nos anti-patterns do CLAUDE.md.)
+
 Backlog natural do motor: dobra interativa (inimigo/herói passando),
 sombra de rajada (escurecer levemente onde gust>0.7 — DESENHADO, não
 véu), wind dir global por bioma no update dos props (hoje só a grama).
