@@ -303,7 +303,11 @@ function LuminaireEngine.submit(bid, kind, a)
         x = a.fx, y = a.fy,
         radius = math.min(L.radiusK * base * fr, (a.capR or 1e9)),
         color = L.color, intensity = L.intensity * fi,
-        dither = true, ditherAmt = 0.5, levels = 6,
+        -- v9.2 (feedback: "ainda pixelado e xadrez"): 8 degraus (gradiente
+        -- bem fino) + dither de amplitude 0.28 (quase imperceptível — só
+        -- quebra a banda). No lightmap ¼ o Bayer cheio virava xadrez de
+        -- 4px; com degraus finos quase não precisa de dither.
+        dither = true, ditherAmt = 0.28, levels = 8,
         seed = a.seed, z = a.rel,
     })
     -- núcleo quente pequeno no centro da chama (hotspot), escala com base,
