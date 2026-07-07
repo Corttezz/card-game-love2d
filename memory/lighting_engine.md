@@ -17,9 +17,12 @@ SILHUETA**.
 `lightDay`/`lightNight` por bioma em biomes.lua; `WorldRoad.setTimeOfDay(t,
 instant)` (0=dia..1=anoitecer, ease 0.30/s durante a viagem — amanhecer suave
 ao entrar num ato novo); GameplayScene seta por `floorInAct` com curva
-`((floor-1)/7)^1.35` (o dia dura, o crepúsculo chega no fim). Default tod=1
-(tools mostram o mood cheio). Prefixos do screenshot tool: `day_`/`mid_`;
-demo tecla T cicla 0→0.5→1. fields no andar do boss = o look da REFERÊNCIA.
+`0.5 + 0.5·((floor-1)/7)^1.35` — **PISO 0.5** (feedback Jul/07: "o jogo base
+está sem a iluminação do demo" — tod=0 no andar 1 dava luz ~branca = motor
+invisível; agora o mood existe desde o 1º andar e fecha em tod=1 no boss).
+Default tod=1 (tools mostram o mood cheio). Prefixos do screenshot tool:
+`day_`/`mid_`; demo tecla T cicla 0→0.5→1. fields no andar do boss = o look
+da REFERÊNCIA.
 `lightAmbient` virou fallback (saiu de ENV_FIELDS — currentLightAmbient()
 faz lerp dia/noite + blend de bioma).
 

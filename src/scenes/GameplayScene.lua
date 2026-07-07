@@ -341,9 +341,12 @@ function GameplayScene.update(dt)
         end
     end
     if GameplayScene.SCENE_MODE == "worldroad" then
-        -- F6.1: entardecer progressivo por andar — dia no andar 1 do ato,
-        -- anoitecer chegando ao boss (curva ^1.35: o dia dura mais, o
-        -- crepúsculo chega no fim). A transição ease durante a viagem.
+        -- F6.1: entardecer progressivo por andar, com PISO 0.5 (feedback:
+        -- "o jogo base está sem a iluminação do demo" — tod=0 no andar 1
+        -- dava luz ~branca = motor invisível; o demo abre em tod=1). O
+        -- mood existe desde o 1º andar (meio-crepúsculo, vagalumes no
+        -- limiar) e fecha no anoitecer pleno no boss (o look da
+        -- referência). Curva ^1.35: escurece devagar, acelera no fim.
         do
             local runT = game.runManager and game.runManager.currentRun
             local floorIn
@@ -352,8 +355,8 @@ function GameplayScene.update(dt)
             else
                 floorIn = ((game.currentPhase or 1) - 1) % 8 + 1
             end
-            local tod = math.min(1, math.max(0, (floorIn - 1) / 7)) ^ 1.35
-            WorldRoad.setTimeOfDay(tod)
+            local prog = math.min(1, math.max(0, (floorIn - 1) / 7)) ^ 1.35
+            WorldRoad.setTimeOfDay(0.5 + 0.5 * prog)
         end
         WorldRoad.update(dt)
         -- Troca de andar/fase → herói "anda" até o próximo encontro:
