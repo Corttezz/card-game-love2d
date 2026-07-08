@@ -8,8 +8,8 @@
 > intocado).
 >
 > **Bateria:** 2 runs × 3 classes, política heurística (LETHAL → sobreviver
-> ao intent → curar → maximizar dano/mana). **Status: aguardando decisão do
-> dono sobre quais propostas aplicar.**
+> ao intent → curar → maximizar dano/mana). **Status: propostas A+B+C
+> APLICADAS (Jul/2026) — ver "Bateria 2" no fim.**
 
 ## Placar da bateria (pós-rebalance F0-F2)
 
@@ -104,3 +104,31 @@ score; por andar: caminho escolhido e razão; por run: métricas agregadas.
 3. Re-rodar a bateria (5×3 runs) e comparar placar — meta: ~40–60% das
    runs do bot chegando ao Ato 2, vitória ocasional.
 4. Iterar as ideias de decisão (C) com nova bateria.
+
+
+---
+
+## Bateria 2 — DEPOIS das correções (A+B+C aplicadas)
+
+Correções: armadura do inimigo expira no turno dele; floor no dano
+aggressive; mana cheia ao entrar em batalha; Fúria turno 8+ com teto +10 e
+pill visível "Fúria" (tooltip explica); guard de reentrância no
+playSelectedCards; boss A1 140→110 HP / 14→12 dmg; elite A1 ×1.6→×1.4;
+recompensa pós-batalha GRÁTIS; juros com fonte única Balatro ($1/$5 cap $5,
+TopBar = RoundEval); reroll linear 5+2/reroll.
+
+| Run | Bateria 1 (antes) | Bateria 2 (depois) |
+|---|---|---|
+| warrior #1 | morreu A1-F5 (148) | morreu A2-F7 (1355) |
+| warrior #2 | morreu A1-F7 (582) | morreu A2-F3 (2078) |
+| mage #1 | morreu A1-F8 (997) | morreu A2-F6 (1595) |
+| mage #2 | morreu A1-F7 (314) | morreu A1-F8 (798) |
+| rogue #1 | morreu A1-F7 (414) | morreu A1-F8 (1177) |
+| rogue #2 | morreu A1-F8 (1089) | morreu A2-F5 (2708) |
+
+- **4/6 runs chegam ao Ato 2** (meta 40-60%: atingida). Boss A1 ainda é
+  filtro (2/6 do bot morrem nele — a heurística é um jogador mediano;
+  humano joga melhor).
+- Decks finais 10-16 cartas (antes 3-10) — recompensas grátis destravaram
+  a progressão.
+- Próxima calibração candidata: Ato 2 (os 4 que passam morrem em F3-F7).
