@@ -90,20 +90,21 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     // Aspecto corrigido → cantos CIRCULARES de verdade (CRT-Geom cornersize).
     vec2 ar = vec2(resolution.x / max(1.0, resolution.y), 1.0);
     vec2 pp = (buv - 0.5) * ar;
-    float cornerR = 0.085 * strength + 0.015;   // cantos generosos de tubo
+    float cornerR = 0.045;   // v2.3: canto de tubo SEM invadir conteúdo
     float dTube = roundedBoxSDF(pp, 0.5 * ar - 0.004, cornerR);
     float tubeMask = 1.0 - smoothstep(-0.004, 0.002, dTube);
     if (tubeMask <= 0.0) {
         return vec4(0.0, 0.0, 0.0, 1.0) * color;
     }
     // sombra de bezel encostada na borda do tubo
-    float bezel = 1.0 - 0.22 * strength
-        * smoothstep(-0.08, -0.002, dTube);
+    float bezel = 1.0 - 0.12 * strength
+        * smoothstep(-0.035, -0.002, dTube);
 
     // ====== UNDERSCAN (revisão de telas, Jul/2026) ======
     // O CONTEÚDO INTEIRO ocupa a área interna segura do tubo — a máscara e
     // a curvatura comem só a moldura preta, NUNCA mana/vida/HUD nos cantos.
-    float inset = 1.0 - 0.045 * strength;
+    // v2.3 (feedback): borda PRA FORA do conteúdo — inset mínimo fixo.
+    float inset = 0.985;
     vec2 suv = (buv - 0.5) / inset + 0.5;
     if (suv.x < 0.0 || suv.x > 1.0 || suv.y < 0.0 || suv.y > 1.0) {
         return vec4(0.0, 0.0, 0.0, 1.0) * color * vec4(vec3(tubeMask), 1.0);
@@ -155,8 +156,10 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     // ====== RELEVO DO DOMO (v2.2) ======
     // 1) Sombreamento lambertiano do domo: o centro do vidro está "mais
     //    perto" e pega mais luz; a queda acelera perto dos cantos (r⁴).
-    float dome = 1.0 - (0.10 * r2 * 2.0 + 0.22 * r2 * r2 * 8.0) * strength;
-    dome = clamp(dome, 0.55, 1.0);
+    // v2.3: relevo POR LUZ, não por escuridão — queda máxima ~15% no
+    // canto extremo (antes chegava a 45% e afogava mana/vida/cartas).
+    float dome = 1.0 - (0.05 * r2 * 2.0 + 0.10 * r2 * r2 * 8.0) * strength;
+    dome = clamp(dome, 0.85, 1.0);
     // 2) Brilho de vidro: reflexo suave e ESTÁTICO da sala no terço
     //    superior (elipse larga, deslocada pra cima) — a pista mais forte
     //    de convexidade num CRT de verdade.
@@ -164,9 +167,9 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     float sheen = exp(-dot(sheenPos, sheenPos) * 3.2) * 0.045 * strength;
 
     // ====== VIGNETTE + FLICKER + NOISE ======
-    vec2 vPos = (suv - 0.5) * (0.62 + 0.38 * (1.0 - strength));
+    vec2 vPos = (suv - 0.5) * 0.45;
     float vignette = clamp(1.0 - dot(vPos, vPos), 0.0, 1.0);
-    vignette = mix(1.0, pow(vignette, 3.0), strength);
+    vignette = mix(1.0, pow(vignette, 2.0), 0.55 * strength);
     float flicker = (1.0 - 0.008 * strength)
         + 0.008 * strength * sin(time * 60.0);
     float noise = (rand(suv * resolution + time * 40.0) * 0.018 - 0.009)

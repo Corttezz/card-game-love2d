@@ -120,3 +120,22 @@ diffusion), CRT-Geom-Deluxe.
   mais forte de convexidade).
 - **TopBar legível sob o tubo** (feedback): fundo mais escuro
   (0.07/0.055/0.04), fontes 12→14 e 8→9, bezel do shader 0.32→0.22.
+
+
+## v2.3 (Jul/2026 — conteúdo intocável)
+
+Feedback do dono: "as bordas devem ficar FORA do que a gente renderiza,
+pegando muito pouco; parte de baixo das cartas e mana/vida ainda ruins."
+Diagnóstico numérico: no canto, domo(×0.60) × vinheta(×0.53) × bezel
+derrubava o brilho pra ~25% — a UI ficava visível mas AFOGADA.
+
+Nova filosofia: **efeitos pra fora do conteúdo, escurecimento mínimo
+por cima dele**:
+- Underscan 4.5%→1.5% fixo (borda pega quase nada do render).
+- Cantos 0.079→0.045 (não se aproximam da UI).
+- Domo: queda máxima 45%→15% (clamp 0.85) — relevo por LUZ (sheen),
+  não por escuridão.
+- Vinheta: pow 3→2, mix 0.55, alcance menor.
+- Bezel 0.22→0.12 e só na moldura.
+Medição pós-fix (luminância média na captura): mana orb 45.7, painel de
+vida 52.3 (sobre fundo ~15) — legíveis. Regra: legibilidade > efeito.
