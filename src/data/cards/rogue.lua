@@ -74,8 +74,8 @@ return {
     rogue_rake = {
         id = "rogue_rake", name = "Garra Rapida",
         type = "attack", subtype = "skill",
-        cost = 1, attack = 4, defense = 0,
-        description = "4 de dano. Aplica Fraco.",
+        cost = 1, attack = 6, defense = 0,
+        description = "6 de dano. Aplica Fraco (2 turnos).",
         image = "assets/cards/attack/bloodSword.png",
         rarity = "common", class = "rogue",
         tags = { "strike", "weak", "debuff" },
@@ -138,8 +138,8 @@ return {
     rogue_blur = {
         id = "rogue_blur", name = "Borrao",
         type = "defense", subtype = "skill",
-        cost = 1, attack = 0, defense = 5,
-        description = "5 de Bloqueio. Ganha Destreza.",
+        cost = 1, attack = 0, defense = 7,
+        description = "7 de Bloqueio. Ganha Destreza.",
         image = "assets/cards/defense/ironShield.png",
         rarity = "uncommon", class = "rogue",
         tags = { "defend", "armor", "dexterity" },

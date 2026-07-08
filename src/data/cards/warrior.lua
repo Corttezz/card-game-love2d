@@ -59,8 +59,8 @@ return {
     warrior_bash = {
         id = "warrior_bash", name = "Pancada",
         type = "attack", subtype = "skill",
-        cost = 2, attack = 8, defense = 0,
-        description = "8 de dano. Aplica Vulneravel (2 turnos).",
+        cost = 2, attack = 10, defense = 0,
+        description = "10 de dano. Aplica Vulneravel (2 turnos).",
         image = "assets/cards/attack/theRock.png",
         rarity = "common", class = "warrior",
         tags = { "strike", "vulnerable", "debuff" },
@@ -133,8 +133,8 @@ return {
     warrior_power_through = {
         id = "warrior_power_through", name = "Forca Interior",
         type = "defense", subtype = "skill",
-        cost = 1, attack = 0, defense = 15,
-        description = "15 de Bloqueio. Descarta 2 cartas aleatorias.",
+        cost = 1, attack = 0, defense = 12,
+        description = "12 de Bloqueio. Descarta 2 cartas aleatorias.",
         image = "assets/cards/attack/theRock.png",
         rarity = "uncommon", class = "warrior",
         tags = { "defend", "armor", "discard" },

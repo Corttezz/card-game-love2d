@@ -113,3 +113,31 @@ Ver `memory/balance_curves.md` para tabela completa. Highlights:
 - **Nunca condicione por `card.name`** — use `card.effects` + `card.tags` (data-driven).
 - Adicione novo efeito em `EffectSystem` com seu branch novo, documente em `memory/gameplay_systems.md` e acrescente `PROCESSED_EFFECT_TYPES` em `tools/validate_cards.lua`.
 - Se o efeito só faz sentido em combo, crie regra em `ComboSystem.RULES`.
+
+## Gameplay Overhaul Jul/2026 (F0-F4 implementadas)
+
+- **Turno**: mão DESCARTA no fim do turno (exceto `card.retain`); draw fixo
+  `Config.Game.CARDS_PER_TURN=5`; jogar 0 cartas = passar o turno (válido).
+  Bloqueio ZERA em `Player:onTurnStart` (flag `retainArmor` reservada);
+  cap de armor 30. Fúria: turno 6+ dá +2 dmg/turno permanente ao inimigo
+  (`Game.battleTurn`, resetado por batalha).
+- **Intents**: `Enemy:rollIntent()` (attack 50 / strong 16 / defend 18 /
+  buff 16; nunca 2 turnos seguidos sem atacar), executado em `enemyTurn`,
+  telegrafado via `Enemy:getIntentPreview()` → EnemyHud (cor semântica:
+  sangue/aço/ouro).
+- **Exhaust**: derivado em `createCardInstance` de `{type="exhaust"}` nos
+  effects. Curas common exaurem. `self_damage`/`damage_per_turn` usam
+  `Player:loseHealth` (ignora armor).
+- **Score TINTA×SELO** (`src/systems/ScoreSystem.lua`): fechado em
+  `_onEnemyDeath`; TopBar mostra sempre; banner no RoundEval; recorde em
+  `ProfileStats.bestScore` (toast único por run via `recordBroken`).
+- **Conquistas** (`src/systems/AchievementSystem.lua` + data): 20 defs,
+  persistidas em ProfileStats.achievements; hooks em Game/EffectSystem/
+  RestScreen/CardRewardScreen; galeria `components/AchievementsScreen.lua`
+  (menu → CONQUISTAS).
+- **Economia**: RoundEval é o ÚNICO pagamento (earnBattleGold removido do
+  nextPhase); mana_upgrade custa 25.
+- **ProfileStats** (`engine/ProfileStats.lua`, save-dir `profile.lua`):
+  runs/wins/losses/bestAct/bestScore/winsByClass/counters/cardsSeen/
+  achievements. `bump()` NÃO salva (chame `flush()`); tools headless não
+  gravam (`_G.HEADLESS_TOOL`).

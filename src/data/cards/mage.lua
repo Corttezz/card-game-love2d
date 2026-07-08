@@ -54,8 +54,8 @@ return {
     mage_fireball = {
         id = "mage_fireball", name = "Bola de Fogo",
         type = "attack", subtype = "common",
-        cost = 2, attack = 9, defense = 0,
-        description = "9 de dano magico. Canaliza Fogo.",
+        cost = 2, attack = 11, defense = 0,
+        description = "11 de dano magico. Canaliza Fogo.",
         image = "assets/cards/attack/theRock.png",
         rarity = "common", class = "mage",
         tags = { "strike", "channel", "fire", "magic" },

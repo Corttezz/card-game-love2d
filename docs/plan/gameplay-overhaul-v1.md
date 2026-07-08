@@ -2,9 +2,14 @@
 
 > **Status:** EM EXECUÇÃO (Jul/2026) — F0 ✅ (honestidade das cartas),
 > F1 ✅ (descarte de mão + block zera + intents do inimigo),
-> F2 ✅ (fúria anti-stall + curas exaurem + folha única + mana 25).
-> Pendentes: F3 score Tinta×Selo, F4 conquistas, F5 cartas que conversam
-> + balance pass numérico. Baseado em 3 auditorias (carta-a-carta,
+> F2 ✅ (fúria anti-stall + curas exaurem + folha única + mana 25),
+> F3 ✅ (ScoreSystem TINTA×SELO + TopBar vivo + banner RoundEval + recorde
+> no perfil + EndScreens), F4 ✅ (20 conquistas + AchievementSystem +
+> galeria via botão CONQUISTAS no menu), F5 parcial (balance pass numérico:
+> bash 8→10, fireball 9→11, rake 4→6, blur 5→7, power_through 15→12).
+> Pendentes de F5: keywords/glossário no hover (orbs nunca explicados),
+> tags decorativas consumidas ou removidas, combos cross-classe, forja
+> visível no CardFrame. Baseado em 3 auditorias (carta-a-carta,
 > loop sistêmico, dossiê Balatro/StS/Monster Train — ver §Apêndices).
 > Pedido do dono: "hoje eu só mando todas as cartas da mão, boto armadura
 > infinita, me curo com poção e dá tudo certo — quero jogabilidade real,
