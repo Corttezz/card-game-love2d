@@ -133,6 +133,45 @@ function CRTShader.getStrength()
     return strength
 end
 
+-- ===== MOUSE ATRAVÉS DO VIDRO (Jul/2026) =====
+-- O shader distorce a IMAGEM (gabinete come borda, domo curva o resto),
+-- mas o mouse chega em coordenadas físicas da janela — perto do topo e da
+-- base o pixel clicado não é o pixel mostrado (bug do dono: filtros da
+-- Coleção "clicam acima de onde aparecem"). Esta função replica EXATAMENTE
+-- a matemática de amostragem do crt.glsl (tela → conteúdo): é o mesmo
+-- caminho que o pixel percorre, então o clique cai onde o olho vê.
+-- MANTENHA EM SINCRONIA com shaders/crt.glsl (BEZEL_PX, halfExt, domo).
+function CRTShader.screenToContent(x, y)
+    -- passthrough: CRT desligado, sem shader, ou strength ~0 (o shader
+    -- também faz passthrough nesse caso)
+    if not shader or not enabled or strength < 0.01 then return x, y end
+    local w, h = love.graphics.getDimensions()
+    if w <= 0 or h <= 0 then return x, y end
+
+    local ar = w / h
+    -- pp: espaço centrado com aspecto (idem shader)
+    local ppx = (x / w - 0.5) * ar
+    local ppy = (y / h - 0.5)
+    -- interior do tubo (gabinete de BEZEL_PX descontado)
+    local bezelU = 20.0 / h                 -- = BEZEL_PX do crt.glsl
+    local hex = 0.5 * ar - bezelU
+    local hey = 0.5 - bezelU
+    if hex <= 0 or hey <= 0 then return x, y end
+    -- tuv: 0..1 dentro da abertura
+    local tx = (ppx / hex) * 0.5 + 0.5
+    local ty = (ppy / hey) * 0.5 + 0.5
+    -- domo r² + r⁴ (o shader desloca a AMOSTRA — replicamos igual)
+    local cx, cy = tx - 0.5, ty - 0.5
+    local r2 = cx * cx + cy * cy
+    local kx = 0.060 * strength
+    local ky = 0.080 * strength
+    local sx = tx + cx * (kx * r2 * 1.6 + kx * r2 * r2 * 7.0)
+    local sy = ty + cy * (ky * r2 * 1.6 + ky * r2 * r2 * 7.0)
+    -- sem clamp: clique no gabinete extrapola pra fora do conteúdo e
+    -- naturalmente não acerta UI (não inventa hits na borda)
+    return sx * w, sy * h
+end
+
 -- Abre uma "cena" — tudo que desenhar depois é capturado no canvas.
 function CRTShader.beginScene()
     if not shader or not enabled then return end

@@ -493,6 +493,13 @@ function love.load(loveArgs)
         return
     end
 
+    -- Regressão do mouse através do vidro (domo do CRT vs hit-test).
+    if loveArgs and loveArgs[1] == "smoke_crt_mouse" then
+        local ok = require("tools.smoke_crt_mouse").run()
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
     -- Regressão da ordem do turno (escudo vs apex da investida).
     if loveArgs and loveArgs[1] == "smoke_turn_order" then
         local ok = require("tools.smoke_turn_order").run()
@@ -514,7 +521,8 @@ function love.load(loveArgs)
         local okP = require("tools.smoke_packs").run()
         local okO = require("tools.smoke_turn_order").run()
         local okUI = require("tools.smoke_ui_turn").run()
-        local ok = okT and okE and okC and okM and okA and okD and okU and okS and okP and okO and okUI
+        local okCRT = require("tools.smoke_crt_mouse").run()
+        local ok = okT and okE and okC and okM and okA and okD and okU and okS and okP and okO and okUI and okCRT
         print(ok and "\n== ALL GREEN ==" or "\n== SOME FAILED ==")
         love.event.quit(ok and 0 or 1)
         return
@@ -761,6 +769,21 @@ function love.load(loveArgs)
     -- quente → a imagem abre revelando o splash (docs/plan/crt-identity-v1).
     CRTShader.setPower(0)
     CRTShader.powerOn(1.5)
+
+    -- MOUSE ATRAVÉS DO VIDRO: o domo do CRT desloca a imagem perto das
+    -- bordas — sem isto, clique/hover perto do topo/base acertam ACIMA de
+    -- onde o botão aparece (bug da Coleção). Patch global: todo mundo que
+    -- lê love.mouse.getPosition/getX/getY enxerga coordenadas de CONTEÚDO,
+    -- na mesma lente do shader. Com CRT desligado é passthrough.
+    local rawGetPosition = love.mouse.getPosition
+    love.mouse.getPosition = function()
+        return CRTShader.screenToContent(rawGetPosition())
+    end
+    love.mouse.getX = function() return (love.mouse.getPosition()) end
+    love.mouse.getY = function()
+        local _, my = love.mouse.getPosition()
+        return my
+    end
 
     -- FX pipeline (shaders próprios, copyright-safe — Fase 2 do refactor Balatro).
     -- Dissolve: exhaust/destroy. Flash: impactos. Booster: pacotes selados.
@@ -1162,6 +1185,7 @@ function love.keypressed(key)
 end
 
 function love.mousereleased(x, y, button)
+    x, y = CRTShader.screenToContent(x, y)
     -- Deck Viewer global consome mouse enquanto aberto
     if deckViewerScreen and deckViewerScreen:isVisible() then
         deckViewerScreen:mousereleased(x, y, button)
@@ -1200,6 +1224,7 @@ function love.mousereleased(x, y, button)
 end
 
 function love.mousepressed(x, y, button)
+    x, y = CRTShader.screenToContent(x, y)
     -- Boot/splash: clique pula direto pro menu.
     if currentState == "boot" then
         BootScene.mousepressed(x, y, button)
@@ -1260,6 +1285,7 @@ function love.wheelmoved(dx, dy)
 end
 
 function love.mousemoved(x, y, dx, dy)
+    x, y = CRTShader.screenToContent(x, y)
     if currentState == "playing" then
         GameplayScene.mousemoved(x, y, dx, dy)
     elseif currentState == "collection" and collectionScreen.mousemoved then

@@ -83,8 +83,9 @@ de outras ferramentas continuam SEM CRT (doutrina existente).
 - Moldura de gabinete desenhada (bezel com textura/reflexo de sala).
 - Estática de canal entre TODAS as trocas de tela.
 - Som: hum de 60Hz ao ligar + "tack" do desligar (pede SFX novos).
-- Curvatura afetando input de mouse (hoje o hit-test ignora o barrel —
-  com curvatura 0.035 o desvio máximo é ~1.5% na borda; aceitável).
+- ~~Curvatura afetando input de mouse (com curvatura 0.035 o desvio era
+  ~1.5%; aceitável)~~ → **RESOLVIDO na v3.5**: com gabinete + domo forte o
+  desvio chegou a 25–36px e quebrou cliques (bug da Coleção). Ver v3.5.
 
 
 ## v2.1 (Jul/2026 — feedback do dono + pesquisa)
@@ -180,3 +181,31 @@ Elementos:
 4. Sombra do vidro DIRECIONAL: a moldura de cima projeta mais sombra no
    vidro (0.28 topo → 0.08 base).
 5. Abertura menos arredondada: cornerR 0.05 → 0.022 (gabinete real).
+
+
+## v3.5 (Jul/2026 — MOUSE ATRAVÉS DO VIDRO)
+
+Bug do dono: na Coleção, os filtros perto do topo "clicam acima de onde
+aparecem" com o CRT ativo. Causa: o shader desloca a IMAGEM (gabinete
+come 20px de borda + domo curva o resto — deslocamento medido de
+**25–36px** nas bordas), mas o hit-test usava o mouse físico cru. O
+"aceitável" da v1 valia pra curvatura 0.035 sem gabinete; deixou de valer.
+
+Correção — `CRTShader.screenToContent(x, y)`:
+- Replica em Lua EXATAMENTE o caminho de amostragem do crt.glsl
+  (pp → interior do tubo → domo r²+r⁴). O shader mapeia tela→conteúdo
+  por natureza (é onde ele sampleia o canvas), então não há inversão
+  numérica — é a mesma função.
+- Aplicada nos callbacks de mouse do main.lua (pressed/released/moved)
+  E num patch global de `love.mouse.getPosition/getX/getY` — os 13
+  módulos que leem hover direto ganham a lente correta sem mudar.
+- Sem clamp: clique no gabinete extrapola pra fora do conteúdo e não
+  acerta UI (não inventa hits na borda).
+- CRT desligado / strength<0.01 → passthrough (idem shader).
+- **MANTER EM SINCRONIA**: mudou geometria no crt.glsl (BEZEL_PX,
+  halfExt, curvXY), mude screenToContent junto — o teste pega.
+
+Validação: `tools/smoke_crt_mouse.lua` (na smoke_all) — teste FIM-A-FIM
+pelo shader real: desenha marcador em posição conhecida → renderiza →
+screenshot → acha o centróide na tela → screenToContent tem que devolver
+a origem (tolerância 2.5px; erro medido <1.1px em 7 pontos).
