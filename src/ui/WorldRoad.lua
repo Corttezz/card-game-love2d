@@ -2874,8 +2874,17 @@ local function drawProps(g, x, w, camZ)
                    or p.kind == "deadtree" or p.kind == "bush" then
                     local oxT, oyT = love.graphics.transformPoint(
                         pxX, sy + sink2)
+                    -- v9.2 (feedback "algumas árvores ficam escuras quando a
+                    -- luz vem de trás"): lift SUAVE — a silhueta da copa nunca
+                    -- cai abaixo de ~72% da cor cheia, mesmo contraluz. Só age
+                    -- em ambiente baixo (max(1,...)); de dia liftT=1 (natural).
+                    -- Alvo menor que o do monstro (1.0): árvore é cenário e
+                    -- deve escurecer um pouco à noite, sem esmagar pra preto.
+                    local ambT = LightEngine.ambientLuma
+                        and LightEngine.ambientLuma() or 1
+                    local liftT = math.min(1.8, math.max(1, 0.72 / math.max(0.2, ambT)))
                     LightEngine.submitOccluder({
-                        z = rel,
+                        z = rel, lift = liftT,
                         img = img, x = oxT, y = oyT, rot = rot,
                         sx = s, sy = s, ox = iw / 2, oy = ih,
                         bx = oxT - iw * s / 2, by = oyT - ih * s,
@@ -3051,7 +3060,7 @@ local function drawEncounterFront(g, x, w, camZ)
     -- nada"): o billboard da viagem precisa do MESMO lift do EnemyRenderer
     -- estático — senão o handoff viagem→batalha muda o brilho de repente.
     local amb = LightEngine.ambientLuma and LightEngine.ambientLuma() or 1
-    local lift = math.min(2.1, math.max(1, 0.95 / math.max(0.2, amb)))
+    local lift = math.min(3.0, math.max(1, 1.0 / math.max(0.2, amb)))
     if e.anim then
         LightEngine.submitOccluder({
             z = rel + 6, lift = lift, bx = oxT, by = oyT, w = e.iw * s, h = e.ih * s,

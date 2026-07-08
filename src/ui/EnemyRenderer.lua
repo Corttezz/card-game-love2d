@@ -466,8 +466,11 @@ function EnemyRenderer.draw(game, cx, cy)
         -- mais, claro não mexe (teto 1.6). Igual em todos os biomas.
         -- mesmo piso do billboard da viagem (drawEncounterFront) — o
         -- handoff viagem→batalha NÃO pode mudar o brilho do monstro
+        -- alvo 1.0: monstro na COR PADRÃO cheia (lightmap≈1 na silhueta),
+        -- igual ao billboard da viagem — sem escurecer ao ficar estático.
+        -- Lanternas ainda ADICIONAM calor por cima (clampa em 1).
         local amb = LightEngine.ambientLuma and LightEngine.ambientLuma() or 1
-        local lift = math.min(2.1, math.max(1, 0.95 / math.max(0.2, amb)))
+        local lift = math.min(3.0, math.max(1, 1.0 / math.max(0.2, amb)))
         if animRef or staticRef then
             LightEngine.submitOccluder({
                 z = 9 + 6,   -- BATTLE_REL + viés (sem require circular)
