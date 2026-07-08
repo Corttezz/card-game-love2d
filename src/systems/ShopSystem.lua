@@ -183,6 +183,10 @@ function ShopSystem:generateCardOffer()
 
         if cardData then
             local cost = self:calculateCardCost(cardData.rarity)
+            -- Recompensa pós-batalha é GRÁTIS (StS: escolha 1 de 3; pagar
+            -- é papel da LOJA). Autoplay B: recompensas pagas travavam o
+            -- crescimento do deck (~40% puladas por falta de ouro).
+            if self.mode == "rewards" then cost = 0 end
             return {
                 type = "card",
                 id = randomCardId,
@@ -257,7 +261,9 @@ end
 -- Cap em REROLL_MAX pra impedir trap de gold drain.
 function ShopSystem:refreshOffers()
     self.refreshCount = self.refreshCount + 1
-    local raw = math.floor(REROLL_BASE * (REROLL_MULT ^ self.refreshCount) + 0.5)
+    -- Linear Balatro-style (base + 2/reroll): o exponencial punia demais o
+    -- segundo reroll e o cap ficava irrelevante.
+    local raw = REROLL_BASE + 2 * self.refreshCount
     self.refreshCost = math.min(raw, REROLL_MAX)
     self:generateOffers()
 end

@@ -93,7 +93,8 @@ function Enemy:takeDamage(damage)
 
     if self.health < self.maxHealth * 0.3 then
         self.attackPattern = "aggressive"
-        self.damage = self.baseDamage * 1.5
+        -- floor: sem ele o HUD (e o dano real) mostrava "30.5" (autoplay A2)
+        self.damage = math.floor(self.baseDamage * 1.5)
     end
 end
 

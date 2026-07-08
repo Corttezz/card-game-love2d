@@ -22,6 +22,7 @@ StatusPill.COLORS = {
     vulnerable = { 0.85, 0.55, 0.25 },
     burn       = { 0.90, 0.40, 0.20 },
     strength   = { 0.85, 0.30, 0.30 },
+    fury       = { 0.95, 0.35, 0.15 },
     dexterity  = { 0.35, 0.75, 0.90 },
     focus      = { 0.80, 0.70, 0.30 },
 }
@@ -31,6 +32,7 @@ StatusPill.ICONS = {
     vulnerable = "status_vulnerable",
     burn       = "flame",
     strength   = "status_strength",
+    fury       = "flame",
     dexterity  = "status_dexterity",
     focus      = "rune",
 }

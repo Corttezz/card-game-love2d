@@ -64,7 +64,7 @@ function M.run()
     check("booster offer tem choose", pack and pack.choose ~= nil)
     check("booster offer tem cost > 0", pack and pack.cost > 0)
 
-    -- Reroll exponencial: 5 → 7 → 10 → 14 → 20 (×1.4).
+    -- Reroll linear Balatro-style: 5 → 7 → 9 → 11 (base + 2/reroll).
     shop = ShopSystem:new()
     shop:setMode("shop")
     check("reroll inicial = 5", shop:getRefreshCost() == 5)
@@ -75,8 +75,8 @@ function M.run()
     shop:refreshOffers()
     local after3 = shop:getRefreshCost()
     check("reroll cresce monotonicamente", after3 > after2)
-    -- 5 * 1.4^3 = 13.72 → arredondado pra 14. Verifica magnitude correta.
-    check("3 rerolls produz ~14 (5 * 1.4^3)", after3 >= 13 and after3 <= 15)
+    -- 5 + 2*3 = 11 (linear). Verifica magnitude correta.
+    check("3 rerolls produz 11 (5 + 2*3)", after3 == 11)
 
     -- setMode reseta reroll.
     shop:setMode("shop")

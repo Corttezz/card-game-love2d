@@ -654,8 +654,9 @@ function CardRewardScreen:_buildSelectionButtons(offer, idx)
     local bx0 = math.floor(pos.x + (pw - totalW) / 2)
     local by0 = math.floor(pos.y + ph + 8)
 
-    -- Buy button: SÓ "$N" (sem texto verbal). Verde-grimório.
-    local buyLabel = "$" .. tostring(offer.cost)
+    -- Buy button: "$N" (loja) ou "PEGAR" (recompensa grátis). Verde-grimório.
+    local buyLabel = (offer.cost or 0) > 0 and ("$" .. tostring(offer.cost))
+        or "PEGAR"
     local buyBtn = Button:new(bx0, by0, buyW, btnH, buyLabel, function()
         local toBuy = self.selectedOffer
         self:clearSelection()
@@ -1341,6 +1342,8 @@ end
 function CardRewardScreen:drawPriceOverlay(cardInstance, x, y, index)
     local offer = cardInstance.shopOffer
     if not offer or offer.purchased then return end
+    -- Recompensa grátis (rewards mode): sem medalhão de preço.
+    if (offer.cost or 0) <= 0 then return end
 
     local canAfford = self.game and self.game.economySystem:canAfford(offer.cost)
 
@@ -1510,7 +1513,9 @@ function CardRewardScreen:_drawHoverInfoPanels()
                        or offer.type == "booster_pack" and "Booster Pack"
                        or offer.type == "card" and "Carta"
                        or "Item"
-        love.graphics.printf(typeLabel .. "  ·  $" .. tostring(offer.cost),
+        local priceLabel = (offer.cost or 0) > 0
+            and ("$" .. tostring(offer.cost)) or "Gratis"
+        love.graphics.printf(typeLabel .. "  ·  " .. priceLabel,
                              panelX + PAD, panelY + 50, TEXT_W, "left")
 
         -- Separador

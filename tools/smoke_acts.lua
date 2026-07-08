@@ -27,13 +27,13 @@ function M.run()
 
     -- 3. Boss stats fixos (rebalanced)
     local b1 = ActSystem.getEnemyStats(1, 8, "boss")
-    check("boss ato 1: hp = 140", b1.health == 140)
+    check("boss ato 1: hp = 110 (rebalance autoplay)", b1.health == 110)
     local b3 = ActSystem.getEnemyStats(3, 8, "boss")
     check("boss ato 3: hp = 500", b3.health == 500)
 
     -- 4. Elite: HP * eliteHPMul (f=4 -> 8+4*6=32; *1.6 = 51)
     local e = ActSystem.getEnemyStats(1, 4, "elite")
-    check("elite ato 1 f=4: hp = floor(32*1.6)", e.health == math.floor(32 * 1.6))
+    check("elite ato 1 f=4: hp = floor(32*1.4)", e.health == math.floor(32 * 1.4))
 
     -- 5. Endless: act 4+, base do ato 3 f=1 = 165
     local endlessF1 = ActSystem.getEnemyStats(4, 1, "battle")

@@ -81,8 +81,8 @@ Config.Acts = {
         number = 1, name = "Catacumbas", floors = 8,
         enemyHP    = function(f) return 8 + f * 6 end,    -- f=1: 14, f=8: 56
         enemyDmg   = function(f) return 3 + f * 1.2 end,  -- f=1: 4, f=8: 12
-        bossHP = 140, bossDmg = 14,
-        eliteHPMul = 1.6, eliteDmgMul = 1.3,
+        bossHP = 110, bossDmg = 12,
+        eliteHPMul = 1.4, eliteDmgMul = 1.25,
         rarityWeights = { common = 70, uncommon = 25, rare = 5,  legendary = 0 },
         interActHeal = 0.30,
     },

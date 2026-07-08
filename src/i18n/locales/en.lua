@@ -192,6 +192,7 @@ return {
 
     status = {
         score      = { name = "Score", desc = "You earn points by WINNING battles: base for the defeated enemy, with bonuses for winning fast, triggering card combos and taking no damage. Current record: {best}." },
+        fury       = { name = "Fury", desc = "Enraged enemy: +{stacks} permanent damage so far (grows each turn, up to +10)." },
         poison     = { name = "Poison",     desc = "Deals {stacks} damage at end of turn. Loses 1 stack per turn." },
         weak       = { name = "Weak",       desc = "Damage dealt reduced by 25% for {duration} turn(s)." },
         vulnerable = { name = "Vulnerable", desc = "Takes 50% more damage from attacks for {duration} turn(s)." },

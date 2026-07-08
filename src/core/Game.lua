@@ -537,6 +537,12 @@ function Game:selectCard(card)
 end
 
 function Game:playSelectedCards()
+    -- Guard de reentrância (autoplay A5): startCombat com sequência ativa
+    -- chamava onComplete SEM processar as cartas — jogada engolida.
+    if self.combatAnimationSystem and self.combatAnimationSystem.isBlocking
+        and self.combatAnimationSystem:isBlocking() then
+        return
+    end
     if #self.selectedCards == 0 then
         -- F1: PASSAR O TURNO é permitido (e às vezes necessário — com o
         -- descarte de mão, pode não haver carta pagável). Mão vai pro
@@ -859,12 +865,21 @@ function Game:enemyTurn()
     -- ícone/número no EnemyHud e pôde se preparar). Depois rola o próximo.
     local intent = self.enemy.nextIntent or "attack"
 
-    -- F2.1: Fúria anti-stall — a partir do turno 6 o inimigo ganha +2 de
-    -- dano permanente POR TURNO. Batalha tem clock; potion-loop morre.
+    -- Armadura do inimigo EXPIRA no início do turno dele (simetria com o
+    -- jogador): defend protege contra UM turno de ataques, não vira muro.
+    -- Autoplay A1: elite com 4 HP ficou imortal re-encapando 20 de armor.
+    if (self.enemy.armor or 0) > 0 then
+        self.enemy.armor = 0
+    end
+
+    -- F2.1: Fúria anti-stall — turno 8+ o inimigo ganha +2 de dano por
+    -- turno, ATÉ +10 total (teto; autoplay A4: sem teto virava sentença).
+    -- Pill "fury" no inimigo torna o acúmulo visível + tooltip explica.
     self.battleTurn = (self.battleTurn or 0) + 1
-    if self.battleTurn >= 6 then
+    if self.battleTurn >= 8 and self.battleTurn < 13 then
         self.enemy.baseDamage = self.enemy.baseDamage + 2
         self.enemy.damage = self.enemy.damage + 2
+        self.enemy:addStatusEffect({ name = "fury", stacks = 2, duration = 99 })
         self:addMessage("Fúria! O inimigo ganha +2 de dano", "warning")
     end
 
@@ -1018,10 +1033,10 @@ function Game:_buildRoundEvalSources()
         })
     end
 
-    -- 3) Juros: 10% do gold atual (cap $5). Balatro caps at $25, escalamos.
+    -- 3) Juros Balatro ($1 a cada $5, cap $5) — FONTE ÚNICA no
+    -- EconomySystem:calculateInterest (a TopBar mostra o mesmo número).
     if self.economySystem then
-        local gold = self.economySystem.currentGold or 0
-        local interest = math.min(math.floor(gold / 5), 5)
+        local interest = self.economySystem:calculateInterest()
         if interest > 0 then
             table.insert(sources, {
                 label = "Juros (1$ a cada 5$)",
@@ -1087,6 +1102,9 @@ function Game:nextPhase()
     -- rico demais pra loja significar escolha.
 
     self.player:resetMaxMana()
+    -- Mana CHEIA ao entrar na batalha (autoplay A3: quem gastava tudo no
+    -- último turno começava a próxima batalha com 0 de mana).
+    self.player:restoreMana()
     self:resetHandAndDeck()
 
     -- Stats do inimigo baseadas no ato + node atual (Fase 5 via ActSystem).

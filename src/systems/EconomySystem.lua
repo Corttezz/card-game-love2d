@@ -12,43 +12,17 @@ function EconomySystem:new()
     instance.totalGoldEarned = 0
     instance.goldSpent = 0
     
-    -- Configurações de ganho de ouro
-    instance.baseGoldPerBattle = 10
-    instance.goldPerPhase = 5
-    instance.bonusGoldThreshold = 3 -- Fases sem perder vida = bonus
-    
-    -- Sistema de juros (como TFT)
-    instance.interestRate = 0.1 -- 10% de juros
-    instance.maxInterestGold = 50 -- Máximo de ouro para juros
+    -- Juros Balatro: $1 a cada $5 guardados, teto $5 (em $25).
+    -- FONTE ÚNICA — TopBar (preview) e RoundEval (pagamento) usam
+    -- calculateInterest(); antes cada um tinha fórmula própria (10% float
+    -- vs floor/5) e o número prometido nunca batia com o pago.
+    instance.interestPer = 5   -- $1 por cada N de ouro
+    instance.interestCap = 5   -- máximo de juros por batalha
     
     -- Histórico de gastos
     instance.purchaseHistory = {}
     
     return instance
-end
-
--- Ganha ouro após vencer uma batalha
-function EconomySystem:earnBattleGold(phase, healthLost, consecutiveWins)
-    local goldEarned = self.baseGoldPerBattle + (phase * self.goldPerPhase)
-    
-    -- Bonus por não perder vida
-    if healthLost == 0 then
-        goldEarned = goldEarned + 5
-    end
-    
-    -- Bonus por vitórias consecutivas
-    if consecutiveWins >= self.bonusGoldThreshold then
-        goldEarned = goldEarned + (consecutiveWins * 2)
-    end
-    
-    -- Aplica juros (como TFT)
-    local interestGold = math.min(self.currentGold * self.interestRate, self.maxInterestGold)
-    goldEarned = goldEarned + interestGold
-    
-    self.currentGold = self.currentGold + goldEarned
-    self.totalGoldEarned = self.totalGoldEarned + goldEarned
-    
-    return goldEarned
 end
 
 -- Gasta ouro
@@ -104,9 +78,10 @@ function EconomySystem:resetForNewRun()
     self.purchaseHistory = {}
 end
 
--- Calcula juros para próxima batalha
+-- Juros da próxima batalha (Balatro: $1 a cada $5, cap $5). Inteiro sempre.
 function EconomySystem:calculateInterest()
-    return math.min(self.currentGold * self.interestRate, self.maxInterestGold)
+    return math.min(math.floor((self.currentGold or 0) / self.interestPer),
+        self.interestCap)
 end
 
 return EconomySystem
