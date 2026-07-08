@@ -153,3 +153,30 @@ shader (zero assets, qualquer resolução):
 - POWER agora apaga SÓ O VIDRO: TV desligada continua visível com um
   reflexo fraco do ambiente no vidro (imersão do desligar).
 - Conteúdo mapeado pro interior do tubo (janela - 2×26px).
+
+
+## v3.1 (Jul/2026 — gabinete REALISTA: facetas + juntas de 45°)
+
+Feedback do dono sobre a v3: abertura arredondada demais; faltam as
+"linhas com sombra nos vértices". Análise da referência (pixelbuddha):
+a moldura de um CRT é um TRONCO DE PIRÂMIDE — 4 facetas trapezoidais
+(topo/base/esquerda/direita) inclinadas da face externa até o vidro
+recuado, encontrando-se em JUNTAS DIAGONAIS de 45° nos cantos (miter
+joints, como moldura de quadro). Cada faceta tem iluminação própria:
+
+| Faceta | Normal aponta | Com luz de cima |
+|---|---|---|
+| topo | pra baixo (em direção ao vidro) | ESCURA (sombra própria) |
+| base | pra cima | CLARA (pega a luz) + lábio especular forte |
+| esquerda | pra direita | média-clara (luz de cima-esquerda) |
+| direita | pra esquerda | média-escura |
+
+Elementos:
+1. Determinação de faceta por penetração dominante (|a.x| vs |a.y| além
+   do retângulo interno); junta onde a.x ≈ a.y → linha escura de 45°.
+2. Lábio especular POR FACETA (forte na base, nulo no topo — assimetria
+   que vende o recesso).
+3. RANHURA escura fina onde o vidro senta (anel no dTube ≈ 0).
+4. Sombra do vidro DIRECIONAL: a moldura de cima projeta mais sombra no
+   vidro (0.28 topo → 0.08 base).
+5. Abertura menos arredondada: cornerR 0.05 → 0.022 (gabinete real).

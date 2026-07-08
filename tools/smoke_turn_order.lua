@@ -16,6 +16,14 @@ function M.run()
 
     print("---- smoke: ordem do turno (escudo vs apex) ----")
 
+    -- Guarda anti-'--' em GLSL (3 incidentes): todo shader precisa COMPILAR.
+    for _, f in ipairs(love.filesystem.getDirectoryItems("shaders")) do
+        if f:match("%.glsl$") then
+            local okS = pcall(love.graphics.newShader, "shaders/" .. f)
+            check("shader compila: " .. f, okS)
+        end
+    end
+
     _G.EventManager = require("engine.EventManager")
     _G.Event = require("engine.Event")
     require("src.i18n.I18n").init()

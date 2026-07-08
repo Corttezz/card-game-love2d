@@ -44,25 +44,61 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     vec2 ar = vec2(resolution.x / max(1.0, resolution.y), 1.0);
     vec2 pp = (uv - 0.5) * ar;
     float bezelU = BEZEL_PX / max(1.0, resolution.y);
-    float cornerR = 0.05;
+    float cornerR = 0.022;   // v3.1: abertura de gabinete real (pouco arredondada)
     vec2 halfExt = 0.5 * ar - bezelU;
     float dTube = roundedBoxSDF(pp, halfExt, cornerR);
 
-    // ====== GABINETE (fora da abertura): plástico escuro com relevo ======
+    // ====== GABINETE v3.1: tronco de pirâmide com 4 FACETAS ======
+    // A moldura de um CRT real é um frustum: facetas trapezoidais
+    // (topo/base/esq/dir) inclinadas até o vidro recuado, encontrando-se
+    // em JUNTAS DIAGONAIS de 45° nos vértices (miter, como moldura de
+    // quadro). Cada faceta tem iluminação própria (luz de cima-esquerda).
     if (dTube > 0.0) {
-        // luz vinda de cima: topo da moldura mais claro, base mais escura
-        float vlight = 1.0 - uv.y;
-        vec3 cab = vec3(0.105, 0.095, 0.088) * (0.72 + 0.55 * vlight);
-        // textura fina de plástico (ruído estático, não anima)
-        cab *= 0.96 + 0.08 * rand(floor(uv * resolution * 0.5));
-        // cantos externos da janela mais escuros (caixa)
+        vec3 plastic = vec3(0.115, 0.104, 0.095);
+
+        // penetração além do retângulo interno, por eixo (>0 na moldura)
+        vec2 aPen = abs(pp) - halfExt;
+        aPen = max(aPen, vec2(0.0));
+
+        // FACETA por penetração dominante + iluminação própria
+        float facetLum;
+        if (aPen.x > aPen.y) {
+            facetLum = (pp.x < 0.0) ? 0.98 : 0.78;   // esq clara / dir média
+        } else {
+            facetLum = (pp.y < 0.0) ? 0.55 : 1.22;   // topo SOMBRA / base LUZ
+        }
+
+        // JUNTA de 45° nos vértices: linha escura onde as facetas se
+        // encontram (a "linha com sombra" da referência do dono).
+        float seam = 0.0;
+        if (aPen.x > 0.0005 && aPen.y > 0.0005) {
+            float dSeam = abs(aPen.x - aPen.y);
+            seam = 1.0 - smoothstep(0.0, 0.0035, dSeam);
+        }
+
+        vec3 cab = plastic * facetLum;
+        // textura fina de plástico (estática)
+        cab *= 0.95 + 0.10 * rand(floor(uv * resolution * 0.5));
+        // junta escura + micro-realce do lado iluminado da junta
+        cab *= 1.0 - 0.38 * seam;
+
+        // RANHURA escura onde o vidro senta (anel fino colado na abertura)
+        float groove = smoothstep(0.0045, 0.0, dTube);
+        cab *= 1.0 - 0.55 * groove;
+
+        // LÁBIO especular POR FACETA logo após a ranhura: forte na base
+        // (pega a luz), nulo no topo (assimetria que vende o recesso)
+        float lipZone = smoothstep(0.013, 0.0045, dTube)
+            * (1.0 - smoothstep(0.0045, 0.0, dTube));
+        float lipStrength;
+        if (aPen.x > aPen.y) lipStrength = (pp.x < 0.0) ? 0.5 : 0.35;
+        else lipStrength = (pp.y < 0.0) ? 0.06 : 0.9;
+        cab += vec3(0.20, 0.19, 0.175) * lipZone * lipStrength;
+
+        // face externa: leve escurecimento até a borda da janela
         vec2 wq = abs(uv - 0.5) * 2.0;
-        cab *= 1.0 - 0.38 * pow(max(wq.x, wq.y), 8.0);
-        // LÁBIO da abertura: brilho especular fino onde o plástico dobra
-        float lip = smoothstep(0.0125, 0.0, dTube);
-        cab += vec3(0.16, 0.15, 0.14) * pow(lip, 5.0) * (0.35 + 0.65 * vlight);
-        // sombra imediatamente ao redor do lábio (recesso)
-        cab *= 1.0 - 0.30 * smoothstep(0.035, 0.012, dTube);
+        cab *= 1.0 - 0.30 * pow(max(wq.x, wq.y), 10.0);
+
         return vec4(cab, 1.0) * color;
     }
 
@@ -154,9 +190,11 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     vec2 sheenPos = (suv - vec2(0.5, 0.24)) * vec2(1.0, 2.1);
     float sheen = exp(-dot(sheenPos, sheenPos) * 3.2) * 0.045 * strength;
 
-    // sombra do vidro recuado sob o lábio (referência) — CURTA e leve
-    float glassShadow = 1.0 - 0.20 * strength
-        * smoothstep(-0.018, -0.001, dTube);
+    // sombra do vidro recuado — DIRECIONAL: a moldura de cima projeta
+    // mais sombra no vidro (0.28 topo → 0.08 base), como na referência.
+    float shadowW = mix(0.08, 0.28, clamp(1.0 - tuv.y, 0.0, 1.0));
+    float glassShadow = 1.0 - shadowW * strength
+        * smoothstep(-0.020, -0.001, dTube);
 
     // ====== VIGNETTE + FLICKER + NOISE ======
     vec2 vPos = (suv - 0.5) * 0.45;

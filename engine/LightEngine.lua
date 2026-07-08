@@ -312,7 +312,7 @@ function LightEngine.composite(x, y, w, h)
             love.graphics.setColor(1, 1, 1, 1)
             if occShader then
                 love.graphics.setShader(occShader)
-                occShader:send("flat", { cr, cg, cb })
+                occShader:send("flatColor", { cr, cg, cb })
             else
                 love.graphics.setShader()
                 love.graphics.setColor(cr, cg, cb, 1)  -- fallback (bug antigo)
