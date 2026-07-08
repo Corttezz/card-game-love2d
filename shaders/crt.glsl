@@ -24,7 +24,7 @@ extern number glitch;
 extern number glitchY;
 
 // Largura do gabinete em px (a moldura vive AQUI, fora do conteúdo).
-const float BEZEL_PX = 26.0;
+const float BEZEL_PX = 20.0;
 
 float roundedBoxSDF(vec2 p, vec2 b, float r) {
     vec2 q = abs(p) - b + r;
@@ -67,29 +67,28 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
         vec2 aPen = abs(ppA) - halfExt;
         aPen = max(aPen, vec2(0.0));
 
-        // FACETA por penetração dominante + iluminação própria
-        float facetLum;
-        if (aPen.x > aPen.y) {
-            facetLum = (pp.x < 0.0) ? 0.98 : 0.78;   // esq clara / dir média
-        } else {
-            facetLum = (pp.y < 0.0) ? 0.55 : 1.22;   // topo SOMBRA / base LUZ
-        }
+        // FACETAS com transição SUAVE na diagonal (v3.3: a troca dura de
+        // luminância era a linha "não natural" — junta real é um gradiente
+        // de luz entre as faces + vinco de sombra macia por cima).
+        float lumX = (pp.x < 0.0) ? 0.98 : 0.78;    // esq clara / dir média
+        float lumY = (pp.y < 0.0) ? 0.55 : 1.22;    // topo SOMBRA / base LUZ
+        float mixXY = smoothstep(-0.007, 0.007, aPen.x - aPen.y);
+        float facetLum = mix(lumY, lumX, mixXY);
 
-        // JUNTA de 45° nos vértices: linha escura onde as facetas se
-        // encontram (a "linha com sombra" da referência do dono).
-        float seam = 0.0;
+        // VINCO da junta: sombra gaussiana LARGA e suave (AO do encaixe),
+        // presente só no corpo da moldura (longe do lábio da abertura).
+        float dSeam = abs(aPen.x - aPen.y);
+        float seamShadow = 0.0;
         if (aPen.x > 0.0005 && aPen.y > 0.0005) {
-            float dSeam = abs(aPen.x - aPen.y);
-            seam = 1.0 - smoothstep(0.0, 0.0018, dSeam);
-            // some perto da abertura (colidia com o arco do canto)
-            seam *= smoothstep(0.004, 0.011, dTube);
+            seamShadow = exp(-pow(dSeam / 0.0075, 2.0))
+                * smoothstep(0.003, 0.010, dTube);
         }
 
         vec3 cab = plastic * facetLum;
         // textura fina de plástico (estática)
         cab *= 0.95 + 0.10 * rand(floor(uv * resolution * 0.5));
-        // junta escura + micro-realce do lado iluminado da junta
-        cab *= 1.0 - 0.22 * seam;
+        // vinco: sombra suave e um pouco mais funda no centro
+        cab *= 1.0 - 0.20 * seamShadow;
 
         // RANHURA escura onde o vidro senta (anel fino colado na abertura)
         float groove = smoothstep(0.0045, 0.0, dTube);
