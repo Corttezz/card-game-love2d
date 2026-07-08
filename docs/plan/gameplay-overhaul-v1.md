@@ -1,6 +1,10 @@
 # Gameplay Overhaul v1 — jogabilidade real, score vivo, conquistas
 
-> **Status:** EM EXECUÇÃO (Jul/2026). Baseado em 3 auditorias (carta-a-carta,
+> **Status:** EM EXECUÇÃO (Jul/2026) — F0 ✅ (honestidade das cartas),
+> F1 ✅ (descarte de mão + block zera + intents do inimigo),
+> F2 ✅ (fúria anti-stall + curas exaurem + folha única + mana 25).
+> Pendentes: F3 score Tinta×Selo, F4 conquistas, F5 cartas que conversam
+> + balance pass numérico. Baseado em 3 auditorias (carta-a-carta,
 > loop sistêmico, dossiê Balatro/StS/Monster Train — ver §Apêndices).
 > Pedido do dono: "hoje eu só mando todas as cartas da mão, boto armadura
 > infinita, me curo com poção e dá tudo certo — quero jogabilidade real,
