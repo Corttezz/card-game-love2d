@@ -3,6 +3,9 @@
 
 local Config = {}
 
+-- Versão do jogo (menu/splash mostram no rodapé).
+Config.VERSION = "0.9.0"
+
 -- Configurações da Interface
 Config.UI = {
     BUTTON_WIDTH_RATIO = 0.25,

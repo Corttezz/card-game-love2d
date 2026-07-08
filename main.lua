@@ -275,6 +275,16 @@ showCardRewards = function()
 end
 
 function love.load(loveArgs)
+    -- Qualquer tool headless (screenshot/smoke/preview/demo/validate) marca a
+    -- flag: sistemas com efeito PERSISTENTE fora da run (ex: ProfileStats)
+    -- viram no-op — capturas de validação não podem poluir o perfil do jogador.
+    local toolArg = loveArgs and loveArgs[1]
+    if toolArg and (toolArg:match("^screenshot_") or toolArg:match("^smoke_")
+        or toolArg:match("^preview_") or toolArg:match("^demo_")
+        or toolArg == "validate_cards" or toolArg == "run_i18n_test") then
+        _G.HEADLESS_TOOL = true
+    end
+
     -- Modo preview: renderiza algumas cartas em PNG e sai.
     --   love . preview_cards
     -- Saida: ~/.local/share/love/card-game/preview_*.png

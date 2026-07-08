@@ -43,11 +43,39 @@ function M.run(mode)
     end
 
     addShot("menu", function()
+        -- Seed TEMPORÁRIO de perfil (plaque só aparece com histórico). Só se
+        -- não existe perfil real — removido no fim pra não poluir o do jogador.
+        local seeded = false
+        if not love.filesystem.getInfo("profile.lua") then
+            love.filesystem.write("profile.lua",
+                'return { runs = 7, wins = 2, losses = 5, bestAct = 2, bestFloor = 6 }')
+            seeded = true
+        end
         local Menu = require("components.Menu")
         local menu = Menu:new()
         simulate(menu, 2.4)              -- intro stagger termina
         love.graphics.clear(0, 0, 0, 1)
         menu:draw()
+        if seeded then love.filesystem.remove("profile.lua") end
+    end)
+
+    addShot("boot", function()
+        -- Splash no auge da cascade (título visível). BootScene é module-level
+        -- state — init + simula 2.3s manualmente com EventManager.
+        -- BootScene consome _G.EventManager (sem ele, pula direto pro fim).
+        local EventManager = require("engine.EventManager")
+        _G.EventManager = EventManager
+        local BootScene = require("src.scenes.BootScene")
+        BootScene.init({ onComplete = function() end })
+        local dt = 1 / 60
+        -- 2.8s: título já em alpha 1 (ease termina em splash+2.05 = 2.55s
+        -- total) e cascade ainda no ar; flash só em splash+2.70.
+        for _ = 1, math.floor(2.8 * 60) do
+            EventManager.update(dt)
+            BootScene.update(dt)
+        end
+        love.graphics.clear(0, 0, 0, 1)
+        BootScene.draw()
     end)
 
     addShot("class", function()

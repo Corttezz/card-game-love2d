@@ -239,9 +239,11 @@ function Menu:draw()
     love.graphics.setFont(subtitleFont)
     local subtitle = self:_subtitle()
     local subtitleWidth = subtitleFont:getWidth(subtitle)
+    -- 0.355: com o botão Continuar presente a coluna de botões começa em
+    -- ~0.42H — o subtítulo em 0.42 colidia com ele.
     love.graphics.print(subtitle,
         math.floor(love.graphics.getWidth() / 2 - subtitleWidth / 2),
-        math.floor(love.graphics.getHeight() * 0.42))
+        math.floor(love.graphics.getHeight() * 0.355))
 
     -- Desenha botões. Durante intro: cada botão fica invisível até seu alpha
     -- passar de 0.1, depois faz slide-up de 12px com back_out (efeito "pop in").
@@ -256,10 +258,67 @@ function Menu:draw()
         end
     end
 
-    -- Instruções
+    -- Perfil persistente (vitórias/melhor progresso) + versão no rodapé —
+    -- o menu "lembra de você" (repaginada Jul/2026).
+    self:_drawProfilePlaque()
+    self:_drawVersionFooter()
 
     -- Reseta cor
     love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- Plaque de perfil no canto superior-esquerdo: só aparece com histórico.
+-- Padrão grimório: painel ink + moldura dourada dupla (mesma linguagem
+-- do banner do título).
+function Menu:_drawProfilePlaque()
+    local ProfileStats = require("engine.ProfileStats")
+    if not ProfileStats.hasHistory() then return end
+    local s = ProfileStats.get()
+
+    local a = self.intro.alphaBg or 1
+    if a <= 0.05 then return end
+
+    local x, y = 18, 16
+    local w, h = 196, 86
+
+    local function colA(c, mul)
+        return { c[1], c[2], c[3], (c[4] or 1) * (mul or a) }
+    end
+    PixelCanvas.rect(x, y, w, h, colA(Palette.PANEL_FILL, 0.88 * a))
+    PixelCanvas.rectOutline(x, y, w, h, colA(Palette.PANEL_OUTLINE))
+    PixelCanvas.rectOutline(x + 3, y + 3, w - 6, h - 6, colA(Palette.PANEL_OUTLINE_INNER))
+
+    local lf = FontManager.getFont(9)
+    love.graphics.setFont(lf)
+    love.graphics.setColor(Palette.RUST[1], Palette.RUST[2], Palette.RUST[3], a)
+    love.graphics.print(I18n.t("menu.profile"), x + 14, y + 10)
+
+    love.graphics.setColor(Palette.AGED_GOLD_LIGHT[1], Palette.AGED_GOLD_LIGHT[2],
+        Palette.AGED_GOLD_LIGHT[3], a)
+    love.graphics.setFont(FontManager.getFont(10))
+    love.graphics.print(I18n.t("menu.profile_wins", { n = s.wins or 0 })
+        .. "  ·  " .. I18n.t("menu.profile_runs", { n = s.runs or 0 }), x + 14, y + 30)
+
+    love.graphics.setColor(Palette.PARCHMENT[1], Palette.PARCHMENT[2],
+        Palette.PARCHMENT[3], 0.95 * a)
+    if (s.bestAct or 0) > 0 then
+        love.graphics.print(I18n.t("menu.profile_best",
+            { act = s.bestAct, floor = s.bestFloor or 0 }), x + 14, y + 52)
+    else
+        love.graphics.print(I18n.t("menu.profile_nobest"), x + 14, y + 52)
+    end
+end
+
+-- Versão + engine no rodapé esquerdo (discreto, alpha baixo).
+function Menu:_drawVersionFooter()
+    local a = (self.intro.alphaBg or 1) * 0.65
+    if a <= 0.05 then return end
+    local f = FontManager.getFont(9)
+    love.graphics.setFont(f)
+    love.graphics.setColor(Palette.PARCHMENT_DARK[1], Palette.PARCHMENT_DARK[2],
+        Palette.PARCHMENT_DARK[3], a)
+    love.graphics.print("v" .. (Config.VERSION or "?") .. " · LOVE2D",
+        12, love.graphics.getHeight() - 22)
 end
 
 function Menu:drawBackground()

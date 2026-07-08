@@ -45,6 +45,8 @@ local state = {
     flashAlpha      = 0,
     skipped         = false,
     bgAlpha         = 0,           -- fade-in do background
+    titleAlpha      = 0,           -- título do jogo (surge no auge da cascade)
+    titleScale      = 0.9,
 }
 
 -- Tamanhos lógicos (em pixels da janela; LÖVE escala automaticamente).
@@ -69,6 +71,8 @@ function BootScene.init(callbacks)
     state.flashAlpha      = 0
     state.skipped         = false
     state.bgAlpha         = 0
+    state.titleAlpha      = 0
+    state.titleScale      = 0.9
     state.onComplete      = callbacks.onComplete
 
     -- Background fade-in (não-bloqueante para não travar o resto).
@@ -185,6 +189,13 @@ local function startSplashSequence()
             Sfx.play("cardDraw", { pitch = pitch, volume = 0.6 })
         end, QUEUE)
     end
+
+    -- 1.60s: título do jogo materializa sob a carta central (identidade da
+    -- tela de entrada — antes o splash era anônimo).
+    EM.parallel(1.60, function()
+        EM.parallelEase(state, "titleAlpha", 1.0, 0.45, "smooth",   QUEUE)
+        EM.parallelEase(state, "titleScale", 1.0, 0.45, "back_out", QUEUE)
+    end, QUEUE)
 
     -- 2.70s: flash branco fullscreen (cobre o auge da cascade).
     EM.parallel(2.70, function()
@@ -334,6 +345,31 @@ local function drawSplash()
         drawCardShape(cx, cy, CARD_SIZE.w, CARD_SIZE.h, c.alpha, c.scale, c.rot, c.dissolve)
     end
 
+    -- Título do jogo (surge no auge da cascade, back_out pop).
+    if state.titleAlpha > 0.02 then
+        -- CardBack pode deixar o DissolveShader ativo (carta central termina
+        -- em dissolve=1) — sem reset as letras saem corroídas/escuras.
+        love.graphics.setShader()
+        local font = FontManager.getFont(math.min(44, math.floor(H * 0.075)))
+        love.graphics.setFont(font)
+        local title = I18n.t("menu.title")
+        local tw = font:getWidth(title)
+        love.graphics.push()
+        love.graphics.translate(cx, math.floor(H * 0.72))
+        love.graphics.scale(state.titleScale, state.titleScale)
+        -- Outline ink 4-direções (contraste sobre o piso claro) + face dourada.
+        love.graphics.setColor(0, 0, 0, 0.85 * state.titleAlpha)
+        for _, o in ipairs({ {2, 0}, {-2, 0}, {0, 2}, {0, -2}, {3, 3} }) do
+            love.graphics.print(title, -tw / 2 + o[1], o[2])
+        end
+        local g = Palette.AGED_GOLD_LIGHT
+        local pulse = 1 + 0.08 * math.sin(state.splashTime * 3)
+        love.graphics.setColor(math.min(1, g[1] * pulse), math.min(1, g[2] * pulse),
+            g[3], state.titleAlpha)
+        love.graphics.print(title, -tw / 2, 0)
+        love.graphics.pop()
+    end
+
     -- Flash overlay manual (caso FlashShader não estivesse disponível).
     if state.flashAlpha > 0 then
         love.graphics.setColor(1, 1, 1, state.flashAlpha)
@@ -366,6 +402,17 @@ function BootScene.draw()
     elseif state.phase == "splash" then
         drawSplash()
         drawSkipHint()
+    end
+
+    -- Versão no canto inferior-esquerdo (identidade "produto de verdade").
+    do
+        local Config = require("src.core.Config")
+        local f = FontManager.getFont(9)
+        love.graphics.setFont(f)
+        local pd = Palette.PARCHMENT_DARK
+        love.graphics.setColor(pd[1], pd[2], pd[3], 0.6 * state.bgAlpha)
+        love.graphics.print("v" .. (Config.VERSION or "?"),
+            12, love.graphics.getHeight() - 22)
     end
 
     love.graphics.setColor(1, 1, 1, 1)

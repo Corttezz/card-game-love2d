@@ -109,6 +109,7 @@ function Game:startGame()
     self._deathHandled = false
     self._deathPauseTimer = 0
     self._saveDeleted = false
+    self._victoryRecorded = false
 
     self.economySystem:resetForNewRun()
     self.economySystem.currentGold = 10
@@ -295,7 +296,10 @@ function Game:startNewRun(classId)
     
     local runData = self.runManager:startNewRun(classId)
     self:addMessage("Nova corrida iniciada como " .. runData.className .. "!", "success")
-    
+
+    -- Perfil persistente (menu mostra vitórias/melhor progresso).
+    require("engine.ProfileStats").recordRunStart(classId)
+
     return runData
 end
 
@@ -1126,6 +1130,10 @@ function Game:checkGameOver()
         if self.isRunMode and self.runManager and not self._saveDeleted then
             self._saveDeleted = true
             self.runManager:deleteSave()
+            -- Perfil: registra a derrota UMA vez (mesmo guard do save).
+            local run = self.runManager.currentRun
+            require("engine.ProfileStats").recordDefeat(
+                run and run.actNumber, run and run.floorInAct)
         end
         return true
     end
@@ -1146,6 +1154,12 @@ function Game:checkVictory()
             and run.currentNode and run.currentNode.type == "boss"
             and self:isPhaseCleared() then
             self.gameState = "victory"
+            -- Perfil: registra vitória UMA vez por run.
+            if not self._victoryRecorded then
+                self._victoryRecorded = true
+                require("engine.ProfileStats").recordVictory(
+                    run.actNumber, run.floorInAct)
+            end
             return true
         end
         return false
