@@ -21,7 +21,11 @@ local enabled = true
 -- animador PRÓPRIO (não EventManager: o desligar precisa rodar até
 -- durante transições de estado e no caminho do quit).
 local power = 1
-local powerAnim = nil   -- { from, to, dur, t, cb }
+local powerAnim = nil   -- { from, to, dur, t, cb, ease }
+-- Coreografia do power (v3.6): o shader tem DUAS coreografias distintas —
+-- ligar (ponto → linha → abre rolando → assenta) e desligar (colapso →
+-- linha → ponto de fósforo que esfria e apaga). powerDirection escolhe.
+local powerDirection = 1   -- 1 = ligando/estável, -1 = desligando
 
 -- Tremidinha ocasional (sync jitter): evento raro de instabilidade de
 -- sinal — banda horizontal treme por ~0.15s a cada 4-9s. Agendado aqui,
@@ -59,8 +63,11 @@ function CRTShader.toggle()
 end
 
 -- ===== API do power =====
-function CRTShader.setPower(p)
+-- dir opcional: força a coreografia (1 ligando, -1 desligando) — usado
+-- pelas ferramentas de captura pra congelar um estágio específico.
+function CRTShader.setPower(p, dir)
     power = math.max(0, math.min(1, p or 1))
+    if dir then powerDirection = dir end
 end
 
 function CRTShader.getPower() return power end
@@ -73,8 +80,15 @@ local function animatePower(to, dur, cb)
         if cb then cb() end
         return
     end
+    -- Desligar DE VERDADE (to≈0) usa a coreografia do colapso; qualquer
+    -- outra animação (ligar, blip de canal) usa a do warm-up.
+    local turningOff = to <= 0.01
+    powerDirection = turningOff and -1 or 1
     powerAnim = { from = power, to = to, dur = math.max(0.05, dur or 0.8),
-                  t = 0, cb = cb }
+                  t = 0, cb = cb,
+                  -- desligar: colapso RÁPIDO no começo, ponto de fósforo
+                  -- demorando pra apagar no fim (easeOutQuad no k)
+                  ease = turningOff and "outquad" or nil }
 end
 
 -- TV ligando (boot, religar após game over).
@@ -116,7 +130,9 @@ function CRTShader.update(dt)
     if not powerAnim then return end
     powerAnim.t = powerAnim.t + dt
     local k = math.min(1, powerAnim.t / powerAnim.dur)
-    power = powerAnim.from + (powerAnim.to - powerAnim.from) * k
+    local e = k
+    if powerAnim.ease == "outquad" then e = 1 - (1 - k) * (1 - k) end
+    power = powerAnim.from + (powerAnim.to - powerAnim.from) * e
     if k >= 1 then
         local cb = powerAnim.cb
         powerAnim = nil
@@ -195,6 +211,7 @@ function CRTShader.endScene()
     shader:send("resolution", { w, h })
     shader:send("strength", strength)
     shader:send("power", power)
+    shader:send("powerDir", powerDirection)
     shader:send("glitch", glitchAmount)
     shader:send("glitchY", glitchBandY)
     love.graphics.setColor(1, 1, 1, 1)

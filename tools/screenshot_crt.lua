@@ -18,9 +18,19 @@ function M.run()
     local menu = Menu:new()
     for _ = 1, 60 do menu:update(1 / 30) end
 
-    local stages = { 0.18, 0.55, 0.90, 1.0 }
-    local names = { "crt_line.png", "crt_opening.png",
-                    "crt_settling.png", "crt_on.png" }
+    -- v3.6: as DUAS coreografias — ligar (ponto → linha → abre → rolo de
+    -- sync → assenta) e desligar (colapso → linha → ponto de fósforo).
+    local stages = {
+        { 0.06, 1,  "crt_on_dot.png" },      -- ponto azulado do canhão
+        { 0.20, 1,  "crt_on_line.png" },     -- linha quente crescendo
+        { 0.45, 1,  "crt_on_opening.png" },  -- abrindo (lavado + estática)
+        { 0.70, 1,  "crt_on_roll.png" },     -- v-hold rolando + blanking
+        { 0.86, 1,  "crt_on_settle.png" },   -- cores assentando
+        { 1.00, 1,  "crt_on.png" },          -- ligado estável
+        { 0.80, -1, "crt_off_collapse.png" },-- colapso vertical + surto
+        { 0.45, -1, "crt_off_line.png" },    -- linha encolhendo
+        { 0.15, -1, "crt_off_dot.png" },     -- ponto laranja apagando
+    }
 
     -- REVISÃO DE TELAS: HUD de batalha (mana canto inf-dir, vida inf-esq,
     -- TopBar) através do tubo — nada pode ser escondido pela máscara.
@@ -52,15 +62,17 @@ function M.run()
     end)
     love.graphics.present()
 
-    for i, p in ipairs(stages) do
-        CRTShader.setPower(p)
+    for _, st in ipairs(stages) do
+        local p, dir, name = st[1], st[2], st[3]
+        CRTShader.setPower(p, dir)
         CRTShader.beginScene()
         love.graphics.clear(0, 0, 0, 1)
         menu:draw()
         CRTShader.endScene()
         love.graphics.captureScreenshot(function(imageData)
-            imageData:encode("png", names[i])
-            print("[crt] " .. names[i] .. " salvo (power=" .. p .. ")")
+            imageData:encode("png", name)
+            print(string.format("[crt] %s salvo (power=%.2f dir=%d)",
+                name, p, dir))
         end)
         love.graphics.present()
     end

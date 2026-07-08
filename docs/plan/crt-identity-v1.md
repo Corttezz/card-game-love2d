@@ -209,3 +209,44 @@ Validação: `tools/smoke_crt_mouse.lua` (na smoke_all) — teste FIM-A-FIM
 pelo shader real: desenha marcador em posição conhecida → renderiza →
 screenshot → acha o centróide na tela → screenToContent tem que devolver
 a origem (tolerância 2.5px; erro medido <1.1px em 7 pontos).
+
+
+## v3.6 (Jul/2026 — LIGA/DESLIGA coreografado, física de tubo real)
+
+Pedido do dono: "mais detalhes, mais efeitos realísticos no ligar e
+desligar — está muito simples". O power deixou de ser uma rampa simétrica
+(linha abre/fecha) e virou DUAS coreografias distintas (uniform
+`powerDir`, escolhido pelo CRTShader conforme a animação):
+
+**LIGAR** (powerOn 1.8s no boot, 1.1s pós-morte):
+1. p<0.10 — PONTO do canhão acendendo no centro: frio, AZULADO
+   (vec3 0.72,0.84,1.0), redondo (corrigido pelo aspecto do tubo).
+2. p<0.30 — linha horizontal cresce a partir do ponto, branca quente.
+3. p<0.62 — abertura vertical com imagem CRUA: estática de sinal (snow
+   0.5→0.3), cores lavadas puxando pro azul (fósforo frio, desat),
+   aberração cromática 3.5× (canhões não convergiram).
+4. p<0.80 — V-HOLD: a imagem ROLA verticalmente procurando sync
+   (fract wrap), desacelera quadrático e TRAVA; barra de blanking
+   escura passa na emenda do rolo (rollBar).
+5. p<0.94 — sinal travado: cores/foco assentando (desat e CA decaem).
+6. p<1.0 — respiração final da fonte (scale 1±0.0045 decaindo) +
+   brilho acomodando (surge 1.05→1.0).
+
+**DESLIGAR** (powerOff com easeOutQuad: colapso RÁPIDO, tail lento —
+0.9s morte/vitória, 1.2s no Sair):
+1. p>0.64 — colapso vertical com SURTO de brilho (capacitor
+   descarregando, surge até 2.5).
+2. p>0.34 — linha encolhe horizontalmente pro centro.
+3. p<0.34 — PONTO persistente de fósforo: esfria de branco quente pro
+   LARANJA (mix 1.0,0.52,0.22) e apaga devagar — o clássico.
+
+Transversais:
+- BLOOM da linha quente: fora da área visível o vidro não é mais corte
+  seco — a linha SANGRA (gaussiana em Y × extensão em X, tinte azulado).
+- snow/desat/caBoost/rollBar aplicados no pipeline de composição.
+- blip() continua na coreografia de LIGAR (dip de canal, sem colapso).
+- Corte seco preservado com CRT off nas Settings (acessibilidade).
+
+Validação: `tools/screenshot_crt.lua` agora congela 9 estágios
+(6 ligando + 3 desligando) via `setPower(p, dir)` — todos revisados
+visualmente. Suite completa ALL GREEN (guard de compilação incluso).

@@ -768,7 +768,7 @@ function love.load(loveArgs)
     -- Identidade CRT: o jogo ABRE como uma TV ligando — ponto → linha
     -- quente → a imagem abre revelando o splash (docs/plan/crt-identity-v1).
     CRTShader.setPower(0)
-    CRTShader.powerOn(1.5)
+    CRTShader.powerOn(1.8)   -- v3.6: warm-up tem mais estágios (rolo de sync)
 
     -- MOUSE ATRAVÉS DO VIDRO: o domo do CRT desloca a imagem perto das
     -- bordas — sem isto, clique/hover perto do topo/base acertam ACIMA de
@@ -856,9 +856,10 @@ function love.load(loveArgs)
             -- linha quente) e RELIGA já na tela final. Com CRT off nas
             -- Settings, powerOff/On viram corte seco (acessibilidade).
             if name == "gameOver" or name == "victory" then
-                CRTShader.powerOff(0.55, function()
+                -- v3.6: colapso + ponto de fósforo apagando pedem fôlego
+                CRTShader.powerOff(0.9, function()
                     currentState = name
-                    CRTShader.powerOn(0.8)
+                    CRTShader.powerOn(1.1)
                 end)
             else
                 currentState = name

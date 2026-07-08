@@ -20,6 +20,7 @@ extern number time;
 extern vec2 resolution;
 extern number strength;
 extern number power;
+extern number powerDir;   // coreografia: 1 = ligando/estável, -1 = desligando
 extern number glitch;
 extern number glitchY;
 
@@ -113,38 +114,131 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     // ====== COORDENADAS DO TUBO (0..1 dentro da abertura) ======
     vec2 tuv = (pp / halfExt) * 0.5 + 0.5;
 
-    // ====== POWER: warm-up/colapso SÓ no vidro (a TV fica visível) ======
+    // ====== POWER v3.6: coreografia física do tubo ======
+    // LIGAR: ponto azulado do canhão frio → linha quente (bloom sangrando
+    // no vidro) → imagem abre → ROLA procurando sync (v-hold: barra de
+    // blanking + estática + cores lavadas de fósforo frio) → trava e
+    // assenta respirando. DESLIGAR: colapso vertical com surto → linha
+    // encolhe pra PONTO → o fósforo persiste, esfria pro laranja e apaga.
     float p = clamp(power, 0.0, 1.0);
     float surge = 1.0;
     float hotline = 0.0;
+    float snow = 0.0;      // estática de sinal destravado
+    float desat = 0.0;     // fósforo frio: cores lavadas/azuladas
+    float caBoost = 1.0;   // aberração cromática maior no warm-up
+    float rollBar = 0.0;   // barra de blanking do rolo vertical
     if (p < 0.999) {
-        float vScale = 1.0;
-        float hScale = 1.0;
         if (p < 0.02) {
             // vidro apagado: reflexo fraco do ambiente pra não ser breu
             vec2 og = tuv - vec2(0.5, 0.3);
             float offGlow = 0.012 + 0.02 * exp(-dot(og, og) * 3.0);
             return vec4(vec3(offGlow), 1.0) * color;
-        } else if (p < 0.35) {
-            float k = (p - 0.02) / 0.33;
-            hScale = max(0.02, k);
-            vScale = 0.006;
-            surge  = 2.4;
-            hotline = 1.0;
-        } else if (p < 0.85) {
-            float k = (p - 0.35) / 0.5;
-            k = k * k;
-            vScale = 0.006 + 0.994 * k;
-            surge  = 1.9 - 0.7 * k;
-            hotline = clamp(1.0 - vScale * 12.0, 0.0, 1.0);
-        } else {
-            float k = (p - 0.85) / 0.15;
-            surge = 1.2 - 0.2 * k;
         }
+        float vScale = 1.0;
+        float hScale = 1.0;
+        float aspT = halfExt.x / halfExt.y;   // pro ponto ser REDONDO
+        if (powerDir < -0.5) {
+            // ---- DESLIGANDO ----
+            if (p < 0.34) {
+                // PONTO persistente: o fósforo esfria (branco → laranja)
+                // e apaga devagar — o clássico das TVs antigas.
+                float fade = (p - 0.02) / 0.32;
+                vec2 dpt = (tuv - 0.5) * vec2(aspT, 1.0);
+                float d2 = dot(dpt, dpt);
+                float core = exp(-d2 * (9000.0 + 22000.0 * (1.0 - fade)));
+                float halo = exp(-d2 * 420.0) * 0.35 * fade;
+                vec3 dotCol = mix(vec3(1.0, 0.52, 0.22),
+                                  vec3(1.0, 0.97, 0.88), fade);
+                vec2 og = tuv - vec2(0.5, 0.3);
+                float offGlow = 0.012
+                    + 0.02 * exp(-dot(og, og) * 3.0) * (1.0 - fade);
+                float amp = fade * fade * 0.9 + 0.1 * fade;
+                return vec4(dotCol * (core * 1.5 + halo) * amp
+                    + vec3(offGlow), 1.0) * color;
+            } else if (p < 0.64) {
+                // linha encolhe horizontalmente pro centro
+                float k = (p - 0.34) / 0.30;
+                vScale = 0.006;
+                hScale = max(0.012, k * k);
+                surge = 2.6;
+                hotline = 1.0;
+            } else {
+                // colapso vertical com surto de brilho (capacitor descarregando)
+                float k = (p - 0.64) / 0.36;   // 1=ligado → 0=colapsado
+                vScale = max(0.006, k * k);
+                surge = 1.0 + (1.0 - k) * 1.5;
+                hotline = clamp(1.0 - vScale * 9.0, 0.0, 1.0);
+            }
+        } else {
+            // ---- LIGANDO ----
+            if (p < 0.10) {
+                // ponto do canhão acendendo (frio, azulado)
+                float k = (p - 0.02) / 0.08;
+                vec2 dpt = (tuv - 0.5) * vec2(aspT, 1.0);
+                float d2 = dot(dpt, dpt);
+                float core = exp(-d2 * (30000.0 - 21000.0 * k));
+                float halo = exp(-d2 * 500.0) * 0.28 * k;
+                vec3 dotCol = vec3(0.72, 0.84, 1.0);
+                return vec4(dotCol * (core * (0.35 + 0.65 * k) + halo)
+                    + vec3(0.012), 1.0) * color;
+            } else if (p < 0.30) {
+                // linha horizontal cresce a partir do ponto
+                float k = (p - 0.10) / 0.20;
+                hScale = max(0.02, k);
+                vScale = 0.006;
+                surge = 2.4;
+                hotline = 1.0;
+            } else if (p < 0.62) {
+                // abertura vertical — imagem ainda crua (lavada + estática)
+                float k = (p - 0.30) / 0.32;
+                k = k * k;
+                vScale = 0.006 + 0.994 * k;
+                surge = 1.9 - 0.6 * k;
+                hotline = clamp(1.0 - vScale * 12.0, 0.0, 1.0);
+                snow = 0.5 - 0.2 * k;
+                desat = 1.0 - 0.3 * k;
+                caBoost = 1.0 + 2.5 * (1.0 - k);
+            } else if (p < 0.80) {
+                // V-HOLD: a imagem ROLA procurando sync, desacelera e trava;
+                // barra de blanking escura passa na emenda do rolo.
+                float k = (p - 0.62) / 0.18;
+                float roll = (1.0 - k) * (1.0 - k) * 1.2;
+                float fy = fract(tuv.y + roll);
+                float seam = min(fy, 1.0 - fy);
+                rollBar = exp(-pow(seam / 0.030, 2.0)) * (1.0 - k);
+                tuv.y = fy;
+                snow = 0.30 * (1.0 - k);
+                desat = 0.7 * (1.0 - k);
+                caBoost = 1.0 + 1.8 * (1.0 - k);
+                surge = 1.3 - 0.15 * k;
+            } else if (p < 0.94) {
+                // sinal travado: cores e foco assentando
+                float k = (p - 0.80) / 0.14;
+                surge = 1.15 - 0.10 * k;
+                snow = (1.0 - k) * 0.10;
+                desat = (1.0 - k) * 0.5;
+                caBoost = 1.0 + 1.6 * (1.0 - k);
+            } else {
+                // respiração final (fonte assentando) + brilho acomodando
+                float k = (p - 0.94) / 0.06;
+                surge = 1.05 - 0.05 * k;
+                float breath = sin(p * 240.0) * (1.0 - k) * 0.0045;
+                tuv = 0.5 + (tuv - 0.5) * (1.0 + breath);
+            }
+        }
+        vec2 tuvOrig = tuv;
         tuv.x = 0.5 + (tuv.x - 0.5) / hScale;
         tuv.y = 0.5 + (tuv.y - 0.5) / vScale;
         if (tuv.x < 0.0 || tuv.x > 1.0 || tuv.y < 0.0 || tuv.y > 1.0) {
-            return vec4(vec3(0.012), 1.0) * color;
+            // BLOOM: a linha quente SANGRA no vidro escuro ao redor
+            // (halação real de fósforo saturado, não corte seco)
+            float sigY = 0.012 + vScale * 0.05;
+            float glowY = exp(-pow((tuvOrig.y - 0.5) / sigY, 2.0));
+            float dx = max(0.0, abs(tuvOrig.x - 0.5) - 0.5 * hScale);
+            float glowX = exp(-pow(dx / 0.06, 2.0));
+            float lineGlow = glowY * glowX * hotline * 0.34 * surge;
+            return vec4(vec3(0.012) + vec3(0.9, 0.87, 1.0) * lineGlow,
+                1.0) * color;
         }
     }
 
@@ -166,7 +260,8 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     }
 
     // ====== ABERRAÇÃO CROMÁTICA (cresce com a distância do centro) ======
-    float caOffset = (0.0006 + 0.0022 * r2 * 4.0) * strength;
+    // caBoost: no warm-up o canhão ainda não convergiu — CA bem maior
+    float caOffset = (0.0006 + 0.0022 * r2 * 4.0) * strength * caBoost;
     vec4 colR = Texel(tex, suv + vec2(caOffset, 0.0));
     vec4 colG = Texel(tex, suv);
     vec4 colB = Texel(tex, suv - vec2(caOffset, 0.0));
@@ -212,6 +307,21 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
         + 0.008 * strength * sin(time * 60.0);
     float noise = (rand(suv * resolution + time * 40.0) * 0.018 - 0.009)
         * strength;
+
+    // ====== WARM-UP: fósforo frio + estática + barra de blanking ======
+    if (desat > 0.001) {
+        // cores lavadas puxando pro azul (fósforo/canhão ainda frios)
+        float luma = dot(rgb, vec3(0.299, 0.587, 0.114));
+        rgb = mix(rgb, vec3(luma) * vec3(0.82, 0.93, 1.18), desat * 0.7);
+    }
+    if (snow > 0.001) {
+        // estática de sinal destravado (neve granulada por pixel/quadro)
+        float n = rand(suv * resolution + vec2(time * 173.0, time * 91.0));
+        rgb = mix(rgb, vec3(n * 0.85 + 0.06), snow);
+    }
+    if (rollBar > 0.001) {
+        rgb *= 1.0 - 0.65 * rollBar;   // emenda escura do rolo vertical
+    }
 
     // ====== COMPOSIÇÃO ======
     rgb *= grille * scan * shimmer * flicker * vignette * dome * glassShadow;

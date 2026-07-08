@@ -522,7 +522,8 @@ function Menu:onQuitClick()
     -- Identidade CRT: sair = a TV desliga (colapso) e ENTÃO fecha.
     local ok, CRTShader = pcall(require, "src.ui.CRTShader")
     if ok and CRTShader.powerOff then
-        CRTShader.powerOff(0.7, function() love.event.quit() end)
+        -- v3.6: colapso → linha → ponto de fósforo esfriando até apagar
+        CRTShader.powerOff(1.2, function() love.event.quit() end)
     else
         love.event.quit()
     end
