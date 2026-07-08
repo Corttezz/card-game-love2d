@@ -347,14 +347,15 @@ local function runBgPreview()
     WorldRoad.setBiome(1)
     WorldRoad._camZ = 6
 
+    -- v2: paleta travada no mundo (verde-floresta + montanha azul-fria + ceu pessego)
     local OPTS = {
-        { key = "opt1_snowpeaks",  label = "1  Snow Peaks (serra nevada, amanhecer)" },
-        { key = "opt2_ruinhills",  label = "2  Ruin Hills (colinas + torres quebradas)" },
-        { key = "opt3_mistforest", label = "3  Mist Forest (floresta em nevoa)" },
-        { key = "opt4_autumnkeep", label = "4  Autumn Keep (outono + ruina)" },
+        { key = "v2a_mountainpine", label = "1  Mountain Pine (serra azul + pinheiral)" },
+        { key = "v2b_farmhills",    label = "2  Farm Hills (colinas verdes + torres)" },
+        { key = "v2c_mistridges",   label = "3  Mist Ridges (cristas de floresta em camadas)" },
+        { key = "v2d_highland",     label = "4  Highland (campina verde + pedras + pico)" },
     }
     -- carrega cada candidato recortado a 400x128 + um "front" transparente
-    local dir = "assets/sprites/world/_bg_candidates/fields/"
+    local dir = "assets/sprites/world/_bg_candidates/fields_v2/"
     local transparentFront
     do
         local fd = love.image.newImageData(400, 128)  -- tudo alpha 0

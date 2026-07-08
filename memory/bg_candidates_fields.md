@@ -26,6 +26,25 @@ Bg atual do fields: serra nevada + céu pêssego (`fields_mountains.png`).
    distante, folhagem âmbar/ferrugem, céu de twilight quente. O mais
    "grimório/dark-fantasy quente" e dramático.
 
+## v2 (feedback: v1 rejeitada — "cores/elementos precisam bater com o mundo")
+v1 usava paletas estrangeiras (roxo vulcânico, âmbar, teal) → descartada.
+**Paleta travada** amostrada dos assets do mundo (em `_bg_candidates/fields_v2/`):
+- verdes: pinho `#0c300c`, musgo `#306c30`, grama `#3c6c18`, oliva
+- marrom: casca `#543c30`, escuro `#301818`, ferrugem `#9c3c18`, estrada `#403010`
+- montanha fria (contraste): `#506080`/`#90a0b0`, neve `#d0d0c0`
+- céu: pêssego `#fcd8b4` → azul-cinza empoeirado
+Prompt PixelLab COMPLETO (paleta hex explícita + composição + mood + técnico).
+- **v2a_mountainpine** — serra azul-fria nevada + treeline de pinho. Clean,
+  clássico, coeso. Mais perto do atual porém mais rico.
+- **v2b_farmhills** — colinas de fazenda verdes recuando pra montanha azul
+  em névoa + torres quebradas distantes + treeline. Muita profundidade
+  verde, casa perfeito com árvores/grama. Tema "Campos Arruinados".
+- **v2c_mistridges** — cristas de floresta em camadas + montanha azul + sol
+  no horizonte. Recuo atmosférico bonito, verde coeso.
+- **v2d_highland** — campina verde com pedras/matacões + pinheiral + pico
+  azul. Mais lush/saturado; pedras dão interesse.
+Ver ao vivo: `love . demo_worldroad bg` (1-4 troca, T hora). Aguardando escolha.
+
 ## Próximo passo (após escolha)
 Aplicar pipeline ([[art_direction]]):
 - instalar como `fields_mountains.png` (crop 400×128),
