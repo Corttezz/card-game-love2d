@@ -459,6 +459,12 @@ function love.load(loveArgs)
         return
     end
 
+    -- Valida a identidade CRT (power em 4 estágios).
+    if loveArgs and loveArgs[1] == "screenshot_crt" then
+        require("tools.screenshot_crt").run()
+        return
+    end
+
     -- Valida a investida do inimigo (windup/apex/recoil + veneno).
     if loveArgs and loveArgs[1] == "screenshot_attack" then
         require("tools.screenshot_attack").run()
@@ -743,6 +749,10 @@ function love.load(loveArgs)
     -- Settings → "CRT Shader" liga/desliga via CRTShader.toggle().
     CRTShader.load()
     if persistedSettings.crtShader == false then CRTShader.setEnabled(false) end
+    -- Identidade CRT: o jogo ABRE como uma TV ligando — ponto → linha
+    -- quente → a imagem abre revelando o splash (docs/plan/crt-identity-v1).
+    CRTShader.setPower(0)
+    CRTShader.powerOn(1.5)
 
     -- FX pipeline (shaders próprios, copyright-safe — Fase 2 do refactor Balatro).
     -- Dissolve: exhaust/destroy. Flash: impactos. Booster: pacotes selados.
@@ -810,7 +820,19 @@ function love.load(loveArgs)
         topBar        = topBar,
         gameUI        = gameUI,
         smokeSystem   = smokeSystem,
-        setCurrentState = function(name) currentState = name end,
+        setCurrentState = function(name)
+            -- Identidade CRT: morte/vitória = a TV DESLIGA (colapso em
+            -- linha quente) e RELIGA já na tela final. Com CRT off nas
+            -- Settings, powerOff/On viram corte seco (acessibilidade).
+            if name == "gameOver" or name == "victory" then
+                CRTShader.powerOff(0.55, function()
+                    currentState = name
+                    CRTShader.powerOn(0.8)
+                end)
+            else
+                currentState = name
+            end
+        end,
         onPhaseCleared  = function()
             if game:isInRunMode() then
                 -- Run mode: passa por Round Eval (cash out) primeiro;
@@ -844,6 +866,9 @@ end
 local function updatePlayButtonPosition() GameplayScene.updatePlayButtonPosition() end
 
 function love.update(dt)
+    -- Identidade CRT: animador do power (ligar/desligar da TV).
+    CRTShader.update(dt)
+
     -- TopBar precisa tickar em TODOS os estados onde é desenhada (loja,
     -- roundEval, rest, event, mapa) — o contador eased de ouro congelava
     -- fora do combate ("comprei e o ouro não mudou", playtest Jul/2026).

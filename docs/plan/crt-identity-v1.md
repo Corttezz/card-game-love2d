@@ -1,0 +1,87 @@
+# Identidade CRT v1 — "A Crônica no Tubo"
+
+> **Status:** EM EXECUÇÃO (Jul/2026). Pedido do dono: CRT forte de verdade
+> ("que pareça uma televisão de tubo, algo antigo"), bordas arredondadas,
+> ligar o jogo = TV ligando, morrer/sair = TV desligando, transições do
+> menu na mesma linguagem.
+
+## 1. Conceito
+
+O jogo INTEIRO vive dentro de um televisor de tubo antigo. Não é um filtro
+por cima — é o aparelho. Consequências de design:
+
+- A tela tem **forma**: cantos arredondados de tubo (máscara superelipse),
+  curvatura de vidro (barrel), sombra de bezel nas bordas.
+- A tela tem **matéria**: scanlines, máscara de fósforo RGB (aperture
+  grille sutil), aberração cromática nas bordas, ruído de sinal, flicker
+  de 60Hz quase imperceptível.
+- A tela tem **estados físicos**: liga (warm-up), desliga (colapso em
+  linha → ponto), e "pulos de canal" nas transições fortes.
+
+Referências de comportamento físico (conhecimento de domínio):
+- **Ligar**: ponto branco no centro → linha horizontal cresce → a imagem
+  "abre" verticalmente com overshoot de brilho (o canhão aquecendo) →
+  assenta com um leve wobble.
+- **Desligar**: a imagem colapsa verticalmente numa linha branca quente →
+  encolhe pra um ponto que persiste ~0.3s → apaga.
+- Balatro/retro handhelds fazem versões disso; a nossa é own-math no
+  shader (copyright-safe, como os demais shaders do projeto).
+
+## 2. Arquitetura
+
+### 2.1 shaders/crt.glsl v2 (reescrita)
+Uniforms: `time`, `resolution`, `strength` (identidade), `power` (0..1,
+estado físico do tubo).
+
+Pipeline por pixel (ordem):
+1. **Power remap**: p<1 remapeia uv pro estágio do warm-up:
+   - p ∈ [0, .35): linha horizontal crescendo (vScale≈0.006, hScale=p/.35)
+   - p ∈ [.35, .85): abertura vertical (vScale 0.006→1, ease quadrático)
+   - p ∈ [.85, 1): assentamento (overshoot de brilho 1.2→1.0)
+   - fora da área visível → preto; vScale pequeno → mistura pra branco
+     quente (a linha brilha independente do conteúdo).
+2. **Barrel**: curvatura de vidro `uv += cc * dot(cc,cc) * 0.035`.
+3. **Máscara de tubo**: superelipse (expoente 8) com borda suave — cantos
+   arredondados REAIS; fora = preto absoluto (o "gabinete").
+4. **Sombra de bezel**: escurecimento extra encostado na máscara.
+5. **Aberração cromática** escalada pela distância do centro (bordas
+   sangram mais — física real do tubo).
+6. **Scanlines** (0.035) + **grille RGB** (triade horizontal, 0.08).
+7. **Vignette** + **flicker** 0.008 + **noise** de sinal.
+
+Cuidado herdado (comentário no shader atual): NUNCA reintroduzir a onda
+horizontal viajante — em pixel art ela lê como bug de cena (4 rodadas de
+caça no GrassField). A curvatura barrel é ESTÁTICA, não viaja.
+
+### 2.2 src/ui/CRTShader.lua v2
+- Estado `power` (default 1) + animador próprio (sem EventManager — o
+  power precisa animar até DURANTE transições de estado/quit).
+- API: `setPower(p)`, `powerOn(dur, cb)`, `powerOff(dur, cb)`,
+  `isPowering()`, `update(dt)` (tick no love.update).
+- **Acessibilidade**: com CRT desligado nas Settings, powerOn/Off chamam
+  o callback imediatamente (corte seco) — a identidade é opcional, o
+  fluxo do jogo não.
+- Canvas do endScene passa a filtrar LINEAR (o barrel em nearest cria
+  degraus serrilhados; linear = suavidade de vidro, apropriado pro CRT).
+
+### 2.3 Momentos (wiring em main.lua)
+| Momento | Efeito |
+|---|---|
+| Boot do jogo | `setPower(0)` + `powerOn(1.5)` — a TV liga revelando o splash (a cascata de cartas já acontece "dentro" do tubo) |
+| Morte (gameOver) | `powerOff(0.55)` → troca de estado no escuro → `powerOn(0.8)` já na tela de game over |
+| Vitória | idem morte (a crônica "desliga" e religa no epílogo) |
+| Sair (botão Sair do menu) | `powerOff(0.7)` → `love.event.quit()` no callback |
+| GameOver/Victory → menu | `blip()` (dip rápido de power 1→0.85→1, "pulo de canal") |
+
+### 2.4 Validação
+`tools/screenshot_crt.lua`: renderiza o menu dentro do CRT com power em
+{0.15, 0.55, 0.80, 1.0} → contact sheet; revisar a linha quente, a
+abertura, os cantos arredondados e a imagem assentada. Capturas normais
+de outras ferramentas continuam SEM CRT (doutrina existente).
+
+## 3. Fora de escopo (v2 futura)
+- Moldura de gabinete desenhada (bezel com textura/reflexo de sala).
+- Estática de canal entre TODAS as trocas de tela.
+- Som: hum de 60Hz ao ligar + "tack" do desligar (pede SFX novos).
+- Curvatura afetando input de mouse (hoje o hit-test ignora o barrel —
+  com curvatura 0.035 o desvio máximo é ~1.5% na borda; aceitável).

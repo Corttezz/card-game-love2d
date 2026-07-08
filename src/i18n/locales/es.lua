@@ -156,7 +156,7 @@ return {
         instructions = "Pulsa ESPACIO para jugar de nuevo o ESC para volver al menu",
     },
 
-    play_button = { label = "Jugar Cartas" end_turn = "Terminar Turno", },
+    play_button = { label = "Jugar Cartas", end_turn = "Terminar Turno" },
 
     window_title = "Card Game - Un juego de cartas estrategico",
 

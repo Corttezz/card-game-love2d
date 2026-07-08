@@ -156,7 +156,7 @@ return {
         instructions = "Druecke LEERTASTE fuer neue Runde oder ESC fuer Menu",
     },
 
-    play_button = { label = "Karten spielen" end_turn = "Zug Beenden", },
+    play_button = { label = "Karten spielen", end_turn = "Zug Beenden" },
 
     window_title = "Card Game - Ein strategisches Kartenspiel",
 

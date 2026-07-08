@@ -519,7 +519,13 @@ function Menu:setContinueCallback(cb) self.onContinueCallback = cb end
 function Menu:setSettingsCallback(cb) self.onSettingsCallback = cb end
 
 function Menu:onQuitClick()
-    love.event.quit()
+    -- Identidade CRT: sair = a TV desliga (colapso) e ENTÃO fecha.
+    local ok, CRTShader = pcall(require, "src.ui.CRTShader")
+    if ok and CRTShader.powerOff then
+        CRTShader.powerOff(0.7, function() love.event.quit() end)
+    else
+        love.event.quit()
+    end
 end
 
 function Menu:setPlayCallback(callback)

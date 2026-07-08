@@ -156,7 +156,7 @@ return {
         instructions = "Appuie sur ESPACE pour rejouer ou ESC pour le menu",
     },
 
-    play_button = { label = "Jouer Cartes" end_turn = "Fin du Tour", },
+    play_button = { label = "Jouer Cartes", end_turn = "Fin du Tour" },
 
     window_title = "Card Game - Un jeu de cartes strategique",
 

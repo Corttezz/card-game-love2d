@@ -160,7 +160,7 @@ return {
         instructions = "Press SPACE to play again or ESC to return to the menu",
     },
 
-    play_button = { label = "Play Cards" end_turn = "End Turn", },
+    play_button = { label = "Play Cards", end_turn = "End Turn" },
 
     window_title = "Card Game - A strategic card game",
 
