@@ -319,6 +319,24 @@ function GameplayScene.draw()
     if smokeSystem and not roadOutdoor then smokeSystem:draw() end
     playButton:draw()
     if endTurnButton then endTurnButton:draw() end
+
+    -- Chamariz do ENCERRAR TURNO (sem mana e nada selecionado): aro dourado
+    -- pulsante + seta quicando — "sua próxima ação é aqui".
+    if GameplayScene._endTurnCallout and endTurnButton then
+        local t = love.timer.getTime()
+        local pulse = 0.5 + 0.5 * math.sin(t * 4.2)
+        love.graphics.setColor(1, 0.85, 0.30, 0.35 + 0.45 * pulse)
+        love.graphics.setLineWidth(2 + pulse * 2)
+        love.graphics.rectangle("line", endTurnButton.x - 4, endTurnButton.y - 4,
+            endTurnButton.width + 8, endTurnButton.height + 8, 8, 8)
+        -- seta quicando apontando pro botão
+        local ax = endTurnButton.x - 18 - pulse * 6
+        local ay = endTurnButton.y + endTurnButton.height / 2
+        love.graphics.setColor(1, 0.85, 0.30, 0.9)
+        love.graphics.polygon("fill", ax, ay - 8, ax, ay + 8, ax + 12, ay)
+        love.graphics.setLineWidth(1)
+        love.graphics.setColor(1, 1, 1, 1)
+    end
     if game.messageSystem then game.messageSystem:draw() end
 
     drawJokersAsCards()
@@ -494,6 +512,30 @@ function GameplayScene.update(dt)
 
     playButton:update(dt)
     if endTurnButton then endTurnButton:update(dt) end
+
+    -- UX do turno multi-jogada (playtest): "joguei e nada aconteceu".
+    -- JOGAR CARTAS desabilita quando não há nada selecionado NEM pagável;
+    -- ENCERRAR TURNO pulsa quando é a única ação que resta.
+    do
+        local blocking = game.combatAnimationSystem:isBlocking()
+        local hasSelection = #game.selectedCards > 0
+        local anyPlayable = false
+        for _, c in ipairs(game.hand) do
+            if (c.cost or 0) <= game.player.mana then
+                anyPlayable = true
+                break
+            end
+        end
+        local myTurn = game.turn == "player" and not blocking
+        if playButton.setEnabled then
+            playButton:setEnabled(myTurn and (hasSelection or anyPlayable))
+        end
+        if endTurnButton and endTurnButton.setEnabled then
+            endTurnButton:setEnabled(myTurn)
+        end
+        GameplayScene._endTurnCallout = myTurn and not hasSelection
+            and not anyPlayable and #game.hand >= 0
+    end
     gameUI:update(dt, game)
     -- topBar:update movido pro main.lua (ticka em todos os estados)
 
