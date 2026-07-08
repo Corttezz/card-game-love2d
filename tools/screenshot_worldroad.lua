@@ -328,37 +328,30 @@ function M.run(mode)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
     elseif mode and mode:match("^postgate%d?") then
-        -- v9.2: SIMULAÇÃO de profundidade — monstro + fileira de postes em
-        -- TODAS as profundidades (rel 4..15) nos dois lados. Vê quais ficam
-        -- na frente/atrás do monstro (BATTLE_REL=9).
+        -- v9.2: MARGEM TOTAL de postes — a beira do caminho INTEIRA (perto
+        -- até a crista) forrada de postes nos dois lados, pra VALIDAR cada
+        -- posição possível (flip do braço, glow, sombra, sumir na dobra).
+        -- Sem monstro: foco na cobertura da margem. "postgate3" = bioma 3.
         local bio = tonumber(mode:match("%d")) or 1
-        local EnemyRenderer = require("src.ui.EnemyRenderer")
-        local I18n = require("src.i18n.I18n"); I18n.init()
-        local Game = require("src.core.Game")
-        local game = Game:new(); game:startNewRun("warrior"); game:startGame()
-        _G.game = game
-        game.enemy.spriteId = "cursed_scarecrow"
         local topBarH = 80
         WorldRoad.clearCache(); WorldRoad.setBiome(bio)
-        local camZ = 6; WorldRoad._camZ = camZ
-        for _ = 1, 30 do WorldRoad.update(1/30); EnemyRenderer.update(1/30) end
+        local camZ = 4; WorldRoad._camZ = camZ
+        for _ = 1, 30 do WorldRoad.update(1/30) end
         WorldRoad._blend = nil; WorldRoad._prevBiomeIndex = nil
-        -- força SÓ postes, um par por rel inteiro
+        -- força SÓ postes, DENSO: um par a cada 0.7 unidade, de perto (rel
+        -- ~0.5) até além da crista (emersão) — cobre a margem inteira
         WorldRoad._props = {}
         local bid = require("src.data.biomes")[bio].id
-        for rel = 4, 15 do
+        local rel = 0.5
+        while rel < 30 do
             for side = -1, 1, 2 do
                 WorldRoad._props[#WorldRoad._props+1] = {
                     z = camZ + rel, kind = "lantern", side = side,
                     lane = 0, variant = 0, bid = bid, big = 1, jitter = 0,
                 }
             end
+            rel = rel + 0.7
         end
-        local cx, cy = WorldRoad.getRoadAnchor(WorldRoad.BATTLE_REL,
-            0, topBarH, width, height - topBarH)
-        WorldRoad.setBattleEnemyDraw(function()
-            EnemyRenderer.draw(game, cx, cy)
-        end, cy)
         WorldRoad.draw(0, topBarH, width, height - topBarH, bio)
         overlays(0, topBarH, width, height - topBarH)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
