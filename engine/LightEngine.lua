@@ -30,6 +30,7 @@ local canvas                    -- lightmap 1/4 res (lazy, recriado no resize)
 local whiteImg                  -- 2x2 branca: quad com UV [0,1] pro shader
 local microImg                  -- radial 16x16 com 2 degraus ASSADOS no alpha
 local shader                    -- shaders/light_dither.glsl
+local occShader                 -- shaders/occluder.glsl (silhueta chapada)
 local shaderOk = nil            -- nil = ainda não tentou; false = falhou (no-op)
 
 local queue, microQueue, occQueue = {}, {}, {}
@@ -113,6 +114,12 @@ local function ensureResources()
             print("[LightEngine] shader light_dither falhou: " .. tostring(sh)
                 .. " — luzes grandes caem no fallback de micro-sprite")
         end
+        -- shader de oclusor: silhueta CHAPADA (só alpha) — corrige o
+        -- esmagamento (sprite × sprite) que escurecia monstro/árvores
+        local ok2, sh2 = pcall(function()
+            return love.graphics.newShader("shaders/occluder.glsl")
+        end)
+        if ok2 and sh2 then occShader = sh2 end
     end
 end
 
@@ -276,21 +283,27 @@ function LightEngine.composite(x, y, w, h)
     love.graphics.setBlendMode("add", "alphamultiply")
     for _, e in ipairs(entries) do
         if e.occ then
-            -- silhueta: pinta o sprite na cor AMBIENTE (alpha do sprite
-            -- recorta pixel-perfeito) — bloqueia toda luz vinda de trás
-            love.graphics.setShader()
+            -- silhueta CHAPADA: o shader usa SÓ o alpha da textura e pinta
+            -- cor flat (ambiente, ou ambiente×lift). ANTES desenhava o
+            -- sprite com setColor → multiplicava ambiente × cor-do-sprite,
+            -- e o multiply final virava sprite² (partes escuras do monstro/
+            -- árvore esmagavam pra quase preto). setColor branco: com o
+            -- shader a cor vem do uniform `flat`.
             love.graphics.setBlendMode("alpha", "alphamultiply")
-            -- e.lift (opcional): pinta ambiente MULTIPLICADO nos pixels da
-            -- própria silhueta — levanta a leitura do dono (ex.: monstro
-            -- no escuro) SEM halo no chão (recorte pixel-perfeito). Sem
-            -- lift, comporta como oclusor normal (ambiente puro).
             local cr, cg, cb = ambient[1], ambient[2], ambient[3]
             if e.lift then
                 cr = math.min(1, cr * e.lift)
                 cg = math.min(1, cg * e.lift)
                 cb = math.min(1, cb * e.lift)
             end
-            love.graphics.setColor(cr, cg, cb, 1)
+            love.graphics.setColor(1, 1, 1, 1)
+            if occShader then
+                love.graphics.setShader(occShader)
+                occShader:send("flat", { cr, cg, cb })
+            else
+                love.graphics.setShader()
+                love.graphics.setColor(cr, cg, cb, 1)  -- fallback (bug antigo)
+            end
             if e.fn then
                 love.graphics.push()
                 love.graphics.scale(1 / S)
@@ -301,6 +314,7 @@ function LightEngine.composite(x, y, w, h)
                     (e.sx or 1) / S, (e.sy or e.sx or 1) / S,
                     e.ox or 0, e.oy or 0)
             end
+            love.graphics.setShader()
             love.graphics.setBlendMode("add", "alphamultiply")
         elseif e.micro then
             love.graphics.setShader()
