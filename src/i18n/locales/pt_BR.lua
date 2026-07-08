@@ -49,6 +49,11 @@ return {
         back        = "VOLTAR AO MENU",
     },
 
+    battle = {
+        your_turn  = "SEU TURNO",
+        enemy_turn = "TURNO DO INIMIGO",
+    },
+
     classes = {
         warrior = {
             name = "Guerreiro",

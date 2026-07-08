@@ -49,6 +49,11 @@ return {
         back        = "BACK TO MENU",
     },
 
+    battle = {
+        your_turn  = "YOUR TURN",
+        enemy_turn = "ENEMY TURN",
+    },
+
     classes = {
         warrior = { name = "Warrior", desc = "Specialist in close combat and resilience",
             passive_name = "Momentum", passive_desc = "Play 2+ attacks in the same turn: +1 Strength this battle." },

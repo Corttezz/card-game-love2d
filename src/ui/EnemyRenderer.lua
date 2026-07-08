@@ -59,7 +59,7 @@ local hurtTime = 0
 local ambientParticles = {}
 local ambientSpawnTimer = 0
 
-local IDLE_FPS = 8
+local IDLE_FPS = 7   -- ping-pong de 4 frames = ciclo ~0.86s (era loop seco 0.5s)
 local HURT_FPS = 12
 local DEATH_FPS = 10
 
@@ -107,11 +107,11 @@ local function ensureAnim(enemyId, animName)
     end
 
     local fps = IDLE_FPS
-    local opts = { loop = true }
+    local opts = { loop = true, pingpong = true }
     if animName == "hurt" then
         fps = HURT_FPS
         opts = { loop = false, onComplete = function()
-            currentAnim = SpriteAnimation.new(enemyId, "idle", "south", IDLE_FPS, { loop = true })
+            currentAnim = SpriteAnimation.new(enemyId, "idle", "south", IDLE_FPS, { loop = true, pingpong = true })
             currentAnimName = "idle"
         end }
     elseif animName == "death" then
@@ -647,7 +647,7 @@ function EnemyRenderer.getEncounterBillboard(enemy)
     -- o monstro "continuava flutuando enquanto vinha" mesmo com footPad)
     -- e vinha parado ("estático vindo é estranho — deixa animando").
     local anim = SpriteAnimation.new(enemy.spriteId, "idle", "south",
-        IDLE_FPS, { loop = true })
+        IDLE_FPS, { loop = true, pingpong = true })
     local img, iw, ih
     if anim then
         iw, ih = anim:getSize()

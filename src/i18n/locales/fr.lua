@@ -48,6 +48,11 @@ return {
         back        = "RETOUR AU MENU",
     },
 
+    battle = {
+        your_turn  = "VOTRE TOUR",
+        enemy_turn = "TOUR DE L ENNEMI",
+    },
+
     classes = {
         warrior = { name = "Guerrier", desc = "Specialiste du combat rapproche et de la resilience",
             passive_name = "Elan", passive_desc = "Jouez 2+ attaques dans le meme tour : +1 de Force pour ce combat." },

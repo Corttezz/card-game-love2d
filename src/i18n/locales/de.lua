@@ -48,6 +48,11 @@ return {
         back        = "ZURUECK",
     },
 
+    battle = {
+        your_turn  = "DEIN ZUG",
+        enemy_turn = "GEGNERZUG",
+    },
+
     classes = {
         warrior = { name = "Krieger",  desc = "Spezialist fuer Nahkampf und Widerstandskraft",
             passive_name = "Schwung", passive_desc = "Spiele 2+ Angriffe im selben Zug: +1 Staerke fuer diesen Kampf." },

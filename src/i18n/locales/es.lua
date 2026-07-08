@@ -48,6 +48,11 @@ return {
         back        = "VOLVER AL MENU",
     },
 
+    battle = {
+        your_turn  = "TU TURNO",
+        enemy_turn = "TURNO DEL ENEMIGO",
+    },
+
     classes = {
         warrior = { name = "Guerrero", desc = "Especialista en combate cuerpo a cuerpo y resistencia",
             passive_name = "Impetu", passive_desc = "Juega 2+ ataques en el mismo turno: +1 de Fuerza en esta batalla." },

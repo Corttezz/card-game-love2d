@@ -81,6 +81,11 @@ function SpriteAnimation.new(enemyId, animation, direction, fps, opts)
     self.fps = fps or 8
     self.frameTime = 1 / self.fps
     self.loop = opts.loop ~= false -- default true
+    -- Ping-pong (1,2,3,4,3,2,...): elimina o corte do wrap 4→1 nos idles
+    -- de 4 frames (análise Jul/2026: ember_imp/abyss_tyrant/blood_duke
+    -- tinham descontinuidade 1.4-1.7× a diferença média entre frames).
+    self.pingpong = opts.pingpong or false
+    self._dir = 1
     self.onComplete = opts.onComplete
     self.frames = frames
     self.currentFrame = 1
@@ -94,6 +99,17 @@ function SpriteAnimation:update(dt)
     self.elapsed = self.elapsed + dt
     while self.elapsed >= self.frameTime do
         self.elapsed = self.elapsed - self.frameTime
+        if self.pingpong and #self.frames > 1 then
+            local nxt = self.currentFrame + self._dir
+            if nxt > #self.frames then
+                self._dir = -1
+                nxt = #self.frames - 1
+            elseif nxt < 1 then
+                self._dir = 1
+                nxt = 2
+            end
+            self.currentFrame = nxt
+        else
         self.currentFrame = self.currentFrame + 1
         if self.currentFrame > #self.frames then
             if self.loop then
@@ -104,6 +120,7 @@ function SpriteAnimation:update(dt)
                 if self.onComplete then self.onComplete() end
                 return
             end
+        end
         end
     end
 end

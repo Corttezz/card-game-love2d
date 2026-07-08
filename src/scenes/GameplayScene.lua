@@ -16,6 +16,7 @@ local InteriorFX       = require("src.ui.InteriorFX")
 local WorldRoad        = require("src.ui.WorldRoad")
 local EnemyRenderer    = require("src.ui.EnemyRenderer")
 local EnemyHud         = require("src.ui.EnemyHud")
+local TurnBanner       = require("src.ui.TurnBanner")
 local Sfx              = require("src.systems.Sfx")
 local SmokeConfig      = require("src.config.SmokeConfig")
 
@@ -225,6 +226,9 @@ function GameplayScene.draw()
 
     gameUI:draw(game)
 
+    -- Banner de turno (por cima do HUD, por baixo da mão/tooltips)
+    TurnBanner.draw()
+
     -- Layout da mão (drag + reorder + slot animado)
     local cardSpacing = Config.Utils.getResponsiveSize(Config.UI.CARD_SPACING_RATIO, 120, "width")
     local currentHandSize = #game.hand
@@ -325,8 +329,17 @@ end
 -- UPDATE
 -- ============================================================================
 
+-- Coreografia de turno (clareza do ritmo): banner "TURNO DO INIMIGO" →
+-- pausa → inimigo age (investida) → banner "SEU TURNO". Estados:
+--   nil      = turno do jogador correndo
+--   "banner" = anunciando o turno inimigo (timer)
+--   "acting" = inimigo agindo (espera a investida terminar)
+local turnStage = nil
+local turnStageT = 0
+
 function GameplayScene.update(dt)
     updatePlayButtonPosition()
+    TurnBanner.update(dt)
 
     game.combatAnimationSystem:update(dt)
 
@@ -426,7 +439,26 @@ function GameplayScene.update(dt)
 
     if game.turn == "enemy" and not game.combatAnimationSystem:isBlocking()
        and game.enemy:isAlive() then
-        game:enemyTurn()
+        if turnStage == nil then
+            turnStage = "banner"
+            turnStageT = 0.75
+            TurnBanner.show("enemy")
+        elseif turnStage == "banner" then
+            turnStageT = turnStageT - dt
+            if turnStageT <= 0 then
+                game:enemyTurn()   -- seta turn="player" ao fim (lógica);
+                turnStage = "acting"  -- visual espera a investida
+            end
+        end
+    elseif turnStage == "acting" then
+        -- inimigo terminou de agir (investida no ar conta como agindo)
+        local attacking = EnemyRenderer.isAttacking and EnemyRenderer.isAttacking()
+        if not attacking then
+            turnStage = nil
+            if game.enemy:isAlive() and game.player:isAlive() then
+                TurnBanner.show("player")
+            end
+        end
     end
 
     -- fumaça só ticka onde é desenhada (interior/legacy) — na estrada

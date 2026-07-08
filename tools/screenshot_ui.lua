@@ -176,6 +176,22 @@ function M.run(mode)
         display:draw(inst, 320, 60, { showStats = true, showDescription = true })
     end)
 
+    addShot("turnbanner", function()
+        -- Banners de turno (clareza do ritmo): captura os dois no hold.
+        local TurnBanner = require("src.ui.TurnBanner")
+        love.graphics.clear(0.10, 0.08, 0.06, 1)
+        TurnBanner.show("enemy")
+        for _ = 1, 12 do TurnBanner.update(1 / 30) end   -- 0.4s = hold
+        TurnBanner.draw()
+        -- desenha o do jogador mais abaixo na MESMA captura (offset via translate)
+        love.graphics.push()
+        love.graphics.translate(0, 120)
+        TurnBanner.show("player")
+        for _ = 1, 12 do TurnBanner.update(1 / 30) end
+        TurnBanner.draw()
+        love.graphics.pop()
+    end)
+
     addShot("collection", function()
         local CollectionScreen = require("components.CollectionScreen")
         local cs = CollectionScreen:new()
