@@ -131,6 +131,7 @@ function Game:startGame()
     -- Restaura jokers da run (em saves antigos vinham de currentDeck → migrados
     -- pelo RunManager:_migrateJokersFromDeck). Em runs novas, jokers={} vazio.
     self:_syncJokersFromRun()
+    self:syncJokerFlags()
 
     -- Reordena o deck para que cartas com flag `innate` fiquem no topo e sejam
     -- compradas primeiro na mao inicial. Em Slay, innate = sempre comeca na mao.
@@ -237,6 +238,9 @@ end
 function Game:drawForTurn()
     -- Passiva rogue: nova janela de Toxinas a cada turno.
     self._toxinAppliedThisTurn = false
+    -- multi-jogada: contadores por turno zerados
+    self._attacksThisTurn = 0
+    self._impetusFiredThisTurn = false
     local baseDraw = Config.Game.CARDS_PER_TURN or 5
     -- Blue Seal acumula compras extras quando cartas com seal são jogadas.
     -- Consumido aqui (uma vez por turno) e zerado.
@@ -375,6 +379,18 @@ end
 -- Adiciona um joker direto aos slots passivos (sem passar pelo deck/hand).
 -- Cumpre o invariante "joker é jogado uma vez e fica no slot pelo resto da run".
 -- meta opcional: { edition, seal } vinda de Buffoon packs.
+-- Sincroniza flags de jokers CONTÍNUOS que vivem no Player (ex: Bastião
+-- retain_armor — Player:onTurnStart não enxerga jokerSlots).
+function Game:syncJokerFlags()
+    local retain = false
+    for _, j in ipairs(self.jokerSlots or {}) do
+        for _, e in ipairs(j.effects or {}) do
+            if e.type == "retain_armor" then retain = true end
+        end
+    end
+    self.player.retainArmor = retain
+end
+
 function Game:addJokerToRun(cardId, meta)
     if not self.isRunMode then
         self:addMessage("Erro: Não está em modo de corrida!", "error")
@@ -411,6 +427,7 @@ function Game:addJokerToRun(cardId, meta)
 
     self:addMessage("Joker ativado: " .. (cardData.name or cardId), "success")
     Sfx.play("jokerActivate")
+    self:syncJokerFlags()
     return true
 end
 
@@ -556,11 +573,14 @@ end
 
 function Game:applyClassTurnPassives(turnContext)
     if self.selectedClass ~= "warrior" then return end
-    local attacks = 0
+    -- multi-jogada: soma ataques de TODAS as jogadas do turno
+    local attacks = self._attacksThisTurn or 0
     for _, c in ipairs(turnContext.allSelectedCards or {}) do
         if (c.attack or 0) > 0 then attacks = attacks + 1 end
     end
-    if attacks >= 2 then
+    self._attacksThisTurn = attacks
+    if attacks >= 2 and not self._impetusFiredThisTurn then
+        self._impetusFiredThisTurn = true
         self.player:gainStrength(1)
         self:addMessage("Ímpeto: +1 Força!", "success")
         if love.timer then self._passiveFlashT = love.timer.getTime() end
@@ -576,12 +596,7 @@ function Game:playSelectedCards()
         return
     end
     if #self.selectedCards == 0 then
-        -- F1: PASSAR O TURNO é permitido (e às vezes necessário — com o
-        -- descarte de mão, pode não haver carta pagável). Mão vai pro
-        -- descarte e o inimigo age.
-        self:addMessage("Turno passado", "info")
-        self:discardHandEndOfTurn()
-        self.turn = "enemy"
+        self:addMessage("Selecione cartas — ou use ENCERRAR TURNO", "info")
         return
     end
 
@@ -868,11 +883,25 @@ function Game:onCombatAnimationComplete()
     -- Cartas já foram removidas da mão em playSelectedCards()
     self.selectedCards = {}
 
-    -- F1 gameplay-overhaul: fim do turno descarta a MÃO INTEIRA (exceto
-    -- retain). Jogar cartas = decidir o que usar ANTES de perder o resto —
-    -- nasce o sequenciamento que o gênero exige.
-    self:discardHandEndOfTurn()
+    -- TURNO MULTI-JOGADA (playtest Jul/2026): jogar cartas NÃO encerra o
+    -- turno — mana restaurada/cartas compradas por efeitos ficam usáveis
+    -- AGORA (cartas de mana/draw eram letra morta no modelo de 1 jogada).
+    -- O turno só passa no botão ENCERRAR TURNO (Game:endTurn).
+end
 
+-- Encerra o turno do jogador: descarta a mão (exceto retain) e passa a
+-- vez pro inimigo. Chamado pelo botão "Encerrar Turno".
+function Game:endTurn()
+    if self.turn ~= "player" then return end
+    if self.combatAnimationSystem and self.combatAnimationSystem.isBlocking
+        and self.combatAnimationSystem:isBlocking() then
+        return
+    end
+    -- devolve mana de cartas selecionadas e não jogadas
+    for i = #self.selectedCards, 1, -1 do
+        self:selectCard(self.selectedCards[i])
+    end
+    self:discardHandEndOfTurn()
     self.turn = "enemy"
 end
 
@@ -971,12 +1000,30 @@ function Game:enemyTurn()
                 end
             end
             if ER and ER.triggerAttack then
-                ER.triggerAttack(intent, applyHit)
+                -- BUG DO ESCUDO (playtest Jul/2026): o resto do turno rodava
+                -- SÍNCRONO enquanto o dano chegava 0.34s depois no apex — o
+                -- bloqueio do jogador era ZERADO antes do golpe aterrissar.
+                -- Agora TODO o pós-golpe é continuação do apex.
+                ER.triggerAttack(intent, function()
+                    applyHit()
+                    self:_finishEnemyTurn()
+                end)
+                return
             else
                 applyHit()
             end
         end
     end
+
+    self:_finishEnemyTurn()
+end
+
+-- Continuação do turno inimigo (roda APÓS o golpe aterrissar): poison tick,
+-- expiração do bloqueio, mana, compra, triggers. Separado de enemyTurn
+-- porque ataques diferem o dano pro apex da investida.
+function Game:_finishEnemyTurn()
+    local okER, ER = pcall(require, "src.ui.EnemyRenderer")
+    if not okER then ER = nil end
 
     -- Telegrafou a PRÓXIMA ação (EnemyHud mostra durante o turno do jogador).
     self.enemy:rollIntent()

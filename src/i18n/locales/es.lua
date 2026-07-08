@@ -156,7 +156,7 @@ return {
         instructions = "Pulsa ESPACIO para jugar de nuevo o ESC para volver al menu",
     },
 
-    play_button = { label = "Jugar Cartas" },
+    play_button = { label = "Jugar Cartas" end_turn = "Terminar Turno", },
 
     window_title = "Card Game - Un juego de cartas estrategico",
 
@@ -230,6 +230,7 @@ return {
         warrior_ghostly_armor   = { name = "Armadura Fantasmal", desc = "Etereo. Gana {def} de Bloqueo." },
         warrior_inflame         = { name = "Inflamar",           desc = "Gana 2 de Fuerza. Gana 1 de Destreza." },
         warrior_power_through   = { name = "Atravesar",          desc = "Anade 2 Heridas al mazo. Gana {def} de Bloqueo." },
+        warrior_bastion         = { name = "Bastion", desc = "Tu Bloqueo NO expira: se acumula entre turnos." },
         warrior_war_cry         = { name = "Grito de Guerra", desc = "+3 de Fuerza en esta batalla." },
         warrior_twin_strike     = { name = "Golpe Doble", desc = "Causa 6 de dano, 2 veces." },
         warrior_iron_discipline = { name = "Disciplina de Hierro", desc = "10 de Bloqueo. +1 de Fuerza en esta batalla." },

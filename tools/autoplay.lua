@@ -355,6 +355,10 @@ local function playBattle(game, label)
             guard = guard + 1
         end
 
+        -- multi-jogada: o bot joga 1 leva e encerra o turno explicitamente
+        if game.enemy:isAlive() and game.turn == "player" then
+            game:endTurn()
+        end
         if game.enemy:isAlive() and game.turn == "enemy" then
             game:enemyTurn()
             -- 0.8s: cobre a investida completa (apex do dano em 0.34s)

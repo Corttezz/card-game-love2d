@@ -213,6 +213,18 @@ return {
         tags = { "strike", "finisher" },
         effects = {},
     },
+    warrior_bastion = {
+        id = "warrior_bastion", name = "Bastiao",
+        type = "joker", subtype = "power",
+        cost = 1, attack = 0, defense = 0,
+        description = "Seu Bloqueio NAO expira: acumula entre turnos.",
+        image = "assets/jokers/joker1.png",
+        rarity = "rare", class = "warrior",
+        tags = { "defend", "armor", "scaling" },
+        effects = {
+            { type = "retain_armor" },
+        },
+    },
     warrior_standard_bearer = {
         id = "warrior_standard_bearer", name = "Porta-Estandarte",
         type = "joker", subtype = "power",

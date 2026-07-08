@@ -22,6 +22,7 @@ local PROCESSED_EFFECT_TYPES = {
     multi_hit = true, damage_bonus_self = true,
     -- card passives
     instant_heal = true, self_damage = true, strength_per_turn = true,
+    retain_armor = true,
     restore_mana = true, increase_max_mana = true,
     add_armor = true, magic_damage = true, draw_cards = true,
     apply_debuff = true, apply_buff = true,

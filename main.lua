@@ -55,6 +55,7 @@ local cardRewardScreen
 local classSelectionScreen
 local collectionScreen
 local achievementsScreen
+local endTurnButton
 local settingsMenu
 local topBar
 local mapScreen
@@ -759,10 +760,24 @@ function love.load(loveArgs)
             game:playSelectedCards()
         end
     end, Theme.Colors.SUCCESS, 18)
-    -- Atualiza texto do botao quando idioma mudar
+
+    -- TURNO MULTI-JOGADA: jogar cartas não passa mais a vez — este botão sim.
+    endTurnButton = Button:new(buttonX, buttonY + buttonHeight + 10,
+        buttonWidth, math.floor(buttonHeight * 0.72),
+        I18n.t("play_button.end_turn"), function()
+        if game.turn == "player" then
+            game:endTurn()
+        end
+    end, Theme.Colors.WARNING, 14)
+    endTurnButton:setIcon("arrow_right")
+
+    -- Atualiza texto dos botoes quando idioma mudar
     I18n.onLocaleChanged(function()
         if playButton and playButton.text ~= nil then
             playButton.text = I18n.t("play_button.label")
+        end
+        if endTurnButton and endTurnButton.text ~= nil then
+            endTurnButton.text = I18n.t("play_button.end_turn")
         end
     end)
     
@@ -783,6 +798,7 @@ function love.load(loveArgs)
     GameplayScene.init({
         game          = game,
         playButton    = playButton,
+        endTurnButton  = endTurnButton,
         topBar        = topBar,
         gameUI        = gameUI,
         smokeSystem   = smokeSystem,
@@ -820,6 +836,10 @@ end
 local function updatePlayButtonPosition() GameplayScene.updatePlayButtonPosition() end
 
 function love.update(dt)
+    -- TopBar precisa tickar em TODOS os estados onde é desenhada (loja,
+    -- roundEval, rest, event, mapa) — o contador eased de ouro congelava
+    -- fora do combate ("comprei e o ouro não mudou", playtest Jul/2026).
+    if topBar and game then topBar:update(dt, game) end
     -- Infra global (antes do dispatch de estado): event queue, particles,
     -- flash fade, screen shake decay.
     EventManager.update(dt)

@@ -156,7 +156,7 @@ return {
         instructions = "Druecke LEERTASTE fuer neue Runde oder ESC fuer Menu",
     },
 
-    play_button = { label = "Karten spielen" },
+    play_button = { label = "Karten spielen" end_turn = "Zug Beenden", },
 
     window_title = "Card Game - Ein strategisches Kartenspiel",
 
@@ -230,6 +230,7 @@ return {
         warrior_ghostly_armor   = { name = "Geisterruestung",    desc = "Aetherisch. Erhalte {def} Block." },
         warrior_inflame         = { name = "Entflammen",         desc = "Erhalte 2 Staerke. Erhalte 1 Geschicklichkeit." },
         warrior_power_through   = { name = "Durchbruch",         desc = "Fuege 2 Wunden ins Deck. Erhalte {def} Block." },
+        warrior_bastion         = { name = "Bastion", desc = "Dein Block verfaellt NICHT: er stapelt sich zwischen Zuegen." },
         warrior_war_cry         = { name = "Kriegsschrei", desc = "+3 Staerke fuer diesen Kampf." },
         warrior_twin_strike     = { name = "Doppelschlag", desc = "Verursacht 6 Schaden, 2-mal." },
         warrior_iron_discipline = { name = "Eiserne Disziplin", desc = "10 Block. +1 Staerke fuer diesen Kampf." },

@@ -156,7 +156,7 @@ return {
         instructions = "Appuie sur ESPACE pour rejouer ou ESC pour le menu",
     },
 
-    play_button = { label = "Jouer Cartes" },
+    play_button = { label = "Jouer Cartes" end_turn = "Fin du Tour", },
 
     window_title = "Card Game - Un jeu de cartes strategique",
 
@@ -230,6 +230,7 @@ return {
         warrior_ghostly_armor   = { name = "Armure Spectrale",  desc = "Etheree. Gagne {def} Blocage." },
         warrior_inflame         = { name = "Enflammer",         desc = "Gagne 2 Force. Gagne 1 Dexterite." },
         warrior_power_through   = { name = "Force Brute",       desc = "Ajoute 2 Blessures au paquet. Gagne {def} Blocage." },
+        warrior_bastion         = { name = "Bastion", desc = "Votre Blocage n expire PAS : il s accumule entre les tours." },
         warrior_war_cry         = { name = "Cri de Guerre", desc = "+3 de Force pour ce combat." },
         warrior_twin_strike     = { name = "Double Frappe", desc = "Inflige 6 degats, 2 fois." },
         warrior_iron_discipline = { name = "Discipline de Fer", desc = "10 de Blocage. +1 de Force pour ce combat." },

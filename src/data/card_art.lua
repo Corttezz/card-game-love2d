@@ -31,6 +31,7 @@ return {
     joker_004               = { icon = "joker_jester",   bg = "abyss",   accent = "AGED_GOLD",  effect = "holo" },
 
     -- ===== NOVAS (gameplay-overhaul Jul/2026 — scaling/payoffs) =====
+    warrior_bastion         = { icon = "warrior_bastion",         bg = "metal",   accent = "AGED_GOLD", effect = "holo" },
     warrior_war_cry         = { icon = "warrior_war_cry",         bg = "rage",    accent = "MAGENTA",   decoration = "flash"  },
     warrior_twin_strike     = { icon = "warrior_twin_strike",     bg = "impact",  accent = "ATTACK",    decoration = "sparks" },
     warrior_iron_discipline = { icon = "warrior_iron_discipline", bg = "metal",   accent = "DEFENSE",   decoration = "sparks" },

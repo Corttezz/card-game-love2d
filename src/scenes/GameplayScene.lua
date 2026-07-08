@@ -27,7 +27,7 @@ local GameplayScene = {}
 GameplayScene.SCENE_MODE = "worldroad"
 
 -- Refs externas (setadas em init)
-local game, playButton, topBar, gameUI, smokeSystem
+local game, playButton, endTurnButton, topBar, gameUI, smokeSystem
 local setCurrentState, onPhaseCleared, onReturnToMenu
 -- State interno
 local hoverCard = nil
@@ -38,6 +38,7 @@ local interiorFade = 0     -- alpha do fade preto (1 → 0 em ~0.9s)
 function GameplayScene.init(deps)
     game           = deps.game
     playButton     = deps.playButton
+    endTurnButton  = deps.endTurnButton
     topBar         = deps.topBar
     gameUI         = deps.gameUI
     smokeSystem    = deps.smokeSystem
@@ -62,6 +63,11 @@ local function updatePlayButtonPosition()
     playButton:setPosition(buttonX, buttonY)
     playButton.width = buttonWidth
     playButton.height = buttonHeight
+    if endTurnButton then
+        endTurnButton:setPosition(buttonX, buttonY + buttonHeight + 8)
+        endTurnButton.width = buttonWidth
+        endTurnButton.height = math.floor(buttonHeight * 0.72)
+    end
 end
 GameplayScene.updatePlayButtonPosition = updatePlayButtonPosition
 
@@ -312,6 +318,7 @@ function GameplayScene.draw()
         and not lastInterior
     if smokeSystem and not roadOutdoor then smokeSystem:draw() end
     playButton:draw()
+    if endTurnButton then endTurnButton:draw() end
     if game.messageSystem then game.messageSystem:draw() end
 
     drawJokersAsCards()
@@ -486,8 +493,9 @@ function GameplayScene.update(dt)
     end
 
     playButton:update(dt)
+    if endTurnButton then endTurnButton:update(dt) end
     gameUI:update(dt, game)
-    topBar:update(dt, game)
+    -- topBar:update movido pro main.lua (ticka em todos os estados)
 
     if game.messageSystem then game.messageSystem:update(dt) end
     if game.enemy then game.enemy:update(dt) end
@@ -541,6 +549,7 @@ function GameplayScene.mousereleased(x, y, button)
 
     if button == 1 then
         playButton:mousereleased(x, y, button)
+        if endTurnButton then endTurnButton:mousereleased(x, y, button) end
 
         local reorderedCard, fromIdx
         for i, card in ipairs(game.hand) do

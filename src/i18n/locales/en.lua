@@ -160,7 +160,7 @@ return {
         instructions = "Press SPACE to play again or ESC to return to the menu",
     },
 
-    play_button = { label = "Play Cards" },
+    play_button = { label = "Play Cards" end_turn = "End Turn", },
 
     window_title = "Card Game - A strategic card game",
 
@@ -253,6 +253,7 @@ return {
         warrior_ghostly_armor   = { name = "Ghostly Armor",     desc = "Ethereal. Gain {def} Block." },
         warrior_inflame         = { name = "Inflame",           desc = "Gain 2 Strength. Gain 1 Dexterity." },
         warrior_power_through   = { name = "Power Through",     desc = "Add 2 Wounds to deck. Gain {def} Block." },
+        warrior_bastion         = { name = "Bastion", desc = "Your Block does NOT expire: it stacks between turns." },
         warrior_war_cry         = { name = "War Cry", desc = "+3 Strength this battle." },
         warrior_twin_strike     = { name = "Twin Strike", desc = "Deal 6 damage, twice." },
         warrior_iron_discipline = { name = "Iron Discipline", desc = "10 Block. +1 Strength this battle." },

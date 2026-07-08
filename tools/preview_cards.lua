@@ -22,6 +22,7 @@ function M.run()
     -- carta em raridades diferentes (já que não existem attack/defense legendary).
     local jobs = {
         -- NOVAS (gameplay-overhaul Jul/2026)
+        { "warrior_bastion",         nil },
         { "warrior_war_cry",         nil },
         { "warrior_twin_strike",     nil },
         { "warrior_iron_discipline", nil },

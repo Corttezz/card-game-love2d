@@ -49,5 +49,8 @@
   },
   "mage_overcharge": {
     "object_id": "ef4e4581-a927-4cce-89cf-bbae71780edc"
+  },
+  "warrior_bastion": {
+    "object_id": "f024bc9b-8492-4347-8306-4d9145257741"
   }
 }

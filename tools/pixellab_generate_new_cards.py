@@ -36,6 +36,9 @@ STYLE = (", dark fantasy grimoire illustration pixel art, inked engraving "
 
 CARDS = {
     # ===== WARRIOR =====
+    "warrior_bastion":
+        "massive rune-engraved tower shield planted in the ground with "
+        "stacked glowing barrier layers behind it",
     "warrior_war_cry":
         "roaring armored warrior head with open helm, battle shout with "
         "carved sound wave arcs",

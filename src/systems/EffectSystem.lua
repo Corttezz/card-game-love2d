@@ -259,7 +259,8 @@ function EffectSystem:processEffectCard(game, effect)
         return self:processEffectCard(game, pick)
 
     elseif t == "strength_scaling" or t == "dexterity_scaling"
-        or t == "multi_hit" or t == "damage_bonus_self" then
+        or t == "multi_hit" or t == "damage_bonus_self"
+        or t == "retain_armor" then
         -- Efeitos processados em applyCardEffects (no damage path), nao aqui.
         -- Retorna true para suprimir o fallback de descricao.
         return true
