@@ -63,10 +63,10 @@ return {
         },
     },
     warrior_second_wind = {
-        id = "warrior_second_wind", name = "Second Wind",
+        id = "warrior_second_wind", name = "Segundo Folego",
         type = "effect", subtype = "common",
         cost = 1, attack = 0, defense = 0,
-        description = "Descarte 2 cartas. Ganhe armadura por cada descartada.",
+        description = "Descarta 2 cartas aleatorias. Ganha 8 de Bloqueio.",
         image = "assets/cards/attack/secondWind.png",
         rarity = "uncommon", class = "warrior",
         tags = { "discard", "armor", "cycle" },
@@ -76,13 +76,13 @@ return {
         },
     },
     warrior_spot_weakness = {
-        id = "warrior_spot_weakness", name = "Spot Weakness",
+        id = "warrior_spot_weakness", name = "Achar a Brecha",
         type = "effect", subtype = "common",
         cost = 1, attack = 0, defense = 0,
         description = "Aplique Vulneravel por 2 turnos e ganhe +3 Forca.",
         image = "assets/cards/attack/theRock.png",
         rarity = "uncommon", class = "warrior",
-        tags = { "weak", "strength", "debuff" },
+        tags = { "vulnerable", "strength", "debuff" },
         effects = {
             { type = "apply_debuff", value = "vulnerable", stacks = 1, duration = 2 },
             { type = "gain_strength", value = 3, description = "+3 Forca" },

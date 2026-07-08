@@ -47,6 +47,13 @@ function Player:addArmor(value)
     self.armor = math.min(self.maxArmor, self.armor + value)
 end
 
+-- Perda de HP DIRETA (ignora armor). Usada por custos auto-infligidos
+-- (self_damage, damage_per_turn) — "pagar com sangue" não pode ser
+-- absorvido pela armadura, senão o custo é fictício (auditoria F0).
+function Player:loseHealth(value)
+    self.health = math.max(0, self.health - value)
+end
+
 function Player:heal(value)
     self.health = math.min(self.maxHealth, self.health + value)
 end

@@ -116,6 +116,13 @@ function EffectSystem:processEffectCard(game, effect)
         game:addMessage(msg("healed", { value = amount }), "success")
         return true
 
+    elseif t == "self_damage" then
+        -- Custo em sangue: HP direto, ignora armor (F0 gameplay-overhaul —
+        -- cartas tipo Sangria prometem "Perde N HP" e precisam cumprir).
+        game.player:loseHealth(v)
+        game:addMessage("-" .. v .. " HP (custo)", "warning")
+        return true
+
     elseif t == "restore_mana" then
         game.player.mana = math.min(game.player.maxMana, game.player.mana + v)
         game:addMessage(msg("mana_restored", { value = v }), "info")
@@ -352,7 +359,9 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
         game:addMessage(msg("regen", { value = amount }), "success")
 
     elseif t == "damage_per_turn" and triggerType == "turn_start" then
-        game.player:takeDamage(v)
+        -- Custo auto-infligido: HP direto, SEM passar pela armadura (senão
+        -- o downside de cartas tipo Berserk é fictício — auditoria F0).
+        game.player:loseHealth(v)
         game:addMessage(msg("penalty", { value = v }), "warning")
 
     elseif t == "on_turn_start_draw" and triggerType == "turn_start" then

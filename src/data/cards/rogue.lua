@@ -163,7 +163,7 @@ return {
         id = "rogue_calculated_gamble", name = "Aposta Calculada",
         type = "effect", subtype = "skill",
         cost = 0, attack = 0, defense = 0,
-        description = "Descarte a mao. Compre o mesmo numero.",
+        description = "Descarta 3 cartas aleatorias. Compre 3.",
         image = "assets/cards/defense/ironShield.png",
         rarity = "uncommon", class = "rogue",
         tags = { "draw", "discard", "cycle", "zero_cost" },

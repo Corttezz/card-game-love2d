@@ -140,6 +140,16 @@ function CardDatabase:createCardInstance(cd)
     -- Flags opcionais de cartas especiais (preenchidos no pass de rebalance da Fase 7).
     instance.innate = cd.innate
     instance.retain = cd.retain
+    -- Exhaust: Game.lua checa instance.exhaust (top-level), mas os dados
+    -- declaram {type="exhaust"} dentro de effects — sem esta derivação
+    -- NENHUMA carta exauria (bug F0 do gameplay-overhaul-v1).
+    instance.exhaust = cd.exhaust or nil
+    for _, eff in ipairs(cd.effects or {}) do
+        if eff.type == "exhaust" then
+            instance.exhaust = true
+            break
+        end
+    end
 
     -- Substitui imagem pela arte procedural pixel-perfect.
     -- Mantém o fallback original se CardFrame falhar (ex: em ambiente sem love).
