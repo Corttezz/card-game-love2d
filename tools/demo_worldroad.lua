@@ -339,102 +339,11 @@ local function runInteractive(postgate)
     love.resize = function() end
 end
 
--- ============================================================================
--- BG: folhear os candidatos de background do bioma 1 ao vivo (1-4 troca)
--- ============================================================================
-local function runBgPreview()
-    setupGame()
-    WorldRoad.setBiome(1)
-    WorldRoad._camZ = 6
-
-    -- v2: paleta travada no mundo (verde-floresta + montanha azul-fria + ceu pessego)
-    local OPTS = {
-        { key = "v2a_mountainpine", label = "1  Mountain Pine (serra azul + pinheiral)" },
-        { key = "v2b_farmhills",    label = "2  Farm Hills (colinas verdes + torres)" },
-        { key = "v2c_mistridges",   label = "3  Mist Ridges (cristas de floresta em camadas)" },
-        { key = "v2d_highland",     label = "4  Highland (campina verde + pedras + pico)" },
-    }
-    -- carrega cada candidato recortado a 400x128 + um "front" transparente
-    local dir = "assets/sprites/world/_bg_candidates/fields_v2/"
-    local transparentFront
-    do
-        local fd = love.image.newImageData(400, 128)  -- tudo alpha 0
-        transparentFront = love.graphics.newImage(fd)
-    end
-    local imgs = {}
-    for _, o in ipairs(OPTS) do
-        local ok, raw = pcall(love.image.newImageData, dir .. o.key .. ".png")
-        if ok and raw then
-            local cw = math.min(400, raw:getWidth())
-            local ch = math.min(128, raw:getHeight())
-            local crop = love.image.newImageData(cw, ch)
-            crop:paste(raw, 0, 0, 0, 0, cw, ch)
-            local img = love.graphics.newImage(crop)
-            img:setFilter("nearest", "nearest")
-            imgs[o.key] = img
-        end
-    end
-
-    local cur = 1
-    local function apply(i)
-        cur = i
-        local o = OPTS[i]
-        -- injeta no cache do WorldRoad (getSprite retorna o cacheado)
-        WorldRoad._spriteCache["fields_mountains"] = imgs[o.key]
-        WorldRoad._spriteCache["fields_mountains_front"] = transparentFront
-    end
-    apply(1)
-
-    love.update = function(dt)
-        WorldRoad.update(dt)
-        EnemyRenderer.update(dt)
-        -- reinjeta todo frame (barato) — algo interno pode recachear
-        local o = OPTS[cur]
-        WorldRoad._spriteCache["fields_mountains"] = imgs[o.key]
-        WorldRoad._spriteCache["fields_mountains_front"] = transparentFront
-    end
-
-    love.draw = function()
-        drawBattleFrame(true)
-        local FontManager = require("src.ui.FontManager")
-        love.graphics.setFont(FontManager.getFont(16))
-        local label = OPTS[cur].label
-        local fw = love.graphics.getFont():getWidth(label)
-        love.graphics.setColor(0.08, 0.06, 0.05, 0.85)
-        love.graphics.rectangle("fill",
-            (love.graphics.getWidth() - fw) / 2 - 12, 92, fw + 24, 26, 7, 7)
-        love.graphics.setColor(0.95, 0.85, 0.6, 1)
-        love.graphics.print(label, (love.graphics.getWidth() - fw) / 2, 96)
-        love.graphics.setColor(1, 1, 1, 0.85)
-        love.graphics.setFont(FontManager.getFont(12))
-        love.graphics.print("1-4 troca background | T hora | ESC sair",
-            12, love.graphics.getHeight() - 24)
-        love.graphics.setColor(1, 1, 1, 1)
-    end
-
-    love.keypressed = function(key)
-        if key == "escape" then love.event.quit()
-        elseif key == "t" then
-            local cur2 = WorldRoad._timeOfDayTarget or 1
-            local nxt = cur2 >= 1 and 0 or (cur2 >= 0.5 and 1 or 0.5)
-            WorldRoad.setTimeOfDay(nxt)
-        elseif tonumber(key) and tonumber(key) >= 1 and tonumber(key) <= 4 then
-            apply(tonumber(key))
-        end
-    end
-    love.mousepressed = function() end
-    love.mousereleased = function() end
-    love.mousemoved = function() end
-    love.resize = function() end
-end
-
 function M.run(mode)
     if mode == "tour" then
         runTour()
     elseif mode == "postgate" then
         runInteractive(true)   -- margem inteira em postes (validação ao vivo)
-    elseif mode == "bg" then
-        runBgPreview()         -- folhear candidatos de bg do bioma 1
     else
         runInteractive()
     end
