@@ -44,9 +44,16 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     vec2 ar = vec2(resolution.x / max(1.0, resolution.y), 1.0);
     vec2 pp = (uv - 0.5) * ar;
     float bezelU = BEZEL_PX / max(1.0, resolution.y);
-    float cornerR = 0.022;   // v3.1: abertura de gabinete real (pouco arredondada)
+    float cornerR = 0.012;   // v3.2: canto pequeno de gabinete real
     vec2 halfExt = 0.5 * ar - bezelU;
-    float dTube = roundedBoxSDF(pp, halfExt, cornerR);
+    // v3.2 (intuição do dono, fisicamente correta): a abertura da moldura
+    // ACOMPANHA a curvatura convexa do vidro — as arestas fazem um leve
+    // arco pra fora no meio de cada lado. SDF avaliado em espaço com
+    // pincushion leve = abertura bojada como o tubo.
+    vec2 nn = pp / (0.5 * ar);
+    float rrA = dot(nn, nn);
+    vec2 ppA = pp * (1.0 + 0.016 * rrA);
+    float dTube = roundedBoxSDF(ppA, halfExt, cornerR);
 
     // ====== GABINETE v3.1: tronco de pirâmide com 4 FACETAS ======
     // A moldura de um CRT real é um frustum: facetas trapezoidais
@@ -57,7 +64,7 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
         vec3 plastic = vec3(0.115, 0.104, 0.095);
 
         // penetração além do retângulo interno, por eixo (>0 na moldura)
-        vec2 aPen = abs(pp) - halfExt;
+        vec2 aPen = abs(ppA) - halfExt;
         aPen = max(aPen, vec2(0.0));
 
         // FACETA por penetração dominante + iluminação própria
@@ -73,14 +80,16 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
         float seam = 0.0;
         if (aPen.x > 0.0005 && aPen.y > 0.0005) {
             float dSeam = abs(aPen.x - aPen.y);
-            seam = 1.0 - smoothstep(0.0, 0.0035, dSeam);
+            seam = 1.0 - smoothstep(0.0, 0.0018, dSeam);
+            // some perto da abertura (colidia com o arco do canto)
+            seam *= smoothstep(0.004, 0.011, dTube);
         }
 
         vec3 cab = plastic * facetLum;
         // textura fina de plástico (estática)
         cab *= 0.95 + 0.10 * rand(floor(uv * resolution * 0.5));
         // junta escura + micro-realce do lado iluminado da junta
-        cab *= 1.0 - 0.38 * seam;
+        cab *= 1.0 - 0.22 * seam;
 
         // RANHURA escura onde o vidro senta (anel fino colado na abertura)
         float groove = smoothstep(0.0045, 0.0, dTube);
