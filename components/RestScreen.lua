@@ -196,6 +196,8 @@ function RestScreen:doForge(cardId)
     self.resultTimer = 1.5
     self.buttons = {}
     Sfx.play("restComplete")
+    -- F4: Ferreiro-Mor (25 forjas acumuladas entre runs).
+    require("src.systems.AchievementSystem").onForge(self.game)
 end
 
 function RestScreen:update(dt)

@@ -54,6 +54,7 @@ local gameUI
 local cardRewardScreen
 local classSelectionScreen
 local collectionScreen
+local achievementsScreen
 local settingsMenu
 local topBar
 local mapScreen
@@ -631,6 +632,14 @@ function love.load(loveArgs)
     menu:setSettingsCallback(function()
         settingsMenu:toggle()
     end)
+    menu:setAchievementsCallback(function()
+        currentState = "achievements"
+        menu:hide()
+        achievementsScreen:show(function()
+            currentState = "menu"
+            menu:show()
+        end)
+    end)
 
     -- Inicializa a interface do jogo
     gameUI = GameUI:new()
@@ -647,6 +656,9 @@ function love.load(loveArgs)
 
     -- Inicializa tela de coleção
     collectionScreen = CollectionScreen:new()
+
+    -- Galeria de conquistas (F4 gameplay-overhaul)
+    achievementsScreen = require("components.AchievementsScreen"):new()
 
     -- Inicializa overlay de configurações
     settingsMenu = SettingsMenu:new()
@@ -832,6 +844,8 @@ function love.update(dt)
         eventScreen:update(dt)
     elseif currentState == "collection" then
         collectionScreen:update(dt)
+    elseif currentState == "achievements" then
+        achievementsScreen:update(dt)
     end
 
     -- Overlay modal sempre atualiza (mesmo sobre outros states).
@@ -881,6 +895,8 @@ function love.draw()
         eventScreen:draw()
     elseif currentState == "collection" then
         collectionScreen:draw()
+    elseif currentState == "achievements" then
+        achievementsScreen:draw()
     elseif currentState == "gameOver" then
         EndScreens.drawGameOver(game)
     elseif currentState == "victory" then
@@ -1001,6 +1017,10 @@ function love.keypressed(key)
     end
 
     -- Collection absorve teclas quando visível
+    if currentState == "achievements" then
+        achievementsScreen:keypressed(key)
+        return
+    end
     if currentState == "collection" then
         if collectionScreen.keypressed then collectionScreen:keypressed(key) end
         if key == "escape" then
@@ -1099,6 +1119,8 @@ function love.mousereleased(x, y, button)
         eventScreen:mousereleased(x, y, button)
     elseif currentState == "collection" then
         if collectionScreen.mousereleased then collectionScreen:mousereleased(x, y, button) end
+    elseif currentState == "achievements" then
+        achievementsScreen:mousereleased(x, y, button)
     end
 end
 
@@ -1147,6 +1169,8 @@ function love.mousepressed(x, y, button)
         eventScreen:mousepressed(x, y, button)
     elseif currentState == "collection" then
         collectionScreen:mousepressed(x, y, button)
+    elseif currentState == "achievements" then
+        achievementsScreen:mousepressed(x, y, button)
     end
 end
 

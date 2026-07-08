@@ -12,6 +12,7 @@ return {
         subtitle        = "Arkane Karten. Fatale Wahlen.",
         play            = "SPIELEN",
         continue        = "FORTSETZEN",
+        achievements    = "ERFOLGE",
         profile         = "PROFIL",
         profile_wins    = "Siege: {n}",
         profile_runs    = "Laeufe: {n}",

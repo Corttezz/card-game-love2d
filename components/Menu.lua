@@ -26,10 +26,10 @@ function Menu:new()
         active        = false,
         alphaTitle    = 1,
         alphaSubtitle = 1,
-        alphaButtons  = { play = 1, collection = 1, settings = 1, quit = 1 },
+        alphaButtons  = { play = 1, collection = 1, achievements = 1, settings = 1, quit = 1 },
         alphaBg       = 1,
         titleScale    = 1,
-        buttonOffsetY = { play = 0, collection = 0, settings = 0, quit = 0 },
+        buttonOffsetY = { play = 0, collection = 0, achievements = 0, settings = 0, quit = 0 },
     }
 
     -- 3 versos de carta flutuantes (Balatro-style demo cards). Cada uma tem
@@ -110,10 +110,24 @@ function Menu:createButtons()
         20
     )
 
+    -- Botão Conquistas (F4 gameplay-overhaul)
+    self.buttons.achievements = Button:new(
+        centerX - buttonWidth / 2,
+        startY + spacing * 2,
+        buttonWidth,
+        buttonHeight,
+        I18n.t("menu.achievements"),
+        function()
+            if self.onAchievementsCallback then self.onAchievementsCallback() end
+        end,
+        Theme.Colors.ACCENT or Theme.Colors.INFO,
+        20
+    )
+
     -- Botão Configurações
     self.buttons.settings = Button:new(
         centerX - buttonWidth / 2,
-        startY + spacing * 2,
+        startY + spacing * 3,
         buttonWidth,
         buttonHeight,
         I18n.t("menu.settings"),
@@ -125,7 +139,7 @@ function Menu:createButtons()
     -- Botão Sair
     self.buttons.quit = Button:new(
         centerX - buttonWidth / 2,
-        startY + spacing * 3,
+        startY + spacing * 4,
         buttonWidth,
         buttonHeight,
         I18n.t("menu.quit"),
@@ -137,6 +151,7 @@ function Menu:createButtons()
     -- Ícones pixel em cada botão (deixa o Button fazer auto-scale pela altura)
     self.buttons.play:setIcon("play_triangle")
     self.buttons.collection:setIcon("scroll")
+    self.buttons.achievements:setIcon("star")
     self.buttons.settings:setIcon("gear")
     self.buttons.quit:setIcon("x_close")
 end
@@ -167,14 +182,20 @@ function Menu:updatePositions()
         self.buttons.collection.height = buttonHeight
     end
 
+    if self.buttons.achievements then
+        self.buttons.achievements:setPosition(centerX - buttonWidth / 2, startY + spacing * 2)
+        self.buttons.achievements.width = buttonWidth
+        self.buttons.achievements.height = buttonHeight
+    end
+
     if self.buttons.settings then
-        self.buttons.settings:setPosition(centerX - buttonWidth / 2, startY + spacing * 2)
+        self.buttons.settings:setPosition(centerX - buttonWidth / 2, startY + spacing * 3)
         self.buttons.settings.width = buttonWidth
         self.buttons.settings.height = buttonHeight
     end
 
     if self.buttons.quit then
-        self.buttons.quit:setPosition(centerX - buttonWidth / 2, startY + spacing * 3)
+        self.buttons.quit:setPosition(centerX - buttonWidth / 2, startY + spacing * 4)
         self.buttons.quit.width = buttonWidth
         self.buttons.quit.height = buttonHeight
     end
@@ -493,6 +514,7 @@ function Menu:onCollectionClick()
 end
 
 function Menu:setCollectionCallback(cb) self.onCollectionCallback = cb end
+function Menu:setAchievementsCallback(cb) self.onAchievementsCallback = cb end
 function Menu:setContinueCallback(cb) self.onContinueCallback = cb end
 function Menu:setSettingsCallback(cb) self.onSettingsCallback = cb end
 
@@ -552,7 +574,7 @@ function Menu:enterWithIntro()
         EM.parallelEase(self.intro, "titleScale",    1, 0.55, "back_out", "menu_intro")
 
         -- Stagger botões: 0.08s offset entre cada (delays absolutos).
-        local order = { "play", "collection", "settings", "quit" }
+        local order = { "play", "collection", "achievements", "settings", "quit" }
         for i, name in ipairs(order) do
             local delay = 0.30 + (i - 1) * 0.08
             EM.parallel(delay, function()

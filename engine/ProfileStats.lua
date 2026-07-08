@@ -26,6 +26,11 @@ local DEFAULTS = {
     bestFloor = 0,   -- andar dentro do bestAct
     bestScore = 0,   -- recorde de pontuação TINTA×SELO (F3)
     lastClass = nil, -- classe da última run iniciada
+    -- F4 (conquistas):
+    achievements = {},  -- { [id] = true }
+    counters = {},      -- { cardsPlayed = N, forges = N }
+    cardsSeen = {},     -- { [cardId] = true } (Bibliotecário)
+    winsByClass = {},   -- { warrior = true, ... } (Trindade)
 }
 
 local cache = nil
@@ -34,6 +39,11 @@ local function load()
     if cache then return cache end
     cache = {}
     for k, v in pairs(DEFAULTS) do cache[k] = v end
+    -- Tabelas aninhadas precisam existir mesmo em perfis antigos.
+    cache.achievements = {}
+    cache.counters = {}
+    cache.cardsSeen = {}
+    cache.winsByClass = {}
     if love.filesystem.getInfo(PATH) then
         local chunk = love.filesystem.load(PATH)
         if chunk then
@@ -77,9 +87,13 @@ local function bumpBest(actNumber, floorInAct)
     end
 end
 
-function ProfileStats.recordVictory(actNumber, floorInAct)
+function ProfileStats.recordVictory(actNumber, floorInAct, classId)
     local s = load()
     s.wins = s.wins + 1
+    if classId then
+        s.winsByClass = s.winsByClass or {}
+        s.winsByClass[classId] = true
+    end
     bumpBest(actNumber, floorInAct)
     save()
 end
@@ -99,6 +113,26 @@ function ProfileStats.updateBestScore(score)
         s.bestScore = score
         save()
     end
+end
+
+-- Contadores acumulados entre runs (cartas jogadas, forjas...). NÃO salva a
+-- cada bump (seria 1 write de disco por turno) — quem fecha o ciclo chama
+-- flush() (fim de batalha / unlock de conquista).
+function ProfileStats.bump(key, n)
+    local s = load()
+    s.counters = s.counters or {}
+    s.counters[key] = (s.counters[key] or 0) + (n or 1)
+end
+
+function ProfileStats.markSeen(cardId)
+    if not cardId then return end
+    local s = load()
+    s.cardsSeen = s.cardsSeen or {}
+    s.cardsSeen[cardId] = true
+end
+
+function ProfileStats.flush()
+    save()
 end
 
 -- true se há qualquer histórico (menu decide se mostra a plaque de perfil).

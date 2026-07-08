@@ -160,6 +160,10 @@ function EffectSystem:processEffectCard(game, effect)
             stacks = effect.stacks or 1,
         }
         game.enemy:addStatusEffect(debuff)
+        -- F4: Miasma (15+ poison acumulado no inimigo).
+        if debuff.name == "poison" then
+            require("src.systems.AchievementSystem").onPoisonApplied(game, game.enemy)
+        end
         game:addMessage(msg("debuff_applied", { name = debuff.name, duration = debuff.duration }), "warning")
         Sfx.play("debuffApplied")
         return true

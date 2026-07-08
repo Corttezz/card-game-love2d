@@ -532,6 +532,12 @@ function CardRewardScreen:purchaseOffer(offer, offerId)
         -- pra evitar duplo-buy caso input leak durante overlay/animação.
         offer.purchased = true
 
+        -- F4 (Voto de Pobreza): qualquer compra em LOJA marca a run.
+        if self.mode == "shop" and self.game.runManager
+            and self.game.runManager.currentRun then
+            self.game.runManager.currentRun._usedShop = true
+        end
+
         local offerName = offer.type == "card" and I18n.cardName({ id = offer.id, name = offer.name }) or offer.name
         -- Screen jiggle no momento da compra (Fase 6.4) — feedback tátil leve.
         if _G.jiggleScreen then _G.jiggleScreen(0.25) end

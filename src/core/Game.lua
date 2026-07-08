@@ -10,6 +10,7 @@ local ShopSystem = require("src.systems.ShopSystem")
 local TagSystem = require("src.systems.TagSystem")
 local ComboSystem = require("src.systems.ComboSystem")
 local ScoreSystem = require("src.systems.ScoreSystem")
+local AchievementSystem = require("src.systems.AchievementSystem")
 local ActSystem = require("src.systems.ActSystem")
 local Config = require("src.core.Config")
 local Sfx = require("src.systems.Sfx")
@@ -326,6 +327,9 @@ function Game:addCardToRun(cardId, meta)
         return false
     end
 
+    -- F4: registro de descoberta (Bibliotecário).
+    AchievementSystem.onCardSeen(self, cardId)
+
     -- Bifurca jokers: nunca entram no deck. Vão direto para jokerSlots
     -- + currentRun.jokers (padrão Balatro G.jokers).
     local cardData = self.deckManager.cardDatabase:getCard(cardId)
@@ -560,6 +564,8 @@ function Game:playSelectedCards()
     ComboSystem.detect(turnContext)
     -- F3: estilo pontua — combos distintos da batalha + máximo num turno.
     self.scoreSystem:recordTurnCombos(turnContext.activeCombos)
+    -- F4: contador de cartas jogadas + Tinta Viva (4 combos num turno).
+    AchievementSystem.onCardsPlayed(self, turnContext)
     ComboSystem.announce(self, turnContext)
     self._currentTurnContext = turnContext
 
@@ -732,6 +738,10 @@ function Game:processCardInCombat(card, turnContext)
         local defense = computeCardValue(card.defense, self.player.dexterity)
 
         self.player:addArmor(defense)
+        -- F4: Muralha do Escriba (cap de armor atingido).
+        if self.player.armor >= self.player.maxArmor then
+            AchievementSystem.onArmorCapped(self)
+        end
 
         -- Floating armor number (Fase 6.1).
         local FloatingText = require("src.ui.FloatingText")
@@ -957,6 +967,9 @@ function Game:_onEnemyDeath()
         self:addMessage("NOVO RECORDE DE CRONICA!", "success")
         Sfx.play("comboTrigger")
     end
+
+    -- F4: conquistas de batalha (turno 1, 1 HP, boss flawless, score, endless).
+    AchievementSystem.onBattleWon(self)
 
     -- Aftershock coreografado via EventManager: 2 tremores menores pós-morte
     -- (sensação de corpo caindo). Exemplo canônico de sequência temporal
@@ -1246,8 +1259,10 @@ function Game:checkVictory()
             if not self._victoryRecorded then
                 self._victoryRecorded = true
                 local PS = require("engine.ProfileStats")
-                PS.recordVictory(run.actNumber, run.floorInAct)
+                PS.recordVictory(run.actNumber, run.floorInAct, run.classId or self.selectedClass)
                 PS.updateBestScore(self.score)
+                -- F4: conquistas de vitória (deck, classes, restrições).
+                AchievementSystem.onVictory(self)
             end
             return true
         end

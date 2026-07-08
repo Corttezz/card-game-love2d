@@ -144,6 +144,20 @@ function M.run(mode)
         dv:draw()
     end)
 
+    addShot("achievements", function()
+        -- Galeria de conquistas (F4). Seed em memória: HEADLESS_TOOL impede
+        -- gravação no profile.lua real.
+        local ProfileStats = require("engine.ProfileStats")
+        local s = ProfileStats.get()
+        s.achievements = { primeira_pagina = true, relampago = true,
+                           miasma = true, grimorio_bolso = true }
+        local AchievementsScreen = require("components.AchievementsScreen")
+        local as = AchievementsScreen:new()
+        as:show(function() end)
+        love.graphics.clear(0.05, 0.04, 0.03, 1)
+        as:draw()
+    end)
+
     addShot("collection", function()
         local CollectionScreen = require("components.CollectionScreen")
         local cs = CollectionScreen:new()

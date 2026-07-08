@@ -57,6 +57,13 @@ function CardDatabase:getAllCards()
     return cardData and cardData.cards or {}
 end
 
+-- Total de cartas do catálogo (Bibliotecário — AchievementSystem).
+function CardDatabase:getTotalCardCount()
+    local n = 0
+    for _ in pairs(self:getAllCards()) do n = n + 1 end
+    return n
+end
+
 function CardDatabase:getDeck(deckId)
     self:loadData()
     return deckData and deckData.decks and deckData.decks[deckId]

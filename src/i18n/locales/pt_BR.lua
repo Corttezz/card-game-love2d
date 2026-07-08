@@ -12,6 +12,7 @@ return {
         subtitle        = "Cartas arcanas. Decisoes fatais.",
         play            = "JOGAR",
         continue        = "CONTINUAR",
+        achievements    = "CONQUISTAS",
         profile         = "PERFIL",
         profile_wins    = "Vitorias: {n}",
         profile_runs    = "Corridas: {n}",
