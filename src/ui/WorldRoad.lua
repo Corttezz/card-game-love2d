@@ -3051,7 +3051,7 @@ local function drawEncounterFront(g, x, w, camZ)
     -- nada"): o billboard da viagem precisa do MESMO lift do EnemyRenderer
     -- estático — senão o handoff viagem→batalha muda o brilho de repente.
     local amb = LightEngine.ambientLuma and LightEngine.ambientLuma() or 1
-    local lift = math.min(1.7, math.max(1, 0.78 / math.max(0.2, amb)))
+    local lift = math.min(2.1, math.max(1, 0.95 / math.max(0.2, amb)))
     if e.anim then
         LightEngine.submitOccluder({
             z = rel + 6, lift = lift, bx = oxT, by = oyT, w = e.iw * s, h = e.ih * s,

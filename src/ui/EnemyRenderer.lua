@@ -467,7 +467,7 @@ function EnemyRenderer.draw(game, cx, cy)
         -- mesmo piso do billboard da viagem (drawEncounterFront) — o
         -- handoff viagem→batalha NÃO pode mudar o brilho do monstro
         local amb = LightEngine.ambientLuma and LightEngine.ambientLuma() or 1
-        local lift = math.min(1.7, math.max(1, 0.78 / math.max(0.2, amb)))
+        local lift = math.min(2.1, math.max(1, 0.95 / math.max(0.2, amb)))
         if animRef or staticRef then
             LightEngine.submitOccluder({
                 z = 9 + 6,   -- BATTLE_REL + viés (sem require circular)
