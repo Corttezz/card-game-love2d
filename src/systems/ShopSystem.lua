@@ -121,7 +121,7 @@ function ShopSystem:initializeShopPools()
 
     self.shopUpgradePool = {
         { id = "health_upgrade",     name = "Vida Extra",   description = "+10 HP máximo",            cost = 5, effect = "increase_max_health",    value = 10 },
-        { id = "mana_upgrade",       name = "Mana Extra",   description = "+1 mana máxima",           cost = 8, effect = "increase_base_mana",     value = 1  },
+        { id = "mana_upgrade",       name = "Mana Extra",   description = "+1 mana máxima",           cost = 25, effect = "increase_base_mana",    value = 1  },
         { id = "card_draw_upgrade",  name = "Cartas Extras",description = "+1 carta por turno",       cost = 6, effect = "increase_card_draw",     value = 1  },
         { id = "damage_upgrade",     name = "Dano Bônus",   description = "+2 dano em cartas de ataque", cost = 4, effect = "increase_attack_damage", value = 2 },
         { id = "defense_upgrade",    name = "Defesa Bônus", description = "+2 defesa em cartas defensivas", cost = 4, effect = "increase_defense",   value = 2  },

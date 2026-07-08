@@ -101,12 +101,13 @@ return {
         id = "mage_healing_drop", name = "Gota Curativa",
         type = "effect", subtype = "potion",
         cost = 1, attack = 0, defense = 0,
-        description = "Cura 10 HP.",
+        description = "Cura 10 HP. Exaurir.",
         image = "assets/cards/effect/potionOfHealing.png",
         rarity = "common", class = "mage",
-        tags = { "heal", "potion" },
+        tags = { "heal", "potion", "exhaust" },
         effects = {
             { type = "instant_heal", value = 10 },
+            { type = "exhaust" },
         },
     },
 
@@ -384,12 +385,13 @@ return {
         id = "effect_healing_potion", name = "Pocao de Cura",
         type = "effect", subtype = "potion",
         cost = 1, attack = 0, defense = 0,
-        description = "Cura 15 HP instantaneamente.",
+        description = "Cura 15 HP. Exaurir.",
         image = "assets/cards/effect/potionOfHealing.png",
         rarity = "common", class = "mage",
-        tags = { "heal", "potion" },
+        tags = { "heal", "potion", "exhaust" },
         effects = {
             { type = "instant_heal", value = 15 },
+            { type = "exhaust" },
         },
     },
     effect_mana_crystal = {

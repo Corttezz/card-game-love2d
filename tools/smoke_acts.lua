@@ -82,7 +82,7 @@ function M.run()
 
     -- 12. Config.Game ajustado
     check("PLAYER_MAX_HEALTH = 60", Config.Game.PLAYER_MAX_HEALTH == 60)
-    check("INITIAL_HAND_SIZE = 4", Config.Game.INITIAL_HAND_SIZE == 4)
+    check("INITIAL_HAND_SIZE = 5 (F1)", Config.Game.INITIAL_HAND_SIZE == 5)
 
     print(string.format("\n  TOTAL: %d pass / %d fail", pass, fail))
     return fail == 0

@@ -98,38 +98,54 @@ function M.run()
     g6:resetHandAndDeck()
     check("resetHandAndDeck zera discard", #g6.discard == 0)
 
-    -- 8. drawForTurn: hand vazia = emergency draw 3
+    -- 8. drawForTurn (F1): draw FIXO de CARDS_PER_TURN (5), mao ja descartada
+    local Config = require("src.core.Config")
+    local perTurn = Config.Game.CARDS_PER_TURN or 5
     local g7 = Game:new()
     g7.hand = {}
-    g7.deck = { makeCard("a"), makeCard("b"), makeCard("c"), makeCard("d") }
+    g7.deck = { makeCard("a"), makeCard("b"), makeCard("c"), makeCard("d"),
+                makeCard("e"), makeCard("f") }
     g7.discard = {}
     g7:drawForTurn()
-    check("drawForTurn com hand=0 compra 3 cartas", #g7.hand == 3)
+    check("drawForTurn compra CARDS_PER_TURN (" .. perTurn .. ")",
+        #g7.hand == perTurn)
 
-    -- 9. drawForTurn: hand nao-vazia = draw normal de 1
+    -- 9. drawForTurn: cartas retain sobrevivem e o draw continua fixo
     local g8 = Game:new()
-    g8.hand = { makeCard("x") }
-    g8.deck = { makeCard("a"), makeCard("b"), makeCard("c") }
+    g8.hand = { makeCard("x") }  -- simulou retain que sobrou do turno anterior
+    g8.deck = { makeCard("a"), makeCard("b"), makeCard("c"), makeCard("d"),
+                makeCard("e"), makeCard("f") }
     g8.discard = {}
     g8:drawForTurn()
-    check("drawForTurn com hand=1 compra apenas 1 (total 2)", #g8.hand == 2)
+    check("drawForTurn com retain na mao = retain + " .. perTurn,
+        #g8.hand == 1 + perTurn)
 
-    -- 10. drawForTurn com hand=0 e deck pequeno: limita a quantidade disponivel
+    -- 10. drawForTurn com deck pequeno: limita a quantidade disponivel
     local g9 = Game:new()
     g9.hand = {}
     g9.deck = { makeCard("a"), makeCard("b") } -- so 2 no deck total
     g9.discard = {}
     g9:drawForTurn()
-    check("drawForTurn com deck=2 e hand=0 limita a 2", #g9.hand == 2)
+    check("drawForTurn com deck=2 limita a 2", #g9.hand == 2)
 
-    -- 11. drawForTurn com hand=0 e discard cheio: reshuffle + draw 3
+    -- 11. drawForTurn com discard cheio: reshuffle + draw fixo
     local g10 = Game:new()
     g10.hand = {}
     g10.deck = {}
-    g10.discard = { makeCard("a"), makeCard("b"), makeCard("c"), makeCard("d") }
+    g10.discard = { makeCard("a"), makeCard("b"), makeCard("c"), makeCard("d"),
+                    makeCard("e"), makeCard("f") }
     g10:drawForTurn()
-    check("drawForTurn reembaralha discard e puxa 3",
-        #g10.hand == 3 and #g10.discard == 0)
+    check("drawForTurn reembaralha discard e puxa " .. perTurn,
+        #g10.hand == perTurn and #g10.discard == 0)
+
+    -- 12. discardHandEndOfTurn (F1): mao vai pro descarte, retain fica
+    local g11 = Game:new()
+    local keep = makeCard("keep"); keep.retain = true
+    g11.hand = { makeCard("a"), keep, makeCard("b") }
+    g11.discard = {}
+    g11:discardHandEndOfTurn()
+    check("discardHandEndOfTurn descarta nao-retain",
+        #g11.hand == 1 and g11.hand[1].id == "keep" and #g11.discard == 2)
 
     print(string.format("\n  TOTAL: %d pass / %d fail", pass, fail))
     return fail == 0

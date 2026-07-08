@@ -23,10 +23,29 @@ local intentIcons = {}
 local function getIntentIcon(kind)
     kind = kind or "attack"
     if intentIcons[kind] ~= nil then return intentIcons[kind] or nil end
-    local name = (kind == "defense") and "intent_defense" or "intent_attack"
+    local name = "intent_attack"
+    if kind == "defense" or kind == "defend" then
+        name = "intent_defense"
+    elseif kind == "buff" then
+        name = "status_strength"
+    end
     local icon = IconLoader.get(name)
     intentIcons[kind] = icon or false
     return icon
+end
+
+-- Preview do intent (F1 gameplay-overhaul): usa Enemy:getIntentPreview se
+-- existir (kind + valor já com weak/strong aplicados); fallback legado =
+-- ataque com enemy.damage.
+local function intentPreview(enemy)
+    if enemy.getIntentPreview then
+        return enemy:getIntentPreview()
+    end
+    local dmg = enemy.damage or 0
+    if enemy.hasStatus and enemy:hasStatus("weak") then
+        dmg = math.floor(dmg * 0.75)
+    end
+    return "attack", dmg
 end
 
 -- ===== HP BAR =====
@@ -132,14 +151,10 @@ end
 -- Dimensions do box do intent (sem desenhar). Útil pra layout.
 function EnemyHud.getIntentDims(enemy)
     if not enemy then return 0, 0 end
-    local dmg = enemy.damage or 0
-    if dmg <= 0 then return 0, 0 end
-    local effective = dmg
-    if enemy.hasStatus and enemy:hasStatus("weak") then
-        effective = math.floor(dmg * 0.75)
-    end
+    local _, value = intentPreview(enemy)
+    if not value or value <= 0 then return 0, 0 end
     local font = FontManager.getResponsiveFont(0.032, 22)
-    local tw = font:getWidth(tostring(effective))
+    local tw = font:getWidth(tostring(value))
     local iconSize, gap, padX, padY = 24, 4, 8, 6
     return iconSize + gap + tw + padX * 2, iconSize + padY * 2
 end
@@ -147,18 +162,13 @@ end
 -- Desenha o intent box. Se boxXOverride/boxYOverride forem nil, centraliza em cx.
 function EnemyHud.drawIntent(enemy, cx, topY, boxXOverride, boxYOverride)
     if not enemy then return end
-    local dmg = enemy.damage or 0
-    if dmg <= 0 then return end
-
-    -- Ajuste pra "weak" (dano infligido -25%)
-    local effective = dmg
-    if enemy.hasStatus and enemy:hasStatus("weak") then
-        effective = math.floor(dmg * 0.75)
-    end
+    local kind, value = intentPreview(enemy)
+    if not value or value <= 0 then return end
+    local isAttack = (kind == "attack" or kind == "strong")
 
     -- Layout horizontal: ícone 24x24 + número grande ao lado
     local font = FontManager.getResponsiveFont(0.032, 22)
-    local txt = tostring(effective)
+    local txt = (kind == "buff" and "+" or "") .. tostring(value)
     local tw = font:getWidth(txt)
 
     local iconSize = 24
@@ -178,9 +188,19 @@ function EnemyHud.drawIntent(enemy, cx, topY, boxXOverride, boxYOverride)
     setColor(Palette.PARCHMENT_DARK, 0.97)
     love.graphics.rectangle("fill", boxX, boxY, boxW, boxH, 5, 5)
 
-    -- Flash vermelho pulsante (telegrafando ataque iminente)
-    local pulse = 0.5 + math.sin(love.timer.getTime() * 3) * 0.5
-    love.graphics.setColor(Palette.BLOOD[1], Palette.BLOOD[2], Palette.BLOOD[3], 0.15 + pulse * 0.08)
+    -- Cor semântica do intent: sangue = ataque, aço = defesa, ouro = buff.
+    local accent = Palette.BLOOD
+    if kind == "defend" then
+        accent = Palette.STEEL or { 0.55, 0.62, 0.70, 1 }
+    elseif kind == "buff" then
+        accent = Palette.AGED_GOLD
+    end
+
+    -- Flash pulsante (mais forte no ataque "strong" — perigo iminente)
+    local pulseSpeed = (kind == "strong") and 5 or 3
+    local pulse = 0.5 + math.sin(love.timer.getTime() * pulseSpeed) * 0.5
+    local pulseBase = (kind == "strong") and 0.24 or 0.15
+    love.graphics.setColor(accent[1], accent[2], accent[3], pulseBase + pulse * 0.08)
     love.graphics.rectangle("fill", boxX, boxY, boxW, boxH, 5, 5)
 
     -- Borda tinta
@@ -188,12 +208,12 @@ function EnemyHud.drawIntent(enemy, cx, topY, boxXOverride, boxYOverride)
     love.graphics.setLineWidth(1)
     love.graphics.rectangle("line", boxX, boxY, boxW, boxH, 5, 5)
 
-    -- Accent blood (faixa interna)
-    setColor(Palette.BLOOD, 0.75)
+    -- Accent na cor do intent (faixa interna)
+    setColor(accent, 0.75)
     love.graphics.rectangle("line", boxX + 2, boxY + 2, boxW - 4, boxH - 4, 4, 4)
 
-    -- Ícone de intent (attack por padrão; futuro: defense/buff baseado em enemy.nextIntent)
-    local icon = getIntentIcon(enemy.nextIntent or "attack")
+    -- Ícone do intent real (attack/strong/defend/buff)
+    local icon = getIntentIcon(kind)
     if icon and icon.draw then
         local iconH = (icon.size and icon.size.h) or 16
         local iw = (icon.size and icon.size.w) or 16
@@ -203,11 +223,14 @@ function EnemyHud.drawIntent(enemy, cx, topY, boxXOverride, boxYOverride)
         icon.draw(iconX, iconY, scale)
     end
 
-    -- Número do dano à direita (grande, vermelho sangue)
+    -- Número à direita, na cor semântica do intent
     love.graphics.setFont(font)
     local tx = boxX + padX + iconSize + gap
     local ty = boxY + math.floor((boxH - font:getHeight()) / 2)
-    FontManager.drawWithOutline(txt, tx, ty, { 1, 0.3, 0.3, 1 }, 0.95)
+    local numColor = { 1, 0.3, 0.3, 1 }                     -- ataque: vermelho
+    if kind == "defend" then numColor = { 0.65, 0.75, 0.9, 1 }
+    elseif kind == "buff" then numColor = { 1, 0.85, 0.4, 1 } end
+    FontManager.drawWithOutline(txt, tx, ty, numColor, 0.95)
 
     love.graphics.setColor(1, 1, 1, 1)
 end

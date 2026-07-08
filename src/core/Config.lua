@@ -35,7 +35,8 @@ Config.UI = {
 -- Configurações do Jogo
 Config.Game = {
     -- Cartas iniciais (Fase 5: hand maior pra compensar deck pequeno de 2 cartas)
-    INITIAL_HAND_SIZE = 4,
+    INITIAL_HAND_SIZE = 5,   -- F1: mão inicial = draw por turno (StS-style)
+    CARDS_PER_TURN = 5,      -- F1: draw fixo por turno (mão descarta no fim)
     MAX_JOKER_SLOTS = 3,
 
     -- Fases: Fase 5 trocou o cap de 10 por estrutura de atos (ver Config.Acts).
@@ -52,7 +53,7 @@ Config.Game = {
     -- Jogador: Fase 5 reduziu HP inicial (60 vs 100). Deck pequeno + curva mais
     -- apertada cria pressao pra tomar decisoes boas nas escolhas de nos.
     PLAYER_MAX_HEALTH = 60,
-    PLAYER_MAX_ARMOR = 50,
+    PLAYER_MAX_ARMOR = 30,   -- F1: era 50 (> maior hit do jogo = imunidade)
     PLAYER_MAX_MANA = 3,
     PLAYER_HEALTH_RESTORE = 20,
 

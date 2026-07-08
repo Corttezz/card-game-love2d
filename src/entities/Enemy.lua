@@ -20,7 +20,66 @@ function Enemy:new(health, damage)
     instance.statusEffects = {}
     -- Valores eased pra display suave de HP/armor (ValueEasing.tick)
     instance.disp = {}
+    -- F1 gameplay-overhaul: o inimigo TELEGRAFA a ação do próximo turno.
+    instance:rollIntent()
     return instance
+end
+
+-- ===== Intents (F1 do gameplay-overhaul-v1) =====
+-- O inimigo anuncia o que fará no próximo turno (nextIntent); o EnemyHud
+-- desenha ícone + número. Cria "janelas": turno de defend/buff do inimigo é
+-- a hora de burstar; ataque forte é a hora de defender.
+local INTENTS = {
+    { kind = "attack", weight = 50 },  -- dano normal
+    { kind = "strong", weight = 16 },  -- dano ×1.6
+    { kind = "defend", weight = 18 },  -- ganha armor
+    { kind = "buff",   weight = 16 },  -- +2 dano permanente
+}
+
+function Enemy:rollIntent()
+    -- Pressão garantida: nunca 2 turnos seguidos sem atacar (senão o
+    -- inimigo "stalla" e devolve o problema que queremos matar).
+    if self._lastIntentNonAttack then
+        self.nextIntent = (math.random() < 0.30) and "strong" or "attack"
+        self._lastIntentNonAttack = false
+        return self.nextIntent
+    end
+    local total = 0
+    for _, it in ipairs(INTENTS) do total = total + it.weight end
+    local r = math.random() * total
+    for _, it in ipairs(INTENTS) do
+        r = r - it.weight
+        if r <= 0 then
+            self.nextIntent = it.kind
+            break
+        end
+    end
+    self.nextIntent = self.nextIntent or "attack"
+    self._lastIntentNonAttack =
+        (self.nextIntent == "defend" or self.nextIntent == "buff")
+    return self.nextIntent
+end
+
+-- Valor de preview do intent pro HUD: (kind, número).
+--   attack/strong → dano previsto (com weak aplicado)
+--   defend        → armor que vai ganhar
+--   buff          → +2 (dano permanente)
+function Enemy:getIntentPreview()
+    local kind = self.nextIntent or "attack"
+    if kind == "defend" then
+        return kind, self:getDefendAmount()
+    elseif kind == "buff" then
+        return kind, 2
+    end
+    local dmg = self.damage
+    if kind == "strong" then dmg = math.floor(dmg * 1.6) end
+    if self:hasStatus("weak") then dmg = math.floor(dmg * 0.75) end
+    return kind, dmg
+end
+
+-- Armor do intent defend: proporcional ao dano (inimigo forte defende forte).
+function Enemy:getDefendAmount()
+    return math.min(self.maxArmor, math.max(6, math.floor(self.damage * 0.8)))
 end
 
 function Enemy:takeDamage(damage)

@@ -151,6 +151,13 @@ end
 -- Chamado no inicio do turno do jogador. Decrementa duracao de buffs e
 -- remove expirados. Efeitos continuos ja foram aplicados (strength e stat, nao buff).
 function Player:onTurnStart()
+    -- F1 gameplay-overhaul: BLOQUEIO ZERA todo turno (StS). Defesa vira
+    -- decisão por turno em vez de poupança — o "banco de armor 50" que
+    -- imunizava o jogador morreu aqui. Jokers futuros podem setar
+    -- retainArmor pra manter uma fração.
+    if not self.retainArmor then
+        self.armor = 0
+    end
     for i = #self.buffs, 1, -1 do
         local b = self.buffs[i]
         b.duration = b.duration - 1

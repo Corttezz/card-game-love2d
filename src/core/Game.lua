@@ -110,6 +110,7 @@ function Game:startGame()
     self._deathPauseTimer = 0
     self._saveDeleted = false
     self._victoryRecorded = false
+    self.battleTurn = 0
 
     self.economySystem:resetForNewRun()
     self.economySystem.currentGold = 10
@@ -218,23 +219,20 @@ function Game:drawCard(staggerDelay)
     end
 end
 
--- Draw de inicio de turno. Regra:
---   - Normal: compra 1 (+ bonus de jokers futuro).
---   - Emergencia: se a mao esta vazia, compra 3. Evita "compra-joga" quando o
---     deck inteiro cabe num unico turno.
--- Jokers podem futuramente somar em `bonus` via turn_start trigger; por ora 0.
+-- Draw de inicio de turno (F1 gameplay-overhaul):
+--   - Fixo: compra CARDS_PER_TURN (5, StS-style) — a mão foi descartada no
+--     fim do turno anterior, então todo turno recomeça com mão fresca
+--     (+ cartas retain que sobreviveram).
+--   - O antigo "draw de emergência +3 com mão vazia" morreu: ele PREMIAVA
+--     esvaziar a mão, o oposto do que o jogo precisa.
 function Game:drawForTurn()
-    local emergencyActive = (#self.hand == 0)
-    local baseDraw = emergencyActive and 3 or 1
+    local baseDraw = Config.Game.CARDS_PER_TURN or 5
     -- Blue Seal acumula compras extras quando cartas com seal são jogadas.
     -- Consumido aqui (uma vez por turno) e zerado.
     local sealBonus = self._sealDrawBonus or 0
     self._sealDrawBonus = 0
     local total = baseDraw + sealBonus
 
-    if emergencyActive then
-        self:addMessage("Recarga: +3 cartas", "info")
-    end
     if sealBonus > 0 then
         self:addMessage("+" .. sealBonus .. " cartas (Blue Seal)", "info")
     end
@@ -529,7 +527,12 @@ end
 
 function Game:playSelectedCards()
     if #self.selectedCards == 0 then
-        self:addMessage("Selecione cartas para jogar!", "warning")
+        -- F1: PASSAR O TURNO é permitido (e às vezes necessário — com o
+        -- descarte de mão, pode não haver carta pagável). Mão vai pro
+        -- descarte e o inimigo age.
+        self:addMessage("Turno passado", "info")
+        self:discardHandEndOfTurn()
+        self.turn = "enemy"
         return
     end
 
@@ -797,7 +800,31 @@ function Game:onCombatAnimationComplete()
 
     -- Cartas já foram removidas da mão em playSelectedCards()
     self.selectedCards = {}
+
+    -- F1 gameplay-overhaul: fim do turno descarta a MÃO INTEIRA (exceto
+    -- retain). Jogar cartas = decidir o que usar ANTES de perder o resto —
+    -- nasce o sequenciamento que o gênero exige.
+    self:discardHandEndOfTurn()
+
     self.turn = "enemy"
+end
+
+-- Move a mão pro descarte no fim do turno do jogador (cartas `retain` ficam).
+function Game:discardHandEndOfTurn()
+    local kept = {}
+    local discarded = 0
+    for _, card in ipairs(self.hand) do
+        if card.retain then
+            table.insert(kept, card)
+        else
+            table.insert(self.discard, card)
+            discarded = discarded + 1
+        end
+    end
+    self.hand = kept
+    if discarded > 0 then
+        self:addMessage("Descartou " .. discarded .. " carta(s)", "info")
+    end
 end
 
 function Game:enemyTurn()
@@ -810,22 +837,53 @@ function Game:enemyTurn()
         return
     end
 
-    -- Inimigo ataca o jogador
-    local damage = self.enemy:performAttack()
-    if damage > 0 then
-        -- Pitch escalado pela magnitude do dano: ataques pesados soam mais graves
-        -- (Balatro engine/sound_manager.lua pattern). Cap entre 0.7 e 1.05.
-        local atkPitch = math.max(0.7, math.min(1.05, 1.1 - damage * 0.012))
-        Sfx.playWithVariation("enemyAttack", atkPitch, 0.08)
-        self.player:takeDamage(damage)
-        self:addMessage("Inimigo causou " .. damage .. " de dano!", "warning")
-        -- Feedback visceral: screen shake proporcional ao dano (clamped).
-        -- Igual ao que CombatSequence faz quando player bate no inimigo.
-        if _G.triggerShake then
-            local intensity = math.min(14, 4 + damage * 0.25)
-            _G.triggerShake(intensity, 0.22)
+    -- F1: executa o intent TELEGRAFADO no turno anterior (o jogador viu o
+    -- ícone/número no EnemyHud e pôde se preparar). Depois rola o próximo.
+    local intent = self.enemy.nextIntent or "attack"
+
+    -- F2.1: Fúria anti-stall — a partir do turno 6 o inimigo ganha +2 de
+    -- dano permanente POR TURNO. Batalha tem clock; potion-loop morre.
+    self.battleTurn = (self.battleTurn or 0) + 1
+    if self.battleTurn >= 6 then
+        self.enemy.baseDamage = self.enemy.baseDamage + 2
+        self.enemy.damage = self.enemy.damage + 2
+        self:addMessage("Fúria! O inimigo ganha +2 de dano", "warning")
+    end
+
+    if intent == "defend" then
+        local armorGain = self.enemy:getDefendAmount()
+        self.enemy:addArmor(armorGain)
+        Sfx.play("armorSound")
+        self:addMessage("Inimigo se defende: +" .. armorGain .. " de armadura", "info")
+    elseif intent == "buff" then
+        self.enemy.baseDamage = self.enemy.baseDamage + 2
+        self.enemy.damage = self.enemy.damage + 2
+        Sfx.playWithVariation("enemyAttack", 0.8, 0.05)
+        self:addMessage("Inimigo se enfurece: +2 de dano permanente!", "warning")
+        if self.enemy.juice_up then self.enemy:juice_up(0.4, 0.1) end
+    else
+        -- attack | strong
+        local damage = self.enemy:performAttack()
+        if intent == "strong" and damage > 0 then
+            damage = math.floor(damage * 1.6)
+        end
+        if damage > 0 then
+            -- Pitch escalado pela magnitude do dano: ataques pesados soam mais
+            -- graves (Balatro sound_manager pattern). Cap entre 0.7 e 1.05.
+            local atkPitch = math.max(0.7, math.min(1.05, 1.1 - damage * 0.012))
+            Sfx.playWithVariation("enemyAttack", atkPitch, 0.08)
+            self.player:takeDamage(damage)
+            self:addMessage("Inimigo causou " .. damage .. " de dano!", "warning")
+            -- Feedback visceral: screen shake proporcional ao dano (clamped).
+            if _G.triggerShake then
+                local intensity = math.min(14, 4 + damage * 0.25)
+                _G.triggerShake(intensity, 0.22)
+            end
         end
     end
+
+    -- Telegrafou a PRÓXIMA ação (EnemyHud mostra durante o turno do jogador).
+    self.enemy:rollIntent()
 
     -- Fim do turno do inimigo: processa poison DoT, decrementa duration de debuffs.
     local poisonDmg = self.enemy:onTurnEnd()
@@ -986,10 +1044,11 @@ function Game:nextPhase()
     self.currentPhase = self.currentPhase + 1
     self.score = self.score + Config.Game.BASE_SCORE_PER_PHASE * self.currentPhase
 
-    local healthLost = self.player.maxHealth - self.player.health
-    local goldEarned = self.economySystem:earnBattleGold(self.currentPhase, healthLost, self.currentPhase)
-    self:addMessage("Ganhou " .. goldEarned .. " ouro!", "success")
-    if goldEarned > 0 then Sfx.play("goldGain") end
+    -- F2 gameplay-overhaul: FOLHA ÚNICA de pagamento. O RoundEvalScreen
+    -- (cash-out Balatro: vitória + bônus HP + juros) é O pagamento da
+    -- batalha. O earnBattleGold daqui era um SEGUNDO salário (~50/batalha
+    -- na fase 5, com "streak" falso via currentPhase) que deixava o jogador
+    -- rico demais pra loja significar escolha.
 
     self.player:resetMaxMana()
     self:resetHandAndDeck()
@@ -1002,6 +1061,7 @@ function Game:nextPhase()
         local nodeType = (run.currentNode and run.currentNode.type) or "battle"
         local stats = ActSystem.getEnemyStats(run.actNumber, run.floorInAct, nodeType)
         self.enemy = Enemy:new(stats.health, stats.damage)
+    self.battleTurn = 0
         -- Sprite do inimigo: roster por ato × tipo de node (v5).
         -- Endless: bioma 4+ a cada 8 andares (mesma fórmula do
         -- GameplayScene/WorldRoad — monstro casa com o cenário).
@@ -1020,6 +1080,7 @@ function Game:nextPhase()
         local newHealth = Config.Game.ENEMY_BASE_HEALTH + (self.currentPhase - 1) * Config.Game.ENEMY_HEALTH_SCALING
         local newDamage = Config.Game.ENEMY_BASE_DAMAGE + (self.currentPhase - 1) * Config.Game.ENEMY_DAMAGE_SCALING
         self.enemy = Enemy:new(newHealth, newDamage)
+        self.battleTurn = 0
     end
 
     -- Cura intra-ato (modo classic) OU cura inter-ato (run mode, quando floorInAct=1
@@ -1102,6 +1163,7 @@ function Game:resumeRun()
     local nodeType = (run.currentNode and run.currentNode.type) or "battle"
     local stats = ActSystem.getEnemyStats(run.actNumber, run.floorInAct, nodeType)
     self.enemy = Enemy:new(stats.health, stats.damage)
+    self.battleTurn = 0
     local spriteAct = run.actNumber
     if run.endlessMode then
         spriteAct = 4 + math.floor(math.max(0, (run.currentFloor or 25) - 25) / 8)
