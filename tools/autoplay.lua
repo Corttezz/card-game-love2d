@@ -27,6 +27,13 @@ local TagSystem    = require("src.systems.TagSystem")
 -- ============================================================
 
 local report = {}
+local anomalies = {}   -- invariantes violadas (o "grito" que faltou no bug do escudo)
+local function anomaly(fmt, ...)
+    local line = select("#", ...) > 0 and fmt:format(...) or fmt
+    table.insert(anomalies, line)
+    table.insert(report, "  !! ANOMALIA: " .. line)
+    print("[autoplay] !! ANOMALIA: " .. line)
+end
 local function log(fmt, ...)
     local line = select("#", ...) > 0 and fmt:format(...) or fmt
     table.insert(report, line)
@@ -356,6 +363,14 @@ local function playBattle(game, label)
         end
 
         -- multi-jogada: o bot joga 1 leva e encerra o turno explicitamente
+        -- INVARIANTES pré-turno-inimigo (detectores de anomalia):
+        local armorBeforeEnemy = game.player.armor or 0
+        local nextKind, nextVal = game.enemy:getIntentPreview()
+        -- usa o contador do ScoreSystem (só dano DO INIMIGO) — HP bruto
+        -- pega custo de sangue de Berserk/Sangria (ignora armor por design)
+        local dmgTakenBeforeEnemy =
+            (game.scoreSystem._battle and game.scoreSystem._battle.damageTaken) or 0
+
         if game.enemy:isAlive() and game.turn == "player" then
             game:endTurn()
         end
@@ -363,6 +378,19 @@ local function playBattle(game, label)
             game:enemyTurn()
             -- 0.8s: cobre a investida completa (apex do dano em 0.34s)
             pump(game, 0.8)
+        end
+
+        -- DETECTOR "escudo furado" (o bug que o dono pegou jogando e o
+        -- piloto engoliu): escudo cobria o golpe anunciado (+4 de margem
+        -- pra Fúria) mas o HP caiu mesmo assim.
+        local dmgTakenAfterEnemy =
+            (game.scoreSystem._battle and game.scoreSystem._battle.damageTaken) or 0
+        local enemyDealt = dmgTakenAfterEnemy - dmgTakenBeforeEnemy
+        if (nextKind == "attack" or nextKind == "strong")
+            and armorBeforeEnemy >= (nextVal or 0) + 4
+            and enemyDealt > 0 then
+            anomaly("escudo furado: %d de escudo vs golpe %s %d, inimigo furou %d",
+                armorBeforeEnemy, nextKind, nextVal or 0, enemyDealt)
         end
 
         log("    dano causado %d | dano sofrido %d | inimigo %d HP",
@@ -473,7 +501,12 @@ local function doRewards(game)
     end
 
     if best then
+        local goldBefore = game.economySystem.currentGold
         game.economySystem:spendGold(best.cost, best.type, best.id)
+        if game.economySystem.currentGold ~= goldBefore - best.cost then
+            anomaly("ouro errado na recompensa: %d - %d != %d",
+                goldBefore, best.cost, game.economySystem.currentGold)
+        end
         game:addCardToRun(best.id)
         log("- Recompensa: comprei **%s** (%s, $%d) → ouro $%d",
             best.name, best.rarity or "?", best.cost,
@@ -798,6 +831,12 @@ function M.run(runsArg, classArg)
     log("---")
     log("## Placar geral")
     for _, o in ipairs(outcomes) do log("- %s", o) end
+    log("")
+    log("## Anomalias detectadas: %d", #anomalies)
+    for _, an in ipairs(anomalies) do log("- %s", an) end
+    if #anomalies > 0 then
+        print(("\n[autoplay] *** %d ANOMALIAS — ver relatorio ***"):format(#anomalies))
+    end
 
     local content = table.concat(report, "\n")
     love.filesystem.write("autoplay_report.md", content)

@@ -141,3 +141,20 @@ Ver `memory/balance_curves.md` para tabela completa. Highlights:
   runs/wins/losses/bestAct/bestScore/winsByClass/counters/cardsSeen/
   achievements. `bump()` NÃO salva (chame `flush()`); tools headless não
   gravam (`_G.HEADLESS_TOOL`).
+
+## Doutrina do piloto (pós bug do escudo, Jul/2026)
+
+O bug "escudo zerado antes do golpe" foi pego pelo DONO jogando, não pelo
+piloto — o diário registrou o sintoma mas ninguém olhou. Correções de
+processo (obrigatórias):
+1. **Mudou ordem/timing do turno → rodar `love . smoke_turn_order`**
+   (regressão dedicada: escudo absorve o golpe diferido do apex; Bastião
+   retém; endTurn descarta). Incluído no smoke_all.
+2. **O piloto tem DETECTORES DE ANOMALIA** (tools/autoplay.lua): "escudo
+   furado" (dano do inimigo com escudo cobrindo o golpe anunciado, medido
+   pelo ScoreSystem = só dano real do inimigo, não custo de sangue) e
+   "ouro errado" em compras. Anomalias saem no placar final — bateria com
+   anomalia > 0 é FALHA, investigar antes de commitar.
+3. Sanidade de 1 run NÃO valida mudança de timing — bateria 2×all mínimo.
+4. O detector já pagou: achou recordDamageTaken contando dano BRUTO
+   (golpe bloqueado matava o bônus flawless do score/conquistas).

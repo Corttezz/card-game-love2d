@@ -480,6 +480,13 @@ function love.load(loveArgs)
         return
     end
 
+    -- Regressão da ordem do turno (escudo vs apex da investida).
+    if loveArgs and loveArgs[1] == "smoke_turn_order" then
+        local ok = require("tools.smoke_turn_order").run()
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
     -- Roda TODOS os smoke tests em sequencia.
     --   love . smoke_all
     if loveArgs and loveArgs[1] == "smoke_all" then
@@ -492,7 +499,8 @@ function love.load(loveArgs)
         local okU = require("tools.smoke_upgrades").run()
         local okS = require("tools.smoke_shop").run()
         local okP = require("tools.smoke_packs").run()
-        local ok = okT and okE and okC and okM and okA and okD and okU and okS and okP
+        local okO = require("tools.smoke_turn_order").run()
+        local ok = okT and okE and okC and okM and okA and okD and okU and okS and okP and okO
         print(ok and "\n== ALL GREEN ==" or "\n== SOME FAILED ==")
         love.event.quit(ok and 0 or 1)
         return

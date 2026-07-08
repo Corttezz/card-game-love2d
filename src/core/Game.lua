@@ -983,20 +983,31 @@ function Game:enemyTurn()
                 -- Pitch escalado pela magnitude (Balatro sound_manager).
                 local atkPitch = math.max(0.7, math.min(1.05, 1.1 - damage * 0.012))
                 Sfx.playWithVariation("enemyAttack", atkPitch, 0.08)
+                local hpBefore = self.player.health
                 self.player:takeDamage(damage)
-                self.scoreSystem:recordDamageTaken(damage)
+                -- Detector do piloto (Jul/2026): registrar o dano BRUTO
+                -- fazia golpe 100% bloqueado matar o bônus flawless do
+                -- score e das conquistas. Conta só o que FUROU o escudo.
+                local effective = hpBefore - self.player.health
+                self.scoreSystem:recordDamageTaken(effective)
                 self:addMessage("Inimigo causou " .. damage .. " de dano!", "warning")
                 if _G.triggerShake then
                     local intensity = math.min(14, 4 + damage * 0.25)
                     _G.triggerShake(intensity, 0.22)
                 end
-                -- Dano flutuante SOBRE O PAINEL DO JOGADOR (antes o HP só
-                -- descia silenciosamente no canto).
+                -- Feedback no painel do jogador: "-N" real que entrou, ou
+                -- BLOQUEADO! em aço quando o escudo segurou tudo.
                 local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
                 if okFT and love.graphics then
-                    FloatingText.spawn("-" .. damage, 120,
-                        love.graphics.getHeight() - 120,
-                        { kind = "damage", fontSize = 22 })
+                    if effective > 0 then
+                        FloatingText.spawn("-" .. effective, 120,
+                            love.graphics.getHeight() - 120,
+                            { kind = "damage", fontSize = 22 })
+                    else
+                        FloatingText.spawn("BLOQUEADO!", 120,
+                            love.graphics.getHeight() - 120,
+                            { kind = "armor", fontSize = 18 })
+                    end
                 end
             end
             if ER and ER.triggerAttack then
