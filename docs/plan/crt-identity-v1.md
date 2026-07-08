@@ -103,3 +103,20 @@ SDF de retângulo arredondado (Shadertoy WtdSDs/fsdyzB).
   glitch/glitchY). É EVENTO discreto, não a onda viajante banida.
 - **Interlace shimmer** (paridade de linha alterna por quadro, 30Hz de
   vida) + **halation** (brilho sangrando, 4-tap).
+
+
+## v2.2 (Jul/2026 — relevo do domo + legibilidade)
+
+Pesquisa: crt-pi.glsl (libretro — Distort com CURVATURE_X/Y anisotrópico
++ barrelScale), CRT-Royale (geometria esférica/cilíndrica, refractive
+diffusion), CRT-Geom-Deluxe.
+
+- **Geometria de DOMO**: curvatura r² + termo r⁴ (7.0) — centro quase
+  plano, cantos dobrando FECHADO (a descrição exata do dono). Anisotrópica
+  (Y 0.062 > X 0.045, padrão crt-pi).
+- **Relevo perceptível**: sombreamento lambertiano do domo (centro "mais
+  perto" = mais claro; queda acelera nos cantos via r⁴) + BRILHO DE VIDRO
+  estático (elipse larga no terço superior — reflexo da sala, a pista
+  mais forte de convexidade).
+- **TopBar legível sob o tubo** (feedback): fundo mais escuro
+  (0.07/0.055/0.04), fontes 12→14 e 8→9, bezel do shader 0.32→0.22.

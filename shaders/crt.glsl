@@ -77,11 +77,14 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
         return vec4(0.0, 0.0, 0.0, 1.0) * color;
     }
 
-    // ====== BARREL: curvatura de vidro (estática) ======
+    // ====== BARREL v2.2: geometria de DOMO (crt-pi/CRT-Geom) ======
+    // Termo r² (curva geral) + termo r⁴ (só morde as BORDAS): o centro
+    // fica quase plano e os cantos dobram fechado — o relevo do vidro que
+    // o dono descreveu. Anisotrópico: vertical curva mais (crt-pi Y>X).
     vec2 cc = puv - 0.5;
     float r2 = dot(cc, cc);
-    float curv = 0.035 * strength;
-    vec2 buv = puv + cc * r2 * curv * 2.4;
+    vec2 curvXY = vec2(0.045, 0.062) * strength;
+    vec2 buv = puv + cc * (curvXY * r2 * 1.6 + curvXY * r2 * r2 * 7.0);
 
     // ====== MÁSCARA DE TUBO: SDF de retângulo arredondado ======
     // Aspecto corrigido → cantos CIRCULARES de verdade (CRT-Geom cornersize).
@@ -94,8 +97,8 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
         return vec4(0.0, 0.0, 0.0, 1.0) * color;
     }
     // sombra de bezel encostada na borda do tubo
-    float bezel = 1.0 - 0.32 * strength
-        * smoothstep(-0.10, -0.002, dTube);
+    float bezel = 1.0 - 0.22 * strength
+        * smoothstep(-0.08, -0.002, dTube);
 
     // ====== UNDERSCAN (revisão de telas, Jul/2026) ======
     // O CONTEÚDO INTEIRO ocupa a área interna segura do tubo — a máscara e
@@ -149,6 +152,17 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     grille.g += (triad >= 1.0 && triad < 2.0 ? 0.05 : -0.03) * strength;
     grille.b += (triad >= 2.0 ? 0.05 : -0.03) * strength;
 
+    // ====== RELEVO DO DOMO (v2.2) ======
+    // 1) Sombreamento lambertiano do domo: o centro do vidro está "mais
+    //    perto" e pega mais luz; a queda acelera perto dos cantos (r⁴).
+    float dome = 1.0 - (0.10 * r2 * 2.0 + 0.22 * r2 * r2 * 8.0) * strength;
+    dome = clamp(dome, 0.55, 1.0);
+    // 2) Brilho de vidro: reflexo suave e ESTÁTICO da sala no terço
+    //    superior (elipse larga, deslocada pra cima) — a pista mais forte
+    //    de convexidade num CRT de verdade.
+    vec2 sheenPos = (suv - vec2(0.5, 0.24)) * vec2(1.0, 2.1);
+    float sheen = exp(-dot(sheenPos, sheenPos) * 3.2) * 0.045 * strength;
+
     // ====== VIGNETTE + FLICKER + NOISE ======
     vec2 vPos = (suv - 0.5) * (0.62 + 0.38 * (1.0 - strength));
     float vignette = clamp(1.0 - dot(vPos, vPos), 0.0, 1.0);
@@ -159,7 +173,9 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
         * strength;
 
     // ====== COMPOSIÇÃO ======
-    rgb *= grille * scan * shimmer * flicker * vignette * bezel * tubeMask;
+    rgb *= grille * scan * shimmer * flicker * vignette * bezel * tubeMask
+        * dome;
+    rgb += sheen;
     rgb += noise;
     rgb *= surge;
     // linha quente do warm-up: o fósforo satura pra branco

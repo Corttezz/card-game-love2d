@@ -80,7 +80,9 @@ function TopBar:draw()
     local screenWidth = love.graphics.getWidth()
 
     -- Fundo pixel: ink fill + borda dourada dupla
-    PixelCanvas.rect(0, 0, screenWidth, self.height, Palette.PANEL_FILL)
+    -- Fundo mais ESCURO que PANEL_FILL: sob o CRT (scanlines+vinheta) o
+    -- dourado precisa de mais contraste (feedback: "difícil de enxergar").
+    PixelCanvas.rect(0, 0, screenWidth, self.height, { 0.07, 0.055, 0.04, 0.98 })
     PixelCanvas.hline(0, self.height,     screenWidth, Palette.AGED_GOLD)
     PixelCanvas.hline(0, self.height + 1, screenWidth, Palette.AGED_GOLD_DARK)
 
@@ -117,7 +119,7 @@ function TopBar:drawGameInfo()
                            scaledIcon, scaledIcon, cw / 2, ch / 2)
 
         Palette.set(Palette.AGED_GOLD_LIGHT)
-        love.graphics.setFont(FontManager.getFont(12))
+        love.graphics.setFont(FontManager.getFont(14))
         -- Display eased pra counter Balatro-style (sobe/desce número suave)
         local goldDisp = math.floor((self.disp.gold or self.game.economySystem.currentGold or 0) + 0.001)
         local goldText = "$" .. goldDisp
@@ -126,7 +128,7 @@ function TopBar:drawGameInfo()
         local interestGold = self.game.economySystem:calculateInterest()
         if interestGold > 0 then
             Palette.set(Palette.PARCHMENT)
-            love.graphics.setFont(FontManager.getFont(8))
+            love.graphics.setFont(FontManager.getFont(9))
             local interestText = I18n.t("top_bar.interest_suffix", { amount = math.floor(interestGold) })
             love.graphics.print(interestText, coinX + 50, centerY + 6)
         end
@@ -141,14 +143,14 @@ function TopBar:drawGameInfo()
         love.graphics.draw(self.deckIcon, deckX, deckY, 0, iconScale, iconScale)
 
         Palette.set(Palette.PARCHMENT_LIGHT)
-        love.graphics.setFont(FontManager.getFont(12))
+        love.graphics.setFont(FontManager.getFont(14))
         local deckSize = #self.game.deck
         local deckText = I18n.t("top_bar.deck_cards", { n = deckSize })
         love.graphics.print(deckText, deckX + 50, centerY - 10)
 
         if self.game.hand then
             Palette.set(Palette.PARCHMENT)
-            love.graphics.setFont(FontManager.getFont(8))
+            love.graphics.setFont(FontManager.getFont(9))
             local handSize = #self.game.hand
             local handText = I18n.t("top_bar.hand_suffix", { n = handSize })
             love.graphics.print(handText, deckX + 50, centerY + 6)
@@ -175,10 +177,10 @@ function TopBar:drawGameInfo()
         else
             Palette.set(Palette.PARCHMENT_LIGHT)
         end
-        love.graphics.setFont(FontManager.getFont(12))
+        love.graphics.setFont(FontManager.getFont(14))
         love.graphics.print(tostring(self.game.score or 0), scoreX + 34, centerY - 10)
         Palette.set(record and Palette.AGED_GOLD or Palette.PARCHMENT)
-        love.graphics.setFont(FontManager.getFont(8))
+        love.graphics.setFont(FontManager.getFont(9))
         love.graphics.print(record and I18n.t("top_bar.score_record")
             or I18n.t("top_bar.score_label"), scoreX + 34, centerY + 6)
 
