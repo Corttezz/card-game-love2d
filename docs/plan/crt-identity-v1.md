@@ -139,3 +139,17 @@ por cima dele**:
 - Bezel 0.22→0.12 e só na moldura.
 Medição pós-fix (luminância média na captura): mana orb 45.7, painel de
 vida 52.3 (sobre fundo ~15) — legíveis. Regra: legibilidade > efeito.
+
+
+## v3 (Jul/2026 — GABINETE visível, referência pixelbuddha do dono)
+
+O preto morto ao redor virou um TELEVISOR desenhado proceduralmente no
+shader (zero assets, qualquer resolução):
+- Moldura de plástico escuro (26px) com luz vinda de cima, textura fina
+  de ruído estático e cantos externos escurecidos.
+- LÁBIO especular na abertura do tubo + sombra de recesso ao redor +
+  sombra curta do vidro recuado por dentro (0.20, legibilidade intacta).
+- Abertura com cantos arredondados (SDF, raio 0.05).
+- POWER agora apaga SÓ O VIDRO: TV desligada continua visível com um
+  reflexo fraco do ambiente no vidro (imersão do desligar).
+- Conteúdo mapeado pro interior do tubo (janela - 2×26px).
