@@ -2668,8 +2668,13 @@ local function drawProps(g, x, w, camZ)
             -- ciclo 25: SAÍDA REAL — depois de passar por você (rel<0) o
             -- prop desliza pra fora pelo canto (acelera pra fora e pra
             -- baixo) em vez de sumir de repente com meia copa na tela
+            -- v9.2 (feedback: "saída sai da tela rápido demais e diagonal;
+            -- deixar mais lenta e mais reta, seguindo o movimento do mundo"):
+            -- empurrão lateral 0.16→0.09 (diagonal mais VERTICAL) e a
+            -- descida 0.20→0.13 (linger — acompanha a perspectiva em vez de
+            -- disparar pro canto)
             local over = math.max(0, -rel)
-            local inner = 0.11 + 0.38 * t + over * 0.16
+            local inner = 0.11 + 0.38 * t + over * 0.09
             local lateral = p.side * w * (inner + p.lane * 0.38)
             -- v9.2 (feedback: "postes têm que ficar na borda da estrada,
             -- não longe"): luminária ROADSIDE ancora na meia-largura REAL
@@ -2680,11 +2685,11 @@ local function drawProps(g, x, w, camZ)
             if rdef and rdef.roadside then
                 local halfR = ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15))
                 lateral = p.side * (halfR * (1.05 + p.lane * 1.2)
-                    + over * w * 0.16)
+                    + over * w * 0.09)
             end
             local pxX = g.cx + lateral
             -- Y pela LATITUDE real da esfera (não lerp pro fundo plano)
-            local sy = g.latY(pxX - g.cx, t) + over * g.h * 0.20
+            local sy = g.latY(pxX - g.cx, t) + over * g.h * 0.13
 
             local img = getSprite(p.kind, p.variant, p.bid)
 

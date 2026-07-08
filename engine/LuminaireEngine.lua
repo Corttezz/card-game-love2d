@@ -299,10 +299,15 @@ function LuminaireEngine.submit(bid, kind, a)
     -- longe = pequena, perto = grande — some a sensação de "tamanho fixo").
     -- Sem halo micro duro e sem poça no chão.
     local base = a.flameH or a.sh
+    -- v9.2 (feedback: "poste longe o feixe fica grande demais; mais
+    -- proporcional"): fator de distância — o glow encolhe além do que o
+    -- flameH já reduz (a perspectiva sozinha deixava o disco grande
+    -- relativo ao poste minúsculo na dobra da esfera). Perto = 1.0.
+    local distK = 0.42 + 0.58 * math.min(1, (a.t or 1) / 0.55)
     LightEngine.submit({
         x = a.fx, y = a.fy,
-        radius = math.min(L.radiusK * base * fr, (a.capR or 1e9)),
-        color = L.color, intensity = L.intensity * fi,
+        radius = math.min(L.radiusK * base * fr * distK, (a.capR or 1e9)),
+        color = L.color, intensity = L.intensity * fi * (0.6 + 0.4 * distK),
         -- v9.2 (feedback: "ainda pixelado e xadrez"): 8 degraus (gradiente
         -- bem fino) + dither de amplitude 0.28 (quase imperceptível — só
         -- quebra a banda). No lightmap ¼ o Bayer cheio virava xadrez de
@@ -313,7 +318,7 @@ function LuminaireEngine.submit(bid, kind, a)
     -- núcleo quente pequeno no centro da chama (hotspot), escala com base,
     -- SEM piso — longe encolhe junto (nada de dot fixo)
     LightEngine.submitMicro(a.fx, a.fy,
-        math.min(L.coreK * base * 0.6 * fr, (a.capR or 1e9) * 0.4),
+        math.min(L.coreK * base * 0.6 * fr * distK, (a.capR or 1e9) * 0.4),
         L.color, 0.9 * fi, a.rel)
 end
 
