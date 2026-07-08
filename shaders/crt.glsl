@@ -52,7 +52,7 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     // pincushion leve = abertura bojada como o tubo.
     vec2 nn = pp / (0.5 * ar);
     float rrA = dot(nn, nn);
-    vec2 ppA = pp * (1.0 + 0.016 * rrA);
+    vec2 ppA = pp * (1.0 + 0.042 * rrA);   // v3.4: bojo PERCEPTÍVEL
     float dTube = roundedBoxSDF(ppA, halfExt, cornerR);
 
     // ====== GABINETE v3.1: tronco de pirâmide com 4 FACETAS ======
@@ -151,7 +151,7 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     // ====== DOMO: curvatura r² + r⁴ (centro plano, cantos fechados) ======
     vec2 cc = tuv - 0.5;
     float r2 = dot(cc, cc);
-    vec2 curvXY = vec2(0.045, 0.062) * strength;
+    vec2 curvXY = vec2(0.060, 0.080) * strength;
     vec2 suv = tuv + cc * (curvXY * r2 * 1.6 + curvXY * r2 * r2 * 7.0);
     if (suv.x < 0.0 || suv.x > 1.0 || suv.y < 0.0 || suv.y > 1.0) {
         return vec4(vec3(0.012), 1.0) * color;
