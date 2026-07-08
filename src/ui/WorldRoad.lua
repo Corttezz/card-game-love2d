@@ -986,6 +986,11 @@ local function roadWobble(worldZ, t, w)
         * w * 0.045 * (0.28 + 0.72 * t)
 end
 
+-- v9.2: registra o desenho do inimigo pra rodar DENTRO do painter no eixo
+-- BATTLE_REL (props mais próximos ficam na frente dele). One-shot: o
+-- WorldRoad.draw consome e zera. Sem registro, nada muda (tools/viagem).
+function WorldRoad.setBattleEnemyDraw(fn) WorldRoad._enemyDraw = fn end
+
 function WorldRoad.getRoadAnchor(rel, x, y, w, h)
     local g = domeGeom(x, y, w, h)
     local t = g.tOf(rel) or 0
@@ -2938,7 +2943,26 @@ local function drawProps(g, x, w, camZ)
     -- Atmosfera nas árvores longe já existe via aFade (escurecimento).
     drawCrestFog(g, x, w)
     drawList(farPass)
-    drawList(nearPass)
+    -- v9.2 (feedback: "definir um eixo onde postes ficam na FRENTE do
+    -- monstro"): o inimigo vive em BATTLE_REL. Props mais PERTO que ele
+    -- (rel < eixo) precisam desenhar DEPOIS dele (na frente); mais longe,
+    -- antes (atrás). GameplayScene registra o desenho do inimigo via
+    -- setBattleEnemyDraw; o painter o chama no eixo, entre os dois grupos.
+    local enemyFn = WorldRoad._enemyDraw
+    if enemyFn then
+        local AXIS = WorldRoad.BATTLE_REL - 0.3
+        local behind, front = {}, {}
+        for _, p in ipairs(nearPass) do
+            if (p.z - camZ) < AXIS then front[#front + 1] = p
+            else behind[#behind + 1] = p end
+        end
+        drawList(behind)
+        enemyFn()                    -- monstro no eixo (props da frente vêm depois)
+        WorldRoad._enemyDraw = nil   -- one-shot
+        drawList(front)
+    else
+        drawList(nearPass)
+    end
     flushGrassTo(-1)   -- fatia final: capim mais perto que todos os props
     -- v8: sombras enfileiradas caem SOBRE o campo completo (grama + pés
     -- de quem estiver dentro delas — como sombra real)

@@ -160,6 +160,24 @@ function GameplayScene.draw()
     local interior = GameplayScene.SCENE_MODE == "worldroad"
         and (nodeType == "boss" or nodeType == "mini_boss" or nodeType == "elite")
 
+    -- v9.2: no battle da estrada, o inimigo desenha DENTRO do painter do
+    -- WorldRoad (no eixo BATTLE_REL) pra que postes/árvores mais próximos
+    -- que ele fiquem NA FRENTE. Registra antes do draw; o painter chama e
+    -- captura o bbox (usado pelo HUD). traveling/interior seguem o fluxo
+    -- antigo (inimigo é billboard ou hall estático).
+    local traveling = GameplayScene.SCENE_MODE == "worldroad"
+        and not interior and WorldRoad.isTraveling()
+    local worldBattle = GameplayScene.SCENE_MODE == "worldroad"
+        and not interior and not traveling
+    local enemyBbox, enemyCx, enemyCy
+    if worldBattle then
+        enemyCx, enemyCy = WorldRoad.getRoadAnchor(WorldRoad.BATTLE_REL,
+            0, topBarHeight, width, height - topBarHeight)
+        WorldRoad.setBattleEnemyDraw(function()
+            enemyBbox = EnemyRenderer.draw(game, enemyCx, enemyCy)
+        end)
+    end
+
     if interior then
         local hallAct = math.min(3, currentAct)
         local drawn = SceneBackground.draw("castle_hall_" .. hallAct,
@@ -184,20 +202,13 @@ function GameplayScene.draw()
 
     topBar:draw()
 
-    -- Inimigo como sprite + HP bar ancorada. Durante a viagem na estrada o
-    -- inimigo vem "lá de trás" como billboard do WorldRoad — o EnemyRenderer
-    -- assume no handoff (fim da viagem), já PLANTADO na superfície da estrada.
-    local traveling = GameplayScene.SCENE_MODE == "worldroad"
-        and not interior and WorldRoad.isTraveling()
-    local enemyBbox, enemyCx, enemyCy
-    if not traveling then
-        if GameplayScene.SCENE_MODE == "worldroad" and not interior then
-            enemyCx, enemyCy = WorldRoad.getRoadAnchor(WorldRoad.BATTLE_REL,
-                0, topBarHeight, width, height - topBarHeight)
-        else
-            enemyCx = math.floor(width / 2)
-            enemyCy = math.floor(height * 0.68)
-        end
+    -- Inimigo: no battle da estrada já foi desenhado DENTRO do WorldRoad.draw
+    -- (callback no eixo BATTLE_REL — props próximos na frente dele). Aqui só
+    -- os outros casos: interior (hall estático) e SceneLayer legado. Na
+    -- viagem o inimigo é billboard do WorldRoad (não desenha aqui).
+    if not traveling and not worldBattle then
+        enemyCx = math.floor(width / 2)
+        enemyCy = math.floor(height * 0.68)
         enemyBbox = EnemyRenderer.draw(game, enemyCx, enemyCy)
     end
 

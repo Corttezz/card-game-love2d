@@ -353,10 +353,13 @@ function M.run(mode)
         end
         WorldRoad._blend = nil
         WorldRoad._prevBiomeIndex = nil
-        WorldRoad.draw(0, topBarH, width, height - topBarH, bio)
+        -- v9.2: inimigo via callback do painter (props próximos na frente)
         local cx, cy = WorldRoad.getRoadAnchor(WorldRoad.BATTLE_REL,
             0, topBarH, width, height - topBarH)
-        EnemyRenderer.draw(game, cx, cy)
+        WorldRoad.setBattleEnemyDraw(function()
+            EnemyRenderer.draw(game, cx, cy)
+        end)
+        WorldRoad.draw(0, topBarH, width, height - topBarH, bio)
         overlays(0, topBarH, width, height - topBarH)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
