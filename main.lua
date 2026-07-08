@@ -282,7 +282,8 @@ function love.load(loveArgs)
     local toolArg = loveArgs and loveArgs[1]
     if toolArg and (toolArg:match("^screenshot_") or toolArg:match("^smoke_")
         or toolArg:match("^preview_") or toolArg:match("^demo_")
-        or toolArg == "validate_cards" or toolArg == "run_i18n_test") then
+        or toolArg == "validate_cards" or toolArg == "run_i18n_test"
+        or toolArg == "autoplay") then
         _G.HEADLESS_TOOL = true
     end
 
@@ -454,6 +455,13 @@ function love.load(loveArgs)
     --   love . screenshot_ui menu|class|settings|rest|event|collection|all
     if loveArgs and loveArgs[1] == "screenshot_ui" then
         require("tools.screenshot_ui").run(loveArgs[2])
+        return
+    end
+
+    -- Piloto de IA: joga runs completas sozinho e escreve diario+metricas.
+    --   love . autoplay [runs] [warrior|mage|rogue|all]
+    if loveArgs and loveArgs[1] == "autoplay" then
+        require("tools.autoplay").run(loveArgs[2], loveArgs[3])
         return
     end
 
