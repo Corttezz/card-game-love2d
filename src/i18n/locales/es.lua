@@ -57,6 +57,8 @@ return {
         interest_suffix = "(+{amount} interes)",
         deck_cards      = "{n} cartas",
         hand_suffix     = "({n} en mano)",
+        score_label        = "puntos",
+        score_record       = "RECORD!",
     },
 
     hud = {
@@ -126,6 +128,11 @@ return {
         class_basic    = "Basica",
         footer         = "CLIC para inspeccionar  ·  RUEDA para desplazar  ·  ESC volver",
         inspect_help   = "← / → Navegar    ·    ESC o clic fuera para cerrar",
+    },
+
+    ["end"] = {
+        record             = "Record: {n}",
+        new_record         = "NUEVO RECORD!",
     },
 
     game_over = {

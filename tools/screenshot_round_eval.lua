@@ -54,6 +54,11 @@ function M.run(phase)
     local sources = game:_buildRoundEvalSources()
 
     local screen = RoundEvalScreen:new()
+    -- F3: semeia um breakdown TINTA×SELO pra validar o banner de score.
+    game.scoreSystem.lastBattle = {
+        tinta = 240, selo = 2.3, total = 552,
+        turns = 3, combos = 2, flawless = true, lowHp = false,
+    }
     screen:show(game, sources, function() end)
 
     local stepDt = 1/60

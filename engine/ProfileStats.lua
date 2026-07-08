@@ -24,6 +24,7 @@ local DEFAULTS = {
     losses    = 0,   -- derrotas (player morreu)
     bestAct   = 0,   -- ato mais fundo já alcançado
     bestFloor = 0,   -- andar dentro do bestAct
+    bestScore = 0,   -- recorde de pontuação TINTA×SELO (F3)
     lastClass = nil, -- classe da última run iniciada
 }
 
@@ -88,6 +89,16 @@ function ProfileStats.recordDefeat(actNumber, floorInAct)
     s.losses = s.losses + 1
     bumpBest(actNumber, floorInAct)
     save()
+end
+
+-- Recorde de pontuação (persistido no fim da run — vitória OU derrota).
+function ProfileStats.updateBestScore(score)
+    if not score or score <= 0 then return end
+    local s = load()
+    if score > (s.bestScore or 0) then
+        s.bestScore = score
+        save()
+    end
 end
 
 -- true se há qualquer histórico (menu decide se mostra a plaque de perfil).

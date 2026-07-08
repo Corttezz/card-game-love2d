@@ -155,6 +155,34 @@ function TopBar:drawGameInfo()
         end
     end
 
+    -- Score da run (F3 gameplay-overhaul): TINTA×SELO acumulado, sempre
+    -- visível — o "quero bater meu recorde" do Balatro. Vira dourado pulsante
+    -- pelo resto da run quando o recorde histórico é cruzado.
+    if self.game and self.game.scoreSystem then
+        local scoreX = padding + 380
+        local IconLoader = require("src.ui.IconLoader")
+        local icon = IconLoader.get("star")
+        if icon and icon.draw and icon.size then
+            local sc = 26 / icon.size.w
+            love.graphics.setColor(1, 1, 1, 1)
+            icon.draw(scoreX, centerY - 14, sc)
+        end
+        local record = self.game.scoreSystem.recordBroken
+        if record then
+            local pulse = 0.85 + math.sin(love.timer.getTime() * 2.5) * 0.15
+            local g = Palette.AGED_GOLD_LIGHT
+            love.graphics.setColor(g[1] * pulse, g[2] * pulse, g[3], 1)
+        else
+            Palette.set(Palette.PARCHMENT_LIGHT)
+        end
+        love.graphics.setFont(FontManager.getFont(12))
+        love.graphics.print(tostring(self.game.score or 0), scoreX + 34, centerY - 10)
+        Palette.set(record and Palette.AGED_GOLD or Palette.PARCHMENT)
+        love.graphics.setFont(FontManager.getFont(8))
+        love.graphics.print(record and I18n.t("top_bar.score_record")
+            or I18n.t("top_bar.score_label"), scoreX + 34, centerY + 6)
+    end
+
     love.graphics.setColor(1, 1, 1, 1)
 end
 

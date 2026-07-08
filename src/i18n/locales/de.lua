@@ -57,6 +57,8 @@ return {
         interest_suffix = "(+{amount} Zinsen)",
         deck_cards      = "{n} Karten",
         hand_suffix     = "({n} in Hand)",
+        score_label        = "Punkte",
+        score_record       = "REKORD!",
     },
 
     hud = {
@@ -126,6 +128,11 @@ return {
         class_basic    = "Basis",
         footer         = "KLICK inspizieren  ·  MAUSRAD scrollen  ·  ESC zurueck",
         inspect_help   = "← / → Navigieren    ·    ESC oder klick ausserhalb",
+    },
+
+    ["end"] = {
+        record             = "Rekord: {n}",
+        new_record         = "NEUER REKORD!",
     },
 
     game_over = {

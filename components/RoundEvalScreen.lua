@@ -95,6 +95,11 @@ function RoundEvalScreen:show(game, sources, onCashOut)
     end
     self._totalPulseTimer = 0
 
+    -- F3: breakdown TINTA×SELO da batalha que acabou (celebração de score).
+    self.scoreData = game and game.scoreSystem
+        and game.scoreSystem.lastBattle or nil
+    self._scoreVisible = false
+
     self:_buildDynaTexts()
     self:_scheduleTimeline()
 
@@ -109,6 +114,8 @@ function RoundEvalScreen:hide()
     self.cashOutButton = nil
     self.titleText = nil
     self.totalText = nil
+    self.scoreText = nil
+    self.scoreData = nil
     self.rowDynas = {}
 end
 
@@ -154,6 +161,24 @@ function RoundEvalScreen:_buildDynaTexts()
         })
     end
 
+    self.scoreText = nil
+    if self.scoreData then
+        local sd = self.scoreData
+        self.scoreText = DynaText.new({
+            text = ("TINTA %d  x  SELO %.2f  =  %d PONTOS")
+                :format(sd.tinta, sd.selo, sd.total),
+            fontSize = 13,
+            bump = false,
+            pop_in = 0.4,
+            pop_in_rate = 5,
+            spacing = 1,
+            colours = {{1, 0.85, 0.30, 1}, {0.95, 0.92, 0.88, 1}},
+            colour_cycle = 2.0,
+            shadow = true,
+            align = "center",
+        })
+    end
+
     self.totalText = DynaText.new({
         text = "TOTAL: $" .. self.totalDollars,
         fontSize = 18,
@@ -172,8 +197,18 @@ function RoundEvalScreen:_scheduleTimeline()
     -- 1) Slide-in painel.
     EventManager.parallelEase(self, "slideOffsetY", 0, PHASES.SLIDE_IN, "smooth")
 
+    -- 1.5) Banner de score (F3) pop logo após o painel assentar.
+    if self.scoreData then
+        EventManager.parallel(PHASES.SLIDE_IN + 0.10, function()
+            self._scoreVisible = true
+            Sfx.play("comboTrigger", { volume = 0.7 })
+            if _G.jiggleScreen then _G.jiggleScreen(0.3) end
+        end)
+    end
+
     -- 2) Cada source aparece em cascata.
     local t = PHASES.SLIDE_IN + PHASES.PRE_ROW_DELAY
+        + (self.scoreData and 0.35 or 0)
     for i, src in ipairs(self.sources) do
         local rowAt = t
 
@@ -280,6 +315,7 @@ function RoundEvalScreen:update(dt)
     if not self.visible then return end
 
     if self.titleText then self.titleText:update(dt) end
+    if self.scoreText then self.scoreText:update(dt) end
     if self.totalText then self.totalText:update(dt) end
     for _, dyna in ipairs(self.rowDynas) do dyna:update(dt) end
 
@@ -359,8 +395,13 @@ function RoundEvalScreen:draw()
     love.graphics.setLineWidth(1)
     love.graphics.line(panelX + 24, panelY + 60, panelX + panelW - 24, panelY + 60)
 
-    -- Rows: cada source.
-    local rowY = panelY + 90
+    -- F3: banner TINTA × SELO = PONTOS (único momento de celebração do score).
+    if self.scoreText and self._scoreVisible then
+        self.scoreText:draw(sw * 0.5, panelY + 80)
+    end
+
+    -- Rows: cada source (descem quando o banner de score existe).
+    local rowY = panelY + (self.scoreData and 104 or 90)
     local rowH = 36
     local labelX = panelX + 36
     local coinsX = panelX + panelW - 36

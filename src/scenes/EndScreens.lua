@@ -84,6 +84,24 @@ function EndScreens.drawGameOver(game)
     love.graphics.setColor(Theme.Colors.TEXT_PRIMARY)
     love.graphics.print(scoreText, centerX - scoreWidth / 2, centerY - height * 0.083)
 
+    -- F3: recorde histórico lado a lado com o score da run.
+    do
+        local ProfileStats = require("engine.ProfileStats")
+        local best = ProfileStats.get().bestScore or 0
+        local rf = FontManager.getResponsiveFont(0.022, 14)
+        love.graphics.setFont(rf)
+        local isNew = game.scoreSystem and game.scoreSystem.recordBroken
+        local rTxt = isNew and I18n.t("end.new_record")
+            or I18n.t("end.record", { n = best })
+        local rw = rf:getWidth(rTxt)
+        if isNew then
+            love.graphics.setColor(1, 0.85, 0.30, 1)
+        else
+            love.graphics.setColor(Theme.Colors.TEXT_SECONDARY)
+        end
+        love.graphics.print(rTxt, centerX - rw / 2, centerY - height * 0.083 + 34)
+    end
+
     local instructionFont = FontManager.getResponsiveFont(Config.UI.INSTRUCTION_FONT_RATIO, 18)
     love.graphics.setFont(instructionFont)
     local instruction = I18n.t("game_over.instructions")
@@ -121,6 +139,24 @@ function EndScreens.drawVictory(game)
     local scoreWidth = scoreFont:getWidth(scoreText)
     love.graphics.setColor(Theme.Colors.TEXT_PRIMARY)
     love.graphics.print(scoreText, centerX - scoreWidth / 2, centerY - height * 0.083)
+
+    -- F3: recorde histórico lado a lado com o score da run.
+    do
+        local ProfileStats = require("engine.ProfileStats")
+        local best = ProfileStats.get().bestScore or 0
+        local rf = FontManager.getResponsiveFont(0.022, 14)
+        love.graphics.setFont(rf)
+        local isNew = game.scoreSystem and game.scoreSystem.recordBroken
+        local rTxt = isNew and I18n.t("end.new_record")
+            or I18n.t("end.record", { n = best })
+        local rw = rf:getWidth(rTxt)
+        if isNew then
+            love.graphics.setColor(1, 0.85, 0.30, 1)
+        else
+            love.graphics.setColor(Theme.Colors.TEXT_SECONDARY)
+        end
+        love.graphics.print(rTxt, centerX - rw / 2, centerY - height * 0.083 + 34)
+    end
 
     local instructionFont = FontManager.getResponsiveFont(Config.UI.INSTRUCTION_FONT_RATIO, 18)
     love.graphics.setFont(instructionFont)

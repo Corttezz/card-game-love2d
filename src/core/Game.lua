@@ -9,6 +9,7 @@ local EconomySystem = require("src.systems.EconomySystem")
 local ShopSystem = require("src.systems.ShopSystem")
 local TagSystem = require("src.systems.TagSystem")
 local ComboSystem = require("src.systems.ComboSystem")
+local ScoreSystem = require("src.systems.ScoreSystem")
 local ActSystem = require("src.systems.ActSystem")
 local Config = require("src.core.Config")
 local Sfx = require("src.systems.Sfx")
@@ -61,6 +62,10 @@ function Game:new()
     instance.economySystem = EconomySystem:new()
     instance.shopSystem = ShopSystem:new()
 
+    -- Pontuação TINTA×SELO (F3 gameplay-overhaul). game.score espelha
+    -- scoreSystem.runScore pra compat com EndScreens/telas antigas.
+    instance.scoreSystem = ScoreSystem:new()
+
     -- Sistema de classes (Slay the Spire style)
     instance.selectedClass = nil
     instance.isRunMode = false
@@ -111,6 +116,8 @@ function Game:startGame()
     self._saveDeleted = false
     self._victoryRecorded = false
     self.battleTurn = 0
+    self.scoreSystem:reset()
+    self.scoreSystem:startBattle()
 
     self.economySystem:resetForNewRun()
     self.economySystem.currentGold = 10
@@ -551,6 +558,8 @@ function Game:playSelectedCards()
     }
     -- Detecta combos e anuncia no feed de mensagens uma vez por turno.
     ComboSystem.detect(turnContext)
+    -- F3: estilo pontua — combos distintos da batalha + máximo num turno.
+    self.scoreSystem:recordTurnCombos(turnContext.activeCombos)
     ComboSystem.announce(self, turnContext)
     self._currentTurnContext = turnContext
 
@@ -699,7 +708,6 @@ function Game:processCardInCombat(card, turnContext)
 
         local wasAlive = self.enemy.health > 0
         self.enemy:takeDamage(damage)
-        self.score = self.score + damage
 
         -- Floating damage number ancorado na carta (Fase 6.1).
         local FloatingText = require("src.ui.FloatingText")
@@ -873,6 +881,7 @@ function Game:enemyTurn()
             local atkPitch = math.max(0.7, math.min(1.05, 1.1 - damage * 0.012))
             Sfx.playWithVariation("enemyAttack", atkPitch, 0.08)
             self.player:takeDamage(damage)
+            self.scoreSystem:recordDamageTaken(damage)
             self:addMessage("Inimigo causou " .. damage .. " de dano!", "warning")
             -- Feedback visceral: screen shake proporcional ao dano (clamped).
             if _G.triggerShake then
@@ -936,6 +945,18 @@ function Game:_onEnemyDeath()
     if _G.jiggleScreen then _G.jiggleScreen(1.5) end
     Sfx.play("enemyDeath")
     self._deathPauseTimer = 1.1
+
+    -- F3: fecha a pontuação da batalha (TINTA×SELO); game.score espelha a run.
+    self.scoreSystem:finishBattle(self)
+    self.score = self.scoreSystem.runScore
+    -- Recorde histórico: toast ÚNICO quando a run cruza o bestScore.
+    local ProfileStats = require("engine.ProfileStats")
+    local best = ProfileStats.get().bestScore or 0
+    if best > 0 and self.score > best and not self.scoreSystem.recordBroken then
+        self.scoreSystem.recordBroken = true
+        self:addMessage("NOVO RECORDE DE CRONICA!", "success")
+        Sfx.play("comboTrigger")
+    end
 
     -- Aftershock coreografado via EventManager: 2 tremores menores pós-morte
     -- (sensação de corpo caindo). Exemplo canônico de sequência temporal
@@ -1042,7 +1063,9 @@ function Game:nextPhase()
     self._saveDeleted = false
 
     self.currentPhase = self.currentPhase + 1
-    self.score = self.score + Config.Game.BASE_SCORE_PER_PHASE * self.currentPhase
+    -- F3: score antigo (BASE_SCORE_PER_PHASE) morreu — a batalha já foi
+    -- pontuada em _onEnemyDeath via ScoreSystem (TINTA×SELO).
+    self.scoreSystem:startBattle()
 
     -- F2 gameplay-overhaul: FOLHA ÚNICA de pagamento. O RoundEvalScreen
     -- (cash-out Balatro: vitória + bônus HP + juros) é O pagamento da
@@ -1062,6 +1085,7 @@ function Game:nextPhase()
         local stats = ActSystem.getEnemyStats(run.actNumber, run.floorInAct, nodeType)
         self.enemy = Enemy:new(stats.health, stats.damage)
     self.battleTurn = 0
+    self.scoreSystem:startBattle()
         -- Sprite do inimigo: roster por ato × tipo de node (v5).
         -- Endless: bioma 4+ a cada 8 andares (mesma fórmula do
         -- GameplayScene/WorldRoad — monstro casa com o cenário).
@@ -1164,6 +1188,7 @@ function Game:resumeRun()
     local stats = ActSystem.getEnemyStats(run.actNumber, run.floorInAct, nodeType)
     self.enemy = Enemy:new(stats.health, stats.damage)
     self.battleTurn = 0
+    self.scoreSystem:startBattle()
     local spriteAct = run.actNumber
     if run.endlessMode then
         spriteAct = 4 + math.floor(math.max(0, (run.currentFloor or 25) - 25) / 8)
@@ -1194,8 +1219,9 @@ function Game:checkGameOver()
             self.runManager:deleteSave()
             -- Perfil: registra a derrota UMA vez (mesmo guard do save).
             local run = self.runManager.currentRun
-            require("engine.ProfileStats").recordDefeat(
-                run and run.actNumber, run and run.floorInAct)
+            local PS = require("engine.ProfileStats")
+            PS.recordDefeat(run and run.actNumber, run and run.floorInAct)
+            PS.updateBestScore(self.score)
         end
         return true
     end
@@ -1219,8 +1245,9 @@ function Game:checkVictory()
             -- Perfil: registra vitória UMA vez por run.
             if not self._victoryRecorded then
                 self._victoryRecorded = true
-                require("engine.ProfileStats").recordVictory(
-                    run.actNumber, run.floorInAct)
+                local PS = require("engine.ProfileStats")
+                PS.recordVictory(run.actNumber, run.floorInAct)
+                PS.updateBestScore(self.score)
             end
             return true
         end
