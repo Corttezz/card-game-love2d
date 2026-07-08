@@ -27,6 +27,10 @@
 - [Scene Pipeline](scene_pipeline.md) — cenários full-res 400×256 via create_map_object + overlays animados (tochas/cristais/parallax); anti-pattern: tileset procedural
 - [WorldRoad](worldroad_scene.md) — mundo rolante estilo Path of Kings (estrada em perspectiva, props em Z, viagem entre andares); SCENE_MODE em GameplayScene; contrato PNG pra arte PixelLab
 - [Backgrounds Catalog](backgrounds_catalog.md) — inventário COMPLETO (scenes/path/patterns/map_nodes/tilesets) + padrões obrigatórios pra gerar novos mantendo coerência visual
+<<<<<<< HEAD
 - [Luminaire Engine](luminaire_engine.md) — LuminaireEngine v1: props emissores de luz (18 luminárias PixelLab, 2-3 por bioma), âncora de chama por conteúdo, cadência mínima de spawn, brasas determinísticas
+=======
+- [UI/UX Overhaul](../docs/plan/ui-ux-overhaul-v1.md) — plano completo do redesign de TODAS as telas (diagnóstico por tela + blueprint Balatro extraído do source + fases F0-F7); harness novo `love . screenshot_ui`
+>>>>>>> 6ff0532 (Docs: plano completo do UI/UX Overhaul v1 (diagnostico + pesquisa + fases))
 - [Lighting Engine](lighting_engine.md) — LightEngine v1: plano completo em docs/plan/lighting-engine-v1.md (lightmap ¼ multiply-only, micro-luzes, lightAmbient por bioma) + doutrina de luz e pegadinhas de API
 - [PixelLab MCP](pixellab_mcp.md) — como usar o MCP (config, gerar/animar/baixar, pegadinhas); chave NAO versionada, mora em ~/.claude.json

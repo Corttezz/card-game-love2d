@@ -13,7 +13,13 @@ genérico. Usuário rejeitou: "ficou muito tosco, nada organizado, parece o que 
 antes". Razão: implementei animações superficiais (slide-in 0.43s, materialize cascade)
 sem reformular as **telas em si** seguindo o blueprint do Balatro source.
 
-**Source de referência (sempre consultar antes de implementar UI):** `/home/cortez/projects/balatro-source/`
+**Source de referência (sempre consultar antes de implementar UI):**
+- WSL2 (máquina antiga): `/home/cortez/projects/balatro-source/`
+- Em QUALQUER máquina: clonar o espelho público `https://github.com/GladdonT/balatro-source-code`
+  (decompilação — usar como referência de ESTRUTURA/números, NUNCA copiar
+  código/assets literalmente; manter FORA do repositório, ex. scratchpad).
+- Anatomia já EXTRAÍDA e sintetizada (paleta hex, painel-sanduíche, shop/
+  round-eval/packs/settings, DynaText, juice): docs/plan/ui-ux-overhaul-v1.md §2.1
 
 ## Regra dura
 

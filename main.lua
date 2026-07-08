@@ -438,6 +438,13 @@ function love.load(loveArgs)
         return
     end
 
+    -- Telas de UI sem harness próprio (levantamento redesign UI/UX):
+    --   love . screenshot_ui menu|class|settings|rest|event|collection|all
+    if loveArgs and loveArgs[1] == "screenshot_ui" then
+        require("tools.screenshot_ui").run(loveArgs[2])
+        return
+    end
+
     -- Validacao do catalogo de cartas (Fase 7).
     --   love . validate_cards
     if loveArgs and loveArgs[1] == "validate_cards" then
