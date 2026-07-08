@@ -168,7 +168,8 @@ local function renderJoker(card, w, h)
 end
 
 function CardFrame.render(card)
-    local key = card.id or (tostring(card.name) .. "_" .. tostring(card.type))
+    local key = (card.id or (tostring(card.name) .. "_" .. tostring(card.type)))
+        .. "+" .. tostring(card.upgrades or 0)
     if cache[key] then return cache[key] end
 
     local w, h = CardFrame.WIDTH, CardFrame.HEIGHT
@@ -192,6 +193,23 @@ function CardFrame.render(card)
         renderJoker(card, w, h)
     else
         renderStandard(card, w, h)
+    end
+
+    -- Selo de FORJA (F5 gameplay-overhaul): carta upada mostra +N na moldura
+    -- (o contador vivia só em run.upgraded — gap "upgrade invisível").
+    if (card.upgrades or 0) > 0 then
+        local FontManager = require("src.ui.FontManager")
+        local tag = "+" .. tostring(card.upgrades)
+        local f = FontManager.getFont(8)
+        local tw = f:getWidth(tag)
+        local bx, by = 4, h - 34
+        local bw, bh = tw + 8, 12
+        PixelCanvas.rect(bx, by, bw, bh, { 0.14, 0.26, 0.10, 1 })
+        PixelCanvas.rectOutline(bx, by, bw, bh, Palette.AGED_GOLD)
+        love.graphics.setFont(f)
+        Palette.set(Palette.AGED_GOLD_LIGHT)
+        love.graphics.print(tag, bx + 4, by + 2)
+        love.graphics.setColor(1, 1, 1, 1)
     end
 
     -- Stepped pixel-art corner cut (3px em L) — aplicado por último pra recortar

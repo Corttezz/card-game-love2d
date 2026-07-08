@@ -158,6 +158,24 @@ function M.run(mode)
         as:draw()
     end)
 
+    addShot("tooltip", function()
+        -- Glossário de keywords no tooltip (F5): carta com veneno + exaurir.
+        I18n.setLocale("pt_BR")
+        local CardDatabase = require("src.systems.CardDatabase")
+        local CardInfoDisplay = require("src.ui.CardInfoDisplay")
+        local cd = CardDatabase:getCard("rogue_catalyst")
+            or CardDatabase:getCard("mage_healing_drop")
+        local inst = CardDatabase:createCardInstance(cd)
+        inst.x, inst.y = 80, 60
+        love.graphics.clear(0.08, 0.06, 0.05, 1)
+        if inst.image then
+            love.graphics.setColor(1, 1, 1, 1)
+            love.graphics.draw(inst.image, 80, 60, 0, 1.4, 1.4)
+        end
+        local display = CardInfoDisplay:new()
+        display:draw(inst, 320, 60, { showStats = true, showDescription = true })
+    end)
+
     addShot("collection", function()
         local CollectionScreen = require("components.CollectionScreen")
         local cs = CollectionScreen:new()

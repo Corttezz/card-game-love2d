@@ -28,7 +28,7 @@ return {
         id = "warrior_quick_strike", name = "Golpe Rapido",
         type = "attack", subtype = "common",
         cost = 0, attack = 4, defense = 0,
-        description = "Custo 0. 4 de dano. Combo-starter.",
+        description = "Custo 0. 4 de dano. Conta em DOBRO para combos.",
         image = "assets/cards/attack/theRock.png",
         rarity = "common", class = "warrior",
         tags = { "strike", "zero_cost", "combo" },

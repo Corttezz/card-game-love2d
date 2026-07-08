@@ -344,6 +344,13 @@ function RunManager:applyUpgradesToInstance(instance, level)
             instance.effects[1].value = instance.effects[1].value + UPGRADE_EFFECT_PER_LVL * level
         end
     end
+    -- F5: re-renderiza a moldura DEPOIS dos stats upados — antes a arte era
+    -- gerada no createCardInstance com os números base (carta forjada mentia
+    -- na moldura) e sem o selo +N.
+    local ok, img = pcall(function()
+        return require("src.ui.CardFrame").render(instance)
+    end)
+    if ok and img then instance.image = img end
     return instance
 end
 

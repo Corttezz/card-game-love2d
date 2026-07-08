@@ -27,7 +27,7 @@ return {
         id = "rogue_stiletto", name = "Estilete",
         type = "attack", subtype = "common",
         cost = 1, attack = 5, defense = 0,
-        description = "5 de dano. Combo-starter.",
+        description = "5 de dano. Conta em DOBRO para combos.",
         image = "assets/cards/attack/bloodSword.png",
         rarity = "common", class = "rogue",
         tags = { "strike", "combo" },
@@ -170,6 +170,18 @@ return {
         effects = {
             { type = "discard_cards", value = 3 },
             { type = "draw_cards", value = 3 },
+        },
+    },
+    rogue_thorn_cloak = {
+        id = "rogue_thorn_cloak", name = "Manto de Espinhos",
+        type = "defense", subtype = "skill",
+        cost = 1, attack = 0, defense = 6,
+        description = "6 de Bloqueio. Espinhos: reflete 3 de dano.",
+        image = "assets/cards/defense/ironShield.png",
+        rarity = "uncommon", class = "rogue",
+        tags = { "defend", "thorn" },
+        effects = {
+            { type = "on_defend_damage", value = 3 },
         },
     },
     rogue_caltrops = {

@@ -61,7 +61,11 @@ function DeckViewerScreen:_build()
         end)
         if ok and inst then
             inst._deckViewerId = e.id
-            inst._forgeLevel = run.upgraded and run.upgraded[e.id] or 0
+            local lvl = run.upgraded and run.upgraded[e.id] or 0
+            if lvl > 0 and self.game.runManager.applyUpgradesToInstance then
+                -- F5: stats + selo +N na própria moldura (CardFrame re-render)
+                self.game.runManager:applyUpgradesToInstance(inst, lvl)
+            end
             table.insert(self.instances, inst)
             self.counts.total = self.counts.total + 1
             local t = e.cd.type or "effect"
@@ -195,18 +199,8 @@ function DeckViewerScreen:draw()
                 love.graphics.setColor(1, 1, 1, 1)
                 love.graphics.draw(inst.image, x, y, 0, scale, scale)
             end
-            -- badge de forja (+N) — fecha o gap "upgrade invisível"
-            if inst._forgeLevel and inst._forgeLevel > 0 then
-                -- badge no canto inferior-direito (em cima cobria o nome)
-                local tag = "+" .. inst._forgeLevel
-                love.graphics.setFont(lvlFont)
-                local tw2 = lvlFont:getWidth(tag)
-                love.graphics.setColor(0.16, 0.28, 0.12, 0.95)
-                love.graphics.rectangle("fill", x + cw - tw2 - 12,
-                    y + chh - 38, tw2 + 10, 16, 3, 3)
-                Palette.set(Palette.MOSS)
-                love.graphics.print(tag, x + cw - tw2 - 7, y + chh - 36)
-            end
+            -- (badge de forja externo removido — o selo +N agora vive na
+            -- própria moldura via CardFrame, com stats reais upados)
         end
     end
     love.graphics.setScissor()

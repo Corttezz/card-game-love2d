@@ -137,8 +137,18 @@ function TagSystem.countAllTags(cards)
     local counts = {}
     if not cards then return counts end
     for _, card in ipairs(cards) do
-        for _, tag in ipairs(TagSystem.getCardTags(card)) do
-            counts[tag] = (counts[tag] or 0) + 1
+        local tags = TagSystem.getCardTags(card)
+        -- F5 gameplay-overhaul: tag "combo" (Combo-starter) faz as DEMAIS
+        -- tags da carta contarem em DOBRO pras regras do ComboSystem —
+        -- antes era decorativa (a auditoria pegou "não faz nada").
+        local weight = 1
+        for _, tag in ipairs(tags) do
+            if tag == "combo" then weight = 2 break end
+        end
+        for _, tag in ipairs(tags) do
+            if tag ~= "combo" then
+                counts[tag] = (counts[tag] or 0) + weight
+            end
         end
     end
     return counts

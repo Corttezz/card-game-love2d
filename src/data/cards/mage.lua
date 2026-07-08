@@ -112,6 +112,19 @@ return {
     },
 
     -- ========== UNCOMMON ==========
+    mage_torn_pages = {
+        id = "mage_torn_pages", name = "Paginas Rasgadas",
+        type = "effect", subtype = "skill",
+        cost = 0, attack = 0, defense = 0,
+        description = "Descarta 1 carta aleatoria. Compre 2.",
+        image = "assets/cards/effect/manaCrystal.png",
+        rarity = "uncommon", class = "mage",
+        tags = { "discard", "draw", "cycle", "zero_cost" },
+        effects = {
+            { type = "discard_cards", value = 1 },
+            { type = "draw_cards", value = 2 },
+        },
+    },
     mage_aggregate = {
         id = "mage_aggregate", name = "Agregar",
         type = "effect", subtype = "skill",

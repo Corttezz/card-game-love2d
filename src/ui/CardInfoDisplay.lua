@@ -105,12 +105,53 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
         return lines * lineHeight
     end
     
+    -- Glossário de keywords (F5): detecta termos na descrição e explica.
+    local kwFont = FontManager.getFont(11)
+    local kwLineH = kwFont:getHeight()
+    local kwHits = {}
+    local _descForKw = I18n.cardDesc(cardInstance)
+    if showDescription and _descForKw and _descForKw ~= "" then
+        local lower = _descForKw:lower()
+        local Keywords = require("src.data.keywords")
+        for _, kw in ipairs(Keywords) do
+            for _, mword in ipairs(kw.match) do
+                if lower:find(mword, 1, true) then
+                    table.insert(kwHits, kw)
+                    break
+                end
+            end
+            if #kwHits >= 3 then break end
+        end
+    end
+    -- Altura de um item do glossário (nome + texto com wrap na fonte menor).
+    local function kwItemHeight(kw, maxWidth)
+        local full = kw.name .. ": " .. kw.text
+        local line = ""
+        local lines = 1
+        for word in full:gmatch("%S+") do
+            local test = line .. (line == "" and "" or " ") .. word
+            if kwFont:getWidth(test) > maxWidth then
+                line = word
+                lines = lines + 1
+            else
+                line = test
+            end
+        end
+        return lines * kwLineH + 4
+    end
+
     -- Calcula altura necessária com quebra de linha (usa descrição localizada)
     local _localizedDescForHeight = I18n.cardDesc(cardInstance)
     if showDescription and _localizedDescForHeight and _localizedDescForHeight ~= "" then
         panelHeight = panelHeight + lineHeight + 10 -- Nome
         local descHeight = calculateTextHeight(_localizedDescForHeight, maxTextWidth)
         panelHeight = panelHeight + descHeight + 10 -- Descrição com quebra de linha
+        if #kwHits > 0 then
+            panelHeight = panelHeight + 8
+            for _, kw in ipairs(kwHits) do
+                panelHeight = panelHeight + kwItemHeight(kw, maxTextWidth)
+            end
+        end
         if showRarity and cardInstance.rarity then
             panelHeight = panelHeight + lineHeight + 10 -- Raridade
         end
@@ -193,6 +234,44 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
         love.graphics.setColor(0.9, 0.9, 0.9, 1)
         self:drawWrappedText(localizedDesc, textX, currentY, maxTextWidth, lineHeight)
         currentY = currentY + descHeight + 15
+
+        -- Glossário (F5): keywords da descrição explicadas em fonte menor,
+        -- nome em dourado + texto em pergaminho (padrão Balatro de tooltip
+        -- secundário anexado).
+        if #kwHits > 0 then
+            love.graphics.setColor(0.78, 0.65, 0.20, 0.5)
+            love.graphics.setLineWidth(1)
+            love.graphics.line(textX, currentY - 6, textX + maxTextWidth, currentY - 6)
+            love.graphics.setFont(kwFont)
+            for _, kw in ipairs(kwHits) do
+                -- nome dourado inline + resto do texto com wrap manual
+                local full = kw.name .. ": " .. kw.text
+                local nameW = kwFont:getWidth(kw.name .. ": ")
+                love.graphics.setColor(1, 0.85, 0.35, 1)
+                love.graphics.print(kw.name .. ":", textX, currentY)
+                love.graphics.setColor(0.82, 0.78, 0.70, 1)
+                -- wrap do texto começando após o nome
+                local line = ""
+                local yy = currentY
+                local xx = textX + nameW
+                local avail = maxTextWidth - nameW
+                for word in kw.text:gmatch("%S+") do
+                    local test = line .. (line == "" and "" or " ") .. word
+                    if kwFont:getWidth(test) > avail then
+                        love.graphics.print(line, xx, yy)
+                        line = word
+                        yy = yy + kwLineH
+                        xx = textX
+                        avail = maxTextWidth
+                    else
+                        line = test
+                    end
+                end
+                if line ~= "" then love.graphics.print(line, xx, yy) end
+                currentY = yy + kwLineH + 4
+            end
+            love.graphics.setFont(displayFont)
+        end
     end
 
     -- Raridade (se habilitado)
