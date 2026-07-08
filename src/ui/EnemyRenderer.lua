@@ -438,21 +438,6 @@ function EnemyRenderer.draw(game, cx, cy)
     if currentAnimName ~= "death" then
         local exT, eyT = love.graphics.transformPoint(drawX, drawY)
         submitEmissives(id, exT, eyT, iw, ih, scale, 9)
-
-        -- v9.2 (feedback: "quando vem luz de trás o monstro fica todo
-        -- escuro"): o corpo oclui a luz de trás e a frente (virada pra
-        -- câmera) ficava em silhueta preta. O monstro é o foco da batalha
-        -- — nunca pode sumir. FILL de leitura mínima: micro-luz suave
-        -- (sem dither) centrada no corpo, z=8 (na frente do oclusor z=15,
-        -- nunca bloqueada), cor puxada pra luz ambiente pra não lavar.
-        local a = LightEngine.ambientLuma and LightEngine.ambientLuma() or 1
-        if a < 0.85 then
-            local fcx, fcy = love.graphics.transformPoint(
-                drawX + iw * scale / 2, drawY + ih * scale * 0.5)
-            local k = 0.30 + 0.25 * (1 - a)   -- mais escuro = fill um pouco maior
-            LightEngine.submitMicro(fcx, fcy, ih * scale * 0.55,
-                { 1.0, 0.94, 0.82 }, k, 8)
-        end
     end
 
     -- LightEngine v1.1: o corpo do inimigo OCLUI luzes atrás dele (janelas
@@ -474,9 +459,17 @@ function EnemyRenderer.draw(game, cx, cy)
             staticRef = sprites and (sprites.south or sprites.east
                 or sprites.west or sprites.north)
         end
+        -- v9.2 (feedback: "monstro com luz em volta no bioma 6"): o antigo
+        -- FILL era micro-luz radial → halo no chão, gritante no escuro.
+        -- Agora o LIFT levanta a leitura SÓ nos pixels da silhueta (recorte
+        -- pixel-perfeito, ZERO halo). Escala pelo ambiente: escuro levanta
+        -- mais, claro não mexe (teto 1.6). Igual em todos os biomas.
+        local amb = LightEngine.ambientLuma and LightEngine.ambientLuma() or 1
+        local lift = math.min(1.6, math.max(1, 0.62 / math.max(0.2, amb)))
         if animRef or staticRef then
             LightEngine.submitOccluder({
                 z = 9 + 6,   -- BATTLE_REL + viés (sem require circular)
+                lift = lift,
                 bx = oxT, by = oyT, w = iw * scale, h = ih * scale,
                 fn = function()
                     if animRef then

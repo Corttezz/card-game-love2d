@@ -262,7 +262,8 @@ function LightEngine.composite(x, y, w, h)
                 if dx * dx + dy * dy <= l.r * l.r then hit = true; break end
             end
         end
-        if hit then o.occ = true; entries[#entries + 1] = o end
+        -- oclusor com lift SEMPRE pinta (levanta o dono mesmo sem luz atrás)
+        if hit or o.lift then o.occ = true; entries[#entries + 1] = o end
     end
     table.sort(entries, function(a, b)
         if a.z ~= b.z then return a.z > b.z end
@@ -279,7 +280,17 @@ function LightEngine.composite(x, y, w, h)
             -- recorta pixel-perfeito) — bloqueia toda luz vinda de trás
             love.graphics.setShader()
             love.graphics.setBlendMode("alpha", "alphamultiply")
-            love.graphics.setColor(ambient[1], ambient[2], ambient[3], 1)
+            -- e.lift (opcional): pinta ambiente MULTIPLICADO nos pixels da
+            -- própria silhueta — levanta a leitura do dono (ex.: monstro
+            -- no escuro) SEM halo no chão (recorte pixel-perfeito). Sem
+            -- lift, comporta como oclusor normal (ambiente puro).
+            local cr, cg, cb = ambient[1], ambient[2], ambient[3]
+            if e.lift then
+                cr = math.min(1, cr * e.lift)
+                cg = math.min(1, cg * e.lift)
+                cb = math.min(1, cb * e.lift)
+            end
+            love.graphics.setColor(cr, cg, cb, 1)
             if e.fn then
                 love.graphics.push()
                 love.graphics.scale(1 / S)
