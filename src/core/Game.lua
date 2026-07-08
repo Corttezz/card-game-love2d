@@ -550,6 +550,7 @@ function Game:applyClassBattleStartPassive()
     if self.selectedClass == "mage" and self.player and self.player.addOrb then
         self.player:addOrb({ type = "lightning", value = 2 })
         self:addMessage("Conduíte: orbe de Raio canalizado!", "info")
+        if love.timer then self._passiveFlashT = love.timer.getTime() end
     end
 end
 
@@ -562,6 +563,7 @@ function Game:applyClassTurnPassives(turnContext)
     if attacks >= 2 then
         self.player:gainStrength(1)
         self:addMessage("Ímpeto: +1 Força!", "success")
+        if love.timer then self._passiveFlashT = love.timer.getTime() end
         Sfx.play("comboTrigger", { pitch = 1.3, volume = 0.6 })
     end
 end
@@ -759,6 +761,7 @@ function Game:processCardInCombat(card, turnContext)
             self._toxinAppliedThisTurn = true
             self.enemy:addStatusEffect({ name = "poison", stacks = 1, duration = 2 })
             self:addMessage("Toxinas: +1 Veneno!", "info")
+            if love.timer then self._passiveFlashT = love.timer.getTime() end
         end
 
         -- Floating damage number ancorado na carta (Fase 6.1).

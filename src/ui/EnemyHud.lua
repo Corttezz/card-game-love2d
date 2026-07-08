@@ -223,6 +223,15 @@ function EnemyHud.drawIntent(enemy, cx, topY, boxXOverride, boxYOverride)
         icon.draw(iconX, iconY, scale)
     end
 
+    -- Hover no box → tooltip explicando O QUE o inimigo fará (clareza total)
+    do
+        local mx, my = love.mouse.getPosition()
+        if mx >= boxX and mx <= boxX + boxW and my >= boxY and my <= boxY + boxH then
+            local StatusTooltip = require("src.ui.StatusTooltip")
+            StatusTooltip.show("intent_" .. kind, mx, my, { value = value })
+        end
+    end
+
     -- Número à direita, na cor semântica do intent
     love.graphics.setFont(font)
     local tx = boxX + padX + iconSize + gap

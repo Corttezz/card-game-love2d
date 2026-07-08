@@ -60,6 +60,7 @@ end
 
 function HudPlayerPanel:draw(player)
     if not player then return end
+    -- (chip da passiva é desenhado no fim deste método — _drawPassiveChip)
 
     -- Dispara flash quando HP cai
     if self.lastHp and player.health < self.lastHp then
@@ -194,6 +195,56 @@ function HudPlayerPanel:draw(player)
         FontManager.drawWithOutline(atxt, tx, ty, { 1, 1, 1, 1 }, 0.9)
     end
 
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+
+-- ===== Chip da PASSIVA de classe (clareza total — Jul/2026) =====
+-- A passiva existe DURANTE o combate, não só na tela de seleção: chip com
+-- o ícone da classe à direita do painel; hover → tooltip com nome+regra;
+-- brilha ~1s quando a passiva DISPARA (Game seta _passiveFlashT).
+local IconLoader = require("src.ui.IconLoader")
+local StatusTooltip = require("src.ui.StatusTooltip")
+local CLASS_CHIP_ICONS = { warrior = "sword_great", mage = "orb", rogue = "dagger" }
+
+function HudPlayerPanel:drawPassiveChip(game)
+    if not game or not game.selectedClass then return end
+    local icon = IconLoader.get(CLASS_CHIP_ICONS[game.selectedClass] or "star")
+    local chip = 30
+    local cx = self.x + self.width + 8
+    local cy = self.y + self.height - chip
+
+    -- brilho pós-ativação (1s de decay, sem update: usa timestamp)
+    local glow = 0
+    if game._passiveFlashT then
+        local dt = love.timer.getTime() - game._passiveFlashT
+        if dt < 1.0 then glow = 1.0 - dt end
+    end
+
+    love.graphics.setColor(0, 0, 0, 0.35)
+    love.graphics.rectangle("fill", cx + 2, cy + 2, chip, chip, 5, 5)
+    setColor(Palette.PARCHMENT_DARK, 0.95)
+    love.graphics.rectangle("fill", cx, cy, chip, chip, 5, 5)
+    if glow > 0 then
+        love.graphics.setColor(1, 0.85, 0.30, 0.45 * glow)
+        love.graphics.rectangle("fill", cx, cy, chip, chip, 5, 5)
+    end
+    setColor(glow > 0 and Palette.AGED_GOLD_LIGHT or Palette.AGED_GOLD, 1)
+    love.graphics.setLineWidth(glow > 0 and 2 or 1)
+    love.graphics.rectangle("line", cx, cy, chip, chip, 5, 5)
+
+    if icon and icon.draw and icon.size then
+        local s = 24 / icon.size.w
+        love.graphics.setColor(1, 1, 1, 1)
+        icon.draw(math.floor(cx + (chip - icon.size.w * s) / 2),
+            math.floor(cy + (chip - (icon.size.h or icon.size.w) * s) / 2), s)
+    end
+
+    -- hover → tooltip explicando a passiva
+    local mx, my = love.mouse.getPosition()
+    if mx >= cx and mx <= cx + chip and my >= cy and my <= cy + chip then
+        StatusTooltip.show("passive_" .. game.selectedClass, mx, my)
+    end
     love.graphics.setColor(1, 1, 1, 1)
 end
 

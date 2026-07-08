@@ -196,6 +196,13 @@ return {
     status = {
         score      = { name = "Score", desc = "You earn points by WINNING battles: base for the defeated enemy, with bonuses for winning fast, triggering card combos and taking no damage. Current record: {best}." },
         fury       = { name = "Fury", desc = "Enraged enemy: +{stacks} permanent damage so far (grows each turn, up to +10)." },
+        intent_attack  = { name = "Will Attack", desc = "Next turn the enemy attacks for {value} damage. Block absorbs it." },
+        intent_strong  = { name = "Heavy Attack", desc = "HEAVY BLOW incoming: {value} damage next turn. Defend!" },
+        intent_defend  = { name = "Will Defend", desc = "Next turn the enemy gains {value} armor (lasts 1 turn)." },
+        intent_buff    = { name = "Will Enrage", desc = "Next turn the enemy gains +{value} PERMANENT damage." },
+        passive_warrior= { name = "Passive: Momentum", desc = "Play 2+ attacks in the same turn: +1 Strength this battle." },
+        passive_mage   = { name = "Passive: Conduit", desc = "You start every battle with a Lightning orb (2) channeled." },
+        passive_rogue  = { name = "Passive: Toxins", desc = "The first attack each turn applies 1 Poison (2 turns)." },
         poison     = { name = "Poison",     desc = "Deals {stacks} damage at end of turn. Loses 1 stack per turn." },
         weak       = { name = "Weak",       desc = "Damage dealt reduced by 25% for {duration} turn(s)." },
         vulnerable = { name = "Vulnerable", desc = "Takes 50% more damage from attacks for {duration} turn(s)." },

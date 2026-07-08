@@ -16,6 +16,7 @@ function M.run()
 
     -- Setup fake game state
     local game = Game:new()
+    game.selectedClass = "warrior"  -- chip da passiva no HUD (clareza)
     game.player.health = 48
     game.player.maxHealth = 80
     game.player.mana = 2

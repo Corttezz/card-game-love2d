@@ -218,6 +218,13 @@ return {
     status = {
         score      = { name = "Pontuacao", desc = "Voce ganha pontos ao VENCER batalhas: base pelo inimigo derrotado, com bonus por vencer rapido, disparar combos de cartas e nao tomar dano. Recorde atual: {best}." },
         fury       = { name = "Fúria", desc = "Inimigo enfurecido: +{stacks} de dano permanente acumulado (cresce a cada turno, até +10)." },
+        intent_attack  = { name = "Vai Atacar", desc = "No proximo turno o inimigo ataca causando {value} de dano. Bloqueio absorve." },
+        intent_strong  = { name = "Ataque Forte", desc = "GOLPE PESADO vindo: {value} de dano no proximo turno. Defenda-se!" },
+        intent_defend  = { name = "Vai Defender", desc = "No proximo turno o inimigo ganha {value} de armadura (dura 1 turno)." },
+        intent_buff    = { name = "Vai se Enfurecer", desc = "No proximo turno o inimigo ganha +{value} de dano PERMANENTE." },
+        passive_warrior= { name = "Passiva: Impeto", desc = "Jogue 2 ou mais ataques no mesmo turno: +1 de Forca nesta batalha." },
+        passive_mage   = { name = "Passiva: Conduite", desc = "Voce comeca cada batalha com um orbe de Raio (2) ja canalizado." },
+        passive_rogue  = { name = "Passiva: Toxinas", desc = "O primeiro ataque de cada turno aplica 1 de Veneno (2 turnos)." },
         poison     = { name = "Veneno",     desc = "Causa {stacks} de dano no fim de cada turno. Perde 1 stack por turno." },
         weak       = { name = "Fraco",      desc = "Dano infligido reduzido em 25%. Dura {duration} turno(s)." },
         vulnerable = { name = "Vulnerável", desc = "Recebe 50% mais dano de ataques. Dura {duration} turno(s)." },

@@ -52,6 +52,10 @@ function HudManager:draw(game)
 
     if game.player then
         self.playerPanel:draw(game.player)
+        -- Chip da passiva de classe (clareza: visível durante o combate)
+        if self.playerPanel.drawPassiveChip then
+            self.playerPanel:drawPassiveChip(game)
+        end
         -- Pills de buff ficam logo acima do player panel (row horizontal).
         -- Passa coords do panel pra alinhamento.
         self.playerBuffPills:draw(
