@@ -85,3 +85,21 @@ de outras ferramentas continuam SEM CRT (doutrina existente).
 - Som: hum de 60Hz ao ligar + "tack" do desligar (pede SFX novos).
 - Curvatura afetando input de mouse (hoje o hit-test ignora o barrel —
   com curvatura 0.035 o desvio máximo é ~1.5% na borda; aceitável).
+
+
+## v2.1 (Jul/2026 — feedback do dono + pesquisa)
+
+Pesquisa: RetroArch CRT-Geom (cornersize/jitter), CRT-Interlaced-Halation,
+SDF de retângulo arredondado (Shadertoy WtdSDs/fsdyzB).
+
+- **UNDERSCAN**: o conteúdo inteiro ocupa a área interna segura do tubo
+  (inset ~4.5%) — máscara/curvatura comem só moldura preta. Revisão de
+  telas validada com captura: mana orb, painel de vida, TopBar e HintBar
+  100% visíveis nos cantos.
+- **Cantos v2**: SDF de retângulo arredondado com aspecto corrigido
+  (círculos reais, raio generoso 0.085) no lugar da superelipse.
+- **TREMIDINHA**: sync jitter ocasional — banda horizontal estreita treme
+  ~0.15s a cada 4-9s (agendado em CRTShader.update, uniforms
+  glitch/glitchY). É EVENTO discreto, não a onda viajante banida.
+- **Interlace shimmer** (paridade de linha alterna por quadro, 30Hz de
+  vida) + **halation** (brilho sangrando, 4-tap).

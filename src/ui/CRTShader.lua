@@ -23,6 +23,14 @@ local enabled = true
 local power = 1
 local powerAnim = nil   -- { from, to, dur, t, cb }
 
+-- Tremidinha ocasional (sync jitter): evento raro de instabilidade de
+-- sinal — banda horizontal treme por ~0.15s a cada 4-9s. Agendado aqui,
+-- executado no shader (uniforms glitch/glitchY).
+local glitchAmount = 0
+local glitchBandY = 0.5
+local glitchTimer = 3.0   -- primeiro evento cedo (o jogador percebe a identidade)
+local glitchActive = 0
+
 -- Carrega o shader e cria canvas de cena. Chamar em love.load.
 function CRTShader.load()
     local ok, s = pcall(love.graphics.newShader, "shaders/crt.glsl")
@@ -84,6 +92,27 @@ end
 
 -- Tick do animador (chamar no love.update).
 function CRTShader.update(dt)
+    -- agendador da tremidinha (só com o tubo ligado e estável)
+    if enabled and shader and power > 0.99 then
+        if glitchActive > 0 then
+            glitchActive = glitchActive - dt
+            glitchAmount = math.max(0, math.min(1, glitchActive / 0.08))
+            if glitchActive <= 0 then
+                glitchAmount = 0
+                glitchTimer = 4.0 + love.math.random() * 5.0
+            end
+        else
+            glitchTimer = glitchTimer - dt
+            if glitchTimer <= 0 then
+                glitchActive = 0.10 + love.math.random() * 0.14
+                glitchBandY = 0.15 + love.math.random() * 0.7
+                glitchAmount = 1.0
+            end
+        end
+    else
+        glitchAmount = 0
+    end
+
     if not powerAnim then return end
     powerAnim.t = powerAnim.t + dt
     local k = math.min(1, powerAnim.t / powerAnim.dur)
@@ -127,6 +156,8 @@ function CRTShader.endScene()
     shader:send("resolution", { w, h })
     shader:send("strength", strength)
     shader:send("power", power)
+    shader:send("glitch", glitchAmount)
+    shader:send("glitchY", glitchBandY)
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.draw(sceneCanvas, 0, 0)
     love.graphics.setShader()
