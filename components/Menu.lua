@@ -267,46 +267,58 @@ function Menu:draw()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Plaque de perfil no canto superior-esquerdo: só aparece com histórico.
--- Padrão grimório: painel ink + moldura dourada dupla (mesma linguagem
--- do banner do título).
+-- Perfil no RODAPÉ direito, espelhando a versão no rodapé esquerdo —
+-- uma linha discreta, sem caixa, que não briga com a arte do menu
+-- (a plaque em caixa no canto superior destoava do cenário — feedback
+-- do dono, Jul/2026). Texto com sombra ink pra legibilidade sobre a arte.
 function Menu:_drawProfilePlaque()
     local ProfileStats = require("engine.ProfileStats")
     if not ProfileStats.hasHistory() then return end
     local s = ProfileStats.get()
 
-    local a = self.intro.alphaBg or 1
+    local a = (self.intro.alphaBg or 1) * 0.9
     if a <= 0.05 then return end
 
-    local x, y = 18, 16
-    local w, h = 196, 86
+    local sw = love.graphics.getWidth()
+    local sh = love.graphics.getHeight()
 
-    local function colA(c, mul)
-        return { c[1], c[2], c[3], (c[4] or 1) * (mul or a) }
-    end
-    PixelCanvas.rect(x, y, w, h, colA(Palette.PANEL_FILL, 0.88 * a))
-    PixelCanvas.rectOutline(x, y, w, h, colA(Palette.PANEL_OUTLINE))
-    PixelCanvas.rectOutline(x + 3, y + 3, w - 6, h - 6, colA(Palette.PANEL_OUTLINE_INNER))
-
-    local lf = FontManager.getFont(9)
-    love.graphics.setFont(lf)
-    love.graphics.setColor(Palette.RUST[1], Palette.RUST[2], Palette.RUST[3], a)
-    love.graphics.print(I18n.t("menu.profile"), x + 14, y + 10)
-
-    love.graphics.setColor(Palette.AGED_GOLD_LIGHT[1], Palette.AGED_GOLD_LIGHT[2],
-        Palette.AGED_GOLD_LIGHT[3], a)
-    love.graphics.setFont(FontManager.getFont(10))
-    love.graphics.print(I18n.t("menu.profile_wins", { n = s.wins or 0 })
-        .. "  ·  " .. I18n.t("menu.profile_runs", { n = s.runs or 0 }), x + 14, y + 30)
-
-    love.graphics.setColor(Palette.PARCHMENT[1], Palette.PARCHMENT[2],
-        Palette.PARCHMENT[3], 0.95 * a)
+    -- Linha única: "★ 2 vitorias · Melhor: Ato 2-6" (ou só corridas se
+    -- nunca venceu). Curta, sem rótulo "PERFIL" — o conteúdo se explica.
+    local parts = {}
+    table.insert(parts, I18n.t("menu.profile_wins", { n = s.wins or 0 }))
     if (s.bestAct or 0) > 0 then
-        love.graphics.print(I18n.t("menu.profile_best",
-            { act = s.bestAct, floor = s.bestFloor or 0 }), x + 14, y + 52)
+        table.insert(parts, I18n.t("menu.profile_best",
+            { act = s.bestAct, floor = s.bestFloor or 0 }))
     else
-        love.graphics.print(I18n.t("menu.profile_nobest"), x + 14, y + 52)
+        table.insert(parts, I18n.t("menu.profile_runs", { n = s.runs or 0 }))
     end
+    local text = table.concat(parts, "  ·  ")
+
+    local f = FontManager.getFont(9)
+    love.graphics.setFont(f)
+    local tw = f:getWidth(text)
+
+    -- Ícone estrela pequeno à esquerda do texto.
+    local IconLoader = require("src.ui.IconLoader")
+    local icon = IconLoader.get("star")
+    local iconSize = 14
+    local totalW = tw + (icon and (iconSize + 6) or 0)
+    local x = sw - 12 - totalW
+    local y = sh - 22
+
+    if icon and icon.draw and icon.size then
+        local sc = iconSize / icon.size.w
+        love.graphics.setColor(1, 1, 1, a)
+        icon.draw(x, y - 2, sc)
+        x = x + iconSize + 6
+    end
+
+    -- Sombra ink + texto pergaminho (mesma receita do drawWithOutline).
+    love.graphics.setColor(0, 0, 0, 0.75 * a)
+    love.graphics.print(text, x + 1, y + 1)
+    love.graphics.setColor(Palette.PARCHMENT[1], Palette.PARCHMENT[2],
+        Palette.PARCHMENT[3], a)
+    love.graphics.print(text, x, y)
 end
 
 -- Versão + engine no rodapé esquerdo (discreto, alpha baixo).
