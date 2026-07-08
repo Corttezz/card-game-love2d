@@ -31,3 +31,4 @@
 - [UI/UX Overhaul](../docs/plan/ui-ux-overhaul-v1.md) — plano completo do redesign de TODAS as telas (diagnóstico por tela + blueprint Balatro extraído do source + fases F0-F7); harness novo `love . screenshot_ui`
 - [Lighting Engine](lighting_engine.md) — LightEngine v1: plano completo em docs/plan/lighting-engine-v1.md (lightmap ¼ multiply-only, micro-luzes, lightAmbient por bioma) + doutrina de luz e pegadinhas de API
 - [PixelLab MCP](pixellab_mcp.md) — como usar o MCP (config, gerar/animar/baixar, pegadinhas); chave NAO versionada, mora em ~/.claude.json
+- [card_creation_flow](card_creation_flow.md) — fluxo OBRIGATÓRIO completo de carta nova (dados+arte+atlas+i18n×5+preview+validate)

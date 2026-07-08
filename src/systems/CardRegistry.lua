@@ -122,6 +122,9 @@ function CardRegistry:getClassInfo(classId)
             id = "warrior",
             name = I18n.t("classes.warrior.name"),
             description = I18n.t("classes.warrior.desc"),
+            -- Passiva de classe (identidade de gameplay — Jul/2026)
+            passiveName = I18n.t("classes.warrior.passive_name"),
+            passiveDesc = I18n.t("classes.warrior.passive_desc"),
             color = {0.8, 0.2, 0.2, 1.0},
             avatar = "assets/classes/warrior.png",
             traits = {
@@ -134,6 +137,9 @@ function CardRegistry:getClassInfo(classId)
             id = "mage",
             name = I18n.t("classes.mage.name"),
             description = I18n.t("classes.mage.desc"),
+            -- Passiva de classe (identidade de gameplay — Jul/2026)
+            passiveName = I18n.t("classes.mage.passive_name"),
+            passiveDesc = I18n.t("classes.mage.passive_desc"),
             color = {0.2, 0.2, 0.8, 1.0},
             avatar = "assets/classes/mage.png",
             traits = {
@@ -146,6 +152,9 @@ function CardRegistry:getClassInfo(classId)
             id = "rogue",
             name = I18n.t("classes.rogue.name"),
             description = I18n.t("classes.rogue.desc"),
+            -- Passiva de classe (identidade de gameplay — Jul/2026)
+            passiveName = I18n.t("classes.rogue.passive_name"),
+            passiveDesc = I18n.t("classes.rogue.passive_desc"),
             color = {0.2, 0.8, 0.2, 1.0},
             avatar = "assets/classes/rogue.png",
             traits = {

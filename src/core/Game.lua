@@ -119,6 +119,7 @@ function Game:startGame()
     self.battleTurn = 0
     self.scoreSystem:reset()
     self.scoreSystem:startBattle()
+    self:applyClassBattleStartPassive()
 
     self.economySystem:resetForNewRun()
     self.economySystem.currentGold = 10
@@ -234,6 +235,8 @@ end
 --   - O antigo "draw de emergência +3 com mão vazia" morreu: ele PREMIAVA
 --     esvaziar a mão, o oposto do que o jogo precisa.
 function Game:drawForTurn()
+    -- Passiva rogue: nova janela de Toxinas a cada turno.
+    self._toxinAppliedThisTurn = false
     local baseDraw = Config.Game.CARDS_PER_TURN or 5
     -- Blue Seal acumula compras extras quando cartas com seal são jogadas.
     -- Consumido aqui (uma vez por turno) e zerado.
@@ -536,6 +539,33 @@ function Game:selectCard(card)
     end
 end
 
+-- ===== PASSIVAS DE CLASSE (identidade de gameplay — Jul/2026) =====
+-- Warrior "Ímpeto":  2+ ataques no mesmo turno → +1 Força (na batalha).
+-- Mage "Conduíte":   começa toda batalha com orbe de Raio (2) canalizado.
+-- Rogue "Toxinas":   o 1º ataque de cada turno aplica 1 de Veneno (2t).
+-- Toda ativação gera toast — nada acontece invisível (lei do projeto).
+
+function Game:applyClassBattleStartPassive()
+    self._toxinAppliedThisTurn = false
+    if self.selectedClass == "mage" and self.player and self.player.addOrb then
+        self.player:addOrb({ type = "lightning", value = 2 })
+        self:addMessage("Conduíte: orbe de Raio canalizado!", "info")
+    end
+end
+
+function Game:applyClassTurnPassives(turnContext)
+    if self.selectedClass ~= "warrior" then return end
+    local attacks = 0
+    for _, c in ipairs(turnContext.snapshot or {}) do
+        if (c.attack or 0) > 0 then attacks = attacks + 1 end
+    end
+    if attacks >= 2 then
+        self.player:gainStrength(1)
+        self:addMessage("Ímpeto: +1 Força!", "success")
+        Sfx.play("comboTrigger", { pitch = 1.3, volume = 0.6 })
+    end
+end
+
 function Game:playSelectedCards()
     -- Guard de reentrância (autoplay A5): startCombat com sequência ativa
     -- chamava onComplete SEM processar as cartas — jogada engolida.
@@ -572,6 +602,8 @@ function Game:playSelectedCards()
     self.scoreSystem:recordTurnCombos(turnContext.activeCombos)
     -- F4: contador de cartas jogadas + Tinta Viva (4 combos num turno).
     AchievementSystem.onCardsPlayed(self, turnContext)
+    -- Passiva de classe por turno (Ímpeto do guerreiro).
+    self:applyClassTurnPassives(turnContext)
     ComboSystem.announce(self, turnContext)
     self._currentTurnContext = turnContext
 
@@ -720,6 +752,14 @@ function Game:processCardInCombat(card, turnContext)
 
         local wasAlive = self.enemy.health > 0
         self.enemy:takeDamage(damage)
+
+        -- Passiva rogue "Toxinas": 1º ataque do turno aplica 1 de Veneno.
+        if self.selectedClass == "rogue" and not self._toxinAppliedThisTurn
+            and self.enemy:isAlive() then
+            self._toxinAppliedThisTurn = true
+            self.enemy:addStatusEffect({ name = "poison", stacks = 1, duration = 2 })
+            self:addMessage("Toxinas: +1 Veneno!", "info")
+        end
 
         -- Floating damage number ancorado na carta (Fase 6.1).
         local FloatingText = require("src.ui.FloatingText")
@@ -1094,6 +1134,7 @@ function Game:nextPhase()
     -- F3: score antigo (BASE_SCORE_PER_PHASE) morreu — a batalha já foi
     -- pontuada em _onEnemyDeath via ScoreSystem (TINTA×SELO).
     self.scoreSystem:startBattle()
+    self:applyClassBattleStartPassive()
 
     -- F2 gameplay-overhaul: FOLHA ÚNICA de pagamento. O RoundEvalScreen
     -- (cash-out Balatro: vitória + bônus HP + juros) é O pagamento da
@@ -1117,6 +1158,7 @@ function Game:nextPhase()
         self.enemy = Enemy:new(stats.health, stats.damage)
     self.battleTurn = 0
     self.scoreSystem:startBattle()
+    self:applyClassBattleStartPassive()
         -- Sprite do inimigo: roster por ato × tipo de node (v5).
         -- Endless: bioma 4+ a cada 8 andares (mesma fórmula do
         -- GameplayScene/WorldRoad — monstro casa com o cenário).
@@ -1220,6 +1262,7 @@ function Game:resumeRun()
     self.enemy = Enemy:new(stats.health, stats.damage)
     self.battleTurn = 0
     self.scoreSystem:startBattle()
+    self:applyClassBattleStartPassive()
     local spriteAct = run.actNumber
     if run.endlessMode then
         spriteAct = 4 + math.floor(math.max(0, (run.currentFloor or 25) - 25) / 8)

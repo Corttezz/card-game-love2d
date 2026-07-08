@@ -198,20 +198,35 @@ function ClassSelectionScreen:_drawClassPanel(p)
     love.graphics.printf(p.info.description or "", x + 26, y + 128,
         w - 52, "center")
 
+    -- PASSIVA da classe (identidade de gameplay — o diferencial real).
+    if p.info.passiveName then
+        local pf = FontManager.getFont(10)
+        love.graphics.setFont(pf)
+        Palette.set(Palette.BLOOD)
+        local pn = "PASSIVA: " .. p.info.passiveName:upper()
+        love.graphics.print(pn,
+            math.floor(x + w / 2 - pf:getWidth(pn) / 2), y + 168)
+        local pdf = FontManager.getFont(8)
+        love.graphics.setFont(pdf)
+        Palette.set(Palette.PARCHMENT_DARK)
+        love.graphics.printf(p.info.passiveDesc or "", x + 22, y + 186,
+            w - 44, "center")
+    end
+
     -- Cartas iniciais (CardFrame REAL em miniatura)
     local label = "Deck inicial:"
     local lf = FontManager.getFont(9)
     love.graphics.setFont(lf)
     Palette.set(Palette.RUST)
     love.graphics.print(label,
-        math.floor(x + w / 2 - lf:getWidth(label) / 2), y + 192)
+        math.floor(x + w / 2 - lf:getWidth(label) / 2), y + 234)
 
-    local cardScale = 0.92
+    local cardScale = 0.88
     local cw = 96 * cardScale
     local chh = 144 * cardScale
     local totalCw = #p.cards * cw + math.max(0, #p.cards - 1) * 14
     local cx = math.floor(x + w / 2 - totalCw / 2)
-    local cy = y + 216
+    local cy = y + 254
     for _, inst in ipairs(p.cards) do
         if inst.image then
             love.graphics.setColor(1, 1, 1, 1)
