@@ -438,6 +438,21 @@ function EnemyRenderer.draw(game, cx, cy)
     if currentAnimName ~= "death" then
         local exT, eyT = love.graphics.transformPoint(drawX, drawY)
         submitEmissives(id, exT, eyT, iw, ih, scale, 9)
+
+        -- v9.2 (feedback: "quando vem luz de trás o monstro fica todo
+        -- escuro"): o corpo oclui a luz de trás e a frente (virada pra
+        -- câmera) ficava em silhueta preta. O monstro é o foco da batalha
+        -- — nunca pode sumir. FILL de leitura mínima: micro-luz suave
+        -- (sem dither) centrada no corpo, z=8 (na frente do oclusor z=15,
+        -- nunca bloqueada), cor puxada pra luz ambiente pra não lavar.
+        local a = LightEngine.ambientLuma and LightEngine.ambientLuma() or 1
+        if a < 0.85 then
+            local fcx, fcy = love.graphics.transformPoint(
+                drawX + iw * scale / 2, drawY + ih * scale * 0.5)
+            local k = 0.30 + 0.25 * (1 - a)   -- mais escuro = fill um pouco maior
+            LightEngine.submitMicro(fcx, fcy, ih * scale * 0.55,
+                { 1.0, 0.94, 0.82 }, k, 8)
+        end
     end
 
     -- LightEngine v1.1: o corpo do inimigo OCLUI luzes atrás dele (janelas
