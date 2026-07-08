@@ -21,7 +21,9 @@ local CardParticles    = require("src.systems.CardParticles")
 local CardRewardScreen = require("components.CardRewardScreen")
 local I18n             = require("src.i18n.I18n")
 
-local PHASE_TIMES = { [0] = 0.20, [1] = 1.20 }
+-- phase 2 = compra a 1ª carta e captura 0.25s depois (valida F2: slot VENDIDO,
+-- carta voando pro deck, popup -$N, demais cartas paradas no lugar).
+local PHASE_TIMES = { [0] = 0.20, [1] = 1.20, [2] = 1.20 }
 
 function M.run(phase)
     phase = tonumber(phase or 1) or 1
@@ -71,15 +73,29 @@ function M.run(phase)
 
     -- Avança simulação (slide-in + materialize cascade dos cards).
     local stepDt = 1/60
-    local elapsed = 0
-    while elapsed < targetT do
-        EventManager.update(stepDt)
-        FloatingText.update(stepDt)
-        FlashShader.update(stepDt)
-        ScreenShake.update(stepDt)
-        CardParticles.update(stepDt)
-        screen:update(stepDt)
-        elapsed = elapsed + stepDt
+    local function simulate(secs)
+        local elapsed = 0
+        while elapsed < secs do
+            EventManager.update(stepDt)
+            FloatingText.update(stepDt)
+            FlashShader.update(stepDt)
+            ScreenShake.update(stepDt)
+            CardParticles.update(stepDt)
+            screen:update(stepDt)
+            elapsed = elapsed + stepDt
+        end
+    end
+    simulate(targetT)
+
+    if phase == 2 then
+        -- Compra a primeira oferta de carta e deixa o FX no meio do voo.
+        for _, offer in ipairs(screen.shopOffers) do
+            if offer.type == "card" then
+                screen:purchaseOffer(offer, offer.id)
+                break
+            end
+        end
+        simulate(0.25)
     end
 
     love.graphics.clear(0.05, 0.04, 0.08, 1)

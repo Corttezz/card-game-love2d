@@ -100,6 +100,7 @@ return {
         instructions       = "Clic: comprar · Refresh: nuevas ofertas · Continuar: seguir",
         shop_refreshed     = "Tienda actualizada!",
         refresh_fail       = "Oro insuficiente para actualizar!",
+        sold               = "VENDIDO",
         bought             = "Comprado: {name}",
         extra_draw         = "Cartas extra por turno: +{n}",
         atk_bonus          = "Dano de ataque: +{n}",

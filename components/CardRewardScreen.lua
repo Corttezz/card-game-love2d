@@ -270,6 +270,16 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
     self.shopOffers = self.shopSystem:getCurrentOffers()
     self.modeConfig = self.shopSystem:getModeConfig()
 
+    -- Slot FIXO por oferta (F2): comprada uma carta, as demais NÃO trocam de
+    -- lugar. Antes, draw/hover/selection indexavam shopOffers[i] contra
+    -- cardInstances compactado — hover mostrava info da carta errada e os
+    -- botões de compra apareciam no slot errado após a 1ª compra.
+    for i, o in ipairs(self.shopOffers) do o._slot = i end
+
+    -- FX de compra (carta voando pro deck + popups de ouro).
+    self._flyCards = {}
+    self._goldPopups = {}
+
     Debug.log("[CardRewardScreen] Aberta em modo", self.mode, "com", #self.shopOffers, "ofertas")
 
     self:updateLayout()
@@ -297,14 +307,24 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
     end
 
     -- Skip/Continue. Em modo shop dá +N ouro de bônus (configurado em MODE_CONFIG).
+    -- F2: em modo shop vira o botão PRINCIPAL da coluna esquerda (Balatro:
+    -- "Next Round" vermelho grande no topo da column), não um botãozinho no
+    -- rodapé. Em rewards continua compacto no rodapé.
     local skipBonus = (self.modeConfig and self.modeConfig.skipBonus) or 0
     local skipLabel = I18n.t("reward.continue")
     if self.mode == "shop" and skipBonus > 0 then
-        skipLabel = "Pular (+" .. skipBonus .. "g)"
+        skipLabel = skipLabel .. " (+" .. skipBonus .. "g)"
     end
-    -- F11.2: Skip button reduzido de 160×40 → 130×32, mais compacto.
+    local skipX, skipY, skipW, skipH = self.skipButtonX, self.skipButtonY, 130, 32
+    local skipFont = 12
+    if self.mode == "shop" and self.buttonsColX and self.buttonsContainer then
+        skipX, skipY = self.buttonsColX, self.buttonsColY
+        skipW = math.max(80, self.buttonsContainer.w - 16)
+        skipH = 52
+        skipFont = 13
+    end
     self.skipButton = Button:new(
-        self.skipButtonX, self.skipButtonY, 130, 32,
+        skipX, skipY, skipW, skipH,
         skipLabel,
         function()
             if self.mode == "shop" and skipBonus > 0 and self.game.economySystem then
@@ -315,9 +335,10 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
             if self.onSkipped then
                 self.onSkipped()
             end
-        end, nil, 12
+        end, nil, skipFont
     )
     self.skipButton:setIcon("arrow_right")
+    if self.mode == "shop" then self.skipButton:setColorScheme("red") end
 
     -- Refresh button só existe se o modo permitir (rewards = false).
     if self.modeConfig and self.modeConfig.canReroll then
@@ -329,8 +350,9 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
         -- F12: dimensões derivadas da column (não hardcoded 130). Antes overflow
         -- de 4-8px porque a column responsiva podia ser menor que o botão.
         -- Largura = column inteira - 2*8px de padding lateral interno.
+        -- F2: fica ABAIXO do Continuar (que agora abre a coluna).
         rerollX = self.buttonsColX
-        rerollY = self.buttonsColY
+        rerollY = self.buttonsColY + 52 + 10
         rerollW = math.max(80, self.buttonsContainer.w - 16)
         rerollH = 44
     else
@@ -347,8 +369,11 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
             if self.game.economySystem:canAfford(currentRefreshCost) then
                 self.game.economySystem:spendGold(currentRefreshCost, "refresh", "shop")
                 Sfx.play("shopReroll")  -- F11.5: dedicado pra reroll (riffle paper).
+                self:_spawnGoldPopup(self.refreshButton.x + self.refreshButton.width / 2,
+                    self.refreshButton.y, "-$" .. currentRefreshCost)
                 self.shopSystem:refreshOffers()
                 self.shopOffers = self.shopSystem:getCurrentOffers()
+                for i, o in ipairs(self.shopOffers) do o._slot = i end
 
                 self:createCardInstances()
                 self:createOfferButtons()
@@ -387,18 +412,13 @@ end
 function CardRewardScreen:createCardInstances()
     self.cardInstances = {}
 
-    local availableOffers = {}
-    local availablePositions = {}
-
+    -- F2: itera pelas ofertas usando o _slot FIXO de cada uma — depois de uma
+    -- compra as cartas restantes ficam onde estavam (slot comprado vira vazio
+    -- com stamp VENDIDO, desenhado em draw()).
     local maxSlots = self.slotCount or 3
-    for i, offer in ipairs(self.shopOffers) do
-        if offer.type == "card" and not offer.purchased and i <= maxSlots then
-            table.insert(availableOffers, offer)
-            table.insert(availablePositions, self.cardPositions[i] or {x = 0, y = 0})
-        end
-    end
-
-    for i, offer in ipairs(availableOffers) do
+    for _, offer in ipairs(self.shopOffers) do
+        if offer.type == "card" and not offer.purchased
+            and (offer._slot or math.huge) <= maxSlots then
         local cardData = self.cardDatabase:getCard(offer.id)
         if not cardData then
             Debug.err("[CardRewardScreen] Card data not found for", offer.id)
@@ -408,7 +428,7 @@ function CardRewardScreen:createCardInstances()
         local cardInstance = self.cardDatabase:createCardInstance(cardData)
 
         if cardInstance then
-            local pos = availablePositions[i]
+            local pos = self.cardPositions[offer._slot] or { x = 0, y = 0 }
 
             -- F13.1: card scale = ~85% do slot (breathing room nas bordas e
             -- espaço pro hover scale-up sem extravasar pra vizinhos). Antes
@@ -453,43 +473,40 @@ function CardRewardScreen:createCardInstances()
                 })
             end
 
+            -- Link bidirecional: purchaseOffer usa offer.cardInstance pro FX
+            -- de compra (antes NUNCA era atribuído — o feedback não disparava).
+            offer.cardInstance = cardInstance
             table.insert(self.cardInstances, cardInstance)
         else
             Debug.err("[CardRewardScreen] Could not create card instance for", offer.id)
         end
         ::continue::
+        end
     end
 end
 
 function CardRewardScreen:createOfferButtons()
     self.cardButtons = {}
 
-    local availableOffers = {}
-    local availablePositions = {}
-
+    -- F2: botão invisível ancorado no _slot fixo da oferta.
     local maxSlots = self.slotCount or 3
-    for i, offer in ipairs(self.shopOffers) do
-        if not offer.purchased and i <= maxSlots then
-            table.insert(availableOffers, offer)
-            table.insert(availablePositions, self.cardPositions[i] or {x = 0, y = 0})
+    for _, offer in ipairs(self.shopOffers) do
+        if not offer.purchased and (offer._slot or math.huge) <= maxSlots then
+            local pos = self.cardPositions[offer._slot] or { x = 0, y = 0 }
+            -- Voucher/pack podem ter w/h custom no layout (pos.w/pos.h).
+            local btnW = pos.w or self.cardWidth
+            local btnH = pos.h or self.cardHeight
+            local capturedOffer = offer  -- closure capture
+            local button = Button:new(
+                pos.x, pos.y, btnW, btnH,
+                "",
+                function()
+                    self:setSelectedOffer(capturedOffer, capturedOffer._slot)
+                end
+            )
+            button:setVariant("invisible")
+            table.insert(self.cardButtons, button)
         end
-    end
-
-    for i, offer in ipairs(availableOffers) do
-        local pos = availablePositions[i]
-        -- Voucher/pack podem ter w/h custom no layout (pos.w/pos.h).
-        local btnW = pos.w or self.cardWidth
-        local btnH = pos.h or self.cardHeight
-        local capturedIdx = i  -- closure capture
-        local button = Button:new(
-            pos.x, pos.y, btnW, btnH,
-            "",
-            function()
-                self:setSelectedOffer(offer, capturedIdx)
-            end
-        )
-        button:setVariant("invisible")
-        table.insert(self.cardButtons, button)
     end
 end
 
@@ -518,18 +535,20 @@ function CardRewardScreen:purchaseOffer(offer, offerId)
         local offerName = offer.type == "card" and I18n.cardName({ id = offer.id, name = offer.name }) or offer.name
         -- Screen jiggle no momento da compra (Fase 6.4) — feedback tátil leve.
         if _G.jiggleScreen then _G.jiggleScreen(0.25) end
-        if offer.type == "card" then
-            -- Feedback visual: carta dissolve pra indicar "absorvida no deck".
-            -- Palette "booster" = roxo/magenta, diferente do exhaust vermelho.
-            if offer.cardInstance and offer.cardInstance.start_dissolve then
-                local DissolveShader = require("src.ui.DissolveShader")
-                offer.cardInstance:start_dissolve(
-                    DissolveShader.palette("booster"),
-                    true,
-                    0.8,
-                    true
-                )
+
+        -- Popup de ouro "-$N" flutuando do slot comprado (todo tipo de oferta).
+        do
+            local pos = self.cardPositions[offer._slot or 0]
+            if pos then
+                local pw = pos.w or self.cardWidth
+                self:_spawnGoldPopup(pos.x + pw - 14, pos.y + 10, "-$" .. offer.cost)
             end
+        end
+
+        if offer.type == "card" then
+            -- Feedback visual F2 (Balatro): a carta VOA até o ícone de deck na
+            -- TopBar, encolhendo — comunica "foi pro seu deck" sem texto.
+            self:_startFlyToDeck(offer)
             self.game:addCardToRun(offer.id)
             self.game:addMessage(I18n.t("reward.bought", { name = offerName }), "success")
         elseif offer.type == "upgrade" then
@@ -686,6 +705,113 @@ function CardRewardScreen:cancelPurchase()
     self:clearSelection()
 end
 
+-- ============================================================================
+-- FX DE COMPRA (F2) — carta voa pro deck + popups de ouro + stamp VENDIDO
+-- ============================================================================
+
+-- Carta comprada voa até o ícone de deck da TopBar (x≈200), encolhendo com
+-- ease_in (sucção). Entry vive em self._flyCards; desenhada em screen-space
+-- (fora do slide do painel) no fim do draw().
+function CardRewardScreen:_startFlyToDeck(offer)
+    local inst = offer.cardInstance
+    if not inst or not inst.image then return end
+    self._flyCards = self._flyCards or {}
+
+    local fly = {
+        img = inst.image,
+        x = inst.x, y = inst.y,
+        scale = inst.currentScale or inst.baseScale or 1,
+        alpha = 1,
+        rot = 0,
+    }
+    table.insert(self._flyCards, fly)
+
+    -- Alvo: ícone de deck da TopBar (padding 20 + 180 — ver TopBar.lua).
+    local targetX, targetY = 205, 6
+    local dur = 0.45
+    if EventManager and EventManager.parallelEase then
+        EventManager.parallelEase(fly, "x", targetX, dur, "ease_in", "shop_fly")
+        EventManager.parallelEase(fly, "y", targetY, dur, "ease_in", "shop_fly")
+        EventManager.parallelEase(fly, "scale", 0.12, dur, "ease_in", "shop_fly")
+        EventManager.parallelEase(fly, "rot", 0.35, dur, "smooth", "shop_fly")
+        EventManager.parallel(dur, function()
+            fly._done = true
+            Sfx.play("cardDraw", { pitch = 1.15, volume = 0.7 })
+        end, "shop_fly")
+    else
+        fly._done = true
+    end
+end
+
+-- Popup "-$N" que flutua pra cima e some (age controlada em update()).
+function CardRewardScreen:_spawnGoldPopup(x, y, text)
+    self._goldPopups = self._goldPopups or {}
+    table.insert(self._goldPopups, { text = text, x = x, y = y, age = 0 })
+end
+
+local POPUP_LIFE = 0.9
+
+function CardRewardScreen:_updatePurchaseFx(dt)
+    if self._flyCards then
+        for i = #self._flyCards, 1, -1 do
+            if self._flyCards[i]._done then table.remove(self._flyCards, i) end
+        end
+    end
+    if self._goldPopups then
+        for i = #self._goldPopups, 1, -1 do
+            local p = self._goldPopups[i]
+            p.age = p.age + dt
+            if p.age >= POPUP_LIFE then table.remove(self._goldPopups, i) end
+        end
+    end
+end
+
+-- Desenhados em SCREEN-SPACE (após o pop do slide) — voam por cima de tudo.
+function CardRewardScreen:_drawPurchaseFx()
+    for _, fly in ipairs(self._flyCards or {}) do
+        love.graphics.setColor(1, 1, 1, fly.alpha)
+        love.graphics.draw(fly.img, fly.x, fly.y, fly.rot, fly.scale, fly.scale)
+    end
+    local font = FontManager.getFont(13)
+    love.graphics.setFont(font)
+    for _, p in ipairs(self._goldPopups or {}) do
+        local t = p.age / POPUP_LIFE
+        local a = 1 - t * t
+        local y = p.y - 36 * t
+        love.graphics.setColor(0, 0, 0, 0.7 * a)
+        love.graphics.print(p.text, p.x + 1, y + 1)
+        love.graphics.setColor(0.95, 0.78, 0.25, a)
+        love.graphics.print(p.text, p.x, y)
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- Slot de carta comprada: moldura vazia esmaecida + stamp "VENDIDO" diagonal
+-- (Balatro deixa o buraco no shelf — comunicar "você JÁ comprou isto aqui").
+function CardRewardScreen:_drawSoldSlot(pos)
+    local w = pos.w or self.cardWidth
+    local h = pos.h or self.cardHeight
+    love.graphics.setColor(0, 0, 0, 0.30)
+    love.graphics.rectangle("fill", pos.x + 4, pos.y + 4, w - 8, h - 8, 4, 4)
+    love.graphics.setColor(Palette.AGED_GOLD_DARK[1], Palette.AGED_GOLD_DARK[2],
+        Palette.AGED_GOLD_DARK[3], 0.5)
+    love.graphics.setLineWidth(1)
+    love.graphics.rectangle("line", pos.x + 4, pos.y + 4, w - 8, h - 8, 4, 4)
+
+    local font = FontManager.getFont(14)
+    love.graphics.setFont(font)
+    local txt = I18n.t("reward.sold")
+    local tw = font:getWidth(txt)
+    love.graphics.push()
+    love.graphics.translate(pos.x + w / 2, pos.y + h / 2)
+    love.graphics.rotate(-0.28)
+    love.graphics.setColor(Palette.BLOOD[1], Palette.BLOOD[2], Palette.BLOOD[3], 0.75)
+    love.graphics.rectangle("line", -tw / 2 - 8, -14, tw + 16, 28)
+    love.graphics.print(txt, -tw / 2, -font:getHeight() / 2)
+    love.graphics.pop()
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
 function CardRewardScreen:applyUpgrade(upgrade)
     if upgrade.effect == "increase_max_health" then
         self.game.player.maxHealth = self.game.player.maxHealth + upgrade.value
@@ -710,6 +836,8 @@ function CardRewardScreen:hide()
     self.cardButtons = {}
     self.skipButton = nil
     self.refreshButton = nil
+    self._flyCards = {}
+    self._goldPopups = {}
 
     self:cancelPurchase()
 end
@@ -727,16 +855,23 @@ function CardRewardScreen:update(dt)
             self:createCardInstances()
             self:createOfferButtons()
             if self.skipButton then
-                self.skipButton.x = self.skipButtonX
-                self.skipButton.y = self.skipButtonY
+                -- F2: em modo shop o Continuar mora na column esquerda.
+                if self.mode == "shop" and self.buttonsColX and self.buttonsContainer then
+                    self.skipButton.x = self.buttonsColX
+                    self.skipButton.y = self.buttonsColY
+                    self.skipButton.width = math.max(80, self.buttonsContainer.w - 16)
+                else
+                    self.skipButton.x = self.skipButtonX
+                    self.skipButton.y = self.skipButtonY
+                end
             end
             if self.refreshButton then
                 -- Em modo shop o reroll fica em column dedicada à esquerda
-                -- (Balatro UI_definitions.lua:706-716). Em modo rewards fica
-                -- ao lado do skip (legacy 1-row layout).
+                -- (Balatro UI_definitions.lua:706-716), abaixo do Continuar.
+                -- Em modo rewards fica ao lado do skip (legacy 1-row layout).
                 if self.mode == "shop" and self.buttonsColX and self.buttonsContainer then
                     self.refreshButton.x = self.buttonsColX
-                    self.refreshButton.y = self.buttonsColY
+                    self.refreshButton.y = self.buttonsColY + 52 + 10
                     self.refreshButton.width = math.max(80, self.buttonsContainer.w - 16)
                 else
                     self.refreshButton.x = self.skipButtonX + 180
@@ -789,6 +924,8 @@ function CardRewardScreen:update(dt)
     if self._selectionButtons then
         for _, b in ipairs(self._selectionButtons) do b:update(dt) end
     end
+
+    self:_updatePurchaseFx(dt)
 end
 
 function CardRewardScreen:easeOutBack(t)
@@ -844,38 +981,64 @@ function CardRewardScreen:draw()
     if self.buttonsContainer then
         self:_drawPanel(self.buttonsContainer.x, self.buttonsContainer.y,
                         self.buttonsContainer.w, self.buttonsContainer.h, "inner")
+        -- F2: painel de OURO no rodapé da column (Balatro: dinheiro sempre
+        -- visível ao lado das ações de gastar). Leitura em 1 fixação.
+        if self.game and self.game.economySystem then
+            local bc = self.buttonsContainer
+            local gy = bc.y + bc.h - 64
+            love.graphics.setColor(0, 0, 0, 0.35)
+            love.graphics.rectangle("fill", bc.x + 8, gy, bc.w - 16, 52, 4, 4)
+            Palette.set(Palette.AGED_GOLD_DARK)
+            love.graphics.setLineWidth(1)
+            love.graphics.rectangle("line", bc.x + 8, gy, bc.w - 16, 52, 4, 4)
+            love.graphics.setFont(FontManager.getFont(9))
+            Palette.set(Palette.PARCHMENT)
+            love.graphics.printf("OURO", bc.x + 8, gy + 8, bc.w - 16, "center")
+            love.graphics.setFont(FontManager.getFont(16))
+            Palette.set(Palette.AGED_GOLD_LIGHT)
+            love.graphics.printf("$" .. self.game.economySystem.currentGold,
+                bc.x + 8, gy + 22, bc.w - 16, "center")
+        end
     end
 
-    for i, cardInstance in ipairs(self.cardInstances) do
+    for _, cardInstance in ipairs(self.cardInstances) do
         if cardInstance and cardInstance.draw then
-            local anim = self.cardAnimations[i]
+            -- F2: anim e affordability vêm da OFERTA da própria instância
+            -- (indexar shopOffers[i] quebrava após a 1ª compra).
+            local offer = cardInstance.shopOffer
+            local slot = offer and offer._slot
+            local anim = slot and self.cardAnimations[slot]
             local scale = anim and anim.scale or 1
 
             if scale > 0 then
-                -- F2: impagável = carta escurecida (2º canal além do preço
+                -- Impagável = carta escurecida (2º canal além do preço
                 -- vermelho; pesquisa: nunca comunicar só por cor do número)
-                local offer = self.shopOffers and self.shopOffers[i]
                 cardInstance.saleDim = (self.mode == "shop") and offer
                     and offer.cost and self.game
                     and not self.game.economySystem:canAfford(offer.cost)
                     or false
                 local pos = {x = cardInstance.x, y = cardInstance.y}
                 cardInstance:draw(pos.x, pos.y, false, true)
-                self:drawPriceOverlay(cardInstance, pos.x, pos.y, i)
+                self:drawPriceOverlay(cardInstance, pos.x, pos.y, slot)
             end
         end
     end
 
     local slotCount = self.slotCount or 3
-    for i, offer in ipairs(self.shopOffers) do
-        if offer.type ~= "card" and i <= slotCount and not offer.purchased then
-            local anim = self.cardAnimations[i]
+    for _, offer in ipairs(self.shopOffers) do
+        local slot = offer._slot or math.huge
+        if offer.type ~= "card" and slot <= slotCount and not offer.purchased then
+            local anim = self.cardAnimations[slot]
             local scale = anim and anim.scale or 1
 
             if scale > 0 then
-                local pos = self.cardPositions[i] or {x = 0, y = 0}
-                self:drawOffer(offer, pos.x, pos.y, i, pos.w, pos.h)
+                local pos = self.cardPositions[slot] or {x = 0, y = 0}
+                self:drawOffer(offer, pos.x, pos.y, slot, pos.w, pos.h)
             end
+        end
+        -- Slot já comprado: buraco com stamp VENDIDO (posições estáveis).
+        if offer.purchased and slot <= slotCount and self.cardPositions[slot] then
+            self:_drawSoldSlot(self.cardPositions[slot])
         end
     end
 
@@ -906,6 +1069,9 @@ function CardRewardScreen:draw()
     -- Selection overlay (CLICK): halo pulsante + mini-buttons Balatro-style
     -- (UI_definitions.lua:382 card_focus_button) attached compactos sob a carta.
     self:_drawSelectionOverlay()
+
+    -- FX de compra por cima de tudo (carta voando pro deck + popups -$N).
+    self:_drawPurchaseFx()
 end
 
 -- F10.3 + F11.2: Helper de painel container Balatro-style com ornamentos.
@@ -1090,8 +1256,9 @@ function CardRewardScreen:drawOffer(offer, x, y, index, customW, customH)
         PixelCanvas.rect(bx, by, math.floor(w - 8), priceH, Palette.PANEL_FILL)
         PixelCanvas.rectOutline(bx, by, math.floor(w - 8), priceH, pricecolor)
         Palette.set(canAfford and Palette.AGED_GOLD_LIGHT or Palette.BLOOD)
-        love.graphics.setFont(FontManager.getFont(10))
-        love.graphics.printf("$" .. offer.cost, bx, by + 6, math.floor(w - 8), "center")
+        -- Fonte 11: no tamanho 10 o glifo "6" da fonte pixel rasteriza como "G".
+        love.graphics.setFont(FontManager.getFont(11))
+        love.graphics.printf("$" .. offer.cost, bx, by + 5, math.floor(w - 8), "center")
         return
     end
 
@@ -1155,7 +1322,8 @@ function CardRewardScreen:drawOffer(offer, x, y, index, customW, customH)
     end
 
     Palette.set(canAfford and Palette.AGED_GOLD_LIGHT or Palette.BLOOD)
-    love.graphics.setFont(FontManager.getFont(10))
+    -- Fonte 11: no tamanho 10 o glifo "6" da fonte pixel rasteriza como "G".
+    love.graphics.setFont(FontManager.getFont(11))
     love.graphics.printf("$" .. offer.cost, x + 8, y + h - 24, w - 16, "center")
 end
 
@@ -1291,10 +1459,10 @@ end
 function CardRewardScreen:_drawHoverInfoPanels()
     local anim = self._hoverAnim or 0
     if anim < 0.01 and not self.hoveredOffer then return end
-    if not self.hoveredOffer or not self.hoveredIdx then return end
+    if not self.hoveredOffer or not self.hoveredInst then return end
 
     local offer = self.hoveredOffer
-    local cardInst = self.cardInstances[self.hoveredIdx]
+    local cardInst = self.hoveredInst
     if not cardInst then return end
     if not self.panel then return end
 
@@ -1373,21 +1541,22 @@ end
 -- Atualiza estado de hover lendo cardInstance.isHovered. Chamado em :update.
 function CardRewardScreen:_updateHoverState()
     local newHovered = nil
-    local newIdx = nil
-    for i, inst in ipairs(self.cardInstances or {}) do
+    local newInst = nil
+    for _, inst in ipairs(self.cardInstances or {}) do
         if inst and inst.isHovered then
-            -- offer correspondente em shopOffers no mesmo idx.
-            local offer = self.shopOffers[i]
+            -- F2: a oferta vem da própria instância (shopOffers[i] mostrava
+            -- a info da carta ERRADA depois de uma compra).
+            local offer = inst.shopOffer
             if offer and not offer.purchased then
                 newHovered = offer
-                newIdx = i
+                newInst = inst
                 break
             end
         end
     end
     if newHovered ~= self.hoveredOffer then
         self.hoveredOffer = newHovered
-        self.hoveredIdx = newIdx
+        self.hoveredInst = newInst
         local target = newHovered and 1 or 0
         if EventManager and EventManager.parallelEase then
             EventManager.parallelEase(self, "_hoverAnim", target, 0.12, "smooth", "shop_hover")
