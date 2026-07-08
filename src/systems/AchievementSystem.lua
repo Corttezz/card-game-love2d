@@ -72,7 +72,7 @@ end
 
 -- Chamado em playSelectedCards (após ComboSystem.detect).
 function AchievementSystem.onCardsPlayed(game, turnContext)
-    local n = turnContext and turnContext.snapshot and #turnContext.snapshot or 0
+    local n = turnContext and turnContext.allSelectedCards and #turnContext.allSelectedCards or 0
     if n > 0 then
         ProfileStats.bump("cardsPlayed", n)
         if (ProfileStats.get().counters.cardsPlayed or 0) >= 2500 then

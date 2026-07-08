@@ -87,12 +87,13 @@ return {
         id = "rogue_blue_elixir", name = "Elixir Azul",
         type = "effect", subtype = "potion",
         cost = 1, attack = 0, defense = 0,
-        description = "Restaura 3 mana.",
+        description = "Restaura 2 mana. Exaurir.",
         image = "assets/cards/effect/manaCrystal.png",
         rarity = "common", class = "rogue",
         tags = { "mana", "potion", "utility" },
         effects = {
-            { type = "restore_mana", value = 3 },
+            { type = "restore_mana", value = 2 },
+            { type = "exhaust" },
         },
     },
 
@@ -305,7 +306,7 @@ return {
         rarity = "rare", class = "rogue",
         tags = { "strike", "scaling", "combo" },
         effects = {
-            { type = "damage_bonus", target = "attack", value = 2 },
+            { type = "damage_bonus", target = "attack", value = 3 },
         },
     },
     rogue_after_image = {
@@ -317,7 +318,7 @@ return {
         rarity = "rare", class = "rogue",
         tags = { "defend", "armor" },
         effects = {
-            { type = "defense_bonus", target = "defense", value = 1 },
+            { type = "defense_bonus", target = "defense", value = 3 },
         },
     },
     rogue_bullet_time = {
@@ -357,7 +358,7 @@ return {
         tags = { "draw", "mana", "cycle" },
         effects = {
             { type = "draw_cards", value = 2 },
-            { type = "restore_mana", value = 2 },
+            { type = "restore_mana", value = 1 },
         },
     },
     rogue_envenom = {

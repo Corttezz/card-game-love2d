@@ -176,3 +176,26 @@ A2 300→220 HP / 22→18 dmg; A3 500→420 / 32→26.
 Funil atual: meio/fim do Ato 2 (mini-boss F7). Para um bot mediano é o
 ponto certo — humano deve vencer ~30-50% das runs. Próximo passo é teste
 HUMANO calibrar o resto.
+
+---
+
+## Auditoria de Balance v2 aplicada (Jul/2026)
+
+Sistêmicas: pair_tags exige 2 CARTAS distintas (matou o auto-×1.3 de todo
+finisher); EXAURIR virou por-batalha (volta na próxima — a remoção de run
+punia demais); legendary 15g→30g; Conduíte orbe 2→4.
+Nerfs: Elixir Azul 3→2+exaurir, Cristal de Mana +3→+1, Deus do Abismo/
+Guardião ×2→×1.5, Ver Vermelho custo 0→1, Fúria(rage) 5→3, Golpe Rápido
+4→3, Achar a Brecha +3→+2, Força Interior 12→9, Sósia mana 2→1,
+Chuva de Meteoros 24→18.
+Buffs: Descarga 6→7 (Raio Esférico→uncommon), Escudo Templário 12→14,
+Grito de Guerra +2→+3, Nova de Gelo 5→9, Raios Gêmeos 5→7, Pós-Imagem
++1→+3, Mil Cortes +2→+3.
+Identidade: Demon Form = +2 Força/turno (novo effect strength_per_turn,
+alinhado à tradução EN que já descrevia isso); IA Criativa = draw+regen
+(deixou de ser clone). Golpe Duplo: descrição mentirosa corrigida.
+BUG meu pego pela suíte: 3 códigos liam turnContext.snapshot (chave real:
+allSelectedCards) — o Ímpeto do guerreiro e o contador de conquistas
+nunca disparavam.
+Bateria pós-balance (9 runs): 8/9 saem do A1; 2 chegam ao A3; ladino
+morreu no boss FINAL com 17.224 pts. Sem vitória do bot (heurística).

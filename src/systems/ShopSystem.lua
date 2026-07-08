@@ -242,7 +242,7 @@ end
 
 function ShopSystem:calculateCardCost(rarity)
     local rarityMultipliers = {
-        common = 1, uncommon = 2, rare = 3, legendary = 5,
+        common = 1, uncommon = 2, rare = 3, legendary = 10,
     }
     return self.cardCostBase * (rarityMultipliers[rarity] or 1)
 end

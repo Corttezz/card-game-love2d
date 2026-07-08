@@ -6,8 +6,8 @@ return {
     mage_zap = {
         id = "mage_zap", name = "Descarga",
         type = "attack", subtype = "common",
-        cost = 1, attack = 6, defense = 0,
-        description = "6 de dano. Canaliza 1 Raio (3 pot).",
+        cost = 1, attack = 7, defense = 0,
+        description = "7 de dano. Canaliza 1 Raio (3 pot).",
         image = "assets/cards/attack/theRock.png",
         rarity = "common", class = "mage",
         tags = { "strike", "channel", "lightning" },
@@ -33,7 +33,7 @@ return {
         cost = 1, attack = 7, defense = 0,
         description = "7 de dano. Canaliza Raio (4 pot).",
         image = "assets/cards/attack/theRock.png",
-        rarity = "common", class = "mage",
+        rarity = "uncommon", class = "mage",
         tags = { "strike", "channel", "lightning" },
         effects = {
             { type = "channel_orb", orbType = "lightning", value = 4 },
@@ -230,8 +230,8 @@ return {
     mage_twin_bolts = {
         id = "mage_twin_bolts", name = "Raios Gemeos",
         type = "attack", subtype = "skill",
-        cost = 2, attack = 5, defense = 0,
-        description = "5 de dano, 2 vezes. Canaliza Raio (2 pot).",
+        cost = 2, attack = 7, defense = 0,
+        description = "7 de dano, 2 vezes. Canaliza Raio (2 pot).",
         image = "assets/cards/attack/theRock.png",
         rarity = "rare", class = "mage",
         tags = { "magic", "lightning", "channel" },
@@ -303,7 +303,7 @@ return {
     mage_frost_nova = {
         id = "mage_frost_nova", name = "Nova de Gelo",
         type = "attack", subtype = "skill",
-        cost = 2, attack = 5, defense = 0,
+        cost = 2, attack = 9, defense = 0,
         description = "5 de dano aoe. Canaliza Gelo (pot 4).",
         image = "assets/cards/attack/theRock.png",
         rarity = "uncommon", class = "mage",
@@ -342,12 +342,13 @@ return {
         id = "mage_creative_ai", name = "IA Criativa",
         type = "joker", subtype = "power",
         cost = 3, attack = 0, defense = 0,
-        description = "Compra +1 carta por turno.",
+        description = "Compra 1 carta e regenera 1 HP no inicio do turno.",
         image = "assets/cards/defense/ironShield.png",
         rarity = "rare", class = "mage",
         tags = { "draw", "cycle", "magic" },
         effects = {
-            { type = "on_turn_start_draw", value = 1, description = "+1 carta por turno" },
+            { type = "on_turn_start_draw", value = 1 },
+            { type = "regen_per_turn", value = 1 },
         },
     },
     mage_echo_form = {
@@ -402,7 +403,7 @@ return {
     mage_meteor_strike = {
         id = "mage_meteor_strike", name = "Chuva de Meteoros",
         type = "attack", subtype = "skill",
-        cost = 3, attack = 24, defense = 0,
+        cost = 3, attack = 18, defense = 0,
         description = "24 de dano. Canaliza 3 orbs de Fogo.",
         image = "assets/cards/attack/theRock.png",
         rarity = "rare", class = "mage",
@@ -471,12 +472,12 @@ return {
         id = "effect_mana_crystal", name = "Cristal de Mana",
         type = "effect", subtype = "crystal",
         cost = 1, attack = 0, defense = 0,
-        description = "Mana maxima +3 (batalha).",
+        description = "Mana maxima +1 (batalha).",
         image = "assets/cards/effect/manaCrystal.png",
         rarity = "common", class = "mage",
         tags = { "mana", "utility" },
         effects = {
-            { type = "increase_max_mana", value = 3 },
+            { type = "increase_max_mana", value = 1 },
         },
     },
 }

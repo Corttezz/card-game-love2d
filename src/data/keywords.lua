@@ -8,7 +8,7 @@ return {
     { match = { "orbe", "canaliza", "evoca", "orb", "channel", "evoke" }, name = "Orbes",
       text = "3 slots. Evocar dispara: Raio=dano, Gelo=armadura, Fogo=dano+queima, Sombra=dano x2. Slot cheio evoca o mais antigo." },
     { match = { "exaurir", "exhaust" }, name = "Exaurir",
-      text = "Uso unico: sai da batalha E da corrida." },
+      text = "Uso unico POR BATALHA: sai do baralho ate a proxima." },
     { match = { "veneno", "poison" }, name = "Veneno",
       text = "Dano por turno igual aos stacks (acumulaveis)." },
     { match = { "vulneravel", "vulnerable" }, name = "Vulneravel",

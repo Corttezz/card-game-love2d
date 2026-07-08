@@ -548,7 +548,7 @@ end
 function Game:applyClassBattleStartPassive()
     self._toxinAppliedThisTurn = false
     if self.selectedClass == "mage" and self.player and self.player.addOrb then
-        self.player:addOrb({ type = "lightning", value = 2 })
+        self.player:addOrb({ type = "lightning", value = 4 })
         self:addMessage("Conduíte: orbe de Raio canalizado!", "info")
         if love.timer then self._passiveFlashT = love.timer.getTime() end
     end
@@ -557,7 +557,7 @@ end
 function Game:applyClassTurnPassives(turnContext)
     if self.selectedClass ~= "warrior" then return end
     local attacks = 0
-    for _, c in ipairs(turnContext.snapshot or {}) do
+    for _, c in ipairs(turnContext.allSelectedCards or {}) do
         if (c.attack or 0) > 0 then attacks = attacks + 1 end
     end
     if attacks >= 2 then
@@ -1122,12 +1122,11 @@ function Game:resetHandAndDeck()
 end
 
 function Game:nextPhase()
-    -- Processa exhaust pendente: remove as cartas exauridas da run.
-    if self.isRunMode and self.runManager:hasActiveRun() and #self._exhaustedThisBattle > 0 then
-        for _, id in ipairs(self._exhaustedThisBattle) do
-            self.runManager:removeCardFromDeck(id)
-        end
-    end
+    -- Exaurir (balance v2): a carta some da BATALHA e volta na próxima
+    -- (StS-style). A remoção permanente da run punia demais — potions e
+    -- cartas de uso único viravam lixo de deck (auditoria v2 §3).
+    -- O objetivo anti-stall (não reciclar cura no reshuffle) continua
+    -- atendido: exauridas não voltam pro discard DENTRO da batalha.
     self._exhaustedThisBattle = {}
     self._deathHandled = false
     self._deathPauseTimer = 0

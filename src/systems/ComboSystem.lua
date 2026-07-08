@@ -91,11 +91,26 @@ local function ruleMatches(rule, turnContext)
         local count = (turnContext.tagCounts and turnContext.tagCounts[rule.tag]) or 0
         return count >= (rule.minCount or 2)
     elseif rule.rule == "pair_tags" then
-        local counts = turnContext.tagCounts or {}
-        for _, t in ipairs(rule.requires or {}) do
-            if (counts[t] or 0) < 1 then return false end
+        -- Balance v2 (Jul/2026): as tags precisam vir de CARTAS DISTINTAS.
+        -- Antes, uma carta com strike+finisher se auto-combinava ×1.3
+        -- sozinha (todo finisher tinha premium fantasma embutido).
+        local req = rule.requires or {}
+        local snapshot = turnContext.allSelectedCards or turnContext.snapshot or {}
+        local TagSystem = require("src.systems.TagSystem")
+        -- tenta uma atribuição: para cada tag exigida, uma carta diferente.
+        local function assign(tagIdx, usedCards)
+            if tagIdx > #req then return true end
+            for ci, card in ipairs(snapshot) do
+                if not usedCards[ci]
+                    and TagSystem.cardHasTag(card, req[tagIdx]) then
+                    usedCards[ci] = true
+                    if assign(tagIdx + 1, usedCards) then return true end
+                    usedCards[ci] = nil
+                end
+            end
+            return false
         end
-        return true
+        return assign(1, {})
     end
     return false
 end

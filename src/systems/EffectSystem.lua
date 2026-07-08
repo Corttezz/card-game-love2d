@@ -357,6 +357,11 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
             game:addMessage(msg("reflect", { value = v }), "warning")
         end
 
+    elseif t == "strength_per_turn" and triggerType == "turn_start" then
+        -- Demon Form: Força cumulativa por turno (identidade StS clássica).
+        game.player:gainStrength(v)
+        game:addMessage("+" .. v .. " Forca (Forma Demoniaca)", "success")
+
     elseif t == "regen_per_turn" and triggerType == "turn_start" then
         local amount = self:applyHealMultiplier(game, v)
         game.player:heal(amount)
