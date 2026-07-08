@@ -90,7 +90,7 @@ Config.Acts = {
         number = 2, name = "Torre de Pedra", floors = 8,
         enemyHP    = function(f) return 60 + f * 10 end,  -- f=1: 70, f=8: 140
         enemyDmg   = function(f) return 9 + f * 1.5 end,  -- f=1: 10, f=8: 21
-        bossHP = 300, bossDmg = 22,
+        bossHP = 220, bossDmg = 18,
         eliteHPMul = 1.6, eliteDmgMul = 1.3,
         rarityWeights = { common = 40, uncommon = 45, rare = 14, legendary = 1 },
         interActHeal = 0.40,
@@ -99,7 +99,7 @@ Config.Acts = {
         number = 3, name = "Abismo", floors = 8,
         enemyHP    = function(f) return 150 + f * 15 end, -- f=1: 165, f=8: 270
         enemyDmg   = function(f) return 18 + f * 2.5 end, -- f=1: 20, f=8: 38
-        bossHP = 500, bossDmg = 32,
+        bossHP = 420, bossDmg = 26,
         eliteHPMul = 1.7, eliteDmgMul = 1.4,
         rarityWeights = { common = 15, uncommon = 45, rare = 32, legendary = 8 },
         interActHeal = 0.40,

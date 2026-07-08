@@ -62,6 +62,27 @@ return {
             { type = "gain_strength", value = 1, description = "+1 Forca" },
         },
     },
+    attack_cleave = {
+        id = "attack_cleave", name = "Cutilada",
+        type = "attack", subtype = "common",
+        cost = 2, attack = 13, defense = 0,
+        description = "Causa 13 de dano.",
+        image = "assets/cards/attack/bloodSword.png",
+        rarity = "common", class = "basic",
+        tags = { "strike" },
+        effects = {},
+    },
+    defense_bulwark = {
+        id = "defense_bulwark", name = "Baluarte",
+        type = "defense", subtype = "common",
+        cost = 2, attack = 0, defense = 13,
+        description = "Ganha 13 de Bloqueio.",
+        image = "assets/cards/defense/ironShield.png",
+        rarity = "common", class = "basic",
+        tags = { "defend", "armor" },
+        effects = {},
+    },
+
     warrior_second_wind = {
         id = "warrior_second_wind", name = "Segundo Folego",
         type = "effect", subtype = "common",

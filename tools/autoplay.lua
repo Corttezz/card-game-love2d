@@ -91,6 +91,33 @@ local function hasEffect(card, etype)
     return false
 end
 
+-- Tags relevantes pros combos ativos (ComboSystem): jogar PARES paga.
+local COMBO_TAGS = { strike = true, poison = true, magic = true,
+                     defend = true, armor = true, channel = true }
+
+local function cardHasTag(card, tag)
+    for _, t in ipairs(card.tags or {}) do
+        if t == tag then return true end
+    end
+    return false
+end
+
+-- Estima o dano REAL de um conjunto, aproximando os combos principais
+-- (strike_combo ×1.4 com 2+ strikes, +6 com 3+; magic_focus ×1.5).
+local function estimateSetDamage(game, set)
+    local total, strikes, magics = 0, 0, 0
+    for _, c in ipairs(set) do
+        local d = expectedDamage(game, c)
+        total = total + d
+        if d > 0 and cardHasTag(c, "strike") then strikes = strikes + 1 end
+        if d > 0 and cardHasTag(c, "magic") then magics = magics + 1 end
+    end
+    if strikes >= 2 then total = math.floor(total * 1.4) end
+    if strikes >= 3 then total = total + 6 end
+    if magics >= 2 then total = math.floor(total * 1.5) end
+    return total
+end
+
 local function chooseCards(game)
     local mana = game.player.mana
     local hand = game.hand
@@ -118,29 +145,69 @@ local function chooseCards(game)
         end
     end
 
-    -- 1. LETHAL?
+    -- 1. LETHAL? (v2: considera combos do conjunto, não só a soma)
     local atkCards = {}
     for _, c in ipairs(hand) do
         if not picked(c) and expectedDamage(game, c) > 0 then
             table.insert(atkCards, c)
         end
     end
-    table.sort(atkCards, function(a, b)
-        local ca, cb = math.max(1, a.cost or 0), math.max(1, b.cost or 0)
-        return expectedDamage(game, a) / ca > expectedDamage(game, b) / cb
-    end)
-    do
-        local dmg, cost, set = 0, 0, {}
-        for _, c in ipairs(atkCards) do
-            if cost + (c.cost or 0) <= manaLeft then
-                dmg = dmg + expectedDamage(game, c)
-                cost = cost + (c.cost or 0)
-                table.insert(set, c)
+    -- v2: ordena por dano/mana MAS com bônus de sinergia — a 2ª carta da
+    -- mesma tag de combo vale mais que o valor de face.
+    local function synergyScore(c, chosenSet)
+        local ca = math.max(1, c.cost or 0)
+        local s = expectedDamage(game, c) / ca
+        for _, tag in ipairs(c.tags or {}) do
+            if COMBO_TAGS[tag] then
+                for _, other in ipairs(chosenSet) do
+                    if cardHasTag(other, tag) then
+                        s = s + 4  -- completa/estende um combo
+                        break
+                    end
+                end
             end
         end
-        if dmg >= (game.enemy.health + (game.enemy.armor or 0)) then
+        return s
+    end
+    do
+        -- monta o melhor conjunto guloso COM sinergia e testa lethal
+        local set, cost = {}, 0
+        local pool = {}
+        for _, c in ipairs(atkCards) do table.insert(pool, c) end
+        while true do
+            local best, bestS = nil, -1
+            for _, c in ipairs(pool) do
+                local inSet = false
+                for _, x in ipairs(set) do if x == c then inSet = true end end
+                if not inSet and cost + (c.cost or 0) <= manaLeft then
+                    local s = synergyScore(c, set)
+                    if s > bestS then best, bestS = c, s end
+                end
+            end
+            if not best then break end
+            table.insert(set, best)
+            cost = cost + (best.cost or 0)
+        end
+        if estimateSetDamage(game, set)
+            >= (game.enemy.health + (game.enemy.armor or 0)) then
             for _, c in ipairs(set) do pick(c, "LETHAL") end
             return picks, "LETHAL"
+        end
+    end
+
+    -- 1b. DEBUFF SETUP (v2): Vulnerável ANTES dos ataques amplifica o turno
+    -- inteiro (+50%). Só vale se ainda vamos atacar 2+ vezes.
+    if #atkCards >= 2 then
+        for _, c in ipairs(hand) do
+            if not picked(c) and (c.cost or 0) <= manaLeft then
+                for _, e in ipairs(c.effects or {}) do
+                    if e.type == "apply_debuff" and e.value == "vulnerable"
+                        and not game.enemy:hasStatus("vulnerable") then
+                        pick(c, "setup-vulneravel")
+                        break
+                    end
+                end
+            end
         end
     end
 
@@ -178,11 +245,18 @@ local function chooseCards(game)
         end
     end
 
-    -- 4. VALOR: resto da mana em dano (combo de strike quando possível).
-    for _, c in ipairs(atkCards) do
-        if not picked(c) and (c.cost or 0) <= manaLeft then
-            pick(c, "dano")
+    -- 4. VALOR (v2): resto da mana em dano escolhido POR SINERGIA — a 2ª
+    -- carta da mesma tag de combo vale +4 (strike_combo/magic_focus/poison).
+    while true do
+        local best, bestS = nil, -1
+        for _, c in ipairs(atkCards) do
+            if not picked(c) and (c.cost or 0) <= manaLeft then
+                local s = synergyScore(c, picks)
+                if s > bestS then best, bestS = c, s end
+            end
         end
+        if not best then break end
+        pick(best, "dano")
     end
     -- 4b. mana sobrando e nada de ataque? joga defesa/efeito que couber.
     for _, c in ipairs(hand) do
@@ -253,6 +327,17 @@ local function playBattle(game, label)
         log("  → joguei [%s] (%s)", table.concat(pickNames, ", "),
             why ~= "" and why or "passei o turno")
 
+        -- Ordem importa: debuffs (Vulnerável) ANTES dos ataques.
+        table.sort(picks, function(x, y)
+            local function rank(c)
+                for _, e in ipairs(c.effects or {}) do
+                    if e.type == "apply_debuff" then return 0 end
+                end
+                if (c.attack or 0) > 0 then return 2 end
+                return 1
+            end
+            return rank(x) < rank(y)
+        end)
         for _, c in ipairs(picks) do game:selectCard(c) end
         local hpBefore = game.player.health
         local enemyBefore = game.enemy.health
@@ -276,6 +361,19 @@ local function playBattle(game, label)
     end
 
     pump(game, 1.5) -- death anim / eventos pendentes
+
+    -- métricas por ato (post-mortem: onde o output deixa de acompanhar)
+    do
+        local act = (game.runManager.currentRun
+            and game.runManager.currentRun.actNumber) or 1
+        local ba = battleStats.byAct[act]
+            or { dealt = 0, taken = 0, turns = 0, battles = 0 }
+        ba.dealt = ba.dealt + (game.enemy.maxHealth - math.max(0, game.enemy.health))
+        ba.taken = ba.taken + math.max(0, dmgTakenBefore - game.player.health)
+        ba.turns = ba.turns + turnCount
+        ba.battles = ba.battles + 1
+        battleStats.byAct[act] = ba
+    end
 
     local won = not game.enemy:isAlive() and game.player:isAlive()
     battleStats.battles = battleStats.battles + 1
@@ -323,6 +421,24 @@ end
 
 local RARITY_SCORE = { common = 1, uncommon = 3, rare = 6, legendary = 10 }
 
+-- Arquétipo por classe (prior de deck-building): o bot compra pra FOCAR,
+-- não pra colecionar — combos exigem densidade da mesma tag.
+local CLASS_ARCHETYPE = {
+    warrior = { strike = 3, armor = 2, defend = 2, strength = 2 },
+    mage    = { channel = 3, magic = 3, lightning = 2, evoke = 2 },
+    rogue   = { poison = 3, strike = 2, finisher = 2 },
+}
+
+local function archetypeScore(game, cardData)
+    local classId = game.selectedClass or "warrior"
+    local prior = CLASS_ARCHETYPE[classId] or {}
+    local s = 0
+    for _, t in ipairs(TagSystem.getCardTags(cardData or {})) do
+        s = s + (prior[t] or 0)
+    end
+    return s
+end
+
 local function doRewards(game)
     game.shopSystem:setMode("rewards")
     game.shopSystem:generateOffers()
@@ -333,7 +449,8 @@ local function doRewards(game)
         if o.type == "card" and game.economySystem:canAfford(o.cost) then
             local cd = game.deckManager.cardDatabase:getCard(o.id)
             local s = (RARITY_SCORE[o.rarity or "common"] or 1) * 2
-                + classTagAffinity(game, cd) - o.cost * 0.5
+                + classTagAffinity(game, cd)
+                + archetypeScore(game, cd) * 2 - o.cost * 0.5
             if s > bestScore then best, bestScore = o, s end
         end
     end
@@ -365,13 +482,33 @@ local function chooseNode(game, pending)
     local gold = game.economySystem.currentGold
     local BT = MapManager.NODE_TYPES
 
+    -- v2: força do deck decide se elite compensa (dano médio por turno
+    -- estimado vs 6 turnos de batalha).
+    local deckDmg = 0
+    local deckN = 0
+    for _, id in ipairs(game.runManager.currentRun.currentDeck or {}) do
+        local cd = game.deckManager.cardDatabase:getCard(id)
+        if cd and (cd.attack or 0) > 0 then
+            deckDmg = deckDmg + cd.attack / math.max(1, cd.cost or 1)
+            deckN = deckN + 1
+        end
+    end
+    local dmgPerMana = deckN > 0 and deckDmg / deckN or 7
+    local dptEstimate = dmgPerMana * (game.player.maxMana or 3)
+    local ActSystem = require("src.systems.ActSystem")
+    local run = game.runManager.currentRun
+    local eliteStats = ActSystem.getEnemyStats(run.actNumber,
+        math.min(8, run.floorInAct + 1), "elite")
+    local canElite = dptEstimate * 6 >= (eliteStats.health or 60)
+
     -- prioridade situacional
     local want
     if hpRatio < 0.5 then
         want = { BT.REST, BT.EVENT, BT.BATTLE, BT.SHOP }
     elseif gold >= 14 then
-        want = { BT.SHOP, BT.ELITE, BT.BATTLE, BT.EVENT, BT.REST }
-    elseif hpRatio > 0.75 then
+        want = canElite and { BT.SHOP, BT.ELITE, BT.BATTLE, BT.EVENT, BT.REST }
+            or { BT.SHOP, BT.BATTLE, BT.EVENT, BT.REST, BT.ELITE }
+    elseif hpRatio > 0.75 and canElite then
         want = { BT.ELITE, BT.BATTLE, BT.EVENT, BT.SHOP, BT.REST }
     else
         want = { BT.BATTLE, BT.EVENT, BT.REST, BT.SHOP, BT.ELITE }
@@ -392,14 +529,17 @@ local function doRest(game)
         p:heal(amt)
         log("- Acampamento: **descansei** +%d HP → %d/%d", amt, p.health, p.maxHealth)
     else
-        -- forja a carta mais repetida do deck (mais cópias = mais valor)
+        -- forja a carta de ATAQUE com mais cópias (dano escala a run;
+        -- +2 atk em 3 cópias = +6 de output por ciclo do deck)
         local counts = {}
         for _, id in ipairs(game.runManager.currentRun.currentDeck) do
             counts[id] = (counts[id] or 0) + 1
         end
         local bestId, bestN = nil, 0
         for id, n in pairs(counts) do
-            if n > bestN then bestId, bestN = id, n end
+            local cd = game.deckManager.cardDatabase:getCard(id)
+            local weight = n * (((cd and cd.attack or 0) > 0) and 2 or 1)
+            if weight > bestN then bestId, bestN = id, weight end
         end
         if bestId then
             local lvl = game.runManager:upgradeCard(bestId)
@@ -436,7 +576,7 @@ local function doShop(game)
         if afford and o.type == "card" then
             local cd = game.deckManager.cardDatabase:getCard(o.id)
             local s = (RARITY_SCORE[o.rarity or "common"] or 1) * 2
-                + classTagAffinity(game, cd)
+                + classTagAffinity(game, cd) + archetypeScore(game, cd) * 2
             if s >= 6 then
                 game.economySystem:spendGold(o.cost, o.type, o.id)
                 game:addCardToRun(o.id)
@@ -474,6 +614,7 @@ local function playRun(classId, runIdx, maxEndlessFloors)
     battleStats = {
         battles = 0, turns = 0, dmgTaken = 0,
         realDecisionTurns = 0, totalTurns = 0,
+        byAct = {},   -- [act] = { dealt, taken, turns, battles }
     }
 
     log("")
@@ -586,6 +727,23 @@ local function playRun(classId, runIdx, maxEndlessFloors)
             and 100 * battleStats.realDecisionTurns / battleStats.totalTurns or 0)
     log("- Deck final: %d cartas | Ouro final: $%d | Score: %d",
         #(run.currentDeck or {}), game.economySystem.currentGold, game.score)
+
+    -- POST-MORTEM: output vs pressão por ato + composição do deck
+    for act, ba in pairs(battleStats.byAct) do
+        if ba.turns > 0 then
+            log("- A%d: dano/turno %.1f | sofrido/turno %.1f | %.1f turnos/batalha",
+                act, ba.dealt / ba.turns, ba.taken / ba.turns,
+                ba.turns / math.max(1, ba.battles))
+        end
+    end
+    do
+        local names = {}
+        for _, id in ipairs(run.currentDeck or {}) do
+            local cd = game.deckManager.cardDatabase:getCard(id)
+            table.insert(names, (cd and cd.name or id))
+        end
+        log("- Deck: %s", table.concat(names, ", "))
+    end
 
     return outcome
 end

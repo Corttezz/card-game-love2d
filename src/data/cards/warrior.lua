@@ -165,7 +165,66 @@ return {
         effects = {},
     },
 
+    warrior_war_cry = {
+        id = "warrior_war_cry", name = "Grito de Guerra",
+        type = "effect", subtype = "power",
+        cost = 1, attack = 0, defense = 0,
+        description = "+2 de Forca nesta batalha.",
+        image = "assets/cards/attack/theRock.png",
+        rarity = "uncommon", class = "warrior",
+        tags = { "strength", "scaling" },
+        effects = {
+            { type = "gain_strength", value = 2 },
+        },
+    },
+    warrior_twin_strike = {
+        id = "warrior_twin_strike", name = "Golpe Duplo",
+        type = "attack", subtype = "skill",
+        cost = 2, attack = 6, defense = 0,
+        description = "Causa 6 de dano, 2 vezes. Forca conta em cada golpe.",
+        image = "assets/cards/attack/theRock.png",
+        rarity = "uncommon", class = "warrior",
+        tags = { "strike" },
+        effects = {
+            { type = "multi_hit", value = 2 },
+        },
+    },
+    warrior_iron_discipline = {
+        id = "warrior_iron_discipline", name = "Disciplina de Ferro",
+        type = "defense", subtype = "skill",
+        cost = 2, attack = 0, defense = 10,
+        description = "10 de Bloqueio. +1 de Forca nesta batalha.",
+        image = "assets/cards/defense/ironShield.png",
+        rarity = "uncommon", class = "warrior",
+        tags = { "defend", "armor", "strength" },
+        effects = {
+            { type = "gain_strength", value = 1 },
+        },
+    },
+
     -- ========== RARE ==========
+    warrior_colossus_blow = {
+        id = "warrior_colossus_blow", name = "Golpe Colossal",
+        type = "attack", subtype = "skill",
+        cost = 3, attack = 24, defense = 0,
+        description = "Causa 24 de dano.",
+        image = "assets/cards/attack/theRock.png",
+        rarity = "rare", class = "warrior",
+        tags = { "strike", "finisher" },
+        effects = {},
+    },
+    warrior_standard_bearer = {
+        id = "warrior_standard_bearer", name = "Porta-Estandarte",
+        type = "joker", subtype = "power",
+        cost = 1, attack = 0, defense = 0,
+        description = "+3 de dano em todos os ataques.",
+        image = "assets/jokers/joker1.png",
+        rarity = "rare", class = "warrior",
+        tags = { "strike", "scaling" },
+        effects = {
+            { type = "damage_bonus", target = "attack", value = 3 },
+        },
+    },
     warrior_berserk = {
         id = "warrior_berserk", name = "Berserk",
         type = "joker", subtype = "power",

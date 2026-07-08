@@ -132,3 +132,47 @@ TopBar = RoundEval); reroll linear 5+2/reroll.
 - Decks finais 10-16 cartas (antes 3-10) — recompensas grátis destravaram
   a progressão.
 - Próxima calibração candidata: Ato 2 (os 4 que passam morrem em F3-F7).
+
+
+---
+
+## Baterias 3-5 — cérebro v2 + 17 cartas novas + tune de bosses
+
+**Cérebro v2 do piloto**: lethal considera combos do conjunto (strike ×1.4,
+magic ×1.5); Vulnerável jogado ANTES dos ataques (ordem importa); valor
+escolhido por sinergia (2ª carta da mesma tag de combo vale +4);
+deck-building com ARQUÉTIPO por classe (warrior strike/armor, mage
+channel/magic, rogue poison/strike); forja prioriza ataques; elite só
+quando o dano estimado do deck aguenta; post-mortem por ato no diário.
+
+**Diagnóstico da bateria 3 (12 runs)**: o problema NÃO era só o script —
+1 vitória (rogue 15.788 pts) escalou dano 24→59→124/turno com 3× Rage;
+as 10 mortes ficaram TRAVADAS em ~17-25 dano/turno do A1 ao A2. Faltava
+ESCALONAMENTO no pool (dano flat de common não acompanha HP 70→270).
+
+**17 cartas novas** (motores de scaling + payoffs custo 2-3):
+- Warrior: Grito de Guerra (+2 Força), Golpe Duplo (6×2, Força conta 2×),
+  Disciplina de Ferro (10 blq +1 Força), Golpe Colossal (24), Porta-
+  Estandarte (joker +3 dano).
+- Mage: Sobrecarga (9 + Raio 3), Foco Arcano (+2 Força), Estaca Mental
+  (10 + compra 1), Raios Gêmeos (5×2 + Raio 2), Torrente Arcana (22).
+- Rogue: Lâmina Envenenada (4 Veneno/3t), Presas Gêmeas (5×2 + Veneno),
+  Expor Fraqueza (Vulnerável + compra 1), Dança das Sombras (+2 Destreza),
+  Carrasco (22).
+- Basic: Cutilada (13/2), Baluarte (13 blq/2).
+
+**Tune de bosses** (bateria 4 mostrou todo mundo morrendo NO boss):
+A2 300→220 HP / 22→18 dmg; A3 500→420 / 32→26.
+
+**Progressão das baterias** (runs que saem do Ato 1):
+| Bateria | Estado | Ao Ato 2+ |
+|---|---|---|
+| 1 | pós-overhaul cru | 0/6 |
+| 2 | bugs A+B+C corrigidos | 4/6 |
+| 3 | cérebro v2 | 5/6 + 1 VITÓRIA |
+| 4 | +17 cartas | 9/12 (mortes concentradas nos bosses) |
+| 5 | bosses tunados | 11/12, 1 chega ao A3 |
+
+Funil atual: meio/fim do Ato 2 (mini-boss F7). Para um bot mediano é o
+ponto certo — humano deve vencer ~30-50% das runs. Próximo passo é teste
+HUMANO calibrar o resto.

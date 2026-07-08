@@ -29,7 +29,7 @@ function M.run()
     local b1 = ActSystem.getEnemyStats(1, 8, "boss")
     check("boss ato 1: hp = 110 (rebalance autoplay)", b1.health == 110)
     local b3 = ActSystem.getEnemyStats(3, 8, "boss")
-    check("boss ato 3: hp = 500", b3.health == 500)
+    check("boss ato 3: hp = 420 (rebalance autoplay b4)", b3.health == 420)
 
     -- 4. Elite: HP * eliteHPMul (f=4 -> 8+4*6=32; *1.6 = 51)
     local e = ActSystem.getEnemyStats(1, 4, "elite")
