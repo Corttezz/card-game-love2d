@@ -3047,9 +3047,14 @@ local function drawEncounterFront(g, x, w, camZ)
     -- oclui luz bem mais funda (castelo); poça de luminária que ele cruza
     -- na viagem continua iluminando-o (sem o viés ele APAGAVA ao passar
     -- por braseiro, estrobando com o flicker)
+    -- v9.2 (feedback: "andando fica numa cor ok, mas estático escurece do
+    -- nada"): o billboard da viagem precisa do MESMO lift do EnemyRenderer
+    -- estático — senão o handoff viagem→batalha muda o brilho de repente.
+    local amb = LightEngine.ambientLuma and LightEngine.ambientLuma() or 1
+    local lift = math.min(1.7, math.max(1, 0.78 / math.max(0.2, amb)))
     if e.anim then
         LightEngine.submitOccluder({
-            z = rel + 6, bx = oxT, by = oyT, w = e.iw * s, h = e.ih * s,
+            z = rel + 6, lift = lift, bx = oxT, by = oyT, w = e.iw * s, h = e.ih * s,
             fn = function()
                 -- SpriteAnimation:draw ignora setColor — repassa via
                 -- getColor (mesmo padrão do occluder do EnemyRenderer)
@@ -3059,7 +3064,7 @@ local function drawEncounterFront(g, x, w, camZ)
         })
     else
         LightEngine.submitOccluder({
-            z = rel + 6, img = e.img, x = oxT, y = oyT, sx = s, sy = s,
+            z = rel + 6, lift = lift, img = e.img, x = oxT, y = oyT, sx = s, sy = s,
             bx = oxT, by = oyT, w = e.iw * s, h = e.ih * s,
         })
     end

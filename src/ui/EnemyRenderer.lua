@@ -464,8 +464,10 @@ function EnemyRenderer.draw(game, cx, cy)
         -- Agora o LIFT levanta a leitura SÓ nos pixels da silhueta (recorte
         -- pixel-perfeito, ZERO halo). Escala pelo ambiente: escuro levanta
         -- mais, claro não mexe (teto 1.6). Igual em todos os biomas.
+        -- mesmo piso do billboard da viagem (drawEncounterFront) — o
+        -- handoff viagem→batalha NÃO pode mudar o brilho do monstro
         local amb = LightEngine.ambientLuma and LightEngine.ambientLuma() or 1
-        local lift = math.min(1.6, math.max(1, 0.62 / math.max(0.2, amb)))
+        local lift = math.min(1.7, math.max(1, 0.78 / math.max(0.2, amb)))
         if animRef or staticRef then
             LightEngine.submitOccluder({
                 z = 9 + 6,   -- BATTLE_REL + viés (sem require circular)
