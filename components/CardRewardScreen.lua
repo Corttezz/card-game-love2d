@@ -7,6 +7,7 @@ CardRewardScreen.__index = CardRewardScreen
 local Config = require("src.core.Config")
 local Debug = require("src.core.Debug")
 local FontManager = require("src.ui.FontManager")
+local HintBar = require("src.ui.HintBar")
 local Theme = require("src.ui.Theme")
 local Palette = require("src.ui.Palette")
 local PixelCanvas = require("src.ui.PixelCanvas")
@@ -1379,22 +1380,9 @@ function CardRewardScreen:_updateHoverState()
 end
 
 function CardRewardScreen:drawInstructions()
-    local screenWidth = love.graphics.getWidth()
-    local screenHeight = love.graphics.getHeight()
-
-    local instructionFont = FontManager.getFont(14)
-    love.graphics.setFont(instructionFont)
-
-    local instructions = I18n.t("reward.instructions")
-    local instructionWidth = instructionFont:getWidth(instructions)
-    local instructionX = (screenWidth - instructionWidth) / 2
-    local instructionY = screenHeight - 40
-
-    love.graphics.setColor(0, 0, 0, 0.5)
-    love.graphics.rectangle("fill", instructionX - 10, instructionY - 5, instructionWidth + 20, 20, 5)
-
-    love.graphics.setColor(0.8, 0.8, 0.8, 1)
-    love.graphics.print(instructions, instructionX, instructionY)
+    -- F1 do UI Overhaul: HintBar padronizada — SEMPRE cabe na tela (o texto
+    -- antigo estourava dos dois lados e atropelava o botão Pular)
+    HintBar.draw(I18n.t("reward.instructions"))
 end
 
 function CardRewardScreen:mousepressed(x, y, button)

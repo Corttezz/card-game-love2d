@@ -589,6 +589,24 @@ function love.load(loveArgs)
         )
         menu:hide()
     end)
+    -- CONTINUAR (F1 do UI Overhaul): retoma a run salva do disco.
+    menu:setContinueCallback(function()
+        Sfx.play("menuOpen")
+        if not game.runManager:loadRun() then
+            print("Continuar: nenhum save válido")
+            menu:show()
+            return
+        end
+        currentState = "playing"
+        if FlashShader and FlashShader.trigger then FlashShader.trigger(0.5, 0.4) end
+        game:resumeRun()
+        gameUI:show()
+        menu:hide()
+        if smokeSystem then
+            local act = math.min(3, (game.runManager.currentRun.actNumber or 1))
+            SmokeConfig.applyToSystem(smokeSystem, "act" .. act)
+        end
+    end)
     menu:setCollectionCallback(function()
         Sfx.play("menuOpen")
         currentState = "collection"

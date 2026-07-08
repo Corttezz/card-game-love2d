@@ -62,6 +62,30 @@ function Menu:createButtons()
     local buttonHeight = Config.Utils.getResponsiveSize(Config.UI.BUTTON_HEIGHT_RATIO, 60, "height")
     local spacing = Config.Utils.getResponsiveSize(Config.UI.BUTTON_SPACING_RATIO, 80, "height")
     
+    -- Botão Continuar (F1): só aparece com run salva em disco. Retomar é a
+    -- ação mais provável de quem tem save — fica ACIMA de Jogar.
+    local SaveManager = require("engine.SaveManager")
+    self._hasSave = SaveManager.hasRun and SaveManager.hasRun() or false
+    if self._hasSave then
+        self.buttons.continueRun = Button:new(
+            centerX - buttonWidth / 2,
+            startY - spacing,
+            buttonWidth,
+            buttonHeight,
+            I18n.t("menu.continue"),
+            function()
+                self.visible = false
+                if Sfx.fadeMusicOut then Sfx.fadeMusicOut(0.5) end
+                if self.onContinueCallback then self.onContinueCallback() end
+            end,
+            Theme.Colors.SUCCESS,
+            22
+        )
+        self.buttons.continueRun:setIcon("scroll")
+    else
+        self.buttons.continueRun = nil
+    end
+
     -- Botão Jogar
     self.buttons.play = Button:new(
         centerX - buttonWidth / 2,
@@ -126,6 +150,11 @@ function Menu:updatePositions()
     local spacing = Config.Utils.getResponsiveSize(Config.UI.BUTTON_SPACING_RATIO, 80, "height")
     
     -- Reposiciona cada botão
+    if self.buttons.continueRun then
+        self.buttons.continueRun:setPosition(centerX - buttonWidth / 2, startY - spacing)
+        self.buttons.continueRun.width = buttonWidth
+        self.buttons.continueRun.height = buttonHeight
+    end
     if self.buttons.play then
         self.buttons.play:setPosition(centerX - buttonWidth / 2, startY)
         self.buttons.play.width = buttonWidth
@@ -228,7 +257,6 @@ function Menu:draw()
     end
 
     -- Instruções
-    self:drawInstructions()
 
     -- Reseta cor
     love.graphics.setColor(1, 1, 1, 1)
@@ -359,24 +387,8 @@ function Menu:_drawFloatingCards()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-function Menu:drawInstructions()
-    Palette.set(Palette.PARCHMENT_DARK)
-    local instructionFont = FontManager.getResponsiveFont(Config.UI.INSTRUCTION_FONT_RATIO, 10)
-    love.graphics.setFont(instructionFont)
-
-    local instructions = {
-        I18n.t("menu.instr_mouse"),
-        I18n.t("menu.instr_space"),
-        I18n.t("menu.instr_restart"),
-        I18n.t("menu.instr_jokers"),
-    }
-
-    local y = math.floor(love.graphics.getHeight() * 0.88)
-    for i, instruction in ipairs(instructions) do
-        local x = math.floor(love.graphics.getWidth() / 2 - instructionFont:getWidth(instruction) / 2)
-        love.graphics.print(instruction, x, y + (i - 1) * (instructionFont:getHeight() + 4))
-    end
-end
+-- (F1 do UI Overhaul: drawInstructions REMOVIDO — instruções de gameplay
+-- vazavam por cima da arte do livro; dicas de jogo pertencem ao gameplay.)
 
 function Menu:onPlayClick()
     self.visible = false
@@ -410,6 +422,7 @@ function Menu:onCollectionClick()
 end
 
 function Menu:setCollectionCallback(cb) self.onCollectionCallback = cb end
+function Menu:setContinueCallback(cb) self.onContinueCallback = cb end
 function Menu:setSettingsCallback(cb) self.onSettingsCallback = cb end
 
 function Menu:onQuitClick()
@@ -421,6 +434,9 @@ function Menu:setPlayCallback(callback)
 end
 
 function Menu:show()
+    -- recria botões: o save pode ter surgido/sumido desde a última visita
+    -- (Continuar aparece/some — F1 do UI Overhaul)
+    self:createButtons()
     self.visible = true
 end
 

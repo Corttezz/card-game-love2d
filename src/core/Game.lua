@@ -108,6 +108,7 @@ function Game:startGame()
     self._exhaustedThisBattle = {}
     self._deathHandled = false
     self._deathPauseTimer = 0
+    self._saveDeleted = false
 
     self.economySystem:resetForNewRun()
     self.economySystem.currentGold = 10
@@ -976,6 +977,7 @@ function Game:nextPhase()
     self._exhaustedThisBattle = {}
     self._deathHandled = false
     self._deathPauseTimer = 0
+    self._saveDeleted = false
 
     self.currentPhase = self.currentPhase + 1
     self.score = self.score + Config.Game.BASE_SCORE_PER_PHASE * self.currentPhase
@@ -1037,6 +1039,77 @@ function Game:nextPhase()
     end
 
     self:addMessage("Fase " .. self.currentPhase .. " iniciada!", "info")
+
+    -- CHECKPOINT (F1 do UI Overhaul): persiste a run a cada andar novo —
+    -- fecha o gap "save/load existe mas sem botão Continuar".
+    self:checkpointRun()
+end
+
+-- ============================================================================
+-- Continuar (F1 do UI Overhaul): save em checkpoint + resume da run salva
+-- ============================================================================
+
+-- Sincroniza HP/ouro do jogador pra dentro da run (antes de persistir).
+function Game:syncRunPlayerState()
+    local run = self.runManager and self.runManager.currentRun
+    if not run then return end
+    run.playerState = run.playerState or {}
+    if self.player then
+        run.playerState.maxHealth = self.player.maxHealth
+        run.playerState.currentHealth = self.player.health
+    end
+    if self.economySystem then
+        run.playerState.gold = self.economySystem.currentGold
+    end
+end
+
+-- Checkpoint: sincroniza e salva em disco (no-op fora do run mode).
+function Game:checkpointRun()
+    if not self.isRunMode then return end
+    if not (self.runManager and self.runManager:hasActiveRun()) then return end
+    self:syncRunPlayerState()
+    self.runManager:saveRun()
+end
+
+-- Retoma uma run carregada (chamar DEPOIS de runManager:loadRun()):
+-- remonta o jogo no andar salvo com deck/jokers/HP/ouro/inimigo corretos.
+function Game:resumeRun()
+    local run = self.runManager and self.runManager.currentRun
+    if not run then return false end
+    self.isRunMode = true
+    self.selectedClass = run.classId
+
+    -- startGame monta o deck da run (initializeDeck usa run.currentDeck) e
+    -- os jokers (_syncJokersFromRun) — mas reseta player/economia/inimigo.
+    self:startGame()
+
+    -- Restaura o estado salvo por cima do reset:
+    local ps = run.playerState
+    if ps and ps.maxHealth then
+        self.player.maxHealth = ps.maxHealth
+        self.player.health = math.max(1,
+            math.min(ps.currentHealth or ps.maxHealth, ps.maxHealth))
+    end
+    if ps and ps.gold then
+        self.economySystem.currentGold = ps.gold
+    end
+
+    -- Inimigo do andar salvo (mesma receita do nextPhase run-mode):
+    local nodeType = (run.currentNode and run.currentNode.type) or "battle"
+    local stats = ActSystem.getEnemyStats(run.actNumber, run.floorInAct, nodeType)
+    self.enemy = Enemy:new(stats.health, stats.damage)
+    local spriteAct = run.actNumber
+    if run.endlessMode then
+        spriteAct = 4 + math.floor(math.max(0, (run.currentFloor or 25) - 25) / 8)
+    end
+    local EnemyRenderer = require("src.ui.EnemyRenderer")
+    self.enemy.spriteId = EnemyRenderer.resolveSpriteId(spriteAct, nodeType)
+    self.enemy.isBoss = (nodeType == "boss" or nodeType == "mini_boss")
+
+    self:addMessage("Corrida retomada: "
+        .. ActSystem.getActName(run.actNumber, run.floorInAct)
+        .. " — andar " .. run.floorInAct, "success")
+    return true
 end
 
 function Game:addMessage(text, type)
@@ -1049,6 +1122,11 @@ end
 function Game:checkGameOver()
     if not self.player:isAlive() then
         self.gameState = "gameOver"
+        -- morte encerra a run: apaga o save (Continuar não ressuscita)
+        if self.isRunMode and self.runManager and not self._saveDeleted then
+            self._saveDeleted = true
+            self.runManager:deleteSave()
+        end
         return true
     end
     return false
