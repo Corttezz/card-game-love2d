@@ -1,22 +1,34 @@
 -- components/ClassSelectionScreen.lua
--- Tela para seleção de classe antes de iniciar uma run
+-- Tela para seleção de classe antes de iniciar uma run.
+--
+-- F4 do UI Overhaul (docs/plan/ui-ux-overhaul-v1.md): 3 PAINÉIS-CLASSE com
+-- ícone, identidade, descrição e PREVIEW REAL das cartas iniciais — no lugar
+-- de 3 botões soltos sem nenhuma informação (diagnóstico: "ZERO informação
+-- por classe"). Hover levanta o painel; clique seleciona.
 
 local Button = require("components.Button")
 local Config = require("src.core.Config")
 local FontManager = require("src.ui.FontManager")
 local Theme = require("src.ui.Theme")
 local Palette = require("src.ui.Palette")
+local Panel9 = require("src.ui.Panel9")
 local PixelCanvas = require("src.ui.PixelCanvas")
 local SceneBackground = require("src.ui.SceneBackground")
 local CardRegistry = require("src.systems.CardRegistry")
+local CardDatabase = require("src.systems.CardDatabase")
+local IconLoader = require("src.ui.IconLoader")
+local HintBar = require("src.ui.HintBar")
 local Debug = require("src.core.Debug")
 local I18n = require("src.i18n.I18n")
 
 local CLASS_ICONS = {
-    warrior = "sword_short",
+    warrior = "sword_great",
     mage    = "orb",
     rogue   = "dagger",
 }
+
+-- Ordem FIXA de exibição (pairs() embaralhava a ordem entre sessões)
+local CLASS_ORDER = { "warrior", "mage", "rogue" }
 
 local ClassSelectionScreen = {}
 ClassSelectionScreen.__index = ClassSelectionScreen
@@ -25,52 +37,76 @@ function ClassSelectionScreen:new()
     local instance = setmetatable({}, ClassSelectionScreen)
     instance.visible = false
     instance.buttons = {}
+    instance.panels = {}          -- {classId, x, y, w, h, btn, info, cards}
     instance.cardRegistry = CardRegistry:new()
     instance.selectedClass = nil
-    
+    instance._starterCache = {}   -- classId -> {cardInstance, ...}
+
     -- Callbacks
     instance.onClassSelected = nil
     instance.onBackToMenu = nil
-    
-    -- Cria os botões das classes
+
     instance:createClassButtons()
-    
+
     return instance
 end
 
-function ClassSelectionScreen:createClassButtons()
-    local classes = self.cardRegistry:getAllClasses()
-    local centerX = love.graphics.getWidth() / 2
-    local startY = love.graphics.getHeight() * 0.4
-    local buttonWidth = Config.Utils.getResponsiveSize(Config.UI.BUTTON_WIDTH_RATIO, 300, "width")
-    local buttonHeight = Config.Utils.getResponsiveSize(Config.UI.BUTTON_HEIGHT_RATIO, 80, "height")
-    local spacing = Config.Utils.getResponsiveSize(Config.UI.BUTTON_SPACING_RATIO, 100, "height")
-    
-    local classIndex = 1
-    for classId, classInfo in pairs(classes) do
-        local button = Button:new(
-            centerX - buttonWidth / 2,
-            startY + (classIndex - 1) * spacing,
-            buttonWidth,
-            buttonHeight,
-            classInfo.name:upper(),
-            function() self:selectClass(classId) end,
-            classInfo.color or Theme.Colors.PRIMARY,
-            16
-        )
-        button:setIcon(CLASS_ICONS[classId] or "scroll")
+-- Instâncias visuais das cartas iniciais (CardFrame real, cacheado).
+function ClassSelectionScreen:_starterCards(classId)
+    if self._starterCache[classId] then return self._starterCache[classId] end
+    local out = {}
+    local ids = self.cardRegistry:getStarterDeckForClass(classId)
+    for _, id in ipairs(ids) do
+        local cd = CardDatabase:getCard(id)
+        if cd then
+            local ok, inst = pcall(function()
+                return CardDatabase:createCardInstance(cd)
+            end)
+            if ok and inst then table.insert(out, inst) end
+        end
+    end
+    self._starterCache[classId] = out
+    return out
+end
 
-        self.buttons[classId] = button
-        classIndex = classIndex + 1
+function ClassSelectionScreen:createClassButtons()
+    self.buttons = {}
+    self.panels = {}
+
+    local sw = love.graphics.getWidth()
+    local sh = love.graphics.getHeight()
+
+    local pw, ph = 280, 408
+    local gap = 28
+    local totalW = pw * 3 + gap * 2
+    local startX = math.floor((sw - totalW) / 2)
+    local py = math.floor(sh * 0.30)
+
+    for i, classId in ipairs(CLASS_ORDER) do
+        local info = self.cardRegistry:getClassInfo(classId)
+        if info then
+            local x = startX + (i - 1) * (pw + gap)
+            local panel = {
+                classId = classId,
+                info = info,
+                x = x, y = py, w = pw, h = ph,
+                cards = self:_starterCards(classId),
+            }
+            panel.btn = Button:new(x, py, pw, ph, "",
+                function() self:selectClass(classId) end)
+            panel.btn:setVariant("invisible")
+            table.insert(self.panels, panel)
+            self.buttons[classId] = panel.btn
+        end
     end
 
     -- Botão voltar ao menu
     local backButtonWidth = Config.Utils.getResponsiveSize(Config.UI.BUTTON_WIDTH_RATIO, 200, "width")
-    local backButtonHeight = Config.Utils.getResponsiveSize(Config.UI.BUTTON_HEIGHT_RATIO, 50, "height")
+    local backButtonHeight = 44
 
     self.buttons.back = Button:new(
-        centerX - backButtonWidth / 2,
-        startY + (classIndex - 1) * spacing + 50,
+        math.floor(sw / 2 - backButtonWidth / 2),
+        py + ph + 20,
         backButtonWidth,
         backButtonHeight,
         I18n.t("class_select.back"),
@@ -91,34 +127,9 @@ function ClassSelectionScreen:createClassButtons()
 end
 
 function ClassSelectionScreen:updatePositions()
-    local classes = self.cardRegistry:getAllClasses()
-    local centerX = love.graphics.getWidth() / 2
-    local startY = love.graphics.getHeight() * 0.4
-    local buttonWidth = Config.Utils.getResponsiveSize(Config.UI.BUTTON_WIDTH_RATIO, 300, "width")
-    local buttonHeight = Config.Utils.getResponsiveSize(Config.UI.BUTTON_HEIGHT_RATIO, 80, "height")
-    local spacing = Config.Utils.getResponsiveSize(Config.UI.BUTTON_SPACING_RATIO, 100, "height")
-    
-    local classIndex = 1
-    for classId, button in pairs(self.buttons) do
-        if classId ~= "back" then
-            button:setPosition(centerX - buttonWidth / 2, startY + (classIndex - 1) * spacing)
-            button.width = buttonWidth
-            button.height = buttonHeight
-            classIndex = classIndex + 1
-        end
-    end
-    
-    -- Reposiciona botão voltar
-    if self.buttons.back then
-        local backButtonWidth = Config.Utils.getResponsiveSize(Config.UI.BUTTON_WIDTH_RATIO, 200, "width")
-        local backButtonHeight = Config.Utils.getResponsiveSize(Config.UI.BUTTON_HEIGHT_RATIO, 50, "height")
-        self.buttons.back:setPosition(
-            centerX - backButtonWidth / 2,
-            startY + (classIndex - 1) * spacing + 50
-        )
-        self.buttons.back.width = backButtonWidth
-        self.buttons.back.height = backButtonHeight
-    end
+    -- layout inteiro depende de sw/sh: recriar é o caminho mais simples e
+    -- barato (padrão resize_pattern.md)
+    self:createClassButtons()
 end
 
 function ClassSelectionScreen:selectClass(classId)
@@ -155,6 +166,63 @@ function ClassSelectionScreen:update(dt)
     end
 end
 
+-- Painel de classe: moldura + ícone + nome + descrição + cartas iniciais.
+function ClassSelectionScreen:_drawClassPanel(p)
+    local hover = p.btn and p.btn.hover
+    local lift = hover and -6 or 0
+    local x, y, w, h = p.x, p.y + lift, p.w, p.h
+
+    Panel9.draw("panel_main", x, y, w, h, {
+        tint = hover and { 1.12, 1.08, 0.9, 1 } or nil,
+    })
+
+    -- Ícone da classe
+    local icon = IconLoader.get(CLASS_ICONS[p.classId] or "scroll")
+    if icon and icon.size then
+        local s = 48 / icon.size.w
+        icon.draw(math.floor(x + w / 2 - icon.size.w * s / 2), y + 34, s)
+    end
+
+    -- Nome
+    local nameFont = FontManager.getFont(16)
+    love.graphics.setFont(nameFont)
+    Palette.set(hover and Palette.RUST or Palette.INK)
+    local name = (p.info.name or p.classId):upper()
+    love.graphics.print(name,
+        math.floor(x + w / 2 - nameFont:getWidth(name) / 2), y + 96)
+
+    -- Descrição (wrap, INK sobre pergaminho)
+    local descFont = FontManager.getFont(9)
+    love.graphics.setFont(descFont)
+    Palette.set(Palette.INK)
+    love.graphics.printf(p.info.description or "", x + 26, y + 128,
+        w - 52, "center")
+
+    -- Cartas iniciais (CardFrame REAL em miniatura)
+    local label = "Deck inicial:"
+    local lf = FontManager.getFont(9)
+    love.graphics.setFont(lf)
+    Palette.set(Palette.RUST)
+    love.graphics.print(label,
+        math.floor(x + w / 2 - lf:getWidth(label) / 2), y + 192)
+
+    local cardScale = 0.92
+    local cw = 96 * cardScale
+    local chh = 144 * cardScale
+    local totalCw = #p.cards * cw + math.max(0, #p.cards - 1) * 14
+    local cx = math.floor(x + w / 2 - totalCw / 2)
+    local cy = y + 216
+    for _, inst in ipairs(p.cards) do
+        if inst.image then
+            love.graphics.setColor(1, 1, 1, 1)
+            love.graphics.draw(inst.image, cx, cy, 0, cardScale, cardScale)
+        end
+        cx = cx + cw + 14
+    end
+
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
 function ClassSelectionScreen:draw()
     if not self.visible then return end
 
@@ -173,11 +241,14 @@ function ClassSelectionScreen:draw()
     end
 
     self:drawTitle()
-    self:drawDescription()
 
-    for _, button in pairs(self.buttons) do
-        button:draw()
+    for _, p in ipairs(self.panels) do
+        self:_drawClassPanel(p)
     end
+
+    if self.buttons.back then self.buttons.back:draw() end
+
+    HintBar.draw(I18n.t("class_select.description"))
 end
 
 function ClassSelectionScreen:drawTitle()
@@ -203,20 +274,6 @@ function ClassSelectionScreen:drawTitle()
     love.graphics.print(title, titleX + 1, titleY + 1)
     Palette.set(Palette.AGED_GOLD_LIGHT)
     love.graphics.print(title, titleX, titleY)
-end
-
-function ClassSelectionScreen:drawDescription()
-    local descFont = FontManager.getResponsiveFont(Config.UI.INSTRUCTION_FONT_RATIO, 10)
-    love.graphics.setFont(descFont)
-
-    local description = I18n.t("class_select.description")
-    local descX = math.floor(love.graphics.getWidth() / 2 - descFont:getWidth(description) / 2)
-    local descY = math.floor(love.graphics.getHeight() * 0.22)
-
-    Palette.set(Palette.INK)
-    love.graphics.print(description, descX + 1, descY + 1)
-    Palette.set(Palette.PARCHMENT_LIGHT)
-    love.graphics.print(description, descX, descY)
 end
 
 function ClassSelectionScreen:mousepressed(x, y, button)
