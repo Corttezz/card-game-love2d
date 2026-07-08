@@ -165,9 +165,8 @@ function RoundEvalScreen:_buildDynaTexts()
     if self.scoreData then
         local sd = self.scoreData
         self.scoreText = DynaText.new({
-            text = ("TINTA %d  x  SELO %.2f  =  %d PONTOS")
-                :format(sd.tinta, sd.selo, sd.total),
-            fontSize = 13,
+            text = ("+%d PONTOS"):format(sd.total),
+            fontSize = 15,
             bump = false,
             pop_in = 0.4,
             pop_in_rate = 5,
@@ -395,13 +394,45 @@ function RoundEvalScreen:draw()
     love.graphics.setLineWidth(1)
     love.graphics.line(panelX + 24, panelY + 60, panelX + panelW - 24, panelY + 60)
 
-    -- F3: banner TINTA × SELO = PONTOS (único momento de celebração do score).
-    if self.scoreText and self._scoreVisible then
-        self.scoreText:draw(sw * 0.5, panelY + 80)
+    -- F3: bloco de pontuação da batalha — total grande + recibo do que o
+    -- jogador FEZ pra ganhar cada bônus (feedback: fórmula era críptica).
+    local scoreBlockH = 0
+    if self.scoreData and self._scoreVisible then
+        if self.scoreText then
+            self.scoreText:draw(sw * 0.5, panelY + 80)
+        end
+        local lines = self.scoreData.breakdown or {}
+        local lf = FontManager.getFont(10)
+        love.graphics.setFont(lf)
+        local ly = panelY + 98
+        local lx = panelX + 60
+        local rx = panelX + panelW - 60
+        for _, item in ipairs(lines) do
+            if item.bad then
+                love.graphics.setColor(0.85, 0.45, 0.35, 0.95)
+            else
+                love.graphics.setColor(0.82, 0.78, 0.70, 0.95)
+            end
+            love.graphics.print(item.label, lx, ly)
+            if item.bad then
+                love.graphics.setColor(0.9, 0.4, 0.3, 1)
+            else
+                love.graphics.setColor(1, 0.85, 0.30, 1)
+            end
+            love.graphics.print(item.value, rx - lf:getWidth(item.value), ly)
+            ly = ly + 16
+        end
+        scoreBlockH = 34 + #lines * 16
+        -- separador fecha o bloco de score antes das rows de ouro
+        love.graphics.setColor(0.78, 0.65, 0.20, 0.4)
+        love.graphics.setLineWidth(1)
+        love.graphics.line(panelX + 24, ly + 4, panelX + panelW - 24, ly + 4)
+    elseif self.scoreData then
+        scoreBlockH = 34 + #(self.scoreData.breakdown or {}) * 16
     end
 
-    -- Rows: cada source (descem quando o banner de score existe).
-    local rowY = panelY + (self.scoreData and 104 or 90)
+    -- Rows de ouro: descem pra abrir espaço pro bloco de score.
+    local rowY = panelY + 90 + scoreBlockH
     local rowH = 36
     local labelX = panelX + 36
     local coinsX = panelX + panelW - 36

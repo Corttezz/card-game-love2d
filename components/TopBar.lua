@@ -181,6 +181,19 @@ function TopBar:drawGameInfo()
         love.graphics.setFont(FontManager.getFont(8))
         love.graphics.print(record and I18n.t("top_bar.score_record")
             or I18n.t("top_bar.score_label"), scoreX + 34, centerY + 6)
+
+        -- Hover no score → tooltip explicando COMO se ganha ponto (feedback:
+        -- "não entendi em que momento eu ganho"). StatusTooltip é global e
+        -- desenhado no fim do frame de gameplay.
+        local mx, my = love.mouse.getPosition()
+        if mx >= scoreX - 4 and mx <= scoreX + 130 and my >= 0 and my <= self.height then
+            local okST, StatusTooltip = pcall(require, "src.ui.StatusTooltip")
+            if okST and StatusTooltip.show then
+                local ProfileStats = require("engine.ProfileStats")
+                StatusTooltip.show("score", mx, my,
+                    { best = ProfileStats.get().bestScore or 0 })
+            end
+        end
     end
 
     love.graphics.setColor(1, 1, 1, 1)

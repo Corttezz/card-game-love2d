@@ -121,10 +121,44 @@ function ScoreSystem:finishBattle(game)
     selo = math.floor(selo * 100 + 0.5) / 100
     local total = math.floor(tinta * selo)
 
+    -- Recibo LEGÍVEL (feedback do dono: "TINTA×SELO não ficou claro").
+    -- Cada linha nomeia O QUE o jogador fez; a matemática fica implícita.
+    local breakdown = {}
+    table.insert(breakdown, {
+        label = "Inimigo derrotado", value = tostring(tinta) .. " pts" })
+    if turnsUsed < par then
+        table.insert(breakdown, {
+            label = ("Vitoria rapida (%d turnos)"):format(turnsUsed),
+            value = ("+%d%%"):format(math.floor(30 * (par - turnsUsed) + 0.5)) })
+    elseif turnsUsed > par then
+        table.insert(breakdown, {
+            label = ("Batalha longa (%d turnos)"):format(turnsUsed),
+            value = ("-%d%%"):format(math.floor(10 * (turnsUsed - par) + 0.5)),
+            bad = true })
+    end
+    if distinct > 0 then
+        table.insert(breakdown, {
+            label = ("Combos de cartas (%d)"):format(distinct),
+            value = ("+%d%%"):format(25 * distinct) })
+    end
+    if (b.maxCombosInTurn or 0) >= 3 then
+        table.insert(breakdown, {
+            label = "3+ combos no mesmo turno", value = "+50%" })
+    end
+    if lowHp then
+        table.insert(breakdown, {
+            label = "Viveu no limite (HP baixo)", value = "+50%" })
+    end
+    if flawless then
+        table.insert(breakdown, {
+            label = "Nao tomou NENHUM dano", value = "+100%" })
+    end
+
     self.lastBattle = {
         tinta = tinta, selo = selo, total = total,
         turns = turnsUsed, combos = distinct,
         flawless = flawless, lowHp = lowHp,
+        breakdown = breakdown,
     }
     self.runScore = self.runScore + total
     return self.lastBattle

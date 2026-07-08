@@ -210,6 +210,7 @@ return {
     -- name: label curto mostrado no header do tooltip
     -- desc: explicação da mecânica, suporta interpolação {stacks}/{duration}
     status = {
+        score      = { name = "Pontuacao", desc = "Voce ganha pontos ao VENCER batalhas: base pelo inimigo derrotado, com bonus por vencer rapido, disparar combos de cartas e nao tomar dano. Recorde atual: {best}." },
         poison     = { name = "Veneno",     desc = "Causa {stacks} de dano no fim de cada turno. Perde 1 stack por turno." },
         weak       = { name = "Fraco",      desc = "Dano infligido reduzido em 25%. Dura {duration} turno(s)." },
         vulnerable = { name = "Vulnerável", desc = "Recebe 50% mais dano de ataques. Dura {duration} turno(s)." },

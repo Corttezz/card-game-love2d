@@ -58,6 +58,12 @@ function M.run(phase)
     game.scoreSystem.lastBattle = {
         tinta = 240, selo = 2.3, total = 552,
         turns = 3, combos = 2, flawless = true, lowHp = false,
+        breakdown = {
+            { label = "Inimigo derrotado", value = "240 pts" },
+            { label = "Vitoria rapida (3 turnos)", value = "+30%" },
+            { label = "Combos de cartas (2)", value = "+50%" },
+            { label = "Nao tomou NENHUM dano", value = "+100%" },
+        },
     }
     screen:show(game, sources, function() end)
 
