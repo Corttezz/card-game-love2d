@@ -486,6 +486,13 @@ function love.load(loveArgs)
         return
     end
 
+    -- Regressão do caminho do CLIQUE (botões de turno via UI).
+    if loveArgs and loveArgs[1] == "smoke_ui_turn" then
+        local ok = require("tools.smoke_ui_turn").run()
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
     -- Regressão da ordem do turno (escudo vs apex da investida).
     if loveArgs and loveArgs[1] == "smoke_turn_order" then
         local ok = require("tools.smoke_turn_order").run()
@@ -506,7 +513,8 @@ function love.load(loveArgs)
         local okS = require("tools.smoke_shop").run()
         local okP = require("tools.smoke_packs").run()
         local okO = require("tools.smoke_turn_order").run()
-        local ok = okT and okE and okC and okM and okA and okD and okU and okS and okP and okO
+        local okUI = require("tools.smoke_ui_turn").run()
+        local ok = okT and okE and okC and okM and okA and okD and okU and okS and okP and okO and okUI
         print(ok and "\n== ALL GREEN ==" or "\n== SOME FAILED ==")
         love.event.quit(ok and 0 or 1)
         return

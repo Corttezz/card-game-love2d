@@ -895,8 +895,12 @@ function Game:endTurn()
     if self.turn ~= "player" then return end
     if self.combatAnimationSystem and self.combatAnimationSystem.isBlocking
         and self.combatAnimationSystem:isBlocking() then
+        -- Clique durante a animação: ENFILEIRA (GameplayScene processa ao
+        -- fim da jogada) — engolir o clique era "encerro e nada acontece".
+        self._endTurnQueued = true
         return
     end
+    self._endTurnQueued = false
     -- devolve mana de cartas selecionadas e não jogadas
     for i = #self.selectedCards, 1, -1 do
         self:selectCard(self.selectedCards[i])

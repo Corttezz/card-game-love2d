@@ -368,6 +368,14 @@ function GameplayScene.update(dt)
 
     game.combatAnimationSystem:update(dt)
 
+    -- Encerrar Turno clicado DURANTE a animação: fica na fila e executa
+    -- assim que a jogada termina (antes era engolido em silêncio).
+    if game._endTurnQueued and game.turn == "player"
+        and not game.combatAnimationSystem:isBlocking() then
+        game._endTurnQueued = false
+        game:endTurn()
+    end
+
     -- Partículas são tickadas centralmente em main.lua via CardParticles.update.
 
     EnemyRenderer.update(dt)
@@ -551,15 +559,12 @@ function GameplayScene.mousepressed(x, y, button)
     if topBar:mousepressed(x, y, button) then return end
 
     if button == 1 then
-        local buttonWidth  = Config.Utils.getResponsiveSize(Config.UI.PLAY_BUTTON_WIDTH_RATIO, 180, "width")
-        local buttonHeight = Config.Utils.getResponsiveSize(Config.UI.PLAY_BUTTON_HEIGHT_RATIO, 60, "height")
-        local buttonX = (love.graphics.getWidth() - buttonWidth) / 1.05
-        local buttonY = love.graphics.getHeight() * 0.72
-
-        if game.turn == "player"
-           and x >= buttonX and x <= buttonX + buttonWidth
-           and y >= buttonY and y <= buttonY + buttonHeight then
-            game:playSelectedCards()
+        -- BUG do playtest ("encerro e nada acontece"): os widgets Button
+        -- exigem mousepressed pra armar o pressed — o hit-test manual
+        -- antigo do Jogar Cartas disparava no press (ignorando disabled)
+        -- e o Encerrar Turno nunca recebia o press → onClick NUNCA fired.
+        if playButton:mousepressed(x, y, button) then return end
+        if endTurnButton and endTurnButton:mousepressed(x, y, button) then
             return
         end
 
