@@ -152,6 +152,44 @@ function EnemyRenderer.getArrivalOffset()
     return -math.abs(math.sin(k * math.pi * 2.2)) * 14 * k * k
 end
 
+-- ===== FX DE COMBATE (Jul/2026 — "o inimigo é uma estátua") =====
+-- Camada PROCEDURAL sobre os clips existentes (idle/hurt/death): investida
+-- no ataque, knockback no dano, tint de veneno/defesa/fúria. Nenhum sprite
+-- novo — física de offsets + cor sobre a base atual.
+local attackFx = nil     -- { t, kind, onApex, apexFired }
+local poisonTime = 0
+local defendTime = 0
+local buffTime = 0
+local knockTime = 0
+
+local ATK_WINDUP = 0.18   -- recua/agacha
+local ATK_LUNGE  = 0.16   -- investida (apex no fim)
+local ATK_RECOIL = 0.42   -- volta suave
+local ATK_TOTAL  = ATK_WINDUP + ATK_LUNGE + ATK_RECOIL
+
+-- O inimigo TELEGRAFA + INVESTE: recua, avança na direção do jogador
+-- (baixo-esquerda) e o dano é aplicado NO IMPACTO via onApex.
+function EnemyRenderer.triggerAttack(kind, onApex)
+    attackFx = { t = 0, kind = kind or "attack", onApex = onApex,
+                 apexFired = false }
+end
+
+function EnemyRenderer.triggerPoison() poisonTime = 0.5 end
+function EnemyRenderer.triggerDefend() defendTime = 0.5 end
+function EnemyRenderer.triggerBuff()   buffTime   = 0.6 end
+
+-- true se a investida ainda está no ar (Game pode segurar o próximo passo)
+function EnemyRenderer.isAttacking()
+    return attackFx ~= nil
+end
+
+-- Última posição desenhada (centro do peito) — pro Game ancorar floating
+-- text de veneno sem conhecer o layout.
+local lastCenterX, lastCenterY = nil, nil
+function EnemyRenderer.getLastPos()
+    return lastCenterX, lastCenterY
+end
+
 function EnemyRenderer.triggerHurt()
     -- Guard: nao sobrescrever death anim com hurt. A death e "terminal" —
     -- uma vez acionada, nao volta pra hurt/idle. Sem esse guard, o hurt
@@ -159,6 +197,7 @@ function EnemyRenderer.triggerHurt()
     -- a animacao e a morte nunca aparecia em tela.
     if currentAnimName == "death" then return end
     hurtTime = 0.20
+    knockTime = 0.25
     if currentEnemyId and SpriteAnimation.exists(currentEnemyId, "hurt", "south") then
         ensureAnim(currentEnemyId, "hurt")
     end
@@ -191,6 +230,20 @@ function EnemyRenderer.update(dt)
     if currentAnim then currentAnim:update(dt) end
     if hurtTime > 0 then hurtTime = math.max(0, hurtTime - dt) end
     if arrivalT > 0 then arrivalT = math.max(0, arrivalT - dt) end
+    if poisonTime > 0 then poisonTime = math.max(0, poisonTime - dt) end
+    if defendTime > 0 then defendTime = math.max(0, defendTime - dt) end
+    if buffTime > 0 then buffTime = math.max(0, buffTime - dt) end
+    if knockTime > 0 then knockTime = math.max(0, knockTime - dt) end
+
+    -- Investida de ataque: o dano do jogo é aplicado NO IMPACTO (apex).
+    if attackFx then
+        attackFx.t = attackFx.t + dt
+        if not attackFx.apexFired and attackFx.t >= ATK_WINDUP + ATK_LUNGE then
+            attackFx.apexFired = true
+            if attackFx.onApex then attackFx.onApex() end
+        end
+        if attackFx.t >= ATK_TOTAL then attackFx = nil end
+    end
 
     -- Spawn partículas ambientais a cada ~0.35s
     ambientSpawnTimer = ambientSpawnTimer - dt
@@ -344,12 +397,49 @@ function EnemyRenderer.draw(game, cx, cy)
 
     -- (4) Idle bounce (±1px vertical — respiração; ±2 parecia flutuar)
     local bounce = math.floor(math.sin(t * 1.6) * 1)
-    -- (5) Micro tremor (±1px horizontal)
-    local jitter = math.floor(math.sin(t * 13.1) * 0.5 + math.cos(t * 17.3) * 0.5)
+    -- (5) Tremor SÓ no impacto (o tremor constante de 13-17Hz era o
+    -- "fricando" apontado pelo dono — monstro parado não treme).
+    local jitter = 0
+    if hurtTime > 0 then
+        jitter = math.floor(math.sin(t * 41) * 2)
+    end
 
-    local drawX = cx - (iw * scale) / 2 + jitter
+    -- FX de combate: investida de ataque (recua → avança pro jogador →
+    -- volta) + knockback ao tomar dano.
+    local atkDX, atkDY = 0, 0
+    if attackFx then
+        local strong = attackFx.kind == "strong"
+        local lunge = strong and 70 or 46
+        local drop = strong and 34 or 24
+        local p = attackFx.t
+        if p < ATK_WINDUP then
+            local k = p / ATK_WINDUP
+            atkDX = 16 * k          -- recua (afasta do jogador)
+            atkDY = -5 * k          -- ergue levemente
+        elseif p < ATK_WINDUP + ATK_LUNGE then
+            local k = (p - ATK_WINDUP) / ATK_LUNGE
+            local kk = k * k        -- acelera até o impacto
+            atkDX = 16 - (16 + lunge) * kk
+            atkDY = -5 + (5 + drop) * kk
+        else
+            local k = math.min(1, (p - ATK_WINDUP - ATK_LUNGE) / ATK_RECOIL)
+            local ease = 1 - (1 - k) * (1 - k)
+            atkDX = -lunge + lunge * ease
+            atkDY = drop - drop * ease
+        end
+    end
+    local knockDX = 0
+    if knockTime > 0 then
+        knockDX = 14 * (knockTime / 0.25)   -- empurrado pra trás no hit
+    end
+
+    local drawX = cx - (iw * scale) / 2 + jitter + atkDX + knockDX
     local drawY = cy - ih * scale + bounce + EnemyRenderer.getArrivalOffset()
-        + footY   -- v8.2: pé do conteúdo NO chão (margem do canvas fora)
+        + footY + atkDY  -- v8.2: pé do conteúdo NO chão (margem do canvas fora)
+
+    -- posição do peito exposta pro Game (floating text de veneno etc.)
+    lastCenterX = drawX + (iw * scale) / 2
+    lastCenterY = drawY + (ih * scale) * 0.35
 
     -- (1) v8: SOMBRA PROJETADA da silhueta (ShadowEngine) — a própria
     -- forma do monstro (frame ATUAL da animação: a sombra respira e ataca
@@ -388,11 +478,28 @@ function EnemyRenderer.draw(game, cx, cy)
 
     -- (6) Pulse de tint (cor varia ±6% lentamente, respiração sutil)
     local pulse = 0.94 + (math.sin(t * 1.1) * 0.5 + 0.5) * 0.06
-    love.graphics.setColor(pulse, pulse, pulse, 1)
+    -- Tint de status por cima do pulse (clareza: veneno tinge VERDE,
+    -- defesa tinge AÇO, fúria/buff tinge VERMELHO pulsante).
+    local tintR, tintG, tintB = pulse, pulse, pulse
+    if poisonTime > 0 then
+        local k = poisonTime / 0.5
+        tintR = pulse * (1 - 0.45 * k)
+        tintB = pulse * (1 - 0.45 * k)
+    elseif defendTime > 0 then
+        local k = defendTime / 0.5
+        tintR = pulse * (1 - 0.25 * k)
+        tintG = pulse * (1 - 0.10 * k)
+    elseif buffTime > 0 then
+        local k = buffTime / 0.6
+        local throb = 0.5 + math.sin(t * 18) * 0.5
+        tintG = pulse * (1 - 0.40 * k * throb)
+        tintB = pulse * (1 - 0.40 * k * throb)
+    end
+    love.graphics.setColor(tintR, tintG, tintB, 1)
 
     -- (3) Sprite principal (anim real OR estático)
     if hasAnim then
-        currentAnim:draw(drawX, drawY, scale, { pulse, pulse, pulse, 1 })
+        currentAnim:draw(drawX, drawY, scale, { tintR, tintG, tintB, 1 })
     else
         local sprites = loadStatic(id)
         local staticImg = sprites and (sprites.south or sprites.east or sprites.west or sprites.north)
@@ -429,6 +536,19 @@ function EnemyRenderer.draw(game, cx, cy)
                 love.graphics.draw(staticImg, drawX, drawY, 0, scale, scale)
             end
         end
+    end
+
+    -- Anel de DEFESA: círculo aço expandindo do peito (intent defend
+    -- executado — "ele se protegeu" legível de relance).
+    if defendTime > 0 then
+        local k = 1 - defendTime / 0.5
+        local ringR = 20 + k * (iw * scale * 0.45)
+        love.graphics.setColor(0.62, 0.72, 0.85, (1 - k) * 0.8)
+        love.graphics.setLineWidth(3)
+        love.graphics.circle("line", drawX + (iw * scale) / 2,
+            drawY + (ih * scale) * 0.45, ringR)
+        love.graphics.setLineWidth(1)
+        love.graphics.setColor(1, 1, 1, 1)
     end
 
     -- LightEngine v1.2: emissivos do monstro (olhos/chamas/cristais) —

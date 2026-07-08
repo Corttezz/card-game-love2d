@@ -926,35 +926,54 @@ function Game:enemyTurn()
         self:addMessage("Fúria! O inimigo ganha +2 de dano", "warning")
     end
 
+    local okER, ER = pcall(require, "src.ui.EnemyRenderer")
+    if not okER then ER = nil end
+
     if intent == "defend" then
         local armorGain = self.enemy:getDefendAmount()
         self.enemy:addArmor(armorGain)
         Sfx.play("armorSound")
         self:addMessage("Inimigo se defende: +" .. armorGain .. " de armadura", "info")
+        if ER and ER.triggerDefend then ER.triggerDefend() end
     elseif intent == "buff" then
         self.enemy.baseDamage = self.enemy.baseDamage + 2
         self.enemy.damage = self.enemy.damage + 2
         Sfx.playWithVariation("enemyAttack", 0.8, 0.05)
         self:addMessage("Inimigo se enfurece: +2 de dano permanente!", "warning")
         if self.enemy.juice_up then self.enemy:juice_up(0.4, 0.1) end
+        if ER and ER.triggerBuff then ER.triggerBuff() end
     else
-        -- attack | strong
+        -- attack | strong — o inimigo INVESTE fisicamente e o dano é
+        -- aplicado NO IMPACTO da investida (apex), não num corte seco.
         local damage = self.enemy:performAttack()
         if intent == "strong" and damage > 0 then
             damage = math.floor(damage * 1.6)
         end
         if damage > 0 then
-            -- Pitch escalado pela magnitude do dano: ataques pesados soam mais
-            -- graves (Balatro sound_manager pattern). Cap entre 0.7 e 1.05.
-            local atkPitch = math.max(0.7, math.min(1.05, 1.1 - damage * 0.012))
-            Sfx.playWithVariation("enemyAttack", atkPitch, 0.08)
-            self.player:takeDamage(damage)
-            self.scoreSystem:recordDamageTaken(damage)
-            self:addMessage("Inimigo causou " .. damage .. " de dano!", "warning")
-            -- Feedback visceral: screen shake proporcional ao dano (clamped).
-            if _G.triggerShake then
-                local intensity = math.min(14, 4 + damage * 0.25)
-                _G.triggerShake(intensity, 0.22)
+            local function applyHit()
+                -- Pitch escalado pela magnitude (Balatro sound_manager).
+                local atkPitch = math.max(0.7, math.min(1.05, 1.1 - damage * 0.012))
+                Sfx.playWithVariation("enemyAttack", atkPitch, 0.08)
+                self.player:takeDamage(damage)
+                self.scoreSystem:recordDamageTaken(damage)
+                self:addMessage("Inimigo causou " .. damage .. " de dano!", "warning")
+                if _G.triggerShake then
+                    local intensity = math.min(14, 4 + damage * 0.25)
+                    _G.triggerShake(intensity, 0.22)
+                end
+                -- Dano flutuante SOBRE O PAINEL DO JOGADOR (antes o HP só
+                -- descia silenciosamente no canto).
+                local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
+                if okFT and love.graphics then
+                    FloatingText.spawn("-" .. damage, 120,
+                        love.graphics.getHeight() - 120,
+                        { kind = "damage", fontSize = 22 })
+                end
+            end
+            if ER and ER.triggerAttack then
+                ER.triggerAttack(intent, applyHit)
+            else
+                applyHit()
             end
         end
     end
@@ -969,6 +988,17 @@ function Game:enemyTurn()
         -- vários ticks numa run; sem variação fica monótono).
         Sfx.playWithVariation("poisonTick", 1.0, 0.2)
         self:addMessage("Veneno: " .. poisonDmg .. " de dano ao inimigo", "success")
+        -- Clareza: o corpo tinge de VERDE + número flutua sobre o inimigo.
+        if ER and ER.triggerPoison then
+            ER.triggerPoison()
+            local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
+            local ex, ey
+            if ER.getLastPos then ex, ey = ER.getLastPos() end
+            if okFT and ex and ey then
+                FloatingText.spawn("-" .. poisonDmg, ex, ey,
+                    { color = { 0.45, 0.9, 0.35, 1 }, fontSize = 18 })
+            end
+        end
     end
 
     self.turn = "player"

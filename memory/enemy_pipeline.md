@@ -263,3 +263,18 @@ Runtime: EnemyRenderer.submitEmissives (pulso lento dessincronizado, apaga
 na morte, mesma z da silhueta-oclusora) + billboard da viagem em
 WorldRoad.drawEncounterFront ("olhos vindo na estrada"). Ver
 memory/lighting_engine.md.
+
+## Camada de FX de combate (Jul/2026 — "inimigo estátua")
+
+`EnemyRenderer` tem camada PROCEDURAL sobre os clips idle/hurt/death:
+- `triggerAttack(kind, onApex)` — windup 0.18s (recua) → investida 0.16s
+  (baixo-esquerda, strong = mais longe) → recoil 0.42s. **O dano do jogo é
+  aplicado NO APEX via callback** (Game:enemyTurn coreografa). Headless
+  precisa bombear `EnemyRenderer.update(dt)` ou o hit nunca acontece
+  (autoplay pumpa 0.8s pós-enemyTurn).
+- `triggerPoison/Defend/Buff` — tints (verde/aço/vermelho pulsante) +
+  anel de defesa expandindo. `triggerHurt` ganhou knockback 14px.
+- `getLastPos()` — âncora pro FloatingText de veneno.
+- **REGRA: monstro parado NÃO treme.** O jitter constante de 13-17Hz foi
+  o "fricando" apontado pelo dono; tremor só com hurtTime > 0.
+- Dano no jogador tem FloatingText "-N" sobre o painel de HP.

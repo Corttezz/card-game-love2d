@@ -49,6 +49,12 @@ local function pump(game, secs)
         if game.enemy and game.enemy.update then
             game.enemy:update(dt)
         end
+        -- Investida do inimigo: o dano é aplicado no APEX via
+        -- EnemyRenderer.update — sem bombear, o hit nunca acontece.
+        do
+            local okER, ER = pcall(require, "src.ui.EnemyRenderer")
+            if okER and ER.update then ER.update(dt) end
+        end
     end
 end
 
@@ -351,7 +357,8 @@ local function playBattle(game, label)
 
         if game.enemy:isAlive() and game.turn == "enemy" then
             game:enemyTurn()
-            pump(game, 0.3)
+            -- 0.8s: cobre a investida completa (apex do dano em 0.34s)
+            pump(game, 0.8)
         end
 
         log("    dano causado %d | dano sofrido %d | inimigo %d HP",

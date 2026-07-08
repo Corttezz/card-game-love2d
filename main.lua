@@ -458,6 +458,12 @@ function love.load(loveArgs)
         return
     end
 
+    -- Valida a investida do inimigo (windup/apex/recoil + veneno).
+    if loveArgs and loveArgs[1] == "screenshot_attack" then
+        require("tools.screenshot_attack").run()
+        return
+    end
+
     -- Piloto de IA: joga runs completas sozinho e escreve diario+metricas.
     --   love . autoplay [runs] [warrior|mage|rogue|all]
     if loveArgs and loveArgs[1] == "autoplay" then
