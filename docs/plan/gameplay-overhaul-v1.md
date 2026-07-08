@@ -5,11 +5,13 @@
 > F2 ✅ (fúria anti-stall + curas exaurem + folha única + mana 25),
 > F3 ✅ (ScoreSystem TINTA×SELO + TopBar vivo + banner RoundEval + recorde
 > no perfil + EndScreens), F4 ✅ (20 conquistas + AchievementSystem +
-> galeria via botão CONQUISTAS no menu), F5 parcial (balance pass numérico:
-> bash 8→10, fireball 9→11, rake 4→6, blur 5→7, power_through 15→12).
-> Pendentes de F5: keywords/glossário no hover (orbs nunca explicados),
-> tags decorativas consumidas ou removidas, combos cross-classe, forja
-> visível no CardFrame. Baseado em 3 auditorias (carta-a-carta,
+> galeria via botão CONQUISTAS no menu), F5 ✅ COMPLETA (balance pass:
+> bash 8→10, fireball 9→11, rake 4→6, blur 5→7, power_through 15→12;
+> GLOSSÁRIO de keywords no tooltip — src/data/keywords.lua, orbs/veneno/
+> exaurir/bloqueio explicados, match PT+EN, máx 3; tag "combo" conta as
+> demais tags da carta em DOBRO; combos cross-classe destravados com
+> mage_torn_pages e rogue_thorn_cloak; FORJA VISÍVEL na moldura — CardFrame
+> re-renderiza pós-upgrade com selo +N e stats reais). Baseado em 3 auditorias (carta-a-carta,
 > loop sistêmico, dossiê Balatro/StS/Monster Train — ver §Apêndices).
 > Pedido do dono: "hoje eu só mando todas as cartas da mão, boto armadura
 > infinita, me curo com poção e dá tudo certo — quero jogabilidade real,
