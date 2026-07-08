@@ -735,34 +735,9 @@ local function rollProp(p, z, forcedSide)
     local rng = WorldRoad._rng
     p.z = z
     p.kind = pickKind(b, rng)
-    -- v9: CADÊNCIA MÍNIMA de luminária — estrada real tem poste em
-    -- intervalo; se passaram >7 unidades de mundo sem emissor, o próximo
-    -- prop VIRA luminária (sorteada pelos pesos do catálogo do bioma)
-    local lumCat = LuminaireEngine.catalog(b.id)
-    if next(lumCat) then
-        if LuminaireEngine.isLuminaire(p.kind) then
-            -- v9.2: ESPAÇAMENTO mínimo — 3 postes aglomerados em poucas
-            -- unidades liam como depósito de poste; perto demais do
-            -- último emissor, o sorteio vira árvore do bioma
-            if z - (WorldRoad._lastLumZ or -1e9) < 5 then
-                p.kind = TREE_KIND[b.id] or "tree"
-            else
-                WorldRoad._lastLumZ = z
-            end
-        elseif z - (WorldRoad._lastLumZ or -1e9) > 7 then
-            local tot = 0
-            for _, d in pairs(lumCat) do tot = tot + (d.weight or 0.5) end
-            local r2 = rng:random() * tot
-            for kind, d in pairs(lumCat) do
-                r2 = r2 - (d.weight or 0.5)
-                if r2 <= 0 then p.kind = kind; break end
-            end
-            WorldRoad._lastLumZ = z
-        end
-    end
-    -- LADO: populate agora spawna nos DOIS lados por passo (ciclo 21 —
-    -- cunhas cheias e simétricas por construção). O saldo _sideBal fica
-    -- pros spawns avulsos durante a viagem.
+    -- LADO primeiro (a cadência de luminária é POR LADO — ver abaixo).
+    -- populate spawna nos DOIS lados por passo; _sideBal balanceia spawns
+    -- avulsos durante a viagem.
     if forcedSide then
         p.side = forcedSide
     else
@@ -772,6 +747,33 @@ local function rollProp(p, z, forcedSide)
         local pLeft = math.min(0.85, math.max(0.15, 0.5 - bal * 0.16))
         p.side = rng:random() < pLeft and -1 or 1
         WorldRoad._sideBal = bal + p.side * (SIDE_W[p.kind] or 0.35)
+    end
+    -- v9: CADÊNCIA MÍNIMA de luminária — estrada real tem poste em
+    -- intervalo; se passaram >7 unidades sem emissor NAQUELE LADO, o
+    -- próximo prop daquele lado VIRA luminária. v9.2 (feedback: "aparece
+    -- muito mais à esquerda"): cursor POR LADO — antes era global e o
+    -- lado -1 (sorteado 1º no passo) cravava o cursor, roubando toda
+    -- luminária forçada e rebaixando as naturais da direita.
+    WorldRoad._lastLumZ = WorldRoad._lastLumZ or {}
+    local lastZ = WorldRoad._lastLumZ[p.side] or -1e9
+    local lumCat = LuminaireEngine.catalog(b.id)
+    if next(lumCat) then
+        if LuminaireEngine.isLuminaire(p.kind) then
+            if z - lastZ < 5 then
+                p.kind = TREE_KIND[b.id] or "tree"
+            else
+                WorldRoad._lastLumZ[p.side] = z
+            end
+        elseif z - lastZ > 7 then
+            local tot = 0
+            for _, d in pairs(lumCat) do tot = tot + (d.weight or 0.5) end
+            local r2 = rng:random() * tot
+            for kind, d in pairs(lumCat) do
+                r2 = r2 - (d.weight or 0.5)
+                if r2 <= 0 then p.kind = kind; break end
+            end
+            WorldRoad._lastLumZ[p.side] = z
+        end
     end
     -- v9: luminária tem lane do catálogo por bioma (cogumelo entra no mato,
     -- lampião cola na estrada — a poça de luz precisa alcançar o caminho)
