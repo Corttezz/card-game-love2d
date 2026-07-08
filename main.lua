@@ -57,6 +57,7 @@ local collectionScreen
 local settingsMenu
 local topBar
 local mapScreen
+local deckViewerScreen
 local restScreen
 local eventScreen
 local packOpenScreen
@@ -639,6 +640,13 @@ function love.load(loveArgs)
 
     -- Inicializa overlay de configurações
     settingsMenu = SettingsMenu:new()
+    deckViewerScreen = require("components.DeckViewerScreen"):new()
+    -- F5 do UI Overhaul: clique no deck da TopBar abre o Deck Viewer
+    if topBar and topBar.setDeckClickCallback then
+        topBar:setDeckClickCallback(function()
+            deckViewerScreen:toggle(game)
+        end)
+    end
 
     -- Inicializa barra superior
     topBar = TopBar:new()
@@ -896,6 +904,11 @@ function love.draw()
 
     ScreenShake.pop()
 
+    -- Deck Viewer global (F5): overlay em qualquer tela da run
+    if deckViewerScreen and deckViewerScreen:isVisible() then
+        deckViewerScreen:draw()
+    end
+
     -- Overlay de settings (modal) ainda DENTRO da cena CRT — assim o shader
     -- cobre o overlay também.
     if settingsMenu then settingsMenu:draw() end
@@ -954,9 +967,22 @@ function love.keypressed(key)
         if settingsMenu:keypressed(key) then return end
     end
 
+    -- Deck Viewer global consome teclas enquanto aberto (D/ESC fecham)
+    if deckViewerScreen and deckViewerScreen:isVisible() then
+        if deckViewerScreen:keypressed(key) then return end
+    end
+
     -- Pack opening absorve teclas (escape fecha) enquanto visível.
     if packOpenScreen and packOpenScreen:isVisible() then
         if packOpenScreen:keypressed(key) then return end
+    end
+
+    -- F5: tecla D abre o deck da run em qualquer tela dela
+    if key == "d" and (currentState == "playing"
+        or currentState == "cardReward" or currentState == "mapSelection")
+        and game and game.isRunMode then
+        deckViewerScreen:toggle(game)
+        return
     end
 
     -- Round Eval absorve teclas (enter/space = Resgatar) enquanto visível.
@@ -1031,6 +1057,12 @@ function love.keypressed(key)
 end
 
 function love.mousereleased(x, y, button)
+    -- Deck Viewer global consome mouse enquanto aberto
+    if deckViewerScreen and deckViewerScreen:isVisible() then
+        deckViewerScreen:mousereleased(x, y, button)
+        return
+    end
+
     -- Settings modal consome primeiro
     if settingsMenu and settingsMenu:isVisible() then
         if settingsMenu:mousereleased(x, y, button) then return end
@@ -1072,6 +1104,12 @@ function love.mousepressed(x, y, button)
         if settingsMenu:mousepressed(x, y, button) then return end
     end
 
+    -- Deck Viewer global consome mouse enquanto aberto
+    if deckViewerScreen and deckViewerScreen:isVisible() then
+        deckViewerScreen:mousepressed(x, y, button)
+        return
+    end
+
     if currentState == "menu" then
         menu:mousepressed(x, y, button)
     elseif currentState == "classSelection" then
@@ -1103,6 +1141,10 @@ function love.mousepressed(x, y, button)
 end
 
 function love.wheelmoved(dx, dy)
+    if deckViewerScreen and deckViewerScreen:isVisible() then
+        deckViewerScreen:wheelmoved(dx, dy)
+        return
+    end
     if currentState == "collection" and collectionScreen.wheelmoved then
         collectionScreen:wheelmoved(dx, dy)
     end

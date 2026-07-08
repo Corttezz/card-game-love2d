@@ -100,6 +100,22 @@ function M.run(mode)
         es:draw()
     end)
 
+    addShot("deck", function()
+        -- Deck Viewer global (F5): deck com cartas variadas + forja no badge
+        local run = game.runManager.currentRun
+        for _, id in ipairs({ "warrior_strike", "attack_001", "defense_001",
+                              "warrior_defend", "mage_zap", "rogue_strike" }) do
+            table.insert(run.currentDeck, id)
+        end
+        game.runManager:upgradeCard("warrior_strike")
+        game.runManager:upgradeCard("warrior_strike")
+        local DeckViewerScreen = require("components.DeckViewerScreen")
+        local dv = DeckViewerScreen:new()
+        dv:show(game)
+        love.graphics.clear(0.10, 0.14, 0.10, 1)
+        dv:draw()
+    end)
+
     addShot("collection", function()
         local CollectionScreen = require("components.CollectionScreen")
         local cs = CollectionScreen:new()

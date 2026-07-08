@@ -1,6 +1,15 @@
 # UI/UX Overhaul v1 — plano completo (menus, loja, packs, HUD, opções)
 
-> **Status:** plano pronto (Jul/2026). Levantamento visual das 11 telas em
+> **Status:** EM EXECUÇÃO (Jul/2026) — feito: F0 parcial (Panel9, HintBar,
+> assets de painel + 10 ilustrações de evento), F1 completa (Continuar
+> funcional com save por andar, hint da loja, screenshake), F4 completa
+> (Rest/Event/ClassSelection renascidas com Panel9 + cenas + ilustrações +
+> cartas reais), F2 cirúrgica (moldura Panel9 na loja + saleDim impagável),
+> F5 núcleo (Deck Viewer GLOBAL: tecla D / clique no deck da TopBar, grid
+> ordenado + contagens + pilhas + badge de forja — fecha o gap "upgrade
+> invisível"). Pendentes: F2 completa (carta voa, packs em container), F3
+> RoundEval recibo, F6 DynaText, F7 Settings com abas; panel_gold falhou
+> no PixelLab (503, re-gerar). Levantamento visual das 11 telas em
 > [`ui-survey-2026-07.png`](ui-survey-2026-07.png) (harness novo:
 > `love . screenshot_ui menu|class|settings|rest|event|collection|all`).
 > Pesquisa em 3 frentes: anatomia do Balatro extraída do source (espelho

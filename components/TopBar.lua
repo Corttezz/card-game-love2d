@@ -187,6 +187,8 @@ function TopBar:drawConfigIcon()
     love.graphics.pop()
 end
 
+function TopBar:setDeckClickCallback(cb) self.onDeckClick = cb end
+
 function TopBar:mousepressed(x, y, button)
     if not self.visible then return false end
     if y <= self.height then
@@ -194,6 +196,13 @@ function TopBar:mousepressed(x, y, button)
             if self.game and self.game.toggleMenu then
                 self.game:toggleMenu()
             end
+            return true
+        end
+        -- F5 do UI Overhaul: área do deck abre o Deck Viewer global
+        local padding = 20
+        local deckX = padding + 180
+        if self.onDeckClick and x >= deckX and x <= deckX + 150 then
+            self.onDeckClick()
             return true
         end
         return true

@@ -8,6 +8,7 @@ local Config = require("src.core.Config")
 local Debug = require("src.core.Debug")
 local FontManager = require("src.ui.FontManager")
 local HintBar = require("src.ui.HintBar")
+local Panel9 = require("src.ui.Panel9")
 local Theme = require("src.ui.Theme")
 local Palette = require("src.ui.Palette")
 local PixelCanvas = require("src.ui.PixelCanvas")
@@ -851,6 +852,13 @@ function CardRewardScreen:draw()
             local scale = anim and anim.scale or 1
 
             if scale > 0 then
+                -- F2: impagável = carta escurecida (2º canal além do preço
+                -- vermelho; pesquisa: nunca comunicar só por cor do número)
+                local offer = self.shopOffers and self.shopOffers[i]
+                cardInstance.saleDim = (self.mode == "shop") and offer
+                    and offer.cost and self.game
+                    and not self.game.economySystem:canAfford(offer.cost)
+                    or false
                 local pos = {x = cardInstance.x, y = cardInstance.y}
                 cardInstance:draw(pos.x, pos.y, false, true)
                 self:drawPriceOverlay(cardInstance, pos.x, pos.y, i)
@@ -905,6 +913,16 @@ end
 function CardRewardScreen:_drawPanel(x, y, w, h, depth)
     x = math.floor(x); y = math.floor(y)
     w = math.floor(w); h = math.floor(h)
+
+    -- F2 do UI Overhaul: painel principal usa a moldura PixelLab (Panel9)
+    -- com miolo escuro; fallback procedural fica pros subpainéis.
+    if depth == "main" and Panel9.has("panel_inner") then
+        love.graphics.setColor(0, 0, 0, 0.45)
+        love.graphics.rectangle("fill", x + 4, y + 4, w, h, 6, 6)
+        Panel9.draw("panel_inner", x, y, w, h,
+            { fill = { 0.10, 0.07, 0.05, 0.94 } })
+        return
+    end
 
     local fill, outline, innerOutline
     if depth == "main" then

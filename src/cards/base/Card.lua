@@ -853,7 +853,10 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
         mesh:setTexture(self.image)
         love.graphics.setShader(shader)
         CardMesh.setUniforms(shader, mouseUV, hoverAmt, timeNow, self.image)
+        -- saleDim (F2 UI Overhaul): item impagável escurece pro tom do fundo
+        if self.saleDim then love.graphics.setColor(0.55, 0.52, 0.48, 1) end
         love.graphics.draw(mesh, drawX, drawY)
+        love.graphics.setColor(1, 1, 1, 1)
         love.graphics.setShader()
     elseif (fx == "holo" or fx == "glow") then
         -- Composição warp + holo via canvas intermediário.
@@ -887,7 +890,9 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
         HoloShader.draw(offCanvas, drawX, drawY, strength, 0, 1, 1)
     else
         -- Fallback sem shader (shader não carregou): draw direto
+        if self.saleDim then love.graphics.setColor(0.55, 0.52, 0.48, 1) end
         love.graphics.draw(self.image, drawX, drawY)
+        love.graphics.setColor(1, 1, 1, 1)
     end
 
     -- Animation layer (halo, embers, drip, flash, ring...) — pós-canvas.
