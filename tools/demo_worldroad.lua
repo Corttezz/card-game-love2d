@@ -23,6 +23,35 @@ local WorldRoad = require("src.ui.WorldRoad")
 local EnemyRenderer = require("src.ui.EnemyRenderer")
 local EnemyHud = require("src.ui.EnemyHud")
 local LightEngine = require("engine.LightEngine")
+local LuminaireEngine = require("engine.LuminaireEngine")
+
+-- POSTGATE: força TODO prop a virar luminária da beira da estrada, pra
+-- validar a margem inteira ao vivo (viajando, trocando bioma). Escolhe um
+-- kind roadside do catálogo do bioma (lantern se houver, senão o 1º).
+local _postKindCache = {}
+local function postKindFor(bid)
+    local hit = _postKindCache[bid]
+    if hit ~= nil then return hit or nil end
+    local cat = LuminaireEngine.catalog(bid)
+    local pick = cat.lantern and "lantern" or cat.brazier and "brazier"
+    if not pick then
+        for k, d in pairs(cat) do if d.roadside then pick = k; break end end
+    end
+    _postKindCache[bid] = pick or false
+    return pick
+end
+
+local function forcePosts()
+    for _, p in ipairs(WorldRoad._props) do
+        local k = postKindFor(p.bid)
+        if k then
+            p.kind = k
+            p.variant = 0
+            p.cluster = nil
+            p.big = 1
+        end
+    end
+end
 
 local game, topBar, gameUI
 
@@ -52,15 +81,19 @@ local function drawBattleFrame(showEnemy)
     local topBarH = topBar.height or 80
 
     love.graphics.clear(0, 0, 0, 1)
-    WorldRoad.draw(0, topBarH, width, height - topBarH, nil)
 
+    -- v9.2: inimigo via callback do painter (mesma ordem do GameplayScene —
+    -- postes mais próximos que ele ficam na frente)
     local bbox, cx, cy
     if showEnemy and not WorldRoad.isTraveling() then
         cx, cy = WorldRoad.getRoadAnchor(WorldRoad.BATTLE_REL,
             0, topBarH, width, height - topBarH)
-        bbox = EnemyRenderer.draw(game, cx, cy)
+        WorldRoad.setBattleEnemyDraw(function()
+            bbox = EnemyRenderer.draw(game, cx, cy)
+        end, cy)
     end
 
+    WorldRoad.draw(0, topBarH, width, height - topBarH, nil)
     WorldRoad.drawOverlays(0, topBarH, width, height - topBarH)
 
     topBar:draw()
@@ -182,7 +215,7 @@ local MONSTER_ROSTER = {
     { id = "eclipse_queen",     label = "Rainha do Eclipse  (Endless Anoitecer - BOSS)", boss = true },
 }
 
-local function runInteractive()
+local function runInteractive(postgate)
     setupGame()
     WorldRoad.setBiome(1)
     WorldRoad._camZ = 6
@@ -200,6 +233,7 @@ local function runInteractive()
     love.update = function(dt)
         WorldRoad.update(dt)
         EnemyRenderer.update(dt)
+        if postgate then forcePosts() end   -- margem inteira em postes
     end
 
     love.draw = function()
@@ -308,6 +342,8 @@ end
 function M.run(mode)
     if mode == "tour" then
         runTour()
+    elseif mode == "postgate" then
+        runInteractive(true)   -- margem inteira em postes (validação ao vivo)
     else
         runInteractive()
     end
