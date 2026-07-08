@@ -30,6 +30,25 @@ return {
     joker_003               = { icon = "joker_vampire",  bg = "abyss",   accent = "AGED_GOLD",  effect = "holo" },
     joker_004               = { icon = "joker_jester",   bg = "abyss",   accent = "AGED_GOLD",  effect = "holo" },
 
+    -- ===== NOVAS (gameplay-overhaul Jul/2026 — scaling/payoffs) =====
+    warrior_war_cry         = { icon = "warrior_war_cry",         bg = "rage",    accent = "MAGENTA",   decoration = "flash"  },
+    warrior_twin_strike     = { icon = "warrior_twin_strike",     bg = "impact",  accent = "ATTACK",    decoration = "sparks" },
+    warrior_iron_discipline = { icon = "warrior_iron_discipline", bg = "metal",   accent = "DEFENSE",   decoration = "sparks" },
+    warrior_colossus_blow   = { icon = "warrior_colossus_blow",   bg = "impact",  accent = "ORANGE",    decoration = "flash"  },
+    warrior_standard_bearer = { icon = "warrior_standard_bearer", bg = "rage",    accent = "AGED_GOLD", effect = "holo" },
+    mage_overcharge         = { icon = "mage_overcharge",         bg = "storm",   accent = "CYAN",      decoration = "sparks" },
+    mage_arcane_focus       = { icon = "mage_arcane_focus",       bg = "arcane",  accent = "PURPLE",    decoration = "smoke"  },
+    mage_mind_spike         = { icon = "mage_mind_spike",         bg = "void",    accent = "PURPLE",    decoration = "flash"  },
+    mage_twin_bolts         = { icon = "mage_twin_bolts",         bg = "storm",   accent = "YELLOW",    decoration = "sparks" },
+    mage_arcane_torrent     = { icon = "mage_arcane_torrent",     bg = "arcane",  accent = "MAGENTA",   decoration = "flash"  },
+    rogue_venom_coating     = { icon = "rogue_venom_coating",     bg = "poison",  accent = "MOSS",      decoration = "smoke"  },
+    rogue_twin_fangs        = { icon = "rogue_twin_fangs",        bg = "poison",  accent = "MOSS",      decoration = "sparks" },
+    rogue_expose_weakness   = { icon = "rogue_expose_weakness",   bg = "void",    accent = "PURPLE",    decoration = "flash"  },
+    rogue_shadow_dance      = { icon = "rogue_shadow_dance",      bg = "shadow",  accent = "PURPLE",    decoration = "smoke"  },
+    rogue_executioner       = { icon = "rogue_executioner",       bg = "blood",   accent = "ATTACK",    decoration = "flash"  },
+    attack_cleave           = { icon = "attack_cleave",           bg = "impact",  accent = "ATTACK",    decoration = "sparks" },
+    defense_bulwark         = { icon = "defense_bulwark",         bg = "stone",   accent = "DEFENSE",   decoration = "dust"   },
+
     -- ===== WARRIOR =====
     warrior_flame_barrier   = { icon = "warrior_flame_barrier",  bg = "fire",    accent = "ORANGE",       decoration = "sparks" },
     warrior_ghostly_armor   = { icon = "warrior_ghostly_armor",  bg = "ghost",   accent = "CYAN_PALE",    decoration = "smoke"  },

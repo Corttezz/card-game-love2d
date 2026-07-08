@@ -1,0 +1,53 @@
+{
+  "rogue_expose_weakness": {
+    "object_id": "d1b0965a-670b-44e5-bac8-7fb8185d744d"
+  },
+  "rogue_executioner": {
+    "object_id": "a88da962-3897-4337-86f6-08ec5283ef14"
+  },
+  "warrior_war_cry": {
+    "object_id": "a65da763-7366-40e5-a426-e08691d2041d"
+  },
+  "warrior_twin_strike": {
+    "object_id": "2822f004-3a80-4073-b2cc-8613e3d4be37"
+  },
+  "warrior_iron_discipline": {
+    "object_id": "5926fc53-3672-4626-82ad-c93ebbbccbba"
+  },
+  "attack_cleave": {
+    "object_id": "06950c4f-7e52-47ea-9c5a-638ac3444b06"
+  },
+  "defense_bulwark": {
+    "object_id": "db4ee5b8-0ca6-4031-b5d3-5a45e47b4998"
+  },
+  "warrior_standard_bearer": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab"
+  },
+  "mage_arcane_torrent": {
+    "object_id": "3e8012db-e803-4c95-839d-63c1ff4f1aba"
+  },
+  "rogue_venom_coating": {
+    "object_id": "a9e20eb2-c468-4f6d-a124-789ab62c245d"
+  },
+  "rogue_twin_fangs": {
+    "object_id": "fd3b5d7f-9e40-4999-b9ea-402085ab74ab"
+  },
+  "mage_arcane_focus": {
+    "object_id": "c2487f14-c42e-4371-ad51-b66397defab1"
+  },
+  "mage_mind_spike": {
+    "object_id": "e915356c-819f-4d8d-a0c9-1ffde6e9a0b9"
+  },
+  "mage_twin_bolts": {
+    "object_id": "585aebc0-ec09-4865-ab6f-5bd0a7b2dbc7"
+  },
+  "rogue_shadow_dance": {
+    "object_id": "935bdd43-5fc6-48ba-b02b-888b2748c0f7"
+  },
+  "warrior_colossus_blow": {
+    "object_id": "90f36621-4a2b-4c9c-9df3-c578eac1faeb"
+  },
+  "mage_overcharge": {
+    "object_id": "ef4e4581-a927-4cce-89cf-bbae71780edc"
+  }
+}

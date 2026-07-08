@@ -21,6 +21,24 @@ function M.run()
     -- Cada entry: {id, rarityOverride?} — rarityOverride permite testar a mesma
     -- carta em raridades diferentes (já que não existem attack/defense legendary).
     local jobs = {
+        -- NOVAS (gameplay-overhaul Jul/2026)
+        { "warrior_war_cry",         nil },
+        { "warrior_twin_strike",     nil },
+        { "warrior_iron_discipline", nil },
+        { "warrior_colossus_blow",   nil },
+        { "warrior_standard_bearer", nil },
+        { "mage_overcharge",         nil },
+        { "mage_arcane_focus",       nil },
+        { "mage_mind_spike",         nil },
+        { "mage_twin_bolts",         nil },
+        { "mage_arcane_torrent",     nil },
+        { "rogue_venom_coating",     nil },
+        { "rogue_twin_fangs",        nil },
+        { "rogue_expose_weakness",   nil },
+        { "rogue_shadow_dance",      nil },
+        { "rogue_executioner",       nil },
+        { "attack_cleave",           nil },
+        { "defense_bulwark",         nil },
         -- COMMON real
         { "warrior_strike",        nil },
         { "warrior_defend",        nil },
