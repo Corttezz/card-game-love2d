@@ -90,8 +90,8 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     // Aspecto corrigido → cantos CIRCULARES de verdade (CRT-Geom cornersize).
     vec2 ar = vec2(resolution.x / max(1.0, resolution.y), 1.0);
     vec2 pp = (buv - 0.5) * ar;
-    float cornerR = 0.040;   // v2.3: canto de tubo SEM invadir conteúdo
-    float dTube = roundedBoxSDF(pp, 0.5 * ar - 0.002, cornerR);
+    float cornerR = 0.032;   // v2.3: canto de tubo SEM invadir conteúdo
+    float dTube = roundedBoxSDF(pp, 0.5 * ar - 0.001, cornerR);
     float tubeMask = 1.0 - smoothstep(-0.004, 0.002, dTube);
     if (tubeMask <= 0.0) {
         return vec4(0.0, 0.0, 0.0, 1.0) * color;
@@ -104,7 +104,7 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     // O CONTEÚDO INTEIRO ocupa a área interna segura do tubo — a máscara e
     // a curvatura comem só a moldura preta, NUNCA mana/vida/HUD nos cantos.
     // v2.3 (feedback): borda PRA FORA do conteúdo — inset mínimo fixo.
-    float inset = 0.992;
+    float inset = 0.997;
     vec2 suv = (buv - 0.5) / inset + 0.5;
     if (suv.x < 0.0 || suv.x > 1.0 || suv.y < 0.0 || suv.y > 1.0) {
         return vec4(0.0, 0.0, 0.0, 1.0) * color * vec4(vec3(tubeMask), 1.0);
