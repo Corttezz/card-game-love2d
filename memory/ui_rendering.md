@@ -80,3 +80,20 @@ Registro em `BackgroundConfig.BACKGROUNDS[KEY]` com `path`, `scaleMode` (cover/c
 Partículas sutis que sobem. 4 presets (default/subtle/atmospheric/intense) trocáveis em runtime via teclas 1-4 no gameplay.
 
 **How to apply:** Nunca hard-code cores (use Theme.Colors) ou coordenadas (use Config.Utils). Ao criar novo widget, herde de HudPanel se for painel de info, ou siga Button.lua como referência para widget interativo.
+
+## Armadilhas de render descobertas no UI Overhaul (Jul/2026)
+
+- **Fonte pixel: glifo "6" em tamanho 10 rasteriza como "G"** (não-integer
+  scale do TTF). Preços e números: use `FontManager.getFont(11)` ou maior.
+- **CardBack/dissolve deixa o shader ativo**: depois de desenhar carta com
+  `dissolve > 0`, chame `love.graphics.setShader()` antes de desenhar texto —
+  senão as letras saem "corroídas" e escuras (bug pego no título do BootScene).
+- **`_G.HEADLESS_TOOL`**: setado por main.lua para QUALQUER tool de linha de
+  comando (`screenshot_*`, `smoke_*`, `preview_*`, `demo_*`, validate). Sistemas
+  com persistência FORA da run (ex.: `engine/ProfileStats.lua`) devem no-op no
+  save quando essa flag existe — capturas de validação não podem poluir o
+  perfil real do jogador.
+- **Loja (CardRewardScreen)**: toda oferta tem `offer._slot` FIXO atribuído em
+  show()/reroll. Draw/hover/selection SEMPRE derivam posição de `_slot` (ou de
+  `inst.shopOffer`), nunca de índice compactado de array — indexar
+  `shopOffers[i]` contra `cardInstances[i]` foi a raiz de 3 bugs pós-compra.

@@ -4,11 +4,18 @@
 > assets de painel + 10 ilustrações de evento), F1 completa (Continuar
 > funcional com save por andar, hint da loja, screenshake), F4 completa
 > (Rest/Event/ClassSelection renascidas com Panel9 + cenas + ilustrações +
-> cartas reais), F2 cirúrgica (moldura Panel9 na loja + saleDim impagável),
+> cartas reais), F2 COMPLETA na loja (slots FIXOS por oferta — bug de índice
+> pós-compra corrigido em draw/hover/selection —, carta voa pro deck da
+> TopBar ao comprar, popup -$N, stamp VENDIDO no slot, coluna esquerda
+> Balatro com CONTINUAR vermelho + Novas ofertas + painel OURO, saleDim),
 > F5 núcleo (Deck Viewer GLOBAL: tecla D / clique no deck da TopBar, grid
 > ordenado + contagens + pilhas + badge de forja — fecha o gap "upgrade
-> invisível"). Pendentes: F2 completa (carta voa, packs em container), F3
-> RoundEval recibo, F6 DynaText, F7 Settings com abas; panel_gold falhou
+> invisível"), MENU repaginado (perfil persistente engine/ProfileStats.lua
+> com plaque de vitórias/melhor progresso + versão v0.9.0 no rodapé;
+> _G.HEADLESS_TOOL protege o perfil das capturas de validação), SPLASH com
+> título do jogo materializando no auge da cascade (BootScene).
+> Pendentes: packs em container no PackOpen, F3 RoundEval recibo, F6
+> DynaText nas demais telas, F7 Settings com abas; panel_gold falhou
 > no PixelLab (503, re-gerar). Levantamento visual das 11 telas em
 > [`ui-survey-2026-07.png`](ui-survey-2026-07.png) (harness novo:
 > `love . screenshot_ui menu|class|settings|rest|event|collection|all`).
