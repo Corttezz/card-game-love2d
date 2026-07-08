@@ -66,6 +66,12 @@ function LightEngine.ambientLuma()
     return lumaOf(ambient)
 end
 
+-- Cor ambiente RGB do frame corrente — o EnemyRenderer usa pra compor o
+-- flat "cor padrão + leve tom do ambiente" do oclusor focal (monstro).
+function LightEngine.ambientColor()
+    return ambient[1], ambient[2], ambient[3]
+end
+
 function LightEngine.update(dt)
     time = time + dt
 end
@@ -269,8 +275,9 @@ function LightEngine.composite(x, y, w, h)
                 if dx * dx + dy * dy <= l.r * l.r then hit = true; break end
             end
         end
-        -- oclusor com lift SEMPRE pinta (levanta o dono mesmo sem luz atrás)
-        if hit or o.lift then o.occ = true; entries[#entries + 1] = o end
+        -- oclusor com lift/flatColor SEMPRE pinta (levanta o dono mesmo sem
+        -- luz atrás — é como o monstro/árvore fica legível no contraluz)
+        if hit or o.lift or o.flatColor then o.occ = true; entries[#entries + 1] = o end
     end
     table.sort(entries, function(a, b)
         if a.z ~= b.z then return a.z > b.z end
@@ -291,7 +298,13 @@ function LightEngine.composite(x, y, w, h)
             -- shader a cor vem do uniform `flat`.
             love.graphics.setBlendMode("alpha", "alphamultiply")
             local cr, cg, cb = ambient[1], ambient[2], ambient[3]
-            if e.lift then
+            if e.flatColor then
+                -- flat CRAVADO pelo dono (monstro focal): "cor padrão + leve
+                -- tom do ambiente", perto do branco. Ignora o teto do lift —
+                -- ambient×lift satura no canal mais forte e nunca chega na
+                -- cor cheia, deixando o corpo escuro do sprite quase preto.
+                cr, cg, cb = e.flatColor[1], e.flatColor[2], e.flatColor[3]
+            elseif e.lift then
                 cr = math.min(1, cr * e.lift)
                 cg = math.min(1, cg * e.lift)
                 cb = math.min(1, cb * e.lift)

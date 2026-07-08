@@ -469,12 +469,27 @@ function EnemyRenderer.draw(game, cx, cy)
         -- alvo 1.0: monstro na COR PADRÃO cheia (lightmap≈1 na silhueta),
         -- igual ao billboard da viagem — sem escurecer ao ficar estático.
         -- Lanternas ainda ADICIONAM calor por cima (clampa em 1).
-        local amb = LightEngine.ambientLuma and LightEngine.ambientLuma() or 1
-        local lift = math.min(3.0, math.max(1, 1.0 / math.max(0.2, amb)))
+        -- flat "cor padrão + leve tom do ambiente": o monstro é elemento
+        -- FOCAL (leitura de gameplay) — precisa ficar na cor cheia do sprite
+        -- mesmo sem luz na frente ou com luz vindo de trás. O ambient×lift
+        -- antigo saturava no canal mais forte (teto 1) e travava em ~82% de
+        -- luma no dusk/noite → o corpo escuro do espantalho esmagava pra
+        -- quase preto. Aqui o flat parte do BRANCO e recebe só uma fração
+        -- (tint) do matiz do ambiente → monstro na cor padrão, levemente
+        -- tingido pela hora. Lanternas na frente ainda SOMAM calor por cima.
+        local ar, ag, ab = 1, 1, 1
+        if LightEngine.ambientColor then ar, ag, ab = LightEngine.ambientColor() end
+        local mx = math.max(ar, ag, ab, 0.001)   -- matiz puro (canal forte = 1)
+        local tint = 0.28
+        local flatColor = {
+            1 - tint * (1 - ar / mx),
+            1 - tint * (1 - ag / mx),
+            1 - tint * (1 - ab / mx),
+        }
         if animRef or staticRef then
             LightEngine.submitOccluder({
                 z = 9 + 6,   -- BATTLE_REL + viés (sem require circular)
-                lift = lift,
+                flatColor = flatColor,
                 bx = oxT, by = oyT, w = iw * scale, h = ih * scale,
                 fn = function()
                     if animRef then

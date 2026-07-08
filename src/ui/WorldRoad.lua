@@ -3057,13 +3057,21 @@ local function drawEncounterFront(g, x, w, camZ)
     -- na viagem continua iluminando-o (sem o viés ele APAGAVA ao passar
     -- por braseiro, estrobando com o flicker)
     -- v9.2 (feedback: "andando fica numa cor ok, mas estático escurece do
-    -- nada"): o billboard da viagem precisa do MESMO lift do EnemyRenderer
-    -- estático — senão o handoff viagem→batalha muda o brilho de repente.
-    local amb = LightEngine.ambientLuma and LightEngine.ambientLuma() or 1
-    local lift = math.min(3.0, math.max(1, 1.0 / math.max(0.2, amb)))
+    -- nada"): o billboard da viagem usa o MESMO flatColor do EnemyRenderer
+    -- estático (cor padrão + leve tom do ambiente) — senão o handoff
+    -- viagem→batalha muda o brilho de repente.
+    local ar, ag, ab = 1, 1, 1
+    if LightEngine.ambientColor then ar, ag, ab = LightEngine.ambientColor() end
+    local mx = math.max(ar, ag, ab, 0.001)
+    local tint = 0.28
+    local flatColor = {
+        1 - tint * (1 - ar / mx),
+        1 - tint * (1 - ag / mx),
+        1 - tint * (1 - ab / mx),
+    }
     if e.anim then
         LightEngine.submitOccluder({
-            z = rel + 6, lift = lift, bx = oxT, by = oyT, w = e.iw * s, h = e.ih * s,
+            z = rel + 6, flatColor = flatColor, bx = oxT, by = oyT, w = e.iw * s, h = e.ih * s,
             fn = function()
                 -- SpriteAnimation:draw ignora setColor — repassa via
                 -- getColor (mesmo padrão do occluder do EnemyRenderer)
@@ -3073,7 +3081,7 @@ local function drawEncounterFront(g, x, w, camZ)
         })
     else
         LightEngine.submitOccluder({
-            z = rel + 6, lift = lift, img = e.img, x = oxT, y = oyT, sx = s, sy = s,
+            z = rel + 6, flatColor = flatColor, img = e.img, x = oxT, y = oyT, sx = s, sy = s,
             bx = oxT, by = oyT, w = e.iw * s, h = e.ih * s,
         })
     end
