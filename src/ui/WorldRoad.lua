@@ -2960,13 +2960,31 @@ local function drawProps(g, x, w, camZ)
         -- que emolduram a batalha (mesma latitude) ficam na frente, como
         -- o usuário quer. rel sozinho não bastava (poste enorme na mesma
         -- faixa parecia atrás).
-        local baseY = WorldRoad._enemyBaseY or 1e9
+        -- régua = pé do monstro pela MESMA fórmula dos props (g.latY na
+        -- latitude de BATTLE_REL). getRoadAnchor usava um lerp diferente,
+        -- então a comparação saía torta.
+        local et = g.tOf(WorldRoad.BATTLE_REL)
+        local baseY = (et and g.latY(0, et)) or WorldRoad._enemyBaseY or 1e9
         local behind, front = {}, {}
         for _, p in ipairs(nearPass) do
             local pt = g.tOf(p.z - camZ)
             local py = pt and pt >= 0 and g.latY(0, pt) or -1e9
-            if py >= baseY - 6 then front[#front + 1] = p
+            -- LUMINÁRIA (poste/braseiro) tem folga generosa: o gate na faixa
+            -- da batalha — mesmo um pouco atrás do pé do monstro — emoldura
+            -- e desenha NA FRENTE. Resto (árvore/arbusto) usa base estrita:
+            -- só na frente se de fato mais perto (evita copa de trás vazar).
+            local tol = LuminaireEngine.isLuminaire(p.kind) and 55 or 4
+            if py >= baseY - tol then front[#front + 1] = p
             else behind[#behind + 1] = p end
+        end
+        if os.getenv("GF_DEBUG") then
+            print(string.format("[depth] baseY=%.0f  front=%d behind=%d",
+                baseY, #front, #behind))
+            for _, p in ipairs(front) do
+                local pt = g.tOf(p.z - camZ)
+                print(string.format("  FRONT %s rel=%.1f py=%.0f",
+                    p.kind, p.z - camZ, pt and g.latY(0, pt) or -1))
+            end
         end
         drawList(behind)
         enemyFn()                    -- monstro no eixo (props da frente vêm depois)
