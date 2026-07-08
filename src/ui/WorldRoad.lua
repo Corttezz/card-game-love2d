@@ -2965,16 +2965,15 @@ local function drawProps(g, x, w, camZ)
         -- então a comparação saía torta.
         local et = g.tOf(WorldRoad.BATTLE_REL)
         local baseY = (et and g.latY(0, et)) or WorldRoad._enemyBaseY or 1e9
+        -- painter puro por Y da BASE: pé do prop ABAIXO do pé do monstro
+        -- (na tela) = mais PERTO → na frente; acima = mais longe → atrás.
+        -- Margem +2px só pra empatados irem pra frente. Vale igual pra
+        -- poste, árvore, tudo (regra de profundidade real, sem exceção).
         local behind, front = {}, {}
         for _, p in ipairs(nearPass) do
             local pt = g.tOf(p.z - camZ)
             local py = pt and pt >= 0 and g.latY(0, pt) or -1e9
-            -- LUMINÁRIA (poste/braseiro) tem folga generosa: o gate na faixa
-            -- da batalha — mesmo um pouco atrás do pé do monstro — emoldura
-            -- e desenha NA FRENTE. Resto (árvore/arbusto) usa base estrita:
-            -- só na frente se de fato mais perto (evita copa de trás vazar).
-            local tol = LuminaireEngine.isLuminaire(p.kind) and 55 or 4
-            if py >= baseY - tol then front[#front + 1] = p
+            if py >= baseY - 2 then front[#front + 1] = p
             else behind[#behind + 1] = p end
         end
         if os.getenv("GF_DEBUG") then
