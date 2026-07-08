@@ -987,9 +987,13 @@ local function roadWobble(worldZ, t, w)
 end
 
 -- v9.2: registra o desenho do inimigo pra rodar DENTRO do painter no eixo
--- BATTLE_REL (props mais próximos ficam na frente dele). One-shot: o
--- WorldRoad.draw consome e zera. Sem registro, nada muda (tools/viagem).
-function WorldRoad.setBattleEnemyDraw(fn) WorldRoad._enemyDraw = fn end
+-- do monstro. baseY = Y do PÉ do monstro na tela (sort 2.5D por base):
+-- prop com pé mais BAIXO na tela (ou ~igual) = mais perto → na FRENTE.
+-- One-shot: o WorldRoad.draw consome e zera. Sem registro, nada muda.
+function WorldRoad.setBattleEnemyDraw(fn, baseY)
+    WorldRoad._enemyDraw = fn
+    WorldRoad._enemyBaseY = baseY
+end
 
 function WorldRoad.getRoadAnchor(rel, x, y, w, h)
     local g = domeGeom(x, y, w, h)
@@ -2950,10 +2954,18 @@ local function drawProps(g, x, w, camZ)
     -- setBattleEnemyDraw; o painter o chama no eixo, entre os dois grupos.
     local enemyFn = WorldRoad._enemyDraw
     if enemyFn then
-        local AXIS = WorldRoad.BATTLE_REL - 0.3
+        -- sort 2.5D por Y da BASE na tela: o pé do monstro é a régua.
+        -- Prop cujo pé cai igual ou mais baixo (−6px de folga) que o do
+        -- monstro está tão perto ou mais → desenha na FRENTE dele. Postes
+        -- que emolduram a batalha (mesma latitude) ficam na frente, como
+        -- o usuário quer. rel sozinho não bastava (poste enorme na mesma
+        -- faixa parecia atrás).
+        local baseY = WorldRoad._enemyBaseY or 1e9
         local behind, front = {}, {}
         for _, p in ipairs(nearPass) do
-            if (p.z - camZ) < AXIS then front[#front + 1] = p
+            local pt = g.tOf(p.z - camZ)
+            local py = pt and pt >= 0 and g.latY(0, pt) or -1e9
+            if py >= baseY - 6 then front[#front + 1] = p
             else behind[#behind + 1] = p end
         end
         drawList(behind)

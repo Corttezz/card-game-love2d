@@ -175,7 +175,7 @@ function GameplayScene.draw()
             0, topBarHeight, width, height - topBarHeight)
         WorldRoad.setBattleEnemyDraw(function()
             enemyBbox = EnemyRenderer.draw(game, enemyCx, enemyCy)
-        end)
+        end, enemyCy)
     end
 
     if interior then
