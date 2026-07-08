@@ -1,6 +1,11 @@
 -- components/RestScreen.lua
 -- Descanso: escolhe entre curar 30% maxHP ou forjar (upgrade) uma carta do deck.
 -- Forge: marca card com `upgraded` na run (runManager.currentRun.upgraded[cardId]++).
+--
+-- F4 do UI Overhaul (docs/plan/ui-ux-overhaul-v1.md): cena REAL de fogueira
+-- (assets/sprites/scenes/path_rest.png) + painel grimório (Panel9) + duas
+-- ESCOLHAS-CARTÃO grandes com preview do resultado (HP atual → resultante),
+-- no lugar dos 2 botões soltos no vazio (tela nota D no levantamento).
 
 local RestScreen = {}
 RestScreen.__index = RestScreen
@@ -8,7 +13,11 @@ RestScreen.__index = RestScreen
 local FontManager      = require("src.ui.FontManager")
 local Palette          = require("src.ui.Palette")
 local Button           = require("components.Button")
-local BackgroundLoader = require("src.ui.card.BackgroundLoader")
+local Panel9           = require("src.ui.Panel9")
+local SceneBackground  = require("src.ui.SceneBackground")
+local IconLoader       = require("src.ui.IconLoader")
+local CardDatabase     = require("src.systems.CardDatabase")
+local HintBar          = require("src.ui.HintBar")
 local Sfx              = require("src.systems.Sfx")
 
 function RestScreen:new()
@@ -21,6 +30,7 @@ function RestScreen:new()
     instance.cardList = {}
     instance.resultText = nil
     instance.resultTimer = 0
+    instance.choiceCards = {}   -- {x,y,w,h,btn,icon,title,detail}
     return instance
 end
 
@@ -38,6 +48,7 @@ function RestScreen:hide()
     self.visible = false
     self.buttons = {}
     self.cardList = {}
+    self.choiceCards = {}
 end
 
 function RestScreen:isVisible() return self.visible end
@@ -52,27 +63,62 @@ function RestScreen:resize()
     end
 end
 
-function RestScreen:buildChooseButtons()
-    self.buttons = {}
+-- Geometria do painel central (compartilhada entre build e draw).
+function RestScreen:panelRect()
     local sw = love.graphics.getWidth()
     local sh = love.graphics.getHeight()
-    local btnW = 260
-    local btnH = 56
-    local y = math.floor(sh * 0.55)
-    local spacing = 24
+    local pw = math.min(680, math.floor(sw * 0.72))
+    local ph = self.mode == "forge"
+        and math.min(560, math.floor(sh * 0.78))
+        or 420
+    local px = math.floor((sw - pw) / 2)
+    local py = math.floor((sh - ph) / 2) + 10
+    return px, py, pw, ph
+end
 
-    local healBtn = Button:new(
-        math.floor(sw / 2 - btnW - spacing / 2), y, btnW, btnH,
-        "Descansar (+30% HP)",
-        function() self:doHeal() end
-    )
-    local forgeBtn = Button:new(
-        math.floor(sw / 2 + spacing / 2), y, btnW, btnH,
-        "Forjar Carta",
-        function() self:enterForgeMode() end
-    )
-    table.insert(self.buttons, healBtn)
-    table.insert(self.buttons, forgeBtn)
+function RestScreen:buildChooseButtons()
+    self.buttons = {}
+    self.choiceCards = {}
+    local px, py, pw, ph = self:panelRect()
+
+    -- Duas escolhas-cartão grandes dentro do painel
+    local cw, chh = 250, 200
+    local gap = 36
+    local cy = py + 150
+    local leftX = math.floor(px + pw / 2 - cw - gap / 2)
+    local rightX = math.floor(px + pw / 2 + gap / 2)
+
+    local p = self.game and self.game.player
+    local healAmt = p and math.floor(p.maxHealth * 0.30) or 0
+    local healTo = p and math.min(p.health + healAmt, p.maxHealth) or 0
+    local healDetail = p
+        and ("HP " .. p.health .. "/" .. p.maxHealth
+             .. "  ->  " .. healTo .. "/" .. p.maxHealth)
+        or ""
+
+    local heal = {
+        x = leftX, y = cy, w = cw, h = chh,
+        icon = "heart", title = "Descansar",
+        sub = "+30% HP",
+        detail = healDetail,
+    }
+    heal.btn = Button:new(leftX, cy, cw, chh, "",
+        function() self:doHeal() end)
+    heal.btn:setVariant("invisible")
+
+    local forge = {
+        x = rightX, y = cy, w = cw, h = chh,
+        icon = "rune", title = "Forjar",
+        sub = "+1 nivel em uma carta",
+        detail = "Aprimora ataque/defesa",
+    }
+    forge.btn = Button:new(rightX, cy, cw, chh, "",
+        function() self:enterForgeMode() end)
+    forge.btn:setVariant("invisible")
+
+    self.choiceCards = { heal, forge }
+    table.insert(self.buttons, heal.btn)
+    table.insert(self.buttons, forge.btn)
 end
 
 function RestScreen:doHeal()
@@ -81,12 +127,14 @@ function RestScreen:doHeal()
     self.resultText = "Curou " .. amt .. " HP."
     self.resultTimer = 1.5
     self.buttons = {}
+    self.choiceCards = {}
     Sfx.play("restComplete")
 end
 
 function RestScreen:enterForgeMode()
     self.mode = "forge"
     self.buttons = {}
+    self.choiceCards = {}
     self.cardList = {}
     local run = self.game.runManager.currentRun
     if not run then return end
@@ -98,46 +146,53 @@ function RestScreen:enterForgeMode()
         end
     end
 
-    local sw = love.graphics.getWidth()
-    local sh = love.graphics.getHeight()
-    local perRow = 4
-    local btnW = math.floor((sw * 0.8) / perRow) - 10
-    local btnH = 44
-    local startX = math.floor(sw * 0.1)
-    local startY = math.floor(sh * 0.35)
+    local px, py, pw, ph = self:panelRect()
+    local perRow = 3
+    local gutter = 10
+    local innerX = px + 36
+    local innerW = pw - 72
+    local btnW = math.floor((innerW - gutter * (perRow - 1)) / perRow)
+    local btnH = 42
+    local startY = py + 130
 
     for i, cardId in ipairs(self.cardList) do
         local col = (i - 1) % perRow
         local row = math.floor((i - 1) / perRow)
-        local x = startX + col * (btnW + 10)
+        local x = innerX + col * (btnW + gutter)
         local y = startY + row * (btnH + 8)
         local upgraded = run.upgraded and run.upgraded[cardId] or 0
-        local label = cardId .. (upgraded > 0 and (" +" .. upgraded) or "")
+        -- nome de exibição da carta (o id cru era ilegível — F4)
+        local cd = CardDatabase:getCard(cardId)
+        local label = (cd and cd.name or cardId)
+            .. (upgraded > 0 and (" +" .. upgraded) or "")
         local btn = Button:new(x, y, btnW, btnH, label, function()
             self:doForge(cardId)
-        end)
+        end, nil, 9)
         table.insert(self.buttons, btn)
     end
 
-    -- Botao voltar
+    -- Botao voltar (dentro do painel, rodapé)
     local back = Button:new(
-        math.floor(sw / 2 - 80), math.floor(sh * 0.85), 160, 44, "Voltar",
+        math.floor(px + pw / 2 - 80), py + ph - 60, 160, 40, "Voltar",
         function() self:show(self.game, self.onClose) end
     )
+    back:setIcon("x_close")
     table.insert(self.buttons, back)
 end
 
 function RestScreen:doForge(cardId)
     if not self.game or not self.game.runManager then return end
+    local cd = CardDatabase:getCard(cardId)
+    local displayName = (cd and cd.name) or cardId
     local newLvl = self.game.runManager:upgradeCard(cardId)
     if not newLvl then
         -- Cap atingido — feedback ao jogador, sem consumir o nó (caller decide).
-        self.resultText = "Já no nível máximo: " .. cardId
+        self.resultText = "Já no nível máximo: " .. displayName
         self.resultTimer = 1.0
         self.buttons = {}
         return
     end
-    self.resultText = "Forjou: " .. cardId .. " (+" .. newLvl .. ")"
+    self.resultText = "Forjou: " .. displayName .. " (+" .. newLvl .. ")"
     self.resultTimer = 1.5
     self.buttons = {}
     Sfx.play("restComplete")
@@ -156,49 +211,91 @@ function RestScreen:update(dt)
     end
 end
 
+-- Escolha-cartão: painel interno com ícone grande + título + detalhe.
+-- Hover (via botão invisível) = levanta 4px + moldura dourada.
+local function drawChoiceCard(c)
+    local hover = c.btn and c.btn.hover
+    local lift = hover and -4 or 0
+    local y = c.y + lift
+
+    Panel9.draw("panel_inner", c.x, y, c.w, c.h, {
+        fill = hover and { 0.20, 0.15, 0.10, 0.94 }
+            or { 0.12, 0.095, 0.075, 0.94 },
+        tint = hover and { 1.15, 1.1, 0.85, 1 } or nil,
+    })
+
+    local icon = IconLoader.get(c.icon)
+    if icon and icon.size then
+        local s = 56 / icon.size.w
+        icon.draw(math.floor(c.x + c.w / 2 - icon.size.w * s / 2), y + 26, s)
+    end
+
+    local tf = FontManager.getFont(16)
+    love.graphics.setFont(tf)
+    Palette.set(hover and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT_LIGHT)
+    love.graphics.print(c.title,
+        math.floor(c.x + c.w / 2 - tf:getWidth(c.title) / 2), y + 96)
+
+    local sf = FontManager.getFont(10)
+    love.graphics.setFont(sf)
+    Palette.set(Palette.AGED_GOLD)
+    love.graphics.print(c.sub,
+        math.floor(c.x + c.w / 2 - sf:getWidth(c.sub) / 2), y + 126)
+
+    Palette.set(Palette.PARCHMENT)
+    love.graphics.print(c.detail,
+        math.floor(c.x + c.w / 2 - sf:getWidth(c.detail) / 2), y + 154)
+end
+
 function RestScreen:draw()
     if not self.visible then return end
     local sw = love.graphics.getWidth()
     local sh = love.graphics.getHeight()
 
-    -- Dimming mais suave pro gameplay atras aparecer como ambiente.
-    love.graphics.setColor(0, 0, 0, 0.55)
-    love.graphics.rectangle("fill", 0, 0, sw, sh)
-
-    -- Overlay quente de acampamento (tint avermelhado de fogueira).
-    local tex = BackgroundLoader.get("fire")
-    if tex then
-        love.graphics.setColor(1, 0.6, 0.3, 0.10)
-        local tw, th = tex:getWidth(), tex:getHeight()
-        love.graphics.draw(tex, love.graphics.newQuad(0, 0, sw, sh, tw, th), 0, 0)
+    -- CENA REAL de fogueira (cover-fit + véu leve) — a tela antiga era um
+    -- fundo pontilhado chapado com o gameplay vazando atrás.
+    local drawn = SceneBackground.draw("path_rest", sw, sh, 0.35)
+    if not drawn then
+        love.graphics.setColor(0.07, 0.05, 0.04, 1)
+        love.graphics.rectangle("fill", 0, 0, sw, sh)
     end
     love.graphics.setColor(1, 1, 1, 1)
 
-    local titleFont = FontManager.getResponsiveFont(0.045, 32)
+    local px, py, pw, ph = self:panelRect()
+    Panel9.draw("panel_main", px, py, pw, ph)
+
+    -- Título em INK sobre o pergaminho do painel (linguagem das cartas)
+    local titleFont = FontManager.getFont(24)
     love.graphics.setFont(titleFont)
-    love.graphics.setColor(Palette.AGED_GOLD_LIGHT)
-    local title = self.mode == "forge" and "Forjar — escolha uma carta" or "Acampamento"
-    local tw = titleFont:getWidth(title)
-    love.graphics.print(title, math.floor((sw - tw) / 2), math.floor(sh * 0.12))
+    Palette.set(Palette.INK)
+    local title = self.mode == "forge" and "Forjar" or "Acampamento"
+    love.graphics.print(title,
+        math.floor(px + pw / 2 - titleFont:getWidth(title) / 2), py + 44)
 
-    local subFont = FontManager.getResponsiveFont(0.022, 16)
+    local subFont = FontManager.getFont(10)
     love.graphics.setFont(subFont)
-    love.graphics.setColor(Palette.PARCHMENT_LIGHT)
-    local sub = self.mode == "forge" and "Clique em uma carta para aprimora-la." or
-        "Descanse para recuperar HP ou forje uma carta em seu deck."
-    local sw2 = subFont:getWidth(sub)
-    love.graphics.print(sub, math.floor((sw - sw2) / 2), math.floor(sh * 0.22))
+    Palette.set(Palette.RUST)
+    local sub = self.mode == "forge"
+        and "Escolha uma carta para aprimorar."
+        or "A fogueira crepita. Recupere o folego ou trabalhe o aco."
+    love.graphics.print(sub,
+        math.floor(px + pw / 2 - subFont:getWidth(sub) / 2), py + 84)
 
+    for _, c in ipairs(self.choiceCards) do drawChoiceCard(c) end
     for _, b in ipairs(self.buttons) do b:draw() end
 
     if self.resultText then
-        local rf = FontManager.getResponsiveFont(0.026, 18)
+        local rf = FontManager.getFont(14)
         love.graphics.setFont(rf)
-        love.graphics.setColor(Palette.AGED_GOLD_LIGHT)
-        local rw = rf:getWidth(self.resultText)
+        Palette.set(Palette.MOSS)
         love.graphics.print(self.resultText,
-            math.floor((sw - rw) / 2), math.floor(sh * 0.80))
+            math.floor(px + pw / 2 - rf:getWidth(self.resultText) / 2),
+            py + ph - 96)
     end
+
+    HintBar.draw(self.mode == "forge"
+        and "Clique numa carta para forjar · Voltar cancela"
+        or "Escolha: descansar OU forjar (uma vez por acampamento)")
 
     love.graphics.setColor(1, 1, 1, 1)
 end

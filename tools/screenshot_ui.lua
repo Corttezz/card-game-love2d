@@ -84,6 +84,14 @@ function M.run(mode)
         local Events = require("src.data.events")
         local EventScreen = require("components.EventScreen")
         local ev = Events.roll(1)
+        -- prefere evento COM ilustração (valida o slot de arte do redesign)
+        for _ = 1, 30 do
+            if ev and love.filesystem.getInfo(
+                "assets/sprites/ui/event_" .. tostring(ev.id) .. ".png") then
+                break
+            end
+            ev = Events.roll(1) or ev
+        end
         if not ev then print("[screenshot] sem evento") return end
         local es = EventScreen:new()
         es:show(ev, game, function() end)
