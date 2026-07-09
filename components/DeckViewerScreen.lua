@@ -39,8 +39,11 @@ function DeckViewerScreen:_build()
     if not run then return end
 
     local list = {}
-    for _, id in ipairs(run.currentDeck or {}) do
-        local cd = CardDatabase:getCard(id)
+    for _, entry in ipairs(run.currentDeck or {}) do
+        -- currentDeck guarda id string OU {id, edition, seal} (booster com
+        -- edition/seal). Normaliza pro id — senão a carta some do visualizador.
+        local id = type(entry) == "table" and entry.id or entry
+        local cd = id and CardDatabase:getCard(id)
         if cd then
             table.insert(list, { id = id, cd = cd })
         end

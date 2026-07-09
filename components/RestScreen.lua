@@ -139,8 +139,12 @@ function RestScreen:enterForgeMode()
     local run = self.game.runManager.currentRun
     if not run then return end
     local seen = {}
-    for _, id in ipairs(run.currentDeck) do
-        if not seen[id] then
+    for _, entry in ipairs(run.currentDeck) do
+        -- currentDeck guarda id string OU {id, edition, seal} (cartas de
+        -- booster com edition/seal — RunManager:addCardToDeck). Normaliza pro
+        -- id: forja/upgrade e display trabalham por id string.
+        local id = type(entry) == "table" and entry.id or entry
+        if id and not seen[id] then
             seen[id] = true
             table.insert(self.cardList, id)
         end
