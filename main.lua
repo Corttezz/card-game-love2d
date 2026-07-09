@@ -452,6 +452,13 @@ function love.load(loveArgs)
         return
     end
 
+    -- Valida a animação de vela do menu (grid do ciclo de crossfade):
+    --   love . screenshot_menuanim
+    if loveArgs and loveArgs[1] == "screenshot_menuanim" then
+        require("tools.screenshot_menuanim").run()
+        return
+    end
+
     -- Telas de UI sem harness próprio (levantamento redesign UI/UX):
     --   love . screenshot_ui menu|class|settings|rest|event|collection|all
     if loveArgs and loveArgs[1] == "screenshot_ui" then

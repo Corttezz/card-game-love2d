@@ -532,6 +532,45 @@ end
 -- O cenário deixou de ser um PNG parado: parallax de mouse (a sala inteira
 -- responde), luz de vela PULSANDO nas duas velas (âncoras na imagem),
 -- flicker quente global, fumaça de incenso derivando na frente.
+-- v2.3: ANIMAÇÃO DE VELA — o background cicla por frames de flicker
+-- desenhados à mão (crossfade suave, "vida de fogo" igual às luminárias dos
+-- postes). Ordem pedida pelo usuário; "menu" = a que já tínhamos (chama
+-- discreta, funciona como respiro). O laço volta pro começo ("menu" no fim
+-- emenda com "menu" no início → dwell mais longo no estado de descanso).
+local BG_SEQ = {
+    "menu",         -- a que temos hoje
+    "menu_normal",  -- normal
+    "menu",         -- volta pra hoje
+    "menu_1",       -- (1)
+    "menu_2",       -- (2)
+    "menu_normal",  -- normal
+    "menu",         -- volta pra hoje  → emenda com o início
+}
+local BG_FADE = 0.65   -- s de crossfade entre um frame e o próximo
+local BG_HOLD = 0.55   -- s parado no frame-alvo antes do próximo crossfade
+local BG_SEG  = BG_FADE + BG_HOLD
+
+-- Deterministic a partir do relógio: retorna (from, to, mix 0..1).
+local function bgFrame(t)
+    local n = #BG_SEQ
+    local cycle = n * BG_SEG
+    local pos = (t % cycle) / BG_SEG      -- [0, n)
+    local idx = math.floor(pos)           -- índice do "from" (0-based)
+    local frac = pos - idx                -- [0,1) dentro do segmento
+    local from = BG_SEQ[(idx % n) + 1]
+    local to   = BG_SEQ[((idx + 1) % n) + 1]
+    local fadeFrac = BG_FADE / BG_SEG
+    local mix
+    if frac < fadeFrac then
+        -- crossfade suave (smoothstep) do from → to
+        local x = frac / fadeFrac
+        mix = x * x * (3 - 2 * x)
+    else
+        mix = 1                            -- segurando no frame-alvo
+    end
+    return from, to, mix
+end
+
 function Menu:drawBackground()
     local width = love.graphics.getWidth()
     local height = love.graphics.getHeight()
@@ -539,8 +578,11 @@ function Menu:drawBackground()
     local t = love.timer.getTime()
 
     local SceneBackground = require("src.ui.SceneBackground")
-    -- CAMADA 1: cenário com parallax (mouse desloca a sala, suavizado)
-    local ok, tf = SceneBackground.drawParallax("menu", width, height, 0.30,
+    -- CAMADA 1: cenário com parallax (mouse desloca a sala) + crossfade de
+    -- vela entre os frames do ciclo (BG_SEQ).
+    local fromScene, toScene, mix = bgFrame(t)
+    local ok, tf = SceneBackground.drawParallaxCrossfade(fromScene, toScene, mix,
+        width, height, 0.30,
         (self._parX or 0) * -14, (self._parY or 0) * -8, 1.07)
     if ok then
         self._sceneTf = tf
