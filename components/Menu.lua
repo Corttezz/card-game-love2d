@@ -546,29 +546,19 @@ local BG_SEQ = {
     "menu_normal",  -- normal
     "menu",         -- volta pra hoje  → emenda com o início
 }
-local BG_FADE = 0.65   -- s de crossfade entre um frame e o próximo
-local BG_HOLD = 0.55   -- s parado no frame-alvo antes do próximo crossfade
-local BG_SEG  = BG_FADE + BG_HOLD
+-- MESMA cadência do fogo dos postes do jogo: WorldRoad troca o frame da
+-- chama a 10 fps com corte seco (fr[floor(_time*10)%#fr]). O menu segue igual
+-- — flicker rápido, sem crossfade (só a chama muda entre os frames, então o
+-- corte seco lê como fogo vivo, não como troca de imagem).
+local BG_FPS = 10
 
 -- Deterministic a partir do relógio: retorna (from, to, mix 0..1).
+-- Corte seco → to = from e mix = 0 (drawParallaxCrossfade desenha só `from`).
 local function bgFrame(t)
     local n = #BG_SEQ
-    local cycle = n * BG_SEG
-    local pos = (t % cycle) / BG_SEG      -- [0, n)
-    local idx = math.floor(pos)           -- índice do "from" (0-based)
-    local frac = pos - idx                -- [0,1) dentro do segmento
-    local from = BG_SEQ[(idx % n) + 1]
-    local to   = BG_SEQ[((idx + 1) % n) + 1]
-    local fadeFrac = BG_FADE / BG_SEG
-    local mix
-    if frac < fadeFrac then
-        -- crossfade suave (smoothstep) do from → to
-        local x = frac / fadeFrac
-        mix = x * x * (3 - 2 * x)
-    else
-        mix = 1                            -- segurando no frame-alvo
-    end
-    return from, to, mix
+    local idx = math.floor(t * BG_FPS) % n
+    local scene = BG_SEQ[idx + 1]
+    return scene, scene, 0
 end
 
 function Menu:drawBackground()
