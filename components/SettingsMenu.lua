@@ -264,7 +264,7 @@ function SettingsMenu:draw()
     -- Título estilo OSD de TV: "◼ MENU" verde-fósforo (este painel é o
     -- menu DO APARELHO — docs/plan/menu-crt-v2.md)
     local title = I18n.t("settings.title")
-    local g = TvOsd.GREEN
+    local g = TvOsd.AMBER
     -- quadradinho OSD à esquerda do título
     local titleW = TvOsd.textWidth(title, 16)
     local tx = math.floor(p.x + (p.w - titleW - 22) / 2)
@@ -275,7 +275,7 @@ function SettingsMenu:draw()
     TvOsd.text(title, tx + 22, p.y + 18, 1, 16)
 
     -- Separador verde-escuro sob o título (linha do OSD)
-    local gd = TvOsd.GREEN_DIM
+    local gd = TvOsd.AMBER_DIM
     love.graphics.setColor(gd[1], gd[2], gd[3], 0.8)
     love.graphics.rectangle("fill", p.x + 16, p.y + 52, p.w - 32, 2)
     love.graphics.setColor(1, 1, 1, 1)

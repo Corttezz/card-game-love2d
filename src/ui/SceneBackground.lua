@@ -63,6 +63,38 @@ function SceneBackground.draw(scene, width, height, overlayAlpha)
     return true
 end
 
+-- Desenha a cena com ZOOM extra + offset de parallax (o zoom cria a folga
+-- pra imagem deslocar sem mostrar borda). offX/offY em pixels de tela.
+-- Retorna (true, transform) se o PNG existe — transform = {scale, ox, oy}
+-- pra ancorar elementos na imagem (ex: brilho das velas do Menu v2.1).
+function SceneBackground.drawParallax(scene, width, height, overlayAlpha, offX, offY, zoom)
+    local img = load(scene)
+    if not img then return false end
+    overlayAlpha = overlayAlpha or 0.35
+    zoom = zoom or 1.06
+    offX, offY = offX or 0, offY or 0
+
+    local iw, ih = img:getWidth(), img:getHeight()
+    local s = math.max(width / iw, height / ih) * zoom
+    local dw, dh = iw * s, ih * s
+    -- offset limitado à folga do zoom (nunca mostra borda)
+    local slackX = (dw - width) / 2
+    local slackY = (dh - height) / 2
+    offX = math.max(-slackX, math.min(slackX, offX))
+    offY = math.max(-slackY, math.min(slackY, offY))
+    local ox = (width - dw) / 2 + offX
+    local oy = (height - dh) / 2 + offY
+
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(img, ox, oy, 0, s, s)
+    if overlayAlpha > 0 then
+        love.graphics.setColor(Palette.INK[1], Palette.INK[2], Palette.INK[3], overlayAlpha)
+        love.graphics.rectangle("fill", 0, 0, width, height)
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+    return true, { scale = s, ox = ox, oy = oy, dw = dw, dh = dh }
+end
+
 function SceneBackground.has(scene)
     return load(scene) ~= nil
 end

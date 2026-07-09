@@ -66,6 +66,33 @@ Duas linguagens convivem SEM brigar:
   só nos elementos "do aparelho". Toda a lógica intocada (persistência,
   dropdown de idioma, caminho do clique testado).
 
+## 2.5 v2.1 (feedback do dono: "ainda muito parecido, precisa ficar bonito")
+
+Diagnóstico: a v2 foi tempero, não reforma. Background parado, botões
+iguais, e o verde OSD BRIGAVA com o sépia dos botões.
+
+1. **Verde → FÓSFORO ÂMBAR** (TvOsd.AMBER 1.0,0.72,0.22): monitores de
+   fósforo âmbar existiam de verdade, e âmbar é a família do dourado do
+   jogo — harmonia resolvida na raiz, o OSD continua "de aparelho".
+2. **Background em CAMADAS VIVAS** (Menu:drawBackground reescrito):
+   - Parallax de mouse suavizado (drawParallax com zoom 1.07 de folga;
+     fundo ±14px, fumaça frontal ±26px = profundidade real).
+   - Luz de VELA pulsando: glow radial cacheado (128², falloff²) em
+     âncoras da imagem (0.209/0.770, 0.44 do PNG 400×256), flicker por
+     love.math.noise (vela não é metrônomo), blend add, halo + núcleo.
+   - Flicker quente global (respiração de sala à vela, alpha ~0.03-0.06).
+   - Fumaça de incenso: 3 novelos (assets/effects/smoke1-3) derivando
+     com wrap horizontal + sway.
+   - BRASAS: faíscas sobem das chamas (spawn 0.3-0.8s, vida 1.4-2.6s,
+     sway senoidal, esfriam amarelo→laranja).
+3. **Inputs REDESENHADOS** (Button variant "tv", novo _drawTv):
+   item de LISTA de menu de TV — backing ink translúcido + accent âmbar
+   à esquerda + linha inferior; hover = BARRA ÂMBAR preenchida
+   (gradiente 2 faixas) com texto INK; texto à esquerda, não centrado.
+   A caixa de aço continua default no resto do jogo (variant "clean").
+4. A 3ª carta flutuante saiu do centro-baixo (vazava atrás dos botões
+   translúcidos) → flutua sobre a página direita do livro (0.69, 0.84).
+
 ## 3. Regras
 - Legibilidade > efeito (herdada da v2.3 do CRT).
 - Nada de onda viajante (trauma GrassField). Varredura de scanline é

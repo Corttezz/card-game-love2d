@@ -36,10 +36,13 @@ function Menu:new()
     -- 3 versos de carta flutuantes (Balatro-style demo cards). Cada uma tem
     -- um state de hover compartilhado com CardBackHover (replica Card:updateMouse).
     -- v2: CLICÁVEIS — clique dá spin 360° com juice (spinT anima em update).
+    -- (a 3ª carta saiu do centro-baixo: com os botões translúcidos do look
+    -- "tv" ela vazava por trás da coluna — agora flutua sobre a página
+    -- direita do livro, área livre)
     instance.floatingCards = {
         { ax = 0.16, ay = 0.30, phase = 0.0, freqY = 0.7, freqR = 0.5, hover = CardBackHover.new(), spinT = 0 },
         { ax = 0.84, ay = 0.30, phase = 1.7, freqY = 0.5, freqR = 0.6, hover = CardBackHover.new(), spinT = 0 },
-        { ax = 0.50, ay = 0.83, phase = 3.1, freqY = 0.8, freqR = 0.4, hover = CardBackHover.new(), spinT = 0 },
+        { ax = 0.69, ay = 0.84, phase = 3.1, freqY = 0.8, freqR = 0.4, hover = CardBackHover.new(), spinT = 0 },
     }
 
     -- v2 "o televisor é o palco" (docs/plan/menu-crt-v2.md):
@@ -172,6 +175,12 @@ function Menu:createButtons()
     self.buttons.achievements:setIcon("star")
     self.buttons.settings:setIcon("gear")
     self.buttons.quit:setIcon("x_close")
+
+    -- v2.1: todos os itens do menu no look "lista de TV" (variant tv) —
+    -- a caixa de aço deu lugar à barra de seleção âmbar.
+    for _, btn in pairs(self.buttons) do
+        btn:setVariant("tv")
+    end
 end
 
 function Menu:updatePositions()
@@ -249,6 +258,36 @@ function Menu:update(dt)
         if m.ay < -0.02 then m.ay = 1.02; m.ax = math.random() end
         if m.ax < -0.02 then m.ax = 1.02 elseif m.ax > 1.02 then m.ax = -0.02 end
     end
+
+    -- v2.1: PARALLAX suavizado (mouse → alvo; lerp evita tranco).
+    do
+        local W, H = love.graphics.getWidth(), love.graphics.getHeight()
+        local mx, my = love.mouse.getPosition()
+        local tx = math.max(-1, math.min(1, (mx / W - 0.5) * 2))
+        local ty = math.max(-1, math.min(1, (my / H - 0.5) * 2))
+        local k = math.min(1, dt * 4)
+        self._parX = (self._parX or 0) + (tx - (self._parX or 0)) * k
+        self._parY = (self._parY or 0) + (ty - (self._parY or 0)) * k
+    end
+
+    -- v2.1: BRASAS subindo das velas (faísca ocasional, vida curta).
+    self.embers = self.embers or {}
+    self._emberTimer = (self._emberTimer or 0) - dt
+    if self._emberTimer <= 0 and #self.embers < 10 then
+        self._emberTimer = 0.28 + math.random() * 0.5
+        table.insert(self.embers, {
+            candle = math.random(2),            -- índice da âncora
+            offX = (math.random() - 0.5) * 10,
+            t = 0,
+            life = 1.4 + math.random() * 1.2,
+            sway = math.random() * math.pi * 2,
+        })
+    end
+    for i = #self.embers, 1, -1 do
+        local e = self.embers[i]
+        e.t = e.t + dt
+        if e.t >= e.life then table.remove(self.embers, i) end
+    end
 end
 
 -- Cria/recria a instância DynaText do título. Recria se a fonte responsiva
@@ -286,6 +325,9 @@ function Menu:draw()
 
     -- Poeira dourada derivando (vida ambiente, atrás das cartas).
     self:_drawMotes()
+
+    -- Brasas das velas (na frente do glow, atrás das cartas).
+    self:_drawEmbers()
 
     -- Cartas decorativas flutuantes (Balatro-style demo).
     self:_drawFloatingCards()
@@ -378,13 +420,37 @@ function Menu:_drawButtonCrtFx(btn)
 
     -- (c) seta OSD piscando (TV menu style)
     if math.floor(t * 2.4) % 2 == 0 then
-        local g = TvOsd.GREEN
+        local g = TvOsd.AMBER
         local ax = x - 18
         local ay = y + h / 2
         love.graphics.setColor(0, 0, 0, 0.7)
         love.graphics.polygon("fill", ax + 1, ay - 5, ax + 1, ay + 7, ax + 11, ay + 1)
         love.graphics.setColor(g[1], g[2], g[3], 0.95)
         love.graphics.polygon("fill", ax, ay - 6, ax, ay + 6, ax + 10, ay)
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- ===== v2.1: brasas das velas =====
+-- Faíscas ocasionais subindo da chama com sway senoidal, esfriando de
+-- amarelo-quente pra laranja antes de apagar.
+function Menu:_drawEmbers()
+    local tf = self._sceneTf
+    if not tf or not self.embers then return end
+    local a0 = (self.intro.alphaBg or 1)
+    if a0 <= 0.05 then return end
+    local ANCH = { { 0.209, 0.44 }, { 0.770, 0.44 } }
+    for _, e in ipairs(self.embers) do
+        local anch = ANCH[e.candle]
+        local k = e.t / e.life
+        local x = tf.ox + anch[1] * tf.dw + e.offX
+            + math.sin(e.t * 3 + e.sway) * 6 * k
+        local y = tf.oy + anch[2] * tf.dh - k * 70
+        local alpha = (1 - k) * 0.8 * a0
+        -- esfria: amarelo → laranja
+        love.graphics.setColor(1, 0.85 - 0.45 * k, 0.30 - 0.20 * k, alpha)
+        local s = k < 0.15 and 2 or 1
+        love.graphics.rectangle("fill", math.floor(x), math.floor(y), s, s)
     end
     love.graphics.setColor(1, 1, 1, 1)
 end
@@ -471,23 +537,38 @@ function Menu:_drawVersionFooter()
         12, love.graphics.getHeight() - 22)
 end
 
+-- ===== v2.1: BACKGROUND EM CAMADAS VIVAS =====
+-- O cenário deixou de ser um PNG parado: parallax de mouse (a sala inteira
+-- responde), luz de vela PULSANDO nas duas velas (âncoras na imagem),
+-- flicker quente global, fumaça de incenso derivando na frente.
 function Menu:drawBackground()
     local width = love.graphics.getWidth()
     local height = love.graphics.getHeight()
     local bgAlpha = self.intro.alphaBg or 1
+    local t = love.timer.getTime()
 
-    -- Tenta usar PNG gerado (scene_menu.png); fallback pra voidStars procedural.
     local SceneBackground = require("src.ui.SceneBackground")
-    if SceneBackground.draw("menu", width, height) then
-        -- Mask de fade-in (escurece enquanto bgAlpha sobe).
+    -- CAMADA 1: cenário com parallax (mouse desloca a sala, suavizado)
+    local ok, tf = SceneBackground.drawParallax("menu", width, height, 0.30,
+        (self._parX or 0) * -14, (self._parY or 0) * -8, 1.07)
+    if ok then
+        self._sceneTf = tf
+
+        -- CAMADA 2: luz das velas (glow radial pulsando com noise orgânico)
+        self:_drawCandleGlow(tf, t, bgAlpha)
+
+        -- CAMADA 3: respiração quente global (flicker de sala à vela)
+        local flick = 0.030 + 0.028 * love.math.noise(t * 1.9, 7.3)
+        love.graphics.setColor(1, 0.70, 0.34, flick * bgAlpha)
+        love.graphics.rectangle("fill", 0, 0, width, height)
+
+        -- CAMADA 4: fumaça de incenso derivando (profundidade)
+        self:_drawSmokeLayer(t, bgAlpha)
+
         if bgAlpha < 1 then
             love.graphics.setColor(0, 0, 0, 1 - bgAlpha)
             love.graphics.rectangle("fill", 0, 0, width, height)
         end
-        -- Overlay grimório pulsante dourado sutil
-        local pulse = 0.04 + math.sin(love.timer.getTime() * 0.5) * 0.02
-        love.graphics.setColor(Palette.AGED_GOLD[1], Palette.AGED_GOLD[2], Palette.AGED_GOLD[3], pulse * bgAlpha)
-        love.graphics.rectangle("fill", 0, 0, width, height)
         love.graphics.setColor(1, 1, 1, 1)
         return
     end
@@ -501,6 +582,79 @@ function Menu:drawBackground()
     if bgAlpha < 1 then
         love.graphics.setColor(0, 0, 0, 1 - bgAlpha)
         love.graphics.rectangle("fill", 0, 0, width, height)
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- Âncoras das velas na IMAGEM do menu (coords relativas ao PNG 400×256,
+-- medidas na captura). O transform do parallax converte pra tela — a luz
+-- acompanha a vela mesmo com a sala deslocando.
+local CANDLE_ANCHORS = {
+    { xr = 0.209, yr = 0.44, phase = 0.0 },
+    { xr = 0.770, yr = 0.44, phase = 3.7 },
+}
+
+-- Imagem radial cacheada pro glow (128×128, falloff quadrático).
+local function ensureGlowImage(self)
+    if self._glowImg then return end
+    local N = 128
+    local data = love.image.newImageData(N, N)
+    data:mapPixel(function(px, py)
+        local dx = (px - N / 2) / (N / 2)
+        local dy = (py - N / 2) / (N / 2)
+        local d = math.sqrt(dx * dx + dy * dy)
+        local v = math.max(0, 1 - d)
+        v = v * v
+        return 1, 1, 1, v
+    end)
+    self._glowImg = love.graphics.newImage(data)
+    self._glowImg:setFilter("linear", "linear")
+end
+
+function Menu:_drawCandleGlow(tf, t, bgAlpha)
+    ensureGlowImage(self)
+    love.graphics.setBlendMode("add")
+    for _, a in ipairs(CANDLE_ANCHORS) do
+        local x = tf.ox + a.xr * tf.dw
+        local y = tf.oy + a.yr * tf.dh
+        -- flicker orgânico (noise, não seno — vela real não é metrônomo)
+        local flick = 0.70 + 0.30 * love.math.noise(t * 5.5, a.phase)
+        local r = tf.dw * 0.075
+            * (0.92 + 0.14 * love.math.noise(t * 2.8, a.phase + 9))
+        -- halo largo alaranjado
+        love.graphics.setColor(1, 0.55, 0.18, 0.26 * flick * bgAlpha)
+        love.graphics.draw(self._glowImg, x, y, 0, r * 2 / 128, r * 2 / 128, 64, 64)
+        -- núcleo quente menor
+        love.graphics.setColor(1, 0.82, 0.45, 0.30 * flick * bgAlpha)
+        love.graphics.draw(self._glowImg, x, y, 0, r / 128, r / 128, 64, 64)
+    end
+    love.graphics.setBlendMode("alpha")
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- Fumaça de incenso: 3 novelos derivando devagar na frente do cenário
+-- (parallax mais forte que o fundo = profundidade de verdade).
+local SMOKE_WISPS = {
+    { img = "assets/effects/smoke1.png", yr = 0.80, speed = 9,  scaleR = 0.55, a = 0.09, seed = 0 },
+    { img = "assets/effects/smoke2.png", yr = 0.88, speed = 14, scaleR = 0.70, a = 0.12, seed = 400 },
+    { img = "assets/effects/smoke3.png", yr = 0.70, speed = 6,  scaleR = 0.45, a = 0.06, seed = 800 },
+}
+
+function Menu:_drawSmokeLayer(t, bgAlpha)
+    local ImageCache = require("src.ui.ImageCache")
+    local W, H = love.graphics.getWidth(), love.graphics.getHeight()
+    local par = (self._parX or 0) * -26   -- parallax frontal mais forte
+    for _, wsp in ipairs(SMOKE_WISPS) do
+        local img = ImageCache.get(wsp.img)
+        if img then
+            local iw = img:getWidth()
+            local sc = (W * wsp.scaleR) / iw
+            local span = W + iw * sc
+            local x = ((t * wsp.speed + wsp.seed) % span) - iw * sc + par
+            local y = H * wsp.yr + math.sin(t * 0.35 + wsp.seed) * 12
+            love.graphics.setColor(1, 0.95, 0.85, wsp.a * bgAlpha)
+            love.graphics.draw(img, x, y, 0, sc, sc, 0, img:getHeight() / 2)
+        end
     end
     love.graphics.setColor(1, 1, 1, 1)
 end

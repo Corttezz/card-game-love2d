@@ -9,11 +9,15 @@ local FontManager = require("src.ui.FontManager")
 
 local TvOsd = {}
 
--- Paleta do aparelho (verde-fósforo clássico de OSD). Exceção consciente
--- à regra "cores só do Theme": esta é a cor DO TELEVISOR, não do jogo —
--- centralizada aqui, usada com parcimônia.
-TvOsd.GREEN     = { 0.42, 0.98, 0.50 }
-TvOsd.GREEN_DIM = { 0.20, 0.52, 0.26 }
+-- Paleta do aparelho: FÓSFORO ÂMBAR (monitores de fósforo P3 reais —
+-- e âmbar é da família do dourado/sépia do jogo; o verde clássico brigava
+-- com os botões, feedback do dono Jul/2026). Exceção consciente à regra
+-- "cores só do Theme": esta é a cor DO TELEVISOR, centralizada aqui.
+TvOsd.AMBER     = { 1.00, 0.72, 0.22 }
+TvOsd.AMBER_DIM = { 0.50, 0.34, 0.10 }
+-- aliases legados (evita quebra se algo ainda referenciar)
+TvOsd.GREEN     = TvOsd.AMBER
+TvOsd.GREEN_DIM = TvOsd.AMBER_DIM
 
 -- ===== CHUVISCO (static de canal fora do ar) =====
 -- 4 frames de ruído 160×120 pré-gerados, ciclados a ~12fps, escalados
@@ -63,7 +67,7 @@ function TvOsd.text(str, x, y, alpha, size)
     if alpha <= 0.02 then return end
     local f = FontManager.getFont(size or 15)
     love.graphics.setFont(f)
-    local g = TvOsd.GREEN
+    local g = TvOsd.AMBER
     -- sombra dura (OSD real tem contorno preto pra ler sobre qualquer cena)
     love.graphics.setColor(0, 0, 0, 0.85 * alpha)
     love.graphics.print(str, x + 2, y + 2)
@@ -92,7 +96,7 @@ function TvOsd.segmentBar(x, y, value, opts)
     local gap   = opts.gap or 3
     local alpha = opts.alpha or 1
     local filled = math.floor((value or 0) * n + 0.5)
-    local g, d = TvOsd.GREEN, TvOsd.GREEN_DIM
+    local g, d = TvOsd.AMBER, TvOsd.AMBER_DIM
     for i = 1, n do
         local sx = x + (i - 1) * (segW + gap)
         -- sombra dura do bloquinho

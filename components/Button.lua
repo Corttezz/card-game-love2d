@@ -255,7 +255,95 @@ function Button:draw()
     if self.variant == "ornate" then
         return self:_drawOrnate()
     end
+    if self.variant == "tv" then
+        return self:_drawTv()
+    end
     return self:_drawClean()
+end
+
+-- Look "menu de TV" (Menu v2.1, docs/plan/menu-crt-v2.md): item de LISTA,
+-- não caixa de aço — backing translúcido com accent dourado à esquerda;
+-- hover = barra de fósforo ÂMBAR preenchida com texto ink (a linguagem
+-- de seleção de menu de televisor). Texto alinhado à ESQUERDA.
+function Button:_drawTv()
+    local x, y, w, h = self.x, self.y, self.width, self.height
+    local hovered = self.hover and not self.disabled and not self._consumed
+    local pressing = self.pressed and hovered
+
+    local scale = self._hoverScale * self._pressScale * Moveable.scaleFactor(self)
+    local rot = Moveable.rotOffset(self)
+    local needsTransform = scale ~= 1 or rot ~= 0
+    if needsTransform then
+        love.graphics.push()
+        love.graphics.translate(x + w / 2, y + h / 2)
+        love.graphics.scale(scale, scale)
+        love.graphics.rotate(rot)
+        love.graphics.translate(-(x + w / 2), -(y + h / 2))
+    end
+    if pressing then x, y = x + 1, y + 1 end
+
+    local AMBER    = { 1.00, 0.72, 0.22 }
+    local AMBER_HI = { 1.00, 0.82, 0.38 }
+    local AMBER_LO = { 0.86, 0.55, 0.12 }
+
+    if hovered then
+        -- sombra dura + barra âmbar com gradiente de 2 faixas (fósforo)
+        love.graphics.setColor(0, 0, 0, 0.45)
+        love.graphics.rectangle("fill", x + 3, y + 3, w, h)
+        love.graphics.setColor(AMBER_HI[1], AMBER_HI[2], AMBER_HI[3], 1)
+        love.graphics.rectangle("fill", x, y, w, math.floor(h / 2))
+        love.graphics.setColor(AMBER_LO[1], AMBER_LO[2], AMBER_LO[3], 1)
+        love.graphics.rectangle("fill", x, y + math.floor(h / 2), w, math.ceil(h / 2))
+        -- contorno ink fino
+        love.graphics.setColor(0.10, 0.07, 0.04, 0.9)
+        love.graphics.rectangle("line", x + 0.5, y + 0.5, w - 1, h - 1)
+    else
+        -- backing translúcido (legibilidade sobre a cena viva)
+        love.graphics.setColor(0.05, 0.04, 0.03, self.disabled and 0.35 or 0.55)
+        love.graphics.rectangle("fill", x, y, w, h)
+        -- accent esquerdo + linha inferior (estrutura de lista)
+        local d = self.disabled and 0.35 or 0.85
+        love.graphics.setColor(AMBER[1] * 0.6, AMBER[2] * 0.6, AMBER[3] * 0.6, d)
+        love.graphics.rectangle("fill", x, y, 3, h)
+        love.graphics.setColor(AMBER[1] * 0.5, AMBER[2] * 0.5, AMBER[3] * 0.5, 0.45)
+        love.graphics.rectangle("fill", x, y + h - 1, w, 1)
+    end
+
+    -- ===== ICON + TEXT (alinhados à esquerda, estilo lista) =====
+    local iconScale, iconPxW, iconPxH = autoIconScale(self)
+    local iconGap = (self.iconHandle and self.text ~= "") and 10 or 0
+    local padX = 18
+    local fontSize = fitFontSize(self.text, self.fontSize,
+        w - padX * 2 - iconPxW - iconGap)
+    local font = FontManager.getFont(fontSize)
+    love.graphics.setFont(font)
+    local textHeight = font:getHeight()
+    local cursorX = x + padX
+    local textY = y + math.floor((h - textHeight) / 2)
+
+    if self.iconHandle then
+        local iconY = y + math.floor((h - iconPxH) / 2)
+        love.graphics.setColor(1, 1, 1, self.disabled and 0.4 or 1)
+        self.iconHandle.draw(cursorX, iconY, iconScale)
+        cursorX = cursorX + iconPxW + iconGap
+    end
+
+    if self.text ~= "" then
+        if hovered then
+            -- texto INK sobre a barra âmbar (contraste de seleção)
+            love.graphics.setColor(0.12, 0.08, 0.04, 1)
+            love.graphics.print(self.text, cursorX, textY)
+        else
+            local pa = self.disabled and 0.4 or 1
+            love.graphics.setColor(0, 0, 0, 0.8 * pa)
+            love.graphics.print(self.text, cursorX + 1, textY + 1)
+            love.graphics.setColor(0.92, 0.86, 0.72, pa)   -- pergaminho claro
+            love.graphics.print(self.text, cursorX, textY)
+        end
+    end
+
+    love.graphics.setColor(1, 1, 1, 1)
+    if needsTransform then love.graphics.pop() end
 end
 
 -- Novo draw: rounded + emboss + scale-hover + shadow animada.
