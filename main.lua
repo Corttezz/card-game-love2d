@@ -493,6 +493,12 @@ function love.load(loveArgs)
         return
     end
 
+    -- Capturas do Menu+Entrada v2 (OSD, sintonia, cascade, settings).
+    if loveArgs and loveArgs[1] == "screenshot_menu_v2" then
+        require("tools.screenshot_menu_v2").run()
+        return
+    end
+
     -- Regressão do mouse através do vidro (domo do CRT vs hit-test).
     if loveArgs and loveArgs[1] == "smoke_crt_mouse" then
         local ok = require("tools.smoke_crt_mouse").run()

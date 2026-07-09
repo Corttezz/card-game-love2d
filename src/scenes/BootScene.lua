@@ -25,6 +25,7 @@ local Sfx             = require("src.systems.Sfx")
 local FlashShader     = require("src.ui.FlashShader")
 local ParticlesManager = require("engine.ParticlesManager")
 local CardBack        = require("src.ui.CardBack")
+local TvOsd           = require("src.ui.TvOsd")
 
 local BootScene = {}
 
@@ -47,6 +48,10 @@ local state = {
     bgAlpha         = 0,           -- fade-in do background
     titleAlpha      = 0,           -- título do jogo (surge no auge da cascade)
     titleScale      = 0.9,
+
+    -- v2 "sintonizando o canal" (docs/plan/menu-crt-v2.md):
+    staticAlpha     = 0,           -- chuvisco resolvendo na cena
+    titleGlitchT    = 0,           -- glitch de sinal RGB no título
 }
 
 -- Tamanhos lógicos (em pixels da janela; LÖVE escala automaticamente).
@@ -73,6 +78,8 @@ function BootScene.init(callbacks)
     state.bgAlpha         = 0
     state.titleAlpha      = 0
     state.titleScale      = 0.9
+    state.staticAlpha     = 0
+    state.titleGlitchT    = 0
     state.onComplete      = callbacks.onComplete
 
     -- Background fade-in (não-bloqueante para não travar o resto).
@@ -93,6 +100,14 @@ end
 local function startSplashSequence()
     state.phase = "splash"
     state.splashTime = 0
+
+    -- SINTONIA: o canal ancora — chuvisco forte resolvendo na cena.
+    state.staticAlpha = 0.85
+    if _G.EventManager then
+        _G.EventManager.parallelEase(state, "staticAlpha", 0, 0.55, "smooth", QUEUE)
+    else
+        state.staticAlpha = 0
+    end
 
     -- Carta central: SEM x/y armazenados — sempre desenhada em liveCenter()
     -- pra acompanhar resize da janela. Só anima alpha/scale/dissolve.
@@ -166,6 +181,10 @@ local function startSplashSequence()
 
             local mc = {
                 angle    = angle,
+                -- v2: ESPIRAL — o ângulo anima junto com a distância
+                -- (antes o voo era linha reta radial; espiral é orgânico)
+                angleSpeed = (math.random() < 0.5 and -1 or 1)
+                    * (1.0 + math.random() * 1.4),      -- rad/s de órbita
                 distFrom = radius,
                 rot      = math.random() * math.pi * 2,
                 rotSpeed = (math.random() - 0.5) * 8,   -- rad/s tumble
@@ -190,11 +209,12 @@ local function startSplashSequence()
         end, QUEUE)
     end
 
-    -- 1.60s: título do jogo materializa sob a carta central (identidade da
-    -- tela de entrada — antes o splash era anônimo).
+    -- 1.60s: título do jogo materializa sob a carta central — com GLITCH
+    -- de sinal (2 cópias RGB deslocadas por ~0.15s, depois assenta).
     EM.parallel(1.60, function()
         EM.parallelEase(state, "titleAlpha", 1.0, 0.45, "smooth",   QUEUE)
         EM.parallelEase(state, "titleScale", 1.0, 0.45, "back_out", QUEUE)
+        state.titleGlitchT = 0.15
     end, QUEUE)
 
     -- 2.70s: flash branco fullscreen (cobre o auge da cascade).
@@ -233,10 +253,20 @@ function BootScene.update(dt)
         -- Atualiza mini-cartas: tumble rotation + scale curve não-monotônica
         -- (pop-in → hold → collapse). Coords absolutas são derivadas no draw
         -- via liveCenter() + polar (angle, distFrom).
+        -- glitch de sinal do título decai
+        if state.titleGlitchT > 0 then
+            state.titleGlitchT = math.max(0, state.titleGlitchT - dt)
+        end
+
         for i = #state.miniCards, 1, -1 do
             local mc = state.miniCards[i]
             mc.age = mc.age + dt
             mc.rot = mc.rot + dt * mc.rotSpeed
+            -- espiral: órbita desacelera conforme chega no centro
+            if mc.angleSpeed then
+                local closeness = 1 - math.min(1, mc.age / mc.lifespan)
+                mc.angle = mc.angle + dt * mc.angleSpeed * (0.4 + 0.6 * closeness)
+            end
 
             local t2 = math.min(1, mc.age / mc.lifespan)
             -- Curva: 0 → 1 em t∈[0, 0.65] (pop-in fast), 1 → 0 em t∈[0.65, 1] (collapse).
@@ -278,30 +308,23 @@ local function drawBackground()
 end
 
 local function drawLoadingBar()
+    -- v2: a "carga" é a TV SINTONIZANDO — label + barra de segmentos OSD
+    -- verde-fósforo (mesma linguagem do volume de TV velha).
     local W, H = love.graphics.getWidth(), love.graphics.getHeight()
-    local x = math.floor((W - LOADING_BAR.w) / 2)
+    local segs, segW, gap = 16, 16, 3
+    local barW = segs * (segW + gap) - gap
+    local x = math.floor((W - barW) / 2)
     local y = math.floor(H * 0.62)
 
-    -- Texto "CARREGANDO..."
-    local font = FontManager.getFont(14)
-    love.graphics.setFont(font)
     local label = I18n.t("boot.loading")
-    Palette.set(Palette.AGED_GOLD_LIGHT)
-    love.graphics.print(label, math.floor((W - font:getWidth(label)) / 2), y - 28)
+    TvOsd.text(label, math.floor((W - TvOsd.textWidth(label, 14)) / 2),
+        y - 28, state.bgAlpha, 14)
+    TvOsd.segmentBar(x, y, state.loadingProgress,
+        { segments = segs, segW = segW, segH = 14, gap = gap,
+          alpha = state.bgAlpha })
 
-    -- Outline da barra.
-    PixelCanvas.rectOutline(x, y, LOADING_BAR.w, LOADING_BAR.h, Palette.AGED_GOLD_DARK)
-    PixelCanvas.rectOutline(x + 1, y + 1, LOADING_BAR.w - 2, LOADING_BAR.h - 2, Palette.AGED_GOLD)
-
-    -- Fill.
-    local fillW = math.floor((LOADING_BAR.w - LOADING_BAR.pad * 2) * state.loadingProgress)
-    if fillW > 0 then
-        PixelCanvas.rect(
-            x + LOADING_BAR.pad, y + LOADING_BAR.pad,
-            fillW, LOADING_BAR.h - LOADING_BAR.pad * 2,
-            Palette.AGED_GOLD_LIGHT
-        )
-    end
+    -- chuvisco leve enquanto sintoniza (resolve quando o splash abre)
+    TvOsd.staticNoise(0.25 * state.bgAlpha)
 end
 
 -- Wrapper sobre src/ui/CardBack. Aplica ambient breathing (mesma lógica do
@@ -362,6 +385,15 @@ local function drawSplash()
         for _, o in ipairs({ {2, 0}, {-2, 0}, {0, 2}, {0, -2}, {3, 3} }) do
             love.graphics.print(title, -tw / 2 + o[1], o[2])
         end
+        -- GLITCH de sinal: cópias R/C deslocadas enquanto o sinal assenta
+        if state.titleGlitchT > 0 then
+            local gk = state.titleGlitchT / 0.15
+            local off = 3 + math.floor(love.timer.getTime() * 60) % 2 * 2
+            love.graphics.setColor(1, 0.2, 0.2, 0.55 * gk * state.titleAlpha)
+            love.graphics.print(title, -tw / 2 - off, 0)
+            love.graphics.setColor(0.2, 1, 1, 0.55 * gk * state.titleAlpha)
+            love.graphics.print(title, -tw / 2 + off, 0)
+        end
         local g = Palette.AGED_GOLD_LIGHT
         local pulse = 1 + 0.08 * math.sin(state.splashTime * 3)
         love.graphics.setColor(math.min(1, g[1] * pulse), math.min(1, g[2] * pulse),
@@ -401,7 +433,16 @@ function BootScene.draw()
         drawLoadingBar()
     elseif state.phase == "splash" then
         drawSplash()
+        -- CHUVISCO da sintonia por cima do programa (resolve em ~0.55s)
+        TvOsd.staticNoise(state.staticAlpha)
         drawSkipHint()
+    end
+
+    -- Tag de canal do aparelho (OSD canto sup-dir, como TV real)
+    do
+        local W = love.graphics.getWidth()
+        local tag = "AV-1"
+        TvOsd.text(tag, W - TvOsd.textWidth(tag) - 26, 20, 0.9 * state.bgAlpha)
     end
 
     -- Versão no canto inferior-esquerdo (identidade "produto de verdade").

@@ -10,6 +10,7 @@ local Sfx = require("src.systems.Sfx")
 local CardBack = require("src.ui.CardBack")
 local CardBackHover = require("src.ui.CardBackHover")
 local DynaText = require("src.ui.DynaText")
+local TvOsd = require("src.ui.TvOsd")
 
 local Menu = {}
 Menu.__index = Menu
@@ -34,11 +35,28 @@ function Menu:new()
 
     -- 3 versos de carta flutuantes (Balatro-style demo cards). Cada uma tem
     -- um state de hover compartilhado com CardBackHover (replica Card:updateMouse).
+    -- v2: CLICÁVEIS — clique dá spin 360° com juice (spinT anima em update).
     instance.floatingCards = {
-        { ax = 0.16, ay = 0.30, phase = 0.0, freqY = 0.7, freqR = 0.5, hover = CardBackHover.new() },
-        { ax = 0.84, ay = 0.30, phase = 1.7, freqY = 0.5, freqR = 0.6, hover = CardBackHover.new() },
-        { ax = 0.50, ay = 0.83, phase = 3.1, freqY = 0.8, freqR = 0.4, hover = CardBackHover.new() },
+        { ax = 0.16, ay = 0.30, phase = 0.0, freqY = 0.7, freqR = 0.5, hover = CardBackHover.new(), spinT = 0 },
+        { ax = 0.84, ay = 0.30, phase = 1.7, freqY = 0.5, freqR = 0.6, hover = CardBackHover.new(), spinT = 0 },
+        { ax = 0.50, ay = 0.83, phase = 3.1, freqY = 0.8, freqR = 0.4, hover = CardBackHover.new(), spinT = 0 },
     }
+
+    -- v2 "o televisor é o palco" (docs/plan/menu-crt-v2.md):
+    -- OSD do aparelho (tag de canal + relógio) que aparece ao entrar e
+    -- some em ~3.5s como TV de verdade.
+    instance.osdTimer = 0
+    -- Motes de poeira dourada derivando (vida ambiente barata).
+    instance.motes = {}
+    for i = 1, 14 do
+        instance.motes[i] = {
+            ax = math.random(), ay = math.random(),
+            speed = 0.006 + math.random() * 0.012,   -- sobe devagar
+            drift = (math.random() - 0.5) * 0.008,
+            phase = math.random() * math.pi * 2,
+            size = 1 + math.random(2),
+        }
+    end
 
     -- Cria os botões do menu
     instance:createButtons()
@@ -212,6 +230,25 @@ function Menu:update(dt)
     for _, button in pairs(self.buttons) do
         button:update(dt)
     end
+
+    -- OSD do aparelho conta o tempo pra sumir (TV real: ~3.5s após trocar
+    -- de canal). enterWithIntro reseta pra 0.
+    self.osdTimer = (self.osdTimer or 0) + dt
+
+    -- Spin das cartas clicáveis decai (0..1, 1 = acabou de clicar).
+    for _, fc in ipairs(self.floatingCards or {}) do
+        if fc.spinT and fc.spinT > 0 then
+            fc.spinT = math.max(0, fc.spinT - dt / 0.55)
+        end
+    end
+
+    -- Poeira dourada deriva pra cima (wrap vertical).
+    for _, m in ipairs(self.motes or {}) do
+        m.ay = m.ay - m.speed * dt * 10
+        m.ax = m.ax + m.drift * dt * 10
+        if m.ay < -0.02 then m.ay = 1.02; m.ax = math.random() end
+        if m.ax < -0.02 then m.ax = 1.02 elseif m.ax > 1.02 then m.ax = -0.02 end
+    end
 end
 
 -- Cria/recria a instância DynaText do título. Recria se a fonte responsiva
@@ -247,6 +284,9 @@ function Menu:draw()
     -- Background com gradiente profissional
     self:drawBackground()
 
+    -- Poeira dourada derivando (vida ambiente, atrás das cartas).
+    self:_drawMotes()
+
     -- Cartas decorativas flutuantes (Balatro-style demo).
     self:_drawFloatingCards()
 
@@ -275,6 +315,8 @@ function Menu:draw()
             local origY = button.y
             if offY ~= 0 then button.y = origY + offY end
             button:draw()
+            -- v2: estética CRT no hover (varredura + glow + seta OSD)
+            self:_drawButtonCrtFx(button)
             if offY ~= 0 then button.y = origY end
         end
     end
@@ -284,7 +326,82 @@ function Menu:draw()
     self:_drawProfilePlaque()
     self:_drawVersionFooter()
 
+    -- OSD do aparelho por cima de tudo (tag de canal + relógio que somem).
+    self:_drawOsdChrome()
+
     -- Reseta cor
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- ===== v2: OSD do televisor =====
+-- "AV-1 GRIMOIRE" + relógio real no canto sup-dir. Visível ~3.5s após
+-- entrar no menu, depois some com fade — comportamento de TV de verdade.
+function Menu:_drawOsdChrome()
+    local t = self.osdTimer or 99
+    local a = 1
+    if t > 3.5 then a = math.max(0, 1 - (t - 3.5) / 0.8) end
+    a = a * (self.intro.alphaBg or 1)
+    if a <= 0.02 then return end
+
+    local W = love.graphics.getWidth()
+    local tag = "AV-1  GRIMOIRE"
+    TvOsd.text(tag, W - TvOsd.textWidth(tag) - 26, 20, a)
+    local clock = os.date("%H:%M")
+    TvOsd.text(clock, W - TvOsd.textWidth(clock) - 26, 44, a * 0.85)
+end
+
+-- ===== v2: estética CRT nos botões (hover) =====
+-- (a) varredura de scanline clara descendo em loop (scissor no rect);
+-- (b) glow de fósforo pulsante na borda; (c) seta OSD piscando à esquerda.
+-- Desenhado POR CIMA do Button — o widget global fica intocado.
+function Menu:_drawButtonCrtFx(btn)
+    if not btn.hover or btn.disabled then return end
+    local t = love.timer.getTime()
+    local x, y, w, h = btn.x, btn.y, btn.width, btn.height
+
+    -- (a) varredura: banda clara de 10px descendo pelo botão (loop 0.9s)
+    local bandH = 10
+    local sweepY = y - bandH + ((t * (h + bandH) / 0.9) % (h + bandH))
+    love.graphics.setScissor(x, y, w, h)
+    love.graphics.setColor(1, 1, 0.92, 0.10)
+    love.graphics.rectangle("fill", x, sweepY, w, bandH)
+    love.graphics.setColor(1, 1, 0.92, 0.05)
+    love.graphics.rectangle("fill", x, sweepY - 4, w, bandH + 8)
+    love.graphics.setScissor()
+
+    -- (b) glow de fósforo: contorno duplo pulsante (âmbar quente)
+    local pulse = 0.35 + 0.20 * math.sin(t * 5)
+    love.graphics.setColor(0.95, 0.78, 0.32, pulse * 0.5)
+    love.graphics.rectangle("line", x - 1.5, y - 1.5, w + 3, h + 3)
+    love.graphics.setColor(0.95, 0.78, 0.32, pulse * 0.22)
+    love.graphics.rectangle("line", x - 3.5, y - 3.5, w + 7, h + 7)
+
+    -- (c) seta OSD piscando (TV menu style)
+    if math.floor(t * 2.4) % 2 == 0 then
+        local g = TvOsd.GREEN
+        local ax = x - 18
+        local ay = y + h / 2
+        love.graphics.setColor(0, 0, 0, 0.7)
+        love.graphics.polygon("fill", ax + 1, ay - 5, ax + 1, ay + 7, ax + 11, ay + 1)
+        love.graphics.setColor(g[1], g[2], g[3], 0.95)
+        love.graphics.polygon("fill", ax, ay - 6, ax, ay + 6, ax + 10, ay)
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- ===== v2: poeira dourada =====
+function Menu:_drawMotes()
+    local a = (self.intro.alphaBg or 1)
+    if a <= 0.05 then return end
+    local W, H = love.graphics.getWidth(), love.graphics.getHeight()
+    local t = love.timer.getTime()
+    local g = Palette.AGED_GOLD_LIGHT
+    for _, m in ipairs(self.motes or {}) do
+        local twinkle = 0.25 + 0.20 * math.sin(t * 1.7 + m.phase)
+        love.graphics.setColor(g[1], g[2], g[3], twinkle * a)
+        love.graphics.rectangle("fill",
+            math.floor(m.ax * W), math.floor(m.ay * H), m.size, m.size)
+    end
     love.graphics.setColor(1, 1, 1, 1)
 end
 
@@ -470,8 +587,20 @@ function Menu:_drawFloatingCards()
         -- mesmo math que Card:updateMouse). liftDir="up" = sobe quando hovered.
         CardBackHover.update(fc.hover, mx, my, cx, cy, cardW, cardH, dt, "up")
         fc.hover.alpha = alpha
-        fc.hover.scale = 1
-        fc.hover.rot   = rotDrift  -- drift senoidal além do perspective rotation
+
+        -- v2: spin de clique — 360° com smoothstep + pop de escala.
+        local spinRot, spinScale = 0, 1
+        if fc.spinT and fc.spinT > 0 then
+            local k = fc.spinT
+            local s = k * k * (3 - 2 * k)          -- smoothstep
+            spinRot = s * math.pi * 2
+            spinScale = 1 + 0.14 * math.sin((1 - k) * math.pi)
+        end
+        fc.hover.scale = spinScale
+        fc.hover.rot   = rotDrift + spinRot
+
+        -- bbox do último draw (pro hit-test do clique em mousepressed)
+        fc._cx, fc._cy, fc._w, fc._h = cx, cy, cardW, cardH
 
         CardBack.draw(cx, cy, cardW, cardH, fc.hover)
     end
@@ -545,6 +674,8 @@ end
 -- e ao voltar do gameplay/collection/settings.
 function Menu:enterWithIntro()
     self.visible = true
+    -- OSD do aparelho reaparece (como TV real ao trocar de canal).
+    self.osdTimer = 0
 
     -- Reset alphas pra 0.
     self.intro.active        = true
@@ -601,9 +732,24 @@ end
 
 function Menu:mousepressed(x, y, button)
     if not self.visible then return end
-    
+
+    local consumed = false
     for name, btn in pairs(self.buttons) do
-        btn:mousepressed(x, y, button)
+        if btn:mousepressed(x, y, button) then consumed = true end
+    end
+
+    -- v2: cartas flutuantes clicáveis (easter egg) — só se o clique não
+    -- caiu em botão (botões têm prioridade no z-order de hit).
+    if not consumed and button == 1 then
+        for _, fc in ipairs(self.floatingCards or {}) do
+            if fc._cx and (fc.spinT or 0) <= 0
+                and math.abs(x - fc._cx) <= fc._w / 2
+                and math.abs(y - fc._cy) <= fc._h / 2 then
+                fc.spinT = 1
+                Sfx.play("cardSelect", { pitch = 1.1 + math.random() * 0.2 })
+                break
+            end
+        end
     end
 end
 

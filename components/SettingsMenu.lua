@@ -9,6 +9,7 @@ local Palette     = require("src.ui.Palette")
 local CRTShader   = require("src.ui.CRTShader")
 local I18n        = require("src.i18n.I18n")
 local SaveManager = require("engine.SaveManager")
+local TvOsd       = require("src.ui.TvOsd")
 
 local SettingsMenu = {}
 SettingsMenu.__index = SettingsMenu
@@ -260,17 +261,24 @@ function SettingsMenu:draw()
     PixelCanvas.rectOutline(p.x, p.y, p.w, p.h, Palette.PANEL_OUTLINE)
     PixelCanvas.rectOutline(p.x + 2, p.y + 2, p.w - 4, p.h - 4, Palette.PANEL_OUTLINE_INNER)
 
-    -- Título
-    local titleFont = FontManager.getFont(16)
-    love.graphics.setFont(titleFont)
-    Palette.set(Palette.AGED_GOLD_LIGHT)
+    -- Título estilo OSD de TV: "◼ MENU" verde-fósforo (este painel é o
+    -- menu DO APARELHO — docs/plan/menu-crt-v2.md)
     local title = I18n.t("settings.title")
-    love.graphics.print(title,
-        math.floor(p.x + (p.w - titleFont:getWidth(title)) / 2),
-        p.y + 20)
+    local g = TvOsd.GREEN
+    -- quadradinho OSD à esquerda do título
+    local titleW = TvOsd.textWidth(title, 16)
+    local tx = math.floor(p.x + (p.w - titleW - 22) / 2)
+    love.graphics.setColor(0, 0, 0, 0.8)
+    love.graphics.rectangle("fill", tx + 2, p.y + 22, 12, 12)
+    love.graphics.setColor(g[1], g[2], g[3], 1)
+    love.graphics.rectangle("fill", tx, p.y + 20, 12, 12)
+    TvOsd.text(title, tx + 22, p.y + 18, 1, 16)
 
-    -- Separador gold sob o título
-    PixelCanvas.hline(p.x + 16, p.y + 52, p.w - 32, Palette.AGED_GOLD_DARK)
+    -- Separador verde-escuro sob o título (linha do OSD)
+    local gd = TvOsd.GREEN_DIM
+    love.graphics.setColor(gd[1], gd[2], gd[3], 0.8)
+    love.graphics.rectangle("fill", p.x + 16, p.y + 52, p.w - 32, 2)
+    love.graphics.setColor(1, 1, 1, 1)
 
     -- Labels + valores (gap = 50, mesmo que rebuild)
     local gap = 50
@@ -287,6 +295,13 @@ function SettingsMenu:draw()
     self:_drawLabel(I18n.t("settings.language"),       p.x + 24, p.y + 76 + gap * 8)
 
     for _, b in ipairs(self.buttons) do b:draw() end
+
+    -- Rodapé OSD do painel: fonte do aparelho (dim, discreto)
+    do
+        local foot = "AV-1 · GRIMOIRE"
+        TvOsd.text(foot, p.x + p.w - TvOsd.textWidth(foot, 10) - 14,
+            p.y + p.h - 24, 0.5, 10)
+    end
 
     -- Dropdown de idiomas (por cima dos demais botoes, com leve sombra)
     if self.languageMenuOpen then
@@ -308,15 +323,18 @@ end
 
 function SettingsMenu:_drawRow(label, value, x, y)
     self:_drawLabel(label, x, y)
-    local font = FontManager.getFont(10)
-    love.graphics.setFont(font)
-    Palette.set(Palette.PARCHMENT)
-    local pct = math.floor((value or 0) * 100)
-    -- valor DEPOIS do rótulo (offset fixo de 130 colidia com rótulos longos
-    -- tipo "Tremor de tela" — F1 do UI Overhaul)
+    -- v2: barra de segmentos verde-fósforo (o volume de TV velha) no
+    -- lugar do "NN%" — entre o rótulo e os botões -/+.
     local labelFont = FontManager.getFont(12)
-    local vx = x + math.max(130, labelFont:getWidth(label) + 16)
-    love.graphics.print(pct .. "%", vx, y + 10)
+    local bx = x + math.max(130, labelFont:getWidth(label) + 16)
+    local rowRight = self._panel.x + self._panel.w - 190
+    local avail = math.max(60, rowRight - bx)
+    local segs = 8
+    local gap = 3
+    local segW = math.max(6, math.floor((avail - (segs - 1) * gap) / segs))
+    TvOsd.segmentBar(bx, y + 6, value, {
+        segments = segs, segW = segW, segH = 14, gap = gap,
+    })
 end
 
 function SettingsMenu:_drawLabel(text, x, y)
