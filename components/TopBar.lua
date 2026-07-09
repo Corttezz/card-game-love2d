@@ -211,7 +211,9 @@ end
 
 function TopBar:drawConfigIcon()
     local configX, configY, iconPxSize = self:_getConfigRect()
-    local scale = iconPxSize / 16    -- matriz gear é 16×16
+    -- escala pelo tamanho REAL do handle (PNG 64×64 do PixelLab ou matriz
+    -- 16×16 fallback — o hard-code de 16 estouraria o PNG pra 128px)
+    local scale = iconPxSize / (self.gearIcon.size and self.gearIcon.size.w or 16)
 
     local centerX = configX + iconPxSize / 2
     local centerY = configY + iconPxSize / 2

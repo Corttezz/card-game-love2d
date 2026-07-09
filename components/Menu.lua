@@ -36,13 +36,11 @@ function Menu:new()
     -- 3 versos de carta flutuantes (Balatro-style demo cards). Cada uma tem
     -- um state de hover compartilhado com CardBackHover (replica Card:updateMouse).
     -- v2: CLICÁVEIS — clique dá spin 360° com juice (spinT anima em update).
-    -- (a 3ª carta saiu do centro-baixo: com os botões translúcidos do look
-    -- "tv" ela vazava por trás da coluna — agora flutua sobre a página
-    -- direita do livro, área livre)
+    -- SÓ duas cartas: esquerda e direita (a 3ª de baixo poluía a coluna
+    -- de botões — cortada a pedido do dono, Jul/2026).
     instance.floatingCards = {
         { ax = 0.16, ay = 0.30, phase = 0.0, freqY = 0.7, freqR = 0.5, hover = CardBackHover.new(), spinT = 0 },
         { ax = 0.84, ay = 0.30, phase = 1.7, freqY = 0.5, freqR = 0.6, hover = CardBackHover.new(), spinT = 0 },
-        { ax = 0.69, ay = 0.84, phase = 3.1, freqY = 0.8, freqR = 0.4, hover = CardBackHover.new(), spinT = 0 },
     }
 
     -- v2 "o televisor é o palco" (docs/plan/menu-crt-v2.md):
@@ -102,7 +100,6 @@ function Menu:createButtons()
             Theme.Colors.SUCCESS,
             22
         )
-        self.buttons.continueRun:setIcon("scroll")
     else
         self.buttons.continueRun = nil
     end
@@ -169,15 +166,9 @@ function Menu:createButtons()
         20
     )
 
-    -- Ícones pixel em cada botão (deixa o Button fazer auto-scale pela altura)
-    self.buttons.play:setIcon("play_triangle")
-    self.buttons.collection:setIcon("scroll")
-    self.buttons.achievements:setIcon("star")
-    self.buttons.settings:setIcon("gear")
-    self.buttons.quit:setIcon("x_close")
-
-    -- v2.1: todos os itens do menu no look "lista de TV" (variant tv) —
-    -- a caixa de aço deu lugar à barra de seleção âmbar.
+    -- v2.2: SEM ícones nos itens do menu (pedido do dono — eram fracos e
+    -- repetidos; lista de TV é texto puro, a seta âmbar do hover já guia).
+    -- v2.1: look "lista de TV" (variant tv) — barra de seleção âmbar.
     for _, btn in pairs(self.buttons) do
         btn:setVariant("tv")
     end
