@@ -113,10 +113,41 @@ local function buildImage(matrix)
     return img
 end
 
+-- Carrega cursor de PNG (arte PixelLab) com hotspot por CONTEÚDO: a ponta
+-- do dedo/seta = centro da primeira linha com pixel opaco. Retorna nil se
+-- o arquivo não existe (caller cai na matriz).
+local function loadPng(path)
+    if not love.filesystem.getInfo(path) then return nil end
+    local ok, data = pcall(love.image.newImageData, path)
+    if not ok or not data then return nil end
+    local w, h = data:getWidth(), data:getHeight()
+    local hx, hy = math.floor(w / 2), 0
+    for y = 0, h - 1 do
+        local minX, maxX = nil, nil
+        for x = 0, w - 1 do
+            local _, _, _, a = data:getPixel(x, y)
+            if a > 0.5 then
+                minX = minX or x
+                maxX = x
+            end
+        end
+        if minX then
+            hx, hy = math.floor((minX + maxX) / 2), y
+            break
+        end
+    end
+    local img = love.graphics.newImage(data)
+    img:setFilter("nearest", "nearest")
+    return { img = img, hx = hx, hy = hy }
+end
+
 function CursorManager.load()
     if loaded then return end
     images.arrow = { img = buildImage(ARROW), hx = 2, hy = 1 }   -- ponta da seta
-    images.hand  = { img = buildImage(HAND),  hx = 9, hy = 0 }   -- ponta do dedo
+    -- mão: arte PixelLab se existir (assets/sprites/ui/cursor_hand.png);
+    -- fallback = matriz desenhada
+    images.hand = loadPng("assets/sprites/ui/cursor_hand.png")
+        or { img = buildImage(HAND), hx = 9, hy = 0 }
     love.mouse.setVisible(false)
     loaded = true
 end
