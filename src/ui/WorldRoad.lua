@@ -730,7 +730,12 @@ local function pickKind(b, rng)
     return TREE_KIND[b.id] or "tree"
 end
 
-local function rollProp(p, z, forcedSide)
+-- noLum: pula o agendador de luminária — usado pelos chamadores que vão
+-- makeWall(p) logo em seguida (treeline/reciclagem de parede). Sem isso o
+-- agendador GASTAVA o cursor do poste e o makeWall sobrescrevia pra árvore:
+-- o poste agendado sumia silenciosamente ("às vezes a estrada fica às
+-- escuras" — v9.3).
+local function rollProp(p, z, forcedSide, noLum)
     local b = rawBiome()
     local rng = WorldRoad._rng
     p.z = z
@@ -748,31 +753,67 @@ local function rollProp(p, z, forcedSide)
         p.side = rng:random() < pLeft and -1 or 1
         WorldRoad._sideBal = bal + p.side * (SIDE_W[p.kind] or 0.35)
     end
-    -- v9: CADÊNCIA MÍNIMA de luminária — estrada real tem poste em
-    -- intervalo; se passaram >7 unidades sem emissor NAQUELE LADO, o
-    -- próximo prop daquele lado VIRA luminária. v9.2 (feedback: "aparece
-    -- muito mais à esquerda"): cursor POR LADO — antes era global e o
-    -- lado -1 (sorteado 1º no passo) cravava o cursor, roubando toda
-    -- luminária forçada e rebaixando as naturais da direita.
-    WorldRoad._lastLumZ = WorldRoad._lastLumZ or {}
-    local lastZ = WorldRoad._lastLumZ[p.side] or -1e9
+    -- v9.3 (feedback: "postes aparecem tudo de uma vez / tudo lá na
+    -- frente"): cadência AGENDADA com FASE ALTERNADA. Cada lado guarda o
+    -- z do PRÓXIMO poste (_nextLumZ[side]); os lados nascem meio período
+    -- defasados → esquerda e direita intercalam em profundidades
+    -- diferentes (um no pé da tela, outro no meio, outro no fundo — a
+    -- "escada" de estrada real). Jitter pequeno (±LUM_JIT) mantém orgânico
+    -- sem deixar dois postes nascerem na mesma faixa de z.
+    local LUM_STEP = 7      -- período base por lado (unidades de z)
+    local LUM_JIT  = 2.5    -- variação máxima somada ao período
+    WorldRoad._nextLumZ = WorldRoad._nextLumZ or {
+        -- primeiro poste do lado A perto (0.15-0.35 do período), o do lado
+        -- B meio período depois — a escada já nasce montada
+        [-1] = z + LUM_STEP * (0.15 + rng:random() * 0.20),
+        [1]  = z + LUM_STEP * (0.60 + rng:random() * 0.25),
+    }
     local lumCat = LuminaireEngine.catalog(b.id)
-    if next(lumCat) then
+    if noLum then
+        -- prop de parede: nunca vira luminária E não mexe no cursor
         if LuminaireEngine.isLuminaire(p.kind) then
-            if z - lastZ < 5 then
-                p.kind = TREE_KIND[b.id] or "tree"
-            else
-                WorldRoad._lastLumZ[p.side] = z
+            p.kind = TREE_KIND[b.id] or "tree"
+        end
+    elseif next(lumCat) then
+        local nextZ = WorldRoad._nextLumZ[p.side] or z
+        if z >= nextZ then
+            -- hora deste lado: o prop VIRA luminária (sorteio do catálogo).
+            -- Na faixa de PERTO (rel < 9, só no populate estático) os kinds
+            -- roadside (poste/braseiro/tocha altos) pesam ×3 — o slot do pé
+            -- da tela precisa LER como poste; santuário/cogumelo discretos
+            -- lá na frente sumiam na moldura ("não parece que tem poste").
+            local nearBias = (z - (WorldRoad._camZ or 0)) < 9
+            local function w(d)
+                local base = d.weight or 0.5
+                if nearBias and d.roadside then base = base * 3 end
+                return base
             end
-        elseif z - lastZ > 7 then
             local tot = 0
-            for _, d in pairs(lumCat) do tot = tot + (d.weight or 0.5) end
+            for _, d in pairs(lumCat) do tot = tot + w(d) end
             local r2 = rng:random() * tot
             for kind, d in pairs(lumCat) do
-                r2 = r2 - (d.weight or 0.5)
+                r2 = r2 - w(d)
                 if r2 <= 0 then p.kind = kind; break end
             end
-            WorldRoad._lastLumZ[p.side] = z
+            WorldRoad._nextLumZ[p.side] = z + LUM_STEP + rng:random() * LUM_JIT
+            if os.getenv("GF_DEBUG") then
+                print(string.format("[lum] FIRE side=%+d z=%.1f rel=%.1f kind=%s next=%.1f",
+                    p.side, z, z - (WorldRoad._camZ or 0), p.kind,
+                    WorldRoad._nextLumZ[p.side]))
+            end
+            -- CORRENTE ENTRE LADOS: o próximo poste do OUTRO lado cai na
+            -- janela intermediária [z+0.3, z+0.65]×período — nem colado no
+            -- meu (mesma faixa de z lê como "portal"), nem além do meu
+            -- próximo (buraco combinado > período deixa trecho às escuras).
+            -- É isso que garante a escada perto/meio/fundo em QUALQUER corte.
+            local other = -p.side
+            local oNext = WorldRoad._nextLumZ[other] or z
+            local lo, hi = z + LUM_STEP * 0.45, z + LUM_STEP * 0.65
+            if oNext < lo then WorldRoad._nextLumZ[other] = lo
+            elseif oNext > hi then WorldRoad._nextLumZ[other] = hi end
+        elseif LuminaireEngine.isLuminaire(p.kind) then
+            -- sorteou luminária fora de hora → vira árvore (mantém a escada)
+            p.kind = TREE_KIND[b.id] or "tree"
         end
     end
     -- v9: luminária tem lane do catálogo por bioma (cogumelo entra no mato,
@@ -866,7 +907,7 @@ local function populate()
     -- v9.2: cursor de cadência de luminária ZERA na repopulação — o valor
     -- do trecho anterior (z alto) fazia o espaçamento mínimo demitir toda
     -- luminária do bioma novo (marsh nascia sem NENHUM emissor)
-    WorldRoad._lastLumZ = nil
+    WorldRoad._nextLumZ = nil
     local b = rawBiome()
     local z = 0.5
     while z < REL_CREST + EMERGE_BAND do
@@ -894,7 +935,7 @@ local function populate()
         for side = -1, 1, 2 do
             local p = {}
             rollProp(p, zt + WorldRoad._camZ
-                + WorldRoad._rng:random() * 0.5, side)
+                + WorldRoad._rng:random() * 0.5, side, true)   -- noLum: vira wall
             makeWall(p)
             table.insert(WorldRoad._props, p)
             resolveOverlap(p)
@@ -1121,7 +1162,7 @@ function WorldRoad.update(dt)
         if p.z - WorldRoad._camZ < -3.5 then
             local wasWall = p.wall
             rollProp(p, WorldRoad._camZ + REL_CREST + EMERGE_BAND * 0.6
-                        + WorldRoad._rng:random() * 2, p.side)
+                        + WorldRoad._rng:random() * 2, p.side, wasWall)
             if wasWall then makeWall(p) end
             resolveOverlap(p)
         end
@@ -3350,7 +3391,7 @@ function WorldRoad.clearCache()
     WorldRoad._blend = nil
     WorldRoad._prevBiomeIndex = nil
     WorldRoad._encounter = nil
-    WorldRoad._lastLumZ = nil
+    WorldRoad._nextLumZ = nil
     WorldRoad._fork = nil
     WorldRoad._landmark = nil
 end
