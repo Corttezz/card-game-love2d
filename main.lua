@@ -452,6 +452,13 @@ function love.load(loveArgs)
         return
     end
 
+    -- Valida o TurnBanner v2 (placa grimório, player + enemy):
+    --   love . screenshot_turnbanner
+    if loveArgs and loveArgs[1] == "screenshot_turnbanner" then
+        require("tools.screenshot_turnbanner").run()
+        return
+    end
+
     -- Valida o cursor pixel-art (contexto + ampliado):
     --   love . screenshot_cursor
     if loveArgs and loveArgs[1] == "screenshot_cursor" then

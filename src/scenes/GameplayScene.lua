@@ -543,6 +543,24 @@ function GameplayScene.update(dt)
         end
         GameplayScene._endTurnCallout = myTurn and not hasSelection
             and not anyPlayable and #game.hand >= 0
+
+        -- AUTO-ENCERRAR (feedback Jul/2026, padrão StS/Balatro): sem
+        -- seleção E sem carta pagável = nenhuma ação possível — depois de
+        -- uma graça curta (callout dourado visível nesse meio-tempo) o
+        -- turno passa SOZINHO, sem precisar clicar em Encerrar Turno.
+        -- Guardas: turnStage nil (a coreografia do turno inimigo flipa
+        -- game.turn cedo — sem isso auto-encerrava durante a investida) e
+        -- banner fora da tela.
+        if GameplayScene._endTurnCallout and turnStage == nil
+            and not TurnBanner.isActive() then
+            GameplayScene._autoEndT = (GameplayScene._autoEndT or 0) + dt
+            if GameplayScene._autoEndT >= 1.1 then
+                GameplayScene._autoEndT = 0
+                game:endTurn()
+            end
+        else
+            GameplayScene._autoEndT = 0
+        end
     end
     gameUI:update(dt, game)
     -- topBar:update movido pro main.lua (ticka em todos os estados)
