@@ -31,9 +31,16 @@ function M.run()
         EnemyRenderer.update(1 / 30)
     end
 
-    for _, kind in ipairs({ "player", "enemy" }) do
+    local shots = {
+        { kind = "player", t = 0.15, tag = "player_in" },   -- meio da queima
+        { kind = "player", t = 0.50, tag = "player" },      -- hold cheio
+        { kind = "enemy",  t = 0.50, tag = "enemy" },
+        { kind = "enemy",  t = 0.90, tag = "enemy_out" },   -- dissolvendo
+    }
+    for _, sp in ipairs(shots) do
+        local kind = sp.kind
         TurnBanner.show(kind)
-        TurnBanner.update(0.4)   -- meio do hold (placa parada, alpha cheio)
+        TurnBanner.update(sp.t)
 
         love.graphics.clear(0, 0, 0, 1)
         local cx, cy = WorldRoad.getRoadAnchor(WorldRoad.BATTLE_REL,
@@ -47,9 +54,10 @@ function M.run()
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
         TurnBanner.draw()
 
+        local tag = sp.tag
         love.graphics.captureScreenshot(function(imageData)
-            imageData:encode("png", "turnbanner_" .. kind .. ".png")
-            print("[screenshot] turnbanner_" .. kind .. ".png salvo")
+            imageData:encode("png", "turnbanner_" .. tag .. ".png")
+            print("[screenshot] turnbanner_" .. tag .. ".png salvo")
         end)
         love.graphics.present()
     end

@@ -26,6 +26,11 @@ extern vec2 image_details;
 extern bool shadow;
 extern vec4 burn_colour_1;
 extern vec4 burn_colour_2;
+// Escala do campo de noise em CÉLULAS por eixo. (0,0) = legado (5.5 iso,
+// cartas). Quads muito largos (banner full-width) passam escala anisotrópica
+// pra célula ficar ~quadrada em pixels — sem isso a queima vira "faixas
+// fantasmas" esticadas em vez de buracos de fogo.
+extern vec2 noise_scale;
 
 // Hash 2D → escalar [0..1). Sem dependência de textura de noise.
 float dh21(vec2 p) {
@@ -77,7 +82,8 @@ vec4 effect(vec4 colour, Image tex, vec2 tc, vec2 sc) {
     float radial = length(cuv) * 1.42;  // ~1 nos cantos
 
     // Campo FBM lentamente animado. Coords escaladas pra granularidade média.
-    vec2 nuv = uv * 5.5 + vec2(time * 0.07, time * 0.045);
+    vec2 nscale = (noise_scale.x > 0.0) ? noise_scale : vec2(5.5, 5.5);
+    vec2 nuv = uv * nscale + vec2(time * 0.07, time * 0.045);
     float n = fbm(nuv);
 
     // Pequena ondulação extra pra borda mais "viva" (não copia 3-sines do Balatro).

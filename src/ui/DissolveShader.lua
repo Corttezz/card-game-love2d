@@ -42,7 +42,7 @@ end
 
 -- Seta o shader como ativo e envia uniforms. Chame antes do love.graphics.draw
 -- e DissolveShader.clear() depois.
-function DissolveShader.apply(image, dissolve, burnColors, isShadow)
+function DissolveShader.apply(image, dissolve, burnColors, isShadow, noiseScale)
     if not loaded then return false end
     dissolve = math.max(0, math.min(1, dissolve or 0))
     burnColors = burnColors or {DEFAULT_BURN_1, DEFAULT_BURN_2}
@@ -50,6 +50,9 @@ function DissolveShader.apply(image, dissolve, burnColors, isShadow)
     love.graphics.setShader(shader)
     shader:send("dissolve", dissolve)
     shader:send("time", love.timer.getTime())
+    -- noise_scale: {0,0} = legado (cartas). Quads muito largos (banner)
+    -- passam escala anisotrópica pra célula de noise ficar ~quadrada.
+    shader:send("noise_scale", noiseScale or { 0, 0 })
 
     local w = image:getWidth()
     local h = image:getHeight()
