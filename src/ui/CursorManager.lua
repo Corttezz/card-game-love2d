@@ -168,8 +168,10 @@ function CursorManager.draw()
     local mx, my = love.mouse.getPosition()
     local spec = images[want] or images.arrow
     want = "arrow"   -- consome o pedido; próximo frame re-pede
-    -- escala responsiva (janela 768 de altura → 2×), sempre inteira (pixel)
-    local s = math.max(1, math.floor(love.graphics.getHeight() / 384 + 0.5))
+    -- escala responsiva (janela 768 de altura → 1.5×; 1080p → 2×), em meios
+    -- passos — feedback "diminuir um pouco": 2× cheio ficava grande demais.
+    -- O warp do CRT suaviza o meio-pixel do 1.5×.
+    local s = math.max(1, math.floor(love.graphics.getHeight() / 256 + 0.5) / 2)
     local pressed = love.mouse.isDown(1)
     local off = pressed and s or 0        -- afunda 1 célula ao clicar
     local k = pressed and 0.86 or 1
