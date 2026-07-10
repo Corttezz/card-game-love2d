@@ -43,14 +43,14 @@ function M.run()
     CursorManager.draw()                       -- mão
     love.mouse.getPosition = rawGetPos
 
-    -- inspeção ampliada 8× no canto inferior esquerdo
+    -- inspeção ampliada 6× no canto inferior esquerdo
     love.graphics.setColor(0, 0, 0, 0.75)
-    love.graphics.rectangle("fill", 8, H - 160, 300, 152, 8, 8)
+    love.graphics.rectangle("fill", 8, H - 190, 340, 182, 8, 8)
     local rawH = love.graphics.getHeight
-    love.graphics.getHeight = function() return 384 * 8 end   -- força escala 8
-    love.mouse.getPosition = function() return 40, H - 140 end
+    love.graphics.getHeight = function() return 384 * 6 end   -- força escala 6
+    love.mouse.getPosition = function() return 40, H - 180 end
     CursorManager.draw()
-    love.mouse.getPosition = function() return 190, H - 140 end
+    love.mouse.getPosition = function() return 230, H - 180 end
     CursorManager.request("hand")
     CursorManager.draw()
     love.mouse.getPosition = rawGetPos

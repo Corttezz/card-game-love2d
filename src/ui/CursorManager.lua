@@ -19,53 +19,79 @@ local images = {}          -- name -> { img, hx, hy }  (hotspot em px da arte)
 local want = "arrow"       -- estado pedido neste frame
 local loaded = false
 
--- Paleta de células das matrizes (16×16):
---   . transparente | I ink | G ouro | L ouro claro | D ouro escuro
+-- Paleta de células das matrizes (24×26):
+--   . transparente | I ink | B osso (corpo) | L luz quente | D sombra | G ouro
 local COLORS = {
     I = Palette.INK,
-    G = Palette.AGED_GOLD,
-    L = Palette.AGED_GOLD_LIGHT,
-    D = Palette.AGED_GOLD_DARK,
+    B = Palette.PARCHMENT_LIGHT,        -- corpo osso/pergaminho (alto contraste)
+    L = { 1.0, 0.957, 0.839 },          -- highlight quente (borda topo/esquerda)
+    D = { 0.659, 0.541, 0.306 },        -- sombra do corpo (borda base/direita)
+    G = Palette.AGED_GOLD,              -- punho da manopla
 }
 
--- Seta clássica chunky: outline ink, corpo ouro, fio de luz na borda esquerda
+-- Seta clássica RASTERIZADA POR POLÍGONO (arestas matematicamente retas —
+-- a v1 era desenhada à mão e saía torta). Hipotenusa 45° exata, borda
+-- esquerda vertical, rabo simétrico. Outline ink 1 célula + anel de trim:
+-- luz no topo/esquerda, sombra na base/direita (leitura de volume Balatro).
 local ARROW = {
-    "I...............",
-    "II..............",
-    "ILI.............",
-    "ILGI............",
-    "ILGGI...........",
-    "ILGGGI..........",
-    "ILGGGGI.........",
-    "ILGGGGGI........",
-    "ILGGGGGGI.......",
-    "ILGGGIIIII......",
-    "ILGIDGGI........",
-    "ILI.IDGGI.......",
-    "II...IDGGI......",
-    "I.....IDGGI.....",
-    ".......IGGI.....",
-    "........II......",
+    "........................",
+    "..I.....................",
+    ".ILI....................",
+    ".ILLI...................",
+    ".ILBLI..................",
+    ".ILBBLI.................",
+    ".ILBBBLI................",
+    ".ILBBBBLI...............",
+    ".ILBBBBBLI..............",
+    ".ILBBBBBBLI.............",
+    ".ILBBBBBBBLI............",
+    ".ILBBBBBBBBLI...........",
+    ".ILBBBBBBBBBLI..........",
+    ".ILBBBBBBBBBBLI.........",
+    ".ILBBBBBBBDDDDLI........",
+    ".ILBBBDBBDIIIII.........",
+    ".ILBBDILBBLI............",
+    ".ILBDI.ILBDI............",
+    ".ILDI..ILBDI............",
+    ".ILI...ILBBLI...........",
+    "..I.....ILBDI...........",
+    "........ILBDLI..........",
+    ".........ILII...........",
+    "..........I.............",
+    "........................",
+    "........................",
 }
 
--- Mão apontando (hover em clicável): indicador estendido, punho fechado
+-- Mão apontando (hover): indicador vertical reto, nós dos dedos dobrados,
+-- vinco do polegar, e PUNHO DE MANOPLA dourado com rebites (sabor Slay the
+-- Spire, paleta grimório).
 local HAND = {
-    "......II........",
-    ".....ILGI.......",
-    ".....ILGI.......",
-    ".....ILGI.......",
-    ".....ILGI.......",
-    ".....ILGIIII....",
-    ".....ILGIGGIII..",
-    ".II..ILGGGGGGGI.",
-    "ILGI.ILGGGGGGGI.",
-    "ILGGIILGGGGGGGI.",
-    ".ILGGGLGGGGGGGI.",
-    ".ILGGGGGGGGGGDI.",
-    "..ILGGGGGGGGGDI.",
-    "..ILGGGGGGGGDI..",
-    "...IGGGGGGGGDI..",
-    "....IIIIIIIII...",
+    "........II..............",
+    ".......ILBI.............",
+    ".......ILBDI............",
+    ".......ILBDI............",
+    ".......ILBDI............",
+    ".......ILBDI............",
+    ".......ILBDI............",
+    ".......ILBDIIIIIIIII....",
+    ".......ILBIBBDIIBBDI....",
+    "......ILBBBBBBBBBBBBDI..",
+    ".....ILBBBBBBBBBBBBBBDI.",
+    ".....ILBDBBBBBBBBBBBBDI.",
+    ".....ILBBDBBBBBBBBBBBDI.",
+    ".....ILBBBDBBBBBBBBBBDI.",
+    "......ILBBBBBBBBBBBBDI..",
+    "......ILBBBBBBBBBBBBDI..",
+    ".....IIIIIIIIIIIIIIIIII.",
+    "....ILGGGGGGGGGGGGGGGGDI",
+    "....ILGLGGGGLGGGGLGGGGDI",
+    "....ILDDDDDDDDDDDDDDDDDI",
+    ".....IIIIIIIIIIIIIIIIII.",
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    "........................",
 }
 
 local function buildImage(matrix)
@@ -89,8 +115,8 @@ end
 
 function CursorManager.load()
     if loaded then return end
-    images.arrow = { img = buildImage(ARROW), hx = 0, hy = 0 }   -- ponta da seta
-    images.hand  = { img = buildImage(HAND),  hx = 7, hy = 0 }   -- ponta do dedo
+    images.arrow = { img = buildImage(ARROW), hx = 2, hy = 1 }   -- ponta da seta
+    images.hand  = { img = buildImage(HAND),  hx = 9, hy = 0 }   -- ponta do dedo
     love.mouse.setVisible(false)
     loaded = true
 end
