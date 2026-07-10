@@ -2536,90 +2536,47 @@ local function drawRoad(g, x, w, camZ)
     end
 end
 
--- Marcos do fork: sprites na boca de cada braço + pill com nome (hover:
--- glow + descrição). Boxes de hit são registradas aqui (frame-fresh).
+-- v9.4 (feedback: "as paradas flutuam / pulam no hover / postes da frente
+-- ficam atrás delas"): o SPRITE físico do marco agora desenha DENTRO do
+-- painter (drawForkPhysical, em drawProps) — intercalado por profundidade
+-- como qualquer prop, com sombra projetada única e silhueta legível no
+-- lightmap. Aqui (overlay pós-composite) fica SÓ a UI: pill com nome +
+-- descrição no hover. Sem bob: parada é LUGAR, não botão.
 local function drawForkMarks(g, x, w, camZ)
     local f = WorldRoad._fork
-    if not f then return end
+    if not f or not f._geo then return end
     local FontManager = require("src.ui.FontManager")
     for i = 1, f.n do
         local node = f.nodes[i]
-        local key = node and LANDMARK_FOR_TYPE[tostring(node.type)] or "landmark_battle"
-        local img = getLandmark(key or "landmark_battle")
-        local rel = f.markZ - camZ
-        local t = g.tOf(rel)
-        local aMul = forkAlpha(f, i)
-        if img and t and aMul > 0.02 then
-            local offX = forkOffset(f, i, rel, w)
-                + roadWobble(camZ + rel, t, w) * 0.5
-            local px = g.cx + offX
-            local py = g.latY(offX, t)
-            local iw, ih = img:getWidth(), img:getHeight()
-            local size = LANDMARK_SIZE[key] or 2.0
-            local s = g.scaleAt(size, t, ih)
-            -- entrada: cresce com animIn; escolha: pulso
-            s = s * (0.7 + 0.3 * f.animIn)
-            if f.chosen == i and f.chosenPulse and f.chosenPulse > 0 then
-                s = s * (1 + f.chosenPulse * 0.25)
+        local geo = f._geo[i]
+        if geo and not f.converge then
+            local px, py = geo.px, geo.py
+            local ihs = geo.ih * geo.s
+            local aMul = geo.aMul
+            local label = (node and node.label) or "?"
+            local font = FontManager.getFont(13)
+            love.graphics.setFont(font)
+            local tw2 = font:getWidth(label)
+            local pw, ph = tw2 + 16, 20
+            local pxc = px - pw / 2
+            local pyc = py - ihs - 26
+            love.graphics.setColor(0.09, 0.07, 0.05, 0.88 * aMul)
+            love.graphics.rectangle("fill", pxc, pyc, pw, ph, 6, 6)
+            love.graphics.setColor(0.55, 0.44, 0.24, 0.9 * aMul)
+            love.graphics.rectangle("line", pxc, pyc, pw, ph, 6, 6)
+            love.graphics.setColor(0.92, 0.82, 0.58, aMul)
+            love.graphics.print(label, math.floor(pxc + 8), math.floor(pyc + 3))
+            if geo.hovered and node and node.desc then
+                local font2 = FontManager.getFont(11)
+                love.graphics.setFont(font2)
+                local dw = font2:getWidth(node.desc)
+                local dx2 = px - dw / 2 - 8
+                local dy2 = pyc - 22
+                love.graphics.setColor(0.09, 0.07, 0.05, 0.82 * aMul)
+                love.graphics.rectangle("fill", dx2, dy2, dw + 16, 18, 5, 5)
+                love.graphics.setColor(0.85, 0.78, 0.62, aMul)
+                love.graphics.print(node.desc, math.floor(dx2 + 8), math.floor(dy2 + 3))
             end
-            local hovered = (f.hover == i and not f.converge)
-
-            -- glow no chão sob o marco (hover: mais forte, na cor do bioma)
-            local acc = rawBiome().accent or { 0.9, 0.75, 0.4 }
-            love.graphics.setColor(acc[1], acc[2], acc[3],
-                (hovered and 0.30 or 0.12) * aMul)
-            love.graphics.ellipse("fill", px, py, iw * s * 0.7, 7 * g.persp(t) + 3)
-            -- v8: sombra projetada da silhueta do marco
-            if not ShadowEngine.sprite(img, px, py - 1, s,
-                { alphaK = aMul }) then
-                love.graphics.setColor(0, 0, 0, 0.22 * aMul)
-                love.graphics.ellipse("fill",
-                    px + sunShadowDir(g, x, w, px) * iw * s * 0.14,
-                    py - 1, iw * s * 0.30, math.max(2, 4 * g.persp(t)))
-            end
-
-            local bob = hovered and math.sin(WorldRoad._time * 4) * 2 or 0
-            local br = hovered and 1.12 or 1
-            love.graphics.setColor(br, br, br, aMul)
-            love.graphics.draw(img, math.floor(px - iw * s / 2),
-                math.floor(py - ih * s + bob), 0, s, s)
-
-            -- hitbox generosa (marco + respiro)
-            local grow = 14
-            f.markBoxes[i] = {
-                x1 = px - iw * s / 2 - grow, y1 = py - ih * s - grow - 16,
-                x2 = px + iw * s / 2 + grow, y2 = py + grow,
-            }
-
-            -- PILL com o nome (sempre); hover adiciona a descrição
-            if not f.converge then
-                local label = (node and node.label) or "?"
-                local font = FontManager.getFont(13)
-                love.graphics.setFont(font)
-                local tw2 = font:getWidth(label)
-                local pw, ph = tw2 + 16, 20
-                local pxc = px - pw / 2
-                local pyc = py - ih * s - 26 + bob
-                love.graphics.setColor(0.09, 0.07, 0.05, 0.88 * aMul)
-                love.graphics.rectangle("fill", pxc, pyc, pw, ph, 6, 6)
-                love.graphics.setColor(0.55, 0.44, 0.24, 0.9 * aMul)
-                love.graphics.rectangle("line", pxc, pyc, pw, ph, 6, 6)
-                love.graphics.setColor(0.92, 0.82, 0.58, aMul)
-                love.graphics.print(label, math.floor(pxc + 8), math.floor(pyc + 3))
-                if hovered and node and node.desc then
-                    local font2 = FontManager.getFont(11)
-                    love.graphics.setFont(font2)
-                    local dw = font2:getWidth(node.desc)
-                    local dx2 = px - dw / 2 - 8
-                    local dy2 = pyc - 22
-                    love.graphics.setColor(0.09, 0.07, 0.05, 0.82 * aMul)
-                    love.graphics.rectangle("fill", dx2, dy2, dw + 16, 18, 5, 5)
-                    love.graphics.setColor(0.85, 0.78, 0.62, aMul)
-                    love.graphics.print(node.desc, math.floor(dx2 + 8), math.floor(dy2 + 3))
-                end
-            end
-        else
-            f.markBoxes[i] = nil
         end
     end
     love.graphics.setColor(1, 1, 1, 1)
@@ -2706,11 +2663,110 @@ local function drawProps(g, x, w, camZ)
         end
     end
 
+    -- v9.4: MARCOS DO FORK são LUGARES DO MUNDO — o sprite desenha AQUI,
+    -- no slot de profundidade de MARK_REL (REGRA DE PROFUNDIDADE: poste/
+    -- árvore mais perto desenha DEPOIS, na frente). Sombra projetada única
+    -- (o disco de glow saiu — lia como sombra dupla) e silhueta com
+    -- flatColor no lightmap (legível à noite, luz de poste soma por cima).
+    -- A UI (pill/descrição) continua no overlay pós-composite.
+    local fkMarks = nil
+    do
+        local f = WorldRoad._fork
+        if f then
+            local relM = f.markZ - camZ
+            local tM = g.tOf(relM)
+            if tM and tM >= 0 then
+                fkMarks = { f = f, rel = relM, t = tM, drawn = false }
+            elseif f._geo then
+                for i = 1, f.n do f._geo[i] = nil; f.markBoxes[i] = nil end
+            end
+        end
+    end
+    local function drawForkPhysical()
+        local f, relM, tM = fkMarks.f, fkMarks.rel, fkMarks.t
+        f._geo = f._geo or {}
+        for i = 1, f.n do
+            local node = f.nodes[i]
+            local key = node and LANDMARK_FOR_TYPE[tostring(node.type)]
+                or "landmark_battle"
+            local img = getLandmark(key or "landmark_battle")
+            local aMul = forkAlpha(f, i)
+            if img and aMul > 0.02 then
+                local offX = forkOffset(f, i, relM, w)
+                    + roadWobble(camZ + relM, tM, w) * 0.5
+                local px = g.cx + offX
+                local py = g.latY(offX, tM)
+                local iw, ih = img:getWidth(), img:getHeight()
+                local size = LANDMARK_SIZE[key] or 2.0
+                local s = g.scaleAt(size, tM, ih)
+                s = s * (0.7 + 0.3 * f.animIn)
+                if f.chosen == i and f.chosenPulse and f.chosenPulse > 0 then
+                    s = s * (1 + f.chosenPulse * 0.25)
+                end
+                local hovered = (f.hover == i and not f.converge)
+                -- sombra projetada (ÚNICA sombra — coerente com o resto)
+                if not ShadowEngine.sprite(img, px, py - 1, s,
+                    { alphaK = aMul }) then
+                    love.graphics.setColor(0, 0, 0, 0.22 * aMul)
+                    love.graphics.ellipse("fill",
+                        px + sunShadowDir(g, x, w, px) * iw * s * 0.14,
+                        py - 1, iw * s * 0.30, math.max(2, 4 * g.persp(tM)))
+                end
+                local br = hovered and 1.10 or 1
+                love.graphics.setColor(br, br, br, aMul)
+                love.graphics.draw(img, math.floor(px - iw * s / 2),
+                    math.floor(py - ih * s), 0, s, s)
+                -- lightmap: silhueta em flatColor (receita do monstro) — o
+                -- marco fica na cor da arte mesmo à noite/contraluz; poça
+                -- de poste soma calor por cima. Só com alpha cheio (na
+                -- convergência o sprite some — silhueta fantasma no chão).
+                if aMul > 0.6 then
+                    local oxT, oyT = love.graphics.transformPoint(
+                        px - iw * s / 2, py - ih * s)
+                    local ar, ag2, ab2 = 1, 1, 1
+                    if LightEngine.ambientColor then
+                        ar, ag2, ab2 = LightEngine.ambientColor()
+                    end
+                    local mx2 = math.max(ar, ag2, ab2, 0.001)
+                    local tint = 0.35
+                    LightEngine.submitOccluder({
+                        z = relM,
+                        flatColor = {
+                            1 - tint * (1 - ar / mx2),
+                            1 - tint * (1 - ag2 / mx2),
+                            1 - tint * (1 - ab2 / mx2),
+                        },
+                        img = img, x = oxT, y = oyT, sx = s, sy = s,
+                        bx = oxT, by = oyT, w = iw * s, h = ih * s,
+                    })
+                end
+                f._geo[i] = { px = px, py = py, s = s, iw = iw, ih = ih,
+                              aMul = aMul, hovered = hovered }
+                local grow = 14
+                f.markBoxes[i] = {
+                    x1 = px - iw * s / 2 - grow, y1 = py - ih * s - grow - 16,
+                    x2 = px + iw * s / 2 + grow, y2 = py + grow,
+                }
+            else
+                f._geo[i] = nil
+                f.markBoxes[i] = nil
+            end
+        end
+        love.graphics.setColor(1, 1, 1, 1)
+    end
+
     local function drawList(list)
     for _, p in ipairs(list) do
         local rel = p.z - camZ
         local t = g.tOf(rel)
         if t and t >= 0 then
+            -- v9.4: marcos do fork entram no painter NO SLOT deles — props
+            -- mais perto (rel menor) desenham depois, NA FRENTE dos marcos
+            if fkMarks and not fkMarks.drawn and rel < fkMarks.rel then
+                flushGrassTo(fkMarks.rel)
+                drawForkPhysical()
+                fkMarks.drawn = true
+            end
             flushGrassTo(rel)
             -- CUNHA (ciclo 21, ref APK): zona permitida = triângulo que vai
             -- da lateral do castelo (crista) até o CANTO de baixo da tela.
@@ -3043,6 +3099,12 @@ local function drawProps(g, x, w, camZ)
         drawList(front)
     else
         drawList(nearPass)
+    end
+    -- v9.4: nenhum prop mais perto que os marcos? desenha os marcos agora
+    if fkMarks and not fkMarks.drawn then
+        flushGrassTo(fkMarks.rel)
+        drawForkPhysical()
+        fkMarks.drawn = true
     end
     flushGrassTo(-1)   -- fatia final: capim mais perto que todos os props
     -- v8: sombras enfileiradas caem SOBRE o campo completo (grama + pés
