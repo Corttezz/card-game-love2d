@@ -452,6 +452,13 @@ function love.load(loveArgs)
         return
     end
 
+    -- Valida o cursor pixel-art (contexto + ampliado):
+    --   love . screenshot_cursor
+    if loveArgs and loveArgs[1] == "screenshot_cursor" then
+        require("tools.screenshot_cursor").run()
+        return
+    end
+
     -- Valida a animação de vela do menu (grid do ciclo de crossfade):
     --   love . screenshot_menuanim
     if loveArgs and loveArgs[1] == "screenshot_menuanim" then
@@ -777,6 +784,9 @@ function love.load(loveArgs)
     -- Pós-processamento CRT (scanlines, wave, aberração cromática). Balatro-style.
     -- Settings → "CRT Shader" liga/desliga via CRTShader.toggle().
     CRTShader.load()
+    -- Cursor pixel-art próprio (esconde o do SO; desenha no fim do draw,
+    -- dentro da cena CRT — sofre o warp do tubo junto com o mundo)
+    require("src.ui.CursorManager").load()
     if persistedSettings.crtShader == false then CRTShader.setEnabled(false) end
     -- Identidade CRT: o jogo ABRE como uma TV ligando — ponto → linha
     -- quente → a imagem abre revelando o splash (docs/plan/crt-identity-v1).
@@ -1050,6 +1060,10 @@ function love.draw()
     -- Overlay de settings (modal) ainda DENTRO da cena CRT — assim o shader
     -- cobre o overlay também.
     if settingsMenu then settingsMenu:draw() end
+
+    -- Cursor pixel-art por cima de TUDO, mas dentro da cena CRT (warp do
+    -- tubo pega o cursor também — coerência Balatro).
+    require("src.ui.CursorManager").draw()
 
     CRTShader.endScene()
 end

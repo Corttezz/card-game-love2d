@@ -95,7 +95,11 @@ function Button:update(dt)
             Moveable.juice_up(self, 0.05, 0.03)
         end
     end
-    if self.hover then self._hoverTime = (self._hoverTime or 0) + (dt or 0) end
+    if self.hover then
+        self._hoverTime = (self._hoverTime or 0) + (dt or 0)
+        -- cursor vira "mão" sobre qualquer botão vivo (pedido por frame)
+        require("src.ui.CursorManager").request("hand")
+    end
 
     -- Scale animations via exp decay (consistente com Card/JokerSlot).
     local targetHover = self.hover and not self.disabled and 1.05 or 1.0

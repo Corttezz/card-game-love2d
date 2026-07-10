@@ -1114,6 +1114,10 @@ function WorldRoad.update(dt)
         else
             local mx, my = love.mouse.getPosition()
             f.hover = WorldRoad.forkHitTest(mx, my)
+            if f.hover then
+                -- parada clicável sob o mouse → cursor "mão"
+                require("src.ui.CursorManager").request("hand")
+            end
         end
     end
 

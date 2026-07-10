@@ -458,6 +458,8 @@ function Card:updateMouse(mx, my, dt, isHovered)
     if mx >= bboxLeft and mx <= bboxRight and my >= bboxTop and my <= bboxBottom and
         isHovered then
         self.isHovered = true
+        -- cursor "mão" sobre carta (mesmo contrato do Button)
+        require("src.ui.CursorManager").request("hand")
         -- Hover proporcional ao baseScale (não hardcode global). Antes
         -- usávamos Config.Cards.HOVER_SCALE fixo em 1.466 — quebrava cards
         -- com baseScale custom (ex: shop com slot maior, baseScale ~2.4).
