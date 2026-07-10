@@ -2801,6 +2801,14 @@ local function drawProps(g, x, w, camZ)
 
             local img = getSprite(p.kind, p.variant, p.bid)
 
+            -- v9.4.1 (feedback: "não seria bom aparecer poste na parte de
+            -- escolher"): enquanto o fork está ativo, poste ROADSIDE da
+            -- faixa da FRENTE some — ele ficava na frente das paradas e
+            -- virava ruído na hora da escolha. Volta quando a viagem segue.
+            if img and WorldRoad._fork and rdef and rdef.roadside
+               and rel < FORK_REL + 2 then
+                img = nil
+            end
             -- CORREDOR DO FORK (feedback: "árvores não podem ocupar os
             -- caminhos"): com a estrada bifurcada, props que caem sobre
             -- QUALQUER braço somem enquanto o fork existe
