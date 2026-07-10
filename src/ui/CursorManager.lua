@@ -144,10 +144,11 @@ end
 function CursorManager.load()
     if loaded then return end
     images.arrow = { img = buildImage(ARROW), hx = 2, hy = 1 }   -- ponta da seta
-    -- mão: arte PixelLab se existir (assets/sprites/ui/cursor_hand.png);
-    -- fallback = matriz desenhada
-    images.hand = loadPng("assets/sprites/ui/cursor_hand.png")
-        or { img = buildImage(HAND), hx = 9, hy = 0 }
+    -- Estado "hand" DESATIVADO a pedido (Jul/2026: "deixa só o cursor
+    -- normal"). Os request("hand") dos clicáveis viram no-op (o guard de
+    -- request ignora estado não registrado). Pra reativar, descomente:
+    -- images.hand = loadPng("assets/sprites/ui/cursor_hand.png")
+    --     or { img = buildImage(HAND), hx = 9, hy = 0 }
     love.mouse.setVisible(false)
     loaded = true
 end
