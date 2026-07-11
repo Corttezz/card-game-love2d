@@ -29,6 +29,20 @@ type: project
 - `components/SettingsMenu:_persist()` é chamado em cada mudança (volume slider, fullscreen toggle, CRT toggle, language). Constrói o snapshot lendo `_G.audioSystem`, `love.window.getFullscreen()`, `CRTShader.isEnabled()`, `I18n.getLocale()`.
 - `main.lua:love.load` carrega settings ANTES de inicializar AudioManager/CRT, aplica fullscreen pré-init.
 
+**SANDBOX de ferramenta (v10.1.3 — Jul/2026):** `PATHS` é um proxy
+(metatable `__index`). Quando `_G.HEADLESS_TOOL` está setado — `main.lua`
+liga pra QUALQUER execução com argumento (`love . screenshot_*`, `test_*`,
+`smoke_*`, `demo_*`, `play`...) — `run`/`settings` apontam pra `*.tool.lua`
+em vez de `run.save.lua`/`settings.lua`. **O jogador roda `love .` sem args.**
+- **Bug que isso matou:** toda tool de captura/teste chama
+  `startNewRun`+`startGame`, e `checkpointRun` (a cada andar) escrevia no
+  `run.save.lua` REAL. Com sessões Claude rodando capturas o dia todo, o
+  save do jogador era sobrescrito por runs warrior de validação → "abandono
+  a run e ela ressuscita", "Continuar mostra run que não joguei". O fluxo de
+  save/abandono em si está CORRETO (regressão: `love . test_saveflow`).
+- Nunca deixe uma tool escrever no save do jogador: se criar tool nova que
+  instancia `Game`/`RunManager`, o sandbox já cobre (flag universal por arg).
+
 **How to apply:**
 - Schema mudou? Bump `Migrations.CURRENT_VERSION`, adicione handler pra versão antiga.
 - Save novo (perfil, metrics)? Adicione path em `SaveManager.PATHS` + funções `saveX`/`loadX` análogas.

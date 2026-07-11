@@ -84,7 +84,10 @@ GameplayScene.updatePlayButtonPosition = updatePlayButtonPosition
 -- a mão fica CENTRADA na tela, mas com a largura do leque LIMITADA pra terminar
 -- antes dos botões de ação (à direita), com folga de meia-carta.
 --
--- Retorna: startX (x do centro da 1ª carta), spacing, cardY, n (#mão).
+-- Retorna: startX (x TOP-LEFT da 1ª carta), spacing, cardY, n (#mão).
+-- IMPORTANTE: Card:draw trata (x,y) como CANTO SUPERIOR-ESQUERDO (o centro é
+-- x + imgW/2), então o leque é centrado VISUALMENTE numa área que exclui a
+-- coluna dos botões — nunca invade a direita.
 local function handLayout()
     local width  = love.graphics.getWidth()
     local height = love.graphics.getHeight()
@@ -96,21 +99,26 @@ local function handLayout()
     -- espaçamento "confortável" quando há poucas cartas (comportamento antigo)
     local maxSpacing = Config.Utils.getResponsiveSize(Config.UI.CARD_SPACING_RATIO, 120, "width")
 
-    -- limite direito = início dos botões (com folga). A metade do leque não pode
-    -- passar disso menos meia-carta, senão a carta mais à direita cobre o botão.
-    local rightLimit = (playButton and playButton.x or width * 0.80) - 16
-    local maxHalf = math.max(cardW * 0.5, rightLimit - cardW * 0.5 - width * 0.5)
-    local maxFanW = maxHalf * 2   -- largura máxima do leque (centro→centro)
+    -- Área da mão: da margem esquerda até o início dos botões (com folga). O
+    -- leque é centrado NESTA área — fica levemente à esquerda do centro da
+    -- tela (natural: os botões de ação ganham a coluna da direita, StS-style).
+    local areaLeft  = 30
+    local areaRight = (playButton and playButton.x or width * 0.80) - 16
+    if areaRight < areaLeft + cardW then areaRight = areaLeft + cardW end
+    local areaW = areaRight - areaLeft
+    local areaCenter = (areaLeft + areaRight) / 2
 
-    local spacing = maxSpacing
+    local spacing
     if n > 1 then
-        spacing = math.min(maxSpacing, maxFanW / (n - 1))
+        -- squeeze: a largura VISUAL do leque (totalW + cardW) cabe em areaW
+        spacing = math.min(maxSpacing, (areaW - cardW) / (n - 1))
     else
         spacing = 0
     end
 
     local totalW = spacing * math.max(0, n - 1)
-    local startX = (width - totalW) / 2
+    -- startX = top-left da 1ª carta pra que o leque fique centrado na área
+    local startX = areaCenter - (totalW + cardW) / 2
     return startX, spacing, cardY, n
 end
 GameplayScene.handLayout = handLayout
