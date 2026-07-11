@@ -296,6 +296,51 @@ function M.run()
     check("run com rngState serializa e parseia", okParse and type(revived) == "table"
         and revived.rngState and revived.rngState.seed == Rng.get().seed)
 
+    -- ===== Jokers: modelo coleção + bancada (Jul/2026) =====
+    -- Bug morto: comprar o 4º joker o fazia SUMIR. Agora entra na bancada e o
+    -- jogador escolhe quais MAX_JOKER_SLOTS ativar.
+    local rmJ = RunManager:new()
+    rmJ:startNewRun("warrior")
+    local cap = rmJ:getMaxJokerSlots()
+    local jids = { "joker_001", "joker_002", "joker_003", "joker_004" }
+    for _, jid in ipairs(jids) do rmJ:addJokerToRun(jid) end
+
+    check("coleção guarda TODOS os jokers comprados (4)",
+        #rmJ.currentRun.jokers == 4)
+    check("ativos limitados ao teto (cap)", rmJ:getActiveJokerCount() == cap)
+    check("excedente vai pra bancada (nao some)",
+        (#rmJ.currentRun.jokers - rmJ:getActiveJokerCount()) == (4 - cap))
+    check("buildJokerInstances devolve SO os ativos",
+        #rmJ:buildJokerInstances() == cap)
+    check("buildAllJokerInstances devolve todos (4)",
+        #rmJ:buildAllJokerInstances() == 4)
+
+    -- Troca de ativos: desativa o slot 1, ativa o benchado (índice 4).
+    local okOff = rmJ:setJokerActive(1, false)
+    check("desativar reduz ativos", okOff and rmJ:getActiveJokerCount() == cap - 1)
+    local okOn = rmJ:setJokerActive(4, true)
+    check("ativar benchado sobe ativos", okOn and rmJ:getActiveJokerCount() == cap)
+    -- Com slots cheios, ativar o índice 1 de novo deve barrar por "cap".
+    local okCap, reason = rmJ:setJokerActive(1, true)
+    check("ativar com slots cheios barra (cap)", (not okCap) and reason == "cap")
+
+    -- Roundtrip: jokerActive sobrevive ao serialize.
+    do
+        local SaveManager = require("engine.SaveManager")
+        local s = "return " .. SaveManager.serialize(rmJ.currentRun)
+        local chunk = loadstring and loadstring(s) or load(s)
+        local okP, revived = pcall(chunk)
+        local activeCount = 0
+        if okP and revived and revived.jokerActive then
+            for i = 1, #(revived.jokers or {}) do
+                if revived.jokerActive[i] then activeCount = activeCount + 1 end
+            end
+        end
+        check("jokerActive serializa e mantem contagem",
+            okP and activeCount == cap)
+    end
+    rmJ:endRun()
+
     Rng.clearActive()
 
     print(string.format("\n  TOTAL: %d pass / %d fail", pass, fail))

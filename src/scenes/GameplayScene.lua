@@ -141,30 +141,97 @@ end
 -- DRAW
 -- ============================================================================
 
+-- Geometria do painel de coringas (topo-ESQUERDO). Feedback Jul/2026: os
+-- jokers viviam parados centralizados no topo; agora ficam num QUADRO à
+-- esquerda, rotulado, com slots fixos (até maxJokerSlots) — visivelmente
+-- "cartas diferenciadas". Clicar no quadro abre o Gerenciador de Coringas.
+-- Fonte única de geometria (usada por draw E pelo hit-test do clique).
+local function jokerFrameGeometry()
+    local topBarHeight = (topBar and topBar.height) or 80
+    local base = 96 * (Config.Cards.BASE_SCALE or 1.333)
+    local slotScale = Config.Cards.JOKER_SLOT_SCALE or 0.7
+    local cardW = base * slotScale
+    local cardH = 144 * (Config.Cards.BASE_SCALE or 1.333) * slotScale
+    local pad, gap, labelH = 8, 8, 18
+    local maxSlots = (game and game.maxJokerSlots) or 3
+    local frameX = 14
+    local frameY = topBarHeight + 8
+    local frameW = pad * 2 + maxSlots * cardW + (maxSlots - 1) * gap
+    local frameH = pad * 2 + labelH + cardH
+    return {
+        x = frameX, y = frameY, w = frameW, h = frameH,
+        cardW = cardW, cardH = cardH, pad = pad, gap = gap,
+        labelH = labelH, maxSlots = maxSlots,
+    }
+end
+
+-- Rect clicável do quadro de coringas (pra main.lua / mousepressed).
+function GameplayScene.jokerFrameRect()
+    local g = jokerFrameGeometry()
+    return g.x, g.y, g.w, g.h
+end
+
 local function drawJokersAsCards()
-    local width = love.graphics.getWidth()
+    local g = jokerFrameGeometry()
+    local mx, my = love.mouse.getPosition()
+    local frameHot = mx >= g.x and mx <= g.x + g.w and my >= g.y and my <= g.y + g.h
 
-    local jokerSpacing    = Config.Utils.getResponsiveSize(0.15, 150, "width")
-    local jokerY          = Config.Utils.getResponsiveSize(0.08, 80, "height")
-    local totalJokersWidth = jokerSpacing * math.max(0, #game.jokerSlots - 1)
-    local jokerStartX = (width - totalJokersWidth) / 2
+    -- Painel de fundo (zona "cartas especiais") — sutil, dourado.
+    local Palette = require("src.ui.Palette")
+    love.graphics.setColor(0.06, 0.05, 0.04, 0.55)
+    love.graphics.rectangle("fill", g.x, g.y, g.w, g.h, 6, 6)
+    love.graphics.setColor(Palette.AGED_GOLD_DARK[1], Palette.AGED_GOLD_DARK[2],
+        Palette.AGED_GOLD_DARK[3], frameHot and 0.95 or 0.6)
+    love.graphics.setLineWidth(frameHot and 2 or 1)
+    love.graphics.rectangle("line", g.x, g.y, g.w, g.h, 6, 6)
+    love.graphics.setLineWidth(1)
 
-    for i, joker in ipairs(game.jokerSlots) do
+    -- Rótulo + contagem ativos/teto (+bancada)
+    local ownedN = 0
+    if game.runManager and game.runManager.currentRun
+        and game.runManager.currentRun.jokers then
+        ownedN = #game.runManager.currentRun.jokers
+    end
+    local activeN = #game.jokerSlots
+    local benched = math.max(0, ownedN - activeN)
+    local lf = FontManager.getFont(8)
+    love.graphics.setFont(lf)
+    Palette.set(Palette.AGED_GOLD_LIGHT)
+    local label = "CORINGAS " .. activeN .. "/" .. g.maxSlots .. "  (J)"
+    love.graphics.print(label, g.x + g.pad, g.y + 5)
+    if benched > 0 then
+        Palette.set(Palette.RUST)
+        local bl = "+" .. benched .. " bancada"
+        love.graphics.print(bl, g.x + g.w - g.pad - lf:getWidth(bl), g.y + 5)
+    end
+
+    -- Slots fixos: joker desenhado OU placeholder vazio.
+    local slotY = g.y + g.pad + g.labelH
+    for i = 1, g.maxSlots do
+        local slotX = g.x + g.pad + (i - 1) * (g.cardW + g.gap)
+        local joker = game.jokerSlots[i]
         if joker then
-            local mx, my = love.mouse.getPosition()
-            local cardWidth = joker:getWidth()
-            local cardHeight = joker:getHeight()
-            local isHovered = mx >= jokerStartX + (i - 1) * jokerSpacing and
-                              mx <= jokerStartX + (i - 1) * jokerSpacing + cardWidth and
-                              my >= jokerY and my <= jokerY + cardHeight
+            local isHovered = mx >= slotX and mx <= slotX + g.cardW
+                and my >= slotY and my <= slotY + g.cardH
             joker:updateMouse(mx, my, love.timer.getDelta(), isHovered)
-
             local originalScale = joker.currentScale
             joker.currentScale = originalScale * Config.Cards.JOKER_SLOT_SCALE
-            joker:draw(jokerStartX + (i - 1) * jokerSpacing, jokerY)
+            joker:draw(slotX, slotY)
             joker.currentScale = originalScale
+        else
+            -- placeholder de slot vazio (tracejado sutil + "+")
+            love.graphics.setColor(Palette.PARCHMENT_DARK[1], Palette.PARCHMENT_DARK[2],
+                Palette.PARCHMENT_DARK[3], 0.35)
+            love.graphics.rectangle("line", slotX, slotY, g.cardW, g.cardH, 4, 4)
+            local pf = FontManager.getFont(18)
+            love.graphics.setFont(pf)
+            love.graphics.setColor(Palette.PARCHMENT_DARK[1], Palette.PARCHMENT_DARK[2],
+                Palette.PARCHMENT_DARK[3], 0.5)
+            love.graphics.print("+", slotX + (g.cardW - pf:getWidth("+")) / 2,
+                slotY + (g.cardH - pf:getHeight()) / 2)
         end
     end
+    love.graphics.setColor(1, 1, 1, 1)
 
     -- Sistema de combate desenha por cima
     game.combatAnimationSystem:draw()
@@ -649,6 +716,15 @@ function GameplayScene.mousepressed(x, y, button)
     -- v9.7.1: retorna se CONSUMIU o clique — o que sobrar vira poke no
     -- cenário do WorldRoad (main.lua → pokeSceneAt, mapa vivo)
     if topBar:mousepressed(x, y, button) then return true end
+
+    -- Clique no quadro de coringas (topo-esquerdo) abre o Gerenciador.
+    if button == 1 then
+        local jx, jy, jw, jh = GameplayScene.jokerFrameRect()
+        if x >= jx and x <= jx + jw and y >= jy and y <= jy + jh then
+            if _G.toggleJokerManager then _G.toggleJokerManager() end
+            return true
+        end
+    end
 
     if button == 1 then
         -- BUG do playtest ("encerro e nada acontece"): os widgets Button

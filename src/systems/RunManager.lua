@@ -47,8 +47,13 @@ function RunManager:startNewRun(classId)
 
         -- Jokers da run (separados do deck — padrão Balatro G.jokers).
         -- Array de strings ou {id, edition?, seal?}. Persistem entre batalhas.
-        -- Reconstruído em jokerSlots via buildJokerInstances().
+        -- COLEÇÃO possuída (ilimitada). Reconstruído em jokerSlots via
+        -- buildJokerInstances() (só os ATIVOS).
         jokers = {},
+        -- Flags de "ativo" paralelas a jokers (jokerActive[i] ↔ jokers[i]).
+        -- Só até MAX_JOKER_SLOTS podem estar ativos; o resto fica na bancada.
+        -- O jogador troca quais ativar pelo Gerenciador de Coringas.
+        jokerActive = {},
 
         -- Progresso
         currentFloor = 1,
@@ -145,18 +150,77 @@ function RunManager:addCardToDeck(cardId, meta)
 end
 
 -- ===== Jokers (run-scoped, separados do deck — padrão Balatro G.jokers) =====
+--
+-- MODELO COLEÇÃO + BANCADA (Jul/2026): a run POSSUI jokers ilimitados
+-- (currentRun.jokers). Só até MAX_JOKER_SLOTS ficam ATIVOS (jokerActive[i]);
+-- os demais ficam na bancada. jokerSlots (instâncias jogáveis) é construído
+-- SÓ dos ativos. Comprar um 4º joker NÃO o perde mais — entra na bancada, e o
+-- jogador troca os ativos pelo Gerenciador de Coringas. Isso vira estratégia:
+-- montar/ajustar o conjunto de coringas ao longo da run.
 
--- Adiciona um joker à run. Não passa pelo deck/hand. meta opcional para
--- edition/seal vindos de Buffoon packs.
-function RunManager:addJokerToRun(jokerId, meta)
-    if not self.currentRun then return false end
+function RunManager:getMaxJokerSlots()
+    -- currentRun.maxJokerSlots é espelhado por Game:recomputeMaxJokerSlots
+    -- (bônus de slot da edition Negative). Sem run/sem espelho → base do Config.
+    return (self.currentRun and self.currentRun.maxJokerSlots)
+        or (Config.Game and Config.Game.MAX_JOKER_SLOTS) or 3
+end
+
+-- Nº de coringas atualmente ativos.
+function RunManager:getActiveJokerCount()
+    if not self.currentRun then return 0 end
+    local act = self.currentRun.jokerActive or {}
+    local n = 0
+    for i = 1, #(self.currentRun.jokers or {}) do
+        if act[i] then n = n + 1 end
+    end
+    return n
+end
+
+-- Garante que jokerActive existe e tem o mesmo tamanho de jokers. Saves antigos
+-- (sem jokerActive) ativam os primeiros MAX_JOKER_SLOTS; o resto fica na bancada.
+function RunManager:_ensureJokerActive()
+    if not self.currentRun then return end
     self.currentRun.jokers = self.currentRun.jokers or {}
+    local act = self.currentRun.jokerActive
+    if not act then
+        act = {}
+        local cap = self:getMaxJokerSlots()
+        for i = 1, #self.currentRun.jokers do
+            act[i] = (i <= cap)
+        end
+        self.currentRun.jokerActive = act
+    else
+        -- normaliza tamanho + reforça o cap (nunca mais ativos que o teto)
+        local cap = self:getMaxJokerSlots()
+        local active = 0
+        for i = 1, #self.currentRun.jokers do
+            if act[i] == nil then act[i] = false end
+            if act[i] then
+                active = active + 1
+                if active > cap then act[i] = false end
+            end
+        end
+    end
+end
+
+-- Adiciona um joker à COLEÇÃO da run. Não passa pelo deck/hand. meta opcional
+-- para edition/seal vindos de Buffoon packs. Ativa automaticamente se houver
+-- slot livre; senão entra na bancada. Retorna (index, ativado?).
+function RunManager:addJokerToRun(jokerId, meta)
+    if not self.currentRun then return nil, false end
+    self.currentRun.jokers = self.currentRun.jokers or {}
+    self:_ensureJokerActive()
 
     local entry = jokerId
     if meta and (meta.edition or meta.seal) then
         entry = { id = jokerId, edition = meta.edition, seal = meta.seal }
     end
     table.insert(self.currentRun.jokers, entry)
+    local idx = #self.currentRun.jokers
+
+    -- auto-ativa se ainda há slot livre
+    local activated = self:getActiveJokerCount() < self:getMaxJokerSlots()
+    self.currentRun.jokerActive[idx] = activated
 
     table.insert(self.currentRun.cardHistory, {
         cardId = jokerId,
@@ -165,44 +229,106 @@ function RunManager:addJokerToRun(jokerId, meta)
         meta = meta,
         slot = "joker",
     })
+    return idx, activated
+end
+
+-- Remove o joker de um índice da coleção (e sua flag). Retorna true se removeu.
+function RunManager:removeJokerAt(index)
+    if not self.currentRun or not self.currentRun.jokers then return false end
+    if not self.currentRun.jokers[index] then return false end
+    self:_ensureJokerActive()
+    table.remove(self.currentRun.jokers, index)
+    table.remove(self.currentRun.jokerActive, index)
     return true
 end
 
 -- Remove o primeiro joker com o id dado. Retorna true se removeu.
 function RunManager:removeJokerFromRun(jokerId)
     if not self.currentRun or not self.currentRun.jokers then return false end
+    self:_ensureJokerActive()
     for i, entry in ipairs(self.currentRun.jokers) do
         local id = type(entry) == "table" and entry.id or entry
         if id == jokerId then
             table.remove(self.currentRun.jokers, i)
+            table.remove(self.currentRun.jokerActive, i)
             return true
         end
     end
     return false
 end
 
--- Reconstrói as instâncias de joker (análogo a buildPlayableDeck mas só pra jokers).
+-- Ativa/desativa o joker de um índice, respeitando o teto de slots. Retorna
+-- (ok, motivo). Motivo "cap" = tentou ativar com os slots cheios.
+function RunManager:setJokerActive(index, active)
+    if not self.currentRun then return false, "no_run" end
+    self:_ensureJokerActive()
+    if not self.currentRun.jokers[index] then return false, "invalid" end
+    if active and not self.currentRun.jokerActive[index] then
+        if self:getActiveJokerCount() >= self:getMaxJokerSlots() then
+            return false, "cap"
+        end
+    end
+    self.currentRun.jokerActive[index] = active and true or false
+    return true
+end
+
+function RunManager:isJokerActive(index)
+    if not self.currentRun then return false end
+    self:_ensureJokerActive()
+    return self.currentRun.jokerActive[index] and true or false
+end
+
+-- Constrói uma instância de joker a partir de uma entry (string ou tabela).
+function RunManager:_instanceFromJokerEntry(entry)
+    local id, edition, seal
+    if type(entry) == "table" then
+        id, edition, seal = entry.id, entry.edition, entry.seal
+    else
+        id = entry
+    end
+    local cardData = self.cardDatabase:getCard(id)
+    if not cardData then
+        print("AVISO: Joker não encontrado no banco de dados: " .. tostring(id))
+        return nil
+    end
+    local instance = self.cardDatabase:createCardInstance(cardData)
+    if edition then instance.edition = edition end
+    if seal then instance.seal = seal end
+    return instance
+end
+
+-- Reconstrói as instâncias de joker ATIVAS (as que vão pra jokerSlots).
 -- Aplica edition/seal por cópia. Não aplica upgrades (jokers não são forjados).
 function RunManager:buildJokerInstances()
     if not self.currentRun or not self.currentRun.jokers then return {} end
+    self:_ensureJokerActive()
 
     local instances = {}
-    for _, entry in ipairs(self.currentRun.jokers) do
-        local id, edition, seal
-        if type(entry) == "table" then
-            id, edition, seal = entry.id, entry.edition, entry.seal
-        else
-            id = entry
+    for i, entry in ipairs(self.currentRun.jokers) do
+        if self.currentRun.jokerActive[i] then
+            local inst = self:_instanceFromJokerEntry(entry)
+            if inst then
+                inst._ownedIndex = i
+                table.insert(instances, inst)
+            end
         end
+    end
+    return instances
+end
 
-        local cardData = self.cardDatabase:getCard(id)
-        if cardData then
-            local instance = self.cardDatabase:createCardInstance(cardData)
-            if edition then instance.edition = edition end
-            if seal then instance.seal = seal end
-            table.insert(instances, instance)
-        else
-            print("AVISO: Joker não encontrado no banco de dados: " .. tostring(id))
+-- Constrói instâncias de TODOS os jokers possuídos (ativos + bancada), cada uma
+-- marcada com _ownedIndex e _active. Usado pelo Gerenciador de Coringas.
+function RunManager:buildAllJokerInstances()
+    if not self.currentRun or not self.currentRun.jokers then return {} end
+    self:_ensureJokerActive()
+
+    local instances = {}
+    for i, entry in ipairs(self.currentRun.jokers) do
+        local inst = self:_instanceFromJokerEntry(entry)
+        if inst then
+            inst._ownedIndex = i
+            inst._active = self.currentRun.jokerActive[i] and true or false
+            table.insert(instances, inst)
         end
     end
     return instances
@@ -447,14 +573,28 @@ end
 function RunManager:_migrateJokersFromDeck()
     if not self.currentRun or not self.currentRun.currentDeck then return end
     self.currentRun.jokers = self.currentRun.jokers or {}
-    for i = #self.currentRun.currentDeck, 1, -1 do
+    self:_ensureJokerActive()   -- flags coerentes ANTES de migrar
+    local cap = self:getMaxJokerSlots()
+    -- percorre em ordem crescente pra preservar a ordem original dos jokers
+    for i = 1, #self.currentRun.currentDeck do
         local entry = self.currentRun.currentDeck[i]
         local cardId = type(entry) == "table" and entry.id or entry
         local cardData = self.cardDatabase:getCard(cardId)
         if cardData and cardData.type == "joker" then
             table.insert(self.currentRun.jokers, entry)
-            table.remove(self.currentRun.currentDeck, i)
+            -- migrado ativa se ainda há slot livre (senão vai pra bancada)
+            local activated = self:getActiveJokerCount() < cap
+            self.currentRun.jokerActive[#self.currentRun.jokers] = activated
             print("[RunManager] migrou joker de currentDeck → jokers: " .. tostring(cardId))
+        end
+    end
+    -- remove os jokers do deck (de trás pra frente)
+    for i = #self.currentRun.currentDeck, 1, -1 do
+        local entry = self.currentRun.currentDeck[i]
+        local cardId = type(entry) == "table" and entry.id or entry
+        local cardData = self.cardDatabase:getCard(cardId)
+        if cardData and cardData.type == "joker" then
+            table.remove(self.currentRun.currentDeck, i)
         end
     end
 end

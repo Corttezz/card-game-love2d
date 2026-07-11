@@ -51,6 +51,8 @@ card-game-love2d/
 │   ├── SettingsMenu.lua        # Overlay modal: volume (music/sfx/master) + fullscreen
 │   ├── PauseMenu.lua           # Menu de pausa (engrenagem da TopBar, StS-style): continuar/config/salvar e sair/abandonar (confirmado); _G.togglePauseMenu
 │   ├── JokerSlot.lua           # Slot visual de joker ativo
+│   ├── DeckViewerScreen.lua    # Deck da run em TELA CHEIA (estilo Coleção); abre por clique no deck da TopBar OU tecla D; hover c/ tooltip + forja aplicada
+│   ├── JokerManagerScreen.lua  # Gerenciador de Coringas (tela cheia): coleção+bancada, escolhe quais MAX_JOKER_SLOTS ativar; abre por clique no quadro de coringas OU tecla J; _G.toggleJokerManager
 │   └── Button.lua              # Widget botão: clean (Balatro-inspired, default) | ornate | invisible
 ├── src/
 │   ├── core/
@@ -305,6 +307,7 @@ O painel do canto de inimigo (antigo `HudEnemyPanel`) foi aposentado. `GameUI.lu
 - **Cartas não devem ter `effects = {}` sem tags significativas.** Starter/básicas OK. Rode `love . validate_cards` antes de commitar.
 - **Nunca condicione por `card.name`** — use `card.effects` + `card.tags` (data-driven).
 - **Jokers nunca passam por `addCardToRun`/`currentDeck` direto** — sempre via `Game:addJokerToRun` (ou via `addCardToRun` que bifurca). Joker é separado de hand/deck (padrão Balatro G.jokers); persistido em `runManager.currentRun.jokers`. Romper esse invariante reabre o bug "mesmo joker pode ser jogado várias vezes".
+- **Coringas = COLEÇÃO + BANCADA (Jul/2026, ver [`memory/jokers_and_hand_layout.md`](memory/jokers_and_hand_layout.md))**: a run POSSUI jokers ilimitados (`currentRun.jokers`); só até `getMaxJokerSlots()` ficam ATIVOS (`currentRun.jokerActive[]`), o resto na bancada. `jokerSlots` = SÓ os ativos, reconstruído por `Game:rebuildJokerSlots()` (fonte única). Comprar NUNCA perde o joker (bancada se cheio). Troca de ativos: `Game:setJokerActive(i, bool)` + Gerenciador de Coringas. NÃO reintroduzir rejeição por slots cheios em `addJokerToRun`/`canAcceptJoker`.
 - **Strength/Dexterity são adicionados em Game:processCardInCombat via `statBonus`** — não duplicar no `EffectSystem:applyCardEffects`. O effect `strength_scaling`/`dexterity_scaling` é flag-only (semântica para tooltip/validador).
 - **Triggers em cartas non-joker** funcionam via `context.sourceCard` em `applyTriggerEffects`. Para fazer uma defense card refletir, adicione `{ type="on_defend_damage", value=N }` ao `effects` da carta — o trigger fica visível em jokerSlots E em sourceCard.
 - Cartas procuram imagens em `assets/cards/attack/theRock.png` como fallback — muitas cartas ainda reusam por falta de arte (não é estilo, é débito).

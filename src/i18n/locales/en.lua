@@ -190,6 +190,23 @@ return {
         inspect_help   = "← / → Navigate    ·    ESC or click outside to close",
     },
 
+    deck_viewer = {
+        title  = "YOUR DECK",
+        counts = "{total} cards   ·   {atk} attack   ·   {def} defense   ·   {eff} effect   ·   {jok} joker",
+        hint   = "WHEEL scrolls  ·  hover to see details  ·  D or ESC closes",
+    },
+
+    joker_manager = {
+        title        = "JOKERS",
+        subtitle     = "Click to activate or send to the bench",
+        active_count = "{n} / {max} active",
+        active_slot  = "ACTIVE {n}",
+        benched      = "BENCH",
+        cap_reached  = "Max {max} active jokers — deactivate one first",
+        empty        = "You have no jokers yet. Buy them in the shop or earn them as rewards.",
+        hint         = "Click toggles active/bench  ·  WHEEL scrolls  ·  J or ESC closes",
+    },
+
     ["end"] = {
         record             = "Best: {n}",
         new_record         = "NEW RECORD!",

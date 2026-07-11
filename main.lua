@@ -61,6 +61,7 @@ local pauseMenu
 local topBar
 local mapScreen
 local deckViewerScreen
+local jokerManagerScreen
 local restScreen
 local eventScreen
 local packOpenScreen
@@ -820,6 +821,11 @@ function love.load(loveArgs)
     -- Inicializa overlay de configurações
     settingsMenu = SettingsMenu:new()
     deckViewerScreen = require("components.DeckViewerScreen"):new()
+    jokerManagerScreen = require("components.JokerManagerScreen"):new()
+    -- Aberto pelo clique no painel de coringas (GameplayScene) OU tecla J.
+    _G.toggleJokerManager = function()
+        if jokerManagerScreen then jokerManagerScreen:toggle(game) end
+    end
 
     -- Menu de PAUSA (engrenagem da TopBar, padrão StS): Continuar /
     -- Configurações / Salvar e voltar ao menu / Abandonar run (confirmado).
@@ -1192,6 +1198,11 @@ function love.draw()
         deckViewerScreen:draw()
     end
 
+    -- Gerenciador de Coringas: overlay em qualquer tela da run
+    if jokerManagerScreen and jokerManagerScreen:isVisible() then
+        jokerManagerScreen:draw()
+    end
+
     -- Overlay de settings (modal) ainda DENTRO da cena CRT — assim o shader
     -- cobre o overlay também.
     if pauseMenu then pauseMenu:draw() end
@@ -1266,6 +1277,11 @@ function love.keypressed(key)
         if deckViewerScreen:keypressed(key) then return end
     end
 
+    -- Gerenciador de Coringas consome teclas enquanto aberto (J/ESC fecham)
+    if jokerManagerScreen and jokerManagerScreen:isVisible() then
+        if jokerManagerScreen:keypressed(key) then return end
+    end
+
     -- Pack opening absorve teclas (escape fecha) enquanto visível.
     if packOpenScreen and packOpenScreen:isVisible() then
         if packOpenScreen:keypressed(key) then return end
@@ -1276,6 +1292,14 @@ function love.keypressed(key)
         or currentState == "cardReward" or currentState == "mapSelection")
         and game and game.isRunMode then
         deckViewerScreen:toggle(game)
+        return
+    end
+
+    -- Tecla J abre o Gerenciador de Coringas em qualquer tela da run
+    if key == "j" and (currentState == "playing"
+        or currentState == "cardReward" or currentState == "mapSelection")
+        and game and game.isRunMode then
+        jokerManagerScreen:toggle(game)
         return
     end
 
@@ -1369,6 +1393,12 @@ function love.mousereleased(x, y, button)
         return
     end
 
+    -- Gerenciador de Coringas consome mouse enquanto aberto
+    if jokerManagerScreen and jokerManagerScreen:isVisible() then
+        jokerManagerScreen:mousereleased(x, y, button)
+        return
+    end
+
     -- Settings modal consome primeiro
     if settingsMenu and settingsMenu:isVisible() then
         if settingsMenu:mousereleased(x, y, button) then return end
@@ -1428,6 +1458,12 @@ function love.mousepressed(x, y, button)
         return
     end
 
+    -- Gerenciador de Coringas consome mouse enquanto aberto
+    if jokerManagerScreen and jokerManagerScreen:isVisible() then
+        jokerManagerScreen:mousepressed(x, y, button)
+        return
+    end
+
     -- TopBar consome cliques na faixa superior (engrenagem/deck) em todos os
     -- estados onde é desenhada. (Nunca era roteada — o clique da engrenagem
     -- não funcionava em lugar NENHUM; bug playtest Jul/2026.)
@@ -1481,6 +1517,10 @@ end
 function love.wheelmoved(dx, dy)
     if deckViewerScreen and deckViewerScreen:isVisible() then
         deckViewerScreen:wheelmoved(dx, dy)
+        return
+    end
+    if jokerManagerScreen and jokerManagerScreen:isVisible() then
+        jokerManagerScreen:wheelmoved(dx, dy)
         return
     end
     if currentState == "collection" and collectionScreen.wheelmoved then

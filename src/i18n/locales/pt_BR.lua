@@ -204,6 +204,23 @@ return {
         inspect_help   = "← / → Navegar    ·    ESC ou clique fora para fechar",
     },
 
+    deck_viewer = {
+        title  = "SEU DECK",
+        counts = "{total} cartas   ·   {atk} ataque   ·   {def} defesa   ·   {eff} efeito   ·   {jok} coringa",
+        hint   = "RODA rola  ·  passe o mouse pra ver detalhes  ·  D ou ESC fecha",
+    },
+
+    joker_manager = {
+        title        = "CORINGAS",
+        subtitle     = "Clique pra ativar ou mandar pra bancada",
+        active_count = "{n} / {max} ativos",
+        active_slot  = "ATIVO {n}",
+        benched      = "BANCADA",
+        cap_reached  = "Máximo de {max} coringas ativos — desative um primeiro",
+        empty        = "Você ainda não tem coringas. Compre na loja ou ganhe em recompensas.",
+        hint         = "Clique alterna ativo/bancada  ·  RODA rola  ·  J ou ESC fecha",
+    },
+
     ["end"] = {
         record             = "Recorde: {n}",
         new_record         = "NOVO RECORDE!",

@@ -370,10 +370,11 @@ function Game:addCardToRun(cardId, meta)
     end
 end
 
--- True se o jogo aceita um joker novo agora (slots não cheios). Caller
--- (CardRewardScreen) usa pra decidir se mostra/permite a compra.
+-- True se o jogo aceita um joker novo agora. Pós-modelo coleção+bancada
+-- (Jul/2026) a coleção é ILIMITADA — excedentes entram na bancada em vez de
+-- sumir. Só exige estar em run. Mantido por compat (CardRewardScreen/autoplay).
 function Game:canAcceptJoker()
-    return #self.jokerSlots < self.maxJokerSlots
+    return self.isRunMode == true
 end
 
 -- Adiciona um joker direto aos slots passivos (sem passar pelo deck/hand).
@@ -403,47 +404,57 @@ function Game:addJokerToRun(cardId, meta)
         return false
     end
 
-    -- Verifica capacidade. Caller deve pre-checar via Game:canAcceptJoker antes
-    -- de gastar gold, pois daqui não sabemos o preço pago.
-    if #self.jokerSlots >= self.maxJokerSlots then
-        self:addMessage("Slots de joker cheios — venda um primeiro", "warning")
-        return false
+    -- COLEÇÃO + BANCADA: o joker SEMPRE entra na coleção da run. Ativa se houver
+    -- slot livre (até maxJokerSlots); senão fica na bancada — NUNCA se perde.
+    -- (Mata o bug histórico "comprei o 4º joker e ele sumiu".) A troca de
+    -- ativos acontece no Gerenciador de Coringas.
+    local _, activated = self.runManager:addJokerToRun(cardId, meta)
+    self:rebuildJokerSlots()
+
+    if activated then
+        self:addMessage("Coringa ativado: " .. (cardData.name or cardId), "success")
+        Sfx.play("jokerActivate")
+    else
+        self:addMessage("Coringa na bancada: " .. (cardData.name or cardId)
+            .. " (troque no gerenciador)", "info")
+        Sfx.play("cardSelect")
     end
-
-    local instance = self.deckManager.cardDatabase:createCardInstance(cardData)
-    if meta then
-        if meta.edition then instance.edition = meta.edition end
-        if meta.seal then instance.seal = meta.seal end
-    end
-
-    table.insert(self.jokerSlots, instance)
-    self.runManager:addJokerToRun(cardId, meta)
-
-    -- Passive one-shot ao adquirir (ex: maxMana++). Mecânicas continuas vêm
-    -- via applyJokerEffects/applyTriggerEffects iterando jokerSlots.
-    if instance.passive then
-        instance.passive(self)
-    end
-
-    self:addMessage("Joker ativado: " .. (cardData.name or cardId), "success")
-    Sfx.play("jokerActivate")
-    self:syncJokerFlags()
     return true
 end
 
--- Reconstrói jokerSlots a partir de runManager.currentRun.jokers. Usado em
--- startGame para popular slots após load de save antigo. Não reaplica passive
--- (efeitos persistentes como maxMana já estão no playerState salvo).
+-- Reconstrói jokerSlots a partir dos jokers ATIVOS da run. Fonte única —
+-- usado no load (startGame), ao adquirir e ao trocar ativos no gerenciador.
+-- Efeitos contínuos/trigger são lidos ao vivo de jokerSlots, então trocar
+-- ativos basta reconstruir + sincronizar flags contínuas (retain_armor etc.).
+function Game:rebuildJokerSlots()
+    self.jokerSlots = {}
+    if self.isRunMode and self.runManager:hasActiveRun() then
+        local instances = self.runManager:buildJokerInstances()
+        for _, inst in ipairs(instances) do
+            table.insert(self.jokerSlots, inst)
+        end
+    end
+    self:syncJokerFlags()
+end
+
+-- Ativa/desativa um joker possuído (índice na coleção da run), respeitando o
+-- teto de slots. Rebuilda os slots e persiste. Retorna (ok, motivo).
+function Game:setJokerActive(ownedIndex, active)
+    if not (self.isRunMode and self.runManager:hasActiveRun()) then
+        return false, "no_run"
+    end
+    local ok, reason = self.runManager:setJokerActive(ownedIndex, active)
+    if ok then
+        self:rebuildJokerSlots()
+        if self.runManager.saveRun then self.runManager:saveRun() end
+    end
+    return ok, reason
+end
+
+-- Restaura jokerSlots a partir da run (load). Delega pro rebuild (fonte única).
 function Game:_syncJokersFromRun()
     if not self.isRunMode or not self.runManager:hasActiveRun() then return end
-    local run = self.runManager.currentRun
-    if not run.jokers or #run.jokers == 0 then return end
-    if #self.jokerSlots > 0 then return end -- já populado, não duplicar
-
-    local instances = self.runManager:buildJokerInstances()
-    for _, inst in ipairs(instances) do
-        table.insert(self.jokerSlots, inst)
-    end
+    self:rebuildJokerSlots()
     Debug.log("[Game] jokerSlots restaurados da run: " .. #self.jokerSlots)
 end
 
@@ -704,6 +715,12 @@ function Game:recomputeMaxJokerSlots()
         end
     end
     self.maxJokerSlots = base + negCount
+    -- Espelha no run pra o teto de ATIVOS (RunManager:getMaxJokerSlots) seguir
+    -- os bônus de slot (Negative) — senão a bancada usaria só o base fixo.
+    if self.isRunMode and self.runManager and self.runManager.currentRun then
+        self.runManager.currentRun.maxJokerSlots = self.maxJokerSlots
+        self:rebuildJokerSlots()
+    end
 end
 
 function Game:processCardInCombat(card, turnContext)
@@ -828,20 +845,12 @@ function Game:processCardInCombat(card, turnContext)
         -- entrar no deck/hand. Aceita defensivamente pra não travar a run,
         -- mas alerta no log pra detectar regressão.
         Debug.warn("[Game] Joker chegou via hand (leak arquitetural): " .. tostring(card.id))
-        if #self.jokerSlots < self.maxJokerSlots then
-            table.insert(self.jokerSlots, card)
-            -- Espelha no run state para persistir ao salvar.
-            if self.isRunMode and card.id then
-                self.runManager:addJokerToRun(card.id, { edition = card.edition, seal = card.seal })
-            end
-
-            if card.passive then card.passive(self) end
-            self:addMessage("Joker ativado: " .. card.name, "success")
-
-            result.joker = true
-        else
-            self:addMessage("Todos os slots de joker estão ocupados!", "warning")
+        -- Roteia pelo caminho canônico (coleção + bancada) em vez de empurrar
+        -- a instância direto — mantém o invariante e nunca perde o joker.
+        if self.isRunMode and card.id then
+            self:addJokerToRun(card.id, { edition = card.edition, seal = card.seal })
         end
+        result.joker = true
         
     elseif card.type == "effect" then
         -- Cartas de efeito executam seu efeito e são descartadas
