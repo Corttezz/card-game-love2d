@@ -2096,6 +2096,15 @@ local CASTLE_APPROACH = {
     fields = 3.2, highlands = 3.2, abyss = 3.4,
     frost = 2.9, marsh = 3.2, dusk = 3.1,
 }
+-- v10.3 (feedback): no fim da aproximação alguns castelos ficavam "pra
+-- cima" e mostravam a BORDA INFERIOR da arte (fundação + grama/neve/musgo
+-- assados na base) flutuando acima da crista. highlands/abyss afunilam pro
+-- portão e assentam bem; fields/frost/marsh/dusk têm base larga → afundam
+-- um pouco mais pra enterrar essa borda no chão. Fração EXTRA de ih·s
+-- somada ao sink (só cresce perto, ∝ progress, pra não afetar o longe).
+local CASTLE_SINK_EXTRA = {
+    fields = 0.06, frost = 0.07, marsh = 0.06, dusk = 0.06,
+}
 local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
     -- v10: progresso POR TRECHO ancorado na troca de bioma — o castelo
     -- RESETA pra longe quando o bioma vira (o módulo antigo fazia a
@@ -2148,8 +2157,12 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
     local sMax = (g.crestYAt(cx) - g.y - 6) / (ih * (1 - sinkK))
     if sMax > 0 then s = math.min(s, sMax) end
     -- afundamento DIMINUI chegando: no fim só 3% da altura fica atrás da
-    -- crista — o PORTÃO (base do sprite) sobe e fica totalmente visível
-    local baseY = g.crestYAt(cx) + ih * s * (0.03 + 0.20 * (1 - progress))
+    -- crista — o PORTÃO (base do sprite) sobe e fica totalmente visível.
+    -- v10.3: + afundamento EXTRA por bioma (∝ progress) pra enterrar a
+    -- borda inferior larga dos castelos que flutuavam no fim.
+    local sinkExtra = (CASTLE_SINK_EXTRA[bid] or 0) * progress
+    local baseY = g.crestYAt(cx)
+        + ih * s * (0.03 + 0.20 * (1 - progress) + sinkExtra)
     -- PÁTIO de terra no pé do castelo (v5.4, feedback "castelo parece
     -- colado"): elipse na cor da estrada onde ela encontra o portão —
     -- o castelo assenta num terreno batido, não numa grama lisa

@@ -1544,6 +1544,16 @@ imersiva com a porta abrindo + som.
 - Sons: castle-gate-open (madeira 3.5s) / castle-gate-magic (arcano 3s),
   volumes 0.62/0.58 no main.lua.
 
+**v10.3 (feedback: castelos "pra cima" mostrando a base no fim):**
+- fields/frost/marsh/dusk têm BORDA INFERIOR larga na arte (grama/neve/
+  cogumelo/fundação assados) que, com o sink fixo de 3% no fim, flutuava
+  acima da crista. highlands/abyss afunilam pro portão e assentam bem.
+- Fix: `CASTLE_SINK_EXTRA` por bioma (fields/marsh/dusk +0.06, frost +0.07
+  de ih·s) somado ao baseY, ∝ progress (só perto, não afeta o longe).
+  Calibrado pela altura da prateleira de chão medida em cada PNG (perfil
+  de opacidade das últimas linhas). Validado offline (linha da crista sobre
+  o sprite) + gate1..6 in-game: base enterrada, portão/paredes intactos.
+
 **v10.1/v10.2 (feedback forte — REVERTI a manipulação de câmera):**
 - ⚠️ **NUNCA empurrar escala/posição do castelo pra "chegar perto".** A
   perspectiva vem SÓ do crescimento natural da caminhada (`progress =
