@@ -275,13 +275,11 @@ function RoundEvalScreen:_buildCashOutButton()
     local btnY = sh * 0.78
     self.cashOutButton = Button:new(
         btnX, btnY, btnW, btnH,
-        "RESGATAR  $" .. self.totalDollars,
+        require("src.i18n.I18n").t("round_eval.cash_out", { n = self.totalDollars }),
         function() self:_onCashOutClick() end,
         nil, 12
     )
-    if self.cashOutButton.setIcon then
-        self.cashOutButton:setIcon("coin")
-    end
+    self.cashOutButton:setIcon("coin")
 end
 
 function RoundEvalScreen:_onCashOutClick()
@@ -407,19 +405,24 @@ function RoundEvalScreen:draw()
         local ly = panelY + 98
         local lx = panelX + 60
         local rx = panelX + panelW - 60
+        local TextFit = require("src.ui.TextFit")
         for _, item in ipairs(lines) do
+            local valueW = lf:getWidth(item.value)
             if item.bad then
                 love.graphics.setColor(0.85, 0.45, 0.35, 0.95)
             else
                 love.graphics.setColor(0.82, 0.78, 0.70, 0.95)
             end
-            love.graphics.print(item.label, lx, ly)
+            -- Label com fit até o value (labels longos colidiam à direita).
+            TextFit.print(item.label, lx, ly,
+                { size = 10, maxW = math.max(40, rx - lx - valueW - 12) })
             if item.bad then
                 love.graphics.setColor(0.9, 0.4, 0.3, 1)
             else
                 love.graphics.setColor(1, 0.85, 0.30, 1)
             end
-            love.graphics.print(item.value, rx - lf:getWidth(item.value), ly)
+            love.graphics.setFont(lf)
+            love.graphics.print(item.value, rx - valueW, ly)
             ly = ly + 16
         end
         scoreBlockH = 34 + #lines * 16

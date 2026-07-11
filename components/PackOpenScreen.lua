@@ -213,7 +213,8 @@ function PackOpenScreen:_buildSkipButton()
     -- Footer fica abaixo dos cards. Skip fica em column à direita do título.
     local footerY = sh * 0.78
     local x = sw * 0.78
-    self.skipButton = Button:new(x, footerY, btnW, btnH, "Pular",
+    self.skipButton = Button:new(x, footerY, btnW, btnH,
+        require("src.i18n.I18n").t("common.skip"),
         function() self:close() end,
         nil, 12)
     self.skipButton:setIcon("x_close")

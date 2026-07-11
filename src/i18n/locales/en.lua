@@ -69,6 +69,47 @@ return {
         hand_suffix     = "({n} in hand)",
         score_label        = "points",
         score_record       = "RECORD!",
+        act             = "ACT {n}",
+        floor           = "floor {x}/{total}",
+        endless         = "ENDLESS",
+    },
+
+    pause = {
+        title           = "PAUSED",
+        progress        = "ACT {act} · floor {floor}/{total} — {class}",
+        no_run          = "No journey in progress",
+        hint            = "ESC closes · the journey stays paused",
+        resume          = "Resume",
+        resume_desc     = "Back to where you were. Nothing changes.",
+        settings        = "Settings",
+        settings_desc   = "Volumes, fullscreen, CRT shader, language and accessibility.",
+        save_quit       = "Save and quit to menu",
+        save_quit_desc  = "Your journey is SAVED right here to continue later.",
+        quit_norun      = "Quit to menu",
+        quit_norun_desc = "Ends this match and returns to the main menu.",
+        abandon         = "Abandon run",
+        abandon_desc    = "Deletes the current journey and its save. There is NO undo.",
+        abandon_confirm = "Are you sure? This deletes the journey.",
+        abandon_yes     = "Yes, abandon",
+        abandon_no      = "No, go back",
+    },
+
+    common = {
+        skip = "Skip",
+        back = "Back",
+        take = "Take",
+    },
+
+    round_eval = {
+        cash_out = "Cash out ${n}",
+    },
+
+    enemy_moves = {
+        attack    = "Lunge",
+        strong    = "CRUSHING BLOW",
+        defend    = "Defensive Stance",
+        buff      = "Rising Fury",
+        buff_gain = "+2 DMG",
     },
 
     hud = {
@@ -84,6 +125,7 @@ return {
         defense      = "Defense: ",
         effects      = "Effects:",
         no_desc      = "(no description)",
+        forged       = "Forged +{n}",
     },
 
     card_type = {
@@ -106,6 +148,11 @@ return {
 
     reward = {
         shop_title         = "RELIC SHOP",
+        rewards_title      = "SPOILS OF BATTLE",
+        rewards_subtitle   = "Pick 1 card for your grimoire — or continue without",
+        skip_no_card       = "Continue without a card",
+        affinity_badge     = "AFFINITY",
+        affinity_line      = "Deck affinity: {tags}",
         gold_label         = "Gold: ${n}",
         continue           = "Continue",
         refresh            = "Refresh (${n})",
@@ -208,6 +255,11 @@ return {
         passive_warrior= { name = "Passive: Momentum", desc = "Play 2+ attacks in the same turn: +1 Strength this battle." },
         passive_mage   = { name = "Passive: Conduit", desc = "You start every battle with a Lightning orb (4) channeled." },
         passive_rogue  = { name = "Passive: Toxins", desc = "The first attack each turn applies 1 Poison (2 turns)." },
+        topbar_gold = { name = "Gold", desc = "Buys cards, forges and upgrades at the shop. Interest: +$1 per $5 saved (max +$5), paid after each battle won. Next payout: +${interest}." },
+        topbar_deck = { name = "Grimoire", desc = "{deck} cards in your grimoire — {hand} in hand right now. At end of turn your hand is discarded and you draw fresh cards. Click to browse the deck." },
+        topbar_progress = { name = "Journey Progress", desc = "Act {act}, floor {floor} of {total}. A MINI-BOSS waits at floor 7; the act BOSS at floor {total}. Defeat the Act 3 boss to finish the chronicle." },
+        topbar_config = { name = "Pause Menu", desc = "Pauses the journey: settings, save and quit to menu, or abandon the run." },
+        reward_rules = { name = "How offers work", desc = "Offered cards belong to YOUR class. Quality improves each act — and every offer without a RARE raises the next one's odds (after a long dry streak, a rare is guaranteed). Cards marked AFFINITY match your deck's strong tags. Cards you already own in copies show up less often." },
         poison     = { name = "Poison",     desc = "Deals {stacks} damage at end of turn. Loses 1 stack per turn." },
         weak       = { name = "Weak",       desc = "Damage dealt reduced by 25% for {duration} turn(s)." },
         vulnerable = { name = "Vulnerable", desc = "Takes 50% more damage from attacks for {duration} turn(s)." },

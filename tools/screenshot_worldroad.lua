@@ -80,11 +80,33 @@ function M.run(mode)
         WorldRoad.clearCache()
         WorldRoad.setBiome(bio)
         local segLen = WorldRoad.TRAVEL_DISTANCE * 8
-        WorldRoad._camZ = segLen * 0.92
+        -- v10.2: máximo NATURAL da caminhada (sem boost de câmera) —
+        -- calibra CASTLE_APPROACH pra caber sem cortar/sair da esfera
+        WorldRoad._camZ = segLen * 1.0
+        WorldRoad._segBase = 0
         for _ = 1, 30 do WorldRoad.update(1 / 30) end
         -- mata o blend residual do setBiome (paleta pura, igual ao modo
         -- endless) e passa o MESMO bioma no draw — o 1 hardcoded criava
         -- blend invertido fields→bioma que a mountains_front do v5.8 expôs
+        WorldRoad._blend = nil
+        WorldRoad._prevBiomeIndex = nil
+        WorldRoad.draw(0, topBarH, width, height - topBarH, bio)
+        overlays(0, topBarH, width, height - topBarH)
+        love.graphics.setColor(0.1, 0.08, 0.06, 1)
+        love.graphics.rectangle("fill", 0, 0, width, topBarH)
+    elseif mode and mode:match("^entry%d?$") then
+        -- v10: CERIMÔNIA DA PORTA congelada no meio (fase door, ~0.7) —
+        -- valida frames da porta + boost do clamp em cena. "entry3" = bioma 3
+        local topBarH = 80
+        local bio = tonumber(mode:match("%d")) or 1
+        WorldRoad.clearCache()
+        WorldRoad.setBiome(bio)
+        local segLen = WorldRoad.TRAVEL_DISTANCE * 8
+        WorldRoad._camZ = segLen * 1.0
+        WorldRoad._segBase = 0
+        WorldRoad._entry = { phase = "door", t = 0,
+                             doorK = 0, fade = 0, sound = nil }
+        for _ = 1, 30 do WorldRoad.update(1 / 30) end   -- ~1s → doorK ≈ 0.7
         WorldRoad._blend = nil
         WorldRoad._prevBiomeIndex = nil
         WorldRoad.draw(0, topBarH, width, height - topBarH, bio)
@@ -124,6 +146,47 @@ function M.run(mode)
                 WorldRoad.draw(0, topBarH, width, height - topBarH, 1)
                 overlays(0, topBarH, width, height - topBarH)
             end
+        end
+        love.graphics.clear(0, 0, 0, 1)
+        WorldRoad.draw(0, topBarH, width, height - topBarH, 1)
+        overlays(0, topBarH, width, height - topBarH)
+        love.graphics.setColor(0.1, 0.08, 0.06, 1)
+        love.graphics.rectangle("fill", 0, 0, width, topBarH)
+    elseif mode == "poke" then
+        -- v9.7: CENÁRIO INTERATIVO — varre cliques fora dos marcos
+        -- (árvores/postes/cercas/nuvens) e captura ~0.17s depois, no meio
+        -- da mexidinha (pêndulo + folhinhas + squash de nuvem + rajada)
+        local topBarH = 80
+        WorldRoad.clearCache()
+        WorldRoad.setBiome(1)
+        WorldRoad._camZ = 5.5
+        for _ = 1, 30 do WorldRoad.update(1 / 30) end
+        WorldRoad.showFork({
+            { type = "battle", label = "Batalha", desc = "x" },
+            { type = "rest",   label = "Descanso", desc = "x" },
+            { type = "shop",   label = "Loja", desc = "x" },
+        }, function() end)
+        for _ = 1, 20 do
+            WorldRoad.update(1 / 30)
+            WorldRoad.draw(0, topBarH, width, height - topBarH, 1)
+            overlays(0, topBarH, width, height - topBarH)
+        end
+        local hits = 0
+        for gy = 0.10, 0.92, 0.08 do
+            for gx = 0.05, 0.95, 0.06 do
+                if WorldRoad.pokeSceneAt(gx * width,
+                    topBarH + gy * (height - topBarH)) then
+                    hits = hits + 1
+                end
+            end
+        end
+        print("[poke] alvos atingidos na varredura: " .. hits)
+        local GrassField = require("engine.GrassField")
+        GrassField.pokeAt(0.30, WorldRoad._camZ + 3, WorldRoad._time)
+        for _ = 1, 5 do
+            WorldRoad.update(1 / 30)
+            WorldRoad.draw(0, topBarH, width, height - topBarH, 1)
+            overlays(0, topBarH, width, height - topBarH)
         end
         love.graphics.clear(0, 0, 0, 1)
         WorldRoad.draw(0, topBarH, width, height - topBarH, 1)

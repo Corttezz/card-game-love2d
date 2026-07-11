@@ -30,6 +30,9 @@ local KINDS = {
     buff   = { color = {0.85, 0.55, 1, 1}, fontSize = 14 },
     chips  = { color = {0.40, 0.75, 1.0, 1}, fontSize = 16 },
     mult   = { color = {1.0, 0.55, 0.20, 1}, fontSize = 16 },
+    -- Nome do golpe do inimigo (ShowMoveName do StS): pergaminho claro —
+    -- anuncia a AÇÃO, não o valor.
+    movename = { color = {0.95, 0.90, 0.78, 1}, fontSize = 15 },
 }
 
 -- spawn: x, y são coords de tela. opts = { color, fontSize, kind, hold, lift }

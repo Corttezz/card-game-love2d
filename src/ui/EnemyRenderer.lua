@@ -62,6 +62,7 @@ local ambientSpawnTimer = 0
 local IDLE_FPS = 7   -- ping-pong de 4 frames = ciclo ~0.86s (era loop seco 0.5s)
 local HURT_FPS = 12
 local DEATH_FPS = 10
+local ATTACK_FPS = 12 -- 9 frames ≈ 0.75s, casa com a duração da investida
 
 -- Pipeline atual usa só direção `south` (combate frontal estático). Outras
 -- direções foram removidas em 2026-04-21 — economiza ~75% disco e créditos
@@ -106,14 +107,23 @@ local function ensureAnim(enemyId, animName)
         return currentAnim
     end
 
+    -- Volta canônica pro idle (usada por todo clip one-shot).
+    local function backToIdle()
+        currentAnim = SpriteAnimation.new(enemyId, "idle", "south", IDLE_FPS,
+            { loop = true, pingpong = true })
+        currentAnimName = "idle"
+    end
+
     local fps = IDLE_FPS
     local opts = { loop = true, pingpong = true }
     if animName == "hurt" then
         fps = HURT_FPS
-        opts = { loop = false, onComplete = function()
-            currentAnim = SpriteAnimation.new(enemyId, "idle", "south", IDLE_FPS, { loop = true, pingpong = true })
-            currentAnimName = "idle"
-        end }
+        opts = { loop = false, onComplete = backToIdle }
+    elseif animName == "attack" then
+        -- ONE-SHOT (bug playtest Jul/2026: caía no default loop+pingpong e o
+        -- inimigo repetia o golpe pra sempre). Toca uma vez e volta pro idle.
+        fps = ATTACK_FPS
+        opts = { loop = false, onComplete = backToIdle }
     elseif animName == "death" then
         fps = DEATH_FPS
         opts = { loop = false }
@@ -136,6 +146,17 @@ function EnemyRenderer.clearCache()
     currentEnemyId = nil
     currentAnimName = nil
     ambientParticles = {}
+    -- clipMetricsCache é declarado depois; limpo via flag no próximo acesso.
+    if EnemyRenderer._clearClipMetrics then EnemyRenderer._clearClipMetrics() end
+end
+
+-- Estado interno pra testes de regressão (tools/test_systems.lua valida o
+-- ciclo attack→idle e a escala estável — bug do loop/encolhimento Jul/2026).
+function EnemyRenderer.debugState()
+    return {
+        animName = currentAnimName,
+        finished = currentAnim and currentAnim:isFinished() or false,
+    }
 end
 
 -- Juice de CHEGADA (fim da viagem na estrada): o inimigo "assenta" com
@@ -161,6 +182,15 @@ local poisonTime = 0
 local defendTime = 0
 local buffTime = 0
 local knockTime = 0
+-- Telegrafia v2 (Jul/2026 — "não fica claro quando ele defende/ataca/buffa"):
+local slashTime = 0          -- arco de golpe no apex da investida
+local buffParticles = {}     -- fagulhas subindo no buff {ox,oy,vy,life,maxLife,size}
+
+-- Durações dos FX de intent executado. defend/buff eram 0.5/0.6s de tint —
+-- curtos e sutis demais pra ler (playtest). Agora carregam ícone/partículas.
+local DEFEND_DUR = 0.9
+local BUFF_DUR   = 0.9
+local SLASH_DUR  = 0.20
 
 local ATK_WINDUP = 0.18   -- recua/agacha
 local ATK_LUNGE  = 0.16   -- investida (apex no fim)
@@ -169,14 +199,40 @@ local ATK_TOTAL  = ATK_WINDUP + ATK_LUNGE + ATK_RECOIL
 
 -- O inimigo TELEGRAFA + INVESTE: recua, avança na direção do jogador
 -- (baixo-esquerda) e o dano é aplicado NO IMPACTO via onApex.
+-- Se o personagem tiver clip "attack" (PixelLab), ele toca junto da investida.
 function EnemyRenderer.triggerAttack(kind, onApex)
     attackFx = { t = 0, kind = kind or "attack", onApex = onApex,
                  apexFired = false }
+    if currentEnemyId and currentAnimName ~= "death"
+        and SpriteAnimation.exists(currentEnemyId, "attack", "south") then
+        ensureAnim(currentEnemyId, "attack")
+    end
 end
 
 function EnemyRenderer.triggerPoison() poisonTime = 0.5 end
-function EnemyRenderer.triggerDefend() defendTime = 0.5 end
-function EnemyRenderer.triggerBuff()   buffTime   = 0.6 end
+
+function EnemyRenderer.triggerDefend()
+    defendTime = DEFEND_DUR
+end
+
+function EnemyRenderer.triggerBuff()
+    buffTime = BUFF_DUR
+    -- Fagulhas de fúria: 14 partículas nascem no corpo e SOBEM (a linguagem
+    -- universal de "ele ficou mais forte"). Offsets relativos ao sprite —
+    -- o draw posiciona no corpo real do frame.
+    buffParticles = {}
+    for _ = 1, 14 do
+        table.insert(buffParticles, {
+            ox = (love.math.random() - 0.5) * 0.8,   -- fração da largura
+            oy = love.math.random() * 0.7,           -- fração da altura (0=peito)
+            vy = 40 + love.math.random() * 55,
+            life = 0.45 + love.math.random() * 0.45,
+            maxLife = 0,
+            size = 2 + love.math.random(2),
+        })
+    end
+    for _, p in ipairs(buffParticles) do p.maxLife = p.life end
+end
 
 -- true se a investida ainda está no ar (Game pode segurar o próximo passo)
 function EnemyRenderer.isAttacking()
@@ -234,12 +290,25 @@ function EnemyRenderer.update(dt)
     if defendTime > 0 then defendTime = math.max(0, defendTime - dt) end
     if buffTime > 0 then buffTime = math.max(0, buffTime - dt) end
     if knockTime > 0 then knockTime = math.max(0, knockTime - dt) end
+    if slashTime > 0 then slashTime = math.max(0, slashTime - dt) end
+
+    -- Fagulhas de fúria sobem e morrem.
+    if #buffParticles > 0 then
+        for i = #buffParticles, 1, -1 do
+            local p = buffParticles[i]
+            p.life = p.life - dt
+            p.oy = p.oy - (p.vy * dt) / 100  -- sobe em fração da altura
+            if p.life <= 0 then table.remove(buffParticles, i) end
+        end
+    end
 
     -- Investida de ataque: o dano do jogo é aplicado NO IMPACTO (apex).
     if attackFx then
         attackFx.t = attackFx.t + dt
         if not attackFx.apexFired and attackFx.t >= ATK_WINDUP + ATK_LUNGE then
             attackFx.apexFired = true
+            -- Arco de golpe no ponto do impacto (leitura instantânea do hit).
+            slashTime = SLASH_DUR
             if attackFx.onApex then attackFx.onApex() end
         end
         if attackFx.t >= ATK_TOTAL then attackFx = nil end
@@ -274,14 +343,27 @@ end
 -- (medido: obsidian_sentinel −19px, glacier_knight −20px, frost_wight
 -- −10px — feedback "muito à esquerda"). Offset do centro do conteúdo
 -- do 1º frame idle, cacheado por id, aplicado no cx do draw.
-local centerOff = {}
-local function contentOffsets(id)
-    local c = centerOff[id]
-    if c ~= nil then return c.off, c.pad end
-    local off, pad = 0, 0
+-- v8.3 (fix playtest Jul/2026): métricas POR CLIP. Os clips antigos foram
+-- CROPADOS na instalação (idle do scarecrow = 96×97), mas clips novos podem
+-- vir com canvas cru do PixelLab (attack = 176-256px com margens
+-- transparentes). Medimos o CONTEÚDO do 1º frame de cada clip:
+--   off = descentramento horizontal do conteúdo no canvas
+--   pad = margem transparente abaixo do pé (crava o pé no chão)
+--   h/w = tamanho do canvas do clip
+-- A ESCALA do personagem deriva SEMPRE do idle (âncora estável) — clip com
+-- canvas maior desenha com o MESMO scale e o corpo nunca muda de tamanho.
+local clipMetricsCache = {}
+function EnemyRenderer._clearClipMetrics() clipMetricsCache = {} end
+local function clipMetrics(id, animName)
+    animName = animName or "idle"
+    local key = id .. "|" .. animName
+    local c = clipMetricsCache[key]
+    if c ~= nil then return c end
+
+    local m = { off = 0, pad = 0, w = 0, h = 0 }
     local imgPath
     local fdir = "assets/sprites/characters/enemies/" .. id
-        .. "/animations/idle/south"
+        .. "/animations/" .. animName .. "/south"
     local info = love.filesystem.getInfo(fdir)
     if info and info.type == "directory" then
         local files = love.filesystem.getDirectoryItems(fdir)
@@ -290,7 +372,7 @@ local function contentOffsets(id)
             if f:match("%.png$") then imgPath = fdir .. "/" .. f; break end
         end
     end
-    if not imgPath then
+    if not imgPath and animName == "idle" then
         local p2 = "assets/sprites/characters/enemies/" .. id .. "/south.png"
         if love.filesystem.getInfo(p2) then imgPath = p2 end
     end
@@ -298,6 +380,7 @@ local function contentOffsets(id)
         local ok, data = pcall(love.image.newImageData, imgPath)
         if ok and data then
             local wpx, hpx = data:getWidth(), data:getHeight()
+            m.w, m.h = wpx, hpx
             local minX, maxX, maxY = wpx, -1, -1
             for yy = 0, hpx - 1 do
                 for xx = 0, wpx - 1 do
@@ -310,18 +393,28 @@ local function contentOffsets(id)
                 end
             end
             if maxX >= minX then
-                off = (minX + maxX) / 2 - wpx / 2
-                -- v8.2: MARGEM DE PÉ — todo o roster tem 2-12px de canvas
-                -- transparente ABAIXO do conteúdo (medido; espantalho 9px
-                -- ≈ 25px na tela) → o monstro "flutuava". pad crava o pé
-                -- do CONTEÚDO no chão. Quem flutua por design (espectros)
-                -- flutua NA ARTE, não por acidente de canvas.
-                pad = (hpx - 1) - maxY
+                m.off = (minX + maxX) / 2 - wpx / 2
+                -- v8.2: MARGEM DE PÉ — canvas transparente abaixo do conteúdo
+                -- fazia o monstro "flutuar". pad crava o pé do CONTEÚDO no
+                -- chão. Quem flutua por design (espectros) flutua NA ARTE.
+                m.pad = (hpx - 1) - maxY
             end
         end
     end
-    centerOff[id] = { off = off, pad = pad }
-    return off, pad
+    clipMetricsCache[key] = m
+    return m
+end
+
+-- Compat: call sites antigos (billboard da viagem etc.) pedem só o idle.
+local function contentOffsets(id)
+    local m = clipMetrics(id, "idle")
+    return m.off, m.pad
+end
+
+-- Exposto pra testes de regressão (escala estável entre clips — depois da
+-- declaração de clipMetrics, senão a closure capturaria um global nil).
+function EnemyRenderer.debugClipMetrics(id, animName)
+    return clipMetrics(id, animName)
 end
 
 -- Spawn de particula ambiental na posicao correta (chamado em draw)
@@ -367,18 +460,24 @@ function EnemyRenderer.draw(game, cx, cy)
         iw, ih = staticImg:getWidth(), staticImg:getHeight()
     end
 
-    -- Escala alvo. 250 normal / 330 boss. v5: escala ADAPTATIVA (float) —
-    -- o piso max(4,...) era pros sprites antigos de ~50px; o roster novo
-    -- tem 150-220px de conteúdo e virava gigante com scale 4.
+    -- Escala alvo. 250 normal / 330 boss. v5: escala ADAPTATIVA (float).
+    -- v8.3: a escala deriva SEMPRE do canvas do IDLE (âncora estável do
+    -- personagem) — o attack do PixelLab vem com canvas cru maior (176-256px
+    -- vs idle cropado ~100px) e, escalando pelo clip atual, o corpo ENCOLHIA
+    -- durante o golpe (playtest Jul/2026).
     local targetHeight = 250
     if game.enemy and game.enemy.isBoss then targetHeight = 330 end
-    local scale = targetHeight / ih
-    if ih <= 80 then scale = math.max(4, math.floor(scale)) end -- roster legado
+    local idleM = clipMetrics(id, "idle")
+    local refH = (idleM.h > 0) and idleM.h or ih
+    local scale = targetHeight / refH
+    if refH <= 80 then scale = math.max(4, math.floor(scale)) end -- roster legado
 
-    -- v8.1/8.2: corrige descentramento E margem de pé do canvas — centro
+    -- v8.1/8.2/8.3: descentramento e margem de pé do CLIP ATUAL — centro
     -- visual no cx pedido e pé do CONTEÚDO cravado em cy (sombra, HUD e
-    -- emissivos seguem juntos)
-    local offX, footPad = contentOffsets(id)
+    -- emissivos seguem juntos), mesmo quando o canvas do clip difere do idle.
+    local curM = hasAnim and clipMetrics(id, currentAnimName or "idle") or idleM
+    if curM.h == 0 then curM = idleM end
+    local offX, footPad = curM.off, curM.pad
     cx = cx - math.floor(offX * scale)
     local footY = math.floor(footPad * scale)
 
@@ -486,14 +585,14 @@ function EnemyRenderer.draw(game, cx, cy)
         tintR = pulse * (1 - 0.45 * k)
         tintB = pulse * (1 - 0.45 * k)
     elseif defendTime > 0 then
-        local k = defendTime / 0.5
-        tintR = pulse * (1 - 0.25 * k)
-        tintG = pulse * (1 - 0.10 * k)
+        local k = defendTime / DEFEND_DUR
+        tintR = pulse * (1 - 0.30 * k)
+        tintG = pulse * (1 - 0.12 * k)
     elseif buffTime > 0 then
-        local k = buffTime / 0.6
+        local k = buffTime / BUFF_DUR
         local throb = 0.5 + math.sin(t * 18) * 0.5
-        tintG = pulse * (1 - 0.40 * k * throb)
-        tintB = pulse * (1 - 0.40 * k * throb)
+        tintG = pulse * (1 - 0.45 * k * throb)
+        tintB = pulse * (1 - 0.45 * k * throb)
     end
     love.graphics.setColor(tintR, tintG, tintB, 1)
 
@@ -538,15 +637,94 @@ function EnemyRenderer.draw(game, cx, cy)
         end
     end
 
-    -- Anel de DEFESA: círculo aço expandindo do peito (intent defend
-    -- executado — "ele se protegeu" legível de relance).
+    -- DEFESA v2 (telegrafia Jul/2026): dois anéis aço em sequência + ESCUDO
+    -- grande com pop sobre o peito — "ele se protegeu" impossível de perder.
     if defendTime > 0 then
-        local k = 1 - defendTime / 0.5
-        local ringR = 20 + k * (iw * scale * 0.45)
-        love.graphics.setColor(0.62, 0.72, 0.85, (1 - k) * 0.8)
-        love.graphics.setLineWidth(3)
-        love.graphics.circle("line", drawX + (iw * scale) / 2,
-            drawY + (ih * scale) * 0.45, ringR)
+        local k = 1 - defendTime / DEFEND_DUR   -- 0→1 ao longo do efeito
+        local ccx = drawX + (iw * scale) / 2
+        local ccy = drawY + (ih * scale) * 0.45
+
+        -- Anel 1 (imediato) + anel 2 (nasce em k=0.25)
+        for ring = 0, 1 do
+            local rk = k - ring * 0.25
+            if rk > 0 and rk < 1 then
+                local ringR = 18 + rk * (iw * scale * 0.55)
+                love.graphics.setColor(0.62, 0.75, 0.92, (1 - rk) * 0.85)
+                love.graphics.setLineWidth(3)
+                love.graphics.circle("line", ccx, ccy, ringR)
+            end
+        end
+        love.graphics.setLineWidth(1)
+
+        -- Escudo central: pop-in (overshoot) e fade-out no último terço.
+        local IconLoader = require("src.ui.IconLoader")
+        local shield = IconLoader.get("armor_shield") or IconLoader.get("shield_round")
+        if shield and shield.draw and shield.size then
+            local popK = math.min(1, k / 0.22)
+            local popScale = 1.25 - 0.25 * (1 - (1 - popK) * (1 - popK)) -- 1.25→1.0
+            local alpha = 1
+            if k > 0.65 then alpha = 1 - (k - 0.65) / 0.35 end
+            local targetH = math.max(36, ih * scale * 0.38)
+            local s = (targetH / shield.size.h) * popScale
+            local sw2, sh2 = shield.size.w * s, shield.size.h * s
+            love.graphics.setColor(1, 1, 1, alpha * 0.95)
+            shield.draw(math.floor(ccx - sw2 / 2), math.floor(ccy - sh2 / 2), s)
+        end
+        love.graphics.setColor(1, 1, 1, 1)
+    end
+
+    -- BUFF v2: fagulhas vermelhas SOBEM do corpo + ícone de força com pop
+    -- acima da cabeça — a linguagem universal de "ele ficou mais forte".
+    if buffTime > 0 then
+        local k = 1 - buffTime / BUFF_DUR
+        local bodyW = iw * scale
+        local bodyH = ih * scale
+
+        for _, p in ipairs(buffParticles) do
+            local a = math.max(0, p.life / p.maxLife)
+            love.graphics.setColor(1.0, 0.35 + 0.35 * a, 0.20, a * 0.9)
+            love.graphics.rectangle("fill",
+                math.floor(drawX + bodyW / 2 + p.ox * bodyW / 2),
+                math.floor(drawY + bodyH * 0.25 + p.oy * bodyH * 0.6),
+                p.size, p.size)
+        end
+
+        local IconLoader = require("src.ui.IconLoader")
+        local up = IconLoader.get("status_strength")
+        if up and up.draw and up.size then
+            local popK = math.min(1, k / 0.22)
+            local popScale = 1.3 - 0.3 * (1 - (1 - popK) * (1 - popK))
+            local alpha = 1
+            if k > 0.6 then alpha = 1 - (k - 0.6) / 0.4 end
+            local targetH = math.max(30, bodyH * 0.30)
+            local s = (targetH / up.size.h) * popScale
+            local sw2, sh2 = up.size.w * s, up.size.h * s
+            love.graphics.setColor(1, 1, 1, alpha * 0.95)
+            up.draw(math.floor(drawX + bodyW / 2 - sw2 / 2),
+                math.floor(drawY - sh2 - 4 + k * 8), s)
+        end
+        love.graphics.setColor(1, 1, 1, 1)
+    end
+
+    -- ARCO DE GOLPE no apex da investida: três traços brancos varrendo na
+    -- direção do ataque (baixo-esquerda) — o "corte" que faltava no impacto.
+    if slashTime > 0 then
+        local k = 1 - slashTime / SLASH_DUR   -- 0→1
+        local ccx = drawX + (iw * scale) * 0.18
+        local ccy = drawY + (ih * scale) * 0.62
+        local len = math.max(46, iw * scale * 0.55)
+        love.graphics.push()
+        love.graphics.translate(ccx, ccy)
+        love.graphics.rotate(-0.65)  -- diagonal ↙ (direção da investida)
+        for i = -1, 1 do
+            local off = i * 9
+            local a = (1 - k) * (1 - math.abs(i) * 0.35)
+            local sweep = len * (0.35 + 0.65 * k)
+            love.graphics.setColor(1, 1, 0.92, a)
+            love.graphics.setLineWidth(3 - math.abs(i))
+            love.graphics.line(-sweep / 2, off, sweep / 2, off)
+        end
+        love.graphics.pop()
         love.graphics.setLineWidth(1)
         love.graphics.setColor(1, 1, 1, 1)
     end

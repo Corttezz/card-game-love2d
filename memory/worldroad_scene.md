@@ -1208,9 +1208,358 @@ sombra de rajada (escurecer levemente onde gust>0.7 — DESENHADO, não
 véu), wind dir global por bioma no update dos props (hoje só a grama).
 
 **Próximos ciclos (fila fina — plateau de qualidade atingido):**
-14. Sfx da viagem — ⚠️ BLOQUEADO: precisa ELEVENLABS_API_KEY
+14. Sfx da viagem — DESBLOQUEADO Jul/10: key ElevenLabs na memória auto
+    do Claude (elevenlabs-api-key); pipeline audio/sfx/ já rodou pro
+    hover do fork (v9.6)
 21. Aguardar feedback do usuário jogando (viagem/blends/interiores em MOTION
     é onde os ciclos 3-12 aparecem; stills já validados)
+
+## v9.5 (Jul/10) — LUGARES VIVOS do fork (fogueira/casa/bandeira/elite/tenda)
+
+Feedback: "a fogueira está estática, isso é estranho — o mapa todo se
+movimenta"; "a sombra não sai do pé da casa, sai mais pra frente dela".
+
+- **Frames PixelLab por landmark** em `assets/sprites/world/anim/<key>/0..8.png`
+  (mesma receita das luminárias v9.1; loader compartilhado `readAnimFrames`).
+  `LANDMARK_ANIM` define fps + `pingpong` (pano/brilho vai-e-volta — loop
+  reiniciando no frame 0 dá "pulo"; fogo corre o loop). Fase própria por
+  braço (`i*3.7`) e `_landmark.phase` herda a fase do braço escolhido →
+  frame NÃO pula no handoff fork→lugar. ⚠️ fase = `seed % #frames` direto;
+  multiplicador 7.31 com seeds `i*3.7` caía quase em uníssono (27.05≈3×9).
+- **Sombra na BASE DA PAREDE** (`LANDMARK_SHADOW_PAD`: shop 12, event 5,
+  chest 6): nesses sprites as últimas linhas são escada/deck/baú avançando
+  pro 1º plano — a silhueta-sombra nascia na PONTA disso ("na frente" da
+  casa). footPad do ShadowEngine + feetY sobe `pad*s`. Medido por
+  opacidade/linha (largura < ~75% da máxima = saliência, não parede).
+- **Micro-luz do lugar** (`LANDMARK_LIGHT`): fogueira quente, obelisco
+  roxo, janelas da casa, orbe da tenda — âncora pelo scan de conteúdo do
+  LuminaireEngine (centróide dos pixels claros; bid "landmark" fora do
+  catálogo é nil-safe), flicker de fogo, `submitMicro` com z=rel (árvore
+  na frente oclui). Bandeira NÃO emite luz.
+- **Fumaça da chaminé da casa** (`LANDMARK_SMOKE`/`drawLandmarkSmoke`):
+  puffs determinísticos (função pura do tempo, doutrina GrassField) no
+  idioma do castelo (quadrados chunky, sem halo), no MESMO slot de
+  profundidade; gate `ih*s < 46px` (longe vira ruído). Boca da chaminé
+  medida no PNG (xf=0.325, yf=0.02).
+- **drawLandmarkFront agora tem paridade com o fork**: frames + fumaça +
+  micro-luz + occluder flatColor (antes o lugar "chegado" apagava à noite).
+  Occluder extraído pra `submitLandmarkOccluder` (um lugar só).
+- Validação dos frames: frame0 == PNG base BIT A BIT (âncoras/scan
+  continuam válidos), atividade 400-2000px/frame concentrada onde deve
+  (máscaras de diff: chamas/pano/janelas/runas/orbe; corpo estático).
+
+## v9.6 (Jul/10) — HOVER dos lugares: reação + som (ElevenLabs)
+
+Feedback: "quando passar o mouse, a animação poderia ser diferente ou
+emitir algum som — fogueira mais forte com som de brasa, casa com porta
+abrindo e barulho de porta".
+
+- **Relógio de animação POR BRAÇO** (`f._animT[i]` acumula `dt·fps`):
+  hover multiplica a velocidade (`hoverFpsK` 1.6-1.8 — fogo cresce, vento
+  venta) SEM pular frame (relógio absoluto, não time·fps). A chegada
+  (`_landmark.phase`) recebe `animT − time·fps` pra continuar contínua;
+  o mod da fase usa o PERÍODO real (pingpong = 2n−2, não n).
+- **Porta da casa = anim de ESTADO** (`hoverAnim = "landmark_shop_hover"`,
+  frames em `anim/landmark_shop_hover/`): progresso `f._hoverK[i]` 0→1
+  (abre a 2.6/s no enter, fecha a 3.2/s no exit), indexa o frame direto —
+  substitui o loop de janelas enquanto > 0.02. A anim PixelLab repinta a
+  fachada com bloom de luz quente antes da folha abrir — mantido (lê como
+  "a casa te recebe" na escala do fork); se incomodar, mascarar só a
+  região da porta em composite offline.
+- **Som por lugar no ENTER do hover** (`LANDMARK_HOVER_SOUND` →
+  `Sfx.playWithVariation(snd, 1.0, 0.06)` — pitch anti-fadiga Balatro):
+  forkHoverFire/Door/Flag/Elite/Tent, gerados no ElevenLabs
+  (sound-generation, 1.4-2.0s) em `audio/sfx/fork-hover-*.mp3`,
+  registrados no main.lua (0.50-0.60). Key do ElevenLabs: memória
+  auto do Claude (`elevenlabs-api-key`) — free tier, usuário rotaciona.
+- Micro-luz do lugar ganha boost ×1.4 na intensidade durante o hover.
+- Convergência: hover congela (sem som/aceleração), porta fecha sozinha.
+
+## v9.7/v9.7.1 (Jul/10) — CENÁRIO INTERATIVO (mapa vivo estilo Hearthstone)
+
+- **Clique em prop** = pêndulo amortecido na base (`pokeRot`, amp por kind
+  em POKE_AMP) + som por kind (POKE_SOUND: rustle/wood/lamp/stone/chime,
+  fogo e chime REUSAM os sons do fork). Copas soltam 5 folhinhas
+  (`drawLeafFx` — cor do bioma, deadtree solta lasca marrom, MESMO slot
+  de profundidade). Cerca com pássaros pousados: `_scareBirds` → voam.
+  Poste clicado: a CHAMA acompanha o pêndulo (`fx += rot·(gy−fy)`) —
+  luz e brasas seguem juntas.
+- **Registro de hit POR FRAME** (`WorldRoad._hitScene`, zerado no início
+  do draw): nuvens se registram no drawClouds, props no drawList — ordem
+  do painter; `pokeSceneAt` varre do fim (mais perto primeiro). Validação:
+  modo `poke` no screenshot tool (varredura de grade → 56 alvos, 0 erros).
+- **Nuvens**: deriva ×1.6 + bob ±4 ("muito estáticas") e clique = squash
+  & stretch amortecido com origem no centro.
+- **Rajada do mouse na grama**: `GrassField.pokeAt(nx, wz, t)` +
+  `pokeLean` somado nos call sites das lâminas/flores (NÃO dentro do
+  windAt — os call sites passam relógios ESCALADOS, o envelope precisa do
+  tempo real do ctx). Conversão mouse→mundo: tl linear pela banda vertical
+  → `wz = camZ + REL_CREST·(1 − tl^(1/T_POW))`. Swish throttled 1.2s.
+- **Entrada dos cliques**: fork miss → poke (forkMousePressed); estado
+  playing → GameplayScene.mousepressed agora RETORNA consumo e o main.lua
+  poka o que sobrou (botão 1); cardReward → CardRewardScreen já retornava
+  consumo, main.lua poka no miss. cardReward também passou a rodar
+  `WorldRoad.update(dt)` (run mode) — o mundo continua vivo atrás das
+  ofertas (anims/vento/nuvens e o juice dos pokes).
+- ⚠️ **v9.7.1 (crash em produção)**: `GrassField` era `local` declarado no
+  MEIO do arquivo — o `update()` (textualmente antes) via global nil →
+  "attempt to index global 'GrassField'". Require movido pro TOPO. É a
+  MESMA lição do ciclo 41 (forkOffset): local declarado depois não existe
+  pra função de cima. Checar sempre que um sistema novo entra no update.
+
+**v9.7.2 (feedback: material/naturalidade/demo):**
+- **Som por MATERIAL**: `POKE_SOUND_BIOME` (bid→kind→som) sobrepõe o
+  default — poste de MADEIRA (fields/marsh/dusk lantern) usa
+  `sceneLampWood` (rangido de madeira novo); ferro (highlands/frost)
+  segue `sceneLampCreak`. Ao adicionar luminária nova, conferir material.
+- **Rajada da grama v2**: a tremida senoidal 15Hz lia como vibração
+  mecânica ("não ficou natural") → onda que PARTE do cursor (lâmina à
+  esquerda deita pra esquerda, side = sign(dx)), swell único
+  `min(1,e·10)·exp(−4e)`, amp 1.9; a brisa própria da lâmina traz a
+  organicidade por cima.
+- **Poof da nuvem regenerado** (sopro fofo abafado, sem tom/squeak).
+- **Demo (`love . demo_worldroad`)**: agora valida TUDO por bioma —
+  `setupAudio()` próprio (love.load do main não roda em modo tool;
+  AudioManager:new se auto-inicializa), tecla **F cicla 2 conjuntos de
+  fork** (6 tipos de lugar), mouse real (fork clicável + pokeSceneAt),
+  rajada da grama funciona (polling no update). 1-6 troca bioma, T hora.
+
+(seção v9.7 antiga removida — duplicava a de cima e dizia "cutucar só na
+encruzilhada", que o v9.7.1 tornou obsoleto. Extra que valia: POKE_AMP
+copa 0.085 / monolito 0.03; folhinhas 1.6s; volumes scene 0.26-0.36;
+validação = modo `poke` do screenshot tool, 56 alvos sem erro.)
+
+## v9.8 (Jul/10) — CASTELOS VIVOS (bandeiras + janelas + fogo/olhos)
+
+Feedback: "castelos totalmente estáticos; janelas podiam ter luz,
+bandeiras paradas". Frames em `anim/<bid>_castle/0..8.png`, troca no
+`drawCastleOf` via `landmarkFrame(bid.."_castle", fase-por-bioma)` —
+entradas fps/pingpong na LANDMARK_ANIM (pingpong em todos).
+
+⚠️ **LIÇÃO NOVA: PixelLab v3 NÃO segura sprite grande parado.** Nos
+landmarks (5-9k px de conteúdo) o "perfectly static" funcionou; nos
+castelos (~35k px) a cantaria INTEIRA ferveu (15-28k px de atividade!)
+e no highlands o modelo INVENTOU janelas acesas. Receita que funcionou —
+**COMPOSITE CIRÚRGICO** (scratchpad `castle_compose.py`):
+- frame final = PNG base 100% + (a) PASTE dos rects bons da anim
+  (bandeiras/estandartes/fogo do portão — auto-detectados por cor:
+  vermelho saturado no topo com V alto pra não pegar tijolo; dusk = rect
+  MANUAL, telhado rosa confunde) + (b) PULSO PROCEDURAL das janelas
+  (pixels no hue da luz do bioma, sat/val por castelo, denoise ≥2
+  vizinhos — EXCETO highlands: os olhos são 8px e morrem no denoise)
+  com dim progressivo por frame (f0=base; o pingpong do runtime faz a
+  respiração) e profundidade por pixel via hash (orgânico).
+- Calibrações que importaram: marsh val 0.72 (senão pega o MUSGO todo),
+  dusk sat 0.55/val 0.65 (senão pega tijolo dourado), abyss flag_val
+  0.58 + banda y<0.26h (senão pega tijolo vermelho torre abaixo).
+- Resultado: atividade 8-2733px CONFINADA, estrutura pixel-idêntica,
+  frame0 == base bit a bit. Por castelo: fields 2 bandeiras + janelas
+  quentes · highlands 2 OLHOS do portão (depth 1.8×) · abyss 2
+  estandartes + fogo do portão + janelas brasa · frost janelas ciano ·
+  marsh luz-bruxa verde · dusk pennant do pináculo + ouro do portão.
+- O compose SOBRESCREVE os frames — originais do PixelLab só no zip do
+  objeto-âncora (re-extrair antes de recompor com regras novas).
+
+## v9.9 (Jul/11) — CASTELOS v2 (arte re-alinhada ao bioma)
+
+Feedback: "castelos meio diferentes da arte do restante do conjunto".
+Análise de estilo (props + paletas): pixel art sombria/pintural, formas
+desgastadas, 1 hue por bioma. Veredito: fields/dusk/highlands REFEITOS
+(cinza-limpo/tijolo-alegre/raso), abyss/frost/marsh mantidos (desafiantes
+gerados perderam — viraram "cena com fundo").
+
+- **Geração** (`create_map_object` 224×200, view=side, selective outline,
+  detailed shading, high detail): prompts com o PADRÃO portão + janelas
+  acesas + bandeiras + paleta do bioma. ⚠️ Em canvas grande o modelo
+  PINTA FUNDO mesmo pedindo isolado (os 6 vieram 100% opacos; highlands
+  v1 veio com lua/céu/montanha — regen com "one single isolated building
+  on a plain flat solid background" + lista de negativos resolveu o fundo
+  ficar CHAPADO). Remoção: flood-fill das bordas (cor = moda da borda)
+  + manter só o maior componente (mata estrelas/ilhas). Crop bbox.
+- **Highlands = torre-vigia** (bioma "Colinas da Torre"): 164×171,
+  estreita — exigiu fix no drawCastleOf: baseScale agora divide por 218
+  FIXO (densidade de pixel constante; dividir por iw esticava qualquer
+  canvas pra mesma largura). Manteve os OLHOS no portão + fogueirinha.
+- **lightWindows re-derivados por conteúdo** (clusters de pixels
+  saturados no hue da luz) e atualizados no biomes.lua pros 3 novos.
+- **Animação**: mesma receita v9.8 (animate_object + composite cirúrgico).
+  ⚠️ Slug de descrição COLIDE no zip (fields novo × velho = mesma pasta,
+  18 arquivos com nomes duplicados) — desambiguar por DIMENSÃO do
+  frame_000, quebrando o infolist em runs que começam em frame_000.
+  Anims antigas de fields/highlands/dusk REMOVIDAS do disco na troca da
+  arte (frames velhos + base nova = castelo antigo aparecendo).
+- Resultado: f0==base bit a bit; movimento confinado (fields 1.9k px =
+  2 bandeiras+janelas; highlands 733 = olhos/fogo do portão+frestas;
+  dusk 3.2k = 3 flâmulas+janelas+portão). Screenshot em cena validado.
+
+## v9.9.1 (Jul/11) — castelos v3 (highlands/abyss/marsh) + conserto do dusk
+
+Feedback: fields = padrão-ouro; highlands "fino e estranho", abyss/marsh
+refazer na linguagem do que deu certo; dusk ótimo mas com BURACOS
+transparentes in-game.
+
+- **Buracos do dusk**: o flood-fill tol 30 VAZAVA pras sombras escuras do
+  castelo (≈ cor do céu pintado). Receita definitiva de extração:
+  flood tol 14 + PEEL de borda (2 anéis, tol 34 — franja de céu na
+  silhueta) + ilhas: manter maior componente E qualquer ilha ≥24px
+  (ponta de bandeira separada não pode sumir). 490px restaurados;
+  recompose em cima da base reparada (rects sem buracos → paste seguro).
+- **v3 = massa do fields** (corpo + 2 torres + portão + janelas +
+  bandeira) com material do bioma: highlands ardósia/janelas de FOGO
+  âmbar/bandeira azul; abyss rocha carbonizada/veias de brasa/portão em
+  chamas/2 bandeiras; marsh pedra verde-negra/musgo/chamas-bruxa no
+  portão/bandeira verde. lightWindows re-derivados (marsh: filtrar musgo
+  claro — só portão+janela viram âncora).
+- Compose: flag_match ganhou blue/green; gatefire com fire_hue por bioma
+  (marsh verde). Pulso do marsh pega brilhos de musgo → piscam como
+  ESPOROS (combina com o ambient do bioma — mantido de propósito).
+- ⚠️ **v3 pode DEGENERAR no fim da sequência** (abyss: fogo explodiu
+  branco pra fora do arco nos frames 7-8) — inspecionar a cauda e
+  TRUNCAR (loader aceita qualquer nº de frames; pingpong segue suave).
+  Abyss ficou com 0..6.
+- Slugs de anim SEMPRE distintos entre versões (colisão de pasta no zip);
+  desambiguação por dimensão continua como rede de segurança.
+
+## v9.9–v9.9.2 (Jul/10-11) — CASTELOS REGENERADOS (arte alinhada ao bioma)
+
+Feedback: "castelos meio diferentes da arte do resto do conjunto". Análise
+props+paletas → estilo alvo: pixel art sombria/pintural, formas desgastadas,
+hue dominante por bioma. Novos gerados via `create_map_object` 224×200
+side/selective outline/detailed shading/high detail; **fields virou o
+padrão-ouro** (corpo largo + 2 torres + portão + janelas acesas + bandeiras)
+e os demais seguiram essa massa. Estado final: TODOS os 6 castelos novos
+exceto frost (mantido — desafiante perdeu). Escala do drawCastleOf agora é
+por DENSIDADE DE PIXEL constante (÷218 fixo, não ÷iw).
+
+**Lições de geração (sprites grandes):**
+- Modelo PINTA FUNDO em canvas grande mesmo pedindo isolado → prompt
+  "one single isolated building on a plain flat solid background" +
+  negativos (no sky/moon/clouds/landscape) e extração determinística.
+- **Extração segura** (`castle*_pipeline.py`): flood-fill das bordas com
+  tol 14 + peel 2 anéis (tol 34) + ilhas <24px removidas (≥24 preservadas
+  — ponta de bandeira solta). Tol 30 direto VAZA pras sombras do corpo
+  (dusk ficou com 490px de buraco — "partes transparentes").
+- **Portão tem que ser PORTA FECHADA no prompt** ("CLOSED by a heavy
+  wooden double door"): arco aberto o modelo pinta com a cor do fundo →
+  vira buraco transparente na extração (highlands v3, 338px no portão).
+- "perfectly frontal symmetrical view facing the viewer" resolve castelo
+  de lado.
+- Anim v3 pode DEGENERAR nos frames finais (abyss: fogo explodiu branco
+  nos f7-f8) → validar filmstrip e TRUNCAR a cauda (loader aceita
+  qualquer contagem; pingpong continua suave com 7 frames).
+- Slug de pasta no zip = 50 chars da descrição → anims com prefixo igual
+  COLIDEM (entradas duplicadas); desambiguar por DIMENSÃO do frame_000
+  em runs consecutivos do infolist.
+
+**v9.9.2 — LUZ DOS CASTELOS UNIFICADA** (feedback: "luz do castelo é um
+quadrado estranho, usa o motor dos postes"): janelas do castelo e
+micro-luzes dos landmarks migradas do `submitMicro` cru (raio grande =
+bloco no lightmap ¼) pra receita do LuminaireEngine: `LightEngine.submit`
+(glow dither 0.28/levels 8, raio ×1.5-1.6, intensidade ×0.55) + núcleo
+`submitMicro` pequeno (×0.45), AMBOS com flicker de fogo e fase própria
+por janela. lightWindows re-derivados por conteúdo a cada arte nova.
+
+(GrassField: rajada de hover do mouse foi REMOVIDA em edição externa —
+vento ambiente ×1.45 no lugar; pokeAt/pokeLean seguem no arquivo sem
+chamadores. Não reintroduzir.)
+
+## v9.9.x (Jul/10-11) — SAGA DOS CASTELOS v2→v6 (regeneração por bioma)
+
+Iterações guiadas pelo usuário até os 6 castelos ficarem no mesmo nível.
+Estado FINAL: fields v2 (arruinado musgo, padrão-ouro do usuário) ·
+highlands v6 (cidadela gótica em camadas, estandarte + janela-catedral) ·
+abyss v3 truncado 7 frames (vulcânico, veias de brasa + portão em chamas) ·
+frost ORIGINAL (venceu o desafiante) · marsh v5 (cidadela alagada,
+torreão redondo + cogumelos brilhantes, anim 100% procedural) · dusk v2
+reparado (ameixa, 3 flâmulas douradas).
+
+**Regras de PROMPT aprendidas (usar SEMPRE em prédio grande):**
+- Palavra de ambiente ("under moonlight") = modelo pinta lua/céu/montanha
+  COLADOS na silhueta → inextraível. Usar "pale highlights on the bricks".
+- "one single isolated building centered on a plain flat solid gray
+  background" + negativos (no sky/moon/clouds/mountains/landscape/ground).
+- Portão: "large arched gateway CLOSED by a heavy wooden double door" —
+  arco aberto o modelo pinta com a COR DO FUNDO → vira buraco transparente.
+- Vista: "perfectly frontal symmetrical view facing the viewer".
+- Silhueta rica: "tall central keep rising HIGH BEHIND the gatehouse wall,
+  towers of DIFFERENT heights, layered depth silhouette" — sem isso vem
+  "muralha + 2 torres" (caixote, reclamação do usuário).
+- Escala drawCastleOf agora é DENSIDADE DE PIXEL fixa (ref 218px) — arte
+  estreita renderiza estreita (não estica pro mesmo w).
+
+**Extração (scratchpad castle*_pipeline.py):** flood borda tol 14 + peel
+2 anéis (tol 34) + ilhas <24px removidas (estrela pintada some, ponta de
+bandeira fica). Tol alta (30) VAZA pras sombras do corpo = buracos
+(dusk teve 490px restaurados). Cena entranhada (lua/montanha na silhueta)
+= regenerar, não operar.
+
+**Anim/composite:** paste rect só das bandeiras/fogo (anim v3), janelas
+SEMPRE pulso procedural (dim progressivo, hash por pixel). Anim v3
+degenera no fim às vezes (abyss: fogo branco explodindo nos frames 7-8 →
+TRUNCAR a cauda; loader aceita qualquer contagem). Colheita do zip:
+slugs de 50 chars COLIDEM entre versões → desambiguar por DIMENSÃO do
+frame_000, runs consecutivos na ordem do infolist.
+
+**Luz (v9.9.2):** janelas do castelo e micro-luzes dos landmarks usam a
+receita do LuminaireEngine (LightEngine.submit glow dither levels=8 +
+submitMicro núcleo 0.45r + flicker fire por janela) — o submitMicro cru
+de raio grande virava BLOCO quadrado no lightmap ¼ (reclamação).
+lightWindows re-derivados por conteúdo a cada troca de arte (v9.9.3:
+highlands 4 âncoras, marsh 4 âncoras com base dos cogumelos).
+
+## v10 (Jul/11) — ENTRADA NO CASTELO (reset por bioma + cerimônia da porta)
+
+Pedidos: castelo reseta pra longe na troca de bioma; limite de aproximação
+mapeado por bioma (sem corte/flutuação); boss = máximo perto; entrada
+imersiva com a porta abrindo + som.
+
+- **Âncora de trecho** (`_segBase`, set no setBiome que MUDA): progress =
+  (camZ − segBase)/SEGMENT_LEN — SEM módulo (o módulo antigo dava a volta
+  no meio do ato). `_segBasePrev` mantém o castelo em crossfade na
+  distância antiga (sem pipocar). Andando o progress trava em
+  APPROACH_WALK_MAX (0.80); o 1.0 final é da cerimônia (`_approachBoost`).
+- **CASTLE_APPROACH por bioma** (growth do fim, "mapeado e salvo") +
+  CLAMP analítico `s ≤ (crestY − y − 6)/(ih·(1−sink))` — topo nunca corta,
+  pra qualquer arte. Calibração visual: screenshot `gate1..6` (agora com
+  boost=1 = visão do boss). Na CERIMÔNIA o clamp RELAXA
+  (`sMax·(1 + boost·1.3)`): o castelo cresce além do enquadramento (pé da
+  muralha, olhando pra cima) e o portão domina a cena — validado no gate3
+  (portão de fogo do abyss preenchendo o quadro no fim da estrada).
+- **Cerimônia `WorldRoad.enterCastle{approach, onComplete}`** (update):
+  walk 1.3s (boost→alvo, boss 1.0/elite 0.82) → door 1.4s (frames de
+  `anim/<bid>_castle_door/` indexados por doorK + som castleGateOpen ou
+  castleGateMagic p/ abyss/dusk) → push 0.9s (boost×1.05 + fade preto)
+  → onComplete. GameplayScene: `interior`/`worldBattle`/inimigo/HUD
+  ganharam gate `not WorldRoad.isEntering()` (a cena segura na estrada até
+  o fade); entryFade() desenhado junto do interiorFade (preto contínuo:
+  entry escurece ATÉ, interiorFade revela DO preto); mousepressed engole
+  cliques na cinemática; o gatilho é o floorKey change com node
+  boss/mini_boss/elite (antes ia direto pro interior com fade seco).
+- **Portas**: 6 anims PixelLab (porta abre; abyss = fogo se parte; dusk =
+  surto dourado), composite SÓ no rect do portão (auto-detect: diff
+  f0-vs-f8 no centro-baixo, dv>40) — frame0 == base bit a bit. ⚠️ abyss
+  TRUNCADO em 7 frames (f7-f8 materializavam uma porta fechada do nada).
+  ⚠️ Slug do zip corta em 50 chars NO MEIO da palavra — keyword de colheita
+  tem que ser prefixo-seguro ("iron_bands_swin", não "..._swinging").
+- Sons: castle-gate-open (madeira 3.5s) / castle-gate-magic (arcano 3s),
+  volumes 0.62/0.58 no main.lua.
+
+**v10.1/v10.2 (feedback forte — REVERTI a manipulação de câmera):**
+- ⚠️ **NUNCA empurrar escala/posição do castelo pra "chegar perto".** A
+  perspectiva vem SÓ do crescimento natural da caminhada (`progress =
+  walked/SEGMENT_LEN`, escala `1+progress^1.4·growth`). O `_approachBoost`
+  (v10) crescia a escala acima do enquadramento → o castelo SAÍA da esfera
+  (dava pra ver o fim da arte no topo) e o cap 0.80 fazia ele "parar/
+  recuar" no fim = os dois ERRADOS. Removidos: `_approachBoost`,
+  `APPROACH_WALK_MAX`, fases "walk"/"push", relaxamento do clamp. O clamp
+  virou só GUARDA (`s=min(s,sMax)`, sem boost) — nunca empurra pra fora.
+- **mini_boss NÃO entra no castelo** (v10.1): briga na ESTRADA como batalha
+  comum (viaja lá de trás, sem hall/background). Interior = só boss/elite.
+- **Cerimônia = SÓ boss, SÓ porta+som+fade** (sem câmera): o boss é um
+  andar como os outros → `travel()` sem encounter (esfera anda 1 passo, o
+  castelo cresce naturalmente) → onComplete `enterCastle()` → door 1.4s
+  (frames + som) → fade 0.9s → hall. elite = hall direto (fade simples,
+  pré-v10). Demo tecla **B** posiciona camZ no fim do trecho e abre a porta.
 
 ## Backlog
 

@@ -1,23 +1,23 @@
 -- components/Button.lua
--- Botão em estilo "Balatro meets grimoire": retângulo sólido com cantos cortados,
+-- BotÃ£o em estilo "Balatro meets grimoire": retÃ¢ngulo sÃ³lido com cantos cortados,
 -- emboss 1px (highlight top/left + shadow bottom/right), scale-on-hover,
--- press squish. Mantém a paleta grimório existente + juice_up do engine.
+-- press squish. MantÃ©m a paleta grimÃ³rio existente + juice_up do engine.
 --
 -- Refactor baseado em UIBox_button do Balatro (functions/UI_definitions.lua:6376).
--- Substitui a versão antiga com 4 rivets + dual outline + stripes (muito detalhe).
+-- Substitui a versÃ£o antiga com 4 rivets + dual outline + stripes (muito detalhe).
 --
 -- ESTADOS visuais:
---   normal   → fill base + emboss + shadow
---   hover    → scale 1.05 + fill mais quente + emboss brighter + pulse sutil
---   pressed  → scale 0.96 + shadow reduzida + fill afundada
---   disabled → steel palette + sem emboss + sem hover
+--   normal   â†’ fill base + emboss + shadow
+--   hover    â†’ scale 1.05 + fill mais quente + emboss brighter + pulse sutil
+--   pressed  â†’ scale 0.96 + shadow reduzida + fill afundada
+--   disabled â†’ steel palette + sem emboss + sem hover
 --
 -- VARIANTS:
 --   "clean"     (default)    Look novo Balatro-inspired
 --   "ornate"    (legacy)     Rivets + stripes + dual outline (look antigo)
---   "invisible" (hit-only)   Só hit area, sem render
+--   "invisible" (hit-only)   SÃ³ hit area, sem render
 --
--- API compatível com versão anterior (Button:new(x, y, w, h, text, onClick, color?, fontSize?))
+-- API compatÃ­vel com versÃ£o anterior (Button:new(x, y, w, h, text, onClick, color?, fontSize?))
 
 local Palette     = require("src.ui.Palette")
 local PixelCanvas = require("src.ui.PixelCanvas")
@@ -30,11 +30,11 @@ local Moveable    = require("engine.Moveable")
 local Button = {}
 Button.__index = Button
 
--- Default variant pros botões novos. Mude aqui se quiser o look antigo por padrão.
+-- Default variant pros botÃµes novos. Mude aqui se quiser o look antigo por padrÃ£o.
 Button.DEFAULT_VARIANT = "clean"
 
--- Radius do corner cut (em pixels lógicos). Balatro usa r=0.1 (~6-8px numa tela
--- 720p). Em pixel art 2-3 é o sweet spot.
+-- Radius do corner cut (em pixels lÃ³gicos). Balatro usa r=0.1 (~6-8px numa tela
+-- 720p). Em pixel art 2-3 Ã© o sweet spot.
 Button.CORNER_RADIUS = 2
 
 function Button:new(x, y, width, height, text, onClick, color, fontSize)
@@ -52,16 +52,16 @@ function Button:new(x, y, width, height, text, onClick, color, fontSize)
     btn.variant = Button.DEFAULT_VARIANT
     btn.iconHandle = nil
     btn.iconForceScale = nil
-    btn.accentColor = color  -- kind hint; atualmente não altera paleta (legacy arg)
+    btn.accentColor = color  -- kind hint; atualmente nÃ£o altera paleta (legacy arg)
     btn.fontSize = fontSize or 14
     btn._hoverTime = 0
 
     -- Scale animations (Balatro-style): hover escala pra 1.05, press squish pra 0.96.
-    -- Eased exp decay pra não saltar.
+    -- Eased exp decay pra nÃ£o saltar.
     btn._hoverScale = 1.0
     btn._pressScale = 1.0
 
-    -- one_press: bloqueia trigger após 1 click. Usado pra botões que mudam state
+    -- one_press: bloqueia trigger apÃ³s 1 click. Usado pra botÃµes que mudam state
     -- (evita duplo click disparando 2x). setOnePress(true) pra ativar.
     btn.onePress = false
     btn._consumed = false
@@ -83,21 +83,21 @@ function Button:update(dt)
         Debug.trace("Button '" .. (self.text or "?") .. "' hover -> " .. tostring(self.hover))
         if self.hover then
             self._hoverTime = 0
-            -- Variant "invisible" = button invisível sobre uma carta (CardRewardScreen,
-            -- pack open). NÃO toca menuHover — a carta já toca hoverCard, evita som duplo.
+            -- Variant "invisible" = button invisÃ­vel sobre uma carta (CardRewardScreen,
+            -- pack open). NÃƒO toca menuHover â€” a carta jÃ¡ toca hoverCard, evita som duplo.
             if self.variant ~= "invisible" then
-                -- Pitch random pra evitar fadiga auditiva ao hoverar vários botões
-                -- em sequência (Balatro engine/text.lua:201 pattern).
+                -- Pitch random pra evitar fadiga auditiva ao hoverar vÃ¡rios botÃµes
+                -- em sequÃªncia (Balatro engine/text.lua:201 pattern).
                 Sfx.playWithVariation("menuHover", 1.0, 0.12)
             end
             -- Hover-enter juice (Balatro card.lua:4307): kick sutil de scale
-            -- pra carta/botão "saltar" ao mouse passar.
+            -- pra carta/botÃ£o "saltar" ao mouse passar.
             Moveable.juice_up(self, 0.05, 0.03)
         end
     end
     if self.hover then
         self._hoverTime = (self._hoverTime or 0) + (dt or 0)
-        -- cursor vira "mão" sobre qualquer botão vivo (pedido por frame)
+        -- cursor vira "mÃ£o" sobre qualquer botÃ£o vivo (pedido por frame)
         require("src.ui.CursorManager").request("hand")
     end
 
@@ -118,11 +118,11 @@ end
 --   fillLo = emboss bottom/right (sombra interna)
 -- ColorScheme override: Button:setColorScheme("green" | "red") aplica paleta
 -- alternativa pra mini-buttons (Buy verde / Cancel vermelho Balatro-style).
--- Mantém comportamento de hover/pressed mas troca fill/border/text por cores
--- semânticas em vez do dourado padrão.
+-- MantÃ©m comportamento de hover/pressed mas troca fill/border/text por cores
+-- semÃ¢nticas em vez do dourado padrÃ£o.
 local SCHEMES = {
     green = {
-        fill       = {0.20, 0.55, 0.25, 1},     -- verde grimório
+        fill       = {0.20, 0.55, 0.25, 1},     -- verde grimÃ³rio
         fillHi     = {0.45, 0.78, 0.40, 1},
         fillLo     = {0.10, 0.32, 0.15, 1},
         border     = {0.05, 0.18, 0.08, 1},
@@ -194,7 +194,7 @@ local function stateColors(btn)
             border     = Palette.AGED_GOLD_DARK,
             text       = Palette.INK,
             textShadow = Palette.PARCHMENT_LIGHT,
-            shadow     = nil,  -- sem shadow quando pressed (botão "afunda")
+            shadow     = nil,  -- sem shadow quando pressed (botÃ£o "afunda")
         }
     elseif btn.hover then
         return {
@@ -240,15 +240,34 @@ local function autoIconScale(btn)
     return scale, baseW * scale, baseH * scale
 end
 
-local function fitFontSize(text, desiredSize, maxWidth)
-    if not text or text == "" or maxWidth <= 0 then return desiredSize end
-    local size = math.max(8, math.floor(desiredSize))
-    while size > 8 do
+-- Fit de texto com DUPLO fallback: (1) desce o tamanho da fonte atÃ© MIN_FONT;
+-- (2) se nem na mÃ­nima couber, TRUNCA com reticÃªncias (UTF-8 safe). Contrato
+-- do componente: texto NUNCA vaza de um Button, em idioma nenhum.
+local MIN_FONT = 8
+local utf8 = require("utf8")
+
+local function fitText(text, desiredSize, maxWidth)
+    if not text or text == "" or maxWidth <= 0 then
+        return text or "", desiredSize
+    end
+    local size = math.max(MIN_FONT, math.floor(desiredSize))
+    while size >= MIN_FONT do
         local font = FontManager.getFont(size)
-        if font:getWidth(text) <= maxWidth then return size end
+        if font:getWidth(text) <= maxWidth then return text, size end
+        if size == MIN_FONT then break end
         size = size - 1
     end
-    return 8
+    -- Fonte mÃ­nima e ainda nÃ£o coube: truncagem com "..."
+    local font = FontManager.getFont(MIN_FONT)
+    local ell = "..."
+    local ellW = font:getWidth(ell)
+    local out = ""
+    for _, code in utf8.codes(text) do
+        local ch = utf8.char(code)
+        if font:getWidth(out .. ch) + ellW > maxWidth then break end
+        out = out .. ch
+    end
+    return out .. ell, MIN_FONT
 end
 
 -- ============ draw ============
@@ -256,19 +275,18 @@ end
 function Button:draw()
     if not self.visible then return end
     if self.variant == "invisible" then return end
-    if self.variant == "ornate" then
-        return self:_drawOrnate()
-    end
     if self.variant == "tv" then
         return self:_drawTv()
     end
+    -- "ornate" foi aposentada no design system Jul/2026 (zero call sites);
+    -- variant desconhecida cai no clean.
     return self:_drawClean()
 end
 
 -- Look "menu de TV" (Menu v2.1, docs/plan/menu-crt-v2.md): item de LISTA,
--- não caixa de aço — backing translúcido com accent dourado à esquerda;
--- hover = barra de fósforo ÂMBAR preenchida com texto ink (a linguagem
--- de seleção de menu de televisor). Texto alinhado à ESQUERDA.
+-- nÃ£o caixa de aÃ§o â€” backing translÃºcido com accent dourado Ã  esquerda;
+-- hover = barra de fÃ³sforo Ã‚MBAR preenchida com texto ink (a linguagem
+-- de seleÃ§Ã£o de menu de televisor). Texto alinhado Ã  ESQUERDA.
 function Button:_drawTv()
     local x, y, w, h = self.x, self.y, self.width, self.height
     local hovered = self.hover and not self.disabled and not self._consumed
@@ -291,7 +309,7 @@ function Button:_drawTv()
     local AMBER_LO = { 0.86, 0.55, 0.12 }
 
     if hovered then
-        -- sombra dura + barra âmbar com gradiente de 2 faixas (fósforo)
+        -- sombra dura + barra Ã¢mbar com gradiente de 2 faixas (fÃ³sforo)
         love.graphics.setColor(0, 0, 0, 0.45)
         love.graphics.rectangle("fill", x + 3, y + 3, w, h)
         love.graphics.setColor(AMBER_HI[1], AMBER_HI[2], AMBER_HI[3], 1)
@@ -302,7 +320,7 @@ function Button:_drawTv()
         love.graphics.setColor(0.10, 0.07, 0.04, 0.9)
         love.graphics.rectangle("line", x + 0.5, y + 0.5, w - 1, h - 1)
     else
-        -- backing translúcido (legibilidade sobre a cena viva)
+        -- backing translÃºcido (legibilidade sobre a cena viva)
         love.graphics.setColor(0.05, 0.04, 0.03, self.disabled and 0.35 or 0.55)
         love.graphics.rectangle("fill", x, y, w, h)
         -- accent esquerdo + linha inferior (estrutura de lista)
@@ -313,11 +331,11 @@ function Button:_drawTv()
         love.graphics.rectangle("fill", x, y + h - 1, w, 1)
     end
 
-    -- ===== ICON + TEXT (alinhados à esquerda, estilo lista) =====
+    -- ===== ICON + TEXT (alinhados Ã  esquerda, estilo lista) =====
     local iconScale, iconPxW, iconPxH = autoIconScale(self)
     local iconGap = (self.iconHandle and self.text ~= "") and 10 or 0
     local padX = 18
-    local fontSize = fitFontSize(self.text, self.fontSize,
+    local drawText, fontSize = fitText(self.text, self.fontSize,
         w - padX * 2 - iconPxW - iconGap)
     local font = FontManager.getFont(fontSize)
     love.graphics.setFont(font)
@@ -332,17 +350,17 @@ function Button:_drawTv()
         cursorX = cursorX + iconPxW + iconGap
     end
 
-    if self.text ~= "" then
+    if drawText ~= "" then
         if hovered then
-            -- texto INK sobre a barra âmbar (contraste de seleção)
+            -- texto INK sobre a barra Ã¢mbar (contraste de seleÃ§Ã£o)
             love.graphics.setColor(0.12, 0.08, 0.04, 1)
-            love.graphics.print(self.text, cursorX, textY)
+            love.graphics.print(drawText, cursorX, textY)
         else
             local pa = self.disabled and 0.4 or 1
             love.graphics.setColor(0, 0, 0, 0.8 * pa)
-            love.graphics.print(self.text, cursorX + 1, textY + 1)
+            love.graphics.print(drawText, cursorX + 1, textY + 1)
             love.graphics.setColor(0.92, 0.86, 0.72, pa)   -- pergaminho claro
-            love.graphics.print(self.text, cursorX, textY)
+            love.graphics.print(drawText, cursorX, textY)
         end
     end
 
@@ -356,7 +374,7 @@ function Button:_drawClean()
     local c = stateColors(self)
     local r = Button.CORNER_RADIUS
 
-    -- Combina scale de hover + press + juice. Transform wrap centralizado no botão.
+    -- Combina scale de hover + press + juice. Transform wrap centralizado no botÃ£o.
     local scale = self._hoverScale * self._pressScale * Moveable.scaleFactor(self)
     local rot = Moveable.rotOffset(self)
     local needsTransform = scale ~= 1 or rot ~= 0
@@ -371,11 +389,11 @@ function Button:_drawClean()
 
     -- ===== SHADOW (drop shadow abaixo + direita) =====
     -- Parallax: shadow distance encolhe quando pressed (Balatro engine/ui.lua:683-686).
-    -- Default 3,3; press com hover → 0,0 (visualmente "afunda" no fundo).
-    -- O fill do botão também se desloca +1,+1 pra completar a sensação de press.
-    -- Aplicamos x/y nudge ao botão inteiro (fill+emboss+border+icon+text), mas
-    -- mantemos a sombra nas coords originais — assim a sombra "fica pra trás"
-    -- enquanto o botão afunda.
+    -- Default 3,3; press com hover â†’ 0,0 (visualmente "afunda" no fundo).
+    -- O fill do botÃ£o tambÃ©m se desloca +1,+1 pra completar a sensaÃ§Ã£o de press.
+    -- Aplicamos x/y nudge ao botÃ£o inteiro (fill+emboss+border+icon+text), mas
+    -- mantemos a sombra nas coords originais â€” assim a sombra "fica pra trÃ¡s"
+    -- enquanto o botÃ£o afunda.
     local pressing = self.pressed and self.hover and not self.disabled
     local shadowDist = pressing and 0 or 3
     local fillNudge = pressing and 1 or 0
@@ -384,7 +402,7 @@ function Button:_drawClean()
         PixelCanvas.rectRounded(x + shadowDist, y + shadowDist, w, h, r, { c.shadow[1], c.shadow[2], c.shadow[3], 0.45 })
     end
 
-    -- Aplica nudge a TODO o resto do botão somando ao x/y locais.
+    -- Aplica nudge a TODO o resto do botÃ£o somando ao x/y locais.
     x = x + fillNudge
     y = y + fillNudge
 
@@ -431,10 +449,10 @@ function Button:_drawClean()
     local iconGap = (self.iconHandle and self.text ~= "") and 8 or 0
     local innerPadX = 12
     local textAvailW = math.max(1, w - innerPadX * 2 - iconPxW - iconGap)
-    local fontSize = fitFontSize(self.text, self.fontSize, textAvailW)
+    local drawText, fontSize = fitText(self.text, self.fontSize, textAvailW)
     local font = FontManager.getFont(fontSize)
     love.graphics.setFont(font)
-    local textWidth = self.text ~= "" and font:getWidth(self.text) or 0
+    local textWidth = drawText ~= "" and font:getWidth(drawText) or 0
     local textHeight = font:getHeight()
     local contentW = iconPxW + iconGap + textWidth
     local cursorX = x + math.floor((w - contentW) / 2)
@@ -449,109 +467,23 @@ function Button:_drawClean()
     if textWidth > 0 then
         if c.textShadow then
             Palette.set(c.textShadow)
-            love.graphics.print(self.text, cursorX + 1, textY + 1)
+            love.graphics.print(drawText, cursorX + 1, textY + 1)
         end
         Palette.set(c.text)
-        love.graphics.print(self.text, cursorX, textY)
+        love.graphics.print(drawText, cursorX, textY)
     end
 
     love.graphics.setColor(1, 1, 1, 1)
     if needsTransform then love.graphics.pop() end
 end
 
--- Look antigo (rivets + dual outline + stripes). Mantido como opt-in via variant.
-function Button:_drawOrnate()
-    local x, y, w, h = self.x, self.y, self.width, self.height
-    local t = love.timer.getTime()
-
-    local dx, dy = 0, 0
-    if self.pressed and self.hover and not self.disabled then
-        dx, dy = 1, 1
-    end
-
-    local c = stateColors(self)
-
-    local juiceScale = Moveable.scaleFactor(self)
-    local juiceRot = Moveable.rotOffset(self)
-    local needsTransform = juiceScale ~= 1 or juiceRot ~= 0
-    if needsTransform then
-        love.graphics.push()
-        love.graphics.translate(x + w / 2, y + h / 2)
-        love.graphics.scale(juiceScale, juiceScale)
-        love.graphics.rotate(juiceRot)
-        love.graphics.translate(-(x + w / 2), -(y + h / 2))
-    end
-
-    if not (self.pressed and self.hover) and not self.disabled then
-        PixelCanvas.dither25(x + 3, y + h,     w - 3, 3,     Palette.BUTTON_SHADOW)
-        PixelCanvas.dither25(x + w, y + 3,     3,     h - 3, Palette.BUTTON_SHADOW)
-    end
-
-    PixelCanvas.rect(x + dx + 1, y + dy + 1, w - 2, h - 2, c.fill)
-
-    -- Stripes
-    if c.border and h >= 20 then
-        PixelCanvas.rect(x + dx + 6, y + dy + 4,     w - 12, 1, c.fillLo or c.border)
-        PixelCanvas.rect(x + dx + 6, y + dy + h - 5, w - 12, 1, c.fillLo or c.border)
-    end
-
-    -- Dual outline
-    PixelCanvas.rectOutline(x + dx, y + dy, w, h, c.border)
-    if w >= 8 and h >= 8 then
-        PixelCanvas.rectOutline(x + dx + 2, y + dy + 2, w - 4, h - 4, c.fillLo or c.border)
-    end
-
-    -- Rivets
-    if c.fillLo and w >= 16 and h >= 16 then
-        PixelCanvas.rect(x + dx + 4,     y + dy + 4,     2, 2, c.fillLo)
-        PixelCanvas.rect(x + dx + w - 6, y + dy + 4,     2, 2, c.fillLo)
-        PixelCanvas.rect(x + dx + 4,     y + dy + h - 6, 2, 2, c.fillLo)
-        PixelCanvas.rect(x + dx + w - 6, y + dy + h - 6, 2, 2, c.fillLo)
-        if c.fillHi then
-            PixelCanvas.pixel(x + dx + 4,     y + dy + 4,     c.fillHi)
-            PixelCanvas.pixel(x + dx + w - 5, y + dy + 4,     c.fillHi)
-            PixelCanvas.pixel(x + dx + 4,     y + dy + h - 5, c.fillHi)
-            PixelCanvas.pixel(x + dx + w - 5, y + dy + h - 5, c.fillHi)
-        end
-    end
-
-    local iconScale, iconPxW, iconPxH = autoIconScale(self)
-    local iconGap = (self.iconHandle and self.text ~= "") and 8 or 0
-    local innerPadX = 14
-    local textAvailW = math.max(1, w - innerPadX * 2 - iconPxW - iconGap)
-    local fontSize = fitFontSize(self.text, self.fontSize, textAvailW)
-    local font = FontManager.getFont(fontSize)
-    love.graphics.setFont(font)
-    local textWidth = self.text ~= "" and font:getWidth(self.text) or 0
-    local textHeight = font:getHeight()
-    local contentW = iconPxW + iconGap + textWidth
-    local cursorX = x + dx + math.floor((w - contentW) / 2)
-    local textY = y + dy + math.floor((h - textHeight) / 2)
-
-    if self.iconHandle then
-        local iconY = y + dy + math.floor((h - iconPxH) / 2)
-        self.iconHandle.draw(cursorX, iconY, iconScale)
-        cursorX = cursorX + iconPxW + iconGap
-    end
-    if textWidth > 0 then
-        if c.textShadow then
-            Palette.set(c.textShadow)
-            love.graphics.print(self.text, cursorX + 1, textY + 1)
-        end
-        Palette.set(c.text)
-        love.graphics.print(self.text, cursorX, textY)
-    end
-
-    love.graphics.setColor(1, 1, 1, 1)
-    if needsTransform then love.graphics.pop() end
-end
 
 -- ============ input ============
 
 -- Retorna true quando o button consumiu o clique (pressed=true). Callers
 -- usam esse return pra short-circuit e EVITAR fallthrough indesejado (ex:
--- CardRewardScreen mousepressed limpava selection se nada consumisse — sem
--- esse return, click no buy mini-button caía na desseleção e o onClick
+-- CardRewardScreen mousepressed limpava selection se nada consumisse â€” sem
+-- esse return, click no buy mini-button caÃ­a na desseleÃ§Ã£o e o onClick
 -- nunca disparava no mousereleased subsequente).
 function Button:mousepressed(mx, my, buttonId)
     if not self.visible or self.disabled or self._consumed then return false end
@@ -570,7 +502,7 @@ function Button:mousereleased(mx, my, buttonId)
             Sfx.playWithVariation("buttonClick", 1.0, 0.08)
             Moveable.juice_up(self, 0.22, 0.05)
             -- Jiggle global no click (Balatro engine/ui.lua:990): empurra o
-            -- screen-shake accumulator pra leve tremor de feedback tátil.
+            -- screen-shake accumulator pra leve tremor de feedback tÃ¡til.
             if _G.jiggleScreen then _G.jiggleScreen(0.3) end
             if self.onePress then self._consumed = true end
             self.onClick()
@@ -588,8 +520,8 @@ end
 
 function Button:setEnabled(enabled)  self.disabled = not enabled end
 function Button:setVisible(visible)  self.visible = visible end
--- Aplica esquema de cores semântico ("green" | "red" | nil = padrão dourado).
--- Usado em mini-buttons compactos onde a cor comunica a ação (Buy = verde,
+-- Aplica esquema de cores semÃ¢ntico ("green" | "red" | nil = padrÃ£o dourado).
+-- Usado em mini-buttons compactos onde a cor comunica a aÃ§Ã£o (Buy = verde,
 -- Cancel = vermelho).
 function Button:setColorScheme(scheme) self.colorScheme = scheme end
 function Button:setText(newText)     self.text = newText or "" end
@@ -600,14 +532,14 @@ end
 
 function Button:setVariant(v) self.variant = v or Button.DEFAULT_VARIANT end
 
--- Ativa one_press: após primeiro click, botão fica "consumed" (disabled visual,
--- não responde mais). Ideal pra botões que iniciam transição de state.
+-- Ativa one_press: apÃ³s primeiro click, botÃ£o fica "consumed" (disabled visual,
+-- nÃ£o responde mais). Ideal pra botÃµes que iniciam transiÃ§Ã£o de state.
 function Button:setOnePress(enabled)
     self.onePress = enabled and true or false
     if not enabled then self._consumed = false end
 end
 
--- Reset one_press (útil ao reexibir button após navegação).
+-- Reset one_press (Ãºtil ao reexibir button apÃ³s navegaÃ§Ã£o).
 function Button:resetConsumed() self._consumed = false end
 
 function Button:setIcon(name, forceScale)

@@ -11,6 +11,8 @@
 
 local MapManager = {}
 
+local Rng = require("src.systems.Rng")
+
 MapManager.NODE_TYPES = {
     BATTLE    = "battle",
     ELITE     = "elite",
@@ -73,10 +75,12 @@ MapManager.NODE_META = {
 }
 
 -- Helper: pesca um tipo dado um vetor { {type=, weight=}, ... }
+-- Stream "map" do Rng da run: a sequência de nodes é reprodutível por seed
+-- e independente dos rolls de carta/loja.
 local function rollWeighted(weights)
     local total = 0
     for _, e in ipairs(weights) do total = total + (e.weight or 1) end
-    local r = love.math.random() * total
+    local r = Rng.get():random("map") * total
     local acc = 0
     for _, e in ipairs(weights) do
         acc = acc + (e.weight or 1)

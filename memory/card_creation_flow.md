@@ -32,7 +32,14 @@ dados (como aconteceu com as 17 do gameplay-overhaul antes da cobrança)
 6. **Validação**: `love . validate_cards` + `love . smoke_all`.
 7. Tag nova → entra ANTES no `TagSystem.CATALOG`; effect novo → implementar
    no EffectSystem + registrar em PROCESSED_EFFECT_TYPES do validador.
-8. Se possível, rodar `love . autoplay 2 all` — o piloto valida se a carta
+8. **Cenário de FORJA** (regra do dono, Jul/2026 — ver matriz em
+   memory/rng_and_offers.md §forja): decidir conscientemente o que a forja
+   melhora nesta carta. attack>0 → +ATQ; defense>0 → +DEF; efeito puro → o
+   PRIMEIRO effect precisa ser de tipo upgradável (UPGRADABLE_EFFECT_TYPES
+   no RunManager) senão a carta NÃO é forjável (o picker a esconde). Stats
+   numéricos SEMPRE com `> 0` — nunca truthiness (defense=0 é truthy; foi o
+   bug do "+2 DEF fantasma" em carta de ataque puro).
+9. Se possível, rodar `love . autoplay 2 all` — o piloto valida se a carta
    entra nos decks e como performa.
 
 Gerador pronto: `python3 tools/pixellab_generate_new_cards.py queue|poll`

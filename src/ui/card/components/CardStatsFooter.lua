@@ -288,7 +288,9 @@ function CardStatsFooter.draw(w, h, card)
         end
     end
 
-    -- Valor à direita — BOLD multi-pass
+    -- Valor à direita — BOLD multi-pass. Carta FORJADA mostra o valor (que já
+    -- é o número real, pós-upgrade) em VERDE-FORJA — padrão StS de stat
+    -- aumentado: o próprio número conta a evolução, nada de badge por cima.
     if value then
         love.graphics.setFont(statFont)
         local vx = bx + bw - 7 - valueW
@@ -301,7 +303,11 @@ function CardStatsFooter.draw(w, h, card)
                 end
             end
         end
-        love.graphics.setColor(Palette.AGED_GOLD_LIGHT)
+        if (card.upgrades or 0) > 0 then
+            love.graphics.setColor(0.55, 0.92, 0.45, 1)
+        else
+            love.graphics.setColor(Palette.AGED_GOLD_LIGHT)
+        end
         love.graphics.print(value, vx, vy)
     end
 end

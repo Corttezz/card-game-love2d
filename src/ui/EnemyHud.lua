@@ -145,18 +145,37 @@ function EnemyHud.drawStatusEffects(enemy, cx, groundY, startX, startY)
 end
 
 -- ===== INTENT (acima do sprite) =====
--- Estilo Slay the Spire: ícone de ataque pequeno + número do dano grande ao lado.
--- Mais compacto horizontalmente que vertical, deixa o sprite respirar.
+-- Estilo Slay the Spire v2 (telegrafia Jul/2026): ícone GRANDE + número, bob
+-- vertical contínuo (o olho acha movimento), escala por severidade (strong é
+-- maior e pulsa mais rápido) e FLASH DE EXECUÇÃO quando o turno inimigo
+-- começa ("é AGORA que ele faz o que anunciou" — IntentFlashAction do StS).
+
+-- Flash de execução: Game:enemyTurn chama EnemyHud.flashIntent() antes de
+-- despachar a ação; o box dá zoom+glow por ~0.55s.
+local flashUntil = 0
+local FLASH_DUR = 0.55
+function EnemyHud.flashIntent()
+    flashUntil = love.timer.getTime() + FLASH_DUR
+end
+
+local ICON_SIZE = 34   -- era 24 — pequeno demais pra ler de relance
 
 -- Dimensions do box do intent (sem desenhar). Útil pra layout.
 function EnemyHud.getIntentDims(enemy)
     if not enemy then return 0, 0 end
-    local _, value = intentPreview(enemy)
+    local kind, value = intentPreview(enemy)
     if not value or value <= 0 then return 0, 0 end
-    local font = FontManager.getResponsiveFont(0.032, 22)
+    local font = FontManager.getResponsiveFont(0.036, 26)
     local tw = font:getWidth(tostring(value))
-    local iconSize, gap, padX, padY = 24, 4, 8, 6
-    return iconSize + gap + tw + padX * 2, iconSize + padY * 2
+    local iconSize, gap, padX, padY = ICON_SIZE, 6, 10, 7
+    local w = iconSize + gap + tw + padX * 2
+    local h = iconSize + padY * 2
+    -- Strong ocupa mais espaço (o layout do cluster respeita).
+    if kind == "strong" then
+        w = math.floor(w * 1.12)
+        h = math.floor(h * 1.12)
+    end
+    return w, h
 end
 
 -- Desenha o intent box. Se boxXOverride/boxYOverride forem nil, centraliza em cx.
@@ -165,20 +184,44 @@ function EnemyHud.drawIntent(enemy, cx, topY, boxXOverride, boxYOverride)
     local kind, value = intentPreview(enemy)
     if not value or value <= 0 then return end
     local isAttack = (kind == "attack" or kind == "strong")
+    local now = love.timer.getTime()
+    local rm = _G.gameSettings and _G.gameSettings.reducedMotion
 
-    -- Layout horizontal: ícone 24x24 + número grande ao lado
-    local font = FontManager.getResponsiveFont(0.032, 22)
+    -- Layout horizontal: ícone grande + número ao lado
+    local font = FontManager.getResponsiveFont(0.036, 26)
     local txt = (kind == "buff" and "+" or "") .. tostring(value)
     local tw = font:getWidth(txt)
 
-    local iconSize = 24
-    local gap = 4
+    local iconSize = ICON_SIZE
+    local gap = 6
     local contentW = iconSize + gap + tw
-    local padX, padY = 8, 6
+    local padX, padY = 10, 7
     local boxW = contentW + padX * 2
     local boxH = iconSize + padY * 2
     local boxX = boxXOverride or math.floor(cx - boxW / 2)
     local boxY = boxYOverride or math.floor(topY - boxH - 10)
+
+    -- Bob vertical contínuo (StS: o intent "flutua" — movimento chama o olho).
+    if not rm then
+        boxY = boxY + math.floor(math.sin(now * 2.2) * 3 + 0.5)
+    end
+
+    -- Escala: strong é maior (perigo tem hierarquia) + flash de execução dá
+    -- zoom no box inteiro. Transform centrado no box.
+    local scaleK = (kind == "strong") and 1.12 or 1.0
+    local flashK = 0
+    if flashUntil > now then
+        flashK = (flashUntil - now) / FLASH_DUR      -- 1→0
+        scaleK = scaleK * (1 + 0.35 * flashK)        -- zoom out do flash
+    end
+    local usedTransform = scaleK ~= 1.0
+    if usedTransform then
+        local mcx, mcy = boxX + boxW / 2, boxY + boxH / 2
+        love.graphics.push()
+        love.graphics.translate(mcx, mcy)
+        love.graphics.scale(scaleK, scaleK)
+        love.graphics.translate(-mcx, -mcy)
+    end
 
     -- Sombra do box
     love.graphics.setColor(0, 0, 0, 0.55)
@@ -241,6 +284,18 @@ function EnemyHud.drawIntent(enemy, cx, topY, boxXOverride, boxYOverride)
     elseif kind == "buff" then numColor = { 1, 0.85, 0.4, 1 } end
     FontManager.drawWithOutline(txt, tx, ty, numColor, 0.95)
 
+    -- FLASH DE EXECUÇÃO: lavagem branca + borda acesa enquanto o zoom decai
+    -- ("o anúncio virou ação"). Desenhado por cima de tudo do box.
+    if flashK > 0 then
+        love.graphics.setColor(1, 1, 0.95, 0.45 * flashK)
+        love.graphics.rectangle("fill", boxX, boxY, boxW, boxH, 5, 5)
+        love.graphics.setColor(accent[1], accent[2], accent[3], 0.9 * flashK)
+        love.graphics.setLineWidth(3)
+        love.graphics.rectangle("line", boxX - 2, boxY - 2, boxW + 4, boxH + 4, 6, 6)
+        love.graphics.setLineWidth(1)
+    end
+
+    if usedTransform then love.graphics.pop() end
     love.graphics.setColor(1, 1, 1, 1)
 end
 

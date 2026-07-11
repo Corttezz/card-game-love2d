@@ -81,6 +81,49 @@ return {
         hand_suffix     = "({n} na mao)",
         score_label        = "pontos",
         score_record       = "RECORDE!",
+        act             = "ATO {n}",
+        floor           = "andar {x}/{total}",
+        endless         = "ENDLESS",
+    },
+
+    pause = {
+        title           = "PAUSA",
+        progress        = "ATO {act} · andar {floor}/{total} — {class}",
+        no_run          = "Nenhuma jornada em andamento",
+        hint            = "ESC fecha · a jornada fica pausada",
+        resume          = "Continuar",
+        resume_desc     = "Volta para onde você estava. Nada muda.",
+        settings        = "Configurações",
+        settings_desc   = "Volumes, tela cheia, shader CRT, idioma e acessibilidade.",
+        save_quit       = "Salvar e voltar ao menu",
+        save_quit_desc  = "Sua jornada fica GUARDADA exatamente neste ponto para continuar depois.",
+        quit_norun      = "Voltar ao menu",
+        quit_norun_desc = "Encerra esta partida e volta ao menu principal.",
+        abandon         = "Abandonar a run",
+        abandon_desc    = "Apaga a jornada atual e o save dela. NÃO tem volta.",
+        abandon_confirm = "Tem certeza? Isso apaga a jornada.",
+        abandon_yes     = "Sim, abandonar",
+        abandon_no      = "Não, voltar",
+    },
+
+    -- Rótulos genéricos de botão (design system: nada de PT hardcoded em componente)
+    common = {
+        skip = "Pular",
+        back = "Voltar",
+        take = "Pegar",
+    },
+
+    round_eval = {
+        cash_out = "Resgatar ${n}",
+    },
+
+    -- Nomes dos golpes do inimigo (sobem do sprite quando ele age — StS ShowMoveName)
+    enemy_moves = {
+        attack    = "Investida",
+        strong    = "GOLPE BRUTAL",
+        defend    = "Postura Defensiva",
+        buff      = "Furia Crescente",
+        buff_gain = "+2 DANO",
     },
 
     hud = {
@@ -96,6 +139,7 @@ return {
         defense      = "Defesa: ",
         effects      = "Efeitos:",
         no_desc      = "(sem descricao)",
+        forged       = "Forjada +{n}",
     },
 
     card_type = {
@@ -118,6 +162,11 @@ return {
 
     reward = {
         shop_title         = "LOJA DE RELIQUIAS",
+        rewards_title      = "ESPOLIOS DA BATALHA",
+        rewards_subtitle   = "Escolha 1 carta para o seu grimorio — ou siga sem carta",
+        skip_no_card       = "Seguir sem carta",
+        affinity_badge     = "AFINIDADE",
+        affinity_line      = "Afinidade com seu deck: {tags}",
         gold_label         = "Ouro: ${n}",
         continue           = "Continuar",
         refresh            = "Novas ofertas (${n})",
@@ -231,6 +280,11 @@ return {
         passive_warrior= { name = "Passiva: Impeto", desc = "Jogue 2 ou mais ataques no mesmo turno: +1 de Forca nesta batalha." },
         passive_mage   = { name = "Passiva: Conduite", desc = "Voce comeca cada batalha com um orbe de Raio (4) ja canalizado." },
         passive_rogue  = { name = "Passiva: Toxinas", desc = "O primeiro ataque de cada turno aplica 1 de Veneno (2 turnos)." },
+        topbar_gold = { name = "Ouro", desc = "Compra cartas, forjas e melhorias na loja. Juros: +$1 a cada $5 guardados (máx +$5), pagos ao vencer batalhas. Próximo pagamento: +${interest}." },
+        topbar_deck = { name = "Grimório", desc = "{deck} cartas no seu grimório — {hand} na mão agora. No fim do turno a mão é descartada e você compra novas. Clique para folhear o deck." },
+        topbar_progress = { name = "Progresso da Jornada", desc = "Ato {act}, andar {floor} de {total}. No andar 7 aguarda um MINI-CHEFE; no andar {total}, o CHEFE do ato. Vença o chefe do Ato 3 para encerrar a crônica." },
+        topbar_config = { name = "Menu de Pausa", desc = "Pausa a jornada: configurações, salvar e voltar ao menu, ou abandonar a run." },
+        reward_rules = { name = "Como funcionam as ofertas", desc = "As cartas oferecidas são da SUA classe. A qualidade melhora a cada ato — e a cada oferta sem RARA, a chance da próxima sobe (após um longo jejum, a rara é garantida). Cartas marcadas com AFINIDADE combinam com as tags fortes do seu grimório. Cartas que você já tem em cópias aparecem menos." },
         poison     = { name = "Veneno",     desc = "Causa {stacks} de dano no fim de cada turno. Perde 1 stack por turno." },
         weak       = { name = "Fraco",      desc = "Dano infligido reduzido em 25%. Dura {duration} turno(s)." },
         vulnerable = { name = "Vulnerável", desc = "Recebe 50% mais dano de ataques. Dura {duration} turno(s)." },

@@ -962,12 +962,34 @@ function Game:enemyTurn()
     local okER, ER = pcall(require, "src.ui.EnemyRenderer")
     if not okER then ER = nil end
 
+    -- TELEGRAFIA v2 (Jul/2026): o intent PISCA ("o anúncio virou ação") e o
+    -- NOME do golpe sobe do inimigo — ShowMoveName + IntentFlash do StS.
+    local ex, ey
+    if ER and ER.getLastPos then ex, ey = ER.getLastPos() end
+    do
+        local okEH, EnemyHud = pcall(require, "src.ui.EnemyHud")
+        if okEH and EnemyHud.flashIntent then EnemyHud.flashIntent() end
+        local I18n = require("src.i18n.I18n")
+        local moveName = I18n.t("enemy_moves." .. intent, nil, "")
+        local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
+        if okFT and ex and ey and moveName ~= "" then
+            FloatingText.spawn(moveName, ex, ey - 54,
+                { kind = "movename", hold = 0.55, lift = 26 })
+        end
+    end
+
     if intent == "defend" then
         local armorGain = self.enemy:getDefendAmount()
         self.enemy:addArmor(armorGain)
         Sfx.play("armorSound")
         self:addMessage("Inimigo se defende: +" .. armorGain .. " de armadura", "info")
         if ER and ER.triggerDefend then ER.triggerDefend() end
+        -- Número do que aconteceu, no corpo do inimigo (não só no toast).
+        local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
+        if okFT and ex and ey then
+            FloatingText.spawn("+" .. armorGain, ex, ey,
+                { kind = "armor", fontSize = 20 })
+        end
     elseif intent == "buff" then
         self.enemy.baseDamage = self.enemy.baseDamage + 2
         self.enemy.damage = self.enemy.damage + 2
@@ -975,6 +997,12 @@ function Game:enemyTurn()
         self:addMessage("Inimigo se enfurece: +2 de dano permanente!", "warning")
         if self.enemy.juice_up then self.enemy:juice_up(0.4, 0.1) end
         if ER and ER.triggerBuff then ER.triggerBuff() end
+        local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
+        if okFT and ex and ey then
+            local I18n = require("src.i18n.I18n")
+            FloatingText.spawn(I18n.t("enemy_moves.buff_gain", nil, "+2"),
+                ex, ey, { kind = "damage", fontSize = 18 })
+        end
     else
         -- attack | strong — o inimigo INVESTE fisicamente e o dano é
         -- aplicado NO IMPACTO da investida (apex), não num corte seco.

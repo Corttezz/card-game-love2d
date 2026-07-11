@@ -59,19 +59,110 @@ function TopBar:update(dt, game)
     -- Ease gold toward real (ease_dollars-style do Balatro). Counter sobe/desce
     -- suave em vez de saltar quando ganhar/gastar ouro.
     local g = game or self.game
+    -- Adota o game ATUAL (returnToMenu recria o Game — sem isto a barra fica
+    -- presa na instância morta: ouro congelado e engrenagem no aviso).
+    if g and g ~= self.game then self.game = g end
     if g and g.economySystem then
         local realGold = g.economySystem.currentGold or 0
         -- Detecta delta de gold (ganho/gasto) e dispara micro-jiggle Balatro-style
         -- (engine/ui.lua:990 pattern: cada evento monetário empurra o accumulator).
         -- Skip primeiro frame onde _lastGold é nil pra não jigglar no boot.
-        if self._lastGold and self._lastGold ~= realGold and _G.jiggleScreen then
-            local delta = math.abs(realGold - self._lastGold)
-            local amt = math.min(0.6, 0.05 + delta * 0.02) -- cap pra não enjoar em ganhos grandes
-            _G.jiggleScreen(amt)
+        if self._lastGold and self._lastGold ~= realGold then
+            if _G.jiggleScreen then
+                local delta = math.abs(realGold - self._lastGold)
+                local amt = math.min(0.6, 0.05 + delta * 0.02) -- cap pra não enjoar em ganhos grandes
+                _G.jiggleScreen(amt)
+            end
+            -- Flash direcional no NÚMERO (padrão TopPanel do StS: verde ao
+            -- ganhar, vermelho ao gastar — a direção da mudança é informação).
+            self._goldFlash = {
+                dir = (realGold > self._lastGold) and 1 or -1,
+                t = 0.6,
+            }
+        end
+        if self._goldFlash then
+            self._goldFlash.t = self._goldFlash.t - dt
+            if self._goldFlash.t <= 0 then self._goldFlash = nil end
         end
         self._lastGold = realGold
         ValueEasing.tick(self.disp, "gold", realGold, dt, 6)
     end
+end
+
+-- Layout CENTRALIZADO da barra: o tubo CRT distorce os cantos em telas
+-- largas — todo o conteúdo (ouro/deck/score/progresso/engrenagem) vive num
+-- grupo central, onde o vidro é plano e legível (pedido playtest Jul/2026).
+-- FONTE ÚNICA de posições: draw, hover zones e mousepressed leem daqui.
+--
+-- Larguras MEDIDAS pelos textos do locale atual com números-modelo largos:
+-- nenhum idioma estoura o bloco e o layout não "dança" quando o valor muda.
+function TopBar:_layout()
+    local sw = love.graphics.getWidth()
+    local f14 = FontManager.getFont(14)
+    local f9 = FontManager.getFont(9)
+    -- 50 = offset REAL onde o texto é desenhado nos blocos (x+50 no draw) —
+    -- com 36 o texto invadia ~14px do gap do bloco vizinho.
+    local ICON_W = 50
+    local PAD_R = 14    -- respiro à direita do texto
+
+    local blocks = {}
+    local function add(key, line1, line2)
+        local w = math.max(f14:getWidth(line1 or ""), f9:getWidth(line2 or ""))
+        table.insert(blocks, { key = key, w = ICON_W + math.ceil(w) + PAD_R })
+    end
+
+    if self.game and self.game.economySystem then
+        add("gold", "$88888", I18n.t("top_bar.interest_suffix", { amount = 8 }))
+    end
+    if self.game and self.game.deck then
+        add("deck", I18n.t("top_bar.deck_cards", { n = 88 }),
+            I18n.t("top_bar.hand_suffix", { n = 8 }))
+    end
+    if self.game and self.game.scoreSystem then
+        local label = I18n.t("top_bar.score_record")
+        local label2 = I18n.t("top_bar.score_label")
+        if f9:getWidth(label2) > f9:getWidth(label) then label = label2 end
+        add("score", "888888", label)
+    end
+    local run = self.game and self.game.runManager
+        and self.game.runManager.currentRun
+    if run then
+        local l1 = run.endlessMode and I18n.t("top_bar.endless")
+            or I18n.t("top_bar.act", { n = 8 })
+        add("progress", l1, I18n.t("top_bar.floor", { x = 8, total = 8 }))
+    end
+    table.insert(blocks, { key = "gear", w = 36 })
+
+    local gap = 22
+    local total = gap * math.max(0, #blocks - 1)
+    for _, b in ipairs(blocks) do total = total + b.w end
+
+    local x = math.max(16, math.floor((sw - total) / 2))
+    local out = {}
+    for _, b in ipairs(blocks) do
+        out[b.key] = { x = x, w = b.w }
+        x = x + b.w + gap
+    end
+    return out
+end
+
+-- Zona interativa da barra: highlight dourado sutil no hover + tooltip via
+-- StatusTooltip (show() agenda; main.lua desenha no fim do frame, por cima).
+-- Chamar ANTES de desenhar o conteúdo do bloco (o highlight fica por baixo).
+function TopBar:_hoverZone(x0, w, tipName, ctx)
+    local mx, my = love.mouse.getPosition()
+    local hovered = mx >= x0 and mx <= x0 + w and my >= 0 and my <= self.height
+    if hovered then
+        PixelCanvas.rect(math.floor(x0), 3, math.floor(w), self.height - 8,
+            { 0.32, 0.26, 0.11, 0.38 })
+        if tipName then
+            local okST, StatusTooltip = pcall(require, "src.ui.StatusTooltip")
+            if okST and StatusTooltip.show then
+                StatusTooltip.show(tipName, mx, my, ctx)
+            end
+        end
+    end
+    return hovered
 end
 
 function TopBar:draw()
@@ -98,14 +189,21 @@ function TopBar:draw()
 end
 
 function TopBar:drawGameInfo()
-    local padding = 20
     local iconScale = 0.05
     local centerY = math.floor(self.height / 2)
+    local L = self:_layout()
 
     -- Moeda
-    if self.game and self.game.economySystem then
-        local coinX = padding
+    if self.game and self.game.economySystem and L.gold then
+        local coinX = L.gold.x
         local coinY = centerY - 22
+
+        -- Zona interativa (highlight + tooltip com breakdown dos juros).
+        local interestGold = self.game.economySystem:calculateInterest()
+        self:_hoverZone(coinX - 6, L.gold.w, "topbar_gold", {
+            gold = self.game.economySystem.currentGold or 0,
+            interest = math.floor(interestGold),
+        })
 
         love.graphics.setColor(1, 1, 1, 1)
         -- Ambient pulse Balatro-style (engine/text.lua:228 pulse pattern):
@@ -118,14 +216,27 @@ function TopBar:drawGameInfo()
         love.graphics.draw(self.coinIcon, coinX + cw * iconScale * 0.5, coinY + ch * iconScale * 0.5, 0,
                            scaledIcon, scaledIcon, cw / 2, ch / 2)
 
-        Palette.set(Palette.AGED_GOLD_LIGHT)
+        -- Cor do número: flash direcional (verde subiu / vermelho desceu)
+        -- decaindo de volta pro dourado — padrão TopPanel do StS.
+        local base = Palette.AGED_GOLD_LIGHT
+        if self._goldFlash then
+            local k = math.min(1, self._goldFlash.t / 0.6)
+            local flash = self._goldFlash.dir > 0
+                and { 0.45, 0.90, 0.40 }   -- verde: ganhou
+                or  { 0.95, 0.35, 0.30 }   -- vermelho: gastou/perdeu
+            love.graphics.setColor(
+                base[1] + (flash[1] - base[1]) * k,
+                base[2] + (flash[2] - base[2]) * k,
+                base[3] + (flash[3] - base[3]) * k, 1)
+        else
+            Palette.set(base)
+        end
         love.graphics.setFont(FontManager.getFont(14))
         -- Display eased pra counter Balatro-style (sobe/desce número suave)
         local goldDisp = math.floor((self.disp.gold or self.game.economySystem.currentGold or 0) + 0.001)
         local goldText = "$" .. goldDisp
         love.graphics.print(goldText, coinX + 50, centerY - 10)
 
-        local interestGold = self.game.economySystem:calculateInterest()
         if interestGold > 0 then
             Palette.set(Palette.PARCHMENT)
             love.graphics.setFont(FontManager.getFont(9))
@@ -135,9 +246,14 @@ function TopBar:drawGameInfo()
     end
 
     -- Deck
-    if self.game and self.game.deck then
-        local deckX = padding + 180
+    if self.game and self.game.deck and L.deck then
+        local deckX = L.deck.x
         local deckY = centerY - 22
+
+        self:_hoverZone(deckX - 6, L.deck.w, "topbar_deck", {
+            deck = #self.game.deck,
+            hand = self.game.hand and #self.game.hand or 0,
+        })
 
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.draw(self.deckIcon, deckX, deckY, 0, iconScale, iconScale)
@@ -160,9 +276,16 @@ function TopBar:drawGameInfo()
     -- Score da run (F3 gameplay-overhaul): TINTA×SELO acumulado, sempre
     -- visível — o "quero bater meu recorde" do Balatro. Vira dourado pulsante
     -- pelo resto da run quando o recorde histórico é cruzado.
-    if self.game and self.game.scoreSystem then
-        local scoreX = padding + 380
+    if self.game and self.game.scoreSystem and L.score then
+        local scoreX = L.score.x
         local IconLoader = require("src.ui.IconLoader")
+
+        -- Zona interativa (tooltip de score já existente, agora com highlight).
+        local okPS, ProfileStats = pcall(require, "engine.ProfileStats")
+        self:_hoverZone(scoreX - 6, L.score.w, "score", {
+            best = (okPS and ProfileStats.get().bestScore) or 0,
+        })
+
         local icon = IconLoader.get("star")
         if icon and icon.draw and icon.size then
             local sc = 26 / icon.size.w
@@ -183,28 +306,51 @@ function TopBar:drawGameInfo()
         love.graphics.setFont(FontManager.getFont(9))
         love.graphics.print(record and I18n.t("top_bar.score_record")
             or I18n.t("top_bar.score_label"), scoreX + 34, centerY + 6)
+    end
 
-        -- Hover no score → tooltip explicando COMO se ganha ponto (feedback:
-        -- "não entendi em que momento eu ganho"). StatusTooltip é global e
-        -- desenhado no fim do frame de gameplay.
-        local mx, my = love.mouse.getPosition()
-        if mx >= scoreX - 4 and mx <= scoreX + 130 and my >= 0 and my <= self.height then
-            local okST, StatusTooltip = pcall(require, "src.ui.StatusTooltip")
-            if okST and StatusTooltip.show then
-                local ProfileStats = require("engine.ProfileStats")
-                StatusTooltip.show("score", mx, my,
-                    { best = ProfileStats.get().bestScore or 0 })
-            end
+    -- Progresso da run: "ATO N" + "andar X/8" (StS TopPanel: onde estou e o
+    -- que vem por aí SEMPRE visíveis). Some fora do run mode (modo clássico).
+    local run = self.game and self.game.runManager
+        and self.game.runManager.currentRun
+    if run and L.progress then
+        local progressX = L.progress.x
+        local MapManager = require("src.systems.MapManager")
+        local total = MapManager.FLOORS_PER_ACT
+        local act = run.actNumber or 1
+        local floorIn = run.floorInAct or 1
+
+        self:_hoverZone(progressX - 6, L.progress.w, "topbar_progress", {
+            act = act, floor = floorIn, total = total,
+        })
+
+        local icon = IconLoader.get("scroll")
+        if icon and icon.draw and icon.size then
+            local sc = 26 / icon.size.w
+            love.graphics.setColor(1, 1, 1, 1)
+            icon.draw(progressX, centerY - 14, sc)
         end
+
+        Palette.set(Palette.PARCHMENT_LIGHT)
+        love.graphics.setFont(FontManager.getFont(14))
+        local actText = run.endlessMode and I18n.t("top_bar.endless")
+            or I18n.t("top_bar.act", { n = act })
+        love.graphics.print(actText, progressX + 34, centerY - 10)
+
+        Palette.set(Palette.PARCHMENT)
+        love.graphics.setFont(FontManager.getFont(9))
+        love.graphics.print(I18n.t("top_bar.floor", { x = floorIn, total = total }),
+            progressX + 34, centerY + 6)
     end
 
     love.graphics.setColor(1, 1, 1, 1)
 end
 
 function TopBar:_getConfigRect()
-    local screenWidth = love.graphics.getWidth()
     local iconPxSize = 32                                -- pixel size on screen
-    local configX = screenWidth - iconPxSize - 20
+    -- Engrenagem entra no grupo centralizado (canto direito distorce no CRT).
+    local L = self:_layout()
+    local configX = L.gear and (L.gear.x + 2)
+        or (love.graphics.getWidth() - iconPxSize - 20)
     local configY = math.floor((self.height - iconPxSize) / 2)
     return configX, configY, iconPxSize
 end
@@ -223,9 +369,14 @@ function TopBar:drawConfigIcon()
     love.graphics.rotate(self.configRotation)
     love.graphics.translate(-centerX, -centerY)
 
-    -- Highlight ao hover: círculo dourado por trás
+    -- Highlight ao hover: círculo dourado por trás + tooltip
     if self.isConfigHovered then
         PixelCanvas.rect(configX - 2, configY - 2, iconPxSize + 4, iconPxSize + 4, Palette.AGED_GOLD_DARK)
+        local okST, StatusTooltip = pcall(require, "src.ui.StatusTooltip")
+        if okST and StatusTooltip.show then
+            local mx, my = love.mouse.getPosition()
+            StatusTooltip.show("topbar_config", mx, my)
+        end
     end
     self.gearIcon.draw(configX, configY, scale)
 
@@ -238,15 +389,20 @@ function TopBar:mousepressed(x, y, button)
     if not self.visible then return false end
     if y <= self.height then
         if self:isConfigIconClicked(x, y) then
-            if self.game and self.game.toggleMenu then
+            -- Engrenagem abre o MENU DE PAUSA (StS-style: continuar /
+            -- configurações / salvar e sair / abandonar). Fallback legado:
+            -- toggleMenu do game (settings direto) se o pause não existir.
+            if _G.togglePauseMenu then
+                _G.togglePauseMenu()
+            elseif self.game and self.game.toggleMenu then
                 self.game:toggleMenu()
             end
             return true
         end
         -- F5 do UI Overhaul: área do deck abre o Deck Viewer global
-        local padding = 20
-        local deckX = padding + 180
-        if self.onDeckClick and x >= deckX and x <= deckX + 150 then
+        local L = self:_layout()
+        if self.onDeckClick and L.deck
+            and x >= L.deck.x - 6 and x <= L.deck.x + L.deck.w then
             self.onDeckClick()
             return true
         end

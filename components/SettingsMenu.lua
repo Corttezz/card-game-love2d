@@ -338,10 +338,14 @@ function SettingsMenu:_drawRow(label, value, x, y)
 end
 
 function SettingsMenu:_drawLabel(text, x, y)
-    local font = FontManager.getFont(12)
-    love.graphics.setFont(font)
+    -- Fit até a coluna de controles (design system Jul/2026): rótulos longos
+    -- (DE/FR) invadiam os botões -/+ e toggles à direita.
+    local maxW = 220
+    if self._panel then
+        maxW = math.max(60, (self._panel.x + self._panel.w - 180) - x - 12)
+    end
     Palette.set(Palette.PARCHMENT_LIGHT)
-    love.graphics.print(text, x, y + 6)
+    require("src.ui.TextFit").print(text, x, y + 6, { size = 12, maxW = maxW })
 end
 
 function SettingsMenu:mousepressed(x, y, button)

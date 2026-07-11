@@ -1,466 +1,293 @@
 -- src/ui/CardInfoDisplay.lua
--- Componente reutilizável para exibir informações de cartas
+-- Tooltip de carta no hover (mão, rewards, coleção via Card.lua).
+--
+-- v2 (design system Jul/2026 — playtest: "o tooltip quebra, texto passa do
+-- painel, letter spacing ruim"): a fonte 16 era grande demais pro painel, a
+-- largura era chutada (não media o conteúdo) e a linha de forja usava print
+-- cru. Agora: TODO o conteúdo é MEDIDO antes (a maior linha define a largura,
+-- com teto), tipografia na escala do design system (nome 13 / corpo 10 com
+-- line-height 1.35 / meta 9), painel escuro-dourado do grimório (era cinza
+-- azulado legado) e a forja mostra APENAS os ganhos reais da carta
+-- (RunManager.getForgeGains — carta de ataque puro nunca anuncia DEF).
+
+local FontManager = require("src.ui.FontManager")
+local I18n = require("src.i18n.I18n")
+local Palette = require("src.ui.Palette")
 
 local CardInfoDisplay = {}
 CardInfoDisplay.__index = CardInfoDisplay
 
-local Config = require("src.core.Config")
-local FontManager = require("src.ui.FontManager")
-local I18n = require("src.i18n.I18n")
+local PAD = 12
+local MAX_INNER = 280
+local MIN_INNER = 170
+local LINE_K = 1.35   -- line-height (respiro pedido no playtest)
 
 function CardInfoDisplay:new()
     local instance = setmetatable({}, CardInfoDisplay)
-    
-    -- Configurações padrão
+
+    -- Configurações padrão (API preservada — Card.lua/CardRewardScreen usam)
     instance.showRarity = true
     instance.showStats = true
     instance.showDescription = false
-    instance.textColor = {1, 1, 1, 1}
-    instance.rarityColor = {1, 1, 1, 1}
-    
-    -- Cores de raridade padrão
+    instance.textColor = { 1, 1, 1, 1 }
+
+    -- Cores de raridade (fallback se Palette.forRarity não cobrir)
     instance.rarityColors = {
-        common = {0.7, 0.7, 0.7},
-        uncommon = {0.2, 0.8, 0.2},
-        rare = {0.8, 0.2, 0.8},
-        legendary = {0.8, 0.6, 0.2},
-        basic = {0.5, 0.5, 0.5}
+        common = { 0.7, 0.7, 0.7 },
+        uncommon = { 0.2, 0.8, 0.2 },
+        rare = { 0.8, 0.2, 0.8 },
+        legendary = { 0.8, 0.6, 0.2 },
+        basic = { 0.5, 0.5, 0.5 },
     }
-    
+
     return instance
 end
 
 -- Configura as opções de exibição
 function CardInfoDisplay:configure(options)
-    if options.showRarity ~= nil then
-        self.showRarity = options.showRarity
-    end
-    if options.showStats ~= nil then
-        self.showStats = options.showStats
-    end
-    if options.showDescription ~= nil then
-        self.showDescription = options.showDescription
-    end
-    if options.textColor then
-        self.textColor = options.textColor
-    end
-    if options.rarityColors then
-        self.rarityColors = options.rarityColors
-    end
+    if options.showRarity ~= nil then self.showRarity = options.showRarity end
+    if options.showStats ~= nil then self.showStats = options.showStats end
+    if options.showDescription ~= nil then self.showDescription = options.showDescription end
+    if options.textColor then self.textColor = options.textColor end
+    if options.rarityColors then self.rarityColors = options.rarityColors end
 end
 
--- Desenha as informações da carta
+-- Linha de forja com os ganhos REAIS da carta (fonte única getForgeGains).
+-- nil quando a carta não é forjada.
+local function buildForgeLine(inst)
+    if (inst.upgrades or 0) <= 0 then return nil end
+    local RunManager = require("src.systems.RunManager")
+    local gains = RunManager.getForgeGains(inst)
+    local lvl = inst.upgrades
+    local parts = {}
+    if gains.atk then table.insert(parts, "+" .. (gains.atk * lvl) .. " ATQ") end
+    if gains.def then table.insert(parts, "+" .. (gains.def * lvl) .. " DEF") end
+    if gains.effect then table.insert(parts, "+" .. (gains.effect * lvl)) end
+    local line = I18n.t("card_info.forged", { n = lvl }, "Forjada +" .. lvl)
+    if #parts > 0 then
+        line = line .. " (" .. table.concat(parts, ", ") .. ")"
+    end
+    return line
+end
+
+-- Keywords da descrição (glossário F5) — até 3 hits, texto composto.
+local function collectKeywords(desc)
+    if not desc or desc == "" then return {} end
+    local hits = {}
+    local lower = desc:lower()
+    local ok, Keywords = pcall(require, "src.data.keywords")
+    if not ok then return hits end
+    for _, kw in ipairs(Keywords) do
+        for _, mword in ipairs(kw.match) do
+            if lower:find(mword, 1, true) then
+                table.insert(hits, kw)
+                break
+            end
+        end
+        if #hits >= 3 then break end
+    end
+    return hits
+end
+
+-- Desenha as informações da carta.
 function CardInfoDisplay:draw(cardInstance, x, y, options)
     if not cardInstance then return end
-    
-    -- Mescla opções locais com configurações globais
+
     local localOptions = options or {}
     local showRarity = localOptions.showRarity ~= nil and localOptions.showRarity or self.showRarity
     local showStats = localOptions.showStats ~= nil and localOptions.showStats or self.showStats
     local showDescription = localOptions.showDescription ~= nil and localOptions.showDescription or self.showDescription
-    
-    -- Calcula dimensões do painel baseado no conteúdo e tamanho da tela
-    local screenWidth = love.graphics.getWidth()
-    local screenHeight = love.graphics.getHeight()
-    
-    -- Painel responsivo baseado no tamanho da tela
-    local panelWidth = math.min(320, math.max(250, screenWidth * 0.25))
-    local panelHeight = 0
-    local padding = math.max(10, math.min(20, screenWidth * 0.01))
-    
-    -- Usa fonte fixa para consistência
-    local displayFont = FontManager.getFont(16)
-    love.graphics.setFont(displayFont)
-    local lineHeight = displayFont:getHeight()
-    local maxTextWidth = panelWidth - padding * 2
-    
-    -- Função para calcular altura do texto com quebra de linha
-    local function calculateTextHeight(text, maxWidth)
-        if not text then return 0 end
-        
-        local words = {}
-        for word in text:gmatch("%S+") do
-            table.insert(words, word)
-        end
-        
-        local currentLine = ""
-        local lines = 1
-        
-        for i, word in ipairs(words) do
-            local testLine = currentLine .. (currentLine == "" and "" or " ") .. word
-            if displayFont:getWidth(testLine) > maxWidth then
-                if currentLine == "" then
-                    -- Palavra muito longa, força quebra
-                    lines = lines + 1
-                else
-                    -- Quebra a linha
-                    currentLine = word
-                    lines = lines + 1
-                end
-            else
-                currentLine = testLine
-            end
-        end
-        
-        return lines * lineHeight
-    end
-    
-    -- Glossário de keywords (F5): detecta termos na descrição e explica.
-    local kwFont = FontManager.getFont(11)
-    local kwLineH = kwFont:getHeight()
-    local kwHits = {}
-    local _descForKw = I18n.cardDesc(cardInstance)
-    if showDescription and _descForKw and _descForKw ~= "" then
-        local lower = _descForKw:lower()
-        local Keywords = require("src.data.keywords")
-        for _, kw in ipairs(Keywords) do
-            for _, mword in ipairs(kw.match) do
-                if lower:find(mword, 1, true) then
-                    table.insert(kwHits, kw)
-                    break
-                end
-            end
-            if #kwHits >= 3 then break end
-        end
-    end
-    -- Altura de um item do glossário (nome + texto com wrap na fonte menor).
-    local function kwItemHeight(kw, maxWidth)
-        local full = kw.name .. ": " .. kw.text
-        local line = ""
-        local lines = 1
-        for word in full:gmatch("%S+") do
-            local test = line .. (line == "" and "" or " ") .. word
-            if kwFont:getWidth(test) > maxWidth then
-                line = word
-                lines = lines + 1
-            else
-                line = test
-            end
-        end
-        return lines * kwLineH + 4
-    end
 
-    -- Calcula altura necessária com quebra de linha (usa descrição localizada)
-    local _localizedDescForHeight = I18n.cardDesc(cardInstance)
-    if showDescription and _localizedDescForHeight and _localizedDescForHeight ~= "" then
-        panelHeight = panelHeight + lineHeight + 10 -- Nome
-        local descHeight = calculateTextHeight(_localizedDescForHeight, maxTextWidth)
-        panelHeight = panelHeight + descHeight + 10 -- Descrição com quebra de linha
-        if #kwHits > 0 then
-            panelHeight = panelHeight + 8
-            for _, kw in ipairs(kwHits) do
-                panelHeight = panelHeight + kwItemHeight(kw, maxTextWidth)
-            end
-        end
-        if showRarity and cardInstance.rarity then
-            panelHeight = panelHeight + lineHeight + 10 -- Raridade
-        end
-        if showStats then
-            panelHeight = panelHeight + lineHeight + 10 -- Stats
-        end
-    else
-        -- Layout compacto sem descrição
-        panelHeight = lineHeight + 10 -- Nome
-        if showRarity and cardInstance.rarity then
-            panelHeight = panelHeight + lineHeight + 10
-        end
-        if showStats then
-            panelHeight = panelHeight + lineHeight + 10
-        end
-    end
-    
-    panelHeight = panelHeight + padding * 2
-    
-    -- Smart positioning: tooltip ABAIXO da carta por default (Balatro-style),
-    -- com fallback ACIMA se cair fora da tela. Considera altura do price
-    -- medalhão (32px halo) pra não colidir.
-    --
-    -- Cardheight estimado pelas dimensões da carta (instância sabe).
-    local approxCardH = 0
-    if cardInstance.image then
-        approxCardH = cardInstance.image:getHeight() * (cardInstance.currentScale or 1)
-    end
-    local priceMedalSafezone = 8  -- spacing após bottom da carta
-    local panelX = x - panelWidth / 2 + 70  -- offset legado pra direita
-    local panelY = y + approxCardH + priceMedalSafezone
+    local sw = love.graphics.getWidth()
+    local sh = love.graphics.getHeight()
 
-    -- Ajusta posição horizontal se o painel sair da tela
-    if panelX < 10 then
-        panelX = 10
-    elseif panelX + panelWidth > screenWidth - 10 then
-        panelX = screenWidth - panelWidth - 10
-    end
+    -- Fontes (escala do design system)
+    local nameFont = FontManager.getFont(13)
+    local forgeFont = FontManager.getFont(9)
+    local bodyFont = FontManager.getFont(10)
+    local kwFont = FontManager.getFont(9)
+    local statFont = FontManager.getFont(11)
 
-    -- Se não cabe abaixo (passa do bottom da tela), tenta acima.
-    local screenHeight = love.graphics.getHeight()
-    if panelY + panelHeight > screenHeight - 10 then
-        panelY = y - panelHeight - priceMedalSafezone
-        -- Se também não cabe acima, força no bottom da tela.
-        if panelY < 10 then
-            panelY = screenHeight - panelHeight - 10
-        end
-    end
-    
-    -- Desenha o painel de fundo (estilo Balatro)
-    love.graphics.setColor(0.2, 0.2, 0.25, 0.95) -- Fundo escuro semi-transparente
-    love.graphics.rectangle("fill", panelX, panelY, panelWidth, panelHeight, 8, 8)
-    
-    -- Borda do painel
-    love.graphics.setColor(0.4, 0.4, 0.5, 0.8)
-    love.graphics.setLineWidth(2)
-    love.graphics.rectangle("line", panelX, panelY, panelWidth, panelHeight, 8, 8)
-    
-    -- Posição inicial para o texto
-    local currentY = panelY + padding
-    local textX = panelX + padding
-    
-    -- Nome da carta (sempre visível)
-    local localizedName = I18n.cardName(cardInstance)
-    local localizedDesc = I18n.cardDesc(cardInstance)
-    love.graphics.setColor(1, 1, 1, 1) -- Nome em branco
-    love.graphics.print(localizedName, textX, currentY)
-    currentY = currentY + lineHeight + 10
+    local nameLH = math.floor(nameFont:getHeight() * 1.2)
+    local bodyLH = math.floor(bodyFont:getHeight() * LINE_K)
+    local kwLH = math.floor(kwFont:getHeight() * LINE_K)
 
-    -- Descrição (se habilitado)
-    if showDescription and localizedDesc and localizedDesc ~= "" then
-        -- Calcula altura da descrição com quebra de linha
-        local descHeight = calculateTextHeight(localizedDesc, maxTextWidth)
+    -- ===== 1. CONTEÚDO =====
+    local name = I18n.cardName(cardInstance)
+    local desc = showDescription and I18n.cardDesc(cardInstance) or nil
+    if desc == "" then desc = nil end
+    local forgeLine = buildForgeLine(cardInstance)
+    local kwHits = desc and collectKeywords(desc) or {}
 
-        -- Área de descrição com fundo mais claro
-        love.graphics.setColor(0.3, 0.3, 0.35, 0.9)
-        love.graphics.rectangle("fill", textX - 5, currentY - 5, panelWidth - padding * 2 + 10, descHeight + 10, 5, 5)
-
-        -- Texto da descrição com quebra de linha
-        love.graphics.setColor(0.9, 0.9, 0.9, 1)
-        self:drawWrappedText(localizedDesc, textX, currentY, maxTextWidth, lineHeight)
-        currentY = currentY + descHeight + 15
-
-        -- Glossário (F5): keywords da descrição explicadas em fonte menor,
-        -- nome em dourado + texto em pergaminho (padrão Balatro de tooltip
-        -- secundário anexado).
-        if #kwHits > 0 then
-            love.graphics.setColor(0.78, 0.65, 0.20, 0.5)
-            love.graphics.setLineWidth(1)
-            love.graphics.line(textX, currentY - 6, textX + maxTextWidth, currentY - 6)
-            love.graphics.setFont(kwFont)
-            for _, kw in ipairs(kwHits) do
-                -- nome dourado inline + resto do texto com wrap manual
-                local full = kw.name .. ": " .. kw.text
-                local nameW = kwFont:getWidth(kw.name .. ": ")
-                love.graphics.setColor(1, 0.85, 0.35, 1)
-                love.graphics.print(kw.name .. ":", textX, currentY)
-                love.graphics.setColor(0.82, 0.78, 0.70, 1)
-                -- wrap do texto começando após o nome
-                local line = ""
-                local yy = currentY
-                local xx = textX + nameW
-                local avail = maxTextWidth - nameW
-                for word in kw.text:gmatch("%S+") do
-                    local test = line .. (line == "" and "" or " ") .. word
-                    if kwFont:getWidth(test) > avail then
-                        love.graphics.print(line, xx, yy)
-                        line = word
-                        yy = yy + kwLineH
-                        xx = textX
-                        avail = maxTextWidth
-                    else
-                        line = test
-                    end
-                end
-                if line ~= "" then love.graphics.print(line, xx, yy) end
-                currentY = yy + kwLineH + 4
-            end
-            love.graphics.setFont(displayFont)
-        end
-    end
-
-    -- Raridade (se habilitado)
+    local rarityText = nil
     if showRarity and cardInstance.rarity then
-        local rarityColor = self.rarityColors[cardInstance.rarity] or {1, 1, 1}
+        rarityText = (I18n.t("rarity." .. cardInstance.rarity, nil, cardInstance.rarity)):upper()
+    end
 
-        -- Calcula largura necessária para o texto da raridade (traduzido + caps)
-        local rarityText = (I18n.t("rarity." .. cardInstance.rarity, nil, cardInstance.rarity)):upper()
-        local textWidth = love.graphics.getFont():getWidth(rarityText)
-        
-        -- Largura responsiva baseada no texto + padding
-        local rarityWidth = math.max(80, textWidth + 20) -- Mínimo 80px, máximo baseado no texto
-        local rarityHeight = 25
-        local rarityX = textX
-        local rarityY = currentY
-        
-        -- Verifica se o botão cabe na tela e ajusta se necessário
-        local screenWidth = love.graphics.getWidth()
-        if rarityX + rarityWidth > screenWidth - 10 then
-            -- Se não cabe, reduz a largura ou ajusta a posição
-            rarityWidth = math.min(rarityWidth, screenWidth - rarityX - 10)
-            if rarityWidth < textWidth + 10 then
-                -- Se ainda não cabe, ajusta a posição
-                rarityX = screenWidth - rarityWidth - 10
-            end
+    -- ===== 2. MEDIDA (a maior linha define a largura; nada vaza) =====
+    local _, nameLines = nameFont:getWrap(name or "", MAX_INNER)
+    local descLines = {}
+    if desc then _, descLines = bodyFont:getWrap(desc, MAX_INNER) end
+    local kwBlocks = {}
+    for _, kw in ipairs(kwHits) do
+        local full = kw.name .. ": " .. kw.text
+        local _, lines = kwFont:getWrap(full, MAX_INNER)
+        table.insert(kwBlocks, lines)
+    end
+
+    local innerW = MIN_INNER
+    for _, l in ipairs(nameLines) do innerW = math.max(innerW, nameFont:getWidth(l)) end
+    for _, l in ipairs(descLines) do innerW = math.max(innerW, bodyFont:getWidth(l)) end
+    for _, block in ipairs(kwBlocks) do
+        for _, l in ipairs(block) do innerW = math.max(innerW, kwFont:getWidth(l)) end
+    end
+    if forgeLine then
+        innerW = math.max(innerW, math.min(MAX_INNER, forgeFont:getWidth(forgeLine)))
+    end
+    innerW = math.min(innerW, MAX_INNER)
+
+    local panelH = PAD
+    panelH = panelH + #nameLines * nameLH
+    if forgeLine then panelH = panelH + kwLH + 2 end
+    if #descLines > 0 then
+        panelH = panelH + 7 + #descLines * bodyLH   -- 7 = separador + gap
+    end
+    for _, block in ipairs(kwBlocks) do
+        panelH = panelH + 4 + #block * kwLH
+    end
+    if rarityText then panelH = panelH + 8 + 18 end
+    if showStats then panelH = panelH + 8 + 16 end
+    panelH = panelH + PAD
+
+    local panelW = innerW + PAD * 2
+
+    -- ===== 3. POSIÇÃO (ACIMA da carta, gap ADAPTATIVO — playtest Jul/2026:
+    -- o painel gruda a 6px do topo da carta; descrição alta que estouraria o
+    -- topo da tela só DESCE o necessário (clamp), nunca pula pra baixo da
+    -- mão — o bottom do painel se adapta à altura do conteúdo) =====
+    local GAP = 6
+    local panelX = math.floor(x - panelW / 2 + 70)
+    local panelY = math.floor(y - panelH - GAP)
+    if panelX < 10 then panelX = 10 end
+    if panelX + panelW > sw - 10 then panelX = sw - panelW - 10 end
+    if panelY < 8 then panelY = 8 end
+
+    -- ===== 4. RENDER (painel grimório escuro — era cinza azulado legado) =====
+    love.graphics.setColor(0, 0, 0, 0.5)
+    love.graphics.rectangle("fill", panelX + 3, panelY + 4, panelW, panelH, 6, 6)
+    love.graphics.setColor(Palette.PANEL_FILL and Palette.PANEL_FILL[1] or 0.10,
+        Palette.PANEL_FILL and Palette.PANEL_FILL[2] or 0.06,
+        Palette.PANEL_FILL and Palette.PANEL_FILL[3] or 0.03, 0.97)
+    love.graphics.rectangle("fill", panelX, panelY, panelW, panelH, 6, 6)
+    Palette.set(Palette.AGED_GOLD)
+    love.graphics.setLineWidth(2)
+    love.graphics.rectangle("line", panelX, panelY, panelW, panelH, 6, 6)
+    Palette.set(Palette.AGED_GOLD_DARK, 0.85)
+    love.graphics.setLineWidth(1)
+    love.graphics.rectangle("line", panelX + 3, panelY + 3, panelW - 6, panelH - 6, 4, 4)
+
+    local tx = panelX + PAD
+    local cy = panelY + PAD
+
+    -- Nome (dourado claro, com sombra de tinta)
+    love.graphics.setFont(nameFont)
+    for _, line in ipairs(nameLines) do
+        love.graphics.setColor(0, 0, 0, 0.9)
+        love.graphics.print(line, tx + 1, cy + 1)
+        Palette.set(Palette.AGED_GOLD_LIGHT)
+        love.graphics.print(line, tx, cy)
+        cy = cy + nameLH
+    end
+
+    -- Forja: só os ganhos REAIS (verde, com fit — nunca vaza)
+    if forgeLine then
+        love.graphics.setColor(0.55, 0.85, 0.45, 1)
+        require("src.ui.TextFit").print(forgeLine, tx, cy + 2,
+            { size = 9, maxW = innerW })
+        cy = cy + kwLH + 2
+    end
+
+    -- Descrição (pergaminho claro com line-height)
+    if #descLines > 0 then
+        Palette.set(Palette.AGED_GOLD_DARK, 0.9)
+        love.graphics.rectangle("fill", tx, cy + 3, innerW, 1)
+        cy = cy + 7
+        love.graphics.setFont(bodyFont)
+        Palette.set(Palette.PARCHMENT_LIGHT)
+        for _, line in ipairs(descLines) do
+            love.graphics.print(line, tx, cy)
+            cy = cy + bodyLH
         end
-        
-        -- Fundo do botão de raridade
-        love.graphics.setColor(rarityColor[1], rarityColor[2], rarityColor[3], 0.8)
-        love.graphics.rectangle("fill", rarityX, rarityY, rarityWidth, rarityHeight, 5, 5)
-        
-        -- Borda do botão
-        love.graphics.setColor(rarityColor[1], rarityColor[2], rarityColor[3], 1)
+    end
+
+    -- Glossário de keywords (nome dourado, corpo pergaminho)
+    for i, kw in ipairs(kwHits) do
+        cy = cy + 4
+        love.graphics.setFont(kwFont)
+        local nameW = kwFont:getWidth(kw.name .. ": ")
+        Palette.set(Palette.AGED_GOLD)
+        love.graphics.print(kw.name .. ":", tx, cy)
+        Palette.set(Palette.PARCHMENT)
+        -- Reflui o texto do bloco pré-wrapado: primeira linha após o nome.
+        local block = kwBlocks[i]
+        for j, line in ipairs(block) do
+            if j == 1 then
+                -- linha 1 do wrap contém "Nome: ..." — imprime só o resto
+                local rest = line:sub(#(kw.name .. ": ") + 1)
+                love.graphics.print(rest, tx + nameW, cy)
+            else
+                love.graphics.print(line, tx, cy)
+            end
+            cy = cy + kwLH
+        end
+    end
+
+    -- Raridade (pill compacta na cor da raridade)
+    if rarityText then
+        cy = cy + 8
+        local rc = (Palette.forRarity and Palette.forRarity(cardInstance.rarity))
+            or self.rarityColors[cardInstance.rarity] or { 1, 1, 1 }
+        love.graphics.setFont(kwFont)
+        local rw = kwFont:getWidth(rarityText) + 12
+        love.graphics.setColor(rc[1], rc[2], rc[3], 0.22)
+        love.graphics.rectangle("fill", tx, cy, rw, 16, 3, 3)
+        love.graphics.setColor(rc[1], rc[2], rc[3], 1)
         love.graphics.setLineWidth(1)
-        love.graphics.rectangle("line", rarityX, rarityY, rarityWidth, rarityHeight, 5, 5)
-        
-        -- Texto da raridade (centralizado no botão)
-        love.graphics.setColor(1, 1, 1, 1)
-        local textX = rarityX + (rarityWidth - textWidth) / 2
-        local textY = rarityY + (rarityHeight - lineHeight) / 2
-        love.graphics.print(rarityText, textX, textY)
-        
-        currentY = currentY + rarityHeight + 10
+        love.graphics.rectangle("line", tx, cy, rw, 16, 3, 3)
+        love.graphics.print(rarityText, tx + 6, cy + 3)
+        cy = cy + 18
     end
-    
-    -- Estatísticas da carta (se habilitado)
+
+    -- Stats (ícones + valores reais da instância — forjada mostra o número real).
+    -- Ícone escalado pra MESMA altura do número e ambos no MESMO topo de linha
+    -- (playtest: o scale fixo 0.022 deixava ícone e valor desalinhados).
     if showStats then
-        love.graphics.setColor(1, 1, 1, 1)
-        
+        cy = cy + 8
+        love.graphics.setFont(statFont)
+        local statH = statFont:getHeight()
+        local sx = tx
+        local function statPair(icon, value, color)
+            if icon then
+                local s = statH / icon:getHeight()
+                love.graphics.setColor(1, 1, 1, 1)
+                love.graphics.draw(icon, sx, cy, 0, s, s)
+                sx = sx + math.ceil(icon:getWidth() * s) + 6
+            end
+            love.graphics.setColor(color or { 1, 1, 1, 1 })
+            love.graphics.print(tostring(value), sx, cy)
+            sx = sx + statFont:getWidth(tostring(value)) + 14
+        end
         if cardInstance.attack and cardInstance.attack > 0 then
-            -- Carta de ataque
-            if cardInstance.attackIcon then
-                love.graphics.draw(cardInstance.attackIcon, textX, currentY - 5, 0, 0.025, 0.025)
-            end
-            love.graphics.print(cardInstance.attack, textX + 25, currentY)
-            
-            -- Ícone de mana + valor
-            if cardInstance.manaIcon then
-                love.graphics.draw(cardInstance.manaIcon, textX + 60, currentY - 5, 0, 0.025, 0.025)
-            end
-            love.graphics.print(cardInstance.cost, textX + 85, currentY)
-            
-        elseif cardInstance.defense and cardInstance.defense > 0 then
-            -- Carta de defesa
-            if cardInstance.armorIcon then
-                love.graphics.draw(cardInstance.armorIcon, textX, currentY - 5, 0, 0.025, 0.025)
-            end
-            
-            -- Ajusta posição do texto baseado no número de dígitos
-            if cardInstance.defense > 9 then
-                love.graphics.print(cardInstance.defense, textX + 3.3, currentY - 0.5)
-            else
-                love.graphics.print(cardInstance.defense, textX + 8.3, currentY - 0.5)
-            end
-            
-            -- Ícone de mana + valor
-            if cardInstance.manaIcon then
-                love.graphics.draw(cardInstance.manaIcon, textX + 60, currentY - 5, 0, 0.025, 0.025)
-            end
-            love.graphics.print(cardInstance.cost, textX + 85, currentY)
-            
-        else
-            -- Carta sem ataque/defesa (como jokers)
-            if cardInstance.manaIcon then
-                love.graphics.draw(cardInstance.manaIcon, textX, currentY - 5, 0, 0.025, 0.025)
-            end
-            love.graphics.print(cardInstance.cost, textX + 25, currentY)
+            statPair(cardInstance.attackIcon, cardInstance.attack, { 1, 0.45, 0.35, 1 })
         end
+        if cardInstance.defense and cardInstance.defense > 0 then
+            statPair(cardInstance.armorIcon, cardInstance.defense, { 0.6, 0.75, 0.95, 1 })
+        end
+        statPair(cardInstance.manaIcon, cardInstance.cost or 0, { 0.55, 0.75, 1, 1 })
     end
-end
 
--- Desenha apenas a raridade da carta
-function CardInfoDisplay:drawRarity(cardInstance, x, y, options)
-    if not cardInstance or not cardInstance.rarity then return end
-    
-    local rarityColor = self.rarityColors[cardInstance.rarity] or {1, 1, 1}
-    love.graphics.setColor(rarityColor[1], rarityColor[2], rarityColor[3], 1)
-    local rarityWord = (I18n.t("rarity." .. cardInstance.rarity, nil, cardInstance.rarity)):upper()
-    love.graphics.print(I18n.t("card_info.rarity_label") .. rarityWord, x + 10, y)
-end
-
--- Desenha apenas as estatísticas da carta
-function CardInfoDisplay:drawStats(cardInstance, x, y, options)
-    if not cardInstance then return end
-    
     love.graphics.setColor(1, 1, 1, 1)
-    
-    if cardInstance.attack and cardInstance.attack > 0 then
-        if cardInstance.attackIcon then
-            love.graphics.draw(cardInstance.attackIcon, x + 5, y - 5, 0, 0.03, 0.03)
-        end
-        love.graphics.print(cardInstance.attack, x + 20, y + 5)
-        
-        if cardInstance.manaIcon then
-            love.graphics.draw(cardInstance.manaIcon, x + 40, y - 5, 0, 0.03, 0.03)
-        end
-        love.graphics.print(cardInstance.cost, x + 60, y + 5)
-        
-    elseif cardInstance.defense and cardInstance.defense > 0 then
-        if cardInstance.armorIcon then
-            love.graphics.draw(cardInstance.armorIcon, x + 5, y - 5, 0, 0.03, 0.03)
-        end
-        
-        if cardInstance.defense > 9 then
-            love.graphics.print(cardInstance.defense, x + 10.5, y)
-        else
-            love.graphics.print(cardInstance.defense, x + 15, y)
-        end
-        
-        if cardInstance.manaIcon then
-            love.graphics.draw(cardInstance.manaIcon, x + 40, y - 5, 0, 0.03, 0.03)
-        end
-        love.graphics.print(cardInstance.cost, x + 60, y + 5)
-        
-    else
-        if cardInstance.manaIcon then
-            love.graphics.draw(cardInstance.manaIcon, x + 5, y - 5, 0, 0.03, 0.03)
-        end
-        love.graphics.print(cardInstance.cost, x + 20, y + 5)
-    end
-end
-
--- Desenha apenas o nome da carta
-function CardInfoDisplay:drawName(cardInstance, x, y, options)
-    if not cardInstance or not cardInstance.name then return end
-
-    local textColor = options and options.textColor or self.textColor
-    love.graphics.setColor(textColor[1], textColor[2], textColor[3], textColor[4])
-    love.graphics.print(I18n.cardName(cardInstance), x + 10, y)
-end
-
--- Função para desenhar texto com quebra de linha
-function CardInfoDisplay:drawWrappedText(text, x, y, maxWidth, lineHeight)
-    if not text then return end
-    
-    -- Garante que a fonte está configurada
-    local displayFont = FontManager.getFont(16)
-    love.graphics.setFont(displayFont)
-    
-    local words = {}
-    for word in text:gmatch("%S+") do
-        table.insert(words, word)
-    end
-    
-    local currentLine = ""
-    local currentY = y
-    
-    for i, word in ipairs(words) do
-        local testLine = currentLine .. (currentLine == "" and "" or " ") .. word
-        if displayFont:getWidth(testLine) > maxWidth then
-            if currentLine == "" then
-                -- Palavra muito longa, força quebra
-                love.graphics.print(word, x, currentY)
-                currentY = currentY + lineHeight
-            else
-                -- Quebra a linha
-                love.graphics.print(currentLine, x, currentY)
-                currentY = currentY + lineHeight
-                currentLine = word
-            end
-        else
-            currentLine = testLine
-        end
-    end
-    
-    -- Desenha a última linha
-    if currentLine ~= "" then
-        love.graphics.print(currentLine, x, currentY)
-    end
+    love.graphics.setLineWidth(1)
 end
 
 return CardInfoDisplay

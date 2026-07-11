@@ -24,6 +24,9 @@ function DeckViewerScreen:new()
     instance.instances = {}
     instance.counts = { total = 0 }
     instance.scroll = 0
+    instance._openedAt = 0
+    -- Tooltip completo no hover (StS-style: descrição + raridade + forja)
+    instance.cardInfo = require("src.ui.CardInfoDisplay"):new()
     return instance
 end
 
@@ -81,6 +84,7 @@ function DeckViewerScreen:show(game)
     self.visible = true
     self.game = game
     self.scroll = 0
+    self._openedAt = love.timer.getTime()
     self:_build()
     Sfx.play("menuOpen")
 end
@@ -122,6 +126,13 @@ end
 
 function DeckViewerScreen:mousereleased(x, y, button)
     if not self.visible then return false end
+    -- BUG playtest Jul/2026: o RELEASE do MESMO clique que abriu (press na
+    -- TopBar) era roteado pra cá — o ponto fica fora do painel e o viewer
+    -- fechava no mesmo frame ("clico e já fecha"). Ignora releases logo
+    -- após a abertura.
+    if love.timer.getTime() - (self._openedAt or 0) < 0.25 then
+        return true
+    end
     -- clique fora do painel fecha
     local px, py, pw, ph = self:panelRect()
     if x < px or x > px + pw or y < py or y > py + ph then
@@ -158,22 +169,26 @@ function DeckViewerScreen:draw()
 
     local cf = FontManager.getFont(9)
     love.graphics.setFont(cf)
-    Palette.set(Palette.RUST)
     local c = self.counts
     local countsText = c.total .. " cartas — " .. (c.attack or 0)
         .. " ataque · " .. (c.defense or 0) .. " defesa · "
         .. (c.effect or 0) .. " efeito"
-    love.graphics.print(countsText, px + 36, py + 58)
 
     -- estado das pilhas da batalha atual (se em combate)
+    local pilesW = 0
     if self.game and self.game.deck then
         local piles = "Compra: " .. #self.game.deck
             .. " · Descarte: " .. #(self.game.discard or {})
             .. " · Mão: " .. #(self.game.hand or {})
+        pilesW = cf:getWidth(piles)
         Palette.set(Palette.INK)
-        love.graphics.print(piles,
-            px + pw - 36 - cf:getWidth(piles), py + 58)
+        love.graphics.print(piles, px + pw - 36 - pilesW, py + 58)
     end
+
+    -- counts com FIT até o bloco de pilhas (deck grande colidia à direita).
+    Palette.set(Palette.RUST)
+    require("src.ui.TextFit").print(countsText, px + 36, py + 58,
+        { size = 9, maxW = math.max(80, pw - 72 - pilesW - 16) })
 
     -- grid de cartas (scissor pra rolagem dentro do painel)
     local gridTop = py + 84
@@ -190,23 +205,55 @@ function DeckViewerScreen:draw()
     local maxScroll = math.max(0, contentH - gridH)
     if self.scroll > maxScroll then self.scroll = maxScroll end
 
+    -- Hover (StS-style): a carta sob o mouse levanta e ganha moldura dourada;
+    -- o tooltip COMPLETO (descrição, raridade, forja com ganhos reais) abre
+    -- acima dela — desenhado FORA do scissor, por cima de tudo.
+    local mx, my = love.mouse.getPosition()
+    local hovered, hx, hy = nil, 0, 0
+    local mouseInGrid = mx >= px + 12 and mx <= px + pw - 12
+        and my >= gridTop and my <= gridTop + gridH
+
     love.graphics.setScissor(px + 12, gridTop, pw - 24, gridH)
-    local lvlFont = FontManager.getFont(9)
     for i, inst in ipairs(self.instances) do
         local col = (i - 1) % perRow
         local row = math.floor((i - 1) / perRow)
         local x = gx0 + col * (cw + gutter)
         local y = gridTop + row * (chh + gutter) - self.scroll
         if y + chh > gridTop and y < gridTop + gridH then
-            if inst.image then
+            local isHover = mouseInGrid and mx >= x and mx < x + cw
+                and my >= y and my < y + chh
+            if isHover then
+                hovered, hx, hy = inst, x, y
+            elseif inst.image then
                 love.graphics.setColor(1, 1, 1, 1)
                 love.graphics.draw(inst.image, x, y, 0, scale, scale)
             end
-            -- (badge de forja externo removido — o selo +N agora vive na
-            -- própria moldura via CardFrame, com stats reais upados)
         end
     end
+    -- Hovered por último (fica por cima dos vizinhos): lift + scale sutil +
+    -- moldura dourada.
+    if hovered and hovered.image then
+        local hs = scale * 1.06
+        local ox = (cw * (1.06 - 1)) / 2
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.draw(hovered.image, hx - ox, hy - 4 - ox, 0, hs, hs)
+        Palette.set(Palette.AGED_GOLD_LIGHT)
+        love.graphics.setLineWidth(2)
+        love.graphics.rectangle("line", hx - ox - 2, hy - 6 - ox,
+            cw * 1.06 + 4, chh * 1.06 + 4, 3, 3)
+        love.graphics.setLineWidth(1)
+    end
     love.graphics.setScissor()
+
+    -- Tooltip completo por cima de tudo (fora do scissor).
+    if hovered then
+        hovered.currentScale = scale
+        self.cardInfo:draw(hovered, hx, hy - 4, {
+            showRarity = true,
+            showStats = true,
+            showDescription = true,
+        })
+    end
 
     HintBar.draw("RODA rola · D ou ESC fecha · clique fora fecha")
     love.graphics.setColor(1, 1, 1, 1)

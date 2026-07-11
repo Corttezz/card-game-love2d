@@ -33,25 +33,30 @@ local GrassField = {}
 -- PRESETS por bioma: personalidade do capim (densidade, altura, vento).
 -- Cores NÃO ficam aqui — vêm do chamador (lerpam no crossfade de bioma).
 -- ----------------------------------------------------------------------------
+-- v9.7.2 (feedback: "as gramas estão muito estáticas"): vento AMBIENTE
+-- ~45% mais forte em todos os biomas (windAmp ×1.45, gustAmp ×1.35,
+-- gustSpeed ×1.15) — a vida da grama agora é toda dele, já que a rajada
+-- de hover do mouse foi removida. Caráter relativo por bioma preservado
+-- (abyss segue o mais parado, highlands o mais ventoso).
 GrassField.PRESETS = {
     --                dens  altK  vento gustA gustV dir broad flor
-    fields    = { density = 1.00, heightK = 1.00, windAmp = 0.50,
-                  gustAmp = 1.10, gustSpeed = 1.30, dir = 1,
+    fields    = { density = 1.00, heightK = 1.00, windAmp = 0.72,
+                  gustAmp = 1.50, gustSpeed = 1.50, dir = 1,
                   broad = 0.10, flower = 0.10 },
-    highlands = { density = 0.80, heightK = 0.90, windAmp = 0.70,
-                  gustAmp = 1.40, gustSpeed = 1.80, dir = -1,
+    highlands = { density = 0.80, heightK = 0.90, windAmp = 1.00,
+                  gustAmp = 1.85, gustSpeed = 2.05, dir = -1,
                   broad = 0.08, flower = 0.06 },   -- vento de montanha
-    abyss     = { density = 0.55, heightK = 0.80, windAmp = 0.30,
-                  gustAmp = 0.60, gustSpeed = 0.90, dir = 1,
+    abyss     = { density = 0.55, heightK = 0.80, windAmp = 0.44,
+                  gustAmp = 0.82, gustSpeed = 1.05, dir = 1,
                   broad = 0.05, flower = 0.08 },   -- restolho, ar parado
-    frost     = { density = 0.50, heightK = 0.70, windAmp = 0.60,
-                  gustAmp = 1.20, gustSpeed = 1.60, dir = -1,
+    frost     = { density = 0.50, heightK = 0.70, windAmp = 0.86,
+                  gustAmp = 1.60, gustSpeed = 1.85, dir = -1,
                   broad = 0.06, flower = 0.05 },
-    marsh     = { density = 1.15, heightK = 1.30, windAmp = 0.45,
-                  gustAmp = 0.85, gustSpeed = 1.00, dir = 1,
+    marsh     = { density = 1.15, heightK = 1.30, windAmp = 0.64,
+                  gustAmp = 1.15, gustSpeed = 1.15, dir = 1,
                   broad = 0.30, flower = 0.09 },   -- juncos altos e pesados
-    dusk      = { density = 0.90, heightK = 1.05, windAmp = 0.55,
-                  gustAmp = 1.00, gustSpeed = 1.10, dir = -1,
+    dusk      = { density = 0.90, heightK = 1.05, windAmp = 0.80,
+                  gustAmp = 1.35, gustSpeed = 1.30, dir = -1,
                   broad = 0.12, flower = 0.12 },
 }
 local DEFAULT_PRESET = GrassField.PRESETS.fields
@@ -220,6 +225,36 @@ local function windAt(nx, wz, t, P, pers)
            * P.windAmp * P.dir * wander
 end
 GrassField.windAt = windAt   -- exposto pra outros sistemas (props, futuro)
+
+-- ----------------------------------------------------------------------------
+-- v9.7: RAJADA DO MOUSE (mapa interativo) — sopro local e amortecido nas
+-- lâminas perto do cursor. Vive FORA do windAt: os call sites passam
+-- relógios ESCALADOS pro windAt (junco 0.62×, flor +0.3) e o envelope da
+-- rajada precisa do tempo REAL do ctx.
+-- ----------------------------------------------------------------------------
+GrassField._poke = nil
+function GrassField.pokeAt(nx, wz, t)
+    GrassField._poke = { nx = nx, wz = wz, t0 = t }
+end
+local function pokeLean(nx, wz, tReal)
+    local pk = GrassField._poke
+    if not pk then return 0 end
+    local e = tReal - pk.t0
+    if e < 0 or e >= 0.9 then return 0 end
+    local dxr = nx - pk.nx
+    local dx = dxr * 7                 -- alcance ~1/7 da tela
+    local dz = (wz - pk.wz) * 0.6      -- ~2 unidades de mundo
+    local d2 = dx * dx + dz * dz
+    if d2 >= 4 then return 0 end
+    -- v9.7.2 (feedback "não ficou natural"): a tremida senoidal de 15Hz
+    -- lia como vibração mecânica. Agora é uma ONDA QUE PARTE do cursor —
+    -- lâmina à esquerda deita pra esquerda, à direita pra direita, num
+    -- swell único suave (sobe rápido, assenta devagar); a brisa própria
+    -- da lâmina continua por cima e traz a variação orgânica.
+    local swell = math.min(1, e * 10) * math.exp(-e * 4.0)
+    local side = dxr >= 0 and 1 or -1
+    return math.exp(-d2 * 1.3) * swell * side * 1.9
+end
 
 -- (v7.4.12: windCalm REMOVIDO — até a "brisa calma" era um campo espacial
 -- compartilhado: a fase variava tão devagar em profundidade que fileiras
@@ -664,7 +699,8 @@ function GrassField.draw(ctx)
                                 else
                                     lean = windAt(nx, z, t0, P, hb) * flex
                                 end
-                                lean = lean + flick * flex
+                                lean = lean
+                                    + (flick + pokeLean(nx, z, t0)) * flex
                                 local kx = lean * 0.55
                                 local sy = s * (1 - math.abs(lean) * 0.16)
                                 -- tom em 3 níveis por lâmina (sombra /
@@ -685,7 +721,8 @@ function GrassField.draw(ctx)
                             -- flor/broto na cor de acento do bioma (a
                             -- "vida" do campo — dourado/brasa/cristal...)
                             if h3 > 1 - P.flower and t > 0.25 then
-                                local lean = windAt(nx, z, t0 + 0.3, P) * 0.8
+                                local lean = (windAt(nx, z, t0 + 0.3, P)
+                                    + pokeLean(nx, z, t0)) * 0.8
                                 batch:setColor(cAcc[1], cAcc[2], cAcc[3], 1)
                                 batch:add(quads[FLOWER_CELL],
                                     math.floor(pxX + h2 * 4 - 2),

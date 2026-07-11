@@ -8,7 +8,7 @@
 
 local Migrations = {}
 
-Migrations.CURRENT_VERSION = "1.1"
+Migrations.CURRENT_VERSION = "1.2"
 
 -- Cada handler recebe payload (que tem .version, .runData, .savedAt) e
 -- muta payload.runData / payload.version para a próxima versão.
@@ -17,6 +17,12 @@ local handlers = {
         -- 1.0 → 1.1: nada a transformar nos dados (era a versão anterior
         -- antes do SaveManager existir). Só registra a bump.
         payload.version = "1.1"
+    end,
+    ["1.1"] = function(payload)
+        -- 1.1 → 1.2: introduz RNG seedável (runData.rngState) e seed da run.
+        -- Save antigo não tem — RunManager.loadRun tolera nil (gera Rng novo).
+        -- Nada a transformar; registra a bump.
+        payload.version = "1.2"
     end,
 }
 

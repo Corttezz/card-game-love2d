@@ -18,7 +18,7 @@ type: project
 
 **2. Fallback de imagem `theRock.png`** usado em muitas cartas — não é estilo, é falta de arte. Pipeline de sprite via pixel-mcp está em `memory/sprite_design_queue.md`. Ao gerar PNGs, substituir campo `image` no `src/data/cards/*.lua`.
 
-**3. Save/load persistente existe mas não há UI** — `RunManager:saveRun/loadRun/hasSavedRun/deleteSave` gravam `run.save.lua`. Ainda não há botão "Continuar" no menu principal.
+**3. Save/load persistente existe mas não há UI** — `RunManager:saveRun/loadRun/hasSavedRun/deleteSave` gravam `run.save.lua`. Ainda não há botão "Continuar" no menu principal. (Jul/2026: o save agora carrega `rngState` — seed + estado exato dos streams; migration 1.2.)
 
 **4. `Game:isRunMode` setado por `startNewRun` mas pode vazar entre runs** — `returnToMenu()` reseta via `Game:new()` então OK no fluxo normal, mas atenção ao adicionar transições novas.
 
@@ -32,7 +32,7 @@ type: project
 
 **9. ClassSelection "class cards" são só Buttons** — visual rico ainda não extraído em `components/ClassCard.lua`.
 
-**10. Forge (Rest) usa IDs crus no label** — mostra `warrior_strike +1` em vez de `Golpe +1`. I18n/lookup por cardData.name fica pendente.
+**10. ~~Forge (Rest) usa IDs crus no label~~** — ✅ resolvido (F4 UI Overhaul): `RestScreen.enterForgeMode` mostra `cardData.name` + nível.
 
 **11. Events não processa "perder HP"** — `apply.function` pode causar dano direto, mas alguns eventos complexos (Slay-style "troca carta pelo vizinho") não estão mapeados.
 
@@ -48,7 +48,7 @@ type: project
 
 **17. Editions/Seals existem mas não há fonte de spawn ainda** — Fase 3 implementou pipeline completo (`card.edition`/`card.seal` + shaders + gameplay + render). Falta: tarots/spectrals que aplicam editions, e booster packs Standard que sorteiam edition+seal aleatoriamente. Será fechado na Fase 5 (Booster Pack opening).
 
-**18. Forge mostra IDs crus** — `RestScreen.enterForgeMode` lista `warrior_strike +1` em vez de `Golpe +1`. Botões precisam de `I18n.cardName({id=cardId})` lookup. (Era item 10, agora destacado pra fechar quando refinar UX da forge cinematic em Fase 3.4 polish.)
+**18. ~~Forge mostra IDs crus~~** — ✅ resolvido junto com o item 10. Jul/2026 adicionou ainda o preview de forja no hover ("ATQ 8 → 10 · DEF 4 → 6").
 
 **19. Forge não tem cinemática (dissolve+materialize)** — funcionalmente upgrada via `RunManager:upgradeCard`, mas a animação Balatro-style (carta entra → +N flutua → juice + sfx) ainda não está implementada. Reutilizar `CardRevealSequence`.
 
@@ -60,7 +60,29 @@ type: project
 - Sleeves PixelLab estão um pouco pequenos comparados ao voucher card. Aumentar scale ou diminuir voucher.
 - Skip button "Pular" está embaixo no centro mas seria mais Balatro ele junto do reroll na column esquerda (button stack vertical: Next Round vermelho + Reroll verde). "Next Round" do Balatro é o equivalente ao "Continuar/Pular" nosso.
 
+**22. Pity compartilhado rewards+loja é decisão de design** — `rng.meta.cardPity` é um contador só. Se um dia rewards e loja precisarem de pity separado, dividir em `meta.cardPity`/`meta.shopPity` (uma linha em `CardRegistry:rollRarity`).
+
+**23. Locales es/fr/de não têm seção `status`** — caem no fallback `en` (padrão pré-existente do i18n). Inclui os tooltips novos da TopBar (`status.topbar_*`) e o `status.reward_rules`. Traduzir quando a seção status inteira for portada.
+
+**24. Watcher de teste** — `love . test_systems` valida a entrega STS-improvements v1. NUNCA rodar com processo `love` do usuário aberto (guarda em tools + memória never-kill-user-processes).
+
+**25. Save é slot ÚNICO sem diálogo** — "Jogar" com um save existente NÃO pergunta nada: a run nova sobrescreve o save antigo no primeiro checkpoint (padrão StS de slot único, mas o StS confirma antes). Se algum dia houver reclamação de "perdi meu save clicando em Jogar", adicionar confirmação no menu quando `SaveManager.hasRun()`.
+
+**26. returnToMenu FAZ limpeza pesada (Jul/2026)** — `EventManager.clear()` + `runManager.currentRun=nil` + `Rng.clearActive()` ANTES de recriar o game. Motivo: callbacks agendados do game descartado re-salvavam a run abandonada e até puxavam `currentState` de volta pro jogo. Ao adicionar transições novas pro menu, passar SEMPRE por `returnToMenu()` (nunca setar `currentState="menu"` na mão).
+
 ---
+
+## Resolvidos pela entrega STS-improvements v1 (Jul/2026)
+
+Plano: `docs/plan/sts-improvements-v1.md` · detalhes: `memory/rng_and_offers.md`.
+
+- ✅ **RNG sem seed** → `src/systems/Rng.lua`: 1 seed/run, 6 streams com getState/setState no save (migration 1.2). Decisões de run reprodutíveis; save-scum neutralizado.
+- ✅ **Raridade flat** → pity acumulativo (+35%/oferta seca, garantia na 25ª) compartilhado rewards+loja, persistido no save.
+- ✅ **Ofertas cegas ao deck** → afinidade por tags (+20%/tag forte, cap +60%), anti-duplicata na oferta, penalidade de cópias (×0.5 com 2+), filtro de classe na loja. Badge "AFINIDADE" + "?" com regras na tela de recompensas.
+- ✅ **Upgrade cap 5 invisível** → forja INFINITA (Config.Game.UPGRADE_LEVEL_CAP=0), ganhos em Config.Offers (fonte única), preview na forja, linha "Forjada +N" no tooltip, oferta "Forja" paga na loja com custo crescente (5×1.35^n) e picker.
+- ✅ **TopBar muda/opaca** → ato/andar visível, tooltip em todos os elementos, flash direcional no ouro, highlight de hover.
+- ✅ **Rewards sem contexto** → título/subtítulo próprios, raridade NOMEADA por slot, skip "Seguir sem carta".
+- ✅ **Eventos com custo escondido** → labels com `[+ganho / -custo]` data-driven; 4 eventos de deck novos (remover/duplicar/forjar/sangue↔ouro); no-repeat por ato via `run.eventHistory`; RestScreen virou picker genérico (`_G.openCardPicker`).
 
 ## Resolvidos pela auditoria de gameplay (Abril/2026)
 

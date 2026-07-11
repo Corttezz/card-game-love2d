@@ -7,6 +7,8 @@ RunManager.__index = RunManager
 local CardRegistry = require("src.systems.CardRegistry")
 local CardDatabase = require("src.systems.CardDatabase")
 local SaveManager  = require("engine.SaveManager")
+local Rng          = require("src.systems.Rng")
+local Config       = require("src.core.Config")
 
 function RunManager:new()
     local instance = setmetatable({}, RunManager)
@@ -27,9 +29,18 @@ function RunManager:startNewRun(classId)
         error("Classe nao encontrada: " .. tostring(classId))
     end
 
+    -- RNG seedável da run (streams card/shop/map/event/enemy/misc). Toda
+    -- decisão de run passa por ele — reprodutível por seed e à prova de
+    -- save-scum (estado serializado em rngState no save).
+    local rng = Rng.setActive(Rng.new())
+    print("[RunManager] nova run com seed " .. tostring(rng.seed))
+
     self.currentRun = {
         classId = classId,
         className = selectedClass.name,
+
+        -- Seed da run (informativo/debug; o estado vivo mora em rngState).
+        runSeed = rng.seed,
 
         -- Deck dinâmico que cresce durante o jogo
         currentDeck = {},
@@ -94,6 +105,18 @@ end
 function RunManager:getCurrentDeck()
     if not self.currentRun then return {} end
     return self.currentRun.currentDeck
+end
+
+-- Ids normalizados do deck (entries podem ser string OU {id, edition, seal}).
+-- Usado pelas ofertas (afinidade/anti-duplicata) e telas de forja.
+function RunManager:getDeckCardIds()
+    if not self.currentRun then return {} end
+    local ids = {}
+    for _, entry in ipairs(self.currentRun.currentDeck) do
+        local id = type(entry) == "table" and entry.id or entry
+        if id then table.insert(ids, id) end
+    end
+    return ids
 end
 
 -- Adiciona uma carta ao deck. meta opcional pra cartas com edition/seal vindas
@@ -207,11 +230,12 @@ function RunManager:completeBattle()
     self.currentRun.currentFloor = self.currentRun.currentFloor + 1
 
     -- Gera 3 cartas de recompensa (padrão Slay the Spire)
-    local cardRewards = self.cardRegistry:generateCardRewards(self.currentRun.classId, 3)
+    local cardRewards = self.cardRegistry:generateCardRewards(self.currentRun.classId, 3,
+        { deckIds = self:getDeckCardIds() })
 
     return {
         cardRewards = cardRewards,
-        gold = love.math.random(10, 25),
+        gold = Rng.get():random("misc", 10, 25),
         floor = self.currentRun.currentFloor,
         canSkipReward = true -- Opção de pular recompensa
     }
@@ -281,21 +305,27 @@ function RunManager:getPendingNodes()
     return self.currentRun and self.currentRun.pendingNodes
 end
 
--- ===== Upgrade map (Fase 3.1 do refactor Balatro) =====
+-- ===== Upgrade map (Fase 3.1 do refactor Balatro; infinito desde Jul/2026) =====
 
--- Cap por carta. Sem isso, forge stackava infinitamente: +1 atk × 20 = absurdo.
--- 5 níveis = +10 atk/def numa carta — já é forte sem virar bola de neve.
-RunManager.UPGRADE_LEVEL_CAP = 5
+-- Cap por carta vem de Config.Game.UPGRADE_LEVEL_CAP (0 = SEM CAP — forja
+-- infinita; o freio de balance é o custo: fogueira = 1 grátis por acampamento,
+-- loja = custo crescente por forja paga). Valor > 0 restaura o teto antigo.
+function RunManager.getUpgradeCap()
+    local cap = Config.Game.UPGRADE_LEVEL_CAP
+    if cap == nil then return 5 end
+    return cap
+end
 
 -- Incrementa o nível de upgrade de uma carta. Aplica a TODAS as cópias dessa
 -- carta no deck na próxima buildPlayableDeck (todas refletem o "+N").
 -- Retorna o novo nível, ou nil se já está no cap (caller deve checar pra
--- bloquear a forge na UI).
+-- bloquear a forge na UI). Com cap 0 (infinito) nunca retorna nil.
 function RunManager:upgradeCard(cardId)
     if not self.currentRun then return 0 end
     self.currentRun.upgraded = self.currentRun.upgraded or {}
     local current = self.currentRun.upgraded[cardId] or 0
-    if current >= RunManager.UPGRADE_LEVEL_CAP then
+    local cap = RunManager.getUpgradeCap()
+    if cap > 0 and current >= cap then
         return nil
     end
     local lvl = current + 1
@@ -303,11 +333,34 @@ function RunManager:upgradeCard(cardId)
     return lvl
 end
 
--- True se a carta pode ser forjada novamente (não atingiu o cap).
+-- True se a carta pode ser forjada novamente (não atingiu o cap E a forja
+-- tem ALGO pra melhorar nela — carta sem stat básico nem effect upgradável
+-- não entra na bigorna).
 function RunManager:canUpgrade(cardId)
     if not self.currentRun then return false end
+    local cardData = self.cardDatabase:getCard(cardId)
+    if not cardData or next(RunManager.getForgeGains(cardData)) == nil then
+        return false
+    end
+    local cap = RunManager.getUpgradeCap()
+    if cap <= 0 then return true end
     local lvl = (self.currentRun.upgraded and self.currentRun.upgraded[cardId]) or 0
-    return lvl < RunManager.UPGRADE_LEVEL_CAP
+    return lvl < cap
+end
+
+-- Custo da PRÓXIMA forja comprada (oferta "Forja" da loja). Cresce por forja
+-- PAGA na run: base × mult^n, teto em FORGE_COST_MAX. A da fogueira é grátis.
+function RunManager:getPaidForgeCost()
+    local n = (self.currentRun and self.currentRun.paidForges) or 0
+    local cfg = Config.Offers
+    local cost = cfg.FORGE_COST_BASE * (cfg.FORGE_COST_MULT ^ n)
+    return math.min(cfg.FORGE_COST_MAX, math.floor(cost + 0.5))
+end
+
+-- Registra uma forja paga (chamado pela loja ao vender a oferta "Forja").
+function RunManager:registerPaidForge()
+    if not self.currentRun then return end
+    self.currentRun.paidForges = (self.currentRun.paidForges or 0) + 1
 end
 
 -- Lê nível de upgrade. Default 0 se carta nunca forjada.
@@ -316,33 +369,68 @@ function RunManager:getUpgrades(cardId)
     return self.currentRun.upgraded[cardId] or 0
 end
 
--- Aplica +N ao instance criado. Cada nível: +2 attack, +2 defense, +1 valor
--- do primeiro effect (se tipo numérico simples). Cost permanece igual — você
--- pagou pra upgradar, não vai pagar mais mana pra usar.
-local UPGRADE_ATK_PER_LVL = 2
-local UPGRADE_DEF_PER_LVL = 2
-local UPGRADE_EFFECT_PER_LVL = 1
+-- Aplica +N ao instance criado. Ganhos por nível vêm de Config.Offers
+-- (FORGE_ATK/DEF/EFFECT_PER_LVL — fonte única com a UI, que mostra o mesmo
+-- número no tooltip/preview). Cost permanece igual — você pagou pra upgradar,
+-- não vai pagar mais mana pra usar.
 local UPGRADABLE_EFFECT_TYPES = {
     instant_heal = true, magic_damage = true, aoe_magic_damage = true,
     add_armor = true, damage_bonus = true, defense_bonus = true,
     damage_bonus_self = true, gain_strength = true, gain_dexterity = true,
 }
 
+-- ===== Regra de forja por CENÁRIO de carta (playtest Jul/2026) =====
+-- Bug original: `if instance.defense` é true até pra defense=0 (0 é truthy em
+-- Lua) — carta de ATAQUE PURO ganhava "+2 DEF" fantasma por nível e o tooltip
+-- mostrava fielmente o absurdo. A forja melhora O QUE A CARTA TEM:
+--   attack > 0      → +FORGE_ATK_PER_LVL por nível
+--   defense > 0     → +FORGE_DEF_PER_LVL por nível
+--   sem stat básico → +FORGE_EFFECT_PER_LVL no PRIMEIRO effect upgradável
+--                     (cartas de efeito puro: poções, utilitárias)
+--   nenhum ganho    → carta NÃO forjável (canUpgrade barra; picker esconde)
+--   joker           → não forjável (invariante existente, nunca chega aqui)
+-- getForgeGains é a FONTE ÚNICA: applyUpgradesToInstance, CardInfoDisplay e
+-- RestScreen (preview + resultado) leem daqui — a UI nunca mente.
+-- Matriz completa em memory/rng_and_offers.md §forja.
+function RunManager.getForgeGains(cardData)
+    if not cardData then return {} end
+    local gains = {}
+    local hasBasic = false
+    if (cardData.attack or 0) > 0 then
+        gains.atk = Config.Offers.FORGE_ATK_PER_LVL
+        hasBasic = true
+    end
+    if (cardData.defense or 0) > 0 then
+        gains.def = Config.Offers.FORGE_DEF_PER_LVL
+        hasBasic = true
+    end
+    if not hasBasic and cardData.effects then
+        for i, eff in ipairs(cardData.effects) do
+            if eff.value and UPGRADABLE_EFFECT_TYPES[eff.type] then
+                gains.effectIndex = i
+                gains.effectType = eff.type
+                gains.effect = Config.Offers.FORGE_EFFECT_PER_LVL
+                break
+            end
+        end
+    end
+    return gains
+end
+
 function RunManager:applyUpgradesToInstance(instance, level)
     if not instance or not level or level <= 0 then return instance end
     instance.upgrades = level
-    if instance.attack then
-        instance.attack = instance.attack + UPGRADE_ATK_PER_LVL * level
+    local gains = RunManager.getForgeGains(instance)
+    if gains.atk then
+        instance.attack = instance.attack + gains.atk * level
     end
-    if instance.defense then
-        instance.defense = instance.defense + UPGRADE_DEF_PER_LVL * level
+    if gains.def then
+        instance.defense = instance.defense + gains.def * level
     end
-    -- Boost no primeiro effect numérico simples (heurística pra healing/damage cards).
-    if instance.effects and instance.effects[1] and instance.effects[1].value then
-        local etype = instance.effects[1].type
-        if UPGRADABLE_EFFECT_TYPES[etype] then
-            instance.effects[1].value = instance.effects[1].value + UPGRADE_EFFECT_PER_LVL * level
-        end
+    if gains.effectIndex and instance.effects
+        and instance.effects[gains.effectIndex] then
+        local eff = instance.effects[gains.effectIndex]
+        eff.value = eff.value + gains.effect * level
     end
     -- F5: re-renderiza a moldura DEPOIS dos stats upados — antes a arte era
     -- gerada no createCardInstance com os números base (carta forjada mentia
@@ -470,6 +558,9 @@ end
 
 function RunManager:saveRun()
     if not self.currentRun then return false, "sem run ativa" end
+    -- Snapshot do RNG viaja no save: load restaura o estado EXATO de cada
+    -- stream (getState/setState) — reabrir o jogo não re-rola nada.
+    self.currentRun.rngState = Rng.get():getState()
     local ok, err = SaveManager.saveRun(self.currentRun)
     if not ok then
         print("[RunManager] falha ao salvar:", err)
@@ -484,6 +575,13 @@ function RunManager:loadRun()
 
     self.currentRun = runData
     self.isRunActive = true
+
+    -- Restaura o RNG da run. Save antigo sem rngState: fromState devolve um
+    -- Rng novo (seed fresca) — a run continua, só não reproduz o passado.
+    Rng.setActive(Rng.fromState(runData.rngState))
+    if not runData.rngState then
+        print("[RunManager] save sem rngState (pré-seed) — RNG novo gerado")
+    end
     return true
 end
 
@@ -498,14 +596,15 @@ end
 -- Termina a corrida atual
 function RunManager:endRun(victory)
     if not self.currentRun then return nil end
-    
+
     local finalStats = self:getCurrentRunStats()
     finalStats.victory = victory
     finalStats.finalScore = self:calculateFinalScore(victory)
-    
+
     self.currentRun = nil
     self.isRunActive = false
-    
+    Rng.clearActive()
+
     return finalStats
 end
 

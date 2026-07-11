@@ -59,7 +59,10 @@ local function updatePlayButtonPosition()
     local buttonWidth  = Config.Utils.getResponsiveSize(Config.UI.PLAY_BUTTON_WIDTH_RATIO, 180, "width")
     local buttonHeight = Config.Utils.getResponsiveSize(Config.UI.PLAY_BUTTON_HEIGHT_RATIO, 60, "height")
     local buttonX = (love.graphics.getWidth() - buttonWidth) / 1.05
-    local buttonY = love.graphics.getHeight() * 0.72
+    -- Feedback Jul/2026: os botões batiam na mão quando o deck crescia. Foram
+    -- SUBIDOS (0.72 → 0.62) e a mão agora é "espremida" numa área que termina
+    -- antes deles (ver handLayout) — dupla garantia contra sobreposição.
+    local buttonY = love.graphics.getHeight() * 0.62
     playButton:setPosition(buttonX, buttonY)
     playButton.width = buttonWidth
     playButton.height = buttonHeight
@@ -71,14 +74,49 @@ local function updatePlayButtonPosition()
 end
 GameplayScene.updatePlayButtonPosition = updatePlayButtonPosition
 
-local function updateCardPositions()
-    local width = love.graphics.getWidth()
+-- ============================================================================
+-- LAYOUT DA MÃO (fanning + squeeze estilo Balatro)
+-- ============================================================================
+-- Balatro (cardarea.lua:align_cards) distribui a mão numa ÁREA de largura fixa:
+-- o espaçamento vira areaW/(n-1), então quantas mais cartas, mais elas se
+-- sobrepõem ("espremem") — nunca estouram a área. A carta em hover sobe e é
+-- desenhada por cima das vizinhas (já feito no draw). Portamos a mesma ideia:
+-- a mão fica CENTRADA na tela, mas com a largura do leque LIMITADA pra terminar
+-- antes dos botões de ação (à direita), com folga de meia-carta.
+--
+-- Retorna: startX (x do centro da 1ª carta), spacing, cardY, n (#mão).
+local function handLayout()
+    local width  = love.graphics.getWidth()
     local height = love.graphics.getHeight()
-    local cardSpacing = Config.Utils.getResponsiveSize(Config.UI.CARD_SPACING_RATIO, 120, "width")
-    local currentHandSize = #game.hand
-    local totalCardsWidth = cardSpacing * math.max(0, currentHandSize - 1)
-    local cardStartX = (width - totalCardsWidth) / 2
+    local n = #game.hand
     local cardY = height * 0.8
+
+    -- largura renderizada aproximada de uma carta (BASE_SCALE do template 96px)
+    local cardW = 96 * (Config.Cards.BASE_SCALE or 1.333)
+    -- espaçamento "confortável" quando há poucas cartas (comportamento antigo)
+    local maxSpacing = Config.Utils.getResponsiveSize(Config.UI.CARD_SPACING_RATIO, 120, "width")
+
+    -- limite direito = início dos botões (com folga). A metade do leque não pode
+    -- passar disso menos meia-carta, senão a carta mais à direita cobre o botão.
+    local rightLimit = (playButton and playButton.x or width * 0.80) - 16
+    local maxHalf = math.max(cardW * 0.5, rightLimit - cardW * 0.5 - width * 0.5)
+    local maxFanW = maxHalf * 2   -- largura máxima do leque (centro→centro)
+
+    local spacing = maxSpacing
+    if n > 1 then
+        spacing = math.min(maxSpacing, maxFanW / (n - 1))
+    else
+        spacing = 0
+    end
+
+    local totalW = spacing * math.max(0, n - 1)
+    local startX = (width - totalW) / 2
+    return startX, spacing, cardY, n
+end
+GameplayScene.handLayout = handLayout
+
+local function updateCardPositions()
+    local cardStartX, cardSpacing, cardY = handLayout()
 
     for i, card in ipairs(game.hand) do
         local layoutX = cardStartX + (i - 1) * cardSpacing
@@ -160,12 +198,16 @@ function GameplayScene.draw()
     local run = game and game.runManager and game.runManager.currentRun
     if run then currentAct = run.actNumber or 1 end
 
-    -- PROGRESSÃO DE CENÁRIO (feedback Jul/2026): batalha comum acontece na
-    -- ESTRADA (mundo-esfera); boss/mini_boss/elite acontecem DENTRO do
-    -- castelo (interior PixelLab por ato) — chegou no marco, entrou.
+    -- PROGRESSÃO DE CENÁRIO (feedback Jul/2026 + v10.1): batalha comum e
+    -- MINI-BOSS acontecem na ESTRADA (mundo-esfera, do lado de fora);
+    -- boss/elite acontecem DENTRO do castelo (interior PixelLab por ato).
     local nodeType = run and run.currentNode and run.currentNode.type
-    local interior = GameplayScene.SCENE_MODE == "worldroad"
-        and (nodeType == "boss" or nodeType == "mini_boss" or nodeType == "elite")
+    -- v10: enquanto a CERIMÔNIA de entrada toca (porta abrindo), a cena
+    -- continua na estrada — o interior só assume depois do fade
+    local entering = GameplayScene.SCENE_MODE == "worldroad"
+        and WorldRoad.isEntering()
+    local interior = GameplayScene.SCENE_MODE == "worldroad" and not entering
+        and (nodeType == "boss" or nodeType == "elite")
 
     -- v9.2: no battle da estrada, o inimigo desenha DENTRO do painter do
     -- WorldRoad (no eixo BATTLE_REL) pra que postes/árvores mais próximos
@@ -175,7 +217,7 @@ function GameplayScene.draw()
     local traveling = GameplayScene.SCENE_MODE == "worldroad"
         and not interior and WorldRoad.isTraveling()
     local worldBattle = GameplayScene.SCENE_MODE == "worldroad"
-        and not interior and not traveling
+        and not interior and not traveling and not entering
     local enemyBbox, enemyCx, enemyCy
     if worldBattle then
         enemyCx, enemyCy = WorldRoad.getRoadAnchor(WorldRoad.BATTLE_REL,
@@ -213,7 +255,7 @@ function GameplayScene.draw()
     -- (callback no eixo BATTLE_REL — props próximos na frente dele). Aqui só
     -- os outros casos: interior (hall estático) e SceneLayer legado. Na
     -- viagem o inimigo é billboard do WorldRoad (não desenha aqui).
-    if not traveling and not worldBattle then
+    if not traveling and not worldBattle and not entering then
         enemyCx = math.floor(width / 2)
         enemyCy = math.floor(height * 0.68)
         enemyBbox = EnemyRenderer.draw(game, enemyCx, enemyCy)
@@ -226,7 +268,7 @@ function GameplayScene.draw()
         WorldRoad.drawOverlays(0, topBarHeight, width, height - topBarHeight)
     end
 
-    if not traveling then
+    if not traveling and not entering then
         EnemyHud.draw(game, enemyBbox, enemyCx, enemyCy)
     end
 
@@ -235,12 +277,9 @@ function GameplayScene.draw()
     -- Banner de turno (por cima do HUD, por baixo da mão/tooltips)
     TurnBanner.draw()
 
-    -- Layout da mão (drag + reorder + slot animado)
-    local cardSpacing = Config.Utils.getResponsiveSize(Config.UI.CARD_SPACING_RATIO, 120, "width")
-    local currentHandSize = #game.hand
-    local totalCardsWidth = cardSpacing * math.max(0, currentHandSize - 1)
-    local cardStartX = (width - totalCardsWidth) / 2
-    local cardY = height * 0.8
+    -- Layout da mão (drag + reorder + slot animado) — fanning/squeeze estilo
+    -- Balatro (ver handLayout): a mão nunca estoura pra cima dos botões.
+    local cardStartX, cardSpacing, cardY, currentHandSize = handLayout()
 
     local draggingCard, draggingIdx
     for i, card in ipairs(game.hand) do
@@ -348,6 +387,14 @@ function GameplayScene.draw()
         love.graphics.rectangle("fill", 0, 0, width, height)
         love.graphics.setColor(1, 1, 1, 1)
     end
+    -- v10: fade da fase "push" da cerimônia (entrando pelo vão da porta —
+    -- escurece ATÉ o preto; o interiorFade acima revela do preto depois)
+    local ef = WorldRoad.entryFade and WorldRoad.entryFade() or 0
+    if ef > 0 then
+        love.graphics.setColor(0, 0, 0, ef * ef)
+        love.graphics.rectangle("fill", 0, 0, width, height)
+        love.graphics.setColor(1, 1, 1, 1)
+    end
 end
 
 -- ============================================================================
@@ -384,7 +431,11 @@ function GameplayScene.update(dt)
     do
         local runU = game.runManager and game.runManager.currentRun
         local ntU = runU and runU.currentNode and runU.currentNode.type
-        local isInt = ntU == "boss" or ntU == "mini_boss" or ntU == "elite"
+        -- v10: o interior só "existe" quando a cerimônia da porta terminou.
+        -- v10.1: mini_boss saiu do interior — briga do lado de fora
+        local isInt = (ntU == "boss" or ntU == "elite")
+            and not (GameplayScene.SCENE_MODE == "worldroad"
+                     and WorldRoad.isEntering())
         if isInt then
             InteriorFX.update(dt, math.min(3, (runU and runU.actNumber) or 1))
         end
@@ -428,18 +479,27 @@ function GameplayScene.update(dt)
         end
         if lastFloorKey ~= nil and floorKey ~= lastFloorKey
            and not WorldRoad.isTraveling() then
-            -- nodes de interior (boss/elite): sem viagem na estrada — a
-            -- batalha começa direto dentro do castelo
             local run2 = game.runManager and game.runManager.currentRun
             local nt = run2 and run2.currentNode and run2.currentNode.type
-            if not (nt == "boss" or nt == "mini_boss" or nt == "elite") then
-                -- o novo inimigo já existe (nextPhase rodou) → vem lá de trás;
-                -- na chegada, quicadas de aterrissagem (juice)
+            if nt == "boss" then
+                -- v10.2: BOSS — a esfera anda pra frente MAIS UM passo (o
+                -- castelo cresce naturalmente, como todo andar), SEM inimigo
+                -- na estrada (o boss está dentro); ao chegar, a porta abre
+                -- + som + fade pro hall. "A porta só abre no boss."
+                WorldRoad.travel({
+                    onComplete = function() WorldRoad.enterCastle() end,
+                })
+            elseif nt ~= "elite" then
+                -- batalha comum E MINI-BOSS (v10.1: "do lado de fora do
+                -- castelo, sem aquele background"): o inimigo vem lá de
+                -- trás pela estrada; na chegada, quicadas de aterrissagem
                 WorldRoad.travel({
                     encounter = EnemyRenderer.getEncounterBillboard(game.enemy),
                     onComplete = function() EnemyRenderer.triggerArrival() end,
                 })
             end
+            -- elite: sem viagem e sem cerimônia — hall direto com o fade
+            -- de entrada simples (comportamento pré-v10)
         end
         lastFloorKey = floorKey
     else
@@ -574,19 +634,26 @@ end
 -- ============================================================================
 
 function GameplayScene.mousepressed(x, y, button)
-    if topBar:mousepressed(x, y, button) then return end
+    -- v10: cerimônia de entrada no castelo é cinemática — engole cliques
+    if GameplayScene.SCENE_MODE == "worldroad" and WorldRoad.isEntering() then
+        return true
+    end
+    -- v9.7.1: retorna se CONSUMIU o clique — o que sobrar vira poke no
+    -- cenário do WorldRoad (main.lua → pokeSceneAt, mapa vivo)
+    if topBar:mousepressed(x, y, button) then return true end
 
     if button == 1 then
         -- BUG do playtest ("encerro e nada acontece"): os widgets Button
         -- exigem mousepressed pra armar o pressed — o hit-test manual
         -- antigo do Jogar Cartas disparava no press (ignorando disabled)
         -- e o Encerrar Turno nunca recebia o press → onClick NUNCA fired.
-        if playButton:mousepressed(x, y, button) then return end
+        if playButton:mousepressed(x, y, button) then return true end
         if endTurnButton and endTurnButton:mousepressed(x, y, button) then
-            return
+            return true
         end
 
         -- Drag-pending em cartas hovered (select vs reorder resolve em release)
+        local armed = false
         for _, card in ipairs(game.hand) do
             if card.isHovered then
                 card.dragPending = true
@@ -594,17 +661,19 @@ function GameplayScene.mousepressed(x, y, button)
                 card.dragStartMY = y
                 card.dragOffsetX = card.x - x
                 card.dragOffsetY = card.y - y
+                armed = true
             end
         end
+        if armed then return true end
     end
+    return false
 end
 
--- Calcula drop-index baseado na posição X do mouse
+-- Calcula drop-index baseado na posição X do mouse (usa o MESMO layout do draw)
 local function computeHandDropIndex(mx, handSize)
     if handSize <= 1 then return 1 end
-    local cardSpacing = Config.Utils.getResponsiveSize(Config.UI.CARD_SPACING_RATIO, 120, "width")
-    local totalW = cardSpacing * (handSize - 1)
-    local cardStartX = (love.graphics.getWidth() - totalW) / 2
+    local cardStartX, cardSpacing = handLayout()
+    if cardSpacing <= 0 then return 1 end
     local rawIdx = 1 + math.floor((mx - cardStartX + cardSpacing / 2) / cardSpacing)
     return math.max(1, math.min(handSize, rawIdx))
 end

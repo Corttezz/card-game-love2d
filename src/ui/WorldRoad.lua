@@ -32,8 +32,14 @@ local Sfx = require("src.systems.Sfx")
 local LightEngine = require("engine.LightEngine")
 local ShadowEngine = require("engine.ShadowEngine")
 local LuminaireEngine = require("engine.LuminaireEngine")
+local RoadWear = require("engine.RoadWear")
+local RoadSurface = require("engine.RoadSurface")
 local Config = require("src.core.Config")
 local EnemyEmissives = require("src.data.enemy_emissives")
+-- v9.7.1: GrassField declarado AQUI (era local no meio do arquivo e o
+-- update() — textualmente ANTES — enxergava global nil → crash na rajada
+-- do mouse; mesma lição do ciclo 41)
+local GrassField = require("engine.GrassField")
 
 local WorldRoad = {}
 
@@ -101,6 +107,13 @@ local ENV_FIELDS = {
 -- ============================================================================
 WorldRoad._time = 0
 WorldRoad._camZ = 0
+-- v10: âncora do TRECHO — o castelo reseta pra longe quando o bioma vira
+-- (pedido: "quando troca de bioma, a distância do castelo reseta").
+-- _segBasePrev preserva a âncora do bioma anterior durante o crossfade
+-- (senão o castelo que está esvaindo pipocava pra longe junto).
+WorldRoad._segBase = 0
+WorldRoad._segBasePrev = 0
+WorldRoad._entry = nil         -- v10.2: cerimônia de entrada (door/fade)
 WorldRoad._ambient = {}          -- partículas ambientais por bioma
 WorldRoad._smoke = {}            -- fumaça da chaminé do castelo (quando perto)
 WorldRoad._castleTop = nil       -- {x, y, s} setado no drawCastleOf
@@ -242,12 +255,41 @@ end
 -- ============================================================================
 -- SPRITES (PNG PixelLab prioridade; fallback procedural)
 -- ============================================================================
+-- v9.7.1: retângulo de CONTEÚDO por imagem (pixels com alpha ≥ 0.6) — o
+-- clique no cenário deve acertar só a parte FÍSICA do prop (feedback: "a
+-- luz não deveria contar no clique, só o corpo do poste"). Canvases
+-- PixelLab têm margens transparentes enormes (lanterna fields: corpo de
+-- 21px num canvas de 72) e a hitbox de quad inteiro cobria justamente a
+-- área onde o glow do LightEngine aparece. Scan 1× por arquivo, cache
+-- fraco por Image (morre junto com o sprite).
+local contentRect = setmetatable({}, { __mode = "k" })
+local function scanContentRect(img, path)
+    if contentRect[img] ~= nil then return end
+    local ok, data = pcall(love.image.newImageData, path)
+    if not ok or not data then contentRect[img] = false; return end
+    local w, h = data:getWidth(), data:getHeight()
+    local x0, y0, x1, y1
+    for y = 0, h - 1 do
+        for x = 0, w - 1 do
+            local _, _, _, a = data:getPixel(x, y)
+            if a >= 0.6 then
+                if not x0 or x < x0 then x0 = x end
+                if not x1 or x > x1 then x1 = x end
+                if not y0 then y0 = y end
+                y1 = y
+            end
+        end
+    end
+    contentRect[img] = x0 and { x0 = x0, y0 = y0, x1 = x1, y1 = y1 } or false
+end
+
 local function tryLoadPng(name)
     local path = "assets/sprites/world/" .. name .. ".png"
     if not love.filesystem.getInfo(path) then return nil end
     local ok, img = pcall(love.graphics.newImage, path)
     if not ok or not img then return nil end
     img:setFilter("nearest", "nearest")
+    scanContentRect(img, path)
     return img
 end
 
@@ -256,19 +298,12 @@ end
 --   assets/sprites/world/anim/<bid>_<kind>_<variant>/0.png..N.png
 -- Sem pasta → luminária fica com o PNG estático (glow assado + flicker
 -- de luz seguem funcionando).
-local lumFramesCache = {}
-local function luminaireFrames(bid, kind, variant)
-    local key = bid .. "_" .. kind .. "_" .. variant
-    local hit = lumFramesCache[key]
-    if hit ~= nil then return hit or nil end
+-- Loader compartilhado (luminárias E landmarks): lê a pasta ordenada
+-- numericamente. nil se não existe ou tem menos de 2 frames.
+local function readAnimFrames(key)
     local dir = "assets/sprites/world/anim/" .. key
     local info = love.filesystem.getInfo(dir)
-    if not info or info.type ~= "directory" then
-        local f0 = nil
-        if variant ~= 0 then f0 = luminaireFrames(bid, kind, 0) end
-        lumFramesCache[key] = f0 or false
-        return f0
-    end
+    if not info or info.type ~= "directory" then return nil end
     local files = love.filesystem.getDirectoryItems(dir)
     table.sort(files, function(a, b)
         local na = tonumber(a:match("^(%d+)"))
@@ -282,13 +317,25 @@ local function luminaireFrames(bid, kind, variant)
             local ok, im = pcall(love.graphics.newImage, dir .. "/" .. f)
             if ok and im then
                 im:setFilter("nearest", "nearest")
+                scanContentRect(im, dir .. "/" .. f)
                 frames[#frames + 1] = im
             end
         end
     end
-    local res = #frames > 1 and frames or false
-    lumFramesCache[key] = res
-    return res or nil
+    return #frames > 1 and frames or nil
+end
+
+local lumFramesCache = {}
+local function luminaireFrames(bid, kind, variant)
+    local key = bid .. "_" .. kind .. "_" .. variant
+    local hit = lumFramesCache[key]
+    if hit ~= nil then return hit or nil end
+    local frames = readAnimFrames(key)
+    if not frames and variant ~= 0 then
+        frames = luminaireFrames(bid, kind, 0)
+    end
+    lumFramesCache[key] = frames or false
+    return frames
 end
 
 -- v9: caminho do PNG da luminária (mesma cascata variant → 0 do getSprite)
@@ -951,7 +998,8 @@ local function populate()
         table.insert(WorldRoad._clouds, {
             xr = WorldRoad._rng:random(),
             yr = 0.07 + WorldRoad._rng:random() * 0.33,
-            speed = 1.6 + WorldRoad._rng:random() * 1.8,
+            -- v9.7: deriva mais viva (feedback "nuvens muito estáticas")
+            speed = 2.6 + WorldRoad._rng:random() * 2.6,
             scale = 0.85 + WorldRoad._rng:random() * 0.55,
             phase = WorldRoad._rng:random() * 6.28,
             variant = 0,
@@ -963,7 +1011,7 @@ local function populate()
         table.insert(WorldRoad._clouds, {
             xr = WorldRoad._rng:random(),
             yr = 0.05 + WorldRoad._rng:random() * 0.20,
-            speed = 0.7 + WorldRoad._rng:random() * 0.9,
+            speed = 1.2 + WorldRoad._rng:random() * 1.3,
             scale = 0.45 + WorldRoad._rng:random() * 0.30,
             phase = WorldRoad._rng:random() * 6.28,
             variant = 0,
@@ -983,7 +1031,44 @@ function WorldRoad.setBiome(n)
         WorldRoad._prevBiomeIndex = WorldRoad._biomeIndex
         WorldRoad._biomeIndex = idx
         WorldRoad._blend = { from = from, t = 0, duration = BLEND_DURATION }
+        -- v10: novo trecho — o castelo do bioma novo COMEÇA lá atrás
+        WorldRoad._segBasePrev = WorldRoad._segBase
+        WorldRoad._segBase = WorldRoad._camZ
     end
+end
+
+-- ============================================================================
+-- v10: CERIMÔNIA DE ENTRADA no castelo — SÓ NO BOSS (v10.1: "a porta só
+-- deve abrir quando for o boss"; mini-boss briga do lado de fora, elite
+-- vai pro hall com fade simples). Pedido: "a porta do castelo abrindo,
+-- um som, e a gente entrando ali dentro".
+-- v10.2 (feedback): a cerimônia NÃO mexe na câmera/escala — o castelo já
+-- está no tamanho natural da caminhada (perto por volta do boss). Só:
+--   door (1.4s) — frames da porta abrindo (anim/<bid>_castle_door) + som
+--                 do portão (madeira; abyss/dusk = surto arcano)
+--   fade (0.9s) — fade a preto → onComplete (GameplayScene revela o hall)
+-- ============================================================================
+function WorldRoad.enterCastle(opts)
+    opts = opts or {}
+    local bid = rawBiome().id
+    WorldRoad._entry = {
+        phase = "door", t = 0,
+        doorK = 0, fade = 0,
+        sound = (bid == "abyss" or bid == "dusk")
+            and "castleGateMagic" or "castleGateOpen",
+        onComplete = opts.onComplete,
+    }
+    Sfx.play(WorldRoad._entry.sound)
+end
+
+function WorldRoad.isEntering()
+    return WorldRoad._entry ~= nil
+end
+
+-- alpha 0..1 do fade a preto da fase "fade" (GameplayScene desenha o rect)
+function WorldRoad.entryFade()
+    local e = WorldRoad._entry
+    return e and e.fade or 0
 end
 
 function WorldRoad.travel(opts)
@@ -1073,6 +1158,300 @@ local function getLandmark(key)
     return img
 end
 
+-- ============================================================================
+-- v9.5: LUGARES VIVOS (feedback: "a fogueira está estática, isso é estranho —
+-- o mapa todo se movimenta"). Cada landmark ganha:
+--   1. FRAMES PixelLab em assets/sprites/world/anim/<key>/0..N.png (mesma
+--      receita das luminárias: frame 0 = PNG base, só fogo/pano/brilho mexe).
+--      pingpong = vai-e-volta (pano/brilho reiniciando no frame 0 dá "pulo";
+--      fogo pode correr o loop).
+--   2. Sombra ancorada na BASE DA PAREDE por conteúdo (footPad): na casa/tenda
+--      as últimas linhas do sprite são escada/deck avançando pro 1º plano e a
+--      silhueta-sombra nascia na PONTA disso — "saindo mais pra frente da
+--      casa" (feedback com print). Valores medidos por opacidade/linha.
+--   3. Micro-luz na chama/janela/orbe (âncora = scan de conteúdo do
+--      LuminaireEngine, receita das janelas do castelo) com flicker de fogo.
+--   4. Fumaça de chaminé determinística na casa (função pura do tempo,
+--      doutrina GrassField), no MESMO slot de profundidade do sprite.
+-- ============================================================================
+-- hoverFpsK: hover ACELERA a animação (fogo cresce, vento venta) — v9.6.
+-- hoverAnim: pasta de anim de ESTADO no hover (porta da casa abrindo);
+-- toca por progresso 0→1 (abre no enter, fecha no exit), não por loop.
+local LANDMARK_ANIM = {
+    landmark_rest   = { fps = 10, hoverFpsK = 1.8 },
+    landmark_battle = { fps = 8, pingpong = true, hoverFpsK = 1.7 },
+    landmark_elite  = { fps = 9, hoverFpsK = 1.6 },
+    landmark_event  = { fps = 7, pingpong = true, hoverFpsK = 1.6 },
+    landmark_shop   = { fps = 6, pingpong = true, hoverAnim = "landmark_shop_hover" },
+    -- v9.8: CASTELOS VIVOS (feedback: "totalmente estáticos") — bandeiras
+    -- tremulam, janelas/fogo/olhos pulsam; frames em anim/<bid>_castle/.
+    -- pingpong em todos (pano e brilho reiniciando no frame 0 dá pulo)
+    fields_castle    = { fps = 8, pingpong = true },
+    highlands_castle = { fps = 5, pingpong = true },
+    abyss_castle     = { fps = 9, pingpong = true },
+    frost_castle     = { fps = 6, pingpong = true },
+    marsh_castle     = { fps = 6, pingpong = true },
+    dusk_castle      = { fps = 8, pingpong = true },
+}
+-- som de hover por lugar (v9.6, ElevenLabs em audio/sfx/fork-hover-*.mp3)
+local LANDMARK_HOVER_SOUND = {
+    landmark_rest   = "forkHoverFire",
+    landmark_shop   = "forkHoverDoor",
+    landmark_battle = "forkHoverFlag",
+    landmark_elite  = "forkHoverElite",
+    landmark_event  = "forkHoverTent",
+}
+local LANDMARK_SHADOW_PAD = {
+    landmark_shop = 12, landmark_event = 5, landmark_chest = 6,
+}
+local LANDMARK_LIGHT = {
+    landmark_rest  = { color = { 1.00, 0.62, 0.28 }, radiusK = 0.55, intensity = 0.55 },
+    landmark_elite = { color = { 0.72, 0.38, 1.00 }, radiusK = 0.45, intensity = 0.50 },
+    landmark_shop  = { color = { 1.00, 0.72, 0.38 }, radiusK = 0.30, intensity = 0.45 },
+    landmark_event = { color = { 0.45, 0.80, 1.00 }, radiusK = 0.30, intensity = 0.45 },
+}
+local LANDMARK_SMOKE = {
+    -- xf/yf = boca da chaminé em fração do canvas (medido no PNG)
+    landmark_shop = { xf = 0.325, yf = 0.02 },
+}
+
+local landmarkFramesCache = {}
+local function landmarkFrames(key)
+    local hit = landmarkFramesCache[key]
+    if hit ~= nil then return hit or nil end
+    local frames = readAnimFrames(key)
+    landmarkFramesCache[key] = frames or false
+    return frames
+end
+
+-- frame do lugar num TEMPO-DE-FRAME absoluto (ft). O fork usa relógio
+-- próprio por braço (acumula dt — o hover acelera sem pular frame)
+local function landmarkFrameAt(key, ft)
+    local fr = landmarkFrames(key)
+    if not fr then return nil end
+    local a = LANDMARK_ANIM[key]
+    if a and a.pingpong then
+        local period = 2 * #fr - 2
+        local k = math.floor(ft % period)
+        if k >= #fr then k = period - k end
+        return fr[k + 1]
+    end
+    return fr[1 + math.floor(ft % #fr)]
+end
+
+-- frame pelo relógio global + fase (caminho da CHEGADA, sem hover).
+-- seed = fase própria (dois marcos iguais não piscam em uníssono).
+-- mod pelo PERÍODO real (pingpong = 2n-2) — preserva a continuidade do
+-- handoff fork → lugar também no vai-e-volta
+local function landmarkFrame(key, seed)
+    local fr = landmarkFrames(key)
+    if not fr then return nil end
+    local a = LANDMARK_ANIM[key]
+    local period = (a and a.pingpong) and (2 * #fr - 2) or #fr
+    return landmarkFrameAt(key,
+        WorldRoad._time * ((a and a.fps) or 8) + (seed or 0) % period)
+end
+
+-- fumaça da chaminé: puffs determinísticos subindo/inchando/sumindo, no
+-- idioma do castelo (aglomerado de quadrados chunky, sem halo translúcido)
+local function drawLandmarkSmoke(key, px, py, iw, ih, s, alpha)
+    local sm = LANDMARK_SMOKE[key]
+    if not sm or ih * s < 46 then return end   -- longe demais: vira ruído
+    local mx = px + (sm.xf - 0.5) * iw * s
+    local my = py - ih * s + sm.yf * ih * s
+    local rise = ih * s * 0.52
+    for k = 0, 2 do
+        local p = (WorldRoad._time * 0.30 + k * 0.333) % 1
+        local a = alpha * 0.40 * math.min(1, p * 5) * (1 - p)
+        if a > 0.01 then
+            local puffX = mx + math.sin(WorldRoad._time * 0.8 + k * 2.1 + p * 2.6)
+                * (0.8 + p * 3.2) * s + p * 2.5 * s
+            local puffY = my - p * rise
+            local sz = math.max(2, (1.1 + p * 2.8) * s)
+            love.graphics.setColor(0.80, 0.77, 0.72, a)
+            love.graphics.rectangle("fill", math.floor(puffX - sz / 2),
+                math.floor(puffY - sz / 2), sz, sz)
+            love.graphics.setColor(0.74, 0.71, 0.66, a * 0.85)
+            love.graphics.rectangle("fill", math.floor(puffX - sz * 0.85),
+                math.floor(puffY - sz * 0.15), math.max(1, sz * 0.6), math.max(1, sz * 0.6))
+            love.graphics.rectangle("fill", math.floor(puffX + sz * 0.35),
+                math.floor(puffY - sz * 0.65), math.max(1, sz * 0.55), math.max(1, sz * 0.55))
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- micro-luz do lugar: âncora por conteúdo (centróide dos pixels mais
+-- claros — fogo/janela/orbe), flicker de fogo das luminárias.
+-- alphaK acompanha o fade do sprite (braço não-escolhido na convergência)
+local function submitLandmarkLight(key, px, py, iw, ih, s, rel, seed, alphaK)
+    local L = LANDMARK_LIGHT[key]
+    if not L or not LightEngine.submitMicro then return end
+    alphaK = alphaK or 1
+    if alphaK <= 0.05 then return end
+    local anc = LuminaireEngine.anchor("landmark", key, 0,
+        "assets/sprites/world/" .. key .. ".png")
+    local ax, ay = (anc and anc.ax) or 0.5, (anc and anc.ay) or 0.45
+    local fx = px + (ax - 0.5) * iw * s
+    local fy = py - ih * s * (1 - ay)
+    local time = love.timer.getTime()
+    local sd = (seed or 0) % 1000
+    local n = love.math.noise(time * 1.4, sd) * 0.75
+        + love.math.noise(time * 4.0, sd + 37.2) * 0.25
+    local fxT, fyT = love.graphics.transformPoint(fx, fy)
+    -- v9.9.2: mesma receita dos postes (glow dither + núcleo) — o micro
+    -- cru com raio grande virava um bloco quadrado no lightmap ¼
+    local fi = 0.86 + 0.14 * n
+    local fr = 0.88 + 0.18 * n
+    local r = iw * s * L.radiusK
+    LightEngine.submit({
+        x = fxT, y = fyT, radius = r * 1.5 * fr,
+        color = L.color, intensity = L.intensity * 0.55 * fi * alphaK,
+        dither = true, ditherAmt = 0.28, levels = 8,
+        seed = sd, z = rel,
+    })
+    LightEngine.submitMicro(fxT, fyT, r * 0.45 * fr,
+        L.color, L.intensity * fi * alphaK, rel)
+end
+
+-- ============================================================================
+-- v9.7: CENÁRIO INTERATIVO (pedido: "tudo interativo no mapa, tipo
+-- Hearthstone") — clicar num prop dá uma mexidinha (pêndulo amortecido no
+-- pivô da base), copa solta folhinhas, cerca espanta os pássaros pousados,
+-- nuvem faz squash, e cada kind tem seu som. O registro de hit é refeito
+-- POR FRAME na ordem do painter (o teste varre do fim = mais perto 1º).
+-- ============================================================================
+WorldRoad._hitScene = {}
+-- v9.7.2: tuft/flowers FORA do mapa de poke (feedback: "não quero
+-- interação com a grama") — grama não tem som nem hitbox (ver skip no
+-- registro do painter); a vida dela vem do vento ambiente do GrassField.
+local POKE_SOUND = {
+    tree = "sceneRustle", pine = "sceneRustle", bush = "sceneRustle",
+    deadtree = "sceneWoodKnock", fence = "sceneWoodKnock",
+    totem = "sceneWoodKnock",
+    lantern = "sceneLampCreak",
+    brazier = "forkHoverFire", firepit = "forkHoverFire",
+    torch = "forkHoverFire", fissure = "forkHoverFire",
+    shrine = "sceneStoneThud", runestone = "sceneStoneThud",
+    crystal = "forkHoverTent", mushroom = "sceneRustle",
+    cloud = "sceneCloudPoof",
+}
+-- v9.7.2: MATERIAL por bioma (feedback: "o poste do bioma 1 é de MADEIRA
+-- e saía barulho de ferro") — override (bid, kind); default = POKE_SOUND.
+-- fields/marsh/dusk = poste de madeira; highlands/frost = ferro (catálogo).
+local POKE_SOUND_BIOME = {
+    fields = { lantern = "sceneLampWood" },
+    marsh  = { lantern = "sceneLampWood" },
+    dusk   = { lantern = "sceneLampWood" },
+}
+-- amplitude do balanço por tipo (monolito treme menos que copa)
+local POKE_AMP = {
+    tree = 0.085, pine = 0.085, bush = 0.11, deadtree = 0.06,
+    tuft = 0.17, flowers = 0.15, fence = 0.045, totem = 0.05,
+    shrine = 0.03, runestone = 0.03, crystal = 0.05, mushroom = 0.12,
+    lantern = 0.05, brazier = 0.04, torch = 0.05, firepit = 0.03,
+    fissure = 0.02,
+}
+
+-- pêndulo amortecido do clique (0 quando não cutucado)
+local function pokeRot(p)
+    local t0 = p._pokeT
+    if not t0 then return 0 end
+    local e = WorldRoad._time - t0
+    if e >= 1.3 then p._pokeT = nil; return 0 end
+    return math.sin(e * 16) * (POKE_AMP[p.kind] or 0.05)
+        * math.exp(-e * 3.4)
+end
+
+-- folhinhas caindo da copa clicada — desenhadas no MESMO slot do prop
+-- (REGRA DE PROFUNDIDADE); trajetória = função pura do tempo desde o clique
+local function drawLeafFx(p, bx, by, iw, ih, s)
+    local fx = p._leafFx
+    if not fx then return end
+    local e = WorldRoad._time - fx.t0
+    if e >= 1.6 then p._leafFx = nil; return end
+    local a = math.min(1, (1.6 - e) * 2.2)
+    for k = 1, #fx do
+        local lf = fx[k]
+        local lx = bx + (lf.dx + math.sin(e * 2.8 + lf.ph) * 0.05) * iw * s
+        local ly = by - (lf.dy - e * lf.spd) * ih * s
+        if ly < by + 2 then
+            local sz = math.max(1, math.floor(1.6 * s + 0.5))
+            love.graphics.setColor(lf.c[1], lf.c[2], lf.c[3], a * 0.9)
+            love.graphics.rectangle("fill", math.floor(lx), math.floor(ly), sz, sz)
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+local function spawnLeafFx(p)
+    local gA = envColor("grassA")
+    local dead = (p.kind == "deadtree")
+    local fx = { t0 = WorldRoad._time }
+    for k = 1, 5 do
+        local r1, r2, r3 = math.random(), math.random(), math.random()
+        fx[k] = {
+            dx = (r1 - 0.5) * 0.55,
+            dy = 0.45 + r2 * 0.35,
+            ph = r3 * 6.28,
+            spd = 0.30 + r1 * 0.22,
+            c = dead and { 0.42, 0.33, 0.20 }
+                or { math.min(1, gA[1] * 1.35), math.min(1, gA[2] * 1.30),
+                     math.min(1, gA[3] * 1.10) },
+        }
+    end
+    p._leafFx = fx
+end
+
+-- clique no cenário: acha o alvo mais PRÓXIMO sob o mouse e reage
+function WorldRoad.pokeSceneAt(mx, my)
+    local hs = WorldRoad._hitScene
+    for i = #hs, 1, -1 do
+        local b = hs[i]
+        if mx >= b.x1 and mx <= b.x2 and my >= b.y1 and my <= b.y2 then
+            b.ref._pokeT = WorldRoad._time
+            if b.kind == "tree" or b.kind == "pine" or b.kind == "bush"
+               or b.kind == "deadtree" then
+                spawnLeafFx(b.ref)
+            end
+            -- pássaros pousados se assustam com a batida na cerca
+            if b.kind == "fence" and b.ref.perched and not b.ref.flown then
+                b.ref._scareBirds = true
+            end
+            local byBid = b.ref.bid and POKE_SOUND_BIOME[b.ref.bid]
+            local snd = (byBid and byBid[b.kind]) or POKE_SOUND[b.kind]
+            if snd then
+                Sfx.playWithVariation(snd,
+                    b.kind == "mushroom" and 0.72 or 1.0, 0.08)
+            end
+            return true
+        end
+    end
+    return false
+end
+
+-- lightmap: silhueta em flatColor (receita do monstro) — o lugar fica na
+-- cor da arte mesmo à noite/contraluz; luz de poste soma calor por cima
+local function submitLandmarkOccluder(img, px, py, iw, ih, s, rel)
+    local oxT, oyT = love.graphics.transformPoint(px - iw * s / 2, py - ih * s)
+    local ar, ag2, ab2 = 1, 1, 1
+    if LightEngine.ambientColor then
+        ar, ag2, ab2 = LightEngine.ambientColor()
+    end
+    local mx2 = math.max(ar, ag2, ab2, 0.001)
+    local tint = 0.35
+    LightEngine.submitOccluder({
+        z = rel,
+        flatColor = {
+            1 - tint * (1 - ar / mx2),
+            1 - tint * (1 - ag2 / mx2),
+            1 - tint * (1 - ab2 / mx2),
+        },
+        img = img, x = oxT, y = oyT, sx = s, sy = s,
+        bx = oxT, by = oyT, w = iw * s, h = ih * s,
+    })
+end
+
 function WorldRoad.update(dt)
     WorldRoad._time = WorldRoad._time + dt
 
@@ -1102,9 +1481,16 @@ function WorldRoad.update(dt)
                 local node = f.nodes[f.chosen]
                 local key = node and LANDMARK_FOR_TYPE[tostring(node.type)]
                 if key then
+                    local a = LANDMARK_ANIM[key]
+                    local fps = (a and a.fps) or 8
+                    local animT = ((f._animT and f._animT[f.chosen]) or 0)
+                        + f.chosen * 3.7
                     WorldRoad._landmark = {
                         key = key, z = f.markZ,
                         size = LANDMARK_SIZE[key] or 2.0,
+                        -- v9.6: fase que faz o relógio global CONTINUAR do
+                        -- relógio do braço — frame não pula no handoff
+                        phase = animT - WorldRoad._time * fps,
                     }
                 end
                 local cb, idx = f.onChosen, f.chosen
@@ -1117,6 +1503,59 @@ function WorldRoad.update(dt)
             if f.hover then
                 -- parada clicável sob o mouse → cursor "mão"
                 require("src.ui.CursorManager").request("hand")
+            end
+        end
+        -- v9.6: LUGARES REAGEM ao hover — relógio de animação POR BRAÇO
+        -- (acumula dt; hover acelera fogo/vento sem pular frame) + progresso
+        -- da anim de estado (porta da casa: abre no enter, fecha no exit)
+        f._animT = f._animT or {}
+        f._hoverK = f._hoverK or {}
+        for i = 1, f.n do
+            local node = f.nodes[i]
+            local key = node and LANDMARK_FOR_TYPE[tostring(node.type)]
+            local a = key and LANDMARK_ANIM[key]
+            local hov = (f.hover == i and not f.converge)
+            if a then
+                f._animT[i] = (f._animT[i] or 0)
+                    + dt * a.fps * (hov and (a.hoverFpsK or 1) or 1)
+            end
+            local hk = f._hoverK[i] or 0
+            f._hoverK[i] = math.min(1, math.max(0, hk + dt * (hov and 2.6 or -3.2)))
+        end
+        -- som do lugar no ENTER do hover (pitch levemente variado —
+        -- pattern Balatro anti-fadiga; sem som na convergência)
+        if f.hover ~= f._hoverPrev then
+            if f.hover and not f.converge then
+                local node = f.nodes[f.hover]
+                local key = node and LANDMARK_FOR_TYPE[tostring(node.type)]
+                local snd = key and LANDMARK_HOVER_SOUND[key]
+                if snd then Sfx.playWithVariation(snd, 1.0, 0.06) end
+            end
+            f._hoverPrev = f.hover
+        end
+    end
+
+    -- v9.7.2: a RAJADA no hover da grama (pokeAt + swish do v9.7) foi
+    -- REMOVIDA a pedido ("barulho estranho, movimento esquisito — não
+    -- quero interação com a grama"). Em compensação o vento AMBIENTE do
+    -- GrassField subiu (WIND_* nos presets) — grama viva sem depender do
+    -- mouse. Não reintroduzir hover/click na grama.
+
+    -- v10.2: cerimônia de entrada — só porta abrindo + fade (SEM câmera)
+    do
+        local en = WorldRoad._entry
+        if en then
+            en.t = en.t + dt
+            if en.phase == "door" then
+                en.doorK = math.min(1, en.t / 1.4)
+                if en.doorK >= 1 then en.phase = "fade"; en.t = 0 end
+            elseif en.phase == "fade" then
+                en.fade = math.min(1, en.t / 0.9)
+                if en.fade >= 1 then
+                    local cb = en.onComplete
+                    WorldRoad._entry = nil
+                    if cb then cb() end
+                end
             end
         end
     end
@@ -1439,12 +1878,27 @@ local function drawClouds(g, x, y, w)
         if img then
             local a = math.min(1, (tint[4] or 0.5) + 0.35) * (c.far and 0.7 or 1)
             local s = c.scale * sw
-            -- bob vertical suave (v5.8): mesma ideia do sway das árvores —
-            -- viva, mas sem sair do lugar
-            local bob = math.sin(WorldRoad._time * 0.35 + (c.phase or 0)) * 2.5
+            -- bob vertical suave (v5.8→v9.7: ±2.5 → ±4, "muito estáticas")
+            local bob = math.sin(WorldRoad._time * 0.35 + (c.phase or 0)) * 4
+            local cx2 = math.floor(x + c.xr * w)
+            local cy2 = math.floor(y + c.yr * (g.crestApexY - y) * 0.8 + bob)
+            local iw2, ih2 = img:getWidth(), img:getHeight()
+            -- v9.7: clique = squash & stretch amortecido (origem no centro
+            -- pra não deslocar a nuvem)
+            local sq = 1
+            if c._pokeT then
+                local e = WorldRoad._time - c._pokeT
+                if e < 1.1 then
+                    sq = 1 + math.sin(e * 13) * 0.10 * math.exp(-e * 3)
+                else c._pokeT = nil end
+            end
             love.graphics.setColor(1, 1, 1, a)
-            love.graphics.draw(img, math.floor(x + c.xr * w),
-                math.floor(y + c.yr * (g.crestApexY - y) * 0.8 + bob), 0, s, s)
+            love.graphics.draw(img,
+                cx2 + math.floor(iw2 * s / 2), cy2 + math.floor(ih2 * s / 2),
+                0, s * sq, s / sq, iw2 / 2, ih2 / 2)
+            local hsn = WorldRoad._hitScene
+            hsn[#hsn + 1] = { x1 = cx2, y1 = cy2, x2 = cx2 + iw2 * s,
+                              y2 = cy2 + ih2 * s, ref = c, kind = "cloud" }
         end
     end
 end
@@ -1634,10 +2088,43 @@ local function drawMountainsFront(g, x, w, camZ)
 end
 
 -- Castelo-destino: atrás do domo, centro da crista, escala por progresso.
-local function drawCastleOf(g, x, w, camZ, bid, alpha)
-    local progress = (camZ % SEGMENT_LEN) / SEGMENT_LEN
+-- v10: LIMITE DE APROXIMAÇÃO mapeado por bioma (pedido: "mapear o limite
+-- de andada por bioma e ter salvo") — fator de crescimento no fim do
+-- trecho (s_max = base×(1+growth)). Calibrado por screenshot gate1..6;
+-- o clamp anti-corte abaixo garante que NENHUMA arte corta no topo.
+local CASTLE_APPROACH = {
+    fields = 3.2, highlands = 3.2, abyss = 3.4,
+    frost = 2.9, marsh = 3.2, dusk = 3.1,
+}
+local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
+    -- v10: progresso POR TRECHO ancorado na troca de bioma — o castelo
+    -- RESETA pra longe quando o bioma vira (o módulo antigo fazia a
+    -- distância "dar a volta" no meio do ato).
+    -- v10.2 (feedback): SÓ o crescimento natural da caminhada — sem cap,
+    -- sem "boost" de câmera. A perspectiva de chegar perto vem só disso
+    -- (como era antes); por volta do boss o castelo já está enorme e a
+    -- porta abre no lugar. Empurrar a escala fazia o castelo SAIR da
+    -- esfera (dava pra ver o fim da arte) e "parar/recuar" no fim = ERRADO.
+    local walked = math.max(0, camZ - (segBase or WorldRoad._segBase or 0))
+    local progress = math.min(1, walked / SEGMENT_LEN)
     local img = getSprite("castle", 0, bid)
     if not img then return false end
+    -- v9.8: castelo VIVO — frames PixelLab (bandeiras/janelas; estrutura
+    -- estática, frame 0 = PNG base). Fase própria por bioma: no crossfade
+    -- os dois castelos não pulsam em uníssono
+    img = landmarkFrame(bid .. "_castle", (bid:byte(1) + #bid) * 0.7) or img
+    -- v10: ENTRADA — a porta abre por cima do frame (anim de ESTADO em
+    -- anim/<bid>_castle_door, indexada pelo progresso da fase "door" —
+    -- mesma receita da porta da casa da loja)
+    do
+        local en = WorldRoad._entry
+        if en and en.doorK and en.doorK > 0.02 then
+            local dfr = landmarkFrames(bid .. "_castle_door")
+            if dfr then
+                img = dfr[1 + math.floor(math.min(1, en.doorK) * (#dfr - 1) + 0.5)]
+            end
+        end
+    end
     local iw, ih = img:getWidth(), img:getHeight()
     -- APROXIMAÇÃO (feedback v5): o castelo se aproxima de verdade — escala
     -- 1.0 → 4.2 ao longo do trecho (antes 1.0→2.5, "nem dava pra ver o
@@ -1646,9 +2133,20 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha)
     -- v5.5: escala pelo MENOR entre largura e altura×1.5 — em tela larga o
     -- castelo escalado por w ficava gigante e cortado no topo
     local refW = math.min(w, g.h * 1.5)
-    local baseScale = (refW * 0.155) / iw
-    local s = baseScale * (1.0 + (progress ^ 1.4) * 3.2)
+    -- v9.9: escala por DENSIDADE DE PIXEL constante (referência = arte de
+    -- ~218px) — antes dividia por iw e QUALQUER canvas esticava pra mesma
+    -- largura; a torre estreita do highlands novo (164px) ficaria gorda
+    local baseScale = (refW * 0.155) / 218
+    local growth = CASTLE_APPROACH[bid] or 3.2
+    local s = baseScale * (1.0 + (progress ^ 1.4) * growth)
     local cx = g.cx
+    -- v10: CLAMP anti-corte — o topo do castelo NUNCA sai da tela
+    -- (pedido: "não deixar a imagem cortada/flutuando / saindo da esfera"),
+    -- pra qualquer arte. É só um GUARDA: com o growth por bioma calibrado,
+    -- no máximo natural o castelo já cabe — o clamp nunca empurra pra fora.
+    local sinkK = 0.03 + 0.20 * (1 - math.min(1, progress))
+    local sMax = (g.crestYAt(cx) - g.y - 6) / (ih * (1 - sinkK))
+    if sMax > 0 then s = math.min(s, sMax) end
     -- afundamento DIMINUI chegando: no fim só 3% da altura fica atrás da
     -- crista — o PORTÃO (base do sprite) sobe e fica totalmente visível
     local baseY = g.crestYAt(cx) + ih * s * (0.03 + 0.20 * (1 - progress))
@@ -1697,14 +2195,31 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha)
         -- cor da luz segue a JANELA PINTADA no castelo do bioma (marsh é
         -- verde, abyss é brasa) — luz laranja em castelo verde denuncia
         local wcol = (bio and bio.lightWindowColor) or LW.color
+        -- v9.9.2 (feedback: "a luz do castelo é um quadrado estranho — usa
+        -- o mesmo motor dos postes"): receita do LuminaireEngine — glow
+        -- posterizado+dither COM flicker de fogo + núcleo micro pequeno,
+        -- em vez do submitMicro cru de raio grande. Fase própria por janela.
+        local time = love.timer.getTime()
         for wi, a in ipairs(wins) do
             local wx = cx - iw * s / 2 + a[1] * iw * s
             local wy = baseY - ih * s + a[2] * ih * s
             local tx, ty = love.graphics.transformPoint(wx, wy)
+            local sd = wi * 37.7
+            local n = love.math.noise(time * 1.4, sd) * 0.75
+                + love.math.noise(time * 4.0, sd + 37.2) * 0.25
+            local fi = 0.86 + 0.14 * n
+            local fr = 0.88 + 0.18 * n
+            local r = LW.radiusK * iw * s
             -- z=999: o castelo é o objeto mais FUNDO — qualquer silhueta
             -- (árvore, inimigo) na frente oclui a luz das janelas
-            LightEngine.submitMicro(tx, ty, LW.radiusK * iw * s,
-                wcol, LW.intensity, 999)
+            LightEngine.submit({
+                x = tx, y = ty, radius = r * 1.6 * fr,
+                color = wcol, intensity = LW.intensity * 0.55 * fi,
+                dither = true, ditherAmt = 0.28, levels = 8,
+                seed = sd, z = 999,
+            })
+            LightEngine.submitMicro(tx, ty, r * 0.45 * fr, wcol,
+                LW.intensity * fi, 999)
         end
     end
     return true
@@ -1714,10 +2229,13 @@ local function drawCastle(g, x, w, camZ)
     local bl = WorldRoad._blend
     if bl and WorldRoad._prevBiomeIndex then
         local t = math.min(1, bl.t / bl.duration)
-        drawCastleOf(g, x, w, camZ, rawBiome().id, 1)
-        drawCastleOf(g, x, w, camZ, rawBiome(WorldRoad._prevBiomeIndex).id, 1 - t)
+        drawCastleOf(g, x, w, camZ, rawBiome().id, 1, WorldRoad._segBase)
+        -- v10: o castelo que ESVAI usa a âncora do trecho anterior —
+        -- continua na distância em que estava, sem pipocar pra longe
+        drawCastleOf(g, x, w, camZ, rawBiome(WorldRoad._prevBiomeIndex).id,
+            1 - t, WorldRoad._segBasePrev)
     else
-        drawCastleOf(g, x, w, camZ, rawBiome().id, 1)
+        drawCastleOf(g, x, w, camZ, rawBiome().id, 1, WorldRoad._segBase)
     end
 
     -- fumaça da chaminé (atrás do domo, junto com o castelo)
@@ -2234,7 +2752,8 @@ end
 -- lição do ciclo 41): na encruzilhada o capim respeita CADA braço em vez
 -- de abrir um clarão único ("sem grama demais entre e em volta deles").
 -- ============================================================================
-local GrassField = require("engine.GrassField")
+-- (v9.7.1: o require do GrassField subiu pro topo do arquivo — o update
+-- usa a rajada do mouse e locals daqui não existem pra quem vem antes)
 
 -- relFrom/relTo (v7.5): janela de profundidade — o drawProps intercala
 -- fatias de grama entre as árvores (capim na frente do pé cobre o pé).
@@ -2335,6 +2854,10 @@ function WorldRoad.forkMousePressed(mx, my)
                 f.chosenPulse = 0.35
             end
         end
+    else
+        -- v9.7: clique fora dos marcos CUTUCA o cenário (mapa vivo estilo
+        -- Hearthstone) — só juice/som, nenhum efeito de gameplay
+        WorldRoad.pokeSceneAt(mx, my)
     end
     return true                                  -- fork ativo consome cliques
 end
@@ -2369,9 +2892,19 @@ local function drawRoad(g, x, w, camZ)
         local eR = (math.sin(worldZ * 0.47 + 3.1) * 0.6 + math.sin(worldZ * 0.17 + 4.2) * 0.4) * edgeAmp
         local rowId = math.floor(worldZ * 2.3)
         local blend = hash(math.floor(worldZ / 1.9) * 3 + math.floor(t * 5))
-        local m = 0.92 + hash(rowId) * 0.10
-        local tile = getRoadTile(rawBiome().id)
-        local tw, th, dv, v, hs, uOff
+        -- v10.1: banda de brilho por faixa MUITO mais sutil (0.10→0.04) —
+        -- a superfície sintetizada carrega a variação; a banda forte por
+        -- cima re-achatava tudo em listras horizontais
+        local m = 0.97 + hash(rowId) * 0.04
+        -- v10.1: superfície SINTETIZADA por bioma (engine/RoadSurface —
+        -- clusters tonais + micro-relevo top-light + sulcos contínuos +
+        -- desgaste central) no lugar do PNG tileado ("textura padrão
+        -- replicada, sem profundidade/desnível" — feedback). PNG segue
+        -- como fallback se o bake falhar.
+        local biomeNow = rawBiome()
+        local tile = RoadSurface.get(biomeNow.id, biomeNow)
+            or getRoadTile(biomeNow.id)
+        local tw, th, dv, v, hs
         if tile then
             tw, th = tile:getWidth(), tile:getHeight()
             if not WorldRoad._roadQuad or WorldRoad._roadQuadTh ~= th then
@@ -2383,7 +2916,6 @@ local function drawRoad(g, x, w, camZ)
             dv = math.min(16, math.max(0.05, (rel - relN) * RD_V_DENSITY))
             v = (worldZ * RD_V_DENSITY) % th
             hs = 4.4 * (0.35 + 0.65 * t)
-            uOff = hash(math.floor(worldZ / 2.5) * 13) * tw
         end
         local newRow = rowId ~= lastDecoRow
         if newRow then lastDecoRow = rowId end
@@ -2406,9 +2938,14 @@ local function drawRoad(g, x, w, camZ)
                 local dxMid = (segX + segW / 2) - cx
                 local segY = math.floor(g.latY(dxMid, t))
                 if tile then
-                    WorldRoad._roadQuad:setViewport((segX - cx) / hs + uOff, v,
+                    -- v10.1: sampling CENTRADO no eixo da estrada (antes:
+                    -- offset u aleatório por faixa) — os sulcos de roda e o
+                    -- desgaste central assados na textura SEGUEM a curva do
+                    -- caminho (e cada braço do fork ganha os seus)
+                    WorldRoad._roadQuad:setViewport(
+                        (segX - cxRow) / hs + tw * 0.5, v,
                         segW / hs, dv, tw, th)
-                    local tm = (0.9 + blend * 0.16) * bright
+                    local tm = (0.95 + blend * 0.08) * bright
                     love.graphics.setColor(tm, tm, tm, aMul)
                     -- ciclo 31: overdraw de 1.5px (mata fresta entre latitudes)
                     love.graphics.draw(tile, WorldRoad._roadQuad, segX, segY, 0,
@@ -2597,19 +3134,27 @@ local function drawLandmarkFront(g, x, w, camZ)
     if not t then return end
     local img = getLandmark(lm.key)
     if not img then return end
+    -- v9.5: o lugar continua VIVO depois da chegada (mesmos frames do fork)
+    img = landmarkFrame(lm.key, lm.phase or lm.z) or img
     local iw, ih = img:getWidth(), img:getHeight()
     local s = g.scaleAt(lm.size or 2.0, t, ih)
     local py = g.crestApexY + (g.bottomY - g.crestApexY) * t
     local lx = g.cx + roadWobble(lm.z, t, w)   -- segue a curva da estrada
-    -- v8: sombra projetada da silhueta do landmark
-    if not ShadowEngine.sprite(img, lx, py - 1, s) then
+    -- v8: sombra projetada da silhueta (v9.5: ancorada na base da parede)
+    local shPad = LANDMARK_SHADOW_PAD[lm.key] or 0
+    local shY = py - 1 - shPad * s
+    if not ShadowEngine.sprite(img, lx, shY, s, { footPad = shPad }) then
         love.graphics.setColor(0, 0, 0, 0.22)
         love.graphics.ellipse("fill",
             lx + sunShadowDir(g, x, w, lx) * iw * s * 0.14,
-            py - 1, iw * s * 0.30, math.max(2, 4 * g.persp(t)))
+            shY, iw * s * 0.30, math.max(2, 4 * g.persp(t)))
         love.graphics.setColor(1, 1, 1, 1)
     end
     love.graphics.draw(img, math.floor(lx - iw * s / 2), math.floor(py - ih * s), 0, s, s)
+    -- v9.5: vida contínua + legibilidade noturna (mesma receita do fork)
+    drawLandmarkSmoke(lm.key, lx, py, iw, ih, s, 1)
+    submitLandmarkLight(lm.key, lx, py, iw, ih, s, rel, lm.z)
+    submitLandmarkOccluder(img, lx, py, iw, ih, s, rel)
 end
 
 -- Props do lado de cá da crista (crescem descendo o domo)
@@ -2696,6 +3241,21 @@ local function drawProps(g, x, w, camZ)
             local img = getLandmark(key or "landmark_battle")
             local aMul = forkAlpha(f, i)
             if img and aMul > 0.02 then
+                -- v9.5: lugar VIVO — frame da animação (fase própria por
+                -- braço). v9.6: relógio próprio do braço (hover acelera
+                -- fogo/vento); porta da casa é anim de ESTADO — substitui
+                -- o frame do loop enquanto abre/fecha (progresso _hoverK)
+                local animT = f._animT and f._animT[i]
+                img = (animT and landmarkFrameAt(key, animT + i * 3.7)
+                    or landmarkFrame(key, i * 3.7)) or img
+                local hoverK = (f._hoverK and f._hoverK[i]) or 0
+                local aDef = LANDMARK_ANIM[key]
+                if hoverK > 0.02 and aDef and aDef.hoverAnim then
+                    local hfr = landmarkFrames(aDef.hoverAnim)
+                    if hfr then
+                        img = hfr[1 + math.floor(hoverK * (#hfr - 1) + 0.5)]
+                    end
+                end
                 local offX = forkOffset(f, i, relM, w)
                     + roadWobble(camZ + relM, tM, w) * 0.5
                 local px = g.cx + offX
@@ -2708,41 +3268,32 @@ local function drawProps(g, x, w, camZ)
                     s = s * (1 + f.chosenPulse * 0.25)
                 end
                 local hovered = (f.hover == i and not f.converge)
-                -- sombra projetada (ÚNICA sombra — coerente com o resto)
-                if not ShadowEngine.sprite(img, px, py - 1, s,
-                    { alphaK = aMul }) then
+                -- sombra projetada (ÚNICA sombra — coerente com o resto).
+                -- v9.5: ancorada na BASE DA PAREDE (footPad): na casa as
+                -- últimas linhas do sprite são a escada avançando pro 1º
+                -- plano e a sombra nascia "na frente" do pé (feedback)
+                local shPad = LANDMARK_SHADOW_PAD[key] or 0
+                local shY = py - 1 - shPad * s
+                if not ShadowEngine.sprite(img, px, shY, s,
+                    { alphaK = aMul, footPad = shPad }) then
                     love.graphics.setColor(0, 0, 0, 0.22 * aMul)
                     love.graphics.ellipse("fill",
                         px + sunShadowDir(g, x, w, px) * iw * s * 0.14,
-                        py - 1, iw * s * 0.30, math.max(2, 4 * g.persp(tM)))
+                        shY, iw * s * 0.30, math.max(2, 4 * g.persp(tM)))
                 end
                 local br = hovered and 1.10 or 1
                 love.graphics.setColor(br, br, br, aMul)
                 love.graphics.draw(img, math.floor(px - iw * s / 2),
                     math.floor(py - ih * s), 0, s, s)
-                -- lightmap: silhueta em flatColor (receita do monstro) — o
-                -- marco fica na cor da arte mesmo à noite/contraluz; poça
-                -- de poste soma calor por cima. Só com alpha cheio (na
+                -- v9.5: coisinhas vivas do lugar (fumaça de chaminé) +
+                -- micro-luz da chama/janela/orbe — mesmo slot de profundidade
+                drawLandmarkSmoke(key, px, py, iw, ih, s, aMul)
+                submitLandmarkLight(key, px, py, iw, ih, s, relM,
+                    i * 31.7, aMul * (hovered and 1.4 or 1))
+                -- lightmap: silhueta legível à noite. Só com alpha cheio (na
                 -- convergência o sprite some — silhueta fantasma no chão).
                 if aMul > 0.6 then
-                    local oxT, oyT = love.graphics.transformPoint(
-                        px - iw * s / 2, py - ih * s)
-                    local ar, ag2, ab2 = 1, 1, 1
-                    if LightEngine.ambientColor then
-                        ar, ag2, ab2 = LightEngine.ambientColor()
-                    end
-                    local mx2 = math.max(ar, ag2, ab2, 0.001)
-                    local tint = 0.35
-                    LightEngine.submitOccluder({
-                        z = relM,
-                        flatColor = {
-                            1 - tint * (1 - ar / mx2),
-                            1 - tint * (1 - ag2 / mx2),
-                            1 - tint * (1 - ab2 / mx2),
-                        },
-                        img = img, x = oxT, y = oyT, sx = s, sy = s,
-                        bx = oxT, by = oyT, w = iw * s, h = ih * s,
-                    })
+                    submitLandmarkOccluder(img, px, py, iw, ih, s, relM)
                 end
                 f._geo[i] = { px = px, py = py, s = s, iw = iw, ih = ih,
                               aMul = aMul, hovered = hovered }
@@ -2957,6 +3508,9 @@ local function drawProps(g, x, w, camZ)
                     -- que árvores (massa menor) — "grama balançando"
                     rot = math.sin(WorldRoad._time * 2.3 + p.z * 1.4) * 0.055
                 end
+                -- v9.7: mexidinha do CLIQUE (pêndulo amortecido na base)
+                -- soma ao vento — qualquer kind reage
+                rot = rot + pokeRot(p)
 
                 -- perspectiva atmosférica + LUZ DO BIOMA: props tomam banho
                 -- da cor ambiente (quente no abismo, frio na geleira) — sem
@@ -2973,6 +3527,37 @@ local function drawProps(g, x, w, camZ)
                     1)
                 love.graphics.draw(img, math.floor(pxX), math.floor(sy + sink2),
                     rot, s * lumFlip, s, iw / 2, ih)
+
+                -- v9.7: mapa interativo — área clicável (ordem do painter)
+                -- + folhinhas do clique no MESMO slot de profundidade.
+                -- v9.7.1: hitbox = retângulo de CONTEÚDO (pixels opacos) e
+                -- não o quad inteiro — as margens do canvas cobriam a área
+                -- do glow ("a luz não deveria contar no clique").
+                -- v9.7.2: grama (tuft/flowers) NÃO é interativa — sem
+                -- hitbox, sem som, sem mexida ("não quero interação com
+                -- a grama"); a vida dela é o vento ambiente do GrassField
+                if p.kind ~= "tuft" and p.kind ~= "flowers" then
+                    local hsn = WorldRoad._hitScene
+                    local cr = contentRect[img]
+                    local bx1, by1, bx2, by2
+                    if cr then
+                        local flip = lumFlip or 1
+                        local rx0 = (cr.x0 - iw * 0.5) * s * flip
+                        local rx1 = (cr.x1 + 1 - iw * 0.5) * s * flip
+                        bx1 = pxX + math.min(rx0, rx1)
+                        bx2 = pxX + math.max(rx0, rx1)
+                        by1 = sy + sink2 + (cr.y0 - ih) * s
+                        by2 = sy + sink2 + (cr.y1 + 1 - ih) * s
+                    else
+                        bx1, by1 = pxX - iw * s * 0.5, sy + sink2 - ih * s
+                        bx2, by2 = pxX + iw * s * 0.5, sy + sink2
+                    end
+                    hsn[#hsn + 1] = {
+                        x1 = bx1, y1 = by1, x2 = bx2, y2 = by2,
+                        ref = p, kind = p.kind,
+                    }
+                end
+                drawLeafFx(p, pxX, sy + sink2, iw, ih, s)
 
                 -- LightEngine v1.1: vegetação OCLUI luz vinda de trás
                 -- (silhueta no lightmap — janelas do castelo/poças fundas
@@ -3012,6 +3597,11 @@ local function drawProps(g, x, w, camZ)
                     if lumFlip < 0 then ax = 1 - ax end
                     local fx = pxX + (ax - 0.5) * iw * s
                     local fy = sy + sink2 - sh2 * (1 - (lumAnc.ay or 0.3))
+                    -- v9.7: poste clicado balança — a CHAMA (e a luz/brasas
+                    -- que nascem dela) acompanha o pêndulo da base
+                    if p._pokeT then
+                        fx = fx + rot * ((sy + sink2) - fy)
+                    end
                     local fxT, fyT = love.graphics.transformPoint(fx, fy)
                     -- v9.2 (feedback: "poça no pé da madeira não faz
                     -- sentido"): a luz no chão cai EMBAIXO DA CHAMA (fx),
@@ -3040,7 +3630,8 @@ local function drawProps(g, x, w, camZ)
                         love.graphics.rectangle("fill", math.floor(bx), math.floor(railY - 3), 3, 3)
                         love.graphics.rectangle("fill", math.floor(bx + 2), math.floor(railY - 5), 2, 2)
                     end
-                    if rel < 6.5 then
+                    -- v9.7: batida na cerca (_scareBirds) também espanta
+                    if rel < 6.5 or p._scareBirds then
                         p.flown = true
                         local skyH = g.crestApexY - g.y
                         for bi = 1, p.perched do
@@ -3222,6 +3813,15 @@ function WorldRoad.draw(x, y, w, h, actNumber)
 
     local g = domeGeom(x, y, w, h)
 
+    -- v9.7: mapa interativo — guarda o rect (o update converte mouse →
+    -- mundo pra rajada da grama) e zera o registro de hit do frame
+    -- (nuvens e props se registram na ordem do painter durante o draw)
+    local lr = WorldRoad._lastRect or {}
+    lr.x, lr.y, lr.w, lr.h = x, y, w, h
+    WorldRoad._lastRect = lr
+    local hs = WorldRoad._hitScene
+    for i = #hs, 1, -1 do hs[i] = nil end
+
     -- LightEngine v1: abre o frame de luz com o ambiente do bioma (lerp
     -- dia→noite pelo timeOfDay + crossfade de bioma). As fontes se
     -- registram durante o draw; o composite roda FORA (drawLightComposite —
@@ -3315,6 +3915,26 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     drawDome(g, x, y, w)
     drawTerrainDetail(g, x, w, WorldRoad._camZ)  -- v7: lombadas de relevo
     drawRoad(g, x, w, WorldRoad._camZ)
+    -- v10: RoadWear — imperfeições do leito por bioma (manchas, pedras,
+    -- rachaduras com brasa, poças, neve, folhas). Determinístico por z do
+    -- mundo; DEPOIS da terra, ANTES da grama/props (detalhe é do CHÃO —
+    -- capim na borda e pés de árvore cobrem ele, nunca o contrário).
+    do
+        local gg = g
+        RoadWear.draw({
+            geom = gg, x = x, w = w, camZ = WorldRoad._camZ,
+            time = WorldRoad._time,
+            bid = rawBiome().id,
+            relCrest = REL_CREST,
+            roadCenter = function(z, t) return gg.cx + roadWobble(z, t, w) end,
+            roadHalf = function(t)
+                return ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15)) * 0.82
+            end,
+            tint = envColor,
+            forkActive = WorldRoad._fork ~= nil,
+            forkRel = FORK_REL,
+        })
+    end
     -- (v7.5: drawGrass agora é chamado DENTRO de drawProps, em fatias de
     -- profundidade intercaladas com as árvores — painter real)
 

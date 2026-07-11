@@ -546,12 +546,21 @@ local function drawHoverTooltip(self)
     local rarityLabel = I18n.t("rarity." .. (inst.rarity or "common"), nil, inst.rarity or "")
 
     local mY = cy + PAD + 36
+    -- Colunas DINÂMICAS com fit (design system Jul/2026): os offsets fixos
+    -- 72/172 colidiam entre si e vazavam do tooltip em idiomas longos.
+    local TextFit = require("src.ui.TextFit")
+    local mX = cx + PAD
+    local mEnd = cx + TIP_W - PAD
     Palette.set(typeColor)
-    love.graphics.print(typeLabel, cx + PAD, mY)
+    local w1 = TextFit.print(typeLabel, mX, mY,
+        { size = 8, maxW = math.floor((mEnd - mX) * 0.34) })
+    mX = mX + w1 + 12
     Palette.set(Palette.PARCHMENT)
-    love.graphics.print(classLabel, cx + PAD + 72, mY)
+    local w2 = TextFit.print(classLabel, mX, mY,
+        { size = 8, maxW = math.floor((mEnd - mX) * 0.5) })
+    mX = mX + w2 + 12
     Palette.set(rarityColor)
-    love.graphics.print(rarityLabel, cx + PAD + 172, mY)
+    TextFit.print(rarityLabel, mX, mY, { size = 8, maxW = mEnd - mX })
 
     -- Descrição (wrap)
     local descFont = FontManager.getFont(8)

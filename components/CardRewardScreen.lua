@@ -265,6 +265,16 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
     self.animationTime = 0
     self.mode = mode or "rewards"
 
+    -- Contexto da run pro cérebro de ofertas (classe filtra pool; deck liga
+    -- afinidade e anti-duplicata — "as escolhas anteriores importam").
+    local run = game.runManager and game.runManager.currentRun
+    self.shopSystem:setContext({
+        classId = (run and run.classId) or game.selectedClass,
+        deckIds = (game.runManager and game.runManager.getDeckCardIds)
+            and game.runManager:getDeckCardIds() or nil,
+        runManager = game.runManager, -- oferta Forja lê o custo crescente daqui
+    })
+
     self.shopSystem:setMode(self.mode)
     self.shopSystem:generateOffers()
     self.shopOffers = self.shopSystem:getCurrentOffers()
@@ -312,6 +322,10 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
     -- rodapé. Em rewards continua compacto no rodapé.
     local skipBonus = (self.modeConfig and self.modeConfig.skipBonus) or 0
     local skipLabel = I18n.t("reward.continue")
+    if self.mode == "rewards" then
+        -- Clareza: "Continuar" não dizia O QUE acontecia (perder a carta).
+        skipLabel = I18n.t("reward.skip_no_card")
+    end
     if self.mode == "shop" and skipBonus > 0 then
         skipLabel = skipLabel .. " (+" .. skipBonus .. "g)"
     end
@@ -656,7 +670,7 @@ function CardRewardScreen:_buildSelectionButtons(offer, idx)
 
     -- Buy button: "$N" (loja) ou "PEGAR" (recompensa grátis). Verde-grimório.
     local buyLabel = (offer.cost or 0) > 0 and ("$" .. tostring(offer.cost))
-        or "PEGAR"
+        or I18n.t("common.take"):upper()
     local buyBtn = Button:new(bx0, by0, buyW, btnH, buyLabel, function()
         local toBuy = self.selectedOffer
         self:clearSelection()
@@ -820,6 +834,19 @@ function CardRewardScreen:_drawSoldSlot(pos)
 end
 
 function CardRewardScreen:applyUpgrade(upgrade)
+    if upgrade.effect == "forge_card" then
+        -- Forja comprada: registra (o custo da PRÓXIMA cresce) e abre o picker
+        -- de carta por cima da loja. O pagamento já aconteceu em purchaseOffer.
+        if self.game.runManager and self.game.runManager.registerPaidForge then
+            self.game.runManager:registerPaidForge()
+        end
+        if _G.openForgeScreen then
+            _G.openForgeScreen()
+        else
+            Debug.warn("[CardRewardScreen] _G.openForgeScreen não registrado — forja ignorada")
+        end
+        return
+    end
     if upgrade.effect == "increase_max_health" then
         self.game.player.maxHealth = self.game.player.maxHealth + upgrade.value
         self.game.player.health = self.game.player.health + upgrade.value
@@ -1027,6 +1054,11 @@ function CardRewardScreen:draw()
                 local pos = {x = cardInstance.x, y = cardInstance.y}
                 cardInstance:draw(pos.x, pos.y, false, true)
                 self:drawPriceOverlay(cardInstance, pos.x, pos.y, slot)
+                -- Badges de clareza no modo rewards: raridade NOMEADA +
+                -- afinidade com o deck (modo shop fica como está — F13).
+                if self.mode == "rewards" then
+                    self:drawRewardBadges(cardInstance, slot)
+                end
             end
         end
     end
@@ -1081,72 +1113,12 @@ function CardRewardScreen:draw()
     self:_drawPurchaseFx()
 end
 
--- F10.3 + F11.2: Helper de painel container Balatro-style com ornamentos.
--- depth = "main" (BOSS_MAIN dourado dual-border + corner pieces) ou "inner" (L_BLACK simples).
+-- F10.3 + F11.2 → design system Jul/2026: o painel Balatro-style virou o
+-- CANÔNICO do jogo e mora em src/ui/UiPanel.lua (fonte única com PauseMenu
+-- e futuras telas). Este método é só o adapter do call site legado.
 function CardRewardScreen:_drawPanel(x, y, w, h, depth)
-    x = math.floor(x); y = math.floor(y)
-    w = math.floor(w); h = math.floor(h)
-
-    -- F2 do UI Overhaul: painel principal usa a moldura PixelLab (Panel9)
-    -- com miolo escuro; fallback procedural fica pros subpainéis.
-    if depth == "main" and Panel9.has("panel_inner") then
-        love.graphics.setColor(0, 0, 0, 0.45)
-        love.graphics.rectangle("fill", x + 4, y + 4, w, h, 6, 6)
-        Panel9.draw("panel_inner", x, y, w, h,
-            { fill = { 0.10, 0.07, 0.05, 0.94 } })
-        return
-    end
-
-    local fill, outline, innerOutline
-    if depth == "main" then
-        fill = {0.10, 0.07, 0.05, 0.94}
-        outline = Palette.AGED_GOLD or {0.78, 0.65, 0.20, 1}
-        innerOutline = Palette.AGED_GOLD_DARK or {0.45, 0.32, 0.10, 1}
-    else
-        -- inner panel (L_BLACK)
-        fill = {0.05, 0.04, 0.03, 0.88}
-        outline = Palette.AGED_GOLD_DARK or {0.45, 0.32, 0.10, 1}
-        innerOutline = nil
-    end
-
-    -- Sombra (offset 4,4).
-    love.graphics.setColor(0, 0, 0, 0.45)
-    love.graphics.rectangle("fill", x + 4, y + 4, w, h, 6, 6)
-    -- Fill principal.
-    love.graphics.setColor(fill)
-    love.graphics.rectangle("fill", x, y, w, h, 6, 6)
-    -- Highlight bevel topo (linha clara fina).
-    love.graphics.setColor(1, 0.88, 0.55, 0.18)
-    love.graphics.setLineWidth(1)
-    love.graphics.line(x + 6, y + 2, x + w - 6, y + 2)
-    -- Outline externo.
-    love.graphics.setColor(outline)
-    love.graphics.setLineWidth(depth == "main" and 3 or 2)
-    love.graphics.rectangle("line", x, y, w, h, 6, 6)
-    -- Inner outline (só painel principal).
-    if innerOutline then
-        love.graphics.setColor(innerOutline)
-        love.graphics.setLineWidth(1)
-        love.graphics.rectangle("line", x + 3, y + 3, w - 6, h - 6, 4, 4)
-    end
-
-    -- Corner ornaments (F11.2): só painel main. Quatro pequenos triângulos
-    -- dourados nos cantos, dando aparência de moldura ornamentada.
-    if depth == "main" then
-        local cornerSize = 10
-        love.graphics.setColor(Palette.AGED_GOLD_LIGHT or {1, 0.92, 0.55, 1})
-        love.graphics.setLineWidth(2)
-        -- Top-left
-        love.graphics.line(x + 2, y + cornerSize, x + 2, y + 2, x + cornerSize, y + 2)
-        -- Top-right
-        love.graphics.line(x + w - cornerSize, y + 2, x + w - 2, y + 2, x + w - 2, y + cornerSize)
-        -- Bottom-left
-        love.graphics.line(x + 2, y + h - cornerSize, x + 2, y + h - 2, x + cornerSize, y + h - 2)
-        -- Bottom-right
-        love.graphics.line(x + w - cornerSize, y + h - 2, x + w - 2, y + h - 2, x + w - 2, y + h - cornerSize)
-    end
-
-    love.graphics.setColor(1, 1, 1, 1)
+    local UiPanel = require("src.ui.UiPanel")
+    UiPanel.draw(x, y, w, h, { depth = depth or "main" })
 end
 
 -- F10.3: Title bar dourado no topo do painel principal com nome da loja +
@@ -1161,11 +1133,20 @@ function CardRewardScreen:_drawTitleBar(panelX, panelY, panelW)
     PixelCanvas.rectOutline(x, y, w, h, Palette.AGED_GOLD or {0.78, 0.65, 0.20, 1})
     PixelCanvas.rectOutline(x + 2, y + 2, w - 4, h - 4, Palette.AGED_GOLD_DARK or {0.45, 0.32, 0.10, 1})
 
-    -- Texto principal centralizado.
+    -- Texto principal centralizado. Modo rewards ganha título próprio +
+    -- subtítulo que diz a REGRA ("escolha 1") — a tela antiga não contava.
+    local isRewards = self.mode == "rewards"
     Palette.set(Palette.AGED_GOLD_LIGHT or {1, 0.92, 0.55, 1})
     love.graphics.setFont(FontManager.getFont(14))
-    love.graphics.printf(I18n.t("reward.shop_title") or "LOJA DE RELIQUIAS",
-        x, y + 10, w, "center")
+    local title = isRewards and I18n.t("reward.rewards_title")
+        or (I18n.t("reward.shop_title") or "LOJA DE RELIQUIAS")
+    love.graphics.printf(title, x, y + (isRewards and 5 or 10), w, "center")
+
+    if isRewards then
+        Palette.set(Palette.PARCHMENT or {0.85, 0.78, 0.62, 1})
+        love.graphics.setFont(FontManager.getFont(8))
+        love.graphics.printf(I18n.t("reward.rewards_subtitle"), x, y + 23, w, "center")
+    end
 
     -- Ouro à direita, dentro do title bar.
     if self.game and self.game.economySystem then
@@ -1174,6 +1155,66 @@ function CardRewardScreen:_drawTitleBar(panelX, panelY, panelW)
         Palette.set(Palette.PARCHMENT_LIGHT or {0.92, 0.85, 0.70, 1})
         love.graphics.printf(goldText, x, y + 12, w - 12, "right")
     end
+
+    -- "?" no canto esquerdo do title bar: explica as REGRAS de oferta (pity,
+    -- afinidade, raridade por ato) em linguagem de jogador — hover abre tooltip.
+    local hx, hy, hr = x + 18, y + math.floor(h / 2), 10
+    love.graphics.setColor(0.10, 0.08, 0.05, 1)
+    love.graphics.circle("fill", hx, hy, hr)
+    Palette.set(Palette.AGED_GOLD or {0.78, 0.65, 0.20, 1})
+    love.graphics.setLineWidth(1)
+    love.graphics.circle("line", hx, hy, hr)
+    Palette.set(Palette.AGED_GOLD_LIGHT or {1, 0.92, 0.55, 1})
+    love.graphics.setFont(FontManager.getFont(11))
+    love.graphics.print("?", hx - 3, hy - 8)
+
+    -- Hitbox em coordenadas de tela: o painel desenha dentro do translate do
+    -- slide — converte o mouse pro espaço local antes de comparar.
+    local mx, my = love.mouse.getPosition()
+    local myLocal = my - (self.slideOffsetY or 0)
+    if mx >= hx - hr - 3 and mx <= hx + hr + 3
+        and myLocal >= hy - hr - 3 and myLocal <= hy + hr + 3 then
+        local okST, StatusTooltip = pcall(require, "src.ui.StatusTooltip")
+        if okST and StatusTooltip.show then
+            StatusTooltip.show("reward_rules", mx, my)
+        end
+    end
+end
+
+-- Badges do modo rewards: pill de raridade NOMEADA na folga superior do slot
+-- (a carta ocupa ~86% — sobra espaço real) + pill "AFINIDADE" na folga
+-- inferior quando a oferta foi puxada pelas tags fortes do deck (Step 2).
+-- Clareza: raridade não é só uma borda colorida; afinidade não é mágica.
+function CardRewardScreen:drawRewardBadges(cardInstance, slot)
+    local offer = cardInstance.shopOffer
+    if not offer or offer.purchased then return end
+    local pos = self.cardPositions[slot]
+    if not pos then return end
+    local w = pos.w or self.cardWidth
+    local h = pos.h or self.cardHeight
+
+    local function pill(cx, cy, text, colorFg)
+        local f = FontManager.getFont(8)
+        love.graphics.setFont(f)
+        local tw = f:getWidth(text)
+        local bw, bh = tw + 12, 13
+        local bx, by = math.floor(cx - bw / 2), math.floor(cy - bh / 2)
+        PixelCanvas.rect(bx, by, bw, bh, { 0.07, 0.055, 0.04, 0.94 })
+        PixelCanvas.rectOutline(bx, by, bw, bh, colorFg)
+        love.graphics.setColor(colorFg[1], colorFg[2], colorFg[3], 1)
+        love.graphics.print(text, bx + 6, by + 2)
+    end
+
+    if offer.rarity then
+        local label = (I18n.t("rarity." .. offer.rarity, nil, offer.rarity)):upper()
+        pill(pos.x + w / 2, pos.y + 9, label, Palette.forRarity(offer.rarity))
+    end
+
+    if offer.affinity then
+        pill(pos.x + w / 2, pos.y + h - 9,
+            I18n.t("reward.affinity_badge"), Palette.AGED_GOLD_LIGHT)
+    end
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 -- Tooltip de carta em pass separado pra ficar acima de tudo (F10.2). Calcula
@@ -1284,8 +1325,10 @@ function CardRewardScreen:drawOffer(offer, x, y, index, customW, customH)
     -- Fallback: texto "✦ VOUCHER ✦" se o PNG não foi gerado pra esse id.
     if offer.type == "upgrade" then
         local spritePath = "assets/sprites/vouchers/" .. tostring(offer.id) .. ".png"
-        local sprite = ImageCache.get(spritePath)
-        local hasSprite = sprite and sprite:getWidth() > 1
+        -- tryGet: miss = nil (o get() devolvia o FALLBACK theRock e o
+        -- voucher sem arte mostrava a carta placeholder antiga na loja)
+        local sprite = ImageCache.tryGet(spritePath)
+        local hasSprite = sprite ~= nil
         -- Layout: nome no topo, sprite centralizado vertical+horizontal, desc+preço no rodapé.
         -- Slots de Y: nameTop(28) → spriteArea(meio) → descBottom(38) → priceBottom(24).
         local nameTopH   = 28      -- de y+8 até y+28 reserva pro nome
@@ -1517,6 +1560,16 @@ function CardRewardScreen:_drawHoverInfoPanels()
             and ("$" .. tostring(offer.cost)) or "Gratis"
         love.graphics.printf(typeLabel .. "  ·  " .. priceLabel,
                              panelX + PAD, panelY + 50, TEXT_W, "left")
+
+        -- Afinidade: POR QUE esta carta apareceu (tags fortes do seu deck).
+        if offer.affinity and offer.affinityTags then
+            love.graphics.setColor(Palette.AGED_GOLD_LIGHT[1], Palette.AGED_GOLD_LIGHT[2],
+                Palette.AGED_GOLD_LIGHT[3], anim)
+            love.graphics.setFont(FontManager.getFont(8))
+            love.graphics.printf(
+                I18n.t("reward.affinity_line", { tags = table.concat(offer.affinityTags, ", ") }),
+                panelX + PAD, panelY + 62, TEXT_W, "left")
+        end
 
         -- Separador
         love.graphics.setColor(Palette.AGED_GOLD[1], Palette.AGED_GOLD[2], Palette.AGED_GOLD[3], 0.6 * anim)

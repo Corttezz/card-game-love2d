@@ -82,6 +82,20 @@ function EventScreen:panelRect()
     return px, py, pw, ph
 end
 
+-- Label da opção com custo/ganho EXPLÍCITO entre colchetes (padrão StS: o
+-- botão declara a troca, nunca é pegadinha). Campos data-driven da opção:
+--   gains = { "$45", "carta rara" }  →  [+$45 / +carta rara]
+--   costs = { "12 HP", "20 ouro" }   →  [-12 HP / -20 ouro]
+-- Sem esses campos o label sai como está (opções "ir embora" etc).
+local function composeOptionLabel(opt)
+    if not opt.gains and not opt.costs then return opt.label end
+    local parts = {}
+    for _, g in ipairs(opt.gains or {}) do table.insert(parts, "+" .. g) end
+    for _, c in ipairs(opt.costs or {}) do table.insert(parts, "-" .. c) end
+    if #parts == 0 then return opt.label end
+    return opt.label .. "  [" .. table.concat(parts, " / ") .. "]"
+end
+
 function EventScreen:buildButtons()
     self.buttons = {}
     if not self.event then return end
@@ -106,7 +120,7 @@ function EventScreen:buildButtons()
             -- Limpa botoes enquanto feedback e exibido (impede duplo-click)
             self.buttons = {}
         end
-        local btn = Button:new(x, y, btnW, btnH, opt.label, onClick, nil, 10)
+        local btn = Button:new(x, y, btnW, btnH, composeOptionLabel(opt), onClick, nil, 10)
         table.insert(self.buttons, btn)
     end
 end

@@ -195,21 +195,39 @@ function CardFrame.render(card)
         renderStandard(card, w, h)
     end
 
-    -- Selo de FORJA (F5 gameplay-overhaul): carta upada mostra +N na moldura
-    -- (o contador vivia só em run.upgraded — gap "upgrade invisível").
+    -- GEMAS DE FORJA (v2 Jul/2026 — substitui o selo "+N" que duplicava
+    -- informação e brigava com o footer): detalhe SUTIL que ESCALA com a
+    -- evolução. Uma gema esmeralda 3×3 por nível numa fileira discreta na
+    -- base do art slot; do 6º nível em diante vira gema + "xN". O VALOR real
+    -- já muda no footer (verde-forja) — a carta é o template vivo.
     if (card.upgrades or 0) > 0 then
-        local FontManager = require("src.ui.FontManager")
-        local tag = "+" .. tostring(card.upgrades)
-        local f = FontManager.getFont(8)
-        local tw = f:getWidth(tag)
-        local bx, by = 4, h - 34
-        local bw, bh = tw + 8, 12
-        PixelCanvas.rect(bx, by, bw, bh, { 0.14, 0.26, 0.10, 1 })
-        PixelCanvas.rectOutline(bx, by, bw, bh, Palette.AGED_GOLD)
-        love.graphics.setFont(f)
-        Palette.set(Palette.AGED_GOLD_LIGHT)
-        love.graphics.print(tag, bx + 4, by + 2)
-        love.graphics.setColor(1, 1, 1, 1)
+        local lvl = card.upgrades
+        local gems = math.min(lvl, 5)
+        local gy = h - CardStatsFooter.HEIGHT - 7
+        local gx = 7
+        local GEM_HI  = { 0.62, 0.95, 0.55, 1 }
+        local GEM_MID = { 0.30, 0.68, 0.30, 1 }
+        local GEM_LO  = { 0.10, 0.32, 0.12, 1 }
+        for i = 1, gems do
+            local cxp = gx + (i - 1) * 6
+            -- Losango 3×3 facetado (luz no topo)
+            PixelCanvas.pixel(cxp,     gy - 1, GEM_HI)
+            PixelCanvas.pixel(cxp - 1, gy,     GEM_MID)
+            PixelCanvas.pixel(cxp,     gy,     GEM_HI)
+            PixelCanvas.pixel(cxp + 1, gy,     GEM_LO)
+            PixelCanvas.pixel(cxp,     gy + 1, GEM_LO)
+        end
+        if lvl > 5 then
+            local FontManager = require("src.ui.FontManager")
+            local f = FontManager.getFont(8)
+            love.graphics.setFont(f)
+            local tag = "x" .. tostring(lvl)
+            love.graphics.setColor(0, 0, 0, 0.9)
+            love.graphics.print(tag, gx + gems * 6 + 2, gy - 4)
+            love.graphics.setColor(GEM_HI)
+            love.graphics.print(tag, gx + gems * 6 + 1, gy - 5)
+            love.graphics.setColor(1, 1, 1, 1)
+        end
     end
 
     -- Stepped pixel-art corner cut (3px em L) — aplicado por último pra recortar

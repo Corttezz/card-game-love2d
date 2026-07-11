@@ -68,6 +68,47 @@ return {
         hand_suffix     = "({n} en mano)",
         score_label        = "puntos",
         score_record       = "RECORD!",
+        act             = "ACTO {n}",
+        floor           = "piso {x}/{total}",
+        endless         = "SIN FIN",
+    },
+
+    pause = {
+        title           = "PAUSA",
+        progress        = "ACTO {act} · piso {floor}/{total} — {class}",
+        no_run          = "Ninguna travesia en curso",
+        hint            = "ESC cierra · la travesia queda en pausa",
+        resume          = "Continuar",
+        resume_desc     = "Vuelve a donde estabas. Nada cambia.",
+        settings        = "Configuracion",
+        settings_desc   = "Volumenes, pantalla completa, shader CRT, idioma y accesibilidad.",
+        save_quit       = "Guardar y salir al menu",
+        save_quit_desc  = "Tu travesia queda GUARDADA justo aqui para continuar despues.",
+        quit_norun      = "Salir al menu",
+        quit_norun_desc = "Termina esta partida y vuelve al menu principal.",
+        abandon         = "Abandonar la run",
+        abandon_desc    = "Borra la travesia actual y su guardado. NO hay vuelta atras.",
+        abandon_confirm = "Seguro? Esto borra la travesia.",
+        abandon_yes     = "Si, abandonar",
+        abandon_no      = "No, volver",
+    },
+
+    common = {
+        skip = "Saltar",
+        back = "Volver",
+        take = "Tomar",
+    },
+
+    round_eval = {
+        cash_out = "Cobrar ${n}",
+    },
+
+    enemy_moves = {
+        attack    = "Embestida",
+        strong    = "GOLPE BRUTAL",
+        defend    = "Postura Defensiva",
+        buff      = "Furia Creciente",
+        buff_gain = "+2 DANO",
     },
 
     hud = {
@@ -83,6 +124,7 @@ return {
         defense      = "Defensa: ",
         effects      = "Efectos:",
         no_desc      = "(sin descripcion)",
+        forged       = "Forjada +{n}",
     },
 
     card_type = {
@@ -105,6 +147,11 @@ return {
 
     reward = {
         shop_title         = "TIENDA DE RELIQUIAS",
+        rewards_title      = "BOTIN DE BATALLA",
+        rewards_subtitle   = "Elige 1 carta para tu grimorio — o sigue sin carta",
+        skip_no_card       = "Seguir sin carta",
+        affinity_badge     = "AFINIDAD",
+        affinity_line      = "Afinidad con tu mazo: {tags}",
         gold_label         = "Oro: ${n}",
         continue           = "Continuar",
         refresh            = "Actualizar (${n})",

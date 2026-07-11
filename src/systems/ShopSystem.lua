@@ -9,6 +9,8 @@ local ShopSystem = {}
 ShopSystem.__index = ShopSystem
 
 local CardDatabase = require("src.systems.CardDatabase")
+local CardRegistry = require("src.systems.CardRegistry")
+local Rng          = require("src.systems.Rng")
 
 -- Catálogo de booster packs disponíveis na loja. Custo + tamanho do conteúdo.
 -- Fase 5 vai usar `size` (cards mostrados) e `choose` (cards escolhidos)
@@ -91,8 +93,7 @@ function ShopSystem:new()
     instance.cardCostBase = 3
     instance.upgradeCostBase = 5
 
-    -- Pool de cartas disponíveis na loja
-    instance.shopCardPool = {}
+    -- Pool de upgrades da loja (cartas vêm do CardRegistry.pickRewardCard).
     instance.shopUpgradePool = {}
 
     -- Sistema de raridade na loja (como TFT)
@@ -102,23 +103,31 @@ function ShopSystem:new()
         rare = 0.05,
     }
 
+    -- Cérebro de oferta compartilhado com as recompensas (pity + afinidade +
+    -- anti-duplicata moram no CardRegistry.pickRewardCard — uma regra só).
+    instance.cardRegistry = CardRegistry:new()
+    instance.cardDatabase = CardDatabase:new()
+
+    -- Contexto da run (classe + deck) injetado por quem abre a loja
+    -- (CardRewardScreen:show). Sem contexto: pool global, sem afinidade.
+    instance.context = {}
+    instance._offeredCardIds = {}
+
     instance:initializeShopPools()
 
     return instance
 end
 
--- Inicializa os pools de cartas e upgrades disponíveis na loja.
+-- Injeta o contexto da run atual antes de gerar ofertas.
+-- ctx = { classId = "warrior", deckIds = { "id1", "id2", ... } }
+function ShopSystem:setContext(ctx)
+    self.context = ctx or {}
+end
+
+-- Inicializa o pool de upgrades disponíveis na loja.
+-- (O pool de CARTAS por raridade foi aposentado: ofertas de carta saem do
+-- CardRegistry.pickRewardCard, que filtra por classe e aplica pity/afinidade.)
 function ShopSystem:initializeShopPools()
-    local cardDatabase = CardDatabase:new()
-    local allCards = cardDatabase:getAllCards()
-
-    for cardId, cardData in pairs(allCards) do
-        if cardData.rarity then
-            self.shopCardPool[cardData.rarity] = self.shopCardPool[cardData.rarity] or {}
-            table.insert(self.shopCardPool[cardData.rarity], cardId)
-        end
-    end
-
     self.shopUpgradePool = {
         { id = "health_upgrade",     name = "Vida Extra",   description = "+10 HP máximo",            cost = 5, effect = "increase_max_health",    value = 10 },
         { id = "mana_upgrade",       name = "Mana Extra",   description = "+1 mana máxima",           cost = 25, effect = "increase_base_mana",    value = 1  },
@@ -155,6 +164,8 @@ end
 -- Gera ofertas aleatórias seguindo o config do modo atual.
 function ShopSystem:generateOffers()
     self.currentOffers = {}
+    -- Dedup por geração: a mesma carta nunca aparece 2x na mesma vitrine.
+    self._offeredCardIds = {}
     local cfg = self:getModeConfig()
 
     for _ = 1, cfg.cards do
@@ -174,37 +185,61 @@ function ShopSystem:generateOffers()
 end
 
 function ShopSystem:generateCardOffer()
-    local rarity = self:rollRarity()
-    local availableCards = self.shopCardPool[rarity]
+    -- Delegado pro CardRegistry (pity + afinidade + anti-duplicata + filtro de
+    -- classe). Stream "shop": rolls da loja não mexem na sequência de rewards.
+    local pick = self.cardRegistry:pickRewardCard({
+        classId = self.context.classId,
+        rarityWeights = self.rarityWeights,
+        deckIds = self.context.deckIds,
+        excludeIds = self._offeredCardIds,
+        stream = "shop",
+    })
+    if not pick then return nil end
+    self._offeredCardIds[pick.cardId] = true
 
-    if availableCards and #availableCards > 0 then
-        local randomCardId = availableCards[love.math.random(#availableCards)]
-        local cardData = CardDatabase:new():getCard(randomCardId)
+    local cardData = self.cardDatabase:getCard(pick.cardId)
+    if not cardData then return nil end
 
-        if cardData then
-            local cost = self:calculateCardCost(cardData.rarity)
-            -- Recompensa pós-batalha é GRÁTIS (StS: escolha 1 de 3; pagar
-            -- é papel da LOJA). Autoplay B: recompensas pagas travavam o
-            -- crescimento do deck (~40% puladas por falta de ouro).
-            if self.mode == "rewards" then cost = 0 end
-            return {
-                type = "card",
-                id = randomCardId,
-                name = cardData.name,
-                description = cardData.description,
-                cost = cost,
-                rarity = cardData.rarity,
-                image = cardData.image,
-            }
-        end
-    end
-
-    return nil
+    local cost = self:calculateCardCost(cardData.rarity)
+    -- Recompensa pós-batalha é GRÁTIS (StS: escolha 1 de 3; pagar
+    -- é papel da LOJA). Autoplay B: recompensas pagas travavam o
+    -- crescimento do deck (~40% puladas por falta de ouro).
+    if self.mode == "rewards" then cost = 0 end
+    return {
+        type = "card",
+        id = pick.cardId,
+        name = cardData.name,
+        description = cardData.description,
+        cost = cost,
+        rarity = cardData.rarity,
+        image = cardData.image,
+        -- Afinidade (badge na UI): a oferta foi puxada por tags fortes do deck.
+        affinity = pick.affinity or nil,
+        affinityTags = pick.affinityTags,
+        fromPity = pick.fromPity,
+    }
 end
 
 function ShopSystem:generateUpgradeOffer()
+    -- Metade das vitrines oferece a FORJA (+1 nível numa carta à sua escolha,
+    -- custo crescente por forja COMPRADA na run — RunManager:getPaidForgeCost);
+    -- a outra metade, um upgrade global do pool clássico.
+    local runManager = self.context and self.context.runManager
+    if runManager and runManager.getPaidForgeCost
+        and Rng.get():random("shop") < 0.5 then
+        return {
+            type = "upgrade",
+            id = "forge_card",
+            name = "Forja",
+            description = "+1 nível numa carta à sua escolha (você escolhe ao comprar)",
+            cost = runManager:getPaidForgeCost(),
+            effect = "forge_card",
+            value = 1,
+        }
+    end
+
     local pool = self.shopUpgradePool
-    local pick = pool[love.math.random(#pool)]
+    local pick = Rng.get():pick("shop", pool)
     return {
         type = "upgrade",
         id = pick.id,
@@ -216,28 +251,24 @@ function ShopSystem:generateUpgradeOffer()
     }
 end
 
--- Sorteia booster pack ponderado por weight. Fase 5 implementa abertura.
+-- Sorteia booster pack ponderado por weight (stream "shop" do Rng da run).
 function ShopSystem:generateBoosterOffer()
-    local totalWeight = 0
-    for _, p in ipairs(BOOSTER_PACK_TYPES) do totalWeight = totalWeight + p.weight end
-    local roll = love.math.random() * totalWeight
-    local cumulative = 0
+    local entries = {}
     for _, p in ipairs(BOOSTER_PACK_TYPES) do
-        cumulative = cumulative + p.weight
-        if roll <= cumulative then
-            return {
-                type = "booster_pack",
-                id = p.id,
-                name = p.name,
-                description = p.description,
-                cost = p.cost,
-                kind = p.kind,
-                size = p.size,
-                choose = p.choose,
-            }
-        end
+        table.insert(entries, { item = p, weight = p.weight })
     end
-    return nil
+    local p = Rng.get():weighted("shop", entries)
+    if not p then return nil end
+    return {
+        type = "booster_pack",
+        id = p.id,
+        name = p.name,
+        description = p.description,
+        cost = p.cost,
+        kind = p.kind,
+        size = p.size,
+        choose = p.choose,
+    }
 end
 
 function ShopSystem:calculateCardCost(rarity)
@@ -247,15 +278,9 @@ function ShopSystem:calculateCardCost(rarity)
     return self.cardCostBase * (rarityMultipliers[rarity] or 1)
 end
 
-function ShopSystem:rollRarity()
-    local roll = love.math.random()
-    local cumulative = 0
-    for rarity, weight in pairs(self.rarityWeights) do
-        cumulative = cumulative + weight
-        if roll <= cumulative then return rarity end
-    end
-    return "common"
-end
+-- rollRarity local removido: a raridade da loja agora sai do MESMO roll das
+-- recompensas (CardRegistry:rollRarity via pickRewardCard) — com pity
+-- compartilhado e ordem determinística (o pairs() antigo nem era estável).
 
 -- Refresha ofertas. Custo cresce exponencialmente (Balatro feel) — não linear como antes.
 -- Cap em REROLL_MAX pra impedir trap de gold drain.

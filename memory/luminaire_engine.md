@@ -92,6 +92,27 @@ re-medir ocioso; orçamento 16.6). Anchor scan é 1× por (bid,kind,variant).
   no núcleo ≥78% do pico — pra cima clampa em 255 e nada muda). Modo
   `lumanim<N>` no screenshot tool prova movimento em cena.
 
+## v9.5 (Jul/10) — pipeline de animação REUSADO pelos landmarks do fork
+
+- Landmarks (fogueira/bandeira/obelisco/casa/tenda) animados com a MESMA
+  receita: `anim/landmark_<k>/0..8.png`, frame0 = base. Loader unificado
+  em `readAnimFrames` (WorldRoad).
+- **Map objects expiram em 8h** → pra animar um PNG já instalado sem o
+  objeto de origem: `animate_object` num objeto 1-direction QUALQUER
+  (âncora) com `custom_start_frame_base64` = PNG atual. O canvas vira o
+  do frame custom; keep_first_frame mantém frame0 == base bit a bit.
+- ⚠️ **NUNCA transcrever base64 grande em chamada de tool** (LLM corrompe
+  chars no meio; PNG tem CRC por chunk → "broken data stream" com contagem
+  de bytes certa). Solução: cliente MCP streamable-HTTP mínimo em Python
+  (initialize → notifications/initialized → tools/call) lendo o base64 do
+  disco — url+Authorization do server pixellab em `~/.claude.json`.
+- Download dos frames: endpoint `api.pixellab.ai/mcp/objects/<id>/download`
+  (zip com TODAS as anims) via curl -sL (solta o header no redirect B2;
+  urllib segue com header e leva 403 — mesmo problema dos map-objects).
+- Validação de qualidade nova: **máscara de diff espacial** (max diff por
+  pixel entre frame0 e 1..8 sobre o sprite ×3) mostra ONDE anima — pega
+  "fervura" de corpo que o número de atividade sozinho não denuncia.
+
 ## Pendências/afinações futuras
 - Variantes _1/_2 por kind (hoje tudo variant 0).
 - fields_lantern standalone (b63b61ef) ficou sem uso — regen 19703fde é o

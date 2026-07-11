@@ -183,13 +183,11 @@ function ClassSelectionScreen:_drawClassPanel(p)
         icon.draw(math.floor(x + w / 2 - icon.size.w * s / 2), y + 34, s)
     end
 
-    -- Nome
-    local nameFont = FontManager.getFont(16)
-    love.graphics.setFont(nameFont)
+    -- Nome (fit na largura do painel — design system Jul/2026)
     Palette.set(hover and Palette.RUST or Palette.INK)
     local name = (p.info.name or p.classId):upper()
-    love.graphics.print(name,
-        math.floor(x + w / 2 - nameFont:getWidth(name) / 2), y + 96)
+    require("src.ui.TextFit").print(name, x + 14, y + 96,
+        { size = 16, maxW = w - 28, align = "center", minSize = 11 })
 
     -- Descrição (wrap, INK sobre pergaminho)
     local descFont = FontManager.getFont(9)
@@ -200,12 +198,10 @@ function ClassSelectionScreen:_drawClassPanel(p)
 
     -- PASSIVA da classe (identidade de gameplay — o diferencial real).
     if p.info.passiveName then
-        local pf = FontManager.getFont(10)
-        love.graphics.setFont(pf)
         Palette.set(Palette.BLOOD)
         local pn = "PASSIVA: " .. p.info.passiveName:upper()
-        love.graphics.print(pn,
-            math.floor(x + w / 2 - pf:getWidth(pn) / 2), y + 168)
+        require("src.ui.TextFit").print(pn, x + 14, y + 168,
+            { size = 10, maxW = w - 28, align = "center" })
         local pdf = FontManager.getFont(8)
         love.graphics.setFont(pdf)
         Palette.set(Palette.PARCHMENT_DARK)

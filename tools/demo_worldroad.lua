@@ -55,10 +55,37 @@ end
 
 local game, topBar, gameUI
 
+-- v9.7.2: áudio mínimo do demo (o love.load do main.lua NÃO roda em modo
+-- tool) — registra só os sons do cenário interativo + fork, pra validar
+-- o MATERIAL de cada elemento por bioma ao vivo
+local function setupAudio()
+    if _G.audioSystem then return end
+    local AudioManager = require("engine.AudioManager")
+    local a = AudioManager:new()
+    _G.audioSystem = a
+    local sfx = {
+        forkHoverFire  = { "audio/sfx/fork-hover-fire.mp3",  0.40 },
+        forkHoverDoor  = { "audio/sfx/fork-hover-door.mp3",  0.38 },
+        forkHoverFlag  = { "audio/sfx/fork-hover-flag.mp3",  0.36 },
+        forkHoverElite = { "audio/sfx/fork-hover-elite.mp3", 0.40 },
+        forkHoverTent  = { "audio/sfx/fork-hover-tent.mp3",  0.36 },
+        sceneRustle     = { "audio/sfx/scene-rustle.mp3",      0.34 },
+        sceneWoodKnock  = { "audio/sfx/scene-wood-knock.mp3",  0.36 },
+        sceneLampCreak  = { "audio/sfx/scene-lamp-creak.mp3",  0.34 },
+        sceneLampWood   = { "audio/sfx/scene-lamp-wood.mp3",   0.34 },
+        sceneStoneThud  = { "audio/sfx/scene-stone-thud.mp3",  0.36 },
+        sceneGrassSwish = { "audio/sfx/scene-grass-swish.mp3", 0.26 },
+        sceneCloudPoof  = { "audio/sfx/scene-cloud-poof.mp3",  0.32 },
+        cardSelect      = { "audio/clickselect2-92097.mp3",    0.5 },
+    }
+    for code, d in pairs(sfx) do a:loadSound(code, d[1], d[2]) end
+end
+
 local function setupGame()
     local I18n = require("src.i18n.I18n")
     I18n.init()
     require("src.ui.PixelCanvas").enableNearest()
+    setupAudio()
 
     local Game = require("src.core.Game")
     game = Game:new()
@@ -215,6 +242,18 @@ local MONSTER_ROSTER = {
     { id = "eclipse_queen",     label = "Rainha do Eclipse  (Endless Anoitecer - BOSS)", boss = true },
 }
 
+-- v9.7.2: F cicla conjuntos de fork — os 6 tipos de lugar testáveis em
+-- qualquer bioma (hover acelera anim + som, porta da casa abre, clique
+-- converge de verdade)
+local FORK_SETS = {
+    { { type = "battle", label = "Batalha",  desc = "Um inimigo bloqueia a estrada" },
+      { type = "rest",   label = "Descanso", desc = "Fogueira acolhedora" },
+      { type = "shop",   label = "Loja",     desc = "Um mercador acena" } },
+    { { type = "elite",    label = "Elite",   desc = "Perigo brilhante" },
+      { type = "event",    label = "Evento",  desc = "Tenda misteriosa" },
+      { type = "treasure", label = "Tesouro", desc = "Baú esquecido" } },
+}
+
 local function runInteractive(postgate)
     setupGame()
     WorldRoad.setBiome(1)
@@ -222,6 +261,8 @@ local function runInteractive(postgate)
 
     local gallery = false
     local gIdx = 1
+    local forkSet = 0
+    local demoFadeIn = 0   -- v10: revela do preto após a cerimônia (B)
 
     local function applyGalleryMonster()
         local e = MONSTER_ROSTER[gIdx]
@@ -233,11 +274,22 @@ local function runInteractive(postgate)
     love.update = function(dt)
         WorldRoad.update(dt)
         EnemyRenderer.update(dt)
+        if demoFadeIn > 0 then demoFadeIn = demoFadeIn - dt / 0.8 end
         if postgate then forcePosts() end   -- margem inteira em postes
     end
 
     love.draw = function()
-        drawBattleFrame(true)
+        -- v10: durante a cerimônia da porta o inimigo não fica na estrada
+        drawBattleFrame(not WorldRoad.isEntering())
+        -- fade da fase "push" (entrando) + revelação pós-cerimônia
+        local ef = (WorldRoad.entryFade and WorldRoad.entryFade() or 0)
+        local fk = math.max(ef * ef, math.max(0, demoFadeIn))
+        if fk > 0 then
+            love.graphics.setColor(0, 0, 0, fk)
+            love.graphics.rectangle("fill", 0, 0,
+                love.graphics.getWidth(), love.graphics.getHeight())
+            love.graphics.setColor(1, 1, 1, 1)
+        end
         love.graphics.setColor(1, 1, 1, 0.85)
         if gallery then
             local e = MONSTER_ROSTER[gIdx]
@@ -257,10 +309,9 @@ local function runInteractive(postgate)
                 12, love.graphics.getHeight() - 24)
         else
             love.graphics.print(
-                "SPACE viagem+encounter | 1-6 bioma | V vista | R reset | M galeria"
+                "SPACE viagem | 1-6 bioma | F fork | B ENTRADA DO BOSS (porta)"
+                .. " | clique = cutuca cenario | V vista | R reset | M galeria"
                 .. " | L luz " .. (LightEngine.isEnabled() and "ON" or "OFF")
-                .. " | O/P ambiente "
-                .. string.format("%.2f", LightEngine.debugAmbientScale)
                 .. " | T hora "
                 .. string.format("%.2f", WorldRoad._timeOfDay or 1)
                 .. " | ESC sair",
@@ -302,7 +353,25 @@ local function runInteractive(postgate)
             end
             return
         end
-        if key == "space" and not WorldRoad.isTraveling() then
+        if key == "f" then
+            -- v9.7.2: encruzilhada de teste — cicla os conjuntos de lugares
+            forkSet = forkSet % #FORK_SETS + 1
+            WorldRoad.showFork(FORK_SETS[forkSet], function(node)
+                print("[demo] fork escolhido: " .. tostring(node and node.type))
+            end)
+        elseif key == "b" and not WorldRoad.isEntering() then
+            -- v10.2: ENTRADA DO BOSS — posiciona o castelo no ponto NATURAL
+            -- de chegada (fim do trecho, como depois de andar o ato todo) e
+            -- só então abre a porta + som + fade. Testável em qualquer bioma
+            WorldRoad._segBase = 0
+            WorldRoad._camZ = WorldRoad.TRAVEL_DISTANCE * 8
+            WorldRoad.enterCastle({
+                onComplete = function()
+                    demoFadeIn = 1
+                    print("[demo] entrada no castelo completa")
+                end,
+            })
+        elseif key == "space" and not WorldRoad.isTraveling() then
             WorldRoad.travel({ encounter = EnemyRenderer.getEncounterBillboard(game.enemy) })
         elseif key == "l" then
             -- LightEngine v1: toggle do motor (validação A/B ao vivo)
@@ -333,7 +402,16 @@ local function runInteractive(postgate)
         end
     end
 
-    love.mousepressed = function() end
+    -- v9.7.2: mouse REAL no demo — fork clicável + cenário interativo
+    -- (árvore/poste/cerca/nuvem reagem; rajada da grama já polla o mouse
+    -- dentro do WorldRoad.update)
+    love.mousepressed = function(mx, my, button)
+        if WorldRoad.isForkActive() then
+            WorldRoad.forkMousePressed(mx, my)
+        elseif button == 1 then
+            WorldRoad.pokeSceneAt(mx, my)
+        end
+    end
     love.mousereleased = function() end
     love.mousemoved = function() end
     love.resize = function() end

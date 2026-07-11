@@ -68,6 +68,47 @@ return {
         hand_suffix     = "({n} in Hand)",
         score_label        = "Punkte",
         score_record       = "REKORD!",
+        act             = "AKT {n}",
+        floor           = "Etage {x}/{total}",
+        endless         = "ENDLOS",
+    },
+
+    pause = {
+        title           = "PAUSE",
+        progress        = "AKT {act} · Etage {floor}/{total} — {class}",
+        no_run          = "Keine Reise im Gange",
+        hint            = "ESC schliesst · die Reise bleibt pausiert",
+        resume          = "Weiterspielen",
+        resume_desc     = "Zurueck zu deinem Standort. Nichts aendert sich.",
+        settings        = "Einstellungen",
+        settings_desc   = "Lautstaerke, Vollbild, CRT-Shader, Sprache und Barrierefreiheit.",
+        save_quit       = "Speichern und zum Menue",
+        save_quit_desc  = "Deine Reise wird GENAU HIER gespeichert und kann spaeter fortgesetzt werden.",
+        quit_norun      = "Zum Menue",
+        quit_norun_desc = "Beendet diese Partie und kehrt zum Hauptmenue zurueck.",
+        abandon         = "Run aufgeben",
+        abandon_desc    = "Loescht die aktuelle Reise und ihren Spielstand. KEIN Zurueck.",
+        abandon_confirm = "Sicher? Das loescht die Reise.",
+        abandon_yes     = "Ja, aufgeben",
+        abandon_no      = "Nein, zurueck",
+    },
+
+    common = {
+        skip = "Ueberspringen",
+        back = "Zurueck",
+        take = "Nehmen",
+    },
+
+    round_eval = {
+        cash_out = "Einloesen ${n}",
+    },
+
+    enemy_moves = {
+        attack    = "Ansturm",
+        strong    = "BRUTALER SCHLAG",
+        defend    = "Verteidigungshaltung",
+        buff      = "Wachsende Wut",
+        buff_gain = "+2 SCH",
     },
 
     hud = {
@@ -83,6 +124,7 @@ return {
         defense      = "Verteid.: ",
         effects      = "Effekte:",
         no_desc      = "(keine Beschreibung)",
+        forged       = "Geschmiedet +{n}",
     },
 
     card_type = {
@@ -105,6 +147,11 @@ return {
 
     reward = {
         shop_title         = "RELIQUIENLADEN",
+        rewards_title      = "BEUTE DER SCHLACHT",
+        rewards_subtitle   = "Waehle 1 Karte fuer dein Grimoire — oder gehe ohne weiter",
+        skip_no_card       = "Ohne Karte weiter",
+        affinity_badge     = "AFFINITAET",
+        affinity_line      = "Deck-Affinitaet: {tags}",
         gold_label         = "Gold: ${n}",
         continue           = "Weiter",
         refresh            = "Erneuern (${n})",

@@ -907,11 +907,9 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
         CardAnimationLayer.draw(self, self._cachedArt, drawX, drawY, 1, 1)
     end
 
-    -- Upgrade badge "+N" (Fase 3.1). Desenhado dentro do transform da carta —
-    -- escala junto. Fade com dissolve pra acompanhar entrada/saída.
-    if self.upgrades and self.upgrades > 0 then
-        self:_drawUpgradeBadge(drawX, drawY)
-    end
+    -- Forja (v2 Jul/2026): o badge "+N" foi REMOVIDO daqui — ele cobria o
+    -- valor real do footer (que já mostra o stat upgradado). A evolução agora
+    -- vive NA moldura: valor em verde-forja + gemas por nível (CardFrame).
 
     -- Seal indicator (Fase 3.3). Disco colorido no canto superior-esquerdo.
     if self.seal then
@@ -924,11 +922,10 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
     -- Texto só aparece no hover e agora está na parte de cima
     -- Mas não desenha se for uma carta de reward (a descrição será desenhada pela CardRewardScreen)
     if self.isHovered and not isRewardCard then
-        -- Define altura proporcional à escala atual
-        local textOffsetY = y + totalOffsetY - 70
-
-        -- Usa o componente CardInfoDisplay para desenhar as informações
-        self.cardInfoDisplay:draw(self, x, textOffsetY + 20, {
+        -- Âncora = TOPO REAL da carta (com lift do hover). O offset legado
+        -- -70+20 vinha da era do texto inline e empurrava o tooltip 50px
+        -- acima do necessário ("muito acima da carta", playtest Jul/2026).
+        self.cardInfoDisplay:draw(self, x, y + totalOffsetY, {
             showRarity = false, -- Cartas na mão não mostram raridade
             showStats = true,
             showDescription = true  -- Agora mostra a descrição no hover
@@ -992,31 +989,9 @@ end
 
 -- ===== Badges (visual) =====
 
--- Badge "+N" no canto inferior-direito da carta. Chamado dentro do transform
--- (origin no centro da carta, scale aplicado). Coords drawX/drawY = canto sup-esq.
-function Card:_drawUpgradeBadge(drawX, drawY)
-    local imgW = self.image:getWidth()
-    local imgH = self.image:getHeight()
-    local badgeW, badgeH = 22, 14
-    local bx = drawX + imgW - badgeW - 3
-    local by = drawY + imgH - badgeH - 3
-
-    local alpha = 1
-    if self.dissolve and self.dissolve > 0.001 then
-        alpha = math.max(0, 1 - self.dissolve)
-    end
-
-    -- Fundo: ouro envelhecido (combina com paleta sépia do CardFrame).
-    local fill = { Palette.AGED_GOLD_DARK[1], Palette.AGED_GOLD_DARK[2], Palette.AGED_GOLD_DARK[3], alpha }
-    local outline = { Palette.AGED_GOLD_LIGHT[1], Palette.AGED_GOLD_LIGHT[2], Palette.AGED_GOLD_LIGHT[3], alpha }
-    PixelCanvas.rect(bx, by, badgeW, badgeH, fill)
-    PixelCanvas.rectOutline(bx, by, badgeW, badgeH, outline)
-
-    love.graphics.setColor(1.0, 0.95, 0.7, alpha)
-    love.graphics.setFont(FontManager.getFont(8))
-    love.graphics.printf("+" .. tostring(self.upgrades), bx, by + 3, badgeW, "center")
-    love.graphics.setColor(1, 1, 1, 1)
-end
+-- _drawUpgradeBadge removido (v2 Jul/2026): o badge no canto inferior-direito
+-- COBRIA o valor real do footer. A evolução agora é mostrada NA moldura pelo
+-- CardFrame (valor verde-forja + gemas por nível) — a carta é o template vivo.
 
 -- Seal: disco colorido pequeno no canto superior-esquerdo.
 local SEAL_COLORS = {

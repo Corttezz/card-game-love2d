@@ -35,7 +35,8 @@ local biomes = {
         lightAmbient = { 0.96, 0.92, 0.87 },
         lightDay   = { 0.99, 0.97, 0.94 },   -- manhã dourada (andar 1)
         lightNight = { 0.55, 0.46, 0.62 },   -- crepúsculo da REFERÊNCIA (boss)
-        lightWindows = { { 0.50, 0.48 }, { 0.27, 0.43 }, { 0.73, 0.66 } },
+        -- v9.9: âncoras do castelo NOVO (2 janelas góticas acesas)
+        lightWindows = { { 0.47, 0.44 }, { 0.61, 0.43 } },
         grassPattern = "soft",
         roadPattern = "stone",
         grassTint = { 0.72, 0.70, 0.42 },
@@ -75,8 +76,9 @@ local biomes = {
         lightAmbient = { 0.67, 0.69, 0.86 },
         lightDay   = { 0.84, 0.84, 0.95 },   -- entardecer azulado
         lightNight = { 0.67, 0.69, 0.86 },   -- noite de lua
-        lightWindows = { { 0.75, 0.34 }, { 0.25, 0.33 }, { 0.48, 0.59 },
-                         { 0.52, 0.88 } },
+        -- v9.9.3: cidadela v6 em camadas — janela-catedral + andares + laterais
+        lightWindows = { { 0.49, 0.64 }, { 0.51, 0.39 }, { 0.38, 0.65 },
+                         { 0.63, 0.65 } },
         grassPattern = "ghost",
         roadPattern = "stone",
         grassTint = { 0.48, 0.55, 0.50 },
@@ -114,8 +116,9 @@ local biomes = {
         lightAmbient = { 0.73, 0.56, 0.52 },
         lightDay   = { 0.86, 0.72, 0.65 },   -- brasa alta
         lightNight = { 0.73, 0.56, 0.52 },   -- penumbra infernal
-        lightWindows = { { 0.50, 0.84 }, { 0.25, 0.69 }, { 0.74, 0.52 },
-                         { 0.55, 0.52 } },
+        -- v9.9.1: fortaleza v3 — portão em chamas, janelas, veias de brasa
+        lightWindows = { { 0.51, 0.85 }, { 0.49, 0.56 }, { 0.26, 0.80 },
+                         { 0.75, 0.79 } },
         lightWindowColor = { 1.00, 0.45, 0.18 },   -- janelas de brasa
         grassPattern = "rage",
         roadPattern = "blood",
@@ -194,7 +197,9 @@ local biomes = {
         lightAmbient = { 0.62, 0.70, 0.58 },
         lightDay   = { 0.78, 0.85, 0.72 },   -- névoa diurna do brejo
         lightNight = { 0.62, 0.70, 0.58 },   -- podridão fechada
-        lightWindows = { { 0.50, 0.80 }, { 0.50, 0.45 }, { 0.50, 0.25 } },
+        -- v9.9.3: cidadela v5 em camadas — 3 janelas + brilho da base
+        lightWindows = { { 0.51, 0.43 }, { 0.32, 0.50 }, { 0.64, 0.51 },
+                         { 0.51, 0.97 } },
         lightWindowColor = { 0.55, 0.95, 0.45 },   -- janelas de bruxaria verde
         grassPattern = "poison",
         roadPattern = "wave",
@@ -233,8 +238,9 @@ local biomes = {
         lightAmbient = { 0.56, 0.47, 0.60 },
         lightDay   = { 0.74, 0.62, 0.66 },   -- golden hour
         lightNight = { 0.56, 0.47, 0.60 },   -- crepúsculo fundo
-        lightWindows = { { 0.50, 0.84 }, { 0.49, 0.63 }, { 0.50, 0.30 },
-                         { 0.43, 0.52 } },
+        -- v9.9: castelo novo — portão dourado + janelas central/esq/dir
+        lightWindows = { { 0.49, 0.88 }, { 0.49, 0.55 }, { 0.23, 0.51 },
+                         { 0.85, 0.64 } },
         grassPattern = "soft",
         roadPattern = "stone",
         grassTint = { 0.80, 0.62, 0.36 },

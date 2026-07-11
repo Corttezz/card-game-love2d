@@ -57,6 +57,7 @@ local collectionScreen
 local achievementsScreen
 local endTurnButton
 local settingsMenu
+local pauseMenu
 local topBar
 local mapScreen
 local deckViewerScreen
@@ -99,8 +100,28 @@ end
 local function returnToMenu()
     if currentState ~= "menu" then Sfx.play("menuClose") end
     currentState = "menu"
+
+    -- Mata TODAS as sequências pendentes do jogo descartado (combate, eases,
+    -- transições agendadas). Sem isto, callbacks do game VELHO continuavam
+    -- rodando por baixo do menu — re-salvavam a run recém-abandonada e até
+    -- puxavam currentState de volta pro jogo ("abandonei, cliquei em Jogar e
+    -- caí na run antiga" — playtest Jul/2026). Ordem importa: clear ANTES de
+    -- menu:show() (a intro do menu agenda eases novos).
+    EventManager.clear()
+
+    -- A run antiga morre NA MEMÓRIA também. deleteSave/saveRun já decidiram o
+    -- disco; isto impede qualquer checkpointRun retardatário de ressuscitá-la.
+    if game and game.runManager then
+        game.runManager.currentRun = nil
+        game.runManager.isRunActive = false
+    end
+    require("src.systems.Rng").clearActive()
+
     game = Game:new() -- Reseta o jogo (cria novo ShopSystem com pools resetados)
     if cardRewardScreen then cardRewardScreen.shopSystem = game.shopSystem end
+    -- Re-vincula a TopBar ao game NOVO (antes ficava apontando pro morto:
+    -- ouro/deck congelavam e o clique da engrenagem caía no aviso).
+    if topBar then topBar:setGame(game) end
     gameUI:hide()
     menu:show()
     if menu.enterWithIntro then menu:enterWithIntro() end
@@ -120,6 +141,25 @@ local function applyActSmoke()
     elseif run.actNumber == 2 then preset = "act2"
     elseif run.actNumber >= 3 then preset = "act3" end
     SmokeConfig.applyToSystem(smokeSystem, preset)
+end
+
+-- Abre o picker de cartas como OVERLAY de qualquer estado (oferta "Forja" da
+-- loja, eventos de deck). Reusa o RestScreen no modo pedido ("forge" |
+-- "remove" | "duplicate"): troca temporariamente pro estado "rest" (que já
+-- roteia update/draw/input do RestScreen) e restaura o estado anterior ao
+-- fechar. onDone roda após a restauração.
+_G.openCardPicker = function(mode, onDone)
+    local prevState = currentState
+    currentState = "rest"
+    restScreen:show(game, function()
+        currentState = prevState
+        if onDone then onDone() end
+    end, mode or "forge")
+end
+
+-- Atalho legado da oferta "Forja" da loja.
+_G.openForgeScreen = function(onDone)
+    _G.openCardPicker("forge", onDone)
 end
 
 -- Helper: avanca pro proximo map (chamado apos fechar rest/event/shop sem batalha).
@@ -162,13 +202,18 @@ local function onNodeChosen(node, index)
 
     elseif t == BT.EVENT then
         mapScreen:hide()
-        local ev = Events.roll(game.runManager.currentRun.actNumber or 1)
+        -- Sorteio pelo stream "event" com histórico: evento visto não repete
+        -- no MESMO ato (Events.roll libera repetição se a pool do ato esgotar).
+        local run = game.runManager.currentRun
+        run.eventHistory = run.eventHistory or {}
+        local ev = Events.roll(run.actNumber or 1, run.eventHistory)
         if not ev then
             -- Sem evento disponivel: age como batalha comum
             currentState = "playing"
             game:nextPhase()
             return
         end
+        run.eventHistory[ev.id] = run.actNumber or 1
         currentState = "event"
         eventScreen:show(ev, game, function()
             skipBattleAndShowMap()
@@ -277,15 +322,19 @@ showCardRewards = function()
 end
 
 function love.load(loveArgs)
-    -- Qualquer tool headless (screenshot/smoke/preview/demo/validate) marca a
-    -- flag: sistemas com efeito PERSISTENTE fora da run (ex: ProfileStats)
-    -- viram no-op — capturas de validação não podem poluir o perfil do jogador.
+    -- QUALQUER execução com argumento é ferramenta/dev (screenshot/smoke/
+    -- test/preview/demo/play...) — o jogador de verdade roda `love .` sem
+    -- args. A flag manda sistemas persistentes pro SANDBOX: ProfileStats
+    -- vira no-op e o SaveManager troca run/settings pra *.tool.lua.
+    -- BUG que isso mata (Jul/2026): as tools chamavam startNewRun+startGame
+    -- e o checkpointRun SOBRESCREVIA o run.save.lua do JOGADOR — "abandono a
+    -- run e ela ressuscita; aparece run que nunca joguei" (o save fantasma
+    -- era das capturas de validação, recriado a cada tool rodada).
     local toolArg = loveArgs and loveArgs[1]
-    if toolArg and (toolArg:match("^screenshot_") or toolArg:match("^smoke_")
-        or toolArg:match("^preview_") or toolArg:match("^demo_")
-        or toolArg == "validate_cards" or toolArg == "run_i18n_test"
-        or toolArg == "autoplay") then
+    if toolArg then
         _G.HEADLESS_TOOL = true
+        print("[sandbox] modo ferramenta (" .. tostring(toolArg)
+            .. "): saves em *.tool.lua — o save do jogador não é tocado")
     end
 
     -- Modo preview: renderiza algumas cartas em PNG e sai.
@@ -391,6 +440,14 @@ function love.load(loveArgs)
         return
     end
 
+    -- Modo teste da entrega STS-improvements v1 (Rng/pity/afinidade/forja/eventos).
+    --   love . test_systems
+    if loveArgs and loveArgs[1] == "test_systems" then
+        local ok = require("tools.test_systems").run()
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
     -- Modo smoke test da Fase 5 (acts/endless/curvas).
     --   love . smoke_acts
     if loveArgs and loveArgs[1] == "smoke_acts" then
@@ -449,6 +506,13 @@ function love.load(loveArgs)
     --   love . screenshot_round_eval 3
     if loveArgs and loveArgs[1] == "screenshot_round_eval" then
         require("tools.screenshot_round_eval").run(loveArgs[2])
+        return
+    end
+
+    -- Testa o fluxo de save/abandono/run nova (bug "run antiga ressuscita"):
+    --   love . test_saveflow
+    if loveArgs and loveArgs[1] == "test_saveflow" then
+        require("tools.test_saveflow").run()
         return
     end
 
@@ -652,6 +716,27 @@ function love.load(loveArgs)
         audioSystem:loadSound("packCardPick",  "audio/sfx/pack-card-pick.mp3",   0.65)
         audioSystem:loadSound("shopOpen",      "audio/sfx/shop-open.mp3",        0.65)
         audioSystem:loadSound("shopReroll",    "audio/sfx/shop-reroll.mp3",      0.60)
+
+        -- v9.6: hover dos LUGARES do fork (WorldRoad) — som por lugar
+        -- (v9.7: volumes reduzidos — feedback "estão muito altas")
+        audioSystem:loadSound("forkHoverFire",  "audio/sfx/fork-hover-fire.mp3",  0.40)
+        audioSystem:loadSound("forkHoverDoor",  "audio/sfx/fork-hover-door.mp3",  0.38)
+        audioSystem:loadSound("forkHoverFlag",  "audio/sfx/fork-hover-flag.mp3",  0.36)
+        audioSystem:loadSound("forkHoverElite", "audio/sfx/fork-hover-elite.mp3", 0.40)
+        audioSystem:loadSound("forkHoverTent",  "audio/sfx/fork-hover-tent.mp3",  0.36)
+
+        -- v9.7: CENÁRIO INTERATIVO (clique em árvore/poste/nuvem/grama etc)
+        audioSystem:loadSound("sceneRustle",     "audio/sfx/scene-rustle.mp3",      0.34)
+        audioSystem:loadSound("sceneWoodKnock",  "audio/sfx/scene-wood-knock.mp3",  0.36)
+        audioSystem:loadSound("sceneLampCreak",  "audio/sfx/scene-lamp-creak.mp3",  0.34)
+        audioSystem:loadSound("sceneLampWood",   "audio/sfx/scene-lamp-wood.mp3",   0.34)
+        audioSystem:loadSound("sceneStoneThud",  "audio/sfx/scene-stone-thud.mp3",  0.36)
+        audioSystem:loadSound("sceneGrassSwish", "audio/sfx/scene-grass-swish.mp3", 0.26)
+        audioSystem:loadSound("sceneCloudPoof",  "audio/sfx/scene-cloud-poof.mp3",  0.32)
+
+        -- v10: cerimônia de entrada no castelo (boss) — portão por material
+        audioSystem:loadSound("castleGateOpen",  "audio/sfx/castle-gate-open.mp3",  0.62)
+        audioSystem:loadSound("castleGateMagic", "audio/sfx/castle-gate-magic.mp3", 0.58)
     end
     
     -- Inicializa o menu
@@ -735,15 +820,47 @@ function love.load(loveArgs)
     -- Inicializa overlay de configurações
     settingsMenu = SettingsMenu:new()
     deckViewerScreen = require("components.DeckViewerScreen"):new()
-    -- F5 do UI Overhaul: clique no deck da TopBar abre o Deck Viewer
-    if topBar and topBar.setDeckClickCallback then
-        topBar:setDeckClickCallback(function()
-            deckViewerScreen:toggle(game)
-        end)
+
+    -- Menu de PAUSA (engrenagem da TopBar, padrão StS): Continuar /
+    -- Configurações / Salvar e voltar ao menu / Abandonar run (confirmado).
+    pauseMenu = require("components.PauseMenu"):new()
+    _G.togglePauseMenu = function()
+        if pauseMenu:isVisible() then
+            pauseMenu:hide()
+            return
+        end
+        pauseMenu:show(game, {
+            onOpenSettings = function()
+                settingsMenu:show()
+            end,
+            onSaveQuit = function()
+                -- Run ativa fica GUARDADA (save já acontece por nó; garante o
+                -- snapshot mais recente antes de sair).
+                if game.runManager and game.runManager.hasActiveRun
+                    and game.runManager:hasActiveRun() then
+                    game.runManager:saveRun()
+                end
+                returnToMenu()
+            end,
+            onAbandon = function()
+                -- Abandono confirmado: apaga o save e encerra a run.
+                if game.runManager then
+                    game.runManager:deleteSave()
+                end
+                returnToMenu()
+            end,
+        })
     end
 
     -- Inicializa barra superior
     topBar = TopBar:new()
+
+    -- F5 do UI Overhaul: clique no deck da TopBar abre o Deck Viewer.
+    -- (Este wire vivia ANTES do TopBar:new() — topBar era nil e o callback
+    -- nunca era registrado; clique no deck da barra não fazia nada.)
+    topBar:setDeckClickCallback(function()
+        deckViewerScreen:toggle(game)
+    end)
 
     -- Inicializa tela de escolha de caminho (entre batalhas)
     mapScreen = MapScreen:new()
@@ -954,6 +1071,11 @@ function love.update(dt)
     elseif currentState == "classSelection" then
         classSelectionScreen:update(dt)
     elseif currentState == "cardReward" then
+        -- v9.7.1: o mundo continua VIVO atrás das ofertas (anims dos
+        -- lugares, vento, nuvens — e o juice dos cliques no cenário)
+        if game and game.isRunMode then
+            require("src.ui.WorldRoad").update(dt)
+        end
         cardRewardScreen:update(dt)
         if packOpenScreen and packOpenScreen:isVisible() then
             packOpenScreen:update(dt)
@@ -979,6 +1101,7 @@ function love.update(dt)
 
     -- Overlay modal sempre atualiza (mesmo sobre outros states).
     if settingsMenu then settingsMenu:update(dt) end
+    if pauseMenu then pauseMenu:update(dt) end
 end
 
 function love.draw()
@@ -1045,6 +1168,11 @@ function love.draw()
         topBar:draw()
     end
 
+    -- Tooltips agendados durante topBar:draw() desenham AQUI, por cima da
+    -- barra e no MESMO frame. StatusTooltip.draw() consome o agendamento —
+    -- se o GameplayScene já desenhou o tooltip deste frame, isto é no-op.
+    require("src.ui.StatusTooltip").draw()
+
     -- Partículas atachadas a cartas (dissolve/materialize/explode).
     -- Desenhadas APÓS as cartas mas DENTRO do shake + CRT scene, assim
     -- seguem o warp do pós-processamento.
@@ -1066,6 +1194,7 @@ function love.draw()
 
     -- Overlay de settings (modal) ainda DENTRO da cena CRT — assim o shader
     -- cobre o overlay também.
+    if pauseMenu then pauseMenu:draw() end
     if settingsMenu then settingsMenu:draw() end
 
     -- Cursor pixel-art por cima de TUDO, mas dentro da cena CRT (warp do
@@ -1111,6 +1240,7 @@ function love.resize(w, h)
     if settingsMenu and settingsMenu.rebuild and settingsMenu.visible then
         settingsMenu:rebuild()
     end
+    if pauseMenu and pauseMenu.resize then pauseMenu:resize() end
     GameplayScene.updatePlayButtonPosition()
 end
 
@@ -1124,6 +1254,11 @@ function love.keypressed(key)
     -- Settings overlay consome teclas primeiro (modal)
     if settingsMenu and settingsMenu.keypressed and settingsMenu:isVisible() then
         if settingsMenu:keypressed(key) then return end
+    end
+
+    -- Pause modal engole teclado enquanto aberto (ESC fecha/desarma confirmação).
+    if pauseMenu and pauseMenu:isVisible() then
+        if pauseMenu:keypressed(key) then return end
     end
 
     -- Deck Viewer global consome teclas enquanto aberto (D/ESC fecham)
@@ -1175,23 +1310,25 @@ function love.keypressed(key)
                 local b = f.markBoxes[n]
                 WorldRoad.forkMousePressed((b.x1 + b.x2) / 2, (b.y1 + b.y2) / 2)
             end
-            if key == "escape" then returnToMenu() end
+            -- ESC em estado de run: abre o MENU DE PAUSA (sair/salvar/abandonar
+            -- são decisões dele — ESC direto pro menu descartava sem perguntar).
+            if key == "escape" and _G.togglePauseMenu then _G.togglePauseMenu() end
             return
         end
         if mapScreen:keypressed(key) then return end
-        if key == "escape" then returnToMenu() end
+        if key == "escape" and _G.togglePauseMenu then _G.togglePauseMenu() end
         return
     end
 
     if currentState == "event" then
         if eventScreen:keypressed(key) then return end
-        if key == "escape" then returnToMenu() end
+        if key == "escape" and _G.togglePauseMenu then _G.togglePauseMenu() end
         return
     end
 
     if currentState == "rest" then
         if restScreen:keypressed(key) then return end
-        if key == "escape" then returnToMenu() end
+        if key == "escape" and _G.togglePauseMenu then _G.togglePauseMenu() end
         return
     end
 
@@ -1201,6 +1338,11 @@ function love.keypressed(key)
             love.event.quit()
         end
     elseif currentState == "playing" then
+        -- ESC no combate: pause (não mais menu direto — a run é preciosa).
+        if key == "escape" then
+            if _G.togglePauseMenu then _G.togglePauseMenu() end
+            return
+        end
         GameplayScene.keypressed(key)
     elseif currentState == "gameOver" then
         -- Teclas do game over
@@ -1230,6 +1372,10 @@ function love.mousereleased(x, y, button)
     -- Settings modal consome primeiro
     if settingsMenu and settingsMenu:isVisible() then
         if settingsMenu:mousereleased(x, y, button) then return end
+    end
+
+    if pauseMenu and pauseMenu:isVisible() then
+        if pauseMenu:mousereleased(x, y, button) then return end
     end
 
     if currentState == "menu" then
@@ -1271,10 +1417,26 @@ function love.mousepressed(x, y, button)
         if settingsMenu:mousepressed(x, y, button) then return end
     end
 
+    -- Pause modal consome tudo enquanto aberto
+    if pauseMenu and pauseMenu:isVisible() then
+        if pauseMenu:mousepressed(x, y, button) then return end
+    end
+
     -- Deck Viewer global consome mouse enquanto aberto
     if deckViewerScreen and deckViewerScreen:isVisible() then
         deckViewerScreen:mousepressed(x, y, button)
         return
+    end
+
+    -- TopBar consome cliques na faixa superior (engrenagem/deck) em todos os
+    -- estados onde é desenhada. (Nunca era roteada — o clique da engrenagem
+    -- não funcionava em lugar NENHUM; bug playtest Jul/2026.)
+    local topBarStates = {
+        playing = true, cardReward = true, roundEval = true,
+        mapSelection = true, rest = true, event = true,
+    }
+    if topBar and topBarStates[currentState] and y <= (topBar.height or 52) then
+        if topBar:mousepressed(x, y, button) then return end
     end
 
     if currentState == "menu" then
@@ -1282,13 +1444,20 @@ function love.mousepressed(x, y, button)
     elseif currentState == "classSelection" then
         classSelectionScreen:mousepressed(x, y, button)
     elseif currentState == "playing" then
-        GameplayScene.mousepressed(x, y, button)
+        -- v9.7.1: clique que NENHUM elemento de gameplay consumiu cutuca
+        -- o cenário (mapa vivo estilo Hearthstone — árvore/poste/nuvem)
+        if not GameplayScene.mousepressed(x, y, button) and button == 1 then
+            require("src.ui.WorldRoad").pokeSceneAt(x, y)
+        end
     elseif currentState == "cardReward" then
         -- Pack overlay tem prioridade — consome cliques se visível.
         if packOpenScreen and packOpenScreen:isVisible() then
             if packOpenScreen:mousepressed(x, y, button) then return end
         end
-        cardRewardScreen:mousepressed(x, y, button)
+        if not cardRewardScreen:mousepressed(x, y, button) and button == 1 then
+            -- v9.7.1: clique fora das ofertas cutuca o cenário atrás
+            require("src.ui.WorldRoad").pokeSceneAt(x, y)
+        end
     elseif currentState == "roundEval" then
         roundEvalScreen:mousepressed(x, y, button)
     elseif currentState == "mapSelection" then

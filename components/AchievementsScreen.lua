@@ -136,15 +136,17 @@ function AchievementsScreen:draw()
                 icon.draw(x + 8, y + math.floor((rowH - 6 - 28) / 2), sc)
             end
 
-            love.graphics.setFont(nameFont)
+            -- name/desc com FIT na célula (design system Jul/2026): textos
+            -- longos vazavam pra coluna vizinha e pra fora do painel.
+            local TextFit = require("src.ui.TextFit")
+            local cellTextW = colW - 44 - 8
             if e.unlocked then
                 Palette.set(Palette.AGED_GOLD_LIGHT)
             else
                 Palette.set(Palette.PARCHMENT_DARK)
             end
-            love.graphics.print(e.name, x + 44, y + 7)
+            TextFit.print(e.name, x + 44, y + 7, { size = 11, maxW = cellTextW, minSize = 9 })
 
-            love.graphics.setFont(descFont)
             if e.unlocked then
                 Palette.set(Palette.PARCHMENT)
             else
@@ -152,7 +154,7 @@ function AchievementsScreen:draw()
                 -- segredo) — só menos brilhante que as desbloqueadas.
                 love.graphics.setColor(0.72, 0.66, 0.55, 1)
             end
-            love.graphics.print(e.desc, x + 44, y + 25)
+            TextFit.print(e.desc, x + 44, y + 25, { size = 8, maxW = cellTextW })
         end
     end
 

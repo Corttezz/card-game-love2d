@@ -7,6 +7,8 @@ CardRegistry.__index = CardRegistry
 
 local CardDatabase = require("src.systems.CardDatabase")
 local I18n = require("src.i18n.I18n")
+local Rng = require("src.systems.Rng")
+local Config = require("src.core.Config")
 
 function CardRegistry:new()
     local instance = setmetatable({}, CardRegistry)
@@ -29,7 +31,10 @@ function CardRegistry:getCardsByClassAndRarity(classId, rarity)
             table.insert(filtered, id)
         end
     end
-    
+
+    -- Ordena por id: pairs() não tem ordem estável e a pool alimenta rolls
+    -- seedados — sem sort, a mesma seed daria ofertas diferentes por sessão.
+    table.sort(filtered)
     return filtered
 end
 
@@ -57,52 +62,218 @@ function CardRegistry:getStarterDeckForClass(classId)
     return starterDecks[classId] or { "attack_001", "defense_001" }
 end
 
--- Gera recompensas de cartas para uma classe.
--- opts.rarityWeights: pesos customizados (Fase 5 passa do ActSystem).
+local RARITY_ORDER = { "common", "uncommon", "rare", "legendary" }
+local RARITY_MIN_ORDER = { common = 1, uncommon = 2, rare = 3, legendary = 4 }
+
+-- Pity de raridade vive em rng.meta (serializado no save junto com o RNG e
+-- compartilhado entre recompensas E loja — uma sequência de azar só).
+local function getPity(rng)
+    rng.meta.cardPity = rng.meta.cardPity or 0
+    return rng.meta.cardPity
+end
+
+local function setPity(rng, v)
+    rng.meta.cardPity = v
+end
+
+-- Conta as tags do deck atual (por cópia — 3 cartas de veneno = veneno forte).
+-- Alimenta a afinidade das ofertas: escolhas anteriores importam.
+function CardRegistry:countDeckTags(deckIds)
+    local counts = {}
+    for _, id in ipairs(deckIds or {}) do
+        local cd = self.cardDatabase:getCard(id)
+        if cd and cd.tags then
+            for _, tag in ipairs(cd.tags) do
+                counts[tag] = (counts[tag] or 0) + 1
+            end
+        end
+    end
+    return counts
+end
+
+-- Sorteia UMA carta de oferta com pity + afinidade + anti-duplicata.
+-- opts:
+--   classId       — filtra pool da classe (nil = todas as cartas com raridade)
+--   rarityWeights — pesos { common=, uncommon=, rare=, legendary= } (qualquer escala)
+--   minRarity     — piso ("uncommon"/"rare" pra elites/bosses)
+--   deckIds       — ids do deck atual (afinidade + penalidade de cópia)
+--   excludeIds    — set { [cardId]=true } já oferecidos (dedup na mesma oferta)
+--   rng, stream   — default Rng.get() / "card" (loja usa "shop")
+-- Retorna { cardId, rarity, affinity, affinityTags, fromPity } ou nil.
+function CardRegistry:pickRewardCard(opts)
+    opts = opts or {}
+    local rng = opts.rng or Rng.get()
+    local stream = opts.stream or "card"
+    local cfg = Config.Offers
+
+    local rarity, fromPity = self:rollRarity(opts.rarityWeights, { rng = rng, stream = stream })
+    if opts.minRarity and (RARITY_MIN_ORDER[rarity] or 0) < (RARITY_MIN_ORDER[opts.minRarity] or 0) then
+        rarity = opts.minRarity
+    end
+
+    -- Pool da raridade (fallback desce a escada se vazia — ex: legendary numa
+    -- classe sem lendárias não pode travar a oferta).
+    local pool = self:_poolFor(opts.classId, rarity)
+    if #pool == 0 then
+        for _, r in ipairs({ "rare", "uncommon", "common" }) do
+            pool = self:_poolFor(opts.classId, r)
+            if #pool > 0 then rarity = r; break end
+        end
+    end
+    if #pool == 0 then return nil end
+
+    local tagCounts = opts._tagCounts or self:countDeckTags(opts.deckIds)
+    local copies = {}
+    for _, id in ipairs(opts.deckIds or {}) do
+        copies[id] = (copies[id] or 0) + 1
+    end
+
+    local entries = {}
+    for _, cardId in ipairs(pool) do
+        if not (opts.excludeIds and opts.excludeIds[cardId]) then
+            local weight = 1.0
+            local affinityTags = nil
+            local cd = self.cardDatabase:getCard(cardId)
+
+            -- Afinidade: cada tag da carta que é "forte" no deck puxa a oferta.
+            if cd and cd.tags then
+                local bonus = 0
+                for _, tag in ipairs(cd.tags) do
+                    if (tagCounts[tag] or 0) >= cfg.AFFINITY_MIN_COUNT then
+                        bonus = bonus + cfg.AFFINITY_PER_TAG
+                        affinityTags = affinityTags or {}
+                        table.insert(affinityTags, tag)
+                    end
+                end
+                if bonus > cfg.AFFINITY_CAP then bonus = cfg.AFFINITY_CAP end
+                weight = weight * (1 + bonus)
+            end
+
+            -- Anti-saturação: cópias demais no deck ⇒ oferta perde peso.
+            if (copies[cardId] or 0) >= cfg.DUPE_THRESHOLD then
+                weight = weight * cfg.DUPE_PENALTY
+            end
+
+            table.insert(entries, {
+                item = { cardId = cardId, affinityTags = affinityTags },
+                weight = weight,
+            })
+        end
+    end
+    if #entries == 0 then return nil end
+
+    local picked = rng:weighted(stream, entries)
+    return {
+        cardId = picked.cardId,
+        rarity = rarity,
+        affinity = picked.affinityTags ~= nil,
+        affinityTags = picked.affinityTags,
+        fromPity = fromPity or nil,
+    }
+end
+
+-- Pool ordenada por classe+raridade; classId nil = todas as cartas da raridade.
+function CardRegistry:_poolFor(classId, rarity)
+    if classId then
+        return self:getCardsByClassAndRarity(classId, rarity)
+    end
+    local ids = {}
+    for id, card in pairs(self.cardDatabase:getAllCards()) do
+        if card.rarity == rarity then table.insert(ids, id) end
+    end
+    table.sort(ids)
+    return ids
+end
+
+-- Gera recompensas de cartas para uma classe (sem duplicata na mesma oferta).
+-- opts.rarityWeights: pesos customizados (ActSystem passa por ato).
 -- opts.minRarity: "uncommon"/"rare" para forcar piso (elites/bosses).
+-- opts.deckIds: deck atual — liga afinidade e anti-duplicata.
 function CardRegistry:generateCardRewards(classId, numCards, opts)
     opts = opts or {}
     local rewards = {}
-    local cardPool = self:getClassCardPool(classId)
-
-    local minRarity = opts.minRarity
-    local minOrder = { common = 1, uncommon = 2, rare = 3, legendary = 4 }
+    local exclude = {}
+    local tagCounts = self:countDeckTags(opts.deckIds)
 
     for _ = 1, numCards or 3 do
-        local rarity = self:rollRarity(opts.rarityWeights)
-        -- Aplica piso minimo (se especificado)
-        if minRarity and (minOrder[rarity] or 0) < (minOrder[minRarity] or 0) then
-            rarity = minRarity
-        end
-        local availableCards = cardPool[rarity]
-        if availableCards and #availableCards > 0 then
-            local randomCard = availableCards[love.math.random(#availableCards)]
-            table.insert(rewards, {
-                cardId = randomCard,
-                rarity = rarity,
-            })
+        local pick = self:pickRewardCard({
+            classId = classId,
+            rarityWeights = opts.rarityWeights,
+            minRarity = opts.minRarity,
+            deckIds = opts.deckIds,
+            excludeIds = exclude,
+            rng = opts.rng,
+            stream = opts.stream or "card",
+            _tagCounts = tagCounts,
+        })
+        if pick then
+            exclude[pick.cardId] = true
+            table.insert(rewards, pick)
         end
     end
 
     return rewards
 end
 
--- Sistema de raridade com pesos customizaveis (Fase 5 via ActSystem).
--- weights: { common=N, uncommon=N, rare=N, legendary=N } (qualquer escala, sao normalizados)
--- Se omitido, usa defaults proximo do Slay (37/37/25/1).
-function CardRegistry:rollRarity(weights)
+-- Sistema de raridade com pesos customizaveis + PITY acumulativo.
+-- weights: { common=N, uncommon=N, rare=N, legendary=N } (qualquer escala).
+-- opts: { rng=, stream= }. Retorna (rarity, fromPity).
+--
+-- Pity ("blizzard" adaptado do StS): cada roll SEM rare/legendary incrementa
+-- um contador que infla o peso de rare+legendary em PITY_STEP por nível;
+-- na HARD_PITY-ésima oferta seca, rare é garantida. Sair rare+ zera. O
+-- contador só se move quando rare é POSSÍVEL no peso (pools 100/0/0/0 dos
+-- testes não inflam nada).
+function CardRegistry:rollRarity(weights, opts)
     weights = weights or { common = 37, uncommon = 37, rare = 25, legendary = 1 }
-    local total = 0
-    for _, w in pairs(weights) do total = total + w end
-    if total <= 0 then return "common" end
+    opts = opts or {}
+    local rng = opts.rng or Rng.get()
+    local stream = opts.stream or "card"
+    local cfg = Config.Offers
 
-    local roll = love.math.random() * total
-    local acc = 0
-    for _, rarity in ipairs({ "common", "uncommon", "rare", "legendary" }) do
-        acc = acc + (weights[rarity] or 0)
-        if roll <= acc then return rarity end
+    local rareW = weights.rare or 0
+    local legW = weights.legendary or 0
+    local rarePossible = rareW > 0 or legW > 0
+    local pity = getPity(rng)
+
+    -- Hard pity: garantia absoluta de rare+ (proporcional entre rare/legendary).
+    if rarePossible and pity >= cfg.HARD_PITY then
+        setPity(rng, 0)
+        if legW > 0 and rng:random(stream) * (rareW + legW) > rareW then
+            return "legendary", true
+        end
+        return "rare", true
     end
-    return "common"
+
+    -- Pesos efetivos: pity infla rare/legendary multiplicativamente.
+    local mult = rarePossible and (1 + cfg.PITY_STEP * pity) or 1
+    local eff = {
+        common    = weights.common or 0,
+        uncommon  = weights.uncommon or 0,
+        rare      = rareW * mult,
+        legendary = legW * mult,
+    }
+    local total = eff.common + eff.uncommon + eff.rare + eff.legendary
+    if total <= 0 then return "common", false end
+
+    local roll = rng:random(stream) * total
+    local acc = 0
+    local rolled = "common"
+    for _, rarity in ipairs(RARITY_ORDER) do
+        acc = acc + eff[rarity]
+        if roll <= acc then
+            rolled = rarity
+            break
+        end
+    end
+
+    if rolled == "rare" or rolled == "legendary" then
+        setPity(rng, 0)
+    elseif rarePossible then
+        setPity(rng, pity + 1)
+    end
+
+    return rolled, false
 end
 
 -- Verifica se uma carta pertence a uma classe

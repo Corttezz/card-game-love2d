@@ -68,6 +68,47 @@ return {
         hand_suffix     = "({n} en main)",
         score_label        = "points",
         score_record       = "RECORD !",
+        act             = "ACTE {n}",
+        floor           = "etage {x}/{total}",
+        endless         = "SANS FIN",
+    },
+
+    pause = {
+        title           = "PAUSE",
+        progress        = "ACTE {act} · etage {floor}/{total} — {class}",
+        no_run          = "Aucun periple en cours",
+        hint            = "ECHAP ferme · le periple reste en pause",
+        resume          = "Reprendre",
+        resume_desc     = "Retour la ou vous etiez. Rien ne change.",
+        settings        = "Parametres",
+        settings_desc   = "Volumes, plein ecran, shader CRT, langue et accessibilite.",
+        save_quit       = "Sauvegarder et quitter",
+        save_quit_desc  = "Votre periple est SAUVEGARDE ici meme pour continuer plus tard.",
+        quit_norun      = "Retour au menu",
+        quit_norun_desc = "Termine cette partie et revient au menu principal.",
+        abandon         = "Abandonner la run",
+        abandon_desc    = "Efface le periple actuel et sa sauvegarde. AUCUN retour possible.",
+        abandon_confirm = "Certain ? Cela efface le periple.",
+        abandon_yes     = "Oui, abandonner",
+        abandon_no      = "Non, revenir",
+    },
+
+    common = {
+        skip = "Passer",
+        back = "Retour",
+        take = "Prendre",
+    },
+
+    round_eval = {
+        cash_out = "Encaisser ${n}",
+    },
+
+    enemy_moves = {
+        attack    = "Charge",
+        strong    = "COUP BRUTAL",
+        defend    = "Posture Defensive",
+        buff      = "Furie Montante",
+        buff_gain = "+2 DEG",
     },
 
     hud = {
@@ -83,6 +124,7 @@ return {
         defense      = "Defense: ",
         effects      = "Effets:",
         no_desc      = "(pas de description)",
+        forged       = "Forgee +{n}",
     },
 
     card_type = {
@@ -105,6 +147,11 @@ return {
 
     reward = {
         shop_title         = "BOUTIQUE DES RELIQUES",
+        rewards_title      = "BUTIN DE BATAILLE",
+        rewards_subtitle   = "Choisissez 1 carte pour votre grimoire — ou continuez sans",
+        skip_no_card       = "Continuer sans carte",
+        affinity_badge     = "AFFINITE",
+        affinity_line      = "Affinite avec votre deck: {tags}",
         gold_label         = "Or: ${n}",
         continue           = "Continuer",
         refresh            = "Actualiser (${n})",

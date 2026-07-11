@@ -49,6 +49,7 @@ card-game-love2d/
 │   ├── CardRewardScreen.lua    # Loja / recompensas pós-batalha (inclui refresh)
 │   ├── TopBar.lua              # Barra superior (ouro, deck, ícone config)
 │   ├── SettingsMenu.lua        # Overlay modal: volume (music/sfx/master) + fullscreen
+│   ├── PauseMenu.lua           # Menu de pausa (engrenagem da TopBar, StS-style): continuar/config/salvar e sair/abandonar (confirmado); _G.togglePauseMenu
 │   ├── JokerSlot.lua           # Slot visual de joker ativo
 │   └── Button.lua              # Widget botão: clean (Balatro-inspired, default) | ornate | invisible
 ├── src/
@@ -82,7 +83,7 @@ card-game-love2d/
 │   │   ├── CardRevealSequence.lua # Orquestrador pack-opening (explode + materialize)
 │   │   ├── EconomySystem.lua   # Ouro, juros tipo TFT
 │   │   ├── ShopSystem.lua      # Ofertas da loja (cartas + upgrades + refresh)
-│   │   ├── AudioSystem.lua     # Áudio robusto (detecta WSL2, fallbacks)
+│   │   ├── (áudio → engine/AudioManager.lua; facade Sfx.lua abaixo)
 │   │   ├── Sfx.lua             # Wrapper thin: Sfx.play("name") ao invés do guard repetido
 │   │   ├── MessageSystem.lua   # Toasts in-game com fade
 │   │   ├── ParticleSystem.lua  # Partículas genéricas
@@ -152,7 +153,7 @@ menu → classSelection → playing
 - `r`: reinicia via `game:startGame()`.
 - `f`: toggle fullscreen + `FontManager.clearCache()`.
 - `1/2/3/4`: presets de smoke (subtle/default/atmospheric/intense). `0`: limpa smoke.
-- `esc`: volta ao menu.
+- `esc`: abre/fecha o **PauseMenu** nos estados de run (playing/mapSelection/rest/event) — sair, salvar e abandonar são decisões DENTRO do pause. Em gameOver/victory volta ao menu direto.
 
 ---
 
@@ -259,8 +260,8 @@ Todos os parâmetros em `Config.Cards`: `BASE_SCALE=0.20`, `HOVER_SCALE=0.22`, `
 
 ## 8. Sistemas importantes
 
-### AudioSystem (`src/systems/AudioSystem.lua`)
-Exposto como `_G.audioSystem` em `main.lua`. Detecta WSL2 via `/proc/version`, tenta inicializar áudio com `pcall`, mantém um cache `audioCache[name]`. Sons carregados: `hoverCard`, `cardSelect`, `deckStart`, `swordSound`, `armorSound` + música de fundo streaming. **Sempre passe por `_G.audioSystem:playSound(name)` — o sistema já faz fallback gracioso.**
+### Áudio (`engine/AudioManager.lua` + facade `src/systems/Sfx.lua`)
+O antigo `src/systems/AudioSystem.lua` virou `engine/AudioManager.lua`; a instância continua exposta como `_G.audioSystem` em `main.lua` (API compatível: `loadSound`, `playSound`, `play(name, {volume, pitch, loop})`, grupos master/music/sfx). Sons registrados em `main.lua` (nativos em `audio/`, gerados via ElevenLabs em `audio/sfx/` — dezenas de códigos camelCase). **Consumers usam `Sfx.play("name")` / `Sfx.playWithVariation(...)` — no-op gracioso sem áudio.** A key do ElevenLabs pra gerar SFX novos fica na memória auto do Claude (`elevenlabs-api-key`).
 
 ### CombatAnimationSystem (`src/systems/CombatAnimationSystem.lua`)
 Máquina de estados: `idle → cards_flying → processing → damage_dealing → complete`. Bloqueia a lógica do jogo via `isBlocking()`. Usa easing out-quart, escalas aumentadas (1.3x) no centro, números de dano flutuantes. Timings em `self.timings`.
@@ -293,6 +294,7 @@ O painel do canto de inimigo (antigo `HudEnemyPanel`) foi aposentado. `GameUI.lu
 - **`print()` é o "logger" do projeto** — há muitos `print` de debug. Não remova em massa sem checar.
 - **Efeitos de cartas** são **data-driven** via `effects = {...}` no CardDatabase. Evite `if card.name == "X"` — use o array `effects`.
 - **Sequências temporais usam `_G.EventManager`** (ex: `EventManager.after(0.3, function() ... end)`) — evita state machines ad-hoc. Ver `memory/engine_layer.md`.
+- **Decisões de RUN usam os streams do `Rng`** (`src/systems/Rng.lua`): `Rng.get():random("card"|"shop"|"map"|"event"|"enemy"|"misc", ...)` — NUNCA `love.math.random` em ofertas/mapa/eventos/economia (quebra a reprodutibilidade por seed e o anti-save-scum). Visual/cosmético (partículas, smoke, jiggle) continua no RNG global. Estado salvo em `run.rngState`; pity de raridade mora em `rng.meta.cardPity`. Ver `memory/rng_and_offers.md`.
 - **Juice visual** (kick de scale/rot em objetos) via `Moveable.juice_up(obj, 0.3, 0.1)` ou `obj:juice_up(...)` se já tiver o método. Card já compõe — use nos momentos "algo aconteceu".
 - **Card FX** (dissolve/materialize/explode/flip) já disponíveis: `card:start_dissolve(...)`, `card:start_materialize(...)`, `card:explode(...)`, `card:flip(...)`. Sequências prontas em `src/systems/CardRevealSequence.lua`. Ver `memory/card_fx_pipeline.md`.
 - **Shaders**: `shaders/dissolve.glsl`, `flash.glsl`, `booster.glsl`, `holo.glsl` foram **reescritos do zero** (Fase 2 do refactor Balatro, Abril/2026) com matemática própria — value noise hash-based + FBM + multi-banda iridescente. Copyright-safe. Novos: `foil.glsl`, `polychrome.glsl`, `negative.glsl` pra editions (Fase 3).
@@ -362,12 +364,12 @@ No `love.load` em `main.lua`: `audioSystem:loadSound("nome", "audio/arquivo.mp3"
 - ✅ **MapManager** com node choices (Fase 4), **ActSystem** com 3 atos + endless (Fase 5).
 - ✅ **RestScreen** + **EventScreen** (Fase 6). Shop reusa CardRewardScreen.
 - ✅ Starter deck de **2 cartas** (Fase 5). Rebalance nas 96 cartas (Fase 7).
+- ✅ **STS-improvements v1** (Jul/2026, `docs/plan/sts-improvements-v1.md`): RNG seedável com 6 streams + estado no save; **pity de raridade** + **afinidade por tags do deck** nas ofertas (rewards+loja, com badges e "?" explicativo); **forja infinita** (cap 0) com preview/tooltip/custo crescente na loja; TopBar com ato/andar + tooltips em tudo + ouro direcional; rewards com raridade nomeada e skip claro; eventos com custos explícitos `[+/-]`, 4 eventos de deck e no-repeat por ato; picker de carta genérico (`_G.openCardPicker`). Teste: `love . test_systems`. Ver `memory/rng_and_offers.md`.
 
 Pendente:
 - Menu "Sobre" ainda é placeholder.
 - 12 cartas ainda com `effects = {}` (intencionalmente — são âncoras de tag starter/básicas).
 - Save/load existe mas sem botão "Continuar" no menu.
-- Upgrade visual de cartas forjadas (o contador é salvo em `run.upgraded[id]` mas render não mostra).
 - Alguns eventos narrativos avançados (trocas complexas Slay-style) não mapeados.
 - HUD legacy com gradientes 20-step (não é do redesign de gameplay).
 
@@ -397,6 +399,7 @@ O diretório `memory/` na raiz do projeto guarda notas persistentes que compleme
 - [`memory/conventions.md`](memory/conventions.md) — OOP via metatables, PT-BR, Config.
 - [`memory/known_gaps.md`](memory/known_gaps.md) — o que é intencional vs pendente.
 - [`memory/run_instructions.md`](memory/run_instructions.md) — como rodar, smoke tests, atalhos.
+- [`memory/rng_and_offers.md`](memory/rng_and_offers.md) — Rng streams (seed/save), pity, afinidade, forja infinita, eventos v2, `love . test_systems`.
 
 **Developer guide visual:** [`src/ui/README_PixelArt.md`](src/ui/README_PixelArt.md) — tutorial completo de como adicionar cartas, ícones, patterns e tunar estética.
 

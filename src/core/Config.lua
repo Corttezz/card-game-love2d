@@ -57,6 +57,11 @@ Config.Game = {
     PLAYER_MAX_MANA = 3,
     PLAYER_HEALTH_RESTORE = 20,
 
+    -- Forja de cartas: 0 = SEM CAP (upgrade infinito — pedido Jul/2026; o
+    -- custo crescente da forja paga + 1 forja grátis por fogueira seguram o
+    -- balance). Valor > 0 restaura um teto de níveis por carta.
+    UPGRADE_LEVEL_CAP = 0,
+
     -- Pontuação
     BASE_SCORE_PER_PHASE = 100,
 
@@ -118,6 +123,35 @@ Config.Endless = {
 
 -- Total de atos (excluindo endless). Usado por RunManager:advanceFloorInAct.
 Config.TotalActs = 3
+
+-- ===== Ofertas de carta (recompensas + loja): pity e afinidade =====
+-- Adaptação do "card blizzard" do Slay the Spire pro nosso modelo de pesos
+-- (ver memory/sts_run_economy.md). Estado do pity vive em Rng.meta (serializado
+-- com o save; compartilhado entre recompensas e loja). Regras explicadas ao
+-- jogador no "?" da tela de recompensas.
+Config.Offers = {
+    PITY_STEP = 0.35,   -- +35% no peso de rare/legendary por oferta sem rare+
+    HARD_PITY = 25,     -- na 25ª oferta seca, rare é GARANTIDA (se possível no pool)
+
+    AFFINITY_PER_TAG   = 0.20, -- +20% de peso por tag da carta que é forte no deck
+    AFFINITY_CAP       = 0.60, -- teto do bônus de afinidade
+    AFFINITY_MIN_COUNT = 2,    -- tag "forte" = presente em 2+ cartas do deck
+
+    DUPE_PENALTY   = 0.5, -- peso da carta cai pela metade quando você já tem cópias
+    DUPE_THRESHOLD = 2,   -- ...a partir desta quantidade de cópias no deck
+
+    -- Forja (upgrade de carta) COMPRADA na loja: custo cresce a cada forja
+    -- paga na run. A forja da fogueira continua grátis (o custo é a ESCOLHA:
+    -- forjar OU descansar).
+    FORGE_COST_BASE = 5,
+    FORGE_COST_MULT = 1.35, -- custo = base * mult^forjasPagasNaRun (arredondado)
+    FORGE_COST_MAX  = 60,
+
+    -- Ganho por nível de forja (fonte única — RunManager aplica, UI exibe).
+    FORGE_ATK_PER_LVL    = 2,
+    FORGE_DEF_PER_LVL    = 2,
+    FORGE_EFFECT_PER_LVL = 1,
+}
 
 -- Configurações das Cartas
 Config.Cards = {
