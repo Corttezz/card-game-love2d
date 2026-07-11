@@ -72,6 +72,16 @@ Três frentes de UX pedidas pelo Daniel, baseadas no Balatro source
 `deck_viewer.*` e `joker_manager.*` em pt_BR + en (es/fr/de caem no fallback en).
 Todas as chaves têm fallback embutido no código (3º arg de `I18n.t`).
 
+## ⚠️ Pegadinha: teto de 60 upvalues do LuaJIT em main.lua
+`love.load` já estava com **exatos 60 upvalues** (o LIMITE do LuaJIT/Lua 5.1 que
+o LÖVE usa). Declarar `jokerManagerScreen` como `local` top-level virou o 61º e
+o jogo NEM BOOTOU: `main.lua: function at line 325 has more than 60 upvalues`.
+O `luac.exe` standalone é **Lua 5.4 (limite 255)** — NÃO reproduz esse erro,
+então `luac -p` passa e mesmo assim o LÖVE quebra. **Regra**: novo singleton de
+tela/overlay em main.lua vai em `_G.<nome>` (como `_G.togglePauseMenu`,
+`_G.jokerManagerScreen`), NUNCA como novo `local` top-level, senão estoura o
+compilador. Pra validar de verdade, rodar no LÖVE (LuaJIT), não só no luac.
+
 ## Teste
 `love . test_systems` cobre o modelo de coringas (11 asserts novos: coleção
 guarda todos, cap de ativos, bancada não some, build ativos/all, troca de
