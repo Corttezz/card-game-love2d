@@ -1,13 +1,37 @@
 ---
 name: roadwear_engine
-description: Motor de imperfeições do solo do caminho (engine/RoadWear.lua) — stamps determinísticos por bioma sobre o leito da estrada
+description: Motores do solo do caminho — RoadSurface (síntese da textura-base com relevo) + RoadWear (decals determinísticos por bioma)
 type: architecture
 ---
 
-# RoadWear — imperfeições do solo do caminho (v10, Jul/2026)
+# Solo do caminho — RoadSurface + RoadWear (v10/v10.1, Jul/2026)
 
 **Pedido:** "o solo do caminho está muito padronizado/plano; quero imperfeições
 naturais, diferenciadas por bioma, mantendo o visual do jogo."
+
+## RoadSurface — SÍNTESE da textura-base (engine/RoadSurface.lua)
+
+A v10 só decorava por cima do PNG tileado — o usuário rejeitou ("você não
+mudou o terreno de fato; bioma 2 virou quadradinhos soltos"). A v10.1
+SINTETIZA a superfície por bioma (192×512, tileia nos 2 eixos, noise em
+lattice modular, bake 1× cacheado):
+
+1. **Clusters tonais** — FBM periódico escolhe entre 4 tons de terra.
+2. **Micro-relevo top-light** — borda superior de cluster elevado = highlight,
+   inferior = sombra. É o que dá o "desnível" 3D.
+3. **Sulcos de roda** contínuos serpenteando + rim claro; **desgaste central**.
+4. **Especiais**: highlands = LAJES Voronoi (juntas escuras, relevo por laje —
+   substitui os decals de cobble); abyss = craquelure FINA (células 18×40,
+   junta 1 texel — 0.045 lia como placas); frost = veios de gelo; marsh =
+   sheen úmido + verdete; dusk = flecos de folhiço.
+
+**Integração (drawRoad)**: sampling CENTRADO no eixo da estrada
+(`(segX-cxRow)/hs + tw*0.5`, sem uOff aleatório) → sulcos/desgaste seguem a
+curva e cada braço do fork ganha os seus. Banda de brilho por faixa reduzida
+(0.10→0.04) — banda forte re-achatava a textura em listras. PNG antigo segue
+como fallback se o bake falhar.
+
+## RoadWear — decals determinísticos (engine/RoadWear.lua)
 
 ## Arquitetura
 

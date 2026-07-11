@@ -243,15 +243,16 @@ RoadWear.CATALOG = {
         { stamp = "stones", cada = 7.0, alpha = 0.95, uMax = 0.85,
           tint = function(cx2) return mul(cx2.tint("roadEdge"), 1.1) end },
     },
+    -- v10.1: os decals de "cobble" saíram — as LAJES agora são ASSADAS na
+    -- superfície (RoadSurface Voronoi); decal de laje solto POR CIMA de
+    -- textura de laje lia como "quadradinhos aleatórios" (feedback).
     highlands = {
-        { stamp = "cobble", cada = 2.2, alpha = 0.95, uMax = 0.8, scaleK = 1.15,
-          tint = function(cx2) return mul(cx2.tint("roadB"), 1.15) end },
-        { stamp = "cobble", cada = 3.4, alpha = 0.9, uMax = 0.75,
-          tint = function(cx2) return mul(cx2.tint("roadA"), 1.05) end },
-        { stamp = "leaves", cada = 5.5, alpha = 0.7, uMax = 0.7,   -- musgo
+        { stamp = "leaves", cada = 4.5, alpha = 0.7, uMax = 0.7,   -- musgo
           tint = function(cx2) return mul(cx2.tint("grassA"), 1.15) end },
         { stamp = "stone",  cada = 5.0, alpha = 1.0, uMax = 0.85,
           tint = function(cx2) return mul(cx2.tint("roadEdge"), 1.3) end },
+        { stamp = "patch",  cada = 5.5, alpha = 0.40, uMax = 0.7,   -- sombra de laje afundada
+          tint = function(cx2) return mul(cx2.tint("roadEdge"), 1.1) end },
     },
     abyss = {
         { stamp = "crack",  cada = 3.0, alpha = 0.95, uMax = 0.7, scaleK = 1.2,
