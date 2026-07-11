@@ -72,7 +72,7 @@ end
 -- e o id da célula mais próxima (tom da laje). Métrica levemente retangular
 -- (lajes assentadas, não bolhas).
 -- ----------------------------------------------------------------------------
-local function voronoi(x, y, nx, ny, seed)
+local function voronoi(x, y, nx, ny, seed, ky)
     local gx, gy = x / W * nx, y / H * ny
     local ci, cj = math.floor(gx), math.floor(gy)
     local d1, d2, id = 1e9, 1e9, 0
@@ -84,7 +84,10 @@ local function voronoi(x, y, nx, ny, seed)
             local jy = latHash(wi, wj, seed + 3) * 0.7 + 0.15
             local dx = (i + jx) - gx
             local dy = (j + jy) - gy
-            local d = math.max(math.abs(dx) * 1.0, math.abs(dy) * 0.78)
+            -- ky > 1 achata a célula na vertical: o leito é esticado ao
+            -- longo da profundidade pela perspectiva, então célula baixa
+            -- na textura lê ~quadrada no chão (v10.1.2 anti-esticado).
+            local d = math.max(math.abs(dx) * 1.0, math.abs(dy) * (ky or 0.78))
             if d < d1 then d2 = d1; d1 = d; id = wi * 131 + wj
             elseif d < d2 then d2 = d end
         end
@@ -122,14 +125,17 @@ local function bake(bid, pal)
             elseif n < 0.70 then ti = 3
             else ti = 4 end
             if slab then
-                -- lajes: tom POR CÉLULA + juntas escuras (idx 0)
-                local dj, id = voronoi(x, y, 9, 16, seed + 11)
-                if dj < 0.085 then ti = 0
+                -- lajes: tom POR CÉLULA + juntas escuras (idx 0). v10.1.2:
+                -- MAIS lajes (9×16→14×36) e mais curtas (ky 1.35) — antes
+                -- ficavam grandes/esticadas ("muito esticado"). Junta mais
+                -- fina (0.085→0.055) pra pedra menor não virar só junta.
+                local dj, id = voronoi(x, y, 14, 36, seed + 11, 1.35)
+                if dj < 0.055 then ti = 0
                 else
                     ti = 2 + math.floor(latHash(id % 97, math.floor(id / 97), seed) * 2.4)
                     ti = math.min(4, ti)
                     -- erosão nos cantos da laje (noise come a borda)
-                    if dj < 0.16 and n > 0.72 then ti = 0 end
+                    if dj < 0.11 and n > 0.74 then ti = 0 end
                 end
             elseif cracked then
                 -- terra rachada: craquelure FINA (células menores, junta
@@ -154,24 +160,29 @@ local function bake(bid, pal)
                 -- relevo: vizinho de CIMA mais baixo → sou topo de calombo
                 local up = idx[(y - 1) % H][x]
                 local dn = idx[(y + 1) % H][x]
-                if up < ti then c = mulc(c, 1.17) end
-                if dn < ti then c = mulc(c, 0.84) end
+                -- v10.1.2: relevo MAIS SUTIL (1.17/0.84 → 1.10/0.90) — o
+                -- contraste forte lia como "linhas demais"
+                if up < ti then c = mulc(c, 1.10) end
+                if dn < ti then c = mulc(c, 0.90) end
                 -- lajes: topo de laje pega mais luz (leitura de pedra)
-                if slab and up == 0 then c = mulc(c, 1.22) end
-                if slab and dn == 0 then c = mulc(c, 0.80) end
+                if slab and up == 0 then c = mulc(c, 1.13) end
+                if slab and dn == 0 then c = mulc(c, 0.88) end
             end
 
             local u = x / W   -- 0..1, centro da ESTRADA em 0.5
             -- SULCOS de roda: canais em ±0.21 serpenteando com y
             if not slab then
+                -- v10.1.2: sulcos MAIS SUTIS (calha 0.20→0.11, rim 1.06→
+                -- 1.03) — os riscos verticais liam como "linha esticada",
+                -- principalmente na neve
                 local wob = math.sin(y / H * math.pi * 6) * 0.018
                 for s = -1, 1, 2 do
                     local du = math.abs(u - (0.5 + s * 0.21 + wob * s))
-                    if du < 0.030 then
-                        local k = 1 - du / 0.030
-                        c = mulc(c, 1 - 0.20 * k)          -- calha escura
-                    elseif du < 0.048 then
-                        c = mulc(c, 1.06)                   -- rim claro
+                    if du < 0.028 then
+                        local k = 1 - du / 0.028
+                        c = mulc(c, 1 - 0.11 * k)          -- calha escura
+                    elseif du < 0.044 then
+                        c = mulc(c, 1.03)                   -- rim claro
                     end
                 end
                 -- DESGASTE central: terra socada mais clara (com noise)
@@ -184,10 +195,15 @@ local function bake(bid, pal)
 
             -- ESPECIAIS por bioma
             if bid == "frost" then
-                -- veios de gelo: cristas do noise viram linhas claras azuladas
-                local r = vnoise(x, y, 10, 24, seed + 41)
-                if math.abs(r - 0.5) < 0.018 then
-                    c = mixc(c, { 0.72, 0.80, 0.95 }, 0.55)
+                -- v10.1.2: gelo em MANCHINHAS quebradas, não veios longos.
+                -- Antes era iso-contorno contínuo (10×24) que a perspectiva
+                -- esticava em riscos ("muito esticado"). Agora: contorno de
+                -- alta freq vertical (12×64 = curto) CORTADO por um segundo
+                -- noise (dash) + mix mais fraco (0.55→0.30).
+                local r = vnoise(x, y, 12, 64, seed + 41)
+                local dash = vnoise(x, y, 20, 30, seed + 47)
+                if math.abs(r - 0.5) < 0.020 and dash > 0.5 then
+                    c = mixc(c, { 0.72, 0.80, 0.95 }, 0.30)
                 end
             elseif bid == "marsh" then
                 -- bandas de brilho úmido (sheen horizontal lento)
