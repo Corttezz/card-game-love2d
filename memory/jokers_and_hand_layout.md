@@ -67,6 +67,17 @@ Três frentes de UX pedidas pelo Daniel, baseadas no Balatro source
   dinâmicas 3-7), hover levanta a carta + moldura dourada + tooltip completo
   (CardInfoDisplay), botão X + hint. Mostra o deck COM forja aplicada (valor
   verde + gemas). Guard `_openedAt < 0.25s` mata o "clico e já fecha".
+- **CLIQUE abre inspeção completa (Jul/2026, igual à Coleção)**: clicar numa
+  carta abre `src/ui/CardInspectModal` — carta grande (warp 3D + sombra) +
+  painel lateral (nome/tipo/classe/raridade/stats/descrição/efeitos + linha de
+  forja verde), navegável por setas ← →, ESC/clique-fora fecha. É o MESMO modal
+  extraído do `drawInspectModal` da CollectionScreen, agora num módulo
+  compartilhado. DeckViewer não é atualizado pelo main.lua, então o fade do
+  modal é ticado no próprio `draw()` (`love.timer.getDelta`). Hit-test via
+  `_cardRects` gravado no draw. Hover é suprimido enquanto o modal está aberto.
+  ⚠️ Follow-up: a CollectionScreen ainda tem a CÓPIA local do modal (não migrei
+  pra não arriscar a tela que já funciona) — se editar um, espelhar no outro OU
+  migrar a Collection pro módulo.
 
 ## i18n
 `deck_viewer.*` e `joker_manager.*` em pt_BR + en (es/fr/de caem no fallback en).

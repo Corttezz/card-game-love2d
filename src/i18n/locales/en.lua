@@ -193,7 +193,7 @@ return {
     deck_viewer = {
         title  = "YOUR DECK",
         counts = "{total} cards   ·   {atk} attack   ·   {def} defense   ·   {eff} effect   ·   {jok} joker",
-        hint   = "WHEEL scrolls  ·  hover to see details  ·  D or ESC closes",
+        hint   = "CLICK to inspect  ·  WHEEL scrolls  ·  D or ESC closes",
     },
 
     joker_manager = {

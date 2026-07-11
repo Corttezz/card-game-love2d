@@ -35,8 +35,12 @@ function DeckViewerScreen:new()
     instance.scroll = 0
     instance.maxScroll = 0
     instance._openedAt = 0
+    instance._cardRects = {}
     -- Tooltip completo no hover (StS-style: descrição + raridade + forja)
     instance.cardInfo = require("src.ui.CardInfoDisplay"):new()
+    -- Modal de inspeção completo (igual à aba de Coleção): clicar numa carta
+    -- abre a carta grande + painel detalhado, navegável por setas.
+    instance.inspectModal = require("src.ui.CardInspectModal"):new()
     return instance
 end
 
@@ -94,6 +98,9 @@ function DeckViewerScreen:show(game)
     self.game = game
     self.scroll = 0
     self._openedAt = love.timer.getTime()
+    -- garante que o modal de inspeção não reaparece de uma abertura anterior
+    self.inspectModal.card = nil
+    self.inspectModal.anim = 0
     self:_build()
     Sfx.play("menuOpen")
 end
@@ -139,12 +146,18 @@ end
 
 function DeckViewerScreen:wheelmoved(dx, dy)
     if not self.visible then return false end
+    if self.inspectModal:isVisible() then return true end   -- modal trava scroll
     self.scroll = math.max(0, math.min(self.maxScroll, self.scroll - dy * 48))
     return true
 end
 
 function DeckViewerScreen:keypressed(key)
     if not self.visible then return false end
+    -- Modal de inspeção consome teclado primeiro (setas navegam, ESC fecha ele)
+    if self.inspectModal:isVisible() then
+        self.inspectModal:keypressed(key)
+        return true
+    end
     if key == "escape" or key == "d" then
         self:hide()
         return true
@@ -157,7 +170,13 @@ function DeckViewerScreen:keypressed(key)
 end
 
 function DeckViewerScreen:mousepressed(x, y, button)
-    return self.visible
+    if not self.visible then return false end
+    -- Modal aberto: cliques vão pras setas / fora-fecha (igual à Coleção).
+    if self.inspectModal:isVisible() then
+        self.inspectModal:mousepressed(x, y, button)
+        return true
+    end
+    return true
 end
 
 function DeckViewerScreen:mousereleased(x, y, button)
@@ -168,10 +187,23 @@ function DeckViewerScreen:mousereleased(x, y, button)
     if love.timer.getTime() - (self._openedAt or 0) < 0.25 then
         return true
     end
+    -- Modal aberto consome o release (navegação foi no press).
+    if self.inspectModal:isVisible() then
+        return true
+    end
+    if button ~= 1 then return true end
     -- botão X (fechar)
     local cx, cy, cw, ch = self:_closeRect()
     if x >= cx and x <= cx + cw and y >= cy and y <= cy + ch then
         self:hide()
+        return true
+    end
+    -- Clique numa carta → abre a inspeção completa (igual à Coleção).
+    for _, r in ipairs(self._cardRects) do
+        if x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h then
+            self.inspectModal:show(self.instances[r.i], self.instances, r.i)
+            return true
+        end
     end
     return true
 end
@@ -180,8 +212,12 @@ end
 
 function DeckViewerScreen:draw()
     if not self.visible then return end
+    -- DeckViewer não é atualizado pelo main.lua (só desenhado) — tico o fade do
+    -- modal aqui mesmo, com o delta do frame.
+    self.inspectModal:update(love.timer.getDelta())
     local sw = love.graphics.getWidth()
     local sh = love.graphics.getHeight()
+    local modalOpen = self.inspectModal:isVisible()
 
     -- Fundo cheio: cena de coleção (mesma vibe) + escurecida; fallback = véu.
     if not SceneBackground.draw("collection", sw, sh, 0.30) then
@@ -249,7 +285,9 @@ function DeckViewerScreen:draw()
     local scale = CARD_W / 96   -- instância é 96×144 → 128×192
     local mx, my = love.mouse.getPosition()
     local hovered, hx, hy = nil, 0, 0
-    local mouseInGrid = my >= gridTop and my <= gridTop + gridH
+    -- Modal aberto suprime o hover do grid (igual à Coleção).
+    local mouseInGrid = (not modalOpen) and my >= gridTop and my <= gridTop + gridH
+    self._cardRects = {}
 
     love.graphics.setScissor(0, gridTop, sw, gridH)
     for i, inst in ipairs(self.instances) do
@@ -258,6 +296,8 @@ function DeckViewerScreen:draw()
         local x = gx0 + col * (CARD_W + GAP_X)
         local y = gridTop + row * (CARD_H + GAP_Y) - self.scroll
         if y + CARD_H > gridTop and y < gridTop + gridH then
+            self._cardRects[#self._cardRects + 1] =
+                { i = i, x = x, y = y, w = CARD_W, h = CARD_H }
             local isHover = mouseInGrid and mx >= x and mx < x + CARD_W
                 and my >= y and my < y + CARD_H
             if isHover then
@@ -293,8 +333,8 @@ function DeckViewerScreen:draw()
         love.graphics.rectangle("fill", barX, gridTop + frac * (gridH - knobH), 6, knobH)
     end
 
-    -- Tooltip completo por cima de tudo (fora do scissor).
-    if hovered then
+    -- Tooltip completo no hover (só quando o modal NÃO está aberto).
+    if hovered and not modalOpen then
         hovered.currentScale = scale
         self.cardInfo:draw(hovered, hx, hy - 8, {
             showRarity = true,
@@ -304,7 +344,10 @@ function DeckViewerScreen:draw()
     end
 
     HintBar.draw(I18n.t("deck_viewer.hint", nil,
-        "RODA rola  ·  passe o mouse pra ver detalhes  ·  D ou ESC fecha"))
+        "CLIQUE pra inspecionar  ·  RODA rola  ·  D ou ESC fecha"))
+
+    -- Modal de inspeção completo por cima de TUDO (igual à aba de Coleção).
+    self.inspectModal:draw()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
