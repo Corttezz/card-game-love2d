@@ -13,10 +13,24 @@ local SaveManager = {}
 local Migrations = require("engine.SaveMigrations")
 
 -- Caminhos relativos ao save directory do LÖVE.
-local PATHS = {
+-- SANDBOX de ferramenta (_G.HEADLESS_TOOL, setado pelo main.lua quando o
+-- jogo roda com QUALQUER argumento): run/settings viram *.tool.lua — as
+-- tools de screenshot/teste chamam startNewRun+checkpointRun e SOBRESCREVIAM
+-- o save real do jogador ("abandonei a run e ela ressuscita" — o fantasma
+-- era o save das capturas de validação).
+local PATHS_PLAYER = {
     settings = "settings.lua",
     run      = "run.save.lua",
 }
+local PATHS_TOOL = {
+    settings = "settings.tool.lua",
+    run      = "run.tool.lua",
+}
+local PATHS = setmetatable({}, {
+    __index = function(_, k)
+        return (_G.HEADLESS_TOOL and PATHS_TOOL or PATHS_PLAYER)[k]
+    end,
+})
 
 local DEFAULT_SETTINGS = {
     masterVolume = 1.0,
