@@ -13,7 +13,9 @@
 --     sprites cujo subject não tá no centro do 64×64).
 --
 -- opts:
---   skipIcon = true  → não desenha o ícone (usado pelo Joker, anima via overlay)
+--   skipIcon = true      → não desenha o ícone (usado pelo Joker, anima via overlay)
+--   iconOverride = handle → substitui artData.icon (frames animados do CardFrame;
+--                           mesmo contrato { size = {w,h}, draw(x, y, scale) })
 
 local PixelCanvas = require("src.ui.PixelCanvas")
 
@@ -28,22 +30,33 @@ local function computeCoverScale(iconW, iconH, slotW, slotH)
     return math.max(1, sW, sH)
 end
 
+-- Geometria compartilhada do ícone no slot (cover-fit ou artScale/artOffsetY).
+-- Também usada pelo CardAnimationLayer pra desenhar frames animados EXATAMENTE
+-- onde o ícone estático ficaria — manter as duas em sincronia é obrigatório.
+function CardArtSlot.layout(iconW, iconH, x, y, w, h, artData)
+    local scale = (artData and artData.artScale)
+        or computeCoverScale(iconW, iconH, w, h)
+    local drawnW = iconW * scale
+    local drawnH = iconH * scale
+    local iconX = x + math.floor((w - drawnW) / 2)
+    local iconY = y + math.floor((h - drawnH) / 2)
+        + ((artData and artData.artOffsetY) or 0)
+    return iconX, iconY, scale
+end
+
 function CardArtSlot.draw(x, y, w, h, artData, theme, opts)
     opts = opts or {}
 
-    if not opts.skipIcon and artData.icon then
-        local iconW = artData.icon.size.w
-        local iconH = artData.icon.size.h
+    local iconHandle = opts.iconOverride or artData.icon
+    if not opts.skipIcon and iconHandle then
+        local iconW = iconHandle.size.w
+        local iconH = iconHandle.size.h
 
-        local scale = artData.artScale or computeCoverScale(iconW, iconH, w, h)
-        local drawnW = iconW * scale
-        local drawnH = iconH * scale
-        local iconX = x + math.floor((w - drawnW) / 2)
-        local iconY = y + math.floor((h - drawnH) / 2) + (artData.artOffsetY or 0)
+        local iconX, iconY, scale = CardArtSlot.layout(iconW, iconH, x, y, w, h, artData)
 
         local sx, sy, sw, sh = love.graphics.getScissor()
         love.graphics.setScissor(x, y, w, h)
-        artData.icon.draw(iconX, iconY, scale)
+        iconHandle.draw(iconX, iconY, scale)
         if sx then
             love.graphics.setScissor(sx, sy, sw, sh)
         else

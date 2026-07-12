@@ -41,6 +41,15 @@ dados (como aconteceu com as 17 do gameplay-overhaul antes da cobrança)
    bug do "+2 DEF fantasma" em carta de ataque puro).
 9. Se possível, rodar `love . autoplay 2 all` — o piloto valida se a carta
    entra nos decks e como performa.
+10. **Ícone ANIMADO em loop idle (parte do pipeline, Jul/2026).** Antes de
+    escrever o prompt: `Read` no PNG e DESCREVER o que a arte é — a animação
+    nasce do sujeito real. Intensidade segue a raridade (basic=quase
+    imperceptível ... legendary=vivo; tabela em
+    memory/card_icon_animation.md). Fluxo:
+    `tools/pixellab_animate_card_icons.py` queue→poll→check +
+    `love . preview_card_anim <card_id>` +
+    `love . screenshot_collection <card_id>`. Ícone sem object_id usa o
+    HOST_OBJECT com custom_start_frame (o script resolve sozinho).
 
 Gerador pronto: `python3 tools/pixellab_generate_new_cards.py queue|poll`
 (adicionar as cartas novas no dict CARDS com prompt temático).

@@ -44,6 +44,7 @@ return {
     },
 
     class_select = {
+        passive_label = "PASSIVA",
         title       = "ESCOLHA SEU ARQUETIPO",
         description = "Cada caminho oferece cartas e taticas unicas.",
         back        = "VOLTAR AO MENU",

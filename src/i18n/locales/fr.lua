@@ -44,6 +44,7 @@ return {
     },
 
     class_select = {
+        passive_label = "PASSIVE",
         title       = "CHOISIS TON ARCHETYPE",
         description = "Chaque voie offre des cartes et tactiques uniques.",
         back        = "RETOUR AU MENU",

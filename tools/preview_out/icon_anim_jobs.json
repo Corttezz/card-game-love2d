@@ -1,0 +1,30 @@
+{
+  "warrior_standard_bearer": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "0c701e89-a6af-4746-8508-f38ca6e22c0b"
+  },
+  "warrior_strike": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "be5a9948-2d59-4187-b043-88fc8a897e19"
+  },
+  "warrior_defend": {
+    "object_id": "a65da763-7366-40e5-a426-e08691d2041d",
+    "group": "c0322b5f-1f7b-45d4-9971-bcea88538326"
+  },
+  "mage_zap": {
+    "object_id": "2822f004-3a80-4073-b2cc-8613e3d4be37",
+    "group": "70973c82-6e1f-4640-8216-578be4ef10d5"
+  },
+  "defense_001": {
+    "object_id": "5926fc53-3672-4626-82ad-c93ebbbccbba",
+    "group": "40e91465-8902-4fb6-a841-57d5dd110fe5"
+  },
+  "rogue_strike": {
+    "object_id": "d1b0965a-670b-44e5-bac8-7fb8185d744d",
+    "group": "cc1f3251-30b8-4edc-926d-8f4500aa3eaa"
+  },
+  "rogue_defend": {
+    "object_id": "a88da962-3897-4337-86f6-08ec5283ef14",
+    "group": "3599901a-1766-497b-9c52-6ba909b808e0"
+  }
+}

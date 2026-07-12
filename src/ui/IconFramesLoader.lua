@@ -1,6 +1,8 @@
 -- src/ui/IconFramesLoader.lua
--- Carrega frames animados de ícones gerados via PixelLab /animate-with-text.
+-- Carrega frames animados de ícones gerados via PixelLab (animate_object v3).
 -- Estrutura: assets/sprites/icons_anim/<name>/frame_NNN.png
+--            assets/sprites/icons_anim/<name>/meta.lua (opcional: return { fps = N })
+-- Pipeline de geração: tools/pixellab_animate_card_icons.py (queue/poll).
 --
 -- Uso:
 --   local anim = IconFramesLoader.get("dagger")
@@ -46,9 +48,22 @@ function IconFramesLoader.get(name)
         missCache[name] = true
         return nil
     end
+    -- fps default 8 (loop de 9 frames ≈ 1.1s — idle vivo mas não frenético).
+    -- Override por animação via meta.lua no diretório dos frames.
+    local fps = 8
+    local metaPath = "assets/sprites/icons_anim/" .. name .. "/meta.lua"
+    if love.filesystem.getInfo(metaPath) then
+        local ok, chunk = pcall(love.filesystem.load, metaPath)
+        if ok and chunk then
+            local okM, meta = pcall(chunk)
+            if okM and type(meta) == "table" and tonumber(meta.fps) then
+                fps = tonumber(meta.fps)
+            end
+        end
+    end
     local handle = setmetatable({
         frames = frames,
-        fps = 2,  -- sutil — 0.5s por frame, cycle completo de 2s
+        fps = fps,
         size = { w = frames[1]:getWidth(), h = frames[1]:getHeight() },
     }, Handle)
     cache[name] = handle

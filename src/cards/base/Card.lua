@@ -671,6 +671,9 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
     self.x = x
     self.y = y
 
+    -- Ícone animado (icons_anim/): self.image já É o canvas vivo do
+    -- CardFrame, atualizado centralmente por CardFrame.update() no love.update.
+
     -- Calcula deslocamentos para hover com efeito 3D
     -- noHoverLift (shop/relic): zera o baseOffsetY pra carta não saltar pra
     -- cima/baixo no hover. Mantém scale + tilt + offsetHoverX (parallax suave).

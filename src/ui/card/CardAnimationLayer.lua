@@ -18,7 +18,6 @@
 --     e t = love.timer.getTime() (passado pra evitar custo repetido).
 
 local Palette = require("src.ui.Palette")
-local AnimatedIconLoader = require("src.ui.AnimatedIconLoader")
 local IconFramesLoader  = require("src.ui.IconFramesLoader")
 local IconAnimations = require("src.ui.card.IconAnimations")
 
@@ -350,24 +349,16 @@ function CardAnimationLayer.draw(card, art, x, y, scaleX, scaleY, t)
         voidTwinkle(x, y, scaleX, scaleY, t)
     end
 
-    -- ICON animations para TODOS os tipos (incluindo joker agora):
-    -- procedural overlay sutil (shine/drip/sparkle/deity_glow).
-    if art and art.iconName then
+    -- ICON animations procedurais sutis (shine/drip/sparkle/deity_glow) —
+    -- SÓ pra ícones sem frames PixelLab. Ícones com icons_anim/ já vivem
+    -- dentro do canvas da carta (CardFrame pré-renderiza um canvas por frame
+    -- e Card:draw troca self.image no tempo — warp/holo pegam de graça).
+    if art and art.iconName and not IconFramesLoader.has(art.iconName) then
         local iconX = x + 16 * scaleX
         local iconY = y + 38 * scaleY
         local iconW = 64 * scaleX
         local iconH = 64 * scaleY
-
-        local frames = IconFramesLoader.get(art.iconName)
-        if frames then
-            local frame = frames:frameAt(t)
-            if frame then
-                love.graphics.setColor(1, 1, 1, 1)
-                love.graphics.draw(frame, iconX, iconY, 0, scaleX, scaleY)
-            end
-        else
-            IconAnimations.draw(art.iconName, iconX, iconY, iconW, iconH, t)
-        end
+        IconAnimations.draw(art.iconName, iconX, iconY, iconW, iconH, t)
     end
 
     -- Restaura

@@ -25,14 +25,24 @@ local function enemyKey(id, anim, dir)
     return tostring(id) .. "|" .. tostring(anim) .. "|" .. tostring(dir)
 end
 
+-- Raiz em disco por id. Ids simples ("grave_slime") continuam em enemies/
+-- (compat). Ids com categoria ("heroes/warrior") resolvem direto sob
+-- characters/ — usado pelos heróis da seleção de classe (Jul/2026).
+local function basePath(id)
+    if tostring(id):find("/", 1, true) then
+        return "assets/sprites/characters/" .. id
+    end
+    return "assets/sprites/characters/enemies/" .. id
+end
+
 -- Carrega todos os PNGs de uma pasta em ordem alfabetica. Retorna {img1, img2, ...} ou nil.
 local function loadFrames(enemyId, animation, direction)
     local key = enemyKey(enemyId, animation, direction)
     if cache[key] then return cache[key] end
     if missCache[key] then return nil end
 
-    local dir = string.format("assets/sprites/characters/enemies/%s/animations/%s/%s",
-        enemyId, animation, direction)
+    local dir = string.format("%s/animations/%s/%s",
+        basePath(enemyId), animation, direction)
     local info = love.filesystem.getInfo(dir)
     if not info or info.type ~= "directory" then
         missCache[key] = true
@@ -149,8 +159,8 @@ function SpriteAnimation:getFrameCount() return #self.frames end
 
 -- Helper: verifica se uma animacao existe no disco sem carregar.
 function SpriteAnimation.exists(enemyId, animation, direction)
-    local dir = string.format("assets/sprites/characters/enemies/%s/animations/%s/%s",
-        enemyId, animation, direction)
+    local dir = string.format("%s/animations/%s/%s",
+        basePath(enemyId), animation, direction)
     local info = love.filesystem.getInfo(dir)
     if not info or info.type ~= "directory" then return false end
     local files = love.filesystem.getDirectoryItems(dir)

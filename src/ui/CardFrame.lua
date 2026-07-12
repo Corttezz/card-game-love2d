@@ -8,10 +8,11 @@
 --
 -- Dimensões: 96×144 lógicos (BASE_SCALE 1.333 → 128×192 na tela).
 
-local PixelCanvas     = require("src.ui.PixelCanvas")
-local Palette         = require("src.ui.Palette")
-local CardArt         = require("src.ui.CardArt")
-local I18n            = require("src.i18n.I18n")
+local PixelCanvas      = require("src.ui.PixelCanvas")
+local Palette          = require("src.ui.Palette")
+local CardArt          = require("src.ui.CardArt")
+local I18n             = require("src.i18n.I18n")
+local IconFramesLoader = require("src.ui.IconFramesLoader")
 
 local CardBorder      = require("src.ui.card.components.CardBorder")
 local CardHeader      = require("src.ui.card.components.CardHeader")
@@ -32,6 +33,14 @@ CardFrame.WIDTH  = 96
 CardFrame.HEIGHT = 144
 
 local cache = {}
+-- Cartas com ícone animado (icons_anim/): key → { canvases = {...}, fps,
+-- live = Canvas, lastIdx }. `canvases` = a carta COMPLETA pré-renderizada uma
+-- vez por frame; `live` = o canvas ÚNICO que todo mundo segura como
+-- instance.image. CardFrame.update() (chamado no love.update) blita o frame
+-- corrente no live quando o índice muda — assim TODA renderização (mão,
+-- coleção, loja, deck viewer, tooltips) anima sem saber de nada, e hover
+-- warp/holo/editions/CRT aplicam na animação de graça.
+local animCache = {}
 
 -- Textura de pergaminho global
 local _parchmentTex
@@ -66,6 +75,12 @@ local function artSlotBounds(card)
     local top    = headerH
     local bottom = h - footerH
     return 5, top, w - 10, bottom - top
+end
+
+-- Exposto pro CardAnimationLayer posicionar frames animados do ícone na
+-- mesma geometria do canvas estático (coords locais do canvas 96×144).
+function CardFrame.artSlotBounds(card)
+    return artSlotBounds(card)
 end
 
 -- Inset por raridade: painel sólido do banner PNG não preenche a largura
@@ -116,13 +131,14 @@ local function drawRecessShadow(ax, ay, aw, ah, bannerX, bannerW, rarity)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-local function renderStandard(card, w, h)
+local function renderStandard(card, w, h, iconOverride)
     local rarity = card.rarity or "common"
     local art    = CardArt.resolve(card)
     local name   = I18n.cardName(card)
 
     local ax, ay, aw, ah = artSlotBounds(card)
-    CardArtSlot.draw(ax, ay, aw, ah, art, "parchment")
+    CardArtSlot.draw(ax, ay, aw, ah, art, "parchment",
+        { iconOverride = iconOverride })
 
     CardDecoration.draw(ax, ay, aw, ah, art.decoration, art.accent)
     local autoDec = CardDecoration.autoForBackground(art.bgPattern)
@@ -141,13 +157,14 @@ local function renderStandard(card, w, h)
     CardStatsFooter.draw(w, h, card)
 end
 
-local function renderJoker(card, w, h)
+local function renderJoker(card, w, h, iconOverride)
     local rarity = card.rarity or "common"
     local art    = CardArt.resolve(card)
     local name   = I18n.cardName(card)
 
     local ax, ay, aw, ah = artSlotBounds(card)
-    CardArtSlot.draw(ax, ay, aw, ah, art, "tarot")
+    CardArtSlot.draw(ax, ay, aw, ah, art, "tarot",
+        { iconOverride = iconOverride })
     CardDecoration.draw(ax, ay, aw, ah, art.decoration or "flash", art.accent)
     -- Aplica decoração auto pelo bg pattern (mesmo comportamento de renderStandard)
     -- — ex: joker_001 tem bg=abyss → abyss_tendrils por cima do tarot card.
@@ -167,11 +184,25 @@ local function renderJoker(card, w, h)
     JokerFooter.draw(w, h)
 end
 
-function CardFrame.render(card)
-    local key = (card.id or (tostring(card.name) .. "_" .. tostring(card.type)))
+local function cacheKey(card)
+    return (card.id or (tostring(card.name) .. "_" .. tostring(card.type)))
         .. "+" .. tostring(card.upgrades or 0)
-    if cache[key] then return cache[key] end
+end
 
+-- Adapta um love.Image de frame animado pro contrato de handle do IconLoader
+-- ({ size, draw }) — assim o CardArtSlot posiciona o frame EXATAMENTE como o
+-- ícone estático (cover-fit/artScale/artOffsetY idênticos).
+local function frameHandle(img)
+    return {
+        size = { w = img:getWidth(), h = img:getHeight() },
+        draw = function(x, y, scale)
+            love.graphics.setColor(1, 1, 1, 1)
+            love.graphics.draw(img, x, y, 0, scale, scale)
+        end,
+    }
+end
+
+local function renderOne(card, iconOverride)
     local w, h = CardFrame.WIDTH, CardFrame.HEIGHT
     local canvas = PixelCanvas.new(w, h)
     PixelCanvas.beginDraw(canvas, true)
@@ -190,9 +221,9 @@ function CardFrame.render(card)
     end
 
     if card.type == "joker" then
-        renderJoker(card, w, h)
+        renderJoker(card, w, h, iconOverride)
     else
-        renderStandard(card, w, h)
+        renderStandard(card, w, h, iconOverride)
     end
 
     -- GEMAS DE FORJA (v2 Jul/2026 — substitui o selo "+N" que duplicava
@@ -252,17 +283,91 @@ function CardFrame.render(card)
 
     PixelCanvas.endDraw()
 
-    cache[key] = canvas
     return canvas
 end
 
+function CardFrame.render(card)
+    local key = cacheKey(card)
+    if cache[key] then return cache[key] end
+
+    -- Ícone animado (assets/sprites/icons_anim/<icon>/): pré-renderiza a
+    -- carta COMPLETA uma vez por frame e devolve um canvas "vivo" que o
+    -- CardFrame.update() mantém sincronizado com o frame corrente. Quem
+    -- guarda a referência (instance.image, telas, tooltips) anima de graça.
+    local art = CardArt.resolve(card)
+    local frames = art.iconName and IconFramesLoader.get(art.iconName)
+    if frames then
+        local canvases = {}
+        for i, img in ipairs(frames.frames) do
+            canvases[i] = renderOne(card, frameHandle(img))
+        end
+        local live = PixelCanvas.new(CardFrame.WIDTH, CardFrame.HEIGHT)
+        animCache[key] = { canvases = canvases, fps = frames.fps,
+                           live = live, lastIdx = 0 }
+        cache[key] = live
+        CardFrame.update()  -- blit inicial (lastIdx=0 força o primeiro copy)
+        return cache[key]
+    end
+
+    cache[key] = renderOne(card)
+    return cache[key]
+end
+
+-- Retorna { canvases, fps, live } se a carta tem ícone animado; nil caso
+-- contrário. Garante o render na primeira consulta, mas SEM renderizar
+-- cartas sem animação (legadas com PNG nem usam CardFrame).
+function CardFrame.getAnimation(card)
+    local key = cacheKey(card)
+    if animCache[key] then return animCache[key] end
+    local art = CardArt.resolve(card)
+    if not (art.iconName and IconFramesLoader.has(art.iconName)) then
+        return nil
+    end
+    CardFrame.render(card)
+    return animCache[key]
+end
+
+-- Tick global (main.lua love.update, todos os estados): quando o frame
+-- corrente de uma animação muda, blita o canvas pré-renderizado no canvas
+-- vivo. Custo: 1 draw 96×144 por carta animada, `fps` vezes por segundo.
+function CardFrame.update()
+    local t = love.timer.getTime()
+    for _, anim in pairs(animCache) do
+        local n = #anim.canvases
+        local idx = math.floor(t * anim.fps) % n + 1
+        if idx ~= anim.lastIdx then
+            anim.lastIdx = idx
+            -- push("all") preserva canvas/blend/cor de quem chamou (update
+            -- global OU render lazy no meio de um draw com canvas ativo).
+            love.graphics.push("all")
+            love.graphics.origin()
+            love.graphics.setCanvas(anim.live)
+            -- Cópia byte-a-byte do frame (replace+premultiplied evita
+            -- recombinar alpha — o conteúdo já veio de um canvas).
+            love.graphics.setBlendMode("replace", "premultiplied")
+            love.graphics.setColor(1, 1, 1, 1)
+            love.graphics.draw(anim.canvases[idx], 0, 0)
+            love.graphics.pop()
+        end
+    end
+end
+
 function CardFrame.invalidate(card)
-    local key = card.id or (card.name or "?")
-    cache[key] = nil
+    -- Keys carregam o sufixo "+<upgrades>" — invalida todos os níveis do ID.
+    local prefix = (card.id or (card.name or "?")) .. "+"
+    for k in pairs(cache) do
+        if k:sub(1, #prefix) == prefix then cache[k] = nil end
+    end
+    for k in pairs(animCache) do
+        if k:sub(1, #prefix) == prefix then animCache[k] = nil end
+    end
+    epoch = epoch + 1
 end
 
 function CardFrame.clearCache()
     cache = {}
+    animCache = {}
+    epoch = epoch + 1
 end
 
 -- Quando o idioma muda, todas as cartas precisam ser re-renderizadas pra

@@ -1,30 +1,38 @@
 -- components/ClassSelectionScreen.lua
--- Tela para seleção de classe antes de iniciar uma run.
---
--- F4 do UI Overhaul (docs/plan/ui-ux-overhaul-v1.md): 3 PAINÉIS-CLASSE com
--- ícone, identidade, descrição e PREVIEW REAL das cartas iniciais — no lugar
--- de 3 botões soltos sem nenhuma informação (diagnóstico: "ZERO informação
--- por classe"). Hover levanta o painel; clique seleciona.
+-- "O Salão dos Heróis" (v2, Jul/2026 — docs/plan/class-select-v2.md).
+-- Cada classe é um PERSONAGEM full-body animado (PixelLab v3, 96px) em
+-- idle sobre um spotlight âmbar — StS-style. Hover dá um passo à frente;
+-- clique é um MOMENTO (flash + anel + faíscas + confirma em 0.45s).
+-- Fallback gracioso: sem sprites instalados, cai pro ícone antigo.
 
 local Button = require("components.Button")
 local Config = require("src.core.Config")
 local FontManager = require("src.ui.FontManager")
 local Theme = require("src.ui.Theme")
 local Palette = require("src.ui.Palette")
-local Panel9 = require("src.ui.Panel9")
 local PixelCanvas = require("src.ui.PixelCanvas")
 local SceneBackground = require("src.ui.SceneBackground")
 local CardRegistry = require("src.systems.CardRegistry")
 local CardDatabase = require("src.systems.CardDatabase")
 local IconLoader = require("src.ui.IconLoader")
+local SpriteAnimation = require("src.ui.SpriteAnimation")
+local RadialGlow = require("src.ui.RadialGlow")
 local HintBar = require("src.ui.HintBar")
 local Debug = require("src.core.Debug")
 local I18n = require("src.i18n.I18n")
+local Sfx = require("src.systems.Sfx")
 
 local CLASS_ICONS = {
     warrior = "sword_great",
     mage    = "orb",
     rogue   = "dagger",
+}
+
+-- Cor de identidade por classe (linha da placa de nome + spotlight tint).
+local CLASS_COLORS = {
+    warrior = { 0.78, 0.25, 0.18 },   -- carmim
+    mage    = { 0.45, 0.55, 0.95 },   -- azul arcano
+    rogue   = { 0.42, 0.72, 0.34 },   -- verde veneno
 }
 
 -- Ordem FIXA de exibição (pairs() embaralhava a ordem entre sessões)
@@ -37,10 +45,13 @@ function ClassSelectionScreen:new()
     local instance = setmetatable({}, ClassSelectionScreen)
     instance.visible = false
     instance.buttons = {}
-    instance.panels = {}          -- {classId, x, y, w, h, btn, info, cards}
+    instance.panels = {}          -- {classId, x, y, w, h, btn, info, cards, lift, fx}
     instance.cardRegistry = CardRegistry:new()
     instance.selectedClass = nil
     instance._starterCache = {}   -- classId -> {cardInstance, ...}
+    instance._heroAnims = {}      -- classId -> SpriteAnimation | false
+    instance._locked = false      -- input travado durante o FX de escolha
+    instance._sparks = {}         -- faíscas do momento da escolha
 
     -- Callbacks
     instance.onClassSelected = nil
@@ -69,6 +80,16 @@ function ClassSelectionScreen:_starterCards(classId)
     return out
 end
 
+-- Animação idle do herói (PixelLab). false = já tentou e não existe.
+function ClassSelectionScreen:_heroAnim(classId)
+    if self._heroAnims[classId] == nil then
+        self._heroAnims[classId] = SpriteAnimation.new(
+            "heroes/" .. classId, "idle", "south", 7, { pingpong = true })
+            or false
+    end
+    return self._heroAnims[classId]
+end
+
 function ClassSelectionScreen:createClassButtons()
     self.buttons = {}
     self.panels = {}
@@ -76,11 +97,11 @@ function ClassSelectionScreen:createClassButtons()
     local sw = love.graphics.getWidth()
     local sh = love.graphics.getHeight()
 
-    local pw, ph = 280, 408
-    local gap = 28
+    local pw, ph = 288, 396
+    local gap = 30
     local totalW = pw * 3 + gap * 2
     local startX = math.floor((sw - totalW) / 2)
-    local py = math.floor(sh * 0.30)
+    local py = math.floor(sh * 0.32)
 
     for i, classId in ipairs(CLASS_ORDER) do
         local info = self.cardRegistry:getClassInfo(classId)
@@ -91,8 +112,11 @@ function ClassSelectionScreen:createClassButtons()
                 info = info,
                 x = x, y = py, w = pw, h = ph,
                 cards = self:_starterCards(classId),
+                lift = 0,       -- suavizado no update
+                fx = 0,         -- 1→0 após o clique (flash/anel)
             }
-            panel.btn = Button:new(x, py, pw, ph, "",
+            -- área clicável cobre o HERÓI (que fica acima do painel) também
+            panel.btn = Button:new(x, py - 150, pw, ph + 150, "",
                 function() self:selectClass(classId) end)
             panel.btn:setVariant("invisible")
             table.insert(self.panels, panel)
@@ -106,7 +130,7 @@ function ClassSelectionScreen:createClassButtons()
 
     self.buttons.back = Button:new(
         math.floor(sw / 2 - backButtonWidth / 2),
-        py + ph + 20,
+        py + ph + 16,
         backButtonWidth,
         backButtonHeight,
         I18n.t("class_select.back"),
@@ -114,7 +138,7 @@ function ClassSelectionScreen:createClassButtons()
         Theme.Colors.WARNING,
         12
     )
-    self.buttons.back:setIcon("arrow_left")
+    self.buttons.back:setVariant("tv")
 
     -- Recria botões ao trocar idioma (textos mudam)
     if not self._localeListenerWired then
@@ -133,15 +157,52 @@ function ClassSelectionScreen:updatePositions()
 end
 
 function ClassSelectionScreen:selectClass(classId)
+    if self._locked then return end
     self.selectedClass = classId
-    if self.onClassSelected then
-        self.onClassSelected(classId)
+
+    -- O MOMENTO da escolha: flash + anel + faíscas + som, e a confirmação
+    -- vem 0.45s depois (EventManager). Sem EM, confirma direto.
+    local panel
+    for _, p in ipairs(self.panels) do
+        if p.classId == classId then panel = p break end
+    end
+    local EM = _G.EventManager
+    if panel and EM then
+        self._locked = true
+        panel.fx = 1
+        -- faíscas douradas radiando do herói
+        local cx = panel.x + panel.w / 2
+        local cy = panel.y - 10
+        for i = 1, 16 do
+            local a = (i / 16) * math.pi * 2 + math.random() * 0.3
+            table.insert(self._sparks, {
+                x = cx, y = cy,
+                vx = math.cos(a) * (90 + math.random() * 120),
+                vy = math.sin(a) * (90 + math.random() * 120) - 40,
+                t = 0, life = 0.5 + math.random() * 0.3,
+            })
+        end
+        Sfx.play("comboTrigger", { volume = 0.8 })
+        if panel.btn and panel.btn.juice_up then panel.btn:juice_up(0.3, 0.1) end
+        EM.after(0.45, function()
+            self._locked = false
+            if self.onClassSelected then
+                self.onClassSelected(classId)
+            else
+                Debug.warn("onClassSelected callback nil em selectClass(" .. tostring(classId) .. ")")
+            end
+        end)
     else
-        Debug.warn("onClassSelected callback nil em selectClass(" .. tostring(classId) .. ")")
+        if self.onClassSelected then
+            self.onClassSelected(classId)
+        else
+            Debug.warn("onClassSelected callback nil em selectClass(" .. tostring(classId) .. ")")
+        end
     end
 end
 
 function ClassSelectionScreen:goBackToMenu()
+    if self._locked then return end
     if self.onBackToMenu then
         self.onBackToMenu()
     end
@@ -151,6 +212,7 @@ function ClassSelectionScreen:show(onClassSelected, onBackToMenu)
     self.visible = true
     self.onClassSelected = onClassSelected
     self.onBackToMenu = onBackToMenu
+    self._locked = false
     self:updatePositions()
 end
 
@@ -164,71 +226,152 @@ function ClassSelectionScreen:update(dt)
     for _, button in pairs(self.buttons) do
         button:update(dt)
     end
-end
 
--- Painel de classe: moldura + ícone + nome + descrição + cartas iniciais.
-function ClassSelectionScreen:_drawClassPanel(p)
-    local hover = p.btn and p.btn.hover
-    local lift = hover and -6 or 0
-    local x, y, w, h = p.x, p.y + lift, p.w, p.h
-
-    Panel9.draw("panel_main", x, y, w, h, {
-        tint = hover and { 1.12, 1.08, 0.9, 1 } or nil,
-    })
-
-    -- Ícone da classe
-    local icon = IconLoader.get(CLASS_ICONS[p.classId] or "scroll")
-    if icon and icon.size then
-        local s = 48 / icon.size.w
-        icon.draw(math.floor(x + w / 2 - icon.size.w * s / 2), y + 34, s)
+    for _, p in ipairs(self.panels) do
+        -- lift suavizado (hover = herói dá um passo à frente)
+        local target = (p.btn and p.btn.hover and not self._locked) and 1 or 0
+        p.lift = p.lift + (target - p.lift) * math.min(1, dt * 10)
+        -- FX do clique decai
+        if p.fx > 0 then p.fx = math.max(0, p.fx - dt / 0.45) end
+        -- idle do herói
+        local anim = self:_heroAnim(p.classId)
+        if anim then anim:update(dt) end
     end
 
-    -- Nome (fit na largura do painel — design system Jul/2026)
-    Palette.set(hover and Palette.RUST or Palette.INK)
-    local name = (p.info.name or p.classId):upper()
-    require("src.ui.TextFit").print(name, x + 14, y + 96,
-        { size = 16, maxW = w - 28, align = "center", minSize = 11 })
+    -- faíscas da escolha
+    for i = #self._sparks, 1, -1 do
+        local s = self._sparks[i]
+        s.t = s.t + dt
+        s.x = s.x + s.vx * dt
+        s.y = s.y + s.vy * dt
+        s.vy = s.vy + 300 * dt
+        if s.t >= s.life then table.remove(self._sparks, i) end
+    end
+end
 
-    -- Descrição (wrap, INK sobre pergaminho)
+-- ===== Herói: sprite animado + spotlight + fallback =====
+function ClassSelectionScreen:_drawHero(p, cx, feetY)
+    local col = CLASS_COLORS[p.classId] or { 1, 0.72, 0.22 }
+    local hover = p.lift
+
+    -- SPOTLIGHT no chão (elipse radial; acende no hover, tinge no clique)
+    local glow = RadialGlow.get()
+    love.graphics.setBlendMode("add")
+    local ga = 0.22 + 0.30 * hover + 0.5 * p.fx
+    love.graphics.setColor(1, 0.72, 0.30, ga)
+    love.graphics.draw(glow, cx, feetY - 4, 0, 2.4, 0.75, 64, 64)
+    love.graphics.setColor(col[1], col[2], col[3], 0.18 + 0.22 * hover)
+    love.graphics.draw(glow, cx, feetY - 4, 0, 1.5, 0.5, 64, 64)
+    love.graphics.setBlendMode("alpha")
+
+    local anim = self:_heroAnim(p.classId)
+    if anim then
+        local iw, ih = anim:getSize()
+        local scale = 2 + 0.18 * hover
+        local dx = cx - iw * scale / 2
+        local dy = feetY - ih * scale + 14 * scale  -- compensa padding do canvas
+        anim:draw(dx, dy - hover * 8, scale)
+        -- FLASH branco no momento da escolha
+        if p.fx > 0.02 then
+            love.graphics.setBlendMode("add")
+            anim:draw(dx, dy - hover * 8, scale, { 1, 1, 1, p.fx * 0.85 })
+            love.graphics.setBlendMode("alpha")
+        end
+        return true
+    end
+
+    -- Fallback: ícone antigo centralizado na zona do herói
+    local icon = IconLoader.get(CLASS_ICONS[p.classId] or "scroll")
+    if icon and icon.size then
+        local s = (72 + 16 * hover) / icon.size.w
+        love.graphics.setColor(1, 1, 1, 1)
+        icon.draw(math.floor(cx - icon.size.w * s / 2),
+            math.floor(feetY - icon.size.w * s - 10 - hover * 8), s)
+    end
+    return false
+end
+
+-- Painel de classe v2: herói em cima (vazando o painel), placa de nome,
+-- passiva e cartas iniciais num backing translúcido (linguagem menu v2.1).
+function ClassSelectionScreen:_drawClassPanel(p)
+    local lift = -8 * p.lift
+    local x, y, w, h = p.x, p.y + lift, p.w, p.h
+    local col = CLASS_COLORS[p.classId] or { 1, 0.72, 0.22 }
+    local hover = p.lift
+
+    -- BACKING translúcido (não Panel9 pesado): ink + contorno que acende
+    love.graphics.setColor(0.05, 0.04, 0.03, 0.62)
+    love.graphics.rectangle("fill", x, y, w, h)
+    local oa = 0.25 + 0.65 * hover
+    love.graphics.setColor(1, 0.72, 0.22, oa)
+    love.graphics.rectangle("line", x + 0.5, y + 0.5, w - 1, h - 1)
+    if hover > 0.05 then
+        love.graphics.setColor(1, 0.72, 0.22, 0.25 * hover)
+        love.graphics.rectangle("line", x - 2.5, y - 2.5, w + 5, h + 5)
+    end
+
+    -- HERÓI (vaza acima do painel — StS style)
+    local cx = x + w / 2
+    self:_drawHero(p, cx, y + 96)
+
+    -- PLACA DE NOME + linha de cor da classe
+    local name = (p.info.name or p.classId):upper()
+    Palette.set(hover > 0.5 and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT_LIGHT)
+    require("src.ui.TextFit").print(name, x + 14, y + 116,
+        { size = 17, maxW = w - 28, align = "center", minSize = 12,
+          shadow = { 0, 0, 0, 0.8 } })
+    love.graphics.setColor(col[1], col[2], col[3], 0.9)
+    local lineW = 64 + 30 * hover
+    love.graphics.rectangle("fill", cx - lineW / 2, y + 140, lineW, 2)
+
+    -- Descrição curta (PARCHMENT cheio — DARK afogava sobre o backing ink)
     local descFont = FontManager.getFont(9)
     love.graphics.setFont(descFont)
-    Palette.set(Palette.INK)
-    love.graphics.printf(p.info.description or "", x + 26, y + 128,
-        w - 52, "center")
+    Palette.set(Palette.PARCHMENT)
+    love.graphics.printf(p.info.description or "", x + 22, y + 152,
+        w - 44, "center")
 
-    -- PASSIVA da classe (identidade de gameplay — o diferencial real).
+    -- PASSIVA (o diferencial real de gameplay)
     if p.info.passiveName then
-        Palette.set(Palette.BLOOD)
-        local pn = "PASSIVA: " .. p.info.passiveName:upper()
-        require("src.ui.TextFit").print(pn, x + 14, y + 168,
-            { size = 10, maxW = w - 28, align = "center" })
+        local py2 = y + 196
+        -- chip: fundo sutil + nome âmbar
+        love.graphics.setColor(1, 0.72, 0.22, 0.10 + 0.10 * hover)
+        love.graphics.rectangle("fill", x + 16, py2 - 6, w - 32, 54)
+        love.graphics.setColor(1, 0.72, 0.22, 0.35)
+        love.graphics.rectangle("line", x + 16.5, py2 - 5.5, w - 33, 53)
+        love.graphics.setColor(1, 0.72, 0.22, 1)
+        require("src.ui.TextFit").print(
+            I18n.t("class_select.passive_label") .. " — " .. p.info.passiveName:upper(),
+            x + 20, py2, { size = 10, maxW = w - 40, align = "center" })
         local pdf = FontManager.getFont(8)
         love.graphics.setFont(pdf)
-        Palette.set(Palette.PARCHMENT_DARK)
-        love.graphics.printf(p.info.passiveDesc or "", x + 22, y + 186,
-            w - 44, "center")
+        Palette.set(Palette.PARCHMENT)
+        love.graphics.printf(p.info.passiveDesc or "", x + 24, py2 + 18,
+            w - 48, "center")
     end
 
     -- Cartas iniciais (CardFrame REAL em miniatura)
-    local label = "Deck inicial:"
-    local lf = FontManager.getFont(9)
-    love.graphics.setFont(lf)
-    Palette.set(Palette.RUST)
-    love.graphics.print(label,
-        math.floor(x + w / 2 - lf:getWidth(label) / 2), y + 234)
-
-    local cardScale = 0.88
+    local cardScale = 0.82
     local cw = 96 * cardScale
     local chh = 144 * cardScale
-    local totalCw = #p.cards * cw + math.max(0, #p.cards - 1) * 14
-    local cx = math.floor(x + w / 2 - totalCw / 2)
-    local cy = y + 254
+    local totalCw = #p.cards * cw + math.max(0, #p.cards - 1) * 12
+    local ccx = math.floor(cx - totalCw / 2)
+    local cy = y + h - chh - 16
     for _, inst in ipairs(p.cards) do
         if inst.image then
             love.graphics.setColor(1, 1, 1, 1)
-            love.graphics.draw(inst.image, cx, cy, 0, cardScale, cardScale)
+            love.graphics.draw(inst.image, ccx, cy, 0, cardScale, cardScale)
         end
-        cx = cx + cw + 14
+        ccx = ccx + cw + 12
+    end
+
+    -- ANEL do momento da escolha (expande e some)
+    if p.fx > 0.02 then
+        local k = 1 - p.fx
+        love.graphics.setColor(1, 0.85, 0.4, p.fx * 0.9)
+        love.graphics.setLineWidth(3)
+        love.graphics.circle("line", cx, y - 10, 30 + k * 160)
+        love.graphics.setLineWidth(1)
     end
 
     love.graphics.setColor(1, 1, 1, 1)
@@ -257,6 +400,14 @@ function ClassSelectionScreen:draw()
         self:_drawClassPanel(p)
     end
 
+    -- faíscas da escolha (por cima dos painéis)
+    for _, s in ipairs(self._sparks) do
+        local a = 1 - s.t / s.life
+        love.graphics.setColor(1, 0.85, 0.4, a)
+        love.graphics.rectangle("fill", math.floor(s.x), math.floor(s.y), 2, 2)
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+
     if self.buttons.back then self.buttons.back:draw() end
 
     HintBar.draw(I18n.t("class_select.description"))
@@ -269,7 +420,7 @@ function ClassSelectionScreen:drawTitle()
     local title = I18n.t("class_select.title")
     local width = love.graphics.getWidth()
     local titleX = math.floor(width / 2 - titleFont:getWidth(title) / 2)
-    local titleY = math.floor(love.graphics.getHeight() * 0.10)
+    local titleY = math.floor(love.graphics.getHeight() * 0.07)
 
     -- Banner pixel: ink fill + dual outline gold
     local padX, padY = 20, 10
@@ -288,7 +439,7 @@ function ClassSelectionScreen:drawTitle()
 end
 
 function ClassSelectionScreen:mousepressed(x, y, button)
-    if not self.visible then return end
+    if not self.visible or self._locked then return end
     for _, btn in pairs(self.buttons) do
         btn:mousepressed(x, y, button)
     end
@@ -296,6 +447,7 @@ end
 
 function ClassSelectionScreen:mousereleased(x, y, button)
     if not self.visible then return end
+    if self._locked then return end
     for _, btn in pairs(self.buttons) do
         btn:mousereleased(x, y, button)
     end

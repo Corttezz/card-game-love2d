@@ -44,6 +44,7 @@ return {
     },
 
     class_select = {
+        passive_label = "PASSIV",
         title       = "WAEHLE DEINEN ARCHETYP",
         description = "Jeder Pfad bietet einzigartige Karten und Taktiken.",
         back        = "ZURUECK",

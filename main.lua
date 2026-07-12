@@ -1,4 +1,5 @@
 local Game = require("src.core.Game")
+local CardFrame = require("src.ui.CardFrame")
 local Button = require("components.Button")
 local Menu = require("components.Menu")
 local GameUI = require("components.GameUI")
@@ -372,6 +373,14 @@ function love.load(loveArgs)
         return
     end
 
+    -- Contact sheet de carta com ícone animado (icons_anim/).
+    --   love . preview_card_anim [card_id]
+    if loveArgs and loveArgs[1] == "preview_card_anim" then
+        require("tools.preview_card_anim").run(loveArgs[2])
+        love.event.quit()
+        return
+    end
+
     -- Captura screenshot do gameplay (ato 1 warrior) pra debug visual.
     --   love . screenshot_gameplay
     -- Saida: ~/.local/share/love/card-game/gameplay_screenshot.png
@@ -526,6 +535,13 @@ function love.load(loveArgs)
         return
     end
 
+    -- Screenshot da coleção (grid + modal inspect da carta alvo).
+    --   love . screenshot_collection [card_id]
+    if loveArgs and loveArgs[1] == "screenshot_collection" then
+        require("tools.screenshot_collection").run(loveArgs[2])
+        return
+    end
+
     -- Screenshot tool: round eval / cash out (Fase 9). Phase 0..3.
     --   love . screenshot_round_eval 3
     if loveArgs and loveArgs[1] == "screenshot_round_eval" then
@@ -605,6 +621,12 @@ function love.load(loveArgs)
     -- Capturas do Menu+Entrada v2 (OSD, sintonia, cascade, settings).
     if loveArgs and loveArgs[1] == "screenshot_menu_v2" then
         require("tools.screenshot_menu_v2").run()
+        return
+    end
+
+    -- Capturas do Salão dos Heróis (seleção de classe v2).
+    if loveArgs and loveArgs[1] == "screenshot_class_select" then
+        require("tools.screenshot_class_select").run()
         return
     end
 
@@ -1095,6 +1117,11 @@ local function updatePlayButtonPosition() GameplayScene.updatePlayButtonPosition
 function love.update(dt)
     -- Identidade CRT: animador do power (ligar/desligar da TV).
     CRTShader.update(dt)
+
+    -- Cartas com ícone animado (icons_anim/): blita o frame corrente no
+    -- canvas vivo de cada carta animada. Roda em TODOS os estados — mão,
+    -- loja, coleção, deck viewer e menu animam pela mesma referência.
+    CardFrame.update()
 
     -- TopBar precisa tickar em TODOS os estados onde é desenhada (loja,
     -- roundEval, rest, event, mapa) — o contador eased de ouro congelava
