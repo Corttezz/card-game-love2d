@@ -304,7 +304,9 @@ function CardFrame.render(card)
         local live = PixelCanvas.new(CardFrame.WIDTH, CardFrame.HEIGHT)
         animCache[key] = { canvases = canvases, fps = frames.fps,
                            live = live, lastIdx = 0 }
-        cache[key] = live
+        -- REGRA (dono, Jul/2026): idle = ESTÁTICO (frame 0). A animação só
+        -- aparece na interação — hover/seleção/inspeção — via liveImage().
+        cache[key] = canvases[1]
         CardFrame.update()  -- blit inicial (lastIdx=0 força o primeiro copy)
         return cache[key]
     end
@@ -325,6 +327,16 @@ function CardFrame.getAnimation(card)
     end
     CardFrame.render(card)
     return animCache[key]
+end
+
+-- Canvas VIVO (animado) da carta, ou nil se ela não tem animação.
+-- Contrato de uso (regra do dono, Jul/2026): os pontos de renderização
+-- desenham instance.image (estático) por padrão e trocam pra este canvas
+-- SÓ na interação — hover, carta selecionada pra jogar, inspeção ampliada.
+function CardFrame.liveImage(card)
+    local ok, anim = pcall(CardFrame.getAnimation, card)
+    if ok and anim then return anim.live end
+    return nil
 end
 
 -- Tick global (main.lua love.update, todos os estados): quando o frame

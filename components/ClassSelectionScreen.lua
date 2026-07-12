@@ -14,6 +14,7 @@ local PixelCanvas = require("src.ui.PixelCanvas")
 local SceneBackground = require("src.ui.SceneBackground")
 local CardRegistry = require("src.systems.CardRegistry")
 local CardDatabase = require("src.systems.CardDatabase")
+local CardFrame = require("src.ui.CardFrame")
 local IconLoader = require("src.ui.IconLoader")
 local SpriteAnimation = require("src.ui.SpriteAnimation")
 local RadialGlow = require("src.ui.RadialGlow")
@@ -297,7 +298,9 @@ function ClassSelectionScreen:_drawHero(p, cx, feetY)
     local anim = self:_heroAnim(p.classId)
     if anim then
         local iw, ih = anim:getSize()
-        local scale = 2 + 0.18 * hover
+        -- escala DINÂMICA pelo canvas real (standard=136px, v3=180px),
+        -- em meio-passos pra manter o pixel art estável (~270px na tela)
+        local scale = math.floor((270 / ih) * 2 + 0.5) / 2 + 0.18 * hover
         local dx = cx - iw * scale / 2
         local dy = feetY - ih * scale + 14 * scale  -- compensa padding do canvas
         anim:draw(dx, dy - hover * 8, scale)
@@ -389,8 +392,15 @@ function ClassSelectionScreen:_drawClassPanel(p)
     local cy = y + h - chh - 16
     for _, inst in ipairs(p.cards) do
         if inst.image then
+            -- Hover na CLASSE anima os ícones dos starters (icons_anim);
+            -- idle = canvas estático (regra do dono, Jul/2026).
+            local img = inst.image
+            if hover > 0.35 then
+                local live = CardFrame.liveImage(inst)
+                if live then img = live end
+            end
             love.graphics.setColor(1, 1, 1, 1)
-            love.graphics.draw(inst.image, ccx, cy, 0, cardScale, cardScale)
+            love.graphics.draw(img, ccx, cy, 0, cardScale, cardScale)
         end
         ccx = ccx + cw + 12
     end

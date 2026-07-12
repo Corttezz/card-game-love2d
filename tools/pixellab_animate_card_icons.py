@@ -103,15 +103,11 @@ ANIMS = {
                  "and pose stay perfectly static"),
         "fps": 6,
     },
-    "rogue_defend": {
-        # v2: a v1 animou a AÇÃO da pose de esquiva (ladino dançando).
-        # Arte em pose dinâmica → congelar o corpo explicitamente.
-        "anim": ("the figure completely frozen mid-dodge like a statue, no "
-                 "limb or body movement whatsoever, only the red cape hem "
-                 "and hood tip swaying very slightly in the wind, barely "
-                 "perceptible"),
-        "fps": 6,
-    },
+    # rogue_defend: NÃO ANIMAR (decisão Jul/2026). A arte é uma pose de
+    # esquiva em pleno movimento — o v3 sempre anima o gesto inteiro, mesmo
+    # com "frozen like a statue" (2 tentativas reprovadas: ladino dançando).
+    # Arte em ação = deixar estática; se quiser animar um dia, regerar a
+    # ARTE numa pose neutra primeiro.
 }
 
 

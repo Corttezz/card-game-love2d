@@ -27,10 +27,18 @@ CardFrame.update()      → chamado no love.update (main.lua, TODOS os estados):
                           no canvas vivo (replace+premultiplied, 1 draw)
 ```
 
-Como TODAS as telas seguram a MESMA referência (instance.image = canvas
-vivo), mão, loja, coleção, deck viewer, tooltips e menu animam sem saber de
-nada — regra do dono (Jul/2026): "a carta precisa ficar animada em todas as
-renderizações". Nunca hookar tela por tela.
+**GATING POR INTERAÇÃO (regra do dono, Jul/2026 v2 — substitui o "anima em
+tudo sempre"):** `instance.image` é o canvas ESTÁTICO (frame 0);
+`CardFrame.liveImage(card)` devolve o canvas vivo. A animação SÓ aparece:
+- mão/loja/rewards/jokers ativos: hover OU carta selecionada pra jogar
+  (`Card:draw` faz o swap sozinho via `self.isHovered or self.isSelected`;
+  GameplayScene seta `card.isSelected` por frame);
+- coleção: hover no grid (drawCardMini) + modal de inspeção (sempre);
+- seleção de classe: hover no painel da classe (`hover > 0.35`);
+- deck viewer: carta hovered.
+Idle em qualquer tela = estático. Padrão de código: swap TEMPORÁRIO de
+`instance.image` durante o draw, restaurar no fim (nunca deixar o live
+vazar pro estado).
 
 Por que não overlay por cima do canvas: ficava FORA do mesh warp 3D do
 hover (ícone "flutuando" reto sobre carta entortada), fora do HoloShader/
@@ -118,11 +126,13 @@ memory/card_creation_flow.md), não um extra. Duas regras inegociáveis:
   descrição de movimento mais explícita (`replace_existing=true`).
 - **O oposto também acontece — v3 anima a AÇÃO da arte** (lição Jul/2026):
   mão aberta virou punho fechando (mage_zap v1), ladino em pose de esquiva
-  virou dança (rogue_defend v1). Arte com pose dinâmica ou gesto implícito
-  PRECISA de congelamento explícito no prompt: "completely frozen like a
-  statue, no limb/finger movement whatsoever, only <elemento> moving".
-  SEMPRE aprovar/reprovar pelo contact sheet antes de considerar entregue —
-  reprovar se a silhueta muda entre frames em carta basic/common.
+  virou dança (rogue_defend v1 E v2). Arte com gesto implícito PRECISA de
+  congelamento explícito no prompt ("completely frozen like a statue, no
+  limb/finger movement whatsoever, only <elemento> moving") — e mesmo assim
+  pode não obedecer. **Arte em pose de AÇÃO (mid-dodge, mid-swing) não é
+  animável por v3: após 2 reprovações, deixar ESTÁTICA** (nem toda carta
+  precisa de animação — regra do dono). SEMPRE aprovar/reprovar pelo
+  contact sheet; reprovar se a silhueta muda entre frames em basic/common.
 - **fps**: meta.lua por animação (`return { fps = 8 }`). 8fps num loop de
   9 frames ≈ 1.1s — vivo sem ser frenético. Cadências menores p/ pulsos.
 - **Ícones compartilhados** (ex: skull_crowned em várias cartas): animar o

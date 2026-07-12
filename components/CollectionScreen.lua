@@ -13,6 +13,7 @@ local SceneBackground = require("src.ui.SceneBackground")
 local CardDatabase = require("src.systems.CardDatabase")
 local CardAnimationLayer = require("src.ui.card.CardAnimationLayer")
 local CardArt      = require("src.ui.CardArt")
+local CardFrame    = require("src.ui.CardFrame")
 local CardMesh     = require("src.ui.CardMesh")
 local I18n         = require("src.i18n.I18n")
 local Sfx          = require("src.systems.Sfx")
@@ -436,6 +437,14 @@ local function drawCardMini(instance, x, y, hoverScale, alpha, mouseUV, hoverStr
     mouseUV = mouseUV or { 0, 0 }
     hoverStrength = hoverStrength or 0
 
+    -- Grid idle = estático; HOVER anima o ícone (regra do dono, Jul/2026).
+    -- Swap temporário de instance.image, restaurado no fim da função.
+    local _prevImage = instance.image
+    if hoverScale > 1.001 or hoverStrength > 0.05 then
+        local live = CardFrame.liveImage(instance)
+        if live then instance.image = live end
+    end
+
     local baseScale = CARD_W / instance.image:getWidth()
     local drawScale = baseScale * hoverScale
     local drawW = instance.image:getWidth() * drawScale
@@ -499,6 +508,7 @@ local function drawCardMini(instance, x, y, hoverScale, alpha, mouseUV, hoverStr
     end
     CardAnimationLayer.draw(instance, instance._cachedArt, px, py, drawScale, drawScale)
     love.graphics.setColor(1, 1, 1, 1)
+    instance.image = _prevImage
 end
 
 local function drawHoverTooltip(self)
@@ -615,7 +625,13 @@ local function drawInspectModal(self)
     local cardX = (width - cardW) / 2 - 140  -- desloca pra esquerda pra caber painel
     local cardY = (height - cardH) / 2
 
-    -- Render da carta com perspective warp + sombra direcional
+    -- Render da carta com perspective warp + sombra direcional.
+    -- Visualização ampliada SEMPRE anima o ícone (regra do dono, Jul/2026).
+    local _prevImage = inst.image
+    do
+        local live = CardFrame.liveImage(inst)
+        if live then inst.image = live end
+    end
     if inst.image then
         local mx, my = love.mouse.getPosition()
         -- mouseUV relativo ao centro da carta grande
@@ -664,6 +680,7 @@ local function drawInspectModal(self)
         end
         CardAnimationLayer.draw(inst, inst._cachedArt, cardX, cardY, scale, scale)
     end
+    inst.image = _prevImage
 
     -- Painel lateral com info detalhada — pixel chrome (sem cantos arredondados)
     local panelX = cardX + cardW + 30

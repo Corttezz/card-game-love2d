@@ -22,9 +22,5 @@
   "rogue_strike": {
     "object_id": "d1b0965a-670b-44e5-bac8-7fb8185d744d",
     "group": "cc1f3251-30b8-4edc-926d-8f4500aa3eaa"
-  },
-  "rogue_defend": {
-    "object_id": "a88da962-3897-4337-86f6-08ec5283ef14",
-    "group": "1aee27da-a4fb-4eee-bbea-bd71b724c9cd"
   }
 }
