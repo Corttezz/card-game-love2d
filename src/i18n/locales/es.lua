@@ -39,6 +39,7 @@ return {
         language    = "Idioma",
         on          = "ON",
         off         = "OFF",
+        reduced_motion = "Movimiento reducido",
         close       = "CERRAR",
     },
 
@@ -168,6 +169,9 @@ return {
         extra_draw         = "Cartas extra por turno: +{n}",
         atk_bonus          = "Dano de ataque: +{n}",
         def_bonus          = "Defensa: +{n}",
+        buy_and_use        = "Usar (${n})",
+        open_pack          = "Abrir (${n})",
+        select_card        = "Seleccionar",
     },
 
     collection = {
@@ -239,6 +243,30 @@ return {
         apply_debuff_weak           = "Aplica {stacks} Debil",
         apply_debuff_poison         = "Aplica {stacks} Veneno",
         unknown                     = "Efecto desconocido",
+    },
+
+    status = {
+        score      = { name = "Puntos", desc = "Ganas puntos al GANAR batallas: base por el enemigo derrotado, con bonos por ganar rapido, activar combos de cartas y no recibir dano. Record actual: {best}." },
+        fury       = { name = "Furia", desc = "Enemigo enfurecido: +{stacks} de dano permanente hasta ahora (crece cada turno, hasta +10)." },
+        intent_attack  = { name = "Va a Atacar", desc = "El proximo turno el enemigo ataca por {value} de dano. El Bloqueo lo absorbe." },
+        intent_strong  = { name = "Ataque Pesado", desc = "GOLPE BRUTAL en camino: {value} de dano el proximo turno. Defiende!" },
+        intent_defend  = { name = "Va a Defender", desc = "El proximo turno el enemigo gana {value} de armadura (dura 1 turno)." },
+        intent_buff    = { name = "Va a Enfurecerse", desc = "El proximo turno el enemigo gana +{value} de dano PERMANENTE." },
+        passive_warrior= { name = "Pasiva: Impetu", desc = "Juega 2+ ataques en el mismo turno: +1 de Fuerza en esta batalla." },
+        passive_mage   = { name = "Pasiva: Conducto", desc = "Comienza cada batalla con un orbe de Rayo (4) canalizado." },
+        passive_rogue  = { name = "Pasiva: Toxinas", desc = "El primer ataque de cada turno aplica 1 de Veneno." },
+        topbar_gold = { name = "Oro", desc = "Compra cartas, forjas y mejoras en la tienda. Interes: +$1 por cada $5 ahorrados (max +$5), pagado tras cada batalla ganada. Proximo pago: +${interest}." },
+        topbar_deck = { name = "Grimorio", desc = "{deck} cartas en tu grimorio — {hand} en mano ahora. Al final del turno tu mano se descarta y robas cartas nuevas. Clic para ver el mazo." },
+        topbar_progress = { name = "Progreso del Viaje", desc = "Acto {act}, piso {floor} de {total}. Un MINI-JEFE espera en el piso 7; el JEFE del acto en el piso {total}. Derrota al jefe del Acto 3 para terminar la cronica." },
+        topbar_config = { name = "Menu de Pausa", desc = "Pausa el viaje: ajustes, guardar y salir al menu, o abandonar la partida." },
+        reward_rules = { name = "Como funcionan las ofertas", desc = "Las cartas ofrecidas son de TU clase. La calidad mejora cada acto — y cada oferta sin una RARA aumenta las probabilidades de la siguiente (tras una racha larga sin raras, una rara esta garantizada). Las cartas marcadas con AFINIDAD coinciden con las etiquetas fuertes de tu mazo. Las cartas que ya tienes en copias aparecen menos." },
+        poison     = { name = "Veneno",     desc = "Causa {stacks} de dano al final del turno, durante {duration} turno(s)." },
+        weak       = { name = "Debil",      desc = "El dano infligido se reduce en un 25% durante {duration} turno(s)." },
+        vulnerable = { name = "Vulnerable", desc = "Recibe un 50% mas de dano de los ataques durante {duration} turno(s)." },
+        strength   = { name = "Fuerza",     desc = "Los ataques causan +{stacks} de dano adicional mientras este activa." },
+        dexterity  = { name = "Destreza",   desc = "Las cartas de defensa ganan +{stacks} de bloqueo adicional." },
+        focus      = { name = "Foco",       desc = "Mejora generica aplicada durante {duration} turno(s)." },
+        burn       = { name = "Quemadura",  desc = "Causa {stacks} de dano de fuego por turno." },
     },
 
     messages = {

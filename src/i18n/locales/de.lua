@@ -39,6 +39,7 @@ return {
         language    = "Sprache",
         on          = "AN",
         off         = "AUS",
+        reduced_motion = "Weniger Bewegung",
         close       = "SCHLIESSEN",
     },
 
@@ -168,6 +169,9 @@ return {
         extra_draw         = "Extra-Karten pro Zug: +{n}",
         atk_bonus          = "Angriffsschaden: +{n}",
         def_bonus          = "Verteidigung: +{n}",
+        buy_and_use        = "Nutzen (${n})",
+        open_pack          = "Oeffnen (${n})",
+        select_card        = "Auswaehlen",
     },
 
     collection = {
@@ -239,6 +243,30 @@ return {
         apply_debuff_weak           = "Wende {stacks} Schwach an",
         apply_debuff_poison         = "Wende {stacks} Gift an",
         unknown                     = "Unbekannter Effekt",
+    },
+
+    status = {
+        score      = { name = "Punkte", desc = "Du erhaeltst Punkte durch GEWONNENE Kaempfe: Basis fuer den besiegten Gegner, mit Boni fuers schnelle Gewinnen, das Ausloesen von Karten-Combos und schadenfreies Spiel. Aktueller Rekord: {best}." },
+        fury       = { name = "Wut", desc = "Wuetender Gegner: +{stacks} dauerhafter Schaden bisher (waechst jeden Zug, bis +10)." },
+        intent_attack  = { name = "Greift an", desc = "Naechsten Zug greift der Gegner fuer {value} Schaden an. Block faengt ihn ab." },
+        intent_strong  = { name = "Schwerer Angriff", desc = "BRUTALER SCHLAG naht: {value} Schaden naechsten Zug. Verteidige dich!" },
+        intent_defend  = { name = "Verteidigt", desc = "Naechsten Zug erhaelt der Gegner {value} Ruestung (haelt 1 Zug)." },
+        intent_buff    = { name = "Wird wuetend", desc = "Naechsten Zug erhaelt der Gegner +{value} DAUERHAFTEN Schaden." },
+        passive_warrior= { name = "Passiv: Schwung", desc = "Spiele 2+ Angriffe im selben Zug: +1 Staerke fuer diesen Kampf." },
+        passive_mage   = { name = "Passiv: Leitung", desc = "Beginne jeden Kampf mit einem kanalisierten Blitz-Orb (4)." },
+        passive_rogue  = { name = "Passiv: Toxine", desc = "Der erste Angriff jeder Runde fuegt 1 Gift zu." },
+        topbar_gold = { name = "Gold", desc = "Kauft Karten, Schmieden und Verbesserungen im Laden. Zinsen: +$1 pro $5 gespart (max +$5), ausgezahlt nach jedem gewonnenen Kampf. Naechste Auszahlung: +${interest}." },
+        topbar_deck = { name = "Grimoire", desc = "{deck} Karten in deinem Grimoire — {hand} gerade auf der Hand. Am Zugende wird deine Hand abgeworfen und du ziehst neue Karten. Klicke, um das Deck zu durchsuchen." },
+        topbar_progress = { name = "Reisefortschritt", desc = "Akt {act}, Etage {floor} von {total}. Ein MINI-BOSS wartet auf Etage 7; der Akt-BOSS auf Etage {total}. Besiege den Boss von Akt 3, um die Chronik zu vollenden." },
+        topbar_config = { name = "Pausenmenue", desc = "Pausiert die Reise: Optionen, speichern und zum Menue, oder den Lauf abbrechen." },
+        reward_rules = { name = "Wie Angebote funktionieren", desc = "Angebotene Karten gehoeren ZU DEINER Klasse. Die Qualitaet steigt mit jedem Akt — und jedes Angebot ohne eine SELTENE erhoeht die Chance des naechsten (nach einer langen Durststrecke ist eine seltene garantiert). Mit AFFINITAET markierte Karten passen zu den starken Tags deines Decks. Karten, die du bereits mehrfach besitzt, erscheinen seltener." },
+        poison     = { name = "Gift",       desc = "Fuegt {stacks} Schaden am Zugende zu, fuer {duration} Zug(e)." },
+        weak       = { name = "Schwach",    desc = "Verursachter Schaden um 25% reduziert fuer {duration} Zug(e)." },
+        vulnerable = { name = "Verwundbar", desc = "Erleidet 50% mehr Schaden durch Angriffe fuer {duration} Zug(e)." },
+        strength   = { name = "Staerke",    desc = "Angriffe verursachen +{stacks} zusaetzlichen Schaden, solange aktiv." },
+        dexterity  = { name = "Geschicklichkeit", desc = "Verteidigungskarten erhalten +{stacks} zusaetzlichen Block." },
+        focus      = { name = "Fokus",      desc = "Generische Verstaerkung fuer {duration} Zug(e) angewandt." },
+        burn       = { name = "Brand",      desc = "Fuegt {stacks} Feuerschaden pro Zug zu." },
     },
 
     messages = {

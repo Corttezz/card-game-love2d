@@ -39,6 +39,7 @@ return {
         language    = "Langue",
         on          = "ON",
         off         = "OFF",
+        reduced_motion = "Mouvement reduit",
         close       = "FERMER",
     },
 
@@ -168,6 +169,9 @@ return {
         extra_draw         = "Cartes piochees en plus par tour : +{n}",
         atk_bonus          = "Degats d'attaque : +{n}",
         def_bonus          = "Defense : +{n}",
+        buy_and_use        = "Utiliser (${n})",
+        open_pack          = "Ouvrir (${n})",
+        select_card        = "Selectionner",
     },
 
     collection = {
@@ -239,6 +243,30 @@ return {
         apply_debuff_weak           = "Applique {stacks} Faible",
         apply_debuff_poison         = "Applique {stacks} Poison",
         unknown                     = "Effet inconnu",
+    },
+
+    status = {
+        score      = { name = "Score", desc = "Tu gagnes des points en REMPORTANT des combats : base pour l'ennemi vaincu, avec bonus pour gagner vite, declencher des combos et ne subir aucun degat. Record actuel : {best}." },
+        fury       = { name = "Furie", desc = "Ennemi enrage : +{stacks} de degats permanents jusqu'ici (augmente chaque tour, jusqu'a +10)." },
+        intent_attack  = { name = "Va Attaquer", desc = "Au prochain tour l'ennemi attaque pour {value} degats. Le Blocage l'absorbe." },
+        intent_strong  = { name = "Attaque Lourde", desc = "COUP BRUTAL en approche : {value} degats au prochain tour. Defends-toi !" },
+        intent_defend  = { name = "Va Defendre", desc = "Au prochain tour l'ennemi gagne {value} d'armure (dure 1 tour)." },
+        intent_buff    = { name = "Va s'Enrager", desc = "Au prochain tour l'ennemi gagne +{value} de degats PERMANENTS." },
+        passive_warrior= { name = "Passive : Elan", desc = "Jouez 2+ attaques dans le meme tour : +1 de Force pour ce combat." },
+        passive_mage   = { name = "Passive : Conduit", desc = "Commencez chaque combat avec un orbe de Foudre (4) canalise." },
+        passive_rogue  = { name = "Passive : Toxines", desc = "La premiere attaque de chaque tour applique 1 Poison." },
+        topbar_gold = { name = "Or", desc = "Achete cartes, forges et ameliorations a la boutique. Interets : +$1 par $5 economises (max +$5), verse apres chaque combat gagne. Prochain versement : +${interest}." },
+        topbar_deck = { name = "Grimoire", desc = "{deck} cartes dans ton grimoire — {hand} en main maintenant. En fin de tour ta main est defaussee et tu pioches de nouvelles cartes. Clique pour parcourir le deck." },
+        topbar_progress = { name = "Progression du Voyage", desc = "Acte {act}, etage {floor} sur {total}. Un MINI-BOSS attend a l'etage 7 ; le BOSS de l'acte a l'etage {total}. Bats le boss de l'Acte 3 pour achever la chronique." },
+        topbar_config = { name = "Menu Pause", desc = "Met le voyage en pause : options, sauvegarder et quitter au menu, ou abandonner la partie." },
+        reward_rules = { name = "Fonctionnement des offres", desc = "Les cartes proposees sont de TA classe. La qualite s'ameliore a chaque acte — et chaque offre sans carte RARE augmente les chances de la suivante (apres une longue serie sans rare, une rare est garantie). Les cartes marquees AFFINITE correspondent aux tags forts de ton deck. Les cartes que tu possedes deja en plusieurs exemplaires apparaissent moins souvent." },
+        poison     = { name = "Poison",     desc = "Inflige {stacks} degats en fin de tour, pendant {duration} tour(s)." },
+        weak       = { name = "Faible",     desc = "Les degats infliges sont reduits de 25% pendant {duration} tour(s)." },
+        vulnerable = { name = "Vulnerable", desc = "Subit 50% de degats en plus des attaques pendant {duration} tour(s)." },
+        strength   = { name = "Force",      desc = "Les attaques infligent +{stacks} degats supplementaires tant qu'elle est active." },
+        dexterity  = { name = "Dexterite",  desc = "Les cartes de defense gagnent +{stacks} de blocage supplementaire." },
+        focus      = { name = "Focus",      desc = "Amelioration generique appliquee pendant {duration} tour(s)." },
+        burn       = { name = "Brulure",    desc = "Inflige {stacks} degats de feu par tour." },
     },
 
     messages = {
