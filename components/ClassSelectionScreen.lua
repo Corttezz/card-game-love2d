@@ -91,6 +91,53 @@ function ClassSelectionScreen:_heroAnim(classId)
     return self._heroAnims[classId]
 end
 
+-- MÉTRICAS do sprite (medidas no south.png, valem pros frames de anim —
+-- mesmo canvas): o padding do canvas VARIA por modo do PixelLab
+-- (standard ~136px, v3 ~180px com pé em altura diferente) — chutar
+-- offset fixo deixava o herói flutuando. Aqui a gente VARRE a imagem:
+-- pixel opaco mais baixo = pé; altura real do conteúdo dita a escala.
+function ClassSelectionScreen:_heroMeta(classId)
+    self._heroMetaCache = self._heroMetaCache or {}
+    if self._heroMetaCache[classId] ~= nil then
+        return self._heroMetaCache[classId]
+    end
+    local path = "assets/sprites/characters/heroes/" .. classId .. "/south.png"
+    if not love.filesystem.getInfo(path) then
+        self._heroMetaCache[classId] = false
+        return false
+    end
+    local ok, data = pcall(love.image.newImageData, path)
+    if not ok or not data then
+        self._heroMetaCache[classId] = false
+        return false
+    end
+    local w, h = data:getDimensions()
+    local bottom, top = 0, h - 1
+    for y = h - 1, 0, -1 do
+        local found = false
+        for x = 0, w - 1, 2 do
+            local _, _, _, a = data:getPixel(x, y)
+            if a > 0.05 then found = true break end
+        end
+        if found then bottom = y break end
+    end
+    for y = 0, h - 1 do
+        local found = false
+        for x = 0, w - 1, 2 do
+            local _, _, _, a = data:getPixel(x, y)
+            if a > 0.05 then found = true break end
+        end
+        if found then top = y break end
+    end
+    local meta = {
+        canvasW = w, canvasH = h,
+        bottom = bottom,                          -- linha do pé
+        contentH = math.max(1, bottom - top + 1), -- altura real do herói
+    }
+    self._heroMetaCache[classId] = meta
+    return meta
+end
+
 function ClassSelectionScreen:createClassButtons()
     self.buttons = {}
     self.panels = {}
@@ -295,25 +342,69 @@ function ClassSelectionScreen:_drawHero(p, cx, feetY)
     love.graphics.draw(glow, cx, feetY - 4, 0, 1.5, 0.5, 64, 64)
     love.graphics.setBlendMode("alpha")
 
+    -- escala/âncora pelas MÉTRICAS medidas (pé de verdade, altura real)
+    local meta = self:_heroMeta(p.classId)
+    local function heroTransform(iw, ih)
+        -- alvo: herói com ~200px de altura de CONTEÚDO na tela
+        local contentH = meta and meta.contentH or ih
+        local scale = math.floor((200 / contentH) * 2 + 0.5) / 2 + 0.18 * hover
+        local footRow = (meta and meta.bottom or ih - 15) + 1
+        local dx = cx - iw * scale / 2
+        local dy = feetY - footRow * scale - hover * 8
+        return dx, dy, scale
+    end
+
     local anim = self:_heroAnim(p.classId)
     if anim then
         local iw, ih = anim:getSize()
-        -- escala DINÂMICA pelo canvas real (standard=136px, v3=180px),
-        -- em meio-passos pra manter o pixel art estável (~270px na tela)
-        local scale = math.floor((270 / ih) * 2 + 0.5) / 2 + 0.18 * hover
-        local dx = cx - iw * scale / 2
-        local dy = feetY - ih * scale + 14 * scale  -- compensa padding do canvas
-        anim:draw(dx, dy - hover * 8, scale)
+        local dx, dy, scale = heroTransform(iw, ih)
+        anim:draw(dx, dy, scale)
         -- FLASH branco no momento da escolha
         if p.fx > 0.02 then
             love.graphics.setBlendMode("add")
-            anim:draw(dx, dy - hover * 8, scale, { 1, 1, 1, p.fx * 0.85 })
+            anim:draw(dx, dy, scale, { 1, 1, 1, p.fx * 0.85 })
             love.graphics.setBlendMode("alpha")
         end
         return true
     end
 
-    -- Fallback: ícone antigo centralizado na zona do herói
+    -- Fallback 1: sprite ESTÁTICO (south.png) com balanço procedural —
+    -- cobre a janela em que a animação do PixelLab ainda não chegou
+    -- (serviço instável Jul/2026) sem perder a vida da cena.
+    self._heroStatic = self._heroStatic or {}
+    if self._heroStatic[p.classId] == nil then
+        local path = "assets/sprites/characters/heroes/" .. p.classId .. "/south.png"
+        if love.filesystem.getInfo(path) then
+            local ok2, img = pcall(love.graphics.newImage, path)
+            if ok2 and img then
+                img:setFilter("nearest", "nearest")
+                self._heroStatic[p.classId] = img
+            else
+                self._heroStatic[p.classId] = false
+            end
+        else
+            self._heroStatic[p.classId] = false
+        end
+    end
+    local static = self._heroStatic[p.classId]
+    if static then
+        local iw, ih = static:getWidth(), static:getHeight()
+        local dx, dy, scale = heroTransform(iw, ih)
+        local t = love.timer.getTime()
+        local bob = math.sin(t * 1.5 + (p.x or 0) * 0.01) * 2
+        dy = dy + bob
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.draw(static, math.floor(dx), math.floor(dy), 0, scale, scale)
+        if p.fx > 0.02 then
+            love.graphics.setBlendMode("add")
+            love.graphics.setColor(1, 1, 1, p.fx * 0.85)
+            love.graphics.draw(static, math.floor(dx), math.floor(dy), 0, scale, scale)
+            love.graphics.setBlendMode("alpha")
+        end
+        return true
+    end
+
+    -- Fallback 2: ícone antigo centralizado na zona do herói
     local icon = IconLoader.get(CLASS_ICONS[p.classId] or "scroll")
     if icon and icon.size then
         local s = (72 + 16 * hover) / icon.size.w
