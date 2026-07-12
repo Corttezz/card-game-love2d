@@ -17,6 +17,7 @@ local Palette      = require("src.ui.Palette")
 local HintBar      = require("src.ui.HintBar")
 local SceneBackground = require("src.ui.SceneBackground")
 local CardDatabase = require("src.systems.CardDatabase")
+local CardFrame    = require("src.ui.CardFrame")
 local Sfx          = require("src.systems.Sfx")
 local I18n         = require("src.i18n.I18n")
 
@@ -309,11 +310,13 @@ function DeckViewerScreen:draw()
         end
     end
     -- Hovered por último (por cima dos vizinhos): lift + scale sutil + moldura.
+    -- Hover anima o ícone (icons_anim); grid idle fica estático.
     if hovered and hovered.image then
         local hs = scale * 1.07
         local ox = (CARD_W * (hs / scale - 1)) / 2
+        local img = CardFrame.liveImage(hovered) or hovered.image
         love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.draw(hovered.image, hx - ox, hy - 8 - ox, 0, hs, hs)
+        love.graphics.draw(img, hx - ox, hy - 8 - ox, 0, hs, hs)
         Palette.set(Palette.AGED_GOLD_LIGHT)
         love.graphics.setLineWidth(2)
         love.graphics.rectangle("line", hx - ox - 2, hy - 10 - ox,

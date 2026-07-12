@@ -4,12 +4,13 @@
 --
 -- Catálogo de overlays (por trigger):
 --   legendary             → halo dourado pulsante
---   rare                  → glow interno sutil vermelho
---   joker                 → anel rotativo de 8 pontos dourados
 --   bgPattern=fire/rage   → embers subindo
---   bgPattern=blood       → gota de sangue caindo
---   bgPattern=storm       → flash branco ocasional
---   bgPattern=ice         → brilho cristalino pulsante
+--   bgPattern=blood       → gota de sangue escorrendo
+--   bgPattern=poison      → bolhas musgo subindo
+--   bgPattern=arcane      → glyphs flutuando (add blend)
+--   bgPattern=shadow      → wisps subindo
+--   bgPattern=abyss       → olhos piscando + ripple + tendril
+--   bgPattern=void        → estrelas + estrela cadente + poeira
 --
 -- API:
 --   CardAnimationLayer.draw(card, art, x, y, scaleX, scaleY, t)
@@ -17,7 +18,6 @@
 --     e t = love.timer.getTime() (passado pra evitar custo repetido).
 
 local Palette = require("src.ui.Palette")
-local AnimatedIconLoader = require("src.ui.AnimatedIconLoader")
 local IconFramesLoader  = require("src.ui.IconFramesLoader")
 local IconAnimations = require("src.ui.card.IconAnimations")
 
@@ -50,35 +50,6 @@ local function legendaryHalo(x, y, sx, sy, t)
     drawPulsingBorder(x - 2, y - 2, w + 4, h + 4, Palette.AGED_GOLD, alpha * 0.4, 1)
 end
 
-local function rareGlow(x, y, sx, sy, t)
-    local alpha = 0.12 + math.sin(t * 2.5) * 0.06
-    local w = CANVAS_W * sx
-    local h = CANVAS_H * sy
-    love.graphics.setColor(Palette.BLOOD[1], Palette.BLOOD[2], Palette.BLOOD[3], alpha)
-    -- Glow interno: retângulo preenchido sobre a art slot
-    local artY = y + 17 * sy
-    local artH = 107 * sy
-    love.graphics.rectangle("fill", x + 4 * sx, artY, (CANVAS_W - 8) * sx, artH)
-end
-
--- Anel rotativo de 8 pontos em volta do centro da carta (pra joker)
-local function jokerRing(x, y, sx, sy, t)
-    local cx = x + CANVAS_W * sx / 2
-    local cy = y + CANVAS_H * sy / 2
-    local radius = math.min(CANVAS_W, CANVAS_H) * sx * 0.28
-    local dotSize = math.max(2, 3 * sx)
-    love.graphics.setColor(Palette.TAROT_GOLD[1], Palette.TAROT_GOLD[2], Palette.TAROT_GOLD[3], 0.85)
-    for i = 0, 7 do
-        local a = t * 0.8 + i * math.pi * 2 / 8
-        local px = cx + math.cos(a) * radius
-        local py = cy + math.sin(a) * radius
-        -- Alpha varia por posição (pulsa)
-        local alpha = 0.5 + math.sin(t * 3 + i) * 0.3
-        love.graphics.setColor(Palette.AGED_GOLD_LIGHT[1], Palette.AGED_GOLD_LIGHT[2], Palette.AGED_GOLD_LIGHT[3], alpha)
-        love.graphics.rectangle("fill", px - dotSize / 2, py - dotSize / 2, dotSize, dotSize)
-    end
-end
-
 -- Embers subindo (fire/rage bg). 4 partículas com posição determinística via t.
 local function embers(x, y, sx, sy, t)
     -- Art slot area (dentro da carta)
@@ -102,7 +73,7 @@ local function embers(x, y, sx, sy, t)
     end
 end
 
--- Gota de sangue caindo (blood bg)
+-- Gota de sangue escorrendo (blood bg). Restaurado a pedido (Jul/2026).
 local function bloodDrip(x, y, sx, sy, t)
     local aX = x + 8 * sx
     local aY = y + 17 * sy
@@ -113,39 +84,6 @@ local function bloodDrip(x, y, sx, sy, t)
     local alpha = 1 - cycle / aH
     love.graphics.setColor(Palette.BLOOD[1], Palette.BLOOD[2], Palette.BLOOD[3], alpha)
     love.graphics.rectangle("fill", aX, dropY, 2 * sx, 3 * sy)
-end
-
--- Flash de raio ocasional (storm bg)
-local function stormFlash(x, y, sx, sy, t)
-    -- Trigger uma vez a cada ~2.5s
-    local cycle = t % 2.5
-    if cycle < 0.08 then
-        local w = CANVAS_W * sx
-        local h = CANVAS_H * sy
-        local alpha = 0.3 * (1 - cycle / 0.08)
-        love.graphics.setColor(1, 1, 1, alpha)
-        local aX = x + 4 * sx
-        local aY = y + 17 * sy
-        love.graphics.rectangle("fill", aX, aY, 88 * sx, 107 * sy)
-    end
-end
-
--- Brilho cristalino (ice bg) — 3 pontos alternando alpha
-local function iceShimmer(x, y, sx, sy, t)
-    local points = {
-        { 0.3, 0.35 }, { 0.6, 0.45 }, { 0.45, 0.65 },
-    }
-    local aX = x + 4 * sx
-    local aY = y + 17 * sy
-    local aW = 88 * sx
-    local aH = 107 * sy
-    for i, p in ipairs(points) do
-        local alpha = math.max(0, math.sin(t * 4 + i * 1.7))
-        love.graphics.setColor(1, 1, 1, alpha * 0.7)
-        local px = aX + p[1] * aW
-        local py = aY + p[2] * aH
-        love.graphics.rectangle("fill", px, py, math.max(2, 2 * sx), math.max(2, 2 * sy))
-    end
 end
 
 -- ===== Tier A animated overlays (2026-04-20) =====
@@ -237,14 +175,6 @@ local function shadowWisps(x, y, sx, sy, t)
         local alpha = 0.4 + math.max(0, math.sin(phase * 1.3)) * 0.4
         love.graphics.setColor(Palette.PURPLE_DEEP[1], Palette.PURPLE_DEEP[2], Palette.PURPLE_DEEP[3], alpha)
         love.graphics.rectangle("fill", px, py, math.max(1, sx), math.max(1, sy))
-    end
-
-    -- Dim pulse: a cada ~5s, escurece a carta brevemente (vibe de shadow respirando)
-    local pulseCycle = t % 5
-    if pulseCycle < 0.6 then
-        local pulseAlpha = (1 - math.abs(pulseCycle - 0.3) / 0.3) * 0.18
-        love.graphics.setColor(Palette.INK[1], Palette.INK[2], Palette.INK[3], pulseAlpha)
-        love.graphics.rectangle("fill", aX, aY, aW, aH)
     end
 end
 
@@ -396,26 +326,17 @@ function CardAnimationLayer.draw(card, art, x, y, scaleX, scaleY, t)
     -- Rarity overlays
     if rarity == "legendary" then
         legendaryHalo(x, y, scaleX, scaleY, t)
-    elseif rarity == "rare" then
-        rareGlow(x, y, scaleX, scaleY, t)
     end
 
-    -- Joker: apenas ring rotativo (ícone estático map_object renderizado pelo canvas)
-    if card.type == "joker" then
-        jokerRing(x, y, scaleX, scaleY, t)
-    end
-
-    -- bgPattern-based overlays
+    -- bgPattern-based overlays.
+    -- (storm/ice removidos Jul/2026: flash/shimmer liam como flicker/bug.
+    --  jokerRing removido: orbitava atrás do ícone e virava pixel perdido.
+    --  bloodDrip mantido a pedido.)
     local bg = art and art.bgPattern
     if bg == "fire" or bg == "rage" then
         embers(x, y, scaleX, scaleY, t)
     elseif bg == "blood" then
         bloodDrip(x, y, scaleX, scaleY, t)
-    elseif bg == "storm" then
-        stormFlash(x, y, scaleX, scaleY, t)
-    elseif bg == "ice" then
-        iceShimmer(x, y, scaleX, scaleY, t)
-    -- Tier A
     elseif bg == "poison" then
         poisonBubbles(x, y, scaleX, scaleY, t)
     elseif bg == "arcane" then
@@ -428,24 +349,16 @@ function CardAnimationLayer.draw(card, art, x, y, scaleX, scaleY, t)
         voidTwinkle(x, y, scaleX, scaleY, t)
     end
 
-    -- ICON animations para TODOS os tipos (incluindo joker agora):
-    -- procedural overlay sutil (shine/drip/sparkle/deity_glow).
-    if art and art.iconName then
+    -- ICON animations procedurais sutis (shine/drip/sparkle/deity_glow) —
+    -- SÓ pra ícones sem frames PixelLab. Ícones com icons_anim/ já vivem
+    -- dentro do canvas da carta (CardFrame pré-renderiza um canvas por frame
+    -- e Card:draw troca self.image no tempo — warp/holo pegam de graça).
+    if art and art.iconName and not IconFramesLoader.has(art.iconName) then
         local iconX = x + 16 * scaleX
         local iconY = y + 38 * scaleY
         local iconW = 64 * scaleX
         local iconH = 64 * scaleY
-
-        local frames = IconFramesLoader.get(art.iconName)
-        if frames then
-            local frame = frames:frameAt(t)
-            if frame then
-                love.graphics.setColor(1, 1, 1, 1)
-                love.graphics.draw(frame, iconX, iconY, 0, scaleX, scaleY)
-            end
-        else
-            IconAnimations.draw(art.iconName, iconX, iconY, iconW, iconH, t)
-        end
+        IconAnimations.draw(art.iconName, iconX, iconY, iconW, iconH, t)
     end
 
     -- Restaura

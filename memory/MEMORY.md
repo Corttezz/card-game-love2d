@@ -23,6 +23,7 @@
 - [Pixel Art System](pixel_art_system.md) — arte procedural (Palette → CardFrame → CRTShader)
 - [UI Pixel Chrome](ui_pixel_system.md) — botões/menus pixel, Press Start 2P
 - [Sprite Design Queue](sprite_design_queue.md) — fila de sprites via pixel-mcp
+- ⚠️ [Card Icon Animation](card_icon_animation.md) — **PARTE DO PIPELINE de carta nova**: olhar a arte ANTES de escrever a animação; intensidade segue raridade (basic=quase imperceptível → legendary=vivo); PixelLab animate_object v3 → icons_anim/ → canvas vivo no CardFrame; `love . preview_card_anim` + `screenshot_collection`
 - [PixelLab Queue: Pack Sleeves](pixellab_queue_packs.md) — prompts prontos pros 5 sleeves de booster + banner. Aguarda MCP reconectar.
 - [Combat Animation](combat_animation.md) — Balatro-style, isBlocking() pausa jogo
 - [Boot Sequence](boot_sequence.md) — BootScene (loading + splash 3s) + Menu animado com intro stagger e música menuMusic

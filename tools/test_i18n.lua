@@ -13,14 +13,19 @@
 
 local I18n = require("src.i18n.I18n")
 
-local function fail(msg)
-    print("[FAIL] " .. msg)
-    os.exit(1)
-end
+local M = {}
 
-local function ok(msg)
-    print("[ OK ] " .. msg)
-end
+function M.run()
+    local failed = false
+    local function fail(msg)
+        print("[FAIL] " .. msg)
+        failed = true
+        error("i18n-fail", 0)
+    end
+    local function ok(msg)
+        print("[ OK ] " .. msg)
+    end
+    local okAll = pcall(function()
 
 -- 1. Carrega todos os locales conhecidos
 local locales = I18n.getAvailable()
@@ -182,5 +187,9 @@ for _ in pairs(seen) do count = count + 1 end
 if count ~= #locales then fail("cycleLocale nao visitou todos os locales (" .. count .. "/" .. #locales .. ")") end
 ok("cycleLocale visita todos os " .. #locales .. " locales")
 
-print("\n=== TODOS OS TESTES I18N PASSARAM ===")
-os.exit(0)
+    print("\n=== TODOS OS TESTES I18N PASSARAM ===")
+    end)  -- fim do corpo protegido
+    return okAll and not failed
+end
+
+return M

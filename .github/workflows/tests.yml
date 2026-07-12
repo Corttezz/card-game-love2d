@@ -1,0 +1,29 @@
+name: Tests
+
+# Roda a suite completa (love . test_all) a cada push/PR.
+# Os testes renderizam molduras de carta (love.graphics), então precisam de um
+# contexto GL — usamos xvfb (framebuffer virtual) + mesa software rendering.
+# O exit code de love.event.quit(0/1) propaga: verde = 0, falha = 1.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instala LÖVE + xvfb + mesa
+        run: |
+          sudo add-apt-repository -y ppa:bartbes/love-stable
+          sudo apt-get update
+          sudo apt-get install -y love xvfb libgl1-mesa-dri
+
+      - name: Versão do LÖVE
+        run: love --version
+
+      - name: Suite completa (test_all)
+        run: xvfb-run -a love . test_all

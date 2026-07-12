@@ -386,7 +386,9 @@ function GameplayScene.draw()
     local dt = love.timer.getDelta()
     for i, card in ipairs(game.hand) do
         local offsetY = 0
-        if game:isCardSelected(card) then offsetY = -100 end
+        -- Flag pro Card:draw: carta selecionada anima o ícone (icons_anim)
+        card.isSelected = game:isCardSelected(card)
+        if card.isSelected then offsetY = -100 end
         local rIdx = renderIdxFor(i)
         local tx = cardStartX + (rIdx - 1) * cardSpacing
         local ty = cardY + offsetY

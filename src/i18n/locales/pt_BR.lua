@@ -44,6 +44,7 @@ return {
     },
 
     class_select = {
+        passive_label = "PASSIVA",
         title       = "ESCOLHA SEU ARQUETIPO",
         description = "Cada caminho oferece cartas e taticas unicas.",
         back        = "VOLTAR AO MENU",
@@ -302,7 +303,7 @@ return {
         topbar_progress = { name = "Progresso da Jornada", desc = "Ato {act}, andar {floor} de {total}. No andar 7 aguarda um MINI-CHEFE; no andar {total}, o CHEFE do ato. Vença o chefe do Ato 3 para encerrar a crônica." },
         topbar_config = { name = "Menu de Pausa", desc = "Pausa a jornada: configurações, salvar e voltar ao menu, ou abandonar a run." },
         reward_rules = { name = "Como funcionam as ofertas", desc = "As cartas oferecidas são da SUA classe. A qualidade melhora a cada ato — e a cada oferta sem RARA, a chance da próxima sobe (após um longo jejum, a rara é garantida). Cartas marcadas com AFINIDADE combinam com as tags fortes do seu grimório. Cartas que você já tem em cópias aparecem menos." },
-        poison     = { name = "Veneno",     desc = "Causa {stacks} de dano no fim de cada turno. Perde 1 stack por turno." },
+        poison     = { name = "Veneno",     desc = "Causa {stacks} de dano no fim do turno, por {duration} turno(s)." },
         weak       = { name = "Fraco",      desc = "Dano infligido reduzido em 25%. Dura {duration} turno(s)." },
         vulnerable = { name = "Vulnerável", desc = "Recebe 50% mais dano de ataques. Dura {duration} turno(s)." },
         strength   = { name = "Força",      desc = "Ataques causam +{stacks} de dano adicional enquanto ativo." },

@@ -1,4 +1,5 @@
 local Game = require("src.core.Game")
+local CardFrame = require("src.ui.CardFrame")
 local Button = require("components.Button")
 local Menu = require("components.Menu")
 local GameUI = require("components.GameUI")
@@ -351,6 +352,38 @@ function love.load(loveArgs)
         return
     end
 
+    if loveArgs and loveArgs[1] == "preview_fx" then
+        require("src.ui.PixelCanvas").enableNearest()
+        I18n.init()
+        require("tools.preview_fx").run()
+        love.event.quit()
+        return
+    end
+
+    if loveArgs and loveArgs[1] == "preview_rareglow" then
+        require("src.ui.PixelCanvas").enableNearest()
+        I18n.init()
+        require("tools.preview_rareglow").run()
+        love.event.quit()
+        return
+    end
+
+    if loveArgs and loveArgs[1] == "preview_anim" then
+        require("src.ui.PixelCanvas").enableNearest()
+        I18n.init()
+        require("tools.preview_anim").run()
+        love.event.quit()
+        return
+    end
+
+    -- Contact sheet de carta com ícone animado (icons_anim/).
+    --   love . preview_card_anim [card_id]
+    if loveArgs and loveArgs[1] == "preview_card_anim" then
+        require("tools.preview_card_anim").run(loveArgs[2])
+        love.event.quit()
+        return
+    end
+
     -- Captura screenshot do gameplay (ato 1 warrior) pra debug visual.
     --   love . screenshot_gameplay
     -- Saida: ~/.local/share/love/card-game/gameplay_screenshot.png
@@ -505,6 +538,13 @@ function love.load(loveArgs)
         return
     end
 
+    -- Screenshot da coleção (grid + modal inspect da carta alvo).
+    --   love . screenshot_collection [card_id]
+    if loveArgs and loveArgs[1] == "screenshot_collection" then
+        require("tools.screenshot_collection").run(loveArgs[2])
+        return
+    end
+
     -- Screenshot tool: round eval / cash out (Fase 9). Phase 0..3.
     --   love . screenshot_round_eval 3
     if loveArgs and loveArgs[1] == "screenshot_round_eval" then
@@ -587,6 +627,12 @@ function love.load(loveArgs)
         return
     end
 
+    -- Capturas do Salão dos Heróis (seleção de classe v2).
+    if loveArgs and loveArgs[1] == "screenshot_class_select" then
+        require("tools.screenshot_class_select").run()
+        return
+    end
+
     -- Regressão do mouse através do vidro (domo do CRT vs hit-test).
     if loveArgs and loveArgs[1] == "smoke_crt_mouse" then
         local ok = require("tools.smoke_crt_mouse").run()
@@ -597,6 +643,30 @@ function love.load(loveArgs)
     -- Regressão da ordem do turno (escudo vs apex da investida).
     if loveArgs and loveArgs[1] == "smoke_turn_order" then
         local ok = require("tools.smoke_turn_order").run()
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
+    -- Roda UM teste isolado por nome (util pra iterar).
+    --   love . test_one test_combat
+    if loveArgs and loveArgs[1] == "test_one" and loveArgs[2] then
+        local ok = require("tools." .. loveArgs[2]).run()
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
+    -- Suite COMPLETA (unit + smoke + validacao). Total geral + exit code.
+    --   love . test_all
+    if loveArgs and loveArgs[1] == "test_all" then
+        local ok = require("tools.run_all_tests").run()
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
+    -- Teste de i18n (chaves/traducoes/interpolacao) isolado.
+    --   love . test_i18n
+    if loveArgs and loveArgs[1] == "test_i18n" then
+        local ok = require("tools.test_i18n").run()
         love.event.quit(ok and 0 or 1)
         return
     end
@@ -1055,6 +1125,11 @@ local function updatePlayButtonPosition() GameplayScene.updatePlayButtonPosition
 function love.update(dt)
     -- Identidade CRT: animador do power (ligar/desligar da TV).
     CRTShader.update(dt)
+
+    -- Cartas com ícone animado (icons_anim/): blita o frame corrente no
+    -- canvas vivo de cada carta animada. Roda em TODOS os estados — mão,
+    -- loja, coleção, deck viewer e menu animam pela mesma referência.
+    CardFrame.update()
 
     -- TopBar precisa tickar em TODOS os estados onde é desenhada (loja,
     -- roundEval, rest, event, mapa) — o contador eased de ouro congelava

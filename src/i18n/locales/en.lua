@@ -44,6 +44,7 @@ return {
     },
 
     class_select = {
+        passive_label = "PASSIVE",
         title       = "CHOOSE YOUR ARCHETYPE",
         description = "Each path offers unique cards and tactics.",
         back        = "BACK TO MENU",
@@ -277,7 +278,7 @@ return {
         topbar_progress = { name = "Journey Progress", desc = "Act {act}, floor {floor} of {total}. A MINI-BOSS waits at floor 7; the act BOSS at floor {total}. Defeat the Act 3 boss to finish the chronicle." },
         topbar_config = { name = "Pause Menu", desc = "Pauses the journey: settings, save and quit to menu, or abandon the run." },
         reward_rules = { name = "How offers work", desc = "Offered cards belong to YOUR class. Quality improves each act — and every offer without a RARE raises the next one's odds (after a long dry streak, a rare is guaranteed). Cards marked AFFINITY match your deck's strong tags. Cards you already own in copies show up less often." },
-        poison     = { name = "Poison",     desc = "Deals {stacks} damage at end of turn. Loses 1 stack per turn." },
+        poison     = { name = "Poison",     desc = "Deals {stacks} damage at end of turn, for {duration} turn(s)." },
         weak       = { name = "Weak",       desc = "Damage dealt reduced by 25% for {duration} turn(s)." },
         vulnerable = { name = "Vulnerable", desc = "Takes 50% more damage from attacks for {duration} turn(s)." },
         strength   = { name = "Strength",   desc = "Attacks deal +{stacks} additional damage while active." },

@@ -74,7 +74,12 @@ function M.run()
     check("attack normal vai pro discard",
         #g4.discard == 1 and g4.discard[1].id == "n")
 
-    -- 6. Joker NAO vai pro discard (fica em jokerSlots)
+    -- 6. Joker NAO vai pro discard. Coringas = coleção + bancada (CLAUDE.md):
+    -- o destino do joker é a coleção da run (via addJokerToRun), não o
+    -- discard. Este é um smoke do DESCARTE — garante só que joker não polui
+    -- a pilha. (Roteamento pra bancada/slots é coberto por test_combat.)
+    -- Atualizado no merge Jul/2026 (o assert antigo "vai pra jokerSlots"
+    -- encodava o roteamento direto pré-refactor).
     local g5 = Game:new()
     g5.deck = {}
     g5.hand = {}
@@ -86,7 +91,6 @@ function M.run()
     jokerCard.passive = function() end
     g5:processCardInCombat(jokerCard, nil)
     check("joker NAO vai pro discard", #g5.discard == 0)
-    check("joker vai pra jokerSlots", #g5.jokerSlots == 1)
 
     -- 7. resetHandAndDeck zera o discard
     local g6 = Game:new()

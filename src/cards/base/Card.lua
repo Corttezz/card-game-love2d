@@ -7,6 +7,7 @@ local PolychromeShader = require("src.ui.PolychromeShader")
 local NegativeShader = require("src.ui.NegativeShader")
 local CardAnimationLayer = require("src.ui.card.CardAnimationLayer")
 local CardArt = require("src.ui.CardArt")
+local CardFrame = require("src.ui.CardFrame")
 local Sfx = require("src.systems.Sfx")
 local CardMesh = require("src.ui.CardMesh")
 local Moveable = require("engine.Moveable")
@@ -671,6 +672,16 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
     self.x = x
     self.y = y
 
+    -- Ícone animado (icons_anim/): idle mostra o canvas ESTÁTICO; a
+    -- animação (canvas vivo do CardFrame) entra SÓ na interação — hover ou
+    -- carta selecionada pra jogar (regra do dono, Jul/2026). Swap temporário
+    -- de self.image durante este draw; restaurado no fim da função.
+    local _prevImage = self.image
+    if self.isHovered or self.isSelected then
+        local live = CardFrame.liveImage(self)
+        if live then self.image = live end
+    end
+
     -- Calcula deslocamentos para hover com efeito 3D
     -- noHoverLift (shop/relic): zera o baseOffsetY pra carta não saltar pra
     -- cima/baixo no hover. Mantém scale + tilt + offsetHoverX (parallax suave).
@@ -918,6 +929,9 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
 
     -- Restaura transformações
     love.graphics.pop()
+
+    -- Restaura o canvas estático (swap do ícone animado no topo do draw)
+    self.image = _prevImage
 
     -- Texto só aparece no hover e agora está na parte de cima
     -- Mas não desenha se for uma carta de reward (a descrição será desenhada pela CardRewardScreen)
