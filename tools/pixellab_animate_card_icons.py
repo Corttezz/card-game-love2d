@@ -81,13 +81,14 @@ ANIMS = {
         "fps": 6,
     },
     "mage_zap": {
-        # v2: a v1 fez a mão fechar em punho + flash branco (reprovada).
-        # Restrição dura: NENHUM movimento de dedos, só a luz respira.
-        "anim": ("only the warm glow of light on the palm slowly breathing "
-                 "brighter and dimmer, a tiny spark glinting at one "
-                 "fingertip, the hand and all fingers completely frozen "
-                 "and motionless, no finger movement whatsoever, no pose "
-                 "change, static open hand"),
+        # v3. v1: mão fechou em punho. v2: mão ok mas o brilho ESTOUROU
+        # (frames quase brancos). Além de congelar a mão, LIMITAR a
+        # amplitude da luz explicitamente.
+        "anim": ("a tiny spark of light at the palm center glinting and "
+                 "shifting very slightly, the glow brightness stays almost "
+                 "constant with only a faint barely visible pulse, no "
+                 "overexposure, no white flash, the hand and all fingers "
+                 "completely frozen and motionless, static open hand"),
         "fps": 6,
     },
     "defense_001": {

@@ -241,10 +241,10 @@ function ClassSelectionScreen:update(dt)
     -- brasas subindo dos braseiros
     self._embers = self._embers or {}
     self._emberTimer = (self._emberTimer or 0) - dt
-    if self._emberTimer <= 0 and #self._embers < 16 then
-        self._emberTimer = 0.18 + math.random() * 0.35
+    if self._emberTimer <= 0 and #self._embers < 8 then
+        self._emberTimer = 0.35 + math.random() * 0.5
         table.insert(self._embers, {
-            brazier = math.random(4),
+            brazier = math.random(2),
             offX = (math.random() - 0.5) * 14,
             t = 0,
             life = 1.2 + math.random() * 1.2,
@@ -437,21 +437,20 @@ function ClassSelectionScreen:draw()
 end
 
 -- ===== v2.1: backdrop vivo =====
--- Âncoras dos 4 BRASEIROS na imagem do salão (coords relativas ao PNG
--- 400×256 gerado Jul/2026 — medidas na arte; ajuste se regenerar).
+-- Âncoras dos 2 BRASEIROS na imagem do salão minimalista (coords
+-- relativas ao PNG 400×256, v2 "limpo" Jul/2026 — ajuste se regenerar).
 local BRAZIER_ANCHORS = {
-    { xr = 0.115, yr = 0.578, phase = 0.0 },
-    { xr = 0.352, yr = 0.578, phase = 2.1 },
-    { xr = 0.648, yr = 0.578, phase = 4.3 },
-    { xr = 0.885, yr = 0.578, phase = 1.2 },
+    { xr = 0.380, yr = 0.735, phase = 0.0 },
+    { xr = 0.618, yr = 0.735, phase = 2.9 },
 }
 
 function ClassSelectionScreen:_drawLivingBackdrop(width, height)
     local t = love.timer.getTime()
 
     -- CAMADA 1: salão com parallax (folga de zoom, offset clampado)
+    -- overlay leve: a arte v2 já é escura por composição (0.38 afogava)
     local ok, tf = SceneBackground.drawParallax("classSelection", width, height,
-        0.38, (self._parX or 0) * -12, (self._parY or 0) * -7, 1.07)
+        0.15, (self._parX or 0) * -12, (self._parY or 0) * -7, 1.07)
     if not ok then
         if not SceneBackground.draw("menu", width, height, 0.55) then
             Theme.Utils.drawVerticalGradient(0, 0, width, height, {

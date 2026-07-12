@@ -13,7 +13,7 @@
   },
   "mage_zap": {
     "object_id": "2822f004-3a80-4073-b2cc-8613e3d4be37",
-    "group": "af8d2dd0-80e1-4a0b-a079-66f5b6d9b69f"
+    "group": "4766ac7d-2f22-4e39-9f9e-d6790dcf1823"
   },
   "defense_001": {
     "object_id": "5926fc53-3672-4626-82ad-c93ebbbccbba",
@@ -25,6 +25,6 @@
   },
   "rogue_defend": {
     "object_id": "a88da962-3897-4337-86f6-08ec5283ef14",
-    "group": "5ce8d037-d92e-4736-b76b-293c93fe305e"
+    "group": "1aee27da-a4fb-4eee-bbea-bd71b724c9cd"
   }
 }
