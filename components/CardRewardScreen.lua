@@ -408,6 +408,7 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
                 self.game:addMessage(I18n.t("reward.shop_refreshed"), "info")
             else
                 self.game:addMessage(I18n.t("reward.refresh_fail"), "error")
+                Sfx.play("purchaseDeny")
             end
         end
     )
@@ -529,6 +530,7 @@ function CardRewardScreen:purchaseOffer(offer, offerId)
 
     if not self.game.economySystem:canAfford(offer.cost) then
         self.game:addMessage(I18n.t("reward.insufficient_gold"), "error")
+        Sfx.play("purchaseDeny")
         return
     end
 
@@ -537,6 +539,7 @@ function CardRewardScreen:purchaseOffer(offer, offerId)
         local cd = self.game.deckManager.cardDatabase:getCard(offer.id)
         if cd and cd.type == "joker" and not self.game:canAcceptJoker() then
             self.game:addMessage("Slots de joker cheios — venda um primeiro", "warning")
+            Sfx.play("purchaseDeny")
             return
         end
     end

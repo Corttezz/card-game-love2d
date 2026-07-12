@@ -97,7 +97,12 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
         local leaveAt = (idx - 1) * self.timings.cardStagger
 
         -- ========== Fase 1: flight ==========
+        local launchPitchIdx = idx  -- captura pra closure (combo cascade pitch)
         scheduleAt(leaveAt + self.timings.preFlight, function()
+            -- SFX dedicado de "jogar carta" no lançamento (whoosh), antes do
+            -- impacto (sword/armor). Pitch crescente por carta no combo.
+            local pitch = math.min(1.4, 0.95 + (launchPitchIdx - 1) * 0.06)
+            self:_playLaunchSfx(card, pitch)
             if card.setTargetPos then
                 card:setTargetPos(targetX, targetY)
             else
@@ -166,6 +171,18 @@ end
 -- ============================================================================
 -- IMPACT HANDLERS
 -- ============================================================================
+
+-- SFX de lançamento da carta (whoosh de "jogar"), tocado na Fase 1 antes do
+-- impacto. Só attack/defense têm som dedicado; joker/effect já soam no impacto.
+function CombatSequence:_playLaunchSfx(card, pitch)
+    local t = card.type
+    local opts = pitch and { pitch = pitch } or nil
+    if t == "attack" then
+        Sfx.play("cardPlayAttack", opts)
+    elseif t == "defense" then
+        Sfx.play("cardPlayDefense", opts)
+    end
+end
 
 function CombatSequence:_playImpactSfx(card, pitch)
     local t = card.type
