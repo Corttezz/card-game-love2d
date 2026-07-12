@@ -116,6 +116,13 @@ memory/card_creation_flow.md), não um extra. Duas regras inegociáveis:
 - **Animação "morta"**: v3 às vezes gera frames quase idênticos (lição do
   luminaire). `check` compara md5 dos frames; se acusar MORTA?, regerar com
   descrição de movimento mais explícita (`replace_existing=true`).
+- **O oposto também acontece — v3 anima a AÇÃO da arte** (lição Jul/2026):
+  mão aberta virou punho fechando (mage_zap v1), ladino em pose de esquiva
+  virou dança (rogue_defend v1). Arte com pose dinâmica ou gesto implícito
+  PRECISA de congelamento explícito no prompt: "completely frozen like a
+  statue, no limb/finger movement whatsoever, only <elemento> moving".
+  SEMPRE aprovar/reprovar pelo contact sheet antes de considerar entregue —
+  reprovar se a silhueta muda entre frames em carta basic/common.
 - **fps**: meta.lua por animação (`return { fps = 8 }`). 8fps num loop de
   9 frames ≈ 1.1s — vivo sem ser frenético. Cadências menores p/ pulsos.
 - **Ícones compartilhados** (ex: skull_crowned em várias cartas): animar o

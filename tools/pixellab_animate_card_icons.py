@@ -81,9 +81,13 @@ ANIMS = {
         "fps": 6,
     },
     "mage_zap": {
-        "anim": ("the small magical spark of light at the fingertips "
-                 "flickering and glinting softly, faint glow pulsing slowly, "
-                 "the hand stays perfectly static"),
+        # v2: a v1 fez a mão fechar em punho + flash branco (reprovada).
+        # Restrição dura: NENHUM movimento de dedos, só a luz respira.
+        "anim": ("only the warm glow of light on the palm slowly breathing "
+                 "brighter and dimmer, a tiny spark glinting at one "
+                 "fingertip, the hand and all fingers completely frozen "
+                 "and motionless, no finger movement whatsoever, no pose "
+                 "change, static open hand"),
         "fps": 6,
     },
     "defense_001": {
@@ -99,9 +103,12 @@ ANIMS = {
         "fps": 6,
     },
     "rogue_defend": {
-        "anim": ("the rogue's red cape hem swaying very gently, barely "
-                 "perceptible breathing motion, the pose and blades stay "
-                 "perfectly static"),
+        # v2: a v1 animou a AÇÃO da pose de esquiva (ladino dançando).
+        # Arte em pose dinâmica → congelar o corpo explicitamente.
+        "anim": ("the figure completely frozen mid-dodge like a statue, no "
+                 "limb or body movement whatsoever, only the red cape hem "
+                 "and hood tip swaying very slightly in the wind, barely "
+                 "perceptible"),
         "fps": 6,
     },
 }

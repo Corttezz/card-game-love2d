@@ -227,6 +227,36 @@ function ClassSelectionScreen:update(dt)
         button:update(dt)
     end
 
+    -- v2.1: backdrop vivo (mesma linguagem do menu) — parallax suavizado
+    do
+        local W, H = love.graphics.getWidth(), love.graphics.getHeight()
+        local mx, my = love.mouse.getPosition()
+        local tx = math.max(-1, math.min(1, (mx / W - 0.5) * 2))
+        local ty = math.max(-1, math.min(1, (my / H - 0.5) * 2))
+        local k = math.min(1, dt * 4)
+        self._parX = (self._parX or 0) + (tx - (self._parX or 0)) * k
+        self._parY = (self._parY or 0) + (ty - (self._parY or 0)) * k
+    end
+
+    -- brasas subindo dos braseiros
+    self._embers = self._embers or {}
+    self._emberTimer = (self._emberTimer or 0) - dt
+    if self._emberTimer <= 0 and #self._embers < 16 then
+        self._emberTimer = 0.18 + math.random() * 0.35
+        table.insert(self._embers, {
+            brazier = math.random(4),
+            offX = (math.random() - 0.5) * 14,
+            t = 0,
+            life = 1.2 + math.random() * 1.2,
+            sway = math.random() * math.pi * 2,
+        })
+    end
+    for i = #self._embers, 1, -1 do
+        local e = self._embers[i]
+        e.t = e.t + dt
+        if e.t >= e.life then table.remove(self._embers, i) end
+    end
+
     for _, p in ipairs(self.panels) do
         -- lift suavizado (hover = herói dá um passo à frente)
         local target = (p.btn and p.btn.hover and not self._locked) and 1 or 0
@@ -383,16 +413,9 @@ function ClassSelectionScreen:draw()
     local width = love.graphics.getWidth()
     local height = love.graphics.getHeight()
 
-    -- Fundo: cena PNG (classSelection → fallback menu → fallback gradiente)
-    if not SceneBackground.draw("classSelection", width, height, 0.45) then
-        if not SceneBackground.draw("menu", width, height, 0.55) then
-            local bgColors = {
-                {0.1, 0.1, 0.2, 1},
-                {0.05, 0.05, 0.1, 1}
-            }
-            Theme.Utils.drawVerticalGradient(0, 0, width, height, bgColors)
-        end
-    end
+    -- Fundo VIVO (v2.1, mesma linguagem do menu): parallax de mouse +
+    -- braseiros pulsando + respiração quente + brasas + poeira.
+    self:_drawLivingBackdrop(width, height)
 
     self:drawTitle()
 
@@ -411,6 +434,65 @@ function ClassSelectionScreen:draw()
     if self.buttons.back then self.buttons.back:draw() end
 
     HintBar.draw(I18n.t("class_select.description"))
+end
+
+-- ===== v2.1: backdrop vivo =====
+-- Âncoras dos 4 BRASEIROS na imagem do salão (coords relativas ao PNG
+-- 400×256 gerado Jul/2026 — medidas na arte; ajuste se regenerar).
+local BRAZIER_ANCHORS = {
+    { xr = 0.115, yr = 0.578, phase = 0.0 },
+    { xr = 0.352, yr = 0.578, phase = 2.1 },
+    { xr = 0.648, yr = 0.578, phase = 4.3 },
+    { xr = 0.885, yr = 0.578, phase = 1.2 },
+}
+
+function ClassSelectionScreen:_drawLivingBackdrop(width, height)
+    local t = love.timer.getTime()
+
+    -- CAMADA 1: salão com parallax (folga de zoom, offset clampado)
+    local ok, tf = SceneBackground.drawParallax("classSelection", width, height,
+        0.38, (self._parX or 0) * -12, (self._parY or 0) * -7, 1.07)
+    if not ok then
+        if not SceneBackground.draw("menu", width, height, 0.55) then
+            Theme.Utils.drawVerticalGradient(0, 0, width, height, {
+                { 0.1, 0.1, 0.2, 1 }, { 0.05, 0.05, 0.1, 1 } })
+        end
+        return
+    end
+    self._sceneTf = tf
+
+    -- CAMADA 2: fogo dos braseiros (glow radial com flicker de noise)
+    local glow = RadialGlow.get()
+    love.graphics.setBlendMode("add")
+    for _, a in ipairs(BRAZIER_ANCHORS) do
+        local x = tf.ox + a.xr * tf.dw
+        local y = tf.oy + a.yr * tf.dh
+        local flick = 0.65 + 0.35 * love.math.noise(t * 6.0, a.phase)
+        local r = tf.dw * 0.060 * (0.9 + 0.16 * love.math.noise(t * 3.1, a.phase + 5))
+        love.graphics.setColor(1, 0.48, 0.14, 0.28 * flick)
+        love.graphics.draw(glow, x, y, 0, r * 2 / 128, r * 1.5 / 128, 64, 64)
+        love.graphics.setColor(1, 0.78, 0.38, 0.30 * flick)
+        love.graphics.draw(glow, x, y, 0, r / 128, r * 0.8 / 128, 64, 64)
+    end
+    love.graphics.setBlendMode("alpha")
+
+    -- CAMADA 3: respiração quente global (sala à luz de fogo)
+    local warm = 0.025 + 0.025 * love.math.noise(t * 2.1, 3.3)
+    love.graphics.setColor(1, 0.62, 0.28, warm)
+    love.graphics.rectangle("fill", 0, 0, width, height)
+
+    -- CAMADA 4: brasas dos braseiros (esfriam amarelo→laranja)
+    for _, e in ipairs(self._embers or {}) do
+        local anch = BRAZIER_ANCHORS[e.brazier]
+        local k = e.t / e.life
+        local x = tf.ox + anch.xr * tf.dw + e.offX
+            + math.sin(e.t * 3 + e.sway) * 7 * k
+        local y = tf.oy + anch.yr * tf.dh - k * 85
+        love.graphics.setColor(1, 0.85 - 0.45 * k, 0.30 - 0.20 * k, (1 - k) * 0.85)
+        local s = k < 0.15 and 2 or 1
+        love.graphics.rectangle("fill", math.floor(x), math.floor(y), s, s)
+    end
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 function ClassSelectionScreen:drawTitle()
