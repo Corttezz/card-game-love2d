@@ -348,6 +348,30 @@ function love.load(loveArgs)
         return
     end
 
+    if loveArgs and loveArgs[1] == "preview_fx" then
+        require("src.ui.PixelCanvas").enableNearest()
+        I18n.init()
+        require("tools.preview_fx").run()
+        love.event.quit()
+        return
+    end
+
+    if loveArgs and loveArgs[1] == "preview_rareglow" then
+        require("src.ui.PixelCanvas").enableNearest()
+        I18n.init()
+        require("tools.preview_rareglow").run()
+        love.event.quit()
+        return
+    end
+
+    if loveArgs and loveArgs[1] == "preview_anim" then
+        require("src.ui.PixelCanvas").enableNearest()
+        I18n.init()
+        require("tools.preview_anim").run()
+        love.event.quit()
+        return
+    end
+
     -- Captura screenshot do gameplay (ato 1 warrior) pra debug visual.
     --   love . screenshot_gameplay
     -- Saida: ~/.local/share/love/card-game/gameplay_screenshot.png
@@ -594,6 +618,30 @@ function love.load(loveArgs)
     -- Regressão da ordem do turno (escudo vs apex da investida).
     if loveArgs and loveArgs[1] == "smoke_turn_order" then
         local ok = require("tools.smoke_turn_order").run()
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
+    -- Roda UM teste isolado por nome (util pra iterar).
+    --   love . test_one test_combat
+    if loveArgs and loveArgs[1] == "test_one" and loveArgs[2] then
+        local ok = require("tools." .. loveArgs[2]).run()
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
+    -- Suite COMPLETA (unit + smoke + validacao). Total geral + exit code.
+    --   love . test_all
+    if loveArgs and loveArgs[1] == "test_all" then
+        local ok = require("tools.run_all_tests").run()
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
+    -- Teste de i18n (chaves/traducoes/interpolacao) isolado.
+    --   love . test_i18n
+    if loveArgs and loveArgs[1] == "test_i18n" then
+        local ok = require("tools.test_i18n").run()
         love.event.quit(ok and 0 or 1)
         return
     end

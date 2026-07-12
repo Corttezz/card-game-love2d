@@ -357,6 +357,23 @@ No `love.load` em `main.lua`: `audioSystem:loadSound("nome", "audio/arquivo.mp3"
 
 ---
 
+## 11b. Testes automatizados
+
+Não há framework externo — cada teste é um módulo Lua em `tools/` com `M.run() -> bool` (true = passou), rodado via dispatcher em `main.lua` (`love . <nome>`). Todos rodam headless-ish dentro do LÖVE; qualquer arg de tool seta `_G.HEADLESS_TOOL=true`, então **saves vão para `*.tool.lua` — o save do jogador nunca é tocado**.
+
+**Comandos:**
+- `love . test_all` — **suite COMPLETA** (unit + integração + smoke + validação + i18n). Roda cada suite em pcall, imprime resumo por suite + total geral, exit code 0/1. É o comando a rodar antes de commitar.
+- `love . test_one <nome>` — roda UM teste isolado (ex: `love . test_one test_combat`), útil pra iterar.
+- `love . smoke_all` — só os smoke tests de sistema (legado; subconjunto de `test_all`).
+
+**Infra compartilhada:** [`tools/testkit.lua`](tools/testkit.lua) — helpers de asserção (`t:eq/near/truthy/throws/...`) + fábricas: `TK.newRunGame(class)` (Game de run pronto), `TK.pump(game, secs)` (avança EventManager/animações — combate é diferido pro apex), `TK.mockGame()` (game leve pra EffectSystem isolado), `TK.seedRng(seed)` (Rng determinístico). Novos testes DEVEM usar o testkit e ser registrados em [`tools/run_all_tests.lua`](tools/run_all_tests.lua).
+
+**Cobertura por domínio (novos, Jul/2026):** `test_entities` (Player/Enemy: dano/armadura/mana/buffs/orbs/status/fúria/intent), `test_economy` (ouro/juros), `test_progression` (RunManager/MapManager/ActSystem: atos/andares/endless), `test_forge` (upgrade/custo forja), `test_cards` (catálogo inteiro instancia + rollRarity + pools), `test_effects_full` (todo tipo de efeito + orbs + triggers), `test_combat` (seleção/mana/pipeline de dano/vitória/derrota/jokers), `test_events` (roll/no-repeat + toda opção aplica sem crash). Somados aos smoke pré-existentes + `validate_cards` + `test_i18n` = **22 suites**.
+
+Nota de comportamento fixada pelos testes: `poison` decrementa **`duration`** por turno e os `stacks` persistem (dano = stacks a cada turno, por duration turnos). O texto i18n foi corrigido (Jul/2026) para refletir isso — antes dizia erroneamente "perde 1 stack por turno". `vulnerable` só existe no Enemy (Player não tem esse caminho).
+
+---
+
 ## 12. Status e lacunas conhecidas (pós-redesign)
 
 - ✅ Efeitos `channel_orb`/`evoke_orb`/`strength_scaling`/`exhaust`/`innate`/`mystery` **implementados** (Fase 2).
