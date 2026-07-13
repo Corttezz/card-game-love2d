@@ -418,5 +418,17 @@
   "orb": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
     "group": "459c5d11-adc9-49e7-b1c6-07fd8ec43514"
+  },
+  "fireball": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "4783a9e0-48fc-4a00-b851-5ca4e34c15b8"
+  },
+  "bolt": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "36c0412a-a557-454f-9cd1-2392cd65022a"
+  },
+  "axe": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "12735a5b-a724-4f1f-8c81-a7ceb86612a9"
   }
 }
