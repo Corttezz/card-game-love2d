@@ -251,10 +251,6 @@
     "object_id": "fd3b5d7f-9e40-4999-b9ea-402085ab74ab",
     "group": "5400a38d-f4d9-4eb5-91be-f20c1120e8a0"
   },
-  "rogue_venom_coating": {
-    "object_id": "a9e20eb2-c468-4f6d-a124-789ab62c245d",
-    "group": "d625d61f-5a94-4253-bddf-a50e889e8a9c"
-  },
   "fang": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
     "group": "36b1f193-38a1-4ed3-bcda-2c36b5793924"
@@ -266,5 +262,57 @@
   "rogue_shadow_dance": {
     "object_id": "935bdd43-5fc6-48ba-b02b-888b2748c0f7",
     "group": "02c75377-89ca-4d44-b50b-116b2aada09f"
+  },
+  "warrior_flame_barrier": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "e92c56a5-9b2d-4bab-bc04-2f79e8f83abf"
+  },
+  "warrior_ghostly_armor": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "b22dbc6c-5613-43b9-8c06-c0d3bbea9901"
+  },
+  "warrior_inflame": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "16b73166-cd77-4131-bfab-ce4264905683"
+  },
+  "warrior_iron_discipline": {
+    "object_id": "5926fc53-3672-4626-82ad-c93ebbbccbba",
+    "group": "dc53d1e7-d0ab-486d-b3cc-7ee1b17c9685"
+  },
+  "shield_kite": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "970ca818-799f-4a51-aead-0056ed21e085"
+  },
+  "armor_plate": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "99bf06cb-6aff-48ad-b5be-879ca74c6f01"
+  },
+  "warrior_power_through": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "6615164c-9f37-4ea0-b84e-d4f0891e4b75"
+  },
+  "warrior_second_wind": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "63dee6ae-a357-46ff-b73b-9685b3b5b6b7"
+  },
+  "warrior_spot_weakness": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "e186e15b-8fa3-43af-bb54-c9b727fcb5a8"
+  },
+  "warrior_twin_strike": {
+    "object_id": "2822f004-3a80-4073-b2cc-8613e3d4be37",
+    "group": "a0f30595-f92f-408f-88df-e6018a9fa54e"
+  },
+  "joker_vampire": {
+    "object_id": "ef6f5fe3-5575-4fc7-ba3a-d4eb855f504d",
+    "group": "49845834-c786-416b-afe4-4f84fb6ece7d"
+  },
+  "mage_force_field": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "c5e55c83-41d1-4ec6-bcd7-6ee084583f21"
+  },
+  "mage_overcharge": {
+    "object_id": "ef4e4581-a927-4cce-89cf-bbae71780edc",
+    "group": "083e7abf-6b67-4a43-b7ef-0d718bcbce49"
   }
 }

@@ -123,11 +123,17 @@ ANIMS = {
                  "the polished steel dome, the helmet completely static"),
         "fps": 9,
     },
-    # joker_vampire: NÃO ANIMAR (decisão Jul/2026). Presas à mostra =
-    # gesto implícito; v1, v2 ("mouth frozen shut") e v3 ("wax figure")
-    # TODAS mexeram a boca ("parece que tá falando", veto do dono).
-    # 3 reprovações → estática. Animar só se a ARTE for regerada com
-    # boca fechada neutra.
+    # joker_vampire: ARTE REGERADA (Jul/2026) após 3 reprovações da arte
+    # antiga (presas à mostra = boca sempre "falava"). Arte nova: boca
+    # fechada séria, desenhada PRA animar (olhos + capa).
+    "joker_vampire": {
+        "object_id": "ef6f5fe3-5575-4fc7-ba3a-d4eb855f504d",
+        "anim": ("the vampire lord's glowing red eyes slowly intensifying "
+                 "and dimming with menace, the high collar cape edge "
+                 "shifting very slightly, his closed mouth face and hair "
+                 "completely frozen, no expression change, no talking"),
+        "fps": 9,
+    },
     "joker_jester": {
         # rosto de bobo com chapéu de guizos
         "anim": ("the jester hat points with bells swaying very slightly, "
@@ -581,11 +587,12 @@ ANIMS = {
         "fps": 7,
     },
     "rogue_venom_coating": {
-        # adaga de lâmina verde
+        # adaga verde. v2: v1 gerou blobs brancos flutuando (artefato).
         "object_id": "a9e20eb2-c468-4f6d-a124-789ab62c245d",
-        "anim": ("a wet toxic sheen shifting slowly along the green "
-                 "blade, a single venom drop forming at the tip, the "
-                 "dagger completely static"),
+        "anim": ("nothing appears or floats in the background, no "
+                 "particles no debris, only a wet toxic sheen shifting "
+                 "very subtly along the green blade edge, the dagger and "
+                 "background completely static"),
         "fps": 7,
     },
     "fang": {
@@ -681,14 +688,190 @@ ANIMS = {
                  "static"),
         "fps": 6,
     },
-    "warrior_war_cry": {
-        # elmo gritando de boca aberta (gesto implícito — 1 tentativa;
-        # se a boca mexer → estática como vampiro/consume)
-        "object_id": "a65da763-7366-40e5-a426-e08691d2041d",
-        "anim": ("the screaming helmet head completely frozen like a "
-                 "bronze statue, mouth and jaw not moving a single pixel, "
-                 "only a faint golden battle aura trembling around the "
-                 "helmet edges"),
+    # warrior_war_cry: NÃO ANIMAR (Jul/2026). Elmo gritando = gesto
+    # implícito; a cabeça girou e a crista cresceu mesmo como "bronze
+    # statue". 1 tentativa (política de arte-em-ação) → estática.
+    # Alternativa futura: regerar a ARTE (elmo de boca fechada + aura).
+
+    # ===== BLOCOS 8-11: commons/basics (quase imperceptível, fps 6) =====
+    "attack_001": {
+        "anim": ("a faint glow pulsing very subtly on the carved rune "
+                 "sigil, the stone stele completely static"),
+        "fps": 6,
+    },
+    "attack_002": {
+        "anim": ("the small red tassel on the hilt swaying very slightly, "
+                 "a thin glint passing along the blade, the sword "
+                 "completely static"),
+        "fps": 6,
+    },
+    "attack_cleave": {
+        "object_id": "06950c4f-7e52-47ea-9c5a-638ac3444b06",
+        "anim": ("a thin cold glint sliding slowly along the broad blade "
+                 "edge, the sword completely static"),
+        "fps": 6,
+    },
+    "defense_bulwark": {
+        "object_id": "db4ee5b8-0ca6-4031-b5d3-5a45e47b4998",
+        "anim": ("a faint warm light flickering very subtly inside the "
+                 "gate arch, a tiny dust speck drifting, the stone tower "
+                 "completely static"),
+        "fps": 6,
+    },
+    "potion_red": {
+        # effect_healing_potion
+        "anim": ("a single tiny bubble rising slowly inside the red "
+                 "liquid, a faint glint on the glass, the bottle "
+                 "completely static"),
+        "fps": 6,
+    },
+    "effect_mana_crystal": {
+        "anim": ("the crystal facets glinting one at a time with a faint "
+                 "inner glow pulse, the crystal cluster completely "
+                 "static"),
+        "fps": 6,
+    },
+    "scroll": {
+        # effect_scroll_wisdom
+        "anim": ("the runic letters glowing very faintly one after "
+                 "another, the parchment scroll completely static"),
+        "fps": 6,
+    },
+    "orb": {
+        # mage_arcane_orb
+        "anim": ("the dark energy inside the orb swirling very slowly "
+                 "with a faint red glow pulse, the orb and stand "
+                 "completely static"),
+        "fps": 6,
+    },
+    "mage_dualcast": {
+        "anim": ("the twin flame columns flickering gently in alternation, "
+                 "tiny sparks glinting, the overall silhouette unchanged"),
+        "fps": 6,
+    },
+    "fireball": {
+        # mage_fireball
+        "anim": ("the fireball's flame trail flickering gently, small "
+                 "embers drifting off, the fiery core keeping its exact "
+                 "shape and brightness"),
+        "fps": 6,
+    },
+    "flame": {
+        # mage_flame_tongue (fogueira)
+        "anim": ("the campfire flames flickering and dancing gently, "
+                 "small embers rising, the logs completely static"),
+        "fps": 6,
+    },
+    "water_drop": {
+        # mage_healing_drop
+        "anim": ("tiny sparkles glinting softly inside the water drop, "
+                 "the highlight shimmering, the drop shape completely "
+                 "unchanged"),
+        "fps": 6,
+    },
+    "bolt": {
+        # mage_lightning
+        "anim": ("the lightning bolt glowing brighter and dimmer in a "
+                 "subtle pulse, the flame wisps at the top flickering "
+                 "slightly, silhouette unchanged"),
+        "fps": 6,
+    },
+    "barrier": {
+        # mage_magic_barrier
+        "anim": ("the glowing dome shimmering gently with a slow light "
+                 "pulse, tiny sparkles at its rim, the base completely "
+                 "static"),
+        "fps": 6,
+    },
+    "rogue_backstab": {
+        "anim": ("a thin cold glint sliding along the dark blade, a faint "
+                 "red gleam pulsing on the hilt gem, the dagger "
+                 "completely static"),
+        "fps": 6,
+    },
+    "potion_blue": {
+        # rogue_blue_elixir
+        "anim": ("a single tiny bubble rising slowly inside the blue "
+                 "liquid, a faint glint on the glass, the bottle "
+                 "completely static"),
+        "fps": 6,
+    },
+    "rogue_neutralize": {
+        # assassino de capa vermelha em pé
+        "anim": ("the assassin's red cloak hem swaying very slightly, "
+                 "barely perceptible breathing, body arms and pose "
+                 "completely frozen"),
+        "fps": 6,
+    },
+    "claw": {
+        # rogue_rake — três garras com sangue
+        "anim": ("a drop of blood slowly forming and falling from one "
+                 "claw tip, a faint glisten on the curved surfaces, the "
+                 "claws completely static"),
+        "fps": 6,
+    },
+    "dagger": {
+        # rogue_stiletto
+        "anim": ("a thin light glint sliding slowly along the ornate "
+                 "blade, the dagger completely static"),
+        "fps": 6,
+    },
+    "rogue_survivor": {
+        # sobrevivente encapuzado agachado
+        "anim": ("the crouched hooded figure breathing slowly and "
+                 "subtly, the cloak edge shifting very slightly, pose "
+                 "and limbs completely frozen"),
+        "fps": 6,
+    },
+    "axe": {
+        # warrior_bash
+        "anim": ("a cold light glint passing slowly across the axe blade "
+                 "edge, the axe completely static"),
+        "fps": 6,
+    },
+    "sword_great": {
+        # warrior_heavy_blade
+        "anim": ("a thin light glint traveling slowly down the great "
+                 "blade, the sword completely static"),
+        "fps": 6,
+    },
+    "helm": {
+        # warrior_helm_of_valor
+        "anim": ("a soft light glint sweeping slowly across the helmet "
+                 "dome, a faint shadow shift in the visor slit, the helm "
+                 "completely static"),
+        "fps": 6,
+    },
+    "warrior_iron_wave": {
+        "anim": ("tiny sparks glinting in the burst at the sword's base, "
+                 "the blade and the burst shape completely static"),
+        "fps": 6,
+    },
+    "sword_short": {
+        # warrior_quick_strike
+        "anim": ("a quick thin glint flashing along the blade edge every "
+                 "few moments, the sword completely static"),
+        "fps": 6,
+    },
+    "warrior_rage": {
+        # guerreiro rubro (rosto frontal — travar)
+        "anim": ("a faint red aura pulsing slowly around the enraged "
+                 "warrior, his body face and pose completely frozen, no "
+                 "limb movement, no expression change"),
+        "fps": 6,
+    },
+    "warrior_seeing_red": {
+        # demônio agachado de olhos vermelhos (mãos erguidas — 1 tentativa)
+        "anim": ("the demon completely frozen like a statue, hands and "
+                 "body not moving a single pixel, only the red eyes "
+                 "glowing brighter and dimmer menacingly"),
+        "fps": 6,
+    },
+    "shield_round": {
+        # warrior_shield_slam
+        "anim": ("a soft light glint sweeping slowly across the wooden "
+                 "shield planks and steel boss, the shield completely "
+                 "static"),
         "fps": 6,
     },
 }
