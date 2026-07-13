@@ -17,7 +17,7 @@ local Palette      = require("src.ui.Palette")
 local HintBar      = require("src.ui.HintBar")
 local SceneBackground = require("src.ui.SceneBackground")
 local CardDatabase = require("src.systems.CardDatabase")
-local CardFrame    = require("src.ui.CardFrame")
+local CardGridRender = require("src.ui.CardGridRender")
 local Sfx          = require("src.systems.Sfx")
 local I18n         = require("src.i18n.I18n")
 
@@ -283,47 +283,79 @@ function DeckViewerScreen:draw()
     self.maxScroll = math.max(0, contentH - gridH)
     if self.scroll > self.maxScroll then self.scroll = self.maxScroll end
 
-    local scale = CARD_W / 96   -- instância é 96×144 → 128×192
+    -- Render IDÊNTICO à Coleção (CardGridRender + interpolação _cardAnim):
+    -- hover levanta/inclina a carta com warp 3D + sombra direcional + ícone
+    -- vivo — SEM borda (a borda anterior estava errada; a Coleção não tem).
+    local dt = love.timer.getDelta()
     local mx, my = love.mouse.getPosition()
-    local hovered, hx, hy = nil, 0, 0
     -- Modal aberto suprime o hover do grid (igual à Coleção).
     local mouseInGrid = (not modalOpen) and my >= gridTop and my <= gridTop + gridH
     self._cardRects = {}
+    self._cardAnim = self._cardAnim or {}
+    local ease = 1 - math.exp(-18 * dt)
 
-    love.graphics.setScissor(0, gridTop, sw, gridH)
+    -- 1) alvos + detecção de hover na posição de GRID (estável, igual Coleção)
+    local hovered, hx, hy = nil, 0, 0
+    local targetX, targetY = {}, {}
     for i, inst in ipairs(self.instances) do
         local col = (i - 1) % cols
         local row = math.floor((i - 1) / cols)
-        local x = gx0 + col * (CARD_W + GAP_X)
-        local y = gridTop + row * (CARD_H + GAP_Y) - self.scroll
-        if y + CARD_H > gridTop and y < gridTop + gridH then
+        local tx = gx0 + col * (CARD_W + GAP_X)
+        local ty = gridTop + row * (CARD_H + GAP_Y) - self.scroll
+        targetX[i], targetY[i] = tx, ty
+        if ty + CARD_H > gridTop and ty < gridTop + gridH then
             self._cardRects[#self._cardRects + 1] =
-                { i = i, x = x, y = y, w = CARD_W, h = CARD_H }
-            local isHover = mouseInGrid and mx >= x and mx < x + CARD_W
-                and my >= y and my < y + CARD_H
-            if isHover then
-                hovered, hx, hy = inst, x, y
-            elseif inst.image then
-                love.graphics.setColor(1, 1, 1, 1)
-                love.graphics.draw(inst.image, x, y, 0, scale, scale)
+                { i = i, x = tx, y = ty, w = CARD_W, h = CARD_H }
+            if mouseInGrid and mx >= tx and mx < tx + CARD_W
+                and my >= ty and my < ty + CARD_H then
+                hovered, hx, hy = inst, tx, ty
             end
         end
     end
-    -- Hovered por último (por cima dos vizinhos): lift + scale sutil + moldura.
-    -- Hover anima o ícone (icons_anim); grid idle fica estático.
-    if hovered and hovered.image then
-        local hs = scale * 1.07
-        local ox = (CARD_W * (hs / scale - 1)) / 2
-        local img = CardFrame.liveImage(hovered) or hovered.image
-        love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.draw(img, hx - ox, hy - 8 - ox, 0, hs, hs)
-        Palette.set(Palette.AGED_GOLD_LIGHT)
-        love.graphics.setLineWidth(2)
-        love.graphics.rectangle("line", hx - ox - 2, hy - 10 - ox,
-            CARD_W * (hs / scale) + 4, CARD_H * (hs / scale) + 4, 3, 3)
-        love.graphics.setLineWidth(1)
+
+    -- 2) interpola posição + hover-scale de cada carta (ease igual Coleção)
+    for i, inst in ipairs(self.instances) do
+        local anim = self._cardAnim[inst]
+        if not anim then
+            anim = { rx = targetX[i], ry = targetY[i], hs = 1.0 }
+            self._cardAnim[inst] = anim
+        end
+        anim.rx = anim.rx + (targetX[i] - anim.rx) * ease
+        anim.ry = anim.ry + (targetY[i] - anim.ry) * ease
+        local targetHs = (inst == hovered) and 1.08 or 1.0
+        anim.hs = anim.hs + (targetHs - anim.hs) * ease
+    end
+
+    local function computeMouseUV(anim)
+        local ccx = anim.rx + CARD_W / 2
+        local ccy = anim.ry + CARD_H / 2
+        local uvx = (mx - ccx) / (CARD_W / 2)
+        local uvy = (my - ccy) / (CARD_H / 2)
+        if uvx > 1 then uvx = 1 elseif uvx < -1 then uvx = -1 end
+        if uvy > 1 then uvy = 1 elseif uvy < -1 then uvy = -1 end
+        return { uvx, uvy }
+    end
+    local function hoverStr(hs) return math.max(0, math.min(1, (hs - 1.0) / 0.08)) end
+
+    -- 3) não-hovered no scissor; hovered por cima COM warp (fora do scissor)
+    love.graphics.setScissor(0, gridTop, sw, gridH)
+    for i, inst in ipairs(self.instances) do
+        if inst ~= hovered then
+            local anim = self._cardAnim[inst]
+            if anim and anim.ry + CARD_H >= gridTop and anim.ry <= gridTop + gridH then
+                CardGridRender.draw(inst, anim.rx, anim.ry, CARD_W, CARD_H, anim.hs, 1, { 0, 0 }, 0)
+            end
+        end
     end
     love.graphics.setScissor()
+
+    if hovered then
+        local anim = self._cardAnim[hovered]
+        if anim then
+            CardGridRender.draw(hovered, anim.rx, anim.ry, CARD_W, CARD_H,
+                anim.hs, 1, computeMouseUV(anim), hoverStr(anim.hs))
+        end
+    end
 
     -- Barra de scroll à direita
     if self.maxScroll > 0 then
@@ -338,7 +370,7 @@ function DeckViewerScreen:draw()
 
     -- Tooltip completo no hover (só quando o modal NÃO está aberto).
     if hovered and not modalOpen then
-        hovered.currentScale = scale
+        hovered.currentScale = CARD_W / 96
         self.cardInfo:draw(hovered, hx, hy - 8, {
             showRarity = true,
             showStats = true,

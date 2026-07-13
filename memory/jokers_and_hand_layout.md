@@ -64,9 +64,17 @@ Três frentes de UX pedidas pelo Daniel, baseadas no Balatro source
 - `components/DeckViewerScreen.lua` reescrito: era painel Panel9 centrado; agora
   é tela cheia estilo Coleção — fundo `SceneBackground("collection")` escurecido,
   título "SEU DECK" + contagens por tipo, grid rolável de largura total (colunas
-  dinâmicas 3-7), hover levanta a carta + moldura dourada + tooltip completo
-  (CardInfoDisplay), botão X + hint. Mostra o deck COM forja aplicada (valor
+  dinâmicas 3-7), botão X + hint. Mostra o deck COM forja aplicada (valor
   verde + gemas). Guard `_openedAt < 0.25s` mata o "clico e já fecha".
+- **HOVER = render IDÊNTICO à Coleção (Jul/2026)**: usa `src/ui/CardGridRender`
+  (o `drawCardMini` da CollectionScreen extraído pra módulo compartilhado) +
+  a MESMA interpolação `_cardAnim` (ease `1-exp(-18*dt)`, hover-scale 1.08,
+  mouseUV, hoverStrength) → warp 3D + tilt + lift + sombra direcional + ícone
+  vivo (CardAnimationLayer). **SEM borda dourada** — a borda anterior era o bug
+  ("Ele coloca uma borda ali em volta. Isso tá errado"). DeckViewer não é
+  atualizado pelo main.lua → o `dt` do ease vem de `love.timer.getDelta()` no
+  próprio draw. Follow-up: CollectionScreen ainda tem a cópia local do
+  `drawCardMini` (não migrada pra não arriscar) — espelhar ou migrar depois.
 - **CLIQUE abre inspeção completa (Jul/2026, igual à Coleção)**: clicar numa
   carta abre `src/ui/CardInspectModal` — carta grande (warp 3D + sombra) +
   painel lateral (nome/tipo/classe/raridade/stats/descrição/efeitos + linha de
