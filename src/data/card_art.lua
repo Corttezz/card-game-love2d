@@ -66,7 +66,7 @@ return {
     warrior_bloodletting    = { icon = "warrior_bloodletting",   bg = "blood",   accent = "MAGENTA_DARK", decoration = "flash", effect = "glow" },
     warrior_brutality       = { icon = "warrior_brutality",      bg = "blood",   accent = "MAGENTA",      decoration = "smoke", effect = "glow" },
     warrior_dark_embrace    = { icon = "warrior_dark_embrace",   bg = "void",    accent = "PURPLE",       decoration = "smoke", effect = "glow" },
-    warrior_demon_form      = { icon = "skull_crowned",          bg = "fire",    accent = "MAGENTA",      decoration = "flash", effect = "glow" },
+    warrior_demon_form      = { icon = "warrior_demon_form",          bg = "fire",    accent = "MAGENTA",      decoration = "flash", effect = "glow" },
     warrior_feed            = { icon = "warrior_feed",           bg = "blood",   accent = "MAGENTA",      decoration = "flash", effect = "glow" },
     warrior_immolate        = { icon = "warrior_immolate",       bg = "fire",    accent = "ORANGE",       decoration = "sparks", effect = "glow" },
     warrior_juggernaut      = { icon = "warrior_juggernaut",     bg = "impact",  accent = "YELLOW",       decoration = "sparks", effect = "glow" },

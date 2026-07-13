@@ -39,25 +39,13 @@
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
     "group": "28718fd9-b9e6-4319-acc8-6b8c77467515"
   },
-  "warrior_brutality": {
-    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
-    "group": "120249a1-26dc-40a5-8a6f-f2dcf804afb4"
-  },
   "warrior_dark_embrace": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
     "group": "2d3faf74-2525-4c65-8a2d-6f34deebf61b"
   },
-  "skull_crowned": {
-    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
-    "group": "77cb3622-04c1-4d79-94a5-15edce18d5c7"
-  },
   "warrior_juggernaut": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
     "group": "3abbce66-0dfb-4303-90f1-7bf18376adc0"
-  },
-  "warrior_bastion": {
-    "object_id": "f024bc9b-8492-4347-8306-4d9145257741",
-    "group": "b1430ef9-4d0c-44ed-9413-74bfc636f2b5"
   },
   "heart": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
@@ -70,10 +58,6 @@
   "mage_echo_form": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
     "group": "00843876-f3ff-46ee-be15-13b078aa2350"
-  },
-  "mage_electrodynamics": {
-    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
-    "group": "04aee6d2-6110-4e79-95ef-da7d06019b45"
   },
   "mage_machine_learning": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
@@ -106,14 +90,6 @@
   "mage_fission": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
     "group": "33b488b2-a021-4b81-9420-541914f09626"
-  },
-  "mage_meteor_strike": {
-    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
-    "group": "a18a3474-967c-480e-877b-260941b828f2"
-  },
-  "mage_rainbow": {
-    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
-    "group": "f5d6c327-eb8f-4ffb-891f-2d0760ad5e4d"
   },
   "mage_twin_bolts": {
     "object_id": "585aebc0-ec09-4865-ab6f-5bd0a7b2dbc7",
@@ -158,10 +134,6 @@
   "warrior_colossus_blow": {
     "object_id": "90f36621-4a2b-4c9c-9df3-c578eac1faeb",
     "group": "f8bfa8cc-a435-4fda-96f9-1eeff65605c2"
-  },
-  "warrior_feed": {
-    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
-    "group": "201d7f9a-c9b4-4320-a9de-962fb6752e56"
   },
   "warrior_immolate": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
@@ -219,10 +191,6 @@
     "object_id": "e915356c-819f-4d8d-a0c9-1ffde6e9a0b9",
     "group": "3fd5b294-0c3f-4222-bc71-36ade71f1c73"
   },
-  "rogue_accuracy": {
-    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
-    "group": "6e5b8e8c-3e34-4f78-b15f-af5633d65d48"
-  },
   "rogue_adrenaline": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
     "group": "e2e121c7-39bf-48a4-8f20-df1eb18fc9a1"
@@ -231,17 +199,9 @@
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
     "group": "b2477993-6020-4dff-8c99-f90e53789428"
   },
-  "rogue_bouncing_flask": {
-    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
-    "group": "61858442-ed08-4e35-ba95-a50fffcbaecf"
-  },
   "coin": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
     "group": "12d52be6-97c1-4fa7-8a14-47e073476f35"
-  },
-  "rogue_caltrops": {
-    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
-    "group": "9d22c1a3-a69c-4971-b5f3-8af3867961bd"
   },
   "moon": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
@@ -275,10 +235,6 @@
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
     "group": "16b73166-cd77-4131-bfab-ce4264905683"
   },
-  "warrior_iron_discipline": {
-    "object_id": "5926fc53-3672-4626-82ad-c93ebbbccbba",
-    "group": "dc53d1e7-d0ab-486d-b3cc-7ee1b17c9685"
-  },
   "shield_kite": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
     "group": "970ca818-799f-4a51-aead-0056ed21e085"
@@ -286,10 +242,6 @@
   "armor_plate": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
     "group": "99bf06cb-6aff-48ad-b5be-879ca74c6f01"
-  },
-  "warrior_power_through": {
-    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
-    "group": "6615164c-9f37-4ea0-b84e-d4f0891e4b75"
   },
   "warrior_second_wind": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
@@ -314,10 +266,6 @@
   "rogue_catalyst": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
     "group": "c29364ba-8a43-48d6-a39b-324009337b57"
-  },
-  "rogue_venom_coating": {
-    "object_id": "a9e20eb2-c468-4f6d-a124-789ab62c245d",
-    "group": "e7493635-89cd-489b-b16d-f241d724b2f8"
   },
   "attack_001": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
@@ -462,5 +410,57 @@
   "rogue_thorn_cloak": {
     "object_id": "269b4d1c-7acb-48f5-8ddb-3b79f40f7734",
     "group": "697d0fa1-8e07-46f9-b83b-10a079046c8d"
+  },
+  "warrior_brutality": {
+    "object_id": "c92b983a-12b1-404f-a479-ce2084c4df34",
+    "group": "dce982b2-2914-419f-93d1-a95accdf98ea"
+  },
+  "warrior_bastion": {
+    "object_id": "8ca93dfb-8106-4772-972a-3f2e6b622bb5",
+    "group": "c5b4a13b-b488-45cc-a09a-7d523d2d9d43"
+  },
+  "mage_electrodynamics": {
+    "object_id": "5e7b57de-686d-4136-aaf5-08ad0b914c98",
+    "group": "68ae8532-47ca-4df5-8ef4-848a597b2b7e"
+  },
+  "mage_meteor_strike": {
+    "object_id": "00124b0b-5e50-40b3-9087-c92505551237",
+    "group": "bf53318d-b9ff-4cd3-b54a-17cc63f812a9"
+  },
+  "mage_rainbow": {
+    "object_id": "c5a07cd5-4995-4a03-addd-7b47be7de621",
+    "group": "686acf9f-7123-4a85-8311-1e780fe79368"
+  },
+  "warrior_feed": {
+    "object_id": "4c051ad7-f95e-4868-a910-d2f59eb2b256",
+    "group": "a4ef7691-d987-4ff9-9703-2c367c97163b"
+  },
+  "rogue_accuracy": {
+    "object_id": "1ee95291-e029-4b85-9abd-ea929c85e903",
+    "group": "4559ff7f-6a24-4006-863e-7423aed516df"
+  },
+  "rogue_bouncing_flask": {
+    "object_id": "94e6688e-f2f6-4a52-af59-5dc84d7d99b1",
+    "group": "023f83df-4360-480c-a363-f065cce470b6"
+  },
+  "rogue_caltrops": {
+    "object_id": "6e8986cc-2b94-4b83-95cc-2ea9aea1969b",
+    "group": "b0626a45-7976-4cd4-8679-68aa3583806b"
+  },
+  "rogue_venom_coating": {
+    "object_id": "f0d48390-d9b7-4ce7-9b73-5daabe19d137",
+    "group": "ca02ce84-376a-4338-a87c-c9d17b860490"
+  },
+  "warrior_iron_discipline": {
+    "object_id": "e5e86875-1e33-45dd-9eb1-bceebef3d9f3",
+    "group": "a38738ca-9e25-43d9-8c1c-d4cb4232d1b9"
+  },
+  "warrior_power_through": {
+    "object_id": "26c484d3-414d-44a4-ad88-e8b09109652b",
+    "group": "2b7fa334-545f-4a5c-970a-28f464f4c465"
+  },
+  "warrior_demon_form": {
+    "object_id": "f37ed6ad-faaa-4113-b17f-837b3f5d492b",
+    "group": "5e2dd5b5-f5ca-42bd-ad90-d9a0b2b5381b"
   }
 }
