@@ -123,15 +123,17 @@ ANIMS = {
                  "the polished steel dome, the helmet completely static"),
         "fps": 9,
     },
-    # joker_vampire: ARTE REGERADA (Jul/2026) após 3 reprovações da arte
-    # antiga (presas à mostra = boca sempre "falava"). Arte nova: boca
-    # fechada séria, desenhada PRA animar (olhos + capa).
+    # joker_vampire: arte NOVA (boca fechada). v2 da animação (veto do
+    # dono: v1 da arte nova ainda rosnava): movimento APENAS olhos +
+    # vestimenta — cabeça/rosto/boca nem citados como animáveis, tudo
+    # explicitamente estátua.
     "joker_vampire": {
         "object_id": "ef6f5fe3-5575-4fc7-ba3a-d4eb855f504d",
-        "anim": ("the vampire lord's glowing red eyes slowly intensifying "
-                 "and dimming with menace, the high collar cape edge "
-                 "shifting very slightly, his closed mouth face and hair "
-                 "completely frozen, no expression change, no talking"),
+        "anim": ("the entire head face mouth jaw and hair are a frozen "
+                 "statue, absolutely no facial movement of any kind, the "
+                 "ONLY two moving things are: the red glow of the eyes "
+                 "slowly brightening and dimming, and the cape fabric and "
+                 "collar shifting very slightly"),
         "fps": 9,
     },
     "joker_jester": {
@@ -738,10 +740,11 @@ ANIMS = {
         "fps": 6,
     },
     "orb": {
-        # mage_arcane_orb
-        "anim": ("the dark energy inside the orb swirling very slowly "
-                 "with a faint red glow pulse, the orb and stand "
-                 "completely static"),
+        # mage_arcane_orb. v2: v1 clareava até rosa e apagava até preto.
+        "anim": ("the orb's overall color and brightness stay exactly "
+                 "constant, only the red energy veins inside shifting "
+                 "position subtly, no lightening no darkening, the orb "
+                 "and stand completely static"),
         "fps": 6,
     },
     "mage_dualcast": {
@@ -750,10 +753,11 @@ ANIMS = {
         "fps": 6,
     },
     "fireball": {
-        # mage_fireball
-        "anim": ("the fireball's flame trail flickering gently, small "
-                 "embers drifting off, the fiery core keeping its exact "
-                 "shape and brightness"),
+        # mage_fireball. v2: v1 escurecia até vinho no fim do loop.
+        "anim": ("the fireball's overall brightness and colors stay "
+                 "exactly constant the whole time, only the flame edges "
+                 "flickering subtly and a few small embers drifting, no "
+                 "dimming no darkening, core shape unchanged"),
         "fps": 6,
     },
     "flame": {
@@ -770,10 +774,11 @@ ANIMS = {
         "fps": 6,
     },
     "bolt": {
-        # mage_lightning
-        "anim": ("the lightning bolt glowing brighter and dimmer in a "
-                 "subtle pulse, the flame wisps at the top flickering "
-                 "slightly, silhouette unchanged"),
+        # mage_lightning. v2: v1 apagava o raio até marrom (off-state).
+        "anim": ("the lightning bolt stays fully bright the whole time "
+                 "never dimming, only the flame wisps at the top "
+                 "flickering gently, brightness constant, silhouette "
+                 "unchanged"),
         "fps": 6,
     },
     "barrier": {
@@ -824,8 +829,10 @@ ANIMS = {
         "fps": 6,
     },
     "axe": {
-        # warrior_bash
-        "anim": ("a cold light glint passing slowly across the axe blade "
+        # warrior_bash. v2: v1 pintou a lâmina de AZUL-gelo (alucinação).
+        "anim": ("the axe keeps its exact original dark steel and brown "
+                 "colors the whole time, no color change whatsoever, only "
+                 "a thin white glint passing briefly along the blade "
                  "edge, the axe completely static"),
         "fps": 6,
     },
@@ -853,13 +860,9 @@ ANIMS = {
                  "few moments, the sword completely static"),
         "fps": 6,
     },
-    "warrior_rage": {
-        # guerreiro rubro (rosto frontal — travar)
-        "anim": ("a faint red aura pulsing slowly around the enraged "
-                 "warrior, his body face and pose completely frozen, no "
-                 "limb movement, no expression change"),
-        "fps": 6,
-    },
+    # warrior_rage: NÃO ANIMAR (Jul/2026). Boca aberta rugindo = gesto
+    # implícito; a boca morfou mesmo com "face frozen". 1 tentativa →
+    # estática. Candidata a arte nova (boca fechada) como o vampiro.
     "warrior_seeing_red": {
         # demônio agachado de olhos vermelhos (mãos erguidas — 1 tentativa)
         "anim": ("the demon completely frozen like a statue, hands and "
@@ -1054,8 +1057,14 @@ def _wait_download(icon, object_id, group, timeout=480):
     deadline = time.time() + timeout
     while time.time() < deadline:
         time.sleep(25)
-        if _try_download(icon, object_id, group):
-            return True
+        try:
+            if _try_download(icon, object_id, group):
+                return True
+        except Exception as e:
+            # Timeout de rede num download NÃO pode derrubar a fábrica —
+            # frames parciais serão re-baixados na próxima iteração.
+            print(f"[run] {icon}: erro transitório ({e}), tentando de novo",
+                  flush=True)
     print(f"[run] {icon}: TIMEOUT ({timeout}s) — fica pro próximo run",
           flush=True)
     return False
@@ -1074,10 +1083,14 @@ def run():
         # Job de run anterior pode ter concluído depois do timeout — checar
         # antes de gastar outra geração.
         prev = jobs.get(icon)
-        if prev and prev.get("group") and \
-                _try_download(icon, prev["object_id"], prev["group"]):
-            ok += 1
-            continue
+        if prev and prev.get("group"):
+            try:
+                if _try_download(icon, prev["object_id"], prev["group"]):
+                    ok += 1
+                    continue
+            except Exception as e:
+                print(f"[run] {icon}: pre-check falhou ({e}), resubmetendo",
+                      flush=True)
         try:
             object_id, group = _submit(icon, spec)
         except Exception as e:

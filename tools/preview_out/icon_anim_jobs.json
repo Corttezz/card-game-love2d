@@ -303,10 +303,6 @@
     "object_id": "2822f004-3a80-4073-b2cc-8613e3d4be37",
     "group": "a0f30595-f92f-408f-88df-e6018a9fa54e"
   },
-  "joker_vampire": {
-    "object_id": "ef6f5fe3-5575-4fc7-ba3a-d4eb855f504d",
-    "group": "49845834-c786-416b-afe4-4f84fb6ece7d"
-  },
   "mage_force_field": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
     "group": "c5e55c83-41d1-4ec6-bcd7-6ee084583f21"
@@ -322,5 +318,105 @@
   "rogue_venom_coating": {
     "object_id": "a9e20eb2-c468-4f6d-a124-789ab62c245d",
     "group": "e7493635-89cd-489b-b16d-f241d724b2f8"
+  },
+  "attack_001": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "5a3c2fc4-1d77-4efa-a331-ef988094026a"
+  },
+  "attack_002": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "870baced-8142-4ff7-b201-a629b2f4be70"
+  },
+  "attack_cleave": {
+    "object_id": "06950c4f-7e52-47ea-9c5a-638ac3444b06",
+    "group": "a0cf75b0-8e74-40f5-b556-6aa8003e60fe"
+  },
+  "defense_bulwark": {
+    "object_id": "db4ee5b8-0ca6-4031-b5d3-5a45e47b4998",
+    "group": "2997276d-2f6e-4ce5-a7b1-12db977d4064"
+  },
+  "potion_red": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "fd1bd688-5788-4698-b260-1f83572fffc6"
+  },
+  "effect_mana_crystal": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "6ae5b822-b391-499a-8508-5c1cf4230472"
+  },
+  "scroll": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "ab317a57-ab27-4f10-96da-5e5900e0d7c1"
+  },
+  "mage_dualcast": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "96863727-2a31-4296-9f13-a73c2d2fab0a"
+  },
+  "flame": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "f9ade3be-befe-4ea0-8021-06bad6bc8c91"
+  },
+  "water_drop": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "e773d6b2-d998-4624-b629-326bab26b52a"
+  },
+  "barrier": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "c889ce75-eeb5-4c04-9842-c54153f7cba6"
+  },
+  "rogue_backstab": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "3396bf18-e6df-45b5-8388-72d71e2b7a51"
+  },
+  "potion_blue": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "27ccf5ef-04e3-410d-b8ce-57aa8644bc15"
+  },
+  "rogue_neutralize": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "2c5fb2c5-e9de-419d-a237-892bd7090f00"
+  },
+  "claw": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "d76a8013-e7bd-440d-85ce-e23e2a424a5b"
+  },
+  "dagger": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "20e754ee-adb5-4004-9ce6-acfac45549c7"
+  },
+  "rogue_survivor": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "41ff44a5-a3c7-45bb-b848-f1349f84c5c6"
+  },
+  "sword_great": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "bbf62a01-faba-4609-b3a4-58a59561cb91"
+  },
+  "helm": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "2ff6cc71-ba80-43ae-a314-a8da8426070d"
+  },
+  "warrior_iron_wave": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "ea7c2d03-81f9-4fc0-a0e1-f4ffe977a28b"
+  },
+  "sword_short": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "2cc70afa-0524-4efc-b293-84fc30f32af0"
+  },
+  "warrior_seeing_red": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "c24f19c6-c14c-4d3f-90f9-66c6c36decc5"
+  },
+  "shield_round": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "7100f241-7cba-4eaa-82ec-2c62d0e8a67b"
+  },
+  "joker_vampire": {
+    "object_id": "ef6f5fe3-5575-4fc7-ba3a-d4eb855f504d",
+    "group": "b5afc002-f954-40a8-90f5-70a5460383e8"
+  },
+  "orb": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "459c5d11-adc9-49e7-b1c6-07fd8ec43514"
   }
 }
