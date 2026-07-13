@@ -152,10 +152,9 @@ ANIMS = {
         "fps": 8,
     },
     "warrior_brutality": {
-        # brutamontes armado com martelo, em pé
-        "anim": ("the armored brute breathing slowly and heavily, chest and "
-                 "shoulders rising and falling, the hammer arms and legs "
-                 "completely frozen, no limb movement"),
+        # arte REGERADA (feedback do dono Jul/2026)
+        "object_id": "c92b983a-12b1-404f-a479-ce2084c4df34",
+        "anim": ("tiny dust particles drifting off the cracked stone, a cold glint passing across the maul spikes, the hammer and rubble completely static"),
         "fps": 8,
     },
     "warrior_dark_embrace": {
@@ -166,13 +165,7 @@ ANIMS = {
                  "static"),
         "fps": 8,
     },
-    "skull_crowned": {
-        # caveira dourada coroada (objeto) — warrior_demon_form
-        "anim": ("a dim red glow pulsing slowly inside the skull's empty "
-                 "eye sockets, the golden crown jewels glinting one at a "
-                 "time, the skull and crown completely static"),
-        "fps": 8,
-    },
+    # skull_crowned: ícone órfão (warrior_demon_form ganhou ícone próprio)
     "warrior_juggernaut": {
         # colosso blindado em pé
         "anim": ("the armored colossus breathing slowly, massive shoulders "
@@ -184,11 +177,9 @@ ANIMS = {
 
     # ===== BLOCO 2: raras — jokers/objetos (fps 8) =====
     "warrior_bastion": {
-        # estandarte/tapeçaria ornamentada vertical
-        "object_id": "f024bc9b-8492-4347-8306-4d9145257741",
-        "anim": ("the tall ornate banner tapestry cloth waving gently in a "
-                 "slow breeze, lower edge rippling softly, the top mount "
-                 "and emblem completely static"),
+        # arte REGERADA (feedback do dono Jul/2026)
+        "object_id": "8ca93dfb-8106-4772-972a-3f2e6b622bb5",
+        "anim": ("the golden runes carved on the stone bastion glowing brighter and dimmer one at a time, the tower and rocks completely static"),
         "fps": 8,
     },
     "heart": {
@@ -213,10 +204,9 @@ ANIMS = {
         "fps": 8,
     },
     "mage_electrodynamics": {
-        # arcos elétricos pendentes (assunto naturalmente animado)
-        "anim": ("the hanging electric arcs crackling and flickering, tiny "
-                 "sparks jumping between the tendrils, the overall shape "
-                 "and silhouette preserved"),
+        # arte REGERADA (feedback do dono Jul/2026)
+        "object_id": "5e7b57de-686d-4136-aaf5-08ad0b914c98",
+        "anim": ("the lightning arcs inside the glass dome crackling and flickering, a faint glow pulsing at the core, the brass device completely static"),
         "fps": 8,
     },
     "mage_machine_learning": {
@@ -281,20 +271,15 @@ ANIMS = {
         "fps": 8,
     },
     "mage_meteor_strike": {
-        # meteoro caindo. v2: v1 virou cogumelo de explosão e emagreceu
-        # (animou o IMPACTO — mesma classe do erro rogue_defend). Forma
-        # geral intocável, só as chamas da cauda tremulam.
-        "anim": ("the meteor column keeps its exact shape and size the "
-                 "whole time, only the flame edges of the trail flickering "
-                 "gently and a few small embers drifting off, no explosion "
-                 "no impact, silhouette completely unchanged"),
+        # arte REGERADA v2 (feedback do dono Jul/2026)
+        "object_id": "00124b0b-5e50-40b3-9087-c92505551237",
+        "anim": ("the meteor's fire trail flames flickering and streaming, small embers flying off, the meteor core and ground keeping their exact shape, brightness constant"),
         "fps": 8,
     },
     "mage_rainbow": {
-        # feixes verticais vermelho/azul subindo de um anel
-        "anim": ("the vertical light beams shimmering and flowing slowly "
-                 "upward, their brightness waving softly, the ring base "
-                 "completely static"),
+        # arte REGERADA v2 (feedback do dono Jul/2026)
+        "object_id": "c5a07cd5-4995-4a03-addd-7b47be7de621",
+        "anim": ("the layered light bands of the arc shimmering gently one after another, tiny sparkles appearing along them, the arc shape and altar completely static"),
         "fps": 8,
     },
     "mage_twin_bolts": {
@@ -381,12 +366,9 @@ ANIMS = {
         "fps": 8,
     },
     "warrior_feed": {
-        # vampiro segurando vítima (pose de ação contida — tentativa única;
-        # se dançar, vira estática como rogue_defend)
-        "anim": ("both figures completely frozen like a dark painting, "
-                 "only the vampire's red cloak edge swaying very slightly "
-                 "and a faint crimson glow pulsing around them, no limb or "
-                 "head movement whatsoever, no talking"),
+        # arte REGERADA (feedback do dono Jul/2026)
+        "object_id": "4c051ad7-f95e-4868-a910-d2f59eb2b256",
+        "anim": ("the glowing crimson heart pulsing slowly in the clawed grip, a drop of blood forming and falling between the fingers, the gauntlet completely static"),
         "fps": 8,
     },
     "warrior_immolate": {
@@ -513,10 +495,9 @@ ANIMS = {
         "fps": 7,
     },
     "rogue_accuracy": {
-        # mira/bússola dourada com olho central
-        "anim": ("a glint traveling slowly around the golden crosshair "
-                 "ring, the central eye shimmering subtly with no "
-                 "blinking, the whole emblem static"),
+        # arte REGERADA (feedback do dono Jul/2026)
+        "object_id": "1ee95291-e029-4b85-9abd-ea929c85e903",
+        "anim": ("a sharp glint traveling along the dagger stuck in the bullseye, the target rings shimmering very subtly, everything static"),
         "fps": 6,
     },
 
@@ -536,10 +517,9 @@ ANIMS = {
         "fps": 6,
     },
     "rogue_bouncing_flask": {
-        # frasco verde inclinado
-        "anim": ("the green liquid inside the flask sloshing gently from "
-                 "side to side with small bubbles, the flask and cork "
-                 "completely static"),
+        # arte REGERADA (feedback do dono Jul/2026)
+        "object_id": "94e6688e-f2f6-4a52-af59-5dc84d7d99b1",
+        "anim": ("the green liquid inside the flask sloshing gently with small bubbles, the flask and cork completely static"),
         "fps": 7,
     },
     "coin": {
@@ -550,10 +530,9 @@ ANIMS = {
         "fps": 6,
     },
     "rogue_caltrops": {
-        # estrepes sobre mancha vermelha
-        "anim": ("cold glints appearing one at a time on the spike tips, "
-                 "a faint wet sheen shifting on the red pool, spikes "
-                 "completely static"),
+        # arte REGERADA (feedback do dono Jul/2026)
+        "object_id": "6e8986cc-2b94-4b83-95cc-2ea9aea1969b",
+        "anim": ("cold glints appearing one at a time on the caltrop spikes, the blood drops glistening subtly, the caltrops completely static"),
         "fps": 6,
     },
     "rogue_catalyst": {
@@ -583,12 +562,9 @@ ANIMS = {
         "fps": 7,
     },
     "rogue_venom_coating": {
-        # adaga verde. v2: v1 gerou blobs brancos flutuando (artefato).
-        "object_id": "a9e20eb2-c468-4f6d-a124-789ab62c245d",
-        "anim": ("nothing appears or floats in the background, no "
-                 "particles no debris, only a wet toxic sheen shifting "
-                 "very subtly along the green blade edge, the dagger and "
-                 "background completely static"),
+        # arte REGERADA (feedback do dono Jul/2026)
+        "object_id": "f0d48390-d9b7-4ce7-9b73-5daabe19d137",
+        "anim": ("thick green venom slowly running down the blade edge, a wet toxic sheen shifting, the dagger completely static"),
         "fps": 7,
     },
     "fang": {
@@ -636,10 +612,9 @@ ANIMS = {
         "fps": 7,
     },
     "warrior_iron_discipline": {
-        # punho de manopla emoldurado
-        "object_id": "5926fc53-3672-4626-82ad-c93ebbbccbba",
-        "anim": ("a cold light glint passing slowly across the gauntlet "
-                 "knuckles, the fist and frame completely static"),
+        # arte REGERADA (feedback do dono Jul/2026)
+        "object_id": "e5e86875-1e33-45dd-9eb1-bceebef3d9f3",
+        "anim": ("a cold light glint passing slowly across the gauntlet knuckles, the chain links glinting one at a time, fist and chains completely static"),
         "fps": 6,
     },
     "shield_kite": {
@@ -656,10 +631,9 @@ ANIMS = {
         "fps": 6,
     },
     "warrior_power_through": {
-        # guerreiro castigado em pé
-        "anim": ("the battered warrior breathing heavily and slowly, "
-                 "chest rising and falling, arms legs and head completely "
-                 "frozen, no limb movement"),
+        # arte REGERADA (feedback do dono Jul/2026)
+        "object_id": "26c484d3-414d-44a4-ad88-e8b09109652b",
+        "anim": ("the battered warrior breathing slowly, chest rising and falling subtly, arms legs and head completely frozen, no limb movement"),
         "fps": 6,
     },
     "warrior_second_wind": {
@@ -933,6 +907,16 @@ ANIMS = {
                  "and the red thorn tips glinting one at a time"),
         "fps": 7,
     },
+    "warrior_demon_form": {
+        # arte NOVA rica (joker raro): demônio coroado de fogo
+        "object_id": "f37ed6ad-faaa-4113-b17f-837b3f5d492b",
+        "anim": ("the crown of fire above the horns flickering and dancing "
+                 "gently, the eyes glowing brighter and dimmer, small embers "
+                 "rising, the face armor and horns a frozen statue, mouth "
+                 "closed, no talking"),
+        "fps": 8,
+    },
+
 }
 
 def token():

@@ -2092,9 +2092,11 @@ end
 -- de andada por bioma e ter salvo") — fator de crescimento no fim do
 -- trecho (s_max = base×(1+growth)). Calibrado por screenshot gate1..6;
 -- o clamp anti-corte abaixo garante que NENHUMA arte corta no topo.
+-- v10.5: growth calibrado pra ALTURA FINAL parelha entre biomas
+-- (ih varia 169-215px; alvo ~550-570px de castelo em 768p no fim)
 local CASTLE_APPROACH = {
     fields = 3.2, highlands = 3.2, abyss = 3.4,
-    frost = 2.9, marsh = 3.2, dusk = 3.1,
+    frost = 2.6, marsh = 3.2, dusk = 3.0,
 }
 -- v10.3 (feedback): no fim da aproximação alguns castelos ficavam "pra
 -- cima" e mostravam a BORDA INFERIOR da arte (fundação + grama/neve/musgo
@@ -2149,17 +2151,15 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
     local growth = CASTLE_APPROACH[bid] or 3.2
     local s = baseScale * (1.0 + (progress ^ 1.4) * growth)
     local cx = g.cx
-    -- v10.4: CLAMP anti-corte com TETO ESTÁVEL (independente de progress).
-    -- BUG que o usuário viu ("castelo faz efeito contrário, encolhe andando
-    -- pra frente"): o sinkK antigo CAÍA com o progress, então (1-sinkK)
-    -- crescia e sMax ENCOLHIA ao aproximar — quando o castelo batia no teto,
-    -- ele DIMINUÍA a cada passo. Agora o teto usa o sink FINAL (progress=1)
-    -- como referência fixa: o castelo cresce monotonicamente e só encosta no
-    -- teto (plateau) no fim, nunca recua. O tamanho final é idêntico ao de
-    -- antes (mesma fórmula em progress=1) — só some o encolhimento no meio.
-    local finalSink = 0.03 + (CASTLE_SINK_EXTRA[bid] or 0)
-    local sMax = (g.crestYAt(cx) - g.y - 6) / (ih * (1 - finalSink))
-    if sMax > 0 then s = math.min(s, sMax) end
+    -- v10.5 (feedback: "bem perto ele só sobe, não expande"): o CLAMP de
+    -- escala foi REMOVIDO. Ele congelava o crescimento em ~56% do trecho
+    -- (sMax ~1.76 numa curva que vai a ~3×) e a metade final da chegada
+    -- virava só o slide do sink = "sobe sem crescer". PERTO = GRANDE, como
+    -- no design original v5: o topo PODE sair do quadro no fim (fica atrás
+    -- da topbar — é a sensação de estar ao pé do castelo). Quem protege o
+    -- chão é o sink/sinkExtra (a base NUNCA sobe acima da crista) e o teto
+    -- real é o growth mapeado por bioma (CASTLE_APPROACH, alturas finais
+    -- parelhas ~550-570px em 768p).
     -- afundamento DIMINUI chegando: no fim só 3% da altura fica atrás da
     -- crista — o PORTÃO (base do sprite) sobe e fica totalmente visível.
     -- v10.3: + afundamento EXTRA por bioma (∝ progress) pra enterrar a

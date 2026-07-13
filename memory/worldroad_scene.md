@@ -1544,6 +1544,22 @@ imersiva com a porta abrindo + som.
 - Sons: castle-gate-open (madeira 3.5s) / castle-gate-magic (arcano 3s),
   volumes 0.62/0.58 no main.lua.
 
+**v10.5 (feedback: "bem perto ele só sobe, não expande"):**
+- O clamp v10.4 (mesmo estável) congelava a escala em ~56% do trecho
+  (sMax ~1.76 vs curva que vai a ~3×) — a metade final da chegada era só
+  o slide do sink = castelo subindo SEM crescer. CLAMP REMOVIDO de vez.
+- Modelo correto (= design original v5): PERTO É GRANDE — no fim o castelo
+  tem ~550-570px (768p), ocupa ~73% da tela e o TOPO sai do quadro (fica
+  atrás da topbar; GameplayScene desenha a topbar depois). Isso é a
+  sensação de estar ao pé do portão. Proteções que ficam: sink/sinkExtra
+  (base NUNCA sobe acima da crista — era esse o "saindo da esfera") e
+  growth por bioma (CASTLE_APPROACH) calibrado pra ALTURA FINAL PARELHA
+  (frost 2.6 e dusk 3.0 porque as artes são mais altas; demais 3.2-3.4).
+- ⚠️ Lição consolidada: NUNCA clamp de escala no castelo. As duas
+  tentativas (v10 relaxável, v10.4 estável) produziram artefatos que o
+  usuário sentiu na hora ("encolhe", "só sobe"). Cortar topo no fim é
+  FEATURE, não bug.
+
 **v10.4 (feedback: 2 bugs no fluxo de chegada/entrada):**
 - BUG 1 — castelo ENCOLHIA ao aproximar do mini-boss/boss ("efeito
   contrário, o mundo anda mas o castelo recua"). Causa: o clamp usava
