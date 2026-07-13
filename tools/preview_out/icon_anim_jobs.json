@@ -193,7 +193,7 @@
   },
   "mage_blizzard": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
-    "group": "a853035a-f408-4cd1-9776-8d21dd14369d"
+    "group": "c98dc2a9-6f93-407e-92be-b018eba7929c"
   },
   "mage_boot_sequence": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
@@ -211,8 +211,60 @@
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
     "group": "5384bee9-6d25-4dc0-b980-46c72565567c"
   },
-  "joker_abyss": {
+  "snowflake": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
-    "group": "b182e96a-5938-4f48-9266-566cd8ae718a"
+    "group": "1e4b0ba2-57a8-4a75-a6c2-334df75bb930"
+  },
+  "mage_mind_spike": {
+    "object_id": "e915356c-819f-4d8d-a0c9-1ffde6e9a0b9",
+    "group": "3fd5b294-0c3f-4222-bc71-36ade71f1c73"
+  },
+  "rogue_accuracy": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "6e5b8e8c-3e34-4f78-b15f-af5633d65d48"
+  },
+  "rogue_adrenaline": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "e2e121c7-39bf-48a4-8f20-df1eb18fc9a1"
+  },
+  "rogue_blur": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "b2477993-6020-4dff-8c99-f90e53789428"
+  },
+  "rogue_bouncing_flask": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "61858442-ed08-4e35-ba95-a50fffcbaecf"
+  },
+  "coin": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "12d52be6-97c1-4fa7-8a14-47e073476f35"
+  },
+  "rogue_caltrops": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "9d22c1a3-a69c-4971-b5f3-8af3867961bd"
+  },
+  "moon": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "3ec72171-5ca4-4f64-9e54-181b8247488a"
+  },
+  "rogue_twin_fangs": {
+    "object_id": "fd3b5d7f-9e40-4999-b9ea-402085ab74ab",
+    "group": "5400a38d-f4d9-4eb5-91be-f20c1120e8a0"
+  },
+  "rogue_venom_coating": {
+    "object_id": "a9e20eb2-c468-4f6d-a124-789ab62c245d",
+    "group": "d625d61f-5a94-4253-bddf-a50e889e8a9c"
+  },
+  "fang": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "36b1f193-38a1-4ed3-bcda-2c36b5793924"
+  },
+  "rogue_expose_weakness": {
+    "object_id": "d1b0965a-670b-44e5-bac8-7fb8185d744d",
+    "group": "5218122c-7f32-401a-860b-41b77b16a6e7"
+  },
+  "rogue_shadow_dance": {
+    "object_id": "935bdd43-5fc6-48ba-b02b-888b2748c0f7",
+    "group": "02c75377-89ca-4d44-b50b-116b2aada09f"
   }
 }

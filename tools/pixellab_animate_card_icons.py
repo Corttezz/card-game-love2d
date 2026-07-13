@@ -113,16 +113,9 @@ ANIMS = {
     # ARTE numa pose neutra primeiro.
 
     # ===== BLOCO 1: lendárias (fps 9, vivas) + jokers raros (fps 8) =====
-    "joker_abyss": {
-        # face cósmica ornamentada. v2: v1 morfava o rosto (boca abria,
-        # cores mudavam). Tática ídolo pintado: rosto intocável, só gemas.
-        "anim": ("a still portrait of an ornate cosmic idol mask, the face "
-                 "completely motionless like a painted statue, not a single "
-                 "pixel of the face mouth or skin changes, the only "
-                 "movement is the small gems on the headdress glinting one "
-                 "after another with tiny sparkles"),
-        "fps": 9,
-    },
+    # joker_abyss: NÃO ANIMAR (Jul/2026). Face cósmica com boca escura =
+    # gesto implícito; v1 e v2 ("painted statue") morfaram o rosto.
+    # 2 reprovações → estática. Animar exige regerar a ARTE.
     "joker_shield": {
         # elmo de aço (objeto)
         "anim": ("a warm ember glow pulsing slowly inside the dark eye slit "
@@ -484,10 +477,12 @@ ANIMS = {
 
     # ===== BLOCO 6: uncommons mago/ladino (sutil, fps 6-7) =====
     "mage_force_field": {
-        # vulto dentro de domo/anel dourado
-        "anim": ("the golden dome ring shimmering gently with a slow "
-                 "light pulse, tiny sparkles at its edge, the cloaked "
-                 "figure inside completely static"),
+        # vulto dentro de domo dourado. v2: v1 levantava os braços do
+        # vulto (gesto de conjuração) — silhueta estátua, só o halo.
+        "anim": ("the cloaked figure a completely frozen black silhouette "
+                 "like a statue, arms and body not moving a single pixel, "
+                 "only the golden halo dome behind shimmering gently with "
+                 "tiny sparkles"),
         "fps": 7,
     },
     "snowflake": {
@@ -506,11 +501,13 @@ ANIMS = {
         "fps": 7,
     },
     "mage_overcharge": {
-        # orbe de energia sobrecarregando
+        # orbe de energia. v2: v1 escurecia até vinho (loop pipocava).
+        # Brilho e cor CONSTANTES, só shimmer interno.
         "object_id": "ef4e4581-a927-4cce-89cf-bbae71780edc",
-        "anim": ("the energy inside the orb shimmering and shifting, tiny "
-                 "electric arcs flickering briefly at the surface, the orb "
-                 "silhouette completely unchanged"),
+        "anim": ("the orb's brightness and color stay exactly constant "
+                 "the whole time, only the energy texture inside "
+                 "shimmering and swirling subtly, tiny sparks glinting, "
+                 "no dimming no color change, silhouette unchanged"),
         "fps": 7,
     },
     "rogue_accuracy": {
@@ -520,13 +517,9 @@ ANIMS = {
                  "blinking, the whole emblem static"),
         "fps": 6,
     },
-    "rogue_acrobatics": {
-        # acrobata em parada de mão (pose de ação — 1 tentativa)
-        "anim": ("the acrobat completely frozen mid-handstand like a "
-                 "statue, no limb movement whatsoever, only the loose "
-                 "clothing and scarf fluttering very slightly"),
-        "fps": 6,
-    },
+    # rogue_acrobatics: NÃO ANIMAR (Jul/2026). Parada de mão = pose de
+    # ação; animou a estrela mesmo com "frozen like a statue".
+    # 1 tentativa (política de arte-em-ação) → estática.
     "rogue_adrenaline": {
         # seringa/tocha com chama vermelha
         "anim": ("the small red flame at the tip flickering gently, a "
@@ -562,11 +555,141 @@ ANIMS = {
         "fps": 6,
     },
     "rogue_catalyst": {
-        # garrafa com espiral verde
-        "anim": ("the green liquid swirling slowly inside the bottle with "
-                 "a soft toxic glow pulsing, the bottle completely "
-                 "static"),
+        # garrafa com espiral verde. v2: v1 fazia a espiral do topo SUMIR
+        # (silhueta mudava). Espiral mantém a forma exata; só o interior.
+        "anim": ("the swirling green tendril on top keeps its exact shape "
+                 "and position the whole time, only the liquid inside the "
+                 "bottle swirling gently with a soft glow, silhouette "
+                 "completely unchanged"),
         "fps": 7,
+    },
+
+    # ===== BLOCO 7: uncommons finais ladino/guerreiro (sutil, fps 6-7) =====
+    "moon": {
+        # lua crescente com rosto — rogue_moonshadow (rosto: travar!)
+        "anim": ("a soft golden glow pulsing gently around the crescent "
+                 "moon, a tiny star glinting nearby, the moon's face "
+                 "completely frozen with no expression change"),
+        "fps": 6,
+    },
+    "rogue_twin_fangs": {
+        # serpente enrodilhada de olhos vermelhos
+        "object_id": "fd3b5d7f-9e40-4999-b9ea-402085ab74ab",
+        "anim": ("the serpent's red eyes glinting with menace, a faint "
+                 "shimmer moving across the dark scales, the coiled body "
+                 "and head completely frozen"),
+        "fps": 7,
+    },
+    "rogue_venom_coating": {
+        # adaga de lâmina verde
+        "object_id": "a9e20eb2-c468-4f6d-a124-789ab62c245d",
+        "anim": ("a wet toxic sheen shifting slowly along the green "
+                 "blade, a single venom drop forming at the tip, the "
+                 "dagger completely static"),
+        "fps": 7,
+    },
+    "fang": {
+        # colar de presas com veneno — rogue_venom_fang
+        "anim": ("venom drops slowly forming and dripping from the fang "
+                 "tips, a faint glisten on the curved surfaces, the fangs "
+                 "and cord completely static"),
+        "fps": 7,
+    },
+    "rogue_expose_weakness": {
+        # armadura com fenda/chama dourada no peito
+        "object_id": "d1b0965a-670b-44e5-bac8-7fb8185d744d",
+        "anim": ("the golden crack of light on the chest armor glowing "
+                 "brighter and dimmer in a slow pulse, the armored figure "
+                 "completely static"),
+        "fps": 7,
+    },
+    "rogue_shadow_dance": {
+        # ladino encapuzado em pé
+        "object_id": "935bdd43-5fc6-48ba-b02b-888b2748c0f7",
+        "anim": ("the rogue's dark cloak hem swaying very slightly, faint "
+                 "shadow wisps drifting off his silhouette, body and pose "
+                 "completely frozen, no limb movement"),
+        "fps": 6,
+    },
+    "warrior_flame_barrier": {
+        # guerreiro dentro de anel de fogo
+        "anim": ("the ring of fire flickering and dancing around the "
+                 "warrior, small embers rising from the flames, the "
+                 "warrior silhouette completely frozen"),
+        "fps": 7,
+    },
+    "warrior_ghostly_armor": {
+        # armadura espectral
+        "anim": ("a faint ghostly shimmer passing slowly over the "
+                 "spectral armor, its glow breathing lightly, the armor "
+                 "and pose completely static"),
+        "fps": 6,
+    },
+    "warrior_inflame": {
+        # guerreiro rubro com aura
+        "anim": ("a faint red aura pulsing slowly around the warrior, "
+                 "tiny embers glinting on his shoulders, body and pose "
+                 "completely frozen, no limb movement"),
+        "fps": 7,
+    },
+    "warrior_iron_discipline": {
+        # punho de manopla emoldurado
+        "object_id": "5926fc53-3672-4626-82ad-c93ebbbccbba",
+        "anim": ("a cold light glint passing slowly across the gauntlet "
+                 "knuckles, the fist and frame completely static"),
+        "fps": 6,
+    },
+    "shield_kite": {
+        # escudo kite com cruz — warrior_kite_guard
+        "anim": ("a light glint sweeping slowly across the shield face, "
+                 "the red cross and silver border completely static"),
+        "fps": 6,
+    },
+    "armor_plate": {
+        # peitoral de aço — warrior_plate_mail
+        "anim": ("a soft light glint sliding slowly across the polished "
+                 "chest plate, the gold trim shining briefly, the armor "
+                 "completely static"),
+        "fps": 6,
+    },
+    "warrior_power_through": {
+        # guerreiro castigado em pé
+        "anim": ("the battered warrior breathing heavily and slowly, "
+                 "chest rising and falling, arms legs and head completely "
+                 "frozen, no limb movement"),
+        "fps": 6,
+    },
+    "warrior_second_wind": {
+        # busto de guerreiro com capa (rosto: travar boca)
+        "anim": ("the warrior's dark red cape swaying gently in the wind, "
+                 "slow calm breathing, his face mouth and expression "
+                 "completely frozen, no talking"),
+        "fps": 6,
+    },
+    "warrior_spot_weakness": {
+        # vigia de elmo observando
+        "anim": ("a sharp glint appearing briefly in the helmet's eye "
+                 "slit, a faint light sweep on the armor, figure and pose "
+                 "completely static"),
+        "fps": 6,
+    },
+    "warrior_twin_strike": {
+        # espadas cruzadas
+        "object_id": "2822f004-3a80-4073-b2cc-8613e3d4be37",
+        "anim": ("cold light glints traveling along the two crossed "
+                 "blades one after the other, the swords completely "
+                 "static"),
+        "fps": 6,
+    },
+    "warrior_war_cry": {
+        # elmo gritando de boca aberta (gesto implícito — 1 tentativa;
+        # se a boca mexer → estática como vampiro/consume)
+        "object_id": "a65da763-7366-40e5-a426-e08691d2041d",
+        "anim": ("the screaming helmet head completely frozen like a "
+                 "bronze statue, mouth and jaw not moving a single pixel, "
+                 "only a faint golden battle aura trembling around the "
+                 "helmet edges"),
+        "fps": 6,
     },
 }
 
