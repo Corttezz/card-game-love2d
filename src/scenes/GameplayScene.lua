@@ -34,6 +34,12 @@ local hoverCard = nil
 local lastFloorKey = nil   -- detecta troca de andar → dispara viagem na estrada
 local lastInterior = nil   -- detecta estrada→interior → fade de entrada
 local interiorFade = 0     -- alpha do fade preto (1 → 0 em ~0.9s)
+-- v10.4: no BOSS o interior (sala) só existe DEPOIS que a cerimônia da porta
+-- terminou. Antes, durante a viagem de aproximação (entering ainda false), o
+-- interior já era true → mostrava a sala do boss ANTES da cutscene, depois a
+-- porta, depois a sala de novo (ordem quebrada). Este flag segura a sala até
+-- o fade da porta completar. Resetado quando um novo andar de boss começa.
+local bossEntered = false
 
 function GameplayScene.init(deps)
     game           = deps.game
@@ -281,8 +287,13 @@ function GameplayScene.draw()
     -- continua na estrada — o interior só assume depois do fade
     local entering = GameplayScene.SCENE_MODE == "worldroad"
         and WorldRoad.isEntering()
+    -- v10.4: elite entra no hall direto; BOSS só vira interior depois da
+    -- cutscene da porta (bossEntered). Durante a viagem de aproximação e a
+    -- própria cutscene, interior=false → a cena mostra a ESTRADA/exterior
+    -- (castelo crescendo, porta abrindo), nunca a sala antes da hora.
     local interior = GameplayScene.SCENE_MODE == "worldroad" and not entering
-        and (nodeType == "boss" or nodeType == "elite")
+        and (nodeType == "elite"
+             or (nodeType == "boss" and bossEntered))
 
     -- v9.2: no battle da estrada, o inimigo desenha DENTRO do painter do
     -- WorldRoad (no eixo BATTLE_REL) pra que postes/árvores mais próximos
@@ -508,9 +519,11 @@ function GameplayScene.update(dt)
     do
         local runU = game.runManager and game.runManager.currentRun
         local ntU = runU and runU.currentNode and runU.currentNode.type
-        -- v10: o interior só "existe" quando a cerimônia da porta terminou.
-        -- v10.1: mini_boss saiu do interior — briga do lado de fora
-        local isInt = (ntU == "boss" or ntU == "elite")
+        -- v10.4: alinhado com `interior` do draw — elite direto; boss só
+        -- depois da cutscene (bossEntered). Guarda `not isEntering` p/ o
+        -- frame de transição.
+        local isInt = (ntU == "elite"
+                       or (ntU == "boss" and bossEntered))
             and not (GameplayScene.SCENE_MODE == "worldroad"
                      and WorldRoad.isEntering())
         if isInt then
@@ -559,12 +572,18 @@ function GameplayScene.update(dt)
             local run2 = game.runManager and game.runManager.currentRun
             local nt = run2 and run2.currentNode and run2.currentNode.type
             if nt == "boss" then
-                -- v10.2: BOSS — a esfera anda pra frente MAIS UM passo (o
-                -- castelo cresce naturalmente, como todo andar), SEM inimigo
-                -- na estrada (o boss está dentro); ao chegar, a porta abre
-                -- + som + fade pro hall. "A porta só abre no boss."
+                -- v10.2/v10.4: BOSS — a esfera anda pra frente (o castelo
+                -- cresce naturalmente, como todo andar), SEM inimigo na
+                -- estrada (o boss está dentro). Ao CHEGAR, a porta abre +
+                -- som; quando o fade completa, bossEntered=true libera a
+                -- sala. Até lá interior=false (sem mostrar a sala antes).
+                bossEntered = false
                 WorldRoad.travel({
-                    onComplete = function() WorldRoad.enterCastle() end,
+                    onComplete = function()
+                        WorldRoad.enterCastle({
+                            onComplete = function() bossEntered = true end,
+                        })
+                    end,
                 })
             elseif nt ~= "elite" then
                 -- batalha comum E MINI-BOSS (v10.1: "do lado de fora do

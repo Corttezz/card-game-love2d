@@ -1544,6 +1544,28 @@ imersiva com a porta abrindo + som.
 - Sons: castle-gate-open (madeira 3.5s) / castle-gate-magic (arcano 3s),
   volumes 0.62/0.58 no main.lua.
 
+**v10.4 (feedback: 2 bugs no fluxo de chegada/entrada):**
+- BUG 1 — castelo ENCOLHIA ao aproximar do mini-boss/boss ("efeito
+  contrário, o mundo anda mas o castelo recua"). Causa: o clamp usava
+  `sinkK = 0.03 + 0.20·(1-progress)` → conforme progress↑, (1-sinkK)↑ →
+  `sMax` ENCOLHIA; quando o castelo batia no teto, DIMINUÍA a cada passo.
+  Fix: teto ESTÁVEL com o sink FINAL (`finalSink = 0.03 + sinkExtra`,
+  constante) → s = min(cresce, constante) = monotônico. Tamanho final
+  idêntico; some só o encolhimento no meio. (geom do teto = onde o topo
+  toca g.y+6, já contando o sinkExtra — nunca corta.)
+- BUG 2 — ordem quebrada no boss: entrava na SALA, aí a cutscene da porta,
+  aí voltava pra sala. Causa: durante a viagem de aproximação `entering`
+  ainda era false (enterCastle só no onComplete), então
+  `interior = not entering and boss = true` → sala aparecia ANTES da porta.
+  Fix: flag `bossEntered` (GameplayScene) — a sala do boss só existe DEPOIS
+  do fade da cutscene. Ordem certa: exterior (castelo cresce) → porta abre
+  → fade → sala. Resetado quando um novo andar de boss começa; elite segue
+  hall direto. `isInt` (InteriorFX/fade) alinhado ao mesmo critério.
+- DEMO: SPACE agora SIMULA O FLUXO — anda um passo por toque (castelo
+  cresce), e ao chegar perto (progress ≥ 0.92) dispara a cerimônia SOZINHO
+  (porta + fade), resetando pra andar de novo. B = entrada instantânea.
+  Modo `screenshot_worldroad grow<NN>` prova crescimento monotônico.
+
 **v10.3 (feedback: castelos "pra cima" mostrando a base no fim):**
 - fields/frost/marsh/dusk têm BORDA INFERIOR larga na arte (grama/neve/
   cogumelo/fundação assados) que, com o sink fixo de 3% no fim, flutuava

@@ -2149,12 +2149,16 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
     local growth = CASTLE_APPROACH[bid] or 3.2
     local s = baseScale * (1.0 + (progress ^ 1.4) * growth)
     local cx = g.cx
-    -- v10: CLAMP anti-corte — o topo do castelo NUNCA sai da tela
-    -- (pedido: "não deixar a imagem cortada/flutuando / saindo da esfera"),
-    -- pra qualquer arte. É só um GUARDA: com o growth por bioma calibrado,
-    -- no máximo natural o castelo já cabe — o clamp nunca empurra pra fora.
-    local sinkK = 0.03 + 0.20 * (1 - math.min(1, progress))
-    local sMax = (g.crestYAt(cx) - g.y - 6) / (ih * (1 - sinkK))
+    -- v10.4: CLAMP anti-corte com TETO ESTÁVEL (independente de progress).
+    -- BUG que o usuário viu ("castelo faz efeito contrário, encolhe andando
+    -- pra frente"): o sinkK antigo CAÍA com o progress, então (1-sinkK)
+    -- crescia e sMax ENCOLHIA ao aproximar — quando o castelo batia no teto,
+    -- ele DIMINUÍA a cada passo. Agora o teto usa o sink FINAL (progress=1)
+    -- como referência fixa: o castelo cresce monotonicamente e só encosta no
+    -- teto (plateau) no fim, nunca recua. O tamanho final é idêntico ao de
+    -- antes (mesma fórmula em progress=1) — só some o encolhimento no meio.
+    local finalSink = 0.03 + (CASTLE_SINK_EXTRA[bid] or 0)
+    local sMax = (g.crestYAt(cx) - g.y - 6) / (ih * (1 - finalSink))
     if sMax > 0 then s = math.min(s, sMax) end
     -- afundamento DIMINUI chegando: no fim só 3% da altura fica atrás da
     -- crista — o PORTÃO (base do sprite) sobe e fica totalmente visível.

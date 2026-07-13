@@ -258,6 +258,7 @@ local function runInteractive(postgate)
     setupGame()
     WorldRoad.setBiome(1)
     WorldRoad._camZ = 6
+    WorldRoad._segBase = 0   -- v10.4: progress do castelo conta daqui
 
     local gallery = false
     local gIdx = 1
@@ -309,8 +310,8 @@ local function runInteractive(postgate)
                 12, love.graphics.getHeight() - 24)
         else
             love.graphics.print(
-                "SPACE viagem | 1-6 bioma | F fork | B ENTRADA DO BOSS (porta)"
-                .. " | clique = cutuca cenario | V vista | R reset | M galeria"
+                "SPACE anda ate o castelo (perto=entrada auto) | B entrada ja"
+                .. " | 1-6 bioma | F fork | clique cutuca | V vista | R reset | M galeria"
                 .. " | L luz " .. (LightEngine.isEnabled() and "ON" or "OFF")
                 .. " | T hora "
                 .. string.format("%.2f", WorldRoad._timeOfDay or 1)
@@ -360,9 +361,8 @@ local function runInteractive(postgate)
                 print("[demo] fork escolhido: " .. tostring(node and node.type))
             end)
         elseif key == "b" and not WorldRoad.isEntering() then
-            -- v10.2: ENTRADA DO BOSS — posiciona o castelo no ponto NATURAL
-            -- de chegada (fim do trecho, como depois de andar o ato todo) e
-            -- só então abre a porta + som + fade. Testável em qualquer bioma
+            -- v10.2: ENTRADA DO BOSS INSTANTÂNEA — pula pro ponto de chegada
+            -- e abre a porta direto (atalho pra testar a cutscene isolada).
             WorldRoad._segBase = 0
             WorldRoad._camZ = WorldRoad.TRAVEL_DISTANCE * 8
             WorldRoad.enterCastle({
@@ -371,8 +371,30 @@ local function runInteractive(postgate)
                     print("[demo] entrada no castelo completa")
                 end,
             })
-        elseif key == "space" and not WorldRoad.isTraveling() then
-            WorldRoad.travel({ encounter = EnemyRenderer.getEncounterBillboard(game.enemy) })
+        elseif key == "space" and not WorldRoad.isTraveling()
+               and not WorldRoad.isEntering() then
+            -- v10.4: SIMULA O FLUXO REAL — cada SPACE anda um passo rumo ao
+            -- castelo (a esfera avança, o castelo CRESCE, monotônico). Quando
+            -- chega PERTO o suficiente, a cerimônia de entrada dispara SOZINHA
+            -- (porta abrindo + som + fade). Ao terminar, reseta pra andar de
+            -- novo. É exatamente o fluxo do jogo (andar → perto → entrar).
+            WorldRoad.travel({
+                onComplete = function()
+                    local seg = WorldRoad.TRAVEL_DISTANCE * 8
+                    local prog = (WorldRoad._camZ - (WorldRoad._segBase or 0)) / seg
+                    print(string.format("[demo] andou -> progress %.2f", prog))
+                    if prog >= 0.92 then
+                        WorldRoad.enterCastle({
+                            onComplete = function()
+                                demoFadeIn = 1
+                                WorldRoad._camZ = 6
+                                WorldRoad._segBase = 0
+                                print("[demo] chegou perto -> entrada AUTOMATICA")
+                            end,
+                        })
+                    end
+                end,
+            })
         elseif key == "l" then
             -- LightEngine v1: toggle do motor (validação A/B ao vivo)
             LightEngine.setEnabled(not LightEngine.isEnabled())
@@ -394,6 +416,7 @@ local function runInteractive(postgate)
             WorldRoad._props = {}
         elseif key == "r" then
             WorldRoad._camZ = 6
+            WorldRoad._segBase = 0
             WorldRoad._props = {}
         elseif key == "escape" then
             love.event.quit()

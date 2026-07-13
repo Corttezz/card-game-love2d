@@ -94,6 +94,23 @@ function M.run(mode)
         overlays(0, topBarH, width, height - topBarH)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
+    elseif mode and mode:match("^grow%d+$") then
+        -- v10.4: castelo num PROGRESS específico (grow50 = 50%) pra provar
+        -- crescimento MONOTÔNICO (sem encolher ao aproximar). segBase=0,
+        -- camZ = SEGMENT_LEN * (NN/100). Bioma fixo 1 (fields).
+        local topBarH = 80
+        local pct = tonumber(mode:match("%d+")) or 50
+        WorldRoad.clearCache()
+        WorldRoad.setBiome(1)
+        WorldRoad._segBase = 0
+        WorldRoad._camZ = (WorldRoad.TRAVEL_DISTANCE * 8) * (pct / 100)
+        for _ = 1, 4 do WorldRoad.update(1 / 30) end
+        WorldRoad._blend = nil
+        WorldRoad._prevBiomeIndex = nil
+        WorldRoad.draw(0, topBarH, width, height - topBarH, 1)
+        overlays(0, topBarH, width, height - topBarH)
+        love.graphics.setColor(0.1, 0.08, 0.06, 1)
+        love.graphics.rectangle("fill", 0, 0, width, topBarH)
     elseif mode and mode:match("^entry%d?$") then
         -- v10: CERIMÔNIA DA PORTA congelada no meio (fase door, ~0.7) —
         -- valida frames da porta + boost do clamp em cena. "entry3" = bioma 3
