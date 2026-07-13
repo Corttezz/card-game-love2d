@@ -314,5 +314,13 @@
   "mage_overcharge": {
     "object_id": "ef4e4581-a927-4cce-89cf-bbae71780edc",
     "group": "083e7abf-6b67-4a43-b7ef-0d718bcbce49"
+  },
+  "rogue_catalyst": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "c29364ba-8a43-48d6-a39b-324009337b57"
+  },
+  "rogue_venom_coating": {
+    "object_id": "a9e20eb2-c468-4f6d-a124-789ab62c245d",
+    "group": "e7493635-89cd-489b-b16d-f241d724b2f8"
   }
 }
