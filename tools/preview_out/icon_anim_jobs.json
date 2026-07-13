@@ -22,5 +22,137 @@
   "rogue_strike": {
     "object_id": "d1b0965a-670b-44e5-bac8-7fb8185d744d",
     "group": "cc1f3251-30b8-4edc-926d-8f4500aa3eaa"
+  },
+  "joker_abyss": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "9019fa26-c628-4f5d-9b66-f9b32f9e4d23"
+  },
+  "joker_shield": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "8133b603-0f7f-4ea5-bf38-e3e41eea93f4"
+  },
+  "joker_jester": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "8b948671-4476-4399-9780-82b560b21d8a"
+  },
+  "jester_hat": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "1f93ea70-0eef-4ca4-9bee-5094c218d5d9"
+  },
+  "warrior_berserk": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "28718fd9-b9e6-4319-acc8-6b8c77467515"
+  },
+  "warrior_brutality": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "120249a1-26dc-40a5-8a6f-f2dcf804afb4"
+  },
+  "warrior_dark_embrace": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "2d3faf74-2525-4c65-8a2d-6f34deebf61b"
+  },
+  "skull_crowned": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "77cb3622-04c1-4d79-94a5-15edce18d5c7"
+  },
+  "warrior_juggernaut": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "3abbce66-0dfb-4303-90f1-7bf18376adc0"
+  },
+  "joker_vampire": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "cc1da30e-bd8b-453a-812d-ba2d6f71dd71"
+  },
+  "warrior_bastion": {
+    "object_id": "f024bc9b-8492-4347-8306-4d9145257741",
+    "group": "b1430ef9-4d0c-44ed-9413-74bfc636f2b5"
+  },
+  "heart": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "8b9503ae-723b-42d5-951c-b244198d79d5"
+  },
+  "mage_creative_ai": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "081ba913-d910-4294-9ed0-95f6eb622953"
+  },
+  "mage_echo_form": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "00843876-f3ff-46ee-be15-13b078aa2350"
+  },
+  "mage_electrodynamics": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "04aee6d2-6110-4e79-95ef-da7d06019b45"
+  },
+  "mage_machine_learning": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "dbffc06b-981f-453d-88ba-a57bb2d01179"
+  },
+  "rune": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "7cb74fba-e59f-4a42-8edc-447f652ede70"
+  },
+  "gem": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "4fbffd05-b925-43a6-bd68-bcbf56caa0f3"
+  },
+  "rogue_a_thousand_cuts": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "049a3d76-e7d5-448f-b622-d1b3dd281bc2"
+  },
+  "rogue_after_image": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "36f9e7bd-ccdf-401d-8f92-24bc5d276583"
+  },
+  "mage_arcane_torrent": {
+    "object_id": "3e8012db-e803-4c95-839d-63c1ff4f1aba",
+    "group": "95f9b783-3fc9-4c8a-8c3f-0b5d8eabb40d"
+  },
+  "mage_buffer": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "cb7f214a-a2c3-46c5-a2c3-0fe48a883964"
+  },
+  "mage_fission": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "33b488b2-a021-4b81-9420-541914f09626"
+  },
+  "mage_meteor_strike": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "a18a3474-967c-480e-877b-260941b828f2"
+  },
+  "mage_rainbow": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "f5d6c327-eb8f-4ffb-891f-2d0760ad5e4d"
+  },
+  "mage_twin_bolts": {
+    "object_id": "585aebc0-ec09-4865-ab6f-5bd0a7b2dbc7",
+    "group": "8a254c36-1a17-459f-aa97-b8ae9534725c"
+  },
+  "rogue_bullet_time": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "cf19844a-03fb-4cca-8763-0e30c5cbaf46"
+  },
+  "rogue_corpse_explosion": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "c46c71cb-aa68-4714-85f3-6ee76c91330f"
+  },
+  "skull": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "fb4a1349-87b3-460d-8d55-35d1f492f289"
+  },
+  "mask": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "fb2407a5-41d7-4ef0-98dc-2e1bde80f61d"
+  },
+  "rogue_envenom": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "10a9abe2-2d46-4c6e-80f1-b9ab4a902ac6"
+  },
+  "rogue_executioner": {
+    "object_id": "a88da962-3897-4337-86f6-08ec5283ef14",
+    "group": "09b12e71-834f-4a4c-939d-ebd75216f9d0"
+  },
+  "star": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "28fe0cef-d82f-4564-bb13-4370c8e1c01b"
   }
 }

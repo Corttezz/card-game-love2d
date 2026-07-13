@@ -124,6 +124,11 @@ memory/card_creation_flow.md), não um extra. Duas regras inegociáveis:
 - **Animação "morta"**: v3 às vezes gera frames quase idênticos (lição do
   luminaire). `check` compara md5 dos frames; se acusar MORTA?, regerar com
   descrição de movimento mais explícita (`replace_existing=true`).
+- **ROSTOS: travar a boca SEMPRE** (feedback do dono, Jul/2026): em busto/
+  face, o v3 mexe a boca e o personagem "parece que tá falando"
+  (joker_vampire v1 reprovado). Prompt de rosto precisa de "mouth lips and
+  jaw completely frozen shut, face expression unchanged, no talking" — o
+  que vive num rosto são OLHOS (glow/glint) e acessórios (capa, guizos).
 - **O oposto também acontece — v3 anima a AÇÃO da arte** (lição Jul/2026):
   mão aberta virou punho fechando (mage_zap v1), ladino em pose de esquiva
   virou dança (rogue_defend v1 E v2). Arte com gesto implícito PRECISA de
