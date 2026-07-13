@@ -408,6 +408,90 @@ ANIMS = {
                  "and pose completely frozen, no limb movement"),
         "fps": 8,
     },
+
+    # ===== BLOCO 5: uncommons mago (sutil, fps 6-7) =====
+    "question": {
+        # pergaminho com "?" — effect_mystery_card
+        "anim": ("a faint golden glow pulsing very subtly on the question "
+                 "mark, the parchment completely static"),
+        "fps": 6,
+    },
+    "mage_aggregate": {
+        # vórtice espiral de fogo
+        "anim": ("the fiery spiral shimmering gently as if slowly "
+                 "swirling, small sparks glinting along the arms, the "
+                 "overall silhouette unchanged"),
+        "fps": 7,
+    },
+    "mage_arcane_focus": {
+        # sigilo arcano concêntrico com núcleo vermelho
+        "object_id": "c2487f14-c42e-4371-ad51-b66397defab1",
+        "anim": ("the red core glowing brighter and dimmer in a slow "
+                 "pulse, tiny sigil marks glinting one at a time, the "
+                 "concentric rings completely static"),
+        "fps": 7,
+    },
+    "eye": {
+        # olho místico em moldura dourada — mage_arcane_sight
+        "anim": ("the red iris shimmering subtly and a tiny glint moving "
+                 "across the pupil, the eye stays open with no blinking, "
+                 "the golden frame completely static"),
+        "fps": 6,
+    },
+    "mage_auto_shields": {
+        # brasão/escudo com vulto
+        "anim": ("a faint light sweep passing slowly across the shield "
+                 "face, the emblem and figure completely static"),
+        "fps": 6,
+    },
+    "mage_ball_lightning": {
+        # orbe de energia laranja
+        "anim": ("the energy inside the orb shimmering and shifting "
+                 "slowly, a tiny spark glinting on the surface, the orb "
+                 "silhouette completely unchanged"),
+        "fps": 7,
+    },
+    "mage_blizzard": {
+        # vórtice de gelo
+        "anim": ("the icy vortex shimmering gently as if slowly swirling, "
+                 "a few tiny snow specks drifting, the overall silhouette "
+                 "unchanged"),
+        "fps": 7,
+    },
+    "mage_boot_sequence": {
+        # tablete/grimório com glifo de raio
+        "anim": ("the lightning bolt glyph glowing brighter and dimmer in "
+                 "a slow electronic pulse, the tablet completely static"),
+        "fps": 6,
+    },
+    "mage_chill": {
+        # vulto encapuzado com chama azul nas mãos
+        "anim": ("the small blue flame in the cupped hands flickering "
+                 "gently and casting a faint cold glow, the hooded figure "
+                 "hands and pose completely frozen"),
+        "fps": 7,
+    },
+    "mage_consume": {
+        # fera sombria de mandíbula aberta (gesto implícito — 1 tentativa)
+        "anim": ("the shadow beast completely frozen like a statue, jaw "
+                 "and body not moving at all, only faint dark wisps "
+                 "rising slowly from its silhouette edges"),
+        "fps": 6,
+    },
+    "crystal": {
+        # cristal vermelho sobre pedestal — mage_crystal_shard
+        "anim": ("the red crystal glowing brighter and dimmer in a slow "
+                 "pulse with a tiny facet glint, the pedestal completely "
+                 "static"),
+        "fps": 6,
+    },
+    "mage_doom_and_gloom": {
+        # massa sombria com caveira
+        "anim": ("faint dark smoke wisps drifting slowly off the shadowy "
+                 "mass, a dim glow pulsing inside, the overall silhouette "
+                 "unchanged"),
+        "fps": 7,
+    },
 }
 
 
@@ -621,6 +705,10 @@ def run():
         if not group:
             fail += 1
             continue
+        # RELOAD do disco antes de salvar: runs longos NÃO podem ressuscitar
+        # entradas removidas externamente (ex: reprovação manual apagou o
+        # group pra forçar regen — clobber flagrado no caso joker_vampire).
+        jobs = load_jobs()
         jobs[icon] = {"object_id": object_id, "group": group}
         save_jobs(jobs)
         if _wait_download(icon, object_id, group):

@@ -59,10 +59,6 @@
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
     "group": "3abbce66-0dfb-4303-90f1-7bf18376adc0"
   },
-  "joker_vampire": {
-    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
-    "group": "cc1da30e-bd8b-453a-812d-ba2d6f71dd71"
-  },
   "warrior_bastion": {
     "object_id": "f024bc9b-8492-4347-8306-4d9145257741",
     "group": "b1430ef9-4d0c-44ed-9413-74bfc636f2b5"
@@ -154,5 +150,29 @@
   "star": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
     "group": "28fe0cef-d82f-4564-bb13-4370c8e1c01b"
+  },
+  "rogue_storm_of_steel": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "4c268f79-bfe4-47b6-b907-ae1ecf410d95"
+  },
+  "warrior_bloodletting": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "8790c55b-2c80-4806-8530-722cca62dda9"
+  },
+  "warrior_colossus_blow": {
+    "object_id": "90f36621-4a2b-4c9c-9df3-c578eac1faeb",
+    "group": "f8bfa8cc-a435-4fda-96f9-1eeff65605c2"
+  },
+  "warrior_feed": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "201d7f9a-c9b4-4320-a9de-962fb6752e56"
+  },
+  "warrior_immolate": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "ebb9f7ef-cbfc-4026-9edc-a99eb8a05473"
+  },
+  "joker_vampire": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "e8b83d45-dae9-4034-8de6-c7f6549bd5e8"
   }
 }

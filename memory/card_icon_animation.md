@@ -109,6 +109,13 @@ memory/card_creation_flow.md), não um extra. Duas regras inegociáveis:
 
 ## Pegadinhas
 
+- **Reprovar/apagar animação SÓ entre runs da fábrica**: um `run` em
+  andamento carrega o jobs file na memória; apagar frames/entrada no meio
+  faz o pre-check re-baixar o group velho (caso joker_vampire v2 zumbi).
+  O save agora recarrega do disco (não ressuscita entradas), mas o
+  pre-check do run JÁ em execução ainda usa a memória — regra prática:
+  esperar o run acabar, aí limpar e relançar.
+
 - **1 job de interpolação POR VEZ na CONTA inteira** (lição Jul/2026,
   confirmada 2×): animate_object com custom_start_frame devolve group id
   válido mas a API DESCARTA silenciosamente jobs concorrentes — mesmo em
