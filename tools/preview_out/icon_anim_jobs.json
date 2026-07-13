@@ -430,5 +430,37 @@
   "axe": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
     "group": "12735a5b-a724-4f1f-8c81-a7ceb86612a9"
+  },
+  "joker_abyss": {
+    "object_id": "0edb967f-0645-493b-bdea-30332a236b88",
+    "group": "39b627f2-5cbb-4150-9c4a-e30cb8fdc6a8"
+  },
+  "mage_consume": {
+    "object_id": "ac4e96b4-0012-403d-a1ff-f0a348206c5f",
+    "group": "051c6a40-bf63-414e-9113-b4df91e0c208"
+  },
+  "rogue_acrobatics": {
+    "object_id": "0b438830-8ce8-4dcb-b832-8ed411184399",
+    "group": "50b6dee6-4a54-40a9-8833-32217e979a28"
+  },
+  "rogue_defend": {
+    "object_id": "d46d72b7-76e0-4c42-80dc-fb624092af9f",
+    "group": "91ad4445-6cff-4ef8-952e-4e41feac6650"
+  },
+  "warrior_rage": {
+    "object_id": "0500a47b-ceee-465e-a32d-749257c7a6ef",
+    "group": "d37bdda2-7711-4fe5-b66d-0bedd5da7f5d"
+  },
+  "warrior_war_cry": {
+    "object_id": "ba7d5f95-e194-44e8-b159-df85abf3d4cd",
+    "group": "769084d7-86b9-45d8-9ecd-c5e8063cacfa"
+  },
+  "mage_torn_pages": {
+    "object_id": "404ca019-b5cb-442a-a428-7eca173323f3",
+    "group": "cb9c49aa-850c-4b0e-b422-4b2d650d8a2b"
+  },
+  "rogue_thorn_cloak": {
+    "object_id": "269b4d1c-7acb-48f5-8ddb-3b79f40f7734",
+    "group": "697d0fa1-8e07-46f9-b83b-10a079046c8d"
   }
 }

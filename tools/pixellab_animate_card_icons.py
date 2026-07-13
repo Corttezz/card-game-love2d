@@ -106,16 +106,10 @@ ANIMS = {
                  "and pose stay perfectly static"),
         "fps": 6,
     },
-    # rogue_defend: NÃO ANIMAR (decisão Jul/2026). A arte é uma pose de
-    # esquiva em pleno movimento — o v3 sempre anima o gesto inteiro, mesmo
-    # com "frozen like a statue" (2 tentativas reprovadas: ladino dançando).
-    # Arte em ação = deixar estática; se quiser animar um dia, regerar a
-    # ARTE numa pose neutra primeiro.
+
 
     # ===== BLOCO 1: lendárias (fps 9, vivas) + jokers raros (fps 8) =====
-    # joker_abyss: NÃO ANIMAR (Jul/2026). Face cósmica com boca escura =
-    # gesto implícito; v1 e v2 ("painted statue") morfaram o rosto.
-    # 2 reprovações → estática. Animar exige regerar a ARTE.
+
     "joker_shield": {
         # elmo de aço (objeto)
         "anim": ("a warm ember glow pulsing slowly inside the dark eye slit "
@@ -465,7 +459,7 @@ ANIMS = {
                  "hands and pose completely frozen"),
         "fps": 7,
     },
-    # mage_consume: NÃO ANIMAR (Jul/2026). Fera de mandíbula ABERTA =
+
     # gesto implícito; mesmo com "frozen like a statue" a boca fechou e o
     # brilho apagou. Mesma família do rogue_defend/joker_vampire.
     "crystal": {
@@ -525,7 +519,7 @@ ANIMS = {
                  "blinking, the whole emblem static"),
         "fps": 6,
     },
-    # rogue_acrobatics: NÃO ANIMAR (Jul/2026). Parada de mão = pose de
+
     # ação; animou a estrela mesmo com "frozen like a statue".
     # 1 tentativa (política de arte-em-ação) → estática.
     "rogue_adrenaline": {
@@ -690,10 +684,7 @@ ANIMS = {
                  "static"),
         "fps": 6,
     },
-    # warrior_war_cry: NÃO ANIMAR (Jul/2026). Elmo gritando = gesto
-    # implícito; a cabeça girou e a crista cresceu mesmo como "bronze
-    # statue". 1 tentativa (política de arte-em-ação) → estática.
-    # Alternativa futura: regerar a ARTE (elmo de boca fechada + aura).
+
 
     # ===== BLOCOS 8-11: commons/basics (quase imperceptível, fps 6) =====
     "attack_001": {
@@ -860,9 +851,7 @@ ANIMS = {
                  "few moments, the sword completely static"),
         "fps": 6,
     },
-    # warrior_rage: NÃO ANIMAR (Jul/2026). Boca aberta rugindo = gesto
-    # implícito; a boca morfou mesmo com "face frozen". 1 tentativa →
-    # estática. Candidata a arte nova (boca fechada) como o vampiro.
+
     "warrior_seeing_red": {
         # demônio agachado de olhos vermelhos (mãos erguidas — 1 tentativa)
         "anim": ("the demon completely frozen like a statue, hands and "
@@ -877,8 +866,74 @@ ANIMS = {
                  "static"),
         "fps": 6,
     },
+    # ===== ARTES REGERADAS (poses neutras, receita do vampiro) + 2 novas =====
+    "joker_abyss": {
+        # ídolo cósmico sereno (arte nova, boca fechada)
+        "object_id": "0edb967f-0645-493b-bdea-30332a236b88",
+        "anim": ("the entire face and headdress are a frozen statue, the "
+                 "ONLY moving things are: the small gems on the headdress "
+                 "glinting one at a time, and a faint glow pulsing in the "
+                 "eyes"),
+        "fps": 9,
+    },
+    "mage_consume": {
+        # fera sombria de boca fechada (arte nova)
+        "object_id": "ac4e96b4-0012-403d-a1ff-f0a348206c5f",
+        "anim": ("the beast's body and closed jaws are a frozen statue, "
+                 "the ONLY moving things are: the red eyes glowing "
+                 "brighter and dimmer, and faint dark wisps drifting off "
+                 "its back"),
+        "fps": 7,
+    },
+    "rogue_acrobatics": {
+        # acrobata em guarda equilibrada (arte nova)
+        "object_id": "0b438830-8ce8-4dcb-b832-8ed411184399",
+        "anim": ("the acrobat's body arms and legs are a frozen statue, "
+                 "the ONLY moving thing is the long scarf fluttering "
+                 "gently in the wind"),
+        "fps": 6,
+    },
+    "rogue_defend": {
+        # ladino em guarda firme (arte nova)
+        "object_id": "d46d72b7-76e0-4c42-80dc-fb624092af9f",
+        "anim": ("the rogue's body blades and stance are a frozen statue, "
+                 "the ONLY moving thing is the red cape hem swaying very "
+                 "slightly"),
+        "fps": 6,
+    },
+    "warrior_rage": {
+        # guerreiro rubro de punhos cerrados (arte nova)
+        "object_id": "0500a47b-ceee-465e-a32d-749257c7a6ef",
+        "anim": ("the warrior's body and head are a frozen statue, the "
+                 "ONLY moving things are: the dark red aura pulsing "
+                 "slowly around him, and a faint glow in the eyes"),
+        "fps": 6,
+    },
+    "warrior_war_cry": {
+        # elmo de visor fechado com arcos gravados (arte nova)
+        "object_id": "ba7d5f95-e194-44e8-b159-df85abf3d4cd",
+        "anim": ("the helmet is a frozen statue, the ONLY moving things "
+                 "are: the golden battle aura shimmering gently, and the "
+                 "carved sound wave arcs glinting one at a time"),
+        "fps": 7,
+    },
+    "mage_torn_pages": {
+        # grimório rasgado com páginas soltas (arte nova)
+        "object_id": "404ca019-b5cb-442a-a428-7eca173323f3",
+        "anim": ("the book is a frozen statue, the ONLY moving things "
+                 "are: the loose torn page edges fluttering very "
+                 "slightly, and the arcane ink marks glinting faintly"),
+        "fps": 7,
+    },
+    "rogue_thorn_cloak": {
+        # manto de espinhos (arte nova)
+        "object_id": "269b4d1c-7acb-48f5-8ddb-3b79f40f7734",
+        "anim": ("the cloak and stand are a frozen statue, the ONLY "
+                 "moving things are: the cloak hem swaying very slightly, "
+                 "and the red thorn tips glinting one at a time"),
+        "fps": 7,
+    },
 }
-
 
 def token():
     """Bearer do PixelLab: ~/.claude.json (mcpServers.pixellab) — não versionar."""

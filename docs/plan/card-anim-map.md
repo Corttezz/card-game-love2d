@@ -1,14 +1,15 @@
 # Mapa de animação das cartas (cartas vivas)
 
-Status vivo (Jul/2026). Pipeline: `tools/pixellab_animate_card_icons.py run`
-+ doutrina em `memory/card_icon_animation.md`.
-**52/116 FEITO**
+COBERTURA TOTAL atingida em Jul/2026. Pipeline: `tools/pixellab_animate_card_icons.py run`
++ doutrina em `memory/card_icon_animation.md` (whitelist p/ rostos; arte com
+**116/116 ANIMADAS**
+gesto implícito = regerar a arte em pose neutra antes de animar).
 
 | Carta | Raridade | Tipo | Ícone | Status |
 |---|---|---|---|---|
-| joker_001 | legendary | joker | joker_abyss | pendente |
+| joker_001 | legendary | joker | joker_abyss | FEITO |
 | joker_002 | legendary | joker | joker_shield | FEITO |
-| joker_003 | legendary | joker | joker_vampire | NAO ANIMAR — vampiro: boca sempre 'fala' (3 reprovacoes) — regerar ARTE p/ animar |
+| joker_003 | legendary | joker | joker_vampire | FEITO |
 | joker_004 | rare | joker | joker_jester | FEITO |
 | joker_005 | rare | joker | jester_hat | FEITO |
 | mage_arcane_torrent | rare | attack | mage_arcane_torrent | FEITO |
@@ -51,74 +52,74 @@ Status vivo (Jul/2026). Pipeline: `tools/pixellab_animate_card_icons.py run`
 | mage_arcane_sight | uncommon | effect | eye | FEITO |
 | mage_auto_shields | uncommon | defense | mage_auto_shields | FEITO |
 | mage_ball_lightning | uncommon | attack | mage_ball_lightning | FEITO |
-| mage_blizzard | uncommon | attack | mage_blizzard | pendente |
+| mage_blizzard | uncommon | attack | mage_blizzard | FEITO |
 | mage_boot_sequence | uncommon | effect | mage_boot_sequence | FEITO |
 | mage_chill | uncommon | effect | mage_chill | FEITO |
-| mage_consume | uncommon | effect | mage_consume | NAO ANIMAR — mandibula aberta fecha sozinha (gesto implicito) |
+| mage_consume | uncommon | effect | mage_consume | FEITO |
 | mage_crystal_shard | uncommon | attack | crystal | FEITO |
 | mage_doom_and_gloom | uncommon | attack | mage_doom_and_gloom | FEITO |
-| mage_force_field | uncommon | defense | mage_force_field | pendente |
-| mage_frost_nova | uncommon | attack | snowflake | pendente |
-| mage_mind_spike | uncommon | attack | mage_mind_spike | pendente |
-| mage_overcharge | uncommon | attack | mage_overcharge | pendente |
-| mage_torn_pages | uncommon | effect | (fallback) | SEM ARTE PROPRIA |
-| rogue_accuracy | uncommon | joker | rogue_accuracy | pendente |
-| rogue_acrobatics | uncommon | effect | rogue_acrobatics | pendente |
-| rogue_adrenaline | uncommon | effect | rogue_adrenaline | pendente |
-| rogue_blur | uncommon | defense | rogue_blur | pendente |
-| rogue_bouncing_flask | uncommon | attack | rogue_bouncing_flask | pendente |
-| rogue_calculated_gamble | uncommon | effect | coin | pendente |
-| rogue_caltrops | uncommon | joker | rogue_caltrops | pendente |
-| rogue_catalyst | uncommon | attack | rogue_catalyst | pendente |
-| rogue_expose_weakness | uncommon | effect | rogue_expose_weakness | pendente |
-| rogue_moonshadow | uncommon | defense | moon | pendente |
-| rogue_shadow_dance | uncommon | effect | rogue_shadow_dance | pendente |
-| rogue_thorn_cloak | uncommon | defense | (fallback) | SEM ARTE PROPRIA |
-| rogue_twin_fangs | uncommon | attack | rogue_twin_fangs | pendente |
-| rogue_venom_coating | uncommon | effect | rogue_venom_coating | pendente |
-| rogue_venom_fang | uncommon | attack | fang | pendente |
-| warrior_flame_barrier | uncommon | defense | warrior_flame_barrier | pendente |
-| warrior_ghostly_armor | uncommon | defense | warrior_ghostly_armor | pendente |
-| warrior_inflame | uncommon | effect | warrior_inflame | pendente |
-| warrior_iron_discipline | uncommon | defense | warrior_iron_discipline | pendente |
-| warrior_kite_guard | uncommon | defense | shield_kite | pendente |
-| warrior_plate_mail | uncommon | defense | armor_plate | pendente |
-| warrior_power_through | uncommon | defense | warrior_power_through | pendente |
-| warrior_second_wind | uncommon | effect | warrior_second_wind | pendente |
-| warrior_spot_weakness | uncommon | effect | warrior_spot_weakness | pendente |
-| warrior_twin_strike | uncommon | attack | warrior_twin_strike | pendente |
-| warrior_war_cry | uncommon | effect | warrior_war_cry | pendente |
-| attack_001 | common | attack | attack_001 | pendente |
-| attack_002 | common | attack | attack_002 | pendente |
-| attack_cleave | common | attack | attack_cleave | pendente |
+| mage_force_field | uncommon | defense | mage_force_field | FEITO |
+| mage_frost_nova | uncommon | attack | snowflake | FEITO |
+| mage_mind_spike | uncommon | attack | mage_mind_spike | FEITO |
+| mage_overcharge | uncommon | attack | mage_overcharge | FEITO |
+| mage_torn_pages | uncommon | effect | mage_torn_pages | FEITO |
+| rogue_accuracy | uncommon | joker | rogue_accuracy | FEITO |
+| rogue_acrobatics | uncommon | effect | rogue_acrobatics | FEITO |
+| rogue_adrenaline | uncommon | effect | rogue_adrenaline | FEITO |
+| rogue_blur | uncommon | defense | rogue_blur | FEITO |
+| rogue_bouncing_flask | uncommon | attack | rogue_bouncing_flask | FEITO |
+| rogue_calculated_gamble | uncommon | effect | coin | FEITO |
+| rogue_caltrops | uncommon | joker | rogue_caltrops | FEITO |
+| rogue_catalyst | uncommon | attack | rogue_catalyst | FEITO |
+| rogue_expose_weakness | uncommon | effect | rogue_expose_weakness | FEITO |
+| rogue_moonshadow | uncommon | defense | moon | FEITO |
+| rogue_shadow_dance | uncommon | effect | rogue_shadow_dance | FEITO |
+| rogue_thorn_cloak | uncommon | defense | rogue_thorn_cloak | FEITO |
+| rogue_twin_fangs | uncommon | attack | rogue_twin_fangs | FEITO |
+| rogue_venom_coating | uncommon | effect | rogue_venom_coating | FEITO |
+| rogue_venom_fang | uncommon | attack | fang | FEITO |
+| warrior_flame_barrier | uncommon | defense | warrior_flame_barrier | FEITO |
+| warrior_ghostly_armor | uncommon | defense | warrior_ghostly_armor | FEITO |
+| warrior_inflame | uncommon | effect | warrior_inflame | FEITO |
+| warrior_iron_discipline | uncommon | defense | warrior_iron_discipline | FEITO |
+| warrior_kite_guard | uncommon | defense | shield_kite | FEITO |
+| warrior_plate_mail | uncommon | defense | armor_plate | FEITO |
+| warrior_power_through | uncommon | defense | warrior_power_through | FEITO |
+| warrior_second_wind | uncommon | effect | warrior_second_wind | FEITO |
+| warrior_spot_weakness | uncommon | effect | warrior_spot_weakness | FEITO |
+| warrior_twin_strike | uncommon | attack | warrior_twin_strike | FEITO |
+| warrior_war_cry | uncommon | effect | warrior_war_cry | FEITO |
+| attack_001 | common | attack | attack_001 | FEITO |
+| attack_002 | common | attack | attack_002 | FEITO |
+| attack_cleave | common | attack | attack_cleave | FEITO |
 | defense_001 | common | defense | defense_001 | FEITO |
-| defense_bulwark | common | defense | defense_bulwark | pendente |
-| effect_healing_potion | common | effect | potion_red | pendente |
-| effect_mana_crystal | common | effect | effect_mana_crystal | pendente |
-| effect_scroll_wisdom | common | effect | scroll | pendente |
-| mage_arcane_orb | common | effect | orb | pendente |
-| mage_dualcast | common | effect | mage_dualcast | pendente |
-| mage_fireball | common | attack | fireball | pendente |
-| mage_flame_tongue | common | attack | flame | pendente |
-| mage_healing_drop | common | effect | water_drop | pendente |
-| mage_lightning | common | attack | bolt | pendente |
-| mage_magic_barrier | common | defense | barrier | pendente |
+| defense_bulwark | common | defense | defense_bulwark | FEITO |
+| effect_healing_potion | common | effect | potion_red | FEITO |
+| effect_mana_crystal | common | effect | effect_mana_crystal | FEITO |
+| effect_scroll_wisdom | common | effect | scroll | FEITO |
+| mage_arcane_orb | common | effect | orb | FEITO |
+| mage_dualcast | common | effect | mage_dualcast | FEITO |
+| mage_fireball | common | attack | fireball | FEITO |
+| mage_flame_tongue | common | attack | flame | FEITO |
+| mage_healing_drop | common | effect | water_drop | FEITO |
+| mage_lightning | common | attack | bolt | FEITO |
+| mage_magic_barrier | common | defense | barrier | FEITO |
 | mage_zap | common | attack | mage_zap | FEITO |
-| rogue_backstab | common | attack | rogue_backstab | pendente |
-| rogue_blue_elixir | common | effect | potion_blue | pendente |
-| rogue_defend | common | defense | rogue_defend | NAO ANIMAR — arte em pose de acao (2 reprovacoes) |
-| rogue_neutralize | common | attack | rogue_neutralize | pendente |
-| rogue_rake | common | attack | claw | pendente |
-| rogue_stiletto | common | attack | dagger | pendente |
+| rogue_backstab | common | attack | rogue_backstab | FEITO |
+| rogue_blue_elixir | common | effect | potion_blue | FEITO |
+| rogue_defend | common | defense | rogue_defend | FEITO |
+| rogue_neutralize | common | attack | rogue_neutralize | FEITO |
+| rogue_rake | common | attack | claw | FEITO |
+| rogue_stiletto | common | attack | dagger | FEITO |
 | rogue_strike | common | attack | rogue_strike | FEITO |
-| rogue_survivor | common | defense | rogue_survivor | pendente |
-| warrior_bash | common | attack | axe | pendente |
+| rogue_survivor | common | defense | rogue_survivor | FEITO |
+| warrior_bash | common | attack | axe | FEITO |
 | warrior_defend | common | defense | warrior_defend | FEITO |
-| warrior_heavy_blade | common | attack | sword_great | pendente |
-| warrior_helm_of_valor | common | defense | helm | pendente |
-| warrior_iron_wave | common | attack | warrior_iron_wave | pendente |
-| warrior_quick_strike | common | attack | sword_short | pendente |
-| warrior_rage | common | attack | warrior_rage | pendente |
-| warrior_seeing_red | common | effect | warrior_seeing_red | pendente |
-| warrior_shield_slam | common | defense | shield_round | pendente |
+| warrior_heavy_blade | common | attack | sword_great | FEITO |
+| warrior_helm_of_valor | common | defense | helm | FEITO |
+| warrior_iron_wave | common | attack | warrior_iron_wave | FEITO |
+| warrior_quick_strike | common | attack | sword_short | FEITO |
+| warrior_rage | common | attack | warrior_rage | FEITO |
+| warrior_seeing_red | common | effect | warrior_seeing_red | FEITO |
+| warrior_shield_slam | common | defense | shield_round | FEITO |
 | warrior_strike | common | attack | warrior_strike | FEITO |

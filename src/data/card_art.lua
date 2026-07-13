@@ -43,6 +43,8 @@ return {
     mage_twin_bolts         = { icon = "mage_twin_bolts",         bg = "storm",   accent = "YELLOW",    decoration = "sparks" },
     mage_arcane_torrent     = { icon = "mage_arcane_torrent",     bg = "arcane",  accent = "MAGENTA",   decoration = "flash"  },
     rogue_venom_coating     = { icon = "rogue_venom_coating",     bg = "poison",  accent = "MOSS",      decoration = "smoke"  },
+    mage_torn_pages         = { icon = "mage_torn_pages",         bg = "arcane",  accent = "PURPLE",    decoration = "dust"   },
+    rogue_thorn_cloak       = { icon = "rogue_thorn_cloak",       bg = "shadow",  accent = "MOSS",      decoration = "smoke"  },
     rogue_twin_fangs        = { icon = "rogue_twin_fangs",        bg = "poison",  accent = "MOSS",      decoration = "sparks" },
     rogue_expose_weakness   = { icon = "rogue_expose_weakness",   bg = "void",    accent = "PURPLE",    decoration = "flash"  },
     rogue_shadow_dance      = { icon = "rogue_shadow_dance",      bg = "shadow",  accent = "PURPLE",    decoration = "smoke"  },

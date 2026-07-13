@@ -145,10 +145,14 @@ memory/card_creation_flow.md), não um extra. Duas regras inegociáveis:
   virou dança (rogue_defend v1 E v2). Arte com gesto implícito PRECISA de
   congelamento explícito no prompt ("completely frozen like a statue, no
   limb/finger movement whatsoever, only <elemento> moving") — e mesmo assim
-  pode não obedecer. **Arte em pose de AÇÃO (mid-dodge, mid-swing) não é
-  animável por v3: após 2 reprovações, deixar ESTÁTICA** (nem toda carta
-  precisa de animação — regra do dono). SEMPRE aprovar/reprovar pelo
-  contact sheet; reprovar se a silhueta muda entre frames em basic/common.
+  pode não obedecer. **Solução DEFINITIVA (validada 8× em Jul/2026, ordem
+  do dono "toda carta precisa de animação"): REGERAR A ARTE em pose neutra
+  (boca fechada, pés plantados, gesto resolvido) e animar com whitelist.**
+  Funcionou para vampiro, abyss (ídolo que abre os olhos), consume, defend,
+  rage, war_cry, acrobatics, torn_pages, thorn_cloak. SEMPRE aprovar/
+  reprovar pelo contact sheet; reprovar silhueta mudando em basic/common,
+  loop que "apaga" (brilho caindo até escuro = pop no reinício) e cores
+  alucinadas fora da paleta (axe v1 azul-gelo).
 - **fps**: meta.lua por animação (`return { fps = 8 }`). 8fps num loop de
   9 frames ≈ 1.1s — vivo sem ser frenético. Cadências menores p/ pulsos.
 - **Ícones compartilhados** (ex: skull_crowned em várias cartas): animar o
