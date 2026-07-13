@@ -73,24 +73,46 @@ local function sortCards(list)
     end)
 end
 
--- Converte cartas raw → instâncias renderizadas (com CardFrame aplicado)
-function CollectionScreen:_buildInstances()
-    if #self.cardInstances > 0 then return end
-    local db = CardDatabase:new()
-    local all = db:getAllCards()
-    local list = {}
-    for _, cd in pairs(all) do list[#list + 1] = cd end
-    sortCards(list)
-
-    for _, cd in ipairs(list) do
+-- Converte cartas raw → instâncias renderizadas (com CardFrame aplicado).
+-- v10.6 (perf — "engasgada ao clicar em COLEÇÃO"): INCREMENTAL com
+-- orçamento de tempo por frame. A tela abre instantânea e as cartas
+-- aparecem em ondas na ordem do grid (topo primeiro); ~0.3-0.6s pra
+-- completar, sem travar frame nenhum. show() constrói a 1ª leva,
+-- update() consome o resto.
+function CollectionScreen:_buildInstances(budgetSecs)
+    if self._buildDone then return end
+    if not self._buildList then
+        local db = CardDatabase:new()
+        local all = db:getAllCards()
+        local list = {}
+        for _, cd in pairs(all) do list[#list + 1] = cd end
+        sortCards(list)
+        self._buildList = list
+        self._buildIdx = 0
+        self._buildDb = db
+    end
+    local t0 = love.timer.getTime()
+    local budget = budgetSecs or 0.006
+    while self._buildIdx < #self._buildList do
+        self._buildIdx = self._buildIdx + 1
+        local cd = self._buildList[self._buildIdx]
+        local db = self._buildDb
         local ok, instance = pcall(function() return db:createCardInstance(cd) end)
         if ok and instance then
             self.cardInstances[#self.cardInstances + 1] = instance
         else
             print("[CollectionScreen] falha ao instanciar carta: " .. tostring(cd.id))
         end
+        if (love.timer.getTime() - t0) >= budget then break end
     end
-    print("[CollectionScreen] " .. #self.cardInstances .. " cartas carregadas")
+    if self._buildIdx >= #self._buildList then
+        self._buildDone = true
+        self._buildList = nil
+        self._buildDb = nil
+        print("[CollectionScreen] " .. #self.cardInstances .. " cartas carregadas")
+    end
+    -- mantém grid/scroll coerentes com a lista parcial que cresce
+    self:_applyFilter()
 end
 
 function CollectionScreen:_applyFilter()
@@ -121,7 +143,9 @@ function CollectionScreen:show(onClose)
     self.visible = true
     self.scrollY = 0
     self.onCloseCallback = onClose
-    self:_buildInstances()
+    -- 1ª leva um pouco maior (preenche o que está na tela de cara);
+    -- o resto flui no update sem travar
+    self:_buildInstances(0.012)
     self:_applyFilter()
 end
 
@@ -159,6 +183,8 @@ end
 
 function CollectionScreen:update(dt)
     if not self.visible then return end
+    -- v10.6: consome a fila de instanciação (orçamento por frame)
+    if not self._buildDone then self:_buildInstances() end
     -- Anima entrada/saída do modal de inspeção
     if self.inspectedCard then
         self.inspectAnim = math.min(1, self.inspectAnim + dt * 6)

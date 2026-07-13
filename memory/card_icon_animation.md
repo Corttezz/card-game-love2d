@@ -160,3 +160,19 @@ memory/card_creation_flow.md), não um extra. Duas regras inegociáveis:
 - Candidatas seguintes (raras com object_id no jobs file): mage_arcane_torrent
   (torrente), mage_overcharge (arcos de energia), warrior_bastion (barreiras),
   rogue_venom_coating (veneno gotejando).
+
+## Performance (v10.6, Jul/2026 — "engasgada ao abrir a Coleção")
+
+Com 116/116 cartas vivas, o render EAGER (9 PNGs do disco + 9 composições
+completas da carta POR carta na instanciação) travava a 1ª abertura da
+Coleção por segundos. Corrigido em duas camadas:
+- **Anim LAZY**: `CardFrame.render` compõe SÓ o frame 0 (estático — que é
+  o idle pela doutrina). O set completo + canvas vivo nasce em
+  `getAnimation()`, chamado no 1º hover/inspeção (poucos ms, 1 carta).
+  `IconFramesLoader.first(name)` carrega só o frame_000.png.
+- **Coleção INCREMENTAL**: `_buildInstances` com orçamento de 6ms/frame
+  (1ª leva 12ms no show) — a tela abre instantânea, cartas fluem em ondas
+  na ordem do grid. `_applyFilter` re-roda por chunk (grid parcial ok).
+- REGRA: pontos de render usam `instance.image` (estático) e SÓ pedem
+  `liveImage()` sob gate de interação (hover/seleção/inspeção) — é isso
+  que faz o lazy disparar na hora certa. Validado: test_all 22/22.

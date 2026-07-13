@@ -290,24 +290,16 @@ function CardFrame.render(card)
     local key = cacheKey(card)
     if cache[key] then return cache[key] end
 
-    -- Ícone animado (assets/sprites/icons_anim/<icon>/): pré-renderiza a
-    -- carta COMPLETA uma vez por frame e devolve um canvas "vivo" que o
-    -- CardFrame.update() mantém sincronizado com o frame corrente. Quem
-    -- guarda a referência (instance.image, telas, tooltips) anima de graça.
+    -- v10.6 (perf — "engasgada ao abrir a Coleção"): na INSTANCIAÇÃO só o
+    -- render ESTÁTICO com o frame 0 da animação (idle = frame 0, regra do
+    -- dono). Os demais frames + canvas vivo ficam LAZY em getAnimation()
+    -- — chamado no primeiro hover/inspeção, que é onde a animação aparece.
+    -- Antes: 116 cartas × (~9 PNGs do disco + ~9 composições completas)
+    -- num frame só = travada de segundos na primeira abertura.
     local art = CardArt.resolve(card)
-    local frames = art.iconName and IconFramesLoader.get(art.iconName)
-    if frames then
-        local canvases = {}
-        for i, img in ipairs(frames.frames) do
-            canvases[i] = renderOne(card, frameHandle(img))
-        end
-        local live = PixelCanvas.new(CardFrame.WIDTH, CardFrame.HEIGHT)
-        animCache[key] = { canvases = canvases, fps = frames.fps,
-                           live = live, lastIdx = 0 }
-        -- REGRA (dono, Jul/2026): idle = ESTÁTICO (frame 0). A animação só
-        -- aparece na interação — hover/seleção/inspeção — via liveImage().
-        cache[key] = canvases[1]
-        CardFrame.update()  -- blit inicial (lastIdx=0 força o primeiro copy)
+    local first = art.iconName and IconFramesLoader.first(art.iconName)
+    if first then
+        cache[key] = renderOne(card, frameHandle(first))
         return cache[key]
     end
 
@@ -316,16 +308,28 @@ function CardFrame.render(card)
 end
 
 -- Retorna { canvases, fps, live } se a carta tem ícone animado; nil caso
--- contrário. Garante o render na primeira consulta, mas SEM renderizar
--- cartas sem animação (legadas com PNG nem usam CardFrame).
+-- contrário. v10.6: é AQUI que o set completo é construído (lazy, no
+-- primeiro hover/inspeção) — ~9 composições de UMA carta ≈ poucos ms,
+-- imperceptível. O frame 0 reusa o canvas estático já composto no render.
 function CardFrame.getAnimation(card)
     local key = cacheKey(card)
     if animCache[key] then return animCache[key] end
     local art = CardArt.resolve(card)
-    if not (art.iconName and IconFramesLoader.has(art.iconName)) then
-        return nil
+    local frames = art.iconName and IconFramesLoader.get(art.iconName)
+    if not frames then return nil end
+    local canvases = {}
+    for i, img in ipairs(frames.frames) do
+        if i == 1 and cache[key] then
+            canvases[1] = cache[key]   -- estático = frame 0, já composto
+        else
+            canvases[i] = renderOne(card, frameHandle(img))
+        end
     end
-    CardFrame.render(card)
+    cache[key] = cache[key] or canvases[1]
+    local live = PixelCanvas.new(CardFrame.WIDTH, CardFrame.HEIGHT)
+    animCache[key] = { canvases = canvases, fps = frames.fps,
+                       live = live, lastIdx = 0 }
+    CardFrame.update()  -- blit inicial (lastIdx=0 força o primeiro copy)
     return animCache[key]
 end
 
