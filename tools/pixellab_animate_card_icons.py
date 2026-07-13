@@ -130,18 +130,11 @@ ANIMS = {
                  "the polished steel dome, the helmet completely static"),
         "fps": 9,
     },
-    "joker_vampire": {
-        # busto de lorde vampiro. v3 (última tentativa — depois vira
-        # estática): v1 e v2 mexiam a BOCA (presas à mostra = gesto
-        # implícito). Tática "retrato de cera": NADA no rosto muda,
-        # nem 1 pixel; só a intensidade do brilho dos olhos.
-        "anim": ("a still portrait of a vampire lord, his face frozen "
-                 "completely motionless like a wax figure, not a single "
-                 "pixel of the mouth fangs or expression changes, the only "
-                 "movement is the red glow of his eyes slowly intensifying "
-                 "and fading, everything else a static painting"),
-        "fps": 9,
-    },
+    # joker_vampire: NÃO ANIMAR (decisão Jul/2026). Presas à mostra =
+    # gesto implícito; v1, v2 ("mouth frozen shut") e v3 ("wax figure")
+    # TODAS mexeram a boca ("parece que tá falando", veto do dono).
+    # 3 reprovações → estática. Animar só se a ARTE for regerada com
+    # boca fechada neutra.
     "joker_jester": {
         # rosto de bobo com chapéu de guizos
         "anim": ("the jester hat points with bells swaying very slightly, "
@@ -471,13 +464,9 @@ ANIMS = {
                  "hands and pose completely frozen"),
         "fps": 7,
     },
-    "mage_consume": {
-        # fera sombria de mandíbula aberta (gesto implícito — 1 tentativa)
-        "anim": ("the shadow beast completely frozen like a statue, jaw "
-                 "and body not moving at all, only faint dark wisps "
-                 "rising slowly from its silhouette edges"),
-        "fps": 6,
-    },
+    # mage_consume: NÃO ANIMAR (Jul/2026). Fera de mandíbula ABERTA =
+    # gesto implícito; mesmo com "frozen like a statue" a boca fechou e o
+    # brilho apagou. Mesma família do rogue_defend/joker_vampire.
     "crystal": {
         # cristal vermelho sobre pedestal — mage_crystal_shard
         "anim": ("the red crystal glowing brighter and dimmer in a slow "
@@ -490,6 +479,93 @@ ANIMS = {
         "anim": ("faint dark smoke wisps drifting slowly off the shadowy "
                  "mass, a dim glow pulsing inside, the overall silhouette "
                  "unchanged"),
+        "fps": 7,
+    },
+
+    # ===== BLOCO 6: uncommons mago/ladino (sutil, fps 6-7) =====
+    "mage_force_field": {
+        # vulto dentro de domo/anel dourado
+        "anim": ("the golden dome ring shimmering gently with a slow "
+                 "light pulse, tiny sparkles at its edge, the cloaked "
+                 "figure inside completely static"),
+        "fps": 7,
+    },
+    "snowflake": {
+        # floco de neve — mage_frost_nova
+        "anim": ("tiny crystalline glints appearing one at a time on the "
+                 "snowflake arms, a faint cold shimmer, the snowflake "
+                 "completely static"),
+        "fps": 6,
+    },
+    "mage_mind_spike": {
+        # cérebro atravessado por espinho
+        "object_id": "e915356c-819f-4d8d-a0c9-1ffde6e9a0b9",
+        "anim": ("a faint glow pulsing slowly across the brain surface, "
+                 "the crystal spike glinting once, brain and spike "
+                 "completely static in shape"),
+        "fps": 7,
+    },
+    "mage_overcharge": {
+        # orbe de energia sobrecarregando
+        "object_id": "ef4e4581-a927-4cce-89cf-bbae71780edc",
+        "anim": ("the energy inside the orb shimmering and shifting, tiny "
+                 "electric arcs flickering briefly at the surface, the orb "
+                 "silhouette completely unchanged"),
+        "fps": 7,
+    },
+    "rogue_accuracy": {
+        # mira/bússola dourada com olho central
+        "anim": ("a glint traveling slowly around the golden crosshair "
+                 "ring, the central eye shimmering subtly with no "
+                 "blinking, the whole emblem static"),
+        "fps": 6,
+    },
+    "rogue_acrobatics": {
+        # acrobata em parada de mão (pose de ação — 1 tentativa)
+        "anim": ("the acrobat completely frozen mid-handstand like a "
+                 "statue, no limb movement whatsoever, only the loose "
+                 "clothing and scarf fluttering very slightly"),
+        "fps": 6,
+    },
+    "rogue_adrenaline": {
+        # seringa/tocha com chama vermelha
+        "anim": ("the small red flame at the tip flickering gently, a "
+                 "faint warm glow pulsing, the handle completely static"),
+        "fps": 7,
+    },
+    "rogue_blur": {
+        # vulto de capa escura
+        "anim": ("the dark cape hem swaying very gently, a faint ghostly "
+                 "blur shimmer at the figure's edges, body and pose "
+                 "completely frozen"),
+        "fps": 6,
+    },
+    "rogue_bouncing_flask": {
+        # frasco verde inclinado
+        "anim": ("the green liquid inside the flask sloshing gently from "
+                 "side to side with small bubbles, the flask and cork "
+                 "completely static"),
+        "fps": 7,
+    },
+    "coin": {
+        # pilha de moedas — rogue_calculated_gamble
+        "anim": ("a golden glint passing across the coin edges one at a "
+                 "time, the dollar emblem shining briefly, the coin stack "
+                 "completely static"),
+        "fps": 6,
+    },
+    "rogue_caltrops": {
+        # estrepes sobre mancha vermelha
+        "anim": ("cold glints appearing one at a time on the spike tips, "
+                 "a faint wet sheen shifting on the red pool, spikes "
+                 "completely static"),
+        "fps": 6,
+    },
+    "rogue_catalyst": {
+        # garrafa com espiral verde
+        "anim": ("the green liquid swirling slowly inside the bottle with "
+                 "a soft toxic glow pulsing, the bottle completely "
+                 "static"),
         "fps": 7,
     },
 }

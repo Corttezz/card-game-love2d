@@ -23,10 +23,6 @@
     "object_id": "d1b0965a-670b-44e5-bac8-7fb8185d744d",
     "group": "cc1f3251-30b8-4edc-926d-8f4500aa3eaa"
   },
-  "joker_abyss": {
-    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
-    "group": "9019fa26-c628-4f5d-9b66-f9b32f9e4d23"
-  },
   "joker_shield": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
     "group": "8133b603-0f7f-4ea5-bf38-e3e41eea93f4"
@@ -171,8 +167,52 @@
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
     "group": "ebb9f7ef-cbfc-4026-9edc-a99eb8a05473"
   },
-  "joker_vampire": {
+  "question": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
-    "group": "e8b83d45-dae9-4034-8de6-c7f6549bd5e8"
+    "group": "383e5816-10d5-4504-ad8c-540b339404a6"
+  },
+  "mage_aggregate": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "0ba666e0-a410-4bac-81d9-4696bb2acd76"
+  },
+  "mage_arcane_focus": {
+    "object_id": "c2487f14-c42e-4371-ad51-b66397defab1",
+    "group": "48f0d98d-e731-44e5-933c-1606453108da"
+  },
+  "eye": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "6d4a57dc-fc07-4225-bec8-651a95f44622"
+  },
+  "mage_auto_shields": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "7588e8a9-beea-4542-b875-d4f15d7ac7b6"
+  },
+  "mage_ball_lightning": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "255a9046-c0e5-4fca-8f23-c2328a694a49"
+  },
+  "mage_blizzard": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "a853035a-f408-4cd1-9776-8d21dd14369d"
+  },
+  "mage_boot_sequence": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "bf14d10f-1c51-48ea-a9b6-e2f9b5725982"
+  },
+  "mage_chill": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "3d58b508-6c57-4dd7-ab12-6e2602961f8e"
+  },
+  "crystal": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "628bd207-6a89-49a0-9b54-01db6d23a7c2"
+  },
+  "mage_doom_and_gloom": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "5384bee9-6d25-4dc0-b980-46c72565567c"
+  },
+  "joker_abyss": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "b182e96a-5938-4f48-9266-566cd8ae718a"
   }
 }
