@@ -20,7 +20,9 @@ local BootFX = {}
 local GOLD_L = { 0.98, 0.82, 0.36 }
 local GOLD   = { 0.80, 0.60, 0.18 }
 local BLOODY = { 0.70, 0.16, 0.12 }
-local SPARK  = { 0.72, 0.92, 1.00 }   -- azul-elétrico
+-- Energia arcana QUENTE (branco-dourado), não azul-elétrico sci-fi — casa com
+-- a paleta sépia/grimório do jogo (feedback: "os raios não combinam com o design").
+local SPARK  = { 1.00, 0.94, 0.66 }
 
 local NUM_CRACKS   = 9
 local CRACK_SEGS   = 7

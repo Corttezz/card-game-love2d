@@ -78,3 +78,11 @@ Feedback do dono sobre a v2: o loop PixelLab "piscava/quebrava" (cada frame é r
 - **Timeline mais longa (~4.25s)** e sincronizada em `startSplashSequence`: 0.85 pedra racha (`bootVortex`, vortex→0.40) → 1.10 carta central SUGADA (dissolve+encolhe pro centro) → 1.30 `bootElectric` (vortex→0.72) → 1.40+ cascade de **22** cartas (stagger 0.07) voando pra DENTRO do buraco → 2.10 título → 3.00 vortex→1.0 (`bootElectric`) → 3.65 flash + `bootImpact` + shake 10 + buraco IMPLODE (vortex→0) → 4.25 menu. BootFX desenhado ATRÁS das cartas em `drawSplash`.
 - **SFX v3** (ElevenLabs, `audio/sfx/boot-{electric,vortex}.mp3`, `scratchpad/gen_boot_sfx2.py`): `bootElectric` (crackle de alta-tensão), `bootVortex` (rumble/sucção do portal). Registrados em main.lua.
 - **Validar o look**: `love . screenshot_bootfx` (só com o jogo FECHADO) → 3 PNGs (intensity 0.4/0.7/1.0) no save dir `%APPDATA%/LOVE/card-game/`.
+
+## Entrada v4 — o FUNDO anima (warp de sucção) + sync + eletricidade sépia (Jul/2026)
+
+Feedback: "o fundo não tem nada acontecendo (raio na frente de foto parada); o som do raio vaza pro menu; os raios azuis não combinam com o design".
+
+- **`shaders/boot_warp.glsl`** — o PRÓPRIO fundo agora anima: swirl (giro) + pinch (contração) da imagem-base em torno do centro, dirigido por `state.vortex`, concentrado no miolo (`f2 = frac²`). A pedra inteira roda e é sugada pro buraco — suave, sem flicker (distorção de UV de UMA imagem). `t` = `state.splashTime` (BOUNDED; `love.timer.getTime()` enrolaria infinito). `drawBootAnimBG(alpha, warp, warpT)` aplica o shader + zoom dolly-in (`1+0.12*warp`). Base com `setWrap("clamp")`. Verificado por screenshot: a câmara vira um maelstrom dourado espiralando no vazio central.
+- **Eletricidade SÉPIA**: `BootFX` `SPARK` mudou de azul-elétrico `{0.72,0.92,1.0}` → branco-dourado quente `{1.0,0.94,0.66}` (arcana, não sci-fi).
+- **Sync de som (bug do vazamento)**: (1) `bootElectric` regerado CURTO (~1.4s) e tocado SÓ em 1.30 (o play de 3.00 vazava 2.8s pro menu — removido). (2) `BootScene._finish()` (e skip, via _finish) chama `_G.audioSystem:stopGroup("sfx")` ANTES do `onComplete` — mata raio/rumble/impacto pendentes; a música (grupo "music") não é afetada. Nada de SFX de boot vaza pro menu.

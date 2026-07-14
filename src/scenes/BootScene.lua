@@ -76,6 +76,7 @@ local SPAWN_RADIUS_RATIO = 0.7
 local bootAnim = {
     dir = "assets/sprites/scenes/boot_anim",
     frames = nil, fps = 9, t = 0, loaded = false,
+    shader = nil,   -- boot_warp.glsl (swirl/pinch de sucção do fundo)
 }
 
 local function loadBootAnim()
@@ -104,23 +105,36 @@ local function loadBootAnim()
     if #frames > 0 then
         bootAnim.frames = {}
         for _, e in ipairs(frames) do bootAnim.frames[#bootAnim.frames + 1] = e.img end
+        bootAnim.frames[1]:setWrap("clamp", "clamp")   -- evita borda repetida no warp
     end
+    -- shader de sucção (opcional — cai pro draw plano se falhar)
+    local ok, sh = pcall(love.graphics.newShader, "shaders/boot_warp.glsl")
+    if ok then bootAnim.shader = sh end
 end
 
 -- Desenha o fundo cover-fit (preenche a tela). Retorna false se não há asset.
 -- v3 (feedback do dono): o loop de frames "piscava/quebrava" (cada frame do
 -- PixelLab é redesenhado pela IA → shimmer). Agora usa um ÚNICO frame ESTÁVEL
 -- como base (sem flicker); a vida vem do BootFX (vórtice procedural).
-local function drawBootAnimBG(alpha)
+local function drawBootAnimBG(alpha, warp, warpT)
     if not bootAnim.frames or #bootAnim.frames == 0 then return false end
+    warp = warp or 0
     local W, H = love.graphics.getDimensions()
-    local idx = 1   -- base estática (frame_00) — sem flicker
-    local img = bootAnim.frames[idx]
+    local img = bootAnim.frames[1]                  -- base estática (frame_00)
     local iw, ih = img:getDimensions()
-    local scale = math.max(W / iw, H / ih)          -- cover
+    -- ZOOM sutil cresce com o warp (dolly-in pro buraco, reforça a sucção)
+    local zoom = 1 + 0.12 * warp
+    local scale = math.max(W / iw, H / ih) * zoom   -- cover + zoom
     local dw, dh = iw * scale, ih * scale
+    -- WARP de sucção (swirl+pinch) — a própria pedra roda/contrai pro centro
+    if bootAnim.shader and warp > 0.001 then
+        love.graphics.setShader(bootAnim.shader)
+        bootAnim.shader:send("intensity", math.min(1, warp))
+        bootAnim.shader:send("t", warpT or 0)
+    end
     love.graphics.setColor(1, 1, 1, alpha or 1)
     love.graphics.draw(img, math.floor((W - dw) / 2), math.floor((H - dh) / 2), 0, scale, scale)
+    love.graphics.setShader()
     love.graphics.setColor(1, 1, 1, 1)
     return true
 end
@@ -302,9 +316,10 @@ local function startSplashSequence()
         state.titleGlitchT = 0.15
     end, QUEUE)
 
-    -- 3.00s: o buraco escancara (vórtice no máximo, eletricidade no talo).
+    -- 3.00s: o buraco escancara (vórtice no máximo). SEM tocar eletricidade
+    -- aqui — o SFX de raio é curto e já tocou em 1.30 (o de 3.00 vazava pro
+    -- menu). O clímax sonoro é o bootImpact do flash.
     EM.parallel(3.00, function()
-        Sfx.play("bootElectric")
         EM.parallelEase(state, "vortex", 1.0, 0.6, "smooth", QUEUE)
     end, QUEUE)
 
@@ -386,9 +401,10 @@ end
 local function drawBackground()
     local W, H = love.graphics.getWidth(), love.graphics.getHeight()
     loadBootAnim()
-    -- 1º: fundo ANIMADO (câmara ritual PixelLab). 0.9 pra dar contraste ao
-    -- primeiro plano (cartas/título) sem apagar a cena.
-    local hadScene = drawBootAnimBG(0.9)
+    -- 1º: fundo (câmara ritual PixelLab) com WARP de sucção dirigido por
+    -- state.vortex — a pedra roda/contrai pro buraco. 0.9 pra dar contraste
+    -- ao primeiro plano.
+    local hadScene = drawBootAnimBG(0.9, state.vortex, state.splashTime)
     -- Fallback: splash estático → menu → ink.
     if not hadScene then
         hadScene = SceneBackground.draw("splash", W, H, 0.55)
@@ -578,6 +594,13 @@ function BootScene._finish()
     state.miniCards = {}
     state.centerCard = nil
     state.flashAlpha = 0
+    state.vortex = 0
+    -- SYNC (feedback): mata qualquer SFX de boot (raio/rumble/impacto) ANTES do
+    -- menu + música entrarem — o barulho de raio vazava pro menu. stopGroup só
+    -- corta o grupo "sfx"; a música (grupo "music") não é afetada.
+    if _G.audioSystem and _G.audioSystem.stopGroup then
+        _G.audioSystem:stopGroup("sfx")
+    end
     if state.onComplete then state.onComplete() end
 end
 
