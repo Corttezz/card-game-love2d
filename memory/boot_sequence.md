@@ -86,3 +86,19 @@ Feedback: "o fundo não tem nada acontecendo (raio na frente de foto parada); o 
 - **`shaders/boot_warp.glsl`** — o PRÓPRIO fundo agora anima: swirl (giro) + pinch (contração) da imagem-base em torno do centro, dirigido por `state.vortex`, concentrado no miolo (`f2 = frac²`). A pedra inteira roda e é sugada pro buraco — suave, sem flicker (distorção de UV de UMA imagem). `t` = `state.splashTime` (BOUNDED; `love.timer.getTime()` enrolaria infinito). `drawBootAnimBG(alpha, warp, warpT)` aplica o shader + zoom dolly-in (`1+0.12*warp`). Base com `setWrap("clamp")`. Verificado por screenshot: a câmara vira um maelstrom dourado espiralando no vazio central.
 - **Eletricidade SÉPIA**: `BootFX` `SPARK` mudou de azul-elétrico `{0.72,0.92,1.0}` → branco-dourado quente `{1.0,0.94,0.66}` (arcana, não sci-fi).
 - **Sync de som (bug do vazamento)**: (1) `bootElectric` regerado CURTO (~1.4s) e tocado SÓ em 1.30 (o play de 3.00 vazava 2.8s pro menu — removido). (2) `BootScene._finish()` (e skip, via _finish) chama `_G.audioSystem:stopGroup("sfx")` ANTES do `onComplete` — mata raio/rumble/impacto pendentes; a música (grupo "music") não é afetada. Nada de SFX de boot vaza pro menu.
+
+## Entrada v5 — REBASE no Balatro de verdade (Jul/2026) ⭐
+
+Feedback do dono: v3/v4 ficaram "toscas" (tela girando, raio, warp de foto). Fui ler o `balatro-source` de verdade — `game.lua:1373 Game:splash_screen` + `resources/shaders/splash.fs` + `vortex.fs`. O que o Balatro FAZ:
+- Fundo = shader `splash.fs` = **plasma/swirl de cor SUAVE** (não foto distorcida, não raio). Swirl de centro + domain-warp "fumaça" 5 iterações, blend de 2 cores sobre base escura. `mid_flash`→branco no fim.
+- Carta "joker" central materializa → dissolve (whoosh1/introPad1/magic_crumple/splash_buildup).
+- 200 cartas **sugadas** pro centro: `ease_value` escala→NEGATIVA (encolhe através do zero) + pos→centro, decelerando; `card.vortex=true` (o `vortex.fs`, um VERTEX shader, curva as CARTAS — não a tela).
+- Flash branco → main_menu.
+
+**O que fiz (adaptado, não copiado)**:
+- **`shaders/boot_splash.glsl`** = port do splash.fs pra paleta SÉPIA (colour_1 ouro, colour_2 pergaminho, base ink marrom). É o fundo profissional suave. `BootScene.drawPlasmaBG(t, midFlash)` desenha fullscreen com `time = splashTime`.
+- **JOGADO FORA**: `src/ui/BootFX.lua` (vórtice/raio/rachaduras procedurais) e `shaders/boot_warp.glsl` (warp da foto) — DELETADOS. Nada de tela girando nem raio.
+- Cartas sugadas pro centro (mini-cards existentes, escala colapsa no centro) sobre o plasma.
+- Sons Balatro-like: powerOn (init) → deckStart (0.5) → bootVortex buildup no dissolve (1.10) → bootCardWhoosh (1.35) + cardDraw por carta → flash + bootImpact + shake leve (3.55) → menu (4.10). `bootElectric` não é mais usado.
+- `frame_00.png` da pedra vira só FALLBACK se o shader falhar.
+- **Validar**: `love . screenshot_bootfx` (jogo FECHADO) → `bootsplash_t{2,5,9}.png` + `_flash.png` no save dir.

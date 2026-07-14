@@ -26,7 +26,6 @@ local FlashShader     = require("src.ui.FlashShader")
 local ParticlesManager = require("engine.ParticlesManager")
 local CardBack        = require("src.ui.CardBack")
 local TvOsd           = require("src.ui.TvOsd")
-local BootFX          = require("src.ui.BootFX")
 
 local BootScene = {}
 
@@ -53,9 +52,6 @@ local state = {
     -- v2 "sintonizando o canal" (docs/plan/menu-crt-v2.md):
     staticAlpha     = 0,           -- chuvisco resolvendo na cena
     titleGlitchT    = 0,           -- glitch de sinal RGB no título
-
-    -- v3 "vórtice": 0..1 = quanto o buraco no centro está aberto (BootFX).
-    vortex          = 0,
 }
 
 -- Tamanhos lógicos (em pixels da janela; LÖVE escala automaticamente).
@@ -68,75 +64,62 @@ local NUM_MINI    = 22
 -- 0.7 = bordas extremas, faz o voo parecer "vindo de longe".
 local SPAWN_RADIUS_RATIO = 0.7
 
--- ============== Fundo animado (PixelLab, Jul/2026) ==============
--- Câmara ritual 256×192 animada em loop (chamas/sigilo/brasas). Frames em
--- assets/sprites/scenes/boot_anim/*.png (ordem alfabética) + meta.lua opcional
--- ({ fps = N }). 256×192 → 4× exato pra 1024×768 (pixels nítidos). Fallback:
--- splash.png estático (SceneBackground) se a pasta não existir.
-local bootAnim = {
+-- ============== Fundo estilo Balatro (v5, Jul/2026) ==============
+-- Feedback do dono: tela girando / raio / warp de foto ficaram TOSCOS. O
+-- Balatro (splash.fs) usa um shader de PLASMA/swirl de cor SUAVE — é o look
+-- profissional. Portamos pra nossa paleta sépia em shaders/boot_splash.glsl.
+-- Sem foto distorcida, sem raio, sem flicker. Fallback: frame_00 → ink.
+local bg = {
     dir = "assets/sprites/scenes/boot_anim",
-    frames = nil, fps = 9, t = 0, loaded = false,
-    shader = nil,   -- boot_warp.glsl (swirl/pinch de sucção do fundo)
+    fallbackImg = nil, loaded = false, shader = nil,
+    offset = 12.0,   -- vort_offset fixo (varia o padrão do plasma)
 }
+local PLASMA_C1 = { 0.95, 0.78, 0.32, 1 }   -- ouro
+local PLASMA_C2 = { 0.93, 0.86, 0.66, 1 }   -- pergaminho claro
 
-local function loadBootAnim()
-    if bootAnim.loaded then return end
-    bootAnim.loaded = true
-    if not love.filesystem.getInfo(bootAnim.dir) then return end
-    local metaPath = bootAnim.dir .. "/meta.lua"
-    if love.filesystem.getInfo(metaPath) then
-        local ok, chunk = pcall(love.filesystem.load, metaPath)
-        if ok and chunk then
-            local okm, m = pcall(chunk)
-            if okm and type(m) == "table" and m.fps then bootAnim.fps = m.fps end
-        end
+local function loadBg()
+    if bg.loaded then return end
+    bg.loaded = true
+    local ok, sh = pcall(love.graphics.newShader, "shaders/boot_splash.glsl")
+    if ok then bg.shader = sh else print("[boot] boot_splash falhou: " .. tostring(sh)) end
+    local p = bg.dir .. "/frame_00.png"
+    if love.filesystem.getInfo(p) then
+        local ok2, img = pcall(love.graphics.newImage, p)
+        if ok2 then img:setFilter("nearest", "nearest"); bg.fallbackImg = img end
     end
-    local frames = {}
-    for _, f in ipairs(love.filesystem.getDirectoryItems(bootAnim.dir)) do
-        if f:match("%.png$") then
-            local ok, img = pcall(love.graphics.newImage, bootAnim.dir .. "/" .. f)
-            if ok and img then
-                img:setFilter("nearest", "nearest")   -- pixel art nítido no upscale
-                frames[#frames + 1] = { name = f, img = img }
-            end
-        end
-    end
-    table.sort(frames, function(a, b) return a.name < b.name end)
-    if #frames > 0 then
-        bootAnim.frames = {}
-        for _, e in ipairs(frames) do bootAnim.frames[#bootAnim.frames + 1] = e.img end
-        bootAnim.frames[1]:setWrap("clamp", "clamp")   -- evita borda repetida no warp
-    end
-    -- shader de sucção (opcional — cai pro draw plano se falhar)
-    local ok, sh = pcall(love.graphics.newShader, "shaders/boot_warp.glsl")
-    if ok then bootAnim.shader = sh end
 end
 
--- Desenha o fundo cover-fit (preenche a tela). Retorna false se não há asset.
--- v3 (feedback do dono): o loop de frames "piscava/quebrava" (cada frame do
--- PixelLab é redesenhado pela IA → shimmer). Agora usa um ÚNICO frame ESTÁVEL
--- como base (sem flicker); a vida vem do BootFX (vórtice procedural).
-local function drawBootAnimBG(alpha, warp, warpT)
-    if not bootAnim.frames or #bootAnim.frames == 0 then return false end
-    warp = warp or 0
+-- Plasma swirl (Balatro). t = tempo do splash; midFlash 0..1 → branco.
+local function drawPlasmaBG(t, midFlash)
+    if not bg.shader then return false end
     local W, H = love.graphics.getDimensions()
-    local img = bootAnim.frames[1]                  -- base estática (frame_00)
-    local iw, ih = img:getDimensions()
-    -- ZOOM sutil cresce com o warp (dolly-in pro buraco, reforça a sucção)
-    local zoom = 1 + 0.12 * warp
-    local scale = math.max(W / iw, H / ih) * zoom   -- cover + zoom
-    local dw, dh = iw * scale, ih * scale
-    -- WARP de sucção (swirl+pinch) — a própria pedra roda/contrai pro centro
-    if bootAnim.shader and warp > 0.001 then
-        love.graphics.setShader(bootAnim.shader)
-        bootAnim.shader:send("intensity", math.min(1, warp))
-        bootAnim.shader:send("t", warpT or 0)
-    end
-    love.graphics.setColor(1, 1, 1, alpha or 1)
-    love.graphics.draw(img, math.floor((W - dw) / 2), math.floor((H - dh) / 2), 0, scale, scale)
-    love.graphics.setShader()
+    love.graphics.setShader(bg.shader)
+    bg.shader:send("time", t)
+    bg.shader:send("vort_speed", 1.0)
+    bg.shader:send("colour_1", PLASMA_C1)
+    bg.shader:send("colour_2", PLASMA_C2)
+    bg.shader:send("mid_flash", midFlash or 0)
+    bg.shader:send("vort_offset", bg.offset)
     love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.rectangle("fill", 0, 0, W, H)
+    love.graphics.setShader()
     return true
+end
+
+-- Fundo do "loading" / fallback: TV escura (pedra estática ou ink).
+local function drawFallbackBG()
+    local W, H = love.graphics.getDimensions()
+    if bg.fallbackImg then
+        local iw, ih = bg.fallbackImg:getDimensions()
+        local s = math.max(W / iw, H / ih)
+        love.graphics.setColor(1, 1, 1, 0.85)
+        love.graphics.draw(bg.fallbackImg, math.floor((W - iw * s) / 2),
+            math.floor((H - ih * s) / 2), 0, s, s)
+    else
+        love.graphics.setColor(Palette.INK[1], Palette.INK[2], Palette.INK[3], 1)
+        love.graphics.rectangle("fill", 0, 0, W, H)
+    end
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 -- ============== Init ==============
@@ -156,7 +139,6 @@ function BootScene.init(callbacks)
     state.staticAlpha     = 0
     state.titleGlitchT    = 0
     state.onComplete      = callbacks.onComplete
-    bootAnim.t            = 0
 
     -- Background fade-in (não-bloqueante para não travar o resto).
     if _G.EventManager then
@@ -180,8 +162,6 @@ end
 local function startSplashSequence()
     state.phase = "splash"
     state.splashTime = 0
-    state.vortex = 0
-    BootFX.reset()
 
     -- SINTONIA: o canal ancora — chuvisco forte resolvendo na cena.
     state.staticAlpha = 0.85
@@ -237,23 +217,13 @@ local function startSplashSequence()
     -- 0.50s: impacto sonoro.
     EM.parallel(0.50, function() Sfx.play("deckStart") end, QUEUE)
 
-    -- 0.85s: a PEDRA racha — o vórtice começa a abrir no centro (rumble grave).
-    EM.parallel(0.85, function()
-        Sfx.play("bootVortex")
-        EM.parallelEase(state, "vortex", 0.40, 0.85, "smooth", QUEUE)
-    end, QUEUE)
-
-    -- 1.10s: a carta central é SUGADA pro buraco (dissolve + encolhe pro centro).
+    -- 1.10s: a carta central DISSOLVE e é sugada pro centro (buildup grave,
+    -- estilo Balatro: magic_crumple + splash_buildup).
     EM.parallel(1.10, function()
-        EM.parallelEase(state.centerCard, "dissolve", 1.0, 0.4, "smooth",  QUEUE)
-        EM.parallelEase(state.centerCard, "alpha",    0.0, 0.4, "smooth",  QUEUE)
-        EM.parallelEase(state.centerCard, "scale",    0.1, 0.4, "ease_in", QUEUE)
-    end, QUEUE)
-
-    -- 1.30s: ELETRICIDADE crackla e o buraco cresce mais.
-    EM.parallel(1.30, function()
-        Sfx.play("bootElectric")
-        EM.parallelEase(state, "vortex", 0.72, 1.2, "smooth", QUEUE)
+        EM.parallelEase(state.centerCard, "dissolve", 1.0, 0.5, "smooth",  QUEUE)
+        EM.parallelEase(state.centerCard, "alpha",    0.0, 0.5, "smooth",  QUEUE)
+        EM.parallelEase(state.centerCard, "scale",    0.1, 0.5, "ease_in", QUEUE)
+        Sfx.play("bootVortex")
     end, QUEUE)
 
     -- 1.40s+: cascade de 16 mini-cartas, staggered 0.06s = 0.96s spawn window.
@@ -316,38 +286,27 @@ local function startSplashSequence()
         state.titleGlitchT = 0.15
     end, QUEUE)
 
-    -- 3.00s: o buraco escancara (vórtice no máximo). SEM tocar eletricidade
-    -- aqui — o SFX de raio é curto e já tocou em 1.30 (o de 3.00 vazava pro
-    -- menu). O clímax sonoro é o bootImpact do flash.
-    EM.parallel(3.00, function()
-        EM.parallelEase(state, "vortex", 1.0, 0.6, "smooth", QUEUE)
-    end, QUEUE)
-
-    -- 3.65s: PEAK — flash + impacto grave + screen-shake forte (o "selo
-    -- mágico assentando"). Punch estilo Balatro.
-    EM.parallel(3.65, function()
+    -- 3.55s: CLÍMAX — flash branco (cobre plasma+cartas) + impacto grave +
+    -- shake sutil. Estilo Balatro: a cena "estoura" no branco e entra o menu.
+    EM.parallel(3.55, function()
         if FlashShader and FlashShader.trigger then
-            FlashShader.trigger(1.0, 0.45)
+            FlashShader.trigger(1.0, 0.5)
         else
             state.flashAlpha = 1.0
-            EM.parallelEase(state, "flashAlpha", 0, 0.45, "smooth", QUEUE)
+            EM.parallelEase(state, "flashAlpha", 0, 0.5, "smooth", QUEUE)
         end
         Sfx.play("bootImpact")
-        if _G.triggerShake then _G.triggerShake(10, 0.4) end
-        -- o buraco IMPLODE sob o flash (colapsa rápido pro nada)
-        EM.parallelEase(state, "vortex", 0.0, 0.4, "ease_in", QUEUE)
+        if _G.triggerShake then _G.triggerShake(7, 0.35) end
     end, QUEUE)
 
-    -- 4.25s: transição pro menu (depois do flash desbotar).
-    EM.parallel(4.25, function() BootScene._finish() end, QUEUE)
+    -- 4.10s: transição pro menu (depois do flash desbotar).
+    EM.parallel(4.10, function() BootScene._finish() end, QUEUE)
 end
 
 -- ============== Update / Draw ==============
 
 function BootScene.update(dt)
     if state.phase == "done" then return end
-
-    bootAnim.t = bootAnim.t + dt   -- fundo animado corre em todas as fases
 
     if state.phase == "loading" then
         state.loadingTime = state.loadingTime + dt
@@ -359,7 +318,6 @@ function BootScene.update(dt)
         end
     elseif state.phase == "splash" then
         state.splashTime = state.splashTime + dt
-        BootFX.update(dt, state.vortex)   -- vórtice procedural (buraco/eletricidade/brasas)
 
         -- Atualiza mini-cartas: tumble rotation + scale curve não-monotônica
         -- (pop-in → hold → collapse). Coords absolutas são derivadas no draw
@@ -400,20 +358,14 @@ end
 
 local function drawBackground()
     local W, H = love.graphics.getWidth(), love.graphics.getHeight()
-    loadBootAnim()
-    -- 1º: fundo (câmara ritual PixelLab) com WARP de sucção dirigido por
-    -- state.vortex — a pedra roda/contrai pro buraco. 0.9 pra dar contraste
-    -- ao primeiro plano.
-    local hadScene = drawBootAnimBG(0.9, state.vortex, state.splashTime)
-    -- Fallback: splash estático → menu → ink.
-    if not hadScene then
-        hadScene = SceneBackground.draw("splash", W, H, 0.55)
+    loadBg()
+    -- SPLASH: plasma swirl (Balatro). LOADING/fallback: TV escura sintonizando.
+    local drawn = false
+    if state.phase == "splash" then
+        drawn = drawPlasmaBG(state.splashTime, 0)
     end
-    if not hadScene then
-        if not SceneBackground.draw("menu", W, H, 0.65) then
-            love.graphics.setColor(Palette.INK[1], Palette.INK[2], Palette.INK[3], 1)
-            love.graphics.rectangle("fill", 0, 0, W, H)
-        end
+    if not drawn then
+        drawFallbackBG()
     end
 
     -- Fade-in mask (escurece o que tem por baixo enquanto bgAlpha sobe).
@@ -469,10 +421,6 @@ end
 local function drawSplash()
     local W, H = love.graphics.getWidth(), love.graphics.getHeight()
     local cx, cy = liveCenter()
-
-    -- VÓRTICE procedural ATRÁS das cartas (elas voam pra DENTRO do buraco).
-    -- baseRadius relativo à tela; state.vortex 0..1 dirige a abertura.
-    BootFX.draw(cx, cy, math.min(W, H) * 0.34, state.vortex)
 
     -- Mini-cartas primeiro (z-order: ficam atrás da central). Coords vêm
     -- de polar (angle, distFrom) → screen — cx/cy são live, então resize
@@ -594,7 +542,6 @@ function BootScene._finish()
     state.miniCards = {}
     state.centerCard = nil
     state.flashAlpha = 0
-    state.vortex = 0
     -- SYNC (feedback): mata qualquer SFX de boot (raio/rumble/impacto) ANTES do
     -- menu + música entrarem — o barulho de raio vazava pro menu. stopGroup só
     -- corta o grupo "sfx"; a música (grupo "music") não é afetada.
