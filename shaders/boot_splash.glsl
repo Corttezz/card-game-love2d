@@ -1,20 +1,23 @@
-// shaders/boot_splash.glsl — fundo da ENTRADA no estilo Balatro (v5, Jul/2026).
-// Adaptado (NÃO copiado) de balatro-source/resources/shaders/splash.fs: swirl de
-// centro + domain-warp "fumaça" (5 iterações) → plasma suave e orgânico. Trocada
-// a paleta azul/branco do Balatro pela nossa SÉPIA/GRIMÓRIO (ouro + pergaminho
-// sobre ink escuro). É o fundo SUAVE e profissional — sem foto distorcida, sem
-// raio, sem flicker. `mid_flash` leva a cena ao branco no clímax.
+// shaders/boot_splash.glsl — energia arcana da ENTRADA (v6, Jul/2026).
+// BASEADO no princípio do splash.fs do Balatro (swirl de centro + domain-warp),
+// mas TRANSFORMADO pro nosso jogo (pedido do dono: "baseado, não igual"):
+//   • MÁSCARA RADIAL: a energia vive no MIOLO (em volta do sigilo da câmara)
+//     e desvanece pras bordas — o fundo é a CÂMARA PIXEL ART, não o plasma.
+//   • Paleta sépia/grimório: ouro + brasa-sangue sobre ink marrom (não azul).
+//   • Pixels maiores (PIXEL_SIZE_FAC 300) — casa com o pixel art 4×.
+//   • Swirl mais lento e coeficientes próprios (4 iterações de warp, não 5).
+// Alpha final multiplica pela COR do draw (controlável do Lua).
 
 extern number time;
 extern number vort_speed;
 extern vec4 colour_1;      // ouro
-extern vec4 colour_2;      // pergaminho claro
+extern vec4 colour_2;      // brasa-sangue
 extern number mid_flash;   // 0..1 → branco
 extern number vort_offset;
 
-#define PIXEL_SIZE_FAC 480.
-// base escura QUENTE (ink marrom) no lugar do teal do Balatro
-#define BASE 0.6*vec4(38./255., 28./255., 20./255., 1./0.6)
+#define PIXEL_SIZE_FAC 300.
+// base escura QUENTE (ink marrom do grimório)
+#define BASE 0.6*vec4(30./255., 22./255., 16./255., 1./0.6)
 
 vec4 effect(vec4 colour, Image texture, vec2 texture_coords, vec2 screen_coords) {
     number pixel_size = length(love_ScreenSize.xy) / PIXEL_SIZE_FAC;
@@ -22,37 +25,42 @@ vec4 effect(vec4 colour, Image texture, vec2 texture_coords, vec2 screen_coords)
               - 0.5 * love_ScreenSize.xy) / length(love_ScreenSize.xy);
     number uv_len = length(uv);
 
+    // swirl central — mais LENTO e contido que o Balatro
     number speed = time * vort_speed;
-    number new_pixel_angle = atan(uv.y, uv.x)
-        + (2.2 + 0.4 * min(6., speed)) * uv_len - 1.
-        - speed * 0.05 - min(6., speed) * speed * 0.02 + vort_offset;
+    number ang = atan(uv.y, uv.x)
+        + (1.7 + 0.35 * min(6., speed)) * uv_len - 1.
+        - speed * 0.045 - min(6., speed) * speed * 0.016 + vort_offset;
     vec2 mid = (love_ScreenSize.xy / length(love_ScreenSize.xy)) / 2.;
-    vec2 sv = vec2(uv_len * cos(new_pixel_angle) + mid.x,
-                   uv_len * sin(new_pixel_angle) + mid.y) - mid;
+    vec2 sv = vec2(uv_len * cos(ang) + mid.x,
+                   uv_len * sin(ang) + mid.y) - mid;
 
-    sv *= 30.;
-    speed = time * 6. * vort_speed + vort_offset + 1033.;
+    // domain-warp "fumaça" (4 iterações; coeficientes próprios)
+    sv *= 26.;
+    speed = time * 5. * vort_speed + vort_offset + 733.;
     vec2 uv2 = vec2(sv.x + sv.y);
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 4; i++) {
         uv2 += sin(max(sv.x, sv.y)) + sv;
-        sv += 0.5 * vec2(cos(5.1123314 + 0.353 * uv2.y + speed * 0.131121),
-                         sin(uv2.x - 0.113 * speed));
-        sv -= 1.0 * cos(sv.x + sv.y) - 1.0 * sin(sv.x * 0.711 - sv.y);
+        sv += 0.55 * vec2(cos(4.31 + 0.31 * uv2.y + speed * 0.117),
+                          sin(uv2.x - 0.101 * speed));
+        sv -= cos(sv.x + sv.y) - sin(sv.x * 0.63 - sv.y);
     }
 
-    number smoke_res = min(2., max(-2., 1.5 + length(sv) * 0.12
-        - 0.17 * (min(10., time * 1.2 - 4.))));
-    if (smoke_res < 0.2) {
-        smoke_res = (smoke_res - 0.2) * 0.6 + 0.2;
-    }
+    number smoke = min(2., max(-2., 1.5 + length(sv) * 0.11
+        - 0.16 * (min(10., time * 1.1 - 3.))));
+    if (smoke < 0.2) smoke = (smoke - 0.2) * 0.6 + 0.2;
 
-    number c1p = max(0., 1. - 2. * abs(1. - smoke_res));
-    number c2p = max(0., 1. - 2. * smoke_res);
+    number c1p = max(0., 1. - 2. * abs(1. - smoke));
+    number c2p = max(0., 1. - 2. * smoke);
     number cb = 1. - min(1., c1p + c2p);
 
     vec4 ret_col = colour_1 * c1p + colour_2 * c2p + vec4(cb * BASE.rgb, cb * colour_1.a);
     number mod_flash = max(mid_flash * 0.8, max(c1p, c2p) * 5. - 4.4)
         + mid_flash * max(c1p, c2p);
+    vec4 outc = ret_col * (1. - mod_flash) + mod_flash * vec4(1., 1., 1., 1.);
 
-    return ret_col * (1. - mod_flash) + mod_flash * vec4(1., 1., 1., 1.);
+    // MÁSCARA RADIAL: energia concentrada no miolo (sigilo), câmara visível
+    // nas bordas. uv_len vai de 0 (centro) a ~0.5 (canto).
+    number edge = 1. - smoothstep(0.16, 0.46, uv_len);
+
+    return vec4(outc.rgb, outc.a * edge) * colour;
 }

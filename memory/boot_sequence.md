@@ -102,3 +102,18 @@ Feedback do dono: v3/v4 ficaram "toscas" (tela girando, raio, warp de foto). Fui
 - Sons Balatro-like: powerOn (init) → deckStart (0.5) → bootVortex buildup no dissolve (1.10) → bootCardWhoosh (1.35) + cardDraw por carta → flash + bootImpact + shake leve (3.55) → menu (4.10). `bootElectric` não é mais usado.
 - `frame_00.png` da pedra vira só FALLBACK se o shader falhar.
 - **Validar**: `love . screenshot_bootfx` (jogo FECHADO) → `bootsplash_t{2,5,9}.png` + `_flash.png` no save dir.
+
+## Entrada v6 — pixel art de volta + energia "nossa" + letra-a-letra (Jul/2026)
+
+Feedback do dono na v5: (1) o pixel art sumiu — tem que ser O fundo, com animação; (2) o plasma não pode ser o Balatro literal — "baseado, com a nossa cara"; (3) rápido demais — as letras do título devem entrar UMA A UMA e ter respiro antes do menu.
+
+**Fundo em 3 CAMADAS** (`drawBackground`):
+1. **Câmara ritual pixel art** (frame_00, estática) — SEMPRE, é o background.
+2. **Energia arcana** (`boot_splash.glsl` retrabalhado): MÁSCARA RADIAL in-shader (`edge = 1-smoothstep(0.16,0.46,uv_len)`) concentra o plasma no MIOLO em volta do sigilo — a câmara fica visível nas bordas. Paleta ouro+brasa-sangue (não azul/branco), `vort_speed 0.6` (lento), `PIXEL_SIZE_FAC 300` (pixels chunky casando com o 4×), 4 iterações de warp com coeficientes próprios. Alpha do Lua (vertex colour) — fade de 2s via `state.plasmaAlpha`.
+3. **Brasas** (`embers` em BootScene): quadradinhos pixel (1-2 "pixels" da arte, `H/256`) subindo — 60% nascem nos BRASEIROS da câmara (x≈0.12/0.88, y≈0.40), 40% do chão; sway senoidal + flicker; ouro/rubro; cap 36. Vivem em TODAS as fases (o cenário respira desde o loading).
+
+**Título LETRA-A-LETRA**: `state.titleLetters` = codepoints UTF-8 de `menu.title` (`require("utf8")`); cada letra tem alpha/scale próprios, "carimba" (scale 1.8→1 back_out) com tick `cardDraw` em pitch crescente (espaços não tocam som). Stagger 0.09s, começa DEPOIS da cascade assentar. O glitch RGB antigo do título foi removido (era single-print).
+
+**Timeline v6 (~7s, dinâmica)**: 0.10 carta central → 0.50 deckStart → 1.40 dissolve+bootVortex → 1.65 whoosh → 1.70+i·0.08 cascade (22 cartas) → `tCascadeEnd+0.25` letras (stagger 0.09) → **RESPIRO de 1s** com tudo pousado → flash+bootImpact+shake → +0.60 menu. Tempos do título/flash calculados de `#titleLetters` (i18n muda o comprimento).
+
+⚠️ v6 entregue LUAC-CLEAN mas SEM verificação visual (jogo do dono aberto na hora) — validar com `love . screenshot_bootfx` (gera `bootv6_{early,mid,late}.png`) na primeira chance.

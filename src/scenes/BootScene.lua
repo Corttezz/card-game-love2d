@@ -46,12 +46,13 @@ local state = {
     flashAlpha      = 0,
     skipped         = false,
     bgAlpha         = 0,           -- fade-in do background
-    titleAlpha      = 0,           -- título do jogo (surge no auge da cascade)
-    titleScale      = 0.9,
 
     -- v2 "sintonizando o canal" (docs/plan/menu-crt-v2.md):
     staticAlpha     = 0,           -- chuvisco resolvendo na cena
-    titleGlitchT    = 0,           -- glitch de sinal RGB no título
+
+    -- v6: energia arcana (plasma mascarado sobre a câmara) + título letra-a-letra
+    plasmaAlpha     = 0,           -- 0..1 alpha da camada de energia
+    titleLetters    = {},          -- { {ch, alpha, scale}, ... }
 }
 
 -- Tamanhos lógicos (em pixels da janela; LÖVE escala automaticamente).
@@ -64,18 +65,20 @@ local NUM_MINI    = 22
 -- 0.7 = bordas extremas, faz o voo parecer "vindo de longe".
 local SPAWN_RADIUS_RATIO = 0.7
 
--- ============== Fundo estilo Balatro (v5, Jul/2026) ==============
--- Feedback do dono: tela girando / raio / warp de foto ficaram TOSCOS. O
--- Balatro (splash.fs) usa um shader de PLASMA/swirl de cor SUAVE — é o look
--- profissional. Portamos pra nossa paleta sépia em shaders/boot_splash.glsl.
--- Sem foto distorcida, sem raio, sem flicker. Fallback: frame_00 → ink.
+-- ============== Fundo em CAMADAS (v6, Jul/2026) ==============
+-- Feedback do dono: o pixel art TEM que ser o fundo (com vida), e a energia
+-- deve ser BASEADA no Balatro mas com a nossa cara. Composição:
+--   1. CÂMARA ritual pixel art (frame_00, estática — sem flicker) = o fundo.
+--   2. ENERGIA ARCANA (boot_splash.glsl): plasma sépia MASCARADO no miolo,
+--      em volta do sigilo — swirl lento ouro+brasa, some nas bordas.
+--   3. BRASAS subindo dos braseiros (procedural, quadradinhos pixel).
 local bg = {
     dir = "assets/sprites/scenes/boot_anim",
-    fallbackImg = nil, loaded = false, shader = nil,
+    chamber = nil, loaded = false, shader = nil,
     offset = 12.0,   -- vort_offset fixo (varia o padrão do plasma)
 }
-local PLASMA_C1 = { 0.95, 0.78, 0.32, 1 }   -- ouro
-local PLASMA_C2 = { 0.93, 0.86, 0.66, 1 }   -- pergaminho claro
+local PLASMA_C1 = { 0.90, 0.70, 0.26, 1 }   -- ouro arcano
+local PLASMA_C2 = { 0.66, 0.20, 0.10, 1 }   -- brasa-sangue
 
 local function loadBg()
     if bg.loaded then return end
@@ -85,39 +88,94 @@ local function loadBg()
     local p = bg.dir .. "/frame_00.png"
     if love.filesystem.getInfo(p) then
         local ok2, img = pcall(love.graphics.newImage, p)
-        if ok2 then img:setFilter("nearest", "nearest"); bg.fallbackImg = img end
+        if ok2 then img:setFilter("nearest", "nearest"); bg.chamber = img end
     end
 end
 
--- Plasma swirl (Balatro). t = tempo do splash; midFlash 0..1 → branco.
-local function drawPlasmaBG(t, midFlash)
-    if not bg.shader then return false end
+-- Camada 1: a câmara pixel art (SEMPRE — é o background).
+local function drawChamberBG()
+    local W, H = love.graphics.getDimensions()
+    if bg.chamber then
+        local iw, ih = bg.chamber:getDimensions()
+        local s = math.max(W / iw, H / ih)
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.draw(bg.chamber, math.floor((W - iw * s) / 2),
+            math.floor((H - ih * s) / 2), 0, s, s)
+    elseif not SceneBackground.draw("splash", W, H, 0.55) then
+        love.graphics.setColor(Palette.INK[1], Palette.INK[2], Palette.INK[3], 1)
+        love.graphics.rectangle("fill", 0, 0, W, H)
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- Camada 2: energia arcana mascarada (alpha controlado por state.plasmaAlpha).
+local function drawPlasmaBG(t, alpha)
+    if not bg.shader or (alpha or 0) < 0.01 then return end
     local W, H = love.graphics.getDimensions()
     love.graphics.setShader(bg.shader)
     bg.shader:send("time", t)
-    bg.shader:send("vort_speed", 1.0)
+    bg.shader:send("vort_speed", 0.6)     -- lento, majestoso (não o ritmo do Balatro)
     bg.shader:send("colour_1", PLASMA_C1)
     bg.shader:send("colour_2", PLASMA_C2)
-    bg.shader:send("mid_flash", midFlash or 0)
+    bg.shader:send("mid_flash", 0)
     bg.shader:send("vort_offset", bg.offset)
-    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setColor(1, 1, 1, alpha)
     love.graphics.rectangle("fill", 0, 0, W, H)
     love.graphics.setShader()
-    return true
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Fundo do "loading" / fallback: TV escura (pedra estática ou ink).
-local function drawFallbackBG()
+-- Camada 3: BRASAS subindo (dos braseiros da câmara + ambiente). Quadradinhos
+-- pixel dourados/rubros com flicker — dá vida ao pixel art sem flicker de IA.
+-- Coords normalizadas (0..1); RNG cosmético = math.random (regra do projeto).
+local embers = { list = {}, spawnT = 0 }
+
+local function updateEmbers(dt)
+    embers.spawnT = embers.spawnT - dt
+    if embers.spawnT <= 0 and #embers.list < 36 then
+        embers.spawnT = 0.10
+        local e = {
+            sway = math.random() * 6.28,
+            spd  = 0.05 + math.random() * 0.06,
+            size = (math.random() < 0.3) and 2 or 1,
+            life = 0,
+            warm = math.random() < 0.72,
+        }
+        if math.random() < 0.6 then
+            -- nasce num dos braseiros da câmara (x≈0.12 / 0.88, y≈0.38)
+            local left = math.random() < 0.5
+            e.x = (left and 0.12 or 0.88) + (math.random() - 0.5) * 0.05
+            e.y = 0.40 + math.random() * 0.06
+        else
+            -- ambiente: sobe do chão
+            e.x = 0.15 + math.random() * 0.7
+            e.y = 1.02
+        end
+        table.insert(embers.list, e)
+    end
+    for i = #embers.list, 1, -1 do
+        local e = embers.list[i]
+        e.life = e.life + dt
+        e.y = e.y - e.spd * dt
+        if e.y < -0.03 then table.remove(embers.list, i) end
+    end
+end
+
+local function drawEmbers()
     local W, H = love.graphics.getDimensions()
-    if bg.fallbackImg then
-        local iw, ih = bg.fallbackImg:getDimensions()
-        local s = math.max(W / iw, H / ih)
-        love.graphics.setColor(1, 1, 1, 0.85)
-        love.graphics.draw(bg.fallbackImg, math.floor((W - iw * s) / 2),
-            math.floor((H - ih * s) / 2), 0, s, s)
-    else
-        love.graphics.setColor(Palette.INK[1], Palette.INK[2], Palette.INK[3], 1)
-        love.graphics.rectangle("fill", 0, 0, W, H)
+    local t = love.timer.getTime()
+    local px = math.max(2, math.floor(H / 256))   -- 1 "pixel" da arte 4×
+    for _, e in ipairs(embers.list) do
+        local x = (e.x + 0.018 * math.sin(t * 0.9 + e.sway)) * W
+        local flick = 0.55 + 0.45 * math.sin(t * 3.2 + e.sway * 2)
+        local a = math.min(1, e.life * 2.5) * 0.55 * flick
+        if e.warm then
+            love.graphics.setColor(0.95, 0.72, 0.28, a)
+        else
+            love.graphics.setColor(0.78, 0.30, 0.14, a)
+        end
+        local s = e.size * px
+        love.graphics.rectangle("fill", math.floor(x), math.floor(e.y * H), s, s)
     end
     love.graphics.setColor(1, 1, 1, 1)
 end
@@ -134,11 +192,12 @@ function BootScene.init(callbacks)
     state.flashAlpha      = 0
     state.skipped         = false
     state.bgAlpha         = 0
-    state.titleAlpha      = 0
-    state.titleScale      = 0.9
     state.staticAlpha     = 0
-    state.titleGlitchT    = 0
+    state.plasmaAlpha     = 0
+    state.titleLetters    = {}
     state.onComplete      = callbacks.onComplete
+    embers.list           = {}
+    embers.spawnT         = 0
 
     -- Background fade-in (não-bloqueante para não travar o resto).
     if _G.EventManager then
@@ -167,8 +226,22 @@ local function startSplashSequence()
     state.staticAlpha = 0.85
     if _G.EventManager then
         _G.EventManager.parallelEase(state, "staticAlpha", 0, 0.55, "smooth", QUEUE)
+        -- Energia arcana desperta DEVAGAR em volta do sigilo (2s de fade).
+        _G.EventManager.parallelEase(state, "plasmaAlpha", 0.9, 2.0, "smooth", QUEUE)
     else
         state.staticAlpha = 0
+        state.plasmaAlpha = 0.9
+    end
+
+    -- Título letra-a-letra (pedido do dono): pré-quebra em codepoints UTF-8.
+    state.titleLetters = {}
+    do
+        local utf8 = require("utf8")
+        local title = I18n.t("menu.title")
+        for _, cp in utf8.codes(title) do
+            table.insert(state.titleLetters,
+                { ch = utf8.char(cp), alpha = 0, scale = 1.8 })
+        end
     end
 
     -- Carta central: SEM x/y armazenados — sempre desenhada em liveCenter()
@@ -217,32 +290,25 @@ local function startSplashSequence()
     -- 0.50s: impacto sonoro.
     EM.parallel(0.50, function() Sfx.play("deckStart") end, QUEUE)
 
-    -- 1.10s: a carta central DISSOLVE e é sugada pro centro (buildup grave,
+    -- 1.40s: a carta central DISSOLVE e é sugada pro centro (buildup grave,
     -- estilo Balatro: magic_crumple + splash_buildup).
-    EM.parallel(1.10, function()
+    EM.parallel(1.40, function()
         EM.parallelEase(state.centerCard, "dissolve", 1.0, 0.5, "smooth",  QUEUE)
         EM.parallelEase(state.centerCard, "alpha",    0.0, 0.5, "smooth",  QUEUE)
         EM.parallelEase(state.centerCard, "scale",    0.1, 0.5, "ease_in", QUEUE)
         Sfx.play("bootVortex")
     end, QUEUE)
 
-    -- 1.40s+: cascade de 16 mini-cartas, staggered 0.06s = 0.96s spawn window.
-    -- Cada uma:
-    --   - Coords em POLAR (angle, distFrom) — cx/cy lidos live no draw,
-    --     resize não quebra centralização.
-    --   - Voa com ease_OUT (decelera ao chegar) — feel de "pousando" no centro,
-    --     contraste com ease_in que fazia a chegada parecer arrombada.
-    --   - Tumble rotation (rotSpeed) durante voo — cartas giram orgânicamente.
-    --   - Scale curve com pop: cresce 0→1 nos primeiros 70% do voo, depois
-    --     colapsa 1→0 nos últimos 30% (sucção pro centro). Computado em update.
-    --   - Lifespan ligeiramente variado por carta (0.55..0.65) — não pousam todas
-    --     no mesmo frame.
-    -- 1.35s: WHOOSH grave da massa de cartas convergindo — dá corpo sonoro
-    -- que os cardDraw individuais (pitched) sozinhos não dão.
-    EM.parallel(1.35, function() Sfx.play("bootCardWhoosh") end, QUEUE)
+    -- 1.70s+: cascade de mini-cartas, staggered 0.08s (janela ~1.7s — mais
+    -- CALMA que antes; feedback: "extremamente rápido"). Cada uma:
+    --   - Coords em POLAR (angle, distFrom) — cx/cy lidos live no draw.
+    --   - Voa com ease_OUT (decelera ao chegar), espiral orgânica.
+    --   - Scale pop-in → collapse no centro (sucção). Computado em update.
+    -- 1.65s: WHOOSH grave da massa de cartas convergindo.
+    EM.parallel(1.65, function() Sfx.play("bootCardWhoosh") end, QUEUE)
 
     for i = 1, NUM_MINI do
-        local delay = 1.40 + (i - 1) * 0.07
+        local delay = 1.70 + (i - 1) * 0.08
         EM.parallel(delay, function()
             local W, H = love.graphics.getWidth(), love.graphics.getHeight()
             local angle = math.random() * math.pi * 2
@@ -277,18 +343,32 @@ local function startSplashSequence()
             Sfx.play("cardDraw", { pitch = pitch, volume = 0.42 })
         end, QUEUE)
     end
+    -- fim da cascade: último spawn + voo (~0.65s)
+    local tCascadeEnd = 1.70 + (NUM_MINI - 1) * 0.08 + 0.70
 
-    -- 2.10s: título do jogo materializa sob a carta central — com GLITCH
-    -- de sinal (2 cópias RGB deslocadas por ~0.15s, depois assenta).
-    EM.parallel(2.10, function()
-        EM.parallelEase(state, "titleAlpha", 1.0, 0.45, "smooth",   QUEUE)
-        EM.parallelEase(state, "titleScale", 1.0, 0.45, "back_out", QUEUE)
-        state.titleGlitchT = 0.15
-    end, QUEUE)
+    -- TÍTULO LETRA-A-LETRA (feedback do dono): cada letra "carimba" na tela
+    -- com pop back_out + tick sonoro em pitch crescente. Começa DEPOIS da
+    -- cascade assentar — nada de atropelar.
+    local T_TITLE = tCascadeEnd + 0.25
+    local nLetters = #state.titleLetters
+    for i = 1, nLetters do
+        EM.parallel(T_TITLE + (i - 1) * 0.09, function()
+            local L = state.titleLetters[i]
+            if L then
+                EM.parallelEase(L, "alpha", 1.0, 0.15, "smooth",   QUEUE)
+                EM.parallelEase(L, "scale", 1.0, 0.30, "back_out", QUEUE)
+                if L.ch ~= " " then
+                    Sfx.play("cardDraw", { pitch = 0.9 + i * 0.035, volume = 0.35 })
+                end
+            end
+        end, QUEUE)
+    end
+    local tTitleEnd = T_TITLE + nLetters * 0.09
 
-    -- 3.55s: CLÍMAX — flash branco (cobre plasma+cartas) + impacto grave +
-    -- shake sutil. Estilo Balatro: a cena "estoura" no branco e entra o menu.
-    EM.parallel(3.55, function()
+    -- RESPIRO: título completo pousado, energia girando — segura ~1s antes
+    -- do clímax (feedback: "já muda direto pro menu, isso está errado").
+    local tFlash = tTitleEnd + 1.0
+    EM.parallel(tFlash, function()
         if FlashShader and FlashShader.trigger then
             FlashShader.trigger(1.0, 0.5)
         else
@@ -299,14 +379,16 @@ local function startSplashSequence()
         if _G.triggerShake then _G.triggerShake(7, 0.35) end
     end, QUEUE)
 
-    -- 4.10s: transição pro menu (depois do flash desbotar).
-    EM.parallel(4.10, function() BootScene._finish() end, QUEUE)
+    -- transição pro menu (depois do flash desbotar).
+    EM.parallel(tFlash + 0.60, function() BootScene._finish() end, QUEUE)
 end
 
 -- ============== Update / Draw ==============
 
 function BootScene.update(dt)
     if state.phase == "done" then return end
+
+    updateEmbers(dt)   -- brasas vivem em todas as fases (o cenário respira)
 
     if state.phase == "loading" then
         state.loadingTime = state.loadingTime + dt
@@ -322,11 +404,6 @@ function BootScene.update(dt)
         -- Atualiza mini-cartas: tumble rotation + scale curve não-monotônica
         -- (pop-in → hold → collapse). Coords absolutas são derivadas no draw
         -- via liveCenter() + polar (angle, distFrom).
-        -- glitch de sinal do título decai
-        if state.titleGlitchT > 0 then
-            state.titleGlitchT = math.max(0, state.titleGlitchT - dt)
-        end
-
         for i = #state.miniCards, 1, -1 do
             local mc = state.miniCards[i]
             mc.age = mc.age + dt
@@ -359,14 +436,13 @@ end
 local function drawBackground()
     local W, H = love.graphics.getWidth(), love.graphics.getHeight()
     loadBg()
-    -- SPLASH: plasma swirl (Balatro). LOADING/fallback: TV escura sintonizando.
-    local drawn = false
+    -- CAMADAS: câmara pixel art (sempre) → energia arcana mascarada no miolo
+    -- (só no splash, fade lento) → brasas subindo dos braseiros.
+    drawChamberBG()
     if state.phase == "splash" then
-        drawn = drawPlasmaBG(state.splashTime, 0)
+        drawPlasmaBG(state.splashTime, state.plasmaAlpha)
     end
-    if not drawn then
-        drawFallbackBG()
-    end
+    drawEmbers()
 
     -- Fade-in mask (escurece o que tem por baixo enquanto bgAlpha sobe).
     if state.bgAlpha < 1 then
@@ -437,38 +513,42 @@ local function drawSplash()
         drawCardShape(cx, cy, CARD_SIZE.w, CARD_SIZE.h, c.alpha, c.scale, c.rot, c.dissolve)
     end
 
-    -- Título do jogo (surge no auge da cascade, back_out pop).
-    if state.titleAlpha > 0.02 then
+    -- TÍTULO LETRA-A-LETRA: cada letra carimba com pop próprio (alpha/scale
+    -- individuais, animados pela timeline). Outline ink + face dourada com
+    -- pulse dessincronizado por letra.
+    if #state.titleLetters > 0 then
         -- CardBack pode deixar o DissolveShader ativo (carta central termina
         -- em dissolve=1) — sem reset as letras saem corroídas/escuras.
         love.graphics.setShader()
         local font = FontManager.getFont(math.min(44, math.floor(H * 0.075)))
         love.graphics.setFont(font)
-        local title = I18n.t("menu.title")
-        local tw = font:getWidth(title)
-        love.graphics.push()
-        love.graphics.translate(cx, math.floor(H * 0.72))
-        love.graphics.scale(state.titleScale, state.titleScale)
-        -- Outline ink 4-direções (contraste sobre o piso claro) + face dourada.
-        love.graphics.setColor(0, 0, 0, 0.85 * state.titleAlpha)
-        for _, o in ipairs({ {2, 0}, {-2, 0}, {0, 2}, {0, -2}, {3, 3} }) do
-            love.graphics.print(title, -tw / 2 + o[1], o[2])
+        local fh = font:getHeight()
+        local totalW = 0
+        for _, L in ipairs(state.titleLetters) do
+            L.w = font:getWidth(L.ch)
+            totalW = totalW + L.w
         end
-        -- GLITCH de sinal: cópias R/C deslocadas enquanto o sinal assenta
-        if state.titleGlitchT > 0 then
-            local gk = state.titleGlitchT / 0.15
-            local off = 3 + math.floor(love.timer.getTime() * 60) % 2 * 2
-            love.graphics.setColor(1, 0.2, 0.2, 0.55 * gk * state.titleAlpha)
-            love.graphics.print(title, -tw / 2 - off, 0)
-            love.graphics.setColor(0.2, 1, 1, 0.55 * gk * state.titleAlpha)
-            love.graphics.print(title, -tw / 2 + off, 0)
-        end
+        local x = cx - totalW / 2
+        local baseY = math.floor(H * 0.72)
         local g = Palette.AGED_GOLD_LIGHT
-        local pulse = 1 + 0.08 * math.sin(state.splashTime * 3)
-        love.graphics.setColor(math.min(1, g[1] * pulse), math.min(1, g[2] * pulse),
-            g[3], state.titleAlpha)
-        love.graphics.print(title, -tw / 2, 0)
-        love.graphics.pop()
+        for i, L in ipairs(state.titleLetters) do
+            if L.alpha > 0.02 then
+                love.graphics.push()
+                love.graphics.translate(x + L.w / 2, baseY + fh / 2)
+                love.graphics.scale(L.scale, L.scale)
+                local ox, oy = -L.w / 2, -fh / 2
+                love.graphics.setColor(0, 0, 0, 0.85 * L.alpha)
+                for _, o in ipairs({ {2, 0}, {-2, 0}, {0, 2}, {0, -2}, {3, 3} }) do
+                    love.graphics.print(L.ch, ox + o[1], oy + o[2])
+                end
+                local pulse = 1 + 0.06 * math.sin(state.splashTime * 3 + i * 0.7)
+                love.graphics.setColor(math.min(1, g[1] * pulse),
+                    math.min(1, g[2] * pulse), g[3], L.alpha)
+                love.graphics.print(L.ch, ox, oy)
+                love.graphics.pop()
+            end
+            x = x + L.w
+        end
     end
 
     -- Flash overlay manual (caso FlashShader não estivesse disponível).
@@ -542,6 +622,8 @@ function BootScene._finish()
     state.miniCards = {}
     state.centerCard = nil
     state.flashAlpha = 0
+    state.titleLetters = {}
+    embers.list = {}
     -- SYNC (feedback): mata qualquer SFX de boot (raio/rumble/impacto) ANTES do
     -- menu + música entrarem — o barulho de raio vazava pro menu. stopGroup só
     -- corta o grupo "sfx"; a música (grupo "music") não é afetada.
