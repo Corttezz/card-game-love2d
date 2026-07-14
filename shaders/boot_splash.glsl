@@ -45,8 +45,12 @@ vec4 effect(vec4 colour, Image texture, vec2 texture_coords, vec2 screen_coords)
         sv -= cos(sv.x + sv.y) - sin(sv.x * 0.63 - sv.y);
     }
 
+    // Crescimento de densidade CAPADO em 2.0 (o original cresce até 10 rumo ao
+    // flash; aqui a timeline é longa — sem o cap, aos ~7s a energia virava um
+    // borrão dourado que engolia a câmara. Validado por screenshot: com 2.0 a
+    // energia estabiliza como fumaça arcana em volta do sigilo).
     number smoke = min(2., max(-2., 1.5 + length(sv) * 0.11
-        - 0.16 * (min(10., time * 1.1 - 3.))));
+        - 0.16 * (min(2.0, time * 1.1 - 3.))));
     if (smoke < 0.2) smoke = (smoke - 0.2) * 0.6 + 0.2;
 
     number c1p = max(0., 1. - 2. * abs(1. - smoke));
