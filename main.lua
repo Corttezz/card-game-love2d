@@ -424,6 +424,11 @@ function love.load(loveArgs)
 
     -- Captura 3 screenshots da animação death (early/mid/late).
     --   love . screenshot_death
+    if loveArgs and loveArgs[1] == "screenshot_bootfx" then
+        require("tools.screenshot_bootfx").run()
+        return
+    end
+
     if loveArgs and loveArgs[1] == "screenshot_death" then
         require("tools.screenshot_death").run()
         return
@@ -816,6 +821,8 @@ function love.load(loveArgs)
         audioSystem:loadSound("bootTvPowerOn",  "audio/sfx/boot-tv-power-on.mp3", 0.70)
         audioSystem:loadSound("bootCardWhoosh", "audio/sfx/boot-card-whoosh.mp3", 0.60)
         audioSystem:loadSound("bootImpact",     "audio/sfx/boot-impact.mp3",      0.75)
+        audioSystem:loadSound("bootElectric",   "audio/sfx/boot-electric.mp3",    0.55)
+        audioSystem:loadSound("bootVortex",     "audio/sfx/boot-vortex.mp3",      0.60)
     end
     
     -- Inicializa o menu

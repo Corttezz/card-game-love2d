@@ -68,3 +68,13 @@ Pedido do dono: "deixar a entrada muito mais completa, boa impressão logo de ca
 - `bootImpact` — impacto grave no flash (t=2.70s) + `_G.triggerShake(6, 0.35)` (micro screen-shake, punch Balatro). O `comboTrigger` antigo em 2.85 foi removido. Os `cardDraw` por carta caíram pra volume 0.42 (o whoosh dá o corpo).
 
 Registro em `main.lua` (`loadSound` do bloco boot). Chave ElevenLabs na auto-memória do Claude (`elevenlabs-api-key`); PixelLab via MCP (`pixellab_mcp`).
+
+## Entrada v3 — vórtice procedural + base estática (Jul/2026)
+
+Feedback do dono sobre a v2: o loop PixelLab "piscava/quebrava" (cada frame é redesenhado pela IA → shimmer) e o fundo não refletia as cartas indo pro centro. Redesenho:
+
+- **Base ESTÁTICA**: `BootScene.drawBootAnimBG` agora usa SÓ `frame_00` (idx fixo = 1) — zero flicker. Os 10 frames extras foram removidos (`meta.frames = 1`). A vida vem toda do BootFX.
+- **`src/ui/BootFX.lua`** — vórtice 100% procedural (código), dirigido por `intensity` 0..1: buraco escuro abrindo no centro + aro incandescente, **rachaduras** radiais espalhando pela pedra, **eletricidade** (raios jagged azul-elétrico + glow), **brasas sugadas** em espiral pro centro, glow/bloom dourado. RNG cosmético = `love.math.random`. Additivo pro glow/energia; alpha pro buraco/rachaduras. `reset/update(dt,intensity)/draw(cx,cy,baseRadius,intensity)`.
+- **Timeline mais longa (~4.25s)** e sincronizada em `startSplashSequence`: 0.85 pedra racha (`bootVortex`, vortex→0.40) → 1.10 carta central SUGADA (dissolve+encolhe pro centro) → 1.30 `bootElectric` (vortex→0.72) → 1.40+ cascade de **22** cartas (stagger 0.07) voando pra DENTRO do buraco → 2.10 título → 3.00 vortex→1.0 (`bootElectric`) → 3.65 flash + `bootImpact` + shake 10 + buraco IMPLODE (vortex→0) → 4.25 menu. BootFX desenhado ATRÁS das cartas em `drawSplash`.
+- **SFX v3** (ElevenLabs, `audio/sfx/boot-{electric,vortex}.mp3`, `scratchpad/gen_boot_sfx2.py`): `bootElectric` (crackle de alta-tensão), `bootVortex` (rumble/sucção do portal). Registrados em main.lua.
+- **Validar o look**: `love . screenshot_bootfx` (só com o jogo FECHADO) → 3 PNGs (intensity 0.4/0.7/1.0) no save dir `%APPDATA%/LOVE/card-game/`.

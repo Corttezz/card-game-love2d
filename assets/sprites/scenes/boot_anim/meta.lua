@@ -1,2 +1,5 @@
--- gerado por dl_boot_anim.py (PixelLab). fps do loop ambiente.
-return { fps = 9, frames = 11 }
+-- Base ESTÁTICA da entrada (frame_00 = câmara ritual PixelLab 256×192).
+-- v3 (Jul/2026): o loop de 11 frames "piscava" (shimmer do PixelLab v3), então
+-- ficou UM frame estável; a vida vem do BootFX (vórtice procedural em código).
+-- fps só existiria caso se volte a um loop de frames.
+return { fps = 9, frames = 1 }

@@ -26,6 +26,7 @@ local FlashShader     = require("src.ui.FlashShader")
 local ParticlesManager = require("engine.ParticlesManager")
 local CardBack        = require("src.ui.CardBack")
 local TvOsd           = require("src.ui.TvOsd")
+local BootFX          = require("src.ui.BootFX")
 
 local BootScene = {}
 
@@ -52,13 +53,16 @@ local state = {
     -- v2 "sintonizando o canal" (docs/plan/menu-crt-v2.md):
     staticAlpha     = 0,           -- chuvisco resolvendo na cena
     titleGlitchT    = 0,           -- glitch de sinal RGB no título
+
+    -- v3 "vórtice": 0..1 = quanto o buraco no centro está aberto (BootFX).
+    vortex          = 0,
 }
 
 -- Tamanhos lógicos (em pixels da janela; LÖVE escala automaticamente).
 local LOADING_BAR = { w = 320, h = 18, pad = 2 }
 local CARD_SIZE   = { w = 96, h = 144 }
 local MINI_SIZE   = { w = 56, h = 84 }
-local NUM_MINI    = 16
+local NUM_MINI    = 22
 
 -- Diagonal ratio do spawn radius das mini-cartas (baseado em max(W,H)).
 -- 0.7 = bordas extremas, faz o voo parecer "vindo de longe".
@@ -103,11 +107,14 @@ local function loadBootAnim()
     end
 end
 
--- Desenha o frame atual cover-fit (preenche a tela). Retorna false se não há anim.
+-- Desenha o fundo cover-fit (preenche a tela). Retorna false se não há asset.
+-- v3 (feedback do dono): o loop de frames "piscava/quebrava" (cada frame do
+-- PixelLab é redesenhado pela IA → shimmer). Agora usa um ÚNICO frame ESTÁVEL
+-- como base (sem flicker); a vida vem do BootFX (vórtice procedural).
 local function drawBootAnimBG(alpha)
     if not bootAnim.frames or #bootAnim.frames == 0 then return false end
     local W, H = love.graphics.getDimensions()
-    local idx = (math.floor(bootAnim.t * bootAnim.fps) % #bootAnim.frames) + 1
+    local idx = 1   -- base estática (frame_00) — sem flicker
     local img = bootAnim.frames[idx]
     local iw, ih = img:getDimensions()
     local scale = math.max(W / iw, H / ih)          -- cover
@@ -159,6 +166,8 @@ end
 local function startSplashSequence()
     state.phase = "splash"
     state.splashTime = 0
+    state.vortex = 0
+    BootFX.reset()
 
     -- SINTONIA: o canal ancora — chuvisco forte resolvendo na cena.
     state.staticAlpha = 0.85
@@ -214,10 +223,23 @@ local function startSplashSequence()
     -- 0.50s: impacto sonoro.
     EM.parallel(0.50, function() Sfx.play("deckStart") end, QUEUE)
 
-    -- 1.20s: carta dissolve (dissolve 0→1 + alpha→0).
-    EM.parallel(1.20, function()
-        EM.parallelEase(state.centerCard, "dissolve", 1.0, 0.4, "smooth", QUEUE)
-        EM.parallelEase(state.centerCard, "alpha",    0.0, 0.4, "smooth", QUEUE)
+    -- 0.85s: a PEDRA racha — o vórtice começa a abrir no centro (rumble grave).
+    EM.parallel(0.85, function()
+        Sfx.play("bootVortex")
+        EM.parallelEase(state, "vortex", 0.40, 0.85, "smooth", QUEUE)
+    end, QUEUE)
+
+    -- 1.10s: a carta central é SUGADA pro buraco (dissolve + encolhe pro centro).
+    EM.parallel(1.10, function()
+        EM.parallelEase(state.centerCard, "dissolve", 1.0, 0.4, "smooth",  QUEUE)
+        EM.parallelEase(state.centerCard, "alpha",    0.0, 0.4, "smooth",  QUEUE)
+        EM.parallelEase(state.centerCard, "scale",    0.1, 0.4, "ease_in", QUEUE)
+    end, QUEUE)
+
+    -- 1.30s: ELETRICIDADE crackla e o buraco cresce mais.
+    EM.parallel(1.30, function()
+        Sfx.play("bootElectric")
+        EM.parallelEase(state, "vortex", 0.72, 1.2, "smooth", QUEUE)
     end, QUEUE)
 
     -- 1.40s+: cascade de 16 mini-cartas, staggered 0.06s = 0.96s spawn window.
@@ -236,7 +258,7 @@ local function startSplashSequence()
     EM.parallel(1.35, function() Sfx.play("bootCardWhoosh") end, QUEUE)
 
     for i = 1, NUM_MINI do
-        local delay = 1.40 + (i - 1) * 0.06
+        local delay = 1.40 + (i - 1) * 0.07
         EM.parallel(delay, function()
             local W, H = love.graphics.getWidth(), love.graphics.getHeight()
             local angle = math.random() * math.pi * 2
@@ -272,29 +294,37 @@ local function startSplashSequence()
         end, QUEUE)
     end
 
-    -- 1.60s: título do jogo materializa sob a carta central — com GLITCH
+    -- 2.10s: título do jogo materializa sob a carta central — com GLITCH
     -- de sinal (2 cópias RGB deslocadas por ~0.15s, depois assenta).
-    EM.parallel(1.60, function()
+    EM.parallel(2.10, function()
         EM.parallelEase(state, "titleAlpha", 1.0, 0.45, "smooth",   QUEUE)
         EM.parallelEase(state, "titleScale", 1.0, 0.45, "back_out", QUEUE)
         state.titleGlitchT = 0.15
     end, QUEUE)
 
-    -- 2.70s: flash branco fullscreen + IMPACTO grave + micro screen-shake
-    -- (o auge da cascade — "selo mágico assentando"). Punch estilo Balatro.
-    EM.parallel(2.70, function()
-        if FlashShader and FlashShader.trigger then
-            FlashShader.trigger(1.0, 0.4)
-        else
-            state.flashAlpha = 1.0
-            EM.parallelEase(state, "flashAlpha", 0, 0.4, "smooth", QUEUE)
-        end
-        Sfx.play("bootImpact")
-        if _G.triggerShake then _G.triggerShake(6, 0.35) end
+    -- 3.00s: o buraco escancara (vórtice no máximo, eletricidade no talo).
+    EM.parallel(3.00, function()
+        Sfx.play("bootElectric")
+        EM.parallelEase(state, "vortex", 1.0, 0.6, "smooth", QUEUE)
     end, QUEUE)
 
-    -- 3.10s: transição pro menu (depois do flash desbotar).
-    EM.parallel(3.10, function() BootScene._finish() end, QUEUE)
+    -- 3.65s: PEAK — flash + impacto grave + screen-shake forte (o "selo
+    -- mágico assentando"). Punch estilo Balatro.
+    EM.parallel(3.65, function()
+        if FlashShader and FlashShader.trigger then
+            FlashShader.trigger(1.0, 0.45)
+        else
+            state.flashAlpha = 1.0
+            EM.parallelEase(state, "flashAlpha", 0, 0.45, "smooth", QUEUE)
+        end
+        Sfx.play("bootImpact")
+        if _G.triggerShake then _G.triggerShake(10, 0.4) end
+        -- o buraco IMPLODE sob o flash (colapsa rápido pro nada)
+        EM.parallelEase(state, "vortex", 0.0, 0.4, "ease_in", QUEUE)
+    end, QUEUE)
+
+    -- 4.25s: transição pro menu (depois do flash desbotar).
+    EM.parallel(4.25, function() BootScene._finish() end, QUEUE)
 end
 
 -- ============== Update / Draw ==============
@@ -314,6 +344,7 @@ function BootScene.update(dt)
         end
     elseif state.phase == "splash" then
         state.splashTime = state.splashTime + dt
+        BootFX.update(dt, state.vortex)   -- vórtice procedural (buraco/eletricidade/brasas)
 
         -- Atualiza mini-cartas: tumble rotation + scale curve não-monotônica
         -- (pop-in → hold → collapse). Coords absolutas são derivadas no draw
@@ -422,6 +453,10 @@ end
 local function drawSplash()
     local W, H = love.graphics.getWidth(), love.graphics.getHeight()
     local cx, cy = liveCenter()
+
+    -- VÓRTICE procedural ATRÁS das cartas (elas voam pra DENTRO do buraco).
+    -- baseRadius relativo à tela; state.vortex 0..1 dirige a abertura.
+    BootFX.draw(cx, cy, math.min(W, H) * 0.34, state.vortex)
 
     -- Mini-cartas primeiro (z-order: ficam atrás da central). Coords vêm
     -- de polar (angle, distFrom) → screen — cx/cy são live, então resize
