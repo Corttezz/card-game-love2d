@@ -64,6 +64,60 @@ local NUM_MINI    = 16
 -- 0.7 = bordas extremas, faz o voo parecer "vindo de longe".
 local SPAWN_RADIUS_RATIO = 0.7
 
+-- ============== Fundo animado (PixelLab, Jul/2026) ==============
+-- Câmara ritual 256×192 animada em loop (chamas/sigilo/brasas). Frames em
+-- assets/sprites/scenes/boot_anim/*.png (ordem alfabética) + meta.lua opcional
+-- ({ fps = N }). 256×192 → 4× exato pra 1024×768 (pixels nítidos). Fallback:
+-- splash.png estático (SceneBackground) se a pasta não existir.
+local bootAnim = {
+    dir = "assets/sprites/scenes/boot_anim",
+    frames = nil, fps = 9, t = 0, loaded = false,
+}
+
+local function loadBootAnim()
+    if bootAnim.loaded then return end
+    bootAnim.loaded = true
+    if not love.filesystem.getInfo(bootAnim.dir) then return end
+    local metaPath = bootAnim.dir .. "/meta.lua"
+    if love.filesystem.getInfo(metaPath) then
+        local ok, chunk = pcall(love.filesystem.load, metaPath)
+        if ok and chunk then
+            local okm, m = pcall(chunk)
+            if okm and type(m) == "table" and m.fps then bootAnim.fps = m.fps end
+        end
+    end
+    local frames = {}
+    for _, f in ipairs(love.filesystem.getDirectoryItems(bootAnim.dir)) do
+        if f:match("%.png$") then
+            local ok, img = pcall(love.graphics.newImage, bootAnim.dir .. "/" .. f)
+            if ok and img then
+                img:setFilter("nearest", "nearest")   -- pixel art nítido no upscale
+                frames[#frames + 1] = { name = f, img = img }
+            end
+        end
+    end
+    table.sort(frames, function(a, b) return a.name < b.name end)
+    if #frames > 0 then
+        bootAnim.frames = {}
+        for _, e in ipairs(frames) do bootAnim.frames[#bootAnim.frames + 1] = e.img end
+    end
+end
+
+-- Desenha o frame atual cover-fit (preenche a tela). Retorna false se não há anim.
+local function drawBootAnimBG(alpha)
+    if not bootAnim.frames or #bootAnim.frames == 0 then return false end
+    local W, H = love.graphics.getDimensions()
+    local idx = (math.floor(bootAnim.t * bootAnim.fps) % #bootAnim.frames) + 1
+    local img = bootAnim.frames[idx]
+    local iw, ih = img:getDimensions()
+    local scale = math.max(W / iw, H / ih)          -- cover
+    local dw, dh = iw * scale, ih * scale
+    love.graphics.setColor(1, 1, 1, alpha or 1)
+    love.graphics.draw(img, math.floor((W - dw) / 2), math.floor((H - dh) / 2), 0, scale, scale)
+    love.graphics.setColor(1, 1, 1, 1)
+    return true
+end
+
 -- ============== Init ==============
 
 function BootScene.init(callbacks)
@@ -81,6 +135,7 @@ function BootScene.init(callbacks)
     state.staticAlpha     = 0
     state.titleGlitchT    = 0
     state.onComplete      = callbacks.onComplete
+    bootAnim.t            = 0
 
     -- Background fade-in (não-bloqueante para não travar o resto).
     if _G.EventManager then
@@ -88,6 +143,10 @@ function BootScene.init(callbacks)
     else
         state.bgAlpha = 1
     end
+
+    -- SOM: a TV LIGANDO — casa com o warm-up do CRTShader.powerOn(1.8) disparado
+    -- em main.lua no mesmo instante (ponto → linha → abre → assenta).
+    Sfx.play("bootTvPowerOn")
 end
 
 -- ============== Splash sequence ==============
@@ -172,6 +231,10 @@ local function startSplashSequence()
     --     colapsa 1→0 nos últimos 30% (sucção pro centro). Computado em update.
     --   - Lifespan ligeiramente variado por carta (0.55..0.65) — não pousam todas
     --     no mesmo frame.
+    -- 1.35s: WHOOSH grave da massa de cartas convergindo — dá corpo sonoro
+    -- que os cardDraw individuais (pitched) sozinhos não dão.
+    EM.parallel(1.35, function() Sfx.play("bootCardWhoosh") end, QUEUE)
+
     for i = 1, NUM_MINI do
         local delay = 1.40 + (i - 1) * 0.06
         EM.parallel(delay, function()
@@ -205,7 +268,7 @@ local function startSplashSequence()
             -- pop in → hold → collapse). Não dá pra fazer com ease único.
 
             local pitch = 0.85 + i * 0.022
-            Sfx.play("cardDraw", { pitch = pitch, volume = 0.6 })
+            Sfx.play("cardDraw", { pitch = pitch, volume = 0.42 })
         end, QUEUE)
     end
 
@@ -217,7 +280,8 @@ local function startSplashSequence()
         state.titleGlitchT = 0.15
     end, QUEUE)
 
-    -- 2.70s: flash branco fullscreen (cobre o auge da cascade).
+    -- 2.70s: flash branco fullscreen + IMPACTO grave + micro screen-shake
+    -- (o auge da cascade — "selo mágico assentando"). Punch estilo Balatro.
     EM.parallel(2.70, function()
         if FlashShader and FlashShader.trigger then
             FlashShader.trigger(1.0, 0.4)
@@ -225,10 +289,9 @@ local function startSplashSequence()
             state.flashAlpha = 1.0
             EM.parallelEase(state, "flashAlpha", 0, 0.4, "smooth", QUEUE)
         end
+        Sfx.play("bootImpact")
+        if _G.triggerShake then _G.triggerShake(6, 0.35) end
     end, QUEUE)
-
-    -- 2.85s: SFX final.
-    EM.parallel(2.85, function() Sfx.play("comboTrigger") end, QUEUE)
 
     -- 3.10s: transição pro menu (depois do flash desbotar).
     EM.parallel(3.10, function() BootScene._finish() end, QUEUE)
@@ -238,6 +301,8 @@ end
 
 function BootScene.update(dt)
     if state.phase == "done" then return end
+
+    bootAnim.t = bootAnim.t + dt   -- fundo animado corre em todas as fases
 
     if state.phase == "loading" then
         state.loadingTime = state.loadingTime + dt
@@ -289,11 +354,16 @@ end
 
 local function drawBackground()
     local W, H = love.graphics.getWidth(), love.graphics.getHeight()
-    local hadScene = SceneBackground.draw("splash", W, H, 0.55)
+    loadBootAnim()
+    -- 1º: fundo ANIMADO (câmara ritual PixelLab). 0.9 pra dar contraste ao
+    -- primeiro plano (cartas/título) sem apagar a cena.
+    local hadScene = drawBootAnimBG(0.9)
+    -- Fallback: splash estático → menu → ink.
     if not hadScene then
-        -- Fallback: usa o PNG do menu com filtro mais escuro.
+        hadScene = SceneBackground.draw("splash", W, H, 0.55)
+    end
+    if not hadScene then
         if not SceneBackground.draw("menu", W, H, 0.65) then
-            -- Fallback final: ink fill.
             love.graphics.setColor(Palette.INK[1], Palette.INK[2], Palette.INK[3], 1)
             love.graphics.rectangle("fill", 0, 0, W, H)
         end

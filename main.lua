@@ -810,6 +810,12 @@ function love.load(loveArgs)
         -- v10: cerimônia de entrada no castelo (boss) — portão por material
         audioSystem:loadSound("castleGateOpen",  "audio/sfx/castle-gate-open.mp3",  0.62)
         audioSystem:loadSound("castleGateMagic", "audio/sfx/castle-gate-magic.mp3", 0.58)
+
+        -- Entrada do jogo (BootScene) — SFX próprios (ElevenLabs, Jul/2026):
+        -- power-on da TV, whoosh da convergência das cartas, impacto do flash.
+        audioSystem:loadSound("bootTvPowerOn",  "audio/sfx/boot-tv-power-on.mp3", 0.70)
+        audioSystem:loadSound("bootCardWhoosh", "audio/sfx/boot-card-whoosh.mp3", 0.60)
+        audioSystem:loadSound("bootImpact",     "audio/sfx/boot-impact.mp3",      0.75)
     end
     
     -- Inicializa o menu

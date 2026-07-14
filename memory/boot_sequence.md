@@ -53,3 +53,18 @@ Substitui o flow antigo (boot → menu instantâneo) por uma sequência inspirad
 **Como ajustar timings do splash**: edite os `EventManager.after(...)` em `BootScene.lua:startSplashSequence`. Cada evento é independente; reordenar é seguro.
 
 **Performance**: BootScene não cria objetos por frame — só atualiza state via EventManager.ease. Custo médio: ~0.1ms/frame em laptops modernos. Sem hot path issues.
+
+---
+
+## Entrada v2 — fundo animado + sonoridade (Jul/2026)
+
+Pedido do dono: "deixar a entrada muito mais completa, boa impressão logo de cara". Escolhas: **fundo 100% animado via PixelLab** + **3 SFX novos via ElevenLabs**.
+
+**Fundo animado (PixelLab)**: câmara ritual 256×192 em loop (chamas tremeluzem, sigilo dourado pulsa, brasas sobem, flicker de luz). 11 frames em `assets/sprites/scenes/boot_anim/frame_NN.png` + `meta.lua` (`{ fps = 9 }`). 256×192 → **4× exato** pra 1024×768 (pixels nítidos, `setFilter("nearest")`) — respeita o teto de 256px da animação v3 do PixelLab. `BootScene.drawBootAnimBG` faz cover-fit; `loadBootAnim` carrega lazy no 1º draw. Fallback: `splash.png` estático → menu → ink. Desenhado a alpha 0.9 (contraste pro primeiro plano). Regenerar: `create_map_object` 256×192 side + `animate_object` v3 (frame_count máx **10** nesse tamanho, gera 11 com keep_first_frame); baixar via `scratchpad/dl_boot_anim.py` (token do ~/.claude.json, URLs backblaze i=0..10).
+
+**SFX novos (ElevenLabs, `audio/sfx/boot-*.mp3`, gerados por `scratchpad/gen_boot_sfx.py`)**:
+- `bootTvPowerOn` — TV ligando (degauss thunk + zunido de alta-tensão + hum). Tocado em `BootScene.init`, casa com `CRTShader.powerOn(1.8)` de main.lua.
+- `bootCardWhoosh` — whoosh grave da convergência das cartas (t=1.35s, antes da cascade).
+- `bootImpact` — impacto grave no flash (t=2.70s) + `_G.triggerShake(6, 0.35)` (micro screen-shake, punch Balatro). O `comboTrigger` antigo em 2.85 foi removido. Os `cardDraw` por carta caíram pra volume 0.42 (o whoosh dá o corpo).
+
+Registro em `main.lua` (`loadSound` do bloco boot). Chave ElevenLabs na auto-memória do Claude (`elevenlabs-api-key`); PixelLab via MCP (`pixellab_mcp`).
