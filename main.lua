@@ -276,6 +276,11 @@ showMapSelection = function()
         currentState = "mapSelection"
     end
 end
+-- Hook global pro callback de Continuar (rotear pro mapa quando o save
+-- foi na encruzilhada). Referenciar a local direto no callback estourava
+-- o limite de 60 upvalues do love.load (LuaJIT) — mesmo padrão do
+-- _G.openCardPicker.
+_G.__showMapSelection = function() showMapSelection() end
 
 -- Continua o jogo após escolher/pular recompensa.
 -- Vitoria agora e disparada por Game:checkVictory (ato 3 boss). Para decidir
@@ -857,6 +862,15 @@ function love.load(loveArgs)
         end
         gameUI:show()
         menu:hide()
+        -- Save feito NA ENCRUZILHADA (nós pendentes, nada escolhido):
+        -- retoma ESCOLHENDO o caminho, não numa batalha — sem isto o
+        -- resumeRun soltava um inimigo "do nada" (bug do dono, Jul/2026).
+        -- showMapSelection reusa os pendentes salvos (guard anti-advance);
+        -- o inimigo provisório do resumeRun é substituído pelo nextPhase
+        -- do nó que o jogador escolher. (via hook _G — limite de upvalues)
+        if game.runManager:getPendingNodes() then
+            _G.__showMapSelection()
+        end
         if smokeSystem then
             local act = math.min(3, (game.runManager.currentRun.actNumber or 1))
             SmokeConfig.applyToSystem(smokeSystem, "act" .. act)

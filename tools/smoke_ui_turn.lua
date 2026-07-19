@@ -177,6 +177,22 @@ function M.run()
         WorldRoad._timeOfDay > 0.62 and WorldRoad._timeOfDay < 1)
     WorldRoad.resetRun()   -- não vaza estado pro resto da suíte
 
+    -- ===== 6. SAVE NA ENCRUZILHADA: os nós pendentes sobrevivem ao
+    -- save/load (bug: 'salvei escolhendo caminho, voltei e apareceu um
+    -- inimigo do nada' — o Continuar roteia pro mapa SE há pendentes) =====
+    local gmA = Game:new()
+    gmA:startNewRun("warrior")
+    gmA.runManager:generateNextNodes(3)
+    check("encruzilhada: nós pendentes gerados",
+        gmA.runManager:getPendingNodes() ~= nil)
+    gmA.runManager:saveRun()
+    local gmB = Game:new()
+    check("encruzilhada: save carrega", gmB.runManager:loadRun() == true)
+    local pend = gmB.runManager:getPendingNodes()
+    check("encruzilhada: pendentes SOBREVIVEM ao load (roteia pro mapa)",
+        pend ~= nil and #pend >= 2)
+    gmB.runManager:deleteSave()
+
     print(string.format("\n  TOTAL: %d pass / %d fail", pass, fail))
     return fail == 0
 end
