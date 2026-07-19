@@ -107,6 +107,46 @@ function M.run()
         game.turn == "player")
     check("mão nova foi comprada", #game.hand > 0)
 
+    -- ===== 4. ABANDONO: a cena REBINDA pro game novo (bug Jul/2026:
+    -- GameplayScene capturava deps.game e seguia na run abandonada —
+    -- "abandonei, escolhi mago e caí na run antiga, tudo bugado") =====
+    local GameplayScene = require("src.scenes.GameplayScene")
+    GameplayScene.init({
+        game = game,                     -- game A (a run "abandonada")
+        playButton = playButton,
+        endTurnButton = endTurnButton,
+        topBar = { update = function() end },
+        gameUI = { update = function() end, show = function() end,
+                   hide = function() end },
+    })
+    check("cena começa vinculada ao game A", GameplayScene.getGame() == game)
+
+    -- estado sujo per-run que precisa morrer no rebind
+    GameplayScene._endTurnCallout = true
+
+    -- espelho do returnToMenu + startGame(nova classe)
+    _G.EventManager.clear()
+    local gameB = Game:new()
+    GameplayScene.setGame(gameB)
+    gameB:startNewRun("mage")
+    gameB:startGame()
+    _G.game = gameB
+
+    check("REBIND: cena aponta pro game NOVO", GameplayScene.getGame() == gameB)
+    check("REBIND: callout de turno zerado",
+        GameplayScene._endTurnCallout == false)
+    check("run nova é do MAGO (não a abandonada)",
+        gameB.runManager and gameB.runManager.currentRun
+        and gameB.runManager.currentRun.classId == "mage")
+    check("run nova: turno do jogador, mão comprada",
+        gameB.turn == "player" and #gameB.hand > 0)
+    -- carta da run nova é jogável (o sintoma era "nenhuma carta joga")
+    local playable = false
+    for _, c in ipairs(gameB.hand) do
+        if (c.cost or 0) <= gameB.player.mana then playable = true break end
+    end
+    check("run nova: existe carta pagável na mão", playable)
+
     print(string.format("\n  TOTAL: %d pass / %d fail", pass, fail))
     return fail == 0
 end

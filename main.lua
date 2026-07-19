@@ -126,6 +126,11 @@ local function returnToMenu()
     -- Re-vincula a TopBar ao game NOVO (antes ficava apontando pro morto:
     -- ouro/deck congelavam e o clique da engrenagem caía no aviso).
     if topBar then topBar:setGame(game) end
+    -- Re-vincula a CENA DE GAMEPLAY ao game novo (bug Jul/2026: a cena
+    -- capturava deps.game e seguia desenhando a run ABANDONADA — "abandonei,
+    -- escolhi mago e caí na run antiga com tudo bugado"). Também zera o
+    -- estado de turno do módulo (turnStage/bossEntered per-run).
+    GameplayScene.setGame(game)
     gameUI:hide()
     menu:show()
     if menu.enterWithIntro then menu:enterWithIntro() end
