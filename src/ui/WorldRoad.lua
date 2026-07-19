@@ -4119,6 +4119,25 @@ function WorldRoad.resetRun()
     WorldRoad._clouds = {}
 end
 
+-- RESTAURA o progresso do mundo ao CONTINUAR uma run salva (pedido do
+-- dono, Jul/2026: "o mundo precisa continuar no exato mesmo local — o
+-- progresso, a proximidade com o castelo, cenário"). O progresso do
+-- mundo é emergente (cada troca de andar viaja TRAVEL_DISTANCE), então
+-- reconstruímos: andar N ⇒ N-1 viagens desde a base do trecho.
+-- IMPORTANTE: seta _biomeIndex DIRETO (sem setBiome) — setBiome reancora
+-- _segBase em _camZ, o que zeraria a caminhada e jogaria o castelo pra
+-- longe de novo.
+function WorldRoad.restoreProgress(actNumber, floorInAct)
+    WorldRoad.resetRun()
+    WorldRoad._biomeIndex = math.max(1, actNumber or 1)
+    WorldRoad._segBase = 0
+    WorldRoad._camZ = math.max(0, (floorInAct or 1) - 1) * WorldRoad.TRAVEL_DISTANCE
+    -- entardecer coerente com o andar (mesma curva do GameplayScene F6.1)
+    local prog = math.min(1, math.max(0, ((floorInAct or 1) - 1) / 7)) ^ 1.35
+    WorldRoad._timeOfDay = 0.62 + 0.38 * prog
+    WorldRoad._timeOfDayTarget = WorldRoad._timeOfDay
+end
+
 function WorldRoad.clearCache()
     WorldRoad._spriteCache = {}
     WorldRoad._quadCache = {}

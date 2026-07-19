@@ -162,6 +162,21 @@ function M.run()
     end
     check("run nova: existe carta pagável na mão", playable)
 
+    -- ===== 5. CONTINUAR: o mundo retoma no exato lugar do save =====
+    -- (pedido do dono: progresso/proximidade do castelo/cenário — o
+    -- progresso é emergente, restoreProgress reconstrói por ato+andar)
+    WorldRoad.restoreProgress(2, 5)
+    check("CONTINUAR: bioma do ato 2 restaurado", WorldRoad._biomeIndex == 2)
+    check("CONTINUAR: caminhada do andar 5 restaurada (4 viagens)",
+        WorldRoad._camZ == 4 * WorldRoad.TRAVEL_DISTANCE)
+    check("CONTINUAR: base do trecho no zero (castelo na distância certa)",
+        WorldRoad._segBase == 0)
+    check("CONTINUAR: sem viagem/entrada pendente",
+        not WorldRoad.isTraveling() and not WorldRoad.isEntering())
+    check("CONTINUAR: entardecer coerente com o andar (não resetou pro dia 1)",
+        WorldRoad._timeOfDay > 0.62 and WorldRoad._timeOfDay < 1)
+    WorldRoad.resetRun()   -- não vaza estado pro resto da suíte
+
     print(string.format("\n  TOTAL: %d pass / %d fail", pass, fail))
     return fail == 0
 end

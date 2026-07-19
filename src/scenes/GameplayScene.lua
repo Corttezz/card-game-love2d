@@ -87,6 +87,9 @@ function GameplayScene.resetTurnState()
     turnStageT = 0
     bossEntered = false
     GameplayScene._endTurnCallout = false
+    -- Sem isto, o 1º frame da run NOVA compararia com o andar da run
+    -- MORTA e dispararia uma viagem/chegada espúria na estrada.
+    lastFloorKey = nil
 end
 
 -- Introspecção pra testes de regressão (smoke_ui_turn).

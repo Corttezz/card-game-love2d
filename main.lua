@@ -847,6 +847,14 @@ function love.load(loveArgs)
         currentState = "playing"
         if FlashShader and FlashShader.trigger then FlashShader.trigger(0.5, 0.4) end
         game:resumeRun()
+        -- O MUNDO retoma no exato lugar do save: bioma do ato, câmera na
+        -- distância caminhada (andar N = N-1 viagens), proximidade do
+        -- castelo e entardecer reconstruídos (pedido do dono, Jul/2026).
+        do
+            local run = game.runManager.currentRun
+            require("src.ui.WorldRoad").restoreProgress(
+                run and run.actNumber or 1, run and run.floorInAct or 1)
+        end
         gameUI:show()
         menu:hide()
         if smokeSystem then
