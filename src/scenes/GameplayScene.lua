@@ -74,6 +74,11 @@ function GameplayScene.setSmokeSystem(s) smokeSystem = s end
 function GameplayScene.setGame(g)
     game = g
     GameplayScene.resetTurnState()
+    -- O CENÁRIO também é estado de módulo e sobrevivia ao abandono:
+    -- o mundo voltava com bioma/câmera/viagem da run morta, e um attackFx
+    -- pendente do inimigo antigo podia disparar o apex dentro da run nova.
+    WorldRoad.resetRun()
+    EnemyRenderer.resetRun()
 end
 
 -- Estado de turno per-run do módulo (usado por setGame e testável isolado).

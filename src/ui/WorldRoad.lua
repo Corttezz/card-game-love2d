@@ -4092,6 +4092,33 @@ function WorldRoad.drawOverlays(x, y, w, h)
     WorldRoad.drawForkOverlay(x, y, w, h)
 end
 
+-- RESET DE RUN (bug "abandonei e caí na run antiga", Jul/2026): o mundo
+-- é estado de módulo e sobrevivia ao abandono — a run nova começava com
+-- o bioma/câmera/viagem/castelo da run morta. Chamado pelo rebind da
+-- GameplayScene (setGame). Volta o mundo pro estado de INÍCIO de run:
+-- bioma 1, câmera no zero, sem viagem/entrada/fork/encounter pendentes.
+function WorldRoad.resetRun()
+    WorldRoad._camZ = 0
+    WorldRoad._segBase = 0
+    WorldRoad._segBasePrev = nil
+    WorldRoad._biomeIndex = 1
+    WorldRoad._prevBiomeIndex = nil
+    WorldRoad._blend = nil
+    WorldRoad._travel = nil
+    WorldRoad._entry = nil
+    WorldRoad._encounter = nil
+    WorldRoad._fork = nil
+    WorldRoad._landmark = nil
+    WorldRoad._enemyDraw = nil
+    WorldRoad._enemyBaseY = nil
+    WorldRoad._nextLumZ = nil
+    WorldRoad._timeOfDay = 1
+    WorldRoad._timeOfDayTarget = 1
+    -- props/nuvens regeneram pro bioma 1 no próximo draw
+    WorldRoad._props = {}
+    WorldRoad._clouds = {}
+end
+
 function WorldRoad.clearCache()
     WorldRoad._spriteCache = {}
     WorldRoad._quadCache = {}

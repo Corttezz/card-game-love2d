@@ -123,6 +123,14 @@ function M.run()
 
     -- estado sujo per-run que precisa morrer no rebind
     GameplayScene._endTurnCallout = true
+    -- CENÁRIO sujo da run "abandonada": mundo avançado no bioma 3 com
+    -- viagem no ar + attackFx do inimigo com apex PENDENTE (o callback
+    -- do game morto não pode disparar na run nova)
+    local WorldRoad = require("src.ui.WorldRoad")
+    WorldRoad.setBiome(3)
+    WorldRoad.travel({ duration = 5 })
+    local apexLeaked = false
+    EnemyRenderer.triggerAttack("attack", function() apexLeaked = true end)
 
     -- espelho do returnToMenu + startGame(nova classe)
     _G.EventManager.clear()
@@ -135,6 +143,13 @@ function M.run()
     check("REBIND: cena aponta pro game NOVO", GameplayScene.getGame() == gameB)
     check("REBIND: callout de turno zerado",
         GameplayScene._endTurnCallout == false)
+    check("REBIND: mundo voltou pro bioma 1 sem viagem",
+        WorldRoad._biomeIndex == 1 and not WorldRoad.isTraveling())
+    -- pump: se o attackFx da run morta tivesse sobrevivido, o apex
+    -- dispararia aqui dentro da run nova
+    pump(1.0)
+    check("REBIND: apex do inimigo ABANDONADO não vazou pra run nova",
+        apexLeaked == false)
     check("run nova é do MAGO (não a abandonada)",
         gameB.runManager and gameB.runManager.currentRun
         and gameB.runManager.currentRun.classId == "mage")
