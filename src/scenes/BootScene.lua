@@ -78,11 +78,13 @@ local bg = {
     chamber = nil, loaded = false, glowShader = nil,
 }
 
--- ÂNCORA NA ARTE (pixels da imagem 256×192). A arte é a PAREDE-SELO (v9,
--- PixelLab): selo entalhado centrado em (128, 96) com raio ≈ 80px — medido
--- na imagem instalada. É o destino das cartas e o que "carrega" de energia.
-local SIGIL_IX, SIGIL_IY = 128, 96
-local SEAL_RADIUS_IMG = 80   -- raio do disco em px da imagem
+-- ÂNCORA NA ARTE (pixels da imagem 256×192). A arte é a NOITE DO GRIMOIRE
+-- (v10, PixelLab): colinas + silhueta do castelo + LUA dourada. A lua é o
+-- coração: destino das cartas e o que "carrega" (halo respira/pulsa).
+-- Centro medido por centroide dos pixels claros: (173, 46); raio útil ~34
+-- (disco + halo).
+local SIGIL_IX, SIGIL_IY = 173, 46
+local SEAL_RADIUS_IMG = 34   -- raio do halo em px da imagem
 
 -- Converte pixel da arte → tela, usando o transform do último draw (cover).
 -- A âncora fica COLADA na arte em qualquer resolução/aspect.
@@ -138,9 +140,13 @@ local function drawClouds()
     local s = bg._s
     local layerW = bg.clouds:getWidth() * s
     local W = love.graphics.getWidth()
+    -- Offsets medidos da arte: conteúdo das nuvens vive em y 23..103 do canvas
+    -- 256×128 → iy -16/-2 coloca as duas camadas na faixa do CÉU (as nuvens
+    -- cruzam a lua de vez em quando — clássico de noite; borda inferior da
+    -- camada 2 encosta de leve nos cumes a alpha baixo, lê como névoa).
     for _, L in ipairs({
-        { spd = 2.2, iy = 4,  a = 0.75, flip = false },
-        { spd = 3.8, iy = 30, a = 0.45, flip = true },
+        { spd = 2.2, iy = -16, a = 0.75, flip = false },
+        { spd = 3.8, iy = -2,  a = 0.45, flip = true },
     }) do
         local x0 = -((t * L.spd * s) % layerW)
         local y = bg._ty + L.iy * s

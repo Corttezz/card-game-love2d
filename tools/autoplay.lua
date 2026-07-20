@@ -88,7 +88,12 @@ end
 local function expectedDamage(game, card)
     local dmg = (card.attack or 0)
     if dmg <= 0 then return 0 end
-    return dmg + (game.player.strength or 0)
+    local str = game.player.strength or 0
+    -- v3: strength_scaling agora conta Forca em DOBRO (auditoria Jul/2026)
+    for _, e in ipairs(card.effects or {}) do
+        if e.type == "strength_scaling" then str = str * 2; break end
+    end
+    return dmg + str
 end
 
 local function expectedArmor(game, card)
@@ -237,6 +242,8 @@ local function chooseCards(game)
     end
 
     -- 3. SOBREVIVER: cobre o hit anunciado se ele dói (>25% do HP atual).
+    -- v3 cap-aware: Bloqueio trunca em maxArmor (30) — defender além do
+    -- min(hit, cap) é desperdício puro (o jogo agora até avisa no toast).
     if incoming > 0 and incoming >= game.player.health * 0.25 then
         local defCards = {}
         for _, c in ipairs(hand) do
@@ -249,8 +256,9 @@ local function chooseCards(game)
             return expectedArmor(game, a) / ca > expectedArmor(game, b) / cb
         end)
         local armor = game.player.armor or 0
+        local target = math.min(incoming, game.player.maxArmor or 30)
         for _, c in ipairs(defCards) do
-            if armor >= incoming then break end
+            if armor >= target then break end
             if (c.cost or 0) <= manaLeft then
                 pick(c, "defender")
                 armor = armor + expectedArmor(game, c)
@@ -272,10 +280,15 @@ local function chooseCards(game)
         pick(best, "dano")
     end
     -- 4b. mana sobrando e nada de ataque? joga defesa/efeito que couber.
+    -- v3: defesa com Bloqueio ja no cap e jogada morta — pula.
     for _, c in ipairs(hand) do
         if not picked(c) and (c.cost or 0) <= manaLeft
             and c.type ~= "joker" then
-            pick(c, "sobra")
+            local atCap = c.type == "defense"
+                and (game.player.armor or 0) >= (game.player.maxArmor or 30)
+            if not atCap then
+                pick(c, "sobra")
+            end
         end
     end
     -- 5. joker na mão: jogar cedo (valor passivo pro resto da run).
@@ -303,6 +316,14 @@ local function playBattle(game, label)
     local dmgTakenBefore = game.player.health
     local realDecisions = 0
 
+    -- v3: DETECTOR DE INTEGRIDADE DO DECK — o grito que faltou no bug do
+    -- Sobrevivente (discard_cards deletava a carta em vez de descartar).
+    -- Invariante: mao + deck + descarte + exauridas + jokers jogados = pool
+    -- inicial da batalha. Qualquer vazamento vira ANOMALIA no relatorio.
+    local jokersPlayed = 0
+    local battlePool = #game.hand + #game.deck + #game.discard
+        + #(game._exhaustedThisBattle or {})
+
     log("")
     log("### %s — inimigo %d HP (dmg %d)", label,
         game.enemy.maxHealth, game.enemy.damage)
@@ -315,51 +336,75 @@ local function playBattle(game, label)
         end
 
         local kind, value = game.enemy:getIntentPreview()
-        local picks, why = chooseCards(game)
-
-        -- "Decisão real": sobrou carta pagável NÃO jogada (houve trade-off)
-        local manaSpent = 0
-        for _, c in ipairs(picks) do manaSpent = manaSpent + (c.cost or 0) end
-        local leftoverPlayable = 0
-        for _, c in ipairs(game.hand) do
-            local inPicks = false
-            for _, p in ipairs(picks) do if p == c then inPicks = true end end
-            if not inPicks and (c.cost or 0) <= (game.player.mana - manaSpent) then
-                leftoverPlayable = leftoverPlayable + 1
-            end
-        end
-        if leftoverPlayable > 0 then realDecisions = realDecisions + 1 end
-
-        local pickNames = {}
-        for _, c in ipairs(picks) do table.insert(pickNames, c.name or c.id) end
 
         log("- T%d: HP %d/%d armor %d | mana %d | intent %s %s | mao: %s",
             turnCount, game.player.health, game.player.maxHealth,
             game.player.armor, game.player.mana,
             kind:upper(), tostring(value or ""), handSummary(game))
-        log("  → joguei [%s] (%s)", table.concat(pickNames, ", "),
-            why ~= "" and why or "passei o turno")
 
-        -- Ordem importa: debuffs (Vulnerável) ANTES dos ataques.
-        table.sort(picks, function(x, y)
-            local function rank(c)
-                for _, e in ipairs(c.effects or {}) do
-                    if e.type == "apply_debuff" then return 0 end
-                end
-                if (c.attack or 0) > 0 then return 2 end
-                return 1
-            end
-            return rank(x) < rank(y)
-        end)
-        for _, c in ipairs(picks) do game:selectCard(c) end
+        -- ===== TURNO MULTI-JOGADA (v3): joga em LEVAS ate o cerebro passar.
+        -- Elixir/draw agora RENDEM — a leva seguinte enxerga a mana e as
+        -- cartas novas (no modelo de 1 leva, carta de motor era letra morta).
         local hpBefore = game.player.health
         local enemyBefore = game.enemy.health
-        game:playSelectedCards()
+        local levas = 0
+        while levas < 4 do
+            local picks, why = chooseCards(game)
+            if #picks == 0 then break end
+            levas = levas + 1
 
-        local guard = 0
-        while game.combatAnimationSystem:isBlocking() and guard < 900 do
-            pump(game, 1 / 30)
-            guard = guard + 1
+            local pickNames = {}
+            for _, c in ipairs(picks) do table.insert(pickNames, c.name or c.id) end
+            log("  → leva %d: [%s] (%s)", levas,
+                table.concat(pickNames, ", "), why ~= "" and why or "?")
+
+            -- Ordem importa: debuffs (Vulnerável) ANTES dos ataques.
+            table.sort(picks, function(x, y)
+                local function rank(c)
+                    for _, e in ipairs(c.effects or {}) do
+                        if e.type == "apply_debuff" then return 0 end
+                    end
+                    if (c.attack or 0) > 0 then return 2 end
+                    return 1
+                end
+                return rank(x) < rank(y)
+            end)
+            for _, c in ipairs(picks) do game:selectCard(c) end
+            for _, c in ipairs(picks) do
+                if c.type == "joker" then jokersPlayed = jokersPlayed + 1 end
+            end
+            game:playSelectedCards()
+
+            local guard = 0
+            while game.combatAnimationSystem:isBlocking() and guard < 900 do
+                pump(game, 1 / 30)
+                guard = guard + 1
+            end
+            if not game.enemy:isAlive() or not game.player:isAlive() then break end
+        end
+
+        -- "Decisão real": sobrou carta pagável NÃO jogada (houve trade-off)
+        local leftoverPlayable = 0
+        for _, c in ipairs(game.hand) do
+            if (c.cost or 0) <= game.player.mana then
+                leftoverPlayable = leftoverPlayable + 1
+            end
+        end
+        if leftoverPlayable > 0 then realDecisions = realDecisions + 1 end
+
+        -- v3: integridade do deck (pos-levas, pre-turno-inimigo)
+        do
+            local nowPool = #game.hand + #game.deck + #game.discard
+                + #(game._exhaustedThisBattle or {}) + jokersPlayed
+            if nowPool ~= battlePool then
+                anomaly("cartas sumiram/apareceram na batalha: pool %d -> %d (T%d)",
+                    battlePool, nowPool, turnCount)
+                battlePool = nowPool -- re-ancora pra nao spammar todo turno
+            end
+        end
+        -- v3: metrica de Bloqueio no cap (defesa desperdicada e sintoma)
+        if (game.player.armor or 0) >= (game.player.maxArmor or 30) then
+            battleStats.armorCapHits = (battleStats.armorCapHits or 0) + 1
         end
 
         -- multi-jogada: o bot joga 1 leva e encerra o turno explicitamente
@@ -628,6 +673,30 @@ local function doShop(game)
                 bought = bought + 1
                 log("- Loja: comprei **%s** ($%d)", o.name, o.cost)
             end
+        elseif afford and o.type == "upgrade" and o.effect == "forge_card" then
+            -- v3: FORJA paga — o piloto agora usa a bigorna da loja.
+            -- Alvo: a carta de ATAQUE com mais peso no deck (mais copias
+            -- x2 se ataque), igual a heuristica da fogueira.
+            local counts = {}
+            for _, id in ipairs(game.runManager.currentRun.currentDeck or {}) do
+                counts[id] = (counts[id] or 0) + 1
+            end
+            local bestId, bestW = nil, 0
+            for id, n in pairs(counts) do
+                local cd = game.deckManager.cardDatabase:getCard(id)
+                local w = n * (((cd and cd.attack or 0) > 0) and 2 or 1)
+                if w > bestW and game.runManager:canUpgrade(id) then
+                    bestId, bestW = id, w
+                end
+            end
+            if bestId then
+                game.economySystem:spendGold(o.cost, o.type, o.id)
+                local lvl = game.runManager:upgradeCard(bestId)
+                game.runManager.currentRun._usedShop = true
+                bought = bought + 1
+                log("- Loja: **FORJEI** %s → nivel %s ($%d)",
+                    bestId, tostring(lvl), o.cost)
+            end
         elseif afford and o.type == "upgrade" and o.cost <= 6 then
             game.economySystem:spendGold(o.cost, o.type, o.id)
             if o.effect == "increase_max_health" then
@@ -658,6 +727,7 @@ local function playRun(classId, runIdx, maxEndlessFloors)
     battleStats = {
         battles = 0, turns = 0, dmgTaken = 0,
         realDecisionTurns = 0, totalTurns = 0,
+        armorCapHits = 0, -- v3: turnos em que o Bloqueio bateu no cap (30)
         byAct = {},   -- [act] = { dealt, taken, turns, battles }
     }
 
@@ -769,6 +839,8 @@ local function playRun(classId, runIdx, maxEndlessFloors)
         battleStats.realDecisionTurns, battleStats.totalTurns,
         battleStats.totalTurns > 0
             and 100 * battleStats.realDecisionTurns / battleStats.totalTurns or 0)
+    log("- Bloqueio no cap (30): %d turno(s) — defesa alem disso evapora",
+        battleStats.armorCapHits or 0)
     log("- Deck final: %d cartas | Ouro final: $%d | Score: %d",
         #(run.currentDeck or {}), game.economySystem.currentGold, game.score)
 
