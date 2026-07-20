@@ -125,11 +125,12 @@ local healDesc = I18n.cardDesc(healCard)
 if not healDesc:find("15") then fail("auto-inject {value} falhou: " .. healDesc) end
 ok("auto-inject {value}: " .. healDesc)
 
--- {atk} + {stacks} via warrior_bash
-local bashCard = { id = "warrior_bash", attack = 8, cost = 2, effects = { { type = "apply_debuff", value = "vulnerable", stacks = 2 } } }
+-- {atk} + {duration} via warrior_bash (espelha a carta real: stacks=1, duration=2)
+local bashCard = { id = "warrior_bash", attack = 8, cost = 2, effects = { { type = "apply_debuff", value = "vulnerable", stacks = 1, duration = 2 } } }
 local bashDesc = I18n.cardDesc(bashCard)
 if not (bashDesc:find("8") and bashDesc:find("2")) then fail("auto-inject combo falhou: " .. bashDesc) end
-ok("auto-inject {atk}+{stacks}: " .. bashDesc)
+if bashDesc:find("{", 1, true) then fail("placeholder sem interpolar: " .. bashDesc) end
+ok("auto-inject {atk}+{duration}: " .. bashDesc)
 
 -- 5d. I18n.effectDesc traduz efeitos declarados em cartas
 I18n.setLocale("pt_BR")

@@ -293,6 +293,15 @@ end
 function EffectSystem:_evokeOrbEffect(game, orb)
     if not orb then return end
     local v = orb.value or 1
+    -- FOCO (auditoria Jul/2026): o buff "focus" existia no HUD (pill) mas
+    -- NADA concedia nem consumia — mecanica fantasma. Agora e o eixo de
+    -- scaling do mago (identidade StS Defect): +1 de potencia por stack em
+    -- CADA orbe evocado. Concedido por Foco Arcano / Consumir.
+    local focus = 0
+    if game.player and game.player.getBuffStacks then
+        focus = game.player:getBuffStacks("focus") or 0
+    end
+    v = v + focus
     if orb.type == "lightning" then
         game.enemy:takeDamage(v)
         game:addMessage("Raio evocado: " .. v .. " dano", "success")
@@ -310,6 +319,46 @@ function EffectSystem:_evokeOrbEffect(game, orb)
         local amount = self:applyHealMultiplier(game, v)
         game.player:heal(amount)
         game:addMessage("Luz evocada: +" .. amount .. " HP", "success")
+    end
+end
+
+-- Pulso passivo dos orbes (fim do turno do jogador, identidade Defect/StS):
+-- cada orbe canalizado dispara uma versao fraca do seu evoke — o motor do
+-- mago gera pressao POR TURNO, nao so no evoke (auditoria Jul/2026: orbe
+-- inerte era a raiz do mago 0/6 no autoplay — dano anemico e DEFEND do
+-- inimigo anulava turnos inteiros). Foco soma no valor base antes da
+-- divisao, entao escala pulso E evoke.
+function EffectSystem:orbPassiveTick(game)
+    local p = game.player
+    if not p or not p.orbs or #p.orbs == 0 then return end
+    local focus = (p.getBuffStacks and p:getBuffStacks("focus")) or 0
+    local dmg, armor, heal = 0, 0, 0
+    for _, orb in ipairs(p.orbs) do
+        local ev = (orb.value or 1) + focus
+        if orb.type == "lightning" then
+            dmg = dmg + math.ceil(ev / 2)
+        elseif orb.type == "ice" then
+            armor = armor + math.ceil(ev / 2)
+        elseif orb.type == "dark" then
+            orb.value = (orb.value or 1) + 2   -- cresce canalizado; evoke dobra
+        elseif orb.type == "fire" then
+            dmg = dmg + math.ceil(ev / 3)
+        elseif orb.type == "holy" then
+            heal = heal + math.ceil(ev / 3)
+        end
+    end
+    if dmg > 0 and game.enemy and game.enemy:isAlive() then
+        game.enemy:takeDamage(dmg)
+        game:addMessage("Orbes pulsam: " .. dmg .. " dano", "info")
+    end
+    if armor > 0 then
+        p:addArmor(armor)
+        game:addMessage("Orbes pulsam: +" .. armor .. " armor", "info")
+    end
+    if heal > 0 then
+        local amount = self:applyHealMultiplier(game, heal)
+        p:heal(amount)
+        game:addMessage("Orbes pulsam: +" .. amount .. " HP", "info")
     end
 end
 

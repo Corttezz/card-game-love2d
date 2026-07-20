@@ -839,7 +839,7 @@ local function playRun(classId, runIdx, maxEndlessFloors)
         battleStats.realDecisionTurns, battleStats.totalTurns,
         battleStats.totalTurns > 0
             and 100 * battleStats.realDecisionTurns / battleStats.totalTurns or 0)
-    log("- Bloqueio no cap (30): %d turno(s) — defesa alem disso evapora",
+    log("- Bloqueio no cap: %d turno(s) — defesa alem disso evapora",
         battleStats.armorCapHits or 0)
     log("- Deck final: %d cartas | Ouro final: $%d | Score: %d",
         #(run.currentDeck or {}), game.economySystem.currentGold, game.score)

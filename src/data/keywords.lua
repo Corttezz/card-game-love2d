@@ -6,7 +6,7 @@
 
 return {
     { match = { "orbe", "canaliza", "evoca", "orb", "channel", "evoke" }, name = "Orbes",
-      text = "3 slots. Evocar dispara: Raio=dano, Gelo=armadura, Fogo=dano+queima, Sombra=dano x2. Slot cheio evoca o mais antigo." },
+      text = "3 slots. Pulsam todo turno (metade do efeito) e Evocar dispara o efeito cheio: Raio=dano, Gelo=armadura, Fogo=dano+queima, Sombra=cresce, evoca x2. Slot cheio evoca o mais antigo." },
     { match = { "exaurir", "exhaust" }, name = "Exaurir",
       text = "Uso unico POR BATALHA: sai do baralho ate a proxima." },
     { match = { "veneno", "poison" }, name = "Veneno",
@@ -20,7 +20,9 @@ return {
     { match = { "inato", "innate" }, name = "Inato",
       text = "Sempre comeca na sua mao no inicio da batalha." },
     { match = { "bloqueio", "armadura", "block", "armor" }, name = "Bloqueio",
-      text = "Absorve dano. Zera no inicio do seu turno. Maximo 30." },
+      text = "Absorve dano. Zera no inicio do seu turno. Maximo 30 (+10 por ato)." },
+    { match = { "foco", "focus" }, name = "Foco",
+      text = "+1 de potencia por ponto em cada pulso e evocacao de orbe, nesta batalha." },
     { match = { "forca", "strength" }, name = "Forca",
       text = "+1 de dano por ponto, nesta batalha." },
     { match = { "destreza", "dexterity" }, name = "Destreza",

@@ -124,6 +124,7 @@ function Game:startGame()
     self.economySystem:resetForNewRun()
     self.economySystem.currentGold = 10
 
+    self:syncArmorCap()
     self:initializeDeck()
     -- Cartas com edition "negative" no deck adicionam slots de joker (Fase 3.2).
     self:recomputeMaxJokerSlots()
@@ -577,7 +578,15 @@ function Game:applyClassBattleStartPassive()
     self._toxinAppliedThisTurn = false
     if self.selectedClass == "mage" and self.player and self.player.addOrb then
         self.player:addOrb({ type = "lightning", value = 4 })
-        self:addMessage("Conduíte: orbe de Raio canalizado!", "info")
+        -- Auditoria Jul/2026 (bateria 2 do autoplay): mago morria no boss do
+        -- A1 — orbe de potencia FIXA nao escala com nada enquanto guerreiro
+        -- (Forca) e ladino (Veneno) compoem. Conduíte agora tambem concede
+        -- 1 de Foco: toda evocacao da batalha sai +1, e cartas de Foco
+        -- empilham em cima (eixo de scaling da classe, StS Defect).
+        if self.player.addBuff then
+            self.player:addBuff("focus", 99, 1)
+        end
+        self:addMessage("Conduíte: orbe de Raio + 1 Foco!", "info")
         if love.timer then self._passiveFlashT = love.timer.getTime() end
     end
 end
@@ -790,6 +799,14 @@ function Game:processCardInCombat(card, turnContext)
         -- Retorna vazio pra CombatAnimationSystem nao spawnar damage number nem shake.
         if self.enemy.health <= 0 then
             if turnContext then table.insert(turnContext.cardsProcessed, card) end
+            -- Exhaust TAMBEM precisa do bookkeeping aqui: sem isso a carta sai
+            -- da mao e nao chega em pilha nenhuma (anomalia "cartas sumiram"
+            -- do autoplay v3) — e escapa da remocao permanente da run.
+            if card.exhaust and card.id then
+                table.insert(self._exhaustedThisBattle, card.id)
+                self:addMessage("Exaurido: " .. (card.name or card.id), "warning")
+                Sfx.play("cardExhaust")
+            end
             if card.type ~= "joker" and not card.exhaust then
                 table.insert(self.discard, card)
             end
@@ -944,6 +961,12 @@ function Game:endTurn()
         self:selectCard(self.selectedCards[i])
     end
     self:discardHandEndOfTurn()
+    -- Pulso passivo dos orbes (Defect-style) antes do inimigo agir — se o
+    -- pulso matar, enemyTurn tem guard de inimigo morto e isPhaseCleared
+    -- transiciona no proximo frame.
+    if self.effectSystem and self.effectSystem.orbPassiveTick then
+        self.effectSystem:orbPassiveTick(self)
+    end
     self.turn = "enemy"
 end
 
@@ -1279,6 +1302,20 @@ function Game:resetHandAndDeck()
     self:addMessage("Mão limpa e deck reembaralhado para o próximo andar!", "info")
 end
 
+-- Cap de Bloqueio POR ATO (auditoria Jul/2026): base 30 no A1, +10/ato
+-- (A2=40, A3+=50). A bateria de autoplay mostrou o cap fixo de 30 comendo
+-- 20-24 turnos de scaling defensivo no A3 (hits inimigos ja passavam de 30).
+-- Fonte unica: chamado em startGame e nextPhase (quando o ato pode virar).
+function Game:syncArmorCap()
+    local act = 1
+    if self.isRunMode and self.runManager:hasActiveRun() then
+        act = self.runManager.currentRun.actNumber or 1
+    end
+    local base = Config.Game.PLAYER_MAX_ARMOR or 30
+    local per = Config.Game.PLAYER_MAX_ARMOR_PER_ACT or 0
+    self.player.maxArmor = base + per * math.max(0, act - 1)
+end
+
 function Game:nextPhase()
     -- Exaurir (balance v2): a carta some da BATALHA e volta na próxima
     -- (StS-style). A remoção permanente da run punia demais — potions e
@@ -1306,6 +1343,7 @@ function Game:nextPhase()
     -- Mana CHEIA ao entrar na batalha (autoplay A3: quem gastava tudo no
     -- último turno começava a próxima batalha com 0 de mana).
     self.player:restoreMana()
+    self:syncArmorCap()
     self:resetHandAndDeck()
 
     -- Stats do inimigo baseadas no ato + node atual (Fase 5 via ActSystem).

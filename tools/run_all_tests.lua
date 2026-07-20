@@ -27,6 +27,7 @@ local SUITES = {
     { group = "smoke", name = "smoke_map" },
     { group = "smoke", name = "smoke_acts" },
     { group = "smoke", name = "smoke_discard" },
+    { group = "smoke", name = "smoke_exhaust_pool" },
     { group = "smoke", name = "smoke_upgrades" },
     { group = "smoke", name = "smoke_shop" },
     { group = "smoke", name = "smoke_packs" },

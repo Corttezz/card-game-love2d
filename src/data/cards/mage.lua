@@ -195,26 +195,32 @@ return {
     },
     mage_overcharge = {
         id = "mage_overcharge", name = "Sobrecarga",
+        -- Auditoria Jul/2026: era estritamente pior que Descarga (2 mana:
+        -- 9+pot3 vs 1 mana: 7+pot3). Pot 3->6 da identidade de "carga
+        -- pesada" e paga o custo 2.
         type = "attack", subtype = "skill",
         cost = 2, attack = 9, defense = 0,
-        description = "9 de dano. Canaliza Raio (3 pot).",
+        description = "9 de dano. Canaliza 1 Raio (pot 6).",
         image = "assets/cards/attack/theRock.png",
         rarity = "uncommon", class = "mage",
-        tags = { "magic", "lightning", "channel" },
+        tags = { "strike", "magic", "lightning", "channel" },
         effects = {
-            { type = "channel_orb", orbType = "lightning", value = 3 },
+            { type = "channel_orb", orbType = "lightning", value = 6 },
         },
     },
     mage_arcane_focus = {
         id = "mage_arcane_focus", name = "Foco Arcano",
+        -- Auditoria Jul/2026: era clone do Grito de Guerra (+2 Forca). Agora
+        -- concede FOCO (+1 potencia por orbe evocado) — o eixo de scaling do
+        -- mago que o nome sempre prometeu. Ver _evokeOrbEffect.
         type = "effect", subtype = "power",
         cost = 1, attack = 0, defense = 0,
-        description = "+2 de Forca nesta batalha.",
+        description = "Ganhe 2 de Foco nesta batalha.",
         image = "assets/cards/effect/manaCrystal.png",
         rarity = "uncommon", class = "mage",
-        tags = { "magic", "strength", "scaling" },
+        tags = { "magic", "scaling" },
         effects = {
-            { type = "gain_strength", value = 2 },
+            { type = "apply_buff", value = "focus", stacks = 2, duration = 99 },
         },
     },
     mage_mind_spike = {
@@ -255,15 +261,17 @@ return {
 
     mage_consume = {
         id = "mage_consume", name = "Consumir",
+        -- Auditoria Jul/2026: gain_strength -> Foco (mago escala orbe, nao
+        -- musculo). Ordem: Foco ANTES do evoke pra ja valer nesta evocacao.
         type = "effect", subtype = "skill",
         cost = 2, attack = 0, defense = 0,
-        description = "+2 de Forca nesta batalha. Evoca todos os orbes.",
+        description = "Ganhe 2 de Foco. Evoca TODOS os orbes.",
         image = "assets/cards/attack/theRock.png",
         rarity = "uncommon", class = "mage",
-        tags = { "evoke", "magic", "strength" },
+        tags = { "evoke", "magic", "scaling" },
         effects = {
+            { type = "apply_buff", value = "focus", stacks = 2, duration = 99 },
             { type = "evoke_all_orbs" },
-            { type = "gain_strength", value = 2 },
         },
     },
     mage_doom_and_gloom = {

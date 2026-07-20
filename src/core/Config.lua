@@ -53,7 +53,14 @@ Config.Game = {
     -- Jogador: Fase 5 reduziu HP inicial (60 vs 100). Deck pequeno + curva mais
     -- apertada cria pressao pra tomar decisoes boas nas escolhas de nos.
     PLAYER_MAX_HEALTH = 60,
-    PLAYER_MAX_ARMOR = 30,   -- F1: era 50 (> maior hit do jogo = imunidade)
+    -- Cap de Bloqueio POR ATO (auditoria Jul/2026): fixo em 30, a bateria de
+    -- autoplay mostrou 20-24 turnos NO CAP no ato 3 — todo o scaling de
+    -- defesa (Destreza/coringas/Muralha) evaporava, e hits de A3 (>30)
+    -- furavam qualquer defesa. 30 no A1 mantem o anti-imunidade original
+    -- (F1: 50 > maior hit do A1); +10 por ato devolve teto pras builds
+    -- defensivas sem nunca virar imunidade na curva de dano do ato.
+    PLAYER_MAX_ARMOR = 30,          -- base (ato 1)
+    PLAYER_MAX_ARMOR_PER_ACT = 10,  -- +10 por ato: A2=40, A3+=50
     PLAYER_MAX_MANA = 3,
     PLAYER_HEALTH_RESTORE = 20,
 
