@@ -268,7 +268,21 @@ local function chooseCards(game)
 
     -- 4. VALOR (v2): resto da mana em dano escolhido POR SINERGIA — a 2ª
     -- carta da mesma tag de combo vale +4 (strike_combo/magic_focus/poison).
-    while true do
+    -- v4 anti-muro: a armadura do inimigo EXPIRA no turno dele — socar um
+    -- muro maior que nosso output total e leva jogada fora ("dano causado 0"
+    -- nos diarios). Nesse caso a mana vai pra defesa/orbes na sobra.
+    local wall = game.enemy.armor or 0
+    local atkWorthIt = true
+    if wall > 0 then
+        local affordable = {}
+        for _, c in ipairs(atkCards) do
+            if not picked(c) and (c.cost or 0) <= manaLeft then
+                table.insert(affordable, c)
+            end
+        end
+        atkWorthIt = estimateSetDamage(game, affordable) > wall
+    end
+    while atkWorthIt do
         local best, bestS = nil, -1
         for _, c in ipairs(atkCards) do
             if not picked(c) and (c.cost or 0) <= manaLeft then
@@ -281,13 +295,19 @@ local function chooseCards(game)
     end
     -- 4b. mana sobrando e nada de ataque? joga defesa/efeito que couber.
     -- v3: defesa com Bloqueio ja no cap e jogada morta — pula.
-    for _, c in ipairs(hand) do
-        if not picked(c) and (c.cost or 0) <= manaLeft
-            and c.type ~= "joker" then
-            local atCap = c.type == "defense"
-                and (game.player.armor or 0) >= (game.player.maxArmor or 30)
-            if not atCap then
-                pick(c, "sobra")
+    -- v4: dois passes — nao-ataque primeiro (no anti-muro, a mana util vai
+    -- pra defesa/efeito antes de sobrar pra ataques que batem no muro).
+    for pass = 1, 2 do
+        for _, c in ipairs(hand) do
+            local wantPass = (pass == 1 and c.type ~= "attack")
+                or (pass == 2 and c.type == "attack")
+            if wantPass and not picked(c) and (c.cost or 0) <= manaLeft
+                and c.type ~= "joker" then
+                local atCap = c.type == "defense"
+                    and (game.player.armor or 0) >= (game.player.maxArmor or 30)
+                if not atCap then
+                    pick(c, "sobra")
+                end
             end
         end
     end
@@ -523,6 +543,87 @@ local function archetypeScore(game, cardData)
     return s
 end
 
+-- ============================================================
+-- v4: PICKER HEADLESS — eventos de deck (remover/duplicar/forjar) usam
+-- _G.openCardPicker (UI). Sem shim, o piloto ganhava a opcao e recebia
+-- um NO-OP ("o escriba se distrai") — as melhores ferramentas de
+-- consistencia de deck eram inacessiveis ao bot.
+-- ============================================================
+
+-- Valor de uma carta DO DECK pro build atual (quanto maior, mais sagrada).
+local function cardValueScore(game, cardId)
+    local cd = game.deckManager.cardDatabase:getCard(cardId)
+    if not cd then return 0 end
+    return (RARITY_SCORE[cd.rarity or "common"] or 1) * 2
+        + archetypeScore(game, cd) * 2
+        + classTagAffinity(game, cd) * 0.5
+        + ((cd.attack or 0) + (cd.defense or 0)) / 4
+end
+
+local function installHeadlessPicker(game)
+    _G.openCardPicker = function(mode)
+        local run = game.runManager.currentRun
+        local deck = run.currentDeck or {}
+        local ids = {}
+        for _, e in ipairs(deck) do
+            ids[#ids + 1] = type(e) == "table" and e.id or e
+        end
+        if #ids == 0 then return end
+        if mode == "remove" then
+            if #ids <= 8 then
+                log("  (picker: deck %d ja enxuto — nao removi)", #ids)
+                return
+            end
+            -- guard: defesa pontua baixo em arquetipo ofensivo, mas remover
+            -- a ultima Esquiva do rogue e suicidio — piso de 3 defesas.
+            local defCount = 0
+            for _, id in ipairs(ids) do
+                local cd = game.deckManager.cardDatabase:getCard(id)
+                if cd and cd.type == "defense" then defCount = defCount + 1 end
+            end
+            local worst, worstS
+            for _, id in ipairs(ids) do
+                local cd = game.deckManager.cardDatabase:getCard(id)
+                local isDef = cd and cd.type == "defense"
+                if not (isDef and defCount <= 3) then
+                    local s = cardValueScore(game, id)
+                    if not worstS or s < worstS then worst, worstS = id, s end
+                end
+            end
+            if not worst then
+                log("  (picker: nada removivel com seguranca)")
+                return
+            end
+            game.runManager:removeCardFromDeck(worst)
+            if game.synchronizeRunDeck then game:synchronizeRunDeck() end
+            log("  (picker: REMOVI a pior carta: %s)", worst)
+        elseif mode == "duplicate" then
+            local best, bestS
+            for _, id in ipairs(ids) do
+                local s = cardValueScore(game, id)
+                if not bestS or s > bestS then best, bestS = id, s end
+            end
+            game:addCardToRun(best)
+            log("  (picker: DUPLIQUEI a melhor carta: %s)", best)
+        elseif mode == "forge" then
+            local counts = {}
+            for _, id in ipairs(ids) do counts[id] = (counts[id] or 0) + 1 end
+            local bestId, bestW = nil, 0
+            for id, n in pairs(counts) do
+                local cd = game.deckManager.cardDatabase:getCard(id)
+                local w = n * (((cd and cd.attack or 0) > 0) and 2 or 1)
+                if w > bestW and game.runManager:canUpgrade(id) then
+                    bestId, bestW = id, w
+                end
+            end
+            if bestId then
+                local lvl = game.runManager:upgradeCard(bestId)
+                log("  (picker: FORJEI %s → nivel %s)", bestId, tostring(lvl))
+            end
+        end
+    end
+end
+
 local function doRewards(game)
     game.shopSystem:setMode("rewards")
     game.shopSystem:generateOffers()
@@ -591,8 +692,14 @@ local function chooseNode(game, pending)
     local canElite = dptEstimate * 6 >= (eliteStats.health or 60)
 
     -- prioridade situacional
+    -- v4 boss-aware: F7=mini_boss e F8=boss — chegar neles meio-morto era a
+    -- causa nº1 de morte medida (10/33 no boss A2-F8). Perto do muro, o
+    -- descanso vale mais que qualquer loja/evento.
+    local nearBoss = (run.floorInAct or 1) >= 6
     local want
-    if hpRatio < 0.5 then
+    if nearBoss and hpRatio < 0.7 then
+        want = { BT.REST, BT.EVENT, BT.SHOP, BT.BATTLE }
+    elseif hpRatio < 0.5 then
         want = { BT.REST, BT.EVENT, BT.BATTLE, BT.SHOP }
     elseif gold >= 14 then
         want = canElite and { BT.SHOP, BT.ELITE, BT.BATTLE, BT.EVENT, BT.REST }
@@ -613,7 +720,11 @@ end
 
 local function doRest(game)
     local p = game.player
-    if p.health <= p.maxHealth * 0.6 then
+    -- v4 boss-aware: com mini_boss/boss a 1-2 andares, curar vale mais que
+    -- forjar mesmo acima do threshold normal de 60%.
+    local floorInAct = game.runManager.currentRun.floorInAct or 1
+    local nearBoss = floorInAct >= 6
+    if p.health <= p.maxHealth * (nearBoss and 0.75 or 0.6) then
         local amt = math.floor(p.maxHealth * 0.30)
         p:heal(amt)
         log("- Acampamento: **descansei** +%d HP → %d/%d", amt, p.health, p.maxHealth)
@@ -637,6 +748,73 @@ local function doRest(game)
     end
 end
 
+-- v4: pontua UMA string de gain/cost declarada pelo evento. As strings sao
+-- o contrato explicito do design ("risco informado, nunca pegadinha") — o
+-- bot le exatamente o que o jogador leria no botao.
+local function scoreEventStr(game, s, isCost)
+    local p = game.player
+    local hp, maxHp = p.health, p.maxHealth
+    local gold = game.economySystem.currentGold
+    local deckN = #(game.runManager.currentRun.currentDeck or {})
+    local sign = isCost and -1 or 1
+    s = s:lower()
+
+    -- custos que nao podemos pagar = veto
+    local costHp = isCost and s:match("^(%d+) hp$")
+    if costHp then
+        local n = tonumber(costHp)
+        if hp - n <= 4 then return -1000 end
+        return -n * (hp < maxHp * 0.4 and 1.6 or 0.6)
+    end
+    local costGold = isCost and s:match("^%$(%d+)$")
+    if costGold then
+        local n = tonumber(costGold)
+        if gold < n then return -1000 end
+        return -n / 8
+    end
+    if s:find("carta aleatoria do deck") then
+        -- remocao ALEATORIA: boa com deck gordo de commons, ruim com deck afiado
+        return (deckN > 16) and 3 or -6
+    end
+    if s:find("armadilha") then
+        local pct, n = s:match("(%d+)%% armadilha (%d+) hp")
+        if pct and n then return -(tonumber(pct) / 100) * tonumber(n) * 1.2 end
+        return -3
+    end
+
+    -- ganhos
+    if s:find("remova 1 carta a sua escolha") then
+        return sign * ((deckN >= 14) and 12 or 5)
+    end
+    if s:find("duplique") then return sign * 8 end
+    if s:find("forj") then return sign * 7 end
+    if s:find("mana maxima") then return sign * 12 end
+    if s:find("hp maximo") then return sign * 7 end
+    if s:find("carta lendaria") then return sign * 10 end
+    if s:find("carta rara") then return sign * ((deckN > 18) and 3 or 6) end
+    if s:find("cartas aleatorias") then
+        return sign * ((deckN > 16) and -2 or 2)  -- diluicao
+    end
+    if s:find("pocao") then return sign * 2 end
+    if s:find("misterioso") then return sign * 1 end
+    local curaPct = s:match("cura (%d+)%%")
+    if curaPct then
+        local heal = math.min(maxHp * tonumber(curaPct) / 100, maxHp - hp)
+        return sign * (heal / maxHp) * 30
+    end
+    local curaFlat = s:match("cura (%d+) hp")
+    if curaFlat then
+        local heal = math.min(tonumber(curaFlat), maxHp - hp)
+        return sign * (heal / maxHp) * 30
+    end
+    -- valor esperado: "50% de ganhar $50", "40% $25"
+    local pct, val = s:match("(%d+)%%[^%$]*%$(%d+)")
+    if pct and val then return sign * (tonumber(pct) / 100) * tonumber(val) / 6 end
+    local flatGold = s:match("^%$(%d+)$")
+    if flatGold then return sign * tonumber(flatGold) / 6 end
+    return 0
+end
+
 local function doEvent(game)
     local run = game.runManager.currentRun
     local ev = Events.roll(run.actNumber or 1)
@@ -644,13 +822,21 @@ local function doEvent(game)
         log("- Evento: nenhum disponivel")
         return
     end
-    local hpRatio = game.player.health / game.player.maxHealth
-    -- heurística: opção 1 é a aposta; última é a saída segura.
-    local idx = (hpRatio < 0.35) and #ev.options or 1
-    local opt = ev.options[idx]
+    -- v4: pontua CADA opcao pelos gains/costs declarados; "ir embora" = 0.
+    -- Escolhe a de maior valor esperado pro estado atual (HP/ouro/deck).
+    local bestIdx, bestScore = #ev.options, 0.5  -- neutro levemente > 0: só
+    for i, opt in ipairs(ev.options) do          -- aposta se valer a pena
+        local s = 0
+        for _, g in ipairs(opt.gains or {}) do s = s + scoreEventStr(game, g, false) end
+        for _, c in ipairs(opt.costs or {}) do s = s + scoreEventStr(game, c, true) end
+        if (opt.gains or opt.costs) and s > bestScore then
+            bestIdx, bestScore = i, s
+        end
+    end
+    local opt = ev.options[bestIdx]
     local okApply, feedback = pcall(opt.apply, game)
-    log("- Evento **%s**: escolhi '%s' → %s", ev.title, opt.label,
-        okApply and (feedback or "ok") or ("ERRO: " .. tostring(feedback)))
+    log("- Evento **%s**: escolhi '%s' (score %.1f) → %s", ev.title, opt.label,
+        bestScore, okApply and (feedback or "ok") or ("ERRO: " .. tostring(feedback)))
 end
 
 local function doShop(game)
@@ -666,6 +852,12 @@ local function doShop(game)
             local cd = game.deckManager.cardDatabase:getCard(o.id)
             local s = (RARITY_SCORE[o.rarity or "common"] or 1) * 2
                 + classTagAffinity(game, cd) + archetypeScore(game, cd) * 2
+            -- v4: MESMA disciplina de deck das recompensas — a loja era o
+            -- furo que engordava o deck por fora do gate (>18 so rare+).
+            local deckSize = #(game.runManager.currentRun.currentDeck or {})
+            if deckSize > 18 and (RARITY_SCORE[o.rarity or "common"] or 1) < 6 then
+                s = -1
+            end
             if s >= 6 then
                 game.economySystem:spendGold(o.cost, o.type, o.id)
                 game:addCardToRun(o.id)
@@ -723,6 +915,9 @@ local function playRun(classId, runIdx, maxEndlessFloors)
     game:startNewRun(classId)
     game:startGame()
     pump(game, 0.5)
+    -- v4: picker headless — sem isso os eventos de deck (remover/duplicar/
+    -- forjar a escolha) eram NO-OP no piloto (dependem de UI).
+    installHeadlessPicker(game)
 
     battleStats = {
         battles = 0, turns = 0, dmgTaken = 0,
