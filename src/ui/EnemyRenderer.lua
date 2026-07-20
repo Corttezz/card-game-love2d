@@ -197,6 +197,24 @@ local ATK_LUNGE  = 0.16   -- investida (apex no fim)
 local ATK_RECOIL = 0.42   -- volta suave
 local ATK_TOTAL  = ATK_WINDUP + ATK_LUNGE + ATK_RECOIL
 
+-- RESET DE RUN (bug "abandonei e caí na run antiga", Jul/2026): FX e clip
+-- correntes são estado de módulo. O pior caso era um attackFx da run
+-- ABANDONADA com onApex pendente — o callback (que fecha o turno inimigo
+-- do game morto) dispararia DENTRO da run nova. Chamado pelo rebind da
+-- GameplayScene (setGame).
+function EnemyRenderer.resetRun()
+    attackFx = nil
+    poisonTime, defendTime, buffTime, knockTime, slashTime = 0, 0, 0, 0, 0
+    buffParticles = {}
+    hurtTime = 0
+    arrivalT = 0
+    ambientParticles = {}
+    ambientSpawnTimer = 0
+    currentAnim = nil
+    currentEnemyId = nil
+    currentAnimName = nil
+end
+
 -- O inimigo TELEGRAFA + INVESTE: recua, avança na direção do jogador
 -- (baixo-esquerda) e o dano é aplicado NO IMPACTO via onApex.
 -- Se o personagem tiver clip "attack" (PixelLab), ele toca junto da investida.

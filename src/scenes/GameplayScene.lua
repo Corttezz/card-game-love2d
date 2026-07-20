@@ -41,6 +41,15 @@ local interiorFade = 0     -- alpha do fade preto (1 → 0 em ~0.9s)
 -- o fade da porta completar. Resetado quando um novo andar de boss começa.
 local bossEntered = false
 
+-- Coreografia de turno (clareza do ritmo): banner "TURNO DO INIMIGO" →
+-- pausa → inimigo age (investida) → banner "SEU TURNO". Estados:
+--   nil      = turno do jogador correndo
+--   "banner" = anunciando o turno inimigo (timer)
+--   "acting" = inimigo agindo (espera a investida terminar)
+-- (declarado AQUI no topo pra setGame/resetTurnState enxergarem a local)
+local turnStage = nil
+local turnStageT = 0
+
 function GameplayScene.init(deps)
     game           = deps.game
     playButton     = deps.playButton
@@ -55,6 +64,36 @@ end
 
 -- Seta smokeSystem depois de init (usado quando smoke muda em runtime).
 function GameplayScene.setSmokeSystem(s) smokeSystem = s end
+
+-- REBIND do game (bug "abandonei e caí na run antiga", Jul/2026):
+-- returnToMenu cria um Game NOVO, mas esta cena capturava deps.game numa
+-- local de módulo — a tela continuava desenhando/atualizando o game morto
+-- enquanto os botões agiam no novo (mão fantasma, nenhuma carta jogável).
+-- Todo rebind passa por aqui, que também zera o estado de turno POR RUN
+-- do módulo (turnStage/bossEntered sobreviviam entre runs).
+function GameplayScene.setGame(g)
+    game = g
+    GameplayScene.resetTurnState()
+    -- O CENÁRIO também é estado de módulo e sobrevivia ao abandono:
+    -- o mundo voltava com bioma/câmera/viagem da run morta, e um attackFx
+    -- pendente do inimigo antigo podia disparar o apex dentro da run nova.
+    WorldRoad.resetRun()
+    EnemyRenderer.resetRun()
+end
+
+-- Estado de turno per-run do módulo (usado por setGame e testável isolado).
+function GameplayScene.resetTurnState()
+    turnStage = nil
+    turnStageT = 0
+    bossEntered = false
+    GameplayScene._endTurnCallout = false
+    -- Sem isto, o 1º frame da run NOVA compararia com o andar da run
+    -- MORTA e dispararia uma viagem/chegada espúria na estrada.
+    lastFloorKey = nil
+end
+
+-- Introspecção pra testes de regressão (smoke_ui_turn).
+function GameplayScene.getGame() return game end
 
 -- ============================================================================
 -- INTERNAL: posicionamento
@@ -488,14 +527,6 @@ end
 -- ============================================================================
 -- UPDATE
 -- ============================================================================
-
--- Coreografia de turno (clareza do ritmo): banner "TURNO DO INIMIGO" →
--- pausa → inimigo age (investida) → banner "SEU TURNO". Estados:
---   nil      = turno do jogador correndo
---   "banner" = anunciando o turno inimigo (timer)
---   "acting" = inimigo agindo (espera a investida terminar)
-local turnStage = nil
-local turnStageT = 0
 
 function GameplayScene.update(dt)
     updatePlayButtonPosition()

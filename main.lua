@@ -126,6 +126,11 @@ local function returnToMenu()
     -- Re-vincula a TopBar ao game NOVO (antes ficava apontando pro morto:
     -- ouro/deck congelavam e o clique da engrenagem caía no aviso).
     if topBar then topBar:setGame(game) end
+    -- Re-vincula a CENA DE GAMEPLAY ao game novo (bug Jul/2026: a cena
+    -- capturava deps.game e seguia desenhando a run ABANDONADA — "abandonei,
+    -- escolhi mago e caí na run antiga com tudo bugado"). Também zera o
+    -- estado de turno do módulo (turnStage/bossEntered per-run).
+    GameplayScene.setGame(game)
     gameUI:hide()
     menu:show()
     if menu.enterWithIntro then menu:enterWithIntro() end
@@ -271,6 +276,11 @@ showMapSelection = function()
         currentState = "mapSelection"
     end
 end
+-- Hook global pro callback de Continuar (rotear pro mapa quando o save
+-- foi na encruzilhada). Referenciar a local direto no callback estourava
+-- o limite de 60 upvalues do love.load (LuaJIT) — mesmo padrão do
+-- _G.openCardPicker.
+_G.__showMapSelection = function() showMapSelection() end
 
 -- Continua o jogo após escolher/pular recompensa.
 -- Vitoria agora e disparada por Game:checkVictory (ato 3 boss). Para decidir
@@ -855,8 +865,25 @@ function love.load(loveArgs)
         currentState = "playing"
         if FlashShader and FlashShader.trigger then FlashShader.trigger(0.5, 0.4) end
         game:resumeRun()
+        -- O MUNDO retoma no exato lugar do save: bioma do ato, câmera na
+        -- distância caminhada (andar N = N-1 viagens), proximidade do
+        -- castelo e entardecer reconstruídos (pedido do dono, Jul/2026).
+        do
+            local run = game.runManager.currentRun
+            require("src.ui.WorldRoad").restoreProgress(
+                run and run.actNumber or 1, run and run.floorInAct or 1)
+        end
         gameUI:show()
         menu:hide()
+        -- Save feito NA ENCRUZILHADA (nós pendentes, nada escolhido):
+        -- retoma ESCOLHENDO o caminho, não numa batalha — sem isto o
+        -- resumeRun soltava um inimigo "do nada" (bug do dono, Jul/2026).
+        -- showMapSelection reusa os pendentes salvos (guard anti-advance);
+        -- o inimigo provisório do resumeRun é substituído pelo nextPhase
+        -- do nó que o jogador escolher. (via hook _G — limite de upvalues)
+        if game.runManager:getPendingNodes() then
+            _G.__showMapSelection()
+        end
         if smokeSystem then
             local act = math.min(3, (game.runManager.currentRun.actNumber or 1))
             SmokeConfig.applyToSystem(smokeSystem, "act" .. act)

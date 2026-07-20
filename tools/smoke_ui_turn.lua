@@ -107,6 +107,92 @@ function M.run()
         game.turn == "player")
     check("mão nova foi comprada", #game.hand > 0)
 
+    -- ===== 4. ABANDONO: a cena REBINDA pro game novo (bug Jul/2026:
+    -- GameplayScene capturava deps.game e seguia na run abandonada —
+    -- "abandonei, escolhi mago e caí na run antiga, tudo bugado") =====
+    local GameplayScene = require("src.scenes.GameplayScene")
+    GameplayScene.init({
+        game = game,                     -- game A (a run "abandonada")
+        playButton = playButton,
+        endTurnButton = endTurnButton,
+        topBar = { update = function() end },
+        gameUI = { update = function() end, show = function() end,
+                   hide = function() end },
+    })
+    check("cena começa vinculada ao game A", GameplayScene.getGame() == game)
+
+    -- estado sujo per-run que precisa morrer no rebind
+    GameplayScene._endTurnCallout = true
+    -- CENÁRIO sujo da run "abandonada": mundo avançado no bioma 3 com
+    -- viagem no ar + attackFx do inimigo com apex PENDENTE (o callback
+    -- do game morto não pode disparar na run nova)
+    local WorldRoad = require("src.ui.WorldRoad")
+    WorldRoad.setBiome(3)
+    WorldRoad.travel({ duration = 5 })
+    local apexLeaked = false
+    EnemyRenderer.triggerAttack("attack", function() apexLeaked = true end)
+
+    -- espelho do returnToMenu + startGame(nova classe)
+    _G.EventManager.clear()
+    local gameB = Game:new()
+    GameplayScene.setGame(gameB)
+    gameB:startNewRun("mage")
+    gameB:startGame()
+    _G.game = gameB
+
+    check("REBIND: cena aponta pro game NOVO", GameplayScene.getGame() == gameB)
+    check("REBIND: callout de turno zerado",
+        GameplayScene._endTurnCallout == false)
+    check("REBIND: mundo voltou pro bioma 1 sem viagem",
+        WorldRoad._biomeIndex == 1 and not WorldRoad.isTraveling())
+    -- pump: se o attackFx da run morta tivesse sobrevivido, o apex
+    -- dispararia aqui dentro da run nova
+    pump(1.0)
+    check("REBIND: apex do inimigo ABANDONADO não vazou pra run nova",
+        apexLeaked == false)
+    check("run nova é do MAGO (não a abandonada)",
+        gameB.runManager and gameB.runManager.currentRun
+        and gameB.runManager.currentRun.classId == "mage")
+    check("run nova: turno do jogador, mão comprada",
+        gameB.turn == "player" and #gameB.hand > 0)
+    -- carta da run nova é jogável (o sintoma era "nenhuma carta joga")
+    local playable = false
+    for _, c in ipairs(gameB.hand) do
+        if (c.cost or 0) <= gameB.player.mana then playable = true break end
+    end
+    check("run nova: existe carta pagável na mão", playable)
+
+    -- ===== 5. CONTINUAR: o mundo retoma no exato lugar do save =====
+    -- (pedido do dono: progresso/proximidade do castelo/cenário — o
+    -- progresso é emergente, restoreProgress reconstrói por ato+andar)
+    WorldRoad.restoreProgress(2, 5)
+    check("CONTINUAR: bioma do ato 2 restaurado", WorldRoad._biomeIndex == 2)
+    check("CONTINUAR: caminhada do andar 5 restaurada (4 viagens)",
+        WorldRoad._camZ == 4 * WorldRoad.TRAVEL_DISTANCE)
+    check("CONTINUAR: base do trecho no zero (castelo na distância certa)",
+        WorldRoad._segBase == 0)
+    check("CONTINUAR: sem viagem/entrada pendente",
+        not WorldRoad.isTraveling() and not WorldRoad.isEntering())
+    check("CONTINUAR: entardecer coerente com o andar (não resetou pro dia 1)",
+        WorldRoad._timeOfDay > 0.62 and WorldRoad._timeOfDay < 1)
+    WorldRoad.resetRun()   -- não vaza estado pro resto da suíte
+
+    -- ===== 6. SAVE NA ENCRUZILHADA: os nós pendentes sobrevivem ao
+    -- save/load (bug: 'salvei escolhendo caminho, voltei e apareceu um
+    -- inimigo do nada' — o Continuar roteia pro mapa SE há pendentes) =====
+    local gmA = Game:new()
+    gmA:startNewRun("warrior")
+    gmA.runManager:generateNextNodes(3)
+    check("encruzilhada: nós pendentes gerados",
+        gmA.runManager:getPendingNodes() ~= nil)
+    gmA.runManager:saveRun()
+    local gmB = Game:new()
+    check("encruzilhada: save carrega", gmB.runManager:loadRun() == true)
+    local pend = gmB.runManager:getPendingNodes()
+    check("encruzilhada: pendentes SOBREVIVEM ao load (roteia pro mapa)",
+        pend ~= nil and #pend >= 2)
+    gmB.runManager:deleteSave()
+
     print(string.format("\n  TOTAL: %d pass / %d fail", pass, fail))
     return fail == 0
 end
