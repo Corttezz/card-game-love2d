@@ -77,9 +77,14 @@ function M.run()
     t:eq("draw_cards puxa 3", #g.hand, 3)
 
     g = fresh()
-    g.hand = { {}, {}, {} }
+    g.hand = { { id = "a" }, { id = "b" }, { id = "c" } }
+    g.discard = {}
     es:processEffectCard(g, { type = "discard_cards", value = 2 })
-    t:eq("discard_cards remove 2", #g.hand, 1)
+    t:eq("discard_cards remove 2 da mão", #g.hand, 1)
+    -- REGRESSÃO (Jul/2026): a carta descartada TEM que ir pro discard, não
+    -- sumir. Antes table.remove só arrancava da mão → o deck de batalha
+    -- degenerava (Sobrevivente comia 1 carta/turno até sobrar só as 3 jogadas).
+    t:eq("discard_cards move as 2 pro discard (não deleta)", #g.discard, 2)
 
     g = fresh()
     es:processEffectCard(g, { type = "apply_debuff", value = "poison", stacks = 3, duration = 2 })

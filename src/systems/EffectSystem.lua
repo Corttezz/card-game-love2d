@@ -169,12 +169,23 @@ function EffectSystem:processEffectCard(game, effect)
         return true
 
     elseif t == "discard_cards" then
+        -- BUG FIX (Jul/2026): a carta descartada tem que IR PRO DISCARD, não
+        -- sumir. table.remove(game.hand) só a arrancava da mão — nunca entrava
+        -- em game.discard, então nunca voltava no reshuffle. Efeito: Sobrevivente
+        -- (discard_cards=1) deletava 1 carta não-jogada por turno; em poucas
+        -- rodadas o deck de batalha degenerava pras 3 cartas que o jogador
+        -- jogava (as únicas que iam pro discard direito), infinitamente. O deck
+        -- DA RUN (currentDeck) nunca foi tocado — o bug era só na instância da
+        -- batalha. Ver smoke_discard test 13.
+        local discarded = 0
         for _ = 1, v do
             if #game.hand > 0 then
-                table.remove(game.hand, love.math.random(#game.hand))
+                local card = table.remove(game.hand, love.math.random(#game.hand))
+                table.insert(game.discard, card)
+                discarded = discarded + 1
             end
         end
-        game:addMessage(msg("discarded", { value = v }), "info")
+        game:addMessage(msg("discarded", { value = discarded }), "info")
         return true
 
     -- ===== Fase 2: novos efeitos =====

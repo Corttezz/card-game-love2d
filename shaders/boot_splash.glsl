@@ -14,6 +14,9 @@ extern vec4 colour_1;      // ouro
 extern vec4 colour_2;      // brasa-sangue
 extern number mid_flash;   // 0..1 → branco
 extern number vort_offset;
+// v7: centro do swirl ANCORADO no SIGILO da câmara (não no centro da tela) —
+// offset em unidades uv (normalizado pela diagonal). A energia emana DELE.
+extern vec2 center_off;
 
 #define PIXEL_SIZE_FAC 300.
 // base escura QUENTE (ink marrom do grimório)
@@ -23,6 +26,7 @@ vec4 effect(vec4 colour, Image texture, vec2 texture_coords, vec2 screen_coords)
     number pixel_size = length(love_ScreenSize.xy) / PIXEL_SIZE_FAC;
     vec2 uv = (floor(screen_coords.xy * (1. / pixel_size)) * pixel_size
               - 0.5 * love_ScreenSize.xy) / length(love_ScreenSize.xy);
+    uv -= center_off;          // centro no sigilo
     number uv_len = length(uv);
 
     // swirl central — mais LENTO e contido que o Balatro
@@ -62,9 +66,10 @@ vec4 effect(vec4 colour, Image texture, vec2 texture_coords, vec2 screen_coords)
         + mid_flash * max(c1p, c2p);
     vec4 outc = ret_col * (1. - mod_flash) + mod_flash * vec4(1., 1., 1., 1.);
 
-    // MÁSCARA RADIAL: energia concentrada no miolo (sigilo), câmara visível
-    // nas bordas. uv_len vai de 0 (centro) a ~0.5 (canto).
-    number edge = 1. - smoothstep(0.16, 0.46, uv_len);
+    // MÁSCARA RADIAL apertada: a energia ABRAÇA o sigilo (raio do círculo da
+    // arte ≈ 0.12 da diagonal) e some logo depois — nada de blobs soltos pela
+    // tela (feedback: "jogados aleatoriamente"). uv_len já é relativo ao sigilo.
+    number edge = 1. - smoothstep(0.10, 0.30, uv_len);
 
     return vec4(outc.rgb, outc.a * edge) * colour;
 }

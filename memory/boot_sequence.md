@@ -116,4 +116,17 @@ Feedback do dono na v5: (1) o pixel art sumiu — tem que ser O fundo, com anima
 
 **Timeline v6 (~7s, dinâmica)**: 0.10 carta central → 0.50 deckStart → 1.40 dissolve+bootVortex → 1.65 whoosh → 1.70+i·0.08 cascade (22 cartas) → `tCascadeEnd+0.25` letras (stagger 0.09) → **RESPIRO de 1s** com tudo pousado → flash+bootImpact+shake → +0.60 menu. Tempos do título/flash calculados de `#titleLetters` (i18n muda o comprimento).
 
-⚠️ v6 entregue LUAC-CLEAN mas SEM verificação visual (jogo do dono aberto na hora) — validar com `love . screenshot_bootfx` (gera `bootv6_{early,mid,late}.png`) na primeira chance.
+v6.1: crescimento de densidade do plasma CAPADO em 2.0 (sem cap, aos ~7s virava borrão dourado engolindo a câmara — pego por screenshot).
+
+## Entrada v7 — o SIGILO é o coração (Jul/2026)
+
+Feedback do dono na v6: energia "jogada aleatoriamente" (ainda cheirava a Balatro), fundo sem animação própria, cartas "indo para nada". Causa-raiz única: a cena não tinha um CORAÇÃO. v7 amarra tudo no SIGILO da câmara:
+
+- **Âncoras NA ARTE** (`SIGIL_IX/IY = 128,64`; `BRAZIERS_IMG = {33,60},{223,60}` — pixels da imagem 256×192): `chamberAnchor(ix,iy)` converte pra tela usando o transform do cover (`bg._tx/_ty/_s` salvos em `drawChamberBG`) — cola em qualquer resolução.
+- **Energia EMANA do sigilo**: shader ganhou `center_off` (uv normalizado pela diagonal) e máscara apertada `smoothstep(0.10, 0.30)` — o swirl abraça o círculo do sigilo, nada de blobs soltos pela tela.
+- **Cartas voam PRO SIGILO** (mini-cards, carta central e burst usam a âncora). Cada carta absorvida → `bumpSigil()`: flare (+0.32, decai 1.6/s) + ANEL de absorção expandindo (240px/s). O destino existe e RESPONDE.
+- **Vida na arte** (`drawChamberLife`): chamas dos braseiros tremulando (2 círculos additive, flicker QUANTIZADO em passos de 1/8s pra ler como pixel art) + poça de luz do sigilo no piso (elipse additive pulsando; flare ilumina o salão). `drawSigilGlow`: 3 círculos additive pulsantes + anéis.
+- Ordem de camadas: câmara → plasma (sigilo) → glow do sigilo → chamas/piso → brasas.
+- **Preview fiel**: `BootScene.previewBackground(t, plasmaAlpha, flare)` — o tool `screenshot_bootfx` usa as MESMAS camadas do jogo (gera `bootv7_{early,absorb,late}.png`).
+
+⚠️ v7 LUAC-CLEAN mas SEM verificação visual (jogo do dono aberto) — rodar `love . screenshot_bootfx` na primeira janela livre.
