@@ -121,7 +121,7 @@ return {
         tags = { "strike", "scaling" },
         effects = {
             { type = "damage_multiplier", target = "attack", value = 1.5,
-              description = "Dobra dano de ataques" },
+              description = "+50% de dano em ataques" },
         },
     },
     joker_002 = {
@@ -134,7 +134,7 @@ return {
         tags = { "defend", "armor", "scaling" },
         effects = {
             { type = "defense_multiplier", target = "defense", value = 1.5,
-              description = "Dobra defesa" },
+              description = "+50% de Bloqueio em defesas" },
         },
     },
     joker_003 = {

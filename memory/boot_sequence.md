@@ -152,3 +152,11 @@ Feedback: "esse efeito que fica em cima ainda não tá bom" — o plasma domain-
 - **Driver**: `state.sealCharge` (ease 0→1 em 2s no splash) × respiração `0.34+0.14·sin(1.8t)` + `0.66·flare` (pulso por carta absorvida; flare=1 no flash). `drawSealCharge(strength)` desenha com o MESMO transform do cover.
 - Validado por screenshot (bootv9_{early,absorb,peak}.png): parede-selo pelo tubo = capa de grimório; brilho cresce com carga/flare, contido.
 - Nota: o título letra-a-letra sobrepõe o arco inferior do selo — legível pelo outline ink; lê como lockup de logo.
+
+## Entrada v10 — "noite do Grimoire" (paisagem ANIMÁVEL) — EM ANDAMENTO (Jul/2026)
+
+Feedback do dono na v9: a parede-selo "parece ritual estático, ficou estranho" — quer um fundo que DÊ pra animar. Conceito v10, escolhido pelo que sabemos animar bem:
+- **Base**: paisagem noturna — colinas escuras + SILHUETA DO CASTELO (destino da run) no horizonte + LUA dourada grande no alto + estrelas. (`frame_00.png`)
+- **Nuvens em PARALLAX** (`boot_anim/clouds.png`, transparente, margens vazias): 2 camadas deslizando em velocidades/alturas/alphas diferentes (2.2 e 3.8 px-de-arte/s, segunda flipada) — `drawClouds()` com wrap horizontal (margens vazias = emenda invisível). Animação clássica, suave, zero flicker. PNG ausente → fundo funciona sem nuvens.
+- **A LUA é o coração**: cartas voam pra ela; `boot_seal_glow` (luminância) faz o halo respirar e pulsar por absorção. Reapontar `SIGIL_IX/IY` + `SEAL_RADIUS_IMG` pro centro/raio da lua QUANDO a arte chegar.
+- **Status**: código pronto (clouds + preview); as 2 artes ESTÃO BLOQUEADAS pelo outage do PixelLab (503/ECIRCUITBREAKER persistente). Gerador em background: `scratchpad/pixellab_boot_bg.py` (cliente MCP HTTP mínimo, retenta ~20min, cria+espera+baixa `night_scene.png`/`night_clouds.png` no scratchpad). Ao chegar: instalar (`frame_00.png`/`clouds.png`), medir âncora da lua, validar `love . screenshot_bootfx`, commitar. A parede-selo v9 fica de placeholder até lá.

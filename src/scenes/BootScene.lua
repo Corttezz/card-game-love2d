@@ -118,6 +118,43 @@ local function loadBg()
         local ok2, img = pcall(love.graphics.newImage, p)
         if ok2 then img:setFilter("nearest", "nearest"); bg.chamber = img end
     end
+    -- Nuvens em PARALLAX (opcional — v10 "noite do Grimoire"): camada com
+    -- transparência que desliza devagar sobre o céu. Se o PNG não existe
+    -- (arte ainda não gerada), o fundo funciona sem nuvens.
+    local pc = bg.dir .. "/clouds.png"
+    if love.filesystem.getInfo(pc) then
+        local ok3, img = pcall(love.graphics.newImage, pc)
+        if ok3 then img:setFilter("nearest", "nearest"); bg.clouds = img end
+    end
+end
+
+-- Camada 1b: nuvens deslizando em 2 profundidades (animação clássica de
+-- pixel art — suave por natureza, zero flicker). A arte tem margens vazias,
+-- então o wrap horizontal não mostra emenda. Velocidades em px da ARTE por
+-- segundo (bem lentas — céu noturno, não vendaval).
+local function drawClouds()
+    if not bg.clouds or not bg._s then return end
+    local t = love.timer.getTime()
+    local s = bg._s
+    local layerW = bg.clouds:getWidth() * s
+    local W = love.graphics.getWidth()
+    for _, L in ipairs({
+        { spd = 2.2, iy = 4,  a = 0.75, flip = false },
+        { spd = 3.8, iy = 30, a = 0.45, flip = true },
+    }) do
+        local x0 = -((t * L.spd * s) % layerW)
+        local y = bg._ty + L.iy * s
+        love.graphics.setColor(1, 1, 1, L.a)
+        for k = 0, 1 + math.ceil(W / layerW) do
+            local x = x0 + k * layerW
+            if L.flip then
+                love.graphics.draw(bg.clouds, x + layerW, y, 0, -s, s)
+            else
+                love.graphics.draw(bg.clouds, x, y, 0, s, s)
+            end
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 -- Camada 1: a câmara pixel art (SEMPRE — é o background). Guarda o transform
@@ -439,9 +476,10 @@ end
 local function drawBackground()
     local W, H = love.graphics.getWidth(), love.graphics.getHeight()
     loadBg()
-    -- CAMADAS: arte pixel (estática) → CARGA do selo (entalhes respirando +
-    -- pulso por carta absorvida + estouro no flash).
+    -- CAMADAS: paisagem pixel (base) → nuvens em parallax (animação de
+    -- verdade) → CARGA da lua (halo respirando + pulso por carta absorvida).
     drawChamberBG()
+    drawClouds()
     if state.phase == "splash" then
         local breath = 0.34 + 0.14 * math.sin(love.timer.getTime() * 1.8)
         drawSealCharge(state.sealCharge * breath + 0.66 * sigil.flare)
@@ -461,8 +499,9 @@ function BootScene.previewBackground(t, charge, flare)
     loadBg()
     sigil.flare = flare or 0
     drawChamberBG()
-    local breath = 0.30 + 0.12 * math.sin((t or 0) * 1.8)
-    drawSealCharge((charge or 0) * breath + 0.55 * sigil.flare)
+    drawClouds()
+    local breath = 0.34 + 0.14 * math.sin((t or 0) * 1.8)
+    drawSealCharge((charge or 0) * breath + 0.66 * sigil.flare)
 end
 
 local function drawLoadingBar()

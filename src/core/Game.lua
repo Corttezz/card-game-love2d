@@ -738,6 +738,20 @@ function Game:processCardInCombat(card, turnContext)
         return math.floor(v)
     end
 
+    -- Auditoria Jul/2026: strength_scaling/dexterity_scaling deixaram de ser
+    -- flag-only — a carta com a flag conta o stat em DOBRO (identidade real da
+    -- Lamina Pesada/Medalhao Estelar; a desc "Escala com Forca" era promessa
+    -- vazia: toda carta ja soma o stat 1x). O DOBRO acontece AQUI (fonte unica
+    -- do statBonus) — nao reintroduzir soma no EffectSystem.
+    local function scaledStat(stat, scalingType)
+        local s = stat or 0
+        if s == 0 or not card.effects then return s end
+        for _, e in ipairs(card.effects) do
+            if e.type == scalingType then return s * 2 end
+        end
+        return s
+    end
+
     -- Side-effects de seal (não envolvem valor da carta): ouro, orbs, draw extra.
     local function applySealSideEffects()
         if not card.seal then return end
@@ -782,7 +796,8 @@ function Game:processCardInCombat(card, turnContext)
             return result
         end
 
-        local damage = computeCardValue(card.attack, self.player.strength)
+        local damage = computeCardValue(card.attack,
+            scaledStat(self.player.strength, "strength_scaling"))
 
         local wasAlive = self.enemy.health > 0
         self.enemy:takeDamage(damage)
@@ -816,9 +831,23 @@ function Game:processCardInCombat(card, turnContext)
         self:addMessage("Dano: " .. damage, "success")
 
     elseif card.type == "defense" then
-        local defense = computeCardValue(card.defense, self.player.dexterity)
+        local defense = computeCardValue(card.defense,
+            scaledStat(self.player.dexterity, "dexterity_scaling"))
 
+        -- Auditoria Jul/2026: o cap de Bloqueio (30) truncava EM SILENCIO —
+        -- o jogador via "+20" e "+17" na mesma leva e nunca sabia que 7
+        -- evaporaram. Agora o desperdicio e anunciado (decisao informada:
+        -- "nao vale jogar o 2o escudo agora").
+        local armorBefore = self.player.armor
         self.player:addArmor(defense)
+        local wasted = (armorBefore + defense) - self.player.armor
+        if wasted > 0 then
+            local I18n = require("src.i18n.I18n")
+            self:addMessage(I18n.t("messages.armor_capped",
+                { max = self.player.maxArmor, wasted = wasted },
+                "Bloqueio no maximo (" .. self.player.maxArmor .. ")! "
+                    .. wasted .. " desperdicado"), "warning")
+        end
         -- F4: Muralha do Escriba (cap de armor atingido).
         if self.player.armor >= self.player.maxArmor then
             AchievementSystem.onArmorCapped(self)

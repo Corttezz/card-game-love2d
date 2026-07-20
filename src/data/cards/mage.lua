@@ -152,9 +152,11 @@ return {
     },
     mage_blizzard = {
         id = "mage_blizzard", name = "Nevasca",
-        type = "attack", subtype = "skill",
+        -- Auditoria Jul/2026: era type="attack" com attack=0 (ganhava Forca
+        -- escondida). Dano magico e effect — nao escala com Forca (identidade).
+        type = "effect", subtype = "skill",
         cost = 2, attack = 0, defense = 0,
-        description = "Dano magico 10. Canaliza Gelo.",
+        description = "10 de dano magico. Canaliza 1 Gelo (pot 4).",
         image = "assets/cards/attack/theRock.png",
         rarity = "uncommon", class = "mage",
         tags = { "aoe", "magic", "ice", "channel" },
@@ -304,7 +306,7 @@ return {
         id = "mage_frost_nova", name = "Nova de Gelo",
         type = "attack", subtype = "skill",
         cost = 2, attack = 9, defense = 0,
-        description = "5 de dano aoe. Canaliza Gelo (pot 4).",
+        description = "9 de dano. Canaliza 1 Gelo (pot 4).",
         image = "assets/cards/attack/theRock.png",
         rarity = "uncommon", class = "mage",
         tags = { "strike", "aoe", "channel", "ice" },
@@ -404,7 +406,7 @@ return {
         id = "mage_meteor_strike", name = "Chuva de Meteoros",
         type = "attack", subtype = "skill",
         cost = 3, attack = 18, defense = 0,
-        description = "24 de dano. Canaliza 3 orbs de Fogo.",
+        description = "18 de dano. Canaliza 3 orbes de Fogo (pot 4).",
         image = "assets/cards/attack/theRock.png",
         rarity = "rare", class = "mage",
         tags = { "strike", "aoe", "fire", "channel", "finisher" },

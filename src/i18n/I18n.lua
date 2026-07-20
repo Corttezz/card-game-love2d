@@ -165,7 +165,10 @@ end
 
 -- Constroi o table de variaveis injetaveis a partir das stats da carta.
 -- Permite que descricoes usem {atk}/{def}/{cost}/{value}/{stacks} e fiquem
--- consistentes mesmo quando o gameplay alterar a stat (ex: buff de Forca).
+-- consistentes mesmo quando o gameplay alterar a stat (ex: forja +N).
+-- Auditoria Jul/2026: efeitos 2 e 3 tambem expostos ({value2}/{stacks2}/
+-- {duration2}/{value3}) — antes so o effects[1] interpolava e toda carta
+-- multi-efeito acabava com numero hard-coded que apodrecia a cada rebalance.
 local function cardVars(card)
     local vars = {
         atk   = card.attack,
@@ -173,10 +176,17 @@ local function cardVars(card)
         cost  = card.cost,
     }
     local effects = card.effects
-    if type(effects) == "table" and effects[1] then
-        local e = effects[1]
-        vars.value  = e.value
-        vars.stacks = e.stacks
+    if type(effects) == "table" then
+        local suffix = { [1] = "", [2] = "2", [3] = "3" }
+        for i = 1, 3 do
+            local e = effects[i]
+            if e then
+                local s = suffix[i]
+                vars["value" .. s]    = e.value
+                vars["stacks" .. s]   = e.stacks
+                vars["duration" .. s] = e.duration
+            end
+        end
     end
     return vars
 end

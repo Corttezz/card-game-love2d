@@ -212,7 +212,7 @@ Flag: `game.isRunMode` + `runManager:hasActiveRun()`.
 Todas herdam de `src/cards/base/Card.lua`. Toda carta tem **`tags = {}`** (array de strings do catálogo em `TagSystem.CATALOG`).
 
 - **`attack`** — dano ao inimigo. Pipeline completo: `applyCardEffects` → `+player.strength` → `ComboSystem.applyToCardValue` → `applyJokerEffects`.
-- **`defense`** — armor ao player (cap 50, zerado por batalha). Mesmo pipeline com `dexterity`.
+- **`defense`** — armor ao player (**cap 30** = `Config.Game.PLAYER_MAX_ARMOR`; zera todo turno, StS-style). Mesmo pipeline com `dexterity`. Truncar no cap gera toast `messages.armor_capped` (auditoria Jul/2026).
 - **`joker`** — slots (máx 3), `card.passive(game)` roda 1x, `card.effects` ficam ativos pelo resto da run.
 - **`effect`** — `processEffectCard` executa, carta descartada.
 
@@ -308,7 +308,7 @@ O painel do canto de inimigo (antigo `HudEnemyPanel`) foi aposentado. `GameUI.lu
 - **Nunca condicione por `card.name`** — use `card.effects` + `card.tags` (data-driven).
 - **Jokers nunca passam por `addCardToRun`/`currentDeck` direto** — sempre via `Game:addJokerToRun` (ou via `addCardToRun` que bifurca). Joker é separado de hand/deck (padrão Balatro G.jokers); persistido em `runManager.currentRun.jokers`. Romper esse invariante reabre o bug "mesmo joker pode ser jogado várias vezes".
 - **Coringas = COLEÇÃO + BANCADA (Jul/2026, ver [`memory/jokers_and_hand_layout.md`](memory/jokers_and_hand_layout.md))**: a run POSSUI jokers ilimitados (`currentRun.jokers`); só até `getMaxJokerSlots()` ficam ATIVOS (`currentRun.jokerActive[]`), o resto na bancada. `jokerSlots` = SÓ os ativos, reconstruído por `Game:rebuildJokerSlots()` (fonte única). Comprar NUNCA perde o joker (bancada se cheio). Troca de ativos: `Game:setJokerActive(i, bool)` + Gerenciador de Coringas. NÃO reintroduzir rejeição por slots cheios em `addJokerToRun`/`canAcceptJoker`.
-- **Strength/Dexterity são adicionados em Game:processCardInCombat via `statBonus`** — não duplicar no `EffectSystem:applyCardEffects`. O effect `strength_scaling`/`dexterity_scaling` é flag-only (semântica para tooltip/validador).
+- **Strength/Dexterity são adicionados em Game:processCardInCombat via `statBonus`** — não duplicar no `EffectSystem:applyCardEffects`. O effect `strength_scaling`/`dexterity_scaling` faz o stat contar em **DOBRO** nessa carta (auditoria Jul/2026: era flag-only e a desc "Escala com Força" era promessa vazia) — o ×2 mora SÓ no `scaledStat` de `processCardInCombat`.
 - **Triggers em cartas non-joker** funcionam via `context.sourceCard` em `applyTriggerEffects`. Para fazer uma defense card refletir, adicione `{ type="on_defend_damage", value=N }` ao `effects` da carta — o trigger fica visível em jokerSlots E em sourceCard.
 - Cartas procuram imagens em `assets/cards/attack/theRock.png` como fallback — muitas cartas ainda reusam por falta de arte (não é estilo, é débito).
 - Ao adicionar novo tipo de effect: implemente em `EffectSystem` + adicione em `PROCESSED_EFFECT_TYPES` de `tools/validate_cards.lua`.

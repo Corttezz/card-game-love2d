@@ -85,7 +85,7 @@ return {
         id = "warrior_heavy_blade", name = "Lamina Pesada",
         type = "attack", subtype = "skill",
         cost = 2, attack = 12, defense = 0,
-        description = "12 de dano. Escala com Forca.",
+        description = "12 de dano. Forca conta em DOBRO.",
         image = "assets/cards/attack/theRock.png",
         rarity = "common", class = "warrior",
         tags = { "strike", "strength", "scaling", "finisher" },
