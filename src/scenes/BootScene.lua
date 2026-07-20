@@ -81,10 +81,11 @@ local bg = {
 -- ÂNCORA NA ARTE (pixels da imagem 256×192). A arte é a NOITE DO GRIMOIRE
 -- (v10, PixelLab): colinas + silhueta do castelo + LUA dourada. A lua é o
 -- coração: destino das cartas e o que "carrega" (halo respira/pulsa).
--- Centro medido por centroide dos pixels claros: (173, 46); raio útil ~34
--- (disco + halo).
-local SIGIL_IX, SIGIL_IY = 173, 46
-local SEAL_RADIUS_IMG = 34   -- raio do halo em px da imagem
+-- Centro do DISCO medido com threshold alto (o centroide anterior misturava
+-- estrelas): (179, 40); raio útil ~30 (disco + halo) — as cartas caem DENTRO
+-- da lua (feedback: "centralizar pra ficar realmente dentro").
+local SIGIL_IX, SIGIL_IY = 179, 40
+local SEAL_RADIUS_IMG = 30   -- raio do halo em px da imagem
 
 -- Converte pixel da arte → tela, usando o transform do último draw (cover).
 -- A âncora fica COLADA na arte em qualquer resolução/aspect.
@@ -115,6 +116,9 @@ local function loadBg()
     local ok, sh = pcall(love.graphics.newShader, "shaders/boot_seal_glow.glsl")
     if ok then bg.glowShader = sh
     else print("[boot] boot_seal_glow falhou: " .. tostring(sh)) end
+    local okT, shT = pcall(love.graphics.newShader, "shaders/boot_star_twinkle.glsl")
+    if okT then bg.twinkleShader = shT
+    else print("[boot] boot_star_twinkle falhou: " .. tostring(shT)) end
     local p = bg.dir .. "/frame_00.png"
     if love.filesystem.getInfo(p) then
         local ok2, img = pcall(love.graphics.newImage, p)
@@ -182,6 +186,29 @@ local function drawChamberBG()
             love.graphics.rectangle("fill", 0, 0, W, H)
         end
     end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- Camada 1c: CINTILAÇÃO das estrelas (v11) — cada estrela pisca no próprio
+-- ritmo (shader boot_star_twinkle, aditivo sobre a própria arte). Lua e
+-- colinas excluídas no shader. Pergunta do dono ("dá pra animar os pontinhos?")
+-- respondida: dá, e é isto.
+local function drawStarTwinkle()
+    if not bg.chamber or not bg.twinkleShader or not bg._s then return end
+    local gx, gy = chamberAnchor(SIGIL_IX, SIGIL_IY)
+    local prev = love.graphics.getBlendMode()
+    love.graphics.setBlendMode("add")
+    love.graphics.setShader(bg.twinkleShader)
+    bg.twinkleShader:send("t", love.timer.getTime())
+    bg.twinkleShader:send("moon_center", { gx, gy })
+    bg.twinkleShader:send("moon_radius", SEAL_RADIUS_IMG * bg._s)
+    bg.twinkleShader:send("art_off", { bg._tx, bg._ty })
+    bg.twinkleShader:send("art_scale", bg._s)
+    bg.twinkleShader:send("sky_limit", 84.0)   -- y da arte onde começam as colinas
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(bg.chamber, bg._tx, bg._ty, 0, bg._s, bg._s)
+    love.graphics.setShader()
+    love.graphics.setBlendMode(prev)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
@@ -275,71 +302,33 @@ local function startSplashSequence()
         end
     end
 
-    -- Carta central: SEM x/y armazenados — sempre desenhada em liveCenter()
-    -- pra acompanhar resize da janela. Só anima alpha/scale/dissolve.
-    state.centerCard = {
-        scale = 0.3, alpha = 0, rot = 0,
-        dissolve = 0,
-    }
-
     local EM = _G.EventManager
     if not EM then
         BootScene.skip()
         return
     end
 
-    -- Burst de partículas no centro inicial. ParticlesManager spawn é
-    -- one-shot: as partículas vão divergir do ponto de spawn, então mesmo
-    -- com resize o burst em si fica coerente (parte de onde estava).
-    do
-        local cx, cy = chamberAnchor(SIGIL_IX, SIGIL_IY)   -- burst NO sigilo
-        ParticlesManager.spawn(cx, cy, 0, 0, {
-            timer = 0.02,
-            lifespan = 1.0,
-            scale = 0.5,
-            speed = 140,
-            colours = {
-                {0.95, 0.78, 0.32, 1},  -- AGED_GOLD_LIGHT
-                {0.78, 0.62, 0.20, 1},  -- AGED_GOLD
-                {0.55, 0.42, 0.12, 1},  -- AGED_GOLD_DARK
-            },
-            pulse_max = 24,
-            vel_variation = 0.6,
-            layer = 8,
-        })
-    end
-
     -- IMPORTANTE: tudo abaixo usa parallel/parallelEase porque queremos
     -- timeline ABSOLUTO (vários eventos simultâneos), não sequencial.
+    --
+    -- v11 (feedback do dono): SEM carta central — a cena abre CONTEMPLATIVA
+    -- (~1.8s só de noite: estrelas cintilando, nuvens andando, lua acordando)
+    -- antes de qualquer carta. Nada "já começa dentro da lua".
 
-    -- 0.10s: carta central materializa (alpha + back_out scale pop).
-    EM.parallel(0.10, function()
-        EM.parallelEase(state.centerCard, "alpha", 1.0, 0.4, "smooth",   QUEUE)
-        EM.parallelEase(state.centerCard, "scale", 1.0, 0.5, "back_out", QUEUE)
-    end, QUEUE)
+    -- 1.50s: a LUA desperta (rumble grave — o portal vai abrir).
+    EM.parallel(1.50, function() Sfx.play("bootVortex") end, QUEUE)
 
-    -- 0.50s: impacto sonoro.
-    EM.parallel(0.50, function() Sfx.play("deckStart") end, QUEUE)
-
-    -- 1.40s: a carta central DISSOLVE e é sugada pro centro (buildup grave,
-    -- estilo Balatro: magic_crumple + splash_buildup).
-    EM.parallel(1.40, function()
-        EM.parallelEase(state.centerCard, "dissolve", 1.0, 0.5, "smooth",  QUEUE)
-        EM.parallelEase(state.centerCard, "alpha",    0.0, 0.5, "smooth",  QUEUE)
-        EM.parallelEase(state.centerCard, "scale",    0.1, 0.5, "ease_in", QUEUE)
-        Sfx.play("bootVortex")
-    end, QUEUE)
-
-    -- 1.70s+: cascade de mini-cartas, staggered 0.08s (janela ~1.7s — mais
-    -- CALMA que antes; feedback: "extremamente rápido"). Cada uma:
-    --   - Coords em POLAR (angle, distFrom) — cx/cy lidos live no draw.
-    --   - Voa com ease_OUT (decelera ao chegar), espiral orgânica.
+    -- 1.80s+: REDEMOINHO de cartas na lua, staggered 0.08s (janela ~1.7s).
+    --   - Coords em POLAR (angle, distFrom) a partir do centro da lua.
+    --   - Voa com ease_OUT (decelera ao chegar); TODAS orbitam no MESMO
+    --     sentido e aceleram perto do centro → lê como furacão/redemoinho
+    --     entrando na lua (não espirais aleatórias).
     --   - Scale pop-in → collapse no centro (sucção). Computado em update.
-    -- 1.65s: WHOOSH grave da massa de cartas convergindo.
-    EM.parallel(1.65, function() Sfx.play("bootCardWhoosh") end, QUEUE)
+    -- 1.75s: WHOOSH grave da massa de cartas convergindo.
+    EM.parallel(1.75, function() Sfx.play("bootCardWhoosh") end, QUEUE)
 
     for i = 1, NUM_MINI do
-        local delay = 1.70 + (i - 1) * 0.08
+        local delay = 1.80 + (i - 1) * 0.08
         EM.parallel(delay, function()
             local W, H = love.graphics.getWidth(), love.graphics.getHeight()
             local angle = math.random() * math.pi * 2
@@ -347,10 +336,9 @@ local function startSplashSequence()
 
             local mc = {
                 angle    = angle,
-                -- v2: ESPIRAL — o ângulo anima junto com a distância
-                -- (antes o voo era linha reta radial; espiral é orgânico)
-                angleSpeed = (math.random() < 0.5 and -1 or 1)
-                    * (1.0 + math.random() * 1.4),      -- rad/s de órbita
+                -- v11 REDEMOINHO: todas orbitam no MESMO sentido (horário) —
+                -- sentidos aleatórios liam como espirais soltas, não furacão.
+                angleSpeed = 1.5 + math.random() * 1.2,   -- rad/s de órbita
                 distFrom = radius,
                 rot      = math.random() * math.pi * 2,
                 rotSpeed = (math.random() - 0.5) * 8,   -- rad/s tumble
@@ -482,9 +470,11 @@ end
 local function drawBackground()
     local W, H = love.graphics.getWidth(), love.graphics.getHeight()
     loadBg()
-    -- CAMADAS: paisagem pixel (base) → nuvens em parallax (animação de
-    -- verdade) → CARGA da lua (halo respirando + pulso por carta absorvida).
+    -- CAMADAS: paisagem pixel (base) → estrelas cintilando → nuvens em
+    -- parallax (passam NA FRENTE das estrelas) → CARGA da lua (halo
+    -- respirando + pulso por carta absorvida).
     drawChamberBG()
+    drawStarTwinkle()
     drawClouds()
     if state.phase == "splash" then
         local breath = 0.34 + 0.14 * math.sin(love.timer.getTime() * 1.8)
@@ -505,6 +495,7 @@ function BootScene.previewBackground(t, charge, flare)
     loadBg()
     sigil.flare = flare or 0
     drawChamberBG()
+    drawStarTwinkle()
     drawClouds()
     local breath = 0.34 + 0.14 * math.sin((t or 0) * 1.8)
     drawSealCharge((charge or 0) * breath + 0.66 * sigil.flare)
