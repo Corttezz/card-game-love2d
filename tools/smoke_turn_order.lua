@@ -49,6 +49,7 @@ function M.run()
     game.enemy.nextIntent = "attack"
     game.enemy.damage = 8
     game.enemy.baseDamage = 8
+    game.enemy.nextIntentDamage = 8   -- telegraph congelado (contrato v2)
     game.battleTurn = 1               -- longe da Fúria
     game.player.armor = 20
     local hpBefore = game.player.health
@@ -79,8 +80,10 @@ function M.run()
     game2:startGame()
     pump(game2, 0.5)
     game2.enemy.nextIntent = "attack"
+    game2.enemy.nextIntent = "attack"
     game2.enemy.damage = 8
     game2.enemy.baseDamage = 8
+    game2.enemy.nextIntentDamage = 8  -- telegraph congelado (contrato v2)
     game2.battleTurn = 1
     game2.player.armor = 0
     local hp2 = game2.player.health

@@ -42,6 +42,7 @@ function Enemy:rollIntent()
     if self._lastIntentNonAttack then
         self.nextIntent = (math.random() < 0.30) and "strong" or "attack"
         self._lastIntentNonAttack = false
+        self.nextIntentDamage = self.damage
         return self.nextIntent
     end
     local total = 0
@@ -57,6 +58,12 @@ function Enemy:rollIntent()
     self.nextIntent = self.nextIntent or "attack"
     self._lastIntentNonAttack =
         (self.nextIntent == "defend" or self.nextIntent == "buff")
+    -- CONGELA o dano bruto no momento do anuncio (auditoria Jul/2026,
+    -- anomalia "escudo furado"): Furia/BUFF mutavam self.damage ENTRE o
+    -- telegraph e a execucao — o golpe batia mais forte que o numero que o
+    -- jogador viu. Preview e performAttack leem este valor; buffs rolados
+    -- depois so valem no PROXIMO intent. Weak continua por cima (so reduz).
+    self.nextIntentDamage = self.damage
     return self.nextIntent
 end
 
@@ -71,7 +78,7 @@ function Enemy:getIntentPreview()
     elseif kind == "buff" then
         return kind, 2
     end
-    local dmg = self.damage
+    local dmg = self.nextIntentDamage or self.damage
     if kind == "strong" then dmg = math.floor(dmg * 1.6) end
     if self:hasStatus("weak") then dmg = math.floor(dmg * 0.75) end
     return kind, dmg
@@ -134,7 +141,9 @@ end
 function Enemy:performAttack()
     if self:canAttack() then
         self.attackCooldown = 1.0
-        local dmg = self.damage
+        -- Executa o valor CONGELADO no anuncio do intent (nunca mais forte
+        -- que o numero que o jogador viu no HUD).
+        local dmg = self.nextIntentDamage or self.damage
         -- "weak": dano infligido -25%
         if self:hasStatus("weak") then
             dmg = math.floor(dmg * 0.75)
