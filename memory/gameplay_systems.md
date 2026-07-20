@@ -46,7 +46,7 @@ A mão inicial do floor (`startGame` / `resetHandAndDeck`) continua usando `draw
 ## Tipos de carta
 
 - `attack` — dano ao enemy, passa por todo pipeline de cima.
-- `defense` — armor ao player (cap `PLAYER_MAX_ARMOR=50`, zerado por batalha em `resetTransientStats`).
+- `defense` — armor ao player (cap POR ATO: 30/40/50 via `PLAYER_MAX_ARMOR` + `PLAYER_MAX_ARMOR_PER_ACT`; zerado por batalha em `resetTransientStats`).
 - `joker` — **NÃO entram em `currentDeck`/hand**. Adquiridos via `Game:addJokerToRun(id, meta)` → vão direto para `game.jokerSlots` (máx 3) E persistem em `runManager.currentRun.jokers` (run-scoped). `card.passive(game)` roda uma vez no acquire; `card.effects` ficam ativos pelo resto da run via `applyJokerEffects`/`applyTriggerEffects`. Padrão Balatro G.jokers separado de G.hand. `addCardToRun` bifurca: se `cardData.type=="joker"` roteia para `addJokerToRun`.
 - `effect` — `card.passive(game)` roda e carta é descartada.
 

@@ -212,7 +212,7 @@ Flag: `game.isRunMode` + `runManager:hasActiveRun()`.
 Todas herdam de `src/cards/base/Card.lua`. Toda carta tem **`tags = {}`** (array de strings do catálogo em `TagSystem.CATALOG`).
 
 - **`attack`** — dano ao inimigo. Pipeline completo: `applyCardEffects` → `+player.strength` → `ComboSystem.applyToCardValue` → `applyJokerEffects`.
-- **`defense`** — armor ao player (**cap 30** = `Config.Game.PLAYER_MAX_ARMOR`; zera todo turno, StS-style). Mesmo pipeline com `dexterity`. Truncar no cap gera toast `messages.armor_capped` (auditoria Jul/2026).
+- **`defense`** — armor ao player (**cap por ato: 30/40/50** = `Config.Game.PLAYER_MAX_ARMOR` + `PLAYER_MAX_ARMOR_PER_ACT×(ato-1)`; zera todo turno, StS-style). Mesmo pipeline com `dexterity`. Truncar no cap gera toast `messages.armor_capped` (auditoria Jul/2026; cap fixo 30 sufocava builds de defesa no late game — 20+ turnos no cap medidos pelo autoplay).
 - **`joker`** — slots (máx 3), `card.passive(game)` roda 1x, `card.effects` ficam ativos pelo resto da run.
 - **`effect`** — `processEffectCard` executa, carta descartada.
 
@@ -220,6 +220,8 @@ Todas herdam de `src/cards/base/Card.lua`. Toda carta tem **`tags = {}`** (array
 - **Continuous jokers**: `damage_multiplier`, `defense_multiplier`, `damage_bonus`, `defense_bonus`, `heal_multiplier`
 - **Card self-effects**: `strength_scaling`, `dexterity_scaling`, `multi_hit`, `damage_bonus_self`
 - **Effect cards / passives**: `instant_heal`, `restore_mana`, `increase_max_mana`, `add_armor`, `magic_damage`, `aoe_magic_damage`, `draw_cards`, `discard_cards`, `apply_debuff`, `apply_buff`, `gain_strength`, `gain_dexterity`, `channel_orb`, `evoke_orb`, `evoke_all_orbs`, `mystery`
+- **Orbes PULSAM** (Jul/2026, `EffectSystem:orbPassiveTick` chamado em `Game:endTurn`): cada orbe canalizado dispara meio-efeito no fim do turno do jogador (raio=dano, gelo=armor, fogo=dano/3, holy=cura/3, sombra=cresce +2). Foco soma no valor antes da divisão. Sem isso o mago era 0/6 no autoplay (orbe inerte = dano anêmico).
+- **Intent do inimigo é CONGELADO no anúncio** (`Enemy.nextIntentDamage`, setado em `rollNextIntent`): o golpe executado NUNCA excede o número que o jogador viu no HUD — Fúria/BUFF entre telegraph e execução só valem no próximo intent (anomalia "escudo furado" do autoplay). Weak aplica por cima (só reduz). Testes que mutam `enemy.damage` devem setar `nextIntentDamage` junto.
 - **Flags**: `exhaust`, `innate`, `retain`
 - **Triggers**: `on_attack_heal`, `on_defend_damage`, `regen_per_turn`, `damage_per_turn`
 
