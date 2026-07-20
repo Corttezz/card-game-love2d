@@ -80,39 +80,33 @@ local bg = {
 local PLASMA_C1 = { 0.90, 0.70, 0.26, 1 }   -- ouro arcano
 local PLASMA_C2 = { 0.66, 0.20, 0.10, 1 }   -- brasa-sangue
 
--- ÂNCORAS NA ARTE da câmara (pixels da imagem 256×192). v7: o SIGILO é o
--- CORAÇÃO da entrada — a energia emana dele, as cartas voam PRA DENTRO dele
--- e ele reage (pulso + flare + anéis por carta absorvida). Braseiros ganham
--- chama viva. Feedback do dono: "as cartas estão indo para nada".
-local SIGIL_IX, SIGIL_IY = 128, 64
-local BRAZIERS_IMG = { { 33, 60 }, { 223, 60 } }
+-- ÂNCORA NA ARTE (pixels da imagem 256×192). v8: o fundo é uma PAREDE com um
+-- SELO entalhado no CENTRO — arte estática por natureza (sem fogo/tocha; o
+-- que era chama congelada saiu, pedido do dono). O selo é o portal: a energia
+-- vive DENTRO dele e as cartas são absorvidas por ele.
+local SIGIL_IX, SIGIL_IY = 128, 96
 
 -- Converte pixel da arte → tela, usando o transform do último draw (cover).
--- As âncoras ficam COLADAS na arte em qualquer resolução/aspect.
+-- A âncora fica COLADA na arte em qualquer resolução/aspect.
 local function chamberAnchor(ix, iy)
     if bg._s then
         return bg._tx + ix * bg._s, bg._ty + iy * bg._s
     end
     local W, H = love.graphics.getDimensions()
-    return W * 0.5, H * 0.34   -- fallback sem arte
+    return W * 0.5, H * 0.5   -- fallback sem arte (selo centrado)
 end
 
--- Estado reativo do sigilo: flare (0..1, decai) + anéis de absorção.
-local sigil = { flare = 0, rings = {} }
+-- Pulso de absorção do selo (0..1, decai): alimenta o uniform `flare` do
+-- shader — a energia clareia POR DENTRO. Nada é desenhado por cima da arte
+-- (os anéis/glows/partículas antigos saíram — feedback: "ridículo").
+local sigil = { flare = 0 }
 
 local function bumpSigil()
-    sigil.flare = math.min(1, sigil.flare + 0.32)
-    table.insert(sigil.rings, { r = 12, a = 0.55 })
+    sigil.flare = math.min(1, sigil.flare + 0.30)
 end
 
 local function updateSigil(dt)
     sigil.flare = math.max(0, sigil.flare - dt * 1.6)
-    for i = #sigil.rings, 1, -1 do
-        local rg = sigil.rings[i]
-        rg.r = rg.r + 240 * dt
-        rg.a = rg.a - 1.8 * dt
-        if rg.a <= 0 then table.remove(sigil.rings, i) end
-    end
 end
 
 local function loadBg()
@@ -163,125 +157,16 @@ local function drawPlasmaBG(t, alpha)
     bg.shader:send("mid_flash", 0)
     bg.shader:send("vort_offset", bg.offset)
     bg.shader:send("center_off", { (gx - 0.5 * W) / diag, (gy - 0.5 * H) / diag })
+    bg.shader:send("flare", sigil.flare)
     love.graphics.setColor(1, 1, 1, alpha)
     love.graphics.rectangle("fill", 0, 0, W, H)
     love.graphics.setShader()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Camada 2b: GLOW reativo do sigilo + anéis de absorção (um por carta
--- engolida) — o "pra onde as cartas estão indo" fica visível e responde.
-local function drawSigilGlow()
-    local gx, gy = chamberAnchor(SIGIL_IX, SIGIL_IY)
-    local H = love.graphics.getHeight()
-    local k = H / 768
-    local t = love.timer.getTime()
-    local pulse = 0.5 + 0.5 * math.sin(t * 1.7)
-    local prev = love.graphics.getBlendMode()
-    love.graphics.setBlendMode("add")
-    local base = 0.05 + 0.06 * pulse + 0.38 * sigil.flare
-    for i = 3, 1, -1 do
-        love.graphics.setColor(0.95, 0.74, 0.30, base / i)
-        love.graphics.circle("fill", gx, gy,
-            (58 + i * 30) * k * (1 + 0.18 * sigil.flare), 32)
-    end
-    for _, rg in ipairs(sigil.rings) do
-        love.graphics.setColor(0.98, 0.85, 0.45, rg.a)
-        love.graphics.setLineWidth(2)
-        love.graphics.circle("line", gx, gy, rg.r * k, 32)
-    end
-    love.graphics.setLineWidth(1)
-    love.graphics.setBlendMode(prev)
-    love.graphics.setColor(1, 1, 1, 1)
-end
-
--- Camada 2c: VIDA na arte — chamas dos braseiros tremulando + poça de luz
--- do sigilo no piso. Flicker QUANTIZADO em passos de 1/8s pra ler como pixel
--- art (não glow smooth de motor 3D).
-local function drawChamberLife()
-    local H = love.graphics.getHeight()
-    local k = H / 768
-    local t = love.timer.getTime()
-    local qt = math.floor(t * 8) / 8
-    local prev = love.graphics.getBlendMode()
-    love.graphics.setBlendMode("add")
-    for i, b in ipairs(BRAZIERS_IMG) do
-        local bx, by = chamberAnchor(b[1], b[2])
-        local flick = 0.5 + 0.5 * math.sin(qt * 37.7 + i * 13.1)
-                                * math.sin(qt * 17.3 + i * 5.7)
-        love.graphics.setColor(0.95, 0.55, 0.18, 0.10 + 0.10 * flick)
-        love.graphics.circle("fill", bx, by, (30 + 8 * flick) * k, 24)
-        love.graphics.setColor(0.99, 0.80, 0.30, 0.10 + 0.08 * (1 - flick))
-        love.graphics.circle("fill", bx, by - 6 * k, (16 + 5 * (1 - flick)) * k, 24)
-    end
-    -- poça de luz do sigilo no piso (pulsa junto; flare ilumina o salão)
-    local gx = chamberAnchor(SIGIL_IX, SIGIL_IY)
-    local pulse = 0.5 + 0.5 * math.sin(t * 1.7)
-    love.graphics.push()
-    love.graphics.translate(gx, H * 0.80)
-    love.graphics.scale(1, 0.28)
-    love.graphics.setColor(0.95, 0.74, 0.30,
-        0.05 + 0.05 * pulse + 0.22 * sigil.flare)
-    love.graphics.circle("fill", 0, 0, 190 * k, 32)
-    love.graphics.pop()
-    love.graphics.setBlendMode(prev)
-    love.graphics.setColor(1, 1, 1, 1)
-end
-
--- Camada 3: BRASAS subindo (dos braseiros da câmara + ambiente). Quadradinhos
--- pixel dourados/rubros com flicker — dá vida ao pixel art sem flicker de IA.
--- Coords normalizadas (0..1); RNG cosmético = math.random (regra do projeto).
-local embers = { list = {}, spawnT = 0 }
-
-local function updateEmbers(dt)
-    embers.spawnT = embers.spawnT - dt
-    if embers.spawnT <= 0 and #embers.list < 36 then
-        embers.spawnT = 0.10
-        local e = {
-            sway = math.random() * 6.28,
-            spd  = 0.05 + math.random() * 0.06,
-            size = (math.random() < 0.3) and 2 or 1,
-            life = 0,
-            warm = math.random() < 0.72,
-        }
-        if math.random() < 0.6 then
-            -- nasce num dos braseiros da câmara (x≈0.12 / 0.88, y≈0.38)
-            local left = math.random() < 0.5
-            e.x = (left and 0.12 or 0.88) + (math.random() - 0.5) * 0.05
-            e.y = 0.40 + math.random() * 0.06
-        else
-            -- ambiente: sobe do chão
-            e.x = 0.15 + math.random() * 0.7
-            e.y = 1.02
-        end
-        table.insert(embers.list, e)
-    end
-    for i = #embers.list, 1, -1 do
-        local e = embers.list[i]
-        e.life = e.life + dt
-        e.y = e.y - e.spd * dt
-        if e.y < -0.03 then table.remove(embers.list, i) end
-    end
-end
-
-local function drawEmbers()
-    local W, H = love.graphics.getDimensions()
-    local t = love.timer.getTime()
-    local px = math.max(2, math.floor(H / 256))   -- 1 "pixel" da arte 4×
-    for _, e in ipairs(embers.list) do
-        local x = (e.x + 0.018 * math.sin(t * 0.9 + e.sway)) * W
-        local flick = 0.55 + 0.45 * math.sin(t * 3.2 + e.sway * 2)
-        local a = math.min(1, e.life * 2.5) * 0.55 * flick
-        if e.warm then
-            love.graphics.setColor(0.95, 0.72, 0.28, a)
-        else
-            love.graphics.setColor(0.78, 0.30, 0.14, a)
-        end
-        local s = e.size * px
-        love.graphics.rectangle("fill", math.floor(x), math.floor(e.y * H), s, s)
-    end
-    love.graphics.setColor(1, 1, 1, 1)
-end
+-- (v8: drawSigilGlow/drawChamberLife/embers REMOVIDOS — feedback do dono:
+-- "tire essas partículas de faísca e de luz, está ficando bem ridículo".
+-- Toda a resposta visual agora vive DENTRO do shader, via uniform flare.)
 
 -- ============== Init ==============
 
@@ -299,10 +184,7 @@ function BootScene.init(callbacks)
     state.plasmaAlpha     = 0
     state.titleLetters    = {}
     state.onComplete      = callbacks.onComplete
-    embers.list           = {}
-    embers.spawnT         = 0
     sigil.flare           = 0
-    sigil.rings           = {}
 
     -- Background fade-in (não-bloqueante para não travar o resto).
     if _G.EventManager then
@@ -432,6 +314,8 @@ local function startSplashSequence()
                 scale    = 0,
                 age      = 0,
                 lifespan = 0.55 + math.random() * 0.10, -- 0.55..0.65
+                trail    = {},   -- rastro de fósforo (ghosting CRT)
+                _trailT  = 0,
                 _alive   = true,
             }
             table.insert(state.miniCards, mc)
@@ -482,6 +366,7 @@ local function startSplashSequence()
         end
         Sfx.play("bootImpact")
         if _G.triggerShake then _G.triggerShake(7, 0.35) end
+        sigil.flare = 1   -- o selo estoura junto com o flash (conexão)
     end, QUEUE)
 
     -- transição pro menu (depois do flash desbotar).
@@ -493,8 +378,7 @@ end
 function BootScene.update(dt)
     if state.phase == "done" then return end
 
-    updateEmbers(dt)   -- brasas vivem em todas as fases (o cenário respira)
-    updateSigil(dt)    -- flare decai + anéis de absorção expandem
+    updateSigil(dt)    -- pulso de absorção decai
 
     if state.phase == "loading" then
         state.loadingTime = state.loadingTime + dt
@@ -530,8 +414,18 @@ function BootScene.update(dt)
                 mc.scale = 1 - (k * k * (3 - 2 * k))  -- smoothstep collapse
             end
 
-            -- Mini-carta chegou: ABSORVIDA pelo sigilo — flare + anel de
-            -- absorção (o destino responde; feedback "indo para nada").
+            -- Rastro de FÓSFORO (ghosting de tubo CRT — identidade nossa,
+            -- não do Balatro): amostra a pose a cada ~35ms, guarda 3 fantasmas.
+            mc._trailT = mc._trailT + dt
+            if mc._trailT >= 0.035 then
+                mc._trailT = 0
+                table.insert(mc.trail, 1, { angle = mc.angle, dist = mc.distFrom,
+                    rot = mc.rot, scale = mc.scale })
+                if #mc.trail > 3 then table.remove(mc.trail) end
+            end
+
+            -- Mini-carta chegou: ABSORVIDA pelo selo — pulso de brilho na
+            -- energia (dentro do shader; o destino responde).
             if mc.age >= mc.lifespan then
                 mc._alive = false
                 table.remove(state.miniCards, i)
@@ -544,15 +438,12 @@ end
 local function drawBackground()
     local W, H = love.graphics.getWidth(), love.graphics.getHeight()
     loadBg()
-    -- CAMADAS: câmara pixel art (sempre) → energia emanando do sigilo (splash)
-    -- → glow reativo do sigilo → chamas/luz do piso → brasas subindo.
+    -- CAMADAS: parede pixel art (estática por natureza) → energia arcana
+    -- DENTRO do selo (splash; flare de absorção vive no shader).
     drawChamberBG()
     if state.phase == "splash" then
         drawPlasmaBG(state.splashTime, state.plasmaAlpha)
     end
-    drawSigilGlow()
-    drawChamberLife()
-    drawEmbers()
 
     -- Fade-in mask (escurece o que tem por baixo enquanto bgAlpha sobe).
     if state.bgAlpha < 1 then
@@ -569,8 +460,6 @@ function BootScene.previewBackground(t, plasmaAlpha, flare)
     sigil.flare = flare or 0
     drawChamberBG()
     if plasmaAlpha and plasmaAlpha > 0.01 then drawPlasmaBG(t, plasmaAlpha) end
-    drawSigilGlow()
-    drawChamberLife()
 end
 
 local function drawLoadingBar()
@@ -623,8 +512,17 @@ local function drawSplash()
     local sx, sy = chamberAnchor(SIGIL_IX, SIGIL_IY)
 
     -- Mini-cartas primeiro (z-order: ficam atrás da central). Coords em polar
-    -- (angle, distFrom) a partir do sigilo — âncora live, resize não quebra.
+    -- (angle, distFrom) a partir do selo — âncora live, resize não quebra.
+    -- Cada carta arrasta um rastro de FÓSFORO (ghosting CRT): fantasmas da
+    -- pose recente com alpha decaindo — velho primeiro, carta por cima.
     for _, mc in ipairs(state.miniCards) do
+        for gi = #mc.trail, 1, -1 do
+            local g = mc.trail[gi]
+            local gx = sx + math.cos(g.angle) * g.dist
+            local gy = sy + math.sin(g.angle) * g.dist
+            drawCardShape(gx, gy, MINI_SIZE.w, MINI_SIZE.h,
+                mc.alpha * math.max(0, 0.22 - gi * 0.05), g.scale * 0.98, g.rot, 0)
+        end
         local x = sx + math.cos(mc.angle) * mc.distFrom
         local y = sy + math.sin(mc.angle) * mc.distFrom
         drawCardShape(x, y, MINI_SIZE.w, MINI_SIZE.h, mc.alpha, mc.scale, mc.rot, 0)
@@ -747,9 +645,7 @@ function BootScene._finish()
     state.centerCard = nil
     state.flashAlpha = 0
     state.titleLetters = {}
-    embers.list = {}
     sigil.flare = 0
-    sigil.rings = {}
     -- SYNC (feedback): mata qualquer SFX de boot (raio/rumble/impacto) ANTES do
     -- menu + música entrarem — o barulho de raio vazava pro menu. stopGroup só
     -- corta o grupo "sfx"; a música (grupo "music") não é afetada.

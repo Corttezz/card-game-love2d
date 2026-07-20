@@ -17,6 +17,9 @@ extern number vort_offset;
 // v7: centro do swirl ANCORADO no SIGILO da câmara (não no centro da tela) —
 // offset em unidades uv (normalizado pela diagonal). A energia emana DELE.
 extern vec2 center_off;
+// v8: pulso de ABSORÇÃO (0..1) — cada carta engolida clareia a energia por
+// dentro (nada de círculos/anéis desenhados por cima do pixel art).
+extern number flare;
 
 #define PIXEL_SIZE_FAC 300.
 // base escura QUENTE (ink marrom do grimório)
@@ -66,10 +69,12 @@ vec4 effect(vec4 colour, Image texture, vec2 texture_coords, vec2 screen_coords)
         + mid_flash * max(c1p, c2p);
     vec4 outc = ret_col * (1. - mod_flash) + mod_flash * vec4(1., 1., 1., 1.);
 
-    // MÁSCARA RADIAL apertada: a energia ABRAÇA o sigilo (raio do círculo da
-    // arte ≈ 0.12 da diagonal) e some logo depois — nada de blobs soltos pela
-    // tela (feedback: "jogados aleatoriamente"). uv_len já é relativo ao sigilo.
-    number edge = 1. - smoothstep(0.10, 0.30, uv_len);
+    // MÁSCARA no DISCO do selo: a energia vive DENTRO do círculo entalhado
+    // (portal) e some no aro — nada de blobs soltos pela tela. uv_len já é
+    // relativo ao centro do selo. O flare expande/clareia levemente (pulso
+    // de absorção quando uma carta é engolida).
+    number edge = 1. - smoothstep(0.10 + 0.02 * flare, 0.24 + 0.03 * flare, uv_len);
 
+    outc.rgb *= (1. + 0.65 * flare);
     return vec4(outc.rgb, outc.a * edge) * colour;
 }

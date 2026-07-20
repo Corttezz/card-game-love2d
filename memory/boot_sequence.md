@@ -130,3 +130,15 @@ Feedback do dono na v6: energia "jogada aleatoriamente" (ainda cheirava a Balatr
 - **Preview fiel**: `BootScene.previewBackground(t, plasmaAlpha, flare)` — o tool `screenshot_bootfx` usa as MESMAS camadas do jogo (gera `bootv7_{early,absorb,late}.png`).
 
 ⚠️ v7 LUAC-CLEAN mas SEM verificação visual (jogo do dono aberto) — rodar `love . screenshot_bootfx` na primeira janela livre.
+
+## Entrada v8 — "o Selo é um portal" (Jul/2026)
+
+Feedback do dono na v7: (1) tochas estáticas no fundo ficam RUINS — se não dá pra animar direito, o background não deve ter elementos que imploram animação; (2) partículas de faísca/luz desenhadas por cima = "ridículo", TIRAR; (3) efeito das cartas melhor mas ainda tosco — conectar com a identidade CRT, menos Balatro, tudo coeso. **"Planeje bem antes de fazer."**
+
+**Conceito coeso**: o fundo é uma PAREDE de pedra com um SELO entalhado no centro (arte estática por natureza — sem fogo/tocha). O selo é um PORTAL: a energia arcana vive DENTRO do disco dele, as cartas voam pra dentro, e cada absorção dá um pulso de brilho NA PRÓPRIA energia (uniform `flare` no shader — nada desenhado por cima). No flash, flare=1 (o selo estoura junto).
+
+- **Arte nova**: `create_map_object` 256×192 "dark stone wall + carved circular seal, NO fire/torches/light sources" → substitui `boot_anim/frame_00.png`. Âncora `SIGIL 128,96` (centro da imagem). ⚠️ CONFERIR o centro/raio reais na arte gerada e ajustar `SIGIL_IX/IY` + máscara do shader (`smoothstep(0.10, 0.24)`) pro disco do selo.
+- **REMOVIDOS**: embers, drawSigilGlow (círculos+anéis), drawChamberLife (chamas/poça) — todo glow "de motor 3D" por cima do pixel art.
+- **Rastro de FÓSFORO nas cartas** (identidade CRT nossa): cada mini-carta guarda 3 poses recentes (~35ms) e desenha fantasmas com alpha decaindo (0.17/0.12/0.07) — ghosting de tubo antigo.
+- Shader: `extern number flare` → `outc.rgb *= 1+0.65*flare` + máscara expande de leve.
+- PixelLab caiu no meio (503/circuit breaker) — download da arte via poll em background; instalar em frame_00.png quando chegar e VALIDAR por screenshot (centro do selo + look).
