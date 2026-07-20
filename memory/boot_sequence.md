@@ -142,3 +142,13 @@ Feedback do dono na v7: (1) tochas estáticas no fundo ficam RUINS — se não d
 - **Rastro de FÓSFORO nas cartas** (identidade CRT nossa): cada mini-carta guarda 3 poses recentes (~35ms) e desenha fantasmas com alpha decaindo (0.17/0.12/0.07) — ghosting de tubo antigo.
 - Shader: `extern number flare` → `outc.rgb *= 1+0.65*flare` + máscara expande de leve.
 - PixelLab caiu no meio (503/circuit breaker) — download da arte via poll em background; instalar em frame_00.png quando chegar e VALIDAR por screenshot (centro do selo + look).
+
+## Entrada v9 — CARGA DO SELO (o plasma morreu de vez) ⭐ (Jul/2026)
+
+Feedback: "esse efeito que fica em cima ainda não tá bom" — o plasma domain-warp (mesmo mascarado) nunca casou com o pixel art. **v9 mata o boot_splash.glsl** (DELETADO) e troca por:
+
+- **`shaders/boot_seal_glow.glsl`**: redesenha A PRÓPRIA ARTE em blend "add", realçando só pixels CLAROS (`hi = (lum-0.18)/0.82`) dentro do disco do selo (máscara radial `smoothstep(0.55, 1.0, d)`). Efeito = os entalhes/inlay dourado ACENDEM — o glow É a arte, pixel-nativo, zero material estranho. Uniforms: `center`/`radius` (px de tela), `strength`.
+- **Arte nova instalada** (`frame_00.png`): PAREDE-SELO — pedra escura + selo entalhado gigante (anel de runas + estrela, inlay ouro/bronze), SEM tochas/fogo (estática por natureza). Âncora `SIGIL 128,96`, `SEAL_RADIUS_IMG 80` (medidos na arte). A câmara ritual antiga saiu.
+- **Driver**: `state.sealCharge` (ease 0→1 em 2s no splash) × respiração `0.34+0.14·sin(1.8t)` + `0.66·flare` (pulso por carta absorvida; flare=1 no flash). `drawSealCharge(strength)` desenha com o MESMO transform do cover.
+- Validado por screenshot (bootv9_{early,absorb,peak}.png): parede-selo pelo tubo = capa de grimório; brilho cresce com carga/flare, contido.
+- Nota: o título letra-a-letra sobrepõe o arco inferior do selo — legível pelo outline ink; lê como lockup de logo.

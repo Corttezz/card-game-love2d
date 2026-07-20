@@ -51,7 +51,7 @@ local state = {
     staticAlpha     = 0,           -- chuvisco resolvendo na cena
 
     -- v6: energia arcana (plasma mascarado sobre a câmara) + título letra-a-letra
-    plasmaAlpha     = 0,           -- 0..1 alpha da camada de energia
+    sealCharge      = 0,           -- 0..1 carga do selo (entalhes acendendo)
     titleLetters    = {},          -- { {ch, alpha, scale}, ... }
 }
 
@@ -65,26 +65,24 @@ local NUM_MINI    = 22
 -- 0.7 = bordas extremas, faz o voo parecer "vindo de longe".
 local SPAWN_RADIUS_RATIO = 0.7
 
--- ============== Fundo em CAMADAS (v6, Jul/2026) ==============
--- Feedback do dono: o pixel art TEM que ser o fundo (com vida), e a energia
--- deve ser BASEADA no Balatro mas com a nossa cara. Composição:
---   1. CÂMARA ritual pixel art (frame_00, estática — sem flicker) = o fundo.
---   2. ENERGIA ARCANA (boot_splash.glsl): plasma sépia MASCARADO no miolo,
---      em volta do sigilo — swirl lento ouro+brasa, some nas bordas.
---   3. BRASAS subindo dos braseiros (procedural, quadradinhos pixel).
+-- ============== Fundo "PAREDE-SELO" (v9, Jul/2026) ==============
+-- Feedback do dono consolidado: nada de plasma do Balatro por cima, nada de
+-- partículas/glow de motor, nada de elemento que implore animação. Composição:
+--   1. PAREDE-SELO pixel art (frame_00: pedra escura + selo entalhado, estática
+--      por natureza — sem tochas/fogo) = o fundo.
+--   2. CARGA DO SELO (boot_seal_glow.glsl): a PRÓPRIA arte redesenhada em
+--      blend aditivo — só os entalhes/inlay dentro do disco acendem; respira,
+--      pulsa por carta absorvida (flare) e estoura no flash. O glow É a arte.
 local bg = {
     dir = "assets/sprites/scenes/boot_anim",
-    chamber = nil, loaded = false, shader = nil,
-    offset = 12.0,   -- vort_offset fixo (varia o padrão do plasma)
+    chamber = nil, loaded = false, glowShader = nil,
 }
-local PLASMA_C1 = { 0.90, 0.70, 0.26, 1 }   -- ouro arcano
-local PLASMA_C2 = { 0.66, 0.20, 0.10, 1 }   -- brasa-sangue
 
--- ÂNCORA NA ARTE (pixels da imagem 256×192). v8: o fundo é uma PAREDE com um
--- SELO entalhado no CENTRO — arte estática por natureza (sem fogo/tocha; o
--- que era chama congelada saiu, pedido do dono). O selo é o portal: a energia
--- vive DENTRO dele e as cartas são absorvidas por ele.
+-- ÂNCORA NA ARTE (pixels da imagem 256×192). A arte é a PAREDE-SELO (v9,
+-- PixelLab): selo entalhado centrado em (128, 96) com raio ≈ 80px — medido
+-- na imagem instalada. É o destino das cartas e o que "carrega" de energia.
 local SIGIL_IX, SIGIL_IY = 128, 96
+local SEAL_RADIUS_IMG = 80   -- raio do disco em px da imagem
 
 -- Converte pixel da arte → tela, usando o transform do último draw (cover).
 -- A âncora fica COLADA na arte em qualquer resolução/aspect.
@@ -112,8 +110,9 @@ end
 local function loadBg()
     if bg.loaded then return end
     bg.loaded = true
-    local ok, sh = pcall(love.graphics.newShader, "shaders/boot_splash.glsl")
-    if ok then bg.shader = sh else print("[boot] boot_splash falhou: " .. tostring(sh)) end
+    local ok, sh = pcall(love.graphics.newShader, "shaders/boot_seal_glow.glsl")
+    if ok then bg.glowShader = sh
+    else print("[boot] boot_seal_glow falhou: " .. tostring(sh)) end
     local p = bg.dir .. "/frame_00.png"
     if love.filesystem.getInfo(p) then
         local ok2, img = pcall(love.graphics.newImage, p)
@@ -143,30 +142,31 @@ local function drawChamberBG()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Camada 2: energia arcana ANCORADA NO SIGILO (alpha via state.plasmaAlpha).
-local function drawPlasmaBG(t, alpha)
-    if not bg.shader or (alpha or 0) < 0.01 then return end
-    local W, H = love.graphics.getDimensions()
+-- Camada 2: CARGA DO SELO (v9). O plasma derivado do Balatro FOI EMBORA
+-- ("o efeito que fica em cima ainda não tá bom"). No lugar: a PRÓPRIA ARTE
+-- redesenhada em blend aditivo com o shader boot_seal_glow — só os pixels
+-- claros (entalhes/inlay) dentro do disco do selo acendem. O glow É a arte:
+-- pixel-nativo, sem material estranho por cima.
+local function drawSealCharge(strength)
+    if not bg.chamber or not bg.glowShader or (strength or 0) < 0.01 then return end
+    if not bg._s then return end
     local gx, gy = chamberAnchor(SIGIL_IX, SIGIL_IY)
-    local diag = math.sqrt(W * W + H * H)
-    love.graphics.setShader(bg.shader)
-    bg.shader:send("time", t)
-    bg.shader:send("vort_speed", 0.6)     -- lento, majestoso (não o ritmo do Balatro)
-    bg.shader:send("colour_1", PLASMA_C1)
-    bg.shader:send("colour_2", PLASMA_C2)
-    bg.shader:send("mid_flash", 0)
-    bg.shader:send("vort_offset", bg.offset)
-    bg.shader:send("center_off", { (gx - 0.5 * W) / diag, (gy - 0.5 * H) / diag })
-    bg.shader:send("flare", sigil.flare)
-    love.graphics.setColor(1, 1, 1, alpha)
-    love.graphics.rectangle("fill", 0, 0, W, H)
+    local prev = love.graphics.getBlendMode()
+    love.graphics.setBlendMode("add")
+    love.graphics.setShader(bg.glowShader)
+    bg.glowShader:send("center", { gx, gy })
+    bg.glowShader:send("radius", SEAL_RADIUS_IMG * bg._s)
+    bg.glowShader:send("strength", math.min(1, strength))
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(bg.chamber, bg._tx, bg._ty, 0, bg._s, bg._s)
     love.graphics.setShader()
+    love.graphics.setBlendMode(prev)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
 -- (v8: drawSigilGlow/drawChamberLife/embers REMOVIDOS — feedback do dono:
 -- "tire essas partículas de faísca e de luz, está ficando bem ridículo".
--- Toda a resposta visual agora vive DENTRO do shader, via uniform flare.)
+-- v9: o plasma boot_splash.glsl também saiu — resposta visual = carga do selo.)
 
 -- ============== Init ==============
 
@@ -181,7 +181,7 @@ function BootScene.init(callbacks)
     state.skipped         = false
     state.bgAlpha         = 0
     state.staticAlpha     = 0
-    state.plasmaAlpha     = 0
+    state.sealCharge      = 0
     state.titleLetters    = {}
     state.onComplete      = callbacks.onComplete
     sigil.flare           = 0
@@ -214,10 +214,11 @@ local function startSplashSequence()
     if _G.EventManager then
         _G.EventManager.parallelEase(state, "staticAlpha", 0, 0.55, "smooth", QUEUE)
         -- Energia arcana desperta DEVAGAR em volta do sigilo (2s de fade).
-        _G.EventManager.parallelEase(state, "plasmaAlpha", 0.9, 2.0, "smooth", QUEUE)
+        -- O selo CARREGA devagar (entalhes acendendo ao longo de 2s).
+        _G.EventManager.parallelEase(state, "sealCharge", 1.0, 2.0, "smooth", QUEUE)
     else
         state.staticAlpha = 0
-        state.plasmaAlpha = 0.9
+        state.sealCharge = 1.0
     end
 
     -- Título letra-a-letra (pedido do dono): pré-quebra em codepoints UTF-8.
@@ -438,11 +439,12 @@ end
 local function drawBackground()
     local W, H = love.graphics.getWidth(), love.graphics.getHeight()
     loadBg()
-    -- CAMADAS: parede pixel art (estática por natureza) → energia arcana
-    -- DENTRO do selo (splash; flare de absorção vive no shader).
+    -- CAMADAS: arte pixel (estática) → CARGA do selo (entalhes respirando +
+    -- pulso por carta absorvida + estouro no flash).
     drawChamberBG()
     if state.phase == "splash" then
-        drawPlasmaBG(state.splashTime, state.plasmaAlpha)
+        local breath = 0.34 + 0.14 * math.sin(love.timer.getTime() * 1.8)
+        drawSealCharge(state.sealCharge * breath + 0.66 * sigil.flare)
     end
 
     -- Fade-in mask (escurece o que tem por baixo enquanto bgAlpha sobe).
@@ -455,11 +457,12 @@ end
 
 -- Preview do fundo completo pro tool de validação (screenshot_bootfx):
 -- desenha todas as camadas num instante t, com flare forçado.
-function BootScene.previewBackground(t, plasmaAlpha, flare)
+function BootScene.previewBackground(t, charge, flare)
     loadBg()
     sigil.flare = flare or 0
     drawChamberBG()
-    if plasmaAlpha and plasmaAlpha > 0.01 then drawPlasmaBG(t, plasmaAlpha) end
+    local breath = 0.30 + 0.12 * math.sin((t or 0) * 1.8)
+    drawSealCharge((charge or 0) * breath + 0.55 * sigil.flare)
 end
 
 local function drawLoadingBar()
