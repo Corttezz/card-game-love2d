@@ -193,6 +193,38 @@ function M.run()
     es:applyTriggerEffects(g, "defend", { target = g.enemy, sourceCard = reflectCard })
     t:eq("trigger de sourceCard também dispara", g.enemy.health, 94)
 
+    -- ===== P0.9 (rebalance v2): LARGEST-MULTIPLIER-WINS entre jokers =====
+    -- 2 jokers x1.5 NAO compõem (x2.25) — só o maior multiplicador conta;
+    -- bônus flat continuam somando todos. Regressão exigida pela crítica A1.
+    g = fresh()
+    g.jokerSlots = {
+        { effects = { { type = "damage_multiplier", target = "attack", value = 1.5 } } },
+        { effects = { { type = "damage_multiplier", target = "attack", value = 1.5 } } },
+    }
+    local atkCard = { type = "attack" }
+    t:eq("2 jokers x1.5: só o maior conta (15, não 22)",
+        es:applyJokerEffects(g, atkCard, 10), 15)
+    g.jokerSlots[2].effects[1].value = 2.0
+    t:eq("maior multiplicador vence (x2.0)",
+        es:applyJokerEffects(g, atkCard, 10), 20)
+    table.insert(g.jokerSlots, { effects = { { type = "damage_bonus", value = 3 } } })
+    table.insert(g.jokerSlots, { effects = { { type = "damage_bonus", value = 2 } } })
+    t:eq("bônus flat somam TODOS por cima do maior x",
+        es:applyJokerEffects(g, atkCard, 10), 25)
+
+    -- ===== P2.3 (rebalance v2): thorn de JOKER dispara 1x/turno =====
+    -- Duas defesas na mesma rodada: joker reflete só na primeira; thorn de
+    -- CARTA (sourceCard) segue disparando por carta jogada.
+    g = fresh()
+    g.jokerSlots = { { effects = { { type = "on_defend_damage", value = 4 } } } }
+    es:applyTriggerEffects(g, "defend", { target = g.enemy })
+    es:applyTriggerEffects(g, "defend", { target = g.enemy })
+    t:eq("thorn de joker: 2 defesas refletem 1x (-4)", g.enemy.health, 96)
+    local thornCard2 = { type = "defense", effects = { { type = "on_defend_damage", value = 6 } } }
+    es:applyTriggerEffects(g, "defend", { target = g.enemy, sourceCard = thornCard2 })
+    es:applyTriggerEffects(g, "defend", { target = g.enemy, sourceCard = thornCard2 })
+    t:eq("thorn de carta segue por carta (-12)", g.enemy.health, 84)
+
     return t:done()
 end
 

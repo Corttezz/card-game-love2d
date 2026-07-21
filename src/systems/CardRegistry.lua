@@ -23,9 +23,13 @@ function CardRegistry:getCardsByClassAndRarity(classId, rarity)
     
     for id, card in pairs(allCards) do
         -- Verifica se pertence à classe (ou é básica)
-        local belongsToClass = (card.class == classId) or 
+        -- P0.1 (rebalance Jul/2026): class=='basic' e NEUTRA OFERTAVEL — devolve
+        -- 9 cartas ao jogo (attack_cleave, defense_bulwark, scroll_wisdom,
+        -- mystery_card, joker_004/005 e os 3 legendarios joker_001/002/003).
+        -- O clause antigo por rarity=='basic' era codigo morto e foi removido.
+        local belongsToClass = (card.class == classId) or
                               (not card.class) or -- Cartas sem classe são consideradas básicas
-                              (card.rarity == "basic")
+                              (card.class == "basic")
         
         if belongsToClass and (not rarity or card.rarity == rarity) then
             table.insert(filtered, id)
@@ -65,6 +69,38 @@ end
 local RARITY_ORDER = { "common", "uncommon", "rare", "legendary" }
 local RARITY_MIN_ORDER = { common = 1, uncommon = 2, rare = 3, legendary = 4 }
 
+-- ===== Afinidade de ofertas (P0.5, rebalance Jul/2026) =====
+-- Tags genericas demais para sinalizar arquetipo (quase toda carta as tem):
+-- conta-las fazia a afinidade puxar "mais do mesmo" em vez de build.
+local AFFINITY_TAG_BLACKLIST = { strike = true, defend = true, armor = true, magic = true }
+-- Peso por tag forte. SUPERSEDE Config.Offers.AFFINITY_PER_TAG=0.20 (handoff:
+-- centralizar em Config.Offers junto com o cap por ato e a blacklist).
+local AFFINITY_PER_TAG = 0.45
+-- Cap PROGRESSIVO por ato (era 0.60 flat em Config.Offers.AFFINITY_CAP):
+-- A1 baixo preserva a variedade do draft inicial (2 primeiros picks nao
+-- travam a run); A2/A3 entregam densidade de arquetipo onde importa.
+-- Endless (ato > 3) usa o cap do A3.
+local AFFINITY_CAP_BY_ACT = { [1] = 0.9, [2] = 1.2, [3] = 1.5 }
+-- P0.2: cartas neutras (class nil ou 'basic') ofertam com peso reduzido —
+-- a vitrine continua majoritariamente da classe.
+local NEUTRAL_CARD_WEIGHT = 0.6
+
+-- P0.10: set { [jokerId]=true } dos jokers ja POSSUIDOS pela run (colecao +
+-- bancada). Dedup e de OFERTA apenas: a posse/colecao fica intocada (lei do
+-- projeto) — a vitrine e que nao repete joker (flat duplicado e valor
+-- marginal; multiplicador duplicado vale zero pos-largest-wins P0.9).
+local function buildOwnedJokerSet(runManager)
+    local owned = {}
+    local run = runManager and runManager.currentRun
+    if run and run.jokers then
+        for _, entry in ipairs(run.jokers) do
+            local id = type(entry) == "table" and entry.id or entry
+            if id then owned[id] = true end
+        end
+    end
+    return owned
+end
+
 -- Pity de raridade vive em rng.meta (serializado no save junto com o RNG e
 -- compartilhado entre recompensas E loja — uma sequência de azar só).
 local function getPity(rng)
@@ -98,6 +134,9 @@ end
 --   minRarity     — piso ("uncommon"/"rare" pra elites/bosses)
 --   deckIds       — ids do deck atual (afinidade + penalidade de cópia)
 --   excludeIds    — set { [cardId]=true } já oferecidos (dedup na mesma oferta)
+--   actNumber     — ato atual (P0.5: cap progressivo de afinidade 0.9/1.2/1.5)
+--   runManager    — P0.10: dedup de joker já possuído (ou passe ownedJokerIds)
+--   ownedJokerIds — set { [jokerId]=true } pré-construído (opcional)
 --   rng, stream   — default Rng.get() / "card" (loja usa "shop")
 -- Retorna { cardId, rarity, affinity, affinityTags, fromPity } ou nil.
 function CardRegistry:pickRewardCard(opts)
@@ -128,24 +167,37 @@ function CardRegistry:pickRewardCard(opts)
         copies[id] = (copies[id] or 0) + 1
     end
 
+    -- P0.5: cap de afinidade progressivo por ato (endless herda o do A3).
+    local actNumber = opts.actNumber or 1
+    local affinityCap = AFFINITY_CAP_BY_ACT[math.min(actNumber, 3)] or 1.5
+
+    -- P0.10: jokers já possuídos saem da vitrine (posse intocada).
+    local ownedJokers = opts.ownedJokerIds or buildOwnedJokerSet(opts.runManager)
+
     local entries = {}
     for _, cardId in ipairs(pool) do
-        if not (opts.excludeIds and opts.excludeIds[cardId]) then
-            local weight = 1.0
+        local cd = self.cardDatabase:getCard(cardId)
+        local excluded = (opts.excludeIds and opts.excludeIds[cardId])
+            or (cd and cd.type == "joker" and ownedJokers[cardId])
+        if not excluded then
+            -- P0.2: neutras (class nil/'basic') entram com peso base 0.6.
+            local weight = (cd and (cd.class == nil or cd.class == "basic"))
+                and NEUTRAL_CARD_WEIGHT or 1.0
             local affinityTags = nil
-            local cd = self.cardDatabase:getCard(cardId)
 
             -- Afinidade: cada tag da carta que é "forte" no deck puxa a oferta.
+            -- P0.5: tags genéricas (blacklist) não contam; 0.45/tag com cap por ato.
             if cd and cd.tags then
                 local bonus = 0
                 for _, tag in ipairs(cd.tags) do
-                    if (tagCounts[tag] or 0) >= cfg.AFFINITY_MIN_COUNT then
-                        bonus = bonus + cfg.AFFINITY_PER_TAG
+                    if not AFFINITY_TAG_BLACKLIST[tag]
+                        and (tagCounts[tag] or 0) >= cfg.AFFINITY_MIN_COUNT then
+                        bonus = bonus + AFFINITY_PER_TAG
                         affinityTags = affinityTags or {}
                         table.insert(affinityTags, tag)
                     end
                 end
-                if bonus > cfg.AFFINITY_CAP then bonus = cfg.AFFINITY_CAP end
+                if bonus > affinityCap then bonus = affinityCap end
                 weight = weight * (1 + bonus)
             end
 
@@ -202,6 +254,9 @@ function CardRegistry:generateCardRewards(classId, numCards, opts)
             minRarity = opts.minRarity,
             deckIds = opts.deckIds,
             excludeIds = exclude,
+            actNumber = opts.actNumber,       -- P0.5: cap de afinidade por ato
+            runManager = opts.runManager,     -- P0.10: dedup de joker possuído
+            ownedJokerIds = opts.ownedJokerIds,
             rng = opts.rng,
             stream = opts.stream or "card",
             _tagCounts = tagCounts,
@@ -277,12 +332,14 @@ function CardRegistry:rollRarity(weights, opts)
 end
 
 -- Verifica se uma carta pertence a uma classe
+-- P0.1: mesmo critério de belongsToClass — class=='basic' é neutra (o clause
+-- antigo por rarity=='basic' foi removido).
 function CardRegistry:isClassCard(cardId, classId)
     local cardData = self.cardDatabase:getCard(cardId)
     if not cardData then return false end
-    
-    return cardData.class == classId or 
-           cardData.rarity == "basic" or 
+
+    return cardData.class == classId or
+           cardData.class == "basic" or
            not cardData.class
 end
 

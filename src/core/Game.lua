@@ -321,15 +321,8 @@ function Game:startNewRun(classId)
     return runData
 end
 
--- Completa uma batalha e gera recompensas
-function Game:completeBattle()
-    if not self.isRunMode then return nil end
-    
-    local rewards = self.runManager:completeBattle()
-    self:addMessage("Batalha vencida! Andar " .. rewards.floor, "success")
-    
-    return rewards
-end
+-- (Game:completeBattle removido no rebalance v2 — chamava
+-- RunManager:completeBattle, caminho morto extinto no P3.1; zero callers.)
 
 -- Adiciona uma carta ao deck da corrida
 -- meta opcional: { edition, seal } pra cartas que vêm de packs com modifiers.

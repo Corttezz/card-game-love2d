@@ -17,26 +17,32 @@ return {
     },
     mage_dualcast = {
         id = "mage_dualcast", name = "Conjuracao Dupla",
+        -- Rebalance v2 Jul/2026: era trap no meta pos-pulso (evocar cedo
+        -- destruia pulsos futuros). Agora evoca E repoe o slot — tempo
+        -- neutro com burst, sem engine nova.
         type = "effect", subtype = "common",
         cost = 1, attack = 0, defense = 0,
-        description = "Evoca o orb mais antigo.",
+        description = "Evoca o orbe mais antigo e canaliza 1 Raio (pot 3).",
         image = "assets/cards/attack/theRock.png",
         rarity = "common", class = "mage",
-        tags = { "evoke", "magic" },
+        tags = { "evoke", "channel", "lightning", "magic" },
         effects = {
             { type = "evoke_orb" },
+            { type = "channel_orb", orbType = "lightning", value = 3 },
         },
     },
     mage_ball_lightning = {
         id = "mage_ball_lightning", name = "Raio Esferico",
+        -- Rebalance v2 Jul/2026: nao superava as commons zap/lightning.
+        -- attack 7->8, pot 4->5 pra valer o slot uncommon.
         type = "attack", subtype = "skill",
-        cost = 1, attack = 7, defense = 0,
-        description = "7 de dano. Canaliza Raio (4 pot).",
+        cost = 1, attack = 8, defense = 0,
+        description = "Causa 8 de dano. Canaliza 1 Raio (pot 5).",
         image = "assets/cards/attack/theRock.png",
         rarity = "uncommon", class = "mage",
         tags = { "strike", "channel", "lightning" },
         effects = {
-            { type = "channel_orb", orbType = "lightning", value = 4 },
+            { type = "channel_orb", orbType = "lightning", value = 5 },
         },
     },
     mage_lightning = {
@@ -54,8 +60,10 @@ return {
     mage_fireball = {
         id = "mage_fireball", name = "Bola de Fogo",
         type = "attack", subtype = "common",
+        -- Rebalance v2 Jul/2026: fix de desc apenas — e type=attack (escala
+        -- com Forca/jokers), "dano magico" mentia; declara a potencia do orbe.
         cost = 2, attack = 11, defense = 0,
-        description = "11 de dano magico. Canaliza Fogo.",
+        description = "Causa 11 de dano. Canaliza 1 Fogo (pot 3).",
         image = "assets/cards/attack/theRock.png",
         rarity = "common", class = "mage",
         tags = { "strike", "channel", "fire", "magic" },
@@ -65,14 +73,16 @@ return {
     },
     mage_flame_tongue = {
         id = "mage_flame_tongue", name = "Lingua de Chamas",
+        -- Rebalance v2 Jul/2026: vulnerable 1t morria no onTurnEnd antes de
+        -- pagar; duration 1->2 abre a janela real.
         type = "attack", subtype = "common",
         cost = 1, attack = 6, defense = 0,
-        description = "6 de dano. Aplica Vulneravel 1t.",
+        description = "Causa 6 de dano. Aplica Vulneravel por 2 turnos.",
         image = "assets/cards/attack/theRock.png",
         rarity = "common", class = "mage",
         tags = { "strike", "fire", "debuff" },
         effects = {
-            { type = "apply_debuff", value = "vulnerable", stacks = 1, duration = 1 },
+            { type = "apply_debuff", value = "vulnerable", stacks = 1, duration = 2 },
         },
     },
     mage_magic_barrier = {
@@ -99,15 +109,19 @@ return {
     },
     mage_healing_drop = {
         id = "mage_healing_drop", name = "Gota Curativa",
-        type = "effect", subtype = "potion",
+        -- Rebalance v2 Jul/2026: era dominada por effect_healing_potion
+        -- (15 HP pelo mesmo custo). Vira a porta de entrada do orbe HOLY
+        -- (engine completa, 0 cartas usavam): cura menor mas RECICLAVEL
+        -- (sem exhaust) + pulso de cura/3 por turno via orbPassiveTick.
+        type = "effect", subtype = "skill",
         cost = 1, attack = 0, defense = 0,
-        description = "Cura 10 HP. Exaurir.",
+        description = "Cura 6 de HP. Canaliza 1 orbe Sagrado (pot 3).",
         image = "assets/cards/effect/potionOfHealing.png",
         rarity = "common", class = "mage",
-        tags = { "heal", "potion", "exhaust" },
+        tags = { "heal", "channel", "holy", "magic" },
         effects = {
-            { type = "instant_heal", value = 10 },
-            { type = "exhaust" },
+            { type = "instant_heal", value = 6 },
+            { type = "channel_orb", orbType = "holy", value = 3 },
         },
     },
 
@@ -154,14 +168,16 @@ return {
         id = "mage_blizzard", name = "Nevasca",
         -- Auditoria Jul/2026: era type="attack" com attack=0 (ganhava Forca
         -- escondida). Dano magico e effect — nao escala com Forca (identidade).
+        -- Rebalance v2 Jul/2026: dano flat que nao escala com nada precisa de
+        -- numero honesto pro A3 (10->14); tag 'aoe' removida (jogo single-enemy).
         type = "effect", subtype = "skill",
         cost = 2, attack = 0, defense = 0,
-        description = "10 de dano magico. Canaliza 1 Gelo (pot 4).",
+        description = "Causa 14 de dano magico (fixo). Canaliza 1 Gelo (pot 4).",
         image = "assets/cards/attack/theRock.png",
         rarity = "uncommon", class = "mage",
-        tags = { "aoe", "magic", "ice", "channel" },
+        tags = { "magic", "ice", "channel" },
         effects = {
-            { type = "aoe_magic_damage", value = 10 },
+            { type = "aoe_magic_damage", value = 14 },
             { type = "channel_orb", orbType = "ice", value = 4 },
         },
     },
@@ -225,9 +241,11 @@ return {
     },
     mage_mind_spike = {
         id = "mage_mind_spike", name = "Estaca Mental",
+        -- Rebalance v2 Jul/2026: attack 10->12, sobe ao meio da banda
+        -- uncommon C2.
         type = "attack", subtype = "skill",
-        cost = 2, attack = 10, defense = 0,
-        description = "10 de dano. Compre 1 carta.",
+        cost = 2, attack = 12, defense = 0,
+        description = "Causa 12 de dano. Compre 1 carta.",
         image = "assets/cards/attack/theRock.png",
         rarity = "uncommon", class = "mage",
         tags = { "magic", "draw" },
@@ -237,22 +255,28 @@ return {
     },
     mage_twin_bolts = {
         id = "mage_twin_bolts", name = "Raios Gemeos",
+        -- Rebalance v2 Jul/2026: attack 7->9, pot 2->3 (18 efetivo + orbe =
+        -- banda rare C2). Desc corrigida: multi_hit e x2 no base, nao 2
+        -- golpes reais — deixa de prometer multihit que nao existe.
         type = "attack", subtype = "skill",
-        cost = 2, attack = 7, defense = 0,
-        description = "7 de dano, 2 vezes. Canaliza Raio (2 pot).",
+        cost = 2, attack = 9, defense = 0,
+        description = "Causa 18 de dano em 2 raios. Canaliza 1 Raio (pot 3).",
         image = "assets/cards/attack/theRock.png",
         rarity = "rare", class = "mage",
         tags = { "magic", "lightning", "channel" },
         effects = {
             { type = "multi_hit", value = 2 },
-            { type = "channel_orb", orbType = "lightning", value = 2 },
+            { type = "channel_orb", orbType = "lightning", value = 3 },
         },
     },
     mage_arcane_torrent = {
         id = "mage_arcane_torrent", name = "Torrente Arcana",
+        -- Rebalance v2 Jul/2026: rare vanilla no piso, attack 22->26. Pico
+        -- pos-largest-wins: 26 x1.5 (magic_focus) x1.5 (MAIOR joker) = 58;
+        -- x1.5 vulnerable = 87. Tripwire: mage >65% vitoria -> reverter 22.
         type = "attack", subtype = "skill",
-        cost = 3, attack = 22, defense = 0,
-        description = "Causa 22 de dano.",
+        cost = 3, attack = 26, defense = 0,
+        description = "Causa 26 de dano.",
         image = "assets/cards/attack/theRock.png",
         rarity = "rare", class = "mage",
         tags = { "magic", "finisher" },
@@ -276,26 +300,32 @@ return {
     },
     mage_doom_and_gloom = {
         id = "mage_doom_and_gloom", name = "Perdicao e Melancolia",
+        -- Rebalance v2 Jul/2026: fix desc/tags — tag 'aoe' removida (jogo
+        -- single-enemy); desc declara a potencia da Sombra. Numeros ficam.
         type = "attack", subtype = "skill",
         cost = 2, attack = 10, defense = 0,
-        description = "10 dano aoe. Canaliza Escuridao.",
+        description = "Causa 10 de dano. Canaliza 1 Sombra (pot 5).",
         image = "assets/cards/attack/theRock.png",
         rarity = "uncommon", class = "mage",
-        tags = { "strike", "aoe", "channel", "dark" },
+        tags = { "strike", "channel", "dark" },
         effects = {
             { type = "channel_orb", orbType = "dark", value = 5 },
         },
     },
     mage_force_field = {
         id = "mage_force_field", name = "Campo de Forca",
+        -- Rebalance v2 Jul/2026: era dominada por auto_shields. defense
+        -- 14->16 e vira o PRIMEIRO payoff de Destreza do jogo: dexterity_
+        -- scaling (Destreza conta em DOBRO via scaledStat, effect que tinha
+        -- 0 usos) no lugar do gain_dexterity +1.
         type = "defense", subtype = "skill",
-        cost = 2, attack = 0, defense = 14,
-        description = "14 Bloqueio magico. +1 Destreza.",
+        cost = 2, attack = 0, defense = 16,
+        description = "Ganha 16 de Bloqueio. Destreza conta em DOBRO.",
         image = "assets/cards/defense/ironShield.png",
         rarity = "uncommon", class = "mage",
         tags = { "defend", "armor", "magic", "dexterity" },
         effects = {
-            { type = "gain_dexterity", value = 1 },
+            { type = "dexterity_scaling" },
         },
     },
     mage_crystal_shard = {
@@ -324,14 +354,52 @@ return {
     },
     mage_arcane_sight = {
         id = "mage_arcane_sight", name = "Visao Arcana",
+        -- Rebalance v2 Jul/2026 (critica A3): cost 1->0 + Exaurir. Sem
+        -- exhaust, C0 "Compre 2" + reshuffle automatico de Game:drawCard =
+        -- mao contem o deck inteiro de graca. 1x/batalha vira cantrip de
+        -- tempo — nicho distinto de torn_pages (C0 draw2 discard1 reciclavel).
         type = "effect", subtype = "skill",
-        cost = 1, attack = 0, defense = 0,
-        description = "Compre 2 cartas.",
+        cost = 0, attack = 0, defense = 0,
+        description = "Compre 2 cartas. Exaurir.",
         image = "assets/cards/effect/manaCrystal.png",
         rarity = "uncommon", class = "mage",
-        tags = { "draw", "cycle", "utility" },
+        tags = { "draw", "cycle", "utility", "zero_cost", "exhaust" },
         effects = {
             { type = "draw_cards", value = 2 },
+            { type = "exhaust" },
+        },
+    },
+
+    -- Rebalance v2 Jul/2026 (nova): segunda fonte de holy — fecha o Clerigo
+    -- Arcano com healing_drop + Calice (pulso = cura/3 por turno, evoke =
+    -- cura cheia).
+    mage_radiant_prayer = {
+        id = "mage_radiant_prayer", name = "Prece Radiante",
+        type = "effect", subtype = "skill",
+        cost = 2, attack = 0, defense = 0,
+        description = "Cura 5 de HP. Canaliza 1 orbe Sagrado (pot 5).",
+        image = "assets/cards/effect/potionOfHealing.png",
+        rarity = "uncommon", class = "mage",
+        tags = { "heal", "channel", "holy", "magic" },
+        effects = {
+            { type = "instant_heal", value = 5 },
+            { type = "channel_orb", orbType = "holy", value = 5 },
+        },
+    },
+    -- Rebalance v2 Jul/2026 (nova): payoff do dark (cresce +2/turno, evoca
+    -- x2) sem esvaziar o tabuleiro; evoke_orb tinha 1 so carta. Tag 'evoke'
+    -- e NAO 'channel' (critica B3: a carta nao canaliza).
+    mage_dark_harvest = {
+        id = "mage_dark_harvest", name = "Colheita Sombria",
+        type = "effect", subtype = "skill",
+        cost = 1, attack = 0, defense = 0,
+        description = "Evoca o orbe mais antigo. Compre 1 carta.",
+        image = "assets/cards/effect/manaCrystal.png",
+        rarity = "uncommon", class = "mage",
+        tags = { "evoke", "dark", "draw", "magic" },
+        effects = {
+            { type = "evoke_orb" },
+            { type = "draw_cards", value = 1 },
         },
     },
 
@@ -350,39 +418,49 @@ return {
     },
     mage_creative_ai = {
         id = "mage_creative_ai", name = "IA Criativa",
+        -- Rebalance v2 Jul/2026: era dominada por sages_gem. regen 1->2.
         type = "joker", subtype = "power",
         cost = 3, attack = 0, defense = 0,
-        description = "Compra 1 carta e regenera 1 HP no inicio do turno.",
+        description = "Compra 1 carta extra e regenera 2 de HP por turno.",
         image = "assets/cards/defense/ironShield.png",
         rarity = "rare", class = "mage",
         tags = { "draw", "cycle", "magic" },
         effects = {
             { type = "on_turn_start_draw", value = 1 },
-            { type = "regen_per_turn", value = 1 },
+            { type = "regen_per_turn", value = 2 },
         },
     },
     mage_echo_form = {
         id = "mage_echo_form", name = "Forma de Eco",
+        -- Rebalance v2 Jul/2026: era o fundo da cadeia de dominancia dos
+        -- jokers (+2 flat por 3 mana). Vira o UNICO multiplicador do mago =
+        -- win-condition A3. Seguro pos-largest-wins: com joker_001 tambem
+        -- ativo vale max(1.5,1.5)=1.5, nunca x2.25.
         type = "joker", subtype = "power",
         cost = 3, attack = 0, defense = 0,
-        description = "+2 de dano em cartas de ataque.",
+        description = "Suas cartas de ataque causam +50% de dano.",
         image = "assets/cards/defense/ironShield.png",
         rarity = "rare", class = "mage",
-        tags = { "strike", "magic", "scaling" },
+        tags = { "magic", "scaling", "passive" },
         effects = {
-            { type = "damage_bonus", target = "attack", value = 2 },
+            { type = "damage_multiplier", target = "attack", value = 1.5 },
         },
     },
     mage_electrodynamics = {
         id = "mage_electrodynamics", name = "Eletrodinamica",
+        -- Rebalance v2 Jul/2026: era clone pior de rune_of_power. Vira o
+        -- motor infinito de orbes da WC Canalizador. DEPENDE do trigger
+        -- channel_per_turn (engine flagada P2.1 em EffectSystem, turn_start).
+        -- Fallback zero-engine se o trigger for vetado: damage_bonus 2 +
+        -- on_turn_start_draw 1.
         type = "joker", subtype = "power",
         cost = 2, attack = 0, defense = 0,
-        description = "+2 de dano em todos os ataques.",
+        description = "Canaliza 1 Raio (pot 2) no inicio de cada turno.",
         image = "assets/cards/defense/ironShield.png",
         rarity = "rare", class = "mage",
-        tags = { "channel", "lightning", "scaling" },
+        tags = { "channel", "lightning", "scaling", "passive" },
         effects = {
-            { type = "damage_bonus", target = "attack", value = 2 },
+            { type = "channel_per_turn", orbType = "lightning", value = 2 },
         },
     },
     mage_fission = {
@@ -400,14 +478,16 @@ return {
     },
     mage_machine_learning = {
         id = "mage_machine_learning", name = "Aprendizado de Maquina",
+        -- Rebalance v2 Jul/2026: era estritamente pior que sages_gem (C1
+        -- draw1 vs C1 draw1+dano). Agora motor de draw pesado: draw 2, C3.
         type = "joker", subtype = "power",
-        cost = 1, attack = 0, defense = 0,
-        description = "+1 carta no inicio de cada turno.",
+        cost = 3, attack = 0, defense = 0,
+        description = "Compra 2 cartas extras no inicio de cada turno.",
         image = "assets/cards/defense/ironShield.png",
         rarity = "rare", class = "mage",
         tags = { "draw", "cycle" },
         effects = {
-            { type = "on_turn_start_draw", value = 1 },
+            { type = "on_turn_start_draw", value = 2 },
         },
     },
     mage_meteor_strike = {
@@ -461,6 +541,43 @@ return {
         effects = {
             { type = "damage_bonus", target = "attack", value = 1 },
             { type = "on_turn_start_draw", value = 1 },
+        },
+    },
+
+    -- Rebalance v2 Jul/2026 (nova): amplificador do Clerigo Arcano —
+    -- heal_multiplier plumbado em todo caminho de cura (com floor via P2.4
+    -- e combo lifesteal_burst roteado via P2.5).
+    mage_sacred_chalice = {
+        id = "mage_sacred_chalice", name = "Calice do Sabio",
+        type = "joker", subtype = "power",
+        cost = 2, attack = 0, defense = 0,
+        description = "Todas as curas recebidas sao aumentadas em 50%.",
+        image = "assets/jokers/joker1.png",
+        rarity = "rare", class = "mage",
+        tags = { "heal", "holy", "passive" },
+        effects = {
+            { type = "heal_multiplier", value = 1.5 },
+        },
+    },
+
+    -- ========== LEGENDARY ==========
+    -- Rebalance v2 Jul/2026 (nova): LEGENDARY de classe, capstone do
+    -- Canalizador. Desc diz "nesta batalha" (duration=99 e idioma interno,
+    -- cf. mage_arcane_focus — critica B7). VIGIADO (B6): se Foco total >= 5
+    -- antes do A3 no autoplay, remove o +1 Foco.
+    mage_primordial_storm = {
+        id = "mage_primordial_storm", name = "Tempestade Primordial",
+        type = "effect", subtype = "skill",
+        cost = 3, attack = 0, defense = 0,
+        description = "Canaliza Raio (pot 6), Gelo (pot 6) e Sombra (pot 4) e ganha +1 de Foco nesta batalha.",
+        image = "assets/cards/effect/manaCrystal.png",
+        rarity = "legendary", class = "mage",
+        tags = { "channel", "lightning", "ice", "dark", "magic", "scaling" },
+        effects = {
+            { type = "channel_orb", orbType = "lightning", value = 6 },
+            { type = "channel_orb", orbType = "ice", value = 6 },
+            { type = "channel_orb", orbType = "dark", value = 4 },
+            { type = "apply_buff", value = "focus", stacks = 1, duration = 99 },
         },
     },
 

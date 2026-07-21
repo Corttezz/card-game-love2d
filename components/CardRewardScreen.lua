@@ -268,11 +268,32 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
     -- Contexto da run pro cérebro de ofertas (classe filtra pool; deck liga
     -- afinidade e anti-duplicata — "as escolhas anteriores importam").
     local run = game.runManager and game.runManager.currentRun
+    local actNumber = (run and run.actNumber) or 1
+
+    -- P0.7 (rebalance Jul/2026): elites/bosses pisam a raridade da recompensa
+    -- — o mapa promete risco, a vitrine paga. Só em modo rewards (a loja do
+    -- SHOP node não é recompensa de combate).
+    local minRarity = nil
+    if self.mode == "rewards" and run and run.currentNode then
+        local nt = run.currentNode.type
+        if nt == "elite" then
+            minRarity = "uncommon"
+        elseif nt == "boss" then
+            minRarity = "rare"
+        end
+    end
+
+    -- P0.3/P0.4: pesos de raridade POR ATO (Config.Acts via ActSystem — antes
+    -- era o fixo 70/25/5 da loja; a tabela por ato era código morto).
+    local ActSystem = require("src.systems.ActSystem")
     self.shopSystem:setContext({
         classId = (run and run.classId) or game.selectedClass,
         deckIds = (game.runManager and game.runManager.getDeckCardIds)
             and game.runManager:getDeckCardIds() or nil,
-        runManager = game.runManager, -- oferta Forja lê o custo crescente daqui
+        runManager = game.runManager, -- forja (custo crescente) + dedup de joker (P0.10)
+        actNumber = actNumber,        -- P0.5: cap de afinidade progressivo por ato
+        rarityWeights = ActSystem.getRarityWeights(actNumber),
+        minRarity = minRarity,
     })
 
     self.shopSystem:setMode(self.mode)
@@ -581,11 +602,17 @@ function CardRewardScreen:purchaseOffer(offer, offerId)
             -- Fase 5: abre o pack imediatamente via PackOpenScreen overlay.
             -- main.lua expõe _G.openBoosterPack(packData, onComplete) que orquestra.
             local BoosterPackSystem = require("src.systems.BoosterPackSystem")
-            local classId = self.game.runManager.currentRun and self.game.runManager.currentRun.classId
+            local run = self.game.runManager and self.game.runManager.currentRun
+            local classId = run and run.classId
+            -- P0.6/P0.10: runManager liga o dedup de joker possuído (Buffoon)
+            -- e actNumber os pesos de raridade por ato (Arcana/Celestial/Spectral).
             local pack = BoosterPackSystem.expandPackRecord({
                 id = offer.id, kind = offer.kind,
                 size = offer.size, choose = offer.choose,
-            }, classId)
+            }, classId, {
+                runManager = self.game.runManager,
+                actNumber = (run and run.actNumber) or 1,
+            })
 
             if _G.openBoosterPack then
                 _G.openBoosterPack(pack, function(selected)
@@ -850,6 +877,10 @@ function CardRewardScreen:applyUpgrade(upgrade)
         end
         return
     end
+    -- P3.2 (rebalance Jul/2026): os branches toast-only (increase_card_draw /
+    -- increase_attack_damage / increase_defense) foram REMOVIDOS junto com as
+    -- ofertas correspondentes (ShopSystem:initializeShopPools) — upgrade
+    -- comprado tem que aplicar efeito real, nunca só mensagem.
     if upgrade.effect == "increase_max_health" then
         self.game.player.maxHealth = self.game.player.maxHealth + upgrade.value
         self.game.player.health = self.game.player.health + upgrade.value
@@ -857,12 +888,9 @@ function CardRewardScreen:applyUpgrade(upgrade)
         self.game.player.baseMaxMana = self.game.player.baseMaxMana + upgrade.value
         self.game.player.maxMana = self.game.player.maxMana + upgrade.value
         self.game.player.mana = self.game.player.mana + upgrade.value
-    elseif upgrade.effect == "increase_card_draw" then
-        self.game:addMessage(I18n.t("reward.extra_draw", { n = upgrade.value }), "info")
-    elseif upgrade.effect == "increase_attack_damage" then
-        self.game:addMessage(I18n.t("reward.atk_bonus", { n = upgrade.value }), "info")
-    elseif upgrade.effect == "increase_defense" then
-        self.game:addMessage(I18n.t("reward.def_bonus", { n = upgrade.value }), "info")
+    else
+        Debug.warn("[CardRewardScreen] upgrade sem efeito implementado: "
+            .. tostring(upgrade.effect) .. " — não deveria estar na vitrine (P3.2)")
     end
 end
 

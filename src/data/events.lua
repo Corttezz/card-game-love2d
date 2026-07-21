@@ -17,11 +17,16 @@ local Rng = require("src.systems.Rng")
 local Events = {}
 
 -- Helper: recompensa de carta com contexto do deck (afinidade/anti-duplicata).
+-- P0.5/P0.10 (rebalance Jul/2026): tambem passa actNumber (cap de afinidade
+-- progressivo por ato) e runManager (dedup de oferta de joker ja possuido).
 local function rewardOpts(game, extra)
     local opts = extra or {}
     if game.runManager and game.runManager.getDeckCardIds then
         opts.deckIds = game.runManager:getDeckCardIds()
     end
+    local run = game.runManager and game.runManager.currentRun
+    opts.actNumber = (run and run.actNumber) or 1
+    opts.runManager = game.runManager
     opts.stream = "event"
     return opts
 end
@@ -185,13 +190,25 @@ Events.POOL = {
                       return "Precisa de 150 ouro."
                   end
                   game.economySystem.currentGold = game.economySystem.currentGold - 150
-                  local rewards = game.runManager.cardRegistry:generateCardRewards(
+                  -- P0.8 (rebalance Jul/2026): com legendaries por classe no
+                  -- pool, minRarity='legendary' resolve. FALLBACK: se o pool
+                  -- legendary da classe estiver vazio/esgotado (ex: dedup de
+                  -- jokers ja possuidos), ignora o filtro de classe — NUNCA
+                  -- entregar rare por $150.
+                  local registry = game.runManager.cardRegistry
+                  local rewards = registry:generateCardRewards(
                       game.selectedClass, 1, rewardOpts(game, { minRarity = "legendary" }))
-                  if rewards[1] then
+                  if not (rewards[1] and rewards[1].rarity == "legendary") then
+                      rewards = registry:generateCardRewards(
+                          nil, 1, rewardOpts(game, { minRarity = "legendary" }))
+                  end
+                  if rewards[1] and rewards[1].rarity == "legendary" then
                       game:addCardToRun(rewards[1].cardId)
                       return "Voce adquiriu " .. rewards[1].cardId
                   end
-                  return "O comerciante nao encontrou nada adequado."
+                  -- Sem legendary em lugar nenhum: devolve o ouro (troca honesta).
+                  game.economySystem.currentGold = game.economySystem.currentGold + 150
+                  return "O comerciante nao encontrou nada adequado. Ouro devolvido."
               end },
             { label = "Recusar", apply = function() return "Ele suspira e parte." end },
         },

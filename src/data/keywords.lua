@@ -6,7 +6,8 @@
 
 return {
     { match = { "orbe", "canaliza", "evoca", "orb", "channel", "evoke" }, name = "Orbes",
-      text = "3 slots. Pulsam todo turno (metade do efeito) e Evocar dispara o efeito cheio: Raio=dano, Gelo=armadura, Fogo=dano+queima, Sombra=cresce, evoca x2. Slot cheio evoca o mais antigo." },
+      -- Rebalance v2 (Jul/2026): orbe Sagrado agora tem cartas (Gota Curativa / Prece Radiante)
+      text = "3 slots. Pulsam todo turno (metade do efeito) e Evocar dispara o efeito cheio: Raio=dano, Gelo=armadura, Fogo=dano+queima, Sagrado=cura, Sombra=cresce, evoca x2. Slot cheio evoca o mais antigo." },
     { match = { "exaurir", "exhaust" }, name = "Exaurir",
       text = "Uso unico POR BATALHA: sai do baralho ate a proxima." },
     { match = { "veneno", "poison" }, name = "Veneno",
@@ -15,7 +16,8 @@ return {
       text = "Alvo recebe +50% de dano." },
     { match = { "fraco", "weak" }, name = "Fraco",
       text = "Alvo causa -25% de dano." },
-    { match = { "reter", "mantida", "retain" }, name = "Reter",
+    -- Rebalance v2 (Jul/2026): "retencao" adicionado — desc nova do Escudo Templario usa o termo
+    { match = { "reter", "retencao", "mantida", "retain" }, name = "Reter",
       text = "Nao e descartada no fim do turno." },
     { match = { "inato", "innate" }, name = "Inato",
       text = "Sempre comeca na sua mao no inicio da batalha." },

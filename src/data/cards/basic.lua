@@ -87,12 +87,13 @@ return {
         id = "warrior_second_wind", name = "Segundo Folego",
         type = "effect", subtype = "common",
         cost = 1, attack = 0, defense = 0,
-        description = "Descarta 2 cartas aleatorias. Ganha 8 de Bloqueio.",
+        description = "Ganha 8 de Bloqueio. Descarta 1 carta aleatoria.",
         image = "assets/cards/attack/secondWind.png",
         rarity = "uncommon", class = "warrior",
         tags = { "discard", "armor", "cycle" },
         effects = {
-            { type = "discard_cards", value = 2 },
+            -- Rebalance Jul/2026: descarte 2 -> 1 (tira o tempo negativo e diferencia de power_through)
+            { type = "discard_cards", value = 1 },
             { type = "add_armor", value = 8, description = "+8 armor" },
         },
     },
@@ -128,13 +129,16 @@ return {
         id = "joker_002", name = "Guardiao do Escudo",
         type = "joker", subtype = "legendary",
         cost = 2, attack = 0, defense = 0,
-        description = "+50% de defesa em todas as cartas.",
+        description = "+50% de Bloqueio em defesas. Reflete 4 de dano no primeiro Bloqueio de cada turno.",
         image = "assets/jokers/joker1.png",
         rarity = "legendary", class = "basic",
         tags = { "defend", "armor", "scaling" },
         effects = {
             { type = "defense_multiplier", target = "defense", value = 1.5,
               description = "+50% de Bloqueio em defesas" },
+            -- Rebalance Jul/2026: reflexo agregado ao x1.5 (que colide com o cap de bloqueio 30/40/50);
+            -- como e JOKER, on_defend_damage dispara 1x/turno (regra P2.3, engine em EffectSystem/Game)
+            { type = "on_defend_damage", value = 4, description = "Reflete 4 no primeiro Bloqueio do turno" },
         },
     },
     joker_003 = {
@@ -194,7 +198,9 @@ return {
         cost = 1, attack = 0, defense = 0,
         description = "Compre 3 cartas do deck.",
         image = "assets/cards/effect/manaCrystal.png",
-        rarity = "common", class = "basic",
+        -- Rebalance Jul/2026: common -> uncommon (nerf preventivo — pos-fix do pool volta a ser
+        -- ofertavel; draw 3 por 1 mana em common dominaria mage_arcane_sight e viraria auto-include)
+        rarity = "uncommon", class = "basic",
         tags = { "draw", "cycle" },
         effects = {
             { type = "draw_cards", value = 3, description = "Compra 3 cartas" },

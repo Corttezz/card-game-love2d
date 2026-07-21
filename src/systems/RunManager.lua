@@ -348,24 +348,11 @@ function RunManager:removeCardFromDeck(cardId)
     return false
 end
 
--- Completa uma batalha e gera recompensas
-function RunManager:completeBattle()
-    if not self.currentRun then return nil end
-
-    self.currentRun.battlesWon = self.currentRun.battlesWon + 1
-    self.currentRun.currentFloor = self.currentRun.currentFloor + 1
-
-    -- Gera 3 cartas de recompensa (padrão Slay the Spire)
-    local cardRewards = self.cardRegistry:generateCardRewards(self.currentRun.classId, 3,
-        { deckIds = self:getDeckCardIds() })
-
-    return {
-        cardRewards = cardRewards,
-        gold = Rng.get():random("misc", 10, 25),
-        floor = self.currentRun.currentFloor,
-        canSkipReward = true -- Opção de pular recompensa
-    }
-end
+-- P3.1 (rebalance Jul/2026): RunManager:completeBattle REMOVIDO — era caminho
+-- MORTO (único caller: Game:completeBattle, que também não tem caller nenhum)
+-- e usava o rollRarity default 37/37/25/1 fora do pipeline vivo de ofertas
+-- (CardRewardScreen → ShopSystem → pickRewardCard, com pesos POR ATO). O fluxo
+-- real de recompensa pós-batalha é showCardRewards em main.lua.
 
 -- ===== Fase 4: map/nodes =====
 

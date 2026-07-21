@@ -132,7 +132,10 @@ function M.run()
         seen[rw.cardId] = true
     end
     check("sem duplicata na mesma oferta", not dupFound)
-    -- Coerência do flag: affinity ⟺ carta tem tag forte do deck.
+    -- Coerência do flag: affinity ⟺ carta tem tag forte NÃO-genérica do deck.
+    -- P0.5 (rebalance Jul/2026): tags genéricas {strike, defend, armor, magic}
+    -- saíram da contagem de afinidade (blacklist em CardRegistry.pickRewardCard).
+    local AFFINITY_BLACKLIST = { strike = true, defend = true, armor = true, magic = true }
     local tagCounts = reg:countDeckTags(deckIds)
     local coherent = true
     for _, rw in ipairs(rewards) do
@@ -140,7 +143,8 @@ function M.run()
         local expected = false
         if cd and cd.tags then
             for _, t in ipairs(cd.tags) do
-                if (tagCounts[t] or 0) >= Config.Offers.AFFINITY_MIN_COUNT then
+                if not AFFINITY_BLACKLIST[t]
+                    and (tagCounts[t] or 0) >= Config.Offers.AFFINITY_MIN_COUNT then
                     expected = true
                 end
             end

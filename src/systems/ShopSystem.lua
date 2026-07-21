@@ -96,7 +96,8 @@ function ShopSystem:new()
     -- Pool de upgrades da loja (cartas vêm do CardRegistry.pickRewardCard).
     instance.shopUpgradePool = {}
 
-    -- Sistema de raridade na loja (como TFT)
+    -- Fallback de raridade (só quando ninguém injeta contexto — P0.3 liga os
+    -- pesos POR ATO via context.rarityWeights, incluindo legendary no A2/A3).
     instance.rarityWeights = {
         common = 0.7,
         uncommon = 0.25,
@@ -119,7 +120,14 @@ function ShopSystem:new()
 end
 
 -- Injeta o contexto da run atual antes de gerar ofertas.
--- ctx = { classId = "warrior", deckIds = { "id1", "id2", ... } }
+-- ctx = {
+--   classId       = "warrior",
+--   deckIds       = { "id1", "id2", ... },
+--   runManager    = runManager,  -- forja (custo crescente) + dedup de joker (P0.10)
+--   actNumber     = 2,           -- P0.5: cap de afinidade progressivo por ato
+--   rarityWeights = {...},       -- P0.3/P0.4: pesos POR ATO (ActSystem.getRarityWeights)
+--   minRarity     = "uncommon",  -- P0.7: piso por node (elite/boss)
+-- }
 function ShopSystem:setContext(ctx)
     self.context = ctx or {}
 end
@@ -128,12 +136,14 @@ end
 -- (O pool de CARTAS por raridade foi aposentado: ofertas de carta saem do
 -- CardRegistry.pickRewardCard, que filtra por classe e aplica pity/afinidade.)
 function ShopSystem:initializeShopPools()
+    -- P3.2 (rebalance Jul/2026): card_draw_upgrade, damage_upgrade e
+    -- defense_upgrade eram TOAST-ONLY — CardRewardScreen:applyUpgrade só
+    -- imprimia mensagem, zero efeito real ("ouro queimado"). Removidos da
+    -- vitrine até serem implementados de verdade. Ficam só os upgrades que
+    -- aplicam no Player (health/mana).
     self.shopUpgradePool = {
         { id = "health_upgrade",     name = "Vida Extra",   description = "+10 HP máximo",            cost = 5, effect = "increase_max_health",    value = 10 },
         { id = "mana_upgrade",       name = "Mana Extra",   description = "+1 mana máxima",           cost = 25, effect = "increase_base_mana",    value = 1  },
-        { id = "card_draw_upgrade",  name = "Cartas Extras",description = "+1 carta por turno",       cost = 6, effect = "increase_card_draw",     value = 1  },
-        { id = "damage_upgrade",     name = "Dano Bônus",   description = "+2 dano em cartas de ataque", cost = 4, effect = "increase_attack_damage", value = 2 },
-        { id = "defense_upgrade",    name = "Defesa Bônus", description = "+2 defesa em cartas defensivas", cost = 4, effect = "increase_defense",   value = 2  },
     }
 end
 
@@ -189,8 +199,14 @@ function ShopSystem:generateCardOffer()
     -- classe). Stream "shop": rolls da loja não mexem na sequência de rewards.
     local pick = self.cardRegistry:pickRewardCard({
         classId = self.context.classId,
-        rarityWeights = self.rarityWeights,
+        -- P0.3/P0.4: pesos de raridade POR ATO injetados via contexto
+        -- (CardRewardScreen:show → ActSystem.getRarityWeights). O fixo
+        -- 70/25/5 antigo vira só fallback pra chamadas sem contexto.
+        rarityWeights = self.context.rarityWeights or self.rarityWeights,
+        minRarity = self.context.minRarity,       -- P0.7: piso elite/boss
         deckIds = self.context.deckIds,
+        actNumber = self.context.actNumber,       -- P0.5: cap de afinidade por ato
+        runManager = self.context.runManager,     -- P0.10: dedup de joker possuído
         excludeIds = self._offeredCardIds,
         stream = "shop",
     })
