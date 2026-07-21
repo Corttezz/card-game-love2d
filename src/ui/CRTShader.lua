@@ -35,6 +35,16 @@ local glitchBandY = 0.5
 local glitchTimer = 3.0   -- primeiro evento cedo (o jogador percebe a identidade)
 local glitchActive = 0
 
+-- SURTO de TV velha (v3.8, pedido do dono): o baseline é limpo/legível,
+-- mas a cada 8-20s o sinal "degrada" por 0.6-2s — vinheta/CA/ruído/
+-- flicker sobem e uma hum bar rola pela tela. Envelope: ataque rápido
+-- (0.12s), decaimento suave (0.35s). Intensidade de pico varia por evento.
+local degradeAmount = 0
+local degradeTimer = 6.0      -- primeiro surto cedo, mas não imediato
+local degradeActive = 0       -- tempo restante do surto corrente
+local degradeDur = 1.0        -- duração total do surto corrente
+local degradePeak = 1.0       -- pico 0.55..1.0 sorteado por evento
+
 -- Carrega o shader e cria canvas de cena. Chamar em love.load.
 function CRTShader.load()
     local ok, s = pcall(love.graphics.newShader, "shaders/crt.glsl")
@@ -127,6 +137,37 @@ function CRTShader.update(dt)
         glitchAmount = 0
     end
 
+    -- agendador do SURTO (mesma condição: tubo ligado e estável)
+    if enabled and shader and power > 0.99 then
+        if degradeActive > 0 then
+            degradeActive = degradeActive - dt
+            local elapsed = degradeDur - degradeActive
+            -- envelope: ataque 0.12s, decaimento 0.35s
+            local env = math.min(1, elapsed / 0.12)
+                * math.min(1, math.max(0, degradeActive) / 0.35)
+            degradeAmount = degradePeak * math.max(0, math.min(1, env))
+            if degradeActive <= 0 then
+                degradeAmount = 0
+                degradeTimer = 8.0 + love.math.random() * 12.0
+            end
+        else
+            degradeTimer = degradeTimer - dt
+            if degradeTimer <= 0 then
+                degradeDur = 0.6 + love.math.random() * 1.4
+                degradeActive = degradeDur
+                degradePeak = 0.55 + love.math.random() * 0.45
+                -- surto costuma vir com uma tremidinha junto (TV real)
+                if glitchActive <= 0 and love.math.random() < 0.6 then
+                    glitchActive = 0.10 + love.math.random() * 0.14
+                    glitchBandY = 0.15 + love.math.random() * 0.7
+                    glitchAmount = 1.0
+                end
+            end
+        end
+    else
+        degradeAmount = 0
+    end
+
     if not powerAnim then return end
     powerAnim.t = powerAnim.t + dt
     local k = math.min(1, powerAnim.t / powerAnim.dur)
@@ -143,6 +184,13 @@ end
 -- Intensidade do efeito (0..1).
 function CRTShader.setStrength(s)
     strength = math.max(0, math.min(1, s or 0))
+end
+
+-- Força o surto (ferramentas de captura/preview — não usar no gameplay,
+-- o agendador do update cuida do timing aleatório).
+function CRTShader.setDegrade(v)
+    degradeAmount = math.max(0, math.min(1, v or 0))
+    degradeActive = 0
 end
 
 function CRTShader.getStrength()
@@ -214,6 +262,7 @@ function CRTShader.endScene()
     shader:send("powerDir", powerDirection)
     shader:send("glitch", glitchAmount)
     shader:send("glitchY", glitchBandY)
+    shader:send("degrade", degradeAmount)
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.draw(sceneCanvas, 0, 0)
     love.graphics.setShader()

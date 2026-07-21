@@ -23,6 +23,10 @@ extern number power;
 extern number powerDir;   // coreografia: 1 = ligando/estável, -1 = desligando
 extern number glitch;
 extern number glitchY;
+// SURTO de TV velha (v3.8): 0 = sinal limpo (baseline legível); 1 = pico
+// do surto — vinheta/CA/ruído/flicker sobem e uma hum bar rola. Agendado
+// em Lua (CRTShader.update: a cada 8-20s por 0.6-2s, envelope suave).
+extern number degrade;
 
 // Largura do gabinete em px (a moldura vive AQUI, fora do conteúdo).
 const float BEZEL_PX = 20.0;
@@ -262,7 +266,9 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     // ====== ABERRAÇÃO CROMÁTICA (cresce com a distância do centro) ======
     // caBoost: no warm-up o canhão ainda não convergiu — CA bem maior
     // v3.7: 0.0022→0.0010 — CA de canto borrava texto na periferia
-    float caOffset = (0.0006 + 0.0010 * r2 * 4.0) * strength * caBoost;
+    // v3.8: no SURTO a convergência "escapa" de novo (CA volta a subir)
+    float caOffset = (0.0006 + (0.0010 + 0.0028 * degrade) * r2 * 4.0)
+        * strength * caBoost;
     vec4 colR = Texel(tex, suv + vec2(caOffset, 0.0));
     vec4 colG = Texel(tex, suv);
     vec4 colB = Texel(tex, suv - vec2(caOffset, 0.0));
@@ -306,12 +312,15 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     // ====== VIGNETTE + FLICKER + NOISE ======
     vec2 vPos = (suv - 0.5) * 0.45;
     float vignette = clamp(1.0 - dot(vPos, vPos), 0.0, 1.0);
-    // v3.7: 0.55→0.30 — a vinheta era o maior fator do escurecimento
-    vignette = mix(1.0, pow(vignette, 2.0), 0.30 * strength);
-    float flicker = (1.0 - 0.008 * strength)
-        + 0.008 * strength * sin(time * 60.0);
+    // v3.7: 0.55→0.30 baseline — a vinheta era o maior fator do
+    // escurecimento. v3.8: no SURTO ela volta a fechar (0.30→0.65 no pico).
+    vignette = mix(1.0, pow(vignette, 2.0),
+        (0.30 + 0.35 * degrade) * strength);
+    float flickAmp = 0.008 * (1.0 + 2.5 * degrade);
+    float flicker = (1.0 - flickAmp * strength)
+        + flickAmp * strength * sin(time * 60.0);
     float noise = (rand(suv * resolution + time * 40.0) * 0.018 - 0.009)
-        * strength;
+        * strength * (1.0 + 2.5 * degrade);
 
     // ====== WARM-UP: fósforo frio + estática + barra de blanking ======
     if (desat > 0.001) {
@@ -326,6 +335,14 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     }
     if (rollBar > 0.001) {
         rgb *= 1.0 - 0.65 * rollBar;   // emenda escura do rolo vertical
+    }
+
+    // ====== SURTO: hum bar rolando + cor levemente lavada (v3.8) ======
+    if (degrade > 0.001) {
+        float hum = pow(0.5 + 0.5 * sin((suv.y - time * 0.22) * 9.4), 3.0);
+        rgb *= 1.0 - 0.13 * degrade * hum;
+        float luma = dot(rgb, vec3(0.299, 0.587, 0.114));
+        rgb = mix(rgb, vec3(luma) * vec3(0.92, 0.97, 1.06), 0.18 * degrade);
     }
 
     // ====== COMPOSIÇÃO ======

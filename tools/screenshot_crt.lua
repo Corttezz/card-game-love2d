@@ -76,6 +76,21 @@ function M.run()
         end)
         love.graphics.present()
     end
+
+    -- SURTO no pico (v3.8): vinheta/CA/ruído/hum bar no máximo.
+    CRTShader.setPower(1, 1)
+    CRTShader.setDegrade(1)
+    CRTShader.beginScene()
+    love.graphics.clear(0, 0, 0, 1)
+    menu:draw()
+    CRTShader.endScene()
+    love.graphics.captureScreenshot(function(imageData)
+        imageData:encode("png", "crt_surto.png")
+        print("[crt] crt_surto.png salvo (degrade=1)")
+    end)
+    love.graphics.present()
+    CRTShader.setDegrade(0)
+
     love.event.quit()
 end
 
