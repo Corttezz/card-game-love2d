@@ -266,8 +266,8 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     // ====== ABERRAÇÃO CROMÁTICA (cresce com a distância do centro) ======
     // caBoost: no warm-up o canhão ainda não convergiu — CA bem maior
     // v3.7: 0.0022→0.0010 — CA de canto borrava texto na periferia
-    // v3.8: no SURTO a convergência "escapa" de novo (CA volta a subir)
-    float caOffset = (0.0006 + (0.0010 + 0.0028 * degrade) * r2 * 4.0)
+    // v3.10: no SURTO o canto volta EXATAMENTE ao valor antigo (0.0022)
+    float caOffset = (0.0006 + mix(0.0010, 0.0022, degrade) * r2 * 4.0)
         * strength * caBoost;
     vec4 colR = Texel(tex, suv + vec2(caOffset, 0.0));
     vec4 colG = Texel(tex, suv);
@@ -297,15 +297,18 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     // ====== RELEVO POR LUZ (v2.3: legibilidade > efeito) ======
     // v3.7 (feedback do dono): cantos acumulavam dome×vignette×glassShadow
     // ≈ -38% e dificultavam leitura — coeficientes e piso suavizados.
-    float dome = 1.0 - (0.03 * r2 * 2.0 + 0.05 * r2 * r2 * 8.0) * strength;
-    dome = clamp(dome, 0.93, 1.0);
+    // v3.10: no SURTO o domo volta aos valores antigos (0.05/0.10, piso 0.85)
+    float dome = 1.0 - (mix(0.03, 0.05, degrade) * r2 * 2.0
+        + mix(0.05, 0.10, degrade) * r2 * r2 * 8.0) * strength;
+    dome = clamp(dome, mix(0.93, 0.85, degrade), 1.0);
     vec2 sheenPos = (suv - vec2(0.5, 0.24)) * vec2(1.0, 2.1);
     float sheen = exp(-dot(sheenPos, sheenPos) * 3.2) * 0.045 * strength;
 
     // sombra do vidro recuado — DIRECIONAL: a moldura de cima projeta
     // mais sombra no vidro. v3.7: 0.28→0.16 topo, 0.08→0.05 base (a faixa
-    // superior escondia o texto da TopBar).
-    float shadowW = mix(0.05, 0.16, clamp(1.0 - tuv.y, 0.0, 1.0));
+    // superior escondia o texto da TopBar). v3.10: surto restaura a antiga.
+    float shadowW = mix(mix(0.05, 0.08, degrade), mix(0.16, 0.28, degrade),
+        clamp(1.0 - tuv.y, 0.0, 1.0));
     float glassShadow = 1.0 - shadowW * strength
         * smoothstep(-0.020, -0.001, dTube);
 
@@ -317,10 +320,10 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     vec2 vPos = (suv - 0.5) * 0.45;
     float vignette = clamp(1.0 - dot(vPos, vPos), 0.0, 1.0);
     // v3.7: 0.55→0.30 baseline — a vinheta era o maior fator do
-    // escurecimento. v3.8: no SURTO ela volta a fechar (0.30→0.65 no pico;
-    // radial por natureza, centro intacto).
+    // escurecimento. v3.10: no SURTO volta EXATAMENTE à antiga (0.55);
+    // radial por natureza, centro intacto.
     vignette = mix(1.0, pow(vignette, 2.0),
-        (0.30 + 0.35 * degrade) * strength);
+        mix(0.30, 0.55, degrade) * strength);
     float flickAmp = 0.008 * (1.0 + 2.5 * dEdge);
     float flicker = (1.0 - flickAmp * strength)
         + flickAmp * strength * sin(time * 60.0);
