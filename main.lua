@@ -648,6 +648,12 @@ function love.load(loveArgs)
         return
     end
 
+    -- Capturas do Gerenciador de Coringas (alinhado ao DeckViewer).
+    if loveArgs and loveArgs[1] == "screenshot_joker_manager" then
+        require("tools.screenshot_joker_manager").run()
+        return
+    end
+
     -- Regressão do mouse através do vidro (domo do CRT vs hit-test).
     if loveArgs and loveArgs[1] == "smoke_crt_mouse" then
         local ok = require("tools.smoke_crt_mouse").run()
