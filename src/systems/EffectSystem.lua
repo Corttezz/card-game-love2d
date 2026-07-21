@@ -13,6 +13,17 @@ local Sfx = require("src.systems.Sfx")
 -- Helper local: mensagem traduzida via messages.<key>, com vars injetadas.
 local function msg(key, vars) return I18n.t("messages." .. key, vars) end
 
+-- Ponte pra UI (OrbRow) — pcall pra rodar headless sem UI (mesmo idioma dos
+-- pcall(require EnemyRenderer/FloatingText) no Game.lua). fn inexistente =
+-- no-op. DECLARADA AQUI NO TOPO: locals de Lua so existem abaixo da definicao
+-- (regressao pega pelo test_all: channel_orb usava antes da declaracao).
+local function notifyOrbUI(fn, ...)
+    local ok, OrbRow = pcall(require, "src.ui.OrbRow")
+    if ok and OrbRow and OrbRow[fn] then
+        pcall(OrbRow[fn], ...)
+    end
+end
+
 function EffectSystem:new()
     return setmetatable({}, EffectSystem)
 end
@@ -254,10 +265,14 @@ function EffectSystem:processEffectCard(game, effect)
         Sfx.play("orbChannel")
         if overflow then
             -- Overflow: orb mais antigo e evocado automaticamente
+            notifyOrbUI("notifyEvoke", 1, overflow)
             self:_evokeOrbEffect(game, overflow)
             game:addMessage("Orb sobrepujou: " .. overflow.type .. " evocado", "warning")
             Sfx.play("orbEvoke")
         end
+        -- UI: orbe "nasce" no slot (pop-in). Depois do overflow pra animacao
+        -- de saida nao engolir a de entrada.
+        notifyOrbUI("notifyChannel", #game.player.orbs)
         return true
 
     elseif t == "evoke_orb" then
@@ -266,6 +281,7 @@ function EffectSystem:processEffectCard(game, effect)
             game:addMessage("Sem orbs para evocar", "warning")
             return true
         end
+        notifyOrbUI("notifyEvoke", 1, orb)
         self:_evokeOrbEffect(game, orb)
         Sfx.play("orbEvoke")
         return true
@@ -274,6 +290,7 @@ function EffectSystem:processEffectCard(game, effect)
         local count = 0
         while #game.player.orbs > 0 do
             local orb = game.player:popOldestOrb()
+            notifyOrbUI("notifyEvoke", 1, orb)
             self:_evokeOrbEffect(game, orb)
             count = count + 1
         end
@@ -317,6 +334,29 @@ function EffectSystem:processEffectCard(game, effect)
     end
 
     return false
+end
+
+-- ==============================================================================
+-- Orbes: formulas CANONICAS de pulso/evoke (fonte unica — a UI OrbRow exibe
+-- estes mesmos numeros; mudou a formula aqui, a tela acompanha de graca).
+-- ==============================================================================
+
+-- Valor do PULSO por turno de um orbe (0 = nao pulsa; dark cresce em vez disso).
+function EffectSystem.orbPulseValue(orb, focus)
+    local ev = (orb.value or 1) + (focus or 0)
+    if orb.type == "lightning" or orb.type == "ice" then
+        return math.ceil(ev / 2)
+    elseif orb.type == "fire" or orb.type == "holy" then
+        return math.ceil(ev / 3)
+    end
+    return 0 -- dark: nao pulsa, cresce +2/turno
+end
+
+-- Valor do EVOKE de um orbe (dark evoca em dobro).
+function EffectSystem.orbEvokeValue(orb, focus)
+    local ev = (orb.value or 1) + (focus or 0)
+    if orb.type == "dark" then return ev * 2 end
+    return ev
 end
 
 -- Aplica o efeito mecanico de um orb evocado. Mapa central de tipos:
@@ -368,23 +408,30 @@ function EffectSystem:orbPassiveTick(game)
     if not p or not p.orbs or #p.orbs == 0 then return end
     local focus = (p.getBuffStacks and p:getBuffStacks("focus")) or 0
     local dmg, armor, heal = 0, 0, 0
-    for _, orb in ipairs(p.orbs) do
-        local ev = (orb.value or 1) + focus
-        if orb.type == "lightning" then
-            dmg = dmg + math.ceil(ev / 2)
+    -- Usabilidade (Jul/2026): pulso POR ORBE tem feedback visual proprio —
+    -- flash no slot + numero flutuante saindo DO orbe (causalidade: o jogador
+    -- ve QUAL orbe fez O QUE). Formula canonica em orbPulseValue.
+    for i, orb in ipairs(p.orbs) do
+        local pulse = EffectSystem.orbPulseValue(orb, focus)
+        if orb.type == "lightning" or orb.type == "fire" then
+            dmg = dmg + pulse
+            notifyOrbUI("notifyPulse", i, "-" .. pulse, "damage")
         elseif orb.type == "ice" then
-            armor = armor + math.ceil(ev / 2)
+            armor = armor + pulse
+            notifyOrbUI("notifyPulse", i, "+" .. pulse, "armor")
+        elseif orb.type == "holy" then
+            heal = heal + pulse
+            notifyOrbUI("notifyPulse", i, "+" .. pulse, "heal")
         elseif orb.type == "dark" then
             orb.value = (orb.value or 1) + 2   -- cresce canalizado; evoke dobra
-        elseif orb.type == "fire" then
-            dmg = dmg + math.ceil(ev / 3)
-        elseif orb.type == "holy" then
-            heal = heal + math.ceil(ev / 3)
+            notifyOrbUI("notifyPulse", i, "+2", "grow")
         end
     end
     if dmg > 0 and game.enemy and game.enemy:isAlive() then
         game.enemy:takeDamage(dmg)
         game:addMessage("Orbes pulsam: " .. dmg .. " dano", "info")
+        local okER, ER = pcall(require, "src.ui.EnemyRenderer")
+        if okER and ER.triggerHurt then ER.triggerHurt() end
     end
     if armor > 0 then
         p:addArmor(armor)
@@ -488,10 +535,12 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
             game:addMessage("Canaliza " .. orb.type .. " (" .. orb.value .. ")", "info")
             Sfx.play("orbChannel")
             if overflow then
+                notifyOrbUI("notifyEvoke", 1, overflow)
                 self:_evokeOrbEffect(game, overflow)
                 game:addMessage("Orb sobrepujou: " .. overflow.type .. " evocado", "warning")
                 Sfx.play("orbEvoke")
             end
+            notifyOrbUI("notifyChannel", #game.player.orbs)
         end
 
     elseif t == "strength_per_turn" and triggerType == "turn_start" then

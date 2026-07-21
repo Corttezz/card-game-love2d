@@ -279,6 +279,12 @@ return {
         strength   = { name = "Staerke",    desc = "Angriffe verursachen +{stacks} zusaetzlichen Schaden, solange aktiv." },
         dexterity  = { name = "Geschicklichkeit", desc = "Verteidigungskarten erhalten +{stacks} zusaetzlichen Block." },
         focus      = { name = "Fokus",      desc = "+{stacks} Kraft bei jedem Puls und jeder Beschwoerung eines Orbs (dieser Kampf)." },
+        orb_lightning = { name = "Blitz-Orb",      desc = "Pulsiert {stacks} Schaden am Ende deines Zuges. Ausloesen verursacht {duration} Schaden." },
+        orb_ice       = { name = "Eis-Orb",        desc = "Pulsiert {stacks} Block am Ende deines Zuges. Ausloesen gibt {duration} Block." },
+        orb_fire      = { name = "Feuer-Orb",      desc = "Pulsiert {stacks} Schaden am Ende deines Zuges. Ausloesen verursacht {duration} Schaden und Brand." },
+        orb_dark      = { name = "Dunkler Orb",    desc = "Pulsiert nicht: waechst +2 pro Zug. Ausloesen verursacht {duration} Schaden (doppelter Wert)." },
+        orb_holy      = { name = "Heiliger Orb",   desc = "Pulsiert {stacks} Heilung am Ende deines Zuges. Ausloesen heilt {duration} LP." },
+        orb_empty     = { name = "Orb-Platz",      desc = "Leer. Kanalisieren-Karten erzeugen hier Orbs (max {stacks}). Voll: Kanalisieren loest den aeltesten aus." },
         burn       = { name = "Brand",      desc = "Fuegt {stacks} Feuerschaden pro Zug zu." },
     },
 

@@ -4,6 +4,7 @@
 local HudPlayerPanel = require("src.ui.HudPlayerPanel")
 local ManaOrb = require("src.ui.ManaOrb")
 local PlayerBuffPills = require("src.ui.PlayerBuffPills")
+local OrbRow = require("src.ui.OrbRow")
 
 local HudManager = {}
 HudManager.__index = HudManager
@@ -35,6 +36,8 @@ function HudManager:update(dt, game)
     self.playerPanel:update(dt, player)
     self.manaOrb:update(dt, player)
     self.playerBuffPills:update(dt)
+    -- Fileira de orbes (mago): singleton — EffectSystem notifica animações.
+    OrbRow.update(dt, game)
 end
 
 function HudManager:updateLayout()
@@ -64,6 +67,9 @@ function HudManager:draw(game)
             self.playerPanel.y,
             self.playerPanel.width
         )
+        -- Orbes acima das buff pills (a bateria do mago SEMPRE visível;
+        -- slots vazios ensinam o cap de 3 — padrão StS/Defect).
+        OrbRow.draw(game, self.playerPanel.x, self.playerPanel.y)
         self.manaOrb:draw(game.player)
     end
 

@@ -5,9 +5,10 @@
 -- exaurir remove da corrida). Ordem = prioridade (máx 3 por tooltip).
 
 return {
-    { match = { "orbe", "canaliza", "evoca", "orb", "channel", "evoke" }, name = "Orbes",
-      -- Rebalance v2 (Jul/2026): orbe Sagrado agora tem cartas (Gota Curativa / Prece Radiante)
-      text = "3 slots. Pulsam todo turno (metade do efeito) e Evocar dispara o efeito cheio: Raio=dano, Gelo=armadura, Fogo=dano+queima, Sagrado=cura, Sombra=cresce, evoca x2. Slot cheio evoca o mais antigo." },
+    { match = { "orbe", "canaliza", "evoca", "orb", "channel", "evoke", "valor" }, name = "Orbes",
+      -- Rebalance v2 (Jul/2026) + OrbRow: a fileira acima do seu painel mostra
+      -- os 3 slots; o numero no orbe e o PULSO por turno (ja com Foco).
+      text = "Ficam na fileira acima do seu painel (3 slots). O numero no orbe = pulso no fim do SEU turno (ja conta Foco). Evocar dispara o efeito cheio: Raio=dano, Gelo=armadura, Fogo=dano+queima, Sagrado=cura, Sombra=cresce e evoca x2. O mais a ESQUERDA evoca primeiro; slots cheios, canalizar evoca o mais antigo." },
     { match = { "exaurir", "exhaust" }, name = "Exaurir",
       text = "Uso unico POR BATALHA: sai do baralho ate a proxima." },
     { match = { "veneno", "poison" }, name = "Veneno",

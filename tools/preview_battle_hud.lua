@@ -16,7 +16,7 @@ function M.run()
 
     -- Setup fake game state
     local game = Game:new()
-    game.selectedClass = "warrior"  -- chip da passiva no HUD (clareza)
+    game.selectedClass = "mage"  -- chip da passiva + OrbRow (fileira de orbes)
     game.player.health = 48
     game.player.maxHealth = 80
     game.player.mana = 2
@@ -26,6 +26,12 @@ function M.run()
     game.player.dexterity = 2
     game.player.buffs = {
         { name = "focus", stacks = 2, duration = 3 },
+    }
+    -- OrbRow (Jul/2026): 2 orbes + 1 slot vazio — valida numero com Foco,
+    -- marcador FIFO e o aro apagado do cap.
+    game.player.orbs = {
+        { type = "lightning", value = 4 },
+        { type = "dark", value = 5 },
     }
     game.enemy.health = 34
     game.enemy.maxHealth = 55
