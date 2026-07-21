@@ -111,3 +111,11 @@ Plano de origem: `docs/plan/sts-improvements-v1.md` (Steps 1-7). Inspiração do
 - **GUARDA**: só rodar se NÃO houver processo `love` do usuário (nunca matar processo!).
 - i18n: seções novas em TODOS os 5 locales (`top_bar.*`, `card_info.forged`, `reward.*`);
   `status.*` só existe em pt_BR/en — es/fr/de caem no fallback en (padrão pré-existente).
+
+## Booster packs no Rng seedado (P0.6, Rebalance v2 Jul/2026)
+
+- `BoosterPackSystem`: TODO roll de pack sai do stream **`shop`** do `Rng` (era
+  `love.math.random` — quebrava reprodutibilidade por seed e anti-save-scum).
+- Pacote Bufão: pool de jokers da classe + neutros, pesos por raridade, dedup
+  contra jokers já possuídos. Packs não-Standard: fallback deixou de ser pool global.
+- Cobertura: `love . test_one smoke_packs`.

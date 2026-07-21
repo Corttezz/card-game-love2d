@@ -78,3 +78,23 @@ Cartas com efeito secundário forte recebem -1 a -3 no valor base.
 
 - `love . smoke_acts` valida curvas HP/dano + starter deck = 2 + PLAYER_MAX_HEALTH = 60
 - `love . validate_cards` lista cartas fora da curva
+
+## Re-baseline pós-Rebalance v2 (Jul/2026, bot v5.17)
+
+Baterias `love . autoplay` com o Piloto v5.17 (prior de defesa pra mago/ladino):
+
+| Bateria | Guerreiro | Mago | Ladino |
+|---|---|---|---|
+| 15×3 (bot v5, pré-fix de prior) | **12/15 (80%)** — os 15 chegaram ao boss final | 0/15 — morte por chip (decks sem defesa = viés do BOT) | 1/15 (7%) |
+| 10×3 (bot v5.17) | 5/10 (50%) | 0/10 (mas muito mais fundo: 4× boss A2, 4× A3) | 1/10 (10%) |
+| 10 mago (Conduíte 2 Foco) | — | **3/10 (30%)** + 1 morte no boss final | — |
+
+- **Lição de método**: bot sem afinidade de defesa pra mago/ladino não mede o jogo,
+  mede o próprio viés. Corrigir a política do bot ANTES de nerfar o jogo.
+- **Levers aplicados**: prior de defesa no bot (v5.17) + Conduíte 1→2 Foco (Game.lua).
+- **Banda atual**: 50/30/10 — todas as classes vencem e chegam ao A3. Tripwires formais
+  (mago >65%, Muralha >65% → Baluarte 8→6) NÃO dispararam (thorn/turno medido 3-6,
+  banda alvo 25-38).
+- **Próximos levers monitorados**: conversão do ladino no boss final (morre lá 4/10);
+  guerreiro se passar de 60% ("sofrido/turno 0.0" em atos inteiros é o sintoma —
+  Onda de Ferro ×4-5 + Escudo de Espinhos + Muralha zera o dano inimigo).

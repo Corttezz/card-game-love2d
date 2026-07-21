@@ -49,3 +49,10 @@ originSessionId: e544765f-309d-4fc7-89e3-58b3dabfa059
 
 **Layout do memory dir (este diretório):**
 `~/.claude/projects/-home-cortez-projects-card-game-love2d/memory/` contém `MEMORY.md` (índice) + arquivos temáticos. Atualize-os quando comportamentos mudarem.
+
+**Piloto de IA (autoplay) v5.17:** `love . autoplay [runs] [classe|all]` — joga runs
+completas pelos sistemas reais e escreve diário + métricas + TRIPWIRES em
+`autoplay_report.md` (save dir). v5: lethal fiel ao pipeline, cérebro de orbes, forja
+por score, bancada de coringas. v5.17: prior de DEFESA pra mago/ladino (sem isso o
+bot mede o próprio viés, não o jogo). Detector de integridade de deck: mão+deck+
+descarte+exauridas+jokers = pool da batalha (pegaria o bug do Sobrevivente).
