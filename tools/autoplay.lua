@@ -972,10 +972,18 @@ local RARITY_SCORE = { common = 1, uncommon = 3, rare = 6, legendary = 10 }
 
 -- Arquetipo por classe (prior de deck-building): o bot compra pra FOCAR,
 -- nao pra colecionar — combos exigem densidade da mesma tag.
+-- V5.17 (re-baseline Jul/2026): mago/ladino ganharam afinidade de DEFESA.
+-- A bateria 15x3 mostrou mago 0/15 morrendo de chip (sofrido 2-16/turno,
+-- decks sem NENHUMA defesa alem do starter) enquanto o guerreiro (unico
+-- prior com defend/armor) zerava o dano inimigo — vies de compra do bot,
+-- nao (so) desbalanceio do jogo. Humano de mago compra Amuleto/Campo de
+-- Forca; o bot agora tambem.
 local CLASS_ARCHETYPE = {
     warrior = { strike = 3, armor = 2, defend = 2, strength = 2 },
-    mage    = { channel = 3, magic = 3, lightning = 2, evoke = 2 },
-    rogue   = { poison = 3, strike = 2, finisher = 2 },
+    mage    = { channel = 3, magic = 3, lightning = 2, evoke = 2,
+                defend = 2, armor = 2, ice = 1 },
+    rogue   = { poison = 3, strike = 2, finisher = 2,
+                defend = 2, armor = 1, thorn = 1 },
 }
 
 local function archetypeScore(game, cardData)
