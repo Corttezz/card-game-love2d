@@ -23,7 +23,6 @@ local SceneBackground = require("src.ui.SceneBackground")
 local I18n            = require("src.i18n.I18n")
 local Sfx             = require("src.systems.Sfx")
 local FlashShader     = require("src.ui.FlashShader")
-local ParticlesManager = require("engine.ParticlesManager")
 local CardBack        = require("src.ui.CardBack")
 local TvOsd           = require("src.ui.TvOsd")
 
@@ -41,7 +40,6 @@ local state = {
 
     -- Splash
     splashTime      = 0,
-    centerCard      = nil,        -- {x, y, w, h, alpha, scale, rot, dissolve}
     miniCards       = {},          -- array de {x, y, tx, ty, scale, alpha, rot}
     flashAlpha      = 0,
     skipped         = false,
@@ -57,7 +55,6 @@ local state = {
 
 -- Tamanhos lógicos (em pixels da janela; LÖVE escala automaticamente).
 local LOADING_BAR = { w = 320, h = 18, pad = 2 }
-local CARD_SIZE   = { w = 96, h = 144 }
 local MINI_SIZE   = { w = 56, h = 84 }
 local NUM_MINI    = 22
 
@@ -432,8 +429,11 @@ function BootScene.update(dt)
             mc.rot = mc.rot + dt * mc.rotSpeed
             -- espiral: órbita desacelera conforme chega no centro
             if mc.angleSpeed then
-                local closeness = 1 - math.min(1, mc.age / mc.lifespan)
-                mc.angle = mc.angle + dt * mc.angleSpeed * (0.4 + 0.6 * closeness)
+                -- REDEMOINHO (v11): a órbita ACELERA conforme chega no centro
+                -- (momento angular de furacão) — antes desacelerava e lia como
+                -- espiral solta.
+                local prox = math.min(1, mc.age / mc.lifespan)   -- 0 longe → 1 lua
+                mc.angle = mc.angle + dt * mc.angleSpeed * (0.5 + 1.7 * prox)
             end
 
             local t2 = math.min(1, mc.age / mc.lifespan)
@@ -567,12 +567,9 @@ local function drawSplash()
         drawCardShape(x, y, MINI_SIZE.w, MINI_SIZE.h, mc.alpha, mc.scale, mc.rot, 0)
     end
 
-    -- Carta central por cima, pairando NA FRENTE do sigilo (é ele quem a
-    -- dissolve e absorve).
-    if state.centerCard then
-        local c = state.centerCard
-        drawCardShape(sx, sy, CARD_SIZE.w, CARD_SIZE.h, c.alpha, c.scale, c.rot, c.dissolve)
-    end
+    -- (v11: a carta central FOI REMOVIDA — feedback do dono: "pode deixar
+    -- direto já no ponto focal da lua". A cena abre contemplativa e o
+    -- redemoinho entra sozinho.)
 
     -- TÍTULO LETRA-A-LETRA: cada letra carimba com pop próprio (alpha/scale
     -- individuais, animados pela timeline). Outline ink + face dourada com
@@ -681,7 +678,6 @@ end
 function BootScene._finish()
     state.phase = "done"
     state.miniCards = {}
-    state.centerCard = nil
     state.flashAlpha = 0
     state.titleLetters = {}
     sigil.flare = 0

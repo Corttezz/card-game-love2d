@@ -61,7 +61,9 @@ ComboSystem.RULES = {
 
     { id = "cycle_motion",
       rule = "pair_tags", requires = { "draw", "discard" },
-      bonus = { type = "damage_bonus", value = 3 },
+      -- Rebalance v2 (Jul/2026, P1.2): +3 -> +5 (warrior/rogue ganharam
+      -- massa de draw+discard; o combo precisava pagar o setup).
+      bonus = { type = "damage_bonus", value = 5 },
       label = "Em Movimento" },
 
     { id = "finisher_chain",
@@ -77,12 +79,28 @@ ComboSystem.RULES = {
     { id = "magic_focus",
       rule = "min_count_tag", tag = "magic", minCount = 2,
       bonus = { type = "damage_multiplier", value = 1.5 },
-      label = "Foco Arcano" },
+      -- Rebalance v2 (Jul/2026, P1.1): label renomeado ('Foco Arcano' colidia
+      -- com o nome da carta mage_arcane_focus).
+      label = "Convergencia Arcana" },
 
     { id = "thorn_reflex",
       rule = "pair_tags", requires = { "defend", "thorn" },
-      bonus = { type = "defense_bonus", value = 4 },
+      -- Rebalance v2 (Jul/2026, P1.2): +4 -> +6 (agora ha massa critica de
+      -- thorn em CARTA: Escudo de Espinhos + thorn_cloak + flame_barrier).
+      bonus = { type = "defense_bonus", value = 6 },
       label = "Reflexos Espinhados" },
+
+    -- Rebalance v2 (Jul/2026, P1.3): combos elementais novos — payoff das
+    -- tags lightning/ice (ja no CATALOG) pro Canalizador do mago.
+    { id = "tempestade",
+      rule = "min_count_tag", tag = "lightning", minCount = 2,
+      bonus = { type = "damage_bonus", value = 5 },
+      label = "Tempestade" },
+
+    { id = "zero_absoluto",
+      rule = "min_count_tag", tag = "ice", minCount = 2,
+      bonus = { type = "defense_bonus", value = 5 },
+      label = "Zero Absoluto" },
 }
 
 -- Avalia se uma regra dispara dado um turnContext (com tagCounts).
@@ -176,9 +194,16 @@ function ComboSystem.applyOnceEffects(game, turnContext)
                 game:addMessage("Combo " .. (combo.label or combo.id) .. ": +"
                     .. (b.stacks or 1) .. " " .. (b.debuff or "debuff"), "warning")
             elseif b.type == "heal" and game.player then
-                game.player:heal(b.value or 0)
+                -- P2.5 (Jul/2026, rebalance v2): heal de combo roteia pelo
+                -- heal_multiplier (com floor via P2.4) — sem isso Calice do
+                -- Sabio/dark_embrace nao amplificavam o lifesteal_burst.
+                local amount = b.value or 0
+                if game.effectSystem and game.effectSystem.applyHealMultiplier then
+                    amount = game.effectSystem:applyHealMultiplier(game, amount)
+                end
+                game.player:heal(amount)
                 game:addMessage("Combo " .. (combo.label or combo.id) .. ": +"
-                    .. (b.value or 0) .. " HP", "success")
+                    .. amount .. " HP", "success")
             elseif b.type == "evoke_on_combo" then
                 -- Evoca 1 orb extra ao fim do turno
                 local orb = game.player:popOldestOrb()

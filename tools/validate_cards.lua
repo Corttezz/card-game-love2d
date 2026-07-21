@@ -36,6 +36,9 @@ local PROCESSED_EFFECT_TYPES = {
     on_attack_debuff = true, on_turn_start_draw = true,
     regen_per_turn = true, damage_per_turn = true,
     heal_multiplier = true,
+    -- P2.1 (Jul/2026, rebalance v2): trigger turn_start que canaliza orbe
+    -- (mage_electrodynamics). Ver EffectSystem:processTriggerEffect.
+    channel_per_turn = true,
     -- Removidos: tag_observer_multiplier / tag_stack_bonus (declarados em
     -- versão anterior do plano combo-aware mas nunca implementados em
     -- EffectSystem). Reintroduzir só quando algum joker realmente precisar.

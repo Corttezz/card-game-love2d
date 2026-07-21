@@ -28,13 +28,48 @@ function EffectSystem:applyJokerEffects(game, card, baseValue, turnContext)
     local finalValue = baseValue
     local msgs = {}
 
+    -- P0.9 (Jul/2026, rebalance v2 — LARGEST-MULTIPLIER-WINS): entre os jokers
+    -- ativos, APENAS o MAIOR damage_multiplier e o MAIOR defense_multiplier
+    -- contam. Sem isso, echo_form 1.5 x joker_001 1.5 = x2.25 em cadeia
+    -- (produto x5.06 com combo+vulnerable — boss A2 em ~1.5 turnos), e duas
+    -- copias do mesmo joker multiplicador dobravam de graca. Bonus FLAT
+    -- (damage_bonus/defense_bonus) continuam somando TODOS; multiplicadores
+    -- de COMBO e vulnerable sao camadas distintas do pipeline e ficam fora
+    -- da regra. NAO reintroduzir produto em cadeia aqui.
+    local bestMult = nil
     for _, joker in ipairs(game.jokerSlots) do
         if joker.effects then
             for _, effect in ipairs(joker.effects) do
-                local newValue, msg = self:processEffect(effect, card, finalValue, turnContext)
-                if newValue ~= finalValue then
-                    finalValue = newValue
-                    if msg then table.insert(msgs, msg) end
+                local isMatchingMult =
+                    (effect.type == "damage_multiplier" and effect.target == "attack"
+                        and card.type == "attack")
+                    or (effect.type == "defense_multiplier" and effect.target == "defense"
+                        and card.type == "defense")
+                if isMatchingMult and (not bestMult
+                    or (effect.value or 1) > (bestMult.value or 1)) then
+                    bestMult = effect
+                end
+            end
+        end
+    end
+    if bestMult then
+        local newValue, m = self:processEffect(bestMult, card, finalValue, turnContext)
+        if newValue ~= finalValue then
+            finalValue = newValue
+            if m then table.insert(msgs, m) end
+        end
+    end
+
+    for _, joker in ipairs(game.jokerSlots) do
+        if joker.effects then
+            for _, effect in ipairs(joker.effects) do
+                -- Multiplicadores ja resolvidos acima (so o maior conta).
+                if effect.type ~= "damage_multiplier" and effect.type ~= "defense_multiplier" then
+                    local newValue, msg = self:processEffect(effect, card, finalValue, turnContext)
+                    if newValue ~= finalValue then
+                        finalValue = newValue
+                        if msg then table.insert(msgs, msg) end
+                    end
                 end
             end
         end
@@ -363,6 +398,8 @@ function EffectSystem:orbPassiveTick(game)
 end
 
 -- Aplica multiplicadores de heal vindos de jokers (heal_multiplier).
+-- P2.4 (Jul/2026, rebalance v2): retorno com math.floor — sem ele, 5 x 1.5
+-- rendia 7.5 HP fracionario no HUD (Prece Radiante sob Calice do Sabio).
 function EffectSystem:applyHealMultiplier(game, amount)
     local final = amount
     for _, joker in ipairs(game.jokerSlots or {}) do
@@ -374,7 +411,7 @@ function EffectSystem:applyHealMultiplier(game, amount)
             end
         end
     end
-    return final
+    return math.floor(final)
 end
 
 -- ==============================================================================
@@ -385,11 +422,15 @@ end
 
 function EffectSystem:applyTriggerEffects(game, triggerType, context)
     -- 1) Triggers de jokers ativos (ex: lifesteal, regen).
+    -- P2.3 (Jul/2026): marca a FONTE joker no context — processTriggerEffect
+    -- usa isso pra limitar on_defend_damage de joker a 1x/turno por joker.
     for _, joker in ipairs(game.jokerSlots or {}) do
         if joker.effects then
+            if context then context.sourceJoker = joker end
             for _, effect in ipairs(joker.effects) do
                 self:processTriggerEffect(game, effect, triggerType, context)
             end
+            if context then context.sourceJoker = nil end
         end
     end
 
@@ -413,9 +454,44 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
         game:addMessage(msg("lifesteal", { value = amount }), "success")
 
     elseif t == "on_defend_damage" and triggerType == "defend" then
+        -- P2.3 (Jul/2026, rebalance v2): thorn cuja FONTE e JOKER dispara no
+        -- maximo 1x por turno POR JOKER (flag resetada em Game:drawForTurn).
+        -- Sem a trava, o reflexo escalava linearmente com defesas jogadas
+        -- (draw engine = 4-5 defesas/turno => 54+ refletidos so de jokers e
+        -- invulnerabilidade no boss A3). Thorn de CARTA (context.sourceCard,
+        -- ex: Barreira de Fogo / Escudo de Espinhos) continua POR CARTA.
         if context and context.target then
-            context.target:takeDamage(v)
-            game:addMessage(msg("reflect", { value = v }), "warning")
+            local fired = true
+            local joker = context.sourceJoker
+            if joker then
+                game._jokerThornFiredThisTurn = game._jokerThornFiredThisTurn or {}
+                if game._jokerThornFiredThisTurn[joker] then
+                    fired = false
+                else
+                    game._jokerThornFiredThisTurn[joker] = true
+                end
+            end
+            if fired then
+                context.target:takeDamage(v)
+                game:addMessage(msg("reflect", { value = v }), "warning")
+            end
+        end
+
+    elseif t == "channel_per_turn" and triggerType == "turn_start" then
+        -- P2.1 (Jul/2026, rebalance v2 — engine flagada #1): motor de orbes
+        -- (mage_electrodynamics). Canaliza 1 orbe do tipo declarado no inicio
+        -- de cada turno. Espelho de strength_per_turn; overflow FIFO evoca o
+        -- orbe mais antigo, igual ao channel_orb de carta.
+        if game.player and game.player.addOrb then
+            local orb = { type = effect.orbType or "lightning", value = math.max(1, v) }
+            local overflow = game.player:addOrb(orb)
+            game:addMessage("Canaliza " .. orb.type .. " (" .. orb.value .. ")", "info")
+            Sfx.play("orbChannel")
+            if overflow then
+                self:_evokeOrbEffect(game, overflow)
+                game:addMessage("Orb sobrepujou: " .. overflow.type .. " evocado", "warning")
+                Sfx.play("orbEvoke")
+            end
         end
 
     elseif t == "strength_per_turn" and triggerType == "turn_start" then

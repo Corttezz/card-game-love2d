@@ -242,6 +242,10 @@ function Game:drawForTurn()
     -- multi-jogada: contadores por turno zerados
     self._attacksThisTurn = 0
     self._impetusFiredThisTurn = false
+    -- P2.3 (Jul/2026, rebalance v2): thorn de JOKER dispara 1x/turno por
+    -- joker — nova janela a cada turno do jogador (ver EffectSystem
+    -- processTriggerEffect on_defend_damage).
+    self._jokerThornFiredThisTurn = {}
     local baseDraw = Config.Game.CARDS_PER_TURN or 5
     -- Blue Seal acumula compras extras quando cartas com seal são jogadas.
     -- Consumido aqui (uma vez por turno) e zerado.
@@ -576,6 +580,8 @@ end
 
 function Game:applyClassBattleStartPassive()
     self._toxinAppliedThisTurn = false
+    -- P2.3: janela nova de thorn-de-joker no comeco de cada batalha.
+    self._jokerThornFiredThisTurn = {}
     if self.selectedClass == "mage" and self.player and self.player.addOrb then
         self.player:addOrb({ type = "lightning", value = 4 })
         -- Auditoria Jul/2026 (bateria 2 do autoplay): mago morria no boss do
@@ -1354,9 +1360,11 @@ function Game:nextPhase()
         local nodeType = (run.currentNode and run.currentNode.type) or "battle"
         local stats = ActSystem.getEnemyStats(run.actNumber, run.floorInAct, nodeType)
         self.enemy = Enemy:new(stats.health, stats.damage)
-    self.battleTurn = 0
-    self.scoreSystem:startBattle()
-    self:applyClassBattleStartPassive()
+        -- (P0.0 Jul/2026: scoreSystem:startBattle + applyClassBattleStartPassive
+        -- DUPLICADOS aqui foram removidos — a passiva rodava 2x por batalha em
+        -- run mode: mago abria com 2 orbes + o dobro de Foco. A aplicacao
+        -- canonica e a incondicional no topo do nextPhase.)
+        self.battleTurn = 0
         -- Sprite do inimigo: roster por ato × tipo de node (v5).
         -- Endless: bioma 4+ a cada 8 andares (mesma fórmula do
         -- GameplayScene/WorldRoad — monstro casa com o cenário).

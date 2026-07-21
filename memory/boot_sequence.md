@@ -159,4 +159,13 @@ Feedback do dono na v9: a parede-selo "parece ritual estático, ficou estranho" 
 - **Base**: paisagem noturna — colinas escuras + SILHUETA DO CASTELO (destino da run) no horizonte + LUA dourada grande no alto + estrelas. (`frame_00.png`)
 - **Nuvens em PARALLAX** (`boot_anim/clouds.png`, transparente, margens vazias): 2 camadas deslizando em velocidades/alturas/alphas diferentes (2.2 e 3.8 px-de-arte/s, segunda flipada) — `drawClouds()` com wrap horizontal (margens vazias = emenda invisível). Animação clássica, suave, zero flicker. PNG ausente → fundo funciona sem nuvens.
 - **A LUA é o coração**: cartas voam pra ela; `boot_seal_glow` (luminância) faz o halo respirar e pulsar por absorção. Reapontar `SIGIL_IX/IY` + `SEAL_RADIUS_IMG` pro centro/raio da lua QUANDO a arte chegar.
+## Entrada v11 — redemoinho na lua + estrelas cintilando + abertura contemplativa (Jul/2026)
+
+Feedback do dono na v10 (gostou, 3 ajustes):
+- **Cartas DENTRO da lua**: centro re-medido com threshold alto no DISCO (o centroide anterior misturava estrelas): `SIGIL 179,40`, raio 30.
+- **SEM carta central**: removida (estado, timeline, draw, ParticlesManager burst, deckStart). A cena abre **contemplativa ~1.8s** (noite + estrelas + nuvens + lua acordando) antes do rumble (1.50) e do redemoinho (1.80+) — era o "delay assim que a tela renderizar".
+- **REDEMOINHO**: todas as cartas orbitam no MESMO sentido (`angleSpeed = 1.5+rand*1.2`, sem sinal aleatório) e a órbita **ACELERA perto do centro** (`0.5 + 1.7*prox` — antes desacelerava e lia como espirais soltas). Furacão entrando na lua.
+- **ESTRELAS CINTILAM** (`shaders/boot_star_twinkle.glsl` + `drawStarTwinkle`): mesmo princípio da carga (arte redesenhada em add), só pixels lum>0.6 do CÉU; fase pseudo-aleatória POR PIXEL DA ARTE (`hash(floor(art_px))`) → cada estrela pisca no próprio ritmo. Exclusões: lua (raio*1.3) e colinas (`sky_limit=84` na arte — rim-light dourado NÃO pisca; validado). Ordem: base → twinkle → nuvens (passam na frente das estrelas) → carga da lua.
+
+## Entrada v10 — status
 - **Status: ENTREGUE e VALIDADO** ✅. O outage do PixelLab foi contornado pelo gerador em background (`scratchpad/pixellab_boot_bg.py`, cliente MCP HTTP que retenta — padrão reutilizável pra outages futuros). Artes instaladas: `frame_00.png` (paisagem) + `clouds.png` (nuvens transparentes). **Âncora da LUA medida por centroide dos pixels claros: (173, 46), raio 34** (`SIGIL_IX/IY`/`SEAL_RADIUS_IMG`). Offsets das nuvens medidos do alpha-bbox (conteúdo y 23..103 do canvas 256×128 → camadas em iy -16/-2). Validado por screenshot pelo tubo: lua flareia entre early/peak, nuvens cruzam a lua, castelo na crista esquerda, título cai sobre as colinas escuras (contraste ótimo).
