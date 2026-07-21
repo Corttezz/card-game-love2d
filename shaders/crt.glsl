@@ -310,17 +310,22 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
         * smoothstep(-0.020, -0.001, dTube);
 
     // ====== VIGNETTE + FLICKER + NOISE ======
+    // v3.9 (dono): o surto é fenômeno de PERIFERIA — no centro a imagem
+    // fica idêntica ao baseline. Máscara radial: 0 no centro, 1 nos cantos.
+    float dEdge = degrade * smoothstep(0.04, 0.32, r2);
+
     vec2 vPos = (suv - 0.5) * 0.45;
     float vignette = clamp(1.0 - dot(vPos, vPos), 0.0, 1.0);
     // v3.7: 0.55→0.30 baseline — a vinheta era o maior fator do
-    // escurecimento. v3.8: no SURTO ela volta a fechar (0.30→0.65 no pico).
+    // escurecimento. v3.8: no SURTO ela volta a fechar (0.30→0.65 no pico;
+    // radial por natureza, centro intacto).
     vignette = mix(1.0, pow(vignette, 2.0),
         (0.30 + 0.35 * degrade) * strength);
-    float flickAmp = 0.008 * (1.0 + 2.5 * degrade);
+    float flickAmp = 0.008 * (1.0 + 2.5 * dEdge);
     float flicker = (1.0 - flickAmp * strength)
         + flickAmp * strength * sin(time * 60.0);
     float noise = (rand(suv * resolution + time * 40.0) * 0.018 - 0.009)
-        * strength * (1.0 + 2.5 * degrade);
+        * strength * (1.0 + 2.5 * dEdge);
 
     // ====== WARM-UP: fósforo frio + estática + barra de blanking ======
     if (desat > 0.001) {
@@ -338,11 +343,12 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     }
 
     // ====== SURTO: hum bar rolando + cor levemente lavada (v3.8) ======
-    if (degrade > 0.001) {
+    // v3.9: mascarado por dEdge — a barra e a lavagem morrem no centro.
+    if (dEdge > 0.001) {
         float hum = pow(0.5 + 0.5 * sin((suv.y - time * 0.22) * 9.4), 3.0);
-        rgb *= 1.0 - 0.13 * degrade * hum;
+        rgb *= 1.0 - 0.13 * dEdge * hum;
         float luma = dot(rgb, vec3(0.299, 0.587, 0.114));
-        rgb = mix(rgb, vec3(luma) * vec3(0.92, 0.97, 1.06), 0.18 * degrade);
+        rgb = mix(rgb, vec3(luma) * vec3(0.92, 0.97, 1.06), 0.18 * dEdge);
     }
 
     // ====== COMPOSIÇÃO ======
