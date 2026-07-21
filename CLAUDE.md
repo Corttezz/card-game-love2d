@@ -179,7 +179,7 @@ menu → classSelection → playing
    - Run mode: `showCardRewards()` → `continueAfterReward` → `showMapSelection` → escolha → dispatch
    - Classic: `game:nextPhase()` direto
 8. `nextPhase()`:
-   - Processa `_exhaustedThisBattle` (remove permanentemente cartas com `exhaust=true` da run)
+   - Limpa `_exhaustedThisBattle` — **Exaurir é POR BATALHA**: a carta sai do baralho até a próxima batalha e VOLTA no próximo andar (não remove da run; auditoria Jul/2026 corrigiu esta doc — o código sempre foi por batalha)
    - Ganha ouro, reseta mana
    - Usa `ActSystem.getEnemyStats(actNumber, floorInAct, nodeType)` para stats do próximo inimigo
    - Cura inter-ato 30-40% quando cruza para novo ato
@@ -222,7 +222,9 @@ Todas herdam de `src/cards/base/Card.lua`. Toda carta tem **`tags = {}`** (array
 - **Effect cards / passives**: `instant_heal`, `restore_mana`, `increase_max_mana`, `add_armor`, `magic_damage`, `aoe_magic_damage`, `draw_cards`, `discard_cards`, `apply_debuff`, `apply_buff`, `gain_strength`, `gain_dexterity`, `channel_orb`, `evoke_orb`, `evoke_all_orbs`, `mystery`
 - **Orbes PULSAM** (Jul/2026, `EffectSystem:orbPassiveTick` chamado em `Game:endTurn`): cada orbe canalizado dispara meio-efeito no fim do turno do jogador (raio=dano, gelo=armor, fogo=dano/3, holy=cura/3, sombra=cresce +2). Foco soma no valor antes da divisão. Sem isso o mago era 0/6 no autoplay (orbe inerte = dano anêmico).
 - **Intent do inimigo é CONGELADO no anúncio** (`Enemy.nextIntentDamage`, setado em `rollNextIntent`): o golpe executado NUNCA excede o número que o jogador viu no HUD — Fúria/BUFF entre telegraph e execução só valem no próximo intent (anomalia "escudo furado" do autoplay). Weak aplica por cima (só reduz). Testes que mutam `enemy.damage` devem setar `nextIntentDamage` junto.
-- **Flags**: `exhaust`, `innate`, `retain`
+- **Flags**: `exhaust` (por batalha), `innate`, `retain`
+- **Jokers multiplicadores NÃO compõem** (rebalance v2, Jul/2026): em `EffectSystem:applyJokerEffects`, só o MAIOR `damage_multiplier` e o MAIOR `defense_multiplier` entre jokers ativos contam (largest-wins); bônus flat somam todos. **Thorn de JOKER** (`on_defend_damage`) dispara no máx 1×/turno; thorn de CARTA segue por carta. Regressões em `test_effects_full`.
+- **Ofertas por ato** (rebalance v2): pesos de raridade vêm de `ActSystem.getRarityWeights(ato)` (A1 70/25/5/0 → A3 15/45/32/8); neutras `class="basic"` ofertáveis com peso 0.6; afinidade com cap progressivo 0.9/1.2/1.5 e blacklist de tags genéricas; elite→minRarity uncommon, boss→rare; oferta nunca repete joker possuído. Ver `memory/rng_and_offers.md`.
 - **Triggers**: `on_attack_heal`, `on_defend_damage`, `regen_per_turn`, `damage_per_turn`
 
 Ver `memory/gameplay_systems.md` para referência completa.
