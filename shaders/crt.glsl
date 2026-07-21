@@ -261,7 +261,8 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
 
     // ====== ABERRAÇÃO CROMÁTICA (cresce com a distância do centro) ======
     // caBoost: no warm-up o canhão ainda não convergiu — CA bem maior
-    float caOffset = (0.0006 + 0.0022 * r2 * 4.0) * strength * caBoost;
+    // v3.7: 0.0022→0.0010 — CA de canto borrava texto na periferia
+    float caOffset = (0.0006 + 0.0010 * r2 * 4.0) * strength * caBoost;
     vec4 colR = Texel(tex, suv + vec2(caOffset, 0.0));
     vec4 colG = Texel(tex, suv);
     vec4 colB = Texel(tex, suv - vec2(caOffset, 0.0));
@@ -288,21 +289,25 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     grille.b += (triad >= 2.0 ? 0.05 : -0.03) * strength;
 
     // ====== RELEVO POR LUZ (v2.3: legibilidade > efeito) ======
-    float dome = 1.0 - (0.05 * r2 * 2.0 + 0.10 * r2 * r2 * 8.0) * strength;
-    dome = clamp(dome, 0.85, 1.0);
+    // v3.7 (feedback do dono): cantos acumulavam dome×vignette×glassShadow
+    // ≈ -38% e dificultavam leitura — coeficientes e piso suavizados.
+    float dome = 1.0 - (0.03 * r2 * 2.0 + 0.05 * r2 * r2 * 8.0) * strength;
+    dome = clamp(dome, 0.93, 1.0);
     vec2 sheenPos = (suv - vec2(0.5, 0.24)) * vec2(1.0, 2.1);
     float sheen = exp(-dot(sheenPos, sheenPos) * 3.2) * 0.045 * strength;
 
     // sombra do vidro recuado — DIRECIONAL: a moldura de cima projeta
-    // mais sombra no vidro (0.28 topo → 0.08 base), como na referência.
-    float shadowW = mix(0.08, 0.28, clamp(1.0 - tuv.y, 0.0, 1.0));
+    // mais sombra no vidro. v3.7: 0.28→0.16 topo, 0.08→0.05 base (a faixa
+    // superior escondia o texto da TopBar).
+    float shadowW = mix(0.05, 0.16, clamp(1.0 - tuv.y, 0.0, 1.0));
     float glassShadow = 1.0 - shadowW * strength
         * smoothstep(-0.020, -0.001, dTube);
 
     // ====== VIGNETTE + FLICKER + NOISE ======
     vec2 vPos = (suv - 0.5) * 0.45;
     float vignette = clamp(1.0 - dot(vPos, vPos), 0.0, 1.0);
-    vignette = mix(1.0, pow(vignette, 2.0), 0.55 * strength);
+    // v3.7: 0.55→0.30 — a vinheta era o maior fator do escurecimento
+    vignette = mix(1.0, pow(vignette, 2.0), 0.30 * strength);
     float flicker = (1.0 - 0.008 * strength)
         + 0.008 * strength * sin(time * 60.0);
     float noise = (rand(suv * resolution + time * 40.0) * 0.018 - 0.009)
