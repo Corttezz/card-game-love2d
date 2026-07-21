@@ -583,9 +583,13 @@ function Game:applyClassBattleStartPassive()
         -- 1 de Foco: toda evocacao da batalha sai +1, e cartas de Foco
         -- empilham em cima (eixo de scaling da classe, StS Defect).
         if self.player.addBuff then
-            self.player:addBuff("focus", 99, 1)
+            -- Re-baseline Jul/2026 (bateria 10x3 pos-v5.17): mago 0/10 com
+            -- warrior 5/10 — mesmo com o bot comprando defesa, o mago nao
+            -- converte A2-F8/A3. Foco inicial 1→2: cada pulso/evocacao sai
+            -- +2 desde o turno 1 (a alavanca e a identidade da classe).
+            self.player:addBuff("focus", 99, 2)
         end
-        self:addMessage("Conduíte: orbe de Raio + 1 Foco!", "info")
+        self:addMessage("Conduíte: orbe de Raio + 2 Foco!", "info")
         if love.timer then self._passiveFlashT = love.timer.getTime() end
     end
 end

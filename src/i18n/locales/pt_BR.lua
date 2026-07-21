@@ -66,7 +66,7 @@ return {
             name = "Mago",
             desc = "Mestre das artes arcanas e manipulacao elemental",
             passive_name = "Conduite",
-            passive_desc = "Comeca cada batalha com um orbe de Raio (4) canalizado.",
+            passive_desc = "Comeca cada batalha com um orbe de Raio (4) canalizado e 2 de Foco.",
         },
         rogue = {
             name = "Ladino",
@@ -308,7 +308,7 @@ return {
         intent_defend  = { name = "Vai Defender", desc = "No proximo turno o inimigo ganha {value} de armadura (dura 1 turno)." },
         intent_buff    = { name = "Vai se Enfurecer", desc = "No proximo turno o inimigo ganha +{value} de dano PERMANENTE." },
         passive_warrior= { name = "Passiva: Impeto", desc = "Jogue 2 ou mais ataques no mesmo turno: +1 de Forca nesta batalha." },
-        passive_mage   = { name = "Passiva: Conduite", desc = "Voce comeca cada batalha com um orbe de Raio (4) ja canalizado." },
+        passive_mage   = { name = "Passiva: Conduite", desc = "Voce comeca cada batalha com um orbe de Raio (4) canalizado e 2 de Foco." },
         passive_rogue  = { name = "Passiva: Toxinas", desc = "O primeiro ataque de cada turno aplica 1 de Veneno (2 turnos)." },
         topbar_gold = { name = "Ouro", desc = "Compra cartas, forjas e melhorias na loja. Juros: +$1 a cada $5 guardados (máx +$5), pagos ao vencer batalhas. Próximo pagamento: +${interest}." },
         topbar_deck = { name = "Grimório", desc = "{deck} cartas no seu grimório — {hand} na mão agora. No fim do turno a mão é descartada e você compra novas. Clique para folhear o deck." },

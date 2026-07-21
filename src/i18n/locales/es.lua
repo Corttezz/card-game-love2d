@@ -59,7 +59,7 @@ return {
         warrior = { name = "Guerrero", desc = "Especialista en combate cuerpo a cuerpo y resistencia",
             passive_name = "Impetu", passive_desc = "Juega 2+ ataques en el mismo turno: +1 de Fuerza en esta batalla." },
         mage    = { name = "Mago",     desc = "Maestro de las artes arcanas y manipulacion elemental",
-            passive_name = "Conducto", passive_desc = "Comienza cada batalla con un orbe de Rayo (4) canalizado." },
+            passive_name = "Conducto", passive_desc = "Comienza cada batalla con un orbe de Rayo (4) canalizado y 2 de Foco." },
         rogue   = { name = "Picaro",   desc = "Asesino agil especializado en venenos y precision",
             passive_name = "Toxinas", passive_desc = "El primer ataque de cada turno aplica 1 de Veneno." },
     },

@@ -59,7 +59,7 @@ return {
         warrior = { name = "Krieger",  desc = "Spezialist fuer Nahkampf und Widerstandskraft",
             passive_name = "Schwung", passive_desc = "Spiele 2+ Angriffe im selben Zug: +1 Staerke fuer diesen Kampf." },
         mage    = { name = "Magier",   desc = "Meister arkaner Kuenste und Elementarmanipulation",
-            passive_name = "Leitung", passive_desc = "Beginne jeden Kampf mit einem kanalisierten Blitz-Orb (4)." },
+            passive_name = "Leitung", passive_desc = "Beginne jeden Kampf mit einem kanalisierten Blitz-Orb (4) und 2 Fokus." },
         rogue   = { name = "Schurke",  desc = "Beweglicher Assassine, spezialisiert auf Gift und Praezision",
             passive_name = "Toxine", passive_desc = "Der erste Angriff jeder Runde fuegt 1 Gift zu." },
     },

@@ -59,7 +59,7 @@ return {
         warrior = { name = "Guerrier", desc = "Specialiste du combat rapproche et de la resilience",
             passive_name = "Elan", passive_desc = "Jouez 2+ attaques dans le meme tour : +1 de Force pour ce combat." },
         mage    = { name = "Mage",     desc = "Maitre des arts arcaniques et manipulation elementale",
-            passive_name = "Conduit", passive_desc = "Commencez chaque combat avec un orbe de Foudre (4) canalise." },
+            passive_name = "Conduit", passive_desc = "Commencez chaque combat avec un orbe de Foudre (4) canalise et 2 de Concentration." },
         rogue   = { name = "Voleur",   desc = "Assassin agile specialise en poison et precision",
             passive_name = "Toxines", passive_desc = "La premiere attaque de chaque tour applique 1 Poison." },
     },
