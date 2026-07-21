@@ -116,6 +116,9 @@ local function loadBg()
     local okT, shT = pcall(love.graphics.newShader, "shaders/boot_star_twinkle.glsl")
     if okT then bg.twinkleShader = shT
     else print("[boot] boot_star_twinkle falhou: " .. tostring(shT)) end
+    local okV, shV = pcall(love.graphics.newShader, "shaders/boot_moon_vortex.glsl")
+    if okV then bg.vortexShader = shV
+    else print("[boot] boot_moon_vortex falhou: " .. tostring(shV)) end
     local p = bg.dir .. "/frame_00.png"
     if love.filesystem.getInfo(p) then
         local ok2, img = pcall(love.graphics.newImage, p)
@@ -206,6 +209,26 @@ local function drawStarTwinkle()
     love.graphics.draw(bg.chamber, bg._tx, bg._ty, 0, bg._s, bg._s)
     love.graphics.setShader()
     love.graphics.setBlendMode(prev)
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- Camada 1d: REDEMOINHO NA LUA (v12) — os PRÓPRIOS pixels do disco giram
+-- (forte no miolo, zero na borda: emenda invisível com a arte parada).
+-- Justifica a sucção das cartas: a lua é um portal se agitando. t = tempo
+-- do splash (bounded); strength = carga + flare.
+local function drawMoonVortex(t, strength)
+    if not bg.chamber or not bg.vortexShader or not bg._s then return end
+    if (strength or 0) < 0.02 then return end
+    local iw, ih = bg.chamber:getDimensions()
+    love.graphics.setShader(bg.vortexShader)
+    bg.vortexShader:send("t", t or 0)
+    bg.vortexShader:send("moon_uv", { SIGIL_IX / iw, SIGIL_IY / ih })
+    bg.vortexShader:send("tex_size", { iw, ih })
+    bg.vortexShader:send("radius_px", SEAL_RADIUS_IMG)
+    bg.vortexShader:send("strength", math.min(1, strength))
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(bg.chamber, bg._tx, bg._ty, 0, bg._s, bg._s)
+    love.graphics.setShader()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
@@ -475,6 +498,11 @@ local function drawBackground()
     -- respirando + pulso por carta absorvida).
     drawChamberBG()
     drawStarTwinkle()
+    if state.phase == "splash" then
+        -- redemoinho ANTES das nuvens (elas passam na frente da lua)
+        drawMoonVortex(state.splashTime,
+            state.sealCharge * 0.75 + 0.5 * sigil.flare)
+    end
     drawClouds()
     if state.phase == "splash" then
         local breath = 0.34 + 0.14 * math.sin(love.timer.getTime() * 1.8)
@@ -496,6 +524,7 @@ function BootScene.previewBackground(t, charge, flare)
     sigil.flare = flare or 0
     drawChamberBG()
     drawStarTwinkle()
+    drawMoonVortex(t, (charge or 0) * 0.75 + 0.5 * sigil.flare)
     drawClouds()
     local breath = 0.34 + 0.14 * math.sin((t or 0) * 1.8)
     drawSealCharge((charge or 0) * breath + 0.66 * sigil.flare)
