@@ -13,6 +13,59 @@ CardRewardScreen.__index = CardRewardScreen
 -- nunca trava as animações da loja/recompensa. Limpa a cada show().
 local FXQ = "reward_fx"
 
+-- ============ DEBUG (caça ao bug "cartas não renderizam") ============
+-- Loga em print E em arquivo (save dir: reward_debug.log) — o arquivo é
+-- sobrescrito a cada show(), então contém sempre a ÚLTIMA abertura.
+-- Desligar depois: REWARD_DBG = false.
+local REWARD_DBG = true
+local _dbgStart = 0
+
+local function dbg(fmt, ...)
+    if not REWARD_DBG then return end
+    local ok, line = pcall(string.format, fmt, ...)
+    if not ok then line = fmt .. " (fmt err)" end
+    local t = love.timer.getTime() - _dbgStart
+    line = string.format("[RDBG %+7.2fs] %s", t, line)
+    print(line)
+    pcall(love.filesystem.append, "reward_debug.log", line .. "\n")
+end
+
+-- Radiografia da fila do EventManager (trigger/blocking/timer de cada evento).
+-- ⚠️ require PRÓPRIO: este bloco vive ANTES dos requires do arquivo — o local
+-- `EventManager` de baixo não está em escopo aqui (upvalue só existe abaixo
+-- da declaração; o global não existe nos tools).
+local function dbgQueue(name)
+    if not REWARD_DBG then return end
+    local okEM, EM = pcall(require, "engine.EventManager")
+    if not okEM or not EM then dbg("dbgQueue: sem EventManager"); return end
+    local q = EM.queues and EM.queues[name]
+    if not q then dbg("queue '%s': (inexistente)", name); return end
+    dbg("queue '%s': %d eventos | EM.paused=%s", name, #q, tostring(EM.paused))
+    for i, ev in ipairs(q) do
+        dbg("   [%d] trig=%s blocking=%s blockable=%s timer=%.2f delay=%.2f done=%s%s",
+            i, tostring(ev.trigger), tostring(ev.blocking), tostring(ev.blockable),
+            ev.timer or -1, ev.delay or -1, tostring(ev.completed),
+            ev.ease and (" ease:" .. tostring(ev.ease.ref_value)) or "")
+    end
+end
+
+-- Snapshot por carta: tudo que decide se ela aparece e onde.
+local function dbgCards(self, tag)
+    if not REWARD_DBG then return end
+    for i, inst in ipairs(self.cardInstances or {}) do
+        local offer = inst.shopOffer
+        local slot = offer and offer._slot
+        local anim = slot and self.cardAnimations and self.cardAnimations[slot]
+        dbg("%s inst[%d] id=%s slot=%s x=%s y=%s entryOy=%s dissolve=%s curScale=%s animScale=%s animElapsed=%s hover=%s",
+            tag, i, tostring(offer and offer.id), tostring(slot),
+            tostring(inst.x), tostring(inst.y),
+            tostring(inst._entryOy), tostring(inst.dissolve),
+            tostring(inst.currentScale),
+            tostring(anim and anim.scale), tostring(anim and anim.elapsed),
+            tostring(inst.isHovered))
+    end
+end
+
 local Config = require("src.core.Config")
 local Debug = require("src.core.Debug")
 local FontManager = require("src.ui.FontManager")
@@ -320,6 +373,20 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
     self:createCardInstances()
     self:createOfferButtons()
 
+    -- ===== DEBUG: arquivo novo por abertura + radiografia do momento =====
+    if REWARD_DBG then
+        _dbgStart = love.timer.getTime()
+        self._dbgNext = 0
+        self._dbgDrawNext = 0
+        pcall(love.filesystem.write, "reward_debug.log", "")
+        dbg("======== SHOW mode=%s tela=%dx%d state-time ========",
+            tostring(self.mode), love.graphics.getWidth(), love.graphics.getHeight())
+        dbg("ofertas=%d | lastScreenW=%s lastScreenH=%s",
+            #self.shopOffers, tostring(self.lastScreenWidth), tostring(self.lastScreenHeight))
+        dbgQueue("base")
+        dbgQueue(FXQ)
+    end
+
     -- Zera a fila dedicada: eventos zumbis de uma abertura anterior morrem
     -- aqui (o close atrasado do "escolha 1" já é guardado por self.visible).
     EventManager.clear(FXQ)
@@ -337,7 +404,9 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
         for i, inst in ipairs(self.cardInstances) do
             inst._entryOy = -70   -- de CIMA pra baixo (negativo = acima do lugar)
             local d = 0.15 + (i - 1) * 0.13
+            dbg("entry AGENDADA carta %d: ease em t=+%.2fs (fila %s)", i, d, FXQ)
             EventManager.parallel(d, function()
+                dbg("entry ease DISPAROU carta %d (entryOy=%s)", i, tostring(inst._entryOy))
                 EventManager.parallelEase(inst, "_entryOy", 0, 0.45, "back_out", FXQ)
                 Sfx.play("cardDraw", { pitch = 0.95 + i * 0.06, volume = 0.55 })
             end, FXQ)
@@ -345,6 +414,7 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
                 Moveable.juice_up(inst, 0.22, 0.05)
             end, FXQ)
         end
+        dbgCards(self, "pos-show")
     end
 
     -- Materialize cascade nas cartas: cada cardInstance arranca em dissolve=1
@@ -980,6 +1050,9 @@ function CardRewardScreen:update(dt)
     local currentWidth = love.graphics.getWidth()
     local currentHeight = love.graphics.getHeight()
     if not self.lastScreenWidth or self.lastScreenWidth ~= currentWidth or self.lastScreenHeight ~= currentHeight then
+        dbg("RESIZE branch! %sx%s -> %dx%d (recria instancias/botoes)",
+            tostring(self.lastScreenWidth), tostring(self.lastScreenHeight),
+            currentWidth, currentHeight)
         self.lastScreenWidth = currentWidth
         self.lastScreenHeight = currentHeight
         self:updateLayout()
@@ -1016,6 +1089,21 @@ function CardRewardScreen:update(dt)
     end
 
     self.animationTime = self.animationTime + dt
+
+    -- DEBUG: snapshot a cada 0.5s nos primeiros 6s da tela (o suficiente
+    -- pra pegar a entrada travada sem inundar o log).
+    if REWARD_DBG and self.animationTime < 6 then
+        self._dbgNext = self._dbgNext or 0
+        if self.animationTime >= self._dbgNext then
+            self._dbgNext = self._dbgNext + 0.5
+            dbg("UPDATE t=%.2f slideY=%.1f paused=%s pend(base)=%d pend(%s)=%d",
+                self.animationTime, self.slideOffsetY or 0,
+                tostring(EventManager.paused),
+                EventManager.pendingCount("base"), FXQ,
+                EventManager.pendingCount(FXQ))
+            dbgCards(self, "  upd")
+        end
+    end
 
     local slotCount = self.slotCount or 3
     for i = 1, slotCount do
@@ -1146,6 +1234,15 @@ function CardRewardScreen:draw()
         end
     end
 
+    -- DEBUG: por 6s, loga o GATE de draw de cada carta a cada 0.5s.
+    local dbgDrawTick = false
+    if REWARD_DBG and self.animationTime < 6 then
+        if self.animationTime >= (self._dbgDrawNext or 0) then
+            self._dbgDrawNext = (self._dbgDrawNext or 0) + 0.5
+            dbgDrawTick = true
+        end
+    end
+
     for _, cardInstance in ipairs(self.cardInstances) do
         if cardInstance and cardInstance.draw then
             -- F2: anim e affordability vêm da OFERTA da própria instância
@@ -1154,6 +1251,18 @@ function CardRewardScreen:draw()
             local slot = offer and offer._slot
             local anim = slot and self.cardAnimations[slot]
             local scale = anim and anim.scale or 1
+
+            if dbgDrawTick then
+                dbg("DRAW gate slot=%s scale=%.2f -> %s | x=%s y=%s+%s dissolve=%s slideY=%.1f",
+                    tostring(slot), scale, (scale > 0) and "DESENHA" or "PULA",
+                    tostring(cardInstance.x), tostring(cardInstance.y),
+                    tostring(cardInstance._entryOy), tostring(cardInstance.dissolve),
+                    self.slideOffsetY or 0)
+            end
+            if REWARD_DBG and scale > 0 and not cardInstance._dbgDrawn then
+                cardInstance._dbgDrawn = true
+                dbg("PRIMEIRO draw da carta slot=%s (t=%.2f)", tostring(slot), self.animationTime)
+            end
 
             if scale > 0 then
                 -- Impagável = carta escurecida (2º canal além do preço
