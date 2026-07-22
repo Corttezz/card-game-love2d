@@ -43,7 +43,10 @@ function CombatSequence:new()
     self.timings = {
         preFlight       = 0.05,  -- delay antes de cartas saírem
         flightDuration  = 0.5,   -- tempo até chegarem ao centro (ease já no renderer)
-        impactHold      = 0.15,  -- tempo no centro pra ler dano antes de dissolver
+        -- v3.1: 0.15→0.35 — a carta SEGURA no centro tempo suficiente pra
+        -- reação física dela ser LIDA (0.15s junto de shake+partículas era
+        -- invisível — "tão totalmente estáticas", feedback do dono).
+        impactHold      = 0.35,
         dissolveTime    = 0.7,   -- duração do start_dissolve
         cardStagger     = 0.22,  -- gap entre cartas consecutivas (combo feel)
     }
@@ -148,19 +151,28 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
             local result = onCardProcessed and onCardProcessed(card) or {}
             self:_handleResult(card, result, targetX + cardW / 2, targetY + cardH / 2)
 
-            -- Game feel v2: reação FÍSICA por tipo no impacto.
-            --   ataque : pulinho + tilt (a carta INVESTE no golpe)
-            --   defesa : INCHA (swell sem vibração — escudo ganhando corpo)
-            --   efeito : pulinho leve + rebolada mística + camada de resolução
+            -- Game feel v2/v3.1: reação FÍSICA por tipo no impacto — AMPLA e
+            -- LONGA o bastante pra sobreviver ao ruído do momento (shake de
+            -- tela + partículas + número acontecem juntos e mascaravam a
+            -- reação curta). Cada tipo ganha um SEGUNDO pulso de assentamento.
+            --   ataque : investida (pulão + tilt) + recuo assentando
+            --   defesa : INCHA visivelmente (swell longo, sem vibração)
+            --   efeito : pulinho + rebolada mística em dois tempos
             if card.type == "attack" then
-                if card.hop_up then card:hop_up(24, 0.30) end
-                if card.juice_up then card:juice_up(0.5, -0.18) end
+                if card.hop_up then card:hop_up(34, 0.42) end
+                if card.juice_up then card:juice_up(0.6, -0.22) end
+                scheduleAt(0.26, function()
+                    if card.juice_up then card:juice_up(0.28, 0.10) end
+                end)
             elseif card.type == "defense" then
-                if card.swell_up then card:swell_up(0.32, 0.5) end
-                if card.juice_up then card:juice_up(0.12, 0.03) end
+                if card.swell_up then card:swell_up(0.45, 0.7) end
+                if card.hop_up then card:hop_up(8, 0.30) end
             elseif card.type == "effect" then
-                if card.hop_up then card:hop_up(12, 0.34) end
-                if card.juice_up then card:juice_up(0.4, 0.22) end
+                if card.hop_up then card:hop_up(16, 0.40) end
+                if card.juice_up then card:juice_up(0.5, 0.25) end
+                scheduleAt(0.18, function()
+                    if card.juice_up then card:juice_up(0.32, -0.2) end
+                end)
                 -- 3ª camada sonora do efeito (cast no voo → chime no impacto
                 -- → resolve fechando). Ver _playLaunchSfx/_playImpactSfx.
                 scheduleAt(0.16, function()

@@ -30,11 +30,13 @@ function JokerProcFx.tick(proc, ordinal)
         joker = g.jokerSlots[proc.slotIndex]
     end
 
-    -- 1) PULINHO do joker (feel v2): sobe com o lado direito levantando
-    -- (rotação anti-horária) — a "puladinha" pedida pelo dono, não só juice.
+    -- 1) PULINHO do joker (feel v2/v3.1): sobe com o lado direito levantando
+    -- (rotação anti-horária) + CRESCE (swell) — "levantar de tamanho e dar
+    -- uma mexidinha" (dono). Amplo e longo pra ler mesmo no meio do combate.
     if joker then
-        if joker.hop_up then joker:hop_up(16, 0.34) end
-        if joker.juice_up then joker:juice_up(0.45, -0.16) end
+        if joker.hop_up then joker:hop_up(22, 0.40) end
+        if joker.swell_up then joker:swell_up(0.22, 0.5) end
+        if joker.juice_up then joker:juice_up(0.55, -0.20) end
     end
 
     -- 2) Som: ASSINATURA do joker se existir (audio/sfx/joker-sig/<id>.mp3,
