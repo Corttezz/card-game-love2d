@@ -409,6 +409,20 @@ function Button:_drawClean()
     -- ===== FILL principal =====
     PixelCanvas.rectRounded(x, y, w, h, r, c.fill)
 
+    -- ===== GRADIENTE sutil (upgrade Jul/2026 — "botão chapado é feio") =====
+    -- Metade de cima levemente mais clara + faixa de baixo mais escura:
+    -- o fill ganha volume sem mudar a paleta nem a geometria.
+    if c.fillHi then
+        love.graphics.setColor(c.fillHi[1], c.fillHi[2], c.fillHi[3], 0.16)
+        love.graphics.rectangle("fill", x + r, y + 2,
+            w - 2 * r, math.floor(h * 0.45))
+    end
+    if c.fillLo then
+        love.graphics.setColor(c.fillLo[1], c.fillLo[2], c.fillLo[3], 0.26)
+        love.graphics.rectangle("fill", x + r, y + h - 2 - math.floor(h * 0.22),
+            w - 2 * r, math.floor(h * 0.22))
+    end
+
     -- ===== EMBOSS (top/left highlight) =====
     -- 1px horizontal no topo + 1px vertical na esquerda. Cria look 3D.
     if c.fillHi then
@@ -431,8 +445,13 @@ function Button:_drawClean()
         love.graphics.rectangle("fill", x + w - 2, y + r, 1, h - 2 * r)
     end
 
-    -- ===== BORDER outline com cantos cortados =====
+    -- ===== BORDER outline com cantos cortados + linha interna =====
+    -- Borda DUPLA (upgrade Jul/2026): outline externo + traço interno mais
+    -- escuro — mesma linguagem dos painéis (UiPanel) e das molduras de carta.
     PixelCanvas.rectRoundedOutline(x, y, w, h, r, c.border)
+    love.graphics.setColor(c.border[1] * 0.55, c.border[2] * 0.55,
+        c.border[3] * 0.55, 0.8)
+    love.graphics.rectangle("line", x + 2.5, y + 2.5, w - 5, h - 5)
 
     -- ===== HOVER PULSE sutil =====
     if self.hover and not self.disabled and not self._consumed then

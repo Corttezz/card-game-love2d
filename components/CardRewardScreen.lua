@@ -201,63 +201,43 @@ function CardRewardScreen:updateLayout()
         self.skipButtonY = panelY + panelH - 50
 
     else
-        -- ========== Modo rewards: 3 cartas em row única ==========
-        -- Reforma Jul/2026 (feedback: "textos espremidos, afinidade por cima
-        -- das cartas"): painel maior, respiro entre cartas, e FAIXAS RESERVADAS
-        -- pros pills (raridade ACIMA, afinidade ABAIXO — nunca sobre a carta)
-        -- + linha de botões de seleção abaixo da faixa de afinidade.
-        local panelW = math.floor(math.min(sw * 0.80, 880))
-        local panelH = math.floor(math.min(sh * 0.72, 600))
-        local panelX = math.floor((sw - panelW) * 0.5)
-        local panelY = math.floor((sh - panelH) * 0.5)
-        self.panel = { x = panelX, y = panelY, w = panelW, h = panelH }
-
-        local titleH = 44
-        local pad = 14
-        local nCards = cfg.cards or 3
-        local PILL_STRIP = 20      -- faixa dos pills (acima E abaixo da carta)
-        local BTN_ROW = 46         -- linha Pegar/Cancelar sob a afinidade
-        local SKIP_ZONE = 62       -- rodapé do painel (botão Seguir)
-
-        local cardsX = panelX + pad
-        local cardsContainerW = panelW - pad * 2
-        local cardSpacing = 18     -- respiro entre cartas (era 4)
-
-        -- Largura pelo espaço horizontal, CAPADA pela altura disponível
-        -- (senão os pills/botões estouram o painel em telas baixas).
-        local wByWidth = math.floor((cardsContainerW - cardSpacing * (nCards - 1)) / nCards)
-        local availH = panelH - titleH - pad * 2 - PILL_STRIP * 2 - BTN_ROW - SKIP_ZONE
-        local wByHeight = math.floor(availH / 1.4)
-        self.cardWidth = math.min(wByWidth, wByHeight)
-        self.cardHeight = math.floor(self.cardWidth * 1.4)
-
-        local cardsY = panelY + titleH + pad + PILL_STRIP
-        -- Container visual envolve pills + cartas (não os botões).
-        self.cardsContainer = {
-            x = cardsX, y = cardsY - PILL_STRIP,
-            w = cardsContainerW, h = self.cardHeight + PILL_STRIP * 2,
-        }
-
-        local cardsTotalW = nCards * self.cardWidth + (nCards - 1) * cardSpacing
-        local cardsStartX = cardsX + (cardsContainerW - cardsTotalW) / 2
-        for i = 1, nCards do
-            self.cardPositions[i] = {
-                x = math.floor(cardsStartX + (i - 1) * (self.cardWidth + cardSpacing)),
-                y = math.floor(cardsY),
-                row = 1, kind = "card",
-            }
-        end
-
+        -- ========== Modo rewards v3 "StS FLUTUANTE" (Jul/2026) ==========
+        -- Feedback do dono: o painel parecia descentralizado, pills eram "só
+        -- um quadrado com texto", tudo apertado. Como no Slay the Spire: SEM
+        -- painel — o mundo (limpo) escurece atrás, um BANNER ornamental no
+        -- topo, 3 cartas GRANDES flutuando centralizadas, marcadores sem
+        -- caixa e o botão Seguir embaixo. Centralização é na TELA inteira.
+        self.panel = nil
+        self.cardsContainer = nil
         self.buttonsContainer = nil
         self.voucherContainer = nil
         self.packsContainer = nil
         self.buttonsColX = nil
         self.buttonsColY = nil
 
+        local nCards = cfg.cards or 3
+        local spacing = 30
+        local wByWidth = math.floor((sw * 0.76 - spacing * (nCards - 1)) / nCards)
+        local wByHeight = math.floor((sh * 0.46) / 1.4)
+        self.cardWidth = math.min(wByWidth, wByHeight)
+        self.cardHeight = math.floor(self.cardWidth * 1.4)
+
+        local cardsTotalW = nCards * self.cardWidth + (nCards - 1) * spacing
+        local cardsStartX = math.floor((sw - cardsTotalW) / 2)
+        local cardsY = math.floor(sh * 0.28)
+        for i = 1, nCards do
+            self.cardPositions[i] = {
+                x = math.floor(cardsStartX + (i - 1) * (self.cardWidth + spacing)),
+                y = cardsY,
+                row = 1, kind = "card",
+            }
+        end
+
+        self.bannerY = math.floor(sh * 0.105)
         self.slotCount = nCards
 
-        self.skipButtonX = panelX + panelW * 0.5 - 90   -- recentrado no show()
-        self.skipButtonY = panelY + panelH - SKIP_ZONE + 8
+        self.skipButtonX = math.floor(sw * 0.5) - 100   -- recentrado na criação
+        self.skipButtonY = sh - 96
     end
 
     Debug.trace("[CardRewardScreen] Layout", self.mode, sw, "x", sh,
@@ -332,6 +312,24 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
     -- Padrão Balatro: easing 'smooth' (cubic in-out) chega "encaixando".
     self.slideOffsetY = -love.graphics.getHeight()
     EventManager.ease(self, "slideOffsetY", 0, 0.43, "smooth")
+
+    -- ENTRADA v3 (rewards): cada carta CAI de cima com back_out (stagger) +
+    -- tick sonoro em pitch crescente + juice ao pousar — fluidez pedida no
+    -- feedback ("animações, coisas legais, jogo satisfatório").
+    if self.mode == "rewards" then
+        local Moveable = require("engine.Moveable")
+        for i, inst in ipairs(self.cardInstances) do
+            inst._entryOy = 90
+            local d = 0.15 + (i - 1) * 0.13
+            EventManager.parallel(d, function()
+                EventManager.parallelEase(inst, "_entryOy", 0, 0.45, "back_out")
+                Sfx.play("cardDraw", { pitch = 0.95 + i * 0.06, volume = 0.55 })
+            end)
+            EventManager.parallel(d + 0.45, function()
+                Moveable.juice_up(inst, 0.22, 0.05)
+            end)
+        end
+    end
 
     -- Materialize cascade nas cartas: cada cardInstance arranca em dissolve=1
     -- e tweena pra 0 com stagger de 80ms — Balatro pack-opening style.
@@ -945,7 +943,9 @@ function CardRewardScreen:update(dt)
                     self.skipButton.y = self.buttonsColY
                     self.skipButton.width = math.max(80, self.buttonsContainer.w - 16)
                 else
-                    self.skipButton.x = self.skipButtonX
+                    -- rewards: recentra pela LARGURA MEDIDA (não o -90 fixo)
+                    self.skipButton.x = math.floor(love.graphics.getWidth() / 2
+                        - self.skipButton.width / 2)
                     self.skipButton.y = self.skipButtonY
                 end
             end
@@ -1050,11 +1050,14 @@ function CardRewardScreen:draw()
     love.graphics.translate(0, self.slideOffsetY or 0)
 
     -- ========== F10.3: Containers Balatro-style ==========
-    -- Painel principal (BOSS_MAIN bg + dual-border dourado).
+    -- Painel principal (BOSS_MAIN bg + dual-border dourado). Modo rewards v3
+    -- NÃO tem painel — banner flutuante estilo StS.
     if self.panel then
         self:_drawPanel(self.panel.x, self.panel.y, self.panel.w, self.panel.h, "main")
         -- Title bar dourado dentro do painel.
         self:_drawTitleBar(self.panel.x, self.panel.y, self.panel.w)
+    elseif self.mode == "rewards" then
+        self:_drawRewardsBanner()
     end
 
     -- Subcontainers L_BLACK (cards row, voucher, packs).
@@ -1109,7 +1112,9 @@ function CardRewardScreen:draw()
                     and offer.cost and self.game
                     and not self.game.economySystem:canAfford(offer.cost)
                     or false
-                local pos = {x = cardInstance.x, y = cardInstance.y}
+                -- _entryOy: queda de entrada do modo rewards (0 após pousar)
+                local pos = {x = cardInstance.x,
+                             y = cardInstance.y + (cardInstance._entryOy or 0)}
                 cardInstance:draw(pos.x, pos.y, false, true)
                 self:drawPriceOverlay(cardInstance, pos.x, pos.y, slot)
                 -- Badges de clareza no modo rewards: raridade NOMEADA +
@@ -1259,6 +1264,87 @@ function CardRewardScreen:_drawTitleBar(panelX, panelY, panelW)
     end
 end
 
+-- Banner flutuante do modo rewards (v3 StS): título grande com outline ink,
+-- filetes ornamentais com losango dos dois lados, subtítulo com respiro e o
+-- "?" das regras (pity/afinidade/raridade) à direita do título.
+function CardRewardScreen:_drawRewardsBanner()
+    local sw = love.graphics.getWidth()
+    local y = self.bannerY or 80
+    local cx = math.floor(sw / 2)
+
+    local title = I18n.t("reward.rewards_title")
+    local tf = FontManager.getFont(20)
+    love.graphics.setFont(tf)
+    local tw = tf:getWidth(title)
+    local th = tf:getHeight()
+
+    -- filetes ornamentais: linha dupla desvanecendo pra fora + losango interno
+    local lineY = y + math.floor(th / 2)
+    local gap = math.floor(tw / 2) + 26
+    local lineW = math.min(190, math.floor(sw * 0.17))
+    local g = Palette.AGED_GOLD
+    for _, side in ipairs({ -1, 1 }) do
+        local x0 = cx + side * gap
+        local x1 = cx + side * (gap + lineW)
+        for seg = 0, 7 do
+            local a = 0.85 * (1 - seg / 8)
+            local sx0 = x0 + side * (lineW / 8) * seg
+            love.graphics.setColor(g[1], g[2], g[3], a)
+            love.graphics.rectangle("fill", math.min(sx0, sx0 + side * (lineW / 8)),
+                lineY - 1, lineW / 8, 2)
+        end
+        -- losango na ponta interna
+        local px = x0 - side * 4
+        love.graphics.setColor(0, 0, 0, 0.8)
+        love.graphics.polygon("fill", px, lineY - 5 + 1, px + 5, lineY + 1,
+            px, lineY + 5 + 1, px - 5, lineY + 1)
+        Palette.set(Palette.AGED_GOLD_LIGHT)
+        love.graphics.polygon("fill", px, lineY - 5, px + 5, lineY,
+            px, lineY + 5, px - 5, lineY)
+    end
+
+    -- título: outline ink 4-direções + face dourada (mesma linguagem do boot)
+    local tx = cx - math.floor(tw / 2)
+    love.graphics.setColor(0, 0, 0, 0.85)
+    for _, o in ipairs({ {2, 0}, {-2, 0}, {0, 2}, {0, -2}, {2, 2} }) do
+        love.graphics.print(title, tx + o[1], y + o[2])
+    end
+    Palette.set(Palette.AGED_GOLD_LIGHT)
+    love.graphics.print(title, tx, y)
+
+    -- subtítulo com RESPIRO (feedback: "texto meio apertado")
+    local sub = I18n.t("reward.rewards_subtitle")
+    local sf = FontManager.getFont(9)
+    love.graphics.setFont(sf)
+    love.graphics.setColor(0, 0, 0, 0.7)
+    love.graphics.print(sub, cx - math.floor(sf:getWidth(sub) / 2) + 1, y + th + 15)
+    Palette.set(Palette.PARCHMENT_LIGHT)
+    love.graphics.print(sub, cx - math.floor(sf:getWidth(sub) / 2), y + th + 14)
+
+    -- "?" das regras à direita do filete (tooltip de pity/afinidade)
+    local hx = cx + gap + lineW + 22
+    local hy = lineY
+    local hr = 10
+    love.graphics.setColor(0.10, 0.08, 0.05, 0.9)
+    love.graphics.circle("fill", hx, hy, hr)
+    Palette.set(Palette.AGED_GOLD)
+    love.graphics.setLineWidth(1)
+    love.graphics.circle("line", hx, hy, hr)
+    Palette.set(Palette.AGED_GOLD_LIGHT)
+    love.graphics.setFont(FontManager.getFont(11))
+    love.graphics.print("?", hx - 3, hy - 8)
+    local mx, my = love.mouse.getPosition()
+    local myLocal = my - (self.slideOffsetY or 0)
+    if mx >= hx - hr - 3 and mx <= hx + hr + 3
+        and myLocal >= hy - hr - 3 and myLocal <= hy + hr + 3 then
+        local okST, StatusTooltip = pcall(require, "src.ui.StatusTooltip")
+        if okST and StatusTooltip.show then
+            StatusTooltip.show("reward_rules", mx, my)
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
 -- Badges do modo rewards: pill de raridade NOMEADA na folga superior do slot
 -- (a carta ocupa ~86% — sobra espaço real) + pill "AFINIDADE" na folga
 -- inferior quando a oferta foi puxada pelas tags fortes do deck (Step 2).
@@ -1266,34 +1352,52 @@ end
 function CardRewardScreen:drawRewardBadges(cardInstance, slot)
     local offer = cardInstance.shopOffer
     if not offer or offer.purchased then return end
+    -- Carta ainda caindo (entrada animada): marcadores esperam ela pousar.
+    if (cardInstance._entryOy or 0) > 1 then return end
     local pos = self.cardPositions[slot]
     if not pos then return end
     local w = pos.w or self.cardWidth
     local h = pos.h or self.cardHeight
 
-    local function pill(cx, cy, text, colorFg)
-        local f = FontManager.getFont(8)
+    -- Reforma v3 (feedback: "só um quadrado com texto, feio"): marcador SEM
+    -- caixa — texto colorido com outline ink e LOSANGOS dos dois lados
+    -- (◆ RARA ◆), mesma linguagem ornamental do banner.
+    local function marker(cx, cy, text, color, fontSize, dia)
+        local f = FontManager.getFont(fontSize)
         love.graphics.setFont(f)
         local tw = f:getWidth(text)
-        local bw, bh = tw + 12, 13
-        local bx, by = math.floor(cx - bw / 2), math.floor(cy - bh / 2)
-        PixelCanvas.rect(bx, by, bw, bh, { 0.07, 0.055, 0.04, 0.94 })
-        PixelCanvas.rectOutline(bx, by, bw, bh, colorFg)
-        love.graphics.setColor(colorFg[1], colorFg[2], colorFg[3], 1)
-        love.graphics.print(text, bx + 6, by + 2)
+        local fh = f:getHeight()
+        -- losangos
+        local dx = math.floor(tw / 2) + 12
+        for _, sx in ipairs({ -1, 1 }) do
+            local px = cx + sx * dx
+            love.graphics.setColor(0, 0, 0, 0.8)
+            love.graphics.polygon("fill", px, cy - dia + 1, px + dia, cy + 1,
+                px, cy + dia + 1, px - dia, cy + 1)
+            love.graphics.setColor(color[1], color[2], color[3], 1)
+            love.graphics.polygon("fill", px, cy - dia, px + dia, cy,
+                px, cy + dia, px - dia, cy)
+        end
+        -- texto com outline ink
+        local tx = cx - math.floor(tw / 2)
+        local ty = cy - math.floor(fh / 2)
+        love.graphics.setColor(0, 0, 0, 0.85)
+        for _, o in ipairs({ {1, 0}, {-1, 0}, {0, 1}, {0, -1} }) do
+            love.graphics.print(text, tx + o[1], ty + o[2])
+        end
+        love.graphics.setColor(color[1], color[2], color[3], 1)
+        love.graphics.print(text, tx, ty)
     end
 
-    -- Reforma Jul/2026 (feedback "afinidade fica POR CIMA das cartas"): os
-    -- pills vivem nas FAIXAS RESERVADAS do layout — raridade ACIMA da carta,
-    -- afinidade ABAIXO. Nunca sobre a arte.
     if offer.rarity then
         local label = (I18n.t("rarity." .. offer.rarity, nil, offer.rarity)):upper()
-        pill(pos.x + w / 2, pos.y - 11, label, Palette.forRarity(offer.rarity))
+        marker(pos.x + math.floor(w / 2), pos.y - 15, label,
+            Palette.forRarity(offer.rarity), 9, 4)
     end
 
     if offer.affinity then
-        pill(pos.x + w / 2, pos.y + h + 11,
-            I18n.t("reward.affinity_badge"), Palette.AGED_GOLD_LIGHT)
+        marker(pos.x + math.floor(w / 2), pos.y + h + 15,
+            I18n.t("reward.affinity_badge"), Palette.AGED_GOLD_LIGHT, 8, 3)
     end
     love.graphics.setColor(1, 1, 1, 1)
 end

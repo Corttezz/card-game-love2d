@@ -53,6 +53,13 @@ Palette.AGED_GOLD_DARK  = hex("#7a5e20")   -- dourado escuro (divisores sutis)
 Palette.MOSS            = hex("#4a6030")   -- verde musgo (effect / poison)
 Palette.RUST            = hex("#8b4a1e")   -- laranja ferrugem
 
+-- ===== Gema de mana (CardCostBadge) — casada com o azul do ManaOrb do HUD
+-- (fill 0.20/0.42/0.92, glint 0.75/0.90/1.0): mana tem UMA cor no jogo todo.
+Palette.MANA_DEEP  = hex("#1a2a5c")   -- faceta inferior (sombra da gema)
+Palette.MANA       = hex("#336beb")   -- corpo da gema (= fill do ManaOrb)
+Palette.MANA_LIGHT = hex("#6f9df0")   -- faceta superior iluminada
+Palette.MANA_GLINT = hex("#bfe5ff")   -- brilho especular (= glint do ManaOrb)
+
 -- ===== TAROT (tema específico do joker — azul-meia-noite + dourado) =====
 Palette.TAROT_NAVY       = hex("#1a1638")   -- azul-meia-noite (fundo do frame)
 Palette.TAROT_NAVY_DARK  = hex("#0a0820")

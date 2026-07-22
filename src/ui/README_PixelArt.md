@@ -19,7 +19,7 @@ CardFrame.render(card)                 → love.Canvas 96×144 (cacheado por ID)
   ├─ CardDecoration   · sparks/dust/smoke/flash opcional sobre a arte
   ├─ CardBorder       · outline ink + borda tipo + cantos raridade
   ├─ CardHeader       · banner escuro com nome dourado
-  ├─ CardCostBadge    · disco aço canto sup. esq.
+  ├─ CardCostBadge    · gema de mana lapidada canto sup. esq. (azul do ManaOrb + engaste ouro)
   ├─ CardRaritySeal   · disco raridade canto sup. dir. (halo em legendary)
   └─ CardStatsFooter  · banner inferior: ATTACK/DEFENSE/PASSIVE/ACTION + valor
   ↓
@@ -61,7 +61,7 @@ Cada um expõe uma `draw(...)` pequena. Adicionar novo componente = 1 arquivo + 
 |---|---|---|
 | `CardBorder` | Full 96×144 | `type, rarity` |
 | `CardHeader` | y=0-13 | `cardName` |
-| `CardCostBadge` | (1,1) 11×11 | `cost` |
+| `CardCostBadge` | (1,2) 13×13 + engastes em x=0/14 | `cost` |
 | `CardRaritySeal` | (w-12,1) 11×11 | `rarity` |
 | `CardArtSlot` | (4,17) 88×107 | `{ icon, bgPattern, accent }` |
 | `CardDecoration` | Sobre art slot | `name, accent` |

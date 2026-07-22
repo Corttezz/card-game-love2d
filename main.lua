@@ -1261,7 +1261,11 @@ function love.draw()
     elseif currentState == "playing" then
         GameplayScene.draw()
     elseif currentState == "cardReward" then
-        GameplayScene.draw() -- Desenha o jogo por trás
+        -- Reforma Jul/2026 (feedback: "limpar mão/jokers/botões do fundo"):
+        -- a batalha ACABOU — atrás dos espólios fica só o MUNDO limpo (estrada
+        -- viva), sem UI de combate. drawWorldOnly é o mesmo caminho do
+        -- mapSelection.
+        GameplayScene.drawWorldOnly()
         cardRewardScreen:draw() -- Overlay da recompensa
         -- Pack opening (Fase 5) é overlay SOBRE a loja — desenha por último.
         if packOpenScreen and packOpenScreen:isVisible() then
