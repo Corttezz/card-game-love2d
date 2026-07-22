@@ -4,6 +4,15 @@
 local CardRewardScreen = {}
 CardRewardScreen.__index = CardRewardScreen
 
+-- FILA DEDICADA das animações desta tela (fix DEFINITIVO Jul/2026 do bug
+-- "cartas invisíveis até o hover"): os helpers parallel/parallelEase são
+-- blocking=false mas BLOCKABLE=true — na fila "base" eles ficavam PRESOS
+-- atrás do rabo bloqueante da sequência de combate que acabou de terminar
+-- (EM.after do Game/CombatSequence é blocking). A entrada das cartas só
+-- rodava quando a base destravava, segundos depois. Fila própria = o combate
+-- nunca trava as animações da loja/recompensa. Limpa a cada show().
+local FXQ = "reward_fx"
+
 local Config = require("src.core.Config")
 local Debug = require("src.core.Debug")
 local FontManager = require("src.ui.FontManager")
@@ -311,10 +320,14 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
     self:createCardInstances()
     self:createOfferButtons()
 
+    -- Zera a fila dedicada: eventos zumbis de uma abertura anterior morrem
+    -- aqui (o close atrasado do "escolha 1" já é guardado por self.visible).
+    EventManager.clear(FXQ)
+
     -- Slide-in animation (Fase 4.4): painel desce do topo da tela em 0.43s.
     -- Padrão Balatro: easing 'smooth' (cubic in-out) chega "encaixando".
     self.slideOffsetY = -love.graphics.getHeight()
-    EventManager.ease(self, "slideOffsetY", 0, 0.43, "smooth")
+    EventManager.ease(self, "slideOffsetY", 0, 0.43, "smooth", FXQ)
 
     -- ENTRADA v3 (rewards): cada carta CAI de cima com back_out (stagger) +
     -- tick sonoro em pitch crescente + juice ao pousar — fluidez pedida no
@@ -322,15 +335,15 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
     if self.mode == "rewards" then
         local Moveable = require("engine.Moveable")
         for i, inst in ipairs(self.cardInstances) do
-            inst._entryOy = 90
+            inst._entryOy = -70   -- de CIMA pra baixo (negativo = acima do lugar)
             local d = 0.15 + (i - 1) * 0.13
             EventManager.parallel(d, function()
-                EventManager.parallelEase(inst, "_entryOy", 0, 0.45, "back_out")
+                EventManager.parallelEase(inst, "_entryOy", 0, 0.45, "back_out", FXQ)
                 Sfx.play("cardDraw", { pitch = 0.95 + i * 0.06, volume = 0.55 })
-            end)
+            end, FXQ)
             EventManager.parallel(d + 0.45, function()
                 Moveable.juice_up(inst, 0.22, 0.05)
-            end)
+            end, FXQ)
         end
     end
 
@@ -352,7 +365,7 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
                 else
                     cardInstance.dissolve = 0
                 end
-            end)
+            end, FXQ)
         end
     end
 
@@ -693,7 +706,7 @@ function CardRewardScreen:purchaseOffer(offer, offerId)
                     self:hide()
                     if self.onSkipped then self.onSkipped() end
                 end
-            end)
+            end, FXQ)
         end
     end
 end
@@ -1962,13 +1975,13 @@ end
 function CardRewardScreen:slideOut()
     if not self.visible then return end
     local h = love.graphics.getHeight()
-    EventManager.parallelEase(self, "slideOffsetY", h, 0.45, "smooth")
+    EventManager.parallelEase(self, "slideOffsetY", h, 0.45, "smooth", FXQ)
 end
 
 -- Volta a loja pro lugar quando pack fecha.
 function CardRewardScreen:slideIn()
     if not self.visible then return end
-    EventManager.parallelEase(self, "slideOffsetY", 0, 0.45, "smooth")
+    EventManager.parallelEase(self, "slideOffsetY", 0, 0.45, "smooth", FXQ)
 end
 
 return CardRewardScreen

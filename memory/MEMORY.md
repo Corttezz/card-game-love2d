@@ -45,4 +45,5 @@
 - [Lighting Engine](lighting_engine.md) — LightEngine v1: plano completo em docs/plan/lighting-engine-v1.md (lightmap ¼ multiply-only, micro-luzes, lightAmbient por bioma) + doutrina de luz e pegadinhas de API
 - [PixelLab MCP](pixellab_mcp.md) — como usar o MCP (config, gerar/animar/baixar, pegadinhas); chave NAO versionada, mora em ~/.claude.json
 - [card_creation_flow](card_creation_flow.md) — fluxo OBRIGATÓRIO completo de carta nova (dados+arte+atlas+i18n×5+preview+validate)
+- ⚠️ [EventManager Queues](eventmanager_queues.md) — **REGRA: fila "base" é do COMBATE; toda tela que anima via EventManager usa fila PRÓPRIA + clear no show** (parallel* é blockable — fica preso atrás do rabo bloqueante da batalha; bug "cartas invisíveis até o hover")
 - [Jokers, leque da mão e Deck Viewer](jokers_and_hand_layout.md) — coringas coleção+bancada (possui ilimitado, ativa até MAX_JOKER_SLOTS, Gerenciador de Coringas por J/clique no quadro top-esq); leque/squeeze da mão estilo Balatro + botões subidos; Deck Viewer em tela cheia
