@@ -1252,12 +1252,14 @@ function Game:_finishEnemyTurn()
         end
     end
 
+    -- blockable=false: o rabo dos dissolves das cartas jogadas é BLOQUEANTE
+    -- na fila base — os steps do fim de turno têm horário próprio.
     local dotDelay = hasDot and 0.45 or 0.05
     local playerDelay = dotDelay + (hasDot and 0.55 or 0.10)
     EM.add(Ev:new({ trigger = "after", delay = dotDelay, blocking = false,
-        func = guarded(dotStep) }))
+        blockable = false, func = guarded(dotStep) }))
     EM.add(Ev:new({ trigger = "after", delay = playerDelay, blocking = false,
-        func = guarded(playerStep) }))
+        blockable = false, func = guarded(playerStep) }))
 end
 
 -- Centraliza efeitos colaterais de morte do inimigo (anim + sfx + pausa).

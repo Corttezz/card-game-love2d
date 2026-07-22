@@ -21,9 +21,17 @@ function JokerProcFx.tick(proc, ordinal)
     if not proc then return end
     ordinal = ordinal or 1
 
+    -- Anima a instância ATUAL do slot, não a referência capturada no impacto:
+    -- rebuildJokerSlots recria instâncias (coleção+bancada) e animar o objeto
+    -- órfão = joker parado na tela ("não se move" — bug Jul/2026).
+    local joker = proc.joker
+    local g = _G.game
+    if g and g.jokerSlots and proc.slotIndex and g.jokerSlots[proc.slotIndex] then
+        joker = g.jokerSlots[proc.slotIndex]
+    end
+
     -- 1) PULINHO do joker (feel v2): sobe com o lado direito levantando
     -- (rotação anti-horária) — a "puladinha" pedida pelo dono, não só juice.
-    local joker = proc.joker
     if joker then
         if joker.hop_up then joker:hop_up(16, 0.34) end
         if joker.juice_up then joker:juice_up(0.45, -0.16) end

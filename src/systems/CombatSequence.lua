@@ -85,11 +85,16 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
     -- EM.after do engine cria eventos BLOCKING por default, que serializam a
     -- fila (cada evento só começa o timer quando o anterior completa). Pra
     -- keyframes de animação precisamos de tempo ABSOLUTO — por isso manual.
+    -- blockable=false (v3): Card:start_dissolve enfileira um ease BLOQUEANTE
+    -- na base — sem isso, os keyframes agendados DEPOIS dele (ticks de joker
+    -- da carta seguinte) ficavam presos ~0.4s atrás do rabo do dissolve e o
+    -- "turno da carta" dessincronizava (regra em memory/eventmanager_queues.md).
     local function scheduleAt(delay, fn)
         EM.add(Ev:new({
             trigger = "after",
             delay = delay,
             blocking = false,
+            blockable = false,
             func = function() fn(); return true end,
         }))
     end
