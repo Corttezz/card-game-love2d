@@ -179,7 +179,7 @@ return {
         confirm_title      = "Confirmar Compra",
         insufficient_gold  = "Ouro insuficiente!",
         gold_transition    = "Ouro: ${from} -> ${to}",
-        instructions       = "Clique numa oferta para comprar · D abre seu deck",
+        instructions       = "Clique escolhe · botao DIREITO inspeciona · D abre seu deck",
         shop_refreshed     = "Loja atualizada!",
         refresh_fail       = "Ouro insuficiente!",
         sold               = "VENDIDO",

@@ -439,6 +439,11 @@ function love.load(loveArgs)
         return
     end
 
+    if loveArgs and loveArgs[1] == "screenshot_rewards" then
+        require("tools.screenshot_rewards").run()
+        return
+    end
+
     if loveArgs and loveArgs[1] == "screenshot_death" then
         require("tools.screenshot_death").run()
         return

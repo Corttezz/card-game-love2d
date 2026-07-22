@@ -165,7 +165,7 @@ return {
         confirm_title      = "Confirm Purchase",
         insufficient_gold  = "Not enough gold!",
         gold_transition    = "Gold: ${from} -> ${to}",
-        instructions       = "Click an offer to buy it · D opens your deck",
+        instructions       = "Click picks · RIGHT-click inspects · D opens your deck",
         shop_refreshed     = "Shop refreshed!",
         refresh_fail       = "Not enough gold to refresh!",
         sold               = "SOLD",

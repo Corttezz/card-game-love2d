@@ -202,37 +202,48 @@ function CardRewardScreen:updateLayout()
 
     else
         -- ========== Modo rewards: 3 cartas em row única ==========
-        local panelW = math.floor(math.min(sw * 0.66, 700))
-        local panelH = math.floor(math.min(sh * 0.55, 480))
+        -- Reforma Jul/2026 (feedback: "textos espremidos, afinidade por cima
+        -- das cartas"): painel maior, respiro entre cartas, e FAIXAS RESERVADAS
+        -- pros pills (raridade ACIMA, afinidade ABAIXO — nunca sobre a carta)
+        -- + linha de botões de seleção abaixo da faixa de afinidade.
+        local panelW = math.floor(math.min(sw * 0.80, 880))
+        local panelH = math.floor(math.min(sh * 0.72, 600))
         local panelX = math.floor((sw - panelW) * 0.5)
         local panelY = math.floor((sh - panelH) * 0.5)
         self.panel = { x = panelX, y = panelY, w = panelW, h = panelH }
 
         local titleH = 44
         local pad = 14
-        local subPad = 8
         local nCards = cfg.cards or 3
+        local PILL_STRIP = 20      -- faixa dos pills (acima E abaixo da carta)
+        local BTN_ROW = 46         -- linha Pegar/Cancelar sob a afinidade
+        local SKIP_ZONE = 62       -- rodapé do painel (botão Seguir)
 
-        -- Cards container ocupa interior do painel.
         local cardsX = panelX + pad
         local cardsContainerW = panelW - pad * 2
-        local cardSpacing = 4
+        local cardSpacing = 18     -- respiro entre cartas (era 4)
 
-        self.cardWidth = math.floor((cardsContainerW - subPad * 2 - cardSpacing * (nCards - 1)) / nCards)
+        -- Largura pelo espaço horizontal, CAPADA pela altura disponível
+        -- (senão os pills/botões estouram o painel em telas baixas).
+        local wByWidth = math.floor((cardsContainerW - cardSpacing * (nCards - 1)) / nCards)
+        local availH = panelH - titleH - pad * 2 - PILL_STRIP * 2 - BTN_ROW - SKIP_ZONE
+        local wByHeight = math.floor(availH / 1.4)
+        self.cardWidth = math.min(wByWidth, wByHeight)
         self.cardHeight = math.floor(self.cardWidth * 1.4)
 
-        local cardsContainerH = self.cardHeight + subPad * 2
-        local cardsY = panelY + titleH + pad
-        self.cardsContainer = { x = cardsX, y = cardsY, w = cardsContainerW, h = cardsContainerH }
+        local cardsY = panelY + titleH + pad + PILL_STRIP
+        -- Container visual envolve pills + cartas (não os botões).
+        self.cardsContainer = {
+            x = cardsX, y = cardsY - PILL_STRIP,
+            w = cardsContainerW, h = self.cardHeight + PILL_STRIP * 2,
+        }
 
-        -- Centralizadas no container (mesmo pattern do modo shop).
         local cardsTotalW = nCards * self.cardWidth + (nCards - 1) * cardSpacing
         local cardsStartX = cardsX + (cardsContainerW - cardsTotalW) / 2
-        local cardsStartY = cardsY + (cardsContainerH - self.cardHeight) / 2
         for i = 1, nCards do
             self.cardPositions[i] = {
                 x = math.floor(cardsStartX + (i - 1) * (self.cardWidth + cardSpacing)),
-                y = math.floor(cardsStartY),
+                y = math.floor(cardsY),
                 row = 1, kind = "card",
             }
         end
@@ -245,8 +256,8 @@ function CardRewardScreen:updateLayout()
 
         self.slotCount = nCards
 
-        self.skipButtonX = panelX + panelW * 0.5 - 90
-        self.skipButtonY = panelY + panelH - 50
+        self.skipButtonX = panelX + panelW * 0.5 - 90   -- recentrado no show()
+        self.skipButtonY = panelY + panelH - SKIP_ZONE + 8
     end
 
     Debug.trace("[CardRewardScreen] Layout", self.mode, sw, "x", sh,
@@ -350,8 +361,14 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
     if self.mode == "shop" and skipBonus > 0 then
         skipLabel = skipLabel .. " (+" .. skipBonus .. "g)"
     end
-    local skipX, skipY, skipW, skipH = self.skipButtonX, self.skipButtonY, 130, 32
+    -- Reforma Jul/2026 (feedback "Seguir ..."): 130px NÃO cabia "Seguir sem
+    -- carta" (~190px em Press Start 2P 12) e o TextFit truncava com "...".
+    -- Largura agora é MEDIDA pelo texto (+ícone/padding) e o botão recentra.
     local skipFont = 12
+    local skipW = FontManager.getFont(skipFont):getWidth(skipLabel) + 64
+    skipW = math.max(200, skipW)
+    local skipX = (self.panel and (self.panel.x + self.panel.w / 2) or (love.graphics.getWidth() / 2)) - skipW / 2
+    local skipY, skipH = self.skipButtonY, 40
     if self.mode == "shop" and self.buttonsColX and self.buttonsContainer then
         skipX, skipY = self.buttonsColX, self.buttonsColY
         skipW = math.max(80, self.buttonsContainer.w - 16)
@@ -689,18 +706,20 @@ function CardRewardScreen:_buildSelectionButtons(offer, idx)
     local pw = pos.w or self.cardWidth
     local ph = pos.h or self.cardHeight
 
-    local btnH = 32
-    local gap = 6
-    -- Buy maior (mostra preço), Cancel pequeno (só X). Buy ~60% / Cancel ~30%.
-    local buyW = math.floor(math.min(pw * 0.55, 90))
-    local cancelW = math.floor(math.min(buyW * 0.7, 50))
-    local totalW = buyW + cancelW + gap
-    local bx0 = math.floor(pos.x + (pw - totalW) / 2)
-    local by0 = math.floor(pos.y + ph + 8)
-
-    -- Buy button: "$N" (loja) ou "PEGAR" (recompensa grátis). Verde-grimório.
+    -- Reforma Jul/2026 (feedback "aquele P e aquele X"): 90px + fonte 12 NÃO
+    -- cabia "PEGAR" e o TextFit degradava até virar UMA LETRA. Largura agora
+    -- é MEDIDA pelo texto; linha desce pra baixo da faixa de afinidade.
+    local btnH = 38
+    local gap = 8
     local buyLabel = (offer.cost or 0) > 0 and ("$" .. tostring(offer.cost))
         or I18n.t("common.take"):upper()
+    local buyW = math.max(110, FontManager.getFont(12):getWidth(buyLabel) + 56)
+    local cancelW = btnH   -- quadrado: só o ícone X, sem texto pra truncar
+    local totalW = buyW + cancelW + gap
+    local bx0 = math.floor(pos.x + (pw - totalW) / 2)
+    local by0 = math.floor(pos.y + ph + (self.mode == "rewards" and 24 or 8))
+
+    -- Buy button: "$N" (loja) ou "PEGAR" (recompensa grátis). Verde-grimório.
     local buyBtn = Button:new(bx0, by0, buyW, btnH, buyLabel, function()
         local toBuy = self.selectedOffer
         self:clearSelection()
@@ -712,7 +731,7 @@ function CardRewardScreen:_buildSelectionButtons(offer, idx)
     end
     table.insert(self._selectionButtons, buyBtn)
 
-    -- Cancel button: ícone X, vermelho-crimson, mais estreito.
+    -- Cancel button: QUADRADO só com o ícone X (nada de texto pra truncar).
     local cancelBtn = Button:new(bx0 + buyW + gap, by0, cancelW, btnH, "", function()
         self:clearSelection()
     end, nil, 14)
@@ -1011,7 +1030,15 @@ function CardRewardScreen:draw()
     -- Ver tools/pixellab_generate_shop_interior.py + memory/balatro_fidelity_directive.md.
     -- Fallback: se shop_interior não existe (ex: PixelLab ainda não gerou), usa
     -- path_shop temporariamente. Fallback final: backdrop preto.
-    if not SceneBackground.draw("shop_interior", w, h, 0.55) then
+    if self.mode == "rewards" then
+        -- IMERSÃO (feedback Jul/2026): espólios de batalha acontecem NO LUGAR
+        -- da batalha — main.lua já desenha o mundo vivo atrás (GameplayScene
+        -- antes deste draw; WorldRoad continua tickando). Só um véu escuro
+        -- pra dar foco ao painel — nada de interior de loja aqui.
+        love.graphics.setColor(0.02, 0.015, 0.01, 0.60)
+        love.graphics.rectangle("fill", 0, 0, w, h)
+        love.graphics.setColor(1, 1, 1, 1)
+    elseif not SceneBackground.draw("shop_interior", w, h, 0.55) then
         if not SceneBackground.draw("path_shop", w, h, 0.55) then
             love.graphics.setColor(0, 0, 0, 0.7)
             love.graphics.rectangle("fill", 0, 0, w, h)
@@ -1133,8 +1160,20 @@ function CardRewardScreen:draw()
     -- Mantemos o método pra eventual re-enable em outro contexto.
 
     -- Hover info panels (FORA do shop window, esquerda + direita). Mostra
-    -- info detalhada e preview ampliado da carta sob o mouse.
+    -- info detalhada e preview ampliado da carta sob o mouse. (Só na LOJA —
+    -- em rewards o hover usa o tooltip canônico abaixo.)
     self:_drawHoverInfoPanels()
+
+    -- REWARDS: tooltip canônico do jogo (o mesmo da mão/deck viewer) acima
+    -- da carta em hover — some quando há seleção ativa (os botões mandam).
+    if self.mode == "rewards" and self.hoveredInst and not self.selectedOffer then
+        local inst = self.hoveredInst
+        self.cardInfoDisplay:draw(inst, inst.x or 0, inst.y or 0, {
+            showRarity = false,   -- o pill de raridade já está acima da carta
+            showStats = true,
+            showDescription = true,
+        })
+    end
 
     -- Selection overlay (CLICK): halo pulsante + mini-buttons Balatro-style
     -- (UI_definitions.lua:382 card_focus_button) attached compactos sob a carta.
@@ -1142,6 +1181,13 @@ function CardRewardScreen:draw()
 
     -- FX de compra por cima de tudo (carta voando pro deck + popups -$N).
     self:_drawPurchaseFx()
+
+    -- Inspeção completa (clique DIREITO numa oferta): mesma visão da Coleção
+    -- — carta grande + painel de detalhes. Por cima de tudo.
+    if self.inspectModal then
+        self.inspectModal:update(love.timer.getDelta())
+        self.inspectModal:draw()
+    end
 end
 
 -- F10.3 + F11.2 → design system Jul/2026: o painel Balatro-style virou o
@@ -1179,8 +1225,9 @@ function CardRewardScreen:_drawTitleBar(panelX, panelY, panelW)
         love.graphics.printf(I18n.t("reward.rewards_subtitle"), x, y + 23, w, "center")
     end
 
-    -- Ouro à direita, dentro do title bar.
-    if self.game and self.game.economySystem then
+    -- Ouro à direita — SÓ na loja (feedback Jul/2026: em recompensas era
+    -- redundante — a TopBar já mostra, e as ofertas são grátis).
+    if self.mode == "shop" and self.game and self.game.economySystem then
         local goldText = "Ouro: $" .. self.game.economySystem.currentGold
         love.graphics.setFont(FontManager.getFont(10))
         Palette.set(Palette.PARCHMENT_LIGHT or {0.92, 0.85, 0.70, 1})
@@ -1236,13 +1283,16 @@ function CardRewardScreen:drawRewardBadges(cardInstance, slot)
         love.graphics.print(text, bx + 6, by + 2)
     end
 
+    -- Reforma Jul/2026 (feedback "afinidade fica POR CIMA das cartas"): os
+    -- pills vivem nas FAIXAS RESERVADAS do layout — raridade ACIMA da carta,
+    -- afinidade ABAIXO. Nunca sobre a arte.
     if offer.rarity then
         local label = (I18n.t("rarity." .. offer.rarity, nil, offer.rarity)):upper()
-        pill(pos.x + w / 2, pos.y + 9, label, Palette.forRarity(offer.rarity))
+        pill(pos.x + w / 2, pos.y - 11, label, Palette.forRarity(offer.rarity))
     end
 
     if offer.affinity then
-        pill(pos.x + w / 2, pos.y + h - 9,
+        pill(pos.x + w / 2, pos.y + h + 11,
             I18n.t("reward.affinity_badge"), Palette.AGED_GOLD_LIGHT)
     end
     love.graphics.setColor(1, 1, 1, 1)
@@ -1540,6 +1590,11 @@ end
 -- Se a tela é estreita demais, eles podem ficar parcialmente fora — caller
 -- pode reduzir scale do preview ou limitar largura do info.
 function CardRewardScreen:_drawHoverInfoPanels()
+    -- Reforma Jul/2026 (feedback: painel esquerdo "espremido" + "foto" solta
+    -- na direita): em REWARDS os painéis laterais morreram — o hover usa o
+    -- tooltip canônico do jogo (CardInfoDisplay) acima da carta, e o clique
+    -- DIREITO abre a inspeção completa (mesma da Coleção). Loja mantém.
+    if self.mode == "rewards" then return end
     local anim = self._hoverAnim or 0
     if anim < 0.01 and not self.hoveredOffer then return end
     if not self.hoveredOffer or not self.hoveredInst then return end
@@ -1670,6 +1725,25 @@ end
 function CardRewardScreen:mousepressed(x, y, button)
     if not self.visible then return false end
 
+    -- Inspeção aberta consome tudo (clique nas setas/fora fecha — igual Coleção).
+    if self.inspectModal and self.inspectModal:isVisible() then
+        self.inspectModal:mousepressed(x, y, button)
+        return true
+    end
+
+    -- Clique DIREITO numa oferta → inspeção completa (mesma da Coleção).
+    if button == 2 then
+        for _, inst in ipairs(self.cardInstances or {}) do
+            if inst and inst.isHovered and inst.shopOffer
+                and not inst.shopOffer.purchased then
+                self.inspectModal = self.inspectModal
+                    or require("src.ui.CardInspectModal"):new()
+                self.inspectModal:show(inst)
+                return true
+            end
+        end
+    end
+
     -- Selection buttons attached na carta selecionada têm prioridade —
     -- consomem o click antes dos cardButtons (que ficariam re-selecionando).
     if self._selectionButtons then
@@ -1704,6 +1778,11 @@ end
 
 function CardRewardScreen:mousereleased(x, y, button)
     if not self.visible then return false end
+
+    -- Inspeção aberta: engole releases (nada atrás pode reagir).
+    if self.inspectModal and self.inspectModal:isVisible() then
+        return true
+    end
 
     if self._selectionButtons then
         for _, b in ipairs(self._selectionButtons) do
