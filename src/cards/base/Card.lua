@@ -939,10 +939,18 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
         -- Âncora = TOPO REAL da carta (com lift do hover). O offset legado
         -- -70+20 vinha da era do texto inline e empurrava o tooltip 50px
         -- acima do necessário ("muito acima da carta", playtest Jul/2026).
-        self.cardInfoDisplay:draw(self, x, y + totalOffsetY, {
+        -- tooltipBelow (coringas ativos no TOPO do combate): painel ABAIXO
+        -- da carta — acima, o clamp cobria o topo dela.
+        local anchorY = y + totalOffsetY
+        if self.tooltipBelow then
+            anchorY = anchorY + (self.image and self.image:getHeight() or 144)
+                * (self.currentScale or 1)
+        end
+        self.cardInfoDisplay:draw(self, x, anchorY, {
             showRarity = false, -- Cartas na mão não mostram raridade
             showStats = true,
-            showDescription = true  -- Agora mostra a descrição no hover
+            showDescription = true,  -- Agora mostra a descrição no hover
+            below = self.tooltipBelow,
         })
     end
 end

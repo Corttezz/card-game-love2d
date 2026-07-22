@@ -161,16 +161,25 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
 
     local panelW = innerW + PAD * 2
 
-    -- ===== 3. POSIÇÃO (ACIMA da carta, gap ADAPTATIVO — playtest Jul/2026:
-    -- o painel gruda a 6px do topo da carta; descrição alta que estouraria o
-    -- topo da tela só DESCE o necessário (clamp), nunca pula pra baixo da
-    -- mão — o bottom do painel se adapta à altura do conteúdo) =====
+    -- ===== 3. POSIÇÃO (gap ADAPTATIVO — playtest Jul/2026: o painel gruda
+    -- a 6px da carta; clamp segura dentro da tela). Default ACIMA (cartas
+    -- da mão, no rodapé). options.below = ABAIXO — para cartas no TOPO da
+    -- tela (coringas ativos do combate, 1ª fileira do Gerenciador): acima,
+    -- o clamp fazia o painel COBRIR o topo da própria carta (feedback
+    -- Jul/2026 "o topo deles tá sendo cortado"). No modo below, y é a
+    -- âncora INFERIOR da carta.
     local GAP = 6
     local panelX = math.floor(x - panelW / 2 + 70)
-    local panelY = math.floor(y - panelH - GAP)
+    local panelY
+    if localOptions.below then
+        panelY = math.floor(y + GAP)
+        if panelY + panelH > sh - 8 then panelY = sh - 8 - panelH end
+    else
+        panelY = math.floor(y - panelH - GAP)
+        if panelY < 8 then panelY = 8 end
+    end
     if panelX < 10 then panelX = 10 end
     if panelX + panelW > sw - 10 then panelX = sw - panelW - 10 end
-    if panelY < 8 then panelY = 8 end
 
     -- ===== 4. RENDER (painel grimório escuro — era cinza azulado legado) =====
     love.graphics.setColor(0, 0, 0, 0.5)

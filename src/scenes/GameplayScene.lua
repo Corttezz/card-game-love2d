@@ -258,6 +258,9 @@ local function drawJokersAsCards()
         if joker then
             local isHovered = mx >= slotX and mx <= slotX + g.cardW
                 and my >= slotY and my <= slotY + g.cardH
+            -- Coringas vivem no TOPO: tooltip ABAIXO da carta (acima, o
+            -- clamp cobria o topo dela — feedback Jul/2026)
+            joker.tooltipBelow = true
             joker:updateMouse(mx, my, love.timer.getDelta(), isHovered)
             local originalScale = joker.currentScale
             joker.currentScale = originalScale * Config.Cards.JOKER_SLOT_SCALE

@@ -28,8 +28,8 @@ function TopBar:new()
 
     instance.game = nil
 
-    instance.configHoverTime = 0
-    instance.configRotation = 0
+    instance.configHover = 0   -- 0..1 suavizado (fade do hover)
+    instance.configSpin = 0    -- ângulo acumulado da engrenagem (nunca snapa)
     instance.isConfigHovered = false
 
     -- Valores eased pra display de gold/deck suavemente mutando.
@@ -48,13 +48,12 @@ function TopBar:update(dt, game)
     local mx, my = love.mouse.getPosition()
     self.isConfigHovered = self:isConfigIconClicked(mx, my)
 
-    if self.isConfigHovered then
-        self.configHoverTime = self.configHoverTime + dt
-        self.configRotation = self.configHoverTime * 3
-    else
-        self.configHoverTime = 0
-        self.configRotation = 0
-    end
+    -- Hover da engrenagem: valor SUAVIZADO 0..1 (placa/escala fazem fade)
+    -- e giro ACUMULADO — acelera no hover, desacelera ao sair (sem snap).
+    local hoverTarget = self.isConfigHovered and 1 or 0
+    self.configHover = self.configHover
+        + (hoverTarget - self.configHover) * math.min(1, dt * 12)
+    self.configSpin = self.configSpin + dt * 3.2 * self.configHover
 
     -- Ease gold toward real (ease_dollars-style do Balatro). Counter sobe/desce
     -- suave em vez de saltar quando ganhar/gastar ouro.
@@ -357,30 +356,41 @@ end
 
 function TopBar:drawConfigIcon()
     local configX, configY, iconPxSize = self:_getConfigRect()
-    -- escala pelo tamanho REAL do handle (PNG 64×64 do PixelLab ou matriz
-    -- 16×16 fallback — o hard-code de 16 estouraria o PNG pra 128px)
-    local scale = iconPxSize / (self.gearIcon.size and self.gearIcon.size.w or 16)
-
     local centerX = configX + iconPxSize / 2
     local centerY = configY + iconPxSize / 2
+    local hover = self.configHover or 0
 
-    love.graphics.push()
-    love.graphics.translate(centerX, centerY)
-    love.graphics.rotate(self.configRotation)
-    love.graphics.translate(-centerX, -centerY)
-
-    -- Highlight ao hover: círculo dourado por trás + tooltip
+    -- Placa de hover FIXA (fora da rotação — só a engrenagem gira):
+    -- rounded plate dourada + aro claro, ambos com fade pelo hover suave.
+    if hover > 0.02 then
+        local pad = 4
+        local gd, gl = Palette.AGED_GOLD_DARK, Palette.AGED_GOLD_LIGHT
+        PixelCanvas.rectRounded(configX - pad, configY - pad,
+            iconPxSize + pad * 2, iconPxSize + pad * 2, 3,
+            { gd[1], gd[2], gd[3], 0.55 * hover })
+        PixelCanvas.rectRoundedOutline(configX - pad, configY - pad,
+            iconPxSize + pad * 2, iconPxSize + pad * 2, 3,
+            { gl[1], gl[2], gl[3], 0.9 * hover })
+    end
     if self.isConfigHovered then
-        PixelCanvas.rect(configX - 2, configY - 2, iconPxSize + 4, iconPxSize + 4, Palette.AGED_GOLD_DARK)
         local okST, StatusTooltip = pcall(require, "src.ui.StatusTooltip")
         if okST and StatusTooltip.show then
             local mx, my = love.mouse.getPosition()
             StatusTooltip.show("topbar_config", mx, my)
         end
     end
-    self.gearIcon.draw(configX, configY, scale)
 
+    -- Só a ENGRENAGEM roda (e cresce um tico no hover). Escala pelo
+    -- tamanho REAL do handle (PNG 64×64 do PixelLab ou matriz 16×16
+    -- fallback — o hard-code de 16 estouraria o PNG pra 128px).
+    local drawSize = iconPxSize * (1 + 0.12 * hover)
+    local scale = drawSize / (self.gearIcon.size and self.gearIcon.size.w or 16)
+    love.graphics.push()
+    love.graphics.translate(centerX, centerY)
+    love.graphics.rotate(self.configSpin)
+    self.gearIcon.draw(-drawSize / 2, -drawSize / 2, scale)
     love.graphics.pop()
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 function TopBar:setDeckClickCallback(cb) self.onDeckClick = cb end

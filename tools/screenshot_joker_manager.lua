@@ -49,9 +49,13 @@ function M.run()
     screen:draw()
     capture("joker_manager.png")
 
-    -- hover no 5º card (bancada): simula mouse na célula via draw 2x
-    -- (o hover lê love.mouse — headless fica no 0,0; o estado parado já
-    -- mostra a diferença ativo/bancada, que é o essencial)
+    -- hover num card da 1ª FILEIRA (posiciona o mouse de verdade):
+    -- valida o tooltip ABAIXO da carta (feedback: acima cobria o topo)
+    if #screen._cardRects >= 2 then
+        local r = screen._cardRects[2]
+        love.mouse.setPosition(r.x + r.w / 2, r.y + r.h / 2)
+    end
+    for _ = 1, 12 do screen:update(dt); love.graphics.clear(0,0,0,1); screen:draw() end
     love.graphics.clear(0, 0, 0, 1)
     screen:draw()
     capture("joker_manager_hover.png")

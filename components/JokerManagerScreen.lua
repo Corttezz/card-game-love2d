@@ -357,11 +357,13 @@ function JokerManagerScreen:draw()
         love.graphics.rectangle("fill", barX, gridTop + frac * (gridH - knobH), 6, knobH)
     end
 
-    -- Tooltip completo
+    -- Tooltip completo — ABAIXO da carta (coringas moram nas fileiras de
+    -- cima; acima, o clamp cobria o topo da carta — feedback Jul/2026)
     if hovered then
-        hovered.currentScale = scale
-        self.cardInfo:draw(hovered, hx, hy - 8, {
+        hovered.currentScale = CARD_W / 96
+        self.cardInfo:draw(hovered, hx, hy + CARD_H + LABEL_H, {
             showRarity = true, showStats = true, showDescription = true,
+            below = true,
         })
     end
 
