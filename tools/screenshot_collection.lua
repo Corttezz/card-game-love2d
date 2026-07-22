@@ -8,7 +8,9 @@
 local M = {}
 
 function M.run(cardId)
-    cardId = cardId or "warrior_standard_bearer"
+    -- Default: carta que existe na coleção (warrior_standard_bearer é joker —
+    -- jokers não aparecem no grid da coleção; default antigo pendurava o tool).
+    cardId = cardId or "warrior_iron_wave"
 
     local I18n = require("src.i18n.I18n")
     I18n.init()
@@ -29,6 +31,9 @@ function M.run(cardId)
         for i, inst in ipairs(screen.filtered or {}) do
             if i <= 5 then print("  ex: " .. tostring(inst.id)) end
         end
+        -- Fix Jul/2026: sem o quit, o tool ficava PENDURADO com a janela
+        -- aberta pra sempre (timeout de quem chama) em vez de falhar rapido.
+        love.event.quit(1)
         return
     end
     print(string.format("[screenshot_collection] alvo %s (idx %d, type=%s)",
