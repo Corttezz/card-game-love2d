@@ -116,6 +116,18 @@ enemy-buff-roar, thorn-reflect. Volumes 0.48–0.58.
   - Token `_enemyTurnSeq` + `enemyRef` invalidam steps agendados se a batalha
     mudou durante os respiros (morte/andar novo/restart).
 
+## v3.1: DOSAGEM (lição — validar feel por PIXEL, não por código)
+
+- Sintoma "carta totalmente estática" com o código CERTO: a reação renderizava
+  (prova de pixel: hop 28px) mas durava 0.3s EXATAMENTE junto de shake de
+  tela + partículas + número — o shake move a tela inteira e mascara o
+  movimento próprio da carta. Feel bug ≠ code bug: medir com ferramenta de
+  pixel (canvas + bbox por frame ao redor do impacto) antes de caçar bug.
+- Dose atual (legível): impactHold 0.35s; ataque hop 34px/0.42s + recuo em
+  +0.26s; defesa swell +45%/0.7s; efeito 2 tempos (+0.18s contra-giro);
+  joker hop 22px/0.4s + swell +22% + juice 0.55. Reação de UM tempo se perde —
+  usar sempre DOIS tempos (kick + assentamento).
+
 ## Regras a preservar
 
 - Elemento define o SOM do impacto; sem tema → sword/armor (identidade física
