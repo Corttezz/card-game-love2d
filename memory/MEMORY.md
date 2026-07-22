@@ -26,6 +26,7 @@
 - ⚠️ [Card Icon Animation](card_icon_animation.md) — **PARTE DO PIPELINE de carta nova**: olhar a arte ANTES de escrever a animação; intensidade segue raridade (basic=quase imperceptível → legendary=vivo); PixelLab animate_object v3 → icons_anim/ → canvas vivo no CardFrame; `love . preview_card_anim` + `screenshot_collection`
 - [PixelLab Queue: Pack Sleeves](pixellab_queue_packs.md) — prompts prontos pros 5 sleeves de booster + banner. Aguarda MCP reconectar.
 - [Combat Animation](combat_animation.md) — Balatro-style, isBlocking() pausa jogo
+- [Card Feel / Game Feel v1](card_feel.md) — identidade AV por tema de carta (CardFeel THEMES tag→som+burst), procs de joker Balatro (tick sequencial no slot, stagger estica), feedback do inimigo; sons impact-* ElevenLabs
 - [Boot Sequence](boot_sequence.md) — BootScene (loading + splash 3s) + Menu animado com intro stagger e música menuMusic
 - [Audio System](audio_system.md) — AudioManager (Balatro port), polifonia, grupos, crossfade, settings persistidos
 - [Save System](save_system.md) — SaveManager + Migrations (atomic write, versioning); RunManager delega tudo

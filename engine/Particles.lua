@@ -21,6 +21,7 @@
 --       max = 200,                         -- pool máximo
 --       pulse_max = nil,                   -- nil = contínuo; N = one-shot
 --       vel_variation = 1,                 -- 0..1 (1 = velocidade plena)
+--       gravity = 0,                       -- px/s² em vy (negativo = sobe: fogo/fumaça)
 --       layer = 0,                         -- z-order (maior = mais por cima)
 --   })
 --   p:fade(0.3)   -- inicia fade-out em 0.3s
@@ -59,6 +60,7 @@ function Particles:new(x, y, w, h, config)
         pulse_max     = config.pulse_max,
         pulsed        = 0,
         vel_variation = config.vel_variation or 1,
+        gravity       = config.gravity or 0,
         colours       = config.colours or { {1, 1, 1, 1} },
         texture       = config.texture,
         size_jitter   = config.size_jitter or 5, -- aplicado quando texture==nil
@@ -164,7 +166,7 @@ function Particles:update(dt)
         p.oy  = p.oy + p.vy * dt
         p.rot = p.rot + p.r_vel * dt
         p.vx  = p.vx * 0.96
-        p.vy  = p.vy * 0.96
+        p.vy  = p.vy * 0.96 + self.gravity * dt
 
         local lifeT = p.age / self.lifespan
         if lifeT >= 1 then

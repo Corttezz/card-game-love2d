@@ -850,6 +850,23 @@ function love.load(loveArgs)
         audioSystem:loadSound("bootImpact",     "audio/sfx/boot-impact.mp3",      0.75)
         audioSystem:loadSound("bootElectric",   "audio/sfx/boot-electric.mp3",    0.55)
         audioSystem:loadSound("bootVortex",     "audio/sfx/boot-vortex.mp3",      0.60)
+
+        -- Game feel v1 (Jul/2026): identidade sonora por TEMA de carta
+        -- (CardFeel.THEMES resolve tag → som) + procs de joker + inimigo.
+        audioSystem:loadSound("impactFire",      "audio/sfx/impact-fire.mp3",      0.55)
+        audioSystem:loadSound("impactIce",       "audio/sfx/impact-ice.mp3",       0.55)
+        audioSystem:loadSound("impactLightning", "audio/sfx/impact-lightning.mp3", 0.52)
+        audioSystem:loadSound("impactDark",      "audio/sfx/impact-dark.mp3",      0.55)
+        audioSystem:loadSound("impactHoly",      "audio/sfx/impact-holy.mp3",      0.52)
+        audioSystem:loadSound("impactArcane",    "audio/sfx/impact-arcane.mp3",    0.52)
+        audioSystem:loadSound("impactPoison",    "audio/sfx/impact-poison.mp3",    0.55)
+        audioSystem:loadSound("healShimmer",     "audio/sfx/heal-shimmer.mp3",     0.50)
+        -- Alias mais baixo pro lifesteal (proc por ataque — não pode gritar).
+        -- NÃO usar opts.volume no play: AudioManager:play MUTA o baseVolume.
+        audioSystem:loadSound("healShimmerSoft", "audio/sfx/heal-shimmer.mp3",     0.30)
+        audioSystem:loadSound("jokerTick",       "audio/sfx/joker-tick.mp3",       0.58)
+        audioSystem:loadSound("enemyBuffRoar",   "audio/sfx/enemy-buff-roar.mp3",  0.55)
+        audioSystem:loadSound("thornReflect",    "audio/sfx/thorn-reflect.mp3",    0.48)
     end
     
     -- Inicializa o menu

@@ -216,6 +216,16 @@ function GameplayScene.jokerFrameRect()
     return g.x, g.y, g.w, g.h
 end
 
+-- Centro do slot `i` de joker (game feel v1: JokerProcFx ancora o popup e a
+-- faísca do proc AQUI — o feedback nasce no joker que contribuiu).
+function GameplayScene.jokerSlotCenter(i)
+    local g = jokerFrameGeometry()
+    i = math.max(1, math.min(i or 1, g.maxSlots))
+    local slotX = g.x + g.pad + (i - 1) * (g.cardW + g.gap)
+    local slotY = g.y + g.pad + g.labelH
+    return slotX + g.cardW / 2, slotY + g.cardH / 2
+end
+
 local function drawJokersAsCards()
     local g = jokerFrameGeometry()
     local mx, my = love.mouse.getPosition()

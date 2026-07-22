@@ -10,6 +10,7 @@ EffectSystem.__index = EffectSystem
 
 local I18n = require("src.i18n.I18n")
 local Sfx = require("src.systems.Sfx")
+local CardFeel = require("src.systems.CardFeel")
 -- Helper local: mensagem traduzida via messages.<key>, com vars injetadas.
 local function msg(key, vars) return I18n.t("messages." .. key, vars) end
 
@@ -32,12 +33,35 @@ end
 -- Efeitos contínuos de jokers (chamados ao jogar uma carta de ataque/defesa).
 -- ==============================================================================
 
+-- Game feel v1 (Jul/2026): helper de PROC — registra que um joker contribuiu
+-- (rótulo tipo "×2"/"+3"/"+4 PV") num sink, com o índice do slot pra UI ticar
+-- o joker certo (JokerProcFx). Sink ausente = no-op (headless/chamadas antigas).
+local function pushJokerProc(game, sink, joker, label, kind)
+    if not sink or not joker then return end
+    for i, j in ipairs(game.jokerSlots or {}) do
+        if j == joker then
+            sink[#sink + 1] = { slotIndex = i, joker = joker, label = label, kind = kind or "mult" }
+            return
+        end
+    end
+end
+
+-- Formata multiplicador sem ".0" (2.0 → "×2", 1.5 → "×1.5").
+local function multLabel(v)
+    return "×" .. string.format("%g", v or 1)
+end
+
 -- turnContext (opcional, Fase 3+): tabela com { allSelectedCards, tagCounts,
 -- activeCombos, cardsProcessed, turnNumber }. Se presente, combos amplificam o
 -- valor ANTES dos jokers (multiplicador-sobre-multiplicador nao vira produtorio).
+--
+-- RETORNO (game feel v1): (finalValue, procs) — procs é o array de contribuições
+-- de joker pro tick sequencial estilo Balatro. Chamadas antigas que só leem o
+-- primeiro retorno continuam funcionando.
 function EffectSystem:applyJokerEffects(game, card, baseValue, turnContext)
     local finalValue = baseValue
     local msgs = {}
+    local procs = {}
 
     -- P0.9 (Jul/2026, rebalance v2 — LARGEST-MULTIPLIER-WINS): entre os jokers
     -- ativos, APENAS o MAIOR damage_multiplier e o MAIOR defense_multiplier
@@ -47,7 +71,7 @@ function EffectSystem:applyJokerEffects(game, card, baseValue, turnContext)
     -- (damage_bonus/defense_bonus) continuam somando TODOS; multiplicadores
     -- de COMBO e vulnerable sao camadas distintas do pipeline e ficam fora
     -- da regra. NAO reintroduzir produto em cadeia aqui.
-    local bestMult = nil
+    local bestMult, bestMultJoker = nil, nil
     for _, joker in ipairs(game.jokerSlots) do
         if joker.effects then
             for _, effect in ipairs(joker.effects) do
@@ -59,6 +83,7 @@ function EffectSystem:applyJokerEffects(game, card, baseValue, turnContext)
                 if isMatchingMult and (not bestMult
                     or (effect.value or 1) > (bestMult.value or 1)) then
                     bestMult = effect
+                    bestMultJoker = joker
                 end
             end
         end
@@ -68,6 +93,7 @@ function EffectSystem:applyJokerEffects(game, card, baseValue, turnContext)
         if newValue ~= finalValue then
             finalValue = newValue
             if m then table.insert(msgs, m) end
+            pushJokerProc(game, procs, bestMultJoker, multLabel(bestMult.value), "mult")
         end
     end
 
@@ -78,8 +104,11 @@ function EffectSystem:applyJokerEffects(game, card, baseValue, turnContext)
                 if effect.type ~= "damage_multiplier" and effect.type ~= "defense_multiplier" then
                     local newValue, msg = self:processEffect(effect, card, finalValue, turnContext)
                     if newValue ~= finalValue then
+                        local delta = newValue - finalValue
                         finalValue = newValue
                         if msg then table.insert(msgs, msg) end
+                        pushJokerProc(game, procs, joker,
+                            (delta >= 0 and "+" or "") .. string.format("%g", delta), "chips")
                     end
                 end
             end
@@ -89,7 +118,40 @@ function EffectSystem:applyJokerEffects(game, card, baseValue, turnContext)
     for _, msg in ipairs(msgs) do
         game:addMessage(msg, "info")
     end
-    return finalValue
+    return finalValue, procs
+end
+
+-- Game feel v1: PREVISÃO de quantos procs de joker uma carta vai disparar —
+-- usada pelo Game ANTES do startCombat pra esticar o stagger (a próxima carta
+-- espera os ticks da anterior). Aproximação barata da mesma lógica de
+-- applyJokerEffects + triggers on_attack/on_defend; contar 1 a mais/menos só
+-- muda pacing, nunca valores.
+function EffectSystem:predictJokerProcs(game, card)
+    if not game or not game.jokerSlots or #game.jokerSlots == 0 then return 0 end
+    local isAtk = card.type == "attack"
+    local isDef = card.type == "defense"
+    if not isAtk and not isDef then return 0 end
+    local n, multSeen = 0, false
+    for _, joker in ipairs(game.jokerSlots) do
+        for _, e in ipairs(joker.effects or {}) do
+            local t = e.type
+            if isAtk then
+                if t == "damage_multiplier" and e.target == "attack" then
+                    if not multSeen then n = n + 1; multSeen = true end
+                elseif t == "damage_bonus" or t == "on_attack_heal"
+                    or t == "on_attack_debuff" then
+                    n = n + 1
+                end
+            else
+                if t == "defense_multiplier" and e.target == "defense" then
+                    if not multSeen then n = n + 1; multSeen = true end
+                elseif t == "defense_bonus" or t == "on_defend_damage" then
+                    n = n + 1
+                end
+            end
+        end
+    end
+    return n
 end
 
 -- Retorna (novoValor, mensagem?) para um efeito aplicado a uma carta específica.
@@ -160,6 +222,9 @@ function EffectSystem:processEffectCard(game, effect)
         local amount = self:applyHealMultiplier(game, v)
         game.player:heal(amount)
         game:addMessage(msg("healed", { value = amount }), "success")
+        -- Game feel v1: cura SOA (shimmer) e brilha verde no painel do jogador.
+        Sfx.play("healShimmer")
+        CardFeel.burstAtPlayer("heal", 1.0)
         return true
 
     elseif t == "self_damage" then
@@ -189,6 +254,9 @@ function EffectSystem:processEffectCard(game, effect)
         game.enemy:takeDamage(v)
         game.score = game.score + v
         game:addMessage(msg("magic_damage", { value = v }), "success")
+        -- Game feel v1: dano mágico de effect card também estoura no inimigo
+        -- (cartas de ATAQUE já ganham burst via CombatSequence; efeito não).
+        CardFeel.burstAtEnemy("magic", 0.9)
         return true
 
     elseif t == "draw_cards" then
@@ -212,6 +280,9 @@ function EffectSystem:processEffectCard(game, effect)
         end
         game:addMessage(msg("debuff_applied", { name = debuff.name, duration = debuff.duration }), "warning")
         Sfx.play("debuffApplied")
+        -- Game feel v1: o debuff APARECE no corpo do inimigo com a cor dele
+        -- (veneno verde, weak lavanda, vulnerable rosado).
+        CardFeel.burstAtEnemy(CardFeel.THEMES[debuff.name] and debuff.name or "poison", 0.8)
         return true
 
     elseif t == "discard_cards" then
@@ -240,11 +311,14 @@ function EffectSystem:processEffectCard(game, effect)
         game.player:gainStrength(v)
         game:addMessage("Força +" .. v, "success")
         Sfx.play("strengthGain")
+        CardFeel.burstAtPlayer("buff", 0.9)
         return true
 
     elseif t == "gain_dexterity" then
         game.player:gainDexterity(v)
         game:addMessage("Destreza +" .. v, "success")
+        Sfx.play("strengthGain", { pitch = 1.15 })
+        CardFeel.burstAtPlayer("armor", 0.9)
         return true
 
     elseif t == "apply_buff" then
@@ -305,6 +379,7 @@ function EffectSystem:processEffectCard(game, effect)
         game.enemy:takeDamage(v)
         game.score = game.score + v
         game:addMessage(msg("magic_damage", { value = v }), "success")
+        CardFeel.burstAtEnemy("magic", 1.2)
         return true
 
     elseif t == "mystery" then
@@ -377,23 +452,30 @@ function EffectSystem:_evokeOrbEffect(game, orb)
         focus = game.player:getBuffStacks("focus") or 0
     end
     v = v + focus
+    -- Game feel v1: o evoke ATERRISSA visivelmente — burst do elemento no
+    -- alvo (dano → inimigo; armor/cura → painel do jogador).
     if orb.type == "lightning" then
         game.enemy:takeDamage(v)
         game:addMessage("Raio evocado: " .. v .. " dano", "success")
+        CardFeel.burstAtEnemy("lightning", 1.1)
     elseif orb.type == "ice" then
         game.player:addArmor(v)
         game:addMessage("Gelo evocado: +" .. v .. " armor", "info")
+        CardFeel.burstAtPlayer("ice", 0.9)
     elseif orb.type == "dark" then
         game.enemy:takeDamage(v * 2)
         game:addMessage("Sombra evocada: " .. (v * 2) .. " dano", "success")
+        CardFeel.burstAtEnemy("dark", 1.2)
     elseif orb.type == "fire" then
         game.enemy:takeDamage(v)
         game.enemy:addStatusEffect({ name = "poison", duration = 2, stacks = math.max(1, math.floor(v / 2)) })
         game:addMessage("Fogo evocado: " .. v .. " dano + queima", "warning")
+        CardFeel.burstAtEnemy("fire", 1.1)
     elseif orb.type == "holy" then
         local amount = self:applyHealMultiplier(game, v)
         game.player:heal(amount)
         game:addMessage("Luz evocada: +" .. amount .. " HP", "success")
+        CardFeel.burstAtPlayer("holy", 1.0)
     end
 end
 
@@ -499,6 +581,11 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
         local amount = self:applyHealMultiplier(game, v)
         game.player:heal(amount)
         game:addMessage(msg("lifesteal", { value = amount }), "success")
+        -- Game feel v1: lifesteal SOA (shimmer discreto) e o joker fonte tica.
+        -- healShimmerSoft: alias registrado mais baixo (opts.volume mutaria o base).
+        Sfx.play("healShimmerSoft")
+        pushJokerProc(game, context and context.procSink, context and context.sourceJoker,
+            "+" .. amount .. " PV", "heal")
 
     elseif t == "on_defend_damage" and triggerType == "defend" then
         -- P2.3 (Jul/2026, rebalance v2): thorn cuja FONTE e JOKER dispara no
@@ -521,6 +608,12 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
             if fired then
                 context.target:takeDamage(v)
                 game:addMessage(msg("reflect", { value = v }), "warning")
+                -- Game feel v1: espinhos têm som metálico próprio + burst no
+                -- inimigo (o dano refletido é VISÍVEL chegando nele).
+                Sfx.play("thornReflect")
+                local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
+                if okCF then CardFeel.burstAtEnemy("physical", 0.7) end
+                pushJokerProc(game, context.procSink, joker, "Reflete " .. v, "mult")
             end
         end
 
@@ -572,13 +665,21 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
         -- Joker que aplica debuff a cada ataque (ex: rogue_envenom poison-on-hit).
         -- effect.debuffName = "poison"/"weak"/"vulnerable"
         if context and context.target and context.target.addStatusEffect then
+            local name = effect.debuffName or "poison"
             context.target:addStatusEffect({
-                name = effect.debuffName or "poison",
+                name = name,
                 stacks = effect.stacks or 1,
                 duration = effect.duration or 2,
             })
-            game:addMessage("Aplicou " .. (effect.debuffName or "poison"), "warning")
+            game:addMessage("Aplicou " .. name, "warning")
             Sfx.play("debuffApplied")
+            -- Game feel v1: o debuff APARECE no corpo do inimigo + joker tica.
+            local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
+            if okCF then
+                CardFeel.burstAtEnemy(CardFeel.THEMES[name] and name or "poison", 0.8)
+            end
+            pushJokerProc(game, context.procSink, context.sourceJoker,
+                I18n.t("status." .. name .. ".name", nil, name), "buff")
         end
     end
 end

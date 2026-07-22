@@ -212,6 +212,20 @@ function M.run()
     t:eq("bônus flat somam TODOS por cima do maior x",
         es:applyJokerEffects(g, atkCard, 10), 25)
 
+    -- ===== Game feel v1: applyJokerEffects retorna PROCS (ticks Balatro) =====
+    -- Cada joker que MUDOU o valor gera um proc {slotIndex, joker, label, kind}
+    -- pro tick sequencial no slot. Previsão (predictJokerProcs) deve bater.
+    do
+        local finalV, procs = es:applyJokerEffects(g, atkCard, 10)
+        t:eq("procs: valor inalterado (25)", finalV, 25)
+        t:eq("procs: 3 contribuições (1 mult largest-wins + 2 flat)", #procs, 3)
+        t:eq("procs: rótulo do multiplicador", procs[1].label, "×2")
+        t:eq("procs: slotIndex aponta o joker do MAIOR mult", procs[1].slotIndex, 2)
+        t:eq("procs: rótulo do flat", procs[2].label, "+3")
+        t:eq("predictJokerProcs bate com o real", es:predictJokerProcs(g, atkCard), 3)
+        t:eq("predictJokerProcs: carta de efeito não proca", es:predictJokerProcs(g, { type = "effect" }), 0)
+    end
+
     -- ===== P2.3 (rebalance v2): thorn de JOKER dispara 1x/turno =====
     -- Duas defesas na mesma rodada: joker reflete só na primeira; thorn de
     -- CARTA (sourceCard) segue disparando por carta jogada.

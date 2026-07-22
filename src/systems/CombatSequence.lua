@@ -21,6 +21,13 @@ local Sfx = require("src.systems.Sfx")
 local FontManager = require("src.ui.FontManager")
 local DissolveShader = require("src.ui.DissolveShader")
 local Config = require("src.core.Config")
+local CardFeel = require("src.systems.CardFeel")
+local JokerProcFx = require("src.ui.JokerProcFx")
+
+-- Gap entre ticks de joker consecutivos (game feel v1). O Balatro segura a
+-- carta pontuando enquanto cada joker tica em sequência — replicamos: o
+-- stagger e o dissolve da carta ESTICAM pra caber os procs dela.
+local PROC_TICK = 0.16
 
 local CombatSequence = {}
 CombatSequence.__index = CombatSequence
@@ -87,6 +94,13 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
         }))
     end
 
+    -- Stagger ACUMULADO por carta (game feel v1): cada carta reserva tempo
+    -- extra proporcional aos procs de joker previstos (card._expectedProcs,
+    -- setado pelo Game antes do startCombat) — a próxima carta só entra
+    -- depois dos ticks da anterior, como no Balatro.
+    local acc = 0
+    local lastDissolveAt = 0
+
     for idx, card in ipairs(cards) do
         -- Alvo computado levando em conta scale atual (renderer vai usar top-left)
         local cardW = (card.image and card.image:getWidth() or 100) * (card.currentScale or 1)
@@ -94,7 +108,9 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
         local targetX = centerX + offsetStart + (idx - 1) * spacing - cardW / 2
         local targetY = centerY - cardH / 2
 
-        local leaveAt = (idx - 1) * self.timings.cardStagger
+        local procHold = math.min(4, card._expectedProcs or 0) * PROC_TICK
+        local leaveAt = acc
+        acc = acc + self.timings.cardStagger + procHold
 
         -- ========== Fase 1: flight ==========
         local launchPitchIdx = idx  -- captura pra closure (combo cascade pitch)
@@ -122,10 +138,25 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
             local result = onCardProcessed and onCardProcessed(card) or {}
             self:_handleResult(card, result, targetX + cardW / 2, targetY + cardH / 2)
             if card.juice_up then card:juice_up(0.5, 0.15) end
+
+            -- Procs de joker (Balatro): cada joker que contribuiu tica em
+            -- SEQUÊNCIA — juice no slot + popup do valor + som com pitch
+            -- crescente. Agendado relativo ao impacto (agora).
+            local procs = result and result.jokerProcs
+            if procs and #procs > 0 then
+                for k, proc in ipairs(procs) do
+                    scheduleAt(0.10 + (k - 1) * PROC_TICK, function()
+                        JokerProcFx.tick(proc, k)
+                    end)
+                end
+            end
         end)
 
         -- ========== Fase 3: dissolve ==========
-        local dissolveAt = impactAt + self.timings.impactHold
+        -- A carta segura no centro por impactHold + o tempo dos SEUS procs
+        -- (o jogador vê os jokers ticando ENQUANTO a carta ainda está lá).
+        local dissolveAt = impactAt + self.timings.impactHold + procHold
+        lastDissolveAt = dissolveAt
         scheduleAt(dissolveAt, function()
             if card.start_dissolve then
                 local palette = DissolveShader.palette(card.type or "default")
@@ -149,8 +180,7 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
     end
 
     -- ========== Fase 4: fim ==========
-    local lastImpactAt = (n - 1) * self.timings.cardStagger + self.timings.preFlight + self.timings.flightDuration
-    local totalDuration = lastImpactAt + self.timings.impactHold + self.timings.dissolveTime * 0.85
+    local totalDuration = lastDissolveAt + self.timings.dissolveTime * 0.85
     scheduleAt(totalDuration, function()
         self:_finish(onComplete)
     end)
@@ -185,6 +215,9 @@ function CombatSequence:_playLaunchSfx(card, pitch)
 end
 
 function CombatSequence:_playImpactSfx(card, pitch)
+    -- Game feel v1: tema da carta (fire/ice/poison/...) tem SOM PRÓPRIO —
+    -- a Bola de Fogo soa fogo, não espada. Sem tema → identidade física.
+    if CardFeel.playImpact(card, pitch) then return end
     local t = card.type
     local opts = pitch and { pitch = pitch } or nil
     if t == "attack" then
@@ -199,6 +232,14 @@ function CombatSequence:_playImpactSfx(card, pitch)
 end
 
 function CombatSequence:_spawnImpactParticles(card, cx, cy)
+    -- Game feel v1: burst com a paleta/física do TEMA (fogo sobe laranja,
+    -- gelo cai azul, veneno borbulha verde). Sem tema → presets por tipo.
+    local theme = CardFeel.themeOf(card)
+    if theme then
+        CardFeel.burst(theme, cx, cy, 1.0)
+        return
+    end
+
     local ok, ParticleSystem = pcall(require, "src.systems.ParticleSystem")
     if not ok or not ParticleSystem then return end
 
@@ -227,10 +268,16 @@ function CombatSequence:_handleResult(card, result, cx, cy)
         end
         local okER, ER = pcall(require, "src.ui.EnemyRenderer")
         if okER and ER.triggerHurt then ER.triggerHurt() end
+        -- O golpe estoura NO INIMIGO (StS): burst temático no sprite dele —
+        -- o jogador vê o fogo/raio/veneno CHEGANDO, não só saindo da carta.
+        CardFeel.burstAtEnemy(CardFeel.themeOf(card) or "physical",
+            math.min(1.6, 0.8 + result.damage * 0.03))
     end
 
     if result.defense and result.defense > 0 then
         self:_addDamageNumber("+" .. result.defense, cx, cy - 60, {0.3, 0.7, 1})
+        -- Escudo sobe no PAINEL do jogador (onde a barra de armor vive).
+        CardFeel.burstAtPlayer("armor", 0.8)
     end
 end
 

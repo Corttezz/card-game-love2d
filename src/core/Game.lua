@@ -669,6 +669,12 @@ function Game:playSelectedCards()
         end
     end
 
+    -- Game feel v1: prevê quantos procs de joker cada carta dispara — o
+    -- CombatSequence estica o stagger pra caber os ticks (Balatro pacing).
+    for _, card in ipairs(self.selectedCards) do
+        card._expectedProcs = self.effectSystem:predictJokerProcs(self, card)
+    end
+
     -- Inicia animação de combate
     self.combatAnimationSystem:startCombat(
         self.selectedCards,
@@ -744,7 +750,11 @@ function Game:processCardInCombat(card, turnContext)
         local v = self.effectSystem:applyCardEffects(self, card, baseValue)
         v = v + (statBonus or 0)
         v = ComboSystem.applyToCardValue(card, v, turnContext)
-        v = self:applyJokerEffects(card, v, turnContext)
+        -- Game feel v1: applyJokerEffects também devolve os PROCS (quem
+        -- contribuiu com o quê) — o CombatSequence tica os jokers em sequência.
+        local procs
+        v, procs = self:applyJokerEffects(card, v, turnContext)
+        result.jokerProcs = procs
         v = applyEditionToValue(v, card)
         v = applySealToValue(v, card)
         return math.floor(v)
@@ -841,8 +851,10 @@ function Game:processCardInCombat(card, turnContext)
         end
 
         -- Triggers on-attack (ex: lifesteal de jokers, on_attack_debuff em cartas)
+        -- procSink: triggers de joker também viram PROCS (tick no slot).
         self.effectSystem:applyTriggerEffects(self, "attack", {
             target = self.enemy, turnContext = turnContext, sourceCard = card,
+            procSink = result.jokerProcs,
         })
         processAdditionalEffects()
         applySealSideEffects()
@@ -881,6 +893,7 @@ function Game:processCardInCombat(card, turnContext)
         -- como Barreira de Fogo via context.sourceCard).
         self.effectSystem:applyTriggerEffects(self, "defend", {
             target = self.enemy, turnContext = turnContext, sourceCard = card,
+            procSink = result.jokerProcs,
         })
         processAdditionalEffects()
         applySealSideEffects()
@@ -1048,6 +1061,11 @@ function Game:enemyTurn()
         Sfx.play("armorSound")
         self:addMessage("Inimigo se defende: +" .. armorGain .. " de armadura", "info")
         if ER and ER.triggerDefend then ER.triggerDefend() end
+        -- Game feel v1: o escudo MATERIALIZA no corpo dele (burst azul-aço).
+        do
+            local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
+            if okCF then CardFeel.burstAtEnemy("armor", 0.9) end
+        end
         -- Número do que aconteceu, no corpo do inimigo (não só no toast).
         local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
         if okFT and ex and ey then
@@ -1057,10 +1075,16 @@ function Game:enemyTurn()
     elseif intent == "buff" then
         self.enemy.baseDamage = self.enemy.baseDamage + 2
         self.enemy.damage = self.enemy.damage + 2
-        Sfx.playWithVariation("enemyAttack", 0.8, 0.05)
+        -- Game feel v1: buff tem RUGIDO próprio (antes reusava enemyAttack
+        -- grave — soava como golpe, confundia) + aura vermelha subindo.
+        Sfx.playWithVariation("enemyBuffRoar", 1.0, 0.06)
         self:addMessage("Inimigo se enfurece: +2 de dano permanente!", "warning")
         if self.enemy.juice_up then self.enemy:juice_up(0.4, 0.1) end
         if ER and ER.triggerBuff then ER.triggerBuff() end
+        do
+            local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
+            if okCF then CardFeel.burstAtEnemy("buff", 1.1) end
+        end
         local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
         if okFT and ex and ey then
             local I18n = require("src.i18n.I18n")
@@ -1152,6 +1176,11 @@ function Game:_finishEnemyTurn()
                 FloatingText.spawn("-" .. poisonDmg, ex, ey,
                     { color = { 0.45, 0.9, 0.35, 1 }, fontSize = 18 })
             end
+        end
+        -- Game feel v1: bolhas verdes borbulham do corpo (o DoT é físico).
+        do
+            local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
+            if okCF then CardFeel.burstAtEnemy("poison", 0.8) end
         end
     end
 

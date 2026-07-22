@@ -80,6 +80,7 @@ card-game-love2d/
 │   │   ├── RunManager.lua      # Modo Slay the Spire + save/load via love.filesystem
 │   │   ├── EffectSystem.lua    # Efeitos data-driven (jokers, effect cards, triggers)
 │   │   ├── CombatSequence.lua  # Combate via EventManager (substitui CombatAnimationSystem)
+│   │   ├── CardFeel.lua        # Game feel v1: tema AV por carta (tag→som+burst temático) — memory/card_feel.md
 │   │   ├── ScreenShake.lua     # Shake global (_G.triggerShake via .install())
 │   │   ├── CardParticles.lua   # Partículas attach-to-card (dissolve/materialize)
 │   │   ├── CardRevealSequence.lua # Orquestrador pack-opening (explode + materialize)
@@ -288,6 +289,9 @@ O painel do canto de inimigo (antigo `HudEnemyPanel`) foi aposentado. `GameUI.lu
 
 ### Smoke
 `SmokeSystem` spawna partículas que sobem lentamente. 4 presets em `SmokeConfig`. Pode ser alterado em runtime via teclas 1-4.
+
+### Game feel (CardFeel + JokerProcFx, Jul/2026)
+Ver [`memory/card_feel.md`](memory/card_feel.md). Regras-chave: (1) o TEMA da carta (tags fire/ice/lightning/dark/holy/poison/heal/lifesteal/magic) define som de impacto (`impact*` em audio/sfx/) + burst de partículas com física (`gravity` no engine/Particles) — sem tema, fallback físico sword/armor; ataque também estoura NO INIMIGO. (2) `applyJokerEffects` retorna `(valor, procs)` e os jokers TICAM em sequência estilo Balatro (juice no slot + popup "×2"/"+3" + `jokerTick` com pitch crescente); o stagger do CombatSequence ESTICA via `card._expectedProcs` (`EffectSystem:predictJokerProcs`) e o dissolve da carta espera os procs dela. Ao criar carta nova, dê tags de tema — o feel vem de graça.
 
 ---
 
