@@ -588,6 +588,13 @@ function CardRewardScreen:createCardInstances()
             -- clicável (cardButton); o sprite visualmente ocupa apenas o centro.
             cardInstance.x = math.floor(pos.x + (slotW - renderW) / 2)
             cardInstance.y = math.floor(pos.y + (slotH - renderH) / 2)
+            -- ÂNCORA IMUTÁVEL do layout (fix Jul/2026 do feedback loop):
+            -- Card:draw grava self.y = y a cada frame; desenhar a partir de
+            -- self.y + entryOy fazia y ACUMULAR o offset (70px/frame — as
+            -- cartas estabilizavam em y≈-1900, fora da tela; era o bug
+            -- "não renderizam até o hover"). O draw parte SEMPRE daqui.
+            cardInstance.homeX = cardInstance.x
+            cardInstance.homeY = cardInstance.y
 
             cardInstance.baseScale = fitScale
             cardInstance.currentScale = fitScale
@@ -1271,9 +1278,13 @@ function CardRewardScreen:draw()
                     and offer.cost and self.game
                     and not self.game.economySystem:canAfford(offer.cost)
                     or false
-                -- _entryOy: queda de entrada do modo rewards (0 após pousar)
-                local pos = {x = cardInstance.x,
-                             y = cardInstance.y + (cardInstance._entryOy or 0)}
+                -- _entryOy: queda de entrada do modo rewards (0 após pousar).
+                -- Base = homeX/homeY (âncora IMUTÁVEL) — nunca self.x/y, que o
+                -- Card:draw sobrescreve a cada frame (feedback loop y+=entryOy
+                -- mandava as cartas pra y≈-1900; bug "não renderizam").
+                local pos = {x = cardInstance.homeX or cardInstance.x,
+                             y = (cardInstance.homeY or cardInstance.y)
+                                 + (cardInstance._entryOy or 0)}
                 cardInstance:draw(pos.x, pos.y, false, true)
                 self:drawPriceOverlay(cardInstance, pos.x, pos.y, slot)
                 -- Badges de clareza no modo rewards: raridade NOMEADA +

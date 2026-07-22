@@ -32,6 +32,18 @@ segundos depois (o jogador percebia "no hover"). Piloto do fix definitivo:
   com efeito de fluxo (fechar tela, avançar estado) DEVEM guardar
   (`if self.visible then ...`).
 
+## Lição irmã: Card:draw MUTA self.x/y — layout precisa de âncora imutável
+O bug REAL das "cartas invisíveis até o hover" (diagnosticado por log em jogo
+real, Jul/2026) nem era fila: `Card:draw(x, y)` GRAVA `self.x/self.y = x/y`.
+A CardRewardScreen desenhava `draw(inst.x, inst.y + _entryOy)` → **feedback
+loop**: `y += entryOy` a cada FRAME (−70/frame) até as cartas estabilizarem em
+y≈−1900 (fora da tela). Hover "consertava" porque caminhos de draw do hover
+reancoravam. **Regra**: em telas que aplicam offset de animação por cima da
+posição, a base do draw é uma ÂNCORA IMUTÁVEL (`inst.homeX/homeY`), nunca
+`inst.x/y`. E o simulador de validação DEVE chamar `screen:draw()` por frame
+— draw muta estado; só update não reproduz feedback loops de draw (foi assim
+que o bug passou batido 2×).
+
 ## Pegadinha remanescente (conhecida, aceitável)
 `Card:start_materialize/start_dissolve` agendam o ease do `dissolve` como
 evento BLOQUEANTE na base (dentro de Card.lua, via `em.add(ev:new{...})` sem

@@ -42,6 +42,12 @@ function M.run()
             ScreenShake.update(stepDt)
             CardParticles.update(stepDt)
             screen:update(stepDt)
+            -- CRÍTICO (lição do bug y+=entryOy): o DRAW muta estado das cartas
+            -- (Card:draw grava self.x/y). Sem desenhar por frame, o simulador
+            -- NÃO reproduz feedback loops de draw — foi assim que o bug das
+            -- cartas fora da tela passou batido duas vezes.
+            love.graphics.clear(0, 0, 0, 1)
+            screen:draw()
             t = t + stepDt
         end
     end
