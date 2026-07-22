@@ -20,6 +20,7 @@ local SUITES = {
     { group = "unit",  name = "test_effects_full" },
     { group = "unit",  name = "test_combat" },
     { group = "unit",  name = "test_events" },
+    { group = "unit",  name = "test_pixelcanvas_state" },
     -- Smoke de sistema (pré-existentes)
     { group = "smoke", name = "smoke_tags" },
     { group = "smoke", name = "smoke_effects" },

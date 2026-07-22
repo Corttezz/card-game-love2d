@@ -377,13 +377,11 @@ function CardFrame.invalidate(card)
     for k in pairs(animCache) do
         if k:sub(1, #prefix) == prefix then animCache[k] = nil end
     end
-    epoch = epoch + 1
 end
 
 function CardFrame.clearCache()
     cache = {}
     animCache = {}
-    epoch = epoch + 1
 end
 
 -- Quando o idioma muda, todas as cartas precisam ser re-renderizadas pra

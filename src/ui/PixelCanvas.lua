@@ -32,28 +32,29 @@ function PixelCanvas.new(w, h)
     return c
 end
 
--- Estado anterior salvo entre begin/endDraw (cor + canvas + blend mode).
-local _savedState = {}
-
--- Prepara o ambiente para desenhar num canvas (salva estado).
+-- Prepara o ambiente para desenhar num canvas (salva estado COMPLETO).
+-- push("all") guarda canvas/cor/blend/shader/scissor E a transform;
+-- origin() + setScissor() zeram translate/scale/clip do chamador. Sem
+-- isso, um render LAZY no meio de um draw transformado (ex.: slide-in da
+-- tela de recompensa, scroll com scissor da Coleção) compunha o conteúdo
+-- DESLOCADO/CLIPADO pra fora do canvas — frames em branco cacheados =
+-- bug "carta piscando no hover" (Jul/2026).
 function PixelCanvas.beginDraw(canvas, clear)
-    _savedState.canvas = love.graphics.getCanvas()
-    _savedState.r, _savedState.g, _savedState.b, _savedState.a = love.graphics.getColor()
-    _savedState.blend = { love.graphics.getBlendMode() }
-
+    love.graphics.push("all")
+    love.graphics.origin()
+    love.graphics.setScissor()
     love.graphics.setCanvas(canvas)
     if clear ~= false then
         love.graphics.clear(0, 0, 0, 0)
     end
     -- alpha blend padrão para camadas compostas
     love.graphics.setBlendMode("alpha")
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Restaura estado anterior.
+-- Restaura estado anterior (par do push("all") do beginDraw).
 function PixelCanvas.endDraw()
-    love.graphics.setCanvas(_savedState.canvas)
-    love.graphics.setColor(_savedState.r, _savedState.g, _savedState.b, _savedState.a)
-    love.graphics.setBlendMode(unpack(_savedState.blend))
+    love.graphics.pop()
 end
 
 -- ===== Primitivas (sempre em coordenadas inteiras) =====
