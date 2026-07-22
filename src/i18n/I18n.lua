@@ -214,15 +214,28 @@ function I18n.effectDesc(effect)
 end
 
 function I18n.cardDesc(cardOrId)
-    local id, fallback, vars
+    local id, fallback, card
     if type(cardOrId) == "table" then
         id = cardOrId.id
         fallback = cardOrId.description
-        vars = cardVars(cardOrId)
+        card = cardOrId
     else
         id = tostring(cardOrId)
     end
     if not id then return fallback or "" end
+    -- BUG Jul/2026 ("valor {value}" cru na loja): chamadores passam tabela
+    -- MÍNIMA ({id, description} — ex: ofertas da CardRewardScreen) ou só o id.
+    -- Sem effects/stats, os placeholders {value}/{atk}/{def} ficavam crus na
+    -- tela. Busca os dados completos no CardDatabase (require lazy — sem
+    -- ciclo de load; getCard é barato, tabela em memória).
+    if not (card and (card.effects or card.attack or card.defense)) then
+        local ok, CardDatabase = pcall(require, "src.systems.CardDatabase")
+        if ok and CardDatabase then
+            local okc, cd = pcall(function() return CardDatabase:getCard(id) end)
+            if okc and cd then card = cd end
+        end
+    end
+    local vars = card and cardVars(card) or nil
     return I18n.t("cards." .. id .. ".desc", vars, fallback or "")
 end
 

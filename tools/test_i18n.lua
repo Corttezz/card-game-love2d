@@ -188,6 +188,32 @@ for _ in pairs(seen) do count = count + 1 end
 if count ~= #locales then fail("cycleLocale nao visitou todos os locales (" .. count .. "/" .. #locales .. ")") end
 ok("cycleLocale visita todos os " .. #locales .. " locales")
 
+-- 7. REGRESSAO (bug Jul/2026 "valor {value}" cru na loja): cardDesc de TODA
+-- carta, em TODO locale, nao pode conter placeholder nao-substituido — tanto
+-- pelo caminho id-string quanto pelo caminho tabela-minima {id, description}
+-- (o que a CardRewardScreen passa). O fix busca a carta no CardDatabase.
+do
+    local CardDatabase = require("src.systems.CardDatabase")
+    local db = CardDatabase:new()
+    local all = db:getAllCards()
+    local bad = 0
+    for _, loc in ipairs(locales) do
+        I18n.setLocale(loc)
+        for id, cd in pairs(all) do
+            local d1 = I18n.cardDesc(id)
+            local d2 = I18n.cardDesc({ id = id, description = cd.description })
+            if d1:match("%{%w+%}") or d2:match("%{%w+%}") then
+                print("  [placeholder cru] " .. loc .. " / " .. id .. ": "
+                    .. (d1:match("%{%w+%}") and d1 or d2))
+                bad = bad + 1
+            end
+        end
+    end
+    I18n.setLocale(startLocale)
+    if bad > 0 then fail(bad .. " descricoes com placeholder cru ({value}/{atk}/...)") end
+    ok("nenhuma carta renderiza placeholder cru em nenhum locale")
+end
+
     print("\n=== TODOS OS TESTES I18N PASSARAM ===")
     end)  -- fim do corpo protegido
     return okAll and not failed
