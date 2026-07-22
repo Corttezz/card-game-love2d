@@ -351,6 +351,15 @@ function love.load(loveArgs)
             .. "): saves em *.tool.lua — o save do jogador não é tocado")
     end
 
+    -- DEBUG (caça "cartas não renderizam"): marca o BOOT no log de reward —
+    -- prova imediata de que ESTE build (instrumentado) é o que está rodando
+    -- (mtime do arquivo muda ao abrir o jogo, sem precisar chegar num reward).
+    if not toolArg then
+        pcall(love.filesystem.append, "reward_debug.log",
+            ("[RDBG] ===== BOOT v%s em %s =====\n"):format(
+                tostring(require("src.core.Config").VERSION), os.date("%H:%M:%S")))
+    end
+
     -- Modo preview: renderiza algumas cartas em PNG e sai.
     --   love . preview_cards
     -- Saida: ~/.local/share/love/card-game/preview_*.png
