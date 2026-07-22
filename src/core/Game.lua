@@ -983,6 +983,9 @@ function Game:endTurn()
     if self.effectSystem and self.effectSystem.orbPassiveTick then
         self.effectSystem:orbPassiveTick(self)
     end
+    -- Turno inimigo NOVO: limpa flag de "agindo" (v3) — se ficou stale de uma
+    -- batalha abandonada, sem isso o inimigo nunca mais agiria.
+    self._enemyActing = false
     self.turn = "enemy"
 end
 
@@ -1013,6 +1016,13 @@ function Game:enemyTurn()
         self.turn = "player"
         return
     end
+
+    -- Re-entrância (v3): com os respiros do fim de turno (DoT/turno do
+    -- jogador em eventos), turn fica "enemy" por ~1s — caller que chama
+    -- enemyTurn() por frame (gate de cena/teste) re-executaria o intent.
+    -- O turno inimigo é UM ato: segunda chamada é no-op até playerStep.
+    if self._enemyActing then return end
+    self._enemyActing = true
 
     -- F1: executa o intent TELEGRAFADO no turno anterior (o jogador viu o
     -- ícone/número no EnemyHud e pôde se preparar). Depois rola o próximo.
@@ -1159,53 +1169,95 @@ function Game:_finishEnemyTurn()
     -- Telegrafou a PRÓXIMA ação (EnemyHud mostra durante o turno do jogador).
     self.enemy:rollIntent()
 
+    -- ===== TURNOS BEM DEFINIDOS (game feel v3, feedback do dono) =====
+    -- O veneno NÃO tica em cima do golpe: o inimigo AGE, respiro, o DoT tica
+    -- (som + bolhas + número), respiro, e SÓ ENTÃO o turno volta pro jogador
+    -- (mana/compra/triggers). Cada evento tem seu momento — nada sobrepõe.
+    -- Token de sequência invalida steps atrasados se a batalha mudou
+    -- (morte/próximo andar/restart) durante os respiros.
+    self._enemyTurnSeq = (self._enemyTurnSeq or 0) + 1
+    local seq = self._enemyTurnSeq
+    local enemyRef = self.enemy
+
     -- Fim do turno do inimigo: processa poison DoT, decrementa duration de debuffs.
-    local poisonDmg = self.enemy:onTurnEnd()
-    if poisonDmg and poisonDmg > 0 then
-        -- Pitch random pra poison "chiar" diferente cada tick (DoT acumula
-        -- vários ticks numa run; sem variação fica monótono).
-        Sfx.playWithVariation("poisonTick", 1.0, 0.2)
-        self:addMessage("Veneno: " .. poisonDmg .. " de dano ao inimigo", "success")
-        -- Clareza: o corpo tinge de VERDE + número flutua sobre o inimigo.
-        if ER and ER.triggerPoison then
-            ER.triggerPoison()
-            local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
-            local ex, ey
-            if ER.getLastPos then ex, ey = ER.getLastPos() end
-            if okFT and ex and ey then
-                FloatingText.spawn("-" .. poisonDmg, ex, ey,
-                    { color = { 0.45, 0.9, 0.35, 1 }, fontSize = 18 })
+    local function dotStep()
+        local poisonDmg = self.enemy:onTurnEnd()
+        if poisonDmg and poisonDmg > 0 then
+            -- Pitch random pra poison "chiar" diferente cada tick (DoT acumula
+            -- vários ticks numa run; sem variação fica monótono).
+            Sfx.playWithVariation("poisonTick", 1.0, 0.2)
+            self:addMessage("Veneno: " .. poisonDmg .. " de dano ao inimigo", "success")
+            -- Clareza: o corpo tinge de VERDE + número flutua sobre o inimigo.
+            if ER and ER.triggerPoison then
+                ER.triggerPoison()
+                local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
+                local ex, ey
+                if ER.getLastPos then ex, ey = ER.getLastPos() end
+                if okFT and ex and ey then
+                    FloatingText.spawn("-" .. poisonDmg, ex, ey,
+                        { color = { 0.45, 0.9, 0.35, 1 }, fontSize = 18 })
+                end
             end
-        end
-        -- Game feel v1: bolhas verdes borbulham do corpo (o DoT é físico).
-        do
+            -- Game feel v1: bolhas verdes borbulham do corpo (o DoT é físico).
             local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
             if okCF then CardFeel.burstAtEnemy("poison", 0.8) end
         end
     end
 
-    self.turn = "player"
+    local function playerStep()
+        self._enemyActing = false
+        self.turn = "player"
 
-    -- Short-circuit: se o inimigo morreu durante o turno (poison, trigger, etc.),
-    -- pula restoreMana/drawForTurn/turn_start triggers. O turn_start aplica efeitos
-    -- como damage_per_turn que dariam dano fantasma no jogador apos o inimigo ja
-    -- estar morto. Tambem dispara death pipeline (anim + pausa) que antes so
-    -- acontecia em processCardInCombat (kill via ataque).
-    if not self.enemy:isAlive() then
-        self:_onEnemyDeath()
+        -- Short-circuit: se o inimigo morreu durante o turno (poison, trigger,
+        -- etc.), pula restoreMana/drawForTurn/turn_start triggers. O turn_start
+        -- aplica efeitos como damage_per_turn que dariam dano fantasma no
+        -- jogador apos o inimigo ja estar morto. Tambem dispara death pipeline.
+        if not self.enemy:isAlive() then
+            self:_onEnemyDeath()
+            return
+        end
+
+        self.player:restoreMana()
+
+        -- Decrementa buffs do jogador (durations per-turno)
+        if self.player.onTurnStart then self.player:onTurnStart() end
+
+        -- Compra do inicio do turno: 1 normal, 3 se a mao estiver vazia (emergencia).
+        self:drawForTurn()
+
+        -- Triggers turn_start (regen, dano por turno) após tudo estabelecer
+        self.effectSystem:applyTriggerEffects(self, "turn_start", {})
+    end
+
+    local EM = _G.EventManager
+    local Ev = _G.Event
+    if not EM or not Ev then
+        -- Fallback headless/sem engine de eventos: síncrono (comportamento antigo).
+        dotStep()
+        playerStep()
         return
     end
 
-    self.player:restoreMana()
+    -- Só abre o respiro do DoT quando há veneno VISÍVEL pra ticar — sem DoT,
+    -- onTurnEnd roda quase imediato (ainda decrementa durations de debuffs).
+    local hasDot = false
+    for _, st in ipairs(self.enemy.statusEffects or {}) do
+        if st.name == "poison" and (st.stacks or 0) > 0 then hasDot = true break end
+    end
 
-    -- Decrementa buffs do jogador (durations per-turno)
-    if self.player.onTurnStart then self.player:onTurnStart() end
+    local function guarded(fn)
+        return function()
+            if self._enemyTurnSeq == seq and self.enemy == enemyRef then fn() end
+            return true
+        end
+    end
 
-    -- Compra do inicio do turno: 1 normal, 3 se a mao estiver vazia (emergencia).
-    self:drawForTurn()
-
-    -- Triggers turn_start (regen, dano por turno) após tudo estabelecer
-    self.effectSystem:applyTriggerEffects(self, "turn_start", {})
+    local dotDelay = hasDot and 0.45 or 0.05
+    local playerDelay = dotDelay + (hasDot and 0.55 or 0.10)
+    EM.add(Ev:new({ trigger = "after", delay = dotDelay, blocking = false,
+        func = guarded(dotStep) }))
+    EM.add(Ev:new({ trigger = "after", delay = playerDelay, blocking = false,
+        func = guarded(playerStep) }))
 end
 
 -- Centraliza efeitos colaterais de morte do inimigo (anim + sfx + pausa).

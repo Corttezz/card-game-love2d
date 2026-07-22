@@ -94,11 +94,17 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
         }))
     end
 
-    -- Stagger ACUMULADO por carta (game feel v1): cada carta reserva tempo
-    -- extra proporcional aos procs de joker previstos (card._expectedProcs,
-    -- setado pelo Game antes do startCombat) — a próxima carta só entra
-    -- depois dos ticks da anterior, como no Balatro.
-    local acc = 0
+    -- ===== TURNOS BEM DEFINIDOS (game feel v3, feedback do dono) =====
+    -- Antes: cartas voavam em cascata e a 2ª resolvia enquanto os jokers da
+    -- 1ª ainda ticavam — parecia tudo simultâneo. Agora é o modelo Balatro
+    -- de verdade: TODAS as cartas pousam na mesa primeiro (voo quase junto),
+    -- e a RESOLUÇÃO é estritamente sequencial — carta 1 bate, os jokers dela
+    -- ticam, respiro, SÓ ENTÃO a carta 2 bate. Nada sobrepõe.
+    local launchStagger = 0.08  -- voo: leve cascata estética, chegam juntas
+    local resolveGap    = 0.30  -- respiro entre o fim de uma carta e a próxima
+    local allLandedAt = self.timings.preFlight + (n - 1) * launchStagger
+        + self.timings.flightDuration
+    local resolveAt = allLandedAt + 0.10
     local lastDissolveAt = 0
 
     for idx, card in ipairs(cards) do
@@ -108,13 +114,12 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
         local targetX = centerX + offsetStart + (idx - 1) * spacing - cardW / 2
         local targetY = centerY - cardH / 2
 
+        -- Tempo reservado pros ticks de joker DESTA carta (turno dela).
         local procHold = math.min(4, card._expectedProcs or 0) * PROC_TICK
-        local leaveAt = acc
-        acc = acc + self.timings.cardStagger + procHold
 
-        -- ========== Fase 1: flight ==========
+        -- ========== Fase 1: flight (todas quase juntas — "mão na mesa") ==========
         local launchPitchIdx = idx  -- captura pra closure (combo cascade pitch)
-        scheduleAt(leaveAt + self.timings.preFlight, function()
+        scheduleAt((idx - 1) * launchStagger + self.timings.preFlight, function()
             -- SFX dedicado de "jogar carta" no lançamento (whoosh), antes do
             -- impacto (sword/armor). Pitch crescente por carta no combo.
             local pitch = math.min(1.4, 0.95 + (launchPitchIdx - 1) * 0.06)
@@ -126,8 +131,8 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
             end
         end)
 
-        -- ========== Fase 2: impacto ==========
-        local impactAt = leaveAt + self.timings.preFlight + self.timings.flightDuration
+        -- ========== Fase 2: impacto SEQUENCIAL (o turno da carta) ==========
+        local impactAt = resolveAt
         local pitchIdx = idx  -- captura pra closure (combo cascade pitch)
         scheduleAt(impactAt, function()
             -- Pitch crescente por carta no combo (Fase 6.2). 1ª carta = 0.95,
@@ -178,6 +183,10 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
         -- (o jogador vê os jokers ticando ENQUANTO a carta ainda está lá).
         local dissolveAt = impactAt + self.timings.impactHold + procHold
         lastDissolveAt = dissolveAt
+
+        -- A PRÓXIMA carta só começa o turno dela depois do desta terminar
+        -- (impacto + procs + respiro) — sequência estrita, nada em paralelo.
+        resolveAt = dissolveAt + resolveGap
         scheduleAt(dissolveAt, function()
             if card.start_dissolve then
                 local palette = DissolveShader.palette(card.type or "default")

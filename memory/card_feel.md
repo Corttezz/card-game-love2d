@@ -97,6 +97,25 @@ enemy-buff-roar, thorn-reflect. Volumes 0.48–0.58.
   prompts casados com a identidade (Vampiro=drenar sangue, Bobo=guizos,
   Juggernaut=passo blindado, Gema=ping de cristal...).
 
+## Feel v3: TURNOS BEM DEFINIDOS (feedback do dono — "nada sobrepõe")
+
+- **Cartas**: modelo Balatro real — TODAS voam pro centro quase juntas
+  (launchStagger 0.08, "mão na mesa"); a RESOLUÇÃO é estritamente sequencial:
+  carta 1 impacta → jokers dela ticam → respiro (resolveGap 0.30) → carta 2.
+  `resolveAt` acumula `impactHold + procHold + resolveGap` por carta. O
+  `timings.cardStagger` antigo não pauta mais a resolução.
+- **Turno do inimigo** (`Game:_finishEnemyTurn`): golpe aterrissa → respiro
+  0.45s → DoT de veneno tica (som+bolhas+número) → respiro 0.55s → turno do
+  jogador (mana/compra/turn_start). Sem veneno visível os respiros caem pra
+  0.05/0.10 (não arrasta). Fallback síncrono sem EventManager (headless).
+- **Guards obrigatórios** (regressão pega pelo smoke_ui_turn):
+  - `Game:enemyTurn` é UM ATO: flag `_enemyActing` bloqueia re-entrância
+    (o gate da cena/testes chama enemyTurn POR FRAME enquanto turn=="enemy" —
+    sem o guard, o intent re-executava 4x). Limpa em `playerStep` e em
+    `endTurn` (stale de batalha abandonada).
+  - Token `_enemyTurnSeq` + `enemyRef` invalidam steps agendados se a batalha
+    mudou durante os respiros (morte/andar novo/restart).
+
 ## Regras a preservar
 
 - Elemento define o SOM do impacto; sem tema → sword/armor (identidade física
