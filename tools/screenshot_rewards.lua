@@ -26,6 +26,11 @@ function M.run()
     _G.game = game
 
     local screen = CardRewardScreen:new(game.shopSystem)
+    -- REPRO fiel ao jogo real: pré-seta lastScreenWidth/Height pra NÃO cair
+    -- no branch de resize do update() (que recria as instâncias e mascarava
+    -- o bug das cartas invisíveis).
+    screen.lastScreenWidth = love.graphics.getWidth()
+    screen.lastScreenHeight = love.graphics.getHeight()
     screen:show(game, function() end, function() end, "rewards")
 
     local stepDt = 1 / 60
@@ -41,6 +46,14 @@ function M.run()
         end
     end
     simulate(1.2)
+
+    -- Diagnóstico: estado real das instâncias após 1.2s
+    for i, inst in ipairs(screen.cardInstances or {}) do
+        print(("  inst[%d] dissolve=%.2f entryOy=%.1f x=%s y=%s scaleAnim=%s"):format(
+            i, inst.dissolve or -1, inst._entryOy or -1,
+            tostring(inst.x), tostring(inst.y),
+            tostring(screen.cardAnimations[i] and screen.cardAnimations[i].scale)))
+    end
 
     local function capture(name)
         CRTShader.setEnabled(true); CRTShader.setStrength(0.85); CRTShader.setPower(1)

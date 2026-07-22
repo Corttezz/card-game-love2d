@@ -80,7 +80,10 @@ function CardCostBadge.draw(cost)
     local s = tostring(cost or 0)
     local tw = font:getWidth(s)
     local tx = ox + math.floor((size - tw) / 2)
-    local ty = oy + 3
+    -- oy+1 (era oy+3): a fonte default do LÖVE imprime o dígito ~2px abaixo
+    -- do y do print (folga de ascender) — com oy+3 o número caía visivelmente
+    -- abaixo do centro da gema (feedback do dono, Jul/2026).
+    local ty = oy + 1
     love.graphics.setColor(Palette.INK)
     love.graphics.print(s, tx - 1, ty)
     love.graphics.print(s, tx + 1, ty)

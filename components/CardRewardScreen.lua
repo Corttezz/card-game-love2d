@@ -333,17 +333,24 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
 
     -- Materialize cascade nas cartas: cada cardInstance arranca em dissolve=1
     -- e tweena pra 0 com stagger de 80ms — Balatro pack-opening style.
-    local stagger = 0.08
-    for i, cardInstance in ipairs(self.cardInstances) do
-        cardInstance.dissolve = 1
-        cardInstance.dissolve_colours = DissolveShader.palette("booster")
-        EventManager.parallel(0.43 + (i - 1) * stagger, function()
-            if cardInstance.start_materialize then
-                cardInstance:start_materialize(DissolveShader.palette("booster"), true, 0.9)
-            else
-                cardInstance.dissolve = 0
-            end
-        end)
+    -- ⚠️ SÓ NA LOJA (fix Jul/2026): em rewards, deixar dissolve=1 esperando o
+    -- start_materialize agendado deixou as cartas INVISÍVEIS no jogo real
+    -- (print do dono: só banner+marcadores). A entrada do rewards é a QUEDA
+    -- (_entryOy) — dissolve fica 0 desde o início, visibilidade garantida
+    -- sem corrida com o EventManager.
+    if self.mode ~= "rewards" then
+        local stagger = 0.08
+        for i, cardInstance in ipairs(self.cardInstances) do
+            cardInstance.dissolve = 1
+            cardInstance.dissolve_colours = DissolveShader.palette("booster")
+            EventManager.parallel(0.43 + (i - 1) * stagger, function()
+                if cardInstance.start_materialize then
+                    cardInstance:start_materialize(DissolveShader.palette("booster"), true, 0.9)
+                else
+                    cardInstance.dissolve = 0
+                end
+            end)
+        end
     end
 
     -- Skip/Continue. Em modo shop dá +N ouro de bônus (configurado em MODE_CONFIG).
