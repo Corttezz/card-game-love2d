@@ -25,6 +25,7 @@ local CardStatsFooter = require("src.ui.card.components.CardStatsFooter")
 local JokerBorder = require("src.ui.card.components.joker.JokerBorder")
 local JokerHeader = require("src.ui.card.components.joker.JokerHeader")
 local JokerSeal   = require("src.ui.card.components.joker.JokerSeal")
+local JokerMoon   = require("src.ui.card.components.joker.JokerMoon")
 local JokerFooter = require("src.ui.card.components.joker.JokerFooter")
 
 local CardFrame = {}
@@ -179,7 +180,10 @@ local function renderJoker(card, w, h, iconOverride)
 
     JokerBorder.draw(w, h, rarity)
     JokerHeader.draw(w, name, rarity)
-    CardCostBadge.draw(card.cost or 0)
+    -- Joker NAO tem custo de mana (passivo, nunca passa pela mao) — o badge
+    -- de custo aqui era vestigial. No lugar: lua crescente tarot, contrapeso
+    -- do JokerSeal do canto direito (pedido do dono, Jul/2026).
+    JokerMoon.draw()
     JokerSeal.draw(w, rarity)
     JokerFooter.draw(w, h)
 end

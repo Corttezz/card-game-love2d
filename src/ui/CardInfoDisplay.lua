@@ -292,7 +292,11 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
         if cardInstance.defense and cardInstance.defense > 0 then
             statPair(cardInstance.armorIcon, cardInstance.defense, { 0.6, 0.75, 0.95, 1 })
         end
-        statPair(cardInstance.manaIcon, cardInstance.cost or 0, { 0.55, 0.75, 1, 1 })
+        -- Joker NAO tem custo de mana (passivo, nunca passa pela mao) — a
+        -- linha de mana aqui era dado vestigial confundindo o jogador.
+        if cardInstance.type ~= "joker" then
+            statPair(cardInstance.manaIcon, cardInstance.cost or 0, { 0.55, 0.75, 1, 1 })
+        end
     end
 
     love.graphics.setColor(1, 1, 1, 1)
