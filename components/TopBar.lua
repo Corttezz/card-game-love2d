@@ -130,7 +130,7 @@ function TopBar:_layout()
             or I18n.t("top_bar.act", { n = 8 })
         add("progress", l1, I18n.t("top_bar.floor", { x = 8, total = 8 }))
     end
-    table.insert(blocks, { key = "gear", w = 36 })
+    -- (engrenagem fica FORA do grupo: fixa no canto direito — _getConfigRect)
 
     local gap = 22
     local total = gap * math.max(0, #blocks - 1)
@@ -346,10 +346,10 @@ end
 
 function TopBar:_getConfigRect()
     local iconPxSize = 32                                -- pixel size on screen
-    -- Engrenagem entra no grupo centralizado (canto direito distorce no CRT).
-    local L = self:_layout()
-    local configX = L.gear and (L.gear.x + 2)
-        or (love.graphics.getWidth() - iconPxSize - 20)
+    -- Engrenagem FIXA no canto direito (pedido do dono Jul/2026). Margem de
+    -- 30px: bezel do CRT come 20px e a placa de hover cresce +5px além do
+    -- ícone — assim nada fica atrás do gabinete.
+    local configX = love.graphics.getWidth() - iconPxSize - 30
     local configY = math.floor((self.height - iconPxSize) / 2)
     return configX, configY, iconPxSize
 end
@@ -363,7 +363,7 @@ function TopBar:drawConfigIcon()
     -- Placa de hover FIXA (fora da rotação — só a engrenagem gira):
     -- rounded plate dourada + aro claro, ambos com fade pelo hover suave.
     if hover > 0.02 then
-        local pad = 4
+        local pad = 5  -- respiro pro gear girado não encostar no aro
         local gd, gl = Palette.AGED_GOLD_DARK, Palette.AGED_GOLD_LIGHT
         PixelCanvas.rectRounded(configX - pad, configY - pad,
             iconPxSize + pad * 2, iconPxSize + pad * 2, 3,

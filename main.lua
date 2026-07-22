@@ -602,6 +602,12 @@ function love.load(loveArgs)
         return
     end
 
+    -- Valida o hover da engrenagem da TopBar (placa fixa + só o gear gira).
+    if loveArgs and loveArgs[1] == "screenshot_topbar_gear" then
+        require("tools.screenshot_topbar_gear").run()
+        return
+    end
+
     -- Valida a identidade CRT (power em 4 estágios).
     if loveArgs and loveArgs[1] == "screenshot_crt" then
         require("tools.screenshot_crt").run()

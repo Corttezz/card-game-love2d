@@ -47,22 +47,30 @@ function MessageSystem:update(dt)
 end
 
 function MessageSystem:draw()
-    local y = 100
+    -- Toasts CENTRADOS no topo (sob a TopBar) — o canto esquerdo em
+    -- x=10/y=100 caía EM CIMA do quadro de coringas do combate (feedback
+    -- Jul/2026: "os jokers ficam em cima de onde aparecem os textos").
+    -- Centro é o padrão StS/Balatro e fica livre em todas as telas.
+    local FontManager = require("src.ui.FontManager")
+    local sw = love.graphics.getWidth()
+    local font = FontManager.getFont(12)
+    love.graphics.setFont(font)
+    local y = 64
     for i, message in ipairs(self.messages) do
         local color = self:getColorByType(message.type)
-        love.graphics.setColor(color[1], color[2], color[3], message.alpha)
-        
+        local x = math.floor((sw - font:getWidth(message.text)) / 2)
+
         -- Sombra do texto
         love.graphics.setColor(0, 0, 0, message.alpha * 0.7)
-        love.graphics.print(message.text, 12, y + 2)
-        
+        love.graphics.print(message.text, x + 2, y + 2)
+
         -- Texto principal
         love.graphics.setColor(color[1], color[2], color[3], message.alpha)
-        love.graphics.print(message.text, 10, y)
-        
+        love.graphics.print(message.text, x, y)
+
         y = y + 25
     end
-    
+
     -- Reseta cor
     love.graphics.setColor(1, 1, 1, 1)
 end
