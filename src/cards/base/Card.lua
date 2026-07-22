@@ -113,6 +113,16 @@ function Card:juice_up(scale_mod, rot_mod)
     Moveable.juice_up(self, scale_mod, rot_mod)
 end
 
+-- Game feel v2: pulinho vertical (ataque investe, joker proca) e crescida
+-- sem oscilação (defesa incha). Proxies pro Moveable, compõem com juice_up.
+function Card:hop_up(px, duration)
+    Moveable.hop_up(self, px, duration)
+end
+
+function Card:swell_up(scale_add, duration)
+    Moveable.swell_up(self, scale_add, duration)
+end
+
 -- ============================================================================
 -- CARD STATE ANIMATIONS (inspirado em card.lua do Balatro, linhas 1973-2240)
 -- ============================================================================
@@ -705,7 +715,9 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
     if not self.isHovered and not self.isDragging then
         ambientY = math.sin(love.timer.getTime() * 0.666 + (self._ambientSeed or 0)) * 3
     end
+    -- hopOffset: pulinho do game feel v2 (negativo = sobe; decai sozinho).
     local totalOffsetY = baseOffsetY + hoverOffsetY + bobOffset + ambientY - baseFloat
+        + Moveable.hopOffset(self)
 
     local offsetX = self.offsetHoverX or 0
     local offsetY = self.offsetHoverY or 0
@@ -717,7 +729,8 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
     -- Scale uniforme (sem o hack legado de scale não-uniforme por tilt).
     -- Perspectiva "press" agora vem do shear abaixo.
     -- Juice: bump multiplicativo de scale quando `juice_up` foi chamado.
-    local s = self.currentScale * Moveable.scaleFactor(self)
+    -- swellFactor: crescida da defesa (game feel v2) — compõe com o juice.
+    local s = self.currentScale * Moveable.scaleFactor(self) * Moveable.swellFactor(self)
     local scaleX = s
     local scaleY = s
 

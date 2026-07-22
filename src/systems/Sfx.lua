@@ -42,6 +42,13 @@ function Sfx.playWithVariation(name, basePitch, pitchVar, baseVolume, volVar)
     a:play(name, opts)
 end
 
+-- Um som com esse código está registrado? (feel v2: JokerProcFx decide entre
+-- assinatura do joker e o jokerTick genérico sem disparar warning de missing).
+function Sfx.has(name)
+    local a = audio()
+    return a ~= nil and a.sources ~= nil and a.sources[name] ~= nil
+end
+
 -- ============== Music ==============
 
 function Sfx.playMusic(code, opts)

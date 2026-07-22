@@ -21,14 +21,23 @@ function JokerProcFx.tick(proc, ordinal)
     if not proc then return end
     ordinal = ordinal or 1
 
-    -- 1) Juice na carta do joker (o slot "pula" — relevo do Balatro).
+    -- 1) PULINHO do joker (feel v2): sobe com o lado direito levantando
+    -- (rotação anti-horária) — a "puladinha" pedida pelo dono, não só juice.
     local joker = proc.joker
-    if joker and joker.juice_up then
-        joker:juice_up(0.6, 0.2)
+    if joker then
+        if joker.hop_up then joker:hop_up(16, 0.34) end
+        if joker.juice_up then joker:juice_up(0.45, -0.16) end
     end
 
-    -- 2) Tick sonoro: pitch sobe a cada joker da cadeia (cascata satisfatória).
-    Sfx.playWithVariation("jokerTick", 1.0 + (ordinal - 1) * 0.08, 0.03)
+    -- 2) Som: ASSINATURA do joker se existir (audio/sfx/joker-sig/<id>.mp3,
+    -- registrada como jokerSig_<id> no main.lua) — cada lendário soa como ele
+    -- mesmo. Fallback: jokerTick genérico. Pitch sobe na cadeia nos dois casos.
+    local sig = joker and joker.id and ("jokerSig_" .. joker.id)
+    if sig and Sfx.has(sig) then
+        Sfx.playWithVariation(sig, 1.0 + (ordinal - 1) * 0.05, 0.02)
+    else
+        Sfx.playWithVariation("jokerTick", 1.0 + (ordinal - 1) * 0.08, 0.03)
+    end
 
     -- 3) Popup + faísca no slot (precisa da geometria da cena de gameplay).
     local ok, GameplayScene = pcall(require, "src.scenes.GameplayScene")

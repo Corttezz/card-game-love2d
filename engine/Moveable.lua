@@ -81,11 +81,68 @@ function Moveable.juice_up(obj, scale_mod, rot_mod)
     end
 end
 
+-- ============ HOP + SWELL (game feel v2, Jul/2026) ============
+-- Canais independentes do juice de scale/rot — compõem no draw.
+
+-- HOP: pulinho vertical (meia-senoide sobe-e-volta). px = altura do pulo.
+-- Uso: carta de ataque "investe", joker "pula" no proc.
+function Moveable.hop_up(obj, px, duration)
+    Moveable.initJuice(obj)
+    if _G.gameSettings and _G.gameSettings.reducedMotion then return end
+    obj.juice.hop_amt = px or 14
+    obj.juice.hop_timer = 0
+    obj.juice.hop_duration = duration or 0.32
+end
+
+-- SWELL: crescida SEM oscilação (sobe rápido, assenta devagar). Diferente do
+-- juice_up que vibra — o swell "incha" (carta de defesa ganhando corpo).
+function Moveable.swell_up(obj, scale_add, duration)
+    Moveable.initJuice(obj)
+    if _G.gameSettings and _G.gameSettings.reducedMotion then return end
+    obj.juice.swell_amt = scale_add or 0.3
+    obj.juice.swell_timer = 0
+    obj.juice.swell_duration = duration or 0.45
+end
+
+-- Offset Y atual do hop (negativo = pra cima). Some no offset vertical do draw.
+function Moveable.hopOffset(obj)
+    local j = obj.juice
+    if not j or not j.hop_duration or not j.hop_timer
+        or j.hop_timer >= j.hop_duration then return 0 end
+    local t = j.hop_timer / j.hop_duration
+    return -(j.hop_amt or 0) * math.sin(math.pi * t)
+end
+
+-- Fator multiplicativo do swell. Envelope: ataque rápido (18%), decay quadrático.
+function Moveable.swellFactor(obj)
+    local j = obj.juice
+    if not j or not j.swell_duration or not j.swell_timer
+        or j.swell_timer >= j.swell_duration then return 1 end
+    local t = j.swell_timer / j.swell_duration
+    local rise = 0.18
+    local env
+    if t < rise then
+        env = t / rise
+    else
+        env = (1 - (t - rise) / (1 - rise)) ^ 2
+    end
+    return 1 + (j.swell_amt or 0) * env
+end
+
 -- Atualiza decay. Chame em update(dt). Sine wave * cubic falloff (padrão Balatro).
 function Moveable.updateJuice(obj, dt)
     local j = obj.juice
-    if not j or j.duration <= 0 or j.timer >= j.duration then
-        if j then j.scale, j.r = 0, 0 end
+    if not j then return end
+    -- Hop/swell tickam SEMPRE (independentes do timer do juice scale/rot —
+    -- o early-return abaixo não pode congelá-los no meio do movimento).
+    if j.hop_duration and j.hop_timer and j.hop_timer < j.hop_duration then
+        j.hop_timer = j.hop_timer + dt
+    end
+    if j.swell_duration and j.swell_timer and j.swell_timer < j.swell_duration then
+        j.swell_timer = j.swell_timer + dt
+    end
+    if j.duration <= 0 or j.timer >= j.duration then
+        j.scale, j.r = 0, 0
         return
     end
     j.timer = j.timer + dt

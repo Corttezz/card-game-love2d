@@ -137,7 +137,28 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
             self:_spawnImpactParticles(card, targetX + cardW / 2, targetY + cardH / 2)
             local result = onCardProcessed and onCardProcessed(card) or {}
             self:_handleResult(card, result, targetX + cardW / 2, targetY + cardH / 2)
-            if card.juice_up then card:juice_up(0.5, 0.15) end
+
+            -- Game feel v2: reação FÍSICA por tipo no impacto.
+            --   ataque : pulinho + tilt (a carta INVESTE no golpe)
+            --   defesa : INCHA (swell sem vibração — escudo ganhando corpo)
+            --   efeito : pulinho leve + rebolada mística + camada de resolução
+            if card.type == "attack" then
+                if card.hop_up then card:hop_up(24, 0.30) end
+                if card.juice_up then card:juice_up(0.5, -0.18) end
+            elseif card.type == "defense" then
+                if card.swell_up then card:swell_up(0.32, 0.5) end
+                if card.juice_up then card:juice_up(0.12, 0.03) end
+            elseif card.type == "effect" then
+                if card.hop_up then card:hop_up(12, 0.34) end
+                if card.juice_up then card:juice_up(0.4, 0.22) end
+                -- 3ª camada sonora do efeito (cast no voo → chime no impacto
+                -- → resolve fechando). Ver _playLaunchSfx/_playImpactSfx.
+                scheduleAt(0.16, function()
+                    Sfx.play("effectResolve", { pitch = pitch })
+                end)
+            else
+                if card.juice_up then card:juice_up(0.5, 0.15) end
+            end
 
             -- Procs de joker (Balatro): cada joker que contribuiu tica em
             -- SEQUÊNCIA — juice no slot + popup do valor + som com pitch
@@ -211,6 +232,9 @@ function CombatSequence:_playLaunchSfx(card, pitch)
         Sfx.play("cardPlayAttack", opts)
     elseif t == "defense" then
         Sfx.play("cardPlayDefense", opts)
+    elseif t == "effect" then
+        -- 1ª camada do efeito: whoosh de conjuração no lançamento (v2).
+        Sfx.play("effectCast", opts)
     end
 end
 
@@ -226,6 +250,11 @@ function CombatSequence:_playImpactSfx(card, pitch)
         Sfx.play("armorSound", opts)
     elseif t == "joker" then
         Sfx.play("jokerActivate", opts)
+    elseif t == "effect" then
+        -- 2ª camada do efeito: chime de ativação (a 3ª, effectResolve, é
+        -- agendada no impacto). Cartas de efeito TEMÁTICAS já retornaram
+        -- no CardFeel.playImpact acima — aqui é o fallback sem tema.
+        Sfx.play("effectChime", opts)
     else
         Sfx.play("cardSelect", opts)
     end

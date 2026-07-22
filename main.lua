@@ -867,6 +867,23 @@ function love.load(loveArgs)
         audioSystem:loadSound("jokerTick",       "audio/sfx/joker-tick.mp3",       0.58)
         audioSystem:loadSound("enemyBuffRoar",   "audio/sfx/enemy-buff-roar.mp3",  0.55)
         audioSystem:loadSound("thornReflect",    "audio/sfx/thorn-reflect.mp3",    0.48)
+
+        -- Game feel v2: carta de EFEITO tem 3 camadas (cast no voo → chime
+        -- no impacto → resolve fechando) — identidade própria de "conjuração".
+        audioSystem:loadSound("effectCast",    "audio/sfx/effect-cast.mp3",    0.45)
+        audioSystem:loadSound("effectChime",   "audio/sfx/effect-chime.mp3",   0.50)
+        audioSystem:loadSound("effectResolve", "audio/sfx/effect-resolve.mp3", 0.50)
+
+        -- Game feel v2: assinatura sonora POR JOKER (são lendários — cada um
+        -- soa como ele mesmo no proc). SCAN do diretório: joker novo = só
+        -- dropar audio/sfx/joker-sig/<id>.mp3; registra como jokerSig_<id>.
+        -- JokerProcFx faz fallback pro jokerTick quando não há assinatura.
+        for _, f in ipairs(love.filesystem.getDirectoryItems("audio/sfx/joker-sig")) do
+            local sigId = f:match("^(.+)%.mp3$")
+            if sigId then
+                audioSystem:loadSound("jokerSig_" .. sigId, "audio/sfx/joker-sig/" .. f, 0.52)
+            end
+        end
     end
     
     -- Inicializa o menu

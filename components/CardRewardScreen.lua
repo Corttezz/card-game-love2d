@@ -301,6 +301,9 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
     -- FX de compra (carta voando pro deck + popups de ouro).
     self._flyCards = {}
     self._goldPopups = {}
+    -- Regra "escolha 1" (rewards): flag zera a cada abertura — sem isto a
+    -- SEGUNDA recompensa da run nasceria travada.
+    self._rewardTaken = false
 
     Debug.log("[CardRewardScreen] Aberta em modo", self.mode, "com", #self.shopOffers, "ofertas")
 
@@ -571,6 +574,10 @@ end
 function CardRewardScreen:purchaseOffer(offer, offerId)
     Debug.log("[CardRewardScreen] Purchasing", offer.name, "($" .. offer.cost .. ")")
 
+    -- REGRA "ESCOLHA 1" (fix Jul/2026 — dava pra pegar as 3): depois da
+    -- primeira carta, cliques atrasados durante o fade/close são ignorados.
+    if self.mode == "rewards" and self._rewardTaken then return end
+
     if not self.game.economySystem:canAfford(offer.cost) then
         self.game:addMessage(I18n.t("reward.insufficient_gold"), "error")
         Sfx.play("purchaseDeny")
@@ -664,6 +671,29 @@ function CardRewardScreen:purchaseOffer(offer, offerId)
 
         if self.onCardPurchased then
             self.onCardPurchased(offer)
+        end
+
+        -- REGRA "ESCOLHA 1" (rewards, StS): pegar UMA carta ENCERRA os
+        -- espólios — os botões morrem na hora, as cartas restantes DISSOLVEM
+        -- (queima Balatro) e a tela fecha sozinha seguindo o fluxo (mesmo
+        -- caminho do Seguir). Antes dava pra pegar as 3.
+        if self.mode == "rewards" and offer.type == "card" then
+            self._rewardTaken = true
+            self.cardButtons = {}
+            self:clearSelection()
+            self.hoveredOffer, self.hoveredInst = nil, nil
+            for _, inst in ipairs(self.cardInstances) do
+                local o = inst.shopOffer
+                if o and o ~= offer and not o.purchased and inst.start_dissolve then
+                    inst:start_dissolve(nil, true, 0.55, true)
+                end
+            end
+            EventManager.parallel(0.65, function()
+                if self.visible then
+                    self:hide()
+                    if self.onSkipped then self.onSkipped() end
+                end
+            end)
         end
     end
 end

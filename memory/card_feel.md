@@ -74,6 +74,29 @@ enemy-buff-roar, thorn-reflect. Volumes 0.48–0.58.
 - apply_debuff (carta OU trigger): burst da cor do status no inimigo.
 - Evoke de orbe: burst do elemento no ALVO (dano→inimigo, armor/cura→player).
 
+## Feel v2 (mesmo dia): física por tipo + assinatura por joker
+
+- **Moveable ganhou 2 canais novos** (compõem com o juice, tickam no
+  updateJuice SEMPRE — não deixar o early-return do juice congelá-los):
+  - `hop_up(obj, px, dur)` → pulinho vertical meia-senoide;
+    `hopOffset(obj)` somado no totalOffsetY do Card:draw.
+  - `swell_up(obj, add, dur)` → crescida SEM oscilação (rise 18% + decay²);
+    `swellFactor(obj)` multiplicado no scale do Card:draw.
+  - Proxies: `card:hop_up()` / `card:swell_up()`. Respeitam reducedMotion.
+- **Reação física por tipo no impacto** (CombatSequence):
+  ataque = hop 24px + juice rot −0.18 (investida, lado direito sobe);
+  defesa = swell +0.32 (incha, escudo ganhando corpo);
+  efeito = hop 12px + juice rot 0.22 (rebolada mística).
+- **Joker proc** = hop 16px + juice rot −0.16 (a "puladinha" pedida).
+- **Carta de efeito tem 3 CAMADAS sonoras**: effectCast (lançamento) →
+  effectChime no impacto (ou som do tema se houver) → effectResolve (+0.16s).
+- **Assinatura sonora POR JOKER**: `audio/sfx/joker-sig/<id>.mp3` → main.lua
+  REGISTRA POR SCAN do diretório como `jokerSig_<id>` (joker novo = dropar o
+  arquivo, zero código). JokerProcFx toca a assinatura (pitch +0.05/elo) com
+  fallback `jokerTick` via `Sfx.has()`. 28 assinaturas geradas (ElevenLabs),
+  prompts casados com a identidade (Vampiro=drenar sangue, Bobo=guizos,
+  Juggernaut=passo blindado, Gema=ping de cristal...).
+
 ## Regras a preservar
 
 - Elemento define o SOM do impacto; sem tema → sword/armor (identidade física
