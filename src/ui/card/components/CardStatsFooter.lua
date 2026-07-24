@@ -10,14 +10,24 @@
 --   joker   → constelação (fallback — jokers usam JokerFooter)
 -- O valor mora num CARTUCHO octogonal (placa engastada), não solto no ar.
 
-local Palette     = require("src.ui.Palette")
-local PixelCanvas = require("src.ui.PixelCanvas")
-local PixelFont   = require("src.ui.PixelFont")
-local I18n        = require("src.i18n.I18n")
+local Palette          = require("src.ui.Palette")
+local PixelCanvas      = require("src.ui.PixelCanvas")
+local PixelFont        = require("src.ui.PixelFont")
+local I18n             = require("src.i18n.I18n")
+local BackgroundLoader = require("src.ui.card.BackgroundLoader")
 
 local CardStatsFooter = {}
 
 CardStatsFooter.HEIGHT = 20
+
+-- v3 (feedback do dono): textura de fundo POR TIPO (patterns PixelLab, os
+-- mesmos da art slot) — o fundo de tinta chapada da v2 ficou pobre.
+local TYPE_PATTERNS = {
+    attack  = "blood",
+    defense = "metal",
+    effect  = "arcane",
+    joker   = "void",
+}
 
 local LABEL_KEYS = {
     attack  = "card_type.attack",
@@ -78,15 +88,21 @@ local function drawProceduralGlyph(name, x, y, color)
     end
 end
 
--- L-bracket 3×3 em cada canto (moldura de placa metálica).
-local function drawCornerBracket(x, y, dx, dy)
-    for i = 0, 2 do
-        PixelCanvas.pixel(x + dx * i, y,          Palette.AGED_GOLD)
-        PixelCanvas.pixel(x,          y + dy * i, Palette.AGED_GOLD)
+-- Cunha de canto (v3.1): triângulo escalonado 5-3-2-1-1 abraçando as DUAS
+-- bordas internas do bevel. Os L-brackets da v2 eram "partezinhas" soltas
+-- e desalinhadas da base (feedback do dono).
+local WEDGE_SPANS = { 5, 3, 2, 1, 1 }
+local function drawCornerWedge(x, y, dx, dy)
+    for row = 0, 4 do
+        for col = 0, WEDGE_SPANS[row + 1] - 1 do
+            local c = Palette.AGED_GOLD
+            if row + col >= WEDGE_SPANS[1] - 1 then
+                c = Palette.AGED_GOLD_DARK   -- hipotenusa em sombra
+            end
+            PixelCanvas.pixel(x + dx * col, y + dy * row, c)
+        end
     end
-    PixelCanvas.pixel(x, y, Palette.AGED_GOLD_LIGHT)
-    PixelCanvas.pixel(x + dx * 2, y, Palette.AGED_GOLD_LIGHT)
-    PixelCanvas.pixel(x, y + dy * 2, Palette.AGED_GOLD_LIGHT)
+    PixelCanvas.pixel(x, y, Palette.AGED_GOLD_LIGHT)  -- quina pega luz
 end
 
 -- ===== MEDALHÃO-SELO 13×13 (esquerda): anel de ouro + corpo no typeColor
@@ -132,45 +148,24 @@ local function drawSealMedallion(cx, cy, typeColor)
     PixelCanvas.pixel(cx - 2, cy - 2, Palette.PARCHMENT_LIGHT)
 end
 
--- ===== CARTUCHO DO VALOR (direita): placa octogonal engastada. Largura
--- dinâmica (valores de 2 dígitos crescem pra dentro). h fixa 15.
-local function cartoucheCut(row, hgt)
-    local c = 3
-    if row < c then return c - row end
-    if row >= hgt - c then return row - (hgt - c - 1) end
-    return 0
-end
-
-local function drawCartouche(x2, cy, cw, typeColor)
-    -- x2 = borda DIREITA; retorna x1 (borda esquerda) pro layout.
-    local ch = 15
-    local x1 = x2 - cw + 1
-    local top = cy - 7
-    -- Silhueta INK (carimbo 4-dir do corpo octogonal)
-    for _, off in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 }, { 0, 0 } }) do
-        for row = 0, ch - 1 do
-            local cut = cartoucheCut(row, ch)
-            PixelCanvas.hline(x1 + cut + off[1], top + row + off[2],
-                cw - cut * 2, Palette.INK)
-        end
-    end
-    -- Corpo: typeColor escurecido (fundo do número), NW mais claro
-    for row = 1, ch - 2 do
-        local cut = cartoucheCut(row, ch) + 1
-        local bodyW = cw - cut * 2
-        if bodyW > 0 then
-            local base = Palette.darken(typeColor, 0.35)
-            if row <= 5 then base = Palette.darken(typeColor, 0.15) end
-            if row >= ch - 4 then base = Palette.darken(typeColor, 0.55) end
-            PixelCanvas.hline(x1 + cut, top + row, bodyW, base)
-        end
-    end
-    -- Filete de ouro no topo interno + engaste nas laterais (garras)
-    PixelCanvas.hline(x1 + 4, top + 1, cw - 8, Palette.AGED_GOLD)
-    PixelCanvas.hline(x1 + 4, top + ch - 2, cw - 8, Palette.AGED_GOLD_DARK)
-    PixelCanvas.pixel(x1 - 1, cy, Palette.AGED_GOLD)
-    PixelCanvas.pixel(x2 + 1, cy, Palette.AGED_GOLD)
-    return x1
+-- ===== LOSANGO DE ARREMATE (v3.1): a linha do tipo termina numa ponta de
+-- lança que "apresenta" o número. Substitui o cartucho octogonal da v3 —
+-- lia como um "domo" descolado da placa (feedback do dono) e a garra de
+-- engaste deixava rebarba dourada colada no número.
+local function drawStripeEnd(dX, cy, typeColor)
+    PixelCanvas.pixel(dX,     cy - 2, Palette.AGED_GOLD_LIGHT)
+    PixelCanvas.pixel(dX - 1, cy - 1, Palette.AGED_GOLD)
+    PixelCanvas.pixel(dX,     cy - 1, Palette.lighten(typeColor, 0.35))
+    PixelCanvas.pixel(dX + 1, cy - 1, Palette.AGED_GOLD)
+    PixelCanvas.pixel(dX - 2, cy,     Palette.AGED_GOLD_DARK)
+    PixelCanvas.pixel(dX - 1, cy,     typeColor)
+    PixelCanvas.pixel(dX,     cy,     Palette.PARCHMENT_LIGHT)
+    PixelCanvas.pixel(dX + 1, cy,     typeColor)
+    PixelCanvas.pixel(dX + 2, cy,     Palette.AGED_GOLD_DARK)
+    PixelCanvas.pixel(dX - 1, cy + 1, Palette.AGED_GOLD_DARK)
+    PixelCanvas.pixel(dX,     cy + 1, Palette.darken(typeColor, 0.45))
+    PixelCanvas.pixel(dX + 1, cy + 1, Palette.AGED_GOLD_DARK)
+    PixelCanvas.pixel(dX,     cy + 2, Palette.AGED_GOLD_DARK)
 end
 
 -- ===== CORRENTES ORNAMENTAIS POR TIPO (entre label e cartucho) =====
@@ -243,6 +238,26 @@ function CardStatsFooter.draw(w, h, card)
     PixelCanvas.rect(bx, by, bw, math.floor(bh / 2), inkTop)
     PixelCanvas.rect(bx, by + math.floor(bh / 2), bw, math.ceil(bh / 2), Palette.INK)
 
+    -- v3: TEXTURA por tipo sobre a tinta (baixa alpha — dá material sem
+    -- roubar legibilidade; mesmo pattern PixelLab da art slot do tipo).
+    local tex = BackgroundLoader.get(TYPE_PATTERNS[card.type])
+    if tex then
+        local quad = love.graphics.newQuad(0, 0, bw - 2, bh - 2,
+            tex:getWidth(), tex:getHeight())
+        love.graphics.setColor(1, 1, 1, 0.16)
+        love.graphics.draw(tex, quad, bx + 1, by + 1)
+        love.graphics.setColor(1, 1, 1, 1)
+    end
+
+    -- v3: a LINHA do tipo está de volta (feedback do dono — a v2 tirou e o
+    -- rodapé perdeu a espinha). Full-width, 3 tons (luz de cima); medalhão,
+    -- label e cartucho desenham POR CIMA, e a corrente ornamental enriquece
+    -- o trecho visível dela.
+    local stripeY = cy - 1
+    PixelCanvas.hline(bx + 1, stripeY,     bw - 2, Palette.lighten(typeColor, 0.25))
+    PixelCanvas.hline(bx + 1, stripeY + 1, bw - 2, typeColor)
+    PixelCanvas.hline(bx + 1, stripeY + 2, bw - 2, Palette.darken(typeColor, 0.55))
+
     -- Bevel direcional (luz top-left, sombra bottom-right)
     PixelCanvas.hline(bx, by, bw, Palette.AGED_GOLD_LIGHT)
     PixelCanvas.vline(bx, by, bh, Palette.AGED_GOLD)
@@ -253,14 +268,19 @@ function CardStatsFooter.draw(w, h, card)
     PixelCanvas.hline(bx + 1, by + bh - 2, bw - 2, { 0, 0, 0, 0.8 })
     PixelCanvas.vline(bx + bw - 2, by + 1, bh - 2, Palette.INK)
 
-    -- Corner brackets
-    drawCornerBracket(bx + 2,      by + 2,       1,  1)
-    drawCornerBracket(bx + bw - 3, by + 2,      -1,  1)
-    drawCornerBracket(bx + 2,      by + bh - 3,  1, -1)
-    drawCornerBracket(bx + bw - 3, by + bh - 3, -1, -1)
+    -- Cunhas de canto (abraçam as duas bordas internas do bevel)
+    drawCornerWedge(bx + 2,      by + 2,       1,  1)
+    drawCornerWedge(bx + bw - 3, by + 2,      -1,  1)
+    drawCornerWedge(bx + 2,      by + bh - 3,  1, -1)
+    drawCornerWedge(bx + bw - 3, by + bh - 3, -1, -1)
 
-    -- ===== MEDALHÃO-SELO com o glifo do tipo (esquerda) =====
-    local medCX = bx + 10
+    -- ===== MEDALHÃO-SELO com o glifo do tipo, SOLDADO à borda esquerda =====
+    -- (v3.1: flutuando no meio da placa ele lia como "domo" descolado;
+    -- as alças de ouro ancoram o selo na moldura, como um rebite-mestre.)
+    local medCX = bx + 8
+    PixelCanvas.hline(bx + 1, cy - 1, 2, Palette.AGED_GOLD_DARK)
+    PixelCanvas.hline(bx + 1, cy,     2, Palette.AGED_GOLD)
+    PixelCanvas.hline(bx + 1, cy + 1, 2, Palette.AGED_GOLD_DARK)
     drawSealMedallion(medCX, cy, typeColor)
     local glyphName = GLYPH_NAMES[card.type]
     if glyphName then
@@ -278,7 +298,7 @@ function CardStatsFooter.draw(w, h, card)
     local font = PixelFont.get(10)
     love.graphics.setFont(font)
     local label = labelFor(card.type)
-    local labelX = bx + 19
+    local labelX = bx + 17
     local labelY = by + math.floor((bh - font:getHeight()) / 2)
     love.graphics.setColor(0, 0, 0, 1)
     for dx = -1, 1 do
@@ -304,16 +324,16 @@ function CardStatsFooter.draw(w, h, card)
     if value then
         local statFont = PixelFont.get(12)
         local valueW = statFont:getWidth(value)
-        local cw = math.max(15, valueW + 9)
-        local cartX2 = bx + bw - 4
-        local cartX1 = drawCartouche(cartX2, cy, cw, typeColor)
-        chainRight = cartX1 - 4
+        -- v3.1: número DIRETO na placa (o outline preto garante leitura sobre
+        -- linha/textura, como na v1) — o cartucho-domo morreu. A linha do
+        -- tipo termina num losango que apresenta o número.
+        local vx = bx + bw - 6 - valueW
+        local vy = by + math.floor((bh - statFont:getHeight()) / 2) - 1
+        local dX = vx - 6
+        drawStripeEnd(dX, cy, typeColor)
+        chainRight = dX - 5
 
         love.graphics.setFont(statFont)
-        local vx = cartX1 + math.floor((cw - valueW) / 2)
-        -- -1: fonte default imprime o dígito ~2px abaixo do y (ascender) —
-        -- mesma lição do badge de custo.
-        local vy = by + math.floor((bh - statFont:getHeight()) / 2) - 1
         love.graphics.setColor(0, 0, 0, 1)
         for dx = -1, 1 do
             for dy = -1, 1 do

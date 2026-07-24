@@ -4,8 +4,9 @@
 -- por um fio pontilhado, com sombra projetada e faíscas entre eles.
 -- A v1 era um rectOutline uniforme (pillow) com símbolos flutuando.
 
-local Palette     = require("src.ui.Palette")
-local PixelCanvas = require("src.ui.PixelCanvas")
+local Palette          = require("src.ui.Palette")
+local PixelCanvas      = require("src.ui.PixelCanvas")
+local BackgroundLoader = require("src.ui.card.BackgroundLoader")
 
 local JokerFooter = {}
 
@@ -77,6 +78,20 @@ function JokerFooter.draw(w, h)
     PixelCanvas.rect(bx, by, bw, math.floor(bh / 2), navyTop)
     PixelCanvas.rect(bx, by + math.floor(bh / 2), bw, math.ceil(bh / 2),
         Palette.TAROT_NAVY_DARK)
+
+    -- v3: textura "void" sobre o navy (céu noturno com material, não chapado)
+    local tex = BackgroundLoader.get("void")
+    if tex then
+        local quad = love.graphics.newQuad(0, 0, bw - 2, bh - 2,
+            tex:getWidth(), tex:getHeight())
+        love.graphics.setColor(1, 1, 1, 0.14)
+        love.graphics.draw(tex, quad, bx + 1, by + 1)
+        love.graphics.setColor(1, 1, 1, 1)
+    end
+
+    -- v3: filete de ouro ACIMA da placa (a v1 tinha e ligava o rodapé à
+    -- moldura; a v2 tirou e a placa ficou "solta" na base da carta).
+    PixelCanvas.hline(bx + 1, by - 1, bw - 2, Palette.TAROT_GOLD_DARK)
 
     -- Bevel direcional ouro-tarot (era rectOutline uniforme = pillow)
     PixelCanvas.hline(bx, by, bw, Palette.AGED_GOLD_LIGHT)
