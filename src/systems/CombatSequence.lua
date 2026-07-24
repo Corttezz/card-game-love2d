@@ -436,6 +436,21 @@ function CombatSequence:draw()
         end
     end
 
+    -- DEBUG FEEL (temporário): overlay IMPOSSÍVEL de não ver — prova de
+    -- build na tela + valores de movimento AO VIVO da 1ª carta voando.
+    if #self.flyingCards > 0 then
+        local c = self.flyingCards[1]
+        local txt = string.format("FDBG v3.1 | hop=%.1f scale=%.2f swell=%.2f",
+            Moveable.hopOffset(c), Moveable.scaleFactor(c), Moveable.swellFactor(c))
+        local f = FontManager.getFont(16)
+        love.graphics.setFont(f)
+        love.graphics.setColor(0, 0, 0, 0.75)
+        love.graphics.rectangle("fill", 8, 100, f:getWidth(txt) + 16, 26, 4, 4)
+        love.graphics.setColor(1, 0.2, 0.9, 1)
+        love.graphics.print(txt, 16, 105)
+        love.graphics.setColor(1, 1, 1, 1)
+    end
+
     -- Damage numbers (por cima)
     if #self.damageNumbers > 0 then
         local font = FontManager.getResponsiveFont(0.04, 32, "height")
