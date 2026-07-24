@@ -32,6 +32,16 @@ local PROC_TICK = 0.16
 local CombatSequence = {}
 CombatSequence.__index = CombatSequence
 
+-- DEBUG FEEL (temporário, caça "carta parada no impacto" — mesmo método do
+-- RDBG que achou a RAIZ dos espólios): loga em feel_debug.log no save dir o
+-- que o DRAW recebe de hop/juice/swell na sessão REAL do jogador.
+local Moveable = require("engine.Moveable")
+local function flog(fmt, ...)
+    pcall(love.filesystem.append, "feel_debug.log",
+        ("[FEEL +%.2f] "):format(love.timer and love.timer.getTime() or 0)
+        .. fmt:format(...) .. "\n")
+end
+
 function CombatSequence:new()
     local self = setmetatable({}, CombatSequence)
     self.active = false
@@ -62,6 +72,13 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
     self.active = true
     self.flyingCards = {}
     for _, c in ipairs(cards) do table.insert(self.flyingCards, c) end
+
+    -- DEBUG FEEL: separador por jogada (o log é zerado no BOOT, main.lua).
+    flog("---------------- startCombat n=%d ids=%s", #cards, (function()
+        local t = {}
+        for _, c in ipairs(cards) do t[#t + 1] = tostring(c.id) end
+        return table.concat(t, ",")
+    end)())
 
     local EM = _G.EventManager
     local Ev = _G.Event
@@ -158,6 +175,11 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
             --   ataque : investida (pulão + tilt) + recuo assentando
             --   defesa : INCHA visivelmente (swell longo, sem vibração)
             --   efeito : pulinho + rebolada mística em dois tempos
+            flog("IMPACT id=%s type=%s hop_up=%s juice_up=%s swell_up=%s rm=%s",
+                tostring(card.id), tostring(card.type),
+                tostring(card.hop_up ~= nil), tostring(card.juice_up ~= nil),
+                tostring(card.swell_up ~= nil),
+                tostring(_G.gameSettings and _G.gameSettings.reducedMotion))
             if card.type == "attack" then
                 if card.hop_up then card:hop_up(34, 0.42) end
                 if card.juice_up then card:juice_up(0.6, -0.22) end
@@ -181,6 +203,11 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
             else
                 if card.juice_up then card:juice_up(0.5, 0.15) end
             end
+            local jj = card.juice
+            flog("POS-KICK id=%s hop_amt=%s hop_dur=%s scale_amt=%s swell_amt=%s",
+                tostring(card.id), tostring(jj and jj.hop_amt),
+                tostring(jj and jj.hop_duration),
+                tostring(jj and jj.scale_amt), tostring(jj and jj.swell_amt))
 
             -- Procs de joker (Balatro): cada joker que contribuiu tica em
             -- SEQUÊNCIA — juice no slot + popup do valor + som com pitch
@@ -384,12 +411,27 @@ end
 function CombatSequence:draw()
     if #self.flyingCards == 0 and #self.damageNumbers == 0 then return end
 
+    -- DEBUG FEEL: amostra a cada ~0.08s o que o draw REAL recebe.
+    local now = love.timer and love.timer.getTime() or 0
+    local sample = false
+    if now - (self._dbgLast or 0) > 0.08 then
+        self._dbgLast = now
+        sample = true
+    end
+
     -- Desenha cartas voando COM O PRÓPRIO RENDERER: herda sombras, warp,
     -- juice, ambient tilt, dissolve. Isso é o grande ganho vs sistema antigo.
     for _, card in ipairs(self.flyingCards) do
         if card.draw and card.image then
             local x = (card.renderX and card.renderX ~= 0) and card.renderX or card.x
             local y = (card.renderY and card.renderY ~= 0) and card.renderY or card.y
+            if sample and card.juice and (card.juice.hop_amt or (card.juice.timer or 99) < (card.juice.duration or 0)) then
+                flog("DRAW id=%s x=%.0f y=%.0f hopOff=%.1f scaleF=%.3f swellF=%.3f rotOff=%.3f dis=%.2f",
+                    tostring(card.id), x, y,
+                    Moveable.hopOffset(card), Moveable.scaleFactor(card),
+                    Moveable.swellFactor(card), Moveable.rotOffset(card),
+                    card.dissolve or 0)
+            end
             card:draw(x, y, false, false)
         end
     end

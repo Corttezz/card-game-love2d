@@ -358,6 +358,11 @@ function love.load(loveArgs)
         pcall(love.filesystem.append, "reward_debug.log",
             ("[RDBG] ===== BOOT v%s em %s =====\n"):format(
                 tostring(require("src.core.Config").VERSION), os.date("%H:%M:%S")))
+        -- DEBUG FEEL: prova de build no log do feel (mesma técnica do RDBG).
+        -- write (não append): log fresco por SESSÃO, o boot é a 1ª linha.
+        pcall(love.filesystem.write, "feel_debug.log",
+            ("[FEEL] ===== BOOT v%s em %s =====\n"):format(
+                tostring(require("src.core.Config").VERSION), os.date("%H:%M:%S")))
     end
 
     -- Modo preview: renderiza algumas cartas em PNG e sai.

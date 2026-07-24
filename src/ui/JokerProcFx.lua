@@ -38,6 +38,13 @@ function JokerProcFx.tick(proc, ordinal)
         if joker.swell_up then joker:swell_up(0.22, 0.5) end
         if joker.juice_up then joker:juice_up(0.55, -0.20) end
     end
+    -- DEBUG FEEL (temporário): prova em jogo real de que o tick achou e
+    -- kickou a instância desenhada.
+    pcall(love.filesystem.append, "feel_debug.log",
+        ("[FEEL] JOKER-TICK slot=%s inst=%s viaLookup=%s hop_amt=%s\n"):format(
+            tostring(proc.slotIndex), tostring(joker ~= nil),
+            tostring(joker ~= proc.joker),
+            tostring(joker and joker.juice and joker.juice.hop_amt)))
 
     -- 2) Som: ASSINATURA do joker se existir (audio/sfx/joker-sig/<id>.mp3,
     -- registrada como jokerSig_<id> no main.lua) — cada lendário soa como ele
