@@ -73,18 +73,33 @@ function JokerFooter.draw(w, h)
     -- Sombra externa sob a placa
     PixelCanvas.rect(bx, by + bh, bw, 1, { 0, 0, 0, 0.7 })
 
-    -- Fundo navy 2 tons (luz de cima)
+    -- Fundo navy em DEGRADÊ contínuo (v3.4: o split 2-tons tinha emenda
+    -- horizontal dura — mesma "reta" do rodapé standard).
     local navyTop = Palette.lerp(Palette.TAROT_NAVY, Palette.TAROT_GOLD_DARK, 0.10)
-    PixelCanvas.rect(bx, by, bw, math.floor(bh / 2), navyTop)
-    PixelCanvas.rect(bx, by + math.floor(bh / 2), bw, math.ceil(bh / 2),
-        Palette.TAROT_NAVY_DARK)
+    for row = 0, bh - 1 do
+        local t = row / (bh - 1)
+        PixelCanvas.hline(bx, by + row, bw,
+            Palette.lerp(navyTop, Palette.TAROT_NAVY_DARK, t))
+    end
 
-    -- v3: textura "void" sobre o navy (céu noturno com material, não chapado)
+    -- Grão do material (denso e muito sutil — matéria, não ruído)
+    for y = by + 1, by + bh - 2 do
+        for x = bx + 1, bx + bw - 2 do
+            local g = (x * 3557 + y * 2953) % 17
+            if g == 0 then
+                PixelCanvas.pixel(x, y, { 1, 1, 1, 0.04 })
+            elseif g == 1 then
+                PixelCanvas.pixel(x, y, { 0, 0, 0, 0.10 })
+            end
+        end
+    end
+
+    -- Textura "void" sobre o navy (v3.4: alpha 0.14→0.24)
     local tex = BackgroundLoader.get("void")
     if tex then
         local quad = love.graphics.newQuad(0, 0, bw - 2, bh - 2,
             tex:getWidth(), tex:getHeight())
-        love.graphics.setColor(1, 1, 1, 0.14)
+        love.graphics.setColor(1, 1, 1, 0.24)
         love.graphics.draw(tex, quad, bx + 1, by + 1)
         love.graphics.setColor(1, 1, 1, 1)
     end
@@ -93,13 +108,35 @@ function JokerFooter.draw(w, h)
     -- moldura; a v2 tirou e a placa ficou "solta" na base da carta).
     PixelCanvas.hline(bx + 1, by - 1, bw - 2, Palette.TAROT_GOLD_DARK)
 
-    -- Bevel direcional ouro-tarot (era rectOutline uniforme = pillow)
+    -- Bevel direcional ouro-tarot (era rectOutline uniforme = pillow).
+    -- v3.2: linha interna de baixo era preta — vala entre placa e moldura;
+    -- agora bronze-tarot (flush).
+    local bronze = Palette.lerp(Palette.TAROT_GOLD_DARK, Palette.INK, 0.45)
     PixelCanvas.hline(bx, by, bw, Palette.AGED_GOLD_LIGHT)
     PixelCanvas.vline(bx, by, bh, Palette.TAROT_GOLD)
     PixelCanvas.hline(bx, by + bh - 1, bw, Palette.TAROT_GOLD_DARK)
     PixelCanvas.vline(bx + bw - 1, by, bh, Palette.TAROT_GOLD_DARK)
     PixelCanvas.hline(bx + 1, by + 1, bw - 2, Palette.TAROT_GOLD_DARK)
-    PixelCanvas.hline(bx + 1, by + bh - 2, bw - 2, { 0, 0, 0, 0.6 })
+    PixelCanvas.hline(bx + 1, by + bh - 2, bw - 2, bronze)
+
+    -- Desgaste sutil (v3.3, realista): lascas de 2px CONCENTRADAS nas
+    -- bordas (onde a mão gasta), centro quase intocado — nada de
+    -- pixel-confete solto (feedback do dono). Determinístico.
+    for y = by, by + bh - 1 do
+        for x = bx, bx + bw - 2 do
+            local edgeDist = math.min(x - bx, (bx + bw - 1) - x,
+                                      y - by, (by + bh - 1) - y)
+            local r = (x * 7919 + y * 6271) % 223
+            local thresh
+            if edgeDist <= 1 then thresh = 8
+            elseif edgeDist <= 3 then thresh = 2
+            else thresh = 0 end
+            if r < thresh then
+                PixelCanvas.pixel(x,     y, { 0, 0, 0, 0.28 })
+                PixelCanvas.pixel(x + 1, y, { 0, 0, 0, 0.16 })
+            end
+        end
+    end
 
     -- Diamantes de engaste nas pontas (ligam a placa à moldura)
     PixelCanvas.pixel(bx - 1, cy, Palette.TAROT_GOLD)

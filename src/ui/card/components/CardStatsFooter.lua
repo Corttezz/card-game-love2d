@@ -180,15 +180,17 @@ local function chainBlades(x1, x2, cy)
     end
 end
 
--- defense: banda rivetada — trilho duplo de aço com rebites 2×2.
+-- defense: banda rivetada — tachas em losango sombreado sobre a linha.
+-- v3.3: os rebites 2×2 com pixel de INK liam como "quadradinho de quebra
+-- de cor" na faixa de aço (feedback do dono) — tacha redonda-losango com
+-- luz em cima e sombra embaixo assenta na linha em vez de brigar com ela.
 local function chainRivets(x1, x2, cy)
-    PixelCanvas.hline(x1, cy - 1, x2 - x1 + 1, Palette.STEEL)
-    PixelCanvas.hline(x1, cy + 1, x2 - x1 + 1, Palette.darken(Palette.STEEL, 0.4))
     for x = x1 + 2, x2 - 2, 5 do
         PixelCanvas.pixel(x,     cy - 1, Palette.STEEL_LIGHT)
-        PixelCanvas.pixel(x + 1, cy - 1, Palette.STEEL)
-        PixelCanvas.pixel(x,     cy,     Palette.STEEL)
-        PixelCanvas.pixel(x + 1, cy,     Palette.INK)
+        PixelCanvas.pixel(x - 1, cy,     Palette.STEEL)
+        PixelCanvas.pixel(x,     cy,     Palette.lighten(Palette.STEEL, 0.45))
+        PixelCanvas.pixel(x + 1, cy,     Palette.darken(Palette.STEEL, 0.35))
+        PixelCanvas.pixel(x,     cy + 1, Palette.darken(Palette.STEEL, 0.55))
     end
 end
 
@@ -221,6 +223,45 @@ local CHAINS = {
     effect  = chainVine,
 }
 
+-- ===== DESGASTE (v3.2, pedido do dono: "impressão de algo mais velho,
+-- carta diferente e velha"): lascas escuras, pontos de ferrugem e poeira
+-- clara espalhados pela placa. DETERMINÍSTICO: hash por pixel + seed do id
+-- da carta — cada carta envelhece com padrão próprio, estável entre
+-- re-renders (nada de random no draw; regra do projeto).
+local function seedFrom(id)
+    local s = 0
+    for i = 1, #(id or "") do
+        s = (s + id:byte(i) * i * 31) % 9973
+    end
+    return s
+end
+
+local RUST_TINT = { 0.55, 0.29, 0.12, 0.40 }
+
+-- v3.3 (feedback: "pixels soltos sem sentido"): desgaste REALISTA —
+-- concentrado nas bordas/cantos (onde a mão gasta a placa), em LASCAS de
+-- 2px deitadas (nunca pixel-confete), ferrugem só grudada na moldura, e
+-- centro da placa quase intocado. Sem poeira branca (era o "quadradinho").
+local function drawWear(bx, by, bw, bh, seed)
+    for y = by, by + bh - 1 do
+        for x = bx, bx + bw - 2 do
+            local edgeDist = math.min(x - bx, (bx + bw - 1) - x,
+                                      y - by, (by + bh - 1) - y)
+            local r = (x * 7919 + y * 6271 + seed * 131) % 211
+            local thresh
+            if edgeDist <= 1 then thresh = 9
+            elseif edgeDist <= 3 then thresh = 3
+            else thresh = 1 end
+            if r < thresh then
+                PixelCanvas.pixel(x,     y, { 0, 0, 0, 0.28 })
+                PixelCanvas.pixel(x + 1, y, { 0, 0, 0, 0.16 })
+            elseif r > 205 and edgeDist == 0 then
+                PixelCanvas.pixel(x, y, RUST_TINT)
+            end
+        end
+    end
+end
+
 function CardStatsFooter.draw(w, h, card)
     local fh = CardStatsFooter.HEIGHT
     local fy = h - fh - 1
@@ -233,18 +274,38 @@ function CardStatsFooter.draw(w, h, card)
     -- Sombra externa embaixo do banner
     PixelCanvas.rect(bx, by + bh, bw, 1, { 0, 0, 0, 0.7 })
 
-    -- Fundo 2 tons de ink (luz vinda de cima)
-    local inkTop = Palette.lerp(Palette.INK, Palette.PARCHMENT_DARK, 0.18)
-    PixelCanvas.rect(bx, by, bw, math.floor(bh / 2), inkTop)
-    PixelCanvas.rect(bx, by + math.floor(bh / 2), bw, math.ceil(bh / 2), Palette.INK)
+    -- Fundo em DEGRADÊ contínuo (v3.4): o split 2-tons tinha uma emenda
+    -- horizontal dura no meio — "reta onde a cor muda drasticamente"
+    -- (feedback do dono, visível na defesa). Lerp por linha = sem emenda.
+    local inkTop = Palette.lerp(Palette.INK, Palette.PARCHMENT_DARK, 0.20)
+    for row = 0, bh - 1 do
+        local t = row / (bh - 1)
+        PixelCanvas.hline(bx, by + row, bw, Palette.lerp(inkTop, Palette.INK, t))
+    end
 
-    -- v3: TEXTURA por tipo sobre a tinta (baixa alpha — dá material sem
-    -- roubar legibilidade; mesmo pattern PixelLab da art slot do tipo).
+    -- GRÃO do material (v3.4, "mais detalhes e mais pixels no background"):
+    -- variação densa e MUITO sutil por hash — superfície com matéria, sem
+    -- virar ruído (é textura, não o desgaste das bordas).
+    local grainSeed = 0
+    for i = 1, #(card.id or "") do grainSeed = (grainSeed + card.id:byte(i)) % 4093 end
+    for y = by + 1, by + bh - 2 do
+        for x = bx + 1, bx + bw - 2 do
+            local g = (x * 3557 + y * 2953 + grainSeed * 41) % 17
+            if g == 0 then
+                PixelCanvas.pixel(x, y, { 1, 1, 1, 0.045 })
+            elseif g == 1 then
+                PixelCanvas.pixel(x, y, { 0, 0, 0, 0.10 })
+            end
+        end
+    end
+
+    -- Textura por tipo sobre a tinta (v3.4: alpha 0.16→0.26 — a 0.16 o
+    -- pattern era invisível e o fundo lia chapado).
     local tex = BackgroundLoader.get(TYPE_PATTERNS[card.type])
     if tex then
         local quad = love.graphics.newQuad(0, 0, bw - 2, bh - 2,
             tex:getWidth(), tex:getHeight())
-        love.graphics.setColor(1, 1, 1, 0.16)
+        love.graphics.setColor(1, 1, 1, 0.26)
         love.graphics.draw(tex, quad, bx + 1, by + 1)
         love.graphics.setColor(1, 1, 1, 1)
     end
@@ -258,21 +319,29 @@ function CardStatsFooter.draw(w, h, card)
     PixelCanvas.hline(bx + 1, stripeY + 1, bw - 2, typeColor)
     PixelCanvas.hline(bx + 1, stripeY + 2, bw - 2, Palette.darken(typeColor, 0.55))
 
-    -- Bevel direcional (luz top-left, sombra bottom-right)
+    -- Bevel direcional (luz top-left, sombra bottom-right).
+    -- v3.2: as linhas internas de baixo/direita eram PRETO puro — abriam uma
+    -- vala escura entre as cunhas de canto e a moldura ("não tá coladinho",
+    -- feedback do dono). Agora bronze (ouro sombreado): flush com as cunhas.
+    local bronze = Palette.lerp(Palette.AGED_GOLD_DARK, Palette.INK, 0.45)
     PixelCanvas.hline(bx, by, bw, Palette.AGED_GOLD_LIGHT)
     PixelCanvas.vline(bx, by, bh, Palette.AGED_GOLD)
     PixelCanvas.hline(bx, by + bh - 1, bw, Palette.AGED_GOLD_DARK)
     PixelCanvas.vline(bx + bw - 1, by, bh, Palette.AGED_GOLD_DARK)
     PixelCanvas.hline(bx + 1, by + 1, bw - 2, Palette.AGED_GOLD)
     PixelCanvas.vline(bx + 1, by + 1, bh - 2, Palette.AGED_GOLD_DARK)
-    PixelCanvas.hline(bx + 1, by + bh - 2, bw - 2, { 0, 0, 0, 0.8 })
-    PixelCanvas.vline(bx + bw - 2, by + 1, bh - 2, Palette.INK)
+    PixelCanvas.hline(bx + 1, by + bh - 2, bw - 2, bronze)
+    PixelCanvas.vline(bx + bw - 2, by + 1, bh - 2, bronze)
 
     -- Cunhas de canto (abraçam as duas bordas internas do bevel)
     drawCornerWedge(bx + 2,      by + 2,       1,  1)
     drawCornerWedge(bx + bw - 3, by + 2,      -1,  1)
     drawCornerWedge(bx + 2,      by + bh - 3,  1, -1)
     drawCornerWedge(bx + bw - 3, by + bh - 3, -1, -1)
+
+    -- Desgaste envelhecido POR CARTA (sobre placa, bevel, linha e cunhas;
+    -- medalhão/label/número desenham depois e ficam limpos por cima)
+    drawWear(bx, by, bw, bh, seedFrom(card.id))
 
     -- ===== MEDALHÃO-SELO com o glifo do tipo, SOLDADO à borda esquerda =====
     -- (v3.1: flutuando no meio da placa ele lia como "domo" descolado;
