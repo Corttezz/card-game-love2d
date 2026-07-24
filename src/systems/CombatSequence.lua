@@ -181,17 +181,17 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
                 tostring(card.swell_up ~= nil),
                 tostring(_G.gameSettings and _G.gameSettings.reducedMotion))
             if card.type == "attack" then
-                if card.hop_up then card:hop_up(34, 0.42) end
-                if card.juice_up then card:juice_up(0.6, -0.22) end
-                scheduleAt(0.26, function()
-                    if card.juice_up then card:juice_up(0.28, 0.10) end
-                end)
+                -- v3.2: pulo CHUNKY (estala-segura-cai-quica) + pop de escala
+                -- (swell curto lê melhor que vibração de 50rad/s) + tilt.
+                if card.hop_up then card:hop_up(44, 0.50) end
+                if card.swell_up then card:swell_up(0.20, 0.35) end
+                if card.juice_up then card:juice_up(0.4, -0.24) end
             elseif card.type == "defense" then
-                if card.swell_up then card:swell_up(0.45, 0.7) end
-                if card.hop_up then card:hop_up(8, 0.30) end
+                if card.swell_up then card:swell_up(0.50, 0.6) end
+                if card.hop_up then card:hop_up(10, 0.35) end
             elseif card.type == "effect" then
-                if card.hop_up then card:hop_up(16, 0.40) end
-                if card.juice_up then card:juice_up(0.5, 0.25) end
+                if card.hop_up then card:hop_up(20, 0.45) end
+                if card.juice_up then card:juice_up(0.45, 0.28) end
                 scheduleAt(0.18, function()
                     if card.juice_up then card:juice_up(0.32, -0.2) end
                 end)

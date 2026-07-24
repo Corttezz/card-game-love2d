@@ -105,12 +105,29 @@ function Moveable.swell_up(obj, scale_add, duration)
 end
 
 -- Offset Y atual do hop (negativo = pra cima). Some no offset vertical do draw.
+-- v3.2: envelope CHUNKY (feedback do dono "se mexe é mt pouco") — meia-senoide
+-- suave lê como flutuação invisível; o olho precisa de ESTALO + PAUSA:
+-- sobe num estalo (12%), SEGURA no alto (até 45%), cai rápido, QUICA no fim.
 function Moveable.hopOffset(obj)
     local j = obj.juice
     if not j or not j.hop_duration or not j.hop_timer
         or j.hop_timer >= j.hop_duration then return 0 end
     local t = j.hop_timer / j.hop_duration
-    return -(j.hop_amt or 0) * math.sin(math.pi * t)
+    local amt = j.hop_amt or 0
+    local k
+    if t < 0.12 then
+        local u = t / 0.12
+        k = 1 - (1 - u) ^ 3               -- estalo pra cima (easeOutCubic)
+    elseif t < 0.45 then
+        k = 1                              -- segura no alto (tempo de LER)
+    elseif t < 0.75 then
+        local u = (t - 0.45) / 0.30
+        k = 1 - u * u                      -- cai rápido (easeInQuad)
+    else
+        local u = (t - 0.75) / 0.25
+        k = 0.22 * math.sin(math.pi * u)   -- quique final
+    end
+    return -amt * k
 end
 
 -- Fator multiplicativo do swell. Envelope: ataque rápido (18%), decay quadrático.
@@ -119,12 +136,16 @@ function Moveable.swellFactor(obj)
     if not j or not j.swell_duration or not j.swell_timer
         or j.swell_timer >= j.swell_duration then return 1 end
     local t = j.swell_timer / j.swell_duration
-    local rise = 0.18
+    -- v3.2: incha num ESTALO (8%), SEGURA inchada (até 55% — leitura), e só
+    -- então desinfla. O decay suave desde o início lia como "nada mexeu".
     local env
-    if t < rise then
-        env = t / rise
+    if t < 0.08 then
+        local u = t / 0.08
+        env = 1 - (1 - u) ^ 3
+    elseif t < 0.55 then
+        env = 1
     else
-        env = (1 - (t - rise) / (1 - rise)) ^ 2
+        env = (1 - (t - 0.55) / 0.45) ^ 2
     end
     return 1 + (j.swell_amt or 0) * env
 end
