@@ -6,9 +6,11 @@
 
 return {
     { match = { "orbe", "canaliza", "evoca", "orb", "channel", "evoke", "valor" }, name = "Orbes",
-      -- Rebalance v2 (Jul/2026) + OrbRow: a fileira acima do seu painel mostra
-      -- os 3 slots; o numero no orbe e o PULSO por turno (ja com Foco).
-      text = "Ficam na fileira acima do seu painel (3 slots). O numero no orbe = pulso no fim do SEU turno (ja conta Foco). Evocar dispara o efeito cheio: Raio=dano, Gelo=armadura, Fogo=dano+queima, Sagrado=cura, Sombra=cresce e evoca x2. O mais a ESQUERDA evoca primeiro; slots cheios, canalizar evoca o mais antigo." },
+      -- CURTO de proposito (feedback Jul/2026: "essas desc de mago estao
+      -- muito grandes" — o tooltip virava um paragrafo-monstro). A regra
+      -- completa por elemento vive no hover da FILEIRA DE ORBES (OrbRow →
+      -- status.orb_*), que e onde o jogador olha quando importa.
+      text = "Vai pra fileira de orbes (3 slots) e PULSA no fim do seu turno (numero no orbe). Evocar dispara o efeito cheio. Detalhes: passe o mouse na fileira." },
     { match = { "exaurir", "exhaust" }, name = "Exaurir",
       text = "Uso unico POR BATALHA: sai do baralho ate a proxima." },
     { match = { "veneno", "poison" }, name = "Veneno",
