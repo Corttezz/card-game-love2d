@@ -56,7 +56,7 @@ local state = {
 -- Tamanhos lógicos (em pixels da janela; LÖVE escala automaticamente).
 local LOADING_BAR = { w = 320, h = 18, pad = 2 }
 local MINI_SIZE   = { w = 56, h = 84 }
-local NUM_MINI    = 22
+local NUM_MINI    = 34
 
 -- Diagonal ratio do spawn radius das mini-cartas (baseado em max(W,H)).
 -- 0.7 = bordas extremas, faz o voo parecer "vindo de longe".
@@ -362,18 +362,31 @@ local function startSplashSequence()
     --     fade final acontece DENTRO do disco (some na luz, não no ar).
     local armBase = math.random() * math.pi * 2
     for i = 1, NUM_MINI do
-        local delay = 1.80 + (i - 1) * 0.09
+        local delay = 1.80 + (i - 1) * 0.075
         EM.parallel(delay, function()
             local W, H = love.graphics.getWidth(), love.graphics.getHeight()
-            -- v13.1: raio ~0.42 da tela — o voo INTEIRO acontece em cena
-            -- (0.7 deixava as cartas fora da tela na maior parte da vida;
-            -- a cena ficava esparsa — revisão por captura)
-            local radius = math.max(W, H) * 0.42
+            local angle0 = armBase + i * 0.7 + (math.random() - 0.5) * 0.18
+
+            -- v13.2 (feedback: "parece que algumas aparecem do nada"): a
+            -- carta nasce LOGO ALÉM DA BORDA da tela na direção do próprio
+            -- ângulo — entra voando de fora, nunca materializa no meio da
+            -- cena. Ray-cast do centro da lua até sair do retângulo da
+            -- tela (+margem de meia carta).
+            local sx, sy = chamberAnchor(SIGIL_IX, SIGIL_IY)
+            local dx, dy = math.cos(angle0), math.sin(angle0)
+            local margin = 70
+            local tExit = math.huge
+            if dx > 1e-6 then tExit = math.min(tExit, (W + margin - sx) / dx)
+            elseif dx < -1e-6 then tExit = math.min(tExit, (-margin - sx) / dx) end
+            if dy > 1e-6 then tExit = math.min(tExit, (H + margin - sy) / dy)
+            elseif dy < -1e-6 then tExit = math.min(tExit, (-margin - sy) / dy) end
+            if tExit == math.huge then tExit = math.max(W, H) * 0.7 end
+            local radius = tExit + math.random() * 40
 
             local mc = {
-                angle0   = armBase + i * 0.7 + (math.random() - 0.5) * 0.18,
+                angle0   = angle0,
                 swirl    = math.pi * (1.5 + math.random() * 0.5),
-                radius   = radius * (0.90 + math.random() * 0.18),
+                radius   = radius,
                 angle    = 0,      -- derivado no update (θ0 + swirl·u^2.2)
                 dist     = radius,
                 rot      = 0,      -- derivado (tangente da espiral)
@@ -398,7 +411,7 @@ local function startSplashSequence()
         end, QUEUE)
     end
     -- fim da cascade: último spawn + voo mais longo (~1.35s)
-    local tCascadeEnd = 1.80 + (NUM_MINI - 1) * 0.09 + 1.40
+    local tCascadeEnd = 1.80 + (NUM_MINI - 1) * 0.075 + 1.40
 
     -- TÍTULO LETRA-A-LETRA (feedback do dono): cada letra "carimba" na tela
     -- com pop back_out + tick sonoro em pitch crescente. Começa DEPOIS da
