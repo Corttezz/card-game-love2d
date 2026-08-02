@@ -5,11 +5,29 @@
 -- exaurir remove da corrida). Ordem = prioridade (máx 3 por tooltip).
 
 return {
-    { match = { "orbe", "canaliza", "evoca", "orb", "channel", "evoke", "valor" }, name = "Orbes",
-      -- CURTO de proposito (feedback Jul/2026: "essas desc de mago estao
-      -- muito grandes" — o tooltip virava um paragrafo-monstro). A regra
-      -- completa por elemento vive no hover da FILEIRA DE ORBES (OrbRow →
-      -- status.orb_*), que e onde o jogador olha quando importa.
+    -- ===== ORBES: verbete POR ELEMENTO (feedback Jul/2026: "explicacao
+    -- apenas da orbe que tem relacao com a carta, nao de todas"). Todos no
+    -- group="orb": o primeiro que casar EXCLUI os demais do grupo — carta
+    -- de Fogo explica so o orbe de Fogo; o generico e fallback pra cartas
+    -- de orbe sem elemento (Evocar, Dualcast). Semantica canonica:
+    -- EffectSystem.orbPulseValue/orbEvokeValue (pulso no fim do SEU turno,
+    -- evocar = efeito cheio).
+    { match = { "raio", "lightning" }, name = "Orbe de Raio", group = "orb",
+      requires = { "orbe", "orb", "canaliza", "evoca", "channel", "evoke", "valor" },
+      text = "Canalizado, PULSA dano no inimigo no fim do seu turno; evocar descarrega o valor cheio." },
+    { match = { "gelo", "frost", "ice" }, name = "Orbe de Gelo", group = "orb",
+      requires = { "orbe", "orb", "canaliza", "evoca", "channel", "evoke", "valor" },
+      text = "Canalizado, PULSA armadura no fim do seu turno; evocar da a armadura cheia." },
+    { match = { "fogo", "fire" }, name = "Orbe de Fogo", group = "orb",
+      requires = { "orbe", "orb", "canaliza", "evoca", "channel", "evoke", "valor" },
+      text = "Canalizado, PULSA dano leve por turno; evocar causa o dano cheio + queimadura." },
+    { match = { "sagrado", "holy" }, name = "Orbe Sagrado", group = "orb",
+      requires = { "orbe", "orb", "canaliza", "evoca", "channel", "evoke", "valor" },
+      text = "Canalizado, PULSA cura leve por turno; evocar cura o valor cheio." },
+    { match = { "sombra", "dark", "shadow" }, name = "Orbe de Sombra", group = "orb",
+      requires = { "orbe", "orb", "canaliza", "evoca", "channel", "evoke", "valor" },
+      text = "Canalizado, CRESCE +2 por turno; evocar dispara em DOBRO." },
+    { match = { "orbe", "canaliza", "evoca", "orb", "channel", "evoke", "valor" }, name = "Orbes", group = "orb",
       text = "Vai pra fileira de orbes (3 slots) e PULSA no fim do seu turno (numero no orbe). Evocar dispara o efeito cheio. Detalhes: passe o mouse na fileira." },
     { match = { "exaurir", "exhaust" }, name = "Exaurir",
       text = "Uso unico POR BATALHA: sai do baralho ate a proxima." },

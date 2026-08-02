@@ -77,11 +77,30 @@ local function collectKeywords(desc)
     local lower = desc:lower()
     local ok, Keywords = pcall(require, "src.data.keywords")
     if not ok then return hits end
+    -- group: no maximo UM verbete por grupo (orbes por elemento — a carta
+    -- de Fogo explica so o orbe de Fogo, e o generico "Orbes" vira
+    -- fallback em vez de segundo verbete; feedback Jul/2026).
+    local groupHit = {}
     for _, kw in ipairs(Keywords) do
-        for _, mword in ipairs(kw.match) do
-            if lower:find(mword, 1, true) then
-                table.insert(hits, kw)
-                break
+        if not (kw.group and groupHit[kw.group]) then
+            -- requires: verbete só vale se a desc TAMBÉM contém uma das
+            -- palavras-contexto (ex: "fogo" sozinho não é orbe de Fogo —
+            -- precisa de "canaliza/evoca/orbe/valor" junto).
+            local ctxOk = true
+            if kw.requires then
+                ctxOk = false
+                for _, rword in ipairs(kw.requires) do
+                    if lower:find(rword, 1, true) then ctxOk = true break end
+                end
+            end
+            if ctxOk then
+                for _, mword in ipairs(kw.match) do
+                    if lower:find(mword, 1, true) then
+                        table.insert(hits, kw)
+                        if kw.group then groupHit[kw.group] = true end
+                        break
+                    end
+                end
             end
         end
         if #hits >= 3 then break end
