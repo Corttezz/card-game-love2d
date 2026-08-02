@@ -177,6 +177,22 @@ function M.run()
         WorldRoad._timeOfDay > 0.62 and WorldRoad._timeOfDay < 1)
     WorldRoad.resetRun()   -- não vaza estado pro resto da suíte
 
+    -- ===== 5b. MÃO CENTRALIZADA NA TELA (feedback Jul/2026) =====
+    do
+        GameplayScene.updatePlayButtonPosition()
+        local startX, spacing, _, n = GameplayScene.handLayout()
+        if n and n > 0 then
+            local cardW = 96 * (require("src.core.Config").Cards.BASE_SCALE or 1.333)
+            local fanCenter = startX + (spacing * (n - 1) + cardW) / 2
+            local center = love.graphics.getWidth() / 2
+            check(string.format(
+                "mão centrada na TELA (centro do leque %.0f vs %.0f)",
+                fanCenter, center), math.abs(fanCenter - center) <= 1)
+        else
+            check("mão centrada: sem cartas pra medir (inesperado)", false)
+        end
+    end
+
     -- ===== 6. SAVE NA ENCRUZILHADA: os nós pendentes sobrevivem ao
     -- save/load (bug: 'salvei escolhendo caminho, voltei e apareceu um
     -- inimigo do nada' — o Continuar roteia pro mapa SE há pendentes) =====

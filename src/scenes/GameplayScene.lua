@@ -144,14 +144,19 @@ local function handLayout()
     -- espaçamento "confortável" quando há poucas cartas (comportamento antigo)
     local maxSpacing = Config.Utils.getResponsiveSize(Config.UI.CARD_SPACING_RATIO, 120, "width")
 
-    -- Área da mão: da margem esquerda até o início dos botões (com folga). O
-    -- leque é centrado NESTA área — fica levemente à esquerda do centro da
-    -- tela (natural: os botões de ação ganham a coluna da direita, StS-style).
+    -- O leque é centrado NO CENTRO DA TELA (feedback Jul/2026: "as cartas
+    -- não estão ficando centralizadas" — centrar na área útil deixava a
+    -- mão deslocada pra esquerda). Os botões da direita continuam
+    -- protegidos: a MEIA-LARGURA disponível é o menor lado livre a partir
+    -- do centro (esquerda até a margem, direita até os botões) — com
+    -- muitas cartas o leque espreme SIMETRICAMENTE em torno do centro.
     local areaLeft  = 30
     local areaRight = (playButton and playButton.x or width * 0.80) - 16
     if areaRight < areaLeft + cardW then areaRight = areaLeft + cardW end
-    local areaW = areaRight - areaLeft
-    local areaCenter = (areaLeft + areaRight) / 2
+    local center = width / 2
+    local halfW = math.max(cardW / 2,
+        math.min(center - areaLeft, areaRight - center))
+    local areaW = halfW * 2
 
     local spacing
     if n > 1 then
@@ -162,8 +167,8 @@ local function handLayout()
     end
 
     local totalW = spacing * math.max(0, n - 1)
-    -- startX = top-left da 1ª carta pra que o leque fique centrado na área
-    local startX = areaCenter - (totalW + cardW) / 2
+    -- startX = top-left da 1ª carta pra que o leque fique centrado na TELA
+    local startX = center - (totalW + cardW) / 2
     return startX, spacing, cardY, n
 end
 GameplayScene.handLayout = handLayout
