@@ -347,45 +347,58 @@ local function startSplashSequence()
     -- 1.75s: WHOOSH grave da massa de cartas convergindo.
     EM.parallel(1.75, function() Sfx.play("bootCardWhoosh") end, QUEUE)
 
+    -- v13 REDEMOINHO DE VERDADE (feedback: "não está tão bom, precisa ser
+    -- mais bem feito"). O voo antigo era um ease radial com ~1 rad de arco:
+    -- lia como riscos retos convergindo. Agora a cinemática é de DRENO:
+    --   • raio: r = R·(1 − u^1.7) — parte lenta e majestosa, ACELERA ao
+    --     cair (matéria despencando no portal), não o contrário;
+    --   • giro: θ = θ0 + swirl·u^2.2 — o enrolar APERTA perto da lua
+    --     (quase todo o arco acontece no mergulho final);
+    --   • braços de GALÁXIA: cartas em cadeia (θ0 = base + i·0.7), não
+    --     ângulos aleatórios — o fluxo lê como correnteza entrando;
+    --   • orientação: a carta SURFA a tangente da espiral (rot = θ+90°
+    --     com wobble sutil), nada de tumble aleatório;
+    --   • escala/alpha: pop-in no nascimento, encolhe com o raio, e o
+    --     fade final acontece DENTRO do disco (some na luz, não no ar).
+    local armBase = math.random() * math.pi * 2
     for i = 1, NUM_MINI do
-        local delay = 1.80 + (i - 1) * 0.08
+        local delay = 1.80 + (i - 1) * 0.09
         EM.parallel(delay, function()
             local W, H = love.graphics.getWidth(), love.graphics.getHeight()
-            local angle = math.random() * math.pi * 2
-            local radius = math.max(W, H) * SPAWN_RADIUS_RATIO
+            -- v13.1: raio ~0.42 da tela — o voo INTEIRO acontece em cena
+            -- (0.7 deixava as cartas fora da tela na maior parte da vida;
+            -- a cena ficava esparsa — revisão por captura)
+            local radius = math.max(W, H) * 0.42
 
             local mc = {
-                angle    = angle,
-                -- v11 REDEMOINHO: todas orbitam no MESMO sentido (horário) —
-                -- sentidos aleatórios liam como espirais soltas, não furacão.
-                angleSpeed = 1.5 + math.random() * 1.2,   -- rad/s de órbita
-                distFrom = radius,
-                rot      = math.random() * math.pi * 2,
-                rotSpeed = (math.random() - 0.5) * 8,   -- rad/s tumble
+                angle0   = armBase + i * 0.7 + (math.random() - 0.5) * 0.18,
+                swirl    = math.pi * (1.5 + math.random() * 0.5),
+                radius   = radius * (0.90 + math.random() * 0.18),
+                angle    = 0,      -- derivado no update (θ0 + swirl·u^2.2)
+                dist     = radius,
+                rot      = 0,      -- derivado (tangente da espiral)
+                wobble   = math.random() * math.pi * 2,
                 alpha    = 0,
+                fadeMul  = 1,
                 scale    = 0,
                 age      = 0,
-                lifespan = 0.55 + math.random() * 0.10, -- 0.55..0.65
+                lifespan = 1.05 + math.random() * 0.30, -- voo com pompa
                 trail    = {},   -- rastro de fósforo (ghosting CRT)
                 _trailT  = 0,
                 _alive   = true,
             }
+            mc.angle = mc.angle0
             table.insert(state.miniCards, mc)
 
-            -- Distância vai de radius → 0 com ease_OUT (decelera ao pousar).
-            EM.parallelEase(mc, "distFrom", 0, mc.lifespan, "ease_out", QUEUE)
-            -- Alpha sobe rápido nos primeiros 0.12s (fade-in).
-            EM.parallelEase(mc, "alpha", 1.0, 0.12, "smooth", QUEUE)
-
-            -- Scale curve é computada em BootScene.update (não-monotônica:
-            -- pop in → hold → collapse). Não dá pra fazer com ease único.
+            -- Alpha sobe nos primeiros 0.15s (materializa na borda).
+            EM.parallelEase(mc, "alpha", 1.0, 0.15, "smooth", QUEUE)
 
             local pitch = 0.85 + i * 0.022
             Sfx.play("cardDraw", { pitch = pitch, volume = 0.42 })
         end, QUEUE)
     end
-    -- fim da cascade: último spawn + voo (~0.65s)
-    local tCascadeEnd = 1.70 + (NUM_MINI - 1) * 0.08 + 0.70
+    -- fim da cascade: último spawn + voo mais longo (~1.35s)
+    local tCascadeEnd = 1.80 + (NUM_MINI - 1) * 0.09 + 1.40
 
     -- TÍTULO LETRA-A-LETRA (feedback do dono): cada letra "carimba" na tela
     -- com pop back_out + tick sonoro em pitch crescente. Começa DEPOIS da
@@ -449,34 +462,38 @@ function BootScene.update(dt)
         for i = #state.miniCards, 1, -1 do
             local mc = state.miniCards[i]
             mc.age = mc.age + dt
-            mc.rot = mc.rot + dt * mc.rotSpeed
-            -- espiral: órbita desacelera conforme chega no centro
-            if mc.angleSpeed then
-                -- REDEMOINHO (v11): a órbita ACELERA conforme chega no centro
-                -- (momento angular de furacão) — antes desacelerava e lia como
-                -- espiral solta.
-                local prox = math.min(1, mc.age / mc.lifespan)   -- 0 longe → 1 lua
-                mc.angle = mc.angle + dt * mc.angleSpeed * (0.5 + 1.7 * prox)
-            end
+            local u = math.min(1, mc.age / mc.lifespan)
 
-            local t2 = math.min(1, mc.age / mc.lifespan)
-            -- Curva: 0 → 1 em t∈[0, 0.65] (pop-in fast), 1 → 0 em t∈[0.65, 1] (collapse).
-            if t2 < 0.65 then
-                local k = t2 / 0.65
-                mc.scale = k * k * (3 - 2 * k)  -- smoothstep pop-in
-            else
-                local k = (t2 - 0.65) / 0.35
-                mc.scale = 1 - (k * k * (3 - 2 * k))  -- smoothstep collapse
-            end
+            -- v13 DRENO: raio desaba com u^1.7 (lento no início, DESPENCA
+            -- no fim) e o giro aperta com u^2.2 (o arco acontece perto da
+            -- lua — enrolar de redemoinho, não deriva constante).
+            local rk = 1 - u ^ 1.5
+            mc.dist = mc.radius * rk
+            mc.angle = mc.angle0 + mc.swirl * (u ^ 2.2)
 
-            -- Rastro de FÓSFORO (ghosting de tubo CRT — identidade nossa,
-            -- não do Balatro): amostra a pose a cada ~35ms, guarda 3 fantasmas.
+            -- orientação: SURFA a tangente da espiral + wobble respirando
+            mc.rot = mc.angle + math.pi / 2
+                + math.sin(mc.age * 3 + mc.wobble) * 0.14
+
+            -- escala: pop-in nos primeiros 12%, depois ENCOLHE com o raio
+            -- (afundando no portal); nunca o colapso brusco antigo.
+            local pop = math.min(1, u / 0.12)
+            pop = pop * pop * (3 - 2 * pop)
+            mc.scale = pop * (0.30 + 0.70 * rk ^ 0.9)
+
+            -- fade final DENTRO do disco (últimos 15% — some na luz antes
+            -- de "sentar" parada no miolo)
+            mc.fadeMul = u > 0.85 and math.max(0, 1 - (u - 0.85) / 0.15) or 1
+
+            -- Rastro de FÓSFORO (ghosting de tubo CRT): amostra a pose a
+            -- cada ~30ms, 5 fantasmas — no mergulho final vira um ARCO
+            -- luminoso seguindo a espiral.
             mc._trailT = mc._trailT + dt
-            if mc._trailT >= 0.035 then
+            if mc._trailT >= 0.03 then
                 mc._trailT = 0
-                table.insert(mc.trail, 1, { angle = mc.angle, dist = mc.distFrom,
+                table.insert(mc.trail, 1, { angle = mc.angle, dist = mc.dist,
                     rot = mc.rot, scale = mc.scale })
-                if #mc.trail > 3 then table.remove(mc.trail) end
+                if #mc.trail > 5 then table.remove(mc.trail) end
             end
 
             -- Mini-carta chegou: ABSORVIDA pelo selo — pulso de brilho na
@@ -584,16 +601,21 @@ local function drawSplash()
     -- Cada carta arrasta um rastro de FÓSFORO (ghosting CRT): fantasmas da
     -- pose recente com alpha decaindo — velho primeiro, carta por cima.
     for _, mc in ipairs(state.miniCards) do
+        -- 5 fantasmas com falloff acentuado: o velho quase some — o rastro
+        -- lê como arco de luz na espiral, não como carta duplicada.
+        local ghostA = { 0.26, 0.17, 0.11, 0.06, 0.035 }
         for gi = #mc.trail, 1, -1 do
             local g = mc.trail[gi]
             local gx = sx + math.cos(g.angle) * g.dist
             local gy = sy + math.sin(g.angle) * g.dist
             drawCardShape(gx, gy, MINI_SIZE.w, MINI_SIZE.h,
-                mc.alpha * math.max(0, 0.22 - gi * 0.05), g.scale * 0.98, g.rot, 0)
+                mc.alpha * mc.fadeMul * (ghostA[gi] or 0.03),
+                g.scale * 0.97, g.rot, 0)
         end
-        local x = sx + math.cos(mc.angle) * mc.distFrom
-        local y = sy + math.sin(mc.angle) * mc.distFrom
-        drawCardShape(x, y, MINI_SIZE.w, MINI_SIZE.h, mc.alpha, mc.scale, mc.rot, 0)
+        local x = sx + math.cos(mc.angle) * mc.dist
+        local y = sy + math.sin(mc.angle) * mc.dist
+        drawCardShape(x, y, MINI_SIZE.w, MINI_SIZE.h,
+            mc.alpha * mc.fadeMul, mc.scale, mc.rot, 0)
     end
 
     -- (v11: a carta central FOI REMOVIDA — feedback do dono: "pode deixar

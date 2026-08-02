@@ -54,8 +54,8 @@ function M.run()
     BootScene.draw()
     capture("menu_v2_boot_tune.png")
 
-    -- pump até o auge da cascade + glitch do título (~2.2s de splash)
-    while elapsed < 0.5 + 2.25 do
+    -- pump até o MEIO do redemoinho v13 (cartas espalhadas na espiral)
+    while elapsed < 0.5 + 3.10 do
         EM.update(dt)
         BootScene.update(dt)
         elapsed = elapsed + dt
@@ -63,6 +63,16 @@ function M.run()
     love.graphics.clear(0, 0, 0, 1)
     BootScene.draw()
     capture("menu_v2_boot_casc.png")
+
+    -- pump até o MERGULHO (arcos apertando na lua)
+    while elapsed < 0.5 + 3.85 do
+        EM.update(dt)
+        BootScene.update(dt)
+        elapsed = elapsed + dt
+    end
+    love.graphics.clear(0, 0, 0, 1)
+    BootScene.draw()
+    capture("menu_v2_boot_dive.png")
 
     -- ===== 4. SETTINGS com barras OSD =====
     local SettingsMenu = require("components.SettingsMenu")
