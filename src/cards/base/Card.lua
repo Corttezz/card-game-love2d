@@ -123,6 +123,11 @@ function Card:swell_up(scale_add, duration)
     Moveable.swell_up(self, scale_add, duration)
 end
 
+-- Game feel v3.3: aparada horizontal (defesa checa pro lado e volta de mola).
+function Card:shove_x(px, duration)
+    Moveable.shove_x(self, px, duration)
+end
+
 -- ============================================================================
 -- CARD STATE ANIMATIONS (inspirado em card.lua do Balatro, linhas 1973-2240)
 -- ============================================================================
@@ -719,7 +724,8 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
     local totalOffsetY = baseOffsetY + hoverOffsetY + bobOffset + ambientY - baseFloat
         + Moveable.hopOffset(self)
 
-    local offsetX = self.offsetHoverX or 0
+    -- shoveOffset: aparada lateral da defesa (game feel v3.3; decai sozinho)
+    local offsetX = (self.offsetHoverX or 0) + Moveable.shoveOffset(self)
     local offsetY = self.offsetHoverY or 0
 
     local tiltX = self.tiltX or 0

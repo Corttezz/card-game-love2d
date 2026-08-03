@@ -187,8 +187,13 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
                 if card.swell_up then card:swell_up(0.20, 0.35) end
                 if card.juice_up then card:juice_up(0.4, -0.24) end
             elseif card.type == "defense" then
-                if card.swell_up then card:swell_up(0.50, 0.6) end
-                if card.hop_up then card:hop_up(10, 0.35) end
+                -- v3.3 (feedback: o inchaço +50% era "violento, bem estranho"):
+                -- a defesa APARA o golpe — checa pro lado torta (shove
+                -- horizontal + tilt), segura, e volta com um TIQUE de mola.
+                -- Sobrou só um swell de corpo discreto.
+                if card.shove_x then card:shove_x(nil, 0.55) end   -- lado alterna
+                if card.juice_up then card:juice_up(0.10, 0.22) end -- torto + tique
+                if card.swell_up then card:swell_up(0.14, 0.40) end
             elseif card.type == "effect" then
                 if card.hop_up then card:hop_up(20, 0.45) end
                 if card.juice_up then card:juice_up(0.45, 0.28) end
@@ -436,20 +441,8 @@ function CombatSequence:draw()
         end
     end
 
-    -- DEBUG FEEL (temporário): overlay IMPOSSÍVEL de não ver — prova de
-    -- build na tela + valores de movimento AO VIVO da 1ª carta voando.
-    if #self.flyingCards > 0 then
-        local c = self.flyingCards[1]
-        local txt = string.format("FDBG v3.1 | hop=%.1f scale=%.2f swell=%.2f",
-            Moveable.hopOffset(c), Moveable.scaleFactor(c), Moveable.swellFactor(c))
-        local f = FontManager.getFont(16)
-        love.graphics.setFont(f)
-        love.graphics.setColor(0, 0, 0, 0.75)
-        love.graphics.rectangle("fill", 8, 100, f:getWidth(txt) + 16, 26, 4, 4)
-        love.graphics.setColor(1, 0.2, 0.9, 1)
-        love.graphics.print(txt, 16, 105)
-        love.graphics.setColor(1, 1, 1, 1)
-    end
+    -- (o overlay FDBG magenta saiu — cumpriu o papel na caça ao bug de
+    -- feel; o diagnóstico continua no feel_debug.log, invisível em jogo)
 
     -- Damage numbers (por cima)
     if #self.damageNumbers > 0 then

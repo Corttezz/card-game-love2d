@@ -4,7 +4,7 @@
 local Config = {}
 
 -- Versão do jogo (menu/splash mostram no rodapé).
-Config.VERSION = "0.9.1-fdbg"   -- sufixo temporário: prova que ESTE build (feel instrumentado) está rodando
+Config.VERSION = "0.9.1"
 
 -- Configurações da Interface
 Config.UI = {

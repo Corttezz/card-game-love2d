@@ -104,6 +104,46 @@ function Moveable.swell_up(obj, scale_add, duration)
     obj.juice.swell_duration = duration or 0.45
 end
 
+-- SHOVE: empurrão HORIZONTAL de aparada (game feel v3.3 — a defesa "apara
+-- o golpe": checa pro lado, segura um instante e volta com um TIQUE de
+-- mola). px pode ser negativo (lado). Sem dir, alterna a cada uso.
+function Moveable.shove_x(obj, px, duration)
+    Moveable.initJuice(obj)
+    if _G.gameSettings and _G.gameSettings.reducedMotion then return end
+    if not px then
+        local dir = (obj.juice._lastShoveDir or 1) * -1
+        obj.juice._lastShoveDir = dir
+        px = 20 * dir
+    end
+    obj.juice.shove_amt = px
+    obj.juice.shove_timer = 0
+    obj.juice.shove_duration = duration or 0.55
+end
+
+-- Offset X atual do shove. Envelope de APARADA: estala pro lado (14%),
+-- SEGURA deslocada (até 42% — tempo de LER o desvio), e volta de MOLA
+-- amortecida — cruza o centro e dá um tique no lado oposto antes de
+-- assentar (o "tique e volta" pedido).
+function Moveable.shoveOffset(obj)
+    local j = obj.juice
+    if not j or not j.shove_duration or not j.shove_timer
+        or j.shove_timer >= j.shove_duration then return 0 end
+    local t = j.shove_timer / j.shove_duration
+    local amt = j.shove_amt or 0
+    local k
+    if t < 0.14 then
+        local u = t / 0.14
+        k = 1 - (1 - u) ^ 3                -- estalo lateral (easeOutCubic)
+    elseif t < 0.42 then
+        k = 1                               -- segura torta (leitura)
+    else
+        local u = (t - 0.42) / 0.58
+        -- mola amortecida: volta, ultrapassa (~-30%) e assenta
+        k = math.cos(u * math.pi * 1.45) * (1 - u) ^ 1.3
+    end
+    return amt * k
+end
+
 -- Offset Y atual do hop (negativo = pra cima). Some no offset vertical do draw.
 -- v3.2: envelope CHUNKY (feedback do dono "se mexe é mt pouco") — meia-senoide
 -- suave lê como flutuação invisível; o olho precisa de ESTALO + PAUSA:
@@ -161,6 +201,9 @@ function Moveable.updateJuice(obj, dt)
     end
     if j.swell_duration and j.swell_timer and j.swell_timer < j.swell_duration then
         j.swell_timer = j.swell_timer + dt
+    end
+    if j.shove_duration and j.shove_timer and j.shove_timer < j.shove_duration then
+        j.shove_timer = j.shove_timer + dt
     end
     if j.duration <= 0 or j.timer >= j.duration then
         j.scale, j.r = 0, 0
