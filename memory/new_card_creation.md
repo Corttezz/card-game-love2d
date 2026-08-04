@@ -223,3 +223,12 @@ Script: `tools/preview_cards.lua`.
 - Preview tool: `tools/preview_cards.lua`
 - Sprite queue memory: [`sprite_design_queue.md`](sprite_design_queue.md)
 - Pixel art system overview: [`pixel_art_system.md`](pixel_art_system.md)
+
+## Coringa novo? Proc visual é OBRIGATÓRIO
+
+Todo efeito de coringa precisa TICAR no slot no momento em que trabalha
+(pulinho + popup + som). Efeito de tipo novo = implementar em EffectSystem
+E chamar `pushJokerProc` no branch (cadeia no combate, direto no
+turn_start). Contrato completo + checklist + tabela de cobertura:
+[`joker_proc_fx.md`](joker_proc_fx.md). Regressão: `love . smoke_ui_turn`
+(seção 7).

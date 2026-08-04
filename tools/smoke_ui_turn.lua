@@ -209,6 +209,25 @@ function M.run()
         pend ~= nil and #pend >= 2)
     gmB.runManager:deleteSave()
 
+    -- ===== 7. PROC VISUAL fora do pipeline de carta (bug 'Aprendizado
+    -- de Máquina não triga visualmente' — jokers de turn_start eram MUDOS;
+    -- pushJokerProc sem sink agora dispara direto no JokerProcFx) =====
+    local gmJ = Game:new()
+    gmJ:startNewRun("mage")
+    gmJ:startGame()
+    _G.game = gmJ
+    gmJ:addJokerToRun("mage_machine_learning")
+    check("proc-fx: joker de compra extra ativo no slot", #gmJ.jokerSlots >= 1)
+    local jk = gmJ.jokerSlots[#gmJ.jokerSlots]
+    gmJ.effectSystem:applyTriggerEffects(gmJ, "turn_start", {})
+    check("proc-fx: turn_start TICOU o joker (hop no slot)",
+        jk.juice ~= nil and jk.juice.hop_amt ~= nil)
+    -- retain_armor (Bastião) tica via notifyJokerProc público
+    local ok7 = pcall(function()
+        gmJ.effectSystem:notifyJokerProc(gmJ, jk, "Escudo mantido", "armor")
+    end)
+    check("proc-fx: notifyJokerProc público não explode", ok7)
+
     print(string.format("\n  TOTAL: %d pass / %d fail", pass, fail))
     return fail == 0
 end

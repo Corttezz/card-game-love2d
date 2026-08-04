@@ -1222,6 +1222,21 @@ function Game:_finishEnemyTurn()
         -- Decrementa buffs do jogador (durations per-turno)
         if self.player.onTurnStart then self.player:onTurnStart() end
 
+        -- BASTIÃO tica quando o escudo é MANTIDO (retain_armor age dentro
+        -- de Player:onTurnStart — sem isto o joker ficava mudo no momento
+        -- exato em que trabalha; auditoria de procs Jul/2026).
+        if self.player.retainArmor and (self.player.armor or 0) > 0 then
+            for _, joker in ipairs(self.jokerSlots or {}) do
+                for _, e in ipairs(joker.effects or {}) do
+                    if e.type == "retain_armor" then
+                        self.effectSystem:notifyJokerProc(self, joker,
+                            "Escudo mantido", "armor")
+                        break
+                    end
+                end
+            end
+        end
+
         -- Compra do inicio do turno: 1 normal, 3 se a mao estiver vazia (emergencia).
         self:drawForTurn()
 

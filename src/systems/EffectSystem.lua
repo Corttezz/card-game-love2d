@@ -37,13 +37,45 @@ end
 -- (rótulo tipo "×2"/"+3"/"+4 PV") num sink, com o índice do slot pra UI ticar
 -- o joker certo (JokerProcFx). Sink ausente = no-op (headless/chamadas antigas).
 local function pushJokerProc(game, sink, joker, label, kind)
-    if not sink or not joker then return end
+    if not joker then return end
+    local slotIndex
     for i, j in ipairs(game.jokerSlots or {}) do
-        if j == joker then
-            sink[#sink + 1] = { slotIndex = i, joker = joker, label = label, kind = kind or "mult" }
-            return
-        end
+        if j == joker then slotIndex = i break end
     end
+    if not slotIndex then return end
+    local proc = { slotIndex = slotIndex, joker = joker,
+                   label = label, kind = kind or "mult" }
+    if sink then
+        sink[#sink + 1] = proc
+        return
+    end
+    -- SEM sink = proc FORA do pipeline de carta (ex: turn_start — compra
+    -- extra, regen, Forma Demoniaca...). Antes era no-op e o joker ficava
+    -- MUDO ("Aprendizado de Máquina não triga visualmente" — feedback
+    -- Jul/2026). Dispara DIRETO no JokerProcFx, escalonado: vários procs
+    -- no mesmo instante ticam em sequência (0.18s), não em uníssono.
+    local now = (love.timer and love.timer.getTime()) or 0
+    if not game._directProcT or now - game._directProcT > 0.6 then
+        game._directProcT, game._directProcN = now, 0
+    end
+    game._directProcN = (game._directProcN or 0) + 1
+    local ord = game._directProcN
+    local function fire()
+        local ok, JokerProcFx = pcall(require, "src.ui.JokerProcFx")
+        if ok and JokerProcFx.tick then pcall(JokerProcFx.tick, proc, ord) end
+    end
+    local EM = _G.EventManager
+    if EM and EM.after and ord > 1 then
+        EM.after((ord - 1) * 0.18, fire)
+    else
+        fire()
+    end
+end
+
+-- API pública do proc direto (Game usa pro retain_armor do Bastião, que
+-- dispara fora do EffectSystem — em Player:onTurnStart).
+function EffectSystem:notifyJokerProc(game, joker, label, kind)
+    pushJokerProc(game, nil, joker, label, kind)
 end
 
 -- Formata multiplicador sem ".0" (2.0 → "×2", 1.5 → "×1.5").
@@ -634,23 +666,31 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
                 Sfx.play("orbEvoke")
             end
             notifyOrbUI("notifyChannel", #game.player.orbs)
+            pushJokerProc(game, context and context.procSink,
+                context and context.sourceJoker, "+1 Orbe", "buff")
         end
 
     elseif t == "strength_per_turn" and triggerType == "turn_start" then
         -- Demon Form: Força cumulativa por turno (identidade StS clássica).
         game.player:gainStrength(v)
         game:addMessage("+" .. v .. " Forca (Forma Demoniaca)", "success")
+        pushJokerProc(game, context and context.procSink,
+            context and context.sourceJoker, "+" .. v .. " Forca", "buff")
 
     elseif t == "regen_per_turn" and triggerType == "turn_start" then
         local amount = self:applyHealMultiplier(game, v)
         game.player:heal(amount)
         game:addMessage(msg("regen", { value = amount }), "success")
+        pushJokerProc(game, context and context.procSink,
+            context and context.sourceJoker, "+" .. amount .. " PV", "heal")
 
     elseif t == "damage_per_turn" and triggerType == "turn_start" then
         -- Custo auto-infligido: HP direto, SEM passar pela armadura (senão
         -- o downside de cartas tipo Berserk é fictício — auditoria F0).
         game.player:loseHealth(v)
         game:addMessage(msg("penalty", { value = v }), "warning")
+        pushJokerProc(game, context and context.procSink,
+            context and context.sourceJoker, "-" .. v .. " PV", "damage")
 
     elseif t == "on_turn_start_draw" and triggerType == "turn_start" then
         -- Joker que compra cartas extra no início do turno (ex: joker_004
@@ -660,6 +700,8 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
             game:drawCard((i - 1) * 0.06)
         end
         game:addMessage("Compra extra: +" .. n, "info")
+        pushJokerProc(game, context and context.procSink,
+            context and context.sourceJoker, "+" .. n .. " cartas", "buff")
 
     elseif t == "on_attack_debuff" and triggerType == "attack" then
         -- Joker que aplica debuff a cada ataque (ex: rogue_envenom poison-on-hit).
