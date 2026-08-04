@@ -37,7 +37,7 @@
 - [Known Gaps](known_gaps.md) — o que é intencional vs pendente pós-redesign
 - [Card Database Notes](card_database.md) — schema pós-redesign, tags, starter de 2 cartas
 - [Run Instructions](run_instructions.md) — love . no root, atalhos, smoke tests
-- [Enemy Pipeline](enemy_pipeline.md) — pixellab create_character + animate_character + install, como adicionar novo inimigo
+- [Enemy Pipeline](enemy_pipeline.md) — como adicionar inimigo novo; hurt/death SEMPRE via tools/pixellab_enemy_anims.py (animate_image, frame 0 = idle real) — templates taking-punch/falling-back-death PROIBIDOS (drift)
 - [Scene Pipeline](scene_pipeline.md) — cenários full-res 400×256 via create_map_object + overlays animados (tochas/cristais/parallax); anti-pattern: tileset procedural
 - [WorldRoad](worldroad_scene.md) — mundo rolante estilo Path of Kings (estrada em perspectiva, props em Z, viagem entre andares); SCENE_MODE em GameplayScene; contrato PNG pra arte PixelLab
 - [Backgrounds Catalog](backgrounds_catalog.md) — inventário COMPLETO (scenes/path/patterns/map_nodes/tilesets) + padrões obrigatórios pra gerar novos mantendo coerência visual

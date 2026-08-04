@@ -8,6 +8,44 @@ type: project
 
 Fluxo completo pra adicionar **um inimigo novo** (sprite + animações + integração no combate).
 
+## ⚠️ HURT/DEATH: usar a fábrica `tools/pixellab_enemy_anims.py` (Ago/2026)
+
+**NÃO usar mais os templates `taking-punch`/`falling-back-death` do
+`animate_character`** — eles REDESENHAM o personagem: auditoria Ago/2026
+mediu drift de identidade alto em TODOS os 21 do roster (espantalho perdia
+gola/ombros de palha, glacier_knight perdia a ESPADA no hurt) e a morte do
+template terminava com o corpo flutuando inclinado no ar ("nem parece que
+morreu" — feedback do dono). Substituídos 42/42 clips pela fábrica:
+
+```bash
+python3 tools/pixellab_enemy_anims.py run [ids...]   # serial, 1 job/vez
+python3 tools/pixellab_enemy_anims.py sheet <id>     # contact sheet
+python3 tools/pixellab_enemy_anims.py status
+```
+
+Doutrina (mesma das cartas, memory/card_icon_animation.md):
+- **`animate_image` com first_frame = `animations/idle/south/0.png` REAL**
+  → frame 0 instalado é idêntico ao idle, o monstro nunca "vira outro".
+  hurt = 6 frames gerados (7 instalados, HURT_FPS 12); death = 8 (9, DEATH_FPS 10).
+- **OLHAR a arte antes de escrever o prompt.** Lição cara: prompt citando
+  prop que a arte NÃO tem faz o v3 MATERIALIZAR o prop do nada (mire_hag
+  ganhou um cajado fantasma; obsidian_sentinel um escudo flutuante que
+  ficava de pé feito lápide na morte). O campo `keep` é whitelist do que
+  existe DE VERDADE no sprite.
+- **Morte é conceito por inimigo** (palha desmonta, slime vira poça, golem
+  desmorona, espectro apaga e a túnica cai vazia, cavaleiro cai de joelhos
+  na espada) e SEMPRE termina "lying LOW at the very bottom of the frame,
+  motionless" — em pé/flutuando = retry.
+- **Tripwires automáticos** pós-download: anim morta (md5 iguais) e MORTE
+  ALTA (altura conteúdo último frame > 0.68× idle). A métrica de altura é
+  fraca pra inimigo baixinho/redondo (grave_slime legítimo deu 0.80) —
+  flag é convite pra OLHAR, não veredito. 1ª passada: 36/42 aprovados.
+- **Serial de verdade** (1 job por vez na conta, submits concorrentes são
+  dropados) e download no formato `.../download?index=N` (get_image).
+- `love . screenshot_death` valida in-game (4 momentos incl. cadáver);
+  exige `game.enemy.health = 0` antes do triggerDeath, senão o draw
+  interpreta "vivo + death terminada" como próxima batalha e volta ao idle.
+
 ## Arquivos envolvidos
 
 | Arquivo | Papel |
@@ -98,8 +136,8 @@ Templates úteis do pixellab (49 disponíveis — `mcp__pixellab__get_character`
 |---|---|
 | `breathing-idle` | **idle** padrão (respira/balança) — 4 frames |
 | `fight-stance-idle-8-frames` | idle mais dinâmico (8 frames, mais pesado) |
-| `taking-punch` | **hurt** (recua, quadro de dor) |
-| `falling-back-death` | **death** (cai pra trás, one-shot) |
+| ~~`taking-punch`~~ | ❌ NÃO usar pra hurt — redesenha o personagem (ver topo) |
+| ~~`falling-back-death`~~ | ❌ NÃO usar pra death — termina flutuando (ver topo) |
 | `cross-punch` / `high-kick` / `hurricane-kick` | ataque do inimigo no jogador (futuro) |
 | `fireball` | ataque mágico ranged |
 | `jumping-1` / `jumping-2` | boss especial |
@@ -231,14 +269,14 @@ No combate:
 **"Estilo do novo inimigo não bate visualmente com os outros"**
 → Certifica que usou o sufixo de estilo obrigatório (passo 1). Se ainda destoar, regere com prompt mais específico reforçando paleta sépia.
 
-## Estado atual do catálogo
+## Estado atual do catálogo (Ago/2026)
 
-Ver `assets/sprites/characters/enemies/` — atualmente:
-- `grave_slime` — ato 1 (idle 4f × 4dir)
-- `stone_golem` — ato 2 (idle 4f × 4dir)
-- `abyss_wraith` — ato 3 (idle 4f × 4dir)
-
-Nenhum deles tem `hurt`/`death` ainda — quando gerar, seguir este guia.
+Ver `assets/sprites/characters/enemies/` — **21 inimigos**, todos com
+`idle` + `hurt` + `death` (south only); `cursed_scarecrow`, `carrion_king`
+e `harvest_reaper` também têm `attack`. Os hurt/death de TODOS foram
+regenerados em Ago/2026 pela fábrica `tools/pixellab_enemy_anims.py`
+(ver seção no topo) — prompts/conceitos de morte por inimigo vivem no
+dict `ENEMIES` do próprio script.
 
 ## Emissivos do monstro (LightEngine) — PASSO OBRIGATÓRIO pra inimigo novo
 

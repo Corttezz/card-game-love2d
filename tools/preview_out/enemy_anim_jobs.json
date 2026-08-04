@@ -1,0 +1,213 @@
+{
+  "cursed_scarecrow/hurt": {
+    "status": "ok",
+    "job_id": "063901b8-16a2-4fd8-8d6e-9e417990b18d",
+    "problems": []
+  },
+  "cursed_scarecrow/death": {
+    "status": "ok",
+    "job_id": "bb493954-ce80-48eb-b0a3-93e55f9012c8",
+    "problems": []
+  },
+  "grave_slime/hurt": {
+    "status": "ok",
+    "job_id": "abe3d24a-4d2c-4b6e-89e3-ace42f5c4954",
+    "problems": []
+  },
+  "grave_slime/death": {
+    "status": "ok",
+    "job_id": "09017ec7-d657-44cd-8173-abb838375fe7",
+    "problems": [],
+    "nota": "aprovado no olho: po\u00e7a correta; metrica de altura nao serve pra inimigo baixinho"
+  },
+  "stone_golem/hurt": {
+    "status": "ok",
+    "job_id": "f9b7184e-bcb2-44c8-ba9f-4f9584c61da1",
+    "problems": []
+  },
+  "stone_golem/death": {
+    "status": "ok",
+    "job_id": "175a943d-0dc5-4ac4-bab5-133367da8e0a",
+    "problems": []
+  },
+  "abyss_wraith/hurt": {
+    "status": "ok",
+    "job_id": "e9ab3904-3bab-4301-990d-ee3b29a73d24",
+    "problems": []
+  },
+  "abyss_wraith/death": {
+    "status": "ok",
+    "job_id": "6a50211b-e35e-4b0b-81c3-d4f1c4ced31f",
+    "problems": []
+  },
+  "abyss_tyrant/hurt": {
+    "status": "ok",
+    "job_id": "d4a37705-c351-46d0-85d8-1826bc999e92",
+    "problems": []
+  },
+  "abyss_tyrant/death": {
+    "status": "ok",
+    "job_id": "d5163eb4-ac9f-42c0-b29b-5f8f4b3c6b58",
+    "problems": []
+  },
+  "blood_duke/hurt": {
+    "status": "ok",
+    "job_id": "83e2725c-8407-4d38-8a29-f557cfe4936a",
+    "problems": []
+  },
+  "blood_duke/death": {
+    "status": "ok",
+    "job_id": "172bd0a6-db7b-4197-afbb-eb98bf0bef8f",
+    "problems": []
+  },
+  "bog_ghoul/hurt": {
+    "status": "ok",
+    "job_id": "009d6b47-f62d-40a6-8e1d-db5e0f8a13b0",
+    "problems": []
+  },
+  "bog_ghoul/death": {
+    "status": "ok",
+    "job_id": "1bc1c5a8-583e-4ea4-b15b-787d64769bc1",
+    "problems": []
+  },
+  "carrion_king/hurt": {
+    "status": "ok",
+    "job_id": "fdf1a2e2-947e-4985-84e0-c68575cedf81",
+    "problems": []
+  },
+  "carrion_king/death": {
+    "status": "ok",
+    "job_id": "b6af53d5-c494-4205-bf36-f76325dfa82f",
+    "problems": []
+  },
+  "dusk_shade/hurt": {
+    "status": "ok",
+    "job_id": "3d59dae9-8def-49a0-a333-6b363205ecaa",
+    "problems": []
+  },
+  "dusk_shade/death": {
+    "status": "ok",
+    "job_id": "c97709e2-ef51-4c2d-8af2-15b2f0c4e2aa",
+    "problems": []
+  },
+  "eclipse_queen/hurt": {
+    "status": "ok",
+    "job_id": "5fa87b5d-99d1-4976-bf04-45cdc3658530",
+    "problems": []
+  },
+  "eclipse_queen/death": {
+    "status": "ok",
+    "job_id": "ccf63594-41fd-489d-b96d-542b68ddd54e",
+    "problems": []
+  },
+  "ember_imp/hurt": {
+    "status": "ok",
+    "job_id": "9fafd9c0-6288-4b32-be74-8f866251d5d5",
+    "problems": []
+  },
+  "ember_imp/death": {
+    "status": "ok",
+    "job_id": "1b633a3b-d139-4f11-af87-48519f65ffb8",
+    "problems": []
+  },
+  "frost_wight/hurt": {
+    "status": "ok",
+    "job_id": "f166e16b-ec7f-405e-ad10-d27094082e31",
+    "problems": []
+  },
+  "frost_wight/death": {
+    "status": "ok",
+    "job_id": "676a3a5c-f492-4314-924f-f59e7bd1cc74",
+    "problems": []
+  },
+  "glacier_knight/hurt": {
+    "status": "ok",
+    "job_id": "9629f6b0-f1b3-447d-88d0-6d3093d9ea22",
+    "problems": []
+  },
+  "glacier_knight/death": {
+    "status": "ok",
+    "job_id": "3887f490-f58a-4276-a5ca-8865900efdc6",
+    "problems": []
+  },
+  "harvest_reaper/hurt": {
+    "status": "ok",
+    "job_id": "abbac43c-e63c-4c73-bae0-a7fb03a2403f",
+    "problems": []
+  },
+  "harvest_reaper/death": {
+    "status": "ok",
+    "job_id": "91f23939-eece-4f54-a5a0-10d3112f6c0a",
+    "problems": []
+  },
+  "mire_hag/hurt": {
+    "status": "ok",
+    "job_id": "55dd3396-a5ed-44a7-ac67-67652368fb50",
+    "problems": []
+  },
+  "mire_hag/death": {
+    "status": "ok",
+    "job_id": "0c9bd8ec-d0ef-475e-93b6-349c50e48e7d",
+    "problems": []
+  },
+  "moon_gargoyle/hurt": {
+    "status": "ok",
+    "job_id": "c6d039d9-82b2-4938-9fb0-c23fcada2c98",
+    "problems": []
+  },
+  "moon_gargoyle/death": {
+    "status": "ok",
+    "job_id": "2f3c1a0f-af8c-4e3f-ba8d-b67fb93a00c0",
+    "problems": []
+  },
+  "obsidian_sentinel/hurt": {
+    "status": "ok",
+    "job_id": "21f67fe1-0401-4eb9-bbbf-a607c36d23b8",
+    "problems": []
+  },
+  "obsidian_sentinel/death": {
+    "status": "ok",
+    "job_id": "9220a0c7-eeb0-43a6-ab22-25bcb2643067",
+    "problems": []
+  },
+  "rot_colossus/hurt": {
+    "status": "ok",
+    "job_id": "87682f22-7a40-4205-a9b1-e85db03f078e",
+    "problems": []
+  },
+  "rot_colossus/death": {
+    "status": "ok",
+    "job_id": "1f0d209b-e8e3-465b-a378-8a54525567aa",
+    "problems": []
+  },
+  "rune_golem/hurt": {
+    "status": "ok",
+    "job_id": "b3ece55d-afe5-43bb-b35a-9ad8550ea94e",
+    "problems": []
+  },
+  "rune_golem/death": {
+    "status": "ok",
+    "job_id": "5f06805a-3967-4c0c-8d00-77ea66f9be97",
+    "problems": []
+  },
+  "tower_lich/hurt": {
+    "status": "ok",
+    "job_id": "71a37059-4e27-4b1c-9923-7f4225a7f3b4",
+    "problems": []
+  },
+  "tower_lich/death": {
+    "status": "ok",
+    "job_id": "417cc0e3-96e0-4f51-b5ea-93dee9457f37",
+    "problems": []
+  },
+  "winter_monarch/hurt": {
+    "status": "ok",
+    "job_id": "9c6850a5-ee7f-40f3-acd1-6d58e46b4d2b",
+    "problems": []
+  },
+  "winter_monarch/death": {
+    "status": "ok",
+    "job_id": "61775fad-a98f-4542-aad3-0447abea768a",
+    "problems": []
+  }
+}

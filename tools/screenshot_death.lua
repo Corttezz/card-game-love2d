@@ -38,18 +38,20 @@ function M.run()
         _G.smokeSystem:update(1/30)
     end
 
-    -- Dispara death
+    -- Dispara death. health=0 é OBRIGATÓRIO: com inimigo "vivo" o draw
+    -- interpreta death terminada como próxima batalha e volta pro idle
+    -- (o 4º frame capturava o monstro ressuscitado em pé).
     print("[death-screenshot] disparando triggerDeath")
+    game.enemy.health = 0
     EnemyRenderer.triggerDeath(game.enemy.spriteId)
 
-    -- Captura em 3 momentos: frame 1 (0.1s), frame 3 (0.3s), frame 6 (0.6s)
+    -- Captura SEQUENCIAL (padrão screenshot_crt — o encadeamento de
+    -- callbacks aninhados só entregava o 1º frame): 4 momentos cobrindo
+    -- início, meio, fim do clip e a pose final congelada ("cadáver").
     local frameTime = 1/30
-    local moments = { 0.05, 0.30, 0.65 }
-    local outFiles = { "death_early.png", "death_mid.png", "death_late.png" }
-
-    -- Acumula tempo até cada momento e captura
-    local totalElapsed = 0
-    local captureIdx = 1
+    local moments = { 0.05, 0.30, 0.65, 1.05 }
+    local outFiles = { "death_early.png", "death_mid.png", "death_late.png",
+                       "death_corpse.png" }
 
     local function renderFrame()
         local width, height = love.graphics.getDimensions()
@@ -64,30 +66,23 @@ function M.run()
         _G.smokeSystem:draw()
     end
 
-    local function captureNext()
-        if captureIdx > #moments then
-            print("[death-screenshot] OK - 3 frames capturados")
-            love.event.quit()
-            return
-        end
-        local target = moments[captureIdx]
+    local totalElapsed = 0
+    for i, target in ipairs(moments) do
         while totalElapsed < target do
             EnemyRenderer.update(frameTime)
             SceneLayer.update(frameTime)
             totalElapsed = totalElapsed + frameTime
         end
         renderFrame()
-        local outName = outFiles[captureIdx]
+        local outName = outFiles[i]
         love.graphics.captureScreenshot(function(imageData)
             imageData:encode("png", outName)
             print("[death-screenshot] " .. outName .. " salvo (t=" .. target .. "s)")
-            captureIdx = captureIdx + 1
-            captureNext()
         end)
         love.graphics.present()
     end
-
-    captureNext()
+    print("[death-screenshot] OK - " .. #moments .. " frames capturados")
+    love.event.quit()
 end
 
 return M
