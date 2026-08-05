@@ -36,6 +36,11 @@ Doutrina (mesma das cartas, memory/card_icon_animation.md):
   desmorona, espectro apaga e a túnica cai vazia, cavaleiro cai de joelhos
   na espada) e SEMPRE termina "lying LOW at the very bottom of the frame,
   motionless" — em pé/flutuando = retry.
+- **Dor = movimento pra DENTRO; ameaça = pra FORA** (hurt v2 do espantalho,
+  feedback do dono): braços abrindo + peito estufado lê como pose de
+  ameaça mesmo com identidade perfeita. Hurt bom: cabeça chicoteia,
+  ombros/garras FECHAM, torso dobra, cambaleio — e proibir no prompt
+  "spreads arms / puffs chest".
 - **Tripwires automáticos** pós-download: anim morta (md5 iguais) e MORTE
   ALTA (altura conteúdo último frame > 0.68× idle). A métrica de altura é
   fraca pra inimigo baixinho/redondo (grave_slime legítimo deu 0.80) —
