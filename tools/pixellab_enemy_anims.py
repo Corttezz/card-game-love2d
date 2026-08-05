@@ -64,9 +64,15 @@ ENEMIES = {
         "keep": ("ragged brown hood with grey feathers, thick straw collar "
                  "and straw shoulder tufts, glowing ember eyes, stitched "
                  "grin, oversized claw hands"),
-        "hurt": ("struck hard: torso and head recoil sharply backward, loose "
-                 "straw wisps shake at the collar, claws jolt up, feet stay "
-                 "planted"),
+        # v2 (feedback do dono): a 1ª versão lia como POSE DE AMEAÇA
+        # (braços abrindo + peito estufado + sorriso). Dor = encolher.
+        "hurt": ("takes a heavy hit and CRUMPLES in pain: head whips "
+                 "sideways, shoulders hunch inward, torso doubles over "
+                 "slightly, claws pull in toward its chest, one leg "
+                 "staggers a half step, loose straw bursts from the "
+                 "collar, eyes narrow wincing — it never spreads its "
+                 "arms open, never puffs its chest, this is pain not "
+                 "threat — then it straightens back up"),
         "death": ("like a puppet cut from its pole it crumples straight "
                   "down: knees buckle, torso folds forward, then the whole "
                   "body collapses into a low heap of straw and cloth on the "
