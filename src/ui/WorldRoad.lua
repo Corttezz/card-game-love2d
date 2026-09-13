@@ -2000,7 +2000,7 @@ end
 -- Quanto a nuvem converge pra cor do céu. Nuvem é o objeto MAIS DISTANTE
 -- da cena — deve ser o mais lavado de todos (Draw Paint Academy: o longe
 -- perde contraste e puxa pra cor do céu).
-local CLOUD_HAZE = 0.58
+local CLOUD_HAZE = 0.42
 
 -- O tint de bioma (`biome.cloud`) foi calibrado quando a nuvem era o
 -- cinza-neutro procedural do makeCloud. O PNG do PixelLab já vem CREME
