@@ -228,6 +228,58 @@ function M.run()
     end)
     check("proc-fx: notifyJokerProc público não explode", ok7)
 
+    -- ===== 8. CERIMONIA DO CASTELO esconde a MAO (pedido do dono Set/2026:
+    -- "quando tiver na animacao de entrar no castelo, nao pode aparecer as
+    -- cartas na mao"). A guarda em GameplayScene.draw usa a MESMA flag que o
+    -- EnemyHud ja usava (WorldRoad.isEntering()); este check existe pra que
+    -- ninguem remova o `if not entering` sem o teste gritar. Espionamos
+    -- Card.draw e contamos as chamadas com e sem a cerimonia no ar. =====
+    local gmC = Game:new()
+    gmC:startNewRun("warrior")
+    gmC:startGame()
+    _G.game = gmC
+    GameplayScene.setGame(gmC)
+    GameplayScene.SCENE_MODE = "worldroad"
+
+    -- Stubs COM draw: os do bloco 4 só tinham update/show/hide, então
+    -- GameplayScene.draw() estourava e o pcall mascarava como "0 cartas" —
+    -- o baseline passava a falhar e o check da cerimônia passava à toa.
+    local noop = function() end
+    GameplayScene.init({
+        game = gmC,
+        playButton = playButton,
+        endTurnButton = endTurnButton,
+        topBar = { update = noop, draw = noop },
+        gameUI = { update = noop, draw = noop, show = noop, hide = noop },
+    })
+
+    local CardBase = require("src.cards.base.Card")
+    local realDraw = CardBase.draw
+    local drawCount = 0
+    CardBase.draw = function() drawCount = drawCount + 1 end
+
+    local drawErr = nil
+    local function countHandDraws()
+        drawCount = 0
+        local ok, err = pcall(function() GameplayScene.draw() end)
+        if not ok then drawErr = err end
+        return drawCount
+    end
+
+    WorldRoad._entry = nil
+    local baseline = countHandDraws()
+    if drawErr then print("    [info] GameplayScene.draw erro: " .. tostring(drawErr)) end
+    check("mao DESENHA fora da cerimonia (baseline)", baseline > 0)
+
+    WorldRoad._entry = { phase = "door", t = 0, doorK = 0, fade = 0 }
+    check("sanity: isEntering() reflete a cerimonia", WorldRoad.isEntering())
+    check("mao NAO desenha durante a cerimonia do castelo", countHandDraws() == 0)
+
+    WorldRoad._entry = nil
+    check("mao VOLTA quando a cerimonia acaba", countHandDraws() > 0)
+
+    CardBase.draw = realDraw
+
     print(string.format("\n  TOTAL: %d pass / %d fail", pass, fail))
     return fail == 0
 end

@@ -270,7 +270,15 @@ Config.Audio = {
     STRENGTH_GAIN_VOLUME = 0.55,
     POISON_TICK_VOLUME = 0.45,
     ENEMY_ATTACK_VOLUME = 0.6,
-    ENEMY_DEATH_VOLUME = 0.65,
+    -- 0.65 -> 0.48 (Set/2026, dono: "barulho quando monstro morre muito alto").
+    -- 0.65 era o TOPO da faixa do projeto (combate vive em 0.5-0.55) e ainda
+    -- soma com o jiggleScreen(1.5) que dispara no mesmo frame (Game.lua:1295).
+    ENEMY_DEATH_VOLUME = 0.48,
+    -- Carta explodindo tem som PROPRIO. Antes tomava emprestado o enemyDeath
+    -- ("som de boom disponivel", comentario no Card.lua) -- carta estourando
+    -- nao deveria soar como monstro morrendo. Registro por scan: enquanto
+    -- audio/sfx/card-explode.mp3 nao existir, cai no enemyDeath e nada quebra.
+    CARD_EXPLODE_VOLUME = 0.45,
     BUTTON_CLICK_VOLUME = 0.4,
     MENU_OPEN_VOLUME = 0.45,
     MENU_CLOSE_VOLUME = 0.4,

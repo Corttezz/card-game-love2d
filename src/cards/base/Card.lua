@@ -354,7 +354,17 @@ function Card:explode(colours, timeFac, onComplete)
             parts1:fade(0.3 * explodeTime)
             self:juice_up(0.5, 0.2)
             if _G.triggerShake then _G.triggerShake(10, 0.3) end
-            pcall(function() Sfx.play("enemyDeath") end) -- som de "boom" disponível
+            -- Som PROPRIO da carta estourando. Antes usava "enemyDeath"
+            -- ("som de boom disponivel") -- emprestado, nao escolhido: carta
+            -- explodindo soava como monstro morrendo. Fallback mantem o
+            -- comportamento antigo enquanto card-explode.mp3 nao existir.
+            pcall(function()
+                if Sfx.has and Sfx.has("cardExplode") then
+                    Sfx.play("cardExplode")
+                else
+                    Sfx.play("enemyDeath")
+                end
+            end)
 
             -- Dissolve final 0.3 → 1
             em.add(ev:new({

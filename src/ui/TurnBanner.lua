@@ -47,6 +47,13 @@ end
 function TurnBanner.isActive() return active ~= nil end
 
 local BAND_H = 46
+local BAND_Y_RATIO = 0.24
+
+-- Retângulo da faixa (y, altura). Fonte ÚNICA da geometria: o ComboBanner
+-- se ancora NISSO pra nunca desenhar por cima do banner de turno.
+function TurnBanner.bandRect()
+    return math.floor(love.graphics.getHeight() * BAND_Y_RATIO), BAND_H
+end
 
 -- Renderiza a faixa COMPLETA (fundo + linhas + losangos + texto) num canvas
 -- full-width — o dissolve queima o conjunto como uma coisa só (igual carta).
@@ -108,7 +115,6 @@ local BURN = {
 function TurnBanner.draw()
     if not active then return end
     local sw = love.graphics.getWidth()
-    local sh = love.graphics.getHeight()
     local t = active.t
 
     -- v2.2 (feedback: "deslizar com o quadrado faltando é estranho — usa a
@@ -134,7 +140,7 @@ function TurnBanner.draw()
     end
 
     local canvas = bandCanvas(active.kind, sw)
-    local y = math.floor(sh * 0.24)
+    local y = TurnBanner.bandRect()
     love.graphics.setColor(1, 1, 1, 1)
     -- noise anisotrópico: célula ~quadrada em pixels na faixa full-width
     -- (sem isso a queima estica em "faixas fantasmas")

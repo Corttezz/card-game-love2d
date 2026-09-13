@@ -12,6 +12,23 @@ local DynaText = require("src.ui.DynaText")
 
 local EndScreens = {}
 
+-- Instrucao do rodape: a fonte cede ate o texto caber com margem. Sem isto o
+-- texto era desenhado centralizado no tamanho fixo e VAZAVA pelos dois lados
+-- da tela — em pt_BR ("Pressione ESPACO para jogar novamente ou ESC para
+-- voltar ao menu") e pior ainda em locale de palavra longa. Mesma ideia do
+-- fit() do HintBar: encolhe o conteudo, nunca deixa sangrar.
+local function drawInstruction(text, centerX, y, width)
+    local sizes = { 18, 16, 14, 12, 10 }
+    local maxW = width - 48          -- margem de 24px de cada lado
+    local font
+    for _, size in ipairs(sizes) do
+        font = FontManager.getResponsiveFont(Config.UI.INSTRUCTION_FONT_RATIO, size)
+        if font:getWidth(text) <= maxW then break end
+    end
+    love.graphics.setFont(font)
+    love.graphics.print(text, math.floor(centerX - font:getWidth(text) / 2), y)
+end
+
 -- Cache de instâncias DynaText por chave (gameOver/victory). Recriadas se a
 -- fonte responsiva muda (resize) ou texto muda (locale). Trackeia lastDrawTime
 -- pra detectar "re-entrada" na cena → dispara :pulse() + reset do pop_in.
@@ -27,6 +44,14 @@ local function ensureTitle(key, text, size, color)
                 text = text,
                 fontSize = size,
                 bump = true,                  -- letras "saltam" episodicamente
+                -- Mesma correção do título do pacote e do Round Eval: com o
+                -- default (bump_phase=200) as letras vizinhas defasam ~-1,06
+                -- rad e o título ESPALHA em vez de ondular — pior ainda em
+                -- locale de palavra longa ("GAME OVER" tem espaço no meio, e
+                -- a letra solta no ar lia como texto quebrado). Fase pequena
+                -- faz o salto viajar pela palavra.
+                bump_phase = 0.42,
+                bump_amount = 0.45,
                 rotate = true,
                 pop_in = 0.5,
                 pop_in_rate = 4,
@@ -102,12 +127,9 @@ function EndScreens.drawGameOver(game)
         love.graphics.print(rTxt, centerX - rw / 2, centerY - height * 0.083 + 34)
     end
 
-    local instructionFont = FontManager.getResponsiveFont(Config.UI.INSTRUCTION_FONT_RATIO, 18)
-    love.graphics.setFont(instructionFont)
-    local instruction = I18n.t("game_over.instructions")
-    local instructionWidth = instructionFont:getWidth(instruction)
     love.graphics.setColor(Theme.Colors.TEXT_SECONDARY)
-    love.graphics.print(instruction, centerX - instructionWidth / 2, centerY + height * 0.083)
+    drawInstruction(I18n.t("game_over.instructions"), centerX,
+        centerY + height * 0.083, width)
 
     love.graphics.setFont(love.graphics.newFont())
 end
@@ -158,12 +180,9 @@ function EndScreens.drawVictory(game)
         love.graphics.print(rTxt, centerX - rw / 2, centerY - height * 0.083 + 34)
     end
 
-    local instructionFont = FontManager.getResponsiveFont(Config.UI.INSTRUCTION_FONT_RATIO, 18)
-    love.graphics.setFont(instructionFont)
-    local instruction = I18n.t("victory.instructions")
-    local instructionWidth = instructionFont:getWidth(instruction)
     love.graphics.setColor(Theme.Colors.TEXT_SECONDARY)
-    love.graphics.print(instruction, centerX - instructionWidth / 2, centerY + height * 0.083)
+    drawInstruction(I18n.t("victory.instructions"), centerX,
+        centerY + height * 0.083, width)
 
     love.graphics.setFont(love.graphics.newFont())
 end

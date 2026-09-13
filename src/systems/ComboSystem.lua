@@ -22,9 +22,52 @@
 --   "heal"               — cura player
 
 local TagSystem = require("src.systems.TagSystem")
+local I18n = require("src.i18n.I18n")
+
+-- Nome EXIBIDO do combo: i18n (combos.<id>) com rule.label de fallback — a
+-- MESMA resolucao que src/ui/ComboBanner.lua ja fazia. Os toasts liam
+-- combo.label direto e por isso saiam em PT dentro do feed traduzido.
+local function comboName(combo)
+    return I18n.t("combos." .. tostring(combo.id), nil,
+        combo.label or tostring(combo.id))
+end
 local Sfx = require("src.systems.Sfx")
 
 local ComboSystem = {}
+
+-- Notifica a UI (banner de combo). Declarado no TOPO de proposito: local em
+-- Lua so existe ABAIXO da definicao, e quem chama esta la embaixo. pcall
+-- porque contextos headless (tools/testes sem canvas) nao tem UI — vira
+-- no-op silencioso em vez de derrubar o combate.
+local function notifyComboUI(combos)
+    pcall(function()
+        require("src.ui.ComboBanner").show(combos)
+    end)
+end
+
+-- QUANDO O BANNER APARECE (v2, feedback do dono Set/2026: "so precisa
+-- aparecer quando triggar o combo de fato").
+--
+-- Diagnostico: nunca foi o caso de aparecer sem combo — detect() so devolve
+-- regra que casou, e announce() ja saia cedo com lista vazia. O que o dono
+-- viu foi o banner subindo no ANUNCIO, junto do clique em "Jogar Cartas",
+-- enquanto o efeito so acontece varios frames depois, quando a carta pousa e
+-- o numero muda. Aparecia antes da propria causa.
+--
+-- Agora o banner sobe no IMPACTO: na primeira vez que um combo REALMENTE
+-- altera alguma coisa. Duas portas, a que vier primeiro:
+--   · applyToCardValue — o valor da carta mudou (dano/bloqueio maior);
+--   · applyOnceEffects — turno so com combo de evento (cura/debuff/evoke),
+--     em que nenhum valor de carta muda.
+-- O guarda `_comboAnnounced` garante que so o turno de VERDADE dispara: o
+-- piloto (tools/autoplay.lua) chama applyToCardValue com contexto sintetico
+-- pra ESTIMAR dano, e estimativa nao e evento.
+local function raiseComboBanner(turnContext)
+    if not turnContext or not turnContext._comboAnnounced then return end
+    if turnContext._comboBannerShown then return end
+    turnContext._comboBannerShown = true
+    notifyComboUI(turnContext.activeCombos)
+end
 
 -- Regras ativas. Ordem importa: combos superiores no pipeline aplicam antes.
 -- id tambem serve de chave i18n (messages.combo.<id>) no futuro.
@@ -174,6 +217,8 @@ function ComboSystem.applyToCardValue(card, baseValue, turnContext)
             end
         end
     end
+    -- causa e efeito: o banner sobe no exato momento em que o numero sobe
+    if v ~= baseValue then raiseComboBanner(turnContext) end
     return v
 end
 
@@ -182,6 +227,9 @@ end
 -- activeCombos; game e usado para efeitos colaterais.
 function ComboSystem.applyOnceEffects(game, turnContext)
     if not turnContext or not turnContext.activeCombos then return end
+    -- rede de seguranca: turno cujos combos sao SO de evento (cura/debuff/
+    -- evoke) nunca passa por applyToCardValue com mudanca — o banner sobe aqui
+    raiseComboBanner(turnContext)
     for _, combo in ipairs(turnContext.activeCombos) do
         local b = combo.bonus
         if b then
@@ -191,8 +239,9 @@ function ComboSystem.applyOnceEffects(game, turnContext)
                     stacks = b.stacks or 1,
                     duration = b.duration or 2,
                 })
-                game:addMessage("Combo " .. (combo.label or combo.id) .. ": +"
-                    .. (b.stacks or 1) .. " " .. (b.debuff or "debuff"), "warning")
+                game:addMessage(I18n.t("messages.combo_debuff", {
+                    combo = comboName(combo), stacks = b.stacks or 1,
+                    name = b.debuff or "debuff" }), "warning")
             elseif b.type == "heal" and game.player then
                 -- P2.5 (Jul/2026, rebalance v2): heal de combo roteia pelo
                 -- heal_multiplier (com floor via P2.4) — sem isso Calice do
@@ -202,27 +251,34 @@ function ComboSystem.applyOnceEffects(game, turnContext)
                     amount = game.effectSystem:applyHealMultiplier(game, amount)
                 end
                 game.player:heal(amount)
-                game:addMessage("Combo " .. (combo.label or combo.id) .. ": +"
-                    .. amount .. " HP", "success")
+                game:addMessage(I18n.t("messages.combo_heal", {
+                    combo = comboName(combo), value = amount }), "success")
             elseif b.type == "evoke_on_combo" then
                 -- Evoca 1 orb extra ao fim do turno
                 local orb = game.player:popOldestOrb()
                 if orb and game.effectSystem then
                     game.effectSystem:_evokeOrbEffect(game, orb)
-                    game:addMessage("Combo " .. (combo.label or combo.id)
-                        .. ": orb bonus evocado", "success")
+                    game:addMessage(I18n.t("messages.combo_orb", {
+                        combo = comboName(combo) }), "success")
                 end
             end
         end
     end
 end
 
--- Toast inicial ao detectar combos. Chamado por Game:playSelectedCards uma vez.
+-- Anuncio dos combos detectados. Chamado por Game:playSelectedCards uma vez,
+-- no momento do clique — ANTES das cartas voarem. Aqui saem o log (historico
+-- no feed lateral) e o som. O BANNER (src/ui/ComboBanner.lua) sai depois, no
+-- impacto, por raiseComboBanner — ver a nota la em cima.
 function ComboSystem.announce(game, turnContext)
     if not turnContext.activeCombos or #turnContext.activeCombos == 0 then return end
     for _, combo in ipairs(turnContext.activeCombos) do
-        game:addMessage("COMBO! " .. (combo.label or combo.id), "success")
+        game:addMessage(I18n.t("messages.combo_announce", {
+            combo = comboName(combo) }), "success")
     end
+    -- marca o turno como REAL (ver raiseComboBanner) — o banner nao sobe
+    -- aqui: espera o combo mexer no numero, la no impacto da carta.
+    turnContext._comboAnnounced = true
     Sfx.play("comboTrigger")
 end
 

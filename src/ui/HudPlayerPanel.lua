@@ -102,7 +102,8 @@ function HudPlayerPanel:draw(player)
     local labelFont = FontManager.getResponsiveFont(0.018, 11)
     love.graphics.setFont(labelFont)
     setColor(Palette.AGED_GOLD_LIGHT, 0.95)
-    love.graphics.print("HERÓI", x + PAD, y + 4)
+    love.graphics.print(
+        require("src.i18n.I18n").t("hud.hero", nil, "HEROI"), x + PAD, y + 4)
 
     -- ===== HP: número grande + barra =====
     -- Display usa valor eased (disp.health) pra number "conta" suave quando

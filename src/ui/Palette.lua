@@ -53,6 +53,15 @@ Palette.AGED_GOLD_DARK  = hex("#7a5e20")   -- dourado escuro (divisores sutis)
 Palette.MOSS            = hex("#4a6030")   -- verde musgo (effect / poison)
 Palette.RUST            = hex("#8b4a1e")   -- laranja ferrugem
 
+-- ===== ACENTO DE COMBO (ComboBanner) =====
+-- Violeta arcano: precisa ser lido EM UM PISCAR como "coisa diferente" ao
+-- lado do ouro (turno do jogador) e do sangue (turno do inimigo) do
+-- TurnBanner. Fica na familia da tinta cara do grimorio (pigmento de
+-- purpura), nao no neon legado.
+Palette.ARCANE_INK      = hex("#120c1a")   -- tinta arcana (fundo da faixa)
+Palette.ARCANE          = hex("#7b4bbd")   -- violeta arcano (linhas/ornamento)
+Palette.ARCANE_LIGHT    = hex("#d8b8ff")   -- violeta claro (texto/valor)
+
 -- ===== Gema de mana (CardCostBadge) — lápis-lazúli ENVELHECIDO.
 -- Feedback do dono (Jul/2026): a 1ª versão usava o azul vivo do ManaOrb e
 -- "gritava" sobre o pergaminho — a carta é relíquia, a gema também tem que

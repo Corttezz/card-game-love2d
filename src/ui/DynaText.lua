@@ -16,10 +16,17 @@
 --   local dt = DynaText.new({
 --       text = "Pacote Padrão",
 --       fontSize = 22,
---       bump = true, rotate = true, pop_in = 0.4,
+--       bump = true, bump_phase = 0.42, bump_amount = 0.45,
+--       rotate = true, pop_in = 0.4,
 --       colours = { {1,0.85,0.2,1} },
 --       shadow = true,
 --   })
+--
+-- ATENÇÃO ao `bump`: ligar sem `bump_phase` cai no default histórico 200, que
+-- ESPALHA as letras (ver a nota em bump_phase abaixo). Título quer 0.42; texto
+-- que o jogador LÊ pra decidir (número, total, contador) não quer bump nenhum
+-- — informação pede linha de base estável. `tools/test_dynatext_bump.lua`
+-- falha se algum consumidor ligar bump sem declarar a fase.
 --   dt:update(dt)        -- avança timer interno
 --   dt:draw(x, y)        -- renderiza centralizado em (x, y)
 
@@ -34,7 +41,10 @@ local utf8 = require("utf8")
 --   fontSize     (number)               default 16
 --   bump         (bool)                 default false   — oscilação Y forte
 --   bump_rate    (number)               default 2.666
---   bump_amount  (number)               default 1.0
+--   bump_amount  (number)               default 1.0     — pico = 14px * amount
+--   bump_phase   (number, rad)          default 200     — defasagem entre letras
+--                                                          vizinhas; pequeno (~0.4)
+--                                                          = onda, 200 = espalhado
 --   float        (bool)                 default false   — oscilação Y sutil sustentada
 --   rotate       (bool)                 default false   — wobble de rotação
 --   pop_in       (number, segundos)     default 0       — duração da cascata; 0 = sem pop_in
@@ -51,6 +61,13 @@ function DynaText.new(config)
     d.bump = config.bump or false
     d.bump_rate = config.bump_rate or 2.666
     d.bump_amount = config.bump_amount or 1.0
+    -- Defasagem de fase entre letras VIZINHAS, em radianos. O default 200 e o
+    -- valor historico: 200 rad da 5.22 rad em modulo 2pi, ou seja ~-1.06 rad
+    -- de salto entre vizinhas, o que ESPALHA as letras em vez de propagar uma
+    -- onda -- num frame parado o texto parece quebrado. Um valor pequeno
+    -- (~0.4) faz o salto viajar pela palavra como ondulacao. Mantido em 200
+    -- por default pra nao mexer em quem ja estava afinado no olho.
+    d.bump_phase = config.bump_phase or 200
     d.float = config.float or false
     d.rotate = config.rotate or false
     d.pop_in = config.pop_in or 0
@@ -179,9 +196,12 @@ function DynaText:draw(centerX, centerY)
             local rotOff = 0
 
             if self.bump then
-                -- Cada letra defasada por k. Curva: max(0, (5+rate)*sin(rate*t + 200*k) - 3 - rate)
-                -- O max(0, ...) faz a letra ficar em "0" parte do tempo e pular pra cima episodicamente.
-                local sinWave = (5 + self.bump_rate) * math.sin(self.bump_rate * self.timer + 200 * i) - 3 - self.bump_rate
+                -- Cada letra defasada por bump_phase*k. Curva:
+                --   max(0, (5+rate)*sin(rate*t + bump_phase*k) - 3 - rate)
+                -- O max(0, ...) faz a letra ficar em "0" parte do tempo (~81% do
+                -- ciclo) e pular pra cima episodicamente. bump_phase controla se
+                -- isso vira ONDA (valor pequeno) ou ESPALHAMENTO (default 200).
+                local sinWave = (5 + self.bump_rate) * math.sin(self.bump_rate * self.timer + self.bump_phase * i) - 3 - self.bump_rate
                 yOff = yOff - self.bump_amount * 7 * math.max(0, sinWave)
             end
 
