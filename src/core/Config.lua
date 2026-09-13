@@ -335,6 +335,32 @@ Config.Utils = {
     -- Calcula posição relativa
     getRelativePosition = function(ratio, screenSize)
         return screenSize * ratio
+    end,
+
+    -- Tamanho com que a janela deve NASCER, dado o monitor e a largura atual.
+    -- Devolve (w, h) ou nil quando não há motivo pra mexer.
+    --
+    -- Mora aqui, separada de `love.window`, para poder ser testada: abrir
+    -- janela de verdade num teste não é reproduzível (cada máquina tem um
+    -- monitor) e `love.window.setMode` repetido dentro de um tool não retorna
+    -- (ver memory/ui_layout_invariants.md). A decisão é aritmética; só a
+    -- aplicação precisa do módulo window.
+    --
+    -- 85% e não 100%: a área que o SO dá não desconta barra de tarefas
+    -- (Windows) nem menu bar e dock (macOS), então pedir tudo enfia a barra de
+    -- título atrás delas.
+    tamanhoJanelaInicial = function(desktopW, desktopH, larguraAtual, fracao)
+        if not desktopW or not desktopH then return nil end
+        if desktopW <= 0 or desktopH <= 0 then return nil end
+        local f = fracao or 0.85
+        local w = math.floor(desktopW * f)
+        local h = math.floor(desktopH * f)
+        -- Nunca abaixo do mínimo declarado no conf.lua, senão o setMode
+        -- devolve uma janela maior que a pedida e o layout nasce errado.
+        if w < 800 or h < 600 then return nil end
+        -- Só cresce. Janela que já veio grande fica como está.
+        if larguraAtual and larguraAtual >= w then return nil end
+        return w, h
     end
 }
 

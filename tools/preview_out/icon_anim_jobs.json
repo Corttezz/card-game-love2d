@@ -486,5 +486,29 @@
   "warrior_taunt": {
     "object_id": "056a0572-72b8-4f65-b310-c57e8de9dd9c",
     "group": "bfb348bb-9e9f-4641-8eca-0a9b92ef0d75"
+  },
+  "mage_radiant_prayer": {
+    "object_id": "2d8f0dc8-73e4-4a45-9371-41a718c8f477",
+    "group": "9a022b32-7935-4673-99f5-27d9602f8222"
+  },
+  "rogue_leech_blade": {
+    "object_id": "8b4e887a-1e5c-49e7-a3b5-fee87fb326c2",
+    "group": "6efe8b6e-8c50-437d-b7c1-36e8693c226a"
+  },
+  "warrior_adrenaline_rush": {
+    "object_id": "816f9a50-64f8-4f34-819b-01cdb0b18f81",
+    "group": "be6ebea8-018f-4b97-a21a-dbbd084bc11d"
+  },
+  "warrior_eternal_bulwark": {
+    "object_id": "b40eb0e7-53db-4537-8a13-b08bfd1e7f43",
+    "group": "bff16220-a1e8-44dc-8228-ff2d624daba4"
+  },
+  "mage_primordial_storm": {
+    "object_id": "d7f53ad8-6f0b-4b88-8062-9e75ff1b196b",
+    "group": "4f2aa39d-a0ac-4fe5-9079-74ecee7c7624"
+  },
+  "rogue_toxin_master": {
+    "object_id": "198bbce0-77a9-495c-9c14-fe9c409a4b3b",
+    "group": "15d2d99b-ead0-4a83-aa28-f932cc79f863"
   }
 }

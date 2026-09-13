@@ -131,6 +131,63 @@ memory/card_creation_flow.md), não um extra. Duas regras inegociáveis:
 - **Animação "morta"**: v3 às vezes gera frames quase idênticos (lição do
   luminaire). `check` compara md5 dos frames; se acusar MORTA?, regerar com
   descrição de movimento mais explícita (`replace_existing=true`).
+- **`check` de md5 detecta animação MORTA, nunca animação ERRADA** (lição
+  Set/2026, lote das 12 cartas órfãs): 8 das 12 animações passaram no `check`
+  com "9 frames, 9 distintos — OK" e estavam quebradas. Frames distintos é
+  exatamente o que uma animação que destrói a arte produz. O que passou pelo
+  md5 e só o OLHO pegou:
+  - `warrior_eternal_bulwark` — as portas do portão **dissolveram** ao longo
+    do loop até sobrar um arco vazio (o modelo leu "portão" como abrível,
+    mesmo com "the doors never open"); frame 8 vazio → frame 0 sólido = pop.
+  - `warrior_adrenaline_rush` — "fluido girando no cilindro" virou uma bola
+    de fogo crescendo no topo: o injetor virou tocha (silhueta destruída).
+  - `rogue_toxin_master` — os "fumos verdes" viraram tentáculos FORA da
+    silhueta da máscara.
+  - `mage_primordial_storm` — o orbe de fogo **trocou de cor** para ciano ao
+    longo do loop (viola "colors unchanged" e o loop não fecha).
+  - `mage_radiant_prayer` / `warrior_taunt` / `rogue_poison_dart` — amplitude
+    e matiz saindo da faixa da raridade; "glint" virando mancha branca
+    estourada.
+
+  **E a lição levou DUAS voltas.** A v2 destes oito foi registrada aqui como
+  "todos aprovados na 2ª tentativa" — e não era verdade. Na inspeção visual
+  antes do merge, três continuavam quebradas: `warrior_eternal_bulwark` (as
+  portas somem no meio do loop, arco vazio nos frames 4-6), `mage_primordial_storm`
+  (os orbes de fogo carbonizam de laranja para preto, loop não fecha) e
+  `mage_radiant_prayer` (o sol migra de amarelo para vermelho). Estão em
+  `tools/preview_out/_quarentena_anim/`, FORA de `icons_anim/` — carta com
+  ícone estático é melhor que carta com animação quebrada.
+
+  O erro de processo foi escrever "aprovado" na memória sem ter olhado o
+  contact sheet da v2. **Escrever a regra não é cumprir a regra.**
+
+  **Regra: `check` verde NÃO é aprovação — é só pré-requisito.** Nenhuma
+  animação entra sem contact sheet olhado a 3× (64px esconde o defeito: a
+  lâmina magenta do `rogue_leech_blade` lia como vermelho escuro a 1×).
+  Grid rápido de N cartas × 9 frames com PIL, sem abrir o LÖVE:
+  `tools/preview_out/anim_grid_12.png` foi gerado assim.
+  Mesma lição que o áudio deu no mesmo dia: header de MP3 válido não diz
+  nada sobre o som servir ao design. Validador automático prova que o
+  ARQUIVO existe e é bem-formado; só o olho (ou o ouvido) prova que ele
+  serve. Ver [[sfx_generation]].
+- **Vocabulário de prompt que corrigiu os 8 casos acima** (v2, todos
+  aprovados na 2ª tentativa): declarar o sujeito como parede/estátua e não
+  só "static" (`"the doors are a solid stone wall that never opens, never
+  fades, never becomes transparent"`); proibir a categoria inteira do
+  artefato (`"absolutely no fire, no flame, no glow, no light emission,
+  nothing grows out of it"`); proibir pixel novo fora do contorno
+  (`"nothing whatsoever may appear outside the mask outline"`); travar cor
+  item a item (`"the fire orb stays orange and never turns blue or cyan"`);
+  e travar FORMA deixando só o brilho variar, quando a raridade pede quase
+  nada (`"keeps exactly the same shape size and outline in every frame, the
+  ONLY change is that glow dimming and brightening"`).
+- **Regerar arte estática abre uma janela de suite VERMELHA** (Set/2026):
+  apagar `assets/sprites/icons/<id>.png` pra regerar faz a trava de arte do
+  `tools/validate_cards.lua` acusar "atlas entry with unresolvable icon" —
+  corretamente. Se outro agente rodar `test_all` nessa janela, vê vermelho
+  que não é dele. Avisar o time antes de mexer em `icons/` ou `icons_anim/`,
+  e NÃO rodar `test_all` com a fábrica escrevendo (leitura parcial de
+  diretório = falso vermelho).
 - **ROSTOS: travar a boca SEMPRE** (feedback do dono, Jul/2026): em busto/
   face, o v3 mexe a boca e o personagem "parece que tá falando"
   (joker_vampire v1 reprovado). Prompt de rosto precisa de "mouth lips and

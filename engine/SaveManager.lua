@@ -36,7 +36,11 @@ local DEFAULT_SETTINGS = {
     masterVolume = 1.0,
     musicVolume  = 0.3,
     sfxVolume    = 0.7,
-    fullscreen   = false,
+    -- Primeiro acesso entra em tela cheia: 1024x768 numa tela moderna lê como
+    -- janelinha, e o jogador novo não sabe que existe a opção. Quem já jogou
+    -- tem o valor no arquivo e este default não o alcança — por isso o
+    -- `love.load` também aumenta a janela de quem escolheu NÃO usar fullscreen.
+    fullscreen   = true,
     crtShader    = true,
     locale       = "pt_BR",
     -- Acessibilidade Balatro-style (G.SETTINGS.reduced_motion / screenshake).

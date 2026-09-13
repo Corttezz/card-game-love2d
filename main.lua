@@ -956,9 +956,40 @@ function love.load(loveArgs)
     -- Se nao existir, retorna defaults (DEFAULT_SETTINGS no SaveManager).
     local persistedSettings = SaveManager.loadSettings()
 
-    -- Aplica fullscreen ANTES de inicializar UI (evita reflow desnecessário).
-    if persistedSettings.fullscreen then
-        love.window.setFullscreen(true)
+    -- JANELA: nascer grande, ANTES de inicializar UI (evita reflow).
+    --
+    -- `conf.lua` não consegue decidir isso: ele roda antes do módulo window
+    -- existir, então não tem como perguntar o tamanho do monitor. Os 1024x768
+    -- de lá são um piso, e num monitor 2560x1440 abrem um selo postal no meio
+    -- da tela. Aqui já dá pra medir.
+    --
+    -- Duas garantias, porque uma só não cobre todo mundo:
+    --   1. quem nunca abriu o jogo entra em fullscreen (DEFAULT_SETTINGS);
+    --   2. quem PREFERE janela ganha uma proporcional ao monitor, não a fixa.
+    -- Sem a 2, trocar o default não faria nada para quem já tem
+    -- `fullscreen = false` salvo — que é a maioria de quem já jogou.
+    --
+    -- Fora em modo ferramenta: screenshot/preview definem a própria janela, e
+    -- captura tem que ser reproduzível entre máquinas com monitores
+    -- diferentes. Sem este guard, o default fullscreen vazaria pros tools.
+    if not _G.HEADLESS_TOOL then
+        if persistedSettings.fullscreen then
+            love.window.setFullscreen(true)
+        else
+            -- 85% do desktop e centralizada. Pedir a área TOTAL põe a barra
+            -- de título atrás da barra de tarefas (Windows) ou do menu bar
+            -- (macOS); pedir mais que a área útil trava o `setMode`.
+            local okDim, dw, dh = pcall(love.window.getDesktopDimensions, 1)
+            if okDim then
+                local alvoW, alvoH = Config.Utils.tamanhoJanelaInicial(
+                    dw, dh, love.graphics.getWidth())
+                if alvoW then
+                    local _, _, flags = love.window.getMode()
+                    flags.centered = true
+                    love.window.setMode(alvoW, alvoH, flags)
+                end
+            end
+        end
     end
 
     -- Inicializa o sistema de áudio com volumes do save.
