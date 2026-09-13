@@ -22,6 +22,11 @@ local LightEngine = {}
 
 LightEngine.SCALE = 4          -- 1 texel de luz = 4px de tela (~pixel lógico)
 LightEngine.debugAmbientScale = 1   -- teclas O/P do demo_worldroad (calibração)
+-- MEDIÇÃO (P6'): suprime TODA luz mantendo o ambiente — o A/B do protocolo
+-- de diferença por pixel (tools/measure_lightpool.lua). Com o mesmo frame
+-- renderizado com e sem luz, tudo que é ASSADO no PNG é idêntico nos dois e
+-- subtrai a zero: a diferença isola só a contribuição da luz. Só ferramenta.
+LightEngine.debugNoLights = false
 
 local MAX_LIGHTS = 16          -- fila com shader (poças/fontes médias)
 local MAX_MICRO  = 64          -- fila de micro-pontos (vagalumes/chamas/janelas)
@@ -154,7 +159,7 @@ end
 --          levels=n (default 4; 2 pra luz pequena/horizonte),
 --          flicker=nil|"fire"|"pulse", seed=n }
 function LightEngine.submit(spec)
-    if not frameActive then return end
+    if not frameActive or LightEngine.debugNoLights then return end
     local inten = spec.intensity or 1
     local radius = spec.radius or 100
     if spec.flicker == "fire" then
@@ -196,7 +201,7 @@ end
 -- Micro-luz: ponto raio 4-12px sem shader (vagalume/chama/janela).
 -- O "glow" É o de-escurecimento local — halo pequeno sobre fundo escuro.
 function LightEngine.submitMicro(x, y, radius, color, intensity, z)
-    if not frameActive then return end
+    if not frameActive or LightEngine.debugNoLights then return end
     if #microQueue >= MAX_MICRO then return end
     microQueue[#microQueue + 1] = {
         x = x, y = y, r = radius or 8,

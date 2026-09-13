@@ -136,3 +136,82 @@ lantern/brazier PixelLab + janelas do castelo) → F3 vida emissiva (vagalumes m
 `rectangle` não tem UV útil (desenhar Image branca 2×2 escalada com o shader);
 `screen_coords` do effect() = pixel do render target ativo; transformPoint converte
 coords dentro do room-sway.
+
+## ⛔ ADITIVO NO LIGHTMAP: NÃO TENTE DE NOVO (P6', Set/2026)
+
+**Se você chegou aqui pensando "o motor só escurece, bastava um termo
+aditivo pra luz aparecer" — essa ideia já foi tentada, removida, e rejeitada
+outra vez em revisão. Leia antes de implementar.**
+
+Tentado no v6, em 4 commits, todos ADITIVO SOBRE A ARTE:
+- `a246f1e` v6.3 — rim light no castelo (cópia do sprite deslocada 2px na
+  direção do sol, cor do celestial, alpha 0.28)
+- `06815f9` v6.4 — `CASTLE_GLOW_K`: glow de corpo (1.25×iw) + de portão
+  (0.55×iw), pulsante
+- `95b35e7` v6.5 — banda de luz aditiva na crista (0.06)
+- `c194d9a` v6.6 — god rays aditivos (0.03-0.06 oscilando)
+
+Todos REMOVIDOS no v7. Lápide no código, `src/ui/WorldRoad.lua:2100-2102`:
+"glow radial translúcido em cena pixel art lia como 'mancha transparente de
+cor estranha', feedback direto. **Luz em pixel art se DESENHA na paleta, não
+se sobrepõe com alpha.**"
+
+**Por que falha (é específico de pixel art):** gradiente translúcido sobre
+paleta limitada produz cores que NÃO EXISTEM na paleta. O olho lê como
+sujeira no sprite, não como luz. Não é serrilhado de borda — é contaminação
+de cor no corpo do sprite.
+
+**A fronteira exata** (`docs/plan/lighting-engine-v1.md` §3 regra 5): o
+banido é *gradiente colado em silhueta de sprite*, liso OU posterizado.
+Véu grande de baixa frequência (véu atmosférico, vinheta) é ACEITO; poça de
+chão aditiva é ACEITA ("dither só em poça de chão", padrão Stardew).
+
+**Rejeitado uma segunda vez** em revisão adversarial (§11, achado F-3
+grave): "boost() não preserva emissivo saturado e pode clarear acima da
+arte → rejeitado → micro-luzes".
+
+**O caminho designado pra halo de verdade** (chama contra céu escuro) tem
+nome e não é o lightmap: **bloom Kawase seletivo sobre canvas emissivo,
+F6.3**. Tabela de riscos: "halo real além da silhueta = F6.3 (bloom), NÃO
+lightmap".
+
+### O sintoma que faz a ideia parecer boa — e a causa real
+"Braseiro aceso e o chão não muda" (medido em `enemy4_winter_monarch`: dois
+fogos, chão intacto). A causa NÃO é falta de aditivo: é o AMBIENTE claro
+demais. O motor é multiply-only com teto 1.0 — a luz só devolve a arte na
+medida em que o ambiente escureceu. Luma do ambiente no gameplay real
+(tod 0.62 no andar 1 → 1.0 no boss; curva em `GameplayScene.lua:657`):
+
+| bioma | andar 1 | boss |
+|---|---|---|
+| fields | 0.674 | 0.491 |
+| highlands | 0.755 | 0.698 |
+| abyss | 0.651 | 0.593 |
+| marsh | 0.732 | 0.674 |
+| dusk | 0.555 | 0.499 |
+| **frost (antes)** | **0.887** | **0.826** |
+
+O frost era o único fora da curva, e o único onde o gate `ambientLuma() <
+0.75` (glow de luminária, `WorldRoad.lua:1822/4161`) NUNCA disparava. A 83%
+não sobra margem. **Corrigido com DADO, não com motor**: `lightDay`
+0.97/0.99/1.00 → 0.86/0.90/0.98 e `lightNight` 0.76/0.83/0.98 →
+0.61/0.66/0.78 (`src/data/biomes.lua`), mantendo o viés frio B>G>R.
+Resultado medido: contraste da poça do braseiro **+14.2 → +42.2** (3×) e,
+de brinde, o degrau de luminância do horizonte **105 → 66** (−38%).
+
+**NOTA IMPORTANTE:** `lightDay` NUNCA é aplicado puro no gameplay — a curva
+tem piso 0.62. Queixa de "de dia o motor é inerte" vinda do
+`screenshot_worldroad day_` é artefato da FERRAMENTA (ela força tod=0), não
+do jogo. Não reequilibre um bioma com base nela.
+
+### Como medir se a poça aparece
+`love . measure_lightpool [bioma]` — renderiza o MESMO frame com e sem luz
+(`LightEngine.debugNoLights`) e tira a diferença por pixel. Arte assada no
+PNG das montanhas é idêntica nos dois e **subtrai a zero**, então a métrica
+não é contaminável por nuvem/sol baked (foi exatamente esse tipo de
+contaminação que invalidou uma medição de nuvens antes).
+⚠️ A diff **não serve** como detector de franja: o toggle esvazia a lista de
+luzes, o teste `hit` de oclusor (`LightEngine.lua:272`) muda, e as árvores
+acendem na diff sem haver defeito. Controle que fecha: bioma não alterado
+(highlands) dá o mesmo padrão. Pra franja, compare o frame de produção
+antes/depois com zoom 3× e em movimento.

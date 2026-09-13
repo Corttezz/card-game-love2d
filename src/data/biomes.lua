@@ -160,8 +160,19 @@ local biomes = {
         fog = { 0.55, 0.60, 0.68, 0.6 },
         -- LightEngine: dia gelado — neutro frio, luz de fogo contrasta
         lightAmbient = { 0.88, 0.92, 1.00 },
-        lightDay   = { 0.97, 0.99, 1.00 },   -- dia gelado
-        lightNight = { 0.76, 0.83, 0.98 },   -- anoitecer polar
+        -- P6' (Set/2026): o frost era o ÚNICO bioma fora da curva — luma do
+        -- ambiente 0.887 no andar 1 e 0.826 no boss, contra 0.49-0.76 de
+        -- todos os outros. O motor é MULTIPLY-ONLY (teto 1.0): a luz só
+        -- "devolve" a arte na medida em que o ambiente escureceu. A 83% não
+        -- sobra margem, e por isso braseiro aceso não fazia poça nenhuma no
+        -- chão (medido em enemy4_winter_monarch: dois fogos, chão intacto).
+        -- A causa era o AMBIENTE claro demais, não falta de termo aditivo —
+        -- aditivo no lightmap foi tentado no v6 e removido no v7 (ver
+        -- memory/lighting_engine.md). Rebaixado pra faixa do highlands, que
+        -- é o mais claro dos que funcionam, preservando o viés frio (B>G>R).
+        -- Piso de legibilidade MIN_AMBIENT_LUMA 0.35: folgado.
+        lightDay   = { 0.86, 0.90, 0.98 },   -- dia gelado    (luma 0.897)
+        lightNight = { 0.61, 0.66, 0.78 },   -- anoitecer polar (luma 0.658)
         lightWindows = { { 0.51, 0.57 }, { 0.34, 0.60 }, { 0.68, 0.76 },
                          { 0.51, 0.37 } },
         lightWindowColor = { 0.70, 0.85, 1.00 },   -- janelas espectrais frias

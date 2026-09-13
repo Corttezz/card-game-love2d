@@ -496,6 +496,13 @@ function love.load(loveArgs)
         return
     end
 
+    -- P6': a poça de luz aparece? A/B do MESMO frame com e sem luz, diff
+    -- por pixel (arte assada no PNG subtrai a zero). love . measure_lightpool [bioma]
+    if loveArgs and loveArgs[1] == "measure_lightpool" then
+        require("tools.measure_lightpool").run(loveArgs[2])
+        return
+    end
+
     -- Demo interativo do WorldRoad (SPACE=viagem, 1-6=bioma, E=encounter,
     -- V=vista, R=reset) OU tour automático com keyframes:
     --   love . demo_worldroad          (interativo)
