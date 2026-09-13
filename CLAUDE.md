@@ -53,6 +53,7 @@ card-game-love2d/
 │   ├── JokerSlot.lua           # Slot visual de joker ativo
 │   ├── DeckViewerScreen.lua    # Deck da run em TELA CHEIA (estilo Coleção); abre por clique no deck da TopBar OU tecla D; hover c/ tooltip + forja aplicada
 │   ├── JokerManagerScreen.lua  # Gerenciador de Coringas (tela cheia): coleção+bancada, escolhe quais MAX_JOKER_SLOTS ativar; abre por clique no quadro de coringas OU tecla J; _G.toggleJokerManager
+│   ├── RunJournalScreen.lua    # ROTEIRO da jornada (tela cheia): o caminho JÁ percorrido, uma trilha por ato + castelo do bioma no fim; abre por clique no indicador de ATO da TopBar OU tecla M; _G.toggleRunJournal
 │   └── Button.lua              # Widget botão: clean (Balatro-inspired, default) | ornate | invisible
 ├── src/
 │   ├── core/
@@ -154,8 +155,9 @@ menu → classSelection → playing
 ### Inputs (gameplay)
 - Mouse: hover/select cartas, clica "Jogar Cartas", clica config na TopBar.
 - `r`: reinicia via `game:startGame()`.
-- `f`: toggle fullscreen + `FontManager.clearCache()`.
+- **NÃO existe tecla `f`** (esta linha documentava um toggle de fullscreen que não tem binding no `love.keypressed` — verificado Set/2026). Fullscreen só por **Configurações → Fullscreen** (`components/SettingsMenu.lua`, que chama `love.resize` manualmente) ou arrastando a borda.
 - `1/2/3/4`: presets de smoke (subtle/default/atmospheric/intense). `0`: limpa smoke.
+- `d` / `j` / `m`: abrem, em qualquer tela da run, o **Deck Viewer**, o **Gerenciador de Coringas** e o **Roteiro da jornada**. Os três também abrem por clique no bloco correspondente (deck / quadro de coringas / indicador de ATO).
 - `esc`: abre/fecha o **PauseMenu** nos estados de run (playing/mapSelection/rest/event) — sair, salvar e abandonar são decisões DENTRO do pause. Em gameOver/victory volta ao menu direto.
 
 ---
@@ -298,7 +300,7 @@ Ver [`memory/card_feel.md`](memory/card_feel.md). Regras-chave: (1) o TEMA da ca
 ## 9. Convenções do projeto
 
 - **OOP via metatables:** `setmetatable({}, Klass)` onde `Klass.__index = Klass`. Construtor `Klass:new()`.
-- **Strings de UI:** português. Mensagens de `print()` de debug também.
+- **Strings de UI:** NUNCA cravadas no código — sempre `I18n.t("chave", vars, fallback)` com a chave nos **5 locales**. Isso inclui toasts (`addMessage`), rótulos de tabelas de dados exibidas (nome de ato, tipo de nó, oferta de loja) e títulos de tela. A trava `love . test_one test_no_hardcoded_pt` falha se um literal acentuado aparecer em caminho de desenho. Mensagens de `print()`/`Debug.*` de debug seguem em português — são ferramenta, não UI.
 - **Posicionamento responsivo:** sempre `Config.Utils.getResponsiveSize(ratio, maxSize, dimension)` ou `love.graphics.getWidth()/getHeight()` direto — nunca hard-code coordenadas.
 - **Fontes:** use `FontManager.getResponsiveFont(ratio, maxSize)` ou `FontManager.getFont(size)` para aproveitar cache. Ao trocar resolução, chame `FontManager.clearCache()`.
 - **Cores:** sempre de `Theme.Colors` — evite hex/RGB literais fora de Theme.
@@ -307,11 +309,16 @@ Ver [`memory/card_feel.md`](memory/card_feel.md). Regras-chave: (1) o TEMA da ca
 - **Efeitos de cartas** são **data-driven** via `effects = {...}` no CardDatabase. Evite `if card.name == "X"` — use o array `effects`.
 - **Sequências temporais usam `_G.EventManager`** (ex: `EventManager.after(0.3, function() ... end)`) — evita state machines ad-hoc. Ver `memory/engine_layer.md`.
 - **Decisões de RUN usam os streams do `Rng`** (`src/systems/Rng.lua`): `Rng.get():random("card"|"shop"|"map"|"event"|"enemy"|"misc", ...)` — NUNCA `love.math.random` em ofertas/mapa/eventos/economia (quebra a reprodutibilidade por seed e o anti-save-scum). Visual/cosmético (partículas, smoke, jiggle) continua no RNG global. Estado salvo em `run.rngState`; pity de raridade mora em `rng.meta.cardPity`. Ver `memory/rng_and_offers.md`.
+- **`DynaText` com `bump`**: SEMPRE declare `bump_phase` (0.42 nas telas de título). O default histórico 200 defasa letras vizinhas em ~-1,06 rad e ESPALHA o texto ("RUND E NAUSW E RTUNG"); fase pequena faz o salto VIAJAR pela palavra. Texto que o jogador LÊ pra decidir (total, número, contador) não leva bump nenhum — informação quer linha de base estável. `love . test_one test_dynatext_bump` trava isso.
 - **Juice visual** (kick de scale/rot em objetos) via `Moveable.juice_up(obj, 0.3, 0.1)` ou `obj:juice_up(...)` se já tiver o método. Card já compõe — use nos momentos "algo aconteceu".
 - **Card FX** (dissolve/materialize/explode/flip) já disponíveis: `card:start_dissolve(...)`, `card:start_materialize(...)`, `card:explode(...)`, `card:flip(...)`. Sequências prontas em `src/systems/CardRevealSequence.lua`. Ver `memory/card_fx_pipeline.md`.
 - **Shaders**: `shaders/dissolve.glsl`, `flash.glsl`, `booster.glsl`, `holo.glsl` foram **reescritos do zero** (Fase 2 do refactor Balatro, Abril/2026) com matemática própria — value noise hash-based + FBM + multi-banda iridescente. Copyright-safe. Novos: `foil.glsl`, `polychrome.glsl`, `negative.glsl` pra editions (Fase 3).
 
 ### Anti-patterns observados (a evitar ao editar)
+- **LAYOUT DE TELA = ZONAS, nunca ancoragem vizinho-a-vizinho (Set/2026).** Tela com vários elementos móveis define bandas (contexto / conteúdo / detalhe / ação) e cada elemento pertence a UMA. Quando falta espaço, quem cede é a ESCALA do conteúdo, não a posição das bandas. Origem: na escolha de carta do pacote, a etiqueta de raridade e os botões confirmar/cancelar tinham **literalmente o mesmo Y** (`ry + imgH + 8`) — dois elementos ancorados na carta sem saber um do outro. Referência: `src/ui/PackChoiceLayout.lua` (expõe `validate()`, rodado por estado nos tools). Banda vazia que só preenche no hover também é bug: informação de hover mora ANCORADA no objeto, não numa tarja fixa.
+- **`resize()` tem que cobrir o estado NOVO, não só o original.** `memory/resize_pattern.md` já exigia `resize()` em toda overlay — e foi violado assim mesmo, porque o checklist cobre "tela nova" e o defeito veio de "estado novo em tela existente". Adicionou rect/escala/fonte derivada/canvas/botão? Estenda o `resize()` **no mesmo commit**. E note: **NASCER grande ≠ CRESCER** — capturar a tela já criada em 1920×1080 não exercita o bug. Teste manual obrigatório: abrir em janela pequena, entrar na tela, apertar `f` COM ELA ABERTA, voltar, e arrastar a borda. (O modo `resizeflow` de `tools/screenshot_packopen.lua` trava: `love.window.setMode` repetido dentro de tool não retorna, e pedir janela maior que o desktop trava na 1ª chamada.)
+- **Fallback silencioso é PROIBIDO.** Três defeitos da mesma sessão tiveram essa causa: `Easing.apply` caía em `smooth` sem avisar (`"easeOut"` camelCase não resolve — 6 animações do PackOpenScreen rodaram erradas por rodadas de polish); `BoosterShader.load()` com `pcall` degradava pra "sem efeito" e um shader quebrado passou despercebido enquanto se media arte crua; `reducedMotion` zerava o juice e custou uma sessão de debug. Lookup que falha ou recurso que não carrega **AVISA** (um `print` por chave desconhecida basta). Corolário: `reducedMotion` remove MOVIMENTO, nunca INFORMAÇÃO.
+- **Antes de somar efeito sobre um asset, ABRA O PNG.** Os pacotes acumularam halo com a própria silhueta (lia como cópia fantasma), cantoneiras de código por cima das chapas metálicas **já pintadas na arte**, e um foil que lavava a cor dando a MESMA listra nos 5 tipos — uniformizando a identidade que se queria criar. A correção foi remover, não somar. Teste objetivo de "está lavando?": renderize 1:1 e compare pixel a pixel com o arquivo — em repouso o desvio deve ser ~0.
 - **REGRA DE PROFUNDIDADE do WorldRoad (lei do projeto, pedido explícito Jul/2026):** TODO elemento novo da cena entra no painter **intercalado por profundidade (`rel`)** — nunca em "camada global por tipo". O padrão é o do v7.5: `drawProps` descarrega fatias de grama entre as árvores (`flushGrassTo` → janelas `relFrom`/`relTo` do GrassField); um elemento na frente do pé de uma árvore desenha DEPOIS dela; atrás, ANTES. Vale pra pedra, animal, efeito, personagem — e também na LUZ (`LightEngine.submitOccluder` com `z`). Elemento desenhado em camada plana por cima do campo é bug, não estilo.
 - `src/ui/HudPanel.lua` e `src/ui/VisualEffects.lua` foram removidos no refactor de Abril/2026 (eram legado). Não recriar.
 - **Cartas não devem ter `effects = {}` sem tags significativas.** Starter/básicas OK. Rode `love . validate_cards` antes de commitar.
@@ -381,7 +388,7 @@ Não há framework externo — cada teste é um módulo Lua em `tools/` com `M.r
 
 **Infra compartilhada:** [`tools/testkit.lua`](tools/testkit.lua) — helpers de asserção (`t:eq/near/truthy/throws/...`) + fábricas: `TK.newRunGame(class)` (Game de run pronto), `TK.pump(game, secs)` (avança EventManager/animações — combate é diferido pro apex), `TK.mockGame()` (game leve pra EffectSystem isolado), `TK.seedRng(seed)` (Rng determinístico). Novos testes DEVEM usar o testkit e ser registrados em [`tools/run_all_tests.lua`](tools/run_all_tests.lua).
 
-**Cobertura por domínio (novos, Jul/2026):** `test_entities` (Player/Enemy: dano/armadura/mana/buffs/orbs/status/fúria/intent), `test_economy` (ouro/juros), `test_progression` (RunManager/MapManager/ActSystem: atos/andares/endless), `test_forge` (upgrade/custo forja), `test_cards` (catálogo inteiro instancia + rollRarity + pools), `test_effects_full` (todo tipo de efeito + orbs + triggers), `test_combat` (seleção/mana/pipeline de dano/vitória/derrota/jokers), `test_events` (roll/no-repeat + toda opção aplica sem crash). Somados aos smoke pré-existentes + `validate_cards` + `test_i18n` = **25 suites** (Jul/2026: +`smoke_packs` e regressões P0.9/P2.3 do rebalance v2 — ver `tools/run_all_tests.lua`, fonte da verdade da contagem).
+**Cobertura por domínio (novos, Jul/2026):** `test_entities` (Player/Enemy: dano/armadura/mana/buffs/orbs/status/fúria/intent), `test_economy` (ouro/juros), `test_progression` (RunManager/MapManager/ActSystem: atos/andares/endless), `test_forge` (upgrade/custo forja), `test_cards` (catálogo inteiro instancia + rollRarity + pools), `test_effects_full` (todo tipo de efeito + orbs + triggers), `test_combat` (seleção/mana/pipeline de dano/vitória/derrota/jokers), `test_events` (roll/no-repeat + toda opção aplica sem crash), `test_journal` (roteiro da run: ciclo begin/note/end, sinks, backfill do mapHistory, endless, save/load) e `test_journal_resize` (auditoria geométrica do Roteiro em 7 tamanhos, janela falsificada). Somados aos smoke pré-existentes + `validate_cards` + `test_i18n` = **33 suites** (Set/2026: +`test_journal`/`test_journal_resize`, `test_no_hardcoded_pt` (trava anti-PT cravado), `test_dynatext_bump` (trava do bump: título ondula, não espalha) e `test_achievements_i18n` (as 20 conquistas traduzidas de verdade nos 5 idiomas); Jul/2026: +`smoke_packs` e regressões P0.9/P2.3 do rebalance v2 — ver `tools/run_all_tests.lua`, fonte da verdade da contagem).
 
 Nota de comportamento fixada pelos testes: `poison` decrementa **`duration`** por turno e os `stacks` persistem (dano = stacks a cada turno, por duration turnos). O texto i18n foi corrigido (Jul/2026) para refletir isso — antes dizia erroneamente "perde 1 stack por turno". `vulnerable` só existe no Enemy (Player não tem esse caminho).
 
@@ -431,6 +438,7 @@ O diretório `memory/` na raiz do projeto guarda notas persistentes que compleme
 - [`memory/known_gaps.md`](memory/known_gaps.md) — o que é intencional vs pendente.
 - [`memory/run_instructions.md`](memory/run_instructions.md) — como rodar, smoke tests, atalhos.
 - [`memory/rng_and_offers.md`](memory/rng_and_offers.md) — Rng streams (seed/save), pity, afinidade, forja infinita, eventos v2, `love . test_systems`.
+- [`memory/enemy_pose_and_scene_anchor.md`](memory/enemy_pose_and_scene_anchor.md) — pose do inimigo (apoiado × flutuante, `src/data/enemy_poses.lua`) e linha de chão por cena (`src/data/scene_anchors.lua`); elite luta na ESTRADA, interior é só do boss.
 
 **Developer guide visual:** [`src/ui/README_PixelArt.md`](src/ui/README_PixelArt.md) — tutorial completo de como adicionar cartas, ícones, patterns e tunar estética.
 

@@ -541,9 +541,9 @@ function love.load(loveArgs)
     end
 
     -- Rotulos de opcao de evento estouram o botao em algum idioma?
-    --   love . check_event_labels [largura]
-    if loveArgs and loveArgs[1] == "check_event_labels" then
-        local ok = require("tools.check_event_labels").run(loveArgs[2])
+    --   love . check_event_i18n [largura]
+    if loveArgs and loveArgs[1] == "check_event_i18n" then
+        local ok = require("tools.check_event_i18n").run(loveArgs[2])
         love.event.quit(ok and 0 or 1)
         return
     end

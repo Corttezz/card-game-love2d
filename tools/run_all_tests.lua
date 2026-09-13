@@ -16,11 +16,17 @@ local SUITES = {
     { group = "unit",  name = "test_economy" },
     { group = "unit",  name = "test_progression" },
     { group = "unit",  name = "test_forge" },
+    { group = "unit",  name = "test_forge_resize" },
     { group = "unit",  name = "test_cards" },
     { group = "unit",  name = "test_effects_full" },
     { group = "unit",  name = "test_combat" },
     { group = "unit",  name = "test_events" },
+    { group = "unit",  name = "test_journal" },
+    { group = "unit",  name = "test_journal_resize" },
+    { group = "unit",  name = "test_enemy_pose" },
     { group = "unit",  name = "test_pixelcanvas_state" },
+    { group = "unit",  name = "test_screen_exits" },
+    { group = "valid", name = "check_event_i18n" },
     -- Smoke de sistema (pré-existentes)
     { group = "smoke", name = "smoke_tags" },
     { group = "smoke", name = "smoke_effects" },
@@ -39,6 +45,9 @@ local SUITES = {
     -- Validação / conteúdo
     { group = "valid", name = "validate_cards" },
     { group = "valid", name = "test_i18n" },
+    { group = "valid", name = "test_no_hardcoded_pt" },
+    { group = "valid", name = "test_dynatext_bump" },
+    { group = "valid", name = "test_achievements_i18n" },
 }
 
 function M.run()
