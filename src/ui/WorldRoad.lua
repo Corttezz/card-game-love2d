@@ -906,7 +906,10 @@ local function resolveOverlap(p)
     -- entulho — 2 props de cerca juntos viravam "ferro-velho" de 6 cercas
     if p.kind == "fence" then
         for _, o in ipairs(WorldRoad._props) do
-            if o ~= p and o.kind == "fence" and math.abs(o.z - p.z) < 8 then
+            -- fantasma do cross-dissolve não conta como ocupante (é arte
+            -- esvaindo do bioma velho, não um objeto do mundo)
+            if o ~= p and not o.ghost and o.kind == "fence"
+               and math.abs(o.z - p.z) < 8 then
                 p.kind = "bush"   -- rebaixa pra arbusto (mantém densidade)
                 local lane = KIND_LANE.default
                 p.lane = lane[1] + WorldRoad._rng:random() * (lane[2] - lane[1])
@@ -920,7 +923,7 @@ local function resolveOverlap(p)
     for _ = 1, 4 do
         local clash = false
         for _, o in ipairs(WorldRoad._props) do
-            if o ~= p and BIG[o.kind] and o.side == p.side
+            if o ~= p and not o.ghost and BIG[o.kind] and o.side == p.side
                and math.abs(o.z - p.z) < 2.2
                and math.abs(o.lane - p.lane) < 0.22 then
                 clash = true
@@ -946,6 +949,99 @@ local function makeWall(p)
     p.big = 1 + rng:random() * 0.3
     p.cluster = rng:random() < 0.5 and rng:random(1, 2) or nil
     p.perched = nil
+end
+
+-- ============================================================================
+-- TROCA DE BIOMA NO POOL DE PROPS (v10.3)
+-- Bug do dono: "ao trocar de ato, as antigas árvores do ato anterior começam
+-- aparecendo, só saem depois". setBiome trocava só a COR (crossfade de
+-- BLEND_DURATION); cada prop guarda o p.bid do sorteio e só trocava quando
+-- RECICLAVA (p.z - camZ < -3.5). Como o pool vai até REL_CREST+EMERGE_BAND
+-- (~35) e cada andar anda TRAVEL_DISTANCE (20), o fundo levava ~2 andares
+-- pra virar. As luminárias viviam do mesmo problema (mesmo pool).
+--
+-- Solução: CROSS-DISSOLVE POR PROP — nada de limpar o pool (sumiço seco de
+-- todas as árvores, treeline inclusa, é pop feio contra o crossfade suave de
+-- cor que já existe). O prop velho vira um FANTASMA: cópia VISUAL no MESMO z
+-- e no MESMO lado, ou seja, no MESMO slot do painter (REGRA DE PROFUNDIDADE
+-- intacta — o fantasma é só mais um prop na lista ordenada por z). Ele esvai
+-- enquanto o prop, já re-sorteado no bioma novo, aparece.
+--
+-- ESCALONADO POR PROFUNDIDADE (perspectiva): prop LONGE é pequeno na tela e
+-- trocar a arte dele é quase imperceptível → troca PRIMEIRO e rápido. Prop
+-- PERTO é grande → troca POR ÚLTIMO e mais devagar (e costuma reciclar
+-- sozinho antes, porque some da tela em poucos metros). Ninguém fica pra
+-- trás: todo prop à frente da câmera entra na onda.
+-- ============================================================================
+local SWAP_FADE   = 0.42   -- cross-dissolve de UM prop (longe); perto estica
+local SWAP_SPREAD = 1.30   -- janela de largada: longe em t=0, perto no fim
+-- campos VISUAIS copiados pro fantasma. Estado interativo (poke, folhinhas,
+-- pássaros pousados, hitbox) fica SÓ com o prop de verdade — fantasma é arte
+-- esvaindo, não é mais um objeto do mundo.
+local GHOST_FIELDS = { "z", "side", "kind", "variant", "bid", "lane",
+                       "big", "cluster", "jitter", "wall" }
+
+-- alpha do cross-dissolve (1 = normal). Fantasma vai 1→0, prop novo 0→1.
+local function propFadeK(p)
+    local t = p.swapT
+    if not t then return 1 end
+    local k = (t - p.swapDelay) / p.swapDur
+    if k <= 0 then return p.ghost and 1 or 0 end
+    if k >= 1 then return p.ghost and 0 or 1 end
+    k = k * k * (3 - 2 * k)          -- smoothstep (sem liga/desliga duro)
+    return p.ghost and (1 - k) or k
+end
+
+local function swapPropsToBiome(camZ)
+    local props = WorldRoad._props
+    if not props or #props == 0 then return end
+    local reduced = _G.gameSettings and _G.gameSettings.reducedMotion
+    -- troca em cima de troca: fantasmas da onda anterior saem na hora
+    for i = #props, 1, -1 do
+        if props[i].ghost then table.remove(props, i) end
+    end
+    -- ordem CRESCENTE de z pro re-sorteio: a cadência de luminária
+    -- (_nextLumZ) é um cursor que só anda pra frente — sortear de trás pra
+    -- frente gastaria o cursor lá no fundo e deixaria a estrada às escuras.
+    local order = {}
+    for _, p in ipairs(props) do order[#order + 1] = p end
+    table.sort(order, function(a, c) return a.z < c.z end)
+    WorldRoad._nextLumZ = nil     -- o bioma novo monta a própria escada
+    local FAR_REL = REL_CREST + EMERGE_BAND
+    local ghosts = {}
+    for _, p in ipairs(order) do
+        local rel = p.z - camZ
+        -- prop já ATRÁS da câmera está deslizando pra fora (over): trocar a
+        -- arte dele no meio da saída é gasto sem ganho
+        if rel >= 0 then
+            local k = math.min(1, rel / FAR_REL)          -- 1 = na crista
+            local delay = SWAP_SPREAD * (1 - k) ^ 1.4
+            local dur = SWAP_FADE * (1 + 0.6 * (1 - k))
+            if not reduced then
+                local gh = {}
+                for _, f in ipairs(GHOST_FIELDS) do gh[f] = p[f] end
+                gh.ghost = true
+                -- o balanço/folhinhas de um clique recente seguem na arte
+                -- que o jogador cutucou (ela é que está esvaindo)
+                gh._pokeT, gh._leafFx = p._pokeT, p._leafFx
+                gh.swapT, gh.swapDelay, gh.swapDur = 0, delay, dur
+                ghosts[#ghosts + 1] = gh
+            end
+            local wasWall = p.wall
+            rollProp(p, p.z, p.side, wasWall)
+            if wasWall then makeWall(p) end
+            resolveOverlap(p)
+            -- estado interativo é da arte VELHA (que virou fantasma)
+            p._pokeT, p._leafFx, p._scareBirds = nil, nil, nil
+            if reduced then
+                -- reducedMotion: corte direto, mas a troca ACONTECE
+                p.swapT, p.swapDelay, p.swapDur = nil, nil, nil
+            else
+                p.swapT, p.swapDelay, p.swapDur = 0, delay, dur
+            end
+        end
+    end
+    for _, gh in ipairs(ghosts) do props[#props + 1] = gh end
 end
 
 local function populate()
@@ -1034,6 +1130,9 @@ function WorldRoad.setBiome(n)
         -- v10: novo trecho — o castelo do bioma novo COMEÇA lá atrás
         WorldRoad._segBasePrev = WorldRoad._segBase
         WorldRoad._segBase = WorldRoad._camZ
+        -- v10.3: os PROPS também viram (antes só a cor virava e as árvores
+        -- do ato anterior ficavam no pool até reciclar, ~2 andares)
+        swapPropsToBiome(WorldRoad._camZ)
     end
 end
 
@@ -1596,13 +1695,30 @@ function WorldRoad.update(dt)
         end
     end
 
+    -- v10.3: relógio do cross-dissolve de troca de bioma. De trás pra frente
+    -- porque remove fantasmas que terminaram de esvair.
+    for i = #WorldRoad._props, 1, -1 do
+        local p = WorldRoad._props[i]
+        if p.swapT then
+            p.swapT = p.swapT + dt
+            if p.swapT >= p.swapDelay + p.swapDur then
+                if p.ghost then
+                    table.remove(WorldRoad._props, i)
+                else
+                    p.swapT, p.swapDelay, p.swapDur = nil, nil, nil
+                end
+            end
+        end
+    end
+
     -- Reciclagem: passou da base → renasce atrás da crista. Preserva o
     -- LADO (simetria eterna) e a identidade de PAREDE (ciclo 22 — sem isso
     -- a treeline dissolvia em props pequenos conforme o jogador viajava)
     for _, p in ipairs(WorldRoad._props) do
         -- -3.5 (era -0.5): dá tempo do slide-out do ciclo 25 tirar o prop
         -- da tela por completo antes de reciclar
-        if p.z - WorldRoad._camZ < -3.5 then
+        -- (fantasma nunca recicla — ele só esvai e sai da lista)
+        if not p.ghost and p.z - WorldRoad._camZ < -3.5 then
             local wasWall = p.wall
             rollProp(p, WorldRoad._camZ + REL_CREST + EMERGE_BAND * 0.6
                         + WorldRoad._rng:random() * 2, p.side, wasWall)
@@ -1868,11 +1984,50 @@ local function drawBirds(g, x, y, w)
     end
 end
 
+-- P2 (perspectiva atmosférica das nuvens): shaders/haze.glsl pinta a
+-- SILHUETA do sprite na cor do céu; o alpha da vertex color é a dose.
+-- Lazy + pcall: sem GPU/shader (tool headless, driver velho) o véu some e
+-- a nuvem só fica com o tint — degrada, não quebra.
+local hazeShader, hazeShaderTried
+local function getHazeShader()
+    if hazeShaderTried then return hazeShader end
+    hazeShaderTried = true
+    local ok, sh = pcall(love.graphics.newShader, "shaders/haze.glsl")
+    if ok then hazeShader = sh end
+    return hazeShader
+end
+
+-- Quanto a nuvem converge pra cor do céu. Nuvem é o objeto MAIS DISTANTE
+-- da cena — deve ser o mais lavado de todos (Draw Paint Academy: o longe
+-- perde contraste e puxa pra cor do céu).
+local CLOUD_HAZE = 0.58
+
+-- O tint de bioma (`biome.cloud`) foi calibrado quando a nuvem era o
+-- cinza-neutro procedural do makeCloud. O PNG do PixelLab já vem CREME
+-- baked (239,213,184) — multiplicar o tint cru escureceria demais.
+-- Normalizar pelo canal máximo preserva o MATIZ do bioma e devolve o
+-- valor; quem cuida do brilho é o véu de névoa acima.
+local function normTint(t)
+    local m = math.max(t[1], t[2], t[3])
+    if m <= 0.001 then return 1, 1, 1 end
+    return t[1] / m, t[2] / m, t[3] / m
+end
+
 local function drawClouds(g, x, y, w)
     local tint = envColor("cloud")
     -- escala acompanha (raiz da) largura da tela: no ultrawide o strip é
     -- gigante — nuvem em px fixo sumiria; no 4:3 não estoura
     local sw = math.sqrt(w / 1024)
+    -- BUG QUE ISSO CORRIGE: até aqui o RGB de `tint` era calculado e
+    -- DESCARTADO (`setColor(1,1,1,a)`) — só o alpha sobrevivia. A nuvem
+    -- creme aparecia igual sob qualquer céu; no abyss medimos 2,6× mais
+    -- clara que o próprio céu, a ponto de ler como corpo celeste.
+    local tr, tg, tb = normTint(tint)
+    -- alvo do lerp: a cor do céu REAL atrás da nuvem. Com strip de
+    -- montanhas full-bleed o céu é a cor amostrada do PNG (a mesma que
+    -- drawSky usa) — usar `skyHorizon` do bioma ali erraria o alvo.
+    local sky = mountainsSkyColor(rawBiome().id) or envColor("skyHorizon")
+    local hz = getHazeShader()
     for _, c in ipairs(WorldRoad._clouds) do
         local img = getSprite("cloud", c.variant)
         if img then
@@ -1892,10 +2047,23 @@ local function drawClouds(g, x, y, w)
                     sq = 1 + math.sin(e * 13) * 0.10 * math.exp(-e * 3)
                 else c._pokeT = nil end
             end
-            love.graphics.setColor(1, 1, 1, a)
-            love.graphics.draw(img,
-                cx2 + math.floor(iw2 * s / 2), cy2 + math.floor(ih2 * s / 2),
+            local dx2 = cx2 + math.floor(iw2 * s / 2)
+            local dy2 = cy2 + math.floor(ih2 * s / 2)
+            -- passe 1: a nuvem com o MATIZ do bioma (opacidade original)
+            love.graphics.setColor(tr, tg, tb, a)
+            love.graphics.draw(img, dx2, dy2,
                 0, s * sq, s / sq, iw2 / 2, ih2 / 2)
+            -- passe 2: véu de névoa na MESMA silhueta e MESMO transform —
+            -- lerp pra cor do céu. O sprite do passe 1 continua opaco: o
+            -- alpha vive só aqui (regra do ciclo 24).
+            if hz and sky then
+                love.graphics.setShader(hz)
+                hz:send("hazeColor", { sky[1], sky[2], sky[3] })
+                love.graphics.setColor(1, 1, 1, a * CLOUD_HAZE)
+                love.graphics.draw(img, dx2, dy2,
+                    0, s * sq, s / sq, iw2 / 2, ih2 / 2)
+                love.graphics.setShader()
+            end
             local hsn = WorldRoad._hitScene
             hsn[#hsn + 1] = { x1 = cx2, y1 = cy2, x2 = cx2 + iw2 * s,
                               y2 = cy2 + ih2 * s, ref = c, kind = "cloud" }
@@ -2318,7 +2486,9 @@ local function drawPropsBehind(g, x, w, camZ)
     if WorldRoad._fork then return end
     for _, p in ipairs(WorldRoad._props) do
         local rel = p.z - camZ
-        if rel > REL_CREST and rel <= REL_CREST + EMERGE_BAND then
+        -- v10.3: alpha do cross-dissolve de troca de bioma (1 fora da troca)
+        local fadeA = propFadeK(p)
+        if fadeA > 0.01 and rel > REL_CREST and rel <= REL_CREST + EMERGE_BAND then
             local em = 1 - (rel - REL_CREST) / EMERGE_BAND
             -- mesma fórmula da cunha em t=0 → continuidade ao cruzar
             local pxX = g.cx + p.side * w * (0.11 + p.lane * 0.38)
@@ -2353,7 +2523,7 @@ local function drawPropsBehind(g, x, w, camZ)
                 local px2 = pxX - (lumAnc.offX or 0) * s * lumFlip
                 local sink = (1 - em) * ih * s
                 local baseY = crest + sink   -- pé (afunda no domo)
-                love.graphics.setColor(0.7, 0.7, 0.7, 1)
+                love.graphics.setColor(0.7, 0.7, 0.7, fadeA)
                 love.graphics.draw(img, math.floor(px2), math.floor(baseY),
                     0, s * lumFlip, s, iw / 2, ih)
                 -- luz: núcleo na chama (poça só quando t alto → aqui não).
@@ -2370,6 +2540,9 @@ local function drawPropsBehind(g, x, w, camZ)
                         fx = fxT, fy = fyT, gx = gxT, gy = gyT,
                         sh = ih * s, t = 0, rel = rel, seed = p.z,
                         flameH = math.max(8, gyT - fyT), capR = g.h * 0.30,
+                        -- v10.3: a luz esvai JUNTO com a luminária trocada
+                        -- (senão sobra poça órfã de um poste que já sumiu)
+                        alphaK = fadeA,
                     })
                 end
                 love.graphics.setColor(1, 1, 1, 1)
@@ -2396,7 +2569,7 @@ local function drawPropsBehind(g, x, w, camZ)
                         if cimg then
                             local cs = s * (0.5 + 0.13 * ci)
                             local ccrest = g.crestYAt(pxX + off) or crest
-                            love.graphics.setColor(0.6, 0.6, 0.6, 1)
+                            love.graphics.setColor(0.6, 0.6, 0.6, fadeA)
                             love.graphics.draw(cimg,
                                 math.floor(pxX + off - cimg:getWidth() * cs / 2),
                                 math.floor(ccrest + (1 - em) * cimg:getHeight() * cs
@@ -2404,7 +2577,7 @@ local function drawPropsBehind(g, x, w, camZ)
                         end
                     end
                 end
-                love.graphics.setColor(0.66, 0.66, 0.66, 1)   -- distante/na sombra
+                love.graphics.setColor(0.66, 0.66, 0.66, fadeA)  -- distante/na sombra
                 love.graphics.draw(img, math.floor(pxX - iw * s / 2),
                     math.floor(crest + sink - ih * s), 0, s, s)
             end
@@ -3372,6 +3545,11 @@ local function drawProps(g, x, w, camZ)
             local sy = g.latY(pxX - g.cx, t) + over * g.h * 0.13
 
             local img = getSprite(p.kind, p.variant, p.bid)
+            -- v10.3: alpha do cross-dissolve de troca de bioma (1 fora da
+            -- troca). O fantasma do prop velho esvai enquanto o prop novo,
+            -- já re-sorteado, aparece — MESMO slot de profundidade.
+            local fadeA = propFadeK(p)
+            if fadeA <= 0.01 then img = nil end
 
             -- v9.4.1 (feedback: "não seria bom aparecer poste na parte de
             -- escolher"): enquanto o fork está ativo, poste ROADSIDE da
@@ -3455,8 +3633,8 @@ local function drawProps(g, x, w, camZ)
                         if cimg then
                             -- v8: sombra projetada da companheira
                             ShadowEngine.queue(cimg, cx2, cy2 - 1, cs,
-                                { alphaK = 0.8 })
-                            love.graphics.setColor(0.88, 0.88, 0.88, 1)
+                                { alphaK = 0.8 * fadeA })
+                            love.graphics.setColor(0.88, 0.88, 0.88, fadeA)
                             love.graphics.draw(cimg,
                                 math.floor(cx2 - cimg:getWidth() * cs / 2),
                                 math.floor(cy2 - cimg:getHeight() * cs
@@ -3483,8 +3661,8 @@ local function drawProps(g, x, w, camZ)
                             local fs = g.scaleAt((KIND_SIZE.fence or 1) * (p.big or 1), ft, ih)
                             -- v8: sombra projetada do segmento de cerca
                             ShadowEngine.queue(img, fx, fy - 1, fs,
-                                { alphaK = 0.85 })
-                            love.graphics.setColor(0.94, 0.94, 0.94, 1)
+                                { alphaK = 0.85 * fadeA })
+                            love.graphics.setColor(0.94, 0.94, 0.94, fadeA)
                             love.graphics.draw(img, math.floor(fx), math.floor(fy),
                                 0, fs, fs, iw / 2, ih)
                         end
@@ -3499,10 +3677,10 @@ local function drawProps(g, x, w, camZ)
                 -- o tapete mais próximo cobria). Fallback: elipse legada.
                 local aFade = math.min(1, 0.72 + t * 1.1)
                 if not ShadowEngine.queue(img, pxX, sy - 1, s,
-                    { alphaK = aFade, flip = lumFlip,
+                    { alphaK = aFade * fadeA, flip = lumFlip,
                       footPad = lumAnc and lumAnc.footPad or 0 }) then
                     local shd = sunShadowDir(g, x, w, pxX)
-                    love.graphics.setColor(0, 0, 0, 0.20 * aFade)
+                    love.graphics.setColor(0, 0, 0, 0.20 * aFade * fadeA)
                     love.graphics.ellipse("fill",
                         pxX + shd * iw * s * 0.16, sy - 1,
                         iw * s * 0.24, math.max(2, 4 * g.persp(t)))
@@ -3541,7 +3719,7 @@ local function drawProps(g, x, w, camZ)
                     aFade * ((1 - mixK) + mixK * math.min(1.6, lt[1] * 1.9)),
                     aFade * ((1 - mixK) + mixK * math.min(1.6, lt[2] * 1.9)),
                     aFade * ((1 - mixK) + mixK * math.min(1.6, lt[3] * 1.9)),
-                    1)
+                    fadeA)   -- v10.3: alpha só varia no cross-dissolve
                 love.graphics.draw(img, math.floor(pxX), math.floor(sy + sink2),
                     rot, s * lumFlip, s, iw / 2, ih)
 
@@ -3553,7 +3731,9 @@ local function drawProps(g, x, w, camZ)
                 -- v9.7.2: grama (tuft/flowers) NÃO é interativa — sem
                 -- hitbox, sem som, sem mexida ("não quero interação com
                 -- a grama"); a vida dela é o vento ambiente do GrassField
-                if p.kind ~= "tuft" and p.kind ~= "flowers" then
+                -- v10.3: fantasma do cross-dissolve não é clicável (a arte
+                -- está esvaindo; quem responde ao clique é o prop novo)
+                if not p.ghost and p.kind ~= "tuft" and p.kind ~= "flowers" then
                     local hsn = WorldRoad._hitScene
                     local cr = contentRect[img]
                     local bx1, by1, bx2, by2
@@ -3581,8 +3761,12 @@ local function drawProps(g, x, w, camZ)
                 -- não vazam por cima da copa; lanterna na FRENTE ainda
                 -- ilumina a árvore). Pedido do usuário: "só aparece a
                 -- porcentagem do corpo que estiver pra fora".
-                if p.kind == "tree" or p.kind == "pine"
-                   or p.kind == "deadtree" or p.kind == "bush" then
+                -- v10.3: no cross-dissolve só a METADE mais opaca oclui —
+                -- fantasma + prop novo empilhados dobrariam a silhueta no
+                -- lightmap (a troca do oclusor cai no meio do fade, invisível)
+                if fadeA >= 0.5
+                   and (p.kind == "tree" or p.kind == "pine"
+                        or p.kind == "deadtree" or p.kind == "bush") then
                     local oxT, oyT = love.graphics.transformPoint(
                         pxX, sy + sink2)
                     -- v9.2 (feedback "algumas árvores ficam escuras quando a
@@ -3633,8 +3817,15 @@ local function drawProps(g, x, w, camZ)
                         -- o céu com um disco do tamanho do sprite)
                         flameH = math.max(8, gyT - fyT),
                         capR = g.h * 0.30,
+                        -- v10.3: a luz esvai JUNTO com a luminária trocada
+                        -- (sem poça órfã de um poste que já sumiu)
+                        alphaK = fadeA,
                     })
-                    LuminaireEngine.drawEmbers(p.bid, p.kind, fx, fy, sh2, p.z)
+                    -- brasas só na metade opaca (fagulha de poste fantasma
+                    -- lê como fagulha solta no ar)
+                    if fadeA >= 0.5 then
+                        LuminaireEngine.drawEmbers(p.bid, p.kind, fx, fy, sh2, p.z)
+                    end
                 end
 
                 -- AVES pousadas na cerca: 2 pixels escuros no trilho de cima;

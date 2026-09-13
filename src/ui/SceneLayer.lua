@@ -90,6 +90,13 @@ SceneLayer.ACT_CONFIGS = {
     },
 }
 
+-- Nome da cena PNG que este ato desenha — o chamador precisa saber QUAL
+-- arte esta na tela pra pedir a linha de chao dela (src/data/scene_anchors).
+function SceneLayer.sceneKeyForAct(act)
+    local cfg = SceneLayer.ACT_CONFIGS[act] or SceneLayer.ACT_CONFIGS[1]
+    return cfg and (cfg.scenePng or cfg.fallbackScene) or "gameplay"
+end
+
 SceneLayer._time = 0
 SceneLayer._currentAct = 1
 SceneLayer._dustSpawnTimer = 0

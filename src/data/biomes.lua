@@ -51,8 +51,13 @@ local biomes = {
         -- v9 LuminaireEngine: 3 luminárias por bioma, rate ↑ ("hoje custa
         -- aparecer uma") — kinds/luz definidos em engine/LuminaireEngine.lua
         -- cerca/placa removidas do bioma 1 (pedido do usuário)
+        -- firepit removida de TODOS os biomas (Set/2026, pedido do dono:
+        -- "a pixel art de fogueira de decoração, fora do padrão"). O PNG
+        -- assets/sprites/world/*_firepit_0.png e a entrada no CATALOG do
+        -- LuminaireEngine ficaram órfãos de propósito — sem peso aqui o
+        -- pickKind nunca sorteia. NÃO reintroduzir sem pedido explícito.
         propWeights = { tree = 3, bush = 3, flowers = 2, rock = 1, stump = 0.8,
-                        lantern = 1.1, firepit = 0.8, shrine = 0.5 },
+                        lantern = 1.1, shrine = 0.5 },
     },
 
     -- Ato 2 — Colinas da Torre: azul-violeta frio, pinheiros e monólitos
@@ -254,7 +259,7 @@ local biomes = {
         propDensity = 1.15,
         propWeights = { tree = 3, flowers = 2.5, fence = 0.45, bush = 2,
                         sign = 0.5, rock = 0.8,
-                        lantern = 1.1, firepit = 0.8, shrine = 0.5 },
+                        lantern = 1.1, shrine = 0.5 },
     },
 }
 

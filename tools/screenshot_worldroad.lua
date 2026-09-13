@@ -51,27 +51,34 @@ function M.run(mode)
 
     love.graphics.clear(0, 0, 0, 1)
 
-    if mode == "interior" then
-        -- Interior de castelo (boss/elite): SceneBackground + inimigo fixo
+    if mode == "interior" or (mode and mode:match("^interior%d$")) then
+        -- Interior de castelo (BOSS): SceneBackground + chefe do ato.
+        -- "interior2" = hall/chefe do ato 2 (tower_lich) etc.
         local SceneBackground = require("src.ui.SceneBackground")
         local EnemyRenderer = require("src.ui.EnemyRenderer")
         local I18n = require("src.i18n.I18n")
         I18n.init()
+        local act = tonumber(mode:match("%d")) or 1
         local Game = require("src.core.Game")
         local game = Game:new()
         game:startNewRun("warrior")
         game:startGame()
+        game.enemy.spriteId = EnemyRenderer.resolveSpriteId(act, "boss")
+        game.enemy.isBoss = true
         _G.game = game
         local InteriorFX = require("src.ui.InteriorFX")
         for _ = 1, 40 do
             EnemyRenderer.update(1 / 30)
-            InteriorFX.update(1 / 30, 1)
+            InteriorFX.update(1 / 30, act)
         end
-        SceneBackground.draw("castle_hall_1", width, height, 0.15)
-        InteriorFX.draw(1)
+        SceneBackground.draw("castle_hall_" .. act, width, height, 0.15)
+        InteriorFX.draw(act)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, 80)
-        EnemyRenderer.draw(game, math.floor(width / 2), math.floor(height * 0.68))
+        local SceneAnchors = require("src.data.scene_anchors")
+        local ax, ay = SceneAnchors.groundAnchor("castle_hall_" .. act,
+            width, height)
+        EnemyRenderer.draw(game, ax, ay)
     elseif mode == "gate" or (mode and mode:match("^gate%d$")) then
         -- FIM DE TRECHO: castelo grande com o portão visível (validação da
         -- curva de aproximação v5). camZ a 92% do segmento. "gate3" = bioma 3.
@@ -233,6 +240,38 @@ function M.run(mode)
         overlays(0, topBarH, width, height - topBarH)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
+    elseif mode == "actswap" then
+        -- TROCA DE ATO (v10.3): 3 painéis do MESMO mundo — ANTES, no MEIO
+        -- do cross-dissolve e DEPOIS. Valida o bug do dono ("ao trocar de
+        -- ato, as antigas árvores do ato anterior começam aparecendo, só
+        -- saem depois"): no painel 3 não pode sobrar nenhuma árvore/poste
+        -- do bioma 1 (fields = árvore folhosa) no cenário do bioma 2.
+        local panelH = math.floor(height / 3)
+        WorldRoad.clearCache()
+        WorldRoad.setBiome(1)
+        WorldRoad._camZ = 6.0
+        for _ = 1, 30 do WorldRoad.update(1 / 30) end
+        WorldRoad._blend = nil
+        WorldRoad._prevBiomeIndex = nil
+        -- painel 1: bioma 1 assentado (referência do "antes")
+        WorldRoad.draw(0, 0, width, panelH, 1)
+        overlays(0, 0, width, panelH)
+        -- painel 2: ~0.6s depois da troca — longe já virou bioma 2, perto
+        -- ainda esvaindo (o escalonamento por profundidade em ação)
+        WorldRoad.setBiome(2)
+        for _ = 1, 18 do
+            WorldRoad.update(1 / 30)
+            WorldRoad.draw(0, panelH, width, panelH, nil)
+        end
+        WorldRoad.draw(0, panelH, width, panelH, nil)
+        overlays(0, panelH, width, panelH)
+        -- painel 3: ~2.6s depois — onda concluída, mundo 100% bioma 2
+        for _ = 1, 60 do
+            WorldRoad.update(1 / 30)
+            WorldRoad.draw(0, panelH * 2, width, panelH, nil)
+        end
+        WorldRoad.draw(0, panelH * 2, width, panelH, nil)
+        overlays(0, panelH * 2, width, panelH)
     elseif mode == "grassanim" then
         -- SEQUÊNCIA TEMPORAL (v7.4.x): 24 frames consecutivos com câmera
         -- PARADA — análise numérica de ondas/bandas coerentes no gramado

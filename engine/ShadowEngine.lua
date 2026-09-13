@@ -63,6 +63,14 @@ local function tipShift(px)
     return math.max(-1, math.min(1, (px - frame.sunX) / (frame.w * 0.5)))
 end
 
+-- Mesma direção, exposta: quem FLUTUA precisa deslocar a própria sombra
+-- pro lado oposto ao sol (a sombra de um corpo no ar não nasce sob ele).
+-- Retorna 0 sem frame ativo (interiores decidem pela luz da cena).
+function ShadowEngine.tipShiftAt(px)
+    if not ShadowEngine.isActive() then return 0 end
+    return tipShift(px)
+end
+
 -- ----------------------------------------------------------------------------
 -- Sombra de um SPRITE estático (props do mundo: árvores, marcos, encounter).
 -- feetX/feetY = âncora dos pés no chão; s = escala do dono na cena.
@@ -81,6 +89,7 @@ end
 local SMEAR = { { -1, 0 }, { 0.7, -0.5 }, { 0.35, 0.55 } }
 local SCALE = 3
 local scratch, batching, batchPrev, selfBatch
+local soloAlphaK   -- opacidade do composite de um batch solo (ver endBatch)
 
 local function ensureScratch()
     local W, H = love.graphics.getDimensions()
@@ -114,7 +123,11 @@ function ShadowEngine.endBatch()
     love.graphics.pop()
     love.graphics.setCanvas(batchPrev)
     love.graphics.setBlendMode("alpha", "premultiplied")
-    love.graphics.setColor(0, 0, 0, frame.alpha)
+    -- alphaK SÓ vale em batch solo (uma silhueta por composite). Numa fila
+    -- com vários donos a cor é única por construção — é o que faz sombras
+    -- cruzadas não escurecerem em dobro (v8.4).
+    love.graphics.setColor(0, 0, 0, frame.alpha * (soloAlphaK or 1))
+    soloAlphaK = nil
     love.graphics.draw(scratch, 0, 0, 0, SCALE, SCALE)
     love.graphics.setBlendMode("alpha")
     love.graphics.setColor(1, 1, 1, 1)
@@ -155,16 +168,21 @@ end
 -- do smear (v8.3) — o chamador desenha a silhueta relativa à origem
 -- (pés em 0,0) com o tint recebido. Retorna false quando inativo
 -- (interiores → elipse legada do chamador).
--- opts: alphaK, lenK, smear (raio do borrão em px de tela)
+-- opts: alphaK (só em chamada solo), lenK, widthK (estreita a silhueta —
+--       corpo no ar projeta sombra MENOR), smear (raio do borrão em px)
 -- ----------------------------------------------------------------------------
 local silTint = { 1, 1, 1, 1 }   -- branco opaco: a COR vem do composite
 function ShadowEngine.silhouette(feetX, feetY, opts, drawFn)
     if not ShadowEngine.isActive() then return false end
     opts = opts or {}
     local solo = not batching
-    if solo then ShadowEngine.beginBatch() end
+    if solo then
+        soloAlphaK = opts.alphaK
+        ShadowEngine.beginBatch()
+    end
     local shd = tipShift(feetX)
     local d = opts.smear or 4
+    local wK = opts.widthK or 1
     for pi = 1, #SMEAR do
         love.graphics.push()
         love.graphics.translate(
@@ -174,7 +192,7 @@ function ShadowEngine.silhouette(feetX, feetY, opts, drawFn)
         -- ANTES do shear: y já flipado (positivo abaixo dos pés) → ponta
         -- pra longe do sol pede kx = +shd·K (sinal oposto ao .sprite)
         love.graphics.shear(shd * 0.78, 0)
-        love.graphics.scale(1.18, -frame.len * (opts.lenK or 1))
+        love.graphics.scale(1.18 * wK, -frame.len * (opts.lenK or 1))
         love.graphics.setColor(silTint)
         drawFn(silTint)
         love.graphics.pop()

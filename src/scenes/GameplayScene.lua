@@ -12,11 +12,13 @@ local Config           = require("src.core.Config")
 local FontManager      = require("src.ui.FontManager")
 local SceneLayer       = require("src.ui.SceneLayer")
 local SceneBackground  = require("src.ui.SceneBackground")
+local SceneAnchors     = require("src.data.scene_anchors")
 local InteriorFX       = require("src.ui.InteriorFX")
 local WorldRoad        = require("src.ui.WorldRoad")
 local EnemyRenderer    = require("src.ui.EnemyRenderer")
 local EnemyHud         = require("src.ui.EnemyHud")
 local TurnBanner       = require("src.ui.TurnBanner")
+local ComboBanner      = require("src.ui.ComboBanner")
 local Sfx              = require("src.systems.Sfx")
 local SmokeConfig      = require("src.config.SmokeConfig")
 
@@ -60,6 +62,28 @@ function GameplayScene.init(deps)
     setCurrentState = deps.setCurrentState or function() end
     onPhaseCleared = deps.onPhaseCleared  or function() end
     onReturnToMenu = deps.onReturnToMenu  or function() end
+end
+
+-- QUEM LUTA DENTRO DO CASTELO — fonte ÚNICA da decisão (draw e update
+-- perguntam aqui). Só o BOSS, e só depois da cutscene da porta.
+--
+-- v11 (Set/2026, feedback do dono: "elite indo pro mesmo cenário do castelo
+-- do endgame não faz sentido"): o hall é o CLÍMAX do ato — é o pagamento da
+-- cerimônia da porta. O elite acontece 2-3x por ato, sem viagem e sem
+-- porta; mandá-lo pro mesmo salão gastava o clímax antes da hora e
+-- contradizia o próprio mundo (você nunca entrou em castelo nenhum). A
+-- estrada já sabe dizer "isto é um elite" (marco landmark_elite com luz
+-- roxa no fork), e o MINI-BOSS — que usa o MESMO sprite do elite no roster
+-- — sempre brigou lá fora: ter os dois em cenas diferentes era incoerente.
+function GameplayScene.isInteriorNode(nodeType, entered)
+    return nodeType == "boss" and entered == true
+end
+
+-- Só pra ferramentas de captura: salta a cerimônia da porta e mostra o
+-- salão do chefe direto (tools/screenshot_enemy_scene.lua). Nunca chamado
+-- pelo jogo — a cutscene é parte do clímax.
+function GameplayScene._debugForceBossEntered()
+    bossEntered = true
 end
 
 -- Seta smokeSystem depois de init (usado quando smoke muda em runtime).
@@ -336,21 +360,19 @@ function GameplayScene.draw()
     local run = game and game.runManager and game.runManager.currentRun
     if run then currentAct = run.actNumber or 1 end
 
-    -- PROGRESSÃO DE CENÁRIO (feedback Jul/2026 + v10.1): batalha comum e
-    -- MINI-BOSS acontecem na ESTRADA (mundo-esfera, do lado de fora);
-    -- boss/elite acontecem DENTRO do castelo (interior PixelLab por ato).
+    -- PROGRESSÃO DE CENÁRIO (feedback Jul/2026 + v10.1 + v11): batalha
+    -- comum, ELITE e mini-boss acontecem na ESTRADA (mundo-esfera, do lado
+    -- de fora); só o BOSS entra no castelo — ver isInteriorNode.
     local nodeType = run and run.currentNode and run.currentNode.type
     -- v10: enquanto a CERIMÔNIA de entrada toca (porta abrindo), a cena
     -- continua na estrada — o interior só assume depois do fade
     local entering = GameplayScene.SCENE_MODE == "worldroad"
         and WorldRoad.isEntering()
-    -- v10.4: elite entra no hall direto; BOSS só vira interior depois da
-    -- cutscene da porta (bossEntered). Durante a viagem de aproximação e a
-    -- própria cutscene, interior=false → a cena mostra a ESTRADA/exterior
-    -- (castelo crescendo, porta abrindo), nunca a sala antes da hora.
+    -- Durante a viagem de aproximação e a própria cutscene, interior=false
+    -- → a cena mostra a ESTRADA/exterior (castelo crescendo, porta
+    -- abrindo), nunca a sala antes da hora.
     local interior = GameplayScene.SCENE_MODE == "worldroad" and not entering
-        and (nodeType == "elite"
-             or (nodeType == "boss" and bossEntered))
+        and GameplayScene.isInteriorNode(nodeType, bossEntered)
 
     -- v9.2: no battle da estrada, o inimigo desenha DENTRO do painter do
     -- WorldRoad (no eixo BATTLE_REL) pra que postes/árvores mais próximos
@@ -370,12 +392,21 @@ function GameplayScene.draw()
         end, enemyCy)
     end
 
+    -- Cena de fundo efetivamente desenhada — o inimigo pisa na LINHA DE
+    -- CHÃO dela (src/data/scene_anchors.lua), não numa fração fixa da tela.
+    -- sceneH: o SceneLayer legado desenha a PNG na area util (sem a top
+    -- bar), o hall desenha em tela cheia — a ancora tem que usar a MESMA
+    -- caixa que o desenho usou, senao o pe sai da laje.
+    local sceneKey, sceneH = nil, height
     if interior then
         local hallAct = math.min(3, currentAct)
         local drawn = SceneBackground.draw("castle_hall_" .. hallAct,
             width, height, 0.15)
+        sceneKey = "castle_hall_" .. hallAct
         if not drawn then
             -- interior ainda não gerado: cai pro SceneLayer do ato
+            sceneKey = SceneLayer.sceneKeyForAct(currentAct)
+            sceneH = height - topBarHeight
             SceneLayer.draw(0, topBarHeight, width, height - topBarHeight, currentAct)
         else
             -- tochas/brasas vivas do hall (glow pulsante + partículas)
@@ -389,6 +420,8 @@ function GameplayScene.draw()
         end
         WorldRoad.draw(0, topBarHeight, width, height - topBarHeight, biomeIdx)
     else
+        sceneKey = SceneLayer.sceneKeyForAct(currentAct)
+        sceneH = height - topBarHeight
         SceneLayer.draw(0, topBarHeight, width, height - topBarHeight, currentAct)
     end
 
@@ -399,9 +432,16 @@ function GameplayScene.draw()
     -- os outros casos: interior (hall estático) e SceneLayer legado. Na
     -- viagem o inimigo é billboard do WorldRoad (não desenha aqui).
     if not traveling and not worldBattle and not entering then
-        enemyCx = math.floor(width / 2)
-        enemyCy = math.floor(height * 0.68)
-        enemyBbox = EnemyRenderer.draw(game, enemyCx, enemyCy)
+        -- v11: o pé do inimigo pousa na LAJE da cena, não em height*0.68
+        -- (número fixo herdado do castle_hall_1 — no hall do ato 2 essa
+        -- linha cai na PAREDE e o chefe ficava pairando; defeito reportado
+        -- Set/2026). A cena também diz a força e a direção da sombra.
+        local anchor = SceneAnchors.get(sceneKey)
+        enemyCx, enemyCy = SceneAnchors.groundAnchor(sceneKey, width, sceneH)
+        enemyBbox = EnemyRenderer.draw(game, enemyCx, enemyCy, {
+            shadowA = anchor.shadowA,
+            lightXr = anchor.lightXr,
+        })
     end
 
     -- LightEngine v1: composite multiply do lightmap sobre mundo+inimigo,
@@ -472,25 +512,31 @@ function GameplayScene.draw()
         end
     end
 
-    -- Desenha não-dragadas (ordem normal), depois hover, depois dragged por cima
-    for _, card in ipairs(game.hand) do
-        if not card.isDragging and card ~= hoverCard then
-            local canPlay = game:canPlayCard(card)
-            card:draw(card.renderX, card.renderY, canPlay)
+    -- v10.5: durante a CERIMÔNIA de entrada no castelo (porta abrindo +
+    -- fade) a mão NÃO é desenhada — é cutscene, não turno. Mesma convenção
+    -- do EnemyHud acima. Layout/updateRender continuam rodando de propósito:
+    -- a mão não congela nem salta quando a cerimônia termina.
+    if not entering then
+        -- Desenha não-dragadas (ordem normal), depois hover, depois dragged por cima
+        for _, card in ipairs(game.hand) do
+            if not card.isDragging and card ~= hoverCard then
+                local canPlay = game:canPlayCard(card)
+                card:draw(card.renderX, card.renderY, canPlay)
+            end
         end
-    end
-    if hoverCard and not hoverCard.isDragging then
-        love.graphics.setColor(1, 1, 1, 1)
-        local canPlay = game:canPlayCard(hoverCard)
-        hoverCard:draw(hoverCard.renderX, hoverCard.renderY, canPlay)
-    end
-    if draggingCard then
-        love.graphics.setColor(1, 1, 1, 1)
-        local savedScale = draggingCard.targetScale
-        draggingCard.targetScale = draggingCard.baseScale + Config.Cards.DRAG_SCALE_BOOST
-        local canPlay = game:canPlayCard(draggingCard)
-        draggingCard:draw(draggingCard.renderX, draggingCard.renderY, canPlay)
-        draggingCard.targetScale = savedScale
+        if hoverCard and not hoverCard.isDragging then
+            love.graphics.setColor(1, 1, 1, 1)
+            local canPlay = game:canPlayCard(hoverCard)
+            hoverCard:draw(hoverCard.renderX, hoverCard.renderY, canPlay)
+        end
+        if draggingCard then
+            love.graphics.setColor(1, 1, 1, 1)
+            local savedScale = draggingCard.targetScale
+            draggingCard.targetScale = draggingCard.baseScale + Config.Cards.DRAG_SCALE_BOOST
+            local canPlay = game:canPlayCard(draggingCard)
+            draggingCard:draw(draggingCard.renderX, draggingCard.renderY, canPlay)
+            draggingCard.targetScale = savedScale
+        end
     end
 
     -- v7.4.14: fumaça ambiente SÓ nos interiores de castelo — na ESTRADA
@@ -525,6 +571,11 @@ function GameplayScene.draw()
 
     drawJokersAsCards()
 
+    -- Banner de COMBO: DEPOIS da mão e depois do combatAnimationSystem (que
+    -- drawJokersAsCards desenha no fim) — as cartas do turno passavam por
+    -- cima dele e "não dava nem pra ler" (feedback do dono, Set/2026).
+    ComboBanner.draw(topBarHeight)
+
     -- fade de entrada no castelo (estrada→interior): tela revela do preto
     if interiorFade > 0 then
         local a = interiorFade * interiorFade   -- ease-out (rápido no fim)
@@ -549,6 +600,7 @@ end
 function GameplayScene.update(dt)
     updatePlayButtonPosition()
     TurnBanner.update(dt)
+    ComboBanner.update(dt)
 
     game.combatAnimationSystem:update(dt)
 
@@ -568,11 +620,9 @@ function GameplayScene.update(dt)
     do
         local runU = game.runManager and game.runManager.currentRun
         local ntU = runU and runU.currentNode and runU.currentNode.type
-        -- v10.4: alinhado com `interior` do draw — elite direto; boss só
-        -- depois da cutscene (bossEntered). Guarda `not isEntering` p/ o
-        -- frame de transição.
-        local isInt = (ntU == "elite"
-                       or (ntU == "boss" and bossEntered))
+        -- Mesma fonte que o draw (isInteriorNode). O `not isEntering`
+        -- cobre o frame de transição da cerimônia da porta.
+        local isInt = GameplayScene.isInteriorNode(ntU, bossEntered)
             and not (GameplayScene.SCENE_MODE == "worldroad"
                      and WorldRoad.isEntering())
         if isInt then
@@ -634,17 +684,16 @@ function GameplayScene.update(dt)
                         })
                     end,
                 })
-            elseif nt ~= "elite" then
-                -- batalha comum E MINI-BOSS (v10.1: "do lado de fora do
-                -- castelo, sem aquele background"): o inimigo vem lá de
-                -- trás pela estrada; na chegada, quicadas de aterrissagem
+            else
+                -- batalha comum, ELITE e MINI-BOSS (v10.1: "do lado de fora
+                -- do castelo, sem aquele background"; v11: o elite entrou
+                -- nesta lista): o inimigo vem lá de trás pela estrada; na
+                -- chegada, quicadas de aterrissagem.
                 WorldRoad.travel({
                     encounter = EnemyRenderer.getEncounterBillboard(game.enemy),
                     onComplete = function() EnemyRenderer.triggerArrival() end,
                 })
             end
-            -- elite: sem viagem e sem cerimônia — hall direto com o fade
-            -- de entrada simples (comportamento pré-v10)
         end
         lastFloorKey = floorKey
     else

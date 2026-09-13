@@ -2,10 +2,12 @@
 -- Renderiza o inimigo como sprite animado no canvas de gameplay.
 -- Combina MÚLTIPLAS camadas visuais pra maximizar polish:
 --
---   1. Sombra elíptica no chão (alpha 0.45)
+--   1. Sombra no chão — de CONTATO (apoiado) ou de ALTURA (flutuante),
+--      conforme src/data/enemy_poses.lua
 --   2. Partículas ambientais por ato (poeira/faíscas/névoa)
 --   3. Animação pixellab real (frames) OU sprite estático
---   4. Idle bounce sutil (sin wave ±2px) — SEMPRE ativo, mesmo com anim real
+--   4. Idle bounce sutil (sin wave ±1px) — apoiados; flutuantes usam o bob
+--      da pose no lugar dele
 --   5. Micro tremor (±1px horizontal, nervosismo constante)
 --   6. Pulse de cor (tint varia ±8% em sin lento)
 --   7. Flash branco em hurt (overlay)
@@ -16,6 +18,14 @@
 local SpriteAnimation = require("src.ui.SpriteAnimation")
 local LightEngine = require("engine.LightEngine")
 local EnemyEmissives = require("src.data.enemy_emissives")
+local EnemyPoses = require("src.data.enemy_poses")
+
+-- Acessibilidade: com reducedMotion o BOB do flutuante some, mas o HOVER
+-- (a altura em si) permanece — altura diz o que a criatura É; balanço é
+-- enfeite. Ver memory/ui_layout_invariants.md, corolário da regra 3.
+local function reducedMotion()
+    return (_G.gameSettings and _G.gameSettings.reducedMotion) or false
+end
 
 -- LightEngine v1.2: micro-luzes dos pixels EMISSIVOS do monstro (olhos,
 -- chamas, cristais — src/data/enemy_emissives.lua). Pulso lento por âncora
@@ -54,6 +64,9 @@ local currentAnim = nil
 local currentEnemyId = nil
 local currentAnimName = nil
 local hurtTime = 0
+-- Descida do flutuante na MORTE (0 = no ar, 1 = pousado). Ver poseOffsetY.
+local poseSink = 0
+local POSE_SINK_DUR = 0.7
 
 -- Ambient particles (fake): partículas locais orbitando o inimigo (poeira/spark/fog).
 local ambientParticles = {}
@@ -138,6 +151,24 @@ local function ensureAnim(enemyId, animName)
     return anim
 end
 
+-- Deslocamento vertical da POSE (negativo = pra cima) + a pose resolvida.
+-- Puro: mesma entrada, mesma saida — dá pra testar sem contexto grafico.
+-- Com reducedMotion o BOB some e sobra so o HOVER: a criatura continua na
+-- ALTURA certa (posicao e informacao; balanco e enfeite).
+-- sinkK 0..1: MORTE. O que segurava a criatura no ar deixa de segurar —
+-- ela desce ate o chao ao longo do clip de death em vez de evaporar
+-- pairando (e a sombra reaparece no tamanho cheio).
+function EnemyRenderer.poseOffsetY(spriteId, spriteH, now, sinkK)
+    local pose = EnemyPoses.get(spriteId)
+    if pose.pose ~= "floating" then return 0, pose end
+    local k = pose.hover
+    if not reducedMotion() then
+        k = k + math.sin((now or 0) * pose.bobSpeed) * pose.bob
+    end
+    k = k * (1 - math.max(0, math.min(1, sinkK or 0)))
+    return -k * (spriteH or 0), pose
+end
+
 function EnemyRenderer.clearCache()
     staticCache = {}
     staticMiss = {}
@@ -207,6 +238,7 @@ function EnemyRenderer.resetRun()
     poisonTime, defendTime, buffTime, knockTime, slashTime = 0, 0, 0, 0, 0
     buffParticles = {}
     hurtTime = 0
+    poseSink = 0
     arrivalT = 0
     ambientParticles = {}
     ambientSpawnTimer = 0
@@ -302,6 +334,12 @@ end
 
 function EnemyRenderer.update(dt)
     if currentAnim then currentAnim:update(dt) end
+    -- morto nao paira: o flutuante desce enquanto a death toca
+    if currentAnimName == "death" then
+        poseSink = math.min(1, poseSink + dt / POSE_SINK_DUR)
+    else
+        poseSink = 0
+    end
     if hurtTime > 0 then hurtTime = math.max(0, hurtTime - dt) end
     if arrivalT > 0 then arrivalT = math.max(0, arrivalT - dt) end
     if poisonTime > 0 then poisonTime = math.max(0, poisonTime - dt) end
@@ -378,7 +416,7 @@ local function clipMetrics(id, animName)
     local c = clipMetricsCache[key]
     if c ~= nil then return c end
 
-    local m = { off = 0, pad = 0, w = 0, h = 0 }
+    local m = { off = 0, pad = 0, w = 0, h = 0, cw = 0 }
     local imgPath
     local fdir = "assets/sprites/characters/enemies/" .. id
         .. "/animations/" .. animName .. "/south"
@@ -412,9 +450,14 @@ local function clipMetrics(id, animName)
             end
             if maxX >= minX then
                 m.off = (minX + maxX) / 2 - wpx / 2
+                -- largura do CONTEÚDO (canvas cru do PixelLab tem margem
+                -- lateral gorda): a elipse de contato mede o corpo, não a
+                -- folha de papel em que ele foi desenhado.
+                m.cw = maxX - minX + 1
                 -- v8.2: MARGEM DE PÉ — canvas transparente abaixo do conteúdo
                 -- fazia o monstro "flutuar". pad crava o pé do CONTEÚDO no
-                -- chão. Quem flutua por design (espectros) flutua NA ARTE.
+                -- chão. Quem flutua por DESIGN (espectros/alados) sobe
+                -- por dado, não por margem de canvas: src/data/enemy_poses.
                 m.pad = (hpx - 1) - maxY
             end
         end
@@ -447,7 +490,11 @@ end
 
 -- Retorna bbox { x, y, w, h } do sprite desenhado (em pixels de tela), ou false.
 -- EnemyHud usa esse bbox pra ancorar HP bar / intent icon.
-function EnemyRenderer.draw(game, cx, cy)
+-- cx/cy = ponto de CHAO onde a criatura pisa (na estrada vem do
+-- WorldRoad.getRoadAnchor; nos interiores, de src/data/scene_anchors.lua).
+-- opts (interiores): { shadowA, lightXr } — a cena diz o quanto e pra onde
+-- a sombra cai; ver SceneAnchors.get(scene).
+function EnemyRenderer.draw(game, cx, cy, opts)
     if not game or not game.enemy or not game.enemy.spriteId then return false end
     local id = game.enemy.spriteId
 
@@ -499,6 +546,14 @@ function EnemyRenderer.draw(game, cx, cy)
     cx = cx - math.floor(offX * scale)
     local footY = math.floor(footPad * scale)
 
+    -- POSE (src/data/enemy_poses.lua): apoiado x flutuante. Quem tem pe
+    -- fica com o pe no chao; quem e espectro/alado SOBE de proposito e
+    -- deriva. A sombra (mais abaixo) fica no chao nos dois casos — e o
+    -- vao entre corpo e sombra que comunica altura.
+    local hoverY, pose = EnemyRenderer.poseOffsetY(id, ih * scale,
+        love.timer.getTime(), poseSink)
+    local floating = pose.pose == "floating"
+
     -- =========================================================
     -- CAMADAS VISUAIS (aplicadas em ordem)
     -- =========================================================
@@ -513,7 +568,9 @@ function EnemyRenderer.draw(game, cx, cy)
     end
 
     -- (4) Idle bounce (±1px vertical — respiração; ±2 parecia flutuar)
-    local bounce = math.floor(math.sin(t * 1.6) * 1)
+    -- Flutuante nao respira em 1px: o bob da pose ja e o movimento dele
+    -- (somar os dois dava tremelique de duas frequencias).
+    local bounce = floating and 0 or math.floor(math.sin(t * 1.6) * 1)
     -- (5) Tremor SÓ no impacto (o tremor constante de 13-17Hz era o
     -- "fricando" apontado pelo dono — monstro parado não treme).
     local jitter = 0
@@ -552,7 +609,7 @@ function EnemyRenderer.draw(game, cx, cy)
 
     local drawX = cx - (iw * scale) / 2 + jitter + atkDX + knockDX
     local drawY = cy - ih * scale + bounce + EnemyRenderer.getArrivalOffset()
-        + footY + atkDY  -- v8.2: pé do conteúdo NO chão (margem do canvas fora)
+        + footY + atkDY + hoverY  -- v8.2: pé do conteúdo NO chão (margem do canvas fora)
 
     -- posição do peito exposta pro Game (floating text de veneno etc.)
     lastCenterX = drawX + (iw * scale) / 2
@@ -564,14 +621,48 @@ function EnemyRenderer.draw(game, cx, cy)
     -- bioma, comprimento pelo horário. Nos INTERIORES (sem frame de
     -- sombra do WorldRoad) cai na elipse rasteira legada — luz de tocha
     -- não tem direção única.
+    -- SOMBRA: de CONTATO pra quem pisa, de ALTURA pra quem flutua.
+    -- Regra que a pose impoe: a sombra NAO sobe com o corpo. Ela fica no
+    -- chao (cy), fica MENOR, mais fraca e mais borrada, e escorrega pro
+    -- lado oposto a luz — a distancia entre corpo e sombra e o que diz
+    -- "isto esta no ar". Colar a elipse de contato embaixo de quem paira
+    -- foi exatamente o defeito reportado (Set/2026).
     do
         local ShadowEngine = require("engine.ShadowEngine")
+        local sceneShadowA = (opts and opts.shadowA) or 1
+        -- Enquanto o flutuante DESCE na morte, a sombra volta ao tamanho e
+        -- a forca de contato — quem pousou projeta sombra de quem pousou.
+        local sink = math.max(0, math.min(1, poseSink))
+        local shK = pose.shadowK + (1 - pose.shadowK) * sink
+        local shA = pose.shadowA + (1 - pose.shadowA) * sink
+
+        local shDX, shDY, smearK = 0, 0, 1
+        if floating then
+            local lift = -hoverY                  -- px acima do chao
+            smearK = 2.4                          -- borda macia (penumbra)
+            -- direcao "pra longe da luz": na estrada o proprio ShadowEngine
+            -- sabe onde esta o astro do bioma; no interior vem da cena.
+            local dirX = ShadowEngine.tipShiftAt(cx)
+            if dirX == 0 then
+                local lx = (opts and opts.lightXr) or 0.5
+                local sw = math.max(1, love.graphics.getWidth())
+                dirX = math.max(-1, math.min(1, (cx / sw - lx) * 2))
+            end
+            shDX = dirX * lift * 0.55
+            shDY = lift * 0.16                    -- projeta pro 1o plano
+        end
+        local shX = cx + jitter * 0.5 + shDX
+        local shY = cy - 1 + shDY
+
         local sx0 = -(iw * scale) / 2
-        -- +footY: a sombra ancora no PÉ DO CONTEÚDO (a margem
-        -- transparente do canvas criava um vão entre pé e sombra)
+        -- +footY: a sombra ancora no PE DO CONTEUDO (a margem
+        -- transparente do canvas criava um vao entre pe e sombra)
         local sy0 = -(ih * scale) + footY
-        local drawn = ShadowEngine.silhouette(cx + jitter * 0.5, cy - 1,
-            { smear = iw * scale * 0.035 },
+        local drawn = ShadowEngine.silhouette(shX, shY,
+            { smear = iw * scale * 0.035 * smearK,
+              widthK = shK,
+              lenK = shK,
+              alphaK = shA * sceneShadowA },
             function(tint)
                 if hasAnim then
                     -- SpriteAnimation:draw ignora setColor sem tint
@@ -587,9 +678,24 @@ function EnemyRenderer.draw(game, cx, cy)
                 end
             end)
         if not drawn then
-            love.graphics.setColor(0, 0, 0, 0.30)
-            love.graphics.ellipse("fill", cx + jitter * 0.5, cy - 1,
-                iw * scale * 0.42, math.max(4, iw * scale * 0.055))
+            -- Interiores: sem sol unico, elipse rasteira. A largura sai do
+            -- CONTEUDO (curM.cw), nao do canvas — canvas cru do PixelLab
+            -- tem margem lateral gorda e a elipse saia larga demais.
+            local baseW = ((curM.cw > 0) and curM.cw or iw) * scale
+            local rx = baseW * 0.46 * shK
+            local ry = math.max(3, baseW * 0.060 * shK)
+            local a = 0.30 * shA * sceneShadowA
+            if floating then
+                -- duas passadas concentricas = penumbra barata: sombra de
+                -- corpo no ar tem borda macia, nao recorte de tesoura.
+                love.graphics.setColor(0, 0, 0, a * 0.5)
+                love.graphics.ellipse("fill", shX, shY, rx * 1.45, ry * 1.45)
+                love.graphics.setColor(0, 0, 0, a * 0.7)
+                love.graphics.ellipse("fill", shX, shY, rx, ry)
+            else
+                love.graphics.setColor(0, 0, 0, a)
+                love.graphics.ellipse("fill", shX, shY, rx, ry)
+            end
         end
     end
 

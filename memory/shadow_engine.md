@@ -33,6 +33,21 @@ escurece a grama em que cai (e o pé de quem estiver dentro dela, como
 sombra real). Inimigo/encounter/landmarks desenham após o campo →
 imediato (`.sprite`/`.begin`).
 
+## Sombra de CONTATO × sombra de ALTURA (v1.1, Set/2026)
+
+`silhouette` aceita `widthK` (estreita a silhueta), `lenK` e `alphaK`
+(**só em chamada solo** — numa fila a cor é única por construção, que é o
+que impede sombras cruzadas de escurecerem em dobro). `tipShiftAt(px)`
+expõe a direção "pra longe do sol" pra quem precisa deslocar a própria
+sombra.
+
+Quem usa: criatura FLUTUANTE (`src/data/enemy_poses.lua`). A sombra dela
+**não sobe com o corpo** — fica no chão, menor, mais fraca, mais borrada e
+escorregada pro lado oposto à luz. É o vão entre corpo e sombra que diz
+"isto está no ar"; elipse de contato colada embaixo de quem paira foi o
+defeito reportado em Set/2026. Ver
+[`memory/enemy_pose_and_scene_anchor.md`](enemy_pose_and_scene_anchor.md).
+
 ## Integrações
 - `EnemyRenderer.draw`: silhueta do FRAME ATUAL da animação via
   `begin/finish` (a sombra respira/ataca junto). `SpriteAnimation:draw`

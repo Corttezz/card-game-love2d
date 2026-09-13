@@ -311,6 +311,11 @@ Validação visual v3.2 PENDENTE: rodar `love . screenshot_worldroad travel`
 
 ## ⚠️ FLUXO DE CENÁRIO — mapa pra mexer depois (o que acontece se...)
 
+> **SUPERSEDIDO em Set/2026 (v11).** O interior é SÓ do boss, e a âncora do
+> inimigo não é mais fixa — ver
+> [`memory/enemy_pose_and_scene_anchor.md`](enemy_pose_and_scene_anchor.md).
+> O texto abaixo descreve o estado v10.4 e ficou aqui pelo histórico.
+
 **Decisão de backdrop (GameplayScene.draw, ordem):**
 1. `SCENE_MODE == "worldroad"` E node ∈ {boss, mini_boss, elite} → INTERIOR
    (castle_hall_<min(act,3)>). Enemy âncora fixa. Travel nunca dispara.
@@ -1602,12 +1607,20 @@ imersiva com a porta abrindo + som.
   `APPROACH_WALK_MAX`, fases "walk"/"push", relaxamento do clamp. O clamp
   virou só GUARDA (`s=min(s,sMax)`, sem boost) — nunca empurra pra fora.
 - **mini_boss NÃO entra no castelo** (v10.1): briga na ESTRADA como batalha
-  comum (viaja lá de trás, sem hall/background). Interior = só boss/elite.
+  comum (viaja lá de trás, sem hall/background).
+- **elite TAMBÉM não entra** (v11, Set/2026 — pedido do dono): o hall é o
+  clímax do ato e o pagamento da cerimônia da porta; o elite acontece 2-3x
+  por ato, sem viagem e sem porta. Hoje **interior = só o boss**, decidido
+  por `GameplayScene.isInteriorNode(nodeType, bossEntered)` (fonte única —
+  a condição vivia duplicada em draw e update). O elite passou a viajar
+  pela estrada como batalha comum. Ver
+  [`memory/enemy_pose_and_scene_anchor.md`](enemy_pose_and_scene_anchor.md).
 - **Cerimônia = SÓ boss, SÓ porta+som+fade** (sem câmera): o boss é um
   andar como os outros → `travel()` sem encounter (esfera anda 1 passo, o
   castelo cresce naturalmente) → onComplete `enterCastle()` → door 1.4s
-  (frames + som) → fade 0.9s → hall. elite = hall direto (fade simples,
-  pré-v10). Demo tecla **B** posiciona camZ no fim do trecho e abre a porta.
+  (frames + som) → fade 0.9s → hall. (v11: a linha "elite = hall direto"
+  morreu junto com o elite no interior.) Demo tecla **B** posiciona camZ no
+  fim do trecho e abre a porta.
 
 ## Backlog
 

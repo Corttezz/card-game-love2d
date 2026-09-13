@@ -299,6 +299,10 @@ function LuminaireEngine.submit(bid, kind, a)
     -- longe = pequena, perto = grande — some a sensação de "tamanho fixo").
     -- Sem halo micro duro e sem poça no chão.
     local base = a.flameH or a.sh
+    -- v10.3: alphaK opcional (1 = normal) — o chamador esvai a luz junto com
+    -- a arte da luminária (cross-dissolve de troca de bioma no WorldRoad),
+    -- pra não sobrar poça órfã de um poste que já sumiu
+    local aK = a.alphaK or 1
     -- v9.2 (feedback: "poste longe o feixe fica grande demais; mais
     -- proporcional"): fator de distância — o glow encolhe além do que o
     -- flameH já reduz (a perspectiva sozinha deixava o disco grande
@@ -307,7 +311,7 @@ function LuminaireEngine.submit(bid, kind, a)
     LightEngine.submit({
         x = a.fx, y = a.fy,
         radius = math.min(L.radiusK * base * fr * distK, (a.capR or 1e9)),
-        color = L.color, intensity = L.intensity * fi * (0.6 + 0.4 * distK),
+        color = L.color, intensity = L.intensity * fi * (0.6 + 0.4 * distK) * aK,
         -- v9.2 (feedback: "ainda pixelado e xadrez"): 8 degraus (gradiente
         -- bem fino) + dither de amplitude 0.28 (quase imperceptível — só
         -- quebra a banda). No lightmap ¼ o Bayer cheio virava xadrez de
@@ -319,7 +323,7 @@ function LuminaireEngine.submit(bid, kind, a)
     -- SEM piso — longe encolhe junto (nada de dot fixo)
     LightEngine.submitMicro(a.fx, a.fy,
         math.min(L.coreK * base * 0.6 * fr * distK, (a.capR or 1e9) * 0.4),
-        L.color, 0.9 * fi, a.rel)
+        L.color, 0.9 * fi * aK, a.rel)
 end
 
 -- ----------------------------------------------------------------------------
