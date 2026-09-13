@@ -22,6 +22,14 @@
 --   recordDamageTaken(n)     — enemyTurn (dano que chegou no player)
 --   finishBattle(game)       — _onEnemyDeath → retorna breakdown pro RoundEval
 
+local I18n = require("src.i18n.I18n")
+
+-- Recibo traduzido (score.*). As linhas do breakdown sao exibidas na
+-- RoundEvalScreen; saiam em PT cravado dentro da tela ja traduzida.
+local function sl(key, vars, fallback)
+    return I18n.t("score." .. key, vars, fallback)
+end
+
 local ScoreSystem = {}
 ScoreSystem.__index = ScoreSystem
 
@@ -125,33 +133,37 @@ function ScoreSystem:finishBattle(game)
     -- Cada linha nomeia O QUE o jogador fez; a matemática fica implícita.
     local breakdown = {}
     table.insert(breakdown, {
-        label = "Inimigo derrotado", value = tostring(tinta) .. " pts" })
+        label = sl("enemy_defeated", nil, "Inimigo derrotado"),
+        value = sl("pts", { n = tinta }, tinta .. " pts") })
     if turnsUsed < par then
         table.insert(breakdown, {
-            label = ("Vitoria rapida (%d turnos)"):format(turnsUsed),
+            label = sl("fast_win", { n = turnsUsed },
+                ("Vitoria rapida (%d turnos)"):format(turnsUsed)),
             value = ("+%d%%"):format(math.floor(30 * (par - turnsUsed) + 0.5)) })
     elseif turnsUsed > par then
         table.insert(breakdown, {
-            label = ("Batalha longa (%d turnos)"):format(turnsUsed),
+            label = sl("long_battle", { n = turnsUsed },
+                ("Batalha longa (%d turnos)"):format(turnsUsed)),
             value = ("-%d%%"):format(math.floor(10 * (turnsUsed - par) + 0.5)),
             bad = true })
     end
     if distinct > 0 then
         table.insert(breakdown, {
-            label = ("Combos de cartas (%d)"):format(distinct),
+            label = sl("card_combos", { n = distinct },
+                ("Combos de cartas (%d)"):format(distinct)),
             value = ("+%d%%"):format(25 * distinct) })
     end
     if (b.maxCombosInTurn or 0) >= 3 then
         table.insert(breakdown, {
-            label = "3+ combos no mesmo turno", value = "+50%" })
+            label = sl("triple_combo", nil, "3+ combos no mesmo turno"), value = "+50%" })
     end
     if lowHp then
         table.insert(breakdown, {
-            label = "Viveu no limite (HP baixo)", value = "+50%" })
+            label = sl("on_the_edge", nil, "Viveu no limite (HP baixo)"), value = "+50%" })
     end
     if flawless then
         table.insert(breakdown, {
-            label = "Nao tomou NENHUM dano", value = "+100%" })
+            label = sl("flawless", nil, "Nao tomou NENHUM dano"), value = "+100%" })
     end
 
     self.lastBattle = {

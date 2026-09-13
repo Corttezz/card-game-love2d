@@ -234,7 +234,7 @@ local function composeOptionLabel(ev, opt, index)
     return label .. "  [" .. table.concat(parts, " / ") .. "]"
 end
 
--- Exposto pra ferramenta de verificação (tools/check_event_labels.lua) medir
+-- Exposto pra ferramenta de verificação (tools/check_event_i18n.lua) medir
 -- o rótulo FINAL em todos os idiomas sem redesenhar a tela. Fonte única: é o
 -- mesmo texto que o botão recebe.
 function EventScreen:optionLabel(opt, index)

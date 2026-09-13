@@ -27,11 +27,15 @@ local I18n             = require("src.i18n.I18n")
 
 local PHASE_TIMES = { [0] = 0.6, [1] = 1.2, [2] = 2.6, [3] = 5.0 }
 
-function M.run(phase)
+-- locale opcional (2o arg): a tela era BILINGUE — titulo e TOTAL cravados em
+-- PT com o botao traduzido. Capturar em idioma estrangeiro e o que prova o
+-- conserto; em pt_BR os dois casos ficam iguais.
+function M.run(phase, locale)
     phase = tonumber(phase or 3) or 3
     local targetT = PHASE_TIMES[phase] or 3.6
 
     I18n.init()
+    if locale then I18n.setLocale(locale) end
     require("src.ui.PixelCanvas").enableNearest()
     CRTShader.load()
     DissolveShader.load()
@@ -58,11 +62,15 @@ function M.run(phase)
     game.scoreSystem.lastBattle = {
         tinta = 240, selo = 2.3, total = 552,
         turns = 3, combos = 2, flawless = true, lowHp = false,
+        -- MESMAS chaves que ScoreSystem:finishBattle usa. Com os rotulos
+        -- cravados em PT aqui a captura MENTIA: mostrava o recibo em portugues
+        -- mesmo depois do codigo real ja estar traduzido.
         breakdown = {
-            { label = "Inimigo derrotado", value = "240 pts" },
-            { label = "Vitoria rapida (3 turnos)", value = "+30%" },
-            { label = "Combos de cartas (2)", value = "+50%" },
-            { label = "Nao tomou NENHUM dano", value = "+100%" },
+            { label = I18n.t("score.enemy_defeated"),
+              value = I18n.t("score.pts", { n = 240 }) },
+            { label = I18n.t("score.fast_win", { n = 3 }),    value = "+30%" },
+            { label = I18n.t("score.card_combos", { n = 2 }), value = "+50%" },
+            { label = I18n.t("score.flawless"),               value = "+100%" },
         },
     }
     screen:show(game, sources, function() end)
@@ -92,7 +100,8 @@ function M.run(phase)
     FlashShader.draw()
 
     love.graphics.captureScreenshot(function(imageData)
-        local path = string.format("round_eval_phase_%d_t%.2f.png", phase, targetT)
+        local path = string.format("round_eval_phase_%d_t%.2f%s.png", phase, targetT,
+            (locale and locale ~= "pt_BR") and ("_" .. locale) or "")
         imageData:encode("png", path)
         print("[screenshot_round_eval] " .. path)
         love.event.quit()

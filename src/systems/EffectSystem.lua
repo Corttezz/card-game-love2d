@@ -263,7 +263,7 @@ function EffectSystem:processEffectCard(game, effect)
         -- Custo em sangue: HP direto, ignora armor (F0 gameplay-overhaul —
         -- cartas tipo Sangria prometem "Perde N HP" e precisam cumprir).
         game.player:loseHealth(v)
-        game:addMessage("-" .. v .. " HP (custo)", "warning")
+        game:addMessage(msg("hp_cost", { value = v }), "warning")
         return true
 
     elseif t == "restore_mana" then
@@ -341,14 +341,14 @@ function EffectSystem:processEffectCard(game, effect)
 
     elseif t == "gain_strength" then
         game.player:gainStrength(v)
-        game:addMessage("Força +" .. v, "success")
+        game:addMessage(msg("strength_up", { value = v }), "success")
         Sfx.play("strengthGain")
         CardFeel.burstAtPlayer("buff", 0.9)
         return true
 
     elseif t == "gain_dexterity" then
         game.player:gainDexterity(v)
-        game:addMessage("Destreza +" .. v, "success")
+        game:addMessage(msg("dexterity_up", { value = v }), "success")
         Sfx.play("strengthGain", { pitch = 1.15 })
         CardFeel.burstAtPlayer("armor", 0.9)
         return true
@@ -360,20 +360,21 @@ function EffectSystem:processEffectCard(game, effect)
         local stacks = effect.stacks or 1
         local duration = effect.duration or 3
         game.player:addBuff(name, duration, stacks)
-        game:addMessage("Buff: " .. name .. " (" .. stacks .. "x, " .. duration .. "t)", "success")
+        game:addMessage(msg("buff_applied",
+            { name = name, stacks = stacks, duration = duration }), "success")
         return true
 
     elseif t == "channel_orb" then
         -- Empilha orb. orbType (default lightning), value = potencia.
         local orb = { type = effect.orbType or "lightning", value = v }
         local overflow = game.player:addOrb(orb)
-        game:addMessage("Canaliza " .. orb.type .. " (" .. orb.value .. ")", "info")
+        game:addMessage(msg("channeled", { name = orb.type, value = orb.value }), "info")
         Sfx.play("orbChannel")
         if overflow then
             -- Overflow: orb mais antigo e evocado automaticamente
             notifyOrbUI("notifyEvoke", 1, overflow)
             self:_evokeOrbEffect(game, overflow)
-            game:addMessage("Orb sobrepujou: " .. overflow.type .. " evocado", "warning")
+            game:addMessage(msg("orb_overflow", { name = overflow.type }), "warning")
             Sfx.play("orbEvoke")
         end
         -- UI: orbe "nasce" no slot (pop-in). Depois do overflow pra animacao
@@ -384,7 +385,7 @@ function EffectSystem:processEffectCard(game, effect)
     elseif t == "evoke_orb" then
         local orb = game.player:popOldestOrb()
         if not orb then
-            game:addMessage("Sem orbs para evocar", "warning")
+            game:addMessage(msg("no_orbs"), "warning")
             return true
         end
         notifyOrbUI("notifyEvoke", 1, orb)
@@ -401,7 +402,7 @@ function EffectSystem:processEffectCard(game, effect)
             count = count + 1
         end
         if count > 0 then
-            game:addMessage("Evocou " .. count .. " orbs!", "success")
+            game:addMessage(msg("evoked_orbs", { value = count }), "success")
             Sfx.play("orbEvoke")
         end
         return true
@@ -425,7 +426,7 @@ function EffectSystem:processEffectCard(game, effect)
             { type = "channel_orb", orbType = "lightning", value = 3 },
         }
         local pick = pool[love.math.random(#pool)]
-        game:addMessage("Mistério revelado!", "info")
+        game:addMessage(msg("mystery"), "info")
         return self:processEffectCard(game, pick)
 
     elseif t == "strength_scaling" or t == "dexterity_scaling"
@@ -488,25 +489,25 @@ function EffectSystem:_evokeOrbEffect(game, orb)
     -- alvo (dano → inimigo; armor/cura → painel do jogador).
     if orb.type == "lightning" then
         game.enemy:takeDamage(v)
-        game:addMessage("Raio evocado: " .. v .. " dano", "success")
+        game:addMessage(msg("evoke_lightning", { value = v }), "success")
         CardFeel.burstAtEnemy("lightning", 1.1)
     elseif orb.type == "ice" then
         game.player:addArmor(v)
-        game:addMessage("Gelo evocado: +" .. v .. " armor", "info")
+        game:addMessage(msg("evoke_ice", { value = v }), "info")
         CardFeel.burstAtPlayer("ice", 0.9)
     elseif orb.type == "dark" then
         game.enemy:takeDamage(v * 2)
-        game:addMessage("Sombra evocada: " .. (v * 2) .. " dano", "success")
+        game:addMessage(msg("evoke_shadow", { value = v * 2 }), "success")
         CardFeel.burstAtEnemy("dark", 1.2)
     elseif orb.type == "fire" then
         game.enemy:takeDamage(v)
         game.enemy:addStatusEffect({ name = "poison", duration = 2, stacks = math.max(1, math.floor(v / 2)) })
-        game:addMessage("Fogo evocado: " .. v .. " dano + queima", "warning")
+        game:addMessage(msg("evoke_fire", { value = v }), "warning")
         CardFeel.burstAtEnemy("fire", 1.1)
     elseif orb.type == "holy" then
         local amount = self:applyHealMultiplier(game, v)
         game.player:heal(amount)
-        game:addMessage("Luz evocada: +" .. amount .. " HP", "success")
+        game:addMessage(msg("evoke_holy", { value = amount }), "success")
         CardFeel.burstAtPlayer("holy", 1.0)
     end
 end
@@ -543,18 +544,18 @@ function EffectSystem:orbPassiveTick(game)
     end
     if dmg > 0 and game.enemy and game.enemy:isAlive() then
         game.enemy:takeDamage(dmg)
-        game:addMessage("Orbes pulsam: " .. dmg .. " dano", "info")
+        game:addMessage(msg("orb_pulse_dmg", { value = dmg }), "info")
         local okER, ER = pcall(require, "src.ui.EnemyRenderer")
         if okER and ER.triggerHurt then ER.triggerHurt() end
     end
     if armor > 0 then
         p:addArmor(armor)
-        game:addMessage("Orbes pulsam: +" .. armor .. " armor", "info")
+        game:addMessage(msg("orb_pulse_armor", { value = armor }), "info")
     end
     if heal > 0 then
         local amount = self:applyHealMultiplier(game, heal)
         p:heal(amount)
-        game:addMessage("Orbes pulsam: +" .. amount .. " HP", "info")
+        game:addMessage(msg("orb_pulse_heal", { value = amount }), "info")
     end
 end
 
@@ -657,12 +658,12 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
         if game.player and game.player.addOrb then
             local orb = { type = effect.orbType or "lightning", value = math.max(1, v) }
             local overflow = game.player:addOrb(orb)
-            game:addMessage("Canaliza " .. orb.type .. " (" .. orb.value .. ")", "info")
+            game:addMessage(msg("channeled", { name = orb.type, value = orb.value }), "info")
             Sfx.play("orbChannel")
             if overflow then
                 notifyOrbUI("notifyEvoke", 1, overflow)
                 self:_evokeOrbEffect(game, overflow)
-                game:addMessage("Orb sobrepujou: " .. overflow.type .. " evocado", "warning")
+                game:addMessage(msg("orb_overflow", { name = overflow.type }), "warning")
                 Sfx.play("orbEvoke")
             end
             notifyOrbUI("notifyChannel", #game.player.orbs)
@@ -673,7 +674,7 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
     elseif t == "strength_per_turn" and triggerType == "turn_start" then
         -- Demon Form: Força cumulativa por turno (identidade StS clássica).
         game.player:gainStrength(v)
-        game:addMessage("+" .. v .. " Forca (Forma Demoniaca)", "success")
+        game:addMessage(msg("demon_form", { value = v }), "success")
         pushJokerProc(game, context and context.procSink,
             context and context.sourceJoker, "+" .. v .. " Forca", "buff")
 
@@ -699,7 +700,7 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
         for i = 1, n do
             game:drawCard((i - 1) * 0.06)
         end
-        game:addMessage("Compra extra: +" .. n, "info")
+        game:addMessage(msg("extra_draw", { value = n }), "info")
         pushJokerProc(game, context and context.procSink,
             context and context.sourceJoker, "+" .. n .. " cartas", "buff")
 
@@ -713,7 +714,7 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
                 stacks = effect.stacks or 1,
                 duration = effect.duration or 2,
             })
-            game:addMessage("Aplicou " .. name, "warning")
+            game:addMessage(msg("applied", { name = name }), "warning")
             Sfx.play("debuffApplied")
             -- Game feel v1: o debuff APARECE no corpo do inimigo + joker tica.
             local okCF, CardFeel = pcall(require, "src.systems.CardFeel")

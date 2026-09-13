@@ -51,10 +51,27 @@ function M.run()
     check("ato 1 interActHeal = 0.30", ActSystem.getInterActHealPercent(1) == 0.30)
     check("endless interActHeal = 0", ActSystem.getInterActHealPercent(4) == 0)
 
-    -- 8. Act name
-    check("ato 1 nome = Catacumbas", ActSystem.getActName(1) == "Catacumbas")
-    check("endless tem Endless no nome",
+    -- 8. Act name — agora vem do i18n (acts.act<N>), não mais do PT cravado em
+    -- Config.Acts. O teste FIXA o locale: antes ele assumia pt_BR sem dizer, e
+    -- passou a falhar sozinho quando a sessão de tool rodava em outro idioma.
+    local I18n = require("src.i18n.I18n")
+    local entryLocale = I18n.getLocale()
+
+    I18n.setLocale("pt_BR")
+    check("ato 1 nome (pt_BR) = Catacumbas", ActSystem.getActName(1) == "Catacumbas")
+    check("endless (pt_BR) tem Endless no nome",
         ActSystem.getActName(4, 3):find("Endless") ~= nil)
+
+    -- E precisa MUDAR de verdade com o idioma: nome repetido nos 5 locales
+    -- passaria no teste de paridade e continuaria errado na tela.
+    I18n.setLocale("en")
+    check("ato 1 nome (en) = Catacombs", ActSystem.getActName(1) == "Catacombs")
+    I18n.setLocale("de")
+    check("ato 1 nome (de) = Katakomben", ActSystem.getActName(1) == "Katakomben")
+    check("ato 1 traduz (pt != de)",
+        ActSystem.getActName(1) ~= "Catacumbas")
+
+    I18n.setLocale(entryLocale)
 
     -- 9. Starter deck de 2 cartas por classe
     local reg = CardRegistry:new()

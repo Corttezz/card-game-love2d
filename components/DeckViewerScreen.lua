@@ -251,9 +251,13 @@ function DeckViewerScreen:draw()
 
     -- estado das pilhas da batalha atual (se em combate)
     if self.game and self.game.deck then
-        local piles = "Compra " .. #self.game.deck
+        local piles = I18n.t("deck_viewer.piles", {
+            draw = #self.game.deck,
+            discard = #(self.game.discard or {}),
+            hand = #(self.game.hand or {}),
+        }, "Compra " .. #self.game.deck
             .. "   ·   Descarte " .. #(self.game.discard or {})
-            .. "   ·   Mão " .. #(self.game.hand or {})
+            .. "   ·   Mao " .. #(self.game.hand or {}))
         local pf = FontManager.getFont(9)
         love.graphics.setFont(pf)
         Palette.set(Palette.RUST)

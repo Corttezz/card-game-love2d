@@ -77,12 +77,23 @@ function ActSystem.getInterActHealPercent(actNumber)
 end
 
 -- Retorna o nome amigavel do ato atual (ex: "Catacumbas", ou "Endless #3").
+--
+-- O nome vem do i18n (`acts.act<N>`); `Config.Acts[n].name` fica como fallback
+-- de dev. Antes o nome saia cravado em PT do Config e a tela aparecia bilingue
+-- ("AKT 1 - Catacumbas") em qualquer locale estrangeiro.
 function ActSystem.getActName(actNumber, endlessFloor)
+    local I18n = require("src.i18n.I18n")
     local act, isEndless = ActSystem.getActConfig(actNumber)
     if isEndless then
-        return "Endless" .. (endlessFloor and (" #" .. endlessFloor) or "")
+        if endlessFloor then
+            return I18n.t("acts.endless_n", { n = endlessFloor },
+                "Endless #" .. endlessFloor)
+        end
+        return I18n.t("acts.endless", nil, "Endless")
     end
-    return (act and act.name) or ("Ato " .. tostring(actNumber))
+    local n = actNumber or 1
+    return I18n.t("acts.act" .. n, nil,
+        (act and act.name) or I18n.t("acts.fallback", { n = n }, "Ato " .. n))
 end
 
 return ActSystem

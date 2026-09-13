@@ -11,21 +11,42 @@ ShopSystem.__index = ShopSystem
 local CardDatabase = require("src.systems.CardDatabase")
 local CardRegistry = require("src.systems.CardRegistry")
 local Rng          = require("src.systems.Rng")
+local I18n         = require("src.i18n.I18n")
 
 -- Catálogo de booster packs disponíveis na loja. Custo + tamanho do conteúdo.
 -- Fase 5 vai usar `size` (cards mostrados) e `choose` (cards escolhidos)
 -- ao abrir o pack pra renderizar a UI.
+-- Nome/descricao EXIBIDOS de um item da loja. O texto das tabelas de dados
+-- abaixo e so FALLBACK de dev: a vitrine e traduzida, e o nome do pacote/
+-- upgrade saia cravado em PT no meio dela. A resolucao acontece na CONSTRUCAO
+-- da oferta (ofertas sao geradas a cada visita e nao viajam no save, entao nao
+-- ha risco de string congelada no idioma antigo).
+--
+-- DECLARADOS AQUI NO TOPO de proposito: local de Lua so existe ABAIXO da
+-- definicao, e generateUpgradeOffer usa estes helpers antes do meio do
+-- arquivo (mesma armadilha do notifyOrbUI no EffectSystem).
+local function itemName(id, fallback)
+    return I18n.t("shop_items." .. tostring(id) .. ".name", nil, fallback or id)
+end
+
+local function itemDesc(id, fallback, vars)
+    return I18n.t("shop_items." .. tostring(id) .. ".desc", vars, fallback or "")
+end
+
+-- NOTA: `name`/`description` aqui sao FALLBACK DE DEV (sem acento de
+-- proposito, pra trava tools/test_no_hardcoded_pt nao precisar abrir excecao
+-- pro arquivo). O texto que o jogador le vem de `shop_items.<id>` no i18n.
 local BOOSTER_PACK_TYPES = {
     {
         id = "pack_standard",
-        name = "Pacote Padrão",
+        name = "Pacote Padrao",
         description = "3 cartas; escolha 1.",
         kind = "Standard", cost = 4, weight = 1.0,
         size = 3, choose = 1,
     },
     {
         id = "pack_buffoon",
-        name = "Pacote Bufão",
+        name = "Pacote Bufao",
         description = "2 jokers; escolha 1.",
         kind = "Buffoon", cost = 4, weight = 0.6,
         size = 2, choose = 1,
@@ -33,7 +54,7 @@ local BOOSTER_PACK_TYPES = {
     {
         id = "pack_arcana",
         name = "Pacote Arcano",
-        description = "3 tarôs; escolha 1.",
+        description = "3 taros; escolha 1.",
         kind = "Arcana", cost = 4, weight = 1.0,
         size = 3, choose = 1,
     },
@@ -142,8 +163,8 @@ function ShopSystem:initializeShopPools()
     -- vitrine até serem implementados de verdade. Ficam só os upgrades que
     -- aplicam no Player (health/mana).
     self.shopUpgradePool = {
-        { id = "health_upgrade",     name = "Vida Extra",   description = "+10 HP máximo",            cost = 5, effect = "increase_max_health",    value = 10 },
-        { id = "mana_upgrade",       name = "Mana Extra",   description = "+1 mana máxima",           cost = 25, effect = "increase_base_mana",    value = 1  },
+        { id = "health_upgrade",     name = "Vida Extra",   description = "+10 HP maximo",            cost = 5, effect = "increase_max_health",    value = 10 },
+        { id = "mana_upgrade",       name = "Mana Extra",   description = "+1 mana maxima",           cost = 25, effect = "increase_base_mana",    value = 1  },
     }
 end
 
@@ -246,8 +267,9 @@ function ShopSystem:generateUpgradeOffer()
         return {
             type = "upgrade",
             id = "forge_card",
-            name = "Forja",
-            description = "+1 nível numa carta à sua escolha (você escolhe ao comprar)",
+            name = itemName("forge_card", "Forja"),
+            description = itemDesc("forge_card",
+                "+1 nivel numa carta a sua escolha (voce escolhe ao comprar)"),
             cost = runManager:getPaidForgeCost(),
             effect = "forge_card",
             value = 1,
@@ -259,8 +281,8 @@ function ShopSystem:generateUpgradeOffer()
     return {
         type = "upgrade",
         id = pick.id,
-        name = pick.name,
-        description = pick.description,
+        name = itemName(pick.id, pick.name),
+        description = itemDesc(pick.id, pick.description, { value = pick.value }),
         cost = pick.cost,
         effect = pick.effect,
         value = pick.value,
@@ -278,8 +300,8 @@ function ShopSystem:generateBoosterOffer()
     return {
         type = "booster_pack",
         id = p.id,
-        name = p.name,
-        description = p.description,
+        name = itemName(p.id, p.name),
+        description = itemDesc(p.id, p.description),
         cost = p.cost,
         kind = p.kind,
         size = p.size,

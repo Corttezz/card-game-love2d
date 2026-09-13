@@ -8,6 +8,7 @@ local AchievementsScreen = {}
 AchievementsScreen.__index = AchievementsScreen
 
 local FontManager       = require("src.ui.FontManager")
+local I18n = require("src.i18n.I18n")
 local Palette           = require("src.ui.Palette")
 local Panel9            = require("src.ui.Panel9")
 local HintBar           = require("src.ui.HintBar")
@@ -23,10 +24,19 @@ function AchievementsScreen:new()
     return instance
 end
 
+-- `entries` guarda TEXTO JÁ TRADUZIDO (AchievementSystem.all resolve o i18n),
+-- então ele é válido só para o idioma em que foi montado. Guardamos qual foi
+-- e o draw remonta se o jogador trocou de idioma — sem isto a galeria ficava
+-- congelada no idioma da abertura (título traduzia, as 20 conquistas não).
+function AchievementsScreen:_refresh()
+    self.entries = AchievementSystem.all()
+    self._builtLocale = I18n.getLocale()
+end
+
 function AchievementsScreen:show(onClose)
     self.visible = true
     self.onClose = onClose
-    self.entries = AchievementSystem.all()
+    self:_refresh()
     Sfx.play("menuOpen")
 end
 
@@ -77,6 +87,8 @@ function AchievementsScreen:draw()
     love.graphics.setColor(0.04, 0.03, 0.02, 0.78)
     love.graphics.rectangle("fill", 0, 0, sw, sh)
 
+    if self._builtLocale ~= I18n.getLocale() then self:_refresh() end
+
     local px, py, pw, ph = self:panelRect()
     Panel9.draw("panel_main", px, py, pw, ph)
 
@@ -85,7 +97,7 @@ function AchievementsScreen:draw()
     local tf = FontManager.getFont(18)
     love.graphics.setFont(tf)
     Palette.set(Palette.INK)
-    love.graphics.print("CONQUISTAS", px + 36, py + 30)
+    love.graphics.print(I18n.t("menu.achievements", nil, "CONQUISTAS"), px + 36, py + 30)
     local cf = FontManager.getFont(11)
     love.graphics.setFont(cf)
     Palette.set(Palette.RUST)
@@ -158,7 +170,7 @@ function AchievementsScreen:draw()
         end
     end
 
-    HintBar.draw("ESC ou clique fora fecha")
+    HintBar.draw(I18n.t("achievements.hint", nil, "ESC ou clique fora fecha"))
     love.graphics.setColor(1, 1, 1, 1)
 end
 

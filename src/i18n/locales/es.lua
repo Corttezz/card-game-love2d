@@ -53,6 +53,9 @@ return {
     battle = {
         your_turn  = "TU TURNO",
         enemy_turn = "TURNO DEL ENEMIGO",
+        -- ComboBanner: titulo da faixa + ganho do combo de orbe.
+        combo       = "COMBO!",
+        combo_evoke = "+{n} orbe evocado",
     },
 
     classes = {
@@ -101,7 +104,24 @@ return {
         take = "Tomar",
     },
 
+    score = {
+        points_total    = "+{n} PUNTOS",
+        pts             = "{n} pts",
+        enemy_defeated  = "Enemigo derrotado",
+        fast_win        = "Victoria rapida ({n} turnos)",
+        long_battle     = "Batalla larga ({n} turnos)",
+        card_combos     = "Combos de cartas ({n})",
+        triple_combo    = "3+ combos en un mismo turno",
+        on_the_edge     = "Al limite (vida baja)",
+        flawless        = "No recibiste NINGUN dano",
+    },
+
     round_eval = {
+        title        = "EVALUACION DE RONDA",
+        total        = "TOTAL: ${n}",
+        src_victory  = "Victoria",
+        src_full_hp  = "Vida llena",
+        src_interest = "Intereses (1$ por cada 5$)",
         cash_out = "Cobrar ${n}",
     },
 
@@ -113,10 +133,127 @@ return {
         buff_gain = "+2 DANO",
     },
 
+
+    acts = {
+        act1      = "Catacumbas",
+        act2      = "Torre de Piedra",
+        act3      = "El Abismo",
+        endless   = "Infinito",
+        endless_n = "Infinito #{n}",
+        fallback  = "Acto {n}",
+    },
+
+    node_type = {
+        battle    = { label = "Batalla",   desc = "Combate normal. Recompensa: 1 carta + oro." },
+        elite     = { label = "Elite",     desc = "Enemigo fuerte. Recompensa: carta poco comun o mejor." },
+        mini_boss = { label = "Mini-Jefe", desc = "Mitad del acto. Recompensa rara." },
+        boss      = { label = "JEFE",      desc = "Fin del acto. Recompensa legendaria + reliquia." },
+        shop      = { label = "Tienda",    desc = "Compra cartas y mejoras." },
+        rest      = { label = "Descanso",  desc = "Cura 30% de vida o forja una carta." },
+        event     = { label = "Evento",    desc = "Encuentro misterioso. Arriesgate." },
+    },
+
+    shop_items = {
+        pack_standard  = { name = "Sobre Estandar",  desc = "3 cartas; elige 1." },
+        pack_buffoon   = { name = "Sobre Bufon",     desc = "2 comodines; elige 1." },
+        pack_arcana    = { name = "Sobre Arcano",    desc = "3 tarots; elige 1." },
+        pack_celestial = { name = "Sobre Celestial", desc = "3 planetas; elige 1." },
+        pack_spectral  = { name = "Sobre Espectral", desc = "2 espectrales; elige 1." },
+        health_upgrade = { name = "Vida Extra", desc = "+{value} de vida maxima" },
+        mana_upgrade   = { name = "Mana Extra", desc = "+{value} de mana maximo" },
+        forge_card     = { name = "Forja",      desc = "+1 nivel en una carta que elijas (la eliges al comprar)" },
+    },
+
+    map = {
+        title = "Elige el siguiente camino",
+        hint  = "Haz clic en una opcion O pulsa 1 / 2 / 3.  ESC vuelve al menu.",
+    },
+
+    achievements = {
+        -- Catalogo de conquistas (src/data/achievements.lua guarda
+        -- so o PT sem acento, como fallback de dev).
+        list = {
+            primeira_pagina = { name = "Primera Pagina", desc = "Gana tu primera partida." },
+            trindade = { name = "Trinidad del Grimorio", desc = "Gana una partida con cada clase." },
+            capitulo_final = { name = "El Capitulo Final", desc = "Derrota al jefe del Acto 3." },
+            alem_da_pagina = { name = "Tras la Ultima Pagina", desc = "Alcanza el piso 10 del modo infinito." },
+            escriba = { name = "Escriba Incansable", desc = "Juega 2500 cartas (entre partidas)." },
+            grimorio_bolso = { name = "Grimorio de Bolsillo", desc = "Gana con un mazo de 6 cartas o menos." },
+            enciclopedia = { name = "Enciclopedia Andante", desc = "Gana con 30 o mas cartas en el mazo." },
+            voto_pobreza = { name = "Voto de Pobreza", desc = "Gana sin comprar nada en las tiendas." },
+            asceta = { name = "Asceta", desc = "Gana sin ningun comodin equipado." },
+            tinta_crua = { name = "Tinta Cruda", desc = "Gana usando solo cartas comunes." },
+            sem_rascunhos = { name = "Sin Borradores", desc = "Gana sin usar nunca la Forja." },
+            relampago = { name = "Rayo Sellado", desc = "Gana una batalla en el primer turno." },
+            fio_navalha = { name = "El Filo de la Navaja", desc = "Gana una batalla con exactamente 1 de vida." },
+            imaculado = { name = "Inmaculado", desc = "Derrota a un jefe sin recibir dano." },
+            miasma = { name = "Miasma", desc = "Acumula 15+ de veneno en un enemigo." },
+            muralha = { name = "La Muralla del Escriba", desc = "Alcanza el bloqueo maximo en un turno." },
+            tinta_viva = { name = "Tinta Viva", desc = "Activa 4 combos en el mismo turno." },
+            velas_10k = { name = "Diez Mil Velas", desc = "Alcanza 10.000 puntos en una partida." },
+            bibliotecario = { name = "Bibliotecario", desc = "Descubre todas las cartas del grimorio." },
+            ferreiro = { name = "Maestro Herrero", desc = "Forja 25 cartas (entre partidas)." },
+        },
+        hint = "ESC o clic fuera para cerrar",
+    },
+
     hud = {
+        hero         = "HEROE",
         damage       = "DANO: ",
         phase        = "FASE: ",
         threat_label = "AMENAZA:",
+    },
+
+    -- Hoguera + selector de cartas (components/RestScreen.lua). El selector
+    -- sirve a TRES modos: forjar (hoguera/tienda), quitar y duplicar (eventos).
+    rest = {
+        -- Menu de la hoguera
+        camp_title   = "Campamento",
+        camp_sub     = "La hoguera crepita. Recupera el aliento o trabaja el acero.",
+        camp_hint    = "Elige: descansar O forjar (una vez por campamento)",
+        heal_title   = "Descansar",
+        heal_sub     = "+30% PV",
+        heal_result  = "Curo {n} PV.",
+        forge_title  = "Forjar",
+        forge_sub    = "+1 nivel en una carta",
+        forge_detail = "Mejora lo que la carta TIENE (sin limite)",
+
+        -- Selector: forjar
+        pick_forge_title = "Forjar",
+        pick_forge_sub   = "Elige una carta para mejorar.",
+        pick_forge_hint  = "Clic en una carta para forjar - Volver cancela",
+        pick_forge_empty = "Ninguna carta del grimorio puede ir al yunque ahora.",
+
+        -- Selector: quitar
+        pick_remove_title = "Quitar carta",
+        pick_remove_sub   = "Elige una carta para QUITAR del grimorio (permanente).",
+        pick_remove_hint  = "Clic en una carta para quitar - Volver cancela",
+        pick_remove_empty = "Al grimorio no le quedan paginas que arrancar.",
+
+        -- Selector: duplicar
+        pick_dup_title = "Duplicar carta",
+        pick_dup_sub   = "Elige una carta para ganar una COPIA de ella.",
+        pick_dup_hint  = "Clic en una carta para duplicar - Volver cancela",
+        pick_dup_empty = "El grimorio esta vacio.",
+
+        -- Paginacion de la cuadricula
+        page_prev = "< Anterior",
+        page_next = "Siguiente >",
+
+        -- Panel del yunque (hover) + placa de delta
+        warn_remove = "Sale del grimorio PARA SIEMPRE.",
+        warn_dup    = "Ganas OTRA copia de ella.",
+        hp_abbr     = "PV",
+        forge_level = "Forja",
+
+        -- Resultados
+        remove_too_thin = "El grimorio esta demasiado flaco para perder paginas.",
+        removed         = "Quitada del grimorio: {name}",
+        duplicated      = "Copia creada: {name}",
+        dup_popup       = "+1 COPIA",
+        forge_capped    = "Ya esta al nivel maximo: {name}",
+        forged          = "Forjada: {name} +{lvl}",
+        forged_gains    = "({parts} en total)",
     },
 
     card_info = {
@@ -137,6 +274,22 @@ return {
         passive = "PASIVA",
         action  = "ACCION",
         unknown = "CARTA",
+    },
+
+    -- Apertura de sobre (nombre del tipo, contador, pista, fichas del detalle)
+    pack = {
+        kind_standard  = "Sobre Estándar",
+        kind_buffoon   = "Sobre Bufón",
+        kind_arcana    = "Sobre Arcano",
+        kind_celestial = "Sobre Celestial",
+        kind_spectral  = "Sobre Espectral",
+        kind_generic   = "Sobre {kind}",
+        choose         = "Elige {n}",
+        closing        = "Cerrando...",
+        click_hint     = "Haz clic en una carta para elegir",
+        chip_cost      = "COSTE",
+        chip_damage    = "DAÑO",
+        chip_defense   = "BLOQUEO",
     },
 
     rarity = {
@@ -173,6 +326,194 @@ return {
         buy_and_use        = "Usar (${n})",
         open_pack          = "Abrir (${n})",
         select_card        = "Seleccionar",
+        joker_run_only     = "Los comodines solo se consiguen durante una partida",
+    },
+
+    deck_viewer = {
+        title  = "TU MAZO",
+        counts = "{total} cartas   ·   {atk} ataque   ·   {def} defensa   ·   {eff} efecto   ·   {jok} comodin",
+        hint   = "CLIC para inspeccionar  ·  RUEDA desplaza  ·  D o ESC cierra",
+        piles  = "Robo {draw}   ·   Descarte {discard}   ·   Mano {hand}",
+    },
+
+    event = {
+        default_result = "Sigues adelante.",
+        hint           = "Haz clic en una opcion O pulsa 1-{n} · la eleccion es definitiva",
+    },
+
+    events = {
+        -- Vocabulario COMPARTILHADO dos rotulos [+x / -y]. Uma so
+        -- traducao por conceito, usada por todos os eventos: e o que
+        -- impede 'HP' e 'PV' de conviverem na mesma tela.
+        tokens = {
+            card_legendary = "carta LEGENDARIA",
+            card_potion    = "carta Pocion de Curacion",
+            card_rare      = "carta RARA",
+            cards_random   = "{n} cartas al azar",
+            chance_gold    = "{pct}% ${n}",
+            chance_potion  = "{pct}% pocion",
+            chance_trap    = "{pct}% trampa {n} PV",
+            dup_choice     = "duplica {n} carta A TU ELECCION",
+            forge_choice   = "1 forja en la carta que elijas",
+            forge_random   = "1 forja en carta al azar",
+            gamble         = "{pct}% de ganar ${n}",
+            gold           = "${n}",
+            heal_flat      = "cura {n} PV",
+            heal_pct       = "cura {n}% de PV",
+            hp             = "{n} PV",
+            max_hp         = "{n} PV maximos",
+            max_mana       = "{n} mana maxima",
+            mystery        = "efecto misterioso",
+            remove_choice  = "elimina {n} carta A TU ELECCION",
+            remove_random  = "{n} carta AL AZAR del mazo",
+        },
+
+        altar_proibido = {
+            title      = "Altar Prohibido",
+            body       = "Un altar de piedra late con energia oscura. Una voz susurra: 'entrega tu sangre...'",
+            opt1       = "Sacrificar sangre",
+            opt2       = "Marcharse",
+            r_got_rare = "Has obtenido una carta rara.",
+            r_leave    = "Sigues adelante, ileso.",
+            r_silent   = "El altar enmudece.",
+        },
+
+        bigorna_antiga = {
+            title      = "Yunque Antiguo",
+            body       = "Un yunque oxidado espera. Parece que aun late una forja en su interior.",
+            opt1       = "Martillar el acero",
+            opt2       = "Ignorar",
+            r_all_max  = "Todas las cartas elegidas ya estan al maximo.",
+            r_forged   = "Carta '{name}' forjada (+{lvl}).",
+            r_ignore   = "El yunque se apaga.",
+            r_no_cards = "No tienes cartas en el mazo.",
+        },
+
+        aposta_ouro = {
+            title     = "La Apuesta del Extrano",
+            body      = "Un extrano encapuchado sonrie. 'Cara o cruz. Doble o nada.'",
+            opt1      = "Apostar",
+            opt2      = "Rechazar",
+            r_lose    = "Has perdido {n} de oro.",
+            r_no_gold = "No tienes {n} de oro.",
+            r_refuse  = "El extrano desaparece.",
+            r_win     = "Has ganado. +{n} de oro neto.",
+        },
+
+        cristais_maximos = {
+            title   = "Cristales Maximos",
+            body    = "Unos cristales flotan en aire denso. Tocar uno podria cambiar tu esencia.",
+            opt1    = "Tocar el cristal rojo",
+            opt2    = "Tocar el cristal azul",
+            opt3    = "Marcharse",
+            r_hp    = "Vida maxima +{n}.",
+            r_leave = "Ignoras el brillo.",
+            r_mana  = "Mana maximo +{n}.",
+        },
+
+        biblioteca_esquecida = {
+            title     = "Biblioteca Olvidada",
+            body      = "Pilas de pergaminos antiguos. Un libro concreto llama tu atencion.",
+            opt1      = "Estudiar",
+            opt2      = "Quemar los libros",
+            r_burn    = "+{n} de oro, pero algo se ha perdido.",
+            r_learned = "Has aprendido: {names}",
+        },
+
+        fonte_vida = {
+            title    = "Fuente de la Vida",
+            body     = "Agua cristalina brota de una piedra antigua. El olor reconforta.",
+            opt1     = "Beber",
+            opt2     = "Embotellar",
+            opt3     = "Marcharse",
+            r_bottle = "Ahora llevas una Pocion de Curacion.",
+            r_drink  = "Curo {n} PV.",
+            r_leave  = "La fuente queda intacta.",
+        },
+
+        comerciante_misterioso = {
+            title       = "Mercader Misterioso",
+            body        = "Un hombre lleno de cicatrices ofrece una carta legendaria a un precio alto.",
+            opt1        = "Comprar",
+            opt2        = "Rechazar",
+            r_bought    = "Has adquirido {name}.",
+            r_need_gold = "Hacen falta {n} de oro.",
+            r_refund    = "El mercader no encontro nada adecuado. Oro devuelto.",
+            r_refuse    = "Suspira y se marcha.",
+        },
+
+        espelho_quebrado = {
+            title       = "Espejo Roto",
+            body        = "Un espejo agrietado muestra tu reflejo deformado. Quieres quitarte una parte?",
+            opt1        = "Aceptar el reflejo",
+            opt2        = "Dar la espalda",
+            r_leave     = "Ignoras el reflejo.",
+            r_removed   = "Eliminada: {name}",
+            r_too_small = "El mazo es demasiado pequeno para quitar una carta.",
+        },
+
+        mochila_abandonada = {
+            title    = "Mochila Abandonada",
+            body     = "Una mochila en el suelo. Algo se mueve dentro.",
+            opt1     = "Abrir",
+            opt2     = "Dejarla",
+            r_gold   = "Oro dentro. +{n}.",
+            r_leave  = "Sigues adelante.",
+            r_potion = "Pocion de curacion.",
+            r_trap   = "Trampa. -{n} PV.",
+        },
+
+        mistery_node = {
+            title    = "Niebla Extrana",
+            body     = "Una niebla extrana te envuelve. Despiertas distinto...",
+            opt1     = "Aceptar",
+            opt2     = "Resistir",
+            r_accept = "Algo ha cambiado en ti.",
+            r_resist = "La niebla se disipa.",
+        },
+
+        escriba_errante = {
+            title        = "Escriba Errante",
+            body         = "Un escriba de dedos manchados ofrece: 'puedo tachar una pagina de tu grimorio. Para siempre.'",
+            opt1         = "Tachar una pagina",
+            opt2         = "Guardar el grimorio",
+            r_distracted = "El escriba se distrae y se marcha.",
+            r_sealed     = "El trato queda sellado.",
+            r_shrug      = "El escriba se encoge de hombros.",
+        },
+
+        espelho_de_tinta = {
+            title   = "Espejo de Tinta",
+            body    = "Un charco de tinta espejada refleja tu grimorio. Una de las paginas parece... copiable.",
+            opt1    = "Sumergir una pagina",
+            opt2    = "No tocar",
+            r_copy  = "La tinta guarda tu copia.",
+            r_fail  = "La tinta se escurre y el reflejo se deshace.",
+            r_leave = "La tinta espejada se seca despacio.",
+        },
+
+        forja_abandonada = {
+            title   = "Forja Abandonada",
+            body    = "Un herrero se marcho con prisa: la forja sigue CALIENTE. Da tiempo a un solo trabajo.",
+            opt1    = "Usar la forja",
+            opt2    = "Seguir camino",
+            r_fail  = "Las brasas se apagan antes de empezar.",
+            r_forge = "El metal aun canta con tu trabajo.",
+            r_leave = "El calor queda atras.",
+        },
+
+        mercador_sangue = {
+            title      = "Mercader de Sangre",
+            body       = "Un mercader palido pesa monedas en una balanza de huesos. 'Sangre por oro. Oro por sangre. Elige el plato.'",
+            opt1       = "Vender sangre",
+            opt2       = "Comprar vigor",
+            opt3       = "Rechazar el trato",
+            r_no_gold  = "No tienes {n} de oro.",
+            r_refuse   = "El mercader guarda la balanza, decepcionado.",
+            r_sold     = "La balanza se inclina. +{n} de oro.",
+            r_too_weak = "Estas demasiado debil para vender sangre.",
+            r_vigor    = "El vigor vuelve a tus venas. +{n} PV.",
+        },
     },
 
     collection = {
@@ -194,6 +535,26 @@ return {
     ["end"] = {
         record             = "Record: {n}",
         new_record         = "NUEVO RECORD!",
+    },
+
+    run_journal = {
+        title        = "CRONICA DEL VIAJE",
+        subtitle     = "Acto {act} · piso {floor}/{total}  ·  {stops} paradas recorridas",
+        act_label    = "ACTO {n}",
+        endless      = "INFINITO",
+        conquered    = "CONQUISTADO",
+        act_progress = "{x}/{total} pisos",
+        node_at      = "Acto {act} · piso {floor}",
+        no_details   = "Sin detalles registrados",
+        hp_line      = "Vida {from} -> {to}",
+        gold_line    = "Oro {from} -> {to}",
+        event_option = "Eleccion: {option}",
+        gain_card    = "Carta: {name}",
+        gain_joker   = "Comodin: {name}",
+        gain_forge   = "Forja: {name} +{lvl}",
+        gain_remove  = "Eliminada: {name}",
+        empty        = "Aun no has recorrido ningun camino.",
+        hint         = "PASA EL RATON por un hito para ver lo que elegiste  ·  RUEDA desplaza  ·  M o ESC cierra",
     },
 
     game_over = {
@@ -270,7 +631,7 @@ return {
         passive_rogue  = { name = "Pasiva: Toxinas", desc = "El primer ataque de cada turno aplica 1 de Veneno." },
         topbar_gold = { name = "Oro", desc = "Compra cartas, forjas y mejoras en la tienda. Interes: +$1 por cada $5 ahorrados (max +$5), pagado tras cada batalla ganada. Proximo pago: +${interest}." },
         topbar_deck = { name = "Grimorio", desc = "{deck} cartas en tu grimorio — {hand} en mano ahora. Al final del turno tu mano se descarta y robas cartas nuevas. Clic para ver el mazo." },
-        topbar_progress = { name = "Progreso del Viaje", desc = "Acto {act}, piso {floor} de {total}. Un MINI-JEFE espera en el piso 7; el JEFE del acto en el piso {total}. Derrota al jefe del Acto 3 para terminar la cronica." },
+        topbar_progress = { name = "Progreso del Viaje", desc = "Acto {act}, piso {floor} de {total}. Un MINI-JEFE espera en el piso 7; el JEFE del acto en el piso {total}. Derrota al jefe del Acto 3 para terminar la cronica. Pulsa aqui para abrir la Cronica del viaje." },
         topbar_config = { name = "Menu de Pausa", desc = "Pausa el viaje: ajustes, guardar y salir al menu, o abandonar la partida." },
         reward_rules = { name = "Como funcionan las ofertas", desc = "Las cartas ofrecidas son de TU clase. La calidad mejora cada acto — y cada oferta sin una RARA aumenta las probabilidades de la siguiente (tras una racha larga sin raras, una rara esta garantizada). Las cartas marcadas con AFINIDAD coinciden con las etiquetas fuertes de tu mazo. Las cartas que ya tienes en copias aparecen menos." },
         poison     = { name = "Veneno",     desc = "Causa {stacks} de dano al final del turno, durante {duration} turno(s)." },
@@ -289,6 +650,69 @@ return {
     },
 
     messages = {
+        achievement          = "LOGRO: {name}!",
+        act_complete         = "Acto completado! Acto {n}",
+        act_transition_heal  = "Transicion de acto: +{value} PV",
+        applied              = "Aplico {name}",
+        block_gained         = "Bloqueo: +{value}",
+        blue_seal            = "+{value} cartas (Sello Azul)",
+        buff_applied         = "Mejora: {name} ({stacks}x, {duration}t)",
+        card_add_failed      = "Error al anadir la carta al mazo!",
+        card_added           = "Carta anadida: {name}",
+        card_removed         = "Carta eliminada: {name}",
+        channeled            = "Canaliza {name} ({value})",
+        combo_announce       = "COMBO! {combo}",
+        combo_debuff         = "Combo {combo}: +{stacks} {name}",
+        combo_heal           = "Combo {combo}: +{value} PV",
+        combo_orb            = "Combo {combo}: orbe extra evocado",
+        damage_dealt         = "Dano: {value}",
+        deck_changed         = "Mazo cambiado a: {name}",
+        deck_size            = "Mazo: {value} cartas",
+        demon_form           = "+{value} Fuerza (Forma Demoniaca)",
+        dexterity_up         = "Destreza +{value}",
+        effect_played        = "Efecto activado: {name}",
+        endless_unlocked     = "Modo Infinito desbloqueado!",
+        enemy_defends        = "El enemigo se defiende: +{value} de armadura",
+        enemy_enrages        = "El enemigo se enfurece: +{value} de dano permanente!",
+        enemy_fury           = "Furia! El enemigo gana +{value} de dano",
+        enemy_hit            = "El enemigo causo {value} de dano!",
+        evoke_fire           = "Fuego evocado: {value} de dano + quemadura",
+        evoke_holy           = "Luz evocada: +{value} PV",
+        evoke_ice            = "Hielo evocado: +{value} de bloqueo",
+        evoke_lightning      = "Rayo evocado: {value} de dano",
+        evoke_shadow         = "Sombra evocada: {value} de dano",
+        evoked_orbs          = "Evocaste {value} orbes!",
+        exhausted            = "Agotada: {name}",
+        extra_draw           = "Robo extra: +{value}",
+        game_start           = "Partida iniciada! Buena suerte!",
+        gold_seal            = "+{value} oro (Sello Dorado)",
+        hand_reset           = "Mano limpia y mazo rebarajado para el siguiente piso!",
+        health_restored      = "Vida restaurada! +{value} PV",
+        hp_cost              = "-{value} PV (coste)",
+        joker_activated      = "Comodin activado: {name}",
+        joker_benched        = "Comodin al banquillo: {name} (cambialo en el gestor)",
+        mystery              = "Misterio revelado!",
+        new_record           = "NUEVO RECORD DE CRONICA!",
+        no_mana              = "Mana insuficiente!",
+        no_orbs              = "Sin orbes que evocar",
+        not_in_run           = "Error: no estas en modo partida!",
+        orb_overflow         = "Orbe desbordado: {name} evocado",
+        orb_pulse_armor      = "Los orbes laten: +{value} de bloqueo",
+        orb_pulse_dmg        = "Los orbes laten: {value} de dano",
+        orb_pulse_heal       = "Los orbes laten: +{value} PV",
+        passive_conduit      = "Conducto: orbe de Rayo + 2 Enfoque!",
+        passive_momentum     = "Impetu: +1 Fuerza!",
+        passive_toxins       = "Toxinas: +1 Veneno!",
+        phase_started        = "Fase {value} iniciada!",
+        poison_tick          = "Veneno: {value} de dano al enemigo",
+        purple_seal          = "Orbe! (Sello Morado)",
+        reshuffled           = "Descarte rebarajado en el mazo",
+        run_resumed          = "Partida retomada: {name} - piso {floor}",
+        run_started          = "Nueva partida como {name}!",
+        select_cards         = "Selecciona cartas - o pulsa TERMINAR TURNO",
+        settings_unavailable = "Menu de ajustes no disponible",
+        starting_gold        = "Oro inicial: {value}",
+        strength_up          = "Fuerza +{value}",
         dmg_multiplier   = "Dano x{value}",
         def_multiplier   = "Defensa x{value}",
         dmg_bonus        = "+{value} dano",

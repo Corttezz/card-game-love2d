@@ -23,6 +23,21 @@ local AchievementSystem = {}
 local defsById = {}
 for _, d in ipairs(Defs) do defsById[d.id] = d end
 
+-- Nome/descricao EXIBIDOS. O texto em `Defs` e FALLBACK DE DEV (sem acento de
+-- proposito, pra trava tools/test_no_hardcoded_pt nao precisar de excecao):
+-- o que o jogador le vem de `achievements.list.<id>` no i18n.
+-- FONTE UNICA — all() e unlock() passam por aqui, entao a galeria e o toast
+-- nunca divergem.
+local function achName(d)
+    return require("src.i18n.I18n").t(
+        "achievements.list." .. d.id .. ".name", nil, d.name or d.id)
+end
+
+local function achDesc(d)
+    return require("src.i18n.I18n").t(
+        "achievements.list." .. d.id .. ".desc", nil, d.desc or "")
+end
+
 local function unlockedSet()
     local s = ProfileStats.get()
     s.achievements = s.achievements or {}
@@ -38,7 +53,7 @@ function AchievementSystem.all()
     local out = {}
     for _, d in ipairs(Defs) do
         table.insert(out, {
-            id = d.id, name = d.name, desc = d.desc,
+            id = d.id, name = achName(d), desc = achDesc(d),
             icon = d.icon, tier = d.tier,
             unlocked = set[d.id] == true,
         })
@@ -61,7 +76,9 @@ function AchievementSystem.unlock(id, game)
     ProfileStats.flush()
 
     if game and game.addMessage then
-        game:addMessage("CONQUISTA: " .. def.name .. "!", "success")
+        local shown = achName(def)
+        game:addMessage(require("src.i18n.I18n").t("messages.achievement",
+            { name = shown }, "CONQUISTA: " .. shown .. "!"), "success")
     end
     Sfx.play("comboTrigger", { pitch = 1.2 })
     print("[Achievement] desbloqueada: " .. id)

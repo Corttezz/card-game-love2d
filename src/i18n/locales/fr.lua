@@ -53,6 +53,9 @@ return {
     battle = {
         your_turn  = "VOTRE TOUR",
         enemy_turn = "TOUR DE L ENNEMI",
+        -- ComboBanner: titulo da faixa + ganho do combo de orbe.
+        combo       = "COMBO !",
+        combo_evoke = "+{n} orbe evoque",
     },
 
     classes = {
@@ -101,7 +104,24 @@ return {
         take = "Prendre",
     },
 
+    score = {
+        points_total    = "+{n} POINTS",
+        pts             = "{n} pts",
+        enemy_defeated  = "Ennemi vaincu",
+        fast_win        = "Victoire rapide ({n} tours)",
+        long_battle     = "Combat long ({n} tours)",
+        card_combos     = "Combos de cartes ({n})",
+        triple_combo    = "3+ combos dans le meme tour",
+        on_the_edge     = "Sur le fil (PV bas)",
+        flawless        = "AUCUN degat subi",
+    },
+
     round_eval = {
+        title        = "EVALUATION DE LA MANCHE",
+        total        = "TOTAL : ${n}",
+        src_victory  = "Victoire",
+        src_full_hp  = "PV au max",
+        src_interest = "Interets (1$ pour 5$)",
         cash_out = "Encaisser ${n}",
     },
 
@@ -113,10 +133,128 @@ return {
         buff_gain = "+2 DEG",
     },
 
+
+    acts = {
+        act1      = "Catacombes",
+        act2      = "Tour de Pierre",
+        act3      = "L abime",
+        endless   = "Infini",
+        endless_n = "Infini #{n}",
+        fallback  = "Acte {n}",
+    },
+
+    node_type = {
+        battle    = { label = "Combat",    desc = "Combat normal. Recompense : 1 carte + or." },
+        elite     = { label = "Elite",     desc = "Ennemi coriace. Recompense : carte peu commune ou mieux." },
+        mini_boss = { label = "Mini-Boss", desc = "Milieu de l acte. Recompense rare." },
+        boss      = { label = "BOSS",      desc = "Fin de l acte. Recompense legendaire + relique." },
+        shop      = { label = "Boutique",  desc = "Achetez cartes et ameliorations." },
+        rest      = { label = "Repos",     desc = "Soignez 30% des PV ou forgez une carte." },
+        event     = { label = "Evenement", desc = "Rencontre mysterieuse. Tentez votre chance." },
+    },
+
+    shop_items = {
+        pack_standard  = { name = "Pack Standard",  desc = "3 cartes ; choisissez-en 1." },
+        pack_buffoon   = { name = "Pack Bouffon",   desc = "2 jokers ; choisissez-en 1." },
+        pack_arcana    = { name = "Pack Arcane",    desc = "3 tarots ; choisissez-en 1." },
+        pack_celestial = { name = "Pack Celeste",   desc = "3 planetes ; choisissez-en 1." },
+        pack_spectral  = { name = "Pack Spectral",  desc = "2 spectrales ; choisissez-en 1." },
+        health_upgrade = { name = "Vie Bonus",  desc = "+{value} PV maximum" },
+        mana_upgrade   = { name = "Mana Bonus", desc = "+{value} mana maximum" },
+        forge_card     = { name = "Forge",      desc = "+1 niveau sur une carte de votre choix (choisie a l achat)" },
+    },
+
+    map = {
+        title = "Choisissez le prochain chemin",
+        hint  = "Cliquez sur une option OU appuyez sur 1 / 2 / 3.  ECHAP revient au menu.",
+    },
+
+    achievements = {
+        -- Catalogo de conquistas (src/data/achievements.lua guarda
+        -- so o PT sem acento, como fallback de dev).
+        list = {
+            primeira_pagina = { name = "Premiere Page", desc = "Gagnez votre premier periple." },
+            trindade = { name = "Trinite du Grimoire", desc = "Gagnez un periple avec chaque classe." },
+            capitulo_final = { name = "Le Dernier Chapitre", desc = "Battez le boss de l Acte 3." },
+            alem_da_pagina = { name = "Au-dela de la Page", desc = "Atteignez l etage 10 du mode infini." },
+            escriba = { name = "Scribe Infatigable", desc = "Jouez 2500 cartes (tous periples)." },
+            grimorio_bolso = { name = "Grimoire de Poche", desc = "Gagnez avec un deck de 6 cartes ou moins." },
+            enciclopedia = { name = "Encyclopedie Vivante", desc = "Gagnez avec 30 cartes ou plus." },
+            voto_pobreza = { name = "Voeu de Pauvrete", desc = "Gagnez sans rien acheter en boutique." },
+            asceta = { name = "Ascete", desc = "Gagnez sans aucun joker equipe." },
+            tinta_crua = { name = "Encre Brute", desc = "Gagnez avec seulement des cartes communes." },
+            sem_rascunhos = { name = "Sans Brouillon", desc = "Gagnez sans jamais utiliser la Forge." },
+            relampago = { name = "Eclair Scelle", desc = "Gagnez un combat au premier tour." },
+            fio_navalha = { name = "Sur le Fil du Rasoir", desc = "Gagnez un combat avec exactement 1 PV." },
+            imaculado = { name = "Immacule", desc = "Battez un boss sans subir de degats." },
+            miasma = { name = "Miasme", desc = "Accumulez 15+ de poison sur un ennemi." },
+            muralha = { name = "Le Mur du Scribe", desc = "Atteignez le blocage maximum en un tour." },
+            tinta_viva = { name = "Encre Vivante", desc = "Declenchez 4 combos dans le meme tour." },
+            velas_10k = { name = "Dix Mille Chandelles", desc = "Atteignez 10 000 points en un periple." },
+            bibliotecario = { name = "Bibliothecaire", desc = "Decouvrez toutes les cartes du grimoire." },
+            ferreiro = { name = "Maitre Forgeron", desc = "Forgez 25 cartes (tous periples)." },
+        },
+        hint = "ECHAP ou clic exterieur pour fermer",
+    },
+
     hud = {
+        hero         = "HEROS",
         damage       = "DEG: ",
         phase        = "PHASE: ",
         threat_label = "MENACE:",
+    },
+
+    -- Feu de camp + selecteur de cartes (components/RestScreen.lua). Le
+    -- selecteur sert TROIS modes : forger (feu/boutique), retirer et
+    -- dupliquer (evenements).
+    rest = {
+        -- Menu du feu de camp
+        camp_title   = "Campement",
+        camp_sub     = "Le feu crepite. Reprends ton souffle ou travaille l'acier.",
+        camp_hint    = "Choisis : se reposer OU forger (une fois par campement)",
+        heal_title   = "Se reposer",
+        heal_sub     = "+30% PV",
+        heal_result  = "Soigne {n} PV.",
+        forge_title  = "Forger",
+        forge_sub    = "+1 niveau sur une carte",
+        forge_detail = "Ameliore ce que la carte A (sans limite)",
+
+        -- Selecteur : forger
+        pick_forge_title = "Forger",
+        pick_forge_sub   = "Choisis une carte a ameliorer.",
+        pick_forge_hint  = "Clique une carte pour forger - Retour annule",
+        pick_forge_empty = "Aucune carte du grimoire ne peut aller a l'enclume.",
+
+        -- Selecteur : retirer
+        pick_remove_title = "Retirer une carte",
+        pick_remove_sub   = "Choisis une carte a RETIRER du grimoire (definitif).",
+        pick_remove_hint  = "Clique une carte pour la retirer - Retour annule",
+        pick_remove_empty = "Le grimoire n'a plus de pages a arracher.",
+
+        -- Selecteur : dupliquer
+        pick_dup_title = "Dupliquer une carte",
+        pick_dup_sub   = "Choisis une carte pour en gagner une COPIE.",
+        pick_dup_hint  = "Clique une carte pour dupliquer - Retour annule",
+        pick_dup_empty = "Le grimoire est vide.",
+
+        -- Pagination de la grille
+        page_prev = "< Precedent",
+        page_next = "Suivant >",
+
+        -- Panneau de l'enclume (survol) + plaque de delta
+        warn_remove = "Quitte le grimoire POUR TOUJOURS.",
+        warn_dup    = "Tu gagnes une AUTRE copie.",
+        hp_abbr     = "PV",
+        forge_level = "Forge",
+
+        -- Resultats
+        remove_too_thin = "Le grimoire est trop maigre pour perdre des pages.",
+        removed         = "Retiree du grimoire : {name}",
+        duplicated      = "Copie creee : {name}",
+        dup_popup       = "+1 COPIE",
+        forge_capped    = "Deja au niveau maximum : {name}",
+        forged          = "Forgee : {name} +{lvl}",
+        forged_gains    = "({parts} au total)",
     },
 
     card_info = {
@@ -137,6 +275,22 @@ return {
         passive = "PASSIVE",
         action  = "ACTION",
         unknown = "CARTE",
+    },
+
+    -- Ouverture de booster (nom du type, compteur, indice, jetons du detail)
+    pack = {
+        kind_standard  = "Pack Standard",
+        kind_buffoon   = "Pack Bouffon",
+        kind_arcana    = "Pack Arcane",
+        kind_celestial = "Pack Céleste",
+        kind_spectral  = "Pack Spectral",
+        kind_generic   = "Pack {kind}",
+        choose         = "Choisissez {n}",
+        closing        = "Fermeture...",
+        click_hint     = "Cliquez sur une carte pour choisir",
+        chip_cost      = "COÛT",
+        chip_damage    = "DÉGÂTS",
+        chip_defense   = "BLOCAGE",
     },
 
     rarity = {
@@ -173,6 +327,194 @@ return {
         buy_and_use        = "Utiliser (${n})",
         open_pack          = "Ouvrir (${n})",
         select_card        = "Selectionner",
+        joker_run_only     = "Les jokers ne s'obtiennent que pendant une partie",
+    },
+
+    deck_viewer = {
+        title  = "VOTRE DECK",
+        counts = "{total} cartes   ·   {atk} attaque   ·   {def} defense   ·   {eff} effet   ·   {jok} joker",
+        hint   = "CLIC pour inspecter  ·  MOLETTE defile  ·  D ou ECHAP ferme",
+        piles  = "Pioche {draw}   ·   Defausse {discard}   ·   Main {hand}",
+    },
+
+    event = {
+        default_result = "Vous poursuivez votre route.",
+        hint           = "Cliquez sur une option OU appuyez sur 1-{n} · le choix est definitif",
+    },
+
+    events = {
+        -- Vocabulario COMPARTILHADO dos rotulos [+x / -y]. Uma so
+        -- traducao por conceito, usada por todos os eventos: e o que
+        -- impede 'HP' e 'PV' de conviverem na mesma tela.
+        tokens = {
+            card_legendary = "carte LEGENDAIRE",
+            card_potion    = "carte Potion de Soin",
+            card_rare      = "carte RARE",
+            cards_random   = "{n} cartes au hasard",
+            chance_gold    = "{pct}% ${n}",
+            chance_potion  = "{pct}% potion",
+            chance_trap    = "{pct}% piege {n} PV",
+            dup_choice     = "dupliquez {n} carte DE VOTRE CHOIX",
+            forge_choice   = "1 forge sur la carte choisie",
+            forge_random   = "1 forge sur carte au hasard",
+            gamble         = "{pct}% de gagner ${n}",
+            gold           = "${n}",
+            heal_flat      = "soigne {n} PV",
+            heal_pct       = "soigne {n}% des PV",
+            hp             = "{n} PV",
+            max_hp         = "{n} PV max",
+            max_mana       = "{n} mana max",
+            mystery        = "effet mysterieux",
+            remove_choice  = "retirez {n} carte DE VOTRE CHOIX",
+            remove_random  = "{n} carte AU HASARD du deck",
+        },
+
+        altar_proibido = {
+            title      = "Autel Interdit",
+            body       = "Un autel de pierre palpite d'une energie sombre. Une voix murmure : 'donne ton sang...'",
+            opt1       = "Sacrifier son sang",
+            opt2       = "S'en aller",
+            r_got_rare = "Vous obtenez une carte rare.",
+            r_leave    = "Vous poursuivez, indemne.",
+            r_silent   = "L'autel se tait.",
+        },
+
+        bigorna_antiga = {
+            title      = "Enclume Ancienne",
+            body       = "Une enclume rouillee attend. On dirait qu'une forge bat encore en elle.",
+            opt1       = "Frapper l'acier",
+            opt2       = "Ignorer",
+            r_all_max  = "Toutes les cartes tirees sont deja au maximum.",
+            r_forged   = "Carte '{name}' forgee (+{lvl}) !",
+            r_ignore   = "L'enclume s'eteint.",
+            r_no_cards = "Vous n'avez aucune carte dans le deck.",
+        },
+
+        aposta_ouro = {
+            title     = "Le Pari de l'Etranger",
+            body      = "Un etranger encapuchonne sourit. 'Pile ou face. Quitte ou double.'",
+            opt1      = "Parier",
+            opt2      = "Refuser",
+            r_lose    = "Vous perdez {n} d'or.",
+            r_no_gold = "Vous n'avez pas {n} d'or.",
+            r_refuse  = "L'etranger disparait.",
+            r_win     = "Vous gagnez ! +{n} d'or net.",
+        },
+
+        cristais_maximos = {
+            title   = "Cristaux du Maximum",
+            body    = "Des cristaux flottent dans un air dense. En toucher un pourrait changer votre essence.",
+            opt1    = "Toucher le cristal rouge",
+            opt2    = "Toucher le cristal bleu",
+            opt3    = "S'en aller",
+            r_hp    = "Vie maximale +{n}.",
+            r_leave = "Vous ignorez la lueur.",
+            r_mana  = "Mana maximal +{n}.",
+        },
+
+        biblioteca_esquecida = {
+            title     = "Bibliotheque Oubliee",
+            body      = "Des piles de parchemins anciens. Un livre en particulier attire votre oeil.",
+            opt1      = "Etudier",
+            opt2      = "Bruler les livres",
+            r_burn    = "+{n} d'or, mais quelque chose est perdu.",
+            r_learned = "Vous apprenez : {names}",
+        },
+
+        fonte_vida = {
+            title    = "Source de Vie",
+            body     = "Une eau limpide jaillit d'une pierre ancienne. L'odeur est reconfortante.",
+            opt1     = "Boire",
+            opt2     = "Mettre en flacon",
+            opt3     = "S'en aller",
+            r_bottle = "Vous possedez maintenant une Potion de Soin.",
+            r_drink  = "Soigne {n} PV.",
+            r_leave  = "La source reste intacte.",
+        },
+
+        comerciante_misterioso = {
+            title       = "Marchand Mysterieux",
+            body        = "Un homme couvert de cicatrices propose une carte legendaire a prix fort.",
+            opt1        = "Acheter",
+            opt2        = "Refuser",
+            r_bought    = "Vous acquerez {name}.",
+            r_need_gold = "Il faut {n} d'or.",
+            r_refund    = "Le marchand n'a rien trouve de convenable. Or rembourse.",
+            r_refuse    = "Il soupire et s'en va.",
+        },
+
+        espelho_quebrado = {
+            title       = "Miroir Brise",
+            body        = "Un miroir fendu renvoie un reflet deforme. Retirer une part de vous-meme ?",
+            opt1        = "Accepter le reflet",
+            opt2        = "Tourner le dos",
+            r_leave     = "Vous ignorez le reflet.",
+            r_removed   = "Retiree : {name}",
+            r_too_small = "Le deck est trop petit pour retirer une carte.",
+        },
+
+        mochila_abandonada = {
+            title    = "Sac Abandonne",
+            body     = "Un sac git au sol. Quelque chose bouge a l'interieur.",
+            opt1     = "Ouvrir",
+            opt2     = "La laisser",
+            r_gold   = "De l'or dedans ! +{n}.",
+            r_leave  = "Vous continuez.",
+            r_potion = "Une potion de soin !",
+            r_trap   = "Un piege ! -{n} PV.",
+        },
+
+        mistery_node = {
+            title    = "Brume Etrange",
+            body     = "Une brume etrange vous enveloppe. Vous vous reveillez different...",
+            opt1     = "Accepter",
+            opt2     = "Resister",
+            r_accept = "Quelque chose a change en vous.",
+            r_resist = "La brume se dissipe.",
+        },
+
+        escriba_errante = {
+            title        = "Scribe Errant",
+            body         = "Un scribe aux doigts taches propose : 'je peux rayer une page de votre grimoire. A jamais.'",
+            opt1         = "Rayer une page",
+            opt2         = "Refermer le grimoire",
+            r_distracted = "Le scribe se laisse distraire et part.",
+            r_sealed     = "Le marche est scelle.",
+            r_shrug      = "Le scribe hausse les epaules.",
+        },
+
+        espelho_de_tinta = {
+            title   = "Miroir d'Encre",
+            body    = "Une flaque d'encre miroitante reflete votre grimoire. Une des pages semble... copiable.",
+            opt1    = "Plonger une page",
+            opt2    = "Ne pas toucher",
+            r_copy  = "L'encre garde votre copie.",
+            r_fail  = "L'encre coule et le reflet se defait.",
+            r_leave = "L'encre miroitante seche lentement.",
+        },
+
+        forja_abandonada = {
+            title   = "Forge Abandonnee",
+            body    = "Un forgeron est parti en hate : la forge est encore CHAUDE. Le temps d'un seul travail.",
+            opt1    = "Utiliser la forge",
+            opt2    = "Reprendre la route",
+            r_fail  = "Les braises meurent avant que vous commenciez.",
+            r_forge = "Le metal chante encore sous votre travail.",
+            r_leave = "La chaleur reste derriere vous.",
+        },
+
+        mercador_sangue = {
+            title      = "Marchand de Sang",
+            body       = "Un marchand pale pese des pieces sur une balance en os. 'Du sang contre de l'or. De l'or contre du sang. Choisissez votre plateau.'",
+            opt1       = "Vendre du sang",
+            opt2       = "Acheter de la vigueur",
+            opt3       = "Refuser la balance",
+            r_no_gold  = "Vous n'avez pas {n} d'or.",
+            r_refuse   = "Le marchand range sa balance, decu.",
+            r_sold     = "La balance penche. +{n} d'or.",
+            r_too_weak = "Vous etes trop faible pour vendre votre sang.",
+            r_vigor    = "La vigueur revient dans vos veines. +{n} PV.",
+        },
     },
 
     collection = {
@@ -194,6 +536,26 @@ return {
     ["end"] = {
         record             = "Record : {n}",
         new_record         = "NOUVEAU RECORD !",
+    },
+
+    run_journal = {
+        title        = "CHRONIQUE DU VOYAGE",
+        subtitle     = "Acte {act} · etage {floor}/{total}  ·  {stops} etapes parcourues",
+        act_label    = "ACTE {n}",
+        endless      = "INFINI",
+        conquered    = "CONQUIS",
+        act_progress = "{x}/{total} etages",
+        node_at      = "Acte {act} · etage {floor}",
+        no_details   = "Aucun detail enregistre",
+        hp_line      = "Vie {from} -> {to}",
+        gold_line    = "Or {from} -> {to}",
+        event_option = "Choix : {option}",
+        gain_card    = "Carte : {name}",
+        gain_joker   = "Joker : {name}",
+        gain_forge   = "Forge : {name} +{lvl}",
+        gain_remove  = "Retiree : {name}",
+        empty        = "Aucun chemin parcouru pour l'instant.",
+        hint         = "SURVOLEZ un jalon pour voir votre choix  ·  MOLETTE fait defiler  ·  M ou ECHAP ferme",
     },
 
     game_over = {
@@ -270,7 +632,7 @@ return {
         passive_rogue  = { name = "Passive : Toxines", desc = "La premiere attaque de chaque tour applique 1 Poison." },
         topbar_gold = { name = "Or", desc = "Achete cartes, forges et ameliorations a la boutique. Interets : +$1 par $5 economises (max +$5), verse apres chaque combat gagne. Prochain versement : +${interest}." },
         topbar_deck = { name = "Grimoire", desc = "{deck} cartes dans ton grimoire — {hand} en main maintenant. En fin de tour ta main est defaussee et tu pioches de nouvelles cartes. Clique pour parcourir le deck." },
-        topbar_progress = { name = "Progression du Voyage", desc = "Acte {act}, etage {floor} sur {total}. Un MINI-BOSS attend a l'etage 7 ; le BOSS de l'acte a l'etage {total}. Bats le boss de l'Acte 3 pour achever la chronique." },
+        topbar_progress = { name = "Progression du Voyage", desc = "Acte {act}, etage {floor} sur {total}. Un MINI-BOSS attend a l'etage 7 ; le BOSS de l'acte a l'etage {total}. Bats le boss de l'Acte 3 pour achever la chronique. Clique ici pour ouvrir la Chronique du voyage." },
         topbar_config = { name = "Menu Pause", desc = "Met le voyage en pause : options, sauvegarder et quitter au menu, ou abandonner la partie." },
         reward_rules = { name = "Fonctionnement des offres", desc = "Les cartes proposees sont de TA classe. La qualite s'ameliore a chaque acte — et chaque offre sans carte RARE augmente les chances de la suivante (apres une longue serie sans rare, une rare est garantie). Les cartes marquees AFFINITE correspondent aux tags forts de ton deck. Les cartes que tu possedes deja en plusieurs exemplaires apparaissent moins souvent." },
         poison     = { name = "Poison",     desc = "Inflige {stacks} degats en fin de tour, pendant {duration} tour(s)." },
@@ -289,6 +651,69 @@ return {
     },
 
     messages = {
+        achievement          = "SUCCES : {name} !",
+        act_complete         = "Acte termine ! Acte {n}",
+        act_transition_heal  = "Transition d acte : +{value} PV",
+        applied              = "{name} applique",
+        block_gained         = "Blocage : +{value}",
+        blue_seal            = "+{value} cartes (Sceau Bleu)",
+        buff_applied         = "Bonus : {name} ({stacks}x, {duration}t)",
+        card_add_failed      = "Echec de l ajout de la carte au deck !",
+        card_added           = "Carte ajoutee : {name}",
+        card_removed         = "Carte retiree : {name}",
+        channeled            = "Canalise {name} ({value})",
+        combo_announce       = "COMBO ! {combo}",
+        combo_debuff         = "Combo {combo} : +{stacks} {name}",
+        combo_heal           = "Combo {combo} : +{value} PV",
+        combo_orb            = "Combo {combo} : orbe bonus evoque",
+        damage_dealt         = "Degats : {value}",
+        deck_changed         = "Deck change pour : {name}",
+        deck_size            = "Deck : {value} cartes",
+        demon_form           = "+{value} Force (Forme Demoniaque)",
+        dexterity_up         = "Dexterite +{value}",
+        effect_played        = "Effet active : {name}",
+        endless_unlocked     = "Mode Infini debloque !",
+        enemy_defends        = "L ennemi se defend : +{value} armure",
+        enemy_enrages        = "L ennemi enrage : +{value} degats permanents !",
+        enemy_fury           = "Fureur ! L ennemi gagne +{value} degats",
+        enemy_hit            = "L ennemi inflige {value} degats !",
+        evoke_fire           = "Feu evoque : {value} degats + brulure",
+        evoke_holy           = "Lumiere evoquee : +{value} PV",
+        evoke_ice            = "Glace evoquee : +{value} blocage",
+        evoke_lightning      = "Foudre evoquee : {value} degats",
+        evoke_shadow         = "Ombre evoquee : {value} degats",
+        evoked_orbs          = "{value} orbes evoques !",
+        exhausted            = "Epuisee : {name}",
+        extra_draw           = "Pioche bonus : +{value}",
+        game_start           = "Partie lancee ! Bonne chance !",
+        gold_seal            = "+{value} or (Sceau Dore)",
+        hand_reset           = "Main videe et deck remelange pour l etage suivant !",
+        health_restored      = "Vie restauree ! +{value} PV",
+        hp_cost              = "-{value} PV (cout)",
+        joker_activated      = "Joker active : {name}",
+        joker_benched        = "Joker sur le banc : {name} (changez dans le gestionnaire)",
+        mystery              = "Mystere revele !",
+        new_record           = "NOUVEAU RECORD DE CHRONIQUE !",
+        no_mana              = "Mana insuffisant !",
+        no_orbs              = "Aucun orbe a evoquer",
+        not_in_run           = "Erreur : pas en mode periple !",
+        orb_overflow         = "Orbe en trop : {name} evoque",
+        orb_pulse_armor      = "Les orbes pulsent : +{value} blocage",
+        orb_pulse_dmg        = "Les orbes pulsent : {value} degats",
+        orb_pulse_heal       = "Les orbes pulsent : +{value} PV",
+        passive_conduit      = "Conduit : orbe de Foudre + 2 Concentration !",
+        passive_momentum     = "Elan : +1 Force !",
+        passive_toxins       = "Toxines : +1 Poison !",
+        phase_started        = "Phase {value} commencee !",
+        poison_tick          = "Poison : {value} degats a l ennemi",
+        purple_seal          = "Orbe ! (Sceau Violet)",
+        reshuffled           = "Defausse remelangee dans le deck",
+        run_resumed          = "Periple repris : {name} - etage {floor}",
+        run_started          = "Nouveau periple en tant que {name} !",
+        select_cards         = "Selectionnez des cartes - ou FIN DU TOUR",
+        settings_unavailable = "Menu des options indisponible",
+        starting_gold        = "Or de depart : {value}",
+        strength_up          = "Force +{value}",
         dmg_multiplier   = "Degats x{value}",
         def_multiplier   = "Defense x{value}",
         dmg_bonus        = "+{value} degats",
