@@ -67,17 +67,24 @@ function TopBar:update(dt, game)
         -- (engine/ui.lua:990 pattern: cada evento monetário empurra o accumulator).
         -- Skip primeiro frame onde _lastGold é nil pra não jigglar no boot.
         if self._lastGold and self._lastGold ~= realGold then
+            local delta = realGold - self._lastGold
             if _G.jiggleScreen then
-                local delta = math.abs(realGold - self._lastGold)
-                local amt = math.min(0.6, 0.05 + delta * 0.02) -- cap pra não enjoar em ganhos grandes
+                local amt = math.min(0.6, 0.05 + math.abs(delta) * 0.02) -- cap pra não enjoar em ganhos grandes
                 _G.jiggleScreen(amt)
             end
             -- Flash direcional no NÚMERO (padrão TopPanel do StS: verde ao
             -- ganhar, vermelho ao gastar — a direção da mudança é informação).
             self._goldFlash = {
-                dir = (realGold > self._lastGold) and 1 or -1,
+                dir = (delta > 0) and 1 or -1,
                 t = 0.6,
             }
+            -- SOM + número subindo no cofre. `goldGain` estava registrado
+            -- desde sempre e NUNCA tinha sido tocado por ninguém (auditoria
+            -- Set/2026); a barra já detectava o delta e só faltava soar.
+            -- Ancorar aqui — e não em quem paga — faz TODA fonte de ouro
+            -- (cash out, pular loja, evento, venda) celebrar no mesmo lugar:
+            -- o cofre. É a "moeda sendo resgatada" chegando ao destino.
+            self:_onGoldDelta(delta)
         end
         if self._goldFlash then
             self._goldFlash.t = self._goldFlash.t - dt
@@ -86,6 +93,38 @@ function TopBar:update(dt, game)
         self._lastGold = realGold
         ValueEasing.tick(self.disp, "gold", realGold, dt, 6)
     end
+end
+
+-- Toca o som do cofre e sobe o número no bloco de ouro.
+--
+-- Dosagem deliberada (o dono pediu "efeitos sutis"): o pitch sobe com o
+-- tamanho do ganho, mas satura — 3 de ouro e 40 de ouro soam diferentes sem
+-- que 40 vire festa. Gasto NÃO ganha som próprio: quem gastou (compra,
+-- reroll, forja) já toca o seu, e dobrar viraria eco.
+--
+-- O FloatingText é global (atualizado/desenhado em main.lua:1333/1462), então
+-- funciona em QUALQUER estado — inclusive por cima da loja e do cash out.
+function TopBar:_onGoldDelta(delta)
+    if delta > 0 then
+        local mag = math.min(1, delta / 25)
+        local Sfx = require("src.systems.Sfx")
+        Sfx.play("goldGain", { pitch = 0.94 + mag * 0.18, volume = 0.45 + mag * 0.2 })
+    end
+
+    local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
+    if not okFT or not FloatingText.spawn then return end
+    local slots = self:_layout()
+    local slot = slots and slots.gold
+    if not slot then return end
+    local sign = (delta > 0) and "+" or ""
+    -- kind "gold" já existe no catálogo do FloatingText (dourado, 14px); só o
+    -- gasto sobrescreve a cor, pra manter a mesma leitura verde/vermelho do
+    -- flash direcional que roda logo acima.
+    FloatingText.spawn(sign .. delta, slot.x + slot.w * 0.5, self.height - 6, {
+        kind = "gold",
+        color = (delta > 0) and nil or { 0.90, 0.35, 0.30, 1 },
+        lift = 20,
+    })
 end
 
 -- Layout CENTRALIZADO da barra: o tubo CRT distorce os cantos em telas
@@ -395,6 +434,10 @@ end
 
 function TopBar:setDeckClickCallback(cb) self.onDeckClick = cb end
 
+-- Clique no indicador de ATO abre o ROTEIRO da run (mesmo molde do deck →
+-- DeckViewer e do quadro de coringas → Gerenciador).
+function TopBar:setActClickCallback(cb) self.onActClick = cb end
+
 function TopBar:mousepressed(x, y, button)
     if not self.visible then return false end
     if y <= self.height then
@@ -414,6 +457,12 @@ function TopBar:mousepressed(x, y, button)
         if self.onDeckClick and L.deck
             and x >= L.deck.x - 6 and x <= L.deck.x + L.deck.w then
             self.onDeckClick()
+            return true
+        end
+        -- Bloco "ATO N / andar X" abre o Roteiro da jornada.
+        if self.onActClick and L.progress
+            and x >= L.progress.x - 6 and x <= L.progress.x + L.progress.w then
+            self.onActClick()
             return true
         end
         return true

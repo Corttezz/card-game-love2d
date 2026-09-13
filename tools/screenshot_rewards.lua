@@ -2,7 +2,11 @@
 -- Valida a reforma do modo REWARDS da CardRewardScreen (Jul/2026): véu sobre
 -- o mundo (sem interior de loja), pills fora das cartas, Seguir com texto
 -- inteiro, botões Pegar/X largos, sem ouro no title bar.
---   love . screenshot_rewards        → rewards_idle.png + rewards_selected.png
+--   love . screenshot_rewards → rewards_idle + rewards_selected + 3 de RESIZE
+--
+-- A tortura existe porque NASCER grande != CRESCER: capturar a tela já criada
+-- no tamanho final não exercita o caminho "layout calculado num tamanho, janela
+-- muda, layout reaproveitado" (memory/ui_layout_invariants.md).
 local M = {}
 
 local Game             = require("src.core.Game")
@@ -90,6 +94,40 @@ function M.run()
     end
     simulate(0.3)
     capture("rewards_selected.png")
+
+    -- ===================== TORTURA DE RESIZE =====================
+    -- Roda SEMPRE (main.lua chama este tool sem argumentos). Mantém a carta
+    -- SELECIONADA — é o estado com mais geometria derivada (botões Pegar/X
+    -- ancorados na carta). NASCER grande != CRESCER: só capturar a tela já
+    -- criada no tamanho final não exercita este caminho.
+    local steps = {
+        { 800, 600, "rewards_resize_1_pequena" },
+        { 1920, 1080, "rewards_resize_2_cresceu" },
+        { 1280, 720, "rewards_resize_3_medio" },
+    }
+    local failures = 0
+    for _, st in ipairs(steps) do
+        love.window.setMode(st[1], st[2], { resizable = true })
+        require("src.ui.FontManager").clearCache()
+        simulate(0.40)
+        local bad = screen:validateLayout()
+        print(("=== %dx%d (%s) — cartas %dx%d, %d violacao(oes)"):format(
+            st[1], st[2], st[3], screen.cardWidth, screen.cardHeight, #bad))
+        for _, msg in ipairs(bad) do
+            failures = failures + 1
+            print("    VIOLACAO: " .. msg)
+        end
+        if screen.skipButton then
+            print(("    botao %q x=%d y=%d w=%d"):format(screen.skipButton.text,
+                screen.skipButton.x, screen.skipButton.y, screen.skipButton.width))
+        end
+        for bi, b in ipairs(screen._selectionButtons or {}) do
+            print(("    escolha[%d] x=%d y=%d w=%d"):format(bi, b.x, b.y, b.width))
+        end
+        capture(st[3] .. ".png")
+    end
+    print(failures == 0 and "=== RESIZE OK: nenhuma violacao ==="
+        or ("=== RESIZE FALHOU: " .. failures .. " violacao(oes) ==="))
 
     love.event.quit()
 end

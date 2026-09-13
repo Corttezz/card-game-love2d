@@ -448,10 +448,18 @@ function Button:_drawClean()
     -- ===== BORDER outline com cantos cortados + linha interna =====
     -- Borda DUPLA (upgrade Jul/2026): outline externo + traço interno mais
     -- escuro — mesma linguagem dos painéis (UiPanel) e das molduras de carta.
+    --
+    -- FIX Set/2026 (o dono: "o botão Resgatar tem uma borda estranha"): o
+    -- traço interno era um `rectangle("line", x + 2.5, ...)` — QUADRADO dentro
+    -- de um outline ARREDONDADO e ancorado em meio-pixel. Dois defeitos que se
+    -- somavam: nos quatro cantos a linha reta cruzava a curva do outline
+    -- externo (o "canto duplo" que se via), e o .5 num render nearest saía
+    -- borrado e mais grosso que 1px — lia como adesivo colado, não moldura.
+    -- A identidade (cor, recuo ~2px, alpha 0.8) é a MESMA; só agora o traço
+    -- segue a mesma curva e assenta em pixel inteiro, como todo o resto da UI.
     PixelCanvas.rectRoundedOutline(x, y, w, h, r, c.border)
-    love.graphics.setColor(c.border[1] * 0.55, c.border[2] * 0.55,
-        c.border[3] * 0.55, 0.8)
-    love.graphics.rectangle("line", x + 2.5, y + 2.5, w - 5, h - 5)
+    PixelCanvas.rectRoundedOutline(x + 2, y + 2, w - 4, h - 4, math.max(0, r - 1),
+        { c.border[1] * 0.55, c.border[2] * 0.55, c.border[3] * 0.55, 0.8 })
 
     -- ===== HOVER PULSE sutil =====
     if self.hover and not self.disabled and not self._consumed then

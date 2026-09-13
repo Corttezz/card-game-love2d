@@ -10,6 +10,7 @@ local CRTShader   = require("src.ui.CRTShader")
 local I18n        = require("src.i18n.I18n")
 local SaveManager = require("engine.SaveManager")
 local TvOsd       = require("src.ui.TvOsd")
+local Sfx         = require("src.systems.Sfx")
 
 local SettingsMenu = {}
 SettingsMenu.__index = SettingsMenu
@@ -26,8 +27,19 @@ function SettingsMenu:new()
     return instance
 end
 
-function SettingsMenu:show() self.visible = true; self:rebuild() end
-function SettingsMenu:hide() self.visible = false end
+-- Esta tela não tocava UM som — nem pra abrir, nem pra fechar, nem ao mexer
+-- no volume (auditoria Set/2026). Abrir/fechar agora usa o mesmo par que
+-- todas as outras overlays do jogo (pause, coleção, roteiro, deck).
+function SettingsMenu:show()
+    self.visible = true
+    self:rebuild()
+    Sfx.play("menuOpen")
+end
+
+function SettingsMenu:hide()
+    if self.visible then Sfx.play("menuClose") end
+    self.visible = false
+end
 function SettingsMenu:isVisible() return self.visible end
 function SettingsMenu:toggle()
     if self.visible then self:hide() else self:show() end
@@ -220,6 +232,15 @@ function SettingsMenu:_adjust(kind, delta)
     elseif kind == "sfx" then a:setSFXVolume(new)
     else a:setVolume(new) end
     self:_persist()
+
+    -- AMOSTRA no volume novo. Mexer num slider de áudio sem ouvir o resultado
+    -- é o defeito clássico desta tela: o jogador tinha que sair, jogar uma
+    -- carta e voltar pra saber o que fez. A música se ouve sozinha (ela já
+    -- está tocando), então só sfx/master precisam de amostra — e ela sai pelo
+    -- próprio grupo ajustado, valendo como medição honesta.
+    if kind ~= "music" then
+        Sfx.play("buttonClick", { pitch = 1.0 + new * 0.12 })
+    end
 end
 
 -- Snapshot current settings → SaveManager. Chamado em qualquer mudança.
