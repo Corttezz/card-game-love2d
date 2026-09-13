@@ -39,6 +39,23 @@ volta como `{"detail":{"type":"invalid_unicode",...}}` — 95 bytes de JSON
 gravados por cima do `.mp3`, que passa a existir e a estar corrompido. Escreva
 o corpo num arquivo e mande com `--data-binary @corpo.json`, em ASCII.
 
+**0. CLIMA produz retumbo; ARRANJO produz música.** Esta é a lição mais cara
+da leva, e veio de uma queixa do dono: *"não pode ser a mesma música do menu
+dentro de cada ato, cada ato tem que ser uma música diferente"*. Os prompts da
+primeira versão descreviam atmosfera — "melancholic, distant drum, cold, vast,
+oppressive". O modelo entregou quatro **retumbos graves quase idênticos**:
+centroide espectral de 107, 173, 139 e 154 Hz para ato 1, ato 2, ato 3 e boss,
+com ~85% da energia abaixo de 200 Hz. Cada arquivo passava sozinho em tudo.
+
+O que consertou foi nomear o **arranjo**: instrumento que carrega a melodia,
+andamento em BPM, modo, e quem fica em primeiro plano. Exemplo do ato 1 —
+*"Medieval folk instrumental, 70 BPM, dorian mode. A plucked lute plays a clear
+repeating melancholy melody in the foreground, a viola holds long notes
+underneath, a soft frame drum keeps a slow steady pulse. Melody loud and
+close."* Os mesmos quatro contextos foram para 1005, 2393, 541 e 1137 Hz.
+
+**Adjetivo de humor não tem tradução sonora única; instrumento tem.**
+
 **2. "Quieto" o modelo entrega como silêncio.** Pedir descanso "quiet, sparse,
 almost silence" devolveu pico **0,043** — cem vezes abaixo das outras faixas.
 Duas tentativas de reforçar o adjetivo ("quiet but PRESENT") não mudaram nada.
@@ -89,6 +106,25 @@ finais e dos iniciais (fade colado pelo modelo; saudável entre 0,5× e 2,0×) e
 **DC offset**. Pegou 4 das 6 faixas na primeira passada. Ele avisa sozinho:
 `SALTO!`, `DESNIVEL!`, `DC!`.
 
+## Estado atual das faixas (Set/2026)
+
+| faixa | brilho | direção |
+|---|---|---|
+| `music-act3` | 0,19k | cellos/contrabaixo, ostinato dissonante, 50 BPM, frígio |
+| `music-boss` | 0,39k | tambores de guerra + metais graves + tremolo agudo, 100 BPM |
+| `music-rest` | 0,42k | violoncelo solo, melodia de ninar, fogueira ao fundo |
+| `music-act1` | 0,49k | alaúde dedilhado + viola + tambor de moldura, 70 BPM, dórico |
+| `music-act2` | 1,49k | cordas em arco + saltério + sino distante, 60 BPM, eólio |
+| `music-shop` | 6,01k | harpa esparsa, timbre claro |
+
+Os três atos ficam separados por fatores de 3× e 2,5× — que era o pedido.
+Restam duas colisões de brilho que o tool aponta (`boss`↔`rest`, `rest`↔`act1`);
+são contextos que raramente se seguem, e o brilho não captura timbre nem
+dinâmica (o `rest` tem 1/3 do RMS do `act1`). **Tentar abrir o `act1` para
+resolver isso saiu pela culatra**: a versão mais brilhante foi a 1,24k e passou
+a colidir com o `act2` — trocar uma colisão entre contextos distantes por uma
+colisão entre dois ATOS é regressão. Ficou a versão de 0,49k.
+
 ## Integração
 
 **O `AudioManager` JÁ tinha crossfade** — `playMusic(code, {fadeDuration})`
@@ -126,6 +162,11 @@ menuMusic`): soltar só uma faixa nova em `audio/music/` já funciona.
 Duas ferramentas, porque medem coisas diferentes:
 
 - `love . check_loop` — as faixas fecham a volta? (salto, fade nas pontas, DC)
+  **e são distinguíveis entre si?** A coluna `brilho` (cruzamentos por zero em
+  kHz, proxy barato do centroide) acusa `RETUMBO!` abaixo de 0,15k, e o rodapé
+  lista pares a menos de 20% de distância — porque **o defeito dos quatro
+  retumbos não existia em nenhum arquivo isolado, só entre dois**, e nenhuma
+  métrica de arquivo único jamais o pegaria.
 - `love . check_music` — percorre os 15 contextos do jogo com o AudioManager
   DE VERDADE e o master em zero, e confere que o diretor e o `audioSystem`
   concordam sobre o que está tocando. Existe porque a suíte nunca executa
