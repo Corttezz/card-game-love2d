@@ -14,6 +14,7 @@ local Palette       = require("src.ui.Palette")
 local IconLoader    = require("src.ui.IconLoader")
 local EnemyRenderer = require("src.ui.EnemyRenderer")
 local Sfx           = require("src.systems.Sfx")
+local I18n          = require("src.i18n.I18n")
 
 -- Cache de sprites estáticos do inimigo (south.png) reaproveitando os assets
 -- já gerados pelo enemy pipeline. Mostrados como preview no MapScreen pra
@@ -67,7 +68,7 @@ function MapScreen:new()
     instance.onNodeChosen = nil
     instance.hoverIndex = nil
     instance.panelRects = {}
-    instance.title = "Escolha o proximo caminho"
+    instance.title = nil   -- resolvido no draw (o locale pode mudar depois do :new)
     -- Fade-out animation: ao escolher node, outros ease alpha → 0.25 em 0.28s
     -- antes do callback disparar (Balatro decision-feedback pattern).
     instance.chosenIdx = nil
@@ -216,12 +217,15 @@ local function drawPanelOverlay(node, index, r, isHover)
                        (isHover and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT_LIGHT)
     love.graphics.setFont(labelFont)
     love.graphics.setColor(labelColor)
-    love.graphics.printf(node.label or node.type, r.x + 8, labelY, r.w - 16, "center")
+    -- labelFor/descFor e não node.label: um nó vindo do save carrega o texto
+    -- do idioma em que foi gerado.
+    local MapManager = require("src.systems.MapManager")
+    love.graphics.printf(MapManager.labelFor(node.type), r.x + 8, labelY, r.w - 16, "center")
 
     love.graphics.setFont(descFont)
     love.graphics.setColor(Palette.PARCHMENT_LIGHT[1], Palette.PARCHMENT_LIGHT[2],
                            Palette.PARCHMENT_LIGHT[3], 0.92)
-    love.graphics.printf(node.desc or "", r.x + 12, descY, r.w - 24, "center")
+    love.graphics.printf(MapManager.descFor(node.type), r.x + 12, descY, r.w - 24, "center")
 
     -- Hover: borda dourada brilhante destacando o painel selecionado
     if isHover then
@@ -245,8 +249,11 @@ function MapScreen:draw()
     local titleFont = FontManager.getResponsiveFont(0.042, 32)
     love.graphics.setFont(titleFont)
     love.graphics.setColor(Palette.AGED_GOLD_LIGHT)
-    local tw = titleFont:getWidth(self.title)
-    love.graphics.print(self.title, math.floor((sw - tw) / 2), math.floor(sh * 0.025))
+    -- Titulo resolvido AQUI (nao no :new): a tela e criada uma vez no boot e
+    -- sobrevive a troca de idioma nas configuracoes.
+    local title = self.title or I18n.t("map.title", nil, "Escolha o proximo caminho")
+    local tw = titleFont:getWidth(title)
+    love.graphics.print(title, math.floor((sw - tw) / 2), math.floor(sh * 0.025))
 
     -- Painéis (com dim ease nos não-escolhidos quando dimOthers > 0)
     for i, r in ipairs(self.panelRects) do
@@ -302,7 +309,8 @@ function MapScreen:draw()
     local hintFont = FontManager.getResponsiveFont(0.022, 14)
     love.graphics.setFont(hintFont)
     love.graphics.setColor(0.85, 0.85, 0.85, 0.7)
-    local hint = "Clique numa opcao OU pressione 1 / 2 / 3.  ESC volta ao menu."
+    local hint = I18n.t("map.hint", nil,
+        "Clique numa opcao OU pressione 1 / 2 / 3.  ESC volta ao menu.")
     local hw = hintFont:getWidth(hint)
     love.graphics.print(hint, math.floor((sw - hw) / 2), math.floor(sh * 0.97) - hintFont:getHeight())
 

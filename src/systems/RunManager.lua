@@ -70,6 +70,15 @@ function RunManager:startNewRun(classId)
         currentNode = nil,
         mapHistory = {}, -- array de { actNumber, floorInAct, type } escolhidos
 
+        -- ROTEIRO da run (Set/2026): uma entrada por NÓ VISITADO, com o que
+        -- foi ESCOLHIDO ali. É o que a tela de Roteiro (RunJournalScreen) lê.
+        -- Entrada aberta em journalBegin (chooseNode) e fechada em journalEnd
+        -- (showMapSelection); as aquisições no meio caem na entrada aberta.
+        -- Só tipos serializáveis (number/string/boolean/table) — o save é o
+        -- currentRun inteiro via SaveManager.serialize.
+        journal = {},
+        journalOpen = nil,  -- índice da entrada em aberto (nil = nenhuma)
+
         -- Estatísticas
         totalDamageDealt = 0,
         totalDamageTaken = 0,
@@ -145,6 +154,10 @@ function RunManager:addCardToDeck(cardId, meta)
         timestamp = love.timer.getTime(),
         meta = meta,
     })
+
+    -- Roteiro: no-op silencioso no deck inicial (nenhum nó aberto ainda).
+    self:journalNote({ kind = "card", id = cardId,
+                       edition = meta and meta.edition })
 
     return true
 end
@@ -229,6 +242,10 @@ function RunManager:addJokerToRun(jokerId, meta)
         meta = meta,
         slot = "joker",
     })
+
+    self:journalNote({ kind = "joker", id = jokerId, active = activated,
+                       edition = meta and meta.edition })
+
     return idx, activated
 end
 
@@ -341,10 +358,11 @@ function RunManager:removeCardFromDeck(cardId)
     for i, deckCardId in ipairs(self.currentRun.currentDeck) do
         if deckCardId == cardId then
             table.remove(self.currentRun.currentDeck, i)
+            self:journalNote({ kind = "remove", id = cardId })
             return true
         end
     end
-    
+
     return false
 end
 
@@ -369,7 +387,10 @@ end
 
 -- Confirma a escolha de um node e avanca floorInAct. Se ultrapassar floorsPerAct,
 -- incrementa actNumber e zera floorInAct. Endless e disparado pelo ActSystem (Fase 5).
-function RunManager:chooseNode(index)
+--
+-- snapshot opcional { hp, maxHp, gold }: abre a entrada do ROTEIRO com o estado
+-- do jogador ANTES do nó (o caller tem o Game; o RunManager não).
+function RunManager:chooseNode(index, snapshot)
     if not self.currentRun or not self.currentRun.pendingNodes then return nil end
     local node = self.currentRun.pendingNodes[index]
     if not node then return nil end
@@ -381,6 +402,8 @@ function RunManager:chooseNode(index)
         floorInAct = self.currentRun.floorInAct,
         type = node.type,
     })
+
+    self:journalBegin(node, snapshot)
 
     return node
 end
@@ -418,6 +441,152 @@ function RunManager:getPendingNodes()
     return self.currentRun and self.currentRun.pendingNodes
 end
 
+-- ============================================================================
+-- ROTEIRO DA RUN (journal) — Set/2026
+-- ============================================================================
+-- "um mapa de tudo o que a gente já fez, tudo o que a gente já escolheu, só
+-- para acompanhar ato por ato" (pedido do dono). O que existia antes era
+-- `mapHistory`, que guarda ato/andar/tipo e NUNCA foi lido por ninguém — o
+-- roteiro estende esse registro com o RESULTADO e as ESCOLHAS de cada nó.
+--
+-- Ciclo de vida de uma entrada:
+--   journalBegin(node, snapshot)  ← chooseNode          (abre, grava hp/ouro de entrada)
+--   journalNote{...}              ← sinks do RunManager (carta/coringa/forja/remoção)
+--   journalEnd(snapshot)          ← showMapSelection    (fecha, grava hp/ouro de saída)
+--
+-- Instrumentar os sinks DAQUI (addCardToDeck, addJokerToRun, upgradeCard,
+-- registerPaidForge, removeCardFromDeck) cobre loja, recompensa, fogueira,
+-- eventos e packs sem espalhar chamadas por cinco telas.
+--
+-- Persistência: `journal` é só number/string/boolean/table, então viaja no
+-- save junto do resto do currentRun — sem migration. Save antigo entra com
+-- journal nil; getJournal() faz backfill a partir do mapHistory.
+
+-- Entrada atualmente aberta, ou nil.
+function RunManager:_openJournalEntry()
+    local run = self.currentRun
+    if not run or not run.journalOpen then return nil end
+    return run.journal and run.journal[run.journalOpen]
+end
+
+-- Abre a entrada do nó. snapshot = { hp, maxHp, gold } (opcional).
+function RunManager:journalBegin(node, snapshot)
+    local run = self.currentRun
+    if not run or not node then return nil end
+    run.journal = run.journal or {}
+    snapshot = snapshot or {}
+
+    -- Fecha uma entrada esquecida em aberto (nó que resolveu por um caminho
+    -- que não passou pelo journalEnd) em vez de empilhar entradas zumbis.
+    if run.journalOpen then
+        self:journalEnd(snapshot)
+    end
+
+    table.insert(run.journal, {
+        act    = run.actNumber or 1,
+        floor  = run.floorInAct or 1,
+        -- andar GLOBAL: em endless o par (act, floor) se repete (act trava em
+        -- totalActs+1 e floor cicla 1..8), então ele não identifica um nó.
+        gfloor = run.currentFloor or 1,
+        type   = node.type,
+        hpIn   = snapshot.hp,
+        maxHp  = snapshot.maxHp,
+        goldIn = snapshot.gold,
+        gains  = {},
+        -- os.time() e NAO love.timer.getTime(): getTime e relativo a sessao e
+        -- vira lixo depois de um load (armadilha ja existente no cardHistory).
+        at     = os.time(),
+    })
+    run.journalOpen = #run.journal
+    return run.journal[run.journalOpen]
+end
+
+-- Anexa uma escolha à entrada aberta. entry = { kind, id, lvl?, label? }.
+-- No-op LEGÍTIMO quando não há nó aberto: deck inicial da classe, efeitos de
+-- teste e qualquer aquisição fora de um nó. Não é fallback silencioso de
+-- recurso faltando — por isso vai em trace, não em warn.
+function RunManager:journalNote(entry)
+    if not entry then return false end
+    local open = self:_openJournalEntry()
+    if not open then
+        local Debug = require("src.core.Debug")
+        Debug.trace("[roteiro] nota fora de no:", entry.kind, tostring(entry.id))
+        return false
+    end
+    open.gains = open.gains or {}
+    table.insert(open.gains, entry)
+    return true
+end
+
+-- Registra o evento sorteado e a opção escolhida na entrada aberta.
+function RunManager:journalEvent(eventId, optionIndex, optionLabel)
+    local open = self:_openJournalEntry()
+    if not open then return false end
+    if eventId then open.eventId = eventId end
+    if optionIndex then open.optionIndex = optionIndex end
+    if optionLabel then open.optionLabel = optionLabel end
+    return true
+end
+
+-- Fecha a entrada aberta. Idempotente: showMapSelection pode rodar duas vezes
+-- (o guard de pendingNodes existe justamente porque isso acontece).
+function RunManager:journalEnd(snapshot)
+    local run = self.currentRun
+    if not run or not run.journalOpen then return false end
+    local open = run.journal and run.journal[run.journalOpen]
+    run.journalOpen = nil
+    if not open then return false end
+    snapshot = snapshot or {}
+    open.hpOut   = snapshot.hp
+    open.goldOut = snapshot.gold
+    if snapshot.maxHp then open.maxHp = snapshot.maxHp end
+    return true
+end
+
+-- Roteiro pronto pra UI: os nós na ORDEM em que foram visitados, com backfill
+-- das runs que começaram antes deste sistema existir.
+--
+-- Ordem cronológica (e não ordenação por ato/andar) porque em endless o par
+-- (act, floor) se repete e deixaria de ser chave.
+--
+-- Backfill: `mapHistory` e `journal` são alimentados na MESMA chamada
+-- (chooseNode), então as J entradas do journal são sempre os J últimos nós.
+-- Os `#mapHistory - #journal` primeiros são os nós anteriores a esta feature:
+-- entram como entradas `partial = true` (a tela diz "sem detalhes" em vez de
+-- fingir que o nó não teve escolhas). Uma run em andamento ganha o caminho
+-- retroativo sem duplicar nada.
+function RunManager:getJournal()
+    local run = self.currentRun
+    if not run then return {} end
+
+    local mh = run.mapHistory or {}
+    local jn = run.journal or {}
+    local legacyCount = math.max(0, #mh - #jn)
+
+    local out = {}
+    for k = 1, legacyCount do
+        local h = mh[k]
+        table.insert(out, {
+            act = h.actNumber or 1,
+            floor = h.floorInAct or 1,
+            gfloor = k,
+            type = h.type,
+            gains = {},
+            partial = true,
+        })
+    end
+    for _, e in ipairs(jn) do
+        table.insert(out, e)
+    end
+    return out
+end
+
+-- True se a entrada é a que está em aberto agora (o nó em que o jogador está).
+function RunManager:isJournalEntryOpen(entry)
+    local open = self:_openJournalEntry()
+    return open ~= nil and open == entry
+end
+
 -- ===== Upgrade map (Fase 3.1 do refactor Balatro; infinito desde Jul/2026) =====
 
 -- Cap por carta vem de Config.Game.UPGRADE_LEVEL_CAP (0 = SEM CAP — forja
@@ -443,6 +612,10 @@ function RunManager:upgradeCard(cardId)
     end
     local lvl = current + 1
     self.currentRun.upgraded[cardId] = lvl
+    -- Roteiro: a forja é anotada AQUI e não em registerPaidForge — este é o
+    -- ponto que sabe O QUE foi forjado (fogueira, loja e eventos passam todos
+    -- por aqui); registerPaidForge só conta o custo e duplicaria a entrada.
+    self:journalNote({ kind = "forge", id = cardId, lvl = lvl })
     return lvl
 end
 

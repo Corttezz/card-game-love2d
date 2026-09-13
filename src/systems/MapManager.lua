@@ -29,6 +29,9 @@ MapManager.FLOORS_PER_ACT = 8
 -- Metadata humana para cada tipo.
 -- `icon`: fallback 64×64 de assets/sprites/icons/ (IconLoader)
 -- `sprite`: sprite 96×96 ilustrado de assets/sprites/map_nodes/ (preferencial)
+-- `label`/`desc`: FALLBACK de dev. O texto exibido vem do i18n
+-- (`node_type.<tipo>.label` / `.desc`) via MapManager.labelFor/descFor —
+-- antes o PT saia cravado daqui e a tela de mapa ficava bilingue.
 MapManager.NODE_META = {
     [MapManager.NODE_TYPES.BATTLE] = {
         label = "Batalha",
@@ -73,6 +76,23 @@ MapManager.NODE_META = {
         desc = "Encontro misterioso. Arrisque.",
     },
 }
+
+-- Texto exibido de um tipo de nó, traduzido. Sempre prefira estes helpers a
+-- ler `node.label`/`node.desc` direto — um nó SALVO carrega o texto do idioma
+-- em que foi gerado.
+function MapManager.labelFor(nodeType)
+    local meta = MapManager.NODE_META[nodeType] or {}
+    return require("src.i18n.I18n").t(
+        "node_type." .. tostring(nodeType) .. ".label",
+        nil, meta.label or tostring(nodeType))
+end
+
+function MapManager.descFor(nodeType)
+    local meta = MapManager.NODE_META[nodeType] or {}
+    return require("src.i18n.I18n").t(
+        "node_type." .. tostring(nodeType) .. ".desc",
+        nil, meta.desc or "")
+end
 
 -- Helper: pesca um tipo dado um vetor { {type=, weight=}, ... }
 -- Stream "map" do Rng da run: a sequência de nodes é reprodutível por seed
@@ -163,10 +183,13 @@ function MapManager._makeNode(nodeType, floorInAct, actNumber)
     local meta = MapManager.NODE_META[nodeType] or {}
     return {
         type = nodeType,
-        label = meta.label or nodeType,
+        -- Já traduzidos na criação para que consumidores que leem node.label
+        -- direto (ex: a bifurcação da estrada no WorldRoad) não precisem saber
+        -- do i18n. Quem desenha uma tela nova deve usar MapManager.labelFor.
+        label = MapManager.labelFor(nodeType),
         icon = meta.icon,
         sprite = meta.sprite, -- nil se não gerado ainda
-        desc = meta.desc,
+        desc = MapManager.descFor(nodeType),
         floorInAct = floorInAct,
         actNumber = actNumber,
     }
