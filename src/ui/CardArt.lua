@@ -13,8 +13,16 @@
 local atlas = require("src.data.card_art")
 local IconLoader = require("src.ui.IconLoader")
 local Palette = require("src.ui.Palette")
+local Debug = require("src.core.Debug")
 
 local CardArt = {}
+
+-- Cartas sem entrada no atlas caem num fallback por (tipo, classe) — e TODAS as
+-- cartas do mesmo tipo passam a dividir o MESMO ícone. Foi exatamente assim que
+-- Adrenalina virou a Poção de Cura (2026-09). O fallback continua existindo pra
+-- não quebrar o render, mas avisa alto: arte repetida é bug, não estilo.
+-- `tools/validate_cards.lua` transforma isso em falha de suite.
+local warnedMissing = {}
 
 -- Fallbacks por tipo de carta quando o ID não está no atlas.
 local TYPE_DEFAULTS = {
@@ -71,6 +79,12 @@ function CardArt.resolve(card)
 
     -- Se não tiver entrada, monta uma derivada de (type, class).
     if not entry then
+        if not warnedMissing[id] then
+            warnedMissing[id] = true
+            Debug.warn(("CardArt: '%s' nao tem entrada em src/data/card_art.lua — "):format(id)
+                .. "usando fallback por tipo. A ARTE VAI REPETIR com outras cartas "
+                .. "do mesmo tipo. Adicione a entrada no atlas.")
+        end
         local defaults = TYPE_DEFAULTS[card.type] or TYPE_DEFAULTS.attack
         local classHint = card.class and CLASS_ICON_HINT[card.class]
         local iconOverride = classHint and classHint[card.type]

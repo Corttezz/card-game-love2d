@@ -462,5 +462,29 @@
   "warrior_demon_form": {
     "object_id": "f37ed6ad-faaa-4113-b17f-837b3f5d492b",
     "group": "5e2dd5b5-f5ca-42bd-ad90-d9a0b2b5381b"
+  },
+  "rogue_dirty_blade": {
+    "object_id": "36c97cc5-31c5-42b3-a122-68f2998d229b",
+    "group": "d0367893-35c9-41f9-a983-319da0cc0419"
+  },
+  "warrior_battle_orders": {
+    "object_id": "1bc98a0b-b2cf-49d3-9abd-68e223ef1771",
+    "group": "9edee463-0cbc-4006-85c3-f6521f3f3895"
+  },
+  "mage_dark_harvest": {
+    "object_id": "fbc3bdd3-353f-4f87-a0f1-8451ca70c53d",
+    "group": "bd043dab-18b9-40ca-880b-c43dfcb48747"
+  },
+  "mage_sacred_chalice": {
+    "object_id": "06a5c0db-522e-4255-94f4-215c4ee5ff5b",
+    "group": "88f05281-e680-44d3-836e-ad7dcf96f668"
+  },
+  "rogue_poison_dart": {
+    "object_id": "a799221f-ee88-4424-8994-4b3661efcd1e",
+    "group": "40351574-a699-4878-a7a1-c575f9248b4b"
+  },
+  "warrior_taunt": {
+    "object_id": "056a0572-72b8-4f65-b310-c57e8de9dd9c",
+    "group": "bfb348bb-9e9f-4641-8eca-0a9b92ef0d75"
   }
 }

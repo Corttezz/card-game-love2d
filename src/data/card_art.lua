@@ -148,4 +148,25 @@ return {
     effect_scroll_wisdom    = { icon = "scroll",                 bg = "soft",    accent = "AGED_GOLD",    decoration = "sparks" },
     effect_mystery_card     = { icon = "question",               bg = "arcane",  accent = "PURPLE",       decoration = "sparks" },
     joker_005               = { icon = "jester_hat",             bg = "abyss",   accent = "AGED_GOLD",    effect = "holo" },
+
+    -- ===== ORFAS (2026-09-12): 12 cartas que nao tinham entrada e caiam no
+    -- fallback por tipo do CardArt.resolve — todas do mesmo tipo dividiam o
+    -- MESMO icone (Adrenalina saia identica a Pocao de Cura, Grito de Comando
+    -- idem; os 3 jokers viravam "skull"; os 3 ataques de ladino, "dagger").
+    -- Arte propria gerada via tools/pixellab_generate_missing_art.py.
+    -- Warrior
+    warrior_adrenaline_rush = { icon = "warrior_adrenaline_rush", bg = "rage",   accent = "MAGENTA",   decoration = "flash", effect = "glow" },
+    warrior_battle_orders   = { icon = "warrior_battle_orders",   bg = "wind",   accent = "AGED_GOLD", decoration = "dust"  },
+    warrior_eternal_bulwark = { icon = "warrior_eternal_bulwark", bg = "stone",  accent = "AGED_GOLD", decoration = "dust",  effect = "holo" },
+    warrior_taunt           = { icon = "warrior_taunt",           bg = "impact", accent = "PURPLE",    decoration = "smoke" },
+    -- Mage
+    mage_dark_harvest       = { icon = "mage_dark_harvest",       bg = "shadow", accent = "PURPLE",    decoration = "smoke" },
+    mage_primordial_storm   = { icon = "mage_primordial_storm",   bg = "storm",  accent = "CYAN",      decoration = "flash", effect = "holo" },
+    mage_radiant_prayer     = { icon = "mage_radiant_prayer",     bg = "soft",   accent = "AGED_GOLD", decoration = "sparks" },
+    mage_sacred_chalice     = { icon = "mage_sacred_chalice",     bg = "arcane", accent = "AGED_GOLD", decoration = "sparks", effect = "glow" },
+    -- Rogue
+    rogue_dirty_blade       = { icon = "rogue_dirty_blade",       bg = "poison", accent = "RUST",         decoration = "smoke"  },
+    rogue_leech_blade       = { icon = "rogue_leech_blade",       bg = "blood",  accent = "ATTACK",       decoration = "flash"  },
+    rogue_poison_dart       = { icon = "rogue_poison_dart",       bg = "poison", accent = "GREEN_BRIGHT", decoration = "sparks" },
+    rogue_toxin_master      = { icon = "rogue_toxin_master",      bg = "poison", accent = "MOSS",         decoration = "smoke", effect = "holo" },
 }

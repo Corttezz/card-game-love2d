@@ -1,0 +1,38 @@
+{
+  "warrior_adrenaline_rush": {
+    "object_id": "816f9a50-64f8-4f34-819b-01cdb0b18f81"
+  },
+  "warrior_battle_orders": {
+    "object_id": "1bc98a0b-b2cf-49d3-9abd-68e223ef1771"
+  },
+  "warrior_eternal_bulwark": {
+    "object_id": "b40eb0e7-53db-4537-8a13-b08bfd1e7f43"
+  },
+  "warrior_taunt": {
+    "object_id": "056a0572-72b8-4f65-b310-c57e8de9dd9c"
+  },
+  "mage_dark_harvest": {
+    "object_id": "fbc3bdd3-353f-4f87-a0f1-8451ca70c53d"
+  },
+  "mage_primordial_storm": {
+    "object_id": "d7f53ad8-6f0b-4b88-8062-9e75ff1b196b"
+  },
+  "mage_sacred_chalice": {
+    "object_id": "06a5c0db-522e-4255-94f4-215c4ee5ff5b"
+  },
+  "rogue_dirty_blade": {
+    "object_id": "36c97cc5-31c5-42b3-a122-68f2998d229b"
+  },
+  "rogue_toxin_master": {
+    "object_id": "198bbce0-77a9-495c-9c14-fe9c409a4b3b"
+  },
+  "mage_radiant_prayer": {
+    "object_id": "2d8f0dc8-73e4-4a45-9371-41a718c8f477"
+  },
+  "rogue_poison_dart": {
+    "object_id": "a799221f-ee88-4424-8994-4b3661efcd1e"
+  },
+  "rogue_leech_blade": {
+    "object_id": "5c745df9-e7bb-47fd-a83a-22c0d5b21f62"
+  }
+}

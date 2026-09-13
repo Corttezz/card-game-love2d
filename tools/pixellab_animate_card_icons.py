@@ -917,6 +917,162 @@ ANIMS = {
         "fps": 8,
     },
 
+    # ===== BLOCO ORFAS (2026-09): as 12 cartas que nao tinham arte propria.
+    # Intensidade segue a raridade (doutrina memory/card_icon_animation.md).
+    # Artes com GESTO implicito (manopla provocando, mao esqueletica) e com
+    # ROSTO (mascara de peste) usam WHITELIST — "as UNICAS coisas que se
+    # movem sao X e Y" — porque proibir item a item deixa brecha.
+
+    # --- common: quase imperceptivel, fps 6 ---
+    "rogue_dirty_blade": {
+        # punhal enferrujado com manchas verdes de podridao
+        "object_id": "36c97cc5-31c5-42b3-a122-68f2998d229b",
+        "anim": ("the dagger is a frozen statue, the ONLY moving thing is a "
+                 "single tiny green rot stain on the blade glistening very "
+                 "slightly wetter and duller, barely perceptible, the blade "
+                 "shape hilt and every color stay unchanged"),
+        "fps": 6,
+    },
+    "rogue_poison_dart": {
+        # zarabatana de madeira com veneno verde na ponta da agulha
+        "object_id": "a799221f-ee88-4424-8994-4b3661efcd1e",
+        # v2: v1 o penacho verde MUDAVA DE FORMA a cada frame (demais pra
+        # common). Agora a forma fica travada; so o brilho varia.
+        "anim": ("the entire image is a frozen statue, the green venom plume "
+                 "keeps exactly the same shape size and outline in every "
+                 "frame, the ONLY change is that green glow dimming and "
+                 "brightening very slightly, barely perceptible, nothing "
+                 "moves or changes shape at all"),
+        "fps": 6,
+    },
+
+    # --- uncommon: sutil, um elemento secundario, fps 7 ---
+    "warrior_battle_orders": {
+        # corno de guerra em espiral, latao com correias de couro
+        "object_id": "1bc98a0b-b2cf-49d3-9abd-68e223ef1771",
+        "anim": ("the coiled war horn is a frozen statue, the ONLY moving "
+                 "thing is a soft metallic light glint sliding gently along "
+                 "the brass coil, the leather straps and horn shape stay "
+                 "perfectly static, brightness stays almost constant"),
+        "fps": 7,
+    },
+    "warrior_taunt": {
+        # manopla em gesto de provocacao + escudo redondo amassado
+        # GESTO: a mao NAO pode se mexer (licao mage_zap/rogue_defend).
+        "object_id": "056a0572-72b8-4f65-b310-c57e8de9dd9c",
+        # v2: a mao ficou parada (whitelist funcionou) mas o "glint" virou
+        # uma MANCHA BRANCA estourada cobrindo metade do escudo.
+        "anim": ("the armored gauntlet hand and every finger are a frozen "
+                 "statue, completely motionless, the ONLY moving thing is a "
+                 "very thin faint 1-pixel-wide light line sliding slowly "
+                 "across the round shield face, the line stays narrow and "
+                 "dim at all times, absolutely no white patch, no bright "
+                 "blob, no bloom, no overexposure"),
+        "fps": 7,
+    },
+    "mage_dark_harvest": {
+        # mao esqueletica com foice + fiapos de sombra roxa
+        # GESTO: dedos nao podem fechar.
+        "object_id": "fbc3bdd3-353f-4f87-a0f1-8451ca70c53d",
+        "anim": ("the skeletal hand and every finger bone are a frozen "
+                 "statue, completely motionless, no grasping and no finger "
+                 "movement whatsoever, the ONLY moving thing is the wisp of "
+                 "purple shadow smoke below the palm drifting and curling "
+                 "gently upward"),
+        "fps": 7,
+    },
+    "mage_radiant_prayer": {
+        # explosao solar dourada com silhueta de figura em prece no centro
+        "object_id": "2d8f0dc8-73e4-4a45-9371-41a718c8f477",
+        # v2: o disco solar MUDOU DE TAMANHO e de MATIZ (amarelo palido ->
+        # laranja saturado) e o loop dava pop. Travar disco e cor.
+        "anim": ("the praying figure and the sun disc are a frozen statue, "
+                 "the sun keeps exactly the same diameter and exactly the "
+                 "same golden color in every single frame, never turning "
+                 "orange or red, the ONLY moving thing is the outermost ray "
+                 "spikes shimmering very slightly at their tips"),
+        "fps": 7,
+    },
+    "rogue_leech_blade": {
+        # sanguessuga enrolada na foice, gotejando numa tigela
+        "object_id": "8b4e887a-1e5c-49e7-a3b5-fee87fb326c2",
+        # v2: arte REGERADA (v1 tinha lamina magenta, fora da paleta). A
+        # espiral da sanguessuga tambem oscilava — travar explicitamente.
+        "anim": ("the sickle blade and the coiled leech are a frozen statue, "
+                 "the leech coil keeps exactly the same shape and thickness "
+                 "in every frame, the ONLY moving thing is a single dark "
+                 "crimson blood droplet growing at the hooked tip and "
+                 "falling into the bowl below"),
+        "fps": 7,
+    },
+
+    # --- rare: o elemento principal se move com clareza, fps 8 ---
+    "warrior_adrenaline_rush": {
+        # injetor de ferro/latao com embolo e agulha (sem braco na arte)
+        "object_id": "816f9a50-64f8-4f34-819b-01cdb0b18f81",
+        # v2: "fluido girando" virou uma BOLA DE FOGO laranja crescendo no
+        # topo — a silhueta foi destruida. Proibir fogo/luz e so gotejar.
+        "anim": ("the entire iron injector including the barrel and plunger "
+                 "is a frozen statue and keeps exactly the same silhouette "
+                 "and colors in every frame, absolutely no fire, no flame, "
+                 "no glow, no light emission, nothing grows out of it, the "
+                 "ONLY moving thing is one small dark droplet trembling at "
+                 "the needle tip"),
+        "fps": 8,
+    },
+    "mage_sacred_chalice": {
+        # calice dourado com gemas, transbordando luz sagrada
+        "object_id": "06a5c0db-522e-4255-94f4-215c4ee5ff5b",
+        "anim": ("the golden chalice and its gemstones are a frozen statue, "
+                 "the ONLY moving thing is the sacred light spilling over the "
+                 "rim shimmering and flowing slowly downward, the glow "
+                 "brightness stays within a narrow range, no white flash"),
+        "fps": 8,
+    },
+
+    # --- legendary: vivo, movimento protagonista, fps 9 ---
+    "warrior_eternal_bulwark": {
+        # portao de fortaleza em ferro negro com braseiros acesos dos lados
+        "object_id": "b40eb0e7-53db-4537-8a13-b08bfd1e7f43",
+        # v2: FALHA GRAVE — as PORTAS DISSOLVERAM ate sobrar um arco vazio.
+        # O modelo leu "portao" como abrivel. Declarar as portas como
+        # parede solida e reduzir a whitelist as chamas.
+        "anim": ("the wooden gate doors are a solid stone wall that never "
+                 "opens, never fades, never becomes transparent and never "
+                 "disappears, the doors stone arch and every plank keep "
+                 "exactly the same shape and opacity in all frames, the "
+                 "ONLY moving thing is the small brazier flame at each side "
+                 "of the base flickering gently"),
+        "fps": 9,
+    },
+    "mage_primordial_storm": {
+        # esfera de tempestade com 3 orbes (raio, gelo, sombra)
+        "object_id": "d7f53ad8-6f0b-4b88-8062-9e75ff1b196b",
+        # v2: o orbe de FOGO virou CIANO ao longo do loop (cor trocada) e o
+        # loop dava pop. Travar a cor de cada orbe individualmente.
+        "anim": ("each orb keeps its own fixed color in every single frame: "
+                 "the fire orb stays orange and never turns blue or cyan, "
+                 "the ice orb stays pale blue, the third orb stays dark, "
+                 "none of them ever swap colors, all three orbs stay in "
+                 "exactly the same positions, the ONLY moving thing is the "
+                 "outer grey mist ring rotating slowly around them"),
+        "fps": 9,
+    },
+    "rogue_toxin_master": {
+        # mascara de medico da peste, bico pálido e lentes escuras
+        # ROSTO: whitelist obrigatoria (licao joker_vampire).
+        "object_id": "198bbce0-77a9-495c-9c14-fe9c409a4b3b",
+        # v2: os "fumos verdes" viraram TENTACULOS alucinados FORA da
+        # silhueta da mascara e as lentes oscilavam de tamanho. Proibir
+        # qualquer pixel novo fora do contorno.
+        "anim": ("the plague doctor mask beak and hood are a frozen statue, "
+                 "nothing whatsoever may appear outside the mask outline, no "
+                 "tendrils no smoke no shapes beyond the silhouette, the two "
+                 "round eye lenses keep exactly the same size and position, "
+                 "the ONLY change is a soft green glow behind those two "
+                 "lenses brightening and dimming slowly"),
+        "fps": 9,
+    },
 }
 
 def token():

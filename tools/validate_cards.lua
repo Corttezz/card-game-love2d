@@ -9,8 +9,69 @@
 
 local CardDatabase = require("src.systems.CardDatabase")
 local TagSystem = require("src.systems.TagSystem")
+local CardArtAtlas = require("src.data.card_art")
+local PixelIcons = require("src.ui.PixelIcons")
 
 local M = {}
+
+-- ---------------------------------------------------------------------------
+-- Trava de arte (2026-09): a arte da carta vem do atlas `src/data/card_art.lua`,
+-- NAO do campo legado `image`. Carta sem entrada no atlas cai no fallback por
+-- tipo do CardArt.resolve e passa a dividir o mesmo icone com todas as outras
+-- cartas do mesmo tipo (foi assim que Adrenalina virou Pocao de Cura).
+-- Estas checagens falham a suite pra impedir a regressao.
+-- ---------------------------------------------------------------------------
+
+-- Um nome de icone so e valido se existe PNG em assets/sprites/icons OU uma
+-- matriz real em PixelIcons. PixelIcons.get devolve `question` pra nome
+-- desconhecido, entao dois icones invalidos renderizariam iguais em silencio.
+local function iconExists(name)
+    if not name or name == "" then return false end
+    if love.filesystem.getInfo("assets/sprites/icons/" .. name .. ".png") then
+        return true
+    end
+    return PixelIcons[name] ~= nil
+end
+
+-- Retorna { missingEntry, duplicateIcons, brokenIcons, deadEntries }
+local function auditCardArt(all)
+    local missingEntry, brokenIcons, deadEntries = {}, {}, {}
+    local iconToIds = {}
+
+    for id, _ in pairs(all) do
+        local entry = CardArtAtlas[id]
+        if not entry then
+            table.insert(missingEntry, id)
+        else
+            local icon = entry.icon
+            if not iconExists(icon) then
+                table.insert(brokenIcons, { id = id, icon = tostring(icon) })
+            end
+            iconToIds[icon] = iconToIds[icon] or {}
+            table.insert(iconToIds[icon], id)
+        end
+    end
+
+    -- Entradas do atlas que nao correspondem a nenhuma carta (lixo/typo).
+    for id, _ in pairs(CardArtAtlas) do
+        if not all[id] then table.insert(deadEntries, id) end
+    end
+
+    local duplicateIcons = {}
+    for icon, ids in pairs(iconToIds) do
+        if #ids > 1 then
+            table.sort(ids)
+            table.insert(duplicateIcons, { icon = icon, ids = ids })
+        end
+    end
+
+    table.sort(missingEntry)
+    table.sort(deadEntries)
+    table.sort(duplicateIcons, function(a, b) return a.icon < b.icon end)
+    table.sort(brokenIcons, function(a, b) return a.id < b.id end)
+
+    return missingEntry, duplicateIcons, brokenIcons, deadEntries
+end
 
 -- Tipos de effect.type que o EffectSystem resolve (fase 2+).
 -- Mantenha em sync com src/systems/EffectSystem.lua.
@@ -119,8 +180,37 @@ function M.run()
     print("\n-- cards without derivable tags (" .. #report.missingImplicitTag .. ") --")
     for _, id in ipairs(report.missingImplicitTag) do print("  " .. id) end
 
+    -- ===== Trava de arte =====
+    local missingArt, dupIcons, brokenIcons, deadEntries = auditCardArt(all)
+
+    print("\n-- cards WITHOUT card_art atlas entry (" .. #missingArt .. ") --")
+    for _, id in ipairs(missingArt) do
+        print("  " .. id .. "  <- cai no fallback por tipo, arte VAI repetir")
+    end
+
+    print("\n-- icons shared by 2+ cards (" .. #dupIcons .. ") --")
+    for _, d in ipairs(dupIcons) do
+        print("  " .. d.icon .. " -> " .. table.concat(d.ids, ", "))
+    end
+
+    print("\n-- atlas entries with unresolvable icon (" .. #brokenIcons .. ") --")
+    for _, b in ipairs(brokenIcons) do
+        print("  " .. b.id .. " -> '" .. b.icon .. "' (sem PNG e sem matriz)")
+    end
+
+    print("\n-- atlas entries without a matching card (" .. #deadEntries .. ") --")
+    for _, id in ipairs(deadEntries) do print("  " .. id) end
+
+    local artOk = #missingArt == 0 and #dupIcons == 0
+                  and #brokenIcons == 0 and #deadEntries == 0
+
     print("\n==== Done ====")
-    return #report.unknownTypes == 0
+    if not artOk then
+        print("FALHOU: arte de carta. Toda carta precisa de entrada propria em "
+            .. "src/data/card_art.lua e de um icone que nao seja usado por "
+            .. "outra carta.")
+    end
+    return #report.unknownTypes == 0 and artOk
 end
 
 return M
