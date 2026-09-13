@@ -1341,11 +1341,14 @@ function love.load(loveArgs)
                 settingsMenu:show()
             end,
             onSaveQuit = function()
-                -- Run ativa fica GUARDADA (save já acontece por nó; garante o
-                -- snapshot mais recente antes de sair).
+                -- Run ativa fica GUARDADA. checkpointRun (não saveRun cru!):
+                -- SINCRONIZA HP/vida máxima/mana base/ouro ATUAIS antes de
+                -- persistir — o saveRun direto gravava o playerState do
+                -- checkpoint ANTERIOR e ganhos recentes (evento +5 vida
+                -- máxima, +1 mana) evaporavam no Continuar (bug Set/2026).
                 if game.runManager and game.runManager.hasActiveRun
                     and game.runManager:hasActiveRun() then
-                    game.runManager:saveRun()
+                    game:checkpointRun()
                 end
                 returnToMenu()
             end,

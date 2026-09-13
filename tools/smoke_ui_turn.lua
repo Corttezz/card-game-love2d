@@ -198,15 +198,32 @@ function M.run()
     -- inimigo do nada' — o Continuar roteia pro mapa SE há pendentes) =====
     local gmA = Game:new()
     gmA:startNewRun("warrior")
+    gmA:startGame()
     gmA.runManager:generateNextNodes(3)
     check("encruzilhada: nós pendentes gerados",
         gmA.runManager:getPendingNodes() ~= nil)
-    gmA.runManager:saveRun()
+    -- GANHOS PERMANENTES da run (evento +vida máxima / +mana base) e a
+    -- pontuação — bug Set/2026: 'acumulo mana ou vida máxima, saio e
+    -- entro, os valores resetam'. Salva via checkpointRun (que SINCRONIZA
+    -- — saveRun cru gravava o snapshot velho, o outro lado do bug).
+    gmA.player.maxHealth = 123
+    gmA.player.health = 111
+    gmA.player.baseMaxMana = 5
+    gmA.scoreSystem.runScore = 777
+    gmA:checkpointRun()
     local gmB = Game:new()
     check("encruzilhada: save carrega", gmB.runManager:loadRun() == true)
     local pend = gmB.runManager:getPendingNodes()
     check("encruzilhada: pendentes SOBREVIVEM ao load (roteia pro mapa)",
         pend ~= nil and #pend >= 2)
+    gmB:resumeRun()
+    check("CONTINUAR: vida máxima do evento sobrevive (123)",
+        gmB.player.maxHealth == 123)
+    check("CONTINUAR: HP atual sobrevive (111)", gmB.player.health == 111)
+    check("CONTINUAR: mana base permanente sobrevive (5)",
+        gmB.player.baseMaxMana == 5 and gmB.player.maxMana == 5)
+    check("CONTINUAR: pontuação da run sobrevive (777)",
+        gmB.scoreSystem.runScore == 777)
     gmB.runManager:deleteSave()
 
     -- ===== 7. PROC VISUAL fora do pipeline de carta (bug 'Aprendizado

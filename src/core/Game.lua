@@ -1533,6 +1533,16 @@ function Game:syncRunPlayerState()
     if self.player then
         run.playerState.maxHealth = self.player.maxHealth
         run.playerState.currentHealth = self.player.health
+        -- Mana máxima PERMANENTE da run (eventos dão +1 em baseMaxMana).
+        -- Sem persistir, sair/entrar resetava o ganho (bug do dono,
+        -- Set/2026). O bônus de BATALHA (Cristal de Mana) fica de fora
+        -- por design — só o base viaja.
+        run.playerState.baseMaxMana = self.player.baseMaxMana
+    end
+    -- Pontuação da run (mesma classe de bug: acumulava e ZERAVA no
+    -- Continuar — o recorde do perfil sobrevivia, a run não).
+    if self.scoreSystem then
+        run.playerState.runScore = self.scoreSystem.runScore or 0
     end
     if self.economySystem then
         run.playerState.gold = self.economySystem.currentGold
@@ -1568,6 +1578,19 @@ function Game:resumeRun()
     end
     if ps and ps.gold then
         self.economySystem.currentGold = ps.gold
+    end
+    -- Mana máxima PERMANENTE (eventos +1): sem restaurar, o Continuar
+    -- voltava pro base da classe (bug do dono, Set/2026). Saves antigos
+    -- sem o campo caem no default do Player (compat).
+    if ps and ps.baseMaxMana then
+        self.player.baseMaxMana = ps.baseMaxMana
+        self.player.maxMana = ps.baseMaxMana
+        self.player.mana = self.player.maxMana
+    end
+    -- Pontuação da run continua de onde parou (startGame zera o
+    -- ScoreSystem — restaurar por cima).
+    if ps and ps.runScore and self.scoreSystem then
+        self.scoreSystem.runScore = ps.runScore
     end
 
     -- Inimigo do andar salvo (mesma receita do nextPhase run-mode):
