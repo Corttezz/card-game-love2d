@@ -272,6 +272,8 @@ Todos os parâmetros em `Config.Cards`: `BASE_SCALE=0.20`, `HOVER_SCALE=0.22`, `
 ### Áudio (`engine/AudioManager.lua` + facade `src/systems/Sfx.lua`)
 O antigo `src/systems/AudioSystem.lua` virou `engine/AudioManager.lua`; a instância continua exposta como `_G.audioSystem` em `main.lua` (API compatível: `loadSound`, `playSound`, `play(name, {volume, pitch, loop})`, grupos master/music/sfx). Sons registrados em `main.lua` (nativos em `audio/`, gerados via ElevenLabs em `audio/sfx/` — dezenas de códigos camelCase). **Consumers usam `Sfx.play("name")` / `Sfx.playWithVariation(...)` — no-op gracioso sem áudio.** A key do ElevenLabs pra gerar SFX novos fica na memória auto do Claude (`elevenlabs-api-key`).
 
+**Trilha por contexto** (Set/2026): 6 faixas em `audio/music/` (3 atos, boss, loja, descanso), registradas por SCAN em `main.lua` e escolhidas por `src/systems/MusicDirector.lua`, que OBSERVA `currentState` no `love.update` em vez de ser notificado pelas telas. Crossfade já existia no `AudioManager` (`playMusic(code, {fadeDuration})`). Faixa nova = soltar o mp3 na pasta. Validar a volta do loop com `love . check_loop` ANTES de commitar — o modelo cola fade-out nas pontas e isso só se ouve na virada. Ver [`memory/music_generation.md`](memory/music_generation.md).
+
 ### CombatAnimationSystem (`src/systems/CombatAnimationSystem.lua`)
 Máquina de estados: `idle → cards_flying → processing → damage_dealing → complete`. Bloqueia a lógica do jogo via `isBlocking()`. Usa easing out-quart, escalas aumentadas (1.3x) no centro, números de dano flutuantes. Timings em `self.timings`.
 

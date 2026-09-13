@@ -587,6 +587,23 @@ function love.load(loveArgs)
         return
     end
 
+    -- Emenda de loop das faixas de musica (audio/music/*.mp3).
+    --   love . check_loop           (todas)
+    --   love . check_loop act       (filtra por substring)
+    -- Percorre os contextos e diz qual faixa tocaria (mudo).
+    --   love . check_music
+    if loveArgs and loveArgs[1] == "check_music" then
+        local ok = require("tools.check_music").run()
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
+    if loveArgs and loveArgs[1] == "check_loop" then
+        local ok = require("tools.check_loop").run(loveArgs[2])
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
     if loveArgs and loveArgs[1] == "check_sfx" then
         local ok = require("tools.check_sfx").run(loveArgs[2])
         -- Sem o quit a janela ficava aberta pra sempre depois de imprimir o
@@ -976,6 +993,15 @@ function love.load(loveArgs)
             stream = true,
             loop   = true,
         })
+
+        -- Trilha por contexto: registro por SCAN a partir da tabela única
+        -- em MusicDirector.TRACKS (ver src/systems/MusicDirector.lua).
+        -- require INLINE de propósito: `love.load` já roda no teto de 60
+        -- upvalues do Lua, e um `local` a mais no topo deste arquivo derruba
+        -- o jogo no boot com "function at line 367 has more than 60
+        -- upvalues". O resto do dispatcher usa a mesma forma. Não promova
+        -- isto para um local no topo.
+        require("src.systems.MusicDirector").registerTracks(audioSystem)
 
         -- Carrega sons do jogo
         audioSystem:loadSound("hoverCard", "audio/hoverCard.wav", Config.Audio.HOVER_VOLUME)
@@ -1522,6 +1548,14 @@ function love.update(dt)
     EventManager.update(dt)
     FloatingText.update(dt)
     if audioSystem then audioSystem:update(dt) end
+    -- Trilha por contexto: o diretor observa o estado e troca de faixa com
+    -- crossfade. Idempotente — chamar todo frame é o desenho, não descuido
+    -- (ver src/systems/MusicDirector.lua).
+    do
+        local run = game and game.runManager and game.runManager.currentRun
+        local node = run and run.currentNode
+        require("src.systems.MusicDirector").apply(currentState, run, node and node.type)
+    end
     CardParticles.update(dt)
     FlashShader.update(dt)
     ScreenShake.update(dt)

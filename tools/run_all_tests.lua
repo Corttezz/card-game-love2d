@@ -26,6 +26,7 @@ local SUITES = {
     { group = "unit",  name = "test_enemy_pose" },
     { group = "unit",  name = "test_pixelcanvas_state" },
     { group = "unit",  name = "test_screen_exits" },
+    { group = "unit",  name = "test_music" },
     { group = "valid", name = "check_event_i18n" },
     -- Smoke de sistema (pré-existentes)
     { group = "smoke", name = "smoke_tags" },

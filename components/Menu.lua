@@ -900,7 +900,13 @@ function Menu:enterWithIntro()
     end
 
     -- Música. fadeDuration > 0 faz crossfade-in suave via AudioManager.
-    if Sfx.playMusic then Sfx.playMusic("menuMusic", { fadeDuration = 1.5 }) end
+    if Sfx.playMusic then
+        Sfx.playMusic("menuMusic", { fadeDuration = 1.5 })
+        -- Avisa o diretor de trilha que o menu já está tocando, senão ele
+        -- reinicia a mesma faixa no primeiro update depois do splash.
+        local okDir, MD = pcall(require, "src.systems.MusicDirector")
+        if okDir then MD.markCurrent("menuMusic") end
+    end
 end
 
 function Menu:hide()
