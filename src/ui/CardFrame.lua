@@ -290,6 +290,11 @@ local function renderOne(card, iconOverride)
     return canvas
 end
 
+-- Descarta os canvases cacheados. NECESSARIO depois de qualquer coisa que
+-- invalide o contexto grafico -- na pratica, love.window.setMode: o Canvas
+-- sobrevive como objeto mas seu conteudo e perdido, e CardFrame.render devolve
+-- o canvas VAZIO do cache. Sintoma: a carta some e so restam selo e moldura.
+-- E o analogo de FontManager.clearCache(), que love.resize ja chama.
 function CardFrame.render(card)
     local key = cacheKey(card)
     if cache[key] then return cache[key] end
@@ -383,6 +388,13 @@ function CardFrame.invalidate(card)
     end
 end
 
+-- Invalida os canvases. Chamar SEMPRE que algo invalidar o contexto grafico —
+-- na pratica `love.window.setMode`: o Canvas sobrevive como OBJETO mas o
+-- conteudo dele e perdido, e render() devolveria o canvas VAZIO do cache.
+-- Sintoma: a carta some e sobram so moldura e selo. E o analogo de
+-- FontManager.clearCache(), e love.resize chama os dois lado a lado.
+-- (Havia uma 2a definicao desta funcao acima, sobrescrita por esta e
+-- incompleta — so limpava `cache`, deixando `animCache` morto. Removida.)
 function CardFrame.clearCache()
     cache = {}
     animCache = {}

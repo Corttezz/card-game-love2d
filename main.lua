@@ -179,11 +179,22 @@ local function skipBattleAndShowMap()
     -- Nao incrementa currentPhase para nao bagunçar scoring; o floor da run
     -- avança em showMapSelection via advanceFloorInAct.
     showMapSelection()
+    -- Nós SEM batalha (descanso/evento/loja) não passavam por checkpointRun
+    -- (só Game:nextPhase salvava) — o roteiro deles só chegava ao disco na
+    -- batalha seguinte. Salva aqui, depois do journalEnd de showMapSelection.
+    game:checkpointRun()
 end
 
 local function onNodeChosen(node, index)
     if not node then return end
-    game.runManager:chooseNode(index)
+    -- Snapshot de entrada do nó pro ROTEIRO (o RunManager não enxerga o Game).
+    -- Inline de propósito: um local novo no topo do arquivo viraria upvalue de
+    -- love.load, que já está no teto de 60 do LuaJIT (ver _G.openCardPicker).
+    game.runManager:chooseNode(index, {
+        hp = game.player and game.player.health,
+        maxHp = game.player and game.player.maxHealth,
+        gold = game.economySystem and game.economySystem.currentGold,
+    })
 
     local t = node.type
     local BT = MapManager.NODE_TYPES
@@ -223,6 +234,9 @@ local function onNodeChosen(node, index)
             return
         end
         run.eventHistory[ev.id] = run.actNumber or 1
+        -- ROTEIRO: o evento sorteado entra já; a OPÇÃO escolhida é anotada
+        -- pelo EventScreen no clique (antes do apply).
+        game.runManager:journalEvent(ev.id, nil, nil)
         currentState = "event"
         eventScreen:show(ev, game, function()
             skipBattleAndShowMap()
@@ -250,15 +264,28 @@ local function onNodeChosen(node, index)
 end
 
 showMapSelection = function()
+    -- ROTEIRO: fecha a entrada do nó que acabou de resolver. Este é o choke
+    -- point por onde TODO nó passa depois de resolvido (batalha, descanso,
+    -- evento, loja) — journalEnd é idempotente, então o caminho de reentrada
+    -- abaixo (guard de pendingNodes) não faz mal.
+    game.runManager:journalEnd({
+        hp = game.player and game.player.health,
+        maxHp = game.player and game.player.maxHealth,
+        gold = game.economySystem and game.economySystem.currentGold,
+    })
+
     -- Se nao ha nos pendentes, avanca o floor e gera novos. Guard contra
     -- duplo-advance (usuario voltar e abrir o mapa de novo).
     if not game.runManager:getPendingNodes() then
         local status = game.runManager:advanceFloorInAct(3)
         if status == "endless_start" then
-            game:addMessage("Modo Endless desbloqueado!", "success")
+            game:addMessage(I18n.t("messages.endless_unlocked", nil,
+                "Modo Endless desbloqueado!"), "success")
         elseif status == "act_complete" then
             local stats = game.runManager:getCurrentRunStats()
-            game:addMessage("Ato completo! Ato " .. ((stats and stats.floor) or "?"), "success")
+            game:addMessage(I18n.t("messages.act_complete",
+                { n = (stats and stats.floor) or "?" },
+                "Ato completo!"), "success")
         end
         game.runManager:generateNextNodes(3)
     end
@@ -272,7 +299,8 @@ showMapSelection = function()
        and WorldRoad.showFork(pending, onNodeChosen) then
         currentState = "mapSelection"
     else
-        mapScreen:show(pending, onNodeChosen, "Escolha o proximo caminho")
+        -- sem titleOverride: o MapScreen resolve "map.title" no idioma atual
+        mapScreen:show(pending, onNodeChosen)
         currentState = "mapSelection"
     end
 end
@@ -351,6 +379,22 @@ function love.load(loveArgs)
             .. "): saves em *.tool.lua — o save do jogador não é tocado")
     end
 
+    -- IDIOMA DETERMINISTICO em captura visual (Set/2026). Tool de screenshot e
+    -- preview existe pra REVISAO VISUAL — sair em alemao porque o sandbox
+    -- herdou o locale de um `test_i18n` anterior ja custou 4 rodadas de
+    -- captura refeita nesta sessao. O `test_i18n` restaura o locale de
+    -- ENTRADA, entao uma vez que o sandbox vira "de" ele se auto-perpetua.
+    -- Testes NAO entram aqui: test_i18n precisa girar os 5 idiomas.
+    if toolArg and (tostring(toolArg):match("^screenshot_")
+                    or tostring(toolArg):match("^preview_")) then
+        -- A flag e lida DENTRO de I18n.init() -- 19 tools chamam init() por
+        -- conta propria depois daqui, e antes disso o init relia o save por
+        -- cima e desfazia o force. Setar a flag cobre todos os caminhos.
+        _G.TOOL_FORCE_LOCALE = "pt_BR"
+        print("[sandbox] captura visual: locale travado em pt_BR "
+            .. "(passe _G.TOOL_FORCE_LOCALE pra mudar)")
+    end
+
     -- DEBUG (caça "cartas não renderizam"): marca o BOOT no log de reward —
     -- prova imediata de que ESTE build (instrumentado) é o que está rodando
     -- (mtime do arquivo muda ao abrir o jogo, sem precisar chegar num reward).
@@ -372,6 +416,24 @@ function love.load(loveArgs)
         require("src.ui.PixelCanvas").enableNearest()
         I18n.init()
         require("tools.preview_cards").run()
+        love.event.quit()
+        return
+    end
+
+    -- Borda do Button ANTES vs DEPOIS do fix do traço interno, 6x nearest.
+    --   love . preview_button_border
+    if loveArgs and loveArgs[1] == "preview_button_border" then
+        require("tools.preview_button_border").run()
+        love.event.quit()
+        return
+    end
+
+    -- Contact sheet do fix de arte repetida (as 12 cartas que eram orfas no
+    -- atlas + as 4 com que colidiam).  love . preview_card_art_fix
+    if loveArgs and loveArgs[1] == "preview_card_art_fix" then
+        require("src.ui.PixelCanvas").enableNearest()
+        I18n.init()
+        require("tools.preview_card_art_fix").run()
         love.event.quit()
         return
     end
@@ -425,6 +487,10 @@ function love.load(loveArgs)
 
     -- Captura o WorldRoad (mundo rolante): 3 biomas ou "full" (1 bioma inteiro).
     --   love . screenshot_worldroad [full]
+    if loveArgs and loveArgs[1] == "screenshot_enemy_scene" then
+        require("tools.screenshot_enemy_scene").run(loveArgs[2])
+        return
+    end
     if loveArgs and loveArgs[1] == "screenshot_worldroad" then
         require("tools.screenshot_worldroad").run(loveArgs[2])
         return
@@ -458,8 +524,102 @@ function love.load(loveArgs)
         return
     end
 
+    -- Valida a BIGORNA (RestScreen modo picker): grade de cartas reais,
+    -- Envelope de SFX: duracao, pico, RMS e tempos de decaimento. Serve pra
+    -- validar som gerado por IA no que IMPORTA — header de MP3 nao diz se a
+    -- cauda e curta, e som percussivo tocado em sequencia (forgeStrike toca 3x
+    -- a cada ~0.28s) vira lama se decair devagar.
+    --   love . check_sfx           (todos)
+    --   love . check_sfx forge     (filtra por substring)
+    -- EventScreen nos 5 locales (prova que as chaves de i18n resolvem: chave
+    -- errada cai no fallback PT e a tela fica perfeita SÓ em português).
+    --   love . screenshot_event [locale]
+    if loveArgs and loveArgs[1] == "screenshot_event" then
+        local ok = require("tools.screenshot_event").run(loveArgs[2])
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
+    -- Rotulos de opcao de evento estouram o botao em algum idioma?
+    --   love . check_event_labels [largura]
+    if loveArgs and loveArgs[1] == "check_event_labels" then
+        local ok = require("tools.check_event_labels").run(loveArgs[2])
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
+    -- Metrica da fonte: altura reportada vs tinta real (entrelinha segura).
+    --   love . check_font_metrics [10,12,14,20]
+    if loveArgs and loveArgs[1] == "check_font_metrics" then
+        local ok = require("tools.check_font_metrics").run(loveArgs[2])
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
+    -- Contact sheet do voo das moedas do cash out.
+    --   love . screenshot_cashout
+    if loveArgs and loveArgs[1] == "screenshot_cashout" then
+        local ok = require("tools.screenshot_cashout").run()
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
+    -- Contact sheet da entrada/saída da EventScreen (dosagem da animação).
+    --   love . screenshot_event_anim
+    if loveArgs and loveArgs[1] == "screenshot_event_anim" then
+        local ok = require("tools.screenshot_event_anim").run()
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
+    -- Curva ASCII do envelope de UM sfx (a FORMA, não só os números).
+    --   love . sfx_envelope card-shelf-place [janelaSegundos]
+    if loveArgs and loveArgs[1] == "sfx_envelope" then
+        local ok = require("tools.sfx_envelope").run(loveArgs[2], loveArgs[3])
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
+    if loveArgs and loveArgs[1] == "check_sfx" then
+        local ok = require("tools.check_sfx").run(loveArgs[2])
+        -- Sem o quit a janela ficava aberta pra sempre depois de imprimir o
+        -- relatório: rodar o tool por pipe (| grep, | tail) travava, porque a
+        -- saída só libera quando o processo morre. Todos os outros tools da
+        -- lista fecham; este era o único que não.
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
+    -- hover + painel de preview e os beats da animação de forja.
+    --   love . screenshot_forge                  — janela padrao, pt_BR
+    --   love . screenshot_forge 1600 900          — outra janela
+    --   love . screenshot_forge - - de            — pt_BR trocado por outro idioma
+    -- O 4o argumento existe pra validar TRADUCAO: e em idioma estrangeiro que
+    -- o portugues cravado aparece.
+    if loveArgs and loveArgs[1] == "screenshot_forge" then
+        local w, h = loveArgs[2], loveArgs[3]
+        if w == "-" then w = nil end
+        if h == "-" then h = nil end
+        require("tools.screenshot_forge").run(w, h, loveArgs[4])
+        return
+    end
+
     if loveArgs and loveArgs[1] == "screenshot_death" then
         require("tools.screenshot_death").run()
+        return
+    end
+
+    -- Telas de fim (GAME OVER / VITÓRIA). 2º arg = locale.
+    --   love . screenshot_endscreens [locale]
+    if loveArgs and loveArgs[1] == "screenshot_endscreens" then
+        require("tools.screenshot_endscreens").run(loveArgs[2])
+        return
+    end
+
+    -- Galeria de conquistas. 2º arg = locale, ou "all" pros 5.
+    --   love . screenshot_achievements all
+    if loveArgs and loveArgs[1] == "screenshot_achievements" then
+        require("tools.screenshot_achievements").run(loveArgs[2])
         return
     end
 
@@ -582,7 +742,8 @@ function love.load(loveArgs)
     -- Screenshot tool: round eval / cash out (Fase 9). Phase 0..3.
     --   love . screenshot_round_eval 3
     if loveArgs and loveArgs[1] == "screenshot_round_eval" then
-        require("tools.screenshot_round_eval").run(loveArgs[2])
+        -- 3º arg = locale (valida a tela traduzida; ver o tool).
+        require("tools.screenshot_round_eval").run(loveArgs[2], loveArgs[3])
         return
     end
 
@@ -597,6 +758,13 @@ function love.load(loveArgs)
     --   love . screenshot_turnbanner
     if loveArgs and loveArgs[1] == "screenshot_turnbanner" then
         require("tools.screenshot_turnbanner").run()
+        return
+    end
+
+    -- Valida o ComboBanner (1 combo, 3 combos, reduced motion, + TurnBanner):
+    --   love . screenshot_combobanner
+    if loveArgs and loveArgs[1] == "screenshot_combobanner" then
+        require("tools.screenshot_combobanner").run()
         return
     end
 
@@ -676,6 +844,19 @@ function love.load(loveArgs)
     -- Capturas do Gerenciador de Coringas (alinhado ao DeckViewer).
     if loveArgs and loveArgs[1] == "screenshot_joker_manager" then
         require("tools.screenshot_joker_manager").run()
+        return
+    end
+
+    -- Capturas do Roteiro da jornada (run mock com histórico de 2 atos).
+    --   love . screenshot_journal              — janela padrão, pt_BR
+    --   love . screenshot_journal small        — janela estreita (zonas comprimidas)
+    --   love . screenshot_journal - de         — pt_BR trocado por outro idioma
+    -- O 3º argumento existe pra validar TRADUÇÃO: é em idioma estrangeiro que
+    -- o português cravado aparece.
+    if loveArgs and loveArgs[1] == "screenshot_journal" then
+        local mode = loveArgs[2]
+        if mode == "-" then mode = nil end
+        require("tools.screenshot_journal").run(mode, loveArgs[3])
         return
     end
 
@@ -857,6 +1038,77 @@ function love.load(loveArgs)
         audioSystem:loadSound("castleGateOpen",  "audio/sfx/castle-gate-open.mp3",  0.62)
         audioSystem:loadSound("castleGateMagic", "audio/sfx/castle-gate-magic.mp3", 0.58)
 
+        -- BIGORNA (Set/2026): sons-assinatura da forja. Registro por SCAN —
+        -- os arquivos ainda NÃO existem no repo; quando forem soltos em
+        -- audio/sfx/ eles passam a tocar sozinhos, sem tocar em código.
+        -- O RestScreen escolhe via Sfx.has e cai em "restComplete" enquanto
+        -- não houver arquivo (mesmo contrato dos sons de joker).
+        --   forgeStrike → a martelada (início da sequência)
+        --   forgeReveal → o aço voltando da brasa (materialize da carta nova)
+        for code, path in pairs({
+            forgeStrike = "audio/sfx/forge-strike.mp3",
+            forgeReveal = "audio/sfx/forge-reveal.mp3",
+        }) do
+            if love.filesystem.getInfo(path) then
+                audioSystem:loadSound(code, path, 0.65)
+            end
+        end
+
+        -- Carta ESTOURANDO tem som proprio, com volume proprio: o 0.65 do
+        -- bloco acima e alto demais pra um efeito que dispara no meio do
+        -- combate. Enquanto o arquivo nao existir, Card:explode cai no
+        -- enemyDeath (fallback via Sfx.has) e nada quebra.
+        if love.filesystem.getInfo("audio/sfx/card-explode.mp3") then
+            audioSystem:loadSound("cardExplode", "audio/sfx/card-explode.mp3",
+                Config.Audio.CARD_EXPLODE_VOLUME)
+        end
+
+        -- LOJA (Set/2026) — mesmo contrato de scan. Enquanto o arquivo não
+        -- existe, o call site cai num som genérico via Sfx.has:
+        --   cardShelfPlace  → cada carta pousando na prateleira (→ cardDraw)
+        --   shopLeaveWhoosh → a loja deslizando pra fora  (→ menuClose)
+        --   cardDeselect    → desmarcar coringa (→ alias abaixo)
+        --
+        -- Volumes CALIBRADOS pelo pico medido de cada amostra
+        -- (`love . sfx_envelope <nome>`), não por chute — dois arquivos com o
+        -- mesmo volume registrado soam muito diferente se um tem pico 0,25 e
+        -- o outro 1,00. Referência do projeto: cardDraw = 0,35 sobre pico
+        -- 0,124, ou seja ~0,043 de amplitude efetiva.
+        --   cardShelfPlace  pico 0,246 → 0,22 ≈ 0,054 efetivo. Um tico acima
+        --     do cardDraw (é o único evento do momento), mas contido: toca
+        --     em cascata, 6-7x seguidas, e som repetido cansa rápido.
+        --   shopLeaveWhoosh pico 0,764 → 0,50 (evento único, gesto de saída).
+        --   cardDeselect    pico 1,000 (amostra no talo) → 0,16, senão
+        --     estoura sobre todo o resto da UI.
+        --   eventEnterWind  → entrar num evento (→ menuOpen)
+        --   eventChoiceSeal → confirmar a escolha do evento (→ buttonClick)
+        --     Os dois picam perto de 1,000, então vão registrados BAIXO pelo
+        --     mesmo motivo do cardDeselect. O vento ainda é ambiente sob a
+        --     tela inteira (0,20 no pico, ~0,04 na cauda sustentada); o lacre
+        --     é pontuação de UM momento por evento e pode ser um tico mais
+        --     presente que um clique comum, mas segue bem abaixo do combate.
+        for code, cfg in pairs({
+            cardShelfPlace  = { "audio/sfx/card-shelf-place.mp3",  0.22 },
+            shopLeaveWhoosh = { "audio/sfx/shop-leave-whoosh.mp3", 0.50 },
+            cardDeselect    = { "audio/sfx/card-deselect.mp3",     0.16 },
+            eventEnterWind  = { "audio/sfx/event-enter-wind.mp3",  0.20 },
+            eventChoiceSeal = { "audio/sfx/event-choice-seal.mp3", 0.22 },
+        }) do
+            if love.filesystem.getInfo(cfg[1]) then
+                audioSystem:loadSound(code, cfg[1], cfg[2])
+            end
+        end
+
+        -- ALIASES pra códigos que call sites JÁ tocavam sem nunca terem sido
+        -- registrados — eram no-op silencioso (proibido por
+        -- memory/ui_layout_invariants §3). JokerManagerScreen:125/:134 toca
+        -- "cardDeselect" e "error"; até existir arte sonora própria, ambos
+        -- apontam pra um som existente com a semântica certa.
+        if not audioSystem.sources["cardDeselect"] then
+            audioSystem:loadSound("cardDeselect", "audio/clickselect2-92097.mp3", 0.40)
+        end
+        audioSystem:loadSound("error", "audio/sfx/purchase-deny.mp3", 0.55)
+
         -- Entrada do jogo (BootScene) — SFX próprios (ElevenLabs, Jul/2026):
         -- power-on da TV, whoosh da convergência das cartas, impacto do flash.
         audioSystem:loadSound("bootTvPowerOn",  "audio/sfx/boot-tv-power-on.mp3", 0.70)
@@ -1004,6 +1256,14 @@ function love.load(loveArgs)
         if _G.jokerManagerScreen then _G.jokerManagerScreen:toggle(game) end
     end
 
+    -- ROTEIRO da run: clique no indicador de ATO da TopBar OU tecla M.
+    -- Mora em _G pelo mesmo motivo do jokerManagerScreen: love.load já está
+    -- no teto de 60 upvalues do LuaJIT.
+    _G.runJournalScreen = require("components.RunJournalScreen"):new()
+    _G.toggleRunJournal = function()
+        if _G.runJournalScreen then _G.runJournalScreen:toggle(game) end
+    end
+
     -- Menu de PAUSA (engrenagem da TopBar, padrão StS): Continuar /
     -- Configurações / Salvar e voltar ao menu / Abandonar run (confirmado).
     pauseMenu = require("components.PauseMenu"):new()
@@ -1037,12 +1297,22 @@ function love.load(loveArgs)
 
     -- Inicializa barra superior
     topBar = TopBar:new()
+    -- Exposta como global no mesmo espírito de _G.audioSystem/_G.EventManager:
+    -- telas que precisam VOAR algo até o cofre (moedas do cash out) têm que
+    -- perguntar à barra onde ele está, em vez de repetir a coordenada e
+    -- dessincronizar na próxima mudança de layout.
+    _G.topBar = topBar
 
     -- F5 do UI Overhaul: clique no deck da TopBar abre o Deck Viewer.
     -- (Este wire vivia ANTES do TopBar:new() — topBar era nil e o callback
     -- nunca era registrado; clique no deck da barra não fazia nada.)
     topBar:setDeckClickCallback(function()
         deckViewerScreen:toggle(game)
+    end)
+
+    -- Clique no bloco "ATO N / andar X" abre o Roteiro da jornada.
+    topBar:setActClickCallback(function()
+        if _G.toggleRunJournal then _G.toggleRunJournal() end
     end)
 
     -- Inicializa tela de escolha de caminho (entre batalhas)
@@ -1389,6 +1659,11 @@ function love.draw()
         _G.jokerManagerScreen:draw()
     end
 
+    -- Roteiro da jornada: overlay em qualquer tela da run
+    if _G.runJournalScreen and _G.runJournalScreen:isVisible() then
+        _G.runJournalScreen:draw()
+    end
+
     -- Overlay de settings (modal) ainda DENTRO da cena CRT — assim o shader
     -- cobre o overlay também.
     if pauseMenu then pauseMenu:draw() end
@@ -1410,6 +1685,16 @@ end
 -- ficam congelados nas dimensões do boot.
 function love.resize(w, h)
     FontManager.clearCache()
+    -- CardFrame JUNTO com FontManager, e ANTES de qualquer tela recalcular:
+    -- love.window.setMode invalida o contexto grafico e o CONTEUDO de todo
+    -- Canvas morre (o objeto sobrevive). As cartas guardam esse canvas em
+    -- `card.image`, entao sem esta linha a ilustracao some ao dar fullscreen --
+    -- ficam so moldura e selo. Pior: `cardRewardScreen:createCardInstances()`
+    -- logo abaixo chama CardFrame.render e, sem o clear ANTES, reconstroi a
+    -- loja inteira lendo o cache MORTO -- ela renasce em branco mesmo
+    -- recriando tudo. Atinge toda tela com carta: loja, mao, DeckViewer,
+    -- Colecao, Gerenciador de Coringas, abertura de pacote. (Set/2026)
+    CardFrame.clearCache()
     -- Cada overlay/menu tem chance de recalcular layout. Padrão obrigatório:
     -- TODA tela com positions cacheadas (cardPositions, button rects, panel
     -- bounds) DEVE expor resize() ou updateLayout() e tratar o caso "ainda
@@ -1433,6 +1718,16 @@ function love.resize(w, h)
     if roundEvalScreen and roundEvalScreen.resize then roundEvalScreen:resize() end
     if collectionScreen and collectionScreen.resize then collectionScreen:resize() end
     if mapScreen and mapScreen.resize then mapScreen:resize() end
+    -- Overlays de tela cheia: DeckViewer e Gerenciador de Coringas definiam
+    -- resize() desde sempre e NUNCA eram chamados aqui (o scroll ficava preso
+    -- na altura antiga). Corrigido junto com a entrada do Roteiro.
+    if deckViewerScreen and deckViewerScreen.resize then deckViewerScreen:resize() end
+    if _G.jokerManagerScreen and _G.jokerManagerScreen.resize then
+        _G.jokerManagerScreen:resize()
+    end
+    if _G.runJournalScreen and _G.runJournalScreen.resize then
+        _G.runJournalScreen:resize()
+    end
     if topBar and topBar.resize then topBar:resize() end
     if settingsMenu and settingsMenu.rebuild and settingsMenu.visible then
         settingsMenu:rebuild()
@@ -1468,6 +1763,11 @@ function love.keypressed(key)
         if _G.jokerManagerScreen:keypressed(key) then return end
     end
 
+    -- Roteiro consome teclas enquanto aberto (M/ESC fecham)
+    if _G.runJournalScreen and _G.runJournalScreen:isVisible() then
+        if _G.runJournalScreen:keypressed(key) then return end
+    end
+
     -- Pack opening absorve teclas (escape fecha) enquanto visível.
     if packOpenScreen and packOpenScreen:isVisible() then
         if packOpenScreen:keypressed(key) then return end
@@ -1486,6 +1786,14 @@ function love.keypressed(key)
         or currentState == "cardReward" or currentState == "mapSelection")
         and game and game.isRunMode then
         _G.jokerManagerScreen:toggle(game)
+        return
+    end
+
+    -- Tecla M abre o Roteiro da jornada em qualquer tela da run
+    if key == "m" and (currentState == "playing"
+        or currentState == "cardReward" or currentState == "mapSelection")
+        and game and game.isRunMode then
+        _G.toggleRunJournal()
         return
     end
 
@@ -1585,6 +1893,12 @@ function love.mousereleased(x, y, button)
         return
     end
 
+    -- Roteiro consome mouse enquanto aberto
+    if _G.runJournalScreen and _G.runJournalScreen:isVisible() then
+        _G.runJournalScreen:mousereleased(x, y, button)
+        return
+    end
+
     -- Settings modal consome primeiro
     if settingsMenu and settingsMenu:isVisible() then
         if settingsMenu:mousereleased(x, y, button) then return end
@@ -1650,6 +1964,12 @@ function love.mousepressed(x, y, button)
         return
     end
 
+    -- Roteiro consome mouse enquanto aberto
+    if _G.runJournalScreen and _G.runJournalScreen:isVisible() then
+        _G.runJournalScreen:mousepressed(x, y, button)
+        return
+    end
+
     -- TopBar consome cliques na faixa superior (engrenagem/deck) em todos os
     -- estados onde é desenhada. (Nunca era roteada — o clique da engrenagem
     -- não funcionava em lugar NENHUM; bug playtest Jul/2026.)
@@ -1707,6 +2027,10 @@ function love.wheelmoved(dx, dy)
     end
     if _G.jokerManagerScreen and _G.jokerManagerScreen:isVisible() then
         _G.jokerManagerScreen:wheelmoved(dx, dy)
+        return
+    end
+    if _G.runJournalScreen and _G.runJournalScreen:isVisible() then
+        _G.runJournalScreen:wheelmoved(dx, dy)
         return
     end
     if currentState == "collection" and collectionScreen.wheelmoved then

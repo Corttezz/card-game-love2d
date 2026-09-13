@@ -138,7 +138,29 @@ function CardDatabase:createCardInstance(cd)
     instance.id = cd.id
     instance.description = cd.description
     instance.rarity = cd.rarity
-    instance.effects = cd.effects
+    -- CÓPIA, nunca a referência do catálogo (fix Set/2026).
+    -- `cardData` é cache de PROCESSO (carregado 1x, nunca recarregado), então
+    -- `cd.effects` é a tabela viva do catálogo. Apontar a instância pra ela
+    -- fazia `RunManager:applyUpgradesToInstance` (RunManager.lua:546, a única
+    -- escrita de `eff.value` do projeto) mutar o CATÁLOGO: forjar uma carta de
+    -- efeito somava o ganho a CADA `buildPlayableDeck` — ou seja a cada andar,
+    -- a cada carta adicionada e a cada abertura do visualizador de deck —
+    -- crescendo sem limite e contaminando todas as cartas daquele id, inclusive
+    -- em runs novas, até fechar o jogo. Efeitos são tabelas planas
+    -- ({type=..., value=...}), então cópia de 2 níveis basta.
+    if cd.effects then
+        local copy = {}
+        for i, eff in ipairs(cd.effects) do
+            if type(eff) == "table" then
+                local e = {}
+                for k, v in pairs(eff) do e[k] = v end
+                copy[i] = e
+            else
+                copy[i] = eff
+            end
+        end
+        instance.effects = copy
+    end
     instance.class = cd.class
     -- Normaliza tags na criacao: carrega do card-data ou deriva do tipo.
     -- TagSystem.getCardTags ja faz merge com tag implicita e remove duplicados.

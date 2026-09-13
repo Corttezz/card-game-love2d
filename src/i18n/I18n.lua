@@ -14,7 +14,14 @@ local I18n = {}
 
 local DEFAULT_LOCALE  = "pt_BR"
 local FALLBACK_LOCALE = "en"
-local SETTINGS_FILE   = "i18n_settings.lua"
+-- SANDBOX de ferramenta — mesma proteção do engine/SaveManager.lua (PATHS_TOOL).
+-- Antes isto era uma constante fixa e ficava FORA do sandbox: qualquer tool que
+-- trocasse locale (o `test_i18n` percorre os 5 idiomas) sobrescrevia o idioma
+-- REAL do jogador. Rodar `love . test_all` deixava o jogo em alemão — foi o que
+-- aconteceu em Set/2026. `run`/`settings` já eram protegidos; este arquivo não.
+local function settingsFile()
+    return _G.HEADLESS_TOOL and "i18n_settings.tool.lua" or "i18n_settings.lua"
+end
 
 I18n.current = DEFAULT_LOCALE
 I18n.data    = {}
@@ -60,7 +67,13 @@ function I18n.init()
     if DEFAULT_LOCALE ~= FALLBACK_LOCALE then
         loadLocale(FALLBACK_LOCALE)
     end
-    local saved = I18n.loadSetting()
+    -- FORCE de ferramenta tem precedencia sobre o idioma persistido.
+    -- Motivo (Set/2026): captura visual precisa ser DETERMINISTICA no idioma.
+    -- O main.lua ja setava pt_BR pros tools de screenshot_/preview_, mas 19
+    -- deles chamam I18n.init() DEPOIS disso -- e o init relia o save por cima,
+    -- desfazendo o force. A trava tem que morar AQUI, onde todo caminho passa.
+    -- Tool que quer outro idioma seta _G.TOOL_FORCE_LOCALE antes do init.
+    local saved = _G.TOOL_FORCE_LOCALE or I18n.loadSetting()
     if saved and saved ~= I18n.current then
         I18n.setLocale(saved, true)  -- silent: nao dispara listeners no boot
     end
@@ -243,13 +256,13 @@ end
 function I18n.saveSetting(locale)
     if not (love and love.filesystem and love.filesystem.write) then return end
     local content = "return " .. string.format("%q", locale) .. "\n"
-    love.filesystem.write(SETTINGS_FILE, content)
+    love.filesystem.write(settingsFile(), content)
 end
 
 function I18n.loadSetting()
     if not (love and love.filesystem and love.filesystem.getInfo) then return nil end
-    if not love.filesystem.getInfo(SETTINGS_FILE) then return nil end
-    local chunk, err = love.filesystem.load(SETTINGS_FILE)
+    if not love.filesystem.getInfo(settingsFile()) then return nil end
+    local chunk, err = love.filesystem.load(settingsFile())
     if not chunk then
         print("[I18n] Falha ao carregar settings: " .. tostring(err))
         return nil

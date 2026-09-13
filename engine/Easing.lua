@@ -74,8 +74,26 @@ local byName = {
     backout = Easing.backOut, back_out = Easing.backOut,
 }
 
+-- Nomes desconhecidos caem em `smooth` — comportamento mantido de propósito
+-- (mudar a resolução agora alteraria animações já afinadas no olho sob smooth).
+-- O que mudou (Set/2026): o fallback deixou de ser MUDO. Um nome errado custou
+-- caro: `PackOpenScreen` passava "easeOut" em camelCase em 6 lugares e a
+-- cinemática inteira rodou com `smooth` por rodadas de polish sem ninguém notar.
+-- byName é case-sensitive e só tem minúsculas (easeout, ease_out, outquart...).
+-- Avisa UMA vez por nome — Easing.apply roda a cada frame de cada ease.
+local warnedNames = {}
+
 function Easing.apply(name, t)
-    local fn = byName[name] or Easing.smooth
+    local fn = byName[name]
+    if not fn then
+        if name ~= nil and not warnedNames[name] then
+            warnedNames[name] = true
+            print(("[Easing] nome desconhecido '%s' — caindo em smooth. "):format(tostring(name))
+                .. "Validos: linear, smooth, lerp, easein, easeout, easeinout, "
+                .. "outquart, bounce, elastic, backout (+ variantes com _).")
+        end
+        fn = Easing.smooth
+    end
     return fn(t)
 end
 
