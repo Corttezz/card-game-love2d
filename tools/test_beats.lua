@@ -382,6 +382,126 @@ function M.run()
     t:eq("saiu o MAIS ANTIGO (FIFO)", gev.player.orbs[1].type, "ice")
 
     -- ========================================================================
+    -- 4f. CADA PULSO ATERRISSA ONDE O EFEITO DELE ACONTECE -- e com a
+    --     assinatura do ELEMENTO, nao um efeito generico.
+    --     (pedido do dono, Set/2026: "os orbes, quando dao dano ao final do
+    --      turno, eles poderiam refletir algo no inimigo visualmente tambem,
+    --      cada um de uma forma sabe, visual e som")
+    --
+    --     A METADE PERIGOSA e a que o pedido NAO cobre: gelo da Bloqueio e
+    --     sagrado CURA -- se eles estourarem no inimigo, o jogo ensina que
+    --     defender fere, que e exatamente o defeito dos espinhos (doutrina de
+    --     defeitos, §3: feedback certo no lugar errado deixa o jogador convicto
+    --     do errado). Sombra nem sai da fileira: engorda o proprio orbe.
+    --
+    --     Como se observa isso num teste headless: interceptando as chamadas de
+    --     som e de burst. E o contrato real -- quem toca o que, e ONDE.
+    -- ========================================================================
+    do
+        local Sfx = require("src.systems.Sfx")
+        local CardFeel = require("src.systems.CardFeel")
+        local OrbRow = require("src.ui.OrbRow")
+        local realPlay      = Sfx.play
+        local realAtEnemy   = CardFeel.burstAtEnemy
+        local realAtPlayer  = CardFeel.burstAtPlayer
+        local realAtSlot    = OrbRow.burstAtSlot
+
+        local log
+        local function resetLog() log = { sfx = {}, enemy = {}, player = {}, slot = {} } end
+        resetLog()   -- criar o Game ja toca sons: o coletor precisa existir antes
+        Sfx.play = function(name) log.sfx[#log.sfx + 1] = name end
+        CardFeel.burstAtEnemy  = function(theme) log.enemy[#log.enemy + 1] = theme end
+        CardFeel.burstAtPlayer = function(theme) log.player[#log.player + 1] = theme end
+        OrbRow.burstAtSlot     = function(_, theme) log.slot[#log.slot + 1] = theme end
+
+        -- Dispara o pulso de UM orbe isolado e devolve o que foi tocado/estourado.
+        local function pulseOf(orbType, value)
+            local g = TK.newRunGame("mage")
+            TK.pump(g, 0.5)
+            g.player.orbs = { { type = orbType, value = value or 4 } }
+            g.player.armor = 0
+            g.player.health = math.max(1, g.player.maxHealth - 20)
+            local before = {
+                enemyHp = g.enemy.health,
+                armor   = g.player.armor,
+                hp      = g.player.health,
+                orbVal  = g.player.orbs[1].value,
+            }
+            resetLog()
+            local steps = {}
+            g.effectSystem:orbPassiveTick(g, steps)
+            CombatBeats.pushAll(steps)
+            TK.pump(g, 1.5)
+            return g, before
+        end
+
+        local sounds = {}
+
+        -- RAIO: fere -> marca no INIMIGO
+        local g, b = pulseOf("lightning", 4)
+        t:truthy("pulso de RAIO fere o inimigo", g.enemy.health < b.enemyHp)
+        t:eq("raio estoura NO INIMIGO", #log.enemy, 1)
+        t:eq("raio usa a paleta de raio", log.enemy[1], "lightning")
+        t:eq("raio nao estoura no painel do jogador", #log.player, 0)
+        t:eq("raio toca UM som", #log.sfx, 1)
+        sounds.lightning = log.sfx[1]
+
+        -- FOGO: fere -> marca no INIMIGO, com outro som e outra paleta
+        g, b = pulseOf("fire", 6)
+        t:truthy("pulso de FOGO fere o inimigo", g.enemy.health < b.enemyHp)
+        t:eq("fogo estoura NO INIMIGO", #log.enemy, 1)
+        t:eq("fogo usa a paleta de fogo", log.enemy[1], "fire")
+        sounds.fire = log.sfx[1]
+
+        -- GELO: da Bloqueio -> marca no JOGADOR, NUNCA no inimigo
+        g, b = pulseOf("ice", 4)
+        t:truthy("pulso de GELO da Bloqueio", g.player.armor > b.armor)
+        t:eq("o inimigo NAO leva dano do pulso de gelo", g.enemy.health, b.enemyHp)
+        t:eq("gelo NAO estoura no inimigo (defender nao fere)", #log.enemy, 0)
+        t:eq("gelo estoura no painel do jogador", #log.player, 1)
+        t:eq("gelo usa a paleta de gelo", log.player[1], "ice")
+        sounds.ice = log.sfx[1]
+
+        -- SAGRADO: cura -> marca no JOGADOR, NUNCA no inimigo
+        g, b = pulseOf("holy", 6)
+        t:truthy("pulso SAGRADO cura o heroi", g.player.health > b.hp)
+        t:eq("o inimigo NAO leva dano do pulso sagrado", g.enemy.health, b.enemyHp)
+        t:eq("sagrado NAO estoura no inimigo (curar nao fere)", #log.enemy, 0)
+        t:eq("sagrado estoura no painel do jogador", #log.player, 1)
+        t:eq("sagrado usa a paleta sagrada", log.player[1], "holy")
+        sounds.holy = log.sfx[1]
+
+        -- SOMBRA: cresce no proprio orbe -> marca NO ORBE
+        g, b = pulseOf("dark", 5)
+        t:eq("pulso de SOMBRA engorda o proprio orbe",
+            g.player.orbs[1].value, b.orbVal + 2)
+        t:eq("o inimigo NAO leva dano do pulso de sombra", g.enemy.health, b.enemyHp)
+        t:eq("sombra NAO estoura no inimigo", #log.enemy, 0)
+        t:eq("sombra NAO estoura no painel do jogador", #log.player, 0)
+        t:eq("sombra estoura NO PROPRIO ORBE", #log.slot, 1)
+        t:eq("sombra usa a paleta de sombra", log.slot[1], "dark")
+        sounds.dark = log.sfx[1]
+
+        -- CADA UM DE UMA FORMA: os 5 sons tem que ser DIFERENTES entre si.
+        -- (Reverter pra um som generico unico derruba esta asserção.)
+        local uniq, names = {}, {}
+        for k, v in pairs(sounds) do
+            names[#names + 1] = k .. "=" .. tostring(v)
+            uniq[tostring(v)] = true
+        end
+        local nUniq = 0
+        for _ in pairs(uniq) do nUniq = nUniq + 1 end
+        table.sort(names)
+        t:eq("os 5 elementos soam DIFERENTE (" .. table.concat(names, " ") .. ")",
+            nUniq, 5)
+
+        Sfx.play = realPlay
+        CardFeel.burstAtEnemy = realAtEnemy
+        CardFeel.burstAtPlayer = realAtPlayer
+        OrbRow.burstAtSlot = realAtSlot
+    end
+
+    -- ========================================================================
     -- 4e. O CASO REAL: quantas cartas do catalogo canalizam em rajada?
     --     Asserção de CONTAGEM pra nao passar verde por nao ter exercitado nada.
     -- ========================================================================

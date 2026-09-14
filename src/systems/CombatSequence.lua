@@ -81,6 +81,10 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
         return
     end
     self.active = true
+    -- Guardado pra REDE do watchdog (ver :update): se a cadeia quebrar no meio,
+    -- alguem precisa poder chamar _finish com o callback certo.
+    self._onComplete = onComplete
+    self._starvedFor = 0
     -- CÓPIA, nunca a lista viva do chamador. `Game:startCombat` passa
     -- `self.selectedCards` direto, e a resolução dura SEGUNDOS agora que cada
     -- acontecimento tem seu beat. Nessa janela o jogador clicar numa carta da
@@ -274,6 +278,8 @@ end
 
 function CombatSequence:_finish(onComplete)
     self.active = false
+    self._onComplete = nil
+    self._starvedFor = 0
     self.damageNumbers = {}
     -- flyingCards pode ainda ter resíduo se dissolve não completou — limpa.
     -- Se houver cartas sobrando, marca como removidas pra CardParticles fazer cleanup.
@@ -391,7 +397,37 @@ end
 -- UPDATE / DRAW
 -- ============================================================================
 
+-- Quanto tempo a cadeia pode ficar SEM NENHUM beat pendente antes de a rede
+-- declarar que ela quebrou. Mid-cadeia isso e impossivel por construcao: cada
+-- beat empurra o proximo elo no INICIO da propria execucao (trigger "before"),
+-- entao sempre ha um beat na fila. Fila vazia com o combate ativo = alguem
+-- limpou a fila ou um elo nao foi empurrado.
+local STARVE_TIMEOUT = 0.75
+
 function CombatSequence:update(dt)
+    -- ===== REDE: o combate NAO PODE ficar ativo pra sempre =====
+    -- `isBlocking()` e `self.active or CombatBeats.isBusy()`, e o jogo inteiro
+    -- espera por ele: turno do inimigo, espolios, vitoria, botoes da mao. Se a
+    -- cadeia quebrar, o jogador fica com a tela travada e os botoes cinzas —
+    -- foi o que aconteceu ao matar o boss (Set/2026). Morte do inimigo no meio
+    -- da resolucao e caminho COMUM: nao pode depender de tudo dar certo.
+    -- Travar o jogo e muito pior que encerrar cedo — mas encerrar em silencio
+    -- tambem e proibido (CLAUDE.md), entao a rede AVISA.
+    if self.active then
+        if CombatBeats.isBusy() then
+            self._starvedFor = 0
+        else
+            self._starvedFor = (self._starvedFor or 0) + dt
+            if self._starvedFor >= STARVE_TIMEOUT then
+                print("[CombatSequence] cadeia de resolucao morreu sem chegar ao "
+                    .. "fim (fila de beats vazia por " .. string.format("%.2f", self._starvedFor)
+                    .. "s com o combate ativo) — encerrando pela rede. "
+                    .. "Isto e BUG: algum elo da cadeia nao foi empurrado.")
+                self:_finish(self._onComplete)
+            end
+        end
+    end
+
     if not self.active and #self.damageNumbers == 0 and #self.flyingCards == 0 then
         return
     end

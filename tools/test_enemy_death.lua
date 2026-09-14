@@ -359,6 +359,101 @@ function M.run()
         t:truthy("a morte ja tinha sido encenada quando abriram", g._deathHandled)
     end
 
+    -- ========================================================================
+    -- 10. MORREU NO MEIO DA RESOLUCAO, COM O CHECKPOINT DA CENA RODANDO
+    --     O TRAVAMENTO de Set/2026 ("matei o boss e o jogo parou, botoes
+    --     cinzas"). Nenhum teste pegava porque nenhum rodava o checkpoint por
+    --     frame da GameplayScene — e era a REPETICAO dele, entre AGENDAR e
+    --     EXECUTAR o beat da morte, que enchia a fila de beats de 1,1s.
+    --     Medido antes da correcao: 11 beats `enemy.death` numa jogada de 2
+    --     cartas (~12s de fila morta); com mais cartas/procs, minutos.
+    -- ========================================================================
+    do
+        freshRenderer()
+        local g = TK.newRunGame("mage")
+        TK.pump(g, 0.5)
+        g.enemy.maxHealth = 120
+        g.enemy.health = 6      -- morre no MEIO da 1a carta, com a 2a por vir
+
+        -- Chuva de Meteoros: ataque + 3 canalizacoes de orbe na MESMA carta —
+        -- a carta do log do dono. Os passos de orbe sao o que alonga a janela
+        -- entre o agendamento da morte e a execucao dele.
+        local db = g.deckManager.cardDatabase
+        local c1 = db:createCardInstance(db:getCard("mage_meteor_strike"))
+        local c2 = db:createCardInstance(db:getCard("mage_meteor_strike"))
+        c1.cost, c2.cost = 0, 0
+        table.insert(g.hand, c1)
+        table.insert(g.hand, c2)
+        g.player.mana = 9
+        g:selectCard(c1)
+        g:selectCard(c2)
+
+        CombatBeats.clear(); CombatBeats.startTrace()
+        g:playSelectedCards()
+
+        -- Pump COM o checkpoint da cena, como o jogo de verdade.
+        local dt, peak, frames = 1 / 30, 0, 0
+        for i = 1, 600 do
+            g:announceDeathIfPending(nil)            -- GameplayScene.update
+            if g._deathPauseTimer and g._deathPauseTimer > 0 then
+                g._deathPauseTimer = math.max(0, g._deathPauseTimer - dt)
+            end
+            TK.pump(g, dt)
+            peak = math.max(peak, CombatBeats.pending())
+            frames = i
+            if g:isReadyForEndScreen() then break end
+        end
+        CombatBeats.stopTrace()
+
+        t:eq("a morte foi encenada UMA vez, nao uma por frame",
+            countExact("enemy.death"), 1)
+        t:truthy("a fila de beats nao inchou (pico " .. peak .. ", limite 14)",
+            peak <= 14)
+        t:falsy("o combate terminou (nao ficou bloqueando pra sempre)",
+            g.combatAnimationSystem:isBlocking())
+        t:falsy("a sequencia de combate saiu do ar", g.combatAnimationSystem.active)
+        t:truthy("a tela de desfecho liberou (" .. frames .. " frames)",
+            g:isReadyForEndScreen())
+        t:truthy("e liberou RAPIDO, nao depois de dezenas de segundos ("
+            .. string.format("%.1f", frames * dt) .. "s, limite 6s)",
+            frames * dt <= 6.0)
+    end
+
+    -- ========================================================================
+    -- 11. A REDE: cadeia quebrada nao pode deixar o combate ativo pra sempre
+    --     `isBlocking()` e o que segura o jogo INTEIRO. Se a cadeia morrer no
+    --     meio (fila limpa por fora, elo nao empurrado), a sequencia tem que
+    --     se encerrar e AVISAR — travar e muito pior que encerrar cedo.
+    -- ========================================================================
+    do
+        freshRenderer()
+        local g = TK.newRunGame("warrior")
+        TK.pump(g, 0.5)
+        local card = { id = "tk_net", name = "Teste Rede", type = "attack",
+                       cost = 0, attack = 3, defense = 0, effects = {} }
+        table.insert(g.hand, card)
+        g.player.mana = 3
+        g:selectCard(card)
+        local finished = false
+        g.combatAnimationSystem:startCombat({ card },
+            function() finished = true end,
+            function() return {} end)
+        TK.pump(g, 0.1)
+        t:truthy("combate ativo depois de comecar", g.combatAnimationSystem.active)
+
+        -- SABOTAGEM: a fila some no meio (é o que `CombatBeats.clear` de uma
+        -- batalha nova faz, e o que um elo esquecido causaria).
+        CombatBeats.clear()
+        TK.pump(g, 0.3)
+        t:truthy("logo depois da fila sumir, a rede ainda nao agiu (da tempo)",
+            g.combatAnimationSystem.active)
+        TK.pump(g, 1.2)
+        t:falsy("a rede encerrou o combate travado",
+            g.combatAnimationSystem.active)
+        t:truthy("e chamou o callback de fim (o turno segue)", finished)
+        t:falsy("o jogo voltou a andar", g.combatAnimationSystem:isBlocking())
+    end
+
     CombatBeats.clear()
     freshRenderer()
     return t:done()

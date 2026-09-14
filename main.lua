@@ -491,6 +491,12 @@ function love.load(loveArgs)
         require("tools.screenshot_enemy_scene").run(loveArgs[2])
         return
     end
+    -- Prova VISUAL do Continuar numa luta de chefe: save real → load →
+    -- ResumeFlow → GameplayScene.draw.  love . screenshot_resume_boss [antes]
+    if loveArgs and loveArgs[1] == "screenshot_resume_boss" then
+        require("tools.screenshot_resume_boss").run(loveArgs[2])
+        return
+    end
     if loveArgs and loveArgs[1] == "screenshot_worldroad" then
         require("tools.screenshot_worldroad").run(loveArgs[2])
         return
@@ -663,6 +669,8 @@ function love.load(loveArgs)
         -- de cap (halo ambar + "/30"), que so aparece a partir de 70%.
         _G.PREVIEW_HUD_CAP = (loveArgs[2] == "cap")
         _G.PREVIEW_HUD_ORB = (loveArgs[2] == "orb")
+        _G.PREVIEW_HUD_PULSE = (loveArgs[2] == "pulse")
+        _G.PREVIEW_HUD_ORBS = (loveArgs[2] == "orbs")
         require("tools.preview_battle_hud").run()
         love.event.quit()
         return
@@ -1265,9 +1273,18 @@ function love.load(loveArgs)
         -- A cena também ancora o ANDAR aqui — retomando NA encruzilhada o
         -- mundo fica um andar atrás, senão a caminhada até o nó escolhido
         -- nunca dispara (ver GameplayScene.resumeWorld).
+        -- E a CENA volta com o mundo: retomar dentro da luta do chefe é
+        -- retomar DENTRO do salão. O nó salvo já diz "boss" (por isso o
+        -- inimigo vem certo), mas `bossEntered` do GameplayScene é estado
+        -- de módulo que nasce false e só vira true pela cerimônia da porta
+        -- — cerimônia que o Continuar nunca dispara. Sem isto o chefe
+        -- aparecia plantado no meio da ESTRADA (bug do dono, Set/2026).
+        -- Elite/mini-boss ficam de fora de propósito: eles lutam na estrada
+        -- (memory/enemy_pose_and_scene_anchor.md).
         -- (require inline: love.load já está no teto de 60 upvalues do
         -- LuaJIT — mesmo motivo do _G.openCardPicker / __showMapSelection)
-        require("src.scenes.GameplayScene").resumeWorld(game)
+        require("src.systems.ResumeFlow").apply(game,
+            require("src.scenes.GameplayScene"))
         gameUI:show()
         menu:hide()
         -- Save feito NA ENCRUZILHADA (nós pendentes, nada escolhido):

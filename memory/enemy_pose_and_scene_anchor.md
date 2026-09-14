@@ -43,6 +43,32 @@ para dentro sem porta — o problema de mundo, não só o de repetição.
 tinha divergido antes (o comentário "v10.4: alinhado com o draw" era o
 sintoma). Regressão em `tools/test_enemy_pose.lua`.
 
+### 1b. A cena é nó + cutscene — e o CONTINUAR só tinha o nó
+
+> "quando estou em um boss, salvo e tento abrir pelo Continuar, ele abre com
+> o boss no meio do cenário normal" (dono, Set/2026, com captura)
+
+O segundo argumento de `isInteriorNode` não vem do save: `bossEntered` é
+**local de módulo** do `GameplayScene`, nasce `false` a cada `setGame` e só
+vira `true` quando `WorldRoad.enterCastle` completa. No Continuar nenhuma
+viagem dispara (`resumeWorld` já ancora `lastFloorKey` no andar salvo), logo
+a cerimônia da porta nunca roda e a flag fica `false` **para sempre** —
+`isInteriorNode("boss", false)` = estrada, com o chefe certo plantado nela.
+
+**Lição geral:** o que a cena mostra é **dado do save + estado encenado**.
+Retomar restaura o primeiro; o segundo tem que ser **reconstruído
+explicitamente**. Vale para qualquer flag de cutscene que futuramente decida
+cenário.
+
+**Onde mora a reconstrução:** `src/systems/ResumeFlow.lua`
+(`plan`/`apply`), chamado pelo `setContinueCallback` do `main.lua`. `plan`
+é pura e guarda duas regras: só `boss` entra no salão (elite/mini-boss
+continuam na estrada — seção 1 acima), e **não** se o save foi na
+encruzilhada (`pendingNodes` não vazio): `showMapSelection` NÃO limpa
+`currentNode`, então o nó do chefe recém-morto fica de resíduo e abriria o
+salão em cima da bifurcação. Regressão em `tools/test_resume.lua`; prova
+visual em `love . screenshot_resume_boss [antes]`.
+
 ---
 
 ## 2. `height * 0.68` nunca foi "a altura do chão"

@@ -190,6 +190,35 @@ sentidos agora são desenhados (`src/ui/OrbRow.lua`, `_drawFx`):
 | expulsar (overflow) | mesmo fantasma, âmbar, rótulo `orb.expelled` | `orbEvoke` no pitch mais grave de todos (0,72) |
 | pulsar | flash + número saindo DO orbe | `orbEvoke` agudo (meio-evoke), subindo com o slot |
 
+### O pulso também CHEGA em algum lugar
+
+Segunda parte do mesmo pedido: *"os orbes, quando dão dano ao final do turno,
+eles poderiam refletir algo no inimigo visualmente também, cada um de uma forma
+sabe, visual e som"*. O pulso já SAÍA do orbe (flash + número no slot); faltava
+a outra ponta.
+
+A metade perigosa é a que o pedido não cobre: **gelo dá Bloqueio e sagrado
+cura**. Estourar esses dois no inimigo ensinaria que defender fere — o mesmo
+defeito dos espinhos ([[defect_doctrine]] §3). Então cada pulso aterrissa onde o
+efeito dele realmente acontece (`PULSE_LANDING`, em `EffectSystem`):
+
+| orbe | pulso faz | marca cai em | som |
+|---|---|---|---|
+| raio | dano | **inimigo** (+ `triggerHurt`) | `impactLightning` |
+| fogo | dano | **inimigo** (+ `triggerHurt`) | `impactFire` |
+| gelo | Bloqueio | **painel do herói** | `impactIce` |
+| sagrado | cura | **painel do herói** | `impactHoly` |
+| sombra | engorda o próprio orbe | **o orbe** (`OrbRow.burstAtSlot`) | `impactDark` |
+
+A identidade não é inventada: vem do `CardFeel` (som + paleta + FÍSICA — fogo
+sobe, gelo cai, raio é rápido e sem gravidade). O `k` foi **medido** na captura
+`lovec . preview_battle_hud pulse`: abaixo de ~0,9 gelo e sombra sumiam contra o
+HUD sépia; todos seguem abaixo do impacto de carta (1,1–1,2), que é o que mantém
+"pulso < golpe".
+
+**Não há segundo número no alvo.** O valor já sai do orbe; repeti-lo a 0,0s de
+distância vira ruído. No alvo cai o IMPACTO (burst + reação), não a conta.
+
 **Removido:** o `evokeFlash` no slot. Quando um orbe sai a fila ANDA, então o
 flash acendia o orbe **seguinte** — o `notifyEvoke(1, ...)` de índice fixo era
 correto sobre a POSIÇÃO e mentiroso sobre o ORBE. Quem conta a saída é o

@@ -271,12 +271,30 @@ return {
     },
     mage_arcane_torrent = {
         id = "mage_arcane_torrent", name = "Torrente Arcana",
-        -- Rebalance v2 Jul/2026: rare vanilla no piso, attack 22->26. Pico
-        -- pos-largest-wins: 26 x1.5 (magic_focus) x1.5 (MAIOR joker) = 58;
-        -- x1.5 vulnerable = 87. Tripwire: mage >65% vitoria -> reverter 22.
+        -- Set/2026 — CUSTO 3 -> 2, dano 26 -> 20. O dono jogou e achou a carta
+        -- ruim apesar de ela ter o MELHOR dano por mana do mago (8,7).
+        --
+        -- O erro estava na conta que a justificava, nao no numero: o comentario
+        -- anterior calculava o pico como "26 x1.5 (magic_focus) x1.5 (joker)",
+        -- mas `magic_focus` exige DUAS cartas com tag magic no mesmo turno e
+        -- PLAYER_MAX_MANA e 3. Custo 3 consome o turno inteiro, entao o
+        -- multiplicador que sustentava o balanceamento era INALCANCAVEL na
+        -- configuracao padrao. Ela foi buffada (22->26) e vigiada por tripwire
+        -- pelo lado do excesso; ninguem olhou o lado de baixo.
+        --
+        -- Comparacao que o jogador faz sem saber que faz: com os mesmos 3 de
+        -- mana, tres comuns de 1 (Relampago 8 + Raio Esferico 8 + Descarga 7)
+        -- dao 23 base, viram ~34 com magic_focus ativo E deixam TRES orbes
+        -- canalizados, que ainda pulsam nos turnos seguintes. Uma rare perdia
+        -- para tres comuns.
+        --
+        -- Com custo 2 sobra 1 de mana: o combo passa a ser alcancavel e a
+        -- premissa do balanceamento volta a valer. 20 x1.5 x1.5 = 45 de pico
+        -- real, contra 58 de um pico teorico que nunca acontecia.
+        -- Tripwire: mago >65% de vitoria no autoplay -> baixar attack pra 18.
         type = "attack", subtype = "skill",
-        cost = 3, attack = 26, defense = 0,
-        description = "Causa 26 de dano.",
+        cost = 2, attack = 20, defense = 0,
+        description = "Causa 20 de dano.",
         image = "assets/cards/attack/theRock.png",
         rarity = "rare", class = "mage",
         tags = { "magic", "finisher" },

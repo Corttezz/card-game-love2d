@@ -189,6 +189,10 @@ GameplayScene.updatePlayButtonPosition = updatePlayButtonPosition
 -- IMPORTANTE: Card:draw trata (x,y) como CANTO SUPERIOR-ESQUERDO (o centro é
 -- x + imgW/2), então o leque é centrado VISUALMENTE numa área que exclui a
 -- coluna dos botões — nunca invade a direita.
+-- Folga entre o pe do inimigo e o topo da mao. 12px: o bastante pra sombra de
+-- contato respirar sem o inimigo parecer levitando acima do piso.
+local ENEMY_HAND_CLEARANCE = 12
+
 local function handLayout()
     local width  = love.graphics.getWidth()
     local height = love.graphics.getHeight()
@@ -470,6 +474,27 @@ function GameplayScene.draw()
         -- Set/2026). A cena também diz a força e a direção da sombra.
         local anchor = SceneAnchors.get(sceneKey)
         enemyCx, enemyCy = SceneAnchors.groundAnchor(sceneKey, width, sceneH)
+
+        -- TETO DA MAO: o pe nunca pousa abaixo do topo das cartas.
+        --
+        -- A linha de chao e dado da ARTE (cada PNG tem o piso onde o artista
+        -- pos), e no `castle_hall_2` a laje so comeca em 83% da altura --
+        -- enquanto a mao comeca em 80% (`handLayout`). O chefe do ato 2
+        -- nascia com o pe 3% ABAIXO do topo das cartas e a metade de baixo
+        -- dele ficava atras delas ("boss 2 esta ficando muito la embaixo, as
+        -- cartas estao na frente dele" -- dono, Set/2026).
+        --
+        -- Subir o pe e melhor que encolher o inimigo: o chefe perde presenca
+        -- se diminuir, e a laje do hall 2 vai de ~0,78 ate a base da tela, ou
+        -- seja, o pe continua na PEDRA depois do corte. A sombra de contato
+        -- acompanha (e desenhada no mesmo cy), entao a leitura de "esta no
+        -- chao" nao se perde.
+        --
+        -- Vale pra qualquer cena e qualquer inimigo: e a mao que define ate
+        -- onde o mundo pode descer, e ela e responsiva.
+        local _, _, handTopY = handLayout()
+        local tetoY = math.floor(handTopY - ENEMY_HAND_CLEARANCE)
+        if enemyCy > tetoY then enemyCy = tetoY end
         enemyBbox = EnemyRenderer.draw(game, enemyCx, enemyCy, {
             shadowA = anchor.shadowA,
             lightXr = anchor.lightXr,

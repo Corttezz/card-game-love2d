@@ -93,6 +93,11 @@ local DELEGATION = {
     -- Numero de dano + reacao do inimigo pra magia/evoke, que antes so tinham
     -- burst (o jogador via a MESMA explosao pra "levou dano" e "ganhou orbe").
     ["showEnemyDamage"]   = "showEnemyDamage",
+    -- A reacao FISICA do inimigo saiu de showEnemyDamage pra ca quando o pulso
+    -- de orbe passou a precisar dela SEM numero (o valor ja sai do orbe).
+    ["enemyHurt"]         = "enemyHurt",
+    -- Aterrissagem do pulso: som do elemento + burst no alvo certo.
+    ["landPulse"]         = "landPulse",
 }
 
 -- ===========================================================================

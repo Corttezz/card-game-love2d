@@ -53,10 +53,18 @@ end
 -- numero nem reacao — so um burst. Sem isso o jogador do mago via a mesma
 -- explosao generica pra "levou dano" e pra "ganhou um orbe". `v` negativo nunca
 -- chega aqui; headless/UI ausente = no-op.
+local function enemyHurt()
+    local okER, ER = pcall(require, "src.ui.EnemyRenderer")
+    if okER and ER.triggerHurt then pcall(ER.triggerHurt) end
+end
+
 local function showEnemyDamage(v)
     if not v or v <= 0 then return end
     local okER, ER = pcall(require, "src.ui.EnemyRenderer")
     if not okER then return end
+    -- Inline de proposito (nao chama enemyHurt): a varredura estatica de
+    -- tools/audit_feedback.lua segue UM nivel de delegacao, entao a reacao do
+    -- inimigo precisa ser visivel aqui pra o tipo de efeito nao parecer mudo.
     if ER.triggerHurt then pcall(ER.triggerHurt) end
     if not ER.getLastPos then return end
     local ex, ey = ER.getLastPos()
@@ -648,6 +656,73 @@ function EffectSystem:_stepEvokeOrb(game, sink, ord)
     end, "ORB")
 end
 
+-- ==============================================================================
+-- ONDE O PULSO ATERRISSA (Set/2026, pedido do dono: "os orbes, quando dao dano
+-- ao final do turno, eles poderiam refletir algo no inimigo visualmente
+-- tambem, cada um de uma forma")
+-- ==============================================================================
+-- O pulso ja SAIA do orbe (flash + numero no slot). Faltava a outra ponta: ele
+-- CHEGAR em algum lugar e deixar marca. Mas "no inimigo" so vale pros pulsos
+-- que de fato ferem — a doutrina de defeitos (§3) diz que feedback certo na
+-- HORA/LUGAR errado e pior que feedback nenhum, porque ensina causalidade
+-- errada. Conferido em EffectSystem.orbPulseValue + orbPassiveTick:
+--
+--   raio, fogo -> DANO no inimigo   -> marca no INIMIGO
+--   gelo       -> Bloqueio no heroi -> marca no PAINEL DO JOGADOR
+--   sagrado    -> cura o heroi      -> marca no PAINEL DO JOGADOR
+--   sombra     -> cresce no proprio orbe (nao sai dali) -> marca NO ORBE
+--
+-- A identidade de cada elemento nao e inventada aqui: vem do CardFeel (som de
+-- impacto + paleta + FISICA das particulas — fogo sobe, gelo cai, raio e rapido
+-- e sem gravidade, sombra sobe devagar). Ver memory/card_feel.md.
+--
+-- `pitch` e a assinatura do elemento; `+ (idx-1)*STEP` mantem a contagem da
+-- esquerda pra direita (a fileira toca como teclado, igual a canalizacao).
+-- `k` (intensidade do burst) foi MEDIDO na captura de validacao
+-- (`lovec . preview_battle_hud pulse`): abaixo de ~0,9 as particulas de gelo e
+-- sombra sumiam contra o HUD sepia. Todos seguem ABAIXO do impacto de carta
+-- (1,1-1,2), que e o que mantem "pulso < golpe" na leitura.
+local PULSE_LAND_STEP = 0.06
+local PULSE_LANDING = {
+    -- raio: estalo agudo e instantaneo, no inimigo
+    lightning = { theme = "lightning", where = "enemy",  pitch = 1.22, k = 1.00 },
+    -- fogo: mais grave e encorpado que o raio, brasas subindo no inimigo
+    fire      = { theme = "fire",      where = "enemy",  pitch = 1.08, k = 1.10 },
+    -- gelo: cristalino, e DEFENSIVO — cai no painel do heroi, nunca no inimigo
+    ice       = { theme = "ice",       where = "player", pitch = 1.18, k = 0.95 },
+    -- sagrado: cura — brilho no heroi
+    holy      = { theme = "holy",      where = "player", pitch = 1.26, k = 0.90 },
+    -- sombra: nao sai da fileira, so engorda o proprio orbe
+    dark      = { theme = "dark",      where = "orb",    pitch = 0.94, k = 0.95 },
+}
+
+-- Toca a assinatura do elemento e estoura o burst NO LUGAR CERTO.
+-- `landed` = o efeito realmente aconteceu (pulso > 0, alvo vivo). Pulso que nao
+-- fez nada nao pode soar como se tivesse feito.
+local function landPulse(orbType, idx, landed)
+    local cfg = PULSE_LANDING[orbType]
+    if not cfg or not landed then return end
+    local theme = CardFeel.THEMES[cfg.theme]
+    if theme and theme.sfx then
+        Sfx.play(theme.sfx, { pitch = cfg.pitch + (idx - 1) * PULSE_LAND_STEP })
+    end
+    if cfg.where == "enemy" then
+        enemyHurt()
+        CardFeel.burstAtEnemy(cfg.theme, cfg.k)
+    elseif cfg.where == "player" then
+        CardFeel.burstAtPlayer(cfg.theme, cfg.k)
+    elseif cfg.where == "orb" then
+        notifyOrbUI("burstAtSlot", idx, cfg.theme, cfg.k)
+    end
+end
+
+-- Porta de validacao VISUAL (tools/preview_battle_hud.lua `pulse`): dispara so
+-- a aterrissagem, sem mexer em estado nenhum. Existe porque o efeito desta
+-- rodada e particula na tela — sem caminho visual, "validei" seria mentira.
+function EffectSystem.previewPulseLanding(orbType, idx)
+    landPulse(orbType, idx or 1, true)
+end
+
 -- Pulso passivo dos orbes (fim do turno do jogador, identidade Defect/StS):
 -- cada orbe canalizado dispara uma versao fraca do seu evoke — o motor do
 -- mago gera pressao POR TURNO, nao so no evoke (auditoria Jul/2026: orbe
@@ -669,25 +744,24 @@ function EffectSystem:orbPassiveTick(game, sink)
         local idx, o = i, orb
         local pulse = EffectSystem.orbPulseValue(o, focus)
         CombatBeats.step(sink, "orb.pulse." .. tostring(o.type), function()
-            -- O pulso era o unico dos tres momentos do orbe SEM som (auditoria
-            -- Set/2026). E meio-evoke, entao soa como um evoke pequeno: mesmo
-            -- timbre, pitch alto, subindo com o slot — a fileira toca da
-            -- esquerda pra direita e o jogador CONTA os orbes que agiram.
-            Sfx.play("orbEvoke", { pitch = 1.28 + (idx - 1) * 0.10 })
+            -- O NUMERO sai do orbe (causa) e o IMPACTO cai no alvo (efeito).
+            -- De proposito nao ha segundo numero no alvo: o valor ja foi dito
+            -- uma vez, e repeti-lo a 0,0s de distancia vira ruido.
+            local landed = false
             if o.type == "lightning" or o.type == "fire" then
                 notifyOrbUI("notifyPulse", idx, "-" .. pulse, "damage")
                 if pulse > 0 and game.enemy and game.enemy:isAlive() then
                     game.enemy:takeDamage(pulse)
                     checkEnrage(game)
                     game:addMessage(msg("orb_pulse_dmg", { value = pulse }), "info")
-                    local okER, ER = pcall(require, "src.ui.EnemyRenderer")
-                    if okER and ER.triggerHurt then ER.triggerHurt() end
+                    landed = true
                 end
             elseif o.type == "ice" then
                 notifyOrbUI("notifyPulse", idx, "+" .. pulse, "armor")
                 if pulse > 0 then
                     p:addArmor(pulse)
                     game:addMessage(msg("orb_pulse_armor", { value = pulse }), "info")
+                    landed = true
                 end
             elseif o.type == "holy" then
                 notifyOrbUI("notifyPulse", idx, "+" .. pulse, "heal")
@@ -695,11 +769,14 @@ function EffectSystem:orbPassiveTick(game, sink)
                     local amount = self:applyHealMultiplier(game, pulse)
                     p:heal(amount)
                     game:addMessage(msg("orb_pulse_heal", { value = amount }), "info")
+                    landed = true
                 end
             elseif o.type == "dark" then
                 o.value = (o.value or 1) + 2   -- cresce canalizado; evoke dobra
                 notifyOrbUI("notifyPulse", idx, "+2", "grow")
+                landed = true
             end
+            landPulse(o.type, idx, landed)
         end, "ORB")
     end
 end

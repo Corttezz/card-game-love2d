@@ -66,6 +66,9 @@ function Game:new()
     -- se tanto processCardInCombat quanto enemyTurn detectam morte no mesmo tick.
     -- Resetado em startGame/nextPhase pra proxima batalha disparar normalmente.
     instance._deathHandled = false
+    -- Par do anterior: AGENDADA (existe beat) x ACONTECEU (o beat rodou).
+    -- Ver Game:announceDeathIfPending — confundir os dois travou o jogo.
+    instance._deathStaged = false
 
     -- Novos sistemas
     instance.deckManager = DeckManager:new()
@@ -136,6 +139,7 @@ function Game:startGame()
     self.discard = {}
     self._exhaustedThisBattle = {}
     self._deathHandled = false
+    self._deathStaged = false
     self._deathPauseTimer = 0
     self._saveDeleted = false
     self._victoryRecorded = false
@@ -1171,23 +1175,43 @@ end
 -- beat proprio.
 --
 -- Retorna true se a morte foi encenada nesta chamada.
+-- AGENDAR NAO E EXECUTAR — a distincao que travou o jogo (Set/2026)
+--
+-- Primeira versao guardava so `_deathHandled`, que so vira true DENTRO do beat,
+-- quando ele roda. Entre AGENDAR e RODAR passam-se dezenas de frames (a cadeia
+-- da carta continua: procs, orbes, dissolve). E o checkpoint da GameplayScene
+-- pergunta "morto e nao encenado?" A CADA FRAME — via um `announceDeathIfPending`
+-- por frame. Resultado: cada frame dessa janela empurrava OUTRO beat de morte
+-- de 1,1s pra fila. Medido em tools/test_death_midchain: 11 beats `enemy.death`
+-- numa jogada de 2 cartas = 12s de fila morta; com a fila travada, `isBlocking()`
+-- nunca cai, os botoes ficam cinzas e a tela de espolios/vitoria NUNCA entra
+-- ("matei o boss e o jogo parou", dono).
+--
+-- Por isso existem DUAS flags, e elas nao sao a mesma coisa:
+--   `_deathStaged`  — a morte ja foi AGENDADA (existe um beat pra ela).
+--   `_deathHandled` — a morte ja ACONTECEU (o `_onEnemyDeath` rodou).
+-- Quem decide "preciso agendar?" tem que olhar a PRIMEIRA. Guardar intencao
+-- com o flag do resultado e a forma geral deste defeito.
 function Game:announceDeathIfPending(sink)
     local e = self.enemy
     if not e then return false end
-    -- REDE: inimigo morto e ainda nao encenado conta como pendente mesmo sem a
+    if self._deathStaged or self._deathHandled then return false end
+    -- REDE: inimigo morto e ainda nao agendado conta como pendente mesmo sem a
     -- marcacao. A marcacao cobre toda fonte de dano de HOJE; a rede cobre a
     -- fonte de AMANHA (quem mexer na vida por fora do Enemy). Nenhuma morte
     -- pode chegar a tela de espolios sem ter acontecido antes.
-    if not (e._pendingDeath or (not e:isAlive() and not self._deathHandled)) then
-        return false
-    end
+    if not (e._pendingDeath or not e:isAlive()) then return false end
     e._pendingDeath = false
-    if self._deathHandled then return false end
+    self._deathStaged = true
 
     local enemyRef = e
     local body = function()
-        -- Passo atrasado de uma batalha que ja trocou: no-op.
-        if self.enemy ~= enemyRef then return end
+        -- Passo atrasado de uma batalha que ja trocou: no-op. Solta o
+        -- agendamento pra que a batalha NOVA possa agendar a morte dela.
+        if self.enemy ~= enemyRef then
+            self._deathStaged = false
+            return
+        end
         self:_onEnemyDeath()
     end
 
@@ -1730,6 +1754,7 @@ function Game:nextPhase()
     -- atendido: exauridas não voltam pro discard DENTRO da batalha.
     self._exhaustedThisBattle = {}
     self._deathHandled = false
+    self._deathStaged = false
     self._deathPauseTimer = 0
     self._saveDeleted = false
 

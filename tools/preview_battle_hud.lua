@@ -11,6 +11,12 @@
 --             mostra o cometa do elemento ENTRANDO na fileira e o fantasma do
 --             orbe expulso SAINDO dela, ao mesmo tempo, para comparar os dois
 --             sentidos num quadro só.
+--   pulse     ONDE cada pulso de fim de turno ATERRISSA →
+--             preview_battle_hud_pulse.png. COMPOSIÇÃO deliberada: no jogo os
+--             três pulsos são beats sequenciais (0,40s cada), aqui os três
+--             caem no mesmo quadro de propósito, porque o que se valida é o
+--             LUGAR — raio no inimigo, gelo no painel do herói, sombra no
+--             próprio orbe. Um quadro por elemento não deixaria comparar.
 
 local M = {}
 
@@ -61,6 +67,28 @@ function M.run()
     -- Modo `orb`: a fileira CHEIA é o estado que produz overflow — é nele que
     -- o jogador perde o fio ("um orbe sumiu e eu não vi por quê").
     local orbMode = _G.PREVIEW_HUD_ORB
+    local pulseMode = _G.PREVIEW_HUD_PULSE
+    -- Modo `orbs`: os CINCO tipos lado a lado, no tamanho de uso e sobre o
+    -- fundo real. E o unico jeito de saber se eles se distinguem ENTRE SI --
+    -- um de cada vez, ampliado, engana (ui_layout_invariants / doutrina §5).
+    if _G.PREVIEW_HUD_ORBS then
+        game.player.orbSlots = 6
+        game.player.orbs = {
+            { type = "lightning", value = 4 },
+            { type = "ice",       value = 4 },
+            { type = "fire",      value = 6 },
+            { type = "dark",      value = 5 },
+            { type = "holy",      value = 6 },
+        }
+    end
+    if pulseMode then
+        -- Um de cada destino, pra comparar os três lugares no mesmo quadro.
+        game.player.orbs = {
+            { type = "lightning", value = 4 },
+            { type = "ice", value = 4 },
+            { type = "dark", value = 5 },
+        }
+    end
     if orbMode then
         game.player.orbs = {
             { type = "ice", value = 4 },
@@ -158,13 +186,77 @@ function M.run()
         FloatingText.draw()
     end
 
+    -- ===== Modo `pulse`: onde cada pulso deixa marca =====
+    -- O primeiro hud:draw acima existe pra popular OrbRow.slotPos (o burst de
+    -- sombra ancora no orbe). Disparamos as três aterrissagens direto pelo
+    -- EffectSystem (mesma função que o beat chama) e adiantamos as partículas.
+    if pulseMode then
+        local EffectSystem = require("src.systems.EffectSystem")
+        local ParticlesManager = require("engine.ParticlesManager")
+        local FloatingText = require("src.ui.FloatingText")
+        local OrbRow = require("src.ui.OrbRow")
+        ParticlesManager.clear()
+        -- Âncora do inimigo FALSIFICADA (mesmo idioma do hover falso de mouse
+        -- acima): o estado fake não tem sprite, então EnemyRenderer.getLastPos
+        -- devolve nil e o burst no inimigo — justamente o que se quer ver —
+        -- nunca sairia. Emprestamos o centro que a própria ferramenta usou pro
+        -- placeholder, e o caminho REAL de landPulse roda inteiro.
+        -- As particulas sao pequenas (1-3px) de proposito: e a mesma linguagem
+        -- do impacto de carta. Entao a ferramenta tambem IMPRIME onde cada
+        -- burst nasceu — a captura confirma o gesto, o texto confirma o LUGAR.
+        local CF = require("src.systems.CardFeel")
+        local realBurst = CF.burst
+        local emitted = {}
+        CF.burst = function(theme, x, y, k)
+            local inst = realBurst(theme, x, y, k)
+            emitted[#emitted + 1] = { theme = theme, x = x, y = y, inst = inst }
+            return inst
+        end
+        local ER = require("src.ui.EnemyRenderer")
+        local realLastPos = ER.getLastPos
+        ER.getLastPos = function() return enemyCx, enemyCy - 70 end
+
+        EffectSystem.previewPulseLanding("lightning", 1)   -- -> inimigo
+        EffectSystem.previewPulseLanding("ice", 2)         -- -> painel do herói
+        EffectSystem.previewPulseLanding("dark", 3)        -- -> o próprio orbe
+        ER.getLastPos = realLastPos
+        CF.burst = realBurst
+        print("[preview] emissores de particula:", ParticlesManager.activeCount())
+        OrbRow.notifyPulse(1, "-3", "damage")
+        OrbRow.notifyPulse(2, "+3", "armor")
+        OrbRow.notifyPulse(3, "+2", "grow")
+        for _ = 1, 9 do                    -- ~0.3s: partículas espalhadas
+            ParticlesManager.update(1 / 30)
+            OrbRow.update(1 / 30, game)
+            FloatingText.update(1 / 30)
+        end
+        for _, e in ipairs(emitted) do
+            print(string.format("[preview] burst %-10s em (%d,%d) com %d particulas",
+                e.theme, e.x, e.y, e.inst and #e.inst.particles or -1))
+        end
+        love.graphics.clear(0.08, 0.05, 0.04, 1)
+        love.graphics.setColor(0.14, 0.10, 0.06, 1)
+        love.graphics.rectangle("fill", 0, 0, w, h * 0.55)
+        love.graphics.setColor(0.06, 0.04, 0.03, 1)
+        love.graphics.rectangle("fill", 0, h * 0.55, w, h * 0.45)
+        love.graphics.setColor(1, 1, 1, 1)
+        EnemyRenderer.draw(game, enemyCx, enemyCy)
+        EnemyHud.draw(game, bbox, enemyCx, enemyCy)
+        hud:draw(game)
+        ParticlesManager.draw()
+        FloatingText.draw()
+    end
+
     love.mouse.getPosition = realMouse
 
     love.graphics.setCanvas()
 
     -- Salva PNG
     local img = canvas:newImageData()
-    local out = orbMode and "preview_battle_hud_orb.png" or "preview_battle_hud.png"
+    local out = _G.PREVIEW_HUD_ORBS and "preview_battle_hud_orbs.png"
+        or orbMode and "preview_battle_hud_orb.png"
+        or pulseMode and "preview_battle_hud_pulse.png"
+        or "preview_battle_hud.png"
     img:encode("png", out)
     print("[preview] salvou", love.filesystem.getSaveDirectory() .. "/" .. out)
 end
