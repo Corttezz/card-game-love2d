@@ -240,6 +240,14 @@ return {
         threat_label = "AMEACA:",
     },
 
+    -- Rotulos curtos da fileira de orbes (src/ui/OrbRow.lua): o que o orbe FEZ
+    -- ao sair do slot. Evocar e escolha do jogador; expulsar e a fileira cheia
+    -- abrindo vaga -- dois acontecimentos diferentes, dois rotulos.
+    orb = {
+        evoked   = "EVOCADO",
+        expelled = "EXPULSO",
+    },
+
     -- Fogueira + picker de cartas (components/RestScreen.lua). O picker serve
     -- a TRES modos: forjar (fogueira/loja), remover e duplicar (eventos).
     rest = {

@@ -28,6 +28,15 @@ end
 local Game = {}
 Game.__index = Game
 
+-- Quanto tempo a MORTE do inimigo segura o combate: o clipe de death rodando
+-- (DEATH_FPS x ~7 frames ~= 0.7s) mais o respiro que separa "ele morreu" de
+-- "acabou". Serve ao beat da morte E ao relogio da cena — uma duracao so.
+-- PENDENCIA ASSUMIDA: valor de ritmo deveria morar em `CombatBeats.HOLD`
+-- (tabela de tempos UNICA do combate) como `DEATH`. Vai como numero cru
+-- enquanto nao entra la; `CombatBeats.hold` aceita numero e aplica
+-- `CombatBeats.speed` igual, entao o knob global continua valendo.
+Game.DEATH_HOLD = 1.1
+
 function Game:new()
     local instance = setmetatable({}, Game)
     instance.deck = {} -- Todas as cartas disponíveis no jogo
@@ -873,7 +882,6 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
         local damage = computeCardValue(card.attack,
             scaledStat(self.player.strength, "strength_scaling"))
 
-        local wasAlive = self.enemy.health > 0
         self.enemy:takeDamage(damage)
 
         -- Passiva rogue "Toxinas": 1º ataque do turno aplica 1 de Veneno.
@@ -895,14 +903,12 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
         local FloatingText = require("src.ui.FloatingText")
         FloatingText.atCard(card, "-" .. tostring(damage), { kind = "damage" })
 
-        -- Dispara death pipeline (anim + sfx + pausa) se a carta foi fatal.
-        if wasAlive and self.enemy.health <= 0 then
-            self:_onEnemyDeath()
-        end
-
-        -- Cruzou os 30% com ESTE golpe? O "ele enfureceu" e o PRIMEIRO passo
+        -- Morreu ou cruzou os 30% com ESTE golpe? Os dois sao o PRIMEIRO passo
         -- depois do dano — antes do veneno, da cura, do que mais a carta faca.
-        self:announceEnrageIfPending(sink)
+        -- A deteccao da morte nao mora mais AQUI (era um `wasAlive` local, e
+        -- por isso so este caminho encenava a morte): mora no Enemy, marcada em
+        -- toda queda de vida, e chega aqui como `_pendingDeath`.
+        self:settleEnemyDamage(sink)
 
         -- Triggers on-attack (ex: lifesteal de jokers, on_attack_debuff em cartas)
         -- procSink: triggers de joker também viram PROCS (tick no slot).
@@ -1097,7 +1103,7 @@ end
 -- instante dele.
 --
 -- Retorna true se anunciou.
-function Game:announceEnrageIfPending(sink)
+function Game:_announceEnrageIfPending(sink)
     local e = self.enemy
     if not e or not e._pendingEnrage then return false end
     e._pendingEnrage = false
@@ -1138,6 +1144,102 @@ function Game:announceEnrageIfPending(sink)
         CombatBeats.push("enemy.enraged", body, "STATUS")
     end
     return true
+end
+
+-- ============================================================================
+-- A MORTE DO INIMIGO — TAMBEM UM ACONTECIMENTO (Set/2026)
+-- ============================================================================
+-- Queixa do dono jogando: "em alguns cenarios o mob nao esta tendo a animacao
+-- de morrer, cair no chao etc. Acho que e quando se buffa".
+--
+-- A hipotese "quando se buffa" estava PERTO: o que os cenarios sem morte tem
+-- em comum nao e o buff, e a FONTE DO GOLPE FINAL. `_onEnemyDeath` (animacao,
+-- rugido, shake, pontuacao da batalha) so era chamado do caminho da carta de
+-- ATAQUE. Matar com magia, com pulso ou evocacao de orbe, com veneno ou com
+-- espinhos levava a vida a zero sem que ninguem encenasse nada — e as fontes
+-- que o dono associa a "se buffar" (Foco + orbes do mago, espinhos armados por
+-- uma carta de defesa) sao justamente essas.
+--
+-- A correcao espelha o ENFURECIDO: `Enemy` marca a VIRADA vivo->morto
+-- (`_pendingDeath`, no unico lugar por onde a vida cai) e aqui isso vira um
+-- BEAT que segura a fila pelo tempo de o corpo cair. Fonte nenhuma fica muda,
+-- porque a deteccao deixou de morar no caminho e passou a morar na entidade.
+--
+-- `sink` presente (resolucao de carta) = a morte vira um passo da carta, logo
+-- depois do dano que a causou. Dentro de um beat (pulso de orbe, reflexo de
+-- espinhos, veneno) = este E o instante, e a fila segura mais. Fora de tudo =
+-- beat proprio.
+--
+-- Retorna true se a morte foi encenada nesta chamada.
+function Game:announceDeathIfPending(sink)
+    local e = self.enemy
+    if not e then return false end
+    -- REDE: inimigo morto e ainda nao encenado conta como pendente mesmo sem a
+    -- marcacao. A marcacao cobre toda fonte de dano de HOJE; a rede cobre a
+    -- fonte de AMANHA (quem mexer na vida por fora do Enemy). Nenhuma morte
+    -- pode chegar a tela de espolios sem ter acontecido antes.
+    if not (e._pendingDeath or (not e:isAlive() and not self._deathHandled)) then
+        return false
+    end
+    e._pendingDeath = false
+    if self._deathHandled then return false end
+
+    local enemyRef = e
+    local body = function()
+        -- Passo atrasado de uma batalha que ja trocou: no-op.
+        if self.enemy ~= enemyRef then return end
+        self:_onEnemyDeath()
+    end
+
+    if sink then
+        sink[#sink + 1] = { label = "enemy.death", fn = body, hold = Game.DEATH_HOLD }
+    elseif CombatBeats.extendCurrent(Game.DEATH_HOLD) then
+        -- Ja estamos dentro de um beat (o orbe que pulsou, o veneno que ticou,
+        -- o espinho que refletiu): a morte acontece NO golpe que a causou e a
+        -- fila segura ate o corpo assentar.
+        CombatBeats.mark("enemy.death")
+        body()
+    else
+        CombatBeats.push("enemy.death", body, Game.DEATH_HOLD)
+    end
+    return true
+end
+
+-- PONTE UNICA DO POS-DANO: tudo que um dano ao inimigo pode ter causado e
+-- encenado aqui, em ordem — primeiro a MORTE (se matou, nada mais importa),
+-- depois o ENFURECIDO. Chamada depois de cada dano, de qualquer fonte.
+function Game:settleEnemyDamage(sink)
+    local died = self:announceDeathIfPending(sink)
+    local raged = self:_announceEnrageIfPending(sink)
+    return died or raged
+end
+
+-- ALIAS de compatibilidade: `settleEnemyDamage` e o nome honesto, mas
+-- `announceEnrageIfPending` e o nome que o EffectSystem conhece (o helper
+-- `checkEnrage` chama isto depois de CADA takeDamage dele — foi justamente
+-- essa varredura ja existente que deu cobertura de graca as 6 fontes de dano
+-- de la). PENDENCIA ASSUMIDA: quando der pra mexer no EffectSystem, trocar
+-- `checkEnrage` pra chamar `settleEnemyDamage` e apagar este alias — o nome
+-- de um hook universal nao pode prometer so metade do que ele faz.
+function Game:announceEnrageIfPending(sink)
+    return self:settleEnemyDamage(sink)
+end
+
+-- A morte ja "aconteceu na tela"? Enquanto for false, nenhuma tela de desfecho
+-- (espolios, vitoria) pode entrar. E a regra que o dono pediu por nome: "a tela
+-- de vitoria ta aparecendo rapido demais, so aparece quando a gente tem a
+-- confirmacao que ele morreu". Mora aqui, e nao inline na cena, pra ser
+-- alcancavel por teste (doutrina de defeitos 1).
+function Game:isDeathSettled()
+    return not self._deathPauseTimer or self._deathPauseTimer <= 0
+end
+
+-- Pode trocar pra tela de desfecho? Combate parado (inclui a fila de beats) E
+-- morte assentada.
+function Game:isReadyForEndScreen()
+    local cs = self.combatAnimationSystem
+    if cs and cs.isBlocking and cs:isBlocking() then return false end
+    return self:isDeathSettled()
 end
 
 -- ============================================================================
@@ -1394,12 +1496,20 @@ function Game:_pushEnemyTurnTail(beat)
             local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
             if okCF then CardFeel.burstAtEnemy("poison", 0.8) end
         end
+        -- Veneno mata igual: se este tick derrubou a criatura, ela cai AGORA —
+        -- neste beat — e nao tres passos adiante, com a barra zerada e o
+        -- monstro em pe enquanto o turno continua rodando. (`onTurnEnd` mexe na
+        -- vida na aritmetica crua, por isso a morte nao vem por `takeDamage`.)
+        self:announceDeathIfPending(nil)
     end), hasDot and "DOT" or "MICRO")
 
     -- Telegrafa a PROXIMA acao (EnemyHud mostra durante o turno do jogador).
     -- Beat proprio: o icone do proximo golpe aparecendo e informacao, e
     -- aparecer junto com o veneno ticando era parte do borrao.
     CombatBeats.push("enemy.next_intent", beat(function()
+        -- Cadaver nao telegrafa o proximo golpe (o HUD chegava a piscar o
+        -- intent de um inimigo que acabou de cair pro veneno/espinhos).
+        if not self.enemy:isAlive() then return end
         self.enemy:rollIntent()
     end), "DECAY")
 
@@ -1454,11 +1564,11 @@ function Game:_pushEnemyTurnTail(beat)
     CombatBeats.push("turn.player_ready", beat(function()
         self._enemyActing = false
         self.turn = "player"
-        -- Se o inimigo morreu durante o rabo (espinhos, veneno, gatilho), o
-        -- pipeline de morte dispara aqui (idempotente).
-        if not self.enemy:isAlive() then
-            self:_onEnemyDeath()
-        end
+        -- Rede final do turno: se o inimigo morreu durante o rabo e nada
+        -- encenou (fonte nova, ordem inesperada), a morte acontece AQUI — e com
+        -- beat, nao num piscar: `extendCurrent` estica este MICRO pro tempo de
+        -- a criatura cair. Idempotente via `_deathHandled`.
+        self:announceDeathIfPending(nil)
     end), "MICRO")
 end
 
@@ -1479,7 +1589,11 @@ function Game:_onEnemyDeath()
     -- intensity-based pra impacto cumulativo no boss death (Fase 6.4).
     if _G.jiggleScreen then _G.jiggleScreen(1.5) end
     Sfx.play("enemyDeath")
-    self._deathPauseTimer = 1.1
+    -- Mesmo numero do beat da morte (Game.DEATH_HOLD): o relogio da cena e o
+    -- hold da fila sao a MESMA duracao, uma fonte so. O beat segura o combate;
+    -- o relogio segura a troca de tela (espolios E vitoria) — as duas metades
+    -- da mesma regra, "a criatura cai antes de acabar".
+    self._deathPauseTimer = Game.DEATH_HOLD
 
     -- F3: fecha a pontuação da batalha (TINTA×SELO); game.score espelha a run.
     self.scoreSystem:finishBattle(self)

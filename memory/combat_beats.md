@@ -148,6 +148,61 @@ beat que está rodando** e `CombatBeats.mark(label)` registra o acontecimento no
 trace sem criar uma entrada na fila. Assim o caso comum não paga ar morto e o
 caso raro ganha o instante dele.
 
+## ORBES: o beat existia, a MUTAÇÃO não morava dentro dele
+
+Segunda rodada do mesmo pedido (Set/2026), o dono jogando de mago: *"melhorar o
+comportamento de canalização... Chuva de Meteoros canaliza muitas ao mesmo
+tempo, fica confuso se está dando dano ou se canalizando uma nova"*.
+
+Os beats `orb.channel` / `orb.evoke` **já existiam** — e mesmo assim o defeito
+continuava, porque só o SOM e a animação estavam na fila. `player:addOrb` e
+`popOldestOrb` rodavam na **COLETA**, dentro do beat de impacto da carta. Então
+a fileira ia de 0 a 3 orbes no mesmo frame do número de dano, e os beats
+seguintes tocavam efeito em cima de orbes que já estavam lá há um segundo.
+
+**A regra que isso destila:** um beat só vale se o ESTADO mudar dentro dele.
+Beat que só carrega feedback de uma mutação já ocorrida é legenda, não
+acontecimento.
+
+Hoje (`EffectSystem:_stepChannelOrb` / `:_stepEvokeOrb`, fonte única também do
+`channel_per_turn` do coringa Eletrodinâmica):
+
+```
+card.impact.attack > orb.make_room > orb.channel > orb.make_room > orb.channel
+  > ... > card.dissolve
+```
+
+- **`orb.make_room`** (`MICRO` 0,10) é o passo CONDICIONAL: barato quando há
+  vaga; quando a fileira está CHEIA ele expulsa o mais antigo, chama
+  `CombatBeats.mark("orb.overflow")` + `extendCurrent("ORB")` e vira o terceiro
+  acontecimento. Antes o orbe sumia sem instante e sem motivo visível.
+- **`orb.channel`** (`ORB` 0,40) é onde `addOrb` roda. Um orbe por beat.
+
+### A linguagem: DIREÇÃO, COR e ALTURA
+
+Dano vai PARA o inimigo; canalizar vem PARA a fileira; evocar SAI dela. Os três
+sentidos agora são desenhados (`src/ui/OrbRow.lua`, `_drawFx`):
+
+| momento | gesto | som |
+|---|---|---|
+| canalizar | cometa da cor do elemento ENTRA do centro do palco até o slot; o slot fica vazio enquanto o orbe voa e só então nasce (pop-in) | `orbChannel`, pitch **subindo com o slot** (1→3): a fileira vira teclado e os orbes são contáveis, como o cash out |
+| evocar | fantasma do orbe SAI do slot rumo ao combate, com o ícone do elemento e o rótulo `orb.evoked` | `orbEvoke` grave, **descendo** em lote |
+| expulsar (overflow) | mesmo fantasma, âmbar, rótulo `orb.expelled` | `orbEvoke` no pitch mais grave de todos (0,72) |
+| pulsar | flash + número saindo DO orbe | `orbEvoke` agudo (meio-evoke), subindo com o slot |
+
+**Removido:** o `evokeFlash` no slot. Quando um orbe sai a fila ANDA, então o
+flash acendia o orbe **seguinte** — o `notifyEvoke(1, ...)` de índice fixo era
+correto sobre a POSIÇÃO e mentiroso sobre o ORBE. Quem conta a saída é o
+fantasma, desenhado de onde o orbe saiu.
+
+Magia e evoke que causam dano ganharam **número no inimigo + `triggerHurt`**
+(`showEnemyDamage`): antes a mesma explosão genérica servia para "levou dano" e
+para "ganhou um orbe".
+
+Trava: `tools/test_beats.lua` blocos 4b–4e. Verificado revertendo — a mutação de
+volta na coleta derruba **4** asserções (a fileira pula de 0 para 3 e `orbsAtImpact`
+vem 3); o evoke eager derruba **1**; o overflow sem instante próprio, **2**.
+
 ## Efeito que muda um número TEM que ticar
 
 `heal_multiplier` era o último contínuo mudo (Abraço Sombrio tinha

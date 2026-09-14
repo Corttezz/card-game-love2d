@@ -98,7 +98,8 @@ function UpgradeTile.staticSprite(offerId)
     return ImageCache.tryGet(VOUCHER_STATIC .. tostring(offerId) .. ".png")
 end
 
--- A imagem a desenhar neste frame. `animate` vem da INTERACAO (hover ou item
+-- A imagem a desenhar neste frame. `animate` liga o loop (as reliquias animam
+-- SEMPRE — ver a nota na banda de arte; o parametro segue existindo pra quem
 -- em foco no painel de detalhe) -- idle e estatico, regra do projeto: o que
 -- se move na prateleira e o que o jogador esta olhando.
 function UpgradeTile.spriteFor(offerId, animate, t)
@@ -442,9 +443,20 @@ function UpgradeTile.draw(offer, rect, state)
     UpgradeTile.drawArt(offer, b.art, {
         alpha = alpha * dim, theme = th, bob = bob, time = t,
         glow = 0.35 + 0.65 * hover,
-        -- Idle estatico, animado na INTERACAO (mesma regra dos icones de
-        -- carta). Sem pasta de animacao, o sprite estatico entra igual.
-        animate = hover > 0.02 or state.animate == true,
+        -- RELIQUIA ANIMA SEMPRE — excecao deliberada a regra dos icones de
+        -- carta ("idle estatico, anima na interacao").
+        --
+        -- Por que a excecao: a regra existe pra mao e pro grid de colecao,
+        -- onde DEZENAS de cartas dividem a tela e animar todas viraria um
+        -- formigueiro — a animacao ali serve pra dizer "esta e a carta sob o
+        -- mouse". Na loja sao 1 a 3 reliquias, cada uma um OBJETO numa
+        -- prateleira, e a peca parada ao lado de cartas que respiram lia como
+        -- imagem quebrada. Pedido explicito do dono (Set/2026): "a animacao
+        -- delas nao precisa ser so no hover".
+        --
+        -- `state.animate == false` ainda desliga (usado pelo teste e por
+        -- qualquer chamador que queira o frame estatico).
+        animate = state.animate ~= false,
     })
     if not reducedMotion() then
         drawEmbers(b.art, th, t, hover, alpha)

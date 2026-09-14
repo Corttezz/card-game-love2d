@@ -89,7 +89,28 @@ function Enemy:getDefendAmount()
     return math.min(self.maxArmor, math.max(6, math.floor(self.damage * 0.8)))
 end
 
+-- MORRER E UM ACONTECIMENTO, NAO UM ESTADO QUE ALGUEM PERCEBE DEPOIS
+-- (Set/2026, queixa do dono: "em alguns cenarios o mob nao esta tendo a
+-- animacao de morrer, cair no chao").
+--
+-- A causa era a mesma do ENFURECIDO: so UM caminho de dano (o da carta de
+-- ataque, em Game:processCardInCombat) sabia detectar a morte e disparar a
+-- animacao. Magia, pulso/evocacao de orbe, veneno e reflexo de espinhos
+-- levavam a vida a zero na aritmetica e ninguem avisava ninguem — a tela de
+-- espolios abria por cima de um inimigo em pe.
+--
+-- Agora a VIRADA vivo->morto e marcada AQUI, no unico lugar por onde a vida
+-- do inimigo pode cair, seja qual for a fonte. O Game consome `_pendingDeath`
+-- (Game:announceDeathIfPending) e transforma em beat. Mesmo contrato do
+-- `_pendingEnrage`: a entidade MARCA, o Game ENCENA.
+function Enemy:_markDeathIfCrossed(wasAlive)
+    if wasAlive and self.health <= 0 then
+        self._pendingDeath = true
+    end
+end
+
 function Enemy:takeDamage(damage)
+    local wasAlive = self.health > 0
     -- "vulnerable": dano recebido +50%. Aplica antes de armor.
     if self:hasStatus("vulnerable") then
         damage = math.floor(damage * 1.5)
@@ -97,6 +118,7 @@ function Enemy:takeDamage(damage)
     local effectiveDamage = math.max(0, damage - self.armor)
     self.armor = math.max(0, self.armor - damage)
     self.health = math.max(0, self.health - effectiveDamage)
+    self:_markDeathIfCrossed(wasAlive)
 
     -- ENFURECIDO (Set/2026): abaixo de 30% de vida o inimigo passa a causar
     -- +50% de dano, PERMANENTE. Isso sempre existiu e era MUDO — acontecia em
@@ -217,9 +239,14 @@ function Enemy:onTurnEnd()
     end
     if poisonDmg > 0 then
         -- takeDamage direto, bypass vulnerable multiplier (poison e DoT fixo)
+        local wasAlive = self.health > 0
         local eff = math.max(0, poisonDmg - self.armor)
         self.armor = math.max(0, self.armor - poisonDmg)
         self.health = math.max(0, self.health - eff)
+        -- Veneno mata como qualquer outra coisa: a virada tem que ser marcada
+        -- AQUI tambem (esta aritmetica crua nao passa por takeDamage — e o
+        -- mesmo desvio que deixa o veneno de fora do ENFURECIDO, de proposito).
+        self:_markDeathIfCrossed(wasAlive)
     end
 
     -- Decrementa duration e limpa

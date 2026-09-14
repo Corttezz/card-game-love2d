@@ -50,9 +50,26 @@ local EVOKE_CYAN = { 0.25, 0.95, 0.95 }
 local slotPos = nil       -- [i] = {x, y} (centro), calculado no draw
 local slotAnim = {}       -- [i] = timer de pop-in (decai 1→0)
 local pulseFlash = {}     -- [i] = timer de flash de pulso
-local evokeFlash = {}     -- [i] = timer de flash de evoke
 local animTime = 0
 local previewMode = nil   -- nil | "evoke_one" | "evoke_all" | "channel"
+
+-- DIREÇÃO É A PALAVRA (Set/2026, pedido do dono jogando de mago: "canaliza
+-- muitas ao mesmo tempo, fica confuso se está dando dano ou se canalizando").
+-- Dano vai PARA o inimigo; canalizar vem PARA a fileira; evocar SAI da fileira.
+-- Duas listas de FX resolvem os dois sentidos que faltavam:
+--   inbound[i] — o orbe está VIAJANDO até o slot i (o slot fica vazio e um
+--                cometa da cor do elemento entra na tela até pousar);
+--   outbound   — fantasma do orbe que DEIXOU o slot, subindo rumo ao combate.
+-- Sem isso o orbe simplesmente aparecia/sumia: mesma leitura de "explodiu algo".
+local inbound = {}        -- [i] = { t, dur, color }
+local outbound = {}       -- array de { slot, t, dur, color, icon, label }
+
+local FLIGHT_IN  = 0.26   -- s: o cometa tem que pousar DENTRO do beat ORB (0.40)
+local FLIGHT_OUT = 0.45
+
+local function reducedMotion()
+    return (_G.gameSettings and _G.gameSettings.reducedMotion) or false
+end
 
 local function decay(tbl, dt)
     for k, v in pairs(tbl) do
@@ -61,11 +78,28 @@ local function decay(tbl, dt)
     end
 end
 
+-- Origem do cometa de canalização: o centro do palco, onde a carta resolve.
+-- Não é o ponto exato da carta (o EffectSystem não o conhece), e não precisa
+-- ser: o que a animação afirma é "isto veio do feitiço e foi PARA a fileira".
+local function spellOrigin()
+    return love.graphics.getWidth() * 0.5, love.graphics.getHeight() * 0.52
+end
+
 -- ===== Notificações vindas do EffectSystem (pcall — nunca podem quebrar) ====
 
--- Orbe entrou no slot i (pop-in).
-function OrbRow.notifyChannel(i)
-    slotAnim[i] = 1.0
+-- Orbe entrou no slot i: ele VIAJA do feitiço até o slot e só então nasce
+-- (pop-in). `orb` opcional dá a cor do elemento ao cometa.
+function OrbRow.notifyChannel(i, orb)
+    if reducedMotion() then
+        -- Tira o MOVIMENTO, nunca a INFORMAÇÃO: sem viagem, mas o orbe ainda
+        -- nasce no instante do beat dele (a ordem continua legível).
+        slotAnim[i] = 1.0
+        return
+    end
+    inbound[i] = {
+        t = 0, dur = FLIGHT_IN,
+        color = OrbRow.COLORS[orb and orb.type] or { 0.85, 0.85, 0.85 },
+    }
 end
 
 -- Orbe do slot i pulsou: flash + número flutuante saindo DO orbe.
@@ -83,14 +117,34 @@ function OrbRow.notifyPulse(i, text, kind)
     end
 end
 
--- Orbe do slot i foi evocado (flash branco; o slot esvazia no próximo draw).
-function OrbRow.notifyEvoke(i, orb)
-    evokeFlash[i] = 1.0
+-- Orbe do slot i SAIU da fileira. `reason`:
+--   "evoke"    — o jogador evocou (a carta pediu);
+--   "overflow" — a fileira estava cheia e o mais antigo foi EXPULSO pra abrir
+--                vaga. É um acontecimento diferente e precisa dizer isso, senão
+--                o jogador vê um orbe sumir e não entende por quê.
+function OrbRow.notifyEvoke(i, orb, reason)
+    local I18n = require("src.i18n.I18n")
+    local isOverflow = (reason == "overflow")
+    local label = isOverflow
+        and I18n.t("orb.expelled", nil, "EXPULSO")
+        or I18n.t("orb.evoked", nil, "EVOCADO")
+    local color = OrbRow.COLORS[orb and orb.type] or { 0.95, 0.90, 0.78 }
+    if isOverflow then color = { 0.95, 0.72, 0.30 } end
+
+    outbound[#outbound + 1] = {
+        slot = i, t = 0, dur = reducedMotion() and 0.0001 or FLIGHT_OUT,
+        color = color, icon = orb and OrbRow.ICONS[orb.type] or nil,
+    }
     if slotPos and slotPos[i] then
         local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
         if okFT and FloatingText.spawn then
-            FloatingText.spawn("EVOCADO!", slotPos[i].x, slotPos[i].y - SIZE * 0.8,
-                { kind = "movename", fontSize = 14, hold = 0.4, lift = 26 })
+            -- O FloatingText e CENTRADO no x, e o slot 1 fica colado na borda
+            -- esquerda: sem esta margem o rotulo sai da tela pela metade
+            -- ("XPULSO" na captura de validacao).
+            local half = FontManager.getFont(14):getWidth(label) * 0.5
+            local x = math.max(slotPos[i].x, half + 6)
+            FloatingText.spawn(label, x, slotPos[i].y - SIZE * 0.8,
+                { color = color, fontSize = 14, hold = 0.4, lift = 26 })
         end
     end
 end
@@ -101,7 +155,22 @@ function OrbRow.update(dt, game)
     animTime = animTime + (dt or 0)
     decay(slotAnim, (dt or 0) * 3)     -- pop-in ~0.33s
     decay(pulseFlash, (dt or 0) * 1.6) -- flash de pulso ~0.6s
-    decay(evokeFlash, (dt or 0) * 1.6)
+
+    -- Cometa de canalização: quando POUSA, o orbe nasce (pop-in). Enquanto
+    -- voa, o slot continua desenhado vazio — o orbe está em trânsito, não lá.
+    for i, fx in pairs(inbound) do
+        fx.t = fx.t + (dt or 0)
+        if fx.t >= fx.dur then
+            inbound[i] = nil
+            slotAnim[i] = 1.0
+        end
+    end
+    -- Fantasma do orbe que saiu (evoke/overflow).
+    for k = #outbound, 1, -1 do
+        local fx = outbound[k]
+        fx.t = fx.t + (dt or 0)
+        if fx.t >= fx.dur then table.remove(outbound, k) end
+    end
 
     -- Preview de evoke/canalização: carta da mão sob o mouse anuncia o que
     -- fará com os orbes ANTES do clique (contrato do intent congelado vale
@@ -162,7 +231,8 @@ function OrbRow.draw(game, panelX, panelY)
         local x = startX + (i - 1) * (SIZE + SPACING)
         local cx, cy = x + SIZE / 2, y + SIZE / 2
         slotPos[i] = { x = cx, y = cy }
-        local orb = p.orbs and p.orbs[i]
+        -- Orbe em TRÂNSITO ainda não está no slot: o cometa é que o carrega.
+        local orb = (not inbound[i]) and p.orbs and p.orbs[i] or nil
 
         -- bob sutil (orbes "flutuam", slots vazios não)
         local bob = orb and math.sin(animTime * 2.2 + i * 1.3) * 2 or 0
@@ -216,11 +286,10 @@ function OrbRow.draw(game, panelX, panelY)
                 love.graphics.setColor(color[1], color[2], color[3], pf * 0.5)
                 love.graphics.circle("fill", cx, cy, r)
             end
-            local ef = evokeFlash[i]
-            if ef then
-                love.graphics.setColor(1, 1, 1, ef * 0.7)
-                love.graphics.circle("fill", cx, cy, r + 2)
-            end
+            -- (Nao existe mais "flash de evoke no slot": quando um orbe sai, a
+            -- fila ANDA e o slot ja e de outro orbe — o flash acendia o orbe
+            -- errado. Quem conta a saida e o FANTASMA em _drawFx, desenhado na
+            -- posicao de onde o orbe saiu.)
 
             -- Ícone do elemento (pequeno, no topo do orbe)
             local icon = IconLoader.get(OrbRow.ICONS[orb.type] or "orb")
@@ -278,8 +347,72 @@ function OrbRow.draw(game, panelX, panelY)
         end
     end
 
+    OrbRow._drawFx()
+
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.setLineWidth(1)
+end
+
+-- Os dois SENTIDOS desenhados. Cometa ENTRANDO (canalizar) e fantasma SAINDO
+-- (evocar/expulsar) — a mesma fileira, gestos opostos, para o jogador nunca
+-- confundir "ganhei um orbe" com "um orbe agiu".
+function OrbRow._drawFx()
+    if not slotPos then return end
+
+    -- ENTRANDO: do centro do palco até o slot, acelerando (ease-in quad) —
+    -- chega e "pousa", em vez de deslizar e parar.
+    local ox, oy = spellOrigin()
+    for i, fx in pairs(inbound) do
+        local pos = slotPos[i]
+        if pos then
+            local k = math.min(1, fx.t / fx.dur)
+            local e = k * k
+            local x = ox + (pos.x - ox) * e
+            local y = oy + (pos.y - oy) * e
+            local c = fx.color
+            -- rastro: 4 cópias atrás, cada vez mais fracas
+            for tr = 4, 1, -1 do
+                local et = math.max(0, e - tr * 0.06)
+                local tx = ox + (pos.x - ox) * et
+                local ty = oy + (pos.y - oy) * et
+                love.graphics.setColor(c[1], c[2], c[3], 0.16 * (5 - tr))
+                love.graphics.circle("fill", tx, ty, SIZE * 0.13 * (1 - tr * 0.12))
+            end
+            love.graphics.setColor(c[1], c[2], c[3], 0.35)
+            love.graphics.circle("fill", x, y, SIZE * 0.30)
+            love.graphics.setColor(1, 1, 1, 0.9)
+            love.graphics.circle("fill", x, y, SIZE * 0.14)
+        end
+    end
+
+    -- SAINDO: o fantasma sobe do slot rumo ao combate, encolhendo e apagando.
+    for _, fx in ipairs(outbound) do
+        local pos = slotPos[fx.slot]
+        if pos then
+            local k = math.min(1, fx.t / fx.dur)
+            local e = 1 - (1 - k) * (1 - k)          -- ease-out
+            local tx, ty = spellOrigin()
+            local x = pos.x + (tx - pos.x) * e * 0.55
+            local y = pos.y + (ty - pos.y) * e * 0.55
+            local r = (SIZE / 2) * (1 - e * 0.55)
+            local c, a = fx.color, 1 - k
+            love.graphics.setColor(c[1], c[2], c[3], 0.70 * a)
+            love.graphics.circle("fill", x, y, r + 5)
+            love.graphics.setColor(0.10, 0.07, 0.05, 0.75 * a)
+            love.graphics.circle("fill", x, y, r)
+            love.graphics.setColor(1, 1, 1, 0.95 * a)
+            love.graphics.setLineWidth(3)
+            love.graphics.circle("line", x, y, r)
+            local icon = fx.icon and IconLoader.get(fx.icon)
+            if icon and icon.draw then
+                local iw = (icon.size and icon.size.w) or 16
+                local ih = (icon.size and icon.size.h) or 16
+                local sc = IconLoader.computeScale(ih, math.floor(SIZE * 0.34))
+                love.graphics.setColor(1, 1, 1, a)
+                icon.draw(math.floor(x - iw * sc / 2), math.floor(y - ih * sc / 2), sc)
+            end
+        end
+    end
 end
 
 return OrbRow

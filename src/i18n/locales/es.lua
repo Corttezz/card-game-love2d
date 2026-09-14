@@ -222,6 +222,12 @@ return {
         threat_label = "AMENAZA:",
     },
 
+    -- Rotulos cortos de la fila de orbes (src/ui/OrbRow.lua).
+    orb = {
+        evoked   = "EVOCADO",
+        expelled = "EXPULSADO",
+    },
+
     -- Hoguera + selector de cartas (components/RestScreen.lua). El selector
     -- sirve a TRES modos: forjar (hoguera/tienda), quitar y duplicar (eventos).
     rest = {

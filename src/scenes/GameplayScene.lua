@@ -743,26 +743,40 @@ function GameplayScene.update(dt)
         SceneLayer.update(dt)
     end
 
+    -- CHECKPOINT DA MORTE (Set/2026): antes de qualquer gate de desfecho, o
+    -- inimigo morto que ainda nao foi encenado vira acontecimento. E a mesma
+    -- rede do `enemy.enrage_check` do turno do inimigo — nenhuma fonte de dano
+    -- pode entregar um cadaver direto pra tela de espolios.
+    game:announceDeathIfPending(nil)
+
+    -- O relogio da morte corre ANTES dos gates: e ele que segura tanto os
+    -- espolios quanto a VITORIA (queixa do dono: "a tela de vitoria ta
+    -- aparecendo rapido demais, so aparece quando a gente tem a confirmacao
+    -- que ele morreu").
+    if game._deathPauseTimer and game._deathPauseTimer > 0 then
+        game._deathPauseTimer = math.max(0, game._deathPauseTimer - dt)
+    end
+
     -- Transições de estado (game over / victory). Retorna true se mudou
     -- (caller deve fazer early return pra não rodar resto do frame).
+    -- Game over NAO espera a morte do inimigo: quem caiu foi o jogador, e o
+    -- respiro dele e a propria TV desligando.
     if game:checkGameOver() and not game.combatAnimationSystem:isBlocking() then
         Sfx.play("runDefeat")
         setCurrentState("gameOver")
         return
     end
 
-    if game:checkVictory() and not game.combatAnimationSystem:isBlocking() then
+    -- Vitoria (boss do ato final) espera a MESMA coisa que os espolios: a
+    -- criatura cair na tela. `isReadyForEndScreen` = combate parado (inclui a
+    -- fila de beats) E morte assentada. A regra mora no Game pra ser testavel.
+    if game:checkVictory() and game:isReadyForEndScreen() then
         Sfx.play("runVictory")
         setCurrentState("victory")
         return
     end
 
-    if game._deathPauseTimer and game._deathPauseTimer > 0 then
-        game._deathPauseTimer = math.max(0, game._deathPauseTimer - dt)
-    end
-
-    if game:isPhaseCleared() and not game.combatAnimationSystem:isBlocking()
-       and (not game._deathPauseTimer or game._deathPauseTimer <= 0) then
+    if game:isPhaseCleared() and game:isReadyForEndScreen() then
         onPhaseCleared()
         return
     end

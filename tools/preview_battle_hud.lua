@@ -1,6 +1,16 @@
 -- tools/preview_battle_hud.lua
 -- Renderiza um frame simulado de batalha pra validar o novo HUD visual.
 -- Usar: love . preview_battle_hud → saída em ~/.local/share/love/card-game/preview_battle_hud.png
+--
+-- MODOS:
+--   (sem arg) HUD em repouso    →  preview_battle_hud.png
+--   cap       Bloqueio no teto  →  preview_battle_hud.png
+--   orb       CANALIZAÇÃO em voo + orbe SAINDO por overflow, no meio da
+--             animação → preview_battle_hud_orb.png. É o único caminho visual
+--             pro pedido "deixar claro se está dando dano ou canalizando":
+--             mostra o cometa do elemento ENTRANDO na fileira e o fantasma do
+--             orbe expulso SAINDO dela, ao mesmo tempo, para comparar os dois
+--             sentidos num quadro só.
 
 local M = {}
 
@@ -48,6 +58,16 @@ function M.run()
         { type = "lightning", value = 4 },
         { type = "dark", value = 5 },
     }
+    -- Modo `orb`: a fileira CHEIA é o estado que produz overflow — é nele que
+    -- o jogador perde o fio ("um orbe sumiu e eu não vi por quê").
+    local orbMode = _G.PREVIEW_HUD_ORB
+    if orbMode then
+        game.player.orbs = {
+            { type = "ice", value = 4 },
+            { type = "lightning", value = 4 },
+            { type = "dark", value = 5 },
+        }
+    end
     game.enemy.health = 34
     game.enemy.maxHealth = 55
     game.enemy.damage = 12
@@ -109,13 +129,42 @@ function M.run()
     hud:draw(game)
     StatusTooltip.draw()
 
+    -- ===== Modo `orb`: captura a ANIMAÇÃO, não o repouso =====
+    -- O primeiro hud:draw acima existe pra popular OrbRow.slotPos (as
+    -- notificações ancoram no slot e sem posição não desenham nada). Só então
+    -- disparamos os dois acontecimentos e adiantamos o relógio até o meio do
+    -- voo, para o quadro mostrar o gesto e não o resultado.
+    if orbMode then
+        local OrbRow = require("src.ui.OrbRow")
+        local FloatingText = require("src.ui.FloatingText")
+        -- 1) o orbe mais antigo é EXPULSO (fileira cheia abrindo vaga)
+        OrbRow.notifyEvoke(1, { type = "ice", value = 4 }, "overflow")
+        table.remove(game.player.orbs, 1)
+        -- 2) o novo orbe VIAJA do feitiço até o slot livre
+        OrbRow.notifyChannel(3, { type = "fire", value = 4 })
+        for _ = 1, 5 do                    -- ~0.17s: cometa no meio do caminho
+            OrbRow.update(1 / 30, game)
+            FloatingText.update(1 / 30)
+        end
+        love.graphics.clear(0.08, 0.05, 0.04, 1)
+        love.graphics.setColor(0.14, 0.10, 0.06, 1)
+        love.graphics.rectangle("fill", 0, 0, w, h * 0.55)
+        love.graphics.setColor(0.06, 0.04, 0.03, 1)
+        love.graphics.rectangle("fill", 0, h * 0.55, w, h * 0.45)
+        love.graphics.setColor(1, 1, 1, 1)
+        EnemyRenderer.draw(game, enemyCx, enemyCy)
+        EnemyHud.draw(game, bbox, enemyCx, enemyCy)
+        hud:draw(game)
+        FloatingText.draw()
+    end
+
     love.mouse.getPosition = realMouse
 
     love.graphics.setCanvas()
 
     -- Salva PNG
     local img = canvas:newImageData()
-    local out = "preview_battle_hud.png"
+    local out = orbMode and "preview_battle_hud_orb.png" or "preview_battle_hud.png"
     img:encode("png", out)
     print("[preview] salvou", love.filesystem.getSaveDirectory() .. "/" .. out)
 end

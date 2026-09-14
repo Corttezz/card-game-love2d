@@ -240,6 +240,178 @@ function M.run()
     t:eq("evoke_all_orbs esvaziou os orbes", #gm2.player.orbs, 0)
 
     -- ========================================================================
+    -- 4b. CANALIZACAO MULTIPLA: N orbes = N acontecimentos CONTAVEIS, e
+    --     nenhum deles no instante do DANO.
+    --     (pedido do dono, Set/2026, jogando de mago: "Chuva de Meteoros
+    --      canaliza muitas ao mesmo tempo, fica confuso se esta dando dano ou
+    --      se canalizando uma nova")
+    --
+    --     O BUG QUE ESTE BLOCO PEGA: os beats de orbe ja existiam, mas a
+    --     MUTACAO nao. `player:addOrb` rodava na COLETA -- dentro do beat de
+    --     impacto da carta -- entao a fileira ia de 0 a 3 orbes no MESMO frame
+    --     do numero de dano, e os beats seguintes so tocavam som em cima de
+    --     orbes que ja estavam la. Reverter isso derruba as asserções de
+    --     "a fileira passou por 1 e por 2": com o bug ela pula de 0 pra 3.
+    -- ========================================================================
+    local gmc = TK.newRunGame("mage")
+    TK.pump(gmc, 0.5)
+    gmc.player.orbs = {}                       -- limpa o orbe da passiva Conduite
+    local meteor = {
+        id = "tk_meteor", name = "Teste Chuva de Meteoros", type = "attack",
+        cost = 0, attack = 6, defense = 0,
+        effects = {
+            { type = "channel_orb", orbType = "fire", value = 4 },
+            { type = "channel_orb", orbType = "fire", value = 4 },
+            { type = "channel_orb", orbType = "fire", value = 4 },
+        },
+    }
+    table.insert(gmc.hand, meteor)
+    gmc.player.mana = 3
+    gmc:selectCard(meteor)
+
+    local enemyHpC = gmc.enemy.health
+    CombatBeats.clear()
+    CombatBeats.startTrace()
+    gmc:playSelectedCards()
+
+    -- Amostra a cada 1/20s: quantos orbes a FILEIRA mostrava e se o dano ja
+    -- tinha saido. E a leitura do JOGADOR quadro a quadro, nao o estado final.
+    local sawCount, orbsAtImpact, dmgLanded = {}, nil, false
+    for _ = 1, 160 do
+        TK.pump(gmc, 0.05)
+        local n = #gmc.player.orbs
+        sawCount[n] = true
+        if not dmgLanded and gmc.enemy.health < enemyHpC then
+            dmgLanded = true
+            orbsAtImpact = n
+        end
+    end
+    CombatBeats.stopTrace()
+
+    t:truthy("o dano da carta aconteceu", dmgLanded)
+    t:eq("nenhum orbe nasceu no instante do DANO (dano e canalizacao sao"
+        .. " acontecimentos separados)", orbsAtImpact, 0)
+    t:eq("um beat de canalizacao POR ORBE (3 orbes = 3 beats)",
+        countExact("orb.channel"), 3)
+    t:truthy("a fileira passou por 1 orbe (os 3 nao aparecem de uma vez)",
+        sawCount[1] == true)
+    t:truthy("a fileira passou por 2 orbes", sawCount[2] == true)
+    t:eq("os 3 orbes acabaram canalizados", #gmc.player.orbs, 3)
+    t:truthy("cada canalizacao veio DEPOIS do impacto da carta ("
+        .. CombatBeats.traceString() .. ")",
+        atPrefix("card.impact.") and at("orb.channel")
+        and at("orb.channel") > atPrefix("card.impact."))
+    t:truthy("a carta so queima depois de canalizar tudo",
+        at("card.dissolve") and at("orb.channel")
+        and at("card.dissolve") > at("orb.channel"))
+
+    -- ========================================================================
+    -- 4c. OVERFLOW e um TERCEIRO acontecimento, com instante proprio.
+    --     Canalizar com a fileira cheia EXPULSA o mais antigo (evocando-o).
+    --     Sem instante proprio o jogador ve um orbe sumir e nao entende por que.
+    -- ========================================================================
+    local gof = TK.newRunGame("mage")
+    TK.pump(gof, 0.5)
+    gof.player.orbs = {}
+    gof.player:addOrb({ type = "lightning", value = 3 })
+    gof.player:addOrb({ type = "lightning", value = 3 })
+    gof.player:addOrb({ type = "lightning", value = 3 })
+    t:eq("fileira cheia (3 de 3)", #gof.player.orbs, gof.player.orbSlots)
+    local hpOf = gof.enemy.health
+
+    local steps = {}
+    gof._beatSink = steps
+    gof.effectSystem:processEffectCard(gof, { type = "channel_orb", orbType = "ice", value = 5 })
+    gof._beatSink = nil
+    -- ANTES de tocar os beats nada pode ter mudado: o estado mora DENTRO do
+    -- acontecimento. Com o bug antigo a fileira ja estaria com o orbe de gelo.
+    t:eq("a fileira NAO muda na coleta, so quando o beat toca",
+        gof.player.orbs[3].type, "lightning")
+    t:eq("o inimigo NAO leva o dano do overflow na coleta", gof.enemy.health, hpOf)
+
+    CombatBeats.clear()
+    CombatBeats.startTrace()
+    CombatBeats.pushAll(steps)
+    TK.pump(gof, 2.5)
+    CombatBeats.stopTrace()
+
+    t:eq("expulsar o orbe mais antigo e UM acontecimento",
+        countExact("orb.overflow"), 1)
+    t:truthy("o orbe SAI antes do novo entrar (" .. CombatBeats.traceString() .. ")",
+        at("orb.overflow") and at("orb.channel")
+        and at("orb.overflow") < at("orb.channel"))
+    t:eq("o orbe novo entrou no fim da fila", gof.player.orbs[3].type, "ice")
+    t:eq("a fileira continua no cap", #gof.player.orbs, 3)
+    t:truthy("o orbe expulso EVOCOU de verdade (o dano dele saiu)",
+        gof.enemy.health < hpOf)
+
+    -- Controle: com vaga na fileira NAO existe expulsao (o beat condicional
+    -- orb.make_room custa MICRO e nao vira acontecimento).
+    local gro = TK.newRunGame("mage")
+    TK.pump(gro, 0.5)
+    gro.player.orbs = {}
+    local steps2 = {}
+    gro._beatSink = steps2
+    gro.effectSystem:processEffectCard(gro, { type = "channel_orb", orbType = "ice", value = 5 })
+    gro._beatSink = nil
+    CombatBeats.clear()
+    CombatBeats.startTrace()
+    CombatBeats.pushAll(steps2)
+    TK.pump(gro, 2.0)
+    CombatBeats.stopTrace()
+    t:eq("com vaga livre nao ha expulsao nenhuma", countExact("orb.overflow"), 0)
+    t:eq("mesmo assim o orbe foi canalizado", #gro.player.orbs, 1)
+
+    -- ========================================================================
+    -- 4d. EVOCAR tambem muda o estado DENTRO do beat -- senao o orbe some no
+    --     impacto e o flash cai depois, num slot que ja e de outro orbe.
+    -- ========================================================================
+    local gev = TK.newRunGame("mage")
+    TK.pump(gev, 0.5)
+    gev.player.orbs = {}
+    gev.player:addOrb({ type = "lightning", value = 3 })
+    gev.player:addOrb({ type = "ice", value = 3 })
+    local steps3 = {}
+    gev._beatSink = steps3
+    gev.effectSystem:processEffectCard(gev, { type = "evoke_orb" })
+    gev._beatSink = nil
+    t:eq("o orbe NAO sai da fileira na coleta", #gev.player.orbs, 2)
+    CombatBeats.pushAll(steps3)
+    TK.pump(gev, 1.5)
+    t:eq("o orbe sai quando o beat de evoke toca", #gev.player.orbs, 1)
+    t:eq("saiu o MAIS ANTIGO (FIFO)", gev.player.orbs[1].type, "ice")
+
+    -- ========================================================================
+    -- 4e. O CASO REAL: quantas cartas do catalogo canalizam em rajada?
+    --     Asserção de CONTAGEM pra nao passar verde por nao ter exercitado nada.
+    -- ========================================================================
+    do
+        local CardDatabase = require("src.systems.CardDatabase")
+        local all = CardDatabase.getAllCards and CardDatabase:getAllCards() or {}
+        local multi, mixed, total = {}, {}, 0
+        for id, cd in pairs(all) do
+            total = total + 1
+            local ch, dmg = 0, false
+            for _, e in ipairs(cd.effects or {}) do
+                if e.type == "channel_orb" then ch = ch + 1 end
+                if e.type == "magic_damage" or e.type == "aoe_magic_damage" then dmg = true end
+            end
+            if (cd.attack or 0) > 0 then dmg = true end
+            if ch >= 2 then multi[#multi + 1] = id end
+            if ch >= 1 and dmg then mixed[#mixed + 1] = id end
+        end
+        table.sort(multi); table.sort(mixed)
+        print("[beats] catalogo lido: " .. total .. " cartas")
+        print("[beats] canalizam 2+ orbes: " .. table.concat(multi, ", "))
+        print("[beats] misturam dano + canalizacao: " .. table.concat(mixed, ", "))
+        t:truthy("o catalogo foi mesmo lido (" .. total .. " cartas)", total > 50)
+        t:truthy("o catalogo TEM cartas que canalizam em rajada (" .. #multi .. ")",
+            #multi >= 3)
+        t:truthy("o catalogo TEM cartas que misturam dano e canalizacao ("
+            .. #mixed .. ")", #mixed >= 8)
+    end
+
+    -- ========================================================================
     -- 5. CORINGA QUE MUDA UM NUMERO TEM QUE TICAR
     --    (Abraco Sombrio: defense_bonus ticava, heal_multiplier era MUDO)
     -- ========================================================================

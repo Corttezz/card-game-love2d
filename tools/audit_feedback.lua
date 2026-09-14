@@ -84,6 +84,15 @@ local DELEGATION = {
     ["drawCard"]          = "Game:drawCard",
     ["_evokeOrbEffect"]   = "EffectSystem:_evokeOrbEffect",
     ["processEffectCard"] = "EffectSystem:processEffectCard",
+    -- Set/2026: canalizar e evocar viraram BEATS proprios e o corpo saiu do
+    -- if-chain pra estes dois helpers (a mutacao do estado precisa morar
+    -- DENTRO do beat, nao na coleta). Sem declarar a delegacao a ferramenta le
+    -- os tres tipos de orbe como MUDOS e acusa regressao onde houve correcao.
+    ["_stepChannelOrb"]   = "EffectSystem:_stepChannelOrb",
+    ["_stepEvokeOrb"]     = "EffectSystem:_stepEvokeOrb",
+    -- Numero de dano + reacao do inimigo pra magia/evoke, que antes so tinham
+    -- burst (o jogador via a MESMA explosao pra "levou dano" e "ganhou orbe").
+    ["showEnemyDamage"]   = "showEnemyDamage",
 }
 
 -- ===========================================================================
@@ -139,7 +148,9 @@ end
 local function delegatesInLine(line)
     local hits = nil
     for pat, fname in pairs(DELEGATION) do
-        if line:find("[:%.]" .. pat .. "%s*%(") then
+        -- Fronteira de palavra em vez de exigir `:`/`.`: helpers LOCAIS
+        -- (showEnemyDamage) sao chamados sem prefixo e ficariam invisiveis.
+        if line:find("[^%w_]" .. pat .. "%s*%(") then
             hits = hits or {}; hits[fname] = true
         end
     end
@@ -178,8 +189,11 @@ local function scanSources()
             for line in (src .. "\n"):gmatch("([^\n]*)\n") do
                 lineNo = lineNo + 1
 
-                if line:match("^function%s") then
+                if line:match("^function%s") or line:match("^local function%s") then
+                    -- Indexa tambem `local function nome(...)`: helper local e
+                    -- destino de delegacao valido (showEnemyDamage nasceu assim).
                     local fname = line:match("^function%s+([%w_]+[:%.][%w_]+)")
+                        or line:match("^local function%s+([%w_]+)")
                     current = nil
                     curFunc = fname
                     attributed = fname and FUNCTION_ATTRIBUTION[fname] or nil

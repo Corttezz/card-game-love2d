@@ -215,6 +215,25 @@ os textos das 7 precisam mudar junto.
 Resumo: **canalizar e evocar não têm instante próprio** (vivem dentro do impacto
 da carta); **pulsar tem instante mas não tem respiro nem som**.
 
+> ### ✅ RESOLVIDO (agente `orbes-canalizacao`, Set/2026)
+>
+> O que desta seção ainda valia quando a correção começou, e o que já tinha sido
+> resolvido pelo agente `ritmo-combate`:
+>
+> | item | estado ao chegar | agora |
+> |---|---|---|
+> | canalizar/evocar sem beat | **já resolvido** — `orb.channel`/`orb.evoke` existiam | mantido |
+> | pulsar sem respiro | **já resolvido** — `orb.pulse.<tipo>`, hold `ORB` | mantido |
+> | pulsar sem som | **ainda valia** | `orbEvoke` agudo, pitch subindo com o slot |
+> | `evoke_all_orbs` num frame só | **já resolvido** — um beat por orbe | + pitch descendo |
+> | `notifyEvoke` com índice fixo `1` | **ainda valia**, e era mais grave do que a auditoria registrou | o flash no slot foi REMOVIDO (acendia o orbe seguinte, porque a fila anda); a saída é contada por um FANTASMA desenhado de onde o orbe saiu |
+> | orbes aparecendo em rajada | **ainda valia, e era a causa raiz** | `addOrb`/`popOldestOrb` rodavam na COLETA, dentro do beat de impacto: os 3 orbes da Chuva de Meteoros nasciam no mesmo frame do número de dano e os beats só tocavam som por cima. A mutação passou a morar DENTRO do beat |
+> | overflow sem instante | **ainda valia** | beat condicional `orb.make_room`, que vira `orb.overflow` quando expulsa |
+> | `aoe_magic_damage` sem número/shake | **ainda valia** | `showEnemyDamage`: número no inimigo + `triggerHurt`, também nos evokes de dano |
+>
+> Ver [`memory/combat_beats.md`](../memory/combat_beats.md) e os blocos 4b–4e de
+> `tools/test_beats.lua`.
+
 ---
 
 ## 5. Achados fora do catálogo (mesma família, encontrados no caminho)

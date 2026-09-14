@@ -176,6 +176,14 @@ function InputFocus.resetLayers()
 end
 
 -- A camada `layer` (default: a corrente) pode ler o mouse agora?
+-- Entrada registrada com este nome, ou nil.
+local function entryNamed(name)
+    for _, e in ipairs(overlays) do
+        if e.name == name then return e end
+    end
+    return nil
+end
+
 function InputFocus.allows(layer)
     if layer == nil then layer = stack[#stack] end
     local e = topVisible()
@@ -185,6 +193,32 @@ function InputFocus.allows(layer)
     if layer == nil then return true end
     if layer == e.name then return true end
     if layer == InputFocus.CHROME and e.keepChrome then return true end
+
+    -- COBERTURA vs COBERTURA: quem está DESENHANDO manda.
+    --
+    -- Coberturas são telas de ESTADO (mapa, descanso/picker, evento, cash
+    -- out) e a prioridade entre elas é a ordem de registro — o que está certo
+    -- para modais empilhados, e errado aqui, porque duas telas de estado podem
+    -- estar visíveis ao mesmo tempo sem uma estar "por cima" da outra.
+    --
+    -- O caso real (dono, Set/2026: "tela de remover carta nenhum clique
+    -- funciona"): `_G.openCardPicker` reusa o RestScreen e troca
+    -- `currentState` para "rest", mas NÃO esconde a tela que o chamou. Aberto
+    -- a partir de um evento, o `eventScreen` seguia visível e — por ter sido
+    -- registrado depois — roubava o foco do picker. O mouse do picker virava a
+    -- sentinela, nenhum item ficava sob o cursor e o clique não achava alvo.
+    -- O clique CHEGAVA; ele é que não tinha em quem cair.
+    --
+    -- MODAL continua ganhando de tudo: se o topo captura eventos (pause,
+    -- settings, deck viewer...), nenhuma cobertura passa por aqui.
+    if not e.capturesEvents then
+        local mine = entryNamed(layer)
+        if mine and not mine.capturesEvents then
+            local ok, vis = pcall(mine.obj.isVisible, mine.obj)
+            if ok and vis then return true end
+        end
+    end
+
     return false
 end
 

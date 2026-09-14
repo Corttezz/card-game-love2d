@@ -222,6 +222,14 @@ return {
         threat_label = "THREAT:",
     },
 
+    -- Short labels for the orb row (src/ui/OrbRow.lua): what the orb DID when it
+    -- left its slot. Evoking is the player's choice; being pushed out is the
+    -- full row making room -- two different events, two labels.
+    orb = {
+        evoked   = "EVOKED",
+        expelled = "PUSHED OUT",
+    },
+
     -- Campfire + card picker (components/RestScreen.lua). The picker serves
     -- THREE modes: forge (campfire/shop), remove and duplicate (events).
     rest = {

@@ -216,6 +216,62 @@ function M.run()
         t:check("o teste rodou ate o fim (erro: " .. tostring(err) .. ")", false)
     end
 
+    -- ===== COBERTURA vs COBERTURA: quem desenha manda (Set/2026) =====
+    -- "Tela de remover carta nenhum clique funciona." `_G.openCardPicker`
+    -- reusa o RestScreen e troca currentState pra "rest", mas NAO esconde a
+    -- tela que o chamou. Aberto de um EVENTO, o eventScreen seguia visivel e,
+    -- por ter sido registrado DEPOIS, roubava o foco: o mouse do picker virava
+    -- sentinela e o clique nao tinha em quem cair.
+    do
+        local IF = require("src.ui.InputFocus")
+        IF.clear()
+        IF.resetLayers()
+
+        local evento = { vis = false }
+        function evento:isVisible() return self.vis end
+        local picker = { vis = false }
+        function picker:isVisible() return self.vis end
+        local pause  = { vis = false }
+        function pause:isVisible() return self.vis end
+
+        -- ordem de registro = a do main.lua: rest ANTES de event
+        IF.register("rest",  picker, { keepChrome = true })
+        IF.register("event", evento, { keepChrome = true })
+        IF.register("pause", pause)
+
+        -- Evento aberto; o picker sobe POR CIMA (mesmo estado visivel).
+        evento.vis = true
+        picker.vis = true
+
+        IF.push("rest")
+        t:truthy("o picker que esta desenhando ENXERGA o mouse", IF.allows())
+        IF.pop()
+
+        -- E a tela de tras continua bloqueada enquanto o picker desenha.
+        IF.push("scene")
+        t:falsy("a cena atras continua bloqueada", IF.allows())
+        IF.pop()
+
+        -- MODAL ganha de qualquer cobertura: pause por cima do picker.
+        pause.vis = true
+        IF.push("rest")
+        t:falsy("com o pause aberto, nem o picker enxerga", IF.allows())
+        IF.pop()
+        IF.push("pause")
+        t:truthy("o pause enxerga", IF.allows())
+        IF.pop()
+        pause.vis = false
+
+        -- Fechado o picker, o evento volta a mandar.
+        picker.vis = false
+        IF.push("event")
+        t:truthy("fechado o picker, o evento volta a enxergar", IF.allows())
+        IF.pop()
+
+        IF.clear()
+        IF.resetLayers()
+    end
+
     return t:done()
 end
 

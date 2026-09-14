@@ -191,10 +191,19 @@ end
 -- flutuava no escuro e a coluna parecia inacabada ao lado da carta grande,
 -- que tem moldura e sombra. Uma composição só, dois lugares.
 local function drawVoucherArt(offer, ax, ay, aw, ah, alpha)
+    local t = love.timer.getTime()
     UpgradeTile.drawArt(offer, { x = ax, y = ay, w = aw, h = ah }, {
         alpha = alpha,
         glow = 0.8,
-        bob = reducedMotion() and 0 or (math.sin(love.timer.getTime() * 1.4) * 2),
+        bob = reducedMotion() and 0 or (math.sin(t * 1.4) * 2),
+        -- O PREVIEW TAMBEM ANIMA. Este painel e o lugar onde o jogador PARA
+        -- pra decidir se compra — a peca maior e parada, ao lado do tile
+        -- pequeno que se mexia, lia como se a grande tivesse travado.
+        -- Pedido do dono (Set/2026). `time` compartilha o relogio com o tile,
+        -- entao os dois ficam no MESMO frame da animacao: duas copias da
+        -- mesma peca fora de fase na mesma tela seriam pior que nenhuma.
+        animate = true,
+        time = t,
     })
 end
 

@@ -48,6 +48,25 @@ local function checkEnrage(game)
     end
 end
 
+-- DANO TEM CARA DE DANO. Magia e evoke acertam o inimigo pelo EffectSystem, que
+-- (ao contrario da carta de ataque, servida pelo CombatSequence) nao tinha
+-- numero nem reacao — so um burst. Sem isso o jogador do mago via a mesma
+-- explosao generica pra "levou dano" e pra "ganhou um orbe". `v` negativo nunca
+-- chega aqui; headless/UI ausente = no-op.
+local function showEnemyDamage(v)
+    if not v or v <= 0 then return end
+    local okER, ER = pcall(require, "src.ui.EnemyRenderer")
+    if not okER then return end
+    if ER.triggerHurt then pcall(ER.triggerHurt) end
+    if not ER.getLastPos then return end
+    local ex, ey = ER.getLastPos()
+    if not ex then return end
+    local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
+    if okFT and FloatingText.spawn then
+        FloatingText.spawn("-" .. tostring(v), ex, ey - 40, { kind = "damage" })
+    end
+end
+
 -- ==============================================================================
 -- Efeitos contínuos de jokers (chamados ao jogar uma carta de ataque/defesa).
 -- ==============================================================================
@@ -341,6 +360,7 @@ function EffectSystem:processEffectCard(game, effect)
         -- Game feel v1: dano mágico de effect card também estoura no inimigo
         -- (cartas de ATAQUE já ganham burst via CombatSequence; efeito não).
         CardFeel.burstAtEnemy("magic", 0.9)
+        showEnemyDamage(v)
         return true
 
     elseif t == "draw_cards" then
@@ -418,53 +438,24 @@ function EffectSystem:processEffectCard(game, effect)
 
     elseif t == "channel_orb" then
         -- Empilha orb. orbType (default lightning), value = potencia.
-        -- CANALIZAR e EVOCAR-POR-OVERFLOW sao DOIS acontecimentos: o orbe
-        -- antigo sai e o novo entra em instantes separados (pedido do dono —
-        -- "o mago com as orbes"). Sem sink os dois caem juntos, como antes.
-        local orb = { type = effect.orbType or "lightning", value = v }
-        local overflow = game.player:addOrb(orb)
-        if overflow then
-            CombatBeats.step(sinkOf(game), "orb.overflow", function()
-                notifyOrbUI("notifyEvoke", 1, overflow)
-                self:_evokeOrbEffect(game, overflow)
-                game:addMessage(msg("orb_overflow", { name = overflow.type }), "warning")
-                Sfx.play("orbEvoke")
-            end, "ORB")
-        end
-        CombatBeats.step(sinkOf(game), "orb.channel", function()
-            game:addMessage(msg("channeled", { name = orb.type, value = orb.value }), "info")
-            Sfx.play("orbChannel")
-            -- UI: orbe "nasce" no slot (pop-in). Depois do overflow pra animacao
-            -- de saida nao engolir a de entrada.
-            notifyOrbUI("notifyChannel", #game.player.orbs)
-        end, "ORB")
+        self:_stepChannelOrb(game, { type = effect.orbType or "lightning", value = v },
+            sinkOf(game))
         return true
 
     elseif t == "evoke_orb" then
-        local orb = game.player:popOldestOrb()
-        if not orb then
+        if #(game.player.orbs or {}) == 0 then
             game:addMessage(msg("no_orbs"), "warning")
             return true
         end
-        CombatBeats.step(sinkOf(game), "orb.evoke", function()
-            notifyOrbUI("notifyEvoke", 1, orb)
-            self:_evokeOrbEffect(game, orb)
-            Sfx.play("orbEvoke")
-        end, "ORB")
+        self:_stepEvokeOrb(game, sinkOf(game), 1)
         return true
 
     elseif t == "evoke_all_orbs" then
         -- UM ORBE POR VEZ (Set/2026): antes os 3 evocavam no mesmo instante e
         -- o jogador via um borrão de números sem saber qual orbe fez o quê.
         local count = #game.player.orbs
-        for _ = 1, count do
-            CombatBeats.step(sinkOf(game), "orb.evoke", function()
-                local orb = game.player:popOldestOrb()
-                if not orb then return end
-                notifyOrbUI("notifyEvoke", 1, orb)
-                self:_evokeOrbEffect(game, orb)
-                Sfx.play("orbEvoke")
-            end, "ORB")
+        for k = 1, count do
+            self:_stepEvokeOrb(game, sinkOf(game), k)
         end
         if count > 0 then
             CombatBeats.step(sinkOf(game), "orb.evoke_all_done", function()
@@ -480,6 +471,7 @@ function EffectSystem:processEffectCard(game, effect)
         game.score = game.score + v
         game:addMessage(msg("magic_damage", { value = v }), "success")
         CardFeel.burstAtEnemy("magic", 1.2)
+        showEnemyDamage(v)
         return true
 
     elseif t == "mystery" then
@@ -559,6 +551,7 @@ function EffectSystem:_evokeOrbEffect(game, orb)
         checkEnrage(game)
         game:addMessage(msg("evoke_lightning", { value = v }), "success")
         CardFeel.burstAtEnemy("lightning", 1.1)
+        showEnemyDamage(v)
     elseif orb.type == "ice" then
         game.player:addArmor(v)
         game:addMessage(msg("evoke_ice", { value = v }), "info")
@@ -568,18 +561,91 @@ function EffectSystem:_evokeOrbEffect(game, orb)
         checkEnrage(game)
         game:addMessage(msg("evoke_shadow", { value = v * 2 }), "success")
         CardFeel.burstAtEnemy("dark", 1.2)
+        showEnemyDamage(v * 2)
     elseif orb.type == "fire" then
         game.enemy:takeDamage(v)
         checkEnrage(game)
         game.enemy:addStatusEffect({ name = "poison", duration = 2, stacks = math.max(1, math.floor(v / 2)) })
         game:addMessage(msg("evoke_fire", { value = v }), "warning")
         CardFeel.burstAtEnemy("fire", 1.1)
+        showEnemyDamage(v)
     elseif orb.type == "holy" then
         local amount = self:applyHealMultiplier(game, v)
         game.player:heal(amount)
         game:addMessage(msg("evoke_holy", { value = amount }), "success")
         CardFeel.burstAtPlayer("holy", 1.0)
     end
+end
+
+-- ==============================================================================
+-- CANALIZAR x EVOCAR: dois acontecimentos que o jogador precisa DISTINGUIR
+-- ==============================================================================
+-- Pedido do dono (Set/2026), jogando com o mago: "Chuva de Meteoros canaliza
+-- muitas ao mesmo tempo, fica confuso se esta dando dano ou se canalizando uma
+-- nova". O defeito NAO era falta de beat — os beats ja existiam. Era que o
+-- ESTADO mudava fora deles: `player:addOrb` rodava na COLETA (dentro do beat de
+-- impacto da carta), entao os 3 orbes APARECIAM na fileira no mesmo instante do
+-- numero de dano e os beats seguintes so tocavam som e pop-in em cima de orbes
+-- que ja estavam la. O mesmo valia pro evoke: o orbe sumia no impacto e o flash
+-- caia depois, no slot 1, em cima de um orbe que nem era aquele.
+--
+-- Agora a MUTACAO mora dentro do beat. E a linguagem separa os dois sentidos:
+--   canalizar -> vai PARA a fileira: streak entrando, pop-in, pitch SUBINDO
+--                com o slot (a fileira vira teclado: 1 grave, 3 agudo);
+--   evocar    -> SAI da fileira pro combate: fantasma do orbe deixando o slot,
+--                pitch GRAVE e descendo;
+--   overflow  -> um TERCEIRO acontecimento (o orbe mais antigo e expulso pra
+--                abrir vaga), com instante proprio e o som mais grave de todos.
+local CHANNEL_PITCH_BASE, CHANNEL_PITCH_STEP = 0.92, 0.15
+local EVOKE_PITCH_BASE,   EVOKE_PITCH_STEP   = 1.02, 0.10
+local OVERFLOW_PITCH = 0.72
+
+-- Canaliza UM orbe como acontecimento(s) proprio(s).
+-- Beat 1 "orb.make_room" (MICRO): barato quando ha vaga. Quando a fileira esta
+--   CHEIA ele expulsa o mais antigo e reivindica o instante via extendCurrent
+--   (padrao do passo CONDICIONAL, o mesmo do enemy.enrage_check) — o jogador
+--   ve o orbe SAIR antes do novo entrar, em vez de um sumir do nada.
+-- Beat 2 "orb.channel" (ORB): o orbe entra. `addOrb` so roda AQUI.
+function EffectSystem:_stepChannelOrb(game, orb, sink)
+    local p = game.player
+    if not p or not p.addOrb then return end
+
+    CombatBeats.step(sink, "orb.make_room", function()
+        if #(p.orbs or {}) < (p.orbSlots or 3) then return end
+        local overflow = p:popOldestOrb()
+        if not overflow then return end
+        -- O evento raro aconteceu: marca no trace e estica o beat barato.
+        CombatBeats.mark("orb.overflow")
+        CombatBeats.extendCurrent("ORB")
+        notifyOrbUI("notifyEvoke", 1, overflow, "overflow")
+        self:_evokeOrbEffect(game, overflow)
+        game:addMessage(msg("orb_overflow", { name = overflow.type }), "warning")
+        Sfx.play("orbEvoke", { pitch = OVERFLOW_PITCH })
+    end, "MICRO")
+
+    CombatBeats.step(sink, "orb.channel", function()
+        p:addOrb(orb)
+        local slot = #p.orbs
+        game:addMessage(msg("channeled", { name = orb.type, value = orb.value }), "info")
+        -- Contavel como o cash out: um som por orbe, pitch subindo com o slot.
+        Sfx.play("orbChannel",
+            { pitch = CHANNEL_PITCH_BASE + (slot - 1) * CHANNEL_PITCH_STEP })
+        notifyOrbUI("notifyChannel", slot, orb)
+    end, "ORB")
+end
+
+-- Evoca o orbe mais antigo como acontecimento proprio. `ord`/`total` so afinam
+-- o pitch quando o evoke vem em lote (evoke_all_orbs): desce a cada orbe, o
+-- gesto sonoro contrario ao da canalizacao.
+function EffectSystem:_stepEvokeOrb(game, sink, ord)
+    CombatBeats.step(sink, "orb.evoke", function()
+        local orb = game.player:popOldestOrb()
+        if not orb then return end
+        notifyOrbUI("notifyEvoke", 1, orb, "evoke")
+        self:_evokeOrbEffect(game, orb)
+        local pitch = EVOKE_PITCH_BASE - ((ord or 1) - 1) * EVOKE_PITCH_STEP
+        Sfx.play("orbEvoke", { pitch = math.max(0.78, pitch) })
+    end, "ORB")
 end
 
 -- Pulso passivo dos orbes (fim do turno do jogador, identidade Defect/StS):
@@ -603,6 +669,11 @@ function EffectSystem:orbPassiveTick(game, sink)
         local idx, o = i, orb
         local pulse = EffectSystem.orbPulseValue(o, focus)
         CombatBeats.step(sink, "orb.pulse." .. tostring(o.type), function()
+            -- O pulso era o unico dos tres momentos do orbe SEM som (auditoria
+            -- Set/2026). E meio-evoke, entao soa como um evoke pequeno: mesmo
+            -- timbre, pitch alto, subindo com o slot — a fileira toca da
+            -- esquerda pra direita e o jogador CONTA os orbes que agiram.
+            Sfx.play("orbEvoke", { pitch = 1.28 + (idx - 1) * 0.10 })
             if o.type == "lightning" or o.type == "fire" then
                 notifyOrbUI("notifyPulse", idx, "-" .. pulse, "damage")
                 if pulse > 0 and game.enemy and game.enemy:isAlive() then
@@ -831,17 +902,14 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
         -- de cada turno. Espelho de strength_per_turn; overflow FIFO evoca o
         -- orbe mais antigo, igual ao channel_orb de carta.
         if game.player and game.player.addOrb then
-            local orb = { type = effect.orbType or "lightning", value = math.max(1, v) }
-            local overflow = game.player:addOrb(orb)
-            game:addMessage(msg("channeled", { name = orb.type, value = orb.value }), "info")
-            Sfx.play("orbChannel")
-            if overflow then
-                notifyOrbUI("notifyEvoke", 1, overflow)
-                self:_evokeOrbEffect(game, overflow)
-                game:addMessage(msg("orb_overflow", { name = overflow.type }), "warning")
-                Sfx.play("orbEvoke")
-            end
-            notifyOrbUI("notifyChannel", #game.player.orbs)
+            -- Mesma rotina da carta (_stepChannelOrb): abrir vaga e canalizar
+            -- sao passos distintos. Aqui o sink e nil DE PROPOSITO — este
+            -- trigger JA roda dentro do beat "trigger.turn_start.channel_per_turn"
+            -- (hold ORB); empurrar pra fila agora jogaria o orbe pro fim do
+            -- turno. Quando ha overflow, o extendCurrent de _stepChannelOrb
+            -- estica ESTE beat, que e o instante certo.
+            self:_stepChannelOrb(game,
+                { type = effect.orbType or "lightning", value = math.max(1, v) }, nil)
             pushJokerProc(game, context and context.procSink,
                 context and context.sourceJoker, "+1 Orbe", "buff")
         end

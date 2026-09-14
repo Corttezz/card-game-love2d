@@ -222,6 +222,12 @@ return {
         threat_label = "GEFAHR:",
     },
 
+    -- Kurze Bezeichnungen fuer die Orb-Reihe (src/ui/OrbRow.lua).
+    orb = {
+        evoked   = "BESCHWOREN",
+        expelled = "VERDRAENGT",
+    },
+
     -- Lagerfeuer + Kartenauswahl (components/RestScreen.lua). Die Auswahl
     -- bedient DREI Modi: schmieden (Lager/Laden), entfernen und duplizieren
     -- (Ereignisse).

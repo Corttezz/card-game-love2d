@@ -222,6 +222,12 @@ return {
         threat_label = "MENACE:",
     },
 
+    -- Etiquettes courtes de la rangee d'orbes (src/ui/OrbRow.lua).
+    orb = {
+        evoked   = "EVOQUE",
+        expelled = "EJECTE",
+    },
+
     -- Feu de camp + selecteur de cartes (components/RestScreen.lua). Le
     -- selecteur sert TROIS modes : forger (feu/boutique), retirer et
     -- dupliquer (evenements).

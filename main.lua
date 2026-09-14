@@ -633,8 +633,12 @@ function love.load(loveArgs)
         return
     end
 
+    -- 2o arg = FONTE do golpe fatal. Sem arg, dispara a animacao na mao
+    -- (valida o clip). `orb` mata pelo pipeline de verdade (pulso de orbe),
+    -- que e justamente a fonte que NAO encenava morte nenhuma.
+    --   love . screenshot_death [orb]
     if loveArgs and loveArgs[1] == "screenshot_death" then
-        require("tools.screenshot_death").run()
+        require("tools.screenshot_death").run(loveArgs[2])
         return
     end
 
@@ -658,6 +662,7 @@ function love.load(loveArgs)
         -- 2o arg "cap": sobe o Bloqueio ao teto pra inspecionar o indicador
         -- de cap (halo ambar + "/30"), que so aparece a partir de 70%.
         _G.PREVIEW_HUD_CAP = (loveArgs[2] == "cap")
+        _G.PREVIEW_HUD_ORB = (loveArgs[2] == "orb")
         require("tools.preview_battle_hud").run()
         love.event.quit()
         return

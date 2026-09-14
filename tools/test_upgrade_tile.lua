@@ -432,6 +432,42 @@ function M.run()
     FontManager.clearCache()
     t:truthy("suite de resize rodou sem erro (" .. tostring(err) .. ")", okRun)
 
+    -- ===== ANIMACAO DA RELIQUIA: SEMPRE, nao so no hover =====
+    -- Pedido do dono (Set/2026): "na loja, a aba de upgrade, o preview dos
+    -- itens na direita precisa ter a animacao tambem; a animacao deles nao
+    -- precisa ser so no hover". Excecao deliberada a regra dos icones de
+    -- carta (que so animam na interacao) — la sao dezenas na tela, aqui sao
+    -- 1 a 3 objetos numa prateleira.
+    do
+        local UT = require("src.ui.UpgradeTile")
+        -- Escolhe um voucher que TENHA pasta de animacao instalada.
+        local comAnim = nil
+        for _, id in ipairs({ "forge_card", "health_upgrade", "mana_upgrade",
+                              "damage_upgrade", "defense_upgrade",
+                              "card_draw_upgrade" }) do
+            if UT.animationFor(id) then comAnim = id; break end
+        end
+
+        if comAnim then
+            -- Em tempos diferentes o frame tem que MUDAR sem hover nenhum.
+            local a = UT.spriteFor(comAnim, true, 0.0)
+            local b = UT.spriteFor(comAnim, true, 0.5)
+            t:truthy("voucher com animacao resolve sprite", a ~= nil)
+            t:truthy("o frame MUDA ao longo do tempo (anima de verdade)", a ~= b)
+
+            -- E o estatico continua acessivel para quem pedir.
+            local est = UT.spriteFor(comAnim, false, 0.5)
+            t:truthy("frame estatico ainda existe", est ~= nil)
+        else
+            t:truthy("nenhum voucher tem pasta de animacao instalada", false)
+        end
+
+        -- Sem pasta de animacao, animar nao pode quebrar: cai no estatico.
+        t:noerror("voucher sem animacao nao estoura ao animar", function()
+            UT.spriteFor("voucher_inexistente_xyz", true, 0.3)
+        end)
+    end
+
     return t:done()
 end
 
