@@ -120,3 +120,33 @@ Plano: `docs/plan/sts-improvements-v1.md` · detalhes: `memory/rng_and_offers.md
 - ✅ `EffectSystem:getCardData` mocks removidos.
 - ✅ Saves persistem em `run.save.lua` via `love.filesystem`.
 - ✅ `SettingsMenu` overlay acessível pela TopBar.
+
+## Pacotes gêmeos: Arcano e Celestial são o MESMO pacote (Set/2026)
+
+`src/systems/ShopSystem.lua` define `pack_arcana` e `pack_celestial` com
+parâmetros **idênticos** — `cost = 4`, `weight = 1.0`, `size = 3`,
+`choose = 1` — e em `BoosterPackSystem.generateContents` os dois caem no mesmo
+ramo, com o mesmo pool e os mesmos pesos de raridade do ato. São dois nomes,
+duas artes e duas trilhas de som para **um conteúdo**.
+
+Descoberto ao renomear os pacotes (os nomes antigos eram os cinco do Balatro
+traduzidos, e as descrições prometiam "tarôs", "planetas" e "espectrais" —
+categorias que **não existem neste jogo**). Os nomes e descrições foram
+corrigidos para dizer a verdade; o conteúdo duplicado **não**.
+
+**Decisão do dono, Set/2026: renomear agora, diferenciar depois.** Nome
+honesto não conserta pacote duplicado, mas parar de mentir já é ganho, e
+diferenciar mexe em balanceamento e pede playtest.
+
+O que JÁ foi feito nessa linha: o Espectral (Mortalha do Coveiro) ganhou
+contrapartida — ele dá 2 cartas onde os irmãos dão 3, pelo mesmo preço, e
+ainda é o mais raro de aparecer (`weight = 0.3`); agora nenhuma delas é comum
+(piso de raridade em `generateContents`, travado em `tools/smoke_packs.lua`).
+A contrapartida é raridade e não edição **de propósito**: edição e selo são o
+que torna o Fardo do Mercador único, e duplicar isso repetiria o erro dos
+gêmeos um nível acima.
+
+Quando for diferenciar, o gancho existe: `pack.kind` já chega no gerador, e
+basta ramificar nele. Ideias descartadas por agora, registradas para não se
+perderem: pool por tag/elemento, garantia de upgrade, escolha entre 2 com
+edição garantida.

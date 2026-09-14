@@ -242,7 +242,9 @@ Events.POOL = {
                   if #deck <= 2 then return T("espelho_quebrado", "r_too_small", nil, "Deck muito pequeno para remover.") end
                   local idx = Rng.get():random("event", #deck)
                   local id = deck[idx]
-                  game.runManager:removeCardFromDeck(id)
+                  -- removeCardAt: tira A COPIA sorteada. Por id sairia sempre
+                  -- a primeira do deck, que pode estar noutro nivel de forja.
+                  game.runManager:removeCardAt(idx)
                   game:synchronizeRunDeck()
                   return T("espelho_quebrado", "r_removed",
                       { name = I18n.cardName(type(id) == "table" and id.id or id) },

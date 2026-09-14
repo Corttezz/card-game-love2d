@@ -84,6 +84,40 @@ function M.run()
     check("cópia foil tem seal Red", modified and modified.seal == "Red")
     check("cópia normal não tem seal", normal and normal.seal == nil)
 
+    -- ===== ESPECTRAL: piso de raridade (decisao do dono, Set/2026) =====
+    -- Ele da 2 cartas onde Arcano/Celestial dao 3, pelo mesmo $4, e e o mais
+    -- raro de aparecer. A contrapartida e NENHUMA COMUM. Sem esta trava, uma
+    -- refatoracao futura no gerador o devolve a condicao de "pacote pior",
+    -- que e um defeito que so aparece pra quem faz a conta.
+    local BPS = require("src.systems.BoosterPackSystem")
+    require("tools.testkit").seedRng(20260914)
+    local pesosA3 = { basic = 0, common = 15, uncommon = 45, rare = 32, legendary = 8 }
+    local comuns, total = 0, 0
+    for _ = 1, 40 do
+        local conteudo = BPS.generateContents({
+            kind = "Spectral", size = 2, classId = "warrior",
+            rarityWeights = pesosA3,
+        })
+        for _, c in ipairs(conteudo) do
+            total = total + 1
+            if c.rarity == "common" or c.rarity == "basic" then comuns = comuns + 1 end
+        end
+    end
+    check("Espectral gerou cartas (" .. total .. ")", total > 0)
+    check("Espectral NAO traz comum nem basic (" .. comuns .. " de " .. total .. ")", comuns == 0)
+
+    -- E o irmao de 3 cartas CONTINUA podendo trazer comum: o piso e do
+    -- Espectral, nao do gerador inteiro.
+    local comunsArcana = 0
+    for _ = 1, 40 do
+        for _, c in ipairs(BPS.generateContents({
+            kind = "Arcana", size = 3, classId = "warrior", rarityWeights = pesosA3,
+        })) do
+            if c.rarity == "common" then comunsArcana = comunsArcana + 1 end
+        end
+    end
+    check("Arcano ainda traz comuns (" .. comunsArcana .. ")", comunsArcana > 0)
+
     print()
     print("  TOTAL: " .. pass .. " pass / " .. fail .. " fail")
     return fail == 0

@@ -47,6 +47,32 @@ Plano de origem: `docs/plan/sts-improvements-v1.md` (Steps 1-7). Inspiração do
 
 ## Forja infinita (Step 3) — REGRA POR CENÁRIO (v2, playtest Jul/2026)
 
+> ### ⚠️ A FORJA É POR CÓPIA, NÃO POR ID (corrigido Set/2026)
+>
+> O nível de forja mora **na entrada do `currentRun.currentDeck`** (campo `up`), e
+> a identidade de uma cópia é o **índice no deck** — nunca o `cardId`. API:
+> `getEntryLevel`, `getUpgradesAt`, `upgradeCardAt`, `canUpgradeAt`,
+> `removeCardAt`, `duplicateCardAt`, `getDeckCopies`.
+>
+> **O que era antes, e por que importa:** o nível vivia em
+> `currentRun.upgraded[cardId]`, um mapa por ID, e `buildPlayableDeck` aplicava
+> esse nível a TODAS as cópias. Com três "Golpe" no deck, forjar uma **forjava
+> as três**. E a tela de forja tinha um `seen[id]` que mostrava só uma cópia —
+> o que era coerente com o modelo: exibir três cartas que sempre andam juntas
+> seria mentira de UI.
+>
+> Quer dizer: a queixa do dono ("se eu tiver duas cartas iguais, na tela de
+> forjar só aparece uma") era o SINTOMA VISÍVEL de um defeito de regra que dava
+> forja de graça. Corrigir só a grade teria exposto a mentira em vez de
+> consertá-la. **Quando uma tela esconde informação, desconfie de que ela está
+> escondendo um defeito do modelo, não economizando espaço.**
+>
+> Saves antigos: o nível efetivo é `entry.up` **ou** `upgraded[id]` **ou** 0, então
+> o mapa legado vira linha de base compartilhada e a primeira forja daquela cópia
+> a desgruda. `upgradeCard(id)` (legado: eventos, autoplay, loja) sobe UMA cópia,
+> a de menor nível, e avisa por `print` se não achar. Travado em `tools/test_forge.lua`.
+
+
 - `Config.Game.UPGRADE_LEVEL_CAP = 0` → SEM cap (>0 restaura teto). Ganhos por nível em
   `Config.Offers.FORGE_ATK/DEF/EFFECT_PER_LVL` (+2/+2/+1).
 - **`RunManager.getForgeGains(cardData)` é a FONTE ÚNICA** dos ganhos — lida por

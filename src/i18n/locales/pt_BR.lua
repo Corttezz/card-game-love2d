@@ -171,11 +171,11 @@ return {
 
     -- Ofertas da loja cujo texto mora em ShopSystem (packs + upgrades).
     shop_items = {
-        pack_standard  = { name = "Pacote Padrão",    desc = "3 cartas; escolha 1." },
-        pack_buffoon   = { name = "Pacote Bufão",     desc = "2 coringas; escolha 1." },
-        pack_arcana    = { name = "Pacote Arcano",    desc = "3 tarôs; escolha 1." },
-        pack_celestial = { name = "Pacote Celestial", desc = "3 planetas; escolha 1." },
-        pack_spectral  = { name = "Pacote Espectral", desc = "2 espectrais; escolha 1." },
+        pack_standard  = { name = "Fardo do Mercador",      desc = "3 cartas ao acaso; escolha 1. Só aqui elas vêm com selo." },
+        pack_buffoon   = { name = "Estojo do Saltimbanco",  desc = "2 coringas; escolha 1. A trupe não viaja de graça." },
+        pack_arcana    = { name = "Relicário do Vidente",   desc = "3 cartas seletas; escolha 1. O olho já sabe qual." },
+        pack_celestial = { name = "Cofre do Astrólogo",     desc = "3 cartas seletas; escolha 1. Guardadas sob um céu fixo." },
+        pack_spectral  = { name = "Mortalha do Coveiro",    desc = "2 cartas, nenhuma comum; escolha 1. Poucas, e ainda assim pesadas." },
         -- RELIQUIAS (upgrades da loja). Quatro camadas de texto, cada uma com
         -- um trabalho: `name` dá identidade, `effect` é o NUMERO que cabe no
         -- chip do tile (maiuscula sem acento — a fonte pixel), `desc` explica
@@ -314,12 +314,12 @@ return {
 
     -- Abertura de booster pack (nome do tipo, contador, dica, chips do detalhe)
     pack = {
-        kind_standard  = "Pacote Padrão",
-        kind_buffoon   = "Pacote Bufão",
-        kind_arcana    = "Pacote Arcano",
-        kind_celestial = "Pacote Celestial",
-        kind_spectral  = "Pacote Espectral",
-        kind_generic   = "Pacote {kind}",
+        kind_standard  = "Fardo do Mercador",
+        kind_buffoon   = "Estojo do Saltimbanco",
+        kind_arcana    = "Relicário do Vidente",
+        kind_celestial = "Cofre do Astrólogo",
+        kind_spectral  = "Mortalha do Coveiro",
+        kind_generic   = "Lacre {kind}",
         choose         = "Escolha {n}",
         closing        = "Fechando...",
         click_hint     = "Clique em uma carta para escolher",

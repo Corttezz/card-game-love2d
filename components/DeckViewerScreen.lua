@@ -62,7 +62,10 @@ function DeckViewerScreen:_build()
         local id = type(entry) == "table" and entry.id or entry
         local cd = id and CardDatabase:getCard(id)
         if cd then
-            table.insert(list, { id = id, cd = cd })
+            -- Nivel POR COPIA (RunManager, secao "Forja POR COPIA"): duas
+            -- copias da mesma carta podem estar em niveis diferentes.
+            local lvl = self.game.runManager:getEntryLevel(entry)
+            table.insert(list, { id = id, cd = cd, lvl = lvl })
         end
     end
     table.sort(list, function(a, b)
@@ -81,7 +84,7 @@ function DeckViewerScreen:_build()
         end)
         if ok and inst then
             inst._deckViewerId = e.id
-            local lvl = run.upgraded and run.upgraded[e.id] or 0
+            local lvl = e.lvl or 0
             if lvl > 0 and self.game.runManager.applyUpgradesToInstance then
                 -- stats + valor verde + gemas na própria moldura (CardFrame re-render)
                 self.game.runManager:applyUpgradesToInstance(inst, lvl)
@@ -268,7 +271,10 @@ function DeckViewerScreen:draw()
     do
         local cx, cy, cw, ch = self:_closeRect()
         local mx, my = love.mouse.getPosition()
-        local hot = mx >= cx and mx <= cx + cw and my >= cy and my <= cy + ch
+        -- Modal de inspeção aberto suprime o hover do X (igual ao grid) — o
+        -- botão acendia POR BAIXO da carta ampliada.
+        local hot = (not modalOpen)
+            and mx >= cx and mx <= cx + cw and my >= cy and my <= cy + ch
         Palette.set(hot and Palette.BLOOD or Palette.PANEL_FILL)
         love.graphics.rectangle("fill", cx, cy, cw, ch, 4, 4)
         Palette.set(Palette.AGED_GOLD)

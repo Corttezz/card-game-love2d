@@ -154,11 +154,11 @@ return {
     },
 
     shop_items = {
-        pack_standard  = { name = "Standard Pack",  desc = "3 cards; pick 1." },
-        pack_buffoon   = { name = "Buffoon Pack",   desc = "2 jokers; pick 1." },
-        pack_arcana    = { name = "Arcana Pack",    desc = "3 tarots; pick 1." },
-        pack_celestial = { name = "Celestial Pack", desc = "3 planets; pick 1." },
-        pack_spectral  = { name = "Spectral Pack",  desc = "2 spectrals; pick 1." },
+        pack_standard  = { name = "Merchant's Bundle",     desc = "3 random cards; pick 1. Only these come sealed." },
+        pack_buffoon   = { name = "Harlequin's Case",      desc = "2 jokers; pick 1. The troupe travels for a price." },
+        pack_arcana    = { name = "Seer's Reliquary",      desc = "3 choice cards; pick 1. The eye already knows which." },
+        pack_celestial = { name = "Astrologer's Coffer",   desc = "3 choice cards; pick 1. Kept under a fixed sky." },
+        pack_spectral  = { name = "Gravedigger's Shroud",  desc = "2 cards, none common; choose 1. Few, and heavy all the same." },
         -- RELICS (shop upgrades): `effect` is the number that fits the tile
         -- chip (uppercase), `desc` explains it in one line, `flavor` is the
         -- grimoire line shown in the detail panel.
@@ -296,12 +296,12 @@ return {
 
     -- Booster pack opening (kind name, counter, hint, detail chips)
     pack = {
-        kind_standard  = "Standard Pack",
-        kind_buffoon   = "Buffoon Pack",
-        kind_arcana    = "Arcana Pack",
-        kind_celestial = "Celestial Pack",
-        kind_spectral  = "Spectral Pack",
-        kind_generic   = "{kind} Pack",
+        kind_standard  = "Merchant's Bundle",
+        kind_buffoon   = "Harlequin's Case",
+        kind_arcana    = "Seer's Reliquary",
+        kind_celestial = "Astrologer's Coffer",
+        kind_spectral  = "Gravedigger's Shroud",
+        kind_generic   = "{kind} Parcel",
         choose         = "Choose {n}",
         closing        = "Closing...",
         click_hint     = "Click a card to choose",

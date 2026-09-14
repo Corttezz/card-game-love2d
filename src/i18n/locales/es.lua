@@ -154,11 +154,11 @@ return {
     },
 
     shop_items = {
-        pack_standard  = { name = "Sobre Estandar",  desc = "3 cartas; elige 1." },
-        pack_buffoon   = { name = "Sobre Bufon",     desc = "2 comodines; elige 1." },
-        pack_arcana    = { name = "Sobre Arcano",    desc = "3 tarots; elige 1." },
-        pack_celestial = { name = "Sobre Celestial", desc = "3 planetas; elige 1." },
-        pack_spectral  = { name = "Sobre Espectral", desc = "2 espectrales; elige 1." },
+        pack_standard  = { name = "Fardo del Mercader",      desc = "3 cartas al azar; elige 1. Solo aqui llevan sello." },
+        pack_buffoon   = { name = "Estuche del Juglar",      desc = "2 comodines; elige 1. La troupe no viaja gratis." },
+        pack_arcana    = { name = "Relicario del Vidente",   desc = "3 cartas selectas; elige 1. El ojo ya sabe cual." },
+        pack_celestial = { name = "Cofre del Astrologo",     desc = "3 cartas selectas; elige 1. Guardadas bajo un cielo fijo." },
+        pack_spectral  = { name = "Mortaja del Enterrador",  desc = "2 cartas, ninguna comun; elige 1. Pocas, y aun asi pesadas." },
         -- RELIQUIAS (mejoras de la tienda): `effect` es el numero que cabe en
         -- el chip del tile, `desc` lo explica en una linea y `flavor` es la
         -- frase de grimorio del panel de detalle.
@@ -296,12 +296,12 @@ return {
 
     -- Apertura de sobre (nombre del tipo, contador, pista, fichas del detalle)
     pack = {
-        kind_standard  = "Sobre Estándar",
-        kind_buffoon   = "Sobre Bufón",
-        kind_arcana    = "Sobre Arcano",
-        kind_celestial = "Sobre Celestial",
-        kind_spectral  = "Sobre Espectral",
-        kind_generic   = "Sobre {kind}",
+        kind_standard  = "Fardo del Mercader",
+        kind_buffoon   = "Estuche del Juglar",
+        kind_arcana    = "Relicario del Vidente",
+        kind_celestial = "Cofre del Astrologo",
+        kind_spectral  = "Mortaja del Enterrador",
+        kind_generic   = "Bulto {kind}",
         choose         = "Elige {n}",
         closing        = "Cerrando...",
         click_hint     = "Haz clic en una carta para elegir",

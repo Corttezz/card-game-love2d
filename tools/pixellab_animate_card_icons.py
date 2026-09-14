@@ -986,12 +986,15 @@ ANIMS = {
         "object_id": "2d8f0dc8-73e4-4a45-9371-41a718c8f477",
         # v2: o disco solar MUDOU DE TAMANHO e de MATIZ (amarelo palido ->
         # laranja saturado) e o loop dava pop. Travar disco e cor.
-        "anim": ("the praying figure and the sun disc are a frozen statue, "
-                 "the sun keeps exactly the same diameter and exactly the "
-                 "same golden color in every single frame, never turning "
-                 "orange or red, the ONLY moving thing is the outermost ray "
-                 "spikes shimmering very slightly at their tips"),
-        "fps": 7,
+        # v3 (Set/2026): a v2 ainda migrou o matiz do disco (amarelo palido
+        # -> laranja-vermelho) ao longo do ciclo. Ciclo curto + so as pontas
+        # dos raios.
+        "anim": ("the tips of the outer sun rays shimmer very slightly, and "
+                 "nothing else in the image changes at all, the sun disc "
+                 "keeps its exact size and its exact golden color in every "
+                 "frame"),
+        "frames": 4,
+        "fps": 6,
     },
     "rogue_leech_blade": {
         # sanguessuga enrolada na foice, gotejando numa tigela
@@ -1037,26 +1040,32 @@ ANIMS = {
         # v2: FALHA GRAVE — as PORTAS DISSOLVERAM ate sobrar um arco vazio.
         # O modelo leu "portao" como abrivel. Declarar as portas como
         # parede solida e reduzir a whitelist as chamas.
-        "anim": ("the wooden gate doors are a solid stone wall that never "
-                 "opens, never fades, never becomes transparent and never "
-                 "disappears, the doors stone arch and every plank keep "
-                 "exactly the same shape and opacity in all frames, the "
-                 "ONLY moving thing is the small brazier flame at each side "
-                 "of the base flickering gently"),
-        "fps": 9,
+        # v3 (Set/2026): a v2 AINDA dissolveu as portas — nos frames do meio
+        # sobrava um arco vazio e a volta dava pop. Duas mudancas: ciclo
+        # curto (4 frames, menos espaco pra derivar) e o movimento descrito
+        # de forma POSITIVA e minima (so a chama), que foi o que funcionou
+        # nos vouchers.
+        "anim": ("a small orange brazier flame at each side of the base "
+                 "flickers gently, and nothing else in the image changes at "
+                 "all, the iron gate doors are solid opaque metal in every "
+                 "frame"),
+        "frames": 4,
+        "fps": 6,
     },
     "mage_primordial_storm": {
         # esfera de tempestade com 3 orbes (raio, gelo, sombra)
         "object_id": "d7f53ad8-6f0b-4b88-8062-9e75ff1b196b",
         # v2: o orbe de FOGO virou CIANO ao longo do loop (cor trocada) e o
         # loop dava pop. Travar a cor de cada orbe individualmente.
-        "anim": ("each orb keeps its own fixed color in every single frame: "
-                 "the fire orb stays orange and never turns blue or cyan, "
-                 "the ice orb stays pale blue, the third orb stays dark, "
-                 "none of them ever swap colors, all three orbs stay in "
-                 "exactly the same positions, the ONLY moving thing is the "
-                 "outer grey mist ring rotating slowly around them"),
-        "fps": 9,
+        # v3 (Set/2026): a v2 nao trocou a cor como a v1, mas os orbes de
+        # fogo CARBONIZARAM (laranja vivo -> preto) ate o fim do ciclo. Ciclo
+        # curto + movimento minimo e positivo so na neblina.
+        "anim": ("the grey mist ring around the sphere drifts slowly, and "
+                 "nothing else in the image changes at all, the three orbs "
+                 "are solid and keep their exact colors and brightness in "
+                 "every frame"),
+        "frames": 4,
+        "fps": 6,
     },
     "rogue_toxin_master": {
         # mascara de medico da peste, bico pálido e lentes escuras
@@ -1203,7 +1212,11 @@ def _submit(icon, spec):
         "animation_description": spec["anim"] + SUFFIX,
         "display_name": icon + "_idle",
         "mode": "v3",
-        "frame_count": 8,
+        # frame_count por entrada. Menos frames = menos caminho pra DERIVAR:
+        # o v3 vai afastando cor/forma do original ao longo do ciclo, e num
+        # ciclo curto ele tem menos espaco pra isso. Usado nas 3 que
+        # reprovaram duas vezes seguidas com 8 (ver nota "3a tentativa").
+        "frame_count": spec.get("frames", 8),
         "replace_existing": True,
     }
     if not spec.get("object_id"):
@@ -1277,8 +1290,19 @@ def run():
         print(f"[run] ({n}/{len(todo)}) {icon}…", flush=True)
         # Job de run anterior pode ter concluído depois do timeout — checar
         # antes de gastar outra geração.
+        #
+        # MAS SÓ SE O PROMPT FOR O MESMO. Sem o confronto de hash, este
+        # atalho RESSUSCITA ANIMAÇÃO REPROVADA: quando alguém apaga a pasta
+        # por ter reprovado o resultado e reescreve a descrição, a entrada
+        # volta pra fila, o pre-check acha o group velho e baixa exatamente
+        # os frames que foram recusados — com o prompt novo no arquivo e o
+        # resultado antigo no disco, o que é pior que falhar, porque parece
+        # ter funcionado. Aconteceu com as 3 animações reprovadas em
+        # Set/2026 (bulwark, primordial_storm, radiant_prayer).
         prev = jobs.get(icon)
-        if prev and prev.get("group"):
+        anim_hash = hashlib.md5(
+            (spec["anim"] + SUFFIX).encode("utf-8")).hexdigest()[:12]
+        if prev and prev.get("group") and prev.get("anim_hash") == anim_hash:
             try:
                 if _try_download(icon, prev["object_id"], prev["group"]):
                     ok += 1
@@ -1286,6 +1310,10 @@ def run():
             except Exception as e:
                 print(f"[run] {icon}: pre-check falhou ({e}), resubmetendo",
                       flush=True)
+        elif prev and prev.get("group"):
+            print(f"[run] {icon}: descricao MUDOU desde o job salvo — "
+                  "regerando em vez de rebaixar o resultado antigo",
+                  flush=True)
         try:
             object_id, group = _submit(icon, spec)
         except Exception as e:
@@ -1299,7 +1327,8 @@ def run():
         # entradas removidas externamente (ex: reprovação manual apagou o
         # group pra forçar regen — clobber flagrado no caso joker_vampire).
         jobs = load_jobs()
-        jobs[icon] = {"object_id": object_id, "group": group}
+        jobs[icon] = {"object_id": object_id, "group": group,
+                      "anim_hash": anim_hash}
         save_jobs(jobs)
         if _wait_download(icon, object_id, group):
             ok += 1

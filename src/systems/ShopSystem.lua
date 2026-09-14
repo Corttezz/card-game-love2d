@@ -39,36 +39,39 @@ end
 local BOOSTER_PACK_TYPES = {
     {
         id = "pack_standard",
-        name = "Pacote Padrao",
-        description = "3 cartas; escolha 1.",
+        name = "Fardo do Mercador",
+        description = "3 cartas ao acaso; escolha 1.",
         kind = "Standard", cost = 4, weight = 1.0,
         size = 3, choose = 1,
     },
     {
         id = "pack_buffoon",
-        name = "Pacote Bufao",
-        description = "2 jokers; escolha 1.",
+        name = "Estojo do Saltimbanco",
+        description = "2 coringas; escolha 1.",
         kind = "Buffoon", cost = 4, weight = 0.6,
         size = 2, choose = 1,
     },
     {
         id = "pack_arcana",
-        name = "Pacote Arcano",
-        description = "3 taros; escolha 1.",
+        name = "Relicario do Vidente",
+        description = "3 cartas seletas; escolha 1.",
         kind = "Arcana", cost = 4, weight = 1.0,
         size = 3, choose = 1,
     },
     {
         id = "pack_celestial",
-        name = "Pacote Celestial",
-        description = "3 planetas; escolha 1.",
+        name = "Cofre do Astrologo",
+        description = "3 cartas seletas; escolha 1.",
         kind = "Celestial", cost = 4, weight = 1.0,
         size = 3, choose = 1,
     },
     {
         id = "pack_spectral",
-        name = "Pacote Espectral",
-        description = "2 espectrais; escolha 1.",
+        name = "Mortalha do Coveiro",
+        -- Menos cartas que os irmaos, mas nenhuma comum (piso de raridade
+        -- em BoosterPackSystem). A descricao PRECISA dizer isso, senao o
+        -- jogador so ve "2 em vez de 3 pelo mesmo preco".
+        description = "2 cartas, nenhuma comum; escolha 1.",
         kind = "Spectral", cost = 4, weight = 0.3,
         size = 2, choose = 1,
     },

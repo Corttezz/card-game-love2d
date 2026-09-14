@@ -30,8 +30,10 @@ local SUITES = {
     { group = "unit",  name = "test_music" },
     { group = "unit",  name = "test_window" },
     { group = "unit",  name = "test_coinburst" },
+    { group = "unit",  name = "test_end_transition" },
     { group = "unit",  name = "test_upgrade_tile" },
     { group = "unit",  name = "test_status_pills" },
+    { group = "unit",  name = "test_input_focus" },
     { group = "valid", name = "check_event_i18n" },
     { group = "valid", name = "audit_feedback" },
     -- Smoke de sistema (pré-existentes)

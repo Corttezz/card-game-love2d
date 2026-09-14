@@ -153,7 +153,10 @@ function AchievementSystem.onVictory(game)
     if not run._usedShop then
         AchievementSystem.unlock("voto_pobreza", game)
     end
-    if not next(run.upgraded or {}) then
+    -- hasAnyUpgrade e nao next(run.upgraded): desde a forja POR COPIA o nivel
+    -- mora em currentDeck[i].up e o mapa por id so guarda a linha de base de
+    -- saves antigos. Ler so o mapa daria "nunca forjou" pra quem forjou.
+    if not game.runManager:hasAnyUpgrade() then
         AchievementSystem.unlock("sem_rascunhos", game)
     end
     if not next(run.jokers or {}) and #(game.jokerSlots or {}) == 0 then

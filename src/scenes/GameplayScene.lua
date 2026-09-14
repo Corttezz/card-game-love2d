@@ -21,6 +21,7 @@ local TurnBanner       = require("src.ui.TurnBanner")
 local ComboBanner      = require("src.ui.ComboBanner")
 local Sfx              = require("src.systems.Sfx")
 local SmokeConfig      = require("src.config.SmokeConfig")
+local InputFocus       = require("src.ui.InputFocus")
 
 local GameplayScene = {}
 
@@ -629,6 +630,17 @@ end
 -- ============================================================================
 
 function GameplayScene.update(dt)
+    -- Um overlay tomou o foco (pausa, deck, coringas...): SOLTA a carta em
+    -- arrasto. Sem isto ela continuaria colada num mouse que, pra esta
+    -- camada, agora lê fora da tela (src/ui/InputFocus) — e sumiria da mão
+    -- enquanto o menu estivesse aberto. Soltar devolve ela ao layout.
+    if not InputFocus.allows(InputFocus.SCENE) then
+        for _, card in ipairs((game and game.hand) or {}) do
+            card.dragPending = false
+            card.isDragging = false
+        end
+    end
+
     updatePlayButtonPosition()
     TurnBanner.update(dt)
     ComboBanner.update(dt)

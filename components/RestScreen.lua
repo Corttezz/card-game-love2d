@@ -1,6 +1,7 @@
 -- components/RestScreen.lua
 -- Descanso: escolhe entre curar 30% maxHP ou forjar (upgrade) uma carta do deck.
--- Forge: marca card com `upgraded` na run (runManager.currentRun.upgraded[cardId]++).
+-- Forge: sobe o nivel DA COPIA escolhida (currentDeck[i].up++ via
+-- RunManager:upgradeCardAt) — nunca das outras copias do mesmo id.
 --
 -- F4 do UI Overhaul (docs/plan/ui-ux-overhaul-v1.md): cena REAL de fogueira
 -- (assets/sprites/scenes/path_rest.png) + painel grimório (Panel9) + duas
@@ -24,6 +25,12 @@
 --       intenção: a forja do Slay the Spire;
 --   (d) overflow resolvido por PAGINAÇÃO (uma grade com scissor cortaria
 --       sombra, lift e painel das cartas — paginar preserva o 3D inteiro).
+--
+-- UMA ENTRADA POR CÓPIA (Set/2026): a grade percorre currentDeck por ÍNDICE.
+-- Duas "Golpe" no deck = duas cartas na bigorna, cada uma com o próprio nível,
+-- e forjar/remover/duplicar uma NÃO toca na outra (RunManager, seção "Forja
+-- POR CÓPIA"). Mesma regra do DeckViewerScreen, que sempre mostrou cópia a
+-- cópia — a bigorna é que destoava.
 --
 -- Acessibilidade: com _G.gameSettings.reducedMotion a MUDANÇA DE VALOR continua
 -- acontecendo e legível (a placa mostra o antes/depois, o "+2 ATQ" aparece) —
@@ -67,8 +74,11 @@ function RestScreen:new()
     instance.onClose = nil
     instance.mode = "choose" -- "choose" | "forge" | "remove" | "duplicate"
     instance.buttons = {}
-    instance.cardList = {}    -- ids elegíveis (grimório inteiro)
-    instance.cardEntries = {} -- {id, inst, level, x, y, w, h} da PÁGINA atual
+    -- ÍNDICES em currentRun.currentDeck das cópias elegíveis. ÍNDICE, e não
+    -- id: duas "Golpe" no deck são DUAS cópias distintas e o jogador escolhe
+    -- QUAL delas vai pra bigorna (ver RunManager, seção "Forja POR CÓPIA").
+    instance.cardList = {}
+    instance.cardEntries = {} -- {idx, id, inst, level, x, y, w, h} da PÁGINA atual
     instance.page = 1
     instance.pageCount = 1
     instance.busy = false     -- cerimônia da bigorna rodando: trava o input
@@ -366,20 +376,20 @@ function RestScreen:enterForgeMode()
         return
     end
 
-    local seen = {}
-    for _, entry in ipairs(run.currentDeck) do
-        -- currentDeck guarda id string OU {id, edition, seal} (cartas de
-        -- booster com edition/seal — RunManager:addCardToDeck). Normaliza pro
-        -- id: forja/upgrade e display trabalham por id string.
+    -- UMA ENTRADA POR CÓPIA. Aqui havia um `seen[id]` que colapsava cópias
+    -- repetidas numa só ("tenho duas Golpe e a bigorna só mostra uma" — a
+    -- queixa do dono). A dedupe era coerente com a forja antiga, que era POR
+    -- ID (forjar uma subia as duas, então mostrar duas seria mentira); com o
+    -- nível POR CÓPIA cada cópia é uma escolha de verdade e todas aparecem.
+    local rm = self.game.runManager
+    for i, entry in ipairs(run.currentDeck) do
+        -- currentDeck guarda id string OU {id, edition, seal, up} (cartas de
+        -- booster com edition/seal — RunManager:addCardToDeck).
         local id = type(entry) == "table" and entry.id or entry
-        if id and not seen[id] then
-            seen[id] = true
-            -- No modo FORJA, só lista carta que a forja consegue melhorar
-            -- (canUpgrade também barra cartas sem stat/effect upgradável).
-            if self.mode ~= "forge"
-                or self.game.runManager:canUpgrade(id) then
-                table.insert(self.cardList, id)
-            end
+        -- No modo FORJA, só lista cópia que a forja consegue melhorar
+        -- (canUpgradeAt também barra cartas sem stat/effect upgradável).
+        if id and (self.mode ~= "forge" or rm:canUpgradeAt(i)) then
+            table.insert(self.cardList, i)
         end
     end
 
@@ -435,15 +445,20 @@ end
 -- Cria as entries da fatia [first, first+count) da cardList.
 function RestScreen:_makeEntries(first, count)
     local entries = {}
-    local run = self.game and self.game.runManager
-        and self.game.runManager.currentRun
+    local rm = self.game and self.game.runManager
+    local run = rm and rm.currentRun
     for i = 1, count do
-        local cardId = self.cardList[first + i - 1]
-        local level = (run and run.upgraded and run.upgraded[cardId]) or 0
+        -- deckIdx é a IDENTIDADE da cópia (índice em currentDeck). O id serve
+        -- só pra montar a instância e escrever o nome.
+        local deckIdx = self.cardList[first + i - 1]
+        local deckEntry = deckIdx and run and run.currentDeck[deckIdx]
+        local cardId = deckEntry and
+            (type(deckEntry) == "table" and deckEntry.id or deckEntry)
+        local level = deckEntry and rm:getEntryLevel(deckEntry) or 0
         local inst = cardId and self:_makeInstance(cardId, level) or nil
         if inst then
             table.insert(entries, {
-                id = cardId, inst = inst, level = level,
+                idx = deckIdx, id = cardId, inst = inst, level = level,
                 x = 0, y = 0, w = 0, h = 0,
             })
         end
@@ -494,7 +509,7 @@ function RestScreen:_layoutPage(rebuild)
         local sameCount = (#self.cardEntries == count)
         local sameFirst = (count == 0)
             or (self.cardEntries[1] ~= nil
-                and self.cardEntries[1].id == self.cardList[first])
+                and self.cardEntries[1].idx == self.cardList[first])
         rebuild = not (sameCount and sameFirst)
     end
 
@@ -559,23 +574,17 @@ end
 
 -- Despacho do picker: a MESMA grade de cartas serve pra forjar (fogueira/
 -- loja), remover (eventos) e duplicar (eventos) — o modo decide a ação.
-function RestScreen:_onPickCard(cardId)
-    if self.busy then return end
+-- Recebe a ENTRY da grade (a cópia escolhida), não um id: com cópias
+-- repetidas o id não distingue qual delas o jogador apontou.
+function RestScreen:_onPickCard(entry)
+    if self.busy or not entry then return end
     if self.mode == "remove" then
-        self:doRemove(cardId)
+        self:doRemove(entry)
     elseif self.mode == "duplicate" then
-        self:doDuplicate(cardId)
+        self:doDuplicate(entry)
     else
-        self:doForge(cardId)
+        self:doForge(entry)
     end
-end
-
--- Entrada visível da carta na página (nil se ela não está na página atual).
-function RestScreen:_entryFor(cardId)
-    for _, e in ipairs(self.cardEntries) do
-        if e.id == cardId then return e end
-    end
-    return nil
 end
 
 -- Mostra o resultado por `hold` segundos e então fecha (update cuida).
@@ -619,8 +628,9 @@ local function playFirst(codes, opts)
     return nil
 end
 
-function RestScreen:doRemove(cardId)
-    if not self.game or not self.game.runManager then return end
+function RestScreen:doRemove(entry)
+    if not self.game or not self.game.runManager or not entry then return end
+    local cardId = entry.id
     local run = self.game.runManager.currentRun
     -- Guarda: nunca deixar o deck abaixo de 2 cartas (o jogo precisa de mão).
     if not run or #run.currentDeck <= 2 then
@@ -631,13 +641,15 @@ function RestScreen:doRemove(cardId)
     -- I18n.cardName e nao cd.name: o nome da carta no texto de resultado
     -- tem que sair no idioma do jogador, igual ao da moldura e do tooltip.
     local displayName = I18n.cardName(cd or cardId)
-    self.game.runManager:removeCardFromDeck(cardId)
+    -- removeCardAt e não removeCardFromDeck(id): com três "Golpe" no deck, a
+    -- remoção por id levaria SEMPRE a primeira — inclusive quando o jogador
+    -- apontou a terceira (que podia ser a forjada).
+    self.game.runManager:removeCardAt(entry.idx)
     if self.game.synchronizeRunDeck then self.game:synchronizeRunDeck() end
     Sfx.play("restComplete")
 
     local text = I18n.t("rest.removed", { name = displayName })
-    local entry = self:_entryFor(cardId)
-    if entry and entry.inst.start_dissolve and not reducedMotion() then
+    if entry.inst and entry.inst.start_dissolve and not reducedMotion() then
         -- A página arde: mesma linguagem da forja, sem o retorno. Paleta
         -- "exhaust" (preto/cinza) — isto não volta.
         self.busy = true
@@ -653,18 +665,20 @@ function RestScreen:doRemove(cardId)
     end
 end
 
-function RestScreen:doDuplicate(cardId)
-    if not self.game or not self.game.runManager then return end
+function RestScreen:doDuplicate(entry)
+    if not self.game or not self.game.runManager or not entry then return end
+    local cardId = entry.id
     local cd = CardDatabase:getCard(cardId)
     -- I18n.cardName e nao cd.name: o nome da carta no texto de resultado
     -- tem que sair no idioma do jogador, igual ao da moldura e do tooltip.
     local displayName = I18n.cardName(cd or cardId)
-    self.game.runManager:addCardToDeck(cardId)
+    -- duplicateCardAt e não addCardToDeck(id): a cópia nova sai igual à
+    -- ESCOLHIDA (mesmo nível de forja, mesma edition/seal).
+    self.game.runManager:duplicateCardAt(entry.idx)
     if self.game.synchronizeRunDeck then self.game:synchronizeRunDeck() end
     Sfx.play("restComplete")
 
-    local entry = self:_entryFor(cardId)
-    if entry then
+    if entry.inst then
         entry.inst:juice_up(0.35, 0.1)
         FloatingText.spawn(I18n.t("rest.dup_popup"),
             math.floor(entry.x + entry.w / 2), math.floor(entry.y + 12),
@@ -1031,8 +1045,9 @@ function RestScreen:_forgeStamp()
     EventManager.parallelEase(f, "stampS", 1, 0.30, "backout", FORGE_Q)
 end
 
-function RestScreen:doForge(cardId)
-    if not self.game or not self.game.runManager then return end
+function RestScreen:doForge(entry)
+    if not self.game or not self.game.runManager or not entry then return end
+    local cardId = entry.id
     local cd = CardDatabase:getCard(cardId)
     -- I18n.cardName e nao cd.name: o nome da carta no texto de resultado
     -- tem que sair no idioma do jogador, igual ao da moldura e do tooltip.
@@ -1041,7 +1056,10 @@ function RestScreen:doForge(cardId)
     local RunManager = require("src.systems.RunManager")
     local gains = RunManager.getForgeGains(cd)
 
-    local newLvl = self.game.runManager:upgradeCard(cardId)
+    -- upgradeCardAt e não upgradeCard(id): forja A CÓPIA apontada. Pelo id,
+    -- as outras cópias da mesma carta subiriam junto (era exatamente o motivo
+    -- de a grade ter sido deduplicada).
+    local newLvl = self.game.runManager:upgradeCardAt(entry.idx)
     if not newLvl then
         -- Cap atingido (só acontece se Config.Game.UPGRADE_LEVEL_CAP > 0) —
         -- feedback ao jogador, sem consumir o nó (caller decide).
@@ -1072,11 +1090,9 @@ function RestScreen:doForge(cardId)
     -- F4: Ferreiro-Mor (25 forjas acumuladas entre runs).
     require("src.systems.AchievementSystem").onForge(self.game)
 
-    local entry = self:_entryFor(cardId)
-
     -- Sem carta visível na página (não deveria acontecer): caminho curto. A
     -- forja NUNCA depende da animação — o upgrade já está aplicado acima.
-    if not entry or not cd then
+    if not entry.inst or not cd then
         playFirst({ "forgeStrike", "restComplete" })
         self:_finishWith(resultText, 1.5)
         return
@@ -1627,7 +1643,7 @@ function RestScreen:mousereleased(x, y, button)
     -- sobrepõem, mas a ordem deixa a intenção explícita).
     local e = self._hoverIdx and self.cardEntries[self._hoverIdx]
     if e and not self.resultText then
-        self:_onPickCard(e.id)
+        self:_onPickCard(e)
         return true
     end
 

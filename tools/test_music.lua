@@ -81,6 +81,52 @@ function M.run()
                  love.filesystem.getInfo("audio/music/" .. file) ~= nil)
     end
 
+    -- ===== SOBREPOSICAO DE FAIXAS (regressao Set/2026) =====
+    -- O dono ouviu duas musicas juntas: "a musica da forja continuou a
+    -- sobrepor a musica do ato". Causa: o crossfade e UM so; uma troca nova
+    -- antes de a anterior terminar substituia o registro e a faixa que estava
+    -- saindo nunca recebia stop(). A→B→C rapido deixava A e B tocando para
+    -- sempre. Abrir a forja e fechar faz exatamente A→B→A em segundos.
+    local AudioManager = require("engine.AudioManager")
+    local audio = AudioManager:new()
+    if audio:isAudioAvailable() then
+        audio:setGroupVolume("master", 0)   -- mudo: teste, nao playtest
+        MD.registerTracks(audio)
+        audio:loadSound("menuMusic", "audio/music.mp3", {
+            volume = 0.6, group = "music", stream = true, loop = true })
+
+        local function tocando()
+            local n, quais = 0, {}
+            for code, e in pairs(audio.sources) do
+                if e.group == "music" and e.template and e.template:isPlaying() then
+                    n = n + 1; quais[#quais + 1] = code
+                end
+            end
+            table.sort(quais)
+            return n, table.concat(quais, "+")
+        end
+
+        -- Encadeia trocas SEM deixar nenhum fade terminar: e o caso real.
+        audio:playMusic("musicAct1", { fadeDuration = 2.5 })
+        audio:update(0.1)
+        audio:playMusic("musicShop", { fadeDuration = 2.5 })   -- entrou na loja
+        audio:update(0.1)
+        audio:playMusic("musicRest", { fadeDuration = 2.5 })   -- abriu a forja
+        audio:update(0.1)
+        local n, quais = tocando()
+        t:truthy("no meio da cadeia, no maximo 2 faixas (" .. quais .. ")", n <= 2)
+
+        audio:playMusic("musicAct1", { fadeDuration = 2.5 })   -- fechou a forja
+        for _ = 1, 200 do audio:update(1 / 60) end             -- deixa assentar
+        local n2, quais2 = tocando()
+        t:eq("depois de assentar, UMA faixa so (" .. quais2 .. ")", n2, 1)
+        t:eq("e e a certa", audio.currentMusic, "musicAct1")
+
+        audio:stopMusic()
+    else
+        t:truthy("audio indisponivel: sobreposicao nao pode ser medida aqui", true)
+    end
+
     return t:done()
 end
 

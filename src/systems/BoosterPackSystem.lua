@@ -7,13 +7,24 @@
 --   (a) TODO roll de pack usa o stream "shop" do Rng seedado — packs são
 --       decisão de RUN (love.math.random quebrava a reprodutibilidade por seed
 --       e o anti-save-scum).
---   (b) Pacote Bufão: pool = jokers da classe + neutros (class 'basic'/nil),
+--   (b) Estojo do Saltimbanco (kind Buffoon): pool = jokers da classe +
+--       neutros (class 'basic'/nil),
 --       pesado por raridade; dedup dentro do pack E contra jokers já
 --       possuídos (P0.10 — a posse/coleção fica intocada, a vitrine é que
 --       não repete).
---   (c) Arcana/Celestial/Spectral (tarôs/planetas/espectrais continuam
---       pendentes como tipos próprios): o fallback deixa de ser o pool GLOBAL
---       e vira classe do jogador + neutras, com pesos de raridade por ato.
+--   (c) Arcana/Celestial/Spectral: o fallback deixa de ser o pool GLOBAL e
+--       vira classe do jogador + neutras, com pesos de raridade por ato.
+--
+-- ATENÇÃO — OS TRÊS SÃO O MESMO PACOTE (auditoria Set/2026): Arcana,
+-- Celestial e Spectral caem no MESMO gerador, com o MESMO pool e os MESMOS
+-- pesos; só o `size` muda (3/3/2). Arcana e Celestial são gêmeos idênticos:
+-- dois nomes, duas artes, um conteúdo. Os nomes antigos (Arcano/Celestial/
+-- Espectral, com descrições prometendo "tarôs", "planetas" e "espectrais")
+-- eram herança do Balatro e MENTIAM sobre o conteúdo — foram trocados pela
+-- família do mercador (Relicário do Vidente / Cofre do Astrólogo / Mortalha
+-- do Coveiro) e as descrições passaram a dizer a verdade ("cartas seletas").
+-- O nome agora é honesto, mas a DUPLICAÇÃO continua: se for dar identidade
+-- mecânica a cada um, é aqui que ela mora. `kind` é a chave que separa.
 --
 -- Uso:
 --   local pack = { kind = "Standard", size = 3, classId = "warrior" }
@@ -37,7 +48,7 @@ local EDITION_RATES = {
 local SEAL_RATE = 0.20  -- 20% chance de ter qualquer seal
 local SEAL_TYPES = { "Red", "Blue", "Gold", "Purple" }
 
--- Peso por raridade dos jokers no Pacote Bufão (P0.6b): legendaries são
+-- Peso por raridade dos jokers no Estojo do Saltimbanco (P0.6b): legendaries são
 -- raros de sair mesmo no pack dedicado.
 local BUFFOON_RARITY_WEIGHT = { common = 1.0, uncommon = 1.0, rare = 0.6, legendary = 0.15 }
 
@@ -143,7 +154,39 @@ function BoosterPackSystem.generateContents(pack)
         weightedEntries = {}
         for _, id in ipairs(pool) do
             local c = all[id]
-            table.insert(weightedEntries, { item = id, weight = rarityWeights[c.rarity] or 0 })
+            local w = rarityWeights[c.rarity] or 0
+            -- ESPECTRAL (Mortalha do Coveiro): PISO DE RARIDADE.
+            --
+            -- Ele dá 2 cartas onde os irmãos dão 3, pelo MESMO $4, e ainda é o
+            -- mais raro de aparecer na loja (weight 0.3). Sem contrapartida
+            -- isso é simplesmente um pacote pior — o jogador que entendesse a
+            -- matemática nunca o compraria, e quem não entendesse seria punido
+            -- por comprar. Decisão do dono (Set/2026): quem dá menos tem que
+            -- dar MELHOR.
+            --
+            -- A contrapartida é raridade, não edição, de propósito: edição e
+            -- selo são o que torna o Fardo do Mercador único, e duplicar isso
+            -- aqui apagaria a identidade dele — que é o mesmo erro dos packs
+            -- gêmeos, um nível acima.
+            if kind == "Spectral" and (c.rarity == "common" or c.rarity == "basic") then
+                w = 0
+            end
+            table.insert(weightedEntries, { item = id, weight = w })
+        end
+        -- Rede: se o piso esvaziou a pool (ato/classe sem incomum+), volta aos
+        -- pesos normais. Pack vazio seria muito pior que pack comum, e o
+        -- jogador pagou. Avisa, porque isto não deveria acontecer.
+        if kind == "Spectral" then
+            local soma = 0
+            for _, e in ipairs(weightedEntries) do soma = soma + (e.weight or 0) end
+            if soma <= 0 then
+                print("[BoosterPack] Espectral sem incomum+ na pool — caindo nos pesos normais")
+                weightedEntries = {}
+                for _, id in ipairs(pool) do
+                    local c = all[id]
+                    table.insert(weightedEntries, { item = id, weight = rarityWeights[c.rarity] or 0 })
+                end
+            end
         end
     end
 

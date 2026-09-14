@@ -154,11 +154,11 @@ return {
     },
 
     shop_items = {
-        pack_standard  = { name = "Pack Standard",  desc = "3 cartes ; choisissez-en 1." },
-        pack_buffoon   = { name = "Pack Bouffon",   desc = "2 jokers ; choisissez-en 1." },
-        pack_arcana    = { name = "Pack Arcane",    desc = "3 tarots ; choisissez-en 1." },
-        pack_celestial = { name = "Pack Celeste",   desc = "3 planetes ; choisissez-en 1." },
-        pack_spectral  = { name = "Pack Spectral",  desc = "2 spectrales ; choisissez-en 1." },
+        pack_standard  = { name = "Ballot du Marchand",      desc = "3 cartes au hasard ; choisissez-en 1. Seules a porter un sceau." },
+        pack_buffoon   = { name = "Etui du Saltimbanque",    desc = "2 jokers ; choisissez-en 1. La troupe ne voyage pas pour rien." },
+        pack_arcana    = { name = "Reliquaire du Devin",     desc = "3 cartes de choix ; choisissez-en 1. L'oeil sait deja laquelle." },
+        pack_celestial = { name = "Coffre de l'Astrologue",  desc = "3 cartes de choix ; choisissez-en 1. Gardees sous un ciel fixe." },
+        pack_spectral  = { name = "Linceul du Fossoyeur",    desc = "2 cartes, aucune commune ; choisissez 1. Peu, et lourdes malgre tout." },
         -- RELIQUES (ameliorations de la boutique) : `effect` est le nombre qui
         -- tient dans la puce du tile, `desc` l explique en une ligne et
         -- `flavor` est la phrase de grimoire du panneau de detail.
@@ -297,12 +297,12 @@ return {
 
     -- Ouverture de booster (nom du type, compteur, indice, jetons du detail)
     pack = {
-        kind_standard  = "Pack Standard",
-        kind_buffoon   = "Pack Bouffon",
-        kind_arcana    = "Pack Arcane",
-        kind_celestial = "Pack Céleste",
-        kind_spectral  = "Pack Spectral",
-        kind_generic   = "Pack {kind}",
+        kind_standard  = "Ballot du Marchand",
+        kind_buffoon   = "Etui du Saltimbanque",
+        kind_arcana    = "Reliquaire du Devin",
+        kind_celestial = "Coffre de l'Astrologue",
+        kind_spectral  = "Linceul du Fossoyeur",
+        kind_generic   = "Paquet {kind}",
         choose         = "Choisissez {n}",
         closing        = "Fermeture...",
         click_hint     = "Cliquez sur une carte pour choisir",

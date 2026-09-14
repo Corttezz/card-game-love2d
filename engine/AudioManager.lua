@@ -227,6 +227,31 @@ function AudioManager:playMusic(code, opts)
     entry.loop = true
     entry.template:setLooping(true)
 
+    -- FAXINA ANTES DE TROCAR — sem isto, música SOBREPÕE música.
+    --
+    -- O defeito (relatado pelo dono, Set/2026: "a música da forja continuou a
+    -- sobrepor a música do ato"): o crossfade é UM só, guardado em
+    -- `musicCrossfade`. Se uma troca nova chega antes de a anterior terminar
+    -- — e isso é o caso comum, porque abrir a forja/picker troca de faixa e
+    -- fechar troca de volta em poucos segundos, com fade de 2,5s — o registro
+    -- do crossfade antigo era SUBSTITUÍDO e a faixa que estava saindo nunca
+    -- recebia `stop()`. Ela ficava tocando para sempre no volume em que parou,
+    -- e a partir daí duas (ou três) faixas somavam.
+    --
+    -- A varredura é sobre TODAS as fontes do grupo `music`, e não só sobre o
+    -- `from` do crossfade anterior, porque a sequência pode ter deixado mais
+    -- de uma órfã (A→B→C rápido deixa A e B). Só sobrevivem a faixa que está
+    -- saindo (vira o `from` do novo fade) e a que está entrando.
+    local atual = self.currentMusic
+    for outroCode, outroEntry in pairs(self.sources) do
+        if outroEntry.group == "music"
+            and outroCode ~= code and outroCode ~= atual
+            and outroEntry.template and outroEntry.template:isPlaying() then
+            outroEntry.template:stop()
+            print("[AudioManager] faixa orfa parada: " .. tostring(outroCode))
+        end
+    end
+
     local fadeDuration = opts.fadeDuration or 0
     if self.currentMusic and self.sources[self.currentMusic] then
         -- Crossfade entre duas músicas.

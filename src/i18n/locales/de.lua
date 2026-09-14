@@ -154,11 +154,11 @@ return {
     },
 
     shop_items = {
-        pack_standard  = { name = "Standard-Pack",  desc = "3 Karten; waehle 1." },
-        pack_buffoon   = { name = "Narren-Pack",    desc = "2 Joker; waehle 1." },
-        pack_arcana    = { name = "Arkana-Pack",    desc = "3 Tarots; waehle 1." },
-        pack_celestial = { name = "Himmels-Pack",   desc = "3 Planeten; waehle 1." },
-        pack_spectral  = { name = "Spektral-Pack",  desc = "2 Spektralkarten; waehle 1." },
+        pack_standard  = { name = "Haendlerbuendel",   desc = "3 zufaellige Karten; waehle 1. Nur hier mit Siegel." },
+        pack_buffoon   = { name = "Gauklerkiste",      desc = "2 Joker; waehle 1. Die Truppe reist nicht umsonst." },
+        pack_arcana    = { name = "Seherreliquiar",    desc = "3 erlesene Karten; waehle 1. Das Auge weiss es schon." },
+        pack_celestial = { name = "Astrologentruhe",   desc = "3 erlesene Karten; waehle 1. Unter festem Himmel verwahrt." },
+        pack_spectral  = { name = "Totengraebertuch",  desc = "2 Karten, keine gewoehnliche; waehle 1. Wenige, und doch schwer." },
         -- RELIKTE (Laden-Upgrades): `effect` ist die Zahl fuer den Chip des
         -- Tiles, `desc` erklaert es in einer Zeile und `flavor` ist die
         -- Grimoire-Zeile im Detailpanel.
@@ -297,12 +297,12 @@ return {
 
     -- Booster-Oeffnung (Typname, Zaehler, Hinweis, Detail-Chips)
     pack = {
-        kind_standard  = "Standardpaket",
-        kind_buffoon   = "Narrenpaket",
-        kind_arcana    = "Arkanpaket",
-        kind_celestial = "Himmelspaket",
-        kind_spectral  = "Geisterpaket",
-        kind_generic   = "{kind}-Paket",
+        kind_standard  = "Haendlerbuendel",
+        kind_buffoon   = "Gauklerkiste",
+        kind_arcana    = "Seherreliquiar",
+        kind_celestial = "Astrologentruhe",
+        kind_spectral  = "Totengraebertuch",
+        kind_generic   = "{kind}-Buendel",
         choose         = "Waehle {n}",
         closing        = "Schliesst...",
         click_hint     = "Klicke auf eine Karte zum Waehlen",

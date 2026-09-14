@@ -103,13 +103,22 @@ function M.run(argW, argH, locale)
             added = added + 1
         end
     end
+    -- CÓPIAS REPETIDAS do MESMO id: a queixa do dono ("se eu tiver duas
+    -- cartas iguais, na tela de forjar só aparece uma"). O deck de teste
+    -- carrega 3 cópias de warrior_strike de propósito — a grade tem que
+    -- mostrar as TRÊS, e forjar uma não pode mexer nas outras duas.
+    game.runManager:addCardToDeck("warrior_strike")
+    game.runManager:addCardToDeck("warrior_strike")
+
     -- Uma carta já forjada (mostra o selo +1 e o preview partindo de +1).
-    local firstId = nil
-    for _, entry in ipairs(run.currentDeck) do
+    -- É a PRIMEIRA cópia de warrior_strike: com o nível por cópia, a grade
+    -- mostra "+1" em UMA das três e "+0" nas outras duas.
+    local firstIdx = nil
+    for i, entry in ipairs(run.currentDeck) do
         local id = type(entry) == "table" and entry.id or entry
-        if id and game.runManager:canUpgrade(id) then firstId = id; break end
+        if id and game.runManager:canUpgrade(id) then firstIdx = i; break end
     end
-    if firstId then game.runManager:upgradeCard(firstId) end
+    if firstIdx then game.runManager:upgradeCardAt(firstIdx) end
 
     local screen = RestScreen:new()
     screen:show(game, function() print("[forge] onClose") end, "forge")
@@ -157,13 +166,35 @@ function M.run(argW, argH, locale)
     simulate(0.5)
     capture("forge_idle.png")
 
-    -- Hover na 2a carta (ou na 1a se só houver uma).
-    local target = screen.cardEntries[2] or screen.cardEntries[1]
+    -- Hover na ULTIMA copia de warrior_strike (a 3a das tres injetadas acima).
+    -- E de proposito uma COPIA REPETIDA: a cerimonia que vem a seguir forja
+    -- ESSA, e as outras duas tem que ficar paradas onde estavam.
+    local target = nil
+    for k = #screen.cardEntries, 1, -1 do
+        if screen.cardEntries[k].id == "warrior_strike" then
+            target = screen.cardEntries[k]; break
+        end
+    end
+    target = target or screen.cardEntries[2] or screen.cardEntries[1]
     if not target then
-        print("[forge] ERRO: nenhuma carta forjavel na pagina — nada a validar")
+        print("[forge] ERRO: nenhuma carta forjavel na pagina - nada a validar")
         love.event.quit()
         return
     end
+    -- Niveis das TRES copias antes da forja (a prova do "por copia").
+    local function dumpCopies(tag)
+        local out = {}
+        for k, e in ipairs(screen.cardEntries) do
+            if e.id == "warrior_strike" then
+                table.insert(out, ("entry[%d] idx=%s lvl=%d")
+                    :format(k, tostring(e.idx),
+                        game.runManager:getUpgradesAt(e.idx)))
+            end
+        end
+        print(("[forge] copias de warrior_strike %s: %s")
+            :format(tag, table.concat(out, " | ")))
+    end
+    dumpCopies("ANTES")
     fakeMouse.x = math.floor(target.x + target.w / 2)
     fakeMouse.y = math.floor(target.y + target.h / 2)
     simulate(0.6)
@@ -172,12 +203,15 @@ function M.run(argW, argH, locale)
     capture("forge_hover.png")
 
     -- Confirma a forja na carta em hover.
-    local beforeLvl = game.runManager:getUpgrades(target.id)
+    -- getUpgradesAt (a COPIA) e nao getUpgrades (o maior entre as copias do
+    -- mesmo id) — senao a linha mentiria: outra copia ja estava em +1.
+    local beforeLvl = game.runManager:getUpgradesAt(target.idx)
     screen:mousereleased(fakeMouse.x, fakeMouse.y, 1)
-    print(("[forge] forjou %s: nivel %d -> %d  (busy=%s forge=%s)"):format(
-        tostring(target.id), beforeLvl,
-        game.runManager:getUpgrades(target.id),
+    print(("[forge] forjou %s (copia idx=%s): nivel %d -> %d  (busy=%s forge=%s)"):format(
+        tostring(target.id), tostring(target.idx), beforeLvl,
+        game.runManager:getUpgradesAt(target.idx),
         tostring(screen.busy), tostring(screen.forge ~= nil)))
+    dumpCopies("DEPOIS")
 
     local f = screen.forge
     if f then

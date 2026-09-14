@@ -87,9 +87,10 @@ function RunManager:startNewRun(classId)
         -- Histórico de cartas adicionadas
         cardHistory = {},
 
-        -- Upgrade map: { cardId -> levelInt }. Aplicado em buildPlayableDeck →
-        -- todas as cópias da mesma carta no deck recebem +N stats. Forge node
-        -- (RestScreen) incrementa via :upgradeCard(id).
+        -- LINHA DE BASE legada de forja: { cardId -> levelInt }. Desde a forja
+        -- POR CÓPIA (Set/2026) nada escreve aqui — o nível novo mora em
+        -- currentDeck[i].up. Fica pra saves antigos continuarem lendo o nível
+        -- que tinham (ver getEntryLevel).
         upgraded = {},
 
         -- Estado do jogador (pode ser expandido)
@@ -598,25 +599,190 @@ function RunManager.getUpgradeCap()
     return cap
 end
 
--- Incrementa o nível de upgrade de uma carta. Aplica a TODAS as cópias dessa
--- carta no deck na próxima buildPlayableDeck (todas refletem o "+N").
--- Retorna o novo nível, ou nil se já está no cap (caller deve checar pra
--- bloquear a forge na UI). Com cap 0 (infinito) nunca retorna nil.
-function RunManager:upgradeCard(cardId)
+-- ===== Forja POR CÓPIA (Set/2026) =====
+--
+-- ANTES: o nível morava em currentRun.upgraded[cardId] — um mapa POR ID. Duas
+-- "Golpe" no deck eram, pra forja, a MESMA carta: forjar uma subia as duas. Foi
+-- por isso que o picker da bigorna deduplicava a grade (mostrar duas cartas
+-- idênticas que sempre andam juntas é mentira de UI) — e a queixa do dono
+-- ("se eu tiver duas cartas iguais, na tela de forjar só aparece uma") é a
+-- ponta visível disso.
+--
+-- AGORA: o nível mora NA CÓPIA, no próprio item de currentDeck (campo `up`).
+-- A identidade de uma cópia é o ÍNDICE dela em currentDeck — nunca o id.
+--
+-- Back-compat SEM migração destrutiva: o nível efetivo de uma cópia é
+--     entry.up  OU  currentRun.upgraded[id]  OU  0
+-- (ver getEntryLevel). Save antigo continua lendo o mapa por id como LINHA DE
+-- BASE compartilhada; a primeira forja daquela cópia grava `up` e a partir daí
+-- ela anda sozinha. Nada se perde e nenhuma ordem de migração importa.
+
+-- Nível de forja de UMA CÓPIA. `entry` é um item de currentDeck: string (id)
+-- OU { id, edition, seal, up }.
+function RunManager:getEntryLevel(entry)
+    if entry == nil then return 0 end
+    if type(entry) == "table" then
+        if entry.up then return entry.up end
+        local legacy = self.currentRun and self.currentRun.upgraded
+        return (legacy and legacy[entry.id]) or 0
+    end
+    local legacy = self.currentRun and self.currentRun.upgraded
+    return (legacy and legacy[entry]) or 0
+end
+
+-- Id de uma entrada do deck (string OU {id,...}).
+function RunManager.entryId(entry)
+    if entry == nil then return nil end
+    if type(entry) == "table" then return entry.id end
+    return entry
+end
+
+-- Nível da cópia no índice `index` de currentDeck.
+function RunManager:getUpgradesAt(index)
     if not self.currentRun then return 0 end
-    self.currentRun.upgraded = self.currentRun.upgraded or {}
-    local current = self.currentRun.upgraded[cardId] or 0
+    return self:getEntryLevel(self.currentRun.currentDeck[index])
+end
+
+-- Promove a entrada do índice a TABELA (é onde o nível por cópia mora) e
+-- devolve a tabela. Preserva edition/seal e a linha de base legada.
+function RunManager:_entryTableAt(index)
+    local deck = self.currentRun and self.currentRun.currentDeck
+    local entry = deck and deck[index]
+    if not entry then return nil end
+    if type(entry) == "table" then
+        entry.up = entry.up or self:getEntryLevel(entry)
+        return entry
+    end
+    local t = { id = entry, up = self:getEntryLevel(entry) }
+    deck[index] = t
+    return t
+end
+
+-- Lista NORMALIZADA de cópias do deck, uma entrada POR CÓPIA (duas "Golpe"
+-- viram duas entradas). É o que as telas de forja/remoção/duplicação devem
+-- percorrer — percorrer ids colapsa cópias.
+function RunManager:getDeckCopies()
+    local out = {}
+    if not self.currentRun then return out end
+    for i, entry in ipairs(self.currentRun.currentDeck) do
+        local id = RunManager.entryId(entry)
+        if id then
+            table.insert(out, {
+                index = i,
+                id = id,
+                level = self:getEntryLevel(entry),
+                edition = type(entry) == "table" and entry.edition or nil,
+                seal = type(entry) == "table" and entry.seal or nil,
+            })
+        end
+    end
+    return out
+end
+
+-- True se ALGUMA carta da run já foi forjada (conquista "sem_rascunhos").
+-- Precisa olhar as duas fontes: o mapa legado E o `up` por cópia.
+function RunManager:hasAnyUpgrade()
+    if not self.currentRun then return false end
+    if next(self.currentRun.upgraded or {}) then return true end
+    for _, entry in ipairs(self.currentRun.currentDeck or {}) do
+        if type(entry) == "table" and (entry.up or 0) > 0 then return true end
+    end
+    return false
+end
+
+-- Forja UMA CÓPIA (índice em currentDeck). Retorna o novo nível, ou nil se a
+-- cópia não existe / já está no cap. Com cap 0 (infinito) nunca retorna nil.
+function RunManager:upgradeCardAt(index)
+    if not self.currentRun then return nil end
+    local entry = self.currentRun.currentDeck[index]
+    if not entry then
+        print("[RunManager] upgradeCardAt: indice fora do deck: " .. tostring(index))
+        return nil
+    end
+    local current = self:getEntryLevel(entry)
     local cap = RunManager.getUpgradeCap()
     if cap > 0 and current >= cap then
         return nil
     end
-    local lvl = current + 1
-    self.currentRun.upgraded[cardId] = lvl
+    local t = self:_entryTableAt(index)
+    if not t then return nil end
+    t.up = current + 1
     -- Roteiro: a forja é anotada AQUI e não em registerPaidForge — este é o
-    -- ponto que sabe O QUE foi forjado (fogueira, loja e eventos passam todos
+    -- ponto que sabe O QUÊ foi forjado (fogueira, loja e eventos passam todos
     -- por aqui); registerPaidForge só conta o custo e duplicaria a entrada.
-    self:journalNote({ kind = "forge", id = cardId, lvl = lvl })
-    return lvl
+    self:journalNote({ kind = "forge", id = t.id, lvl = t.up })
+    return t.up
+end
+
+-- True se a CÓPIA do índice pode ser forjada (tem ganho E não bateu o cap).
+function RunManager:canUpgradeAt(index)
+    if not self.currentRun then return false end
+    local entry = self.currentRun.currentDeck[index]
+    local id = RunManager.entryId(entry)
+    if not id then return false end
+    local cardData = self.cardDatabase:getCard(id)
+    if not cardData or next(RunManager.getForgeGains(cardData)) == nil then
+        return false
+    end
+    local cap = RunManager.getUpgradeCap()
+    if cap <= 0 then return true end
+    return self:getEntryLevel(entry) < cap
+end
+
+-- Remove UMA CÓPIA pelo índice (a que o jogador apontou, com o nível dela).
+-- removeCardFromDeck(id) remove a PRIMEIRA cópia — errado quando o jogador
+-- escolheu a terceira.
+function RunManager:removeCardAt(index)
+    if not self.currentRun then return false end
+    local entry = self.currentRun.currentDeck[index]
+    if not entry then return false end
+    local id = RunManager.entryId(entry)
+    table.remove(self.currentRun.currentDeck, index)
+    self:journalNote({ kind = "remove", id = id })
+    return true
+end
+
+-- Duplica UMA CÓPIA pelo índice. A cópia nova nasce igual à escolhida — mesmo
+-- edition/seal e MESMO nível de forja (duplicar "Golpe +2" entrega "Golpe +2",
+-- não uma Golpe crua). Retorna o índice da nova cópia.
+function RunManager:duplicateCardAt(index)
+    if not self.currentRun then return nil end
+    local entry = self.currentRun.currentDeck[index]
+    if not entry then return nil end
+    local id = RunManager.entryId(entry)
+    local lvl = self:getEntryLevel(entry)
+    local meta = nil
+    if type(entry) == "table" and (entry.edition or entry.seal) then
+        meta = { edition = entry.edition, seal = entry.seal }
+    end
+    if not self:addCardToDeck(id, meta) then return nil end
+    local newIndex = #self.currentRun.currentDeck
+    if lvl > 0 then
+        local t = self:_entryTableAt(newIndex)
+        if t then t.up = lvl end
+    end
+    return newIndex
+end
+
+-- Forja POR ID (legado — eventos, autoplay e a loja, que não têm índice em
+-- mão). Escolhe UMA cópia: a de MENOR nível entre as forjáveis, pra que forjar
+-- "Golpe" repetidamente espalhe os níveis em vez de empilhar tudo numa só.
+-- Retorna o novo nível, ou nil se nenhuma cópia dessa carta pode ser forjada.
+function RunManager:upgradeCard(cardId)
+    if not self.currentRun then return 0 end
+    local best, bestLvl = nil, nil
+    for i, entry in ipairs(self.currentRun.currentDeck) do
+        if RunManager.entryId(entry) == cardId and self:canUpgradeAt(i) then
+            local lvl = self:getEntryLevel(entry)
+            if not bestLvl or lvl < bestLvl then best, bestLvl = i, lvl end
+        end
+    end
+    if not best then
+        -- Sem fallback silencioso: quem chamou achou que tinha essa carta.
+        print("[RunManager] upgradeCard: nenhuma copia forjavel de " .. tostring(cardId))
+        return nil
+    end
+    return self:upgradeCardAt(best)
 end
 
 -- True se a carta pode ser forjada novamente (não atingiu o cap E a forja
@@ -630,6 +796,16 @@ function RunManager:canUpgrade(cardId)
     end
     local cap = RunManager.getUpgradeCap()
     if cap <= 0 then return true end
+    -- Com cap finito: basta UMA cópia abaixo do teto. (Sem cópia no deck cai
+    -- na linha de base legada — o comportamento antigo.)
+    local any = false
+    for i, entry in ipairs(self.currentRun.currentDeck or {}) do
+        if RunManager.entryId(entry) == cardId then
+            any = true
+            if self:getEntryLevel(entry) < cap then return true end
+        end
+    end
+    if any then return false end
     local lvl = (self.currentRun.upgraded and self.currentRun.upgraded[cardId]) or 0
     return lvl < cap
 end
@@ -649,10 +825,23 @@ function RunManager:registerPaidForge()
     self.currentRun.paidForges = (self.currentRun.paidForges or 0) + 1
 end
 
--- Lê nível de upgrade. Default 0 se carta nunca forjada.
+-- Lê nível de upgrade POR ID (legado). Com nível por cópia não existe "o"
+-- nível de uma carta: devolve o MAIOR entre as cópias no deck (é o que
+-- interessa a quem pergunta "essa carta já foi forjada?"). Quem precisa de uma
+-- cópia específica usa getUpgradesAt(index).
 function RunManager:getUpgrades(cardId)
-    if not self.currentRun or not self.currentRun.upgraded then return 0 end
-    return self.currentRun.upgraded[cardId] or 0
+    if not self.currentRun then return 0 end
+    local best = 0
+    for _, entry in ipairs(self.currentRun.currentDeck or {}) do
+        if RunManager.entryId(entry) == cardId then
+            best = math.max(best, self:getEntryLevel(entry))
+        end
+    end
+    -- Carta fora do deck (já removida): resta a linha de base legada.
+    if best == 0 and self.currentRun.upgraded then
+        best = self.currentRun.upgraded[cardId] or 0
+    end
+    return best
 end
 
 -- Aplica +N ao instance criado. Ganhos por nível vêm de Config.Offers
@@ -784,7 +973,10 @@ function RunManager:buildPlayableDeck()
         local cardData = self.cardDatabase:getCard(cardId)
         if cardData then
             local cardInstance = self.cardDatabase:createCardInstance(cardData)
-            local lvl = upgradedMap[cardId] or 0
+            -- Nível POR CÓPIA (entry.up); o mapa por id fica como linha de base
+            -- pra saves anteriores à forja por cópia.
+            local lvl = (type(entry) == "table" and entry.up)
+                or upgradedMap[cardId] or 0
             if lvl > 0 then
                 self:applyUpgradesToInstance(cardInstance, lvl)
             end

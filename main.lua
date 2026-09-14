@@ -1406,6 +1406,35 @@ function love.load(loveArgs)
     -- "roundEval" entre playing → cardReward em modo run.
     roundEvalScreen = RoundEvalScreen:new()
 
+    -- ===================================================================
+    -- FOCO DE ENTRADA: quem, ao ficar visível, toma o mouse de quem está
+    -- atrás. ESTA é a lista — overlay que não está aqui não bloqueia nada,
+    -- e overlay que está aqui bloqueia por construção (src/ui/InputFocus).
+    --
+    -- A ORDEM é a prioridade (último = mais por cima). Primeiro as
+    -- COBERTURAS (keepChrome: tapam a cena, mas a TopBar segue viva e
+    -- clicável — clicar no ouro/deck/engrenagem na loja/descanso é
+    -- comportamento desejado), depois os MODAIS (engolem tudo, TopBar
+    -- inclusive, e capturam os eventos).
+    --
+    -- AO CRIAR UMA TELA NOVA: registre aqui, no mesmo commit. É a única
+    -- linha necessária — o bloqueio do hover de trás vem de graça.
+    -- ===================================================================
+    do
+        local IF = require("src.ui.InputFocus")
+        IF.clear()
+        IF.register("map",          mapScreen,               { keepChrome = true })
+        IF.register("rest",         restScreen,              { keepChrome = true })
+        IF.register("event",        eventScreen,             { keepChrome = true })
+        IF.register("roundEval",    roundEvalScreen,         { keepChrome = true })
+        IF.register("packOpen",     packOpenScreen)
+        IF.register("deckViewer",   deckViewerScreen)
+        IF.register("jokerManager", _G.jokerManagerScreen)
+        IF.register("runJournal",   _G.runJournalScreen)
+        IF.register("pause",        pauseMenu)
+        IF.register("settings",     settingsMenu)
+    end
+
     -- API global pra ser chamada pela CardRewardScreen quando jogador compra
     -- um booster pack. Padrão Balatro (UI_definitions.lua:1629+): a loja
     -- desliza pra fora da tela enquanto o pack toma o foco. Quando o pack
@@ -1446,20 +1475,15 @@ function love.load(loveArgs)
     CRTShader.setPower(0)
     CRTShader.powerOn(1.8)   -- v3.6: warm-up tem mais estágios (rolo de sync)
 
-    -- MOUSE ATRAVÉS DO VIDRO: o domo do CRT desloca a imagem perto das
-    -- bordas — sem isto, clique/hover perto do topo/base acertam ACIMA de
-    -- onde o botão aparece (bug da Coleção). Patch global: todo mundo que
-    -- lê love.mouse.getPosition/getX/getY enxerga coordenadas de CONTEÚDO,
-    -- na mesma lente do shader. Com CRT desligado é passthrough.
-    local rawGetPosition = love.mouse.getPosition
-    love.mouse.getPosition = function()
-        return CRTShader.screenToContent(rawGetPosition())
-    end
-    love.mouse.getX = function() return (love.mouse.getPosition()) end
-    love.mouse.getY = function()
-        local _, my = love.mouse.getPosition()
-        return my
-    end
+    -- MOUSE ATRAVÉS DO VIDRO + PORTÃO DE FOCO. Duas verdades, o MESMO ponto
+    -- único: todo mundo que lê love.mouse.getPosition/getX/getY enxerga
+    --   (a) coordenadas de CONTEÚDO, na mesma lente do CRT (o domo desloca a
+    --       imagem perto das bordas — sem isto, clique/hover perto do topo/
+    --       base acertam ACIMA de onde o botão aparece; bug da Coleção);
+    --   (b) o mouse FORA DA TELA quando quem está desenhando não é o dono do
+    --       foco (overlay modal aberto) — é o que faz o hover de trás morrer
+    --       sozinho. Ver src/ui/InputFocus.lua.
+    require("src.ui.InputFocus").installMouseGate(CRTShader.screenToContent)
 
     -- FX pipeline (shaders próprios, copyright-safe — Fase 2 do refactor Balatro).
     -- Dissolve: exhaust/destroy. Flash: impactos. Booster: pacotes selados.
@@ -1532,12 +1556,27 @@ function love.load(loveArgs)
             -- linha quente) e RELIGA já na tela final. Com CRT off nas
             -- Settings, powerOff/On viram corte seco (acessibilidade).
             if name == "gameOver" or name == "victory" then
-                -- v3.6: colapso + ponto de fósforo apagando pedem fôlego
-                CRTShader.powerOff(0.9, function()
-                    currentState = name
-                    CRTShader.powerOn(1.1)
-                end)
+                -- TRAVA DE REENTRADA — sem ela o jogo TRAVA NA TELA PRETA.
+                -- O gatilho é uma CONDIÇÃO, não um evento: o
+                -- GameplayScene.update chama isto toda vez que
+                -- `game:checkGameOver()` é verdadeiro, e morte não deixa de
+                -- ser verdadeira. Cada chamada substituía o `powerAnim` em
+                -- curso e zerava o cronômetro dele, então o callback que
+                -- troca o estado NUNCA chegava ao fim: a TV ficava desligada
+                -- para sempre, sem tela, sem input, só fechando o jogo
+                -- (relatado pelo dono, Set/2026).
+                -- v3.6: colapso + ponto de fósforo apagando pedem fôlego.
+                -- A trava de reentrada mora em src/ui/EndTransition.lua —
+                -- sem ela o jogo TRAVA NA TELA PRETA (o gatilho é condição,
+                -- não evento, e reiniciava o desligamento todo frame).
+                require("src.ui.EndTransition").start(name,
+                    function(dur, cb) CRTShader.powerOff(dur, cb) end,
+                    function(finalName)
+                        currentState = finalName
+                        CRTShader.powerOn(1.1)
+                    end)
             else
+                require("src.ui.EndTransition").clear()
                 currentState = name
             end
         end,
@@ -1582,10 +1621,19 @@ function love.update(dt)
     -- loja, coleção, deck viewer e menu animam pela mesma referência.
     CardFrame.update()
 
+    -- FOCO DE ENTRADA: zera a pilha de camadas do frame (higiene — um erro
+    -- no meio de um draw anterior não pode deixar o portão do mouse torto).
+    local IF = require("src.ui.InputFocus")
+    IF.resetLayers()
+
     -- TopBar precisa tickar em TODOS os estados onde é desenhada (loja,
     -- roundEval, rest, event, mapa) — o contador eased de ouro congelava
     -- fora do combate ("comprei e o ouro não mudou", playtest Jul/2026).
+    -- Camada CHROME: modal apaga o hover da barra; cobertura (loja/descanso/
+    -- mapa) deixa ela viva.
+    IF.push(IF.CHROME)
     if topBar and game then topBar:update(dt, game) end
+    IF.pop()
     -- Infra global (antes do dispatch de estado): event queue, particles,
     -- flash fade, screen shake decay.
     EventManager.update(dt)
@@ -1604,7 +1652,11 @@ function love.update(dt)
     FlashShader.update(dt)
     ScreenShake.update(dt)
 
-    -- Dispatch por estado.
+    -- Dispatch por estado, na camada SCENE: é tudo que fica ATRÁS de um
+    -- overlay. Continua rodando (o mundo não congela), mas com um overlay
+    -- visível o portão do InputFocus faz o mouse ler fora da tela aqui
+    -- dentro — hover de carta/botão/HUD morre sozinho.
+    IF.push(IF.SCENE)
     if currentState == "boot" then
         BootScene.update(dt)
     elseif currentState == "menu" then
@@ -1621,30 +1673,49 @@ function love.update(dt)
         end
         cardRewardScreen:update(dt)
         if packOpenScreen and packOpenScreen:isVisible() then
+            -- O pacote é MODAL sobre a loja: atualiza na camada dele (só ele
+            -- enxerga o mouse), e a loja atrás para de acender.
+            IF.push("packOpen")
             packOpenScreen:update(dt)
+            IF.pop()
         end
     elseif currentState == "roundEval" then
+        IF.push("roundEval")
         roundEvalScreen:update(dt)
+        IF.pop()
     elseif currentState == "mapSelection" then
         local WorldRoad = require("src.ui.WorldRoad")
         if WorldRoad.isForkActive() then
+            -- Encruzilhada: a escolha acontece NO MUNDO — é cena, não overlay.
             WorldRoad.update(dt)
         else
+            IF.push("map")
             mapScreen:update(dt)
+            IF.pop()
         end
     elseif currentState == "rest" then
+        IF.push("rest")
         restScreen:update(dt)
+        IF.pop()
     elseif currentState == "event" then
+        IF.push("event")
         eventScreen:update(dt)
+        IF.pop()
     elseif currentState == "collection" then
         collectionScreen:update(dt)
     elseif currentState == "achievements" then
         achievementsScreen:update(dt)
     end
+    IF.pop()
 
-    -- Overlay modal sempre atualiza (mesmo sobre outros states).
-    if settingsMenu then settingsMenu:update(dt) end
-    if pauseMenu then pauseMenu:update(dt) end
+    -- Overlays modais: cada um na SUA camada — o topo visível é o único que
+    -- enxerga o mouse de verdade.
+    if settingsMenu then
+        IF.push("settings"); settingsMenu:update(dt); IF.pop()
+    end
+    if pauseMenu then
+        IF.push("pause"); pauseMenu:update(dt); IF.pop()
+    end
 end
 
 function love.draw()
@@ -1654,6 +1725,13 @@ function love.draw()
 
     -- Screen shake (sistema dedicado). Pair com .pop() no fim do love.draw.
     ScreenShake.push()
+
+    -- FOCO DE ENTRADA. Boa parte do hover deste jogo é decidida no DRAW
+    -- (grids das telas cheias, quadro de coringas, botão X...), então a
+    -- camada precisa valer aqui também, não só no update.
+    local IF = require("src.ui.InputFocus")
+    IF.resetLayers()
+    IF.push(IF.SCENE)
 
     if currentState == "boot" then
         BootScene.draw()
@@ -1672,11 +1750,11 @@ function love.draw()
         cardRewardScreen:draw() -- Overlay da recompensa
         -- Pack opening (Fase 5) é overlay SOBRE a loja — desenha por último.
         if packOpenScreen and packOpenScreen:isVisible() then
-            packOpenScreen:draw()
+            IF.push("packOpen"); packOpenScreen:draw(); IF.pop()
         end
     elseif currentState == "roundEval" then
         GameplayScene.draw()       -- gameplay congelado por trás
-        roundEvalScreen:draw()     -- overlay de cash out
+        IF.push("roundEval"); roundEvalScreen:draw(); IF.pop()
     elseif currentState == "mapSelection" then
         local WorldRoad = require("src.ui.WorldRoad")
         if WorldRoad.isForkActive() then
@@ -1684,14 +1762,14 @@ function love.draw()
             GameplayScene.drawWorldOnly()
         else
             GameplayScene.draw()
-            mapScreen:draw()
+            IF.push("map"); mapScreen:draw(); IF.pop()
         end
     elseif currentState == "rest" then
         GameplayScene.draw()
-        restScreen:draw()
+        IF.push("rest"); restScreen:draw(); IF.pop()
     elseif currentState == "event" then
         GameplayScene.draw()
-        eventScreen:draw()
+        IF.push("event"); eventScreen:draw(); IF.pop()
     elseif currentState == "collection" then
         collectionScreen:draw()
     elseif currentState == "achievements" then
@@ -1712,7 +1790,12 @@ function love.draw()
                    or currentState == "mapSelection"
                    or currentState == "rest"
                    or currentState == "event") then
+        -- Camada CHROME (ver love.update): modal apaga, cobertura preserva.
+        IF.pop()                  -- sai de SCENE
+        IF.push(IF.CHROME)
         topBar:draw()
+        IF.pop()
+        IF.push(IF.SCENE)         -- volta pra SCENE (o pop do fim do bloco)
     end
 
     -- Tooltips agendados durante topBar:draw() desenham AQUI, por cima da
@@ -1735,28 +1818,31 @@ function love.draw()
 
     ScreenShake.pop()
 
+    IF.pop()   -- fecha a camada SCENE: daqui pra baixo só overlay e cursor
+
     -- Deck Viewer global (F5): overlay em qualquer tela da run
     if deckViewerScreen and deckViewerScreen:isVisible() then
-        deckViewerScreen:draw()
+        IF.push("deckViewer"); deckViewerScreen:draw(); IF.pop()
     end
 
     -- Gerenciador de Coringas: overlay em qualquer tela da run
     if _G.jokerManagerScreen and _G.jokerManagerScreen:isVisible() then
-        _G.jokerManagerScreen:draw()
+        IF.push("jokerManager"); _G.jokerManagerScreen:draw(); IF.pop()
     end
 
     -- Roteiro da jornada: overlay em qualquer tela da run
     if _G.runJournalScreen and _G.runJournalScreen:isVisible() then
-        _G.runJournalScreen:draw()
+        IF.push("runJournal"); _G.runJournalScreen:draw(); IF.pop()
     end
 
     -- Overlay de settings (modal) ainda DENTRO da cena CRT — assim o shader
     -- cobre o overlay também.
-    if pauseMenu then pauseMenu:draw() end
-    if settingsMenu then settingsMenu:draw() end
+    if pauseMenu then IF.push("pause"); pauseMenu:draw(); IF.pop() end
+    if settingsMenu then IF.push("settings"); settingsMenu:draw(); IF.pop() end
 
     -- Cursor pixel-art por cima de TUDO, mas dentro da cena CRT (warp do
-    -- tubo pega o cursor também — coerência Balatro).
+    -- tubo pega o cursor também — coerência Balatro). SEM camada: o cursor
+    -- segue o mouse de verdade em qualquer situação.
     require("src.ui.CursorManager").draw()
 
     CRTShader.endScene()
@@ -1829,34 +1915,16 @@ function love.keypressed(key)
         return
     end
 
-    -- Settings overlay consome teclas primeiro (modal)
-    if settingsMenu and settingsMenu.keypressed and settingsMenu:isVisible() then
-        if settingsMenu:keypressed(key) then return end
-    end
-
-    -- Pause modal engole teclado enquanto aberto (ESC fecha/desarma confirmação).
-    if pauseMenu and pauseMenu:isVisible() then
-        if pauseMenu:keypressed(key) then return end
-    end
-
-    -- Deck Viewer global consome teclas enquanto aberto (D/ESC fecham)
-    if deckViewerScreen and deckViewerScreen:isVisible() then
-        if deckViewerScreen:keypressed(key) then return end
-    end
-
-    -- Gerenciador de Coringas consome teclas enquanto aberto (J/ESC fecham)
-    if _G.jokerManagerScreen and _G.jokerManagerScreen:isVisible() then
-        if _G.jokerManagerScreen:keypressed(key) then return end
-    end
-
-    -- Roteiro consome teclas enquanto aberto (M/ESC fecham)
-    if _G.runJournalScreen and _G.runJournalScreen:isVisible() then
-        if _G.runJournalScreen:keypressed(key) then return end
-    end
-
-    -- Pack opening absorve teclas (escape fecha) enquanto visível.
-    if packOpenScreen and packOpenScreen:isVisible() then
-        if packOpenScreen:keypressed(key) then return end
+    -- MODAL ABERTO ENGOLE O TECLADO. Uma chamada no lugar de seis cadeias
+    -- escritas à mão: o topo do registro (src/ui/InputFocus) é quem recebe,
+    -- e nada vaza pro atalho de trás. Overlay novo entra aqui de graça —
+    -- basta estar registrado no love.load.
+    do
+        local captor = require("src.ui.InputFocus").captor()
+        if captor then
+            if captor.keypressed then captor:keypressed(key) end
+            return
+        end
     end
 
     -- F5: tecla D abre o deck da run em qualquer tela dela
@@ -1967,31 +2035,14 @@ end
 
 function love.mousereleased(x, y, button)
     x, y = CRTShader.screenToContent(x, y)
-    -- Deck Viewer global consome mouse enquanto aberto
-    if deckViewerScreen and deckViewerScreen:isVisible() then
-        deckViewerScreen:mousereleased(x, y, button)
-        return
-    end
 
-    -- Gerenciador de Coringas consome mouse enquanto aberto
-    if _G.jokerManagerScreen and _G.jokerManagerScreen:isVisible() then
-        _G.jokerManagerScreen:mousereleased(x, y, button)
-        return
-    end
-
-    -- Roteiro consome mouse enquanto aberto
-    if _G.runJournalScreen and _G.runJournalScreen:isVisible() then
-        _G.runJournalScreen:mousereleased(x, y, button)
-        return
-    end
-
-    -- Settings modal consome primeiro
-    if settingsMenu and settingsMenu:isVisible() then
-        if settingsMenu:mousereleased(x, y, button) then return end
-    end
-
-    if pauseMenu and pauseMenu:isVisible() then
-        if pauseMenu:mousereleased(x, y, button) then return end
+    -- Modal aberto recebe o release e NADA passa (ver love.keypressed).
+    do
+        local captor = require("src.ui.InputFocus").captor()
+        if captor then
+            if captor.mousereleased then captor:mousereleased(x, y, button) end
+            return
+        end
     end
 
     if currentState == "menu" then
@@ -2001,9 +2052,6 @@ function love.mousereleased(x, y, button)
     elseif currentState == "playing" then
         GameplayScene.mousereleased(x, y, button)
     elseif currentState == "cardReward" then
-        if packOpenScreen and packOpenScreen:isVisible() then
-            if packOpenScreen:mousereleased(x, y, button) then return end
-        end
         cardRewardScreen:mousereleased(x, y, button)
     elseif currentState == "roundEval" then
         roundEvalScreen:mousereleased(x, y, button)
@@ -2028,32 +2076,14 @@ function love.mousepressed(x, y, button)
         return
     end
 
-    -- Settings modal consome primeiro
-    if settingsMenu and settingsMenu:isVisible() then
-        if settingsMenu:mousepressed(x, y, button) then return end
-    end
-
-    -- Pause modal consome tudo enquanto aberto
-    if pauseMenu and pauseMenu:isVisible() then
-        if pauseMenu:mousepressed(x, y, button) then return end
-    end
-
-    -- Deck Viewer global consome mouse enquanto aberto
-    if deckViewerScreen and deckViewerScreen:isVisible() then
-        deckViewerScreen:mousepressed(x, y, button)
-        return
-    end
-
-    -- Gerenciador de Coringas consome mouse enquanto aberto
-    if _G.jokerManagerScreen and _G.jokerManagerScreen:isVisible() then
-        _G.jokerManagerScreen:mousepressed(x, y, button)
-        return
-    end
-
-    -- Roteiro consome mouse enquanto aberto
-    if _G.runJournalScreen and _G.runJournalScreen:isVisible() then
-        _G.runJournalScreen:mousepressed(x, y, button)
-        return
+    -- Modal aberto recebe o clique e NADA passa — nem pra TopBar (ver
+    -- love.keypressed). Ordem de prioridade = ordem do registro no love.load.
+    do
+        local captor = require("src.ui.InputFocus").captor()
+        if captor then
+            if captor.mousepressed then captor:mousepressed(x, y, button) end
+            return
+        end
     end
 
     -- TopBar consome cliques na faixa superior (engrenagem/deck) em todos os
@@ -2078,10 +2108,6 @@ function love.mousepressed(x, y, button)
             require("src.ui.WorldRoad").pokeSceneAt(x, y)
         end
     elseif currentState == "cardReward" then
-        -- Pack overlay tem prioridade — consome cliques se visível.
-        if packOpenScreen and packOpenScreen:isVisible() then
-            if packOpenScreen:mousepressed(x, y, button) then return end
-        end
         if not cardRewardScreen:mousepressed(x, y, button) and button == 1 then
             -- v9.7.1: clique fora das ofertas cutuca o cenário atrás
             require("src.ui.WorldRoad").pokeSceneAt(x, y)
@@ -2107,17 +2133,15 @@ function love.mousepressed(x, y, button)
 end
 
 function love.wheelmoved(dx, dy)
-    if deckViewerScreen and deckViewerScreen:isVisible() then
-        deckViewerScreen:wheelmoved(dx, dy)
-        return
-    end
-    if _G.jokerManagerScreen and _G.jokerManagerScreen:isVisible() then
-        _G.jokerManagerScreen:wheelmoved(dx, dy)
-        return
-    end
-    if _G.runJournalScreen and _G.runJournalScreen:isVisible() then
-        _G.runJournalScreen:wheelmoved(dx, dy)
-        return
+    -- Modal aberto fica com a roda. Quem não tem wheelmoved (pausa,
+    -- configurações) ENGOLE — rolar sobre um modal não pode rolar a lista
+    -- que está atrás dele.
+    do
+        local captor = require("src.ui.InputFocus").captor()
+        if captor then
+            if captor.wheelmoved then captor:wheelmoved(dx, dy) end
+            return
+        end
     end
     if currentState == "collection" and collectionScreen.wheelmoved then
         collectionScreen:wheelmoved(dx, dy)
@@ -2126,6 +2150,15 @@ end
 
 function love.mousemoved(x, y, dx, dy)
     x, y = CRTShader.screenToContent(x, y)
+    -- Modal aberto fica com o movimento (sem isto o arrasto de carta lá
+    -- atrás continuava armando por baixo do menu).
+    do
+        local captor = require("src.ui.InputFocus").captor()
+        if captor then
+            if captor.mousemoved then captor:mousemoved(x, y, dx, dy) end
+            return
+        end
+    end
     if currentState == "playing" then
         GameplayScene.mousemoved(x, y, dx, dy)
     elseif currentState == "collection" and collectionScreen.mousemoved then

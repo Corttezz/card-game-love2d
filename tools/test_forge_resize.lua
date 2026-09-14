@@ -144,7 +144,7 @@ function M.run()
         t:truthy("janela pequena pagina o grimório", paged.pageCount >= 1)
         if paged.pageCount > 1 then
             paged:_changePage(1)
-            local anchorId = paged.cardEntries[1] and paged.cardEntries[1].id
+            local anchorId = paged.cardEntries[1] and paged.cardEntries[1].idx
             resizeTo(paged, 1920, 1080)
             t:truthy("página continua dentro de 1..pageCount após crescer",
                 paged.page >= 1 and paged.page <= paged.pageCount)
@@ -153,7 +153,7 @@ function M.run()
             -- A âncora garante que a carta que abria a página continua na tela.
             local stillThere = false
             for _, e in ipairs(paged.cardEntries) do
-                if e.id == anchorId then stillThere = true break end
+                if e.idx == anchorId then stillThere = true break end
             end
             t:truthy("a carta que abria a página continua visível (âncora)",
                 stillThere)
@@ -172,7 +172,9 @@ function M.run()
         local cer = makeScreen(game, "forge")
         local target = cer.cardEntries[1]
         local instBefore = target.inst
-        cer:_onPickCard(target.id)
+        -- _onPickCard recebe a ENTRY (a copia), nao o id: duas copias do
+        -- mesmo id sao escolhas diferentes (RunManager, "Forja POR COPIA").
+        cer:_onPickCard(target)
         t:truthy("cerimônia iniciou (busy)", cer.busy)
         t:truthy("estado da cerimônia existe", cer.forge ~= nil)
 
