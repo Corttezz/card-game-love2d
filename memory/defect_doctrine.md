@@ -191,7 +191,33 @@ mudo NOVO aparecer, e cobra a remoção da lista quando um é corrigido.
 
 ---
 
-## 11. Build errada vira bug fantasma
+## 11. Mudar o TEMPO de um sistema abre janelas que não existiam
+
+O crash `attempt to index local 'g' (a nil value)` no meio de um turno
+(Set/2026) não veio de código novo com defeito: veio de código ANTIGO cuja
+janela de exposição era curta demais para alguém alcançar.
+
+`Game:playSelectedCards` sempre passou `self.selectedCards` — a tabela **viva**
+— para o `CombatSequence`, que monta a geometria uma vez e percorre a lista
+depois. E `Game:selectCard` nunca teve guarda de combate ativo. Enquanto a
+resolução durava fração de segundo, ninguém conseguia clicar no meio. Quando
+cada acontecimento passou a ocupar seu instante ([[combat_beats]]), a resolução
+passou a durar **segundos** e a janela virou o tamanho de um turno: bastava
+clicar numa carta da mão.
+
+Dois estragos, e o silencioso é o pior: selecionar inseria uma carta sem
+geometria (crash), desselecionar devolvia a mana de uma carta **já sendo
+jogada** — sem quebrar nada.
+
+**A regra:** ao desacelerar ou alongar um sistema, procure o que ficava
+protegido só pela velocidade. Pergunte "o que o jogador consegue fazer agora
+que antes não dava tempo?". E a correção certa é em duas camadas — trave a
+entrada (o guard) **e** torne o consumidor imune (copiar a lista na entrada,
+nunca iterar referência viva de terceiros).
+
+---
+
+## 12. Build errada vira bug fantasma
 
 O dono joga a partir de cópias e máquinas diferentes. Já custou semanas de "bug
 que não reproduz" (memória `user-runs-stale-copy`). Duas defesas:

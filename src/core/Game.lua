@@ -549,6 +549,17 @@ function Game:canPlayCard(card)
 end
 
 function Game:selectCard(card)
+    -- MÃO TRAVADA ENQUANTO AS CARTAS RESOLVEM. Com o ritmo por beats a
+    -- resolução dura segundos, e nessa janela dava pra mexer na seleção: a
+    -- `selectedCards` é a MESMA tabela que o CombatSequence percorre.
+    -- Selecionar derrubava o jogo ("attempt to index local 'g'" — carta sem
+    -- geometria); desselecionar era pior porque não quebrava nada: devolvia a
+    -- mana de uma carta que já estava sendo jogada.
+    local seq = self.combatAnimationSystem
+    if seq and (seq.active or (seq.isBlocking and seq:isBlocking())) then
+        return false
+    end
+
     -- Seleciona ou desseleciona a carta
     if self:isCardSelected(card) then
         -- Desseleciona a carta

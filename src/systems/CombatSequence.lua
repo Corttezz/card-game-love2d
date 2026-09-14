@@ -81,6 +81,18 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
         return
     end
     self.active = true
+    -- CÓPIA, nunca a lista viva do chamador. `Game:startCombat` passa
+    -- `self.selectedCards` direto, e a resolução dura SEGUNDOS agora que cada
+    -- acontecimento tem seu beat. Nessa janela o jogador clicar numa carta da
+    -- mão fazia `table.insert` na MESMA tabela que esta função percorre: a
+    -- carta nova existia em `cards[idx]` mas não em `geom[idx]` (montado uma
+    -- vez, lá em cima) e o combate morria com "attempt to index local 'g'".
+    -- Desselecionar era pior e silencioso: `table.remove` desalinhava os
+    -- índices e a geometria passava a pertencer a outra carta.
+    local pending = {}
+    for _, c in ipairs(cards) do table.insert(pending, c) end
+    cards = pending
+
     self.flyingCards = {}
     for _, c in ipairs(cards) do table.insert(self.flyingCards, c) end
 
@@ -167,6 +179,18 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
             return
         end
         local g = geom[idx]
+        if not g then
+            -- Não deveria acontecer (a lista é copiada e `geom` cobre todos os
+            -- índices). Se acontecer, encerra a cadeia em vez de derrubar o
+            -- jogo no meio do turno — mas AVISA, porque é sintoma de alguém ter
+            -- mexido na lista depois do layout.
+            print("[CombatSequence] sem geometria para a carta " .. tostring(idx)
+                .. " de " .. tostring(#cards) .. " — encerrando a resolucao")
+            CombatBeats.push("combat.end", function()
+                self:_finish(onComplete)
+            end, "MICRO")
+            return
+        end
         local cx, cy = g.x + g.w / 2, g.y + g.h / 2
         local pitch = math.min(1.4, 0.95 + (idx - 1) * 0.06)
 
