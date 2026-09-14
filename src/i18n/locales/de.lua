@@ -760,6 +760,7 @@ return {
         passive_momentum     = "Schwung: +1 Staerke!",
         passive_toxins       = "Toxine: +1 Gift!",
         phase_started        = "Phase {value} gestartet!",
+        burn_tick        = "Brand: {value} Schaden",
         poison_tick          = "Gift: {value} Schaden am Gegner",
         purple_seal          = "Orb! (Lila Siegel)",
         reshuffled           = "Ablage ins Deck gemischt",

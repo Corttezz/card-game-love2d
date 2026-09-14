@@ -759,6 +759,7 @@ return {
         passive_momentum     = "Impetu: +1 Fuerza!",
         passive_toxins       = "Toxinas: +1 Veneno!",
         phase_started        = "Fase {value} iniciada!",
+        burn_tick        = "Quemadura: {value} de dano",
         poison_tick          = "Veneno: {value} de dano al enemigo",
         purple_seal          = "Orbe! (Sello Morado)",
         reshuffled           = "Descarte rebarajado en el mazo",

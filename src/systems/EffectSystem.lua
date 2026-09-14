@@ -124,6 +124,29 @@ function EffectSystem:notifyJokerProc(game, joker, label, kind)
     pushJokerProc(game, nil, joker, label, kind)
 end
 
+-- TEMA VISUAL DE CADA DEBUFF. `CardFeel.THEMES` e indexado por TAG de carta
+-- (fire/ice/poison/...), e nem todo status tem tag de mesmo nome -- queimadura
+-- e o caso: sem este mapa ela estouraria com as BOLHAS VERDES do veneno, que e
+-- exatamente a confusao que este status veio desfazer.
+local DEBUFF_THEME = { burn = "fire" }
+local warnedTheme = {}
+local function debuffTheme(name)
+    if DEBUFF_THEME[name] then return DEBUFF_THEME[name] end
+    if CardFeel.THEMES[name] then return name end
+    -- Fallback silencioso e proibido (CLAUDE.md 9): status novo sem tema AVISA.
+    if not warnedTheme[name] then
+        warnedTheme[name] = true
+        print("[EffectSystem] debuff sem tema visual: '" .. tostring(name)
+            .. "' (usando magic) — registre em DEBUFF_THEME ou CardFeel.THEMES")
+    end
+    return "magic"
+end
+
+-- Nome do status TRADUZIDO, pro toast nao imprimir a chave crua ("poison").
+local function statusName(name)
+    return I18n.t("status." .. tostring(name) .. ".name", nil, tostring(name))
+end
+
 -- Formata multiplicador sem ".0" (2.0 → "×2", 1.5 → "×1.5").
 local function multLabel(v)
     return "×" .. string.format("%g", v or 1)
@@ -390,11 +413,12 @@ function EffectSystem:processEffectCard(game, effect)
         if debuff.name == "poison" then
             require("src.systems.AchievementSystem").onPoisonApplied(game, game.enemy)
         end
-        game:addMessage(msg("debuff_applied", { name = debuff.name, duration = debuff.duration }), "warning")
+        game:addMessage(msg("debuff_applied",
+            { name = statusName(debuff.name), duration = debuff.duration }), "warning")
         Sfx.play("debuffApplied")
         -- Game feel v1: o debuff APARECE no corpo do inimigo com a cor dele
-        -- (veneno verde, weak lavanda, vulnerable rosado).
-        CardFeel.burstAtEnemy(CardFeel.THEMES[debuff.name] and debuff.name or "poison", 0.8)
+        -- (veneno verde, weak lavanda, vulnerable rosado, queimadura laranja).
+        CardFeel.burstAtEnemy(debuffTheme(debuff.name), 0.8)
         return true
 
     elseif t == "discard_cards" then
@@ -538,7 +562,7 @@ end
 --   lightning: dano direto
 --   ice      : armor
 --   dark     : dano dobrado (simbolo: orb cresce enquanto canalizado; MVP = 2x valor)
---   fire     : dano em dot (aplica debuff "burn" via poison por ora; refinar)
+--   fire     : dano + QUEIMADURA (status proprio `burn`, DoT de fogo)
 --   holy     : cura
 function EffectSystem:_evokeOrbEffect(game, orb)
     if not orb then return end
@@ -573,7 +597,15 @@ function EffectSystem:_evokeOrbEffect(game, orb)
     elseif orb.type == "fire" then
         game.enemy:takeDamage(v)
         checkEnrage(game)
-        game.enemy:addStatusEffect({ name = "poison", duration = 2, stacks = math.max(1, math.floor(v / 2)) })
+        -- QUEIMADURA, nao veneno (Set/2026 — o dono jogando: "por que o inimigo
+        -- esta ficando com veneno na minha run de mago?"). O atalho antigo
+        -- ("aplica burn via poison por ora; refinar") sobreviveu ao "por ora" e
+        -- custava tres coisas: roubava a identidade do LADINO (veneno e o eixo
+        -- dele, 6 cartas), fazia a TELA MENTIR (icone/nome/desc diziam Veneno) e
+        -- CONTAMINAVA sinergias (conquista de 15+ veneno, combo poison_stack).
+        -- Mecanica igual -- dano por turno pelos stacks -- com status proprio.
+        game.enemy:addStatusEffect({ name = "burn", duration = 2,
+            stacks = math.max(1, math.floor(v / 2)) })
         game:addMessage(msg("evoke_fire", { value = v }), "warning")
         CardFeel.burstAtEnemy("fire", 1.1)
         showEnemyDamage(v)
@@ -778,6 +810,32 @@ function EffectSystem:orbPassiveTick(game, sink)
             end
             landPulse(o.type, idx, landed)
         end, "ORB")
+    end
+end
+
+-- ==============================================================================
+-- QUEIMADURA: a APRESENTACAO do DoT de fogo
+-- ==============================================================================
+-- O dano mora em Enemy:onTurnEnd, junto do veneno — mesmo instante, mesma
+-- aritmetica, mesma travessia do limiar de morte. Aqui fica so a linguagem: o
+-- veneno CHIA verde e borbulha; a queimadura ESTALA laranja. Dois DoTs, duas
+-- assinaturas — a mesma regra dos pulsos de orbe.
+function EffectSystem.announceBurnTick(game, dmg)
+    if not dmg or dmg <= 0 then return end
+    Sfx.play("impactFire", { pitch = 1.15 })
+    game:addMessage(msg("burn_tick", { value = dmg }), "warning")
+    CardFeel.burstAtEnemy("fire", 0.9)
+    local okER, ER = pcall(require, "src.ui.EnemyRenderer")
+    if okER then
+        if ER.triggerHurt then pcall(ER.triggerHurt) end
+        if ER.getLastPos then
+            local ex, ey = ER.getLastPos()
+            local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
+            if okFT and ex and ey then
+                FloatingText.spawn("-" .. dmg, ex, ey,
+                    { color = { 1.0, 0.55, 0.20, 1 }, fontSize = 18 })
+            end
+        end
     end
 end
 
@@ -1039,7 +1097,7 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
             -- Game feel v1: o debuff APARECE no corpo do inimigo + joker tica.
             local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
             if okCF then
-                CardFeel.burstAtEnemy(CardFeel.THEMES[name] and name or "poison", 0.8)
+                CardFeel.burstAtEnemy(debuffTheme(name), 0.8)
             end
             pushJokerProc(game, context.procSink, context.sourceJoker,
                 I18n.t("status." .. name .. ".name", nil, name), "buff")

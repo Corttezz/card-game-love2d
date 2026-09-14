@@ -502,6 +502,144 @@ function M.run()
     end
 
     -- ========================================================================
+    -- 4g. A FILEIRA TEM QUE SE LER: silhueta = elemento, glifo = unidade.
+    --     (pedido do dono, Set/2026: "esta meio dificil de entender esses
+    --      circulos ali, podemos pensar em algo diferente")
+    --
+    --     A captura `lovec . preview_battle_hud orbs` mostrou o defeito: cinco
+    --     DISCOS iguais, quatro deles exibindo o mesmo "3", e o icone do
+    --     elemento a ~14px virava mancha. O redesenho deu SILHUETA propria a
+    --     cada elemento e um GLIFO DE UNIDADE ao lado do numero.
+    --
+    --     O que este bloco trava nao e "esta bonito" -- e que o orbe nao MINTA:
+    --     a unidade que ele anuncia tem que ser a que o EffectSystem de fato
+    --     aplica. Se alguem mudar o pulso do gelo pra dano e esquecer o glifo,
+    --     a fileira passa a ensinar causalidade errada em silencio.
+    -- ========================================================================
+    do
+        local OrbRow = require("src.ui.OrbRow")
+        local TYPES = { "lightning", "ice", "fire", "dark", "holy" }
+
+        -- (a) cada elemento tem uma silhueta, e nenhuma se repete
+        local byShape = {}
+        for _, ty in ipairs(TYPES) do
+            local sh = OrbRow.SHAPES[ty]
+            t:truthy("orbe " .. ty .. " tem silhueta propria (nao e mais disco)",
+                type(sh) == "table" and #sh >= 6)
+            local key = table.concat(sh or {}, ",")
+            t:falsy("a silhueta de " .. ty .. " nao repete a de "
+                .. tostring(byShape[key]), byShape[key] ~= nil)
+            byShape[key] = ty
+        end
+
+        -- (b) o que o EffectSystem REALMENTE faz com cada pulso, observado
+        local function observedPulseUnit(orbType)
+            local g = TK.newRunGame("mage")
+            TK.pump(g, 0.5)
+            g.player.orbs = { { type = orbType, value = 6 } }
+            g.player.armor = 0
+            g.player.health = math.max(1, g.player.maxHealth - 20)
+            local b = { hp = g.enemy.health, armor = g.player.armor,
+                        php = g.player.health, val = 6 }
+            local steps = {}
+            g.effectSystem:orbPassiveTick(g, steps)
+            CombatBeats.pushAll(steps)
+            TK.pump(g, 1.5)
+            if g.enemy.health < b.hp then return "damage" end
+            if g.player.armor > b.armor then return "block" end
+            if g.player.health > b.php then return "heal" end
+            if ((g.player.orbs[1] or {}).value or 0) > b.val then return "grow" end
+            return "nada"
+        end
+
+        local function observedEvokeUnit(orbType)
+            local g = TK.newRunGame("mage")
+            TK.pump(g, 0.5)
+            g.player.orbs = {}
+            g.player.armor = 0
+            g.player.health = math.max(1, g.player.maxHealth - 20)
+            local b = { hp = g.enemy.health, armor = g.player.armor,
+                        php = g.player.health }
+            g.effectSystem:_evokeOrbEffect(g, { type = orbType, value = 6 })
+            if g.enemy.health < b.hp then return "damage" end
+            if g.player.armor > b.armor then return "block" end
+            if g.player.health > b.php then return "heal" end
+            return "nada"
+        end
+
+        for _, ty in ipairs(TYPES) do
+            t:eq("o glifo do PULSO de " .. ty .. " diz o que o pulso faz",
+                OrbRow.UNIT_OF.pulse[ty], observedPulseUnit(ty))
+            t:eq("o glifo do EVOKE de " .. ty .. " diz o que o evoke faz",
+                OrbRow.UNIT_OF.evoke[ty], observedEvokeUnit(ty))
+        end
+
+        -- (c) o numero nao pode ser mentira: SOMBRA nao pulsa, entao o que ela
+        --     mostra e o valor ACUMULADO (o que dobra ao evocar), nunca o zero
+        --     do pulso.
+        local EffectSystem2 = require("src.systems.EffectSystem")
+        local darkOrb = { type = "dark", value = 7 }
+        t:eq("sombra nao pulsa (valor de pulso e zero)",
+            EffectSystem2.orbPulseValue(darkOrb, 0), 0)
+        local vDark, uDark = OrbRow.readout(darkOrb, 0, "pulse")
+        t:eq("mas a fileira mostra o valor ACUMULADO, nao o zero", vDark, 7)
+        t:eq("e o glifo dela diz CRESCE, nao dano", uDark, "grow")
+        local vEv, uEv = OrbRow.readout(darkOrb, 0, "evoke")
+        t:eq("no preview de evoke o numero vira o dobro", vEv, 14)
+        t:eq("e o glifo vira DANO (e o que evocar sombra faz)", uEv, "damage")
+
+        -- (d) Foco entra na conta que a fileira exibe (senao o numero na tela
+        --     diverge do dano que sai).
+        local vFocus = OrbRow.readout({ type = "lightning", value = 4 }, 2, "pulse")
+        t:eq("o numero exibido ja inclui o Foco",
+            vFocus, EffectSystem2.orbPulseValue({ type = "lightning", value = 4 }, 2))
+    end
+
+    -- ========================================================================
+    -- 4h. O MAGO NAO ENVENENA NINGUEM (ponta a ponta, numa run de verdade)
+    --     Queixa do dono, jogando: "por que o inimigo esta ficando com veneno
+    --     na minha run de mago? nao faz muito sentido". Estava certo — o ramo
+    --     `fire` de _evokeOrbEffect aplicava `poison` como atalho.
+    --
+    --     Os blocos de tools/test_effects_full cobrem a unidade; ESTE cobre a
+    --     CADEIA inteira, que e onde o jogador vive: evocar fogo -> queimadura
+    --     entra -> turno do inimigo -> o beat do DoT tica -> a vida cai.
+    -- ========================================================================
+    do
+        local gf = TK.newRunGame("mage")
+        TK.pump(gf, 0.5)
+        gf.player.orbs = {}
+        gf.effectSystem:processEffectCard(gf,
+            { type = "channel_orb", orbType = "fire", value = 6 })
+        gf.effectSystem:processEffectCard(gf, { type = "evoke_orb" })
+
+        t:truthy("evocar fogo deixa QUEIMADURA no inimigo",
+            gf.enemy:hasStatus("burn"))
+        t:falsy("e NAO deixa veneno (o mago nao tem carta de veneno no deck)",
+            gf.enemy:hasStatus("poison"))
+
+        -- O turno do inimigo tica o DoT: a queimadura tem que DOER.
+        local hpBefore = gf.enemy.health
+        gf.enemy.armor = 0
+        -- `buff`, nao `defend`: defender da armadura ANTES do beat do DoT e a
+        -- armadura absorveria a queimadura inteira -- o teste passaria a medir
+        -- a armadura em vez do DoT.
+        gf.enemy.nextIntent = "buff"
+        gf.battleTurn = 1
+        gf.turn = "enemy"
+        CombatBeats.clear()
+        CombatBeats.startTrace()
+        gf:enemyTurn()
+        TK.pump(gf, 4.0)
+        CombatBeats.stopTrace()
+
+        t:truthy("o beat do DoT aconteceu (" .. CombatBeats.traceString() .. ")",
+            at("enemy.dot") ~= nil)
+        t:truthy("a queimadura DOEU no turno do inimigo",
+            gf.enemy.health < hpBefore)
+    end
+
+    -- ========================================================================
     -- 4e. O CASO REAL: quantas cartas do catalogo canalizam em rajada?
     --     Asserção de CONTAGEM pra nao passar verde por nao ter exercitado nada.
     -- ========================================================================

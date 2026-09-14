@@ -772,6 +772,7 @@ return {
         passive_momentum     = "Momentum: +1 Strength!",
         passive_toxins       = "Toxins: +1 Poison!",
         phase_started        = "Phase {value} started!",
+        burn_tick        = "Burn: {value} damage",
         poison_tick          = "Poison: {value} damage to the enemy",
         purple_seal          = "Orb! (Purple Seal)",
         reshuffled           = "Discard shuffled back into the deck",

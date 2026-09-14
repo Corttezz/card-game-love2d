@@ -21,7 +21,6 @@
 
 local Palette = require("src.ui.Palette")
 local FontManager = require("src.ui.FontManager")
-local IconLoader = require("src.ui.IconLoader")
 local StatusTooltip = require("src.ui.StatusTooltip")
 
 local OrbRow = {}
@@ -31,7 +30,9 @@ local OrbRow = {}
 -- pontas -- o sol e o losango se tocavam.
 local SIZE = 46          -- diâmetro do slot
 local SPACING = 14
-local GAP_ABOVE_PILLS = 8
+-- 16 (era 8): o trilho da fila mora ABAIXO das silhuetas e com 8 ele encostava
+-- na banda de pills (visto na captura de validacao).
+local GAP_ABOVE_PILLS = 16
 
 OrbRow.COLORS = {
     lightning = { 0.95, 0.85, 0.30 },
@@ -40,13 +41,9 @@ OrbRow.COLORS = {
     fire      = { 0.95, 0.50, 0.20 },
     holy      = { 0.95, 0.90, 0.62 },
 }
-OrbRow.ICONS = {
-    lightning = "bolt",
-    ice       = "snowflake",
-    dark      = "moon",
-    fire      = "flame",
-    holy      = "star",
-}
+-- (A tabela OrbRow.ICONS saiu: o PNG de 64x64 reduzido pra ~14px dentro do
+-- orbe virava mancha -- foi o que a captura de validacao mostrou. Quem
+-- identifica o elemento agora e a SILHUETA, e o nome continua no tooltip.)
 local EVOKE_CYAN = { 0.25, 0.95, 0.95 }
 
 -- ============================================================================
@@ -140,6 +137,32 @@ local UNIT_COLOR = {
     grow   = { 0.80, 0.62, 1.00 },
 }
 
+-- Expostos pra trava de teste (tools/test_beats.lua bloco 4g): a unidade que o
+-- orbe ANUNCIA tem que bater com o que o EffectSystem de fato faz, e duas
+-- silhuetas nunca podem coincidir.
+OrbRow.SHAPES = SHAPES
+OrbRow.UNIT_OF = UNIT_OF
+
+-- O QUE O ORBE DIZ: (valor, unidade). Fonte única do par número+glifo — o
+-- desenho e o teste leem daqui.
+--   mode "pulse" = fim de turno; "evoke" = ao ser evocado (preview de carta).
+-- Sombra é o caso que justifica a função existir: ela NÃO pulsa, então o
+-- "valor do pulso" dela é 0 e mostrar 0 seria mentira; o que cresce é o valor
+-- acumulado, e é ELE que dobra no evoke.
+-- Exposto pro tool de comparacao visual (tools/orb_compare.lua).
+OrbRow._shapePoints = shapePoints
+
+function OrbRow.readout(orb, focus, mode)
+    local EffectSystem = require("src.systems.EffectSystem")
+    if mode == "evoke" then
+        return EffectSystem.orbEvokeValue(orb, focus), UNIT_OF.evoke[orb.type]
+    end
+    if orb.type == "dark" then
+        return (orb.value or 1), UNIT_OF.pulse.dark
+    end
+    return EffectSystem.orbPulseValue(orb, focus), UNIT_OF.pulse[orb.type]
+end
+
 -- Glifos de unidade em VETOR, legíveis a ~9px (PNG reduzido não é).
 local function drawUnitGlyph(unit, x, y, h)
     local a = h * 0.5
@@ -148,11 +171,10 @@ local function drawUnitGlyph(unit, x, y, h)
         -- Faisca de 4 pontas. NAO e um "X": na captura de validacao o X lia
         -- como MULTIPLICADOR ("x3"), que neste jogo e a linguagem dos coringas
         -- -- o glifo de dano estava dizendo a coisa errada.
+        local w = a * 0.22   -- pontas finas: "faisca", nao "losango"
         love.graphics.polygon("fill",
-            x, y - a,  x + a * 0.30, y - a * 0.30,  x + a, y,
-            x + a * 0.30, y + a * 0.30,  x, y + a,
-            x - a * 0.30, y + a * 0.30,  x - a, y,
-            x - a * 0.30, y - a * 0.30)
+            x, y - a,  x + w, y - w,  x + a, y,  x + w, y + w,
+            x, y + a,  x - w, y + w,  x - a, y,  x - w, y - w)
     elseif unit == "block" then       -- escudo
         love.graphics.polygon("fill",
             x - a, y - a, x + a, y - a, x + a, y * 1 + a * 0.2,
@@ -218,6 +240,7 @@ function OrbRow.notifyChannel(i, orb)
     end
     inbound[i] = {
         t = 0, dur = FLIGHT_IN,
+        otype = orb and orb.type,
         color = OrbRow.COLORS[orb and orb.type] or { 0.85, 0.85, 0.85 },
     }
 end
@@ -265,7 +288,7 @@ function OrbRow.notifyEvoke(i, orb, reason)
 
     outbound[#outbound + 1] = {
         slot = i, t = 0, dur = reducedMotion() and 0.0001 or FLIGHT_OUT,
-        color = color, icon = orb and OrbRow.ICONS[orb.type] or nil,
+        color = color, otype = orb and orb.type,
     }
     if slotPos and slotPos[i] then
         local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
@@ -357,7 +380,6 @@ function OrbRow.draw(game, panelX, panelY)
     slotPos = {}
     local mx, my = love.mouse.getPosition()
     local font = FontManager.getResponsiveFont(0.024, 15)
-    local smallFont = FontManager.getResponsiveFont(0.016, 10)
 
     for i = 1, (p.orbSlots or 3) do
         local x = startX + (i - 1) * (SIZE + SPACING)
@@ -438,20 +460,9 @@ function OrbRow.draw(game, panelX, panelY)
             -- Sombra é o caso que o número nu tornava mentiroso: ela NÃO pulsa,
             -- o valor dela só CRESCE (seta) -- e vira DANO quando evocada, que
             -- é o que o preview de evoke passa a mostrar.
-            local shown, unit, numC
-            if inEvokePreview then
-                shown = EffectSystem.orbEvokeValue(orb, focus)
-                unit  = UNIT_OF.evoke[orb.type]
-                numC  = EVOKE_CYAN
-            elseif orb.type == "dark" then
-                shown = (orb.value or 1)
-                unit  = UNIT_OF.pulse.dark
-                numC  = { 1, 1, 1 }
-            else
-                shown = EffectSystem.orbPulseValue(orb, focus)
-                unit  = UNIT_OF.pulse[orb.type]
-                numC  = { 1, 1, 1 }
-            end
+            local shown, unit = OrbRow.readout(orb, focus,
+                inEvokePreview and "evoke" or "pulse")
+            local numC = inEvokePreview and EVOKE_CYAN or { 1, 1, 1 }
 
             love.graphics.setFont(font)
             local txt   = tostring(shown)
@@ -556,10 +567,18 @@ function OrbRow._drawFx()
                 love.graphics.setColor(c[1], c[2], c[3], 0.16 * (5 - tr))
                 love.graphics.circle("fill", tx, ty, SIZE * 0.13 * (1 - tr * 0.12))
             end
-            love.graphics.setColor(c[1], c[2], c[3], 0.35)
-            love.graphics.circle("fill", x, y, SIZE * 0.30)
-            love.graphics.setColor(1, 1, 1, 0.9)
-            love.graphics.circle("fill", x, y, SIZE * 0.14)
+            -- A cabeça do cometa JÁ É o orbe: a silhueta do elemento, crescendo
+            -- de 40% até o tamanho do slot. Quando pousa, o orbe que nasce tem
+            -- exatamente a forma que estava voando.
+            local rr = (SIZE / 2) * (0.40 + 0.60 * e)
+            local pts = shapePoints(fx.otype, x, y, rr)
+            love.graphics.setColor(c[1], c[2], c[3], 0.40)
+            if pts then love.graphics.polygon("fill", pts)
+            else love.graphics.circle("fill", x, y, rr) end
+            love.graphics.setColor(1, 1, 1, 0.85)
+            love.graphics.setLineWidth(2)
+            if pts then love.graphics.polygon("line", pts)
+            else love.graphics.circle("line", x, y, rr) end
         end
     end
 
@@ -574,21 +593,18 @@ function OrbRow._drawFx()
             local y = pos.y + (ty - pos.y) * e * 0.55
             local r = (SIZE / 2) * (1 - e * 0.55)
             local c, a = fx.color, 1 - k
+            local halo = shapePoints(fx.otype, x, y, r + 5)
+            local body = shapePoints(fx.otype, x, y, r)
             love.graphics.setColor(c[1], c[2], c[3], 0.70 * a)
-            love.graphics.circle("fill", x, y, r + 5)
+            if halo then love.graphics.polygon("fill", halo)
+            else love.graphics.circle("fill", x, y, r + 5) end
             love.graphics.setColor(0.10, 0.07, 0.05, 0.75 * a)
-            love.graphics.circle("fill", x, y, r)
+            if body then love.graphics.polygon("fill", body)
+            else love.graphics.circle("fill", x, y, r) end
             love.graphics.setColor(1, 1, 1, 0.95 * a)
             love.graphics.setLineWidth(3)
-            love.graphics.circle("line", x, y, r)
-            local icon = fx.icon and IconLoader.get(fx.icon)
-            if icon and icon.draw then
-                local iw = (icon.size and icon.size.w) or 16
-                local ih = (icon.size and icon.size.h) or 16
-                local sc = IconLoader.computeScale(ih, math.floor(SIZE * 0.34))
-                love.graphics.setColor(1, 1, 1, a)
-                icon.draw(math.floor(x - iw * sc / 2), math.floor(y - ih * sc / 2), sc)
-            end
+            if body then love.graphics.polygon("line", body)
+            else love.graphics.circle("line", x, y, r) end
         end
     end
 end

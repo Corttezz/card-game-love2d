@@ -44,7 +44,10 @@ StatusPill.ICONS = {
     poison       = "status_poison",
     weak         = "status_weak",
     vulnerable   = "status_vulnerable",
-    burn         = "flame",
+    -- QUEIMADURA tem icone PROPRIO (Set/2026). Dividia `flame` com a Furia, e
+    -- as duas sao pills laranja no MESMO inimigo: mesmo simbolo, mesma cor,
+    -- dois estados diferentes. Agora so a Furia usa `flame`.
+    burn         = "status_burn",
     strength     = "status_strength",
     fury         = "flame",
     dexterity    = "status_dexterity",

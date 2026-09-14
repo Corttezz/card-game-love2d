@@ -227,27 +227,42 @@ function Enemy:getStatusStacks(name)
     return 0
 end
 
+-- Aplica um DoT (dano por turno) com a aritmetica dos venenos: bypass do
+-- takeDamage de proposito, porque DoT e dano FIXO e nao passa pelo
+-- multiplicador de Vulneravel. A armadura absorve e e consumida.
+-- `_markDeathIfCrossed` e obrigatorio: esta aritmetica crua nao passa pelo
+-- takeDamage, e sem ele morrer de DoT volta a nao ter animacao de morte.
+function Enemy:_applyDot(dmg)
+    if not dmg or dmg <= 0 then return 0 end
+    local wasAlive = self.health > 0
+    local eff = math.max(0, dmg - self.armor)
+    self.armor = math.max(0, self.armor - dmg)
+    self.health = math.max(0, self.health - eff)
+    self:_markDeathIfCrossed(wasAlive)
+    return dmg
+end
+
 -- Chamado pelo Game no final do turno do inimigo.
--- Processa DoT (poison), decrementa duration, limpa expirados.
--- Retorna dano de poison infligido (para UI/logs).
+-- Processa os DoTs (VENENO e QUEIMADURA), decrementa duration, limpa expirados.
+-- Retorna (danoVeneno, danoQueimadura) — DOIS numeros porque sao DOIS status
+-- diferentes: o veneno e do ladino, a queimadura e do fogo do mago, e somar os
+-- dois num numero so seria a mesma confusao que criou o `burn` (Set/2026).
+-- O 1o retorno continua sendo o veneno: chamadas antigas nao mudam.
 function Enemy:onTurnEnd()
-    local poisonDmg = 0
+    local poisonDmg, burnDmg = 0, 0
     for _, e in ipairs(self.statusEffects) do
-        if e.name == "poison" and e.duration > 0 then
-            poisonDmg = poisonDmg + (e.stacks or 1)
+        if e.duration > 0 then
+            if e.name == "poison" then
+                poisonDmg = poisonDmg + (e.stacks or 1)
+            elseif e.name == "burn" then
+                burnDmg = burnDmg + (e.stacks or 1)
+            end
         end
     end
-    if poisonDmg > 0 then
-        -- takeDamage direto, bypass vulnerable multiplier (poison e DoT fixo)
-        local wasAlive = self.health > 0
-        local eff = math.max(0, poisonDmg - self.armor)
-        self.armor = math.max(0, self.armor - poisonDmg)
-        self.health = math.max(0, self.health - eff)
-        -- Veneno mata como qualquer outra coisa: a virada tem que ser marcada
-        -- AQUI tambem (esta aritmetica crua nao passa por takeDamage — e o
-        -- mesmo desvio que deixa o veneno de fora do ENFURECIDO, de proposito).
-        self:_markDeathIfCrossed(wasAlive)
-    end
+    -- Em sequencia, nao somados: com armadura o total sai igual (ela e
+    -- consumida), e assim cada DoT tem sua propria travessia do limiar de morte.
+    self:_applyDot(poisonDmg)
+    self:_applyDot(burnDmg)
 
     -- Decrementa duration e limpa
     for i = #self.statusEffects, 1, -1 do
@@ -258,7 +273,7 @@ function Enemy:onTurnEnd()
         end
     end
 
-    return poisonDmg
+    return poisonDmg, burnDmg
 end
 
 return Enemy

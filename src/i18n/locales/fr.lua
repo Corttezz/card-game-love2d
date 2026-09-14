@@ -760,6 +760,7 @@ return {
         passive_momentum     = "Elan : +1 Force !",
         passive_toxins       = "Toxines : +1 Poison !",
         phase_started        = "Phase {value} commencee !",
+        burn_tick        = "Brulure : {value} degats",
         poison_tick          = "Poison : {value} degats a l ennemi",
         purple_seal          = "Orbe ! (Sceau Violet)",
         reshuffled           = "Defausse remelangee dans le deck",

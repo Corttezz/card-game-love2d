@@ -1492,15 +1492,20 @@ end
 -- gatilhos de inicio de turno e a devolucao da vez. Cada um num beat.
 -- Separado de enemyTurn so por tamanho — faz parte da MESMA cadeia.
 function Game:_pushEnemyTurnTail(beat)
-    -- So abre o respiro do DoT quando ha veneno VISIVEL pra ticar — sem DoT,
+    -- So abre o respiro do DoT quando ha DoT VISIVEL pra ticar — sem ele,
     -- onTurnEnd ainda precisa rodar (decrementa durations), mas sem ar.
+    -- Set/2026: a QUEIMADURA conta aqui tambem. Checar so `poison` fazia o
+    -- fogo do mago ticar dentro de um MICRO de 0,10s, sem tempo de ler.
     local hasDot = false
     for _, st in ipairs(self.enemy.statusEffects or {}) do
-        if st.name == "poison" and (st.stacks or 0) > 0 then hasDot = true break end
+        if (st.name == "poison" or st.name == "burn") and (st.stacks or 0) > 0 then
+            hasDot = true
+            break
+        end
     end
 
     CombatBeats.push("enemy.dot", beat(function()
-        local poisonDmg = self.enemy:onTurnEnd()
+        local poisonDmg, burnDmg = self.enemy:onTurnEnd()
         if poisonDmg and poisonDmg > 0 then
             -- Pitch random pra poison "chiar" diferente cada tick.
             Sfx.playWithVariation("poisonTick", 1.0, 0.2)
@@ -1519,6 +1524,17 @@ function Game:_pushEnemyTurnTail(beat)
             -- Game feel v1: bolhas verdes borbulham do corpo (o DoT e fisico).
             local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
             if okCF then CardFeel.burstAtEnemy("poison", 0.8) end
+        end
+        -- QUEIMADURA (Set/2026): segundo DoT, assinatura PROPRIA — o veneno
+        -- chia verde, o fogo estala laranja. Quando os dois ticam no mesmo
+        -- turno (mago com carta de ladino) o beat ganha ar extra em vez de
+        -- despejar dois numeros no mesmo piscar: e o passo CONDICIONAL de
+        -- CombatBeats, o mesmo do `enemy.enrage_check`.
+        if burnDmg and burnDmg > 0 then
+            self.effectSystem.announceBurnTick(self, burnDmg)
+            if poisonDmg and poisonDmg > 0 then
+                CombatBeats.extendCurrent("DOT")
+            end
         end
         -- Veneno mata igual: se este tick derrubou a criatura, ela cai AGORA —
         -- neste beat — e nao tres passos adiante, com a barra zerada e o

@@ -232,6 +232,108 @@ Trava: `tools/test_beats.lua` blocos 4b–4e. Verificado revertendo — a mutaç
 volta na coleta derruba **4** asserções (a fileira pula de 0 para 3 e `orbsAtImpact`
 vem 3); o evoke eager derruba **1**; o overflow sem instante próprio, **2**.
 
+## A FILEIRA: forma = elemento, glifo = unidade
+
+Terceiro pedido da mesma frente: *"gostaria de melhorar o visual dos orbes
+também, está meio difícil de entender esses círculos ali"*.
+
+A captura `lovec . preview_battle_hud orbs` (os **cinco tipos lado a lado, no
+tamanho de uso, sobre o fundo real**) mostrou o defeito inteiro num quadro:
+cinco **discos iguais**, **quatro deles exibindo o mesmo "3"**, com o ícone do
+elemento renderizado a ~14px virando mancha — e a fileira indistinguível da row
+de pills logo abaixo, também redonda e do mesmo tamanho.
+
+Três problemas empilhados, três respostas separadas (`src/ui/OrbRow.lua`):
+
+| o que não se lia | resposta |
+|---|---|
+| QUE elemento é | **silhueta**: losango (raio), hexágono (gelo), chama (fogo), pentágono invertido (sombra), sol de 12 pontas (sagrado). Cor sozinha não ensina; ícone pequeno não sobrevive ao tamanho de uso; contorno sobrevive |
+| O QUE ele faz | **glifo de unidade** ao lado do número, em vetor: faísca = dano, escudo = bloqueio, cruz = cura, seta = cresce — duplo-codificado com cor |
+| QUAL sai primeiro | **trilho** com seta apontando pra ESQUERDA sob a fileira + aro branco no próximo a evocar |
+
+O ícone PNG saiu de dentro do orbe (era a mancha) e `OrbRow.ICONS` morreu com
+ele. O nome do elemento continua no tooltip de hover, cujo texto
+(`status.orb_*`) já nomeia exatamente as mesmas unidades que os glifos.
+
+**Duas correções vieram de OLHAR a captura, não de raciocinar:**
+1. o glifo de dano era um **X** — que neste jogo significa **multiplicador**
+   (a linguagem dos coringas). Virou faísca de 4 pontas;
+2. o aro de "próximo a sair" era cor de pergaminho e **sumia em cima do orbe
+   sagrado**, quase da mesma cor. Virou branco pulsante.
+
+O cometa de canalização e o fantasma de saída passaram a usar a **mesma
+silhueta**: o que voa pra dentro já é o orbe que vai nascer.
+
+**O número não pode mentir** (`OrbRow.readout`, fonte única do par
+número+glifo): sombra **não pulsa**, então exibir o valor do pulso mostraria 0 —
+ela mostra o valor ACUMULADO com a seta; no preview de evoke o mesmo orbe vira
+**dano pelo dobro**, e o glifo acompanha. É o momento em que a fileira ensina a
+mecânica.
+
+Trava: `tools/test_beats.lua` bloco 4g. Não afere estética — afere que o orbe
+**não minta**: cruza `OrbRow.UNIT_OF` com o que `orbPassiveTick` e
+`_evokeOrbEffect` de fato fazem (observando quem mudou: vida do inimigo,
+bloqueio, vida do herói, valor do orbe) e exige silhuetas distintas entre si.
+Verificado revertendo: glifo do gelo mentindo derruba **1**; voltar aos cinco
+discos derruba **9**; número nu da sombra derruba **1**.
+
+## QUEIMADURA: o atalho que virou mentira de tela
+
+*"Por que o inimigo está ficando com veneno na minha run de mago? Não faz muito
+sentido"* (dono, Set/2026). Estava certo: `_evokeOrbEffect`, ramo `fire`,
+aplicava **`poison`** — e o próprio comentário admitia o atalho desde sempre:
+*"aplica debuff `burn` via poison por ora; refinar"*. O **"por ora" durou**, e
+cobrava três preços:
+
+1. **roubava a identidade do LADINO** — veneno é o eixo dele (10 cartas do
+   catálogo aplicam, todas `class="rogue"`) e nenhuma carta de mago ou guerreiro
+   aplica. Ver a pill de Veneno como mago manda o jogador procurar no próprio
+   deck uma carta que não existe;
+2. **a tela mentia** — ícone, nome e descrição diziam Veneno; o que houve foi
+   queimadura;
+3. **contaminava sinergias** — a conquista de 15+ de veneno e o combo
+   `poison_stack` são do ladino, e o mago os disparava sem ter nada a ver.
+
+Hoje o fogo aplica **`burn`**, status próprio. A mecânica é a mesma de propósito
+(stacks de dano por turno, pela duração, absorvidos pela armadura) — o pedido
+não era rebalancear, era parar de mentir.
+
+**Onde mora o tick:** em `Enemy:onTurnEnd`, no mesmo lugar e no mesmo instante
+do veneno. `onTurnEnd` agora devolve **`(danoVeneno, danoQueimadura)`** — dois
+números, nunca somados: são dois status diferentes e o jogador precisa saber
+qual doeu. Os dois passam pelo helper `Enemy:_applyDot`, que carrega o
+`_markDeathIfCrossed` obrigatório — sem ele, **morrer queimado volta a não ter
+animação de morte** (a aritmetica crua do DoT não passa por `takeDamage`; foi o
+caminho que o agente `morte-e-vitoria` acabou de consertar).
+
+**A apresentação é separada da mecânica:** `EffectSystem.announceBurnTick` dá a
+linguagem de fogo (estala laranja, número âmbar, `triggerHurt`), contra o chiado
+verde e as bolhas do veneno. Quando os dois DoTs ticam no mesmo turno, o beat
+`enemy.dot` ganha ar extra via `CombatBeats.extendCurrent("DOT")` em vez de
+despejar dois números no mesmo piscar — o passo CONDICIONAL, o mesmo idioma do
+`enemy.enrage_check`. E o `hasDot` que decide se o beat tem respiro passou a
+contar queimadura: checando só `poison`, o fogo do mago ticava dentro de um
+`MICRO` de 0,10 s, sem tempo de ler.
+
+**Fallback silencioso caçado no caminho:** `CardFeel.THEMES` é indexado por TAG
+de carta, e `burn` não é tag — a queimadura teria estourado com as **bolhas
+verdes do veneno**, recriando a confusão que o status veio desfazer. Virou
+`DEBUFF_THEME` (burn → fire) com aviso no console para status sem tema. No mesmo
+caminho, o toast `debuff_applied` passou a interpolar o nome **traduzido** em vez
+da chave crua.
+
+Trava em dois níveis. `tools/test_effects_full.lua` cobre a unidade: a queimadura
+queima de verdade (cadência, armadura, morte, `_pendingDeath`), os dois DoTs são
+contados separados, e uma varredura do catálogo inteiro exige que **toda** fonte
+de veneno seja `class="rogue"` (hoje 10 cartas, todas do ladino).
+`tools/test_beats.lua` bloco 4h cobre a CADEIA numa run de verdade — evocar fogo
+→ queimadura entra → turno do inimigo → o beat do DoT tica → a vida cai.
+
+Verificado revertendo: o atalho do fogo derruba **2 + 2**; a queimadura sem tick
+derruba **8 + 1**; e tirar o `_markDeathIfCrossed` do DoT derruba **1** — e
+**só** essa asserção, o que quer dizer que ela é a única guarda do caminho de
+morte por DoT (`test_enemy_death` continua verde sem ele).
+
 ## Efeito que muda um número TEM que ticar
 
 `heal_multiplier` era o último contínuo mudo (Abraço Sombrio tinha

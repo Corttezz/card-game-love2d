@@ -136,6 +136,31 @@ local function returnToMenu()
     if menu.enterWithIntro then menu:enterWithIntro() end
 end
 
+-- Recomeçar da tela de fim de run (R no game over, ESPAÇO na vitória).
+--
+-- Antes os dois chamavam `startGame()` SEM classe, e isso estourava:
+--   RunManager.lua:29: Classe nao encontrada: nil
+-- ou seja, o jogo CRASHAVA ao vencer — o pior momento possível pra quebrar,
+-- porque é onde a run inteira está em jogo (bug do dono, Set/2026).
+--
+-- Reusa a classe da run que acabou, que é o que o jogador espera de
+-- "tentar de novo". Sem classe (save antigo, estado inesperado), vai pra
+-- SELEÇÃO em vez de adivinhar — e avisa, porque chegar aqui sem classe é
+-- anômalo.
+local function replayRun()
+    local classe = game and game.selectedClass
+    if not classe and game and game.runManager and game.runManager.currentRun then
+        classe = game.runManager.currentRun.classId
+    end
+    if classe then
+        startGame(classe)
+    else
+        print("[replay] run sem classe conhecida — abrindo a selecao de classe")
+        currentState = "classSelection"
+        classSelectionScreen:show()
+    end
+end
+
 -- Forward-declares para mutual recursion map <-> reward
 local showMapSelection
 
@@ -609,6 +634,24 @@ function love.load(loveArgs)
         return
     end
 
+    -- Contact sheet de PNGs (frames de anim, variacoes de arte).
+    --   love . sheet <dir|a.png,b.png> [escala] [saida.png]
+    if loveArgs and loveArgs[1] == "orb_compare" then
+        require("tools.orb_compare").run()
+        return
+    end
+
+    if loveArgs and loveArgs[1] == "orb_zoom" then
+        require("tools.orb_zoom").run(loveArgs[2], loveArgs[3])
+        return
+    end
+
+    if loveArgs and loveArgs[1] == "sheet" then
+        local ok = require("tools.sheet").run(loveArgs[2], loveArgs[3], loveArgs[4])
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
     if loveArgs and loveArgs[1] == "check_loop" then
         local ok = require("tools.check_loop").run(loveArgs[2])
         love.event.quit(ok and 0 or 1)
@@ -671,6 +714,9 @@ function love.load(loveArgs)
         _G.PREVIEW_HUD_ORB = (loveArgs[2] == "orb")
         _G.PREVIEW_HUD_PULSE = (loveArgs[2] == "pulse")
         _G.PREVIEW_HUD_ORBS = (loveArgs[2] == "orbs")
+        -- `orbs evoke`: mesma fileira com a mao sobre uma carta de Evocar --
+        -- e onde os numeros e DOIS glifos mudam (sombra vira dano).
+        _G.PREVIEW_HUD_ORBS_EVOKE = (loveArgs[3] == "evoke")
         require("tools.preview_battle_hud").run()
         love.event.quit()
         return
@@ -2041,14 +2087,14 @@ function love.keypressed(key)
     elseif currentState == "gameOver" then
         -- Teclas do game over
         if key == "r" then
-            startGame()
+            replayRun()
         elseif key == "escape" then
             returnToMenu()
         end
     elseif currentState == "victory" then
         -- Teclas da vitória
         if key == "space" then
-            startGame()
+            replayRun()
         elseif key == "escape" then
             returnToMenu()
         end

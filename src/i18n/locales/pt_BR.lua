@@ -808,6 +808,7 @@ return {
         passive_momentum     = "Ímpeto: +1 Força!",
         passive_toxins       = "Toxinas: +1 Veneno!",
         phase_started        = "Fase {value} iniciada!",
+        burn_tick        = "Queimadura: {value} de dano",
         poison_tick          = "Veneno: {value} de dano ao inimigo",
         purple_seal          = "Orbe! (Selo Roxo)",
         reshuffled           = "Descarte reembaralhado no deck",

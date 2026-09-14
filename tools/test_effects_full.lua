@@ -126,12 +126,96 @@ function M.run()
     es:processEffectCard(g, { type = "evoke_orb" })
     t:eq("evoke dark = 2x dano", g.enemy.health, 90)
 
-    -- fire -> dano + poison
+    -- fire -> dano + QUEIMADURA (status proprio; NAO veneno)
+    -- Set/2026: o dono, jogando de MAGO, viu veneno empilhando no inimigo e
+    -- estranhou com razao -- veneno e o eixo do LADINO e nenhuma carta de mago
+    -- aplica. O ramo `fire` de _evokeOrbEffect usava "poison" como atalho
+    -- ("via poison por ora; refinar"), e o "por ora" ficou. Este par de
+    -- asserções e o que impede o atalho de voltar.
     g = fresh()
     es:processEffectCard(g, { type = "channel_orb", orbType = "fire", value = 6 })
     es:processEffectCard(g, { type = "evoke_orb" })
     t:eq("evoke fire = dano", g.enemy.health, 94)
-    t:truthy("evoke fire aplica poison", g.enemy:hasStatus("poison"))
+    t:truthy("evoke fire aplica QUEIMADURA", g.enemy:hasStatus("burn"))
+    t:falsy("evoke fire NAO aplica veneno (veneno e identidade do ladino)",
+        g.enemy:hasStatus("poison"))
+
+    -- ===== QUEIMADURA: o DoT proprio do fogo =====
+    -- Mecanica IGUAL a do veneno (stacks de dano por turno, pela duracao,
+    -- absorvido pela armadura) com status SEPARADO -- o pedido nao era
+    -- rebalancear, era parar de mentir. Estas asserções travam as duas metades:
+    -- que a queimadura queima de verdade, e que ela nao e veneno.
+    do
+        local Enemy = require("src.entities.Enemy")
+        local e = Enemy:new(50, 5)
+        e:addStatusEffect({ name = "burn", duration = 2, stacks = 3 })
+        t:truthy("queimadura entra como status proprio", e:hasStatus("burn"))
+        t:falsy("queimadura NAO e veneno", e:hasStatus("poison"))
+
+        -- Tica no MESMO lugar que o veneno (Enemy:onTurnEnd), com a mesma
+        -- cadencia: o dano sai ANTES do decremento de duration.
+        local _, b1 = e:onTurnEnd()
+        t:eq("1a queimadura tica os stacks", b1, 3)
+        local _, b2 = e:onTurnEnd()
+        t:eq("2a queimadura tica os stacks", b2, 3)
+        local _, b3 = e:onTurnEnd()
+        t:eq("queimadura expira depois da duracao", b3, 0)
+        t:eq("total queimado = stacks x duracao (igual ao veneno)",
+            50 - e.health, 6)
+
+        -- O 1o retorno continua sendo o VENENO (chamadas antigas nao mudam) e
+        -- os dois DoTs sao numeros SEPARADOS, nunca somados num so.
+        local e4 = Enemy:new(50, 5)
+        e4:addStatusEffect({ name = "poison", duration = 1, stacks = 2 })
+        e4:addStatusEffect({ name = "burn", duration = 1, stacks = 3 })
+        local pv, bv = e4:onTurnEnd()
+        t:eq("veneno e queimadura sao contados SEPARADOS (veneno)", pv, 2)
+        t:eq("veneno e queimadura sao contados SEPARADOS (queimadura)", bv, 3)
+        t:eq("e os dois doem", 50 - e4.health, 5)
+
+        local e2 = Enemy:new(50, 5)
+        e2.armor = 2
+        e2:addStatusEffect({ name = "burn", duration = 1, stacks = 5 })
+        e2:onTurnEnd()
+        t:eq("armadura absorve queimadura, como no veneno", e2.health, 47)
+        t:eq("e a armadura e consumida", e2.armor, 0)
+
+        local e3 = Enemy:new(3, 5)
+        e3:addStatusEffect({ name = "burn", duration = 1, stacks = 9 })
+        e3:onTurnEnd()
+        t:eq("queimadura mata", e3.health, 0)
+        t:truthy("morrer QUEIMADO marca a morte (senao a animacao nao roda)",
+            e3._pendingDeath == true)
+    end
+
+    -- ===== VENENO E IDENTIDADE DO LADINO =====
+    -- Varredura do catalogo inteiro. Foi ESTA fronteira que o atalho do fogo
+    -- furava: o mago via a pill de Veneno e ia procurar no proprio deck uma
+    -- carta que nao existe -- alem de disparar a conquista de 15+ veneno e o
+    -- combo `poison_stack`, que sao do ladino.
+    do
+        local CardDatabase = require("src.systems.CardDatabase")
+        local offenders, sources = {}, 0
+        for id, cd in pairs(CardDatabase:getAllCards()) do
+            local applies = false
+            for _, ef in ipairs(cd.effects or {}) do
+                if (ef.type == "apply_debuff" and ef.value == "poison")
+                    or ef.debuffName == "poison" then
+                    applies = true
+                end
+            end
+            if applies then
+                sources = sources + 1
+                if cd.class ~= "rogue" then
+                    offenders[#offenders + 1] = id .. "(" .. tostring(cd.class) .. ")"
+                end
+            end
+        end
+        table.sort(offenders)
+        t:truthy("o catalogo TEM fontes de veneno (" .. sources .. ")", sources >= 5)
+        t:eq("VENENO so vem do ladino (" .. table.concat(offenders, ", ") .. ")",
+            #offenders, 0)
+    end
 
     -- holy -> cura
     g = fresh(); g.player.health = 40

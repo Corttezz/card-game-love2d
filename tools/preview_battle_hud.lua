@@ -101,6 +101,11 @@ function M.run()
     game.enemy.damage = 12
     game.enemy.statusEffects = {
         { name = "poison",     stacks = 3, duration = 2 },
+        -- QUEIMADURA ao lado do VENENO de proposito: os dois sao DoT e o
+        -- defeito que criou este status foi justamente confundi-los. Validar
+        -- lado a lado e a unica forma de saber se a distincao funciona
+        -- (doutrina de defeitos, 5 e 7).
+        { name = "burn",       stacks = 4, duration = 2 },
         { name = "weak",       stacks = 1, duration = 2 },
         { name = "vulnerable", stacks = 1, duration = 1 },
     }
@@ -134,6 +139,14 @@ function M.run()
     end
     EnemyHud.draw(game, bbox, enemyCx, enemyCy)
 
+    -- Mao FALSIFICADA com uma carta de Evocar sob o mouse: exercita o caminho
+    -- REAL do preview (OrbRow.update le game.hand e acende previewMode), que e
+    -- onde os numeros viram valor de EVOKE e o glifo da sombra vira DANO.
+    if _G.PREVIEW_HUD_ORBS_EVOKE then
+        game.hand = { { id = "fake_evoke", isHovered = true,
+            effects = { { type = "evoke_all_orbs" } } } }
+    end
+
     -- HUD player panel + mana orb
     local hud = HudManager:new()
     hud:update(0.016)
@@ -153,6 +166,14 @@ function M.run()
     local fakeX = hud.playerPanel.x + (hoverIndex - 1) * (pillSize + 8) + pillSize / 2
     local fakeY = PlayerBuffPills.getBandTop(hud.playerPanel.y) + pillSize / 2
     love.mouse.getPosition = function() return fakeX, fakeY end
+
+    -- OrbRow.update ZERA previewMode e so o preenche se receber `game` -- e o
+    -- hud:update acima roda sem ele. Entao o preview tem que ser armado DEPOIS,
+    -- imediatamente antes do draw (mesma ordem do jogo real, onde a cena passa
+    -- o game nos dois).
+    if _G.PREVIEW_HUD_ORBS_EVOKE then
+        require("src.ui.OrbRow").update(0.016, game)
+    end
 
     hud:draw(game)
     StatusTooltip.draw()
@@ -253,7 +274,9 @@ function M.run()
 
     -- Salva PNG
     local img = canvas:newImageData()
-    local out = _G.PREVIEW_HUD_ORBS and "preview_battle_hud_orbs.png"
+    local out = (_G.PREVIEW_HUD_ORBS and _G.PREVIEW_HUD_ORBS_EVOKE)
+            and "preview_battle_hud_orbs_evoke.png"
+        or _G.PREVIEW_HUD_ORBS and "preview_battle_hud_orbs.png"
         or orbMode and "preview_battle_hud_orb.png"
         or pulseMode and "preview_battle_hud_pulse.png"
         or "preview_battle_hud.png"
