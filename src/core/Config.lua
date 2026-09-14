@@ -4,7 +4,14 @@
 local Config = {}
 
 -- Versão do jogo (menu/splash mostram no rodapé).
-Config.VERSION = "0.9.1"
+-- Sobe a cada leva de correcoes que o dono vai TESTAR. O menu imprime este
+-- numero no rodape (Menu:_drawVersionFooter), e e assim que se responde
+-- "estou rodando a build certa?" sem adivinhar — ver a memoria
+-- user-runs-stale-copy: `love .` com CWD errado ja custou semanas de "bug que
+-- nao reproduz" neste projeto. O lancador oficial e o jogar.bat.
+-- 0.9.2 (Set/2026): forja por copia, hover bloqueado por modal, trava de fim
+--   de run (tela preta), faxina de musica orfa, pacotes renomeados.
+Config.VERSION = "0.9.2"
 
 -- Configurações da Interface
 Config.UI = {
