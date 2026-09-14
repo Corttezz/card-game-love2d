@@ -163,8 +163,11 @@ function ShopSystem:initializeShopPools()
     -- vitrine até serem implementados de verdade. Ficam só os upgrades que
     -- aplicam no Player (health/mana).
     self.shopUpgradePool = {
-        { id = "health_upgrade",     name = "Vida Extra",   description = "+10 HP maximo",            cost = 5, effect = "increase_max_health",    value = 10 },
-        { id = "mana_upgrade",       name = "Mana Extra",   description = "+1 mana maxima",           cost = 25, effect = "increase_base_mana",    value = 1  },
+        -- name/description aqui sao FALLBACK DE DEV (sem acento). O texto que
+        -- o jogador le sai de `shop_items.<id>` no i18n, que desde Set/2026
+        -- tambem carrega `effect` (o numero do chip do tile) e `flavor`.
+        { id = "health_upgrade",     name = "Elixir Vital",    description = "+10 de vida maxima",  cost = 5,  effect = "increase_max_health", value = 10 },
+        { id = "mana_upgrade",       name = "Cristal de Eter", description = "+1 de mana maxima",   cost = 25, effect = "increase_base_mana",  value = 1  },
     }
 end
 

@@ -159,9 +159,27 @@ return {
         pack_arcana    = { name = "Pack Arcane",    desc = "3 tarots ; choisissez-en 1." },
         pack_celestial = { name = "Pack Celeste",   desc = "3 planetes ; choisissez-en 1." },
         pack_spectral  = { name = "Pack Spectral",  desc = "2 spectrales ; choisissez-en 1." },
-        health_upgrade = { name = "Vie Bonus",  desc = "+{value} PV maximum" },
-        mana_upgrade   = { name = "Mana Bonus", desc = "+{value} mana maximum" },
-        forge_card     = { name = "Forge",      desc = "+1 niveau sur une carte de votre choix (choisie a l achat)" },
+        -- RELIQUES (ameliorations de la boutique) : `effect` est le nombre qui
+        -- tient dans la puce du tile, `desc` l explique en une ligne et
+        -- `flavor` est la phrase de grimoire du panneau de detail.
+        health_upgrade = {
+            name   = "Elixir Vital",
+            effect = "+{value} PV MAX",
+            desc   = "Augmente vos PV maximum de {value}, et vous soigne d autant sur le coup.",
+            flavor = "Une gorgee de plus d encre rouge.",
+        },
+        mana_upgrade   = {
+            name   = "Cristal d Ether",
+            effect = "+{value} MANA MAX",
+            desc   = "Chaque tour commence avec {value} mana de plus, jusqu a la fin de la partie.",
+            flavor = "La source tient dans une pierre, si la pierre est assez vieille.",
+        },
+        forge_card     = {
+            name   = "Forge",
+            effect = "+1 NIVEAU",
+            desc   = "Ameliore une carte de votre deck. Vous choisissez laquelle a l achat.",
+            flavor = "Le marteau se souvient de ce que la page a oublie.",
+        },
     },
 
     map = {
@@ -328,6 +346,16 @@ return {
         open_pack          = "Ouvrir (${n})",
         select_card        = "Selectionner",
         joker_run_only     = "Les jokers ne s'obtiennent que pendant une partie",
+        instructions_shop  = "Survolez pour lire · CLIC selectionne · confirmez dans le panneau · DROIT inspecte",
+        detail_type_voucher = "Relique",
+        detail_type_pack    = "Pack",
+        detail_free         = "Gratuit",
+        detail_empty        = "Survolez une offre pour voir ses details ici",
+        badge_relic         = "RELIQUE",
+        badge_pack          = "PACK",
+        voucher_effect      = "Effet",
+        detail_prefocus     = "Survolez pour comparer",
+        detail_stale        = "derniere offre consultee",
     },
 
     deck_viewer = {

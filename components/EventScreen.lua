@@ -300,8 +300,15 @@ function EventScreen:_spawnDeltas(opt, cx, cy)
         for _, txt in ipairs(list or {}) do
             local delay = i * 0.13
             i = i + 1
+            -- `txt` e um DESCRITOR { k, n, fb }, nao uma string: a migracao
+            -- de i18n trocou o formato de gains/costs e atualizou o rotulo do
+            -- botao (composeOptionLabel), mas este caminho ficou concatenando
+            -- a tabela — crash ao escolher qualquer opcao com ganho ou custo.
+            -- Passou despercebido porque a trava check_event_i18n mede o
+            -- ROTULO, e o FloatingText nao tinha cobertura nenhuma.
+            local texto = deltaText(txt)
             EventManager.parallel(delay, function()
-                FloatingText.spawn(prefix .. txt, cx, cy - i * 4, {
+                FloatingText.spawn(prefix .. texto, cx, cy - i * 4, {
                     color = color, fontSize = 13, lift = 30, hold = 0.5,
                 })
             end, FXQ)

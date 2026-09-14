@@ -28,6 +28,8 @@ local SUITES = {
     { group = "unit",  name = "test_screen_exits" },
     { group = "unit",  name = "test_music" },
     { group = "unit",  name = "test_window" },
+    { group = "unit",  name = "test_coinburst" },
+    { group = "unit",  name = "test_upgrade_tile" },
     { group = "valid", name = "check_event_i18n" },
     -- Smoke de sistema (pré-existentes)
     { group = "smoke", name = "smoke_tags" },
@@ -43,6 +45,7 @@ local SUITES = {
     { group = "smoke", name = "smoke_packs" },
     { group = "smoke", name = "smoke_turn_order" },
     { group = "smoke", name = "smoke_ui_turn" },
+    { group = "smoke", name = "test_worldroad_resume" },
     { group = "smoke", name = "smoke_crt_mouse" },
     -- Validação / conteúdo
     { group = "valid", name = "validate_cards" },

@@ -159,9 +159,27 @@ return {
         pack_arcana    = { name = "Arcana Pack",    desc = "3 tarots; pick 1." },
         pack_celestial = { name = "Celestial Pack", desc = "3 planets; pick 1." },
         pack_spectral  = { name = "Spectral Pack",  desc = "2 spectrals; pick 1." },
-        health_upgrade = { name = "Extra Health", desc = "+{value} max HP" },
-        mana_upgrade   = { name = "Extra Mana",   desc = "+{value} max mana" },
-        forge_card     = { name = "Forge",        desc = "+1 level on a card of your choice (you pick when buying)" },
+        -- RELICS (shop upgrades): `effect` is the number that fits the tile
+        -- chip (uppercase), `desc` explains it in one line, `flavor` is the
+        -- grimoire line shown in the detail panel.
+        health_upgrade = {
+            name   = "Vital Elixir",
+            effect = "+{value} MAX HP",
+            desc   = "Raises your maximum health by {value}, and heals the same amount now.",
+            flavor = "One more sip of red ink.",
+        },
+        mana_upgrade   = {
+            name   = "Aether Crystal",
+            effect = "+{value} MAX MANA",
+            desc   = "Every turn starts with {value} more mana, for the rest of the run.",
+            flavor = "A spring fits inside a stone, if the stone is old enough.",
+        },
+        forge_card     = {
+            name   = "Forge",
+            effect = "+1 LEVEL",
+            desc   = "Upgrades one card in your deck. You pick which one when you buy.",
+            flavor = "The hammer remembers what the page forgot.",
+        },
     },
 
     map = {
@@ -327,6 +345,16 @@ return {
         atk_bonus          = "Attack damage: +{n}",
         def_bonus          = "Defense: +{n}",
         joker_run_only     = "Jokers can only be acquired during a run",
+        instructions_shop  = "Hover to read · CLICK selects · confirm in the panel · RIGHT inspects",
+        detail_type_voucher = "Relic",
+        detail_type_pack    = "Pack",
+        detail_free         = "Free",
+        detail_empty        = "Hover an offer to read its details here",
+        badge_relic         = "RELIC",
+        badge_pack          = "PACK",
+        voucher_effect      = "Effect",
+        detail_prefocus     = "Hover to compare",
+        detail_stale        = "last offer you looked at",
     },
 
     event = {

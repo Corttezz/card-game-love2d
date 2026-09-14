@@ -116,8 +116,39 @@ function GameplayScene.resetTurnState()
     lastFloorKey = nil
 end
 
+-- CONTINUAR uma run salva: devolve o MUNDO ao ponto do save E ancora o
+-- andar da cena. Mora aqui (e não no main.lua) porque `lastFloorKey` — o
+-- gatilho da caminhada até o próximo encontro — é estado DESTE módulo:
+-- restaurar o mundo sem ancorar o andar deixa as duas metades em
+-- desacordo.
+--
+-- O bug que isto mata (Set/2026, "a bandeira não sai da frente do primeiro
+-- inimigo"): o save feito NA ENCRUZILHADA guarda o andar JÁ avançado
+-- (showMapSelection chama advanceFloorInAct ANTES de montar o fork), mas a
+-- caminhada até esse andar ainda não aconteceu — o mundo pertence ao andar
+-- ANTERIOR. Como o Continuar vinha do menu (setGame ⇒ lastFloorKey = nil),
+-- o primeiro andar depois de retomar era lido como "início de run" e
+-- NENHUMA viagem disparava. Sem a viagem, o marco plantado pela
+-- convergência do fork (landmark_battle — um estandarte vermelho) ficava
+-- parado em ARRIVE_REL 7.5, à frente do inimigo em BATTLE_REL 9 e desenhado
+-- depois dele: a bandeira em cima do monstro, pra sempre.
+function GameplayScene.resumeWorld(g)
+    local run = g and g.runManager and g.runManager.currentRun
+    local act = (run and run.actNumber) or 1
+    local floor = (run and run.floorInAct) or 1
+    local pending = run and run.pendingNodes
+    local atFork = (pending ~= nil and #pending > 0)
+    -- Na encruzilhada o mundo está um andar ATRÁS do que o save diz.
+    WorldRoad.restoreProgress(act, atFork and math.max(1, floor - 1) or floor)
+    -- Âncora que o detector de troca de andar compara. Na encruzilhada é
+    -- floor-1 DE PROPÓSITO (pode dar 0 quando o ato acabou de virar): o nó
+    -- escolhido sempre lê como troca de andar e a caminhada acontece.
+    lastFloorKey = act .. ":" .. (atFork and (floor - 1) or floor)
+end
+
 -- Introspecção pra testes de regressão (smoke_ui_turn).
 function GameplayScene.getGame() return game end
+function GameplayScene.getFloorAnchor() return lastFloorKey end
 
 -- ============================================================================
 -- INTERNAL: posicionamento

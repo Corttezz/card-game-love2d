@@ -176,9 +176,28 @@ return {
         pack_arcana    = { name = "Pacote Arcano",    desc = "3 tarôs; escolha 1." },
         pack_celestial = { name = "Pacote Celestial", desc = "3 planetas; escolha 1." },
         pack_spectral  = { name = "Pacote Espectral", desc = "2 espectrais; escolha 1." },
-        health_upgrade = { name = "Vida Extra", desc = "+{value} HP máximo" },
-        mana_upgrade   = { name = "Mana Extra", desc = "+{value} mana máxima" },
-        forge_card     = { name = "Forja",      desc = "+1 nível numa carta à sua escolha (você escolhe ao comprar)" },
+        -- RELIQUIAS (upgrades da loja). Quatro camadas de texto, cada uma com
+        -- um trabalho: `name` dá identidade, `effect` é o NUMERO que cabe no
+        -- chip do tile (maiuscula sem acento — a fonte pixel), `desc` explica
+        -- em uma frase e `flavor` é a linha de grimório do painel de detalhe.
+        health_upgrade = {
+            name   = "Elixir Vital",
+            effect = "+{value} VIDA MAX",
+            desc   = "Aumenta sua vida máxima em {value}, e cura o mesmo tanto na hora.",
+            flavor = "Um gole a mais de tinta vermelha.",
+        },
+        mana_upgrade   = {
+            name   = "Cristal de Éter",
+            effect = "+{value} MANA MAX",
+            desc   = "Todo turno passa a começar com {value} de mana a mais, pelo resto da corrida.",
+            flavor = "A fonte cabe numa pedra, se a pedra for antiga o bastante.",
+        },
+        forge_card     = {
+            name   = "Forja",
+            effect = "+1 NIVEL",
+            desc   = "Aprimora uma carta do seu deck. Você escolhe qual na hora da compra.",
+            flavor = "O martelo lembra o que a página esqueceu.",
+        },
     },
 
     map = {
@@ -344,6 +363,22 @@ return {
         atk_bonus          = "Dano de ataque: +{n}",
         def_bonus          = "Defesa: +{n}",
         joker_run_only     = "Coringas so podem ser adquiridos durante uma corrida",
+        -- Split-view da loja: rotulos que antes so existiam como fallback PT
+        -- cravado no CardDetailPanel/CardRewardScreen — em alemao a vitrine
+        -- mostrava "Reliquia" no meio do texto traduzido.
+        instructions_shop  = "Passe o mouse pra ler · CLIQUE seleciona · confirme no painel · DIREITO inspeciona",
+        detail_type_voucher = "Relíquia",
+        detail_type_pack    = "Pacote",
+        detail_free         = "Grátis",
+        detail_empty        = "Passe o mouse sobre uma oferta pra ver os detalhes aqui",
+        -- Etiquetas da faixa sob o slot (mesma linguagem do "◆ COMUM ◆" das
+        -- cartas). Ja em CAIXA ALTA e sem acento: o :upper() de Lua nao sobe
+        -- vogal acentuada e sairia "RELíQUIA".
+        badge_relic         = "RELIQUIA",
+        badge_pack          = "PACOTE",
+        voucher_effect      = "Efeito",
+        detail_prefocus     = "Passe o mouse pra comparar",
+        detail_stale        = "ultima oferta observada",
     },
 
     event = {

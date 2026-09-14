@@ -111,16 +111,33 @@ function TopBar:_onGoldDelta(delta)
         Sfx.play("goldGain", { pitch = 0.94 + mag * 0.18, volume = 0.45 + mag * 0.2 })
     end
 
-    local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
-    if not okFT or not FloatingText.spawn then return end
+    -- O slot do ouro é o alvo dos DOIS efeitos abaixo.
     local slots = self:_layout()
     local slot = slots and slots.gold
     if not slot then return end
+    local alvoX = slot.x + slot.w * 0.5
+
+    -- Ganho de ouro chove moedas até o contador. Mora AQUI, e não nas telas,
+    -- porque este é o funil por onde todo delta passa — ligar tela por tela
+    -- deixaria a próxima fonte de ouro sem animação e ninguém perceberia
+    -- (era o caso do "Continuar" da loja). Ver src/ui/CoinBurst.lua.
+    --
+    -- Vem ANTES do FloatingText de propósito: os dois são independentes, e
+    -- pendurar as moedas depois do early-return dele faria uma falha no texto
+    -- levar a animação junto, calada.
+    if delta > 0 then
+        local okCB, CoinBurst = pcall(require, "src.ui.CoinBurst")
+        if okCB then CoinBurst.spawn(delta, alvoX, self.height - 10) end
+    end
+
+    local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
+    if not okFT or not FloatingText.spawn then return end
+
     local sign = (delta > 0) and "+" or ""
     -- kind "gold" já existe no catálogo do FloatingText (dourado, 14px); só o
     -- gasto sobrescreve a cor, pra manter a mesma leitura verde/vermelho do
     -- flash direcional que roda logo acima.
-    FloatingText.spawn(sign .. delta, slot.x + slot.w * 0.5, self.height - 6, {
+    FloatingText.spawn(sign .. delta, alvoX, self.height - 6, {
         kind = "gold",
         color = (delta > 0) and nil or { 0.90, 0.35, 0.30, 1 },
         lift = 20,

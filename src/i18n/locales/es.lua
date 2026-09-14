@@ -159,9 +159,27 @@ return {
         pack_arcana    = { name = "Sobre Arcano",    desc = "3 tarots; elige 1." },
         pack_celestial = { name = "Sobre Celestial", desc = "3 planetas; elige 1." },
         pack_spectral  = { name = "Sobre Espectral", desc = "2 espectrales; elige 1." },
-        health_upgrade = { name = "Vida Extra", desc = "+{value} de vida maxima" },
-        mana_upgrade   = { name = "Mana Extra", desc = "+{value} de mana maximo" },
-        forge_card     = { name = "Forja",      desc = "+1 nivel en una carta que elijas (la eliges al comprar)" },
+        -- RELIQUIAS (mejoras de la tienda): `effect` es el numero que cabe en
+        -- el chip del tile, `desc` lo explica en una linea y `flavor` es la
+        -- frase de grimorio del panel de detalle.
+        health_upgrade = {
+            name   = "Elixir Vital",
+            effect = "+{value} VIDA MAX",
+            desc   = "Sube tu vida maxima en {value}, y te cura otro tanto al momento.",
+            flavor = "Un trago mas de tinta roja.",
+        },
+        mana_upgrade   = {
+            name   = "Cristal de Eter",
+            effect = "+{value} MANA MAX",
+            desc   = "Cada turno empieza con {value} de mana mas, el resto de la partida.",
+            flavor = "La fuente cabe en una piedra, si la piedra es bastante antigua.",
+        },
+        forge_card     = {
+            name   = "Forja",
+            effect = "+1 NIVEL",
+            desc   = "Mejora una carta de tu mazo. Eliges cual al comprarla.",
+            flavor = "El martillo recuerda lo que la pagina olvido.",
+        },
     },
 
     map = {
@@ -327,6 +345,16 @@ return {
         open_pack          = "Abrir (${n})",
         select_card        = "Seleccionar",
         joker_run_only     = "Los comodines solo se consiguen durante una partida",
+        instructions_shop  = "Pasa el raton para leer · CLIC selecciona · confirma en el panel · DERECHO inspecciona",
+        detail_type_voucher = "Reliquia",
+        detail_type_pack    = "Sobre",
+        detail_free         = "Gratis",
+        detail_empty        = "Pasa el raton por una oferta para ver los detalles aqui",
+        badge_relic         = "RELIQUIA",
+        badge_pack          = "SOBRE",
+        voucher_effect      = "Efecto",
+        detail_prefocus     = "Pasa el raton para comparar",
+        detail_stale        = "ultima oferta observada",
     },
 
     deck_viewer = {

@@ -1,1 +1,1 @@
-return { fps = 7 }
+return { fps = 8 }

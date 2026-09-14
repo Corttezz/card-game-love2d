@@ -34,6 +34,12 @@ nessa conta. **Prefira isto antes de pedir orçamento novo pro dono.**
 
 ## As três armadilhas
 
+**-1. O prompt tem teto de 450 caracteres.** Passar disso devolve
+`{"detail":{"type":"validation_error","code":"text_too_long", ...}}` — e, como
+sempre, os 336 bytes do erro são gravados por cima do `.mp3`. Descrever
+arranjo direito custa espaço, então conte os caracteres antes de mandar:
+`python -c "import json;print(len(json.load(open('x.json'))['text']))"`.
+
 **1. Travessão quebra a requisição.** Prompt com `—` interpolado no `curl -d`
 volta como `{"detail":{"type":"invalid_unicode",...}}` — 95 bytes de JSON
 gravados por cima do `.mp3`, que passa a existir e a estar corrompido. Escreva
@@ -115,7 +121,19 @@ finais e dos iniciais (fade colado pelo modelo; saudável entre 0,5× e 2,0×) e
 | `music-rest` | 0,42k | violoncelo solo, melodia de ninar, fogueira ao fundo |
 | `music-act1` | 0,49k | alaúde dedilhado + viola + tambor de moldura, 70 BPM, dórico |
 | `music-act2` | 1,49k | cordas em arco + saltério + sino distante, 60 BPM, eólio |
-| `music-shop` | 6,01k | harpa esparsa, timbre claro |
+| `music-shop` | 0,24k | alaúde + viola da gamba + tambor de mão, 85 BPM, mixolídio |
+
+**A loja foi refeita uma segunda vez** (o dono: *"a música dentro da loja está
+totalmente quebrada, toda bizarra"*). A versão anterior tinha brilho 6,01k —
+cinco vezes mais aguda que qualquer outra faixa, com rolloff em 10,9 kHz, ou
+seja, energia espalhada até o topo do espectro: chiado, não música. A causa
+foi pedir **saltério/dulcimer e harpa**, que são metálicos e agudos por
+natureza. Trocar a instrumentação para alaúde + viola da gamba + tambor de mão,
+e proibir explicitamente a família aguda (*"no bells, no chimes, no harp, no
+cymbals, no hiss"*), levou de 5417 Hz para 432 Hz de centroide.
+
+**Instrumento errado não se conserta com adjetivo.** Pedir "warm" e "nothing
+shrill" ao dulcimer não mudou nada; trocar o instrumento mudou tudo.
 
 Os três atos ficam separados por fatores de 3× e 2,5× — que era o pedido.
 Restam duas colisões de brilho que o tool aponta (`boss`↔`rest`, `rest`↔`act1`);

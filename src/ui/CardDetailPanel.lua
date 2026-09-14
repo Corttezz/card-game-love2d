@@ -44,6 +44,7 @@ local CardMesh           = require("src.ui.CardMesh")
 local CardArt            = require("src.ui.CardArt")
 local CardAnimationLayer = require("src.ui.card.CardAnimationLayer")
 local ImageCache         = require("src.ui.ImageCache")
+local UpgradeTile        = require("src.ui.UpgradeTile")
 local I18n               = require("src.i18n.I18n")
 
 local PAD = 14
@@ -185,30 +186,16 @@ local function drawPackArt(offer, ax, ay, aw, ah, alpha)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Sprite PixelLab do voucher; sem PNG, um selo ornamental de pergaminho.
+-- Relíquia: MESMA composição do tile da vitrine (pedestal + halo na cor do
+-- efeito + sprite apoiado). Antes era só o PNG centrado no vazio — a peça
+-- flutuava no escuro e a coluna parecia inacabada ao lado da carta grande,
+-- que tem moldura e sombra. Uma composição só, dois lugares.
 local function drawVoucherArt(offer, ax, ay, aw, ah, alpha)
-    local sprite = ImageCache.tryGet("assets/sprites/vouchers/" .. tostring(offer.id) .. ".png")
-    if sprite then
-        local sw, sh = sprite:getWidth(), sprite:getHeight()
-        local raw = math.min(aw / sw, ah / sh)
-        -- Pixel art prefere escala inteira; abaixo de 1 cai pra float pra caber.
-        local scale = raw >= 1 and math.floor(raw) or raw
-        love.graphics.setColor(1, 1, 1, alpha)
-        love.graphics.draw(sprite,
-            math.floor(ax + (aw - sw * scale) / 2),
-            math.floor(ay + (ah - sh * scale) / 2), 0, scale, scale)
-        love.graphics.setColor(1, 1, 1, 1)
-        return
-    end
-    local r = math.floor(math.min(aw, ah) * 0.30)
-    local cx, cy = math.floor(ax + aw / 2), math.floor(ay + ah / 2)
-    setC(Palette.PARCHMENT_DARK, 0.85 * alpha)
-    love.graphics.circle("fill", cx, cy, r)
-    setC(Palette.AGED_GOLD, alpha)
-    love.graphics.setLineWidth(2)
-    love.graphics.circle("line", cx, cy, r)
-    love.graphics.setLineWidth(1)
-    love.graphics.setColor(1, 1, 1, 1)
+    UpgradeTile.drawArt(offer, { x = ax, y = ay, w = aw, h = ah }, {
+        alpha = alpha,
+        glow = 0.8,
+        bob = reducedMotion() and 0 or (math.sin(love.timer.getTime() * 1.4) * 2),
+    })
 end
 
 -- ============================================================================
@@ -339,6 +326,16 @@ function CardDetailPanel.draw(rect, payload, opts)
     local descLineCount = #wrapLines(desc, FontManager.getFont(F.desc), textW)
     if payload.kind == "card" and inst and inst.effects then
         descLineCount = descLineCount + math.min(4, #inst.effects) + 1
+    elseif payload.kind == "voucher" then
+        -- Relíquia agora traz chip de efeito + linha de grimório abaixo da
+        -- descrição: a arte tem que ceder a mesma altura que eles ocupam,
+        -- senão o texto encosta no rodapé dos botões de compra.
+        local flavor = UpgradeTile.flavor(offer)
+        if UpgradeTile.effectLabel(offer) then descLineCount = descLineCount + 2 end
+        if flavor then
+            descLineCount = descLineCount
+                + #wrapLines(flavor, FontManager.getFont(F.tiny), textW)
+        end
     end
     local artFrac = 0.44
     if descLineCount <= 3 then artFrac = 0.60
@@ -467,12 +464,49 @@ function CardDetailPanel.draw(rect, payload, opts)
         end
     end
 
+    -- ===== Chip do EFEITO (relíquia) =====
+    -- O painel da relíquia era nome + "Relíquia · $5" + uma linha de texto, e
+    -- depois meio painel de vazio — enquanto o da carta tem custo, dano e
+    -- lista de efeitos. Aqui o NÚMERO ganha o mesmo peso que tem no tile:
+    -- uma placa com a cor do efeito, para o jogador comparar de longe.
+    if payload.kind == "voucher" then
+        local chipTxt = UpgradeTile.effectLabel(offer)
+        if chipTxt then
+            local th = UpgradeTile.theme(offer)
+            local f = FontManager.getFont(F.stat)
+            local chipH = f:getHeight() + 10
+            local chipW = math.min(textW, f:getWidth(chipTxt) + 28)
+            local chipX = textX + math.floor((textW - chipW) / 2)
+            setC(Palette.darken(Palette.INK, 0.2), alpha * 0.85)
+            love.graphics.rectangle("fill", chipX, cy, chipW, chipH, 3, 3)
+            setC(th.accent, alpha * 0.9)
+            love.graphics.setLineWidth(1)
+            love.graphics.rectangle("line", chipX + 0.5, cy + 0.5, chipW - 1, chipH - 1, 3, 3)
+            love.graphics.setFont(f)
+            setC(th.text, alpha)
+            love.graphics.printf(chipTxt, chipX, cy + 5, chipW, "center")
+            cy = cy + chipH + 6
+        end
+    end
+
     divider(textX, cy, textW, alpha * 0.8)
     cy = cy + 8
 
     -- ===== Descrição =====
     cy = line(desc, FontManager.getFont(F.desc), Palette.PARCHMENT_LIGHT,
               textX, cy, textW, bottom, alpha)
+
+    -- ===== Linha de grimório (relíquia) =====
+    -- Ocupa o vão que sobrava sob a descrição curta com a coisa certa: voz,
+    -- não enchimento. Cai fora sozinha se não houver espaço.
+    if payload.kind == "voucher" then
+        local flavor = UpgradeTile.flavor(offer)
+        if flavor and cy < bottom - 10 then
+            cy = cy + 6
+            line('"' .. flavor .. '"', FontManager.getFont(F.tiny),
+                 Palette.PARCHMENT, textX, cy, textW, bottom, alpha * 0.8, "center")
+        end
+    end
 
     -- ===== Efeitos (até 4, como na inspeção) =====
     if payload.kind == "card" and inst and inst.effects and #inst.effects > 0 then

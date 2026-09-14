@@ -79,6 +79,8 @@ local Button = require("components.Button")
 local CardDatabase = require("src.systems.CardDatabase")
 local CardInfoDisplay = require("src.ui.CardInfoDisplay")
 local CardDetailPanel = require("src.ui.CardDetailPanel")
+local UpgradeTile = require("src.ui.UpgradeTile")
+local Moveable = require("engine.Moveable")
 local I18n = require("src.i18n.I18n")
 local Sfx = require("src.systems.Sfx")
 local EventManager = require("engine.EventManager")
@@ -463,6 +465,18 @@ function CardRewardScreen:validateLayout()
                     w = p.w or self.cardWidth,
                     h = (p.h or self.cardHeight) + labelH + SHOP_HOVER_LIFT,
                 }, "slot " .. i)
+            end
+        end
+
+        -- Bandas INTERNAS do tile de relíquia (nome/arte/chip/preço): a
+        -- não-sobreposição do conteúdo é provada aqui, não olhada na captura.
+        for _, offer in ipairs(self.shopOffers or {}) do
+            local p = offer._slot and self.cardPositions[offer._slot]
+            if offer.type == "upgrade" and p then
+                for _, msg in ipairs(UpgradeTile.validate(p.x, p.y,
+                    p.w or self.cardWidth, p.h or self.cardHeight)) do
+                    bad[#bad + 1] = "reliquia: " .. msg
+                end
             end
         end
 
@@ -965,6 +979,9 @@ function CardRewardScreen:purchaseOffer(offer, offerId)
             self.game:addCardToRun(offer.id)
             self.game:addMessage(I18n.t("reward.bought", { name = offerName }), "success")
         elseif offer.type == "upgrade" then
+            -- Floreio ANTES do applyUpgrade: a forja abre o picker por cima
+            -- da loja, e o gesto tem que já estar no ar quando ele entrar.
+            self:_startRelicFlourish(offer)
             self:applyUpgrade(offer)
             self.game:addMessage(I18n.t("reward.bought", { name = offerName }), "success")
         elseif offer.type == "booster_pack" then
@@ -1349,9 +1366,54 @@ function CardRewardScreen:_startFlyToDeck(offer)
 end
 
 -- Popup "-$N" que flutua pra cima e some (age controlada em update()).
-function CardRewardScreen:_spawnGoldPopup(x, y, text)
+-- `color`/`centered` são opcionais: a compra de relíquia reusa este mesmo
+-- popup pra subir o EFEITO ganho ("+10 VIDA MAX") na cor do efeito.
+function CardRewardScreen:_spawnGoldPopup(x, y, text, color, centered)
     self._goldPopups = self._goldPopups or {}
-    table.insert(self._goldPopups, { text = text, x = x, y = y, age = 0 })
+    table.insert(self._goldPopups,
+        { text = text, x = x, y = y, age = 0, color = color, centered = centered })
+end
+
+-- Compra de RELÍQUIA: a peça sobe do pedestal crescendo e se apaga, e o
+-- EFEITO sobe escrito atrás dela. Antes o feedback era idêntico ao de
+-- qualquer oferta (popup "-$N" + carimbo VENDIDO): a tela cobrava e não
+-- dizia o que você tinha acabado de ganhar — que é justamente o que um
+-- upgrade vende. Com reducedMotion sobra o texto, que é a INFORMAÇÃO.
+function CardRewardScreen:_startRelicFlourish(offer)
+    local pos = offer._slot and self.cardPositions[offer._slot]
+    if not pos then return end
+    local w = pos.w or self.cardWidth
+    local h = pos.h or self.cardHeight
+    local bands = UpgradeTile.layout(pos.x, pos.y, w, h)
+    local th = UpgradeTile.theme(offer)
+
+    local label = UpgradeTile.effectLabel(offer)
+    if label then
+        self:_spawnGoldPopup(pos.x + w / 2,
+            math.floor(bands.art.y + bands.art.h * 0.45), label, th.text, true)
+    end
+
+    local fx = self:_slotFx(offer._slot)
+    Moveable.juice_up(fx, 0.35, 0.08)
+
+    local sprite = ImageCache.tryGet(
+        "assets/sprites/vouchers/" .. tostring(offer.id) .. ".png")
+    if not sprite or reducedMotion() then return end
+
+    local sw, sh = sprite:getWidth(), sprite:getHeight()
+    local raw = math.min((bands.art.w - 8) / sw, (bands.art.h - 8) / sh)
+    local scale = raw >= 1 and math.floor(raw) or raw
+    local fly = {
+        img = sprite, ox = sw / 2, oy = sh / 2,
+        x = pos.x + w / 2, y = bands.art.y + bands.art.h * 0.55,
+        scale = scale, alpha = 1, rot = 0,
+    }
+    self._flyCards = self._flyCards or {}
+    table.insert(self._flyCards, fly)
+    EventManager.parallelEase(fly, "y", fly.y - 64, 0.55, "ease_out", "shop_fly")
+    EventManager.parallelEase(fly, "scale", scale * 1.6, 0.55, "ease_out", "shop_fly")
+    EventManager.parallelEase(fly, "alpha", 0, 0.55, "ease_in", "shop_fly")
+    EventManager.parallel(0.58, function() fly._done = true end, "shop_fly")
 end
 
 local POPUP_LIFE = 0.9
@@ -1375,7 +1437,11 @@ end
 function CardRewardScreen:_drawPurchaseFx()
     for _, fly in ipairs(self._flyCards or {}) do
         love.graphics.setColor(1, 1, 1, fly.alpha)
-        love.graphics.draw(fly.img, fly.x, fly.y, fly.rot, fly.scale, fly.scale)
+        -- ox/oy: a carta voa pelo canto (origem 0,0 — é como ela é desenhada
+        -- na grade); a relíquia sobe pelo CENTRO, senão crescer a escala a
+        -- empurra pro canto inferior-direito em vez de inflar no lugar.
+        love.graphics.draw(fly.img, fly.x, fly.y, fly.rot, fly.scale, fly.scale,
+            fly.ox or 0, fly.oy or 0)
     end
     local font = FontManager.getFont(13)
     love.graphics.setFont(font)
@@ -1383,10 +1449,12 @@ function CardRewardScreen:_drawPurchaseFx()
         local t = p.age / POPUP_LIFE
         local a = 1 - t * t
         local y = p.y - 36 * t
+        local x = p.centered and (p.x - font:getWidth(p.text) / 2) or p.x
         love.graphics.setColor(0, 0, 0, 0.7 * a)
-        love.graphics.print(p.text, p.x + 1, y + 1)
-        love.graphics.setColor(0.95, 0.78, 0.25, a)
-        love.graphics.print(p.text, p.x, y)
+        love.graphics.print(p.text, x + 1, y + 1)
+        local c = p.color or { 0.95, 0.78, 0.25 }
+        love.graphics.setColor(c[1], c[2], c[3], a)
+        love.graphics.print(p.text, x, y)
     end
     love.graphics.setColor(1, 1, 1, 1)
 end
@@ -1612,6 +1680,8 @@ function CardRewardScreen:update(dt)
 
     -- Hover → alimenta o painel de detalhe fixo do split-view.
     self:_updateHoverState()
+    -- ...e o destaque dos slots que não são carta (voucher/pacote).
+    self:_updateSlotFx(dt)
     self:_resolveDetailPayload()
     self._detailAnim = math.min(1, (self._detailAnim or 1) + dt * 7)
 
@@ -1754,7 +1824,27 @@ function CardRewardScreen:draw()
 
             if scale > 0 then
                 local pos = self.cardPositions[slot] or {x = 0, y = 0}
-                self:drawOffer(offer, pos.x, pos.y, slot, pos.w, pos.h)
+                -- ENTRADA: `anim.scale` já era calculado pra TODOS os slots no
+                -- update, mas só as cartas o usavam (elas materializam em
+                -- cascata). Voucher e pacote simplesmente APARECIAM no meio da
+                -- cascata, quebrando a leitura de "a prateleira está sendo
+                -- montada". Agora a mesma curva easeOutBack os traz, crescendo
+                -- a partir do CENTRO do slot. O hop/juice do hover compõe aqui.
+                local fx = self:_slotFx(slot)
+                local s = scale * Moveable.scaleFactor(fx) * Moveable.swellFactor(fx)
+                local lift = Moveable.hopOffset(fx)
+                local w = pos.w or self.cardWidth
+                local h = pos.h or self.cardHeight
+                if math.abs(s - 1) > 0.001 or lift ~= 0 then
+                    love.graphics.push()
+                    love.graphics.translate(pos.x + w / 2, pos.y + h / 2 + lift)
+                    love.graphics.scale(s, s)
+                    love.graphics.translate(-(pos.x + w / 2), -(pos.y + h / 2))
+                    self:drawOffer(offer, pos.x, pos.y, slot, pos.w, pos.h)
+                    love.graphics.pop()
+                else
+                    self:drawOffer(offer, pos.x, pos.y, slot, pos.w, pos.h)
+                end
             end
         end
         -- Slot já comprado: buraco com stamp VENDIDO (posições estáveis).
@@ -1773,6 +1863,17 @@ function CardRewardScreen:draw()
         local anim = slot and self.cardAnimations[slot]
         if slot and (anim and anim.scale or 1) > 0 then
             self:drawOfferBadges(cardInstance, slot)
+        end
+    end
+
+    -- Mesma faixa, para relíquia e pacotes (categoria em vez de raridade).
+    for _, offer in ipairs(self.shopOffers or {}) do
+        local slot = offer._slot
+        if slot and offer.type ~= "card" and slot <= slotCount then
+            local anim = self.cardAnimations[slot]
+            if (anim and anim.scale or 1) >= 0.98 then
+                self:drawCategoryBadge(offer, slot)
+            end
         end
     end
 
@@ -1980,6 +2081,65 @@ function CardRewardScreen:_drawRewardsBanner()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
+-- Reforma v3 (feedback: "só um quadrado com texto, feio"): marcador SEM
+-- caixa — texto colorido com outline ink e LOSANGOS dos dois lados
+-- (◆ RARA ◆), mesma linguagem ornamental do banner.
+--
+-- Era um closure dentro de drawOfferBadges; virou função de arquivo quando a
+-- faixa de rótulos passou a servir TAMBÉM os slots que não são carta (o
+-- voucher e os pacotes tinham uma faixa reservada e VAZIA embaixo deles —
+-- "zona vazia é pior que zona ausente", ui_layout_invariants §1).
+local function drawMarker(cx, cy, text, color, fontSize, dia)
+    local f = FontManager.getFont(fontSize)
+    love.graphics.setFont(f)
+    local tw = f:getWidth(text)
+    local fh = f:getHeight()
+    -- losangos
+    local dx = math.floor(tw / 2) + 12
+    for _, sx in ipairs({ -1, 1 }) do
+        local px = cx + sx * dx
+        love.graphics.setColor(0, 0, 0, 0.8)
+        love.graphics.polygon("fill", px, cy - dia + 1, px + dia, cy + 1,
+            px, cy + dia + 1, px - dia, cy + 1)
+        love.graphics.setColor(color[1], color[2], color[3], 1)
+        love.graphics.polygon("fill", px, cy - dia, px + dia, cy,
+            px, cy + dia, px - dia, cy)
+    end
+    -- texto com outline ink
+    local tx = cx - math.floor(tw / 2)
+    local ty = cy - math.floor(fh / 2)
+    love.graphics.setColor(0, 0, 0, 0.85)
+    for _, o in ipairs({ {1, 0}, {-1, 0}, {0, 1}, {0, -1} }) do
+        love.graphics.print(text, tx + o[1], ty + o[2])
+    end
+    love.graphics.setColor(color[1], color[2], color[3], 1)
+    love.graphics.print(text, tx, ty)
+end
+
+-- Etiqueta de CATEGORIA na faixa sob os slots que não são carta. A fileira 2
+-- (relíquia + pacotes) tinha `slotLabelH` reservado no layout e nada escrito
+-- nele, enquanto a fileira 1 mostrava "◆ COMUM ◆" sob cada carta: a vitrine
+-- lia como duas telas diferentes empilhadas. Mesmo marcador, mesma altura.
+function CardRewardScreen:drawCategoryBadge(offer, slot)
+    if self.mode ~= "shop" or not offer or offer.purchased then return end
+    local pos = self.cardPositions[slot]
+    if not pos then return end
+    local label, color
+    if offer.type == "upgrade" then
+        label = I18n.t("reward.badge_relic", nil, "RELIQUIA")
+        color = UpgradeTile.theme(offer).text
+    elseif offer.type == "booster_pack" then
+        label = I18n.t("reward.badge_pack", nil, "PACOTE")
+        color = Palette.PARCHMENT
+    else
+        return
+    end
+    local h = pos.h or self.cardHeight
+    drawMarker(pos.x + math.floor((pos.w or self.cardWidth) / 2),
+        pos.y + h + 13, label, color, 8, 3)
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
 -- Marcadores de clareza da oferta: raridade NOMEADA + "AFINIDADE" quando a
 -- carta foi puxada pelas tags fortes do deck. Clareza: raridade não é só uma
 -- borda colorida; afinidade não é mágica.
@@ -1997,36 +2157,7 @@ function CardRewardScreen:drawOfferBadges(cardInstance, slot)
     if not pos then return end
     local w = pos.w or self.cardWidth
     local h = pos.h or self.cardHeight
-
-    -- Reforma v3 (feedback: "só um quadrado com texto, feio"): marcador SEM
-    -- caixa — texto colorido com outline ink e LOSANGOS dos dois lados
-    -- (◆ RARA ◆), mesma linguagem ornamental do banner.
-    local function marker(cx, cy, text, color, fontSize, dia)
-        local f = FontManager.getFont(fontSize)
-        love.graphics.setFont(f)
-        local tw = f:getWidth(text)
-        local fh = f:getHeight()
-        -- losangos
-        local dx = math.floor(tw / 2) + 12
-        for _, sx in ipairs({ -1, 1 }) do
-            local px = cx + sx * dx
-            love.graphics.setColor(0, 0, 0, 0.8)
-            love.graphics.polygon("fill", px, cy - dia + 1, px + dia, cy + 1,
-                px, cy + dia + 1, px - dia, cy + 1)
-            love.graphics.setColor(color[1], color[2], color[3], 1)
-            love.graphics.polygon("fill", px, cy - dia, px + dia, cy,
-                px, cy + dia, px - dia, cy)
-        end
-        -- texto com outline ink
-        local tx = cx - math.floor(tw / 2)
-        local ty = cy - math.floor(fh / 2)
-        love.graphics.setColor(0, 0, 0, 0.85)
-        for _, o in ipairs({ {1, 0}, {-1, 0}, {0, 1}, {0, -1} }) do
-            love.graphics.print(text, tx + o[1], ty + o[2])
-        end
-        love.graphics.setColor(color[1], color[2], color[3], 1)
-        love.graphics.print(text, tx, ty)
-    end
+    local marker = drawMarker
 
     local cx = pos.x + math.floor(w / 2)
     if self.mode == "shop" then
@@ -2192,7 +2323,20 @@ function CardRewardScreen:drawOffer(offer, x, y, index, customW, customH)
         return
     end
 
-    -- Upgrade (voucher) ou outro: card-style frame.
+    -- Upgrade (voucher) = RELÍQUIA na prateleira: placa iluminada com pedestal,
+    -- halo na cor do efeito, chip com o número e placa de preço. Tudo em
+    -- src/ui/UpgradeTile.lua, que fatia o slot em bandas validáveis.
+    if offer.type == "upgrade" then
+        local fx = self:_slotFx(index or 0)
+        UpgradeTile.draw(offer, { x = x, y = y, w = w, h = h }, {
+            hover  = fx.hover or 0,
+            afford = canAfford,
+            time   = love.timer.getTime(),
+        })
+        return
+    end
+
+    -- Qualquer outro tipo: card-style frame (rede de segurança).
     PixelCanvas.rect(math.floor(x), math.floor(y), math.floor(w), math.floor(h), Palette.PANEL_FILL)
     PixelCanvas.rectOutline(math.floor(x), math.floor(y), math.floor(w), math.floor(h),
         canAfford and Palette.AGED_GOLD or Palette.BLOOD)
@@ -2203,57 +2347,13 @@ function CardRewardScreen:drawOffer(offer, x, y, index, customW, customH)
     love.graphics.setFont(FontManager.getFont(compact and 8 or 10))
     love.graphics.printf(displayName, x + 6, y + (compact and 6 or 12), w - 12, "center")
 
-    -- Voucher: sprite PixelLab específico do offer.id ocupa o centro.
-    -- Fallback: texto "✦ VOUCHER ✦" se o PNG não foi gerado pra esse id.
-    if offer.type == "upgrade" then
-        local spritePath = "assets/sprites/vouchers/" .. tostring(offer.id) .. ".png"
-        -- tryGet: miss = nil (o get() devolvia o FALLBACK theRock e o
-        -- voucher sem arte mostrava a carta placeholder antiga na loja)
-        local sprite = ImageCache.tryGet(spritePath)
-        local hasSprite = sprite ~= nil
-        -- Layout: nome no topo, sprite centralizado vertical+horizontal, desc+preço no rodapé.
-        -- Slots de Y: nameTop(28) → spriteArea(meio) → descBottom(38) → priceBottom(24).
-        -- No tile compacto do split-view a DESCRIÇÃO sai (ela vive no painel
-        -- de detalhe) e sobra espaço pra arte do voucher respirar.
-        local nameTopH   = compact and 20 or 28   -- reserva pro nome
-        local descBottomH = compact and 0 or 38   -- desc fica acima do preço
-        local priceBottomH = compact and 20 or 24 -- preço no rodapé
-        local spriteAreaY = y + nameTopH
-        local spriteAreaH = h - nameTopH - descBottomH - priceBottomH
-        if hasSprite and spriteAreaH > 16 then
-            local sw, sh = sprite:getWidth(), sprite:getHeight()
-            -- Aproveita melhor o espaço: padding lateral 12px, vertical 4px.
-            local areaW = w - 24
-            local areaH = spriteAreaH - 8
-            local rawScale = math.min(areaW / sw, areaH / sh)
-            -- Pixel art prefere integer scale, mas se area < sprite usa float pra caber.
-            local scale = rawScale >= 1 and math.floor(rawScale) or rawScale
-            local drawW = sw * scale
-            local drawH = sh * scale
-            local dx = math.floor(x + (w - drawW) / 2)
-            local dy = math.floor(spriteAreaY + 4 + (areaH - drawH) / 2)
-            love.graphics.setColor(1, 1, 1, 1)
-            love.graphics.draw(sprite, dx, dy, 0, scale, scale)
-        end
+    Palette.set(Palette.PARCHMENT)
+    love.graphics.setFont(FontManager.getFont(8))
+    love.graphics.printf(displayDesc, x + 8, y + 36, w - 16, "center")
 
-        -- Descrição compacta acima do preço (não no meio como antes).
-        if descBottomH > 0 then
-            Palette.set(Palette.PARCHMENT)
-            love.graphics.setFont(FontManager.getFont(8))
-            love.graphics.printf(displayDesc, x + 6, y + h - descBottomH, w - 12, "center")
-        end
-    else
-        Palette.set(Palette.PARCHMENT)
-        love.graphics.setFont(FontManager.getFont(8))
-        love.graphics.printf(displayDesc, x + 8, y + 36, w - 16, "center")
-    end
-
-    -- Tag visual no header: rarity p/ cards, BOOSTER p/ packs, UPGRADE p/ vouchers.
+    -- Tag visual no header: raridade p/ cards.
     if offer.type == "card" and offer.rarity then
         Palette.set(Palette.forRarity(offer.rarity))
-        love.graphics.rectangle("fill", math.floor(x + 6), math.floor(y + 4), math.floor(w - 12), 3)
-    elseif offer.type == "upgrade" then
-        Palette.set(Palette.MOSS or {0.4, 0.65, 0.35, 1})
         love.graphics.rectangle("fill", math.floor(x + 6), math.floor(y + 4), math.floor(w - 12), 3)
     end
 
@@ -2450,6 +2550,55 @@ function CardRewardScreen:_updateHoverState()
 end
 
 -- ============================================================================
+-- FX DOS SLOTS NAO-CARTA (voucher / booster pack)
+-- ============================================================================
+-- A carta tem hover próprio (Card:updateMouse faz lift, tilt e escala). O
+-- voucher e o pacote eram DESENHOS PARADOS: passar o mouse por cima não mexia
+-- um pixel — só o painel da direita trocava de conteúdo. Aqui eles ganham o
+-- mesmo vocabulário da carta: destaque contínuo (hover interpolado) + estalo
+-- ao entrar (hop + juice do Moveable) + kick na compra.
+--
+-- Nenhum estado GEOMÉTRICO mora aqui (só hover 0..1 e o juice), então o resize
+-- não tem o que invalidar: a geometria sai de cardPositions a cada frame.
+function CardRewardScreen:_slotFx(slot)
+    self.slotFx = self.slotFx or {}
+    local fx = self.slotFx[slot]
+    if not fx then
+        fx = { hover = 0 }
+        Moveable.initJuice(fx)
+        self.slotFx[slot] = fx
+    end
+    return fx
+end
+
+function CardRewardScreen:_updateSlotFx(dt)
+    local hoveredSlot = self.hoveredOffer and self.hoveredOffer._slot
+    for _, offer in ipairs(self.shopOffers or {}) do
+        if offer.type ~= "card" and offer._slot then
+            local fx = self:_slotFx(offer._slot)
+            local target = (not offer.purchased and hoveredSlot == offer._slot) and 1 or 0
+            if target == 1 and not fx._hot then
+                fx._hot = true
+                Moveable.hop_up(fx, 7, 0.30)
+                Moveable.juice_up(fx, 0.10, 0.02)
+                Sfx.playWithVariation("hoverCard", 0.92, 0.12, 0.42, 0.05)
+            elseif target == 0 then
+                fx._hot = false
+            end
+            -- reducedMotion: o destaque troca NA HORA (a informação "é este
+            -- que está em foco" não pode depender de animação), só não há
+            -- interpolação nem pulinho.
+            if reducedMotion() then
+                fx.hover = target
+            else
+                fx.hover = fx.hover + (target - fx.hover) * math.min(1, dt * 12)
+            end
+            Moveable.updateJuice(fx, dt)
+        end
+    end
+end
+
+-- ============================================================================
 -- PAINEL DE DETALHE FIXO (split-view da loja)
 -- ============================================================================
 -- Decide O QUE o painel da direita mostra, por prioridade:
@@ -2553,7 +2702,7 @@ function CardRewardScreen:drawInstructions()
         -- Split-view: o hint ensina a gramática nova (passar o mouse LÊ, o
         -- clique SELECIONA e a compra é confirmada no painel).
         text = I18n.t("reward.instructions_shop", nil,
-            "Passe o mouse pra ler · CLIQUE seleciona · confirme no painel · DIREITO inspeciona")
+            "Passe o mouse pra ler - CLIQUE seleciona - confirme no painel - DIREITO inspeciona")
     end
     HintBar.draw(text)
 end

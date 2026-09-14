@@ -598,6 +598,11 @@ function love.load(loveArgs)
         return
     end
 
+    if loveArgs and loveArgs[1] == "preview_coinburst" then
+        require("tools.preview_coinburst").run()
+        return
+    end
+
     if loveArgs and loveArgs[1] == "check_loop" then
         local ok = require("tools.check_loop").run(loveArgs[2])
         love.event.quit(ok and 0 or 1)
@@ -1249,11 +1254,12 @@ function love.load(loveArgs)
         -- O MUNDO retoma no exato lugar do save: bioma do ato, câmera na
         -- distância caminhada (andar N = N-1 viagens), proximidade do
         -- castelo e entardecer reconstruídos (pedido do dono, Jul/2026).
-        do
-            local run = game.runManager.currentRun
-            require("src.ui.WorldRoad").restoreProgress(
-                run and run.actNumber or 1, run and run.floorInAct or 1)
-        end
+        -- A cena também ancora o ANDAR aqui — retomando NA encruzilhada o
+        -- mundo fica um andar atrás, senão a caminhada até o nó escolhido
+        -- nunca dispara (ver GameplayScene.resumeWorld).
+        -- (require inline: love.load já está no teto de 60 upvalues do
+        -- LuaJIT — mesmo motivo do _G.openCardPicker / __showMapSelection)
+        require("src.scenes.GameplayScene").resumeWorld(game)
         gameUI:show()
         menu:hide()
         -- Save feito NA ENCRUZILHADA (nós pendentes, nada escolhido):
@@ -1581,6 +1587,7 @@ function love.update(dt)
     -- flash fade, screen shake decay.
     EventManager.update(dt)
     FloatingText.update(dt)
+    require("src.ui.CoinBurst").update(dt)
     if audioSystem then audioSystem:update(dt) end
     -- Trilha por contexto: o diretor observa o estado e troca de faixa com
     -- crossfade. Idempotente — chamar todo frame é o desenho, não descuido
@@ -1717,6 +1724,7 @@ function love.draw()
 
     -- Floating text (números de dano/cura/ouro). Acima das partículas, mas
     -- dentro do shake pra acompanhar o jiggle.
+    require("src.ui.CoinBurst").draw()
     FloatingText.draw()
 
     -- Flash overlay fullscreen (se FlashShader.trigger foi chamado).
