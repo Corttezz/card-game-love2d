@@ -233,3 +233,39 @@ Coleção por segundos. Corrigido em duas camadas:
 - REGRA: pontos de render usam `instance.image` (estático) e SÓ pedem
   `liveImage()` sob gate de interação (hover/seleção/inspeção) — é isso
   que faz o lazy disparar na hora certa. Validado: test_all 22/22.
+
+## O que salvou as 3 reprovadas na TERCEIRA tentativa (Set/2026)
+
+`warrior_eternal_bulwark`, `mage_primordial_storm` e `mage_radiant_prayer`
+falharam duas vezes seguidas com descrições cada vez mais específicas
+("never fades", "stays orange", "same golden color"). Insistir no adjetivo
+proibitivo não resolveu. O que resolveu foram duas mudanças de MÉTODO:
+
+1. **Ciclo curto** — `frame_count` 4 em vez de 8. O v3 vai DERIVANDO cor e
+   forma ao longo do ciclo; metade do caminho é metade da chance de derivar.
+   O `frame_count` agora é por entrada (`spec.frames`).
+2. **Movimento POSITIVO e mínimo**, em vez de whitelist cercada de proibições.
+   *"a small orange brazier flame at each side flickers gently, and nothing
+   else in the image changes at all"* funcionou onde "the doors never open,
+   never fade, never become transparent" falhou duas vezes. É a mesma redação
+   que fez os vouchers saírem certos de primeira.
+
+### ⚠️ ARMADILHA DO PIPELINE: o pre-check ressuscitava a reprovada
+
+Ao reprovar uma animação, o fluxo natural é apagar a pasta e reescrever o
+prompt. Mas `run()` tinha um atalho que, ao achar um job salvo daquele ícone,
+baixava os frames dele em vez de gerar — então voltavam **exatamente os frames
+recusados**, com o prompt novo no arquivo e o resultado velho no disco. Parece
+ter funcionado, que é pior que falhar.
+
+Corrigido: o job guarda `anim_hash` (md5 da descrição + SUFFIX). Se o prompt
+mudou, regenera e imprime *"descricao MUDOU desde o job salvo"*. Ver
+[[defect_doctrine]] §6 — cache que não confere a entrada é armadilha.
+
+### Medir a EMENDA, não só os frames
+
+`check` de md5 diz que os frames são distintos; não diz que o ÚLTIMO casa com o
+PRIMEIRO. Critério: diferença média 0→N não pode passar de ~1,6x a de um passo
+normal (0→1). Acima disso, **ping-pong** (duplicar os frames de volta) mata a
+emenda por construção — usado em `mage_radiant_prayer` e em dois vouchers.
+Para chama e líquido corrente prefira regerar: fogo em marcha a ré se percebe.

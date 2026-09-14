@@ -149,6 +149,26 @@ Repare no `cardDeselect`: a amostra veio **no talo** (pico 1,000). Registrar
 0.30 nele estouraria sobre toda a UI. Palpite de volume sem olhar o pico é
 chute.
 
+### O override no call site RENASCE — e sempre como "som alto demais"
+
+Set/2026, segunda vez: o hover do voucher e do pacote passava `volume = 0.42`
+no call site. Como `opts.volume` SUBSTITUI, e a carta toca **a mesma amostra**
+sem override nenhum (ou seja, no `HOVER_VOLUME = 0.03` do registro), o mesmo
+som saía **14x mais alto** na loja — amplitude efetiva 0,334 contra 0,024.
+
+É literalmente a queixa "o barulho da carta sai muito alto" que já tinha sido
+corrigida em `Card.lua`, ressurgida noutra tela. O arquivo nunca foi o problema.
+
+Dois acompanhantes que vieram juntos e valem procurar quando um hover soa
+estranho:
+- **Som sem o jogador mexer o mouse.** A loja entra deslizando e o hit-test
+  desconta o offset: os slots passam por baixo de um cursor PARADO e disparam
+  hover-enter sozinhos. A 0,03 ninguém ouvia; a 0,42 virava estalo ao abrir.
+  Gate: não testar hover enquanto a tela desliza.
+- **Degrau entre hover e clique.** O som de SELECIONAR usava a mesma amostra de
+  hover a `volume = 0.5` — 17x o hover. Corrigir só o hover deixaria o degrau;
+  o gesto certo era o som próprio de seleção.
+
 **Calibração mora num lugar só** — no registro do `main.lua`, não nos call
 sites. Com fallback de vários códigos (`playFirst({"a","b"})`), um volume no
 call site valeria para todos eles.
