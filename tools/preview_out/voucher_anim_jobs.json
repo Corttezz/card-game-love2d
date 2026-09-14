@@ -1,0 +1,26 @@
+{
+  "forge_card": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "8ce1c3d8-88bb-4673-848d-3efab6088a54"
+  },
+  "health_upgrade": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "9c9febcf-55ca-4c19-8121-eec9075326be"
+  },
+  "mana_upgrade": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "c50c7af5-e19c-4e70-887e-b36f0b58c263"
+  },
+  "damage_upgrade": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "921990ee-90c9-4726-b8a1-40ceb322e827"
+  },
+  "defense_upgrade": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "48fdaf7f-d109-4ce7-8aba-eb71e285d3ac"
+  },
+  "card_draw_upgrade": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "5d4192b6-cc6b-48da-b24b-326f6861742e"
+  }
+}

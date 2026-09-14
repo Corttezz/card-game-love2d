@@ -769,9 +769,13 @@ function GameplayScene.update(dt)
             end
         end
     elseif turnStage == "acting" then
-        -- inimigo terminou de agir (investida no ar conta como agindo)
+        -- inimigo terminou de agir (investida no ar conta como agindo).
+        -- `_enemyActing` (Set/2026): o turno do inimigo virou uma CADEIA de
+        -- beats e `isBlocking()` passa a ser true durante ela — sem este
+        -- check o ramo de cima deixa de rodar e o banner do JOGADOR subia
+        -- antes do inimigo sequer golpear. A flag só cai no beat final.
         local attacking = EnemyRenderer.isAttacking and EnemyRenderer.isAttacking()
-        if not attacking then
+        if not attacking and not game._enemyActing then
             turnStage = nil
             if game.enemy:isAlive() and game.player:isAlive() then
                 TurnBanner.show("player")

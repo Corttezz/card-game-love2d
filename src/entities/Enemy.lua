@@ -98,10 +98,32 @@ function Enemy:takeDamage(damage)
     self.armor = math.max(0, self.armor - damage)
     self.health = math.max(0, self.health - effectiveDamage)
 
+    -- ENFURECIDO (Set/2026): abaixo de 30% de vida o inimigo passa a causar
+    -- +50% de dano, PERMANENTE. Isso sempre existiu e era MUDO — acontecia em
+    -- toda batalha, mudava a conta de dano que o jogador estava fazendo, e
+    -- nada aparecia na tela. Agora o CRUZAMENTO do limiar e um acontecimento:
+    --   * vira status REAL `enraged` (pill + tooltip no EnemyHud);
+    --   * levanta `_pendingEnrage`, que o Game consome pra dar o INSTANTE
+    --     proprio (beat bloqueante com rugido e numero).
+    -- O nome e `enraged`, NAO `fury`: `fury` ja e o anti-stall do turno 8+
+    -- (Game:enemyTurn), outra mecanica, com pill e tooltip proprios.
+    -- O recalculo de `damage` continua acontecendo a CADA dano (e nao so na
+    -- virada) de proposito: `baseDamage` cresce com a Furia, e recalcular
+    -- mantem o x1.5 sobre a base atual — mexer nisso seria rebalancear.
+    -- INVARIANTE PRESERVADA (CLAUDE.md 6): `nextIntentDamage` fica congelado
+    -- no anuncio, entao o golpe JA telegrafado nao muda — a furia so vale do
+    -- proximo intent em diante. Isso separa naturalmente "ele enfureceu" de
+    -- "ele bate mais forte", que e exatamente o que ajuda a leitura.
     if self.health < self.maxHealth * 0.3 then
+        local wasEnraged = (self.attackPattern == "aggressive")
         self.attackPattern = "aggressive"
         -- floor: sem ele o HUD (e o dano real) mostrava "30.5" (autoplay A2)
         self.damage = math.floor(self.baseDamage * 1.5)
+        if not wasEnraged then
+            self._pendingEnrage = true
+            -- duration alta = permanente na pratica (onTurnEnd decrementa).
+            self:addStatusEffect({ name = "enraged", stacks = 1, duration = 999 })
+        end
     end
 end
 

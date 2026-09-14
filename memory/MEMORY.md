@@ -28,6 +28,7 @@
 - [Sprite Design Queue](sprite_design_queue.md) — fila de sprites via pixel-mcp
 - ⚠️ [Card Icon Animation](card_icon_animation.md) — **PARTE DO PIPELINE de carta nova**: olhar a arte ANTES de escrever a animação; intensidade segue raridade (basic=quase imperceptível → legendary=vivo); PixelLab animate_object v3 → icons_anim/ → canvas vivo no CardFrame; `love . preview_card_anim` + `screenshot_collection`
 - [PixelLab Queue: Pack Sleeves](pixellab_queue_packs.md) — prompts prontos pros 5 sleeves de booster + banner. Aguarda MCP reconectar.
+- ⚠️ [Combat Beats](combat_beats.md) — **Set/2026: a batalha e uma FILA DE BEATS (um acontecimento por instante, bloqueando o proximo); tabela de tempos unica em CombatBeats.HOLD; espinhos viraram ESTADO (dano so quando o inimigo ataca)**
 - [Combat Animation](combat_animation.md) — Balatro-style, isBlocking() pausa jogo
 - [Joker Proc FX](joker_proc_fx.md) — contrato OBRIGATORIO: todo efeito de coringa tica visualmente no momento em que trabalha (pushJokerProc: cadeia no combate, direto no turn_start); checklist pra coringa novo
 - [Card Feel / Game Feel v1](card_feel.md) — identidade AV por tema de carta (CardFeel THEMES tag→som+burst), procs de joker Balatro (tick sequencial no slot, stagger estica), feedback do inimigo; sons impact-* ElevenLabs

@@ -655,6 +655,9 @@ function love.load(loveArgs)
     -- Modo preview do HUD de batalha.
     --   love . preview_battle_hud
     if loveArgs and loveArgs[1] == "preview_battle_hud" then
+        -- 2o arg "cap": sobe o Bloqueio ao teto pra inspecionar o indicador
+        -- de cap (halo ambar + "/30"), que so aparece a partir de 70%.
+        _G.PREVIEW_HUD_CAP = (loveArgs[2] == "cap")
         require("tools.preview_battle_hud").run()
         love.event.quit()
         return

@@ -67,7 +67,11 @@ function M.run()
 
     -- DEPOIS do apex + continuação: golpe absorvido pelo escudo, HP intacto,
     -- e SÓ ENTÃO o escudo expira (início do turno do jogador).
-    pump(game, 1.0)
+    -- Pump 1.0 -> 3.5 (Set/2026): o turno do inimigo virou uma CADEIA de
+    -- beats (telegrafia > golpe > espinhos > veneno > intent > upkeep >
+    -- compra > gatilhos > a vez volta) — ~2.4s em vez de ~1s. Dar menos
+    -- pump nao testa o fim do turno, testa o meio dele.
+    pump(game, 3.5)
     check("pós-golpe: HP intacto (20 de escudo absorveu 8 de dano)",
         game.player.health == hpBefore)
     check("pós-golpe: escudo expirou APÓS absorver (novo turno)",
@@ -89,7 +93,7 @@ function M.run()
     local hp2 = game2.player.health
     game2.turn = "enemy"
     game2:enemyTurn()
-    pump(game2, 1.2)
+    pump(game2, 3.5)
     check("sem escudo: dano integral chegou no HP",
         game2.player.health == hp2 - 8)
 
@@ -104,7 +108,7 @@ function M.run()
     game3.player.armor = 12
     game3.turn = "enemy"
     game3:enemyTurn()
-    pump(game3, 1.0)
+    pump(game3, 3.5)
     check("Bastião: escudo sobrevive à virada do turno",
         game3.player.armor == 12)
 

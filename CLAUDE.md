@@ -75,6 +75,7 @@ card-game-love2d/
 │   │   ├── Player.lua          # HP, armor, mana, spendMana/restoreMana
 │   │   └── Enemy.lua           # HP, damage scaling, attackPattern, statusEffects
 │   ├── systems/
+│   │   ├── CombatBeats.lua     # METRÔNOMO: fila "beats" — um acontecimento por instante, bloqueando o próximo (tabela de tempos única) — memory/combat_beats.md
 │   │   ├── CardDatabase.lua    # Loader fino (~170 LOC) que merge src/data/cards/*.lua
 │   │   ├── CardRegistry.lua    # Classes + pools por raridade + rolagem (substitui ClassSystem)
 │   │   ├── DeckManager.lua     # Modo clássico: decks estáticos
@@ -227,7 +228,9 @@ Todas herdam de `src/cards/base/Card.lua`. Toda carta tem **`tags = {}`** (array
 - **Orbes PULSAM** (Jul/2026, `EffectSystem:orbPassiveTick` chamado em `Game:endTurn`): cada orbe canalizado dispara meio-efeito no fim do turno do jogador (raio=dano, gelo=armor, fogo=dano/3, holy=cura/3, sombra=cresce +2). Foco soma no valor antes da divisão. Sem isso o mago era 0/6 no autoplay (orbe inerte = dano anêmico).
 - **Intent do inimigo é CONGELADO no anúncio** (`Enemy.nextIntentDamage`, setado em `rollNextIntent`): o golpe executado NUNCA excede o número que o jogador viu no HUD — Fúria/BUFF entre telegraph e execução só valem no próximo intent (anomalia "escudo furado" do autoplay). Weak aplica por cima (só reduz). Testes que mutam `enemy.damage` devem setar `nextIntentDamage` junto.
 - **Flags**: `exhaust` (por batalha), `innate`, `retain`
-- **Jokers multiplicadores NÃO compõem** (rebalance v2, Jul/2026): em `EffectSystem:applyJokerEffects`, só o MAIOR `damage_multiplier` e o MAIOR `defense_multiplier` entre jokers ativos contam (largest-wins); bônus flat somam todos. **Thorn de JOKER** (`on_defend_damage`) dispara no máx 1×/turno; thorn de CARTA segue por carta. Regressões em `test_effects_full`.
+- **Jokers multiplicadores NÃO compõem** (rebalance v2, Jul/2026): em `EffectSystem:applyJokerEffects`, só o MAIOR `damage_multiplier` e o MAIOR `defense_multiplier` entre jokers ativos contam (largest-wins); bônus flat somam todos. Regressões em `test_effects_full`.
+- **INIMIGO ENFURECIDO tem instante próprio** (Set/2026): cruzar 30% de vida (`Enemy:takeDamage`) dá +50% de dano permanente — antes era MUDO. Agora vira status `enraged` (nome obrigatório; `fury` é o anti-stall do turno 8+, outra mecânica) + beat bloqueante via `Game:announceEnrageIfPending`. `nextIntentDamage` segue congelado: o golpe já telegrafado não muda.
+- **ESPINHOS são ESTADO, não dano na hora** (Set/2026, `memory/combat_beats.md`): `on_defend_damage` ARMA `player:addBuff("thorn", 1, N)` quando a defesa é jogada; o dano só sai quando o **inimigo ataca** (beat `player.thorn_reflect` → `EffectSystem:fireThornReflect`), e o buff expira no upkeep seguinte. Antes o reflexo acontecia ao JOGAR a carta, mesmo que o inimigo nunca atacasse. A regra P2.3 sobrevive: joker ARMA 1×/turno, carta arma por carta — mesmo teto por turno, momento diferente. Travas em `test_beats` + `test_effects_full`.
 - **Ofertas por ato** (rebalance v2): pesos de raridade vêm de `ActSystem.getRarityWeights(ato)` (A1 70/25/5/0 → A3 15/45/32/8); neutras `class="basic"` ofertáveis com peso 0.6; afinidade com cap progressivo 0.9/1.2/1.5 e blacklist de tags genéricas; elite→minRarity uncommon, boss→rare; oferta nunca repete joker possuído. Ver `memory/rng_and_offers.md`.
 - **Triggers**: `on_attack_heal`, `on_defend_damage`, `regen_per_turn`, `damage_per_turn`
 
@@ -274,6 +277,9 @@ Todos os parâmetros em `Config.Cards`: `BASE_SCALE=0.20`, `HOVER_SCALE=0.22`, `
 O antigo `src/systems/AudioSystem.lua` virou `engine/AudioManager.lua`; a instância continua exposta como `_G.audioSystem` em `main.lua` (API compatível: `loadSound`, `playSound`, `play(name, {volume, pitch, loop})`, grupos master/music/sfx). Sons registrados em `main.lua` (nativos em `audio/`, gerados via ElevenLabs em `audio/sfx/` — dezenas de códigos camelCase). **Consumers usam `Sfx.play("name")` / `Sfx.playWithVariation(...)` — no-op gracioso sem áudio.** A key do ElevenLabs pra gerar SFX novos fica na memória auto do Claude (`elevenlabs-api-key`).
 
 **Trilha por contexto** (Set/2026): 6 faixas em `audio/music/` (3 atos, boss, loja, descanso), registradas por SCAN em `main.lua` e escolhidas por `src/systems/MusicDirector.lua`, que OBSERVA `currentState` no `love.update` em vez de ser notificado pelas telas. Crossfade já existia no `AudioManager` (`playMusic(code, {fadeDuration})`). Faixa nova = soltar o mp3 na pasta. Validar a volta do loop com `love . check_loop` ANTES de commitar — o modelo cola fade-out nas pontas e isso só se ouve na virada. Ver [`memory/music_generation.md`](memory/music_generation.md).
+
+### Ritmo do combate (`src/systems/CombatBeats.lua`, Set/2026)
+Toda batalha é uma **fila de beats**: cada acontecimento (dano, buff/debuff no inimigo, proc de joker, pulso/evoke de orbe, veneno, compra) ocupa um instante só dele e SEGURA o próximo. `CombatSequence:isBlocking()` inclui `CombatBeats.isBusy()`. Os tempos vivem numa tabela única (`CombatBeats.HOLD`) com `CombatBeats.speed` como knob global. Sem `_G.EventManager` o push roda síncrono (API antiga preservada pra testes/autoplay). Ver [`memory/combat_beats.md`](memory/combat_beats.md).
 
 ### CombatAnimationSystem (`src/systems/CombatAnimationSystem.lua`)
 Máquina de estados: `idle → cards_flying → processing → damage_dealing → complete`. Bloqueia a lógica do jogo via `isBlocking()`. Usa easing out-quart, escalas aumentadas (1.3x) no centro, números de dano flutuantes. Timings em `self.timings`.
@@ -443,6 +449,7 @@ O diretório `memory/` na raiz do projeto guarda notas persistentes que compleme
 - [`memory/known_gaps.md`](memory/known_gaps.md) — o que é intencional vs pendente.
 - [`memory/run_instructions.md`](memory/run_instructions.md) — como rodar, smoke tests, atalhos.
 - [`memory/rng_and_offers.md`](memory/rng_and_offers.md) — Rng streams (seed/save), pity, afinidade, forja infinita, eventos v2, `love . test_systems`.
+- [`memory/combat_beats.md`](memory/combat_beats.md) — fila de beats, tabela de tempos, cadeia do turno do inimigo, espinhos como estado.
 - [`memory/enemy_pose_and_scene_anchor.md`](memory/enemy_pose_and_scene_anchor.md) — pose do inimigo (apoiado × flutuante, `src/data/enemy_poses.lua`) e linha de chão por cena (`src/data/scene_anchors.lua`); elite luta na ESTRADA, interior é só do boss.
 
 **Developer guide visual:** [`src/ui/README_PixelArt.md`](src/ui/README_PixelArt.md) — tutorial completo de como adicionar cartas, ícones, patterns e tunar estética.

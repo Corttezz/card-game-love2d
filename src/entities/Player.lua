@@ -127,13 +127,25 @@ function Player:countOrbsByType(orbType)
     return n
 end
 
--- Adiciona/stack um buff nomeado. Se ja existe, soma duracao e stacks.
+-- Buffs cuja DURACAO nao acumula: stackear dois deles soma a intensidade mas
+-- a janela continua sendo a mesma (o buff vale "ate o meu proximo turno").
+-- "thorn" (Espinhos, Set/2026) e o caso: duas Barreiras de Fogo no mesmo turno
+-- refletem mais, nao por mais turnos — somar duracao faria o reflexo sobreviver
+-- ao turno seguinte, que e exatamente o contrario do contrato StS.
+local NON_CUMULATIVE_DURATION = { thorn = true }
+
+-- Adiciona/stack um buff nomeado. Se ja existe, soma duracao e stacks
+-- (excecao: NON_CUMULATIVE_DURATION mantem a maior duracao).
 function Player:addBuff(name, duration, stacks)
     duration = duration or 1
     stacks = stacks or 1
     for _, b in ipairs(self.buffs) do
         if b.name == name then
-            b.duration = b.duration + duration
+            if NON_CUMULATIVE_DURATION[name] then
+                b.duration = math.max(b.duration, duration)
+            else
+                b.duration = b.duration + duration
+            end
             b.stacks = (b.stacks or 1) + stacks
             return
         end

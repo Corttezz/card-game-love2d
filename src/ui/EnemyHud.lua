@@ -120,25 +120,66 @@ local StatusPill = require("src.ui.StatusPill")
 local BADGE_SIZE = 42
 local BADGE_SPACING = 10
 
+-- Estados do inimigo que mudam as regras e não viviam em statusEffects:
+--   block   — enemy.armor, ganho pelo intent "defender". Era INVISÍVEL: o
+--             jogador batia e o dano sumia sem explicação.
+--   enraged — enemy.attackPattern == "aggressive" (abaixo de 30% de vida o
+--             dano vira ×1.5 em Enemy:takeDamage:101). Acontece em TODA batalha
+--             e era invisível: sem pill, sem toast, sem som — o número do
+--             intent simplesmente subia. Provavelmente o estado escondido mais
+--             caro do jogo, porque muda a conta do dano que o jogador leva.
+-- Ambos são derivados (leitura pura) — nada é escrito no inimigo aqui.
+--
+-- FORWARD-COMPAT (combinado com o dono do Enemy.lua): se um dia a fúria virar
+-- um status de verdade em `enemy.statusEffects` (nome esperado: "enraged"), a
+-- lista de lá VENCE e o derivado é suprimido — assim a transição não duplica a
+-- pill em nenhum dos dois lados, aconteça na ordem que acontecer.
+local function hasStatus(enemy, name)
+    for _, e in ipairs(enemy.statusEffects or {}) do
+        if e.name == name then return true end
+    end
+    return false
+end
+
+function EnemyHud.collectPills(enemy)
+    if not enemy then return {} end
+    local list = {}
+
+    local armor = math.floor(enemy.armor or 0)
+    if armor > 0 and not hasStatus(enemy, "block") then
+        list[#list + 1] = { name = "block", stacks = armor, duration = 1 }
+    end
+    if enemy.attackPattern == "aggressive" and not hasStatus(enemy, "enraged") then
+        list[#list + 1] = { name = "enraged", stacks = 1, duration = 1, showStacks = false }
+    end
+    for _, e in ipairs(enemy.statusEffects or {}) do
+        list[#list + 1] = e
+    end
+    return list
+end
+
 -- Dimensions da row de status pills (sem desenhar). Útil pra layout.
-function EnemyHud.getStatusPillsDims(enemy)
-    if not enemy or not enemy.statusEffects then return 0, 0 end
-    return StatusPill.getRowDims(#enemy.statusEffects, BADGE_SIZE, BADGE_SPACING)
+-- `size` opcional: o caller passa o tamanho já ajustado à largura disponível.
+function EnemyHud.getStatusPillsDims(enemy, size)
+    local pills = EnemyHud.collectPills(enemy)
+    return StatusPill.getRowDims(#pills, size or BADGE_SIZE, BADGE_SPACING)
 end
 
 -- Desenha os pills começando em (startX, startY) top-left.
 -- Se startX/startY forem nil, cai em fallback centralizado em cx/groundY (legado).
-function EnemyHud.drawStatusEffects(enemy, cx, groundY, startX, startY)
-    if not enemy or not enemy.statusEffects or #enemy.statusEffects == 0 then return end
+function EnemyHud.drawStatusEffects(enemy, cx, groundY, startX, startY, size)
+    local pills = EnemyHud.collectPills(enemy)
+    if #pills == 0 then return end
+    size = size or BADGE_SIZE
 
     if not startX then
-        local total = StatusPill.getRowDims(#enemy.statusEffects, BADGE_SIZE, BADGE_SPACING)
+        local total = StatusPill.getRowDims(#pills, size, BADGE_SPACING)
         startX = math.floor(cx - total / 2)
     end
     local y = startY or math.floor(groundY + 38)
 
-    StatusPill.drawRow(enemy.statusEffects, startX, y, {
-        size = BADGE_SIZE,
+    StatusPill.drawRow(pills, startX, y, {
+        size = size,
         spacing = BADGE_SPACING,
         pulseHalo = false, -- debuffs do inimigo têm halo estático
     })
@@ -322,8 +363,15 @@ function EnemyHud.draw(game, bbox, fallbackCx, fallbackGroundY)
     -- Layout: o cluster inteiro fica acima do sprite.
     -- Espaço necessário pra HP: 13pt font (número) + 4 gap + 10 bar = ~27px
     local iw, ih = EnemyHud.getIntentDims(game.enemy)
-    local pw, ph = EnemyHud.getStatusPillsDims(game.enemy)
     local gap = 10
+    -- Zona: o cluster (intent + pills) não pode passar de 90% da largura da
+    -- tela. Com estados novos (Bloqueio, Enfurecido) a row cresceu — quem cede
+    -- é a ESCALA das pills, nunca a posição do intent (ui_layout_invariants §1).
+    local pillCount = #EnemyHud.collectPills(game.enemy)
+    local pillSize = StatusPill.fitSize(pillCount,
+        love.graphics.getWidth() * 0.9 - iw - (iw > 0 and gap or 0),
+        BADGE_SIZE, BADGE_SPACING)
+    local pw, ph = EnemyHud.getStatusPillsDims(game.enemy, pillSize)
     local bothPresent = (iw > 0 and pw > 0)
     local totalW = iw + (bothPresent and gap or 0) + pw
     local rowH = math.max(ih, ph)
@@ -346,7 +394,7 @@ function EnemyHud.draw(game, bbox, fallbackCx, fallbackGroundY)
         if pw > 0 then
             local pillsX = startX + (iw > 0 and (iw + gap) or 0)
             local pillsY = rowY + math.floor((rowH - ph) / 2)
-            EnemyHud.drawStatusEffects(game.enemy, cx, groundY, pillsX, pillsY)
+            EnemyHud.drawStatusEffects(game.enemy, cx, groundY, pillsX, pillsY, pillSize)
         end
     end
 

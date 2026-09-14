@@ -22,6 +22,14 @@ tela ficavam PRESAS atrás disso e só rodavam quando a base destravava,
 segundos depois (o jogador percebia "no hover"). Piloto do fix definitivo:
 **fila dedicada `reward_fx`**, limpa a cada `show()`.
 
+## A fila "beats" (Set/2026)
+Além de `base`/`ui`, existe agora `"beats"` — a espinha CAUSAL do combate
+(`src/systems/CombatBeats.lua`). Todo evento dela é `trigger="before"` e
+BLOQUEANTE: um acontecimento por instante, na ordem de push. `push` vai sempre
+pro **FIM** da fila, mesmo chamado de dentro de um beat em execução — por isso
+sequências com passos dinâmicos são escritas como CADEIA. Ver
+[`memory/combat_beats.md`](combat_beats.md).
+
 ## REGRA DE OURO
 - A fila `"base"` pertence ao FLUXO DE COMBATE/jogo. Nenhuma tela/overlay
   deve agendar animação nela.

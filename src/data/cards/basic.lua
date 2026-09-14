@@ -129,7 +129,7 @@ return {
         id = "joker_002", name = "Guardiao do Escudo",
         type = "joker", subtype = "legendary",
         cost = 2, attack = 0, defense = 0,
-        description = "+50% de Bloqueio em defesas. Reflete 4 de dano no primeiro Bloqueio de cada turno.",
+        description = "+50% de Bloqueio em defesas. O primeiro Bloqueio do turno arma Espinhos 4.",
         image = "assets/jokers/joker1.png",
         rarity = "legendary", class = "basic",
         tags = { "defend", "armor", "scaling" },
@@ -138,7 +138,7 @@ return {
               description = "+50% de Bloqueio em defesas" },
             -- Rebalance Jul/2026: reflexo agregado ao x1.5 (que colide com o cap de bloqueio 30/40/50);
             -- como e JOKER, on_defend_damage dispara 1x/turno (regra P2.3, engine em EffectSystem/Game)
-            { type = "on_defend_damage", value = 4, description = "Reflete 4 no primeiro Bloqueio do turno" },
+            { type = "on_defend_damage", value = 4, description = "Arma Espinhos 4 no primeiro Bloqueio do turno" },
         },
     },
     joker_003 = {

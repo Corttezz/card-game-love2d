@@ -145,9 +145,13 @@ function OrbRow.draw(game, panelX, panelY)
     local focus = (p.getBuffStacks and p:getBuffStacks("focus")) or 0
     local EffectSystem = require("src.systems.EffectSystem")
 
-    local pillRow = 36 + 6 -- BADGE_SIZE + gap do PlayerBuffPills
+    -- Zona: a fileira de orbes empilha a partir do TOPO da banda de pills.
+    -- A altura da banda é do PlayerBuffPills (fonte única) — antes isso era o
+    -- número mágico "36 + 6" repetido aqui, que silenciosamente quebraria se a
+    -- banda mudasse de tamanho (ui_layout_invariants §1).
+    local PlayerBuffPills = require("src.ui.PlayerBuffPills")
     local startX = math.floor(panelX)
-    local y = math.floor(panelY - pillRow - GAP_ABOVE_PILLS - SIZE)
+    local y = math.floor(PlayerBuffPills.getBandTop(panelY) - GAP_ABOVE_PILLS - SIZE)
 
     slotPos = {}
     local mx, my = love.mouse.getPosition()

@@ -60,12 +60,14 @@ function HudManager:draw(game)
             self.playerPanel:drawPassiveChip(game)
         end
         -- Pills de buff ficam logo acima do player panel (row horizontal).
-        -- Passa coords do panel pra alinhamento.
+        -- Passa coords do panel pra alinhamento e o `game` pros estados
+        -- DERIVADOS de coringas ativos (reflexo, regen, sangria, retenção).
         self.playerBuffPills:draw(
             game.player,
             self.playerPanel.x,
             self.playerPanel.y,
-            self.playerPanel.width
+            self.playerPanel.width,
+            game
         )
         -- Orbes acima das buff pills (a bateria do mago SEMPRE visível;
         -- slots vazios ensinam o cap de 3 — padrão StS/Defect).

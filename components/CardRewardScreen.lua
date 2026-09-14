@@ -80,6 +80,7 @@ local CardDatabase = require("src.systems.CardDatabase")
 local CardInfoDisplay = require("src.ui.CardInfoDisplay")
 local CardDetailPanel = require("src.ui.CardDetailPanel")
 local UpgradeTile = require("src.ui.UpgradeTile")
+local ShopEngraving = require("src.ui.ShopEngraving")
 local Moveable = require("engine.Moveable")
 local I18n = require("src.i18n.I18n")
 local Sfx = require("src.systems.Sfx")
@@ -204,6 +205,11 @@ end
 function CardRewardScreen:updateLayout()
     local sw = love.graphics.getWidth()
     local sh = love.graphics.getHeight()
+    -- Estado CACHEADO novo tem que morrer no resize, no mesmo commit
+    -- (ui_layout_invariants, secao 2): as placas gravadas sao bitmaps
+    -- rasterizados na largura da banda. A chave ja inclui as dimensoes, mas
+    -- sem isto os canvases do tamanho antigo ficariam vivos pra sempre.
+    ShopEngraving.clearCache()
     local cfg = self.modeConfig or { cards = 3, upgrades = 0, boosters = 0 }
     self.layoutMode = self.mode
 
@@ -474,7 +480,7 @@ function CardRewardScreen:validateLayout()
             local p = offer._slot and self.cardPositions[offer._slot]
             if offer.type == "upgrade" and p then
                 for _, msg in ipairs(UpgradeTile.validate(p.x, p.y,
-                    p.w or self.cardWidth, p.h or self.cardHeight)) do
+                    p.w or self.cardWidth, p.h or self.cardHeight, offer.cost)) do
                     bad[#bad + 1] = "reliquia: " .. msg
                 end
             end
@@ -1072,10 +1078,13 @@ function CardRewardScreen:setSelectedOffer(offer, idx)
         self._selectionAnim = 1
     end
 
-    -- Sfx leve (cardSelect com pitch alto). hoverCard com +0.2 também serve.
-    if Sfx.playWithVariation then
-        Sfx.playWithVariation("hoverCard", 1.1, 0.08, 0.5, 0.05)
-    end
+    -- Selecao tem som PROPRIO: cardSelect, no volume do registro
+    -- (Config.Audio.CLICK_SELECT_VOLUME = 0.2). Antes era o hoverCard com
+    -- `volume = 0.5` cravado aqui -- 16x o hover da carta, com a MESMA
+    -- amostra. Corrigido o hover (ver _playSlotHoverSfx), manter o select em
+    -- 0.5 deixaria um degrau de 17:1 entre passar o mouse e clicar; e emprestar
+    -- o som de hover pra confirmar selecao ja era o gesto errado.
+    Sfx.play("cardSelect", { pitch = 1.05 + (math.random() * 2 - 1) * 0.06 })
 end
 
 -- Mini-buttons Balatro-style (UI_definitions.lua:382 card_focus_button) attached
@@ -1384,7 +1393,7 @@ function CardRewardScreen:_startRelicFlourish(offer)
     if not pos then return end
     local w = pos.w or self.cardWidth
     local h = pos.h or self.cardHeight
-    local bands = UpgradeTile.layout(pos.x, pos.y, w, h)
+    local bands = UpgradeTile.layout(pos.x, pos.y, w, h, offer.cost)
     local th = UpgradeTile.theme(offer)
 
     local label = UpgradeTile.effectLabel(offer)
@@ -2089,31 +2098,11 @@ end
 -- faixa de rótulos passou a servir TAMBÉM os slots que não são carta (o
 -- voucher e os pacotes tinham uma faixa reservada e VAZIA embaixo deles —
 -- "zona vazia é pior que zona ausente", ui_layout_invariants §1).
+-- Marcador "losango . TEXTO . losango". A implementacao vive em
+-- src/ui/ShopEngraving.marker, compartilhada com a tela de abertura de pacote
+-- (que antes desenhava a MESMA etiqueta como caixinha com contorno).
 local function drawMarker(cx, cy, text, color, fontSize, dia)
-    local f = FontManager.getFont(fontSize)
-    love.graphics.setFont(f)
-    local tw = f:getWidth(text)
-    local fh = f:getHeight()
-    -- losangos
-    local dx = math.floor(tw / 2) + 12
-    for _, sx in ipairs({ -1, 1 }) do
-        local px = cx + sx * dx
-        love.graphics.setColor(0, 0, 0, 0.8)
-        love.graphics.polygon("fill", px, cy - dia + 1, px + dia, cy + 1,
-            px, cy + dia + 1, px - dia, cy + 1)
-        love.graphics.setColor(color[1], color[2], color[3], 1)
-        love.graphics.polygon("fill", px, cy - dia, px + dia, cy,
-            px, cy + dia, px - dia, cy)
-    end
-    -- texto com outline ink
-    local tx = cx - math.floor(tw / 2)
-    local ty = cy - math.floor(fh / 2)
-    love.graphics.setColor(0, 0, 0, 0.85)
-    for _, o in ipairs({ {1, 0}, {-1, 0}, {0, 1}, {0, -1} }) do
-        love.graphics.print(text, tx + o[1], ty + o[2])
-    end
-    love.graphics.setColor(color[1], color[2], color[3], 1)
-    love.graphics.print(text, tx, ty)
+    ShopEngraving.marker(cx, cy, text, color, fontSize, dia)
 end
 
 -- Etiqueta de CATEGORIA na faixa sob os slots que não são carta. A fileira 2
@@ -2289,16 +2278,22 @@ function CardRewardScreen:drawOffer(offer, x, y, index, customW, customH)
         local PackSleeve = require("src.ui.PackSleeve")
         local sleeveW, sleeveH = PackSleeve.getDimensions()
 
-        -- Header (nome) ocupa o topo; price banner ocupa o rodapé.
-        -- Sleeve preenche o resto centralizado.
+        -- Header (nome) ocupa o topo; o resto e do SLEEVE.
+        --
+        -- O preço deixou de ser uma barra no rodapé (Set/2026, "cara de IA"):
+        -- era um retângulo de 1px flutuando sob a arte, a 40px de cartas que
+        -- mostravam o preço como MOEDA cunhada no canto. Duas gramáticas pra
+        -- mesma informação na mesma fileira — e a barra ainda roubava ~22px de
+        -- altura do envelope. Agora o pacote usa a moeda de ShopEngraving,
+        -- carimbada no canto do SLEEVE (o objeto), não do slot.
         local headerH = compact and 13 or 16
-        local priceH = compact and 18 or 22
-        local availH = h - headerH - priceH - 8
+        local availH = h - headerH - 10
         local availW = w - 8
         local scale = math.min(availW / sleeveW, availH / sleeveH)
 
+        local drawW, drawH = sleeveW * scale, sleeveH * scale
         local cx = math.floor(x + w * 0.5)
-        local cy = math.floor(y + headerH + 4 + (sleeveH * scale) * 0.5)
+        local cy = math.floor(y + headerH + 4 + drawH * 0.5)
         PackSleeve.drawAt(offer.id, offer.kind, cx, cy, scale, 1)
 
         -- Nome do pack no topo do slot (dentro).
@@ -2306,20 +2301,14 @@ function CardRewardScreen:drawOffer(offer, x, y, index, customW, customH)
         love.graphics.setFont(FontManager.getFont(compact and 8 or 9))
         love.graphics.printf(offer.name, x + 4, y + 3, w - 8, "center")
 
-        -- Preço banner no rodapé — largura casada com o SLEEVE, não com o
-        -- slot: na fileira larga do split-view uma barra de 206px sob um
-        -- pacote de 120px ficava solta, sem parecer do mesmo objeto.
-        local pricecolor = canAfford and Palette.AGED_GOLD or Palette.BLOOD
-        local bannerW = math.floor(math.min(w - 8, math.max(70, sleeveW * scale + 16)))
-        local bx = math.floor(x + (w - bannerW) / 2)
-        local by = math.floor(y + h - priceH - 4)
-        PixelCanvas.rect(bx, by, bannerW, priceH, Palette.PANEL_FILL)
-        PixelCanvas.rectOutline(bx, by, bannerW, priceH, pricecolor)
-        Palette.set(canAfford and Palette.AGED_GOLD_LIGHT or Palette.BLOOD)
-        -- Fonte 11/9: no tamanho 10 o glifo "6" da fonte pixel rasteriza como "G".
-        love.graphics.setFont(FontManager.getFont(compact and 9 or 11))
-        love.graphics.printf("$" .. offer.cost, bx, by + (compact and 4 or 5),
-            bannerW, "center")
+        local sleeveRect = {
+            x = math.floor(cx - drawW / 2), y = math.floor(cy - drawH / 2),
+            w = math.floor(drawW), h = math.floor(drawH),
+        }
+        ShopEngraving.stampPrice(sleeveRect, offer.cost, {
+            afford = canAfford,
+            glow = (self.hoveredOffer == offer) and 1 or 0,
+        })
         return
     end
 
@@ -2364,14 +2353,17 @@ function CardRewardScreen:drawOffer(offer, x, y, index, customW, customH)
         w - 16, "center")
 end
 
--- Medalhão dourado canto superior-direito da carta. Inspirado em Balatro
--- create_shop_card_ui (UI_definitions.lua:802-880) que usa UIBox flutuante
--- com DynaText `$<cost>`. Aqui simplificamos com disco + texto centrado.
--- Tem halo glow externo, disco principal, outline preto, $N centralizado.
--- Estado: dourado se canAfford, blood-red se não.
--- rect: retângulo REAL da carta neste frame (_cardDrawRect). O medalhão é
--- parte da carta — tem que subir junto com ela no hover, não ficar preso ao
--- retângulo estático do slot.
+-- Moeda de preço no canto superior-direito da carta. Inspirado em Balatro
+-- create_shop_card_ui (UI_definitions.lua:802-880), que flutua um UIBox com
+-- DynaText `$<cost>` sobre a carta.
+--
+-- O desenho mora em src/ui/ShopEngraving.priceSeal, compartilhado com pacote e
+-- relíquia. Antes vivia aqui, com dez `setColor` de RGB literal e discos do
+-- `love.graphics.circle` — anti-aliasados, num jogo de borda dura. Centralizar
+-- resolveu as duas coisas: paleta e degraus.
+--
+-- rect: retângulo REAL da carta neste frame (_cardDrawRect). A moeda é parte
+-- da carta — sobe junto com ela no hover, não fica presa ao slot estático.
 function CardRewardScreen:drawPriceOverlay(cardInstance, rect)
     local offer = cardInstance.shopOffer
     if not offer or offer.purchased then return end
@@ -2379,59 +2371,10 @@ function CardRewardScreen:drawPriceOverlay(cardInstance, rect)
     if (offer.cost or 0) <= 0 then return end
 
     local canAfford = self.game and self.game.economySystem:canAfford(offer.cost)
-
-    -- Posição: canto superior-direito da carta DESENHADA.
-    -- Raio proporcional à carta: no grid compacto do split-view um disco de
-    -- 14px fixo comia a ilustração inteira.
-    local r = math.max(9, math.min(14, math.floor(rect.w * 0.13)))
-    local cx = math.floor(rect.x + rect.w - r)
-    local cy = math.floor(rect.y + r)
-
-    -- Sombra atrás do disco (offset 2,2).
-    love.graphics.setColor(0, 0, 0, 0.5)
-    love.graphics.circle("fill", cx + 2, cy + 2, r + 1)
-
-    -- Halo externo glow (cor combina com afford).
-    if canAfford then
-        love.graphics.setColor(1.0, 0.85, 0.30, 0.45)
-    else
-        love.graphics.setColor(0.85, 0.18, 0.18, 0.45)
-    end
-    love.graphics.circle("fill", cx, cy, r + 3)
-
-    -- Disco principal.
-    if canAfford then
-        love.graphics.setColor(0.95, 0.78, 0.25, 1)
-    else
-        love.graphics.setColor(0.55, 0.14, 0.10, 1)
-    end
-    love.graphics.circle("fill", cx, cy, r)
-
-    -- Borda interna mais clara (highlight).
-    love.graphics.setColor(canAfford and {1, 0.92, 0.55, 0.6} or {0.85, 0.30, 0.20, 0.6})
-    love.graphics.setLineWidth(2)
-    love.graphics.circle("line", cx, cy, r - 1)
-
-    -- Outline externo escuro pra contrastar com fundo claro.
-    love.graphics.setColor(0.05, 0.04, 0.02, 1)
-    love.graphics.setLineWidth(1.5)
-    love.graphics.circle("line", cx, cy, r)
-
-    -- Texto $N centralizado. Cor escura sobre dourado, clara sobre vermelho.
-    -- Fonte 11 no disco grande, 9 no compacto — 10 é proibido (o glifo "6"
-    -- da fonte pixel rasteriza como "G" nesse tamanho).
-    local font = FontManager.getFont(r >= 12 and 11 or 9)
-    love.graphics.setFont(font)
-    local txt = "$" .. tostring(offer.cost)
-    local tw = font:getWidth(txt)
-    local th = font:getHeight()
-    if canAfford then
-        love.graphics.setColor(0.10, 0.06, 0.02, 1)
-    else
-        love.graphics.setColor(1, 0.95, 0.85, 1)
-    end
-    love.graphics.print(txt, cx - tw * 0.5, cy - th * 0.5)
-    love.graphics.setColor(1, 1, 1, 1)
+    ShopEngraving.stampPrice(rect, offer.cost, {
+        afford = canAfford,
+        glow = (self.hoveredOffer == offer) and 1 or 0,
+    })
 end
 
 -- LEGACY: drawPurchaseConfirmation (modal centralizado) removido. Substituído
@@ -2571,6 +2514,40 @@ function CardRewardScreen:_slotFx(slot)
     return fx
 end
 
+-- Som de hover do slot NAO-carta (reliquia / pacote).
+--
+-- TRES defeitos somavam na queixa "o barulho de hover nos upgrades e nos
+-- pacotes esta estranho" (dono, Set/2026). O hover da CARTA, que o dono nao
+-- reclamou, e a referencia de "certo" -- e usa a mesma amostra:
+--
+-- 1) VOLUME 14x. O call site passava `volume = 0.42`, e opts.volume
+--    SUBSTITUI o baseVolume do registro (engine/AudioManager.lua), nao
+--    multiplica. A carta toca a MESMA amostra SEM volume no call site, ou
+--    seja em Config.Audio.HOVER_VOLUME = 0.03. Medido em audio/hoverCard.wav:
+--    pico 0.795 -> o slot saia a 0.334 de amplitude contra 0.024 da carta.
+--    E literalmente a queixa "barulho da carta sai muito alto" que ja tinha
+--    sido corrigida em Card.lua:502 e voltou a nascer aqui.
+-- 2) SOM SEM O JOGADOR MEXER O MOUSE. A loja entra deslizando de -altura ate
+--    0 em 0.43s e o hit-test desconta `slideOffsetY`: os slots passam POR
+--    BAIXO de um mouse parado e disparam hover-enter sozinhos. A 0.03
+--    ninguem ouvia; a 0.42 vira um estalo do nada ao abrir a loja.
+-- 3) PITCH GRAVE DEMAIS. 0.92 +- 0.12 chega a 0.80. A amostra e um clique de
+--    ~20ms (onset 7ms, pico em 19ms, cai a 10% em 1ms); esticada pra grave le
+--    como arrastada. A carta usa 0.95 +- 0.18.
+--
+-- Nao ha calibracao nova no call site -- quem manda e o baseVolume do
+-- registro, que e onde a calibracao do projeto mora. E o codigo dedicado vem
+-- primeiro pelo contrato de playFirstSfx: no dia em que hoverRelic/hoverPack
+-- forem registrados, passam a tocar sozinhos sem tocar neste arquivo.
+function CardRewardScreen:_playSlotHoverSfx(offer)
+    -- Mouse parado + tela em movimento nao e hover do jogador.
+    if math.abs(self.slideOffsetY or 0) > 1 then return end
+    local codes = (offer.type == "booster_pack")
+        and { "hoverPack", "hoverCard" }
+        or  { "hoverRelic", "hoverCard" }
+    playFirstSfx(codes, { pitch = 0.95 + (math.random() * 2 - 1) * 0.18 })
+end
+
 function CardRewardScreen:_updateSlotFx(dt)
     local hoveredSlot = self.hoveredOffer and self.hoveredOffer._slot
     for _, offer in ipairs(self.shopOffers or {}) do
@@ -2581,7 +2558,7 @@ function CardRewardScreen:_updateSlotFx(dt)
                 fx._hot = true
                 Moveable.hop_up(fx, 7, 0.30)
                 Moveable.juice_up(fx, 0.10, 0.02)
-                Sfx.playWithVariation("hoverCard", 0.92, 0.12, 0.42, 0.05)
+                self:_playSlotHoverSfx(offer)
             elseif target == 0 then
                 fx._hot = false
             end

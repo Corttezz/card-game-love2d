@@ -11,6 +11,7 @@ EffectSystem.__index = EffectSystem
 local I18n = require("src.i18n.I18n")
 local Sfx = require("src.systems.Sfx")
 local CardFeel = require("src.systems.CardFeel")
+local CombatBeats = require("src.systems.CombatBeats")
 -- Helper local: mensagem traduzida via messages.<key>, com vars injetadas.
 local function msg(key, vars) return I18n.t("messages." .. key, vars) end
 
@@ -27,6 +28,24 @@ end
 
 function EffectSystem:new()
     return setmetatable({}, EffectSystem)
+end
+
+-- Coletor de PASSOS do combate (ver src/systems/CombatBeats.lua). O Game seta
+-- `game._beatSink` enquanto resolve uma carta; com ele presente, cada efeito
+-- vira um acontecimento com instante proprio em vez de todos no mesmo frame.
+-- Ausente (API chamada direto por teste/autoplay) = sincrono, como sempre foi.
+local function sinkOf(game)
+    return game and game._beatSink or nil
+end
+
+-- Todo dano ao inimigo pode cruzar os 30% de vida e ENFURECE-LO (+50% de dano
+-- permanente). Era mudo; agora o Game da um instante proprio ao cruzamento.
+-- Chamado depois de CADA takeDamage daqui. `game` leve (mockGame dos testes)
+-- nao tem o metodo — vira no-op, como o resto das pontes de UI deste arquivo.
+local function checkEnrage(game)
+    if game and game.announceEnrageIfPending then
+        game:announceEnrageIfPending(sinkOf(game))
+    end
 end
 
 -- ==============================================================================
@@ -246,6 +265,38 @@ end
 -- Efeitos de cartas de efeito (potions/utilitárias) — jogadas, consumidas.
 -- ==============================================================================
 
+-- Efeitos que JA emitem os proprios passos (orbes evocam/canalizam um a um).
+-- Envolve-los num passo externo os colapsaria de volta num instante so.
+local SELF_STEPPED = {
+    channel_orb = true, evoke_orb = true, evoke_all_orbs = true,
+}
+-- Mudanca de ESTADO merece o beat longo; numero que sobe e desce, o curto.
+local EFFECT_HOLD = {
+    apply_debuff = "STATUS", apply_buff = "STATUS",
+    gain_strength = "STATUS", gain_dexterity = "STATUS",
+    increase_max_mana = "STATUS",
+}
+
+-- Entrada SEQUENCIADA de um efeito de carta: com `game._beatSink` ativo cada
+-- efeito ocupa um instante proprio (ver CombatBeats); sem sink roda na hora.
+-- `showFallback` reproduz o comportamento do `card.passive` compilado pelo
+-- CardDatabase (descrever no feed o efeito que o engine nao reconhece).
+function EffectSystem:processEffectCardStepped(game, effect, showFallback)
+    local run = function()
+        local handled = self:processEffectCard(game, effect)
+        if not handled and showFallback then
+            local text = I18n.effectDesc(effect)
+            if text and text ~= "" then game:addMessage(text, "info") end
+        end
+    end
+    if SELF_STEPPED[effect.type] then
+        run()
+        return
+    end
+    CombatBeats.step(sinkOf(game), "effect." .. tostring(effect.type), run,
+        EFFECT_HOLD[effect.type] or "SIDE_EFFECT")
+end
+
 function EffectSystem:processEffectCard(game, effect)
     local t = effect.type
     local v = effect.value or 0
@@ -284,6 +335,7 @@ function EffectSystem:processEffectCard(game, effect)
 
     elseif t == "magic_damage" then
         game.enemy:takeDamage(v)
+        checkEnrage(game)
         game.score = game.score + v
         game:addMessage(msg("magic_damage", { value = v }), "success")
         -- Game feel v1: dano mágico de effect card também estoura no inimigo
@@ -366,20 +418,26 @@ function EffectSystem:processEffectCard(game, effect)
 
     elseif t == "channel_orb" then
         -- Empilha orb. orbType (default lightning), value = potencia.
+        -- CANALIZAR e EVOCAR-POR-OVERFLOW sao DOIS acontecimentos: o orbe
+        -- antigo sai e o novo entra em instantes separados (pedido do dono —
+        -- "o mago com as orbes"). Sem sink os dois caem juntos, como antes.
         local orb = { type = effect.orbType or "lightning", value = v }
         local overflow = game.player:addOrb(orb)
-        game:addMessage(msg("channeled", { name = orb.type, value = orb.value }), "info")
-        Sfx.play("orbChannel")
         if overflow then
-            -- Overflow: orb mais antigo e evocado automaticamente
-            notifyOrbUI("notifyEvoke", 1, overflow)
-            self:_evokeOrbEffect(game, overflow)
-            game:addMessage(msg("orb_overflow", { name = overflow.type }), "warning")
-            Sfx.play("orbEvoke")
+            CombatBeats.step(sinkOf(game), "orb.overflow", function()
+                notifyOrbUI("notifyEvoke", 1, overflow)
+                self:_evokeOrbEffect(game, overflow)
+                game:addMessage(msg("orb_overflow", { name = overflow.type }), "warning")
+                Sfx.play("orbEvoke")
+            end, "ORB")
         end
-        -- UI: orbe "nasce" no slot (pop-in). Depois do overflow pra animacao
-        -- de saida nao engolir a de entrada.
-        notifyOrbUI("notifyChannel", #game.player.orbs)
+        CombatBeats.step(sinkOf(game), "orb.channel", function()
+            game:addMessage(msg("channeled", { name = orb.type, value = orb.value }), "info")
+            Sfx.play("orbChannel")
+            -- UI: orbe "nasce" no slot (pop-in). Depois do overflow pra animacao
+            -- de saida nao engolir a de entrada.
+            notifyOrbUI("notifyChannel", #game.player.orbs)
+        end, "ORB")
         return true
 
     elseif t == "evoke_orb" then
@@ -388,28 +446,37 @@ function EffectSystem:processEffectCard(game, effect)
             game:addMessage(msg("no_orbs"), "warning")
             return true
         end
-        notifyOrbUI("notifyEvoke", 1, orb)
-        self:_evokeOrbEffect(game, orb)
-        Sfx.play("orbEvoke")
+        CombatBeats.step(sinkOf(game), "orb.evoke", function()
+            notifyOrbUI("notifyEvoke", 1, orb)
+            self:_evokeOrbEffect(game, orb)
+            Sfx.play("orbEvoke")
+        end, "ORB")
         return true
 
     elseif t == "evoke_all_orbs" then
-        local count = 0
-        while #game.player.orbs > 0 do
-            local orb = game.player:popOldestOrb()
-            notifyOrbUI("notifyEvoke", 1, orb)
-            self:_evokeOrbEffect(game, orb)
-            count = count + 1
+        -- UM ORBE POR VEZ (Set/2026): antes os 3 evocavam no mesmo instante e
+        -- o jogador via um borrão de números sem saber qual orbe fez o quê.
+        local count = #game.player.orbs
+        for _ = 1, count do
+            CombatBeats.step(sinkOf(game), "orb.evoke", function()
+                local orb = game.player:popOldestOrb()
+                if not orb then return end
+                notifyOrbUI("notifyEvoke", 1, orb)
+                self:_evokeOrbEffect(game, orb)
+                Sfx.play("orbEvoke")
+            end, "ORB")
         end
         if count > 0 then
-            game:addMessage(msg("evoked_orbs", { value = count }), "success")
-            Sfx.play("orbEvoke")
+            CombatBeats.step(sinkOf(game), "orb.evoke_all_done", function()
+                game:addMessage(msg("evoked_orbs", { value = count }), "success")
+            end, "MICRO")
         end
         return true
 
     elseif t == "aoe_magic_damage" then
         -- Por ora so ha 1 inimigo; aoe e alias de magic_damage. Stub pronto p/ multi-enemy.
         game.enemy:takeDamage(v)
+        checkEnrage(game)
         game.score = game.score + v
         game:addMessage(msg("magic_damage", { value = v }), "success")
         CardFeel.burstAtEnemy("magic", 1.2)
@@ -489,6 +556,7 @@ function EffectSystem:_evokeOrbEffect(game, orb)
     -- alvo (dano → inimigo; armor/cura → painel do jogador).
     if orb.type == "lightning" then
         game.enemy:takeDamage(v)
+        checkEnrage(game)
         game:addMessage(msg("evoke_lightning", { value = v }), "success")
         CardFeel.burstAtEnemy("lightning", 1.1)
     elseif orb.type == "ice" then
@@ -497,10 +565,12 @@ function EffectSystem:_evokeOrbEffect(game, orb)
         CardFeel.burstAtPlayer("ice", 0.9)
     elseif orb.type == "dark" then
         game.enemy:takeDamage(v * 2)
+        checkEnrage(game)
         game:addMessage(msg("evoke_shadow", { value = v * 2 }), "success")
         CardFeel.burstAtEnemy("dark", 1.2)
     elseif orb.type == "fire" then
         game.enemy:takeDamage(v)
+        checkEnrage(game)
         game.enemy:addStatusEffect({ name = "poison", duration = 2, stacks = math.max(1, math.floor(v / 2)) })
         game:addMessage(msg("evoke_fire", { value = v }), "warning")
         CardFeel.burstAtEnemy("fire", 1.1)
@@ -518,57 +588,70 @@ end
 -- inerte era a raiz do mago 0/6 no autoplay — dano anemico e DEFEND do
 -- inimigo anulava turnos inteiros). Foco soma no valor base antes da
 -- divisao, entao escala pulso E evoke.
-function EffectSystem:orbPassiveTick(game)
+function EffectSystem:orbPassiveTick(game, sink)
     local p = game.player
     if not p or not p.orbs or #p.orbs == 0 then return end
+    sink = sink or sinkOf(game)
     local focus = (p.getBuffStacks and p:getBuffStacks("focus")) or 0
-    local dmg, armor, heal = 0, 0, 0
-    -- Usabilidade (Jul/2026): pulso POR ORBE tem feedback visual proprio —
-    -- flash no slot + numero flutuante saindo DO orbe (causalidade: o jogador
-    -- ve QUAL orbe fez O QUE). Formula canonica em orbPulseValue.
+    -- UM ORBE POR VEZ (Set/2026, pedido do dono: "um exemplo e o mago com as
+    -- orbes"). ANTES: o laco somava dmg/armor/heal dos 3 orbes e aplicava um
+    -- numero agregado no mesmo instante — o jogador via "-7" e nao tinha como
+    -- saber de onde veio. AGORA cada orbe pulsa no beat dele: flash no slot,
+    -- numero saindo DAQUELE orbe, efeito aplicado, respiro, proximo.
+    -- Formula canonica em orbPulseValue (fonte unica com a UI).
     for i, orb in ipairs(p.orbs) do
-        local pulse = EffectSystem.orbPulseValue(orb, focus)
-        if orb.type == "lightning" or orb.type == "fire" then
-            dmg = dmg + pulse
-            notifyOrbUI("notifyPulse", i, "-" .. pulse, "damage")
-        elseif orb.type == "ice" then
-            armor = armor + pulse
-            notifyOrbUI("notifyPulse", i, "+" .. pulse, "armor")
-        elseif orb.type == "holy" then
-            heal = heal + pulse
-            notifyOrbUI("notifyPulse", i, "+" .. pulse, "heal")
-        elseif orb.type == "dark" then
-            orb.value = (orb.value or 1) + 2   -- cresce canalizado; evoke dobra
-            notifyOrbUI("notifyPulse", i, "+2", "grow")
-        end
-    end
-    if dmg > 0 and game.enemy and game.enemy:isAlive() then
-        game.enemy:takeDamage(dmg)
-        game:addMessage(msg("orb_pulse_dmg", { value = dmg }), "info")
-        local okER, ER = pcall(require, "src.ui.EnemyRenderer")
-        if okER and ER.triggerHurt then ER.triggerHurt() end
-    end
-    if armor > 0 then
-        p:addArmor(armor)
-        game:addMessage(msg("orb_pulse_armor", { value = armor }), "info")
-    end
-    if heal > 0 then
-        local amount = self:applyHealMultiplier(game, heal)
-        p:heal(amount)
-        game:addMessage(msg("orb_pulse_heal", { value = amount }), "info")
+        local idx, o = i, orb
+        local pulse = EffectSystem.orbPulseValue(o, focus)
+        CombatBeats.step(sink, "orb.pulse." .. tostring(o.type), function()
+            if o.type == "lightning" or o.type == "fire" then
+                notifyOrbUI("notifyPulse", idx, "-" .. pulse, "damage")
+                if pulse > 0 and game.enemy and game.enemy:isAlive() then
+                    game.enemy:takeDamage(pulse)
+                    checkEnrage(game)
+                    game:addMessage(msg("orb_pulse_dmg", { value = pulse }), "info")
+                    local okER, ER = pcall(require, "src.ui.EnemyRenderer")
+                    if okER and ER.triggerHurt then ER.triggerHurt() end
+                end
+            elseif o.type == "ice" then
+                notifyOrbUI("notifyPulse", idx, "+" .. pulse, "armor")
+                if pulse > 0 then
+                    p:addArmor(pulse)
+                    game:addMessage(msg("orb_pulse_armor", { value = pulse }), "info")
+                end
+            elseif o.type == "holy" then
+                notifyOrbUI("notifyPulse", idx, "+" .. pulse, "heal")
+                if pulse > 0 then
+                    local amount = self:applyHealMultiplier(game, pulse)
+                    p:heal(amount)
+                    game:addMessage(msg("orb_pulse_heal", { value = amount }), "info")
+                end
+            elseif o.type == "dark" then
+                o.value = (o.value or 1) + 2   -- cresce canalizado; evoke dobra
+                notifyOrbUI("notifyPulse", idx, "+2", "grow")
+            end
+        end, "ORB")
     end
 end
 
 -- Aplica multiplicadores de heal vindos de jokers (heal_multiplier).
 -- P2.4 (Jul/2026, rebalance v2): retorno com math.floor — sem ele, 5 x 1.5
 -- rendia 7.5 HP fracionario no HUD (Prece Radiante sob Calice do Sabio).
-function EffectSystem:applyHealMultiplier(game, amount)
+function EffectSystem:applyHealMultiplier(game, amount, procSink)
     local final = amount
     for _, joker in ipairs(game.jokerSlots or {}) do
         if joker.effects then
             for _, effect in ipairs(joker.effects) do
                 if effect.type == "heal_multiplier" then
+                    local before = final
                     final = final * (effect.value or 1)
+                    -- EFEITO QUE MUDA UM NUMERO TEM QUE TICAR (Set/2026, pedido
+                    -- do dono sobre o Abraco Sombrio): o joker tinha defense_bonus
+                    -- ticando e heal_multiplier MUDO — metade dele era invisivel.
+                    -- Sem sink o proc dispara direto (escalonado no JokerProcFx).
+                    if math.floor(final) ~= math.floor(before) then
+                        pushJokerProc(game, procSink, joker,
+                            multLabel(effect.value or 1) .. " PV", "heal")
+                    end
                 end
             end
         end
@@ -577,33 +660,119 @@ function EffectSystem:applyHealMultiplier(game, amount)
 end
 
 -- ==============================================================================
+-- ESPINHOS (thorn) — estado armado por cartas/jokers de on_defend_damage e
+-- DISPARADO pelo golpe do inimigo. Fonte unica do valor pra logica e pra UI.
+-- ==============================================================================
+
+-- Quanto o jogador reflete AGORA (0 = sem espinhos armados).
+function EffectSystem.thornStacks(game)
+    local p = game and game.player
+    if not p or not p.getBuffStacks then return 0 end
+    return p:getBuffStacks("thorn") or 0
+end
+
+-- Dispara o reflexo. Chamado pelo Game DEPOIS do golpe do inimigo aterrissar,
+-- no beat proprio dele. Retorna o dano refletido (0 se nao havia espinhos).
+function EffectSystem:fireThornReflect(game)
+    local v = EffectSystem.thornStacks(game)
+    if v <= 0 then return 0 end
+    local enemy = game.enemy
+    if not enemy or not enemy.isAlive or not enemy:isAlive() then return 0 end
+    enemy:takeDamage(v)
+    game:addMessage(msg("reflect", { value = v }), "warning")
+    -- Game feel v1: espinhos têm som metálico próprio + burst no inimigo
+    -- (o dano refletido é VISÍVEL chegando nele).
+    Sfx.play("thornReflect")
+    CardFeel.burstAtEnemy("physical", 0.7)
+    local okER, ER = pcall(require, "src.ui.EnemyRenderer")
+    if okER and ER.triggerHurt then ER.triggerHurt() end
+    local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
+    if okFT and okER and ER.getLastPos then
+        local ex, ey = ER.getLastPos()
+        if ex and ey then
+            FloatingText.spawn("-" .. v, ex, ey, { kind = "damage", fontSize = 20 })
+        end
+    end
+    return v
+end
+
+-- ==============================================================================
 -- Efeitos de trigger — disparados pelo Game em eventos específicos.
 -- triggerType: "attack" | "defend" | "turn_start"
 -- context: tabela opcional com dados do evento (ex: {target = enemy}).
 -- ==============================================================================
 
+-- Mapa tipo-de-efeito -> gatilho que o dispara. Serve a DOIS propositos:
+--   1) saber, SEM executar, se um efeito tem algo a fazer neste gatilho — sem
+--      isso cada joker inerte viraria um BEAT vazio e o turno ganhava ar morto;
+--   2) documentar o contrato num lugar só.
+-- AO ADICIONAR UM TRIGGER NOVO em processTriggerEffect, REGISTRE AQUI — senão
+-- ele nunca dispara. A trava `test_beats` compara este mapa com o código-fonte
+-- de processTriggerEffect e falha se divergirem.
+EffectSystem.TRIGGER_OF = {
+    on_attack_heal     = "attack",
+    on_attack_debuff   = "attack",
+    on_defend_damage   = "defend",
+    channel_per_turn   = "turn_start",
+    strength_per_turn  = "turn_start",
+    regen_per_turn     = "turn_start",
+    damage_per_turn    = "turn_start",
+    on_turn_start_draw = "turn_start",
+}
+
+-- context.beatSink (Set/2026): quando presente, cada trigger que TEM o que
+-- fazer vira um PASSO na fila em vez de rodar junto com todos os outros — um
+-- acontecimento por instante (ver src/systems/CombatBeats.lua). Sem sink o
+-- comportamento e o antigo, sincrono (API direta: testes, autoplay).
 function EffectSystem:applyTriggerEffects(game, triggerType, context)
+    local sink = context and context.beatSink
+
     -- 1) Triggers de jokers ativos (ex: lifesteal, regen).
     -- P2.3 (Jul/2026): marca a FONTE joker no context — processTriggerEffect
     -- usa isso pra limitar on_defend_damage de joker a 1x/turno por joker.
     for _, joker in ipairs(game.jokerSlots or {}) do
         if joker.effects then
-            if context then context.sourceJoker = joker end
             for _, effect in ipairs(joker.effects) do
-                self:processTriggerEffect(game, effect, triggerType, context)
+                if EffectSystem.TRIGGER_OF[effect.type] == triggerType then
+                    local j, e = joker, effect
+                    CombatBeats.step(sink, "trigger." .. triggerType .. "." .. tostring(e.type),
+                        function()
+                            if context then context.sourceJoker = j end
+                            self:processTriggerEffect(game, e, triggerType, context)
+                            if context then context.sourceJoker = nil end
+                        end, EffectSystem.beatHoldFor(e.type))
+                end
             end
-            if context then context.sourceJoker = nil end
         end
     end
 
     -- 2) Triggers da carta sendo jogada (passada pelo Game via context.sourceCard).
-    -- Ex: defense card "Barreira de Fogo" tem on_defend_damage → reflete dano.
+    -- Ex: defense card "Barreira de Fogo" tem on_defend_damage → arma espinhos.
     -- Sem isso, triggers em cartas non-joker seriam silenciosamente no-op.
     if context and context.sourceCard and context.sourceCard.effects then
         for _, effect in ipairs(context.sourceCard.effects) do
-            self:processTriggerEffect(game, effect, triggerType, context)
+            if EffectSystem.TRIGGER_OF[effect.type] == triggerType then
+                local e = effect
+                CombatBeats.step(sink, "trigger." .. triggerType .. "." .. tostring(e.type),
+                    function()
+                        if context then context.sourceJoker = nil end
+                        self:processTriggerEffect(game, e, triggerType, context)
+                    end, EffectSystem.beatHoldFor(e.type))
+            end
         end
     end
+end
+
+-- Quanto tempo cada trigger ocupa. Mudanca de ESTADO (buff/debuff/espinhos)
+-- ganha o beat longo; numero que so sobe e desce ganha o curto.
+local TRIGGER_HOLD = {
+    on_defend_damage   = "STATUS",
+    on_attack_debuff   = "STATUS",
+    strength_per_turn  = "STATUS",
+    channel_per_turn   = "ORB",
+}
+function EffectSystem.beatHoldFor(effectType)
+    return TRIGGER_HOLD[effectType] or "SIDE_EFFECT"
 end
 
 function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
@@ -611,7 +780,7 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
     local v = effect.value or 0
 
     if t == "on_attack_heal" and triggerType == "attack" then
-        local amount = self:applyHealMultiplier(game, v)
+        local amount = self:applyHealMultiplier(game, v, context and context.procSink)
         game.player:heal(amount)
         game:addMessage(msg("lifesteal", { value = amount }), "success")
         -- Game feel v1: lifesteal SOA (shimmer discreto) e o joker fonte tica.
@@ -621,33 +790,39 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
             "+" .. amount .. " PV", "heal")
 
     elseif t == "on_defend_damage" and triggerType == "defend" then
-        -- P2.3 (Jul/2026, rebalance v2): thorn cuja FONTE e JOKER dispara no
-        -- maximo 1x por turno POR JOKER (flag resetada em Game:drawForTurn).
-        -- Sem a trava, o reflexo escalava linearmente com defesas jogadas
-        -- (draw engine = 4-5 defesas/turno => 54+ refletidos so de jokers e
-        -- invulnerabilidade no boss A3). Thorn de CARTA (context.sourceCard,
-        -- ex: Barreira de Fogo / Escudo de Espinhos) continua POR CARTA.
-        if context and context.target then
-            local fired = true
-            local joker = context.sourceJoker
-            if joker then
-                game._jokerThornFiredThisTurn = game._jokerThornFiredThisTurn or {}
-                if game._jokerThornFiredThisTurn[joker] then
-                    fired = false
-                else
-                    game._jokerThornFiredThisTurn[joker] = true
-                end
+        -- ESPINHOS VIRARAM ESTADO (Set/2026, pedido do dono: "esse dano nao
+        -- deveria ser so quando o inimigo atacar?"). ANTES: jogar a carta ja
+        -- causava o dano na hora — o reflexo acontecia mesmo que o inimigo
+        -- nunca atacasse, e a palavra "refletir" era mentira. AGORA (padrao
+        -- StS / Flame Barrier): a carta ARMA o buff "thorn" no jogador, que
+        -- dura o turno; quem dispara o dano e o GOLPE do inimigo
+        -- (Game:_enemyStrikeChain -> EffectSystem:fireThornReflect), no
+        -- instante proprio dele. O buff expira no Player:onTurnStart seguinte.
+        --
+        -- P2.3 preservado: thorn cuja FONTE e JOKER ARMA no maximo 1x por
+        -- turno POR JOKER (flag resetada em Game:drawForTurn) — o teto de
+        -- stacks por turno continua o mesmo de antes do rebalance. Thorn de
+        -- CARTA (context.sourceCard) continua acumulando POR CARTA jogada.
+        local fired = true
+        local joker = context and context.sourceJoker
+        if joker then
+            game._jokerThornFiredThisTurn = game._jokerThornFiredThisTurn or {}
+            if game._jokerThornFiredThisTurn[joker] then
+                fired = false
+            else
+                game._jokerThornFiredThisTurn[joker] = true
             end
-            if fired then
-                context.target:takeDamage(v)
-                game:addMessage(msg("reflect", { value = v }), "warning")
-                -- Game feel v1: espinhos têm som metálico próprio + burst no
-                -- inimigo (o dano refletido é VISÍVEL chegando nele).
-                Sfx.play("thornReflect")
-                local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
-                if okCF then CardFeel.burstAtEnemy("physical", 0.7) end
-                pushJokerProc(game, context.procSink, joker, "Reflete " .. v, "mult")
-            end
+        end
+        if fired and game.player and game.player.addBuff then
+            -- duration 1 = "dura ate o inicio do meu proximo turno".
+            game.player:addBuff("thorn", 1, v)
+            local total = game.player:getBuffStacks("thorn")
+            game:addMessage(I18n.t("messages.thorn_ready", { value = total },
+                "Espinhos armados: {value}"), "info")
+            pushJokerProc(game, context and context.procSink, joker,
+                "+" .. v .. " " .. I18n.t("status.thorn.name", nil, "Espinhos"), "buff")
+            local okCF, CF = pcall(require, "src.systems.CardFeel")
+            if okCF then CF.burstAtPlayer("armor", 0.6) end
         end
 
     elseif t == "channel_per_turn" and triggerType == "turn_start" then
@@ -679,7 +854,7 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
             context and context.sourceJoker, "+" .. v .. " Forca", "buff")
 
     elseif t == "regen_per_turn" and triggerType == "turn_start" then
-        local amount = self:applyHealMultiplier(game, v)
+        local amount = self:applyHealMultiplier(game, v, context and context.procSink)
         game.player:heal(amount)
         game:addMessage(msg("regen", { value = amount }), "success")
         pushJokerProc(game, context and context.procSink,

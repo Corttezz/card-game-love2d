@@ -78,7 +78,9 @@ function M.run()
     check("endTurn: press armou o botão", pressed == true)
     check("endTurn: turno passou pro fluxo inimigo (clique FUNCIONA)",
         game.turn == "enemy" or game._endTurnQueued == true)
-    pump(2.0)
+    -- 2.0 -> 4.0 (Set/2026): o turno do inimigo virou cadeia de beats
+    -- (~2.4s). Ver comentario gemeo em smoke_turn_order.
+    pump(4.0)
     check("inimigo agiu e devolveu o turno", game.turn == "player")
 
     -- ===== 2. JOGAR CARTAS desabilitado NÃO dispara =====
@@ -102,7 +104,9 @@ function M.run()
     click(endTurnButton)
     local queuedOrDone = game._endTurnQueued or game.turn == "enemy"
     check("endTurn durante animação: enfileirado ou executado", queuedOrDone)
-    pump(3.0)
+    -- 3.0 -> 7.0: resolucao da carta (impacto > procs > efeitos > dissolve)
+    -- + turno inteiro do inimigo, agora tudo em sequencia estrita.
+    pump(7.0)
     check("ciclo completo fechou (turno do jogador de novo)",
         game.turn == "player")
     check("mão nova foi comprada", #game.hand > 0)

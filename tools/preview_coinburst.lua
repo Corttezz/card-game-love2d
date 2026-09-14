@@ -12,7 +12,7 @@ function M.run()
     _G.gameSettings = _G.gameSettings or {}
     _G.gameSettings.reducedMotion = false
 
-    local instantes = { 0.10, 0.35, 0.70, 1.20 }
+    local instantes = { 0.35, 0.80, 1.10, 1.40, 1.70 }
     local canvases = {}
 
     CoinBurst.clear()

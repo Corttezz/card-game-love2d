@@ -97,3 +97,80 @@ Partículas sutis que sobem. 4 presets (default/subtle/atmospheric/intense) troc
   show()/reroll. Draw/hover/selection SEMPRE derivam posição de `_slot` (ou de
   `inst.shopOffer`), nunca de índice compactado de array — indexar
   `shopOffers[i]` contra `cardInstances[i]` foi a raiz de 3 bugs pós-compra.
+
+## Ícone de pill de status: contrato de silhueta (Set/2026)
+
+Regra nascida de um defeito que passou por DUAS validações e só caiu na
+terceira. Vale pra todo `assets/sprites/icons/status_*.png` (64×64) consumido
+por `src/ui/StatusPill.lua`.
+
+**O contrato:** silhueta **NÃO circular**, **clara/saturada**, sobre fundo
+**transparente**, sem nada abaixo de 3px no canvas de 64.
+
+Os três porquês, cada um de um erro real:
+
+1. **Forma fechada compete com o anel da pill.** A v1 do `status_thorn` era um
+   escudo redondo com espinhos radiais. A pill JÁ é um disco com anel colorido,
+   então o ícone virou "bolinha escura dentro de um anel" — sem silhueta. Todo
+   `status_*` que funciona (gota do veneno, seta do fraco, braço da força) é uma
+   forma aberta. A v2 (estrela de 4 pontas grossas, sem disco) leu de primeira.
+2. **Traço fino não sobrevive ao downscale.** A pill desenha o ícone com alvo
+   `size * 0.76` — 27px numa pill de 36. De 64 pra 27 é fator 0,42: linhas de
+   1-2px somem. Um `dagger` e "três gotinhas" morreram assim.
+3. **Escuro sobre escuro some.** O corpo da pill é quase preto
+   (`0.10, 0.07, 0.05`, luminância ~19). Ícone escuro não tem silhueta ali,
+   por mais bem desenhado que seja.
+
+### Como validar — os três passos, e nenhum sozinho basta
+
+Cada passo aqui existe porque um ícone passou nos outros dois e reprovou na
+tela mesmo assim.
+
+1. **No tamanho de uso, nunca ampliado.** A 4x tudo parece ótimo; o defeito
+   mora no downscale. (Foi assim que `dagger` e "três gotinhas" foram
+   aprovados.)
+2. **Sobre o fundo REAL, nunca sobre branco.** O sheet de aprovação em fundo
+   claro é justamente onde tons escuros brilham — uma gota vinho linda no sheet
+   virou mancha invisível no jogo. Teste sobre o corpo quase-preto da pill.
+3. **Lado a lado com uma pill que funciona** (`status_poison` é a referência).
+   Isolado, o olho se acostuma com qualquer coisa; em comparação, os dois
+   defeitos que passaram por todo o resto cairiam em dois segundos.
+
+**Medida objetiva de triagem** (luminância média do ícone já reduzido a 27px,
+menos a luminância do corpo da pill). Ela diz ONDE olhar com atenção; o olho
+continua sendo o desempate:
+
+| ícone | matiz | contraste | lê? |
+|---|---|---|---|
+| `status_regen` (broto) | verde | 96 | sim |
+| `status_poison` (referência) | verde | 80 | sim |
+| `status_thorn` v2 (estrela) | laranja | 78 | sim |
+| `status_enraged` (crânio) | laranja | 68 | sim |
+| `status_retain_armor` | aço/ouro | 62 | sim |
+| `status_bleed` v3 (gota clara) | vermelho | 55 | sim |
+| `status_lifesteal` (coração) | vermelho | 31 | sim |
+| `status_thorn` v1 (disco) | ferrugem escuro | 29 | **não** |
+| `status_bleed` v1 (vinho escuro) | vermelho escuro | 7 | **não** |
+
+**A faixa NÃO é neutra em relação ao matiz — e sem esta nota o número vira
+armadilha.** Na fórmula de luminância o verde pesa 0,7152 e o vermelho 0,2126,
+mais de 3× de diferença. Ou seja: **60 é trivial pra verde e fisicamente
+inalcançável pra vermelho puro, que satura perto de 54.** Perseguir "60" num
+ícone vermelho só o transforma em rosa ou salmão — ganha o número e perde a
+identidade (a gota deixa de ler como sangue). Leia a tabela por coluna de matiz,
+não por número absoluto:
+
+- **verde / branco / ouro:** abaixo de ~60 desconfie.
+- **vermelho / magenta:** ~50 já é o teto prático; 31 ainda lê se a cor for
+  saturada (o coração do lifesteal é prova).
+- **qualquer matiz abaixo de ~15:** não há desenho que salve. É problema de
+  TOM, não de forma.
+
+**Como consertar um vermelho que está baixo:** aumente a ÁREA DO REALCE (branco
+ou amarelo claro) dentro da forma — não clareie o vermelho. Foi o que levou a
+gota de 7 pra 55 mantendo a leitura de sangue.
+
+**Vocabulário de prompt que funciona** (PixelLab): *"no thin lines, no empty
+margins, readable when shrunk to 36 pixels, light/saturated subject on a
+near-black background"* + a forma pedida, explicitamente **sem disco, sem anel,
+fundo transparente**.

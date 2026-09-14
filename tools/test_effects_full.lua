@@ -170,11 +170,18 @@ function M.run()
     es:applyTriggerEffects(g, "attack", { target = g.enemy })
     t:eq("on_attack_heal cura no ataque", g.player.health, 53)
 
-    -- on_defend_damage (reflete) via joker
+    -- on_defend_damage ARMA ESPINHOS (Set/2026) — nao causa dano na hora.
+    -- Contrato novo: a carta/joker vira o buff "thorn"; quem dispara o dano
+    -- e o GOLPE do inimigo (Game:enemyTurn -> fireThornReflect). Ver test_beats.
     g = fresh()
     g.jokerSlots = { { effects = { { type = "on_defend_damage", value = 4 } } } }
     es:applyTriggerEffects(g, "defend", { target = g.enemy })
-    t:eq("on_defend_damage reflete no alvo", g.enemy.health, 96)
+    t:eq("on_defend_damage NAO fere ao jogar a carta", g.enemy.health, 100)
+    t:eq("on_defend_damage arma 4 de espinhos", g.player:getBuffStacks("thorn"), 4)
+    t:eq("espinhos duram 1 turno (expiram no proximo upkeep)",
+        g.player.buffs[1].duration, 1)
+    es:fireThornReflect(g)
+    t:eq("fireThornReflect cobra os 4 no inimigo", g.enemy.health, 96)
 
     -- regen_per_turn / damage_per_turn no turn_start
     g = fresh(); g.player.health = 50
@@ -191,7 +198,9 @@ function M.run()
     g = fresh()
     local reflectCard = { type = "defense", effects = { { type = "on_defend_damage", value = 6 } } }
     es:applyTriggerEffects(g, "defend", { target = g.enemy, sourceCard = reflectCard })
-    t:eq("trigger de sourceCard também dispara", g.enemy.health, 94)
+    t:eq("trigger de sourceCard também dispara (arma espinhos)",
+        g.player:getBuffStacks("thorn"), 6)
+    t:eq("sourceCard: inimigo intacto ate ele atacar", g.enemy.health, 100)
 
     -- ===== P0.9 (rebalance v2): LARGEST-MULTIPLIER-WINS entre jokers =====
     -- 2 jokers x1.5 NAO compõem (x2.25) — só o maior multiplicador conta;
@@ -226,18 +235,24 @@ function M.run()
         t:eq("predictJokerProcs: carta de efeito não proca", es:predictJokerProcs(g, { type = "effect" }), 0)
     end
 
-    -- ===== P2.3 (rebalance v2): thorn de JOKER dispara 1x/turno =====
-    -- Duas defesas na mesma rodada: joker reflete só na primeira; thorn de
-    -- CARTA (sourceCard) segue disparando por carta jogada.
+    -- ===== P2.3 (rebalance v2): thorn de JOKER ARMA 1x/turno =====
+    -- A intencao de balanceamento sobreviveu a migracao pro modelo de ESTADO
+    -- (Set/2026): o TETO por turno e o mesmo de antes — joker contribui uma
+    -- vez, carta contribui por carta jogada. O que mudou e QUANDO o dano sai.
     g = fresh()
     g.jokerSlots = { { effects = { { type = "on_defend_damage", value = 4 } } } }
     es:applyTriggerEffects(g, "defend", { target = g.enemy })
     es:applyTriggerEffects(g, "defend", { target = g.enemy })
-    t:eq("thorn de joker: 2 defesas refletem 1x (-4)", g.enemy.health, 96)
+    t:eq("thorn de joker: 2 defesas armam 1x (4)", g.player:getBuffStacks("thorn"), 4)
     local thornCard2 = { type = "defense", effects = { { type = "on_defend_damage", value = 6 } } }
     es:applyTriggerEffects(g, "defend", { target = g.enemy, sourceCard = thornCard2 })
     es:applyTriggerEffects(g, "defend", { target = g.enemy, sourceCard = thornCard2 })
-    t:eq("thorn de carta segue por carta (-12)", g.enemy.health, 84)
+    t:eq("thorn de carta acumula por carta (4 + 6 + 6 = 16)",
+        g.player:getBuffStacks("thorn"), 16)
+    t:eq("espinhos empilhados nao esticam a duracao (1 turno)",
+        g.player.buffs[1].duration, 1)
+    es:fireThornReflect(g)
+    t:eq("o golpe do inimigo cobra o total de uma vez (-16)", g.enemy.health, 84)
 
     return t:done()
 end

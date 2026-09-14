@@ -153,6 +153,68 @@ function PixelCanvas.vline(x, y, len, color)
     PixelCanvas.rect(x, y, 1, len, color)
 end
 
+-- ===== Discos pixel-perfect =====
+-- Por que existem: todo "selo"/"medalhão" da UI estava sendo desenhado com
+-- love.graphics.circle, que é um polígono ANTI-ALIASADO. Num jogo cujo resto
+-- é pixel art de borda dura, um disco suave lê como widget de outra engine —
+-- foi uma das causas do "cara de IA" reportado pelo dono (Set/2026) nas
+-- placas de preço da loja. Aqui o disco é construído por HLINES inteiras a
+-- partir da equação do círculo: a borda tem degraus, como um ícone desenhado
+-- à mão.
+
+-- Meia-largura da linha dy de um disco de raio r (sem AA, arredondada).
+local function discHalfWidth(r, dy)
+    local v = r * r - dy * dy
+    if v < 0 then return -1 end
+    return math.floor(math.sqrt(v) + 0.5)
+end
+
+-- Disco sólido com borda escalonada.
+function PixelCanvas.disc(cx, cy, r, color)
+    Palette.set(color)
+    cx, cy, r = math.floor(cx), math.floor(cy), math.floor(r)
+    for dy = -r, r do
+        local hw = discHalfWidth(r, dy)
+        if hw >= 0 then
+            love.graphics.rectangle("fill", cx - hw, cy + dy, hw * 2 + 1, 1)
+        end
+    end
+end
+
+-- Anel de 1px (a casca do disco de raio r).
+function PixelCanvas.discOutline(cx, cy, r, color)
+    Palette.set(color)
+    cx, cy, r = math.floor(cx), math.floor(cy), math.floor(r)
+    for dy = -r, r do
+        local hw = discHalfWidth(r, dy)
+        if hw >= 0 then
+            local inner = discHalfWidth(r - 1, dy)
+            if inner < 0 or dy == -r or dy == r then
+                love.graphics.rectangle("fill", cx - hw, cy + dy, hw * 2 + 1, 1)
+            else
+                love.graphics.rectangle("fill", cx - hw, cy + dy, hw - inner, 1)
+                love.graphics.rectangle("fill", cx + inner + 1, cy + dy, hw - inner, 1)
+            end
+        end
+    end
+end
+
+-- Disco com luz direcional: interpola `top` -> `bottom` linha a linha.
+-- É o gradiente que o projeto aceita — por LINHA INTEIRA de pixel, não o
+-- degradê contínuo de shader. Dá volume de metal batido sem virar "pillow".
+function PixelCanvas.discShaded(cx, cy, r, top, bottom)
+    cx, cy, r = math.floor(cx), math.floor(cy), math.floor(r)
+    if r < 0 then return end
+    for dy = -r, r do
+        local hw = discHalfWidth(r, dy)
+        if hw >= 0 then
+            local t = (r > 0) and ((dy + r) / (2 * r)) or 0
+            Palette.set(Palette.lerp(top, bottom, t))
+            love.graphics.rectangle("fill", cx - hw, cy + dy, hw * 2 + 1, 1)
+        end
+    end
+end
+
 -- ===== Bitmap drawing (coração do sistema) =====
 
 -- Desenha uma matriz 2D de índices de cor em (ox, oy).

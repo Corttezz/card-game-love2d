@@ -7,36 +7,49 @@
 -- o nome miudo, uma tarja verde de 3px no topo e o preco como texto solto.
 -- No tile compacto do split-view a descricao era DESCARTADA, entao o item nao
 -- dizia o que fazia: o jogador via "Forja $5" e precisava passar o mouse pra
--- descobrir o resto. Ao lado, os booster packs tinham sleeve ilustrada e placa
--- de preco emoldurada -- o upgrade parecia o slot inacabado da loja.
+-- descobrir o resto.
 --
 -- Aqui ele vira um OBJETO na prateleira: placa iluminada (mais clara que o
--- fundo, entao existe), relicario com pedestal e halo na cor do efeito, chip
--- com o NUMERO do efeito (a informacao que faltava) e placa de preco com a
--- mesma gramatica da dos pacotes.
+-- fundo, entao existe), relicario com halo na cor do efeito, PLACA GRAVADA com
+-- o efeito e MOEDA cunhada com o preco.
+--
+-- REVISAO Set/2026 ("cara de IA"): a versao anterior mostrava o efeito e o
+-- preco como dois retangulos empilhados de cantos arredondados anti-aliasados,
+-- moldura de 1px simetrica e texto centrado -- vocabulario de formulario web,
+-- nao de grimorio, e diferente do que a CARTA ao lado ja fazia (moeda no canto
+-- superior direito). As duas placas foram substituidas pela gramatica unica de
+-- src/ui/ShopEngraving.lua, que carta, pacote e reliquia agora compartilham.
+-- Repare que o tile PERDEU uma banda: o preco nao ocupa mais linha nenhuma, e
+-- a sobra foi pra arte.
 --
 -- LAYOUT POR ZONAS (memory/ui_layout_invariants.md, secao 1)
 -- layout() e uma funcao PURA que fatia o retangulo do slot em bandas
--- empilhadas -- nome / arte / chip / preco. Nenhum elemento e ancorado no
+-- empilhadas -- nome / arte / efeito -- mais o rect da MOEDA, que e overlay
+-- carimbado na moldura (como o custo de mana na carta) e por isso tem regra
+-- propria: nunca invade a coluna do nome. Nenhum elemento e ancorado no
 -- vizinho: quando falta altura, quem cede e a ESCALA do conteudo, e as bandas
--- opcionais CAEM em ordem de prioridade declarada (o chip cai, o preco nunca).
--- validate() prova isso geometricamente e roda nos testes.
+-- opcionais CAEM em ordem de prioridade declarada. validate() prova isso
+-- geometricamente e roda nos testes.
 --
--- RESIZE: este modulo nao guarda estado geometrico nenhum -- as bandas sao
--- derivadas do retangulo a cada frame. Nao ha cache pra invalidar (secao 2).
+-- RESIZE: este modulo nao guarda estado geometrico -- as bandas sao derivadas
+-- do retangulo a cada frame. O unico cache e o de bitmaps da placa gravada,
+-- que vive no ShopEngraving e e limpo por ShopEngraving.clearCache() no
+-- resize da loja (secao 2).
 
-local Palette     = require("src.ui.Palette")
-local PixelCanvas = require("src.ui.PixelCanvas")
-local FontManager = require("src.ui.FontManager")
-local TextFit     = require("src.ui.TextFit")
-local ImageCache  = require("src.ui.ImageCache")
-local I18n        = require("src.i18n.I18n")
-local Moveable    = require("engine.Moveable")
+local Palette       = require("src.ui.Palette")
+local PixelCanvas   = require("src.ui.PixelCanvas")
+local FontManager   = require("src.ui.FontManager")
+local TextFit       = require("src.ui.TextFit")
+local ImageCache    = require("src.ui.ImageCache")
+local I18n          = require("src.i18n.I18n")
+local Moveable      = require("engine.Moveable")
+local ShopEngraving = require("src.ui.ShopEngraving")
+local FramesLoader  = require("src.ui.IconFramesLoader")
 
 local UpgradeTile = {}
 
 -- Acessibilidade: reducedMotion remove MOVIMENTO, nunca INFORMACAO
--- (ui_layout_invariants, secao 3). Halo, chip e destaque de hover continuam.
+-- (ui_layout_invariants, secao 3). Halo, placa e destaque de hover continuam.
 local function reducedMotion()
     return (_G.gameSettings and _G.gameSettings.reducedMotion) or false
 end
@@ -48,18 +61,74 @@ local function setC(color, alpha)
 end
 
 -- ============================================================================
+-- SPRITE: estatico por padrao, animado na INTERACAO
+-- ============================================================================
+-- Mesmo contrato dos icones de carta (memory/card_icon_animation.md):
+--   assets/sprites/vouchers_anim/<offer_id>/frame_NNN.png (+ meta.lua {fps})
+-- Pasta ausente = o tile usa o PNG estatico de assets/sprites/vouchers/. Os
+-- dois estados sao normais e nenhum quebra -- a faixa de animacao e um upgrade
+-- opcional do asset, nao um requisito do codigo.
+local VOUCHER_STATIC = "assets/sprites/vouchers/"
+local VOUCHER_ANIM   = "assets/sprites/vouchers_anim"
+
+UpgradeTile.ANIM_ROOT = VOUCHER_ANIM
+
+local animWarned = {}
+
+-- Handle de animacao do voucher, ou nil. AVISA uma vez se a pasta existe mas
+-- nao rendeu frame nenhum -- fallback silencioso e proibido (secao 3): uma
+-- pasta com PNG de nome errado degradaria pra estatico sem rastro nenhum.
+function UpgradeTile.animationFor(offerId)
+    if not offerId then return nil end
+    local handle = FramesLoader.getFrom(VOUCHER_ANIM, offerId)
+    if handle then return handle end
+    if not animWarned[offerId]
+        and love.filesystem.getInfo(VOUCHER_ANIM .. "/" .. tostring(offerId), "directory") then
+        animWarned[offerId] = true
+        print(("[UpgradeTile] %s/%s existe mas nao tem frame_NNN.png legivel -- "
+            .. "caindo no PNG estatico"):format(VOUCHER_ANIM, tostring(offerId)))
+    end
+    return nil
+end
+
+function UpgradeTile.staticSprite(offerId)
+    if not offerId then return nil end
+    -- tryGet: miss = nil (o get() devolvia o placeholder theRock e o voucher
+    -- sem arte mostrava uma carta no lugar).
+    return ImageCache.tryGet(VOUCHER_STATIC .. tostring(offerId) .. ".png")
+end
+
+-- A imagem a desenhar neste frame. `animate` vem da INTERACAO (hover ou item
+-- em foco no painel de detalhe) -- idle e estatico, regra do projeto: o que
+-- se move na prateleira e o que o jogador esta olhando.
+function UpgradeTile.spriteFor(offerId, animate, t)
+    if animate then
+        local anim = UpgradeTile.animationFor(offerId)
+        if anim then
+            local frame = anim:frameAt(t or 0)
+            if frame then return frame, true end
+        end
+    end
+    -- Frame 0 do set animado tambem serve de estatico (se a pasta existe mas
+    -- o PNG solto nao). Ordem: estatico -> frame 0 -> nil.
+    local img = UpgradeTile.staticSprite(offerId)
+    if img then return img, false end
+    return FramesLoader.firstFrom(VOUCHER_ANIM, offerId), false
+end
+
+-- ============================================================================
 -- TEMA POR EFEITO (data-driven: chaveado pelo `effect`, nunca pelo nome --
 -- convencao do projeto contra condicional por card.name)
 -- ============================================================================
 local THEMES = {
     forge_card          = { accent = Palette.RUST },
     increase_max_health = { accent = Palette.BLOOD },
-    increase_base_mana  = { accent = Palette.BLUE },
+    increase_base_mana  = { accent = Palette.MANA_LIGHT },
 }
 local DEFAULT_THEME = { accent = Palette.AGED_GOLD }
 
--- accent = cromo (borda do chip, topo do pedestal); glow = halo atras da
--- reliquia; text = cor do numero do efeito (tem que passar no fundo escuro).
+-- accent = cromo (filete da placa gravada, halo); text = cor do efeito quando
+-- ele aparece FORA da placa (popup de compra, etiqueta de categoria).
 function UpgradeTile.theme(offer)
     local base = (offer and THEMES[offer.effect]) or DEFAULT_THEME
     local accent = base.accent
@@ -71,7 +140,7 @@ function UpgradeTile.theme(offer)
 end
 
 -- Texto curto do efeito ("+10 VIDA MAX"). Vive no i18n como
--- shop_items.<id>.effect; sem chave, devolve nil e a banda do chip nao e
+-- shop_items.<id>.effect; sem chave, devolve nil e a banda da placa nao e
 -- desenhada (o painel de detalhe continua explicando o item por extenso).
 function UpgradeTile.effectLabel(offer)
     if not offer or not offer.id then return nil end
@@ -92,60 +161,69 @@ end
 -- ============================================================================
 -- LAYOUT (puro)
 -- ============================================================================
--- Bandas, de cima pra baixo:
---   name  (obrigatoria)  nome da reliquia
---   art   (obrigatoria)  pedestal + halo + sprite
---   chip  (opcional)     numero do efeito
---   price (obrigatoria)  placa de preco
+-- Bandas empilhadas, de cima pra baixo:
+--   name   (obrigatoria)  nome da reliquia -- largura DESCONTADA da moeda
+--   art    (obrigatoria)  halo + sombra de contato + sprite
+--   effect (opcional)     placa gravada com o efeito
+-- Overlay:
+--   seal   (quando ha preco)  moeda cunhada no canto superior direito
 local ART_MIN = 44   -- piso da arte antes de derrubar banda opcional
 
-function UpgradeTile.layout(x, y, w, h)
+-- `cost` e opcional: a moeda cresce com o numero de digitos, entao quem sabe o
+-- preco reserva o espaco EXATO e o nome fica com o resto. Sem ele, reserva-se
+-- o pior caso (3 digitos) -- a coluna do nome nunca pode ficar devendo.
+function UpgradeTile.layout(x, y, w, h, cost)
     x, y, w, h = math.floor(x), math.floor(y), math.floor(w), math.floor(h)
     local pad = clamp(math.floor(w * 0.05), 4, 9)
     local ix, iw = x + pad, w - pad * 2
     local iy, ih = y + pad, h - pad * 2
 
-    local nameH  = clamp(math.floor(h * 0.095), 12, 20)
-    local priceH = clamp(math.floor(h * 0.10), 15, 22)
-    local chipH  = clamp(math.floor(h * 0.085), 13, 18)
-    local gap    = (ih >= 150) and 5 or 3
+    local nameH   = clamp(math.floor(h * 0.095), 12, 20)
+    local effectH = clamp(math.floor(h * 0.105), 13, 20)
+    local gap     = (ih >= 150) and 5 or 3
 
-    -- Altura da arte = sobra. As opcionais caem em ordem declarada enquanto a
-    -- arte nao alcanca o piso -- nunca por "ajuste fino" no call site.
-    local function artOf(useChip)
-        local bands = nameH + priceH + (useChip and chipH or 0)
-        local gaps  = gap * (useChip and 3 or 2)
+    -- Altura da arte = sobra. A banda opcional cai enquanto a arte nao alcanca
+    -- o piso -- nunca por "ajuste fino" no call site.
+    local function artOf(useEffect)
+        local bands = nameH + (useEffect and effectH or 0)
+        local gaps  = gap * (useEffect and 2 or 1)
         return ih - bands - gaps
     end
-    local useChip = artOf(true) >= ART_MIN
-    local artH = math.max(10, artOf(useChip))
+    local useEffect = artOf(true) >= ART_MIN
+    local artH = math.max(10, artOf(useEffect))
+
+    local frame = { x = x, y = y, w = w, h = h }
+    local seal = ShopEngraving.sealRect(frame, cost)
 
     local cy = iy
     local bands = {
         pad = pad,
-        frame = { x = x, y = y, w = w, h = h },
+        frame = frame,
         inner = { x = ix, y = iy, w = iw, h = ih },
+        seal = seal,
     }
 
-    bands.name = { x = ix, y = cy, w = iw, h = nameH }
+    -- A moeda tem prioridade na coluna da direita: o nome cede largura. Sem
+    -- isso, um nome longo passaria POR BAIXO do disco (o defeito classico de
+    -- dois elementos ancorados no mesmo canto sem saber um do outro).
+    local nameW = math.max(12, seal.x - 2 - ix)
+    bands.name = { x = ix, y = cy, w = nameW, h = nameH }
     cy = cy + nameH + gap
     bands.art = { x = ix, y = cy, w = iw, h = artH }
     cy = cy + artH + gap
-    if useChip then
-        bands.chip = { x = ix, y = cy, w = iw, h = chipH }
-        cy = cy + chipH + gap
+    if useEffect then
+        bands.effect = { x = ix, y = cy, w = iw, h = effectH }
     end
-    bands.price = { x = ix, y = cy, w = iw, h = priceH }
     return bands
 end
 
 -- Violacoes geometricas (lista vazia = OK). Mesmo contrato do
 -- PackChoiceLayout.validate: o teste que layout por acumulacao nunca tem.
-function UpgradeTile.validate(x, y, w, h)
-    local b = UpgradeTile.layout(x, y, w, h)
+function UpgradeTile.validate(x, y, w, h, cost)
+    local b = UpgradeTile.layout(x, y, w, h, cost)
     local bad = {}
     local prev
-    for _, key in ipairs({ "name", "art", "chip", "price" }) do
+    for _, key in ipairs({ "name", "art", "effect" }) do
         local r = b[key]
         if r then
             if r.x < b.frame.x or r.y < b.frame.y
@@ -165,6 +243,15 @@ function UpgradeTile.validate(x, y, w, h)
             prev = { key = key, y = r.y, h = r.h }
         end
     end
+    -- A moeda e overlay, mas nao pode sair do tile nem morder o nome.
+    local s = b.seal
+    if s.x + s.w > b.frame.x + b.frame.w + 1 or s.y < b.frame.y - 1 then
+        bad[#bad + 1] = ("moeda (%d,%d %dx%d) escapa do tile"):format(s.x, s.y, s.w, s.h)
+    end
+    if b.name.x + b.name.w > s.x then
+        bad[#bad + 1] = ("nome (fim x=%d) passa por baixo da moeda (x=%d)")
+            :format(b.name.x + b.name.w, s.x)
+    end
     return bad
 end
 
@@ -179,7 +266,8 @@ end
 -- no primeiro (o anti-pattern "somar camada sobre arte que ja tem",
 -- ui_layout_invariants secao 4). O que faltava era CHAO, nao mobilia: uma
 -- sombra de contato e um halo quente resolvem, sem cobrir nada.
---   opts.alpha, opts.glow (0..1), opts.bob (px), opts.theme
+--   opts.alpha, opts.glow (0..1), opts.bob (px), opts.theme,
+--   opts.animate (bool), opts.time
 function UpgradeTile.drawArt(offer, rect, opts)
     opts = opts or {}
     local alpha = opts.alpha or 1
@@ -190,10 +278,8 @@ function UpgradeTile.drawArt(offer, rect, opts)
     local restY = rect.y + rect.h - 3   -- linha de chao (base da banda)
     local availH = rect.h - 6
 
-    -- Sprite da reliquia. tryGet: miss = nil (o get() devolvia o placeholder
-    -- theRock e o voucher sem arte mostrava uma carta no lugar).
-    local sprite = offer and offer.id
-        and ImageCache.tryGet("assets/sprites/vouchers/" .. tostring(offer.id) .. ".png")
+    local sprite = UpgradeTile.spriteFor(offer and offer.id,
+        opts.animate and not reducedMotion(), opts.time or 0)
 
     local dw, dh = 0, 0
     local scale = 0
@@ -202,9 +288,8 @@ function UpgradeTile.drawArt(offer, rect, opts)
         local raw = math.min((rect.w - 10) / sw, availH / sh)
         -- Escala em passos de 1/4. Inteiro puro era luxo caro aqui: com
         -- sprite de 64px e banda de ~120, floor() joga tudo pra 1x e a peca
-        -- encolhia pra metade da banda (a versao antiga do tile mostrava a
-        -- bigorna MAIOR). Um quarto de passo mantem a malha previsivel e
-        -- ainda preenche -- o jogo ja desenha carta em 1.333.
+        -- encolhia pra metade da banda. Um quarto de passo mantem a malha
+        -- previsivel e ainda preenche -- o jogo ja desenha carta em 1.333.
         scale = (raw >= 1) and (math.floor(raw * 4) / 4) or raw
         dw, dh = sw * scale, sh * scale
     end
@@ -234,17 +319,16 @@ function UpgradeTile.drawArt(offer, rect, opts)
     elseif not sprite then
         -- Sem PNG: selo ornamental (nunca um buraco).
         local r = math.floor(math.min(rect.w, math.max(8, availH)) * 0.28)
-        setC(Palette.PARCHMENT_DARK, 0.85 * alpha)
-        love.graphics.circle("fill", cx, restY - r, r)
-        setC(th.accent, alpha)
-        love.graphics.setLineWidth(2)
-        love.graphics.circle("line", cx, restY - r, r)
-        love.graphics.setLineWidth(1)
+        PixelCanvas.disc(cx, restY - r, r,
+            { Palette.PARCHMENT_DARK[1], Palette.PARCHMENT_DARK[2],
+              Palette.PARCHMENT_DARK[3], 0.85 * alpha })
+        PixelCanvas.discOutline(cx, restY - r, r,
+            { th.accent[1], th.accent[2], th.accent[3], alpha })
     end
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Brasas subindo do pedestal no hover. Deterministicas (senoide por indice):
+-- Brasas subindo do chao no hover. Deterministicas (senoide por indice):
 -- captura de tela vira reproduzivel e o RNG da run nao e gasto com cosmetico.
 local function drawEmbers(rect, th, t, k, alpha)
     if k <= 0.02 then return end
@@ -277,7 +361,7 @@ function UpgradeTile.draw(offer, rect, state)
     local afford = state.afford ~= false
     local t = state.time or love.timer.getTime()
     local th = UpgradeTile.theme(offer)
-    local b = UpgradeTile.layout(rect.x, rect.y, rect.w, rect.h)
+    local b = UpgradeTile.layout(rect.x, rect.y, rect.w, rect.h, offer and offer.cost)
     local f = b.frame
 
     -- Foco clareia a moldura, MAS dentro da propria cor de estado: um tile
@@ -290,60 +374,57 @@ function UpgradeTile.draw(offer, rect, state)
             hover)
     end
 
+    -- Impagavel = tile ESCURECIDO, alem do preco vermelho. Mesma regra das
+    -- cartas (Card.saleDim): nunca comunicar so pela cor do numero.
+    local shade = afford and 1 or 0.55
+    local dim = afford and 1 or 0.45
+
     -- ===== Placa =====
     -- Sombra projetada: o tile e um OBJETO na prateleira, nao um recorte no
     -- fundo (o retangulo PANEL_FILL antigo tinha a cor do proprio fundo).
-    setC(Palette.INK, alpha * (0.45 + 0.2 * hover))
-    love.graphics.rectangle("fill", f.x + 3, f.y + 4, f.w, f.h, 4, 4)
+    local R = 3   -- canto CORTADO (degraus), nao arredondado por vetor: a
+                  -- versao AA do love.graphics era um dos tells de "cara de IA"
+    PixelCanvas.rectRounded(f.x + 3, f.y + 4, f.w, f.h, R,
+        { Palette.INK[1], Palette.INK[2], Palette.INK[3],
+          alpha * (0.45 + 0.2 * hover) })
 
-    -- Fundo: um degrade CURTO (4 faixas) de topo iluminado pra base em
-    -- sombra. A primeira versao usava uma faixa clara chapada no topo 16% e
-    -- ela lia como um cabecalho colado, com emenda visivel no meio da placa.
-    -- Impagavel escurece a PLACA inteira, nao so o numero: e o equivalente do
-    -- saleDim das cartas. Comunicar so pela cor do preco falha exatamente em
-    -- quem tem dificuldade com vermelho.
-    local shade = afford and 1 or 0.55
     local fillTop = Palette.darken(
         Palette.lerp(Palette.INK, Palette.PARCHMENT_DARK, 0.30 + 0.16 * hover), shade)
     local fillBot = Palette.darken(
         Palette.lerp(Palette.INK, Palette.PARCHMENT_DARK, 0.12 + 0.10 * hover), shade)
-    setC(Palette.lerp(fillTop, fillBot, 0.5), alpha)
-    love.graphics.rectangle("fill", f.x, f.y, f.w, f.h, 4, 4)
-    -- Faixas INSET 2px: o miolo recebe o degrade e a base arredondada segue
-    -- aparecendo na borda (retangulo reto por cima comeria os cantos).
+    PixelCanvas.rectRounded(f.x, f.y, f.w, f.h, R,
+        { fillTop[1], fillTop[2], fillTop[3], alpha })
+    -- Luz de cima pra baixo em LINHAS INTEIRAS de pixel (inset 2px, pra base
+    -- arredondada seguir aparecendo na borda). O degrade de 8 faixas da versao
+    -- anterior deixava emendas horizontais visiveis no meio da placa.
     local gx, gy = f.x + 2, f.y + 2
     local gw, gh = f.w - 4, f.h - 4
-    local STEPS = 8   -- 4 faixas deixavam uma emenda visivel no meio da placa
-    local bandH = math.max(1, math.floor(gh / STEPS))
-    for i = 0, STEPS - 1 do
-        local bh = (i == STEPS - 1) and (gh - bandH * (STEPS - 1)) or bandH
-        setC(Palette.lerp(fillTop, fillBot, i / (STEPS - 1)), alpha)
-        love.graphics.rectangle("fill", gx, gy + i * bandH, gw, math.max(1, bh))
+    for row = 0, gh - 1 do
+        local c = Palette.lerp(fillTop, fillBot, row / math.max(1, gh - 1))
+        PixelCanvas.hline(gx, gy + row, gw, { c[1], c[2], c[3], alpha })
     end
 
-    -- Moldura dupla + rebites de canto (leitura de placa de metal).
-    setC(Palette.INK, alpha)
-    love.graphics.setLineWidth(1)
-    love.graphics.rectangle("line", f.x + 0.5, f.y + 0.5, f.w - 1, f.h - 1, 4, 4)
-    setC(borderColor, alpha * (0.75 + 0.25 * hover))
-    love.graphics.rectangle("line", f.x + 2.5, f.y + 2.5, f.w - 5, f.h - 5, 3, 3)
-    for _, c in ipairs({ { f.x + 4, f.y + 4 }, { f.x + f.w - 6, f.y + 4 },
-                         { f.x + 4, f.y + f.h - 6 }, { f.x + f.w - 6, f.y + f.h - 6 } }) do
-        setC(borderColor, alpha * 0.9)
-        love.graphics.rectangle("fill", c[1], c[2], 2, 2)
-    end
-
-    -- Impagavel = tile ESCURECIDO, alem do preco vermelho. Mesma regra das
-    -- cartas (Card.saleDim): nunca comunicar so pela cor do numero.
-    local dim = afford and 1 or 0.45
+    -- Moldura: bevel direcional (luz no topo, sombra na base) + cunhas de
+    -- canto -- o mesmo vocabulario do rodape da carta. A moldura dupla
+    -- perfeitamente simetrica com quatro rebites 2x2 identicos saiu: simetria
+    -- de maquina e exatamente o que le como gerado.
+    PixelCanvas.rectRoundedOutline(f.x, f.y, f.w, f.h, R,
+        { Palette.INK[1], Palette.INK[2], Palette.INK[3], alpha })
+    local hi = Palette.lerp(borderColor, Palette.PARCHMENT_LIGHT, 0.35)
+    local lo = Palette.darken(borderColor, 0.5)
+    local ba = alpha * (0.75 + 0.25 * hover)
+    PixelCanvas.hline(f.x + 3, f.y + 1, f.w - 6, { hi[1], hi[2], hi[3], ba })
+    PixelCanvas.vline(f.x + 1, f.y + 3, f.h - 6, { borderColor[1], borderColor[2], borderColor[3], ba })
+    PixelCanvas.hline(f.x + 3, f.y + f.h - 2, f.w - 6, { lo[1], lo[2], lo[3], ba })
+    PixelCanvas.vline(f.x + f.w - 2, f.y + 3, f.h - 6, { lo[1], lo[2], lo[3], ba })
 
     -- ===== Banda NOME =====
     do
         local name = (offer and offer.name) or "?"
         local size = clamp(math.floor(b.name.h * 0.62), 8, 13)
-        -- -16 (nao -4): com -4 um nome longo era reduzido ate encostar na
-        -- moldura dos dois lados, sem margem nenhuma.
-        local font, txt = TextFit.fit(name, size, b.name.w - 16)
+        -- -12: margem real dos dois lados (com -4 um nome longo era reduzido
+        -- ate encostar na moldura).
+        local font, txt = TextFit.fit(name, size, b.name.w - 12)
         love.graphics.setFont(font)
         local tx = b.name.x + math.floor((b.name.w - font:getWidth(txt)) / 2)
         local ty = b.name.y + math.floor((b.name.h - font:getHeight()) / 2)
@@ -359,55 +440,34 @@ function UpgradeTile.draw(offer, rect, state)
         bob = math.sin(t * 1.6) * 1.5 + hover * 5
     end
     UpgradeTile.drawArt(offer, b.art, {
-        alpha = alpha * dim, theme = th, bob = bob,
+        alpha = alpha * dim, theme = th, bob = bob, time = t,
         glow = 0.35 + 0.65 * hover,
+        -- Idle estatico, animado na INTERACAO (mesma regra dos icones de
+        -- carta). Sem pasta de animacao, o sprite estatico entra igual.
+        animate = hover > 0.02 or state.animate == true,
     })
     if not reducedMotion() then
         drawEmbers(b.art, th, t, hover, alpha)
     end
 
-    -- ===== Banda CHIP (o numero do efeito) =====
+    -- ===== Banda EFEITO: placa gravada =====
     local label = UpgradeTile.effectLabel(offer)
-    if b.chip and label then
-        local c = b.chip
-        setC(Palette.darken(Palette.INK, 0.2), alpha * 0.85)
-        love.graphics.rectangle("fill", c.x, c.y, c.w, c.h, 3, 3)
-        setC(th.accent, alpha * (0.7 + 0.3 * hover))
-        love.graphics.rectangle("line", c.x + 0.5, c.y + 0.5, c.w - 1, c.h - 1, 3, 3)
-        local size = clamp(math.floor(c.h * 0.60), 8, 11)
-        local font, txt = TextFit.fit(label, size, c.w - 8)
-        love.graphics.setFont(font)
-        local tx = c.x + math.floor((c.w - font:getWidth(txt)) / 2)
-        local ty = c.y + math.floor((c.h - font:getHeight()) / 2)
-        FontManager.drawWithOutline(txt, tx, ty,
-            { th.text[1], th.text[2], th.text[3], alpha }, 0.8 * alpha)
+    if b.effect and label then
+        ShopEngraving.effectStrip(b.effect.x, b.effect.y, b.effect.w, b.effect.h,
+            label, {
+                accent = th.accent,
+                alpha  = alpha,
+                dim    = dim,
+                seed   = ShopEngraving.seedOf(offer and offer.id),
+            })
     end
 
-    -- ===== Banda PRECO =====
-    -- Mesma gramatica da placa dos booster packs ao lado (PANEL_FILL +
-    -- contorno dourado/sangue): a fileira 2 passa a ler como uma prateleira
-    -- so, nao como dois componentes de telas diferentes.
-    do
-        -- Placa mais estreita que o chip de efeito de proposito: empilhadas na
-        -- mesma largura, as duas liam como duas barras iguais e a hierarquia
-        -- (o que o item FAZ vs o que ele CUSTA) sumia.
-        local inset = math.floor(b.price.w * 0.12)
-        local p = { x = b.price.x + inset, y = b.price.y,
-                    w = b.price.w - inset * 2, h = b.price.h }
-        local priceColor = afford and Palette.AGED_GOLD or Palette.BLOOD
-        PixelCanvas.rect(p.x, p.y, p.w, p.h, Palette.PANEL_FILL)
-        PixelCanvas.rectOutline(p.x, p.y, p.w, p.h, priceColor)
-        -- Fonte 11/9: no tamanho 10 o glifo "6" da fonte pixel rasteriza "G".
-        local size = (p.h >= 20) and 11 or 9
-        local font, txt = TextFit.fit("$" .. tostring((offer and offer.cost) or 0),
-            size, p.w - 6)
-        love.graphics.setFont(font)
-        local col = afford and Palette.AGED_GOLD_LIGHT or Palette.BLOOD
-        setC(col, alpha)
-        love.graphics.print(txt,
-            p.x + math.floor((p.w - font:getWidth(txt)) / 2),
-            p.y + math.floor((p.h - font:getHeight()) / 2))
-    end
+    -- ===== PRECO: moeda cunhada na moldura =====
+    -- Nao ocupa banda nenhuma: e carimbo sobre o objeto, como na carta ao
+    -- lado. Foi a troca que fez a fileira inteira falar a mesma lingua.
+    ShopEngraving.stampPrice(f, offer and offer.cost, {
+        afford = afford, alpha = alpha, glow = hover,
+    })
 
     love.graphics.setColor(1, 1, 1, 1)
 end

@@ -21,11 +21,26 @@ function M.run()
     game.player.maxHealth = 80
     game.player.mana = 2
     game.player.maxMana = 3
-    game.player.armor = 7
+    -- Bloqueio: 7 por padrão. `love . preview_battle_hud cap` sobe pro TETO,
+    -- que é o único jeito de ver o "/30" e o halo âmbar do cap (o indicador
+    -- só aparece a partir de 70% — abaixo disso ele seria ruído).
+    local capMode = _G.PREVIEW_HUD_CAP
+    game.player.armor = capMode and (game.player.maxArmor or 30) or 7
     game.player.strength = 3
     game.player.dexterity = 2
     game.player.buffs = {
         { name = "focus", stacks = 2, duration = 3 },
+        -- Reflexo de CARTA (Barreira de Fogo & cia): buff com duração.
+        { name = "thorn", stacks = 7, duration = 1 },
+    }
+    -- Coringas ATIVOS: estados contínuos que vivem no joker e não no player.
+    -- O PlayerBuffPills deriva pill+tooltip deles (regen/sangria/retenção/
+    -- roubo de vida) — antes eram completamente invisíveis.
+    game.jokerSlots = {
+        { id = "preview_regen",  name = "Regen",  effects = { { type = "regen_per_turn", value = 2 } } },
+        { id = "preview_bleed",  name = "Sangria", effects = { { type = "damage_per_turn", value = 1 } } },
+        { id = "preview_bastion", name = "Bastiao", effects = { { type = "retain_armor" } } },
+        { id = "preview_vampire", name = "Vampiro", effects = { { type = "on_attack_heal", value = 3 } } },
     }
     -- OrbRow (Jul/2026): 2 orbes + 1 slot vazio — valida numero com Foco,
     -- marcador FIFO e o aro apagado do cap.
@@ -41,6 +56,10 @@ function M.run()
         { name = "weak",       stacks = 1, duration = 2 },
         { name = "vulnerable", stacks = 1, duration = 1 },
     }
+    -- Estados do inimigo que eram invisíveis: armadura (o dano sumia sem
+    -- explicação) e o modo agressivo abaixo de 30% de vida (×1.5 de dano).
+    game.enemy.armor = 9
+    game.enemy.attackPattern = "aggressive"
 
     local w, h = 1024, 768
     local canvas = love.graphics.newCanvas(w, h)
@@ -70,7 +89,27 @@ function M.run()
     -- HUD player panel + mana orb
     local hud = HudManager:new()
     hud:update(0.016)
+
+    -- Hover FALSIFICADO sobre a pill de Espinhos: exercita o caminho REAL
+    -- (StatusPill.drawRow detecta o hover → StatusTooltip.show → draw), então
+    -- a captura também prova que o tooltip do estado novo resolve no i18n.
+    local PlayerBuffPills = require("src.ui.PlayerBuffPills")
+    local StatusTooltip = require("src.ui.StatusTooltip")
+    local pills = PlayerBuffPills.collect(game.player, game)
+    local hoverIndex = 1
+    for i, p in ipairs(pills) do
+        if p.name == "thorn" then hoverIndex = i end
+    end
+    local pillSize = PlayerBuffPills.getPillSize(#pills, hud.playerPanel.x)
+    local realMouse = love.mouse.getPosition
+    local fakeX = hud.playerPanel.x + (hoverIndex - 1) * (pillSize + 8) + pillSize / 2
+    local fakeY = PlayerBuffPills.getBandTop(hud.playerPanel.y) + pillSize / 2
+    love.mouse.getPosition = function() return fakeX, fakeY end
+
     hud:draw(game)
+    StatusTooltip.draw()
+
+    love.mouse.getPosition = realMouse
 
     love.graphics.setCanvas()
 

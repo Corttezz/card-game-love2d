@@ -46,12 +46,12 @@ return {
         id = "warrior_shield_slam", name = "Escudo de Espinhos",
         type = "defense", subtype = "common",
         cost = 1, attack = 0, defense = 5,
-        description = "Ganha 5 de Bloqueio. Reflete 3 de dano ao defender.",
+        description = "Ganha 5 de Bloqueio. Espinhos 3: reflete quando o inimigo atacar.",
         image = "assets/cards/defense/ironShield.png",
         rarity = "common", class = "warrior",
         tags = { "defend", "armor", "thorn" },
         effects = {
-            { type = "on_defend_damage", value = 3, description = "Reflete 3 ao defender" },
+            { type = "on_defend_damage", value = 3, description = "Espinhos 3 (reflete no ataque do inimigo)" },
         },
     },
     warrior_helm_of_valor = {
@@ -111,12 +111,12 @@ return {
         type = "defense", subtype = "power",
         cost = 2, attack = 0, defense = 12,
         -- Rebalance v2 (Jul/2026): on_defend_damage 4 -> 7; tag 'fire' removida (morta, poluia afinidade).
-        description = "Ganha 12 de Bloqueio. Reflete 7 de dano ao defender.",
+        description = "Ganha 12 de Bloqueio. Espinhos 7: reflete quando o inimigo atacar.",
         image = "assets/cards/attack/theRock.png",
         rarity = "uncommon", class = "warrior",
         tags = { "defend", "armor", "thorn" },
         effects = {
-            { type = "on_defend_damage", value = 7, description = "Reflete 7 ao defender" },
+            { type = "on_defend_damage", value = 7, description = "Espinhos 7 (reflete no ataque do inimigo)" },
         },
     },
     warrior_ghostly_armor = {
@@ -401,7 +401,7 @@ return {
         id = "warrior_juggernaut", name = "Juggernaut",
         type = "joker", subtype = "power",
         cost = 2, attack = 0, defense = 0,
-        description = "+3 de Bloqueio em defesas. Reflete 6 de dano no primeiro Bloqueio de cada turno.",
+        description = "+3 de Bloqueio em defesas. O primeiro Bloqueio do turno arma Espinhos 6.",
         image = "assets/cards/attack/theRock.png",
         rarity = "rare", class = "warrior",
         tags = { "defend", "armor", "thorn" },
@@ -447,13 +447,13 @@ return {
         id = "warrior_eternal_bulwark", name = "Baluarte Eterno",
         type = "joker", subtype = "power",
         cost = 2, attack = 0, defense = 0,
-        description = "+2 de Bloqueio em defesas. Reflete 8 de dano no primeiro Bloqueio de cada turno.",
+        description = "+2 de Bloqueio em defesas. O primeiro Bloqueio do turno arma Espinhos 8.",
         image = "assets/cards/defense/ironShield.png",
         rarity = "legendary", class = "warrior",
         tags = { "defend", "thorn", "passive" },
         effects = {
             { type = "defense_bonus", target = "defense", value = 2 },
-            { type = "on_defend_damage", value = 8, description = "Reflete 8 no primeiro Bloqueio do turno" },
+            { type = "on_defend_damage", value = 8, description = "Arma Espinhos 8 no primeiro Bloqueio do turno" },
         },
     },
 }

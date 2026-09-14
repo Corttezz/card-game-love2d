@@ -159,9 +159,21 @@ function HudPlayerPanel:draw(player)
         local badgeCy = y + h / 2 + 4
         local targetSize = 44 -- tamanho do shield na tela
 
-        -- Halo steel pulsante atrás (feedback de "blocking", mantém do design antigo)
+        -- CAP DE BLOQUEIO (30/40/50 por ato). Era invisível: o painel mostrava
+        -- só o valor atual, então o jogador não tinha como saber que a próxima
+        -- defesa seria desperdiçada — decisão tomada às cegas todo turno no
+        -- late game. Aparece só quando PASSA A IMPORTAR (>= 70% do cap);
+        -- mostrar "/50" o tempo todo seria ruído nos turnos em que o teto está
+        -- longe.
+        local capMax = player.maxArmor or 0
+        local nearCap = capMax > 0 and armor >= capMax * 0.7
+        local atCap = capMax > 0 and armor >= capMax
+
+        -- Halo pulsante atrás (feedback de "blocking"). No cap ele vira âmbar:
+        -- a cor muda ANTES de o jogador ler o número.
         local pulse = 0.75 + math.sin(self.animTime * 3) * 0.25
-        love.graphics.setColor(Palette.STEEL_LIGHT[1], Palette.STEEL_LIGHT[2], Palette.STEEL_LIGHT[3], 0.30 * pulse)
+        local halo = atCap and Palette.AGED_GOLD or Palette.STEEL_LIGHT
+        love.graphics.setColor(halo[1], halo[2], halo[3], (atCap and 0.45 or 0.30) * pulse)
         love.graphics.circle("fill", badgeCx, badgeCy, targetSize / 2 + 4)
 
         -- Shield PNG custom
@@ -194,6 +206,18 @@ function HudPlayerPanel:draw(player)
         local tx = badgeCx - atw / 2
         local ty = badgeCy - ath / 2
         FontManager.drawWithOutline(atxt, tx, ty, { 1, 1, 1, 1 }, 0.9)
+
+        -- Teto, logo abaixo do valor. Só numeral — nada a traduzir.
+        if nearCap then
+            local capFont = FontManager.getResponsiveFont(0.018, 13)
+            love.graphics.setFont(capFont)
+            local ctxt = "/" .. tostring(capMax)
+            local ctw = capFont:getWidth(ctxt)
+            FontManager.drawWithOutline(ctxt,
+                badgeCx - ctw / 2, badgeCy + ath / 2 - 2,
+                atCap and Palette.AGED_GOLD_LIGHT or { 0.85, 0.85, 0.85, 1 }, 0.9)
+            love.graphics.setFont(armorFont)
+        end
     end
 
     love.graphics.setColor(1, 1, 1, 1)

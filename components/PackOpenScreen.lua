@@ -32,6 +32,7 @@ local Config         = require("src.core.Config")
 local Debug          = require("src.core.Debug")
 local FontManager    = require("src.ui.FontManager")
 local Palette        = require("src.ui.Palette")
+local ShopEngraving = require("src.ui.ShopEngraving")
 local PixelCanvas    = require("src.ui.PixelCanvas")
 local Button         = require("components.Button")
 local Sfx            = require("src.systems.Sfx")
@@ -223,6 +224,10 @@ end
 
 function PackOpenScreen:resize()
     if not self.visible or not self.pack then return end
+    -- Bitmaps gravados (cartuchos de custo/dano) sao rasterizados por tamanho:
+    -- estado cacheado novo morre no resize, no mesmo commit
+    -- (ui_layout_invariants, secao 2).
+    ShopEngraving.clearCache()
     -- ORDEM: arte primeiro (o layout mede image:getWidth()), zonas depois.
     self:_rebuildCardArt()
     self:_computeZones()
@@ -1043,9 +1048,13 @@ function PackOpenScreen:_setCardSelection(idx, card)
         self._selectionAnim = 1
     end
 
-    if Sfx.playWithVariation then
-        Sfx.playWithVariation("hoverCard", 1.1, 0.08, 0.5, 0.05)
-    end
+    -- Selecao tem som PROPRIO: cardSelect no volume do registro
+    -- (Config.Audio.CLICK_SELECT_VOLUME = 0.2). Era hoverCard com
+    -- `volume = 0.5` cravado no call site -- e opts.volume SUBSTITUI o
+    -- baseVolume (engine/AudioManager.lua), entao a MESMA amostra que a carta
+    -- toca a 0.03 no hover saia aqui 16x mais alta. Mesmo defeito, mesma
+    -- correcao da loja (CardRewardScreen:_playSlotHoverSfx).
+    Sfx.play("cardSelect", { pitch = 1.05 + (math.random() * 2 - 1) * 0.06 })
 end
 
 function PackOpenScreen:_clearCardSelection()
@@ -1148,11 +1157,14 @@ function PackOpenScreen:_drawRarityTags()
             local lit = { rc[1] + (1 - rc[1]) * 0.45,
                           rc[2] + (1 - rc[2]) * 0.45,
                           rc[3] + (1 - rc[3]) * 0.45, 1 }
-            love.graphics.setColor(0, 0, 0, 0.72)
-            love.graphics.rectangle("fill", tx - 7, ty - 3, tw + 14, font:getHeight() + 5)
-            love.graphics.setColor(rc[1], rc[2], rc[3], 0.85)
-            love.graphics.rectangle("line", tx - 7, ty - 3, tw + 14, font:getHeight() + 5)
-            FontManager.drawWithOutline(label, tx, ty, lit, 0.95)
+            -- Marcador de losango, o MESMO da loja -- nao mais uma caixinha
+            -- preta com contorno de 1px. A loja etiqueta raridade assim duas
+            -- telas antes; ter duas gramaticas pra mesma etiqueta era parte do
+            -- "cara de IA" que o dono reportou (Set/2026). A caixa saiu: menos
+            -- cromo, mesma informacao.
+            ShopEngraving.marker(math.floor(tx + tw * 0.5),
+                math.floor(ty + font:getHeight() * 0.5), label, lit, 11, 3)
+            love.graphics.setFont(font)
         end
     end
     love.graphics.setColor(1, 1, 1, 1)
@@ -1180,19 +1192,16 @@ end
 -- "chip" de metadado: rotulo pequeno + valor, com moldura. E como a loja
 -- (src/ui/CardDetailPanel.lua) apresenta custo/dano, e aqui o jogador precisa
 -- DA MESMA informacao: este e o momento de decisao dele.
-local function drawChip(x, y, w, h, label, value, colour)
-    love.graphics.setColor(0, 0, 0, 0.45)
-    love.graphics.rectangle("fill", x, y, w, h)
-    love.graphics.setColor(colour[1], colour[2], colour[3], 0.75)
-    love.graphics.rectangle("line", x, y, w, h)
-    local fl = FontManager.getFont(8)
-    love.graphics.setFont(fl)
-    love.graphics.setColor(0.80, 0.76, 0.70, 0.95)
-    love.graphics.printf(label, x, y + 4, w, "center")
-    local fv = FontManager.getFont(13)
-    love.graphics.setFont(fv)
-    love.graphics.setColor(colour[1], colour[2], colour[3], 1)
-    love.graphics.printf(value, x, y + 4 + fl:getHeight() + 1, w, "center")
+-- Cartucho de metadado: rotulo pequeno + valor. E como a loja
+-- (src/ui/CardDetailPanel.lua) apresenta custo/dano, e aqui o jogador precisa
+-- DA MESMA informacao: este e o momento de decisao dele.
+--
+-- Antes era retangulo preto a 45% com contorno de 1px na cor do tipo -- o
+-- mesmo dialeto de campo de formulario que o dono reprovou na loja. Agora usa
+-- a chapa gravada compartilhada (bevel, cunhas de canto, grao e desgaste).
+local function drawChip(x, y, w, h, label, value, colour, seed)
+    ShopEngraving.valuePlate(x, y, w, h, label, value,
+        { accent = colour, seed = seed or 0 })
 end
 
 function PackOpenScreen:_drawDetailBand()
@@ -1286,7 +1295,8 @@ function PackOpenScreen:_drawDetailBand()
     local cx = d.x + d.w - PAD - chipsW
     local cy = d.y + math.floor((d.h - chipH) * 0.5)
     for _, c in ipairs(chips) do
-        drawChip(cx, cy, chipW, chipH, c[1], c[2], c[3])
+        drawChip(cx, cy, chipW, chipH, c[1], c[2], c[3],
+            ShopEngraving.seedOf(card.id))
         cx = cx + chipW + chipGap
     end
 

@@ -875,8 +875,16 @@ local function playBattle(game, label)
         end
         if game.enemy:isAlive() and game.turn == "enemy" then
             game:enemyTurn()
-            -- 0.8s: cobre a investida completa (apex do dano em 0.34s)
-            pump(game, 0.8)
+            -- Set/2026: o turno do inimigo virou uma CADEIA de beats
+            -- (telegrafia > golpe > espinhos > veneno > upkeep > compra >
+            -- gatilhos > a vez volta) e nao tem mais duracao fixa. Pumpar um
+            -- numero magico mediria meio turno: esperamos a fila DRENAR.
+            local guardET = 0
+            while game.combatAnimationSystem:isBlocking() and guardET < 600 do
+                pump(game, 1 / 30)
+                guardET = guardET + 1
+            end
+            pump(game, 0.2)
         end
 
         -- DETECTOR "escudo furado" (o bug que o dono pegou jogando e o

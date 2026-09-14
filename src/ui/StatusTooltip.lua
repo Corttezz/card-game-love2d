@@ -140,12 +140,29 @@ local function capitalize(s)
     return string.upper(string.sub(s, 1, 1)) .. string.sub(s, 2)
 end
 
--- Resolve textos via I18n, com fallbacks sãos
+-- Resolve textos via I18n, com fallbacks sãos.
+-- ctx.variant escolhe uma VARIAÇÃO da descrição: `status.<x>.desc_<variant>`.
+-- Nasceu do estado permanente (joker/passiva), onde interpolar {duration} de
+-- um buff de 99 turnos imprimia "dura 99 turno(s)" — mentira com cara de dado.
+-- Variante ausente cai na desc normal (e avisa, ui_layout_invariants §3).
+local warnedVariant = {}
 local function resolveTexts(statusName, ctx)
     local nameKey = "status." .. statusName .. ".name"
     local descKey = "status." .. statusName .. ".desc"
     local name = I18n.t(nameKey, nil, capitalize(statusName))
-    local desc = I18n.t(descKey, ctx, "")
+    local desc = ""
+    local variant = ctx and ctx.variant
+    if variant then
+        desc = I18n.t(descKey .. "_" .. variant, ctx, "")
+        if desc == "" and not warnedVariant[statusName .. "/" .. variant] then
+            warnedVariant[statusName .. "/" .. variant] = true
+            print("[StatusTooltip] sem chave " .. descKey .. "_" .. variant
+                .. " — usando a desc padrao")
+        end
+    end
+    if desc == "" then
+        desc = I18n.t(descKey, ctx, "")
+    end
     return name, desc
 end
 

@@ -64,6 +64,38 @@ function M.run()
     t:noerror("update sem moedas", function() CoinBurst.update(0.016) end)
     t:noerror("draw sem moedas", function() CoinBurst.draw() end)
 
+    -- REGRESSAO (Set/2026): a moeda que CHEGOU nao pode continuar se mexendo.
+    -- A primeira versao era fisica livre e so iniciava o fade na chegada: a
+    -- moeda seguia sendo integrada, passava do contador, era puxada de volta e
+    -- ORBITAVA ate sumir. O dono viu e descreveu como "umas particulas de
+    -- moeda ficam meio que rodando e caindo". Fade nao encerra movimento.
+    CoinBurst.clear()
+    _G.gameSettings.reducedMotion = false
+    CoinBurst.spawn(50, 400, 20)
+    -- deixa todas chegarem (voo 0,55s + stagger)
+    pump(1.0)
+    local pousadas, movidas = 0, 0
+    for _, c in ipairs(CoinBurst._coins()) do
+        if c.landed then
+            pousadas = pousadas + 1
+            local px, py = c.x, c.y
+            CoinBurst.update(1 / 60)
+            if c.x ~= px or c.y ~= py then movidas = movidas + 1 end
+        end
+    end
+    t:truthy("ha moedas ja pousadas pra checar", pousadas > 0)
+    t:eq("moeda pousada NAO se move mais", movidas, 0)
+
+    -- E toda moeda chega ao contador: nenhuma pode expirar no meio do caminho.
+    CoinBurst.clear()
+    CoinBurst.spawn(50, 400, 20)
+    pump(1.0)
+    local fora = 0
+    for _, c in ipairs(CoinBurst._coins()) do
+        if not c.landed then fora = fora + 1 end
+    end
+    t:eq("toda moeda chegou ao alvo em 1s", fora, 0)
+
     return t:done()
 end
 
