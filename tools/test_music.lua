@@ -127,6 +127,41 @@ function M.run()
         t:truthy("audio indisponivel: sobreposicao nao pode ser medida aqui", true)
     end
 
+    -- ===== ESPELHO DESSINCRONIZADO (regressao Set/2026) =====
+    -- "Abro o jogo, clico em continuar e a musica de fundo continua sendo a
+    -- do menu." O diretor guardava `_current` como espelho do que tocava; se
+    -- o espelho desencontrasse do AudioManager (o menu chama playMusic
+    -- direto, e ha markCurrent), ele passava a achar que ja estava tocando a
+    -- faixa certa e nunca mais trocava. Agora a decisao le o estado REAL.
+    local AM = require("engine.AudioManager")
+    local audio2 = AM:new()
+    if audio2:isAudioAvailable() then
+        _G.audioSystem = audio2
+        audio2:setGroupVolume("master", 0)
+        MD.registerTracks(audio2)
+        audio2:loadSound("menuMusic", "audio/music.mp3", {
+            volume = 0.6, group = "music", stream = true, loop = true })
+
+        -- menu tocando de verdade
+        audio2:playMusic("menuMusic")
+        -- ... e o espelho do diretor MENTINDO que a faixa do ato ja entrou
+        MD.markCurrent("musicAct1")
+
+        MD.apply("playing", { actNumber = 1 }, nil)
+        t:eq("troca acontece mesmo com o espelho mentindo", audio2.currentMusic, "musicAct1")
+
+        -- E o inverso: espelho dizendo "menu" com o ato ja tocando nao
+        -- redispara a mesma faixa.
+        MD.markCurrent("menuMusic")
+        MD.apply("playing", { actNumber = 1 }, nil)
+        t:eq("nao redispara a faixa que ja toca", audio2.currentMusic, "musicAct1")
+        t:eq("e o espelho se corrige sozinho", MD._current, "musicAct1")
+
+        audio2:stopMusic()
+    else
+        t:truthy("audio indisponivel: espelho nao pode ser medido aqui", true)
+    end
+
     return t:done()
 end
 

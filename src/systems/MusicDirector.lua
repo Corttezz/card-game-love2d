@@ -108,6 +108,13 @@ end
 
 -- Chamado todo frame pelo main.lua. `nil` de `pick` significa "mantenha o que
 -- está tocando" (ex.: recompensa pós-batalha, que é uma pausa dentro do ato).
+-- O que o AudioManager REALMENTE está tocando. Fonte da verdade — ver o
+-- comentário em `apply`.
+local function tocandoAgora()
+    local a = _G.audioSystem
+    return a and a.currentMusic or nil
+end
+
 function MusicDirector.apply(state, run, nodeType)
     if not MusicDirector.enabled then return end
 
@@ -115,9 +122,32 @@ function MusicDirector.apply(state, run, nodeType)
     if not wanted then return end
 
     local code = resolve(wanted)
-    if not code or code == MusicDirector._current then return end
+    if not code then return end
+
+    -- COMPARA COM O QUE TOCA DE VERDADE, não com a variável própria.
+    --
+    -- `_current` é um espelho, e espelho sai de sincronia: qualquer caminho
+    -- que chame `Sfx.playMusic` direto (o menu faz), um `markCurrent` no
+    -- momento errado, ou um play que falhou, e o diretor passa a acreditar
+    -- que já está tocando a faixa certa — então nunca mais troca. O sintoma
+    -- é exatamente "abro o jogo, clico em Continuar e a música do menu
+    -- continua" (dono, Set/2026): o diretor pede a faixa do ato UMA vez, algo
+    -- desencontra o espelho, e a partir dali ele acha que não há nada a fazer.
+    --
+    -- Perguntando ao AudioManager, a decisão passa a ser tomada sobre o
+    -- estado real e o espelho vira só cache.
+    local atual = tocandoAgora() or MusicDirector._current
+    if code == atual then
+        MusicDirector._current = atual
+        return
+    end
 
     local fade = (code == "musicBoss") and FADE_FAST or FADE_SLOW
+    -- Log de troca: sem isto, "a música está errada" não tem como ser
+    -- diagnosticado a não ser adivinhando (foi o que aconteceu).
+    print(string.format("[Musica] %s -> %s (estado=%s, no=%s)",
+        tostring(atual or "nada"), tostring(code), tostring(state),
+        tostring(nodeType or "-")))
     Sfx.playMusic(code, { fadeDuration = fade })
     MusicDirector._current = code
 end
