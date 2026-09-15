@@ -88,6 +88,17 @@ ffmpeg -i in.mp3 -filter_complex \
   [b][h]acrossfade=d=2.0:c1=tri:c2=tri[o]" -map "[o]" -ar 44100 -b:a 128k out.mp3
 ```
 
+
+**⚠️ O 2.0s do passo 2 é CHUTE, e chute errado dá DESNIVEL.** O corte vira as
+DUAS pontas da faixa final: o trecho depois dele passa a ser o começo, e o
+trecho antes dele, o fim. Se cair logo depois de um ataque, o fim fica muito
+mais alto que o começo e o `check_loop` acusa. Aconteceu na refação do ato 1:
+com 2.0s a razão prevista era **3,81x**; varrendo candidatos e escolhendo o
+ponto em que o RMS dos 400ms ANTES e DEPOIS do corte é igual, caiu pra
+**1,00x**. É uma varredura de dez linhas (decodificar mono 8kHz, comparar duas
+janelas) e vale sempre — o melhor corte saiu em 7,3s, 4,3s, 6,0s e 1,6s nas
+quatro tentativas, nunca em 2,0s.
+
 O passo 2 é o que apaga fade-out e clique de uma vez: a emenda deixa de ser um
 ponto e vira uma mistura. Custa 2s de duração e resolveu as 6 faixas.
 
@@ -119,7 +130,7 @@ finais e dos iniciais (fade colado pelo modelo; saudável entre 0,5× e 2,0×) e
 | `music-act3` | 0,19k | cellos/contrabaixo, ostinato dissonante, 50 BPM, frígio |
 | `music-boss` | 0,39k | tambores de guerra + metais graves + tremolo agudo, 100 BPM |
 | `music-rest` | 0,42k | violoncelo solo, melodia de ninar, fogueira ao fundo |
-| `music-act1` | 0,49k | alaúde dedilhado + viola + tambor de moldura, 70 BPM, dórico |
+| `music-act1` | 0,78k | alaúde dedilhado (melodia AGUDA) + viola + tambor de moldura, 76 BPM, dórico — refeito em Set/2026 pra sair de cima do menu (0,51k); ver [[known_gaps]] |
 | `music-act2` | 1,49k | cordas em arco + saltério + sino distante, 60 BPM, eólio |
 | `music-shop` | 0,24k | alaúde + viola da gamba + tambor de mão, 85 BPM, mixolídio |
 

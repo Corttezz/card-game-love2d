@@ -183,6 +183,32 @@ ARRANJO (trocar o instrumento que carrega a melodia), nunca de adjetivo.
 As outras 5 colisoes do rodape sao entre contextos que raramente se seguem
 (boss/rest, rest/act1) ou entre atos distantes (act1/act5, act2/act6).
 
+**Atualizacao 2 (Set/2026) — CORRIGIDO, com uma troca consciente.** A faixa do
+ato 1 foi refeita: **0,49k -> 0,78k**, salto 0,0080, razao 0,91x. A colisao com
+o MENU morreu (0,51k vs 0,78k = 53% de distancia).
+
+Em troca nasceu uma colisao ato1 <-> ato4 (0,78k vs 0,88k, 11%). Isso e uma
+MELHORA e nao um empate, pelo criterio que esta pagina ja usava: menu->ato 1 e
+uma transicao IMEDIATA, acontece em toda run que comeca; ato 1 -> ato 4 nunca e
+consecutiva (passam dois atos inteiros no meio). Nota sobre o alvo: a janela
+"0,65-0,80k" estava otimista — com o ato 4 em 0,88k o teto real pra zero
+colisoes e **0,73k**. 0,78k ficou dentro da janela pedida mas acima desse teto.
+
+Quatro tentativas, e as duas primeiras erraram por LADOS OPOSTOS:
+  1. flauta doce como melodia principal .................... 0,86k (colide c/ ato4)
+  2. + viola baixa segurando drone grave .................... 0,10k RETUMBO
+  3. alaude e flauta doce revezando a melodia ............... 0,84k
+  4. alaude sozinho, melodia AGUDA nas cordas ............... 0,78k  <- instalada
+A 4 e a menos invasiva musicalmente: mantem o arranjo que o dono aprovou
+(alaude + viola + tambor de moldura, dorico) e so muda o registro. As opcoes
+1 e 3 trocavam o instrumento que carrega a melodia, o que e mudanca maior numa
+faixa de que ele nunca reclamou.
+
+⚠️ **Limite de quem fez:** brilho e emenda sao MEDIDOS; "se a melodia ficou
+boa" nao foi avaliado por ninguem que ouviu. Se soar pior que a anterior, o
+original esta preservado no historico do git.
+
+
 ## Salao do chefe do ato 3: o TRONO fica escondido atras do chefe (Set/2026)
 
 Queixa original do dono foi "a composicao da sala do chefe do ato 3 esta
@@ -232,4 +258,28 @@ EMITTERS[3]. Trocar a arte de um ato que o dono ja joga, sem ganho claro,
 nao compensa. Se for regerar, o alvo e: vao claro atras do CORPO **e** trono
 visivel ACIMA DA CABECA (fora da linha do corpo), com a laje comecando em
 ~0.72 pra manter yr 0.78.
+
+**Atualizacao 3 (Set/2026) — mais duas tentativas, TODAS falharam no mesmo
+ponto; hall 3 fica como esta.** O alvo era juntar as tres coisas de uma vez:
+vao claro atras do CORPO, trono ACIMA DA CABECA (fora de x 0.375-0.625 /
+yr-0.43..yr) e laje comecando em ~0.72. Quatro artes geradas ao todo, e o
+problema nunca foi o contraste nem o chao — foi sempre o TRONO:
+
+  - "trono numa alcova elevada, bem acima do vao" -> o modelo pos o trono no
+    CHAO, centralizado, na altura do corpo. Mesmo defeito de hoje, so que
+    bonito. (`tools/preview_out/hall3_tentativa_trono_no_corpo.png`)
+  - "trono numa sacada alta + o chao COMPLETAMENTE VAZIO" -> o trono sumiu por
+    completo e a sala virou caverna: sem colunas, sem braseiros, sem salao.
+    (`tools/preview_out/hall3_tentativa_sem_trono.png`)
+
+**Padrao:** "sala do trono" puxa o modelo pra por o trono no centro do chao, e
+proibir isso faz ele APAGAR o trono em vez de subi-lo. Os dois vaos claros
+saem otimos; o trono e que nao sobe.
+
+Se alguem voltar: parar de pedir "trono" na mesma imagem. Duas saidas que nao
+foram tentadas — (a) gerar o salao SEM trono e compor o trono por cima, num
+retangulo alto, com o mesmo composite cirurgico usado nas animacoes; (b)
+aceitar outro simbolo de identidade que viva nas laterais (estandartes,
+estatuas), abrindo mao do trono. Custo ate aqui: 4 geracoes, nenhuma instalada.
+
 
