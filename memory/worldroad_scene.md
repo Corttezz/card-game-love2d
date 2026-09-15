@@ -1713,7 +1713,7 @@ braços; `forkhover` = porta aberta). ⚠️ O modo fork passava `1` fixo no
 `WorldRoad.draw` e chamava `setBiome(1)` todo frame — TODA captura de fork
 de outro ato até aqui mostrava o ato 1. Corrigido.
 
-### Duas lições de MÉTODO do v11 (valem fora desta cena)
+### Lições de MÉTODO do v11 (valem fora desta cena)
 
 **1. Uma trava que mede a coisa errada é pior que trava nenhuma** — ela dá
 confiança falsa. As duas do lote falharam pelos dois jeitos clássicos:
@@ -1741,6 +1741,19 @@ barraca do pântano a arte perdeu as abas laterais de pano, mas a descrição de
 idle continuava pedindo "as abas balançam". Pedir movimento de algo que não
 existe é convidar o v3 a INVENTAR — e inventar é justamente o que faz ele
 ferver a estrutura. A anim segue o que está desenhado.
+
+**4. `git status` responde "está salvo?"; diff contra um SHA anotado responde
+outra pergunta.** Com mais de uma frente commitando, o `HEAD` se move por
+baixo de você: comparar com um SHA que você anotou antes responde "mudou
+desde aquele ponto?", e uma peça commitada DEPOIS dele aparece como
+"diferente", o que é fácil de ler como "não commitada". Aconteceu aqui — as
+três peças refeitas diferiam de `36d4d31` (o commit do lote) justamente
+porque já estavam salvas em `bf1b770`. As perguntas certas pra "está salvo?"
+são `git status --short` (vazio = tudo commitado) e `git log -1 -- <arquivo>`
+(qual commit carrega este arquivo). É a MESMA família das lições 1 e 2: a
+medição estava correta e respondia uma pergunta parecida — só não era a
+pergunta que se queria responder. Antes de concluir a partir de um número,
+confira se ele mede o que você está afirmando.
 
 ## Backlog
 
