@@ -1,0 +1,20 @@
+Frames de PixelLab (animate_object v3, frame_count=4) das cinco gemas do mago —
+REPROVADOS na inspecao visual em Set/2026, guardados como evidencia.
+
+O que cada um fez de errado (contact sheet olhado a 6x, frames 0..4):
+  lightning  a pedra inteira bombeia de ambar para amarelo claro; as facetas
+             internas se reorganizam a cada frame.
+  ice        o interior vira uma mancha branca no frame 2 e o contorno mexe.
+  fire       o frame 2 desbota para pessego — cor fora da paleta do elemento.
+  dark       as facetas fervem; frame 3 abre um buraco preto no centro.
+  holy       os RAIOS encolhem (silhueta mudando) e o brilho branco some.
+
+Causa comum: o v3 REDESENHA o sprite inteiro a cada frame, e num canvas de 48px
+com interior facetado ele tem liberdade demais. Insistir no adjetivo proibitivo
+nao resolve (a memoria ja registrava isso). O que resolveu foi trocar o metodo:
+tools/bake_orb_anim.lua deriva os frames do PNG que ja esta no jogo, promovendo
+pixel na rampa de cor do PROPRIO sprite — paleta e silhueta ficam impossiveis
+de mudar, por construcao.
+
+As animacoes continuam na conta PixelLab com display_name "idle_glow" nos
+objetos das gemas. Nao sao consumidas por nada no jogo.

@@ -1632,6 +1632,87 @@ imersiva com a porta abrindo + som.
   morreu junto com o elite no interior.) Demo tecla **B** posiciona camZ no
   fim do trecho e abre a porta.
 
+## v11 (Set/2026) — LUGAR POR ATO: 5 locais × 6 atos
+
+Pedido do dono, jogando: "cada um desses locais aí customizado por ato — no
+ato 1 a loja é diferente, no ato 2 a loja é diferente, e isso para cada um
+dos locais (...) se atente ao chão, se atente ao ato". Aviso explícito de que
+refazer custa dinheiro à toa.
+
+**Resolução por bioma.** `landmarkKeyFor(nodeType, bid)` devolve
+`<bid>_landmark_<tipo>` quando a arte do bioma existe; senão cai no genérico
+**e AVISA** (fallback silencioso é proibido). Os caminhos reaproveitam os
+loaders que já existiam, sem tocar neles: base em
+`assets/sprites/world/<key>.png` (tryLoadPng), frames em
+`anim/<key>/0..8.png` (readAnimFrames).
+- **O ato 1 É o dono da arte genérica** (`LANDMARK_GENERIC_BIOME = "fields"`):
+  não duplica PNG nem avisa por ele.
+- **O conjunto do bioma é ATÔMICO**: se o tipo tem anim de estado (a porta da
+  loja) e ela falta, o bioma inteiro volta pro genérico. Meia-loja do bioma
+  com a porta da cabana de outro seria pulo de identidade na cara do jogador.
+- As tabelas de config (`LANDMARK_SIZE/ANIM/HOVER_SOUND/SHADOW_PAD/LIGHT/
+  SMOKE`) continuam por TIPO; `landmarkFamily` tira o prefixo do bioma e
+  `lmCfg` deixa a chave CHEIA sobrepor. **Toda loja e toda tenda precisa de
+  entrada própria de `SHADOW_PAD` mesmo valendo 0** — sem ela herdaria os 12
+  da cabana do ato 1 e a sombra sairia do pé.
+
+**A fumaça é do BIOMA, não da fumaça** (`LANDMARK_SMOKE[...].color`): ela vive
+contra o céu. Céu escuro (colinas, abismo, pântano) pede fumaça clara; céu
+claro (geleira, crepúsculo) pede fumaça escura, senão ela simplesmente some.
+Vale pra vapor e faísca que dependam de contraste com o céu.
+
+**Duas teimosias do PixelLab que não se resolvem por prompt** (3 tentativas
+gastas provando a primeira):
+1. Ele SEMPRE pinta uma laje de chão chapada embaixo do prédio. A saída foi
+   inverter: o prompt PEDE o chão certo do bioma, e a cirurgia
+   (`foot.mjs`) só (a) apaga o que passa da PAREDE no rodapé e (b) puxa o
+   que fica pro tom do chão do bioma. Objeto ALTO E FINO (estandarte,
+   obelisco, fogueira) NÃO se apara — a base dele é legitimamente mais larga
+   que o corpo, igual ao monte de cascalho do ato 1.
+   Regra extra: **tufo de grama verde-vivo no pé é corpo estranho** em bioma
+   cuja relva não é verde (colinas = turfa azul-esverdeada, dusk = restolho);
+   a harmonização normal não pega porque poupa pixel saturado, então há um
+   passe próprio pra vegetação. Dither na borda foi TESTADO E DESCARTADO:
+   a 1:1 na tela vira tracejado visível.
+2. O v3 não segura sprite parado (mesma lição dos castelos v9.8). Composite
+   cirúrgico com 3 máscaras, escolhidas por tipo:
+   - `glow` — pixels emissivos (saturados OU muito claros) em qualquer frame,
+     dilatados 2px. **Independente de MATIZ**: serve pra janela âmbar, chama
+     laranja, runa violeta e cristal ciano. Loja / fogueira / elite.
+   - `rect` — retângulo do diff f0-vs-f8. É a porta abrindo.
+   - `above` — congela SÓ o rodapé. Estandarte e tenda, onde o pano ondulando
+     É a animação e mascarar por luz mataria ela.
+
+**Medir, não olhar o contact sheet.** Jurei ver o telhado de neve mexendo num
+sheet 3× e a medição provou 0px de diferença — a vizinhança de sprites com
+luz diferente engana. As travas que valem, impressas pelo compose de cada
+conjunto: (a) frame 0 == base bit a bit, (b) **nada muda fora da máscara**
+(prova que a estrutura não ferveu — a versão anterior dessa trava media "o
+rodapé não mudou" e dava falso alarme no abismo, onde a brasa do chão pulsa
+de propósito), (c) emenda do loop pela diferença REAL entre o último e o
+primeiro frame contra um passo médio (a versão anterior comparava CONTAGEM de
+pixels ativos, que é só proxy). Emenda > 1.6× → ping-pong; foi assim que
+`abyss/highlands/frost_landmark_elite` e `abyss_landmark_rest` ganharam
+entrada própria em `LANDMARK_ANIM` (o rest/elite do ato 1 fecha o loop).
+
+**Custo real:** os 24 conjuntos + piloto sairam por **127 gerações** (estimei
+750-1100). Uma base = ~5, uma anim v3 = ~1-2. O caro é REFAZER: 3 bases
+descartadas no piloto. Retrabalho: 4 peças (elite e loja do abismo, fogueira
+do pântano, tufos do highlands).
+
+**Ferramentas** (scratchpad, Node — o Python da máquina está quebrado):
+`wave.mjs` (driver da onda, fases base/anim, **idempotente**: a primeira
+rodada morreu no download e teria pago tudo de novo), `foot.mjs`,
+`compose.mjs`, `install_frames.mjs`, `medir.mjs`, `png.mjs` (decode/encode
+RGBA puro). ⚠️ **Frame de animação mora em URL ASSINADA do Backblaze: mandar
+o header Authorization junto devolve 401** — a assinatura já é a credencial.
+No jogo: `love . grade_locais` monta a grade 5×6 de conferência a partir das
+cenas reais, e `love . screenshot_worldroad b<N>_fork|forkb|forkhover` captura
+a encruzilhada de um ato (`forkb` = elite/evento, porque showFork trava em 3
+braços; `forkhover` = porta aberta). ⚠️ O modo fork passava `1` fixo no
+`WorldRoad.draw` e chamava `setBiome(1)` todo frame — TODA captura de fork
+de outro ato até aqui mostrava o ato 1. Corrigido.
+
 ## Backlog
 
 - [ ] **Validação visual v3.3 nativa** (precisa driver resetado; testar em
@@ -1641,6 +1722,6 @@ imersiva com a porta abrindo + som.
 - [ ] Herói PixelLab (create_character vista NORTE + animate walk 2-4 frames)
 - [ ] Entrada do inimigo ao fim da viagem (materialize/juice em vez de pop)
 - [ ] Sfx de passos durante travel (Sfx.play com pitchVariation)
-- [ ] Variação de landmark por bioma (hoje é a mesma torre com paleta trocada)
+- [x] ~~Variação de landmark por bioma~~ — FEITO no v11 (5 locais × 6 atos)
 - [ ] Avaliar textura modo-7 na grama com pattern DEDICADO de terreno
   (gerar via PixelLab um tile "grass_ground" sem motivos — aí sim funciona)

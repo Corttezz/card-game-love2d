@@ -47,6 +47,15 @@ function M.run(mode)
         mode = mode:gsub("^wide_", "")
     end
 
+    -- prefixo "b<N>_": força o BIOMA/ATO do modo (fork etc. nasciam sempre
+    -- no bioma 1). Necessário pra validar arte de lugar POR ATO — a mesma
+    -- encruzilhada no chão de gelo, de pântano, de abismo.
+    local biomeOverride = nil
+    if mode and mode:match("^b%d_") then
+        biomeOverride = tonumber(mode:match("^b(%d)_"))
+        mode = mode:gsub("^b%d_", "")
+    end
+
     local width, height = love.graphics.getDimensions()
 
     love.graphics.clear(0, 0, 0, 1)
@@ -137,16 +146,24 @@ function M.run(mode)
         overlays(0, topBarH, width, height - topBarH)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
-    elseif mode == "fork" or mode == "fork2" then
+    elseif mode == "fork" or mode == "fork2" or mode == "forkhover"
+        or mode == "forkb" then
         -- A ENCRUZILHADA (v5): estrada bifurcada com 3 marcos + hover no 2.
         -- "fork2" captura o MEIO da convergência (braço escolhido virando
         -- a estrada central).
         local topBarH = 80
         WorldRoad.clearCache()
-        WorldRoad.setBiome(1)
+        WorldRoad.setBiome(biomeOverride or 1)
+        WorldRoad._blend = nil            -- paleta PURA do bioma pedido
         WorldRoad._camZ = 5.5
         for _ = 1, 30 do WorldRoad.update(1 / 30) end
-        WorldRoad.showFork({
+        -- showFork trava em 3 braços (regra do jogo, não mexo nela), e são 5
+        -- tipos de lugar: "forkb" mostra os outros dois pra conferência.
+        WorldRoad.showFork(mode == "forkb" and {
+            { type = "elite", label = "Elite", desc = "Algo forte espera" },
+            { type = "event", label = "Evento", desc = "Um encontro estranho" },
+            { type = "battle", label = "Batalha", desc = "Um inimigo bloqueia a estrada" },
+        } or {
             { type = "battle", label = "Batalha", desc = "Um inimigo bloqueia a estrada" },
             { type = "rest",   label = "Descanso", desc = "Fogueira acolhedora" },
             { type = "shop",   label = "Loja", desc = "Um mercador acena" },
@@ -155,10 +172,20 @@ function M.run(mode)
         -- de draw pra calcular as hitboxes)
         for _ = 1, 20 do
             WorldRoad.update(1 / 30)
-            WorldRoad.draw(0, topBarH, width, height - topBarH, 1)
+            WorldRoad.draw(0, topBarH, width, height - topBarH, biomeOverride or 1)
             overlays(0, topBarH, width, height - topBarH)
         end
         if WorldRoad._fork then WorldRoad._fork.hover = 2 end
+        -- "forkhover": a LOJA com o mouse em cima — é o único jeito de ver a
+        -- porta ABERTA (anim de estado indexada por _hoverK). Não dá pra
+        -- forjar via f.hover: o update RECALCULA hover pelo mouse real a cada
+        -- tick e o progresso decairia. Crava o progresso no fim, direto.
+        if mode == "forkhover" and WorldRoad._fork then
+            local f = WorldRoad._fork
+            f._hoverK = f._hoverK or {}
+            f._hoverK[3] = 1
+            f.hover = 3
+        end
         if mode == "fork2" then
             local f = WorldRoad._fork
             local b = f and f.markBoxes and f.markBoxes[3]
@@ -167,12 +194,12 @@ function M.run(mode)
             end
             for _ = 1, 85 do   -- atravessa a convergência INTEIRA (2.4s)
                 WorldRoad.update(1 / 30)   -- exercita onChosen + _landmark
-                WorldRoad.draw(0, topBarH, width, height - topBarH, 1)
+                WorldRoad.draw(0, topBarH, width, height - topBarH, biomeOverride or 1)
                 overlays(0, topBarH, width, height - topBarH)
             end
         end
         love.graphics.clear(0, 0, 0, 1)
-        WorldRoad.draw(0, topBarH, width, height - topBarH, 1)
+        WorldRoad.draw(0, topBarH, width, height - topBarH, biomeOverride or 1)
         overlays(0, topBarH, width, height - topBarH)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)

@@ -322,16 +322,17 @@ function ShopSystem:buildServiceOffer(id)
     local cost = ShopServices.cost(id, runManager)
     if not cost then return nil end
 
+    local value = ShopServices.value(id)
     return {
         type = "upgrade",
         id = id,
         -- Fallback de dev sem acento (mesma regra do resto do arquivo): o
         -- texto do jogador sai de `shop_items.<id>` nos 5 locales.
         name = itemName(id, id),
-        description = itemDesc(id, ""),
+        description = itemDesc(id, "", { value = value }),
         cost = cost,
         effect = svc.effect,
-        value = 1,
+        value = value,
         -- A UI não precisa saber COMO o serviço funciona, mas o picker sim.
         picker = svc.picker,
         isService = true,

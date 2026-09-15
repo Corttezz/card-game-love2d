@@ -1295,6 +1295,12 @@ local LANDMARK_ANIM = {
     landmark_elite  = { fps = 9, hoverFpsK = 1.6 },
     landmark_event  = { fps = 7, pingpong = true, hoverFpsK = 1.6 },
     landmark_shop   = { fps = 6, pingpong = true, hoverAnim = "landmark_shop_hover" },
+    -- v11: os rest/elite POR ATO medem emenda ~2x (o genérico do ato 1 fecha
+    -- o loop e roda direto). Ping-pong neles, medido um a um no compose.
+    abyss_landmark_rest      = { fps = 10, pingpong = true, hoverFpsK = 1.8 },
+    abyss_landmark_elite     = { fps = 9,  pingpong = true, hoverFpsK = 1.6 },
+    highlands_landmark_elite = { fps = 9,  pingpong = true, hoverFpsK = 1.6 },
+    frost_landmark_elite     = { fps = 9,  pingpong = true, hoverFpsK = 1.6 },
     -- v9.8: CASTELOS VIVOS (feedback: "totalmente estáticos") — bandeiras
     -- tremulam, janelas/fogo/olhos pulsam; frames em anim/<bid>_castle/.
     -- pingpong em todos (pano e brilho reiniciando no frame 0 dá pulo)
@@ -1313,8 +1319,28 @@ local LANDMARK_HOVER_SOUND = {
     landmark_elite  = "forkHoverElite",
     landmark_event  = "forkHoverTent",
 }
+-- v11: a chave CHEIA (<bid>_landmark_<tipo>) sobrepõe a do tipo — cada arte
+-- de ato tem seu próprio pé de parede e sua própria boca de chaminé, medidos
+-- no PNG (perfil de opacidade por linha, receita do v9.5).
 local LANDMARK_SHADOW_PAD = {
     landmark_shop = 12, landmark_event = 5, landmark_chest = 6,
+    -- v11: TODA loja e TODA tenda de ato precisa de entrada própria, mesmo
+    -- quando o valor é 0 — sem ela a chave cai na família e herdaria os 12
+    -- da cabana do ato 1, jogando a sombra pra fora do pé. Medido no PNG:
+    -- linhas do rodapé com menos de 75% da largura máxima são saliência
+    -- (degrau, deck, monte), não parede.
+    highlands_landmark_shop = 0,  abyss_landmark_shop = 9,
+    frost_landmark_shop     = 5,  marsh_landmark_shop = 5,
+    dusk_landmark_shop      = 4,
+    highlands_landmark_event = 4, abyss_landmark_event = 4,
+    frost_landmark_event     = 3, marsh_landmark_event = 5,
+    dusk_landmark_event      = 4,
+    highlands_landmark_rest = 4,  abyss_landmark_rest = 5,
+    frost_landmark_rest     = 8,  marsh_landmark_rest = 8,
+    dusk_landmark_rest      = 4,
+    highlands_landmark_battle = 3, frost_landmark_battle = 4,
+    highlands_landmark_elite  = 3, frost_landmark_elite  = 3,
+    marsh_landmark_elite      = 5,
 }
 local LANDMARK_LIGHT = {
     landmark_rest  = { color = { 1.00, 0.62, 0.28 }, radiusK = 0.55, intensity = 0.55 },
@@ -1325,7 +1351,101 @@ local LANDMARK_LIGHT = {
 local LANDMARK_SMOKE = {
     -- xf/yf = boca da chaminé em fração do canvas (medido no PNG)
     landmark_shop = { xf = 0.325, yf = 0.02 },
+    -- color: ver drawLandmarkSmoke — valor escolhido CONTRA o céu do bioma
+    -- céu ESCURO (colinas, abismo, pântano) → fumaça clara, a de sempre.
+    -- céu CLARO (geleira, crepúsculo) → fumaça escura e densa, senão some.
+    highlands_landmark_shop = { xf = 0.233, yf = 0.00 },
+    abyss_landmark_shop     = { xf = 0.230, yf = 0.00, color = { 0.72, 0.64, 0.58 } },
+    frost_landmark_shop     = { xf = 0.339, yf = 0.00, color = { 0.42, 0.44, 0.49 } },
+    marsh_landmark_shop     = { xf = 0.739, yf = 0.02, color = { 0.72, 0.74, 0.62 } },
+    dusk_landmark_shop      = { xf = 0.212, yf = 0.00, color = { 0.38, 0.32, 0.28 } },
 }
+
+-- ============================================================================
+-- v11 (Set/2026) — LUGAR POR ATO: cada bioma tem sua loja, sua fogueira, seu
+-- estandarte, seu obelisco e sua tenda. Pedido do dono: "no ato 1 a loja é
+-- diferente, no ato 2 a loja é diferente, e isso para cada um dos locais".
+--
+-- A chave vira `<bid>_landmark_<tipo>` quando a arte do bioma existe; senão
+-- cai no genérico E AVISA (fallback silencioso é PROIBIDO neste projeto).
+-- Os caminhos seguem os loaders que já existem, sem tocar neles:
+--   base   assets/sprites/world/<key>.png            (tryLoadPng)
+--   frames assets/sprites/world/anim/<key>/0..N.png  (readAnimFrames)
+--
+-- As tabelas de configuração (tamanho, fps, som, sombra, luz, fumaça)
+-- continuam por TIPO — `landmarkFamily` tira o prefixo do bioma. Uma
+-- entrada com a chave CHEIA sobrepõe a do tipo quando a arte do bioma
+-- precisa de âncora própria (ex.: a chaminé muda de lugar).
+local LANDMARK_GENERIC_BIOME = "fields"   -- ato 1 = dono da arte genérica
+local function landmarkFamily(key)
+    if not key then return nil end
+    return key:match("(landmark_.+)$") or key
+end
+local function lmCfg(tbl, key)
+    if not key then return nil end
+    local v = tbl[key]
+    if v ~= nil then return v end
+    return tbl[landmarkFamily(key)]
+end
+
+local landmarkKeyCache = {}
+local landmarkKeyWarned = {}
+-- chave da arte de ESTADO do hover (porta da loja abrindo) na versão do bioma
+local function landmarkHoverAnimKey(key)
+    local a = lmCfg(LANDMARK_ANIM, key)
+    if not (a and a.hoverAnim) then return nil end
+    local bid = key:match("^(.-)_landmark_")
+    if bid then
+        local k = bid .. "_" .. a.hoverAnim
+        if love.filesystem.getInfo("assets/sprites/world/anim/" .. k) then
+            return k
+        end
+    end
+    return a.hoverAnim
+end
+
+-- resolve tipo de nó + bioma → chave da arte. O conjunto do bioma é ATÔMICO:
+-- se o tipo tem anim de estado (porta da loja) e ela falta, o bioma inteiro
+-- volta pro genérico — meia-loja do bioma com a porta da cabana de outro
+-- seria um pulo de identidade na cara do jogador.
+local function landmarkKeyFor(nodeType, bid)
+    local base = LANDMARK_FOR_TYPE[tostring(nodeType)]
+    if not base then return nil end
+    bid = bid or rawBiome().id
+    local ck = bid .. "|" .. base
+    local hit = landmarkKeyCache[ck]
+    if hit then return hit end
+
+    -- o ato 1 É o dono da arte genérica (pedido do dono: "a arte de hoje
+    -- fica sendo a do ato 1") — não duplicamos os PNGs nem avisamos por ele
+    if bid == LANDMARK_GENERIC_BIOME then
+        landmarkKeyCache[ck] = base
+        return base
+    end
+
+    local key = bid .. "_" .. base
+    local faltou = nil
+    if not love.filesystem.getInfo("assets/sprites/world/" .. key .. ".png") then
+        faltou = key .. ".png"
+    else
+        local a = LANDMARK_ANIM[base]
+        if a and a.hoverAnim
+            and not love.filesystem.getInfo(
+                "assets/sprites/world/anim/" .. bid .. "_" .. a.hoverAnim) then
+            faltou = "anim/" .. bid .. "_" .. a.hoverAnim .. "/"
+        end
+    end
+    if faltou then
+        if not landmarkKeyWarned[ck] then
+            landmarkKeyWarned[ck] = true
+            print(("[worldroad] bioma '%s' sem arte própria de %s (falta %s) — usando o lugar genérico")
+                :format(bid, base, faltou))
+        end
+        key = base
+    end
+    landmarkKeyCache[ck] = key
+    return key
+end
 
 local landmarkFramesCache = {}
 local function landmarkFrames(key)
@@ -1341,7 +1461,7 @@ end
 local function landmarkFrameAt(key, ft)
     local fr = landmarkFrames(key)
     if not fr then return nil end
-    local a = LANDMARK_ANIM[key]
+    local a = lmCfg(LANDMARK_ANIM, key)
     if a and a.pingpong then
         local period = 2 * #fr - 2
         local k = math.floor(ft % period)
@@ -1358,7 +1478,7 @@ end
 local function landmarkFrame(key, seed)
     local fr = landmarkFrames(key)
     if not fr then return nil end
-    local a = LANDMARK_ANIM[key]
+    local a = lmCfg(LANDMARK_ANIM, key)
     local period = (a and a.pingpong) and (2 * #fr - 2) or #fr
     return landmarkFrameAt(key,
         WorldRoad._time * ((a and a.fps) or 8) + (seed or 0) % period)
@@ -1367,11 +1487,17 @@ end
 -- fumaça da chaminé: puffs determinísticos subindo/inchando/sumindo, no
 -- idioma do castelo (aglomerado de quadrados chunky, sem halo translúcido)
 local function drawLandmarkSmoke(key, px, py, iw, ih, s, alpha)
-    local sm = LANDMARK_SMOKE[key]
+    local sm = lmCfg(LANDMARK_SMOKE, key)
     if not sm or ih * s < 46 then return end   -- longe demais: vira ruído
     local mx = px + (sm.xf - 0.5) * iw * s
     local my = py - ih * s + sm.yf * ih * s
     local rise = ih * s * 0.52
+    -- v11: a fumaça vive CONTRA O CÉU, então o valor dela é do BIOMA, não da
+    -- fumaça. Céu escuro (highlands, abyss) pede fumaça clara; céu claro
+    -- (frost, dusk) pede fumaça escura e densa, senão ela simplesmente some.
+    -- Mesma regra vale pra vapor e faísca que dependam de contraste com o céu.
+    local cr, cg, cb = 0.80, 0.77, 0.72
+    if sm.color then cr, cg, cb = sm.color[1], sm.color[2], sm.color[3] end
     for k = 0, 2 do
         local p = (WorldRoad._time * 0.30 + k * 0.333) % 1
         local a = alpha * 0.40 * math.min(1, p * 5) * (1 - p)
@@ -1380,10 +1506,10 @@ local function drawLandmarkSmoke(key, px, py, iw, ih, s, alpha)
                 * (0.8 + p * 3.2) * s + p * 2.5 * s
             local puffY = my - p * rise
             local sz = math.max(2, (1.1 + p * 2.8) * s)
-            love.graphics.setColor(0.80, 0.77, 0.72, a)
+            love.graphics.setColor(cr, cg, cb, a)
             love.graphics.rectangle("fill", math.floor(puffX - sz / 2),
                 math.floor(puffY - sz / 2), sz, sz)
-            love.graphics.setColor(0.74, 0.71, 0.66, a * 0.85)
+            love.graphics.setColor(cr * 0.92, cg * 0.92, cb * 0.92, a * 0.85)
             love.graphics.rectangle("fill", math.floor(puffX - sz * 0.85),
                 math.floor(puffY - sz * 0.15), math.max(1, sz * 0.6), math.max(1, sz * 0.6))
             love.graphics.rectangle("fill", math.floor(puffX + sz * 0.35),
@@ -1397,7 +1523,7 @@ end
 -- claros — fogo/janela/orbe), flicker de fogo das luminárias.
 -- alphaK acompanha o fade do sprite (braço não-escolhido na convergência)
 local function submitLandmarkLight(key, px, py, iw, ih, s, rel, seed, alphaK)
-    local L = LANDMARK_LIGHT[key]
+    local L = lmCfg(LANDMARK_LIGHT, key)
     if not L or not LightEngine.submitMicro then return end
     alphaK = alphaK or 1
     if alphaK <= 0.05 then return end
@@ -1591,15 +1717,15 @@ function WorldRoad.update(dt)
             WorldRoad._camZ = c.z0 + c.dist * c.k
             if k >= 1 then
                 local node = f.nodes[f.chosen]
-                local key = node and LANDMARK_FOR_TYPE[tostring(node.type)]
+                local key = node and landmarkKeyFor(node.type)
                 if key then
-                    local a = LANDMARK_ANIM[key]
+                    local a = lmCfg(LANDMARK_ANIM, key)
                     local fps = (a and a.fps) or 8
                     local animT = ((f._animT and f._animT[f.chosen]) or 0)
                         + f.chosen * 3.7
                     WorldRoad._landmark = {
                         key = key, z = f.markZ,
-                        size = LANDMARK_SIZE[key] or 2.0,
+                        size = lmCfg(LANDMARK_SIZE, key) or 2.0,
                         -- v9.6: fase que faz o relógio global CONTINUAR do
                         -- relógio do braço — frame não pula no handoff
                         phase = animT - WorldRoad._time * fps,
@@ -1624,8 +1750,8 @@ function WorldRoad.update(dt)
         f._hoverK = f._hoverK or {}
         for i = 1, f.n do
             local node = f.nodes[i]
-            local key = node and LANDMARK_FOR_TYPE[tostring(node.type)]
-            local a = key and LANDMARK_ANIM[key]
+            local key = node and landmarkKeyFor(node.type)
+            local a = key and lmCfg(LANDMARK_ANIM, key)
             local hov = (f.hover == i and not f.converge)
             if a then
                 f._animT[i] = (f._animT[i] or 0)
@@ -1639,8 +1765,8 @@ function WorldRoad.update(dt)
         if f.hover ~= f._hoverPrev then
             if f.hover and not f.converge then
                 local node = f.nodes[f.hover]
-                local key = node and LANDMARK_FOR_TYPE[tostring(node.type)]
-                local snd = key and LANDMARK_HOVER_SOUND[key]
+                local key = node and landmarkKeyFor(node.type)
+                local snd = key and lmCfg(LANDMARK_HOVER_SOUND, key)
                 if snd then Sfx.playWithVariation(snd, 1.0, 0.06) end
             end
             f._hoverPrev = f.hover
@@ -3053,7 +3179,7 @@ function WorldRoad.forkMousePressed(mx, my)
         Sfx.play("cardSelect")
         local node = f.nodes[i]
         if node then
-            local key = LANDMARK_FOR_TYPE[tostring(node.type)]
+            local key = landmarkKeyFor(node.type)
             local img = key and getLandmark(key)
             if img then
                 -- juice visual: o marco "responde" à escolha
@@ -3347,7 +3473,7 @@ local function drawLandmarkFront(g, x, w, camZ)
     local py = g.crestApexY + (g.bottomY - g.crestApexY) * t
     local lx = g.cx + roadWobble(lm.z, t, w)   -- segue a curva da estrada
     -- v8: sombra projetada da silhueta (v9.5: ancorada na base da parede)
-    local shPad = LANDMARK_SHADOW_PAD[lm.key] or 0
+    local shPad = lmCfg(LANDMARK_SHADOW_PAD, lm.key) or 0
     local shY = py - 1 - shPad * s
     if not ShadowEngine.sprite(img, lx, shY, s, { footPad = shPad }) then
         love.graphics.setColor(0, 0, 0, 0.22)
@@ -3442,7 +3568,7 @@ local function drawProps(g, x, w, camZ)
         f._geo = f._geo or {}
         for i = 1, f.n do
             local node = f.nodes[i]
-            local key = node and LANDMARK_FOR_TYPE[tostring(node.type)]
+            local key = node and landmarkKeyFor(node.type)
                 or "landmark_battle"
             local img = getLandmark(key or "landmark_battle")
             local aMul = forkAlpha(f, i)
@@ -3455,9 +3581,10 @@ local function drawProps(g, x, w, camZ)
                 img = (animT and landmarkFrameAt(key, animT + i * 3.7)
                     or landmarkFrame(key, i * 3.7)) or img
                 local hoverK = (f._hoverK and f._hoverK[i]) or 0
-                local aDef = LANDMARK_ANIM[key]
+                local aDef = lmCfg(LANDMARK_ANIM, key)
                 if hoverK > 0.02 and aDef and aDef.hoverAnim then
-                    local hfr = landmarkFrames(aDef.hoverAnim)
+                    -- v11: a porta que abre é a do LUGAR DESTE ATO
+                    local hfr = landmarkFrames(landmarkHoverAnimKey(key))
                     if hfr then
                         img = hfr[1 + math.floor(hoverK * (#hfr - 1) + 0.5)]
                     end
@@ -3467,7 +3594,7 @@ local function drawProps(g, x, w, camZ)
                 local px = g.cx + offX
                 local py = g.latY(offX, tM)
                 local iw, ih = img:getWidth(), img:getHeight()
-                local size = LANDMARK_SIZE[key] or 2.0
+                local size = lmCfg(LANDMARK_SIZE, key) or 2.0
                 local s = g.scaleAt(size, tM, ih)
                 s = s * (0.7 + 0.3 * f.animIn)
                 if f.chosen == i and f.chosenPulse and f.chosenPulse > 0 then
@@ -3478,7 +3605,7 @@ local function drawProps(g, x, w, camZ)
                 -- v9.5: ancorada na BASE DA PAREDE (footPad): na casa as
                 -- últimas linhas do sprite são a escada avançando pro 1º
                 -- plano e a sombra nascia "na frente" do pé (feedback)
-                local shPad = LANDMARK_SHADOW_PAD[key] or 0
+                local shPad = lmCfg(LANDMARK_SHADOW_PAD, key) or 0
                 local shY = py - 1 - shPad * s
                 if not ShadowEngine.sprite(img, px, shY, s,
                     { alphaK = aMul, footPad = shPad }) then
