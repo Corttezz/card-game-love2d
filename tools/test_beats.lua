@@ -242,6 +242,45 @@ function M.run()
         #procsK, nK)
 
     -- ========================================================================
+    -- 2c. O ANDAR NOVO SEMPRE COMECA NA VEZ DO JOGADOR
+    --     (dono: "teve um turno de batalha que o inimigo ja chegou me dando
+    --      dano enquanto andava, antes mesmo de chegar na tela pra eu jogar
+    --      minha carta, ou seja atacou antes de mim")
+    --
+    -- `endTurn` poe turn="enemy" e SO ENTAO enfileira o pulso dos orbes. Se o
+    -- pulso mata o inimigo, o portao da GameplayScene — que exige
+    -- `enemy:isAlive()` — nunca chama `enemyTurn()`, e quem devolvia a vez era
+    -- o beat final DELE. A vez ficava com o inimigo pela recompensa, pelo
+    -- descanso e pelo mapa; no andar seguinte o portao via inimigo novo VIVO
+    -- + vez do inimigo e mandava ele golpear antes da primeira carta.
+    -- ========================================================================
+    do
+        local gp = TK.newRunGame("mage")
+        TK.pump(gp, 0.5)
+
+        -- Reproduz a morte que vem DO FIM DO TURNO (e nao das cartas): a vez
+        -- ja passou pro inimigo quando ele cai.
+        gp.turn = "enemy"
+        gp.enemy.health = 0
+        t:truthy("cenario montado: fase limpa com a vez do inimigo",
+            gp:isPhaseCleared() and gp.turn == "enemy")
+
+        -- O jogador atravessa recompensa/descanso/mapa e entra no andar novo.
+        gp:nextPhase()
+        TK.pump(gp, 0.5)
+
+        t:eq("andar novo comeca na vez do JOGADOR", gp.turn, "player")
+        t:truthy("e o inimigo do andar novo esta vivo (senao o teste nao prova nada)",
+            gp.enemy and gp.enemy:isAlive())
+
+        -- A condicao exata do portao da cena (GameplayScene): com ela
+        -- verdadeira, o inimigo age antes do jogador.
+        local portaoAbriria = (gp.turn == "enemy") and gp.enemy:isAlive()
+        t:falsy("o portao do turno do inimigo NAO abre no primeiro frame do andar",
+            portaoAbriria)
+    end
+
+    -- ========================================================================
     -- 3. ORDEM CAUSAL DO TURNO DO INIMIGO
     -- ========================================================================
     local g3 = TK.newRunGame("warrior")

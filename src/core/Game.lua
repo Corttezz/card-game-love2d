@@ -1726,6 +1726,24 @@ end
 function Game:resetHandAndDeck()
     CombatBeats.clear()   -- mesma razao do startGame: batalha nova, fila limpa
     self._enemyActing = false
+    -- BATALHA NOVA COMECA NA VEZ DO JOGADOR. Sempre. (Set/2026)
+    --
+    -- Faltava, e o dono levou o golpe: "teve um turno de batalha que o inimigo
+    -- ja chegou me dando dano enquanto andava, antes mesmo de chegar na tela
+    -- pra eu jogar minha carta".
+    --
+    -- Como vazava: `endTurn` poe `turn = "enemy"` e SO ENTAO enfileira o pulso
+    -- dos orbes. Quando o pulso (ou veneno, ou espinhos) MATA o inimigo — que
+    -- e exatamente como o mago fecha batalha — o portao da cena exige
+    -- `enemy:isAlive()` pra chamar `enemyTurn()`. O inimigo ja esta morto,
+    -- entao `enemyTurn` nunca roda, e quem devolvia a vez era justamente o
+    -- beat final dele. `turn` ficava "enemy" pela recompensa, pelo descanso e
+    -- pelo mapa inteiros; no andar seguinte o portao via inimigo VIVO + vez do
+    -- inimigo e mandava o bicho novo golpear antes da primeira carta.
+    --
+    -- Por isso era intermitente: so acontece quando a morte vem do fim do
+    -- turno, nunca quando vem das cartas jogadas.
+    self.turn = "player"
     self.hand = {}
     self.selectedCards = {}
     self.discard = {} -- limpa descarte entre batalhas
