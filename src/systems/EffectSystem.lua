@@ -198,11 +198,37 @@ function EffectSystem:applyJokerEffects(game, card, baseValue, turnContext)
         end
     end
 
+    -- ECO (Set/2026): dobra a PRIMEIRA carta de ataque do turno, uma vez por
+    -- turno. Fica FORA do largest-wins de proposito — nao e um multiplicador
+    -- plano concorrendo com os outros, e um pico condicional: premia botar o
+    -- golpe grande na frente em vez de somar em tudo.
+    --
+    -- Existe porque "Forma de Eco" era um CLONE do "Deus do Abismo" (os dois
+    -- damage_multiplier attack 1.5) — queixa do dono: "qual a diferenca entre
+    -- deus do abismo e forma de eco? nenhuma, e uma e lendaria a outra rara".
+    -- E com o largest-wins ter os dois nao somava nada: max(1.5,1.5) = 1.5.
+    if card.type == "attack" and not game._echoFiredThisTurn then
+        for _, joker in ipairs(game.jokerSlots) do
+            for _, effect in ipairs(joker.effects or {}) do
+                if effect.type == "echo_first_attack" then
+                    game._echoFiredThisTurn = true
+                    local fator = effect.value or 2
+                    finalValue = finalValue * fator
+                    table.insert(msgs, msg("echo_first", { value = fator }))
+                    pushJokerProc(game, procs, joker, multLabel(fator), "mult")
+                    break
+                end
+            end
+            if game._echoFiredThisTurn then break end
+        end
+    end
+
     for _, joker in ipairs(game.jokerSlots) do
         if joker.effects then
             for _, effect in ipairs(joker.effects) do
                 -- Multiplicadores ja resolvidos acima (so o maior conta).
-                if effect.type ~= "damage_multiplier" and effect.type ~= "defense_multiplier" then
+                if effect.type ~= "damage_multiplier" and effect.type ~= "defense_multiplier"
+                    and effect.type ~= "echo_first_attack" then
                     local newValue, msg = self:processEffect(effect, card, finalValue, turnContext)
                     if newValue ~= finalValue then
                         local delta = newValue - finalValue
@@ -239,6 +265,10 @@ function EffectSystem:predictJokerProcs(game, card)
             if isAtk then
                 if t == "damage_multiplier" and e.target == "attack" then
                     if not multSeen then n = n + 1; multSeen = true end
+                elseif t == "echo_first_attack" then
+                    -- So proca se ainda nao ecoou neste turno; prever a mais
+                    -- deixaria a carta esperando um tick que nao vem.
+                    if not game._echoFiredThisTurn then n = n + 1 end
                 elseif t == "damage_bonus" or t == "on_attack_heal"
                     or t == "on_attack_debuff" then
                     n = n + 1

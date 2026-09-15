@@ -1230,8 +1230,10 @@ function PackOpenScreen:_drawDetailBand()
     -- Coluna esquerda: nome + descricao + efeitos. Direita: chips numericos.
     local chipW, chipH, chipGap = 76, 40, 8
     local chips = {}
-    chips[#chips + 1] = { I18n.t("pack.chip_cost"), tostring(card.cost or 0),
-                          Palette.AGED_GOLD_LIGHT }
+    if require("src.ui.CardFrame").showsManaCost(card) then
+        chips[#chips + 1] = { I18n.t("pack.chip_cost"), tostring(card.cost or 0),
+                              Palette.AGED_GOLD_LIGHT }
+    end
     if (card.attack or 0) > 0 then
         chips[#chips + 1] = { I18n.t("pack.chip_damage"), tostring(card.attack),
                               Palette.forCardType("attack") }

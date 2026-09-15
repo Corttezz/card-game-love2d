@@ -450,18 +450,28 @@ return {
     },
     mage_echo_form = {
         id = "mage_echo_form", name = "Forma de Eco",
-        -- Rebalance v2 Jul/2026: era o fundo da cadeia de dominancia dos
-        -- jokers (+2 flat por 3 mana). Vira o UNICO multiplicador do mago =
-        -- win-condition A3. Seguro pos-largest-wins: com joker_001 tambem
-        -- ativo vale max(1.5,1.5)=1.5, nunca x2.25.
+        -- Set/2026 — REFORMULADA. Era `damage_multiplier attack 1.5`, ou seja,
+        -- um CLONE EXATO do joker_001 (Deus do Abismo), que ainda por cima e
+        -- lendario. Queixa do dono: "qual a diferenca entre deus do abismo e
+        -- forma de eco? nenhuma, e uma e lendaria a outra rara". Pior: com o
+        -- largest-wins do P0.9, ter os dois ativos nao somava NADA —
+        -- max(1.5, 1.5) = 1.5 — entao a segunda copia era ouro no lixo.
+        --
+        -- Agora ela faz o que o NOME promete: ECO. Dobra a PRIMEIRA carta de
+        -- ataque do turno, uma vez por turno. Isso a separa do joker_001 no
+        -- que importa, que e COMO se joga com ela: o lendario e um bonus
+        -- plano que premia muitos ataques; o eco e um pico condicional que
+        -- premia carregar UM golpe grande e bota-lo na frente. Mesma familia
+        -- (dano), decisao diferente na mao.
         type = "joker", subtype = "power",
         cost = 3, attack = 0, defense = 0,
-        description = "Suas cartas de ataque causam +50% de dano.",
+        description = "Dobra o dano da sua primeira carta de ataque do turno.",
         image = "assets/cards/defense/ironShield.png",
         rarity = "rare", class = "mage",
         tags = { "magic", "scaling", "passive" },
         effects = {
-            { type = "damage_multiplier", target = "attack", value = 1.5 },
+            { type = "echo_first_attack", value = 2,
+              description = "Dobra a primeira carta de ataque do turno" },
         },
     },
     mage_electrodynamics = {

@@ -610,7 +610,8 @@ local function drawHoverTooltip(self)
     local statFont = FontManager.getFont(10)
     love.graphics.setFont(statFont)
     Palette.set(Palette.AGED_GOLD_LIGHT)
-    local statLine = I18n.t("card_info.cost") .. tostring(inst.cost or 0)
+    local statLine = CardFrame.showsManaCost(inst)
+        and (I18n.t("card_info.cost") .. tostring(inst.cost or 0)) or ""
     if inst.type == "attack" then
         statLine = statLine .. "  ATK: " .. tostring(inst.attack or 0)
     elseif inst.type == "defense" then
@@ -758,8 +759,11 @@ local function drawInspectModal(self)
     love.graphics.setFont(statFont)
     love.graphics.setColor(Palette.PARCHMENT_LIGHT[1], Palette.PARCHMENT_LIGHT[2], Palette.PARCHMENT_LIGHT[3], anim)
     local statY = metaY + lineH * 3 + 12
-    love.graphics.print(I18n.t("card_info.cost") .. tostring(inst.cost or 0), panelX + PAD, statY)
-    statY = statY + 20
+    if CardFrame.showsManaCost(inst) then
+        love.graphics.print(I18n.t("card_info.cost") .. tostring(inst.cost or 0),
+            panelX + PAD, statY)
+        statY = statY + 20
+    end
     if inst.type == "attack" then
         love.graphics.setColor(Palette.BLOOD[1], Palette.BLOOD[2], Palette.BLOOD[3], anim)
         love.graphics.print(I18n.t("card_info.damage") .. tostring(inst.attack or 0), panelX + PAD, statY)

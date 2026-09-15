@@ -273,6 +273,8 @@ function Game:drawForTurn()
     -- joker — nova janela a cada turno do jogador (ver EffectSystem
     -- processTriggerEffect on_defend_damage).
     self._jokerThornFiredThisTurn = {}
+    -- Eco (Forma de Eco): uma carta de ataque dobrada por turno.
+    self._echoFiredThisTurn = false
     local baseDraw = Config.Game.CARDS_PER_TURN or 5
     -- Blue Seal acumula compras extras quando cartas com seal são jogadas.
     -- Consumido aqui (uma vez por turno) e zerado.
@@ -614,6 +616,7 @@ function Game:applyClassBattleStartPassive()
     self._toxinAppliedThisTurn = false
     -- P2.3: janela nova de thorn-de-joker no comeco de cada batalha.
     self._jokerThornFiredThisTurn = {}
+    self._echoFiredThisTurn = false
     if self.selectedClass == "mage" and self.player and self.player.addOrb then
         self.player:addOrb({ type = "lightning", value = 4 })
         -- Auditoria Jul/2026 (bateria 2 do autoplay): mago morria no boss do

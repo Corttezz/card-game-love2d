@@ -657,6 +657,12 @@ function love.load(loveArgs)
         return
     end
 
+    if loveArgs and loveArgs[1] == "scan_clones" then
+        local ok = require("tools.scan_clones").run()
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
     if loveArgs and loveArgs[1] == "sheet" then
         local ok = require("tools.sheet").run(loveArgs[2], loveArgs[3], loveArgs[4])
         love.event.quit(ok and 0 or 1)

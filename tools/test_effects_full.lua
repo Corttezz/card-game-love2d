@@ -333,6 +333,48 @@ function M.run()
         t:eq("predictJokerProcs: carta de efeito não proca", es:predictJokerProcs(g, { type = "effect" }), 0)
     end
 
+    -- ===== ECO: dobra a PRIMEIRA carta de ataque do turno (Set/2026) =====
+    -- "Forma de Eco" era um CLONE do "Deus do Abismo" (os dois
+    -- damage_multiplier attack 1.5) — e, com o largest-wins acima, ter os
+    -- dois ativos nao somava nada. Queixa do dono: "qual a diferenca entre
+    -- deus do abismo e forma de eco? nenhuma". Agora e um PICO condicional.
+    do
+        local ge = fresh()
+        ge.jokerSlots = { { effects = { { type = "echo_first_attack", value = 2 } } } }
+        local atk = { type = "attack" }
+
+        t:eq("predict conta o eco antes de ele sair",
+            es:predictJokerProcs(ge, atk), 1)
+        t:eq("primeira carta de ataque do turno DOBRA",
+            es:applyJokerEffects(ge, atk, 10), 20)
+        t:eq("a SEGUNDA carta do mesmo turno sai limpa (o eco e 1x/turno)",
+            es:applyJokerEffects(ge, atk, 10), 10)
+        t:eq("e o predict para de prometer um tick que nao vem",
+            es:predictJokerProcs(ge, atk), 0)
+
+        ge._echoFiredThisTurn = false   -- (o Game zera isto no drawForTurn)
+        t:eq("turno novo, o eco volta", es:applyJokerEffects(ge, atk, 10), 20)
+
+        -- Defesa nao ecoa, e o eco nao gasta a janela numa carta de defesa.
+        local gd = fresh()
+        gd.jokerSlots = { { effects = { { type = "echo_first_attack", value = 2 } } } }
+        t:eq("carta de DEFESA nao ecoa",
+            es:applyJokerEffects(gd, { type = "defense" }, 10), 10)
+        t:eq("e a janela do eco continua de pe pro ataque",
+            es:applyJokerEffects(gd, { type = "attack" }, 10), 20)
+
+        -- Fica FORA do largest-wins: eco e multiplicador de joker COMPÕEM.
+        -- (E de proposito — sao camadas diferentes; o eco custa a condicao
+        -- de ser a primeira carta do turno.)
+        local gm = fresh()
+        gm.jokerSlots = {
+            { effects = { { type = "echo_first_attack", value = 2 } } },
+            { effects = { { type = "damage_multiplier", target = "attack", value = 1.5 } } },
+        }
+        t:eq("eco e multiplicador compoem (10 -> x1.5 -> x2 = 30)",
+            es:applyJokerEffects(gm, { type = "attack" }, 10), 30)
+    end
+
     -- ===== P2.3 (rebalance v2): thorn de JOKER ARMA 1x/turno =====
     -- A intencao de balanceamento sobreviveu a migracao pro modelo de ESTADO
     -- (Set/2026): o TETO por turno e o mesmo de antes — joker contribui uma

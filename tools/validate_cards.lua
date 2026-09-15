@@ -78,6 +78,9 @@ end
 local PROCESSED_EFFECT_TYPES = {
     -- jokers / card-effects
     damage_multiplier = true, defense_multiplier = true,
+    -- Eco: dobra a PRIMEIRA carta de ataque do turno (mage_echo_form).
+    -- Fica fora do largest-wins — ver EffectSystem:applyJokerEffects.
+    echo_first_attack = true,
     damage_bonus = true, defense_bonus = true,
     strength_scaling = true, dexterity_scaling = true,
     multi_hit = true, damage_bonus_self = true,
@@ -204,13 +207,78 @@ function M.run()
     local artOk = #missingArt == 0 and #dupIcons == 0
                   and #brokenIcons == 0 and #deadEntries == 0
 
+    -- ===== Trava de CORINGA CLONADO (Set/2026) =====
+    -- O dono achou jogando: "qual a diferenca entre deus do abismo e forma de
+    -- eco? nenhuma, e uma e lendaria a outra rara". Eram dois jokers com
+    -- `damage_multiplier attack 1.5` identico — e, com o largest-wins, ter os
+    -- dois ativos nao somava NADA (max(1.5,1.5)=1.5): o segundo era ouro no
+    -- lixo, com cara de premio.
+    --
+    -- Carta normal repetir efeito e DESIGN (o ataque e a defesa da carta
+    -- diferenciam, e o custo tambem). Coringa nao tem nem custo nem stats —
+    -- se a assinatura de efeito e igual, nao sobra NENHUMA decisao separando
+    -- os dois. So conta quando a mesma run pode oferecer os dois: coringas de
+    -- classes diferentes sao paridade entre classes, nao clone.
+    local cloneJokers = {}
+    do
+        local porSig = {}
+        for id, card in pairs(all) do
+            if card.type == "joker" and card.effects and #card.effects > 0 then
+                local partes = {}
+                for _, e in ipairs(card.effects) do
+                    local campos = {}
+                    for k, v in pairs(e) do
+                        if k ~= "description" and type(v) ~= "table"
+                            and type(v) ~= "function" then
+                            campos[#campos + 1] = tostring(k) .. "=" .. tostring(v)
+                        end
+                    end
+                    table.sort(campos)
+                    partes[#partes + 1] = table.concat(campos, ",")
+                end
+                table.sort(partes)
+                local sig = table.concat(partes, " | ")
+                porSig[sig] = porSig[sig] or {}
+                table.insert(porSig[sig], { id = id, class = card.class or "basic" })
+            end
+        end
+        for sig, lista in pairs(porSig) do
+            if #lista > 1 then
+                -- Co-ofertaveis: mesma classe, ou um dos dois e neutro
+                -- (class="basic" aparece pra todo mundo).
+                for i = 1, #lista do
+                    for j = i + 1, #lista do
+                        local a, b = lista[i], lista[j]
+                        if a.class == b.class
+                            or a.class == "basic" or b.class == "basic" then
+                            table.insert(cloneJokers,
+                                { a = a.id, b = b.id, sig = sig })
+                        end
+                    end
+                end
+            end
+        end
+        table.sort(cloneJokers, function(x, y) return x.a < y.a end)
+    end
+
+    print("\n-- coringas CLONADOS ofertaveis na mesma run (" .. #cloneJokers .. ") --")
+    for _, c in ipairs(cloneJokers) do
+        print("  " .. c.a .. "  ==  " .. c.b .. "   [" .. c.sig .. "]")
+    end
+
     print("\n==== Done ====")
     if not artOk then
         print("FALHOU: arte de carta. Toda carta precisa de entrada propria em "
             .. "src/data/card_art.lua e de um icone que nao seja usado por "
             .. "outra carta.")
     end
-    return #report.unknownTypes == 0 and artOk
+    if #cloneJokers > 0 then
+        print("FALHOU: coringa clonado. Dois coringas que a MESMA run pode "
+            .. "oferecer tem a mesma assinatura de efeito — como coringa nao "
+            .. "tem custo nem stats, nao sobra decisao nenhuma entre eles. "
+            .. "Reformule um (mude a MECANICA, nao so o numero).")
+    end
+    return #report.unknownTypes == 0 and artOk and #cloneJokers == 0
 end
 
 return M

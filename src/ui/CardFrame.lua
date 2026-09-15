@@ -33,6 +33,20 @@ local CardFrame = {}
 CardFrame.WIDTH  = 96
 CardFrame.HEIGHT = 144
 
+-- CORINGA NAO TEM CUSTO DE MANA. Ele e passivo: entra nos slots e nunca passa
+-- pela mao, entao o `cost` do dado e vestigial — mostrar o numero ensina uma
+-- regra que nao existe ("preciso de 2 de mana pra usar esse coringa?").
+--
+-- Isto e uma PERGUNTA SOBRE A CARTA, nao sobre o desenho, e mora aqui porque
+-- ja foi corrigida tres vezes em lugares diferentes: no badge da arte
+-- (renderJoker), no tooltip (CardInfoDisplay) e — reportada pelo dono em
+-- Set/2026, "tem joker na hora de escolher que apresenta custo tbm" — no chip
+-- da escolha de pacote. Cada tela que mostra custo REPETIA o `if`, e a
+-- proxima tela ia repetir o defeito. Pergunte aqui.
+function CardFrame.showsManaCost(card)
+    return card ~= nil and card.type ~= "joker"
+end
+
 local cache = {}
 -- Cartas com ícone animado (icons_anim/): key → { canvases = {...}, fps,
 -- live = Canvas, lastIdx }. `canvases` = a carta COMPLETA pré-renderizada uma
