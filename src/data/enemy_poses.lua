@@ -90,19 +90,27 @@ EnemyPoses.BY_ID = {
                      hover = 0.07, bob = 0.016, bobSpeed = 1.35,
                      shadowK = 0.68, shadowA = 0.58 },
 
-    -- Lich da Torre: o sprite TEM botas, entao pelo criterio literal da
-    -- tabela ele seria apoiado — e era. Vira flutuante por DECISAO DE
-    -- DESIGN do dono (Set/2026): "quero que o boss do ato 2 fique meio que
-    -- flutuando, sem sombra no pe, indo pra cima e pra baixo lentamente".
+    -- Lich da Torre: virou flutuante por DECISAO DE DESIGN do dono (Set/2026,
+    -- 1a leva): "quero que o boss do ato 2 fique meio que flutuando, sem
+    -- sombra no pe, indo pra cima e pra baixo lentamente". Na epoca ele era
+    -- a UNICA excecao ao criterio literal da tabela — o sprite tinha botas
+    -- de sola chata plantada e so o DADO dizia que ele flutuava.
     --
-    -- Registrado assim, com a excecao explicita, porque o criterio da tabela
-    -- continua valendo pros outros 20: quem quebra a regra tem que dizer por
-    -- que, senao a proxima pessoa "corrige" isto de volta pra grounded
-    -- achando que foi engano.
+    -- Set/2026, 2a leva: "o pezinho dele precisa parecer que ele esta
+    -- realmente flutuando, entao ele precisa ficar inclinado para baixo. A
+    -- capa tambem precisa ficar mexendo um pouquinho". A ARTE foi corrigida
+    -- pra casar com o dado: as botas agora PENDEM com o bico pra baixo (pe
+    -- relaxado de quem nao pisa) nos tres clips (idle/hurt/death), e o idle
+    -- ganhou 6 frames com ondulacao de pano assada por deslocamento a partir
+    -- de UM frame base. Ou seja: ele nao e mais excecao ao criterio literal
+    -- ("da pra ver o pe tocando a linha de base?" — agora nao da), e SEGUE
+    -- valendo o registro do porque, pra ninguem "corrigir" de volta.
     --
     -- Numeros: hover BAIXO e bob LENTO (0.55 rad/s, o mais lento da tabela).
     -- Ele nao e um espectro esvoacante — e um morto-vivo coroado que paira
-    -- porque despreza o chao. Pressa quebraria a leitura.
+    -- porque despreza o chao. Pressa quebraria a leitura. O balanco RAPIDO
+    -- dele mora na capa (ciclo ~1.4s no clip), nao no corpo: quem decide
+    -- ondular o pano nao precisa acelerar o bob.
     tower_lich   = { pose = "floating",
                      hover = 0.075, bob = 0.014, bobSpeed = 0.55,
                      shadowK = 0.62, shadowA = 0.50 },

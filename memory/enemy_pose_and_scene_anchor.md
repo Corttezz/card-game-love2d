@@ -76,7 +76,8 @@ visual em `love . screenshot_resume_boss [antes]`.
 > "o boss do segundo ato FLUTUA e tem uma sombra embaixo dele redonda como
 > se tivesse no chão."
 
-O chefe do ato 2 (`tower_lich`) **tem botas** — ele não flutua na arte. O
+Na época o chefe do ato 2 (`tower_lich`) **tinha botas de sola chata** — ele
+não flutuava na arte (isso mudou; ver a seção 4). O
 que flutuava era a ÂNCORA: nos interiores o inimigo era desenhado em
 `height * 0.68`, número herdado do `castle_hall_1`. No `castle_hall_2` a
 laje começa muito mais baixa e essa linha cai **na parede, acima da porta**.
@@ -129,7 +130,7 @@ a linha de base? Bota, garra, casco, pata, base de lodo = `grounded`. Barra
 de manto que afina, farrapo que se desfaz, talão pendurado de asa aberta =
 `floating`.
 
-**Flutuantes (4):**
+**Flutuantes (5):**
 
 | id | onde aparece | por que |
 |---|---|---|
@@ -137,12 +138,13 @@ de manto que afina, farrapo que se desfaz, talão pendurado de asa aberta =
 | `dusk_shade` | bioma 6, batalha | farrapos que se desfazem em fumaça |
 | `carrion_king` | **boss do ato 1** | asas abertas, talões PENDURADOS (dedos curvados, sem sola) |
 | `eclipse_queen` | boss do bioma 6 | capa em leque, nenhum pé |
+| `tower_lich` | **boss do ato 2** | botas PENDENDO com o bico pra baixo (ver seção 4) |
 
-**Apoiados (17):** `abyss_tyrant`, `blood_duke`, `bog_ghoul`,
+**Apoiados (16):** `abyss_tyrant`, `blood_duke`, `bog_ghoul`,
 `cursed_scarecrow`, `ember_imp`, `frost_wight`, `glacier_knight`,
 `grave_slime`, `harvest_reaper`, `mire_hag`, `moon_gargoyle`,
 `obsidian_sentinel`, `rot_colossus`, `rune_golem`, `stone_golem`,
-`tower_lich`, `winter_monarch`.
+`winter_monarch`.
 
 ### A regra que faz a coisa LER
 
@@ -175,6 +177,65 @@ Corolário da regra 3 de [[ui_layout_invariants]]. Testado numericamente via
 
 ---
 
+## 4. O dado dizia "flutua", a ARTE dizia "pisa"
+
+> "no ato 2, o boss que agora está voando e flutuando ficou um pouco melhor,
+> mas as animações dele ainda parecem que ele está meio que só em cima de
+> algo. O pezinho dele precisa parecer que ele está realmente flutuando,
+> então ele precisa ficar inclinado para baixo. A capa também precisa ficar
+> mexendo um pouquinho, coisas sutis, bem pequenas." (dono, Set/2026)
+
+A seção 3 tinha subido o `tower_lich` e tirado a sombra de contato dele por
+DADO. O sprite, porém, continuava com **bota de sola chata plantada** e uma
+idle cuja silhueta não se mexia: as bordas da capa andavam 0-1px entre os
+quatro frames, e o que sobrava era chuvisco de regeração, não balanço.
+Pose flutuante + postura de quem pisa = leitura de "apoiado em algo
+invisível". **Altura é dado; POSTURA é arte — corrigir só um dos dois não
+resolve.**
+
+Correções, nos três clips (`idle`/`hurt`/`death`):
+
+- **Bico pra baixo.** As botas foram regeradas por `inpaint_image` com
+  máscara própria (só os pés, o orbe do cajado fora dela) e depois
+  escurecidas/dessaturadas em 0.68/0.35 — cru elas saíam o objeto mais
+  claro da metade de baixo e lavavam a paleta fria. A ponta da bota
+  direita saiu **cortada na última linha do canvas**: a máscara ia até
+  `y=130` e o modelo preencheu até o fim. Máscara de inpaint precisa
+  deixar folga pro conteúdo respirar.
+- **Capa ondulando.** `animate_image` foi tentado e REPROVADO: ele redesenha
+  o sprite inteiro e o chefe DERIVA (medido: ~90% dos pixels mudam entre
+  frames, a capa vira outra forma, as botas perdem a ponta). O que entrou
+  foi **deslocamento assado a partir de UM frame base** — 6 frames, cada
+  pixel vindo do frame base, deriva zero por construção e amplitude que é
+  um número escolhido (`AH=3.0` horizontal, `AV=1.3` vertical, ~1.4s de
+  ciclo com o ping-pong do `IDLE_FPS`). A componente vertical não é
+  enfeite: só a horizontal faz o pano DESLIZAR; é a barra subindo e
+  descendo que lê como tecido pairando. **O cajado fica fora das zonas de
+  deslocamento — madeira não é pano.**
+
+### O pé de CADA CLIP tem que cair na mesma linha
+
+`EnemyRenderer.clipMetrics` mede o `pad` (margem transparente abaixo do
+conteúdo) do **1º frame de cada clip** e é ele que posiciona o sprite. Bota
+pendendo é mais comprida que sola chata, então corrigir só a `idle` deixava
+`idle=1` e `hurt=4`: **o chefe pularia ~7px na tela a cada golpe recebido.**
+Por isso o pé corrigido foi transplantado também pra `hurt` (7 frames) e pro
+começo da `death` (4 frames — do 5º em diante ele já está desabando e não
+há pé visível). Os 21 inimigos do roster têm `span=0` entre idle/hurt/death;
+`attack` fica fora de propósito (canvas cru do PixelLab, margem gorda, e o
+`EnemyRenderer` já conta com isso).
+
+Travas em `tools/test_enemy_pose.lua` (seção 5), as duas verificadas
+falhando com o defeito presente: pé na mesma linha nos três clips de
+**todos** os inimigos, e a silhueta da capa do lich se mexendo — com **teto**,
+porque a outra metade do pedido foi "coisas sutis, bem pequenas".
+
+Pendente: `south.png` (sprite estático usado só pelos ícones de nó do
+`MapScreen`) segue com a bota antiga. É arte diferente da idle, renderiza a
+poucos pixels e não foi tocada.
+
+---
+
 ## Fallback anunciado, nunca mudo
 
 `EnemyPoses.get` e `SceneAnchors.get` **imprimem aviso** (uma vez por chave)
@@ -192,8 +253,10 @@ entrando sem classificação é o caminho de volta pro defeito.
 - `src/ui/EnemyRenderer.lua` — `poseOffsetY` (puro) + bloco de sombra
 - `engine/ShadowEngine.lua` — `widthK`/`alphaK`/`tipShiftAt`
 - `src/scenes/GameplayScene.lua` — `isInteriorNode`, uso da âncora
-- `tools/test_enemy_pose.lua` — 92 asserts (registrado em `run_all_tests`)
+- `tools/test_enemy_pose.lua` — 162 asserts (registrado em `run_all_tests`)
 - `tools/screenshot_enemy_scene.lua` — `love . screenshot_enemy_scene 2_boss`
+- `love . sheet <dir> <escala>` — frames lado a lado sobre fundo escuro,
+  que é como se valida arte aqui (o Python da máquina quebrou em Set/2026)
 
 ## Ligações
 
