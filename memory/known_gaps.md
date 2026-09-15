@@ -182,3 +182,34 @@ ARRANJO (trocar o instrumento que carrega a melodia), nunca de adjetivo.
 
 As outras 5 colisoes do rodape sao entre contextos que raramente se seguem
 (boss/rest, rest/act1) ou entre atos distantes (act1/act5, act2/act6).
+
+## Salao do chefe do ato 3: o TRONO fica escondido atras do chefe (Set/2026)
+
+Queixa original do dono foi "a composicao da sala do chefe do ato 3 esta
+estranha", com a leitura de que o chefe ficava no terco inferior e sobrava
+espaco vazio em cima, com um trono pequeno.
+
+**Recapturado em Set/2026** (`love . screenshot_enemy_scene 3_boss`, imagem
+em `tools/preview_out/hall3_ANTES.png`) e a parte de "chefe la embaixo" NAO
+se confirma mais: o chefe domina o quadro e o pe esta acima do topo da mao.
+O teto de mao (`ENEMY_HAND_CLEARANCE`) que corrigiu o chefe do ato 2
+provavelmente resolveu isto junto.
+
+O que SOBRA, e que e um problema de composicao de verdade:
+
+**O trono e o elemento mais brilhante da arte e fica exatamente atras do
+sujeito.** Na tela o que se ve sao as barras alaranjadas do estrado
+cortando a altura dos ombros do chefe; a cadeira em si fica 100% ocluida.
+O salao le como "corredor com barras brilhantes", nao como sala do trono —
+e o chefe (silhueta escura) encosta em fundo escuro dos dois lados, sem
+separacao de valor.
+
+**Nao corrigido, de proposito.** O conserto e de ARTE (regerar o
+`castle_hall_3.png` com o estrado mais largo/alto, ou o trono fora da linha
+de centro), e nao de parametro: framing por cena nao resolve, porque a
+ancora do pe acompanha o mesmo transform — mover o fundo move o chefe junto
+e a relacao entre os dois nao muda. O unico lever real e a arte.
+
+Custo estimado: ~30 geracoes PixelLab. Ficou de fora agora porque a frente
+dos locais por ato tem 25 conjuntos pela frente (750-1100 geracoes de um
+saldo de ~1840) e essa era a prioridade declarada do dono.
