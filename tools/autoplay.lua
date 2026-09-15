@@ -374,6 +374,39 @@ end
 
 local battleStats -- metricas agregadas (setado em M.run)
 
+-- ============================================================
+-- MEDIDOR: quanto do VENENO a armadura do inimigo come (Set/2026)
+-- ============================================================
+-- `Enemy:_applyDot` faz `eff = max(0, dano - armor)` e CONSOME a armadura: o
+-- veneno nao ignora Bloqueio como no Slay the Spire, ele e absorvido. Isso e
+-- citado como suspeito da fraqueza do ladino — entao vira NUMERO, nao palpite.
+--
+-- O gancho e do INSTRUMENTO, nao do jogo: embrulha o metodo em memoria durante
+-- a bateria e soma declarado x efetivo. `_applyDot` DEVOLVE o valor declarado
+-- (nao o efetivo), entao a unica forma honesta de medir e olhar a vida antes e
+-- depois — que e exatamente o que o jogador ve.
+local dotMeter = { declared = 0, effective = 0, absorbedTicks = 0, ticks = 0 }
+local function installDotMeter()
+    local Enemy = require("src.entities.Enemy")
+    if Enemy._autoplayDotHooked then return end
+    Enemy._autoplayDotHooked = true
+    local orig = Enemy._applyDot
+    Enemy._applyDot = function(self, dmg)
+        local hpBefore = self.health
+        local ret = orig(self, dmg)
+        if (dmg or 0) > 0 then
+            local eff = hpBefore - self.health
+            dotMeter.declared = dotMeter.declared + dmg
+            dotMeter.effective = dotMeter.effective + eff
+            dotMeter.ticks = dotMeter.ticks + 1
+            if eff < dmg then
+                dotMeter.absorbedTicks = dotMeter.absorbedTicks + 1
+            end
+        end
+        return ret
+    end
+end
+
 -- Carta de motor pagavel: effect com draw_cards, ou restore_mana que rende
 -- mais mana do que custa.
 local function chooseMotorCard(game)
@@ -765,9 +798,29 @@ local function playBattle(game, label)
 
         -- ===== FASE MOTOR (V5.5): draw/restore_mana SOZINHAS em loop
         -- enquanto renderem — a leva seguinte enxerga mao e mana novas.
-        while levas < 6 do
+        --
+        -- CONSERTO Set/2026 — O BOT PODIA PASSAR A BATALHA INTEIRA CICLANDO.
+        -- O orcamento de levas era UM SO, compartilhado com a fase BATCH:
+        -- `while levas < 6` no motor e `while levas < 6` no batch. Uma carta
+        -- que se auto-sustenta em mana (Sosia: custa 1, compra 2, devolve 1)
+        -- num deck pequeno volta pra mao a cada reembaralhamento e o guard de
+        -- nao-progresso NAO dispara — porque ela PROGRIDE mesmo: a mao cresce.
+        -- O motor gastava as 6 levas, o batch nunca rodava, e o bot ficava
+        -- parado sem atacar ate morrer. Medido no diario: run de ladino que
+        -- morreu em A1-F5 com 8 turnos seguidos de "leva 1..6: [Sosia] (motor)"
+        -- e "dano causado 0" — score 64 contra ~12.000 das runs vizinhas.
+        -- Como o ladino e a classe com MAIS cartas de ciclo (Sosia, Adrenalina,
+        -- Aposta Calculada, Acrobacias, Elixir Azul, Tempo-bala), o defeito
+        -- penalizava justamente a classe que se estava tentando medir.
+        --
+        -- A correcao e dar ao motor um orcamento PROPRIO: ciclar e meio, nunca
+        -- fim. O batch fica com o resto garantido.
+        local MOTOR_MAX_LEVAS = 3
+        local motorLevas = 0
+        while motorLevas < MOTOR_MAX_LEVAS and levas < 6 do
             local motor = chooseMotorCard(game)
             if not motor then break end
+            motorLevas = motorLevas + 1
             local handBefore, manaBefore = #game.hand, game.player.mana
             levas = levas + 1
             if motor.type == "joker" then jokersPlayed = jokersPlayed + 1 end
@@ -1411,70 +1464,75 @@ local function doRest(game)
     end
 end
 
--- v4: pontua UMA string de gain/cost declarada pelo evento. As strings sao
--- o contrato explicito do design ("risco informado, nunca pegadinha") — o
--- bot le exatamente o que o jogador leria no botao.
-local function scoreEventStr(game, s, isCost)
+-- Pontua UMA entrada de gain/cost declarada pelo evento.
+--
+-- CONSERTO Set/2026 — O PILOTO CRASHAVA EM TODO EVENTO COM CUSTO/GANHO.
+-- A v4 recebia STRING e fazia `s:lower()`; os eventos passaram a declarar
+-- TABELAS estruturadas (`{ k = "gold", n = 30, fb = "$30" }`) e a chamada
+-- morria com "attempt to call method 'lower' (a nil value)". O pcall de
+-- playRun engolia a run inteira: 3 de 8 corridas da bateria de ladino
+-- terminaram em CRASH em vez de em morte medida — e o diario nao media
+-- ganho nenhum de evento nas outras.
+--
+-- A correcao nao e so "aceitar tabela": e parar de LER TEXTO. O `fb` e o
+-- fallback de exibicao em PT; ler ele faria o bot decidir diferente em
+-- outro idioma. A chave `k` e o contrato estavel — o bot pontua por ela.
+local function scoreEventEntry(game, entry, isCost)
     local p = game.player
     local hp, maxHp = p.health, p.maxHealth
     local gold = game.economySystem.currentGold
     local deckN = #deckIdList(game)
     local sign = isCost and -1 or 1
-    s = s:lower()
 
-    -- custos que nao podemos pagar = veto
-    local costHp = isCost and s:match("^(%d+) hp$")
-    if costHp then
-        local n = tonumber(costHp)
+    if type(entry) ~= "table" or not entry.k then return 0 end
+    local k, n, pct = entry.k, tonumber(entry.n) or 0, tonumber(entry.pct) or 0
+
+    -- ===== custos que nao podemos pagar = veto =====
+    if isCost and k == "hp" then
         if hp - n <= 4 then return -1000 end
         return -n * (hp < maxHp * 0.4 and 1.6 or 0.6)
     end
-    local costGold = isCost and s:match("^%$(%d+)$")
-    if costGold then
-        local n = tonumber(costGold)
+    if isCost and k == "gold" then
         if gold < n then return -1000 end
         return -n / 8
     end
-    if s:find("carta aleatoria do deck") then
+    if k == "chance_trap" then
+        return -(pct / 100) * n * 1.2
+    end
+    if k == "remove_random" then
         -- remocao ALEATORIA: boa com deck gordo de commons, ruim com deck afiado
         return (deckN > 16) and 3 or -6
     end
-    if s:find("armadilha") then
-        local pct, n = s:match("(%d+)%% armadilha (%d+) hp")
-        if pct and n then return -(tonumber(pct) / 100) * tonumber(n) * 1.2 end
-        return -3
-    end
 
-    -- ganhos
-    if s:find("remova 1 carta a sua escolha") then
-        return sign * ((deckN >= 14) and 12 or 5)
-    end
-    if s:find("duplique") then return sign * 8 end
-    if s:find("forj") then return sign * 7 end
-    if s:find("mana maxima") then return sign * 12 end
-    if s:find("hp maximo") then return sign * 7 end
-    if s:find("carta lendaria") then return sign * 10 end
-    if s:find("carta rara") then return sign * ((deckN > 18) and 3 or 6) end
-    if s:find("cartas aleatorias") then
-        return sign * ((deckN > 16) and -2 or 2)  -- diluicao
-    end
-    if s:find("pocao") then return sign * 2 end
-    if s:find("misterioso") then return sign * 1 end
-    local curaPct = s:match("cura (%d+)%%")
-    if curaPct then
-        local heal = math.min(maxHp * tonumber(curaPct) / 100, maxHp - hp)
+    -- ===== ganhos =====
+    if k == "remove_choice"  then return sign * ((deckN >= 14) and 12 or 5) end
+    if k == "dup_choice"     then return sign * 8 end
+    if k == "forge_choice" or k == "forge_random" then return sign * 7 end
+    if k == "max_mana"       then return sign * 12 end
+    if k == "max_hp"         then return sign * 7 end
+    if k == "card_legendary" then return sign * 10 end
+    if k == "card_rare"      then return sign * ((deckN > 18) and 3 or 6) end
+    if k == "cards_random"   then return sign * ((deckN > 16) and -2 or 2) end -- diluicao
+    if k == "card_potion" or k == "chance_potion" then return sign * 2 end
+    if k == "mystery"        then return sign * 1 end
+    if k == "heal_pct" then
+        local heal = math.min(maxHp * n / 100, maxHp - hp)
         return sign * (heal / maxHp) * 30
     end
-    local curaFlat = s:match("cura (%d+) hp")
-    if curaFlat then
-        local heal = math.min(tonumber(curaFlat), maxHp - hp)
+    if k == "heal_flat" then
+        local heal = math.min(n, maxHp - hp)
         return sign * (heal / maxHp) * 30
     end
-    -- valor esperado: "50% de ganhar $50", "40% $25"
-    local pct, val = s:match("(%d+)%%[^%$]*%$(%d+)")
-    if pct and val then return sign * (tonumber(pct) / 100) * tonumber(val) / 6 end
-    local flatGold = s:match("^%$(%d+)$")
-    if flatGold then return sign * tonumber(flatGold) / 6 end
+    -- valor esperado de ouro probabilistico ("50% de ganhar $50", "40% $25")
+    if k == "gamble" or k == "chance_gold" then
+        return sign * (pct / 100) * n / 6
+    end
+    if k == "gold" then return sign * n / 6 end
+
+    -- Chave DESCONHECIDA grita (fallback silencioso e proibido no projeto):
+    -- evento novo com chave nova passaria a valer 0 e o bot nunca a escolheria.
+    anomaly("evento com chave de %s desconhecida: '%s' — o piloto pontuou 0",
+        isCost and "custo" or "ganho", tostring(k))
     return 0
 end
 
@@ -1490,8 +1548,8 @@ local function doEvent(game)
     local bestIdx, bestScore = #ev.options, 0.5  -- neutro levemente > 0: so
     for i, opt in ipairs(ev.options) do          -- aposta se valer a pena
         local s = 0
-        for _, g in ipairs(opt.gains or {}) do s = s + scoreEventStr(game, g, false) end
-        for _, c in ipairs(opt.costs or {}) do s = s + scoreEventStr(game, c, true) end
+        for _, g in ipairs(opt.gains or {}) do s = s + scoreEventEntry(game, g, false) end
+        for _, c in ipairs(opt.costs or {}) do s = s + scoreEventEntry(game, c, true) end
         if (opt.gains or opt.costs) and s > bestScore then
             bestIdx, bestScore = i, s
         end
@@ -1514,23 +1572,99 @@ local REAL_UPGRADES = {
     forge_card = true,
 }
 
+-- Servicos SEM picker (mexem no ledger da run, nao no deck). A tesoura e a
+-- prensa ficam de fora de proposito: elas tem politica propria mais abaixo,
+-- porque so fazem sentido em funcao do TAMANHO do deck.
+local SERVICE_EFFECTS = {
+    add_joker_slot    = true,
+    raise_interest_cap = true,
+    increase_draw     = true,
+}
+
 -- V5.1: o harness APLICA o efeito do upgrade (a UI real faz isso na
 -- CardRewardScreen) + detector "ouro queimado": upgrade comprado que nao
 -- altera estado observavel = anomalia.
+-- Aplica um upgrade/servico comprado, ESPELHANDO CardRewardScreen:applyUpgrade
+-- (a tela real). Set/2026: antes daqui so saiam mana e vida maxima — os cinco
+-- SERVICOS da loja (tesoura, prensa, bancada de coringa, grimorio, cofre) nao
+-- tinham caminho nenhum no piloto, e por isso a metade cara da loja NUNCA era
+-- comprada numa bateria inteira. Qualquer conclusao de economia tirada dali
+-- media o bot, nao a economia.
+--
+-- O detector de "ouro queimado" tambem estava errado para servicos: ele
+-- perguntava se mana OU vida maxima mudou, e nenhum servico mexe nesses dois.
+-- Ligar os servicos sem consertar o detector encheria o relatorio de alarme
+-- falso — que e pior do que nao ter detector. Agora cada efeito declara QUAL
+-- e o seu observavel.
 local function applyUpgradeOffer(game, o)
     local p = game.player
-    local beforeMana, beforeHp = p.maxMana, p.maxHealth
-    if o.effect == "increase_base_mana" then
+    local rm = game.runManager
+    local efeito = o.effect
+
+    -- observador(game) -> valor comparavel antes/depois
+    local OBSERVAVEL = {
+        increase_base_mana  = function() return p.maxMana end,
+        increase_max_health = function() return p.maxHealth end,
+        add_joker_slot      = function()
+            return (rm and rm.getMaxJokerSlots and rm:getMaxJokerSlots()) or 0
+        end,
+        raise_interest_cap  = function()
+            return (game.economySystem and game.economySystem.getInterestCap
+                and game.economySystem:getInterestCap()) or 0
+        end,
+        increase_draw       = function()
+            return (rm and rm.getServiceCount and rm:getServiceCount("card_draw_upgrade")) or 0
+        end,
+    }
+    local observa = OBSERVAVEL[efeito]
+    local antes = observa and observa() or nil
+
+    if efeito == "increase_base_mana" then
         p.baseMaxMana = (p.baseMaxMana or p.maxMana) + (o.value or 1)
         p.maxMana = p.maxMana + (o.value or 1)
         p.mana = p.mana + (o.value or 1)
-    elseif o.effect == "increase_max_health" then
+    elseif efeito == "increase_max_health" then
         p.maxHealth = p.maxHealth + (o.value or 0)
         p.health = p.health + (o.value or 0)
+
+    elseif efeito == "add_joker_slot" then
+        if rm and rm.registerService then rm:registerService(o.id) end
+        if game.recomputeMaxJokerSlots then game:recomputeMaxJokerSlots() end
+    elseif efeito == "raise_interest_cap" then
+        if rm and rm.registerService then rm:registerService(o.id) end
+        if game.syncInterestCap then game:syncInterestCap() end
+    elseif efeito == "increase_draw" then
+        if rm and rm.registerService then rm:registerService(o.id) end
+
+    elseif efeito == "remove_card" or efeito == "duplicate_card"
+        or efeito == "forge_card" then
+        -- Servicos de PICKER: quem muda o deck e o _G.openCardPicker headless
+        -- (installHeadlessPicker), igual a tela real.
+        --
+        -- O LEDGER VEM ANTES DO PICKER, e isso nao e detalhe: e ele que faz o
+        -- preco da PROXIMA compra subir (8, 12, 17, 25, 36, 45 na tesoura).
+        -- Sem registrar, o servico fica eternamente no preco base — a primeira
+        -- bateria com servicos ligados comprou a tesoura 40 vezes e TODAS as
+        -- 40 sairam por $8, o que faria a economia parecer barata por um
+        -- defeito do medidor. CardRewardScreen:_openDeckService registra na
+        -- mesma ordem.
+        if efeito == "forge_card" then
+            if rm and rm.registerPaidForge then rm:registerPaidForge() end
+        elseif rm and rm.registerService then
+            rm:registerService(o.id)
+        end
+        if _G.openCardPicker then _G.openCardPicker(o.picker) end
+        return  -- o observavel destes e o deck, checado pelo proprio picker
+
+    else
+        anomaly("upgrade sem caminho no piloto: %s (efeito '%s') — ouro gasto "
+            .. "sem efeito aplicado", tostring(o.id or "?"), tostring(efeito))
+        return
     end
-    if p.maxMana == beforeMana and p.maxHealth == beforeHp then
-        anomaly("ouro queimado: upgrade %s nao alterou estado observavel",
-            tostring(o.id or o.effect or "?"))
+
+    if observa and observa() == antes then
+        anomaly("ouro queimado: upgrade %s nao alterou seu observavel (%s)",
+            tostring(o.id or efeito or "?"), tostring(antes))
     end
 end
 
@@ -1608,6 +1742,80 @@ local function doShop(game)
     end
 
     local offers = game.shopSystem:getCurrentOffers()
+
+    -- ===== SERVICOS DA LOJA (Set/2026) =====
+    -- Tesoura, prensa, bancada de coringa, grimorio e cofre: as compras CARAS
+    -- e permanentes. O piloto nao tinha caminho nenhum pra elas, entao a
+    -- metade cara da vitrine ficava intocada a corrida inteira e a economia
+    -- media do relatorio era a de um jogador que so compra carta de $3.
+    --
+    -- A politica abaixo nao tenta ser otima — tenta ser um jogador RAZOAVEL,
+    -- que e o que um instrumento de balanco precisa representar:
+    --   • so compra o que tem uso AGORA (bancada de coringa so com coringa
+    --     parado; tesoura so com deck inchado);
+    --   • o cofre e decisao de ABERTURA — ele rende por batalha RESTANTE, e
+    --     comprado tarde e prejuizo (o proprio Config.Offers explica isso);
+    --   • nunca fura a reserva de caixa nem o teto de 3 compras por loja.
+    local rm = game.runManager
+    local Config = require("src.core.Config")
+    local function serviceWorth(o)
+        local ef = o.effect
+        if ef == "increase_draw" then
+            -- +1 carta por turno e motor puro e nao depende de estado.
+            return 10
+        elseif ef == "add_joker_slot" then
+            -- So vale com coringa PARADO na bancada — senao e slot vazio.
+            local possuidos = #((run.jokers) or {})
+            local ativos = (rm and rm.getMaxJokerSlots and rm:getMaxJokerSlots())
+                or (game.maxJokerSlots or 3)
+            return (possuidos > ativos) and 9 or -1
+        elseif ef == "raise_interest_cap" then
+            -- Rende +N por batalha restante, e so se realiza mantendo
+            -- 5x(teto) parado no bolso. Decisao de abertura: A1-A2 apenas, e
+            -- so com caixa que aguente a imobilizacao.
+            local eco = game.economySystem
+            local tetoNovo = (eco:getInterestCap() or 5)
+                + ((Config.Offers and Config.Offers.INTEREST_CAP_PER_BUY) or 2)
+            local precisaNoBolso = 5 * tetoNovo
+            if act > 2 then return -1 end
+            if eco.currentGold - o.cost < precisaNoBolso then return -1 end
+            return 8
+        end
+        return -1
+    end
+
+    for _, o in ipairs(offers) do
+        if bought >= 3 then break end
+        if o.type == "upgrade" and SERVICE_EFFECTS[o.effect] then
+            local w = serviceWorth(o)
+            if w > 0 and game.economySystem:canAfford(o.cost)
+                and spendable() >= o.cost then
+                game.economySystem:spendGold(o.cost, o.type, o.id)
+                applyUpgradeOffer(game, o)
+                run._usedShop = true
+                bought = bought + 1
+                log("- Loja: comprei SERVICO **%s** ($%d, peso %.1f)",
+                    o.name, o.cost, w)
+            end
+        end
+    end
+
+    -- TESOURA (remove_card): deck inchado e o gatilho, igual ao guard do
+    -- picker headless (que se recusa a remover abaixo de 8 cartas).
+    for _, o in ipairs(offers) do
+        if bought >= 3 then break end
+        if o.type == "upgrade" and o.effect == "remove_card"
+            and #deckIdList(game) >= 14
+            and game.economySystem:canAfford(o.cost)
+            and spendable() >= o.cost then
+            game.economySystem:spendGold(o.cost, o.type, o.id)
+            applyUpgradeOffer(game, o)
+            run._usedShop = true
+            bought = bought + 1
+            log("- Loja: comprei SERVICO **%s** ($%d, deck %d cartas)",
+                o.name, o.cost, #deckIdList(game))
+        end
+    end
 
     -- Forja paga (score V5.9 decide o alvo; so compra se ha alvo que rende)
     for _, o in ipairs(offers) do
@@ -1709,10 +1917,25 @@ end
 -- UMA RUN COMPLETA
 -- ============================================================
 
-local function playRun(classId, runIdx, maxEndlessFloors)
+local function playRun(classId, runIdx, maxEndlessFloors, seed)
     local Game = require("src.core.Game")
     local game = Game:new()
     game:startNewRun(classId)
+
+    -- SEED FIXA (Set/2026) — sem isto, medir "antes x depois" de uma mudanca
+    -- de balanco compara duas amostras DIFERENTES e o ruido engole o efeito.
+    -- Duas fontes precisam ser fixadas, nao uma:
+    --   • Rng (streams card/shop/map/event/enemy) → ofertas, mapa, eventos;
+    --   • love.math → o EMBARALHAMENTO do deck (Game:shuffleDeck), que decide
+    --     a mao de cada turno e pesa tanto quanto a oferta.
+    -- Fixar so o Rng deixaria metade da run solta.
+    if seed then
+        local Rng = require("src.systems.Rng")
+        Rng.setActive(Rng.new(seed))
+        game.runManager.currentRun.runSeed = seed
+        love.math.setRandomSeed(seed)
+    end
+
     game:startGame()
     pump(game, 0.5)
     -- v4: picker headless — sem isso os eventos de deck (remover/duplicar/
@@ -1891,29 +2114,37 @@ end
 -- ENTRY
 -- ============================================================
 
-function M.run(runsArg, classArg)
+-- love . autoplay [runs] [classe|all] [seedBase]
+-- Com seedBase, a run i da classe C usa seed = seedBase + i (mesma seed por
+-- indice em qualquer execucao) — e o unico jeito de um A/B de balanco medir a
+-- MUDANCA em vez do sorteio.
+function M.run(runsArg, classArg, seedArg)
     local runsPerClass = tonumber(runsArg or "2") or 2
     local classes = { "warrior", "mage", "rogue" }
     if classArg and classArg ~= "all" then classes = { classArg } end
+    local seedBase = tonumber(seedArg)
 
     _G.EventManager = EventManager
     _G.Event = require("engine.Event")  -- CombatSequence usa _G.Event
     local I18n = require("src.i18n.I18n")
     I18n.init()
+    installDotMeter()
 
     -- silencia print interno do jogo? nao — deixa no console, o diario e a parte.
 
     log("# Diario do Piloto de IA — autoplay v5")
     log("")
-    log("Runs por classe: %d | Classes: %s", runsPerClass,
-        table.concat(classes, ", "))
+    log("Runs por classe: %d | Classes: %s | Seed base: %s", runsPerClass,
+        table.concat(classes, ", "), seedBase and tostring(seedBase) or "aleatoria")
 
     local outcomes = {}
     for _, classId in ipairs(classes) do
         for i = 1, runsPerClass do
-            local ok, res = pcall(playRun, classId, i, 3)
+            local seed = seedBase and (seedBase + i) or nil
+            local ok, res = pcall(playRun, classId, i, 3, seed)
             if ok then
-                table.insert(outcomes, classId .. " #" .. i .. ": " .. res)
+                table.insert(outcomes, classId .. " #" .. i
+                    .. (seed and (" (seed " .. seed .. ")") or "") .. ": " .. res)
             else
                 table.insert(outcomes, classId .. " #" .. i .. ": CRASH " .. tostring(res))
                 log("")
@@ -1927,6 +2158,20 @@ function M.run(runsArg, classArg)
     log("## Placar geral")
     for _, o in ipairs(outcomes) do log("- %s", o) end
     log("")
+    log("## Veneno/DoT: quanto a armadura do inimigo comeu")
+    if dotMeter.ticks > 0 then
+        local perdido = dotMeter.declared - dotMeter.effective
+        log("- ticks de DoT: %d | declarado %d | efetivo %d | ABSORVIDO %d (%.1f%%)",
+            dotMeter.ticks, dotMeter.declared, dotMeter.effective, perdido,
+            100 * perdido / math.max(1, dotMeter.declared))
+        log("- ticks com absorcao parcial ou total: %d (%.1f%% dos ticks)",
+            dotMeter.absorbedTicks,
+            100 * dotMeter.absorbedTicks / dotMeter.ticks)
+    else
+        log("- nenhum tick de DoT nesta bateria")
+    end
+
+    log("")
     log("## Anomalias detectadas: %d", #anomalies)
     for _, an in ipairs(anomalies) do log("- %s", an) end
     if #anomalies > 0 then
@@ -1938,6 +2183,22 @@ function M.run(runsArg, classArg)
     print("\n[autoplay] relatorio salvo: autoplay_report.md ("
         .. #report .. " linhas)")
     love.event.quit()
+end
+
+-- ===== Superficie de teste =====
+-- `tools/test_autoplay_pilot.lua` conduz UMA batalha pelo cerebro real do
+-- piloto. Sem isto a unica forma de testar a politica de turno seria rodar uma
+-- corrida inteira — caro demais pra suite e vago demais pra apontar defeito.
+-- `battleStats` normalmente e montado por playRun; o teste precisa monta-lo.
+M._playBattle = playBattle
+function M._resetBattleStats()
+    battleStats = {
+        battles = 0, turns = 0, dmgTaken = 0,
+        realDecisionTurns = 0, totalTurns = 0,
+        armorCapHits = 0, byAct = {},
+        focusMaxByAct = {}, thornReflect = 0, thornTurns = 0,
+        multJokersMax = 0, multEffective = 1,
+    }
 end
 
 return M

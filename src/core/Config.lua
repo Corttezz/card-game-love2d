@@ -202,6 +202,65 @@ Config.Endless = {
 -- número move o fim da campanha inteiro (foi 3 até Set/2026).
 Config.TotalActs = 6
 
+-- ===== ECONOMIA: o pagamento por batalha (Set/2026) =====
+--
+-- POR QUE A VITORIA PASSOU A ESCALAR POR ATO
+--
+-- A campanha dobrou (3 -> 6 atos, Config.TotalActs) e o pagamento nao foi
+-- revisto. Medido com `love . autoplay 16 warrior 901000` (261 batalhas, loja
+-- exercitada de verdade — inclusive os servicos):
+--
+--   • renda de $9,88 por batalha, CONSTANTE do ato 1 ao ato 6;
+--       $5 vitoria (50%) + $3 HP cheio (11%) + juros (39%)
+--   • os juros batem no teto de $5 em 55% das batalhas — ou seja, sao um
+--     salario fixo, nao um premio por poupar: acima de $25 no bolso guardar
+--     mais nao rende nada, e o jogador passa dos $25 ainda no ato 1;
+--   • ouro medio no bolso: A1 $29 · A2 $42 · A3 $56 · A4 $57 · A5 $39 · A6 $38;
+--   • compras por ato: 74 · 62 · 28 · 43 · 10 · 1.
+--
+-- A renda e LINEAR e os precos sao GEOMETRICOS (forja x1,35; servicos x1,45 a
+-- x2,2 por compra na run). Com 3 atos a corrida acabava antes de a conta
+-- apertar. Com 6, o poder de compra por batalha no ato 6 e EXATAMENTE o do
+-- ato 1 ($10) enquanto a coisa mais barata que ainda nao se comprou custa
+-- $25-60: a loja fecha sozinha na metade final da campanha, e os numeros
+-- acima mostram isso acontecendo (10 compras no A5, 1 no A6).
+--
+-- A CORRECAO E NO TERMO LINEAR, que foi o que a campanha mais longa quebrou.
+-- A vitoria passa a pagar `BASE + POR_ATO*(ato-1)`: $5 · $7 · $9 · $11 · $13 ·
+-- $15. Com ~4,3 batalhas por ato (26 batalhas numa corrida completa, medidas),
+-- isso soma ~$129 numa corrida inteira, TODOS na metade de tras — a renda
+-- total sai de ~$260 pra ~$390 e passa a acompanhar a escalada dos precos.
+--
+-- O ato 1 fica BYTE-IDENTICO de proposito: e a parte mais testada do jogo e
+-- nao ha evidencia de que esteja errada.
+--
+-- O QUE DELIBERADAMENTE NAO MUDOU, e por que:
+--
+--  • O TETO DOS JUROS continua 5. Subi-lo premiaria GUARDAR justamente na
+--    metade em que o problema e nao conseguir GASTAR, e realimentaria o ciclo
+--    que Config.Offers descreve nos tres freios do Cofre. O numero (55% de
+--    saturacao) diz que a mecanica esta morta acima de $25 — mas a cura disso
+--    e a relIquia Cofre existir, nao a base subir.
+--
+--  • O BONUS DE HP CHEIO continua $3 fixo. Ele e colhido em 11% das batalhas
+--    pelo guerreiro e em 7-8% pelo mago e pelo ladino — premia quem ja esta
+--    ganhando. Escalar por ato ALARGARIA a diferenca entre as classes, entao
+--    fica como esta; se virar alavanca um dia, e pra baixo, nao pra cima.
+Config.Economy = {
+    VICTORY_GOLD_BASE    = 5,  -- pago no ato 1 (inalterado)
+    VICTORY_GOLD_PER_ACT = 2,  -- +$2 por ato: A1 $5 ... A6 $15
+    FULL_HP_BONUS        = 3,  -- bonus por terminar a batalha sem perder HP
+}
+
+-- Ouro da vitoria no ato `act` (FONTE UNICA — Game:_buildRoundEvalSources
+-- paga por aqui e qualquer preview deve ler daqui tambem; duas formulas pro
+-- mesmo numero e como a TopBar passou a mentir sobre os juros uma vez).
+function Config.Economy.victoryGold(act)
+    act = math.max(1, math.floor(tonumber(act) or 1))
+    return Config.Economy.VICTORY_GOLD_BASE
+        + Config.Economy.VICTORY_GOLD_PER_ACT * (act - 1)
+end
+
 -- ===== Ofertas de carta (recompensas + loja): pity e afinidade =====
 -- Adaptação do "card blizzard" do Slay the Spire pro nosso modelo de pesos
 -- (ver memory/sts_run_economy.md). Estado do pity vive em Rng.meta (serializado
@@ -237,9 +296,15 @@ Config.Offers = {
     -- a loja vende o serviço, não uma assinatura barata pro resto do jogo.
     --
     -- COMO OS NÚMEROS FORAM ESCOLHIDOS (e por que não são chute):
-    --   Uma run de 6 atos paga ~$9 por batalha ($5 vitória + $3 HP cheio +
-    --   juros até $5) em ~35 batalhas: a ordem de grandeza da run inteira é
-    --   $350-450, e uma carta comum custa $3.
+    --   Uma run de 6 atos paga ~$10 por batalha ($5 vitória + $3 HP cheio +
+    --   juros até $5) e uma carta comum custa $3.
+    --   NÚMERO DE BATALHAS, medido (Set/2026, `love . autoplay 16 warrior`):
+    --   17,3 por corrida até a morte (andar ~31); uma corrida COMPLETA até o
+    --   andar 48 dá ~26 batalhas. O "~35 batalhas" que estava escrito aqui era
+    --   estimativa, nunca medição, e inflava em ~35% o retorno de tudo que
+    --   rende POR BATALHA RESTANTE — o Cofre logo abaixo em primeiro lugar.
+    --   Com a vitória escalando por ato (Config.Economy), a renda da corrida
+    --   inteira sai de ~$260 para ~$390.
     --   • remover/duplicar entram na faixa da forja (base 5) porque competem
     --     com ela pelo mesmo slot e pelo mesmo bolso;
     --   • slot de coringa e compra extra são upgrades PERMANENTES de motor —
@@ -289,8 +354,10 @@ Config.Offers = {
     --     custo real da relíquia não é só o preço: é a liquidez.
     --
     --  3. PISTA QUE ENCURTA. O ganho é +2 por batalha RESTANTE. Comprado no
-    --     ato 1 (~30 batalhas pela frente) rende ~$60 por $25; comprado no
-    --     ato 5 (~10 batalhas) rende $20 por $68 e é prejuízo. O item se
+    --     ato 1 (~23 batalhas pela frente, medido) rende ~$46 por $25;
+    --     comprado no ato 5 (~4 batalhas) rende $8 por $68 e é prejuízo grosso.
+    --     (Os números antigos aqui — 30 e 10 batalhas — vinham do mesmo
+    --     "~35 batalhas" estimado acima.) O item se
     --     desvaloriza sozinho conforme a corrida anda — é decisão de ABERTURA,
     --     não de fechamento, e isso não precisou de regra nenhuma.
     --

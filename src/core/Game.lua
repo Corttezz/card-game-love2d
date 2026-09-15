@@ -1711,9 +1711,18 @@ function Game:_buildRoundEvalSources()
     -- 1) Vitória: recompensa base por derrotar inimigo.
     -- Os rótulos são exibidos na RoundEvalScreen — vão pelo i18n (antes eram
     -- PT cravado e apareciam em português dentro da tela traduzida).
+    --
+    -- Set/2026: o valor ESCALA POR ATO (Config.Economy.victoryGold) — era $5
+    -- fixo, e com a campanha em 6 atos a renda por batalha ficava idêntica no
+    -- ato 6 e no ato 1 enquanto todos os preços da loja escalavam. O raciocínio
+    -- e os números medidos estão em Config.Economy.
+    local act = 1
+    if self.isRunMode and self.runManager and self.runManager:hasActiveRun() then
+        act = self.runManager.currentRun.actNumber or 1
+    end
     table.insert(sources, {
         label = I18n.t("round_eval.src_victory", nil, "Vitoria"),
-        dollars = 5,
+        dollars = Config.Economy.victoryGold(act),
         color = {1, 0.85, 0.30, 1},
     })
 
@@ -1721,7 +1730,7 @@ function Game:_buildRoundEvalSources()
     if self.player and self.player.health == self.player.maxHealth then
         table.insert(sources, {
             label = I18n.t("round_eval.src_full_hp", nil, "HP cheio"),
-            dollars = 3,
+            dollars = Config.Economy.FULL_HP_BONUS,
             color = {0.4, 0.95, 0.5, 1},
         })
     end

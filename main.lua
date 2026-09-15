@@ -947,9 +947,9 @@ function love.load(loveArgs)
     end
 
     -- Piloto de IA: joga runs completas sozinho e escreve diario+metricas.
-    --   love . autoplay [runs] [warrior|mage|rogue|all]
+    --   love . autoplay [runs] [warrior|mage|rogue|all] [seedBase]
     if loveArgs and loveArgs[1] == "autoplay" then
-        require("tools.autoplay").run(loveArgs[2], loveArgs[3])
+        require("tools.autoplay").run(loveArgs[2], loveArgs[3], loveArgs[4])
         return
     end
 
