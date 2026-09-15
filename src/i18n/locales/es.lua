@@ -208,6 +208,12 @@ return {
             desc   = "Robas una carta extra cada turno, el resto de la partida.",
             flavor = "Leer por delante es la unica trampa que el libro permite.",
         },
+        interest_cap   = {
+            name   = "Caja Fuerte",
+            effect = "+{value} INTERES MAX",
+            desc   = "Sube el tope de intereses en {value}. Ganas $1 por cada $5 guardados, hasta ese tope.",
+            flavor = "Solo el oro quieto trabaja para ti.",
+        },
     },
 
     map = {
@@ -381,6 +387,7 @@ return {
         joker_run_only     = "Los comodines solo se consiguen durante una partida",
         joker_slot_gained  = "Comodines en juego: hasta {n}",
         service_refunded   = "Compra cancelada: ${n} devueltos",
+        interest_cap_raised = "Tope de intereses: ${n} por batalla",
         instructions_shop  = "Pasa el raton para leer · CLIC selecciona · confirma en el panel · DERECHO inspecciona",
         detail_type_voucher = "Reliquia",
         detail_type_pack    = "Sobre",

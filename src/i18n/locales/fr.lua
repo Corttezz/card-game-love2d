@@ -208,6 +208,12 @@ return {
             desc   = "Vous piochez une carte de plus chaque tour, jusqu a la fin de la partie.",
             flavor = "Lire en avance est la seule triche que le livre autorise.",
         },
+        interest_cap   = {
+            name   = "Tresor",
+            effect = "+{value} INTERETS MAX",
+            desc   = "Releve le plafond des interets de {value}. Vous gagnez 1 $ par tranche de 5 $ gardee, jusqu a ce plafond.",
+            flavor = "Seul l or qui dort travaille vraiment.",
+        },
     },
 
     map = {
@@ -382,6 +388,7 @@ return {
         joker_run_only     = "Les jokers ne s'obtiennent que pendant une partie",
         joker_slot_gained  = "Jokers en scene : jusqu a {n}",
         service_refunded   = "Achat annule : ${n} rembourses",
+        interest_cap_raised = "Plafond des interets : ${n} par combat",
         instructions_shop  = "Survolez pour lire · CLIC selectionne · confirmez dans le panneau · DROIT inspecte",
         detail_type_voucher = "Relique",
         detail_type_pack    = "Pack",

@@ -226,6 +226,12 @@ return {
             desc   = "Você compra uma carta a mais todo turno, pelo resto da corrida.",
             flavor = "Ler adiante é a única trapaça que o livro permite.",
         },
+        interest_cap   = {
+            name   = "Arca",
+            effect = "+{value} JUROS MAX",
+            desc   = "Levanta o teto dos juros em {value}. Você ganha $1 a cada $5 guardados, até esse teto.",
+            flavor = "O ouro parado é o único que trabalha.",
+        },
     },
 
     map = {
@@ -401,6 +407,7 @@ return {
         joker_run_only     = "Coringas so podem ser adquiridos durante uma corrida",
         joker_slot_gained  = "Coringas em campo: até {n}",
         service_refunded   = "Compra cancelada — ${n} devolvido",
+        interest_cap_raised = "Teto de juros: ${n} por batalha",
         -- Split-view da loja: rotulos que antes so existiam como fallback PT
         -- cravado no CardDetailPanel/CardRewardScreen — em alemao a vitrine
         -- mostrava "Reliquia" no meio do texto traduzido.

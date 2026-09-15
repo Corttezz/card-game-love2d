@@ -152,6 +152,7 @@ function Game:startGame()
     self.economySystem.currentGold = 10
 
     self:syncArmorCap()
+    self:syncInterestCap()
     self:initializeDeck()
     -- Cartas com edition "negative" no deck adicionam slots de joker (Fase 3.2).
     self:recomputeMaxJokerSlots()
@@ -1804,6 +1805,23 @@ function Game:syncArmorCap()
     self.player.maxArmor = base + per * math.max(0, act - 1)
 end
 
+-- Espelha no EconomySystem o TETO DE JUROS comprado na loja (relíquia
+-- "Cofre"). A fonte da verdade é o ledger de serviços da run — que viaja no
+-- save —, e este é o mesmo padrão do syncArmorCap logo acima: a entidade
+-- guarda um número simples e o Game o reescreve nos chokepoints de batalha.
+--
+-- Chamado junto de syncArmorCap (startGame + nextPhase) e logo após a compra.
+-- Os dois primeiros são a rede: mesmo que um caminho novo de compra esqueça
+-- de sincronizar, o desvio morre no andar seguinte em vez de durar a run.
+function Game:syncInterestCap()
+    if not self.economySystem or not self.economySystem.setBonusInterestCap then
+        return
+    end
+    local porCompra = (Config.Offers and Config.Offers.INTEREST_CAP_PER_BUY) or 2
+    self.economySystem:setBonusInterestCap(
+        self:getShopServiceCount("interest_cap") * porCompra)
+end
+
 function Game:nextPhase()
     -- Exaurir (balance v2): a carta some da BATALHA e volta na próxima
     -- (StS-style). A remoção permanente da run punia demais — potions e
@@ -1833,6 +1851,7 @@ function Game:nextPhase()
     -- último turno começava a próxima batalha com 0 de mana).
     self.player:restoreMana()
     self:syncArmorCap()
+    self:syncInterestCap()
     self:resetHandAndDeck()
 
     -- Stats do inimigo baseadas no ato + node atual (Fase 5 via ActSystem).

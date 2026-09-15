@@ -107,6 +107,10 @@ function EconomySystem:resetForNewRun()
     self.totalGoldEarned = 0
     self.goldSpent = 0
     self.purchaseHistory = {}
+    -- Teto de juros comprado é da RUN: corrida nova volta ao base. (O espelho
+    -- é reescrito logo em seguida por Game:syncInterestCap; zerar aqui garante
+    -- que nenhum caminho de reset deixe o bônus da run anterior vazar.)
+    self:setBonusInterestCap(0)
 end
 
 -- ===== TETO DE JUROS COMPRÁVEL (Set/2026) =====

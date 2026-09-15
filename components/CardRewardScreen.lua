@@ -1610,6 +1610,19 @@ function CardRewardScreen:applyUpgrade(upgrade)
             I18n.t("reward.joker_slot_gained", { n = total },
                 "Slots de coringa: " .. tostring(total)), "success")
 
+    elseif upgrade.effect == "raise_interest_cap" then
+        -- COFRE: levanta o teto dos juros pelo resto da run. O ledger é a
+        -- fonte; syncInterestCap reescreve o espelho no EconomySystem — e a
+        -- TopBar, que lê calculateInterest todo frame, mostra o número novo
+        -- no frame seguinte sem precisar saber que algo foi comprado.
+        if rm and rm.registerService then rm:registerService(upgrade.id) end
+        if self.game.syncInterestCap then self.game:syncInterestCap() end
+        local teto = (self.game.economySystem and self.game.economySystem.getInterestCap
+            and self.game.economySystem:getInterestCap()) or 0
+        self.game:addMessage(
+            I18n.t("reward.interest_cap_raised", { n = teto },
+                "Teto de juros: " .. tostring(teto)), "success")
+
     elseif upgrade.effect == "increase_draw" then
         -- GRIMÓRIO: +1 carta comprada por turno, pelo resto da run. O ledger
         -- é lido por Game:drawForTurn e pela mão inicial da batalha.

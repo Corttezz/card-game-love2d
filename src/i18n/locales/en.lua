@@ -208,6 +208,12 @@ return {
             desc   = "You draw one extra card every turn, for the rest of the run.",
             flavor = "Reading ahead is the only cheat the book allows.",
         },
+        interest_cap   = {
+            name   = "Vault",
+            effect = "+{value} MAX INTEREST",
+            desc   = "Raises the interest ceiling by {value}. You earn $1 per $5 saved, up to that ceiling.",
+            flavor = "Only idle gold ever works for you.",
+        },
     },
 
     map = {
@@ -383,6 +389,7 @@ return {
         joker_run_only     = "Jokers can only be acquired during a run",
         joker_slot_gained  = "Jokers on stage: up to {n}",
         service_refunded   = "Purchase cancelled — ${n} refunded",
+        interest_cap_raised = "Interest ceiling: ${n} per battle",
         instructions_shop  = "Hover to read · CLICK selects · confirm in the panel · RIGHT inspects",
         detail_type_voucher = "Relic",
         detail_type_pack    = "Pack",

@@ -208,6 +208,12 @@ return {
             desc   = "Du ziehst jede Runde eine Karte mehr, fuer den Rest des Laufs.",
             flavor = "Vorauslesen ist der einzige Betrug, den das Buch erlaubt.",
         },
+        interest_cap   = {
+            name   = "Tresor",
+            effect = "+{value} MAX. ZINSEN",
+            desc   = "Hebt die Zinsgrenze um {value}. Du erhaeltst $1 je $5 Erspartes, bis zu dieser Grenze.",
+            flavor = "Nur ruhendes Gold arbeitet fuer dich.",
+        },
     },
 
     map = {
@@ -382,6 +388,7 @@ return {
         joker_run_only     = "Joker gibt es nur waehrend eines Laufs",
         joker_slot_gained  = "Joker im Spiel: bis zu {n}",
         service_refunded   = "Kauf abgebrochen — ${n} erstattet",
+        interest_cap_raised = "Zinsgrenze: ${n} pro Kampf",
         instructions_shop  = "Mauszeiger liest · KLICK waehlt · im Panel bestaetigen · RECHTS pruefen",
         detail_type_voucher = "Relikt",
         detail_type_pack    = "Pack",

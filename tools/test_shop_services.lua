@@ -246,6 +246,89 @@ function M.run()
         #gd.hand, maoBase + 1)
 
     -- ========================================================================
+    -- 4b. COFRE: o teto dos juros sobe, e sobe de verdade
+    -- ========================================================================
+    -- Diferente das outras relíquias, esta REALIMENTA a fonte de ouro. As
+    -- travas aqui são três:
+    --   • o teto efetivo sai do LEDGER, não de um campo solto que alguém
+    --     esqueceria de salvar;
+    --   • calculateInterest (que a TopBar lê todo frame e o cash-out usa pra
+    --     PAGAR) enxerga o teto novo — número prometido e número pago são o
+    --     mesmo, que foi a razão de existir do calculateInterest;
+    --   • o guarda-corpo do Config segura, pra que nenhum caminho futuro
+    --     transforme juros em motor infinito.
+    local EconomySystem = require("src.systems.EconomySystem")
+    local gi = TK.newRunGame("warrior")
+    local porCompra = Config.Offers.INTEREST_CAP_PER_BUY
+
+    gi.economySystem.currentGold = 500   -- cofre farto: o teto é quem limita
+    local jurosBase = gi.economySystem:calculateInterest()
+    t:eq("sem compra, juros no teto base", jurosBase, 5)
+
+    gi.runManager:registerService("interest_cap")
+    gi:syncInterestCap()
+    t:eq("1 compra sobe o teto em INTEREST_CAP_PER_BUY",
+        gi.economySystem:getInterestCap(), 5 + porCompra)
+    t:eq("os juros PAGOS acompanham o teto novo",
+        gi.economySystem:calculateInterest(), 5 + porCompra)
+
+    gi.runManager:registerService("interest_cap")
+    gi:syncInterestCap()
+    t:eq("2a compra sobe de novo (repetivel)",
+        gi.economySystem:getInterestCap(), 5 + porCompra * 2)
+
+    -- O teto NÃO dá dinheiro sozinho: continua limitado por floor(ouro/5).
+    gi.economySystem.currentGold = 10
+    t:eq("cofre vazio: teto alto nao inventa juros",
+        gi.economySystem:calculateInterest(), 2)
+
+    -- Guarda-corpo: nem 999 compras estouram o teto do teto.
+    local eco = EconomySystem:new()
+    eco:setBonusInterestCap(999)
+    t:eq("guarda-corpo limita o teto total",
+        eco:getInterestCap(), Config.Offers.INTEREST_CAP_MAX)
+    eco:setBonusInterestCap(-5)
+    t:eq("bonus negativo nao baixa o teto base", eco:getInterestCap(), 5)
+
+    -- Corrida nova volta ao base (o bônus é da RUN, não do objeto).
+    eco:setBonusInterestCap(6)
+    eco:resetForNewRun()
+    t:eq("corrida nova volta ao teto base", eco:getInterestCap(), 5)
+
+    -- O preço sobe a cada compra — é o freio principal do composto.
+    local rmJuros = RunManager:new()
+    rmJuros:startNewRun("warrior")
+    local p1 = ShopServices.cost("interest_cap", rmJuros)
+    rmJuros:registerService("interest_cap")
+    local p2 = ShopServices.cost("interest_cap", rmJuros)
+    rmJuros:registerService("interest_cap")
+    local p3 = ShopServices.cost("interest_cap", rmJuros)
+    t:truthy("cofre encarece a cada compra", p3 > p2 and p2 > p1)
+    t:truthy("as 3 primeiras compras custam mais que uma lendaria (30)",
+        p1 + p2 + p3 > 30 * 3)
+    -- Sem teto de compras: o pedido foi "aumentar sempre".
+    t:truthy("cofre continua ofertavel depois de 2 compras",
+        ShopServices.isAvailable("interest_cap", rmJuros))
+
+    -- A placa do tile mostra o MESMO numero que o efeito aplica.
+    local ofertaCofre
+    do
+        local shopC = ShopSystem:new()
+        shopC:setContext({ runManager = rmJuros })
+        ofertaCofre = shopC:buildServiceOffer("interest_cap")
+    end
+    t:truthy("oferta do cofre existe", ofertaCofre ~= nil)
+    if ofertaCofre then
+        t:eq("value da oferta = ganho real por compra",
+            ofertaCofre.value, porCompra)
+        local UT = require("src.ui.UpgradeTile")
+        local placa = UT.effectLabel(ofertaCofre) or ""
+        t:truthy("placa do tile imprime o numero (nao '{value}')",
+            placa:find(tostring(porCompra), 1, true) ~= nil
+                and not placa:find("{value}", 1, true))
+    end
+
+    -- ========================================================================
     -- 5. ESTORNO: pagou, fechou o picker sem escolher, recebe de volta
     -- ========================================================================
     local CardRewardScreen = require("components.CardRewardScreen")
@@ -345,6 +428,8 @@ function M.run()
     gs.runManager:registerService("joker_slot")
     gs.runManager:registerService("card_draw_upgrade")
     gs.runManager:registerService("card_draw_upgrade")
+    gs.runManager:registerService("interest_cap")
+    gs.runManager:registerService("interest_cap")
     t:truthy("save escreveu", (gs.runManager:saveRun()))
 
     local rmLoad = RunManager:new()
@@ -359,6 +444,26 @@ function M.run()
     rmLoad.currentRun.maxJokerSlots = nil
     t:eq("teto de coringas conta a bancada mesmo sem espelho",
         rmLoad:getMaxJokerSlots(), Config.Game.MAX_JOKER_SLOTS + 1)
+    t:eq("cofre (teto de juros) sobrevive ao save",
+        rmLoad:getServiceCount("interest_cap"), 2)
+
+    -- O CAMINHO INTEIRO do Continuar: carregar a run e remontar o jogo tem
+    -- que devolver o teto de juros comprado. O espelho vive no EconomySystem,
+    -- que `startGame` reseta — é exatamente aqui que um teto comprado
+    -- sumiria sem ninguém perceber (o jogador só veria "meus juros
+    -- diminuíram" umas batalhas depois).
+    local Game = require("src.core.Game")
+    local gResume = Game:new()
+    gResume.runManager = rmLoad
+    gResume.isRunMode = true
+    t:truthy("resumeRun remontou a run", (gResume:resumeRun()))
+    gResume.economySystem.currentGold = 500
+    t:eq("teto de juros volta certo depois do Continuar",
+        gResume.economySystem:getInterestCap(),
+        5 + Config.Offers.INTEREST_CAP_PER_BUY * 2)
+    t:eq("e os juros pagos ja usam o teto restaurado",
+        gResume.economySystem:calculateInterest(),
+        5 + Config.Offers.INTEREST_CAP_PER_BUY * 2)
 
     -- Run recém-criada não herda ledger de outra run.
     local rmNovo = RunManager:new()
@@ -433,7 +538,7 @@ function M.run()
             end
         end
         for _, key in ipairs({ "reward.joker_slot_gained", "reward.service_refunded",
-                              "reward.extra_draw" }) do
+                              "reward.extra_draw", "reward.interest_cap_raised" }) do
             local txt = I18n.t(key, { n = 1 }, "__missing__")
             t:check(code .. " tem " .. key,
                 txt ~= "__missing__" and txt ~= key and txt ~= "")

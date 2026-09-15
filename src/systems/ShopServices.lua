@@ -42,6 +42,16 @@ ShopServices.CATALOG = {
     { id = "duplicate_card", effect = "duplicate_card", picker = "duplicate", weight = 0.8 },
     { id = "joker_slot",     effect = "add_joker_slot", weight = 0.9 },
     { id = "card_draw_upgrade", effect = "increase_draw", weight = 0.8 },
+    -- COFRE: levanta o teto dos juros. Peso menor que o resto de propósito —
+    -- é a relíquia mais cara e a que o jogador precisa ver CEDO pra ela valer
+    -- a pena (ver a análise dos três freios em Config.Offers). Aparecer demais
+    -- no ato 5 só serviria pra vender prejuízo.
+    { id = "interest_cap",   effect = "raise_interest_cap", weight = 0.7,
+      -- Único serviço cujo `value` não é 1: o número que a placa do tile
+      -- mostra ("+2 JUROS MAX") e que a descrição interpola é o mesmo que o
+      -- Game aplica. Lido do Config em ShopServices.value() — duas fontes pro
+      -- MESMO número é como uma placa passa a mentir depois de um rebalance.
+      valueKey = "INTEREST_CAP_PER_BUY" },
 }
 
 local BY_ID = {}
@@ -60,6 +70,22 @@ function ShopServices.tuning(id)
             .. tostring(id))
     end
     return cfg
+end
+
+-- O NÚMERO do serviço: o que a placa do tile exibe e o que o efeito aplica.
+-- 1 por padrão (remover 1 carta, 1 cópia, 1 slot, 1 compra); quem tem
+-- `valueKey` lê a grandeza direto do Config, pra que rebalancear o número não
+-- deixe a vitrine prometendo o valor antigo.
+function ShopServices.value(id)
+    local svc = BY_ID[id]
+    if not svc then return 1 end
+    if svc.valueKey then
+        local v = Config.Offers and Config.Offers[svc.valueKey]
+        if v then return v end
+        print("[ShopServices] valueKey ausente em Config.Offers: "
+            .. tostring(svc.valueKey) .. " (servico " .. tostring(id) .. ")")
+    end
+    return 1
 end
 
 -- Quantas vezes o serviço já foi comprado nesta run.
