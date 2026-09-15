@@ -269,3 +269,40 @@ PRIMEIRO. Critério: diferença média 0→N não pode passar de ~1,6x a de um p
 normal (0→1). Acima disso, **ping-pong** (duplicar os frames de volta) mata a
 emenda por construção — usado em `mage_radiant_prayer` e em dois vouchers.
 Para chama e líquido corrente prefira regerar: fogo em marcha a ré se percebe.
+
+## Quando o v3 NÃO serve: as gemas do mago (Set/2026)
+
+Pedido do dono, jogando: *"as orbes ali, as gemas do mago: se a gente conseguir
+colocar animações bem sutis ali na arte delas, bem sutíssimas, só para não ser
+tipo um PNG estático igual está hoje"*.
+
+O caminho deste arquivo foi tentado **primeiro**, nas cinco gemas
+(`assets/sprites/orbs/*.png`, 48×48), com a redação que esta memória registra
+como vencedora: ciclo curto (`frame_count=4`) e movimento positivo mínimo
+("the ONLY change is that inner glow dimming and brightening"). **As cinco
+foram reprovadas no contact sheet** — raio bombeando de âmbar a amarelo claro,
+gelo virando mancha branca, fogo desbotando pra pêssego, sombra fervendo com um
+buraco preto no meio do ciclo, e o sagrado com os RAIOS ENCOLHENDO. Frames em
+`tools/preview_out/_quarentena_anim/orbs_pixellab_v3_reprovada/`.
+
+**A lição nova não é sobre redação, é sobre ADEQUAÇÃO**: o v3 redesenha o
+sprite inteiro a cada frame. Isso é aceitável quando o sujeito tem uma parte
+móvel óbvia (pano, chama, fumaça) e o resto é fundo. Numa **pedra facetada de
+48px**, onde o "resto" é justamente a identidade (paleta do elemento + contorno
++ o corte que diferencia as cinco), ele não tem onde errar pouco.
+
+O que funcionou foi **trocar o método, não o prompt**: `tools/bake_orb_anim.lua`
+não gera frame, ele DERIVA — cada pixel só pode subir **um degrau na rampa de
+cor do próprio sprite**, e só dentro de uma faixa diagonal de luz que atravessa
+a pedra. Isso torna impossível, por construção, inventar cor, mexer na silhueta
+ou tocar o contorno; a emenda do loop é ZERO porque a faixa nasce e morre fora
+da pedra (frame 0 e último frame são o PNG estático, pixel a pixel).
+
+**Regra prática**: arte cuja IDENTIDADE é a paleta e o contorno (gema, ícone de
+status, moeda, selo) pede animação derivada; arte com um sujeito e um elemento
+móvel (personagem, estandarte, tocha) pede v3. Travas em
+[`tools/test_orb_anim.lua`](../tools/test_orb_anim.lua) — silhueta, contorno,
+paleta, emenda e um TETO de dosagem (35% dos pixels opacos no pior frame),
+que é o que impede alguém re-assar com faixa larga e transformar cintilar em
+piscar. Aprovação visual: `love . orb_anim_compare` e
+`love . preview_battle_hud orbs anim`.

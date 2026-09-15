@@ -213,6 +213,27 @@ function M.run()
         FloatingText.draw()
     end
 
+    -- ===== Modo `orbs anim`: a fileira VIVA, com as gemas fora de fase =====
+    -- A gema tem um loop idle sutilíssimo (assets/sprites/orbs_anim/) e cada
+    -- slot corre com fase própria. Num quadro parado isso é justamente o que dá
+    -- pra provar: se as cinco pedras estivessem em sincronia, a faixa de luz
+    -- estaria no mesmo lugar nas cinco; aqui ela está num ponto diferente em
+    -- cada uma. Adiantamos meio ciclo pra pegar a faixa no meio da travessia,
+    -- em vez do quadro de repouso (que é, por construção, a arte de hoje).
+    if _G.PREVIEW_HUD_ORBS_ANIM then
+        local OrbRow = require("src.ui.OrbRow")
+        for _ = 1, 30 do OrbRow.update(1 / 60, game) end   -- 0,5s
+        love.graphics.clear(0.08, 0.05, 0.04, 1)
+        love.graphics.setColor(0.14, 0.10, 0.06, 1)
+        love.graphics.rectangle("fill", 0, 0, w, h * 0.55)
+        love.graphics.setColor(0.06, 0.04, 0.03, 1)
+        love.graphics.rectangle("fill", 0, h * 0.55, w, h * 0.45)
+        love.graphics.setColor(1, 1, 1, 1)
+        EnemyRenderer.draw(game, enemyCx, enemyCy)
+        EnemyHud.draw(game, bbox, enemyCx, enemyCy)
+        hud:draw(game)
+    end
+
     -- ===== Modo `pulse`: onde cada pulso deixa marca =====
     -- O primeiro hud:draw acima existe pra popular OrbRow.slotPos (o burst de
     -- sombra ancora no orbe). Disparamos as três aterrissagens direto pelo
@@ -282,6 +303,8 @@ function M.run()
     local img = canvas:newImageData()
     local out = (_G.PREVIEW_HUD_ORBS and _G.PREVIEW_HUD_ORBS_EVOKE)
             and "preview_battle_hud_orbs_evoke.png"
+        or (_G.PREVIEW_HUD_ORBS and _G.PREVIEW_HUD_ORBS_ANIM)
+            and "preview_battle_hud_orbs_anim.png"
         or _G.PREVIEW_HUD_ORBS and "preview_battle_hud_orbs.png"
         or orbMode and "preview_battle_hud_orb.png"
         or pulseMode and "preview_battle_hud_pulse.png"

@@ -95,6 +95,47 @@ OrbRow.ART = {
     holy      = "assets/sprites/orbs/holy.png",
 }
 
+-- GEMA VIVA (Set/2026, pedido do dono jogando): "se a gente conseguir colocar
+-- animações bem sutis ali na arte delas, bem sutíssimas, só para não ser tipo
+-- um PNG estático igual está hoje".
+--
+-- Mesmo CONTRATO de pasta dos ícones de carta e dos vouchers da loja
+-- (memory/card_icon_animation.md): assets/sprites/orbs_anim/<tipo>/frame_NNN.png
+-- (+ meta.lua com fps). Pasta ausente = PNG estático, e isso é um estado
+-- normal, não um defeito — o que é defeito é pasta existir sem frame legível,
+-- e isso AVISA (fallback silencioso é proibido, CLAUDE.md §9).
+--
+-- DUAS decisões que divergem da doutrina dos ícones de carta, de propósito:
+--   1. Aqui a animação roda SEMPRE, não só no hover. A regra "idle = estático"
+--      existe porque a mão/coleção tem DEZENAS de cartas e todas vivas viram
+--      carnaval; a fileira tem no máximo 3 gemas, e o pedido do dono é
+--      justamente que elas não pareçam PNG parado. Mesmo caso das relíquias da
+--      loja (UpgradeTile), que também animam sempre.
+--   2. Cada slot corre com uma FASE própria (PHASE_STEP). Três gemas pulsando
+--      em uníssono leriam como um pisca-pisca da HUD inteira — que é o oposto
+--      de sutil; defasadas, cada pedra respira sozinha.
+local ANIM_ROOT = "assets/sprites/orbs_anim"
+local PHASE_STEP = 0.37   -- s de defasagem entre slots vizinhos
+
+OrbRow.ANIM_ROOT = ANIM_ROOT
+
+local FramesLoader = require("src.ui.IconFramesLoader")
+local animWarned = {}
+
+-- Handle de animação da gema, ou nil (sem pasta = estático, caso normal).
+function OrbRow.animationFor(orbType)
+    if not orbType then return nil end
+    local handle = FramesLoader.getFrom(ANIM_ROOT, orbType)
+    if handle then return handle end
+    if not animWarned[orbType]
+        and love.filesystem.getInfo(ANIM_ROOT .. "/" .. tostring(orbType), "directory") then
+        animWarned[orbType] = true
+        print(("[OrbRow] %s/%s existe mas nao tem frame_NNN.png legivel -- "
+            .. "caindo no PNG estatico"):format(ANIM_ROOT, tostring(orbType)))
+    end
+    return nil
+end
+
 local ImageCache = require("src.ui.ImageCache")
 local gemCache = {}
 local warnedGem = {}
@@ -112,6 +153,19 @@ local function gemOf(orbType)
     end
     gemCache[orbType] = img or false
     return img
+end
+
+-- A imagem da gema NESTE instante. `t` nil = quadro de repouso (frame 0 do
+-- loop, que é byte a byte o PNG estático — v3 guarda o frame de entrada como
+-- frame 0, é o que garante zero "pop" entre parado e vivo).
+-- Ordem: frame do loop -> PNG estático -> nil (e o nil já avisou em gemOf).
+function OrbRow.gemImageAt(orbType, t)
+    local anim = OrbRow.animationFor(orbType)
+    if anim then
+        local frame = anim:frameAt(t or 0)
+        if frame then return frame, (t ~= nil) end
+    end
+    return gemOf(orbType), false
 end
 
 -- UNIDADE do número. `mode` = "pulse" (fim de turno) ou "evoke" (ao evocar).
@@ -203,6 +257,14 @@ local FLIGHT_OUT = 0.45
 
 local function reducedMotion()
     return (_G.gameSettings and _G.gameSettings.reducedMotion) or false
+end
+
+-- Relógio do loop idle da gema do slot i (fase própria por slot — ver a nota
+-- de GEMA VIVA lá em cima). reducedMotion devolve nil: a pedra congela no
+-- quadro de repouso, com a mesma cor, o mesmo tamanho e o mesmo número.
+local function gemClock(i)
+    if reducedMotion() then return nil end
+    return animTime + (i - 1) * PHASE_STEP
 end
 
 local function decay(tbl, dt)
@@ -342,9 +404,9 @@ end
 
 -- Desenha a gema 1:1 em (x, y). `flash` (0..1) acende a pedra SEM lavá-la:
 -- blend aditivo por cima do desenho normal, em vez de multiplicar a cor (que
--- só escureceria a arte).
-local function drawGem(orbType, x, y, alpha, flash)
-    local img = gemOf(orbType)
+-- só escureceria a arte). `t` = relógio do loop idle (nil = quadro parado).
+local function drawGem(orbType, x, y, alpha, flash, t)
+    local img = OrbRow.gemImageAt(orbType, t)
     if not img then return false end
     love.graphics.setColor(1, 1, 1, alpha or 1)
     love.graphics.draw(img, math.floor(x), math.floor(y))
@@ -496,7 +558,7 @@ function OrbRow.draw(game, panelX, panelY)
 
             -- A GEMA, 1:1.
             local pf = pulseFlash[i] or 0
-            if not drawGem(orb.type, x, gy, 1, math.max(pf * 0.8, kick * 0.6)) then
+            if not drawGem(orb.type, x, gy, 1, math.max(pf * 0.8, kick * 0.6), gemClock(i)) then
                 -- Sem arte: aro de emergência (o aviso já saiu em gemOf).
                 love.graphics.setColor(color[1], color[2], color[3], 0.9)
                 love.graphics.setLineWidth(2)
@@ -610,7 +672,7 @@ function OrbRow._drawFx()
             -- e meio pixel de tremor num voo de 0,26s lê como sujeira.
             love.graphics.setColor(c[1], c[2], c[3], 0.30 + 0.35 * e)
             love.graphics.circle("fill", x, y, SIZE * (0.18 + 0.24 * e))
-            if not drawGem(fx.otype, x - SIZE / 2, y - SIZE / 2, 1, 0.35 * (1 - e)) then
+            if not drawGem(fx.otype, x - SIZE / 2, y - SIZE / 2, 1, 0.35 * (1 - e), gemClock(i)) then
                 love.graphics.setColor(1, 1, 1, 0.85)
                 love.graphics.setLineWidth(2)
                 love.graphics.circle("line", x, y, SIZE * 0.3)
@@ -634,7 +696,7 @@ function OrbRow._drawFx()
             -- diferente: forma diferente leria como outro orbe.
             love.graphics.setColor(c[1], c[2], c[3], 0.65 * a)
             love.graphics.circle("fill", x, y, SIZE * 0.40)
-            if not drawGem(fx.otype, x - SIZE / 2, y - SIZE / 2, a, 0.5 * a) then
+            if not drawGem(fx.otype, x - SIZE / 2, y - SIZE / 2, a, 0.5 * a, gemClock(fx.slot)) then
                 love.graphics.setColor(1, 1, 1, 0.95 * a)
                 love.graphics.setLineWidth(3)
                 love.graphics.circle("line", x, y, SIZE * 0.35)
