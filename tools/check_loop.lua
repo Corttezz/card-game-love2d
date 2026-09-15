@@ -112,9 +112,27 @@ function M.run(filter)
 
     local files = {}
     for _, item in ipairs(love.filesystem.getDirectoryItems(DIR)) do
-        if item:match("%.mp3$") then files[#files + 1] = item end
+        if item:match("%.mp3$") then
+            files[#files + 1] = { nome = item, caminho = DIR .. "/" .. item }
+        end
     end
-    table.sort(files)
+    table.sort(files, function(a, b) return a.nome < b.nome end)
+
+    -- A MUSICA DO MENU MORA FORA DE audio/music/ E POR ISSO NUNCA FOI MEDIDA.
+    --
+    -- Ela e a faixa mais antiga do jogo (audio/music.mp3, anterior a trilha
+    -- por contexto) e ficou de fora da varredura so por causa do caminho —
+    -- exatamente o tipo de buraco que a regra "meca a EMENDA, nao o item"
+    -- existe pra fechar. Quando finalmente foi medida (Set/2026) tinha 1,1s
+    -- de silencio digital na cabeca e 1,4s na cauda: a cada 3 minutos o menu
+    -- ficava ~2,5s MUDO, e ninguem sabia porque nenhuma ferramenta olhava.
+    --
+    -- Ela tambem entra na comparacao de BRILHO, que e o que pega "a faixa do
+    -- ato soa igual a do menu".
+    if love.filesystem.getInfo("audio/music.mp3") then
+        table.insert(files, 1, { nome = "music.mp3 (menu)",
+                                 caminho = "audio/music.mp3" })
+    end
 
     print("")
     print("=== EMENDA DE LOOP ===")
@@ -123,9 +141,10 @@ function M.run(filter)
 
     local shown, warned = 0, 0
     local bright = {}
-    for _, f in ipairs(files) do
+    for _, entrada in ipairs(files) do
+        local f = entrada.nome
         if (not filter) or f:find(filter, 1, true) then
-            local r, err = analyze(DIR .. "/" .. f)
+            local r, err = analyze(entrada.caminho)
             if r then
                 local flag = ""
                 if r.jump > 0.05 then flag = flag .. " SALTO!" end

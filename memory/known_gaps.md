@@ -150,3 +150,35 @@ Quando for diferenciar, o gancho existe: `pack.kind` já chega no gerador, e
 basta ramificar nele. Ideias descartadas por agora, registradas para não se
 perderem: pool por tag/elemento, garantia de upgrade, escolha entre 2 com
 edição garantida.
+
+## A musica do ATO 1 soa como a do MENU (Set/2026, medido e NAO corrigido)
+
+`love . check_loop` passou a incluir `audio/music.mp3` (a faixa do menu mora
+fora de `audio/music/` e por isso nunca tinha sido medida em 9 meses). Ao
+entrar na varredura ela revelou uma colisao que ninguem sabia que existia:
+
+    music-act1.mp3       0.49k
+    music.mp3 (menu)     0.51k     <- 4% de distancia
+
+Quatro por cento. Pela regra do proprio tool (faixas a menos de 20% soam
+iguais), o jogador sai do menu e entra no ato 1 ouvindo praticamente o mesmo
+timbre. E exatamente a familia de queixa que o dono ja fez uma vez ("nao
+pode ser a mesma musica do menu dentro de cada ato").
+
+**Deliberadamente NAO corrigido**, por dois motivos que se somam:
+
+1. O dono nunca reclamou DESTA. Ele reclamou dos quatro retumbos iguais, que
+   foram corrigidos. Mexer no ato 1 agora e arriscar piorar uma faixa que
+   passou no crivo dele.
+2. Ja houve UMA tentativa de abrir o brilho do ato 1 e ela SAIU PELA CULATRA
+   (registrado em [[music_generation]]): a versao mais brilhante foi a 1,24k
+   e passou a colidir com o ato 2 — trocar colisao entre contextos distantes
+   por colisao entre dois ATOS e regressao.
+
+O que mudou desde aquela tentativa: o ato 2 subiu para 1,49k e entraram
+act4 (0,88k) e act6 (1,29k). Sobrou uma janela livre em **~0,65-0,80k** que
+nao existia antes. Se alguem for mexer, o alvo e esse, e a mudanca e de
+ARRANJO (trocar o instrumento que carrega a melodia), nunca de adjetivo.
+
+As outras 5 colisoes do rodape sao entre contextos que raramente se seguem
+(boss/rest, rest/act1) ou entre atos distantes (act1/act5, act2/act6).
