@@ -1713,6 +1713,35 @@ braços; `forkhover` = porta aberta). ⚠️ O modo fork passava `1` fixo no
 `WorldRoad.draw` e chamava `setBiome(1)` todo frame — TODA captura de fork
 de outro ato até aqui mostrava o ato 1. Corrigido.
 
+### Duas lições de MÉTODO do v11 (valem fora desta cena)
+
+**1. Uma trava que mede a coisa errada é pior que trava nenhuma** — ela dá
+confiança falsa. As duas do lote falharam pelos dois jeitos clássicos:
+- *Proibir movimento que era de propósito.* A trava "o rodapé não mudou"
+  acusava FALHA no abismo, onde a rachadura de brasa fica NO CHÃO e pulsar é
+  o efeito pretendido. O que realmente prova que a estrutura não ferveu é
+  "nada mudou FORA DA MÁSCARA".
+- *Medir um proxy em vez da coisa.* A emenda do loop estava sendo calculada
+  pela CONTAGEM de pixels ativos por frame — dois frames podem ter a mesma
+  contagem com conteúdo completamente diferente. O certo é a diferença REAL
+  entre o último e o primeiro frame contra a de um passo médio.
+Fica ao lado da regra "meça a emenda, não o item": escolher O QUE medir é
+parte do teste, não detalhe de implementação.
+
+**2. ⚠️ Captura de encruzilhada anterior a Set/2026 é SUSPEITA.** O modo
+`fork` do `screenshot_worldroad` passava `1` fixo como `actNumber` no
+`WorldRoad.draw`, e `draw` chama `setBiome(actNumber)` — ou seja, TODA
+captura de fork de qualquer ato mostrava o ato 1, independente do
+`setBiome` feito antes. Qualquer conclusão visual tirada dessas imagens no
+passado precisa ser refeita antes de virar decisão. Corrigido no v11 (o modo
+aceita prefixo `b<N>_` e repassa o bioma pro draw).
+
+**3. Não descreva na animação o que não está no sprite.** Ao refazer a
+barraca do pântano a arte perdeu as abas laterais de pano, mas a descrição de
+idle continuava pedindo "as abas balançam". Pedir movimento de algo que não
+existe é convidar o v3 a INVENTAR — e inventar é justamente o que faz ele
+ferver a estrutura. A anim segue o que está desenhado.
+
 ## Backlog
 
 - [ ] **Validação visual v3.3 nativa** (precisa driver resetado; testar em

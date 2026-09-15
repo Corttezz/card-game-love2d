@@ -1301,6 +1301,7 @@ local LANDMARK_ANIM = {
     abyss_landmark_elite     = { fps = 9,  pingpong = true, hoverFpsK = 1.6 },
     highlands_landmark_elite = { fps = 9,  pingpong = true, hoverFpsK = 1.6 },
     frost_landmark_elite     = { fps = 9,  pingpong = true, hoverFpsK = 1.6 },
+    dusk_landmark_elite      = { fps = 9,  pingpong = true, hoverFpsK = 1.6 },
     -- v9.8: CASTELOS VIVOS (feedback: "totalmente estáticos") — bandeiras
     -- tremulam, janelas/fogo/olhos pulsam; frames em anim/<bid>_castle/.
     -- pingpong em todos (pano e brilho reiniciando no frame 0 dá pulo)
@@ -1333,14 +1334,14 @@ local LANDMARK_SHADOW_PAD = {
     frost_landmark_shop     = 5,  marsh_landmark_shop = 5,
     dusk_landmark_shop      = 4,
     highlands_landmark_event = 4, abyss_landmark_event = 4,
-    frost_landmark_event     = 3, marsh_landmark_event = 5,
+    frost_landmark_event     = 3, marsh_landmark_event = 4,
     dusk_landmark_event      = 4,
     highlands_landmark_rest = 4,  abyss_landmark_rest = 5,
-    frost_landmark_rest     = 8,  marsh_landmark_rest = 8,
+    frost_landmark_rest     = 4,  marsh_landmark_rest = 8,
     dusk_landmark_rest      = 4,
     highlands_landmark_battle = 3, frost_landmark_battle = 4,
     highlands_landmark_elite  = 3, frost_landmark_elite  = 3,
-    marsh_landmark_elite      = 5,
+    marsh_landmark_elite      = 5, dusk_landmark_elite  = 3,
 }
 local LANDMARK_LIGHT = {
     landmark_rest  = { color = { 1.00, 0.62, 0.28 }, radiusK = 0.55, intensity = 0.55 },
