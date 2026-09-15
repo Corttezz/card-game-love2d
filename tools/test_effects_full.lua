@@ -180,12 +180,26 @@ function M.run()
         t:eq("armadura absorve queimadura, como no veneno", e2.health, 47)
         t:eq("e a armadura e consumida", e2.armor, 0)
 
+        -- MORTE POR DoT: os dois DoTs atravessam `_markDeathIfCrossed`, que e
+        -- o que faz a morte cair NO tick que a causou (com animacao) em vez de
+        -- ser recolhida pela rede de seguranca beats adiante. A aritmetica crua
+        -- do DoT nao passa por takeDamage, entao a marcacao tem que ser
+        -- explicita -- foi o caminho que o `morte-e-vitoria` consertou.
+        -- As duas asserções juntas provam a EQUIVALENCIA: queimar e envenenar
+        -- matam igual.
         local e3 = Enemy:new(3, 5)
         e3:addStatusEffect({ name = "burn", duration = 1, stacks = 9 })
         e3:onTurnEnd()
         t:eq("queimadura mata", e3.health, 0)
         t:truthy("morrer QUEIMADO marca a morte (senao a animacao nao roda)",
             e3._pendingDeath == true)
+
+        local e5 = Enemy:new(3, 5)
+        e5:addStatusEffect({ name = "poison", duration = 1, stacks = 9 })
+        e5:onTurnEnd()
+        t:eq("veneno mata", e5.health, 0)
+        t:eq("e marca a morte do MESMO jeito que a queimadura",
+            e5._pendingDeath, e3._pendingDeath)
     end
 
     -- ===== VENENO E IDENTIDADE DO LADINO =====

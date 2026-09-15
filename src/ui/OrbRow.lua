@@ -25,11 +25,14 @@ local StatusTooltip = require("src.ui.StatusTooltip")
 
 local OrbRow = {}
 
--- 46 (era 42) porque o conteúdo virou glifo+número lado a lado: com 42 o par
--- encostava no contorno. SPACING 14 (era 10) separa silhuetas que agora têm
--- pontas -- o sol e o losango se tocavam.
-local SIZE = 46          -- diâmetro do slot
-local SPACING = 14
+-- SIZE = 48 porque a arte é 48x48 NATIVA (assets/sprites/orbs/): desenhar 1:1
+-- é o ponto inteiro de ter gerado no tamanho de uso. Reduzir pra 46 borraria a
+-- pedra -- foi arte reduzida virando mancha que derrubou o ícone dentro do
+-- orbe na rodada passada.
+local SIZE = 48          -- lado da gema (1:1 com o PNG)
+local SPACING = 12       -- medido: com 8 as placas vizinhas encostavam
+local PLATE_H = 18       -- altura da placa do número (cabe fonte 13 + borda)
+local GAP_GEM_PLATE = 2  -- a placa "pendura" na gema, não flutua
 -- 16 (era 8): o trilho da fila mora ABAIXO das silhuetas e com 8 ele encostava
 -- na banda de pills (visto na captura de validacao).
 local GAP_ABOVE_PILLS = 16
@@ -72,52 +75,43 @@ local EVOKE_CYAN = { 0.25, 0.95, 0.95 }
 -- valendo no fantasma de saída, onde tem espaço, e o nome do elemento continua
 -- no tooltip de hover.
 
--- Vértices de cada silhueta, normalizados em raio 1 e centrados na origem.
--- `love.graphics.polygon` recebe a lista escalada em SHAPE_POINTS.
-local function regular(n, rot, squash)
-    local pts = {}
-    for k = 0, n - 1 do
-        local a = rot + k * (2 * math.pi / n)
-        pts[#pts + 1] = math.cos(a)
-        pts[#pts + 1] = math.sin(a) * (squash or 1)
-    end
-    return pts
-end
-
-local SHAPES = {
-    -- RAIO: losango alto e estreito -- angular, "rápido".
-    lightning = { 0, -1.12,  0.86, 0,  0, 1.12,  -0.86, 0 },
-    -- GELO: hexágono de cristal (topo plano).
-    ice       = regular(6, 0),
-    -- SOMBRA: pentágono de ponta pra BAIXO -- o único que aponta pro chão.
-    dark      = regular(5, math.pi / 2),
-    -- SAGRADO: sol de 12 pontas (raios curtos alternados) -- preenchido abaixo.
-    holy      = nil,
-    -- FOGO: gota de chama -- base larga, ponta em cima.
-    fire      = { 0, -1.22,  0.42, -0.42,  0.92, 0.28,  0.52, 1.02,
-                  -0.52, 1.02,  -0.92, 0.28,  -0.42, -0.42 },
+-- ARTE POR ELEMENTO: gema lapidada, 48x48 nativa, uma por elemento.
+-- Set/2026: as silhuetas VETORIAIS que vieram antes resolveram a leitura
+-- (distinguir os cinco de relance, e o glifo de unidade dizendo o que o número
+-- era) mas o dono reprovou o visual -- "achei meio feio". O diagnóstico é
+-- concreto: contorno colorido com INTERIOR VAZIO é wireframe, não objeto. Num
+-- jogo de pixel art com bevel, sombra e desgaste, geometria chapada lê como
+-- ícone de aplicativo -- e as pills logo abaixo (arte pixel dentro de aro)
+-- pareciam melhores que os orbes.
+--
+-- O que MUDOU é o material; o que FICOU é a leitura: cada gema tem um corte
+-- próprio (marquise / hexágono / gota / brilhante / estrela), o glifo de
+-- unidade continua, o trilho FIFO continua e `readout` segue como fonte única.
+OrbRow.ART = {
+    lightning = "assets/sprites/orbs/lightning.png",
+    ice       = "assets/sprites/orbs/ice.png",
+    fire      = "assets/sprites/orbs/fire.png",
+    dark      = "assets/sprites/orbs/dark.png",
+    holy      = "assets/sprites/orbs/holy.png",
 }
-do
-    local sun = {}
-    for k = 0, 11 do
-        local a = k * (math.pi / 6) - math.pi / 2
-        local rad = (k % 2 == 0) and 1.10 or 0.74
-        sun[#sun + 1] = math.cos(a) * rad
-        sun[#sun + 1] = math.sin(a) * rad
-    end
-    SHAPES.holy = sun
-end
 
--- Lista de vértices absoluta pra (cx, cy, r).
-local function shapePoints(orbType, cx, cy, r)
-    local base = SHAPES[orbType]
-    if not base then return nil end
-    local pts = {}
-    for k = 1, #base, 2 do
-        pts[#pts + 1] = cx + base[k] * r
-        pts[#pts + 1] = cy + base[k + 1] * r
+local ImageCache = require("src.ui.ImageCache")
+local gemCache = {}
+local warnedGem = {}
+local function gemOf(orbType)
+    if gemCache[orbType] ~= nil then return gemCache[orbType] or nil end
+    local path = OrbRow.ART[orbType]
+    local img = path and ImageCache.tryGet(path) or nil
+    if img then
+        img:setFilter("nearest", "nearest")
+    elseif not warnedGem[orbType] then
+        -- Fallback silencioso é proibido (CLAUDE.md §9): elemento sem gema AVISA.
+        warnedGem[orbType] = true
+        print("[OrbRow] sem arte de gema pra '" .. tostring(orbType)
+            .. "' — registre em OrbRow.ART (esperado 48x48 nativo)")
     end
-    return pts
+    gemCache[orbType] = img or false
+    return img
 end
 
 -- UNIDADE do número. `mode` = "pulse" (fim de turno) ou "evoke" (ao evocar).
@@ -140,7 +134,6 @@ local UNIT_COLOR = {
 -- Expostos pra trava de teste (tools/test_beats.lua bloco 4g): a unidade que o
 -- orbe ANUNCIA tem que bater com o que o EffectSystem de fato faz, e duas
 -- silhuetas nunca podem coincidir.
-OrbRow.SHAPES = SHAPES
 OrbRow.UNIT_OF = UNIT_OF
 
 -- O QUE O ORBE DIZ: (valor, unidade). Fonte única do par número+glifo — o
@@ -150,7 +143,6 @@ OrbRow.UNIT_OF = UNIT_OF
 -- "valor do pulso" dela é 0 e mostrar 0 seria mentira; o que cresce é o valor
 -- acumulado, e é ELE que dobra no evoke.
 -- Exposto pro tool de comparacao visual (tools/orb_compare.lua).
-OrbRow._shapePoints = shapePoints
 
 function OrbRow.readout(orb, focus, mode)
     local EffectSystem = require("src.systems.EffectSystem")
@@ -304,6 +296,68 @@ function OrbRow.notifyEvoke(i, orb, reason)
     end
 end
 
+-- Altura total de uma célula: gema + placa. O slot VAZIO não tem placa (a
+-- fileira encolhe sozinha nos turnos sem orbe), mas a ALTURA da banda é a
+-- mesma sempre -- senão a row inteira pularia de lugar quando o 1º orbe nasce.
+local function cellHeight()
+    return SIZE + GAP_GEM_PLATE + PLATE_H
+end
+
+-- A PLACA do número. Fica EMBAIXO da gema, não por cima (decisão do dono no
+-- comparativo): número branco sobre pedra facetada apaga a pedra -- ganha-se a
+-- gema e perde-se a gema. A placa leva o glifo de unidade junto e a borda na
+-- cor do elemento, então ela também é identidade, não só suporte.
+local function drawPlate(x, y, w, color, unit, value, font)
+    love.graphics.setColor(0.07, 0.05, 0.04, 0.95)
+    love.graphics.rectangle("fill", x, y, w, PLATE_H)
+    love.graphics.setColor(Palette.INK[1], Palette.INK[2], Palette.INK[3], 1)
+    love.graphics.setLineWidth(1)
+    love.graphics.rectangle("line", x - 1, y - 1, w + 2, PLATE_H + 2)
+    love.graphics.setColor(color[1], color[2], color[3], 1)
+    love.graphics.rectangle("line", x, y, w, PLATE_H)
+
+    local txt = tostring(value)
+    love.graphics.setFont(font)
+    local tw = font:getWidth(txt)
+    local gh = PLATE_H - 8
+    local gap = 3
+    local total = gh + gap + tw
+    local cx = x + w / 2
+    local cy = y + PLATE_H / 2
+    local gx = cx - total / 2 + gh / 2
+    local nx = math.floor(cx - total / 2 + gh + gap)
+    local ny = math.floor(cy - font:getHeight() / 2)
+
+    local uc = UNIT_COLOR[unit or ""] or { 1, 1, 1 }
+    love.graphics.setColor(0, 0, 0, 0.9)
+    drawUnitGlyph(unit, gx + 1, cy + 1, gh)
+    love.graphics.setColor(uc[1], uc[2], uc[3], 1)
+    drawUnitGlyph(unit, gx, cy, gh)
+
+    love.graphics.setColor(0, 0, 0, 0.9)
+    love.graphics.print(txt, nx + 1, ny + 1)
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.print(txt, nx, ny)
+end
+
+-- Desenha a gema 1:1 em (x, y). `flash` (0..1) acende a pedra SEM lavá-la:
+-- blend aditivo por cima do desenho normal, em vez de multiplicar a cor (que
+-- só escureceria a arte).
+local function drawGem(orbType, x, y, alpha, flash)
+    local img = gemOf(orbType)
+    if not img then return false end
+    love.graphics.setColor(1, 1, 1, alpha or 1)
+    love.graphics.draw(img, math.floor(x), math.floor(y))
+    if flash and flash > 0 then
+        local prev = love.graphics.getBlendMode()
+        love.graphics.setBlendMode("add")
+        love.graphics.setColor(flash * 0.7, flash * 0.7, flash * 0.7, 1)
+        love.graphics.draw(img, math.floor(x), math.floor(y))
+        love.graphics.setBlendMode(prev)
+    end
+    return true
+end
+
 -- ===== Update/draw (chamados pelo HudManager) =====
 
 function OrbRow.update(dt, game)
@@ -375,11 +429,17 @@ function OrbRow.draw(game, panelX, panelY)
     -- banda mudasse de tamanho (ui_layout_invariants §1).
     local PlayerBuffPills = require("src.ui.PlayerBuffPills")
     local startX = math.floor(panelX)
-    local y = math.floor(PlayerBuffPills.getBandTop(panelY) - GAP_ABOVE_PILLS - SIZE)
+    local y = math.floor(PlayerBuffPills.getBandTop(panelY)
+        - GAP_ABOVE_PILLS - cellHeight())
 
     slotPos = {}
     local mx, my = love.mouse.getPosition()
-    local font = FontManager.getResponsiveFont(0.024, 15)
+    -- Fonte 13: a placa tem 18px de altura, e 15 (a de antes, quando o número
+    -- morava DENTRO da silhueta) transbordava a borda.
+    local font = FontManager.getResponsiveFont(0.021, 13)
+    local plateY = y + SIZE + GAP_GEM_PLATE
+    local plateInset = 3
+    local plateW = SIZE - plateInset * 2
 
     for i = 1, (p.orbSlots or 3) do
         local x = startX + (i - 1) * (SIZE + SPACING)
@@ -388,121 +448,98 @@ function OrbRow.draw(game, panelX, panelY)
         -- Orbe em TRÂNSITO ainda não está no slot: o cometa é que o carrega.
         local orb = (not inbound[i]) and p.orbs and p.orbs[i] or nil
 
-        -- bob sutil (orbes "flutuam", slots vazios não)
-        local bob = orb and math.sin(animTime * 2.2 + i * 1.3) * 2 or 0
-        cy = cy + bob
-
         if not orb then
-            -- Slot VAZIO: círculo apagado e MENOR. Continua sendo o único
-            -- redondo da fileira — "sem elemento" não tem silhueta.
+            -- Slot VAZIO: aro apagado e MENOR, sem placa. A fileira encolhe
+            -- sozinha nos turnos sem orbe, e "sem elemento" continua sendo a
+            -- única coisa redonda e oca da fileira.
             love.graphics.setColor(0.10, 0.07, 0.05, 0.55)
-            love.graphics.circle("fill", cx, cy, SIZE / 2 - 6)
+            love.graphics.circle("fill", cx, cy, SIZE / 2 - 8)
             love.graphics.setColor(0.45, 0.40, 0.32, 0.45)
             love.graphics.setLineWidth(1)
-            love.graphics.circle("line", cx, cy, SIZE / 2 - 6)
+            love.graphics.circle("line", cx, cy, SIZE / 2 - 8)
             -- Preview de canalização: próximo slot livre pisca convidando
             if previewMode == "channel" and (p.orbs and #p.orbs + 1 == i or (not p.orbs and i == 1)) then
-                local blink = 0.5 + math.sin(animTime * 6) * 0.4
+                -- Sem movimento a piscada vira realce fixo: o slot que vai
+                -- receber continua APONTADO, so nao pisca.
+                local blink = reducedMotion() and 0.9
+                    or (0.5 + math.sin(animTime * 6) * 0.4)
                 love.graphics.setColor(0.95, 0.85, 0.30, blink * 0.7)
                 love.graphics.setLineWidth(2)
-                love.graphics.circle("line", cx, cy, SIZE / 2)
+                love.graphics.circle("line", cx, cy, SIZE / 2 - 4)
             end
         else
             local color = OrbRow.COLORS[orb.type] or { 0.7, 0.7, 0.7 }
-            -- pop-in: escala 1.35→1.0
-            local kick = slotAnim[i] or 0
-            local scale = 1 + kick * 0.35
-            local r = (SIZE / 2) * scale
-
-            -- Este orbe está na mira do preview de evoke?
             local inEvokePreview = (previewMode == "evoke_all")
                 or (previewMode == "evoke_one" and i == 1)
 
-            -- SILHUETA do elemento. O contorno é a informação principal:
-            -- sobrevive ao tamanho de uso e se lê de canto de olho.
-            local pts     = shapePoints(orb.type, cx, cy, r)
-            local haloPts = shapePoints(orb.type, cx, cy, r + 3)
-
-            -- Halo (pulsante; ciano se em preview de evoke)
-            local haloC = inEvokePreview and EVOKE_CYAN or color
-            local haloA = 0.30 * (0.75 + math.sin(animTime * 3 + i) * 0.25)
-            if inEvokePreview then haloA = 0.55 + math.sin(animTime * 6) * 0.2 end
-            love.graphics.setColor(haloC[1], haloC[2], haloC[3], haloA)
-            if haloPts then love.graphics.polygon("fill", haloPts)
-            else love.graphics.circle("fill", cx, cy, r + 3) end
-
-            -- Corpo escuro + contorno de tinta + contorno do elemento.
-            love.graphics.setColor(0.10, 0.07, 0.05, 0.96)
-            if pts then love.graphics.polygon("fill", pts)
-            else love.graphics.circle("fill", cx, cy, r) end
-            love.graphics.setColor(Palette.INK[1], Palette.INK[2], Palette.INK[3], 1)
-            love.graphics.setLineWidth(3)
-            if pts then love.graphics.polygon("line", pts)
-            else love.graphics.circle("line", cx, cy, r) end
-            love.graphics.setColor(color[1], color[2], color[3], 1)
-            love.graphics.setLineWidth(2)
-            if pts then love.graphics.polygon("line", pts)
-            else love.graphics.circle("line", cx, cy, r) end
-
-            -- Flash de pulso: acende a própria silhueta.
-            local pf = pulseFlash[i]
-            if pf then
-                love.graphics.setColor(color[1], color[2], color[3], pf * 0.5)
-                if pts then love.graphics.polygon("fill", pts)
-                else love.graphics.circle("fill", cx, cy, r) end
+            -- bob sutil + pulinho do pop-in. Sem ESCALA: a gema é pixel art
+            -- 1:1, e escalar em fração faria a pedra tremer (shimmer). O
+            -- "nasceu agora" vem de subir e acender, não de inchar.
+            local kick = slotAnim[i] or 0
+            -- reducedMotion tira o MOVIMENTO e nada mais: some o flutuar e o
+            -- pulinho de chegada, FICA o clarao do pop-in (que e o que diz
+            -- "este nasceu agora") e ficam todos os numeros.
+            local bob = 0
+            if not reducedMotion() then
+                bob = math.sin(animTime * 2.2 + i * 1.3) * 2 - kick * 6
             end
-            -- (Nao existe mais "flash de evoke no slot": quando um orbe sai, a
-            -- fila ANDA e o slot ja e de outro orbe — o flash acendia o orbe
-            -- errado. Quem conta a saida e o FANTASMA em _drawFx, desenhado na
-            -- posicao de onde o orbe saiu.)
+            local gy = y + bob
 
-            -- GLIFO + NÚMERO, lado a lado: "quanto" e "de quê" no mesmo olhar.
-            -- Sombra é o caso que o número nu tornava mentiroso: ela NÃO pulsa,
-            -- o valor dela só CRESCE (seta) -- e vira DANO quando evocada, que
-            -- é o que o preview de evoke passa a mostrar.
+            -- Halo: brilho difuso ATRÁS da pedra (a gema tem corpo, então o
+            -- halo não precisa mais desenhar a forma).
+            local haloC = inEvokePreview and EVOKE_CYAN or color
+            local haloA = 0.26 * (0.75 + math.sin(animTime * 3 + i) * 0.25)
+            if inEvokePreview then haloA = 0.50 + math.sin(animTime * 6) * 0.18 end
+            if reducedMotion() then haloA = inEvokePreview and 0.58 or 0.26 end
+            love.graphics.setColor(haloC[1], haloC[2], haloC[3], haloA)
+            love.graphics.circle("fill", cx, gy + SIZE / 2, SIZE * 0.42)
+
+            -- A GEMA, 1:1.
+            local pf = pulseFlash[i] or 0
+            if not drawGem(orb.type, x, gy, 1, math.max(pf * 0.8, kick * 0.6)) then
+                -- Sem arte: aro de emergência (o aviso já saiu em gemOf).
+                love.graphics.setColor(color[1], color[2], color[3], 0.9)
+                love.graphics.setLineWidth(2)
+                love.graphics.circle("line", cx, gy + SIZE / 2, SIZE / 2 - 6)
+            end
+
+            -- PLACA do número, pendurada na pedra.
             local shown, unit = OrbRow.readout(orb, focus,
                 inEvokePreview and "evoke" or "pulse")
-            local numC = inEvokePreview and EVOKE_CYAN or { 1, 1, 1 }
+            drawPlate(x + plateInset, plateY, plateW,
+                inEvokePreview and EVOKE_CYAN or color,
+                unit, shown, font)
+            if inEvokePreview then
+                -- No preview de evoke o número também é outro: pinta o valor de
+                -- ciano por cima pra ninguém ler o de pulso.
+                local txt = tostring(shown)
+                love.graphics.setFont(font)
+                local tw = font:getWidth(txt)
+                local gh = PLATE_H - 8
+                local total = gh + 3 + tw
+                love.graphics.setColor(EVOKE_CYAN[1], EVOKE_CYAN[2], EVOKE_CYAN[3], 1)
+                love.graphics.print(txt,
+                    math.floor(x + plateInset + plateW / 2 - total / 2 + gh + 3),
+                    math.floor(plateY + PLATE_H / 2 - font:getHeight() / 2))
+            end
 
-            love.graphics.setFont(font)
-            local txt   = tostring(shown)
-            local tw    = font:getWidth(txt)
-            local gh    = math.floor(SIZE * 0.20)          -- altura do glifo
-            local gap   = 3
-            local total = gh + gap + tw
-            local gx    = cx - total / 2 + gh / 2
-            local nx    = cx - total / 2 + gh + gap
-            local ny    = cy - font:getHeight() / 2 + 1
-
-            local uc = (inEvokePreview and EVOKE_CYAN) or UNIT_COLOR[unit or ""] or { 1, 1, 1 }
-            love.graphics.setColor(0, 0, 0, 0.9)
-            drawUnitGlyph(unit, gx + 1, cy + 1, gh)
-            love.graphics.setColor(uc[1], uc[2], uc[3], 1)
-            drawUnitGlyph(unit, gx, cy, gh)
-
-            love.graphics.setColor(0, 0, 0, 0.9)
-            love.graphics.print(txt, nx + 1, ny + 1)
-            love.graphics.setColor(numC[1], numC[2], numC[3], 1)
-            love.graphics.print(txt, nx, ny)
-
-            -- PRÓXIMO A SAIR (FIFO): aro claro em volta da silhueta. Mais forte
-            -- que o triangulinho antigo, que sumia no tamanho de uso.
+            -- PRÓXIMO A SAIR (FIFO): moldura clara em volta da CÉLULA inteira
+            -- (pedra + placa). Antes era um aro na silhueta; com a gema não há
+            -- polígono, e a moldura da célula lê melhor — marca "este bloco",
+            -- não "esta borda".
             if i == 1 and #p.orbs > 0 then
-                -- Aro BRANCO, nao pergaminho: o aro cor-de-pergaminho sumia
-                -- em cima do orbe SAGRADO, que e quase da mesma cor (visto na
-                -- captura). Branco contrasta com os cinco elementos.
-                local ring = shapePoints(orb.type, cx, cy, r + 5)
-                local a = 0.75 + math.sin(animTime * 3.5) * 0.2
+                local a = reducedMotion() and 0.9
+                    or (0.70 + math.sin(animTime * 3.5) * 0.2)
                 love.graphics.setColor(1, 1, 1, a)
-                love.graphics.setLineWidth(2)
-                if ring then love.graphics.polygon("line", ring)
-                else love.graphics.circle("line", cx, cy, r + 5) end
+                love.graphics.setLineWidth(1)
+                love.graphics.rectangle("line", x - 3, y - 3,
+                    SIZE + 6, cellHeight() + 6)
             end
         end
 
         -- Hover → tooltip com números exatos (stacks=pulso, duration=evoke —
         -- reuso do StatusTooltip; as descs de status.orb_* nomeiam os campos).
-        if mx >= x and mx <= x + SIZE and my >= y and my <= y + SIZE then
+        if mx >= x and mx <= x + SIZE and my >= y and my <= y + cellHeight() then
             if orb then
                 StatusTooltip.show("orb_" .. orb.type, mx, my, {
                     stacks = EffectSystem.orbPulseValue(orb, focus),
@@ -522,7 +559,7 @@ function OrbRow.draw(game, panelX, panelY)
     -- Ensina a regra inteira de uma vez -- "entram pela direita, saem pela
     -- esquerda" -- sem texto e sem depender de marcador por orbe.
     if #(p.orbs or {}) > 0 then
-        local railY = y + SIZE + 6
+        local railY = y + cellHeight() + 6
         local railX2 = startX + (math.min(#p.orbs, p.orbSlots or 3) - 1)
             * (SIZE + SPACING) + SIZE / 2
         love.graphics.setColor(0.72, 0.66, 0.52, 0.55)
@@ -567,18 +604,17 @@ function OrbRow._drawFx()
                 love.graphics.setColor(c[1], c[2], c[3], 0.16 * (5 - tr))
                 love.graphics.circle("fill", tx, ty, SIZE * 0.13 * (1 - tr * 0.12))
             end
-            -- A cabeça do cometa JÁ É o orbe: a silhueta do elemento, crescendo
-            -- de 40% até o tamanho do slot. Quando pousa, o orbe que nasce tem
-            -- exatamente a forma que estava voando.
-            local rr = (SIZE / 2) * (0.40 + 0.60 * e)
-            local pts = shapePoints(fx.otype, x, y, rr)
-            love.graphics.setColor(c[1], c[2], c[3], 0.40)
-            if pts then love.graphics.polygon("fill", pts)
-            else love.graphics.circle("fill", x, y, rr) end
-            love.graphics.setColor(1, 1, 1, 0.85)
-            love.graphics.setLineWidth(2)
-            if pts then love.graphics.polygon("line", pts)
-            else love.graphics.circle("line", x, y, rr) end
+            -- A cabeça do cometa JÁ É a gema que vai nascer -- a MESMA arte,
+            -- não um substituto. Ela viaja em escala INTEIRA (1:1) com um brilho
+            -- por trás que cresce: escalar a pedra em fração faria ela tremer,
+            -- e meio pixel de tremor num voo de 0,26s lê como sujeira.
+            love.graphics.setColor(c[1], c[2], c[3], 0.30 + 0.35 * e)
+            love.graphics.circle("fill", x, y, SIZE * (0.18 + 0.24 * e))
+            if not drawGem(fx.otype, x - SIZE / 2, y - SIZE / 2, 1, 0.35 * (1 - e)) then
+                love.graphics.setColor(1, 1, 1, 0.85)
+                love.graphics.setLineWidth(2)
+                love.graphics.circle("line", x, y, SIZE * 0.3)
+            end
         end
     end
 
@@ -591,20 +627,18 @@ function OrbRow._drawFx()
             local tx, ty = spellOrigin()
             local x = pos.x + (tx - pos.x) * e * 0.55
             local y = pos.y + (ty - pos.y) * e * 0.55
-            local r = (SIZE / 2) * (1 - e * 0.55)
             local c, a = fx.color, 1 - k
-            local halo = shapePoints(fx.otype, x, y, r + 5)
-            local body = shapePoints(fx.otype, x, y, r)
-            love.graphics.setColor(c[1], c[2], c[3], 0.70 * a)
-            if halo then love.graphics.polygon("fill", halo)
-            else love.graphics.circle("fill", x, y, r + 5) end
-            love.graphics.setColor(0.10, 0.07, 0.05, 0.75 * a)
-            if body then love.graphics.polygon("fill", body)
-            else love.graphics.circle("fill", x, y, r) end
-            love.graphics.setColor(1, 1, 1, 0.95 * a)
-            love.graphics.setLineWidth(3)
-            if body then love.graphics.polygon("line", body)
-            else love.graphics.circle("line", x, y, r) end
+            -- O fantasma é a PRÓPRIA gema saindo, apagando -- também 1:1, pelo
+            -- mesmo motivo do cometa. Quem diz "isto está indo embora" é o
+            -- alpha + o halo da cor (âmbar quando é expulsão), não uma forma
+            -- diferente: forma diferente leria como outro orbe.
+            love.graphics.setColor(c[1], c[2], c[3], 0.65 * a)
+            love.graphics.circle("fill", x, y, SIZE * 0.40)
+            if not drawGem(fx.otype, x - SIZE / 2, y - SIZE / 2, a, 0.5 * a) then
+                love.graphics.setColor(1, 1, 1, 0.95 * a)
+                love.graphics.setLineWidth(3)
+                love.graphics.circle("line", x, y, SIZE * 0.35)
+            end
         end
     end
 end

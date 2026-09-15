@@ -520,16 +520,50 @@ function M.run()
         local OrbRow = require("src.ui.OrbRow")
         local TYPES = { "lightning", "ice", "fire", "dark", "holy" }
 
-        -- (a) cada elemento tem uma silhueta, e nenhuma se repete
-        local byShape = {}
+        -- (a) cada elemento tem a SUA gema, e nenhuma se repete.
+        -- Set/2026: a arte era silhueta vetorial e virou gema pixel
+        -- (assets/sprites/orbs/) -- o dono reprovou o contorno vazio, "meio
+        -- feio", e tinha razao: wireframe nao e objeto. O que o teste trava nao
+        -- e o material, e a REGRA que sobreviveu aos dois: cinco elementos,
+        -- cinco leituras distintas.
+        local byPath, byPixels = {}, {}
         for _, ty in ipairs(TYPES) do
-            local sh = OrbRow.SHAPES[ty]
-            t:truthy("orbe " .. ty .. " tem silhueta propria (nao e mais disco)",
-                type(sh) == "table" and #sh >= 6)
-            local key = table.concat(sh or {}, ",")
-            t:falsy("a silhueta de " .. ty .. " nao repete a de "
-                .. tostring(byShape[key]), byShape[key] ~= nil)
-            byShape[key] = ty
+            local path = OrbRow.ART[ty]
+            t:truthy("orbe " .. ty .. " tem arte propria declarada",
+                type(path) == "string" and path ~= "")
+            t:falsy("a arte de " .. ty .. " nao repete o arquivo de "
+                .. tostring(byPath[path]), byPath[path] ~= nil)
+            byPath[path] = ty
+
+            local info = path and love.filesystem.getInfo(path)
+            t:truthy("o arquivo de " .. ty .. " existe no disco (" .. tostring(path) .. ")",
+                info ~= nil)
+
+            -- Arte NATIVA no tamanho de uso: 48x48. Se alguem trocar por um
+            -- PNG maior, ele seria reduzido em tempo de desenho -- que e
+            -- exatamente o defeito que matou o icone DENTRO do orbe.
+            if info then
+                local ok, data = pcall(love.image.newImageData, path)
+                if ok and data then
+                    t:eq("a gema de " .. ty .. " e 48x48 nativa (largura)",
+                        data:getWidth(), 48)
+                    t:eq("a gema de " .. ty .. " e 48x48 nativa (altura)",
+                        data:getHeight(), 48)
+                    -- Assinatura esparsa: pega dois arquivos IGUAIS com nomes
+                    -- diferentes, que o teste de caminho sozinho deixaria passar.
+                    local sig = 0
+                    for py = 0, 47, 4 do
+                        for px = 0, 47, 4 do
+                            local r, g, b, a = data:getPixel(px, py)
+                            sig = sig + (r * 7 + g * 13 + b * 17) * a * (px + py + 1)
+                        end
+                    end
+                    sig = math.floor(sig * 1000)
+                    t:falsy("a gema de " .. ty .. " nao e um clone da de "
+                        .. tostring(byPixels[sig]), byPixels[sig] ~= nil)
+                    byPixels[sig] = ty
+                end
+            end
         end
 
         -- (b) o que o EffectSystem REALMENTE faz com cada pulso, observado
@@ -637,6 +671,42 @@ function M.run()
             at("enemy.dot") ~= nil)
         t:truthy("a queimadura DOEU no turno do inimigo",
             gf.enemy.health < hpBefore)
+    end
+
+    -- MORRER QUEIMADO tem que encenar a morte igual a morrer envenenado: no
+    -- beat do tick que matou, e nao tres passos adiante com a barra zerada e o
+    -- monstro em pe. (`_applyDot` -> `_markDeathIfCrossed` -> o `enemy.dot`
+    -- chama `announceDeathIfPending`, que reivindica o instante corrente.)
+    --
+    -- MEDIDO, pra ninguem se enganar: este bloco continua VERDE se alguem
+    -- tirar o `_markDeathIfCrossed` do `_applyDot` -- a REDE de
+    -- announceDeathIfPending ("morto e nao encenado conta como pendente")
+    -- recolhe a morte assim mesmo. Quem guarda a marcacao e a asserção unitaria
+    -- `morrer QUEIMADO marca a morte` em tools/test_effects_full.lua. Os dois
+    -- testes cobrem coisas diferentes: aqui, que a morte por queimadura E
+    -- encenada e cai no beat certo; la, que a marcacao existe -- que e o que
+    -- mantem a morte correta quando a checagem nao acontece no mesmo beat.
+    do
+        local gk = TK.newRunGame("mage")
+        TK.pump(gk, 0.5)
+        gk.enemy.armor = 0
+        gk.enemy.health = 3
+        gk.enemy:addStatusEffect({ name = "burn", duration = 2, stacks = 9 })
+        gk.enemy.nextIntent = "buff"
+        gk.battleTurn = 1
+        gk.turn = "enemy"
+        CombatBeats.clear()
+        CombatBeats.startTrace()
+        gk:enemyTurn()
+        TK.pump(gk, 5.0)
+        CombatBeats.stopTrace()
+
+        t:eq("a queimadura derrubou o inimigo", gk.enemy.health, 0)
+        t:truthy("morrer QUEIMADO encena a morte ("
+            .. CombatBeats.traceString() .. ")", at("enemy.death") ~= nil)
+        t:truthy("e ela acontece NO tick que matou, nao depois",
+            at("enemy.dot") and at("enemy.death")
+            and at("enemy.death") >= at("enemy.dot"))
     end
 
     -- ========================================================================

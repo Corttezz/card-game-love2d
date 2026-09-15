@@ -636,6 +636,11 @@ function love.load(loveArgs)
 
     -- Contact sheet de PNGs (frames de anim, variacoes de arte).
     --   love . sheet <dir|a.png,b.png> [escala] [saida.png]
+    if loveArgs and loveArgs[1] == "probe_continue" then
+        require("tools.probe_continue").run()
+        return
+    end
+
     if loveArgs and loveArgs[1] == "orb_compare" then
         require("tools.orb_compare").run()
         return

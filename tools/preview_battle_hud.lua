@@ -108,6 +108,12 @@ function M.run()
         { name = "burn",       stacks = 4, duration = 2 },
         { name = "weak",       stacks = 1, duration = 2 },
         { name = "vulnerable", stacks = 1, duration = 1 },
+        -- FURIA e ENFURECIDO junto de propósito: com VULNERAVEL e QUEIMADURA
+        -- sao QUATRO pills laranja na mesma row do inimigo. Se elas competirem,
+        -- e aqui que se ve -- e o remedio e FORMA, nao matiz (laranja e a cor
+        -- certa pra fogo e pra raiva; clarear troca identidade por metrica).
+        { name = "fury",       stacks = 2, duration = 9 },
+        { name = "enraged",    stacks = 1, duration = 9 },
     }
     -- Estados do inimigo que eram invisíveis: armadura (o dano sumia sem
     -- explicação) e o modo agressivo abaixo de 30% de vida (×1.5 de dano).

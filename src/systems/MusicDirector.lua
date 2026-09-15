@@ -137,6 +137,19 @@ function MusicDirector.apply(state, run, nodeType)
     -- Perguntando ao AudioManager, a decisão passa a ser tomada sobre o
     -- estado real e o espelho vira só cache.
     local atual = tocandoAgora() or MusicDirector._current
+
+    -- DIAGNOSTICO: loga toda vez que a INTENCAO muda, mesmo quando nao ha
+    -- troca. Sem isto, "a musica nao trocou" nao deixa rastro nenhum — o log
+    -- de troca so aparece quando ela acontece, e o caso que interessa e
+    -- justamente o contrario. Dispara no maximo uma vez por mudanca de
+    -- contexto, entao nao vira ruido.
+    if wanted ~= MusicDirector._lastWanted then
+        MusicDirector._lastWanted = wanted
+        print(string.format("[Musica] quer %s -> resolveu %s | tocando %s (estado=%s, no=%s)",
+            tostring(wanted), tostring(code), tostring(atual),
+            tostring(state), tostring(nodeType or "-")))
+    end
+
     if code == atual then
         MusicDirector._current = atual
         return

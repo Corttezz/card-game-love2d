@@ -247,7 +247,7 @@ Três problemas empilhados, três respostas separadas (`src/ui/OrbRow.lua`):
 
 | o que não se lia | resposta |
 |---|---|
-| QUE elemento é | **silhueta**: losango (raio), hexágono (gelo), chama (fogo), pentágono invertido (sombra), sol de 12 pontas (sagrado). Cor sozinha não ensina; ícone pequeno não sobrevive ao tamanho de uso; contorno sobrevive |
+| QUE elemento é | **silhueta própria por elemento**. Cor sozinha não ensina; ícone pequeno não sobrevive ao tamanho de uso |
 | O QUE ele faz | **glifo de unidade** ao lado do número, em vetor: faísca = dano, escudo = bloqueio, cruz = cura, seta = cresce — duplo-codificado com cor |
 | QUAL sai primeiro | **trilho** com seta apontando pra ESQUERDA sob a fileira + aro branco no próximo a evocar |
 
@@ -255,14 +255,50 @@ O ícone PNG saiu de dentro do orbe (era a mancha) e `OrbRow.ICONS` morreu com
 ele. O nome do elemento continua no tooltip de hover, cujo texto
 (`status.orb_*`) já nomeia exatamente as mesmas unidades que os glifos.
 
-**Duas correções vieram de OLHAR a captura, não de raciocinar:**
+**Duas correções da v1 vieram de OLHAR a captura, não de raciocinar:**
 1. o glifo de dano era um **X** — que neste jogo significa **multiplicador**
    (a linguagem dos coringas). Virou faísca de 4 pontas;
 2. o aro de "próximo a sair" era cor de pergaminho e **sumia em cima do orbe
    sagrado**, quase da mesma cor. Virou branco pulsante.
 
-O cometa de canalização e o fantasma de saída passaram a usar a **mesma
-silhueta**: o que voa pra dentro já é o orbe que vai nascer.
+O cometa de canalização e o fantasma de saída passaram a usar a **mesma arte**:
+o que voa pra dentro já é o orbe que vai nascer.
+
+### A segunda rodada: a silhueta estava certa, o MATERIAL não
+
+O dono reprovou a v1 — *"não gostei do novo design das orbs, achei meio feio"*.
+A leitura tinha melhorado e a estética tinha piorado, e o diagnóstico é preciso:
+**contorno colorido com interior vazio é wireframe, não objeto**. Num jogo de
+pixel art com bevel, sombra e desgaste, geometria vetorial chapada lê como ícone
+de aplicativo — tanto que as pills logo abaixo (arte pixel dentro de aro)
+pareciam melhores que os orbes.
+
+Hoje cada elemento é uma **gema lapidada em pixel art** (`assets/sprites/orbs/`,
+`OrbRow.ART`), **48×48 NATIVA** — gerada no tamanho de uso de propósito e
+desenhada **1:1**. Arte reduzida virando mancha já falhou aqui duas vezes;
+`SIZE = 48` existe por causa disso, não por gosto.
+
+**O que sobreviveu à troca de material** — e é por isso que ela foi barata: a
+distinção por silhueta (cada gema tem corte próprio: marquise, hexágono, gota,
+brilhante, estrela), os glifos de unidade, o trilho FIFO e o `readout` como
+fonte única.
+
+**O número saiu de cima da pedra.** Número branco sobre gema facetada APAGA a
+gema: ganha-se a pedra e perde-se a pedra. Ele mora numa **placa embaixo**, que
+leva o glifo junto e a borda na cor do elemento — a placa também é identidade,
+não só suporte. O slot vazio não tem placa (a fileira encolhe sozinha nos turnos
+sem orbe), mas a ALTURA da banda é constante, senão a row saltaria quando o
+primeiro orbe nasce.
+
+**Nada escala a pedra:** o pop-in virou *subir + acender* em vez de *inchar*, e
+cometa e fantasma viajam em escala inteira — escala fracionária em pixel art
+treme, e meio pixel de tremor num voo de 0,26 s lê como sujeira.
+
+A trava mudou de objeto junto: em vez de comparar vértices, `test_beats` 4g
+exige arte declarada por elemento, arquivo existente, **48×48 nativo** e uma
+assinatura esparsa de pixels — que pega dois elementos apontando para a mesma
+pedra *e* dois arquivos idênticos com nomes diferentes. Verificado revertendo:
+fogo reusando a arte do raio derruba **2**; caminho de arte quebrado, **1**.
 
 **O número não pode mentir** (`OrbRow.readout`, fonte única do par
 número+glifo): sombra **não pulsa**, então exibir o valor do pulso mostraria 0 —

@@ -49,7 +49,12 @@ StatusPill.ICONS = {
     -- dois estados diferentes. Agora so a Furia usa `flame`.
     burn         = "status_burn",
     strength     = "status_strength",
-    fury         = "flame",
+    -- FURIA nao e fogo: e o anti-stall do turno 8+, o inimigo escalando +2 de
+    -- dano por turno. A fogueira era interina e, depois que a queimadura ganhou
+    -- chama propria, as duas viravam "duas pills laranja" no MESMO inimigo. O
+    -- icone novo separa por FORMA (cunhas retas subindo x chama gorda e
+    -- arredondada), nao por matiz -- laranja e a cor certa pras duas.
+    fury         = "status_fury",
     dexterity    = "status_dexterity",
     focus        = "rune",
     -- Interinos: reusam ícones existentes até a leva status_* do PixelLab
