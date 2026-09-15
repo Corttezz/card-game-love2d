@@ -142,6 +142,106 @@ function M.run()
     t:eq("inimigo que DEFENDE nao leva reflexo", g2.enemy.health, hp2)
 
     -- ========================================================================
+    -- 2b. O CORINGA QUE ARMOU ESPINHOS FALA QUANDO ELES SAEM
+    --     (dono: "JOKER BALUARTE ETERNO TAMBEM TEM Q FAZER BARULHO QUANDO
+    --      RECEBER DANO")
+    --
+    -- Espinhos sao ESTADO: o coringa arma quando a defesa e jogada e o
+    -- reflexo so sai no golpe do inimigo. O proc visual/sonoro existia so no
+    -- ARMAR, entao o lendario ficava MUDO no instante em que faz o que
+    -- promete — o inimigo levava dano "do nada".
+    -- ========================================================================
+    local gj = TK.newRunGame("warrior")
+    TK.pump(gj, 0.5)
+
+    local bulwark = {
+        id = "warrior_eternal_bulwark", name = "Baluarte Eterno",
+        type = "joker",
+        effects = { { type = "on_defend_damage", value = 8 } },
+    }
+    gj.jokerSlots = { bulwark }
+
+    -- Espia os procs SEM depender da UI (o tick de verdade mora no
+    -- JokerProcFx, que precisa de geometria de cena).
+    -- Nota: isto ve so o proc DIRETO. O proc do ARMAR sai por outro caminho
+    -- (`procSink` da carta, consumido pelo CombatSequence) e nao passa por
+    -- aqui — o que interessa neste bloco e justamente o do REFLEXO.
+    local procs = {}
+    gj.effectSystem.notifyJokerProc = function(_, _, joker, label, kind)
+        procs[#procs + 1] = { id = joker and joker.id, label = label, kind = kind }
+    end
+
+    local hpj = gj.enemy.health
+    gj:processCardInCombat(
+        { id = "tk_def", name = "Defesa", type = "defense",
+          cost = 1, attack = 0, defense = 5, effects = {} }, nil)
+    t:eq("o coringa armou os 8 espinhos", gj.player:getBuffStacks("thorn"), 8)
+
+    -- P2.3: o MESMO coringa nao arma duas vezes no mesmo turno.
+    gj:processCardInCombat(
+        { id = "tk_def2", name = "Defesa 2", type = "defense",
+          cost = 1, attack = 0, defense = 5, effects = {} }, nil)
+    t:eq("segunda defesa NAO rearma (teto 1x/turno do P2.3)",
+        gj.player:getBuffStacks("thorn"), 8)
+
+    -- E o teto tem que sobreviver a `rebuildJokerSlots` (abrir o Gerenciador
+    -- de Coringas no meio da luta recria as instancias). Antes a chave era a
+    -- INSTANCIA: com a referencia orfa o teto reabria sozinho.
+    gj.jokerSlots = { {
+        id = "warrior_eternal_bulwark", name = "Baluarte Eterno",
+        type = "joker",
+        effects = { { type = "on_defend_damage", value = 8 } },
+    } }
+    gj:processCardInCombat(
+        { id = "tk_def3", name = "Defesa 3", type = "defense",
+          cost = 1, attack = 0, defense = 5, effects = {} }, nil)
+    t:eq("nem depois de recriar a instancia do coringa (chave e o ID)",
+        gj.player:getBuffStacks("thorn"), 8)
+
+    -- Agora o inimigo ataca: o reflexo sai E o coringa tem que falar.
+    local procsAntes = #procs
+    gj.enemy.nextIntent = "attack"
+    gj.enemy.damage = 6; gj.enemy.baseDamage = 6; gj.enemy.nextIntentDamage = 6
+    gj.battleTurn = 1
+    gj.turn = "enemy"
+    gj:enemyTurn()
+    TK.pump(gj, 3.5)
+
+    t:eq("o reflexo cobrou os 8 no inimigo", gj.enemy.health, hpj - 8)
+
+    local falouNoReflexo
+    for i = procsAntes + 1, #procs do
+        if procs[i].id == "warrior_eternal_bulwark" then falouNoReflexo = procs[i] end
+    end
+    t:truthy("o Baluarte Eterno PROCA quando os espinhos saem (era mudo)",
+        falouNoReflexo ~= nil)
+    t:eq("e o proc mostra o dano refletido",
+        falouNoReflexo and falouNoReflexo.label, "-8")
+
+    -- CONTROLE: sem ataque do inimigo nao ha reflexo — logo nao ha proc.
+    local gk = TK.newRunGame("warrior")
+    TK.pump(gk, 0.5)
+    gk.jokerSlots = { {
+        id = "warrior_juggernaut", name = "Juggernaut", type = "joker",
+        effects = { { type = "on_defend_damage", value = 6 } },
+    } }
+    local procsK = {}
+    gk.effectSystem.notifyJokerProc = function(_, _, joker, label)
+        procsK[#procsK + 1] = { id = joker and joker.id, label = label }
+    end
+    gk:processCardInCombat(
+        { id = "tk_def", name = "Defesa", type = "defense",
+          cost = 1, attack = 0, defense = 5, effects = {} }, nil)
+    local nK = #procsK
+    gk.enemy.nextIntent = "defend"
+    gk.battleTurn = 1
+    gk.turn = "enemy"
+    gk:enemyTurn()
+    TK.pump(gk, 3.5)
+    t:eq("inimigo que DEFENDE nao faz o coringa falar (nada refletiu)",
+        #procsK, nK)
+
+    -- ========================================================================
     -- 3. ORDEM CAUSAL DO TURNO DO INIMIGO
     -- ========================================================================
     local g3 = TK.newRunGame("warrior")

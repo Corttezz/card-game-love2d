@@ -10,6 +10,7 @@
 
 local TK = require("tools.testkit")
 local MD = require("src.systems.MusicDirector")
+local Config = require("src.core.Config")
 
 local M = {}
 
@@ -28,8 +29,10 @@ function M.run()
     t:eq("ato 3 em combate", MD.pick("playing", { actNumber = 3 }, "battle"), "musicAct3")
     t:eq("mapa segue o ato",  MD.pick("mapSelection", { actNumber = 2 }, nil), "musicAct2")
 
-    -- Endless passa de 3; não pode cair no tema do ato 1.
-    t:eq("endless fica no tema do ato 3", MD.pick("playing", { actNumber = 7 }, "battle"), "musicAct3")
+    -- Endless passa do ultimo ato e TRAVA na faixa dele (nao volta pro ato 1).
+    t:eq("endless fica no tema do ultimo ato",
+         MD.pick("playing", { actNumber = Config.TotalActs + 4 }, "battle"),
+         "musicAct" .. Config.TotalActs)
 
     -- Sem run, não estoura: assume ato 1.
     t:eq("sem run assume ato 1", MD.pick("playing", nil, nil), "musicAct1")
@@ -55,12 +58,17 @@ function M.run()
     -- Um typo ("musicAct1" vs "musicact1") não trava nada em runtime — o
     -- `resolve` cai no fallback e a tela fica com a música do ato anterior.
     local produced = {}
-    for _, case in ipairs({
-        { "menu", nil, nil }, { "playing", { actNumber = 1 }, "battle" },
-        { "playing", { actNumber = 2 }, "battle" }, { "playing", { actNumber = 3 }, "battle" },
+    local casos = {
+        { "menu", nil, nil },
         { "playing", { actNumber = 1 }, "boss" }, { "rest", { actNumber = 1 }, "rest" },
         { "cardReward", { actNumber = 1 }, "shop" },
-    }) do
+    }
+    -- Um caso de combate POR ATO: assim a varredura cresce junto com a
+    -- campanha e uma faixa de ato novo nunca fica orfa por esquecimento.
+    for a = 1, Config.TotalActs do
+        casos[#casos + 1] = { "playing", { actNumber = a }, "battle" }
+    end
+    for _, case in ipairs(casos) do
         local code = MD.pick(case[1], case[2], case[3])
         if code then produced[code] = true end
     end

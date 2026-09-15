@@ -169,11 +169,12 @@ local function applyActSmoke()
     if not smokeSystem or not game or not game.runManager then return end
     local run = game.runManager.currentRun
     if not run then return end
+    -- Presets de smoke existem só pros 3 primeiros atos; os atos 4-6 herdam o
+    -- do irmão de clima (mesma escolha do salão de chefe em GameplayScene).
     local preset = "default"
+    local porAto = { "act1", "act2", "act3", "act1", "act2", "act3" }
     if run.endlessMode then preset = "act3"
-    elseif run.actNumber == 1 then preset = "act1"
-    elseif run.actNumber == 2 then preset = "act2"
-    elseif run.actNumber >= 3 then preset = "act3" end
+    else preset = porAto[run.actNumber] or "act3" end
     SmokeConfig.applyToSystem(smokeSystem, preset)
 end
 

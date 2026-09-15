@@ -16,8 +16,12 @@ function M.run()
 
     print("---- Fase 5 acts smoke test ----")
 
-    -- 1. Config.Acts tem 3 atos
-    check("Config.Acts tem 3 atos", #Config.Acts == 3)
+    -- 1. Config.Acts cobre TODOS os atos declarados. O numero deixou de ser 3
+    -- em Set/2026 (campanha foi pros 6 biomas que ja existiam); cravar a
+    -- contagem aqui so faria a suite brigar com a proxima mudanca de escopo.
+    check("Config.Acts tem um registro por ato de Config.TotalActs",
+        #Config.Acts == Config.TotalActs)
+    check("ha mais de um ato", Config.TotalActs >= 3)
 
     -- 2. Curva ato 1 (rebalanced): f=1 -> hp 14, f=8 -> hp 56
     local s1 = ActSystem.getEnemyStats(1, 1, "battle")
@@ -35,10 +39,14 @@ function M.run()
     local e = ActSystem.getEnemyStats(1, 4, "elite")
     check("elite ato 1 f=4: hp = floor(32*1.4)", e.health == math.floor(32 * 1.4))
 
-    -- 5. Endless: act 4+, base do ato 3 f=1 = 165
-    local endlessF1 = ActSystem.getEnemyStats(4, 1, "battle")
-    local endlessF5 = ActSystem.getEnemyStats(4, 5, "battle")
-    check("endless f1 = hp base act3 f1 (165)", endlessF1.health == 165)
+    -- 5. Endless comeca UM ATO DEPOIS do ultimo, seja ele qual for, e parte
+    -- da curva do ultimo ato da campanha.
+    local primeiroEndless = Config.TotalActs + 1
+    local baseUltimo = ActSystem.getEnemyStats(Config.TotalActs, 1, "battle")
+    local endlessF1 = ActSystem.getEnemyStats(primeiroEndless, 1, "battle")
+    local endlessF5 = ActSystem.getEnemyStats(primeiroEndless, 5, "battle")
+    check("endless f1 parte da curva do ultimo ato",
+        endlessF1.health == baseUltimo.health)
     check("endless scala exponencial", endlessF5.health > endlessF1.health * 1.5)
 
     -- 6. Rarity weights do ato 1 sao Slay-early
@@ -49,7 +57,8 @@ function M.run()
 
     -- 7. InterActHeal valores
     check("ato 1 interActHeal = 0.30", ActSystem.getInterActHealPercent(1) == 0.30)
-    check("endless interActHeal = 0", ActSystem.getInterActHealPercent(4) == 0)
+    check("endless interActHeal = 0",
+        ActSystem.getInterActHealPercent(Config.TotalActs + 1) == 0)
 
     -- 8. Act name — agora vem do i18n (acts.act<N>), não mais do PT cravado em
     -- Config.Acts. O teste FIXA o locale: antes ele assumia pt_BR sem dizer, e
@@ -60,7 +69,7 @@ function M.run()
     I18n.setLocale("pt_BR")
     check("ato 1 nome (pt_BR) = Catacumbas", ActSystem.getActName(1) == "Catacumbas")
     check("endless (pt_BR) tem Endless no nome",
-        ActSystem.getActName(4, 3):find("Endless") ~= nil)
+        ActSystem.getActName(Config.TotalActs + 1, 3):find("Endless") ~= nil)
 
     -- E precisa MUDAR de verdade com o idioma: nome repetido nos 5 locales
     -- passaria no teste de paridade e continuaria errado na tela.

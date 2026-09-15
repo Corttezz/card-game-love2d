@@ -8,6 +8,7 @@ local TK = require("tools.testkit")
 local RunManager = require("src.systems.RunManager")
 local MapManager = require("src.systems.MapManager")
 local ActSystem  = require("src.systems.ActSystem")
+local Config     = require("src.core.Config")
 
 local M = {}
 
@@ -70,7 +71,8 @@ function M.run()
     t:eq("virou ato 2", rm2.currentRun.actNumber, 2)
     t:eq("andar reset p/ 1", rm2.currentRun.floorInAct, 1)
 
-    rm2.currentRun.floorInAct = 8; rm2.currentRun.actNumber = 3
+    rm2.currentRun.floorInAct = 8
+    rm2.currentRun.actNumber = Config.TotalActs
     t:eq("fim do ato final retorna 'endless_start'", rm2:advanceFloorInAct(3), "endless_start")
     t:truthy("endlessMode ativado", rm2.currentRun.endlessMode)
 
@@ -114,18 +116,24 @@ function M.run()
     -- elite: multiplica battle
     t:eq("elite ato1 andar1 HP = floor(14*1.4)=19", ActSystem.getEnemyStats(1, 1, "elite").health, 19)
 
-    -- endless: floor 1 == base do ato 3 (fator 1.0), depois escala 1.18^(f-1)
-    local e1 = ActSystem.getEnemyStats(4, 1, "battle")
-    t:eq("endless andar1 HP = base ato3 (165)", e1.health, 165)
-    local e5 = ActSystem.getEnemyStats(4, 5, "battle")
+    -- endless: floor 1 == base do ULTIMO ato (fator 1.0), depois 1.18^(f-1).
+    -- Ancorado em Config.TotalActs: a campanha foi de 3 pra 6 atos em Set/2026
+    -- e um "4" cravado aqui virou silenciosamente um ato normal.
+    local primeiroEndless = Config.TotalActs + 1
+    local baseUltimo = ActSystem.getEnemyStats(Config.TotalActs, 1, "battle")
+    local e1 = ActSystem.getEnemyStats(primeiroEndless, 1, "battle")
+    t:eq("endless andar1 HP = base do ultimo ato", e1.health, baseUltimo.health)
+    local e5 = ActSystem.getEnemyStats(primeiroEndless, 5, "battle")
     t:truthy("endless escala HP acima do andar 1", e5.health > e1.health)
 
     -- pesos de raridade e cura inter-ato
     t:eq("cura inter-ato ato1 = 0.30", ActSystem.getInterActHealPercent(1), 0.30)
     t:eq("cura inter-ato ato2 = 0.40", ActSystem.getInterActHealPercent(2), 0.40)
-    t:eq("cura inter-ato endless = 0", ActSystem.getInterActHealPercent(4), 0)
+    t:eq("cura inter-ato endless = 0",
+        ActSystem.getInterActHealPercent(primeiroEndless), 0)
     t:eq("raridade ato1 common = 70", ActSystem.getRarityWeights(1).common, 70)
-    t:eq("raridade endless legendary = 10", ActSystem.getRarityWeights(4).legendary, 10)
+    t:eq("raridade endless legendary = 10",
+        ActSystem.getRarityWeights(primeiroEndless).legendary, 10)
 
     return t:done()
 end

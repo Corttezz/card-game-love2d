@@ -899,6 +899,30 @@ function EffectSystem:fireThornReflect(game)
             FloatingText.spawn("-" .. v, ex, ey, { kind = "damage", fontSize = 20 })
         end
     end
+
+    -- O JOKER QUE ARMOU FALA AQUI (Set/2026, pedido do dono sobre o Baluarte
+    -- Eterno: "tambem tem q fazer barulho quando receber dano").
+    --
+    -- Espinhos sao ESTADO: o joker arma quando a defesa e jogada e o reflexo
+    -- so sai agora, quando o inimigo ataca. O proc visual/sonoro estava so no
+    -- ARMAR — ou seja, o lendario ficava MUDO exatamente no instante em que
+    -- faz o que promete. Quem olha a tela ve o inimigo levar dano do nada e
+    -- nao liga a um coringa.
+    --
+    -- Vale pros QUATRO que armam espinhos (Baluarte Eterno, Juggernaut,
+    -- Estrepes, joker_005) — todos tem som assinatura em audio/sfx/joker-sig/.
+    -- A varredura e pela ORDEM DOS SLOTS, nao pelo `pairs` do mapa: com dois
+    -- coringas de espinho a cadeia de ticks tem que sair sempre na mesma
+    -- ordem, senao o som do turno muda de run pra run sem motivo.
+    local armados = game._jokerThornFiredThisTurn
+    if armados then
+        for _, slotJoker in ipairs(game.jokerSlots or {}) do
+            if slotJoker and armados[slotJoker.id or slotJoker] then
+                self:notifyJokerProc(game, slotJoker, "-" .. v, "damage")
+            end
+        end
+    end
+
     return v
 end
 
@@ -1009,14 +1033,22 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
         -- turno POR JOKER (flag resetada em Game:drawForTurn) — o teto de
         -- stacks por turno continua o mesmo de antes do rebalance. Thorn de
         -- CARTA (context.sourceCard) continua acumulando POR CARTA jogada.
+        -- A chave e o ID, nao a INSTANCIA (Set/2026). Duas razoes: (1) quem
+        -- armou precisa ser reencontrado la no `fireThornReflect`, turno do
+        -- inimigo adiante, pra PROCAR — e `rebuildJokerSlots` recria as
+        -- instancias (abrir o Gerenciador de Coringas no meio da luta basta),
+        -- deixando a referencia velha orfa; (2) pela mesma orfandade, o teto
+        -- P2.3 se reabria sozinho e o joker armava espinhos duas vezes no
+        -- mesmo turno. Id e estavel; instancia nao.
         local fired = true
         local joker = context and context.sourceJoker
         if joker then
+            local jid = joker.id or joker
             game._jokerThornFiredThisTurn = game._jokerThornFiredThisTurn or {}
-            if game._jokerThornFiredThisTurn[joker] then
+            if game._jokerThornFiredThisTurn[jid] then
                 fired = false
             else
-                game._jokerThornFiredThisTurn[joker] = true
+                game._jokerThornFiredThisTurn[jid] = true
             end
         end
         if fired and game.player and game.player.addBuff then

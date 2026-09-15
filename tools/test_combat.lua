@@ -99,10 +99,13 @@ function M.run()
     g.enemy.health = 0
     t:truthy("isPhaseCleared com inimigo morto", g:isPhaseCleared())
 
-    -- checkVictory: precisa ato 3, andar 8, boss, inimigo morto
+    -- checkVictory: precisa do ULTIMO ato, andar 8, boss, inimigo morto.
+    -- Ancorado em Config.TotalActs — a campanha foi de 3 pra 6 atos em
+    -- Set/2026 e um "3" cravado aqui passaria a testar o meio do jogo.
     g = TK.newRunGame("warrior"); TK.pump(g, 0.5)
     local run = g.runManager.currentRun
-    run.actNumber = 3; run.floorInAct = 8; run.endlessMode = false
+    run.actNumber = require("src.core.Config").TotalActs
+    run.floorInAct = 8; run.endlessMode = false
     run.currentNode = { type = "boss" }
     g.enemy.health = 0
     t:truthy("checkVictory no boss final", g:checkVictory())

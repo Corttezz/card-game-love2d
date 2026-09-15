@@ -11,7 +11,10 @@ local Config = {}
 -- nao reproduz" neste projeto. O lancador oficial e o jogar.bat.
 -- 0.9.2 (Set/2026): forja por copia, hover bloqueado por modal, trava de fim
 --   de run (tela preta), faxina de musica orfa, pacotes renomeados.
-Config.VERSION = "0.9.2"
+-- 0.9.3 (Set/2026): CAMPANHA DE 6 ATOS (era 3 — os biomas, chefes e poses dos
+--   atos 4-6 ja existiam e so apareciam no endless), 3 faixas novas, portao
+--   de fogo do ato 3 regerado, Baluarte Eterno deixa de ser mudo no reflexo.
+Config.VERSION = "0.9.3"
 
 -- Configurações da Interface
 Config.UI = {
@@ -123,11 +126,70 @@ Config.Acts = {
         rarityWeights = { common = 15, uncommon = 45, rare = 32, legendary = 8 },
         interActHeal = 0.40,
     },
+
+    -- ========================================================================
+    -- ATOS 4-6 (Set/2026) — a campanha ia até o 3 enquanto os biomas, os
+    -- chefes, as poses e as emissivas dos outros três já estavam prontos e só
+    -- apareciam no endless. Queixa do dono: "pq sao so 3 atos? nos temos
+    -- varios boses e varios mapas ja feitos pq parou ai?".
+    --
+    -- COMO A CURVA FOI ESCOLHIDA (e por que não é só "multiplica por 2"):
+    --
+    --   DANO acompanha o TETO DE ARMADURA, não uma progressão geométrica.
+    --   O teto é `PLAYER_MAX_ARMOR + PLAYER_MAX_ARMOR_PER_ACT*(ato-1)` =
+    --   30/40/50/60/70/80. A vida do jogador NÃO escala junto (base 60, só
+    --   sobe por upgrade), então dano geométrico mata em um golpe: seguindo o
+    --   fator ~1.7 que existe entre os atos 1→3, o ato 6 bateria a ~200 por
+    --   turno. O que se preserva é a RELAÇÃO: um turno cheio de defesa
+    --   absorve aproximadamente um golpe. Fim de ato = ~77% do teto de
+    --   armadura daquele ato, igual ao ato 3 (38 de 50).
+    --
+    --   VIDA cresce ~1.5x por ato, essa sim geométrica, porque o dano do
+    --   jogador é MULTIPLICATIVO (Força + combos + multiplicadores de
+    --   coringa compõem). No log do dono um deck maduro de ato 3 já dava 109
+    --   num golpe só.
+    --
+    --   CHEFE mantém a proporção do ato 3: dano do chefe ≈ 0,68x o dano do
+    --   inimigo comum do fim do ato (o chefe é parede, não canhão), e vida
+    --   ≈ 1,55x a do comum do fim do ato.
+    --
+    -- Estes números são um PONTO DE PARTIDA defensável, não um veredito de
+    -- balanço — o balanço é decisão do dono. `love . autoplay` mede winrate
+    -- por classe se for preciso apertar.
+    -- ========================================================================
+    {
+        number = 4, name = "Cidadela Gelada", floors = 8,
+        enemyHP    = function(f) return 250 + f * 22 end, -- f=1: 272, f=8: 426
+        enemyDmg   = function(f) return 22 + f * 3.0 end, -- f=1: 25, f=8: 46  (teto 60)
+        bossHP = 660, bossDmg = 32,
+        eliteHPMul = 1.75, eliteDmgMul = 1.45,
+        rarityWeights = { common = 10, uncommon = 40, rare = 38, legendary = 12 },
+        interActHeal = 0.40,
+    },
+    {
+        number = 5, name = "Coracao Putrido", floors = 8,
+        enemyHP    = function(f) return 380 + f * 32 end, -- f=1: 412, f=8: 636
+        enemyDmg   = function(f) return 27 + f * 3.5 end, -- f=1: 30, f=8: 55  (teto 70)
+        bossHP = 990, bossDmg = 38,
+        eliteHPMul = 1.80, eliteDmgMul = 1.50,
+        rarityWeights = { common = 5,  uncommon = 35, rare = 44, legendary = 16 },
+        interActHeal = 0.40,
+    },
+    {
+        number = 6, name = "Corte do Eclipse", floors = 8,
+        enemyHP    = function(f) return 560 + f * 45 end, -- f=1: 605, f=8: 920
+        enemyDmg   = function(f) return 32 + f * 4.0 end, -- f=1: 36, f=8: 64  (teto 80)
+        bossHP = 1430, bossDmg = 45,
+        eliteHPMul = 1.85, eliteDmgMul = 1.50,
+        rarityWeights = { common = 0,  uncommon = 28, rare = 50, legendary = 22 },
+        interActHeal = 0.40,
+    },
 }
 
 Config.Endless = {
-    -- HP e dano crescem exponencial apos o ato 3. O contador de endless comeca
-    -- em floorInAct=1 com actNumber=4 (ver RunManager:advanceFloorInAct).
+    -- HP e dano crescem exponencial DEPOIS do ultimo ato (Config.TotalActs).
+    -- O contador de endless comeca em floorInAct=1 com actNumber=TotalActs+1
+    -- (ver RunManager:advanceFloorInAct).
     scalingMultiplier = 1.18, -- HP e dmg *= 1.18 por andar
     -- Raridades favorecem o alto-nivel mas comum ainda aparece (sem tirar o "floor" de oferta).
     rarityWeights = { common = 10, uncommon = 35, rare = 45, legendary = 10 },
@@ -135,8 +197,10 @@ Config.Endless = {
     healEveryNFloors = 5, healPercent = 0.20,
 }
 
--- Total de atos (excluindo endless). Usado por RunManager:advanceFloorInAct.
-Config.TotalActs = 3
+-- Total de atos (excluindo endless). Usado por RunManager:advanceFloorInAct
+-- e por Game:checkVictory — a tela de vitória nasce daqui, então mexer neste
+-- número move o fim da campanha inteiro (foi 3 até Set/2026).
+Config.TotalActs = 6
 
 -- ===== Ofertas de carta (recompensas + loja): pity e afinidade =====
 -- Adaptação do "card blizzard" do Slay the Spire pro nosso modelo de pesos

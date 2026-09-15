@@ -26,6 +26,9 @@ MusicDirector.TRACKS = {
     musicAct1 = "music-act1.mp3",
     musicAct2 = "music-act2.mp3",
     musicAct3 = "music-act3.mp3",
+    musicAct4 = "music-act4.mp3",
+    musicAct5 = "music-act5.mp3",
+    musicAct6 = "music-act6.mp3",
     musicBoss = "music-boss.mp3",
     musicShop = "music-shop.mp3",
     musicRest = "music-rest.mp3",
@@ -64,6 +67,9 @@ local FALLBACK = {
     musicAct1 = "menuMusic",
     musicAct2 = "musicAct1",
     musicAct3 = "musicAct2",
+    musicAct4 = "musicAct3",
+    musicAct5 = "musicAct4",
+    musicAct6 = "musicAct5",
     musicBoss = "musicAct3",
     musicShop = "musicAct1",
     musicRest = "musicAct1",
@@ -100,10 +106,15 @@ function MusicDirector.pick(state, run, nodeType)
 
     if state == "playing" and nodeType == "boss" then return "musicBoss" end
 
+    -- Uma faixa por ato. O `resolve` cuida do resto: enquanto o mp3 de um ato
+    -- não existe, a cadeia de FALLBACK desce pro ato anterior — soltar o
+    -- arquivo em audio/music/ liga a faixa sem tocar em código. Em endless o
+    -- ato passa de TotalActs e trava na última faixa da campanha.
     local act = (run and run.actNumber) or 1
-    if act >= 3 then return "musicAct3" end
-    if act == 2 then return "musicAct2" end
-    return "musicAct1"
+    local Config = require("src.core.Config")
+    local ultimo = Config.TotalActs or 3
+    act = math.max(1, math.min(act, ultimo))
+    return "musicAct" .. act
 end
 
 -- Chamado todo frame pelo main.lua. `nil` de `pick` significa "mantenha o que

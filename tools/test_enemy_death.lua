@@ -246,7 +246,7 @@ function M.run()
         local g = TK.newRunGame("warrior")
         TK.pump(g, 0.5)
         local run = g.runManager.currentRun
-        run.actNumber = 3
+        run.actNumber = require("src.core.Config").TotalActs
         run.floorInAct = MapManager.FLOORS_PER_ACT
         run.currentNode = { type = "boss" }
         run.endlessMode = false

@@ -90,6 +90,14 @@ SceneLayer.ACT_CONFIGS = {
     },
 }
 
+-- Os atos 4-6 (Set/2026) reusam a cena do irmao de clima: este SceneLayer e o
+-- caminho LEGADO (a estrada de verdade e o WorldRoad, que tem bioma proprio
+-- pros seis) e so aparece quando o interior do ato ainda nao foi gerado.
+-- Mesmo pareamento do salao de chefe em GameplayScene.
+SceneLayer.ACT_CONFIGS[4] = SceneLayer.ACT_CONFIGS[1]
+SceneLayer.ACT_CONFIGS[5] = SceneLayer.ACT_CONFIGS[2]
+SceneLayer.ACT_CONFIGS[6] = SceneLayer.ACT_CONFIGS[3]
+
 -- Nome da cena PNG que este ato desenha — o chamador precisa saber QUAL
 -- arte esta na tela pra pedir a linha de chao dela (src/data/scene_anchors).
 function SceneLayer.sceneKeyForAct(act)
