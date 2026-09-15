@@ -183,6 +183,31 @@ return {
             desc   = "Ameliore une carte de votre deck. Vous choisissez laquelle a l achat.",
             flavor = "Le marteau se souvient de ce que la page a oublie.",
         },
+        -- SERVICES (sept. 2026) : reliques qui touchent la partie, pas un combat.
+        remove_card    = {
+            name   = "Ciseaux",
+            effect = "-1 CARTE",
+            desc   = "Arrache definitivement une carte de votre deck. Vous choisissez laquelle a l achat.",
+            flavor = "Toutes les pages ne meritaient pas d etre ecrites.",
+        },
+        duplicate_card = {
+            name   = "Presse",
+            effect = "+1 COPIE",
+            desc   = "Copie une carte de votre deck, avec le niveau de forge qu elle possede deja.",
+            flavor = "La meme ligne, deux fois, dans la meme encre.",
+        },
+        joker_slot     = {
+            name   = "Etabli",
+            effect = "+1 EMPLACEMENT",
+            desc   = "Un joker de plus de votre troupe entre en scene, jusqu a la fin de la partie.",
+            flavor = "Il y a toujours de la place, si la table est assez longue.",
+        },
+        card_draw_upgrade   = {
+            name   = "Grimoire",
+            effect = "+1 PIOCHE",
+            desc   = "Vous piochez une carte de plus chaque tour, jusqu a la fin de la partie.",
+            flavor = "Lire en avance est la seule triche que le livre autorise.",
+        },
     },
 
     map = {
@@ -355,6 +380,8 @@ return {
         open_pack          = "Ouvrir (${n})",
         select_card        = "Selectionner",
         joker_run_only     = "Les jokers ne s'obtiennent que pendant une partie",
+        joker_slot_gained  = "Jokers en scene : jusqu a {n}",
+        service_refunded   = "Achat annule : ${n} rembourses",
         instructions_shop  = "Survolez pour lire · CLIC selectionne · confirmez dans le panneau · DROIT inspecte",
         detail_type_voucher = "Relique",
         detail_type_pack    = "Pack",

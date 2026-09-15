@@ -183,6 +183,31 @@ return {
             desc   = "Mejora una carta de tu mazo. Eliges cual al comprarla.",
             flavor = "El martillo recuerda lo que la pagina olvido.",
         },
+        -- SERVICIOS (Sep/2026): reliquias que tocan la partida, no una batalla.
+        remove_card    = {
+            name   = "Tijeras",
+            effect = "-1 CARTA",
+            desc   = "Arranca una carta de tu mazo para siempre. Eliges cual al comprarla.",
+            flavor = "No toda pagina merecia haberse escrito.",
+        },
+        duplicate_card = {
+            name   = "Prensa",
+            effect = "+1 COPIA",
+            desc   = "Copia una carta de tu mazo, con el nivel de forja que ya tenga.",
+            flavor = "La misma linea, dos veces, con la misma tinta.",
+        },
+        joker_slot     = {
+            name   = "Banco",
+            effect = "+1 RANURA",
+            desc   = "Un comodin mas de tu troupe entra en juego, el resto de la partida.",
+            flavor = "Siempre cabe uno mas, si la mesa es larga.",
+        },
+        card_draw_upgrade   = {
+            name   = "Grimorio",
+            effect = "+1 ROBO",
+            desc   = "Robas una carta extra cada turno, el resto de la partida.",
+            flavor = "Leer por delante es la unica trampa que el libro permite.",
+        },
     },
 
     map = {
@@ -354,6 +379,8 @@ return {
         open_pack          = "Abrir (${n})",
         select_card        = "Seleccionar",
         joker_run_only     = "Los comodines solo se consiguen durante una partida",
+        joker_slot_gained  = "Comodines en juego: hasta {n}",
+        service_refunded   = "Compra cancelada: ${n} devueltos",
         instructions_shop  = "Pasa el raton para leer · CLIC selecciona · confirma en el panel · DERECHO inspecciona",
         detail_type_voucher = "Reliquia",
         detail_type_pack    = "Sobre",

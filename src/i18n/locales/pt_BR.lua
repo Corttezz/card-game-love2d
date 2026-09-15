@@ -201,6 +201,31 @@ return {
             desc   = "Aprimora uma carta do seu deck. Você escolhe qual na hora da compra.",
             flavor = "O martelo lembra o que a página esqueceu.",
         },
+        -- SERVIÇOS (Set/2026): relíquias que mexem na corrida, não na batalha.
+        remove_card    = {
+            name   = "Tesoura",
+            effect = "-1 CARTA",
+            desc   = "Arranca uma carta do seu deck de vez. Você escolhe qual na hora da compra.",
+            flavor = "Nem toda página merecia ter sido escrita.",
+        },
+        duplicate_card = {
+            name   = "Prensa",
+            effect = "+1 COPIA",
+            desc   = "Copia uma carta do seu deck, com o nível de forja que ela já tem.",
+            flavor = "A mesma linha, duas vezes, na mesma tinta.",
+        },
+        joker_slot     = {
+            name   = "Bancada",
+            effect = "+1 SLOT",
+            desc   = "Mais um coringa da sua trupe entra em campo, pelo resto da corrida.",
+            flavor = "Sempre cabe mais um, se a mesa for comprida.",
+        },
+        card_draw_upgrade   = {
+            name   = "Grimório",
+            effect = "+1 COMPRA",
+            desc   = "Você compra uma carta a mais todo turno, pelo resto da corrida.",
+            flavor = "Ler adiante é a única trapaça que o livro permite.",
+        },
     },
 
     map = {
@@ -374,6 +399,8 @@ return {
         atk_bonus          = "Dano de ataque: +{n}",
         def_bonus          = "Defesa: +{n}",
         joker_run_only     = "Coringas so podem ser adquiridos durante uma corrida",
+        joker_slot_gained  = "Coringas em campo: até {n}",
+        service_refunded   = "Compra cancelada — ${n} devolvido",
         -- Split-view da loja: rotulos que antes so existiam como fallback PT
         -- cravado no CardDetailPanel/CardRewardScreen — em alemao a vitrine
         -- mostrava "Reliquia" no meio do texto traduzido.

@@ -229,6 +229,83 @@ Config.Offers = {
     FORGE_ATK_PER_LVL    = 2,
     FORGE_DEF_PER_LVL    = 2,
     FORGE_EFFECT_PER_LVL = 1,
+
+    -- ===== SERVIÇOS da loja (Set/2026) =====
+    -- Relíquias que mexem na RUN e não numa batalha: tesoura (remover carta),
+    -- prensa (duplicar carta), bancada extra de coringa e o grimório de compra
+    -- extra. Cada uma encarece a cada compra NA MESMA RUN, igual à forja —
+    -- a loja vende o serviço, não uma assinatura barata pro resto do jogo.
+    --
+    -- COMO OS NÚMEROS FORAM ESCOLHIDOS (e por que não são chute):
+    --   Uma run de 6 atos paga ~$9 por batalha ($5 vitória + $3 HP cheio +
+    --   juros até $5) em ~35 batalhas: a ordem de grandeza da run inteira é
+    --   $350-450, e uma carta comum custa $3.
+    --   • remover/duplicar entram na faixa da forja (base 5) porque competem
+    --     com ela pelo mesmo slot e pelo mesmo bolso;
+    --   • slot de coringa e compra extra são upgrades PERMANENTES de motor —
+    --     ficam na faixa do Cristal de Éter ($25) pra cima e têm TETO DE
+    --     COMPRAS por run (`maxPerRun`), senão viram a única coisa que se
+    --     compra na run inteira.
+    -- Balanço é decisão do dono: mexer aqui move a economia toda.
+    --   base      = custo da 1ª compra na run
+    --   mult      = multiplicador por compra JÁ FEITA (custo = base*mult^n)
+    --   max       = teto do custo
+    --   maxPerRun = 0 (sem limite) ou N compras por run
+    --   minDeck   = só é ofertada com pelo menos N cartas no deck
+    SERVICES = {
+        -- 8, 12, 17, 25, 36, 45(teto) — barata na primeira, dolorosa na quinta.
+        remove_card    = { base = 8,  mult = 1.45, max = 45, maxPerRun = 0, minDeck = 3 },
+        -- 12, 19, 29, 45, 60(teto) — duplicar carta forjada é forte demais
+        -- pra custar o mesmo que remover uma ruim.
+        duplicate_card = { base = 12, mult = 1.55, max = 60, maxPerRun = 0 },
+        -- 30, 60 — o teto de 2 leva a bancada de 3 pra 5 coringas ATIVOS.
+        joker_slot     = { base = 30, mult = 2.0,  max = 90, maxPerRun = 2 },
+        -- 25, 55 — +1 carta por turno é motor puro; 2 é o teto.
+        card_draw_upgrade   = { base = 25, mult = 2.2,  max = 80, maxPerRun = 2 },
+        -- 25, 41, 68, 113, 150(teto) — ver INTEREST_CAP_* logo abaixo.
+        -- SEM teto de compras (`maxPerRun = 0`): o pedido foi "aumentar
+        -- sempre". Quem segura é o PREÇO, e ele segura de verdade — as cinco
+        -- primeiras compras somam $397, que é aproximadamente a renda inteira
+        -- de uma corrida.
+        interest_cap        = { base = 25, mult = 1.65, max = 150, maxPerRun = 0 },
+    },
+
+    -- ===== TETO DE JUROS comprável (Set/2026) =====
+    -- Pedido do dono: "hoje o juros tem limite, ter uma forma também de
+    -- destravar o limite do juros e aumentar sempre ele".
+    --
+    -- POR QUE ISTO PRECISA DE MAIS CUIDADO QUE AS OUTRAS RELÍQUIAS
+    -- Slot de coringa e compra extra são DEGRAUS: sobem o patamar e param.
+    -- Teto de juros realimenta a própria fonte — mais teto, mais ouro
+    -- guardado, mais juros, mais teto. Sem freio vira motor infinito.
+    --
+    -- SÃO TRÊS FREIOS, e nenhum deles é uma trava dura:
+    --
+    --  1. PREÇO CRESCENTE (×1,65 por compra). O freio principal.
+    --
+    --  2. OURO PARADO. Juros são `floor(ouro/5)` LIMITADOS pelo teto: pra
+    --     realizar teto C é preciso manter 5×C no cofre. Teto 15 exige $75
+    --     dormindo no bolso — sete cartas comuns que você NÃO comprou. O
+    --     custo real da relíquia não é só o preço: é a liquidez.
+    --
+    --  3. PISTA QUE ENCURTA. O ganho é +2 por batalha RESTANTE. Comprado no
+    --     ato 1 (~30 batalhas pela frente) rende ~$60 por $25; comprado no
+    --     ato 5 (~10 batalhas) rende $20 por $68 e é prejuízo. O item se
+    --     desvaloriza sozinho conforme a corrida anda — é decisão de ABERTURA,
+    --     não de fechamento, e isso não precisou de regra nenhuma.
+    --
+    -- De propósito NÃO existe um quarto freio (rendimento decrescente por
+    -- compra): os três acima já se compõem, e somar um quarto faria a compra
+    -- parecer quebrada em vez de cara.
+    --
+    -- Com 6 atos (o dobro da campanha antiga) o item vale literalmente o dobro
+    -- do que valeria antes — é por isso que a base é $25 e não $10.
+    INTEREST_CAP_PER_BUY = 2,   -- quanto o teto sobe por compra
+    -- Guarda-corpo, não design: nas contas acima chegar aqui custaria mais de
+    -- $1.000 numa corrida que rende ~$400. Existe pra que o número não possa
+    -- disparar num modo futuro (endless longo, joker que dá ouro), nunca pra
+    -- ser encostado numa corrida normal.
+    INTEREST_CAP_MAX = 25,
 }
 
 -- Configurações das Cartas

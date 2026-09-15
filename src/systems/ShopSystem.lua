@@ -8,10 +8,11 @@
 local ShopSystem = {}
 ShopSystem.__index = ShopSystem
 
-local CardDatabase = require("src.systems.CardDatabase")
-local CardRegistry = require("src.systems.CardRegistry")
-local Rng          = require("src.systems.Rng")
-local I18n         = require("src.i18n.I18n")
+local CardDatabase  = require("src.systems.CardDatabase")
+local CardRegistry  = require("src.systems.CardRegistry")
+local Rng           = require("src.systems.Rng")
+local I18n          = require("src.i18n.I18n")
+local ShopServices  = require("src.systems.ShopServices")
 
 -- Catálogo de booster packs disponíveis na loja. Custo + tamanho do conteúdo.
 -- Fase 5 vai usar `size` (cards mostrados) e `choose` (cards escolhidos)
@@ -89,13 +90,32 @@ local MODE_CONFIG = {
     },
     shop = {
         cards = 4,
-        upgrades = 1,
+        -- 2 (era 1): com os SERVIÇOS (tesoura, prensa, bancada de coringa,
+        -- grimório de compra) o slot único virava gargalo — seis relíquias
+        -- disputando uma vaga fazem cada mecânica aparecer em ~1 de cada 6
+        -- lojas. Duas vagas: uma é FIXA da tesoura (remoção, StS-style) e a
+        -- outra sorteia entre forja/vida/mana/prensa/bancada/grimório.
+        --
+        -- O layout absorve isso sozinho: a fileira 2 da vitrine é montada de
+        -- `upgrades + boosters` células dividindo o MESMO vão da fileira 1
+        -- (CardRewardScreen:updateLayout) — com 2+2 as duas fileiras passam a
+        -- ter 4 colunas e ficam alinhadas coluna a coluna, o que antes (3
+        -- contra 4) não acontecia.
+        upgrades = 2,
         boosters = 2,
         canReroll = true,
         canSkip = true,
         skipBonus = 3,  -- ouro extra ao pular a loja
     },
 }
+
+-- Upgrades GLOBAIS sorteáveis que não são serviço (custo fixo, aplicam direto
+-- no Player). O peso decide a chance relativa dentro do slot rotativo.
+local CLASSIC_UPGRADE_WEIGHT = {
+    health_upgrade = 1.0,
+    mana_upgrade   = 0.7,
+}
+local FORGE_WEIGHT = 1.2
 
 local REROLL_BASE = 5
 local REROLL_MULT = 1.4
@@ -137,6 +157,8 @@ function ShopSystem:new()
     -- (CardRewardScreen:show). Sem contexto: pool global, sem afinidade.
     instance.context = {}
     instance._offeredCardIds = {}
+    -- Dedup da vitrine de upgrades (uma relíquia por loja).
+    instance._offeredUpgradeIds = {}
 
     instance:initializeShopPools()
 
@@ -210,9 +232,31 @@ function ShopSystem:generateOffers()
         if offer then table.insert(self.currentOffers, offer) end
     end
 
-    for _ = 1, cfg.upgrades do
+    -- Vitrine de upgrades: a primeira vaga é FIXA dos serviços marcados
+    -- `fixture` (hoje só a tesoura), as demais rotacionam. Dedup por geração:
+    -- a mesma relíquia nunca ocupa duas vagas da mesma loja.
+    self._offeredUpgradeIds = {}
+    local upgradesLeft = cfg.upgrades
+    if upgradesLeft > 0 then
+        for _, svc in ipairs(ShopServices.CATALOG) do
+            if upgradesLeft <= 0 then break end
+            if svc.fixture then
+                local offer = self:buildServiceOffer(svc.id)
+                if offer then
+                    table.insert(self.currentOffers, offer)
+                    self._offeredUpgradeIds[svc.id] = true
+                    upgradesLeft = upgradesLeft - 1
+                end
+            end
+        end
+    end
+
+    for _ = 1, upgradesLeft do
         local offer = self:generateUpgradeOffer()
-        if offer then table.insert(self.currentOffers, offer) end
+        if offer then
+            table.insert(self.currentOffers, offer)
+            self._offeredUpgradeIds[offer.id] = true
+        end
     end
 
     for _ = 1, cfg.boosters do
@@ -263,14 +307,59 @@ function ShopSystem:generateCardOffer()
     }
 end
 
-function ShopSystem:generateUpgradeOffer()
-    -- Metade das vitrines oferece a FORJA (+1 nível numa carta à sua escolha,
-    -- custo crescente por forja COMPRADA na run — RunManager:getPaidForgeCost);
-    -- a outra metade, um upgrade global do pool clássico.
+-- Monta a oferta de um SERVIÇO (tesoura, prensa, bancada de coringa,
+-- grimório). Devolve nil quando o serviço não está disponível nesta run —
+-- teto de compras batido ou deck curto demais pra tesoura.
+function ShopSystem:buildServiceOffer(id)
+    local svc = ShopServices.get(id)
+    if not svc then
+        print("[ShopSystem] servico desconhecido: " .. tostring(id))
+        return nil
+    end
     local runManager = self.context and self.context.runManager
-    if runManager and runManager.getPaidForgeCost
-        and Rng.get():random("shop") < 0.5 then
-        return {
+    if not ShopServices.isAvailable(id, runManager) then return nil end
+
+    local cost = ShopServices.cost(id, runManager)
+    if not cost then return nil end
+
+    return {
+        type = "upgrade",
+        id = id,
+        -- Fallback de dev sem acento (mesma regra do resto do arquivo): o
+        -- texto do jogador sai de `shop_items.<id>` nos 5 locales.
+        name = itemName(id, id),
+        description = itemDesc(id, ""),
+        cost = cost,
+        effect = svc.effect,
+        value = 1,
+        -- A UI não precisa saber COMO o serviço funciona, mas o picker sim.
+        picker = svc.picker,
+        isService = true,
+    }
+end
+
+-- Uma vaga ROTATIVA da vitrine de upgrades.
+--
+-- Antes eram dois caminhos costurados na mão: "50% de chance de ser forja,
+-- senão sorteia o pool clássico". Com seis relíquias possíveis isso não
+-- escala — e a chance de cada uma ficava escondida num `if`. Agora todos os
+-- candidatos DISPONÍVEIS entram numa lista ponderada única e o sorteio é um
+-- só, no stream `shop` do Rng da run (reprodutível por seed).
+function ShopSystem:generateUpgradeOffer()
+    local runManager = self.context and self.context.runManager
+    local offered = self._offeredUpgradeIds or {}
+    local entries = {}
+
+    local function candidate(offer, weight)
+        if offer and not offered[offer.id] and (weight or 0) > 0 then
+            table.insert(entries, { item = offer, weight = weight })
+        end
+    end
+
+    -- FORJA: +1 nível numa carta à escolha; custo cresce por forja COMPRADA
+    -- na run (RunManager:getPaidForgeCost). Ledger próprio, herdado.
+    if runManager and runManager.getPaidForgeCost then
+        candidate({
             type = "upgrade",
             id = "forge_card",
             name = itemName("forge_card", "Forja"),
@@ -279,20 +368,35 @@ function ShopSystem:generateUpgradeOffer()
             cost = runManager:getPaidForgeCost(),
             effect = "forge_card",
             value = 1,
-        }
+            picker = "forge",
+        }, FORGE_WEIGHT)
     end
 
-    local pool = self.shopUpgradePool
-    local pick = Rng.get():pick("shop", pool)
-    return {
-        type = "upgrade",
-        id = pick.id,
-        name = itemName(pick.id, pick.name),
-        description = itemDesc(pick.id, pick.description, { value = pick.value }),
-        cost = pick.cost,
-        effect = pick.effect,
-        value = pick.value,
-    }
+    -- Upgrades globais de custo fixo (vida/mana máxima).
+    for _, pick in ipairs(self.shopUpgradePool) do
+        candidate({
+            type = "upgrade",
+            id = pick.id,
+            name = itemName(pick.id, pick.name),
+            description = itemDesc(pick.id, pick.description, { value = pick.value }),
+            cost = pick.cost,
+            effect = pick.effect,
+            value = pick.value,
+        }, CLASSIC_UPGRADE_WEIGHT[pick.id] or 1.0)
+    end
+
+    -- Serviços não-fixos (a tesoura já ocupou a vaga fixa em generateOffers).
+    -- O peso é PERGUNTADO ao ShopServices, não lido do catálogo: a bancada de
+    -- coringa pesa mais quando o jogador tem coringa parado na bancada.
+    for _, svc in ipairs(ShopServices.CATALOG) do
+        if not svc.fixture then
+            candidate(self:buildServiceOffer(svc.id),
+                ShopServices.weight(svc.id, runManager))
+        end
+    end
+
+    if #entries == 0 then return nil end
+    return Rng.get():weighted("shop", entries)
 end
 
 -- Sorteia booster pack ponderado por weight (stream "shop" do Rng da run).

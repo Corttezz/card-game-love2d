@@ -174,9 +174,13 @@ end
 
 function RunManager:getMaxJokerSlots()
     -- currentRun.maxJokerSlots é espelhado por Game:recomputeMaxJokerSlots
-    -- (bônus de slot da edition Negative). Sem run/sem espelho → base do Config.
-    return (self.currentRun and self.currentRun.maxJokerSlots)
-        or (Config.Game and Config.Game.MAX_JOKER_SLOTS) or 3
+    -- (bônus de slot da edition Negative + bancadas compradas na loja).
+    -- Sem espelho (save recém-carregado, antes do primeiro startGame) o teto
+    -- ainda tem que CONTAR as bancadas compradas, senão o jogador perde
+    -- coringas ativos ao reabrir o jogo.
+    local base = (Config.Game and Config.Game.MAX_JOKER_SLOTS) or 3
+    if not self.currentRun then return base end
+    return self.currentRun.maxJokerSlots or (base + self:getServiceCount("joker_slot"))
 end
 
 -- Nº de coringas atualmente ativos.
@@ -823,6 +827,51 @@ end
 function RunManager:registerPaidForge()
     if not self.currentRun then return end
     self.currentRun.paidForges = (self.currentRun.paidForges or 0) + 1
+end
+
+-- Desfaz uma forja paga: o jogador comprou e FECHOU o picker sem escolher
+-- carta nenhuma. Sem isto o preço da próxima forja subiria por uma compra
+-- que não aconteceu (ver CardRewardScreen:_refundDeckService).
+function RunManager:unregisterPaidForge()
+    if not self.currentRun then return end
+    self.currentRun.paidForges = math.max(0, (self.currentRun.paidForges or 0) - 1)
+end
+
+-- ===== LEDGER DE SERVIÇOS DA LOJA (Set/2026) =====
+--
+-- `currentRun.services = { [id] = compras }`. É o que faz o custo crescer e
+-- o que fecha a torneira dos serviços com teto (slot de coringa, compra
+-- extra). Mora no currentRun porque é ESTADO DE RUN: viaja no save junto com
+-- tudo (SaveManager serializa a tabela inteira) e morre com a run.
+--
+-- Os NÚMEROS ficam em Config.Offers.SERVICES e a leitura deles em
+-- src/systems/ShopServices.lua; aqui mora só a contagem.
+
+function RunManager:_services()
+    if not self.currentRun then return nil end
+    self.currentRun.services = self.currentRun.services or {}
+    return self.currentRun.services
+end
+
+function RunManager:getServiceCount(id)
+    local s = self:_services()
+    if not s or not id then return 0 end
+    return s[id] or 0
+end
+
+function RunManager:registerService(id)
+    local s = self:_services()
+    if not s or not id then return 0 end
+    s[id] = (s[id] or 0) + 1
+    return s[id]
+end
+
+-- Simétrico do register: desfaz a compra quando ela não se concretizou.
+function RunManager:unregisterService(id)
+    local s = self:_services()
+    if not s or not id then return 0 end
+    s[id] = math.max(0, (s[id] or 0) - 1)
+    return s[id]
 end
 
 -- Lê nível de upgrade POR ID (legado). Com nível por cópia não existe "o"

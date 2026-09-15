@@ -183,6 +183,31 @@ return {
             desc   = "Verbessert eine Karte deines Decks. Du waehlst sie beim Kauf.",
             flavor = "Der Hammer erinnert sich, was die Seite vergass.",
         },
+        -- DIENSTE (Sep/2026): Relikte, die den Lauf aendern, nicht einen Kampf.
+        remove_card    = {
+            name   = "Schere",
+            effect = "-1 KARTE",
+            desc   = "Reisst eine Karte endgueltig aus deinem Deck. Du waehlst sie beim Kauf.",
+            flavor = "Nicht jede Seite haette geschrieben werden sollen.",
+        },
+        duplicate_card = {
+            name   = "Presse",
+            effect = "+1 KOPIE",
+            desc   = "Kopiert eine Karte deines Decks, samt ihrer bisherigen Schmiedestufe.",
+            flavor = "Dieselbe Zeile, zweimal, in derselben Tinte.",
+        },
+        joker_slot     = {
+            name   = "Werkbank",
+            effect = "+1 PLATZ",
+            desc   = "Ein weiterer Joker deiner Truppe tritt auf, fuer den Rest des Laufs.",
+            flavor = "Es passt immer noch einer dazu, wenn der Tisch lang genug ist.",
+        },
+        card_draw_upgrade   = {
+            name   = "Grimoire",
+            effect = "+1 ZUG",
+            desc   = "Du ziehst jede Runde eine Karte mehr, fuer den Rest des Laufs.",
+            flavor = "Vorauslesen ist der einzige Betrug, den das Buch erlaubt.",
+        },
     },
 
     map = {
@@ -355,6 +380,8 @@ return {
         open_pack          = "Oeffnen (${n})",
         select_card        = "Auswaehlen",
         joker_run_only     = "Joker gibt es nur waehrend eines Laufs",
+        joker_slot_gained  = "Joker im Spiel: bis zu {n}",
+        service_refunded   = "Kauf abgebrochen — ${n} erstattet",
         instructions_shop  = "Mauszeiger liest · KLICK waehlt · im Panel bestaetigen · RECHTS pruefen",
         detail_type_voucher = "Relikt",
         detail_type_pack    = "Pack",

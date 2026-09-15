@@ -166,7 +166,11 @@ function Game:startGame()
     self:promoteInnateCardsToTop()
 
     -- Stagger no draw inicial pra entrada ficar elegante em vez de pop-in.
-    for i = 1, Config.Game.INITIAL_HAND_SIZE do
+    -- A mão inicial acompanha o grimório de compra extra (serviço da loja):
+    -- INITIAL_HAND_SIZE e CARDS_PER_TURN são o mesmo número por design
+    -- (F1: "mão inicial = draw por turno"), e separá-los faria do primeiro
+    -- turno o único turno sem o benefício comprado.
+    for i = 1, Config.Game.INITIAL_HAND_SIZE + self:getShopServiceCount("card_draw_upgrade") do
         self:drawCard((i - 1) * 0.08)
     end
 
@@ -275,7 +279,11 @@ function Game:drawForTurn()
     self._jokerThornFiredThisTurn = {}
     -- Eco (Forma de Eco): uma carta de ataque dobrada por turno.
     self._echoFiredThisTurn = false
-    local baseDraw = Config.Game.CARDS_PER_TURN or 5
+    -- + grimório de compra extra comprado na loja (serviço `card_draw_upgrade`):
+    -- permanente pelo resto da run, e por isso soma na BASE, não no bônus de
+    -- seal (que é consumido a cada turno).
+    local baseDraw = (Config.Game.CARDS_PER_TURN or 5)
+        + self:getShopServiceCount("card_draw_upgrade")
     -- Blue Seal acumula compras extras quando cartas com seal são jogadas.
     -- Consumido aqui (uma vez por turno) e zerado.
     local sealBonus = self._sealDrawBonus or 0
@@ -760,8 +768,21 @@ end
 
 -- Conta cartas Negative no deck atual e ajusta maxJokerSlots = base + N.
 -- Chamar após startGame, addCardToRun, e qualquer mudança de deck.
+-- Quantas vezes um SERVIÇO da loja foi comprado nesta run (bancada extra de
+-- coringa, grimório de compra extra). Fonte única: o ledger do RunManager,
+-- que viaja no save. Fora de run mode não existe loja persistente → 0.
+-- Ver src/systems/ShopServices.lua.
+function Game:getShopServiceCount(id)
+    if self.isRunMode and self.runManager and self.runManager.getServiceCount then
+        return self.runManager:getServiceCount(id)
+    end
+    return 0
+end
+
 function Game:recomputeMaxJokerSlots()
-    local base = Config.Game.MAX_JOKER_SLOTS or 3
+    -- Base do Config + bancadas COMPRADAS na loja (serviço `joker_slot`).
+    local base = (Config.Game.MAX_JOKER_SLOTS or 3)
+        + self:getShopServiceCount("joker_slot")
     local negCount = 0
     for _, card in ipairs(self.deck or {}) do
         if card and card.edition == "negative" then
@@ -1760,7 +1781,7 @@ function Game:resetHandAndDeck()
     self:shuffleDeck()
     self:promoteInnateCardsToTop()
 
-    for i = 1, Config.Game.INITIAL_HAND_SIZE do
+    for i = 1, Config.Game.INITIAL_HAND_SIZE + self:getShopServiceCount("card_draw_upgrade") do
         if #self.deck > 0 then
             self:drawCard((i - 1) * 0.08)  -- stagger pra cascata visual
         end

@@ -183,6 +183,31 @@ return {
             desc   = "Upgrades one card in your deck. You pick which one when you buy.",
             flavor = "The hammer remembers what the page forgot.",
         },
+        -- SERVICES (Sep/2026): relics that alter the run, not a single battle.
+        remove_card    = {
+            name   = "Shears",
+            effect = "-1 CARD",
+            desc   = "Tears one card out of your deck for good. You pick which one when you buy.",
+            flavor = "Not every page deserved to be written.",
+        },
+        duplicate_card = {
+            name   = "Press",
+            effect = "+1 COPY",
+            desc   = "Copies one card of your deck, keeping the forge level it already has.",
+            flavor = "The same line, twice, in the same ink.",
+        },
+        joker_slot     = {
+            name   = "Bench",
+            effect = "+1 SLOT",
+            desc   = "One more joker from your troupe takes the stage, for the rest of the run.",
+            flavor = "There is always room for one more, if the table is long enough.",
+        },
+        card_draw_upgrade   = {
+            name   = "Grimoire",
+            effect = "+1 DRAW",
+            desc   = "You draw one extra card every turn, for the rest of the run.",
+            flavor = "Reading ahead is the only cheat the book allows.",
+        },
     },
 
     map = {
@@ -356,6 +381,8 @@ return {
         atk_bonus          = "Attack damage: +{n}",
         def_bonus          = "Defense: +{n}",
         joker_run_only     = "Jokers can only be acquired during a run",
+        joker_slot_gained  = "Jokers on stage: up to {n}",
+        service_refunded   = "Purchase cancelled — ${n} refunded",
         instructions_shop  = "Hover to read · CLICK selects · confirm in the panel · RIGHT inspects",
         detail_type_voucher = "Relic",
         detail_type_pack    = "Pack",

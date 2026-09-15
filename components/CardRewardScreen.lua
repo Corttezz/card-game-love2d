@@ -87,6 +87,7 @@ local Sfx = require("src.systems.Sfx")
 local EventManager = require("engine.EventManager")
 local DissolveShader = require("src.ui.DissolveShader")
 local ImageCache = require("src.ui.ImageCache")
+local ShopServices = require("src.systems.ShopServices")
 
 -- Acessibilidade: com reducedMotion ligado, transições da tela resolvem
 -- instantaneamente (o conteúdo continua idêntico, só não desliza/piscando).
@@ -1494,20 +1495,93 @@ function CardRewardScreen:_drawSoldSlot(pos)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-function CardRewardScreen:applyUpgrade(upgrade)
-    if upgrade.effect == "forge_card" then
-        -- Forja comprada: registra (o custo da PRÓXIMA cresce) e abre o picker
-        -- de carta por cima da loja. O pagamento já aconteceu em purchaseOffer.
-        if self.game.runManager and self.game.runManager.registerPaidForge then
-            self.game.runManager:registerPaidForge()
-        end
-        if _G.openForgeScreen then
-            _G.openForgeScreen()
-        else
-            Debug.warn("[CardRewardScreen] _G.openForgeScreen não registrado — forja ignorada")
-        end
+-- ============================================================================
+-- SERVIÇOS DE DECK (forja / tesoura / prensa)
+-- ============================================================================
+-- Os três compram a MESMA coisa: o direito de apontar uma carta do deck. A
+-- diferença é só o modo do picker, então o caminho é um só.
+--
+-- ⚠️ PAGO ANTES, APLICADO DEPOIS. `purchaseOffer` já debitou o ouro quando
+-- esta função roda, e o picker é uma tela SEPARADA que o jogador pode fechar
+-- no "Voltar" sem escolher carta nenhuma. Sem o estorno abaixo o jogador paga
+-- e não leva — e o slot na vitrine já está carimbado VENDIDO. A forja tinha
+-- esse buraco desde sempre; ele só não incomodava porque a forja aparecia em
+-- metade das lojas. Com a tesoura FIXA na prateleira viraria rotina.
+--
+-- Como se sabe se o serviço foi usado: a ASSINATURA DO DECK
+-- (ShopServices.deckFingerprint) muda quando uma carta entra, sai ou sobe de
+-- nível. Se ela não mudou entre abrir e fechar o picker, nada aconteceu.
+local DECK_SERVICE_PICKER = {
+    forge_card     = "forge",
+    remove_card    = "remove",
+    duplicate_card = "duplicate",
+}
+
+function CardRewardScreen:_openDeckService(offer, pickerMode)
+    local rm = self.game.runManager
+
+    -- Ledger: o custo da PRÓXIMA compra deste serviço cresce a partir de
+    -- agora. Desfeito no estorno se o jogador não escolher carta.
+    if offer.effect == "forge_card" then
+        if rm and rm.registerPaidForge then rm:registerPaidForge() end
+    elseif rm and rm.registerService then
+        rm:registerService(offer.id)
+    end
+
+    if not _G.openCardPicker then
+        Debug.warn("[CardRewardScreen] _G.openCardPicker nao registrado — servico '"
+            .. tostring(offer.id) .. "' estornado")
+        self:_refundDeckService(offer)
         return
     end
+
+    local before = ShopServices.deckFingerprint(rm)
+    _G.openCardPicker(pickerMode, function()
+        if ShopServices.deckFingerprint(rm) == before then
+            self:_refundDeckService(offer)
+        end
+    end)
+end
+
+-- Desfaz a compra de um serviço de deck: devolve o ouro, desfaz o ledger e
+-- RECOLOCA a oferta na vitrine (o slot deixa de ser VENDIDO). O jogador sai
+-- exatamente como entrou — é isso que faz "Voltar" significar cancelar.
+function CardRewardScreen:_refundDeckService(offer)
+    local rm = self.game.runManager
+
+    if offer.effect == "forge_card" then
+        if rm and rm.unregisterPaidForge then rm:unregisterPaidForge() end
+    elseif rm and rm.unregisterService then
+        rm:unregisterService(offer.id)
+    end
+
+    if self.game.economySystem and self.game.economySystem.refundPurchase then
+        self.game.economySystem:refundPurchase(offer.cost, offer.type, offer.id)
+    end
+
+    offer.purchased = false
+    self.game:addMessage(
+        I18n.t("reward.service_refunded", { n = offer.cost },
+            "Compra cancelada - $" .. tostring(offer.cost) .. " devolvido"),
+        "warning")
+    Sfx.play("purchaseDeny")
+
+    -- A tela pode ter fechado enquanto o picker estava aberto (não acontece
+    -- no fluxo atual, mas o estorno não pode ressuscitar layout morto).
+    if not self.visible then return end
+    self:createCardInstances()
+    self:createOfferButtons()
+end
+
+function CardRewardScreen:applyUpgrade(upgrade)
+    local pickerMode = DECK_SERVICE_PICKER[upgrade.effect]
+    if pickerMode then
+        self:_openDeckService(upgrade, pickerMode)
+        return
+    end
+
+    local rm = self.game.runManager
+
     -- P3.2 (rebalance Jul/2026): os branches toast-only (increase_card_draw /
     -- increase_attack_damage / increase_defense) foram REMOVIDOS junto com as
     -- ofertas correspondentes (ShopSystem:initializeShopPools) — upgrade
@@ -1519,6 +1593,30 @@ function CardRewardScreen:applyUpgrade(upgrade)
         self.game.player.baseMaxMana = self.game.player.baseMaxMana + upgrade.value
         self.game.player.maxMana = self.game.player.maxMana + upgrade.value
         self.game.player.mana = self.game.player.mana + upgrade.value
+
+    elseif upgrade.effect == "add_joker_slot" then
+        -- BANCADA EXTRA: sobe o teto de coringas ATIVOS pelo resto da run.
+        -- O ledger é a fonte; recomputeMaxJokerSlots (base + Negative +
+        -- comprados) reescreve o espelho em currentRun.maxJokerSlots e
+        -- reconstrói jokerSlots — sem isso o coringa que estava na bancada
+        -- não subiria pro tabuleiro até a próxima batalha.
+        if rm and rm.registerService then rm:registerService(upgrade.id) end
+        if self.game.recomputeMaxJokerSlots then
+            self.game:recomputeMaxJokerSlots()
+        end
+        local total = (rm and rm.getMaxJokerSlots and rm:getMaxJokerSlots())
+            or self.game.maxJokerSlots or 0
+        self.game:addMessage(
+            I18n.t("reward.joker_slot_gained", { n = total },
+                "Slots de coringa: " .. tostring(total)), "success")
+
+    elseif upgrade.effect == "increase_draw" then
+        -- GRIMÓRIO: +1 carta comprada por turno, pelo resto da run. O ledger
+        -- é lido por Game:drawForTurn e pela mão inicial da batalha.
+        if rm and rm.registerService then rm:registerService(upgrade.id) end
+        local n = (rm and rm.getServiceCount and rm:getServiceCount(upgrade.id)) or 1
+        self.game:addMessage(I18n.t("reward.extra_draw", { n = n }), "success")
+
     else
         Debug.warn("[CardRewardScreen] upgrade sem efeito implementado: "
             .. tostring(upgrade.effect) .. " — não deveria estar na vitrine (P3.2)")

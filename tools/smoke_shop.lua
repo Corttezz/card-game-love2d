@@ -41,7 +41,9 @@ function M.run()
     shop:setMode("shop")
     cfg = shop:getModeConfig()
     check("shop: 4 cartas", cfg.cards == 4)
-    check("shop: 1 voucher", cfg.upgrades == 1)
+    -- 2 (era 1) desde os SERVIÇOS da loja (Set/2026): uma vaga fixa da tesoura
+    -- + uma rotativa. Ver tools/test_shop_services.lua.
+    check("shop: 2 vagas de reliquia", cfg.upgrades == 2)
     check("shop: 2 boosters", cfg.boosters == 2)
     check("shop: canReroll true", cfg.canReroll == true)
     check("shop: skipBonus 3", cfg.skipBonus == 3)
@@ -51,7 +53,16 @@ function M.run()
     typeCounts = { card = 0, upgrade = 0, booster_pack = 0 }
     for _, o in ipairs(offers) do typeCounts[o.type] = (typeCounts[o.type] or 0) + 1 end
     check("shop gera mistura de tipos", typeCounts.card > 0 and typeCounts.booster_pack > 0)
-    check("shop tem ~7 ofertas", #offers >= 5 and #offers <= 7)
+    check("shop tem ~8 ofertas", #offers >= 5 and #offers <= 8)
+    -- Esta loja foi aberta SEM contexto de run (setContext nunca chamado):
+    -- serviço é estado de run, então a tesoura nao tem onde existir e as duas
+    -- vagas caem no pool clássico. Degradar assim é o comportamento certo —
+    -- o que NAO pode é gerar oferta de serviço sem ledger pra cobrá-la.
+    check("sem run, nenhuma vaga vira servico",
+        typeCounts.upgrade > 0 and (function()
+            for _, o in ipairs(offers) do if o.isService then return false end end
+            return true
+        end)())
 
     -- Booster packs: campos esperados.
     local pack
