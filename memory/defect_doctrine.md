@@ -264,6 +264,91 @@ passa a aceitar o defeito junto.
 
 ---
 
+## 14. O teste que passa o MESMO literal errado dos dois lados confirma a si mesmo
+
+`RunManager:advanceFloorInAct(totalActs)` recebia o total de atos como
+**parâmetro**, com default 3. Todos os chamadores passavam `3` cravado —
+inclusive o caminho real do jogo. Quando a campanha foi de 3 para 6 atos,
+`Config.TotalActs` mudou e esse `3` não.
+
+O estrago: a run virava endless ao fim do ato 3, `checkVictory` retorna false
+com `endlessMode`, e o jogo ficou **impossível de vencer**. Os atos 4-6
+existiam, com a curva certa, mas rotulados endless e sem fim. Trocar "o jogo
+acaba cedo demais" por "o jogo não acaba nunca" é regressão pior que o
+defeito original.
+
+**E a suíte ficou verde o tempo todo**, porque os testes também passavam `3`:
+
+```lua
+t:eq("fim do ato final retorna 'endless_start'", rm2:advanceFloorInAct(3), ...)
+```
+
+O teste exercitava o PARÂMETRO, nunca a configuração do jogo. Ele teria
+passado com `Config.TotalActs` valendo 3, 6 ou 600. Não é teste fraco — é
+teste que **não toca a variável que o defeito habita**.
+
+**A regra:** quando um valor tem uma fonte única (`Config.X`), o teste chama
+o caminho de produção **sem passar o valor**. Parâmetro com default vira
+override de teste, nunca contrato de chamada — e se produção passa o valor,
+o teste tem que provar que produção passa o CERTO, não que a função respeita
+o que recebe.
+
+Corolário que pegou o defeito: a varredura certa não era do FIM, era de
+**cada fronteira**. O teste novo percorre ato a ato e exige que nenhum passo
+do meio ligue o endless. Defeito de limiar mora nas bordas, e "a borda" quase
+nunca é só a última.
+
+E o achado não veio de teste nenhum: veio de rodar `love . autoplay` e ler
+"Ato final: A4-F4 **(endless)**" num relatório. **Jogar o jogo — mesmo com um
+bot — encontra o que a suíte inteira não vê**, que é a mesma lição que o dono
+vem dando a sessão toda de outro jeito.
+
+---
+
+## 15. Detector que mede a coisa errada é pior que detector nenhum
+
+Três casos na mesma sessão, em subsistemas sem relação:
+
+| onde | o que media | por que mentia |
+|---|---|---|
+| "ouro queimado" do autoplay | `getUpgrades(id)` (MAIOR nível entre cópias) contra o retorno de `upgradeCard(id)` (nível da cópia de MENOR nível, recém-forjada) | com 2 cópias e uma já forjada, antes=1 e depois=1 → gritava numa forja que funcionou (3 alarmes falsos em 6 corridas) |
+| "rodapé parado" dos marcos | qualquer pixel mudando no rodapé | no abismo a brasa do chão pulsa **de propósito** — proibia movimento que era design |
+| emenda de loop dos marcos | CONTAGEM de pixels ativos | é proxy: dois frames podem ter a mesma contagem e conteúdo diferente |
+
+Os três modos de falha têm nome:
+- **pergunta trocada** — mede uma grandeza parecida com a que interessa
+  (máximo entre cópias ≠ nível daquela cópia);
+- **proibição larga demais** — trava movimento que era intencional;
+- **proxy** — conta em vez de comparar.
+
+Isso é pior que não medir porque **dá confiança falsa**, e no caso do
+autoplay é especialmente caro: aquele harness existe para decidir BALANÇO, e
+alarme falso faz a anomalia de verdade se perder no ruído.
+
+**A regra:** escolher O QUE medir é parte do teste, não detalhe de
+implementação. E vale a checagem barata: *o detector consegue distinguir o
+caso bom do caso ruim?* Se os dois produzem o mesmo número, ele não mede
+nada.
+
+---
+
+## 16. Regra de domínio repetida em N telas volta na tela N+1
+
+"Coringa não tem custo de mana" (ele é passivo e nunca passa pela mão) foi
+corrigida no badge da arte, depois no tooltip — e **reapareceu** na escolha
+de pacote e na Coleção, porque cada tela carregava seu próprio `if`. O dono
+achou jogando: *"tem joker na hora de escolher que apresenta custo tbm"*.
+
+Correção de tela conserta a tela. Correção de REGRA conserta as próximas: a
+pergunta virou `CardFrame.showsManaCost(card)`, e a tela seguinte pergunta em
+vez de repetir o defeito.
+
+**O sintoma diagnóstico:** se você está escrevendo um `if` que já escreveu
+noutro arquivo, o `if` está no lugar errado — não é duplicação de código, é
+uma regra de domínio sem casa.
+
+---
+
 ## Ligações
 
 [[ui_layout_invariants]] · [[ui_rendering]] · [[combat_beats]] ·

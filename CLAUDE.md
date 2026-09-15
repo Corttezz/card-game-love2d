@@ -188,7 +188,7 @@ menu → classSelection → playing
    - Ganha ouro, reseta mana
    - Usa `ActSystem.getEnemyStats(actNumber, floorInAct, nodeType)` para stats do próximo inimigo
    - Cura inter-ato 30-40% quando cruza para novo ato
-9. **Vitória**: `actNumber >= 3` AND `floorInAct >= 8` AND `currentNode.type == "boss"` AND enemy morto. Após vencer, opção de entrar em endless.
+9. **Vitória**: `actNumber >= Config.TotalActs` (hoje 6) AND `floorInAct >= 8` AND `currentNode.type == "boss"` AND enemy morto AND **NÃO** `endlessMode`. Após vencer, opção de entrar em endless. O `endlessMode` desliga a vitória, então qualquer caminho que o ligue cedo demais torna o jogo invencível — foi o que aconteceu ao passar de 3 pra 6 atos (defect_doctrine 14).
 10. **Endless**: `endlessMode = true` trava checkVictory; scaling `1.18^floorsInEndless`.
 
 ---
@@ -204,7 +204,7 @@ Convivem no mesmo `Game`:
 | Starter | Deck estático | **2 cartas** (1 attack + 1 defense) |
 | Deck cresce? | Não | Sim, via map nodes (battle/event/shop/forge) |
 | Classes | Ignoradas | warrior/mage/rogue com pool próprio |
-| Progressão | Cap `VICTORY_PHASES=24` | **3 atos × 8 andares + endless** |
+| Progressão | Cap `VICTORY_PHASES=24` | **6 atos × 8 andares + endless** (era 3 até Set/2026) |
 | Mapa | Nenhum | MapManager gera 2-3 node choices |
 | Save/load | Não | `run.save.lua` via `love.filesystem` |
 
@@ -278,7 +278,7 @@ O antigo `src/systems/AudioSystem.lua` virou `engine/AudioManager.lua`; a instâ
 
 **Música NUNCA sobrepõe música**: `AudioManager:playMusic` para toda faixa órfã do grupo `music` antes de montar o crossfade novo. O crossfade é UM só — uma troca que chega antes de a anterior terminar (abrir a forja e fechar faz ato→loja→forja→volta em segundos, com fade de 2,5s) substituía o registro e a faixa que saía nunca recebia `stop()`, ficando tocando para sempre. Trava em `test_music`.
 
-**Trilha por contexto** (Set/2026): 6 faixas em `audio/music/` (3 atos, boss, loja, descanso), registradas por SCAN em `main.lua` e escolhidas por `src/systems/MusicDirector.lua`, que OBSERVA `currentState` no `love.update` em vez de ser notificado pelas telas. Crossfade já existia no `AudioManager` (`playMusic(code, {fadeDuration})`). Faixa nova = soltar o mp3 na pasta. Validar a volta do loop com `love . check_loop` ANTES de commitar — o modelo cola fade-out nas pontas e isso só se ouve na virada. Ver [`memory/music_generation.md`](memory/music_generation.md).
+**Trilha por contexto** (Set/2026): 9 faixas em `audio/music/` (6 atos, boss, loja, descanso) + `audio/music.mp3` (menu), registradas por SCAN em `main.lua` e escolhidas por `src/systems/MusicDirector.lua`, que OBSERVA `currentState` no `love.update` em vez de ser notificado pelas telas. Crossfade já existia no `AudioManager` (`playMusic(code, {fadeDuration})`). Faixa nova = soltar o mp3 na pasta. Validar a volta do loop com `love . check_loop` ANTES de commitar — o modelo cola fade-out nas pontas e isso só se ouve na virada. Ver [`memory/music_generation.md`](memory/music_generation.md).
 
 ### Ritmo do combate (`src/systems/CombatBeats.lua`, Set/2026)
 Toda batalha é uma **fila de beats**: cada acontecimento (dano, buff/debuff no inimigo, proc de joker, pulso/evoke de orbe, veneno, compra) ocupa um instante só dele e SEGURA o próximo. `CombatSequence:isBlocking()` inclui `CombatBeats.isBusy()`. Os tempos vivem numa tabela única (`CombatBeats.HOLD`) com `CombatBeats.speed` como knob global. Sem `_G.EventManager` o push roda síncrono (API antiga preservada pra testes/autoplay). Ver [`memory/combat_beats.md`](memory/combat_beats.md).
@@ -416,7 +416,7 @@ Nota de comportamento fixada pelos testes: `poison` decrementa **`duration`** po
 
 - ✅ Efeitos `channel_orb`/`evoke_orb`/`strength_scaling`/`exhaust`/`innate`/`mystery` **implementados** (Fase 2).
 - ✅ Sistema de **tags** + **combos** ativos (Fases 1 e 3).
-- ✅ **MapManager** com node choices (Fase 4), **ActSystem** com 3 atos + endless (Fase 5).
+- ✅ **MapManager** com node choices (Fase 4), **ActSystem** com **6 atos** + endless (Fase 5; foram 3 atos até Set/2026 — os biomas, chefes e poses dos atos 4-6 ja existiam e so apareciam no endless). `Config.TotalActs` e a fonte unica: `checkVictory` e `advanceFloorInAct` leem dela, e NENHUM chamador de producao passa o total como argumento (passar `3` cravado deixou o jogo impossivel de vencer por uma leva — ver defect_doctrine 14).
 - ✅ **RestScreen** + **EventScreen** (Fase 6). Shop reusa CardRewardScreen.
 - ✅ Starter deck de **2 cartas** (Fase 5). Rebalance nas 96 cartas (Fase 7).
 - ✅ **STS-improvements v1** (Jul/2026, `docs/plan/sts-improvements-v1.md`): RNG seedável com 6 streams + estado no save; **pity de raridade** + **afinidade por tags do deck** nas ofertas (rewards+loja, com badges e "?" explicativo); **forja infinita** (cap 0) com preview/tooltip/custo crescente na loja; TopBar com ato/andar + tooltips em tudo + ouro direcional; rewards com raridade nomeada e skip claro; eventos com custos explícitos `[+/-]`, 4 eventos de deck e no-repeat por ato; picker de carta genérico (`_G.openCardPicker`). Teste: `love . test_systems`. Ver `memory/rng_and_offers.md`.
