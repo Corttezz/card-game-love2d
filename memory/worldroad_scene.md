@@ -1755,6 +1755,52 @@ medição estava correta e respondia uma pergunta parecida — só não era a
 pergunta que se queria responder. Antes de concluir a partir de um número,
 confira se ele mede o que você está afirmando.
 
+**5. A cirurgia de composite não é opcional, e MÁSCARA LARGA a anula.** As
+animações dos locais por ato foram compostas — e mesmo assim o dono viu
+"bandeira que se mexe do lugar" e "fogueira flicando a sombra". A cirurgia
+estava lá; o que faltou foi o tamanho da máscara:
+- o estandarte usou o modo `above`, que congela só o rodapé e libera TODO o
+  resto: o mastro era repintado a cada quadro e aparecia/sumia. Medido depois:
+  no estandarte do ato 2 o mastro mora em x11-12 e o pano em x11-28 — o mastro
+  está DENTRO do vão do pano, então qualquer máscara "o pano inteiro" o inclui.
+- a fogueira usou `glow` (saturado OU muito claro), que pega a brasa do chão,
+  as runas da tigela e o entulho junto com a chama.
+- a loja das colinas usou o mesmo `glow`, e a pedra pálida dela passa de
+  luma 195 — a máscara virou "o prédio inteiro".
+
+⚠️ **E a trava "nada fora da máscara" PASSOU em todos os três**, porque ela
+verifica o que foi DECLARADO, não o que deveria ficar parado. Uma trava não
+substitui escolher a máscara certa.
+
+Receita que corrigiu (custo ZERO — máscara nova é subconjunto da antiga, então
+o movimento já está nos quadros instalados; basta reinstalar o original e
+recompor): **diga ao contrário — liste o que NÃO pode mudar e proteja primeiro**
+(mastro, travessa, anel de pedras, corpo do braseiro, entulho, moldura), e só
+então abra a máscara na chama / na barra de baixo do pano / na luz da porta.
+Na dúvida, máscara MENOR: animação sutil demais é reclamação pequena, estrutura
+fervendo é "cara de IA". A geometria sai da arte-base, não de chute:
+- PANO = a maior sequência de linhas com o MESMO vão [mn..mx] (a travessa é
+  larga mas dura 2-3 linhas; o pano é a coluna constante e alta). Tentar por
+  "linha larga o bastante" pega a travessa junto — errei assim na 1ª versão.
+- MASTRO = a coluna FINA que sobra logo ABAIXO do pano, antes do entulho.
+- ANEL DE PEDRAS = a primeira linha da metade de baixo que chega a ~70% da
+  largura máxima; dali pra baixo é estrutura.
+Confira sempre as DUAS pontas: quadro 0 == base bit a bit **e** movimento médio
+não-nulo — máscara apertada demais vira sprite parado, que é o outro jeito de
+errar.
+
+**6. Detector que reprova tudo não discrimina nada — e o conserto é comparar
+com um PAR conhecido-bom.** A 1ª versão do `tools/anim_drift` reprovou 36 de
+36, inclusive as do ato 1, que são o padrão da casa; ela teria mandado refazer
+o conjunto inteiro. Passou a comparar cada marco com o EQUIVALENTE DO ATO 1 em
+vez de usar limiar absoluto, e aí isolou exatamente os 6 defeituosos. É a mesma
+família das lições 1, 2 e 4 desta lista: a medida estava certa, a PERGUNTA é
+que estava errada. E note o limite dela: o defeito do estandarte (mastro
+piscando no MEIO do sprite) não aparece em métrica de rodapé nenhuma — foi
+preciso ABRIR os quadros (`love . sheet <pasta> 4`). Métrica filtra, olho
+decide.
+
+
 ## Backlog
 
 - [ ] **Validação visual v3.3 nativa** (precisa driver resetado; testar em
