@@ -1,6 +1,10 @@
 -- src/ui/CardGridRender.lua
 -- Render de carta "mini" num grid, com warp 3D (mesh+shader), sombra direcional
--- e camada de animação de ícone — IDÊNTICO ao drawCardMini da CollectionScreen.
+-- e camada de animacao de icone. PARIDADE com o drawCardMini da
+-- CollectionScreen (o hover anima o icone nas duas) — garantida por
+-- `tools/test_card_live_hover.lua`, NAO por este comentario: ele afirmava a
+-- paridade desde sempre e a troca pela imagem viva nunca tinha sido extraida
+-- pra ca, entao o Deck Viewer ficou sem animacao no hover ate Set/2026.
 -- Extraído pra ser COMPARTILHADO: o Deck Viewer da run usa exatamente o mesmo
 -- caminho de render que a aba de Coleção, então o hover (profundidade/tilt/
 -- sombra/ícone vivo) fica igualzinho (pedido do Daniel: "tudo idêntico").
@@ -13,6 +17,7 @@ local Config             = require("src.core.Config")
 local CardMesh           = require("src.ui.CardMesh")
 local CardArt            = require("src.ui.CardArt")
 local CardAnimationLayer = require("src.ui.card.CardAnimationLayer")
+local CardFrame          = require("src.ui.CardFrame")
 
 local M = {}
 
@@ -22,6 +27,25 @@ function M.draw(instance, x, y, cardW, cardH, hoverScale, alpha, mouseUV, hoverS
     alpha = alpha or 1
     mouseUV = mouseUV or { 0, 0 }
     hoverStrength = hoverStrength or 0
+
+    -- ICONE VIVO NO HOVER — isto FALTAVA (Set/2026).
+    --
+    -- O cabecalho deste arquivo sempre AFIRMOU que o caminho era identico ao
+    -- da Colecao, "ícone vivo" incluso, e nao era: a troca pela imagem viva
+    -- morava inline na CollectionScreen e nunca foi extraida junto. Como este
+    -- modulo e o renderizador do Deck Viewer e do Gerenciador de Coringas, as
+    -- duas telas desenhavam sempre o canvas estatico — "na tela de seu deck,
+    -- ao fazer hover ou clicar numa carta, nao fica com animacao" (dono).
+    --
+    -- Comentario que promete paridade nao a garante; so o codigo garante.
+    --
+    -- Swap TEMPORARIO de `instance.image` (mesmo idioma da Colecao), restaurado
+    -- no fim: assim as ~8 leituras de `instance.image` abaixo — inclusive a
+    -- malha do warp e as uniforms do shader — enxergam o frame vivo sem que
+    -- nenhuma delas precise saber que ele existe.
+    local _prevImage = instance.image
+    instance.image = CardFrame.imageFor(instance, hoverScale, hoverStrength)
+        or instance.image
 
     local baseScale = cardW / instance.image:getWidth()
     local drawScale = baseScale * hoverScale
@@ -79,6 +103,7 @@ function M.draw(instance, x, y, cardW, cardH, hoverScale, alpha, mouseUV, hoverS
     end
     CardAnimationLayer.draw(instance, instance._cachedArt, px, py, drawScale, drawScale)
     love.graphics.setColor(1, 1, 1, 1)
+    instance.image = _prevImage   -- desfaz o swap do icone vivo
 end
 
 return M

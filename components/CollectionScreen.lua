@@ -463,13 +463,14 @@ local function drawCardMini(instance, x, y, hoverScale, alpha, mouseUV, hoverStr
     mouseUV = mouseUV or { 0, 0 }
     hoverStrength = hoverStrength or 0
 
-    -- Grid idle = estático; HOVER anima o ícone (regra do dono, Jul/2026).
-    -- Swap temporário de instance.image, restaurado no fim da função.
+    -- Grid idle = estatico; HOVER anima o icone (regra do dono, Jul/2026).
+    -- Swap temporario de instance.image, restaurado no fim da funcao.
+    -- O LIMIAR mora em CardFrame.isInteracting: ele estava cravado aqui como
+    -- numero magico e faltava no CardGridRender, que e o renderizador do Deck
+    -- Viewer — foi assim que o deck da run ficou sem animacao no hover.
     local _prevImage = instance.image
-    if hoverScale > 1.001 or hoverStrength > 0.05 then
-        local live = CardFrame.liveImage(instance)
-        if live then instance.image = live end
-    end
+    instance.image = CardFrame.imageFor(instance, hoverScale, hoverStrength)
+        or instance.image
 
     local baseScale = CARD_W / instance.image:getWidth()
     local drawScale = baseScale * hoverScale

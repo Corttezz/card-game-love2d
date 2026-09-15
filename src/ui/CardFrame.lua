@@ -47,6 +47,35 @@ function CardFrame.showsManaCost(card)
     return card ~= nil and card.type ~= "joker"
 end
 
+-- A CARTA ESTA SENDO INTERAGIDA? (hover ou selecao)
+--
+-- E a regra do dono "idle = estatico, interacao = vivo": a ilustracao so
+-- anima quando o jogador esta mexendo naquela carta. Mora AQUI porque os dois
+-- limiares abaixo estavam escritos inline, como numeros magicos, dentro da
+-- CollectionScreen — e faltavam no `CardGridRender`, que e o renderizador
+-- COMPARTILHADO do Deck Viewer e do Gerenciador de Coringas. Resultado: a
+-- Colecao animava no hover e o deck da run nao ("na tela de seu deck dentro
+-- do jogo, ao fazer hover ou clicar em uma carta, nao fica com animacao" —
+-- dono, Set/2026), apesar de o cabecalho do CardGridRender AFIRMAR que o
+-- caminho era identico ao da Colecao.
+--
+-- Ver defect_doctrine 16: regra de dominio repetida em N telas volta na
+-- tela N+1. Pergunte aqui em vez de repetir o `if`.
+function CardFrame.isInteracting(hoverScale, hoverStrength)
+    return (hoverScale or 1) > 1.001 or (hoverStrength or 0) > 0.05
+end
+
+-- A imagem que a carta deve desenhar AGORA: a viva quando interagida (se ela
+-- tiver animacao), a estatica caso contrario. Devolver `card.image` no
+-- fallback e de proposito — carta sem frames animados nunca deixa de desenhar.
+function CardFrame.imageFor(card, hoverScale, hoverStrength)
+    if card and CardFrame.isInteracting(hoverScale, hoverStrength) then
+        local live = CardFrame.liveImage(card)
+        if live then return live end
+    end
+    return card and card.image or nil
+end
+
 local cache = {}
 -- Cartas com ícone animado (icons_anim/): key → { canvases = {...}, fps,
 -- live = Canvas, lastIdx }. `canvases` = a carta COMPLETA pré-renderizada uma
