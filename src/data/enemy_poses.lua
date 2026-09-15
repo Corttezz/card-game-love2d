@@ -70,7 +70,6 @@ EnemyPoses.BY_ID = {
     rot_colossus      = { pose = "grounded" },  -- pés de três dedos
     rune_golem        = { pose = "grounded" },  -- pés de pedra
     stone_golem       = { pose = "grounded" },  -- pernas de pedra
-    tower_lich        = { pose = "grounded" },  -- botas sob a túnica
     winter_monarch    = { pose = "grounded" },  -- botas sob a capa
 
     -- === FLUTUANTES ==========================================================
@@ -90,6 +89,23 @@ EnemyPoses.BY_ID = {
     carrion_king = { pose = "floating",
                      hover = 0.07, bob = 0.016, bobSpeed = 1.35,
                      shadowK = 0.68, shadowA = 0.58 },
+
+    -- Lich da Torre: o sprite TEM botas, entao pelo criterio literal da
+    -- tabela ele seria apoiado — e era. Vira flutuante por DECISAO DE
+    -- DESIGN do dono (Set/2026): "quero que o boss do ato 2 fique meio que
+    -- flutuando, sem sombra no pe, indo pra cima e pra baixo lentamente".
+    --
+    -- Registrado assim, com a excecao explicita, porque o criterio da tabela
+    -- continua valendo pros outros 20: quem quebra a regra tem que dizer por
+    -- que, senao a proxima pessoa "corrige" isto de volta pra grounded
+    -- achando que foi engano.
+    --
+    -- Numeros: hover BAIXO e bob LENTO (0.55 rad/s, o mais lento da tabela).
+    -- Ele nao e um espectro esvoacante — e um morto-vivo coroado que paira
+    -- porque despreza o chao. Pressa quebraria a leitura.
+    tower_lich   = { pose = "floating",
+                     hover = 0.075, bob = 0.014, bobSpeed = 0.55,
+                     shadowK = 0.62, shadowA = 0.50 },
 
     -- Rainha do eclipse: capa imensa que se abre num leque, sem pé algum.
     -- Realeza não treme — deriva lenta e larga.

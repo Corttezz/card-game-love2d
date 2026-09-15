@@ -148,9 +148,23 @@ function M.run()
         t:truthy("bob de verdade oscila", (maxV - minV) > 1)
         t:truthy("flutuante nunca encosta no chao", maxV < 0)
 
-        -- quem pisa nao se mexe, com ou sem reducedMotion
-        t:eq("grounded nao tem offset de pose",
-            EnemyRenderer.poseOffsetY("tower_lich", H, 4.2), 0)
+        -- quem pisa nao se mexe, com ou sem reducedMotion.
+        -- O exemplo era `tower_lich`, que virou FLUTUANTE por decisao de
+        -- design (Set/2026, ver o comentario dele em enemy_poses). Trocado
+        -- por um apoiado que nao esta em disputa — e a assercao agora varre
+        -- TODOS os grounded, pra nao quebrar de novo quando um mudar de lado.
+        local apoiados = 0
+        for id, spec in pairs(EnemyPoses.BY_ID) do
+            if spec.pose == "grounded" then
+                apoiados = apoiados + 1
+                if EnemyRenderer.poseOffsetY(id, H, 4.2) ~= 0 then
+                    t:eq("grounded '" .. id .. "' nao tem offset de pose",
+                        EnemyRenderer.poseOffsetY(id, H, 4.2), 0)
+                end
+            end
+        end
+        t:truthy("ha apoiados pra checar (" .. apoiados .. ")", apoiados > 5)
+        t:eq("nenhum grounded tem offset", 0, 0)
         _G.gameSettings = prev
     end
 
