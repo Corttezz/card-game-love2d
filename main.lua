@@ -651,6 +651,11 @@ function love.load(loveArgs)
         return
     end
 
+    if loveArgs and loveArgs[1] == "dim" then
+        require("tools.dim").run(loveArgs[2])
+        return
+    end
+
     if loveArgs and loveArgs[1] == "sheet" then
         local ok = require("tools.sheet").run(loveArgs[2], loveArgs[3], loveArgs[4])
         love.event.quit(ok and 0 or 1)

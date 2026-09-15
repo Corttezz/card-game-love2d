@@ -229,6 +229,41 @@ que não reproduz" (memória `user-runs-stale-copy`). Duas defesas:
 
 ---
 
+## 13. Arte de ESTADO precisa concordar com a arte BASE — e ninguém confere
+
+`WorldRoad.drawCastle` troca a arte do castelo pelo frame da animação de
+entrada quando `doorK > 0.02`. A troca é seca: o código desenha o que
+estiver no PNG e **não tem opinião sobre o que ele mostra**. A fortaleza do
+abismo tem um arco em chamas; a animação apagava o fogo e descia uma laje
+de pedra no vão. *"Ta aparecendo uma porta do nada no castelo que tinha
+porta de fogo"* (dono, Set/2026).
+
+Dois aprendizados, e o segundo é o caro:
+
+**Truncar uma animação que vai pro lugar errado não conserta.** A primeira
+tentativa cortou os 2 últimos frames ("materializavam uma porta fechada").
+Mas o frame 6 já era a laje quase fechada — o defeito só ficou mais curto,
+e o dono reportou o MESMO sintoma uma leva depois, o que custou a viagem
+inteira de novo. Sentido errado se corrige regerando, não aparando.
+
+**O primeiro invariante que escrevi estava errado, e os dados disseram.**
+Medi "o vão CLAREIA ao abrir" e três biomas reprovaram — com razão deles: o
+castelo dos campos tem uma porta de madeira de verdade, que abre pra um
+interior escuro. Brilho não separa os dois casos. O que separa é MATERIAL:
+uma passagem é um BURACO (escuridão, ou fogo), um portão fechado é uma
+SUPERFÍCIE feita da mesma alvenaria do muro ao lado. A trava virou "a cor
+do vão não pode CONVERGIR pra cor da parede que o ladeia" — e aí a mesma
+asserção aprova a porta de madeira (que se AFASTA do muro, virando vazio) e
+reprova a laje. Números em `tools/test_castle_gate.lua`: defeito sobra 19%
+da distância inicial, o caso aprovado mais apertado sobra 82%.
+
+**A regra:** quando uma trava reprova casos que você sabe que são certos,
+ela está medindo o SINTOMA e não a propriedade. Não afrouxe o limiar —
+procure o invariante que distingue de verdade, porque o limiar afrouxado
+passa a aceitar o defeito junto.
+
+---
+
 ## Ligações
 
 [[ui_layout_invariants]] · [[ui_rendering]] · [[combat_beats]] ·

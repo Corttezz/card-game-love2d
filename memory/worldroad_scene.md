@@ -1542,10 +1542,20 @@ imersiva com a porta abrindo + som.
   boss/mini_boss/elite (antes ia direto pro interior com fade seco).
 - **Portas**: 6 anims PixelLab (porta abre; abyss = fogo se parte; dusk =
   surto dourado), composite SÓ no rect do portão (auto-detect: diff
-  f0-vs-f8 no centro-baixo, dv>40) — frame0 == base bit a bit. ⚠️ abyss
-  TRUNCADO em 7 frames (f7-f8 materializavam uma porta fechada do nada).
+  f0-vs-f8 no centro-baixo, dv>40) — frame0 == base bit a bit.
   ⚠️ Slug do zip corta em 50 chars NO MEIO da palavra — keyword de colheita
   tem que ser prefixo-seguro ("iron_bands_swin", não "..._swinging").
+
+  **⚠️ ABYSS — a porta que nascia do nada (Set/2026, REGERADO).** A
+  fortaleza do abismo NÃO TEM PORTA: tem um arco em CHAMAS. A anim antiga
+  apagava o fogo e descia uma laje de pedra no vão. A primeira tentativa de
+  conserto TRUNCOU em 7 frames ("f7-f8 materializavam uma porta fechada do
+  nada") e **não resolveu** — o frame 6 já era a laje quase fechada, e o
+  dono voltou a reportar exatamente o mesmo sintoma uma leva depois.
+  Truncar uma animação que vai pro lugar errado só faz chegar mais perto
+  devagar. Os 9 frames de hoje foram REGERADOS no sentido certo: as veias
+  de brasa acendem pela fortaleza inteira e o arco ABRE numa passagem
+  incandescente. Travado por `love . test_one test_castle_gate`.
 - Sons: castle-gate-open (madeira 3.5s) / castle-gate-magic (arcano 3s),
   volumes 0.62/0.58 no main.lua.
 

@@ -1143,9 +1143,22 @@ end
 -- um som, e a gente entrando ali dentro".
 -- v10.2 (feedback): a cerimônia NÃO mexe na câmera/escala — o castelo já
 -- está no tamanho natural da caminhada (perto por volta do boss). Só:
---   door (1.4s) — frames da porta abrindo (anim/<bid>_castle_door) + som
---                 do portão (madeira; abyss/dusk = surto arcano)
+--   door (1.4s) — frames de ABERTURA (anim/<bid>_castle_door) + som do
+--                 portão (madeira; abyss/dusk = surto arcano)
 --   fade (0.9s) — fade a preto → onComplete (GameplayScene revela o hall)
+--
+-- v10.3 (Set/2026): "abrir" é o VERBO, não a batente. A fase se chama
+-- "door" por herança dos biomas de portão de madeira, mas o que a
+-- animação mostra tem que ser COERENTE COM A ARTE DO CASTELO daquele
+-- bioma. O abismo NÃO TEM PORTA: a fortaleza v3 tem um arco em CHAMAS.
+-- Os frames antigos apagavam o fogo e desciam uma laje de pedra no vão —
+-- literalmente uma porta nascendo do nada, e foi assim que o dono viu
+-- ("ta aparecendo uma porta do nada no castelo que tinha porta de fogo").
+-- Os frames de hoje fazem o oposto: as veias de brasa acendem pela
+-- fortaleza inteira e o arco ABRE numa passagem incandescente.
+-- Ao trocar a arte do castelo de um bioma, REGERE esta animação junto —
+-- ela parte do frame 0 da arte base e nada no código percebe se as duas
+-- divergirem.
 -- ============================================================================
 function WorldRoad.enterCastle(opts)
     opts = opts or {}
@@ -2292,9 +2305,12 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
     -- estática, frame 0 = PNG base). Fase própria por bioma: no crossfade
     -- os dois castelos não pulsam em uníssono
     img = landmarkFrame(bid .. "_castle", (bid:byte(1) + #bid) * 0.7) or img
-    -- v10: ENTRADA — a porta abre por cima do frame (anim de ESTADO em
+    -- v10: ENTRADA — a abertura SUBSTITUI o frame vivo (anim de ESTADO em
     -- anim/<bid>_castle_door, indexada pelo progresso da fase "door" —
-    -- mesma receita da porta da casa da loja)
+    -- mesma receita da porta da casa da loja). O frame 0 dessa anim TEM
+    -- que ser igual à arte base do castelo: aqui a troca é seca, e
+    -- qualquer diferença vira um pulo na cara do jogador quando doorK
+    -- cruza 0.02 (ver v10.3 no cabeçalho de enterCastle).
     do
         local en = WorldRoad._entry
         if en and en.doorK and en.doorK > 0.02 then
