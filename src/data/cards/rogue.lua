@@ -480,15 +480,40 @@ return {
     },
     rogue_death_mark = {
         id = "rogue_death_mark", name = "Marca da Morte",
+        -- NERF Set/2026 (dono: "carta coringa marca da morte e muito forte, no
+        -- minimo ser considerada lendaria ou ter nerf"). Lifesteal 2 -> 1.
+        --
+        -- Ele estava certo, e a comparacao com os PARES mostra por que. Os dois
+        -- efeitos disparam POR CARTA DE ATAQUE JOGADA (`damage_bonus` soma no
+        -- pipeline de cada ataque; `on_attack_heal` e trigger chamado por carta
+        -- em `processCardInCombat`) — nao 1x/turno. Com 3 ataques no turno a
+        -- versao antiga dava +6 de dano E +6 de cura, sem condicao nenhuma.
+        --
+        --   Mil Cortes (ladino, RARA)        +3 dano
+        --   Runa do Poder (mago, RARA)       +3 dano
+        --   Porta-Estandarte (guerr., RARA)  +3 dano
+        --   Senhor Vampiro (LENDARIA)        +3 de cura por ataque
+        --   Marca da Morte (RARA)            +2 dano E +2 de cura   <- aqui
+        --
+        -- Ou seja: o dano de uma rara MAIS dois tercos de uma lendaria, na
+        -- raridade das que entregam UMA coisa so. Nao era "uma rara forte", era
+        -- duas raras numa.
+        --
+        -- ESCOLHI NERFAR EM VEZ DE PROMOVER A LENDARIA porque promover nao
+        -- consertava a comparacao: mesmo como lendaria ela seguiria melhor que
+        -- o Senhor Vampiro, que e lendario e so cura. E cortei a CURA, nao o
+        -- dano, pra manter a identidade hibrida (strike + lifesteal) e deixar
+        -- a troca explicita contra o par direto: contra Mil Cortes voce cede 1
+        -- de dano por ataque e recebe 1 de HP. Isso e escolha; +2/+2 nao era.
         type = "joker", subtype = "power",
         cost = 2, attack = 0, defense = 0,
-        description = "+2 dano em ataques. Lifesteal 2.",
+        description = "+2 dano em ataques. Lifesteal 1.",
         image = "assets/jokers/joker1.png",
         rarity = "rare", class = "rogue",
         tags = { "strike", "lifesteal", "scaling" },
         effects = {
             { type = "damage_bonus", target = "attack", value = 2 },
-            { type = "on_attack_heal", value = 2 },
+            { type = "on_attack_heal", value = 1 },
         },
     },
 

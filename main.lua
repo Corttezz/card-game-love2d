@@ -672,6 +672,12 @@ function love.load(loveArgs)
         return
     end
 
+    if loveArgs and loveArgs[1] == "anim_drift" then
+        local ok = require("tools.anim_drift").run(loveArgs[2])
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
     if loveArgs and loveArgs[1] == "scan_clones" then
         local ok = require("tools.scan_clones").run()
         love.event.quit(ok and 0 or 1)
