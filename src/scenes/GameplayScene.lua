@@ -29,13 +29,6 @@ local GameplayScene = {}
 -- "scene" (SceneLayer com PNG estático por ato — comportamento antigo).
 GameplayScene.SCENE_MODE = "worldroad"
 
--- Salão de chefe reusado pelos atos 4-6 (só há arte para 1..3). Escolhido por
--- CLIMA, não por número: 4 é a Cidadela Gelada (pedra pálida do hall 1), 5 é o
--- Coração Pútrido (catedral roxa do hall 2) e 6 é a Corte do Eclipse (o salão
--- em brasa do hall 3, o mais "final"). Cair todo mundo no 3 poria a cidadela
--- de gelo dentro de uma fornalha.
-local HALL_BY_ACT = { [4] = 1, [5] = 2, [6] = 3 }
-
 -- Refs externas (setadas em init)
 local game, playButton, endTurnButton, topBar, gameUI, smokeSystem
 local setCurrentState, onPhaseCleared, onReturnToMenu
@@ -444,11 +437,23 @@ function GameplayScene.draw()
     if interior then
         -- Salão do chefe por ato. Só existem 3 PNGs (castle_hall_1..3) e a
         -- campanha tem 6 atos desde Set/2026, então os atos novos REUSAM o
-        -- salão do irmão de clima mais próximo em vez de cair todos no 3:
-        -- o hall 3 é o abismo em brasa e serviria muito mal a uma cidadela
-        -- de gelo. Arte própria para 4-6 é débito conhecido (known_gaps) —
-        -- quando ela existir, este mapa some e vira `currentAct`.
-        local hallAct = HALL_BY_ACT[currentAct] or math.min(3, currentAct)
+        -- v11: cada ato tem o SEU salão (1..6). O reuso por clima que morava
+        -- aqui (4→1, 5→2, 6→3) era paliativo e o dono pegou jogando: "o
+        -- cenário do boss de alguns atos está igual o do primeiro ato".
+        -- O fallback fica só como rede pra ato sem arte, e AVISA.
+        local hallAct = currentAct
+        if not love.filesystem.getInfo(
+            "assets/sprites/scenes/castle_hall_" .. hallAct .. ".png") then
+            if not GameplayScene._avisouHall then
+                GameplayScene._avisouHall = {}
+            end
+            if not GameplayScene._avisouHall[hallAct] then
+                GameplayScene._avisouHall[hallAct] = true
+                print(("[cena] sem castle_hall_%d.png — caindo no salão %d")
+                    :format(hallAct, math.min(3, hallAct)))
+            end
+            hallAct = math.min(3, hallAct)
+        end
         local drawn = SceneBackground.draw("castle_hall_" .. hallAct,
             width, height, 0.15)
         sceneKey = "castle_hall_" .. hallAct

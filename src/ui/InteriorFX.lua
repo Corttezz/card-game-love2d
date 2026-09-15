@@ -21,6 +21,18 @@ local EMITTERS = {
     [3] = {   -- cidadela infernal: rios de lava nas bordas + trono ao fundo
         { 0.09, 0.74, 26 }, { 0.91, 0.74, 26 }, { 0.50, 0.24, 14 },
     },
+    -- v11: salões 4-6. As âncoras saem das chamas PINTADAS na arte (detectadas
+    -- por cluster de luma e convertidas pro eixo da tela — o cover-fit corta
+    -- 88px de cada lado, então coordenada de arte cairia ~8% pro lado errado).
+    [4] = {   -- cidadela glacial: dois braseiros de chama azul-branca
+        { 0.333, 0.664, 10 }, { 0.668, 0.664, 10 },
+    },
+    [5] = {   -- coração pútrido: dois fogos-fátuos verdes entre as raízes
+        { 0.268, 0.665, 10 }, { 0.756, 0.660, 10 },
+    },
+    -- [6] NÃO EXISTE de propósito: a corte do eclipse não tem fogo pintado —
+    -- a luz dela é o vão claro do fundo. Emissor sem chama na arte seria brasa
+    -- saindo do nada (regra: a âncora vem do que está desenhado).
 }
 
 -- Cor das brasas por ato
@@ -28,6 +40,8 @@ local EMBER_COLOR = {
     [1] = { 1.00, 0.62, 0.22 },
     [2] = { 1.00, 0.86, 0.55 },
     [3] = { 1.00, 0.42, 0.14 },
+    [4] = { 0.62, 0.85, 1.00 },   -- fagulha de gelo
+    [5] = { 0.55, 1.00, 0.42 },   -- fogo-fátuo do brejo
 }
 
 local embers = {}
@@ -41,7 +55,8 @@ end
 
 function InteriorFX.update(dt, act)
     time = time + dt
-    local a = math.min(3, math.max(1, act or 1))
+    local a = math.max(1, act or 1)
+    if not EMITTERS[a] then return end   -- salão sem fogo pintado: sem brasa
     local w = love.graphics.getWidth()
     local h = love.graphics.getHeight()
 
@@ -76,7 +91,8 @@ function InteriorFX.update(dt, act)
 end
 
 function InteriorFX.draw(act)
-    local a = math.min(3, math.max(1, act or 1))
+    local a = math.max(1, act or 1)
+    if not EMITTERS[a] then return end   -- salão sem fogo pintado: sem brasa
     local w = love.graphics.getWidth()
     local h = love.graphics.getHeight()
     local c = EMBER_COLOR[a]

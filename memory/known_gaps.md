@@ -213,3 +213,23 @@ e a relacao entre os dois nao muda. O unico lever real e a arte.
 Custo estimado: ~30 geracoes PixelLab. Ficou de fora agora porque a frente
 dos locais por ato tem 25 conjuntos pela frente (750-1100 geracoes de um
 saldo de ~1840) e essa era a prioridade declarada do dono.
+
+**Atualizacao (Set/2026, frente dos saloes 4-6).** A REGRA que faltava foi
+extraida e esta aplicada nos saloes novos: o chefe cobre a faixa central da
+arte — medido no caminho real, x 0.375-0.625 e de (yr-0.43) ate yr — entao o
+elemento de identidade nao pode morar ali, e a faixa imediatamente atras do
+corpo dele precisa CONTRASTAR em valor com a silhueta (chefe palido pede
+fundo escuro; chefe escuro pede fundo claro). Os saloes 4, 5 e 6 nasceram
+com essa regra e o resultado esta em `tools/preview_out/salas_de_chefe_1a6.png`.
+
+Uma regeracao do `castle_hall_3` foi TENTADA aplicando a regra (1 geracao;
+candidato em `tools/preview_out/candidato_hall3_NAO_INSTALADO.png`) e **nao
+foi instalada**. Ela resolve o contraste — vao de lava claro atras do tirano
+escuro — mas perde o TRONO por completo, ou seja, troca um problema de
+identidade por outro; e a linha de chao dela cai em ~0.86 contra os 0.78 de
+hoje, o que puxaria o chefe pra perto da mao e obrigaria a remedir
+EMITTERS[3]. Trocar a arte de um ato que o dono ja joga, sem ganho claro,
+nao compensa. Se for regerar, o alvo e: vao claro atras do CORPO **e** trono
+visivel ACIMA DA CABECA (fora da linha do corpo), com a laje comecando em
+~0.72 pra manter yr 0.78.
+

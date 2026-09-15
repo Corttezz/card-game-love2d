@@ -64,6 +64,26 @@ SceneAnchors.BY_SCENE = {
     castle_hall_3 = { xr = 0.50, yr = 0.78,
                       shadowA = 0.45, lightXr = 0.5, lightBehind = false },
 
+    -- ATO 4 — cidadela glacial. A laje de gelo começa em ~0.72 (a soleira do
+    -- arco escuro); 0.78 cai bem à frente dela, no ladrilho, igual aos halls
+    -- 1 e 3. Luz de dois braseiros pálidos NA FRENTE das paredes laterais e
+    -- do arco escuro ao fundo → sombra curta e definida sobre gelo polido.
+    castle_hall_4 = { xr = 0.50, yr = 0.78,
+                      shadowA = 0.85, lightXr = 0.5, lightBehind = true },
+
+    -- ATO 5 — coração pútrido. O lajedo molhado só começa em ~0.755 (antes
+    -- disso são as raízes e o vão preto): 0.82 é o primeiro ponto em que o pé
+    -- pisa pedra de verdade. Chão alagado reflete → sombra de contato fraca.
+    castle_hall_5 = { xr = 0.50, yr = 0.82,
+                      shadowA = 0.55, lightXr = 0.5, lightBehind = true },
+
+    -- ATO 6 — corte do eclipse. O mármore da frente começa em ~0.73 (o vão
+    -- claro morre na linha do chão); 0.78 fica no meio do espelho. A luz vem
+    -- do FUNDO e é forte: a sombra cai pro primeiro plano e é bem marcada
+    -- sobre pedra polida.
+    castle_hall_6 = { xr = 0.50, yr = 0.78,
+                      shadowA = 0.95, lightXr = 0.5, lightBehind = true },
+
     -- Cenas legadas do SceneLayer (fallback por ato quando o hall não
     -- existe, e caminho antigo de SCENE_MODE ~= "worldroad").
     catacumbs   = { xr = 0.50, yr = 0.80, shadowA = 0.95,

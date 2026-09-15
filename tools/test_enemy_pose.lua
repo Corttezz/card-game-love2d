@@ -39,8 +39,18 @@ function M.run()
     -- ===================================================================
     -- 2. Linha de chão das cenas de interior
     -- ===================================================================
-    for act = 1, 3 do
+    -- v11: varre TODOS os atos da campanha, não os 3 que tinham arte quando
+    -- o teste nasceu. O ato novo sem salão (ou com salão sem âncora) passa a
+    -- FALHAR aqui em vez de aparecer na cara do dono — foi exatamente assim
+    -- que os atos 4-6 ficaram reusando o cenário do ato 1 sem ninguém ver.
+    local Config = require("src.core.Config")
+    local totalAtos = Config.TotalActs or 3
+    t:truthy("campanha tem ao menos 3 atos (sanidade do proprio teste)",
+        totalAtos >= 3)
+    for act = 1, totalAtos do
         local key = "castle_hall_" .. act
+        t:truthy(key .. " tem ARTE no disco",
+            love.filesystem.getInfo("assets/sprites/scenes/" .. key .. ".png") ~= nil)
         t:truthy(key .. " tem linha de chao declarada",
             SceneAnchors.BY_SCENE[key] ~= nil)
         local a = SceneAnchors.get(key)
@@ -49,6 +59,25 @@ function M.run()
         -- HUD. Fora dessa faixa é bug de dado, não de gosto.
         t:truthy(key .. " ancora na laje (yr=" .. tostring(a.yr) .. ")",
             a.yr > 0.60 and a.yr < 0.95)
+    end
+
+    -- Cada ato tem o SEU salão: dois atos apontando pro mesmo PNG é o defeito
+    -- que o dono pegou jogando ("o cenário do boss de alguns atos está igual
+    -- o do primeiro ato"). Comparação por conteúdo, não por nome de arquivo.
+    do
+        local vistos, repetido = {}, nil
+        for act = 1, totalAtos do
+            local p = "assets/sprites/scenes/castle_hall_" .. act .. ".png"
+            if love.filesystem.getInfo(p) then
+                local dados = love.filesystem.read(p)
+                if vistos[dados] then
+                    repetido = "atos " .. vistos[dados] .. " e " .. act
+                end
+                vistos[dados] = act
+            end
+        end
+        t:falsy("nenhum salao de chefe se repete entre atos"
+            .. (repetido and (" (" .. repetido .. ")") or ""), repetido ~= nil)
     end
 
     -- O hall do ato 2 é o do defeito: a laje dele é MAIS BAIXA que a dos
