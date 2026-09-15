@@ -647,6 +647,20 @@ function love.load(loveArgs)
         return
     end
 
+    -- Gera os frames do loop idle das gemas (assets/sprites/orbs_anim/).
+    if loveArgs and loveArgs[1] == "bake_orb_anim" then
+        local ok = require("tools.bake_orb_anim").run(loveArgs[2], loveArgs[3], loveArgs[4])
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
+    -- Imagem de aprovação do loop idle das gemas (parado x vivo, 1:1).
+    if loveArgs and loveArgs[1] == "orb_anim_compare" then
+        local ok = require("tools.orb_anim_compare").run(loveArgs[2])
+        love.event.quit(ok and 0 or 1)
+        return
+    end
+
     if loveArgs and loveArgs[1] == "orb_zoom" then
         require("tools.orb_zoom").run(loveArgs[2], loveArgs[3])
         return
@@ -734,6 +748,9 @@ function love.load(loveArgs)
         -- `orbs evoke`: mesma fileira com a mao sobre uma carta de Evocar --
         -- e onde os numeros e DOIS glifos mudam (sombra vira dano).
         _G.PREVIEW_HUD_ORBS_EVOKE = (loveArgs[3] == "evoke")
+        -- `orbs anim`: mesma fileira com o relogio do loop idle adiantado --
+        -- prova que as gemas estao VIVAS e fora de fase entre si.
+        _G.PREVIEW_HUD_ORBS_ANIM = (loveArgs[3] == "anim")
         require("tools.preview_battle_hud").run()
         love.event.quit()
         return
@@ -1102,8 +1119,23 @@ function love.load(loveArgs)
     if audioSystem:isAudioAvailable() then
         -- Música do menu (loop, streaming). Tocada via Sfx.playMusic("menuMusic")
         -- após o splash terminar (ver components/Menu.lua:enterWithIntro).
+        -- VOLUME CALIBRADO PELO NIVEL MEDIDO, nao por palpite (Set/2026).
+        --
+        -- As 9 faixas de audio/music/ foram niveladas a -18 LUFS no
+        -- pos-processamento (memory/music_generation.md). Esta aqui e a musica
+        -- ORIGINAL do jogo e nunca passou por isso: medida, ela esta a
+        -- **-16,3 LUFS** contra -19,2 do ato 3. Registrada no mesmo 0.6 das
+        -- outras, saia ~2,9 dB MAIS ALTA que todo o resto.
+        --
+        -- Isso nao e detalhe de mixagem: e o que fazia o dono dizer "ainda
+        -- tocando a musica do menu depois que clico em continuar". O diretor
+        -- troca na hora (o log dele prova), mas durante o crossfade a faixa
+        -- mais alta domina — entao o menu continuava audivel por cima do
+        -- drone grave e quieto do ato ate quase o fim do cruzamento.
+        --
+        -- 0.6 * 10^(-2,9/20) = 0.43 poe as duas no mesmo nivel percebido.
         audioSystem:loadSound("menuMusic", "audio/music.mp3", {
-            volume = 0.6,
+            volume = 0.43,
             group  = "music",
             stream = true,
             loop   = true,

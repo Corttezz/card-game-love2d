@@ -166,7 +166,17 @@ function MusicDirector.apply(state, run, nodeType)
         return
     end
 
-    local fade = (code == "musicBoss") and FADE_FAST or FADE_SLOW
+    -- CHEGAR corta rapido; ASSENTAR corta devagar.
+    --
+    -- Entrar no chefe ja usava o corte rapido (a tensao tem que chegar junto
+    -- com o inimigo). SAIR DO MENU PRA RUN e a mesma coisa e estava no corte
+    -- lento: o jogador clica em Continuar, a cena do ato ja esta na tela, e a
+    -- musica do menu ainda ocupava 2,5s de cruzamento. Foi metade da queixa
+    -- "ainda tocando a musica do menu depois que clico em continuar" (a outra
+    -- metade era o menu estar 2,9 dB mais alto que todas as outras faixas —
+    -- ver o registro em main.lua).
+    local saindoDoMenu = (atual == "menuMusic" and code ~= "menuMusic")
+    local fade = (code == "musicBoss" or saindoDoMenu) and FADE_FAST or FADE_SLOW
     -- Log de troca: sem isto, "a música está errada" não tem como ser
     -- diagnosticado a não ser adivinhando (foi o que aconteceu).
     print(string.format("[Musica] %s -> %s (estado=%s, no=%s)",

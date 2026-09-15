@@ -130,6 +130,43 @@ function M.run()
         t:eq("depois de assentar, UMA faixa so (" .. quais2 .. ")", n2, 1)
         t:eq("e e a certa", audio.currentMusic, "musicAct1")
 
+        -- ===== O "CONTINUAR" (regressao Set/2026, reincidente) =====
+        -- Dono: "ainda tocando a musica do menu dps que clico em continuar".
+        -- O log dele mostra o diretor fazendo a coisa certa
+        -- ("menuMusic -> musicAct3"), entao a suspeita nao e mais a DECISAO e
+        -- sim a EXECUCAO: a faixa do menu tem que parar de verdade.
+        --
+        -- Dois tempos de clique, porque sao caminhos DIFERENTES no playMusic:
+        -- clicar depois do fade do menu terminar cai no ramo de crossfade
+        -- normal; clicar EM CIMA do fade-in (from=nil) substitui um crossfade
+        -- que ainda nao acabou — e foi assim que a faixa orfa nasceu da outra
+        -- vez.
+        for _, caso in ipairs({
+            { nome = "menu ja assentado", framesAntes = 200 },
+            { nome = "clique em cima do fade-in do menu", framesAntes = 3 },
+        }) do
+            audio:stopMusic()
+            for _, e in pairs(audio.sources) do
+                if e.group == "music" and e.template then e.template:stop() end
+            end
+
+            audio:playMusic("menuMusic", { fadeDuration = 1.5 })  -- Menu:show
+            for _ = 1, caso.framesAntes do audio:update(1 / 60) end
+
+            audio:playMusic("musicAct3", { fadeDuration = 2.5 })  -- Continuar
+            for _ = 1, 400 do audio:update(1 / 60) end            -- ~6.7s
+
+            local nc, quaisC = tocando()
+            t:eq("Continuar (" .. caso.nome .. "): so a faixa do ato toca ("
+                 .. quaisC .. ")", nc, 1)
+            t:eq("Continuar (" .. caso.nome .. "): e e a do ato",
+                 audio.currentMusic, "musicAct3")
+
+            local menuEntry = audio.sources["menuMusic"]
+            t:falsy("Continuar (" .. caso.nome .. "): a faixa do MENU esta parada",
+                menuEntry and menuEntry.template and menuEntry.template:isPlaying())
+        end
+
         audio:stopMusic()
     else
         t:truthy("audio indisponivel: sobreposicao nao pode ser medida aqui", true)
