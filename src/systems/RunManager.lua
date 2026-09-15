@@ -416,8 +416,25 @@ end
 -- Avanca floorInAct apos resolver um node (batalha vencida, loja saida, etc).
 -- Retorna "act_complete" se cruzou para novo ato, "endless_start" se saiu do ultimo,
 -- "advanced" caso normal.
+-- ATENCAO: `totalActs` e OVERRIDE DE TESTE, nao contrato de chamada.
+--
+-- Este parametro nascia com default 3 e TODOS os chamadores passavam `3`
+-- cravado — inclusive o caminho real do jogo (main.lua, showMapSelection).
+-- Quando a campanha foi de 3 pra 6 atos (Set/2026), `Config.TotalActs` mudou
+-- e este 3 NAO: a run passava a endless ao fim do ato 3, `checkVictory`
+-- retorna false com `endlessMode`, e o jogo ficava IMPOSSIVEL DE VENCER —
+-- os atos 4-6 existiam, com a curva certa, mas rotulados como endless e sem
+-- tela de vitoria no fim. Pior que o defeito original, que ao menos vencia.
+--
+-- Os testes nao pegaram porque TAMBEM passavam `3`: exercitavam o parametro,
+-- nunca a configuracao do jogo. Passar o mesmo literal errado dos dois lados
+-- e um teste que confirma a si mesmo.
+--
+-- Agora o default e a FONTE UNICA (`Config.TotalActs`) e nenhum chamador de
+-- producao passa nada. Ver `tools/test_progression.lua`, que trava a chamada
+-- SEM argumento.
 function RunManager:advanceFloorInAct(totalActs)
-    totalActs = totalActs or 3
+    totalActs = totalActs or Config.TotalActs or 3
     if not self.currentRun then return "advanced" end
     local MapManager = require("src.systems.MapManager")
 

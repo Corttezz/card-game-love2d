@@ -60,20 +60,43 @@ function M.run()
     rm:removeCardFromDeck("warrior_bash")
     t:eq("removeCardFromDeck remove 1", #run.currentDeck, n - 1)
 
-    -- advanceFloorInAct: transições
+    -- advanceFloorInAct: transições.
+    --
+    -- SEM ARGUMENTO, DE PROPOSITO. Estas asserções passavam `3` cravado — o
+    -- mesmo literal que os chamadores de produção passavam — e por isso
+    -- exercitavam o PARAMETRO, nunca a configuração do jogo. Quando a
+    -- campanha foi pra 6 atos, a run virava endless ao fim do ato 3, o
+    -- `checkVictory` (que retorna false em endless) deixava o jogo
+    -- IMPOSSIVEL DE VENCER, e estes testes seguiram verdes. Passar o mesmo
+    -- literal errado dos dois lados é um teste que confirma a si mesmo.
     local rm2 = RunManager:new(); rm2:startNewRun("mage")
     rm2.currentRun.floorInAct = 3
-    t:eq("avanço normal retorna 'advanced'", rm2:advanceFloorInAct(3), "advanced")
+    t:eq("avanço normal retorna 'advanced'", rm2:advanceFloorInAct(), "advanced")
     t:eq("andar incrementou", rm2.currentRun.floorInAct, 4)
 
     rm2.currentRun.floorInAct = 8; rm2.currentRun.actNumber = 1
-    t:eq("fim de ato (não-final) retorna 'act_complete'", rm2:advanceFloorInAct(3), "act_complete")
+    t:eq("fim de ato (não-final) retorna 'act_complete'", rm2:advanceFloorInAct(), "act_complete")
     t:eq("virou ato 2", rm2.currentRun.actNumber, 2)
     t:eq("andar reset p/ 1", rm2.currentRun.floorInAct, 1)
 
+    -- A CAMPANHA INTEIRA, ato a ato: nenhum ato do meio pode virar endless.
+    -- É a trava que faltava — o defeito não estava no fim, estava em CADA
+    -- fronteira depois do 3.
+    local rmFull = RunManager:new(); rmFull:startNewRun("warrior")
+    for ato = 1, Config.TotalActs - 1 do
+        rmFull.currentRun.actNumber = ato
+        rmFull.currentRun.floorInAct = MapManager.FLOORS_PER_ACT
+        local st = rmFull:advanceFloorInAct()
+        t:eq("ato " .. ato .. " -> " .. (ato + 1) .. " é 'act_complete'",
+            st, "act_complete")
+        t:falsy("ato " .. ato .. " NAO liga o endless (jogo ficaria "
+            .. "invencivel: checkVictory retorna false em endless)",
+            rmFull.currentRun.endlessMode)
+    end
+
     rm2.currentRun.floorInAct = 8
     rm2.currentRun.actNumber = Config.TotalActs
-    t:eq("fim do ato final retorna 'endless_start'", rm2:advanceFloorInAct(3), "endless_start")
+    t:eq("fim do ato final retorna 'endless_start'", rm2:advanceFloorInAct(), "endless_start")
     t:truthy("endlessMode ativado", rm2.currentRun.endlessMode)
 
     -- ===================== MAPMANAGER =====================

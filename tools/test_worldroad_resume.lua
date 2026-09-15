@@ -34,7 +34,7 @@ function M.run()
     -- ===== 1. Uma run que chegou na ENCRUZILHADA e salvou ===================
     -- (espelho do showMapSelection: o andar avança ANTES de montar o fork)
     local gA = TK.newRunGame("warrior")
-    gA.runManager:advanceFloorInAct(3)
+    gA.runManager:advanceFloorInAct()
     gA.runManager:generateNextNodes(3)
     local pendA = gA.runManager:getPendingNodes()
     t:truthy("save montado na encruzilhada (nós pendentes)",

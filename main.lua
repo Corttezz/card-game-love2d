@@ -303,7 +303,8 @@ showMapSelection = function()
     -- Se nao ha nos pendentes, avanca o floor e gera novos. Guard contra
     -- duplo-advance (usuario voltar e abrir o mapa de novo).
     if not game.runManager:getPendingNodes() then
-        local status = game.runManager:advanceFloorInAct(3)
+        -- SEM argumento: o total de atos e Config.TotalActs, fonte unica.
+        local status = game.runManager:advanceFloorInAct()
         if status == "endless_start" then
             game:addMessage(I18n.t("messages.endless_unlocked", nil,
                 "Modo Endless desbloqueado!"), "success")

@@ -1059,6 +1059,25 @@ local function forgeScore(game, cardId, counts)
 end
 
 -- Melhor alvo de forja do deck atual (usado por fogueira, loja e picker).
+-- Indice da copia que a forja VAI pegar: a de MENOR nivel entre as
+-- forjaveis daquele id. Espelha a escolha de `RunManager:upgradeCard`, e
+-- existe pra que o detector de "ouro queimado" meca a MESMA copia antes e
+-- depois (a forja e por copia, nao por id — CLAUDE.md).
+local function forgeIndexFor(game, cardId)
+    local rm = game.runManager
+    local run = rm and rm.currentRun
+    if not run then return nil end
+    local best, bestLvl
+    for i, entry in ipairs(run.currentDeck or {}) do
+        local RM = require("src.systems.RunManager")
+        if RM.entryId(entry) == cardId and rm:canUpgradeAt(i) then
+            local lvl = rm:getEntryLevel(entry)
+            if not bestLvl or lvl < bestLvl then best, bestLvl = i, lvl end
+        end
+    end
+    return best
+end
+
 local function bestForgeTarget(game)
     local counts = {}
     for _, id in ipairs(deckIdList(game)) do
@@ -1599,13 +1618,35 @@ local function doShop(game)
             local target, ts = bestForgeTarget(game)
             if target and ts > 0 then
                 game.economySystem:spendGold(o.cost, o.type, o.id)
-                local before = game.runManager:getUpgrades(target)
-                local lvl = game.runManager:upgradeCard(target)
+
+                -- O DETECTOR PRECISA OLHAR A MESMA COPIA ANTES E DEPOIS.
+                --
+                -- A versao anterior comparava `getUpgrades(id)` com o retorno
+                -- de `upgradeCard(id)` — e essas duas funcoes respondem a
+                -- perguntas DIFERENTES: a primeira devolve o MAIOR nivel entre
+                -- as copias daquela carta, a segunda forja a de MENOR nivel e
+                -- devolve o nivel DELA. Com duas copias (uma ja forjada), o
+                -- "antes" era 1 e o "depois" era 1, e o detector gritava "ouro
+                -- queimado" numa forja que tinha funcionado. Era ALARME FALSO,
+                -- e ele apareceu 3x na bateria de 6 corridas.
+                --
+                -- Isso importa alem do ruido: este harness e o que mede
+                -- BALANCO. Tripwire que mente faz anomalia de verdade se
+                -- perder no meio do barulho — e a forja e POR COPIA desde
+                -- Set/2026 (CLAUDE.md), entao perguntar por ID e o erro de
+                -- origem. Resolve-se o INDICE e usam-se as APIs `...At`.
+                local idx = forgeIndexFor(game, target)
+                local before = idx and game.runManager:getUpgradesAt(idx) or nil
+                local lvl = idx and game.runManager:upgradeCardAt(idx) or nil
                 if game.runManager.registerPaidForge then
                     game.runManager:registerPaidForge()
                 end
-                if not lvl or lvl == before then
-                    anomaly("ouro queimado: forja de %s nao subiu de nivel", target)
+                if not idx then
+                    anomaly("ouro queimado: nenhuma copia forjavel de %s", target)
+                elseif not lvl or lvl <= before then
+                    anomaly("ouro queimado: forja de %s (copia %d) nao subiu "
+                        .. "de nivel (%s -> %s)", target, idx,
+                        tostring(before), tostring(lvl))
                 end
                 run._usedShop = true
                 bought = bought + 1
@@ -1751,7 +1792,7 @@ local function playRun(classId, runIdx, maxEndlessFloors)
         repeat
             safety = safety + 1
             if not game.runManager:getPendingNodes() then
-                game.runManager:advanceFloorInAct(3)
+                game.runManager:advanceFloorInAct()
                 game.runManager:generateNextNodes(3)
             end
             local pending = game.runManager:getPendingNodes()
