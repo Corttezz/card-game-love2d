@@ -89,6 +89,31 @@ function M.run()
         end
     end
 
+    -- 2c. chefe acompanha a sala em tela grande (fullscreen nativo 1440p)
+    do
+        local GS = require("src.scenes.GameplayScene")
+        t:eq("4:3 não muda o chefe", GS.hallScreenK("castle_hall_3", 1024, 768), 1)
+        t:eq("1080p não muda o chefe", GS.hallScreenK("castle_hall_3", 1920, 1080), 1)
+        t:near("1440p cresce com a sala (6.4/4.8)",
+            GS.hallScreenK("castle_hall_3", 2560, 1440), 6.4 / 4.8, 1e-6)
+        t:eq("4K para no teto", GS.hallScreenK("castle_hall_3", 3840, 2160), 1.4)
+        t:eq("cena que não é salão não muda", GS.hallScreenK("gameplay", 2560, 1440), 1)
+    end
+
+    -- 2d. poça de contato roda (apoiado) e some pra quem flutua
+    do
+        local D = require("src.ui.InteriorDepth")
+        local canvas = love.graphics.newCanvas(32, 32)
+        t:noerror("InteriorDepth desenha sob o tirano", function()
+            D.noteBbox({ width = 300, height = 330 })
+            love.graphics.setCanvas(canvas)
+            D.drawContact(3, "abyss_tyrant", 512, 560)
+            D.drawContact(2, "tower_lich", 512, 560)
+            love.graphics.setCanvas()
+        end)
+        D.reset()
+    end
+
     -- 3. sem discos
     t:falsy("InteriorFX não desenha círculo (as 'bolas de luz')",
         readSrc("src/ui/InteriorFX.lua"):find("graphics.circle", 1, true) ~= nil)

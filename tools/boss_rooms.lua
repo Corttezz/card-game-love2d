@@ -6,6 +6,7 @@
 --   love . boss_rooms [ato|shots]
 --   BOSS_ROOMS_SIZE=1920x1080 love . boss_rooms shots   (tamanho da janela:
 --   o cover-fit corta a arte diferente em 4:3 e em 16:9 — confira os dois)
+--   BOSS_ROOMS_VIRTUAL=2560x1440 ... shots  (tela maior que o monitor)
 --   BOSS_ROOMS_SEQ=6 ... shots   (+6 quadros seguidos por sala: animação)
 --
 --   1-6 / ← →  troca de ato (sala + chefe)
@@ -37,6 +38,21 @@ function M.run(startAct)
     local sw, sh = (os.getenv("BOSS_ROOMS_SIZE") or ""):match("^(%d+)x(%d+)$")
     if sw then love.window.setMode(tonumber(sw), tonumber(sh)) end
 
+    -- BOSS_ROOMS_VIRTUAL=2560x1440: tela FALSIFICADA maior que o monitor
+    -- (setMode acima do desktop trava). Desenha num canvas desse tamanho com
+    -- getWidth/getHeight mentindo e a captura sai do canvas.
+    local vw, vh = (os.getenv("BOSS_ROOMS_VIRTUAL") or ""):match("^(%d+)x(%d+)$")
+    local vcanvas, pendingCap
+    if vw then
+        vw, vh = tonumber(vw), tonumber(vh)
+        vcanvas = love.graphics.newCanvas(vw, vh)
+        vcanvas:setFilter("nearest", "nearest")
+        love.graphics.getWidth = function() return vw end
+        love.graphics.getHeight = function() return vh end
+        love.graphics.getDimensions = function() return vw, vh end
+        love.graphics.captureScreenshot = function(cb) pendingCap = cb end
+    end
+
     local total = Config.TotalActs or 6
     local shots = (startAct == "shots")   -- verificação: captura os 6 e sai
     local act = math.max(1, math.min(total, tonumber(startAct) or 1))
@@ -53,6 +69,7 @@ function M.run(startAct)
         -- anterior na frente, e as cartas da mão nova nasciam invisíveis
         -- (dissolve=1) — "a mão só aparece no ato 1".
         _G.EventManager.clear()
+        require("src.ui.InteriorDepth").reset()
         local game = Game:new()
         game:startNewRun("warrior")
         game:startGame()
@@ -102,7 +119,23 @@ function M.run(startAct)
         frames = frames + 1
     end
 
+    local drawFrame
     love.draw = function()
+        if not vcanvas then return drawFrame() end
+        love.graphics.setCanvas(vcanvas)
+        drawFrame()
+        love.graphics.setCanvas()
+        if pendingCap then
+            local cb = pendingCap
+            pendingCap = nil
+            cb(vcanvas:newImageData())
+        end
+        love.graphics.setColor(1, 1, 1, 1)
+        local ww, wh = love.window.getMode()
+        local k = math.min(ww / vw, wh / vh)
+        love.graphics.draw(vcanvas, 0, 0, 0, k, k)
+    end
+    drawFrame = function()
         love.graphics.clear(0, 0, 0, 1)
         GameplayScene.draw()
         local label = string.format("ATO %d/%d  %s   |  1-6 / <- -> troca  H dano  K morte  J volta  ESC sai",

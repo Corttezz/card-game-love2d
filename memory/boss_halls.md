@@ -52,6 +52,19 @@ type: project
 - `BOSS_ROOMS_SEQ=4 ... boss_rooms shots` grava quadros seguidos pra conferir
   animação.
 
+## Fullscreen nativo e contato (Out/2026, round 2b)
+- `BOSS_ROOMS_VIRTUAL=2560x1440 love . boss_rooms shots` renderiza num canvas
+  falsificado maior que o monitor (setMode acima do desktop trava).
+- O chefe tem altura FIXA (330px, EnemyRenderer) e a sala cresce com a tela:
+  em 1440p ele ficava ~25% menor em relação ao salão. `GameplayScene.hallScreenK`
+  multiplica o sizeK no salão por `clamp(escala/4.8, 1, 1.4)` — 4:3 e 1080p
+  intactos. A ESTRADA tem o mesmo descompasso e não foi mexida (não é deste
+  módulo).
+- `src/ui/InteriorDepth.lua`: poça de oclusão em degraus na grade da arte sob
+  os pés de quem APOIA (desenhada antes do chefe; largura do bbox do quadro
+  anterior), mais longa pra frente quando a luz vem do fundo. Em piso escuro
+  (hall 3/5) quase não aparece — fisicamente certo; o contato ali vem da laje.
+
 ## Chão × mão (o que decide se uma arte serve)
 Em 16:9 (escala 4.8, corte de ~15px da arte em cima e embaixo) o teto da mão
 segura o pé do chefe por volta da linha **0.72-0.75 da PNG**. Arte cujo chão

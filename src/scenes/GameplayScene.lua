@@ -418,6 +418,20 @@ function GameplayScene.drawWorldOnly()
     WorldRoad.drawOverlays(0, topBarHeight, width, height - topBarHeight)
 end
 
+-- Salão em tela GRANDE (Out/2026, dono: "analise em fullscreen nativo"): o
+-- chefe tem altura FIXA em pixels (330) e o salão cresce com a tela pelo
+-- cover-fit — em 2560x1440 o chefe ficava ~25% menor em relação à sala do
+-- que em 1920x1080 e lia como boneco na frente do cenário. Acima da escala
+-- de referência (1080p = 4.8 px por pixel da arte) o chefe cresce junto com
+-- a sala, com teto; abaixo dela nada muda (4:3 e 1080p ficam como estão).
+GameplayScene.HALL_REF_SCALE = 4.8
+function GameplayScene.hallScreenK(sceneKey, w, h)
+    if not sceneKey or not sceneKey:find("^castle_hall_") then return 1 end
+    local tr = SceneBackground.getCoverTransform(sceneKey, w, h)
+    if not tr then return 1 end
+    return math.max(1, math.min(1.4, tr.scale / GameplayScene.HALL_REF_SCALE))
+end
+
 function GameplayScene.draw()
     local width = love.graphics.getWidth()
     local height = love.graphics.getHeight()
@@ -552,13 +566,21 @@ function GameplayScene.draw()
         local _, _, handTopY = handLayout()
         local tetoY = math.floor(handTopY - ENEMY_HAND_CLEARANCE)
         if enemyCy > tetoY then enemyCy = tetoY end
+        -- salão: poça de oclusão em degraus sob os pés (contato com o piso),
+        -- ANTES do chefe (require inline: estado do salão fica no módulo)
+        local InteriorDepth = interiorHall and require("src.ui.InteriorDepth")
+        if InteriorDepth then
+            InteriorDepth.drawContact(interiorHall, game.enemy and game.enemy.spriteId,
+                enemyCx, enemyCy)
+        end
         enemyBbox = EnemyRenderer.draw(game, enemyCx, enemyCy, {
             shadowA = anchor.shadowA,
             lightXr = anchor.lightXr,
             -- quem recuou no piso encolhe pela perspectiva do chão
             sizeK = SceneAnchors.depthSizeK(sceneKey, width, sceneH, artCy,
-                enemyCy, WorldRoad.ENEMY_SIZE_PERSP),
+                enemyCy, WorldRoad.ENEMY_SIZE_PERSP) * GameplayScene.hallScreenK(sceneKey, width, sceneH),
         })
+        if InteriorDepth then InteriorDepth.noteBbox(enemyBbox) end
         -- clima mais próximo (neve/cinza/esporos) passa NA FRENTE do chefe
         if interiorHall then InteriorFX.drawFront(interiorHall, topBarHeight) end
     end
@@ -762,7 +784,10 @@ function GameplayScene.update(dt)
         end
         if lastInterior ~= nil and isInt ~= lastInterior then
             interiorFade = 1
-            if isInt then InteriorFX.clear() end
+            if isInt then
+                InteriorFX.clear()
+                require("src.ui.InteriorDepth").reset()
+            end
         end
         lastInterior = isInt
         if interiorFade > 0 then
