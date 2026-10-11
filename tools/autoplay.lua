@@ -2544,6 +2544,9 @@ function M.evalDeckSim(game, mutate)
             local ok, r = pcall(M.replayBattle, snap, 9100000 + fi * 101 + k * 7919
                 + (run.runSeed or 0) % 100000)
             print = realPrint
+            -- cada replay monta um Game com canvas de carta (CardFrame): sem
+            -- coletar, a bateria longa estoura a memoria e o processo morre mudo
+            if evalCounter % 8 == 0 then collectgarbage("step", 400) end
             if ok and r then
                 local loss = math.min(r.hpLost, r.maxHp)
                 if not r.won then loss = loss + 30 + 60 * (r.enemyLeft or 1) end

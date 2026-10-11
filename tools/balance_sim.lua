@@ -273,6 +273,17 @@ function M.run(runsArg, classArg, seedArg, policyArg)
     I18n.init()
     enableFullCatalog()
 
+    -- A bateria nao desenha nada: a moldura procedural de cada carta (um
+    -- canvas por instancia, refeito a cada replay da simulacao de deck)
+    -- era o maior custo de CPU e de memoria. Uma moldura unica compartilhada
+    -- mantem largura/altura validas pra geometria do CombatSequence.
+    do
+        local CardFrame = require("src.ui.CardFrame")
+        local shared = love.graphics.newCanvas(96, 144)
+        CardFrame.render = function() return shared end
+        print("[balance_sim] moldura de carta compartilhada (bateria sem render)")
+    end
+
     local Autoplay = require("tools.autoplay")
     Autoplay.policy = policy
     Autoplay.quiet = true
