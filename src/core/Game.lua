@@ -12,6 +12,7 @@ local TagSystem = require("src.systems.TagSystem")
 local ComboSystem = require("src.systems.ComboSystem")
 local ScoreSystem = require("src.systems.ScoreSystem")
 local AchievementSystem = require("src.systems.AchievementSystem")
+local UnlockSystem = require("src.systems.UnlockSystem")
 local ActSystem = require("src.systems.ActSystem")
 local Config = require("src.core.Config")
 local Sfx = require("src.systems.Sfx")
@@ -340,11 +341,17 @@ function Game:startNewRun(classId)
     self.isRunMode = true
     self.selectedClass = classId
     
+    -- Meta-progressão: migra perfil antigo ANTES de qualquer contador mudar.
+    UnlockSystem.ensure()
+    self.unlockResult = nil
+
     local runData = self.runManager:startNewRun(classId)
     self:addMessage(msg("run_started", { name = runData.className }), "success")
 
     -- Perfil persistente (menu mostra vitórias/melhor progresso).
     require("engine.ProfileStats").recordRunStart(classId)
+    -- Deck inicial conta como "visto" (Coleção) + zera pendentes da run.
+    UnlockSystem.onRunStarted(classId, runData.currentDeck)
 
     return runData
 end
@@ -362,6 +369,7 @@ function Game:addCardToRun(cardId, meta)
 
     -- F4: registro de descoberta (Bibliotecário).
     AchievementSystem.onCardSeen(self, cardId)
+    UnlockSystem.markDiscovered(cardId)
 
     -- Bifurca jokers: nunca entram no deck. Vão direto para jokerSlots
     -- + currentRun.jokers (padrão Balatro G.jokers).
@@ -1650,6 +1658,14 @@ function Game:_onEnemyDeath()
     -- F4: conquistas de batalha (turno 1, 1 HP, boss flawless, score, endless).
     AchievementSystem.onBattleWon(self)
 
+    -- Meta-progressão: chefe de ato vencido libera classe/marco NA HORA.
+    do
+        local run = self.isRunMode and self.runManager and self.runManager.currentRun
+        if run and run.currentNode and run.currentNode.type == "boss" then
+            UnlockSystem.onBossDefeated(run.actNumber, self)
+        end
+    end
+
     -- Aftershock coreografado via EventManager: 2 tremores menores pós-morte
     -- (sensação de corpo caindo). Exemplo canônico de sequência temporal
     -- sem state machine dedicada.
@@ -1964,12 +1980,28 @@ function Game:checkGameOver()
             -- Perfil: registra a derrota UMA vez (mesmo guard do save).
             local run = self.runManager.currentRun
             local PS = require("engine.ProfileStats")
+            -- Meta-progressão ANTES do recordDefeat (que mexe no perfil).
+            self.unlockResult = UnlockSystem.onRunEnded(self:_unlockSummary(false))
             PS.recordDefeat(run and run.actNumber, run and run.floorInAct)
             PS.updateBestScore(self.score)
         end
         return true
     end
     return false
+end
+
+-- Resumo da run pro UnlockSystem.onRunEnded (XP de maestria + marcos).
+function Game:_unlockSummary(victory)
+    local run = self.runManager and self.runManager.currentRun or {}
+    return {
+        classId = run.classId or self.selectedClass,
+        victory = victory and true or false,
+        actNumber = run.actNumber or 1,
+        floorInAct = run.floorInAct or 1,
+        endlessMode = run.endlessMode or false,
+        floorsInEndless = run.floorsInEndless or 0,
+        score = self.score or 0,
+    }
 end
 
 function Game:checkVictory()
@@ -1990,6 +2022,8 @@ function Game:checkVictory()
             if not self._victoryRecorded then
                 self._victoryRecorded = true
                 local PS = require("engine.ProfileStats")
+                -- Meta-progressão ANTES do recordVictory (que mexe no perfil).
+                self.unlockResult = UnlockSystem.onRunEnded(self:_unlockSummary(true))
                 PS.recordVictory(run.actNumber, run.floorInAct, run.classId or self.selectedClass)
                 PS.updateBestScore(self.score)
                 -- F4: conquistas de vitória (deck, classes, restrições).

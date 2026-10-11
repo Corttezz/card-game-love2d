@@ -37,6 +37,7 @@ local SUITES = {
     { group = "unit",  name = "test_upgrade_tile" },
     { group = "unit",  name = "test_status_pills" },
     { group = "unit",  name = "test_input_focus" },
+    { group = "unit",  name = "test_unlocks" },
     { group = "valid", name = "check_event_i18n" },
     { group = "valid", name = "audit_feedback" },
     -- Smoke de sistema (pré-existentes)

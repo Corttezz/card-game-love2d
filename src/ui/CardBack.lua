@@ -86,6 +86,12 @@ local function loadBackImage()
     return _img
 end
 
+-- Imagem do verso (nil se o PNG não existir) — quem precisa compor o verso
+-- num canvas próprio (Coleção: carta não descoberta) usa direto.
+function CardBack.getImage()
+    return loadBackImage()
+end
+
 function CardBack.reload()
     _img = nil
     _triedLoad = false

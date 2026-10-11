@@ -946,4 +946,48 @@ return {
         rogue_leech_blade       = { name = "Blutegel-Klinge",        desc = "Verursacht {atk} Schaden. Heilt {value} LP beim Angriff." },
         rogue_toxin_master      = { name = "Giftmeister",            desc = "Jeder Angriff wendet {stacks} Gift fuer {duration} Zuege an." },
     },
+
+    -- Meta-progressão (UnlockSystem — frente progressão, Out/2026).
+    -- NÃO confundir com `unlock.class.*` (requisitos de classe, frente classes).
+    unlocks = {
+        toast_class = "NEUE KLASSE FREIGESCHALTET: {name}!",
+        toast_card  = "KARTE FREIGESCHALTET: {name}",
+        locked       = "GESPERRT",
+        undiscovered = "UNENTDECKT",
+        discovered_count = "{n}/{total} entdeckt",
+        hint = {
+            mastery      = "{class}-Meisterschaft, Stufe {level}",
+            act_cleared  = "Besiege den Boss von Akt {act}",
+            reach_act    = "Erreiche Akt {act}",
+            victory      = "Gewinne eine Reise",
+            undiscovered = "Finde sie auf einer Reise",
+        },
+        reveal = {
+            title     = "MEISTERSCHAFT: {class}",
+            level     = "STUFE {level}",
+            max       = "MAXIMALE MEISTERSCHAFT",
+            xp        = "+{xp} EP",
+            new_cards = "NEUE KARTEN",
+            new_class = "NEUE KLASSE",
+            none      = "Spiel weiter, um mehr Karten freizuschalten.",
+            level_up  = "STUFE AUFGESTIEGEN!",
+        },
+        bundle = {
+            warrior_1 = "Dornenwall",
+            warrior_2 = "Blutdurst",
+            warrior_3 = "Berserkerwut",
+            warrior_4 = "Feuer und Erschoepfung",
+            warrior_5 = "Daemonengestalt",
+            mage_1 = "Eissturm",
+            mage_2 = "Lebender Donner",
+            mage_3 = "Dunkle Ernte",
+            mage_4 = "Arkane Spaltung",
+            mage_5 = "Erzmagier",
+            rogue_1 = "Phiolen und Gifte",
+            rogue_2 = "Tausend Schnitte",
+            rogue_3 = "Schattentanz",
+            rogue_4 = "Hinrichtung",
+            rogue_5 = "Giftmeister",
+        },
+    },
 }

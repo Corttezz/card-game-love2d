@@ -946,4 +946,48 @@ return {
         rogue_leech_blade       = { name = "Lame Sangsue",           desc = "Inflige {atk} degats. Soigne {value} PV en attaquant." },
         rogue_toxin_master      = { name = "Maitre des Toxines",     desc = "Chaque attaque applique {stacks} Poison pendant {duration} tours." },
     },
+
+    -- Meta-progressão (UnlockSystem — frente progressão, Out/2026).
+    -- NÃO confundir com `unlock.class.*` (requisitos de classe, frente classes).
+    unlocks = {
+        toast_class = "NOUVELLE CLASSE DEBLOQUEE : {name} !",
+        toast_card  = "CARTE DEBLOQUEE : {name}",
+        locked       = "VERROUILLEE",
+        undiscovered = "NON DECOUVERTE",
+        discovered_count = "{n}/{total} decouvertes",
+        hint = {
+            mastery      = "Maitrise {class}, niveau {level}",
+            act_cleared  = "Battez le boss de l'Acte {act}",
+            reach_act    = "Atteignez l'Acte {act}",
+            victory      = "Remportez un voyage",
+            undiscovered = "Trouvez-la pendant un voyage",
+        },
+        reveal = {
+            title     = "MAITRISE : {class}",
+            level     = "NIVEAU {level}",
+            max       = "MAITRISE MAXIMALE",
+            xp        = "+{xp} XP",
+            new_cards = "NOUVELLES CARTES",
+            new_class = "NOUVELLE CLASSE",
+            none      = "Continuez a jouer pour debloquer plus de cartes.",
+            level_up  = "NIVEAU SUPERIEUR !",
+        },
+        bundle = {
+            warrior_1 = "Mur d'Epines",
+            warrior_2 = "Soif de Sang",
+            warrior_3 = "Furie du Berserker",
+            warrior_4 = "Feu et Epuisement",
+            warrior_5 = "Forme Demoniaque",
+            mage_1 = "Tempete de Glace",
+            mage_2 = "Tonnerre Vivant",
+            mage_3 = "Moisson Sombre",
+            mage_4 = "Fission Arcanique",
+            mage_5 = "Archimage",
+            rogue_1 = "Fioles et Toxines",
+            rogue_2 = "Mille Coupures",
+            rogue_3 = "Danse des Ombres",
+            rogue_4 = "Execution",
+            rogue_5 = "Maitre des Poisons",
+        },
+    },
 }

@@ -17,6 +17,8 @@ local CardFrame    = require("src.ui.CardFrame")
 local CardMesh     = require("src.ui.CardMesh")
 local I18n         = require("src.i18n.I18n")
 local Sfx          = require("src.systems.Sfx")
+local UnlockSystem = require("src.systems.UnlockSystem")
+local CardBack     = require("src.ui.CardBack")
 
 local CollectionScreen = {}
 CollectionScreen.__index = CollectionScreen
@@ -97,11 +99,18 @@ function CollectionScreen:_buildInstances(budgetSecs)
         self._buildIdx = self._buildIdx + 1
         local cd = self._buildList[self._buildIdx]
         local db = self._buildDb
-        local ok, instance = pcall(function() return db:createCardInstance(cd) end)
-        if ok and instance then
-            self.cardInstances[#self.cardInstances + 1] = instance
+        if not UnlockSystem.isCardDiscovered(cd.id) then
+            -- NÃO DESCOBERTA (Balatro): ocupa o slot mas aparece como verso
+            -- "?". Stub leve — nem compõe o canvas da carta (que o jogador
+            -- não vai ver), o que também barateia a abertura da tela.
+            self.cardInstances[#self.cardInstances + 1] = self:_makeHidden(cd)
         else
-            print("[CollectionScreen] falha ao instanciar carta: " .. tostring(cd.id))
+            local ok, instance = pcall(function() return db:createCardInstance(cd) end)
+            if ok and instance then
+                self.cardInstances[#self.cardInstances + 1] = instance
+            else
+                print("[CollectionScreen] falha ao instanciar carta: " .. tostring(cd.id))
+            end
         end
         if (love.timer.getTime() - t0) >= budget then break end
     end
@@ -113,6 +122,37 @@ function CollectionScreen:_buildInstances(budgetSecs)
     end
     -- mantém grid/scroll coerentes com a lista parcial que cresce
     self:_applyFilter()
+end
+
+function CollectionScreen:_makeHidden(cd)
+    return {
+        id = cd.id, name = cd.name, class = cd.class, type = cd.type,
+        rarity = cd.rarity, _hidden = true,
+        _locked = not UnlockSystem.isCardUnlockedReal(cd.id),
+    }
+end
+
+-- Reabrir a Coleção depois de uma run: o que foi descoberto nesse meio-tempo
+-- vira carta de verdade (e o que estava liberado-mas-oculto atualiza o selo).
+function CollectionScreen:_refreshDiscovery()
+    if not self._buildDone then return end
+    local db
+    for i, inst in ipairs(self.cardInstances) do
+        if inst._hidden then
+            if UnlockSystem.isCardDiscovered(inst.id) then
+                db = db or CardDatabase:new()
+                local cd = db:getCard(inst.id)
+                local ok, real = pcall(function() return db:createCardInstance(cd) end)
+                if ok and real then
+                    self.cardInstances[i] = real
+                else
+                    print("[CollectionScreen] falha ao revelar carta: " .. tostring(inst.id))
+                end
+            else
+                inst._locked = not UnlockSystem.isCardUnlockedReal(inst.id)
+            end
+        end
+    end
 end
 
 function CollectionScreen:_applyFilter()
@@ -131,6 +171,12 @@ function CollectionScreen:_applyFilter()
         end
         if match then self.filtered[#self.filtered + 1] = inst end
     end
+    -- Contador "x/y descobertas" da aba (calculado aqui, não no draw).
+    local disc = 0
+    for _, inst in ipairs(self.filtered) do
+        if not inst._hidden then disc = disc + 1 end
+    end
+    self.discoveredCount = disc
     -- Recalcula scroll máximo
     local rows = math.ceil(#self.filtered / COLS)
     local contentH = rows * (CARD_H + GAP_Y)
@@ -145,6 +191,7 @@ function CollectionScreen:show(onClose)
     self.onCloseCallback = onClose
     -- 1ª leva um pouco maior (preenche o que está na tela de cara);
     -- o resto flui no update sem travar
+    self:_refreshDiscovery()
     self:_buildInstances(0.012)
     self:_applyFilter()
 end
@@ -161,7 +208,11 @@ end
 -- gridOrigin/cardRect calculam dinamicamente da window size a cada frame, então
 -- o CollectionScreen já é responsivo sem cache de layout. resize() é stub
 -- pra contrato uniforme com outras overlay screens.
-function CollectionScreen:resize() end
+function CollectionScreen:resize()
+    -- O canvas do verso "?" perde o conteúdo em setMode: recompõe sob demanda.
+    self._mysteryCanvas = nil
+    self:_applyFilter()
+end
 
 -- ===== Layout helpers =====
 
@@ -257,7 +308,12 @@ function CollectionScreen:_inspectNeighbor(delta)
         if inst == self.inspectedCard then idx = i; break end
     end
     if not idx then return end
-    local newIdx = ((idx - 1 + delta) % #self.filtered) + 1
+    local n = #self.filtered
+    local newIdx = idx
+    for _ = 1, n do
+        newIdx = ((newIdx - 1 + delta) % n) + 1
+        if not self.filtered[newIdx]._hidden then break end
+    end
     self.inspectedCard = self.filtered[newIdx]
     self.inspectAnim = 0.3 -- leve "pop" ao trocar
 end
@@ -376,7 +432,11 @@ function CollectionScreen:mousereleased(x, y, button)
     elseif self._dragPendingIdx then
         -- Só click (sem drag) → abre modal de inspeção, como era antes
         local inst = self.filtered[self._dragPendingIdx]
-        if inst then
+        if inst and inst._hidden then
+            -- Carta não descoberta não abre zoom (não há o que mostrar); a
+            -- dica de como liberar já está no tooltip do hover.
+            Sfx.play("buttonClick", { pitch = 0.7 })
+        elseif inst then
             Sfx.play("collectionFlip")
             self.inspectedCard = inst
             self.inspectAnim = 0
@@ -413,7 +473,8 @@ local function drawTitleAndFilters(self)
     -- Subtítulo: count
     local subFont = FontManager.getFont(14)
     love.graphics.setFont(subFont)
-    local sub = I18n.t("collection.count", { n = #self.filtered })
+    local sub = I18n.t("unlocks.discovered_count",
+        { n = self.discoveredCount or #self.filtered, total = #self.filtered })
     love.graphics.setColor(Palette.PARCHMENT_LIGHT)
     love.graphics.print(sub, (width - subFont:getWidth(sub)) / 2, 50)
 
@@ -501,7 +562,10 @@ local function drawCardMini(instance, x, y, hoverScale, alpha, mouseUV, hoverStr
     local py = math.floor(cy - drawH / 2)
 
     -- Desenha sombra (pode usar mesh pra acompanhar warp)
-    local shader = CardMesh.getShader()
+    -- Perf (Out/2026): em repouso (hoverStrength 0) o warp é IDENTIDADE —
+    -- o vertex shader não move nada e o fragment é passthrough. Pular shader+
+    -- mesh+uniforms nas cartas paradas tira ~30 shader switches por frame.
+    local shader = (hoverStrength > 0.001) and CardMesh.getShader() or nil
     local timeNow = love.timer.getTime()
     if shader then
         local mesh = CardMesh.getMesh(instance.image:getWidth(), instance.image:getHeight())
@@ -537,9 +601,97 @@ local function drawCardMini(instance, x, y, hoverScale, alpha, mouseUV, hoverStr
     instance.image = _prevImage
 end
 
+-- Verso da carta NÃO DESCOBERTA, composto UMA vez num canvas 96×144 (mesma
+-- resolução do canvas da carta → mesma escala/nitidez no grid). Plain draw no
+-- grid, sem shader: em repouso o warp é identidade.
+local function getMysteryCanvas(self)
+    if self._mysteryCanvas then return self._mysteryCanvas end
+    local W, H = CardFrame.WIDTH, CardFrame.HEIGHT
+    local c = love.graphics.newCanvas(W, H)
+    c:setFilter("nearest", "nearest")
+    love.graphics.push("all")
+    love.graphics.origin()
+    -- O 1º uso acontece DENTRO do scissor do grid: sem limpar, o recorte de
+    -- tela vale também pro canvas e o verso sai cortado.
+    love.graphics.setScissor()
+    love.graphics.setShader()
+    love.graphics.setCanvas(c)
+    love.graphics.clear(0, 0, 0, 0)
+    local img = CardBack.getImage()
+    if img then
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.draw(img, 0, 0, 0, W / img:getWidth(), H / img:getHeight())
+    else
+        print("[CollectionScreen] verso da carta ausente (assets/cards/back.png) — usando fallback chapado")
+        love.graphics.setColor(Palette.INK)
+        love.graphics.rectangle("fill", 0, 0, W, H)
+        love.graphics.setColor(Palette.AGED_GOLD)
+        love.graphics.rectangle("line", 1.5, 1.5, W - 3, H - 3)
+    end
+    -- Véu escuro + "?" dourado no centro.
+    love.graphics.setColor(Palette.INK[1], Palette.INK[2], Palette.INK[3], 0.45)
+    love.graphics.rectangle("fill", 0, 0, W, H)
+    local f = FontManager.getFont(32)
+    love.graphics.setFont(f)
+    local q = "?"
+    local qx = math.floor((W - f:getWidth(q)) / 2)
+    local qy = math.floor((H - f:getHeight()) / 2)
+    love.graphics.setColor(0, 0, 0, 0.8)
+    love.graphics.print(q, qx + 2, qy + 2)
+    love.graphics.setColor(Palette.AGED_GOLD_LIGHT)
+    love.graphics.print(q, qx, qy)
+    love.graphics.pop()
+    self._mysteryCanvas = c
+    return c
+end
+
+local function drawMystery(self, inst, x, y, hoverScale)
+    local img = getMysteryCanvas(self)
+    local drawScale = (CARD_W / img:getWidth()) * hoverScale
+    local drawW, drawH = img:getWidth() * drawScale, img:getHeight() * drawScale
+    local lift = (hoverScale - 1) * 30
+    local px = math.floor(x + CARD_W / 2 - drawW / 2)
+    local py = math.floor(y + CARD_H / 2 - lift - drawH / 2)
+    love.graphics.setColor(0, 0, 0, 0.45)
+    love.graphics.draw(img, px + 4, py + 7, 0, drawScale, drawScale)
+    -- Bloqueada = mais apagada que a liberada-mas-não-vista: o jogador lê de
+    -- relance o que já pode cair numa run e o que ainda depende de maestria.
+    local k = inst._locked and 0.55 or 0.9
+    love.graphics.setColor(k, k, k, 1)
+    love.graphics.draw(img, px, py, 0, drawScale, drawScale)
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+local function drawHiddenTooltip(self, inst)
+    local TIP_W, TIP_H, PAD = 300, 110, 10
+    local cx = self.hoverCard.x + CARD_W + 10
+    local cy = self.hoverCard.y
+    if cx + TIP_W > love.graphics.getWidth() then cx = self.hoverCard.x - TIP_W - 10 end
+    if cx < 0 then cx = 0 end
+    if cy + TIP_H > love.graphics.getHeight() then cy = love.graphics.getHeight() - TIP_H - 10 end
+    PixelCanvas.rect(cx, cy, TIP_W, TIP_H, Palette.PANEL_FILL)
+    PixelCanvas.rectOutline(cx, cy, TIP_W, TIP_H, Palette.AGED_GOLD)
+    PixelCanvas.rectOutline(cx + 2, cy + 2, TIP_W - 4, TIP_H - 4, Palette.AGED_GOLD_DARK)
+    local nameFont = FontManager.getFont(12)
+    love.graphics.setFont(nameFont)
+    Palette.set(Palette.AGED_GOLD_LIGHT)
+    love.graphics.print("???", cx + PAD, cy + PAD)
+    local metaFont = FontManager.getFont(10)
+    love.graphics.setFont(metaFont)
+    if inst._locked then Palette.set(Palette.BLOOD) else Palette.set(Palette.PARCHMENT) end
+    love.graphics.print(I18n.t(inst._locked and "unlocks.locked" or "unlocks.undiscovered"),
+        cx + PAD, cy + PAD + 24)
+    local key, vars = UnlockSystem.getCardHint(inst.id)
+    local descFont = FontManager.getFont(8)
+    love.graphics.setFont(descFont)
+    Palette.set(Palette.PARCHMENT_LIGHT)
+    love.graphics.printf(I18n.t(key, vars), cx + PAD, cy + PAD + 46, TIP_W - PAD * 2)
+end
+
 local function drawHoverTooltip(self)
     if not self.hoverCard then return end
     local inst = self.hoverCard.instance
+    if inst._hidden then return drawHiddenTooltip(self, inst) end
 
     local TIP_W = 320
     local TIP_H = 180
@@ -871,8 +1023,12 @@ function CollectionScreen:draw()
         if i ~= self._draggingIdx and i ~= hoveringIdx then
             local anim = self._cardAnim[inst]
             if anim and anim.ry + CARD_H >= TOP_OFFSET and anim.ry <= height - BOTTOM_PAD then
-                -- Cards não-hover: sem warp (mouseUV zero, hoverStrength zero)
-                drawCardMini(inst, anim.rx, anim.ry, anim.hs, 1, { 0, 0 }, 0)
+                if inst._hidden then
+                    drawMystery(self, inst, anim.rx, anim.ry, anim.hs)
+                else
+                    -- Cards não-hover: sem warp (mouseUV zero, hoverStrength zero)
+                    drawCardMini(inst, anim.rx, anim.ry, anim.hs, 1, { 0, 0 }, 0)
+                end
             end
         end
     end
@@ -883,9 +1039,13 @@ function CollectionScreen:draw()
         local inst = self.filtered[hoveringIdx]
         local anim = self._cardAnim[inst]
         if anim then
-            local uv = computeMouseUV(anim)
-            local str = hoverStrFromScale(anim.hs)
-            drawCardMini(inst, anim.rx, anim.ry, anim.hs, 1, uv, str)
+            if inst._hidden then
+                drawMystery(self, inst, anim.rx, anim.ry, anim.hs)
+            else
+                local uv = computeMouseUV(anim)
+                local str = hoverStrFromScale(anim.hs)
+                drawCardMini(inst, anim.rx, anim.ry, anim.hs, 1, uv, str)
+            end
         end
     end
 
@@ -893,7 +1053,9 @@ function CollectionScreen:draw()
     if self._draggingIdx then
         local inst = self.filtered[self._draggingIdx]
         local anim = self._cardAnim[inst]
-        if anim and inst then
+        if anim and inst and inst._hidden then
+            drawMystery(self, inst, anim.rx, anim.ry, anim.hs)
+        elseif anim and inst then
             drawCardMini(inst, anim.rx, anim.ry, anim.hs, 0.95, { 0, 0 }, 0)
         end
     end

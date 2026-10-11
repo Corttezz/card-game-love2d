@@ -135,6 +135,24 @@ function ProfileStats.flush()
     save()
 end
 
+-- SÓ TESTES: troca o perfil em memória (nil = recarrega do disco no próximo
+-- get). Devolve o anterior pra o teste restaurar. Nada vai pro disco
+-- (save() já é no-op sob _G.HEADLESS_TOOL).
+function ProfileStats._swapForTests(tbl)
+    local prev = cache
+    cache = tbl
+    if tbl then
+        tbl.achievements = tbl.achievements or {}
+        tbl.counters = tbl.counters or {}
+        tbl.cardsSeen = tbl.cardsSeen or {}
+        tbl.winsByClass = tbl.winsByClass or {}
+        for k, v in pairs(DEFAULTS) do
+            if tbl[k] == nil and type(v) ~= "table" then tbl[k] = v end
+        end
+    end
+    return prev
+end
+
 -- true se há qualquer histórico (menu decide se mostra a plaque de perfil).
 function ProfileStats.hasHistory()
     return load().runs > 0
