@@ -109,6 +109,14 @@ end
 
 function InputFocus.count() return #overlays end
 
+-- O combate congela? Sim quando há um MODAL (que captura eventos) aberto
+-- sobre a luta: pausa, configurações, deck, coringas, roteiro. Cobertura
+-- (keepChrome) não conta — ela nunca aparece durante "playing".
+function InputFocus.freezesCombat(state)
+    if state ~= "playing" then return false end
+    return InputFocus.captor() ~= nil
+end
+
 -- Fecha TODO overlay registrado que estiver visível (do topo pra base).
 -- Usado ao voltar pro menu: uma cobertura esquecida visível (descanso,
 -- evento, mapa, cash out) tomava o foco e o menu inteiro ficava sem hover nem

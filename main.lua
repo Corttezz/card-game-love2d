@@ -1819,9 +1819,15 @@ function love.update(dt)
     IF.push(IF.CHROME)
     if topBar and game then topBar:update(dt, game) end
     IF.pop()
+    -- PAUSA DE VERDADE: com um modal aberto (pausa, configurações, deck,
+    -- coringas, roteiro) NO COMBATE, o combate congela. Antes o turno do
+    -- inimigo seguia rodando atrás do menu — dava pra morrer com a pausa
+    -- aberta (e "Salvar e sair" gravava o morto). O relógio do combate é o
+    -- EventManager (beats, eases, compra) + o GameplayScene.update.
+    local combatFrozen = IF.freezesCombat(currentState)
     -- Infra global (antes do dispatch de estado): event queue, particles,
     -- flash fade, screen shake decay.
-    EventManager.update(dt)
+    if not combatFrozen then EventManager.update(dt) end
     FloatingText.update(dt)
     require("src.ui.CoinBurst").update(dt)
     if audioSystem then audioSystem:update(dt) end
@@ -1847,7 +1853,7 @@ function love.update(dt)
     elseif currentState == "menu" then
         menu:update(dt)
     elseif currentState == "playing" then
-        GameplayScene.update(dt)
+        if not combatFrozen then GameplayScene.update(dt) end
     elseif currentState == "classSelection" then
         classSelectionScreen:update(dt)
     elseif currentState == "cardReward" then

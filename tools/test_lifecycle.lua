@@ -161,6 +161,16 @@ function M.run()
         t:falsy("cobertura (descanso) fechada", a:isVisible())
         t:falsy("modal (pausa) fechada", b:isVisible())
         t:eq("sem tela visivel, o foco volta pro menu", IF.activeName(), nil)
+
+        -- "Morri com o menu de pausa aberto": modal sobre a luta CONGELA o combate.
+        b.v = true
+        t:truthy("pausa aberta na luta congela o combate", IF.freezesCombat("playing"))
+        t:falsy("pausa fora da luta nao congela nada", IF.freezesCombat("mapSelection"))
+        b.v = false
+        t:falsy("pausa fechada: o combate segue", IF.freezesCombat("playing"))
+        a.v = true
+        t:falsy("cobertura (descanso) nao congela a luta", IF.freezesCombat("playing"))
+        a.v = false
         IF.clear()
     end
 
