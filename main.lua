@@ -629,6 +629,12 @@ function love.load(loveArgs)
         require("tools.screenshot_resume_boss").run(loveArgs[2])
         return
     end
+    -- Galeria interativa das salas de chefe (1-6 / setas troca o ato).
+    --   love . boss_rooms [ato]
+    if loveArgs and loveArgs[1] == "boss_rooms" then
+        require("tools.boss_rooms").run(loveArgs[2])
+        return
+    end
     if loveArgs and loveArgs[1] == "screenshot_worldroad" then
         require("tools.screenshot_worldroad").run(loveArgs[2])
         return
