@@ -473,26 +473,13 @@ function GameplayScene.draw()
     -- bar), o hall desenha em tela cheia — a ancora tem que usar a MESMA
     -- caixa que o desenho usou, senao o pe sai da laje.
     local sceneKey, sceneH = nil, height
+    local interiorHall = nil
     if interior then
-        -- Salão do chefe por ato. Só existem 3 PNGs (castle_hall_1..3) e a
-        -- campanha tem 6 atos desde Set/2026, então os atos novos REUSAM o
-        -- v11: cada ato tem o SEU salão (1..6). O reuso por clima que morava
-        -- aqui (4→1, 5→2, 6→3) era paliativo e o dono pegou jogando: "o
-        -- cenário do boss de alguns atos está igual o do primeiro ato".
-        -- O fallback fica só como rede pra ato sem arte, e AVISA.
-        local hallAct = currentAct
-        if not love.filesystem.getInfo(
-            "assets/sprites/scenes/castle_hall_" .. hallAct .. ".png") then
-            if not GameplayScene._avisouHall then
-                GameplayScene._avisouHall = {}
-            end
-            if not GameplayScene._avisouHall[hallAct] then
-                GameplayScene._avisouHall[hallAct] = true
-                print(("[cena] sem castle_hall_%d.png — caindo no salão %d")
-                    :format(hallAct, math.min(3, hallAct)))
-            end
-            hallAct = math.min(3, hallAct)
-        end
+        -- Salão do chefe por ato (1..6). A escolha do salão — e o aviso de
+        -- ato sem arte — mora em InteriorFX.hallFor: draw e update perguntam
+        -- ao MESMO lugar (a v1 tickava as brasas com min(3, ato) e desenhava
+        -- o salão real: nos atos 4-6 as brasas saíam da lava do hall 3).
+        local hallAct = InteriorFX.hallFor(currentAct)
         local drawn = SceneBackground.draw("castle_hall_" .. hallAct,
             width, height, 0.15)
         sceneKey = "castle_hall_" .. hallAct
@@ -502,8 +489,10 @@ function GameplayScene.draw()
             sceneH = height - topBarHeight
             SceneLayer.draw(0, topBarHeight, width, height - topBarHeight, currentAct)
         else
-            -- tochas/brasas vivas do hall (glow pulsante + partículas)
+            -- luz nas chamas pintadas, névoa no chão, vinheta e partículas
+            -- de trás — tudo ATRÁS do chefe (ver InteriorFX)
             InteriorFX.draw(hallAct)
+            interiorHall = hallAct
         end
     elseif GameplayScene.SCENE_MODE == "worldroad" then
         -- Endless: biomas extras (4+) ciclam a cada 8 andares via currentFloor
@@ -570,6 +559,8 @@ function GameplayScene.draw()
             sizeK = SceneAnchors.depthSizeK(sceneKey, width, sceneH, artCy,
                 enemyCy, WorldRoad.ENEMY_SIZE_PERSP),
         })
+        -- clima mais próximo (neve/cinza/esporos) passa NA FRENTE do chefe
+        if interiorHall then InteriorFX.drawFront(interiorHall) end
     end
 
     -- LightEngine v1: composite multiply do lightmap sobre mundo+inimigo,
@@ -767,7 +758,7 @@ function GameplayScene.update(dt)
             and not (GameplayScene.SCENE_MODE == "worldroad"
                      and WorldRoad.isEntering())
         if isInt then
-            InteriorFX.update(dt, math.min(3, (runU and runU.actNumber) or 1))
+            InteriorFX.update(dt, InteriorFX.hallFor((runU and runU.actNumber) or 1))
         end
         if lastInterior ~= nil and isInt ~= lastInterior then
             interiorFade = 1

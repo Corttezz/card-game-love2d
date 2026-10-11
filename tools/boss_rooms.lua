@@ -3,7 +3,9 @@
 -- pelo caminho real de desenho (GameplayScene.draw), já depois da cerimônia
 -- da porta. Mesma montagem do screenshot_enemy_scene, mas ao vivo.
 --
---   love . boss_rooms [ato]
+--   love . boss_rooms [ato|shots]
+--   BOSS_ROOMS_SIZE=1920x1080 love . boss_rooms shots   (tamanho da janela:
+--   o cover-fit corta a arte diferente em 4:3 e em 16:9 — confira os dois)
 --
 --   1-6 / ← →  troca de ato (sala + chefe)
 --   H          animação de dano     K  animação de morte (J reaparece)
@@ -30,13 +32,24 @@ function M.run(startAct)
     _G.EventManager = _G.EventManager or require("engine.EventManager")
     _G.Event = _G.Event or require("engine.Event")
 
+    -- UM setMode só, antes de montar (setMode repetido dentro de tool trava)
+    local sw, sh = (os.getenv("BOSS_ROOMS_SIZE") or ""):match("^(%d+)x(%d+)$")
+    if sw then love.window.setMode(tonumber(sw), tonumber(sh)) end
+
     local total = Config.TotalActs or 6
     local shots = (startAct == "shots")   -- verificação: captura os 6 e sai
     local act = math.max(1, math.min(total, tonumber(startAct) or 1))
     local frames = 0
+    local pendingKey = nil
 
     local function mount(a)
         act = a
+        -- Linha do tempo NOVA pra cada sala. A fila de eventos é global e
+        -- sobrevive ao Game antigo: trocar de ato antes da mão terminar de
+        -- materializar (ou depois de H/K) deixava eventos órfãos da sala
+        -- anterior na frente, e as cartas da mão nova nasciam invisíveis
+        -- (dissolve=1) — "a mão só aparece no ato 1".
+        _G.EventManager.clear()
         local game = Game:new()
         game:startNewRun("warrior")
         game:startGame()
@@ -72,10 +85,16 @@ function M.run(startAct)
 
     love.update = function(dt)
         dt = math.min(dt, 1 / 20)
+        if pendingKey then
+            local k = pendingKey
+            pendingKey = nil
+            love.keypressed(k)
+            frames = 0
+        end
         if _G.EventManager.update then _G.EventManager.update(dt) end
         WorldRoad.update(dt)
         EnemyRenderer.update(dt)
-        InteriorFX.update(dt, math.min(3, act))
+        InteriorFX.update(dt, InteriorFX.hallFor(act))
         if _G.game and _G.game.update then pcall(_G.game.update, _G.game, dt) end
         frames = frames + 1
     end
@@ -92,13 +111,14 @@ function M.run(startAct)
         love.graphics.rectangle("fill", 0, y - 6, font:getWidth(label) + 24, font:getHeight() + 12)
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.print(label, 12, y)
-        if shots and frames >= 90 then
+        if shots and frames >= 120 then
             frames = -1e9
             local a = act
             love.graphics.captureScreenshot(function(img)
                 img:encode("png", "boss_room_" .. a .. ".png")
                 print("[boss_rooms] salvo boss_room_" .. a .. ".png")
-                if a >= total then love.event.quit() else mount(a + 1); frames = 0 end
+                -- troca pelo MESMO caminho da tecla (é ele que o dono usa)
+                if a >= total then love.event.quit() else pendingKey = tostring(a + 1) end
             end)
         end
     end

@@ -347,7 +347,7 @@ Validação visual v3.2 PENDENTE: rodar `love . screenshot_worldroad travel`
   1.33) — se compor algo importante nas bordas do hall, some. Gerar 340×256
   se incomodar.
 - Elite em interior pode cansar (elite é frequente) — talvez só boss/mini_boss.
-- Endless (bioma 4-6) usa castle_hall_<min(act,3)> = sempre o do ato 3.
+- ~~Endless (bioma 4-6) usa castle_hall_<min(act,3)>~~ — superado: cada ato tem o seu salão (ver [[boss_halls]]).
 - CRTShader por cima de tudo suaviza o pixel do interior — conferir com CRT on.
 
 ## Loop infinito de melhoria (ciclos autônomos — Jul/04 noite)

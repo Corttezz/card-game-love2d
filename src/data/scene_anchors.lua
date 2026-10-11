@@ -55,10 +55,11 @@ SceneAnchors.DEFAULT = {
 }
 
 SceneAnchors.BY_SCENE = {
-    -- ATO 1 — salão de pedra clara. Piso pálido do fundo (após os degraus)
-    -- até a frente; 0.78 fica no meio da laje, sobre o tapete vermelho.
-    -- Tochas nas duas paredes + vitral ao fundo → sombra curta e definida.
-    castle_hall_1 = { xr = 0.50, yr = 0.78, backYr = 0.70,
+    -- ATO 1 — salão do rei-carniça (arte nova, Out/2026). O lajedo começa na
+    -- soleira do vão âmbar (~0.70); 0.78 cai no tapete vermelho, e o recuo
+    -- para em 0.72 — um passo À FRENTE da soleira, nunca dentro do vão.
+    -- Seis arandelas nas colunas + vão claro ao fundo → sombra definida.
+    castle_hall_1 = { xr = 0.50, yr = 0.78, backYr = 0.72,
                       shadowA = 1.00, lightXr = 0.5, lightBehind = true },
 
     -- ATO 2 — catedral roxa. A laje começa BEM mais baixa que nos irmãos
@@ -67,9 +68,12 @@ SceneAnchors.BY_SCENE = {
     castle_hall_2 = { xr = 0.50, yr = 0.83, backYr = 0.83,
                       shadowA = 0.92, lightXr = 0.5, lightBehind = true },
 
-    -- ATO 3 — salão de lava. Chão alto e aberto; a luz vem DE BAIXO (as
-    -- fendas incandescentes nas laterais), então a sombra de contato é
-    -- fraca — chão que brilha não projeta sombra escura.
+    -- ATO 3 — cidadela infernal (arte nova, Out/2026): portão-caveira com
+    -- cascata de lava. A PNG gerada tinha o chão começando em 0.78 — em 16:9
+    -- o teto da mão segurava o pé do tirano acima disso, e ele pairava DENTRO
+    -- da cascata. 18 linhas da faixa vertical (pedestais/cascatas, 176-193)
+    -- foram removidas e o rodapé espelhado: o basalto agora começa em ~0.71.
+    -- A luz vem da lava (fundo e laterais) → sombra de contato fraca.
     castle_hall_3 = { xr = 0.50, yr = 0.78, backYr = 0.73,
                       shadowA = 0.45, lightXr = 0.5, lightBehind = false },
 

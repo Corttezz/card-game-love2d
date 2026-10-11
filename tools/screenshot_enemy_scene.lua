@@ -69,7 +69,7 @@ function M.run(mode)
     for _ = 1, 90 do
         WorldRoad.update(1 / 30)
         EnemyRenderer.update(1 / 30)
-        require("src.ui.InteriorFX").update(1 / 30, math.min(3, act))
+        local IFX = require("src.ui.InteriorFX"); IFX.update(1 / 30, IFX.hallFor(act))
     end
 
     love.graphics.clear(0, 0, 0, 1)

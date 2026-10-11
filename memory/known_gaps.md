@@ -259,6 +259,10 @@ nao compensa. Se for regerar, o alvo e: vao claro atras do CORPO **e** trono
 visivel ACIMA DA CABECA (fora da linha do corpo), com a laje comecando em
 ~0.72 pra manter yr 0.78.
 
+**RESOLVIDO (Out/2026):** hall 3 regerado sem trono — portão-caveira ACIMA da
+cabeça e cascata de lava clara atrás do corpo; chão ajustado pra ~0.71. Ver
+[[boss_halls]]. O histórico abaixo fica pelo registro.
+
 **Atualizacao 3 (Set/2026) — mais duas tentativas, TODAS falharam no mesmo
 ponto; hall 3 fica como esta.** O alvo era juntar as tres coisas de uma vez:
 vao claro atras do CORPO, trono ACIMA DA CABECA (fora de x 0.375-0.625 /
