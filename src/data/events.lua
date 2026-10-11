@@ -83,9 +83,13 @@ Events.POOL = {
                   -- Tenta até 5 vezes pegar uma carta que ainda não bateu o cap;
                   -- senão cancela com mensagem (com cap 0/infinito passa de primeira).
                   for _ = 1, 5 do
-                      local entry = deck[Rng.get():random("event", #deck)]
+                      local idx = Rng.get():random("event", #deck)
+                      local entry = deck[idx]
                       local picked = type(entry) == "table" and entry.id or entry
-                      local lvl = game.runManager:upgradeCard(picked)
+                      -- POR CÓPIA (upgradeCardAt): pelo id, a forja ia pra
+                      -- cópia de menor nível daquele id, não pra sorteada
+                      -- (CLAUDE.md: "A FORJA É POR CÓPIA, NÃO POR ID").
+                      local lvl = game.runManager:upgradeCardAt(idx)
                       if lvl then
                           return T("bigorna_antiga", "r_forged",
                               { name = I18n.cardName(picked), lvl = lvl },

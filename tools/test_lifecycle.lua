@@ -161,6 +161,24 @@ function M.run()
         es:hide()
     end
 
+    -- 7b2. Bigorna forja a CÓPIA sorteada (forja é por cópia, não por id).
+    do
+        local Events = require("src.data.events")
+        local anvil = Events.get("bigorna_antiga").options[1]
+        local hitHigh = false
+        for seed = 1, 12 do
+            TK.seedRng(seed)
+            local g = TK.newRunGame("warrior")
+            local run = g.runManager.currentRun
+            local id = (type(run.currentDeck[1]) == "table") and run.currentDeck[1].id or run.currentDeck[1]
+            run.currentDeck = { { id = id, up = 2 }, { id = id, up = 0 } }
+            anvil.apply(g)
+            if g.runManager:getEntryLevel(run.currentDeck[1]) == 3 then hitHigh = true end
+        end
+        t:truthy("bigorna as vezes forja a copia JA forjada (sorteio por copia, nao 'a de menor nivel do id')", hitHigh)
+        TK.seedRng(20261010)
+    end
+
     -- 7c. "Comprei a Forja, apertei Voltar e perdi o ouro."
     do
         local g = TK.newRunGame("warrior")
