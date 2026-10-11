@@ -48,6 +48,23 @@ return {
         title       = "CHOOSE YOUR ARCHETYPE",
         description = "Each path offers unique cards and tactics.",
         back        = "BACK TO MENU",
+        locked        = "LOCKED",
+        mastery       = "MASTERY {level}",
+        mastery_max   = "MAX MASTERY",
+        hp_label      = "HP",
+        deck_label    = "DECK",
+        deck_count    = "{n} cards",
+        starter_label = "STARTING CARDS",
+        locked_hint   = "Class locked — meet the requirement to unlock it.",
+    },
+
+    -- Requisitos de liberação de classe (UnlockSystem.getClassUnlockInfo.reqKey)
+    unlock = {
+        class = {
+            default   = "Unlocked",
+            mage_req  = "Defeat the Act {act} boss",
+            rogue_req = "Complete Act {act} or win a run",
+        },
     },
 
     battle = {

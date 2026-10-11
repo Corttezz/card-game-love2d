@@ -48,6 +48,23 @@ return {
         title       = "ESCOLHA SEU ARQUETIPO",
         description = "Cada caminho oferece cartas e taticas unicas.",
         back        = "VOLTAR AO MENU",
+        locked        = "BLOQUEADA",
+        mastery       = "MAESTRIA {level}",
+        mastery_max   = "MAESTRIA MÁXIMA",
+        hp_label      = "VIDA",
+        deck_label    = "BARALHO",
+        deck_count    = "{n} cartas",
+        starter_label = "CARTAS INICIAIS",
+        locked_hint   = "Classe bloqueada — cumpra o requisito para liberar.",
+    },
+
+    -- Requisitos de liberação de classe (UnlockSystem.getClassUnlockInfo.reqKey)
+    unlock = {
+        class = {
+            default   = "Liberada",
+            mage_req  = "Vença o chefe do Ato {act}",
+            rogue_req = "Complete o Ato {act} ou vença uma jornada",
+        },
     },
 
     battle = {

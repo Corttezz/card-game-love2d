@@ -1,9 +1,16 @@
 -- components/ClassSelectionScreen.lua
--- "O Salão dos Heróis" (v2, Jul/2026 — docs/plan/class-select-v2.md).
--- Cada classe é um PERSONAGEM full-body animado (PixelLab v3, 96px) em
--- idle sobre um spotlight âmbar — StS-style. Hover dá um passo à frente;
--- clique é um MOMENTO (flash + anel + faíscas + confirma em 0.45s).
--- Fallback gracioso: sem sprites instalados, cai pro ícone antigo.
+-- "O Salão dos Emblemas" (v3, Out/2026). Cada classe é representada pelo
+-- seu OBJETO icônico — espada cravada no escudo, orbe arcano, adaga com
+-- veneno e sangue — em vez de um herói chibi (o dono achou que o boneco
+-- "abre margem para críticas"; ver memory/class_emblems.md). O emblema é
+-- o protagonista do painel, com idle procedural (src/ui/ClassEmblem.lua).
+--
+-- Padrão StS charSelect + polish Balatro:
+--   • preview de VIDA, BARALHO inicial (as cartas reais) e da PASSIVA;
+--   • classe LIBERADA mostra o nível de MAESTRIA (UnlockSystem);
+--   • classe BLOQUEADA: emblema em silhueta acorrentado, requisito escrito
+--     e barra de progresso — clicar NÃO inicia run (som de negação + tremor).
+-- Layout = ZONAS (src/ui/ClassSelectLayout.lua, com validate()).
 
 local Button = require("components.Button")
 local Config = require("src.core.Config")
@@ -16,20 +23,17 @@ local CardRegistry = require("src.systems.CardRegistry")
 local CardDatabase = require("src.systems.CardDatabase")
 local CardFrame = require("src.ui.CardFrame")
 local IconLoader = require("src.ui.IconLoader")
-local SpriteAnimation = require("src.ui.SpriteAnimation")
 local RadialGlow = require("src.ui.RadialGlow")
 local HintBar = require("src.ui.HintBar")
+local TextFit = require("src.ui.TextFit")
+local ClassEmblem = require("src.ui.ClassEmblem")
+local Layout = require("src.ui.ClassSelectLayout")
+local UnlockSystem = require("src.systems.UnlockSystem")
 local Debug = require("src.core.Debug")
 local I18n = require("src.i18n.I18n")
 local Sfx = require("src.systems.Sfx")
 
-local CLASS_ICONS = {
-    warrior = "sword_great",
-    mage    = "orb",
-    rogue   = "dagger",
-}
-
--- Cor de identidade por classe (linha da placa de nome + spotlight tint).
+-- Cor de identidade por classe (linha da placa de nome + aura).
 local CLASS_COLORS = {
     warrior = { 0.78, 0.25, 0.18 },   -- carmim
     mage    = { 0.45, 0.55, 0.95 },   -- azul arcano
@@ -41,16 +45,16 @@ local CLASS_ORDER = { "warrior", "mage", "rogue" }
 
 local ClassSelectionScreen = {}
 ClassSelectionScreen.__index = ClassSelectionScreen
+ClassSelectionScreen.CLASS_ORDER = CLASS_ORDER
 
 function ClassSelectionScreen:new()
     local instance = setmetatable({}, ClassSelectionScreen)
     instance.visible = false
     instance.buttons = {}
-    instance.panels = {}          -- {classId, x, y, w, h, btn, info, cards, lift, fx}
+    instance.panels = {}          -- {classId, rect, bandas, btn, info, cards, lift, fx, shake, unlock, mastery}
     instance.cardRegistry = CardRegistry:new()
     instance.selectedClass = nil
     instance._starterCache = {}   -- classId -> {cardInstance, ...}
-    instance._heroAnims = {}      -- classId -> SpriteAnimation | false
     instance._locked = false      -- input travado durante o FX de escolha
     instance._sparks = {}         -- faíscas do momento da escolha
 
@@ -74,153 +78,120 @@ function ClassSelectionScreen:_starterCards(classId)
             local ok, inst = pcall(function()
                 return CardDatabase:createCardInstance(cd)
             end)
-            if ok and inst then table.insert(out, inst) end
+            if ok and inst then
+                table.insert(out, inst)
+            else
+                print("[ClassSelection] AVISO: carta inicial não instanciou: " .. tostring(id))
+            end
+        else
+            print("[ClassSelection] AVISO: carta inicial inexistente: " .. tostring(id))
         end
     end
     self._starterCache[classId] = out
     return out
 end
 
--- Animação idle do herói (PixelLab). false = já tentou e não existe.
-function ClassSelectionScreen:_heroAnim(classId)
-    if self._heroAnims[classId] == nil then
-        self._heroAnims[classId] = SpriteAnimation.new(
-            "heroes/" .. classId, "idle", "south", 7, { pingpong = true })
-            or false
-    end
-    return self._heroAnims[classId]
-end
-
--- MÉTRICAS do sprite (medidas no south.png, valem pros frames de anim —
--- mesmo canvas): o padding do canvas VARIA por modo do PixelLab
--- (standard ~136px, v3 ~180px com pé em altura diferente) — chutar
--- offset fixo deixava o herói flutuando. Aqui a gente VARRE a imagem:
--- pixel opaco mais baixo = pé; altura real do conteúdo dita a escala.
-function ClassSelectionScreen:_heroMeta(classId)
-    self._heroMetaCache = self._heroMetaCache or {}
-    if self._heroMetaCache[classId] ~= nil then
-        return self._heroMetaCache[classId]
-    end
-    local path = "assets/sprites/characters/heroes/" .. classId .. "/south.png"
-    if not love.filesystem.getInfo(path) then
-        self._heroMetaCache[classId] = false
-        return false
-    end
-    local ok, data = pcall(love.image.newImageData, path)
-    if not ok or not data then
-        self._heroMetaCache[classId] = false
-        return false
-    end
-    local w, h = data:getDimensions()
-    local bottom, top = 0, h - 1
-    for y = h - 1, 0, -1 do
-        local found = false
-        for x = 0, w - 1, 2 do
-            local _, _, _, a = data:getPixel(x, y)
-            if a > 0.05 then found = true break end
-        end
-        if found then bottom = y break end
-    end
-    for y = 0, h - 1 do
-        local found = false
-        for x = 0, w - 1, 2 do
-            local _, _, _, a = data:getPixel(x, y)
-            if a > 0.05 then found = true break end
-        end
-        if found then top = y break end
-    end
-    local meta = {
-        canvasW = w, canvasH = h,
-        bottom = bottom,                          -- linha do pé
-        contentH = math.max(1, bottom - top + 1), -- altura real do herói
-    }
-    self._heroMetaCache[classId] = meta
-    return meta
+-- Estado de liberação/maestria (relido a cada show/resize — o perfil muda
+-- entre uma visita e outra).
+function ClassSelectionScreen:_refreshUnlock(panel)
+    panel.unlock = UnlockSystem.getClassUnlockInfo(panel.classId)
+    panel.unlocked = UnlockSystem.isClassUnlocked(panel.classId)
+    panel.mastery = panel.unlocked and UnlockSystem.getClassMastery(panel.classId) or nil
 end
 
 function ClassSelectionScreen:createClassButtons()
-    self.buttons = {}
-    self.panels = {}
-
     local sw = love.graphics.getWidth()
     local sh = love.graphics.getHeight()
+    local lay = Layout.compute(sw, sh, #CLASS_ORDER)
+    self.layout = lay
 
-    local pw, ph = 288, 396
-    local gap = 30
-    local totalW = pw * 3 + gap * 2
-    local startX = math.floor((sw - totalW) / 2)
-    local py = math.floor(sh * 0.32)
+    -- preserva animações em andamento (lift/fx/shake) entre rebuilds
+    local prev = {}
+    for _, p in ipairs(self.panels or {}) do prev[p.classId] = p end
+
+    self.buttons = {}
+    self.panels = {}
 
     for i, classId in ipairs(CLASS_ORDER) do
         local info = self.cardRegistry:getClassInfo(classId)
         if info then
-            local x = startX + (i - 1) * (pw + gap)
+            local r = lay.panels[i]
+            local old = prev[classId]
             local panel = {
                 classId = classId,
                 info = info,
-                x = x, y = py, w = pw, h = ph,
+                rect = r,
                 cards = self:_starterCards(classId),
-                lift = 0,       -- suavizado no update
-                fx = 0,         -- 1→0 após o clique (flash/anel)
+                lift = old and old.lift or 0,
+                fx = old and old.fx or 0,
+                shake = old and old.shake or 0,
             }
-            -- área clicável cobre o HERÓI (que fica acima do painel) também
-            panel.btn = Button:new(x, py - 150, pw, ph + 150, "",
+            self:_refreshUnlock(panel)
+            -- área clicável = o painel inteiro (emblema incluso)
+            panel.btn = Button:new(r.x, r.y, r.w, r.h, "",
                 function() self:selectClass(classId) end)
             panel.btn:setVariant("invisible")
             table.insert(self.panels, panel)
             self.buttons[classId] = panel.btn
+        else
+            print("[ClassSelection] AVISO: getClassInfo sem dados para " .. classId)
         end
     end
 
-    -- Botão voltar ao menu
-    local backButtonWidth = Config.Utils.getResponsiveSize(Config.UI.BUTTON_WIDTH_RATIO, 200, "width")
-    local backButtonHeight = 44
-
-    self.buttons.back = Button:new(
-        math.floor(sw / 2 - backButtonWidth / 2),
-        py + ph + 16,
-        backButtonWidth,
-        backButtonHeight,
+    local b = lay.back
+    self.buttons.back = Button:new(b.x, b.y, b.w, b.h,
         I18n.t("class_select.back"),
         function() self:goBackToMenu() end,
-        Theme.Colors.WARNING,
-        12
-    )
+        Theme.Colors.WARNING, 12)
     self.buttons.back:setVariant("tv")
 
     -- Recria botões ao trocar idioma (textos mudam)
     if not self._localeListenerWired then
         self._localeListenerWired = true
         I18n.onLocaleChanged(function()
-            self.buttons = {}
             self:createClassButtons()
         end)
     end
 end
 
+-- Layout inteiro depende de sw/sh: recriar é o caminho simples e barato
+-- (padrão resize_pattern.md). main.lua chama updatePositions no love.resize.
 function ClassSelectionScreen:updatePositions()
-    -- layout inteiro depende de sw/sh: recriar é o caminho mais simples e
-    -- barato (padrão resize_pattern.md)
     self:createClassButtons()
 end
 
+function ClassSelectionScreen:resize()
+    self:createClassButtons()
+end
+
+function ClassSelectionScreen:_panelOf(classId)
+    for _, p in ipairs(self.panels) do
+        if p.classId == classId then return p end
+    end
+end
+
+-- Retorna true se a escolha foi aceita (classe liberada).
 function ClassSelectionScreen:selectClass(classId)
-    if self._locked then return end
+    if self._locked then return false end
+    local panel = self:_panelOf(classId)
+
+    -- BLOQUEADA: nega com som + tremor; nunca inicia run.
+    if not UnlockSystem.isClassUnlocked(classId) then
+        if panel then panel.shake = 1 end
+        Sfx.play("error", { volume = 0.7 })
+        return false
+    end
+
     self.selectedClass = classId
 
     -- O MOMENTO da escolha: flash + anel + faíscas + som, e a confirmação
     -- vem 0.45s depois (EventManager). Sem EM, confirma direto.
-    local panel
-    for _, p in ipairs(self.panels) do
-        if p.classId == classId then panel = p break end
-    end
     local EM = _G.EventManager
     if panel and EM then
         self._locked = true
         panel.fx = 1
-        -- faíscas douradas radiando do herói
-        local cx = panel.x + panel.w / 2
-        local cy = panel.y - 10
+        local e = panel.rect.emblem
+        local cx, cy = e.x + e.w / 2, e.y + e.h / 2
         for i = 1, 16 do
             local a = (i / 16) * math.pi * 2 + math.random() * 0.3
             table.insert(self._sparks, {
@@ -232,14 +203,16 @@ function ClassSelectionScreen:selectClass(classId)
         end
         Sfx.play("comboTrigger", { volume = 0.8 })
         if panel.btn and panel.btn.juice_up then panel.btn:juice_up(0.3, 0.1) end
-        EM.after(0.45, function()
+        -- fila PRÓPRIA e não-bloqueante: um evento travado na fila "base"
+        -- (sobra de outra tela) não pode segurar o início da run
+        EM.parallel(0.45, function()
             self._locked = false
             if self.onClassSelected then
                 self.onClassSelected(classId)
             else
                 Debug.warn("onClassSelected callback nil em selectClass(" .. tostring(classId) .. ")")
             end
-        end)
+        end, "class_select")
     else
         if self.onClassSelected then
             self.onClassSelected(classId)
@@ -247,6 +220,7 @@ function ClassSelectionScreen:selectClass(classId)
             Debug.warn("onClassSelected callback nil em selectClass(" .. tostring(classId) .. ")")
         end
     end
+    return true
 end
 
 function ClassSelectionScreen:goBackToMenu()
@@ -261,6 +235,8 @@ function ClassSelectionScreen:show(onClassSelected, onBackToMenu)
     self.onClassSelected = onClassSelected
     self.onBackToMenu = onBackToMenu
     self._locked = false
+    -- fila própria limpa a cada visita (memory/eventmanager_queues.md)
+    if _G.EventManager then _G.EventManager.clear("class_select") end
     self:updatePositions()
 end
 
@@ -275,7 +251,7 @@ function ClassSelectionScreen:update(dt)
         button:update(dt)
     end
 
-    -- v2.1: backdrop vivo (mesma linguagem do menu) — parallax suavizado
+    -- backdrop vivo (mesma linguagem do menu) — parallax suavizado
     do
         local W, H = love.graphics.getWidth(), love.graphics.getHeight()
         local mx, my = love.mouse.getPosition()
@@ -305,16 +281,18 @@ function ClassSelectionScreen:update(dt)
         if e.t >= e.life then table.remove(self._embers, i) end
     end
 
+    local hovered = {}
     for _, p in ipairs(self.panels) do
-        -- lift suavizado (hover = herói dá um passo à frente)
-        local target = (p.btn and p.btn.hover and not self._locked) and 1 or 0
+        -- lift suavizado (hover = painel acende; bloqueada não "levanta")
+        local hov = p.btn and p.btn.hover and not self._locked
+        local target = (hov and p.unlocked) and 1 or 0
         p.lift = p.lift + (target - p.lift) * math.min(1, dt * 10)
-        -- FX do clique decai
+        p.hovered = hov
+        hovered[p.classId] = p.lift
         if p.fx > 0 then p.fx = math.max(0, p.fx - dt / 0.45) end
-        -- idle do herói
-        local anim = self:_heroAnim(p.classId)
-        if anim then anim:update(dt) end
+        if p.shake > 0 then p.shake = math.max(0, p.shake - dt / 0.35) end
     end
+    ClassEmblem.update(dt, hovered)
 
     -- faíscas da escolha
     for i = #self._sparks, 1, -1 do
@@ -327,173 +305,304 @@ function ClassSelectionScreen:update(dt)
     end
 end
 
--- ===== Herói: sprite animado + spotlight + fallback =====
-function ClassSelectionScreen:_drawHero(p, cx, feetY)
-    local col = CLASS_COLORS[p.classId] or { 1, 0.72, 0.22 }
-    local hover = p.lift
+-- ===== Helpers de texto =====
 
-    -- SPOTLIGHT no chão (elipse radial; acende no hover, tinge no clique)
-    local glow = RadialGlow.get()
-    love.graphics.setBlendMode("add")
-    local ga = 0.22 + 0.30 * hover + 0.5 * p.fx
-    love.graphics.setColor(1, 0.72, 0.30, ga)
-    love.graphics.draw(glow, cx, feetY - 4, 0, 2.4, 0.75, 64, 64)
-    love.graphics.setColor(col[1], col[2], col[3], 0.18 + 0.22 * hover)
-    love.graphics.draw(glow, cx, feetY - 4, 0, 1.5, 0.5, 64, 64)
-    love.graphics.setBlendMode("alpha")
-
-    -- escala/âncora pelas MÉTRICAS medidas (pé de verdade, altura real)
-    local meta = self:_heroMeta(p.classId)
-    local function heroTransform(iw, ih)
-        -- alvo: herói com ~200px de altura de CONTEÚDO na tela
-        local contentH = meta and meta.contentH or ih
-        local scale = math.floor((200 / contentH) * 2 + 0.5) / 2 + 0.18 * hover
-        local footRow = (meta and meta.bottom or ih - 15) + 1
-        local dx = cx - iw * scale / 2
-        local dy = feetY - footRow * scale - hover * 8
-        return dx, dy, scale
+-- Texto multi-linha que CABE na caixa: desce a fonte até caber; no mínimo,
+-- corta as linhas excedentes com "...". Retorna nada; desenha.
+local function printWrapped(text, r, size, minSize, align)
+    text = tostring(text or "")
+    local s = size
+    local font, lines
+    while true do
+        font = FontManager.getFont(s)
+        local _, wrapped = font:getWrap(text, r.w)
+        lines = wrapped
+        if #lines * math.ceil(font:getHeight() * 1.2) <= r.h or s <= minSize then break end
+        s = s - 1
     end
-
-    local anim = self:_heroAnim(p.classId)
-    if anim then
-        local iw, ih = anim:getSize()
-        local dx, dy, scale = heroTransform(iw, ih)
-        anim:draw(dx, dy, scale)
-        -- FLASH branco no momento da escolha
-        if p.fx > 0.02 then
-            love.graphics.setBlendMode("add")
-            anim:draw(dx, dy, scale, { 1, 1, 1, p.fx * 0.85 })
-            love.graphics.setBlendMode("alpha")
+    local lh = math.ceil(font:getHeight() * 1.2)   -- a fonte pixel cola as linhas
+    local maxLines = math.max(1, math.floor(r.h / lh))
+    love.graphics.setFont(font)
+    local blockH = math.min(#lines, maxLines) * lh
+    local y = r.y + math.floor((r.h - blockH) / 2)
+    for i = 1, math.min(#lines, maxLines) do
+        local line = lines[i]
+        if i == maxLines and #lines > maxLines then
+            local _, fitted = TextFit.fit(line .. "...", s, r.w, s)
+            line = fitted
         end
-        return true
+        local lw = font:getWidth(line)
+        local x = r.x
+        if align == "center" then x = r.x + math.floor((r.w - lw) / 2) end
+        love.graphics.print(line, x, y)
+        y = y + lh
     end
-
-    -- Fallback 1: sprite ESTÁTICO (south.png) com balanço procedural —
-    -- cobre a janela em que a animação do PixelLab ainda não chegou
-    -- (serviço instável Jul/2026) sem perder a vida da cena.
-    self._heroStatic = self._heroStatic or {}
-    if self._heroStatic[p.classId] == nil then
-        local path = "assets/sprites/characters/heroes/" .. p.classId .. "/south.png"
-        if love.filesystem.getInfo(path) then
-            local ok2, img = pcall(love.graphics.newImage, path)
-            if ok2 and img then
-                img:setFilter("nearest", "nearest")
-                self._heroStatic[p.classId] = img
-            else
-                self._heroStatic[p.classId] = false
-            end
-        else
-            self._heroStatic[p.classId] = false
-        end
-    end
-    local static = self._heroStatic[p.classId]
-    if static then
-        local iw, ih = static:getWidth(), static:getHeight()
-        local dx, dy, scale = heroTransform(iw, ih)
-        local t = love.timer.getTime()
-        local bob = math.sin(t * 1.5 + (p.x or 0) * 0.01) * 2
-        dy = dy + bob
-        love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.draw(static, math.floor(dx), math.floor(dy), 0, scale, scale)
-        if p.fx > 0.02 then
-            love.graphics.setBlendMode("add")
-            love.graphics.setColor(1, 1, 1, p.fx * 0.85)
-            love.graphics.draw(static, math.floor(dx), math.floor(dy), 0, scale, scale)
-            love.graphics.setBlendMode("alpha")
-        end
-        return true
-    end
-
-    -- Fallback 2: ícone antigo centralizado na zona do herói
-    local icon = IconLoader.get(CLASS_ICONS[p.classId] or "scroll")
-    if icon and icon.size then
-        local s = (72 + 16 * hover) / icon.size.w
-        love.graphics.setColor(1, 1, 1, 1)
-        icon.draw(math.floor(cx - icon.size.w * s / 2),
-            math.floor(feetY - icon.size.w * s - 10 - hover * 8), s)
-    end
-    return false
 end
 
--- Painel de classe v2: herói em cima (vazando o painel), placa de nome,
--- passiva e cartas iniciais num backing translúcido (linguagem menu v2.1).
-function ClassSelectionScreen:_drawClassPanel(p)
-    local lift = -8 * p.lift
-    local x, y, w, h = p.x, p.y + lift, p.w, p.h
-    local col = CLASS_COLORS[p.classId] or { 1, 0.72, 0.22 }
-    local hover = p.lift
-
-    -- BACKING translúcido (não Panel9 pesado): ink + contorno que acende
-    love.graphics.setColor(0.05, 0.04, 0.03, 0.62)
+-- Barra de progresso pixel (trilho ink + preenchimento + contorno).
+local function drawBar(x, y, w, h, frac, fillColor)
+    frac = math.max(0, math.min(1, frac or 0))
+    love.graphics.setColor(0.04, 0.03, 0.02, 0.85)
     love.graphics.rectangle("fill", x, y, w, h)
-    local oa = 0.25 + 0.65 * hover
-    love.graphics.setColor(1, 0.72, 0.22, oa)
+    if frac > 0 then
+        love.graphics.setColor(fillColor)
+        love.graphics.rectangle("fill", x + 1, y + 1, math.max(1, math.floor((w - 2) * frac)), h - 2)
+    end
+    Palette.set(Palette.AGED_GOLD_DARK)
     love.graphics.rectangle("line", x + 0.5, y + 0.5, w - 1, h - 1)
-    if hover > 0.05 then
-        love.graphics.setColor(1, 0.72, 0.22, 0.25 * hover)
-        love.graphics.rectangle("line", x - 2.5, y - 2.5, w + 5, h + 5)
-    end
+end
 
-    -- HERÓI (vaza acima do painel — StS style)
-    local cx = x + w / 2
-    self:_drawHero(p, cx, y + 96)
+-- ===== Bandas do painel =====
 
-    -- PLACA DE NOME + linha de cor da classe
-    local name = (p.info.name or p.classId):upper()
-    Palette.set(hover > 0.5 and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT_LIGHT)
-    require("src.ui.TextFit").print(name, x + 14, y + 116,
-        { size = 17, maxW = w - 28, align = "center", minSize = 12,
-          shadow = { 0, 0, 0, 0.8 } })
-    love.graphics.setColor(col[1], col[2], col[3], 0.9)
-    local lineW = 64 + 30 * hover
-    love.graphics.rectangle("fill", cx - lineW / 2, y + 140, lineW, 2)
-
-    -- Descrição curta (PARCHMENT cheio — DARK afogava sobre o backing ink)
-    local descFont = FontManager.getFont(9)
-    love.graphics.setFont(descFont)
-    Palette.set(Palette.PARCHMENT)
-    love.graphics.printf(p.info.description or "", x + 22, y + 152,
-        w - 44, "center")
-
-    -- PASSIVA (o diferencial real de gameplay)
-    if p.info.passiveName then
-        local py2 = y + 196
-        -- chip: fundo sutil + nome âmbar
-        love.graphics.setColor(1, 0.72, 0.22, 0.10 + 0.10 * hover)
-        love.graphics.rectangle("fill", x + 16, py2 - 6, w - 32, 54)
-        love.graphics.setColor(1, 0.72, 0.22, 0.35)
-        love.graphics.rectangle("line", x + 16.5, py2 - 5.5, w - 33, 53)
-        love.graphics.setColor(1, 0.72, 0.22, 1)
-        require("src.ui.TextFit").print(
-            I18n.t("class_select.passive_label") .. " — " .. p.info.passiveName:upper(),
-            x + 20, py2, { size = 10, maxW = w - 40, align = "center" })
-        local pdf = FontManager.getFont(8)
-        love.graphics.setFont(pdf)
+function ClassSelectionScreen:_drawStatus(p, r, ts)
+    if p.unlocked then
+        -- MAESTRIA: "MAESTRIA N" + pips (níveis) + barra de XP do nível atual
+        local m = p.mastery or { level = 0, maxLevel = 0, xp = 0, xpToNext = 0 }
+        local isMax = (m.maxLevel or 0) > 0 and (m.level or 0) >= m.maxLevel
+        local label = isMax and I18n.t("class_select.mastery_max")
+            or I18n.t("class_select.mastery", { level = m.level or 0 })
+        Palette.set(Palette.AGED_GOLD_LIGHT)
+        TextFit.print(label, r.x, r.y, { size = math.floor(10 * ts), maxW = r.w,
+            align = "center", minSize = 8, shadow = { 0, 0, 0, 0.8 } })
+        local pipN = math.max(0, m.maxLevel or 0)
+        local pip = math.floor(6 * ts)
+        local gap = math.floor(3 * ts)
+        local by = r.y + math.floor(14 * ts)
+        if pipN > 0 then
+            local totalW = pipN * pip + (pipN - 1) * gap
+            local x = r.x + math.floor((r.w - totalW) / 2)
+            for i = 1, pipN do
+                if i <= (m.level or 0) then
+                    Palette.set(Palette.AGED_GOLD)
+                    love.graphics.rectangle("fill", x, by, pip, pip)
+                else
+                    love.graphics.setColor(0.04, 0.03, 0.02, 0.85)
+                    love.graphics.rectangle("fill", x, by, pip, pip)
+                end
+                Palette.set(Palette.AGED_GOLD_DARK)
+                love.graphics.rectangle("line", x + 0.5, by + 0.5, pip - 1, pip - 1)
+                x = x + pip + gap
+            end
+        end
+        local barW = math.floor(r.w * 0.6)
+        local barY = by + pip + math.floor(4 * ts)
+        local frac = isMax and 1 or ((m.xpToNext or 0) > 0 and (m.xp or 0) / m.xpToNext or 0)
+        drawBar(r.x + math.floor((r.w - barW) / 2), barY, barW, math.max(4, math.floor(5 * ts)),
+            frac, Palette.AGED_GOLD)
+    else
+        -- BLOQUEADA: requisito + barra de progresso com "p/g"
+        local u = p.unlock or {}
+        local req = I18n.t(u.reqKey or "unlock.class.default", u.vars or {})
+        love.graphics.setColor(0.86, 0.55, 0.30, 1)  -- ferrugem clara: aviso, não erro
+        -- o requisito é A informação do painel bloqueado: nunca truncar.
+        -- Não coube numa linha? quebra em duas (fonte menor) e a barra desce.
+        local reqSize = math.floor(10 * ts)
+        local _, fitted = TextFit.fit(req, reqSize, r.w, 8)
+        local textH
+        if fitted == req then
+            TextFit.print(req, r.x, r.y, { size = reqSize, maxW = r.w,
+                align = "center", minSize = 8, shadow = { 0, 0, 0, 0.8 } })
+            textH = math.floor(18 * ts)
+        else
+            local f8 = FontManager.getFont(8)
+            local lh = math.ceil(f8:getHeight() * 1.2)  -- mesmo passo do printWrapped
+            printWrapped(req, { x = r.x, y = r.y, w = r.w, h = lh * 2 }, 8, 8, "center")
+            textH = lh * 2 + 2
+        end
+        local goal = math.max(1, u.goal or 1)
+        local prog = math.max(0, math.min(goal, u.progress or 0))
+        local countTxt = ("%d/%d"):format(prog, goal)
+        local cf = FontManager.getFont(math.floor(9 * ts))
+        local barH = math.max(6, math.floor(8 * ts))
+        local barW = math.floor(r.w * 0.62)
+        local totalW = barW + 6 + cf:getWidth(countTxt)
+        local bx = r.x + math.floor((r.w - totalW) / 2)
+        local by = r.y + textH
+        drawBar(bx, by, barW, barH, prog / goal, { 0.72, 0.40, 0.20, 1 })
+        love.graphics.setFont(cf)
         Palette.set(Palette.PARCHMENT)
-        love.graphics.printf(p.info.passiveDesc or "", x + 24, py2 + 18,
-            w - 48, "center")
+        love.graphics.print(countTxt, bx + barW + 6, by + math.floor((barH - cf:getHeight()) / 2))
     end
+end
 
-    -- Cartas iniciais (CardFrame REAL em miniatura)
-    local cardScale = 0.82
-    local cw = 96 * cardScale
-    local chh = 144 * cardScale
-    local totalCw = #p.cards * cw + math.max(0, #p.cards - 1) * 12
-    local ccx = math.floor(cx - totalCw / 2)
-    local cy = y + h - chh - 16
+function ClassSelectionScreen:_drawStats(p, r, ts)
+    -- VIDA ♥ 60  ·  BARALHO 2 cartas
+    local hp = Config.Game.PLAYER_MAX_HEALTH
+    local nCards = #self.cardRegistry:getStarterDeckForClass(p.classId)
+    local font = FontManager.getFont(math.floor(10 * ts))
+    local iconPx = math.floor(14 * ts)
+    local items = {
+        { icon = "heart",  text = I18n.t("class_select.hp_label") .. " " .. hp },
+        { icon = "scroll", text = I18n.t("class_select.deck_count", { n = nCards }) },
+    }
+    local sep = math.floor(14 * ts)
+    local widths, total = {}, 0
+    for i, it in ipairs(items) do
+        widths[i] = iconPx + 4 + font:getWidth(it.text)
+        total = total + widths[i]
+    end
+    total = total + sep * (#items - 1)
+    -- se não couber (idioma longo), cai pra uma fonte menor
+    if total > r.w then
+        font = FontManager.getFont(math.max(7, math.floor(8 * ts)))
+        total = 0
+        for i, it in ipairs(items) do
+            widths[i] = iconPx + 4 + font:getWidth(it.text)
+            total = total + widths[i]
+        end
+        total = total + sep * (#items - 1)
+    end
+    local x = r.x + math.floor((r.w - total) / 2)
+    local cy = r.y + math.floor(r.h / 2)
+    love.graphics.setFont(font)
+    for i, it in ipairs(items) do
+        local icon = IconLoader.get(it.icon)
+        if icon and icon.size then
+            icon.draw(x, cy - iconPx / 2, iconPx / icon.size.h)
+        end
+        Palette.set(Palette.PARCHMENT_LIGHT)
+        love.graphics.print(it.text, x + iconPx + 4, cy - math.floor(font:getHeight() / 2))
+        x = x + widths[i] + sep
+    end
+end
+
+function ClassSelectionScreen:_drawPassive(p, r, ts, hover)
+    if not p.info.passiveName then return end
+    love.graphics.setColor(1, 0.72, 0.22, 0.10 + 0.10 * hover)
+    love.graphics.rectangle("fill", r.x, r.y, r.w, r.h)
+    love.graphics.setColor(1, 0.72, 0.22, 0.35)
+    love.graphics.rectangle("line", r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1)
+    love.graphics.setColor(1, 0.72, 0.22, 1)
+    local titleH = math.floor(16 * ts)
+    TextFit.print(I18n.t("class_select.passive_label") .. " — " .. p.info.passiveName:upper(),
+        r.x + 4, r.y + 4, { size = math.floor(10 * ts), maxW = r.w - 8, align = "center", minSize = 7 })
+    Palette.set(Palette.PARCHMENT)
+    printWrapped(p.info.passiveDesc or "",
+        { x = r.x + 8, y = r.y + 4 + titleH, w = r.w - 16, h = r.h - titleH - 8 },
+        math.floor(9 * ts), 7, "center")
+end
+
+function ClassSelectionScreen:_drawCards(p, r, ts, hover)
+    local lay = self.layout
+    local labelH = math.floor(Layout.CARD_LABEL_H * ts)
+    Palette.set(Palette.PARCHMENT_DARK)
+    TextFit.print(I18n.t("class_select.starter_label"), r.x, r.y,
+        { size = math.floor(8 * ts), maxW = r.w, align = "center", minSize = 7 })
+    local s = lay.cardScale
+    local cw = Layout.CARD_W * s
+    local gap = 12
+    local totalCw = #p.cards * cw + math.max(0, #p.cards - 1) * gap
+    local x = math.floor(r.x + (r.w - totalCw) / 2)
+    local y = r.y + labelH
     for _, inst in ipairs(p.cards) do
         if inst.image then
-            -- Hover na CLASSE anima os ícones dos starters (icons_anim);
-            -- idle = canvas estático (regra do dono, Jul/2026).
+            -- hover na CLASSE anima os ícones dos starters (icons_anim);
+            -- idle = canvas estático (regra do dono, Jul/2026)
             local img = inst.image
             if hover > 0.35 then
                 local live = CardFrame.liveImage(inst)
                 if live then img = live end
             end
             love.graphics.setColor(1, 1, 1, 1)
-            love.graphics.draw(img, ccx, cy, 0, cardScale, cardScale)
+            love.graphics.draw(img, x, y, 0, s, s)
         end
-        ccx = ccx + cw + 12
+        x = x + math.floor(cw + gap)
+    end
+end
+
+-- Painel de classe v3: emblema protagonista + bandas (ClassSelectLayout).
+function ClassSelectionScreen:_drawClassPanel(p)
+    local R = p.rect
+    local ts = self.layout.ts
+    local hover = p.lift
+    local col = CLASS_COLORS[p.classId] or { 1, 0.72, 0.22 }
+    local shakeX = p.shake > 0 and math.floor(math.sin(p.shake * 40) * 6 * p.shake) or 0
+    local liftY = -math.floor(6 * hover)
+
+    love.graphics.push()
+    love.graphics.translate(shakeX, liftY)
+
+    -- BACKING translúcido: ink + contorno (dourado liberado / ferrugem bloqueado)
+    love.graphics.setColor(0.05, 0.04, 0.03, p.unlocked and 0.62 or 0.72)
+    love.graphics.rectangle("fill", R.x, R.y, R.w, R.h)
+    if p.unlocked then
+        love.graphics.setColor(1, 0.72, 0.22, 0.25 + 0.65 * hover)
+    else
+        local a = p.hovered and 0.75 or 0.40
+        love.graphics.setColor(0.62, 0.34, 0.18, a)
+    end
+    love.graphics.rectangle("line", R.x + 0.5, R.y + 0.5, R.w - 1, R.h - 1)
+    if hover > 0.05 then
+        love.graphics.setColor(1, 0.72, 0.22, 0.25 * hover)
+        love.graphics.rectangle("line", R.x - 2.5, R.y - 2.5, R.w + 5, R.h + 5)
+    end
+
+    -- EMBLEMA (protagonista)
+    local e = R.emblem
+    if p.unlocked then
+        -- chão de luz quente sob o emblema
+        local glow = RadialGlow.get()
+        love.graphics.setBlendMode("add")
+        love.graphics.setColor(1, 0.72, 0.30, 0.10 + 0.18 * hover + 0.4 * p.fx)
+        love.graphics.draw(glow, e.x + e.w / 2, e.y + e.h * 0.92, 0, e.w / 128 * 1.1, 0.35, 64, 64)
+        love.graphics.setColor(col[1], col[2], col[3], 0.10 + 0.16 * hover)
+        love.graphics.draw(glow, e.x + e.w / 2, e.y + e.h * 0.92, 0, e.w / 128 * 0.7, 0.25, 64, 64)
+        love.graphics.setBlendMode("alpha")
+    end
+    local drew = ClassEmblem.draw(p.classId, e.x + e.w / 2, e.y + e.h / 2, e.h - 8,
+        { hover = hover, locked = not p.unlocked, flash = p.fx, boxW = e.w - 8 })
+    if not drew then
+        -- asset ausente (já avisado no console): placeholder VISÍVEL, não vazio
+        Palette.set(Palette.RUST)
+        love.graphics.rectangle("line", e.x + 0.5, e.y + 0.5, e.w - 1, e.h - 1)
+    end
+    if not p.unlocked then
+        -- etiqueta BLOQUEADA ancorada no pé do emblema
+        local f = FontManager.getFont(math.floor(10 * ts))
+        local txt = I18n.t("class_select.locked")
+        local tw = math.min(e.w - 8, f:getWidth(txt) + 16)
+        local th = f:getHeight() + 6
+        local tx = e.x + math.floor((e.w - tw) / 2)
+        local ty = e.y + e.h - th
+        love.graphics.setColor(0.08, 0.05, 0.04, 0.92)
+        love.graphics.rectangle("fill", tx, ty, tw, th)
+        love.graphics.setColor(0.62, 0.34, 0.18, 1)
+        love.graphics.rectangle("line", tx + 0.5, ty + 0.5, tw - 1, th - 1)
+        love.graphics.setColor(0.90, 0.62, 0.38, 1)
+        TextFit.print(txt, tx + 4, ty + 3, { size = math.floor(10 * ts), maxW = tw - 8, align = "center", minSize = 7 })
+    end
+
+    -- NOME + linha de cor da classe
+    local name = (p.info.name or p.classId):upper()
+    if p.unlocked then
+        Palette.set(hover > 0.5 and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT_LIGHT)
+    else
+        Palette.set(Palette.PARCHMENT_DARK)
+    end
+    local nr = R.name
+    TextFit.print(name, nr.x, nr.y, { size = math.floor(17 * ts), maxW = nr.w,
+        align = "center", minSize = 12, shadow = { 0, 0, 0, 0.8 } })
+    love.graphics.setColor(col[1], col[2], col[3], p.unlocked and 0.9 or 0.35)
+    local lineW = math.floor((64 + 30 * hover) * ts)
+    love.graphics.rectangle("fill", nr.x + math.floor((nr.w - lineW) / 2), nr.y + nr.h - 2, lineW, 2)
+
+    -- STATUS (maestria | requisito)
+    self:_drawStatus(p, R.status, ts)
+
+    -- DESCRIÇÃO
+    Palette.set(Palette.PARCHMENT)
+    printWrapped(p.info.description or "", R.desc, math.floor(9 * ts), 7, "center")
+
+    -- STATS, PASSIVA, CARTAS
+    self:_drawStats(p, R.stats, ts)
+    self:_drawPassive(p, R.passive, ts, hover)
+    self:_drawCards(p, R.cards, ts, hover)
+
+    -- bloqueada: véu sobre a parte de "conteúdo" (dá pra espiar, não usar)
+    if not p.unlocked then
+        local top = R.desc.y - 2
+        love.graphics.setColor(0.03, 0.02, 0.02, 0.45)
+        love.graphics.rectangle("fill", R.x + 1, top, R.w - 2, R.cards.y + R.cards.h - top + 2)
     end
 
     -- ANEL do momento da escolha (expande e some)
@@ -501,10 +610,11 @@ function ClassSelectionScreen:_drawClassPanel(p)
         local k = 1 - p.fx
         love.graphics.setColor(1, 0.85, 0.4, p.fx * 0.9)
         love.graphics.setLineWidth(3)
-        love.graphics.circle("line", cx, y - 10, 30 + k * 160)
+        love.graphics.circle("line", e.x + e.w / 2, e.y + e.h / 2, 30 + k * 160)
         love.graphics.setLineWidth(1)
     end
 
+    love.graphics.pop()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
@@ -514,10 +624,7 @@ function ClassSelectionScreen:draw()
     local width = love.graphics.getWidth()
     local height = love.graphics.getHeight()
 
-    -- Fundo VIVO (v2.1, mesma linguagem do menu): parallax de mouse +
-    -- braseiros pulsando + respiração quente + brasas + poeira.
     self:_drawLivingBackdrop(width, height)
-
     self:drawTitle()
 
     for _, p in ipairs(self.panels) do
@@ -534,10 +641,17 @@ function ClassSelectionScreen:draw()
 
     if self.buttons.back then self.buttons.back:draw() end
 
-    HintBar.draw(I18n.t("class_select.description"))
+    -- hint: sobre classe bloqueada, explica por que o clique não vai
+    local hint = I18n.t("class_select.description")
+    for _, p in ipairs(self.panels) do
+        if p.hovered and not p.unlocked then
+            hint = I18n.t("class_select.locked_hint")
+        end
+    end
+    HintBar.draw(hint)
 end
 
--- ===== v2.1: backdrop vivo =====
+-- ===== backdrop vivo =====
 -- Âncoras dos 2 BRASEIROS na imagem do salão minimalista (coords
 -- relativas ao PNG 400×256, v2 "limpo" Jul/2026 — ajuste se regenerar).
 local BRAZIER_ANCHORS = {
@@ -549,7 +663,6 @@ function ClassSelectionScreen:_drawLivingBackdrop(width, height)
     local t = love.timer.getTime()
 
     -- CAMADA 1: salão com parallax (folga de zoom, offset clampado)
-    -- overlay leve: a arte v2 já é escura por composição (0.38 afogava)
     local ok, tf = SceneBackground.drawParallax("classSelection", width, height,
         0.15, (self._parX or 0) * -12, (self._parY or 0) * -7, 1.07)
     if not ok then
@@ -596,24 +709,29 @@ function ClassSelectionScreen:_drawLivingBackdrop(width, height)
 end
 
 function ClassSelectionScreen:drawTitle()
-    local titleFont = FontManager.getResponsiveFont(Config.UI.TITLE_FONT_RATIO, 24)
-    love.graphics.setFont(titleFont)
-
+    local r = self.layout.title
     local title = I18n.t("class_select.title")
-    local width = love.graphics.getWidth()
-    local titleX = math.floor(width / 2 - titleFont:getWidth(title) / 2)
-    local titleY = math.floor(love.graphics.getHeight() * 0.07)
-
-    -- Banner pixel: ink fill + dual outline gold
-    local padX, padY = 20, 10
-    local bw = titleFont:getWidth(title) + padX * 2
+    local padX, padY = 20, 8
+    local size = math.floor(24 * self.layout.ts)
+    local titleFont = FontManager.getFont(size)
+    -- a faixa do título tem altura reservada: a fonte cede, a banda não
+    while size > 12 and titleFont:getHeight() + padY * 2 > r.h do
+        size = size - 1
+        titleFont = FontManager.getFont(size)
+    end
+    love.graphics.setFont(titleFont)
+    local tw = titleFont:getWidth(title)
+    local titleX = math.floor(r.x + (r.w - tw) / 2)
     local bh = titleFont:getHeight() + padY * 2
-    local bx, by = titleX - padX, titleY - padY
+    local by = r.y + math.floor((r.h - bh) / 2)
+    local titleY = by + padY
+
+    local bw = tw + padX * 2
+    local bx = titleX - padX
     PixelCanvas.rect(bx, by, bw, bh, Palette.PANEL_FILL)
     PixelCanvas.rectOutline(bx, by, bw, bh, Palette.PANEL_OUTLINE)
     PixelCanvas.rectOutline(bx + 3, by + 3, bw - 6, bh - 6, Palette.PANEL_OUTLINE_INNER)
 
-    -- Título
     Palette.set(Palette.INK)
     love.graphics.print(title, titleX + 1, titleY + 1)
     Palette.set(Palette.AGED_GOLD_LIGHT)

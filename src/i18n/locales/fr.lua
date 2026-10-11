@@ -48,6 +48,23 @@ return {
         title       = "CHOISIS TON ARCHETYPE",
         description = "Chaque voie offre des cartes et tactiques uniques.",
         back        = "RETOUR AU MENU",
+        locked        = "VERROUILLEE",
+        mastery       = "MAITRISE {level}",
+        mastery_max   = "MAITRISE MAX",
+        hp_label      = "PV",
+        deck_label    = "DECK",
+        deck_count    = "{n} cartes",
+        starter_label = "CARTES DE DEPART",
+        locked_hint   = "Classe verrouillee — remplis la condition pour la debloquer.",
+    },
+
+    -- Requisitos de liberação de classe (UnlockSystem.getClassUnlockInfo.reqKey)
+    unlock = {
+        class = {
+            default   = "Debloquee",
+            mage_req  = "Vaincs le boss de l'Acte {act}",
+            rogue_req = "Termine l'Acte {act} ou gagne une partie",
+        },
     },
 
     battle = {
