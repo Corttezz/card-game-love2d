@@ -48,22 +48,21 @@ LuminaireEngine.POOL_MIN_T = 0.50
 --   weight  — peso de spawn sugerido (biomes.lua referencia)
 -- ----------------------------------------------------------------------------
 local FIRE_AMBER  = { 1.00, 0.62, 0.25 }
-local FIRE_ORANGE = { 1.00, 0.52, 0.18 }
 
+-- Out/2026 (dono, jogando): fora a fogueira dos Campos e do Crepúsculo e a
+-- lanterna de chão das Colinas — "muito feias, não fazem sentido". A remoção
+-- de Set/2026 só tirou a fogueira de biomes.lua (propWeights), mas luminária
+-- é sorteada DAQUI (cadência do WorldRoad) — por isso ela continuava
+-- aparecendo. Tirar um tipo de luminária = tirar do CATALOG.
 local CATALOG = {
-    -- Campos Arruinados: âmbar de fazenda — lampião, fogueira de beira de
-    -- estrada, santuário de vela (mundo rural que ainda acende as luzes)
+    -- Campos Arruinados: âmbar de fazenda — lampião e santuário de vela
+    -- (mundo rural que ainda acende as luzes)
     fields = {
         lantern = { size = 4.2, face = 1, roadside = true,
             lane = { 0.0, 0.08 }, anchor = { 0.78, 0.46 },
             weight = 1.1,
             light = { color = FIRE_AMBER, radiusK = 1.35, coreK = 0.40,
                       intensity = 0.85, flicker = "fire" } },
-        firepit = { size = 1.0, lane = { 0.02, 0.20 }, anchor = { 0.50, 0.30 },
-            weight = 0.8,
-            light = { color = FIRE_ORANGE, radiusK = 1.70, coreK = 0.55,
-                      intensity = 0.90, flicker = "fire" },
-            embers = { color = { 1.0, 0.70, 0.30 }, count = 3 } },
         shrine = { size = 1.6, lane = { 0.30, 0.75 }, anchor = { 0.50, 0.42 },
             weight = 0.5,
             light = { color = { 1.00, 0.75, 0.40 }, radiusK = 0.90,
@@ -71,8 +70,7 @@ local CATALOG = {
     },
 
     -- Colinas da Torre: noite de lua — fogo ARCANO azul nos braseiros dos
-    -- monólitos, runas acesas na pedra, e um lampião de ferro quente de
-    -- viajante (único calor da noite fria)
+    -- monólitos e runas acesas na pedra
     highlands = {
         brazier = { size = 1.50, roadside = true, lane = { 0.01, 0.12 }, anchor = { 0.50, 0.20 },
             weight = 0.9,
@@ -83,12 +81,6 @@ local CATALOG = {
             weight = 0.7,
             light = { color = { 0.45, 0.62, 1.00 }, radiusK = 1.10,
                       coreK = 0.35, intensity = 0.70, flicker = "wisp" } },
-        -- lanterna de FERRO de viajante apoiada no chão (arte PixelLab veio
-        -- assim e ficou ótima — luminária baixa, não poste)
-        lantern = { size = 0.9, roadside = true, lane = { 0.0, 0.08 }, anchor = { 0.50, 0.42 },
-            weight = 0.6,
-            light = { color = { 0.95, 0.72, 0.42 }, radiusK = 1.30,
-                      coreK = 0.40, intensity = 0.80, flicker = "fire" } },
     },
 
     -- Estrada do Abismo: inferno — braseiro de pilar rugindo (referência),
@@ -147,18 +139,13 @@ local CATALOG = {
     },
 
     -- Campos do Crepúsculo: golden hour eterna — lampião dourado
-    -- (referência), fogueira de colheita, santuário de velas no trigo
+    -- (referência) e santuário de velas no trigo
     dusk = {
         lantern = { size = 4.2, face = 1, roadside = true,
             lane = { 0.0, 0.08 }, anchor = { 0.78, 0.46 },
             weight = 1.1,
             light = { color = { 1.00, 0.72, 0.30 }, radiusK = 1.40,
                       coreK = 0.40, intensity = 0.85, flicker = "fire" } },
-        firepit = { size = 1.1, lane = { 0.02, 0.20 }, anchor = { 0.50, 0.28 },
-            weight = 0.8,
-            light = { color = FIRE_ORANGE, radiusK = 1.80, coreK = 0.60,
-                      intensity = 0.90, flicker = "fire" },
-            embers = { color = { 1.0, 0.72, 0.32 }, count = 3 } },
         shrine = { size = 1.6, lane = { 0.30, 0.75 }, anchor = { 0.50, 0.42 },
             weight = 0.5,
             light = { color = { 1.00, 0.78, 0.45 }, radiusK = 0.95,

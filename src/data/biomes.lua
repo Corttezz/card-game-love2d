@@ -97,7 +97,7 @@ local biomes = {
         propDensity = 1.0,
         propWeights = { pine = 3, rock = 2.5, ruin = 1, bush = 1,
                         sign = 0.4, deadtree = 0.6, flowers = 0.8,
-                        brazier = 0.9, runestone = 0.7, lantern = 0.6 },
+                        brazier = 0.9, runestone = 0.7 },
     },
 
     -- Ato 3 — Estrada do Abismo: vermelho-âmbar infernal, terra morta
@@ -268,7 +268,9 @@ local biomes = {
         rock = { 0.42, 0.36, 0.30 }, rockDark = { 0.26, 0.22, 0.18 },
         landmark = { 0.42, 0.36, 0.28 }, landmarkDark = { 0.26, 0.22, 0.17 },
         propDensity = 1.15,
-        propWeights = { tree = 3, flowers = 2.5, fence = 0.45, bush = 2,
+        -- cerca removida do Crepúsculo (Out/2026, dono: "cerca estranha que
+        -- não serve para nada"), como já tinha saído dos Campos
+        propWeights = { tree = 3, flowers = 2.5, bush = 2,
                         sign = 0.5, rock = 0.8,
                         lantern = 1.1, shrine = 0.5 },
     },
