@@ -836,10 +836,6 @@ function EnemyRenderer.draw(game, cx, cy, opts)
                      iw = iw, ih = ih, scale = scale, groundY = cy,
                      cx = cx + driftX }
         BossAura.drawBack(auraId, auraRect)
-        -- contorno na cor do tema, colado atrás do corpo
-        BossAura.drawRim(auraId, auraRect, function(x, y, tint)
-            if hasAnim then currentAnim:draw(x, y, scale, tint) end
-        end)
     end
 
     -- (6) Pulse de tint (cor varia ±6% lentamente, respiração sutil)

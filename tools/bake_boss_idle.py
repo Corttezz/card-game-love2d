@@ -91,6 +91,13 @@ def weight(motion, X, Y):
 # CONFIG POR CHEFE — regiões lidas OLHANDO o quadro 0 de cada um com régua
 # (doutrina: olhar a arte antes de decidir o movimento).
 # ---------------------------------------------------------------------------
+# PÉS FIXOS dos apoiados: a capa que balança passa rente às botas e a borda
+# macia da região arrastava pixels do pé (o pé "patinava" 1px e, somado ao
+# contorno de 1px que existia embaixo, o chefe lia flutuando — Out/2026).
+# Caixas medidas nas linhas 104+ do quadro 0 (colunas com conteúdo).
+TYRANT_FEET = [box(24, 102, 54, 140, 1), box(69, 102, 99, 140, 1)]
+MONARCH_FEET = [box(33, 102, 57, 140, 1), box(66, 102, 85, 140, 1)]
+
 CONFIG = {
     # Rei-carniça (ato 1): asas abertas que BATEM (rotação no ombro), peito
     # que estufa, talões pendurados que balançam atrasados.
@@ -142,9 +149,11 @@ CONFIG = {
             {"type": "shift", "dx": 0, "dy": -1.6, "lag": 0.0,
              "regions": [box(20, 0, 104, 92, 12)]},
             {"type": "shift", "dx": -2.5, "dy": 0, "lag": 0.25,
-             "regions": [box(-20, 40, 30, 118, 6)], "ramp": ("y", 40, 116)},
+             "regions": [box(-20, 40, 30, 118, 6)], "ramp": ("y", 40, 116),
+             "exclude": TYRANT_FEET},
             {"type": "shift", "dx": 2.5, "dy": 0, "lag": 0.25,
-             "regions": [box(94, 40, 145, 118, 6)], "ramp": ("y", 40, 116)},
+             "regions": [box(94, 40, 145, 118, 6)], "ramp": ("y", 40, 116),
+             "exclude": TYRANT_FEET},
         ],
     },
     # Monarca do inverno (ato 4): capa que tremula (a aba direita é a
@@ -157,10 +166,11 @@ CONFIG = {
              "regions": [box(28, 14, 92, 84, 10)],
              "exclude": [box(0, 0, 32, 129, 3)]},
             {"type": "shift", "dx": 3.5, "dy": -1.5, "lag": 0.22,
-             "regions": [box(86, 76, 145, 120, 6)], "ramp": ("y", 76, 116)},
+             "regions": [box(86, 76, 145, 120, 6)], "ramp": ("y", 76, 116),
+             "exclude": MONARCH_FEET},
             {"type": "shift", "dx": -2.0, "dy": -0.8, "lag": 0.35,
              "regions": [box(-10, 80, 34, 114, 5)], "ramp": ("y", 80, 112),
-             "exclude": [box(30, 40, 46, 129, 2)]},
+             "exclude": [box(30, 40, 46, 129, 2)] + MONARCH_FEET},
         ],
     },
     # Colosso podre (ato 5): fôlego de bicho enorme — peito/ombros sobem,

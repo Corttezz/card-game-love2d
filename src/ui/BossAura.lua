@@ -115,6 +115,56 @@ function BossAura.reset()
 end
 
 -- ---------------------------------------------------------------------------
+-- ENXAME (moscas): cada mosca é um agente que persegue um alvo sorteado em
+-- volta do corpo e troca de alvo em intervalos irregulares. Aceleração
+-- limitada + amortecimento = trajeto ERRÁTICO mas CONTÍNUO (zigue-zague que
+-- faz curva), velocidade própria por mosca. A órbita em elipse de antes era
+-- um carrossel — "não natural" (dono, Out/2026). Posições em px da arte.
+-- ---------------------------------------------------------------------------
+local function pickTarget(w, f, iw, ih)
+    local a = love.math.random() * 6.283
+    local d = 0.35 + 0.65 * math.sqrt(love.math.random())
+    f.tx = (w.cu + math.cos(a) * w.ru * d) * iw
+    f.ty = (w.cv + math.sin(a) * w.rv * d) * ih
+    f.retarget = 0.25 + love.math.random() * 0.9
+    if love.math.random() < 0.5 then f.front = not f.front end
+end
+
+function BossAura._updateSwarm(w, s, dt)
+    local iw, ih = s.iw or 0, s.ih or 0
+    if iw == 0 then return end            -- ainda sem draw (canvas desconhecido)
+    if not s.flies then
+        s.flies = {}
+        for i = 1, w.n do
+            local f = { vx = 0, vy = 0, front = (i % 2 == 0),
+                        maxV = w.speed[1] + love.math.random() * (w.speed[2] - w.speed[1]),
+                        ph = love.math.random() * 6.283 }
+            pickTarget(w, f, iw, ih)
+            f.x, f.y = f.tx, f.ty
+            pickTarget(w, f, iw, ih)
+            s.flies[i] = f
+        end
+    end
+    for _, f in ipairs(s.flies) do
+        f.retarget = f.retarget - dt
+        if f.retarget <= 0 then pickTarget(w, f, iw, ih) end
+        local dx, dy = f.tx - f.x, f.ty - f.y
+        local d = math.sqrt(dx * dx + dy * dy) + 1e-6
+        local acc = f.maxV * 6
+        f.vx = f.vx + dx / d * acc * dt
+        f.vy = f.vy + dy / d * acc * dt
+        -- tremido lateral (zumbido) perpendicular ao voo
+        local j = math.sin(s.t * 23 + f.ph) * f.maxV * 0.8
+        f.vx = f.vx - dy / d * j * dt * 4
+        f.vy = f.vy + dx / d * j * dt * 4
+        local v = math.sqrt(f.vx * f.vx + f.vy * f.vy)
+        if v > f.maxV then f.vx, f.vy = f.vx / v * f.maxV, f.vy / v * f.maxV end
+        f.x = f.x + f.vx * dt
+        f.y = f.y + f.vy * dt
+    end
+end
+
+-- ---------------------------------------------------------------------------
 -- UPDATE: emissores + vida das partículas. `id` = chefe na tela (ou nil).
 -- dying = clip de death tocando: para de emitir e esvai em 0.6s.
 -- ---------------------------------------------------------------------------
@@ -134,20 +184,42 @@ function BossAura.update(dt, id, dying)
     if not still and not dying and spec.emit then
         for i, em in ipairs(spec.emit) do
             local n = 0
-            if em.every then
+            local spot = nil
+            if em.kind == "ooze" then
+                -- cada PONTO pintado pinga no seu próprio ritmo, irregular
+                s.spots = s.spots or {}
+                s.spots[i] = s.spots[i] or {}
+                for si, sp in ipairs(em.spots) do
+                    local tm = (s.spots[i][si] or rnd(em.interval)) - dt
+                    if tm <= 0 and not spot then
+                        spot = sp
+                        n = 1
+                        tm = rnd(em.interval)
+                    end
+                    s.spots[i][si] = tm
+                end
+            elseif em.every then
+                -- rajada com intervalo IRREGULAR (±35%): metrônomo lê máquina
                 s.timers[i] = (s.timers[i] or (em.every * 0.5)) - dt
                 if s.timers[i] <= 0 then
-                    s.timers[i] = em.every
+                    s.timers[i] = em.every * (0.65 + 0.7 * love.math.random())
                     n = em.burst or 1
                 end
             else
-                s.acc[i] = (s.acc[i] or 0) + dt * (em.rate or 1)
-                n = math.floor(s.acc[i])
-                s.acc[i] = s.acc[i] - n
+                -- chegada de POISSON: intervalo exponencial entre partículas.
+                -- O acumulador antigo soltava uma a cada 1/rate segundos
+                -- exatos — cadência de esteira (revisão do dono, Out/2026).
+                s.acc[i] = (s.acc[i] or (-math.log(1 - love.math.random()) / (em.rate or 1))) - dt
+                while s.acc[i] <= 0 and n < 6 do
+                    n = n + 1
+                    s.acc[i] = s.acc[i] - math.log(1 - love.math.random()) / (em.rate or 1)
+                end
             end
             for _ = 1, n do
                 local u, v
-                if em.points then
+                if spot then
+                    u, v = spot[1], spot[2]
+                elseif em.points then
                     local p = em.points[love.math.random(#em.points)]
                     u, v = p[1], p[2]
                 else
@@ -164,11 +236,18 @@ function BossAura.update(dt, id, dying)
                         life = life, max = life,
                         ph = love.math.random() * 6.283,
                         big = love.math.random() < (em.big or 0),
-                        landed = false,
+                        -- balanço com frequência PRÓPRIA (todas iguais = coreografia)
+                        sf = 1.2 + love.math.random() * 1.8,
+                        state = (em.kind == "ooze") and "form" or nil,
+                        st = 0, formDur = rnd(em.form or { 0.8, 1.6 }),
                     }
                 end
             end
         end
+    end
+
+    if spec.swarm and not still then
+        BossAura._updateSwarm(spec.swarm, s, dt)
     end
 
     for _, list in ipairs({ s.back, s.front }) do
@@ -179,17 +258,26 @@ function BossAura.update(dt, id, dying)
                 table.remove(list, i)
             elseif not still then
                 local em = p.em
-                if em.kind == "drip" then
-                    if not p.landed then
-                        p.vy = p.vy + (em.gravity or 60) * dt
+                if em.kind == "ooze" then
+                    -- gota: FORMA pendurada no ponto (cresce e estica), SOLTA
+                    -- e cai com gravidade, ESPIRRA uma vez no chão e some
+                    p.st = p.st + dt
+                    if p.state == "form" then
+                        if p.st >= p.formDur then
+                            p.state, p.st, p.vy = "fall", 0, 4
+                            p.ay = 2          -- sai da ponta da gota esticada
+                        end
+                    elseif p.state == "fall" then
+                        p.vy = p.vy + (em.gravity or 90) * dt
                         p.ay = p.ay + p.vy * dt
-                        -- pousa no CHÃO da cena (linha medida no último
-                        -- draw, em pixels da arte) e vira poça
                         local g = s.groundArt
                         if g and p.v * (s.ih or 0) + p.ay >= g - 1 then
-                            p.landed = true
+                            p.state, p.st = "splash", 0
                             p.ay = g - 1 - p.v * s.ih
-                            p.life = math.min(p.life, 0.6)
+                            p.life = 0.55
+                            p.max = 0.55
+                            p.sx = 7 + love.math.random() * 7
+                            p.sy = -(9 + love.math.random() * 6)
                         end
                     end
                 else
@@ -318,8 +406,18 @@ local function orbitOne(r, o, s, front)
     local t = still and 0 or s.t
     local fade = s.fade
     for i = 1, o.n do
-        local base = (i - 1) / o.n * 6.283
-        local ang = base + t * o.speed * ((o.kind == "fly") and (0.8 + 0.1 * i) or 1)
+        -- cada corpo com raio, velocidade, fase e oscilação PRÓPRIOS (hash
+        -- do índice: estável entre quadros). Espaçamento igual + velocidade
+        -- igual = carrossel; o dono lê como mecânico. `o.regular = true`
+        -- mantém a geometria exata (runas: são feitiço, não bicho).
+        local h1, h2, h3 = 0.5, 0.5, 0
+        if not o.regular then
+            h1 = (math.sin(i * 12.9898) * 43758.5453) % 1
+            h2 = (math.sin(i * 78.233) * 12345.678) % 1
+            h3 = (math.sin(i * 39.425) * 24634.634) % 1
+        end
+        local base = (i - 1) / o.n * 6.283 + h3 * 1.4
+        local ang = base + t * o.speed * (0.7 + 0.6 * h2)
         local sn = math.sin(ang)
         local isFront = sn > 0
         if isFront == front then
@@ -336,12 +434,17 @@ local function orbitOne(r, o, s, front)
                 end
             elseif o.kind == "flake" then
                 -- redemoinho: cada floco sobe devagar e volta pro pé
-                local rise = ((t * (o.rise or 0.05) + i * 0.137) % 1)
+                local rise = ((t * (o.rise or 0.05) * (0.7 + 0.6 * h2) + h1 + i * 0.137) % 1)
                 v = cv + 0.40 - rise * 0.85 + rv * sn
                 u = cu + ru * math.cos(ang) * (0.75 + 0.25 * rise)
             else
-                u = cu + ru * math.cos(ang)
-                v = cv + rv * sn
+                local rk = 0.8 + 0.4 * h1
+                u = cu + ru * rk * math.cos(ang)
+                v = cv + rv * rk * sn
+                if not o.regular then
+                    -- planar: sobe e desce devagar, cada um no seu tempo
+                    v = v + 0.025 * math.sin(t * (0.6 + h2) + i * 2.1)
+                end
             end
             local ax, ay = u * r.iw, v * r.ih
             local near = isFront and 1 or 0.6
@@ -398,7 +501,27 @@ local function orbitOne(r, o, s, front)
     end
 end
 
+local function drawSwarm(r, spec, s, front)
+    local w = spec.swarm
+    if not w or not s.flies then return end
+    for i, f in ipairs(s.flies) do
+        if f.front == front then
+            setK(f.x, f.y, w.px or 1)
+            local c = front and w.color or w.color2
+            love.graphics.setColor(c[1], c[2], c[3], s.fade * (front and 1 or 0.7))
+            artRect(r, f.x, f.y, 1, 1)
+            -- asinhas claras batendo (alternam rápido, fase própria)
+            if floor(s.t * 28 + f.ph * 3) % 2 == 0 then
+                love.graphics.setColor(w.wing[1], w.wing[2], w.wing[3], 0.55 * s.fade)
+                artRect(r, f.x, f.y - 1, 1, 1)
+            end
+        end
+    end
+    setK(0, 0, 1)
+end
+
 local function orbitBodies(r, spec, s, front)
+    drawSwarm(r, spec, s, front)
     setK(0, 0, 1)
     if spec.orbit then orbitOne(r, spec.orbit, s, front) end
     if spec.orbits then
@@ -413,7 +536,7 @@ local function drawParticles(r, list, fade)
         local k = p.life / p.max             -- 1 nasceu → 0 morre
         local ax = p.u * r.iw + p.ax
         local ay = p.v * r.ih + p.ay
-        if em.sway then ax = ax + math.sin(p.ph + (p.max - p.life) * 2.2) * em.sway * 0.3 end
+        if em.sway then ax = ax + math.sin(p.ph + (p.max - p.life) * (p.sf or 2.2)) * em.sway * 0.3 end
         setK(ax, ay, em.px or 1)
         local c1, c2 = em.color, em.color2 or em.color
         local mix = 1 - k
@@ -469,18 +592,34 @@ local function drawParticles(r, list, fade)
                 artRect(r, ax, ay + d, 1, 1); artRect(r, ax, ay - d, 1, 1)
             end
             love.graphics.setBlendMode("alpha")
-        elseif kind == "drip" then
-            if p.landed then
-                -- poça respingando: 3 px que abrem e somem
-                love.graphics.setColor(cr, cg, cb, a * 0.85)
-                artRect(r, ax - 1, ay, 3, 1)
-                if k > 0.15 then
-                    artRect(r, ax - 2, ay - 1, 1, 1)
-                    artRect(r, ax + 2, ay - 1, 1, 1)
-                end
+        elseif kind == "ooze" then
+            -- cor FOSCA da gosma (sem pop saturado), brilho só na ponta
+            local base, hi = em.color, em.color2 or em.color
+            if p.state == "form" then
+                local k2 = math.min(1, p.st / p.formDur)
+                local len = (k2 < 0.45) and 1 or ((k2 < 0.8) and 2 or 3)
+                love.graphics.setColor(base[1], base[2], base[3], 0.95 * fade)
+                artRect(r, ax, ay, 1, len)
+                if len == 3 then artRect(r, ax, ay + 2, 1, 1) end
+                love.graphics.setColor(hi[1], hi[2], hi[3], 0.9 * fade)
+                artRect(r, ax, ay + len - 1, 1, 1)
+            elseif p.state == "fall" then
+                love.graphics.setColor(base[1], base[2], base[3], 0.95 * fade)
+                artRect(r, ax, ay - 1, 1, (p.vy > 30) and 3 or 2)
+                love.graphics.setColor(hi[1], hi[2], hi[3], 0.9 * fade)
+                artRect(r, ax, ay, 1, 1)
             else
-                love.graphics.setColor(cr, cg, cb, a)
-                artRect(r, ax, ay, p.big and 2 or 1, (p.vy > 20) and 3 or 2)
+                -- espirro: poça achatando + dois pingos em arco
+                local tt = p.st
+                local kk = math.max(0, 1 - tt / 0.55)
+                love.graphics.setColor(base[1], base[2], base[3], 0.9 * kk * fade)
+                artRect(r, ax - 1, ay, (tt < 0.2) and 2 or 3, 1)
+                local dy = p.sy * tt + 0.5 * 90 * tt * tt
+                if dy < 0.5 then
+                    love.graphics.setColor(hi[1], hi[2], hi[3], 0.85 * kk * fade)
+                    artRect(r, ax - p.sx * tt, ay + dy, 1, 1)
+                    artRect(r, ax + 1 + p.sx * tt * 0.8, ay + dy * 0.85, 1, 1)
+                end
             end
         end
     end
@@ -598,6 +737,7 @@ function BossAura.drawBack(id, r)
     -- chão em pixels da arte, pro update pousar as gotas
     s.groundArt = (r.groundY - r.y) / r.scale
     s.ih = r.ih
+    s.iw = r.iw
     love.graphics.push("all")
     drawFloor(r, spec, s)
     drawCorona(r, spec, s)
@@ -619,53 +759,6 @@ function BossAura.drawFront(id, r)
     orbitBodies(r, spec, s, true)
     drawParticles(r, s.front, s.fade)
     setK(0, 0, 1)
-    love.graphics.pop()
-end
-
--- CONTORNO DE CHEFE: a silhueta do quadro atual, na cor do tema, 1 pixel
--- da arte pra fora nas 4 direções, atrás do corpo. É o "este é o chefe"
--- que se lê de longe, mesmo com o fundo da sala brigando (fornalha laranja
--- atrás do tirano, feixe branco atrás da rainha). drawFn(x, y, tint)
--- desenha o quadro corrente com o shader de silhueta ativo.
-local rimShader = nil
-local function getRimShader()
-    if rimShader ~= nil then return rimShader end
-    local ok, sh = pcall(love.graphics.newShader, [[
-        vec4 effect(vec4 color, Image tex, vec2 uv, vec2 sc) {
-            float a = Texel(tex, uv).a;
-            return vec4(color.rgb, color.a * step(0.1, a));
-        }
-    ]])
-    if not ok then
-        print("[BossAura] AVISO: shader de contorno não compilou: " .. tostring(sh))
-        sh = false
-    end
-    rimShader = sh
-    return rimShader
-end
-
-function BossAura.drawRim(id, r, drawFn)
-    local spec = AURAS[id]
-    if not spec or not spec.rim then return end
-    local s = getState(id)
-    if s.fade <= 0 then return end
-    local sh = getRimShader()
-    if not sh then return end
-    local rim = spec.rim
-    local k = 1
-    if rim.pulse and not reducedMotion() then
-        k = 0.7 + 0.3 * math.sin(s.t * rim.pulse)
-    end
-    local P = math.max(1, floor(r.scale + 0.5))
-    love.graphics.push("all")
-    love.graphics.setShader(sh)
-    -- a cor vai como TINT: o SpriteAnimation:draw reseta o setColor pra
-    -- branco no fim de cada quadro desenhado
-    local col = { rim.color[1], rim.color[2], rim.color[3],
-                  (rim.a or 0.5) * k * s.fade }
-    for _, d in ipairs({ { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 } }) do
-        drawFn(r.x + d[1] * P, r.y + d[2] * P, col)
-    end
     love.graphics.pop()
 end
 

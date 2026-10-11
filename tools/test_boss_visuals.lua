@@ -9,7 +9,7 @@
 --     (os idles antigos de 4 quadros eram chuvisco de regeração)
 -- (b) o idle nasce do quadro base: quadro 0 do idle ≈ quadro 0 do hurt/death
 --     (identidade do chefe não deriva ao apanhar/morrer)
--- (c) todo chefe tem aura com contorno + brilho; o emissor emite; a morte
+-- (c) todo chefe tem aura com brilho PEQUENO e sem contorno; o emissor emite; a morte
 --     esvai; reducedMotion para o movimento
 -- (d) winter_monarch centra pelo EIXO DO CORPO, não pelo bbox
 
@@ -109,8 +109,13 @@ function M.run()
         local a = AURAS[id]
         t:truthy(id .. ": tem aura declarada", a ~= nil)
         if a then
-            t:truthy(id .. ": aura tem contorno", a.rim and a.rim.color)
+            -- contorno colorido foi REJEITADO pelo dono ("a arte já tem o
+            -- contorno dela") e brilho grande lê como bola de luz
+            t:falsy(id .. ": aura sem contorno colorido", a.rim)
             t:truthy(id .. ": aura tem brilho", a.glows and #a.glows > 0)
+            local maxR = 0
+            for _, g in ipairs(a.glows or {}) do maxR = math.max(maxR, g.r or 0) end
+            t:truthy(id .. ": brilho pequeno (raio " .. maxR .. " <= 8)", maxR <= 8)
         end
     end
 

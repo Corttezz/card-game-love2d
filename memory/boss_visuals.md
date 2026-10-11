@@ -80,6 +80,22 @@ type: project
   saiu (`corona.disc = false`), fica só uma coroa curta de raios na cabeça.
   Uma cena, um eclipse.
 
+## Rodada 2 do dono (Out/2026)
+
+- **Contorno colorido SAIU** de todos ("a arte já tem o contorno dela").
+  Brilhos ficaram só pequenos (raio <= 8 px da arte; maior lê como bola de
+  luz). `test_boss_visuals` trava os dois.
+- **Natural > mecânico.** Emissor com intervalo FIXO (acumulador) virou
+  chegada de Poisson; rajada com ±35%; órbitas com raio/velocidade/fase por
+  corpo (exceto `regular = true`, runas); balanço com frequência própria.
+- Colosso: moscas viraram ENXAME de agentes (alvo sorteado, aceleração
+  limitada, tremido perpendicular — `swarm`); gosma `ooze` nasce em pontos
+  PINTADOS (lábio, garras), forma → estica → cai com gravidade → espirra uma
+  vez; esporos raros, lentos, foscos.
+- Pés dos apoiados: a capa que balança passava rente às botas e a borda
+  macia arrastava pixel do pé — `TYRANT_FEET`/`MONARCH_FEET` excluídos no
+  bake (pé idêntico ao quadro 0 em todos os quadros).
+
 ## Pendente
 
 - Círculo rúnico do lich: em 1024x768 a laje do salão 2 cai atrás da mão de

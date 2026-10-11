@@ -16,7 +16,9 @@
 --   area      { u0, v0, u1, v1 } de onde o emissor nasce
 --
 -- Camadas:
---   glows   brilho posterizado aditivo nos pixels que já são luz na arte
+--   glows   brilho posterizado aditivo PEQUENO nos pixels que já são luz na
+--           arte (raio <= 8 px da arte: maior que isso vira "bola de luz",
+--           que o dono rejeitou nos salões)
 --           (mesmas âncoras de enemy_emissives — no salão o LightEngine não
 --           tem lightmap e o olho/orbe pintado ficava apagado)
 --   orbit   (ou `orbits`, lista) n corpos girando numa elipse; metade de trás desenha ATRÁS do
@@ -31,9 +33,8 @@
 --   floor   círculo rúnico no chão (só o lich: diz "ele paira SOBRE algo")
 --   corona  coroa de raios atrás da cabeça (só a rainha; `disc = false`
 --           tira o disco — a sala 6 já tem o eclipse pintado no fundo)
---   rim     contorno da silhueta na cor do tema (1 pixel da arte, atrás do
---           corpo) — o tirano usa contorno ESCURO: a sala dele é lava
---           clara e ele precisa recortar, não brilhar
+--   (SEM contorno colorido: existiu e saiu — "a arte já tem o contorno
+--   dela", dono, Out/2026)
 --   glint   brilho que percorre a borda externa da silhueta (asas da rainha)
 --
 -- `reducedMotion`: órbitas congelam, emissores param, coroa/círculo param de
@@ -45,9 +46,8 @@ return {
     -- Ato 1 — Rei-carniça. Corvos rondando, penas caindo, coração de brasa
     -- batendo em DUAS pancadas (tum-tum) no peito de costelas.
     carrion_king = {
-        rim = { color = { 1.00, 0.46, 0.12 }, a = 0.45, pulse = 1.6 },
         glows = {
-            { u = 0.446, v = 0.464, r = 10, color = { 1.00, 0.52, 0.12 },
+            { u = 0.446, v = 0.464, r = 6, color = { 1.00, 0.52, 0.12 },
               a = 0.55, beat = 1.25 },                       -- coração
             { u = 0.435, v = 0.240, r = 4, color = { 1.00, 0.60, 0.15 }, a = 0.45 },
             { u = 0.545, v = 0.240, r = 4, color = { 1.00, 0.60, 0.15 }, a = 0.45 },
@@ -71,11 +71,10 @@ return {
     -- o orbe do cajado pulsa com faíscas arcanas em órbita e almas sobem da
     -- barra do manto.
     tower_lich = {
-        rim = { color = { 0.45, 0.85, 1.00 }, a = 0.50, pulse = 1.1 },
         floor = { ru = 0.36, rv = 0.060, speed = 0.35, a = 0.60,
                   color = { 0.45, 0.80, 1.00 }, color2 = { 0.66, 0.52, 1.00 } },
         glows = {
-            { u = 0.190, v = 0.240, r = 13, color = { 0.55, 0.82, 1.00 },
+            { u = 0.190, v = 0.240, r = 8, color = { 0.55, 0.82, 1.00 },
               a = 0.55, pulse = 1.6 },                       -- orbe do cajado
             { u = 0.455, v = 0.260, r = 3, color = { 0.38, 0.83, 0.95 }, a = 0.55 },
             { u = 0.495, v = 0.260, r = 3, color = { 0.38, 0.83, 0.95 }, a = 0.55 },
@@ -101,19 +100,18 @@ return {
     -- Ato 3 — Tirano do abismo (o dono gostou: só realça). Fagulhas do
     -- inferno saindo da fornalha do peito e fumaça rasteira nas garras.
     abyss_tyrant = {
-        rim = { color = { 0.10, 0.02, 0.02 }, a = 0.85 },
         glows = {
-            { u = 0.496, v = 0.621, r = 12, color = { 1.00, 0.50, 0.10 },
+            { u = 0.496, v = 0.621, r = 7, color = { 1.00, 0.50, 0.10 },
               a = 0.55, pulse = 2.4 },                       -- fornalha
             { u = 0.451, v = 0.258, r = 3, color = { 1.00, 0.75, 0.15 }, a = 0.5 },
             { u = 0.534, v = 0.259, r = 3, color = { 1.00, 0.75, 0.15 }, a = 0.5 },
-            { u = 0.244, v = 0.467, r = 6, color = { 0.95, 0.44, 0.03 }, a = 0.35,
+            { u = 0.244, v = 0.467, r = 4, color = { 0.95, 0.44, 0.03 }, a = 0.35,
               pulse = 3.1 },
-            { u = 0.749, v = 0.469, r = 6, color = { 0.94, 0.43, 0.04 }, a = 0.35,
+            { u = 0.749, v = 0.469, r = 4, color = { 0.94, 0.43, 0.04 }, a = 0.35,
               pulse = 2.7 },
         },
         emit = {
-            { kind = "spark", px = 2, rate = 13, big = 0.3, area = { 0.30, 0.42, 0.70, 0.68 },
+            { kind = "spark", px = 2, rate = 7, big = 0.2, area = { 0.30, 0.42, 0.70, 0.68 },
               vx = { -8, 8 }, vy = { -30, -16 }, life = { 0.6, 1.2 },
               color = { 1.00, 0.86, 0.32 }, color2 = { 0.86, 0.22, 0.05 } },
             -- CINZA escura subindo: a sala 3 é lava laranja — fagulha
@@ -131,9 +129,8 @@ return {
     -- Ato 4 — Monarca do inverno. Redemoinho de neve girando em volta,
     -- sopro gelado de tempos em tempos e névoa rasteira nos pés.
     winter_monarch = {
-        rim = { color = { 0.70, 0.92, 1.00 }, a = 0.45, pulse = 0.9 },
         glows = {
-            { u = 0.156, v = 0.178, r = 12, color = { 0.50, 0.80, 1.00 },
+            { u = 0.156, v = 0.178, r = 8, color = { 0.50, 0.80, 1.00 },
               a = 0.55, pulse = 1.4 },                       -- orbe do cajado
             { u = 0.425, v = 0.238, r = 3, color = { 0.55, 0.85, 1.00 }, a = 0.55 },
             { u = 0.468, v = 0.238, r = 3, color = { 0.55, 0.85, 1.00 }, a = 0.55 },
@@ -155,29 +152,33 @@ return {
         },
     },
 
-    -- Ato 5 — Colosso podre. Esporos subindo dos ombros, moscas zumbindo em
-    -- volta da cabeça e gosma pingando das mãos até o chão.
+    -- Ato 5 — Colosso podre. Revisão do dono (Out/2026): "as partículas não
+    -- estão naturais". Agora POUCO e orgânico: moscas em enxame errático
+    -- (agentes perseguindo alvos, não carrossel), gosma que se FORMA nos
+    -- pontos pintados (boca, garras), estica, cai com gravidade e espirra
+    -- uma vez no chão; esporos raros e lentos. Cores foscas, sem pop.
     rot_colossus = {
-        rim = { color = { 0.45, 0.95, 0.35 }, a = 0.40, pulse = 1.3 },
         glows = {
-            { u = 0.300, v = 0.190, r = 7, color = { 0.47, 0.90, 0.44 }, a = 0.35,
-              pulse = 1.3 },
-            { u = 0.651, v = 0.173, r = 7, color = { 0.47, 0.90, 0.44 }, a = 0.35,
-              pulse = 1.1 },
-            { u = 0.420, v = 0.280, r = 3, color = { 0.30, 0.90, 0.95 }, a = 0.5 },
-            { u = 0.550, v = 0.280, r = 3, color = { 0.30, 0.90, 0.95 }, a = 0.5 },
+            { u = 0.300, v = 0.190, r = 5, color = { 0.42, 0.78, 0.40 }, a = 0.22,
+              pulse = 0.7 },
+            { u = 0.651, v = 0.173, r = 5, color = { 0.42, 0.78, 0.40 }, a = 0.22,
+              pulse = 0.55 },
+            { u = 0.420, v = 0.280, r = 2, color = { 0.30, 0.90, 0.95 }, a = 0.35 },
+            { u = 0.550, v = 0.280, r = 2, color = { 0.30, 0.90, 0.95 }, a = 0.35 },
         },
-        orbit = { kind = "fly", n = 7, px = 2, cu = 0.48, cv = 0.26, ru = 0.46,
-                  rv = 0.20, speed = 4.5, color = { 0.04, 0.05, 0.03 },
-                  color2 = { 0.30, 0.40, 0.25 } },
+        swarm = { n = 5, px = 2, cu = 0.47, cv = 0.32, ru = 0.36, rv = 0.24,
+                  speed = { 22, 38 }, color = { 0.05, 0.05, 0.04 },
+                  color2 = { 0.12, 0.13, 0.10 }, wing = { 0.78, 0.82, 0.72 } },
         emit = {
-            { kind = "spore", px = 2, rate = 5.5, big = 0.35, area = { 0.22, 0.10, 0.75, 0.26 },
-              vx = { -3, 3 }, vy = { -10, -5 }, sway = 5, life = { 2.2, 3.2 },
-              color = { 0.58, 0.96, 0.46 }, color2 = { 0.30, 0.60, 0.22 } },
-            { kind = "drip", px = 2, rate = 1.6, big = 0.5,
-              points = { { 0.17, 0.78 }, { 0.80, 0.78 }, { 0.36, 0.62 } },
-              gravity = 70, life = { 3.0, 3.0 },
-              color = { 0.44, 0.66, 0.22 }, color2 = { 0.24, 0.40, 0.12 } },
+            { kind = "spore", px = 1, rate = 0.7, area = { 0.22, 0.12, 0.72, 0.24 },
+              vx = { -2, 2 }, vy = { -5, -2.5 }, sway = 5, life = { 3.5, 5.0 },
+              a = 0.65, color = { 0.52, 0.70, 0.40 }, color2 = { 0.34, 0.48, 0.26 } },
+            -- pontos PINTADOS de onde a gosma escorre (px do canvas 141x131,
+            -- lidos com régua): lábio de baixo e pontas das garras
+            { kind = "ooze", px = 2, gravity = 95, life = { 8, 8 },
+              interval = { 2.2, 5.5 }, form = { 0.9, 1.8 },
+              spots = { { 0.426, 0.320 }, { 0.206, 0.757 }, { 0.667, 0.765 } },
+              color = { 0.30, 0.40, 0.16 }, color2 = { 0.50, 0.60, 0.28 } },
         },
     },
 
@@ -185,7 +186,6 @@ return {
     -- eclipse com coroa de luz atrás da cabeça, pétalas de sombra no ar e um
     -- brilho que corre pela borda das asas.
     eclipse_queen = {
-        rim = { color = { 0.95, 0.30, 0.70 }, a = 0.50, pulse = 0.8 },
         -- coroa de raios curta em volta da CABEÇA, sem disco: o eclipse da
         -- cena é o da abertura do salão 6 (InteriorFX/arte da sala)
         corona = { u = 0.50, v = 0.24, r = 13, speed = 0.18, disc = false,
