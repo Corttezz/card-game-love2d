@@ -87,9 +87,9 @@ return {
         warrior = { name = "Warrior", desc = "Specialist in close combat and resilience",
             passive_name = "Momentum", passive_desc = "Play 2+ attacks in the same turn: +1 Strength this battle." },
         mage    = { name = "Mage",    desc = "Master of arcane arts and elemental manipulation",
-            passive_name = "Conduit", passive_desc = "Start every battle with a Lightning orb (4) channeled and 2 Focus." },
+            passive_name = "Conduit", passive_desc = "Start every battle with a Lightning orb (4) channeled and 2 Focus (+1 every two acts)." },
         rogue   = { name = "Rogue",   desc = "Agile assassin specialized in poison and precision",
-            passive_name = "Toxins", passive_desc = "The first attack each turn applies 1 Poison." },
+            passive_name = "Toxins", passive_desc = "The first attack each turn applies 1 Poison (+1 every two acts)." },
     },
 
     top_bar = {
@@ -924,9 +924,9 @@ return {
         orb_pulse_armor      = "Orbs pulse: +{value} block",
         orb_pulse_dmg        = "Orbs pulse: {value} damage",
         orb_pulse_heal       = "Orbs pulse: +{value} HP",
-        passive_conduit      = "Conduit: Lightning orb + 2 Focus!",
+        passive_conduit      = "Conduit: Lightning orb + {n} Focus!",
         passive_momentum     = "Momentum: +1 Strength!",
-        passive_toxins       = "Toxins: +1 Poison!",
+        passive_toxins       = "Toxins: +{n} Poison!",
         phase_started        = "Phase {value} started!",
         floor_entered = "{act} — floor {floor} ({node})",
         burn_tick        = "Burn: {value} damage",

@@ -86,9 +86,9 @@ return {
         warrior = { name = "Krieger",  desc = "Spezialist fuer Nahkampf und Widerstandskraft",
             passive_name = "Schwung", passive_desc = "Spiele 2+ Angriffe im selben Zug: +1 Staerke fuer diesen Kampf." },
         mage    = { name = "Magier",   desc = "Meister arkaner Kuenste und Elementarmanipulation",
-            passive_name = "Leitung", passive_desc = "Beginne jeden Kampf mit einem kanalisierten Blitz-Orb (4) und 2 Fokus." },
+            passive_name = "Leitung", passive_desc = "Beginne jeden Kampf mit einem kanalisierten Blitz-Orb (4) und 2 Fokus (+1 alle zwei Akte)." },
         rogue   = { name = "Schurke",  desc = "Beweglicher Assassine, spezialisiert auf Gift und Praezision",
-            passive_name = "Toxine", passive_desc = "Der erste Angriff jeder Runde fuegt 1 Gift zu." },
+            passive_name = "Toxine", passive_desc = "Der erste Angriff jeder Runde fügt 1 Gift zu (+1 alle zwei Akte)." },
     },
 
     top_bar = {
@@ -921,9 +921,9 @@ return {
         orb_pulse_armor      = "Orbs pulsieren: +{value} Block",
         orb_pulse_dmg        = "Orbs pulsieren: {value} Schaden",
         orb_pulse_heal       = "Orbs pulsieren: +{value} LP",
-        passive_conduit      = "Leiter: Blitzorb + 2 Fokus!",
+        passive_conduit      = "Leiter: Blitzorb + {n} Fokus!",
         passive_momentum     = "Schwung: +1 Stärke!",
-        passive_toxins       = "Toxine: +1 Gift!",
+        passive_toxins       = "Toxine: +{n} Gift!",
         phase_started        = "Phase {value} gestartet!",
         floor_entered = "{act} — Etage {floor} ({node})",
         burn_tick        = "Brand: {value} Schaden",

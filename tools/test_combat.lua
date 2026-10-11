@@ -133,6 +133,25 @@ function M.run()
     t:eq("jokerSlots = ativos (MAX 3)", #g.jokerSlots, 3)
     t:eq("coleção da run acumula os 4", #g.runManager.currentRun.jokers, 4)
 
+    -- ===== Passivas que crescem com a run (Out/2026) =====
+    -- Conduite (Foco) e Toxinas (Veneno) sobem 1 degrau a cada 2 atos.
+    local function focusAt(act)
+        local gm = TK.newRunGame("mage")
+        gm.runManager.currentRun.actNumber = act
+        gm.player.buffs = {}
+        gm:applyClassBattleStartPassive()
+        for _, b in ipairs(gm.player.buffs) do
+            if b.name == "focus" then return b.stacks end
+        end
+        return 0
+    end
+    t:eq("Conduite: Foco 2 nos atos 1-2", focusAt(2), 2)
+    t:eq("Conduite: Foco 3 nos atos 3-4", focusAt(3), 3)
+    t:eq("Conduite: Foco 4 nos atos 5-6", focusAt(6), 4)
+    local gr = TK.newRunGame("rogue")
+    gr.runManager.currentRun.actNumber = 5
+    t:eq("Toxinas: 3 de Veneno nos atos 5-6", gr:classPassiveTier(), 3)
+
     return t:done()
 end
 

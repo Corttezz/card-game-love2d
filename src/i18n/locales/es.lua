@@ -86,9 +86,9 @@ return {
         warrior = { name = "Guerrero", desc = "Especialista en combate cuerpo a cuerpo y resistencia",
             passive_name = "Impetu", passive_desc = "Juega 2+ ataques en el mismo turno: +1 de Fuerza en esta batalla." },
         mage    = { name = "Mago",     desc = "Maestro de las artes arcanas y manipulacion elemental",
-            passive_name = "Conducto", passive_desc = "Comienza cada batalla con un orbe de Rayo (4) canalizado y 2 de Foco." },
+            passive_name = "Conducto", passive_desc = "Comienza cada batalla con un orbe de Rayo (4) canalizado y 2 de Foco (+1 cada dos actos)." },
         rogue   = { name = "Picaro",   desc = "Asesino agil especializado en venenos y precision",
-            passive_name = "Toxinas", passive_desc = "El primer ataque de cada turno aplica 1 de Veneno." },
+            passive_name = "Toxinas", passive_desc = "El primer ataque de cada turno aplica 1 de Veneno (+1 cada dos actos)." },
     },
 
     top_bar = {
@@ -920,9 +920,9 @@ return {
         orb_pulse_armor      = "Los orbes laten: +{value} de bloqueo",
         orb_pulse_dmg        = "Los orbes laten: {value} de daño",
         orb_pulse_heal       = "Los orbes laten: +{value} PV",
-        passive_conduit      = "Conducto: ¡orbe de Rayo + 2 Enfoque!",
+        passive_conduit      = "Conducto: ¡orbe de Rayo + {n} Enfoque!",
         passive_momentum     = "Ímpetu: ¡+1 Fuerza!",
-        passive_toxins       = "Toxinas: ¡+1 Veneno!",
+        passive_toxins       = "Toxinas: ¡+{n} Veneno!",
         phase_started        = "¡Fase {value} iniciada!",
         floor_entered = "{act} — piso {floor} ({node})",
         burn_tick        = "Quemadura: {value} de daño",

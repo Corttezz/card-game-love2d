@@ -86,9 +86,9 @@ return {
         warrior = { name = "Guerrier", desc = "Specialiste du combat rapproche et de la resilience",
             passive_name = "Elan", passive_desc = "Jouez 2+ attaques dans le meme tour : +1 de Force pour ce combat." },
         mage    = { name = "Mage",     desc = "Maitre des arts arcaniques et manipulation elementale",
-            passive_name = "Conduit", passive_desc = "Commencez chaque combat avec un orbe de Foudre (4) canalise et 2 de Concentration." },
+            passive_name = "Conduit", passive_desc = "Commencez chaque combat avec un orbe de Foudre (4) canalisé et 2 de Concentration (+1 tous les deux actes)." },
         rogue   = { name = "Voleur",   desc = "Assassin agile specialise en poison et precision",
-            passive_name = "Toxines", passive_desc = "La premiere attaque de chaque tour applique 1 Poison." },
+            passive_name = "Toxines", passive_desc = "La première attaque de chaque tour applique 1 Poison (+1 tous les deux actes)." },
     },
 
     top_bar = {
@@ -921,9 +921,9 @@ return {
         orb_pulse_armor      = "Les orbes pulsent : +{value} blocage",
         orb_pulse_dmg        = "Les orbes pulsent : {value} dégâts",
         orb_pulse_heal       = "Les orbes pulsent : +{value} PV",
-        passive_conduit      = "Conduit : orbe de Foudre + 2 Concentration !",
+        passive_conduit      = "Conduit : orbe de Foudre + {n} Concentration !",
         passive_momentum     = "Élan : +1 Force !",
-        passive_toxins       = "Toxines : +1 Poison !",
+        passive_toxins       = "Toxines : +{n} Poison !",
         phase_started        = "Phase {value} commencée !",
         floor_entered = "{act} — étage {floor} ({node})",
         burn_tick        = "Brûlure : {value} dégâts",

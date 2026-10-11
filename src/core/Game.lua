@@ -627,9 +627,20 @@ end
 
 -- ===== PASSIVAS DE CLASSE (identidade de gameplay — Jul/2026) =====
 -- Warrior "Ímpeto":  2+ ataques no mesmo turno → +1 Força (na batalha).
--- Mage "Conduíte":   começa toda batalha com orbe de Raio (2) canalizado.
--- Rogue "Toxinas":   o 1º ataque de cada turno aplica 1 de Veneno (2t).
+-- Mage "Conduíte":   começa toda batalha com orbe de Raio (4) e Foco 2/3/4 (cresce a cada 2 atos).
+-- Rogue "Toxinas":   o 1º ataque de cada turno aplica 1/2/3 de Veneno (2t, cresce a cada 2 atos).
 -- Toda ativação gera toast — nada acontece invisível (lei do projeto).
+
+-- Degrau das passivas que CRESCEM com a run (Out/2026): 1 nos atos 1-2,
+-- 2 nos atos 3-4, 3 nos atos 5-6 (endless fica no ultimo degrau+1).
+-- Bateria do piloto v6: guerreiro 47% (Impeto rende Forca a cada batalha),
+-- ladino 23-27% e mago 6-13% — Conduite e Toxinas eram FIXAS a run inteira
+-- e as duas classes quebravam nos atos 4-6, quando o inimigo ja escalou.
+function Game:classPassiveTier()
+    local run = self.runManager and self.runManager.currentRun
+    local act = (run and run.actNumber) or 1
+    return 1 + math.floor((math.max(1, act) - 1) / 2)
+end
 
 function Game:applyClassBattleStartPassive()
     self._toxinAppliedThisTurn = false
@@ -648,9 +659,10 @@ function Game:applyClassBattleStartPassive()
             -- warrior 5/10 — mesmo com o bot comprando defesa, o mago nao
             -- converte A2-F8/A3. Foco inicial 1→2: cada pulso/evocacao sai
             -- +2 desde o turno 1 (a alavanca e a identidade da classe).
-            self.player:addBuff("focus", 99, 2)
+            -- Out/2026: Foco cresce com a run (2 → 3 → 4), ver classPassiveTier.
+            self.player:addBuff("focus", 99, 1 + self:classPassiveTier())
         end
-        self:addMessage(msg("passive_conduit"), "info")
+        self:addMessage(msg("passive_conduit", { n = 1 + self:classPassiveTier() }), "info")
         if love.timer then self._passiveFlashT = love.timer.getTime() end
     end
 end
@@ -934,8 +946,10 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
             and self.enemy:isAlive() then
             self._toxinAppliedThisTurn = true
             CombatBeats.step(sink, "passive.toxins", function()
-                self.enemy:addStatusEffect({ name = "poison", stacks = 1, duration = 2 })
-                self:addMessage(msg("passive_toxins"), "info")
+                -- Out/2026: Veneno cresce com a run (1 → 2 → 3).
+                local stacks = self:classPassiveTier()
+                self.enemy:addStatusEffect({ name = "poison", stacks = stacks, duration = 2 })
+                self:addMessage(msg("passive_toxins", { n = stacks }), "info")
                 local okCF, CF = pcall(require, "src.systems.CardFeel")
                 if okCF then CF.burstAtEnemy("poison", 0.8) end
                 if love.timer then self._passiveFlashT = love.timer.getTime() end
