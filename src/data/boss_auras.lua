@@ -171,8 +171,10 @@ return {
                   color2 = { 0.12, 0.13, 0.10 }, wing = { 0.78, 0.82, 0.72 } },
         emit = {
             { kind = "spore", px = 1, rate = 0.7, area = { 0.22, 0.12, 0.72, 0.24 },
-              vx = { -2, 2 }, vy = { -5, -2.5 }, sway = 5, life = { 3.5, 5.0 },
-              a = 0.65, color = { 0.52, 0.70, 0.40 }, color2 = { 0.34, 0.48, 0.26 } },
+              -- mesmo vocabulário dos esporos do salão 5 (InteriorFX): subida
+              -- de 1-2.5 px da arte/s, cor dessaturada, nada de verde aceso
+              vx = { -1, 1 }, vy = { -2.5, -1.0 }, sway = 4, life = { 5.0, 8.0 },
+              a = 0.55, color = { 0.66, 0.76, 0.52 }, color2 = { 0.44, 0.54, 0.34 } },
             -- pontos PINTADOS de onde a gosma escorre (px do canvas 141x131,
             -- lidos com régua): lábio de baixo e pontas das garras
             { kind = "ooze", px = 2, gravity = 95, life = { 8, 8 },
