@@ -37,7 +37,16 @@ end
 
 HintBar._fit = fit   -- exposto pro teste de truncamento UTF-8
 
+-- DESLIGADA no jogo (pedido do dono, Out/2026: "tirar esses textos
+-- informativos... estão poluindo coisa demais"). As faixas de rodapé
+-- ("Passe o mouse pra ler · CLIQUE seleciona...") repetiam o que a própria
+-- tela já ensina pelo hover/botões. Um interruptor só, aqui, em vez de
+-- arrancar as 9 chamadas: religar é trocar pra true. Informação que o
+-- jogador PRECISA pra decidir não pode morar aqui — vai ancorada no objeto.
+HintBar.ENABLED = false
+
 function HintBar.draw(text, opts)
+    if not HintBar.ENABLED then return end
     if not text or text == "" then return end
     opts = opts or {}
     local W = love.graphics.getWidth()

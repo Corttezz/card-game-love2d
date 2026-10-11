@@ -305,14 +305,9 @@ function MapScreen:draw()
         end
     end
 
-    -- Hint no rodapé
-    local hintFont = FontManager.getResponsiveFont(0.022, 14)
-    love.graphics.setFont(hintFont)
-    love.graphics.setColor(0.85, 0.85, 0.85, 0.7)
-    local hint = I18n.t("map.hint", nil,
-        "Clique numa opcao OU pressione 1 / 2 / 3.  ESC volta ao menu.")
-    local hw = hintFont:getWidth(hint)
-    love.graphics.print(hint, math.floor((sw - hw) / 2), math.floor(sh * 0.97) - hintFont:getHeight())
+    -- Sem faixa de dica no rodapé (pedido do dono, Out/2026: textos
+    -- informativos poluíam a tela). Os marcos já se explicam no hover e as
+    -- teclas 1/2/3 continuam funcionando — ver HintBar.ENABLED.
 
     love.graphics.setColor(1, 1, 1, 1)
 end
