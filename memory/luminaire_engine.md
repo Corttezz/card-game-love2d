@@ -57,6 +57,10 @@ Ele é dono de:
 ## Custo
 Bench travel 15.61 ms/frame (com o jogo do usuário rodando em paralelo —
 re-medir ocioso; orçamento 16.6). Anchor scan é 1× por (bid,kind,variant).
+Out/2026: o scan lê o buffer rgba8 por FFI (tabela F8 = byte/255 em float,
+idêntico ao getPixel) e roda no PRÉ-AQUECIMENTO do bioma (WorldRoad
+`prewarmJobs`), fora do frame da troca de ato. `submit(bid, kind, a)` lê
+`a` na hora — o WorldRoad reusa a mesma tabela por chamada.
 
 ## v9.1 (feedback: postes maiores + braço pra estrada + fogo animado)
 - **face** no catálogo (+1/-1 = direção do braço NA ARTE; nil = simétrico):

@@ -81,3 +81,6 @@ inimigo idem). Custo: 3× draws de sombra (~300 draws/frame, trivial).
 ## Custo
 Bench 13.48ms/frame total da cena (luz+sombra+tapete somados; orçamento
 16.6 — margem ok mas ficar de olho ao adicionar camadas novas).
+Out/2026: `flush` ~0.4 ms. A fila REUSA as entradas entre frames
+(`squeueN`) e o WorldRoad passa `opts` de um pool por frame — o motor lê
+`opts` só no `flush` do MESMO frame; não guarde referência além dele.

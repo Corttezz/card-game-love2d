@@ -75,3 +75,12 @@ como fallback se o bake falhar.
   ambiente escuro comem tudo). Validar SEMPRE com zoom no leito.
 - Poça = aro escuro + miolo CLARO tintado com a cor do fog (reflexo do céu).
 - Rachadura do abyss ilumina (submitMicro rel=z) — chão vivo à noite.
+
+## Perf (Out/2026)
+- `RoadSurface.get(bid, pal, yieldEvery)`: com `yieldEvery` o bake cede
+  (`coroutine.yield`) a cada N linhas — SÓ o pré-aquecimento do WorldRoad
+  passa (roda na coroutine dele). Bake era ~1/3 do engasgo da troca de ato.
+- Falha do bake AVISA (`[RoadSurface] bake ... falhou`) e cacheia `false`
+  (1 aviso, não 1 bake falho por frame); o chamador cai no PNG tileado.
+- A estrada desenha num QuadMesh (1 draw); `RoadSurface.has(bid)` existe
+  pra ferramentas checarem o cache.

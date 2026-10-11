@@ -1801,6 +1801,61 @@ preciso ABRIR os quadros (`love . sheet <pasta> 4`). Métrica filtra, olho
 decide.
 
 
+## ⭐ Perf Out/2026 — o mundo inteiro em ~3-4 ms (era 15-30)
+
+Medição da revisão de lançamento: 1080p custava 20-31 ms de CPU por frame
+(~1000 draw calls) e a troca de ato engasgava 100-370 ms. O custo NÃO era
+GPU: eram **dezenas de milhares de chamadas Lua→C por frame** (setViewport
++ draw por fatia do chão, por fatia da estrada; batch:add + setColor por
+lâmina) — e chamada C/closure no laço também derruba o JIT.
+
+**O que mudou (mesma imagem — prova pixel a pixel ≤0,002% de px, só
+arredondamento de float):**
+- `engine/QuadMesh.lua` (novo): quads escritos por FFI num ByteData e
+  desenhados como 1 Mesh com `setDrawRange`. Fórmulas de vértice/UV/cor =
+  as do LÖVE 11 (Quad::refresh, Matrix4::setTransformation, toColor32).
+  Quad SEM textura no meio de texturizados = u sentinela + `untexturedShader`.
+- **Chão do domo**: malha cacheada por (camZ, geometria, textura); câmera
+  parada = 1 draw, zero Lua. Alpha do crossfade vai na cor GLOBAL (fora da
+  chave — senão a camada que entra reconstruía a cada frame).
+- **Estrada**: mesma ordem de antes (tile → decoração → próxima fileira)
+  num QuadMesh só, 1 draw. O `paintRow` era closure criada POR FILEIRA —
+  FNEW no laço aborta o trace e, com FFI, o interpretador fica MAIS lento
+  que as chamadas C antigas (95 ms/frame num run). Agora 1 closure/frame.
+- **Grama**: ver `engine/GrassField.lua` — vento no VERTEX SHADER e lote
+  reusado com a câmera parada (chave: camZ, geometria, cores, bioma,
+  `forkSig`, fatias). Na câmera andando a CPU escreve só a lâmina parada +
+  parâmetros (hash/fase). `ctx.frame` (= `WorldRoad._drawFrame`) zera o
+  cursor por FRAME DE DESENHO — com o mundo pausado o `_time` não anda.
+- **Troca de ato**: `prewarmTick` no `update` carrega o bioma ATUAL e o
+  PRÓXIMO aos poucos (`WorldRoad.PREWARM_BUDGET` = 2 ms/frame): chão,
+  RoadSurface (bake cede a cada 16 linhas), montanhas+cor do céu, castelo
+  (+porta), props×3 variantes, luminárias (sprite+chama+âncora), marcos do
+  fork. Loader novo de asset de bioma? **Adicione em `prewarmJobs`** — a
+  trava `test_perf_budget` reprova se o 1º frame do bioma decodificar PNG.
+- PNG decodificado 1× (ImageData → Image) e varredura de conteúdo por FFI
+  no buffer rgba8 (era getPixel por pixel, 2 decodes por arquivo).
+- **Pools por frame** em drawProps (opções de sombra, oclusores, hitboxes,
+  listas de passe, arg do LuminaireEngine): 130 → ~26 KB/frame de lixo.
+- `pickKind`/sorteio de luminária em ordem ESTÁVEL (`kindOrder`): `pairs()`
+  em chave string muda de ordem entre processos (hash semeado do LuaJIT) —
+  o mesmo seed dava cenários diferentes e a prova visual era impossível.
+
+**Lições de JIT (LuaJIT 2.1 do LÖVE 11.5):** laço quente com FFI PRECISA
+compilar. Matam o trace: closure criada no laço (FNEW/UCLO), desvio
+frequente que vira trace lateral que não monta (NYICOAL — use
+`math.max/min` em vez de `x > 0 and x or 0`). Diagnóstico:
+`love . test_one perf_probe 1920x1080:jitv` lista abortos por linha.
+
+**Números (1080p, mesma sessão, máquina com outra frente rodando):**
+regime estável 24-31 → 3-4 ms (mediana), draw calls ~1000 → ~410,
+viajando ~30 → ~9-10 ms, troca de ato 140-250 → 31-51 ms (o resto é
+JIT reaquecendo + fantasmas do crossfade, não carga de disco).
+
+**Ferramentas:** `perf_probe [WxH][:phases|:switch|:jitv|:profile]`
+(ms por fase + KB alocados), `perf_visual_diff ref|cmp[:WxH]` (casos
+determinísticos: relógio/mouse/RNG congelados), trava `test_perf_budget`.
+
 ## Backlog
 
 - [ ] **Validação visual v3.3 nativa** (precisa driver resetado; testar em

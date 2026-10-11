@@ -215,3 +215,9 @@ luzes, o teste `hit` de oclusor (`LightEngine.lua:272`) muda, e as árvores
 acendem na diff sem haver defeito. Controle que fecha: bioma não alterado
 (highlands) dá o mesmo padrão. Pra franja, compare o frame de produção
 antes/depois com zoom 3× e em movimento.
+
+## Oclusores de pool (Out/2026, perf)
+O WorldRoad passa ao `submitOccluder` tabelas de um POOL por frame (era 1
+tabela nova por árvore por frame). Contrato: o motor só lê o oclusor até o
+`composite` do MESMO frame — nunca guarde a referência entre frames
+(o slot é reescrito no frame seguinte). Mesma regra vale pro `ShadowEngine`.
