@@ -1026,4 +1026,48 @@ return {
         rogue_leech_blade       = { name = "Hoja Sanguijuela",       desc = "Causa {atk} de dano. Cura {value} PV al atacar." },
         rogue_toxin_master      = { name = "Maestro de las Toxinas", desc = "Cada ataque aplica {stacks} de Veneno durante {duration} turnos." },
     },
+
+    -- Meta-progressão (UnlockSystem — frente progressão, Out/2026).
+    -- NÃO confundir com `unlock.class.*` (requisitos de classe, frente classes).
+    unlocks = {
+        toast_class = "NUEVA CLASE DESBLOQUEADA: {name}!",
+        toast_card  = "CARTA DESBLOQUEADA: {name}",
+        locked       = "BLOQUEADA",
+        undiscovered = "SIN DESCUBRIR",
+        discovered_count = "{n}/{total} descubiertas",
+        hint = {
+            mastery      = "Maestria de {class}, nivel {level}",
+            act_cleared  = "Vence al jefe del Acto {act}",
+            reach_act    = "Llega al Acto {act}",
+            victory      = "Gana una travesia",
+            undiscovered = "Encuentrala en una travesia",
+        },
+        reveal = {
+            title     = "MAESTRIA DE {class}",
+            level     = "NIVEL {level}",
+            max       = "MAESTRIA MAXIMA",
+            xp        = "+{xp} XP",
+            new_cards = "NUEVAS CARTAS",
+            new_class = "NUEVA CLASE",
+            none      = "Sigue jugando para desbloquear mas cartas.",
+            level_up  = "SUBISTE DE NIVEL!",
+        },
+        bundle = {
+            warrior_1 = "Muralla de Espinas",
+            warrior_2 = "Sed de Sangre",
+            warrior_3 = "Furia Berserker",
+            warrior_4 = "Fuego y Agotamiento",
+            warrior_5 = "Forma Demoniaca",
+            mage_1 = "Tormenta de Hielo",
+            mage_2 = "Trueno Vivo",
+            mage_3 = "Cosecha Oscura",
+            mage_4 = "Fision Arcana",
+            mage_5 = "Archimago",
+            rogue_1 = "Frascos y Toxinas",
+            rogue_2 = "Mil Cortes",
+            rogue_3 = "Danza de Sombras",
+            rogue_4 = "Ejecucion",
+            rogue_5 = "Maestro del Veneno",
+        },
+    },
 }

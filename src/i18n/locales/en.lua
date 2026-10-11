@@ -1041,4 +1041,48 @@ return {
         rogue_leech_blade       = { name = "Leech Blade",            desc = "Deal {atk} damage. Heal {value} HP on attack." },
         rogue_toxin_master      = { name = "Toxin Master",           desc = "Every attack applies {stacks} Poison for {duration} turns." },
     },
+
+    -- Meta-progressão (UnlockSystem — frente progressão, Out/2026).
+    -- NÃO confundir com `unlock.class.*` (requisitos de classe, frente classes).
+    unlocks = {
+        toast_class = "NEW CLASS UNLOCKED: {name}!",
+        toast_card  = "CARD UNLOCKED: {name}",
+        locked       = "LOCKED",
+        undiscovered = "UNDISCOVERED",
+        discovered_count = "{n}/{total} discovered",
+        hint = {
+            mastery      = "{class} mastery, level {level}",
+            act_cleared  = "Defeat the Act {act} boss",
+            reach_act    = "Reach Act {act}",
+            victory      = "Win a journey",
+            undiscovered = "Find it during a journey",
+        },
+        reveal = {
+            title     = "{class} MASTERY",
+            level     = "LEVEL {level}",
+            max       = "MAX MASTERY",
+            xp        = "+{xp} XP",
+            new_cards = "NEW CARDS",
+            new_class = "NEW CLASS",
+            none      = "Keep playing to unlock more cards.",
+            level_up  = "LEVEL UP!",
+        },
+        bundle = {
+            warrior_1 = "Wall of Thorns",
+            warrior_2 = "Bloodthirst",
+            warrior_3 = "Berserker Fury",
+            warrior_4 = "Fire and Exhaust",
+            warrior_5 = "Demon Form",
+            mage_1 = "Ice Storm",
+            mage_2 = "Living Thunder",
+            mage_3 = "Dark Harvest",
+            mage_4 = "Arcane Fission",
+            mage_5 = "Archmage",
+            rogue_1 = "Flasks and Toxins",
+            rogue_2 = "A Thousand Cuts",
+            rogue_3 = "Shadow Dance",
+            rogue_4 = "Execution",
+            rogue_5 = "Venom Master",
+        },
+    },
 }

@@ -380,44 +380,137 @@ function CardFrame.getAnimation(card)
     cache[key] = cache[key] or canvases[1]
     local live = PixelCanvas.new(CardFrame.WIDTH, CardFrame.HEIGHT)
     animCache[key] = { canvases = canvases, fps = frames.fps,
-                       live = live, lastIdx = 0 }
+                       live = live, lastIdx = 0, lastReq = love.timer.getTime() }
     CardFrame.update()  -- blit inicial (lastIdx=0 força o primeiro copy)
     return animCache[key]
 end
 
--- Canvas VIVO (animado) da carta, ou nil se ela não tem animação.
+-- ===== Construção PROGRESSIVA + ciclo de vida das animações (perf Out/2026) =====
+-- MEDIDO (tools/perf_collection.lua): cada PRIMEIRO hover numa carta montava o
+-- set inteiro de uma vez (9 PNGs do disco + 8 composições completas da carta)
+-- = engasgo de 8-23ms NO FRAME do hover. Na Coleção, varrer o grid com o mouse
+-- é uma sequência de "primeiros hovers": a lista inteira gaguejava. E o
+-- animCache crescia sem teto: toda carta já hoverada continuava sendo blitada
+-- pra sempre no CardFrame.update, então a tela ficava mais lenta quanto mais
+-- o jogador olhava.
+-- Agora: (1) liveImage monta o set aos poucos (BUILD_PER_CALL composições por
+-- chamada; até lá a carta segue no estático = frame 0, sem salto visual);
+-- (2) update só blita animação PEDIDA nos últimos STALE_SECS; (3) teto LRU de
+-- MAX_LIVE sets em memória (o resto é recomposto sob demanda).
+local BUILD_PER_CALL = 1
+local STALE_SECS = 0.35
+local MAX_LIVE = 24
+local building = {}   -- key → { frames, fps, canvases, i }
+
+local function blitFrame(anim, idx)
+    anim.lastIdx = idx
+    -- push("all") preserva canvas/blend/cor de quem chamou (update global OU
+    -- liveImage no meio de um draw com canvas ativo).
+    love.graphics.push("all")
+    love.graphics.origin()
+    love.graphics.setCanvas(anim.live)
+    -- Cópia byte-a-byte do frame (replace+premultiplied evita recombinar
+    -- alpha — o conteúdo já veio de um canvas).
+    love.graphics.setBlendMode("replace", "premultiplied")
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(anim.canvases[idx], 0, 0)
+    love.graphics.pop()
+end
+
+local function evictLRU()
+    while true do
+        local n, oldestKey, oldestT = 0, nil, math.huge
+        for k, a in pairs(animCache) do
+            n = n + 1
+            if (a.lastReq or 0) < oldestT then oldestT = a.lastReq or 0; oldestKey = k end
+        end
+        if n <= MAX_LIVE or not oldestKey then return end
+        animCache[oldestKey] = nil
+    end
+end
+
+-- Canvas VIVO (animado) da carta, ou nil se ela não tem animação (ou se o
+-- set ainda está sendo montado — quem chama desenha o estático, que É o
+-- frame 0).
 -- Contrato de uso (regra do dono, Jul/2026): os pontos de renderização
 -- desenham instance.image (estático) por padrão e trocam pra este canvas
 -- SÓ na interação — hover, carta selecionada pra jogar, inspeção ampliada.
 function CardFrame.liveImage(card)
-    local ok, anim = pcall(CardFrame.getAnimation, card)
-    if ok and anim then return anim.live end
-    return nil
+    local key = cacheKey(card)
+    local now = love.timer.getTime()
+    local anim = animCache[key]
+    if anim then
+        local stale = (now - (anim.lastReq or 0)) > STALE_SECS
+        anim.lastReq = now
+        if stale then
+            -- update() parou de blitar enquanto ninguém olhava: sincroniza já.
+            blitFrame(anim, math.floor(now * anim.fps) % #anim.canvases + 1)
+        end
+        return anim.live
+    end
+
+    local b = building[key]
+    if not b then
+        local okA, art = pcall(CardArt.resolve, card)
+        if not okA or not art or not art.iconName then return nil end
+        if not IconFramesLoader.has(art.iconName) then return nil end
+        local frames = IconFramesLoader.getIncremental(art.iconName, 1)
+        if not frames or #frames.frames == 0 then return nil end
+        if not cache[key] then
+            local okR, err = pcall(CardFrame.render, card)
+            if not okR then
+                print("[CardFrame] liveImage: render falhou para " .. key .. ": " .. tostring(err))
+                return nil
+            end
+        end
+        b = { frames = frames.frames, fps = frames.fps,
+              canvases = { cache[key] }, i = 1 }
+        building[key] = b
+        return nil
+    end
+
+    local made = 0
+    while b.i < #b.frames and made < BUILD_PER_CALL do
+        b.i = b.i + 1
+        local ok, cv = pcall(renderOne, card, frameHandle(b.frames[b.i]))
+        if not ok then
+            print("[CardFrame] falha compondo frame " .. b.i .. " de " .. key .. ": " .. tostring(cv))
+            building[key] = nil
+            return nil
+        end
+        b.canvases[b.i] = cv
+        made = made + 1
+    end
+    if b.i < #b.frames then return nil end
+
+    building[key] = nil
+    anim = { canvases = b.canvases, fps = b.fps, lastIdx = 0, lastReq = now,
+             live = PixelCanvas.new(CardFrame.WIDTH, CardFrame.HEIGHT) }
+    animCache[key] = anim
+    blitFrame(anim, math.floor(now * anim.fps) % #anim.canvases + 1)
+    evictLRU()
+    return anim.live
 end
 
 -- Tick global (main.lua love.update, todos os estados): quando o frame
--- corrente de uma animação muda, blita o canvas pré-renderizado no canvas
--- vivo. Custo: 1 draw 96×144 por carta animada, `fps` vezes por segundo.
+-- corrente de uma animação EM USO muda, blita o canvas pré-renderizado no
+-- canvas vivo. Animação que ninguém pediu nos últimos STALE_SECS não custa
+-- nada (liveImage ressincroniza quando ela volta a ser pedida).
 function CardFrame.update()
     local t = love.timer.getTime()
     for _, anim in pairs(animCache) do
-        local n = #anim.canvases
-        local idx = math.floor(t * anim.fps) % n + 1
-        if idx ~= anim.lastIdx then
-            anim.lastIdx = idx
-            -- push("all") preserva canvas/blend/cor de quem chamou (update
-            -- global OU render lazy no meio de um draw com canvas ativo).
-            love.graphics.push("all")
-            love.graphics.origin()
-            love.graphics.setCanvas(anim.live)
-            -- Cópia byte-a-byte do frame (replace+premultiplied evita
-            -- recombinar alpha — o conteúdo já veio de um canvas).
-            love.graphics.setBlendMode("replace", "premultiplied")
-            love.graphics.setColor(1, 1, 1, 1)
-            love.graphics.draw(anim.canvases[idx], 0, 0)
-            love.graphics.pop()
+        if (t - (anim.lastReq or t)) <= STALE_SECS then
+            local idx = math.floor(t * anim.fps) % #anim.canvases + 1
+            if idx ~= anim.lastIdx then blitFrame(anim, idx) end
         end
     end
+end
+
+-- Quantos sets de animação estão vivos em memória (régua/teste de perf).
+function CardFrame._liveCount()
+    local n = 0
+    for _ in pairs(animCache) do n = n + 1 end
+    return n
 end
 
 function CardFrame.invalidate(card)
@@ -428,6 +521,9 @@ function CardFrame.invalidate(card)
     end
     for k in pairs(animCache) do
         if k:sub(1, #prefix) == prefix then animCache[k] = nil end
+    end
+    for k in pairs(building) do
+        if k:sub(1, #prefix) == prefix then building[k] = nil end
     end
 end
 
@@ -441,6 +537,7 @@ end
 function CardFrame.clearCache()
     cache = {}
     animCache = {}
+    building = {}
 end
 
 -- Quando o idioma muda, todas as cartas precisam ser re-renderizadas pra

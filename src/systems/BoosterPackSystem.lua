@@ -72,9 +72,13 @@ end
 -- IDs ordenados: pairs() não tem ordem estável e o pool alimenta rolls
 -- seedados — sem sort, a mesma seed daria packs diferentes por sessão
 -- (mesma razão do sort em CardRegistry:getCardsByClassAndRarity).
+-- Só cartas DESBLOQUEADAS (UnlockSystem): pacote é oferta como qualquer outra.
 local function sortedIds(all)
+    local UnlockSystem = require("src.systems.UnlockSystem")
     local ids = {}
-    for id in pairs(all) do table.insert(ids, id) end
+    for id in pairs(all) do
+        if UnlockSystem.isCardUnlocked(id) then table.insert(ids, id) end
+    end
     table.sort(ids)
     return ids
 end
@@ -103,6 +107,8 @@ function BoosterPackSystem.generateContents(pack)
         local cardData = cardId and cd:getCard(cardId)
         if not cardData then return end
         local instance = cd:createCardInstance(cardData)
+        -- Pacote aberto = carta vista (Coleção revela).
+        require("src.systems.UnlockSystem").markDiscovered(cardId)
         instance.shopOffer = nil  -- contraste com cards na shop
         if withModifiers then
             local edition = pollEdition()

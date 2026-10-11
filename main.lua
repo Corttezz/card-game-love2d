@@ -411,7 +411,14 @@ function love.load(loveArgs)
         _G.HEADLESS_TOOL = true
         print("[sandbox] modo ferramenta (" .. tostring(toolArg)
             .. "): saves em *.tool.lua — o save do jogador não é tocado")
+        -- Meta-progressão: ferramenta (autoplay/balanceamento/smokes) mede o
+        -- CATÁLOGO INTEIRO e as 3 classes. Teste que quer o comportamento real
+        -- desliga explicitamente (test_unlocks).
+        require("src.systems.UnlockSystem").setOverrideAll(true)
     end
+    -- Migração de perfil antigo → desbloqueios retroativos, ANTES de qualquer
+    -- tela ler classe/carta liberada.
+    require("src.systems.UnlockSystem").ensure()
 
     -- IDIOMA DETERMINISTICO em captura visual (Set/2026). Tool de screenshot e
     -- preview existe pra REVISAO VISUAL — sair em alemao porque o sandbox
@@ -882,6 +889,13 @@ function love.load(loveArgs)
     --   love . screenshot_collection [card_id]
     if loveArgs and loveArgs[1] == "screenshot_collection" then
         require("tools.screenshot_collection").run(loveArgs[2])
+        return
+    end
+
+    -- Meta-progressão: reveal pós-run + Coleção com cartas "?".
+    --   love . screenshot_unlocks
+    if loveArgs and loveArgs[1] == "screenshot_unlocks" then
+        require("tools.screenshot_unlocks").run()
         return
     end
 

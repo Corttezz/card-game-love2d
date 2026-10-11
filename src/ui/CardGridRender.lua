@@ -75,7 +75,8 @@ function M.draw(instance, x, y, cardW, cardH, hoverScale, alpha, mouseUV, hoverS
     local px = math.floor(cx - drawW / 2)
     local py = math.floor(cy - drawH / 2)
 
-    local shader = CardMesh.getShader()
+    -- Em repouso o warp é identidade: sem shader/mesh (perf, ver CollectionScreen).
+    local shader = (hoverStrength > 0.001) and CardMesh.getShader() or nil
     local timeNow = love.timer.getTime()
     if shader then
         local mesh = CardMesh.getMesh(instance.image:getWidth(), instance.image:getHeight())

@@ -9,8 +9,24 @@ local Theme = require("src.ui.Theme")
 local I18n = require("src.i18n.I18n")
 local SceneBackground = require("src.ui.SceneBackground")
 local DynaText = require("src.ui.DynaText")
+local UnlockReveal = require("src.ui.UnlockReveal")
 
 local EndScreens = {}
+
+-- Zonas da tela final quando há meta-progressão pra mostrar: título / placar
+-- (como sempre) → banda de REVELAÇÃO (maestria + desbloqueios) → instrução
+-- colada no rodapé. Sem resultado, layout clássico (instrução no centro).
+local function drawRevealAndInstruction(game, key, centerX, centerY, width, height)
+    local result = game and game.unlockResult
+    if result then
+        local top = centerY - height * 0.083 + 34 + 34
+        local bottom = height - 44
+        UnlockReveal.draw(result, 16, top, width - 32, bottom - top)
+        love.graphics.setColor(Theme.Colors.TEXT_SECONDARY)
+        return height - 34
+    end
+    return centerY + height * 0.083
+end
 
 -- Instrucao do rodape: a fonte cede ate o texto caber com margem. Sem isto o
 -- texto era desenhado centralizado no tamanho fixo e VAZAVA pelos dois lados
@@ -128,8 +144,9 @@ function EndScreens.drawGameOver(game)
     end
 
     love.graphics.setColor(Theme.Colors.TEXT_SECONDARY)
-    drawInstruction(I18n.t("game_over.instructions"), centerX,
-        centerY + height * 0.083, width)
+    local instrY = drawRevealAndInstruction(game, "game_over", centerX, centerY, width, height)
+    love.graphics.setColor(Theme.Colors.TEXT_SECONDARY)
+    drawInstruction(I18n.t("game_over.instructions"), centerX, instrY, width)
 
     love.graphics.setFont(love.graphics.newFont())
 end
@@ -181,8 +198,9 @@ function EndScreens.drawVictory(game)
     end
 
     love.graphics.setColor(Theme.Colors.TEXT_SECONDARY)
-    drawInstruction(I18n.t("victory.instructions"), centerX,
-        centerY + height * 0.083, width)
+    local instrY = drawRevealAndInstruction(game, "victory", centerX, centerY, width, height)
+    love.graphics.setColor(Theme.Colors.TEXT_SECONDARY)
+    drawInstruction(I18n.t("victory.instructions"), centerX, instrY, width)
 
     love.graphics.setFont(love.graphics.newFont())
 end

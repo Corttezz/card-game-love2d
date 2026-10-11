@@ -9,6 +9,7 @@ local CardDatabase = require("src.systems.CardDatabase")
 local I18n = require("src.i18n.I18n")
 local Rng = require("src.systems.Rng")
 local Config = require("src.core.Config")
+local UnlockSystem = require("src.systems.UnlockSystem")
 
 function CardRegistry:new()
     local instance = setmetatable({}, CardRegistry)
@@ -215,6 +216,8 @@ function CardRegistry:pickRewardCard(opts)
     if #entries == 0 then return nil end
 
     local picked = rng:weighted(stream, entries)
+    -- Ofertada = vista: passa a aparecer revelada na Coleção.
+    UnlockSystem.markDiscovered(picked.cardId)
     return {
         cardId = picked.cardId,
         rarity = rarity,
@@ -225,16 +228,25 @@ function CardRegistry:pickRewardCard(opts)
 end
 
 -- Pool ordenada por classe+raridade; classId nil = todas as cartas da raridade.
+-- SÓ cartas DESBLOQUEADAS (UnlockSystem, meta-progressão): esta é a porta
+-- única de rewards, loja e eventos — carta bloqueada nunca entra numa oferta.
+-- (Pacotes têm pool própria em BoosterPackSystem, com o mesmo filtro.)
 function CardRegistry:_poolFor(classId, rarity)
+    local ids
     if classId then
-        return self:getCardsByClassAndRarity(classId, rarity)
+        ids = self:getCardsByClassAndRarity(classId, rarity)
+    else
+        ids = {}
+        for id, card in pairs(self.cardDatabase:getAllCards()) do
+            if card.rarity == rarity then table.insert(ids, id) end
+        end
+        table.sort(ids)
     end
-    local ids = {}
-    for id, card in pairs(self.cardDatabase:getAllCards()) do
-        if card.rarity == rarity then table.insert(ids, id) end
+    local out = {}
+    for _, id in ipairs(ids) do
+        if UnlockSystem.isCardUnlocked(id) then out[#out + 1] = id end
     end
-    table.sort(ids)
-    return ids
+    return out
 end
 
 -- Gera recompensas de cartas para uma classe (sem duplicata na mesma oferta).
