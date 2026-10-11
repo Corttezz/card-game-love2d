@@ -14,7 +14,7 @@ type: project
 | 3 tirano | NOVA: portão-caveira com cascata de lava atrás do corpo, correntes com crânios, braseiros. 18 linhas (176-193) removidas + rodapé espelhado pra o chão começar em ~0.71 | lava respira, braseiros, cinza caindo |
 | 4 monarca | original (simétrica, eixo 200.5) | braseiros azuis, NEVE |
 | 5 colosso | original deslocada 5px (eixo estava em 206) + CORAÇÃO de raízes no fundo do túnel (edit_image, colado só no túnel) | coração BATE (pulso duplo), esporos/vaga-lumes, névoa verde |
-| 6 rainha | original + ECLIPSE com coroa carmim no vão (inpaint num recorte 128², colado de volta) | feixe respira, poeira só no feixe |
+| 6 rainha | original + ECLIPSE pintado em pixel na grade da arte (disco duro r=12 em (200,58), coroa carmim em faixas pontilhadas Bayer, 8 raios de 1px) — o do inpaint tinha gradiente liso e lia como vetor | feixe respira, poeira só no feixe |
 
 ## Regras
 - **Nada de disco de luz.** A luz da chama é a própria pintura: máscara
@@ -28,7 +28,8 @@ type: project
   tickava com `min(3, ato)` → brasas da lava do hall 3 nos atos 4-6).
 - **Profundidade:** `InteriorFX.draw` logo após o fundo (névoa no chão,
   vinheta, partículas de trás — atrás do chefe); `InteriorFX.drawFront`
-  depois do `EnemyRenderer.draw` (neve/cinza/esporos próximos).
+  depois do `EnemyRenderer.draw` (neve/cinza/esporos próximos), recortado
+  abaixo da TopBar (`drawFront(hall, topBarHeight)` — a barra já foi desenhada).
 - Partícula = 1 pixel da arte (posição truncada na grade da PNG).
 - Troca de salão pré-aquece o clima (25s simulados) — a sala nunca abre vazia.
 

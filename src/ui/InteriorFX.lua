@@ -472,13 +472,19 @@ function InteriorFX.draw(hall)
 end
 
 -- Clima que passa NA FRENTE do chefe (neve/cinza/esporos próximos).
--- Chamado logo depois do EnemyRenderer.draw no salão.
-function InteriorFX.drawFront(hall)
+-- Chamado logo depois do EnemyRenderer.draw no salão — e isso é DEPOIS da
+-- TopBar, então recorta na janela da cena (abaixo de `clipTop`): sem o
+-- recorte a neve pintava pontos brancos por cima da barra superior.
+function InteriorFX.drawFront(hall, clipTop)
     if not HALLS[hall or 1] then return end
     local w, h = love.graphics.getWidth(), love.graphics.getHeight()
     local tr = SceneBackground.getCoverTransform("castle_hall_" .. hall, w, h)
     if not tr then return end
+    local top = math.max(0, math.floor(clipTop or 0))
+    local sx, sy, sw, sh = love.graphics.getScissor()
+    love.graphics.intersectScissor(0, top, w, h - top)
     drawParticles(tr, true)
+    if sx then love.graphics.setScissor(sx, sy, sw, sh) else love.graphics.setScissor() end
     love.graphics.setColor(1, 1, 1, 1)
 end
 

@@ -560,7 +560,7 @@ function GameplayScene.draw()
                 enemyCy, WorldRoad.ENEMY_SIZE_PERSP),
         })
         -- clima mais próximo (neve/cinza/esporos) passa NA FRENTE do chefe
-        if interiorHall then InteriorFX.drawFront(interiorHall) end
+        if interiorHall then InteriorFX.drawFront(interiorHall, topBarHeight) end
     end
 
     -- LightEngine v1: composite multiply do lightmap sobre mundo+inimigo,
