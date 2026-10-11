@@ -28,6 +28,7 @@ local SUITES = {
     { group = "unit",  name = "test_enemy_pose" },
     { group = "unit",  name = "test_enemy_stage" },
     { group = "unit",  name = "test_interior_fx" },
+    { group = "unit",  name = "test_weather" },
     { group = "unit",  name = "test_boss_visuals" },
     { group = "unit",  name = "test_castle_gate" },
     { group = "unit",  name = "test_card_live_hover" },

@@ -35,6 +35,7 @@ local LuminaireEngine = require("engine.LuminaireEngine")
 local RoadWear = require("engine.RoadWear")
 local RoadSurface = require("engine.RoadSurface")
 local QuadMesh = require("engine.QuadMesh")
+local WeatherEngine = require("engine.WeatherEngine")
 local Config = require("src.core.Config")
 local EnemyEmissives = require("src.data.enemy_emissives")
 -- v9.7.1: GrassField declarado AQUI (era local no meio do arquivo e o
@@ -1991,31 +1992,16 @@ function WorldRoad.update(dt)
         if c.xr < -0.2 then c.xr = 1.15 end
     end
 
-    -- PARTÍCULAS AMBIENTAIS por bioma (folha/neve/brasa/esporo): a camada
-    -- de vida que faz o mundo respirar. Spawn contínuo, cap 36.
-    local amb = rawBiome().ambient
-    if amb and #WorldRoad._ambient < 36 and WorldRoad._rng:random() < amb.rate then
-        local rising = amb.style == "ember"
-        table.insert(WorldRoad._ambient, {
-            xr = WorldRoad._rng:random(),
-            yr = rising and (0.75 + WorldRoad._rng:random() * 0.25)
-                 or (-0.05 - WorldRoad._rng:random() * 0.1),
-            vy = (rising and -1 or 1) * (0.028 + WorldRoad._rng:random() * 0.03),
-            phase = WorldRoad._rng:random() * 6.28,
-            size = WorldRoad._rng:random(2, 3),
-            life = 1,
-            style = amb.style,
-            color = amb.color,
+    -- CLIMA (WeatherEngine, Out/2026): neve/chuva/cinza/folhas/sementes em
+    -- coordenadas de MUNDO, empurradas pela mesma rajada do capim. Substitui
+    -- as antigas partículas ambientais em tela (36 quadradinhos planos, sem
+    -- profundidade nem vento).
+    do
+        local bid = rawBiome().id
+        WeatherEngine.update(dt, {
+            biomeId = bid, camZ = WorldRoad._camZ, time = WorldRoad._time,
+            windP = GrassField.PRESETS[bid],
         })
-    end
-    for i = #WorldRoad._ambient, 1, -1 do
-        local a = WorldRoad._ambient[i]
-        a.yr = a.yr + a.vy * dt
-        a.xr = a.xr + math.sin(WorldRoad._time * 1.6 + a.phase) * 0.018 * dt
-            - (tr and 0.010 or 0.004) * dt
-        if a.yr > 1.08 or a.yr < -0.12 or a.xr < -0.05 or a.xr > 1.05 then
-            table.remove(WorldRoad._ambient, i)
-        end
     end
 
     -- FUMAÇA DA CHAMINÉ do castelo: só quando perto (progress > 0.55) —
@@ -3763,6 +3749,9 @@ local function drawProps(g, x, w, camZ)
         if relLow < grassRel - 0.35 or relLow <= -1 then
             drawGrass(g, x, w, camZ, relLow, grassRel)
             grassRel = relLow
+            -- clima da MESMA fatia: floco no ar/pousado nessa profundidade
+            -- (o capim e as árvores mais perto vêm depois e o cobrem)
+            WeatherEngine.flushTo(relLow)
         end
     end
 
@@ -4054,11 +4043,35 @@ local function drawProps(g, x, w, camZ)
                 -- BALANÇO de vento (vegetação viva): rotação sutil no pivô
                 -- da base, fase única por prop (p.z)
                 local rot = 0
+                local gustKx = 0
                 -- v9: luminária AFUNDA o footPad (pé do conteúdo no chão)
                 local sink2 = lumSink
                 if p.kind == "tree" or p.kind == "pine"
                    or p.kind == "deadtree" or p.kind == "bush" then
                     rot = math.sin(WorldRoad._time * 1.15 + p.z * 0.7) * 0.018
+                    -- WeatherEngine v1: a MESMA rajada que deita o capim
+                    -- inclina a copa — CISALHAMENTO com pivô no pé (linhas
+                    -- de pixel só deslizam; rotação serrilharia o sprite).
+                    -- A frente de rajada atravessa capim → árvore → ar.
+                    local wP = GrassField.PRESETS[p.bid or rawBiome().id]
+                    if wP and not (_G.gameSettings and _G.gameSettings.reducedMotion) then
+                        local gw = GrassField.windAt((pxX - x) / w, p.z,
+                            WorldRoad._time, wP, 0)
+                        local stiff = (p.kind == "bush") and 0.030
+                            or (p.kind == "deadtree" and 0.014 or 0.022)
+                        gustKx = -gw * stiff
+                        -- rajada forte arranca folha da copa (cai no clima,
+                        -- com a cor do capim do bioma; árvore seca não)
+                        if gw * gw > 1.6 and p.kind ~= "deadtree" and t > 0.25
+                           and WorldRoad._rng:random() < 0.035 then
+                            local gA = envColor("grassA")
+                            WeatherEngine.emitLeaf((pxX - g.cx) / w
+                                + (WorldRoad._rng:random() - 0.5) * iw * s * 0.5 / w,
+                                p.z, t, ih * s * 0.62 / (g.persp(t) * g.h),
+                                { math.min(1, gA[1] * 1.35), math.min(1, gA[2] * 1.3),
+                                  math.min(1, gA[3] * 1.1) })
+                        end
+                    end
                     -- ciclo 27: base ENTERRADA ~4% no gramado — sprites do
                     -- PixelLab às vezes têm a raiz cortada reta na borda do
                     -- canvas; afundar esconde o corte (raiz "sai do chão")
@@ -4086,7 +4099,7 @@ local function drawProps(g, x, w, camZ)
                     aFade * ((1 - mixK) + mixK * math.min(1.6, lt[3] * 1.9)),
                     fadeA)   -- v10.3: alpha só varia no cross-dissolve
                 love.graphics.draw(img, math.floor(pxX), math.floor(sy + sink2),
-                    rot, s * lumFlip, s, iw / 2, ih)
+                    rot, s * lumFlip, s, iw / 2, ih, gustKx * lumFlip, 0)
 
                 -- v9.7: mapa interativo — área clicável (ordem do painter)
                 -- + folhinhas do clique no MESMO slot de profundidade.
@@ -4274,6 +4287,9 @@ local function drawProps(g, x, w, camZ)
             end
         end
         drawList(behind)
+        -- clima mais longe que o monstro desenha antes dele (o resto vem
+        -- nas fatias da frente — floco perto cai NA FRENTE do inimigo)
+        WeatherEngine.flushTo(WorldRoad.BATTLE_REL)
         enemyFn()                    -- monstro no eixo (props da frente vêm depois)
         WorldRoad._enemyDraw = nil   -- one-shot
         drawList(front)
@@ -4435,7 +4451,9 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     -- registram durante o draw; o composite roda FORA (drawLightComposite —
     -- GameplayScene/tools), pra iluminar também o inimigo plantado e
     -- deixar HUD/pills de fora.
-    LightEngine.beginFrame(currentLightAmbient())
+    -- (WeatherEngine: tempestade escurece o ambiente, raio o devolve até
+    -- ~branco — multiply-only, o clarão nunca pinta acima da arte)
+    LightEngine.beginFrame(WeatherEngine.modulateAmbient(currentLightAmbient()))
 
     -- ShadowEngine v1: frame de sombra — direção pelo astro do bioma,
     -- comprimento pelo horário (tod), opacidade pela luminância da luz
@@ -4466,6 +4484,11 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     love.graphics.scale(1.006, 1.006)
     love.graphics.translate(-swCx, -swCy)
 
+    -- clima: projeta e monta o lote do frame (DENTRO do room sway — as
+    -- micro-luzes das brasas usam transformPoint)
+    WeatherEngine.beginFrame({ geom = g, x = x, w = w, camZ = WorldRoad._camZ,
+        relCrest = REL_CREST, tPow = T_POW })
+
     _profMark('pre')
     drawSky(g, x, y, w)
     drawCelestial(g, x, y, w)
@@ -4474,6 +4497,8 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     -- (feedback: "as nuvens passam atrás das montanhas") — a camada
     -- mountains_front redesenha só os picos por cima delas.
     drawClouds(g, x, y, w)
+    -- raio da tempestade: atrás dos picos da frente (eles cobrem o pé)
+    WeatherEngine.drawSky(g, x, w)
     drawMountainsFront(g, x, w, WorldRoad._camZ)
     drawBirds(g, x, y, w)
 
@@ -4523,6 +4548,8 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     drawCastle(g, x, w, WorldRoad._camZ)
     drawEncounterBehind(g, x, w, WorldRoad._camZ)
     drawPropsBehind(g, x, w, WorldRoad._camZ)
+    -- clima ALÉM da crista: cai atrás da curva (o domo cobre o resto)
+    WeatherEngine.flushTo(REL_CREST)
     _profMark('castle')
     drawDome(g, x, y, w)
     _profMark('dome')
@@ -4600,26 +4627,13 @@ function WorldRoad.draw(x, y, w, h, actNumber)
         end
     end
 
-    -- partículas ambientais (folha/neve/brasa/esporo — atrás dos props)
-    for _, a in ipairs(WorldRoad._ambient) do
-        local ax = x + a.xr * w
-        local ay = y + a.yr * h
-        local flicker = a.style == "ember"
-            and (0.7 + 0.3 * math.sin(WorldRoad._time * 9 + a.phase)) or 1
-        love.graphics.setColor(a.color[1] * flicker, a.color[2] * flicker,
-            a.color[3] * flicker, 0.8)
-        love.graphics.rectangle("fill", math.floor(ax), math.floor(ay), a.size, a.size)
-        -- LightEngine v1: brasa é emissiva — micro-luz pra não apagar no
-        -- multiply (revisão F-3: micro-luz, não boost de cor)
-        if a.style == "ember" then
-            local ex, ey = love.graphics.transformPoint(ax, ay)
-            LightEngine.submitMicro(ex, ey, Config.Lighting.EMBER.radius,
-                a.color, Config.Lighting.EMBER.intensity * flicker)
-        end
-    end
+    -- (partículas ambientais em tela → WeatherEngine, intercalado por
+    -- profundidade dentro do drawProps)
 
     _profMark('critters')
     drawProps(g, x, w, WorldRoad._camZ)
+    -- clima em PRIMEIRO PLANO: na frente de tudo, grande (perto da câmera)
+    WeatherEngine.flushAll()
 
     _profMark('props')
     -- v6.6: fim do room sway — fork/pills/vinhetas ficam FIXOS (UI
@@ -4719,6 +4733,7 @@ function WorldRoad.resetRun()
     -- props/nuvens regeneram pro bioma 1 no próximo draw
     WorldRoad._props = {}
     WorldRoad._clouds = {}
+    WeatherEngine.reset()
 end
 
 -- RESTAURA o progresso do mundo ao CONTINUAR uma run salva (pedido do
@@ -4849,6 +4864,7 @@ function WorldRoad.clearCache()
     lumFramesCache = {}
     prewarm.done, prewarm.co, prewarm.bid = {}, nil, nil
     require("engine.GrassField").clearCache()
+    WeatherEngine.reset()
     WorldRoad._props = {}
     WorldRoad._clouds = {}
     WorldRoad._blend = nil

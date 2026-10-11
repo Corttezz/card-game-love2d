@@ -500,6 +500,7 @@ Config.Audio = {
     MENU_HOVER_VOLUME = 0.15,
     COLLECTION_FLIP_VOLUME = 0.5,
     PURCHASE_CONFIRM_VOLUME = 0.6,
+    THUNDER_VOLUME = 0.55,        -- raio da tempestade (WeatherEngine): ambiente, não pode cobrir o combate
     PURCHASE_DENY_VOLUME = 0.4,
     BATTLE_VICTORY_VOLUME = 0.6,
     GOLD_GAIN_VOLUME = 0.55,
