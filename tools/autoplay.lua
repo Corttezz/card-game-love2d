@@ -75,7 +75,23 @@ end
 -- Helpers de simulacao
 -- ============================================================
 
+-- FX de APRESENTACAO (texto flutuante, particulas, faixa de combo, cometas de
+-- orbe, moedas) so esvaziam no update deles, que o love.update/HUD chama todo
+-- frame. O piloto nao desenha nem chama esses updates: sem esvaziar aqui, cada
+-- batalha simulada empilhava ~100 mil particulas presas a cartas (e, por elas,
+-- Games inteiros) e a bateria longa chegava a 9 GB. Nenhuma regra do jogo le
+-- esses singletons — limpar e invisivel pro resultado.
+local function drainPresentation()
+    require("src.ui.FloatingText").clear()
+    require("src.systems.CardParticles").clear()
+    require("src.ui.ComboBanner").clear()
+    require("src.ui.OrbRow").clear()
+    require("src.ui.CoinBurst").clear()
+end
+M.drainPresentation = drainPresentation
+
 local function pump(game, secs)
+    drainPresentation()
     local dt = 1 / 30
     for _ = 1, math.max(1, math.floor(secs * 30)) do
         EventManager.update(dt)
@@ -2132,6 +2148,10 @@ end
 
 local function playRun(classId, runIdx, maxEndlessFloors, seed)
     local Game = require("src.core.Game")
+    -- Run nova num processo que ja jogou outras (bateria): nada da run
+    -- anterior — eventos pendentes, FX — pode atravessar pra esta.
+    EventManager.clear()
+    drainPresentation()
     local game = Game:new()
     game:startNewRun(classId)
 
@@ -2534,19 +2554,25 @@ function M.evalDeckSim(game, mutate)
     }
     if mutate then mutate(base) end
     evalCounter = evalCounter + 1
+    -- FILAS ISOLADAS: cada replay monta um Game descartavel que deixa eventos
+    -- pendentes (materializar carta, fim de dissolve — "after" BLOQUEANTES) na
+    -- fila GLOBAL. Sem isolar, milhares deles se acumulavam, serializados, e
+    -- ainda rodavam por cima da run real. Cada replay ganha filas novas; as da
+    -- run voltam intactas no fim.
+    local savedQueues = EventManager.queues
+
     local total, n = 0, 0
     local realPrint = print
     for fi, f in ipairs(fights) do
         for k = 1, M.SIM_PER_FIGHT do
             local snap = deepcopy(base)
             snap.act, snap.floorInAct, snap.node = f.act, f.floor, { type = f.node }
+            EventManager.queues = { base = {}, ui = {} }
             print = function() end
             local ok, r = pcall(M.replayBattle, snap, 9100000 + fi * 101 + k * 7919
                 + (run.runSeed or 0) % 100000)
             print = realPrint
-            -- cada replay monta um Game com canvas de carta (CardFrame): sem
-            -- coletar, a bateria longa estoura a memoria e o processo morre mudo
-            if evalCounter % 8 == 0 then collectgarbage("step", 400) end
+            drainPresentation()
             if ok and r then
                 local loss = math.min(r.hpLost, r.maxHp)
                 if not r.won then loss = loss + 30 + 60 * (r.enemyLeft or 1) end
@@ -2555,6 +2581,7 @@ function M.evalDeckSim(game, mutate)
         end
     end
     -- devolve o mundo da run como estava
+    EventManager.queues = savedQueues
     Rng.setActive(savedRng)
     love.math.setRandomState(savedLove)
     math.randomseed((run.runSeed or 1) + evalCounter * 31)

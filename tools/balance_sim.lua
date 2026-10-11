@@ -256,17 +256,9 @@ end
 -- Entrada
 -- ============================================================
 
-function M.run(runsArg, classArg, seedArg, policyArg)
-    local runs = tonumber(runsArg or os.getenv("BALANCE_RUNS") or "20") or 20
-    local classes = { "warrior", "mage", "rogue" }
-    local carg = classArg or os.getenv("BALANCE_CLASSES") or "all"
-    if carg ~= "all" then
-        classes = {}
-        for c in carg:gmatch("[^,]+") do classes[#classes + 1] = c end
-    end
-    local seed = tonumber(seedArg or os.getenv("BALANCE_SEED") or "500000") or 500000
-    local policy = policyArg or os.getenv("BALANCE_POLICY") or "v6"
-
+-- Prepara o processo pra bateria (tambem usado por tools/leak_probe.lua).
+-- Devolve o modulo do piloto pronto.
+function M.setup(policy)
     _G.EventManager = require("engine.EventManager")
     _G.Event = require("engine.Event")
     local I18n = require("src.i18n.I18n")
@@ -283,11 +275,31 @@ function M.run(runsArg, classArg, seedArg, policyArg)
         CardFrame.render = function() return shared end
         print("[balance_sim] moldura de carta compartilhada (bateria sem render)")
     end
+    -- A faixa de combo pre-renderiza um canvas por combo anunciado. Sem
+    -- love.graphics.present (a bateria nunca apresenta frame), o driver
+    -- acumulava esses comandos de desenho e o processo crescia em degraus de
+    -- dezenas de MB por run ate passar de 1 GB — com o heap Lua em ~10 MB.
+    -- Medido: com a faixa desligada o working set fica plano entre runs.
+    require("src.ui.ComboBanner").show = function() end
 
     local Autoplay = require("tools.autoplay")
     Autoplay.policy = policy
     Autoplay.quiet = true
     Autoplay.installHooks()
+    return Autoplay
+end
+
+function M.run(runsArg, classArg, seedArg, policyArg)
+    local runs = tonumber(runsArg or os.getenv("BALANCE_RUNS") or "20") or 20
+    local classes = { "warrior", "mage", "rogue" }
+    local carg = classArg or os.getenv("BALANCE_CLASSES") or "all"
+    if carg ~= "all" then
+        classes = {}
+        for c in carg:gmatch("[^,]+") do classes[#classes + 1] = c end
+    end
+    local seed = tonumber(seedArg or os.getenv("BALANCE_SEED") or "500000") or 500000
+    local policy = policyArg or os.getenv("BALANCE_POLICY") or "v6"
+    local Autoplay = M.setup(policy)
 
     -- silencia o print do jogo durante a bateria (milhares de toasts por run
     -- deixavam a bateria lenta e o log ilegivel); o resumo por run sai aqui.

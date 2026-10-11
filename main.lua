@@ -1071,6 +1071,12 @@ function love.load(loveArgs)
         require("tools.balance_sim").run(loveArgs[2], loveArgs[3], loveArgs[4], loveArgs[5])
         return
     end
+    -- Sonda de vazamento: runs em sequencia + heap/texturas/censo por run.
+    --   love . leak_probe [runs] [classe] [seedBase] [v6|v5]
+    if loveArgs and loveArgs[1] == "leak_probe" then
+        require("tools.leak_probe").run(loveArgs[2], loveArgs[3], loveArgs[4], loveArgs[5])
+        return
+    end
     -- Banco de batalhas (A/B so do COMBATE do piloto, sem ruido de run).
     --   love . balance_bench [runsGravadas] [classes] [seed] [v5,v6]
     if loveArgs and loveArgs[1] == "balance_bench" then

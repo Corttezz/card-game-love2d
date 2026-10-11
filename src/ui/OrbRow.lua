@@ -420,6 +420,15 @@ local function drawGem(orbType, x, y, alpha, flash, t)
     return true
 end
 
+-- Zera os FX em voo (troca de batalha/run, ou quem simula sem desenhar: as
+-- listas so esvaziam em update(), que so roda no HUD da batalha).
+function OrbRow.clear()
+    for k in pairs(inbound) do inbound[k] = nil end
+    for k = #outbound, 1, -1 do outbound[k] = nil end
+    for k in pairs(slotAnim) do slotAnim[k] = nil end
+    for k in pairs(pulseFlash) do pulseFlash[k] = nil end
+end
+
 -- ===== Update/draw (chamados pelo HudManager) =====
 
 function OrbRow.update(dt, game)
