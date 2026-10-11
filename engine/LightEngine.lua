@@ -28,7 +28,9 @@ LightEngine.debugAmbientScale = 1   -- teclas O/P do demo_worldroad (calibraçã
 -- subtrai a zero: a diferença isola só a contribuição da luz. Só ferramenta.
 LightEngine.debugNoLights = false
 
-local MAX_LIGHTS = 16          -- fila com shader (poças/fontes médias)
+local MAX_LIGHTS = 28          -- fila com shader (poças/fontes médias; 16→28 em Out/2026: as
+                                -- janelas do castelo perto lotavam a fila e as poças dos vagalumes
+                                -- do WeatherEngine — as mais fracas — nunca entravam)
 local MAX_MICRO  = 64          -- fila de micro-pontos (vagalumes/chamas/janelas)
 
 local canvas                    -- lightmap 1/4 res (lazy, recriado no resize)

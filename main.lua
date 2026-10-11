@@ -2,6 +2,7 @@
 -- ativos antes de qualquer require do jogo (um erro carregando modulo ja
 -- passa pelo handler). Sem `local`: love.load vive no teto de 60 upvalues.
 require("src.core.Release").install()
+if os.getenv("ASSET_AUDIT") then require("tools.asset_audit_hook") end -- TEMP auditoria de imagens
 
 local Game = require("src.core.Game")
 local CardFrame = require("src.ui.CardFrame")
@@ -1341,8 +1342,9 @@ function love.load(loveArgs)
         audioSystem:loadSound("collectionFlip", "audio/sfx/collection-flip.mp3", Config.Audio.COLLECTION_FLIP_VOLUME)
         audioSystem:loadSound("purchaseConfirm", "audio/sfx/purchase-confirm.mp3", Config.Audio.PURCHASE_CONFIRM_VOLUME)
         audioSystem:loadSound("purchaseDeny", "audio/sfx/purchase-deny.mp3", Config.Audio.PURCHASE_DENY_VOLUME)
-        -- trovão da tempestade do WorldRoad (WeatherEngine — toca ~1s depois do raio)
-        audioSystem:loadSound("thunder", "audio/sfx/thunder.mp3", Config.Audio.THUNDER_VOLUME)
+        -- clima do WorldRoad (camas, avulsos, trovões): registro por SCAN de
+        -- audio/sfx/weather/ — ver src/systems/WeatherAudio.lua
+        require("src.systems.WeatherAudio").registerSounds(audioSystem)
         audioSystem:loadSound("battleVictory", "audio/sfx/battle-victory.mp3", Config.Audio.BATTLE_VICTORY_VOLUME)
         audioSystem:loadSound("goldGain", "audio/sfx/gold-gain.mp3", Config.Audio.GOLD_GAIN_VOLUME)
         audioSystem:loadSound("nodeSelect", "audio/sfx/node-select.mp3", Config.Audio.NODE_SELECT_VOLUME)
@@ -1946,6 +1948,9 @@ function love.update(dt)
     -- canvas vivo de cada carta animada. Roda em TODOS os estados — mão,
     -- loja, coleção, deck viewer e menu animam pela mesma referência.
     CardFrame.update()
+
+    -- Camas de clima só vivem enquanto o mundo atualiza: fora dele somem.
+    require("src.systems.WeatherAudio").watchdog(dt)
 
     -- FOCO DE ENTRADA: zera a pilha de camadas do frame (higiene — um erro
     -- no meio de um draw anterior não pode deixar o portão do mouse torto).

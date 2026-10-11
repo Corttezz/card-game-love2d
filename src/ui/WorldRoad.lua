@@ -36,6 +36,7 @@ local RoadWear = require("engine.RoadWear")
 local RoadSurface = require("engine.RoadSurface")
 local QuadMesh = require("engine.QuadMesh")
 local WeatherEngine = require("engine.WeatherEngine")
+local _NO_CRITTERS = {}   -- lista vazia (noite com vagalumes do clima)
 local Config = require("src.core.Config")
 local EnemyEmissives = require("src.data.enemy_emissives")
 -- v9.7.1: GrassField declarado AQUI (era local no meio do arquivo e o
@@ -2010,10 +2011,20 @@ function WorldRoad.update(dt)
     -- profundidade nem vento).
     do
         local bid = rawBiome().id
+        -- v2: densidade pela CHEGADA AO CASTELO (mesma conta do castelo
+        -- crescendo) e vagalumes pela noite (luma do ambiente)
+        local walked = math.max(0, WorldRoad._camZ - (WorldRoad._segBase or 0))
         WeatherEngine.update(dt, {
             biomeId = bid, camZ = WorldRoad._camZ, time = WorldRoad._time,
             windP = GrassField.PRESETS[bid],
+            progress = math.min(1, walked / SEGMENT_LEN),
+            luma = LightEngine.ambientLuma(),
         })
+        -- SOM do clima: camas que nunca dão loop + avulsos + trovão
+        local wa = require("src.systems.WeatherAudio")
+        local st = WeatherEngine.audioState()
+        wa.update(dt, st)
+        if st.blink then wa.fireflyBlink(st.blink) end
     end
 
     -- FUMAÇA DA CHAMINÉ do castelo: só quando perto (progress > 0.55) —
@@ -4606,7 +4617,10 @@ function WorldRoad.draw(x, y, w, h, actNumber)
         -- bioma escurecido (inclusive fields ao anoitecer, F6.1) acende;
         -- de dia vira borboleta
         local glow = LightEngine.ambientLuma() < 0.75
-        for _, cr in ipairs(WorldRoad._critters) do
+        -- v2: à noite quem acende é o WeatherEngine (vagalume em profundidade,
+        -- com som) — o critter de tela só fica de borboleta, de dia
+        local skipGlow = glow and WeatherEngine.hasFireflies(b.id)
+        for _, cr in ipairs(skipGlow and _NO_CRITTERS or WorldRoad._critters) do
             local cxr = x + cr.xr * w
             local cyy = g.latY(cxr - g.cx, cr.yr)
                 - 14 - math.sin(WorldRoad._time * 3.1 + cr.phase) * 6

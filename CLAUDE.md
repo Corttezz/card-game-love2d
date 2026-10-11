@@ -30,7 +30,7 @@ card-game-love2d/
 │   ├── LightEngine.lua         # Motor de iluminação 2D do WorldRoad (lightmap ¼ multiply-only, micro-luzes, zero stencil) — memory/lighting_engine.md
 │   ├── ShadowEngine.lua        # Motor de sombras projetadas de silhueta (direção pelo sol, comprimento pelo horário, fila pós-grama) — memory/shadow_engine.md
 │   ├── LuminaireEngine.lua     # Motor de props emissores de luz (catálogo 2-3 luminárias/bioma, âncora de chama por conteúdo, cadência de spawn, brasas) — memory/luminaire_engine.md
-│   └── WeatherEngine.lua       # Clima com profundidade (neve/chuva/cinza/folhas em coords de mundo, pixel de ARTE, flush nas fatias da grama, vento do GrassField, raio multiply-only) — memory/weather_engine.md
+│   └── WeatherEngine.lua       # Clima FINO com profundidade (1 px de tela, densidade pela chegada ao castelo, vagalumes com poça de luz, flush nas fatias da grama, vento do GrassField, raio multiply-only) — memory/weather_engine.md
 ├── shaders/                    # GLSL (LÖVE 11.x format)
 │   ├── crt.glsl, holo.glsl, card_perspective.glsl  # Pré-existentes
 │   ├── dissolve.glsl           # Próprio (value noise + FBM + threshold animado)
@@ -97,6 +97,7 @@ card-game-love2d/
 │   │   ├── EconomySystem.lua   # Ouro, juros tipo TFT
 │   │   ├── ShopSystem.lua      # Ofertas da loja (cartas + upgrades + refresh)
 │   │   ├── (áudio → engine/AudioManager.lua; facade Sfx.lua abaixo)
+│   │   ├── WeatherAudio.lua    # Som do clima: camas sem loop fixo (vozes em crossfade de variantes), avulsos, trovão por distância; watchdog no love.update — memory/weather_engine.md
 │   │   ├── Sfx.lua             # Wrapper thin: Sfx.play("name") ao invés do guard repetido
 │   │   ├── MessageSystem.lua   # Toasts in-game com fade
 │   │   ├── ParticleSystem.lua  # Partículas genéricas

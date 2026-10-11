@@ -118,6 +118,9 @@ function AudioManager:loadSound(code, path, opts)
         pitchVariation = opts.pitchVariation or 0,
         loop           = opts.loop or false,
         instances      = { template },
+        -- ganho POR INSTÂNCIA (camas de ambiente com crossfade entre vozes
+        -- do mesmo som). Fraco: instância ociosa não segura nada.
+        instGain       = setmetatable({}, { __mode = "k" }),
     }
 
     template:setVolume(computeFinalVolume(self, entry))
@@ -169,6 +172,7 @@ function AudioManager:play(code, opts)
 
     opts = opts or {}
     local src = acquireInstance(self, entry)
+    entry.instGain[src] = opts.gain   -- instância reusada não herda ganho velho
 
     -- Pitch com variação opcional (útil em SFX repetitivos: sword, click).
     local pitch = opts.pitch or entry.basePitch
@@ -181,7 +185,7 @@ function AudioManager:play(code, opts)
     -- Volume: opt.volume sobrescreve baseVolume só para este play.
     local saved = entry.baseVolume
     if opts.volume ~= nil then entry.baseVolume = opts.volume end
-    src:setVolume(computeFinalVolume(self, entry))
+    src:setVolume(computeFinalVolume(self, entry) * (opts.gain or 1))
     entry.baseVolume = saved
 
     if opts.loop ~= nil then src:setLooping(opts.loop) end
@@ -193,6 +197,16 @@ function AudioManager:play(code, opts)
     end
 
     return src
+end
+
+-- Ganho de UMA instância (0..1) multiplicado sobre base×grupo×master — o
+-- update por frame respeita (antes reescrevia o volume de toda instância
+-- tocando, o que impedia fade por voz). nil/1 = sem ganho extra.
+function AudioManager:setInstanceGain(code, src, g)
+    local entry = self.sources[code]
+    if not entry or not src then return end
+    entry.instGain[src] = g
+    src:setVolume(computeFinalVolume(self, entry) * (g or 1))
 end
 
 -- Compat com a API antiga (Sfx.play -> playSound).
@@ -360,7 +374,7 @@ function AudioManager:update(dt)
             if src:isPlaying() then
                 -- Música em crossfade tem volume gerenciado acima; pular.
                 if not (self.musicCrossfade and (code == self.musicCrossfade.from or code == self.musicCrossfade.to)) then
-                    src:setVolume(final)
+                    src:setVolume(final * (entry.instGain[src] or 1))
                 end
                 i = i + 1
             else

@@ -186,13 +186,13 @@ function M.run()
         WorldRoad.clearCache()
         WorldRoad.setBiome(4)
         for _ = 1, 10 do frame(4) end
-        WeatherEngine.update(1 / 30, { biomeId = "abyss", camZ = 5.5, time = 3000 })
+        WeatherEngine.update(1 / 30, { biomeId = "abyss", camZ = 5.5, time = 3000, progress = 1 })
         local P0, n0 = WeatherEngine._particles()
         local snowLeft0 = 0
         for i = 1, n0 do if P0[i].pr == WeatherEngine.PRESETS.frost then snowLeft0 = snowLeft0 + 1 end end
         t:truthy("logo após a troca a neve ainda está no ar (sem pop)", snowLeft0 > 50)
         for i = 1, 30 * 60 do
-            WeatherEngine.update(1 / 30, { biomeId = "abyss", camZ = 5.5, time = 3000 + i / 30 })
+            WeatherEngine.update(1 / 30, { biomeId = "abyss", camZ = 5.5, time = 3000 + i / 30, progress = 1 })
         end
         local P, np = WeatherEngine._particles()
         local snowLeft, ash = 0, 0
@@ -202,6 +202,170 @@ function M.run()
         end
         t:eq("60 s depois a neve acabou", snowLeft, 0)
         t:truthy("e a cinza do abismo chegou (" .. ash .. ")", ash > 50)
+    end
+
+    -- 9. v2: FINO — pixel de tela, partículas pequenas
+    do
+        WorldRoad.clearCache()
+        WorldRoad.setBiome(2)
+        frame(2)
+        t:eq("unidade = 1 px de tela até 1440p", WeatherEngine.stats.unit, 1)
+        for id, pr in pairs(WeatherEngine.PRESETS) do
+            if pr.kind ~= "rain" then
+                -- maior partícula (perto, fora do 1º plano) em 1080p: ≤ 3 px de tela
+                local px1080 = math.floor(pr.size * (1028 / 1000) + 0.5)
+                t:truthy(id .. ": partícula pequena (" .. px1080 .. " px ≤ 3 em 1080p)", px1080 <= 3)
+            else
+                t:truthy(id .. ": chuva translúcida (alpha " .. pr.alpha .. " ≤ 0.65)", pr.alpha <= 0.65)
+            end
+        end
+    end
+
+    -- 10. v2: densidade pela chegada ao castelo; tempestade só no fim
+    do
+        local IF = WeatherEngine.intensityFor
+        t:truthy("começo do ato é calmo (" .. IF(0) .. ")", IF(0) <= 0.15)
+        t:near("porta do castelo = intensidade cheia", IF(1), 1, 1e-6)
+        local mono = true
+        for k = 1, 20 do if IF(k / 20) < IF((k - 1) / 20) then mono = false end end
+        t:truthy("curva cresce sempre (monotônica)", mono)
+        local function settle(prog, secs)
+            for i = 1, secs * 30 do
+                WeatherEngine.update(1 / 30, { biomeId = "frost", camZ = 5.5,
+                    time = 4000 + i / 30, progress = prog, luma = 0.9 })
+            end
+            local P, np = WeatherEngine._particles()
+            local main = 0
+            for i = 1, np do if not P[i].ff and not P[i].rise then main = main + 1 end end
+            return main
+        end
+        WorldRoad.clearCache(); WorldRoad.setBiome(4); frame(4)
+        local n0 = settle(0, 40)
+        local n1 = settle(1, 40)
+        t:truthy(string.format("começo %d ≪ castelo %d flocos", n0, n1), n0 < n1 * 0.25)
+        -- raio nunca no começo do ato (60 s de colinas no progresso 0.3)
+        WorldRoad.clearCache(); WorldRoad.setBiome(2); frame(2)
+        local any = false
+        for i = 1, 30 * 60 do
+            WeatherEngine.update(1 / 30, { biomeId = "highlands", camZ = 5.5,
+                time = 5000 + i / 30, progress = 0.3, luma = 0.6 })
+            if WeatherEngine.isStriking() then any = true end
+        end
+        t:falsy("sem raio na primeira metade do ato", any)
+        t:eq("sem tempestade na primeira metade", WeatherEngine.storm(), 0)
+    end
+
+    -- 11. v2: vagalumes pela noite
+    do
+        local function ffCount(luma)
+            WorldRoad.clearCache(); WorldRoad.setBiome(1); frame(1)
+            for i = 1, 30 * 40 do
+                WeatherEngine.update(1 / 30, { biomeId = "fields", camZ = 5.5,
+                    time = 6000 + i / 30, progress = 0.5, luma = luma })
+            end
+            local P, np = WeatherEngine._particles()
+            local n = 0
+            for i = 1, np do if P[i].ff then n = n + 1 end end
+            return n
+        end
+        local day, nightN = ffCount(0.95), ffCount(0.45)
+        t:eq("dia claro: nenhum vagalume", day, 0)
+        t:truthy("noite: vagalumes acesos (" .. nightN .. ")", nightN >= 10)
+        local glowMax, glowMin = 0, 1
+        for _, style in ipairs({ "wander", "sparkle", "wisp", "mote" }) do
+            for k = 0, 40 do
+                local pp = { period = 3, ph = k / 40, life = 5, life0 = 10 }
+                local g = WeatherEngine._ffGlow(pp, style)
+                glowMax = math.max(glowMax, g); glowMin = math.min(glowMin, g)
+            end
+        end
+        t:truthy(string.format("vagalume: brilho em [0,1] nos 4 estilos (%.2f..%.2f)",
+            glowMin, glowMax), glowMax <= 1 and glowMin >= 0)
+    end
+
+    -- 12. v2: SOM — camas sem loop fixo, avulsos e trovões sem repetir
+    do
+        local WA = require("src.systems.WeatherAudio")
+        local fakeNow = 0
+        local realGet = love.timer.getTime
+        love.timer.getTime = function() return fakeNow end
+        local started, gains = {}, {}
+        local function newSrc(code)
+            local s = { code = code, t0 = fakeNow, off = 0, pitch = 1, stopped = false }
+            function s:getDuration() return 6 end
+            function s:tell() return (fakeNow - self.t0) * self.pitch + self.off end
+            function s:isPlaying() return not self.stopped and self:tell() < 6 end
+            function s:seek(o) self.off = o end
+            function s:getPitch() return self.pitch end
+            function s:stop() self.stopped = true end
+            return s
+        end
+        local saved = _G.audioSystem
+        _G.audioSystem = {
+            play = function(_, code, opts)
+                local s = newSrc(code)
+                s.pitch = (opts and opts.pitch) or 1
+                started[#started + 1] = code
+                return s
+            end,
+            setInstanceGain = function(_, code, src, g)
+                if g then gains[#gains + 1] = g end
+            end,
+        }
+        WA._reset()
+        local st = { biomeId = "highlands", intensity = 1, storm = 1, night = 0.5,
+                     rain = 1, gust = 0.8 }
+        for i = 1, 30 * 120 do
+            fakeNow = i / 30
+            WA.update(1 / 30, st)
+        end
+        -- camas: a mesma variante nunca começa duas vezes seguidas na família
+        local byFam, repeatOk, nBeds = {}, true, 0
+        for _, c in ipairs(started) do
+            local fam = c:match("^wx:(rain%-heavy)") or c:match("^wx:(rain%-light)")
+            if fam then
+                nBeds = nBeds + 1
+                if byFam[fam] == c then repeatOk = false end
+                byFam[fam] = c
+            end
+        end
+        t:truthy("chuva: camas rodaram várias vozes em 2 min (" .. nBeds .. ")", nBeds >= 10)
+        t:truthy("chuva: nunca a mesma variante duas vezes seguidas", repeatOk)
+        local maxG = 0
+        for _, g in ipairs(gains) do maxG = math.max(maxG, g) end
+        t:truthy(string.format("ganho de voz ≤ 1 (%.2f)", maxG), maxG <= 1 + 1e-6)
+        -- trovão: 30 raios seguidos, nunca o mesmo arquivo duas vezes
+        local prev, okT = nil, true
+        for k = 1, 30 do
+            local name = WA.thunder((k % 7) / 7)
+            if name == prev then okT = false end
+            prev = name
+        end
+        t:truthy("trovão nunca repete a variante anterior", okT)
+        -- watchdog: mundo parou de atualizar → camas somem
+        local beds = WA._state()
+        fakeNow = fakeNow + 1
+        for _ = 1, 120 do WA.watchdog(1 / 60) end
+        local alive = 0
+        for _, bed in pairs(beds) do alive = alive + #bed.voices end
+        t:eq("watchdog: sem update do mundo, nenhuma voz de cama viva", alive, 0)
+        WA._reset()
+        _G.audioSystem = saved
+        love.timer.getTime = realGet
+        -- todo nome citado nas tabelas existe em audio/sfx/weather/
+        local missing = {}
+        local function check(n)
+            if not love.filesystem.getInfo("audio/sfx/weather/" .. n .. ".mp3") then
+                missing[#missing + 1] = n
+            end
+        end
+        for _, cfg in pairs(WA.BIOMES) do
+            for _, b in ipairs(cfg.beds) do for _, v in ipairs(b.vars) do check(v) end end
+            for _, o in ipairs(cfg.ones) do for _, v in ipairs(o.vars) do check(v) end end
+        end
+        for _, list in pairs(WA.THUNDER) do for _, v in ipairs(list) do check(v) end end
+        for _, v in ipairs(WA.FIREFLY) do check(v) end
+        t:eq("todo som citado existe no disco (" .. table.concat(missing, ",") .. ")", #missing, 0)
     end
 
     -- 8. fonte

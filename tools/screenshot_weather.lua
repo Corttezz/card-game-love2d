@@ -7,6 +7,7 @@
 --   love . test_one screenshot_weather 2:storm            (pico da tempestade)
 --   love . test_one screenshot_weather 4:off              (A/B: clima desligado)
 --   love . test_one screenshot_weather 4:travel           (viajando — o clima vem em você)
+--   love . test_one screenshot_weather 1:start / 1:castle (começo do ato × perto do chefe)
 --
 -- Saída: weather_<bioma>[_<modo>].png no save dir.
 
@@ -27,14 +28,28 @@ function M.run(arg)
     local WorldRoad = require("src.ui.WorldRoad")
     local WeatherEngine = require("engine.WeatherEngine")
     WeatherEngine.disabled = modes.off == true
+    WeatherEngine.debugMagenta = modes.mag == true
     if modes.storm or modes.strike then WeatherEngine.setIntensityOverride(1) end
 
     local width, height = love.graphics.getDimensions()
     local topBarH = math.floor(height * 0.08)
     WorldRoad.clearCache()
     WorldRoad.setBiome(bio)
-    WorldRoad.setTimeOfDay(0.8, true)
-    WorldRoad._camZ = 5.5
+    -- start = começo do ato (andar 1: calmo, tod 0.62) | castle = perto do
+    -- chefe (andar 8: pico, tod 1) | sem modo = meio do ato
+    if modes.castle then
+        WorldRoad.setTimeOfDay(1, true)
+        WorldRoad._segBase = 0
+        WorldRoad._camZ = WorldRoad.TRAVEL_DISTANCE * 7
+    elseif modes.start then
+        WorldRoad.setTimeOfDay(0.62, true)
+        WorldRoad._segBase = 0
+        WorldRoad._camZ = 0.5
+    else
+        WorldRoad.setTimeOfDay(0.8, true)
+        WorldRoad._segBase = 0
+        WorldRoad._camZ = WorldRoad.TRAVEL_DISTANCE * 3.5
+    end
     local function frame()
         love.graphics.clear(0, 0, 0, 1)
         WorldRoad.draw(0, topBarH, width, height - topBarH, bio)
@@ -53,10 +68,11 @@ function M.run(arg)
         love.graphics.present()
     end
     if modes.strike then
-        WeatherEngine.strike(0.30)
+        WeatherEngine.strike(0.30, 0.15)
         WorldRoad.update(0.02)
     end
     frame()
+    print("[weather] pools", WeatherEngine.stats.pools, "micro", WeatherEngine.stats.micro)
     print(string.format("[weather] ms update %.3f  sort %.3f  build %.3f", WeatherEngine.stats.msUpdate or -1, WeatherEngine.stats.msSort or -1, WeatherEngine.stats.msBuild or -1))
     print(string.format("[weather] bioma %d  partículas %d  quads %d  fatias %d  flash %.2f",
         bio, WeatherEngine.count(), WeatherEngine.stats.quads,
@@ -66,11 +82,12 @@ function M.run(arg)
         local hist = {}
         for i = 1, n do
             local p = P[i]
-            local k = (p.st == 1 and "pous" or "ar") .. (p.fg and "FG" or "")
+            local k = (p.ff and "FF" or "") .. (p.st == 1 and "pous" or "ar") .. (p.fg and "FG" or "")
                 .. string.format("_rel%02d", math.floor((p.z - WorldRoad._camZ) / 4) * 4)
             hist[k] = (hist[k] or 0) + 1
         end
         for k, v in pairs(hist) do print("[dbg]", k, v) end
+        print("[dbg] night", WeatherEngine.night(), "intens", WeatherEngine.intensity(), "storm", WeatherEngine.storm())
         for i = 1, math.min(8, n) do
             local p = P[i]
             print(string.format("[dbg] lx %.2f rel %.1f hg %.3f vf %.3f st %d",
@@ -78,7 +95,7 @@ function M.run(arg)
         end
     end
     local suffix = ""
-    for _, k in ipairs({ "storm", "strike", "off", "travel" }) do
+    for _, k in ipairs({ "start", "castle", "storm", "strike", "off", "travel" }) do
         if modes[k] then suffix = suffix .. "_" .. k end
     end
     local name = "weather_" .. bio .. suffix .. ".png"

@@ -1,6 +1,6 @@
 ---
 name: weather_engine
-description: WeatherEngine v1 — clima com profundidade no WorldRoad (neve/chuva/cinza/folhas/sementes em coordenadas de mundo, vento = rajada do GrassField, tempestade com raio multiply-only, árvores inclinando na rajada)
+description: WeatherEngine v2 + WeatherAudio — clima FINO com profundidade no WorldRoad (densidade pela chegada ao castelo, vagalumes com luz, raio multiply-only) e som de clima sem loop fixo (camas em crossfade de variantes, avulsos, trovão por distância); lista dos sons ElevenLabs a regenerar
 type: architecture
 ---
 
@@ -96,3 +96,57 @@ billboard da viagem (handoff sem pulo). 768 e 1080p (área 1028) = 1.0
 exato. Prova: `ENEMY_SCENE_VIRTUAL=2560x1440 love . screenshot_enemy_scene
 1_battle` (tela falsificada num canvas — setMode acima do desktop trava).
 Trava em `test_enemy_stage`.
+
+
+## v2 (Out/2026, 2ª rodada do dono: "pixels grandes, chuva grossa, POLUINDO")
+- **Fino**: medida em pixel de TELA (`u = floor(h/900)` → 1 px até 1440p).
+  Chuva = risco de 1 px, longo (size 34 → ~35 px perto, ~14 no meio), alpha
+  0.5-0.6; neve ≤3 px perto e 1 px no resto; cinza/semente/folha 1-2 px.
+  Partícula de 1 px num print reduzido SOME — julgue no tamanho nativo
+  (crop 1:1) e lembre que em movimento ela lê muito mais que parada.
+- **Densidade pela chegada ao castelo**: `intensityFor(progress)` = 0.12 →
+  1.0 (progress = caminhado/SEGMENT_LEN, a MESMA conta do castelo crescendo).
+  Tempestade/raio só com progress > ~0.6 (`stormFor`). Tools:
+  `setProgressOverride`, modos `start`/`castle` do screenshot_weather.
+- **Vagalumes** (camada `ff` do preset): 1 px + cruz de halo quando aceso,
+  micro-luz no núcleo (devolve a cor cheia no multiply) e POÇA no capim
+  (LightEngine.submit, 6 por frame, só perto). Densidade pela NOITE (luma do
+  ambiente 0.82→0.55). Estilos: wander (campos, amarelo), wisp (pântano,
+  verde), mote (crepúsculo), sparkle (geleira), azul raro nas colinas; abismo
+  não tem (brasas). O critter-vagalume antigo de tela fica desligado à noite
+  quando o bioma tem `ff` (borboleta de dia segue).
+- **LightEngine MAX_LIGHTS 16 → 28**: com o castelo perto as janelas lotavam a
+  fila e a poça do vagalume (a mais fraca) nunca entrava — provado por diff
+  A/B (poças on/off) antes de mexer.
+
+## WeatherAudio (src/systems/WeatherAudio.lua)
+- Camas = fila de VOZES sem loop: cada voz toca uma vez, de um ponto
+  aleatório (≤35%), pitch ±6%; perto do fim a próxima variante (≠ anterior)
+  entra em crossfade de 1.6 s. A emenda do arquivo nunca é ouvida (por isso o
+  SALTO do check_loop nas camas não importa). Ganho por cama vem do estado do
+  clima (intensidade, tempestade, rajada do capim, noite).
+- Precisa de ganho POR INSTÂNCIA: `AudioManager:setInstanceGain(code, src, g)`
+  (o update do AudioManager reescrevia o volume de toda instância tocando).
+- Avulsos com intervalo/pitch/volume sorteados; trovão por distância do raio
+  (perto: near/crack-2; meio: mid/roll; longe: far/roll), atraso
+  0.15+2.2·dist s, volume 1−0.55·dist, nunca a mesma variante seguida.
+  ElevenLabs gera estéreo → sem pan (Source:setPosition exige mono).
+- **Watchdog** no love.update: mundo parou de atualizar (salão, loja, menu,
+  pause) → camas somem em fade.
+- Registro por SCAN de `audio/sfx/weather/` (código `wx:<nome>`), volume
+  `Config.Audio.WEATHER_VOLUME` × categoria. Normalizados com ffmpeg (camas
+  −22 dB médio, avulsos/trovão pico −2 dB). `CHECK_LOOP_DIR=audio/sfx/weather
+  love . check_loop` mede as camas; `love . check_sfx weather` os envelopes.
+- Trava: test_weather §12 (mock de audioSystem: rotação sem repetir, ganho ≤1,
+  trovão sem repetir, watchdog, todo nome existe no disco).
+
+## ⚠️ Sons gerados no ElevenLabs FREE (sem uso comercial) — REGENERAR
+`audio/sfx/weather/`: rain-light-1/2/3, rain-heavy-1/2, wind-1/2/3,
+blizzard-1/2, night-crickets-1/2, marsh-night-1, ember-crackle-1 (camas, 6 s,
+loop:true); thunder-near, thunder-crack-2, thunder-mid (era
+audio/sfx/thunder.mp3), thunder-roll, thunder-far; drip-1/2, owl-1,
+cricket-chirp-1, frog-1, ember-pop-1, ice-tinkle-1, firefly-1/2 (avulsos).
+Depois de regenerar: mesmo nome, normalizar (ffmpeg volume + alimiter) e
+rodar `love . check_sfx weather`. Custo real medido: ~30 gerações ≈ 1100
+créditos. rain-light-1/2 saíram quase mudos na 1ª tentativa (−60 dB) —
+pedir "clearly audible, close" no prompt.

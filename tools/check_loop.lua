@@ -103,7 +103,7 @@ local function analyze(path)
 end
 
 function M.run(filter)
-    local DIR = "audio/music"
+    local DIR = os.getenv("CHECK_LOOP_DIR") or "audio/music"   -- CHECK_LOOP_DIR=audio/sfx/weather: camas de clima
     if not love.filesystem.getInfo(DIR) then
         print("Sem " .. DIR .. "/ — nada a medir.")
         love.event.quit()
