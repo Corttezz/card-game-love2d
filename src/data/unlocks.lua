@@ -19,14 +19,16 @@ local U = {}
 
 -- XP pra passar DO nível N pro N+1 (índice = nível atual). 5 níveis no total:
 -- 100 → 250 → 450 → 700 → 1000 de XP acumulado. Uma vitória completa (6 atos)
--- rende ~870 XP; uma morte no ato 2 rende ~150.
+-- rende ~490 XP (nível 3); uma morte no ato 2 rende ~85. Maestria completa
+-- pede ~2 vitórias ou ~10 runs medianas — com 870 por vitória (calibração
+-- da era de 3 atos) uma run só esvaziava a progressão da classe.
 U.LEVEL_COSTS = { 100, 150, 200, 250, 300 }
 
 -- Composição do XP de uma run (ver UnlockSystem.computeRunXP).
 U.XP = {
-    PER_FLOOR    = 10,   -- por andar alcançado (ato-1)*8 + andar
-    PER_ACT      = 40,   -- por ato completado (chefe do ato vencido)
-    VICTORY      = 150,  -- bônus de vitória
+    PER_FLOOR    = 5,    -- por andar alcançado (ato-1)*8 + andar
+    PER_ACT      = 25,   -- por ato completado (chefe do ato vencido)
+    VICTORY      = 100,  -- bônus de vitória
     PER_ENDLESS  = 15,   -- por andar do endless
     MINIMUM      = 20,   -- piso: nenhuma run sai de mãos vazias
 }

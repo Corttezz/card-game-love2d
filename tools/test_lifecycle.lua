@@ -187,21 +187,41 @@ function M.run()
         scr:show(g, function() end, function() end, "shop")
         local run = g.runManager.currentRun
         run.paidForges = 2
-        local offer = { effect = "forge_card", cost = 7, purchased = true, type = "upgrade" }
+        local offer = { id = "forge", effect = "forge_card", cost = 7, purchased = true, type = "upgrade" }
         local gold0 = g.economySystem.currentGold
-        local prev = _G.openForgeScreen
-        _G.openForgeScreen = function(onDone) onDone(false) end   -- jogador apertou Voltar
+        -- A loja abre o picker generico (_G.openCardPicker) e decide o estorno
+        -- pela assinatura do deck: se nada mudou, o jogador saiu pelo Voltar.
+        local prev = _G.openCardPicker
+        _G.openCardPicker = function(_, onDone) onDone(false) end   -- jogador apertou Voltar
         scr:applyUpgrade(offer)
         t:eq("Voltar sem forjar devolve o ouro", g.economySystem.currentGold - gold0, 7)
         t:falsy("e a oferta volta a ficar a venda", offer.purchased)
         t:eq("e o preco da proxima forja nao sobe por uma forja que nao houve", run.paidForges, 2)
-        _G.openForgeScreen = function(onDone) onDone(true) end    -- forjou de verdade
+        _G.openCardPicker = function(_, onDone)                      -- forjou de verdade
+            g.runManager:upgradeCardAt(1)
+            onDone(true)
+        end
         offer.purchased = true
         scr:applyUpgrade(offer)
         t:eq("forja feita: nada devolvido", g.economySystem.currentGold - gold0, 7)
         t:eq("forja feita conta no preco", run.paidForges, 3)
-        _G.openForgeScreen = prev
+        _G.openCardPicker = prev
         scr:hide()
+    end
+
+    -- 7d. Abandonar pelo pause rende XP de maestria uma vez e apaga o save.
+    do
+        local g = TK.newRunGame("warrior")
+        local run = g.runManager.currentRun
+        run.actNumber, run.floorInAct = 2, 4
+        local UnlockSystem = require("src.systems.UnlockSystem")
+        local before = UnlockSystem.getClassMastery("warrior").xp
+        g:abandonRun()
+        local after = UnlockSystem.getClassMastery("warrior").xp
+        t:truthy("abandonar rende XP de maestria (StS: abandonar = morrer)", after > before)
+        t:falsy("abandonar apaga o save", g.runManager:hasSavedRun())
+        g:abandonRun()
+        t:eq("abandonar de novo nao paga XP duas vezes", UnlockSystem.getClassMastery("warrior").xp, after)
     end
 
     -- 8. advanceFloorInAct sem argumento usa a fonte única de atos.

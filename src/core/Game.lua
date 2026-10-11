@@ -2087,6 +2087,27 @@ function Game:checkGameOver()
     return false
 end
 
+-- Abandono confirmado no pause: conta como fim de run (StS: abandonar = morrer).
+-- Rende o XP de maestria do que a run andou e registra a derrota no perfil —
+-- sem isso, abandonar uma run longa jogava fora todo o progresso de classe.
+-- Mesmo guard do checkGameOver: nunca registra duas vezes.
+function Game:abandonRun()
+    if not self.runManager then return end
+    if not self.isRunMode then self.runManager:deleteSave(); return end
+    if self._saveDeleted or self._victoryRecorded then
+        if self.runManager.deleteSave then self.runManager:deleteSave() end
+        return
+    end
+    self._saveDeleted = true
+    local run = self.runManager.currentRun
+    if run then
+        local PS = require("engine.ProfileStats")
+        self.unlockResult = UnlockSystem.onRunEnded(self:_unlockSummary(false))
+        PS.recordDefeat(run.actNumber, run.floorInAct)
+    end
+    self.runManager:deleteSave()
+end
+
 -- Resumo da run pro UnlockSystem.onRunEnded (XP de maestria + marcos).
 function Game:_unlockSummary(victory)
     local run = self.runManager and self.runManager.currentRun or {}

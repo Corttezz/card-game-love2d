@@ -31,6 +31,7 @@ local Layout = require("src.ui.ClassSelectLayout")
 local UnlockSystem = require("src.systems.UnlockSystem")
 local Debug = require("src.core.Debug")
 local I18n = require("src.i18n.I18n")
+local TextCase = require("src.i18n.TextCase")
 local Sfx = require("src.systems.Sfx")
 
 -- Cor de identidade por classe (linha da placa de nome + aura).
@@ -474,7 +475,7 @@ function ClassSelectionScreen:_drawPassive(p, r, ts, hover)
     love.graphics.rectangle("line", r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1)
     love.graphics.setColor(1, 0.72, 0.22, 1)
     local titleH = math.floor(16 * ts)
-    TextFit.print(I18n.t("class_select.passive_label") .. " — " .. p.info.passiveName:upper(),
+    TextFit.print(I18n.t("class_select.passive_label") .. " — " .. TextCase.upper(p.info.passiveName),
         r.x + 4, r.y + 4, { size = math.floor(10 * ts), maxW = r.w - 8, align = "center", minSize = 7 })
     Palette.set(Palette.PARCHMENT)
     printWrapped(p.info.passiveDesc or "",
@@ -573,7 +574,7 @@ function ClassSelectionScreen:_drawClassPanel(p)
     end
 
     -- NOME + linha de cor da classe
-    local name = (p.info.name or p.classId):upper()
+    local name = TextCase.upper(p.info.name or p.classId)
     if p.unlocked then
         Palette.set(hover > 0.5 and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT_LIGHT)
     else

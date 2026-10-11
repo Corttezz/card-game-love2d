@@ -1660,10 +1660,9 @@ function love.load(loveArgs)
                 returnToMenu()
             end,
             onAbandon = function()
-                -- Abandono confirmado: apaga o save e encerra a run.
-                if game.runManager then
-                    game.runManager:deleteSave()
-                end
+                -- Abandono confirmado: encerra a run (XP de maestria + derrota
+                -- no perfil) e apaga o save.
+                game:abandonRun()
                 returnToMenu()
             end,
         }, opts)

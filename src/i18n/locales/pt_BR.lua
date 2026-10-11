@@ -718,7 +718,7 @@ return {
         filter_defense = "DEFESA",
         filter_joker   = "JOKERS",
         filter_effect  = "EFEITOS",
-        class_basic    = "Basica",
+        class_basic    = "Básica",
         footer         = "CLIQUE pra inspecionar  ·  RODA DO MOUSE pra rolar  ·  ESC volta",
         inspect_help   = "← / → Navegar    ·    ESC ou clique fora para fechar",
     },

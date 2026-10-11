@@ -285,6 +285,14 @@ function Release.errorhandler(msg)
         return function() return 1 end
     end
 
+    -- Tool/teste (`love . <arg>`) que quebra SAI com codigo 1: o handler
+    -- padrao abre a tela azul e espera alguem fechar — uma suite quebrada
+    -- ficava pendurada ate o timeout de quem a chamou.
+    if Release.DEV and _G.HEADLESS_TOOL then
+        print(trace)
+        return function() return 1 end
+    end
+
     if Release.DEV and Release._defaultErrorhandler then
         return Release._defaultErrorhandler(msg)
     end
