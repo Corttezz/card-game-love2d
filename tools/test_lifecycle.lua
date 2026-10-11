@@ -132,6 +132,35 @@ function M.run()
         es:hide()
     end
 
+    -- 7b. "O evento me matou e a run seguiu a 0 HP" / "cliquei numa opção
+    --     sem ouro, ela subiu -$20 e gastou o evento sem cobrar nada".
+    do
+        local Events = require("src.data.events")
+        local g = TK.newRunGame("warrior")
+        local altar = Events.get("altar_proibido")
+        local sac = altar.options[1]
+        g.player.health = 8
+        t:falsy("altar (8 HP) com 8 de vida: opcao IMPAGAVEL", Events.canAfford(sac, g))
+        g.player.health = 9
+        t:truthy("altar com 9 de vida: pagavel", Events.canAfford(sac, g))
+        g.player.armor = 20
+        sac.apply(g)
+        t:eq("custo de sangue ignora armadura e deixa 1 de vida", g.player.health, 1)
+        t:truthy("evento nunca mata", g.player:isAlive())
+
+        local aposta = Events.get("aposta_ouro").options[1]
+        g.economySystem.currentGold = 5
+        t:falsy("aposta de $20 com $5: impagavel", Events.canAfford(aposta, g))
+
+        local EventScreen = require("components.EventScreen")
+        local es = EventScreen:new()
+        es:show(Events.get("aposta_ouro"), g, function() end)
+        t:truthy("botao da opcao impagavel nasce DESABILITADO", es.buttons[1].disabled)
+        es:keypressed("1")
+        t:truthy("atalho 1 nao escolhe opcao desabilitada", #es.buttons > 0)
+        es:hide()
+    end
+
     -- 8. advanceFloorInAct sem argumento usa a fonte única de atos.
     do
         local g = TK.newRunGame("warrior")

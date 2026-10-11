@@ -291,6 +291,11 @@ function EventScreen:buildButtons()
         end
         local btn = Button:new(x, y, btnW, btnH,
             composeOptionLabel(self.event, opt, i), onClick, nil, 10)
+        -- Opção impagável (ouro/vida) nasce DESABILITADA: o rótulo já diz o
+        -- custo, o botão cinza diz "agora não dá".
+        if not require("src.data.events").canAfford(opt, self.game) then
+            btn:setEnabled(false)
+        end
         table.insert(self.buttons, btn)
     end
 end
@@ -509,7 +514,7 @@ function EventScreen:keypressed(key)
     if key == "1" or key == "2" or key == "3" or key == "4" then
         local i = tonumber(key)
         local btn = self.buttons[i]
-        if btn and btn.onClick then
+        if btn and btn.onClick and not btn.disabled then
             -- O atalho de teclado não passa pelo Button:mousereleased, então
             -- o feedback do clique é reproduzido aqui — escolher pelo 1-4 tem
             -- que soar igual a escolher pelo mouse.

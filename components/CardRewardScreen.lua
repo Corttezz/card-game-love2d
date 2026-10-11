@@ -728,6 +728,9 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
         skipX, skipY, skipW, skipH,
         skipLabel,
         function()
+            -- Saída JÁ em curso: cada clique extra na janela da cerimônia
+            -- pagava o bônus de novo (e o _closing só era checado depois).
+            if self._closing then return end
             if self.mode == "shop" and skipBonus > 0 and self.game.economySystem then
                 self.game.economySystem:earnGold(skipBonus, "shop_skip")
                 self.game:addMessage(I18n.t("messages.shop_skipped", { n = skipBonus }), "info")
@@ -2686,6 +2689,10 @@ end
 
 function CardRewardScreen:mousepressed(x, y, button)
     if not self.visible then return false end
+    -- Durante a cerimônia de saída nada mais é clicável: comprar uma Forja
+    -- nessa janela abria o picker e o callback da saída o atropelava (ouro
+    -- gasto, forja perdida). Engole o clique.
+    if self._closing then return true end
 
     -- Inspeção aberta consome tudo (clique nas setas/fora fecha — igual Coleção).
     if self.inspectModal and self.inspectModal:isVisible() then
@@ -2740,6 +2747,7 @@ end
 
 function CardRewardScreen:mousereleased(x, y, button)
     if not self.visible then return false end
+    if self._closing then return true end
 
     -- Inspeção aberta: engole releases (nada atrás pode reagir).
     if self.inspectModal and self.inspectModal:isVisible() then
