@@ -606,7 +606,15 @@ return {
 
     play_button = { label = "Karten spielen", end_turn = "Zug Beenden" },
 
-    window_title = "Card Game - Ein strategisches Kartenspiel",
+    window_title = "Grimoire",
+    -- Tela de erro fatal (src/core/Release.lua). Sem dependencia de fonte do jogo.
+    crash = {
+        title    = "Etwas ist schiefgelaufen",
+        body     = "Das Spiel ist auf einen unerwarteten Fehler gestossen und muss beendet werden. Der bis zur letzten Ebene gespeicherte Fortschritt bleibt erhalten.",
+        log_path = "Ein Bericht wurde gespeichert unter:",
+        hint     = "Esc: schliessen   C: Bericht kopieren",
+        copied   = "Bericht in die Zwischenablage kopiert.",
+    },
 
     effects = {
         damage_multiplier           = "Verdoppelt Angriffsschaden",

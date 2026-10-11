@@ -11,3 +11,7 @@ NEXT_SESSION.md
 .DS_Store
 Thumbs.db
 __pycache__/
+
+# Build de release (tools/build_release.py)
+build/
+/build_info.lua

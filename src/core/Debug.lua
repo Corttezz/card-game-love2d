@@ -3,7 +3,8 @@
 
 local Debug = {}
 
-Debug.enabled = true      -- master switch
+-- master switch: desligado em RELEASE (Debug.err continua indo pro log).
+Debug.enabled = require("src.core.Release").isDev()
 Debug.verbose = false     -- logs de hover/mouse/draw (muito ruidoso)
 
 -- Log normal (info).

@@ -606,7 +606,15 @@ return {
 
     play_button = { label = "Jouer Cartes", end_turn = "Fin du Tour" },
 
-    window_title = "Card Game - Un jeu de cartes strategique",
+    window_title = "Grimoire",
+    -- Tela de erro fatal (src/core/Release.lua). Sem dependencia de fonte do jogo.
+    crash = {
+        title    = "Un probleme est survenu",
+        body     = "Le jeu a rencontre une erreur inattendue et doit se fermer. La progression sauvegardee jusqu'au dernier etage est conservee.",
+        log_path = "Un rapport a ete enregistre dans :",
+        hint     = "Echap : fermer   C : copier le rapport",
+        copied   = "Rapport copie dans le presse-papiers.",
+    },
 
     effects = {
         damage_multiplier           = "Double les degats des cartes d'attaque",

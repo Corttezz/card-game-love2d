@@ -17,7 +17,7 @@ local FXQ = "reward_fx"
 -- Loga em print E em arquivo (save dir: reward_debug.log) — o arquivo é
 -- sobrescrito a cada show(), então contém sempre a ÚLTIMA abertura.
 -- Desligar depois: REWARD_DBG = false.
-local REWARD_DBG = true
+local REWARD_DBG = require("src.core.Release").isDev()  -- release: sem reward_debug.log
 local _dbgStart = 0
 
 local function dbg(fmt, ...)

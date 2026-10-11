@@ -1019,6 +1019,12 @@ function GameplayScene.mousemoved(x, y, dx, dy)
 end
 
 function GameplayScene.keypressed(key)
+    -- Atalhos de DEV (restart e presets de smoke) nao existem no jogo publicado.
+    local dev = require("src.core.Release").isDev()
+    if not dev and (key == "r" or key == "0" or key == "1" or key == "2"
+                    or key == "3" or key == "4") then
+        return
+    end
     if key == "r" then
         game:startGame()
     elseif key == "f" then
