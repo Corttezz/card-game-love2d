@@ -47,3 +47,29 @@ em vez de `run.save.lua`/`settings.lua`. **O jogador roda `love .` sem args.**
 - Schema mudou? Bump `Migrations.CURRENT_VERSION`, adicione handler pra versão antiga.
 - Save novo (perfil, metrics)? Adicione path em `SaveManager.PATHS` + funções `saveX`/`loadX` análogas.
 - Settings novo campo? Adicione em `DEFAULT_SETTINGS` (backfill automático no load) e persista no `_persist()` do SettingsMenu.
+
+## Estágio da run e o Continuar (revisão de lançamento, Out/2026)
+
+`currentRun.stage` diz ONDE retomar; gravado pelo `main.lua` (`setRunStage`)
+em cada ponto seguro e decidido por `ResumeFlow.stageAction(run)` (pura,
+travada em `tools/test_lifecycle.lua`):
+
+| stage | gravado em | Continuar abre |
+|---|---|---|
+| `battle` (ou nil = save antigo) | `Game:nextPhase` (vida do INÍCIO da luta) | a luta, do começo |
+| `cashout` | `showRoundEval` | o cash out |
+| `rewards` | `showCardRewards` (ouro já resgatado) | a recompensa |
+| `rest` / `event` (+`stageEventId`) / `shop` | `openNonBattleNode` | o mesmo nó (evento pelo id: `Events.get`) |
+| `event_done` / `rest_done` | EventScreen (após o apply) / RestScreen `_markCampUsed` | encruzilhada seguinte (nunca reaplica) |
+| `fork` | fim de `showMapSelection` | encruzilhada (pendingNodes) |
+
+Regras que nasceram com isso:
+- "Salvar e sair" com `stage == "battle"` e estado `playing` **não regrava** —
+  o save do início da luta vale (padrão StS; antes gravava a vida perdida com o
+  inimigo voltando cheio).
+- `checkpointRun` recusa jogador morto e `gameState` gameOver/victory (a morte
+  atrás da pausa ressuscitava com 1 de vida).
+- `checkVictory` apaga o save (o menu oferecia Continuar pro chefe vencido).
+- `startGame(classId)` faz checkpoint na hora (run nova nasce salva).
+- Save ilegível: `SaveManager.quarantineRun()` → `run.save.lua.corrupt` + aviso
+  (ConfirmDialog em modo aviso); o Continuar some do menu.

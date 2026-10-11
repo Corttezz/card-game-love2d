@@ -18,13 +18,13 @@ type: project
 
 **2. Fallback de imagem `theRock.png`** usado em muitas cartas — não é estilo, é falta de arte. Pipeline de sprite via pixel-mcp está em `memory/sprite_design_queue.md`. Ao gerar PNGs, substituir campo `image` no `src/data/cards/*.lua`.
 
-**3. Save/load persistente existe mas não há UI** — `RunManager:saveRun/loadRun/hasSavedRun/deleteSave` gravam `run.save.lua`. Ainda não há botão "Continuar" no menu principal. (Jul/2026: o save agora carrega `rngState` — seed + estado exato dos streams; migration 1.2.)
+**3. ~~Save/load persistente existe mas não há UI~~** — ✅ Continuar existe (F1) e, desde Out/2026, retoma o ESTÁGIO certo (ver [[save_system]]). Texto antigo: — `RunManager:saveRun/loadRun/hasSavedRun/deleteSave` gravam `run.save.lua`. Ainda não há botão "Continuar" no menu principal. (Jul/2026: o save agora carrega `rngState` — seed + estado exato dos streams; migration 1.2.)
 
 **4. `Game:isRunMode` setado por `startNewRun` mas pode vazar entre runs** — `returnToMenu()` reseta via `Game:new()` então OK no fluxo normal, mas atenção ao adicionar transições novas.
 
 **5. `conf.lua` com `t.modules.touch = false`** — iOS deployment não está configurado.
 
-**6. `Menu:onAboutClick`** continua placeholder.
+**6. ~~`Menu:onAboutClick` placeholder~~** — ✅ Out/2026: link "Créditos" no rodapé do menu → `components/CreditsScreen.lua` (atribuição LÖVE/zlib e Press Start 2P/OFL).
 
 **7. ~~`CardRewardScreen` ainda tem muitos `print` de debug~~** — ✅ resolvido na Fase 0 do refactor Balatro (Abril/2026). Prints viraram `Debug.log/trace/err`.
 
@@ -34,7 +34,7 @@ type: project
 
 **10. ~~Forge (Rest) usa IDs crus no label~~** — ✅ resolvido (F4 UI Overhaul): `RestScreen.enterForgeMode` mostra `cardData.name` + nível.
 
-**11. Events não processa "perder HP"** — `apply.function` pode causar dano direto, mas alguns eventos complexos (Slay-style "troca carta pelo vizinho") não estão mapeados.
+**11. Events: custos de sangue** — ✅ Out/2026: `loseHealth` (armadura não paga) e nunca matam; opção impagável desabilitada (`Events.canAfford`). Pendente o resto: **Events não processa "perder HP"** — `apply.function` pode causar dano direto, mas alguns eventos complexos (Slay-style "troca carta pelo vizinho") não estão mapeados.
 
 **12. `damage_per_turn` no player não é disparado pelo Game** — existe em `processTriggerEffect` mas `applyTriggerEffects("turn_start")` só roda no fim do enemy turn, então DoT do player vem só a cada 2 turnos lógicos. Provavelmente está ok, mas revisar se virar bug.
 
@@ -66,7 +66,7 @@ type: project
 
 **24. Watcher de teste** — `love . test_systems` valida a entrega STS-improvements v1. NUNCA rodar com processo `love` do usuário aberto (guarda em tools + memória never-kill-user-processes).
 
-**25. Save é slot ÚNICO sem diálogo** — "Jogar" com um save existente NÃO pergunta nada: a run nova sobrescreve o save antigo no primeiro checkpoint (padrão StS de slot único, mas o StS confirma antes). Se algum dia houver reclamação de "perdi meu save clicando em Jogar", adicionar confirmação no menu quando `SaveManager.hasRun()`.
+**25. ~~Save é slot ÚNICO sem diálogo~~** — ✅ Out/2026: "Jogar" com save abre `ConfirmDialog` ("Começar nova corrida?"). Texto antigo: Save é slot ÚNICO sem diálogo — "Jogar" com um save existente NÃO pergunta nada: a run nova sobrescreve o save antigo no primeiro checkpoint (padrão StS de slot único, mas o StS confirma antes). Se algum dia houver reclamação de "perdi meu save clicando em Jogar", adicionar confirmação no menu quando `SaveManager.hasRun()`.
 
 **26. returnToMenu FAZ limpeza pesada (Jul/2026)** — `EventManager.clear()` + `runManager.currentRun=nil` + `Rng.clearActive()` ANTES de recriar o game. Motivo: callbacks agendados do game descartado re-salvavam a run abandonada e até puxavam `currentState` de volta pro jogo. Ao adicionar transições novas pro menu, passar SEMPRE por `returnToMenu()` (nunca setar `currentState="menu"` na mão).
 

@@ -96,3 +96,15 @@ bug de origem.
 Teste: `love . test_one test_input_focus` (50 asserções — mecanismo, `Button` e
 `PauseMenu` reais, e a FIAÇÃO do `main.lua` fatiada por função, porque o
 mecanismo certo com o dispatch revertido passava).
+
+## hideAll e freezesCombat (Out/2026)
+
+- `InputFocus.hideAll()` fecha todo overlay registrado visível (avisa quem não
+  tem `hide()`). O `returnToMenu` usa: uma COBERTURA esquecida visível
+  (descanso/evento/mapa/cash out) tomava o foco e o menu nascia MORTO depois de
+  "Salvar e sair".
+- `InputFocus.freezesCombat(state)`: `playing` + modal capturando ⇒ o
+  `love.update` pula `EventManager.update` e `GameplayScene.update` — pausa de
+  verdade (o turno inimigo rodava atrás do menu).
+- `src/ui/ConfirmDialog.lua` é registrado como `confirm` (o mais alto). Modo
+  aviso = sem `cancel` (um botão).
