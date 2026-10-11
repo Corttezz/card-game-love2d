@@ -64,6 +64,7 @@ local SUITES = {
     { group = "smoke", name = "smoke_crt_mouse" },
     -- Validação / conteúdo
     { group = "valid", name = "validate_cards" },
+    { group = "valid", name = "test_card_audit" },
     { group = "valid", name = "test_i18n" },
     { group = "valid", name = "test_no_hardcoded_pt" },
     { group = "valid", name = "test_dynatext_bump" },

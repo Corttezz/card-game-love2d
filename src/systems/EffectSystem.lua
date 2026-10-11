@@ -318,6 +318,18 @@ end
 -- balance, este branch também somava → strength entrava 2x para cartas que
 -- declaravam o effect. Mantemos o effect declarado nas cartas (semântica útil
 -- para tooltip/UI/validate_cards) mas não dobramos a aplicação.
+-- Quantos GOLPES a carta da (multi_hit). Fonte unica: o Game multiplica o
+-- bonus de Forca por isto (Forca vale por golpe) e o piloto
+-- (tools/autoplay.lua) espelha a mesma conta.
+function EffectSystem.hitCount(card)
+    for _, e in ipairs((card and card.effects) or {}) do
+        if e.type == "multi_hit" and card.type == "attack" then
+            return math.max(1, e.value or 1)
+        end
+    end
+    return 1
+end
+
 function EffectSystem:applyCardEffects(game, card, baseValue)
     local finalValue = baseValue
     if not card.effects or type(card.effects) ~= "table" then

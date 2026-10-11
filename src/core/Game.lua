@@ -827,7 +827,10 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
     -- Pipeline unificado attack/defense: effects → stat → combo → jokers → edition → seal.
     local function computeCardValue(baseValue, statBonus)
         local v = self.effectSystem:applyCardEffects(self, card, baseValue)
-        v = v + (statBonus or 0)
+        -- "Causa X de dano N vezes" (auditoria de cartas Out/2026): a Forca
+        -- entra em CADA golpe, como a descricao promete — antes a base era
+        -- multiplicada pelos golpes e a Forca somada uma vez so.
+        v = v + (statBonus or 0) * EffectSystem.hitCount(card)
         v = ComboSystem.applyToCardValue(card, v, turnContext)
         -- Game feel v1: applyJokerEffects também devolve os PROCS (quem
         -- contribuiu com o quê) — o CombatSequence tica os jokers em sequência.

@@ -200,13 +200,15 @@ return {
         type = "attack", subtype = "skill",
         cost = 2, attack = 7, defense = 0,
         -- Rebalance v2 (Jul/2026): attack 6 -> 7 + strength_scaling (era dominada pela common heavy_blade).
-        description = "Causa 7 de dano, 2 vezes. Forca conta em DOBRO.",
+        -- Auditoria Out/2026: a Forca passou a valer POR GOLPE em todo multi_hit
+        -- (EffectSystem.hitCount). (7+F)x2 = 14+2F: exatamente o numero que o
+        -- strength_scaling dava aqui — a flag saiu pra nao contar a Forca 4x.
+        description = "Causa 7 de dano 2 vezes.",
         image = "assets/cards/attack/theRock.png",
         rarity = "uncommon", class = "warrior",
         tags = { "strike" },
         effects = {
             { type = "multi_hit", value = 2 },
-            { type = "strength_scaling", description = "+dano por Forca" },
         },
     },
     warrior_iron_discipline = {
