@@ -117,9 +117,17 @@ local HALLS = {
     -- coração de raízes pairando no fundo do túnel, acima da cabeça do chefe.
     [5] = {
         flames = { { 106, 152, 22, 28 }, { 272, 150, 24, 32 } },
-        pulses = { { 108, 226, 18, 10, 0.7, 0.20 }, { 272, 226, 18, 12, 0.8, 0.20 },
-                   -- o coração podre ao fundo do túnel BATE (tum-tum, pausa)
+        -- (as poças "≡" do chão foram APAGADAS da arte: liam como pixel solto)
+        pulses = { -- o coração podre ao fundo do túnel BATE (tum-tum, pausa)
                    { 160, 54, 88, 120, 1.2, 0.55, th = 0.14, beat = true } },
+        -- chamas repintadas em degraus verde -> amarelo; luz aditiva fraca
+        -- (a 0.75 o núcleo estourava em branco) e quadros como no hall 3
+        flameGlow = 0.28,
+        anim = {
+            flameFrames = true,
+            flamePalette = { { 44, 112, 32 }, { 76, 168, 50 }, { 132, 214, 78 },
+                             { 198, 236, 122 }, { 232, 244, 164 } },
+        },
         -- round 2 (dono: "partículas não naturais"): poucas, lentas, com
         -- profundidade; vaga-lumes com caminho errante e ciclo de piscar;
         -- névoa lenta. Nada de ponto saturado estourando.
@@ -565,7 +573,7 @@ function InteriorFX.draw(hall)
     if img then
         love.graphics.setBlendMode("add")
         for i, f in ipairs(cfg.flames) do
-            love.graphics.setColor(1, 1, 1, 0.75 * flicker(i))
+            love.graphics.setColor(1, 1, 1, (cfg.flameGlow or 0.75) * flicker(i))
             love.graphics.draw(img, quadFor(hall, "f" .. i, f), ox + f[1] * s, oy + f[2] * s, 0, s, s)
         end
         for i, pz in ipairs(cfg.pulses) do

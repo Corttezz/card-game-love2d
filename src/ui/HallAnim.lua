@@ -34,12 +34,23 @@ local function hash1(n)
 end
 
 -- Quadros de uma chama pintada, lado a lado num atlas (largura w*N).
-local function buildFlame(src, r)
+-- `palette` (opcional): lista de cores {r,g,b} 0..255 que SÃO a chama —
+-- chama repintada em degraus escuros (fogo-fátuo verde do hall 5) tem
+-- pixel abaixo do limiar de luma e confundiria com as raízes em volta.
+local function buildFlame(src, r, palette)
     local x0, y0, w, h = r[1], r[2], r[3], r[4]
     local iw, ih = src:getWidth(), src:getHeight()
     local function get(x, y)
         if x < 0 or y < 0 or x >= iw or y >= ih then return 0, 0, 0, 0 end
         return src:getPixel(x, y)
+    end
+    local function isFlame(cr, cg, cb)
+        if not palette then return luma(cr, cg, cb) > FLAME_LUMA end
+        local R, G, B = math.floor(cr * 255 + 0.5), math.floor(cg * 255 + 0.5), math.floor(cb * 255 + 0.5)
+        for _, c in ipairs(palette) do
+            if c[1] == R and c[2] == G and c[3] == B then return true end
+        end
+        return false
     end
     -- cor de fundo por linha: média do que NÃO é chama naquela linha
     local bg = {}
@@ -47,7 +58,7 @@ local function buildFlame(src, r)
         local sr, sg, sb, n = 0, 0, 0, 0
         for x = 0, w - 1 do
             local cr, cg, cb = get(x0 + x, y0 + y)
-            if luma(cr, cg, cb) <= FLAME_LUMA * 0.7 then
+            if not isFlame(cr, cg, cb) and luma(cr, cg, cb) <= FLAME_LUMA * 0.7 then
                 sr, sg, sb, n = sr + cr, sg + cg, sb + cb, n + 1
             end
         end
@@ -63,11 +74,11 @@ local function buildFlame(src, r)
                 local dy = math.floor((math.sin(ph * 2 + x * 0.9) * 0.5 + 0.5) * 1.6 * v + 0.5)
                 local sr, sg, sb = get(x0 + x - dx, y0 + y + dy)
                 local ox, oy = f * w + x, y
-                if luma(sr, sg, sb) > FLAME_LUMA then
+                if isFlame(sr, sg, sb) then
                     atlas:setPixel(ox, oy, sr, sg, sb, 1)
                 else
                     local cr, cg, cb = get(x0 + x, y0 + y)
-                    if luma(cr, cg, cb) > FLAME_LUMA then
+                    if isFlame(cr, cg, cb) then
                         local c = bg[y]
                         atlas:setPixel(ox, oy, c[1], c[2], c[3], 1)
                     end
@@ -123,7 +134,7 @@ function HallAnim.build(src, cfg)
     local st = { flames = {}, flows = {}, shimmer = anim.shimmer or {} }
     if anim.flameFrames then
         for i, r in ipairs(cfg.flames) do
-            st.flames[i] = { r = r, img = toImage(buildFlame(src, r)), off = i * 3 }
+            st.flames[i] = { r = r, img = toImage(buildFlame(src, r, anim.flamePalette)), off = i * 3 }
         end
     end
     for i, r in ipairs(anim.flows or {}) do

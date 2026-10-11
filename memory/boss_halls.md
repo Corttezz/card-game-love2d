@@ -65,6 +65,15 @@ type: project
   anterior), mais longa pra frente quando a luz vem do fundo. Em piso escuro
   (hall 3/5) quase não aparece — fisicamente certo; o contato ali vem da laje.
 
+## Sala 5, round 3
+- As "poças" pintadas no chão (traços horizontais claros perto dos cantos da
+  mão) liam como glitch: apagadas da arte (traço vira o piso escuro da linha).
+- Fogos-fátuos: o branco-amarelo pintado + aditivo 0.75 estourava em mancha.
+  Repintados na MESMA silhueta em 5 degraus verde -> amarelo por profundidade
+  (núcleo claro só perto da base, pontas verdes); `flameGlow = 0.28`; quadros
+  do HallAnim com `flamePalette` (a chama é reconhecida pela cor exata, não
+  pela luma — os degraus escuros ficariam de fora e as raízes entrariam).
+
 ## Chão × mão (o que decide se uma arte serve)
 Em 16:9 (escala 4.8, corte de ~15px da arte em cima e embaixo) o teto da mão
 segura o pé do chefe por volta da linha **0.72-0.75 da PNG**. Arte cujo chão
