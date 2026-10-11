@@ -44,12 +44,13 @@ card-game-love2d/
 │   └── EndScreens.lua          # drawGameOver + drawVictory
 ├── components/                 # UI de alto nível (telas, widgets)
 │   ├── Menu.lua                # Menu principal
-│   ├── ClassSelectionScreen.lua# Seleção de classe (warrior/mage/rogue)
+│   ├── ClassSelectionScreen.lua# Seleção de classe por EMBLEMA (não personagem) + estado bloqueado/maestria via UnlockSystem — memory/class_emblems.md
 │   ├── GameUI.lua              # HUD do gameplay (só delega ao HudManager)
 │   ├── CardRewardScreen.lua    # Loja / recompensas pós-batalha (inclui refresh)
 │   ├── TopBar.lua              # Barra superior (ouro, deck, ícone config)
-│   ├── SettingsMenu.lua        # Overlay modal: volume (music/sfx/master) + fullscreen
-│   ├── PauseMenu.lua           # Menu de pausa (engrenagem da TopBar, StS-style): continuar/config/salvar e sair/abandonar (confirmado); _G.togglePauseMenu
+│   ├── SettingsMenu.lua        # Abas Áudio/Vídeo/Jogo em altura fixa, controles [<] valor [>]; VOLTAR retorna ao Pause; SettingsMenu.applyRuntime(settings) no boot (vsync, combatSpeed → CombatBeats.speed)
+│   ├── PauseMenu.lua           # Pausa por zonas (resumo da run + seed, atalhos D/J/M, Continuar primário, abandono em 2 etapas); teclado/gamepad via src/ui/MenuKit.lua; _G.togglePauseMenu
+│   ├── CreditsScreen.lua       # Créditos (LÖVE/zlib, fonte/OFL) — substituiu o "Sobre" placeholder
 │   ├── JokerSlot.lua           # Slot visual de joker ativo
 │   ├── DeckViewerScreen.lua    # Deck da run em TELA CHEIA (estilo Coleção); abre por clique no deck da TopBar OU tecla D; hover c/ tooltip + forja aplicada
 │   ├── JokerManagerScreen.lua  # Gerenciador de Coringas (tela cheia): coleção+bancada, escolhe quais MAX_JOKER_SLOTS ativar; abre por clique no quadro de coringas OU tecla J; _G.toggleJokerManager
@@ -60,7 +61,8 @@ card-game-love2d/
 │   │   ├── Game.lua            # Orquestrador (turnos, deck, combate, hooks de settings)
 │   │   ├── Config.lua          # Constantes centrais (UI ratios, gameplay, cards, audio)
 │   │   ├── BackgroundConfig.lua# Loader e drawer de backgrounds configuráveis
-│   │   └── Debug.lua           # Logger condicional (log/trace/warn/err)
+│   │   ├── Debug.lua           # Logger condicional (log/trace/warn/err)
+│   │   └── Release.lua         # Modo DEV × RELEASE (flag = existência de build_info.lua), identity do save, errorhandler amigável + crash log — memory/release_pipeline.md
 │   ├── data/                   # DADOS — tabelas Lua puras (sem lógica)
 │   │   ├── cards/
 │   │   │   ├── basic.lua       # Cartas sem classe + 3 jokers lendários
@@ -77,7 +79,11 @@ card-game-love2d/
 │   ├── systems/
 │   │   ├── CombatBeats.lua     # METRÔNOMO: fila "beats" — um acontecimento por instante, bloqueando o próximo (tabela de tempos única) — memory/combat_beats.md
 │   │   ├── CardDatabase.lua    # Loader fino (~170 LOC) que merge src/data/cards/*.lua
-│   │   ├── CardRegistry.lua    # Classes + pools por raridade + rolagem (substitui ClassSystem)
+│   │   ├── CardRegistry.lua    # Classes + pools por raridade + rolagem (substitui ClassSystem); _poolFor filtra UnlockSystem.isCardUnlocked
+│   │   ├── UnlockSystem.lua    # Meta-progressão: cartas/classes desbloqueáveis, maestria por classe (5 níveis × pacote de 3), descoberta (Coleção "?"); dados em src/data/unlocks.lua — memory/unlocks.md
+│   │   ├── AchievementSystem.lua # Conquistas (gatilhos inline, padrão StS); catálogo em src/data/achievements.lua; ícones próprios via src/ui/AchievementIcons.lua
+│   │   ├── SteamBridge.lua     # Mapa conquista → API name Steam; no-op AVISADO sem Steam — memory/steam_achievements.md
+│   │   ├── ResumeFlow.lua      # Continuar retoma pelo run.stage (battle/cashout/rewards/rest/event/shop/fork/*_done) — memory/save_system.md
 │   │   ├── DeckManager.lua     # Modo clássico: decks estáticos
 │   │   ├── RunManager.lua      # Modo Slay the Spire + save/load via love.filesystem
 │   │   ├── EffectSystem.lua    # Efeitos data-driven (jokers, effect cards, triggers)
@@ -156,10 +162,10 @@ menu → classSelection → playing
 
 ### Inputs (gameplay)
 - Mouse: hover/select cartas, clica "Jogar Cartas", clica config na TopBar.
-- `r`: reinicia via `game:startGame()`.
-- **NÃO existe tecla `f`** (esta linha documentava um toggle de fullscreen que não tem binding no `love.keypressed` — verificado Set/2026). Fullscreen só por **Configurações → Fullscreen** (`components/SettingsMenu.lua`, que chama `love.resize` manualmente) ou arrastando a borda.
-- `1/2/3/4`: presets de smoke (subtle/default/atmospheric/intense). `0`: limpa smoke.
-- `d` / `j` / `m`: abrem, em qualquer tela da run, o **Deck Viewer**, o **Gerenciador de Coringas** e o **Roteiro da jornada**. Os três também abrem por clique no bloco correspondente (deck / quadro de coringas / indicador de ATO).
+- `r` (reinicia) e `1/2/3/4`/`0` (presets de smoke) só existem no **modo clássico em DEV** — numa run eram armadilha (R recriava o player e o checkpoint gravava isso). A tecla `f` foi removida: fullscreen só por **Configurações → Vídeo** ou arrastando a borda.
+- **Gamepad**: só dentro de modais (D-pad/A/B/ombros) + START/BACK pausa durante a run.
+- `esc` no menu principal pede confirmação antes de sair; "Jogar" com corrida salva pede confirmação.
+- `d` / `j` / `m`: abrem, em qualquer tela da run (inclusive descanso, evento e cash out), o **Deck Viewer**, o **Gerenciador de Coringas** e o **Roteiro da jornada**. Os três também abrem por clique no bloco correspondente (deck / quadro de coringas / indicador de ATO).
 - `esc`: abre/fecha o **PauseMenu** nos estados de run (playing/mapSelection/rest/event) — sair, salvar e abandonar são decisões DENTRO do pause. Em gameOver/victory volta ao menu direto.
 
 ---
@@ -317,6 +323,8 @@ Ver [`memory/card_feel.md`](memory/card_feel.md). Regras-chave: (1) o TEMA da ca
 - **Strings de UI:** NUNCA cravadas no código — sempre `I18n.t("chave", vars, fallback)` com a chave nos **5 locales**. Isso inclui toasts (`addMessage`), rótulos de tabelas de dados exibidas (nome de ato, tipo de nó, oferta de loja) e títulos de tela. A trava `love . test_one test_no_hardcoded_pt` falha se um literal acentuado aparecer em caminho de desenho. Mensagens de `print()`/`Debug.*` de debug seguem em português — são ferramenta, não UI.
 - **NUNCA declare `local` novo no escopo de arquivo do `main.lua`.** O `love.load` vive no TETO de 60 upvalues do LuaJIT: um único `local` a mais no topo derruba o jogo no boot com *"function at line NNN has more than 60 upvalues"* — e derruba TODOS os tools e a suíte junto, porque o erro é de compilação. Use `require("...")` inline dentro da função (é o que o dispatcher inteiro já faz) ou ponha o estado num módulo. Derrubou o boot duas vezes em Set/2026: uma com a janela, outra com a trava de fim de run.
 - **A janela NASCE grande, e isso é decidido no `love.load`, não no `conf.lua`.** O `conf.lua` roda antes do módulo window existir, então não pode perguntar o tamanho do monitor — os 1024x768 de lá são um piso. Quem nunca abriu o jogo entra em fullscreen (`DEFAULT_SETTINGS.fullscreen = true` em `engine/SaveManager.lua`); quem prefere janela ganha 85% do desktop, centralizada, via `Config.Utils.tamanhoJanelaInicial`. **As duas coisas são necessárias**: trocar só o default não alcança quem já tem `fullscreen = false` salvo. Tudo isso é pulado sob `_G.HEADLESS_TOOL`, senão o default vazaria pras capturas e elas deixariam de ser reproduzíveis entre máquinas. Trava: `love . test_one test_window`.
+- **Acento é permitido em TODOS os locales** (a fonte desenha Latin-1 inteiro — `test_locale_glyphs`; fora do Latin-1, como `œ`, NÃO). Para caixa alta use `TextCase.upper` (o `:upper()` do Lua deixa "LéGENDAIRE"); nunca corte texto de UI por byte (UTF-8 inválido derruba a LÖVE). A Press Start 2P não tem `Õ`/`Í` maiúsculos: título em caixa alta perde esses acentos.
+- **DEV × RELEASE**: atalhos e logs de desenvolvedor ficam atrás de `require("src.core.Release").isDev()`. Nunca commitar `build_info.lua`. Saves carregam via `SaveManager.loadDataChunk` (recusa bytecode, sem os/io), nunca `love.filesystem.load`; save novo entra em `Release.MIGRATE_FILES`.
 - **Posicionamento responsivo:** sempre `Config.Utils.getResponsiveSize(ratio, maxSize, dimension)` ou `love.graphics.getWidth()/getHeight()` direto — nunca hard-code coordenadas.
 - **Fontes:** use `FontManager.getResponsiveFont(ratio, maxSize)` ou `FontManager.getFont(size)` para aproveitar cache. Ao trocar resolução, chame `FontManager.clearCache()`.
 - **Cores:** sempre de `Theme.Colors` — evite hex/RGB literais fora de Theme.
@@ -336,6 +344,10 @@ Ver [`memory/card_feel.md`](memory/card_feel.md). Regras-chave: (1) o TEMA da ca
 - **Fallback silencioso é PROIBIDO.** Três defeitos da mesma sessão tiveram essa causa: `Easing.apply` caía em `smooth` sem avisar (`"easeOut"` camelCase não resolve — 6 animações do PackOpenScreen rodaram erradas por rodadas de polish); `BoosterShader.load()` com `pcall` degradava pra "sem efeito" e um shader quebrado passou despercebido enquanto se media arte crua; `reducedMotion` zerava o juice e custou uma sessão de debug. Lookup que falha ou recurso que não carrega **AVISA** (um `print` por chave desconhecida basta). Corolário: `reducedMotion` remove MOVIMENTO, nunca INFORMAÇÃO.
 - **Antes de somar efeito sobre um asset, ABRA O PNG.** Os pacotes acumularam halo com a própria silhueta (lia como cópia fantasma), cantoneiras de código por cima das chapas metálicas **já pintadas na arte**, e um foil que lavava a cor dando a MESMA listra nos 5 tipos — uniformizando a identidade que se queria criar. A correção foi remover, não somar. Teste objetivo de "está lavando?": renderize 1:1 e compare pixel a pixel com o arquivo — em repouso o desvio deve ser ~0.
 - **REGRA DE PROFUNDIDADE do WorldRoad (lei do projeto, pedido explícito Jul/2026):** TODO elemento novo da cena entra no painter **intercalado por profundidade (`rel`)** — nunca em "camada global por tipo". O padrão é o do v7.5: `drawProps` descarrega fatias de grama entre as árvores (`flushGrassTo` → janelas `relFrom`/`relTo` do GrassField); um elemento na frente do pé de uma árvore desenha DEPOIS dela; atrás, ANTES. Vale pra pedra, animal, efeito, personagem — e também na LUZ (`LightEngine.submitOccluder` com `z`). Elemento desenhado em camada plana por cima do campo é bug, não estilo.
+- **Classe = OBJETO, nunca personagem (Out/2026).** Os heróis chibi foram removidos a pedido do dono ("abre margem para críticas"). A seleção usa emblemas (`assets/sprites/emblems/`, `src/ui/ClassEmblem.lua`). Classe bloqueada vem de `UnlockSystem.isClassUnlocked/getClassUnlockInfo/getClassMastery` e nunca inicia run.
+- **Oferta de carta passa por `CardRegistry:_poolFor` ou `BoosterPackSystem`** — os dois filtram `UnlockSystem.isCardUnlocked`. Pool nova de oferta fora deles vaza carta bloqueada (`test_unlocks`, 60 seeds). Abandonar pelo pause é fim de run (`Game:abandonRun`: XP de maestria + derrota, uma vez).
+- **Tela nova que não é overlay e precisa sumir ao voltar ao menu**: registre-a no `InputFocus` — o `returnToMenu` usa `InputFocus.hideAll()`. Com modal aberto durante a luta o combate CONGELA (`InputFocus.freezesCombat`).
+- **Animação de carta monta progressiva**: `IconFramesLoader.has()` NÃO carrega o set; `CardFrame.liveImage` monta 1 frame por frame (LRU 24). Régua: `love . test_one perf_collection`.
 - `src/ui/HudPanel.lua` e `src/ui/VisualEffects.lua` foram removidos no refactor de Abril/2026 (eram legado). Não recriar.
 - **A FORJA É POR CÓPIA, NÃO POR ID (Set/2026).** O nível vive em `currentRun.currentDeck[i].up` e a identidade da cópia é o ÍNDICE no deck. Use `upgradeCardAt/canUpgradeAt/removeCardAt/duplicateCardAt/getEntryLevel` do RunManager — nunca indexe forja por `cardId`. Antes o nível morava num mapa por id e `buildPlayableDeck` o aplicava a TODAS as cópias: com três "Golpe", forjar uma forjava as três, e a tela de forja escondia as cópias porque mostrá-las seria mentira de UI. Ver [`memory/rng_and_offers.md`](memory/rng_and_offers.md).
 - **Cartas não devem ter `effects = {}` sem tags significativas.** Starter/básicas OK. Rode `love . validate_cards` antes de commitar.
@@ -404,6 +416,9 @@ Não há framework externo — cada teste é um módulo Lua em `tools/` com `M.r
 - `love . test_one <nome>` — roda UM teste isolado (ex: `love . test_one test_combat`), útil pra iterar.
 - `love . smoke_all` — só os smoke tests de sistema (legado; subconjunto de `test_all`).
 
+- `python tools/build_release.py` — build de RELEASE: só arquivos do git, comentários removidos SÓ na cópia (prova por bytecode idêntico), `test_all` na cópia limpa, `Grimoire.exe` + pasta de depot Steam (`build/steam/`) e smoke do executável (`GRIMOIRE_SELFTEST`). Templates VDF em `steam/`. Ver `memory/release_pipeline.md`.
+- `CARDGAME_IDENTITY=<nome>` isola o save dir (rodar suites em paralelo, worktrees). Qualquer arg de tool liga `UnlockSystem.setOverrideAll(true)` (catálogo inteiro pro autoplay/balanceamento); testes do comportamento real desligam e usam `ProfileStats._swapForTests`. Tool/teste que quebra em DEV imprime o trace e sai com 1 (não pendura na tela azul).
+
 **Infra compartilhada:** [`tools/testkit.lua`](tools/testkit.lua) — helpers de asserção (`t:eq/near/truthy/throws/...`) + fábricas: `TK.newRunGame(class)` (Game de run pronto), `TK.pump(game, secs)` (avança EventManager/animações — combate é diferido pro apex), `TK.mockGame()` (game leve pra EffectSystem isolado), `TK.seedRng(seed)` (Rng determinístico). Novos testes DEVEM usar o testkit e ser registrados em [`tools/run_all_tests.lua`](tools/run_all_tests.lua).
 
 **Cobertura por domínio (novos, Jul/2026):** `test_entities` (Player/Enemy: dano/armadura/mana/buffs/orbs/status/fúria/intent), `test_economy` (ouro/juros), `test_progression` (RunManager/MapManager/ActSystem: atos/andares/endless), `test_forge` (upgrade/custo forja), `test_cards` (catálogo inteiro instancia + rollRarity + pools), `test_effects_full` (todo tipo de efeito + orbs + triggers), `test_combat` (seleção/mana/pipeline de dano/vitória/derrota/jokers), `test_events` (roll/no-repeat + toda opção aplica sem crash), `test_journal` (roteiro da run: ciclo begin/note/end, sinks, backfill do mapHistory, endless, save/load) `test_journal_resize` (auditoria geométrica do Roteiro em 7 tamanhos, janela falsificada) e `test_upgrade_tile` (relíquia da loja: bandas do tile em 5 tamanhos, resize da vitrine com janela falsificada e as 4 camadas de texto nos 5 locales). Somados aos smoke pré-existentes + `validate_cards` + `test_i18n` = **43 suites** (Set/2026: +`test_journal`/`test_journal_resize`, `test_no_hardcoded_pt` (trava anti-PT cravado), `test_dynatext_bump` (trava do bump: título ondula, não espalha) e `test_achievements_i18n` (as 20 conquistas traduzidas de verdade nos 5 idiomas); Jul/2026: +`smoke_packs` e regressões P0.9/P2.3 do rebalance v2 — ver `tools/run_all_tests.lua`, fonte da verdade da contagem).
@@ -422,10 +437,11 @@ Nota de comportamento fixada pelos testes: `poison` decrementa **`duration`** po
 - ✅ **STS-improvements v1** (Jul/2026, `docs/plan/sts-improvements-v1.md`): RNG seedável com 6 streams + estado no save; **pity de raridade** + **afinidade por tags do deck** nas ofertas (rewards+loja, com badges e "?" explicativo); **forja infinita** (cap 0) com preview/tooltip/custo crescente na loja; TopBar com ato/andar + tooltips em tudo + ouro direcional; rewards com raridade nomeada e skip claro; eventos com custos explícitos `[+/-]`, 4 eventos de deck e no-repeat por ato; picker de carta genérico (`_G.openCardPicker`). Teste: `love . test_systems`. Ver `memory/rng_and_offers.md`.
 - ✅ **Rebalance v2 + re-baseline** (Jul/2026, commit `6e7118c` + follow-ups): 46 mudanças de carta + 13 cartas novas por arquétipo; BoosterPackSystem 100% no stream `shop` do Rng seedado (era `love.math.random`); Piloto v5 (lethal fiel ao pipeline, cérebro de orbes, tripwires no diário) + v5.17 (prior de DEFESA pra mago/ladino — bot sem defesa não mede o jogo, mede o próprio viés); **Mago: Conduíte = orbe de Raio (4) + 2 de Foco** (bateria: mago 0/15 → 3/10). Re-baseline 10×3: guerreiro 50% · mago 30% · ladino 10% de winrate do bot, todas as classes chegando ao A3. Próximos levers monitorados: conversão do ladino no boss final, guerreiro >60%.
 
+- ✅ **Pacote de lançamento** (Out/2026): desbloqueio de cartas/classes + maestria (`memory/unlocks.md`), Coleção com descobertas e sem lag, conquistas repaginadas + Steam (`memory/steam_achievements.md`), emblemas de classe, pause/configurações redesenhados (`memory/pause_settings_menu.md`), save por estágio, build de release (`memory/release_pipeline.md`).
+
 Pendente:
-- Menu "Sobre" ainda é placeholder.
+- **Licenças antes de vender**: SFX/música gerados no plano FREE do ElevenLabs (não permite uso comercial) — assinar e regenerar; confirmar assinatura PixelLab no período da arte; declarar conteúdo gerado por IA na Steam; documentar origem de `music.mp3`, `hoverCard.wav` e PNGs antigos. Token PixelLab vencido segue no histórico git (`3fc14ea`) — reescrever histórico se o repo for público.
 - 12 cartas ainda com `effects = {}` (intencionalmente — são âncoras de tag starter/básicas).
-- Save/load existe mas sem botão "Continuar" no menu.
 - Alguns eventos narrativos avançados (trocas complexas Slay-style) não mapeados.
 - HUD legacy com gradientes 20-step (não é do redesign de gameplay).
 
