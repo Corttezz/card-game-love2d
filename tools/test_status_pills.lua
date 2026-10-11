@@ -171,11 +171,14 @@ function M.run()
         "block", "enraged" }
     local WITH_PERMANENT = { thorn = true, lifesteal = true, regen = true,
         bleed = true, retain_armor = true }
-    local ASCII_ONLY = { es = true, fr = true, de = true }
+    -- (A antiga "convenção" de/es/fr SEM ACENTO caiu em Out/2026: a fonte
+    -- Press Start 2P desenha Latin-1 inteiro — provado caractere a caractere
+    -- por tools/test_locale_glyphs.lua, que é a trava de verdade agora.
+    -- "Zurueck"/"dano"/"defense" liam como erro de digitação pro jogador.)
 
     for _, code in ipairs(LOCALES) do
         local mod = require("src.i18n.locales." .. code)
-        local missing, empty, nonAscii = {}, {}, {}
+        local missing, empty = {}, {}
         for _, name in ipairs(NEW_STATES) do
             local entry = mod.status and mod.status[name]
             if not entry then
@@ -187,16 +190,12 @@ function M.run()
                     local v = entry[k]
                     if type(v) ~= "string" or v == "" then
                         empty[#empty + 1] = name .. "." .. k
-                    elseif ASCII_ONLY[code] and v:find("[\128-\255]") then
-                        -- Convenção do projeto: de/es/fr transliteram pra ASCII.
-                        nonAscii[#nonAscii + 1] = name .. "." .. k
                     end
                 end
             end
         end
         t:eq(code .. ": todos os estados novos existem", table.concat(missing, ","), "")
         t:eq(code .. ": nenhuma string vazia", table.concat(empty, ","), "")
-        t:eq(code .. ": sem acento (convencao)", table.concat(nonAscii, ","), "")
         -- Toast disparado pelo EffectSystem quando o reflexo é armado.
         local ready = mod.messages and mod.messages.thorn_ready
         t:truthy(code .. ": messages.thorn_ready existe",
