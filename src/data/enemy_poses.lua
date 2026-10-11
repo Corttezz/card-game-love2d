@@ -32,6 +32,15 @@
 --   bobSpeed  rad/s do balanço (criatura pesada = lenta)
 --   shadowK   escala da sombra (largura); < 1 = mais longe do chão
 --   shadowA   multiplicador de opacidade da sombra
+--   drift     deriva HORIZONTAL do flutuante, mesma unidade do bob (só
+--             chefes: pairar parado lia "estático", Out/2026)
+--   idle      { fps, cycle = true } — idle assado em LOOP fechado (os 6
+--             chefes: tools/bake_boss_idle.py). Sem o campo: ping-pong no
+--             IDLE_FPS padrão do EnemyRenderer.
+--   axisX     coluna (px do canvas do idle) do EIXO DO CORPO. O renderer
+--             centra pelo bbox do conteúdo; quando cajado de um lado e capa
+--             do outro desequilibram o bbox, o corpo sai do centro e o
+--             chefe lê TORTO (winter_monarch, Out/2026).
 --
 -- ACESSIBILIDADE: com `reducedMotion` o `bob` some, o `hover` PERMANECE.
 -- Altura é informação (diz o que a criatura é), balanço é enfeite.
@@ -55,7 +64,8 @@ EnemyPoses.GROUNDED = GROUNDED
 -- ---------------------------------------------------------------------------
 EnemyPoses.BY_ID = {
     -- === APOIADOS ============================================================
-    abyss_tyrant      = { pose = "grounded" },  -- garras blindadas plantadas
+    abyss_tyrant      = { pose = "grounded",    -- garras blindadas plantadas
+                          idle = { fps = 6, cycle = true } },
     blood_duke        = { pose = "grounded" },  -- botas sob o manto
     bog_ghoul         = { pose = "grounded" },  -- pés palmados
     cursed_scarecrow  = { pose = "grounded" },  -- botas de couro
@@ -67,10 +77,17 @@ EnemyPoses.BY_ID = {
     mire_hag          = { pose = "grounded" },  -- botas de pântano
     moon_gargoyle     = { pose = "grounded" },  -- agachada nas garras
     obsidian_sentinel = { pose = "grounded" },  -- botas de placas
-    rot_colossus      = { pose = "grounded" },  -- pés de três dedos
+    rot_colossus      = { pose = "grounded",    -- pés de três dedos
+                          idle = { fps = 5, cycle = true } },
     rune_golem        = { pose = "grounded" },  -- pés de pedra
     stone_golem       = { pose = "grounded" },  -- pernas de pedra
-    winter_monarch    = { pose = "grounded" },  -- botas sob a capa
+    -- botas sob a capa. "Meio torto" (dono, Out/2026): o cajado pra fora à
+    -- esquerda (x 7-30) e a capa esvoaçando à direita (até x 120) puxavam o
+    -- centro do bbox pra x 63.5 — mas coroa, caveira, cinto e o meio das
+    -- botas estão em x ~56. Centrado pelo bbox, o CORPO ficava 8px de arte
+    -- (~20px de tela) à esquerda da porta, da barra de vida e do palco.
+    winter_monarch    = { pose = "grounded", axisX = 56,
+                          idle = { fps = 6, cycle = true } },
 
     -- === FLUTUANTES ==========================================================
     -- Espectro puro: manto que AFINA até virar nada. Sobe mais alto e
@@ -86,9 +103,14 @@ EnemyPoses.BY_ID = {
 
     -- Rei-carniça: asas ABERTAS e talões PENDURADOS (dedos curvados, sem
     -- sola). Paira baixo e rápido — é batida de asa, não deriva etérea.
+    -- Out/2026 ("não tem nada de especial"): o bob agora bate NA FREQUÊNCIA
+    -- da asa (idle de 12 quadros a 8fps = 1.5s → 4.19 rad/s) — o corpo sobe
+    -- a cada batida, como quem se sustenta no ar.
     carrion_king = { pose = "floating",
-                     hover = 0.07, bob = 0.016, bobSpeed = 1.35,
-                     shadowK = 0.68, shadowA = 0.58 },
+                     hover = 0.07, bob = 0.012, bobSpeed = 4.19,
+                     drift = 0.010,
+                     shadowK = 0.68, shadowA = 0.58,
+                     idle = { fps = 8, cycle = true } },
 
     -- Lich da Torre: virou flutuante por DECISAO DE DESIGN do dono (Set/2026,
     -- 1a leva): "quero que o boss do ato 2 fique meio que flutuando, sem
@@ -111,15 +133,26 @@ EnemyPoses.BY_ID = {
     -- porque despreza o chao. Pressa quebraria a leitura. O balanco RAPIDO
     -- dele mora na capa (ciclo ~1.4s no clip), nao no corpo: quem decide
     -- ondular o pano nao precisa acelerar o bob.
+    --
+    -- Out/2026, 3a leva: "o boss 2 e meio estatico flutuando, nao intimida".
+    -- 0.55 rad/s era um ciclo de 11s com 1.4% da altura: na pratica PARADO.
+    -- Agora ciclo de ~5.7s com o dobro da amplitude e deriva lateral lenta,
+    -- capa assada em 12 quadros com atraso entre as abas (bake_boss_idle) e
+    -- o circulo runico girando no chao (BossAura) — o vao entre ele e o
+    -- circulo e o que diz "paira".
     tower_lich   = { pose = "floating",
-                     hover = 0.075, bob = 0.014, bobSpeed = 0.55,
-                     shadowK = 0.62, shadowA = 0.50 },
+                     hover = 0.075, bob = 0.028, bobSpeed = 1.10,
+                     drift = 0.016,
+                     shadowK = 0.62, shadowA = 0.50,
+                     idle = { fps = 6, cycle = true } },
 
     -- Rainha do eclipse: capa imensa que se abre num leque, sem pé algum.
     -- Realeza não treme — deriva lenta e larga.
     eclipse_queen = { pose = "floating",
-                      hover = 0.06, bob = 0.013, bobSpeed = 0.62,
-                      shadowK = 0.66, shadowA = 0.55 },
+                      hover = 0.06, bob = 0.020, bobSpeed = 0.90,
+                      drift = 0.010,
+                      shadowK = 0.66, shadowA = 0.55,
+                      idle = { fps = 5, cycle = true } },
 }
 
 local warned = {}
@@ -145,6 +178,9 @@ function EnemyPoses.get(spriteId)
         bobSpeed = p.bobSpeed or 1.0,
         shadowK  = p.shadowK or 1.0,
         shadowA  = p.shadowA or 1.0,
+        drift    = p.drift or 0,
+        idle     = p.idle,
+        axisX    = p.axisX,
     }
 end
 

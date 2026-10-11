@@ -481,6 +481,7 @@ O diretório `memory/` na raiz do projeto guarda notas persistentes que compleme
 - [`memory/rng_and_offers.md`](memory/rng_and_offers.md) — Rng streams (seed/save), pity, afinidade, forja infinita, eventos v2, `love . test_systems`.
 - [`memory/combat_beats.md`](memory/combat_beats.md) — fila de beats, tabela de tempos, cadeia do turno do inimigo, espinhos como estado.
 - [`memory/enemy_pose_and_scene_anchor.md`](memory/enemy_pose_and_scene_anchor.md) — pose do inimigo (apoiado × flutuante, `src/data/enemy_poses.lua`) e linha de chão por cena (`src/data/scene_anchors.lua`); elite luta na ESTRADA, interior é só do boss.
+- [`memory/boss_visuals.md`](memory/boss_visuals.md) — chefes: idle assado em loop de 12 quadros a partir do quadro 0 (`tools/bake_boss_idle.py`, nunca regerar idle no PixelLab — deriva), aura assinatura + contorno (`src/data/boss_auras.lua` → `src/ui/BossAura.lua`, só com `enemy.isBoss`), `axisX` quando cajado/capa desequilibram o bbox. Trava `test_boss_visuals`.
 
 **Developer guide visual:** [`src/ui/README_PixelArt.md`](src/ui/README_PixelArt.md) — tutorial completo de como adicionar cartas, ícones, patterns e tunar estética.
 

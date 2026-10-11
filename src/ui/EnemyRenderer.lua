@@ -19,6 +19,7 @@ local SpriteAnimation = require("src.ui.SpriteAnimation")
 local LightEngine = require("engine.LightEngine")
 local EnemyEmissives = require("src.data.enemy_emissives")
 local EnemyPoses = require("src.data.enemy_poses")
+local BossAura = require("src.ui.BossAura")
 
 -- Acessibilidade: com reducedMotion o BOB do flutuante some, mas o HOVER
 -- (a altura em si) permanece — altura diz o que a criatura É; balanço é
@@ -64,6 +65,9 @@ local currentAnim = nil
 local currentEnemyId = nil
 local currentAnimName = nil
 local hurtTime = 0
+-- Chefe na tela (spriteId) quando enemy.isBoss — o update da aura precisa
+-- saber de quem emitir sem conhecer o game. Setado no draw.
+local auraId = nil
 -- Descida do flutuante na MORTE (0 = no ar, 1 = pousado). Ver poseOffsetY.
 local poseSink = 0
 local POSE_SINK_DUR = 0.7
@@ -134,6 +138,20 @@ local function loadStatic(id)
     return sprites
 end
 
+-- Idle de cada inimigo: ping-pong no IDLE_FPS (roster comum, 4 quadros)
+-- ou LOOP fechado no fps declarado na pose (chefes, idle assado por
+-- tools/bake_boss_idle.py — ciclo que já volta ao quadro 0 sozinho;
+-- ping-pong ali faria o pano "rebobinar").
+local function idleSpec(enemyId)
+    local p = EnemyPoses.BY_ID[enemyId]
+    local spec = p and p.idle
+    if spec and spec.cycle then
+        return spec.fps or IDLE_FPS, { loop = true }
+    end
+    return IDLE_FPS, { loop = true, pingpong = true }
+end
+EnemyRenderer._idleSpec = idleSpec
+
 local function ensureAnim(enemyId, animName)
     if currentAnim and currentEnemyId == enemyId and currentAnimName == animName
        and not currentAnim:isFinished() then
@@ -142,13 +160,12 @@ local function ensureAnim(enemyId, animName)
 
     -- Volta canônica pro idle (usada por todo clip one-shot).
     local function backToIdle()
-        currentAnim = SpriteAnimation.new(enemyId, "idle", "south", IDLE_FPS,
-            { loop = true, pingpong = true })
+        local ifps, iopts = idleSpec(enemyId)
+        currentAnim = SpriteAnimation.new(enemyId, "idle", "south", ifps, iopts)
         currentAnimName = "idle"
     end
 
-    local fps = IDLE_FPS
-    local opts = { loop = true, pingpong = true }
+    local fps, opts = idleSpec(enemyId)
     if animName == "hurt" then
         fps = HURT_FPS
         opts = { loop = false, onComplete = backToIdle }
@@ -189,6 +206,19 @@ function EnemyRenderer.poseOffsetY(spriteId, spriteH, now, sinkK)
     return -k * (spriteH or 0), pose
 end
 
+-- Deriva HORIZONTAL do flutuante (só quem declara `drift` — os chefes que
+-- pairam). Ciclo mais lento que o bob (0.53x) pra traçar um oito largo em
+-- vez de ir e voltar na mesma linha. reducedMotion: zero (é balanço).
+function EnemyRenderer.poseOffsetX(spriteId, spriteH, now, sinkK)
+    local pose = EnemyPoses.get(spriteId)
+    if pose.pose ~= "floating" or (pose.drift or 0) == 0 or reducedMotion() then
+        return 0
+    end
+    local k = math.sin((now or 0) * pose.bobSpeed * 0.53) * pose.drift
+    k = k * (1 - math.max(0, math.min(1, sinkK or 0)))
+    return k * (spriteH or 0)
+end
+
 function EnemyRenderer.clearCache()
     staticCache = {}
     staticMiss = {}
@@ -197,6 +227,7 @@ function EnemyRenderer.clearCache()
     currentEnemyId = nil
     currentAnimName = nil
     ambientParticles = {}
+    BossAura.reset()
     -- clipMetricsCache é declarado depois; limpo via flag no próximo acesso.
     if EnemyRenderer._clearClipMetrics then EnemyRenderer._clearClipMetrics() end
 end
@@ -262,6 +293,8 @@ function EnemyRenderer.resetRun()
     arrivalT = 0
     ambientParticles = {}
     ambientSpawnTimer = 0
+    auraId = nil
+    BossAura.reset()
     currentAnim = nil
     currentEnemyId = nil
     currentAnimName = nil
@@ -367,6 +400,7 @@ function EnemyRenderer.update(dt)
     if buffTime > 0 then buffTime = math.max(0, buffTime - dt) end
     if knockTime > 0 then knockTime = math.max(0, knockTime - dt) end
     if slashTime > 0 then slashTime = math.max(0, slashTime - dt) end
+    BossAura.update(dt, auraId, currentAnimName == "death")
 
     -- Fagulhas de fúria sobem e morrem.
     if #buffParticles > 0 then
@@ -605,6 +639,12 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     local curM = hasAnim and clipMetrics(id, currentAnimName or "idle") or idleM
     if curM.h == 0 then curM = idleM end
     local offX = curM.off
+    -- EIXO DO CORPO declarado (enemy_poses.axisX): troca o centro do bbox do
+    -- idle pelo eixo, preservando o desvio relativo de cada clip.
+    local axisX = (EnemyPoses.BY_ID[id] or {}).axisX
+    if axisX and idleM.w > 0 then
+        offX = offX + ((axisX + 0.5 - idleM.w / 2) - idleM.off)
+    end
     cx = cx - math.floor(offX * scale)
 
     -- POSE (src/data/enemy_poses.lua): apoiado x flutuante. Quem tem pe
@@ -614,6 +654,9 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     local hoverY, pose = EnemyRenderer.poseOffsetY(id, ih * scale,
         love.timer.getTime(), poseSink)
     local floating = pose.pose == "floating"
+    local driftX = EnemyRenderer.poseOffsetX(id, ih * scale,
+        love.timer.getTime(), poseSink)
+    auraId = (game.enemy.isBoss and BossAura.has(id)) and id or nil
 
     -- Pé: margem do QUADRO atual na idle de quem pisa (ver framePads) e
     -- AFUNDADO FOOT_SINK px no chão. footY = deslocamento que leva a base
@@ -684,7 +727,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         knockDX = 14 * (knockTime / 0.25)   -- empurrado pra trás no hit
     end
 
-    local drawX = cx - (iw * scale) / 2 + jitter + atkDX + knockDX
+    local drawX = cx - (iw * scale) / 2 + jitter + atkDX + knockDX + driftX
     local drawY = cy - ih * scale + bounce + EnemyRenderer.getArrivalOffset()
         + footY + atkDY + hoverY  -- v8.2: pé do conteúdo NO chão (margem do canvas fora)
     -- Régua do palco (tools/test_enemy_stage): onde o pé DESTE quadro caiu,
@@ -785,6 +828,20 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         end
     end
 
+    -- Aura do chefe, camada de TRÁS (círculo no chão, eclipse, metade de
+    -- trás das órbitas, fumaça rasteira) — depois da sombra, antes do corpo.
+    local auraRect = nil
+    if auraId then
+        auraRect = { x = drawX, y = drawY, w = iw * scale, h = ih * scale,
+                     iw = iw, ih = ih, scale = scale, groundY = cy,
+                     cx = cx + driftX }
+        BossAura.drawBack(auraId, auraRect)
+        -- contorno na cor do tema, colado atrás do corpo
+        BossAura.drawRim(auraId, auraRect, function(x, y, tint)
+            if hasAnim then currentAnim:draw(x, y, scale, tint) end
+        end)
+    end
+
     -- (6) Pulse de tint (cor varia ±6% lentamente, respiração sutil)
     local pulse = 0.94 + (math.sin(t * 1.1) * 0.5 + 0.5) * 0.06
     -- Tint de status por cima do pulse (clareza: veneno tinge VERDE,
@@ -846,6 +903,11 @@ function EnemyRenderer.draw(game, cx, cy, opts)
             end
         end
     end
+
+    -- Aura do chefe, camada da FRENTE (brilhos, metade da frente das
+    -- órbitas, penas/almas/fagulhas) — antes dos FX de intent, que são
+    -- leitura de jogo e não podem ficar por baixo de enfeite.
+    if auraRect then BossAura.drawFront(auraId, auraRect) end
 
     -- DEFESA v2 (telegrafia Jul/2026): dois anéis aço em sequência + ESCUDO
     -- grande com pop sobre o peito — "ele se protegeu" impossível de perder.
@@ -1037,8 +1099,9 @@ function EnemyRenderer.getEncounterBillboard(enemy)
     -- o south.png estático tinha margens DIFERENTES dos frames (por isso
     -- o monstro "continuava flutuando enquanto vinha" mesmo com footPad)
     -- e vinha parado ("estático vindo é estranho — deixa animando").
+    local bfps, bopts = idleSpec(enemy.spriteId)
     local anim = SpriteAnimation.new(enemy.spriteId, "idle", "south",
-        IDLE_FPS, { loop = true, pingpong = true })
+        bfps, bopts)
     local img, iw, ih
     if anim then
         iw, ih = anim:getSize()
