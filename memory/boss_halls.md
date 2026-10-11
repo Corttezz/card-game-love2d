@@ -57,9 +57,11 @@ type: project
   falsificado maior que o monitor (setMode acima do desktop trava).
 - O chefe tem altura FIXA (330px, EnemyRenderer) e a sala cresce com a tela:
   em 1440p ele ficava ~25% menor em relação ao salão. `GameplayScene.hallScreenK`
-  multiplica o sizeK no salão por `clamp(escala/4.8, 1, 1.4)` — 4:3 e 1080p
-  intactos. A ESTRADA tem o mesmo descompasso e não foi mexida (não é deste
-  módulo).
+  multiplica o sizeK no salão por `clamp(escala/3.7, 1, 3)`. Revisto a pedido
+  do dono ("em tela cheia os bosses não ficam muito pequenos?"): com 4.8 o
+  chefe ocupava ~27% da altura em 1080p. Hoje 1080p = 1.3x (comparação lado a
+  lado 1.0/1.2/1.35), 1440p/4K mantêm a mesma proporção da sala, 1024x768 e
+  1366x768 intactos. A estrada usa `WorldRoad.enemyScreenK` (outra regra).
 - `src/ui/InteriorDepth.lua`: poça de oclusão em degraus na grade da arte sob
   os pés de quem APOIA (desenhada antes do chefe; largura do bbox do quadro
   anterior), mais longa pra frente quando a luz vem do fundo. Em piso escuro

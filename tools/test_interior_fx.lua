@@ -93,10 +93,13 @@ function M.run()
     do
         local GS = require("src.scenes.GameplayScene")
         t:eq("4:3 não muda o chefe", GS.hallScreenK("castle_hall_3", 1024, 768), 1)
-        t:eq("1080p não muda o chefe", GS.hallScreenK("castle_hall_3", 1920, 1080), 1)
-        t:near("1440p cresce com a sala (6.4/4.8)",
-            GS.hallScreenK("castle_hall_3", 2560, 1440), 6.4 / 4.8, 1e-6)
-        t:eq("4K para no teto", GS.hallScreenK("castle_hall_3", 3840, 2160), 1.4)
+        t:near("1080p: chefe 1.3x (4.8/3.7)",
+            GS.hallScreenK("castle_hall_3", 1920, 1080), 4.8 / 3.7, 1e-6)
+        t:near("1440p mantém a proporção da sala (6.4/3.7)",
+            GS.hallScreenK("castle_hall_3", 2560, 1440), 6.4 / 3.7, 1e-6)
+        t:near("4K mantém a proporção da sala (9.6/3.7)",
+            GS.hallScreenK("castle_hall_3", 3840, 2160), 9.6 / 3.7, 1e-6)
+        t:eq("1366x768 não muda o chefe", GS.hallScreenK("castle_hall_3", 1366, 768), 1)
         t:eq("cena que não é salão não muda", GS.hallScreenK("gameplay", 2560, 1440), 1)
     end
 

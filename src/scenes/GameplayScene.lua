@@ -418,18 +418,23 @@ function GameplayScene.drawWorldOnly()
     WorldRoad.drawOverlays(0, topBarHeight, width, height - topBarHeight)
 end
 
--- Salão em tela GRANDE (Out/2026, dono: "analise em fullscreen nativo"): o
--- chefe tem altura FIXA em pixels (330) e o salão cresce com a tela pelo
--- cover-fit — em 2560x1440 o chefe ficava ~25% menor em relação à sala do
--- que em 1920x1080 e lia como boneco na frente do cenário. Acima da escala
--- de referência (1080p = 4.8 px por pixel da arte) o chefe cresce junto com
--- a sala, com teto; abaixo dela nada muda (4:3 e 1080p ficam como estão).
-GameplayScene.HALL_REF_SCALE = 4.8
+-- Tamanho do chefe no salão (Out/2026, dono: "em tela cheia os bosses não
+-- ficam muito pequenos?"). O chefe tem altura FIXA em pixels (330) e o salão
+-- cresce com a tela pelo cover-fit: em 1920x1080 ele ocupava ~27% da altura
+-- e lia pequeno pro clímax do ato; em 2560x1440 pior ainda. O chefe passa a
+-- crescer na mesma proporção da sala a partir de 3.7 px por pixel da arte —
+-- 1080p fica 1.3x (escolhido por comparação lado a lado de 1.0/1.2/1.35:
+-- domina a sala sem a barra de vida colar no topo nem o pé descer na mão),
+-- 1440p e 4K mantêm a MESMA proporção. Abaixo disso (1024x768, 1366x768)
+-- nada muda: lá o chefe já ocupa ~43% da altura.
+GameplayScene.HALL_REF_SCALE = 3.7
+GameplayScene.HALL_MAX_K = 3
 function GameplayScene.hallScreenK(sceneKey, w, h)
     if not sceneKey or not sceneKey:find("^castle_hall_") then return 1 end
     local tr = SceneBackground.getCoverTransform(sceneKey, w, h)
     if not tr then return 1 end
-    return math.max(1, math.min(1.4, tr.scale / GameplayScene.HALL_REF_SCALE))
+    return math.max(1, math.min(GameplayScene.HALL_MAX_K,
+        tr.scale / GameplayScene.HALL_REF_SCALE))
 end
 
 function GameplayScene.draw()
