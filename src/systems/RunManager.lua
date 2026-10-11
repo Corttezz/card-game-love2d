@@ -413,7 +413,9 @@ end
 -- Retorna "act_complete" se cruzou para novo ato, "endless_start" se saiu do ultimo,
 -- "advanced" caso normal.
 function RunManager:advanceFloorInAct(totalActs)
-    totalActs = totalActs or 3
+    -- Fonte única: Config.TotalActs (o 3 cravado aqui e no chamador deixaria
+    -- o jogo invencível se o número de atos mudasse — defect_doctrine 14).
+    totalActs = totalActs or require("src.core.Config").TotalActs or 3
     if not self.currentRun then return "advanced" end
     local MapManager = require("src.systems.MapManager")
 

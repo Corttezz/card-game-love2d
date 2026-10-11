@@ -91,6 +91,11 @@ local function startGame(classId)
     game:startNewRun(classId)
 
     game:startGame()
+    -- A corrida NOVA nasce salva. Sem isto o primeiro save só vinha no andar
+    -- 2: fechar a janela na primeira luta fazia o Continuar carregar a run
+    -- ANTERIOR (que o jogador já tinha confirmado descartar), e morrer na
+    -- primeira luta apagava aquela run antiga.
+    game:checkpointRun()
     gameUI:show()
     classSelectionScreen:hide()
 
@@ -112,6 +117,20 @@ local function returnToMenu()
     -- caí na run antiga" — playtest Jul/2026). Ordem importa: clear ANTES de
     -- menu:show() (a intro do menu agenda eases novos).
     EventManager.clear()
+
+    -- Toda tela da run SOME junto. As de estado (descanso/evento/mapa/cash
+    -- out) são coberturas no InputFocus: uma delas visível por baixo do menu
+    -- tomava o foco e o menu ficava MORTO — nenhum botão respondia depois de
+    -- "Salvar e sair" no acampamento (revisão de lançamento, Out/2026).
+    -- (InputFocus.hideAll cobre todo overlay registrado — tela nova entra de
+    -- graça; a loja/recompensa é tela de ESTADO, fora do registro.)
+    require("src.ui.InputFocus").hideAll()
+    if cardRewardScreen and cardRewardScreen:isVisible() then cardRewardScreen:hide() end
+    -- Morte/vitória em curso (TV desligando) morre aqui também: o callback
+    -- dela trocava o estado pra gameOver POR CIMA do menu. powerOn substitui
+    -- a animação de desligar (e o callback dela) e devolve a imagem.
+    require("src.ui.EndTransition").clear()
+    if CRTShader.getPower and CRTShader.getPower() < 1 then CRTShader.powerOn(0.6) end
 
     -- A run antiga morre NA MEMÓRIA também. deleteSave/saveRun já decidiram o
     -- disco; isto impede qualquer checkpointRun retardatário de ressuscitá-la.
@@ -210,6 +229,80 @@ local function skipBattleAndShowMap()
     game:checkpointRun()
 end
 
+-- ONDE a run está, pra o Continuar retomar no MESMO lugar (revisão de
+-- lançamento, Out/2026). Antes o save só sabia "nó corrente" e o resume SEMPRE
+-- abria batalha: "Salvar e sair" no acampamento/evento/loja voltava como uma
+-- LUTA, e sair no cash out/recompensa refazia a batalha já vencida com o ouro
+-- e a carta no bolso (farm infinito). Estágios:
+--   "battle"  luta em andamento   -> retoma a luta do COMEÇO (save do início)
+--   "cashout" vitória, antes do Resgatar -> reabre o cash out
+--   "rewards" ouro resgatado, carta não escolhida -> reabre a recompensa
+--   "rest" | "event" | "shop"     -> reabre o nó
+--   "fork"    encruzilhada (pendingNodes) -> escolhe o caminho
+local function setRunStage(stage, extra)
+    local run = game and game.runManager and game.runManager.currentRun
+    if not run then return end
+    run.stage = stage
+    run.stageEventId = extra
+    game:checkpointRun()
+end
+
+-- Abre um nó SEM batalha (descanso/evento/loja). Usado na escolha do caminho
+-- e no Continuar. `eventId` (opcional) reabre o MESMO evento salvo.
+local function openNonBattleNode(t, eventId)
+    local BT = MapManager.NODE_TYPES
+    if t == BT.REST then
+        mapScreen:hide()
+        currentState = "rest"
+        setRunStage("rest")
+        restScreen:show(game, function()
+            currentState = "mapSelection" -- nao avanca; volta para gerar proximo map
+            -- Note: REST consome o slot do floor (floorInAct ja avancou no showMapSelection).
+            -- O proximo showMapSelection vai gerar novos nodes.
+            skipBattleAndShowMap()
+        end)
+        return true
+    elseif t == BT.EVENT then
+        mapScreen:hide()
+        local run = game.runManager.currentRun
+        run.eventHistory = run.eventHistory or {}
+        local ev = eventId and Events.get(eventId) or nil
+        if not ev then
+            -- Sorteio pelo stream "event" com histórico: evento visto não repete
+            -- no MESMO ato (Events.roll libera repetição se a pool do ato esgotar).
+            ev = Events.roll(run.actNumber or 1, run.eventHistory)
+            if not ev then return false end
+            run.eventHistory[ev.id] = run.actNumber or 1
+            -- ROTEIRO: o evento sorteado entra já; a OPÇÃO escolhida é anotada
+            -- pelo EventScreen no clique (antes do apply).
+            game.runManager:journalEvent(ev.id, nil, nil)
+        end
+        currentState = "event"
+        setRunStage("event", ev.id)
+        eventScreen:show(ev, game, function()
+            skipBattleAndShowMap()
+        end)
+        return true
+    elseif t == BT.SHOP then
+        -- Reusa CardRewardScreen como shop em modo "shop":
+        -- 4 cartas + 1 voucher + 2 packs + reroll exponencial + skip +3g.
+        mapScreen:hide()
+        currentState = "cardReward"
+        setRunStage("shop")
+        cardRewardScreen:show(game,
+            function(offer)
+                Debug.log("Shop: comprou", offer.name)
+            end,
+            function()
+                skipBattleAndShowMap()
+            end,
+            "shop"
+        )
+        return true
+    end
+    return false
+end
+
 local function onNodeChosen(node, index)
     if not node then return end
     -- Snapshot de entrada do nó pro ROTEIRO (o RunManager não enxerga o Game).
@@ -235,52 +328,13 @@ local function onNodeChosen(node, index)
         game:nextPhase()
         applyActSmoke()
 
-    elseif t == BT.REST then
-        mapScreen:hide()
-        currentState = "rest"
-        restScreen:show(game, function()
-            currentState = "mapSelection" -- nao avanca; volta para gerar proximo map
-            -- Note: REST consome o slot do floor (floorInAct ja avancou no showMapSelection).
-            -- O proximo showMapSelection vai gerar novos nodes.
-            skipBattleAndShowMap()
-        end)
-
-    elseif t == BT.EVENT then
-        mapScreen:hide()
-        -- Sorteio pelo stream "event" com histórico: evento visto não repete
-        -- no MESMO ato (Events.roll libera repetição se a pool do ato esgotar).
-        local run = game.runManager.currentRun
-        run.eventHistory = run.eventHistory or {}
-        local ev = Events.roll(run.actNumber or 1, run.eventHistory)
-        if not ev then
+    elseif t == BT.REST or t == BT.EVENT or t == BT.SHOP then
+        if not openNonBattleNode(t) then
             -- Sem evento disponivel: age como batalha comum
+            mapScreen:hide()
             currentState = "playing"
             game:nextPhase()
-            return
         end
-        run.eventHistory[ev.id] = run.actNumber or 1
-        -- ROTEIRO: o evento sorteado entra já; a OPÇÃO escolhida é anotada
-        -- pelo EventScreen no clique (antes do apply).
-        game.runManager:journalEvent(ev.id, nil, nil)
-        currentState = "event"
-        eventScreen:show(ev, game, function()
-            skipBattleAndShowMap()
-        end)
-
-    elseif t == BT.SHOP then
-        -- Reusa CardRewardScreen como shop em modo "shop":
-        -- 4 cartas + 1 voucher + 2 packs + reroll exponencial + skip +3g.
-        mapScreen:hide()
-        currentState = "cardReward"
-        cardRewardScreen:show(game,
-            function(offer)
-                Debug.log("Shop: comprou", offer.name)
-            end,
-            function()
-                skipBattleAndShowMap()
-            end,
-            "shop"
-        )
     else
         mapScreen:hide()
         currentState = "playing"
@@ -302,7 +356,10 @@ showMapSelection = function()
     -- Se nao ha nos pendentes, avanca o floor e gera novos. Guard contra
     -- duplo-advance (usuario voltar e abrir o mapa de novo).
     if not game.runManager:getPendingNodes() then
-        local status = game.runManager:advanceFloorInAct(3)
+        -- SEM total cravado: o RunManager lê Config.TotalActs (passar 3 aqui
+        -- deixaria o jogo invencível no dia em que os atos mudassem —
+        -- defect_doctrine 14).
+        local status = game.runManager:advanceFloorInAct()
         if status == "endless_start" then
             game:addMessage(I18n.t("messages.endless_unlocked", nil,
                 "Modo Endless desbloqueado!"), "success")
@@ -328,12 +385,17 @@ showMapSelection = function()
         mapScreen:show(pending, onNodeChosen)
         currentState = "mapSelection"
     end
+    -- Encruzilhada é ponto seguro: salva aqui (antes, depois de uma BATALHA
+    -- nada salvava até o próximo nó — fechar a janela na encruzilhada
+    -- devolvia o jogador à luta já vencida, sem a carta e o ouro).
+    setRunStage("fork")
 end
 -- Hook global pro callback de Continuar (rotear pro mapa quando o save
 -- foi na encruzilhada). Referenciar a local direto no callback estourava
 -- o limite de 60 upvalues do love.load (LuaJIT) — mesmo padrão do
 -- _G.openCardPicker.
 _G.__showMapSelection = function() showMapSelection() end
+
 
 -- Continua o jogo após escolher/pular recompensa.
 -- Vitoria agora e disparada por Game:checkVictory (ato 3 boss). Para decidir
@@ -356,6 +418,7 @@ local showCardRewards
 -- Game:_buildRoundEvalSources. Click "Resgatar" → showCardRewards.
 showRoundEval = function()
     currentState = "roundEval"
+    setRunStage("cashout")
 
     if FlashShader and FlashShader.trigger then FlashShader.trigger(0.4, 0.35) end
     Sfx.play("battleVictory")
@@ -369,6 +432,7 @@ end
 -- Função para mostrar recompensas de cartas após vitória
 showCardRewards = function()
     currentState = "cardReward"
+    setRunStage("rewards")
 
     -- Flash branco curto pra transição playing → recompensa (Fase 6.5).
     if FlashShader and FlashShader.trigger then FlashShader.trigger(0.4, 0.35) end
@@ -386,6 +450,31 @@ showCardRewards = function()
         end,
         "rewards"
     )
+end
+
+-- Continuar: reabre o ESTÁGIO salvo (ver setRunStage). Devolve true se tratou
+-- (o caller não precisa fazer mais nada). Hook global pelo mesmo motivo do
+-- __showMapSelection (teto de upvalues do love.load).
+_G.__resumeRunStage = function()
+    local run = game and game.runManager and game.runManager.currentRun
+    local action = require("src.systems.ResumeFlow").stageAction(run)
+    if action == "battle" or action == "fork" then return false end
+    if action == "map" then showMapSelection() return true end
+    -- A luta deste nó JÁ acabou (ou o nó nem tem luta): o inimigo que o
+    -- resumeRun montou não pode ficar de pé atrás do cash out/descanso.
+    if game.enemy then
+        game.enemy.health = 0
+        game._deathHandled, game._deathStaged = true, true
+        require("src.ui.EnemyRenderer").triggerDeath(game.enemy.spriteId)
+    end
+    if action == "cashout" then showRoundEval() return true end
+    if action == "rewards" then showCardRewards() return true end
+    local BT = MapManager.NODE_TYPES
+    local t = (action == "rest" and BT.REST) or (action == "event" and BT.EVENT)
+        or (action == "shop" and BT.SHOP)
+    if openNonBattleNode(t, run.stageEventId) then return true end
+    showMapSelection()
+    return true
 end
 
 function love.load(loveArgs)
@@ -1344,7 +1433,7 @@ function love.load(loveArgs)
         -- showMapSelection reusa os pendentes salvos (guard anti-advance);
         -- o inimigo provisório do resumeRun é substituído pelo nextPhase
         -- do nó que o jogador escolher. (via hook _G — limite de upvalues)
-        if game.runManager:getPendingNodes() then
+        if not _G.__resumeRunStage() and game.runManager:getPendingNodes() then
             _G.__showMapSelection()
         end
         if smokeSystem then
@@ -1429,6 +1518,9 @@ function love.load(loveArgs)
             pauseMenu:hide()
             return
         end
+        -- TV já desligando pra tela de morte/vitória: a run acabou. Abrir a
+        -- pausa aqui deixava "Salvar e sair" regravar uma run morta.
+        if require("src.ui.EndTransition").pending() then return end
         pauseMenu:show(game, {
             onOpenSettings = function()
                 settingsMenu:show()
@@ -1439,7 +1531,14 @@ function love.load(loveArgs)
                 -- persistir — o saveRun direto gravava o playerState do
                 -- checkpoint ANTERIOR e ganhos recentes (evento +5 vida
                 -- máxima, +1 mana) evaporavam no Continuar (bug Set/2026).
-                if game.runManager and game.runManager.hasActiveRun
+                -- No MEIO de uma luta o save do INÍCIO dela (Game:nextPhase)
+                -- é o que vale: salvar agora gravava a vida já perdida com o
+                -- inimigo voltando cheio — e, morto atrás do menu, gravava 0.
+                -- Retomar = refazer a luta do começo (como no StS).
+                local run = game.runManager and game.runManager.currentRun
+                local midBattle = run and run.stage == "battle"
+                    and currentState == "playing"
+                if not midBattle and game.runManager and game.runManager.hasActiveRun
                     and game.runManager:hasActiveRun() then
                     game:checkpointRun()
                 end

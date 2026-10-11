@@ -387,6 +387,15 @@ Events.POOL = {
     },
 }
 
+-- Evento por id (ou nil). O Continuar reabre o MESMO evento em que o jogador
+-- salvou (run.stageEventId) em vez de sortear outro.
+function Events.get(id)
+    for _, e in ipairs(Events.POOL) do
+        if e.id == id then return e end
+    end
+    return nil
+end
+
 -- Sorteia um evento do pool para um ato especifico (ou "any").
 -- history: run.eventHistory ({ [id] = actNumber }) — evento visto NO MESMO ATO
 -- não repete; pool esgotada no ato libera repetição (melhor que evento nenhum).

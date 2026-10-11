@@ -267,6 +267,11 @@ function EventScreen:buildButtons()
                 local ok, res = pcall(opt.apply, self.game)
                 if ok then feedback = res end
             end
+            -- Escolha FEITA: um "Salvar e sair" durante o texto de resultado
+            -- não pode reabrir este evento no Continuar (a opção seria
+            -- aplicada duas vezes). O resume lê "event_done" → encruzilhada.
+            local run = rm and rm.currentRun
+            if run and run.stage == "event" then run.stage = "event_done" end
             self.resultText = feedback
                 or I18n.t("event.default_result", nil, "Voce segue em frente.")
             self.resultTimer = 1.8

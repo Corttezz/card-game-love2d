@@ -119,6 +119,7 @@ function handle:keypressed(key) return ConfirmDialog.keypressed(key) end
 function handle:mousepressed(x, y, b) return ConfirmDialog.mousepressed(x, y, b) end
 function handle:mousereleased(x, y, b) return ConfirmDialog.mousereleased(x, y, b) end
 function handle:wheelmoved() return true end
+function handle:hide() ConfirmDialog.hide() end
 ConfirmDialog.handle = handle
 
 function ConfirmDialog.isVisible() return state.visible end
