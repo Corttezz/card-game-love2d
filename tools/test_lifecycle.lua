@@ -215,6 +215,12 @@ function M.run()
         local run = g.runManager.currentRun
         run.actNumber, run.floorInAct = 2, 4
         local UnlockSystem = require("src.systems.UnlockSystem")
+        -- Perfil FALSO: o XP acumulado pelas suites anteriores pode ter
+        -- maxado o guerreiro, e no nivel maximo o XP nao cresce mais.
+        local ProfileStats = require("engine.ProfileStats")
+        local prevProfile = ProfileStats._swapForTests({ runs = 0, wins = 0 })
+        UnlockSystem._resetForTests()
+        UnlockSystem.ensure()
         local before = UnlockSystem.getClassMastery("warrior").xp
         g:abandonRun()
         local after = UnlockSystem.getClassMastery("warrior").xp
@@ -222,6 +228,9 @@ function M.run()
         t:falsy("abandonar apaga o save", g.runManager:hasSavedRun())
         g:abandonRun()
         t:eq("abandonar de novo nao paga XP duas vezes", UnlockSystem.getClassMastery("warrior").xp, after)
+        ProfileStats._swapForTests(prevProfile)
+        UnlockSystem._resetForTests()
+        UnlockSystem.setOverrideAll(true)   -- todo arg de tool roda com o catalogo inteiro
     end
 
     -- 8. advanceFloorInAct sem argumento usa a fonte única de atos.
