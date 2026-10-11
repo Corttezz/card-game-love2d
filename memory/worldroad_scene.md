@@ -1856,6 +1856,26 @@ JIT reaquecendo + fantasmas do crossfade, não carga de disco).
 (ms por fase + KB alocados), `perf_visual_diff ref|cmp[:WxH]` (casos
 determinísticos: relógio/mouse/RNG congelados), trava `test_perf_budget`.
 
+## Fork fechando — clareira acompanha o fade (Out/2026)
+
+Bug do dono: ao escolher um braço, os outros dois sumiam mas ficava um
+"rastro liso sem grama" onde estavam. Causa (NÃO era o cache da grama — o
+`forkSig` já incluía `converge.k` e reconstruía todo frame): a ESTRADA dos
+braços não escolhidos esmaece com `forkAlpha` (zera em k≈0.63), mas o
+`roadCenters` do ctx da grama seguia devolvendo os 3 centros com largura
+cheia até o fork fechar → chão do domo sem estrada e sem capim. Existia
+desde o v7.4.15 (clareira por braço), anterior à otimização b44694f.
+Correção: `roadCenters(z,t)` devolve um 3º valor `ws[i] = forkAlpha(f,i)`
+e o GrassField multiplica a clareira (lâminas e acentos) por ele — a grama
+CRESCE de volta junto com o fade. `forkAlpha` subiu pra antes do
+`drawGrass` (lição ciclo 41: local abaixo é nil pra quem vem antes).
+Regra: **tudo que esmaece um elemento do chão tem que esmaecer a máscara
+que ele impõe à grama (clareira, corredor de props) na mesma curva.**
+Trava: `test_perf_budget` ("fork fechando → braço que sumiu não deixa
+clareira", "reconstrói a cada frame da convergência", "assentado → volta a
+reusar o lote"). Captura: `love . screenshot_worldroad forkfade<N>` (N
+ticks de 1/30 s após escolher o braço do meio; o rastro aparecia em 40-48).
+
 ## Backlog
 
 - [ ] **Validação visual v3.3 nativa** (precisa driver resetado; testar em

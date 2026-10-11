@@ -3173,6 +3173,12 @@ local function forkOffset(f, i, rel, w)
     return off
 end
 
+-- alpha do braço i (não escolhidos somem durante a convergência)
+local function forkAlpha(f, i)
+    if not f.converge or i == f.chosen then return 1 end
+    return math.max(0, 1 - (f.converge.k or 0) * 1.6)
+end
+
 -- ============================================================================
 -- v7.1: GRAMA VIVA — engine/GrassField.lua (motor dedicado de vegetação).
 -- Cores vêm do envColor (lerpam no crossfade); geometria/estrada INJETADAS.
@@ -3199,7 +3205,7 @@ local function drawGrass(g, x, w, camZ, relFrom, relTo)
         -- de luminância) o ×1.42 fixo sumia no fundo
         local lum = (gA[1] + gA[2] + gA[3]) / 3
         local lk = 1.30 + math.max(0, 0.42 - lum) * 1.6
-        _grassFork = { cs = {} }
+        _grassFork = { cs = {}, ws = {} }
         _grassCtx = {
             x = x, w = w,
             time = WorldRoad._time,
@@ -3220,12 +3226,16 @@ local function drawGrass(g, x, w, camZ, relFrom, relTo)
                 local rel = z - WorldRoad._camZ
                 if rel <= FORK_REL - 1.5 then return nil end
                 local wob = roadWobble(z, t, w) * 0.5
-                local cs = _grassFork.cs
+                local cs, ws = _grassFork.cs, _grassFork.ws
                 for i = 1, f.n do
                     cs[i] = g.cx + forkOffset(f, i, rel, w) + wob
+                    -- clareira do braço ACOMPANHA o fade dele: braço que
+                    -- some na convergência devolve a grama junto (antes a
+                    -- estrada sumia e a clareira ficava → faixa lisa)
+                    ws[i] = forkAlpha(f, i)
                 end
-                for i = f.n + 1, #cs do cs[i] = nil end
-                return cs, (f.n > 1 and 0.78 or 1)
+                for i = f.n + 1, #cs do cs[i] = nil; ws[i] = nil end
+                return cs, (f.n > 1 and 0.78 or 1), ws
             end,
             colors = {
                 mid   = { gA[1] * 0.98, gA[2] * 0.98, gA[3] * 0.98 },
@@ -3254,12 +3264,6 @@ local function drawGrass(g, x, w, camZ, relFrom, relTo)
     _grassCtx.forkSig = f and (f.n * 1e7 + (f.chosen or 0) * 1e6
         + (f.converge and f.converge.k or 0) * 1e3 + (f.animIn or 0)) or 0
     GrassField.draw(_grassCtx)
-end
-
--- alpha do braço i (não escolhidos somem durante a convergência)
-local function forkAlpha(f, i)
-    if not f.converge or i == f.chosen then return 1 end
-    return math.max(0, 1 - (f.converge.k or 0) * 1.6)
 end
 
 function WorldRoad.forkHitTest(mx, my)

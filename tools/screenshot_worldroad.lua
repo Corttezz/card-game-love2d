@@ -147,7 +147,7 @@ function M.run(mode)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
     elseif mode == "fork" or mode == "fork2" or mode == "forkhover"
-        or mode == "forkb" then
+        or mode == "forkb" or (mode and mode:match("^forkfade%d+$")) then
         -- A ENCRUZILHADA (v5): estrada bifurcada com 3 marcos + hover no 2.
         -- "fork2" captura o MEIO da convergência (braço escolhido virando
         -- a estrada central).
@@ -185,6 +185,22 @@ function M.run(mode)
             f._hoverK = f._hoverK or {}
             f._hoverK[3] = 1
             f.hover = 3
+        end
+        -- "forkfade<N>": escolhe o braço DO MEIO e captura N ticks (1/30 s)
+        -- depois — o sumiço dos braços não escolhidos. Trava visual do bug
+        -- "rastro liso sem grama onde os braços estavam" (Out/2026).
+        local fadeTicks = mode and tonumber(mode:match("^forkfade(%d+)$"))
+        if fadeTicks then
+            local f = WorldRoad._fork
+            local b = f and f.markBoxes and f.markBoxes[2]
+            if b then
+                WorldRoad.forkMousePressed((b.x1 + b.x2) / 2, (b.y1 + b.y2) / 2)
+            end
+            for _ = 1, fadeTicks do
+                WorldRoad.update(1 / 30)
+                WorldRoad.draw(0, topBarH, width, height - topBarH, biomeOverride or 1)
+                overlays(0, topBarH, width, height - topBarH)
+            end
         end
         if mode == "fork2" then
             local f = WorldRoad._fork

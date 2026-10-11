@@ -706,9 +706,9 @@ function GrassField.draw(ctx)
                     -- v7.4.15: na encruzilhada valida contra CADA braço —
                     -- a clareira única (half + 0.17w) deixava o miolo
                     -- entre os caminhos e o entorno carecas
-                    local centers, armK
+                    local centers, armK, armW
                     if ctx.roadCenters then
-                        centers, armK = ctx.roadCenters(z, t)
+                        centers, armK, armW = ctx.roadCenters(z, t)
                     end
                     local clear = half * 0.90 * (centers and (armK or 1) or 1)
                     local spread = 0.92 + 0.14 * t
@@ -726,10 +726,12 @@ function GrassField.draw(ctx)
                         if centers then
                             dRoad = 1e9
                             for a = 1, #centers do
+                                -- armW[a] (0..1): braço sumindo encolhe a
+                                -- própria clareira (grama volta junto)
                                 local dd = math.abs(pxX - centers[a])
+                                    - clear * (armW and armW[a] or 1)
                                 if dd < dRoad then dRoad = dd end
                             end
-                            dRoad = dRoad - clear
                         else
                             dRoad = math.abs(pxX - roadC) - clear
                         end
@@ -876,11 +878,12 @@ function GrassField.draw(ctx)
                     -- DENTRO de um braço (antes: sumia da região inteira)
                     local armBlock = false
                     if ctx.roadCenters then
-                        local cs, aK = ctx.roadCenters(z, t)
+                        local cs, aK, aW = ctx.roadCenters(z, t)
                         if cs then
                             local ha = half * 0.94 * (aK or 1)
                             for a = 1, #cs do
-                                if math.abs(pxX - cs[a]) < ha then
+                                if math.abs(pxX - cs[a])
+                                   < ha * (aW and aW[a] or 1) then
                                     armBlock = true
                                     break
                                 end

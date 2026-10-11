@@ -110,7 +110,56 @@ function M.run()
         for _ = 1, 5 do frame(1) end
         t:check("fork aberto e parado → grama volta a reusar o lote",
             GrassField.stats.builds == 0 and GrassField.stats.replays > 0)
+
+        -- fork FECHANDO (bug do dono, Out/2026: "rastro liso sem grama onde
+        -- os braços não escolhidos estavam"): a clareira de cada braço tem
+        -- que encolher junto com o fade dele, e a grama reconstrói até
+        -- assentar. Espia o ctx que o WorldRoad entrega ao GrassField.
+        local realDraw, lastCtx = GrassField.draw, nil
+        GrassField.draw = function(ctx, ...)
+            lastCtx = ctx
+            return realDraw(ctx, ...)
+        end
+        local okF, errF = pcall(function()
+            local f = WorldRoad._fork
+            f.chosen, f.hover = 2, 2
+            f.converge = { t = 0, k = 0, duration = 2.4,
+                z0 = WorldRoad._camZ, dist = 10 }
+            local closed = false
+            f.onChosen = function() closed = true end
+            local fadedArmOk, sawFaded, convBuilt = true, false, true
+            while WorldRoad._fork and not closed do
+                GrassField.resetStats()
+                frame(1)
+                if WorldRoad._fork then
+                    convBuilt = convBuilt and GrassField.stats.builds > 0
+                end
+                local k = WorldRoad._fork and WorldRoad._fork.converge.k or 1
+                if WorldRoad._fork and k >= 0.7 and lastCtx
+                   and lastCtx.roadCenters then
+                    local z = WorldRoad._camZ + 14
+                    local cs, _, ws = lastCtx.roadCenters(z, 0.5)
+                    if cs then
+                        sawFaded = true
+                        fadedArmOk = fadedArmOk and ws ~= nil
+                            and ws[1] == 0 and ws[3] == 0 and ws[2] == 1
+                    end
+                end
+            end
+            t:check("fork fechando → grama reconstrói a cada frame da convergência",
+                convBuilt)
+            t:check("fork fechando → braço que sumiu não deixa clareira (largura 0)",
+                sawFaded and fadedArmOk)
+            for _ = 1, 3 do frame(1) end
+            GrassField.resetStats()
+            for _ = 1, 5 do frame(1) end
+            t:check("fork fechado e assentado → grama volta a reusar o lote",
+                GrassField.stats.builds == 0 and GrassField.stats.replays > 0)
+        end)
+        GrassField.draw = realDraw
+        if not okF then error(errF, 0) end
         WorldRoad._fork = nil
+        WorldRoad._landmark = nil
 
         -- ---- 5: troca de bioma pré-aquecida ---------------------------
         local decodes = 0
