@@ -104,6 +104,37 @@ return {
         take = "Nehmen",
     },
 
+    -- Diálogo de confirmação genérico (src/ui/ConfirmDialog.lua)
+    confirm = {
+        new_run_title = "Neuen Lauf beginnen?",
+        new_run_body  = "Du hast einen laufenden Lauf. Ein neuer Lauf löscht den gespeicherten für immer.",
+        new_run_yes   = "Neu beginnen",
+        quit_title    = "Spiel beenden?",
+        quit_body     = "Dein Lauf bleibt am letzten Kontrollpunkt gespeichert.",
+        quit_yes      = "Beenden",
+        cancel        = "Abbrechen",
+    },
+
+    -- Tela de créditos (components/CreditsScreen.lua) — link no rodapé do menu
+    credits = {
+        link          = "Mitwirkende",
+        title         = "MITWIRKENDE",
+        hint          = "Klicken oder ESC zum Zurückkehren",
+        thanks        = "Danke fürs Spielen!",
+        role_design   = "Idee, Design und Programmierung",
+        name_design   = "Daniel Cortez",
+        role_art      = "Pixel-Art",
+        name_art      = "Daniel Cortez, mit PixelLab",
+        role_audio    = "Musik und Soundeffekte",
+        name_audio    = "Daniel Cortez, mit ElevenLabs",
+        role_engine   = "Engine",
+        name_engine   = "LÖVE 11 — zlib-Lizenz",
+        role_font     = "Schrift",
+        name_font     = "Press Start 2P, von CodeMan38 — SIL Open Font License 1.1",
+        role_inspired = "Inspiriert von",
+        name_inspired = "Slay the Spire · Balatro",
+    },
+
     score = {
         points_total    = "+{n} PUNKTE",
         pts             = "{n} Pkt",

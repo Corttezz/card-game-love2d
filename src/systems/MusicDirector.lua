@@ -84,7 +84,7 @@ end
 -- Pública para que os testes possam exercitar a decisão sem áudio nenhum.
 function MusicDirector.pick(state, run, nodeType)
     if state == "boot" or state == "menu" or state == "classSelection"
-        or state == "collection" or state == "achievements"
+        or state == "collection" or state == "achievements" or state == "credits"
         or state == "gameOver" or state == "victory" then
         return "menuMusic"
     end

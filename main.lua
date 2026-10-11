@@ -973,7 +973,7 @@ function love.load(loveArgs)
     -- Roda UM teste isolado por nome (util pra iterar).
     --   love . test_one test_combat
     if loveArgs and loveArgs[1] == "test_one" and loveArgs[2] then
-        local ok = require("tools." .. loveArgs[2]).run()
+        local ok = require("tools." .. loveArgs[2]).run(loveArgs[3])
         love.event.quit(ok and 0 or 1)
         return
     end
@@ -1365,6 +1365,17 @@ function love.load(loveArgs)
     menu:setSettingsCallback(function()
         settingsMenu:toggle()
     end)
+    -- Créditos (link no rodapé do menu): estado próprio, mesmo padrão das
+    -- conquistas. A tela mora em _G pra não somar upvalue ao love.load.
+    menu:setCreditsCallback(function()
+        _G.creditsScreen = _G.creditsScreen or require("components.CreditsScreen"):new()
+        currentState = "credits"
+        menu:hide()
+        _G.creditsScreen:show(function()
+            currentState = "menu"
+            menu:show()
+        end)
+    end)
     menu:setAchievementsCallback(function()
         currentState = "achievements"
         menu:hide()
@@ -1506,6 +1517,8 @@ function love.load(loveArgs)
         IF.register("runJournal",   _G.runJournalScreen)
         IF.register("pause",        pauseMenu)
         IF.register("settings",     settingsMenu)
+        -- Confirmação genérica (Jogar com save, sair do jogo): por cima de tudo.
+        IF.register("confirm",      require("src.ui.ConfirmDialog").handle)
     end
 
     -- API global pra ser chamada pela CardRewardScreen quando jogador compra
@@ -1789,6 +1802,7 @@ function love.update(dt)
     if pauseMenu then
         IF.push("pause"); pauseMenu:update(dt); IF.pop()
     end
+    IF.push("confirm"); require("src.ui.ConfirmDialog").update(dt); IF.pop()
 end
 
 function love.draw()
@@ -1847,6 +1861,8 @@ function love.draw()
         collectionScreen:draw()
     elseif currentState == "achievements" then
         achievementsScreen:draw()
+    elseif currentState == "credits" then
+        _G.creditsScreen:draw()
     elseif currentState == "gameOver" then
         EndScreens.drawGameOver(game)
     elseif currentState == "victory" then
@@ -1912,6 +1928,7 @@ function love.draw()
     -- cobre o overlay também.
     if pauseMenu then IF.push("pause"); pauseMenu:draw(); IF.pop() end
     if settingsMenu then IF.push("settings"); settingsMenu:draw(); IF.pop() end
+    IF.push("confirm"); require("src.ui.ConfirmDialog").draw(); IF.pop()
 
     -- Cursor pixel-art por cima de TUDO, mas dentro da cena CRT (warp do
     -- tubo pega o cursor também — coerência Balatro). SEM camada: o cursor
@@ -1978,6 +1995,7 @@ function love.resize(w, h)
         settingsMenu:rebuild()
     end
     if pauseMenu and pauseMenu.resize then pauseMenu:resize() end
+    require("src.ui.ConfirmDialog").resize()
     GameplayScene.updatePlayButtonPosition()
 end
 
@@ -2034,6 +2052,10 @@ function love.keypressed(key)
         achievementsScreen:keypressed(key)
         return
     end
+    if currentState == "credits" then
+        _G.creditsScreen:keypressed(key)
+        return
+    end
     if currentState == "collection" then
         if collectionScreen.keypressed then collectionScreen:keypressed(key) end
         if key == "escape" then
@@ -2080,7 +2102,7 @@ function love.keypressed(key)
     if currentState == "menu" then
         -- Teclas do menu
         if key == "escape" then
-            love.event.quit()
+            menu:requestQuit()
         end
     elseif currentState == "playing" then
         -- ESC no combate: pause (não mais menu direto — a run é preciosa).
@@ -2138,6 +2160,8 @@ function love.mousereleased(x, y, button)
         if collectionScreen.mousereleased then collectionScreen:mousereleased(x, y, button) end
     elseif currentState == "achievements" then
         achievementsScreen:mousereleased(x, y, button)
+    elseif currentState == "credits" then
+        _G.creditsScreen:mousereleased(x, y, button)
     end
 end
 
@@ -2202,6 +2226,8 @@ function love.mousepressed(x, y, button)
         collectionScreen:mousepressed(x, y, button)
     elseif currentState == "achievements" then
         achievementsScreen:mousepressed(x, y, button)
+    elseif currentState == "credits" then
+        _G.creditsScreen:mousepressed(x, y, button)
     end
 end
 

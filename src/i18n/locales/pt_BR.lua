@@ -9,17 +9,17 @@ return {
 
     menu = {
         title           = "GRIMOIRE",
-        subtitle        = "Cartas arcanas. Decisoes fatais.",
+        subtitle        = "Cartas arcanas. Decisões fatais.",
         play            = "JOGAR",
         continue        = "CONTINUAR",
         achievements    = "CONQUISTAS",
         profile         = "PERFIL",
-        profile_wins    = "Vitorias: {n}",
+        profile_wins    = "Vitórias: {n}",
         profile_runs    = "Corridas: {n}",
         profile_best    = "Melhor: Ato {act} · Andar {floor}",
-        profile_nobest  = "Nenhuma corrida concluida ainda",
-        collection      = "COLECAO",
-        settings        = "CONFIGURACOES",
+        profile_nobest  = "Nenhuma corrida concluída ainda",
+        collection      = "COLEÇÃO",
+        settings        = "CONFIGURAÇÕES",
         quit            = "SAIR",
         instr_mouse     = "Mouse - selecionar cartas",
         instr_space     = "Espaco - comprar do deck",
@@ -115,6 +115,37 @@ return {
         skip = "Pular",
         back = "Voltar",
         take = "Pegar",
+    },
+
+    -- Diálogo de confirmação genérico (src/ui/ConfirmDialog.lua)
+    confirm = {
+        new_run_title = "Começar nova corrida?",
+        new_run_body  = "Você tem uma corrida em andamento. Começar outra apaga a corrida salva para sempre.",
+        new_run_yes   = "Começar do zero",
+        quit_title    = "Sair do jogo?",
+        quit_body     = "Sua corrida fica salva no último ponto de parada.",
+        quit_yes      = "Sair",
+        cancel        = "Cancelar",
+    },
+
+    -- Tela de créditos (components/CreditsScreen.lua) — link no rodapé do menu
+    credits = {
+        link          = "Créditos",
+        title         = "CRÉDITOS",
+        hint          = "Clique ou ESC para voltar",
+        thanks        = "Obrigado por jogar!",
+        role_design   = "Criação, design e programação",
+        name_design   = "Daniel Cortez",
+        role_art      = "Pixel art",
+        name_art      = "Daniel Cortez, com PixelLab",
+        role_audio    = "Música e efeitos sonoros",
+        name_audio    = "Daniel Cortez, com ElevenLabs",
+        role_engine   = "Motor",
+        name_engine   = "LÖVE 11 — licença zlib",
+        role_font     = "Fonte",
+        name_font     = "Press Start 2P, de CodeMan38 — SIL Open Font License 1.1",
+        role_inspired = "Inspirado por",
+        name_inspired = "Slay the Spire · Balatro",
     },
 
     score = {
