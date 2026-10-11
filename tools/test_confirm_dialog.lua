@@ -77,6 +77,27 @@ function M.run(arg)
         t:eq("confirmar sai", quit, 1)
     end
 
+    -- 3b. Aviso (sem `cancel`): um botão só; ENTER/ESC fecham.
+    do
+        local fired = 0
+        CD.show({ title = "x", body = "y", confirm = I18n.t("confirm.ok"),
+            onConfirm = function() fired = fired + 1 end })
+        t:eq("aviso tem UM botao", #CD._state().buttons, 1)
+        CD.keypressed("return")
+        t:falsy("ENTER fecha o aviso", CD.isVisible())
+        t:eq("e confirma uma vez", fired, 1)
+    end
+
+    -- 3c. Save ilegível sai do caminho (Continuar não fica morto no menu).
+    do
+        local SaveManager = require("engine.SaveManager")
+        SaveManager.saveRun({ classId = "warrior" })
+        t:truthy("(pre) ha save", SaveManager.hasRun())
+        t:truthy("quarantineRun move o save", SaveManager.quarantineRun())
+        t:falsy("depois disso o menu nao oferece Continuar", SaveManager.hasRun())
+        t:falsy("sem save, quarantine e no-op", SaveManager.quarantineRun())
+    end
+
     -- 4. Geometria: painel e botões cabem na tela em todo idioma e tamanho.
     do
         local realW, realH = love.graphics.getWidth, love.graphics.getHeight

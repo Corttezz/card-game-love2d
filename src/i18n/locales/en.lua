@@ -113,6 +113,9 @@ return {
         quit_body     = "Your run stays saved at the last checkpoint.",
         quit_yes      = "Quit",
         cancel        = "Cancel",
+        corrupt_title = "The saved run could not be opened",
+        corrupt_body = "The file was damaged and has been set aside. Start a new run with Play.",
+        ok = "OK",
     },
 
     -- Tela de créditos (components/CreditsScreen.lua) — link no rodapé do menu

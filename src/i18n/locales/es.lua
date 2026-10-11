@@ -113,6 +113,9 @@ return {
         quit_body     = "Tu partida queda guardada en el último punto de control.",
         quit_yes      = "Salir",
         cancel        = "Cancelar",
+        corrupt_title = "No se pudo abrir la partida guardada",
+        corrupt_body = "El archivo estaba dañado y se guardó aparte. Empieza una nueva partida en Jugar.",
+        ok = "Entendido",
     },
 
     -- Tela de créditos (components/CreditsScreen.lua) — link no rodapé do menu

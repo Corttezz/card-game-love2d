@@ -113,6 +113,9 @@ return {
         quit_body     = "Dein Lauf bleibt am letzten Kontrollpunkt gespeichert.",
         quit_yes      = "Beenden",
         cancel        = "Abbrechen",
+        corrupt_title = "Der gespeicherte Lauf konnte nicht geöffnet werden",
+        corrupt_body = "Die Datei war beschädigt und wurde beiseitegelegt. Starte einen neuen Lauf mit Spielen.",
+        ok = "Verstanden",
     },
 
     -- Tela de créditos (components/CreditsScreen.lua) — link no rodapé do menu

@@ -126,6 +126,9 @@ return {
         quit_body     = "Sua corrida fica salva no último ponto de parada.",
         quit_yes      = "Sair",
         cancel        = "Cancelar",
+        corrupt_title = "Não foi possível abrir a corrida salva",
+        corrupt_body = "O arquivo estava danificado e foi guardado à parte. Comece uma nova corrida em Jogar.",
+        ok = "Entendi",
     },
 
     -- Tela de créditos (components/CreditsScreen.lua) — link no rodapé do menu

@@ -92,6 +92,14 @@ local function layout()
 
     local half = math.floor((innerW - BTN_GAP) / 2)
     local by = py + ph - PAD - BTN_H
+    -- Sem `cancel` = AVISO: um botão só, centralizado (ESC e ENTER fecham).
+    if not opts.cancel then
+        local okBtn = Button:new(math.floor(px + (pw - half) / 2), by, half, BTN_H,
+            opts.confirm or "", function() close(true) end, nil, 11)
+        okBtn:setOnePress(true)
+        state.buttons = { okBtn }
+        return
+    end
     -- Cancelar à ESQUERDA, confirmar à direita (ação destrutiva longe do
     -- caminho natural do olho; ENTER confirma, ESC cancela).
     local cancelBtn = Button:new(px + PAD, by, half, BTN_H,

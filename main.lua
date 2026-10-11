@@ -1402,7 +1402,16 @@ function love.load(loveArgs)
         Sfx.play("menuOpen")
         if not game.runManager:loadRun() then
             print("Continuar: nenhum save válido")
+            -- Save ilegível sai do caminho (vira .corrupt) e o jogador SABE:
+            -- antes o Continuar ficava no menu e cada clique falhava calado.
+            require("engine.SaveManager").quarantineRun()
             menu:show()
+            local T = require("src.i18n.I18n").t   -- inline: teto de upvalues
+            require("src.ui.ConfirmDialog").show({
+                title   = T("confirm.corrupt_title"),
+                body    = T("confirm.corrupt_body"),
+                confirm = T("confirm.ok"),
+            })
             return
         end
         currentState = "playing"

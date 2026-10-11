@@ -113,6 +113,9 @@ return {
         quit_body     = "Votre partie reste sauvegardée au dernier point de contrôle.",
         quit_yes      = "Quitter",
         cancel        = "Annuler",
+        corrupt_title = "Impossible d'ouvrir la partie sauvegardée",
+        corrupt_body = "Le fichier était endommagé et a été mis de côté. Commencez une nouvelle partie avec Jouer.",
+        ok = "Compris",
     },
 
     -- Tela de créditos (components/CreditsScreen.lua) — link no rodapé do menu
