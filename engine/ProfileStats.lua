@@ -45,12 +45,18 @@ local function load()
     cache.cardsSeen = {}
     cache.winsByClass = {}
     if love.filesystem.getInfo(PATH) then
-        local chunk = love.filesystem.load(PATH)
+        -- Perfil e DADO, nunca codigo: loadDataChunk recusa bytecode e roda
+        -- o chunk sem acesso a os/io (mesma regra dos outros saves).
+        local chunk, err = SaveManager.loadDataChunk(PATH)
         if chunk then
             local ok, data = pcall(chunk)
             if ok and type(data) == "table" then
                 for k, v in pairs(data) do cache[k] = v end
+            else
+                print("[ProfileStats] perfil corrompido em " .. PATH .. ", usando padrao")
             end
+        else
+            print("[ProfileStats] parse falhou em " .. PATH .. ": " .. tostring(err))
         end
     end
     return cache
