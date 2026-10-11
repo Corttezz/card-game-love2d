@@ -75,3 +75,24 @@ grama. Perf_probe antes/depois ficou dentro do ruído da máquina (+0-1 ms).
 - Sombras de nuvem continuam BANIDAS (ciclo 26 do worldroad_scene) — clima
   não é desculpa pra elas voltarem.
 - Bioma novo → preset em `WeatherEngine.PRESETS[id]` (o teste cobra).
+
+## Auditoria dos motores existentes (Out/2026, pedido do dono)
+| motor | estado | o que mudou | impacto |
+|---|---|---|---|
+| GrassField | forte, lê bem em 1080p/1440p | `windAt` virou o vento ÚNICO: árvores (cisalhamento) e clima usam a mesma rajada | rajada atravessa capim → árvore → ar |
+| LightEngine | poças medidas OK (`measure_lightpool` 1/4/6: delta máx 236-255, médio 14-22) | `modulateAmbient` (tempestade escurece, raio devolve até ~branco); brasas = micro-luz | raio "acende o mundo" sem quebrar multiply-only |
+| ShadowEngine | sombras escalam com o dono (ok em tela grande) | nada — já move com sol/horário | — |
+| LuminaireEngine | catálogo por bioma, poças passam | nada; partícula que cruza a poça fica acesa DE GRAÇA (lightmap multiplica o clima) | floco/gota brilham perto do poste |
+| QuadMesh | base do chão/estrada/grama | reutilizado pelo clima (1 lote, 1 draw por fatia) | custo ~0.6 ms no pior caso |
+| CRT | scanline/ruído por `resolution` (escala com a tela) | nada | — |
+| holo/foil | só cartas | fora do escopo do mundo | — |
+
+## Inimigo da estrada em tela grande (mesma sessão)
+O mundo escala com a altura da área; o EnemyRenderer desenha 250/330 px
+FIXOS → em 2560x1440 o monstro ficava ~25% menor que o mundo. Fix no lado
+WorldRoad/GameplayScene: `WorldRoad.enemyScreenK(areaH) = clamp(areaH/1030,
+1, 1.4)` multiplicado no `sizeK` do inimigo da estrada E nos dois passes do
+billboard da viagem (handoff sem pulo). 768 e 1080p (área 1028) = 1.0
+exato. Prova: `ENEMY_SCENE_VIRTUAL=2560x1440 love . screenshot_enemy_scene
+1_battle` (tela falsificada num canvas — setMode acima do desktop trava).
+Trava em `test_enemy_stage`.

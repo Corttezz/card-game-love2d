@@ -24,6 +24,19 @@ function M.run(mode)
     local act = tonumber(mode:match("^(%d+)")) or 1
     local nodeType = mode:match("^%d+_(%a[%a_]*)") or "boss"
 
+    -- ENEMY_SCENE_VIRTUAL=2560x1440: tela FALSIFICADA maior que o monitor
+    -- (setMode acima do desktop trava — mesmo truque do boss_rooms). Desenha
+    -- num canvas desse tamanho com getWidth/getHeight mentindo.
+    local vw, vh = (os.getenv("ENEMY_SCENE_VIRTUAL") or ""):match("^(%d+)x(%d+)$")
+    local vcanvas
+    if vw then
+        vw, vh = tonumber(vw), tonumber(vh)
+        vcanvas = love.graphics.newCanvas(vw, vh)
+        love.graphics.getWidth = function() return vw end
+        love.graphics.getHeight = function() return vh end
+        love.graphics.getDimensions = function() return vw, vh end
+    end
+
     local I18n = require("src.i18n.I18n")
     I18n.init()
     require("src.ui.PixelCanvas").enableNearest()
@@ -72,8 +85,17 @@ function M.run(mode)
         local IFX = require("src.ui.InteriorFX"); IFX.update(1 / 30, IFX.hallFor(act))
     end
 
+    if vcanvas then love.graphics.setCanvas(vcanvas) end
     love.graphics.clear(0, 0, 0, 1)
     GameplayScene.draw()
+    if vcanvas then
+        love.graphics.setCanvas()
+        local path = "enemy_scene_" .. mode .. "_" .. vw .. "x" .. vh .. ".png"
+        vcanvas:newImageData():encode("png", path)
+        print("[screenshot] salvo em save-dir: " .. path)
+        love.event.quit()
+        return
+    end
 
     love.graphics.captureScreenshot(function(imageData)
         local path = "enemy_scene_" .. mode .. ".png"

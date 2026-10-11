@@ -284,6 +284,17 @@ function M.run()
         WorldRoad.battleRelFor(x, y, w, h, 5000), WorldRoad.BATTLE_REL_NEAR)
     t:near("tamanho no palco histórico é 1.0",
         WorldRoad.battleSizeK(WorldRoad.ENEMY_SIZE_REF_REL), 1, 1e-9)
+    -- tela grande (Out/2026): o inimigo acompanha o mundo acima de 1080p;
+    -- 4:3 e 1080p (área = altura − TopBar 52) ficam exatamente como eram
+    t:eq("1024x768: escala de tela 1", WorldRoad.enemyScreenK(768 - 52), 1)
+    t:eq("1920x1080: escala de tela 1", WorldRoad.enemyScreenK(1080 - 52), 1)
+    local k1440 = WorldRoad.enemyScreenK(1440 - 52)
+    t:truthy(string.format("2560x1440: inimigo cresce com o mundo (%.2f)", k1440),
+        k1440 > 1.3 and k1440 <= 1.4)
+    t:eq("teto 1.4 em telas enormes", WorldRoad.enemyScreenK(4000), 1.4)
+    local gp = love.filesystem.read("src/scenes/GameplayScene.lua") or ""
+    t:truthy("GameplayScene aplica enemyScreenK no inimigo da estrada",
+        gp:find("WorldRoad.enemyScreenK(height - topBarHeight)", 1, true) ~= nil)
 
     return t:done()
 end

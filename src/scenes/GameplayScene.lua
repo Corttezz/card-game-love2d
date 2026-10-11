@@ -474,7 +474,8 @@ function GameplayScene.draw()
         -- a distância de parada (WorldRoad.battleSizeK) — parar mais ao
         -- fundo sem encolher deixaria um gigante longe, quebrando a escala
         -- das árvores em volta.
-        local sizeK = WorldRoad.battleSizeK and WorldRoad.battleSizeK() or 1
+        local sizeK = (WorldRoad.battleSizeK and WorldRoad.battleSizeK() or 1)
+            * WorldRoad.enemyScreenK(height - topBarHeight)   -- tela grande: cresce com o mundo
         WorldRoad.setBattleEnemyDraw(function()
             enemyBbox = EnemyRenderer.draw(game, enemyCx, enemyCy,
                 { sizeK = sizeK })

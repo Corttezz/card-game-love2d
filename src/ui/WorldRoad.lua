@@ -1333,6 +1333,18 @@ function WorldRoad.battleSizeK(rel)
     return (g.persp(t) / g.persp(t0)) ^ WorldRoad.ENEMY_SIZE_PERSP
 end
 
+-- TELA GRANDE (Out/2026, fullscreen nativo): o mundo escala com a altura
+-- da área (g.scaleAt ∝ h) mas o EnemyRenderer desenha em pixels FIXOS
+-- (250/330) — em 2560x1440 o monstro da estrada ficava ~25% menor que o
+-- mundo em volta ("boneco colado no cenário"). Mesma regra do salão
+-- (GameplayScene.hallScreenK): acima da área de 1080p o inimigo cresce
+-- junto, com teto 1.4; abaixo nada muda (4:3 e 1080p ficam como estão).
+WorldRoad.ENEMY_SCREEN_REF_H = 1030   -- altura da área do mundo em 1920x1080
+function WorldRoad.enemyScreenK(areaH)
+    if not areaH then return 1 end
+    return math.max(1, math.min(1.4, areaH / WorldRoad.ENEMY_SCREEN_REF_H))
+end
+
 -- Distância de parada pra que o PÉ do inimigo (no centro da estrada) caia
 -- em footLimitY ou ACIMA (menor y). Pura: inverte a mesma geometria do
 -- getRoadAnchor (sy = crest + (bottom - crest)·t, t = (1 - rel/crista)^pow).
@@ -2705,7 +2717,7 @@ local function drawEncounterBehind(g, x, w, camZ)
     -- em t=0 (antes era 0.5 fixo → o inimigo ENCOLHIA de repente ao cruzar a
     -- crista e ficava maior que árvore — quebrava a esfera)
     local tBattle = g.tOf(WorldRoad.BATTLE_REL) or 0.3
-    local s = e.targetScale * WorldRoad.battleSizeK()
+    local s = e.targetScale * WorldRoad.battleSizeK() * WorldRoad.enemyScreenK(g.h)
         * (g.persp(0) / math.max(0.01, g.persp(tBattle)))
     -- v8.2: centro por conteúdo + pé cravado (consistente com o passe
     -- frontal — sem pulo ao cruzar a crista)
@@ -4325,7 +4337,7 @@ local function drawEncounterFront(g, x, w, camZ)
     local k = math.min(1.02, g.persp(t) / math.max(0.01, g.persp(tBattle)))
     -- battleSizeK: no BATTLE_REL o billboard tem o MESMO tamanho que o
     -- EnemyRenderer vai desenhar (handoff sem pulo, qualquer distância)
-    local s = e.targetScale * WorldRoad.battleSizeK() * k
+    local s = e.targetScale * WorldRoad.battleSizeK() * WorldRoad.enemyScreenK(g.h) * k
     -- v8.2: centro por conteúdo + pé cravado no chão (a margem embaixo do
     -- canvas fazia o monstro "surgir flutuando lá do fundo")
     -- Out/2026: pé do QUADRO atual (framePads) + afundado footSink, mesma
