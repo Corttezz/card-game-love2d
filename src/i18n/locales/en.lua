@@ -215,7 +215,7 @@ return {
 
     map = {
         title = "Choose the next path",
-        hint  = "Click an option OR press 1 / 2 / 3.  ESC returns to the menu.",
+        hint  = "Click an option OR press 1 / 2 / 3.  ESC pauses.",
     },
 
     achievements = {
@@ -251,6 +251,8 @@ return {
         damage       = "DMG: ",
         phase        = "PHASE: ",
         threat_label = "THREAT:",
+        jokers_frame = "JOKERS {n}/{max}  (J)",
+        jokers_bench = "+{n} benched",
     },
 
     -- Short labels for the orb row (src/ui/OrbRow.lua): what the orb DID when it
@@ -321,6 +323,9 @@ return {
         effects      = "Effects:",
         no_desc      = "(no description)",
         forged       = "Forged +{n}",
+        atk_short    = "ATK",
+        def_short    = "DEF",
+        class_basic  = "Neutral",
     },
 
     card_type = {
@@ -394,6 +399,7 @@ return {
         voucher_effect      = "Effect",
         detail_prefocus     = "Hover to compare",
         detail_stale        = "last offer you looked at",
+        detail_buy          = "BUY",
     },
 
     event = {
@@ -832,6 +838,9 @@ return {
         reflect          = "Reflect: {value} dmg",
         regen            = "Regen +{value} HP",
         penalty          = "Penalty -{value} HP",
+        shop_skipped     = "+${n} for skipping the shop",
+        pack_cards_added = "Cards added to deck: {n}",
+        pack_opened      = "{name} opened",
     },
 
     -- ======== COMBOS (ComboSystem rule labels) ========

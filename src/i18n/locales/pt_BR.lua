@@ -22,7 +22,7 @@ return {
         settings        = "CONFIGURAÇÕES",
         quit            = "SAIR",
         instr_mouse     = "Mouse - selecionar cartas",
-        instr_space     = "Espaco - comprar do deck",
+        instr_space     = "Espaço - comprar do deck",
         instr_restart   = "R - reiniciar a batalha",
         instr_jokers    = "Jokers ficam ativos pelo resto da corrida",
     },
@@ -82,7 +82,7 @@ return {
     top_bar = {
         interest_suffix = "(+{amount} juros)",
         deck_cards      = "{n} cartas",
-        hand_suffix     = "({n} na mao)",
+        hand_suffix     = "({n} na mão)",
         score_label        = "pontos",
         score_record       = "RECORDE!",
         act             = "ATO {n}",
@@ -174,7 +174,7 @@ return {
         attack    = "Investida",
         strong    = "GOLPE BRUTAL",
         defend    = "Postura Defensiva",
-        buff      = "Furia Crescente",
+        buff      = "Fúria Crescente",
         buff_gain = "+2 DANO",
     },
 
@@ -191,10 +191,10 @@ return {
 
     -- Tipos de nó do mapa (MapManager.NODE_META guarda só o PT de fallback).
     node_type = {
-        battle    = { label = "Batalha",   desc = "Combate padrao. Recompensa: 1 carta + ouro." },
+        battle    = { label = "Batalha",   desc = "Combate padrão. Recompensa: 1 carta + ouro." },
         elite     = { label = "Elite",     desc = "Inimigo forte. Recompensa: carta garantida incomum+." },
         mini_boss = { label = "Mini-Boss", desc = "Meio do ato. Recompensa rara." },
-        boss      = { label = "BOSS",      desc = "Fim do ato. Recompensa lendaria + reliquia." },
+        boss      = { label = "BOSS",      desc = "Fim do ato. Recompensa lendária + relíquia." },
         shop      = { label = "Loja",      desc = "Compre cartas e upgrades." },
         rest      = { label = "Descanso",  desc = "Cure 30% HP ou forje uma carta." },
         event     = { label = "Evento",    desc = "Encontro misterioso. Arrisque." },
@@ -225,15 +225,15 @@ return {
         },
         forge_card     = {
             name   = "Forja",
-            effect = "+1 NIVEL",
+            effect = "+1 NÍVEL",
             desc   = "Aprimora uma carta do seu deck. Você escolhe qual na hora da compra.",
             flavor = "O martelo lembra o que a página esqueceu.",
         },
     },
 
     map = {
-        title = "Escolha o proximo caminho",
-        hint  = "Clique numa opcao OU pressione 1 / 2 / 3.  ESC volta ao menu.",
+        title = "Escolha o próximo caminho",
+        hint  = "Clique numa opção OU pressione 1 / 2 / 3.  ESC pausa.",
     },
 
     achievements = {
@@ -268,7 +268,9 @@ return {
         hero         = "HERÓI",
         damage       = "DANO: ",
         phase        = "FASE: ",
-        threat_label = "AMEACA:",
+        threat_label = "AMEAÇA:",
+        jokers_frame = "CORINGAS {n}/{max}  (J)",
+        jokers_bench = "+{n} na bancada",
     },
 
     -- Rotulos curtos da fileira de orbes (src/ui/OrbRow.lua): o que o orbe FEZ
@@ -284,49 +286,49 @@ return {
     rest = {
         -- Menu da fogueira
         camp_title   = "Acampamento",
-        camp_sub     = "A fogueira crepita. Recupere o folego ou trabalhe o aco.",
+        camp_sub     = "A fogueira crepita. Recupere o fôlego ou trabalhe o aço.",
         camp_hint    = "Escolha: descansar OU forjar (uma vez por acampamento)",
         heal_title   = "Descansar",
         heal_sub     = "+30% HP",
         heal_result  = "Curou {n} HP.",
         forge_title  = "Forjar",
-        forge_sub    = "+1 nivel em uma carta",
+        forge_sub    = "+1 nível em uma carta",
         forge_detail = "Melhora o que a carta TEM (sem limite)",
 
         -- Picker: forjar
         pick_forge_title = "Forjar",
         pick_forge_sub   = "Escolha uma carta para aprimorar.",
         pick_forge_hint  = "Clique numa carta para forjar - Voltar cancela",
-        pick_forge_empty = "Nenhuma carta do grimorio pode ir pra bigorna agora.",
+        pick_forge_empty = "Nenhuma carta do grimório pode ir pra bigorna agora.",
 
         -- Picker: remover
         pick_remove_title = "Remover carta",
-        pick_remove_sub   = "Escolha uma carta para REMOVER do grimorio (permanente).",
+        pick_remove_sub   = "Escolha uma carta para REMOVER do grimório (permanente).",
         pick_remove_hint  = "Clique numa carta para remover - Voltar cancela",
-        pick_remove_empty = "O grimorio nao tem paginas para arrancar.",
+        pick_remove_empty = "O grimório não tem páginas para arrancar.",
 
         -- Picker: duplicar
         pick_dup_title = "Duplicar carta",
-        pick_dup_sub   = "Escolha uma carta para ganhar uma COPIA dela.",
+        pick_dup_sub   = "Escolha uma carta para ganhar uma CÓPIA dela.",
         pick_dup_hint  = "Clique numa carta para duplicar - Voltar cancela",
-        pick_dup_empty = "O grimorio esta vazio.",
+        pick_dup_empty = "O grimório está vazio.",
 
         -- Paginacao da grade
         page_prev = "< Anterior",
-        page_next = "Proxima >",
+        page_next = "Próxima >",
 
         -- Painel de bigorna (hover) + placa de delta
-        warn_remove = "Sai do grimorio PARA SEMPRE.",
-        warn_dup    = "Voce ganha OUTRA copia dela.",
+        warn_remove = "Sai do grimório PARA SEMPRE.",
+        warn_dup    = "Você ganha OUTRA cópia dela.",
         hp_abbr     = "HP",
         forge_level = "Forja",
 
         -- Resultados
-        remove_too_thin = "O grimorio esta magro demais para perder paginas.",
-        removed         = "Removida do grimorio: {name}",
-        duplicated      = "Copia criada: {name}",
-        dup_popup       = "+1 COPIA",
-        forge_capped    = "Ja no nivel maximo: {name}",
+        remove_too_thin = "O grimório está magro demais para perder páginas.",
+        removed         = "Removida do grimório: {name}",
+        duplicated      = "Cópia criada: {name}",
+        dup_popup       = "+1 CÓPIA",
+        forge_capped    = "Já no nível máximo: {name}",
         forged          = "Forjou: {name} +{lvl}",
         forged_gains    = "({parts} no total)",
     },
@@ -337,8 +339,11 @@ return {
         damage       = "Dano: ",
         defense      = "Defesa: ",
         effects      = "Efeitos:",
-        no_desc      = "(sem descricao)",
+        no_desc      = "(sem descrição)",
         forged       = "Forjada +{n}",
+        atk_short    = "ATQ",
+        def_short    = "DEF",
+        class_basic  = "Neutra",
     },
 
     card_type = {
@@ -347,7 +352,7 @@ return {
         joker   = "JOKER",
         effect  = "EFEITO",
         passive = "PASSIVA",
-        action  = "ACAO",
+        action  = "AÇÃO",
         unknown = "CARTA",
     },
 
@@ -368,17 +373,17 @@ return {
     },
 
     rarity = {
-        basic     = "Basica",
+        basic     = "Básica",
         common    = "Comum",
         uncommon  = "Incomum",
         rare      = "Rara",
-        legendary = "Lendaria",
+        legendary = "Lendária",
     },
 
     reward = {
-        shop_title         = "LOJA DE RELIQUIAS",
-        rewards_title      = "ESPOLIOS DA BATALHA",
-        rewards_subtitle   = "Escolha 1 carta para o seu grimorio — ou siga sem carta",
+        shop_title         = "LOJA DE RELÍQUIAS",
+        rewards_title      = "ESPÓLIOS DA BATALHA",
+        rewards_subtitle   = "Escolha 1 carta para o seu grimório — ou siga sem carta",
         skip_no_card       = "Seguir sem carta",
         affinity_badge     = "AFINIDADE",
         affinity_line      = "Afinidade com seu deck: {tags}",
@@ -393,7 +398,7 @@ return {
         confirm_title      = "Confirmar Compra",
         insufficient_gold  = "Ouro insuficiente!",
         gold_transition    = "Ouro: ${from} -> ${to}",
-        instructions       = "Clique escolhe · botao DIREITO inspeciona · D abre seu deck",
+        instructions       = "Clique escolhe · botão DIREITO inspeciona · D abre seu deck",
         shop_refreshed     = "Loja atualizada!",
         refresh_fail       = "Ouro insuficiente!",
         sold               = "VENDIDO",
@@ -401,7 +406,7 @@ return {
         extra_draw         = "Cartas extras por turno: +{n}",
         atk_bonus          = "Dano de ataque: +{n}",
         def_bonus          = "Defesa: +{n}",
-        joker_run_only     = "Coringas so podem ser adquiridos durante uma corrida",
+        joker_run_only     = "Coringas só podem ser adquiridos durante uma corrida",
         -- Split-view da loja: rotulos que antes so existiam como fallback PT
         -- cravado no CardDetailPanel/CardRewardScreen — em alemao a vitrine
         -- mostrava "Reliquia" no meio do texto traduzido.
@@ -413,11 +418,12 @@ return {
         -- Etiquetas da faixa sob o slot (mesma linguagem do "◆ COMUM ◆" das
         -- cartas). Ja em CAIXA ALTA e sem acento: o :upper() de Lua nao sobe
         -- vogal acentuada e sairia "RELíQUIA".
-        badge_relic         = "RELIQUIA",
+        badge_relic         = "RELÍQUIA",
         badge_pack          = "PACOTE",
         voucher_effect      = "Efeito",
         detail_prefocus     = "Passe o mouse pra comparar",
-        detail_stale        = "ultima oferta observada",
+        detail_stale        = "última oferta observada",
+        detail_buy          = "COMPRAR",
     },
 
     event = {
@@ -661,14 +667,14 @@ return {
 
     game_over = {
         title        = "GAME OVER",
-        final_score  = "Pontuacao Final: {score}",
+        final_score  = "Pontuação Final: {score}",
         instructions = "Pressione R para tentar novamente ou ESC para voltar ao menu",
     },
 
     victory = {
-        title        = "VITORIA!",
-        final_score  = "Pontuacao Final: {score}",
-        instructions = "Pressione ESPACO para jogar novamente ou ESC para voltar ao menu",
+        title        = "VITÓRIA!",
+        final_score  = "Pontuação Final: {score}",
+        instructions = "Pressione ESPAÇO para jogar novamente ou ESC para voltar ao menu",
     },
 
     play_button = {
@@ -733,14 +739,14 @@ return {
     -- name: label curto mostrado no header do tooltip
     -- desc: explicação da mecânica, suporta interpolação {stacks}/{duration}
     status = {
-        score      = { name = "Pontuacao", desc = "Voce ganha pontos ao VENCER batalhas: base pelo inimigo derrotado, com bonus por vencer rapido, disparar combos de cartas e nao tomar dano. Recorde atual: {best}." },
+        score      = { name = "Pontuação", desc = "Você ganha pontos ao VENCER batalhas: base pelo inimigo derrotado, com bônus por vencer rápido, disparar combos de cartas e não tomar dano. Recorde atual: {best}." },
         fury       = { name = "Fúria", desc = "Inimigo enfurecido: +{stacks} de dano permanente acumulado (cresce a cada turno, até +10)." },
-        intent_attack  = { name = "Vai Atacar", desc = "No proximo turno o inimigo ataca causando {value} de dano. Bloqueio absorve." },
-        intent_strong  = { name = "Ataque Forte", desc = "GOLPE PESADO vindo: {value} de dano no proximo turno. Defenda-se!" },
-        intent_defend  = { name = "Vai Defender", desc = "No proximo turno o inimigo ganha {value} de armadura (dura 1 turno)." },
-        intent_buff    = { name = "Vai se Enfurecer", desc = "No proximo turno o inimigo ganha +{value} de dano PERMANENTE." },
-        passive_warrior= { name = "Passiva: Impeto", desc = "Jogue 2 ou mais ataques no mesmo turno: +1 de Forca nesta batalha." },
-        passive_mage   = { name = "Passiva: Conduite", desc = "Voce comeca cada batalha com um orbe de Raio (4) canalizado e 2 de Foco." },
+        intent_attack  = { name = "Vai Atacar", desc = "No próximo turno o inimigo ataca causando {value} de dano. Bloqueio absorve." },
+        intent_strong  = { name = "Ataque Forte", desc = "GOLPE PESADO vindo: {value} de dano no próximo turno. Defenda-se!" },
+        intent_defend  = { name = "Vai Defender", desc = "No próximo turno o inimigo ganha {value} de armadura (dura 1 turno)." },
+        intent_buff    = { name = "Vai se Enfurecer", desc = "No próximo turno o inimigo ganha +{value} de dano PERMANENTE." },
+        passive_warrior= { name = "Passiva: Ímpeto", desc = "Jogue 2 ou mais ataques no mesmo turno: +1 de Força nesta batalha." },
+        passive_mage   = { name = "Passiva: Conduíte", desc = "Você começa cada batalha com um orbe de Raio (4) canalizado e 2 de Foco." },
         passive_rogue  = { name = "Passiva: Toxinas", desc = "O primeiro ataque de cada turno aplica 1 de Veneno (2 turnos)." },
         topbar_gold = { name = "Ouro", desc = "Compra cartas, forjas e melhorias na loja. Juros: +$1 a cada $5 guardados (máx +$5), pagos ao vencer batalhas. Próximo pagamento: +${interest}." },
         topbar_deck = { name = "Grimório", desc = "{deck} cartas no seu grimório — {hand} na mão agora. No fim do turno a mão é descartada e você compra novas. Clique para folhear o deck." },
@@ -752,13 +758,13 @@ return {
         vulnerable = { name = "Vulnerável", desc = "Recebe 50% mais dano de ataques. Dura {duration} turno(s)." },
         strength   = { name = "Força",      desc = "Ataques causam +{stacks} de dano adicional enquanto ativo." },
         dexterity  = { name = "Destreza",   desc = "Cartas de defesa ganham +{stacks} de bloqueio adicional." },
-        focus      = { name = "Foco",       desc = "+{stacks} de potencia em cada pulso e evocacao de orbe (esta batalha)." },
+        focus      = { name = "Foco",       desc = "+{stacks} de potência em cada pulso e evocação de orbe (esta batalha)." },
         orb_lightning = { name = "Orbe de Raio",   desc = "Pulsa {stacks} de dano no fim do seu turno. Evocar causa {duration} de dano." },
         orb_ice       = { name = "Orbe de Gelo",   desc = "Pulsa {stacks} de Bloqueio no fim do seu turno. Evocar da {duration} de Bloqueio." },
         orb_fire      = { name = "Orbe de Fogo",   desc = "Pulsa {stacks} de dano no fim do seu turno. Evocar causa {duration} de dano e queima." },
-        orb_dark      = { name = "Orbe Sombrio",   desc = "Nao pulsa: cresce +2 por turno. Evocar causa {duration} de dano (dobro do valor)." },
+        orb_dark      = { name = "Orbe Sombrio",   desc = "Não pulsa: cresce +2 por turno. Evocar causa {duration} de dano (dobro do valor)." },
         orb_holy      = { name = "Orbe Sagrado",   desc = "Pulsa {stacks} de cura no fim do seu turno. Evocar cura {duration} HP." },
-        orb_empty     = { name = "Slot de Orbe",   desc = "Vazio. Cartas de Canalizar criam orbes aqui (maximo {stacks}). Cheio, canalizar evoca o mais antigo." },
+        orb_empty     = { name = "Slot de Orbe",   desc = "Vazio. Cartas de Canalizar criam orbes aqui (máximo {stacks}). Cheio, canalizar evoca o mais antigo." },
         burn       = { name = "Queimadura", desc = "Causa {stacks} de dano de fogo por turno." },
         -- Estados que mudavam regras sem aparecer na tela (Set/2026).
         -- `desc_permanent` = fonte é coringa/passiva (não tem duração pra mostrar).
@@ -799,7 +805,7 @@ return {
         combo_announce       = "COMBO! {combo}",
         combo_debuff         = "Combo {combo}: +{stacks} {name}",
         combo_heal           = "Combo {combo}: +{value} HP",
-        combo_orb            = "Combo {combo}: orbe bonus evocado",
+        combo_orb            = "Combo {combo}: orbe bônus evocado",
         damage_dealt         = "Dano: {value}",
         deck_changed         = "Deck alterado para: {name}",
         deck_size            = "Deck: {value} cartas",
@@ -857,17 +863,20 @@ return {
         def_bonus        = "+{value} defesa",
         healed           = "Curou {value} HP!",
         mana_restored    = "Restaurou {value} mana!",
-        max_mana_up      = "Mana maxima +{value}!",
+        max_mana_up      = "Mana máxima +{value}!",
         armor_up         = "+{value} armadura!",
-        magic_damage     = "Dano magico: {value}",
+        magic_damage     = "Dano mágico: {value}",
         drew_cards       = "Comprou {value} cartas!",
         debuff_applied   = "Aplicou {name} x{duration}",
         discarded        = "Descartou {value} carta(s)",
-        armor_capped     = "Bloqueio no maximo ({max})! {wasted} desperdicado",
+        armor_capped     = "Bloqueio no máximo ({max})! {wasted} desperdiçado",
         lifesteal        = "Lifesteal +{value} HP",
         reflect          = "Reflexo: {value} dmg",
         regen            = "Regen +{value} HP",
         penalty          = "Penalidade -{value} HP",
+        shop_skipped     = "+${n} por pular a loja",
+        pack_cards_added = "Cartas adicionadas ao deck: {n}",
+        pack_opened      = "{name} aberto",
     },
 
     -- ======== COMBOS (labels das regras do ComboSystem) ========
@@ -878,11 +887,11 @@ return {
         triple_strike   = "Triplo Golpe",
         armor_tower     = "Torre de Armaduras",
         poison_stack    = "Veneno Concentrado",
-        channel_burst   = "Explosao Arcana",
+        channel_burst   = "Explosão Arcana",
         cycle_motion    = "Em Movimento",
         finisher_chain  = "Remate",
         lifesteal_burst = "Ferida Vital",
-        magic_focus     = "Convergencia Arcana",
+        magic_focus     = "Convergência Arcana",
         thorn_reflex    = "Reflexos Espinhados",
         tempestade      = "Tempestade",
         zero_absoluto   = "Zero Absoluto",
