@@ -1065,6 +1065,19 @@ function love.load(loveArgs)
         return
     end
 
+    -- Bateria de balanceamento (piloto v6, relatorio agregado).
+    --   love . balance_sim [runsPorClasse] [classes] [seedBase] [v6|v5]
+    if loveArgs and loveArgs[1] == "balance_sim" then
+        require("tools.balance_sim").run(loveArgs[2], loveArgs[3], loveArgs[4], loveArgs[5])
+        return
+    end
+    -- Banco de batalhas (A/B so do COMBATE do piloto, sem ruido de run).
+    --   love . balance_bench [runsGravadas] [classes] [seed] [v5,v6]
+    if loveArgs and loveArgs[1] == "balance_bench" then
+        require("tools.balance_bench").run(loveArgs[2], loveArgs[3], loveArgs[4], loveArgs[5])
+        return
+    end
+
     -- Validacao do catalogo de cartas (Fase 7).
     --   love . validate_cards
     if loveArgs and loveArgs[1] == "validate_cards" then

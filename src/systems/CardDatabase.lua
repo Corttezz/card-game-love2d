@@ -160,6 +160,14 @@ function CardDatabase:createCardInstance(cd)
             end
         end
         instance.effects = copy
+        -- O `passive` compilado acima fechava sobre `cd.effects` (o CATALOGO):
+        -- quem resolvesse a carta pelo passive (caminho sem fila de beats)
+        -- ignorava a FORJA, que so escreve na copia. Recompila sobre a copia
+        -- (auditoria de cartas Out/2026: a descricao forjada tem que valer
+        -- em qualquer caminho).
+        if cd.type == "effect" or cd.type == "joker" then
+            instance.passive = self:createEffectFunction(instance.effects)
+        end
     end
     instance.class = cd.class
     -- Normaliza tags na criacao: carrega do card-data ou deriva do tipo.

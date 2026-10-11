@@ -190,14 +190,21 @@ local function cardVars(card)
     }
     local effects = card.effects
     if type(effects) == "table" then
-        local suffix = { [1] = "", [2] = "2", [3] = "3" }
-        for i = 1, 3 do
+        -- Auditoria de cartas (Out/2026): ate o 4o efeito (Tempestade
+        -- Primordial tinha "+1 de Foco" cravado no 4o) e {pct} = percentual
+        -- de um *_multiplier (1.5 -> 50), pro "+50%" acompanhar o dado.
+        local suffix = { [1] = "", [2] = "2", [3] = "3", [4] = "4" }
+        for i = 1, 4 do
             local e = effects[i]
             if e then
                 local s = suffix[i]
                 vars["value" .. s]    = e.value
                 vars["stacks" .. s]   = e.stacks
                 vars["duration" .. s] = e.duration
+                if type(e.value) == "number" and type(e.type) == "string"
+                    and e.type:find("_multiplier$") then
+                    vars["pct" .. s] = math.floor((e.value - 1) * 100 + 0.5)
+                end
             end
         end
     end
@@ -212,13 +219,23 @@ function I18n.effectDesc(effect)
     if not effect then return "" end
     local t = effect.type
     local vars = {
-        value  = effect.value,
-        stacks = effect.stacks,
-        target = effect.target,
+        value    = effect.value,
+        stacks   = effect.stacks or 1,
+        target   = effect.target,
+        duration = effect.duration or 2,
     }
-    if t and type(effect.value) == "string" then
+    if type(effect.value) == "number" and t and t:find("_multiplier$") then
+        vars.pct = math.floor((effect.value - 1) * 100 + 0.5)
+    end
+    -- Compostos (auditoria de cartas Out/2026): o IDENTIFICADOR que muda o
+    -- texto pode morar em `value` (apply_debuff "poison"), `orbType`
+    -- (channel_orb "ice") ou `debuffName` (on_attack_debuff "poison"). Antes
+    -- so `value` era olhado e todo canalizar virava "Canaliza 1 orbe".
+    local qualifier = (type(effect.value) == "string" and effect.value)
+        or effect.orbType or effect.debuffName
+    if t and qualifier then
         local MISS = "\0__miss__\0"
-        local compound = "effects." .. t .. "_" .. effect.value
+        local compound = "effects." .. t .. "_" .. qualifier
         local v = I18n.t(compound, vars, MISS)
         if v ~= MISS then return v end
     end
