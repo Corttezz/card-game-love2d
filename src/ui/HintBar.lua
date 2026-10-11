@@ -25,13 +25,17 @@ local function fit(text, maxW, sizes)
     -- menor fonte e ainda largo: trunca
     local out = text
     while #out > 4 and font:getWidth(out .. "…") > maxW do
-        -- remove byte a byte respeitando UTF-8 (continuation bytes 0x80-0xBF)
-        repeat
-            out = out:sub(1, -2)
-        until #out == 0 or out:byte(-1) < 0x80 or out:byte(-1) > 0xBF
+        -- remove UM CARACTERE inteiro (não um byte). A versão antiga parava
+        -- no byte-líder de um caractere acentuado e deixava-o órfão: UTF-8
+        -- inválido, e a LÖVE derruba o jogo no getWidth/print.
+        local cut = require("utf8").offset(out, -1)
+        if not cut or cut <= 1 then out = "" break end
+        out = out:sub(1, cut - 1)
     end
     return font, out .. "…"
 end
+
+HintBar._fit = fit   -- exposto pro teste de truncamento UTF-8
 
 function HintBar.draw(text, opts)
     if not text or text == "" then return end

@@ -70,6 +70,22 @@ function M.run()
     t:check("varreu os 5 locales de verdade (" .. total .. " textos > 2000)", total > 2000)
     for i = 1, math.min(#missing, 40) do print("    " .. missing[i]) end
     t:eq("textos com caractere que a fonte NAO desenha (sai buraco na tela)", #missing, 0)
+    -- Caixa alta que entende acento (rótulos forçados em maiúsculas).
+    local TextCase = require("src.i18n.TextCase")
+    t:eq("upper com acento (fr)", TextCase.upper("légendaire"), "LÉGENDAIRE")
+    t:eq("upper com acento (pt)", TextCase.upper("ação"), "AÇÃO")
+    t:eq("upper com acento (de)", TextCase.upper("zurück"), "ZURÜCK")
+    t:eq("upper ASCII intacto", TextCase.upper("Pegar"), "PEGAR")
+
+    -- Truncamento da HintBar nunca deixa UTF-8 quebrado (crash da LÖVE).
+    local HintBar = require("src.ui.HintBar")
+    local utf8 = require("utf8")
+    local bad = 0
+    for w = 40, 400, 7 do
+        local _, out = HintBar._fit("Ação ÉCHAP é longuíssimo é é é é é é é é é é é é é", w, { 8 })
+        if not utf8.len(out) then bad = bad + 1 end
+    end
+    t:eq("truncar texto acentuado nunca gera UTF-8 invalido", bad, 0)
     return t:done()
 end
 

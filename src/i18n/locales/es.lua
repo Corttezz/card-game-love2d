@@ -807,6 +807,7 @@ return {
         passive_momentum     = "Ímpetu: ¡+1 Fuerza!",
         passive_toxins       = "Toxinas: ¡+1 Veneno!",
         phase_started        = "¡Fase {value} iniciada!",
+        floor_entered = "{act} — piso {floor} ({node})",
         burn_tick        = "Quemadura: {value} de daño",
         poison_tick          = "Veneno: {value} de daño al enemigo",
         purple_seal          = "¡Orbe! (Sello Morado)",

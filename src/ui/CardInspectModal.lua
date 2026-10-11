@@ -212,8 +212,10 @@ function CardInspectModal:draw()
     local typeColor = Palette.forCardType(inst.type) or Palette.PARCHMENT
     local rarityColor = Palette.forRarity(inst.rarity) or Palette.PARCHMENT
     local typeLabel = I18n.t("card_type." .. (inst.type or "unknown"), nil, I18n.t("card_type.unknown"))
-    local classLabel = inst.class and I18n.t("classes." .. inst.class .. ".name", nil, inst.class)
-                                   or I18n.t("collection.class_basic")
+    -- class "basic" (neutras) não tem entrada em classes.* — caía no id cru.
+    local classLabel = (inst.class and inst.class ~= "basic")
+        and I18n.t("classes." .. inst.class .. ".name", nil, inst.class)
+        or I18n.t("card_info.class_basic")
     local rarityLabel = I18n.t("rarity." .. (inst.rarity or "common"), nil, inst.rarity or "")
 
     local metaY = panelY + 84

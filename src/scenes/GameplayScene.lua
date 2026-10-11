@@ -10,6 +10,7 @@
 
 local Config           = require("src.core.Config")
 local FontManager      = require("src.ui.FontManager")
+local I18n             = require("src.i18n.I18n")
 local SceneLayer       = require("src.ui.SceneLayer")
 local SceneBackground  = require("src.ui.SceneBackground")
 local SceneAnchors     = require("src.data.scene_anchors")
@@ -317,11 +318,11 @@ local function drawJokersAsCards()
     local lf = FontManager.getFont(8)
     love.graphics.setFont(lf)
     Palette.set(Palette.AGED_GOLD_LIGHT)
-    local label = "CORINGAS " .. activeN .. "/" .. g.maxSlots .. "  (J)"
+    local label = I18n.t("hud.jokers_frame", { n = activeN, max = g.maxSlots })
     love.graphics.print(label, g.x + g.pad, g.y + 5)
     if benched > 0 then
         Palette.set(Palette.RUST)
-        local bl = "+" .. benched .. " bancada"
+        local bl = I18n.t("hud.jokers_bench", { n = benched })
         love.graphics.print(bl, g.x + g.w - g.pad - lf:getWidth(bl), g.y + 5)
     end
 

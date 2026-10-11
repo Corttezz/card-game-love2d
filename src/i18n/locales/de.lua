@@ -808,6 +808,7 @@ return {
         passive_momentum     = "Schwung: +1 Stärke!",
         passive_toxins       = "Toxine: +1 Gift!",
         phase_started        = "Phase {value} gestartet!",
+        floor_entered = "{act} — Etage {floor} ({node})",
         burn_tick        = "Brand: {value} Schaden",
         poison_tick          = "Gift: {value} Schaden am Gegner",
         purple_seal          = "Orb! (Lila Siegel)",

@@ -1144,7 +1144,7 @@ function PackOpenScreen:_drawRarityTags()
         if card and card.rarity and not card._chosen and (card.dissolve or 0) < 0.2 then
             local imgW = card.image:getWidth() * (card.currentScale or 1)
             local rx = card.renderX or card.x or 0
-            local label = (I18n.t("rarity." .. card.rarity, nil, card.rarity)):upper()
+            local label = require("src.i18n.TextCase").upper(I18n.t("rarity." .. card.rarity, nil, card.rarity))
             local tw = font:getWidth(label)
             local tx = math.floor(rx + (imgW - tw) * 0.5)
             local ty = math.floor(z.tags.y + (z.tags.h - font:getHeight()) * 0.5)
@@ -1254,7 +1254,7 @@ function PackOpenScreen:_drawDetailBand()
     love.graphics.setFont(FontManager.getFont(9))
     local tc = Palette.forCardType(card.type)
     love.graphics.setColor(tc[1], tc[2], tc[3], 1)
-    love.graphics.printf(typeLabel:upper() .. (rarLabel and ("  -  " .. rarLabel:upper()) or ""),
+    love.graphics.printf(require("src.i18n.TextCase").upper(typeLabel) .. (rarLabel and ("  -  " .. require("src.i18n.TextCase").upper(rarLabel)) or ""),
         d.x + PAD, d.y + 13, textW, "right")
 
     love.graphics.setColor(th.accent[1], th.accent[2], th.accent[3], 0.45)

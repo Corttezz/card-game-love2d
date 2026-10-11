@@ -1826,8 +1826,11 @@ function Game:nextPhase()
         -- isBoss nunca era setado (só lido) — bosses agora rendem maiores
         self.enemy.isBoss = (nodeType == "boss" or nodeType == "mini_boss")
         -- Log com nome do ato
-        self:addMessage(ActSystem.getActName(run.actNumber, run.floorInAct)
-            .. " — andar " .. run.floorInAct .. " (" .. nodeType .. ")", "info")
+        self:addMessage(require("src.i18n.I18n").t("messages.floor_entered", {
+            act = ActSystem.getActName(run.actNumber, run.floorInAct),
+            floor = run.floorInAct,
+            node = require("src.i18n.I18n").t("node_type." .. nodeType .. ".label", nil, nodeType),
+        }), "info")
     else
         local newHealth = Config.Game.ENEMY_BASE_HEALTH + (self.currentPhase - 1) * Config.Game.ENEMY_HEALTH_SCALING
         local newDamage = Config.Game.ENEMY_BASE_DAMAGE + (self.currentPhase - 1) * Config.Game.ENEMY_DAMAGE_SCALING

@@ -808,6 +808,7 @@ return {
         passive_momentum     = "Élan : +1 Force !",
         passive_toxins       = "Toxines : +1 Poison !",
         phase_started        = "Phase {value} commencée !",
+        floor_entered = "{act} — étage {floor} ({node})",
         burn_tick        = "Brûlure : {value} dégâts",
         poison_tick          = "Poison : {value} dégâts à l'ennemi",
         purple_seal          = "Orbe ! (Sceau Violet)",
