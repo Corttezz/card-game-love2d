@@ -347,9 +347,12 @@ end
 --   Linha 2: HP bar com número acima do bar
 --   Linha 3: sprite
 -- Deixa a área inferior livre pra cartas da mão.
-function EnemyHud.draw(game, bbox, fallbackCx, fallbackGroundY)
-    if not game or not game.enemy or game.enemy:isDefeated() then return end
-
+-- Geometria do cluster (intent + pills + HP) — PURA, sem desenhar. Fonte
+-- única do draw e da régua do palco da batalha (tools/test_enemy_stage):
+-- quem mede se o inimigo colide com a carta em hover precisa do MESMO
+-- retângulo que a tela pinta. `rect` = união do cluster + sprite.
+function EnemyHud.layout(game, bbox, fallbackCx, fallbackGroundY)
+    if not game or not game.enemy then return nil end
     local cx, groundY, topY, sw
     if type(bbox) == "table" then
         cx, groundY, topY, sw = bbox.cx, bbox.bottomY, bbox.topY, bbox.width
@@ -376,7 +379,6 @@ function EnemyHud.draw(game, bbox, fallbackCx, fallbackGroundY)
     local totalW = iw + (bothPresent and gap or 0) + pw
     local rowH = math.max(ih, ph)
 
-    local hpBlockH = 27      -- número + gap + bar
     local rowGap = 6         -- gap entre row de intent/pills e HP bar
     local topMargin = 8      -- gap do cluster até o topo do sprite
 
@@ -384,22 +386,42 @@ function EnemyHud.draw(game, bbox, fallbackCx, fallbackGroundY)
     local hpBarY = math.floor(topY - topMargin - 10) -- 10 = barH
     local rowY = math.floor(hpBarY - rowGap - 13 - rowH) -- 13 = font HP number
 
+    local barW = math.max(160, math.min(260, sw + 40))
+    local clusterW = math.max(totalW, barW)
+    -- +3: bob do intent (±3px) — a régua mede o pior quadro, não o médio
+    local top = (totalW > 0) and (rowY - 3) or (hpBarY - 13)
+    local spriteL = cx - sw / 2
+    local left = math.min(cx - clusterW / 2, spriteL)
+    local right = math.max(cx + clusterW / 2, spriteL + sw)
+    return {
+        cx = cx, groundY = groundY, topY = topY, sw = sw,
+        iw = iw, ih = ih, pw = pw, ph = ph, gap = gap,
+        pillSize = pillSize, totalW = totalW, rowH = rowH,
+        hpBarY = hpBarY, rowY = rowY,
+        rect = { x = left, y = top, w = right - left, h = groundY - top },
+    }
+end
+
+function EnemyHud.draw(game, bbox, fallbackCx, fallbackGroundY)
+    if not game or not game.enemy or game.enemy:isDefeated() then return end
+    local L = EnemyHud.layout(game, bbox, fallbackCx, fallbackGroundY)
+
     -- Desenha row (intent + pills) se existir
-    if totalW > 0 then
-        local startX = math.floor(cx - totalW / 2)
-        if iw > 0 then
-            local boxY = rowY + math.floor((rowH - ih) / 2)
-            EnemyHud.drawIntent(game.enemy, cx, topY, startX, boxY)
+    if L.totalW > 0 then
+        local startX = math.floor(L.cx - L.totalW / 2)
+        if L.iw > 0 then
+            local boxY = L.rowY + math.floor((L.rowH - L.ih) / 2)
+            EnemyHud.drawIntent(game.enemy, L.cx, L.topY, startX, boxY)
         end
-        if pw > 0 then
-            local pillsX = startX + (iw > 0 and (iw + gap) or 0)
-            local pillsY = rowY + math.floor((rowH - ph) / 2)
-            EnemyHud.drawStatusEffects(game.enemy, cx, groundY, pillsX, pillsY, pillSize)
+        if L.pw > 0 then
+            local pillsX = startX + (L.iw > 0 and (L.iw + L.gap) or 0)
+            local pillsY = L.rowY + math.floor((L.rowH - L.ph) / 2)
+            EnemyHud.drawStatusEffects(game.enemy, L.cx, L.groundY, pillsX, pillsY, L.pillSize)
         end
     end
 
     -- HP bar com número acima, posicionado explicitamente
-    EnemyHud.drawHpBar(game.enemy, cx, groundY, sw, hpBarY)
+    EnemyHud.drawHpBar(game.enemy, L.cx, L.groundY, L.sw, L.hpBarY)
 end
 
 return EnemyHud

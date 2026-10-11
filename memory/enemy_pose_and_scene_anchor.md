@@ -236,6 +236,97 @@ poucos pixels e não foi tocada.
 
 ---
 
+## 5. O palco da batalha: pé DENTRO do chão e parada mais ao fundo (Out/2026)
+
+> "quando ele aparece lá de trás e fica o corpo inteiro para fora, ele ainda
+> fica meio que flutuando alguns milímetros do chão [...] só deixar elas um
+> pouquinho mais para baixo do chão."
+> "Os inimigos param muito na frente da tela. Muitas das vezes, a descrição
+> da carta ou a carta em si, quando faz o hover, fica à frente do inimigo."
+
+### 5a. Pé: três causas, nenhuma era número mágico por inimigo
+
+1. **Margem só do 1º quadro.** `clipMetrics.pad` media o quadro 0; a regeração
+   do PixelLab desloca a figura INTEIRA (pés junto) entre quadros da idle.
+   Agora `framePads[i]` e quem PISA usa o pad do quadro atual na idle (o
+   billboard da viagem também — `getEncounterBillboard.framePads`).
+2. **Respiro pra cima.** `floor(sin)` dava {-1,0}: meio ciclo 1px ACIMA. Virou {0,+1}.
+3. **Dois floors.** `floor(footPad·scale)` + o floor do `SpriteAnimation` somavam até 2px pra cima.
+
+Mais `EnemyRenderer.FOOT_SINK = 2`: o pé afunda 2px (+respiro = 2-3px). A
+sombra nasce no pé afundado. Flutuantes não afundam (pose manda).
+
+| inimigo | pads idle (arte) | pior gap ANTES | gap AGORA |
+|---|---|---|---|
+| abyss_tyrant | 3,3,5,5 | +5.2px (no ar) | -2.7..-2.1 |
+| ember_imp | 3,5,5,5 | +6.5px | -2.8..-2.3 |
+| rot_colossus | 10,9,12,12 | +5.0px | -2.9..-2.3 |
+| moon_gargoyle | 4,4,4,5 | +4.0px | -2.8..-2.0 |
+| bog_ghoul | 9,9,10,10 | +3.7px | -3.0..-2.3 |
+| obsidian_sentinel | 6,6,7,7 | +3.4px | -2.6..-2.1 |
+| winter_monarch | 5,5,6,5 | +3.0px | -2.8..-2.2 |
+| demais apoiados (9) | constantes | +1..+2px (respiro+floor) | -3.0..-2.1 |
+| flutuantes (5) | — | no ar por design | no ar (+14..+36) |
+
+(gap = linha do chão − base do pé; negativo = dentro do chão. Tabela completa
+impressa por `love . test_one test_enemy_stage`.)
+
+### 5b. Distância de parada: o estudo e a escolha
+
+`love . test_one study_enemy_stage 9,11,12,13,14,15,auto[,shots]` desenha o
+GameplayScene REAL em 1024x768 / 1280x720 / 1920x1080 (janela falsificada,
+mouse falso na carta do meio) e mede inimigo+HUD (`EnemyHud.layout().rect`)
+contra `Card.lastDrawRect` e `CardInfoDisplay.lastRect`.
+
+Achados:
+- **Recuar sozinho não resolve o tooltip.** Acima da carta levantada ele
+  ocupa ~0,45-0,62 da altura no centro — exatamente o tronco do inimigo em
+  QUALQUER distância que ainda seja estrada (12/12 cenas colidindo de rel 9
+  a 15). Por isso a descrição da mão do combate foi pro LADO da carta
+  (`Card.tooltipSide` → `CardInfoDisplay` opção `side`, topo alinhado ao topo
+  da carta, lado ESQUERDO preferido: à direita Jogar/Encerrar desenham por
+  cima e engoliam o painel em 1024x768).
+- **A carta em hover tem tamanho FIXO em px; o mundo escala com a tela.**
+  Rel fixo não serve: rel 12 limpa 1080p e colide 12/12 em 768/720; rel 15
+  limpa 768 mas deixa o inimigo minúsculo em 1080p. Escolha: **palco pela
+  zona da mão** — `GameplayScene.stageFootLimit()` = topo da carta levantada
+  − 18px, e `WorldRoad.battleRelFor` inverte a geometria da estrada pra achar
+  o rel (clamp 9..16.5). Resultado: ~12.6 em 1080p, ~15.4 em 1024x768,
+  ~16.1 em 1280x720. Recalculado todo frame (resize coerente por construção;
+  `syncBattleStage` roda também antes da viagem, que nasce em camZ+dist+palco).
+- **Tamanho:** encolhe pela perspectiva do mundo elevada a
+  `WorldRoad.ENEMY_SIZE_PERSP = 0.6` (`battleSizeK`, 1.0 no rel 9 histórico).
+  Perspectiva pura dava 120-140px em 768/720 — menor que a carta, sem
+  ameaça; 0.6 dá 148-183px (182-212 em 1080p).
+
+| palco | 1024x768 | 1280x720 | 1920x1080 |
+|---|---|---|---|
+| rel 9 (antes) | carta 12/12, tooltip 12/12 | 12/12, 12/12 | 12/12, 12/12 |
+| rel 12 fixo | 12/12, 12/12 | 12/12, 12/12 | 1/12, 1/12 |
+| **auto (escolha)** | **0/12, 0/12** | **0/12, 0/12** | **0/12, 0/12** |
+
+### 5c. Chefe no salão: recua o que a laje deixa
+
+`scene_anchors.backYr` = borda de trás do piso de cada PNG (lida de olho:
+hall1 0.70, hall2 0.83, hall3 0.73, hall4 0.75, hall5 0.79, hall6 0.75). O
+chefe recua de `yr` até `max(backYr, zona da carta)` e encolhe pela
+perspectiva do chão (`SceneAnchors.depthSizeK`, horizonte 0.42, mesmo
+expoente 0.6). Halls 2 e 5 não recuam (laje baixa + teto da mão — a
+limitação da seção 2 continua). **O chefe ainda colide com a carta em hover
+nos salões**: o piso das artes acaba antes da zona da carta. Resolver de
+verdade pede re-enquadrar as PNGs (horizonte mais alto), não mexer em âncora.
+
+Travas: `tools/test_enemy_stage.lua` (pé de todo apoiado em todo quadro com
+margem medida independente; inimigo+HUD fora da carta e do tooltip nos 3
+tamanhos; chefe não avança, não sai da laje, segue maior que o comum).
+Verificada falhando com framePads desligado (6 inimigos) e com o palco preso
+em rel 9 (todas as cenas da estrada).
+
+Prancha do estudo: `prancha_palco.png` no save dir do sandbox
+(`%APPDATA%/LOVE/card-game-inimigo/`).
+
+---
+
 ## Fallback anunciado, nunca mudo
 
 `EnemyPoses.get` e `SceneAnchors.get` **imprimem aviso** (uma vez por chave)
@@ -254,6 +345,7 @@ entrando sem classificação é o caminho de volta pro defeito.
 - `engine/ShadowEngine.lua` — `widthK`/`alphaK`/`tipShiftAt`
 - `src/scenes/GameplayScene.lua` — `isInteriorNode`, uso da âncora
 - `tools/test_enemy_pose.lua` — 162 asserts (registrado em `run_all_tests`)
+- `tools/test_enemy_stage.lua` + `tools/study_enemy_stage.lua` — palco (seção 5)
 - `tools/screenshot_enemy_scene.lua` — `love . screenshot_enemy_scene 2_boss`
 - `love . sheet <dir> <escala>` — frames lado a lado sobre fundo escuro,
   que é como se valida arte aqui (o Python da máquina quebrou em Set/2026)

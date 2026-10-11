@@ -197,8 +197,30 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
         panelY = math.floor(y - panelH - GAP)
         if panelY < 8 then panelY = 8 end
     end
+    if localOptions.side and localOptions.cardW then
+        -- AO LADO da carta (mão do combate, Out/2026): acima da carta
+        -- levantada o painel caía sobre o tronco do inimigo, que fica no
+        -- meio da tela. De lado, topo alinhado ao topo da carta: o painel
+        -- ocupa a faixa da própria carta levantada e não sobe pro palco.
+        -- Lado preferido = ESQUERDO: à direita moram Jogar/Encerrar, que
+        -- desenham DEPOIS da mão e engoliam o painel (visto em 1024x768).
+        -- Sem espaço (cartas da ponta esquerda), vira pra direita — perto do
+        -- centro, longe dos botões.
+        local cx0 = localOptions.cardX or x
+        local cw = localOptions.cardW
+        local right = cx0 + cw + GAP
+        local left = cx0 - GAP - panelW
+        panelX = (left >= 10) and left or right
+        panelY = math.floor(y)
+        if panelY + panelH > sh - 8 then panelY = sh - 8 - panelH end
+        if panelY < 8 then panelY = 8 end
+        panelX = math.floor(panelX)
+    end
     if panelX < 10 then panelX = 10 end
     if panelX + panelW > sw - 10 then panelX = sw - panelW - 10 end
+    -- Retângulo efetivamente desenhado: a régua do palco da batalha
+    -- (tools/test_enemy_stage) mede o inimigo contra ESTE painel.
+    self.lastRect = { x = panelX, y = panelY, w = panelW, h = panelH }
 
     -- ===== 4. RENDER (painel grimório escuro — era cinza azulado legado) =====
     love.graphics.setColor(0, 0, 0, 0.5)

@@ -63,6 +63,17 @@ local BLEND_DURATION = 2.2
 
 WorldRoad.BATTLE_REL      = 9    -- perto de nós (ref: inimigo no terço de
                                  -- baixo, SEPARADO do castelo na crista)
+-- PALCO DA BATALHA (Out/2026, dono: "os inimigos param muito na frente da
+-- tela; a carta em hover e a descrição ficam à frente do inimigo"). O rel 9
+-- acima é o MAIS PERTO que o inimigo para; a cena (GameplayScene) empurra
+-- ele estrada adentro até o pé ficar acima da carta levantada no hover —
+-- ver battleRelFor. Como cartas/tooltip têm tamanho FIXO em px e o mundo
+-- escala com a altura da tela, a distância de parada é por TAMANHO DE
+-- TELA: ~12.6 em 1080p, ~15.4 em 1024x768, ~16 em 1280x720.
+-- BATTLE_REL guarda o palco VIGENTE (lido pelo painter, pela viagem e pelo
+-- oclusor de luz); quem o escreve é WorldRoad.setBattleRel.
+WorldRoad.BATTLE_REL_NEAR = 9
+WorldRoad.BATTLE_REL_FAR  = 16.5 -- teto: além disso ele encosta no castelo
 -- ciclo 24 (feedback): viagem mais CALMA — menos distância e mais tempo
 -- ("as coisas vão muito rápido, o inimigo chega muito rápido")
 -- ciclo 26: mais lenta ainda (5.0→6.5s pra mesma distância)
@@ -1260,6 +1271,7 @@ function WorldRoad.travel(opts)
             targetScale = e.targetScale or 4,
             spriteId = e.spriteId,
             offX = e.offX, footPad = e.footPad,
+            framePads = e.framePads, footSink = e.footSink,
             z = WorldRoad._camZ + dist + WorldRoad.BATTLE_REL,
         }
     else
@@ -1298,6 +1310,47 @@ function WorldRoad.getRoadAnchor(rel, x, y, w, h)
     local sy = g.crestApexY + (g.bottomY - g.crestApexY) * t
     local wob = roadWobble(WorldRoad._camZ + rel, t, w)
     return math.floor(g.cx + wob), math.floor(sy)
+end
+
+-- TAMANHO do inimigo de batalha pela distância de parada. Até Out/2026 ele
+-- parava em rel 9 com 250px (330 o chefe) — esse é o 1.0 da régua. Parar
+-- mais ao fundo encolhe pela MESMA perspectiva do mundo (g.persp), elevada
+-- a ENEMY_SIZE_PERSP: 1 = perspectiva pura; < 1 = o monstro encolhe menos
+-- que um prop (criatura grande, e a leitura de intenção precisa de corpo).
+-- Independe do tamanho da tela: t só depende do rel.
+-- 0.6 (estudo Out/2026, tools/study_enemy_stage): com perspectiva pura o
+-- comum parava com 120-140px em 1024x768/720p — menor que a carta da mão,
+-- sem ameaça; 0.6 dá 148-183px (183-211 em 1080p) e ainda encolhe o
+-- bastante pra não virar gigante ao lado das árvores da mesma faixa.
+-- Vale também pro salão do chefe (SceneAnchors.depthSizeK).
+WorldRoad.ENEMY_SIZE_REF_REL = 9
+WorldRoad.ENEMY_SIZE_PERSP   = 0.6
+function WorldRoad.battleSizeK(rel)
+    local g = domeGeom(0, 0, 1, 1)
+    local t = g.tOf(rel or WorldRoad.BATTLE_REL) or 0
+    local t0 = g.tOf(WorldRoad.ENEMY_SIZE_REF_REL) or t
+    return (g.persp(t) / g.persp(t0)) ^ WorldRoad.ENEMY_SIZE_PERSP
+end
+
+-- Distância de parada pra que o PÉ do inimigo (no centro da estrada) caia
+-- em footLimitY ou ACIMA (menor y). Pura: inverte a mesma geometria do
+-- getRoadAnchor (sy = crest + (bottom - crest)·t, t = (1 - rel/crista)^pow).
+-- Clampada em [BATTLE_REL_NEAR, BATTLE_REL_FAR] — nunca mais perto que o
+-- palco histórico, nunca colado no castelo.
+function WorldRoad.battleRelFor(x, y, w, h, footLimitY)
+    local g = domeGeom(x, y, w, h)
+    local span = g.bottomY - g.crestApexY
+    local near, far = WorldRoad.BATTLE_REL_NEAR, WorldRoad.BATTLE_REL_FAR
+    if span <= 0 or not footLimitY then return near end
+    local t = (footLimitY - g.crestApexY) / span
+    if t >= (g.tOf(near) or 1) then return near end
+    if t <= 0 then return far end
+    local rel = REL_CREST * (1 - t ^ (1 / T_POW))
+    return math.max(near, math.min(far, rel))
+end
+
+function WorldRoad.setBattleRel(rel)
+    WorldRoad.BATTLE_REL = rel or WorldRoad.BATTLE_REL_NEAR
 end
 
 local function easeInOutCubic(t)
@@ -2666,7 +2719,8 @@ local function drawEncounterBehind(g, x, w, camZ)
     -- em t=0 (antes era 0.5 fixo → o inimigo ENCOLHIA de repente ao cruzar a
     -- crista e ficava maior que árvore — quebrava a esfera)
     local tBattle = g.tOf(WorldRoad.BATTLE_REL) or 0.3
-    local s = e.targetScale * (g.persp(0) / math.max(0.01, g.persp(tBattle)))
+    local s = e.targetScale * WorldRoad.battleSizeK()
+        * (g.persp(0) / math.max(0.01, g.persp(tBattle)))
     -- v8.2: centro por conteúdo + pé cravado (consistente com o passe
     -- frontal — sem pulo ao cruzar a crista)
     cx = cx - math.floor((e.offX or 0) * s)
@@ -4253,13 +4307,23 @@ local function drawEncounterFront(g, x, w, camZ)
     -- persp(t)/persp(tBattle) = 1.0 exato no BATTLE_REL (sem pulo)
     local tBattle = g.tOf(WorldRoad.BATTLE_REL) or 0.3
     local k = math.min(1.02, g.persp(t) / math.max(0.01, g.persp(tBattle)))
-    local s = e.targetScale * k
+    -- battleSizeK: no BATTLE_REL o billboard tem o MESMO tamanho que o
+    -- EnemyRenderer vai desenhar (handoff sem pulo, qualquer distância)
+    local s = e.targetScale * WorldRoad.battleSizeK() * k
     -- v8.2: centro por conteúdo + pé cravado no chão (a margem embaixo do
     -- canvas fazia o monstro "surgir flutuando lá do fundo")
+    -- Out/2026: pé do QUADRO atual (framePads) + afundado footSink, mesma
+    -- regra do EnemyRenderer — sem isso ele vinha "flutuando milímetros"
+    -- nos quadros em que a idle sobe a figura inteira.
     cx = cx - math.floor((e.offX or 0) * s)
-    local footY = math.floor((e.footPad or 0) * s)
+    local pad = e.footPad or 0
+    if e.framePads and e.anim and e.framePads[e.anim.currentFrame] then
+        pad = e.framePads[e.anim.currentFrame]
+    end
+    local sink = (e.footSink or 0) * math.min(1, k)
+    local footY = pad * s + sink
     local dx0 = math.floor(cx - e.iw * s / 2)
-    local dy0 = math.floor(sy - e.ih * s) + footY
+    local dy0 = sy - e.ih * s + footY
     -- v8/8.4: sombra projetada do monstro que vem vindo (frame da anim)
     if e.anim then
         ShadowEngine.silhouette(cx, sy - 1, { smear = e.iw * s * 0.035 },

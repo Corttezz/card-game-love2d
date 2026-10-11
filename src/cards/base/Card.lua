@@ -796,6 +796,10 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
 
     local cardCenterX = x + offsetX + (self.image:getWidth() * scaleX) / 2
     local cardCenterY = y + totalOffsetY + (self.image:getHeight() * scaleY) / 2
+    -- Retângulo desenhado (sem tilt): régua do palco da batalha
+    -- (tools/test_enemy_stage mede o inimigo contra a carta em hover).
+    self.lastDrawRect = { x = x + offsetX, y = y + totalOffsetY,
+        w = self.image:getWidth() * scaleX, h = self.image:getHeight() * scaleY }
 
     love.graphics.translate(cardCenterX, cardCenterY)
 
@@ -980,6 +984,11 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
             showStats = true,
             showDescription = true,  -- Agora mostra a descrição no hover
             below = self.tooltipBelow,
+            -- tooltipSide (mão do combate): painel AO LADO da carta, não
+            -- acima — acima ele cobria o inimigo (GameplayScene, palco).
+            side = self.tooltipSide,
+            cardX = x + offsetX,
+            cardW = imgW,
         })
     end
 end

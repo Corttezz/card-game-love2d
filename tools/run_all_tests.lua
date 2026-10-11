@@ -26,6 +26,7 @@ local SUITES = {
     { group = "unit",  name = "test_journal" },
     { group = "unit",  name = "test_journal_resize" },
     { group = "unit",  name = "test_enemy_pose" },
+    { group = "unit",  name = "test_enemy_stage" },
     { group = "unit",  name = "test_castle_gate" },
     { group = "unit",  name = "test_card_live_hover" },
     { group = "unit",  name = "test_pixelcanvas_state" },

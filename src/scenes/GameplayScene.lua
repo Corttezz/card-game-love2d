@@ -194,6 +194,7 @@ GameplayScene.updatePlayButtonPosition = updatePlayButtonPosition
 -- contato respirar sem o inimigo parecer levitando acima do piso.
 local ENEMY_HAND_CLEARANCE = 12
 
+
 local function handLayout()
     local width  = love.graphics.getWidth()
     local height = love.graphics.getHeight()
@@ -233,6 +234,36 @@ local function handLayout()
     return startX, spacing, cardY, n
 end
 GameplayScene.handLayout = handLayout
+
+-- Quanto a carta em hover SOBE em relação à mão em repouso (px de tela).
+local HOVER_LIFT = 130
+-- PALCO DA BATALHA (Out/2026, dono: "os inimigos param muito na frente da
+-- tela. Muitas das vezes a descrição da carta ou a carta em si, quando faz
+-- o hover, fica à frente do inimigo"). Zona da MÃO EM HOVER: o pé do
+-- inimigo fica pelo menos STAGE_CLEARANCE px acima do topo da carta
+-- levantada. Na estrada isso vira DISTÂNCIA (WorldRoad.battleRelFor empurra
+-- o encontro estrada adentro, e a perspectiva encolhe o corpo junto); no
+-- salão do chefe vira posição na laje, limitada pela borda do piso (ver
+-- SceneAnchors.backYr). O tooltip da carta foi pro LADO dela pela mesma
+-- razão (Card.tooltipSide) — acima da carta ele caía exatamente sobre o
+-- tronco do inimigo, em qualquer distância que ainda fosse estrada.
+-- Medido por tools/study_enemy_stage; travado por tools/test_enemy_stage.
+local STAGE_CLEARANCE = 18
+local function stageFootLimit()
+    local _, _, cardY = handLayout()
+    return math.floor(cardY - HOVER_LIFT - STAGE_CLEARANCE)
+end
+GameplayScene.stageFootLimit = stageFootLimit
+
+-- Recalculado todo frame a partir da janela (como o resto da cena): resize
+-- e troca de fullscreen reposicionam o palco sem cache nenhum.
+local function syncBattleStage()
+    local width, height = love.graphics.getWidth(), love.graphics.getHeight()
+    local tb = (topBar and topBar.height) or 80
+    WorldRoad.setBattleRel(WorldRoad.battleRelFor(0, tb, width, height - tb,
+        stageFootLimit()))
+end
+GameplayScene.syncBattleStage = syncBattleStage
 
 local function updateCardPositions()
     local cardStartX, cardSpacing, cardY = handLayout()
@@ -421,11 +452,18 @@ function GameplayScene.draw()
     local worldBattle = GameplayScene.SCENE_MODE == "worldroad"
         and not interior and not traveling and not entering
     local enemyBbox, enemyCx, enemyCy
+    if GameplayScene.SCENE_MODE == "worldroad" then syncBattleStage() end
     if worldBattle then
         enemyCx, enemyCy = WorldRoad.getRoadAnchor(WorldRoad.BATTLE_REL,
             0, topBarHeight, width, height - topBarHeight)
+        -- sizeK: o inimigo encolhe pela MESMA perspectiva do mundo conforme
+        -- a distância de parada (WorldRoad.battleSizeK) — parar mais ao
+        -- fundo sem encolher deixaria um gigante longe, quebrando a escala
+        -- das árvores em volta.
+        local sizeK = WorldRoad.battleSizeK and WorldRoad.battleSizeK() or 1
         WorldRoad.setBattleEnemyDraw(function()
-            enemyBbox = EnemyRenderer.draw(game, enemyCx, enemyCy)
+            enemyBbox = EnemyRenderer.draw(game, enemyCx, enemyCy,
+                { sizeK = sizeK })
         end, enemyCy)
     end
 
@@ -493,6 +531,17 @@ function GameplayScene.draw()
         -- Set/2026). A cena também diz a força e a direção da sombra.
         local anchor = SceneAnchors.get(sceneKey)
         enemyCx, enemyCy = SceneAnchors.groundAnchor(sceneKey, width, sceneH)
+        local artCy = enemyCy
+
+        -- PALCO (ver STAGE_CLEARANCE): o chefe recua na laje até sair de
+        -- trás da carta em hover — mas só até a BORDA DE TRÁS do piso
+        -- (backYr): além dela ele pisaria degrau/parede. Na maioria dos
+        -- salões a laje acaba antes da zona da carta, então o recuo é
+        -- parcial: "um pouquinho mais longe", o que a arte deixa.
+        local _, backY = SceneAnchors.groundAnchor(sceneKey, width, sceneH,
+            anchor.backYr or anchor.yr)
+        local stageY = stageFootLimit()
+        if enemyCy > stageY then enemyCy = math.max(backY, stageY) end
 
         -- TETO DA MAO: o pe nunca pousa abaixo do topo das cartas.
         --
@@ -517,6 +566,9 @@ function GameplayScene.draw()
         enemyBbox = EnemyRenderer.draw(game, enemyCx, enemyCy, {
             shadowA = anchor.shadowA,
             lightXr = anchor.lightXr,
+            -- quem recuou no piso encolhe pela perspectiva do chão
+            sizeK = SceneAnchors.depthSizeK(sceneKey, width, sceneH, artCy,
+                enemyCy, WorldRoad.ENEMY_SIZE_PERSP),
         })
     end
 
@@ -572,12 +624,14 @@ function GameplayScene.draw()
         local offsetY = 0
         -- Flag pro Card:draw: carta selecionada anima o ícone (icons_anim)
         card.isSelected = game:isCardSelected(card)
+        -- descrição AO LADO da carta em hover (ver STAGE_CLEARANCE)
+        card.tooltipSide = true
         if card.isSelected then offsetY = -100 end
         local rIdx = renderIdxFor(i)
         local tx = cardStartX + (rIdx - 1) * cardSpacing
         local ty = cardY + offsetY
         if card == hoverCard and not draggingCard then
-            ty = cardY - 130
+            ty = cardY - HOVER_LIFT
         end
         if card.isDragging then
             local mx, my = love.mouse.getPosition()
@@ -744,6 +798,8 @@ function GameplayScene.update(dt)
             WorldRoad.setTimeOfDay(0.62 + 0.38 * prog)
         end
         WorldRoad.update(dt)
+        -- o palco vale ANTES da viagem: o encontro nasce em camZ+dist+palco
+        syncBattleStage()
         -- Troca de andar/fase → herói "anda" até o próximo encontro:
         -- o mundo rola pra frente (técnica Path of Kings)
         local floorKey

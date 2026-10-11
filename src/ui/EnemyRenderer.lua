@@ -67,6 +67,26 @@ local hurtTime = 0
 -- Descida do flutuante na MORTE (0 = no ar, 1 = pousado). Ver poseOffsetY.
 local poseSink = 0
 local POSE_SINK_DUR = 0.7
+-- Quanto o pé de quem PISA afunda no chão, em px de tela. O dono pediu o pé
+-- "um pouquinho mais pra baixo do chão" (Out/2026): base do sprite cravada
+-- exatamente na linha lia como pairar — o contorno escuro do pé fica por
+-- cima da textura do chão em vez de dentro dela. 2px + o respiro {0,+1}
+-- deixa o pé sempre 2-3px dentro do chão, nunca acima.
+EnemyRenderer.FOOT_SINK = 2
+local lastFoot = nil
+function EnemyRenderer.getLastFoot() return lastFoot end
+-- Testes: fixa o quadro da animação corrente (varrer TODOS os quadros da
+-- idle é o que prova que o pé não descola em nenhum deles).
+function EnemyRenderer._debugSetFrame(i)
+    if currentAnim and currentAnim.frames and currentAnim.frames[i] then
+        currentAnim.currentFrame = i
+        return true
+    end
+    return false
+end
+function EnemyRenderer._debugFrameCount()
+    return currentAnim and currentAnim.frames and #currentAnim.frames or 0
+end
 
 -- Ambient particles (fake): partículas locais orbitando o inimigo (poeira/spark/fog).
 local ambientParticles = {}
@@ -409,6 +429,9 @@ end
 -- A ESCALA do personagem deriva SEMPRE do idle (âncora estável) — clip com
 -- canvas maior desenha com o MESMO scale e o corpo nunca muda de tamanho.
 local clipMetricsCache = {}
+-- Limiar de "pixel de conteúdo" (pé/silhueta). Mesmo valor nas duas
+-- varreduras — 1º quadro e por quadro — senão as margens discordam.
+local FOOT_ALPHA = 0.1
 function EnemyRenderer._clearClipMetrics() clipMetricsCache = {} end
 local function clipMetrics(id, animName)
     animName = animName or "idle"
@@ -441,7 +464,7 @@ local function clipMetrics(id, animName)
             for yy = 0, hpx - 1 do
                 for xx = 0, wpx - 1 do
                     local _, _, _, a = data:getPixel(xx, yy)
-                    if a > 0.1 then
+                    if a > FOOT_ALPHA then
                         if xx < minX then minX = xx end
                         if xx > maxX then maxX = xx end
                         if yy > maxY then maxY = yy end
@@ -459,6 +482,42 @@ local function clipMetrics(id, animName)
                 -- chão. Quem flutua por DESIGN (espectros/alados) sobe
                 -- por dado, não por margem de canvas: src/data/enemy_poses.
                 m.pad = (hpx - 1) - maxY
+            end
+        end
+    end
+    -- PÉ POR QUADRO (Out/2026, dono: "quando ele fica o corpo inteiro pra
+    -- fora, ainda fica meio que flutuando alguns milímetros do chão"). O
+    -- `pad` acima mede SÓ o 1º quadro, mas a regeração do PixelLab desloca
+    -- a figura INTEIRA (pés junto) 1-2px entre quadros da idle: abyss_tyrant,
+    -- ember_imp e rot_colossus sobem 2px de arte (~5px na tela) em metade
+    -- do ciclo — o pé descolava do chão e voltava, a cada respiração.
+    -- framePads[i] = margem abaixo do conteúdo do quadro i (mesmo limiar).
+    -- Quem pisa usa o pad DO QUADRO na idle: o pé fica cravado e o que
+    -- sobra de movimento é o do corpo em relação ao pé.
+    m.framePads = {}
+    if imgPath and fdir and info and info.type == "directory" then
+        local files = love.filesystem.getDirectoryItems(fdir)
+        table.sort(files, function(a, b)
+            local na, nb = tonumber(a:match("^(%d+)")), tonumber(b:match("^(%d+)"))
+            if na and nb then return na < nb end
+            return a < b
+        end)
+        for _, f in ipairs(files) do
+            if f:match("%.png$") then
+                local ok, data = pcall(love.image.newImageData, fdir .. "/" .. f)
+                local pad = m.pad
+                if ok and data then
+                    local wpx, hpx = data:getWidth(), data:getHeight()
+                    local found = false
+                    for yy = hpx - 1, 0, -1 do
+                        for xx = 0, wpx - 1 do
+                            local _, _, _, a = data:getPixel(xx, yy)
+                            if a > FOOT_ALPHA then found = true; break end
+                        end
+                        if found then pad = (hpx - 1) - yy; break end
+                    end
+                end
+                m.framePads[#m.framePads + 1] = pad
             end
         end
     end
@@ -532,6 +591,9 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     -- durante o golpe (playtest Jul/2026).
     local targetHeight = 250
     if game.enemy and game.enemy.isBoss then targetHeight = 330 end
+    -- sizeK: o PALCO decide o tamanho (na estrada, a perspectiva da
+    -- distância de parada — WorldRoad.battleSizeK; nos salões, 1).
+    targetHeight = targetHeight * ((opts and opts.sizeK) or 1)
     local idleM = clipMetrics(id, "idle")
     local refH = (idleM.h > 0) and idleM.h or ih
     local scale = targetHeight / refH
@@ -542,9 +604,8 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     -- emissivos seguem juntos), mesmo quando o canvas do clip difere do idle.
     local curM = hasAnim and clipMetrics(id, currentAnimName or "idle") or idleM
     if curM.h == 0 then curM = idleM end
-    local offX, footPad = curM.off, curM.pad
+    local offX = curM.off
     cx = cx - math.floor(offX * scale)
-    local footY = math.floor(footPad * scale)
 
     -- POSE (src/data/enemy_poses.lua): apoiado x flutuante. Quem tem pe
     -- fica com o pe no chao; quem e espectro/alado SOBE de proposito e
@@ -553,6 +614,20 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     local hoverY, pose = EnemyRenderer.poseOffsetY(id, ih * scale,
         love.timer.getTime(), poseSink)
     local floating = pose.pose == "floating"
+
+    -- Pé: margem do QUADRO atual na idle de quem pisa (ver framePads) e
+    -- AFUNDADO FOOT_SINK px no chão. footY = deslocamento que leva a base
+    -- do canvas até o pé, SEM truncar: o SpriteAnimation já faz floor do y
+    -- e um segundo floor aqui somava até 2px pra CIMA — justamente o lado
+    -- que lê como flutuar.
+    local footPad = curM.pad
+    local frameIdx = hasAnim and currentAnim.currentFrame or 1
+    if not floating and (currentAnimName or "idle") == "idle"
+        and curM.framePads and curM.framePads[frameIdx] then
+        footPad = curM.framePads[frameIdx]
+    end
+    local sink = floating and 0 or EnemyRenderer.FOOT_SINK
+    local footY = footPad * scale + sink
 
     -- =========================================================
     -- CAMADAS VISUAIS (aplicadas em ordem)
@@ -570,7 +645,9 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     -- (4) Idle bounce (±1px vertical — respiração; ±2 parecia flutuar)
     -- Flutuante nao respira em 1px: o bob da pose ja e o movimento dele
     -- (somar os dois dava tremelique de duas frequencias).
-    local bounce = floating and 0 or math.floor(math.sin(t * 1.6) * 1)
+    -- Out/2026: o floor do seno dava {-1, 0} — meio ciclo 1px ACIMA do
+    -- chão. Agora {0, +1}: respira pra DENTRO do chão, nunca descola.
+    local bounce = floating and 0 or (math.sin(t * 1.6) > 0 and 1 or 0)
     -- (5) Tremor SÓ no impacto (o tremor constante de 13-17Hz era o
     -- "fricando" apontado pelo dono — monstro parado não treme).
     local jitter = 0
@@ -610,6 +687,14 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     local drawX = cx - (iw * scale) / 2 + jitter + atkDX + knockDX
     local drawY = cy - ih * scale + bounce + EnemyRenderer.getArrivalOffset()
         + footY + atkDY + hoverY  -- v8.2: pé do conteúdo NO chão (margem do canvas fora)
+    -- Régua do palco (tools/test_enemy_stage): onde o pé DESTE quadro caiu,
+    -- pela mesma conta que o SpriteAnimation usa (floor do y).
+    lastFoot = {
+        groundY = cy,
+        footBottom = math.floor(drawY) + (ih - footPad) * scale,
+        scale = scale, frame = frameIdx, pad = footPad,
+        floating = floating, drawY = drawY, ih = ih,
+    }
 
     -- posição do peito exposta pro Game (floating text de veneno etc.)
     lastCenterX = drawX + (iw * scale) / 2
@@ -652,12 +737,13 @@ function EnemyRenderer.draw(game, cx, cy, opts)
             shDY = lift * 0.16                    -- projeta pro 1o plano
         end
         local shX = cx + jitter * 0.5 + shDX
-        local shY = cy - 1 + shDY
+        -- a sombra nasce no PÉ (afundado `sink`), não na linha nominal
+        local shY = cy - 1 + sink + shDY
 
         local sx0 = -(iw * scale) / 2
         -- +footY: a sombra ancora no PE DO CONTEUDO (a margem
         -- transparente do canvas criava um vao entre pe e sombra)
-        local sy0 = -(ih * scale) + footY
+        local sy0 = -(ih * scale) + footY - sink
         local drawn = ShadowEngine.silhouette(shX, shY,
             { smear = iw * scale * 0.035 * smearK,
               widthK = shK,
@@ -910,7 +996,10 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         }
         if animRef or staticRef then
             LightEngine.submitOccluder({
-                z = 9 + 6,   -- BATTLE_REL + viés (sem require circular)
+                -- BATTLE_REL + viés. Lido via package.loaded: o WorldRoad
+                -- requer este módulo (require direto seria circular).
+                z = (((package.loaded["src.ui.WorldRoad"] or {}).BATTLE_REL)
+                    or 9) + 6,
                 flatColor = flatColor,
                 bx = oxT, by = oyT, w = iw * scale, h = ih * scale,
                 fn = function()
@@ -975,6 +1064,12 @@ function EnemyRenderer.getEncounterBillboard(enemy)
         -- por conteúdo (o espantalho "já surgia flutuando lá do fundo")
         offX = offX,
         footPad = footPad,
+        -- Out/2026: pé por quadro + afundado, mesma regra do draw (quem
+        -- flutua não crava: o pad dele é o do 1º quadro, sem afundar)
+        framePads = (not EnemyPoses.isFloating(enemy.spriteId))
+            and clipMetrics(enemy.spriteId, "idle").framePads or nil,
+        footSink = EnemyPoses.isFloating(enemy.spriteId) and 0
+            or EnemyRenderer.FOOT_SINK,
     }
 end
 
