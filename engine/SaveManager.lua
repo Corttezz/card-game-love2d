@@ -50,6 +50,10 @@ local DEFAULT_SETTINGS = {
     reducedMotion = false,
     -- LightEngine (cena WorldRoad): false = frame idêntico ao pré-motor
     lighting      = true,
+    -- Out/2026 (Configurações v3): vsync do monitor e ritmo do combate
+    -- (multiplicador de VELOCIDADE exibido; CombatBeats.speed = 1/x).
+    vsync         = true,
+    combatSpeed   = 1,
 }
 
 SaveManager.PATHS = PATHS

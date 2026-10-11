@@ -1,413 +1,730 @@
 -- components/SettingsMenu.lua
--- Overlay pixel de configurações (volume, fullscreen, CRT shader).
--- Ativado pelo ícone de config na TopBar. Desenha por cima do jogo.
+-- CONFIGURAÇÕES — overlay modal aberto pelo menu principal ou pela PAUSA.
+--
+-- v3 (Out/2026 — "seguir o padrão de hoje"). Estrutura do create_UIBox_settings
+-- do Balatro (functions/UI_definitions.lua:2265): ABAS com conteúdo de altura
+-- FIXA (o painel não pula ao trocar de aba — tab_h do Balatro) e um botão
+-- VOLTAR que devolve pra quem abriu (back_func = 'options': aberto da pausa,
+-- volta pra pausa; aberto do menu, fecha).
+--
+--   ÁUDIO   Geral · Música · Efeitos                          (sliders 0-100%)
+--   VÍDEO   Tela cheia · VSync · Shader CRT · Iluminação       (toggles)
+--   JOGO    Ritmo do combate · Tremor de tela · Movimento reduzido · Idioma
+--
+-- Todo controle tem a MESMA forma: [<] valor [>] — o "option cycle" do
+-- Balatro. Isso dá teclado/gamepad de graça (←/→ ajusta, ↑/↓ escolhe a
+-- linha, Tab/Q/E troca aba, ESC volta) e matou o dropdown de idioma, que
+-- abria pra fora do painel em janela pequena.
+--
+-- Visual: painel escuro-dourado canônico (UiPanel) + título dourado, igual à
+-- pausa/loja/roteiro. A v2 misturava o OSD âmbar de TV com os botões sépia
+-- ("dois dialetos na mesma tela") e tinha linhas de altura FIXA que, em
+-- 800x600, punham o botão FECHAR por cima da linha do Idioma.
+--
+-- Persistência: toda mudança grava via engine/SaveManager.saveSettings e
+-- espelha em _G.gameSettings (lido por ScreenShake/Moveable/WorldRoad).
+-- SettingsMenu.applyRuntime(settings) aplica no boot o que não vive em
+-- módulo próprio (ritmo do combate, vsync).
 
-local Button      = require("components.Button")
 local FontManager = require("src.ui.FontManager")
-local PixelCanvas = require("src.ui.PixelCanvas")
 local Palette     = require("src.ui.Palette")
 local CRTShader   = require("src.ui.CRTShader")
 local I18n        = require("src.i18n.I18n")
 local SaveManager = require("engine.SaveManager")
-local TvOsd       = require("src.ui.TvOsd")
 local Sfx         = require("src.systems.Sfx")
+local Button      = require("components.Button")
+local UiPanel     = require("src.ui.UiPanel")
+local TextFit     = require("src.ui.TextFit")
+local MenuKit     = require("src.ui.MenuKit")
 
 local SettingsMenu = {}
 SettingsMenu.__index = SettingsMenu
 
-local STEP = 0.1   -- incremento de volume por clique
+local STEP = 0.1   -- passo dos sliders (10%)
 
+-- Ritmo do combate: multiplicador de VELOCIDADE exibido ao jogador. O
+-- CombatBeats.speed é multiplicador de DURAÇÃO, então speed = 1 / x.
+SettingsMenu.COMBAT_SPEEDS = { 1, 1.5, 2, 3 }
+
+-- Métricas
+local PAD       = 22
+local TITLE_H   = 50
+local TAB_H     = 32
+local ROW_H     = 40
+local ROW_GAP   = 6
+local ZONE_GAP  = 12
+local BACK_H    = 36
+local FOOTER_H  = 26
+local ARROW_W   = 28
+local MAX_ROWS  = 4
+
+-- ===================================================================
+-- RUNTIME (estático): aplica settings que não moram em módulo próprio.
+-- ===================================================================
+local function speedLabel(x)
+    if x == math.floor(x) then return ("%dx"):format(x) end
+    return ("%.1fx"):format(x)
+end
+
+function SettingsMenu.applyRuntime(settings)
+    settings = settings or _G.gameSettings or {}
+    local x = tonumber(settings.combatSpeed) or 1
+    if x <= 0 then
+        print("[SettingsMenu] combatSpeed invalido (" .. tostring(settings.combatSpeed) .. "), usando 1")
+        x = 1
+    end
+    require("src.systems.CombatBeats").speed = 1 / x
+    -- VSync: só fora das ferramentas (captura tem que ser reproduzível).
+    if not _G.HEADLESS_TOOL and settings.vsync ~= nil
+        and love.window and love.window.setVSync then
+        local ok, err = pcall(love.window.setVSync, settings.vsync and 1 or 0)
+        if not ok then print("[SettingsMenu] setVSync falhou: " .. tostring(err)) end
+    end
+end
+
+local function gs()
+    _G.gameSettings = _G.gameSettings or {}
+    return _G.gameSettings
+end
+
+local function clamp01(v) return math.max(0, math.min(1, v)) end
+local function round1(v) return math.floor(v * 10 + 0.5) / 10 end
+
+-- ===== volumes (AudioManager quando há áudio; gameSettings sempre) =====
+local VOL_FIELD = { master = "masterVolume", music = "musicVolume", sfx = "sfxVolume" }
+local VOL_DEFAULT = { master = 1.0, music = 0.3, sfx = 0.7 }
+
+local function getVolume(kind)
+    local a = _G.audioSystem
+    if a then
+        if kind == "music" then return a.musicVolume or 0 end
+        if kind == "sfx" then return a.sfxVolume or 0 end
+        return a.volume or 0
+    end
+    local v = gs()[VOL_FIELD[kind]]
+    if v == nil then v = VOL_DEFAULT[kind] end
+    return v
+end
+
+local function setVolume(kind, v)
+    v = round1(clamp01(v))
+    gs()[VOL_FIELD[kind]] = v
+    local a = _G.audioSystem
+    if a then
+        if kind == "music" then a:setMusicVolume(v)
+        elseif kind == "sfx" then a:setSFXVolume(v)
+        else a:setVolume(v) end
+    end
+    -- AMOSTRA no volume novo: a música se ouve sozinha (já está tocando);
+    -- sfx/master tocam um clique pelo próprio grupo ajustado.
+    if kind ~= "music" then
+        Sfx.play("buttonClick", { pitch = 1.0 + v * 0.12 })
+    end
+end
+
+local function getVSync()
+    if love.window and love.window.getVSync then
+        local ok, v = pcall(love.window.getVSync)
+        if ok then return v ~= 0 end
+    end
+    return gs().vsync ~= false
+end
+
+local function speedIndex()
+    local cur = tonumber(gs().combatSpeed) or 1
+    for i, v in ipairs(SettingsMenu.COMBAT_SPEEDS) do
+        if math.abs(v - cur) < 0.01 then return i end
+    end
+    return 1
+end
+
+-- ===================================================================
+-- DEFINIÇÃO DAS ABAS (dados → linhas). Cada linha:
+--   kind  "slider" | "toggle" | "cycle"
+--   get() → valor (slider 0..1, toggle bool, cycle texto)
+--   step(dir) muda um passo (dir = -1/+1); slider também tem set(v)
+-- ===================================================================
+function SettingsMenu:_tabs()
+    local menu = self
+    local function volRow(kind, labelKey)
+        return { key = "vol_" .. kind, kind = "slider", label = I18n.t(labelKey),
+            get = function() return getVolume(kind) end,
+            set = function(v) setVolume(kind, v) end,
+            step = function(dir) setVolume(kind, getVolume(kind) + dir * STEP) end }
+    end
+    local function toggle(key, labelKey, get, set)
+        return { key = key, kind = "toggle", label = I18n.t(labelKey),
+            get = get, step = function() set(not get()) end }
+    end
+    return {
+        { key = "audio", label = I18n.t("settings.tab_audio"), rows = {
+            volRow("master", "settings.master"),
+            volRow("music", "settings.music"),
+            volRow("sfx", "settings.sfx"),
+        } },
+        { key = "video", label = I18n.t("settings.tab_video"), rows = {
+            toggle("fullscreen", "settings.fullscreen",
+                function() return love.window.getFullscreen() end,
+                function(v)
+                    love.window.setFullscreen(v)
+                    gs().fullscreen = v
+                    FontManager.clearCache()
+                    -- love.resize reposiciona TODAS as telas (inclusive esta).
+                    if love.resize then
+                        love.resize(love.graphics.getWidth(), love.graphics.getHeight())
+                    else
+                        menu:rebuild()
+                    end
+                end),
+            toggle("vsync", "settings.vsync", getVSync,
+                function(v)
+                    gs().vsync = v
+                    if love.window and love.window.setVSync then
+                        local ok, err = pcall(love.window.setVSync, v and 1 or 0)
+                        if not ok then print("[SettingsMenu] setVSync falhou: " .. tostring(err)) end
+                    end
+                end),
+            toggle("crt", "settings.crt_shader",
+                function() return CRTShader.isEnabled() end,
+                function(v) CRTShader.setEnabled(v); gs().crtShader = v end),
+            toggle("lighting", "settings.lighting",
+                function() return gs().lighting ~= false end,
+                function(v) gs().lighting = v end),
+        } },
+        { key = "game", label = I18n.t("settings.tab_game"), rows = {
+            { key = "combat_speed", kind = "cycle", label = I18n.t("settings.combat_speed"),
+              get = function() return speedLabel(SettingsMenu.COMBAT_SPEEDS[speedIndex()]) end,
+              step = function(dir)
+                  local n = #SettingsMenu.COMBAT_SPEEDS
+                  local i = ((speedIndex() - 1 + dir) % n) + 1
+                  gs().combatSpeed = SettingsMenu.COMBAT_SPEEDS[i]
+                  SettingsMenu.applyRuntime(gs())
+              end },
+            { key = "screenshake", kind = "slider", label = I18n.t("settings.screenshake"),
+              get = function() return gs().screenshake or 1.0 end,
+              set = function(v) gs().screenshake = round1(clamp01(v)) end,
+              step = function(dir)
+                  gs().screenshake = round1(clamp01((gs().screenshake or 1.0) + dir * STEP))
+              end },
+            toggle("reduced_motion", "settings.reduced_motion",
+                function() return gs().reducedMotion and true or false end,
+                function(v) gs().reducedMotion = v end),
+            { key = "language", kind = "cycle", label = I18n.t("settings.language"),
+              get = function() return I18n.getLabel(I18n.getLocale()) end,
+              step = function(dir)
+                  local list = I18n.getAvailable()
+                  local idx = 1
+                  for i, code in ipairs(list) do
+                      if code == I18n.getLocale() then idx = i break end
+                  end
+                  local code = list[((idx - 1 + dir) % #list) + 1]
+                  if I18n.setLocale(code) then
+                      gs().locale = code
+                      FontManager.clearCache()
+                      menu:rebuild()   -- rótulos no idioma novo
+                  end
+              end },
+        } },
+    }
+end
+
+-- ===================================================================
+-- CICLO DE VIDA
+-- ===================================================================
 function SettingsMenu:new()
     local instance = setmetatable({}, SettingsMenu)
     instance.visible = false
-    instance.buttons = {}
-    instance.languageMenuOpen = false   -- dropdown de idiomas
-    instance.languageButtons = {}        -- botoes do dropdown (um por idioma)
-    instance._langAnchor = nil           -- {x, y, w, h} do botao gatilho
+    instance.tab = 1
+    instance.focus = 1          -- linha focada (1..#rows; #rows+1 = VOLTAR)
+    instance.rows = {}
+    instance.tabs = {}
+    instance.onClose = nil
+    instance._t = 0
     return instance
 end
 
--- Esta tela não tocava UM som — nem pra abrir, nem pra fechar, nem ao mexer
--- no volume (auditoria Set/2026). Abrir/fechar agora usa o mesmo par que
--- todas as outras overlays do jogo (pause, coleção, roteiro, deck).
-function SettingsMenu:show()
+-- opts.onClose: chamado ao VOLTAR (a pausa usa pra se reabrir).
+function SettingsMenu:show(opts)
     self.visible = true
+    self.onClose = opts and opts.onClose or nil
+    self.tab = self.tab or 1
+    self.focus = 1
+    self._t = 0
+    self._pressed = nil
     self:rebuild()
     Sfx.play("menuOpen")
 end
 
-function SettingsMenu:hide()
+-- Fecha. `skipCallback` = fechamento forçado (sem voltar pra pausa).
+function SettingsMenu:hide(skipCallback)
     if self.visible then Sfx.play("menuClose") end
     self.visible = false
+    local cb = self.onClose
+    self.onClose = nil
+    if cb and not skipCallback then cb() end
 end
+
 function SettingsMenu:isVisible() return self.visible end
 function SettingsMenu:toggle()
     if self.visible then self:hide() else self:show() end
 end
 
--- Recalcula posições dos botões (chamar em show e em love.resize).
-function SettingsMenu:rebuild()
-    self.buttons = {}
-    local W, H = love.graphics.getWidth(), love.graphics.getHeight()
-    -- Painel maior pra acomodar as linhas extras (8 rows agora: + iluminação).
-    local panelW = math.min(520, math.floor(W * 0.65))
-    local panelH = math.min(630, math.floor(H * 0.90))
-    local panelX = math.floor((W - panelW) / 2)
-    local panelY = math.floor((H - panelH) / 2)
-    self._panel = { x = panelX, y = panelY, w = panelW, h = panelH }
+function SettingsMenu:tabCount() return #(self.tabs or {}) end
 
-    local btnW, btnH = 36, 32
-    local rowX = panelX + panelW - 180
-    local rowY = panelY + 76
-    local gap  = 50
-
-    -- Linhas 1-3: volumes
-    self:_addVolumeRow("music",  rowX, rowY,            btnW, btnH)
-    self:_addVolumeRow("sfx",    rowX, rowY + gap,      btnW, btnH)
-    self:_addVolumeRow("master", rowX, rowY + gap * 2,  btnW, btnH)
-
-    -- Linha 4: Fullscreen toggle
-    local fsOn = love.window.getFullscreen()
-    local fsBtn = Button:new(
-        rowX, rowY + gap * 3, 140, btnH,
-        fsOn and I18n.t("settings.on") or I18n.t("settings.off"),
-        function()
-            local fs = not love.window.getFullscreen()
-            love.window.setFullscreen(fs)
-            FontManager.clearCache()
-            if love.resize then love.resize(love.graphics.getWidth(), love.graphics.getHeight()) end
-            self:rebuild()
-            self:_persist()
-        end, nil, 10
-    )
-    fsBtn:setIcon(fsOn and "check" or "x_close")
-    table.insert(self.buttons, fsBtn)
-
-    -- Linha 5: CRT shader toggle
-    local crtOn = CRTShader.isEnabled()
-    local crtBtn = Button:new(
-        rowX, rowY + gap * 4, 140, btnH,
-        crtOn and I18n.t("settings.on") or I18n.t("settings.off"),
-        function()
-            CRTShader.toggle()
-            self:rebuild()
-            self:_persist()
-        end, nil, 10
-    )
-    crtBtn:setIcon(crtOn and "check" or "x_close")
-    table.insert(self.buttons, crtBtn)
-
-    -- Linha 6: Iluminação (LightEngine da cena WorldRoad) toggle
-    local lightOn = not (_G.gameSettings and _G.gameSettings.lighting == false)
-    local lightBtn = Button:new(
-        rowX, rowY + gap * 5, 140, btnH,
-        lightOn and I18n.t("settings.on") or I18n.t("settings.off"),
-        function()
-            if _G.gameSettings then
-                _G.gameSettings.lighting = not lightOn
-            end
-            self:rebuild()
-            self:_persist()
-        end, nil, 10
-    )
-    lightBtn:setIcon(lightOn and "check" or "x_close")
-    table.insert(self.buttons, lightBtn)
-
-    -- Linha 7: Screenshake (F1 do UI Overhaul — persistia no save mas não
-    -- tinha UI). Padrão -/+ dos volumes; 0% desliga o shake.
-    local shakeMinus = Button:new(rowX, rowY + gap * 6, btnW, btnH, "-",
-        function()
-            local v = (_G.gameSettings and _G.gameSettings.screenshake) or 1.0
-            _G.gameSettings.screenshake = math.max(0, v - 0.1)
-            self:_persist()
-        end, nil, 14)
-    local shakePlus = Button:new(rowX + btnW + 10, rowY + gap * 6, btnW, btnH, "+",
-        function()
-            local v = (_G.gameSettings and _G.gameSettings.screenshake) or 1.0
-            _G.gameSettings.screenshake = math.min(1, v + 0.1)
-            self:_persist()
-        end, nil, 14)
-    table.insert(self.buttons, shakeMinus)
-    table.insert(self.buttons, shakePlus)
-
-    -- Linha 8: Reduced motion toggle (acessibilidade Balatro-style)
-    local rmOn = _G.gameSettings and _G.gameSettings.reducedMotion or false
-    local rmBtn = Button:new(
-        rowX, rowY + gap * 7, 140, btnH,
-        rmOn and I18n.t("settings.on") or I18n.t("settings.off"),
-        function()
-            _G.gameSettings.reducedMotion = not rmOn
-            self:rebuild()
-            self:_persist()
-        end, nil, 10
-    )
-    rmBtn:setIcon(rmOn and "check" or "x_close")
-    table.insert(self.buttons, rmBtn)
-
-    -- Linha 9: seletor de idioma (dropdown). Click no botao alterna lista.
-    local langBtnW = 140
-    local langBtnX = rowX
-    local langBtnY = rowY + gap * 8
-    local langBtn = Button:new(
-        langBtnX, langBtnY, langBtnW, btnH,
-        I18n.getLabel(I18n.getLocale()),
-        function() self:_toggleLanguageMenu() end,
-        nil, 10
-    )
-    langBtn:setIcon("scroll")
-    table.insert(self.buttons, langBtn)
-    self._langAnchor = { x = langBtnX, y = langBtnY, w = langBtnW, h = btnH }
-    -- Reconstroi a lista do dropdown (necessario apos rebuild de painel).
-    self:_buildLanguageButtons()
-
-    -- Botão fechar (com ícone x)
-    local closeBtn = Button:new(
-        panelX + panelW / 2 - 70, panelY + panelH - 56, 140, 36,
-        I18n.t("settings.close"), function() self:hide() end, nil, 12
-    )
-    closeBtn:setIcon("x_close")
-    table.insert(self.buttons, closeBtn)
-end
-
--- ===== Dropdown de idiomas =====
--- Cria um Button por idioma disponivel. Posicionados ABAIXO do botao gatilho
--- formando uma lista vertical. Marcados como invisiveis ate o dropdown abrir
--- (controlado por self.languageMenuOpen).
-function SettingsMenu:_buildLanguageButtons()
-    self.languageButtons = {}
-    if not self._langAnchor then return end
-    local a = self._langAnchor
-    local locales = I18n.getAvailable()
-    local current = I18n.getLocale()
-    for i, code in ipairs(locales) do
-        local label = I18n.getLabel(code)
-        -- Marca o ativo com check; demais sem icone.
-        local btn = Button:new(
-            a.x, a.y + a.h + 2 + (i - 1) * (a.h + 2),
-            a.w, a.h,
-            label,
-            function() self:_selectLanguage(code) end,
-            nil, 10
-        )
-        if code == current then btn:setIcon("check") end
-        self.languageButtons[i] = { code = code, btn = btn }
-    end
-end
-
-function SettingsMenu:_toggleLanguageMenu()
-    self.languageMenuOpen = not self.languageMenuOpen
-end
-
-function SettingsMenu:_selectLanguage(code)
-    self.languageMenuOpen = false
-    if I18n.setLocale(code) then
-        -- rebuild reconstroi os botoes com labels traduzidos
+function SettingsMenu:setTab(i)
+    local n = #self.tabs
+    if n == 0 then return end
+    i = ((i - 1) % n) + 1
+    if i ~= self.tab then
+        self.tab = i
+        self.focus = 1
+        Sfx.playWithVariation("menuHover", 1.1, 0.08)
         self:rebuild()
-        self:_persist()
     end
 end
 
-function SettingsMenu:_dropdownRect()
-    if not self._langAnchor then return nil end
-    local a = self._langAnchor
-    local n = #self.languageButtons
-    return a.x, a.y + a.h + 2, a.w, n * (a.h + 2)
-end
+-- ===================================================================
+-- LAYOUT
+-- ===================================================================
+function SettingsMenu:rebuild()
+    self.tabs = self:_tabs()
+    if self.tab > #self.tabs then self.tab = 1 end
 
-function SettingsMenu:_addVolumeRow(kind, x, y, btnW, btnH)
-    local minus = Button:new(x, y, btnW, btnH, "-",
-        function() self:_adjust(kind, -STEP) end, nil, 16)
-    local plus  = Button:new(x + btnW + 24, y, btnW, btnH, "+",
-        function() self:_adjust(kind, STEP) end, nil, 16)
-    table.insert(self.buttons, minus)
-    table.insert(self.buttons, plus)
-end
+    local sw, sh = love.graphics.getWidth(), love.graphics.getHeight()
+    local pw = math.max(300, math.min(600, sw - 32))
+    local innerW = pw - PAD * 2
 
-function SettingsMenu:_adjust(kind, delta)
-    local a = _G.audioSystem
-    if not a then return end
-    local getter = kind == "music" and a.musicVolume or (kind == "sfx" and a.sfxVolume or a.volume)
-    local new = math.max(0, math.min(1, (getter or 0) + delta))
-    if kind == "music" then a:setMusicVolume(new)
-    elseif kind == "sfx" then a:setSFXVolume(new)
-    else a:setVolume(new) end
-    self:_persist()
-
-    -- AMOSTRA no volume novo. Mexer num slider de áudio sem ouvir o resultado
-    -- é o defeito clássico desta tela: o jogador tinha que sair, jogar uma
-    -- carta e voltar pra saber o que fez. A música se ouve sozinha (ela já
-    -- está tocando), então só sfx/master precisam de amostra — e ela sai pelo
-    -- próprio grupo ajustado, valendo como medição honesta.
-    if kind ~= "music" then
-        Sfx.play("buttonClick", { pitch = 1.0 + new * 0.12 })
+    -- Altura: conteúdo de altura FIXA (MAX_ROWS) — a aba não muda o painel.
+    -- Janela baixa: quem cede é a altura da linha (até 30px), não as zonas.
+    local rowH = ROW_H
+    local function total(rh)
+        return PAD + TITLE_H + TAB_H + ZONE_GAP + MAX_ROWS * (rh + ROW_GAP) - ROW_GAP
+            + ZONE_GAP + BACK_H + FOOTER_H + 8
     end
-end
+    while total(rowH) > sh - 24 and rowH > 30 do rowH = rowH - 2 end
+    local ph = math.min(total(rowH), sh - 16)
+    local px = math.floor((sw - pw) / 2)
+    local py = math.floor((sh - ph) / 2)
+    self._panel = { x = px, y = py, w = pw, h = ph }
+    self._rowH = rowH
 
--- Snapshot current settings → SaveManager. Chamado em qualquer mudança.
-function SettingsMenu:_persist()
-    local a = _G.audioSystem
-    SaveManager.saveSettings({
-        masterVolume  = a and a.volume or 1.0,
-        musicVolume   = a and a.musicVolume or 0.3,
-        sfxVolume     = a and a.sfxVolume or 0.7,
-        fullscreen    = love.window.getFullscreen(),
-        crtShader     = CRTShader.isEnabled(),
-        lighting      = not (_G.gameSettings and _G.gameSettings.lighting == false),
-        reducedMotion = _G.gameSettings and _G.gameSettings.reducedMotion or false,
-        screenshake   = _G.gameSettings and _G.gameSettings.screenshake or 1.0,
-        locale        = I18n.getLocale(),
-    })
-end
-
-function SettingsMenu:update(dt)
-    if not self.visible then return end
-    for _, b in ipairs(self.buttons) do b:update(dt) end
-    if self.languageMenuOpen then
-        for _, e in ipairs(self.languageButtons) do e.btn:update(dt) end
+    local x, y = px + PAD, py + PAD
+    local z = {}
+    z.title = { x = x, y = y, w = innerW, h = TITLE_H }
+    y = y + TITLE_H
+    z.tabs = { x = x, y = y, w = innerW, h = TAB_H }
+    self._tabRects = {}
+    local gap = 6
+    local tw = math.floor((innerW - gap * (#self.tabs - 1)) / #self.tabs)
+    for i = 1, #self.tabs do
+        self._tabRects[i] = { x = x + (i - 1) * (tw + gap), y = y, w = tw, h = TAB_H }
     end
+    y = y + TAB_H + ZONE_GAP
+    z.content = { x = x, y = y, w = innerW, h = MAX_ROWS * (rowH + ROW_GAP) - ROW_GAP }
+
+    -- Coluna de controle à direita, larga o bastante pro "DESLIGADO" em DE.
+    local ctrlW = math.min(300, math.floor(innerW * 0.56))
+    self.rows = {}
+    for i, def in ipairs(self.tabs[self.tab].rows) do
+        local ry = y + (i - 1) * (rowH + ROW_GAP)
+        local r = { x = x, y = ry, w = innerW, h = rowH, def = def }
+        local cx = x + innerW - ctrlW - 8
+        local ah = rowH - 12
+        r.ctrl = { x = cx, y = ry + 6, w = ctrlW, h = ah }
+        r.left = { x = cx, y = ry + 6, w = ARROW_W, h = ah }
+        r.right = { x = cx + ctrlW - ARROW_W, y = ry + 6, w = ARROW_W, h = ah }
+        r.value = { x = cx + ARROW_W + 6, y = ry + 6, w = ctrlW - ARROW_W * 2 - 12, h = ah }
+        r.label = { x = x + 12, y = ry, w = cx - (x + 12) - 12, h = rowH }
+        self.rows[i] = r
+    end
+    y = z.content.y + z.content.h + ZONE_GAP
+
+    local backLabel = self.onClose and I18n.t("settings.back") or I18n.t("settings.close")
+    local bw = math.min(220, innerW)
+    z.back = { x = math.floor(px + (pw - bw) / 2), y = y, w = bw, h = BACK_H }
+    self.backButton = Button:new(z.back.x, z.back.y, bw, BACK_H, backLabel,
+        function() self:hide() end, nil, 12)
+    z.footer = { x = x, y = py + ph - FOOTER_H - 4, w = innerW, h = FOOTER_H }
+    self._zones = z
+
+    self.focus = math.max(1, math.min(#self.rows + 1, self.focus or 1))
 end
 
-function SettingsMenu:draw()
-    if not self.visible then return end
+function SettingsMenu:resize()
+    if self.visible then self:rebuild() end
+end
 
-    local W, H = love.graphics.getWidth(), love.graphics.getHeight()
-    local p = self._panel
-
-    -- Dim global
-    love.graphics.setColor(0, 0, 0, 0.65)
-    love.graphics.rectangle("fill", 0, 0, W, H)
-
-    -- Painel pixel (sem cantos arredondados): fill INK + dual outline gold
-    PixelCanvas.rect(p.x, p.y, p.w, p.h, Palette.PANEL_FILL)
-    PixelCanvas.rectOutline(p.x, p.y, p.w, p.h, Palette.PANEL_OUTLINE)
-    PixelCanvas.rectOutline(p.x + 2, p.y + 2, p.w - 4, p.h - 4, Palette.PANEL_OUTLINE_INNER)
-
-    -- Título estilo OSD de TV: "◼ MENU" verde-fósforo (este painel é o
-    -- menu DO APARELHO — docs/plan/menu-crt-v2.md)
-    local title = I18n.t("settings.title")
-    local g = TvOsd.AMBER
-    -- quadradinho OSD à esquerda do título
-    local titleW = TvOsd.textWidth(title, 16)
-    local tx = math.floor(p.x + (p.w - titleW - 22) / 2)
-    love.graphics.setColor(0, 0, 0, 0.8)
-    love.graphics.rectangle("fill", tx + 2, p.y + 22, 12, 12)
-    love.graphics.setColor(g[1], g[2], g[3], 1)
-    love.graphics.rectangle("fill", tx, p.y + 20, 12, 12)
-    TvOsd.text(title, tx + 22, p.y + 18, 1, 16)
-
-    -- Separador verde-escuro sob o título (linha do OSD)
-    local gd = TvOsd.AMBER_DIM
-    love.graphics.setColor(gd[1], gd[2], gd[3], 0.8)
-    love.graphics.rectangle("fill", p.x + 16, p.y + 52, p.w - 32, 2)
-    love.graphics.setColor(1, 1, 1, 1)
-
-    -- Labels + valores (gap = 50, mesmo que rebuild)
-    local gap = 50
-    self:_drawRow(I18n.t("settings.music"),  _G.audioSystem and _G.audioSystem.musicVolume or 0, p.x + 24, p.y + 76)
-    self:_drawRow(I18n.t("settings.sfx"),    _G.audioSystem and _G.audioSystem.sfxVolume or 0,   p.x + 24, p.y + 76 + gap)
-    self:_drawRow(I18n.t("settings.master"), _G.audioSystem and _G.audioSystem.volume or 0,      p.x + 24, p.y + 76 + gap * 2)
-    self:_drawLabel(I18n.t("settings.fullscreen"),     p.x + 24, p.y + 76 + gap * 3)
-    self:_drawLabel(I18n.t("settings.crt_shader"),     p.x + 24, p.y + 76 + gap * 4)
-    self:_drawLabel(I18n.t("settings.lighting"),       p.x + 24, p.y + 76 + gap * 5)
-    self:_drawRow(I18n.t("settings.screenshake"),
-        (_G.gameSettings and _G.gameSettings.screenshake) or 1.0,
-        p.x + 24, p.y + 76 + gap * 6)
-    self:_drawLabel(I18n.t("settings.reduced_motion"), p.x + 24, p.y + 76 + gap * 7)
-    self:_drawLabel(I18n.t("settings.language"),       p.x + 24, p.y + 76 + gap * 8)
-
-    for _, b in ipairs(self.buttons) do b:draw() end
-
-    -- Rodapé OSD do painel: fonte do aparelho (dim, discreto)
-    do
-        local foot = "AV-1 · GRIMOIRE"
-        TvOsd.text(foot, p.x + p.w - TvOsd.textWidth(foot, 10) - 14,
-            p.y + p.h - 24, 0.5, 10)
+-- Não-sobreposição + tudo dentro do painel/janela (test_pause_menu).
+function SettingsMenu:validate()
+    local problems = {}
+    local p, z = self._panel, self._zones
+    if not p or not z then return { "sem layout" } end
+    local sw, sh = love.graphics.getWidth(), love.graphics.getHeight()
+    if p.x < 0 or p.y < 0 or p.x + p.w > sw or p.y + p.h > sh then
+        problems[#problems + 1] = "painel fora da janela"
     end
-
-    -- Dropdown de idiomas (por cima dos demais botoes, com leve sombra)
-    if self.languageMenuOpen then
-        local dx, dy, dw, dh = self:_dropdownRect()
-        if dx then
-            -- Sombra
-            love.graphics.setColor(0, 0, 0, 0.55)
-            love.graphics.rectangle("fill", dx + 3, dy + 3, dw, dh + 4)
-            -- Painel pixel do dropdown
-            PixelCanvas.rect(dx, dy, dw, dh + 4, Palette.PANEL_FILL)
-            PixelCanvas.rectOutline(dx, dy, dw, dh + 4, Palette.AGED_GOLD)
-            PixelCanvas.rectOutline(dx + 1, dy + 1, dw - 2, dh + 2, Palette.AGED_GOLD_DARK)
-            for _, e in ipairs(self.languageButtons) do e.btn:draw() end
+    local function inside(r, name)
+        if r.x < p.x or r.y < p.y or r.x + r.w > p.x + p.w or r.y + r.h > p.y + p.h then
+            problems[#problems + 1] = name .. " vaza do painel"
         end
     end
-
-    love.graphics.setColor(1, 1, 1, 1)
-end
-
-function SettingsMenu:_drawRow(label, value, x, y)
-    self:_drawLabel(label, x, y)
-    -- v2: barra de segmentos verde-fósforo (o volume de TV velha) no
-    -- lugar do "NN%" — entre o rótulo e os botões -/+.
-    local labelFont = FontManager.getFont(12)
-    local bx = x + math.max(130, labelFont:getWidth(label) + 16)
-    local rowRight = self._panel.x + self._panel.w - 190
-    local avail = math.max(60, rowRight - bx)
-    local segs = 8
-    local gap = 3
-    local segW = math.max(6, math.floor((avail - (segs - 1) * gap) / segs))
-    TvOsd.segmentBar(bx, y + 6, value, {
-        segments = segs, segW = segW, segH = 14, gap = gap,
-    })
-end
-
-function SettingsMenu:_drawLabel(text, x, y)
-    -- Fit até a coluna de controles (design system Jul/2026): rótulos longos
-    -- (DE/FR) invadiam os botões -/+ e toggles à direita.
-    local maxW = 220
-    if self._panel then
-        maxW = math.max(60, (self._panel.x + self._panel.w - 180) - x - 12)
+    local prev
+    for _, name in ipairs({ "title", "tabs", "content", "back", "footer" }) do
+        local r = z[name]
+        inside(r, "zona " .. name)
+        if prev and r.y < prev.r.y + prev.r.h then
+            problems[#problems + 1] = ("zona %s invade %s"):format(name, prev.name)
+        end
+        prev = { name = name, r = r }
     end
-    Palette.set(Palette.PARCHMENT_LIGHT)
-    require("src.ui.TextFit").print(text, x, y + 6, { size = 12, maxW = maxW })
+    for i, r in ipairs(self.rows) do
+        if r.y + r.h > z.content.y + z.content.h + 0.5 then
+            problems[#problems + 1] = "linha " .. i .. " passa da zona de conteudo"
+        end
+        if r.label.w < 40 then problems[#problems + 1] = "rotulo da linha " .. i .. " espremido" end
+        if r.value.w < 60 then problems[#problems + 1] = "valor da linha " .. i .. " espremido" end
+        if MenuKit.overlaps(r.left, r.value) or MenuKit.overlaps(r.value, r.right) then
+            problems[#problems + 1] = "controles da linha " .. i .. " se cruzam"
+        end
+        if r.label.x + r.label.w > r.ctrl.x then
+            problems[#problems + 1] = "rotulo da linha " .. i .. " invade o controle"
+        end
+        for j = i + 1, #self.rows do
+            if MenuKit.overlaps(r, self.rows[j]) then
+                problems[#problems + 1] = ("linhas %d e %d se cruzam"):format(i, j)
+            end
+        end
+    end
+    for i, a in ipairs(self._tabRects or {}) do
+        inside(a, "aba " .. i)
+        for j = i + 1, #self._tabRects do
+            if MenuKit.overlaps(a, self._tabRects[j]) then
+                problems[#problems + 1] = ("abas %d e %d se cruzam"):format(i, j)
+            end
+        end
+    end
+    return problems
+end
+
+-- ===================================================================
+-- AÇÕES
+-- ===================================================================
+-- Snapshot completo → disco (e espelho em _G.gameSettings).
+function SettingsMenu:_persist()
+    local g = gs()
+    local snapshot = {
+        masterVolume  = getVolume("master"),
+        musicVolume   = getVolume("music"),
+        sfxVolume     = getVolume("sfx"),
+        fullscreen    = love.window.getFullscreen(),
+        vsync         = getVSync(),
+        crtShader     = CRTShader.isEnabled(),
+        lighting      = g.lighting ~= false,
+        reducedMotion = g.reducedMotion and true or false,
+        screenshake   = g.screenshake or 1.0,
+        combatSpeed   = tonumber(g.combatSpeed) or 1,
+        locale        = I18n.getLocale(),
+    }
+    for k, v in pairs(snapshot) do g[k] = v end
+    local ok, err = SaveManager.saveSettings(snapshot)
+    if not ok then print("[SettingsMenu] falha ao salvar settings: " .. tostring(err)) end
+    return ok
+end
+
+-- Muda a linha i um passo (dir -1/+1). Persiste.
+function SettingsMenu:stepRow(i, dir)
+    local r = self.rows[i]
+    if not r then return end
+    r.def.step(dir)
+    if r.def.kind ~= "slider" or r.def.key == "screenshake" then
+        Sfx.playWithVariation("buttonClick", 1.0, 0.08)
+    end
+    self:_persist()
+end
+
+-- Clique no corpo do valor: slider pula pro ponto; toggle/cycle avançam.
+function SettingsMenu:_clickValue(i, mx)
+    local r = self.rows[i]
+    if not r then return end
+    if r.def.kind == "slider" then
+        local v = (mx - r.value.x) / r.value.w
+        v = math.ceil(clamp01(v) * 10) / 10
+        r.def.set(v)
+        if r.def.key == "screenshake" then Sfx.playWithVariation("buttonClick", 1.0, 0.08) end
+        self:_persist()
+    else
+        self:stepRow(i, 1)
+    end
+end
+
+-- ===================================================================
+-- UPDATE / INPUT
+-- ===================================================================
+function SettingsMenu:update(dt)
+    if not self.visible then return end
+    self._t = (self._t or 0) + (dt or 0)
+    if self.backButton then self.backButton:update(dt) end
+    local mx, my = love.mouse.getPosition()
+    if mx ~= self._lastMX or my ~= self._lastMY then
+        local first = self._lastMX == nil
+        self._lastMX, self._lastMY = mx, my
+        if not first then
+            local target
+            for i, r in ipairs(self.rows) do
+                if MenuKit.hit(r, mx, my) then target = i end
+            end
+            if self._zones and MenuKit.hit(self._zones.back, mx, my) then target = #self.rows + 1 end
+            if target and target ~= self.focus then
+                self.focus = target
+                if target <= #self.rows then Sfx.playWithVariation("menuHover", 1.0, 0.12) end
+            end
+        end
+    end
+    for i, r in ipairs(self._tabRects or {}) do
+        if MenuKit.hit(r, mx, my) and i ~= self.tab then
+            require("src.ui.CursorManager").request("hand")
+        end
+    end
+    for _, r in ipairs(self.rows) do
+        if MenuKit.hit(r.ctrl, mx, my) then require("src.ui.CursorManager").request("hand") end
+    end
+end
+
+local function partAt(self, x, y)
+    for i, r in ipairs(self._tabRects or {}) do
+        if MenuKit.hit(r, x, y) then return { kind = "tab", i = i } end
+    end
+    for i, r in ipairs(self.rows) do
+        if MenuKit.hit(r.left, x, y) then return { kind = "left", i = i } end
+        if MenuKit.hit(r.right, x, y) then return { kind = "right", i = i } end
+        if MenuKit.hit(r.value, x, y) then return { kind = "value", i = i } end
+    end
+    return nil
 end
 
 function SettingsMenu:mousepressed(x, y, button)
     if not self.visible then return false end
-    -- Dropdown aberto: cliques fora dele fecham o dropdown (sem fechar painel)
-    if self.languageMenuOpen then
-        for _, e in ipairs(self.languageButtons) do e.btn:mousepressed(x, y, button) end
-        local dx, dy, dw, dh = self:_dropdownRect()
-        local insideDropdown = dx and x >= dx and x <= dx + dw and y >= dy and y <= dy + dh + 4
-        local a = self._langAnchor
-        local insideAnchor = a and x >= a.x and x <= a.x + a.w and y >= a.y and y <= a.y + a.h
-        if not insideDropdown and not insideAnchor then
-            self.languageMenuOpen = false
-        end
-        return true
+    if button == 1 then
+        self._pressed = partAt(self, x, y)
+        if self.backButton then self.backButton:mousepressed(x, y, button) end
     end
-    for _, b in ipairs(self.buttons) do b:mousepressed(x, y, button) end
-    return true   -- consome o clique (overlay modal)
+    return true   -- modal
 end
 
 function SettingsMenu:mousereleased(x, y, button)
     if not self.visible then return false end
-    if self.languageMenuOpen then
-        for _, e in ipairs(self.languageButtons) do e.btn:mousereleased(x, y, button) end
+    if button ~= 1 then return true end
+    if self.backButton and self.backButton:mousereleased(x, y, button) then return true end
+    local part = partAt(self, x, y)
+    local pressed = self._pressed
+    self._pressed = nil
+    if not part or not pressed or part.kind ~= pressed.kind or part.i ~= pressed.i then
         return true
     end
-    for _, b in ipairs(self.buttons) do b:mousereleased(x, y, button) end
+    if part.kind == "tab" then
+        self:setTab(part.i)
+    elseif part.kind == "left" then
+        self.focus = part.i; self:stepRow(part.i, -1)
+    elseif part.kind == "right" then
+        self.focus = part.i; self:stepRow(part.i, 1)
+    elseif part.kind == "value" then
+        self.focus = part.i; self:_clickValue(part.i, x)
+    end
     return true
 end
 
 function SettingsMenu:keypressed(key)
     if not self.visible then return false end
-    if key == "escape" then
-        if self.languageMenuOpen then
-            self.languageMenuOpen = false
-        else
+    local n = tonumber(key)
+    if n and n >= 1 and n <= #self.tabs then self:setTab(n) return true end
+    local it = MenuKit.intent(key, MenuKit.shiftDown())
+    local onBack = self.focus > #self.rows
+    if it == "back" then
+        self:hide()
+    elseif it == "tab_next" then self:setTab(self.tab + 1)
+    elseif it == "tab_prev" then self:setTab(self.tab - 1)
+    elseif it == "up" or it == "down" then
+        local total = #self.rows + 1
+        self.focus = ((self.focus - 1 + (it == "up" and -1 or 1)) % total) + 1
+        Sfx.playWithVariation("menuHover", 1.0, 0.12)
+    elseif (it == "left" or it == "right") and not onBack then
+        self:stepRow(self.focus, it == "left" and -1 or 1)
+    elseif it == "confirm" then
+        if onBack then
+            Sfx.playWithVariation("buttonClick", 1.0, 0.08)
             self:hide()
+        else
+            local r = self.rows[self.focus]
+            if r and r.def.kind ~= "slider" then self:stepRow(self.focus, 1) end
         end
-        return true
     end
     return true
+end
+
+-- ===================================================================
+-- DRAW
+-- ===================================================================
+local function drawSegments(r, value)
+    local segs = 10
+    local gap = 2
+    local pctW = FontManager.getFont(9):getWidth("100%") + 8
+    local barW = r.w - pctW
+    local segW = math.max(3, math.floor((barW - gap * (segs - 1)) / segs))
+    local segH = math.max(8, r.h - 14)
+    local bx = r.x
+    local by = r.y + math.floor((r.h - segH) / 2)
+    local filled = math.floor(value * segs + 0.5)
+    for i = 1, segs do
+        local sx = bx + (i - 1) * (segW + gap)
+        Palette.set(Palette.INK, 0.8)
+        love.graphics.rectangle("fill", sx + 1, by + 1, segW, segH)
+        if i <= filled then
+            Palette.set(Palette.AGED_GOLD_LIGHT)
+            love.graphics.rectangle("fill", sx, by, segW, segH)
+            love.graphics.setColor(1, 1, 1, 0.25)
+            love.graphics.rectangle("fill", sx, by, segW, 2)
+        else
+            Palette.set(Palette.AGED_GOLD_DARK)
+            love.graphics.rectangle("line", sx + 0.5, by + 0.5, segW - 1, segH - 1)
+        end
+    end
+    local pct = ("%d%%"):format(math.floor(value * 100 + 0.5))
+    Palette.set(Palette.PARCHMENT_LIGHT)
+    TextFit.print(pct, r.x + r.w - pctW + 4, r.y + math.floor((r.h - 9) / 2),
+        { size = 9, maxW = pctW - 4, align = "right" })
+end
+
+local function drawArrow(r, glyph, hot)
+    Palette.set(hot and Palette.AGED_GOLD or Palette.lerp(Palette.INK, Palette.PARCHMENT_DARK, 0.5))
+    love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 3, 3)
+    Palette.set(hot and Palette.AGED_GOLD_LIGHT or Palette.AGED_GOLD_DARK)
+    love.graphics.rectangle("line", r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1, 3, 3)
+    local f = FontManager.getFont(10)
+    love.graphics.setFont(f)
+    Palette.set(hot and Palette.INK or Palette.PARCHMENT_LIGHT)
+    love.graphics.print(glyph, math.floor(r.x + (r.w - f:getWidth(glyph)) / 2),
+        math.floor(r.y + (r.h - f:getHeight()) / 2))
+end
+
+function SettingsMenu:_drawRow(i, r, focused, mx, my)
+    if focused then
+        Palette.set(Palette.lerp(Palette.INK, Palette.PARCHMENT_DARK, 0.35))
+        love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 3, 3)
+        Palette.set(Palette.AGED_GOLD_DARK)
+        love.graphics.rectangle("line", r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1, 3, 3)
+    else
+        Palette.set(Palette.AGED_GOLD_DARK, 0.45)
+        love.graphics.rectangle("fill", r.x + 8, r.y + r.h + math.floor(ROW_GAP / 2) - 1, r.w - 16, 1)
+    end
+    Palette.set(focused and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT_LIGHT)
+    TextFit.print(r.def.label, r.label.x, r.y + math.floor((r.h - 12) / 2),
+        { size = 12, maxW = r.label.w })
+
+    drawArrow(r.left, "<", MenuKit.hit(r.left, mx, my))
+    drawArrow(r.right, ">", MenuKit.hit(r.right, mx, my))
+
+    local kind, v = r.def.kind, r.def.get()
+    if kind == "slider" then
+        drawSegments(r.value, v or 0)
+    else
+        local text, col
+        if kind == "toggle" then
+            text = v and I18n.t("settings.on") or I18n.t("settings.off")
+            col = v and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT
+        else
+            text, col = tostring(v), Palette.PARCHMENT_LIGHT
+        end
+        Palette.set(Palette.INK, 0.55)
+        love.graphics.rectangle("fill", r.value.x, r.value.y, r.value.w, r.value.h, 3, 3)
+        local ty = r.value.y + math.floor((r.value.h - 10) / 2)
+        if kind == "toggle" then
+            -- lâmpada acesa/apagada COLADA no texto (grupo centralizado):
+            -- lê o estado antes da palavra, sem depender do idioma.
+            local d, gapL = 8, 8
+            local font, shown = TextFit.fit(text, 10, r.value.w - d - gapL - 12)
+            local groupW = d + gapL + font:getWidth(shown)
+            local gx = math.floor(r.value.x + (r.value.w - groupW) / 2)
+            local ly = r.value.y + math.floor((r.value.h - d) / 2)
+            Palette.set(v and Palette.AGED_GOLD_LIGHT or Palette.AGED_GOLD_DARK)
+            love.graphics.rectangle(v and "fill" or "line", gx + 0.5, ly + 0.5, d - 1, d - 1)
+            love.graphics.setFont(font)
+            Palette.set(col)
+            love.graphics.print(shown, gx + d + gapL, ty)
+        else
+            Palette.set(col)
+            TextFit.print(text, r.value.x + 6, ty,
+                { size = 10, maxW = r.value.w - 12, align = "center" })
+        end
+    end
+end
+
+function SettingsMenu:draw()
+    if not self.visible then return end
+    local t = self._t or 0
+    MenuKit.drawVeil(t, 0.65)
+    MenuKit.pushEnter(t)
+
+    local p, z = self._panel, self._zones
+    UiPanel.draw(p.x, p.y, p.w, p.h)
+    local mx, my = love.mouse.getPosition()
+
+    -- CABEÇALHO (mesma gramática da pausa)
+    local title = I18n.t("settings.title")
+    local tf, shown = TextFit.fit(title, 22, z.title.w, 12)
+    love.graphics.setFont(tf)
+    local tx = math.floor(z.title.x + (z.title.w - tf:getWidth(shown)) / 2)
+    Palette.set(Palette.INK, 0.85)
+    love.graphics.print(shown, tx + 2, z.title.y + 4 + 2)
+    Palette.set(Palette.AGED_GOLD_LIGHT)
+    love.graphics.print(shown, tx, z.title.y + 4)
+    Palette.set(Palette.AGED_GOLD_DARK)
+    love.graphics.rectangle("fill", z.title.x + 24, z.title.y + TITLE_H - 14, z.title.w - 48, 1)
+
+    -- ABAS
+    for i, r in ipairs(self._tabRects) do
+        local active = i == self.tab
+        local hot = MenuKit.hit(r, mx, my)
+        if active then
+            Palette.set(Palette.AGED_GOLD)
+        elseif hot then
+            Palette.set(Palette.lerp(Palette.INK, Palette.PARCHMENT_DARK, 0.6))
+        else
+            Palette.set(Palette.lerp(Palette.INK, Palette.PARCHMENT_DARK, 0.3))
+        end
+        love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 3, 3)
+        Palette.set(active and Palette.AGED_GOLD_LIGHT or Palette.AGED_GOLD_DARK)
+        love.graphics.rectangle("line", r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1, 3, 3)
+        Palette.set(active and Palette.INK or Palette.PARCHMENT_LIGHT)
+        TextFit.print(self.tabs[i].label, r.x + 6, r.y + math.floor((r.h - 11) / 2),
+            { size = 11, maxW = r.w - 12, align = "center" })
+    end
+    -- base da aba ativa liga a aba ao conteúdo
+    Palette.set(Palette.AGED_GOLD)
+    love.graphics.rectangle("fill", z.tabs.x, z.tabs.y + TAB_H + 3, z.tabs.w, 2)
+
+    -- LINHAS
+    for i, r in ipairs(self.rows) do
+        self:_drawRow(i, r, i == self.focus, mx, my)
+    end
+
+    -- VOLTAR
+    if self.backButton then self.backButton:draw() end
+
+    -- anel de foco (por cima de tudo, item focado)
+    if self.focus > #self.rows then
+        MenuKit.focusRing(z.back.x, z.back.y, z.back.w, z.back.h, t)
+    elseif self.rows[self.focus] then
+        local r = self.rows[self.focus]
+        MenuKit.focusRing(r.x, r.y, r.w, r.h, t, 2)
+    end
+
+    -- RODAPÉ
+    Palette.set(Palette.PARCHMENT)
+    TextFit.print(I18n.t("settings.hint"), z.footer.x, z.footer.y + math.floor((z.footer.h - 8) / 2),
+        { size = 8, maxW = z.footer.w, align = "center" })
+
+    love.graphics.pop()
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 return SettingsMenu

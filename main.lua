@@ -956,6 +956,15 @@ function love.load(loveArgs)
         return
     end
 
+    -- Capturas do menu de PAUSA + CONFIGURAÇÕES em 3 tamanhos (canvas com
+    -- janela falsificada — sem setMode).
+    --   love . screenshot_pause          — pt_BR
+    --   love . screenshot_pause de       — outro idioma
+    if loveArgs and loveArgs[1] == "screenshot_pause" then
+        require("tools.screenshot_pause").run(loveArgs[2])
+        return
+    end
+
     -- Regressão do mouse através do vidro (domo do CRT vs hit-test).
     if loveArgs and loveArgs[1] == "smoke_crt_mouse" then
         local ok = require("tools.smoke_crt_mouse").run()
@@ -1080,6 +1089,9 @@ function love.load(loveArgs)
     -- Card ambient_tilt). Bind direto em persistedSettings: mudanças no
     -- SettingsMenu refletem aqui automaticamente sem proxy.
     _G.gameSettings = persistedSettings
+    -- Settings sem módulo próprio (ritmo do combate → CombatBeats.speed,
+    -- vsync) — fonte única em SettingsMenu.applyRuntime.
+    SettingsMenu.applyRuntime(persistedSettings)
 
     -- Fila de eventos temporais (engine/EventManager). Sistemas podem
     -- agendar sequências via _G.EventManager.addEvent{...} sem passar ctx.
@@ -1413,14 +1425,26 @@ function love.load(loveArgs)
     -- Menu de PAUSA (engrenagem da TopBar, padrão StS): Continuar /
     -- Configurações / Salvar e voltar ao menu / Abandonar run (confirmado).
     pauseMenu = require("components.PauseMenu"):new()
-    _G.togglePauseMenu = function()
+    -- opts.quiet: reabertura vinda das Configurações (VOLTAR devolve pra
+    -- pausa, padrão back_func='options' do Balatro) — sem som duplicado.
+    _G.togglePauseMenu = function(opts)
         if pauseMenu:isVisible() then
             pauseMenu:hide()
             return
         end
         pauseMenu:show(game, {
             onOpenSettings = function()
-                settingsMenu:show()
+                settingsMenu:show({
+                    onClose = function() _G.togglePauseMenu({ quiet = true }) end,
+                })
+            end,
+            -- Atalhos da pausa (mesmas telas das teclas D/J/M).
+            onOpenDeck = function() deckViewerScreen:toggle(game) end,
+            onOpenJokers = function()
+                if _G.toggleJokerManager then _G.toggleJokerManager() end
+            end,
+            onOpenJournal = function()
+                if _G.toggleRunJournal then _G.toggleRunJournal() end
             end,
             onSaveQuit = function()
                 -- Run ativa fica GUARDADA. checkpointRun (não saveRun cru!):
@@ -1441,7 +1465,7 @@ function love.load(loveArgs)
                 end
                 returnToMenu()
             end,
-        })
+        }, opts)
     end
 
     -- Inicializa barra superior
@@ -2103,6 +2127,26 @@ function love.keypressed(key)
         elseif key == "escape" then
             returnToMenu()
         end
+    end
+end
+
+-- GAMEPAD (Out/2026): por ora só os MODAIS de sistema e o START da pausa.
+-- O botão vira TECLA e segue o caminho do teclado (src/ui/MenuKit é o mapa
+-- único de intenções). Fora de modal, só START/BACK fazem algo — e só em
+-- estado de run (no menu principal, ESC fecha o jogo; START não pode).
+function love.gamepadpressed(joystick, button)
+    local key = ({
+        dpup = "up", dpdown = "down", dpleft = "left", dpright = "right",
+        a = "return", b = "escape", start = "escape", back = "escape",
+        leftshoulder = "pageup", rightshoulder = "pagedown",
+    })[button]
+    if not key then return end
+    if require("src.ui.InputFocus").captor() then
+        love.keypressed(key)
+    elseif (button == "start" or button == "back") and _G.togglePauseMenu
+        and (currentState == "playing" or currentState == "mapSelection"
+             or currentState == "rest" or currentState == "event") then
+        _G.togglePauseMenu()
     end
 end
 

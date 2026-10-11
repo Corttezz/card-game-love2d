@@ -39,7 +39,8 @@ cacheados, garantir 3 coisas:
 | `CollectionScreen` | calc dinâmico por frame | `resize()` é stub no-op |
 | `MapScreen` | layout dinâmico | `resize()` re-roda `updateLayout` |
 | `TopBar` | recalc por frame | `resize()` |
-| `SettingsMenu` | rebuild buttons | `rebuild()` quando visible |
+| `SettingsMenu` | rebuild por aba (altura fixa) | `resize()` → `rebuild()` quando visible |
+| `PauseMenu` | rebuild por zonas + preserva foco | `resize()` (validate() no test_pause_menu) |
 
 ## Centralização — armadilha comum
 
