@@ -1,5 +1,8 @@
 function love.conf(t)
-    t.identity = "card-game"                    -- The name of the save directory (string)
+    -- CARDGAME_IDENTITY isola o save dir quando varias copias do projeto
+    -- rodam testes ao mesmo tempo (worktrees). O jogo normal nao define a
+    -- variavel e cai no diretorio de sempre.
+    t.identity = os.getenv("CARDGAME_IDENTITY") or "card-game"
     t.version = "11.5"                          -- The LÖVE version this game was made for (string)
     t.console = true                            -- Attach a console (boolean, Windows only)
     t.accelerometerjoystick = false            -- Enable the accelerometer on iOS and Android by exposing it as a Joystick (boolean)
