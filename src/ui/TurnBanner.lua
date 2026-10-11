@@ -18,6 +18,11 @@ local TurnBanner = {}
 local active = nil  -- { kind, t }
 local canvasCache = {}   -- key kind..w -> canvas (faixa pré-renderizada)
 
+-- Resize/fullscreen: love.window.setMode apaga o CONTEÚDO de todo Canvas (o
+-- objeto sobrevive) — voltar a uma largura já vista mostrava faixa vazia.
+-- Chamado no love.resize junto do CardFrame.clearCache.
+function TurnBanner.clearCache() canvasCache = {} end
+
 -- Base de TINTA igual pros dois; só o acento (linhas/texto) muda.
 local COLORS = {
     player = { band = { 0.09, 0.07, 0.05, 0.88 },
@@ -58,7 +63,9 @@ end
 -- Renderiza a faixa COMPLETA (fundo + linhas + losangos + texto) num canvas
 -- full-width — o dissolve queima o conjunto como uma coisa só (igual carta).
 local function bandCanvas(kind, sw)
-    local key = kind .. sw
+    -- Idioma NA CHAVE: a faixa tem o texto "SEU TURNO" assado no canvas —
+    -- sem o locale, trocar de idioma deixava a faixa no idioma antigo.
+    local key = kind .. sw .. "|" .. tostring(I18n.getLocale and I18n.getLocale())
     if canvasCache[key] then return canvasCache[key] end
     -- scissor herdado do frame recortaria o clear/draw do canvas (o glClear
     -- RESPEITA scissor) — desliga durante o render off-screen

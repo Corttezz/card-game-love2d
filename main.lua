@@ -176,7 +176,11 @@ local function replayRun()
     else
         print("[replay] run sem classe conhecida — abrindo a selecao de classe")
         currentState = "classSelection"
-        classSelectionScreen:show()
+        -- MESMOS callbacks do Jogar: sem eles a escolha de classe e o Voltar
+        -- só avisavam no console — tela sem saída.
+        classSelectionScreen:show(
+            function(classId) startGame(classId) end,
+            function() returnToMenu() end)
     end
 end
 
@@ -2072,6 +2076,9 @@ function love.resize(w, h)
     -- recriando tudo. Atinge toda tela com carta: loja, mao, DeckViewer,
     -- Colecao, Gerenciador de Coringas, abertura de pacote. (Set/2026)
     CardFrame.clearCache()
+    -- Faixas de turno/combo são canvas assados: mesmo destino do CardFrame.
+    require("src.ui.TurnBanner").clearCache()
+    require("src.ui.ComboBanner").clearCache()
     -- Cada overlay/menu tem chance de recalcular layout. Padrão obrigatório:
     -- TODA tela com positions cacheadas (cardPositions, button rects, panel
     -- bounds) DEVE expor resize() ou updateLayout() e tratar o caso "ainda
@@ -2134,25 +2141,24 @@ function love.keypressed(key)
     end
 
     -- F5: tecla D abre o deck da run em qualquer tela dela
-    if key == "d" and (currentState == "playing"
-        or currentState == "cardReward" or currentState == "mapSelection")
-        and game and game.isRunMode then
+    -- Telas da run onde D/J/M funcionam: TODAS (antes descanso, evento e
+    -- cash out ficavam de fora — o atalho "não funcionava às vezes").
+    local runScreen = currentState == "playing" or currentState == "cardReward"
+        or currentState == "mapSelection" or currentState == "rest"
+        or currentState == "event" or currentState == "roundEval"
+    if key == "d" and runScreen and game and game.isRunMode then
         deckViewerScreen:toggle(game)
         return
     end
 
     -- Tecla J abre o Gerenciador de Coringas em qualquer tela da run
-    if key == "j" and (currentState == "playing"
-        or currentState == "cardReward" or currentState == "mapSelection")
-        and game and game.isRunMode then
+    if key == "j" and runScreen and game and game.isRunMode then
         _G.jokerManagerScreen:toggle(game)
         return
     end
 
     -- Tecla M abre o Roteiro da jornada em qualquer tela da run
-    if key == "m" and (currentState == "playing"
-        or currentState == "cardReward" or currentState == "mapSelection")
-        and game and game.isRunMode then
+    if key == "m" and runScreen and game and game.isRunMode then
         _G.toggleRunJournal()
         return
     end
@@ -2199,6 +2205,23 @@ function love.keypressed(key)
         end
         if mapScreen:keypressed(key) then return end
         if key == "escape" and _G.togglePauseMenu then _G.togglePauseMenu() end
+        return
+    end
+
+    -- ESC na loja/recompensa/cash out: pausa (antes não fazia nada — a
+    -- engrenagem era o único caminho). Teclas próprias da tela vêm antes.
+    if currentState == "cardReward" or currentState == "roundEval" then
+        if key == "escape" and _G.togglePauseMenu then _G.togglePauseMenu() end
+        return
+    end
+
+    -- ESC na seleção de classe = Voltar (a tela não tinha tecla nenhuma).
+    if currentState == "classSelection" then
+        if classSelectionScreen.keypressed then
+            classSelectionScreen:keypressed(key)
+        elseif key == "escape" then
+            classSelectionScreen:goBackToMenu()
+        end
         return
     end
 
