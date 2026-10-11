@@ -44,6 +44,7 @@ local SUITES = {
     { group = "unit",  name = "test_autoplay_pilot" },
     { group = "unit",  name = "test_economy_acts" },
     { group = "unit",  name = "test_pause_menu" },
+    { group = "unit",  name = "test_class_select" },
     { group = "valid", name = "check_event_i18n" },
     { group = "valid", name = "audit_feedback" },
     -- Smoke de sistema (pré-existentes)

@@ -26,8 +26,9 @@ local function enemyKey(id, anim, dir)
 end
 
 -- Raiz em disco por id. Ids simples ("grave_slime") continuam em enemies/
--- (compat). Ids com categoria ("heroes/warrior") resolvem direto sob
--- characters/ — usado pelos heróis da seleção de classe (Jul/2026).
+-- (compat). Ids com categoria ("<categoria>/<id>") resolvem direto sob
+-- characters/ (os heróis da seleção de classe que usavam isso viraram
+-- emblemas em Out/2026 — src/ui/ClassEmblem.lua).
 local function basePath(id)
     if tostring(id):find("/", 1, true) then
         return "assets/sprites/characters/" .. id

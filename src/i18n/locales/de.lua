@@ -55,6 +55,23 @@ return {
         title       = "WAEHLE DEINEN ARCHETYP",
         description = "Jeder Pfad bietet einzigartige Karten und Taktiken.",
         back        = "ZURUECK",
+        locked        = "GESPERRT",
+        mastery       = "MEISTERSCHAFT {level}",
+        mastery_max   = "MAX. MEISTERSCHAFT",
+        hp_label      = "LP",
+        deck_label    = "DECK",
+        deck_count    = "{n} Karten",
+        starter_label = "STARTKARTEN",
+        locked_hint   = "Klasse gesperrt — erfuelle die Bedingung, um sie freizuschalten.",
+    },
+
+    -- Requisitos de liberação de classe (UnlockSystem.getClassUnlockInfo.reqKey)
+    unlock = {
+        class = {
+            default   = "Freigeschaltet",
+            mage_req  = "Besiege den Boss von Akt {act}",
+            rogue_req = "Schliesse Akt {act} ab oder gewinne einen Lauf",
+        },
     },
 
     battle = {

@@ -30,7 +30,7 @@ cacheados, garantir 3 coisas:
 | Tela | Estratégia | Método |
 |---|---|---|
 | `Menu` | recalcula em update | `updatePositions()` |
-| `ClassSelectionScreen` | recalcula em update | `updatePositions()` |
+| `ClassSelectionScreen` | rebuild por zonas (`ClassSelectLayout`) | `resize()` = `updatePositions()` (Out/2026) |
 | `CardRewardScreen` | cacheia tudo em :show + detecta resize em update | `updateLayout()` + rebuild buttons |
 | `PackOpenScreen` | cacheia em :show via `_layoutCards` | `resize()` re-roda `_layoutCards` + `_buildSkipButton` |
 | `RestScreen` | rebuild buttons por mode | `resize()` chama `buildChooseButtons` ou `buildForgeButtons` |

@@ -55,6 +55,23 @@ return {
         title       = "ELIGE TU ARQUETIPO",
         description = "Cada camino ofrece cartas y tacticas unicas.",
         back        = "VOLVER AL MENU",
+        locked        = "BLOQUEADA",
+        mastery       = "MAESTRIA {level}",
+        mastery_max   = "MAESTRIA MÁXIMA",
+        hp_label      = "VIDA",
+        deck_label    = "MAZO",
+        deck_count    = "{n} cartas",
+        starter_label = "CARTAS INICIALES",
+        locked_hint   = "Clase bloqueada — cumple el requisito para desbloquearla.",
+    },
+
+    -- Requisitos de liberação de classe (UnlockSystem.getClassUnlockInfo.reqKey)
+    unlock = {
+        class = {
+            default   = "Desbloqueada",
+            mage_req  = "Derrota al jefe del Acto {act}",
+            rogue_req = "Completa el Acto {act} o gana una partida",
+        },
     },
 
     battle = {
