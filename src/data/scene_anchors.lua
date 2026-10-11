@@ -73,14 +73,22 @@ SceneAnchors.BY_SCENE = {
     -- o teto da mão segurava o pé do tirano acima disso, e ele pairava DENTRO
     -- da cascata. 18 linhas da faixa vertical (pedestais/cascatas, 176-193)
     -- foram removidas e o rodapé espelhado: o basalto agora começa em ~0.71.
-    -- A luz vem da lava (fundo e laterais) → sombra de contato fraca.
+    -- Out/2026 (round 2, "o tirano está flutuando"): entre as bases dos
+    -- pilares havia a POÇA de lava da cascata, e é exatamente ali (0.72-0.73)
+    -- que o pé pousa — pé na frente de lava clara lê como flutuar. Pintada
+    -- uma laje de basalto (y 176-187 da PNG) sobre a poça: o pé agora pisa
+    -- pedra escura com a lava atrás e acima. Pedra → sombra de contato
+    -- visível (antes 0.45, chão de lava).
     castle_hall_3 = { xr = 0.50, yr = 0.78, backYr = 0.73,
-                      shadowA = 0.45, lightXr = 0.5, lightBehind = false },
+                      shadowA = 0.75, lightXr = 0.5, lightBehind = true },
 
     -- ATO 4 — cidadela glacial. A laje de gelo começa em ~0.72 (a soleira do
     -- arco escuro); 0.78 cai bem à frente dela, no ladrilho, igual aos halls
     -- 1 e 3. Luz de dois braseiros pálidos NA FRENTE das paredes laterais e
     -- do arco escuro ao fundo → sombra curta e definida sobre gelo polido.
+    -- Out/2026: o pé pousava na soleira com o VÃO PRETO do arco logo atrás
+    -- (parecia pairar); o piso de gelo agora continua pra dentro do arco em
+    -- 4 degraus que escurecem (y 173-187 da PNG).
     castle_hall_4 = { xr = 0.50, yr = 0.78, backYr = 0.75,
                       shadowA = 0.85, lightXr = 0.5, lightBehind = true },
 

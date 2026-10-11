@@ -6,6 +6,7 @@
 --   love . boss_rooms [ato|shots]
 --   BOSS_ROOMS_SIZE=1920x1080 love . boss_rooms shots   (tamanho da janela:
 --   o cover-fit corta a arte diferente em 4:3 e em 16:9 — confira os dois)
+--   BOSS_ROOMS_SEQ=6 ... shots   (+6 quadros seguidos por sala: animação)
 --
 --   1-6 / ← →  troca de ato (sala + chefe)
 --   H          animação de dano     K  animação de morte (J reaparece)
@@ -41,6 +42,8 @@ function M.run(startAct)
     local act = math.max(1, math.min(total, tonumber(startAct) or 1))
     local frames = 0
     local pendingKey = nil
+    local seqN = tonumber(os.getenv("BOSS_ROOMS_SEQ") or "") or 0
+    local seqLeft = 0
 
     local function mount(a)
         act = a
@@ -111,12 +114,24 @@ function M.run(startAct)
         love.graphics.rectangle("fill", 0, y - 6, font:getWidth(label) + 24, font:getHeight() + 12)
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.print(label, 12, y)
-        if shots and frames >= 120 then
+        -- BOSS_ROOMS_SEQ=n: além do quadro principal, n quadros seguidos
+        -- (a cada 4 frames) pra conferir animação — boss_room_<ato>_<k>.png
+        if shots and seqLeft > 0 and frames >= 4 then
+            frames = -1e9
+            local a, k = act, seqN - seqLeft + 1
+            love.graphics.captureScreenshot(function(img)
+                img:encode("png", ("boss_room_%d_%d.png"):format(a, k))
+                seqLeft = seqLeft - 1
+                if seqLeft > 0 then frames = 0
+                elseif a >= total then love.event.quit() else pendingKey = tostring(a + 1) end
+            end)
+        elseif shots and seqLeft == 0 and frames >= 120 then
             frames = -1e9
             local a = act
             love.graphics.captureScreenshot(function(img)
                 img:encode("png", "boss_room_" .. a .. ".png")
                 print("[boss_rooms] salvo boss_room_" .. a .. ".png")
+                if seqN > 0 then seqLeft = seqN; frames = 0; return end
                 -- troca pelo MESMO caminho da tecla (é ele que o dono usa)
                 if a >= total then love.event.quit() else pendingKey = tostring(a + 1) end
             end)

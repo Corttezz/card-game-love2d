@@ -25,6 +25,7 @@
 --     fonte única (draw e update do GameplayScene perguntam aqui).
 
 local SceneBackground = require("src.ui.SceneBackground")
+local HallAnim        = require("src.ui.HallAnim")
 
 local InteriorFX = {}
 
@@ -42,6 +43,12 @@ local InteriorFX = {}
 --            (por segundo), color, region {x, y, w, h} de nascimento
 --   fog      névoa rente ao chão: y (topo da faixa), h, color, alpha
 --   vignette força do escurecimento das bordas (0..1)
+--   anim     movimento pintado no lugar (ver HallAnim): flameFrames, flows,
+--            shimmer
+--   smoke    {x, y} pontas de chama de onde sobe fumaça
+--   bubbles  {x, y, w, h} poças de lava que borbulham
+--   fireflies {n, region, color} vaga-lumes errantes (ciclo de piscar)
+--   emberRate brasas por chama por segundo (default 3)
 -- ---------------------------------------------------------------------------
 local HALLS = {
     -- ATO 1 — salão do rei-carniça: seis arandelas nas colunas e o vão
@@ -84,6 +91,17 @@ local HALLS = {
                     region = { 0, -10, 400, 20 } },
         fog = { y = 178, h = 40, color = { 0.45, 0.10, 0.04 }, alpha = 0.40 },
         vignette = 0.85,
+        -- movimento pintado no lugar (HallAnim): chamas com quadros, lava
+        -- descendo nas três cascatas, ar tremendo sobre os rios de lava
+        anim = {
+            flameFrames = true,
+            flows = { { 186, 100, 28, 76 }, { 128, 140, 30, 36 }, { 242, 140, 30, 36 } },
+            shimmer = { { 0, 190, 72, 50 }, { 328, 190, 72, 50 },
+                        { 116, 164, 46, 22 }, { 238, 164, 46, 22 } },
+        },
+        -- fumaça saindo das pontas dos braseiros; borbulhas nas poças
+        smoke = { { 38, 121 }, { 104, 145 }, { 297, 145 }, { 361, 121 } },
+        bubbles = { { 122, 176, 36, 10 }, { 243, 176, 36, 10 }, { 172, 173, 58, 3 } },
     },
     -- ATO 4 — cidadela glacial: dois braseiros de chama azul-branca.
     [4] = {
@@ -102,10 +120,14 @@ local HALLS = {
         pulses = { { 108, 226, 18, 10, 0.7, 0.20 }, { 272, 226, 18, 12, 0.8, 0.20 },
                    -- o coração podre ao fundo do túnel BATE (tum-tum, pausa)
                    { 160, 54, 88, 120, 1.2, 0.55, th = 0.14, beat = true } },
-        ember = { 0.55, 1.00, 0.42 },
-        ambient = { style = "spores", rate = 12, color = { 0.62, 1.00, 0.45 },
-                    region = { 40, 150, 320, 100 } },
-        fog = { y = 190, h = 46, color = { 0.20, 0.36, 0.12 }, alpha = 0.58 },
+        -- round 2 (dono: "partículas não naturais"): poucas, lentas, com
+        -- profundidade; vaga-lumes com caminho errante e ciclo de piscar;
+        -- névoa lenta. Nada de ponto saturado estourando.
+        ember = { 0.55, 0.85, 0.42 }, emberRate = 0.6,
+        ambient = { style = "spores", rate = 3.5, color = { 0.72, 0.82, 0.55 },
+                    region = { 20, 60, 360, 190 } },
+        fireflies = { n = 6, region = { 120, 110, 160, 100 }, color = { 0.86, 0.98, 0.50 } },
+        fog = { y = 190, h = 46, color = { 0.20, 0.36, 0.12 }, alpha = 0.55, speed = 0.35 },
         vignette = 0.80,
     },
     -- ATO 6 — corte do eclipse: sem fogo pintado (a luz é o vão do fundo);
@@ -132,6 +154,7 @@ local time = 0
 -- pontilhada e vinheta pontilhada, ambas na resolução da arte.
 local fogImg, vignetteImg
 local hallImgs = {}
+local hallAnims = {}
 local quads = {}
 local avisou = {}
 
@@ -234,6 +257,7 @@ local function hallImage(hall)
     local img = love.graphics.newImage(dst)
     img:setFilter("nearest", "nearest")
     hallImgs[hall] = img
+    hallAnims[hall] = HallAnim.build(src, cfg)
     quads[hall] = {}
     return img
 end
@@ -294,11 +318,56 @@ local function spawnAmbient(cfg)
         p.vx, p.vy = (rnd() - 0.5) * 4, 8 + rnd() * 9
         p.maxLife = 30
     elseif st == "spores" then
-        p.vx, p.vy = (rnd() - 0.5) * 3, -(2 + rnd() * 4)
-        p.maxLife = 5 + rnd() * 5
-        p.blink = rnd() < 0.3          -- vaga-lume: pisca forte
+        -- profundidade z: longe = menor, mais lento, mais apagado
+        local z = rnd()
+        p.z = z
+        p.size = (z > 0.78) and 2 or 1
+        p.front = z > 0.85
+        p.speedK = 0.35 + 0.75 * z
+        p.vx, p.vy = 0, -(0.6 + rnd() * 1.4) * p.speedK
+        p.freq = 0.25 + rnd() * 0.5            -- deriva lateral própria
+        p.amp = (1.5 + rnd() * 2.5) * p.speedK
+        p.maxLife = 9 + rnd() * 8
     end
     particles[#particles + 1] = p
+end
+
+local function spawnFirefly(cfg)
+    local ff = cfg.fireflies
+    local r = ff.region
+    particles[#particles + 1] = {
+        kind = "firefly", front = rnd() < 0.3, color = ff.color,
+        cx = r[1] + rnd() * r[3], cy = r[2] + rnd() * r[4], x = 0, y = 0,
+        ax = 6 + rnd() * 14, ay = 3 + rnd() * 7,
+        fx = 0.10 + rnd() * 0.18, fy = 0.13 + rnd() * 0.22,
+        phase = rnd() * 6.28, phase2 = rnd() * 6.28,
+        period = 2.6 + rnd() * 3.2, blinkOff = rnd() * 5,
+        life = 0, maxLife = 16 + rnd() * 14, vx = 0, vy = 0,
+    }
+end
+
+local function spawnSmoke(cfg)
+    local pt = cfg.smoke[rnd(1, #cfg.smoke)]
+    particles[#particles + 1] = {
+        kind = "smoke", front = false, x = pt[1] + (rnd() - 0.5) * 3, y = pt[2],
+        vx = 1 + rnd() * 1.5, vy = -(5 + rnd() * 4), phase = rnd() * 6.28,
+        life = 0, maxLife = 3 + rnd() * 1.5,
+    }
+end
+
+local function spawnBubble(cfg)
+    local b = cfg.bubbles[rnd(1, #cfg.bubbles)]
+    particles[#particles + 1] = {
+        kind = "bubble", front = false,
+        x = b[1] + math.floor(rnd() * b[3]), y = b[2] + math.floor(rnd() * b[4]),
+        vx = 0, vy = 0, life = 0, maxLife = 0.55 + rnd() * 0.35,
+    }
+end
+
+local function countKind(k)
+    local n = 0
+    for i = 1, #particles do if particles[i].kind == k then n = n + 1 end end
+    return n
 end
 
 local function spawnEmber(cfg)
@@ -342,11 +411,17 @@ step = function(dt, hall)
             spawnAmbient(cfg)
         end
         if cfg.ember then
-            emberAcc = emberAcc + dt * 3 * #cfg.flames
+            emberAcc = emberAcc + dt * (cfg.emberRate or 3) * #cfg.flames
             while emberAcc >= 1 do
                 emberAcc = emberAcc - 1
                 spawnEmber(cfg)
             end
+        end
+        if cfg.smoke and rnd() < dt * 6 then spawnSmoke(cfg) end
+        if cfg.bubbles and rnd() < dt * 5 then spawnBubble(cfg) end
+        if cfg.fireflies and rnd() < dt * 0.8
+            and countKind("firefly") < cfg.fireflies.n then
+            spawnFirefly(cfg)
         end
     end
 
@@ -360,10 +435,23 @@ step = function(dt, hall)
         elseif k == "ash" or k == "snow" then
             p.vx = p.vx + math.sin(time * 1.3 + p.phase) * 4 * dt   -- balanço
         elseif k == "spores" then
-            p.vx = p.vx + math.sin(time * 0.9 + p.phase) * 3 * dt
+            -- deriva senoidal própria (velocidade, não aceleração: sem
+            -- acumular e sem todos balançando juntos)
+            p.vx = math.cos(time * p.freq + p.phase) * p.amp * p.freq * 2
+        elseif k == "smoke" then
+            p.vx = p.vx * (1 - dt * 0.4) + math.sin(time * 0.8 + p.phase) * 0.6 * dt
+            p.vy = p.vy * (1 - dt * 0.35)
         end
-        p.x = p.x + p.vx * dt
-        p.y = p.y + p.vy * dt
+        if k == "firefly" then
+            -- caminho errante: duas senoides por eixo, sem integrar
+            local t = p.life
+            p.x = p.cx + math.sin(t * p.fx * 6.28 + p.phase) * p.ax
+                + math.sin(t * p.fx * 14.4 + p.phase2) * p.ax * 0.3
+            p.y = p.cy + math.sin(t * p.fy * 6.28 + p.phase2) * p.ay
+        else
+            p.x = p.x + p.vx * dt
+            p.y = p.y + p.vy * dt
+        end
         if p.life >= p.maxLife or p.y > 262 or p.y < -14
             or p.x < -10 or p.x > 410 then
             particles[i] = particles[#particles]
@@ -376,7 +464,23 @@ end
 local function lifeAlpha(p)
     local t = p.life / p.maxLife
     if p.kind == "ash" or p.kind == "snow" then return 1 end
+    if p.kind == "spores" or p.kind == "firefly" then
+        return math.min(1, t * 4) * math.min(1, (1 - t) * 4)   -- entra/sai devagar
+    end
     return math.min(1, t * 5) * math.min(1, (1 - t) * 3)
+end
+
+-- vaga-lume: aceso ~0.8s com subida/descida suave, apagado o resto do ciclo
+local function blinkOf(p)
+    local ph = ((p.life + p.blinkOff) % p.period) / p.period
+    local on = 0.8 / p.period
+    if ph > on then return 0.06 end
+    return 0.06 + 0.94 * math.sin(ph / on * math.pi)
+end
+
+local function cell(ox, oy, s, x, y, n)
+    love.graphics.rectangle("fill", math.floor(ox + x * s), math.floor(oy + y * s),
+        math.ceil(s * n), math.ceil(s * n))
 end
 
 local function drawParticles(tr, front)
@@ -387,19 +491,50 @@ local function drawParticles(tr, front)
         if p.front == front then
             local c = p.color
             local a = lifeAlpha(p)
-            if p.kind == "ember" then
+            local k = p.kind
+            local px, py = math.floor(p.x), math.floor(p.y)
+            if k == "smoke" then
+                -- borrão de fumaça que cresce: 1 -> 2 -> 3 px, alpha em degraus
+                local t = p.life / p.maxLife
+                local n = (t < 0.3) and 1 or ((t < 0.65) and 2 or 3)
+                local al = math.floor((1 - t) * 4) / 4 * 0.38
+                love.graphics.setColor(0.46, 0.39, 0.36, al)
+                cell(ox, oy, s, px, py, n)
+            elseif k == "bubble" then
+                local t = p.life / p.maxLife
+                if t < 0.6 then
+                    love.graphics.setColor(1, 0.86, 0.45, 0.9)
+                    cell(ox, oy, s, px, py, t < 0.3 and 1 or 2)
+                else
+                    -- estoura: respingos em volta
+                    love.graphics.setColor(1, 0.55, 0.15, 0.8 * (1 - t) / 0.4)
+                    cell(ox, oy, s, px - 1, py, 1); cell(ox, oy, s, px + 2, py, 1)
+                    cell(ox, oy, s, px, py - 1, 1); cell(ox, oy, s, px + 1, py - 1, 1)
+                end
+            elseif k == "firefly" then
+                love.graphics.setColor(c[1], c[2], c[3], a * blinkOf(p) * 0.9)
+                cell(ox, oy, s, px, py, 1)
+            elseif k == "spores" then
+                local tw = 0.8 + 0.2 * math.sin(time * 0.9 + p.phase)
+                local al = a * tw * (0.18 + 0.42 * p.z)
+                love.graphics.setColor(c[1], c[2], c[3], al)
+                cell(ox, oy, s, px, py, 1)
+                if p.size > 1 then
+                    -- esporo próximo: halo em cruz mais fraco (bloco 2x2 lia
+                    -- como "pixel quadrado" e não como poeira viva)
+                    love.graphics.setColor(c[1], c[2], c[3], al * 0.35)
+                    cell(ox, oy, s, px - 1, py, 1); cell(ox, oy, s, px + 1, py, 1)
+                    cell(ox, oy, s, px, py - 1, 1); cell(ox, oy, s, px, py + 1, 1)
+                end
+            elseif k == "ember" then
                 local t = p.life / p.maxLife
                 love.graphics.setColor(c[1], math.max(0.1, c[2] - t * 0.35), c[3], a)
-            elseif p.blink then
-                a = a * (0.25 + 0.75 * math.max(0, math.sin(time * 4 + p.phase)))
-                love.graphics.setColor(c[1], c[2], c[3], a)
+                cell(ox, oy, s, px, py, 1)
             else
                 local tw = 0.65 + 0.35 * math.sin(time * 2.2 + p.phase)
                 love.graphics.setColor(c[1], c[2], c[3], a * tw * (front and 0.95 or 0.7))
+                cell(ox, oy, s, px, py, 1)
             end
-            love.graphics.rectangle("fill",
-                math.floor(ox + math.floor(p.x) * s), math.floor(oy + math.floor(p.y) * s),
-                math.ceil(s), math.ceil(s))
         end
     end
 end
@@ -423,8 +558,10 @@ function InteriorFX.draw(hall)
     if not fogImg then buildFog() end
     if not vignetteImg then buildVignette() end
 
+    -- 0) movimento pintado no lugar (chamas com quadros, lava descendo, calor)
     -- 1) a própria arte, aditiva, nas fontes de luz (formato exato do fogo)
     local img = hallImage(hall)
+    if img then HallAnim.draw(hallAnims[hall], tr, time) end
     if img then
         love.graphics.setBlendMode("add")
         for i, f in ipairs(cfg.flames) do
@@ -452,7 +589,7 @@ function InteriorFX.draw(hall)
     local fc = fog.color
     local sy = fog.h / FOG_H
     for layer = 1, 2 do
-        local speed = layer == 1 and 3 or -5
+        local speed = (layer == 1 and 3 or -5) * (fog.speed or 1)
         local off = math.floor((time * speed) % FOG_W)
         local yy = oy + (fog.y + (layer - 1) * fog.h * 0.35) * s
         love.graphics.setColor(fc[1], fc[2], fc[3], fog.alpha * (layer == 1 and 1 or 0.7))

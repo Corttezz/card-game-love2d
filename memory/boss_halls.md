@@ -33,6 +33,25 @@ type: project
 - Partícula = 1 pixel da arte (posição truncada na grade da PNG).
 - Troca de salão pré-aquece o clima (25s simulados) — a sala nunca abre vazia.
 
+## Round 2 (Out/2026)
+- **Pé na frente de vazio = flutuar.** Hall 3: laje de basalto pintada sobre a
+  poça de lava entre as bases dos pilares (y 176-187, x 171-230); hall 4: piso
+  de gelo continua pra dentro do arco escuro em 4 degraus (y 173-187). Regra:
+  atrás do pé (linhas ~0.69-0.74 da PNG, x 0.42-0.58) tem que haver SUPERFÍCIE
+  pintada, nunca vão escuro nem lava clara.
+- **Movimento pintado no lugar** (`src/ui/HallAnim.lua`, campo `anim` do salão):
+  chamas com 8 quadros (linhas ondulando, fundo da linha cobre onde a chama
+  saiu), lava descendo nas cascatas (faixas periódicas 24px dentro da máscara
+  de luma, 1px/quadro = laço sem emenda), calor (linhas ±1px). Fumaça
+  (`smoke`) e borbulhas (`bubbles`) são partículas do InteriorFX. Correntes
+  balançando: NÃO feito.
+- **Sala 5 natural:** esporos poucos e lentos com profundidade (z: tamanho,
+  velocidade, brilho), deriva senoidal por partícula, vaga-lumes errantes com
+  ciclo de piscar (0.8s aceso), névoa a 0.35×. Bloco 2×2 lia como "pixel
+  quadrado": esporo próximo é 1px + halo em cruz fraco.
+- `BOSS_ROOMS_SEQ=4 ... boss_rooms shots` grava quadros seguidos pra conferir
+  animação.
+
 ## Chão × mão (o que decide se uma arte serve)
 Em 16:9 (escala 4.8, corte de ~15px da arte em cima e embaixo) o teto da mão
 segura o pé do chefe por volta da linha **0.72-0.75 da PNG**. Arte cujo chão

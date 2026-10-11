@@ -70,6 +70,25 @@ function M.run()
         end
     end
 
+    -- 2b. cascata animada só onde há lava PINTADA (HallAnim.flows)
+    for hall, cfg in pairs(InteriorFX.HALLS) do
+        local flows = cfg.anim and cfg.anim.flows or {}
+        if #flows > 0 then
+            local data = love.image.newImageData("assets/sprites/scenes/castle_hall_" .. hall .. ".png")
+            for i, r in ipairs(flows) do
+                local lava, total = 0, r[3] * r[4]
+                for y = r[2], r[2] + r[4] - 1 do
+                    for x = r[1], r[1] + r[3] - 1 do
+                        local cr, cg, cb = data:getPixel(x, y)
+                        if 0.3 * cr + 0.59 * cg + 0.11 * cb > 0.45 then lava = lava + 1 end
+                    end
+                end
+                t:truthy(("salão %d cascata %d cobre lava pintada (%d%%)")
+                    :format(hall, i, math.floor(lava / total * 100)), lava / total >= 0.3)
+            end
+        end
+    end
+
     -- 3. sem discos
     t:falsy("InteriorFX não desenha círculo (as 'bolas de luz')",
         readSrc("src/ui/InteriorFX.lua"):find("graphics.circle", 1, true) ~= nil)
