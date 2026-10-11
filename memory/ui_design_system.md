@@ -14,7 +14,8 @@ Button + 12 botões caseiros + 10 overflows reais + catálogo visual.
 1. **Painel de sistema/modal** → `src/ui/UiPanel.lua` (`UiPanel.draw(x,y,w,h)` /
    `{depth="inner"}`). É o idioma escuro-dourado da loja (sombra + PANEL_FILL +
    dual-border dourada + cantos ornamentais). NÃO redesenhar essa gramática na mão —
-   CardRewardScreen._drawPanel e PauseMenu já delegam pra cá.
+   PauseMenu já delega pra cá. (A LOJA não usa mais painel nenhum desde
+   Out/2026 — tela cheia, zonas por respiro: ver `memory/shop_layout.md`.)
 2. **Texto em largura fixa** → `src/ui/TextFit.lua` (`TextFit.print(text, x, y,
    {size=, maxW=, align=})` — shrink até 8 e trunca com "..."), OU `printf` com wrap
    e altura medida. `print` cru de i18n/concat em container estreito é BUG (foi a
@@ -31,7 +32,8 @@ Button + 12 botões caseiros + 10 overflows reais + catálogo visual.
 
 ## Dois idiomas visuais (intencional por ora)
 
-- **Escuro-dourado** (UiPanel): loja, rewards, pause, round-eval → modais de sistema.
+- **Escuro-dourado** (UiPanel): pause, round-eval → modais de sistema. Loja e
+  rewards usam o MESMO idioma sem caixa (banner com filetes + conteúdo solto).
 - **Pergaminho-claro** (Panel9 `panel_main`): rest, deck viewer, event, achievements,
   class selection → telas "de mundo". Unificar ou não é decisão de fase 2 com o Daniel
   (doc §6) — não migrar por conta própria.

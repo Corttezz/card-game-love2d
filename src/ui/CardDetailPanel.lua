@@ -212,6 +212,27 @@ end
 -- ============================================================================
 
 -- Quebra o texto em linhas reais: respeita "\n" explícito E o wrap por largura.
+-- Efeitos que a DESCRIÇÃO ainda não diz. Desde a auditoria carta a carta
+-- (descrição = efeito real nos 5 idiomas) a lista "Efeitos:" repetia, palavra
+-- por palavra, a frase logo acima ("Ganha 5 de Bloqueio" duas vezes) — ruído
+-- puro no painel da loja. Só sobra o que acrescenta informação.
+local function normalized(text)
+    return (tostring(text or ""):lower():gsub("[%p%s]+", " "))
+end
+
+local function extraEffects(inst, desc)
+    local out = {}
+    if not (inst and inst.effects) then return out end
+    local hay = normalized(desc)
+    for _, e in ipairs(inst.effects) do
+        local txt = I18n.effectDesc(e)
+        if txt and txt ~= "" and not hay:find(normalized(txt), 1, true) then
+            out[#out + 1] = txt
+        end
+    end
+    return out
+end
+
 local function wrapLines(text, font, w)
     local out = {}
     for seg in (tostring(text) .. "\n"):gmatch("([^\n]*)\n") do
@@ -333,8 +354,9 @@ function CardDetailPanel.draw(rect, payload, opts)
     -- deixava um vão morto no pé do painel nas cartas de descrição curta —
     -- exatamente o "espaço morto" reportado.
     local descLineCount = #wrapLines(desc, FontManager.getFont(F.desc), textW)
-    if payload.kind == "card" and inst and inst.effects then
-        descLineCount = descLineCount + math.min(4, #inst.effects) + 1
+    local extras = (payload.kind == "card") and extraEffects(inst, desc) or {}
+    if #extras > 0 then
+        descLineCount = descLineCount + math.min(4, #extras) + 1
     elseif payload.kind == "voucher" then
         -- Relíquia agora traz chip de efeito + linha de grimório abaixo da
         -- descrição: a arte tem que ceder a mesma altura que eles ocupam,
@@ -518,15 +540,15 @@ function CardDetailPanel.draw(rect, payload, opts)
     end
 
     -- ===== Efeitos (até 4, como na inspeção) =====
-    if payload.kind == "card" and inst and inst.effects and #inst.effects > 0 then
+    if #extras > 0 then
         cy = cy + 4
         cy = line(I18n.t("card_info.effects", nil, "Efeitos"),
                   FontManager.getFont(F.tiny), Palette.AGED_GOLD,
                   textX, cy, textW, bottom, alpha)
         local effFont = FontManager.getFont(F.tiny)
-        for i, e in ipairs(inst.effects) do
+        for i, txt in ipairs(extras) do
             if i > 4 or cy > bottom then break end
-            cy = line("- " .. I18n.effectDesc(e), effFont, Palette.PARCHMENT,
+            cy = line("- " .. txt, effFont, Palette.PARCHMENT,
                       textX + 6, cy, textW - 6, bottom, alpha)
         end
     end

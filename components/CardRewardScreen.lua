@@ -74,7 +74,6 @@ local Panel9 = require("src.ui.Panel9")
 local Theme = require("src.ui.Theme")
 local Palette = require("src.ui.Palette")
 local PixelCanvas = require("src.ui.PixelCanvas")
-local SceneBackground = require("src.ui.SceneBackground")
 local Button = require("components.Button")
 local CardDatabase = require("src.systems.CardDatabase")
 local CardInfoDisplay = require("src.ui.CardInfoDisplay")
@@ -126,7 +125,6 @@ end
 -- pra cima e sobe mais um tanto — nunca invade o rótulo de raridade abaixo.
 local SHOP_HOVER_LIFT = 12
 
--- offer.type → "kind" do painel de detalhe.
 local function offerKind(offer)
     if not offer then return nil end
     if offer.type == "booster_pack" then return "pack" end
@@ -239,18 +237,29 @@ function CardRewardScreen:updateLayout()
         -- faixa horizontal cada botão recebe a largura MEDIDA do seu rótulo,
         -- em qualquer locale (o alemão "Erneuern" é curto, o PT é o pior
         -- caso), e a grade ainda ganha ~150px de volta.
+        -- TELA CHEIA, SEM MODAL (Out/2026 — "a loja está meio poluída"):
+        -- a loja era um painel com moldura dupla POR CIMA do interior da loja,
+        -- e dentro dele mais três caixas (barra de título, vitrine, rodapé) —
+        -- cinco retângulos dourados aninhados e uma cena viva vazando pelas
+        -- bordas. Agora a loja OCUPA a área de jogo, como a de Balatro e a do
+        -- Slay the Spire: as zonas existem (cabeçalho / vitrine / detalhe /
+        -- ações), mas são separadas por RESPIRO, não por moldura. O retângulo
+        -- `panel` continua existindo como a área útil sob a TopBar — é ele
+        -- que as zonas fatiam e o validateLayout confere.
         local topBarH = 56  -- TopBar.height + padding folga
-        local panelW = math.floor(math.min(sw * 0.94, 1200))
-        local panelH = math.floor(math.min(sh * 0.90, 820))
+        local margin = math.floor(math.max(12, math.min(40, sw * 0.025)))
+        -- Teto de largura: num 2560 a vitrine não se espalha até as bordas
+        -- (olho viajando 2000px entre a carta e o painel de detalhe).
+        local panelW = math.floor(math.min(sw - margin * 2, 1560))
         local panelX = math.floor((sw - panelW) * 0.5)
-        local panelY = math.floor(math.max(topBarH + 4, (sh - panelH) * 0.5))
-        -- Reclampa altura se ficou abaixo do topBar (telas pequenas).
-        if panelY + panelH > sh - 4 then panelH = sh - panelY - 4 end
-        self.panel = { x = panelX, y = panelY, w = panelW, h = panelH }
+        local panelY = topBarH
+        local panelH = sh - panelY - math.floor(margin * 0.6)
 
-        local titleH = 50     -- altura do title bar
-        local pad = 16        -- padding interno do painel
-        local colGap = 12     -- respiro entre as 3 colunas
+        local titleH = 34     -- cabeçalho solto (título + "?")
+        local pad = 0         -- sem moldura, sem padding de moldura
+        -- Respiro entre vitrine e detalhe: é ele que separa as zonas agora.
+        local colGap = math.floor(math.max(16, math.min(40, sw * 0.02)))
+        self.panel = { x = panelX, y = panelY, w = panelW, h = panelH }
 
         local nCards = cfg.cards or 4
         local nVouchers = cfg.upgrades or 1
@@ -461,6 +470,22 @@ function CardRewardScreen:validateLayout()
         contains(self.panel, self.gridArea, "grade")
         contains(self.panel, self.detailPanel, "painel de detalhe")
         contains(self.panel, self.actionBar, "rodape de acoes")
+
+        -- Sem moldura, quem separa as ZONAS é o respiro: vitrine e detalhe
+        -- nunca se tocam, e o rodapé de ações fica abaixo das duas.
+        local g, d, a = self.gridArea, self.detailPanel, self.actionBar
+        if g and d and g.x + g.w > d.x then
+            bad[#bad + 1] = string.format("vitrine (ate x=%d) invade o detalhe (x=%d)",
+                g.x + g.w, d.x)
+        end
+        if a then
+            for _, z in ipairs({ g, d }) do
+                if z and z.y + z.h > a.y then
+                    bad[#bad + 1] = string.format("zona (ate y=%d) invade o rodape (y=%d)",
+                        z.y + z.h, a.y)
+                end
+            end
+        end
 
         -- Slots + faixa de rótulos + reserva do lift cabem na grade?
         local labelH = self.slotLabelH or 0
@@ -1257,14 +1282,6 @@ function CardRewardScreen:_layoutActionButtons()
 
 end
 
--- Faixa de ações. SEM leitor de ouro: o número vive no title bar e repetir o
--- mesmo "$30" colado nos botões poluía (incômodo apontado pelo dono).
-function CardRewardScreen:_drawActionBar()
-    local bar = self.actionBar
-    if not bar then return end
-    self:_drawPanel(bar.x, bar.y, bar.w, bar.h, "inner")
-end
-
 -- Pré-foca a primeira oferta de carta ao abrir a loja.
 --
 -- Defeito reportado: sem hover, ~29% da tela ficava preta com 3 linhas de
@@ -1838,14 +1855,8 @@ function CardRewardScreen:draw()
     if not self.visible then return end
 
     local w, h = love.graphics.getDimensions()
-    -- Backdrop FIXO (não desliza com o painel) — fica sempre cobrindo o gameplay
-    -- atrás. Só o conteúdo (título + slots + botões) entra pelo topo.
-    -- Background: cena DEDICADA do interior da loja (shop_interior). Não usa
-    -- mais path_shop porque esse é o ícone do node de loja no mapa — repetir
-    -- o mesmo visual entre map node e shop interior cria sensação de pobreza.
-    -- Ver tools/pixellab_generate_shop_interior.py + memory/balatro_fidelity_directive.md.
-    -- Fallback: se shop_interior não existe (ex: PixelLab ainda não gerou), usa
-    -- path_shop temporariamente. Fallback final: backdrop preto.
+    -- Backdrop FIXO (não desliza com o conteúdo) — fica sempre cobrindo o
+    -- gameplay atrás. Só o conteúdo (título + slots + botões) entra pelo topo.
     if self.mode == "rewards" then
         -- IMERSÃO (feedback Jul/2026): espólios de batalha acontecem NO LUGAR
         -- da batalha — main.lua já desenha o mundo vivo atrás (GameplayScene
@@ -1854,39 +1865,39 @@ function CardRewardScreen:draw()
         love.graphics.setColor(0.02, 0.015, 0.01, 0.60)
         love.graphics.rectangle("fill", 0, 0, w, h)
         love.graphics.setColor(1, 1, 1, 1)
-    elseif not SceneBackground.draw("shop_interior", w, h, 0.55) then
-        if not SceneBackground.draw("path_shop", w, h, 0.55) then
-            love.graphics.setColor(0, 0, 0, 0.7)
-            love.graphics.rectangle("fill", 0, 0, w, h)
+    else
+        -- LOJA SEM CENÁRIO (Out/2026): o interior pintado da loja vazava pelas
+        -- bordas do modal antigo como uma moldura de ruído — estantes e
+        -- moedas pela metade, competindo com as ofertas. Testadas três saídas
+        -- (memory/shop_layout.md); venceu a superfície lisa: escura, com uma
+        -- luz central suave que aponta pra vitrine sem desenhar nada.
+        Palette.set(Palette.darken(Palette.INK, 0.55))
+        love.graphics.rectangle("fill", 0, 0, w, h)
+        local steps = 24
+        for i = steps, 1, -1 do
+            local k = i / steps
+            love.graphics.setColor(Palette.INK[1] * 1.6, Palette.INK[2] * 1.6,
+                Palette.INK[3] * 1.6, 0.10)
+            love.graphics.ellipse("fill", w * 0.5, h * 0.48, w * 0.62 * k, h * 0.62 * k)
         end
+        love.graphics.setColor(1, 1, 1, 1)
     end
 
     -- Slide-in: tudo dentro deste push é translado pelo offset animado em show().
     love.graphics.push()
     love.graphics.translate(0, self.slideOffsetY or 0)
 
-    -- ========== F10.3: Containers Balatro-style ==========
-    -- Painel principal (BOSS_MAIN bg + dual-border dourado). Modo rewards v3
-    -- NÃO tem painel — banner flutuante estilo StS.
+    -- LOJA: nenhuma moldura em volta — só o cabeçalho solto. Modo rewards
+    -- v3 também não tem painel (banner flutuante estilo StS).
     if self.panel then
-        self:_drawPanel(self.panel.x, self.panel.y, self.panel.w, self.panel.h, "main")
-        -- Title bar dourado dentro do painel.
-        self:_drawTitleBar(self.panel.x, self.panel.y, self.panel.w)
+        self:_drawShopHeader(self.panel.x, self.panel.y, self.panel.w)
     elseif self.mode == "rewards" then
         self:_drawRewardsBanner()
     end
 
-    -- Subcontainer da GRADE (split-view: cartas + voucher + packs vivem na
-    -- mesma vitrine, não em três caixas separadas como antes).
-    if self.gridArea then
-        self:_drawPanel(self.gridArea.x, self.gridArea.y,
-                        self.gridArea.w, self.gridArea.h, "inner")
-    end
-    -- Rodapé de ações (reroll | OURO | continuar). O dinheiro continua ao lado
-    -- das ações de gastar, como na coluna antiga — só mudou de orientação.
-    if self.actionBar then
-        self:_drawActionBar()
-    end
+    -- Vitrine e rodapé de ações NÃO têm caixa: eram duas das cinco molduras
+    -- aninhadas. Os retângulos gridArea/actionBar seguem existindo como
+    -- ZONAS do layout (validateLayout), só não são desenhados.
 
     -- DEBUG: por 6s, loga o GATE de draw de cada carta a cada 0.5s.
     local dbgDrawTick = false
@@ -1989,16 +2000,9 @@ function CardRewardScreen:draw()
         end
     end
 
-    -- Mesma faixa, para relíquia e pacotes (categoria em vez de raridade).
-    for _, offer in ipairs(self.shopOffers or {}) do
-        local slot = offer._slot
-        if slot and offer.type ~= "card" and slot <= slotCount then
-            local anim = self.cardAnimations[slot]
-            if (anim and anim.scale or 1) >= 0.98 then
-                self:drawCategoryBadge(offer, slot)
-            end
-        end
-    end
+    -- Relíquia e pacote NÃO levam etiqueta de categoria ("◆ RELÍQUIA ◆",
+    -- "◆ PACOTE ◆"): o objeto já diz o que é — a placa com efeito gravado e o
+    -- envelope. A etiqueta repetida sob cada slot era ruído (Out/2026).
 
     -- ===== Painel de DETALHE FIXO (3ª coluna, só na loja) =====
     -- Desenhado DENTRO do slide, junto com o resto do painel: ele é parte da
@@ -2051,67 +2055,34 @@ function CardRewardScreen:draw()
     end
 end
 
--- F10.3 + F11.2 → design system Jul/2026: o painel Balatro-style virou o
--- CANÔNICO do jogo e mora em src/ui/UiPanel.lua (fonte única com PauseMenu
--- e futuras telas). Este método é só o adapter do call site legado.
-function CardRewardScreen:_drawPanel(x, y, w, h, depth)
-    local UiPanel = require("src.ui.UiPanel")
-    UiPanel.draw(x, y, w, h, { depth = depth or "main" })
-end
+-- Cabeçalho da loja SEM CAIXA: título solto entre dois filetes + o "?" que
+-- explica as regras de oferta (pity, afinidade, raridade por ato). O ouro NÃO
+-- se repete aqui: a TopBar já mostra o cofre logo acima — o título antigo
+-- tinha "Ouro: $30" a 50px do "$30" da barra.
+function CardRewardScreen:_drawShopHeader(px, py, pw)
+    local font = FontManager.getFont(14)
+    love.graphics.setFont(font)
+    local title = I18n.t("reward.shop_title") or "LOJA"
+    local tw = font:getWidth(title)
+    local tx = math.floor(px + (pw - tw) / 2)
+    local ty = math.floor(py + 12)
+    FontManager.drawWithOutline(title, tx, ty, Palette.AGED_GOLD_LIGHT, 0.9)
+    -- filetes curtos dos dois lados (respiro, não moldura)
+    local midY = ty + math.floor(font:getHeight() / 2)
+    local lineW = math.min(120, math.floor(pw * 0.12))
+    Palette.set(Palette.AGED_GOLD_DARK)
+    love.graphics.rectangle("fill", tx - 16 - lineW, midY, lineW, 1)
+    love.graphics.rectangle("fill", tx + tw + 16 + 26, midY, lineW, 1)
 
--- F10.3: Title bar dourado no topo do painel principal com nome da loja +
--- ouro à direita. Fica DENTRO do painel principal (não solto na cena).
-function CardRewardScreen:_drawTitleBar(panelX, panelY, panelW)
-    local h = 36
-    local x = panelX + 8
-    local y = panelY + 6
-    local w = panelW - 16
-
-    PixelCanvas.rect(x, y, w, h, Palette.PANEL_FILL or {0.18, 0.12, 0.08, 1})
-    PixelCanvas.rectOutline(x, y, w, h, Palette.AGED_GOLD or {0.78, 0.65, 0.20, 1})
-    PixelCanvas.rectOutline(x + 2, y + 2, w - 4, h - 4, Palette.AGED_GOLD_DARK or {0.45, 0.32, 0.10, 1})
-
-    -- Texto principal centralizado. Modo rewards ganha título próprio +
-    -- subtítulo que diz a REGRA ("escolha 1") — a tela antiga não contava.
-    local isRewards = self.mode == "rewards"
-    Palette.set(Palette.AGED_GOLD_LIGHT or {1, 0.92, 0.55, 1})
-    love.graphics.setFont(FontManager.getFont(14))
-    local title = isRewards and I18n.t("reward.rewards_title")
-        or (I18n.t("reward.shop_title") or "LOJA DE RELIQUIAS")
-    love.graphics.printf(title, x, y + (isRewards and 5 or 10), w, "center")
-
-    if isRewards then
-        Palette.set(Palette.PARCHMENT or {0.85, 0.78, 0.62, 1})
-        love.graphics.setFont(FontManager.getFont(8))
-        love.graphics.printf(I18n.t("reward.rewards_subtitle"), x, y + 23, w, "center")
-    end
-
-    -- Ouro à direita — SÓ na loja (em recompensas as ofertas são grátis).
-    -- UM ÚNICO leitor de ouro na tela, e é este: o rodapé de ações chegou a
-    -- ter outro, mas duplicar o mesmo número em dois cantos incomodava o dono.
-    -- Ficou o do header por ser onde a informação sempre esteve (padrão HUD).
-    if self.mode == "shop" and self.game and self.game.economySystem then
-        local goldText = I18n.t("reward.gold_label",
-            { n = self.game.economySystem.currentGold })
-        love.graphics.setFont(FontManager.getFont(10))
-        Palette.set(Palette.PARCHMENT_LIGHT or {0.92, 0.85, 0.70, 1})
-        love.graphics.printf(goldText, x, y + 12, w - 12, "right")
-    end
-
-    -- "?" no canto esquerdo do title bar: explica as REGRAS de oferta (pity,
-    -- afinidade, raridade por ato) em linguagem de jogador — hover abre tooltip.
-    local hx, hy, hr = x + 18, y + math.floor(h / 2), 10
+    local hx, hy, hr = tx + tw + 22, midY, 9
     love.graphics.setColor(0.10, 0.08, 0.05, 1)
     love.graphics.circle("fill", hx, hy, hr)
-    Palette.set(Palette.AGED_GOLD or {0.78, 0.65, 0.20, 1})
+    Palette.set(Palette.AGED_GOLD)
     love.graphics.setLineWidth(1)
     love.graphics.circle("line", hx, hy, hr)
-    Palette.set(Palette.AGED_GOLD_LIGHT or {1, 0.92, 0.55, 1})
-    love.graphics.setFont(FontManager.getFont(11))
-    love.graphics.print("?", hx - 3, hy - 8)
-
-    -- Hitbox em coordenadas de tela: o painel desenha dentro do translate do
-    -- slide — converte o mouse pro espaço local antes de comparar.
+    Palette.set(Palette.AGED_GOLD_LIGHT)
+    love.graphics.setFont(FontManager.getFont(10))
+    love.graphics.print("?", hx - 3, hy - 7)
     local mx, my = love.mouse.getPosition()
     local myLocal = my - (self.slideOffsetY or 0)
     if mx >= hx - hr - 3 and mx <= hx + hr + 3
@@ -2121,6 +2092,7 @@ function CardRewardScreen:_drawTitleBar(panelX, panelY, panelW)
             StatusTooltip.show("reward_rules", mx, my)
         end
     end
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 -- Banner flutuante do modo rewards (v3 StS): título grande com outline ink,
@@ -2217,30 +2189,6 @@ end
 -- (que antes desenhava a MESMA etiqueta como caixinha com contorno).
 local function drawMarker(cx, cy, text, color, fontSize, dia)
     ShopEngraving.marker(cx, cy, text, color, fontSize, dia)
-end
-
--- Etiqueta de CATEGORIA na faixa sob os slots que não são carta. A fileira 2
--- (relíquia + pacotes) tinha `slotLabelH` reservado no layout e nada escrito
--- nele, enquanto a fileira 1 mostrava "◆ COMUM ◆" sob cada carta: a vitrine
--- lia como duas telas diferentes empilhadas. Mesmo marcador, mesma altura.
-function CardRewardScreen:drawCategoryBadge(offer, slot)
-    if self.mode ~= "shop" or not offer or offer.purchased then return end
-    local pos = self.cardPositions[slot]
-    if not pos then return end
-    local label, color
-    if offer.type == "upgrade" then
-        label = I18n.t("reward.badge_relic", nil, "RELIQUIA")
-        color = UpgradeTile.theme(offer).text
-    elseif offer.type == "booster_pack" then
-        label = I18n.t("reward.badge_pack", nil, "PACOTE")
-        color = Palette.PARCHMENT
-    else
-        return
-    end
-    local h = pos.h or self.cardHeight
-    drawMarker(pos.x + math.floor((pos.w or self.cardWidth) / 2),
-        pos.y + h + 13, label, color, 8, 3)
-    love.graphics.setColor(1, 1, 1, 1)
 end
 
 -- Marcadores de clareza da oferta: raridade NOMEADA + "AFINIDADE" quando a
@@ -2344,40 +2292,6 @@ function CardRewardScreen:_drawCardTooltipOverlay(cardInstance)
     })
 end
 
-function CardRewardScreen:drawTitle()
-    local screenWidth = love.graphics.getWidth()
-    local screenHeight = love.graphics.getHeight()
-
-    local titleFont = FontManager.getFont(16)
-    love.graphics.setFont(titleFont)
-
-    local title = I18n.t("reward.shop_title")
-    local titleWidth = titleFont:getWidth(title)
-    local titleX = math.floor((screenWidth - titleWidth) / 2)
-    local titleY = math.floor(screenHeight * 0.1)
-
-    local padX, padY = 20, 8
-    local bx, by = titleX - padX, titleY - padY
-    local bw, bh = titleWidth + padX * 2, titleFont:getHeight() + padY * 2
-    PixelCanvas.rect(bx, by, bw, bh, Palette.PANEL_FILL)
-    PixelCanvas.rectOutline(bx, by, bw, bh, Palette.PANEL_OUTLINE)
-    PixelCanvas.rectOutline(bx + 2, by + 2, bw - 4, bh - 4, Palette.PANEL_OUTLINE_INNER)
-
-    Palette.set(Palette.AGED_GOLD_LIGHT)
-    love.graphics.print(title, titleX, titleY)
-
-    if self.game and self.game.economySystem then
-        local goldText = I18n.t("reward.gold_label", { n = self.game.economySystem.currentGold })
-        local goldFont = FontManager.getFont(10)
-        love.graphics.setFont(goldFont)
-        local goldWidth = goldFont:getWidth(goldText)
-        Palette.set(Palette.PARCHMENT_LIGHT)
-        love.graphics.print(goldText,
-            math.floor((screenWidth - goldWidth) / 2),
-            titleY + bh)
-    end
-end
-
 function CardRewardScreen:drawOffer(offer, x, y, index, customW, customH)
     local canAfford = self.game and self.game.economySystem:canAfford(offer.cost)
     local w = customW or self.cardWidth
@@ -2410,10 +2324,24 @@ function CardRewardScreen:drawOffer(offer, x, y, index, customW, customH)
         local cy = math.floor(y + headerH + 4 + drawH * 0.5)
         PackSleeve.drawAt(offer.id, offer.kind, cx, cy, scale, 1)
 
-        -- Nome do pack no topo do slot (dentro).
+        -- Nome do pack no topo do slot (dentro). Quebra em 2 linhas quando
+        -- cada PALAVRA cabe; uma palavra maior que o slot (alemão:
+        -- "Totengräbertuch") era cortada no meio pelo printf — aí o nome vai
+        -- numa linha só, reduzido/truncado pelo TextFit.
         Palette.set(Palette.AGED_GOLD_LIGHT)
-        love.graphics.setFont(FontManager.getFont(compact and 8 or 9))
-        love.graphics.printf(offer.name, x + 4, y + 3, w - 8, "center")
+        local nameFont = FontManager.getFont(compact and 8 or 9)
+        local wordTooLong = false
+        for word in tostring(offer.name or ""):gmatch("%S+") do
+            if nameFont:getWidth(word) > w - 8 then wordTooLong = true break end
+        end
+        if wordTooLong then
+            local font, txt = require("src.ui.TextFit").fit(offer.name, compact and 8 or 9, w - 8)
+            love.graphics.setFont(font)
+            love.graphics.printf(txt, x + 4, y + 3, w - 8, "center")
+        else
+            love.graphics.setFont(nameFont)
+            love.graphics.printf(offer.name, x + 4, y + 3, w - 8, "center")
+        end
 
         local sleeveRect = {
             x = math.floor(cx - drawW / 2), y = math.floor(cy - drawH / 2),

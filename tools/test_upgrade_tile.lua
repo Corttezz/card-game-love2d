@@ -83,7 +83,7 @@ end
 
 local SIZES = {
     { 800, 600 }, { 1024, 768 }, { 1280, 720 }, { 1366, 768 },
-    { 1600, 900 }, { 1920, 1080 },
+    { 1600, 900 }, { 1920, 1080 }, { 2560, 1440 },
 }
 
 local UPGRADE_IDS = { "forge_card", "health_upgrade", "mana_upgrade" }
@@ -165,8 +165,7 @@ function M.run()
                     val ~= "__missing__" and val ~= key and val ~= "")
             end
         end
-        for _, key in ipairs({ "reward.badge_relic", "reward.badge_pack",
-                               "reward.detail_type_voucher", "reward.detail_type_pack",
+        for _, key in ipairs({ "reward.detail_type_voucher", "reward.detail_type_pack",
                                "reward.instructions_shop", "reward.voucher_effect" }) do
             local val = I18n.t(key, nil, "__missing__")
             t:truthy(code .. " tem " .. key, val ~= "__missing__" and val ~= key)
@@ -414,6 +413,29 @@ function M.run()
                     #bad > 0 and bad[1] or "ok"), #bad, 0)
             end
         end
+
+        -- Loja em TELA CHEIA (Out/2026): as zonas sem moldura continuam
+        -- separadas em todo tamanho E em todo idioma — o rodape mede o rotulo
+        -- dos botoes no locale atual (alemao e o mais longo em varias telas).
+        screen:clearSelection()
+        for _, code in ipairs(I18n.getAvailable()) do
+            I18n.setLocale(code)
+            fakeW, fakeH = 800, 600
+            local s2 = CardRewardScreen:new(game.shopSystem)
+            s2:show(game, function() end, function() end, "shop")
+            pump(s2, 0.3)
+            for _, s in ipairs(SIZES) do
+                resizeTo(s2, s[1], s[2])
+                local sel = s2.shopOffers[1]
+                if sel then s2:setSelectedOffer(sel, sel._slot) end
+                pump(s2, 0.05)
+                local bad = s2:validateLayout()
+                t:eq(("%s %dx%d loja tela cheia (%s)"):format(code, s[1], s[2],
+                    #bad > 0 and bad[1] or "ok"), #bad, 0)
+            end
+            s2:hide()
+        end
+        I18n.setLocale("pt_BR")
 
         -- O tile e desenhavel em qualquer tamanho (o draw le as MESMAS bandas
         -- que o validate; um erro de nil aqui seria crash na loja real).

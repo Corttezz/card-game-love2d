@@ -45,7 +45,17 @@ function M.run(phase)
     phase = not resizeRun and tonumber(phase) or nil
     local targetT = (phase and PHASE_TIMES[phase]) or 1.20
 
+    -- Tamanho de janela por ambiente (SHOP_W/SHOP_H) — uma chamada só, no
+    -- começo: comparar a loja em 800x600 / 1280x720 / 1920x1080 sem editar o
+    -- tool. SHOP_TAG prefixa os PNGs pra várias rodadas não se sobrescreverem.
+    local envW, envH = tonumber(os.getenv("SHOP_W")), tonumber(os.getenv("SHOP_H"))
+    if envW and envH and not resizeRun then
+        love.window.setMode(envW, envH, { resizable = true })
+    end
+    local tag = os.getenv("SHOP_TAG") or ""
+
     I18n.init()
+    if os.getenv("SHOP_LOCALE") then I18n.setLocale(os.getenv("SHOP_LOCALE")) end
     require("src.ui.PixelCanvas").enableNearest()
     CRTShader.load()
     DissolveShader.load()
@@ -64,6 +74,18 @@ function M.run(phase)
         game.economySystem.currentGold = 30
     end
     _G.game = game
+    -- Seed fixa: as mesmas ofertas em todo tamanho/variante, pra comparar
+    -- layout com layout (sem isto cada captura sorteava outra vitrine).
+    do
+        local Rng = require("src.systems.Rng")
+        Rng.setActive(Rng.new(tonumber(os.getenv("SHOP_SEED")) or 4242))
+    end
+
+    -- TopBar real por cima, como no jogo (main.lua desenha a barra DEPOIS do
+    -- overlay da loja): sem ela a captura mentia sobre o espaço disponível e
+    -- escondia o ouro duplicado.
+    local topBar = require("components.TopBar"):new()
+    topBar:setGame(game)
 
     local screen = CardRewardScreen:new(game.shopSystem)
     screen:show(game,
@@ -98,6 +120,7 @@ function M.run(phase)
             ScreenShake.update(stepDt)
             CardParticles.update(stepDt)
             screen:update(stepDt)
+            topBar:update(stepDt, game)
             elapsed = elapsed + stepDt
         end
     end
@@ -114,7 +137,10 @@ function M.run(phase)
         CardParticles.draw()
         FloatingText.draw()
         FlashShader.draw()
+        topBar:draw()
+        love.graphics.setColor(1, 1, 1, 1)
 
+        name = tag .. name
         love.graphics.captureScreenshot(function(imageData)
             imageData:encode("png", name)
             print("[screenshot_shop] " .. name)

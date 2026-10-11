@@ -485,7 +485,6 @@ return {
         skip_no_card       = "Seguir sem carta",
         affinity_badge     = "AFINIDADE",
         affinity_line      = "Afinidade com seu deck: {tags}",
-        gold_label         = "Ouro: ${n}",
         continue           = "Continuar",
         refresh            = "Novas ofertas (${n})",
         buy                = "Comprar (${n})",
@@ -516,11 +515,6 @@ return {
         detail_type_pack    = "Pacote",
         detail_free         = "Grátis",
         detail_empty        = "Passe o mouse sobre uma oferta pra ver os detalhes aqui",
-        -- Etiquetas da faixa sob o slot (mesma linguagem do "◆ COMUM ◆" das
-        -- cartas). Ja em CAIXA ALTA e sem acento: o :upper() de Lua nao sobe
-        -- vogal acentuada e sairia "RELíQUIA".
-        badge_relic         = "RELÍQUIA",
-        badge_pack          = "PACOTE",
         voucher_effect      = "Efeito",
         detail_prefocus     = "Passe o mouse pra comparar",
         detail_stale        = "última oferta observada",
