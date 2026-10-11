@@ -1,16 +1,25 @@
+-- DEV x RELEASE vem de src/core/Release.lua (flag unica: build_info.lua, que
+-- so o tools/build_release.py escreve). conf.lua roda antes dos modulos
+-- love.*, e o Release nao toca nenhum no carregamento.
+local okRelease, Release = pcall(require, "src.core.Release")
+if not okRelease then
+    print("[conf] src.core.Release falhou: " .. tostring(Release))
+    Release = nil
+end
+
 function love.conf(t)
-    -- CARDGAME_IDENTITY isola o save dir quando varias copias do projeto
-    -- rodam testes ao mesmo tempo (worktrees). O jogo normal nao define a
-    -- variavel e cai no diretorio de sempre.
-    t.identity = os.getenv("CARDGAME_IDENTITY") or "card-game"
+    -- Save dir: DEV "card-game" (historico), RELEASE "Grimoire".
+    -- CARDGAME_IDENTITY sobrepoe (frentes paralelas/smoke nao pisam no save real).
+    t.identity = Release and Release.identity() or (os.getenv("CARDGAME_IDENTITY") or "card-game")
     t.version = "11.5"                          -- The LÖVE version this game was made for (string)
-    t.console = true                            -- Attach a console (boolean, Windows only)
+    -- Console so em DEV: o executavel publicado nao abre janela preta junto.
+    t.console = not (Release and Release.isRelease())
     t.accelerometerjoystick = false            -- Enable the accelerometer on iOS and Android by exposing it as a Joystick (boolean)
     t.externalstorage = false                   -- True to save files (and read from the save directory) in external storage on Android (boolean) 
     t.gammacorrect = false                      -- Enable gamma-correct rendering, when supported by the system (boolean)
 
     t.window.title = "Grimoire"                  -- The window title (string)
-    t.window.icon = nil                         -- Filepath to an image to use as the window's icon (string)
+    t.window.icon = "assets/branding/icon.png"  -- Icone da janela/barra de tarefas (o .exe usa assets/branding/icon.ico via rcedit)
     t.window.width = 1024                       -- The window width (number)
     t.window.height = 768                       -- The window height (number)
     t.window.minwidth = 800                     -- Minimum window width if resizable (number)

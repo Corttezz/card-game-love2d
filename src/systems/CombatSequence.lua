@@ -37,7 +37,9 @@ CombatSequence.__index = CombatSequence
 -- RDBG que achou a RAIZ dos espólios): loga em feel_debug.log no save dir o
 -- que o DRAW recebe de hop/juice/swell na sessão REAL do jogador.
 local Moveable = require("engine.Moveable")
+local FEEL_LOG = require("src.core.Release").isDev()  -- release: sem log de caca
 local function flog(fmt, ...)
+    if not FEEL_LOG then return end
     pcall(love.filesystem.append, "feel_debug.log",
         ("[FEEL +%.2f] "):format(love.timer and love.timer.getTime() or 0)
         .. fmt:format(...) .. "\n")

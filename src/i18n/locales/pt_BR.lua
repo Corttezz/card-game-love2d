@@ -702,7 +702,15 @@ return {
         end_turn = "Encerrar Turno",
     },
 
-    window_title = "Card Game - Um jogo de cartas estrategico",
+    window_title = "Grimoire",
+    -- Tela de erro fatal (src/core/Release.lua). Sem dependencia de fonte do jogo.
+    crash = {
+        title    = "Algo deu errado",
+        body     = "O jogo encontrou um erro inesperado e precisa fechar. O progresso salvo ate o ultimo andar continua guardado.",
+        log_path = "Um relatorio foi salvo em:",
+        hint     = "Esc: fechar   C: copiar relatorio",
+        copied   = "Relatorio copiado para a area de transferencia.",
+    },
 
     -- ======== EFEITOS (declarados em card.effects) ========
     -- Chaves simples (effects.<type>) usam placeholders {value}/{stacks}/{target}.

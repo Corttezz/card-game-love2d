@@ -183,7 +183,7 @@ local lastTime        -- frame atual (múltiplas chamadas/frame — v7.5)
 local camMovingFrame = false
 -- diagnóstico (prova magenta + log de LOD): cacheado no load — os.getenv
 -- por moita custava 7.8k chamadas C/frame
-local GF_DEBUG = os.getenv("GF_DEBUG")
+local GF_DEBUG = require("src.core.Release").isDev() and os.getenv("GF_DEBUG")  -- nunca no pacote
 
 -- ----------------------------------------------------------------------------
 -- VENTO em 3 camadas. Fase espacial vem da POSIÇÃO DE MUNDO (nx = fração

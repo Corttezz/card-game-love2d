@@ -262,7 +262,15 @@ end
 function I18n.loadSetting()
     if not (love and love.filesystem and love.filesystem.getInfo) then return nil end
     if not love.filesystem.getInfo(settingsFile()) then return nil end
-    local chunk, err = love.filesystem.load(settingsFile())
+    -- Arquivo de dados do usuario: sem bytecode e sem acesso a globais.
+    local raw = love.filesystem.read(settingsFile())
+    local chunk, err
+    if raw and raw:byte(1) ~= 27 then
+        chunk, err = loadstring(raw, "=" .. settingsFile())
+        if chunk then setfenv(chunk, {}) end
+    else
+        err = "unreadable or binary"
+    end
     if not chunk then
         print("[I18n] Falha ao carregar settings: " .. tostring(err))
         return nil

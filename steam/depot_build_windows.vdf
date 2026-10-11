@@ -1,0 +1,18 @@
+"DepotBuild"
+{
+	// Depot Windows (configure no Steamworks: OS = Windows, 64-bit).
+	"DepotID"      "DEPOT_ID"
+	"ContentRoot"  "../build/steam/windows/content/"
+
+	"FileMapping"
+	{
+		"LocalPath"  "*"
+		"DepotPath"  "."
+		"Recursive"  "1"
+	}
+
+	// steam_appid.txt e so de desenvolvimento: NUNCA vai no depot.
+	"FileExclusion" "steam_appid.txt"
+	"FileExclusion" "*.pdb"
+	"FileExclusion" "*.log"
+}

@@ -1,3 +1,8 @@
+-- PRIMEIRA linha de proposito: errorhandler amigavel + log + modo DEV/RELEASE
+-- ativos antes de qualquer require do jogo (um erro carregando modulo ja
+-- passa pelo handler). Sem `local`: love.load vive no teto de 60 upvalues.
+require("src.core.Release").install()
+
 local Game = require("src.core.Game")
 local CardFrame = require("src.ui.CardFrame")
 local Button = require("components.Button")
@@ -399,6 +404,8 @@ function love.load(loveArgs)
     -- e o checkpointRun SOBRESCREVIA o run.save.lua do JOGADOR — "abandono a
     -- run e ela ressuscita; aparece run que nunca joguei" (o save fantasma
     -- era das capturas de validação, recriado a cada tool rodada).
+    -- RELEASE: nenhum argumento chega ao dispatcher (tools/ nem vai no pacote).
+    loveArgs = require("src.core.Release").filterArgs(loveArgs)
     local toolArg = loveArgs and loveArgs[1]
     if toolArg then
         _G.HEADLESS_TOOL = true
@@ -425,7 +432,7 @@ function love.load(loveArgs)
     -- DEBUG (caça "cartas não renderizam"): marca o BOOT no log de reward —
     -- prova imediata de que ESTE build (instrumentado) é o que está rodando
     -- (mtime do arquivo muda ao abrir o jogo, sem precisar chegar num reward).
-    if not toolArg then
+    if not toolArg and require("src.core.Release").isDev() then
         pcall(love.filesystem.append, "reward_debug.log",
             ("[RDBG] ===== BOOT v%s em %s =====\n"):format(
                 tostring(require("src.core.Config").VERSION), os.date("%H:%M:%S")))
