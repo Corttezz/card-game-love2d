@@ -1,0 +1,665 @@
+{
+  "count": 30,
+  "achievements": [
+    {
+      "apiName": "ACH_PRIMEIRO_CHEFE",
+      "id": "primeiro_chefe",
+      "tier": "natural",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_PRIMEIRO_CHEFE.png",
+      "iconUnachieved": "icons/ACH_PRIMEIRO_CHEFE_locked.png",
+      "name": {
+        "brazilian": "Coroa Partida",
+        "english": "Broken Crown",
+        "spanish": "Corona Rota",
+        "french": "Couronne Brisee",
+        "german": "Zerbrochene Krone"
+      },
+      "desc": {
+        "brazilian": "Derrote seu primeiro chefe.",
+        "english": "Defeat your first boss.",
+        "spanish": "Derrota a tu primer jefe.",
+        "french": "Vainquez votre premier boss.",
+        "german": "Besiege deinen ersten Boss."
+      }
+    },
+    {
+      "apiName": "ACH_CAPITULO_FINAL",
+      "id": "capitulo_final",
+      "tier": "natural",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_CAPITULO_FINAL.png",
+      "iconUnachieved": "icons/ACH_CAPITULO_FINAL_locked.png",
+      "name": {
+        "brazilian": "O Terceiro Capítulo",
+        "english": "The Third Chapter",
+        "spanish": "El Tercer Capitulo",
+        "french": "Le Troisieme Chapitre",
+        "german": "Das Dritte Kapitel"
+      },
+      "desc": {
+        "brazilian": "Derrote o chefe do Ato 3.",
+        "english": "Defeat the Act 3 boss.",
+        "spanish": "Derrota al jefe del Acto 3.",
+        "french": "Vainquez le boss de l'Acte 3.",
+        "german": "Besiege den Boss von Akt 3."
+      }
+    },
+    {
+      "apiName": "ACH_PRIMEIRA_PAGINA",
+      "id": "primeira_pagina",
+      "tier": "natural",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_PRIMEIRA_PAGINA.png",
+      "iconUnachieved": "icons/ACH_PRIMEIRA_PAGINA_locked.png",
+      "name": {
+        "brazilian": "Primeira Página",
+        "english": "First Page",
+        "spanish": "Primera Pagina",
+        "french": "Premiere Page",
+        "german": "Erste Seite"
+      },
+      "desc": {
+        "brazilian": "Vença sua primeira corrida.",
+        "english": "Win your first run.",
+        "spanish": "Gana tu primera partida.",
+        "french": "Remportez votre premier periple.",
+        "german": "Gewinne deinen ersten Lauf."
+      }
+    },
+    {
+      "apiName": "ACH_VITORIA_GUERREIRO",
+      "id": "vitoria_guerreiro",
+      "tier": "natural",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_VITORIA_GUERREIRO.png",
+      "iconUnachieved": "icons/ACH_VITORIA_GUERREIRO_locked.png",
+      "name": {
+        "brazilian": "Lâmina Lendária",
+        "english": "Legendary Blade",
+        "spanish": "Hoja Legendaria",
+        "french": "Lame Legendaire",
+        "german": "Legendaere Klinge"
+      },
+      "desc": {
+        "brazilian": "Vença uma corrida com o Guerreiro.",
+        "english": "Win a run with the Warrior.",
+        "spanish": "Gana una partida con el Guerrero.",
+        "french": "Remportez un periple avec le Guerrier.",
+        "german": "Gewinne einen Lauf mit dem Krieger."
+      }
+    },
+    {
+      "apiName": "ACH_VITORIA_MAGO",
+      "id": "vitoria_mago",
+      "tier": "natural",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_VITORIA_MAGO.png",
+      "iconUnachieved": "icons/ACH_VITORIA_MAGO_locked.png",
+      "name": {
+        "brazilian": "Arcano Supremo",
+        "english": "Supreme Arcanist",
+        "spanish": "Arcano Supremo",
+        "french": "Arcaniste Supreme",
+        "german": "Oberster Arkanist"
+      },
+      "desc": {
+        "brazilian": "Vença uma corrida com o Mago.",
+        "english": "Win a run with the Mage.",
+        "spanish": "Gana una partida con el Mago.",
+        "french": "Remportez un periple avec le Mage.",
+        "german": "Gewinne einen Lauf mit dem Magier."
+      }
+    },
+    {
+      "apiName": "ACH_VITORIA_LADINO",
+      "id": "vitoria_ladino",
+      "tier": "natural",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_VITORIA_LADINO.png",
+      "iconUnachieved": "icons/ACH_VITORIA_LADINO_locked.png",
+      "name": {
+        "brazilian": "Sombra Invicta",
+        "english": "Unbeaten Shadow",
+        "spanish": "Sombra Invicta",
+        "french": "Ombre Invaincue",
+        "german": "Unbesiegter Schatten"
+      },
+      "desc": {
+        "brazilian": "Vença uma corrida com o Ladino.",
+        "english": "Win a run with the Rogue.",
+        "spanish": "Gana una partida con el Picaro.",
+        "french": "Remportez un periple avec le Voleur.",
+        "german": "Gewinne einen Lauf mit dem Schurken."
+      }
+    },
+    {
+      "apiName": "ACH_TRINDADE",
+      "id": "trindade",
+      "tier": "natural",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_TRINDADE.png",
+      "iconUnachieved": "icons/ACH_TRINDADE_locked.png",
+      "name": {
+        "brazilian": "Trindade do Grimório",
+        "english": "Grimoire Trinity",
+        "spanish": "Trinidad del Grimorio",
+        "french": "Trinite du Grimoire",
+        "german": "Dreifaltigkeit des Grimoires"
+      },
+      "desc": {
+        "brazilian": "Vença uma corrida com cada classe.",
+        "english": "Win a run with every class.",
+        "spanish": "Gana una partida con cada clase.",
+        "french": "Remportez un periple avec chaque classe.",
+        "german": "Gewinne einen Lauf mit jeder Klasse."
+      }
+    },
+    {
+      "apiName": "ACH_DESPERTAR",
+      "id": "despertar",
+      "tier": "natural",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_DESPERTAR.png",
+      "iconUnachieved": "icons/ACH_DESPERTAR_locked.png",
+      "name": {
+        "brazilian": "Todos Despertos",
+        "english": "All Awakened",
+        "spanish": "Todos Despiertos",
+        "french": "Tous Eveilles",
+        "german": "Alle Erwacht"
+      },
+      "desc": {
+        "brazilian": "Desbloqueie todas as classes.",
+        "english": "Unlock every class.",
+        "spanish": "Desbloquea todas las clases.",
+        "french": "Debloquez toutes les classes.",
+        "german": "Schalte alle Klassen frei."
+      }
+    },
+    {
+      "apiName": "ACH_CORO_CORINGAS",
+      "id": "coro_coringas",
+      "tier": "natural",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_CORO_CORINGAS.png",
+      "iconUnachieved": "icons/ACH_CORO_CORINGAS_locked.png",
+      "name": {
+        "brazilian": "Coro de Coringas",
+        "english": "Choir of Jokers",
+        "spanish": "Coro de Comodines",
+        "french": "Choeur de Jokers",
+        "german": "Chor der Joker"
+      },
+      "desc": {
+        "brazilian": "Vença uma batalha com todos os espaços de coringa ocupados.",
+        "english": "Win a battle with every joker slot filled.",
+        "spanish": "Gana una batalla con todos los espacios de comodin ocupados.",
+        "french": "Gagnez un combat avec tous les emplacements de joker occupes.",
+        "german": "Gewinne einen Kampf mit allen Joker-Plaetzen belegt."
+      }
+    },
+    {
+      "apiName": "ACH_GRIMORIO_BOLSO",
+      "id": "grimorio_bolso",
+      "tier": "build",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_GRIMORIO_BOLSO.png",
+      "iconUnachieved": "icons/ACH_GRIMORIO_BOLSO_locked.png",
+      "name": {
+        "brazilian": "Grimório de Bolso",
+        "english": "Pocket Grimoire",
+        "spanish": "Grimorio de Bolsillo",
+        "french": "Grimoire de Poche",
+        "german": "Taschen-Grimoire"
+      },
+      "desc": {
+        "brazilian": "Vença com um deck de 6 cartas ou menos.",
+        "english": "Win with a deck of 6 cards or fewer.",
+        "spanish": "Gana con un mazo de 6 cartas o menos.",
+        "french": "Gagnez avec un deck de 6 cartes ou moins.",
+        "german": "Gewinne mit einem Deck aus 6 Karten oder weniger."
+      }
+    },
+    {
+      "apiName": "ACH_ENCICLOPEDIA",
+      "id": "enciclopedia",
+      "tier": "build",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_ENCICLOPEDIA.png",
+      "iconUnachieved": "icons/ACH_ENCICLOPEDIA_locked.png",
+      "name": {
+        "brazilian": "Enciclopédia Ambulante",
+        "english": "Walking Encyclopedia",
+        "spanish": "Enciclopedia Andante",
+        "french": "Encyclopedie Ambulante",
+        "german": "Wandelnde Enzyklopaedie"
+      },
+      "desc": {
+        "brazilian": "Vença com 30 ou mais cartas no deck.",
+        "english": "Win with 30 or more cards in your deck.",
+        "spanish": "Gana con 30 o mas cartas en el mazo.",
+        "french": "Gagnez avec 30 cartes ou plus dans le deck.",
+        "german": "Gewinne mit 30 oder mehr Karten im Deck."
+      }
+    },
+    {
+      "apiName": "ACH_VOTO_POBREZA",
+      "id": "voto_pobreza",
+      "tier": "build",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_VOTO_POBREZA.png",
+      "iconUnachieved": "icons/ACH_VOTO_POBREZA_locked.png",
+      "name": {
+        "brazilian": "Voto de Pobreza",
+        "english": "Vow of Poverty",
+        "spanish": "Voto de Pobreza",
+        "french": "Voeu de Pauvrete",
+        "german": "Armutsgeluebde"
+      },
+      "desc": {
+        "brazilian": "Vença sem comprar nada em lojas.",
+        "english": "Win without buying anything in shops.",
+        "spanish": "Gana sin comprar nada en las tiendas.",
+        "french": "Gagnez sans rien acheter dans les boutiques.",
+        "german": "Gewinne, ohne in Laeden etwas zu kaufen."
+      }
+    },
+    {
+      "apiName": "ACH_ASCETA",
+      "id": "asceta",
+      "tier": "build",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_ASCETA.png",
+      "iconUnachieved": "icons/ACH_ASCETA_locked.png",
+      "name": {
+        "brazilian": "Asceta",
+        "english": "Ascetic",
+        "spanish": "Asceta",
+        "french": "Ascete",
+        "german": "Asket"
+      },
+      "desc": {
+        "brazilian": "Vença sem possuir nenhum coringa.",
+        "english": "Win without owning a single joker.",
+        "spanish": "Gana sin poseer ningun comodin.",
+        "french": "Gagnez sans posseder aucun joker.",
+        "german": "Gewinne, ohne einen einzigen Joker zu besitzen."
+      }
+    },
+    {
+      "apiName": "ACH_TINTA_CRUA",
+      "id": "tinta_crua",
+      "tier": "build",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_TINTA_CRUA.png",
+      "iconUnachieved": "icons/ACH_TINTA_CRUA_locked.png",
+      "name": {
+        "brazilian": "Tinta Crua",
+        "english": "Raw Ink",
+        "spanish": "Tinta Cruda",
+        "french": "Encre Brute",
+        "german": "Rohe Tinte"
+      },
+      "desc": {
+        "brazilian": "Vença usando apenas cartas comuns.",
+        "english": "Win using only common cards.",
+        "spanish": "Gana usando solo cartas comunes.",
+        "french": "Gagnez en n'utilisant que des cartes communes.",
+        "german": "Gewinne nur mit gewoehnlichen Karten."
+      }
+    },
+    {
+      "apiName": "ACH_SEM_RASCUNHOS",
+      "id": "sem_rascunhos",
+      "tier": "build",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_SEM_RASCUNHOS.png",
+      "iconUnachieved": "icons/ACH_SEM_RASCUNHOS_locked.png",
+      "name": {
+        "brazilian": "Sem Rascunhos",
+        "english": "No Drafts",
+        "spanish": "Sin Borradores",
+        "french": "Sans Brouillon",
+        "german": "Ohne Entwurf"
+      },
+      "desc": {
+        "brazilian": "Vença sem nunca usar a Forja.",
+        "english": "Win without ever using the Forge.",
+        "spanish": "Gana sin usar nunca la Forja.",
+        "french": "Gagnez sans jamais utiliser la Forge.",
+        "german": "Gewinne, ohne je die Schmiede zu benutzen."
+      }
+    },
+    {
+      "apiName": "ACH_RELAMPAGO",
+      "id": "relampago",
+      "tier": "skill",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_RELAMPAGO.png",
+      "iconUnachieved": "icons/ACH_RELAMPAGO_locked.png",
+      "name": {
+        "brazilian": "Relâmpago Selado",
+        "english": "Sealed Lightning",
+        "spanish": "Relampago Sellado",
+        "french": "Eclair Scelle",
+        "german": "Versiegelter Blitz"
+      },
+      "desc": {
+        "brazilian": "Vença uma batalha antes de o inimigo agir.",
+        "english": "Win a battle before the enemy acts.",
+        "spanish": "Gana una batalla antes de que el enemigo actue.",
+        "french": "Gagnez un combat avant que l'ennemi n'agisse.",
+        "german": "Gewinne einen Kampf, bevor der Gegner handelt."
+      }
+    },
+    {
+      "apiName": "ACH_FIO_NAVALHA",
+      "id": "fio_navalha",
+      "tier": "skill",
+      "hidden": true,
+      "iconAchieved": "icons/ACH_FIO_NAVALHA.png",
+      "iconUnachieved": "icons/ACH_FIO_NAVALHA_locked.png",
+      "name": {
+        "brazilian": "Fio da Navalha",
+        "english": "Razor's Edge",
+        "spanish": "Filo de la Navaja",
+        "french": "Fil du Rasoir",
+        "german": "Messers Schneide"
+      },
+      "desc": {
+        "brazilian": "Vença uma batalha com exatamente 1 HP.",
+        "english": "Win a battle with exactly 1 HP.",
+        "spanish": "Gana una batalla con exactamente 1 PV.",
+        "french": "Gagnez un combat avec exactement 1 PV.",
+        "german": "Gewinne einen Kampf mit genau 1 LP."
+      }
+    },
+    {
+      "apiName": "ACH_IMACULADO",
+      "id": "imaculado",
+      "tier": "skill",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_IMACULADO.png",
+      "iconUnachieved": "icons/ACH_IMACULADO_locked.png",
+      "name": {
+        "brazilian": "Imaculado",
+        "english": "Immaculate",
+        "spanish": "Inmaculado",
+        "french": "Immacule",
+        "german": "Makellos"
+      },
+      "desc": {
+        "brazilian": "Derrote um chefe sem tomar dano.",
+        "english": "Defeat a boss without taking damage.",
+        "spanish": "Derrota a un jefe sin recibir dano.",
+        "french": "Vainquez un boss sans subir de degats.",
+        "german": "Besiege einen Boss, ohne Schaden zu nehmen."
+      }
+    },
+    {
+      "apiName": "ACH_MIASMA",
+      "id": "miasma",
+      "tier": "skill",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_MIASMA.png",
+      "iconUnachieved": "icons/ACH_MIASMA_locked.png",
+      "name": {
+        "brazilian": "Miasma",
+        "english": "Miasma",
+        "spanish": "Miasma",
+        "french": "Miasme",
+        "german": "Miasma"
+      },
+      "desc": {
+        "brazilian": "Acumule 15 de veneno em um inimigo.",
+        "english": "Stack 15 poison on an enemy.",
+        "spanish": "Acumula 15 de veneno en un enemigo.",
+        "french": "Accumulez 15 de poison sur un ennemi.",
+        "german": "Haeufe 15 Gift auf einem Gegner an."
+      }
+    },
+    {
+      "apiName": "ACH_MURALHA",
+      "id": "muralha",
+      "tier": "skill",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_MURALHA.png",
+      "iconUnachieved": "icons/ACH_MURALHA_locked.png",
+      "name": {
+        "brazilian": "Muralha do Escriba",
+        "english": "Scribe's Rampart",
+        "spanish": "Muralla del Escriba",
+        "french": "Rempart du Scribe",
+        "german": "Wall des Schreibers"
+      },
+      "desc": {
+        "brazilian": "Atinja o máximo de bloqueio num turno.",
+        "english": "Reach maximum block in a turn.",
+        "spanish": "Alcanza el bloqueo maximo en un turno.",
+        "french": "Atteignez le blocage maximum en un tour.",
+        "german": "Erreiche den maximalen Block in einem Zug."
+      }
+    },
+    {
+      "apiName": "ACH_TINTA_VIVA",
+      "id": "tinta_viva",
+      "tier": "skill",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_TINTA_VIVA.png",
+      "iconUnachieved": "icons/ACH_TINTA_VIVA_locked.png",
+      "name": {
+        "brazilian": "Tinta Viva",
+        "english": "Living Ink",
+        "spanish": "Tinta Viva",
+        "french": "Encre Vivante",
+        "german": "Lebende Tinte"
+      },
+      "desc": {
+        "brazilian": "Dispare 4 combos no mesmo turno.",
+        "english": "Trigger 4 combos in the same turn.",
+        "spanish": "Activa 4 combos en el mismo turno.",
+        "french": "Declenchez 4 combos dans le meme tour.",
+        "german": "Loese 4 Combos im selben Zug aus."
+      }
+    },
+    {
+      "apiName": "ACH_GOLPE_TINTA",
+      "id": "golpe_tinta",
+      "tier": "skill",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_GOLPE_TINTA.png",
+      "iconUnachieved": "icons/ACH_GOLPE_TINTA_locked.png",
+      "name": {
+        "brazilian": "Golpe de Tinta",
+        "english": "Ink Strike",
+        "spanish": "Golpe de Tinta",
+        "french": "Coup d'Encre",
+        "german": "Tintenschlag"
+      },
+      "desc": {
+        "brazilian": "Cause 60 de dano com uma única carta.",
+        "english": "Deal 60 damage with a single card.",
+        "spanish": "Inflige 60 de dano con una sola carta.",
+        "french": "Infligez 60 degats avec une seule carte.",
+        "german": "Verursache 60 Schaden mit einer einzigen Karte."
+      }
+    },
+    {
+      "apiName": "ACH_CONDUITE_PLENO",
+      "id": "conduite_pleno",
+      "tier": "skill",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_CONDUITE_PLENO.png",
+      "iconUnachieved": "icons/ACH_CONDUITE_PLENO_locked.png",
+      "name": {
+        "brazilian": "Conduíte Pleno",
+        "english": "Full Conduit",
+        "spanish": "Conducto Pleno",
+        "french": "Conduit Plein",
+        "german": "Voller Leiter"
+      },
+      "desc": {
+        "brazilian": "Tenha 3 orbes canalizados ao mesmo tempo.",
+        "english": "Have 3 orbs channeled at once.",
+        "spanish": "Ten 3 orbes canalizados a la vez.",
+        "french": "Ayez 3 orbes canalises en meme temps.",
+        "german": "Habe 3 Kugeln gleichzeitig kanalisiert."
+      }
+    },
+    {
+      "apiName": "ACH_MAOS_LIMPAS",
+      "id": "maos_limpas",
+      "tier": "skill",
+      "hidden": true,
+      "iconAchieved": "icons/ACH_MAOS_LIMPAS.png",
+      "iconUnachieved": "icons/ACH_MAOS_LIMPAS_locked.png",
+      "name": {
+        "brazilian": "Mãos Limpas",
+        "english": "Clean Hands",
+        "spanish": "Manos Limpias",
+        "french": "Mains Propres",
+        "german": "Saubere Haende"
+      },
+      "desc": {
+        "brazilian": "Vença uma batalha sem jogar cartas de ataque.",
+        "english": "Win a battle without playing attack cards.",
+        "spanish": "Gana una batalla sin jugar cartas de ataque.",
+        "french": "Gagnez un combat sans jouer de carte d'attaque.",
+        "german": "Gewinne einen Kampf ohne Angriffskarten."
+      }
+    },
+    {
+      "apiName": "ACH_VELAS_10K",
+      "id": "velas_10k",
+      "tier": "skill",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_VELAS_10K.png",
+      "iconUnachieved": "icons/ACH_VELAS_10K_locked.png",
+      "name": {
+        "brazilian": "Dez Mil Velas",
+        "english": "Ten Thousand Candles",
+        "spanish": "Diez Mil Velas",
+        "french": "Dix Mille Chandelles",
+        "german": "Zehntausend Kerzen"
+      },
+      "desc": {
+        "brazilian": "Alcance 10.000 pontos numa corrida.",
+        "english": "Reach 10,000 points in a run.",
+        "spanish": "Alcanza 10.000 puntos en una partida.",
+        "french": "Atteignez 10 000 points en un periple.",
+        "german": "Erreiche 10.000 Punkte in einem Lauf."
+      }
+    },
+    {
+      "apiName": "ACH_ESCRIBA",
+      "id": "escriba",
+      "tier": "collection",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_ESCRIBA.png",
+      "iconUnachieved": "icons/ACH_ESCRIBA_locked.png",
+      "name": {
+        "brazilian": "Escriba Incansável",
+        "english": "Tireless Scribe",
+        "spanish": "Escriba Incansable",
+        "french": "Scribe Infatigable",
+        "german": "Unermuedlicher Schreiber"
+      },
+      "desc": {
+        "brazilian": "Jogue 2500 cartas (somando corridas).",
+        "english": "Play 2500 cards (across runs).",
+        "spanish": "Juega 2500 cartas (sumando partidas).",
+        "french": "Jouez 2500 cartes (tous periples confondus).",
+        "german": "Spiele 2500 Karten (ueber alle Laeufe)."
+      }
+    },
+    {
+      "apiName": "ACH_FERREIRO",
+      "id": "ferreiro",
+      "tier": "collection",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_FERREIRO.png",
+      "iconUnachieved": "icons/ACH_FERREIRO_locked.png",
+      "name": {
+        "brazilian": "Ferreiro-Mor",
+        "english": "Master Smith",
+        "spanish": "Maestro Herrero",
+        "french": "Maitre Forgeron",
+        "german": "Schmiedemeister"
+      },
+      "desc": {
+        "brazilian": "Forje 25 cartas (somando corridas).",
+        "english": "Forge 25 cards (across runs).",
+        "spanish": "Forja 25 cartas (sumando partidas).",
+        "french": "Forgez 25 cartes (tous periples confondus).",
+        "german": "Schmiede 25 Karten (ueber alle Laeufe)."
+      }
+    },
+    {
+      "apiName": "ACH_VETERANO",
+      "id": "veterano",
+      "tier": "collection",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_VETERANO.png",
+      "iconUnachieved": "icons/ACH_VETERANO_locked.png",
+      "name": {
+        "brazilian": "Veterano das Páginas",
+        "english": "Veteran of the Pages",
+        "spanish": "Veterano de las Paginas",
+        "french": "Veteran des Pages",
+        "german": "Veteran der Seiten"
+      },
+      "desc": {
+        "brazilian": "Vença 10 corridas.",
+        "english": "Win 10 runs.",
+        "spanish": "Gana 10 partidas.",
+        "french": "Remportez 10 periples.",
+        "german": "Gewinne 10 Laeufe."
+      }
+    },
+    {
+      "apiName": "ACH_BIBLIOTECARIO",
+      "id": "bibliotecario",
+      "tier": "collection",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_BIBLIOTECARIO.png",
+      "iconUnachieved": "icons/ACH_BIBLIOTECARIO_locked.png",
+      "name": {
+        "brazilian": "Bibliotecário",
+        "english": "Librarian",
+        "spanish": "Bibliotecario",
+        "french": "Bibliothecaire",
+        "german": "Bibliothekar"
+      },
+      "desc": {
+        "brazilian": "Descubra todas as cartas do grimório.",
+        "english": "Discover every card in the grimoire.",
+        "spanish": "Descubre todas las cartas del grimorio.",
+        "french": "Decouvrez toutes les cartes du grimoire.",
+        "german": "Entdecke alle Karten des Grimoires."
+      }
+    },
+    {
+      "apiName": "ACH_ALEM_DA_PAGINA",
+      "id": "alem_da_pagina",
+      "tier": "collection",
+      "hidden": true,
+      "iconAchieved": "icons/ACH_ALEM_DA_PAGINA.png",
+      "iconUnachieved": "icons/ACH_ALEM_DA_PAGINA_locked.png",
+      "name": {
+        "brazilian": "Além da Última Página",
+        "english": "Beyond the Last Page",
+        "spanish": "Mas Alla de la Ultima Pagina",
+        "french": "Au-dela de la Derniere Page",
+        "german": "Jenseits der Letzten Seite"
+      },
+      "desc": {
+        "brazilian": "Alcance o andar 10 do modo infinito.",
+        "english": "Reach floor 10 of endless mode.",
+        "spanish": "Alcanza el piso 10 del modo infinito.",
+        "french": "Atteignez l'etage 10 du mode infini.",
+        "german": "Erreiche Etage 10 im Endlosmodus."
+      }
+    }
+  ]
+}

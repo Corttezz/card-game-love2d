@@ -72,6 +72,7 @@ local SUITES = {
     { group = "valid", name = "test_no_hardcoded_pt" },
     { group = "valid", name = "test_dynatext_bump" },
     { group = "valid", name = "test_achievements_i18n" },
+    { group = "unit",  name = "test_achievements" },
 }
 
 function M.run()

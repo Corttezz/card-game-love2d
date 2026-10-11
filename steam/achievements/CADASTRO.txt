@@ -1,0 +1,334 @@
+# Gerado por tools/achievement_text.py steam — NAO editar a mao.
+# Uma conquista por bloco, na ordem do catalogo. Campos do painel
+# Steamworks > Stats & Achievements > Achievements.
+
+API Name ......: ACH_PRIMEIRO_CHEFE
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_PRIMEIRO_CHEFE.png
+Unachieved icon: icons/ACH_PRIMEIRO_CHEFE_locked.png
+  [brazilian] Coroa Partida — Derrote seu primeiro chefe.
+  [english] Broken Crown — Defeat your first boss.
+  [spanish] Corona Rota — Derrota a tu primer jefe.
+  [french] Couronne Brisee — Vainquez votre premier boss.
+  [german] Zerbrochene Krone — Besiege deinen ersten Boss.
+
+API Name ......: ACH_CAPITULO_FINAL
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_CAPITULO_FINAL.png
+Unachieved icon: icons/ACH_CAPITULO_FINAL_locked.png
+  [brazilian] O Terceiro Capítulo — Derrote o chefe do Ato 3.
+  [english] The Third Chapter — Defeat the Act 3 boss.
+  [spanish] El Tercer Capitulo — Derrota al jefe del Acto 3.
+  [french] Le Troisieme Chapitre — Vainquez le boss de l'Acte 3.
+  [german] Das Dritte Kapitel — Besiege den Boss von Akt 3.
+
+API Name ......: ACH_PRIMEIRA_PAGINA
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_PRIMEIRA_PAGINA.png
+Unachieved icon: icons/ACH_PRIMEIRA_PAGINA_locked.png
+  [brazilian] Primeira Página — Vença sua primeira corrida.
+  [english] First Page — Win your first run.
+  [spanish] Primera Pagina — Gana tu primera partida.
+  [french] Premiere Page — Remportez votre premier periple.
+  [german] Erste Seite — Gewinne deinen ersten Lauf.
+
+API Name ......: ACH_VITORIA_GUERREIRO
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_VITORIA_GUERREIRO.png
+Unachieved icon: icons/ACH_VITORIA_GUERREIRO_locked.png
+  [brazilian] Lâmina Lendária — Vença uma corrida com o Guerreiro.
+  [english] Legendary Blade — Win a run with the Warrior.
+  [spanish] Hoja Legendaria — Gana una partida con el Guerrero.
+  [french] Lame Legendaire — Remportez un periple avec le Guerrier.
+  [german] Legendaere Klinge — Gewinne einen Lauf mit dem Krieger.
+
+API Name ......: ACH_VITORIA_MAGO
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_VITORIA_MAGO.png
+Unachieved icon: icons/ACH_VITORIA_MAGO_locked.png
+  [brazilian] Arcano Supremo — Vença uma corrida com o Mago.
+  [english] Supreme Arcanist — Win a run with the Mage.
+  [spanish] Arcano Supremo — Gana una partida con el Mago.
+  [french] Arcaniste Supreme — Remportez un periple avec le Mage.
+  [german] Oberster Arkanist — Gewinne einen Lauf mit dem Magier.
+
+API Name ......: ACH_VITORIA_LADINO
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_VITORIA_LADINO.png
+Unachieved icon: icons/ACH_VITORIA_LADINO_locked.png
+  [brazilian] Sombra Invicta — Vença uma corrida com o Ladino.
+  [english] Unbeaten Shadow — Win a run with the Rogue.
+  [spanish] Sombra Invicta — Gana una partida con el Picaro.
+  [french] Ombre Invaincue — Remportez un periple avec le Voleur.
+  [german] Unbesiegter Schatten — Gewinne einen Lauf mit dem Schurken.
+
+API Name ......: ACH_TRINDADE
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_TRINDADE.png
+Unachieved icon: icons/ACH_TRINDADE_locked.png
+  [brazilian] Trindade do Grimório — Vença uma corrida com cada classe.
+  [english] Grimoire Trinity — Win a run with every class.
+  [spanish] Trinidad del Grimorio — Gana una partida con cada clase.
+  [french] Trinite du Grimoire — Remportez un periple avec chaque classe.
+  [german] Dreifaltigkeit des Grimoires — Gewinne einen Lauf mit jeder Klasse.
+
+API Name ......: ACH_DESPERTAR
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_DESPERTAR.png
+Unachieved icon: icons/ACH_DESPERTAR_locked.png
+  [brazilian] Todos Despertos — Desbloqueie todas as classes.
+  [english] All Awakened — Unlock every class.
+  [spanish] Todos Despiertos — Desbloquea todas las clases.
+  [french] Tous Eveilles — Debloquez toutes les classes.
+  [german] Alle Erwacht — Schalte alle Klassen frei.
+
+API Name ......: ACH_CORO_CORINGAS
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_CORO_CORINGAS.png
+Unachieved icon: icons/ACH_CORO_CORINGAS_locked.png
+  [brazilian] Coro de Coringas — Vença uma batalha com todos os espaços de coringa ocupados.
+  [english] Choir of Jokers — Win a battle with every joker slot filled.
+  [spanish] Coro de Comodines — Gana una batalla con todos los espacios de comodin ocupados.
+  [french] Choeur de Jokers — Gagnez un combat avec tous les emplacements de joker occupes.
+  [german] Chor der Joker — Gewinne einen Kampf mit allen Joker-Plaetzen belegt.
+
+API Name ......: ACH_GRIMORIO_BOLSO
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_GRIMORIO_BOLSO.png
+Unachieved icon: icons/ACH_GRIMORIO_BOLSO_locked.png
+  [brazilian] Grimório de Bolso — Vença com um deck de 6 cartas ou menos.
+  [english] Pocket Grimoire — Win with a deck of 6 cards or fewer.
+  [spanish] Grimorio de Bolsillo — Gana con un mazo de 6 cartas o menos.
+  [french] Grimoire de Poche — Gagnez avec un deck de 6 cartes ou moins.
+  [german] Taschen-Grimoire — Gewinne mit einem Deck aus 6 Karten oder weniger.
+
+API Name ......: ACH_ENCICLOPEDIA
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_ENCICLOPEDIA.png
+Unachieved icon: icons/ACH_ENCICLOPEDIA_locked.png
+  [brazilian] Enciclopédia Ambulante — Vença com 30 ou mais cartas no deck.
+  [english] Walking Encyclopedia — Win with 30 or more cards in your deck.
+  [spanish] Enciclopedia Andante — Gana con 30 o mas cartas en el mazo.
+  [french] Encyclopedie Ambulante — Gagnez avec 30 cartes ou plus dans le deck.
+  [german] Wandelnde Enzyklopaedie — Gewinne mit 30 oder mehr Karten im Deck.
+
+API Name ......: ACH_VOTO_POBREZA
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_VOTO_POBREZA.png
+Unachieved icon: icons/ACH_VOTO_POBREZA_locked.png
+  [brazilian] Voto de Pobreza — Vença sem comprar nada em lojas.
+  [english] Vow of Poverty — Win without buying anything in shops.
+  [spanish] Voto de Pobreza — Gana sin comprar nada en las tiendas.
+  [french] Voeu de Pauvrete — Gagnez sans rien acheter dans les boutiques.
+  [german] Armutsgeluebde — Gewinne, ohne in Laeden etwas zu kaufen.
+
+API Name ......: ACH_ASCETA
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_ASCETA.png
+Unachieved icon: icons/ACH_ASCETA_locked.png
+  [brazilian] Asceta — Vença sem possuir nenhum coringa.
+  [english] Ascetic — Win without owning a single joker.
+  [spanish] Asceta — Gana sin poseer ningun comodin.
+  [french] Ascete — Gagnez sans posseder aucun joker.
+  [german] Asket — Gewinne, ohne einen einzigen Joker zu besitzen.
+
+API Name ......: ACH_TINTA_CRUA
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_TINTA_CRUA.png
+Unachieved icon: icons/ACH_TINTA_CRUA_locked.png
+  [brazilian] Tinta Crua — Vença usando apenas cartas comuns.
+  [english] Raw Ink — Win using only common cards.
+  [spanish] Tinta Cruda — Gana usando solo cartas comunes.
+  [french] Encre Brute — Gagnez en n'utilisant que des cartes communes.
+  [german] Rohe Tinte — Gewinne nur mit gewoehnlichen Karten.
+
+API Name ......: ACH_SEM_RASCUNHOS
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_SEM_RASCUNHOS.png
+Unachieved icon: icons/ACH_SEM_RASCUNHOS_locked.png
+  [brazilian] Sem Rascunhos — Vença sem nunca usar a Forja.
+  [english] No Drafts — Win without ever using the Forge.
+  [spanish] Sin Borradores — Gana sin usar nunca la Forja.
+  [french] Sans Brouillon — Gagnez sans jamais utiliser la Forge.
+  [german] Ohne Entwurf — Gewinne, ohne je die Schmiede zu benutzen.
+
+API Name ......: ACH_RELAMPAGO
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_RELAMPAGO.png
+Unachieved icon: icons/ACH_RELAMPAGO_locked.png
+  [brazilian] Relâmpago Selado — Vença uma batalha antes de o inimigo agir.
+  [english] Sealed Lightning — Win a battle before the enemy acts.
+  [spanish] Relampago Sellado — Gana una batalla antes de que el enemigo actue.
+  [french] Eclair Scelle — Gagnez un combat avant que l'ennemi n'agisse.
+  [german] Versiegelter Blitz — Gewinne einen Kampf, bevor der Gegner handelt.
+
+API Name ......: ACH_FIO_NAVALHA
+Hidden ........: yes
+Set by ........: Client
+Achieved icon .: icons/ACH_FIO_NAVALHA.png
+Unachieved icon: icons/ACH_FIO_NAVALHA_locked.png
+  [brazilian] Fio da Navalha — Vença uma batalha com exatamente 1 HP.
+  [english] Razor's Edge — Win a battle with exactly 1 HP.
+  [spanish] Filo de la Navaja — Gana una batalla con exactamente 1 PV.
+  [french] Fil du Rasoir — Gagnez un combat avec exactement 1 PV.
+  [german] Messers Schneide — Gewinne einen Kampf mit genau 1 LP.
+
+API Name ......: ACH_IMACULADO
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_IMACULADO.png
+Unachieved icon: icons/ACH_IMACULADO_locked.png
+  [brazilian] Imaculado — Derrote um chefe sem tomar dano.
+  [english] Immaculate — Defeat a boss without taking damage.
+  [spanish] Inmaculado — Derrota a un jefe sin recibir dano.
+  [french] Immacule — Vainquez un boss sans subir de degats.
+  [german] Makellos — Besiege einen Boss, ohne Schaden zu nehmen.
+
+API Name ......: ACH_MIASMA
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_MIASMA.png
+Unachieved icon: icons/ACH_MIASMA_locked.png
+  [brazilian] Miasma — Acumule 15 de veneno em um inimigo.
+  [english] Miasma — Stack 15 poison on an enemy.
+  [spanish] Miasma — Acumula 15 de veneno en un enemigo.
+  [french] Miasme — Accumulez 15 de poison sur un ennemi.
+  [german] Miasma — Haeufe 15 Gift auf einem Gegner an.
+
+API Name ......: ACH_MURALHA
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_MURALHA.png
+Unachieved icon: icons/ACH_MURALHA_locked.png
+  [brazilian] Muralha do Escriba — Atinja o máximo de bloqueio num turno.
+  [english] Scribe's Rampart — Reach maximum block in a turn.
+  [spanish] Muralla del Escriba — Alcanza el bloqueo maximo en un turno.
+  [french] Rempart du Scribe — Atteignez le blocage maximum en un tour.
+  [german] Wall des Schreibers — Erreiche den maximalen Block in einem Zug.
+
+API Name ......: ACH_TINTA_VIVA
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_TINTA_VIVA.png
+Unachieved icon: icons/ACH_TINTA_VIVA_locked.png
+  [brazilian] Tinta Viva — Dispare 4 combos no mesmo turno.
+  [english] Living Ink — Trigger 4 combos in the same turn.
+  [spanish] Tinta Viva — Activa 4 combos en el mismo turno.
+  [french] Encre Vivante — Declenchez 4 combos dans le meme tour.
+  [german] Lebende Tinte — Loese 4 Combos im selben Zug aus.
+
+API Name ......: ACH_GOLPE_TINTA
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_GOLPE_TINTA.png
+Unachieved icon: icons/ACH_GOLPE_TINTA_locked.png
+  [brazilian] Golpe de Tinta — Cause 60 de dano com uma única carta.
+  [english] Ink Strike — Deal 60 damage with a single card.
+  [spanish] Golpe de Tinta — Inflige 60 de dano con una sola carta.
+  [french] Coup d'Encre — Infligez 60 degats avec une seule carte.
+  [german] Tintenschlag — Verursache 60 Schaden mit einer einzigen Karte.
+
+API Name ......: ACH_CONDUITE_PLENO
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_CONDUITE_PLENO.png
+Unachieved icon: icons/ACH_CONDUITE_PLENO_locked.png
+  [brazilian] Conduíte Pleno — Tenha 3 orbes canalizados ao mesmo tempo.
+  [english] Full Conduit — Have 3 orbs channeled at once.
+  [spanish] Conducto Pleno — Ten 3 orbes canalizados a la vez.
+  [french] Conduit Plein — Ayez 3 orbes canalises en meme temps.
+  [german] Voller Leiter — Habe 3 Kugeln gleichzeitig kanalisiert.
+
+API Name ......: ACH_MAOS_LIMPAS
+Hidden ........: yes
+Set by ........: Client
+Achieved icon .: icons/ACH_MAOS_LIMPAS.png
+Unachieved icon: icons/ACH_MAOS_LIMPAS_locked.png
+  [brazilian] Mãos Limpas — Vença uma batalha sem jogar cartas de ataque.
+  [english] Clean Hands — Win a battle without playing attack cards.
+  [spanish] Manos Limpias — Gana una batalla sin jugar cartas de ataque.
+  [french] Mains Propres — Gagnez un combat sans jouer de carte d'attaque.
+  [german] Saubere Haende — Gewinne einen Kampf ohne Angriffskarten.
+
+API Name ......: ACH_VELAS_10K
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_VELAS_10K.png
+Unachieved icon: icons/ACH_VELAS_10K_locked.png
+  [brazilian] Dez Mil Velas — Alcance 10.000 pontos numa corrida.
+  [english] Ten Thousand Candles — Reach 10,000 points in a run.
+  [spanish] Diez Mil Velas — Alcanza 10.000 puntos en una partida.
+  [french] Dix Mille Chandelles — Atteignez 10 000 points en un periple.
+  [german] Zehntausend Kerzen — Erreiche 10.000 Punkte in einem Lauf.
+
+API Name ......: ACH_ESCRIBA
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_ESCRIBA.png
+Unachieved icon: icons/ACH_ESCRIBA_locked.png
+  [brazilian] Escriba Incansável — Jogue 2500 cartas (somando corridas).
+  [english] Tireless Scribe — Play 2500 cards (across runs).
+  [spanish] Escriba Incansable — Juega 2500 cartas (sumando partidas).
+  [french] Scribe Infatigable — Jouez 2500 cartes (tous periples confondus).
+  [german] Unermuedlicher Schreiber — Spiele 2500 Karten (ueber alle Laeufe).
+
+API Name ......: ACH_FERREIRO
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_FERREIRO.png
+Unachieved icon: icons/ACH_FERREIRO_locked.png
+  [brazilian] Ferreiro-Mor — Forje 25 cartas (somando corridas).
+  [english] Master Smith — Forge 25 cards (across runs).
+  [spanish] Maestro Herrero — Forja 25 cartas (sumando partidas).
+  [french] Maitre Forgeron — Forgez 25 cartes (tous periples confondus).
+  [german] Schmiedemeister — Schmiede 25 Karten (ueber alle Laeufe).
+
+API Name ......: ACH_VETERANO
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_VETERANO.png
+Unachieved icon: icons/ACH_VETERANO_locked.png
+  [brazilian] Veterano das Páginas — Vença 10 corridas.
+  [english] Veteran of the Pages — Win 10 runs.
+  [spanish] Veterano de las Paginas — Gana 10 partidas.
+  [french] Veteran des Pages — Remportez 10 periples.
+  [german] Veteran der Seiten — Gewinne 10 Laeufe.
+
+API Name ......: ACH_BIBLIOTECARIO
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_BIBLIOTECARIO.png
+Unachieved icon: icons/ACH_BIBLIOTECARIO_locked.png
+  [brazilian] Bibliotecário — Descubra todas as cartas do grimório.
+  [english] Librarian — Discover every card in the grimoire.
+  [spanish] Bibliotecario — Descubre todas las cartas del grimorio.
+  [french] Bibliothecaire — Decouvrez toutes les cartes du grimoire.
+  [german] Bibliothekar — Entdecke alle Karten des Grimoires.
+
+API Name ......: ACH_ALEM_DA_PAGINA
+Hidden ........: yes
+Set by ........: Client
+Achieved icon .: icons/ACH_ALEM_DA_PAGINA.png
+Unachieved icon: icons/ACH_ALEM_DA_PAGINA_locked.png
+  [brazilian] Além da Última Página — Alcance o andar 10 do modo infinito.
+  [english] Beyond the Last Page — Reach floor 10 of endless mode.
+  [spanish] Mas Alla de la Ultima Pagina — Alcanza el piso 10 del modo infinito.
+  [french] Au-dela de la Derniere Page — Atteignez l'etage 10 du mode infini.
+  [german] Jenseits der Letzten Seite — Erreiche Etage 10 im Endlosmodus.
+
