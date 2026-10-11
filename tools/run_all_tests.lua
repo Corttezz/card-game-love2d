@@ -65,6 +65,7 @@ local SUITES = {
     -- Validação / conteúdo
     { group = "valid", name = "validate_cards" },
     { group = "valid", name = "test_card_audit" },
+    { group = "unit",  name = "test_balance_ai" },
     { group = "valid", name = "test_i18n" },
     { group = "valid", name = "test_no_hardcoded_pt" },
     { group = "valid", name = "test_dynatext_bump" },

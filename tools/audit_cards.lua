@@ -554,6 +554,31 @@ function M.behaviorAudit(opts)
             end
             counted.cards = counted.cards + 1
             rows[#rows + 1] = { id = id, kind = "card", got = got, ex = ex, inst = inst }
+            -- Inato: embaralhada no FUNDO do baralho, tem que voltar ao topo
+            -- (o caminho real: reembaralhar promove as inatas).
+            -- Retencao: fica na mao no fim do turno; as outras vao pro descarte.
+            if cd.innate or cd.retain then
+                local g = neutralGame(classOf(cd), CardDatabase)
+                local inst2 = mkInst(CardDatabase, id)
+                if cd.innate then
+                    g.deck[#g.deck + 1] = inst2
+                    g:shuffleDeck(); g:promoteInnateCardsToTop()
+                    if g.deck[1] ~= inst2 then
+                        issues[#issues + 1] = id .. ": Inato, mas nao foi pro topo do baralho"
+                    end
+                end
+                if cd.retain then
+                    g.hand[#g.hand + 1] = inst2
+                    g.turn = "player"
+                    g:discardHandEndOfTurn()
+                    local kept = false
+                    for _, c in ipairs(g.hand) do if c == inst2 then kept = true end end
+                    if not kept then
+                        issues[#issues + 1] = id .. ": Retencao, mas foi descartada no fim do turno"
+                    end
+                end
+                counted.flags = (counted.flags or 0) + 1
+            end
             -- forja: o ganho declarado TEM que aparecer no efeito medido
             local gains = RunManager.getForgeGains(cd)
             if next(gains) ~= nil and not hasEff(cd, "mystery") then
