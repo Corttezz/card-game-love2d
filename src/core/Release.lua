@@ -279,7 +279,7 @@ function Release.errorhandler(msg)
     local trace = debug.traceback("Error: " .. msg, 3)
     local _, absPath = Release.writeCrashLog(msg, trace)
 
-    if Release._selftest then
+    if Release._selftest and Release._selftest ~= "crash" then
         pcall(love.filesystem.write, "selftest_result.txt",
             "FAIL " .. tostring(Release.version()) .. "\n" .. trace .. "\n")
         return function() return 1 end
@@ -315,13 +315,18 @@ function Release.errorhandler(msg)
     local pathText = utf8safe(absPath or "?")
     local copyText = utf8safe(trace)
     local justCopied = false
+    local fontCache = nil
 
     local function draw()
         if not love.graphics.isActive() then return end
         local w, h = love.graphics.getDimensions()
         local s = math.max(1, math.min(w / 1024, h / 768))
-        local fTitle = love.graphics.newFont(math.floor(28 * s))
-        local fBody  = love.graphics.newFont(math.floor(16 * s))
+        if not fontCache or fontCache.s ~= s then
+            fontCache = { s = s,
+                title = love.graphics.newFont(math.floor(28 * s)),
+                body  = love.graphics.newFont(math.floor(16 * s)) }
+        end
+        local fTitle, fBody = fontCache.title, fontCache.body
         local pad = math.floor(48 * s)
         local wrapW = w - pad * 2
         love.graphics.clear(0.10, 0.07, 0.05)
@@ -343,7 +348,16 @@ function Release.errorhandler(msg)
         love.graphics.present()
     end
 
+    -- Validacao automatica da tela (o smoke nao enxerga janela): com
+    -- GRIMOIRE_CRASH_SHOT=1 grava crash_screen.png no save dir e fecha.
+    local shotFrames = os.getenv("GRIMOIRE_CRASH_SHOT") and 0 or nil
+
     return function()
+        if shotFrames then
+            shotFrames = shotFrames + 1
+            if shotFrames == 2 then love.graphics.captureScreenshot("crash_screen.png") end
+            if shotFrames > 4 then return 1 end
+        end
         love.event.pump()
         for e, a in love.event.poll() do
             if e == "quit" then return 1 end
@@ -395,8 +409,11 @@ local function selftestDeep()
 end
 
 -- Envolve o love.run padrao: roda o jogo de verdade e injeta o roteiro.
+-- GRIMOIRE_SELFTEST=crash: em vez de passar, provoca um erro depois do boot
+-- pra exercitar a tela de erro e o crash log do PACOTE (com
+-- GRIMOIRE_CRASH_SHOT=1 a tela vira crash_screen.png e o processo sai com 1).
 local function installSelftest()
-    Release._selftest = true
+    Release._selftest = (os.getenv("GRIMOIRE_SELFTEST") == "crash") and "crash" or true
     local baseRun = love.run
     love.run = function()
         local loop = baseRun()
@@ -412,6 +429,9 @@ local function installSelftest()
             if not skipped and t > 0.8 then
                 skipped = true
                 love.event.push("keypressed", "space", "space", false)
+            end
+            if Release._selftest == "crash" and t > 2.0 then
+                error("selftest: erro induzido para validar a tela de crash")
             end
             if skipped and not deepDone and t > 2.0 then
                 deepDone = true

@@ -114,11 +114,25 @@ local function atomicWrite(path, data)
     return true
 end
 
+-- Carrega um arquivo de DADOS do save dir sem dar a ele poder de codigo.
+-- Save e arquivo do usuario (Steam Cloud, save compartilhado num forum): com
+-- love.filesystem.load ele rodaria com acesso a os/io. Aqui: so texto (bytecode
+-- recusado — o LuaJIT nao valida bytecode) e ambiente VAZIO.
+function SaveManager.loadDataChunk(path)
+    local raw = love.filesystem.read(path)
+    if not raw then return nil, "read failed" end
+    if raw:byte(1) == 27 then return nil, "binary chunk refused" end
+    local chunk, err = loadstring(raw, "=" .. path)
+    if not chunk then return nil, err end
+    setfenv(chunk, {})
+    return chunk
+end
+
 -- Lê arquivo Lua serializado, retorna `default` em caso de ausência ou corrupção.
 local function safeRead(path, default)
     if not love.filesystem.getInfo(path) then return default end
 
-    local chunk, err = love.filesystem.load(path)
+    local chunk, err = SaveManager.loadDataChunk(path)
     if not chunk then
         print("[SaveManager] parse falhou em " .. path .. ": " .. tostring(err))
         return default

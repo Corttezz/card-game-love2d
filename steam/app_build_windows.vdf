@@ -1,0 +1,20 @@
+"AppBuild"
+{
+	// Template SteamPipe. Troque APP_ID e DEPOT_ID pelos numeros do
+	// Steamworks (App Admin > SteamPipe > Depots). Caminhos sao relativos a
+	// ESTE arquivo. O conteudo e gerado por: python tools/build_release.py
+	// Upload: steamcmd +login <conta> +run_app_build <caminho>\steam\app_build_windows.vdf +quit
+	"AppID"        "APP_ID"
+	"Desc"         "Grimoire Windows"
+	"BuildOutput"  "../build/steam/output/"
+	"ContentRoot"  "../build/steam/windows/content/"
+	// Vazio = nao publica sozinho. Publique pela pagina de Builds (ou "beta").
+	"SetLive"      ""
+	// "1" = so simula (lista arquivos), nao envia. Use na primeira vez.
+	"Preview"      "0"
+
+	"Depots"
+	{
+		"DEPOT_ID" "depot_build_windows.vdf"
+	}
+}
