@@ -161,6 +161,31 @@ function M.run()
         es:hide()
     end
 
+    -- 7c. "Comprei a Forja, apertei Voltar e perdi o ouro."
+    do
+        local g = TK.newRunGame("warrior")
+        local CardRewardScreen = require("components.CardRewardScreen")
+        local scr = CardRewardScreen:new(g.shopSystem)
+        scr:show(g, function() end, function() end, "shop")
+        local run = g.runManager.currentRun
+        run.paidForges = 2
+        local offer = { effect = "forge_card", cost = 7, purchased = true, type = "upgrade" }
+        local gold0 = g.economySystem.currentGold
+        local prev = _G.openForgeScreen
+        _G.openForgeScreen = function(onDone) onDone(false) end   -- jogador apertou Voltar
+        scr:applyUpgrade(offer)
+        t:eq("Voltar sem forjar devolve o ouro", g.economySystem.currentGold - gold0, 7)
+        t:falsy("e a oferta volta a ficar a venda", offer.purchased)
+        t:eq("e o preco da proxima forja nao sobe por uma forja que nao houve", run.paidForges, 2)
+        _G.openForgeScreen = function(onDone) onDone(true) end    -- forjou de verdade
+        offer.purchased = true
+        scr:applyUpgrade(offer)
+        t:eq("forja feita: nada devolvido", g.economySystem.currentGold - gold0, 7)
+        t:eq("forja feita conta no preco", run.paidForges, 3)
+        _G.openForgeScreen = prev
+        scr:hide()
+    end
+
     -- 8. advanceFloorInAct sem argumento usa a fonte única de atos.
     do
         local g = TK.newRunGame("warrior")

@@ -206,7 +206,8 @@ _G.openCardPicker = function(mode, onDone)
     currentState = "rest"
     restScreen:show(game, function()
         currentState = prevState
-        if onDone then onDone() end
+        -- onDone(feito): false = o jogador saiu pelo Voltar sem escolher.
+        if onDone then onDone(restScreen.lastPickDone == true) end
     end, mode or "forge")
 end
 

@@ -1505,7 +1505,21 @@ function CardRewardScreen:applyUpgrade(upgrade)
             self.game.runManager:registerPaidForge()
         end
         if _G.openForgeScreen then
-            _G.openForgeScreen()
+            -- Forja PAGA e o jogador desistiu (Voltar sem escolher carta):
+            -- devolve o ouro e a oferta. Antes o ouro sumia e o preço da
+            -- próxima forja subia por uma forja que não aconteceu.
+            _G.openForgeScreen(function(done)
+                if done then return end
+                local run = self.game.runManager and self.game.runManager.currentRun
+                if run and (run.paidForges or 0) > 0 then
+                    run.paidForges = run.paidForges - 1
+                end
+                if self.game.economySystem and (upgrade.cost or 0) > 0 then
+                    self.game.economySystem:earnGold(upgrade.cost, "forge_refund")
+                end
+                upgrade.purchased = false
+                if self.createOfferButtons then self:createOfferButtons() end
+            end)
         else
             Debug.warn("[CardRewardScreen] _G.openForgeScreen não registrado — forja ignorada")
         end
