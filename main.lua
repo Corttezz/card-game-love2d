@@ -1971,6 +1971,9 @@ function love.update(dt)
         if not combatFrozen then GameplayScene.update(dt) end
     elseif currentState == "classSelection" then
         classSelectionScreen:update(dt)
+        -- Aquece o bioma 1 enquanto o jogador escolhe: a run nasce com o
+        -- mundo pronto (sem engasgo no primeiro frame).
+        require("src.ui.WorldRoad").prewarmTick(nil, 1)
     elseif currentState == "cardReward" then
         -- v9.7.1: o mundo continua VIVO atrás das ofertas (anims dos
         -- lugares, vento, nuvens — e o juice dos cliques no cenário)

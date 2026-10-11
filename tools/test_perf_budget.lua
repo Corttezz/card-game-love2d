@@ -138,6 +138,22 @@ function M.run()
     end)
     t:check("cenário roda sem erro" .. (ok and "" or (": " .. tostring(err))), ok)
 
+    -- ---- 6: seleção de classe aquece o bioma 1 mesmo com o mundo parado
+    -- em outro ato (run anterior terminou no ato 4) ----------------------
+    do
+        local WR = require("src.ui.WorldRoad")
+        WR.clearCache()
+        local prevIdx = WR._biomeIndex
+        WR._biomeIndex = 4
+        for _ = 1, 2000 do
+            if WR.isPrewarmed(1) then break end
+            WR.prewarmTick(1, 1)
+        end
+        t:check("prewarmTick(_, 1) aquece o bioma 1 com o mundo em outro ato",
+            WR.isPrewarmed(1))
+        WR._biomeIndex = prevIdx
+    end
+
     WorldRoad.resetRun()
     WorldRoad.clearCache()
     return t:done()

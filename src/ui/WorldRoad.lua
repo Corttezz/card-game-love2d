@@ -4733,16 +4733,20 @@ end
 
 -- Roda jobs até o orçamento do frame acabar. Alvo: bioma atual, depois o
 -- próximo. Exposto (WorldRoad.prewarmTick) pra ferramentas medirem.
-prewarmTick = function(budget)
+-- `baseIdx` (opcional) aquece a partir de outro bioma que não o atual: a
+-- seleção de classe aquece o bioma 1 antes de a run existir, e o primeiro
+-- frame do mundo deixa de pagar ~130 ms de carga.
+prewarmTick = function(budget, baseIdx)
     budget = budget or WorldRoad.PREWARM_BUDGET
     if budget <= 0 then return end
-    local cur = rawBiome().id
+    local base = baseIdx or WorldRoad._biomeIndex
+    local cur = rawBiome(base).id
     local target
     if not prewarm.done[cur] then
-        target = WorldRoad._biomeIndex
+        target = base
     else
-        local nxt = rawBiome(WorldRoad._biomeIndex + 1).id
-        if not prewarm.done[nxt] then target = WorldRoad._biomeIndex + 1 end
+        local nxt = rawBiome(base + 1).id
+        if not prewarm.done[nxt] then target = base + 1 end
     end
     if not target then return end
     local bid = rawBiome(target).id
