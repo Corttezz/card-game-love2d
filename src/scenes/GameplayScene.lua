@@ -10,6 +10,7 @@
 
 local Config           = require("src.core.Config")
 local FontManager      = require("src.ui.FontManager")
+local I18n             = require("src.i18n.I18n")
 local SceneLayer       = require("src.ui.SceneLayer")
 local SceneBackground  = require("src.ui.SceneBackground")
 local SceneAnchors     = require("src.data.scene_anchors")
@@ -317,11 +318,11 @@ local function drawJokersAsCards()
     local lf = FontManager.getFont(8)
     love.graphics.setFont(lf)
     Palette.set(Palette.AGED_GOLD_LIGHT)
-    local label = "CORINGAS " .. activeN .. "/" .. g.maxSlots .. "  (J)"
+    local label = I18n.t("hud.jokers_frame", { n = activeN, max = g.maxSlots })
     love.graphics.print(label, g.x + g.pad, g.y + 5)
     if benched > 0 then
         Palette.set(Palette.RUST)
-        local bl = "+" .. benched .. " bancada"
+        local bl = I18n.t("hud.jokers_bench", { n = benched })
         love.graphics.print(bl, g.x + g.w - g.pad - lf:getWidth(bl), g.y + 5)
     end
 
@@ -1037,6 +1038,19 @@ function GameplayScene.mousemoved(x, y, dx, dy)
 end
 
 function GameplayScene.keypressed(key)
+    -- Atalhos de DESENVOLVIMENTO (reiniciar batalha, presets de fumaça) só
+    -- existem no modo clássico. Numa RUN eles eram armadilha: "R" rodava
+    -- game:startGame() — player novo (vida/mana máximas perdidas), ouro 10,
+    -- inimigo base do ato 1 no lugar do chefe — e o checkpoint seguinte
+    -- gravava isso. Os números trocavam a fumaça em silêncio. (Revisão de
+    -- lançamento, Out/2026.) O "f" de tela cheia saiu de vez: alternava sem
+    -- love.resize (layout velho) e sem gravar a preferência — o caminho certo
+    -- é Configurações → Tela cheia.
+    if key == "escape" then
+        onReturnToMenu()
+        return
+    end
+    if game and game.isRunMode then return end
     -- Atalhos de DEV (restart e presets de smoke) nao existem no jogo publicado.
     local dev = require("src.core.Release").isDev()
     if not dev and (key == "r" or key == "0" or key == "1" or key == "2"
@@ -1045,10 +1059,6 @@ function GameplayScene.keypressed(key)
     end
     if key == "r" then
         game:startGame()
-    elseif key == "f" then
-        local fullscreen = not love.window.getFullscreen()
-        love.window.setFullscreen(fullscreen)
-        FontManager.clearCache()
     elseif key == "1" then
         SmokeConfig.applyToSystem(smokeSystem, "subtle")
     elseif key == "2" then
@@ -1059,8 +1069,6 @@ function GameplayScene.keypressed(key)
         SmokeConfig.applyToSystem(smokeSystem, "intense")
     elseif key == "0" then
         if smokeSystem then smokeSystem:clear() end
-    elseif key == "escape" then
-        onReturnToMenu()
     end
 end
 

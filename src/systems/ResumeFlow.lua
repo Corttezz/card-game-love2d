@@ -51,6 +51,28 @@ end
 
 -- Aplica o plano na cena. `scene` é injetável só para teste; em produção é o
 -- GameplayScene. Devolve o plano para quem quiser logar/decidir depois.
+-- O QUE o Continuar reabre, a partir de `run.stage` (gravado pelo main.lua
+-- em cada ponto seguro — ver setRunStage). Pura e testável (test_lifecycle):
+--   "battle" → retomar a luta (default: save sem estágio = comportamento antigo)
+--   "fork"   → encruzilhada (pendingNodes)
+--   "cashout" | "rewards" | "rest" | "event" | "shop" → reabrir a tela
+--   "map"    → nó já resolvido (escolha do evento/fogueira feita) ou estágio
+--              desconhecido: segue pra próxima encruzilhada, NUNCA reabre o
+--              nó (reaplicaria a escolha) e NUNCA vira luta fantasma.
+local KNOWN = { cashout = true, rewards = true, rest = true, event = true, shop = true }
+function ResumeFlow.stageAction(run)
+    local stage = run and run.stage
+    local pending = run and run.pendingNodes
+    if pending and #pending > 0 then return "fork" end
+    if stage == nil or stage == "battle" then return "battle" end
+    if KNOWN[stage] then return stage end
+    if stage ~= "event_done" and stage ~= "rest_done" and stage ~= "fork" then
+        print("[ResumeFlow] estagio desconhecido '" .. tostring(stage)
+            .. "' — seguindo pra encruzilhada")
+    end
+    return "map"
+end
+
 function ResumeFlow.apply(game, scene)
     scene = scene or require("src.scenes.GameplayScene")
     local run = game and game.runManager and game.runManager.currentRun

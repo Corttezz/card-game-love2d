@@ -60,8 +60,8 @@ local function buildForgeLine(inst)
     local gains = RunManager.getForgeGains(inst)
     local lvl = inst.upgrades
     local parts = {}
-    if gains.atk then table.insert(parts, "+" .. (gains.atk * lvl) .. " ATQ") end
-    if gains.def then table.insert(parts, "+" .. (gains.def * lvl) .. " DEF") end
+    if gains.atk then table.insert(parts, "+" .. (gains.atk * lvl) .. " " .. I18n.t("card_info.atk_short")) end
+    if gains.def then table.insert(parts, "+" .. (gains.def * lvl) .. " " .. I18n.t("card_info.def_short")) end
     if gains.effect then table.insert(parts, "+" .. (gains.effect * lvl)) end
     local line = I18n.t("card_info.forged", { n = lvl }, "Forjada +" .. lvl)
     if #parts > 0 then
@@ -140,7 +140,7 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
 
     local rarityText = nil
     if showRarity and cardInstance.rarity then
-        rarityText = (I18n.t("rarity." .. cardInstance.rarity, nil, cardInstance.rarity)):upper()
+        rarityText = require("src.i18n.TextCase").upper(I18n.t("rarity." .. cardInstance.rarity, nil, cardInstance.rarity))
     end
 
     -- ===== 2. MEDIDA (a maior linha define a largura; nada vaza) =====

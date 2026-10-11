@@ -141,6 +141,40 @@ return {
         take = "Take",
     },
 
+    -- Diálogo de confirmação genérico (src/ui/ConfirmDialog.lua)
+    confirm = {
+        new_run_title = "Start a new run?",
+        new_run_body  = "You have a run in progress. Starting another one erases the saved run forever.",
+        new_run_yes   = "Start over",
+        quit_title    = "Quit the game?",
+        quit_body     = "Your run stays saved at the last checkpoint.",
+        quit_yes      = "Quit",
+        cancel        = "Cancel",
+        corrupt_title = "The saved run could not be opened",
+        corrupt_body = "The file was damaged and has been set aside. Start a new run with Play.",
+        ok = "OK",
+    },
+
+    -- Tela de créditos (components/CreditsScreen.lua) — link no rodapé do menu
+    credits = {
+        link          = "Credits",
+        title         = "CREDITS",
+        hint          = "Click or ESC to go back",
+        thanks        = "Thank you for playing!",
+        role_design   = "Created, designed and programmed by",
+        name_design   = "Daniel Cortez",
+        role_art      = "Pixel art",
+        name_art      = "Daniel Cortez, with PixelLab",
+        role_audio    = "Music and sound effects",
+        name_audio    = "Daniel Cortez, with ElevenLabs",
+        role_engine   = "Engine",
+        name_engine   = "LÖVE 11 — zlib license",
+        role_font     = "Font",
+        name_font     = "Press Start 2P, by CodeMan38 — SIL Open Font License 1.1",
+        role_inspired = "Inspired by",
+        name_inspired = "Slay the Spire · Balatro",
+    },
+
     score = {
         points_total    = "+{n} POINTS",
         pts             = "{n} pts",
@@ -255,7 +289,7 @@ return {
 
     map = {
         title = "Choose the next path",
-        hint  = "Click an option OR press 1 / 2 / 3.  ESC returns to the menu.",
+        hint  = "Click an option OR press 1 / 2 / 3.  ESC pauses.",
     },
 
     achievements = {
@@ -315,6 +349,8 @@ return {
         damage       = "DMG: ",
         phase        = "PHASE: ",
         threat_label = "THREAT:",
+        jokers_frame = "JOKERS {n}/{max}  (J)",
+        jokers_bench = "+{n} benched",
     },
 
     -- Short labels for the orb row (src/ui/OrbRow.lua): what the orb DID when it
@@ -385,6 +421,9 @@ return {
         effects      = "Effects:",
         no_desc      = "(no description)",
         forged       = "Forged +{n}",
+        atk_short    = "ATK",
+        def_short    = "DEF",
+        class_basic  = "Neutral",
     },
 
     card_type = {
@@ -461,6 +500,7 @@ return {
         voucher_effect      = "Effect",
         detail_prefocus     = "Hover to compare",
         detail_stale        = "last offer you looked at",
+        detail_buy          = "BUY",
     },
 
     event = {
@@ -878,6 +918,7 @@ return {
         passive_momentum     = "Momentum: +1 Strength!",
         passive_toxins       = "Toxins: +1 Poison!",
         phase_started        = "Phase {value} started!",
+        floor_entered = "{act} — floor {floor} ({node})",
         burn_tick        = "Burn: {value} damage",
         poison_tick          = "Poison: {value} damage to the enemy",
         purple_seal          = "Orb! (Purple Seal)",
@@ -908,6 +949,9 @@ return {
         reflect          = "Reflect: {value} dmg",
         regen            = "Regen +{value} HP",
         penalty          = "Penalty -{value} HP",
+        shop_skipped     = "+${n} for skipping the shop",
+        pack_cards_added = "Cards added to deck: {n}",
+        pack_opened      = "{name} opened",
     },
 
     -- ======== COMBOS (ComboSystem rule labels) ========

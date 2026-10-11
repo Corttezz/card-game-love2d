@@ -267,6 +267,11 @@ function EventScreen:buildButtons()
                 local ok, res = pcall(opt.apply, self.game)
                 if ok then feedback = res end
             end
+            -- Escolha FEITA: um "Salvar e sair" durante o texto de resultado
+            -- não pode reabrir este evento no Continuar (a opção seria
+            -- aplicada duas vezes). O resume lê "event_done" → encruzilhada.
+            local run = rm and rm.currentRun
+            if run and run.stage == "event" then run.stage = "event_done" end
             self.resultText = feedback
                 or I18n.t("event.default_result", nil, "Voce segue em frente.")
             self.resultTimer = 1.8
@@ -286,6 +291,11 @@ function EventScreen:buildButtons()
         end
         local btn = Button:new(x, y, btnW, btnH,
             composeOptionLabel(self.event, opt, i), onClick, nil, 10)
+        -- Opção impagável (ouro/vida) nasce DESABILITADA: o rótulo já diz o
+        -- custo, o botão cinza diz "agora não dá".
+        if not require("src.data.events").canAfford(opt, self.game) then
+            btn:setEnabled(false)
+        end
         table.insert(self.buttons, btn)
     end
 end
@@ -504,7 +514,7 @@ function EventScreen:keypressed(key)
     if key == "1" or key == "2" or key == "3" or key == "4" then
         local i = tonumber(key)
         local btn = self.buttons[i]
-        if btn and btn.onClick then
+        if btn and btn.onClick and not btn.disabled then
             -- O atalho de teclado não passa pelo Button:mousereleased, então
             -- o feedback do clique é reproduzido aqui — escolher pelo 1-4 tem
             -- que soar igual a escolher pelo mouse.

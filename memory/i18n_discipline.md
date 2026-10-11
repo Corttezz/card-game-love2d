@@ -136,3 +136,16 @@ caso de largura; o `TextFit` deu conta).
 ## Ligações
 
 [[conventions]] · [[ui_layout_invariants]] · [[run_journal]]
+
+## Acentos são permitidos em TODOS os locales (Out/2026)
+
+A antiga "convenção de/es/fr em ASCII" caiu: Press Start 2P desenha Latin-1
+inteiro, provado caractere a caractere por `tools/test_locale_glyphs.lua`
+(trava real — falha se algum texto tiver glifo que a fonte não desenha).
+"Zurueck"/"dano"/"defense" liam como erro de digitação. Duas armadilhas que
+vieram junto:
+- `string.upper` não sobe letra acentuada ("LéGENDAIRE") → use
+  `src/i18n/TextCase.upper`.
+- Cortar texto por BYTE (`s:sub(1, -2)`) deixa UTF-8 inválido e a LÖVE derruba
+  o jogo no `print`/`getWidth` → corte por caractere (`utf8.offset`), como a
+  HintBar e o CardHeader fazem.

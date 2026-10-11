@@ -46,6 +46,9 @@ local SUITES = {
     { group = "unit",  name = "test_pause_menu" },
     { group = "unit",  name = "test_class_select" },
     { group = "unit",  name = "test_unlocks" },
+    { group = "unit",  name = "test_confirm_dialog" },
+    { group = "unit",  name = "test_credits" },
+    { group = "unit",  name = "test_lifecycle" },
     { group = "valid", name = "check_event_i18n" },
     { group = "valid", name = "audit_feedback" },
     -- Smoke de sistema (pré-existentes)
@@ -73,6 +76,7 @@ local SUITES = {
     { group = "valid", name = "test_dynatext_bump" },
     { group = "valid", name = "test_achievements_i18n" },
     { group = "unit",  name = "test_achievements" },
+    { group = "valid", name = "test_locale_glyphs" },
 }
 
 function M.run()

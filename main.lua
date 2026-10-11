@@ -96,6 +96,11 @@ local function startGame(classId)
     game:startNewRun(classId)
 
     game:startGame()
+    -- A corrida NOVA nasce salva. Sem isto o primeiro save só vinha no andar
+    -- 2: fechar a janela na primeira luta fazia o Continuar carregar a run
+    -- ANTERIOR (que o jogador já tinha confirmado descartar), e morrer na
+    -- primeira luta apagava aquela run antiga.
+    game:checkpointRun()
     gameUI:show()
     classSelectionScreen:hide()
 
@@ -117,6 +122,20 @@ local function returnToMenu()
     -- caí na run antiga" — playtest Jul/2026). Ordem importa: clear ANTES de
     -- menu:show() (a intro do menu agenda eases novos).
     EventManager.clear()
+
+    -- Toda tela da run SOME junto. As de estado (descanso/evento/mapa/cash
+    -- out) são coberturas no InputFocus: uma delas visível por baixo do menu
+    -- tomava o foco e o menu ficava MORTO — nenhum botão respondia depois de
+    -- "Salvar e sair" no acampamento (revisão de lançamento, Out/2026).
+    -- (InputFocus.hideAll cobre todo overlay registrado — tela nova entra de
+    -- graça; a loja/recompensa é tela de ESTADO, fora do registro.)
+    require("src.ui.InputFocus").hideAll()
+    if cardRewardScreen and cardRewardScreen:isVisible() then cardRewardScreen:hide() end
+    -- Morte/vitória em curso (TV desligando) morre aqui também: o callback
+    -- dela trocava o estado pra gameOver POR CIMA do menu. powerOn substitui
+    -- a animação de desligar (e o callback dela) e devolve a imagem.
+    require("src.ui.EndTransition").clear()
+    if CRTShader.getPower and CRTShader.getPower() < 1 then CRTShader.powerOn(0.6) end
 
     -- A run antiga morre NA MEMÓRIA também. deleteSave/saveRun já decidiram o
     -- disco; isto impede qualquer checkpointRun retardatário de ressuscitá-la.
@@ -162,7 +181,11 @@ local function replayRun()
     else
         print("[replay] run sem classe conhecida — abrindo a selecao de classe")
         currentState = "classSelection"
-        classSelectionScreen:show()
+        -- MESMOS callbacks do Jogar: sem eles a escolha de classe e o Voltar
+        -- só avisavam no console — tela sem saída.
+        classSelectionScreen:show(
+            function(classId) startGame(classId) end,
+            function() returnToMenu() end)
     end
 end
 
@@ -193,7 +216,8 @@ _G.openCardPicker = function(mode, onDone)
     currentState = "rest"
     restScreen:show(game, function()
         currentState = prevState
-        if onDone then onDone() end
+        -- onDone(feito): false = o jogador saiu pelo Voltar sem escolher.
+        if onDone then onDone(restScreen.lastPickDone == true) end
     end, mode or "forge")
 end
 
@@ -214,6 +238,80 @@ local function skipBattleAndShowMap()
     -- (só Game:nextPhase salvava) — o roteiro deles só chegava ao disco na
     -- batalha seguinte. Salva aqui, depois do journalEnd de showMapSelection.
     game:checkpointRun()
+end
+
+-- ONDE a run está, pra o Continuar retomar no MESMO lugar (revisão de
+-- lançamento, Out/2026). Antes o save só sabia "nó corrente" e o resume SEMPRE
+-- abria batalha: "Salvar e sair" no acampamento/evento/loja voltava como uma
+-- LUTA, e sair no cash out/recompensa refazia a batalha já vencida com o ouro
+-- e a carta no bolso (farm infinito). Estágios:
+--   "battle"  luta em andamento   -> retoma a luta do COMEÇO (save do início)
+--   "cashout" vitória, antes do Resgatar -> reabre o cash out
+--   "rewards" ouro resgatado, carta não escolhida -> reabre a recompensa
+--   "rest" | "event" | "shop"     -> reabre o nó
+--   "fork"    encruzilhada (pendingNodes) -> escolhe o caminho
+local function setRunStage(stage, extra)
+    local run = game and game.runManager and game.runManager.currentRun
+    if not run then return end
+    run.stage = stage
+    run.stageEventId = extra
+    game:checkpointRun()
+end
+
+-- Abre um nó SEM batalha (descanso/evento/loja). Usado na escolha do caminho
+-- e no Continuar. `eventId` (opcional) reabre o MESMO evento salvo.
+local function openNonBattleNode(t, eventId)
+    local BT = MapManager.NODE_TYPES
+    if t == BT.REST then
+        mapScreen:hide()
+        currentState = "rest"
+        setRunStage("rest")
+        restScreen:show(game, function()
+            currentState = "mapSelection" -- nao avanca; volta para gerar proximo map
+            -- Note: REST consome o slot do floor (floorInAct ja avancou no showMapSelection).
+            -- O proximo showMapSelection vai gerar novos nodes.
+            skipBattleAndShowMap()
+        end)
+        return true
+    elseif t == BT.EVENT then
+        mapScreen:hide()
+        local run = game.runManager.currentRun
+        run.eventHistory = run.eventHistory or {}
+        local ev = eventId and Events.get(eventId) or nil
+        if not ev then
+            -- Sorteio pelo stream "event" com histórico: evento visto não repete
+            -- no MESMO ato (Events.roll libera repetição se a pool do ato esgotar).
+            ev = Events.roll(run.actNumber or 1, run.eventHistory)
+            if not ev then return false end
+            run.eventHistory[ev.id] = run.actNumber or 1
+            -- ROTEIRO: o evento sorteado entra já; a OPÇÃO escolhida é anotada
+            -- pelo EventScreen no clique (antes do apply).
+            game.runManager:journalEvent(ev.id, nil, nil)
+        end
+        currentState = "event"
+        setRunStage("event", ev.id)
+        eventScreen:show(ev, game, function()
+            skipBattleAndShowMap()
+        end)
+        return true
+    elseif t == BT.SHOP then
+        -- Reusa CardRewardScreen como shop em modo "shop":
+        -- 4 cartas + 1 voucher + 2 packs + reroll exponencial + skip +3g.
+        mapScreen:hide()
+        currentState = "cardReward"
+        setRunStage("shop")
+        cardRewardScreen:show(game,
+            function(offer)
+                Debug.log("Shop: comprou", offer.name)
+            end,
+            function()
+                skipBattleAndShowMap()
+            end,
+            "shop"
+        )
+        return true
+    end
+    return false
 end
 
 local function onNodeChosen(node, index)
@@ -241,52 +339,13 @@ local function onNodeChosen(node, index)
         game:nextPhase()
         applyActSmoke()
 
-    elseif t == BT.REST then
-        mapScreen:hide()
-        currentState = "rest"
-        restScreen:show(game, function()
-            currentState = "mapSelection" -- nao avanca; volta para gerar proximo map
-            -- Note: REST consome o slot do floor (floorInAct ja avancou no showMapSelection).
-            -- O proximo showMapSelection vai gerar novos nodes.
-            skipBattleAndShowMap()
-        end)
-
-    elseif t == BT.EVENT then
-        mapScreen:hide()
-        -- Sorteio pelo stream "event" com histórico: evento visto não repete
-        -- no MESMO ato (Events.roll libera repetição se a pool do ato esgotar).
-        local run = game.runManager.currentRun
-        run.eventHistory = run.eventHistory or {}
-        local ev = Events.roll(run.actNumber or 1, run.eventHistory)
-        if not ev then
+    elseif t == BT.REST or t == BT.EVENT or t == BT.SHOP then
+        if not openNonBattleNode(t) then
             -- Sem evento disponivel: age como batalha comum
+            mapScreen:hide()
             currentState = "playing"
             game:nextPhase()
-            return
         end
-        run.eventHistory[ev.id] = run.actNumber or 1
-        -- ROTEIRO: o evento sorteado entra já; a OPÇÃO escolhida é anotada
-        -- pelo EventScreen no clique (antes do apply).
-        game.runManager:journalEvent(ev.id, nil, nil)
-        currentState = "event"
-        eventScreen:show(ev, game, function()
-            skipBattleAndShowMap()
-        end)
-
-    elseif t == BT.SHOP then
-        -- Reusa CardRewardScreen como shop em modo "shop":
-        -- 4 cartas + 1 voucher + 2 packs + reroll exponencial + skip +3g.
-        mapScreen:hide()
-        currentState = "cardReward"
-        cardRewardScreen:show(game,
-            function(offer)
-                Debug.log("Shop: comprou", offer.name)
-            end,
-            function()
-                skipBattleAndShowMap()
-            end,
-            "shop"
-        )
     else
         mapScreen:hide()
         currentState = "playing"
@@ -335,12 +394,17 @@ showMapSelection = function()
         mapScreen:show(pending, onNodeChosen)
         currentState = "mapSelection"
     end
+    -- Encruzilhada é ponto seguro: salva aqui (antes, depois de uma BATALHA
+    -- nada salvava até o próximo nó — fechar a janela na encruzilhada
+    -- devolvia o jogador à luta já vencida, sem a carta e o ouro).
+    setRunStage("fork")
 end
 -- Hook global pro callback de Continuar (rotear pro mapa quando o save
 -- foi na encruzilhada). Referenciar a local direto no callback estourava
 -- o limite de 60 upvalues do love.load (LuaJIT) — mesmo padrão do
 -- _G.openCardPicker.
 _G.__showMapSelection = function() showMapSelection() end
+
 
 -- Continua o jogo após escolher/pular recompensa.
 -- Vitoria agora e disparada por Game:checkVictory (ato 3 boss). Para decidir
@@ -363,6 +427,7 @@ local showCardRewards
 -- Game:_buildRoundEvalSources. Click "Resgatar" → showCardRewards.
 showRoundEval = function()
     currentState = "roundEval"
+    setRunStage("cashout")
 
     if FlashShader and FlashShader.trigger then FlashShader.trigger(0.4, 0.35) end
     Sfx.play("battleVictory")
@@ -376,6 +441,7 @@ end
 -- Função para mostrar recompensas de cartas após vitória
 showCardRewards = function()
     currentState = "cardReward"
+    setRunStage("rewards")
 
     -- Flash branco curto pra transição playing → recompensa (Fase 6.5).
     if FlashShader and FlashShader.trigger then FlashShader.trigger(0.4, 0.35) end
@@ -393,6 +459,31 @@ showCardRewards = function()
         end,
         "rewards"
     )
+end
+
+-- Continuar: reabre o ESTÁGIO salvo (ver setRunStage). Devolve true se tratou
+-- (o caller não precisa fazer mais nada). Hook global pelo mesmo motivo do
+-- __showMapSelection (teto de upvalues do love.load).
+_G.__resumeRunStage = function()
+    local run = game and game.runManager and game.runManager.currentRun
+    local action = require("src.systems.ResumeFlow").stageAction(run)
+    if action == "battle" or action == "fork" then return false end
+    if action == "map" then showMapSelection() return true end
+    -- A luta deste nó JÁ acabou (ou o nó nem tem luta): o inimigo que o
+    -- resumeRun montou não pode ficar de pé atrás do cash out/descanso.
+    if game.enemy then
+        game.enemy.health = 0
+        game._deathHandled, game._deathStaged = true, true
+        require("src.ui.EnemyRenderer").triggerDeath(game.enemy.spriteId)
+    end
+    if action == "cashout" then showRoundEval() return true end
+    if action == "rewards" then showCardRewards() return true end
+    local BT = MapManager.NODE_TYPES
+    local t = (action == "rest" and BT.REST) or (action == "event" and BT.EVENT)
+        or (action == "shop" and BT.SHOP)
+    if openNonBattleNode(t, run.stageEventId) then return true end
+    showMapSelection()
+    return true
 end
 
 function love.load(loveArgs)
@@ -1046,7 +1137,7 @@ function love.load(loveArgs)
     -- Roda UM teste isolado por nome (util pra iterar).
     --   love . test_one test_combat
     if loveArgs and loveArgs[1] == "test_one" and loveArgs[2] then
-        local ok = require("tools." .. loveArgs[2]).run()
+        local ok = require("tools." .. loveArgs[2]).run(loveArgs[3])
         love.event.quit(ok and 0 or 1)
         return
     end
@@ -1403,7 +1494,16 @@ function love.load(loveArgs)
         Sfx.play("menuOpen")
         if not game.runManager:loadRun() then
             print("Continuar: nenhum save válido")
+            -- Save ilegível sai do caminho (vira .corrupt) e o jogador SABE:
+            -- antes o Continuar ficava no menu e cada clique falhava calado.
+            require("engine.SaveManager").quarantineRun()
             menu:show()
+            local T = require("src.i18n.I18n").t   -- inline: teto de upvalues
+            require("src.ui.ConfirmDialog").show({
+                title   = T("confirm.corrupt_title"),
+                body    = T("confirm.corrupt_body"),
+                confirm = T("confirm.ok"),
+            })
             return
         end
         currentState = "playing"
@@ -1435,7 +1535,7 @@ function love.load(loveArgs)
         -- showMapSelection reusa os pendentes salvos (guard anti-advance);
         -- o inimigo provisório do resumeRun é substituído pelo nextPhase
         -- do nó que o jogador escolher. (via hook _G — limite de upvalues)
-        if game.runManager:getPendingNodes() then
+        if not _G.__resumeRunStage() and game.runManager:getPendingNodes() then
             _G.__showMapSelection()
         end
         if smokeSystem then
@@ -1455,6 +1555,17 @@ function love.load(loveArgs)
     end)
     menu:setSettingsCallback(function()
         settingsMenu:toggle()
+    end)
+    -- Créditos (link no rodapé do menu): estado próprio, mesmo padrão das
+    -- conquistas. A tela mora em _G pra não somar upvalue ao love.load.
+    menu:setCreditsCallback(function()
+        _G.creditsScreen = _G.creditsScreen or require("components.CreditsScreen"):new()
+        currentState = "credits"
+        menu:hide()
+        _G.creditsScreen:show(function()
+            currentState = "menu"
+            menu:show()
+        end)
     end)
     menu:setAchievementsCallback(function()
         currentState = "achievements"
@@ -1512,6 +1623,9 @@ function love.load(loveArgs)
             pauseMenu:hide()
             return
         end
+        -- TV já desligando pra tela de morte/vitória: a run acabou. Abrir a
+        -- pausa aqui deixava "Salvar e sair" regravar uma run morta.
+        if require("src.ui.EndTransition").pending() then return end
         pauseMenu:show(game, {
             onOpenSettings = function()
                 settingsMenu:show({
@@ -1532,7 +1646,14 @@ function love.load(loveArgs)
                 -- persistir — o saveRun direto gravava o playerState do
                 -- checkpoint ANTERIOR e ganhos recentes (evento +5 vida
                 -- máxima, +1 mana) evaporavam no Continuar (bug Set/2026).
-                if game.runManager and game.runManager.hasActiveRun
+                -- No MEIO de uma luta o save do INÍCIO dela (Game:nextPhase)
+                -- é o que vale: salvar agora gravava a vida já perdida com o
+                -- inimigo voltando cheio — e, morto atrás do menu, gravava 0.
+                -- Retomar = refazer a luta do começo (como no StS).
+                local run = game.runManager and game.runManager.currentRun
+                local midBattle = run and run.stage == "battle"
+                    and currentState == "playing"
+                if not midBattle and game.runManager and game.runManager.hasActiveRun
                     and game.runManager:hasActiveRun() then
                     game:checkpointRun()
                 end
@@ -1610,6 +1731,8 @@ function love.load(loveArgs)
         IF.register("runJournal",   _G.runJournalScreen)
         IF.register("pause",        pauseMenu)
         IF.register("settings",     settingsMenu)
+        -- Confirmação genérica (Jogar com save, sair do jogo): por cima de tudo.
+        IF.register("confirm",      require("src.ui.ConfirmDialog").handle)
     end
 
     -- API global pra ser chamada pela CardRewardScreen quando jogador compra
@@ -1811,9 +1934,15 @@ function love.update(dt)
     IF.push(IF.CHROME)
     if topBar and game then topBar:update(dt, game) end
     IF.pop()
+    -- PAUSA DE VERDADE: com um modal aberto (pausa, configurações, deck,
+    -- coringas, roteiro) NO COMBATE, o combate congela. Antes o turno do
+    -- inimigo seguia rodando atrás do menu — dava pra morrer com a pausa
+    -- aberta (e "Salvar e sair" gravava o morto). O relógio do combate é o
+    -- EventManager (beats, eases, compra) + o GameplayScene.update.
+    local combatFrozen = IF.freezesCombat(currentState)
     -- Infra global (antes do dispatch de estado): event queue, particles,
     -- flash fade, screen shake decay.
-    EventManager.update(dt)
+    if not combatFrozen then EventManager.update(dt) end
     FloatingText.update(dt)
     require("src.ui.CoinBurst").update(dt)
     require("src.ui.AchievementToast").update(dt); require("src.systems.SteamBridge").update()
@@ -1840,7 +1969,7 @@ function love.update(dt)
     elseif currentState == "menu" then
         menu:update(dt)
     elseif currentState == "playing" then
-        GameplayScene.update(dt)
+        if not combatFrozen then GameplayScene.update(dt) end
     elseif currentState == "classSelection" then
         classSelectionScreen:update(dt)
     elseif currentState == "cardReward" then
@@ -1894,6 +2023,7 @@ function love.update(dt)
     if pauseMenu then
         IF.push("pause"); pauseMenu:update(dt); IF.pop()
     end
+    IF.push("confirm"); require("src.ui.ConfirmDialog").update(dt); IF.pop()
 end
 
 function love.draw()
@@ -1952,6 +2082,8 @@ function love.draw()
         collectionScreen:draw()
     elseif currentState == "achievements" then
         achievementsScreen:draw()
+    elseif currentState == "credits" then
+        _G.creditsScreen:draw()
     elseif currentState == "gameOver" then
         EndScreens.drawGameOver(game)
     elseif currentState == "victory" then
@@ -2017,6 +2149,7 @@ function love.draw()
     -- cobre o overlay também.
     if pauseMenu then IF.push("pause"); pauseMenu:draw(); IF.pop() end
     if settingsMenu then IF.push("settings"); settingsMenu:draw(); IF.pop() end
+    IF.push("confirm"); require("src.ui.ConfirmDialog").draw(); IF.pop()
 
     -- Toast de conquista: acima de overlays, abaixo do cursor (qualquer estado).
     require("src.ui.AchievementToast").draw()
@@ -2048,6 +2181,9 @@ function love.resize(w, h)
     -- recriando tudo. Atinge toda tela com carta: loja, mao, DeckViewer,
     -- Colecao, Gerenciador de Coringas, abertura de pacote. (Set/2026)
     CardFrame.clearCache()
+    -- Faixas de turno/combo são canvas assados: mesmo destino do CardFrame.
+    require("src.ui.TurnBanner").clearCache()
+    require("src.ui.ComboBanner").clearCache()
     -- Cada overlay/menu tem chance de recalcular layout. Padrão obrigatório:
     -- TODA tela com positions cacheadas (cardPositions, button rects, panel
     -- bounds) DEVE expor resize() ou updateLayout() e tratar o caso "ainda
@@ -2086,6 +2222,7 @@ function love.resize(w, h)
         settingsMenu:rebuild()
     end
     if pauseMenu and pauseMenu.resize then pauseMenu:resize() end
+    require("src.ui.ConfirmDialog").resize()
     GameplayScene.updatePlayButtonPosition()
 end
 
@@ -2109,25 +2246,24 @@ function love.keypressed(key)
     end
 
     -- F5: tecla D abre o deck da run em qualquer tela dela
-    if key == "d" and (currentState == "playing"
-        or currentState == "cardReward" or currentState == "mapSelection")
-        and game and game.isRunMode then
+    -- Telas da run onde D/J/M funcionam: TODAS (antes descanso, evento e
+    -- cash out ficavam de fora — o atalho "não funcionava às vezes").
+    local runScreen = currentState == "playing" or currentState == "cardReward"
+        or currentState == "mapSelection" or currentState == "rest"
+        or currentState == "event" or currentState == "roundEval"
+    if key == "d" and runScreen and game and game.isRunMode then
         deckViewerScreen:toggle(game)
         return
     end
 
     -- Tecla J abre o Gerenciador de Coringas em qualquer tela da run
-    if key == "j" and (currentState == "playing"
-        or currentState == "cardReward" or currentState == "mapSelection")
-        and game and game.isRunMode then
+    if key == "j" and runScreen and game and game.isRunMode then
         _G.jokerManagerScreen:toggle(game)
         return
     end
 
     -- Tecla M abre o Roteiro da jornada em qualquer tela da run
-    if key == "m" and (currentState == "playing"
-        or currentState == "cardReward" or currentState == "mapSelection")
-        and game and game.isRunMode then
+    if key == "m" and runScreen and game and game.isRunMode then
         _G.toggleRunJournal()
         return
     end
@@ -2140,6 +2276,10 @@ function love.keypressed(key)
     -- Collection absorve teclas quando visível
     if currentState == "achievements" then
         achievementsScreen:keypressed(key)
+        return
+    end
+    if currentState == "credits" then
+        _G.creditsScreen:keypressed(key)
         return
     end
     if currentState == "collection" then
@@ -2173,6 +2313,23 @@ function love.keypressed(key)
         return
     end
 
+    -- ESC na loja/recompensa/cash out: pausa (antes não fazia nada — a
+    -- engrenagem era o único caminho). Teclas próprias da tela vêm antes.
+    if currentState == "cardReward" or currentState == "roundEval" then
+        if key == "escape" and _G.togglePauseMenu then _G.togglePauseMenu() end
+        return
+    end
+
+    -- ESC na seleção de classe = Voltar (a tela não tinha tecla nenhuma).
+    if currentState == "classSelection" then
+        if classSelectionScreen.keypressed then
+            classSelectionScreen:keypressed(key)
+        elseif key == "escape" then
+            classSelectionScreen:goBackToMenu()
+        end
+        return
+    end
+
     if currentState == "event" then
         if eventScreen:keypressed(key) then return end
         if key == "escape" and _G.togglePauseMenu then _G.togglePauseMenu() end
@@ -2188,7 +2345,7 @@ function love.keypressed(key)
     if currentState == "menu" then
         -- Teclas do menu
         if key == "escape" then
-            love.event.quit()
+            menu:requestQuit()
         end
     elseif currentState == "playing" then
         -- ESC no combate: pause (não mais menu direto — a run é preciosa).
@@ -2266,6 +2423,8 @@ function love.mousereleased(x, y, button)
         if collectionScreen.mousereleased then collectionScreen:mousereleased(x, y, button) end
     elseif currentState == "achievements" then
         achievementsScreen:mousereleased(x, y, button)
+    elseif currentState == "credits" then
+        _G.creditsScreen:mousereleased(x, y, button)
     end
 end
 
@@ -2330,6 +2489,8 @@ function love.mousepressed(x, y, button)
         collectionScreen:mousepressed(x, y, button)
     elseif currentState == "achievements" then
         achievementsScreen:mousepressed(x, y, button)
+    elseif currentState == "credits" then
+        _G.creditsScreen:mousepressed(x, y, button)
     end
 end
 

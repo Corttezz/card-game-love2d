@@ -181,7 +181,9 @@ local function ensureGeometry(entry)
     geo.h = geo.padV * 2 + geo.titleH + n * geo.rowH
     -- rodape encostado no piso da zona; cresce pra cima
     geo.y = math.max(zTop, zBottom - geo.h)
-    geo.key = entry.key .. "|" .. sw .. "|" .. geo.h
+    -- idioma na chave: o nome do combo é texto assado no canvas
+    geo.key = entry.key .. "|" .. sw .. "|" .. geo.h .. "|"
+        .. tostring(I18n.getLocale and I18n.getLocale())
     entry.geo = geo
     return geo
 end
@@ -325,6 +327,13 @@ function ComboBanner.update(dt)
 end
 
 function ComboBanner.isActive() return active ~= nil end
+
+-- Resize/fullscreen apaga o conteúdo de todo Canvas — ver TurnBanner.clearCache.
+function ComboBanner.clearCache()
+    canvasCache = {}
+    canvasCount = 0
+    if active then active.geo = nil end
+end
 
 -- Limpa tudo (troca de batalha/run). Seguro de chamar a qualquer momento.
 function ComboBanner.clear()

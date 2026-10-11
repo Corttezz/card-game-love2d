@@ -27,10 +27,10 @@ function Menu:new()
         active        = false,
         alphaTitle    = 1,
         alphaSubtitle = 1,
-        alphaButtons  = { play = 1, collection = 1, achievements = 1, settings = 1, quit = 1 },
+        alphaButtons  = { continueRun = 1, play = 1, collection = 1, achievements = 1, settings = 1, quit = 1 },
         alphaBg       = 1,
         titleScale    = 1,
-        buttonOffsetY = { play = 0, collection = 0, achievements = 0, settings = 0, quit = 0 },
+        buttonOffsetY = { continueRun = 0, play = 0, collection = 0, achievements = 0, settings = 0, quit = 0 },
     }
 
     -- 3 versos de carta flutuantes (Balatro-style demo cards). Cada uma tem
@@ -524,8 +524,26 @@ function Menu:_drawVersionFooter()
     love.graphics.setFont(f)
     love.graphics.setColor(Palette.PARCHMENT_DARK[1], Palette.PARCHMENT_DARK[2],
         Palette.PARCHMENT_DARK[3], a)
-    love.graphics.print("v" .. (Config.VERSION or "?") .. " · LOVE2D",
-        12, love.graphics.getHeight() - 22)
+    local ver = "v" .. (Config.VERSION or "?") .. " · LOVE2D"
+    local y = love.graphics.getHeight() - 22
+    love.graphics.print(ver, 12, y)
+
+    -- Link "Créditos" logo depois da versão (substitui o antigo "Sobre"
+    -- placeholder). Link de rodapé, não item da coluna: a coluna já tem 6
+    -- botões e um 7º empurraria o "Sair" pra fora da tela em 768px.
+    local label = I18n.t("credits.link")
+    local lx = 12 + f:getWidth(ver) + 18
+    local lw, lh = f:getWidth(label), f:getHeight()
+    self._creditsRect = { x = lx - 6, y = y - 6, w = lw + 12, h = lh + 12 }
+    local mx, my = love.mouse.getPosition()
+    local r = self._creditsRect
+    local hover = mx >= r.x and mx <= r.x + r.w and my >= r.y and my <= r.y + r.h
+    if hover then
+        love.graphics.setColor(Palette.AGED_GOLD_LIGHT[1], Palette.AGED_GOLD_LIGHT[2],
+            Palette.AGED_GOLD_LIGHT[3], math.min(1, a / 0.65))
+    end
+    love.graphics.print(label, lx, y)
+    love.graphics.rectangle("fill", lx, y + lh + 1, lw, 1)
 end
 
 -- ===== v2.1: BACKGROUND EM CAMADAS VIVAS =====
@@ -789,6 +807,25 @@ end
 -- vazavam por cima da arte do livro; dicas de jogo pertencem ao gameplay.)
 
 function Menu:onPlayClick()
+    -- Slot ÚNICO de save (padrão StS): começar outra corrida apaga a salva no
+    -- primeiro checkpoint. Antes era SEM PERGUNTAR — um clique distraído em
+    -- "Jogar" em vez de "Continuar" jogava fora a run (known_gaps 25).
+    if self._hasSave and not self._newRunConfirmed then
+        local ConfirmDialog = require("src.ui.ConfirmDialog")
+        ConfirmDialog.show({
+            title   = I18n.t("confirm.new_run_title"),
+            body    = I18n.t("confirm.new_run_body"),
+            confirm = I18n.t("confirm.new_run_yes"),
+            cancel  = I18n.t("confirm.cancel"),
+            danger  = true,
+            onConfirm = function()
+                self._newRunConfirmed = true
+                self:onPlayClick()
+                self._newRunConfirmed = false
+            end,
+        })
+        return
+    end
     self.visible = false
     -- Fade-out da música menu antes de entrar no gameplay.
     if Sfx.fadeMusicOut then Sfx.fadeMusicOut(0.5) end
@@ -823,6 +860,22 @@ function Menu:setCollectionCallback(cb) self.onCollectionCallback = cb end
 function Menu:setAchievementsCallback(cb) self.onAchievementsCallback = cb end
 function Menu:setContinueCallback(cb) self.onContinueCallback = cb end
 function Menu:setSettingsCallback(cb) self.onSettingsCallback = cb end
+function Menu:setCreditsCallback(cb) self.onCreditsCallback = cb end
+
+-- ESC no menu principal: antes fechava o jogo NA HORA (sem animação nem
+-- pergunta) — quem aperta ESC "pra voltar" perdia a janela. Agora pergunta.
+function Menu:requestQuit()
+    local ConfirmDialog = require("src.ui.ConfirmDialog")
+    if ConfirmDialog.isVisible() then return end
+    ConfirmDialog.show({
+        title   = I18n.t("confirm.quit_title"),
+        body    = I18n.t("confirm.quit_body"),
+        confirm = I18n.t("confirm.quit_yes"),
+        cancel  = I18n.t("confirm.cancel"),
+        danger  = true,
+        onConfirm = function() self:onQuitClick() end,
+    })
+end
 
 function Menu:onQuitClick()
     -- Identidade CRT: sair = a TV desliga (colapso) e ENTÃO fecha.
@@ -889,7 +942,9 @@ function Menu:enterWithIntro()
         EM.parallelEase(self.intro, "titleScale",    1, 0.55, "back_out", "menu_intro")
 
         -- Stagger botões: 0.08s offset entre cada (delays absolutos).
-        local order = { "play", "collection", "achievements", "settings", "quit" }
+        -- continueRun entra no stagger (antes surgia seco, a 100%, enquanto o
+        -- resto da coluna fazia fade-in — o único botão "fora do ritmo").
+        local order = { "continueRun", "play", "collection", "achievements", "settings", "quit" }
         for i, name in ipairs(order) do
             local delay = 0.30 + (i - 1) * 0.08
             EM.parallel(delay, function()
@@ -919,6 +974,14 @@ function Menu:mousepressed(x, y, button)
     local consumed = false
     for name, btn in pairs(self.buttons) do
         if btn:mousepressed(x, y, button) then consumed = true end
+    end
+
+    -- Link "Créditos" do rodapé.
+    local r = self._creditsRect
+    if not consumed and button == 1 and r and self.onCreditsCallback
+        and x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h then
+        self.onCreditsCallback()
+        return
     end
 
     -- v2: cartas flutuantes clicáveis (easter egg) — só se o clique não

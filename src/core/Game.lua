@@ -1861,6 +1861,14 @@ function Game:nextPhase()
     self._deathStaged = false
     self._deathPauseTimer = 0
     self._saveDeleted = false
+    -- Batalha nova SEMPRE começa no turno do jogador. Se o golpe final veio
+    -- do pulso de orbe do fim de turno (ou de um "Encerrar turno" enfileirado
+    -- durante a jogada que matou), `turn` ficava "enemy" — e só startGame o
+    -- zerava. Resultado: a PRÓXIMA batalha abria com o inimigo agindo
+    -- primeiro (revisão de lançamento, Out/2026; trava em test_lifecycle).
+    self.turn = "player"
+    self._endTurnQueued = false
+    self._enemyActing = false
 
     self.currentPhase = self.currentPhase + 1
     -- F3: score antigo (BASE_SCORE_PER_PHASE) morreu — a batalha já foi
@@ -1907,8 +1915,11 @@ function Game:nextPhase()
         -- isBoss nunca era setado (só lido) — bosses agora rendem maiores
         self.enemy.isBoss = (nodeType == "boss" or nodeType == "mini_boss")
         -- Log com nome do ato
-        self:addMessage(ActSystem.getActName(run.actNumber, run.floorInAct)
-            .. " — andar " .. run.floorInAct .. " (" .. nodeType .. ")", "info")
+        self:addMessage(require("src.i18n.I18n").t("messages.floor_entered", {
+            act = ActSystem.getActName(run.actNumber, run.floorInAct),
+            floor = run.floorInAct,
+            node = require("src.i18n.I18n").t("node_type." .. nodeType .. ".label", nil, nodeType),
+        }), "info")
     else
         local newHealth = Config.Game.ENEMY_BASE_HEALTH + (self.currentPhase - 1) * Config.Game.ENEMY_HEALTH_SCALING
         local newDamage = Config.Game.ENEMY_BASE_DAMAGE + (self.currentPhase - 1) * Config.Game.ENEMY_DAMAGE_SCALING
@@ -1940,6 +1951,12 @@ function Game:nextPhase()
 
     -- CHECKPOINT (F1 do UI Overhaul): persiste a run a cada andar novo —
     -- fecha o gap "save/load existe mas sem botão Continuar".
+    -- Estágio "battle": este save (vida do INÍCIO da luta) é o ponto de
+    -- retomada; "Salvar e sair" no meio da luta não o sobrescreve (main.lua).
+    if self.isRunMode and self.runManager:hasActiveRun() then
+        self.runManager.currentRun.stage = "battle"
+        self.runManager.currentRun.stageEventId = nil
+    end
     self:checkpointRun()
 end
 
@@ -1975,6 +1992,13 @@ end
 function Game:checkpointRun()
     if not self.isRunMode then return end
     if not (self.runManager and self.runManager:hasActiveRun()) then return end
+    -- Run que ACABOU não se salva. Morto (ou já vencido) e "Salvar e sair"
+    -- gravava currentHealth 0 por cima do save que a morte tinha apagado — e o
+    -- resumeRun, com math.max(1, ...), RESSUSCITAVA o jogador com 1 de vida.
+    if (self.player and not self.player:isAlive())
+        or self.gameState == "gameOver" or self.gameState == "victory" then
+        return
+    end
     self:syncRunPlayerState()
     self.runManager:saveRun()
 end
@@ -2099,6 +2123,11 @@ function Game:checkVictory()
                 self.unlockResult = UnlockSystem.onRunEnded(self:_unlockSummary(true))
                 PS.recordVictory(run.actNumber, run.floorInAct, run.classId or self.selectedClass)
                 PS.updateBestScore(self.score)
+                -- Vitória ENCERRA a run em disco (a derrota já fazia isso no
+                -- checkGameOver). Sem isto o menu seguia oferecendo
+                -- "Continuar" e devolvia o jogador ao chefe final — e cada
+                -- replay contava outra vitória no perfil.
+                if self.runManager.deleteSave then self.runManager:deleteSave() end
                 -- F4: conquistas de vitória (deck, classes, restrições).
                 AchievementSystem.onVictory(self)
             end

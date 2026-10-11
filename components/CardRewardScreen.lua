@@ -713,7 +713,7 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
         skipLabel = I18n.t("reward.skip_no_card")
     end
     if self.mode == "shop" and skipBonus > 0 then
-        skipLabel = skipLabel .. " (+" .. skipBonus .. "g)"
+        skipLabel = skipLabel .. " (+$" .. skipBonus .. ")"
     end
     -- Reforma Jul/2026 (feedback "Seguir ..."): 130px NÃO cabia "Seguir sem
     -- carta" (~190px em Press Start 2P 12) e o TextFit truncava com "...".
@@ -729,9 +729,12 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
         skipX, skipY, skipW, skipH,
         skipLabel,
         function()
+            -- Saída JÁ em curso: cada clique extra na janela da cerimônia
+            -- pagava o bônus de novo (e o _closing só era checado depois).
+            if self._closing then return end
             if self.mode == "shop" and skipBonus > 0 and self.game.economySystem then
                 self.game.economySystem:earnGold(skipBonus, "shop_skip")
-                self.game:addMessage("+" .. skipBonus .. "g (pulou loja)", "info")
+                self.game:addMessage(I18n.t("messages.shop_skipped", { n = skipBonus }), "info")
             end
             -- Saída pela porta da frente: cartas queimam, painel desliza,
             -- som anuncia. _exitWithFlourish chama hide + onSkipped no fim.
@@ -1019,12 +1022,12 @@ function CardRewardScreen:purchaseOffer(offer, offerId)
                             })
                         end
                     end
-                    self.game:addMessage("+" .. #(selected or {}) .. " carta(s) ao deck", "success")
+                    self.game:addMessage(I18n.t("messages.pack_cards_added", { n = #(selected or {}) }), "success")
                 end)
             else
                 Debug.warn("[CardRewardScreen] _G.openBoosterPack não setado — pack ignorado")
             end
-            self.game:addMessage(offerName .. " aberto", "info")
+            self.game:addMessage(I18n.t("messages.pack_opened", { name = offerName }), "info")
         end
         Sfx.play("purchaseConfirm")
 
@@ -1103,7 +1106,7 @@ function CardRewardScreen:_buildSelectionButtons(offer, idx)
     local bx0, by0, buyW, cancelW, btnH, gap = self:_selectionButtonsRect(idx)
     if not bx0 then return end
     local buyLabel = (offer.cost or 0) > 0 and ("$" .. tostring(offer.cost))
-        or I18n.t("common.take"):upper()
+        or require("src.i18n.TextCase").upper(I18n.t("common.take"))
     -- Na loja o botão é largo: cabe o verbo + o preço ("COMPRAR $12").
     if self.mode == "shop" and (offer.cost or 0) > 0 then
         local verb = I18n.t("reward.detail_buy", nil, "COMPRAR")
@@ -2263,7 +2266,7 @@ function CardRewardScreen:drawOfferBadges(cardInstance, slot)
     if self.mode == "shop" then
         -- Faixa de rótulos abaixo do slot (slotLabelH reservado no layout).
         if offer.rarity then
-            local label = (I18n.t("rarity." .. offer.rarity, nil, offer.rarity)):upper()
+            local label = require("src.i18n.TextCase").upper(I18n.t("rarity." .. offer.rarity, nil, offer.rarity))
             marker(cx, pos.y + h + 13, label, Palette.forRarity(offer.rarity), 8, 3)
         end
         if offer.affinity then
@@ -2272,7 +2275,7 @@ function CardRewardScreen:drawOfferBadges(cardInstance, slot)
         end
     else
         if offer.rarity then
-            local label = (I18n.t("rarity." .. offer.rarity, nil, offer.rarity)):upper()
+            local label = require("src.i18n.TextCase").upper(I18n.t("rarity." .. offer.rarity, nil, offer.rarity))
             marker(cx, pos.y - 15, label, Palette.forRarity(offer.rarity), 9, 4)
         end
         if offer.affinity then
@@ -2773,7 +2776,7 @@ function CardRewardScreen:_selectionButtonsRect(idx)
     local offer = self.selectedOffer
     btnH = 38
     local buyLabel = (offer and (offer.cost or 0) > 0) and ("$" .. tostring(offer.cost))
-        or I18n.t("common.take"):upper()
+        or require("src.i18n.TextCase").upper(I18n.t("common.take"))
     local buyW = math.max(110, FontManager.getFont(12):getWidth(buyLabel) + 56)
     local cancelW = btnH
     local totalW = buyW + cancelW + gap
@@ -2797,6 +2800,10 @@ end
 
 function CardRewardScreen:mousepressed(x, y, button)
     if not self.visible then return false end
+    -- Durante a cerimônia de saída nada mais é clicável: comprar uma Forja
+    -- nessa janela abria o picker e o callback da saída o atropelava (ouro
+    -- gasto, forja perdida). Engole o clique.
+    if self._closing then return true end
 
     -- Inspeção aberta consome tudo (clique nas setas/fora fecha — igual Coleção).
     if self.inspectModal and self.inspectModal:isVisible() then
@@ -2851,6 +2858,7 @@ end
 
 function CardRewardScreen:mousereleased(x, y, button)
     if not self.visible then return false end
+    if self._closing then return true end
 
     -- Inspeção aberta: engole releases (nada atrás pode reagir).
     if self.inspectModal and self.inspectModal:isVisible() then

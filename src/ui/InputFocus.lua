@@ -109,6 +109,38 @@ end
 
 function InputFocus.count() return #overlays end
 
+-- O combate congela? Sim quando há um MODAL (que captura eventos) aberto
+-- sobre a luta: pausa, configurações, deck, coringas, roteiro. Cobertura
+-- (keepChrome) não conta — ela nunca aparece durante "playing".
+function InputFocus.freezesCombat(state)
+    if state ~= "playing" then return false end
+    return InputFocus.captor() ~= nil
+end
+
+-- Fecha TODO overlay registrado que estiver visível (do topo pra base).
+-- Usado ao voltar pro menu: uma cobertura esquecida visível (descanso,
+-- evento, mapa, cash out) tomava o foco e o menu inteiro ficava sem hover nem
+-- clique — softlock depois de "Salvar e sair" (revisão de lançamento,
+-- Out/2026). Overlay sem hide() é AVISADO, não ignorado em silêncio.
+-- Devolve quantos fechou.
+function InputFocus.hideAll()
+    local n = 0
+    for i = #overlays, 1, -1 do
+        local e = overlays[i]
+        local ok, vis = pcall(e.obj.isVisible, e.obj)
+        if ok and vis then
+            if type(e.obj.hide) == "function" then
+                e.obj:hide()
+                n = n + 1
+            else
+                print("[InputFocus] '" .. e.name .. "' visivel sem hide() — "
+                    .. "nao da pra fechar ao voltar pro menu")
+            end
+        end
+    end
+    return n
+end
+
 -- Nomes registrados, da menor pra maior prioridade (diagnóstico/testes).
 function InputFocus.names()
     local t = {}

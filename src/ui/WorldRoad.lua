@@ -340,13 +340,26 @@ end
 
 -- v9: caminho do PNG da luminária (mesma cascata variant → 0 do getSprite)
 -- — o LuminaireEngine escaneia o arquivo pra achar a chama/margens
+-- MEMOIZADO (revisão de perf, Out/2026): é chamado POR LUMINÁRIA POR FRAME
+-- (argumento do LuminaireEngine.anchor), e cada chamada fazia até 2 stats de
+-- disco + concatenações — ~3% do frame do WorldRoad no perfil. O disco não
+-- muda em runtime; false = "não existe" (cacheado também).
+local lumPathCache = {}
 local function luminairePath(bid, kind, variant)
+    local key = bid .. "|" .. kind .. "|" .. tostring(variant)
+    local hit = lumPathCache[key]
+    if hit ~= nil then return hit or nil end
+    local found = false
     local p1 = "assets/sprites/world/" .. bid .. "_" .. kind .. "_"
         .. variant .. ".png"
-    if love.filesystem.getInfo(p1) then return p1 end
-    local p0 = "assets/sprites/world/" .. bid .. "_" .. kind .. "_0.png"
-    if love.filesystem.getInfo(p0) then return p0 end
-    return nil
+    if love.filesystem.getInfo(p1) then
+        found = p1
+    else
+        local p0 = "assets/sprites/world/" .. bid .. "_" .. kind .. "_0.png"
+        if love.filesystem.getInfo(p0) then found = p0 end
+    end
+    lumPathCache[key] = found
+    return found or nil
 end
 
 local function px(data, x, y, c, w, h)

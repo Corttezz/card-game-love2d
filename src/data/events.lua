@@ -54,7 +54,9 @@ Events.POOL = {
             { label = "Sacrificar sangue",
               gains = { { k = "card_rare", fb = "carta RARA" } }, costs = { { k = "hp", n = 8, fb = "8 HP" } },
               apply = function(game)
-                  game.player:takeDamage(8)
+                  -- Custo de SANGUE: loseHealth (armadura não paga sangue) e
+                  -- nunca mata — o botão já fica desabilitado sem vida (Events.canAfford).
+                  game.player:loseHealth(math.min(8, game.player.health - 1))
                   local rewards = game.runManager.cardRegistry:generateCardRewards(
                       game.selectedClass, 1, rewardOpts(game, { minRarity = "rare" }))
                   if rewards[1] then
@@ -81,9 +83,13 @@ Events.POOL = {
                   -- Tenta até 5 vezes pegar uma carta que ainda não bateu o cap;
                   -- senão cancela com mensagem (com cap 0/infinito passa de primeira).
                   for _ = 1, 5 do
-                      local entry = deck[Rng.get():random("event", #deck)]
+                      local idx = Rng.get():random("event", #deck)
+                      local entry = deck[idx]
                       local picked = type(entry) == "table" and entry.id or entry
-                      local lvl = game.runManager:upgradeCard(picked)
+                      -- POR CÓPIA (upgradeCardAt): pelo id, a forja ia pra
+                      -- cópia de menor nível daquele id, não pra sorteada
+                      -- (CLAUDE.md: "A FORJA É POR CÓPIA, NÃO POR ID").
+                      local lvl = game.runManager:upgradeCardAt(idx)
                       if lvl then
                           return T("bigorna_antiga", "r_forged",
                               { name = I18n.cardName(picked), lvl = lvl },
@@ -270,7 +276,9 @@ Events.POOL = {
                       game:addCardToRun("effect_healing_potion")
                       return T("mochila_abandonada", "r_potion", nil, "Pocao de cura!")
                   else
-                      game.player:takeDamage(6)
+                      -- Armadilha fere mas não mata fora de combate (morte
+                      -- num evento não tinha tela de derrota: a run seguia a 0 HP).
+                      game.player:loseHealth(math.max(0, math.min(6, game.player.health - 1)))
                       return T("mochila_abandonada", "r_trap", { n = 6 }, "Armadilha! -6 HP.")
                   end
               end },
@@ -367,7 +375,7 @@ Events.POOL = {
                   if game.player.health <= 12 then
                       return T("mercador_sangue", "r_too_weak", nil, "Voce esta fraco demais para vender sangue.")
                   end
-                  game.player:takeDamage(12)
+                  game.player:loseHealth(12)
                   game.economySystem.currentGold = game.economySystem.currentGold + 45
                   return T("mercador_sangue", "r_sold", { n = 45 }, "A balanca pende. +45 ouro.")
               end },
@@ -386,6 +394,33 @@ Events.POOL = {
         },
     },
 }
+
+-- O jogador PODE pagar a opção? Lido dos custos declarados (os mesmos que
+-- montam o rótulo "[+$45 / -12 HP]"): ouro precisa existir, vida precisa
+-- SOBRAR (custo de sangue nunca mata). Sem isto o botão de uma opção
+-- impagável ficava clicável, gastava o evento e ainda subia "-$20" na tela
+-- sem cobrar nada.
+function Events.canAfford(opt, game)
+    for _, c in ipairs((opt and opt.costs) or {}) do
+        if c.k == "gold" and c.n then
+            local gold = game and game.economySystem and game.economySystem.currentGold or 0
+            if gold < c.n then return false end
+        elseif c.k == "hp" and c.n then
+            local hp = game and game.player and game.player.health or 0
+            if hp <= c.n then return false end
+        end
+    end
+    return true
+end
+
+-- Evento por id (ou nil). O Continuar reabre o MESMO evento em que o jogador
+-- salvou (run.stageEventId) em vez de sortear outro.
+function Events.get(id)
+    for _, e in ipairs(Events.POOL) do
+        if e.id == id then return e end
+    end
+    return nil
+end
 
 -- Sorteia um evento do pool para um ato especifico (ou "any").
 -- history: run.eventHistory ({ [id] = actNumber }) — evento visto NO MESMO ATO

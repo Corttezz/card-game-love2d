@@ -204,6 +204,20 @@ function SaveManager.loadRun()
     return payload.runData, payload
 end
 
+-- Save de run que NÃO carrega (corrompido, migration falhou): sai do caminho
+-- sem ser destruído — vai pra `<run>.corrupt` (o dono pode mandar o arquivo
+-- pra análise). Sem isto o botão Continuar ficava no menu pra sempre e cada
+-- clique falhava calado. Devolve true se havia algo pra mover.
+function SaveManager.quarantineRun()
+    local info = love.filesystem.getInfo(PATHS.run)
+    if not info then return false end
+    local raw = love.filesystem.read(PATHS.run)
+    if raw then love.filesystem.write(PATHS.run .. ".corrupt", raw) end
+    love.filesystem.remove(PATHS.run)
+    print("[SaveManager] save de run ilegivel movido para " .. PATHS.run .. ".corrupt")
+    return true
+end
+
 function SaveManager.hasRun()
     return love.filesystem.getInfo(PATHS.run) ~= nil
 end

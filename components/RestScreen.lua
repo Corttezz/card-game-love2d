@@ -137,6 +137,10 @@ function RestScreen:show(game, onClose, mode)
     self.forge = nil
     self.page = 1
     self._hoverIdx = nil
+    -- O picker FEZ algo (forjou/removeu/duplicou)? Quem abriu o picker pago
+    -- (Forja da loja) lê isto no fechamento pra devolver o ouro se o jogador
+    -- só apertou Voltar.
+    self.lastPickDone = false
     if self._directPicker then
         self:enterForgeMode()
     else
@@ -248,7 +252,19 @@ function RestScreen:buildChooseButtons()
     table.insert(self.buttons, forge.btn)
 end
 
+-- A fogueira foi USADA: "Salvar e sair" durante a cerimônia não pode
+-- reabrir o acampamento no Continuar (curaria/forjaria duas vezes). O resume
+-- lê "rest_done" → encruzilhada. Picker direto (loja/evento) não é nó de
+-- descanso e não mexe no estágio.
+function RestScreen:_markCampUsed()
+    if self._directPicker then return end
+    local rm = self.game and self.game.runManager
+    local run = rm and rm.currentRun
+    if run and run.stage == "rest" then run.stage = "rest_done" end
+end
+
 function RestScreen:doHeal()
+    self:_markCampUsed()
     local amt = math.floor(self.game.player.maxHealth * 0.30)
     self.game.player:heal(amt)
     self.resultText = I18n.t("rest.heal_result", { n = amt })
@@ -645,6 +661,7 @@ function RestScreen:doRemove(entry)
     -- remoção por id levaria SEMPRE a primeira — inclusive quando o jogador
     -- apontou a terceira (que podia ser a forjada).
     self.game.runManager:removeCardAt(entry.idx)
+    self.lastPickDone = true
     if self.game.synchronizeRunDeck then self.game:synchronizeRunDeck() end
     Sfx.play("restComplete")
 
@@ -675,6 +692,7 @@ function RestScreen:doDuplicate(entry)
     -- duplicateCardAt e não addCardToDeck(id): a cópia nova sai igual à
     -- ESCOLHIDA (mesmo nível de forja, mesma edition/seal).
     self.game.runManager:duplicateCardAt(entry.idx)
+    self.lastPickDone = true
     if self.game.synchronizeRunDeck then self.game:synchronizeRunDeck() end
     Sfx.play("restComplete")
 
@@ -1060,6 +1078,10 @@ function RestScreen:doForge(entry)
     -- as outras cópias da mesma carta subiriam junto (era exatamente o motivo
     -- de a grade ter sido deduplicada).
     local newLvl = self.game.runManager:upgradeCardAt(entry.idx)
+    if newLvl then
+        self:_markCampUsed()
+        self.lastPickDone = true
+    end
     if not newLvl then
         -- Cap atingido (só acontece se Config.Game.UPGRADE_LEVEL_CAP > 0) —
         -- feedback ao jogador, sem consumir o nó (caller decide).

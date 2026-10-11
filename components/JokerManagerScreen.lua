@@ -74,7 +74,12 @@ function JokerManagerScreen:toggle(game)
 end
 
 function JokerManagerScreen:isVisible() return self.visible end
-function JokerManagerScreen:resize() self.scroll = 0 end
+-- Resize NÃO zera a rolagem: o draw recalcula maxScroll e reclampa a cada
+-- frame, então a posição de leitura sobrevive a fullscreen/arrasto de borda
+-- (antes voltava pro topo — mesmo padrão do RunJournalScreen).
+function JokerManagerScreen:resize()
+    self.scroll = math.max(0, math.min(self.scroll or 0, self.maxScroll or 0))
+end
 function JokerManagerScreen:update(dt) end
 
 local function columnsFor(width)

@@ -85,6 +85,26 @@ function M.run()
         t:eq("3 cliques no Seguir = 1 avanço só (guard _closing)", calls.n, 1)
     end
 
+    -- ---- 2b. o BÔNUS de pular a loja paga uma vez só ----------------------
+    -- (revisão de lançamento, Out/2026: o bônus era pago ANTES do guard
+    -- _closing — cada clique na janela da cerimônia pagava de novo.)
+    do
+        resetQueues()
+        local screen, calls = openShop(t)
+        local eco = screen.game.economySystem
+        local before = eco.currentGold
+        t:truthy("(pre) loja tem botao Pular", screen.skipButton ~= nil)
+        screen.skipButton.onClick()
+        local once = eco.currentGold - before
+        screen.skipButton.onClick()
+        screen.skipButton.onClick()
+        t:eq("3 cliques no Pular pagam o bonus UMA vez", eco.currentGold - before, once)
+        t:truthy("clique durante a saida e engolido",
+            screen:mousepressed(10, 10, 1) == true)
+        pumpEM(1.0)
+        t:eq("e a loja avanca uma vez so", calls.n, 1)
+    end
+
     -- ---- 3. reducedMotion resolve na hora, sem EventManager --------------
     do
         resetQueues()
