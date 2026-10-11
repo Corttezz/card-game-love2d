@@ -16,9 +16,12 @@
 --   dobrar, truque de pixel art (Defold forum).
 -- - Ponta mais clara que o corpo: BAKED no atlas em tons de cinza; o tint
 --   por bioma colore corpo e ponta de uma vez (1 setColor por lâmina).
--- - TUDO num SpriteBatch: ~2000 lâminas = 1 draw call.
+-- - Out/2026 (perf): lote = QuadMesh (FFI) e o VENTO roda no VERTEX
+--   SHADER (GrassField.SHADER_VERTEX — as mesmas fórmulas de windAt/
+--   flick/pokeLean, por vértice). Câmera parada = o lote do frame
+--   anterior é reusado inteiro (0 Lua por lâmina); 1 draw por fatia.
 --
--- SEM stencil, SEM mesh, SEM alpha translúcido — pixels opacos na paleta.
+-- SEM stencil, SEM alpha translúcido — pixels opacos na paleta.
 --
 -- USO (ver WorldRoad):
 --   GrassField.draw{ x=, w=, time=, camZ=, geom=g, relCrest=,
@@ -28,6 +31,7 @@
 -- ============================================================================
 
 local GrassField = {}
+local QuadMesh = require("engine.QuadMesh")
 
 -- ----------------------------------------------------------------------------
 -- PRESETS por bioma: personalidade do capim (densidade, altura, vento).
@@ -164,19 +168,164 @@ local function bakeAtlas()
     end
     atlasImg = love.graphics.newImage(id)
     atlasImg:setFilter("nearest", "nearest")
+    -- Out/2026: "quad" = UV normalizado {u0, v0, u1, v1} (o lote é um
+    -- QuadMesh escrito por FFI — ver engine/QuadMesh.lua), mesmo recorte
+    -- do Quad do LÖVE que existia aqui
     quads = {}
     for i = 0, n - 1 do
-        quads[i] = love.graphics.newQuad(i * CELL_W, 0, CELL_W, CELL_H,
-            atlasW, CELL_H)
+        quads[i] = { (i * CELL_W) / atlasW, 0, (i * CELL_W + CELL_W) / atlasW, 1 }
     end
     clumpQuads = {}
     for i = 0, N_CLUMP - 1 do
-        clumpQuads[i] = love.graphics.newQuad(clumpX0 + i * CLUMP_W, 0,
-            CLUMP_W, CELL_H, atlasW, CELL_H)
+        local x0 = clumpX0 + i * CLUMP_W
+        clumpQuads[i] = { x0 / atlasW, 0, (x0 + CLUMP_W) / atlasW, 1 }
     end
 end
 
-local batch
+-- ----------------------------------------------------------------------------
+-- LOTE NA GPU (Out/2026, perf): o SpriteBatch "stream" com ~10k
+-- batch:add + ~10k setColor por frame (5-8 ms de chamadas C) virou um
+-- QuadMesh escrito por FFI com o VENTO NO VERTEX SHADER:
+--   - a CPU escreve a lâmina PARADA (vento zero) + os parâmetros do vento
+--     dela (hash/fase/amplitude) — as MESMAS fórmulas de antes, só que
+--     avaliadas por vértice na GPU (GrassField.SHADER_* abaixo);
+--   - com a câmera PARADA (batalha, escolha de caminho) nada da cena da
+--     grama muda além do relógio → o lote do frame anterior é REUSADO
+--     inteiro: zero Lua por lâmina, só 1 uniform + 1 draw por fatia;
+--   - cada FATIA de profundidade (painter do WorldRoad) é um trecho
+--     contíguo do buffer (setDrawRange) — a intercalação com as árvores
+--     é a mesma, fatia a fatia.
+-- Cisalhamento (kx) e encurtamento (sy) são lineares na altura do
+-- vértice: X += kx·sx·(ly−oy) e Y −= |lean|·0.16·sy·(ly−oy) — o mesmo
+-- Matrix4::setTransformation do SpriteBatch, só que com kx vindo do shader.
+-- ----------------------------------------------------------------------------
+local ffi = require("ffi")
+pcall(ffi.cdef, [[
+typedef struct {
+    float x, y, u, v;
+    uint8_t r, g, b, a;
+    float ax, ay, kind;
+    float w1, w2, w3, w4;
+} gf_vertex_t;
+]])
+local GF_FORMAT = {
+    { "VertexPosition", "float", 2 },
+    { "VertexTexCoord", "float", 2 },
+    { "VertexColor", "byte", 4 },
+    { "GrassArm", "float", 3 },     -- (sx·(ly−oy), sy·(ly−oy), tipo)
+    { "GrassWind", "float", 4 },    -- parâmetros do vento (por tipo)
+}
+-- tipos de sprite (GrassArm.z)
+local K_CLUMP, K_CREST, K_BLADE, K_BROAD, K_FLOWER = 0, 1, 2, 3, 4
+
+GrassField.SHADER_VERTEX = [[
+uniform float uT;      // relógio do mundo (ctx.time)
+uniform vec4 uP;       // gustSpeed, gustAmp, windAmp, dir (preset do bioma)
+uniform vec4 uPoke;    // nx, wz, t0, ativo — rajada pontual (pokeAt)
+attribute vec3 GrassArm;
+attribute vec4 GrassWind;
+
+// windAt da CPU (ver comentário da função Lua windAt — mesma fórmula)
+float windAt(float nx, float wz, float t, float pers) {
+    float ph = nx * 5.2 + wz * 0.14;
+    float phA = nx * 7.5 + wz * 0.23;
+    float phB = nx * 3.2 - wz * 0.31 + 1.7;
+    float f1 = max(sin(phA * 0.85 - t * uP.x), 0.0);
+    float f2 = max(sin(phB * 0.41 - t * uP.x * 0.737 + 2.4), 0.0);
+    float gust = f1 * f1 * 0.70 + f2 * f2 * 0.50;
+    float tb = t * (1.0 + pers * 0.45) + pers * 7.9;
+    float breeze = sin(tb * 1.35 + ph * 3.1) * 0.30
+                 + sin(tb * 0.53 + ph * 1.7) * 0.20;
+    float curl = sin(ph * 9.3 + t * 2.6) * sin(ph * 3.7 - t * 1.9) * 0.12;
+    float jitter = sin(tb * 6.1 + ph * 12.7) * 0.10 * (0.35 + gust);
+    float wander = 0.72 + 0.28 * sin(t * 0.083 + ph * 0.11);
+    return (breeze + gust * uP.y + curl + jitter) * uP.z * uP.w * wander;
+}
+
+// pokeLean da CPU (rajada local amortecida)
+float pokeLean(float nx, float wz) {
+    if (uPoke.w < 0.5) return 0.0;
+    float e = uT - uPoke.z;
+    if (e < 0.0 || e >= 0.9) return 0.0;
+    float dxr = nx - uPoke.x;
+    float dx = dxr * 7.0;
+    float dz = (wz - uPoke.y) * 0.6;
+    float d2 = dx * dx + dz * dz;
+    if (d2 >= 4.0) return 0.0;
+    float swell = min(1.0, e * 10.0) * exp(-e * 4.0);
+    float side = dxr >= 0.0 ? 1.0 : -1.0;
+    return exp(-d2 * 1.3) * swell * side * 1.9;
+}
+
+vec4 position(mat4 transform_projection, vec4 vertex_position) {
+    float kind = GrassArm.z;
+    float kx;
+    float squash = 0.0;
+    if (kind < 0.5) {
+        // moita do tapete: 2 senos com frequência/fase PRÓPRIAS (v7.4.12)
+        float hk = GrassWind.x;
+        float dz = GrassWind.y;
+        kx = (sin(uT * (0.85 + hk * 1.35) + hk * 37.0) * 0.72
+            + sin(uT * (1.9 + hk * 2.2) + dz * 53.0) * 0.28) * GrassWind.z;
+    } else if (kind < 1.5) {
+        // franja da crista
+        float hk = GrassWind.x;
+        kx = (sin(uT * (0.85 + hk * 1.35) + hk * 41.0) * 0.7
+            + sin(uT * (2.0 + hk * 1.7) + hk * 91.0) * 0.3) * GrassWind.z;
+    } else {
+        float nx = GrassWind.x;
+        float wz = GrassWind.y;
+        float hb = GrassWind.z;
+        float h3 = GrassWind.w;
+        float pk = pokeLean(nx, wz);
+        float lean;
+        if (kind < 3.5) {
+            float flex = 0.55 + hb * 0.75;
+            float fe = sin(uT * 0.37 + h3 * 41.0);
+            float flick = fe > 0.92
+                ? ((fe - 0.92) / 0.08) * sin(uT * 11.0 + h3 * 9.0) * 0.45
+                : 0.0;
+            if (kind < 2.5) {
+                lean = windAt(nx, wz, uT, hb) * flex;
+            } else {
+                // junco largo: INÉRCIA (relógio lento, balanço fundo)
+                lean = windAt(nx, wz, uT * 0.62, hb * 0.4) * flex * 1.30;
+            }
+            lean = lean + (flick + pk) * flex;
+            squash = abs(lean) * 0.16;
+        } else {
+            lean = (windAt(nx, wz, uT + 0.3, 0.0) + pk) * 0.8;   // flor
+        }
+        kx = lean * 0.55;
+    }
+    vertex_position.x += kx * GrassArm.x;
+    vertex_position.y -= squash * GrassArm.y;
+    return transform_projection * vertex_position;
+}
+]]
+GrassField.SHADER_PIXEL = [[
+vec4 effect(vec4 color, Image tex, vec2 uv, vec2 sc) {
+    return Texel(tex, uv) * color;
+}
+]]
+
+local qm
+local shader
+local frameId_          -- frame atual (ctx.frame, ou ctx.time)
+-- CACHE do lote: válido enquanto a "cena da grama" não muda (tudo menos o
+-- relógio, que é uniform). frameMode = "replay" (reusa trechos gravados)
+-- ou "build" (gera e grava). cacheable cai pra false se algo no frame
+-- depende do tempo na CPU (broto nascendo) ou se as fatias mudaram.
+local cache = { valid = false, slices = {} }
+local frameMode, sliceIdx, cacheable = "build", 0, false
+-- contadores (trava de regressão tools/test_perf_budget): fatias
+-- REUSADAS × CONSTRUÍDAS e sprites escritos pela CPU desde o último reset
+GrassField.stats = { replays = 0, builds = 0, sprites = 0 }
+function GrassField.resetStats()
+    local st = GrassField.stats
+    st.replays, st.builds, st.sprites = 0, 0, 0
+end
+local cDark = { 0, 0, 0 }   -- reusado (era 1 tabela nova por fatia)
 local rowCache = {}   -- estáticos por fileira do tapete (podado por janela)
 local lastCamZ        -- detecta câmera em movimento (broto desligado)
 local lastTime        -- frame atual (múltiplas chamadas/frame — v7.5)
@@ -207,10 +356,13 @@ local function windAt(nx, wz, t, P, pers)
     local phB = nx * 3.2 - wz * 0.31 + 1.7
     local f1 = math.sin(phA * 0.85 - t * P.gustSpeed)
     local f2 = math.sin(phB * 0.41 - t * P.gustSpeed * 0.737 + 2.4)
-    local gust = (f1 > 0 and f1 * f1 or 0) * 0.70
-               + (f2 > 0 and f2 * f2 or 0) * 0.50
+    -- (Out/2026: max(f,0)² ≡ (f>0 and f² or 0), sem desvio — ver QuadMesh.c8)
+    local f1p, f2p = math.max(f1, 0), math.max(f2, 0)
+    local gust = (f1p * f1p) * 0.70
+               + (f2p * f2p) * 0.50
     -- (2) brisa local no TEMPO PRÓPRIO da lâmina
-    local tb = t * (1 + (pers or 0) * 0.45) + (pers or 0) * 7.9
+    pers = pers or 0
+    local tb = t * (1 + pers * 0.45) + pers * 7.9
     local breeze = math.sin(tb * 1.35 + ph * 3.1) * 0.30
                  + math.sin(tb * 0.53 + ph * 1.7) * 0.20
     -- (3) REDEMOINHOS: alta frequência espacial transversal (vorticles
@@ -236,25 +388,7 @@ GrassField._poke = nil
 function GrassField.pokeAt(nx, wz, t)
     GrassField._poke = { nx = nx, wz = wz, t0 = t }
 end
-local function pokeLean(nx, wz, tReal)
-    local pk = GrassField._poke
-    if not pk then return 0 end
-    local e = tReal - pk.t0
-    if e < 0 or e >= 0.9 then return 0 end
-    local dxr = nx - pk.nx
-    local dx = dxr * 7                 -- alcance ~1/7 da tela
-    local dz = (wz - pk.wz) * 0.6      -- ~2 unidades de mundo
-    local d2 = dx * dx + dz * dz
-    if d2 >= 4 then return 0 end
-    -- v9.7.2 (feedback "não ficou natural"): a tremida senoidal de 15Hz
-    -- lia como vibração mecânica. Agora é uma ONDA QUE PARTE do cursor —
-    -- lâmina à esquerda deita pra esquerda, à direita pra direita, num
-    -- swell único suave (sobe rápido, assenta devagar); a brisa própria
-    -- da lâmina continua por cima e traz a variação orgânica.
-    local swell = math.min(1, e * 10) * math.exp(-e * 4.0)
-    local side = dxr >= 0 and 1 or -1
-    return math.exp(-d2 * 1.3) * swell * side * 1.9
-end
+-- (pokeLean mora no SHADER_VERTEX — uniform uPoke; Out/2026)
 
 -- (v7.4.12: windCalm REMOVIDO — até a "brisa calma" era um campo espacial
 -- compartilhado: a fase variava tão devagar em profundidade que fileiras
@@ -264,9 +398,72 @@ end
 
 -- hash determinístico [0,1) — população estateless (mundo-ancorada, sem
 -- spawn/reciclagem: as lâminas "existem" onde a janela da câmera olha)
+-- ordenação da fileira por balde de cor (ver PASSE A)
+local sortRow
+local function byRowKey(a, b) return sortRow[a].key < sortRow[b].key end
+
 local function hash(a, b)
     local v = math.sin(a * 127.1 + b * 311.7) * 43758.5453
     return v - math.floor(v)
+end
+
+-- Escreve 1 sprite PARADO (vento zero) + parâmetros do vento. Equivale a
+-- SpriteBatch:add(quad, x, y, 0, sx, sy, ox, oy, kx=0) com a cor (R,G,B)
+-- em bytes; o shader soma kx·arm.x e −squash·arm.y por vértice.
+local function emit(x, y, sx, sy, ox, oy, qw, qh, q, R, G, B,
+                    kind, w1, w2, w3, w4)
+    local i = qm:alloc()
+    local vt = qm.v
+    local xl, xr = x - ox * sx, x + (qw - ox) * sx
+    local dT, dB = -oy, qh - oy
+    local yT, yB = y + sy * dT, y + sy * dB
+    local axT, axB = sx * dT, sx * dB
+    local ayT, ayB = sy * dT, sy * dB
+    local u0, v0, u1, v1 = q[1], q[2], q[3], q[4]
+    local p = vt[i]
+    p.x, p.y, p.u, p.v = xl, yT, u0, v0
+    p.r, p.g, p.b, p.a = R, G, B, 255
+    p.ax, p.ay, p.kind = axT, ayT, kind
+    p.w1, p.w2, p.w3, p.w4 = w1, w2, w3, w4
+    p = vt[i + 1]
+    p.x, p.y, p.u, p.v = xl, yB, u0, v1
+    p.r, p.g, p.b, p.a = R, G, B, 255
+    p.ax, p.ay, p.kind = axB, ayB, kind
+    p.w1, p.w2, p.w3, p.w4 = w1, w2, w3, w4
+    p = vt[i + 2]
+    p.x, p.y, p.u, p.v = xr, yT, u1, v0
+    p.r, p.g, p.b, p.a = R, G, B, 255
+    p.ax, p.ay, p.kind = axT, ayT, kind
+    p.w1, p.w2, p.w3, p.w4 = w1, w2, w3, w4
+    p = vt[i + 3]
+    p.x, p.y, p.u, p.v = xr, yB, u1, v1
+    p.r, p.g, p.b, p.a = R, G, B, 255
+    p.ax, p.ay, p.kind = axB, ayB, kind
+    p.w1, p.w2, p.w3, p.w4 = w1, w2, w3, w4
+end
+
+-- chave da "cena da grama" (tudo que muda a geometria/cor escrita pela
+-- CPU). Comparada campo a campo, sem alocar.
+local KEY_N = 22
+local keyNow, keyPrev = {}, {}
+local function fillKey(k, ctx)
+    local g, c = ctx.geom, ctx.colors
+    k[1], k[2], k[3], k[4] = ctx.camZ, ctx.x, ctx.w, ctx.relCrest
+    k[5], k[6], k[7], k[8] = g.cx, g.crestApexY, g.bottomY, g.R
+    k[9], k[10], k[11] = c.light[1], c.light[2], c.light[3]
+    k[12], k[13], k[14] = c.mid[1], c.mid[2], c.mid[3]
+    k[15], k[16], k[17] = c.accent[1], c.accent[2], c.accent[3]
+    k[18] = ctx.biomeId
+    k[19] = ctx.castleGapHalf or 0
+    k[20] = ctx.forkSig or 0
+    k[21] = ctx.roadCenters and 1 or 0
+    k[22] = GF_DEBUG and 1 or 0
+end
+local function sameKey()
+    for i = 1, KEY_N do
+        if keyNow[i] ~= keyPrev[i] then return false end
+    end
+    return true
 end
 
 -- ----------------------------------------------------------------------------
@@ -278,13 +475,73 @@ local SLOTS = 12           -- tentativas de tufo por célula (6 por lado)
 function GrassField.draw(ctx)
     if GrassField.disabled then return end   -- A/B de benchmark
     bakeAtlas()
-    if not batch then
-        batch = love.graphics.newSpriteBatch(atlasImg, 8192, "stream")
+    if not qm then
+        qm = QuadMesh.new(16384, { ctype = "gf_vertex_t", format = GF_FORMAT })
+        shader = love.graphics.newShader(GrassField.SHADER_PIXEL,
+            GrassField.SHADER_VERTEX)
     end
-    batch:clear()
+    local P = GrassField.PRESETS[ctx.biomeId] or DEFAULT_PRESET
+    local relFrom = ctx.relFrom or -1
+    local relTo = ctx.relTo or (ctx.relCrest + 2)
+
+    -- ---- início de FRAME: decide replay × build, uniforms do vento
+    local frameId = ctx.frame or ctx.time
+    if frameId ~= frameId_ then
+        -- o frame que acabou pode virar cache (se nada nele dependeu do
+        -- relógio na CPU e as fatias foram todas gravadas)
+        if frameMode == "build" then
+            cache.valid = cacheable
+            keyPrev, keyNow = keyNow, keyPrev
+        end
+        frameId_ = frameId
+        fillKey(keyNow, ctx)
+        if cache.valid and sameKey() then
+            frameMode = "replay"
+        else
+            frameMode = "build"
+            cache.valid = false
+            for i = #cache.slices, 1, -1 do cache.slices[i] = nil end
+            qm:reset()
+            cacheable = not GF_DEBUG
+        end
+        sliceIdx = 0
+        shader:send("uT", ctx.time)
+        shader:send("uP", { P.gustSpeed, P.gustAmp, P.windAmp, P.dir })
+        local pk = GrassField._poke
+        if pk then
+            shader:send("uPoke", { pk.nx, pk.wz, pk.t0, 1 })
+        else
+            shader:send("uPoke", { 0, 0, 0, 0 })
+        end
+    end
+    sliceIdx = sliceIdx + 1
+    if frameMode == "replay" then
+        local sl = cache.slices[sliceIdx]
+        if sl and sl[1] == relFrom and sl[2] == relTo then
+            if sl[4] > 0 then
+                local prev = love.graphics.getShader()
+                love.graphics.setShader(shader)
+                love.graphics.setColor(1, 1, 1, 1)
+                qm:draw(sl[3], sl[4], atlasImg)
+                love.graphics.setShader(prev)
+            end
+            GrassField._lastCount = sl[4]
+            GrassField.stats.replays = GrassField.stats.replays + 1
+            return
+        end
+        -- fatias mudaram (prop novo, fork...): o resto do frame é build e
+        -- ele não vira cache (faltam as fatias de antes no registro)
+        frameMode = "build"
+        cache.valid = false
+        cacheable = false
+        qm:reset()
+    end
+    local sliceStart = qm.n
+    -- cor corrente do lote em bytes (equivalente ao batch:setColor)
+    local cR, cG, cB = 255, 255, 255
+    local c8 = QuadMesh.c8
 
     local g = ctx.geom
-    local P = GrassField.PRESETS[ctx.biomeId] or DEFAULT_PRESET
     local t0 = ctx.time
     local camZ = ctx.camZ
     local w = ctx.w
@@ -293,7 +550,7 @@ function GrassField.draw(ctx)
     local cAcc = ctx.colors.accent
     -- 3º tom (sombra): lâminas na sombra das vizinhas — profundidade de
     -- moita real (2 tons alternados liam como padrão artificial)
-    local cDark = { cMid[1] * 0.68, cMid[2] * 0.68, cMid[3] * 0.68 }
+    cDark[1], cDark[2], cDark[3] = cMid[1] * 0.68, cMid[2] * 0.68, cMid[3] * 0.68
 
     -- até QUASE a crista (-0.05, não -0.8): o corte antigo deixava uma
     -- faixa careca que a geometria da esfera AMPLIFICA nas laterais
@@ -302,9 +559,6 @@ function GrassField.draw(ctx)
     -- v7.5: JANELA de profundidade — o WorldRoad chama draw() várias
     -- vezes por frame, intercalando fatias de grama entre as árvores
     -- (painter real: capim na frente do pé da árvore COBRE o pé)
-    local relFrom = ctx.relFrom or -1
-    local relTo = ctx.relTo or (ctx.relCrest + 2)
-
     -- câmera em movimento? (viagem/convergência — broto desligado).
     -- Detecção POR FRAME (ctx.time): com múltiplas chamadas por frame,
     -- comparar camZ por chamada daria "parado" da 2ª fatia em diante
@@ -440,9 +694,11 @@ function GrassField.draw(ctx)
                         -- é a mesma — pintar por balde não muda a imagem):
                         -- setColor só quando o balde troca (~9/fileira em
                         -- vez de 96) — chamada C é o custo dominante
-                        table.sort(rc.order, function(a, b)
-                            return rc[a].key < rc[b].key
-                        end)
+                        -- comparador fixo (closure criada no laço aborta
+                        -- o trace do JIT — Out/2026)
+                        sortRow = rc
+                        table.sort(rc.order, byRowKey)
+                        sortRow = nil
                         rowCache[ci] = rc
                     end
                     local roadC = ctx.roadCenter(z, t)
@@ -492,22 +748,20 @@ function GrassField.draw(ctx)
                             -- em frequências próprias + fase própria +
                             -- amplitude própria. ZERO termo compartilhado
                             -- entre moitas = impossível formar linha.
-                            local lean = (math.sin(t0 * (0.85 + e.hk * 1.35)
-                                    + e.hk * 37) * 0.72
-                                + math.sin(t0 * (1.9 + e.hk * 2.2)
-                                    + e.dz * 53) * 0.28)
-                                * (0.14 + math.abs(e.dz) * 0.26)
-                                * P.windAmp * P.dir
+                            -- (vento: GPU — amplitude da moita vai no
+                            -- atributo; fases/frequências saem de hk/dz)
+                            local amp = (0.14 + math.abs(e.dz) * 0.26)
+                                * P.windAmp * P.dir * 0.5 * e.flip
                             if GF_DEBUG then
-                                batch:setColor(1, 0, 1, 1)   -- prova magenta
+                                cR, cG, cB = 255, 0, 255   -- prova magenta
                                 lastKey = -1
                             elseif e.key ~= lastKey then
                                 lastKey = e.key
                                 local c = (e.tone == 3) and cDark
                                     or ((e.tone == 2) and cMid or cLight)
-                                batch:setColor(
-                                    math.min(1, c[1] * e.dr),
-                                    c[2] * e.dg, c[3] * e.db, 1)
+                                cR = c8(math.min(1, c[1] * e.dr))
+                                cG = c8(c[2] * e.dg)
+                                cB = c8(c[3] * e.db)
                             end
                             local edgeK = math.min(1,
                                 dRoad / (6 + 14 * perspK))
@@ -518,6 +772,8 @@ function GrassField.draw(ctx)
                             if age < 1.4 then
                                 gk = math.min(1, age / (0.6 + e.hk * 0.7))
                                 gk = gk * gk * (3 - 2 * gk)
+                                -- broto é animação de CPU: frame não cacheia
+                                cacheable = false
                             end
                             -- hMul só na ALTURA: rasteira estreita
                             -- furaria o tapete (largura cobre o chão).
@@ -534,13 +790,14 @@ function GrassField.draw(ctx)
                             -- metade das moitas dobrava pro lado oposto
                             -- do próprio lean ("um conjunto se mexe pra
                             -- esquerda, outro pra diagonal direita")
-                            batch:add(e.q, math.floor(pxX),
-                                math.floor(base + 1), 0,
+                            emit(math.floor(pxX),
+                                math.floor(base + 1),
                                 sK * sxK * e.flip,
                                 sK * e.hMul
                                     * (0.35 + 0.65 * edgeK) * gk,
-                                CLUMP_W / 2, CELL_H,
-                                lean * 0.5 * e.flip, 0)
+                                CLUMP_W / 2, CELL_H, CLUMP_W, CELL_H,
+                                e.q, cR, cG, cB,
+                                K_CLUMP, e.hk, e.dz, amp, 0)
                         end
                     end
                 end
@@ -572,19 +829,18 @@ function GrassField.draw(ctx)
                     -- v7.4.12: oscilador independente também aqui — a
                     -- franja é literalmente uma LINHA; com vento
                     -- compartilhado ela pulsava em conjunto na crista
-                    local lean = (math.sin(t0 * (0.85 + hk * 1.35)
-                            + hk * 41) * 0.7
-                        + math.sin(t0 * (2.0 + hk * 1.7) + hk * 91) * 0.3)
-                        * (0.15 + hk * 0.2) * P.windAmp * P.dir
+                    -- (vento: GPU, tipo K_CREST)
                     local ht = hash(k * 29 + 3, 57)
                     local c = (ht < 0.45) and cDark or cMid
-                    batch:setColor(c[1], c[2], c[3], 1)
                     local sC = scaleC * (0.75 + hk * 0.5)
                     local flipC = (ht < 0.5) and 1 or -1
-                    batch:add(clumpQuads[math.floor(hk * N_CLUMP) % N_CLUMP],
-                        math.floor(px), math.floor(cy + 3), 0,
-                        sC * flipC, sC,
-                        CLUMP_W / 2, CELL_H, lean * 0.5 * flipC, 0)
+                    local q = clumpQuads[math.floor(hk * N_CLUMP) % N_CLUMP]
+                    local ampC = (0.15 + hk * 0.2) * P.windAmp * P.dir
+                        * 0.5 * flipC
+                    emit(math.floor(px), math.floor(cy + 3),
+                        sC * flipC, sC, CLUMP_W / 2, CELL_H, CLUMP_W, CELL_H,
+                        q, c8(c[1]), c8(c[2]), c8(c[3]),
+                        K_CREST, hk, 0, ampC, 0)
                 end
             end
         end
@@ -667,13 +923,8 @@ function GrassField.draw(ctx)
                         local scale = (0.22 + persp * 1.85) * P.heightK
                             * ramp * hMulA
                         if scale * CELL_H >= 1.6 then
-                            -- FLICK do tufo: impulso raro e curto (bicho/
-                            -- lufada pontual) — sacode e assenta
-                            local fe = math.sin(t0 * 0.37 + h3 * 41)
-                            local flick = (fe > 0.92)
-                                and ((fe - 0.92) / 0.08)
-                                    * math.sin(t0 * 11 + h3 * 9) * 0.45
-                                or 0
+                            -- FLICK do tufo (impulso raro e curto — bicho/
+                            -- lufada pontual): no shader, por h3
                             -- tom SECO/VIÇOSO por tufo (campos reais têm
                             -- manchas amareladas — GoT: variação por área)
                             local dryK = hash(ci * 7, slot * 3 + 9) * 0.30
@@ -687,22 +938,10 @@ function GrassField.draw(ctx)
                                 local s = scale * (0.72 + hb * 0.55)
                                 local bx = pxX + (bi - nb / 2)
                                     * (1.6 + persp * 2.2) + hb * 3
-                                -- física: raiz fixa, ponta balança;
-                                -- flexível ∝ altura; encurta ao dobrar.
-                                -- Junco largo tem INÉRCIA: relógio mais
-                                -- lento e balanço mais fundo (peso real)
-                                local flex = 0.55 + hb * 0.75
-                                local lean
-                                if broad then
-                                    lean = windAt(nx, z, t0 * 0.62, P,
-                                        hb * 0.4) * flex * 1.30
-                                else
-                                    lean = windAt(nx, z, t0, P, hb) * flex
-                                end
-                                lean = lean
-                                    + (flick + pokeLean(nx, z, t0)) * flex
-                                local kx = lean * 0.55
-                                local sy = s * (1 - math.abs(lean) * 0.16)
+                                -- física (raiz fixa, ponta balança,
+                                -- flexível ∝ altura, encurta ao dobrar,
+                                -- junco com INÉRCIA): no shader, a partir
+                                -- de nx/z/hb/h3 — ver SHADER_VERTEX
                                 -- tom em 3 níveis por lâmina (sombra /
                                 -- meia-luz / luz) — moita com profundidade;
                                 -- o gradiente raiz→ponta vem do atlas
@@ -710,25 +949,25 @@ function GrassField.draw(ctx)
                                 local c = (ht < 0.25) and cDark
                                     or ((ht < 0.55) and cMid or cLight)
                                 -- seco puxa pro amarelo (R sobe, B cai)
-                                batch:setColor(
-                                    math.min(1, c[1] * (1 + dryK * 0.30)),
-                                    c[2] * (1 - dryK * 0.06),
-                                    c[3] * (1 - dryK * 0.35), 1)
-                                batch:add(quads[vquad],
-                                    math.floor(bx), math.floor(base + 1),
-                                    0, s, sy, CELL_W / 2, CELL_H, kx, 0)
+                                emit(math.floor(bx), math.floor(base + 1),
+                                    s, s, CELL_W / 2, CELL_H, CELL_W, CELL_H,
+                                    quads[vquad],
+                                    c8(math.min(1, c[1] * (1 + dryK * 0.30))),
+                                    c8(c[2] * (1 - dryK * 0.06)),
+                                    c8(c[3] * (1 - dryK * 0.35)),
+                                    broad and K_BROAD or K_BLADE,
+                                    nx, z, hb, h3)
                             end
                             -- flor/broto na cor de acento do bioma (a
                             -- "vida" do campo — dourado/brasa/cristal...)
                             if h3 > 1 - P.flower and t > 0.25 then
-                                local lean = (windAt(nx, z, t0 + 0.3, P)
-                                    + pokeLean(nx, z, t0)) * 0.8
-                                batch:setColor(cAcc[1], cAcc[2], cAcc[3], 1)
-                                batch:add(quads[FLOWER_CELL],
-                                    math.floor(pxX + h2 * 4 - 2),
+                                emit(math.floor(pxX + h2 * 4 - 2),
                                     math.floor(base + 1),
-                                    0, scale * 0.9, scale * 0.9,
-                                    CELL_W / 2, CELL_H, lean * 0.55, 0)
+                                    scale * 0.9, scale * 0.9,
+                                    CELL_W / 2, CELL_H, CELL_W, CELL_H,
+                                    quads[FLOWER_CELL],
+                                    c8(cAcc[1]), c8(cAcc[2]), c8(cAcc[3]),
+                                    K_FLOWER, nx, z, 0, h3)
                             end
                         end
                     end
@@ -737,14 +976,31 @@ function GrassField.draw(ctx)
         end
     end
 
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.draw(batch)
-    GrassField._lastCount = batch:getCount()   -- instrumentação (bench)
+    local count = qm.n - sliceStart
+    if count > 0 then
+        qm:upload(sliceStart, qm.n)
+        local prev = love.graphics.getShader()
+        love.graphics.setShader(shader)
+        love.graphics.setColor(1, 1, 1, 1)
+        qm:draw(sliceStart, count, atlasImg)
+        love.graphics.setShader(prev)
+    end
+    local sl = cache.slices[sliceIdx]
+    if not sl then
+        sl = {}
+        cache.slices[sliceIdx] = sl
+    end
+    sl[1], sl[2], sl[3], sl[4] = relFrom, relTo, sliceStart, count
+    GrassField._lastCount = count   -- instrumentação (bench)
+    local st = GrassField.stats
+    st.builds, st.sprites = st.builds + 1, st.sprites + count
 end
 
 -- limpa recursos GPU (troca de resolução etc.)
 function GrassField.clearCache()
-    atlasImg, quads, clumpQuads, batch = nil, nil, nil, nil
+    atlasImg, quads, clumpQuads, qm, shader = nil, nil, nil, nil, nil
+    frameId_, frameMode, cacheable = nil, "build", false
+    cache = { valid = false, slices = {} }
     rowCache = {}
     lastCamZ = nil
 end

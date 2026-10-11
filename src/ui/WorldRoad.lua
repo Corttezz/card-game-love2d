@@ -34,6 +34,7 @@ local ShadowEngine = require("engine.ShadowEngine")
 local LuminaireEngine = require("engine.LuminaireEngine")
 local RoadWear = require("engine.RoadWear")
 local RoadSurface = require("engine.RoadSurface")
+local QuadMesh = require("engine.QuadMesh")
 local Config = require("src.core.Config")
 local EnemyEmissives = require("src.data.enemy_emissives")
 -- v9.7.1: GrassField declarado AQUI (era local no meio do arquivo e o
@@ -262,17 +263,33 @@ end
 -- 21px num canvas de 72) e a hitbox de quad inteiro cobria justamente a
 -- área onde o glow do LightEngine aparece. Scan 1× por arquivo, cache
 -- fraco por Image (morre junto com o sprite).
+-- Out/2026 (perf da troca de bioma): o PNG era decodificado DUAS vezes
+-- (newImage + newImageData) e varrido com getPixel por pixel. Agora o
+-- chamador passa o ImageData que já decodificou e a varredura lê o alpha
+-- direto do buffer rgba8 (FFI) — mesmo limiar: a ≥ 0.6 ⇔ byte ≥ 153.
+local ffi = require("ffi")
 local contentRect = setmetatable({}, { __mode = "k" })
-local function scanContentRect(img, path)
+local function scanContentRect(img, path, data)
     if contentRect[img] ~= nil then return end
-    local ok, data = pcall(love.image.newImageData, path)
-    if not ok or not data then contentRect[img] = false; return end
+    if not data then
+        local ok, d = pcall(love.image.newImageData, path)
+        if not ok or not d then contentRect[img] = false; return end
+        data = d
+    end
     local w, h = data:getWidth(), data:getHeight()
+    local px = data:getFormat() == "rgba8"
+        and ffi.cast("const uint8_t*", data:getFFIPointer()) or nil
     local x0, y0, x1, y1
     for y = 0, h - 1 do
         for x = 0, w - 1 do
-            local _, _, _, a = data:getPixel(x, y)
-            if a >= 0.6 then
+            local opaque
+            if px then
+                opaque = px[(y * w + x) * 4 + 3] >= 153
+            else
+                local _, _, _, a = data:getPixel(x, y)
+                opaque = a >= 0.6
+            end
+            if opaque then
                 if not x0 or x < x0 then x0 = x end
                 if not x1 or x > x1 then x1 = x end
                 if not y0 then y0 = y end
@@ -286,10 +303,12 @@ end
 local function tryLoadPng(name)
     local path = "assets/sprites/world/" .. name .. ".png"
     if not love.filesystem.getInfo(path) then return nil end
-    local ok, img = pcall(love.graphics.newImage, path)
+    local okd, data = pcall(love.image.newImageData, path)
+    if not okd or not data then return nil end
+    local ok, img = pcall(love.graphics.newImage, data)
     if not ok or not img then return nil end
     img:setFilter("nearest", "nearest")
-    scanContentRect(img, path)
+    scanContentRect(img, path, data)
     return img
 end
 
@@ -314,10 +333,13 @@ local function readAnimFrames(key)
     local frames = {}
     for _, f in ipairs(files) do
         if f:match("%.png$") then
-            local ok, im = pcall(love.graphics.newImage, dir .. "/" .. f)
+            local path = dir .. "/" .. f
+            local okd, data = pcall(love.image.newImageData, path)
+            local ok, im = false, nil
+            if okd and data then ok, im = pcall(love.graphics.newImage, data) end
             if ok and im then
                 im:setFilter("nearest", "nearest")
-                scanContentRect(im, dir .. "/" .. f)
+                scanContentRect(im, path, data)
                 frames[#frames + 1] = im
             end
         end
@@ -775,16 +797,36 @@ local function kindMult(kind)
     if LuminaireEngine.isLuminaire(kind) then return 1.0 end
     return 0.5
 end
+-- Ordem de sorteio ESTÁVEL (Out/2026): pairs() sobre chaves string muda de
+-- ordem entre processos (hash de string semeado do LuaJIT) — o mesmo seed
+-- dava cenários diferentes a cada execução e a prova visual pixel a pixel
+-- (tools/perf_visual_diff) era impossível. Lista ordenada por nome, 1x
+-- por tabela de pesos.
+local kindOrderCache = setmetatable({}, { __mode = "k" })
+local function kindOrder(weights)
+    local list = kindOrderCache[weights]
+    if not list then
+        list = {}
+        for kind in pairs(weights) do list[#list + 1] = kind end
+        table.sort(list)
+        kindOrderCache[weights] = list
+    end
+    return list
+end
 local function pickKind(b, rng)
+    local weights = b.propWeights
+    local order = kindOrder(weights)
     local total = 0
-    for kind, wgt in pairs(b.propWeights) do
-        total = total + wgt * kindMult(kind)
+    for i = 1, #order do
+        local kind = order[i]
+        total = total + weights[kind] * kindMult(kind)
     end
     total = total + 0.7
     local r = rng:random() * total
     if r > total - 0.7 then return "tuft" end
-    for kind, wgt in pairs(b.propWeights) do
-        r = r - wgt * kindMult(kind)
+    for i = 1, #order do
+        local kind = order[i]
+        r = r - weights[kind] * kindMult(kind)
         if r <= 0 then return kind end
     end
     return TREE_KIND[b.id] or "tree"
@@ -849,10 +891,12 @@ local function rollProp(p, z, forcedSide, noLum)
                 return base
             end
             local tot = 0
-            for _, d in pairs(lumCat) do tot = tot + w(d) end
+            local lumOrder = kindOrder(lumCat)   -- ordem estável (ver pickKind)
+            for i = 1, #lumOrder do tot = tot + w(lumCat[lumOrder[i]]) end
             local r2 = rng:random() * tot
-            for kind, d in pairs(lumCat) do
-                r2 = r2 - w(d)
+            for i = 1, #lumOrder do
+                local kind = lumOrder[i]
+                r2 = r2 - w(lumCat[kind])
                 if r2 <= 0 then p.kind = kind; break end
             end
             WorldRoad._nextLumZ[p.side] = z + LUM_STEP + rng:random() * LUM_JIT
@@ -1704,8 +1748,16 @@ local function submitLandmarkOccluder(img, px, py, iw, ih, s, rel)
     })
 end
 
+-- pré-aquecimento de bioma (definido lá embaixo, depois de todos os
+-- loaders — local declarada aqui pro update enxergar; lição do ciclo 41)
+local prewarmTick
+
 function WorldRoad.update(dt)
     WorldRoad._time = WorldRoad._time + dt
+    -- Out/2026: carrega/assa os assets do bioma ATUAL e do PRÓXIMO aos
+    -- poucos (orçamento por frame) — a troca de ato engasgava 100-370 ms
+    -- no 1º frame do bioma novo carregando tudo de uma vez
+    prewarmTick()
 
     if #WorldRoad._props == 0 then populate() end
 
@@ -2839,38 +2891,69 @@ local GROUND_V_DENSITY = 4.8   -- texels de textura por unidade de mundo
 -- as fileiras do padrão CURVAM pra baixo nas bordas como a crista. Antes as
 -- linhas eram horizontais retas e contradiziam o arco da estrada (era o
 -- resto da "curvatura contrária" que sobrava no campo próximo).
-local function drawDomeTexOf(g, x, w, bid, alpha)
+-- Out/2026 (perf): as ~15-40k fatias viraram quads num QuadMesh (FFI) em
+-- vez de setViewport+draw por fatia (custava 2-6 ms de chamadas C/frame).
+-- MESMA geometria e UV de antes, quad a quad. E como o chão só depende de
+-- câmera/geometria/bioma/alpha, com a câmera parada (batalha) o lote é
+-- reaproveitado inteiro: 1 draw, zero Lua. Um slot por camada do
+-- crossfade (bioma anterior + atual).
+local domeSlots = {}
+local function drawDomeTexOf(g, x, w, bid, alpha, slot)
     local tex = getGroundTexture(bid)
-    love.graphics.setColor(1, 1, 1, alpha)
-    local domeTop = g.crestApexY
-    local H = g.bottomY - domeTop
-    local step = 3
-    for sy = 0, H - 1, step do
-        local t = sy / H
-        local tn = math.min(1, (sy + step) / H)
-        local rel = REL_CREST * (1 - t ^ (1 / T_POW))
-        local relNext = REL_CREST * (1 - tn ^ (1 / T_POW))
-        local worldZ = WorldRoad._camZ + rel
-        local dv = math.min(20, math.max(0.05, (rel - relNext) * GROUND_V_DENSITY))
-        local v = (worldZ * GROUND_V_DENSITY) % GROUND_TEX_H
-        local hs = GROUND_TEX_SCALE * (0.44 + 1.06 * t)
-        -- v5.6: SEG adaptativo — perto da CRISTA (t<0.3), onde a borda da
-        -- esfera é visível, fatias de 8px (curva lisa); no corpo, 32px.
-        -- Fatias de 32px na borda viravam "retângulos" (feedback: "não é
-        -- um círculo perfeito, tem partes retas").
-        local SEG = (t < 0.3) and 8 or 32
-        for segX = x, x + w - 1, SEG do
-            local segW = math.min(SEG, x + w - segX)
-            local dxMid = (segX + segW / 2) - g.cx
-            local segY = g.latY(dxMid, t)
-            if segY < g.bottomY + 30 then
-                tex.quad:setViewport((segX - g.cx) / hs, v, segW / hs, dv,
-                    GROUND_TEX_W, GROUND_TEX_H)
-                love.graphics.draw(tex.img, tex.quad, segX, math.floor(segY), 0,
-                    hs, (step + 1) / dv)
+    local ds = domeSlots[slot]
+    if not ds then
+        ds = { qm = QuadMesh.new(4096) }
+        domeSlots[slot] = ds
+    end
+    local camZ = WorldRoad._camZ
+    -- (alpha do crossfade fica FORA da chave: vai na cor global do draw —
+    -- senão a camada que entra reconstruía o lote inteiro a cada frame)
+    if ds.camZ ~= camZ or ds.x ~= x or ds.w ~= w or ds.cx ~= g.cx
+       or ds.top ~= g.crestApexY or ds.bottom ~= g.bottomY or ds.R ~= g.R
+       or ds.tex ~= tex then
+        ds.camZ, ds.x, ds.w, ds.cx = camZ, x, w, g.cx
+        ds.top, ds.bottom, ds.R = g.crestApexY, g.bottomY, g.R
+        ds.tex = tex
+        WorldRoad._domeBuilds = (WorldRoad._domeBuilds or 0) + 1   -- (trava de perf)
+        local qm = ds.qm
+        qm:reset()
+        local domeTop = g.crestApexY
+        local H = g.bottomY - domeTop
+        local step = 3
+        local TW, TH = GROUND_TEX_W, GROUND_TEX_H
+        for sy = 0, H - 1, step do
+            local t = sy / H
+            local tn = math.min(1, (sy + step) / H)
+            local rel = REL_CREST * (1 - t ^ (1 / T_POW))
+            local relNext = REL_CREST * (1 - tn ^ (1 / T_POW))
+            local worldZ = camZ + rel
+            local dv = math.min(20, math.max(0.05, (rel - relNext) * GROUND_V_DENSITY))
+            local v = (worldZ * GROUND_V_DENSITY) % GROUND_TEX_H
+            local hs = GROUND_TEX_SCALE * (0.44 + 1.06 * t)
+            local syK = (step + 1) / dv
+            local v0, v1 = v / TH, (v + dv) / TH
+            -- v5.6: SEG adaptativo — perto da CRISTA (t<0.3), onde a borda da
+            -- esfera é visível, fatias de 8px (curva lisa); no corpo, 32px.
+            -- Fatias de 32px na borda viravam "retângulos" (feedback: "não é
+            -- um círculo perfeito, tem partes retas").
+            local SEG = (t < 0.3) and 8 or 32
+            for segX = x, x + w - 1, SEG do
+                local segW = math.min(SEG, x + w - segX)
+                local dxMid = (segX + segW / 2) - g.cx
+                local segY = g.latY(dxMid, t)
+                if segY < g.bottomY + 30 then
+                    local vx, vw = (segX - g.cx) / hs, segW / hs
+                    qm:rect(segX, math.floor(segY), hs * vw, syK * dv,
+                        vx / TW, v0, (vx + vw) / TW, v1, 1, 1, 1, 1)
+                end
             end
         end
+        ds.count = qm.n
+        qm:upload(0, qm.n)
     end
+    love.graphics.setColor(1, 1, 1, alpha)
+    ds.qm:draw(0, ds.count, tex.img)
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 local function drawDome(g, x, y, w)
@@ -2891,10 +2974,10 @@ local function drawDome(g, x, y, w)
     local bl = WorldRoad._blend
     if bl and WorldRoad._prevBiomeIndex then
         local t = math.min(1, bl.t / bl.duration)
-        drawDomeTexOf(g, x, w, rawBiome(WorldRoad._prevBiomeIndex).id, 1)
-        drawDomeTexOf(g, x, w, rawBiome().id, t)
+        drawDomeTexOf(g, x, w, rawBiome(WorldRoad._prevBiomeIndex).id, 1, 1)
+        drawDomeTexOf(g, x, w, rawBiome().id, t, 2)
     else
-        drawDomeTexOf(g, x, w, rawBiome().id, 1)
+        drawDomeTexOf(g, x, w, rawBiome().id, 1, 1)
     end
 
     -- SOMBRAS DE NUVEM: REMOVIDAS (ciclo 26) — as elipses deslizando no
@@ -3159,6 +3242,17 @@ local function drawGrass(g, x, w, camZ, relFrom, relTo)
     end
     _grassCtx.relFrom = relFrom
     _grassCtx.relTo = relTo
+    -- frame de DESENHO (não o relógio): com o mundo pausado o _time não
+    -- anda, mas cada draw é um frame novo — o GrassField zera o cursor
+    -- do lote por frame (senão o buffer cresceria a cada frame pausado)
+    _grassCtx.frame = WorldRoad._drawFrame
+    -- assinatura do fork (tudo que move os braços no forkOffset): o
+    -- GrassField reusa o lote da grama enquanto a cena não muda, e o
+    -- roadCenters lê o fork AO VIVO — sem isso o cache não veria a
+    -- encruzilhada abrindo/convergindo
+    local f = WorldRoad._fork
+    _grassCtx.forkSig = f and (f.n * 1e7 + (f.chosen or 0) * 1e6
+        + (f.converge and f.converge.k or 0) * 1e3 + (f.animIn or 0)) or 0
     GrassField.draw(_grassCtx)
 end
 
@@ -3222,181 +3316,194 @@ local function drawRoad(g, x, w, camZ)
     local fork = WorldRoad._fork
 
     local step = 2
+    -- Out/2026 (perf): cada fatia/retângulo vira um quad no QuadMesh (FFI)
+    -- na MESMA ordem de antes (tile da fileira → decoração → próxima
+    -- fileira por cima); 1 draw no fim. Retângulo chapado = quad SEM
+    -- textura (u sentinela + shader do lote). Antes: ~7-12k chamadas C.
+    local qm = WorldRoad._roadQM
+    if not qm then
+        qm = QuadMesh.new(8192)
+        WorldRoad._roadQM = qm
+    end
+    qm:reset()
+    local UNTEX = QuadMesh.UNTEXTURED
+    local function rect(rx, ry, rw, rh, r, gg, bb, aa)
+        qm:rect(rx, ry, rw, rh, UNTEX, 0, UNTEX, 0, r, gg, bb, aa)
+    end
+    local tileUsed = nil
     local function hash(n)
         local v = math.sin(n * 12.9898) * 43758.5453
         return v - math.floor(v)
     end
     local lastDecoRow = nil   -- ciclo 29: decoração pontual 1x por faixa
-    for sy = 0, groundH - 1, step do
-        local t = sy / groundH
-        local rel = REL_CREST * (1 - t ^ (1 / T_POW))
-        local worldZ = camZ + rel
+    -- estado da FILEIRA corrente (upvalues do paintRow): o paintRow era
+    -- uma closure criada POR FILEIRA — criação de função no laço aborta o
+    -- JIT (NYI), e com o lote em FFI o interpretador ficava MAIS lento
+    -- que as chamadas C de antes. Agora é 1 closure por frame.
+    local t, rel, worldZ, half0, edgeAmp, eL, eR, rowId, blend, m
+    local newRow
+    local biomeNow = rawBiome()
+    local tile = RoadSurface.get(biomeNow.id, biomeNow)
+        or getRoadTile(biomeNow.id)
+    local tw, th, dv, v, hs
+    if tile then tw, th = tile:getWidth(), tile:getHeight() end
 
-        local half0 = ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15))
-        local edgeAmp = 5 * (0.30 + 0.70 * t)
-        local eL = (math.sin(worldZ * 0.55) * 0.6 + math.sin(worldZ * 0.21 + 1.4) * 0.4) * edgeAmp
-        local eR = (math.sin(worldZ * 0.47 + 3.1) * 0.6 + math.sin(worldZ * 0.17 + 4.2) * 0.4) * edgeAmp
-        local rowId = math.floor(worldZ * 2.3)
-        local blend = hash(math.floor(worldZ / 1.9) * 3 + math.floor(t * 5))
+    -- pinta UMA fileira da estrada com centro/largura/alpha/brilho dados
+    local function paintRow(cxRow, halfMul, aMul, decorate, bright)
+        local half = half0 * halfMul
+        -- BORDA SERRADA (ref APK do usuário): degraus irregulares por
+        -- faixa de mundo (rowId) — tijolos "saltando" da borda em
+        -- escadinha, não linha lisa. É isso que faz parecer caminho real.
+        local jag = 14 * (0.35 + 0.65 * t)
+        local jL = (hash(rowId * 13 + 7) - 0.5) * jag
+        local jR = (hash(rowId * 19 + 3) - 0.5) * jag
+        local xL = math.floor(cxRow - half + eL + jL)
+        local xR = math.floor(cxRow + half + eR + jR)
+
+        local SEG = 16
+        for segX = xL, xR - 1, SEG do
+            local segW = math.min(SEG, xR - segX)
+            local dxMid = (segX + segW / 2) - cx
+            local segY = math.floor(g.latY(dxMid, t))
+            if tile then
+                -- v10.1: sampling CENTRADO no eixo da estrada (antes:
+                -- offset u aleatório por faixa) — os sulcos de roda e o
+                -- desgaste central assados na textura SEGUEM a curva do
+                -- caminho (e cada braço do fork ganha os seus)
+                local vx = (segX - cxRow) / hs + tw * 0.5
+                local vw = segW / hs
+                local tm = (0.95 + blend * 0.08) * bright
+                -- ciclo 31: overdraw de 1.5px (mata fresta entre latitudes)
+                qm:rect(segX, segY, hs * vw, ((step + 1.5) / dv) * dv,
+                    vx / tw, v / th, (vx + vw) / tw, (v + dv) / th,
+                    tm, tm, tm, aMul)
+            else
+                rect(segX, segY, segW, step + 1.5,
+                    (roadA[1] + (roadB[1] - roadA[1]) * blend) * m * bright,
+                    (roadA[2] + (roadB[2] - roadA[2]) * blend) * m * bright,
+                    (roadA[3] + (roadB[3] - roadA[3]) * blend) * m * bright, aMul)
+            end
+        end
+
+        if not decorate then return end
+
+        -- pedrinhas/torrões (ciclo 29: 1x por rowId)
+        if newRow then
+            for k = 1, 2 do
+                local hpos = hash(rowId * 31 + k * 17)
+                if hpos > 0.35 then
+                    local px2 = xL + math.floor(hpos * (xR - xL))
+                    local sz = math.max(2, math.floor((1 + hash(rowId + k) * 2) * (0.4 + 0.6 * t) * 2))
+                    local py2 = math.floor(g.latY(px2 - cx, t))
+                    if hash(rowId * 3 + k) > 0.5 then
+                        rect(px2, py2, sz, sz, roadEdge[1], roadEdge[2], roadEdge[3], 0.5 * aMul)
+                    else
+                        rect(px2, py2, sz, sz, roadA[1] * 1.2, roadA[2] * 1.2, roadA[3] * 1.15, 0.6 * aMul)
+                    end
+                end
+            end
+        end
+
+        -- SULCOS de desgaste (na latitude)
+        if t > 0.45 then
+            local rutA = (t - 0.45) * 0.5
+            local rutW = math.max(1, math.floor(2 * g.persp(t)))
+            local rdx = half * 0.42
+            local ra = rutA * 0.5 * aMul
+            rect(math.floor(cxRow - rdx),
+                math.floor(g.latY(cxRow - rdx - cx, t)), rutW, step,
+                roadEdge[1], roadEdge[2], roadEdge[3], ra)
+            rect(math.floor(cxRow + rdx),
+                math.floor(g.latY(cxRow + rdx - cx, t)), rutW, step,
+                roadEdge[1], roadEdge[2], roadEdge[3], ra)
+        end
+
+        -- bordas quebradas + pedrinha da transição
+        local yL = math.floor(g.latY(xL - cx, t))
+        local yR = math.floor(g.latY(xR - cx, t))
+        if hash(rowId * 5 + 2) > 0.25 then
+            rect(xL - 2, yL, 2, step, roadEdge[1], roadEdge[2], roadEdge[3], 0.85 * aMul)
+        end
+        if hash(rowId * 11 + 4) > 0.25 then
+            rect(xR, yR, 2, step, roadEdge[1], roadEdge[2], roadEdge[3], 0.85 * aMul)
+        end
+        if newRow and hash(rowId * 17 + 9) > 0.72 then
+            local ps = math.max(2, math.floor(3.5 * g.persp(t)))
+            local side = hash(rowId * 23 + 3) > 0.5 and 1 or -1
+            local px2 = side > 0 and (xR + 3 + math.floor(hash(rowId * 29) * 8 * g.persp(t)))
+                                  or (xL - 5 - math.floor(hash(rowId * 29) * 8 * g.persp(t)))
+            rect(px2, math.floor(g.latY(px2 - cx, t)), ps, math.max(step, ps - 1),
+                roadA[1] * 1.25, roadA[2] * 1.22, roadA[3] * 1.15, 0.9 * aMul)
+        end
+
+        -- v6.5: DITHER de transição terra↔grama — salpicos dos dois
+        -- lados da borda (denso perto, esparso longe). A emenda vira
+        -- meio-tom orgânico em vez de linha serrada dura.
+        if newRow then
+            local ga2 = envColor("grassA")
+            for k = 1, 3 do
+                local hh = hash(rowId * 53 + k * 7)
+                local dd = math.floor(hh * hh * 12 * g.persp(t)) + 2
+                local sz2 = math.max(1, math.floor(2 * g.persp(t)))
+                local sideK = (hash(rowId * 59 + k) > 0.5) and 1 or -1
+                -- terra salpicada na grama (fora da borda)
+                local bx = sideK > 0 and (xR + dd) or (xL - dd - sz2)
+                rect(bx, math.floor(g.latY(bx - cx, t)), sz2, sz2,
+                    roadA[1], roadA[2], roadA[3], (1 - hh * 0.6) * 0.5 * aMul)
+                -- grama salpicada na terra (dentro da borda)
+                local gx2 = sideK > 0 and (xR - 2 - dd) or (xL + dd)
+                if gx2 > xL + 2 and gx2 < xR - 2 - sz2 then
+                    rect(gx2, math.floor(g.latY(gx2 - cx, t)), sz2, sz2,
+                        ga2[1], ga2[2], ga2[3], 0.32 * aMul)
+                end
+            end
+        end
+
+        -- GRAMA INVADINDO a estrada (v5.4, feedback): fiapos verdes
+        -- entrando pelas bordas — transição orgânica terra↔gramado
+        if newRow and hash(rowId * 41 + 5) > 0.45 then
+            local ga = envColor("grassA")
+            local gs = hash(rowId * 43 + 1) > 0.5 and 1 or -1
+            local gx = gs > 0 and (xR - 2 - math.floor(hash(rowId * 47) * 6))
+                               or (xL + math.floor(hash(rowId * 47) * 6))
+            local gy = math.floor(g.latY(gx - cx, t))
+            local gsz = math.max(1, math.floor(2 * g.persp(t)))
+            rect(gx, gy, gsz + 1, gsz, ga[1] * 1.3, ga[2] * 1.3, ga[3] * 1.15, 0.85 * aMul)
+            rect(gx + gs, gy - gsz, gsz, gsz, ga[1] * 1.3, ga[2] * 1.3, ga[3] * 1.15, 0.85 * aMul)
+        end
+    end
+
+    for sy = 0, groundH - 1, step do
+        t = sy / groundH
+        rel = REL_CREST * (1 - t ^ (1 / T_POW))
+        worldZ = camZ + rel
+
+        half0 = ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15))
+        edgeAmp = 5 * (0.30 + 0.70 * t)
+        eL = (math.sin(worldZ * 0.55) * 0.6 + math.sin(worldZ * 0.21 + 1.4) * 0.4) * edgeAmp
+        eR = (math.sin(worldZ * 0.47 + 3.1) * 0.6 + math.sin(worldZ * 0.17 + 4.2) * 0.4) * edgeAmp
+        rowId = math.floor(worldZ * 2.3)
+        blend = hash(math.floor(worldZ / 1.9) * 3 + math.floor(t * 5))
         -- v10.1: banda de brilho por faixa MUITO mais sutil (0.10→0.04) —
         -- a superfície sintetizada carrega a variação; a banda forte por
         -- cima re-achatava tudo em listras horizontais
-        local m = 0.97 + hash(rowId) * 0.04
+        m = 0.97 + hash(rowId) * 0.04
         -- v10.1: superfície SINTETIZADA por bioma (engine/RoadSurface —
         -- clusters tonais + micro-relevo top-light + sulcos contínuos +
         -- desgaste central) no lugar do PNG tileado ("textura padrão
         -- replicada, sem profundidade/desnível" — feedback). PNG segue
         -- como fallback se o bake falhar.
-        local biomeNow = rawBiome()
-        local tile = RoadSurface.get(biomeNow.id, biomeNow)
-            or getRoadTile(biomeNow.id)
-        local tw, th, dv, v, hs
+        -- (tile resolvido 1x fora do laço — mesmo valor em toda fileira)
         if tile then
-            tw, th = tile:getWidth(), tile:getHeight()
-            if not WorldRoad._roadQuad or WorldRoad._roadQuadTh ~= th then
-                WorldRoad._roadQuad = love.graphics.newQuad(0, 0, 1, 1, tw, th)
-                WorldRoad._roadQuadTh = th
-            end
+            tileUsed = tile
             local tn2 = math.min(1, (sy + step) / groundH)
             local relN = REL_CREST * (1 - tn2 ^ (1 / T_POW))
             dv = math.min(16, math.max(0.05, (rel - relN) * RD_V_DENSITY))
             v = (worldZ * RD_V_DENSITY) % th
             hs = 4.4 * (0.35 + 0.65 * t)
         end
-        local newRow = rowId ~= lastDecoRow
+        newRow = rowId ~= lastDecoRow
         if newRow then lastDecoRow = rowId end
-
-        -- pinta UMA fileira da estrada com centro/largura/alpha/brilho dados
-        local function paintRow(cxRow, halfMul, aMul, decorate, bright)
-            local half = half0 * halfMul
-            -- BORDA SERRADA (ref APK do usuário): degraus irregulares por
-            -- faixa de mundo (rowId) — tijolos "saltando" da borda em
-            -- escadinha, não linha lisa. É isso que faz parecer caminho real.
-            local jag = 14 * (0.35 + 0.65 * t)
-            local jL = (hash(rowId * 13 + 7) - 0.5) * jag
-            local jR = (hash(rowId * 19 + 3) - 0.5) * jag
-            local xL = math.floor(cxRow - half + eL + jL)
-            local xR = math.floor(cxRow + half + eR + jR)
-
-            local SEG = 16
-            for segX = xL, xR - 1, SEG do
-                local segW = math.min(SEG, xR - segX)
-                local dxMid = (segX + segW / 2) - cx
-                local segY = math.floor(g.latY(dxMid, t))
-                if tile then
-                    -- v10.1: sampling CENTRADO no eixo da estrada (antes:
-                    -- offset u aleatório por faixa) — os sulcos de roda e o
-                    -- desgaste central assados na textura SEGUEM a curva do
-                    -- caminho (e cada braço do fork ganha os seus)
-                    WorldRoad._roadQuad:setViewport(
-                        (segX - cxRow) / hs + tw * 0.5, v,
-                        segW / hs, dv, tw, th)
-                    local tm = (0.95 + blend * 0.08) * bright
-                    love.graphics.setColor(tm, tm, tm, aMul)
-                    -- ciclo 31: overdraw de 1.5px (mata fresta entre latitudes)
-                    love.graphics.draw(tile, WorldRoad._roadQuad, segX, segY, 0,
-                        hs, (step + 1.5) / dv)
-                else
-                    love.graphics.setColor(
-                        (roadA[1] + (roadB[1] - roadA[1]) * blend) * m * bright,
-                        (roadA[2] + (roadB[2] - roadA[2]) * blend) * m * bright,
-                        (roadA[3] + (roadB[3] - roadA[3]) * blend) * m * bright, aMul)
-                    love.graphics.rectangle("fill", segX, segY, segW, step + 1.5)
-                end
-            end
-
-            if not decorate then return end
-
-            -- pedrinhas/torrões (ciclo 29: 1x por rowId)
-            if newRow then
-                for k = 1, 2 do
-                    local hpos = hash(rowId * 31 + k * 17)
-                    if hpos > 0.35 then
-                        local px2 = xL + math.floor(hpos * (xR - xL))
-                        local sz = math.max(2, math.floor((1 + hash(rowId + k) * 2) * (0.4 + 0.6 * t) * 2))
-                        if hash(rowId * 3 + k) > 0.5 then
-                            love.graphics.setColor(roadEdge[1], roadEdge[2], roadEdge[3], 0.5 * aMul)
-                        else
-                            love.graphics.setColor(roadA[1] * 1.2, roadA[2] * 1.2, roadA[3] * 1.15, 0.6 * aMul)
-                        end
-                        love.graphics.rectangle("fill", px2,
-                            math.floor(g.latY(px2 - cx, t)), sz, sz)
-                    end
-                end
-            end
-
-            -- SULCOS de desgaste (na latitude)
-            if t > 0.45 then
-                local rutA = (t - 0.45) * 0.5
-                local rutW = math.max(1, math.floor(2 * g.persp(t)))
-                love.graphics.setColor(roadEdge[1], roadEdge[2], roadEdge[3], rutA * 0.5 * aMul)
-                local rdx = half * 0.42
-                love.graphics.rectangle("fill", math.floor(cxRow - rdx),
-                    math.floor(g.latY(cxRow - rdx - cx, t)), rutW, step)
-                love.graphics.rectangle("fill", math.floor(cxRow + rdx),
-                    math.floor(g.latY(cxRow + rdx - cx, t)), rutW, step)
-            end
-
-            -- bordas quebradas + pedrinha da transição
-            local yL = math.floor(g.latY(xL - cx, t))
-            local yR = math.floor(g.latY(xR - cx, t))
-            if hash(rowId * 5 + 2) > 0.25 then
-                love.graphics.setColor(roadEdge[1], roadEdge[2], roadEdge[3], 0.85 * aMul)
-                love.graphics.rectangle("fill", xL - 2, yL, 2, step)
-            end
-            if hash(rowId * 11 + 4) > 0.25 then
-                love.graphics.setColor(roadEdge[1], roadEdge[2], roadEdge[3], 0.85 * aMul)
-                love.graphics.rectangle("fill", xR, yR, 2, step)
-            end
-            if newRow and hash(rowId * 17 + 9) > 0.72 then
-                local ps = math.max(2, math.floor(3.5 * g.persp(t)))
-                local side = hash(rowId * 23 + 3) > 0.5 and 1 or -1
-                local px2 = side > 0 and (xR + 3 + math.floor(hash(rowId * 29) * 8 * g.persp(t)))
-                                      or (xL - 5 - math.floor(hash(rowId * 29) * 8 * g.persp(t)))
-                love.graphics.setColor(roadA[1] * 1.25, roadA[2] * 1.22, roadA[3] * 1.15, 0.9 * aMul)
-                love.graphics.rectangle("fill", px2, math.floor(g.latY(px2 - cx, t)), ps, math.max(step, ps - 1))
-            end
-
-            -- v6.5: DITHER de transição terra↔grama — salpicos dos dois
-            -- lados da borda (denso perto, esparso longe). A emenda vira
-            -- meio-tom orgânico em vez de linha serrada dura.
-            if newRow then
-                local ga2 = envColor("grassA")
-                for k = 1, 3 do
-                    local hh = hash(rowId * 53 + k * 7)
-                    local dd = math.floor(hh * hh * 12 * g.persp(t)) + 2
-                    local sz2 = math.max(1, math.floor(2 * g.persp(t)))
-                    local sideK = (hash(rowId * 59 + k) > 0.5) and 1 or -1
-                    -- terra salpicada na grama (fora da borda)
-                    local bx = sideK > 0 and (xR + dd) or (xL - dd - sz2)
-                    love.graphics.setColor(roadA[1], roadA[2], roadA[3],
-                        (1 - hh * 0.6) * 0.5 * aMul)
-                    love.graphics.rectangle("fill", bx,
-                        math.floor(g.latY(bx - cx, t)), sz2, sz2)
-                    -- grama salpicada na terra (dentro da borda)
-                    local gx2 = sideK > 0 and (xR - 2 - dd) or (xL + dd)
-                    if gx2 > xL + 2 and gx2 < xR - 2 - sz2 then
-                        love.graphics.setColor(ga2[1], ga2[2], ga2[3], 0.32 * aMul)
-                        love.graphics.rectangle("fill", gx2,
-                            math.floor(g.latY(gx2 - cx, t)), sz2, sz2)
-                    end
-                end
-            end
-
-            -- GRAMA INVADINDO a estrada (v5.4, feedback): fiapos verdes
-            -- entrando pelas bordas — transição orgânica terra↔gramado
-            if newRow and hash(rowId * 41 + 5) > 0.45 then
-                local ga = envColor("grassA")
-                local gs = hash(rowId * 43 + 1) > 0.5 and 1 or -1
-                local gx = gs > 0 and (xR - 2 - math.floor(hash(rowId * 47) * 6))
-                                   or (xL + math.floor(hash(rowId * 47) * 6))
-                local gy = math.floor(g.latY(gx - cx, t))
-                local gsz = math.max(1, math.floor(2 * g.persp(t)))
-                love.graphics.setColor(ga[1] * 1.3, ga[2] * 1.3, ga[3] * 1.15, 0.85 * aMul)
-                love.graphics.rectangle("fill", gx, gy, gsz + 1, gsz)
-                love.graphics.rectangle("fill", gx + gs, gy - gsz, gsz, gsz)
-            end
-        end
 
         -- MEANDRO ORGÂNICO: centro serpenteia (roadWobble compartilhado
         -- com TODAS as âncoras — inimigo, marcos, chegada seguem a curva)
@@ -3420,6 +3527,14 @@ local function drawRoad(g, x, w, camZ)
         else
             paintRow(cx + wob, 1, 1, true, 1)
         end
+    end
+    if qm.n > 0 then
+        qm:upload(0, qm.n)
+        local prevShader = love.graphics.getShader()
+        love.graphics.setShader(QuadMesh.untexturedShader())
+        love.graphics.setColor(1, 1, 1, 1)
+        qm:draw(0, qm.n, tileUsed)
+        love.graphics.setShader(prevShader)
     end
 end
 
@@ -3530,14 +3645,49 @@ local function drawCrestFog(g, x, w)
     end
 end
 
+-- POOLS POR FRAME (Out/2026, perf): o drawProps alocava ~100 KB/frame em
+-- tabelas de vida de 1 frame (opções de sombra, oclusores, hitboxes,
+-- listas de passe) — lixo que o GC recolhia em picos. Os consumidores
+-- (ShadowEngine.flush, LightEngine.composite, hit-test do clique) leem
+-- tudo DENTRO do mesmo frame, então cada slot é reaproveitado no próximo.
+local propZDesc = function(a, c) return a.z > c.z end
+local _farPass, _nearPass, _behind, _front = {}, {}, {}, {}
+local function clearList(t) for i = #t, 1, -1 do t[i] = nil end end
+local shOptPool, shOptN = {}, 0
+local function shadowOpts(alphaK, flip, footPad)
+    shOptN = shOptN + 1
+    local o = shOptPool[shOptN]
+    if not o then o = {}; shOptPool[shOptN] = o end
+    o.alphaK, o.flip, o.footPad = alphaK, flip, footPad
+    return o
+end
+local occPool, occN = {}, 0
+local function occluderSlot()
+    occN = occN + 1
+    local o = occPool[occN]
+    if not o then o = {}; occPool[occN] = o end
+    o.fn = nil
+    return o
+end
+local hitPool = {}
+local function hitSlot(idx)
+    local e = hitPool[idx]
+    if not e then e = {}; hitPool[idx] = e end
+    return e
+end
+local lumArg = {}
+
 local function drawProps(g, x, w, camZ)
-    table.sort(WorldRoad._props, function(a, c) return a.z > c.z end)
+    table.sort(WorldRoad._props, propZDesc)
+    shOptN, occN = 0, 0
 
     -- passe 1: props DISTANTES (t < 0.25) — depois recebem a névoa por cima
     -- passe 2: névoa da crista
     -- passe 3: props do meio/perto — nítidos, na frente da névoa
-    local farPass = {}
-    local nearPass = {}
+    local farPass = _farPass
+    local nearPass = _nearPass
+    clearList(farPass)
+    clearList(nearPass)
     for _, p in ipairs(WorldRoad._props) do
         local rel0 = p.z - camZ
         local t0 = g.tOf(rel0)
@@ -3790,7 +3940,7 @@ local function drawProps(g, x, w, camZ)
                         if cimg then
                             -- v8: sombra projetada da companheira
                             ShadowEngine.queue(cimg, cx2, cy2 - 1, cs,
-                                { alphaK = 0.8 * fadeA })
+                                shadowOpts(0.8 * fadeA))
                             love.graphics.setColor(0.88, 0.88, 0.88, fadeA)
                             love.graphics.draw(cimg,
                                 math.floor(cx2 - cimg:getWidth() * cs / 2),
@@ -3818,7 +3968,7 @@ local function drawProps(g, x, w, camZ)
                             local fs = g.scaleAt((KIND_SIZE.fence or 1) * (p.big or 1), ft, ih)
                             -- v8: sombra projetada do segmento de cerca
                             ShadowEngine.queue(img, fx, fy - 1, fs,
-                                { alphaK = 0.85 * fadeA })
+                                shadowOpts(0.85 * fadeA))
                             love.graphics.setColor(0.94, 0.94, 0.94, fadeA)
                             love.graphics.draw(img, math.floor(fx), math.floor(fy),
                                 0, fs, fs, iw / 2, ih)
@@ -3834,8 +3984,8 @@ local function drawProps(g, x, w, camZ)
                 -- o tapete mais próximo cobria). Fallback: elipse legada.
                 local aFade = math.min(1, 0.72 + t * 1.1)
                 if not ShadowEngine.queue(img, pxX, sy - 1, s,
-                    { alphaK = aFade * fadeA, flip = lumFlip,
-                      footPad = lumAnc and lumAnc.footPad or 0 }) then
+                    shadowOpts(aFade * fadeA, lumFlip,
+                        lumAnc and lumAnc.footPad or 0)) then
                     local shd = sunShadowDir(g, x, w, pxX)
                     love.graphics.setColor(0, 0, 0, 0.20 * aFade * fadeA)
                     love.graphics.ellipse("fill",
@@ -3906,10 +4056,11 @@ local function drawProps(g, x, w, camZ)
                         bx1, by1 = pxX - iw * s * 0.5, sy + sink2 - ih * s
                         bx2, by2 = pxX + iw * s * 0.5, sy + sink2
                     end
-                    hsn[#hsn + 1] = {
-                        x1 = bx1, y1 = by1, x2 = bx2, y2 = by2,
-                        ref = p, kind = p.kind,
-                    }
+                    local hidx = #hsn + 1
+                    local he = hitSlot(hidx)
+                    he.x1, he.y1, he.x2, he.y2 = bx1, by1, bx2, by2
+                    he.ref, he.kind = p, p.kind
+                    hsn[hidx] = he
                 end
                 drawLeafFx(p, pxX, sy + sink2, iw, ih, s)
 
@@ -3935,13 +4086,13 @@ local function drawProps(g, x, w, camZ)
                     local ambT = LightEngine.ambientLuma
                         and LightEngine.ambientLuma() or 1
                     local liftT = math.min(1.8, math.max(1, 0.72 / math.max(0.2, ambT)))
-                    LightEngine.submitOccluder({
-                        z = rel, lift = liftT,
-                        img = img, x = oxT, y = oyT, rot = rot,
-                        sx = s, sy = s, ox = iw / 2, oy = ih,
-                        bx = oxT - iw * s / 2, by = oyT - ih * s,
-                        w = iw * s, h = ih * s,
-                    })
+                    local oc = occluderSlot()
+                    oc.z, oc.lift = rel, liftT
+                    oc.img, oc.x, oc.y, oc.rot = img, oxT, oyT, rot
+                    oc.sx, oc.sy, oc.ox, oc.oy = s, s, iw / 2, ih
+                    oc.bx, oc.by = oxT - iw * s / 2, oyT - ih * s
+                    oc.w, oc.h = iw * s, ih * s
+                    LightEngine.submitOccluder(oc)
                 end
 
                 -- LuminaireEngine v9: prop emissor → o MOTOR cuida do núcleo
@@ -3966,18 +4117,19 @@ local function drawProps(g, x, w, camZ)
                     -- não na raiz do poste (pxX) — a lâmpada fica no braço,
                     -- deslocada pro lado
                     local gxT, gyT = love.graphics.transformPoint(fx, sy)
-                    LuminaireEngine.submit(p.bid, p.kind, {
-                        fx = fxT, fy = fyT, gx = gxT, gy = gyT,
-                        sh = sh2, t = t, rel = rel, seed = p.z,
-                        -- v9.2: poça ∝ altura da CHAMA sobre o chão, com
-                        -- teto de 30% da área (poste gigante ditherizava
-                        -- o céu com um disco do tamanho do sprite)
-                        flameH = math.max(8, gyT - fyT),
-                        capR = g.h * 0.30,
-                        -- v10.3: a luz esvai JUNTO com a luminária trocada
-                        -- (sem poça órfã de um poste que já sumiu)
-                        alphaK = fadeA,
-                    })
+                    -- (arg reusado: o motor lê na hora, não guarda)
+                    local la = lumArg
+                    la.fx, la.fy, la.gx, la.gy = fxT, fyT, gxT, gyT
+                    la.sh, la.t, la.rel, la.seed = sh2, t, rel, p.z
+                    -- v9.2: poça ∝ altura da CHAMA sobre o chão, com
+                    -- teto de 30% da área (poste gigante ditherizava
+                    -- o céu com um disco do tamanho do sprite)
+                    la.flameH = math.max(8, gyT - fyT)
+                    la.capR = g.h * 0.30
+                    -- v10.3: a luz esvai JUNTO com a luminária trocada
+                    -- (sem poça órfã de um poste que já sumiu)
+                    la.alphaK = fadeA
+                    LuminaireEngine.submit(p.bid, p.kind, la)
                     -- brasas só na metade opaca (fagulha de poste fantasma
                     -- lê como fagulha solta no ar)
                     if fadeA >= 0.5 then
@@ -4045,7 +4197,9 @@ local function drawProps(g, x, w, camZ)
         -- (na tela) = mais PERTO → na frente; acima = mais longe → atrás.
         -- Margem +2px só pra empatados irem pra frente. Vale igual pra
         -- poste, árvore, tudo (regra de profundidade real, sem exceção).
-        local behind, front = {}, {}
+        local behind, front = _behind, _front
+        clearList(behind)
+        clearList(front)
         for _, p in ipairs(nearPass) do
             local pt = g.tOf(p.z - camZ)
             local py = pt and pt >= 0 and g.latY(0, pt) or -1e9
@@ -4173,7 +4327,28 @@ local function drawEncounterFront(g, x, w, camZ)
     end
 end
 
+-- Instrumento de perf (tools/perf_probe): com WorldRoad._prof = {} o draw
+-- acumula ms por fase em _prof[fase]. nil = custo zero (1 teste por marca).
+-- Também acumula KB alocados por fase em _prof["kb " .. fase] (o perf_probe
+-- para o GC durante a medição).
+local _profT, _profKB
+local function _profMark(name)
+    local P = WorldRoad._prof
+    if not P then return end
+    love.graphics.flushBatch()
+    local now = love.timer.getTime()
+    local kb = collectgarbage("count")
+    if name ~= "start" and _profT then
+        P[name] = (P[name] or 0) + (now - _profT) * 1000
+        P["kb " .. name] = (P["kb " .. name] or 0) + (kb - _profKB)
+    end
+    _profT, _profKB = now, kb
+end
+
+WorldRoad._drawFrame = 0
 function WorldRoad.draw(x, y, w, h, actNumber)
+    _profMark("start")
+    WorldRoad._drawFrame = WorldRoad._drawFrame + 1
     if actNumber then WorldRoad.setBiome(actNumber) end
 
     local g = domeGeom(x, y, w, h)
@@ -4223,6 +4398,7 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     love.graphics.scale(1.006, 1.006)
     love.graphics.translate(-swCx, -swCy)
 
+    _profMark('pre')
     drawSky(g, x, y, w)
     drawCelestial(g, x, y, w)
     drawMountains(g, x, w, WorldRoad._camZ)
@@ -4233,6 +4409,7 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     drawMountainsFront(g, x, w, WorldRoad._camZ)
     drawBirds(g, x, y, w)
 
+    _profMark('sky')
     -- v6.2: PERSPECTIVA ATMOSFÉRICA — véu na cor da névoa sobre TODO o
     -- plano distante (strip+espelho+nuvens+picos+pássaros), mais forte
     -- perto do horizonte e sumindo no zênite. O longe perde contraste e
@@ -4274,12 +4451,17 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     -- (feedback direto). Se voltarem um dia, têm que ser DESENHADOS:
     -- feixes em dither de pixels na paleta, não polígono com alpha.)
 
+    _profMark('haze')
     drawCastle(g, x, w, WorldRoad._camZ)
     drawEncounterBehind(g, x, w, WorldRoad._camZ)
     drawPropsBehind(g, x, w, WorldRoad._camZ)
+    _profMark('castle')
     drawDome(g, x, y, w)
+    _profMark('dome')
     drawTerrainDetail(g, x, w, WorldRoad._camZ)  -- v7: lombadas de relevo
+    _profMark('terrain')
     drawRoad(g, x, w, WorldRoad._camZ)
+    _profMark('road')
     -- v10: RoadWear — imperfeições do leito por bioma (manchas, pedras,
     -- rachaduras com brasa, poças, neve, folhas). Determinístico por z do
     -- mundo; DEPOIS da terra, ANTES da grama/props (detalhe é do CHÃO —
@@ -4300,6 +4482,7 @@ function WorldRoad.draw(x, y, w, h, actNumber)
             forkRel = FORK_REL,
         })
     end
+    _profMark('roadwear')
     -- (v7.5: drawGrass agora é chamado DENTRO de drawProps, em fatias de
     -- profundidade intercaladas com as árvores — painter real)
 
@@ -4367,8 +4550,10 @@ function WorldRoad.draw(x, y, w, h, actNumber)
         end
     end
 
+    _profMark('critters')
     drawProps(g, x, w, WorldRoad._camZ)
 
+    _profMark('props')
     -- v6.6: fim do room sway — fork/pills/vinhetas ficam FIXOS (UI
     -- interativa balançando desalinharia os hitboxes do mouse)
     love.graphics.pop()
@@ -4411,6 +4596,7 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     love.graphics.draw(gh2, x, y, 0, vw / 256, h)
     love.graphics.draw(gh2, x + w, y, 0, -vw / 256, h)
 
+    _profMark('front')
     love.graphics.setColor(1, 1, 1, 1)
 end
 
@@ -4486,10 +4672,110 @@ function WorldRoad.restoreProgress(actNumber, floorInAct)
     WorldRoad._timeOfDayTarget = WorldRoad._timeOfDay
 end
 
+-- ============================================================================
+-- PRÉ-AQUECIMENTO DE BIOMA (Out/2026, perf): o 1º frame de um bioma novo
+-- decodificava ~30-60 PNGs (props × variantes, luminárias + frames de
+-- chama, marcos do fork, castelo, montanhas), assava a textura do chão e
+-- a superfície da estrada (RoadSurface, ~98k texels) — tudo DENTRO do
+-- frame da troca de ato (100-370 ms de engasgo medidos pelo perf_probe).
+-- Agora uma coroutine percorre a MESMA lista de loaders (os caches são os
+-- de sempre — o draw só encontra tudo pronto) com orçamento de tempo por
+-- frame, primeiro do bioma ATUAL e depois do PRÓXIMO (ato N+1). Um job
+-- pesado indivisível (um PNG grande) estoura o orçamento uma vez, nunca
+-- empilha. Falha de loader: avisa e marca o bioma como feito (sem laço).
+-- ============================================================================
+WorldRoad.PREWARM_BUDGET = 0.002      -- s por frame (update)
+local prewarm = { done = {}, co = nil, bid = nil }
+local PREWARM_NODE_TYPES = { "battle", "elite", "rest", "shop", "event", "treasure" }
+
+local function prewarmJobs(idx)
+    local b = rawBiome(idx)
+    local bid = b.id
+    local y = coroutine.yield
+    getGroundTexture(bid); y()
+    RoadSurface.get(bid, b, 16); y()
+    getSprite("mountains", 0, bid); y()
+    mountainsSkyColor(bid); y()
+    getSprite("mountains_front", 0, bid); y()
+    getSprite("castle", 0, bid); y()
+    landmarkFrames(bid .. "_castle"); y()
+    landmarkFrames(bid .. "_castle_door"); y()
+    -- props do sorteio + espécie da parede + tufo: 3 variantes cada
+    local kinds = {}
+    for _, k in ipairs(kindOrder(b.propWeights)) do kinds[#kinds + 1] = k end
+    kinds[#kinds + 1] = TREE_KIND[bid] or "tree"
+    kinds[#kinds + 1] = "tuft"
+    for _, kind in ipairs(kinds) do
+        for v = 0, 2 do getSprite(kind, v, bid); y() end
+    end
+    -- luminárias: sprite + frames da chama + âncora por conteúdo
+    local lumCat = LuminaireEngine.catalog(bid)
+    for _, kind in ipairs(kindOrder(lumCat)) do
+        for v = 0, 2 do
+            getSprite(kind, v, bid)
+            luminaireFrames(bid, kind, v)
+            LuminaireEngine.anchor(bid, kind, v, luminairePath(bid, kind, v))
+            y()
+        end
+    end
+    -- marcos do fork deste ato (+ animação de hover)
+    for _, nt in ipairs(PREWARM_NODE_TYPES) do
+        local key = landmarkKeyFor(nt, bid)
+        if key then
+            getLandmark(key)
+            landmarkFrames(key)
+            local hk = landmarkHoverAnimKey(key)
+            if hk then landmarkFrames(hk) end
+            y()
+        end
+    end
+end
+
+-- Roda jobs até o orçamento do frame acabar. Alvo: bioma atual, depois o
+-- próximo. Exposto (WorldRoad.prewarmTick) pra ferramentas medirem.
+prewarmTick = function(budget)
+    budget = budget or WorldRoad.PREWARM_BUDGET
+    if budget <= 0 then return end
+    local cur = rawBiome().id
+    local target
+    if not prewarm.done[cur] then
+        target = WorldRoad._biomeIndex
+    else
+        local nxt = rawBiome(WorldRoad._biomeIndex + 1).id
+        if not prewarm.done[nxt] then target = WorldRoad._biomeIndex + 1 end
+    end
+    if not target then return end
+    local bid = rawBiome(target).id
+    if prewarm.bid ~= bid or not prewarm.co then
+        prewarm.bid = bid
+        prewarm.co = coroutine.create(prewarmJobs)
+        prewarm.arg = target
+    end
+    local t0 = love.timer.getTime()
+    repeat
+        local ok, err = coroutine.resume(prewarm.co, prewarm.arg)
+        if not ok then
+            print(("[worldroad] pré-aquecimento do bioma '%s' falhou: %s")
+                :format(bid, tostring(err)))
+            prewarm.done[bid], prewarm.co = true, nil
+            return
+        end
+        if coroutine.status(prewarm.co) == "dead" then
+            prewarm.done[bid], prewarm.co = true, nil
+            return
+        end
+    until love.timer.getTime() - t0 >= budget
+end
+WorldRoad.prewarmTick = prewarmTick
+function WorldRoad.isPrewarmed(idx)
+    return prewarm.done[rawBiome(idx).id] == true
+end
+
 function WorldRoad.clearCache()
     WorldRoad._spriteCache = {}
     WorldRoad._quadCache = {}
     lumFramesCache = {}
+    prewarm.done, prewarm.co, prewarm.bid = {}, nil, nil
     require("engine.GrassField").clearCache()
     WorldRoad._props = {}
     WorldRoad._clouds = {}

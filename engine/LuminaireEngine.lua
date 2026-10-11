@@ -186,17 +186,37 @@ function LuminaireEngine.isLuminaire(kind) return KIND_SET[kind] == true end
 -- ----------------------------------------------------------------------------
 local anchorCache = {}
 
-local function scanImage(path)
-    local ok, data = pcall(love.image.newImageData, path)
-    if not ok or not data then return nil end
+-- Out/2026 (perf da troca de bioma): leitura dos pixels por FFI direto no
+-- buffer rgba8 do ImageData — getPixel por pixel eram ~10-20k chamadas C
+-- por PNG, 2 passadas, na hora do 1º frame do bioma novo. Os valores são
+-- os MESMOS do getPixel do LÖVE 11 (byte/255 em float): tabela F8.
+local ffi = require("ffi")
+local F8 = {}
+for b = 0, 255 do F8[b] = tonumber(ffi.cast("float", b / 255)) end
+
+local function scanImage(path, data)
+    if not data then
+        local ok, d = pcall(love.image.newImageData, path)
+        if not ok or not d then return nil end
+        data = d
+    end
     local w, h = data:getWidth(), data:getHeight()
     local minX, maxX, maxY = w, -1, -1
     local sumX, sumY, sumW = 0, 0, 0
     local peak = 0
+    local px = data:getFormat() == "rgba8"
+        and ffi.cast("const uint8_t*", data:getFFIPointer()) or nil
+    local function rgba(x, y)
+        if px then
+            local o = (y * w + x) * 4
+            return F8[px[o]], F8[px[o + 1]], F8[px[o + 2]], F8[px[o + 3]]
+        end
+        return data:getPixel(x, y)
+    end
     -- passada 1: bbox do conteúdo + pico de luminância
     for y = 0, h - 1 do
         for x = 0, w - 1 do
-            local r, g, b, a = data:getPixel(x, y)
+            local r, g, b, a = rgba(x, y)
             if a > 0.5 then
                 if x < minX then minX = x end
                 if x > maxX then maxX = x end
@@ -211,7 +231,7 @@ local function scanImage(path)
     local cut = peak * 0.88
     for y = 0, h - 1 do
         for x = 0, w - 1 do
-            local r, g, b, a = data:getPixel(x, y)
+            local r, g, b, a = rgba(x, y)
             if a > 0.5 then
                 local lum = r * 0.3 + g * 0.55 + b * 0.15
                 if lum >= cut then
@@ -230,6 +250,7 @@ local function scanImage(path)
     end
     return res
 end
+LuminaireEngine._scanImage = scanImage   -- (teste de equivalência)
 
 -- Retorna { ax, ay, offX, footPad } — ax/ay fração do sprite (y do topo).
 function LuminaireEngine.anchor(bid, kind, variant, path)

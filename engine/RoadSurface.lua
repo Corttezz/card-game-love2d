@@ -98,7 +98,11 @@ end
 -- ----------------------------------------------------------------------------
 -- BAKE por bioma. pal = tabela do bioma (roadA/roadB/roadEdge).
 -- ----------------------------------------------------------------------------
-local function bake(bid, pal)
+-- yieldEvery (Out/2026): quando o bake roda DENTRO do pré-aquecimento do
+-- WorldRoad (coroutine dele), cede a cada N linhas — o bake inteiro (~98k
+-- texels com FBM/Voronoi) era ~1/3 do engasgo da troca de ato. Fora da
+-- coroutine (nil) roda direto, como sempre.
+local function bake(bid, pal, yieldEvery)
     local roadA = pal.roadA or { 0.45, 0.33, 0.20 }
     local roadB = pal.roadB or mulc(roadA, 0.86)
     local edge  = pal.roadEdge or mulc(roadA, 0.45)
@@ -116,6 +120,9 @@ local function bake(bid, pal)
 
     -- PASSE 1: campo tonal (clusters FBM) ou lajes (Voronoi)
     for y = 0, H - 1 do
+        if yieldEvery and y % yieldEvery == yieldEvery - 1 then
+            coroutine.yield()
+        end
         idx[y] = {}
         for x = 0, W - 1 do
             local n = fbm(x, y, seed)
@@ -150,6 +157,9 @@ local function bake(bid, pal)
     -- PASSE 2: cor + MICRO-RELEVO (top-light: borda de cima do cluster mais
     -- alto = highlight; borda de baixo = sombra) + sulcos + desgaste + grão
     for y = 0, H - 1 do
+        if yieldEvery and y % yieldEvery == yieldEvery - 1 then
+            coroutine.yield()
+        end
         for x = 0, W - 1 do
             local ti = idx[y][x]
             local c
@@ -234,14 +244,26 @@ local function bake(bid, pal)
 end
 
 -- pal = tabela de cores do bioma (rawBiome() do WorldRoad serve direto)
-function RoadSurface.get(bid, pal)
+-- yieldEvery: SÓ quem roda numa coroutine própria passa (pré-aquecimento
+-- do WorldRoad). O resultado é o mesmo: bake determinístico por bioma.
+function RoadSurface.get(bid, pal, yieldEvery)
     local hit = cache[bid]
-    if hit then return hit end
-    local ok, img = pcall(bake, bid, pal or {})
-    if not ok or not img then return nil end
-    cache[bid] = img
-    return img
+    if hit ~= nil then return hit or nil end
+    local ok, img = pcall(bake, bid, pal or {}, yieldEvery)
+    if not ok or not img then
+        -- sem fallback MUDO: o chamador cai no PNG tileado, mas avisa
+        print(("[RoadSurface] bake do bioma '%s' falhou: %s — usando o PNG")
+            :format(tostring(bid), tostring(img)))
+        cache[bid] = false   -- 1 aviso, não 1 bake falho por frame
+        return nil
+    end
+    -- outro caminho (draw síncrono) pode ter assado no meio de um bake
+    -- cedido: fica o primeiro (conteúdo idêntico)
+    if not cache[bid] then cache[bid] = img end
+    return cache[bid]
 end
+
+function RoadSurface.has(bid) return cache[bid] ~= nil end
 
 function RoadSurface.clear() cache = {} end
 

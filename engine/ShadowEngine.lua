@@ -133,9 +133,10 @@ function ShadowEngine.endBatch()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
+local NO_OPTS = {}
 function ShadowEngine.sprite(img, feetX, feetY, s, opts)
     if not img or not ShadowEngine.isActive() then return false end
-    opts = opts or {}
+    opts = opts or NO_OPTS
     local solo = not batching
     if solo then ShadowEngine.beginBatch() end
     local iw, ih = img:getWidth(), img:getHeight()
@@ -209,23 +210,29 @@ end
 -- sombra escurece a grama em que cai (e o pé de quem estiver dentro
 -- dela, como sombra real faria). Ordem de submit = far→near (painter).
 -- ----------------------------------------------------------------------------
-local squeue = {}
+-- (Out/2026: entradas da fila REUSADAS entre frames — era 1 tabela nova
+-- por prop por frame; squeueN é o tamanho vivo da fila)
+local squeue, squeueN = {}, 0
 function ShadowEngine.queue(img, feetX, feetY, s, opts)
     if not img or not ShadowEngine.isActive() then return false end
-    squeue[#squeue + 1] = { img = img, x = feetX, y = feetY, s = s, o = opts }
+    squeueN = squeueN + 1
+    local q = squeue[squeueN]
+    if not q then q = {}; squeue[squeueN] = q end
+    q.img, q.x, q.y, q.s, q.o = img, feetX, feetY, s, opts
     return true
 end
 
 function ShadowEngine.flush()
-    if #squeue == 0 then return end
+    if squeueN == 0 then return end
     -- UM batch pra fila inteira: sombras vizinhas que se cruzam viram
     -- união chapada (uma cor), não escurecimento duplo (v8.4)
     ShadowEngine.beginBatch()
-    for i = 1, #squeue do
+    for i = 1, squeueN do
         local q = squeue[i]
         ShadowEngine.sprite(q.img, q.x, q.y, q.s, q.o)
-        squeue[i] = nil
+        q.img, q.o = nil, nil   -- não segura sprite/opts até o próximo frame
     end
+    squeueN = 0
     ShadowEngine.endBatch()
 end
 

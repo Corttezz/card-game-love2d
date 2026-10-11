@@ -67,6 +67,9 @@ local SUITES = {
     { group = "smoke", name = "smoke_turn_order" },
     { group = "smoke", name = "smoke_ui_turn" },
     { group = "smoke", name = "test_worldroad_resume" },
+    -- trava de performance do WorldRoad (draw calls, cache estático, GC,
+    -- troca de bioma sem decodificar PNG) — não mede ms (varia por máquina)
+    { group = "smoke", name = "test_perf_budget" },
     { group = "smoke", name = "test_resume" },
     { group = "smoke", name = "smoke_crt_mouse" },
     -- Validação / conteúdo
