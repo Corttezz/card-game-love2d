@@ -489,11 +489,11 @@ function UnlockSystem.onRunEnded(summary)
     return result
 end
 
--- Só pra testes: esquece pendentes/listeners/flags.
+-- Só pra testes: esquece pendentes/flags. NÃO apaga listeners: as conquistas
+-- assinam onUnlock no boot e a suite roda tudo no mesmo processo.
 function UnlockSystem._resetForTests()
     overrideAll = false
     revealAll = false
-    listeners = {}
     pendingRun = { cards = {}, classes = {} }
     UnlockSystem.lastResult = nil
 end
