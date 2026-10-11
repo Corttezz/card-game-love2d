@@ -225,7 +225,7 @@ return {
         act2      = "Torre de Pedra",
         act3      = "Abismo",
         act4      = "Cidadela Gelada",
-        act5      = "Coracao Putrido",
+        act5      = "Coração Pútrido",
         act6      = "Corte do Eclipse",
         endless   = "Endless",
         endless_n = "Endless #{n}",
@@ -752,7 +752,11 @@ return {
         gain_forge   = "Forja: {name} +{lvl}",
         gain_remove  = "Removida: {name}",
         empty        = "Nenhum caminho percorrido ainda.",
-        hint         = "PASSE O MOUSE num marco pra ver o que foi escolhido  ·  RODA rola  ·  M ou ESC fecha",
+        summary      = "Cartas +{cards}  ·  Forjas {forges}  ·  Coringas {jokers}  ·  Removidas {removed}",
+        now          = "AGORA",
+        more         = "+{n} mais",
+        stops        = "{n} paradas",
+        hint         = "PASSE O MOUSE numa parada pra ver tudo  ·  RODA ou SETAS rolam  ·  M ou ESC fecha",
     },
 
     ["end"] = {

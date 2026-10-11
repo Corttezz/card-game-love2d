@@ -731,7 +731,11 @@ return {
         gain_forge   = "Forge: {name} +{lvl}",
         gain_remove  = "Removed: {name}",
         empty        = "No path travelled yet.",
-        hint         = "HOVER a marker to see what you chose  ·  WHEEL scrolls  ·  M or ESC closes",
+        summary      = "Cards +{cards}  ·  Forges {forges}  ·  Jokers {jokers}  ·  Removed {removed}",
+        now          = "NOW",
+        more         = "+{n} more",
+        stops        = "{n} stops",
+        hint         = "HOVER a stop to see everything  ·  WHEEL or ARROWS scroll  ·  M or ESC closes",
     },
 
     ["end"] = {

@@ -1,6 +1,6 @@
 ---
 name: Roteiro da run (journal) e RunJournalScreen
-description: Registro do caminho percorrido (RunManager journal*) e a tela cheia que o desenha — trilha por ato terminando no castelo do bioma. Invariantes de captura, backfill e endless.
+description: Registro do caminho percorrido (RunManager journal*) e a tela cheia que o desenha — capítulos em grade (coluna = andar) com o resultado sob cada parada, castelo fechando a linha. Invariantes de captura, backfill, endless e a decisão do redesenho Out/2026.
 type: project
 ---
 
@@ -80,38 +80,68 @@ na batalha seguinte.
 
 ---
 
-## A tela: `components/RunJournalScreen.lua`
+## A tela: `components/RunJournalScreen.lua` (+ `src/ui/RunJournalLayout.lua`)
 
 Abre por clique no bloco "ATO N" da TopBar (`TopBar:setActClickCallback`, wire em
 `main.lua`) **ou** tecla `M`. Mesmo molde do [[jokers_and_hand_layout]]
 (DeckViewer/Gerenciador): `_G.runJournalScreen` + `_G.toggleRunJournal`, registro
-nos 6 hooks do `main.lua` **e no `love.resize`** — onde de quebra entraram
-`deckViewerScreen` e `jokerManagerScreen`, que definiam `resize()` e nunca eram
-chamados.
+nos 6 hooks do `main.lua` **e no `love.resize`**.
 
-**Zonas:** CABEÇALHO / TRILHAS (rolável) / RODAPÉ. Dentro da faixa de ato:
-TÍTULO / TRILHA (nós à esquerda serpenteando, castelo à direita).
+### Redesenho Out/2026 ("a tela de logs tá muito feia")
 
-**Escala:** o layout inteiro é derivado da janela a cada frame — nenhuma
-coordenada sobrevive a um resize; `resize()` só reclampa o scroll (único estado
-de posição guardado). A largura do castelo sai da JANELA (16%), não do nó, pra o
-cálculo do `nodeSize` não ficar circular. Quando sobra tela a faixa ESTICA até
-`BAND_STRETCH` e a folga vai pro **castelo** — ele é o marco, é ele que merece o
-espaço; os nós não crescem junto.
+Diagnóstico da v1 (capturas 1024/1280/1920, en/pt_BR, run curta e de 6 atos):
+cenário de biblioteca competindo com discos e texto de 9px; toda parada com o
+mesmo peso (batalha comum = chefe); NADA dizia o que aconteceu sem hover;
+castelo maior que a trilha (16% da janela, até 280px); tooltip subindo pra
+faixa do ato de cima; com 6 atos os nós encolhiam pra 26px e metade direita da
+tela virava pontilhado vazio.
 
-**Castelo:** `assets/sprites/world/<biomeId>_castle.png`, com
-`biomeId = biomes[((act-1) % 6) + 1].id` — mesma regra do `WorldRoad.rawBiome`,
-replicada pra não acoplar a tela ao motor de cena. Conquistado usa o último frame
-de `anim/<bid>_castle_door/` (portão aberto) + etiqueta CONQUISTADO; em andamento
-é silhueta + "x/8 andares". Ancorado no CHÃO da faixa pra etiqueta ficar colada.
+Variantes capturadas (prancha no relatório da sessão; switch temporário via
+`JOURNAL_PROTO`, já removido):
+- **A** capítulos em GRADE — uma coluna por andar, resultado escrito sob cada
+  parada, chefe/elite com disco maior e aro duplo, castelo pequeno fechando a
+  linha, superfície lisa.
+- **B** trilha compacta sem texto + painel de detalhe FIXO à direita.
+- **C** a v1 limpa (sem cenário, castelo menor).
 
-**Do StS veio a INTENÇÃO, não o código:** nó percorrido em cor sólida com anel em
-volta (`MapRoomNode.taken`), trilha como cadeia de pontinhos (`MapEdge`), marco
-final grande e fora da fileira dos nós (`DungeonMap.renderBossIcon`).
+**A venceu.** Critérios: entender a run em segundos (só A mostra o resultado
+sem hover — B e C exigem passar o mouse em 48 paradas); hierarquia (A e B);
+sem fundo concorrendo (as três); 6 atos com rolagem clara (A rola, B cabe mas
+o painel fica ~80% vazio = zona vazia); coerência com a loja nova (A e B usam a
+mesma superfície lisa + título com filetes de `memory/shop_layout.md`).
 
-**Validação:** `love . screenshot_journal` (+ `small`), `love . test_one
-test_journal` (42 asserts) e `test_journal_resize` (auditoria geométrica em 7
-tamanhos com janela falsificada, padrão de `tools/test_forge_resize.lua`).
+### Como ficou (não regredir)
+
+- **Coluna = andar.** Todo andar 6 fica na mesma vertical: a run lê como grade.
+  Endless (ato trava, andar cicla) quebra em linhas de 8 na mesma faixa.
+- **Resultado sob a parada, 2 linhas:** (1) o ganho mais importante (coringa >
+  carta > forja "Nome +N" > remoção riscada; senão a opção do evento) + PIPS
+  dourados pros ganhos extras — nunca "+N", que nesta tela já é forja;
+  (2) vida/ouro com sinal e ícone (independe de idioma) ou "AGORA" no nó aberto.
+- **Hierarquia:** chefe/mini-chefe/elite = disco cheio com aro duplo; resto =
+  74% do disco. Nó parcial (backfill) a 50%.
+- **Castelo** = ~1 coluna (10% do conteúdo, teto 132px), fecha a ÚLTIMA linha
+  do capítulo. Estado ("CONQUISTADO" / "x/8 andares" / "N paradas") vai no
+  título do capítulo, à direita.
+- **Detalhe (hover) mora AO LADO da parada**, dentro da faixa do próprio ato
+  ∩ zona visível: largura limitada a `tipRoom` (lado com mais espaço), linhas
+  cortadas a `maxTipH` com "+N mais". Faixa quase toda rolada pra fora = sem
+  detalhe (não invade a vizinha).
+- **Abre no fim** (ato em andamento). Roda, setas, PgUp/PgDn, Home/End.
+- Cabeçalho: título + filetes, progresso, e resumo da run (cartas/forjas/
+  coringas/removidas) — `run_journal.summary`.
+- Layout PURO em `RunJournalLayout.compute(sw, sh, bands, scroll)` +
+  `validate(L, tip?)`. Ancorado no topo (página de diário), não centrado.
+
+**Validação:** `love . screenshot_journal [long|small] [- <loc>]` com
+`JOURNAL_W/JOURNAL_H` (um setMode por processo) → `run_journal_<modo>_<WxH>_<loc>[_hover].png`;
+`JOURNAL_PROTO=<módulo>` captura outra tela no mesmo cenário (antes/depois).
+`test_journal_resize`: 7 tamanhos × 5 idiomas × run curta/longa, topo e fim da
+rolagem, `validate` + detalhe de TODA parada visível + teclado.
+
+**Why:** a tela era um mapa de ícones sem informação e o fundo brigava com ela.
+**How to apply:** informação nova de parada entra na célula (2 linhas) ou no
+detalhe — nunca numa banda nova; não reintroduzir cenário nem castelo-protagonista.
 
 ## Ligações
 

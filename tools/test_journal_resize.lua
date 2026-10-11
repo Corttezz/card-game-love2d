@@ -7,10 +7,13 @@
 -- um tool TRAVA, então a janela é FALSIFICADA (monkey-patch em
 -- love.graphics.getWidth/getHeight), igual ao tools/test_forge_resize.lua.
 --
--- O que este teste garante, em TODO tamanho testado:
---   • as zonas não se cruzam (trilhas ficam entre o cabeçalho e o rodapé);
---   • nenhum nó sai da janela pela esquerda/direita;
---   • o castelo nunca invade a trilha;
+-- O que este teste garante, em 7 tamanhos × 5 idiomas × run curta (2 atos) e
+-- longa (6 atos + endless), no fim e no topo da rolagem — via
+-- RunJournalLayout.validate (src/ui/RunJournalLayout.lua):
+--   • as zonas não se cruzam (capítulos entre o cabeçalho e o rodapé);
+--   • nenhuma parada sai da janela nem da própria faixa; castelo fora da grade;
+--   • o detalhe (hover) de TODA parada visível fica dentro da faixa do próprio
+--     ato, dentro da zona e da janela, sem tapar a própria parada;
 --   • o scroll nunca aponta pra fora do conteúdo recém-medido.
 --
 --   love . test_one test_journal_resize
@@ -64,42 +67,57 @@ local function seededGame()
     return game
 end
 
--- Invariantes geométricas do layout resolvido.
-local function auditLayout(L, sw, sh)
-    local problems = {}
-    local zoneTop, zoneBot = L.zoneY, L.zoneY + L.zoneH
-
-    if zoneBot > sh then
-        table.insert(problems, "zona de trilhas passa do rodapé")
+-- Run longa: os 6 atos da campanha + endless com 11 paradas (linhas de 8).
+local function longGame()
+    local g = TK.newRunGame("warrior")
+    local rm = g.runManager
+    local run = rm.currentRun
+    run.mapHistory, run.journal, run.journalOpen = {}, {}, nil
+    local types = { "battle", "event", "battle", "rest", "shop", "elite", "mini_boss", "boss" }
+    local function add(act, fl, t)
+        run.actNumber, run.floorInAct = act, fl
+        run.currentFloor = (act - 1) * 8 + fl
+        table.insert(run.mapHistory, { actNumber = act, floorInAct = fl, type = t })
+        rm:journalBegin({ type = t }, { hp = 50, maxHp = 60, gold = 10 })
+        -- shop com muitos ganhos: é o detalhe mais alto, o que testa o corte
+        if t == "shop" then
+            for _ = 1, 6 do rm:journalNote({ kind = "card", id = "warrior_bash" }) end
+            rm:journalNote({ kind = "remove", id = "warrior_strike" })
+        else
+            rm:journalNote({ kind = "card", id = "warrior_bash" })
+        end
+        rm:journalEvent("evt_x", 1, "Opcao longa de evento pra medir a largura")
+        rm:journalEnd({ hp = 45, gold = 20 })
     end
-    if L.trailX + L.trailW + L.castleW > sw then
-        table.insert(problems, "trilha + castelo estouram a largura")
+    for act = 1, 6 do
+        for fl = 1, 8 do add(act, fl, types[fl]) end
     end
+    for i = 1, 11 do add(7, ((i - 1) % 8) + 1, types[((i - 1) % 8) + 1]) end
+    run.actNumber, run.endlessMode = 7, true
+    return g
+end
 
+-- Invariantes do layout resolvido + o detalhe de CADA parada visível.
+local function auditLayout(screen)
+    local Layout = require("src.ui.RunJournalLayout")
+    local L = screen:_layout()
+    local problems = Layout.validate(L)
     for bi, lb in ipairs(L.bands) do
-        if lb.castle.x < L.trailX + L.trailW then
-            table.insert(problems, "castelo invade a trilha na faixa " .. bi)
-        end
-        for ni, n in ipairs(lb.nodes) do
-            local half = L.nodeSize / 2
-            if n.cx - half < 0 or n.cx + half > sw then
-                table.insert(problems,
-                    ("nó %d/%d fora da janela (cx=%d)"):format(bi, ni, n.cx))
-            end
-            if n.cx + half > lb.castle.x then
-                table.insert(problems,
-                    ("nó %d/%d encosta no castelo"):format(bi, ni))
-            end
-        end
-        -- Sem scroll, a faixa tem que caber na zona (se não couber, maxScroll
-        -- existe e o scissor cuida do resto).
-        if L.contentH <= L.zoneH then
-            if lb.y < zoneTop - 1 or lb.y + lb.h > zoneBot + 1 then
-                table.insert(problems, "faixa " .. bi .. " fora da zona sem scroll")
+        for ni, c in ipairs(lb.cells) do
+            local visible = c.y + c.h > L.zone.y and c.y < L.zone.y + L.zone.h
+            if visible then
+                local tip = screen:_tipFor(L, bi, ni)
+                local whole = c.y >= L.zone.y and c.y + c.h <= L.zone.y + L.zone.h
+                if whole and not tip then
+                    problems[#problems + 1] = ("[detalhe %d/%d] parada inteira visível sem detalhe"):format(bi, ni)
+                end
+                for _, p in ipairs(tip and Layout.validate(L, tip) or {}) do
+                    problems[#problems + 1] = ("[detalhe %d/%d] %s"):format(bi, ni, p)
+                end
             end
         end
     end
-    return problems
+    return problems, L
 end
 
 function M.run()
@@ -127,21 +145,33 @@ function M.run()
             { 420, 900 },    -- estreito e alto: força a serpentina
         }
 
-        for _, s in ipairs(sizes) do
-            local w, h = s[1], s[2]
-            resizeTo(screen, w, h)
-            local L = screen:_layout()
-            local problems = auditLayout(L, w, h)
-            t:eq(("%dx%d sem violação de zona"):format(w, h),
-                #problems, 0)
-            if #problems > 0 then
-                for _, p in ipairs(problems) do print("      -> " .. p) end
+        local I18n = require("src.i18n.I18n")
+        local prevLocale = I18n.getLocale and I18n.getLocale() or "pt_BR"
+        local long = Screen:new()
+        local gLong = longGame()
+        for _, loc in ipairs({ "pt_BR", "en", "es", "fr", "de" }) do
+            I18n.setLocale(loc)
+            for _, s in ipairs(sizes) do
+                local w, h = s[1], s[2]
+                for _, sc in ipairs({ { screen, game, "curta" }, { long, gLong, "longa" } }) do
+                    local scr = sc[1]
+                    if not scr:isVisible() then scr:show(sc[2]) end
+                    resizeTo(scr, w, h)
+                    local problems, L = auditLayout(scr)
+                    -- rola pro topo e confere de novo (show abre no fim)
+                    scr:keypressed("home")
+                    local p2 = auditLayout(scr)
+                    for _, p in ipairs(p2) do problems[#problems + 1] = p end
+                    t:eq(("%s %s %dx%d sem violação de zona"):format(sc[3], loc, w, h),
+                        #problems, 0)
+                    for i = 1, math.min(5, #problems) do print("      -> " .. problems[i]) end
+                    t:truthy(("%s %s %dx%d disco dentro dos limites"):format(sc[3], loc, w, h),
+                        L.disc >= 24 and L.disc <= 56)
+                end
             end
-            t:truthy(("%dx%d escala do nó dentro dos limites"):format(w, h),
-                L.nodeSize >= 26 and L.nodeSize <= 76)
-            t:truthy(("%dx%d scroll dentro do conteúdo"):format(w, h),
-                screen.scroll >= 0 and screen.scroll <= screen.maxScroll + 0.001)
         end
+        I18n.setLocale(prevLocale)
+        long:hide()
 
         -- Com 2 atos o layout SEMPRE cabe (a faixa encolhe junto com a janela),
         -- então o scroll só aparece com muitas faixas — um roteiro longo, que é
@@ -172,6 +202,23 @@ function M.run()
         long:wheelmoved(0, -999)
         t:truthy("rolou até o fim", long.scroll > 0)
         local deep = long.scroll
+        t:eq("abre no fim (o ato em andamento)", long.scroll, long.maxScroll)
+
+        -- teclado: home/end/setas/página
+        long:keypressed("home")
+        t:eq("HOME vai pro topo", long.scroll, 0)
+        long:keypressed("down")
+        t:truthy("SETA pra baixo rola", long.scroll > 0)
+        long:keypressed("pagedown")
+        local afterPg = long.scroll
+        t:truthy("PAGE DOWN rola mais que a seta", afterPg > 48)
+        long:keypressed("up")
+        t:truthy("SETA pra cima volta", long.scroll < afterPg)
+        long:keypressed("end")
+        t:eq("END vai pro fim", long.scroll, long.maxScroll)
+        long:wheelmoved(0, 1)
+        t:truthy("RODA pra cima sobe", long.scroll < long.maxScroll)
+        long:keypressed("end")
 
         resizeTo(long, 1920, 1080)
         long:_layout()
@@ -179,7 +226,7 @@ function M.run()
             long.scroll <= long.maxScroll + 0.001)
         t:truthy("scroll de fato encolheu", long.scroll <= deep)
         t:eq("sem violação de zona no roteiro longo",
-            #auditLayout(long:_layout(), 1920, 1080), 0)
+            #auditLayout(long), 0)
 
         -- Roteiro vazio não pode explodir em nenhum tamanho.
         local empty = Screen:new()

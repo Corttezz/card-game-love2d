@@ -733,7 +733,11 @@ return {
         gain_forge   = "Schmiede: {name} +{lvl}",
         gain_remove  = "Entfernt: {name}",
         empty        = "Noch kein Weg zurückgelegt.",
-        hint         = "ZEIGE auf einen Meilenstein für deine Wahl  ·  MAUSRAD scrollt  ·  M oder ESC schließt",
+        summary      = "Karten +{cards}  ·  Schmieden {forges}  ·  Joker {jokers}  ·  Entfernt {removed}",
+        now          = "JETZT",
+        more         = "+{n} weitere",
+        stops        = "{n} Stationen",
+        hint         = "ZEIGE auf eine Station für alle Details  ·  MAUSRAD oder PFEILE scrollen  ·  M oder ESC schließt",
     },
 
     game_over = {

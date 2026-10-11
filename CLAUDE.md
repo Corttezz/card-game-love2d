@@ -55,7 +55,7 @@ card-game-love2d/
 │   ├── JokerSlot.lua           # Slot visual de joker ativo
 │   ├── DeckViewerScreen.lua    # Deck da run em TELA CHEIA (estilo Coleção); abre por clique no deck da TopBar OU tecla D; hover c/ tooltip + forja aplicada
 │   ├── JokerManagerScreen.lua  # Gerenciador de Coringas (tela cheia): coleção+bancada, escolhe quais MAX_JOKER_SLOTS ativar; abre por clique no quadro de coringas OU tecla J; _G.toggleJokerManager
-│   ├── RunJournalScreen.lua    # ROTEIRO da jornada (tela cheia): o caminho JÁ percorrido, uma trilha por ato + castelo do bioma no fim; abre por clique no indicador de ATO da TopBar OU tecla M; _G.toggleRunJournal
+│   ├── RunJournalScreen.lua    # ROTEIRO da jornada (tela cheia, sem cenário): o caminho JÁ percorrido em capítulos por ato, coluna = andar, resultado escrito sob cada parada + castelo do bioma fechando a linha; layout puro em `src/ui/RunJournalLayout.lua`; abre por clique no indicador de ATO da TopBar OU tecla M; _G.toggleRunJournal
 │   └── Button.lua              # Widget botão: clean (Balatro-inspired, default) | ornate | invisible
 ├── src/
 │   ├── core/

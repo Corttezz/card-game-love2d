@@ -733,7 +733,11 @@ return {
         gain_forge   = "Forge : {name} +{lvl}",
         gain_remove  = "Retirée : {name}",
         empty        = "Aucun chemin parcouru pour l'instant.",
-        hint         = "SURVOLEZ un jalon pour voir votre choix  ·  MOLETTE fait défiler  ·  M ou ÉCHAP ferme",
+        summary      = "Cartes +{cards}  ·  Forges {forges}  ·  Jokers {jokers}  ·  Retirées {removed}",
+        now          = "EN COURS",
+        more         = "+{n} de plus",
+        stops        = "{n} étapes",
+        hint         = "SURVOLEZ une étape pour tout voir  ·  MOLETTE ou FLÈCHES défilent  ·  M ou ÉCHAP ferme",
     },
 
     game_over = {

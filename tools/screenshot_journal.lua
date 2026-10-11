@@ -1,18 +1,21 @@
 -- tools/screenshot_journal.lua
 -- Capturas do ROTEIRO DA JORNADA (components/RunJournalScreen.lua).
 --
---   love . screenshot_journal          → run_journal.png, run_journal_hover.png
---   love . screenshot_journal small    → run_journal_small.png (janela estreita)
+--   love . screenshot_journal               → run_journal_short_<WxH>_<loc>[_hover].png
+--   love . screenshot_journal long          → run longa: 6 atos + endless
+--   love . screenshot_journal small         → janela estreita 760x560
+--   love . screenshot_journal - de          → outro idioma (3º arg)
 --
--- A run mock tem histórico de DOIS atos pra exercitar os dois estados do
--- castelo de uma vez: ato 1 fechado (CONQUISTADO, portão aberto) e ato 2 em
--- andamento (silhueta + contador). Os dois primeiros nós entram SÓ no
--- mapHistory, sem entrada de journal — é o caminho de backfill das runs que
--- começaram antes desta feature ("Sem detalhes registrados").
+-- Tamanho da janela por ambiente: JOURNAL_W / JOURNAL_H (um setMode por
+-- processo — a memória de invariantes registra que setMode repetido dentro de
+-- um tool TRAVA). Pedir janela maior que o desktop também trava: fique em
+-- até 1920x1080.
 --
--- O modo `small` roda num processo separado de propósito: a memória de
--- invariantes registra que chamadas repetidas de love.window.setMode dentro
--- de um tool TRAVAM. Um setMode por processo, e só pra janela MENOR.
+-- Run CURTA: ato 1 fechado (CONQUISTADO) + ato 2 em andamento. Os dois
+-- primeiros nós entram SÓ no mapHistory — é o backfill das runs anteriores à
+-- feature ("Sem detalhes registrados").
+-- Run LONGA: os 6 atos da campanha + uma faixa de endless com 11 paradas; é a
+-- que exercita a rolagem e as linhas de 8 do endless.
 
 local M = {}
 
@@ -38,8 +41,8 @@ local function visit(rm, act, floor, ntype, snapIn, snapOut, notes, ev)
     if snapOut then rm:journalEnd(snapOut) end
 end
 
--- Pega ids reais do catálogo pra não inventar carta que não existe (o
--- tooltip avisaria "carta fora do catálogo" e a captura mentiria).
+-- Ids reais do catálogo (carta inventada faria o tooltip avisar e a captura
+-- mentir).
 local function pickIds()
     local CardDatabase = require("src.systems.CardDatabase")
     local cards, jokers = {}, {}
@@ -54,46 +57,16 @@ local function pickIds()
     return cards, jokers
 end
 
--- mode: nil | "small"     locale: nil (pt_BR) | "en" | "es" | "fr" | "de"
--- O locale explícito existe pra VALIDAR A TRADUÇÃO: é em idioma estrangeiro
--- que o PT cravado aparece (a tela saía "AKT 1 — Catacumbas"). Capturar só em
--- pt_BR esconde exatamente o defeito que se quer pegar.
-function M.run(mode, locale)
-    _G.EventManager = require("engine.EventManager")
-    _G.Event = require("engine.Event")
-    local I18n = require("src.i18n.I18n")
-    I18n.init()
-    -- Locale FIXO na captura: o sandbox de ferramenta herda settings.tool.lua,
-    -- que pode estar em qualquer idioma — a captura viraria alemão sem aviso.
-    I18n.setLocale(locale or "pt_BR")
-    require("src.ui.PixelCanvas").enableNearest()
-
-    if mode == "small" then
-        love.window.setMode(760, 560, { resizable = true })
-    end
-
-    local Game = require("src.core.Game")
-    local game = Game:new()
-    game:startNewRun("warrior")
-    game:startGame()
-    _G.game = game
-
-    local rm = game.runManager
+local function seedShort(rm, cards, jokers)
     local run = rm.currentRun
-    -- Zera o que startNewRun deixou (deck inicial anotou fora de nó — no-op).
-    run.mapHistory, run.journal, run.journalOpen = {}, {}, nil
-
-    local cards, jokers = pickIds()
     local c1 = cards[1] or "warrior_strike"
     local c2 = cards[2] or "warrior_defend"
     local c3 = cards[3] or c1
     local j1 = jokers[1]
 
-    -- Dois nós SEM journal: só mapHistory (backfill / "sem detalhes").
     table.insert(run.mapHistory, { actNumber = 1, floorInAct = 1, type = "battle" })
     table.insert(run.mapHistory, { actNumber = 1, floorInAct = 2, type = "battle" })
 
-    -- ===== ATO 1 — completo (andares 3..8) =====
     visit(rm, 1, 3, "event", { hp = 52, maxHp = 60, gold = 28 },
         { hp = 45, gold = 28 }, { { kind = "card", id = c2 } },
         { id = "evt_altar", idx = 2, label = "Tocar o altar" })
@@ -111,7 +84,6 @@ function M.run(mode, locale)
     visit(rm, 1, 8, "boss", { hp = 41, maxHp = 60, gold = 34 },
         { hp = 22, gold = 68 }, { { kind = "card", id = c3 } })
 
-    -- ===== ATO 2 — em andamento (andares 1..4) =====
     visit(rm, 2, 1, "battle", { hp = 40, maxHp = 60, gold = 68 },
         { hp = 33, gold = 85 }, { { kind = "card", id = c2 } })
     visit(rm, 2, 2, "elite", { hp = 33, maxHp = 60, gold = 85 },
@@ -119,47 +91,131 @@ function M.run(mode, locale)
                                    { kind = "forge", id = c3, lvl = 2 } })
     visit(rm, 2, 3, "rest", { hp = 18, maxHp = 60, gold = 112 },
         { hp = 36, gold = 112 }, { { kind = "forge", id = c1, lvl = 2 } })
-    -- Nó ATUAL: fica em aberto de propósito (aro pulsando + "você está aqui").
     visit(rm, 2, 4, "shop", { hp = 36, maxHp = 60, gold = 112 }, nil,
         { { kind = "card", id = c3 } })
+    run.actNumber, run.floorInAct = 2, 4
+    return 1, 6   -- faixa/parada do hover (a loja com coringa + remoção)
+end
 
-    run.actNumber = 2
-    run.floorInAct = 4
+-- 6 atos completos + endless. Tipos variam por ato pra a grade não virar
+-- papel de parede; ganhos ciclam pelo catálogo.
+local function seedLong(rm, cards, jokers)
+    local run = rm.currentRun
+    local plans = {
+        { "battle", "battle", "event", "battle", "rest", "shop", "elite", "boss" },
+        { "battle", "event", "battle", "elite", "rest", "battle", "mini_boss", "boss" },
+        { "battle", "shop", "battle", "event", "elite", "rest", "battle", "boss" },
+        { "event", "battle", "elite", "battle", "shop", "rest", "mini_boss", "boss" },
+        { "battle", "battle", "rest", "elite", "event", "shop", "elite", "boss" },
+        { "battle", "elite", "event", "battle", "rest", "shop", "mini_boss", "boss" },
+    }
+    local hp, gold, k = 60, 20, 0
+    local function nextCard() k = k + 1; return cards[(k % #cards) + 1] end
+    for act, plan in ipairs(plans) do
+        for fl, t in ipairs(plan) do
+            local notes = {}
+            local hpOut, goldOut = hp, gold
+            if t == "battle" or t == "elite" or t == "mini_boss" or t == "boss" then
+                hpOut = math.max(8, hp - (t == "battle" and 6 or 14))
+                goldOut = gold + (t == "battle" and 16 or 30)
+                notes[1] = { kind = "card", id = nextCard() }
+                if t == "boss" and jokers[act] then
+                    notes[2] = { kind = "joker", id = jokers[act] }
+                end
+            elseif t == "rest" then
+                if fl % 2 == 0 then
+                    hpOut = math.min(70, hp + 20)
+                else
+                    notes[1] = { kind = "forge", id = nextCard(), lvl = act }
+                end
+            elseif t == "shop" then
+                goldOut = math.max(0, gold - 60)
+                notes[1] = { kind = "card", id = nextCard() }
+                notes[2] = { kind = "remove", id = nextCard() }
+                notes[3] = { kind = "card", id = nextCard() }
+            elseif t == "event" then
+                hpOut = hp - 5
+                notes[1] = { kind = "card", id = nextCard() }
+            end
+            visit(rm, act, fl, t, { hp = hp, maxHp = 70, gold = gold },
+                { hp = hpOut, gold = goldOut }, notes,
+                t == "event" and { id = "evt_x", idx = 1, label = "Beber da fonte" } or nil)
+            hp, gold = math.max(20, hpOut), goldOut
+            if fl == 8 then hp = math.min(70, hp + 25) end
+        end
+    end
+    -- Endless: o ato trava em totalActs+1 e o andar cicla 1..8.
+    local types = { "battle", "elite", "shop", "battle", "rest", "event", "elite", "boss",
+                    "battle", "elite", "battle" }
+    for i, t in ipairs(types) do
+        local fl = ((i - 1) % 8) + 1
+        local last = (i == #types)
+        visit(rm, 7, fl, t, { hp = hp, maxHp = 70, gold = gold },
+            (not last) and { hp = hp - 4, gold = gold + 20 } or nil,
+            { { kind = "card", id = nextCard() } })
+        hp, gold = hp - 4, gold + 20
+    end
+    run.actNumber, run.floorInAct, run.endlessMode = 7, 3, true
+    return 7, 6
+end
 
-    local screen = require("components.RunJournalScreen"):new()
+function M.run(mode, locale)
+    _G.EventManager = require("engine.EventManager")
+    _G.Event = require("engine.Event")
+    local I18n = require("src.i18n.I18n")
+    I18n.init()
+    -- Locale FIXO: o sandbox herda settings.tool.lua, que pode estar em
+    -- qualquer idioma — a captura viraria alemão sem aviso.
+    I18n.setLocale(locale or "pt_BR")
+    require("src.ui.PixelCanvas").enableNearest()
+
+    local W, H = tonumber(os.getenv("JOURNAL_W")), tonumber(os.getenv("JOURNAL_H"))
+    if mode == "small" then W, H = 760, 560 end
+    if W and H then love.window.setMode(W, H, { resizable = true }) end
+
+    local Game = require("src.core.Game")
+    local game = Game:new()
+    game:startNewRun("warrior")
+    game:startGame()
+    _G.game = game
+
+    local rm = game.runManager
+    local run = rm.currentRun
+    run.mapHistory, run.journal, run.journalOpen = {}, {}, nil
+
+    local cards, jokers = pickIds()
+    local hb, hn
+    if mode == "long" then
+        hb, hn = seedLong(rm, cards, jokers)
+    else
+        hb, hn = seedShort(rm, cards, jokers)
+    end
+
+    -- JOURNAL_PROTO: outro módulo de tela (protótipos/antes-depois).
+    local proto = os.getenv("JOURNAL_PROTO")
+    local screen = require(proto or "components.RunJournalScreen"):new()
     screen:show(game)
 
-    local dt = 1 / 30
-    for _ = 1, 10 do screen:update(dt) end
+    local sw, sh = love.graphics.getWidth(), love.graphics.getHeight()
+    local tag = ("%s_%dx%d_%s"):format(mode or "short", sw, sh, locale or "pt_BR")
+    if proto then tag = tag .. "_" .. (os.getenv("JOURNAL_PROTO_TAG") or "proto") end
 
-    love.mouse.setPosition(-100, -100)   -- sem hover na visão geral
+    love.mouse.setPosition(-100, -100)
     love.graphics.clear(0, 0, 0, 1)
     screen:draw()
-    local suffix = (locale and locale ~= "pt_BR") and ("_" .. locale) or ""
-    capture(mode == "small" and ("run_journal_small" .. suffix .. ".png")
-        or ("run_journal" .. suffix .. ".png"))
+    capture("run_journal_" .. tag .. ".png")
 
-    if mode == "small" then
-        love.event.quit()
-        return
-    end
-
-    -- Hover no nó da loja do ato 1 (coringa + carta removida no mesmo nó):
-    -- é o tooltip mais denso e o que valida o ancoramento.
     local L = screen:_layout()
-    local target = L.bands[1] and L.bands[1].nodes[6]
-    if target then
-        love.mouse.setPosition(target.cx, target.cy)
+    local band = L.bands[hb]
+    local cell = band and (band.cells or band.nodes)[hn]
+    if cell then
+        love.mouse.setPosition(cell.cx, cell.cy)
     else
-        print("[roteiro] AVISO: nó alvo do hover não encontrado")
-    end
-    for _ = 1, 4 do
-        love.graphics.clear(0, 0, 0, 1)
-        screen:draw()
+        print("[roteiro] AVISO: parada alvo do hover não encontrada")
     end
     love.graphics.clear(0, 0, 0, 1)
     screen:draw()
-    capture("run_journal_hover" .. suffix .. ".png")
+    capture("run_journal_" .. tag .. "_hover.png")
 
     love.event.quit()
 end
