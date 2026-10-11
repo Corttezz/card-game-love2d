@@ -356,6 +356,8 @@ function Game:startNewRun(classId)
 
     -- Perfil persistente (menu mostra vitórias/melhor progresso).
     require("engine.ProfileStats").recordRunStart(classId)
+    -- Conquistas: deck inicial conta como "descoberto" (Bibliotecario).
+    AchievementSystem.onRunStarted(self, classId)
 
     return runData
 end
@@ -912,6 +914,7 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
             scaledStat(self.player.strength, "strength_scaling"))
 
         self.enemy:takeDamage(damage)
+        AchievementSystem.onCardDamage(self, card, damage)   -- Golpe de Tinta
 
         -- Passiva rogue "Toxinas": 1º ataque do turno aplica 1 de Veneno.
         -- Debuff no inimigo = mudanca de ESTADO: instante proprio, depois do

@@ -1450,6 +1450,7 @@ function love.load(loveArgs)
 
     -- Galeria de conquistas (F4 gameplay-overhaul)
     achievementsScreen = require("components.AchievementsScreen"):new()
+    require("src.systems.AchievementSystem").install()   -- Steam + UnlockSystem
 
     -- Inicializa overlay de configurações
     settingsMenu = SettingsMenu:new()
@@ -1770,6 +1771,7 @@ function love.update(dt)
     EventManager.update(dt)
     FloatingText.update(dt)
     require("src.ui.CoinBurst").update(dt)
+    require("src.ui.AchievementToast").update(dt); require("src.systems.SteamBridge").update()
     if audioSystem then audioSystem:update(dt) end
     -- Trilha por contexto: o diretor observa o estado e troca de faixa com
     -- crossfade. Idempotente — chamar todo frame é o desenho, não descuido
@@ -1970,6 +1972,9 @@ function love.draw()
     -- cobre o overlay também.
     if pauseMenu then IF.push("pause"); pauseMenu:draw(); IF.pop() end
     if settingsMenu then IF.push("settings"); settingsMenu:draw(); IF.pop() end
+
+    -- Toast de conquista: acima de overlays, abaixo do cursor (qualquer estado).
+    require("src.ui.AchievementToast").draw()
 
     -- Cursor pixel-art por cima de TUDO, mas dentro da cena CRT (warp do
     -- tubo pega o cursor também — coerência Balatro). SEM camada: o cursor

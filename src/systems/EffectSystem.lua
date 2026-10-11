@@ -696,6 +696,7 @@ function EffectSystem:_stepChannelOrb(game, orb, sink)
     CombatBeats.step(sink, "orb.channel", function()
         p:addOrb(orb)
         local slot = #p.orbs
+        require("src.systems.AchievementSystem").onOrbChanneled(game)  -- Conduite Pleno
         game:addMessage(msg("channeled", { name = orb.type, value = orb.value }), "info")
         -- Contavel como o cash out: um som por orbe, pitch subindo com o slot.
         Sfx.play("orbChannel",
