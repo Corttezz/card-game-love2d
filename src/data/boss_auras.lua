@@ -29,7 +29,8 @@
 --           cisco invisível (medido nas salas a 1024x768). 2 = legível e
 --           ainda múltiplo inteiro da grade do sprite.
 --   floor   círculo rúnico no chão (só o lich: diz "ele paira SOBRE algo")
---   corona  disco do eclipse atrás da cabeça (só a rainha)
+--   corona  coroa de raios atrás da cabeça (só a rainha; `disc = false`
+--           tira o disco — a sala 6 já tem o eclipse pintado no fundo)
 --   rim     contorno da silhueta na cor do tema (1 pixel da arte, atrás do
 --           corpo) — o tirano usa contorno ESCURO: a sala dele é lava
 --           clara e ele precisa recortar, não brilhar
@@ -53,9 +54,9 @@ return {
             { u = 0.461, v = 0.568, r = 5, color = { 0.96, 0.72, 0.30 }, a = 0.30,
               pulse = 1.7 },                                 -- amuleto do cinto
         },
-        orbit = { kind = "crow", n = 4, px = 3, cu = 0.50, cv = 0.16, ru = 0.56,
-                  rv = 0.10, speed = 0.55, color = { 0.13, 0.10, 0.20 },
-                  color2 = { 0.58, 0.50, 0.90 } },
+        orbit = { kind = "crow", n = 3, px = 2, cu = 0.50, cv = 0.10, ru = 0.62,
+                  rv = 0.08, speed = 0.45, color = { 0.09, 0.07, 0.13 },
+                  color2 = { 0.36, 0.31, 0.56 } },
         emit = {
             { kind = "feather", px = 2, rate = 2.2, area = { 0.08, 0.28, 0.92, 0.62 },
               vx = { -3, 3 }, vy = { 5, 9 }, sway = 5, life = { 2.6, 3.6 },
@@ -185,7 +186,10 @@ return {
     -- brilho que corre pela borda das asas.
     eclipse_queen = {
         rim = { color = { 0.95, 0.30, 0.70 }, a = 0.50, pulse = 0.8 },
-        corona = { u = 0.50, v = 0.24, r = 23, speed = 0.18,
+        -- coroa de raios curta em volta da CABEÇA, sem disco: o eclipse da
+        -- cena é o da abertura do salão 6 (InteriorFX/arte da sala)
+        corona = { u = 0.50, v = 0.24, r = 13, speed = 0.18, disc = false,
+                   rays = 20, rayLen = 2, a = 0.45,
                    color = { 0.96, 0.38, 0.72 }, color2 = { 0.55, 0.22, 0.85 },
                    dark = { 0.02, 0.01, 0.04 } },
         glows = {

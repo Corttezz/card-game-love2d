@@ -262,16 +262,46 @@ local function drawGlows(r, spec, s, fade)
     love.graphics.setBlendMode("alpha")
 end
 
--- Corvo de 7x3 pixels da arte, batida de asa em 3 quadros (asa em cima /
--- planando / asa embaixo). O 3º valor marca o pixel de BRILHO (pena de
--- corvo tem reflexo azul-violeta — sem ele o corvo some no fundo escuro).
+-- Corvo: silhueta de pássaro de FRENTE (o "m" clássico de pássaro ao
+-- longe), 9x5 pixels da arte, 3 quadros de batida. CORPO de 3 pixels no
+-- meio e asa de 2 pixels de espessura — a versão anterior tinha asa de 1
+-- pixel com ponta clara e lia como risquinhos soltos (revisão Out/2026).
+-- '#' = pena escura, 'o' = único pixel de brilho (dorso).
+local function parseShape(rows)
+    local pts = {}
+    local h, w = #rows, #rows[1]
+    for y, row in ipairs(rows) do
+        for x = 1, #row do
+            local ch = row:sub(x, x)
+            if ch ~= "." then
+                pts[#pts + 1] = { x - 1 - floor(w / 2), y - 1 - floor(h / 2), ch == "o" }
+            end
+        end
+    end
+    return pts
+end
 local CROW = {
-    { { -3, -2, 1 }, { 3, -2, 1 }, { -2, -1 }, { 2, -1 }, { -1, 0 }, { 0, 0 },
-      { 1, 0 }, { 0, -1 }, { 0, 1 } },
-    { { -3, 0, 1 }, { -2, 0 }, { -1, 0 }, { 0, 0 }, { 1, 0 }, { 2, 0 },
-      { 3, 0, 1 }, { 0, -1 }, { 0, 1 } },
-    { { -3, 1 }, { 3, 1 }, { -2, 0, 1 }, { 2, 0, 1 }, { -1, 0 }, { 0, 0 },
-      { 1, 0 }, { 0, -1 }, { 0, 1 } },
+    parseShape({                 -- asas em cima
+        "#.......#",
+        "##.....##",
+        ".##.#.##.",
+        "..##o##..",
+        "....#....",
+    }),
+    parseShape({                 -- planando
+        ".........",
+        "....#....",
+        "###.o.###",
+        "..##o##..",
+        "....#....",
+    }),
+    parseShape({                 -- asas embaixo
+        ".........",
+        "....#....",
+        "..##o##..",
+        ".##.#.##.",
+        "##.....##",
+    }),
 }
 local CROW_SEQ = { 1, 2, 3, 2 }
 
@@ -333,8 +363,6 @@ local function orbitOne(r, o, s, front)
                 local pulse = still and 1 or (0.7 + 0.3 * math.sin(s.t * 2.4 + i * 1.3))
                 love.graphics.setColor(c[1], c[2], c[3], fade * near * 0.9 * pulse)
                 for _, d in ipairs(g) do artRect(r, ax + d[1], ay + d[2], 1, 1) end
-                love.graphics.setColor(c[1], c[2], c[3], fade * near * 0.25 * pulse)
-                artRect(r, ax - 2, ay - 2, 5, 5)
                 love.graphics.setBlendMode("alpha")
             elseif o.kind == "mote" then
                 local c = isFront and o.color or o.color2
@@ -395,24 +423,24 @@ local function drawParticles(r, list, fade)
         local a = (em.a or 1) * math.min(1, k * 2.5) * math.min(1, (1 - k) * 8 + 0.2) * fade
         local kind = em.kind
         if kind == "feather" then
+            -- pena: 3 pixels em DIAGONAL que tomba de "/" pra "\" conforme
+            -- balança; risco horizontal/vertical lia como pixel solto
+            local dir = (math.sin(p.ph + (p.max - p.life) * 3) > 0) and 1 or -1
             love.graphics.setColor(cr, cg, cb, a)
-            -- pena: 2x1 que vira 1x2 conforme balança (rodopio barato)
-            if math.sin(p.ph + (p.max - p.life) * 3) > 0 then
-                artRect(r, ax, ay, 2, 1)
-            else
-                artRect(r, ax, ay, 1, 2)
-            end
-            love.graphics.setColor(c2[1], c2[2], c2[3], a * 0.8)
+            artRect(r, ax - dir, ay - 1, 1, 1)
+            artRect(r, ax + dir, ay + 1, 1, 1)
+            love.graphics.setColor(c2[1], c2[2], c2[3], a)
             artRect(r, ax, ay, 1, 1)
         elseif kind == "petal" then
+            -- pétala: gota 2x2 com um pixel claro que gira em volta — o
+            -- traço de 3 pixels de antes lia como risco, não como pétala
+            local f = floor(p.ph + (p.max - p.life) * 2.5) % 4
             love.graphics.setColor(cr, cg, cb, a)
-            local f = floor(p.ph + (p.max - p.life) * 2.5) % 3
-            local b = p.big and 1 or 0
-            if f == 0 then artRect(r, ax, ay, 2 + b, 1)
-            elseif f == 1 then artRect(r, ax, ay, 1 + b, 1 + b)
-            else artRect(r, ax, ay, 1, 2 + b) end
-            love.graphics.setColor(c2[1], c2[2], c2[3], a * 0.7)
-            artRect(r, ax, ay, 1, 1)
+            artRect(r, ax, ay, 2, 2)
+            local hx = (f == 1 or f == 2) and 1 or 0
+            local hy = (f >= 2) and 1 or 0
+            love.graphics.setColor(c2[1], c2[2], c2[3], a)
+            artRect(r, ax + hx, ay + hy, 1, 1)
         elseif kind == "wisp" or kind == "spore" or kind == "ember" or kind == "spark" then
             love.graphics.setBlendMode("add")
             if kind == "spark" and love.math.random() < 0.15 then a = a * 0.3 end
@@ -494,7 +522,8 @@ local function drawFloor(r, spec, s)
     love.graphics.setBlendMode("alpha")
 end
 
--- Eclipse: disco escuro + coroa de raios que gira, atrás da cabeça.
+-- Eclipse: coroa de raios que gira atrás da cabeça (+ disco escuro e anel,
+-- a menos que `disc = false`).
 local function drawCorona(r, spec, s)
     local c = spec.corona
     if not c then return end
@@ -507,16 +536,23 @@ local function drawCorona(r, spec, s)
     -- NORMAL, não aditiva: a sala 6 é um feixe de luz BRANCA — luz somada
     -- em branco some; cor pintada por cima lê.
     local rot = still and 0 or t * c.speed
-    for i = 0, 23 do
-        local ang = i / 24 * 6.283 + rot
-        local len = 3 + 3 * (0.5 + 0.5 * math.sin(i * 2.1 + (still and 0 or t * 1.3)))
+    local nr = c.rays or 24
+    for i = 0, nr - 1 do
+        if (i % 2 == 0) or c.disc ~= false then
+        local ang = i / nr * 6.283 + rot
+        local len = (c.rayLen or 3) * (1 + (0.5 + 0.5 * math.sin(i * 2.1 + (still and 0 or t * 1.3))))
         for d = 0, floor(len) do
             local k = d / (len + 1)
             local col = (d < 2) and c.color or c.color2
-            love.graphics.setColor(col[1], col[2], col[3], (0.55 - 0.45 * k) * fade)
+            love.graphics.setColor(col[1], col[2], col[3], (c.a or 0.55) * (1 - 0.8 * k) * fade)
             artRect(r, cxA + math.cos(ang) * (R + d), cyA + math.sin(ang) * (R + d), 1, 1)
         end
+        end
     end
+    -- Sem disco nem anel (`disc = false`): a sala 6 já tem o eclipse
+    -- pintado na abertura do fundo; dois eclipses empilhados liam como
+    -- cópia. Fica só a coroa de raios em volta da cabeça.
+    if c.disc == false then return end
     -- anel de luz colado no disco
     for i = 0, 71 do
         local ang = i / 72 * 6.283

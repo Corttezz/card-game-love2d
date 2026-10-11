@@ -69,6 +69,17 @@ type: project
 4. Emissor que depende do chão (gota) pousa no UPDATE com o chão medido no
    último draw — pousar no draw quebra quando há vários updates por draw.
 
+## Revisão combinada (Out/2026)
+
+- Corvo de asa de 1 pixel com ponta clara lia como "risquinhos roxos
+  soltos". Virou silhueta de pássaro de frente ("m", 9x5, corpo de 3px, asa
+  de 2px, 3 quadros) desenhada a partir de máscara ASCII em `BossAura`
+  (`parseShape`). Pena = diagonal de 3px que tomba; pétala = gota 2x2.
+  **Partícula que é um traço reto de 2-3px lê como glitch, não como coisa.**
+- A sala 6 ganhou um eclipse pintado na abertura do fundo: o disco da aura
+  saiu (`corona.disc = false`), fica só uma coroa curta de raios na cabeça.
+  Uma cena, um eclipse.
+
 ## Pendente
 
 - Círculo rúnico do lich: em 1024x768 a laje do salão 2 cai atrás da mão de
