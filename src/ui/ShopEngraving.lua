@@ -69,7 +69,10 @@ ShopEngraving.seedOf = seedOf
 function ShopEngraving.sealRadius(objW, cost)
     local r = math.max(8, math.min(14, math.floor((objW or 0) * 0.13)))
     local digits = cost and #tostring(math.max(0, math.floor(cost))) or 3
-    if digits >= 2 then r = r + math.min(4, (digits - 1) * 2) end
+    -- O "$" conta como digito: "$8" ja sao 2 glifos. Sem folga pra 1 digito
+    -- o numero colava no aro e "$8" lia "$&" (relato da arte das reliquias,
+    -- Out/2026). A reserva do layout (cost nil = 3 digitos) segue o teto.
+    r = r + math.min(4, digits * 2)
     return r
 end
 
