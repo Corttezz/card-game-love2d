@@ -800,12 +800,6 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
     -- (tools/test_enemy_stage mede o inimigo contra a carta em hover).
     self.lastDrawRect = { x = x + offsetX, y = y + totalOffsetY,
         w = self.image:getWidth() * scaleX, h = self.image:getHeight() * scaleY }
-    -- alvo de navegação (src/ui/NavCursor). O cursor mira o TERÇO DE BAIXO
-    -- da carta: em hover ela sobe, e o ponto continua dentro da caixa de
-    -- repouso — sem isso o foco "soltava" a carta a cada quadro.
-    require("src.ui.NavCursor").target(self, self.lastDrawRect.x, self.lastDrawRect.y,
-        self.lastDrawRect.w, self.lastDrawRect.h,
-        { py = 0.82, group = self.navGroup })
 
     love.graphics.translate(cardCenterX, cardCenterY)
 

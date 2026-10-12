@@ -25,8 +25,6 @@ local ScribeDice  = require("src.systems.ScribeDice")
 
 local ScribeDiceScreen = {}
 ScribeDiceScreen.__index = ScribeDiceScreen
--- navega sozinha (MenuKit): o cursor de foco do teclado/pad não toma as teclas
-ScribeDiceScreen.ownsNavigation = true
 
 local ROLL_DUR = 1.15      -- duração da rolagem (s)
 local FACE_SWAP = 0.075    -- troca de face durante a rolagem (s)

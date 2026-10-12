@@ -274,11 +274,6 @@ end
 
 function Button:draw()
     if not self.visible then return end
-    -- alvo de navegação por teclado/pad (src/ui/NavCursor) — inclusive o
-    -- invisível (hitbox de cartão/linha que a tela desenha por conta própria)
-    if not self.disabled and not self._consumed then
-        require("src.ui.NavCursor").target(self, self.x, self.y, self.width, self.height)
-    end
     if self.variant == "invisible" then return end
     if self.variant == "tv" then
         return self:_drawTv()

@@ -44,7 +44,6 @@ local saved = nil            -- funções originais enquanto o contexto vale
 local activeK = 1
 local vw, vh = 0, 0
 local chromeScaled = true    -- TopBar/tooltips de chrome escalam? (main.lua)
-local suspended = 0          -- >0 dentro de UiScale.outside: adotados NÃO reentram
 
 local function clamp(v, lo, hi) return math.max(lo, math.min(hi, v)) end
 
@@ -181,7 +180,7 @@ function UiScale.reset()
             pcall(love.graphics.pop)
             unpatch()
         end
-        depth, activeK, suspended = 0, 1, 0
+        depth, activeK = 0, 1
     end
 end
 
@@ -197,11 +196,7 @@ function UiScale.outside(fn, ...)
         unpatch()
     end
     depth, activeK = 0, 1
-    -- função ADOTADA chamada aqui dentro (ex.: GameplayScene._drawWorldOnlyReal)
-    -- não pode reabrir o contexto — o mundo é desenhado na janela real
-    suspended = suspended + 1
     local res = { pcall(fn, ...) }
-    suspended = suspended - 1
     depth, activeK = d, k
     if k ~= 1 then
         patch(k)
@@ -249,7 +244,7 @@ function UiScale.adopt(tbl, opts)
         tbl[name] = function(...)
             -- já dentro do contexto (chamada aninhada): nada a fazer — as
             -- coordenadas já são virtuais
-            if depth > 0 or suspended > 0 or (pred and not pred()) then return fn(...) end
+            if depth > 0 or (pred and not pred()) then return fn(...) end
             UiScale.begin()
             local args, n = { ... }, select("#", ...)
             if isMouse and activeK ~= 1 then
