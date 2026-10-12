@@ -371,7 +371,7 @@ local function detailLines(e)
     if e.optionLabel then
         local opt = RunJournalScreen.optionText(e)
         table.insert(lines, { t = I18n.t("run_journal.event_option",
-            { option = e.optionLabel }, "Escolha: " .. e.optionLabel), c = Palette.ARCANE_LIGHT })
+            { option = opt }, "Escolha: " .. opt), c = Palette.ARCANE_LIGHT })
     end
     for _, g in ipairs(e.gains or {}) do
         local name = cardNameFor(g.id)
