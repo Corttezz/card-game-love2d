@@ -70,11 +70,26 @@ function M.run()
                     finite = false
                 end
             end
-            if i > 1 and P[i - 1].sortRel < p.sortRel then sorted = false end
+            -- só o LOTE MONTADO (1..built) tem ordem garantida: folha que a
+            -- rajada arranca DURANTE o draw (emitLeaf, sorteio do RNG global
+            -- do mundo) entra no fim da lista e só é ordenada no frame
+            -- seguinte — era a falha dependente de ordem da suíte (Out/2026)
+            if i > 1 and i <= WeatherEngine.built()
+               and P[i - 1].sortRel < p.sortRel then sorted = false end
         end
         t:truthy("bioma " .. bio .. ": nenhum campo NaN/inf", finite)
         t:truthy("bioma " .. bio .. ": lote ordenado do fundo pra frente", sorted)
         t:eq("bioma " .. bio .. ": todas as montadas foram desenhadas", WeatherEngine.undrawn(), 0)
+        -- regressão: folha arrancada no meio do frame não quebra o lote
+        -- montado nem a ordem do frame seguinte
+        WeatherEngine.emitLeaf(0.1, WorldRoad._camZ + 3, 0.6, 0.3, { 0.5, 0.6, 0.2 })
+        frame(bio)
+        local P2, n2 = WeatherEngine._particles()
+        local ok2 = true
+        for i = 2, WeatherEngine.built() do
+            if P2[i - 1].sortRel < P2[i].sortRel then ok2 = false end
+        end
+        t:truthy("bioma " .. bio .. ": folha emitida entra ordenada no frame seguinte", ok2)
         t:truthy("bioma " .. bio .. ": intercalado em várias fatias (" ..
             WeatherEngine.stats.flushes .. ")", WeatherEngine.stats.flushes >= 3)
     end
