@@ -209,5 +209,272 @@
     "status": "ok",
     "job_id": "61775fad-a98f-4542-aad3-0447abea768a",
     "problems": []
+  },
+  "hollow_farmer/hurt": {
+    "status": "ok",
+    "job_id": "2c197d0e-c494-4203-8fba-7addfdbea24e",
+    "problems": []
+  },
+  "hollow_farmer/death": {
+    "status": "ok",
+    "job_id": "39a8993d-9d51-4fbd-b010-2941497ffd9d",
+    "problems": []
+  },
+  "plague_rats/hurt": {
+    "status": "ok",
+    "job_id": "979c875b-10cd-4de1-8ce0-0cca0e7c7f69",
+    "problems": []
+  },
+  "plague_rats/death": {
+    "status": "ok",
+    "problems": [
+      "ASSADA (pixellab_new_enemies.py piledeath): v3 n\u00e3o derrubava a pilha \u2014 o monte afunda na terra"
+    ]
+  },
+  "blight_bull/hurt": {
+    "status": "ok",
+    "job_id": "f38d4f9f-3474-4d30-81fd-6a7a51e50e74",
+    "problems": []
+  },
+  "blight_bull/death": {
+    "status": "ok",
+    "job_id": "44868292-2095-4aea-9b3f-91878622e642",
+    "problems": [
+      "MORTE ALTA 0.70 \u2014 revisado \u00e0 m\u00e3o: touro deitado de lado, chifres somam altura (ok)"
+    ]
+  },
+  "wicker_effigy/hurt": {
+    "status": "ok",
+    "job_id": "1b47f050-dde5-4f64-b835-d48fc60595c4",
+    "problems": []
+  },
+  "wicker_effigy/death": {
+    "status": "ok",
+    "job_id": "c5f33cf6-0e7e-4071-91ad-c9b36540042b",
+    "problems": [
+      "MORTE ALTA 0.83 \u2014 revisado: monte de galhos com o cr\u00e2nio e a galhada por cima (galhada soma altura); ilhas soltas limpas"
+    ]
+  },
+  "ram_cultist/hurt": {
+    "status": "ok",
+    "job_id": "c9d330fc-d48a-40ad-b273-7b63447d35fb",
+    "problems": []
+  },
+  "ram_cultist/death": {
+    "status": "ok",
+    "job_id": "9a1bd04c-4c23-4780-be6f-71726db80583",
+    "problems": [
+      "0.68 no limite \u2014 revisado: tombado sentado, cabe\u00e7a ca\u00edda, incens\u00e1rio no ch\u00e3o (ok)"
+    ]
+  },
+  "spectral_knight/hurt": {
+    "status": "ok",
+    "job_id": "4744611b-8277-48e7-a46a-c1605b07ec60",
+    "problems": []
+  },
+  "spectral_knight/death": {
+    "status": "ok",
+    "job_id": "b7c63520-92fa-42c2-a863-b10892f4ebc1",
+    "problems": [
+      "0.83 \u2014 3\u00aa tentativa: cavaleiro deitado; o escudo-torre fica cravado de p\u00e9 (prop r\u00edgido no v3) (ok)"
+    ]
+  },
+  "storm_griffin/hurt": {
+    "status": "ok",
+    "job_id": "012b78a6-5c7f-4b2f-882a-691e5790437c",
+    "problems": []
+  },
+  "storm_griffin/death": {
+    "status": "ok",
+    "job_id": "770f8651-1a8a-475b-a403-7cb03d626706",
+    "problems": []
+  },
+  "hellhound/hurt": {
+    "status": "ok",
+    "job_id": "cd95b395-09b8-4884-8458-33e6d9321e4c",
+    "problems": []
+  },
+  "hellhound/death": {
+    "status": "ok",
+    "job_id": "e8f98cca-017a-4e9f-9fc4-c2021e5665bd",
+    "problems": [
+      "0.79 \u2014 revisado: deitado de barriga, a crina de fogo soma altura (ok)"
+    ]
+  },
+  "abyss_acolyte/hurt": {
+    "status": "ok",
+    "job_id": "f940fc06-edc8-447f-a19f-eb2eac54e942",
+    "problems": []
+  },
+  "abyss_acolyte/death": {
+    "status": "ok",
+    "job_id": "b794baf3-4a97-48ac-a069-5efd218fc987",
+    "problems": []
+  },
+  "pit_brute/hurt": {
+    "status": "ok",
+    "job_id": "7a668730-445c-406e-9451-4e16304e4890",
+    "problems": []
+  },
+  "pit_brute/death": {
+    "status": "ok",
+    "job_id": "e18de463-ba16-48f9-a334-7c6f3185144a",
+    "problems": []
+  },
+  "frost_wolf/hurt": {
+    "status": "ok",
+    "job_id": "ec14d4c4-dc90-4cbd-894d-795e45e40508",
+    "problems": []
+  },
+  "frost_wolf/death": {
+    "status": "ok",
+    "job_id": "127a47df-b695-450d-9e2f-250db8a5d05c",
+    "problems": []
+  },
+  "rime_shaman/hurt": {
+    "status": "ok",
+    "job_id": "8d277c1f-d399-4938-a401-87d0c24980e6",
+    "problems": []
+  },
+  "rime_shaman/death": {
+    "status": "ok",
+    "job_id": "77bde294-ce1b-446a-9c2a-1b7dc08577a5",
+    "problems": [
+      "1.01 \u2014 corpo deitado; a altura \u00e9 o cajado cravado de p\u00e9 (ok)"
+    ]
+  },
+  "frost_troll/hurt": {
+    "status": "ok",
+    "job_id": "a7a4acc2-1a63-4f22-8935-fcd6891a6433",
+    "problems": []
+  },
+  "frost_troll/death": {
+    "status": "ok",
+    "job_id": "1a6f94df-4487-44e5-84c4-5233f05305a4",
+    "problems": [
+      "0.75 \u2014 de bru\u00e7os, cabe\u00e7a no ch\u00e3o (ok)"
+    ]
+  },
+  "ice_wyrm/hurt": {
+    "status": "ok",
+    "job_id": "28bee97b-a983-4d59-b655-81fb71fa61e9",
+    "problems": []
+  },
+  "ice_wyrm/death": {
+    "status": "ok",
+    "job_id": "72f3e2ef-644d-4018-94fb-aec4a4f699a7",
+    "problems": [
+      "pesco\u00e7o desaba sobre as espiras (ok)"
+    ]
+  },
+  "storm_harpy/hurt": {
+    "status": "ok",
+    "job_id": "9a71b80a-f973-431a-a77d-986542a4a7d1",
+    "problems": []
+  },
+  "storm_harpy/death": {
+    "status": "ok",
+    "job_id": "af7707c0-5a99-4d8a-b2d8-85d9aa46d95a",
+    "problems": []
+  },
+  "abyss_watcher/hurt": {
+    "status": "ok",
+    "job_id": "2815f641-37d0-4069-b816-c65c3b267a75",
+    "problems": []
+  },
+  "abyss_watcher/death": {
+    "status": "ok",
+    "job_id": "c65d4f9c-53bd-4745-90d5-e503a5e1d337",
+    "problems": [
+      "0.72 \u2014 revisado: carne desaba sobre os tent\u00e1culos (chifres somam altura); cad\u00e1ver assentado no ch\u00e3o via grounddeath"
+    ]
+  },
+  "plague_toad/hurt": {
+    "status": "ok",
+    "job_id": "00cea3b2-1a44-478b-9e03-a813c6d4540d",
+    "problems": []
+  },
+  "plague_toad/death": {
+    "status": "ok",
+    "job_id": "72cc2acd-00c7-4313-bef1-7c221d928b7b",
+    "problems": [
+      "1.00 \u2014 revisado: rola e termina de barriga pra cima com as patas pro ar (altura = patas); cad\u00e1ver pinado"
+    ]
+  },
+  "leech_horror/hurt": {
+    "status": "ok",
+    "job_id": "7e54afa0-6760-4cd2-b8a2-b86eaa594116",
+    "problems": []
+  },
+  "leech_horror/death": {
+    "status": "ok",
+    "job_id": "21055ee3-fd95-48a0-876f-12cbcc3aa321",
+    "problems": [
+      "0.72 \u2014 monte de sanguessugas (ok)"
+    ]
+  },
+  "croc_warrior/hurt": {
+    "status": "ok",
+    "job_id": "04625a19-88af-4335-ac8f-a12020002dc3",
+    "problems": []
+  },
+  "croc_warrior/death": {
+    "status": "ok",
+    "job_id": "1dbcf30f-464b-45ac-bcc4-a9d1b935abb3",
+    "problems": []
+  },
+  "spore_mother/hurt": {
+    "status": "ok",
+    "job_id": "11d087bf-2ccf-4e6b-adcc-861cad6e31c5",
+    "problems": []
+  },
+  "spore_mother/death": {
+    "status": "ok",
+    "job_id": "5fec368c-1d42-4459-bdcd-f8ee85ef0e83",
+    "problems": [
+      "0.78 \u2014 o chap\u00e9u largo fica por cima do corpo arriado (ok)"
+    ]
+  },
+  "dusk_bat/hurt": {
+    "status": "ok",
+    "job_id": "13d27e4d-3627-49b1-b146-dbd5f9e915a8",
+    "problems": []
+  },
+  "dusk_bat/death": {
+    "status": "ok",
+    "job_id": "4c26ee0e-b0a0-46c7-bc51-b94d46f6d473",
+    "problems": []
+  },
+  "grave_thrall/hurt": {
+    "status": "ok",
+    "job_id": "f0a4e55a-fbd8-46be-b421-9a6b643e8024",
+    "problems": []
+  },
+  "grave_thrall/death": {
+    "status": "ok",
+    "job_id": "74aa0a5c-ad16-42c6-9b4f-d6f880e7c03d",
+    "problems": [
+      "0.76 \u2014 revisado: esqueleto deitado; o escudo-torre fica CRAVADO no ch\u00e3o ao lado (\u00e9 o escudo da arte, n\u00e3o prop materializado) (ok)"
+    ]
+  },
+  "dullahan/hurt": {
+    "status": "ok",
+    "job_id": "1edf39df-ac28-42cc-afd2-1dd2cd6c4663",
+    "problems": []
+  },
+  "dullahan/death": {
+    "status": "ok",
+    "job_id": "755db4db-3bab-4095-abb9-000eddd1c3cf",
+    "problems": []
+  },
+  "fallen_angel/hurt": {
+    "status": "ok",
+    "job_id": "e5d87957-d4c9-4a2b-a81c-db4164b02e02",
+    "problems": []
+  },
+  "fallen_angel/death": {
+    "status": "ok",
+    "job_id": "09f7babf-9d2c-40fa-81e8-6d3df7aecfcc",
+    "problems": []
   }
 }
