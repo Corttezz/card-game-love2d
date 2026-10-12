@@ -318,8 +318,25 @@ function CollectionScreen:_inspectNeighbor(delta)
     self.inspectAnim = 0.3 -- leve "pop" ao trocar
 end
 
+-- X de fechar (mesmo lugar e desenho do Deck Viewer). Substitui a faixa de
+-- dica do rodapé ("CLIQUE pra inspecionar · RODA pra rolar · ESC volta"):
+-- regra do projeto, sem rodapé de instruções — a saída mora num objeto.
+local function closeRect()
+    return love.graphics.getWidth() - 52, 24, 30, 30
+end
+
+local function inRect(x, y, rx, ry, rw, rh)
+    return x >= rx and x <= rx + rw and y >= ry and y <= ry + rh
+end
+
 function CollectionScreen:mousepressed(x, y, button)
     if not self.visible then return end
+    if button == 1 and not self.inspectedCard and inRect(x, y, closeRect()) then
+        Sfx.play("menuClose")
+        self:hide()
+        if self.onCloseCallback then self.onCloseCallback() end
+        return
+    end
     if button == 1 then
         -- Modal de inspeção: clique fora fecha, clique em setas navega
         if self.inspectedCard then
@@ -1070,12 +1087,23 @@ function CollectionScreen:draw()
         drawHoverTooltip(self)
     end
 
-    -- Footer com instruções
-    local instFont = FontManager.getFont(12)
-    love.graphics.setFont(instFont)
-    love.graphics.setColor(Palette.PARCHMENT_LIGHT)
-    local inst = I18n.t("collection.footer")
-    love.graphics.print(inst, (width - instFont:getWidth(inst)) / 2, height - 22)
+    -- Fechar (X) no canto superior direito
+    if not self.inspectedCard then
+        local cx, cy, cw, ch = closeRect()
+        local mx, my = love.mouse.getPosition()
+        local hot = inRect(mx, my, cx, cy, cw, ch)
+        Palette.set(hot and Palette.BLOOD or Palette.PANEL_FILL)
+        love.graphics.rectangle("fill", cx, cy, cw, ch, 4, 4)
+        Palette.set(Palette.AGED_GOLD)
+        love.graphics.setLineWidth(1)
+        love.graphics.rectangle("line", cx, cy, cw, ch, 4, 4)
+        local xf = FontManager.getFont(14)
+        love.graphics.setFont(xf)
+        Palette.set(Palette.PARCHMENT_LIGHT)
+        love.graphics.print("X", math.floor(cx + (cw - xf:getWidth("X")) / 2),
+            math.floor(cy + (ch - xf:getHeight()) / 2))
+        if hot then require("src.ui.CursorManager").request("hand") end
+    end
 
     -- Modal de inspeção (por cima de tudo)
     drawInspectModal(self)
