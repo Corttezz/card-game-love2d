@@ -82,8 +82,8 @@ StatusPill.ICONS = {
     block        = "armor_shield", -- mesmo ícone do Bloqueio no painel do jogador
     -- Kit dos inimigos (Out/2026). Frágil tem ícone próprio (peitoral de aço
     -- rachado); revoada = garra e eclipse = lua seguem interinos.
-    weak_self       = "status_weak",
-    vulnerable_self = "status_vulnerable",
+    weak_self       = "status_weak_self",        -- espada partida (24px nativo)
+    vulnerable_self = "status_vulnerable_self",  -- escudo de aço rachado (24px)
     frail           = "status_frail",
     poison_self     = "status_poison",
     burn_self       = "status_burn",

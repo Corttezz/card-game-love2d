@@ -145,6 +145,13 @@ function M.run(mode)
         game.enemy.nextIntentDamage = it.raw
     end
 
+    -- ENEMY_SCENE_PLAYER_DEBUFFS="weak,frail,vulnerable": debuffs no jogador
+    -- (pills do HUD dele) — validação dos ícones de status do lado do herói.
+    local pdeb = os.getenv("ENEMY_SCENE_PLAYER_DEBUFFS")
+    if pdeb and pdeb ~= "" and game.player.addDebuff then
+        for name in pdeb:gmatch("[%w_]+") do game.player:addDebuff(name, 2, 2) end
+    end
+
     if vcanvas then love.graphics.setCanvas(vcanvas) end
     love.graphics.clear(0, 0, 0, 1)
     GameplayScene.draw()

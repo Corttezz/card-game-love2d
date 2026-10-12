@@ -21,10 +21,11 @@ end
 -- Cache dos ícones de intent (preguiçoso). Mapa kind -> ícone: o kind é a
 -- categoria de LEITURA do golpe (src/data/enemies.lua).
 local INTENT_ICON = {
-    attack = "intent_attack", strong = "intent_attack", multi = "intent_multi",
+    attack = "intent_attack", strong = "intent_strong", multi = "intent_multi",
     defend = "intent_defense", defense = "intent_defense",
     buff = "intent_buff", heal = "intent_heal",
     debuff = "intent_debuff", charge = "intent_charge", summon = "intent_summon",
+    unknown = "intent_unknown",
 }
 local intentIcons = {}
 local function getIconByName(name)
@@ -37,12 +38,16 @@ local function getIconByName(name)
     return icon
 end
 local function getIntentIcon(kind)
-    return getIconByName(INTENT_ICON[kind or "attack"] or "intent_attack")
+    -- kind sem ícone declarado = "?" (desconhecido), nunca um ataque falso
+    -- (fallback silencioso proibido: getIconByName já avisa se faltar PNG).
+    return getIconByName(INTENT_ICON[kind or "attack"] or "intent_unknown")
 end
 
 -- Ícone do status de um debuff (pequeno, ao lado do número).
 local DEBUFF_ICON = {
-    weak = "status_weak", vulnerable = "status_vulnerable", frail = "status_frail",
+    -- debuffs que o golpe aplica NO JOGADOR: mesmos ícones das pills dele
+    weak = "status_weak_self", vulnerable = "status_vulnerable_self",
+    frail = "status_frail",
     poison = "status_poison", burn = "status_burn",
 }
 
@@ -309,6 +314,9 @@ function EnemyHud.flashIntent()
 end
 
 local ICON_SIZE = 34   -- era 24 — pequeno demais pra ler de relance
+-- O set de intents (Out/2026, v2) é desenhado NATIVO em 32x32: computeScale
+-- (32, 34) = 1, pixel 1:1. PNG maior que o alvo é reduzido por nearest
+-- fracionário e o pixel picota — foi o defeito do set v1 (64px → 0.53).
 
 -- Geometria do box (pura): largura do conteúdo = ícone + número + extras.
 local function intentBoxGeom(spec)
