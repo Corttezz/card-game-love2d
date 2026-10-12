@@ -1597,27 +1597,6 @@ local function doRewards(game)
             game.economySystem.currentGold)
     end
 
-    -- ESPOLIO DO CHEFE (Out/2026): depois da carta do chefe do ATO, 1 de 3
-    -- coringas raros (CardRewardScreen, modo de vitrine "boss_relic").
-    local cn = game.runManager.currentRun and game.runManager.currentRun.currentNode
-    if cn and cn.type == "boss" then
-        game.shopSystem:setMode("boss_relic")
-        primeShopContext(game)
-        game.shopSystem:generateOffers()
-        local ids, byId = {}, {}
-        for _, o in ipairs(game.shopSystem:getCurrentOffers()) do
-            recOffer(o.id)
-            ids[#ids + 1] = o.id; byId[o.id] = o
-        end
-        local pickId = (#ids > 0) and (v6Build() and M.pickBySim(game, ids) or ids[1]) or nil
-        if not pickId and #ids > 0 then pickId = ids[1] end -- coringa: sempre vale (bancada)
-        if pickId then
-            game:addCardToRun(pickId)
-            log("- Espolio do chefe: peguei **%s** (%s)", byId[pickId].name,
-                byId[pickId].rarity or "?")
-            optimizeJokerBench(game, "espolio")
-        end
-    end
 end
 
 -- ============================================================

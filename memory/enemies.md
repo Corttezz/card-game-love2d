@@ -1,6 +1,6 @@
 ---
 name: Inimigos — roster por ato, kit de golpes, chefes com mecânica
-description: Out/2026. Cada criatura tem KIT próprio (src/data/enemies.lua): golpes nomeados, multi-golpe, perfurante, debuffs NO jogador (Fraco/Frágil/Vulnerável/Veneno/Queimadura), carga, invocação, fases. Roster por ato sorteado no stream "enemy" sem repetir; espólio de coringa raro depois do chefe.
+description: Out/2026. Cada criatura tem KIT próprio (src/data/enemies.lua): golpes nomeados, multi-golpe, perfurante, debuffs NO jogador (Fraco/Frágil/Vulnerável/Veneno/Queimadura), carga, invocação, fases. Roster por ato SÓ do bioma (HOME_BIOME), sorteado no stream "enemy" sem repetir. Sem espólio extra de coringa depois do chefe (decisão do dono).
 type: project
 ---
 
@@ -26,7 +26,6 @@ coringa raro depois do chefe.
 | execução (beats) | `Game:enemyTurn` + `_pushEnemyTurnTail` + `_announcePhaseIfPending` |
 | HUD | `EnemyHud.intentSpec` (fonte única do número, ícones extras e tooltip) |
 | textos | `src/i18n/locales/enemy_kit/<loc>.lua`, plugado no locale como `enemy_kit = require(...)` |
-| espólio do chefe | `ShopSystem` modo `boss_relic` + `CardRewardScreen` (`bossRelic`, `run.bossRelicPending`) |
 | trava | `tools/test_enemies.lua` |
 
 ## Regras que não podem quebrar
@@ -64,23 +63,27 @@ coringa raro depois do chefe.
 | 2 | tower_lich | **Escudo de Gelo** a cada 3º turno (bloqueio grande + Frágil); drena (Frágil + cura) |
 | 3 | abyss_tyrant | **Reunir Chamas** (carga, a cada 3) força **Fogo Infernal** ×2,4 + Queimadura no turno seguinte |
 | 4 | winter_monarch | **Lâmina do Inverno** perfura o Bloqueio; **Inverno Eterno** a cada 3 (Frágil + Fraco) |
-| 5 | rot_colossus | Regeneração passiva 3%/turno (`regen`, beat `enemy.regen`); **Nuvem Pestilenta** envenena o jogador |
+| 5 | rot_colossus | Regeneração passiva 2%/turno (`regen`, beat `enemy.regen`); **Nuvem Pestilenta** envenena o jogador |
 | 6 | eclipse_queen | abaixo de 50% vira o **ECLIPSE** (beat `enemy.phase`, kit novo, dano ×1,3, abre com Eclipse Total) |
 
-## Espólio do chefe
+## Sem espólio extra no chefe (decisão do dono, Out/2026)
 
-Fechar a recompensa de carta do CHEFE DO ATO (não o mini-chefe) reabre a mesma
-tela como espólio: 1 de 3 coringas raros/lendários da classe ou neutros, que a
-run ainda não possui, grátis, pular permitido. A marca `run.bossRelicPending`
-viaja no save: Continuar no meio do espólio volta nele (a chave da vitrine no
-save é por modo — `boss_relic` — então a carta já escolhida nunca re-sorteia).
+Existiu por algumas horas um "1 de 3 coringas raros" depois da carta do chefe.
+O dono mandou tirar: *"escolher coringa depois do chefe é forte demais; o
+objetivo é que montar o deck perfeito seja difícil"*. Chefe paga o normal
+(ouro + recompensa de carta). Não reintroduzir.
 
-## Sprites emprestados (interino)
+## Roster = só o bioma do ato
 
-Até a frente `inimigos-arte` entregar arte nova, cada ato completa o pool com
-sprites de outros atos onde o tema casa (ver `ROSTER`). Trocar = editar o
-`ROSTER` + escrever o kit do id novo (o teste exige kit, nome nos 5 idiomas e
-pasta do sprite).
+Regra do dono: nenhum monstro fora do bioma em que aparece (o roster interino
+emprestava sprites entre atos e isso foi notado jogando). Cada ato: os 3
+originais (comum/elite/chefe) + 4 da leva nova da frente `inimigos-arte`
+(2 comuns, 1 elite, 1 mini-chefe próprio). `Enemies.HOME_BIOME` declara o
+bioma de cada criatura À PARTE do `ROSTER`; `test_enemies` exige que toda
+entrada do roster seja do bioma do ato, e que no endless o bioma do inimigo
+seja o mesmo que a cena desenha (fórmula `4 + floor((andar-25)/8)` do
+GameplayScene, embrulhada em 6). Criatura nova = sprite + `HOME_BIOME` + kit
++ nome dos golpes nos 5 `enemy_kit` locales.
 
 ## Ferramentas
 

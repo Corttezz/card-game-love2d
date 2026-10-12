@@ -78,6 +78,34 @@ function M.run()
             for _, id in ipairs(list) do seenIds[id] = true end
         end
     end
+    -- REGRA DO DONO (Out/2026): só criatura DO BIOMA do ato. Emprestar sprite
+    -- de outro ato fazia aparecer "monstros sem relação com o bioma".
+    local foreign = {}
+    for act = 1, 6 do
+        for nt, list in pairs(EnemyKits.ROSTER[act]) do
+            for _, id in ipairs(list) do
+                if EnemyKits.HOME_BIOME[id] ~= act then
+                    foreign[#foreign + 1] = ("A%d.%s=%s(bioma %s)"):format(act, nt, id,
+                        tostring(EnemyKits.HOME_BIOME[id]))
+                end
+            end
+        end
+    end
+    t:eq("todo inimigo do roster pertence ao bioma do ato", table.concat(foreign, ","), "")
+    -- Endless: o bioma do inimigo é o MESMO que a cena desenha (fórmula do
+    -- GameplayScene: 4 + floor((andar - 25) / 8), embrulhado em 6).
+    local endlessOk = true
+    for floor = 25, 120 do
+        local shown = (((4 + math.floor((floor - 25) / 8)) - 1) % 6) + 1
+        local run = { endlessMode = true, actNumber = 7, currentFloor = floor }
+        local act = EnemyRoster.biomeAct(run)
+        if act ~= shown then endlessOk = false end
+        TK.seedRng(floor)
+        local id = EnemyRoster.pick(act, "battle", nil)
+        if EnemyKits.HOME_BIOME[id] ~= shown then endlessOk = false end
+    end
+    t:truthy("endless: inimigo do bioma que a cena mostra (andares 25-120)", endlessOk)
+
     local missingKit, missingSprite = {}, {}
     for id in pairs(seenIds) do
         if not EnemyKits.KITS[id] then missingKit[#missingKit + 1] = id end
@@ -229,10 +257,14 @@ function M.run()
         local poison = q:tickDebuffDots()
         t:eq("veneno no jogador tica as pilhas", poison, 4)
         t:eq("veneno ignora o Bloqueio", q.health, q.maxHealth - 4)
+        -- DoT no jogador: pilhas SOMAM, duração fica a MAIOR (não compõe).
+        q:addDebuff("poison", 1, 2)
+        t:eq("2º veneno soma pilhas", q:getDebuffStacks("poison"), 6)
+        t:eq("2º veneno não soma duração (fica a maior)", q.debuffs[1].duration, 2)
     end
     do
         -- Integração: carta de ataque com o jogador Fraco causa 75%.
-        local g = battleWith("grave_slime", "slime_crush", 500, 5)
+        local g = battleWith("cursed_scarecrow", "rusty_scythe", 500, 5)
         g.player:addDebuff("weak", 2)
         local hp0 = g.enemy.health
         local card = { id = "t_weak", type = "attack", attack = 20, cost = 0, effects = {} }
@@ -292,10 +324,13 @@ function M.run()
         local run3 = { actNumber = 3, recentEnemies = { "ember_imp" } }
         local nodes = { { type = "battle" }, { type = "elite" }, { type = "rest" } }
         EnemyRoster.assignNodes(run3, nodes)
-        t:eq("nó de batalha não repete o último inimigo", nodes[1].enemyId, "dusk_shade")
-        t:eq("nó de elite recebe o elite do ato", nodes[2].enemyId, "obsidian_sentinel")
+        t:check("nó de batalha não repete o último inimigo",
+            nodes[1].enemyId ~= "ember_imp" and EnemyKits.HOME_BIOME[nodes[1].enemyId] == 3)
+        t:check("nó de elite recebe um elite do ato",
+            nodes[2].enemyId == "obsidian_sentinel" or nodes[2].enemyId == "pit_brute")
         t:eq("nó sem combate fica sem inimigo", nodes[3].enemyId, nil)
-        t:eq("resolveNode lê o inimigo gravado", EnemyRoster.resolveNode(run3, nodes[1]), "dusk_shade")
+        t:eq("resolveNode lê o inimigo gravado", EnemyRoster.resolveNode(run3, nodes[1]),
+            nodes[1].enemyId)
     end
 
     -- ======================================================================
@@ -328,7 +363,14 @@ function M.run()
         CombatBeats.stopTrace()
         t:eq("carga tem beat próprio", traceCount("enemy.charge"), 1)
         t:eq("depois da carga vem o Fogo Infernal", g.enemy:getIntent().id, "hellfire")
-        t:check("Fogo Infernal é o maior golpe (×2.4)", g.enemy:getIntent().perHit >= math.floor(10 * 2.4))
+        local hellMult, maxOther = 0, 0
+        for _, m in ipairs(EnemyKits.KITS.abyss_tyrant.moves) do
+            if m.id == "hellfire" then hellMult = m.mult
+            elseif (m.mult or 0) * (m.hits or 1) > maxOther then maxOther = (m.mult or 0) * (m.hits or 1) end
+        end
+        t:eq("Fogo Infernal anunciado com o multiplicador do kit",
+            g.enemy:getIntent().perHit, math.floor(10 * hellMult))
+        t:check("Fogo Infernal é o maior golpe do Tirano", hellMult > maxOther)
         runEnemyTurn(g)
         t:check("Fogo Infernal queima o jogador", g.player:getDebuffStacks("burn") > 0)
     end
@@ -347,8 +389,10 @@ function M.run()
         t:truthy("Colosso nasce com Regeneração", g.enemy:hasStatus("regen"))
         g.enemy.health = 500
         runEnemyTurn(g)
-        t:eq("Colosso regenera 3% no fim do turno", g.enemy.health, 500 + math.floor(1000 * 0.03))
-        t:check("Nuvem Pestilenta envenena o jogador", g.player:getDebuffStacks("poison") >= 5)
+        local pct = EnemyKits.KITS.rot_colossus.passive.regenPct
+        t:eq("Colosso regenera a fração do kit no fim do turno", g.enemy.health,
+            500 + math.floor(1000 * pct))
+        t:check("Nuvem Pestilenta envenena o jogador", g.player:getDebuffStacks("poison") >= 4)
     end
     do
         -- A6 Rainha: abaixo de 50% vira o ECLIPSE (beat, kit novo, dano sobe).
@@ -371,54 +415,6 @@ function M.run()
             if m.id == g.enemy:getIntent().id then inPhase2 = true end
         end
         t:truthy("golpes seguintes vêm do kit da fase 2", inPhase2)
-    end
-
-    -- ======================================================================
-    -- 6b. ESPÓLIO DO CHEFE: 1 de 3 coringas raros depois da carta
-    -- ======================================================================
-    do
-        local CardRewardScreen = require("components.CardRewardScreen")
-        local CardDatabase = require("src.systems.CardDatabase")
-        TK.seedRng(31337)
-        local game = TK.newRunGame("warrior")
-        local run = game.runManager.currentRun
-        run.currentNode = { type = "boss" }
-        run.mapHistory = { { actNumber = 1, floorInAct = 8, type = "boss" } }
-        local ownedId = "warrior_bastion"
-        game:addJokerToRun(ownedId)
-        local finished = false
-        local screen = CardRewardScreen:new(game.shopSystem)
-        screen:show(game, nil, function() finished = true end, "rewards")
-        t:falsy("1ª passada do chefe é a CARTA (não o espólio)", screen.bossRelic)
-        -- Fechar a recompensa (pulando) abre o espólio.
-        screen.onSkipped()
-        t:truthy("fechar a carta abre o espólio do chefe", screen.bossRelic)
-        t:truthy("marca do espólio viaja na run (Continuar)", run.bossRelicPending)
-        local okJokers, n = true, 0
-        for _, o in ipairs(screen.shopOffers) do
-            n = n + 1
-            local cd = CardDatabase:getCard(o.id)
-            if not cd or cd.type ~= "joker" or (cd.rarity ~= "rare" and cd.rarity ~= "legendary")
-                or o.id == ownedId or o.cost ~= 0 then
-                okJokers = false
-            end
-        end
-        t:eq("espólio oferece 3 coringas", n, 3)
-        t:truthy("só raros/lendários, grátis, nunca um já possuído", okJokers)
-        -- Continuar no meio do espólio: reabre o espólio (não a carta).
-        local screen2 = CardRewardScreen:new(game.shopSystem)
-        screen2:show(game, nil, function() finished = true end, "rewards")
-        t:truthy("Continuar no meio do espólio volta nele", screen2.bossRelic)
-        screen2.onSkipped()
-        t:truthy("fechar o espólio segue o fluxo", finished)
-        t:falsy("marca do espólio limpa", run.bossRelicPending)
-        -- Mini-chefe NÃO tem espólio.
-        run.currentNode = { type = "mini_boss" }
-        local screen3 = CardRewardScreen:new(game.shopSystem)
-        local done3 = false
-        screen3:show(game, nil, function() done3 = true end, "rewards")
-        screen3.onSkipped()
-        t:truthy("mini-chefe: fechar a carta segue direto", done3 and not screen3.bossRelic)
     end
 
     -- ======================================================================

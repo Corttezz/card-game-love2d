@@ -53,37 +53,68 @@
 local Enemies = {}
 
 -- ── ROSTER POR ATO ──────────────────────────────────────────────────────────
--- Cada ato: 2+ comuns, 1+ elite, mini-chefe DISTINTO do elite, 1 chefe.
+-- Cada ato: 3 comuns, 2 elites, mini-chefe DISTINTO dos elites, 1 chefe.
 -- Sorteio pelo stream "enemy", sem repetir o último inimigo enfrentado.
--- Sprites emprestados de outros atos só onde o tema casa, até chegarem os
--- novos (frente "inimigos-arte"): a gosma e o carniçal nas catacumbas, o
--- golem de pedra e o espectro na torre, a sombra no abismo.
+-- REGRA (dono, Out/2026): só criatura DO BIOMA do ato — nada de emprestar
+-- sprite de outro ato ("monstros sem relação com o bioma"). A fonte da
+-- pertença é HOME_BIOME abaixo; test_enemies cruza as duas tabelas.
 Enemies.ROSTER = {
-    [1] = { battle = { "cursed_scarecrow", "grave_slime" },
-            elite = { "harvest_reaper" },
-            mini_boss = { "bog_ghoul" },
+    [1] = { battle = { "cursed_scarecrow", "hollow_farmer", "plague_rats" },
+            elite = { "harvest_reaper", "blight_bull" },
+            mini_boss = { "wicker_effigy" },
             boss = { "carrion_king" } },
-    [2] = { battle = { "moon_gargoyle", "stone_golem" },
-            elite = { "rune_golem" },
-            mini_boss = { "abyss_wraith" },
+    [2] = { battle = { "moon_gargoyle", "ram_cultist", "storm_harpy" },
+            elite = { "rune_golem", "spectral_knight" },
+            mini_boss = { "storm_griffin" },
             boss = { "tower_lich" } },
-    [3] = { battle = { "ember_imp", "dusk_shade" },
-            elite = { "obsidian_sentinel" },
-            mini_boss = { "blood_duke" },
+    [3] = { battle = { "ember_imp", "hellhound", "abyss_acolyte" },
+            elite = { "obsidian_sentinel", "pit_brute" },
+            mini_boss = { "abyss_watcher" },
             boss = { "abyss_tyrant" } },
-    [4] = { battle = { "frost_wight", "stone_golem" },
-            elite = { "glacier_knight" },
-            mini_boss = { "moon_gargoyle" },
+    [4] = { battle = { "frost_wight", "frost_wolf", "rime_shaman" },
+            elite = { "glacier_knight", "frost_troll" },
+            mini_boss = { "ice_wyrm" },
             boss = { "winter_monarch" } },
-    [5] = { battle = { "bog_ghoul", "grave_slime" },
-            elite = { "mire_hag" },
-            mini_boss = { "harvest_reaper" },
+    [5] = { battle = { "bog_ghoul", "plague_toad", "leech_horror" },
+            elite = { "mire_hag", "croc_warrior" },
+            mini_boss = { "spore_mother" },
             boss = { "rot_colossus" } },
-    [6] = { battle = { "dusk_shade", "abyss_wraith" },
-            elite = { "blood_duke" },
-            mini_boss = { "obsidian_sentinel" },
+    [6] = { battle = { "dusk_shade", "dusk_bat", "grave_thrall" },
+            elite = { "blood_duke", "dullahan" },
+            mini_boss = { "fallen_angel" },
             boss = { "eclipse_queen" } },
 }
+
+-- Bioma de ORIGEM de cada criatura (o ato cuja arte/cenário ela habita).
+-- Declarado à parte do ROSTER de propósito: é o que impede o "empréstimo".
+Enemies.HOME_BIOME = {
+    cursed_scarecrow = 1, hollow_farmer = 1, plague_rats = 1, harvest_reaper = 1,
+    blight_bull = 1, wicker_effigy = 1, carrion_king = 1,
+    moon_gargoyle = 2, ram_cultist = 2, storm_harpy = 2, rune_golem = 2,
+    spectral_knight = 2, storm_griffin = 2, tower_lich = 2,
+    ember_imp = 3, hellhound = 3, abyss_acolyte = 3, obsidian_sentinel = 3,
+    pit_brute = 3, abyss_watcher = 3, abyss_tyrant = 3,
+    frost_wight = 4, frost_wolf = 4, rime_shaman = 4, glacier_knight = 4,
+    frost_troll = 4, ice_wyrm = 4, winter_monarch = 4,
+    bog_ghoul = 5, plague_toad = 5, leech_horror = 5, mire_hag = 5,
+    croc_warrior = 5, spore_mother = 5, rot_colossus = 5,
+    dusk_shade = 6, dusk_bat = 6, grave_thrall = 6, blood_duke = 6,
+    dullahan = 6, fallen_angel = 6, eclipse_queen = 6,
+}
+
+-- ── ESCALA DE DANO POR ATO (calibrada pela bateria do piloto, Out/2026) ─────
+-- As curvas de dano do Config.Acts foram afinadas para o kit ANTIGO, cujo
+-- golpe médio valia ~0,76× o dano base (50% ataque, 16% forte ×1,6, resto
+-- sem dano). Os kits batem em média ~1,0–1,1× e ainda debuffam — sem esta
+-- escala o guerreiro do piloto caiu de 60% para 15% de vitória (morrendo nos
+-- chefes dos atos 3-4). O começo SOBE um pouco de propósito: a auditoria
+-- mediu 0,0–0,2 de dano sofrido por turno nos atos 1-2 (zero tensão).
+Enemies.DAMAGE_SCALE_BY_ACT = { 1.15, 1.10, 0.92, 0.88, 0.84, 0.84 }
+
+-- Chefes por cima da escala do ato: a mecânica-assinatura (carga, perfurante,
+-- revoada, peste, eclipse) já é o perigo — com o dano cheio, os chefes dos
+-- atos 4-6 respondiam por ~2/3 das mortes do piloto (bateria v4, Out/2026).
+Enemies.BOSS_DAMAGE_SCALE = 0.90
 
 -- ── KITS ────────────────────────────────────────────────────────────────────
 local W, F, V = "weak", "frail", "vulnerable"
@@ -109,18 +140,6 @@ Enemies.KITS = {
             { id = "dread_stare",  kind = "attack", weight = 15, mult = 0.6,
               debuff = { name = W, duration = 2 }, maxRow = 1 },
             { id = "straw_wall",   kind = "defend", weight = 15, armor = 1.0, maxRow = 1 },
-        },
-    },
-    grave_slime = {
-        hpMul = 1.3, dmgMul = 0.85,
-        opener = "acid_spit",
-        moves = {
-            { id = "slime_crush", kind = "attack", weight = 40, mult = 1.1 },
-            { id = "acid_spit",   kind = "attack", weight = 30, mult = 0.7,
-              debuff = { name = F, duration = 2 }, maxRow = 1 },
-            { id = "swell",       kind = "buff",   weight = 15, strength = 0.25,
-              armor = 0.6, maxRow = 1 },
-            { id = "ooze_split",  kind = "multi",  weight = 15, mult = 0.4, hits = 3 },
         },
     },
     harvest_reaper = {
@@ -174,18 +193,6 @@ Enemies.KITS = {
               debuff = { name = W, duration = 2 }, maxRow = 1 },
         },
     },
-    stone_golem = {
-        hpMul = 1.35, dmgMul = 0.9,
-        moves = {
-            { id = "stone_fist",  kind = "attack", weight = 40, mult = 1.1 },
-            { id = "stone_wall",  kind = "defend", weight = 20, armor = 1.4, maxRow = 1 },
-            { id = "gather_mass", kind = "charge", weight = 25, armor = 0.6,
-              next = "crushing_blow", maxRow = 1, minTurn = 2 },
-            { id = "crushing_blow", kind = "strong", weight = 0, mult = 2.2 },
-            { id = "tremor",      kind = "multi",  weight = 15, mult = 0.35, hits = 3,
-              debuff = { name = F, duration = 1 } },
-        },
-    },
     rune_golem = {
         hpMul = 1.1,
         opener = "rune_ward",
@@ -197,19 +204,6 @@ Enemies.KITS = {
             { id = "slam",       kind = "attack", weight = 30, mult = 1.2 },
         },
     },
-    abyss_wraith = {
-        hpMul = 0.95, dmgMul = 1.05,
-        opener = "wail",
-        moves = {
-            { id = "chill_touch", kind = "attack", weight = 35, mult = 0.9,
-              debuff = { name = F, duration = 2 } },
-            { id = "wail",        kind = "debuff", weight = 20,
-              debuff = { { name = W, duration = 2 }, { name = V, duration = 1 } },
-              maxRow = 1 },
-            { id = "life_drain",  kind = "attack", weight = 25, mult = 1.0, heal = 0.08 },
-            { id = "phantom_slash", kind = "multi", weight = 20, mult = 0.4, hits = 3 },
-        },
-    },
     -- CHEFE A2 — escudo de gelo a cada 3º turno (a janela de burst é o turno
     -- SEGUINTE, quando o escudo cai) e drena: Fragilidade + cura.
     tower_lich = {
@@ -219,7 +213,7 @@ Enemies.KITS = {
               debuff = { name = F, duration = 2 }, every = 3 },
             { id = "essence_drain", kind = "attack", weight = 35, mult = 0.8,
               heal = 0.06, debuff = { name = F, duration = 2 } },
-            { id = "necrotic_ray",  kind = "strong", weight = 35, mult = 1.4 },
+            { id = "necrotic_ray",  kind = "strong", weight = 35, mult = 1.3 },
             { id = "bone_volley",   kind = "multi",  weight = 30, mult = 0.4, hits = 4 },
         },
     },
@@ -277,11 +271,11 @@ Enemies.KITS = {
         moves = {
             { id = "gather_flames", kind = "charge", weight = 0, armor = 1.0,
               next = "hellfire", every = 3 },
-            { id = "hellfire",      kind = "strong", weight = 0, mult = 2.4,
-              debuff = { name = "burn", stacks = 4, duration = 3 } },
+            { id = "hellfire",      kind = "strong", weight = 0, mult = 2.0,
+              debuff = { name = "burn", stacks = 3, duration = 2 } },
             { id = "abyssal_claws", kind = "attack", weight = 50, mult = 1.1 },
             { id = "cinder_spray",  kind = "multi",  weight = 50, mult = 0.4, hits = 3,
-              debuff = { name = "burn", stacks = 2, duration = 2 } },
+              debuff = { name = "burn", stacks = 2, duration = 1 } },
         },
     },
 
@@ -314,7 +308,7 @@ Enemies.KITS = {
             { id = "eternal_winter", kind = "debuff", weight = 0, armor = 1.2,
               debuff = { { name = F, duration = 2 }, { name = W, duration = 2 } },
               every = 3 },
-            { id = "winter_blade",   kind = "strong", weight = 40, mult = 0.85, pierce = true },
+            { id = "winter_blade",   kind = "strong", weight = 40, mult = 0.7, pierce = true },
             { id = "royal_blizzard", kind = "multi",  weight = 35, mult = 0.4, hits = 4 },
             { id = "frozen_crown",   kind = "attack", weight = 25, mult = 1.2 },
         },
@@ -339,15 +333,15 @@ Enemies.KITS = {
     -- longa é dele.
     rot_colossus = {
         hpMul = 1.0,
-        passive = { regenPct = 0.03 },
+        passive = { regenPct = 0.02 },
         opener = "plague_cloud",
         moves = {
             { id = "plague_cloud", kind = "debuff", weight = 25,
-              debuff = { name = "poison", stacks = 5, duration = 3 }, maxRow = 1 },
-            { id = "colossal_slam", kind = "strong", weight = 30, mult = 1.5 },
+              debuff = { name = "poison", stacks = 4, duration = 3 }, maxRow = 1 },
+            { id = "colossal_slam", kind = "strong", weight = 30, mult = 1.35 },
             { id = "putrid_blow",  kind = "attack", weight = 30, mult = 1.0,
               debuff = { name = "poison", stacks = 3, duration = 2 } },
-            { id = "regrow",       kind = "heal",   weight = 15, heal = 0.07,
+            { id = "regrow",       kind = "heal",   weight = 15, heal = 0.05,
               armor = 0.8, maxRow = 1, minTurn = 2 },
         },
     },
@@ -364,17 +358,283 @@ Enemies.KITS = {
             { id = "veil",         kind = "defend", weight = 30, armor = 1.3, maxRow = 1 },
         },
         phases = {
-            { at = 0.5, id = "eclipse", dmgMul = 1.3, opener = "total_eclipse",
+            { at = 0.5, id = "eclipse", dmgMul = 1.15, opener = "total_eclipse",
               moves = {
                   { id = "total_eclipse", kind = "debuff", weight = 0,
                     debuff = { { name = W, duration = 2 }, { name = F, duration = 2 },
                                { name = V, duration = 1 } } },
-                  { id = "black_corona",  kind = "strong", weight = 35, mult = 1.0,
+                  { id = "black_corona",  kind = "strong", weight = 35, mult = 0.7,
                     pierce = true },
-                  { id = "star_rain",     kind = "multi",  weight = 35, mult = 0.45, hits = 4 },
+                  { id = "star_rain",     kind = "multi",  weight = 35, mult = 0.4, hits = 3 },
                   { id = "void_embrace",  kind = "attack", weight = 30, mult = 1.3,
                     heal = 0.05 },
               } },
+        },
+    },
+
+    -- ===================== CRIATURAS NOVAS (Out/2026, frente inimigos-arte) =====================
+    -- A silhueta já anuncia o golpe: o kit segue o conceito que veio com a arte.
+
+    -- ATO 1 — CAMPOS
+    hollow_farmer = {   -- camponês oco: ergue o forcado um turno e crava no seguinte
+        moves = {
+            { id = "pitchfork_jab",    kind = "attack", weight = 40, mult = 1.1 },
+            { id = "wind_up",          kind = "charge", weight = 25, armor = 0.5,
+              next = "pitchfork_skewer", maxRow = 1, minTurn = 2 },
+            { id = "pitchfork_skewer", kind = "strong", weight = 0, mult = 2.0 },
+            { id = "hunker",           kind = "defend", weight = 15, armor = 1.0, maxRow = 1 },
+            { id = "dread_stare",      kind = "attack", weight = 20, mult = 0.6,
+              debuff = { name = W, duration = 2 }, maxRow = 1 },
+        },
+    },
+    plague_rats = {     -- ninhada: muitas mordidas fracas + peste
+        hpMul = 0.9,
+        opener = "infected_bite",
+        moves = {
+            { id = "gnaw",          kind = "multi",  weight = 40, mult = 0.35, hits = 3 },
+            { id = "infected_bite", kind = "attack", weight = 30, mult = 0.6,
+              debuff = { name = "poison", stacks = 3, duration = 2 }, maxRow = 1 },
+            { id = "swarm_over",    kind = "multi",  weight = 15, mult = 0.25, hits = 5 },
+            { id = "scatter",       kind = "defend", weight = 15, armor = 0.8, maxRow = 1 },
+        },
+    },
+    blight_bull = {     -- touro podre: couro grosso e investida
+        hpMul = 1.15,
+        opener = "bellow",
+        moves = {
+            { id = "gore",        kind = "strong", weight = 30, mult = 1.6 },
+            { id = "rotten_hide", kind = "attack", weight = 25, mult = 0.7, armor = 1.3, maxRow = 1 },
+            { id = "trample",     kind = "multi",  weight = 25, mult = 0.5, hits = 2 },
+            { id = "bellow",      kind = "buff",   weight = 20, strength = 0.2, maxRow = 1 },
+        },
+    },
+    wicker_effigy = {   -- gigante de vime em brasa: queima e se atiça
+        opener = "kindle",
+        moves = {
+            { id = "ember_lash",   kind = "attack", weight = 35, mult = 0.8,
+              debuff = { name = "burn", stacks = 3, duration = 2 } },
+            { id = "kindle",       kind = "buff",   weight = 20, strength = 0.25, maxRow = 1 },
+            { id = "wicker_crush", kind = "strong", weight = 25, mult = 1.5 },
+            { id = "smoke_screen", kind = "defend", weight = 20, armor = 1.2, maxRow = 1 },
+        },
+    },
+
+    -- ATO 2 — PLANALTOS
+    ram_cultist = {     -- cultista do incensário: enfraquece e expõe
+        opener = "dark_hymn",
+        moves = {
+            { id = "dark_hymn",    kind = "debuff", weight = 25,
+              debuff = { { name = W, duration = 2 }, { name = V, duration = 1 } }, maxRow = 1 },
+            { id = "censer_swing", kind = "attack", weight = 40, mult = 1.1 },
+            { id = "brand",        kind = "attack", weight = 20, mult = 0.6,
+              debuff = { name = V, duration = 2 }, maxRow = 1 },
+            { id = "prayer",       kind = "heal",   weight = 15, heal = 0.08, armor = 0.6,
+              maxRow = 1, minTurn = 2 },
+        },
+    },
+    storm_harpy = {     -- garras à frente: duas, três garradas
+        hpMul = 0.9,
+        moves = {
+            { id = "talon_flurry", kind = "multi",  weight = 45, mult = 0.4, hits = 3 },
+            { id = "dive",         kind = "strong", weight = 25, mult = 1.6 },
+            { id = "screech",      kind = "debuff", weight = 15,
+              debuff = { name = W, duration = 2 }, maxRow = 1 },
+            { id = "gust",         kind = "defend", weight = 15, armor = 0.9, maxRow = 1 },
+        },
+    },
+    spectral_knight = { -- escudo-torre: bloqueio alto e contra-golpe
+        hpMul = 1.1,
+        opener = "tower_shield",
+        moves = {
+            { id = "tower_shield",   kind = "defend", weight = 25, armor = 1.8, maxRow = 1 },
+            { id = "riposte",        kind = "attack", weight = 30, mult = 0.8, armor = 1.0 },
+            { id = "spectral_lance", kind = "strong", weight = 25, mult = 0.9, pierce = true },
+            { id = "ghost_charge",   kind = "strong", weight = 20, mult = 1.5 },
+        },
+    },
+    storm_griffin = {   -- grifo da tempestade: rajada de garras e trovão
+        opener = "thunder_roar",
+        moves = {
+            { id = "lightning_talons", kind = "multi",  weight = 35, mult = 0.45, hits = 3 },
+            { id = "thunder_roar",     kind = "buff",   weight = 20, strength = 0.25,
+              armor = 0.6, maxRow = 1 },
+            { id = "storm_dive",       kind = "strong", weight = 30, mult = 1.6 },
+            { id = "static_shock",     kind = "attack", weight = 15, mult = 0.6,
+              debuff = { name = W, duration = 1 } },
+        },
+    },
+
+    -- ATO 3 — ABISMO
+    hellhound = {       -- duas cabeças: duas mordidas e bafo de brasa
+        hpMul = 0.95,
+        moves = {
+            { id = "twin_bite",       kind = "multi",  weight = 45, mult = 0.55, hits = 2 },
+            { id = "hellfire_breath", kind = "attack", weight = 30, mult = 0.7,
+              debuff = { name = "burn", stacks = 3, duration = 2 }, maxRow = 1 },
+            { id = "howl",            kind = "buff",   weight = 15, strength = 0.2, maxRow = 1 },
+            { id = "pounce",          kind = "strong", weight = 10, mult = 1.4 },
+        },
+    },
+    abyss_acolyte = {   -- acólito do tomo: amaldiçoa e se fortalece
+        opener = "curse",
+        moves = {
+            { id = "curse",     kind = "debuff", weight = 25,
+              debuff = { { name = W, duration = 2 }, { name = F, duration = 2 } }, maxRow = 1 },
+            { id = "void_bolt", kind = "attack", weight = 35, mult = 1.1 },
+            { id = "dark_pact", kind = "buff",   weight = 20, strength = 0.25, heal = 0.05,
+              maxRow = 1 },
+            { id = "tome_slam", kind = "attack", weight = 20, mult = 0.8, armor = 0.8 },
+        },
+    },
+    pit_brute = {       -- marreta: ergue um turno, desaba no outro
+        hpMul = 1.15,
+        moves = {
+            { id = "raise_hammer", kind = "charge", weight = 25, armor = 0.8,
+              next = "hammer_fall", maxRow = 1 },
+            { id = "hammer_fall",  kind = "strong", weight = 0, mult = 2.2 },
+            { id = "chain_lash",   kind = "multi",  weight = 40, mult = 0.4, hits = 3 },
+            { id = "brute_punch",  kind = "attack", weight = 35, mult = 1.1 },
+        },
+    },
+    abyss_watcher = {   -- massa de sete olhos: loucura e raio
+        opener = "gaze_of_madness",
+        moves = {
+            { id = "gaze_of_madness", kind = "debuff", weight = 25,
+              debuff = { { name = W, duration = 2 }, { name = V, duration = 1 },
+                         { name = F, duration = 1 } }, maxRow = 1 },
+            { id = "eye_ray",         kind = "strong", weight = 30, mult = 1.0, pierce = true },
+            { id = "tentacle_lash",   kind = "multi",  weight = 30, mult = 0.35, hits = 4 },
+            { id = "blink",           kind = "defend", weight = 15, armor = 1.2, maxRow = 1 },
+        },
+    },
+
+    -- ATO 4 — CIDADELA GELADA
+    frost_wolf = {      -- matilha: mordidas rápidas
+        hpMul = 0.9,
+        moves = {
+            { id = "frost_fangs", kind = "multi",  weight = 45, mult = 0.4, hits = 3 },
+            { id = "lunge",       kind = "attack", weight = 35, mult = 1.2 },
+            { id = "pack_howl",   kind = "buff",   weight = 20, strength = 0.2, maxRow = 1 },
+        },
+    },
+    rime_shaman = {     -- xamã do totem: enfraquece e se protege
+        opener = "chill_hex",
+        moves = {
+            { id = "chill_hex", kind = "attack", weight = 30, mult = 0.6,
+              debuff = { name = W, duration = 2 }, maxRow = 1 },
+            { id = "ice_totem", kind = "defend", weight = 25, armor = 1.3, maxRow = 1 },
+            { id = "frost_bolt", kind = "attack", weight = 35, mult = 1.1 },
+            { id = "blizzard",  kind = "multi",  weight = 10, mult = 0.35, hits = 3 },
+        },
+    },
+    frost_troll = {     -- troll das neves: aguenta e regenera
+        hpMul = 1.2,
+        passive = { regenPct = 0.02 },
+        moves = {
+            { id = "club_smash", kind = "strong", weight = 35, mult = 1.5 },
+            { id = "troll_hide", kind = "attack", weight = 25, mult = 0.6, armor = 1.4, maxRow = 1 },
+            { id = "maul",       kind = "multi",  weight = 25, mult = 0.5, hits = 2 },
+            { id = "regenerate", kind = "heal",   weight = 15, heal = 0.08, maxRow = 1, minTurn = 2 },
+        },
+    },
+    ice_wyrm = {        -- serpe: puxa o ar e sopra gelo
+        moves = {
+            { id = "deep_breath",  kind = "charge", weight = 20, armor = 0.8,
+              next = "frost_breath", maxRow = 1, minTurn = 2 },
+            { id = "frost_breath", kind = "strong", weight = 25, mult = 1.4,
+              debuff = { name = F, duration = 2 } },
+            { id = "scale_armor",  kind = "defend", weight = 20, armor = 1.6, maxRow = 1 },
+            { id = "tail_sweep",   kind = "multi",  weight = 35, mult = 0.4, hits = 3 },
+        },
+    },
+
+    -- ATO 5 — CORAÇÃO PÚTRIDO
+    plague_toad = {     -- sapo inchado: cospe veneno
+        hpMul = 1.05,
+        opener = "toxic_spit",
+        moves = {
+            { id = "toxic_spit",    kind = "attack", weight = 40, mult = 0.6,
+              debuff = { name = "poison", stacks = 3, duration = 2 }, maxRow = 1 },
+            { id = "tongue_lash",   kind = "attack", weight = 35, mult = 1.1 },
+            { id = "bloat",         kind = "defend", weight = 15, armor = 1.0, maxRow = 1 },
+            { id = "noxious_croak", kind = "debuff", weight = 10,
+              debuff = { { name = "poison", stacks = 3, duration = 2 }, { name = W, duration = 1 } },
+              maxRow = 1 },
+        },
+    },
+    leech_horror = {    -- massa de sanguessugas: drena
+        moves = {
+            { id = "life_drain",  kind = "attack", weight = 45, mult = 0.9, heal = 0.08 },
+            { id = "leech_swarm", kind = "multi",  weight = 30, mult = 0.35, hits = 3, heal = 0.04 },
+            { id = "engorge",     kind = "buff",   weight = 15, strength = 0.2, heal = 0.05, maxRow = 1 },
+            { id = "latch",       kind = "attack", weight = 10, mult = 0.6,
+              debuff = { name = W, duration = 1 } },
+        },
+    },
+    croc_warrior = {    -- homem-crocodilo: casco e mordida
+        hpMul = 1.1,
+        moves = {
+            { id = "shell_guard",   kind = "attack", weight = 30, mult = 0.6, armor = 1.5, maxRow = 1 },
+            { id = "death_roll",    kind = "strong", weight = 30, mult = 1.6 },
+            { id = "spear_thrust",  kind = "attack", weight = 30, mult = 1.1 },
+            { id = "crushing_jaws", kind = "strong", weight = 10, mult = 0.9, pierce = true },
+        },
+    },
+    spore_mother = {    -- matriarca-fungo: esporos e rebrota
+        passive = { regenPct = 0.02 },
+        opener = "spore_cloud",
+        moves = {
+            { id = "spore_cloud", kind = "debuff", weight = 25,
+              debuff = { name = "poison", stacks = 4, duration = 3 }, maxRow = 1 },
+            { id = "fungal_lash", kind = "multi",  weight = 30, mult = 0.4, hits = 3 },
+            { id = "spore_burst", kind = "attack", weight = 30, mult = 0.7,
+              debuff = { name = "poison", stacks = 2, duration = 2 } },
+            { id = "mycelium",    kind = "heal",   weight = 15, heal = 0.08, armor = 0.6,
+              maxRow = 1, minTurn = 2 },
+        },
+    },
+
+    -- ATO 6 — CORTE DO ECLIPSE
+    dusk_bat = {        -- morcego gigante: rajada que suga
+        hpMul = 0.9,
+        moves = {
+            { id = "wing_flurry", kind = "multi",  weight = 45, mult = 0.35, hits = 3, heal = 0.04 },
+            { id = "blood_bite",  kind = "attack", weight = 30, mult = 0.9, heal = 0.06 },
+            { id = "screech",     kind = "debuff", weight = 15,
+              debuff = { name = W, duration = 2 }, maxRow = 1 },
+            { id = "flutter",     kind = "defend", weight = 10, armor = 1.0, maxRow = 1 },
+        },
+    },
+    grave_thrall = {    -- esqueleto blindado: parede de escudo
+        hpMul = 1.15,
+        opener = "shield_wall",
+        moves = {
+            { id = "shield_wall", kind = "defend", weight = 25, armor = 1.6, maxRow = 1 },
+            { id = "bone_bash",   kind = "attack", weight = 35, mult = 1.1 },
+            { id = "shield_bash", kind = "attack", weight = 30, mult = 0.7, armor = 1.0 },
+            { id = "rattle",      kind = "debuff", weight = 10,
+              debuff = { name = F, duration = 2 }, maxRow = 1 },
+        },
+    },
+    dullahan = {        -- cavaleiro sem cabeça: golpes pesados e pavor
+        hpMul = 1.05,
+        opener = "dread_stare",
+        moves = {
+            { id = "headless_cleave", kind = "strong", weight = 30, mult = 1.6 },
+            { id = "dread_stare",     kind = "attack", weight = 25, mult = 0.6,
+              debuff = { name = W, duration = 2 }, maxRow = 1 },
+            { id = "ghost_charge",    kind = "strong", weight = 20, mult = 1.4 },
+            { id = "spine_whip",      kind = "multi",  weight = 25, mult = 0.45, hits = 3 },
+        },
+    },
+    fallen_angel = {    -- anjo caído: lâmina alta e asas profanas
+        opener = "unholy_wings",
+        moves = {
+            { id = "fallen_blade",  kind = "strong", weight = 30, mult = 1.6 },
+            { id = "unholy_wings",  kind = "buff",   weight = 20, strength = 0.25, armor = 0.8,
+              maxRow = 1 },
+            { id = "judgment",      kind = "strong", weight = 25, mult = 0.9, pierce = true },
+            { id = "feather_storm", kind = "multi",  weight = 25, mult = 0.4, hits = 3 },
         },
     },
 }

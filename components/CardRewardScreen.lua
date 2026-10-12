@@ -594,17 +594,10 @@ function CardRewardScreen:_run()
     return rm and rm.currentRun
 end
 
--- Modo da VITRINE (o que o ShopSystem gera e a chave do save): o espólio do
--- chefe reusa a TELA de recompensa (self.mode = "rewards", escolha 1), mas a
--- vitrine é outra — coringas — e a chave do save também.
-function CardRewardScreen:_offerMode()
-    return self.bossRelic and "boss_relic" or self.mode
-end
-
 function CardRewardScreen:_restoreOffers(run)
     local st = run and run.shopState
     if not st then return false end
-    if st.key ~= offerNodeKey(run, self:_offerMode()) then
+    if st.key ~= offerNodeKey(run, self.mode) then
         run.shopState = nil -- resíduo de outro nó
         return false
     end
@@ -619,7 +612,7 @@ function CardRewardScreen:_persistOffers(writeNow)
     local run = self:_run()
     if not run then return end
     local st = self.shopSystem:exportState()
-    st.key = offerNodeKey(run, self:_offerMode())
+    st.key = offerNodeKey(run, self.mode)
     run.shopState = st
     if writeNow and self.game.checkpointRun then self.game:checkpointRun() end
 end
@@ -641,32 +634,6 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
     -- afinidade e anti-duplicata — "as escolhas anteriores importam").
     local run = game.runManager and game.runManager.currentRun
 
-    -- ESPÓLIO DO CHEFE (Out/2026): vencido o chefe do ATO, depois da carta
-    -- vem 1 de 3 coringas raros/lendários. É a MESMA tela em segunda passada:
-    -- fechar a recompensa (pegando ou pulando) marca `bossRelicPending` e
-    -- reabre como espólio; fechar o espólio limpa a marca e segue o fluxo
-    -- original. A marca viaja no save — Continuar no meio do espólio volta
-    -- direto nele (e nunca re-sorteia a carta já escolhida).
-    self.bossRelic = false
-    local isActBoss = self.mode == "rewards" and run and run.currentNode
-        and run.currentNode.type == "boss"
-    if isActBoss and run.bossRelicPending then
-        self.bossRelic = true
-    end
-    if isActBoss then
-        local finalCb = onSkipped
-        if self.bossRelic then
-            self.onSkipped = function()
-                run.bossRelicPending = nil
-                if finalCb then finalCb() end
-            end
-        else
-            self.onSkipped = function()
-                run.bossRelicPending = true
-                self:show(game, onCardPurchased, finalCb, "rewards")
-            end
-        end
-    end
     local actNumber = (run and run.actNumber) or 1
 
     -- P0.7 (rebalance Jul/2026): elites/bosses pisam a raridade da recompensa
@@ -695,7 +662,7 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
         minRarity = minRarity,
     })
 
-    self.shopSystem:setMode(self:_offerMode())
+    self.shopSystem:setMode(self.mode)
     -- Vitrine JÁ gerada para este nó (Continuar após "Salvar e sair") volta
     -- idêntica — ofertas, VENDIDO, preços e reroll. Só gera se não houver.
     local restored = self:_restoreOffers(run)
@@ -830,9 +797,6 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
     if self.mode == "rewards" then
         -- Clareza: "Continuar" não dizia O QUE acontecia (perder a carta).
         skipLabel = I18n.t("reward.skip_no_card")
-        if self.bossRelic then
-            skipLabel = I18n.t("enemy_kit.boss_reward.skip", nil, skipLabel)
-        end
     end
     if self.mode == "shop" and skipBonus > 0 then
         skipLabel = skipLabel .. " (+$" .. skipBonus .. ")"
@@ -2325,9 +2289,6 @@ function CardRewardScreen:_drawRewardsBanner()
     local cx = math.floor(sw / 2)
 
     local title = I18n.t("reward.rewards_title")
-    if self.bossRelic then
-        title = I18n.t("enemy_kit.boss_reward.title", nil, title)
-    end
     local tf = FontManager.getFont(20)
     love.graphics.setFont(tf)
     local tw = tf:getWidth(title)
@@ -2368,8 +2329,7 @@ function CardRewardScreen:_drawRewardsBanner()
     love.graphics.print(title, tx, y)
 
     -- subtítulo com RESPIRO (feedback: "texto meio apertado")
-    local sub = self.bossRelic and I18n.t("enemy_kit.boss_reward.subtitle")
-        or I18n.t("reward.rewards_subtitle")
+    local sub = I18n.t("reward.rewards_subtitle")
     local sf = FontManager.getFont(9)
     love.graphics.setFont(sf)
     love.graphics.setColor(0, 0, 0, 0.7)
