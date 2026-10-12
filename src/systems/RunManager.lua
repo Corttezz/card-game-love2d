@@ -387,6 +387,10 @@ function RunManager:generateNextNodes(numNodes)
     local act = self.currentRun.actNumber or 1
     local floorInAct = self.currentRun.floorInAct or 1
     self.currentRun.pendingNodes = MapManager.generate(floorInAct, act, numNodes or 3)
+    -- Inimigo de cada nó de combate decidido JÁ (stream "enemy", sem repetir
+    -- o último): prévia, batalha e Continuar leem o mesmo (EnemyRoster).
+    require("src.systems.EnemyRoster").assignNodes(self.currentRun,
+        self.currentRun.pendingNodes)
     return self.currentRun.pendingNodes
 end
 

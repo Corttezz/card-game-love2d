@@ -113,8 +113,11 @@ function Game:initializeDeck()
 end
 
 function Game:shuffleDeck()
+    -- Stream "misc" do Rng da run (Out/2026): com love.math.random a mesma
+    -- seed não reproduzia o combate — a mão de cada turno saía diferente.
+    local rng = require("src.systems.Rng").get()
     for i = #self.deck, 2, -1 do
-        local j = love.math.random(i)
+        local j = rng:random("misc", i)
         self.deck[i], self.deck[j] = self.deck[j], self.deck[i]
     end
 end
@@ -945,6 +948,11 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
 
         local damage = computeCardValue(card.attack,
             scaledStat(self.player.strength, "strength_scaling"))
+        -- FRACO (debuff do inimigo, Out/2026): o ataque sai 25% menor — por
+        -- ultimo, depois de jokers/combos, como no StS.
+        if self.player.applyWeakToAttack then
+            damage = self.player:applyWeakToAttack(damage)
+        end
 
         self.enemy:takeDamage(damage)
         AchievementSystem.onCardDamage(self, card, damage)   -- Golpe de Tinta
@@ -992,6 +1000,10 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
     elseif card.type == "defense" then
         local defense = computeCardValue(card.defense,
             scaledStat(self.player.dexterity, "dexterity_scaling"))
+        -- FRAGIL (debuff do inimigo, Out/2026): a defesa rende 25% menos.
+        if self.player.applyFrailToBlock then
+            defense = self.player:applyFrailToBlock(defense)
+        end
 
         -- Auditoria Jul/2026: o cap de Bloqueio (30) truncava EM SILENCIO —
         -- o jogador via "+20" e "+17" na mesma leva e nunca sabia que 7
@@ -1292,13 +1304,67 @@ function Game:announceDeathIfPending(sink)
     return true
 end
 
+-- O intent em execucao poe veneno/queimadura no jogador? (o beat do DoT do
+-- jogador e empurrado ANTES do golpe acontecer — precisa saber se tera ar).
+function Game:_intentAppliesDot()
+    local it = self.enemy and self.enemy.getIntent and self.enemy:getIntent()
+    for _, d in ipairs((it and it.debuffs) or {}) do
+        if d.name == "poison" or d.name == "burn" then return true end
+    end
+    return false
+end
+
+-- FASE NOVA do chefe (Rainha do Eclipse abaixo de 50%): mesmo contrato do
+-- ENFURECIDO — o Enemy marca `_pendingPhase` no funil de dano, aqui vira
+-- acontecimento (beat STATUS com nome da fase, rugido e shake). O intent ja
+-- anunciado NAO muda; o kit novo vale do proximo intent em diante.
+function Game:_announcePhaseIfPending(sink)
+    local e = self.enemy
+    if not e or not e._pendingPhase then return false end
+    local ph = e._pendingPhase
+    e._pendingPhase = nil
+    if not e:isAlive() then return false end
+    local enemyRef = e
+    local body = function()
+        if self.enemy ~= enemyRef then return end
+        local I18n = require("src.i18n.I18n")
+        local key = "enemy_kit.phases." .. tostring(ph.id)
+        local name = I18n.t(key .. ".name", nil, tostring(ph.id))
+        self:addMessage(I18n.t(key .. ".msg", nil, name), "warning")
+        Sfx.playWithVariation("enemyBuffRoar", 0.75, 0.04)
+        if enemyRef.juice_up then enemyRef:juice_up(0.6, 0.15) end
+        local okER, ER = pcall(require, "src.ui.EnemyRenderer")
+        if okER and ER.triggerBuff then ER.triggerBuff() end
+        local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
+        if okCF then CardFeel.burstAtEnemy("dark", 1.4) end
+        if _G.triggerShake then _G.triggerShake(10, 0.35) end
+        local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
+        if okFT and okER and ER.getLastPos then
+            local ex, ey = ER.getLastPos()
+            if ex and ey then
+                FloatingText.spawn(name, ex, ey - 30, { kind = "movename", hold = 0.7, lift = 26 })
+            end
+        end
+    end
+    if sink then
+        sink[#sink + 1] = { label = "enemy.phase", fn = body, hold = "STATUS" }
+    elseif CombatBeats.extendCurrent("STATUS") then
+        CombatBeats.mark("enemy.phase")
+        body()
+    else
+        CombatBeats.push("enemy.phase", body, "STATUS")
+    end
+    return true
+end
+
 -- PONTE UNICA DO POS-DANO: tudo que um dano ao inimigo pode ter causado e
 -- encenado aqui, em ordem — primeiro a MORTE (se matou, nada mais importa),
 -- depois o ENFURECIDO. Chamada depois de cada dano, de qualquer fonte.
 function Game:settleEnemyDamage(sink)
     local died = self:announceDeathIfPending(sink)
     local raged = self:_announceEnrageIfPending(sink)
-    return died or raged
+    local phased = self:_announcePhaseIfPending(sink)
+    return died or raged or phased
 end
 
 -- ALIAS de compatibilidade: `settleEnemyDamage` e o nome honesto, mas
@@ -1439,18 +1505,37 @@ function Game:enemyTurn()
         local okEH, EnemyHud = pcall(require, "src.ui.EnemyHud")
         if okEH and EnemyHud.flashIntent then EnemyHud.flashIntent() end
         local I18n = require("src.i18n.I18n")
-        local moveName = I18n.t("enemy_moves." .. intent, nil, "")
+        -- Nome do golpe do KIT (enemy_kit.moves.<id>); golpe legado cai no
+        -- nome generico do kind.
+        local cur = self.enemy:getIntent()
+        local moveName = I18n.t("enemy_kit.moves." .. tostring(cur.id) .. ".name", nil,
+            I18n.t("enemy_moves." .. intent, nil, ""))
         if moveName ~= "" then
             float(moveName, { kind = "movename", hold = 0.55, lift = 26 })
         end
     end), "TELEGRAPH")
 
-    -- ===== BEAT: A ACAO =====
-    local struck = false   -- o golpe chegou a acontecer? (governa os espinhos)
+    -- ===== BEATS: A ACAO =====
+    -- O golpe CONGELADO no anuncio (Enemy:getIntent, kit em src/data/enemies)
+    -- vira uma sequencia de acontecimentos, cada um no seu beat, na mesma
+    -- ordem em que o tooltip do intent os descreve:
+    --   bloqueio > golpe(s) > espinhos > debuff(s) no jogador > forca > cura
+    --     > invocacao > carga
+    -- A execucao le os CAMPOS do intent (nao o kind): um golpe pode bloquear,
+    -- bater e debuffar no mesmo turno.
+    local it = self.enemy:getIntent()
+    local I18n = require("src.i18n.I18n")
+    local struck = false   -- algum golpe chegou a acontecer? (governa os espinhos)
+    local function playerFloat(text, opts)
+        local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
+        if okFT and love.graphics then
+            FloatingText.spawn(text, 120, love.graphics.getHeight() - 150, opts)
+        end
+    end
 
-    if intent == "defend" then
+    if (it.armor or 0) > 0 then
         CombatBeats.push("enemy.defend", beat(function()
-            local armorGain = self.enemy:getDefendAmount()
+            local armorGain = it.armor
             self.enemy:addArmor(armorGain)
             Sfx.play("armorSound")
             self:addMessage(msg("enemy_defends", { value = armorGain }), "info")
@@ -1460,43 +1545,33 @@ function Game:enemyTurn()
             if okCF then CardFeel.burstAtEnemy("armor", 0.9) end
             float("+" .. armorGain, { kind = "armor", fontSize = 20 })
         end), "ENEMY_ACT")
+    end
 
-    elseif intent == "buff" then
-        CombatBeats.push("enemy.buff", beat(function()
-            self.enemy.baseDamage = self.enemy.baseDamage + 2
-            self.enemy.damage = self.enemy.damage + 2
-            -- Game feel v1: buff tem RUGIDO proprio (antes reusava enemyAttack
-            -- grave — soava como golpe, confundia) + aura vermelha subindo.
-            Sfx.playWithVariation("enemyBuffRoar", 1.0, 0.06)
-            self:addMessage(msg("enemy_enrages", { value = 2 }), "warning")
-            if self.enemy.juice_up then self.enemy:juice_up(0.4, 0.1) end
-            if ER and ER.triggerBuff then ER.triggerBuff() end
-            local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
-            if okCF then CardFeel.burstAtEnemy("buff", 1.1) end
-            local I18n = require("src.i18n.I18n")
-            float(I18n.t("enemy_moves.buff_gain", nil, "+2"),
-                { kind = "damage", fontSize = 18 })
-        end), "STATUS")
-
-    else
-        -- attack | strong — o inimigo INVESTE fisicamente e o dano e aplicado
-        -- NO IMPACTO da investida (apex), nao num corte seco. O beat nao e por
-        -- TEMPO: ele espera o apex acontecer (pushUntil), senao o resto do
-        -- turno rodava por cima de um golpe ainda no ar — foi o "bug do
-        -- escudo" do playtest Jul/2026.
-        local landed = false
-        local function applyHit(damage)
+    if (it.hits or 0) > 0 and (it.perHit or 0) > 0 then
+        -- O inimigo INVESTE fisicamente e o dano e aplicado NO IMPACTO da
+        -- investida (apex), nao num corte seco. O beat nao e por TEMPO: ele
+        -- espera o apex acontecer (pushUntil), senao o resto do turno rodava
+        -- por cima de um golpe ainda no ar — foi o "bug do escudo" do
+        -- playtest Jul/2026. MULTI-GOLPE = uma investida por golpe, cada uma
+        -- no seu beat (o Bloqueio absorve golpe a golpe e o jogador VE onde
+        -- o escudo acabou).
+        local function applyHit(damage, pierce)
             -- Pitch escalado pela magnitude (Balatro sound_manager).
             local atkPitch = math.max(0.7, math.min(1.05, 1.1 - damage * 0.012))
             Sfx.playWithVariation("enemyAttack", atkPitch, 0.08)
             local hpBefore = self.player.health
-            self.player:takeDamage(damage)
+            self.player:takeDamage(damage, pierce)
             -- Detector do piloto (Jul/2026): registrar o dano BRUTO fazia golpe
             -- 100% bloqueado matar o bonus flawless do score e das conquistas.
             -- Conta so o que FUROU o escudo.
             local effective = hpBefore - self.player.health
             self.scoreSystem:recordDamageTaken(effective)
-            self:addMessage(msg("enemy_hit", { value = damage }), "warning")
+            if pierce then
+                self:addMessage(I18n.t("enemy_kit.msg.pierce", { value = damage },
+                    "Golpe atravessa o Bloqueio: {value}!"), "warning")
+            else
+                self:addMessage(msg("enemy_hit", { value = damage }), "warning")
+            end
             if _G.triggerShake then
                 local intensity = math.min(14, 4 + damage * 0.25)
                 _G.triggerShake(intensity, 0.22)
@@ -1517,32 +1592,37 @@ function Game:enemyTurn()
             end
         end
 
-        CombatBeats.pushUntil("enemy.attack", beat(function()
-            local damage = self.enemy:performAttack()
-            if intent == "strong" and damage > 0 then
-                damage = math.floor(damage * 1.6)
-            end
-            if damage <= 0 then
-                landed = true
-                return
-            end
-            struck = true
-            if ER and ER.triggerAttack then
-                ER.triggerAttack(intent, function()
-                    applyHit(damage)
+        local hits = it.hits
+        local animKind = (it.kind == "strong") and "strong" or "attack"
+        for h = 1, hits do
+            local landed = false
+            CombatBeats.pushUntil("enemy.attack", beat(function()
+                if not self.player:isAlive() then landed = true return end
+                local damage = self.enemy:intentHitDamage(self.player)
+                if damage <= 0 then
                     landed = true
-                end)
-            else
-                applyHit(damage)
-                landed = true
-            end
-        end), function() return landed end, 2.5, "HIT_SETTLE")
+                    return
+                end
+                struck = true
+                if ER and ER.triggerAttack then
+                    ER.triggerAttack(animKind, function()
+                        applyHit(damage, it.pierce)
+                        landed = true
+                    end)
+                else
+                    applyHit(damage, it.pierce)
+                    landed = true
+                end
+            end), function() return landed end, 2.5,
+                (h == hits) and "HIT_SETTLE" or "JOKER_PROC")
+        end
 
         -- ===== BEAT: ESPINHOS =====
         -- Contrato Set/2026: a carta ARMA o buff "thorn"; o REFLEXO acontece
         -- aqui, quando o inimigo ataca — causa e efeito em instantes separados.
         -- O beat so e empurrado se ha espinhos armados AGORA (a carta ja foi
         -- jogada no turno do jogador); o corpo confere se o golpe saiu mesmo.
+        -- Multi-golpe reflete UMA vez por turno (o teto P2.3 continua por turno).
         if EffectSystem.thornStacks(self) > 0 then
             CombatBeats.push("player.thorn_reflect", beat(function()
                 if not struck then return end
@@ -1551,6 +1631,85 @@ function Game:enemyTurn()
                 self:announceEnrageIfPending(nil)
             end), "REFLECT")
         end
+    end
+
+    -- ===== BEATS: DEBUFF NO JOGADOR (um por status) =====
+    -- Estado do jogador mudando = STATUS (0,55s): o jogador precisa ver que
+    -- esta Fraco/Fragil ANTES de comprar a mao que isso afeta.
+    for _, d in ipairs(it.debuffs or {}) do
+        CombatBeats.push("enemy.debuff." .. d.name, beat(function()
+            if not self.player:isAlive() then return end
+            self.player:addDebuff(d.name, d.duration, d.stacks)
+            local statusName = I18n.t("status." .. d.name .. ".name", nil,
+                I18n.t("enemy_kit.status." .. d.name .. ".name", nil, d.name))
+            self:addMessage(I18n.t("enemy_kit.msg.debuffed", { name = statusName },
+                "Debuff: " .. statusName), "warning")
+            Sfx.playWithVariation("enemyBuffRoar", 0.8, 0.05)
+            if _G.triggerShake then _G.triggerShake(3, 0.12) end
+            local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
+            if okCF then
+                local theme = ({ weak = "weak", frail = "weak", vulnerable = "vulnerable",
+                    poison = "poison", burn = "fire" })[d.name] or "weak"
+                CardFeel.burstAtPlayer(theme, 0.9)
+            end
+            playerFloat(statusName, { kind = "movename", hold = 0.5, lift = 22 })
+        end), "STATUS")
+    end
+
+    if (it.strength or 0) > 0 then
+        CombatBeats.push("enemy.buff", beat(function()
+            self.enemy:gainStrength(it.strength)
+            -- Game feel v1: buff tem RUGIDO proprio (antes reusava enemyAttack
+            -- grave — soava como golpe, confundia) + aura vermelha subindo.
+            Sfx.playWithVariation("enemyBuffRoar", 1.0, 0.06)
+            self:addMessage(msg("enemy_enrages", { value = it.strength }), "warning")
+            if self.enemy.juice_up then self.enemy:juice_up(0.4, 0.1) end
+            if ER and ER.triggerBuff then ER.triggerBuff() end
+            local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
+            if okCF then CardFeel.burstAtEnemy("buff", 1.1) end
+            float(I18n.t("enemy_kit.msg.strength_float", { value = it.strength },
+                "+" .. it.strength), { kind = "damage", fontSize = 18 })
+        end), "STATUS")
+    end
+
+    if (it.heal or 0) > 0 then
+        CombatBeats.push("enemy.heal", beat(function()
+            local healed = self.enemy:healSelf(it.heal)
+            if healed <= 0 then return end
+            Sfx.playWithVariation("enemyBuffRoar", 1.15, 0.05)
+            self:addMessage(I18n.t("enemy_kit.msg.healed", { value = healed },
+                "Inimigo recupera {value} de vida"), "warning")
+            local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
+            if okCF then CardFeel.burstAtEnemy("heal", 1.0) end
+            float("+" .. healed, { color = { 0.45, 0.9, 0.5, 1 }, fontSize = 20 })
+        end), "STATUS")
+    end
+
+    if (it.summon or 0) > 0 then
+        CombatBeats.push("enemy.summon", beat(function()
+            self.enemy:addStatusEffect({ name = "swarm", stacks = it.summon, duration = 999 })
+            Sfx.playWithVariation("enemyBuffRoar", 1.2, 0.08)
+            self:addMessage(I18n.t("enemy_kit.msg.summoned", { value = it.summon },
+                "A revoada cresce: +{value}"), "warning")
+            if ER and ER.triggerBuff then ER.triggerBuff() end
+            local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
+            if okCF then CardFeel.burstAtEnemy("dark", 1.1) end
+            float("+" .. it.summon, { kind = "damage", fontSize = 18 })
+        end), "STATUS")
+    end
+
+    if it.charge then
+        -- CARGA: o turno inteiro e o aviso. O golpe carregado ja esta forcado
+        -- como proximo intent (Enemy:rollIntent) e aparece no HUD no fim deste
+        -- turno — o jogador tem a mao inteira pra se preparar.
+        CombatBeats.push("enemy.charge", beat(function()
+            Sfx.playWithVariation("enemyBuffRoar", 0.7, 0.04)
+            self:addMessage(I18n.t("enemy_kit.msg.charging", nil,
+                "O inimigo carrega um golpe devastador!"), "warning")
+            if self.enemy.juice_up then self.enemy:juice_up(0.5, 0.12) end
+            if ER and ER.triggerBuff then ER.triggerBuff() end
+            if _G.triggerShake then _G.triggerShake(5, 0.3) end
+        end), "STATUS")
     end
 
     -- ===== BEATS: fim do turno do inimigo + comeco do turno do jogador =====
@@ -1612,6 +1771,38 @@ function Game:_pushEnemyTurnTail(beat)
         self:announceDeathIfPending(nil)
     end), hasDot and "DOT" or "MICRO")
 
+    -- REGENERACAO do inimigo (Colosso Putrido): cura propria no fim do turno
+    -- dele — instante proprio, a luta longa e a vantagem dele e o jogador
+    -- precisa VER a vida voltar.
+    if self.enemy:hasStatus("regen") then
+        CombatBeats.push("enemy.regen", beat(function()
+            local healed = self.enemy:tickRegen()
+            if healed and healed > 0 then
+                local I18n = require("src.i18n.I18n")
+                self:addMessage(I18n.t("enemy_kit.msg.healed", { value = healed },
+                    "Inimigo recupera {value} de vida"), "warning")
+                local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
+                if okCF then CardFeel.burstAtEnemy("heal", 0.8) end
+                local okER, ER = pcall(require, "src.ui.EnemyRenderer")
+                local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
+                if okER and okFT and ER.getLastPos then
+                    local ex, ey = ER.getLastPos()
+                    if ex and ey then
+                        FloatingText.spawn("+" .. healed, ex, ey,
+                            { color = { 0.45, 0.9, 0.5, 1 }, fontSize = 18 })
+                    end
+                end
+            end
+        end), "DOT")
+    end
+
+    -- Debuffs do JOGADOR decaem no fim do turno do inimigo (o que ele acabou
+    -- de aplicar pula este decremento — Player:decayDebuffs). Sempre
+    -- empurrado: o golpe deste turno pode ter acabado de aplicar um.
+    CombatBeats.push("player.debuff_decay", beat(function()
+        if self.player.decayDebuffs then self.player:decayDebuffs() end
+    end), "MICRO")
+
     -- Telegrafa a PROXIMA acao (EnemyHud mostra durante o turno do jogador).
     -- Beat proprio: o icone do proximo golpe aparecendo e informacao, e
     -- aparecer junto com o veneno ticando era parte do borrao.
@@ -1619,7 +1810,7 @@ function Game:_pushEnemyTurnTail(beat)
         -- Cadaver nao telegrafa o proximo golpe (o HUD chegava a piscar o
         -- intent de um inimigo que acabou de cair pro veneno/espinhos).
         if not self.enemy:isAlive() then return end
-        self.enemy:rollIntent()
+        self.enemy:rollIntent(self.player)
     end), "DECAY")
 
     -- ===== Upkeep do jogador =====
@@ -1648,6 +1839,34 @@ function Game:_pushEnemyTurnTail(beat)
             end
         end
     end), "HANDOFF")
+
+    -- VENENO/QUEIMADURA NO JOGADOR (golpes do kit): perda de vida que ignora
+    -- o Bloqueio, no comeco do turno dele, ANTES da compra. Beat proprio — e
+    -- dano, e o jogador precisa saber de onde veio. Sem DoT, custa MICRO.
+    local playerDot = self.player.getDebuffStacks
+        and (self.player:getDebuffStacks("poison") + self.player:getDebuffStacks("burn") > 0
+            or self:_intentAppliesDot())
+    CombatBeats.push("player.dot", beat(function()
+        if not self.enemy:isAlive() or not self.player:isAlive() then return end
+        if not self.player.tickDebuffDots then return end
+        local poison, burn = self.player:tickDebuffDots()
+        local total = (poison or 0) + (burn or 0)
+        if total <= 0 then return end
+        self.scoreSystem:recordDamageTaken(total)
+        local I18n = require("src.i18n.I18n")
+        self:addMessage(I18n.t("enemy_kit.msg.player_dot", { value = total },
+            "Voce perde {value} de vida"), "warning")
+        Sfx.playWithVariation("poisonTick", 0.85, 0.15)
+        local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
+        if okCF then
+            CardFeel.burstAtPlayer(((burn or 0) > (poison or 0)) and "fire" or "poison", 0.8)
+        end
+        local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
+        if okFT and love.graphics then
+            FloatingText.spawn("-" .. total, 120, love.graphics.getHeight() - 120,
+                { color = { 0.45, 0.9, 0.35, 1 }, fontSize = 20 })
+        end
+    end), playerDot and "DOT" or "MICRO")
 
     CombatBeats.push("player.draw", beat(function()
         if not self.enemy:isAlive() or not self.player:isAlive() then return end
@@ -1931,21 +2150,18 @@ function Game:nextPhase()
         local nodeType = (run.currentNode and run.currentNode.type) or "battle"
         local stats = ActSystem.getEnemyStats(run.actNumber, run.floorInAct, nodeType,
             run.endlessMode and run.floorsInEndless or nil)
-        self.enemy = Enemy:new(stats.health, stats.damage)
+        -- QUEM luta (Out/2026): o inimigo foi sorteado quando o nó nasceu
+        -- (EnemyRoster, stream "enemy") e mora em currentNode.enemyId — o
+        -- kit dele (src/data/enemies.lua) traz golpes, vida e dano próprios.
+        local EnemyRoster = require("src.systems.EnemyRoster")
+        local enemyId = EnemyRoster.resolveNode(run, run.currentNode, nodeType)
+        self.enemy = EnemyRoster.spawn(Enemy, enemyId, stats)
+        EnemyRoster.remember(run, enemyId)
         -- (P0.0 Jul/2026: scoreSystem:startBattle + applyClassBattleStartPassive
         -- DUPLICADOS aqui foram removidos — a passiva rodava 2x por batalha em
         -- run mode: mago abria com 2 orbes + o dobro de Foco. A aplicacao
         -- canonica e a incondicional no topo do nextPhase.)
         self.battleTurn = 0
-        -- Sprite do inimigo: roster por ato × tipo de node (v5).
-        -- Endless: bioma 4+ a cada 8 andares (mesma fórmula do
-        -- GameplayScene/WorldRoad — monstro casa com o cenário).
-        local spriteAct = run.actNumber
-        if run.endlessMode then
-            spriteAct = 4 + math.floor(math.max(0, (run.currentFloor or 25) - 25) / 8)
-        end
-        local EnemyRenderer = require("src.ui.EnemyRenderer")
-        self.enemy.spriteId = EnemyRenderer.resolveSpriteId(spriteAct, nodeType)
         -- isBoss nunca era setado (só lido) — bosses agora rendem maiores
         self.enemy.isBoss = (nodeType == "boss" or nodeType == "mini_boss")
         -- Log com nome do ato
@@ -2077,16 +2293,14 @@ function Game:resumeRun()
     local nodeType = (run.currentNode and run.currentNode.type) or "battle"
     local stats = ActSystem.getEnemyStats(run.actNumber, run.floorInAct, nodeType,
         run.endlessMode and run.floorsInEndless or nil)
-    self.enemy = Enemy:new(stats.health, stats.damage)
+    -- O MESMO inimigo do nó salvo (currentNode.enemyId) — o Continuar não
+    -- re-sorteia (EnemyRoster).
+    local EnemyRoster = require("src.systems.EnemyRoster")
+    local enemyId = EnemyRoster.resolveNode(run, run.currentNode, nodeType)
+    self.enemy = EnemyRoster.spawn(Enemy, enemyId, stats)
     self.battleTurn = 0
     self.scoreSystem:startBattle()
     self:applyClassBattleStartPassive()
-    local spriteAct = run.actNumber
-    if run.endlessMode then
-        spriteAct = 4 + math.floor(math.max(0, (run.currentFloor or 25) - 25) / 8)
-    end
-    local EnemyRenderer = require("src.ui.EnemyRenderer")
-    self.enemy.spriteId = EnemyRenderer.resolveSpriteId(spriteAct, nodeType)
     self.enemy.isBoss = (nodeType == "boss" or nodeType == "mini_boss")
 
     self:addMessage(msg("run_resumed", {

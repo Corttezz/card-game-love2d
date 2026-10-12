@@ -158,6 +158,33 @@ function M.report(records, agg, meta)
             s.floors / math.max(1, s.runs - s.crashes), deckSum / math.max(1, deckN), s.crashes)
     end
     p("")
+    -- Ritmo do combate (kit dos inimigos, Out/2026): turnos por luta, dano
+    -- SOFRIDO por turno (tensao) e duracao das lutas de chefe, por ato.
+    p("## Combate por ato (todas as classes)")
+    p("")
+    p("| ato | batalhas | turnos/luta | dano sofrido/turno | chefes | turnos/chefe |")
+    p("|---|---|---|---|---|---|")
+    local acts = {}
+    for _, r in ipairs(records) do
+        for a, ba in pairs(r.byAct or {}) do
+            local x = acts[a] or { battles = 0, turns = 0, taken = 0, bosses = 0, bossTurns = 0 }
+            x.battles = x.battles + (ba.battles or 0)
+            x.turns = x.turns + (ba.turns or 0)
+            x.taken = x.taken + (ba.taken or 0)
+            x.bosses = x.bosses + (ba.bosses or 0)
+            x.bossTurns = x.bossTurns + (ba.bossTurns or 0)
+            acts[a] = x
+        end
+    end
+    for a = 1, 8 do
+        local x = acts[a]
+        if x and x.battles > 0 then
+            p("| %d | %d | %.1f | %.1f | %d | %s |", a, x.battles, x.turns / x.battles,
+                x.taken / math.max(1, x.turns), x.bosses,
+                x.bosses > 0 and string.format("%.1f", x.bossTurns / x.bosses) or "-")
+        end
+    end
+    p("")
     p("## Ato de morte")
     p("")
     for _, c in ipairs(classes) do

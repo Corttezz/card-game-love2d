@@ -32,15 +32,100 @@ function Player:new()
     -- permitem efeitos narrativos (ex: "focus", "concentration") e expiram por turno.
     instance.buffs = {}
 
+    -- DEBUFFS que o INIMIGO aplica (Out/2026, src/data/enemies.lua):
+    -- weak/frail/vulnerable/poison/burn. Lista separada de `buffs` porque o
+    -- relógio é outro: buff decai no upkeep do jogador; debuff decai no FIM
+    -- do turno do inimigo e PULA o turno em que foi aplicado (padrão StS
+    -- "justApplied") — "Fraco 2" vale para os 2 próximos turnos do jogador.
+    instance.debuffs = {}
+
     return instance
 end
 
-function Player:takeDamage(damage)
-    -- Debuff "vulnerable" do jogador amplificaria dano recebido (futuro).
-    -- Por ora: armor absorve, resto vai pra HP.
+-- `pierce` = golpe que ATRAVESSA o Bloqueio (lança de gelo, raio rúnico).
+-- A Vulnerabilidade do jogador já vem aplicada no dano pelo Enemy
+-- (intentHitDamage) — aqui ela não entra de novo.
+function Player:takeDamage(damage, pierce)
+    if pierce then
+        self.health = math.max(0, self.health - damage)
+        return
+    end
     local effectiveDamage = math.max(0, damage - self.armor)
     self.armor = math.max(0, self.armor - damage)
     self.health = math.max(0, self.health - effectiveDamage)
+end
+
+-- ===== Debuffs do inimigo =====
+-- DoT (poison/burn) soma pilhas E duração (mesma aritmética do Enemy);
+-- weak/frail/vulnerable somam só duração.
+local DOT_DEBUFF = { poison = true, burn = true }
+
+function Player:addDebuff(name, duration, stacks)
+    duration = duration or 1
+    stacks = stacks or 1
+    self.debuffs = self.debuffs or {}
+    for _, d in ipairs(self.debuffs) do
+        if d.name == name then
+            d.duration = d.duration + duration
+            if DOT_DEBUFF[name] then d.stacks = (d.stacks or 0) + stacks end
+            d.fresh = true
+            return d
+        end
+    end
+    local d = { name = name, duration = duration,
+        stacks = DOT_DEBUFF[name] and stacks or 1, fresh = true }
+    table.insert(self.debuffs, d)
+    return d
+end
+
+function Player:hasDebuff(name)
+    for _, d in ipairs(self.debuffs or {}) do
+        if d.name == name and d.duration > 0 then return true end
+    end
+    return false
+end
+
+function Player:getDebuffStacks(name)
+    for _, d in ipairs(self.debuffs or {}) do
+        if d.name == name and d.duration > 0 then return d.stacks or 1 end
+    end
+    return 0
+end
+
+-- Fim do turno do INIMIGO: decrementa, exceto o que foi aplicado agora.
+function Player:decayDebuffs()
+    for i = #(self.debuffs or {}), 1, -1 do
+        local d = self.debuffs[i]
+        if d.fresh then
+            d.fresh = nil
+        else
+            d.duration = d.duration - 1
+            if d.duration <= 0 then table.remove(self.debuffs, i) end
+        end
+    end
+end
+
+-- Veneno/queimadura no JOGADOR: perda de vida que ignora o Bloqueio, no
+-- começo do turno dele. Devolve (veneno, queimadura) — dois números, nunca
+-- somados (mesma regra do Enemy:onTurnEnd).
+function Player:tickDebuffDots()
+    local poison = self:getDebuffStacks("poison")
+    local burn = self:getDebuffStacks("burn")
+    if poison > 0 then self:loseHealth(poison) end
+    if burn > 0 then self:loseHealth(burn) end
+    return poison, burn
+end
+
+-- Fraco: os ATAQUES do jogador causam 25% menos.
+function Player:applyWeakToAttack(dmg)
+    if self:hasDebuff("weak") then return math.floor(dmg * 0.75) end
+    return dmg
+end
+
+-- Frágil: o Bloqueio das DEFESAS do jogador rende 25% menos.
+function Player:applyFrailToBlock(block)
+    if self:hasDebuff("frail") then return math.floor(block * 0.75) end
+    return block
 end
 
 function Player:addArmor(value)
@@ -186,6 +271,7 @@ function Player:resetTransientStats()
     self.dexterity = 0
     self.orbs = {}
     self.buffs = {}
+    self.debuffs = {}
     self.armor = 0
 end
 

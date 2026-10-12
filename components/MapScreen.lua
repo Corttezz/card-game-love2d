@@ -267,7 +267,10 @@ function MapScreen:draw()
             local isCombat = (node.type == "battle" or node.type == "elite"
                 or node.type == "mini_boss" or node.type == "boss")
             if isCombat then
-                local spriteId = EnemyRenderer.resolveSpriteId(node.actNumber, node.type)
+                -- O inimigo do nó já foi sorteado (EnemyRoster) — a prévia
+                -- mostra exatamente quem vai lutar.
+                local spriteId = node.enemyId
+                    or EnemyRenderer.resolveSpriteId(node.actNumber, node.type)
                 local img = loadEnemySouthSprite(spriteId)
                 if img then
                     local iw, ih = img:getWidth(), img:getHeight()

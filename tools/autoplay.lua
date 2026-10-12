@@ -337,8 +337,10 @@ end
 local function freeDamageThisTurn(game)
     local enemy = game.enemy
     local poison = enemy:hasStatus("poison") and enemy:getStatusStacks("poison") or 0
-    local kind = enemy.nextIntent or "attack"
-    local defendPrev = (kind == "defend") and enemy:getDefendAmount() or 0
+    -- Bloqueio que o intent CONGELADO vai dar ao inimigo (kit Out/2026:
+    -- "bloqueia e golpeia" tambem conta, nao so o defend puro).
+    local it = enemy.getIntent and enemy:getIntent() or nil
+    local defendPrev = (it and it.armor) or 0
     local freePoison = math.max(0, poison - defendPrev)
     local p = game.player
     local focus = getFocus(p)
@@ -514,8 +516,8 @@ local function chooseBatch(game, turnState)
     local hand = game.hand
     local enemy = game.enemy
     local manaLeft = p.mana
-    local kind, value = enemy:getIntentPreview()
-    local incoming = (kind == "attack" or kind == "strong") and (value or 0) or 0
+    -- Dano TOTAL do intent (multi-golpe soma; Vulneravel congelado entra).
+    local incoming = enemy.getIncomingDamage and enemy:getIncomingDamage(p) or 0
     local hpRatio = p.health / p.maxHealth
     local run = (game.runManager and game.runManager.currentRun) or {}
     local floorInAct = run.floorInAct or 1
@@ -850,7 +852,8 @@ local function playBattle(game, label)
             return false, "stall"
         end
 
-        local kind, value = game.enemy:getIntentPreview()
+        local kind, value, itLog = game.enemy:getIntentPreview(game.player)
+        if itLog and (itLog.hits or 0) > 1 then value = tostring(value) .. "x" .. itLog.hits end
 
         log("- T%d: HP %d/%d armor %d | mana %d | intent %s %s | mao: %s",
             turnCount, game.player.health, game.player.maxHealth,
@@ -1042,7 +1045,17 @@ local function playBattle(game, label)
 
         -- INVARIANTES pre-turno-inimigo (detectores de anomalia):
         local armorBeforeEnemy = game.player.armor or 0
-        local nextKind, nextVal = game.enemy:getIntentPreview()
+        local nextKind = game.enemy:getIntentPreview(game.player)
+        -- Total do intent (multi-golpe soma) e se ele fura o Bloqueio de
+        -- proposito (perfurante) — o detector abaixo nao pode acusar o golpe
+        -- que ATRAVESSA o escudo por design.
+        local nextIt = game.enemy:getIntent()
+        local nextVal = game.enemy:getIncomingDamage(game.player)
+        local nextPierce = nextIt.pierce and true or false
+        local dotNext = game.player:getDebuffStacks("poison") + game.player:getDebuffStacks("burn")
+        for _, d in ipairs(nextIt.debuffs or {}) do
+            if d.name == "poison" or d.name == "burn" then dotNext = dotNext + (d.stacks or 0) end
+        end
         -- usa o contador do ScoreSystem (so dano DO INIMIGO) — HP bruto
         -- pega custo de sangue de Berserk/Sangria (ignora armor por design)
         local dmgTakenBeforeEnemy =
@@ -1083,7 +1096,7 @@ local function playBattle(game, label)
         local dmgTakenAfterEnemy =
             (game.scoreSystem._battle and game.scoreSystem._battle.damageTaken) or 0
         local enemyDealt = dmgTakenAfterEnemy - dmgTakenBeforeEnemy
-        if (nextKind == "attack" or nextKind == "strong")
+        if (nextVal or 0) > 0 and not nextPierce and dotNext == 0
             and armorBeforeEnemy >= (nextVal or 0) + 4
             and enemyDealt > 0 then
             anomaly("escudo furado: %d de escudo vs golpe %s %d, inimigo furou %d",
@@ -1092,7 +1105,7 @@ local function playBattle(game, label)
 
         bctx.turns = bctx.turns + 1
         bctx.dealt = bctx.dealt + math.max(0, enemyBefore - game.enemy.health)
-        if (nextKind == "attack" or nextKind == "strong") and (nextVal or 0) > 0 then
+        if (nextVal or 0) > 0 then
             bctx.hitTurns = bctx.hitTurns + 1
             bctx.incSum = bctx.incSum + nextVal
             bctx.lostSum = bctx.lostSum + math.max(0, enemyDealt)
@@ -1115,6 +1128,12 @@ local function playBattle(game, label)
         ba.taken = ba.taken + math.max(0, dmgTakenBefore - game.player.health)
         ba.turns = ba.turns + turnCount
         ba.battles = ba.battles + 1
+        -- chefe separado (kit Out/2026: meta de 7-10 turnos no fim de jogo)
+        local cn = game.runManager.currentRun and game.runManager.currentRun.currentNode
+        if cn and cn.type == "boss" then
+            ba.bossTurns = (ba.bossTurns or 0) + turnCount
+            ba.bosses = (ba.bosses or 0) + 1
+        end
         battleStats.byAct[act] = ba
     end
 
@@ -1553,6 +1572,28 @@ local function doRewards(game)
     else
         log("- Recompensa: pulei (nada valia / deck cheio) → ouro $%d",
             game.economySystem.currentGold)
+    end
+
+    -- ESPOLIO DO CHEFE (Out/2026): depois da carta do chefe do ATO, 1 de 3
+    -- coringas raros (CardRewardScreen, modo de vitrine "boss_relic").
+    local cn = game.runManager.currentRun and game.runManager.currentRun.currentNode
+    if cn and cn.type == "boss" then
+        game.shopSystem:setMode("boss_relic")
+        primeShopContext(game)
+        game.shopSystem:generateOffers()
+        local ids, byId = {}, {}
+        for _, o in ipairs(game.shopSystem:getCurrentOffers()) do
+            recOffer(o.id)
+            ids[#ids + 1] = o.id; byId[o.id] = o
+        end
+        local pickId = (#ids > 0) and (v6Build() and M.pickBySim(game, ids) or ids[1]) or nil
+        if not pickId and #ids > 0 then pickId = ids[1] end -- coringa: sempre vale (bancada)
+        if pickId then
+            game:addCardToRun(pickId)
+            log("- Espolio do chefe: peguei **%s** (%s)", byId[pickId].name,
+                byId[pickId].rarity or "?")
+            optimizeJokerBench(game, "espolio")
+        end
     end
 end
 

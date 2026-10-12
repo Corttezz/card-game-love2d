@@ -475,7 +475,8 @@ function EffectSystem:processEffectCard(game, effect)
         local discarded = 0
         for _ = 1, v do
             if #game.hand > 0 then
-                local card = table.remove(game.hand, love.math.random(#game.hand))
+                local card = table.remove(game.hand,
+                    require("src.systems.Rng").get():random("misc", #game.hand))
                 table.insert(game.discard, card)
                 discarded = discarded + 1
             end
@@ -558,7 +559,7 @@ function EffectSystem:processEffectCard(game, effect)
             { type = "gain_strength", value = 2 },
             { type = "channel_orb", orbType = "lightning", value = 3 },
         }
-        local pick = pool[love.math.random(#pool)]
+        local pick = pool[require("src.systems.Rng").get():random("misc", #pool)]
         game:addMessage(msg("mystery"), "info")
         return self:processEffectCard(game, pick)
 

@@ -18,28 +18,40 @@ local function setColor(c, a)
     love.graphics.setColor(c[1], c[2], c[3], a or c[4] or 1)
 end
 
--- Cache dos ícones de intent (preguiçoso).
+-- Cache dos ícones de intent (preguiçoso). Mapa kind -> ícone: o kind é a
+-- categoria de LEITURA do golpe (src/data/enemies.lua).
+local INTENT_ICON = {
+    attack = "intent_attack", strong = "intent_attack", multi = "intent_attack",
+    defend = "intent_defense", defense = "intent_defense",
+    buff = "status_strength", heal = "status_regen",
+    debuff = "status_weak", charge = "status_fury", summon = "claw",
+}
 local intentIcons = {}
-local function getIntentIcon(kind)
-    kind = kind or "attack"
-    if intentIcons[kind] ~= nil then return intentIcons[kind] or nil end
-    local name = "intent_attack"
-    if kind == "defense" or kind == "defend" then
-        name = "intent_defense"
-    elseif kind == "buff" then
-        name = "status_strength"
-    end
+local function getIconByName(name)
+    if intentIcons[name] ~= nil then return intentIcons[name] or nil end
     local icon = IconLoader.get(name)
-    intentIcons[kind] = icon or false
+    if not icon then
+        print("[EnemyHud] ícone de intent ausente: " .. tostring(name))
+    end
+    intentIcons[name] = icon or false
     return icon
 end
+local function getIntentIcon(kind)
+    return getIconByName(INTENT_ICON[kind or "attack"] or "intent_attack")
+end
+
+-- Ícone do status de um debuff (pequeno, ao lado do número).
+local DEBUFF_ICON = {
+    weak = "status_weak", vulnerable = "status_vulnerable", frail = "armor_plate",
+    poison = "status_poison", burn = "status_burn",
+}
 
 -- Preview do intent (F1 gameplay-overhaul): usa Enemy:getIntentPreview se
--- existir (kind + valor já com weak/strong aplicados); fallback legado =
+-- existir (kind + valor já com weak/vulnerável aplicados); fallback legado =
 -- ataque com enemy.damage.
-local function intentPreview(enemy)
+local function intentPreview(enemy, player)
     if enemy.getIntentPreview then
-        return enemy:getIntentPreview()
+        return enemy:getIntentPreview(player)
     end
     local dmg = enemy.damage or 0
     if enemy.hasStatus and enemy:hasStatus("weak") then
@@ -47,6 +59,84 @@ local function intentPreview(enemy)
     end
     return "attack", dmg
 end
+
+-- O que o box do intent mostra — fonte ÚNICA do desenho, da medida e do
+-- tooltip (o número desenhado e o número explicado não podem divergir).
+--   text    "12" | "4×3" | "+5" | nil (golpe sem número: debuff/carga/invocação)
+--   extras  ícones pequenos depois do número (debuffs do golpe, bloqueio)
+--   pierce  golpe que atravessa o Bloqueio (marca vermelha no box)
+--   title/body  tooltip: nome do golpe + linhas montadas dos números CONGELADOS
+function EnemyHud.intentSpec(enemy, player)
+    if not enemy then return nil end
+    local kind, value, it = intentPreview(enemy, player)
+    it = it or {}
+    local I18n = require("src.i18n.I18n")
+    local hits = it.hits or 0
+    local text
+    if (it.perHit or 0) > 0 and value and value > 0 then
+        text = (hits > 1) and (value .. "×" .. hits) or tostring(value)
+    elseif kind == "buff" and (value or 0) > 0 then
+        text = "+" .. value
+    elseif (kind == "defend" or kind == "heal") and (value or 0) > 0 then
+        text = tostring(value)
+    end
+
+    local extras = {}
+    local lines = {}
+    if (it.armor or 0) > 0 and kind ~= "defend" then
+        extras[#extras + 1] = "intent_defense"
+    end
+    if (it.perHit or 0) > 0 and value and value > 0 then
+        if hits > 1 then
+            lines[#lines + 1] = I18n.t("enemy_kit.intent.multi",
+                { hits = hits, value = value, total = value * hits })
+        else
+            lines[#lines + 1] = I18n.t("enemy_kit.intent.hit", { value = value })
+        end
+        if it.pierce then lines[#lines + 1] = I18n.t("enemy_kit.intent.pierce") end
+    end
+    if (it.armor or 0) > 0 then
+        lines[#lines + 1] = I18n.t("enemy_kit.intent.armor", { value = it.armor })
+    end
+    for _, d in ipairs(it.debuffs or {}) do
+        extras[#extras + 1] = DEBUFF_ICON[d.name] or "status_weak"
+        local nm = I18n.t("enemy_kit.status." .. d.name .. "_self.name", nil,
+            I18n.t("enemy_kit.status." .. d.name .. ".name", nil, d.name))
+        if d.name == "poison" or d.name == "burn" then
+            lines[#lines + 1] = I18n.t("enemy_kit.intent.dot",
+                { name = nm, stacks = d.stacks, duration = d.duration })
+        else
+            lines[#lines + 1] = I18n.t("enemy_kit.intent.debuff",
+                { name = nm, duration = d.duration })
+        end
+    end
+    if (it.strength or 0) > 0 then
+        lines[#lines + 1] = I18n.t("enemy_kit.intent.strength", { value = it.strength })
+    end
+    if (it.heal or 0) > 0 then
+        lines[#lines + 1] = I18n.t("enemy_kit.intent.heal", { value = it.heal })
+    end
+    if (it.summon or 0) > 0 then
+        lines[#lines + 1] = I18n.t("enemy_kit.intent.summon", { value = it.summon })
+    end
+    if it.charge then
+        lines[#lines + 1] = I18n.t("enemy_kit.intent.charge")
+    end
+
+    local title = I18n.t("enemy_kit.moves." .. tostring(it.id or kind) .. ".name", nil,
+        I18n.t("status.intent_" .. tostring(kind) .. ".name", nil, tostring(kind)))
+    -- Golpe pesado tem hierarquia visual (maior, pulsa mais rápido).
+    local heavy = (kind == "strong") or (kind == "charge")
+    return {
+        kind = kind, value = value or 0, text = text, extras = extras,
+        pierce = it.pierce and true or false, heavy = heavy,
+        title = title, body = table.concat(lines, " "),
+    }
+end
+
+-- Banda de largura de um ícone extra e do vão entre eles.
+local EXTRA_ICON = 24
+local EXTRA_GAP = 3
 
 -- ===== HP BAR =====
 -- Por default fica sob os pés do sprite. Se `barYOverride` for passado, desenha
@@ -201,18 +291,34 @@ end
 
 local ICON_SIZE = 34   -- era 24 — pequeno demais pra ler de relance
 
--- Dimensions do box do intent (sem desenhar). Útil pra layout.
-function EnemyHud.getIntentDims(enemy)
-    if not enemy then return 0, 0 end
-    local kind, value = intentPreview(enemy)
-    if not value or value <= 0 then return 0, 0 end
+-- Geometria do box (pura): largura do conteúdo = ícone + número + extras.
+local function intentBoxGeom(spec)
     local font = FontManager.getResponsiveFont(0.036, 26)
-    local tw = font:getWidth(tostring(value))
-    local iconSize, gap, padX, padY = ICON_SIZE, 6, 10, 7
-    local w = iconSize + gap + tw + padX * 2
-    local h = iconSize + padY * 2
-    -- Strong ocupa mais espaço (o layout do cluster respeita).
-    if kind == "strong" then
+    local tw = spec.text and font:getWidth(spec.text) or 0
+    local nExtra = #spec.extras
+    local gap = 6
+    local contentW = ICON_SIZE
+    if tw > 0 then contentW = contentW + gap + tw end
+    if nExtra > 0 then
+        contentW = contentW + gap + nExtra * EXTRA_ICON + (nExtra - 1) * EXTRA_GAP
+    end
+    local padX, padY = 10, 7
+    return {
+        font = font, tw = tw, gap = gap, padX = padX, padY = padY,
+        w = contentW + padX * 2, h = ICON_SIZE + padY * 2,
+    }
+end
+
+-- Dimensions do box do intent (sem desenhar). Útil pra layout.
+-- `player` opcional (Vulnerável congelado entra no número).
+function EnemyHud.getIntentDims(enemy, player)
+    if not enemy then return 0, 0 end
+    local spec = EnemyHud.intentSpec(enemy, player)
+    if not spec then return 0, 0 end
+    local g = intentBoxGeom(spec)
+    local w, h = g.w, g.h
+    -- Golpe pesado ocupa mais espaço (o layout do cluster respeita).
+    if spec.heavy then
         w = math.floor(w * 1.12)
         h = math.floor(h * 1.12)
     end
@@ -220,25 +326,18 @@ function EnemyHud.getIntentDims(enemy)
 end
 
 -- Desenha o intent box. Se boxXOverride/boxYOverride forem nil, centraliza em cx.
-function EnemyHud.drawIntent(enemy, cx, topY, boxXOverride, boxYOverride)
+function EnemyHud.drawIntent(enemy, cx, topY, boxXOverride, boxYOverride, player)
     if not enemy then return end
-    local kind, value = intentPreview(enemy)
-    if not value or value <= 0 then return end
-    local isAttack = (kind == "attack" or kind == "strong")
+    local spec = EnemyHud.intentSpec(enemy, player)
+    if not spec then return end
+    local kind = spec.kind
     local now = love.timer.getTime()
     local rm = _G.gameSettings and _G.gameSettings.reducedMotion
 
-    -- Layout horizontal: ícone grande + número ao lado
-    local font = FontManager.getResponsiveFont(0.036, 26)
-    local txt = (kind == "buff" and "+" or "") .. tostring(value)
-    local tw = font:getWidth(txt)
-
-    local iconSize = ICON_SIZE
-    local gap = 6
-    local contentW = iconSize + gap + tw
-    local padX, padY = 10, 7
-    local boxW = contentW + padX * 2
-    local boxH = iconSize + padY * 2
+    local g = intentBoxGeom(spec)
+    local font, txt = g.font, spec.text
+    local iconSize, gap, padX, padY = ICON_SIZE, g.gap, g.padX, g.padY
+    local boxW, boxH = g.w, g.h
     local boxX = boxXOverride or math.floor(cx - boxW / 2)
     local boxY = boxYOverride or math.floor(topY - boxH - 10)
 
@@ -247,9 +346,9 @@ function EnemyHud.drawIntent(enemy, cx, topY, boxXOverride, boxYOverride)
         boxY = boxY + math.floor(math.sin(now * 2.2) * 3 + 0.5)
     end
 
-    -- Escala: strong é maior (perigo tem hierarquia) + flash de execução dá
-    -- zoom no box inteiro. Transform centrado no box.
-    local scaleK = (kind == "strong") and 1.12 or 1.0
+    -- Escala: golpe pesado é maior (perigo tem hierarquia) + flash de execução
+    -- dá zoom no box inteiro. Transform centrado no box.
+    local scaleK = spec.heavy and 1.12 or 1.0
     local flashK = 0
     if flashUntil > now then
         flashK = (flashUntil - now) / FLASH_DUR      -- 1→0
@@ -272,18 +371,23 @@ function EnemyHud.drawIntent(enemy, cx, topY, boxXOverride, boxYOverride)
     setColor(Palette.PARCHMENT_DARK, 0.97)
     love.graphics.rectangle("fill", boxX, boxY, boxW, boxH, 5, 5)
 
-    -- Cor semântica do intent: sangue = ataque, aço = defesa, ouro = buff.
+    -- Cor semântica do intent: sangue = ataque, aço = defesa, ouro = buff,
+    -- violeta = debuff/carga (ameaça que não é dano agora), verde = cura.
     local accent = Palette.BLOOD
     if kind == "defend" then
         accent = Palette.STEEL or { 0.55, 0.62, 0.70, 1 }
-    elseif kind == "buff" then
+    elseif kind == "buff" or kind == "summon" then
         accent = Palette.AGED_GOLD
+    elseif kind == "debuff" or kind == "charge" then
+        accent = { 0.62, 0.40, 0.85, 1 }
+    elseif kind == "heal" then
+        accent = { 0.40, 0.80, 0.50, 1 }
     end
 
-    -- Flash pulsante (mais forte no ataque "strong" — perigo iminente)
-    local pulseSpeed = (kind == "strong") and 5 or 3
+    -- Flash pulsante (mais forte no golpe pesado — perigo iminente)
+    local pulseSpeed = spec.heavy and 5 or 3
     local pulse = 0.5 + math.sin(love.timer.getTime() * pulseSpeed) * 0.5
-    local pulseBase = (kind == "strong") and 0.24 or 0.15
+    local pulseBase = spec.heavy and 0.24 or 0.15
     love.graphics.setColor(accent[1], accent[2], accent[3], pulseBase + pulse * 0.08)
     love.graphics.rectangle("fill", boxX, boxY, boxW, boxH, 5, 5)
 
@@ -296,7 +400,7 @@ function EnemyHud.drawIntent(enemy, cx, topY, boxXOverride, boxYOverride)
     setColor(accent, 0.75)
     love.graphics.rectangle("line", boxX + 2, boxY + 2, boxW - 4, boxH - 4, 4, 4)
 
-    -- Ícone do intent real (attack/strong/defend/buff)
+    -- Ícone do intent
     local icon = getIntentIcon(kind)
     if icon and icon.draw then
         local iconH = (icon.size and icon.size.h) or 16
@@ -307,23 +411,58 @@ function EnemyHud.drawIntent(enemy, cx, topY, boxXOverride, boxYOverride)
         icon.draw(iconX, iconY, scale)
     end
 
-    -- Hover no box → tooltip explicando O QUE o inimigo fará (clareza total)
+    -- PERFURANTE: o golpe atravessa o Bloqueio — barra vermelha cortando o
+    -- canto do ícone (a mesma leitura do "escudo quebrado").
+    if spec.pierce then
+        love.graphics.setColor(1, 0.25, 0.2, 0.95)
+        love.graphics.setLineWidth(3)
+        local ix, iy = boxX + padX, boxY + padY
+        love.graphics.line(ix + iconSize - 4, iy + 2, ix + 4, iy + iconSize - 2)
+        love.graphics.setLineWidth(1)
+    end
+
+    -- Hover no box → tooltip com o NOME do golpe e o que ele faz, montado dos
+    -- números congelados (intentSpec). Clareza total.
     do
         local mx, my = love.mouse.getPosition()
         if mx >= boxX and mx <= boxX + boxW and my >= boxY and my <= boxY + boxH then
             local StatusTooltip = require("src.ui.StatusTooltip")
-            StatusTooltip.show("intent_" .. kind, mx, my, { value = value })
+            StatusTooltip.show("intent_" .. kind, mx, my,
+                { value = spec.value, title = spec.title, body = spec.body })
         end
     end
 
     -- Número à direita, na cor semântica do intent
-    love.graphics.setFont(font)
-    local tx = boxX + padX + iconSize + gap
-    local ty = boxY + math.floor((boxH - font:getHeight()) / 2)
-    local numColor = { 1, 0.3, 0.3, 1 }                     -- ataque: vermelho
-    if kind == "defend" then numColor = { 0.65, 0.75, 0.9, 1 }
-    elseif kind == "buff" then numColor = { 1, 0.85, 0.4, 1 } end
-    FontManager.drawWithOutline(txt, tx, ty, numColor, 0.95)
+    local cursorX = boxX + padX + iconSize
+    if txt then
+        love.graphics.setFont(font)
+        local tx = cursorX + gap
+        local ty = boxY + math.floor((boxH - font:getHeight()) / 2)
+        local numColor = { 1, 0.3, 0.3, 1 }                     -- ataque: vermelho
+        if kind == "defend" then numColor = { 0.65, 0.75, 0.9, 1 }
+        elseif kind == "buff" then numColor = { 1, 0.85, 0.4, 1 }
+        elseif kind == "heal" then numColor = { 0.5, 0.95, 0.55, 1 } end
+        FontManager.drawWithOutline(txt, tx, ty, numColor, 0.95)
+        cursorX = tx + g.tw
+    end
+
+    -- Extras: ícones pequenos dos debuffs do golpe / bloqueio junto do ataque.
+    if #spec.extras > 0 then
+        local ex = cursorX + gap
+        local ey = boxY + math.floor((boxH - EXTRA_ICON) / 2)
+        for _, name in ipairs(spec.extras) do
+            local ic = getIconByName(name)
+            if ic and ic.draw then
+                local ih2 = (ic.size and ic.size.h) or 16
+                local iw2 = (ic.size and ic.size.w) or 16
+                local sc = IconLoader.computeScale(ih2, EXTRA_ICON)
+                love.graphics.setColor(1, 1, 1, 1)
+                ic.draw(ex + math.floor((EXTRA_ICON - iw2 * sc) / 2),
+                    ey + math.floor((EXTRA_ICON - ih2 * sc) / 2), sc)
+            end
+            ex = ex + EXTRA_ICON + EXTRA_GAP
+        end
+    end
 
     -- FLASH DE EXECUÇÃO: lavagem branca + borda acesa enquanto o zoom decai
     -- ("o anúncio virou ação"). Desenhado por cima de tudo do box.
@@ -365,7 +504,7 @@ function EnemyHud.layout(game, bbox, fallbackCx, fallbackGroundY)
 
     -- Layout: o cluster inteiro fica acima do sprite.
     -- Espaço necessário pra HP: 13pt font (número) + 4 gap + 10 bar = ~27px
-    local iw, ih = EnemyHud.getIntentDims(game.enemy)
+    local iw, ih = EnemyHud.getIntentDims(game.enemy, game.player)
     local gap = 10
     -- Zona: o cluster (intent + pills) não pode passar de 90% da largura da
     -- tela. Com estados novos (Bloqueio, Enfurecido) a row cresceu — quem cede
@@ -411,7 +550,7 @@ function EnemyHud.draw(game, bbox, fallbackCx, fallbackGroundY)
         local startX = math.floor(L.cx - L.totalW / 2)
         if L.iw > 0 then
             local boxY = L.rowY + math.floor((L.rowH - L.ih) / 2)
-            EnemyHud.drawIntent(game.enemy, L.cx, L.topY, startX, boxY)
+            EnemyHud.drawIntent(game.enemy, L.cx, L.topY, startX, boxY, game.player)
         end
         if L.pw > 0 then
             local pillsX = startX + (L.iw > 0 and (L.iw + L.gap) or 0)

@@ -115,6 +115,17 @@ function AI.cardValue(game, card, ctx, stat)
     elseif card.edition == "holo" then v = v * 1.2
     elseif card.edition == "polychrome" then v = v * 1.5 end
     if card.seal == "Red" then v = v * 2 end
+    -- Debuffs do INIMIGO no jogador (kit Out/2026): Fraco corta o ataque,
+    -- Frágil corta a defesa — mesma conta (e mesma ordem: por último) do
+    -- Game:_resolveCardInCombat.
+    local pl = game and game.player
+    if pl and pl.hasDebuff then
+        if card.type == "attack" and pl:hasDebuff("weak") then
+            return math.floor(math.floor(v) * 0.75)
+        elseif card.type == "defense" and pl:hasDebuff("frail") then
+            return math.floor(math.floor(v) * 0.75)
+        end
+    end
     return math.floor(v)
 end
 
@@ -251,6 +262,11 @@ end
 -- strong x1.6, 34% defend/buff) — so o FUTURO usa isto; o turno atual usa o
 -- intent congelado de verdade.
 local function avgIncoming(enemy)
+    -- Kit do inimigo (Out/2026): media ponderada dos golpes dele — o kit
+    -- define quanto cada criatura bate (multi-golpe, perfurante, carga).
+    if enemy.expectedDamagePerTurn then
+        return enemy:expectedDamagePerTurn() + 0.3
+    end
     -- (Buff soma +2 permanente: ~0.3/turno de crescimento medio.)
     return (enemy.damage or 0) * (0.50 + 0.16 * 1.6) + 0.3
 end
@@ -447,26 +463,52 @@ function AI.simulate(game, set, bctx, opts)
     S.hpLoss = 0
     S.killedAfterHit = false
     if endsTurn and not S.lethal then
-        local kind = e.nextIntent or "attack"
         local eArmorAtk = 0  -- armadura do inimigo EXPIRA no inicio do turno dele
         S.eArmor = eArmorAtk
-        if kind == "attack" or kind == "strong" then
-            local dmg = e.nextIntentDamage or e.damage or 0
-            if kind == "strong" then dmg = math.floor(dmg * 1.6) end
-            if S.weak then dmg = math.floor(dmg * 0.75) end
-            if dmg > 0 then
+        -- Intent CONGELADO do kit (Out/2026): golpes x dano por golpe,
+        -- perfurante, bloqueio do proprio inimigo e debuffs no jogador.
+        local it = e.getIntent and e:getIntent() or nil
+        local perHit, hits, pierce = 0, 0, false
+        if it then
+            perHit, hits, pierce = it.perHit or 0, it.hits or 0, it.pierce and true or false
+            if it.vuln and p.hasDebuff and p:hasDebuff("vulnerable") then
+                perHit = math.floor(perHit * 1.5)
+            end
+            S.eArmor = it.armor or 0
+        else
+            local kind = e.nextIntent or "attack"
+            if kind == "attack" or kind == "strong" then
+                perHit, hits = e.nextIntentDamage or e.damage or 0, 1
+                if kind == "strong" then perHit = math.floor(perHit * 1.6) end
+            elseif kind == "defend" then
+                S.eArmor = e.getDefendAmount and e:getDefendAmount() or 6
+            end
+        end
+        if S.weak and perHit > 0 then perHit = math.floor(perHit * 0.75) end
+        local dmg = perHit * hits
+        if dmg > 0 then
+            if pierce then
+                S.hpLoss = dmg
+                S.armorLeft = S.armor
+            else
                 S.hpLoss = math.max(0, dmg - S.armor)
                 S.armorLeft = math.max(0, S.armor - dmg)
-                if S.thorn > 0 then
-                    -- reflexo nao passa pelo Vulneravel? passa: takeDamage
-                    hit(S.thorn)
-                end
             end
-        elseif kind == "defend" then
-            S.eArmor = e.getDefendAmount and e:getDefendAmount() or 6
-            S.armorLeft = S.armor
+            if S.thorn > 0 then
+                -- reflexo nao passa pelo Vulneravel? passa: takeDamage
+                hit(S.thorn)
+            end
         else
             S.armorLeft = S.armor
+        end
+        -- Veneno/queimadura NO JOGADOR ticam no upkeep seguinte (ignoram o
+        -- Bloqueio): o que ja esta nele + o que este golpe aplica.
+        if p.getDebuffStacks then
+            local pdot = p:getDebuffStacks("poison") + p:getDebuffStacks("burn")
+            for _, d in ipairs((it and it.debuffs) or {}) do
+                if d.name == "poison" or d.name == "burn" then pdot = pdot + (d.stacks or 0) end
+            end
+            S.hpLoss = S.hpLoss + pdot
         end
         -- DoT no fim do turno do inimigo (absorvido pela armadura nova)
         if S.eHp > 0 then

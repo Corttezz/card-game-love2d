@@ -1132,30 +1132,15 @@ function EnemyRenderer.getEncounterBillboard(enemy)
     }
 end
 
--- ROSTER v5 (data-driven): monstro por CONTEXTO — ato/bioma × tipo de node.
--- battle = comum; elite/mini_boss = elite do ato; boss = chefe do ato.
--- 4-6 = biomas endless (frost/marsh/dusk), casados com o visual do
--- WorldRoad (que também embrulha o índice módulo 6).
-local ENEMY_ROSTER = {
-    [1] = { battle = "cursed_scarecrow", elite = "harvest_reaper",
-            mini_boss = "harvest_reaper", boss = "carrion_king" },
-    [2] = { battle = "moon_gargoyle", elite = "rune_golem",
-            mini_boss = "rune_golem", boss = "tower_lich" },
-    [3] = { battle = "ember_imp", elite = "obsidian_sentinel",
-            mini_boss = "obsidian_sentinel", boss = "abyss_tyrant" },
-    [4] = { battle = "frost_wight", elite = "glacier_knight",
-            mini_boss = "glacier_knight", boss = "winter_monarch" },
-    [5] = { battle = "bog_ghoul", elite = "mire_hag",
-            mini_boss = "mire_hag", boss = "rot_colossus" },
-    [6] = { battle = "dusk_shade", elite = "blood_duke",
-            mini_boss = "blood_duke", boss = "eclipse_queen" },
-}
-
+-- ROSTER: a fonte única agora é src/data/enemies.lua (`ROSTER`, pools por
+-- ato × tipo de nó, Out/2026). A batalha usa o inimigo SORTEADO no nó
+-- (EnemyRoster, gravado em node.enemyId); este helper devolve o PRIMEIRO do
+-- pool — o "rosto" do ato, usado por ferramentas de captura e como prévia
+-- de nó antigo sem enemyId. Endless cicla 4,5,6,1,2,3,... (WorldRoad).
 function EnemyRenderer.resolveSpriteId(actNumber, nodeType)
-    -- mesmo wrap do WorldRoad.rawBiome: endless cicla 4,5,6,1,2,3,...
     local effectiveAct = (((actNumber or 1) - 1) % 6) + 1
-    local roster = ENEMY_ROSTER[effectiveAct] or ENEMY_ROSTER[1]
-    return roster[nodeType or "battle"] or roster.battle
+    local pool = require("src.systems.EnemyRoster").poolFor(effectiveAct, nodeType)
+    return pool[1]
 end
 
 return EnemyRenderer

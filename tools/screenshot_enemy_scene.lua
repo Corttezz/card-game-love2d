@@ -9,6 +9,7 @@
 --   love . screenshot_enemy_scene 1_boss
 --   love . screenshot_enemy_scene 6_battle     → dusk_shade (flutuante)
 --
+-- ENEMY_SCENE_ID=<id> força o sprite (vale pra arte nova fora do roster).
 -- Sufixo "_hud" desenha a cena SEM o HUD/mão (default inclui tudo, que é o
 -- que o jogador vê). Saída: enemy_scene_<modo>.png no save dir.
 --
@@ -58,8 +59,35 @@ function M.run(mode)
     run.actNumber = act
     run.floorInAct = (nodeType == "boss") and 8 or 3
     run.currentNode = { type = nodeType }
-    game.enemy.spriteId = EnemyRenderer.resolveSpriteId(act, nodeType)
+    -- ENEMY_SCENE_ID=<id>: força o sprite (arte nova ainda fora do roster)
+    local forcedId = os.getenv("ENEMY_SCENE_ID")
+    if forcedId and forcedId ~= "" then mode = mode .. "_" .. forcedId end
+    game.enemy.spriteId = (forcedId and forcedId ~= "") and forcedId
+        or EnemyRenderer.resolveSpriteId(act, nodeType)
     game.enemy.isBoss = (nodeType == "boss")
+
+    -- KIT DO INIMIGO (Out/2026): monta o inimigo pelo roster (kit + stats do
+    -- ato) e, com ENEMY_SCENE_MOVE=<id do golpe>, anuncia aquele golpe — é o
+    -- que prova na tela o intent novo (multi-golpe, debuff, perfurante...).
+    -- ENEMY_SCENE_DEBUFFS=weak,frail,poison põe debuffs no jogador (pills).
+    -- ENEMY_SCENE_HOVER=1 posiciona o mouse no intent (tooltip do golpe).
+    do
+        local EnemyRoster = require("src.systems.EnemyRoster")
+        local ActSystem = require("src.systems.ActSystem")
+        local Enemy = require("src.entities.Enemy")
+        local stats = ActSystem.getEnemyStats(act, run.floorInAct, nodeType)
+        local sid = game.enemy.spriteId
+        game.enemy = EnemyRoster.spawn(Enemy, sid, stats)
+        game.enemy.isBoss = (nodeType == "boss")
+        local mv = os.getenv("ENEMY_SCENE_MOVE")
+        if mv and mv ~= "" then
+            game.enemy:forceIntent(mv, game.player)
+            mode = mode .. "_" .. mv
+        end
+        for name in (os.getenv("ENEMY_SCENE_DEBUFFS") or ""):gmatch("[^,]+") do
+            game.player:addDebuff(name, 2, (name == "poison" or name == "burn") and 4 or 1)
+        end
+    end
 
     _G.game = game
     local topBar = TopBar:new()
@@ -85,9 +113,37 @@ function M.run(mode)
         local IFX = require("src.ui.InteriorFX"); IFX.update(1 / 30, IFX.hallFor(act))
     end
 
+    -- Layout real do cluster do intent, capturado do próprio draw.
+    local EnemyHud = require("src.ui.EnemyHud")
+    local lastL
+    local origLayout = EnemyHud.layout
+    EnemyHud.layout = function(...)
+        local L = origLayout(...)
+        lastL = L
+        return L
+    end
     if vcanvas then love.graphics.setCanvas(vcanvas) end
     love.graphics.clear(0, 0, 0, 1)
     GameplayScene.draw()
+    -- Tooltip do golpe: 2ª passada com o mouse em cima do intent (a 1ª
+    -- passada calcula o layout real do cluster).
+    if os.getenv("ENEMY_SCENE_HOVER") == "1" then
+        local L = lastL
+        if L and L.iw > 0 then
+            local hx = math.floor(L.cx - L.totalW / 2 + L.iw / 2)
+            local hy = math.floor(L.rowY + L.rowH / 2)
+            love.mouse.getPosition = function() return hx, hy end
+            love.graphics.clear(0, 0, 0, 1)
+            GameplayScene.draw()
+            -- o tooltip é desenhado pelo main.lua no fim do frame
+            -- (relógio adiantado: o pop-in do tooltip já assentou)
+            local ST = require("src.ui.StatusTooltip")
+            local realTime = love.timer.getTime
+            love.timer.getTime = function() return realTime() + 2 end
+            if ST.draw then ST.draw() end
+            love.timer.getTime = realTime
+        end
+    end
     if vcanvas then
         love.graphics.setCanvas()
         local path = "enemy_scene_" .. mode .. "_" .. vw .. "x" .. vh .. ".png"

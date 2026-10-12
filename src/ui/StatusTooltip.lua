@@ -147,8 +147,18 @@ end
 -- Variante ausente cai na desc normal (e avisa, ui_layout_invariants §3).
 local warnedVariant = {}
 local function resolveTexts(statusName, ctx)
-    local nameKey = "status." .. statusName .. ".name"
-    local descKey = "status." .. statusName .. ".desc"
+    -- Texto JÁ composto pelo chamador (tooltip do intent do inimigo: nome do
+    -- golpe + linhas montadas dos números congelados — EnemyHud).
+    if ctx and ctx.title then return ctx.title, ctx.body or "" end
+    local ns = "status."
+    -- Status do kit dos inimigos (Frágil, Revoada, Eclipse, DoT no jogador)
+    -- moram em `enemy_kit.status` — arquivo próprio por locale.
+    if I18n.t("status." .. statusName .. ".name", nil, "") == ""
+        and I18n.t("enemy_kit.status." .. statusName .. ".name", nil, "") ~= "" then
+        ns = "enemy_kit.status."
+    end
+    local nameKey = ns .. statusName .. ".name"
+    local descKey = ns .. statusName .. ".desc"
     local name = I18n.t(nameKey, nil, capitalize(statusName))
     local desc = ""
     local variant = ctx and ctx.variant

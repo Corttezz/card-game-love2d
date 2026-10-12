@@ -88,6 +88,17 @@ local MODE_CONFIG = {
         canSkip = true,
         skipBonus = 0,
     },
+    -- ESPÓLIO DO CHEFE (Out/2026, auditoria de conteúdo): depois da carta
+    -- do chefe de cada ato, 1 de 3 CORINGAS raros/lendários que a run ainda
+    -- não tem. Grátis, escolha 1, pular permitido.
+    boss_relic = {
+        cards = 3,
+        upgrades = 0,
+        boosters = 0,
+        canReroll = false,
+        canSkip = true,
+        skipBonus = 0,
+    },
     shop = {
         cards = 4,
         -- 2 (era 1): com os SERVIÇOS (tesoura, prensa, bancada de coringa,
@@ -198,7 +209,10 @@ end
 
 -- Define o modo antes de gerar ofertas. "rewards" pra post-battle; "shop" pra SHOP node.
 function ShopSystem:setMode(mode)
-    if mode ~= "rewards" and mode ~= "shop" then mode = "shop" end
+    if not MODE_CONFIG[mode] then
+        print("[ShopSystem] modo desconhecido '" .. tostring(mode) .. "' — usando 'shop'")
+        mode = "shop"
+    end
     self.mode = mode
     -- Reset de reroll por sessão da loja.
     self.refreshCount = 0
@@ -226,6 +240,13 @@ function ShopSystem:generateOffers()
     -- Dedup por geração: a mesma carta nunca aparece 2x na mesma vitrine.
     self._offeredCardIds = {}
     local cfg = self:getModeConfig()
+
+    if self.mode == "boss_relic" then
+        for _, offer in ipairs(self:generateBossJokerOffers(cfg.cards)) do
+            table.insert(self.currentOffers, offer)
+        end
+        return
+    end
 
     for _ = 1, cfg.cards do
         local offer = self:generateCardOffer()
@@ -305,6 +326,57 @@ function ShopSystem:generateCardOffer()
         affinityTags = pick.affinityTags,
         fromPity = pick.fromPity,
     }
+end
+
+-- Coringas do espólio do chefe: raros/lendários da classe (ou neutros),
+-- desbloqueados e que a run AINDA NÃO possui (coleção + bancada). Stream
+-- "card" do Rng. Pool curta (run já tem quase todos): completa com incomuns.
+function ShopSystem:generateBossJokerOffers(n)
+    local UnlockSystem = require("src.systems.UnlockSystem")
+    local Rng = require("src.systems.Rng")
+    local classId = self.context.classId
+    local owned = {}
+    local run = self.context.runManager and self.context.runManager.currentRun
+    for _, entry in ipairs((run and run.jokers) or {}) do
+        local id = type(entry) == "table" and entry.id or entry
+        if id then owned[id] = true end
+    end
+    local function poolOf(rarities)
+        local ids = {}
+        for id, cd in pairs(self.cardDatabase:getAllCards()) do
+            if cd.type == "joker" and rarities[cd.rarity] and not owned[id]
+                and (cd.class == nil or cd.class == "basic" or cd.class == classId)
+                and UnlockSystem.isCardUnlocked(id) then
+                ids[#ids + 1] = id
+            end
+        end
+        table.sort(ids) -- pairs não é determinístico; o sorteio por seed é
+        return ids
+    end
+    local pool = poolOf({ rare = true, legendary = true })
+    if #pool < n then
+        local extra = poolOf({ uncommon = true })
+        local rng = Rng.get()
+        while #pool < n and #extra > 0 do
+            pool[#pool + 1] = table.remove(extra, rng:random("card", #extra))
+        end
+    end
+    local offers = {}
+    local rng = Rng.get()
+    while #offers < n and #pool > 0 do
+        local id = table.remove(pool, rng:random("card", #pool))
+        local cd = self.cardDatabase:getCard(id)
+        if cd then
+            offers[#offers + 1] = {
+                type = "card", id = id, name = cd.name, description = cd.description,
+                cost = 0, rarity = cd.rarity, image = cd.image, bossRelic = true,
+            }
+        end
+    end
+    if #offers == 0 then
+        print("[ShopSystem] espólio do chefe sem coringa disponível (run já tem todos)")
+    end
+    return offers
 end
 
 -- Monta a oferta de um SERVIÇO (tesoura, prensa, bancada de coringa,

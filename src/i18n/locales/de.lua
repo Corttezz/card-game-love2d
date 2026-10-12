@@ -1233,4 +1233,7 @@ return {
         strength      = { name = "Stärke", text = "+1 Schaden pro Punkt, in diesem Kampf." },
         dexterity     = { name = "Geschicklichkeit", text = "+1 Block pro Punkt, in diesem Kampf." },
     },
+
+    -- Kit dos inimigos (golpes nomeados, tooltip do intent, debuffs no jogador)
+    enemy_kit = require("src.i18n.locales.enemy_kit.de"),
 }

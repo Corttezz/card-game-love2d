@@ -1,10 +1,12 @@
 local Config = require("src.core.Config")
 local ValueEasing = require("src.ui.ValueEasing")
+local EnemyKits = require("src.data.enemies")
+local Rng = require("src.systems.Rng")
 
 local Enemy = {}
 Enemy.__index = Enemy
 
-function Enemy:new(health, damage)
+function Enemy:new(health, damage, kitId)
     local instance = setmetatable({}, Enemy)
     instance.maxHealth = health
     instance.health = health
@@ -21,72 +23,336 @@ function Enemy:new(health, damage)
     -- Valores eased pra display suave de HP/armor (ValueEasing.tick)
     instance.disp = {}
     -- F1 gameplay-overhaul: o inimigo TELEGRAFA a ação do próximo turno.
-    instance:rollIntent()
+    -- O kit (src/data/enemies.lua) decide QUAIS golpes ele tem; sem kit, o
+    -- "generic" reproduz os quatro intents de antes (testes, modo clássico).
+    instance:setKit(kitId or "generic")
     return instance
 end
 
--- ===== Intents (F1 do gameplay-overhaul-v1) =====
--- O inimigo anuncia o que fará no próximo turno (nextIntent); o EnemyHud
--- desenha ícone + número. Cria "janelas": turno de defend/buff do inimigo é
--- a hora de burstar; ataque forte é a hora de defender.
-local INTENTS = {
-    { kind = "attack", weight = 50 },  -- dano normal
-    { kind = "strong", weight = 16 },  -- dano ×1.6
-    { kind = "defend", weight = 18 },  -- ganha armor
-    { kind = "buff",   weight = 16 },  -- +2 dano permanente
-}
-
-function Enemy:rollIntent()
-    -- Pressão garantida: nunca 2 turnos seguidos sem atacar (senão o
-    -- inimigo "stalla" e devolve o problema que queremos matar).
-    if self._lastIntentNonAttack then
-        self.nextIntent = (math.random() < 0.30) and "strong" or "attack"
-        self._lastIntentNonAttack = false
-        self.nextIntentDamage = self.damage
-        return self.nextIntent
+-- ===== Kit de golpes (Out/2026, src/data/enemies.lua) =====
+-- Antes havia UMA tabela de intents dividida pelas 21 criaturas. Agora cada
+-- criatura tem o seu kit: golpes nomeados, multi-golpe, debuffs no jogador,
+-- carga telegrafada, invocação, fases. Trocar o kit zera o histórico de
+-- golpes e rola o intent de novo (é o "nascimento" da criatura).
+--
+-- O hpMul/dmgMul do kit NÃO mora aqui: quem escala vida/dano é o
+-- EnemyRoster.spawn, que sabe que está criando um inimigo novo (setKit pode
+-- ser chamado em inimigo de teste já montado).
+function Enemy:setKit(kitId)
+    local kit = EnemyKits.KITS[kitId]
+    if not kit then
+        -- Fallback silencioso é proibido (CLAUDE.md): avisa e usa o legado.
+        print("[Enemy] kit desconhecido '" .. tostring(kitId) .. "' — usando 'generic'")
+        kitId, kit = "generic", EnemyKits.KITS.generic
     end
-    local total = 0
-    for _, it in ipairs(INTENTS) do total = total + it.weight end
-    local r = math.random() * total
-    for _, it in ipairs(INTENTS) do
-        r = r - it.weight
-        if r <= 0 then
-            self.nextIntent = it.kind
-            break
+    self.kitId = kitId
+    self.kit = kit
+    self._phaseIdx = 0
+    self._phaseOpener = nil
+    self._moveHistory = {}
+    self._rollIndex = 0
+    self._forcedNext = nil
+    self._pendingPhase = nil
+    if kitId ~= "generic" then
+        -- Armadura do inimigo escala com o dano dele: o teto fixo de 20 virava
+        -- "nada" no ato 6 (golpe do jogador passa de 100).
+        self.maxArmor = math.max(20, math.floor(self.damage * 2.5))
+    end
+    local passive = kit.passive
+    if passive and passive.regenPct then
+        local n = math.max(1, math.floor(self.maxHealth * passive.regenPct))
+        self:addStatusEffect({ name = "regen", stacks = n, duration = 999 })
+    end
+    self:rollIntent()
+end
+
+-- Golpes ativos agora (kit base ou a fase corrente).
+function Enemy:_moves()
+    local ph = (self._phaseIdx or 0) > 0 and self.kit.phases
+        and self.kit.phases[self._phaseIdx]
+    return (ph and ph.moves) or self.kit.moves
+end
+
+function Enemy:_findMove(id)
+    for _, m in ipairs(self:_moves()) do
+        if m.id == id then return m end
+    end
+    for _, m in ipairs(self.kit.moves) do
+        if m.id == id then return m end
+    end
+    for _, ph in ipairs(self.kit.phases or {}) do
+        for _, m in ipairs(ph.moves) do
+            if m.id == id then return m end
         end
     end
-    self.nextIntent = self.nextIntent or "attack"
-    self._lastIntentNonAttack =
-        (self.nextIntent == "defend" or self.nextIntent == "buff")
-    -- CONGELA o dano bruto no momento do anuncio (auditoria Jul/2026,
-    -- anomalia "escudo furado"): Furia/BUFF mutavam self.damage ENTRE o
-    -- telegraph e a execucao — o golpe batia mais forte que o numero que o
-    -- jogador viu. Preview e performAttack leem este valor; buffs rolados
-    -- depois so valem no PROXIMO intent. Weak continua por cima (so reduz).
-    self.nextIntentDamage = self.damage
+    return nil
+end
+
+local function dealsDamage(m)
+    return (m.mult or 0) > 0
+end
+
+-- Quantas vezes seguidas o golpe `id` acabou de sair.
+function Enemy:_streak(id)
+    local n = 0
+    for i = #self._moveHistory, 1, -1 do
+        if self._moveHistory[i] ~= id then break end
+        n = n + 1
+    end
+    return n
+end
+
+-- Escolhe o PRÓXIMO golpe. Ordem de precedência:
+--   1. golpe forçado (carga -> golpe carregado)
+--   2. abertura da fase recém-aberta / abertura do kit (1º turno)
+--   3. golpe de cadência fixa (`every`)
+--   4. sorteio ponderado (stream "enemy"), respeitando minTurn, maxRow e a
+--      PRESSÃO GARANTIDA: nunca dois turnos seguidos sem dano (senão o
+--      inimigo "stalla" e devolve o problema que o F1 matou).
+function Enemy:_chooseMove()
+    local t = self._rollIndex
+    if self._forcedNext then
+        local m = self:_findMove(self._forcedNext)
+        self._forcedNext = nil
+        if m then return m end
+    end
+    if self._phaseOpener then
+        local m = self:_findMove(self._phaseOpener)
+        self._phaseOpener = nil
+        if m then return m end
+    end
+    if t == 1 and self.kit.opener then
+        local m = self:_findMove(self.kit.opener)
+        if m then return m end
+    end
+    local moves = self:_moves()
+    for _, m in ipairs(moves) do
+        if m.every and t > 1 and t % m.every == 0 then return m end
+    end
+
+    local last = self._moveHistory[#self._moveHistory]
+    local lastMove = last and self:_findMove(last)
+    local needDamage = lastMove and not dealsDamage(lastMove)
+    local pool, total = {}, 0
+    for _, m in ipairs(moves) do
+        local w = m.weight or 0
+        local ok = w > 0
+            and (not m.minTurn or t >= m.minTurn)
+            and self:_streak(m.id) < (m.maxRow or 2)
+            and (not needDamage or dealsDamage(m))
+        if ok then
+            pool[#pool + 1] = m
+            total = total + w
+        end
+    end
+    if #pool == 0 then
+        -- Restrições demais (kit pequeno): relaxa tudo menos o peso.
+        for _, m in ipairs(moves) do
+            if (m.weight or 0) > 0 then
+                pool[#pool + 1] = m
+                total = total + m.weight
+            end
+        end
+    end
+    if #pool == 0 then return moves[1] end
+    local r = Rng.get():random("enemy") * total
+    for _, m in ipairs(pool) do
+        r = r - m.weight
+        if r <= 0 then return m end
+    end
+    return pool[#pool]
+end
+
+-- Lista normalizada de debuffs do golpe (aceita um só ou lista).
+local function debuffList(m)
+    local d = m.debuff
+    if not d then return nil end
+    if d.name then d = { d } end
+    local out = {}
+    for i, x in ipairs(d) do
+        out[i] = { name = x.name, duration = x.duration or 1, stacks = x.stacks or 1 }
+    end
+    return out
+end
+
+-- CONGELA o golpe no momento do anúncio (auditoria Jul/2026, anomalia
+-- "escudo furado"): Fúria/buff mutavam self.damage ENTRE o telegraph e a
+-- execução — o golpe batia mais forte que o número que o jogador viu. Todo
+-- número do intent (dano por golpe, golpes, bloqueio, cura, força) é fixado
+-- AQUI; buffs rolados depois só valem no PRÓXIMO intent. Weak do inimigo
+-- continua por cima (só reduz).
+--
+-- `player` (opcional) congela a Vulnerabilidade do jogador junto: o golpe só
+-- é ampliado se o jogador JÁ estava vulnerável no anúncio (e ainda estiver
+-- na execução) — o número no HUD nunca é menor que o golpe.
+function Enemy:rollIntent(player)
+    self._rollIndex = (self._rollIndex or 0) + 1
+    local m = self:_chooseMove()
+    self._moveHistory[#self._moveHistory + 1] = m.id
+    if m.next then self._forcedNext = m.next end
+
+    local D = self.damage
+    local hits = m.hits or 1
+    if m.swarm then
+        hits = math.min(8, hits + self:getStatusStacks("swarm"))
+    end
+    local strength = m.strengthFlat
+    if m.strength then
+        strength = math.max(2, math.floor((self.baseDamage or D) * m.strength))
+    end
+    local hasDmg = (m.mult or 0) > 0
+    local intent = {
+        id = m.id,
+        kind = m.kind or "attack",
+        raw = D,
+        perHit = hasDmg and math.max(1, math.floor(D * m.mult)) or 0,
+        hits = hasDmg and hits or 0,
+        pierce = m.pierce or nil,
+        armor = m.armor and math.floor(self:getDefendAmount() * m.armor) or 0,
+        strength = strength or 0,
+        heal = m.heal and math.max(1, math.floor(self.maxHealth * m.heal)) or 0,
+        summon = m.summon or 0,
+        charge = m.next and true or nil,
+        debuffs = debuffList(m),
+        vuln = (player and player.hasDebuff and player:hasDebuff("vulnerable")) or nil,
+    }
+    self.intent = intent
+    self.nextIntent = intent.kind
+    self.nextIntentDamage = D
     return self.nextIntent
 end
 
--- Valor de preview do intent pro HUD: (kind, número).
---   attack/strong → dano previsto (com weak aplicado)
---   defend        → armor que vai ganhar
---   buff          → +2 (dano permanente)
-function Enemy:getIntentPreview()
+-- Anuncia um golpe ESPECÍFICO do kit (testes e ferramentas de captura).
+-- Passa pelo mesmo congelamento do rollIntent.
+function Enemy:forceIntent(moveId, player)
+    self._forcedNext = moveId
+    return self:rollIntent(player)
+end
+
+-- Intent corrente. Se alguém sobrescreveu nextIntent/nextIntentDamage por
+-- fora (testes antigos montam o cenário assim), sintetiza o golpe legado
+-- correspondente — o contrato antigo (attack/strong ×1.6/defend/buff +2)
+-- continua valendo pra quem escreve só esses dois campos.
+function Enemy:getIntent()
+    local it = self.intent
     local kind = self.nextIntent or "attack"
-    if kind == "defend" then
-        return kind, self:getDefendAmount()
+    local raw = self.nextIntentDamage or self.damage
+    if it and it.kind == kind and it.raw == raw then return it end
+    local synth = { id = kind, kind = kind, raw = raw, perHit = 0, hits = 0,
+        armor = 0, strength = 0, heal = 0, summon = 0 }
+    if kind == "attack" then
+        synth.perHit, synth.hits = raw, 1
+    elseif kind == "strong" then
+        synth.perHit, synth.hits = math.floor(raw * 1.6), 1
+    elseif kind == "defend" then
+        synth.armor = self:getDefendAmount()
     elseif kind == "buff" then
-        return kind, 2
+        synth.strength = 2
     end
-    local dmg = self.nextIntentDamage or self.damage
-    if kind == "strong" then dmg = math.floor(dmg * 1.6) end
+    self.intent = synth
+    return synth
+end
+
+-- Dano de UM golpe do intent, como vai acontecer (e como o HUD mostra):
+-- weak do inimigo reduz; vulnerável do jogador amplia só se congelado.
+function Enemy:intentHitDamage(player)
+    local it = self:getIntent()
+    local dmg = it.perHit or 0
+    if dmg <= 0 then return 0 end
     if self:hasStatus("weak") then dmg = math.floor(dmg * 0.75) end
-    return kind, dmg
+    if it.vuln and player and player.hasDebuff and player:hasDebuff("vulnerable") then
+        dmg = math.floor(dmg * 1.5)
+    end
+    return dmg
+end
+
+-- Dano TOTAL previsto do intent (todos os golpes) — o que o piloto e
+-- qualquer preview devem ler. Não desconta Bloqueio.
+function Enemy:getIncomingDamage(player)
+    local it = self:getIntent()
+    return self:intentHitDamage(player) * (it.hits or 0)
+end
+
+-- Dano MÉDIO por turno do kit ativo (média ponderada dos golpes sorteáveis,
+-- golpes × multiplicador × dano atual). Só pra estimar o FUTURO (piloto de
+-- balanceamento); o turno corrente usa o intent congelado.
+function Enemy:expectedDamagePerTurn()
+    local total, sum = 0, 0
+    for _, m in ipairs(self:_moves()) do
+        local w = m.weight or 0
+        if w > 0 then
+            total = total + w
+            sum = sum + w * (m.mult or 0) * (m.hits or 1)
+        end
+    end
+    if total <= 0 then return self.damage or 0 end
+    return (self.damage or 0) * sum / total
+end
+
+-- Valor de preview do intent pro HUD: (kind, número, intent).
+--   golpe com dano       → dano POR GOLPE (weak/vulnerável aplicados)
+--   defend               → armor que vai ganhar
+--   buff                 → +dano permanente
+--   heal                 → cura
+--   debuff/charge/summon → 0 (o HUD desenha ícone, sem número)
+function Enemy:getIntentPreview(player)
+    local it = self:getIntent()
+    local kind = it.kind
+    if (it.perHit or 0) > 0 then
+        return kind, self:intentHitDamage(player), it
+    elseif kind == "defend" then
+        return kind, it.armor, it
+    elseif kind == "buff" then
+        return kind, it.strength, it
+    elseif kind == "heal" then
+        return kind, it.heal, it
+    end
+    return kind, 0, it
 end
 
 -- Armor do intent defend: proporcional ao dano (inimigo forte defende forte).
 function Enemy:getDefendAmount()
     return math.min(self.maxArmor, math.max(6, math.floor(self.damage * 0.8)))
+end
+
+-- ===== Execução do intent (chamada pelo Game, cada parte no seu beat) =====
+function Enemy:healSelf(n)
+    if not n or n <= 0 or self.health <= 0 then return 0 end
+    local before = self.health
+    self.health = math.min(self.maxHealth, self.health + n)
+    return self.health - before
+end
+
+function Enemy:gainStrength(n)
+    if not n or n <= 0 then return end
+    self.baseDamage = self.baseDamage + n
+    self.damage = self.damage + n
+end
+
+-- Regeneração passiva (status `regen`): cura no fim do turno do inimigo.
+function Enemy:tickRegen()
+    if not self:hasStatus("regen") or self.health <= 0 then return 0 end
+    return self:healSelf(self:getStatusStacks("regen"))
+end
+
+-- FASES (Rainha do Eclipse): cruzar a fração de vida troca o kit e sobe o
+-- dano. Mesmo contrato do ENFURECIDO: a entidade MARCA (`_pendingPhase`), o
+-- Game ENCENA (Game:_announcePhaseIfPending). O intent já anunciado NÃO muda.
+function Enemy:_checkPhase()
+    local phases = self.kit and self.kit.phases
+    if not phases or self.health <= 0 then return end
+    local nextIdx = (self._phaseIdx or 0) + 1
+    local ph = phases[nextIdx]
+    if ph and self.health <= self.maxHealth * (ph.at or 0.5) then
+        self._phaseIdx = nextIdx
+        self._pendingPhase = ph
+        self._phaseOpener = ph.opener
+        self._moveHistory = {}
+        local mul = ph.dmgMul or 1
+        self.baseDamage = math.floor(self.baseDamage * mul)
+        self.damage = math.floor(self.damage * mul)
+        self:addStatusEffect({ name = ph.id or "eclipse", stacks = 1, duration = 999 })
+    end
 end
 
 -- MORRER E UM ACONTECIMENTO, NAO UM ESTADO QUE ALGUEM PERCEBE DEPOIS
@@ -107,6 +373,9 @@ function Enemy:_markDeathIfCrossed(wasAlive)
     if wasAlive and self.health <= 0 then
         self._pendingDeath = true
     end
+    -- Mesmo ponto único de queda de vida: a troca de FASE também é marcada
+    -- aqui (dano direto e DoT passam por este funil).
+    self:_checkPhase()
 end
 
 function Enemy:takeDamage(damage)

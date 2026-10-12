@@ -59,7 +59,18 @@ local HAS_PERMANENT_DESC = {
 local ORDER = {
     "strength", "dexterity", "focus",
     "thorn", "lifesteal", "regen", "bleed", "retain_armor",
+    -- Debuffs do inimigo (Out/2026) depois dos buffs: o que te ajuda primeiro,
+    -- o que te atrapalha no fim da row.
+    "weak_self", "frail", "vulnerable_self", "poison_self", "burn_self",
 }
+
+-- Debuff do jogador (player.debuffs) → pill. Sufixo _self: o tooltip fala com
+-- o jogador ("seus ataques causam 25% menos"), não com o alvo genérico.
+local DEBUFF_PILL = {
+    weak = "weak_self", frail = "frail", vulnerable = "vulnerable_self",
+    poison = "poison_self", burn = "burn_self",
+}
+PlayerBuffPills.DEBUFF_PILL = DEBUFF_PILL
 local ORDER_INDEX = {}
 for i, name in ipairs(ORDER) do ORDER_INDEX[name] = i end
 
@@ -105,6 +116,21 @@ function PlayerBuffPills.collect(player, game)
         if d > 0 and d < PERMANENT_THRESHOLD then
             e.duration = math.max(e.duration, d)
             e.timed = true
+        end
+    end
+
+    -- Debuffs aplicados pelo inimigo (golpes do kit). Duração é a real: o
+    -- decremento acontece no fim do turno do inimigo (Player:decayDebuffs).
+    for _, d in ipairs(player.debuffs or {}) do
+        local pill = DEBUFF_PILL[d.name]
+        if pill and (d.duration or 0) > 0 then
+            local e = entry(pill)
+            e.stacks = e.stacks + (d.stacks or 1)
+            e.duration = math.max(e.duration, d.duration)
+            e.timed = true
+            if pill ~= "poison_self" and pill ~= "burn_self" then
+                e.showStacks = false
+            end
         end
     end
 

@@ -39,6 +39,16 @@ StatusPill.COLORS = {
     retain_armor = { 0.60, 0.72, 0.85 }, -- Bloqueio NÃO zera no turno
     block        = { 0.55, 0.70, 0.88 }, -- armadura do inimigo
     enraged      = { 0.95, 0.45, 0.20 }, -- inimigo ferido bate 50% mais forte
+    -- Kit dos inimigos (Out/2026, src/data/enemies.lua): debuffs NO JOGADOR
+    -- (sufixo _self: o tooltip fala com o jogador, "seus ataques...") e
+    -- estados próprios do chefe.
+    weak_self       = { 0.50, 0.45, 0.70 },
+    vulnerable_self = { 0.85, 0.55, 0.25 },
+    frail           = { 0.45, 0.62, 0.80 }, -- Bloqueio rende menos
+    poison_self     = { 0.45, 0.75, 0.30 },
+    burn_self       = { 0.90, 0.40, 0.20 },
+    swarm           = { 0.40, 0.35, 0.45 }, -- corvos invocados (Rei da Carniça)
+    eclipse         = { 0.55, 0.30, 0.75 }, -- 2ª fase da Rainha do Eclipse
 }
 StatusPill.ICONS = {
     poison       = "status_poison",
@@ -70,6 +80,15 @@ StatusPill.ICONS = {
     retain_armor = "status_retain_armor",
     enraged      = "status_enraged",
     block        = "armor_shield", -- mesmo ícone do Bloqueio no painel do jogador
+    -- Kit dos inimigos (Out/2026). Interinos de arte existente até a leva
+    -- dedicada (frágil = placa de armadura; revoada = garra; eclipse = lua).
+    weak_self       = "status_weak",
+    vulnerable_self = "status_vulnerable",
+    frail           = "armor_plate",
+    poison_self     = "status_poison",
+    burn_self       = "status_burn",
+    swarm           = "claw",
+    eclipse         = "moon",
 }
 
 -- ===== Avisos (ui_layout_invariants §3: fallback silencioso é proibido) =====

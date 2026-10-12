@@ -79,6 +79,7 @@ card-game-love2d/
 │   │   ├── Player.lua          # HP, armor, mana, spendMana/restoreMana
 │   │   └── Enemy.lua           # HP, damage scaling, attackPattern, statusEffects
 │   ├── systems/
+│   │   ├── EnemyRoster.lua     # Quem luta em cada nó: pool por ato × tipo (src/data/enemies.lua), stream "enemy", sem repetir — memory/enemies.md
 │   │   ├── CombatBeats.lua     # METRÔNOMO: fila "beats" — um acontecimento por instante, bloqueando o próximo (tabela de tempos única) — memory/combat_beats.md
 │   │   ├── CardDatabase.lua    # Loader fino (~170 LOC) que merge src/data/cards/*.lua
 │   │   ├── CardRegistry.lua    # Classes + pools por raridade + rolagem (substitui ClassSystem); _poolFor filtra UnlockSystem.isCardUnlocked
@@ -183,7 +184,7 @@ menu → classSelection → playing
    - **Defense path**: idem com `player.dexterity`.
    - **Joker/Effect**: passive roda; joker vai pros slots.
 5. `onCombatAnimationComplete` → `ComboSystem.applyOnceEffects` (heal/debuff/evoke) → `turn = "enemy"`.
-6. `Game:enemyTurn()`:
+6. `Game:enemyTurn()` — executa o golpe CONGELADO do **kit** do inimigo (`src/data/enemies.lua`, ver `memory/enemies.md`): bloqueio > golpe(s) > espinhos > debuffs no jogador > força/cura/invocação/carga, um beat cada:
    - `performAttack` (considera `weak`)
    - `takeDamage` aplica no player
    - `enemy:onTurnEnd()` → poison DoT + decrementa durations de debuffs
@@ -238,6 +239,7 @@ Todas herdam de `src/cards/base/Card.lua`. Toda carta tem **`tags = {}`** (array
 - **Intent do inimigo é CONGELADO no anúncio** (`Enemy.nextIntentDamage`, setado em `rollNextIntent`): o golpe executado NUNCA excede o número que o jogador viu no HUD — Fúria/BUFF entre telegraph e execução só valem no próximo intent (anomalia "escudo furado" do autoplay). Weak aplica por cima (só reduz). Testes que mutam `enemy.damage` devem setar `nextIntentDamage` junto.
 - **Flags**: `exhaust` (por batalha), `innate`, `retain`
 - **Jokers multiplicadores NÃO compõem** (rebalance v2, Jul/2026): em `EffectSystem:applyJokerEffects`, só o MAIOR `damage_multiplier` e o MAIOR `defense_multiplier` entre jokers ativos contam (largest-wins); bônus flat somam todos. Regressões em `test_effects_full`.
+- **INIMIGOS TÊM KIT PRÓPRIO** (Out/2026, `memory/enemies.md`): `src/data/enemies.lua` = roster por ato (2+ comuns, elite, mini-chefe distinto, chefe) + golpes nomeados por criatura (multi-golpe, perfurante, debuff NO jogador — `weak`/`frail`/`vulnerable`/`poison`/`burn` em `player.debuffs`, decaem no fim do turno do inimigo pulando o turno aplicado —, carga, revoada, fases). O inimigo é sorteado no stream "enemy" quando o NÓ nasce (`node.enemyId`), nunca repete o último. Execução lê os CAMPOS do intent, não o `kind`; todo número (inclusive nº de golpes e Vulnerável) congela no anúncio. Chefe do ato rende 1 de 3 coringas raros depois da carta (`boss_relic`). Golpe novo = nome nos 5 `enemy_kit` locales; trava `test_enemies`.
 - **INIMIGO ENFURECIDO tem instante próprio** (Set/2026): cruzar 30% de vida (`Enemy:takeDamage`) dá +50% de dano permanente — antes era MUDO. Agora vira status `enraged` (nome obrigatório; `fury` é o anti-stall do turno 8+, outra mecânica) + beat bloqueante via `Game:announceEnrageIfPending`. `nextIntentDamage` segue congelado: o golpe já telegrafado não muda.
 - **ESPINHOS são ESTADO, não dano na hora** (Set/2026, `memory/combat_beats.md`): `on_defend_damage` ARMA `player:addBuff("thorn", 1, N)` quando a defesa é jogada; o dano só sai quando o **inimigo ataca** (beat `player.thorn_reflect` → `EffectSystem:fireThornReflect`), e o buff expira no upkeep seguinte. Antes o reflexo acontecia ao JOGAR a carta, mesmo que o inimigo nunca atacasse. A regra P2.3 sobrevive: joker ARMA 1×/turno, carta arma por carta — mesmo teto por turno, momento diferente. Travas em `test_beats` + `test_effects_full`.
 - **Ofertas por ato** (rebalance v2): pesos de raridade vêm de `ActSystem.getRarityWeights(ato)` (A1 70/25/5/0 → A3 15/45/32/8); neutras `class="basic"` ofertáveis com peso 0.6; afinidade com cap progressivo 0.9/1.2/1.5 e blacklist de tags genéricas; elite→minRarity uncommon, boss→rare; oferta nunca repete joker possuído. Ver `memory/rng_and_offers.md`.
