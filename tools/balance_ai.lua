@@ -341,8 +341,8 @@ function AI.simulate(game, set, bctx, opts)
     end
 
     -- combos do conjunto (modulo real)
-    local ctx = { allSelectedCards = set, tagCounts = TagSystem.countAllTags(set) }
-    ComboSystem.detect(ctx)
+    local ctx = { allSelectedCards = set, tagCounts = TagSystem.countAllTags(set), game = game }
+    ComboSystem.detect(ctx, game)
 
     -- Impeto do guerreiro: decide ANTES de resolver (applyClassTurnPassives)
     if game.selectedClass == "warrior" and not game._impetusFiredThisTurn then
@@ -723,9 +723,10 @@ end
 
 local LAMBDA = 5.5   -- pontos que 1 de mana rende numa carta media
 
-local COMBO_TAGS = { strike = 0.35, defend = 0.3, armor = 0.25, magic = 0.4,
-    lightning = 0.35, ice = 0.25, poison = 0.45, channel = 0.3, thorn = 0.3,
-    finisher = 0.2, lifesteal = 0.15, draw = 0.1, discard = 0.1 }
+-- Combos simples (Out/2026): a Saraivada/Muralha pagam densidade de ATAQUE/
+-- DEFESA na mao, o Par paga COPIAS da mesma carta no deck.
+local COMBO_TYPE_W = { attack = 0.25, defense = 0.2 }
+local PAIR_W = 0.6
 
 local function deckIdsOf(game)
     local out = {}
@@ -808,13 +809,17 @@ function AI.cardWorth(game, cd, dctx, inDeck)
     elseif dctx.class == "rogue" and cd.type == "attack" and (cd.cost or 0) == 0 then
         pts = pts + 0.8   -- Toxinas no 1o ataque, carta gratis abre o turno
     end
-    -- sinergia de combo por tag (cresce com a densidade da tag no deck)
-    for _, t in ipairs(TagSystem.getCardTags(cd)) do
-        local w = COMBO_TAGS[t]
-        if w then
-            local c = (dctx.tags[t] or 0) - (inDeck and 1 or 0)
-            pts = pts + w * math.min(6, c)
-        end
+    -- sinergia dos combos simples: densidade do tipo (Saraivada/Muralha) e
+    -- copias da mesma carta (Par)
+    local tw = COMBO_TYPE_W[cd.type]
+    if tw then
+        local c = ((cd.type == "attack") and dctx.attackCards or dctx.blockCards)
+            - (inDeck and 1 or 0)
+        pts = pts + tw * math.min(6, c)
+        local copies = 0
+        for _, id in ipairs(dctx.ids or {}) do if id == cd.id then copies = copies + 1 end end
+        if inDeck then copies = copies - 1 end
+        pts = pts + PAIR_W * math.min(2, copies)
     end
     -- necessidades do deck
     local n = math.max(1, dctx.n)

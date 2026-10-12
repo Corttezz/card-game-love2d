@@ -800,6 +800,7 @@ function Game:playSelectedCards()
         cardsProcessed = {},
         turnNumber = self.turnCount or 0,
         activeCombos = {},
+        game = self,   -- coringas de combo (ComboSystem.boostFor)
     }
     -- Detecta combos e anuncia no feed de mensagens uma vez por turno.
     ComboSystem.detect(turnContext)

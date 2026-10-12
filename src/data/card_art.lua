@@ -148,6 +148,10 @@ return {
     effect_scroll_wisdom    = { icon = "scroll",                 bg = "soft",    accent = "AGED_GOLD",    decoration = "sparks" },
     effect_mystery_card     = { icon = "question",               bg = "arcane",  accent = "PURPLE",       decoration = "sparks", artOffsetY = -9 },  -- sujeito no PÉ da arte (CardArtSlot.VALIGN)
     joker_005               = { icon = "jester_hat",             bg = "abyss",   accent = "AGED_GOLD",    effect = "holo" },
+    -- coringas de combo (Out/2026): reusam icones do atlas ate ter arte propria
+    joker_combo_volley      = { icon = "dagger",                 bg = "storm",   accent = "AGED_GOLD",    effect = "holo" },
+    joker_combo_wall        = { icon = "shield_kite",            bg = "metal",   accent = "AGED_GOLD",    effect = "holo" },
+    joker_combo_pair        = { icon = "mask",                   bg = "arcane",  accent = "AGED_GOLD",    effect = "holo" },
 
     -- ===== ORFAS (2026-09-12): 12 cartas que nao tinham entrada e caiam no
     -- fallback por tipo do CardArt.resolve — todas do mesmo tipo dividiam o

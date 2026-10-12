@@ -141,21 +141,21 @@ function M.run()
     local c = db:createCardInstance(db:getCard("warrior_strike"))
     local c2 = db:createCardInstance(db:getCard("warrior_strike"))
     g.player.strength = 2
-    local ctx = DamagePreview.buildContext({ c, c2 })
-    local v, steps = DamagePreview.cardValue(g, c, ctx)
+    local ctx = DamagePreview.buildContext({ c, c2 }, g)
+    local v, steps = DamagePreview.cardValue(g, c2, ctx)
     t:eq("ultimo passo carrega o valor final", steps[#steps].after, v)
     local kinds = {}
     for _, s in ipairs(steps) do kinds[s.kind] = true end
     t:truthy("passo de Forca presente", kinds.stat)
-    t:truthy("passo de combo presente (2 golpes)", kinds.combo)
+    t:truthy("passo de combo presente (2o golpe: Saraivada e Par)", kinds.combo)
 
-    -- ===== dicas de combo =====
-    local added = DamagePreview.combosAddedBy({ c }, c2)
-    t:truthy("2o golpe dispara um combo novo", #added >= 1)
-    local near = DamagePreview.nearCombos({ c })
-    local foundStrike = false
-    for _, n in ipairs(near) do if n.need == "strike" then foundStrike = true end end
-    t:truthy("1 golpe selecionado: falta 1 'strike' pra combo", foundStrike)
+    -- ===== dica de combo: o que a proxima carta ganharia =====
+    local added = DamagePreview.combosAddedBy({ c }, c2, g)
+    local ids = {}
+    for _, a in ipairs(added) do ids[a.combo.id] = a.value end
+    t:truthy("2o golpe igual ganharia Saraivada", ids.volley ~= nil)
+    t:truthy("2o golpe igual ganharia Par", ids.pair ~= nil)
+    t:eq("1a carta nao ganha nada", #DamagePreview.combosAddedBy({}, c, g), 0)
 
     return t:done()
 end

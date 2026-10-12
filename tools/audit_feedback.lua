@@ -121,6 +121,10 @@ local BASELINE_SILENT = {
     discard_cards     = "so toast (a carta some da mao sem animacao de descarte)",
     strength_scaling  = "invisivel: dobra o stat dentro do numero final da carta",
     dexterity_scaling = "invisivel: dobra o stat dentro do numero final da carta",
+    -- Coringas de combo (Out/2026): dobram Saraivada/Muralha/Par dentro do
+    -- bonus da carta — o efeito aparece na ficha dourada da previa e no
+    -- numero do banner, nao num proc proprio (como o *_scaling acima).
+    combo_boost       = "invisivel: dobra o bonus de combo dentro do numero da carta",
     multi_hit         = "invisivel: vira 1 numero, a descricao promete 2 golpes",
     add_armor         = "so toast (nao usa o caminho visual da carta de defesa)",
     exhaust           = "branch e no-op; o som real (cardExhaust) mora no Game, "

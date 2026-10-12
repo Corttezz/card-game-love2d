@@ -876,7 +876,7 @@ function M.descAudit()
                 -- PT dos dados nem no tipo cru — e nenhum numero inventado.
                 for _, e in ipairs(cd.effects or {}) do
                     local MISS = "\0MISS"
-                    local q = (type(e.value) == "string" and e.value) or e.orbType or e.debuffName
+                    local q = (type(e.value) == "string" and e.value) or e.orbType or e.debuffName or e.combo
                     local has = I18n.t("effects." .. tostring(e.type), nil, MISS) ~= MISS
                         or (q and I18n.t("effects." .. tostring(e.type) .. "_" .. q, nil, MISS) ~= MISS)
                     local et = I18n.effectDesc(e)

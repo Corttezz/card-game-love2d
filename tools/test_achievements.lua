@@ -239,10 +239,11 @@ function M.run()
     -- ===== Gatilhos de turno / efeito =====
     fresh()
     g = fakeRun()
+    -- combos simples (Out/2026): sao 3 regras — Tinta Viva = as 3 na jogada
+    AS.onCardsPlayed(g, { allSelectedCards = {}, activeCombos = { 1, 2 } })
+    t:falsy("tinta_viva: 2 combos", has("tinta_viva"))
     AS.onCardsPlayed(g, { allSelectedCards = {}, activeCombos = { 1, 2, 3 } })
-    t:falsy("tinta_viva: 3 combos", has("tinta_viva"))
-    AS.onCardsPlayed(g, { allSelectedCards = {}, activeCombos = { 1, 2, 3, 4 } })
-    t:truthy("tinta_viva: 4 combos", has("tinta_viva"))
+    t:truthy("tinta_viva: 3 combos", has("tinta_viva"))
 
     fresh()
     PS.get().counters.cardsPlayed = 2498

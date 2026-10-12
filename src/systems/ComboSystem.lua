@@ -1,381 +1,178 @@
 -- src/systems/ComboSystem.lua
--- Detecta sinergias entre cartas jogadas no mesmo turno, gerando multiplicadores
--- e bonus que o EffectSystem aplica antes dos jokers.
+-- COMBOS SIMPLES (Out/2026, decisão do dono): "combos no geral estão MUITO
+-- fortes, de defesa e de ataque, e não são explicados — o jogador só joga
+-- carta e combo sem saber. Tira e põe combos mais SIMPLES: quanto mais cartas
+-- de ataque, mais o bônus sobe; o mesmo pra defesa; carta igual vale mais;
+-- coringas de combo também."
 --
--- Contrato:
---   ComboSystem.detect(turnContext) -> { combo1, combo2, ... }
---   Cada combo tem { id, rule, matches (lista de cartas) }
---   ComboSystem.applyToCardValue(card, baseValue, turnContext, targetType) -> novoValor
---     targetType e "attack" ou "defense". So aplica combos cujo bonus match.
+-- Saem as 13 regras por TAG (Combo de Ataques, Remate, Convergência Arcana...)
+-- — ninguém sabia que tag cada carta tinha. Ficam TRÊS regras que se leem na
+-- própria mão, sem lógica escondida:
 --
--- RULES sao dataDRiven: adicionar novas regras e so acrescentar uma entrada.
--- Tipos de regra suportados:
---   "min_count_tag"   — N+ cartas com a tag
---   "pair_tags"       — cartas cobrindo todas as tags em `requires`
+--   SARAIVADA (volley) — cada carta de ATAQUE depois da primeira, na mesma
+--     jogada, ganha +step por ataque anterior (2º +2, 3º +4, 4º+ +6).
+--   MURALHA (wall)     — o mesmo para cartas de DEFESA, em Bloqueio.
+--   PAR (pair)         — cada CÓPIA repetida da mesma carta na jogada ganha
+--     +value por cópia anterior (2ª cópia +3, 3ª +6).
 --
--- Tipos de bonus suportados:
---   "damage_multiplier"  — multiplica dano em ataques
---   "defense_multiplier" — multiplica defesa em defesas
---   "damage_bonus"       — soma dano fixo em ataques
---   "defense_bonus"      — soma defesa fixa em defesas
---   "apply_debuff"       — aplica debuff no inimigo apos resolver cartas
---   "heal"               — cura player
+-- Tudo é bônus PLANO, somado depois da Força e ANTES dos coringas (o
+-- multiplicador de coringa multiplica a carta já com o bônus). Carta com a tag
+-- `combo` (Golpe Rápido, Estilete...) conta como DUAS cartas na fila da
+-- Saraivada/Muralha. Coringas de combo (`combo_boost`) dobram uma das regras.
+--
+-- Contrato (o mesmo de antes — Game, DamagePreview, piloto, tutorial e Guia
+-- leem daqui):
+--   ComboSystem.detect(turnContext, game?)          -> activeCombos
+--   ComboSystem.cardSteps(card, value, ctx, game?)  -> valor, passos  (PURO)
+--   ComboSystem.applyToCardValue(card, value, ctx)  -> valor (+ banner)
+--   ComboSystem.applyOnceEffects / announce          (banner + som)
+--   ComboSystem.RULES — a lista das 3 regras (Guia de combos, i18n)
 
 local TagSystem = require("src.systems.TagSystem")
-local I18n = require("src.i18n.I18n")
-
--- Nome EXIBIDO do combo: i18n (combos.<id>) com rule.label de fallback — a
--- MESMA resolucao que src/ui/ComboBanner.lua ja fazia. Os toasts liam
--- combo.label direto e por isso saiam em PT dentro do feed traduzido.
-local function comboName(combo)
-    return I18n.t("combos." .. tostring(combo.id), nil,
-        combo.label or tostring(combo.id))
-end
 local Sfx = require("src.systems.Sfx")
 
 local ComboSystem = {}
 
--- Notifica a UI (banner de combo). Declarado no TOPO de proposito: local em
--- Lua so existe ABAIXO da definicao, e quem chama esta la embaixo. pcall
--- porque contextos headless (tools/testes sem canvas) nao tem UI — vira
--- no-op silencioso em vez de derrubar o combate.
+-- Notifica a UI (banner de combo). pcall: headless (tools/testes) não tem UI.
 local function notifyComboUI(combos)
     pcall(function()
         require("src.ui.ComboBanner").show(combos)
     end)
 end
 
--- QUANDO O BANNER APARECE (v2, feedback do dono Set/2026: "so precisa
--- aparecer quando triggar o combo de fato").
---
--- Diagnostico: nunca foi o caso de aparecer sem combo — detect() so devolve
--- regra que casou, e announce() ja saia cedo com lista vazia. O que o dono
--- viu foi o banner subindo no ANUNCIO, junto do clique em "Jogar Cartas",
--- enquanto o efeito so acontece varios frames depois, quando a carta pousa e
--- o numero muda. Aparecia antes da propria causa.
---
--- Agora o banner sobe no IMPACTO: na primeira vez que um combo REALMENTE
--- altera alguma coisa. Duas portas, a que vier primeiro:
---   · applyToCardValue — o valor da carta mudou (dano/bloqueio maior);
---   · applyOnceEffects — turno so com combo de evento (cura/debuff/evoke),
---     em que nenhum valor de carta muda.
--- O guarda `_comboAnnounced` garante que so o turno de VERDADE dispara: o
--- piloto (tools/autoplay.lua) chama applyToCardValue com contexto sintetico
--- pra ESTIMAR dano, e estimativa nao e evento.
+-- O banner sobe no IMPACTO (primeira vez que um combo muda um número), não no
+-- clique — e só no turno de verdade (`_comboAnnounced`): o piloto estima dano
+-- com contexto sintético, e estimativa não é evento.
 local function raiseComboBanner(turnContext)
     if not turnContext or not turnContext._comboAnnounced then return end
     if turnContext._comboBannerShown then return end
     turnContext._comboBannerShown = true
     notifyComboUI(turnContext.activeCombos)
 end
+ComboSystem.raiseBanner = raiseComboBanner
 
 -- ============================================================================
--- COMBO v3 — INTENCAO, NAO VOLUME (Out/2026)
+-- As três regras (dados) — números escolhidos pela bateria (memory/combo_rules.md)
 -- ============================================================================
--- Queixa do dono: "o combo de muitas cartas da dano demais... vira
--- automatico: seleciona um milhao de cartas e pronto, nao precisa pensar".
--- A leva grande era SEMPRE a melhor porque o combo crescia mais rapido que o
--- numero de cartas (medido: tools/balance_sim, secao "Jogadas"):
---   * todo bonus valia pra TODA carta de ataque/defesa da leva, tivesse ela a
---     tag do combo ou nao;
---   * os multiplicadores de combo se MULTIPLICAVAM entre si
---     (x1.4 golpes * x1.3 remate * x1.5 arcano = x2.73, antes dos coringas);
---   * bonus planos (+6 do Triplo Golpe, +5 da Tempestade...) entravam UMA VEZ
---     POR CARTA — a 5a carta somava mais que a 2a.
--- Tres regras novas, as mesmas da camada de coringas (P0.9):
---   1. ALVO: o bonus vale so pras cartas que FORMAM o combo (`appliesTo`,
---      padrao = a tag da regra). "*" = qualquer carta do tipo certo.
---   2. MAIOR MULTIPLICADOR VENCE: numa carta, so o maior multiplicador de
---      combo conta; os outros nao compoem. Planos somam.
---   3. PLANO E POR LEVA (`once`): o bonus fixo entra UMA vez, na primeira
---      carta da leva que ele alcanca — premio de montar o combo, nao de
---      empilhar cartas.
--- Resultado: o dano cresce LINEAR com o numero de cartas; o que paga e
--- escolher QUAIS cartas vao juntas.
---
--- `id` e a chave i18n (combos.<id>); `label` e fallback.
+-- `kind` = tipo de carta que a regra alcança; `step` = bônus por carta anterior
+-- na fila; `cap` = teto de cartas anteriores contadas (o bônus para de subir).
+-- `tag` só ilustra o Guia de combos (exemplos de carta), não decide nada.
 ComboSystem.RULES = {
-    -- v3: x1.4 -> x1.5. O x1.4 compunha com os outros multiplicadores e
-    -- valia ate em carta sem a tag; sozinho e so nos golpes, x1.5 devolve o
-    -- poder que a bateria mostrou perdido (warrior 40% -> 30% com x1.4).
-    { id = "strike_combo",
-      rule = "min_count_tag", tag = "strike", minCount = 2,
-      bonus = { type = "damage_multiplier", value = 1.5 },
-      label = "Combo de Ataques" },
-
-    { id = "defend_wall",
-      rule = "min_count_tag", tag = "defend", minCount = 2,
-      bonus = { type = "defense_multiplier", value = 1.5 },
-      label = "Muralha" },
-
-    -- v3: +6 POR golpe (3 golpes = +18, 5 = +30) -> +10 uma vez por leva.
-    { id = "triple_strike",
-      rule = "min_count_tag", tag = "strike", minCount = 3,
-      bonus = { type = "damage_bonus", value = 10, once = true },
-      label = "Triplo Golpe" },
-
-    -- v3: +6 por defesa -> +10 uma vez por leva.
-    { id = "armor_tower",
-      rule = "min_count_tag", tag = "armor", minCount = 2,
-      bonus = { type = "defense_bonus", value = 10, once = true },
-      label = "Torre de Armaduras" },
-
-    -- Out/2026 (balanceamento de classe): +2 -> +4. Unico combo do eixo do
-    -- ladino, e o veneno e o que escala contra a vida alta do A4-A6.
-    { id = "poison_stack",
-      rule = "min_count_tag", tag = "poison", minCount = 2,
-      bonus = { type = "apply_debuff", debuff = "poison", stacks = 4, duration = 2 },
-      label = "Veneno Concentrado" },
-
-    { id = "channel_burst",
-      rule = "min_count_tag", tag = "channel", minCount = 3,
-      bonus = { type = "evoke_on_combo", value = 1 },
-      label = "Explosao Arcana" },
-
-    -- v3: +5 em todo ataque -> +6 no primeiro ataque da leva (as cartas de
-    -- compra/descarte quase nunca sao ataques: o premio vai pro golpe).
-    { id = "cycle_motion",
-      rule = "pair_tags", requires = { "draw", "discard" },
-      appliesTo = "*",
-      bonus = { type = "damage_bonus", value = 6, once = true },
-      label = "Em Movimento" },
-
-    -- v3: x1.3 em todo ataque -> x1.6 so no REMATE (a carta finisher). Com
-    -- o maior-vence, um x1.3 perderia sempre pro x1.5 do Combo de Ataques
-    -- (todo finisher tambem e golpe) — o remate precisa valer mais pra que
-    -- montar golpe + finisher seja uma decisao.
-    { id = "finisher_chain",
-      rule = "pair_tags", requires = { "strike", "finisher" },
-      appliesTo = "finisher",
-      bonus = { type = "damage_multiplier", value = 1.6 },
-      label = "Remate" },
-
-    { id = "lifesteal_burst",
-      rule = "pair_tags", requires = { "strike", "lifesteal" },
-      bonus = { type = "heal", value = 4 },
-      label = "Ferida Vital" },
-
-    { id = "magic_focus",
-      rule = "min_count_tag", tag = "magic", minCount = 2,
-      bonus = { type = "damage_multiplier", value = 1.5 },
-      -- Rebalance v2 (Jul/2026, P1.1): label renomeado ('Foco Arcano' colidia
-      -- com o nome da carta mage_arcane_focus).
-      label = "Convergencia Arcana" },
-
-    -- v3: +6 em toda defesa -> +6 uma vez, na carta de espinhos.
-    { id = "thorn_reflex",
-      rule = "pair_tags", requires = { "defend", "thorn" },
-      appliesTo = "thorn",
-      bonus = { type = "defense_bonus", value = 6, once = true },
-      label = "Reflexos Espinhados" },
-
-    -- Rebalance v2 (Jul/2026, P1.3): combos elementais — payoff das tags
-    -- lightning/ice pro Canalizador do mago. v3: +5 por ataque -> +6 uma vez.
-    { id = "tempestade",
-      rule = "min_count_tag", tag = "lightning", minCount = 2,
-      appliesTo = "*",
-      bonus = { type = "damage_bonus", value = 6, once = true },
-      label = "Tempestade" },
-
-    -- Nao ha DEFESA com tag ice no catalogo: o Bloqueio vai pra primeira
-    -- defesa da leva ("*"), como antes ia pra todas.
-    { id = "zero_absoluto",
-      rule = "min_count_tag", tag = "ice", minCount = 2,
-      appliesTo = "*",
-      bonus = { type = "defense_bonus", value = 6, once = true },
-      label = "Zero Absoluto" },
+    { id = "volley", kind = "attack",  step = 2, cap = 3, tag = "strike",
+      bonusType = "damage_bonus",  label = "Saraivada" },
+    { id = "wall",   kind = "defense", step = 2, cap = 3, tag = "defend",
+      bonusType = "defense_bonus", label = "Muralha" },
+    { id = "pair",   kind = "same",    step = 3, cap = 2,
+      bonusType = "card_bonus",    label = "Par" },
 }
 
--- Avalia se uma regra dispara dado um turnContext (com tagCounts).
-local function ruleMatches(rule, turnContext)
-    if rule.rule == "min_count_tag" then
-        local count = (turnContext.tagCounts and turnContext.tagCounts[rule.tag]) or 0
-        return count >= (rule.minCount or 2)
-    elseif rule.rule == "pair_tags" then
-        -- Balance v2 (Jul/2026): as tags precisam vir de CARTAS DISTINTAS.
-        -- Antes, uma carta com strike+finisher se auto-combinava ×1.3
-        -- sozinha (todo finisher tinha premium fantasma embutido).
-        local req = rule.requires or {}
-        local snapshot = turnContext.allSelectedCards or turnContext.snapshot or {}
-        local TagSystem = require("src.systems.TagSystem")
-        -- tenta uma atribuição: para cada tag exigida, uma carta diferente.
-        local function assign(tagIdx, usedCards)
-            if tagIdx > #req then return true end
-            for ci, card in ipairs(snapshot) do
-                if not usedCards[ci]
-                    and TagSystem.cardHasTag(card, req[tagIdx]) then
-                    usedCards[ci] = true
-                    if assign(tagIdx + 1, usedCards) then return true end
-                    usedCards[ci] = nil
-                end
-            end
-            return false
-        end
-        return assign(1, {})
-    end
-    return false
+local RULE_BY_ID = {}
+for _, r in ipairs(ComboSystem.RULES) do RULE_BY_ID[r.id] = r end
+ComboSystem.RULE_BY_ID = RULE_BY_ID
+
+-- Quanto a carta "pesa" na fila da Saraivada/Muralha (tag `combo` = 2).
+local function queueWeight(card)
+    return TagSystem.cardHasTag(card, "combo") and 2 or 1
 end
 
--- Detecta combos ativos dado um turnContext. Retorna lista de { id, rule, bonus, label }.
--- Efeito colateral: anexa em turnContext.activeCombos (idempotente se chamado 2x).
-function ComboSystem.detect(turnContext)
-    turnContext.activeCombos = turnContext.activeCombos or {}
-    if not turnContext.tagCounts then return turnContext.activeCombos end
-    -- Limpa deteccao anterior se for re-chamada
-    for i = #turnContext.activeCombos, 1, -1 do
-        turnContext.activeCombos[i] = nil
+-- Multiplicador dos coringas de combo sobre uma regra (combo_boost).
+-- Maior vence, como todo multiplicador de coringa (P0.9).
+function ComboSystem.boostFor(game, ruleId)
+    local best = 1
+    for _, joker in ipairs((game and game.jokerSlots) or {}) do
+        for _, e in ipairs(joker.effects or {}) do
+            if e.type == "combo_boost" and e.combo == ruleId and (e.value or 1) > best then
+                best = e.value or 1
+            end
+        end
     end
+    return best
+end
+
+-- Bônus de UMA regra numa carta, dado o contexto da jogada. Devolve 0 quando a
+-- regra não alcança a carta. `cards` = a jogada em ordem de resolução.
+local function ruleBonusFor(rule, card, cards, game)
+    if not card then return 0 end
+    local before = 0
+    if rule.kind == "same" then
+        if card.type ~= "attack" and card.type ~= "defense" then return 0 end
+        for _, c in ipairs(cards) do
+            if c == card then break end
+            if c.id and c.id == card.id then before = before + 1 end
+        end
+    else
+        if card.type ~= rule.kind then return 0 end
+        for _, c in ipairs(cards) do
+            if c == card then break end
+            if c.type == rule.kind then before = before + queueWeight(c) end
+        end
+    end
+    if before <= 0 then return 0 end
+    local b = rule.step * math.min(before, rule.cap)
+    return math.floor(b * ComboSystem.boostFor(game, rule.id))
+end
+ComboSystem.ruleBonusFor = ruleBonusFor
+
+local function playOf(turnContext)
+    return (turnContext and (turnContext.allSelectedCards or turnContext.snapshot)) or {}
+end
+
+-- Combos que a jogada dispara (para banner, prévia, pontuação, conquistas).
+-- Cada entrada = a regra + `bonus` { type, value = soma dos bônus da jogada }.
+function ComboSystem.detect(turnContext, game)
+    turnContext.activeCombos = turnContext.activeCombos or {}
+    for i = #turnContext.activeCombos, 1, -1 do turnContext.activeCombos[i] = nil end
+    game = game or turnContext.game
+    local cards = playOf(turnContext)
     for _, rule in ipairs(ComboSystem.RULES) do
-        if ruleMatches(rule, turnContext) then
-            table.insert(turnContext.activeCombos, rule)
+        local total = 0
+        for _, c in ipairs(cards) do total = total + ruleBonusFor(rule, c, cards, game) end
+        if total > 0 then
+            table.insert(turnContext.activeCombos, {
+                id = rule.id, label = rule.label, rule = rule,
+                bonus = { type = rule.bonusType, value = total },
+            })
         end
     end
     return turnContext.activeCombos
 end
 
--- Aplica combos de valor (damage_*/defense_*) sobre um valor base para uma carta.
--- Chamado pelo Game:processCardInCombat depois do applyCardEffects e ANTES dos jokers.
--- Isso garante que jokers com multiplicador multipliquem o valor ja potencializado.
--- Tags que a CARTA precisa ter pro bonus valer nela (combo v3).
--- nil = qualquer carta do tipo certo.
-local function targetTags(rule)
-    if rule.appliesTo == "*" then return nil end
-    if rule.appliesTo then
-        return type(rule.appliesTo) == "table" and rule.appliesTo or { rule.appliesTo }
-    end
-    if rule.tag then return { rule.tag } end
-    return rule.requires   -- par sem alvo declarado: qualquer tag do par
-end
-
--- O tipo de carta que o bonus alcanca (dano -> ataque, defesa -> defesa).
-local BONUS_CARD_TYPE = {
-    damage_multiplier = "attack", damage_bonus = "attack",
-    defense_multiplier = "defense", defense_bonus = "defense",
-}
-
--- A carta FORMA o combo `rule`? (tipo certo + tag do alvo)
-function ComboSystem.cardIsTarget(rule, card)
-    local b = rule.bonus or {}
-    if not card or BONUS_CARD_TYPE[b.type] ~= card.type then return false end
-    local tags = targetTags(rule)
-    if not tags then return true end
-    for _, tag in ipairs(tags) do
-        if TagSystem.cardHasTag(card, tag) then return true end
-    end
-    return false
-end
-
--- Bonus `once`: so a PRIMEIRA carta-alvo da leva (ordem de resolucao).
-local function isFirstTarget(rule, card, turnContext)
-    for _, c in ipairs(turnContext.allSelectedCards or {}) do
-        if ComboSystem.cardIsTarget(rule, c) then return c == card end
-    end
-    return true
-end
-
--- Versao PURA (sem banner): devolve (valor, passos). `passos` e a lista de
--- { combo, op = "mult"|"add", value, after } que a previa de dano
--- (src/systems/DamagePreview.lua) mostra ao jogador — a MESMA conta que o
--- combate faz, entao previa == resultado por construcao.
--- Ordem: o MAIOR multiplicador de combo da carta (so ele) e depois os planos
--- (plano nao e multiplicado: +8 e +8).
-function ComboSystem.cardSteps(card, baseValue, turnContext)
+-- Versão PURA: (valor, passos). Passo = { combo, op = "add", value, after }.
+-- A prévia de dano (DamagePreview) mostra estes passos como fichas — a MESMA
+-- conta do combate.
+function ComboSystem.cardSteps(card, baseValue, turnContext, game)
     local steps = {}
-    if not turnContext or not turnContext.activeCombos then return baseValue, steps end
-    local bestMult, adds = nil, {}
-    for _, combo in ipairs(turnContext.activeCombos) do
-        local b = combo.bonus
-        if b and ComboSystem.cardIsTarget(combo, card) then
-            if b.type == "damage_multiplier" or b.type == "defense_multiplier" then
-                if not bestMult or (b.value or 1) > (bestMult.bonus.value or 1) then
-                    bestMult = combo
-                end
-            elseif (b.type == "damage_bonus" or b.type == "defense_bonus")
-                and (not b.once or isFirstTarget(combo, card, turnContext)) then
-                adds[#adds + 1] = combo
-            end
-        end
-    end
+    if not turnContext then return baseValue, steps end
+    game = game or turnContext.game
+    local cards = playOf(turnContext)
     local v = baseValue
-    if bestMult then
-        v = v * (bestMult.bonus.value or 1)
-        steps[#steps + 1] = { combo = bestMult, op = "mult",
-            value = bestMult.bonus.value or 1, after = v }
-    end
-    for _, combo in ipairs(adds) do
-        v = v + (combo.bonus.value or 0)
-        steps[#steps + 1] = { combo = combo, op = "add",
-            value = combo.bonus.value or 0, after = v }
+    for _, rule in ipairs(ComboSystem.RULES) do
+        local b = ruleBonusFor(rule, card, cards, game)
+        if b > 0 then
+            v = v + b
+            steps[#steps + 1] = { combo = rule, op = "add", value = b, after = v }
+        end
     end
     return v, steps
 end
 
--- Porta do banner pra quem calcula pela versao pura (Game via DamagePreview).
-ComboSystem.raiseBanner = raiseComboBanner
-
 function ComboSystem.applyToCardValue(card, baseValue, turnContext)
     local v = ComboSystem.cardSteps(card, baseValue, turnContext)
-    -- causa e efeito: o banner sobe no exato momento em que o numero sobe
     if v ~= baseValue then raiseComboBanner(turnContext) end
     return v
 end
 
--- Aplica combos de EVENTO (debuff/heal/evoke) uma unica vez por turno (chamado
--- apos todas as cartas do turno ja terem sido processadas). turnContext carrega
--- activeCombos; game e usado para efeitos colaterais.
-function ComboSystem.applyOnceEffects(game, turnContext)
+-- Os combos simples não têm prêmio de fim de jogada (debuff/cura/evoke saíram
+-- com as regras por tag). Mantido pelo contrato: o banner sobe aqui se a
+-- jogada tiver combo e nenhum número tiver mudado antes.
+function ComboSystem.applyOnceEffects(_game, turnContext)
     if not turnContext or not turnContext.activeCombos then return end
-    -- rede de seguranca: turno cujos combos sao SO de evento (cura/debuff/
-    -- evoke) nunca passa por applyToCardValue com mudanca — o banner sobe aqui
-    raiseComboBanner(turnContext)
-    for _, combo in ipairs(turnContext.activeCombos) do
-        local b = combo.bonus
-        if b then
-            if b.type == "apply_debuff" and game.enemy then
-                game.enemy:addStatusEffect({
-                    name = b.debuff or "poison",
-                    stacks = b.stacks or 1,
-                    duration = b.duration or 2,
-                })
-                game:addMessage(I18n.t("messages.combo_debuff", {
-                    combo = comboName(combo), stacks = b.stacks or 1,
-                    name = b.debuff or "debuff" }), "warning")
-            elseif b.type == "heal" and game.player then
-                -- P2.5 (Jul/2026, rebalance v2): heal de combo roteia pelo
-                -- heal_multiplier (com floor via P2.4) — sem isso Calice do
-                -- Sabio/dark_embrace nao amplificavam o lifesteal_burst.
-                local amount = b.value or 0
-                if game.effectSystem and game.effectSystem.applyHealMultiplier then
-                    amount = game.effectSystem:applyHealMultiplier(game, amount)
-                end
-                game.player:heal(amount)
-                game:addMessage(I18n.t("messages.combo_heal", {
-                    combo = comboName(combo), value = amount }), "success")
-            elseif b.type == "evoke_on_combo" then
-                -- Evoca 1 orb extra ao fim do turno
-                local orb = game.player:popOldestOrb()
-                if orb and game.effectSystem then
-                    game.effectSystem:_evokeOrbEffect(game, orb)
-                    game:addMessage(I18n.t("messages.combo_orb", {
-                        combo = comboName(combo) }), "success")
-                end
-            end
-        end
-    end
+    if #turnContext.activeCombos > 0 then raiseComboBanner(turnContext) end
 end
 
--- Anuncio dos combos detectados. Chamado por Game:playSelectedCards uma vez,
--- no momento do clique — ANTES das cartas voarem. Aqui saem o log (historico
--- no feed lateral) e o som. O BANNER (src/ui/ComboBanner.lua) sai depois, no
--- impacto, por raiseComboBanner — ver a nota la em cima.
-function ComboSystem.announce(game, turnContext)
+-- Anúncio no clique: só o som (o banner diz o nome, no impacto).
+function ComboSystem.announce(_game, turnContext)
     if not turnContext.activeCombos or #turnContext.activeCombos == 0 then return end
-    for _, combo in ipairs(turnContext.activeCombos) do
-        game:addMessage(I18n.t("messages.combo_announce", {
-            combo = comboName(combo) }), "success")
-    end
-    -- marca o turno como REAL (ver raiseComboBanner) — o banner nao sobe
-    -- aqui: espera o combo mexer no numero, la no impacto da carta.
     turnContext._comboAnnounced = true
     Sfx.play("comboTrigger")
 end

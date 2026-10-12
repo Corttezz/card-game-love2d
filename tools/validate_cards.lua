@@ -81,6 +81,9 @@ local PROCESSED_EFFECT_TYPES = {
     -- Eco: dobra a PRIMEIRA carta de ataque do turno (mage_echo_form).
     -- Fica fora do largest-wins — ver EffectSystem:applyJokerEffects.
     echo_first_attack = true,
+    -- Coringas de combo (Out/2026): dobram Saraivada/Muralha/Par
+    -- (ComboSystem.boostFor).
+    combo_boost = true,
     damage_bonus = true, defense_bonus = true,
     strength_scaling = true, dexterity_scaling = true,
     multi_hit = true, damage_bonus_self = true,

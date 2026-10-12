@@ -86,9 +86,10 @@ function M.run()
         t:eq("dano = ataque + força", g.enemy.health, enemyHp - (atk2.attack + 3))
     end
 
-    -- ===== COMBO v3 no combate real: a leva grande cresce LINEAR =====
-    -- 3 golpes: Impeto (+1 Forca antes das cartas) -> x1.5 em cada golpe e o
-    -- +10 do Triplo Golpe UMA vez (na 1a carta). Antes: x1.4 e +6 em CADA carta.
+    -- ===== COMBOS SIMPLES no combate real (Out/2026) =====
+    -- 3 Golpes iguais: Impeto (+1 Forca antes das cartas, 3 ataques) e, do 2o
+    -- em diante, Saraivada (+step por ataque anterior) e Par (+step por copia
+    -- anterior). Bonus plano, linear.
     do
         local CardDatabase = require("src.systems.CardDatabase")
         local db = CardDatabase:new()
@@ -103,12 +104,14 @@ function M.run()
         end
         for _, c in ipairs(strikes) do g:selectCard(c) end
         local a = strikes[1].attack
-        local expected = math.floor((a + 1) * 1.5 + 10) + 2 * math.floor((a + 1) * 1.5)
+        local R = require("src.systems.ComboSystem").RULE_BY_ID
+        local expected = 3 * (a + 1) + (R.volley.step + R.pair.step)
+            + (2 * R.volley.step + 2 * R.pair.step)
         local preview = require("src.systems.DamagePreview").simulate(g, g.selectedCards)
         g:playSelectedCards()
         TK.pump(g, 6.0)
-        t:eq("v3: 3 golpes = x1.5 em cada + 10 uma vez", 500 - g.enemy.health, expected)
-        t:eq("v3: previa bate com o golpe real", preview.damage, expected)
+        t:eq("combos simples: 3 golpes = base + Saraivada + Par", 500 - g.enemy.health, expected)
+        t:eq("combos simples: previa bate com o golpe real", preview.damage, expected)
     end
 
     -- ===== Passivas que CRESCEM na luta (balanceamento de classe, Out/2026) =====

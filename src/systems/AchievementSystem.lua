@@ -46,7 +46,7 @@ AchievementSystem.ENDLESS_MARKS = { "ciclo_3", "ciclo_5", "ciclo_10" }
 
 -- Limiares (uma fonte so: descricoes no i18n citam estes numeros).
 AchievementSystem.T = {
-    POISON = 15, COMBOS = 4, SCORE = 10000, CARD_DAMAGE = 60,
+    POISON = 15, COMBOS = 3, SCORE = 10000, CARD_DAMAGE = 60,
     ORBS = 3, POCKET_DECK = 6, BIG_DECK = 30, ENDLESS_FLOOR = 10,
 }
 

@@ -33,7 +33,7 @@ return {
         id = "warrior_quick_strike", name = "Golpe Rapido",
         type = "attack", subtype = "common",
         cost = 0, attack = 3, defense = 0,
-        description = "Causa 3 de dano. Conta em DOBRO para combos.",
+        description = "Causa 3 de dano. Conta em DOBRO na Saraivada.",
         image = "assets/cards/attack/theRock.png",
         rarity = "common", class = "warrior",
         tags = { "strike", "zero_cost", "combo" },

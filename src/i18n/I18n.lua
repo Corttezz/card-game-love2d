@@ -237,7 +237,7 @@ function I18n.effectDesc(effect)
     -- (channel_orb "ice") ou `debuffName` (on_attack_debuff "poison"). Antes
     -- so `value` era olhado e todo canalizar virava "Canaliza 1 orbe".
     local qualifier = (type(effect.value) == "string" and effect.value)
-        or effect.orbType or effect.debuffName
+        or effect.orbType or effect.debuffName or effect.combo
     if t and qualifier then
         local MISS = "\0__miss__\0"
         local compound = "effects." .. t .. "_" .. qualifier

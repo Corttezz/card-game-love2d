@@ -179,6 +179,40 @@ return {
         },
     },
 
+    -- ========== CORINGAS DE COMBO (Out/2026, combos simples) ==========
+    -- Cada um DOBRA uma das tres regras do ComboSystem (combo_boost). Neutros:
+    -- servem a qualquer classe, porque Saraivada/Muralha/Par sao de todos.
+    joker_combo_volley = {
+        id = "joker_combo_volley", name = "Chuva de Laminas",
+        type = "joker", subtype = "uncommon",
+        cost = 1, attack = 0, defense = 0,
+        description = "Saraivada vale ×2.",
+        image = "assets/jokers/joker1.png",
+        rarity = "uncommon", class = "basic",
+        tags = { "strike", "combo" },
+        effects = { { type = "combo_boost", combo = "volley", value = 2 } },
+    },
+    joker_combo_wall = {
+        id = "joker_combo_wall", name = "Muro de Escudos",
+        type = "joker", subtype = "uncommon",
+        cost = 1, attack = 0, defense = 0,
+        description = "Muralha vale ×2.",
+        image = "assets/jokers/joker1.png",
+        rarity = "uncommon", class = "basic",
+        tags = { "defend", "combo" },
+        effects = { { type = "combo_boost", combo = "wall", value = 2 } },
+    },
+    joker_combo_pair = {
+        id = "joker_combo_pair", name = "Espelho Gemeo",
+        type = "joker", subtype = "uncommon",
+        cost = 1, attack = 0, defense = 0,
+        description = "Par vale ×2.",
+        image = "assets/jokers/joker1.png",
+        rarity = "uncommon", class = "basic",
+        tags = { "combo" },
+        effects = { { type = "combo_boost", combo = "pair", value = 2 } },
+    },
+
     -- ========== EFFECTS BASICOS ==========
     effect_mystery_card = {
         id = "effect_mystery_card", name = "Carta Misterio",

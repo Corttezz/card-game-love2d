@@ -32,7 +32,7 @@ return {
         id = "rogue_stiletto", name = "Estilete",
         type = "attack", subtype = "common",
         cost = 1, attack = 5, defense = 0,
-        description = "Causa 5 de dano. Conta em DOBRO para combos.",
+        description = "Causa 5 de dano. Conta em DOBRO na Saraivada.",
         image = "assets/cards/attack/bloodSword.png",
         rarity = "common", class = "rogue",
         tags = { "strike", "combo" },

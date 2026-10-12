@@ -120,16 +120,17 @@ function Panel.update(game, hoverCard, dt)
         for _, c in ipairs(sel) do with[#with + 1] = c end
         with[#with + 1] = hoverCard
         state.hover = { card = hoverCard, R = DamagePreview.simulate(game, with),
-            added = DamagePreview.combosAddedBy(sel, hoverCard) }
+            added = DamagePreview.combosAddedBy(sel, hoverCard, game) }
     end
 
-    -- selos "+COMBO" na mao (so com selecao: e a selecao que define o combo)
+    -- selo na mao: o bonus de combo que a carta GANHARIA se entrasse agora
+    -- ("Saraivada +4"). So com selecao: e a selecao que define a fila.
     state.badges = {}
     if myTurn and #sel > 0 then
         for _, c in ipairs(game.hand or {}) do
             if c.type ~= "joker" and not game:isCardSelected(c) and game:canPlayCard(c) then
-                local added = DamagePreview.combosAddedBy(sel, c)
-                if #added > 0 then state.badges[c] = added[1] end
+                local added = DamagePreview.combosAddedBy(sel, c, game)
+                if #added > 0 then state.badges[c] = added end
             end
         end
     end
@@ -268,31 +269,34 @@ local function buildLines(R, opts)
     if opts and opts.hover then
         local H = opts.hover
         local added = H.added and H.added[1]
+        local addedText = added and (comboName(added.combo) .. " +" .. fmtNum(added.value)) or nil
         local txt = t("with_card", { card = I18n.cardName(H.card), n = H.R.damage },
             "+ " .. I18n.cardName(H.card) .. ": " .. H.R.damage)
         if (H.R.block or 0) > (R.block or 0) then
             txt = txt .. " / +" .. H.R.block
         end
         lines[#lines + 1] = { kind = "hover", text = txt,
-            right = added and comboName(added) or nil }
+            right = addedText }
     end
     return lines
 end
 
 -- O que o combo FAZ, montado dos numeros da propria regra (texto e dado nunca
 -- divergem). Multiplicador ganha a lei do "maior vence" junto.
-function Panel.comboDescription(combo)
-    local b = combo.bonus or {}
-    local body = t("combo_desc." .. tostring(combo.id), {
-        n = combo.minCount or 2, v = fmtNum(b.value or 0), stacks = b.stacks or 1 }, "")
-    if b.type == "damage_multiplier" or b.type == "defense_multiplier" then
-        body = body .. " " .. t("combo_desc.rule_mult", nil, "")
-    end
-    return body
+-- O que o combo FAZ, montado dos numeros da propria regra (texto e dado nunca
+-- divergem): {v} = bonus por carta anterior, {max} = o teto. `game` (opcional)
+-- aplica os coringas de combo (ComboSystem.boostFor).
+function Panel.comboDescription(combo, game)
+    local rule = combo.rule or combo
+    local ComboSystem = require("src.systems.ComboSystem")
+    local k = ComboSystem.boostFor(game, rule.id)
+    local step = (rule.step or 0) * k
+    return t("combo_desc." .. tostring(rule.id), {
+        v = fmtNum(step), max = fmtNum(step * (rule.cap or 1)) }, "")
 end
 
 -- Hover numa linha de combo/coringa: tooltip com o que ele faz.
-local function rowTooltip(l, x, y, w, h)
+local function rowTooltip(l, x, y, w, h, game)
     if not (l.combo or l.joker) then return end
     local mx, my = love.mouse.getPosition()
     if mx < x or mx > x + w or my < y or my > y + h then return end
@@ -301,7 +305,7 @@ local function rowTooltip(l, x, y, w, h)
     local StatusTooltip = require("src.ui.StatusTooltip")
     if l.combo then
         StatusTooltip.show("combo_" .. tostring(l.combo.id), mx, my,
-            { title = comboName(l.combo), body = Panel.comboDescription(l.combo) })
+            { title = comboName(l.combo), body = Panel.comboDescription(l.combo, game) })
     else
         StatusTooltip.show("joker_" .. tostring(l.joker.id), mx, my,
             { title = I18n.cardName(l.joker), body = I18n.cardDesc(l.joker) or "" })
@@ -480,7 +484,7 @@ function Panel.draw(game, anchor, topLimit)
             if right ~= "" then
                 FontManager.drawWithOutline(right, x + w - pad - rw, ly, col, 0.8)
             end
-            rowTooltip(l, x, ly, w, lh)
+            rowTooltip(l, x, ly, w, lh, game)
             ly = ly + lh
         elseif l.kind == "card" or l.kind == "extra" then
             love.graphics.setFont(font)
@@ -588,10 +592,18 @@ function Panel.drawHandBadges(game)
     if not next(state.badges) then return end
     local font = FontManager.getResponsiveFont(0.014, 11)
     love.graphics.setFont(font)
-    local label = t("combo_badge", nil, "+COMBO")
-    local tw = font:getWidth(label)
     for _, c in ipairs(game.hand or {}) do
-        if state.badges[c] and c.renderX then
+        local added = state.badges[c]
+        local label
+        if added then
+            local parts = {}
+            for _, a in ipairs(added) do
+                parts[#parts + 1] = comboName(a.combo) .. " +" .. fmtNum(a.value)
+            end
+            label = table.concat(parts, " ")
+        end
+        local tw = label and font:getWidth(label) or 0
+        if added and c.renderX then
             local cw = (c.image and c.image.getWidth and c.image:getWidth() or 96)
                 * (c.scale or c.baseScale or 1.333)
             local bx = math.floor(c.renderX + cw / 2 - tw / 2 - 4)

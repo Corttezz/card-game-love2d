@@ -124,7 +124,7 @@ local function formatBonus(b)
     local t = b.type
     if t == "damage_multiplier" or t == "defense_multiplier" then
         return "×" .. string.format("%g", b.value or 1)
-    elseif t == "damage_bonus" or t == "defense_bonus" then
+    elseif t == "damage_bonus" or t == "defense_bonus" or t == "card_bonus" then
         return "+" .. string.format("%g", b.value or 0)
     elseif t == "heal" then
         return "+" .. string.format("%g", b.value or 0) .. " HP"

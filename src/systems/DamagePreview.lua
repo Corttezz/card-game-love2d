@@ -96,7 +96,7 @@ function DamagePreview.cardValue(game, card, turnContext, st)
 
     -- 3. combos da leva
     local comboSteps
-    v, comboSteps = ComboSystem.cardSteps(card, v, turnContext)
+    v, comboSteps = ComboSystem.cardSteps(card, v, turnContext, game)
     for _, cs in ipairs(comboSteps) do
         steps[#steps + 1] = { kind = "combo", combo = cs.combo, op = cs.op,
             value = cs.value, after = cs.after }
@@ -150,7 +150,7 @@ end
 -- ============================================================================
 
 -- turnContext igual ao de Game:playSelectedCards (combos detectados).
-function DamagePreview.buildContext(cards)
+function DamagePreview.buildContext(cards, game)
     local snapshot = {}
     for _, c in ipairs(cards or {}) do snapshot[#snapshot + 1] = c end
     local ctx = {
@@ -158,8 +158,9 @@ function DamagePreview.buildContext(cards)
         tagCounts = TagSystem.countAllTags(snapshot),
         cardsProcessed = {},
         activeCombos = {},
+        game = game,
     }
-    ComboSystem.detect(ctx)
+    ComboSystem.detect(ctx, game)
     return ctx
 end
 
@@ -190,7 +191,7 @@ function DamagePreview.simulate(game, cards)
         R.combos = {}
         return R
     end
-    local ctx = DamagePreview.buildContext(cards)
+    local ctx = DamagePreview.buildContext(cards, game)
     R.combos = ctx.activeCombos
     R.context = ctx
     local E = simEnemy(game.enemy)
@@ -392,20 +393,6 @@ function DamagePreview.simulate(game, cards)
         R.cards[#R.cards + 1] = entry
     end
 
-    -- premio de combo no FIM da leva (ComboSystem.applyOnceEffects)
-    for _, combo in ipairs(ctx.activeCombos) do
-        local b = combo.bonus or {}
-        if b.type == "evoke_on_combo" then
-            evoke(table.remove(P.orbs, 1), "combo")
-        elseif b.type == "heal" then
-            local h = game.effectSystem and game.effectSystem.applyHealMultiplier
-                and game.effectSystem:applyHealMultiplier(game, b.value or 0) or (b.value or 0)
-            R.heal = R.heal + h
-        elseif b.type == "apply_debuff" and b.debuff == "poison" then
-            R.poison = R.poison + (b.stacks or 1)
-        end
-    end
-
     R.lethal = E.health <= 0 and R.enemyHealth > 0
     R.enemyHealthAfter = E.health
     return R
@@ -415,45 +402,17 @@ end
 -- Dicas de combo (o que a selecao dispara e o que falta pra disparar)
 -- ============================================================================
 
--- Combos NOVOS que `card` dispararia se entrasse na selecao atual.
-function DamagePreview.combosAddedBy(selected, card)
-    local before = {}
-    for _, c in ipairs(DamagePreview.buildContext(selected).activeCombos) do before[c.id] = true end
+-- O que `card` GANHARIA de combo se entrasse agora no fim da selecao:
+-- lista de { combo = regra, value = bonus } (Saraivada/Muralha/Par). O selo da
+-- mao e a linha de hover do painel leem daqui.
+function DamagePreview.combosAddedBy(selected, card, game)
     local with = {}
-    for _, c in ipairs(selected) do with[#with + 1] = c end
+    for _, c in ipairs(selected or {}) do with[#with + 1] = c end
     with[#with + 1] = card
     local out = {}
-    for _, c in ipairs(DamagePreview.buildContext(with).activeCombos) do
-        if not before[c.id] then out[#out + 1] = c end
-    end
-    return out
-end
-
--- Combos a UMA carta de distancia: { combo, need = tag } para regras
--- min_count_tag com (minCount-1) cartas da tag ja selecionadas.
-function DamagePreview.nearCombos(selected)
-    local ctx = DamagePreview.buildContext(selected)
-    local active = {}
-    for _, c in ipairs(ctx.activeCombos) do active[c.id] = true end
-    local out = {}
     for _, rule in ipairs(ComboSystem.RULES) do
-        if not active[rule.id] then
-            if rule.rule == "min_count_tag" then
-                local have = ctx.tagCounts[rule.tag] or 0
-                if have > 0 and have == (rule.minCount or 2) - 1 then
-                    out[#out + 1] = { combo = rule, need = rule.tag }
-                end
-            elseif rule.rule == "pair_tags" then
-                local req = rule.requires or {}
-                local missing, have = nil, 0
-                for _, tag in ipairs(req) do
-                    if (ctx.tagCounts[tag] or 0) > 0 then have = have + 1 else missing = tag end
-                end
-                if have == #req - 1 and missing then
-                    out[#out + 1] = { combo = rule, need = missing }
-                end
-            end
-        end
+        local b = ComboSystem.ruleBonusFor(rule, card, with, game)
+        if b > 0 then out[#out + 1] = { combo = rule, value = b } end
     end
     return out
 end
