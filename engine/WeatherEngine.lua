@@ -578,6 +578,7 @@ function WeatherEngine.beginFrame(f)
     qm = qm or QuadMesh.new(1024)
     qm:reset()
     local camZ, relCrest, tPow = f.camZ, f.relCrest, f.tPow
+    WeatherEngine._sortCamZ = camZ   -- emitLeaf insere na ordem com o mesmo eixo
     local w, h = f.w, g.h
     -- v2: pixel de TELA. 1 px até ~1440p; 2 px só em 4K (fino é a regra)
     local hk = h / 1000
@@ -831,6 +832,21 @@ function WeatherEngine.emitLeaf(dxFrac, z, t, hFrac, color)
     p.vf = LEAF_SHED.fall * (0.7 + rng:random() * 0.6)
     p.tint = p.tint or {}
     p.tint[1], p.tint[2], p.tint[3] = color[1], color[2], color[3]
+    -- chave de ordem válida já na entrada (a tabela é reciclada e trazia
+    -- o sortRel da partícula morta); o lote do frame seguinte reordena
+    p.sortRel = z - camZ0
+    -- A folha nasce DURANTE o draw do WorldRoad (slot da árvore), depois da
+    -- ordenação do quadro: entra já na posição certa (fundo → frente) em vez
+    -- de ficar no fim com o sortRel velho da tabela reaproveitada — o lote
+    -- ficava fora de ordem até o quadro seguinte (test_weather, ordem do
+    -- test_all).
+    p.sortRel = p.z - (WeatherEngine._sortCamZ or 0)
+    local j = nP - 1
+    while j >= 1 and (P[j].sortRel or 0) < p.sortRel do
+        P[j + 1] = P[j]
+        j = j - 1
+    end
+    P[j + 1] = p
 end
 
 function WeatherEngine.hasFireflies(bid)
