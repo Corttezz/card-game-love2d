@@ -61,6 +61,7 @@ EnemyPoses.GROUNDED = GROUNDED
 
 -- ---------------------------------------------------------------------------
 -- OS 21 DO ROSTER (+ legados grave_slime / stone_golem / abyss_wraith)
+-- + LEVA NOVA de 24 (Out/2026, 4 por ato)
 -- ---------------------------------------------------------------------------
 EnemyPoses.BY_ID = {
     -- === APOIADOS ============================================================
@@ -88,6 +89,32 @@ EnemyPoses.BY_ID = {
     -- (~20px de tela) à esquerda da porta, da barra de vida e do palco.
     winter_monarch    = { pose = "grounded", axisX = 56,
                           idle = { fps = 6, cycle = true } },
+
+    -- === LEVA NOVA (Out/2026) — apoiados ===================================
+    -- Idle de TODOS assado por deslocamento a partir do south.png (12
+    -- quadros, loop fechado, pés fixos): tools/pixellab_new_enemies.py idle.
+    hollow_farmer     = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- botas
+    plague_rats       = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- monte de ratos no chão
+    blight_bull       = { pose = "grounded", idle = { fps = 5, cycle = true } },  -- quatro cascos
+    wicker_effigy     = { pose = "grounded", idle = { fps = 5, cycle = true } },  -- pés de vime
+    ram_cultist       = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- botas sob o manto
+    storm_harpy       = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- agachada nos talões
+    spectral_knight   = { pose = "grounded", idle = { fps = 5, cycle = true } },  -- soleretes + escudo no chão
+    storm_griffin     = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- garras e patas no chão
+    hellhound         = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- quatro patas
+    abyss_acolyte     = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- barra do manto no chão
+    pit_brute         = { pose = "grounded", idle = { fps = 5, cycle = true } },  -- cascos + marreta plantada
+    frost_wolf        = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- quatro patas
+    rime_shaman       = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- botas de pele
+    frost_troll       = { pose = "grounded", idle = { fps = 5, cycle = true } },  -- pés + punhos no chão
+    ice_wyrm          = { pose = "grounded", idle = { fps = 5, cycle = true } },  -- espiras assentadas
+    plague_toad       = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- agachado nas patas
+    leech_horror      = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- pés de sanguessuga
+    croc_warrior      = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- pés + cauda no chão
+    spore_mother      = { pose = "grounded", idle = { fps = 5, cycle = true } },  -- raízes plantadas
+    grave_thrall      = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- botas + escudo
+    dullahan          = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- botas de placa
+    fallen_angel      = { pose = "grounded", idle = { fps = 5, cycle = true } },  -- botas sob o manto, asas abertas
 
     -- === FLUTUANTES ==========================================================
     -- Espectro puro: manto que AFINA até virar nada. Sobe mais alto e
@@ -145,6 +172,20 @@ EnemyPoses.BY_ID = {
                      drift = 0.016,
                      shadowK = 0.62, shadowA = 0.50,
                      idle = { fps = 6, cycle = true } },
+
+    -- LEVA NOVA (Out/2026) — flutuantes. Olho-medusa: massa de carne com
+    -- cortina de tentáculos, sem pé nenhum; paira pesado e lento.
+    abyss_watcher = { pose = "floating",
+                      hover = 0.08, bob = 0.020, bobSpeed = 0.80,
+                      shadowK = 0.60, shadowA = 0.50,
+                      idle = { fps = 6, cycle = true } },
+    -- Morcego gigante: asas abertas e pés pendurados. O bob bate na
+    -- frequência da asa (12 quadros a 8fps = 1.5s → 4.19 rad/s), como o
+    -- rei-carniça — sobe a cada batida.
+    dusk_bat      = { pose = "floating",
+                      hover = 0.10, bob = 0.014, bobSpeed = 4.19,
+                      shadowK = 0.55, shadowA = 0.45,
+                      idle = { fps = 8, cycle = true } },
 
     -- Rainha do eclipse: capa imensa que se abre num leque, sem pé algum.
     -- Realeza não treme — deriva lenta e larga.
