@@ -962,6 +962,24 @@ return {
         },
     },
 
+    -- Revelações do menu depois da corrida (UnlockShowcase, estilo Balatro).
+    unlock_showcase = {
+        title_card        = "New card unlocked!",
+        title_class       = "New class!",
+        title_mastery     = "Mastery up!",
+        title_seal        = "Seal {n} unlocked",
+        title_achievement = "Achievement!",
+        mastery_level     = "Level {level}",
+        mastery_sub       = "{class} mastery",
+        mastery_cards     = "New cards join the offers.",
+        class_sub         = "Pick this class on your next run.",
+        seal_sub          = "{class}: {rule}",
+        card_sub          = "This card can now appear in offers.",
+        counter           = "{i} of {n}",
+        continue          = "Continue",
+        skip              = "Skip all",
+    },
+
     play_button = { label = "Play Cards", end_turn = "End Turn" },
 
     window_title = "Grimoire",

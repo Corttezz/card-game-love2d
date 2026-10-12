@@ -983,6 +983,24 @@ return {
         },
     },
 
+    -- Revelações do menu depois da corrida (UnlockShowcase, estilo Balatro).
+    unlock_showcase = {
+        title_card        = "Nova carta desbloqueada!",
+        title_class       = "Nova classe!",
+        title_mastery     = "Maestria subiu!",
+        title_seal        = "Selo {n} liberado",
+        title_achievement = "Conquista!",
+        mastery_level     = "Nível {level}",
+        mastery_sub       = "Maestria de {class}",
+        mastery_cards     = "Novas cartas entram nas ofertas.",
+        class_sub         = "Escolha a classe na próxima corrida.",
+        seal_sub          = "{class}: {rule}",
+        card_sub          = "A carta agora pode aparecer nas ofertas.",
+        counter           = "{i} de {n}",
+        continue          = "Continuar",
+        skip              = "Pular tudo",
+    },
+
     play_button = {
         label = "Jogar Cartas",
         end_turn = "Encerrar Turno",
