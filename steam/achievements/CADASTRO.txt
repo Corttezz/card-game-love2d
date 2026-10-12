@@ -326,7 +326,7 @@ Hidden ........: yes
 Set by ........: Client
 Achieved icon .: icons/ACH_ALEM_DA_PAGINA.png
 Unachieved icon: icons/ACH_ALEM_DA_PAGINA_locked.png
-  [brazilian] Além da Última Página — Alcance o andar 10 do modo infinito.
+  [brazilian] Além da Última Página — Alcance o andar 10 do Sem Fim.
   [english] Beyond the Last Page — Reach floor 10 of endless mode.
   [spanish] Más Allá de la Última Página — Alcanza el piso 10 del modo infinito.
   [french] Au-delà de la Dernière Page — Atteignez l'étage 10 du mode infini.
@@ -337,7 +337,7 @@ Hidden ........: no
 Set by ........: Client
 Achieved icon .: icons/ACH_CICLO_3.png
 Unachieved icon: icons/ACH_CICLO_3_locked.png
-  [brazilian] Três Voltas — Feche o ciclo 3 do modo infinito.
+  [brazilian] Três Voltas — Feche o ciclo 3 do Sem Fim.
   [english] Three Turns — Close cycle 3 of endless mode.
   [spanish] Tres Vueltas — Cierra el ciclo 3 del modo infinito.
   [french] Trois Tours — Bouclez le cycle 3 du mode infini.
@@ -348,7 +348,7 @@ Hidden ........: no
 Set by ........: Client
 Achieved icon .: icons/ACH_CICLO_5.png
 Unachieved icon: icons/ACH_CICLO_5_locked.png
-  [brazilian] Cinco Voltas — Feche o ciclo 5 do modo infinito.
+  [brazilian] Cinco Voltas — Feche o ciclo 5 do Sem Fim.
   [english] Five Turns — Close cycle 5 of endless mode.
   [spanish] Cinco Vueltas — Cierra el ciclo 5 del modo infinito.
   [french] Cinq Tours — Bouclez le cycle 5 du mode infini.
@@ -359,7 +359,7 @@ Hidden ........: yes
 Set by ........: Client
 Achieved icon .: icons/ACH_CICLO_10.png
 Unachieved icon: icons/ACH_CICLO_10_locked.png
-  [brazilian] Ouroboros — Feche o ciclo 10 do modo infinito.
+  [brazilian] Ouroboros — Feche o ciclo 10 do Sem Fim.
   [english] Ouroboros — Close cycle 10 of endless mode.
   [spanish] Uróboros — Cierra el ciclo 10 del modo infinito.
   [french] Ouroboros — Bouclez le cycle 10 du mode infini.

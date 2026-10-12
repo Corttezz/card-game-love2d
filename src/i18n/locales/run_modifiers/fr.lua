@@ -13,7 +13,7 @@ return {
         ultimo_selo = { name = "Le Dernier Sceau", desc = "Chaque ennemi inflige +10 % de dégâts." },
     },
     seal_ui = {
-        record = "{class} : plus haut sceau gagné {seal} · infini étage {floor} · record {score} pts",
+        record = "{class} : plus haut sceau gagné {seal} · Infini : étage {floor} · record {score} pts",
         title = "Sceaux du Grimoire",
         label = "Sceau {n}",
         none = "Sans sceau : le grimoire tel quel",

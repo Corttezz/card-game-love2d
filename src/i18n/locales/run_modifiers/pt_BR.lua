@@ -13,7 +13,7 @@ return {
         ultimo_selo = { name = "O Último Selo", desc = "Todo inimigo causa +10% de dano." },
     },
     seal_ui = {
-        record = "{class}: maior selo vencido {seal} · infinito andar {floor} · recorde {score} pts",
+        record = "{class}: maior selo vencido {seal} · Sem Fim: andar {floor} · recorde {score} pts",
         title = "Selos do Grimório",
         label = "Selo {n}",
         none = "Sem selo: o grimório como foi escrito",
@@ -34,7 +34,7 @@ return {
         fome = { name = "Fome", desc = "Toda cura (fogueira e ciclo) é 30% menor." },
     },
     endless = {
-        cycle_title = "Ciclo {n} do Modo Infinito",
+        cycle_title = "Ciclo {n} do Sem Fim",
         cycle_sub = "Escolha uma maldição. Ela fica até o fim da corrida e se acumula.",
         stacks = "Acúmulo {n}/{max}",
         score_bonus = "+{n}% de pontuação",

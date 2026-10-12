@@ -13,7 +13,7 @@ return {
         ultimo_selo = { name = "Das Letzte Siegel", desc = "Jeder Gegner verursacht +10 % Schaden." },
     },
     seal_ui = {
-        record = "{class}: höchstes gewonnenes Siegel {seal} · Endlos Etage {floor} · Rekord {score} Pkt",
+        record = "{class}: höchstes gewonnenes Siegel {seal} · Endlos: Etage {floor} · Rekord {score} Pkt",
         title = "Siegel des Grimoires",
         label = "Siegel {n}",
         none = "Kein Siegel: das Grimoire wie geschrieben",

@@ -13,7 +13,7 @@ return {
         ultimo_selo = { name = "El Último Sello", desc = "Todo enemigo causa +10% de daño." },
     },
     seal_ui = {
-        record = "{class}: mayor sello ganado {seal} · infinito piso {floor} · récord {score} pts",
+        record = "{class}: mayor sello ganado {seal} · Infinito: piso {floor} · récord {score} pts",
         title = "Sellos del Grimorio",
         label = "Sello {n}",
         none = "Sin sello: el grimorio tal como fue escrito",
