@@ -562,6 +562,9 @@ ENEMIES = {
                 "motionless"),
     },
     "plague_toad": {
+        # 2 prompts e o sapo não morria (só piscava as pústulas): cadáver
+        # desenhado à parte (de lado, patas pro ar) pinado no fim.
+        "last_frame": "tools/preview_out/new_enemies/plague_toad/death_end.png",
         "keep": ("giant bloated plague toad squatting, warty olive and "
                "mustard skin, round pale belly, glowing yellow-green "
                "poison pustules on its back and shoulder, toxic slime "

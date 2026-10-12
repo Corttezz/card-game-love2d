@@ -225,11 +225,11 @@ return {
     },
     plague_rats = {
         -- olhinhos vermelhos dos ratos — SUTIS, é a ninhada que lê, não a luz
-        { xr = 0.748, yr = 0.175, r = 0.035, color = { 0.85, 0.18, 0.15 },
+        { xr = 0.748, yr = 0.287, r = 0.035, color = { 0.85, 0.18, 0.15 },
           intensity = 0.25 },                                               -- rato do topo
-        { xr = 0.431, yr = 0.452, r = 0.035, color = { 0.85, 0.18, 0.15 },
+        { xr = 0.431, yr = 0.526, r = 0.035, color = { 0.85, 0.18, 0.15 },
           intensity = 0.25 },                                               -- rato do meio
-        { xr = 0.507, yr = 0.484, r = 0.035, color = { 0.85, 0.18, 0.15 },
+        { xr = 0.507, yr = 0.554, r = 0.035, color = { 0.85, 0.18, 0.15 },
           intensity = 0.25 },                                               -- rato do meio dir
     },
     blight_bull = {
@@ -324,8 +324,8 @@ return {
           intensity = 0.30 },                                               -- nuvem do sopro
     },
     storm_harpy = {
-        { xr = 0.465, yr = 0.383, r = 0.035, color = { 0.80, 0.90, 1.00 } },  -- olho esq
-        { xr = 0.525, yr = 0.383, r = 0.035, color = { 0.80, 0.90, 1.00 } },  -- olho dir
+        { xr = 0.465, yr = 0.457, r = 0.035, color = { 0.80, 0.90, 1.00 } },  -- olho esq
+        { xr = 0.525, yr = 0.457, r = 0.035, color = { 0.80, 0.90, 1.00 } },  -- olho dir
     },
     abyss_watcher = {
         { xr = 0.501, yr = 0.330, r = 0.070, color = { 0.95, 0.46, 0.11 },
@@ -372,9 +372,9 @@ return {
     },
     -- Ato 6 · crepúsculo -----------------------------------------------
     dusk_bat = {
-        { xr = 0.475, yr = 0.451, r = 0.035, color = { 0.95, 0.20, 0.20 },
+        { xr = 0.475, yr = 0.620, r = 0.035, color = { 0.95, 0.20, 0.20 },
           intensity = 0.40 },                                               -- olho esq
-        { xr = 0.554, yr = 0.451, r = 0.035, color = { 0.95, 0.20, 0.20 },
+        { xr = 0.554, yr = 0.620, r = 0.035, color = { 0.95, 0.20, 0.20 },
           intensity = 0.40 },                                               -- olho dir
     },
     grave_thrall = {
