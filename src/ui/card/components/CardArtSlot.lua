@@ -33,13 +33,24 @@ end
 -- Geometria compartilhada do ícone no slot (cover-fit ou artScale/artOffsetY).
 -- Também usada pelo CardAnimationLayer pra desenhar frames animados EXATAMENTE
 -- onde o ícone estático ficaria — manter as duas em sincronia é obrigatório.
+-- ENQUADRAMENTO VERTICAL (Out/2026, dono: "o topo das cartas está cortado"
+-- — o elmo do Defender, o punho da espada, a cabeça da Força Interior). O
+-- cover-fit inteiro (64→128) passa ~25-31px da altura do slot e o corte era
+-- dividido meio a meio: metade do excesso sumia em CIMA, justamente onde
+-- ficam cabeças, punhos e chamas. VALIGN = fração do excesso cortada em
+-- cima (0 = topo encostado, 0.5 = centro): 0.2 mostra o topo do sujeito e
+-- tira o resto do pé/chão, que o rodapé de stats já emoldura. Carta cujo
+-- sujeito importante fica EMBAIXO usa artOffsetY em src/data/card_art.lua.
+CardArtSlot.VALIGN = 0.2
+
 function CardArtSlot.layout(iconW, iconH, x, y, w, h, artData)
     local scale = (artData and artData.artScale)
         or computeCoverScale(iconW, iconH, w, h)
     local drawnW = iconW * scale
     local drawnH = iconH * scale
     local iconX = x + math.floor((w - drawnW) / 2)
-    local iconY = y + math.floor((h - drawnH) / 2)
+    local excess = h - drawnH   -- negativo quando o ícone passa do slot
+    local iconY = y + math.floor(excess * (excess < 0 and CardArtSlot.VALIGN or 0.5))
         + ((artData and artData.artOffsetY) or 0)
     return iconX, iconY, scale
 end

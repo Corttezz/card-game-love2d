@@ -90,6 +90,35 @@ function M.run()
                     miss <= 4)
             end
         end
+        -- 3. ENQUADRAMENTO: a ilustração em cover-fit passa da altura do slot;
+        --    o corte fica quase todo EMBAIXO (CardArtSlot.VALIGN) pra cabeças,
+        --    punhos e chamas não sumirem sob o banner. Toda carta sem override
+        --    (artScale/artOffsetY) corta no máximo ~1/4 do excesso em cima.
+        do
+            local CardArtSlot = require("src.ui.card.components.CardArtSlot")
+            local CardArt = require("src.ui.CardArt")
+            local worst, worstId, n = 0, nil, 0
+            for cid, ccd in pairs(db:getAllCards()) do
+                local inst = db:createCardInstance(ccd)
+                local art = CardArt.resolve(inst)
+                if art and art.icon and art.icon.size and not art.artScale
+                    and (art.artOffsetY or 0) == 0 then
+                    local ax, ay, aw, ah = CardFrame.artSlotBounds(inst)
+                    local _, iy, sc = CardArtSlot.layout(art.icon.size.w, art.icon.size.h,
+                        ax, ay, aw, ah, art)
+                    local excess = art.icon.size.h * sc - ah
+                    if excess > 0 then
+                        n = n + 1
+                        local topCut = ay - iy
+                        local frac = topCut / excess
+                        if frac > worst then worst, worstId = frac, cid end
+                    end
+                end
+            end
+            t:truthy(("ilustração: corte de cima <= 25%% do excesso em %d cartas (pior %.2f, %s)")
+                :format(n, worst, tostring(worstId)), n > 50 and worst <= 0.25)
+        end
+
         -- coringa
         for id, cd in pairs(db:getAllCards()) do
             if cd.type == "joker" then

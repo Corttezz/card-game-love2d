@@ -90,7 +90,7 @@ return {
     mage_fission            = { icon = "mage_fission",           bg = "arcane",  accent = "ORANGE",       decoration = "flash", effect = "glow" },
     mage_machine_learning   = { icon = "mage_machine_learning",  bg = "arcane",  accent = "GREEN_BRIGHT", decoration = "sparks", effect = "glow" },
     mage_meteor_strike      = { icon = "mage_meteor_strike",     bg = "fire",    accent = "MAGENTA",      decoration = "flash", effect = "glow" },
-    mage_rainbow            = { icon = "mage_rainbow",           bg = "arcane",  accent = "PINK",         decoration = "sparks", effect = "holo" },
+    mage_rainbow            = { icon = "mage_rainbow",           bg = "arcane",  accent = "PINK",         decoration = "sparks", effect = "holo", artOffsetY = -9 },  -- sujeito no PÉ da arte (CardArtSlot.VALIGN)
     effect_healing_potion   = { icon = "potion_red",             bg = "soft",    accent = "MAGENTA",      decoration = "sparks" },
     effect_mana_crystal     = { icon = "effect_mana_crystal",    bg = "arcane",  accent = "CYAN",         decoration = "sparks" },
 
@@ -146,7 +146,7 @@ return {
     rogue_shooting_star     = { icon = "star",                   bg = "wind",    accent = "YELLOW",       decoration = "sparks", effect = "glow" },
     -- Basic/Effect/Joker
     effect_scroll_wisdom    = { icon = "scroll",                 bg = "soft",    accent = "AGED_GOLD",    decoration = "sparks" },
-    effect_mystery_card     = { icon = "question",               bg = "arcane",  accent = "PURPLE",       decoration = "sparks" },
+    effect_mystery_card     = { icon = "question",               bg = "arcane",  accent = "PURPLE",       decoration = "sparks", artOffsetY = -9 },  -- sujeito no PÉ da arte (CardArtSlot.VALIGN)
     joker_005               = { icon = "jester_hat",             bg = "abyss",   accent = "AGED_GOLD",    effect = "holo" },
 
     -- ===== ORFAS (2026-09-12): 12 cartas que nao tinham entrada e caiam no
@@ -162,7 +162,7 @@ return {
     -- Mage
     mage_dark_harvest       = { icon = "mage_dark_harvest",       bg = "shadow", accent = "PURPLE",    decoration = "smoke" },
     mage_primordial_storm   = { icon = "mage_primordial_storm",   bg = "storm",  accent = "CYAN",      decoration = "flash", effect = "holo" },
-    mage_radiant_prayer     = { icon = "mage_radiant_prayer",     bg = "soft",   accent = "AGED_GOLD", decoration = "sparks" },
+    mage_radiant_prayer     = { icon = "mage_radiant_prayer",     bg = "soft",   accent = "AGED_GOLD", decoration = "sparks", artOffsetY = -9 },  -- sujeito no PÉ da arte (CardArtSlot.VALIGN)
     mage_sacred_chalice     = { icon = "mage_sacred_chalice",     bg = "arcane", accent = "AGED_GOLD", decoration = "sparks", effect = "glow" },
     -- Rogue
     rogue_dirty_blade       = { icon = "rogue_dirty_blade",       bg = "poison", accent = "RUST",         decoration = "smoke"  },
