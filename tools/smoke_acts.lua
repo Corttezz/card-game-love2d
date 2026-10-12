@@ -68,8 +68,9 @@ function M.run()
 
     I18n.setLocale("pt_BR")
     check("ato 1 nome (pt_BR) = Catacumbas", ActSystem.getActName(1) == "Catacumbas")
-    check("endless (pt_BR) tem Endless no nome",
-        ActSystem.getActName(Config.TotalActs + 1, 3):find("Endless") ~= nil)
+    local endlessName = ActSystem.getActName(Config.TotalActs + 1, 3)
+    check("endless (pt_BR) tem Sem Fim no nome (" .. endlessName .. ")",
+        endlessName:find("Sem Fim") ~= nil)
 
     -- E precisa MUDAR de verdade com o idioma: nome repetido nos 5 locales
     -- passaria no teste de paridade e continuaria errado na tela.

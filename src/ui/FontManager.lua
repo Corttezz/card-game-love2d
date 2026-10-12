@@ -1,6 +1,7 @@
 -- src/ui/FontManager.lua
 -- Loader cacheado da fonte pixel default do jogo.
--- Aponta pra assets/fonts/pixel.ttf (Press Start 2P, OFL). Todos os call sites
+-- Aponta pra assets/fonts/pixel.ttf ("Grimoire Pixel": Press Start 2P, OFL, com as
+-- maiusculas acentuadas redesenhadas por tools/font_latin_caps.py). Todos os call sites
 -- usam getFont/getResponsiveFont e ganham visual pixel automaticamente.
 -- Fallback: se o TTF falhar, cai no default do LÖVE com warning no console.
 

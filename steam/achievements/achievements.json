@@ -12,7 +12,7 @@
         "brazilian": "Coroa Partida",
         "english": "Broken Crown",
         "spanish": "Corona Rota",
-        "french": "Couronne Brisee",
+        "french": "Couronne Brisée",
         "german": "Zerbrochene Krone"
       },
       "desc": {
@@ -33,8 +33,8 @@
       "name": {
         "brazilian": "O Terceiro Capítulo",
         "english": "The Third Chapter",
-        "spanish": "El Tercer Capitulo",
-        "french": "Le Troisieme Chapitre",
+        "spanish": "El Tercer Capítulo",
+        "french": "Le Troisième Chapitre",
         "german": "Das Dritte Kapitel"
       },
       "desc": {
@@ -55,15 +55,15 @@
       "name": {
         "brazilian": "Primeira Página",
         "english": "First Page",
-        "spanish": "Primera Pagina",
-        "french": "Premiere Page",
+        "spanish": "Primera Página",
+        "french": "Première Page",
         "german": "Erste Seite"
       },
       "desc": {
         "brazilian": "Vença sua primeira corrida.",
         "english": "Win your first run.",
         "spanish": "Gana tu primera partida.",
-        "french": "Remportez votre premier periple.",
+        "french": "Remportez votre premier périple.",
         "german": "Gewinne deinen ersten Lauf."
       }
     },
@@ -78,14 +78,14 @@
         "brazilian": "Lâmina Lendária",
         "english": "Legendary Blade",
         "spanish": "Hoja Legendaria",
-        "french": "Lame Legendaire",
-        "german": "Legendaere Klinge"
+        "french": "Lame Légendaire",
+        "german": "Legendäre Klinge"
       },
       "desc": {
         "brazilian": "Vença uma corrida com o Guerreiro.",
         "english": "Win a run with the Warrior.",
         "spanish": "Gana una partida con el Guerrero.",
-        "french": "Remportez un periple avec le Guerrier.",
+        "french": "Remportez un périple avec le Guerrier.",
         "german": "Gewinne einen Lauf mit dem Krieger."
       }
     },
@@ -100,14 +100,14 @@
         "brazilian": "Arcano Supremo",
         "english": "Supreme Arcanist",
         "spanish": "Arcano Supremo",
-        "french": "Arcaniste Supreme",
+        "french": "Arcaniste Suprême",
         "german": "Oberster Arkanist"
       },
       "desc": {
         "brazilian": "Vença uma corrida com o Mago.",
         "english": "Win a run with the Mage.",
         "spanish": "Gana una partida con el Mago.",
-        "french": "Remportez un periple avec le Mage.",
+        "french": "Remportez un périple avec le Mage.",
         "german": "Gewinne einen Lauf mit dem Magier."
       }
     },
@@ -128,8 +128,8 @@
       "desc": {
         "brazilian": "Vença uma corrida com o Ladino.",
         "english": "Win a run with the Rogue.",
-        "spanish": "Gana una partida con el Picaro.",
-        "french": "Remportez un periple avec le Voleur.",
+        "spanish": "Gana una partida con el Pícaro.",
+        "french": "Remportez un périple avec le Voleur.",
         "german": "Gewinne einen Lauf mit dem Schurken."
       }
     },
@@ -144,14 +144,14 @@
         "brazilian": "Trindade do Grimório",
         "english": "Grimoire Trinity",
         "spanish": "Trinidad del Grimorio",
-        "french": "Trinite du Grimoire",
+        "french": "Trinité du Grimoire",
         "german": "Dreifaltigkeit des Grimoires"
       },
       "desc": {
         "brazilian": "Vença uma corrida com cada classe.",
         "english": "Win a run with every class.",
         "spanish": "Gana una partida con cada clase.",
-        "french": "Remportez un periple avec chaque classe.",
+        "french": "Remportez un périple avec chaque classe.",
         "german": "Gewinne einen Lauf mit jeder Klasse."
       }
     },
@@ -166,14 +166,14 @@
         "brazilian": "Todos Despertos",
         "english": "All Awakened",
         "spanish": "Todos Despiertos",
-        "french": "Tous Eveilles",
+        "french": "Tous Éveillés",
         "german": "Alle Erwacht"
       },
       "desc": {
         "brazilian": "Desbloqueie todas as classes.",
         "english": "Unlock every class.",
         "spanish": "Desbloquea todas las clases.",
-        "french": "Debloquez toutes les classes.",
+        "french": "Débloquez toutes les classes.",
         "german": "Schalte alle Klassen frei."
       }
     },
@@ -194,9 +194,9 @@
       "desc": {
         "brazilian": "Vença uma batalha com todos os espaços de coringa ocupados.",
         "english": "Win a battle with every joker slot filled.",
-        "spanish": "Gana una batalla con todos los espacios de comodin ocupados.",
-        "french": "Gagnez un combat avec tous les emplacements de joker occupes.",
-        "german": "Gewinne einen Kampf mit allen Joker-Plaetzen belegt."
+        "spanish": "Gana una batalla con todos los espacios de comodín ocupados.",
+        "french": "Gagnez un combat avec tous les emplacements de joker occupés.",
+        "german": "Gewinne einen Kampf mit allen Joker-Plätzen belegt."
       }
     },
     {
@@ -232,13 +232,13 @@
         "brazilian": "Enciclopédia Ambulante",
         "english": "Walking Encyclopedia",
         "spanish": "Enciclopedia Andante",
-        "french": "Encyclopedie Ambulante",
-        "german": "Wandelnde Enzyklopaedie"
+        "french": "Encyclopédie Ambulante",
+        "german": "Wandelnde Enzyklopädie"
       },
       "desc": {
         "brazilian": "Vença com 30 ou mais cartas no deck.",
         "english": "Win with 30 or more cards in your deck.",
-        "spanish": "Gana con 30 o mas cartas en el mazo.",
+        "spanish": "Gana con 30 o más cartas en el mazo.",
         "french": "Gagnez avec 30 cartes ou plus dans le deck.",
         "german": "Gewinne mit 30 oder mehr Karten im Deck."
       }
@@ -254,15 +254,15 @@
         "brazilian": "Voto de Pobreza",
         "english": "Vow of Poverty",
         "spanish": "Voto de Pobreza",
-        "french": "Voeu de Pauvrete",
-        "german": "Armutsgeluebde"
+        "french": "Voeu de Pauvreté",
+        "german": "Armutsgelübde"
       },
       "desc": {
         "brazilian": "Vença sem comprar nada em lojas.",
         "english": "Win without buying anything in shops.",
         "spanish": "Gana sin comprar nada en las tiendas.",
         "french": "Gagnez sans rien acheter dans les boutiques.",
-        "german": "Gewinne, ohne in Laeden etwas zu kaufen."
+        "german": "Gewinne, ohne in Läden etwas zu kaufen."
       }
     },
     {
@@ -276,14 +276,14 @@
         "brazilian": "Asceta",
         "english": "Ascetic",
         "spanish": "Asceta",
-        "french": "Ascete",
+        "french": "Ascète",
         "german": "Asket"
       },
       "desc": {
         "brazilian": "Vença sem possuir nenhum coringa.",
         "english": "Win without owning a single joker.",
-        "spanish": "Gana sin poseer ningun comodin.",
-        "french": "Gagnez sans posseder aucun joker.",
+        "spanish": "Gana sin poseer ningún comodín.",
+        "french": "Gagnez sans posséder aucun joker.",
         "german": "Gewinne, ohne einen einzigen Joker zu besitzen."
       }
     },
@@ -306,7 +306,7 @@
         "english": "Win using only common cards.",
         "spanish": "Gana usando solo cartas comunes.",
         "french": "Gagnez en n'utilisant que des cartes communes.",
-        "german": "Gewinne nur mit gewoehnlichen Karten."
+        "german": "Gewinne nur mit gewöhnlichen Karten."
       }
     },
     {
@@ -341,14 +341,14 @@
       "name": {
         "brazilian": "Relâmpago Selado",
         "english": "Sealed Lightning",
-        "spanish": "Relampago Sellado",
-        "french": "Eclair Scelle",
+        "spanish": "Relámpago Sellado",
+        "french": "Éclair Scellé",
         "german": "Versiegelter Blitz"
       },
       "desc": {
         "brazilian": "Vença uma batalha antes de o inimigo agir.",
         "english": "Win a battle before the enemy acts.",
-        "spanish": "Gana una batalla antes de que el enemigo actue.",
+        "spanish": "Gana una batalla antes de que el enemigo actúe.",
         "french": "Gagnez un combat avant que l'ennemi n'agisse.",
         "german": "Gewinne einen Kampf, bevor der Gegner handelt."
       }
@@ -386,14 +386,14 @@
         "brazilian": "Imaculado",
         "english": "Immaculate",
         "spanish": "Inmaculado",
-        "french": "Immacule",
+        "french": "Immaculé",
         "german": "Makellos"
       },
       "desc": {
         "brazilian": "Derrote um chefe sem tomar dano.",
         "english": "Defeat a boss without taking damage.",
-        "spanish": "Derrota a un jefe sin recibir dano.",
-        "french": "Vainquez un boss sans subir de degats.",
+        "spanish": "Derrota a un jefe sin recibir daño.",
+        "french": "Vainquez un boss sans subir de dégâts.",
         "german": "Besiege einen Boss, ohne Schaden zu nehmen."
       }
     },
@@ -416,7 +416,7 @@
         "english": "Stack 15 poison on an enemy.",
         "spanish": "Acumula 15 de veneno en un enemigo.",
         "french": "Accumulez 15 de poison sur un ennemi.",
-        "german": "Haeufe 15 Gift auf einem Gegner an."
+        "german": "Häufe 15 Gift auf einem Gegner an."
       }
     },
     {
@@ -436,7 +436,7 @@
       "desc": {
         "brazilian": "Atinja o máximo de bloqueio num turno.",
         "english": "Reach maximum block in a turn.",
-        "spanish": "Alcanza el bloqueo maximo en un turno.",
+        "spanish": "Alcanza el bloqueo máximo en un turno.",
         "french": "Atteignez le blocage maximum en un tour.",
         "german": "Erreiche den maximalen Block in einem Zug."
       }
@@ -459,8 +459,8 @@
         "brazilian": "Dispare 4 combos no mesmo turno.",
         "english": "Trigger 4 combos in the same turn.",
         "spanish": "Activa 4 combos en el mismo turno.",
-        "french": "Declenchez 4 combos dans le meme tour.",
-        "german": "Loese 4 Combos im selben Zug aus."
+        "french": "Déclenchez 4 combos dans le même tour.",
+        "german": "Löse 4 Combos im selben Zug aus."
       }
     },
     {
@@ -480,8 +480,8 @@
       "desc": {
         "brazilian": "Cause 60 de dano com uma única carta.",
         "english": "Deal 60 damage with a single card.",
-        "spanish": "Inflige 60 de dano con una sola carta.",
-        "french": "Infligez 60 degats avec une seule carte.",
+        "spanish": "Inflige 60 de daño con una sola carta.",
+        "french": "Infligez 60 dégâts avec une seule carte.",
         "german": "Verursache 60 Schaden mit einer einzigen Karte."
       }
     },
@@ -503,7 +503,7 @@
         "brazilian": "Tenha 3 orbes canalizados ao mesmo tempo.",
         "english": "Have 3 orbs channeled at once.",
         "spanish": "Ten 3 orbes canalizados a la vez.",
-        "french": "Ayez 3 orbes canalises en meme temps.",
+        "french": "Ayez 3 orbes canalises en même temps.",
         "german": "Habe 3 Kugeln gleichzeitig kanalisiert."
       }
     },
@@ -519,7 +519,7 @@
         "english": "Clean Hands",
         "spanish": "Manos Limpias",
         "french": "Mains Propres",
-        "german": "Saubere Haende"
+        "german": "Saubere Hände"
       },
       "desc": {
         "brazilian": "Vença uma batalha sem jogar cartas de ataque.",
@@ -547,7 +547,7 @@
         "brazilian": "Alcance 10.000 pontos numa corrida.",
         "english": "Reach 10,000 points in a run.",
         "spanish": "Alcanza 10.000 puntos en una partida.",
-        "french": "Atteignez 10 000 points en un periple.",
+        "french": "Atteignez 10 000 points en un périple.",
         "german": "Erreiche 10.000 Punkte in einem Lauf."
       }
     },
@@ -563,14 +563,14 @@
         "english": "Tireless Scribe",
         "spanish": "Escriba Incansable",
         "french": "Scribe Infatigable",
-        "german": "Unermuedlicher Schreiber"
+        "german": "Unermüdlicher Schreiber"
       },
       "desc": {
         "brazilian": "Jogue 2500 cartas (somando corridas).",
         "english": "Play 2500 cards (across runs).",
         "spanish": "Juega 2500 cartas (sumando partidas).",
-        "french": "Jouez 2500 cartes (tous periples confondus).",
-        "german": "Spiele 2500 Karten (ueber alle Laeufe)."
+        "french": "Jouez 2500 cartes (tous périples confondus).",
+        "german": "Spiele 2500 Karten (über alle Läufe)."
       }
     },
     {
@@ -584,15 +584,15 @@
         "brazilian": "Ferreiro-Mor",
         "english": "Master Smith",
         "spanish": "Maestro Herrero",
-        "french": "Maitre Forgeron",
+        "french": "Maître Forgeron",
         "german": "Schmiedemeister"
       },
       "desc": {
         "brazilian": "Forje 25 cartas (somando corridas).",
         "english": "Forge 25 cards (across runs).",
         "spanish": "Forja 25 cartas (sumando partidas).",
-        "french": "Forgez 25 cartes (tous periples confondus).",
-        "german": "Schmiede 25 Karten (ueber alle Laeufe)."
+        "french": "Forgez 25 cartes (tous périples confondus).",
+        "german": "Schmiede 25 Karten (über alle Läufe)."
       }
     },
     {
@@ -605,16 +605,16 @@
       "name": {
         "brazilian": "Veterano das Páginas",
         "english": "Veteran of the Pages",
-        "spanish": "Veterano de las Paginas",
-        "french": "Veteran des Pages",
+        "spanish": "Veterano de las Páginas",
+        "french": "Vétéran des Pages",
         "german": "Veteran der Seiten"
       },
       "desc": {
         "brazilian": "Vença 10 corridas.",
         "english": "Win 10 runs.",
         "spanish": "Gana 10 partidas.",
-        "french": "Remportez 10 periples.",
-        "german": "Gewinne 10 Laeufe."
+        "french": "Remportez 10 périples.",
+        "german": "Gewinne 10 Läufe."
       }
     },
     {
@@ -628,14 +628,14 @@
         "brazilian": "Bibliotecário",
         "english": "Librarian",
         "spanish": "Bibliotecario",
-        "french": "Bibliothecaire",
+        "french": "Bibliothécaire",
         "german": "Bibliothekar"
       },
       "desc": {
         "brazilian": "Descubra todas as cartas do grimório.",
         "english": "Discover every card in the grimoire.",
         "spanish": "Descubre todas las cartas del grimorio.",
-        "french": "Decouvrez toutes les cartes du grimoire.",
+        "french": "Découvrez toutes les cartes du grimoire.",
         "german": "Entdecke alle Karten des Grimoires."
       }
     },
@@ -649,15 +649,15 @@
       "name": {
         "brazilian": "Além da Última Página",
         "english": "Beyond the Last Page",
-        "spanish": "Mas Alla de la Ultima Pagina",
-        "french": "Au-dela de la Derniere Page",
+        "spanish": "Más Allá de la Última Página",
+        "french": "Au-delà de la Dernière Page",
         "german": "Jenseits der Letzten Seite"
       },
       "desc": {
         "brazilian": "Alcance o andar 10 do modo infinito.",
         "english": "Reach floor 10 of endless mode.",
         "spanish": "Alcanza el piso 10 del modo infinito.",
-        "french": "Atteignez l'etage 10 du mode infini.",
+        "french": "Atteignez l'étage 10 du mode infini.",
         "german": "Erreiche Etage 10 im Endlosmodus."
       }
     }

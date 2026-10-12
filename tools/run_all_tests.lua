@@ -37,6 +37,7 @@ local SUITES = {
     { group = "unit",  name = "test_music" },
     { group = "unit",  name = "test_window" },
     { group = "unit",  name = "test_release" },
+    { group = "unit",  name = "test_app_loop" },
     { group = "unit",  name = "test_coinburst" },
     { group = "unit",  name = "test_end_transition" },
     { group = "unit",  name = "test_replay" },
@@ -91,6 +92,8 @@ local SUITES = {
     { group = "valid", name = "test_achievements_i18n" },
     { group = "unit",  name = "test_achievements" },
     { group = "valid", name = "test_locale_glyphs" },
+    -- acento de verdade: glifos das maiusculas, ASCII-ismos por locale, glossario traduzido
+    { group = "valid", name = "test_locale_accents" },
 }
 
 function M.run()

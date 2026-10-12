@@ -135,7 +135,7 @@ function UnlockReveal.draw(result, x, y, w, h)
     if result.classId and result.after then
         local alpha = math.min(1, t / 0.4)
         setC(Palette.AGED_GOLD_LIGHT, alpha)
-        printCentered(I18n.t("unlocks.reveal.title", { class = className(result.classId):upper() }),
+        printCentered(I18n.t("unlocks.reveal.title", { class = require("src.i18n.TextCase").upper(className(result.classId)) }),
             headF, cx, y)
     end
 

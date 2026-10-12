@@ -2,7 +2,25 @@
 -- Glossário de keywords (F5 do gameplay-overhaul-v1): detectadas na
 -- descrição da carta e explicadas no tooltip (CardInfoDisplay) — resolve
 -- "orbs jamais explicados" e ensina as regras novas (bloqueio zera,
--- exaurir remove da corrida). Ordem = prioridade (máx 3 por tooltip).
+-- exaurir remove da batalha). Ordem = prioridade (máx 3 por tooltip).
+--
+-- Out/2026: o glossário era PORTUGUÊS em todos os idiomas (nome/texto
+-- cravados aqui). Agora este arquivo guarda só a ESTRUTURA — id, grupo e as
+-- palavras que disparam o verbete, POR LOCALE, do jeito que aparecem na
+-- descrição TRADUZIDA (minúsculas, com acento). Nome e texto exibidos vêm do
+-- i18n: `keyword.<id>.name` / `keyword.<id>.text` nos 5 locales.
+-- Trava: love . test_one test_locale_accents (cada verbete casa a própria
+-- carta-exemplo em cada idioma).
+
+-- Contexto de orbe: "fogo" sozinho não é orbe de Fogo — a descrição precisa
+-- falar de canalizar/evocar/orbe/valor junto.
+local ORB_CTX = {
+    pt_BR = { "orbe", "canaliza", "evoca", "valor" },
+    en    = { "orb", "channel", "evoke", "value" },
+    es    = { "orbe", "canaliza", "evoca", "valor" },
+    fr    = { "orbe", "canalise", "évoque", "valeur" },
+    de    = { "orb", "kanalisiere", "löse", "wert" },
+}
 
 return {
     -- ===== ORBES: verbete POR ELEMENTO (feedback Jul/2026: "explicacao
@@ -12,42 +30,53 @@ return {
     -- de orbe sem elemento (Evocar, Dualcast). Semantica canonica:
     -- EffectSystem.orbPulseValue/orbEvokeValue (pulso no fim do SEU turno,
     -- evocar = efeito cheio).
-    { match = { "raio", "lightning" }, name = "Orbe de Raio", group = "orb",
-      requires = { "orbe", "orb", "canaliza", "evoca", "channel", "evoke", "valor" },
-      text = "Canalizado, PULSA dano no inimigo no fim do seu turno; evocar descarrega o valor cheio." },
-    { match = { "gelo", "frost", "ice" }, name = "Orbe de Gelo", group = "orb",
-      requires = { "orbe", "orb", "canaliza", "evoca", "channel", "evoke", "valor" },
-      text = "Canalizado, PULSA armadura no fim do seu turno; evocar da a armadura cheia." },
-    { match = { "fogo", "fire" }, name = "Orbe de Fogo", group = "orb",
-      requires = { "orbe", "orb", "canaliza", "evoca", "channel", "evoke", "valor" },
-      text = "Canalizado, PULSA dano leve por turno; evocar causa o dano cheio + queimadura." },
-    { match = { "sagrado", "holy" }, name = "Orbe Sagrado", group = "orb",
-      requires = { "orbe", "orb", "canaliza", "evoca", "channel", "evoke", "valor" },
-      text = "Canalizado, PULSA cura leve por turno; evocar cura o valor cheio." },
-    { match = { "sombra", "dark", "shadow" }, name = "Orbe de Sombra", group = "orb",
-      requires = { "orbe", "orb", "canaliza", "evoca", "channel", "evoke", "valor" },
-      text = "Canalizado, CRESCE +2 por turno; evocar dispara em DOBRO." },
-    { match = { "orbe", "canaliza", "evoca", "orb", "channel", "evoke", "valor" }, name = "Orbes", group = "orb",
-      text = "Vai pra fileira de orbes (3 slots) e PULSA no fim do seu turno (numero no orbe). Evocar dispara o efeito cheio. Detalhes: passe o mouse na fileira." },
-    { match = { "exaurir", "exhaust" }, name = "Exaurir",
-      text = "Uso unico POR BATALHA: sai do baralho ate a proxima." },
-    { match = { "veneno", "poison" }, name = "Veneno",
-      text = "Dano por turno igual aos stacks (acumulaveis)." },
-    { match = { "vulneravel", "vulnerable" }, name = "Vulneravel",
-      text = "Alvo recebe +50% de dano." },
-    { match = { "fraco", "weak" }, name = "Fraco",
-      text = "Alvo causa -25% de dano." },
-    -- Rebalance v2 (Jul/2026): "retencao" adicionado — desc nova do Escudo Templario usa o termo
-    { match = { "reter", "retencao", "mantida", "retain" }, name = "Reter",
-      text = "Nao e descartada no fim do turno." },
-    { match = { "inato", "innate" }, name = "Inato",
-      text = "Sempre comeca na sua mao no inicio da batalha." },
-    { match = { "bloqueio", "armadura", "block", "armor" }, name = "Bloqueio",
-      text = "Absorve dano. Zera no inicio do seu turno. Maximo 30 (+10 por ato)." },
-    { match = { "foco", "focus" }, name = "Foco",
-      text = "+1 de potencia por ponto em cada pulso e evocacao de orbe, nesta batalha." },
-    { match = { "forca", "strength" }, name = "Forca",
-      text = "+1 de dano por ponto, nesta batalha." },
-    { match = { "destreza", "dexterity" }, name = "Destreza",
-      text = "+1 de bloqueio por ponto, nesta batalha." },
+    { id = "orb_lightning", group = "orb", requires = ORB_CTX,
+      match = { pt_BR = { "raio" }, en = { "lightning" }, es = { "rayo" },
+                fr = { "foudre" }, de = { "blitz" } } },
+    { id = "orb_ice", group = "orb", requires = ORB_CTX,
+      match = { pt_BR = { "gelo" }, en = { "ice", "frost" }, es = { "hielo" },
+                fr = { "glace" }, de = { "eis" } } },
+    { id = "orb_fire", group = "orb", requires = ORB_CTX,
+      match = { pt_BR = { "fogo" }, en = { "fire" }, es = { "fuego" },
+                fr = { "feu" }, de = { "feuer" } } },
+    { id = "orb_holy", group = "orb", requires = ORB_CTX,
+      match = { pt_BR = { "sagrado" }, en = { "holy" }, es = { "sagrado" },
+                fr = { "sacré" }, de = { "heilig" } } },
+    { id = "orb_dark", group = "orb", requires = ORB_CTX,
+      match = { pt_BR = { "sombra" }, en = { "shadow", "dark" }, es = { "sombra" },
+                fr = { "ombre" }, de = { "schatten" } } },
+    { id = "orb", group = "orb", match = ORB_CTX },
+    { id = "exhaust",
+      match = { pt_BR = { "exaurir" }, en = { "exhaust" }, es = { "agotar" },
+                fr = { "épuiser" }, de = { "erschöpfen" } } },
+    { id = "poison",
+      match = { pt_BR = { "veneno" }, en = { "poison" }, es = { "veneno" },
+                fr = { "poison" }, de = { "gift" } } },
+    { id = "vulnerable",
+      match = { pt_BR = { "vulnerável" }, en = { "vulnerable" }, es = { "vulnerable" },
+                fr = { "vulnérable" }, de = { "verwundbar" } } },
+    { id = "weak",
+      match = { pt_BR = { "fraco" }, en = { "weak" }, es = { "débil" },
+                fr = { "faible" }, de = { "schwach" } } },
+    -- Rebalance v2 (Jul/2026): "retenção" — desc do Escudo Templário usa o termo
+    { id = "retain",
+      match = { pt_BR = { "reter", "retenção", "mantida" }, en = { "retain" },
+                es = { "retención", "retener" }, fr = { "conservation" },
+                de = { "behalten" } } },
+    { id = "innate",
+      match = { pt_BR = { "inato" }, en = { "innate" }, es = { "innato" },
+                fr = { "inné" }, de = { "angeboren" } } },
+    { id = "block",
+      match = { pt_BR = { "bloqueio", "armadura" }, en = { "block", "armor" },
+                es = { "bloqueo", "armadura" }, fr = { "blocage", "armure" },
+                de = { "block", "rüstung" } } },
+    { id = "focus",
+      match = { pt_BR = { "foco" }, en = { "focus" }, es = { "foco" },
+                fr = { "focus" }, de = { "fokus" } } },
+    { id = "strength",
+      match = { pt_BR = { "força" }, en = { "strength" }, es = { "fuerza" },
+                fr = { "force" }, de = { "stärke" } } },
+    { id = "dexterity",
+      match = { pt_BR = { "destreza" }, en = { "dexterity" }, es = { "destreza" },
+                fr = { "dextérité" }, de = { "geschicklichkeit" } } },
 }

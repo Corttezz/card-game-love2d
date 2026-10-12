@@ -103,7 +103,11 @@ end
 -- Define o locale atual. Retorna true se trocou, false se nao existe.
 -- Se `silent = true`, nao dispara listeners (uso: boot).
 function I18n.setLocale(locale, silent)
-    if locale == I18n.current then return true end
+    -- "Já é o atual" só vale com a tabela CARREGADA: sem I18n.init() o
+    -- current nasce pt_BR com data vazia, e setLocale("pt_BR") saía cedo —
+    -- todo I18n.t caía no fallback do código e o teste passava por acaso
+    -- (smoke_acts lia "Catacumbas" do Config, não do locale; Out/2026).
+    if locale == I18n.current and I18n.data[locale] then return true end
     if not loadLocale(locale) then return false end
     I18n.current = locale
     I18n.saveSetting(locale)

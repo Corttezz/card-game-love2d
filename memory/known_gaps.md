@@ -14,6 +14,14 @@ type: project
 
 ## Ainda abertos (pós-redesign)
 
+**0. ASSETS DE ORIGEM DESCONHECIDA (Out/2026) — resolver ANTES de vender.** Os créditos agora dizem só o que é verdade de forma genérica (música/SFX gerados com ElevenLabs; arte gerada com PixelLab e editada pelo desenvolvedor; fonte Grimoire Pixel = Press Start 2P modificada, OFL; LÖVE zlib). Os arquivos abaixo NÃO se encaixam nessa frase com certeza — ninguém sabe de onde vieram. Não apagar (alguns estão em uso); documentar a origem ou substituir:
+- `audio/music.mp3` (trilha do menu)
+- `audio/hoverCard.wav`
+- `audio/deckStart.mp3`
+- `audio/clickselect2-92097.mp3`, `audio/sword-sound-260274.mp3`, `audio/punching-light-armour-87442.mp3` — o sufixo numérico tem cara de download da Pixabay (licença própria, permite uso comercial, mas precisa confirmar o arquivo exato)
+- PNGs antigos: `assets/cards/**` (theRock, bloodSword, rage, secondWind, seeingRed, ironShield, manaCrystal, potionOfHealing, back), `assets/icons/*.png` (armor/attack/coin/deck/mana), `assets/jokers/*`, `assets/backgrounds/step1.png`
+Ver também a seção de licenças em `memory/release_pipeline.md`.
+
 **1. Cartas ainda com `effects = {}`** — 12 cartas (starter/básicas): `warrior_strike`, `warrior_defend`, `rogue_strike`, `rogue_defend`, `attack_001`, `defense_001`, etc. Isso é **intencional**: são âncoras de tag (`#strike` / `#defend`) sem efeito adicional, balanceadas por combos. Rodar `love . validate_cards` para ver lista atualizada.
 
 **2. Fallback de imagem `theRock.png`** usado em muitas cartas — não é estilo, é falta de arte. Pipeline de sprite via pixel-mcp está em `memory/sprite_design_queue.md`. Ao gerar PNGs, substituir campo `image` no `src/data/cards/*.lua`.

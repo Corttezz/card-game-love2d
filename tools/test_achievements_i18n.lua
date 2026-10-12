@@ -16,7 +16,8 @@
 --      "Miasme" em fr);
 --   3. a maioria dos nomes é de fato distinta entre pt_BR e en (guarda contra
 --      alguém colar o bloco PT inteiro num locale novo);
---   4. acento SÓ em pt_BR — de/es/fr seguem a transliteração ASCII do projeto.
+--   4. es/fr/de são ACENTUADOS de verdade (Out/2026 inverteu a regra antiga
+--      "acento só no pt_BR" — a fonte desenha o Latin-1 inteiro).
 --
 --   love . test_one test_achievements_i18n
 --   love . test_all
@@ -70,9 +71,12 @@ function M.run()
                 table.insert(missing, d.id .. " (" .. loc .. ")")
                 n, s = "", ""
             end
-            -- Acento só no pt_BR (convenção dos locales do projeto).
-            if loc ~= "pt_BR" and (hasAccent(n) or hasAccent(s)) then
-                table.insert(accented, d.id .. " (" .. loc .. ")")
+            -- Out/2026: a regra antiga era o CONTRÁRIO ("acento só no
+            -- pt_BR"). Agora todo idioma é acentuado de verdade; um texto
+            -- transliterado é que é defeito (tools/test_locale_accents.lua).
+            -- Aqui basta provar que es/fr/de TÊM acento em algum lugar.
+            if loc ~= "pt_BR" and loc ~= "en" and (hasAccent(n) or hasAccent(s)) then
+                accented[loc] = true
             end
             names[#names + 1] = n
             descs[#descs + 1] = s
@@ -103,11 +107,9 @@ function M.run()
     end
     t:eq("nenhum texto repetido igual nos 5 idiomas", #notTranslated, 0)
 
-    if #accented > 0 then
-        print("\n  Acento fora do pt_BR (de/es/fr usam ASCII no projeto):")
-        for _, m in ipairs(accented) do print("    " .. m) end
+    for _, loc in ipairs({ "es", "fr", "de" }) do
+        t:truthy("conquistas em " .. loc .. " são acentuadas (não transliteradas)", accented[loc])
     end
-    t:eq("acento só no pt_BR", #accented, 0)
 
     -- Guarda contra "colei o bloco PT no locale novo": a maioria dos NOMES
     -- tem de diferir entre pt_BR e en. Alguns coincidem de verdade

@@ -6,8 +6,13 @@ mpg123, LuaJIT, FreeType and others) are covered by license.txt, distributed
 next to this file. OpenAL Soft and mpg123 are LGPL libraries and ship as
 separate, replaceable DLLs (OpenAL32.dll, mpg123.dll).
 
-Font: Press Start 2P (assets/fonts/pixel.ttf)
+Font: Grimoire Pixel (assets/fonts/pixel.ttf)
 ---------------------------------------------
+Grimoire Pixel is a Modified Version of Press Start 2P by CodeMan38:
+the accented Latin-1 capitals were redrawn at full letter height
+(tools/font_latin_caps.py). As required by the Reserved Font Name clause,
+the modified font is distributed under a different name.
+
 Copyright 2012 The Press Start 2P Project Authors (cody@zone38.net),
 with Reserved Font Name "Press Start 2P".
 

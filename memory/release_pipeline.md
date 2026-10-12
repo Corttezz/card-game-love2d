@@ -152,8 +152,11 @@ subdir `Grimoire/`):
 - **Proveniencia desconhecida**: `audio/music.mp3` (menu), `audio/hoverCard.wav`,
   os PNGs legados de `assets/cards/**`, `assets/icons/*.png`,
   `assets/backgrounds/step1.png`. Documentar origem ou substituir.
-- Fonte `assets/fonts/pixel.ttf` = Press Start 2P (OFL 1.1): ok comercial,
-  exige o aviso — vai em `dist/THIRD_PARTY_NOTICES.txt` (o build falha sem).
+- Fonte `assets/fonts/pixel.ttf` = "Grimoire Pixel", versao MODIFICADA da
+  Press Start 2P (OFL 1.1, Reserved Font Name "Press Start 2P" — por isso o
+  nome novo; maiusculas acentuadas redesenhadas por `tools/font_latin_caps.py`,
+  Out/2026): ok comercial, exige o aviso — vai em
+  `dist/THIRD_PARTY_NOTICES.txt` (o build falha sem).
 - LOVE/SDL/OpenAL Soft/mpg123: `license.txt` do LOVE vai junto; OpenAL e
   mpg123 sao LGPL e seguem como DLL separada (substituivel) — ok.
 - `assets/backgrounds/202509071408.mp4` (62 MB) nao e referenciado e nunca

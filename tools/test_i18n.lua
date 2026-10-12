@@ -141,7 +141,7 @@ ok("effectDesc simples: " .. healStr)
 
 local debuffVuln = { type = "apply_debuff", value = "vulnerable", stacks = 2 }
 local debuffStr = I18n.effectDesc(debuffVuln)
-if not debuffStr:find("Vulneravel") then fail("effectDesc composto apply_debuff_vulnerable: " .. debuffStr) end
+if not debuffStr:find("Vulnerável") then fail("effectDesc composto apply_debuff_vulnerable: " .. debuffStr) end
 ok("effectDesc composto: " .. debuffStr)
 
 I18n.setLocale("en")

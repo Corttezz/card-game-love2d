@@ -71,12 +71,43 @@ local function buildForgeLine(inst)
 end
 
 -- Keywords da descrição (glossário F5) — até 3 hits, texto composto.
-local function collectKeywords(desc)
+-- Casa as palavras do LOCALE ATUAL contra a descrição já traduzida, e o
+-- verbete exibido vem do i18n (`keyword.<id>.name/text`). Antes o glossário
+-- era português em todo idioma (Out/2026).
+local TextCase = require("src.i18n.TextCase")
+
+-- Palavra começa aqui? (antes dela não pode haver letra ASCII: "gelo" não
+-- casa dentro de "Congelar", "ice" não casa dentro de "twice"). O fim fica
+-- livre para pegar plural/flexão ("Raios", "Orbs").
+local function hasWord(lower, word)
+    local from = 1
+    while true do
+        local i = lower:find(word, from, true)
+        if not i then return false end
+        if i == 1 or not lower:sub(i - 1, i - 1):match("%a") then return true end
+        from = i + 1
+    end
+end
+
+local function anyWord(lower, byLocale, loc)
+    local words = byLocale and (byLocale[loc] or byLocale.en)
+    if not words then return false end
+    for _, w in ipairs(words) do
+        if hasWord(lower, w) then return true end
+    end
+    return false
+end
+
+function CardInfoDisplay.collectKeywords(desc)
     if not desc or desc == "" then return {} end
     local hits = {}
-    local lower = desc:lower()
+    local lower = TextCase.lower(desc)
     local ok, Keywords = pcall(require, "src.data.keywords")
-    if not ok then return hits end
+    if not ok then
+        print("[CardInfoDisplay] glossario nao carregou: " .. tostring(Keywords))
+        return hits
+    end
+    local loc = I18n.getLocale()
     -- group: no maximo UM verbete por grupo (orbes por elemento — a carta
     -- de Fogo explica so o orbe de Fogo, e o generico "Orbes" vira
     -- fallback em vez de segundo verbete; feedback Jul/2026).
@@ -86,27 +117,21 @@ local function collectKeywords(desc)
             -- requires: verbete só vale se a desc TAMBÉM contém uma das
             -- palavras-contexto (ex: "fogo" sozinho não é orbe de Fogo —
             -- precisa de "canaliza/evoca/orbe/valor" junto).
-            local ctxOk = true
-            if kw.requires then
-                ctxOk = false
-                for _, rword in ipairs(kw.requires) do
-                    if lower:find(rword, 1, true) then ctxOk = true break end
-                end
-            end
-            if ctxOk then
-                for _, mword in ipairs(kw.match) do
-                    if lower:find(mword, 1, true) then
-                        table.insert(hits, kw)
-                        if kw.group then groupHit[kw.group] = true end
-                        break
-                    end
-                end
+            local ctxOk = (kw.requires == nil) or anyWord(lower, kw.requires, loc)
+            if ctxOk and anyWord(lower, kw.match, loc) then
+                table.insert(hits, {
+                    id   = kw.id,
+                    name = I18n.t("keyword." .. kw.id .. ".name", nil, kw.id),
+                    text = I18n.t("keyword." .. kw.id .. ".text", nil, ""),
+                })
+                if kw.group then groupHit[kw.group] = true end
             end
         end
         if #hits >= 3 then break end
     end
     return hits
 end
+local collectKeywords = CardInfoDisplay.collectKeywords
 
 -- Desenha as informações da carta.
 function CardInfoDisplay:draw(cardInstance, x, y, options)
@@ -148,8 +173,9 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
     local descLines = {}
     if desc then _, descLines = bodyFont:getWrap(desc, MAX_INNER) end
     local kwBlocks = {}
+    local kwSep = I18n.t("keyword.sep", nil, ": ")
     for _, kw in ipairs(kwHits) do
-        local full = kw.name .. ": " .. kw.text
+        local full = kw.name .. kwSep .. kw.text
         local _, lines = kwFont:getWrap(full, MAX_INNER)
         table.insert(kwBlocks, lines)
     end
@@ -274,18 +300,20 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
     for i, kw in ipairs(kwHits) do
         cy = cy + 4
         love.graphics.setFont(kwFont)
-        local nameW = kwFont:getWidth(kw.name .. ": ")
-        Palette.set(Palette.AGED_GOLD)
-        love.graphics.print(kw.name .. ":", tx, cy)
-        Palette.set(Palette.PARCHMENT)
-        -- Reflui o texto do bloco pré-wrapado: primeira linha após o nome.
+        -- Nome dourado + corpo pergaminho, a partir do bloco pré-wrapado.
+        -- O wrap apara o espaço do fim da linha, então compara sem ele; e só
+        -- corta quando o nome inteiro está na linha (nunca no meio de um
+        -- caractere UTF-8). Nome quebrado no wrap sai todo em pergaminho.
+        local head = (kw.name .. kwSep):gsub("%s+$", "")
         local block = kwBlocks[i]
         for j, line in ipairs(block) do
-            if j == 1 then
-                -- linha 1 do wrap contém "Nome: ..." — imprime só o resto
-                local rest = line:sub(#(kw.name .. ": ") + 1)
-                love.graphics.print(rest, tx + nameW, cy)
+            if j == 1 and line:sub(1, #head) == head then
+                Palette.set(Palette.AGED_GOLD)
+                love.graphics.print(head, tx, cy)
+                Palette.set(Palette.PARCHMENT)
+                love.graphics.print(line:sub(#head + 1), tx + kwFont:getWidth(head), cy)
             else
+                Palette.set(Palette.PARCHMENT)
                 love.graphics.print(line, tx, cy)
             end
             cy = cy + kwLH

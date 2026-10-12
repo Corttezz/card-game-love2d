@@ -52,6 +52,8 @@ local DEV_PATTERNS = {
 local ALLOW = {
     ["src/data/decks.lua"] =
         "modo clássico (legado): decks estáticos nunca exibidos na UI de run",
+    ["src/data/keywords.lua"] =
+        "palavras-GATILHO do glossário por locale (casadas contra a desc traduzida, nunca desenhadas); o texto exibido mora em keyword.<id>.name/text",
     ["src/data/biomes.lua"] =
         "biomes[].name não é lido por ninguém — só o .id é usado (WorldRoad/Roteiro)",
     ["src/ui/PackThemes.lua"] =

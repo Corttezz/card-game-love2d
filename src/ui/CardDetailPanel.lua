@@ -217,7 +217,7 @@ end
 -- por palavra, a frase logo acima ("Ganha 5 de Bloqueio" duas vezes) — ruído
 -- puro no painel da loja. Só sobra o que acrescenta informação.
 local function normalized(text)
-    return (tostring(text or ""):lower():gsub("[%p%s]+", " "))
+    return (require("src.i18n.TextCase").lower(tostring(text or "")):gsub("[%p%s]+", " "))
 end
 
 local function extraEffects(inst, desc)
