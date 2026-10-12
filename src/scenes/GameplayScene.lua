@@ -24,6 +24,13 @@ local DamagePreviewPanel = require("src.ui.DamagePreviewPanel")
 local Sfx              = require("src.systems.Sfx")
 local SmokeConfig      = require("src.config.SmokeConfig")
 local InputFocus       = require("src.ui.InputFocus")
+-- ESCALA DE UI (Out/2026): a cena é ADOTADA pelo UiScale — mão, HUD, botões,
+-- quadro de coringas e toasts vivem no espaço virtual (~1280x720, scale k).
+-- O MUNDO (WorldRoad / salão / inimigo) NÃO: ele já escala com a janela, e
+-- roda dentro de UiScale.outside com a janela real. Fronteira: o bbox do
+-- inimigo volta dividido por k pro HUD; o limite do palco vai multiplicado
+-- por k pro WorldRoad. Ver memory/ui_scale.md.
+local UiScale          = require("src.ui.UiScale")
 
 local GameplayScene = {}
 
@@ -266,10 +273,15 @@ GameplayScene.stageFootLimit = stageFootLimit
 -- Recalculado todo frame a partir da janela (como o resto da cena): resize
 -- e troca de fullscreen reposicionam o palco sem cache nenhum.
 local function syncBattleStage()
-    local width, height = love.graphics.getWidth(), love.graphics.getHeight()
-    local tb = (topBar and topBar.height) or 80
-    WorldRoad.setBattleRel(WorldRoad.battleRelFor(0, tb, width, height - tb,
-        stageFootLimit()))
+    -- limite do palco medido no espaço da UI (a mão), convertido pra pixels
+    -- da tela — o WorldRoad vive na janela real (UiScale.outside)
+    local k = UiScale.activeK()
+    local limit = stageFootLimit() * k
+    local tb = ((topBar and topBar.height) or 80) * k
+    UiScale.outside(function()
+        local width, height = love.graphics.getWidth(), love.graphics.getHeight()
+        WorldRoad.setBattleRel(WorldRoad.battleRelFor(0, tb, width, height - tb, limit))
+    end)
 end
 GameplayScene.syncBattleStage = syncBattleStage
 
@@ -410,9 +422,14 @@ end
 -- v5 (Encruzilhada): desenha SÓ o mundo (estrada + fork), sem inimigo, HUD
 -- ou mão — usado pelo estado mapSelection quando a escolha acontece in-world.
 function GameplayScene.drawWorldOnly()
+    -- mundo puro: janela REAL (a TopBar está no espaço da UI → × k)
+    local tbReal = (topBar.height or 80) * UiScale.activeK()
+    return UiScale.outside(GameplayScene._drawWorldOnlyReal, tbReal)
+end
+
+function GameplayScene._drawWorldOnlyReal(topBarHeight)
     local width = love.graphics.getWidth()
     local height = love.graphics.getHeight()
-    local topBarHeight = topBar.height or 80
     local currentAct = 1
     local run = game and game.runManager and game.runManager.currentRun
     if run then currentAct = run.actNumber or 1 end
@@ -481,6 +498,18 @@ function GameplayScene.draw()
         and not interior and not traveling and not entering
     local enemyBbox, enemyCx, enemyCy
     if GameplayScene.SCENE_MODE == "worldroad" then syncBattleStage() end
+    -- Números do palco medidos na UI (mão) ANTES de sair pro mundo real.
+    local uiK = UiScale.activeK()
+    local stageYReal = stageFootLimit() * uiK
+    local _, _, handTopV = handLayout()
+    local handTopReal = handTopV * uiK
+    local uiTopBarH = topBarHeight
+    local interiorHall = nil
+    -- ===== MUNDO (janela real) =====
+    UiScale.outside(function()
+    local width = love.graphics.getWidth()
+    local height = love.graphics.getHeight()
+    local topBarHeight = uiTopBarH * uiK
     if worldBattle then
         enemyCx, enemyCy = WorldRoad.getRoadAnchor(WorldRoad.BATTLE_REL,
             0, topBarHeight, width, height - topBarHeight)
@@ -502,7 +531,6 @@ function GameplayScene.draw()
     -- bar), o hall desenha em tela cheia — a ancora tem que usar a MESMA
     -- caixa que o desenho usou, senao o pe sai da laje.
     local sceneKey, sceneH = nil, height
-    local interiorHall = nil
     if interior then
         -- Salão do chefe por ato (1..6). A escolha do salão — e o aviso de
         -- ato sem arte — mora em InteriorFX.hallFor: draw e update perguntam
@@ -536,8 +564,6 @@ function GameplayScene.draw()
         SceneLayer.draw(0, topBarHeight, width, height - topBarHeight, currentAct)
     end
 
-    topBar:draw()
-
     -- Inimigo: no battle da estrada já foi desenhado DENTRO do WorldRoad.draw
     -- (callback no eixo BATTLE_REL — props próximos na frente dele). Aqui só
     -- os outros casos: interior (hall estático) e SceneLayer legado. Na
@@ -558,7 +584,7 @@ function GameplayScene.draw()
         -- parcial: "um pouquinho mais longe", o que a arte deixa.
         local _, backY = SceneAnchors.groundAnchor(sceneKey, width, sceneH,
             anchor.backYr or anchor.yr)
-        local stageY = stageFootLimit()
+        local stageY = stageYReal
         if enemyCy > stageY then enemyCy = math.max(backY, stageY) end
 
         -- TETO DA MAO: o pe nunca pousa abaixo do topo das cartas.
@@ -578,8 +604,7 @@ function GameplayScene.draw()
         --
         -- Vale pra qualquer cena e qualquer inimigo: e a mao que define ate
         -- onde o mundo pode descer, e ela e responsiva.
-        local _, _, handTopY = handLayout()
-        local tetoY = math.floor(handTopY - ENEMY_HAND_CLEARANCE)
+        local tetoY = math.floor(handTopReal - ENEMY_HAND_CLEARANCE * uiK)
         if enemyCy > tetoY then enemyCy = tetoY end
         -- salão: poça de oclusão em degraus sob os pés (contato com o piso),
         -- ANTES do chefe (require inline: estado do salão fica no módulo)
@@ -618,6 +643,16 @@ function GameplayScene.draw()
     if GameplayScene.SCENE_MODE == "worldroad" and not interior then
         WorldRoad.drawOverlays(0, topBarHeight, width, height - topBarHeight)
     end
+    end)
+    -- ===== UI (espaço virtual) =====
+    -- O bbox do inimigo veio em pixels da tela: o HUD dele mora na UI.
+    if enemyBbox and uiK ~= 1 then
+        enemyBbox = { cx = enemyBbox.cx / uiK, topY = enemyBbox.topY / uiK,
+            bottomY = enemyBbox.bottomY / uiK, width = enemyBbox.width / uiK,
+            height = enemyBbox.height / uiK }
+    end
+    if enemyCx then enemyCx, enemyCy = enemyCx / uiK, enemyCy / uiK end
+    topBar:draw()
 
     if not traveling and not entering then
         EnemyHud.draw(game, enemyBbox, enemyCx, enemyCy)
@@ -816,7 +851,7 @@ function GameplayScene.update(dt)
 
     -- Partículas são tickadas centralmente em main.lua via CardParticles.update.
 
-    EnemyRenderer.update(dt)
+    UiScale.outside(EnemyRenderer.update, dt)
     -- FX de interior (tochas) tickam quando o node atual é de castelo;
     -- transição estrada↔interior dispara fade de entrada (portão)
     do
@@ -828,7 +863,7 @@ function GameplayScene.update(dt)
             and not (GameplayScene.SCENE_MODE == "worldroad"
                      and WorldRoad.isEntering())
         if isInt then
-            InteriorFX.update(dt, InteriorFX.hallFor((runU and runU.actNumber) or 1))
+            UiScale.outside(InteriorFX.update, dt, InteriorFX.hallFor((runU and runU.actNumber) or 1))
         end
         if lastInterior ~= nil and isInt ~= lastInterior then
             interiorFade = 1
@@ -861,7 +896,7 @@ function GameplayScene.update(dt)
             local prog = math.min(1, math.max(0, (floorIn - 1) / 7)) ^ 1.35
             WorldRoad.setTimeOfDay(0.62 + 0.38 * prog)
         end
-        WorldRoad.update(dt)
+        UiScale.outside(WorldRoad.update, dt)
         -- o palco vale ANTES da viagem: o encontro nasce em camZ+dist+palco
         syncBattleStage()
         -- Troca de andar/fase → herói "anda" até o próximo encontro:
@@ -904,7 +939,7 @@ function GameplayScene.update(dt)
         end
         lastFloorKey = floorKey
     else
-        SceneLayer.update(dt)
+        UiScale.outside(SceneLayer.update, dt)
     end
 
     -- CHECKPOINT DA MORTE (Set/2026): antes de qualquer gate de desfecho, o

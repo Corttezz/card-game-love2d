@@ -362,8 +362,12 @@ end
 -- Última posição desenhada (centro do peito) — pro Game ancorar floating
 -- text de veneno sem conhecer o layout.
 local lastCenterX, lastCenterY = nil, nil
+-- Volta no espaço da UI (src/ui/UiScale): quem pergunta é texto flutuante/
+-- partícula, que desenham com a UI; o inimigo é desenhado na janela real.
 function EnemyRenderer.getLastPos()
-    return lastCenterX, lastCenterY
+    if not lastCenterX then return lastCenterX, lastCenterY end
+    local k = require("src.ui.UiScale").k()
+    return lastCenterX / k, lastCenterY / k
 end
 
 function EnemyRenderer.triggerHurt()

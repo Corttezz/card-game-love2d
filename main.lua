@@ -1984,9 +1984,9 @@ end
 local function updatePlayButtonPosition() GameplayScene.updatePlayButtonPosition() end
 
 function love.update(dt)
-    -- Escala de UI: higiene do frame + a TopBar só escala fora da batalha.
+    -- Escala de UI: higiene do frame (a batalha também escala desde Out/2026).
     require("src.ui.UiScale").reset()
-    require("src.ui.UiScale").setChromeScaled(currentState ~= "playing")
+    require("src.ui.UiScale").setChromeScaled(true)
     -- Identidade CRT: animador do power (ligar/desligar da TV).
     CRTShader.update(dt)
 
@@ -2021,7 +2021,13 @@ function love.update(dt)
     local combatFrozen = IF.freezesCombat(currentState)
     -- Infra global (antes do dispatch de estado): event queue, particles,
     -- flash fade, screen shake decay.
-    if not combatFrozen then EventManager.update(dt) end
+    -- Callbacks do EventManager são lógica de jogo/UI (beats, floating text,
+    -- compra, FX de carta): rodam no espaço da UI, o mesmo da cena adotada.
+    if not combatFrozen then
+        require("src.ui.UiScale").begin()
+        EventManager.update(dt)
+        require("src.ui.UiScale").finish()
+    end
     FloatingText.update(dt)
     require("src.ui.CoinBurst").update(dt)
     require("src.ui.AchievementToast").update(dt); require("src.systems.SteamBridge").update()
@@ -2119,7 +2125,7 @@ end
 
 function love.draw()
     require("src.ui.UiScale").reset()
-    require("src.ui.UiScale").setChromeScaled(currentState ~= "playing")
+    require("src.ui.UiScale").setChromeScaled(true)
     -- Abre a cena CRT: tudo que for desenhado até endScene() vai pro canvas
     -- de pós-processamento e depois é redesenhado com o shader aplicado.
     CRTShader.beginScene()
@@ -2209,10 +2215,9 @@ function love.draw()
     -- Partículas atachadas a cartas (dissolve/materialize/explode).
     -- Desenhadas APÓS as cartas mas DENTRO do shake + CRT scene, assim
     -- seguem o warp do pós-processamento.
-    -- Fora da batalha/estrada elas nascem nas coordenadas VIRTUAIS das telas
-    -- de UI (loja, descanso...) — então desenham no mesmo espaço (UiScale).
-    local fxScaled = currentState ~= "playing" and currentState ~= "mapSelection"
-        and currentState ~= "boot"
+    -- Elas nascem nas coordenadas VIRTUAIS da UI (batalha inclusive: o centro
+    -- do inimigo sai do EnemyRenderer já ÷ k) — desenham no mesmo espaço.
+    local fxScaled = currentState ~= "boot"
     if fxScaled then require("src.ui.UiScale").begin() end
     CardParticles.draw()
 

@@ -38,11 +38,26 @@ chamado de fora do draw também). Chamada aninhada (depth>0) passa direto.
 (`adoptDefaults`, antes dos tools). TopBar com predicado: escala fora de
 `playing`.
 
-## Ainda 1:1 (de propósito)
+## Batalha (adotada na 2ª leva, Out/2026)
 
-GameplayScene: HUD de batalha + mão (outras frentes mexendo). Consequência:
-a TopBar muda de tamanho ao sair da batalha pra loja. Quando a batalha
-adotar, `setChromeScaled(true)` sempre.
+`src.scenes.GameplayScene` é adotado (MODULES): mão, hover, tooltip ao
+lado, HUD, prévia de dano, botões, quadro de coringas, toasts e TopBar
+vivem no espaço da UI. O MUNDO (WorldRoad, salão do chefe, inimigo,
+InteriorFX, SceneLayer) roda dentro de `UiScale.outside` com a janela real
+— ele já escala sozinho (enemyScreenK/hallScreenK). Fronteiras:
+- `syncBattleStage` mede o limite do palco na UI (mão) e passa × k pro
+  `WorldRoad.battleRelFor`; o teto da mão no salão idem;
+- o bbox do inimigo volta ÷ k pro `EnemyHud`/prévia;
+- `EnemyRenderer.getLastPos()` devolve ÷ k (quem pergunta é texto
+  flutuante/partícula, que desenham com a UI);
+- `EventManager.update` roda no contexto (beats, compra, FX = lógica de UI);
+  partículas/CoinBurst/FloatingText desenham no contexto em todo estado
+  (menos boot). Por isso as moedas do cash-out saem do lugar certo.
+`test_enemy_stage` cobre 1080p/1440p/4K com a escala ligada (régua em
+pixels da tela). Captura: `love . test_one screenshot_uiscale_battle [loc]`.
+Consequência visível: em 1440p/4K a mão maior empurra o inimigo pro fundo
+da estrada — ele fica proporcionalmente menor que em 1024x768 (o mundo tem
+teto próprio, `enemyScreenK` ≤ 1.4).
 
 ## Armadilhas
 

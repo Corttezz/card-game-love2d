@@ -19,7 +19,11 @@ local TK = require("tools.testkit")
 
 local M = {}
 
-local SIZES = { { 1024, 768 }, { 1280, 720 }, { 1920, 1080 } }
+-- { W, H, escalada? } — as escaladas rodam com a ESCALA DE UI ligada
+-- (src/ui/UiScale): mão/HUD crescem k vezes, o mundo não. A régua é a mesma,
+-- tudo convertido pra pixels da tela (Out/2026, a mão cresceu em 1440p/4K).
+local SIZES = { { 1024, 768 }, { 1280, 720 }, { 1920, 1080 },
+                { 1920, 1080, true }, { 2560, 1440, true }, { 3840, 2160, true } }
 local ROOT = "assets/sprites/characters/enemies/"
 
 -- margem de cada quadro da idle, varrida aqui (não pelo renderer)
@@ -182,6 +186,12 @@ function M.run()
         return b
     end
     local realMouse = love.mouse.getPosition
+    local UiScale = require("src.ui.UiScale")
+    local uiK = 1   -- escala de UI do tamanho corrente (1 nos não-escalados)
+    local function scaleRect(r, k)
+        if not r or k == 1 then return r end
+        return { x = r.x * k, y = r.y * k, w = r.w * k, h = r.h * k }
+    end
 
     local function scene(W, H, act, nodeType)
         local run = game.runManager.currentRun
@@ -195,29 +205,43 @@ function M.run()
         WorldRoad.setBiome(act)
         local sx, sp, cy = GameplayScene.handLayout()
         local mid = math.ceil(#hand / 2)
-        local mx, my = sx + (mid - 1) * sp + 60, cy + 60
+        -- mouse em pixels da TELA (o contexto da UI divide por k)
+        local mx, my = (sx + (mid - 1) * sp + 60) * uiK, (cy + 60) * uiK
         love.mouse.getPosition = function() return mx, my end
         local cv = love.graphics.newCanvas(W, H)
         love.graphics.setCanvas({ cv, stencil = true })
+        -- o hover da carta mede o retângulo do ÚLTIMO desenho: quando a escala
+        -- de UI muda entre um tamanho e outro, um quadro de aquecimento
+        -- (só depois de a mão assentar no layout do tamanho atual)
         for _ = 1, 20 do GameplayScene.update(1 / 30) end
+        GameplayScene.draw()
+        for _ = 1, 3 do GameplayScene.update(1 / 30) end
         lastBbox = nil
         GameplayScene.draw()
         love.graphics.setCanvas()
         love.mouse.getPosition = realMouse
         local hc = hand[mid]
-        local L = type(lastBbox) == "table" and EnemyHud.layout(game, lastBbox)
+        -- o HUD é desenhado na UI com o bbox ÷ k; a régua compara na tela
+        local L
+        if type(lastBbox) == "table" then
+            local b = lastBbox
+            L = EnemyHud.layout(game, { cx = b.cx / uiK, topY = b.topY / uiK,
+                bottomY = b.bottomY / uiK, width = b.width / uiK, height = b.height / uiK })
+        end
         return {
-            rect = L and L.rect, bbox = lastBbox,
-            card = hc.isHovered and hc.lastDrawRect or nil,
-            tip = hc.isHovered and hc.cardInfoDisplay.lastRect or nil,
+            rect = L and scaleRect(L.rect, uiK), bbox = lastBbox,
+            card = hc.isHovered and scaleRect(hc.lastDrawRect, uiK) or nil,
+            tip = hc.isHovered and scaleRect(hc.cardInfoDisplay.lastRect, uiK) or nil,
             rel = WorldRoad.BATTLE_REL,
         }
     end
 
     for _, sz in ipairs(SIZES) do
         local W, H = sz[1], sz[2]
+        if sz[3] then UiScale.force(nil) end
+        uiK = sz[3] and UiScale.k(W, H) or 1
         withSize(W, H, function()
-            local tag = W .. "x" .. H
+            local tag = W .. "x" .. H .. (sz[3] and (" ui" .. uiK) or "")
             local maxRoadH = 0
             for act = 1, 6 do
                 for _, nodeType in ipairs({ "battle", "elite" }) do
@@ -262,7 +286,7 @@ function M.run()
                 -- limitação de enquadramento já registrada em
                 -- memory/enemy_pose_and_scene_anchor.md, não recuo do palco.
                 local _, _, cardY = GameplayScene.handLayout()
-                local floorY = math.min(backY, math.floor(cardY - 12))
+                local floorY = math.min(backY, math.floor((cardY - 12) * uiK))
                 t:truthy(string.format("%s: não sai da laje (pé %d >= borda %d)",
                     name, foot, floorY), foot >= floorY)
                 local h = r.bbox and (r.bbox.bottomY - r.bbox.topY) or 0
@@ -270,6 +294,8 @@ function M.run()
                     name, h, maxRoadH), h > maxRoadH)
             end
         end)
+        UiScale.force(1)
+        uiK = 1
     end
     EnemyRenderer.draw = realDraw
     EnemyRenderer.resetRun()

@@ -265,9 +265,9 @@ function UiScale.adopt(tbl, opts)
     return tbl
 end
 
--- As telas de UI do jogo. FORA da lista, de propósito: GameplayScene (HUD
--- de batalha + mão) — outras frentes mexem lá; adota depois. A TopBar escala
--- só fora da batalha (predicado). TELA NOVA DE UI: entra aqui no mesmo commit.
+-- As telas de UI do jogo (a batalha entra por MODULES). A TopBar tem
+-- predicado (chromeScaled) — hoje sempre ligado. TELA NOVA DE UI: entra aqui
+-- no mesmo commit.
 UiScale.SCREENS = {
     "components.Menu", "components.ClassSelectionScreen",
     "components.CardRewardScreen", "components.CollectionScreen",
@@ -279,7 +279,10 @@ UiScale.SCREENS = {
     "components.RoundEvalScreen", "components.PauseMenu",
     "components.SettingsMenu",
 }
-UiScale.MODULES = { "src.scenes.EndScreens", "src.ui.ConfirmDialog", "src.ui.AchievementToast" }
+UiScale.MODULES = { "src.scenes.EndScreens", "src.ui.ConfirmDialog", "src.ui.AchievementToast",
+    -- batalha: a CENA é adotada (mão/HUD/botões); o mundo dentro dela roda
+    -- em UiScale.outside (ver o cabeçalho de GameplayScene)
+    "src.scenes.GameplayScene" }
 
 function UiScale.adoptDefaults()
     for _, mod in ipairs(UiScale.SCREENS) do
