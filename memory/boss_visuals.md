@@ -159,6 +159,20 @@ e virava chuvisco) → monte baixo de ratos mortos na estrada. Trava:
 `test_enemy_fall` (cadáver de todo apoiado com o pé FOOT_SINK no chão).
 Prancha dos cadáveres: `SHEET_MODE=death ... shot_enemy_sheet`.
 
+## Olho apaga na morte + fogo pintado que queima (Out/2026)
+
+- "O espantalho morre de olho aberto": a micro-luz já sumia na death, mas o
+  olho PINTADO seguia aceso até o cadáver. `tools/death_eyes_off.py` segue
+  cada âncora "olho" de enemy_emissives quadro a quadro (registro por SSD
+  do retalho da cabeça + fallback de mancha pequena) e escurece o olho na
+  2ª metade da morte. Cor sozinha pegava palha/trigo/fagulha. Exceções na
+  ferramenta: SWEEP (lich, cor única), SKIP (o rastreio caía num realce).
+- Fogo pintado só balançava com o corpo: `tools/bake_flame_flicker.py`
+  (caixas por inimigo) estica a chama da base, ondula as pontas e sobe um
+  tom de cor, 3 tremidas por volta do idle, no idle e no hurt —
+  wicker_effigy (ombros + peito), hellhound (crina + rabo), abyss_acolyte
+  (livro). Chefes com fogo têm a BossAura por cima.
+
 ## Pendente
 
 - Círculo rúnico do lich: em 1024x768 a laje do salão 2 cai atrás da mão de
