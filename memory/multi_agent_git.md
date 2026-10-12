@@ -56,3 +56,16 @@ usado na auditoria: para cada hunk removido, `git blame -L a,b <commit>^ -- arq`
 se a linha vem de commit recente de outra frente e a mensagem não explica,
 é revert silencioso. Conferir também se a versão do arquivo no commit é
 IDÊNTICA a `<commit-do-vizinho>^` (assinatura do revert puro).
+
+## `git apply --cached --unidiff-zero` com hunks FILTRADOS desloca inserções
+
+Medido (Out/2026, ce02e63 → refeito em e2de850): filtrar hunks `-U0` de um
+arquivo com mudanças de várias frentes e aplicar só os seus com
+`--unidiff-zero` jogou uma inserção pura (`@@ -N,0 +M @@`) ~30 linhas fora do
+lugar — `Game.lua` commitado com erro de sintaxe, e `PauseMenu`/`TopBar` com
+linhas duplicadas. O apply verde não prova nada. **Faça assim:** gere o
+conteúdo final por arquivo = base + SÓ os seus blocos (difflib sobre
+base × cópia de trabalho, bloco a bloco por regex) e grave com
+`git hash-object -w` + `git update-index --cacheinfo`. E **teste a árvore
+do commit** antes de dar update-ref: `git checkout-index -a --prefix=<wt>/`
+num diretório limpo + `love . test_all` lá dentro.
