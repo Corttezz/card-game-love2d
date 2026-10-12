@@ -786,6 +786,29 @@ local function playLeva(game, picks, why, levaNum)
     else
         table.sort(picks, function(x, y) return playRank(x) < playRank(y) end)
     end
+    -- JOGADAS (Out/2026, combo-clareza): quantas cartas por leva e quanto do
+    -- valor das cartas (dano/bloqueio) veio de COMBO — a pergunta do dono
+    -- "jogar um milhao de cartas e o melhor?" precisa de numero.
+    if battleStats and battleStats.plays then
+        local ps = battleStats.plays
+        local n = #picks
+        ps.n = ps.n + 1
+        ps.cards = ps.cards + n
+        if n > ps.max then ps.max = n end
+        ps.hist[n] = (ps.hist[n] or 0) + 1
+        local ctx = buildCtx(picks)
+        if #(ctx.activeCombos or {}) > 0 then ps.withCombo = ps.withCombo + 1 end
+        for _, c in ipairs(picks) do
+            if c.type == "attack" or c.type == "defense" then
+                local stat = c.type == "attack" and game.player.strength or game.player.dexterity
+                local plain = AI.cardValue(game, c, nil, stat)
+                local combo = AI.cardValue(game, c, ctx, stat)
+                local k = c.type == "attack" and "atk" or "def"
+                ps[k] = ps[k] + combo
+                ps[k .. "Combo"] = ps[k .. "Combo"] + (combo - plain)
+            end
+        end
+    end
     for _, c in ipairs(picks) do game:selectCard(c) end
     game:playSelectedCards()
     local guard = 0
@@ -2253,6 +2276,8 @@ local function playRun(classId, runIdx, maxEndlessFloors, seed)
         focusMaxByAct = {},   -- [act] = foco maximo visto (mago)
         thornReflect = 0, thornTurns = 0,
         multJokersMax = 0, multEffective = 1,
+        plays = { n = 0, cards = 0, max = 0, hist = {}, withCombo = 0,
+            atk = 0, atkCombo = 0, def = 0, defCombo = 0 },
     }
 
     log("")
@@ -2376,6 +2401,7 @@ local function playRun(classId, runIdx, maxEndlessFloors, seed)
     runRec.battles = battleStats.battles
     runRec.turns = battleStats.turns
     runRec.byAct = battleStats.byAct
+    runRec.plays = battleStats.plays
     runRec.deck, runRec.jokers = {}, {}
     for _, e in ipairs(run.currentDeck or {}) do
         runRec.deck[#runRec.deck + 1] = type(e) == "table" and e.id or e
@@ -2667,6 +2693,8 @@ function M._resetBattleStats()
         armorCapHits = 0, byAct = {},
         focusMaxByAct = {}, thornReflect = 0, thornTurns = 0,
         multJokersMax = 0, multEffective = 1,
+        plays = { n = 0, cards = 0, max = 0, hist = {}, withCombo = 0,
+            atk = 0, atkCombo = 0, def = 0, defCombo = 0 },
     }
 end
 

@@ -184,6 +184,36 @@ function M.report(records, agg, meta)
                 x.bosses > 0 and string.format("%.1f", x.bossTurns / x.bosses) or "-")
         end
     end
+    -- JOGADAS (Out/2026, combo-clareza): o tamanho da leva e quanto do valor
+    -- das cartas veio de COMBO. "Spam" = muitas cartas por leva + combo
+    -- carregando o dano.
+    p("")
+    p("## Jogadas por classe")
+    p("")
+    p("| classe | levas | cartas/leva | max | levas com combo | dano de combo | bloqueio de combo | 1 | 2 | 3 | 4 | 5+ |")
+    p("|---|---|---|---|---|---|---|---|---|---|---|---|")
+    for _, c in ipairs(classes) do
+        local t = { n = 0, cards = 0, max = 0, withCombo = 0, atk = 0, atkCombo = 0,
+            def = 0, defCombo = 0, hist = {} }
+        for _, r in ipairs(agg.byClass[c].list) do
+            local ps = r.plays
+            if ps then
+                for _, k in ipairs({ "n", "cards", "withCombo", "atk", "atkCombo", "def", "defCombo" }) do
+                    t[k] = t[k] + (ps[k] or 0)
+                end
+                if (ps.max or 0) > t.max then t.max = ps.max end
+                for k, v in pairs(ps.hist or {}) do
+                    local b = math.min(5, k)
+                    t.hist[b] = (t.hist[b] or 0) + v
+                end
+            end
+        end
+        p("| %s | %d | %.2f | %d | %s | %s | %s | %s | %s | %s | %s | %s |", c, t.n,
+            t.cards / math.max(1, t.n), t.max, fmtPct(t.withCombo, t.n),
+            fmtPct(t.atkCombo, t.atk), fmtPct(t.defCombo, t.def),
+            fmtPct(t.hist[1] or 0, t.n), fmtPct(t.hist[2] or 0, t.n), fmtPct(t.hist[3] or 0, t.n),
+            fmtPct(t.hist[4] or 0, t.n), fmtPct(t.hist[5] or 0, t.n))
+    end
     p("")
     p("## Ato de morte")
     p("")
