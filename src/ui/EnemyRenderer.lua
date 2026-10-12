@@ -637,6 +637,13 @@ end
 function EnemyRenderer.draw(game, cx, cy, opts)
     if not game or not game.enemy or not game.enemy.spriteId then return false end
     local id = game.enemy.spriteId
+    -- CHÃO DO CADÁVER (opts.deathCy, salão com deathYr): quem voa cai pra
+    -- FRENTE e pra baixo até o piso andável — a linha de chão escorrega de
+    -- cy pra deathCy junto da queda (poseSink). Apoiado não se mexe.
+    if opts and opts.deathCy and currentAnimName == "death"
+        and currentEnemyId == id and EnemyPoses.isFloating(id) then
+        cy = cy + (opts.deathCy - cy) * poseSink
+    end
 
     -- Detecta necessidade de re-iniciar a idle:
     --  1) Inimigo trocou de spriteId (novo ato/node).

@@ -65,7 +65,11 @@ SceneAnchors.BY_SCENE = {
     -- ATO 2 — catedral roxa. A laje começa BEM mais baixa que nos irmãos
     -- (a parede e a porta ocupam até ~0.78): 0.83 é o primeiro ponto em que
     -- o pé realmente encosta na pedra. É a cena do defeito original.
-    castle_hall_2 = { xr = 0.50, yr = 0.83, backYr = 0.83,
+    -- deathYr (Out/2026): 0.83 é a faixa estreita de pedra COLADA na base da
+    -- parede/balaustrada (y 208-216 da PNG); o lich morto deitado ali lia
+    -- "em cima do parapeito". O piso andável (mosaico) vai de 0.845 a 0.92
+    -- — o cadáver de quem voa cai no meio dele (y 226). Só os mortos.
+    castle_hall_2 = { xr = 0.50, yr = 0.83, backYr = 0.83, deathYr = 0.885,
                       shadowA = 0.92, lightXr = 0.5, lightBehind = true },
 
     -- ATO 3 — cidadela infernal (arte nova, Out/2026): portão-caveira com

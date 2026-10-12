@@ -108,6 +108,14 @@ afundar: o corpo deitado terminava acima do chão. Trava `test_enemy_fall`
 (todo flutuante × 6 salões × 3 tamanhos + estrada × 3 escalas de palco);
 prova `SHOT_SIZE=1920x1080 love . test_one shot_boss_aura 2:death`.
 
+**Chão do cadáver ≠ chão do vivo.** No salão 2 a linha do vivo (0.83) é a
+faixa estreita colada na base da balaustrada; o lich morto deitado ali lia
+"em cima do parapeito". `scene_anchors.deathYr` (só hall 2: 0.885, meio do
+mosaico) → `GameplayScene` passa `opts.deathCy` → o flutuante escorrega a
+linha de chão de cy pra deathCy junto da queda (cai pra frente). Como esse
+chão fica abaixo do topo da mão, a MÃO DESCE e sai da tela quando o inimigo
+morre nesse caso (`corpseUnderHand`). Demais salões e estrada: sem deathYr.
+
 ## Pendente
 
 - Círculo rúnico do lich: em 1024x768 a laje do salão 2 cai atrás da mão de

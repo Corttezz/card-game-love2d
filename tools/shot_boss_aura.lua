@@ -79,11 +79,18 @@ local function mountAndShoot(act, mode)
     if mode == "death" then
         -- queda do flutuante: início, meio da queda, impacto, quique,
         -- assentado e o cadáver 2s depois (não pode voltar a pairar)
+        -- desenha a cada passo: a mão (que desce quando o cadáver cai atrás
+        -- dela) anima no draw, com o dt do quadro
         local marks = { 0.0, 0.18, 0.32, 0.45, 0.8, 2.6 }
         local now = 0
         for i, m in ipairs(marks) do
-            step(m - now)
-            now = m
+            while now < m - 1e-6 do
+                step(1 / 30)
+                now = now + 1 / 30
+                love.graphics.setCanvas(canvas)
+                GameplayScene.draw()
+                love.graphics.setCanvas()
+            end
             shots[i] = render()
         end
     else

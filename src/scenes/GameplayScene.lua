@@ -44,6 +44,8 @@ local interiorFade = 0     -- alpha do fade preto (1 → 0 em ~0.9s)
 -- porta, depois a sala de novo (ordem quebrada). Este flag segura a sala até
 -- o fade da porta completar. Resetado quando um novo andar de boss começa.
 local bossEntered = false
+-- cadáver de quem voa cai num chão abaixo do topo da mão (ver deathCy)
+local corpseUnderHand = false
 
 -- Coreografia de turno (clareza do ritmo): banner "TURNO DO INIMIGO" →
 -- pausa → inimigo age (investida) → banner "SEU TURNO". Estados:
@@ -443,6 +445,7 @@ function GameplayScene.hallScreenK(sceneKey, w, h)
 end
 
 function GameplayScene.draw()
+    corpseUnderHand = false
     local width = love.graphics.getWidth()
     local height = love.graphics.getHeight()
     local topBarHeight = topBar.height or 80
@@ -584,7 +587,19 @@ function GameplayScene.draw()
             InteriorDepth.drawContact(interiorHall, game.enemy and game.enemy.spriteId,
                 enemyCx, enemyCy)
         end
+        -- CHÃO DO CADÁVER (scene_anchors.deathYr): onde quem voa CAI ao
+        -- morrer. No salão 2 a linha do vivo é a faixa estreita colada na
+        -- base da parede — o corpo deitado ali lia "em cima da balaustrada";
+        -- o piso andável fica à frente. Sem deathYr, é a linha do vivo.
+        local deathCy = nil
+        if anchor.deathYr then
+            local _, dy = SceneAnchors.groundAnchor(sceneKey, width, sceneH,
+                anchor.deathYr)
+            deathCy = math.max(enemyCy, dy)
+        end
+        corpseUnderHand = deathCy ~= nil and deathCy > tetoY
         enemyBbox = EnemyRenderer.draw(game, enemyCx, enemyCy, {
+            deathCy = deathCy,
             shadowA = anchor.shadowA,
             lightXr = anchor.lightXr,
             -- quem recuou no piso encolhe pela perspectiva do chão
@@ -654,6 +669,12 @@ function GameplayScene.draw()
         local rIdx = renderIdxFor(i)
         local tx = cardStartX + (rIdx - 1) * cardSpacing
         local ty = cardY + offsetY
+        -- inimigo morto com o cadáver caindo ATRÁS da mão (chão do cadáver
+        -- abaixo do topo das cartas, salão 2): a mão desce e sai da tela —
+        -- a luta acabou e o corpo no chão é o que se quer ver.
+        if corpseUnderHand and game.enemy and not game.enemy:isAlive() then
+            ty = ty + height * 0.5
+        end
         if card == hoverCard and not draggingCard then
             ty = cardY - HOVER_LIFT
         end

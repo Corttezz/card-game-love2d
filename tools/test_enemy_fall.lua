@@ -9,7 +9,9 @@
 -- em 3 escalas de palco (sizeK da estrada / hallScreenK 1.3 em 1080p):
 --   (a) no meio da queda o corpo ainda está ACIMA do chão (caiu, não teleportou)
 --   (b) o quadro final repousa com o pixel opaco mais baixo FOOT_SINK px
---       dentro do chão (± 1px de arredondamento) — a mesma régua de quem pisa
+--       dentro do chão (± 1px de arredondamento) — a mesma régua de quem pisa.
+--       Salão com `deathYr` (scene_anchors): o chão é o do CADÁVER, no piso
+--       andável à frente (o do vivo no salão 2 é a faixa colada na parede)
 --   (c) e CONTINUA lá 3s depois (não volta a pairar)
 --   (d) reducedMotion: queda mais curta, mesmo repouso
 -- Apoiados não mudam: o pé da death continua na linha de antes.
@@ -31,7 +33,15 @@ function M.run()
         for _, sz in ipairs(sizes) do
             local scene = "castle_hall_" .. hall
             local x, y = SceneAnchors.groundAnchor(scene, sz[1], sz[2])
-            floors[#floors + 1] = { name = scene .. "@" .. sz[1], x = x, y = y }
+            -- chão do CADÁVER (deathYr): onde o corpo tem que terminar
+            local a = SceneAnchors.get(scene)
+            local deathY = nil
+            if a.deathYr then
+                local _, dy = SceneAnchors.groundAnchor(scene, sz[1], sz[2], a.deathYr)
+                deathY = math.max(y, dy)
+            end
+            floors[#floors + 1] = { name = scene .. "@" .. sz[1], x = x, y = y,
+                                    deathY = deathY }
         end
     end
     for _, sz in ipairs(sizes) do
@@ -58,7 +68,8 @@ function M.run()
         EnemyRenderer.resetRun()
         local game = { enemy = { spriteId = id, isBoss = false, health = 10 } }
         love.graphics.setCanvas(canvas)
-        EnemyRenderer.draw(game, fl.x, fl.y, { sizeK = sizeK })
+        local opts = { sizeK = sizeK, deathCy = fl.deathY }
+        EnemyRenderer.draw(game, fl.x, fl.y, opts)
         game.enemy.health = 0
         EnemyRenderer.triggerDeath(id)
         local samples = {}
@@ -67,9 +78,10 @@ function M.run()
         while tt < 4.5 do
             EnemyRenderer.update(dt)
             tt = tt + dt
-            EnemyRenderer.draw(game, fl.x, fl.y, { sizeK = sizeK })
+            EnemyRenderer.draw(game, fl.x, fl.y, opts)
             local f = EnemyRenderer.getLastFoot()
-            samples[#samples + 1] = { t = tt, gap = f.footBottom - f.groundY }
+            -- régua contra o chão FINAL esperado (cadáver), não o do vivo
+            samples[#samples + 1] = { t = tt, gap = f.footBottom - (fl.deathY or fl.y) }
         end
         love.graphics.setCanvas()
         _G.gameSettings = saved
