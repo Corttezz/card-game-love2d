@@ -220,3 +220,21 @@ o turno com 9-10 de mana e ataques na mão ("vazio 41 x jogar 4 cartas -65"),
 jogando cura/defesa contra um chefe que regenera — o mago quase não toma dano
 (0,5/turno) e o valor do piloto prefere tartaruga. Próximo passo é do piloto
 (`AI.score` subestima dano quando o HP está folgado), não do mago.
+
+### Re-medição pós-f67ebe4 (passiva do mago em toda luta)
+
+O f67ebe4 consertou a passiva do mago (orbe + Foco era apagado pelo
+`resetTransientStats` do `nextPhase`: só valia na 1ª luta da run). Os 43% acima
+foram medidos COM o defeito. Mesmo HEAD, seed 720000:
+
+| variante (mago, 30 runs) | vitória | turnos/luta A5 · A6 |
+|---|---|---|
+| f67ebe4 como está (Foco inicial 2/3/4) | 63% | 12,0 · 14,8 |
+| Foco inicial 1/2/3 | 77% | — |
+| Conduíte pedindo 3 cartas de orbe (parcial 11 runs) | 36% | — |
+| sem multiplicador de coringa no orbe (parcial 16 runs) | 75% | — |
+| **Foco inicial 0/1/2 (adotado)** | **53%** | 11,6 · 14,2 |
+
+Sanidade 20 runs no mesmo HEAD: guerreiro 50%, ladino 55%. O ruído entre
+variantes vizinhas é grande (1/2/3 deu MAIS que 2/3/4) — com 30 runs o erro
+padrão é ~9pp. Mortes do mago (adotado): A2 1 · A3 1 · A4 1 · A5 7 · A6 4.

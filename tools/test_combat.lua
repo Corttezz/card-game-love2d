@@ -214,9 +214,9 @@ function M.run()
         end
         return 0
     end
-    t:eq("Conduite: Foco 2 nos atos 1-2", focusAt(2), 2)
-    t:eq("Conduite: Foco 3 nos atos 3-4", focusAt(3), 3)
-    t:eq("Conduite: Foco 4 nos atos 5-6", focusAt(6), 4)
+    t:eq("Conduite: Foco 0 nos atos 1-2", focusAt(2), 0)
+    t:eq("Conduite: Foco 1 nos atos 3-4", focusAt(3), 1)
+    t:eq("Conduite: Foco 2 nos atos 5-6", focusAt(6), 2)
     local gr = TK.newRunGame("rogue")
     gr.runManager.currentRun.actNumber = 5
     t:eq("Toxinas: 3 de Veneno nos atos 5-6", gr:classPassiveTier(), 3)

@@ -696,10 +696,20 @@ function Game:applyClassBattleStartPassive()
             -- warrior 5/10 — mesmo com o bot comprando defesa, o mago nao
             -- converte A2-F8/A3. Foco inicial 1→2: cada pulso/evocacao sai
             -- +2 desde o turno 1 (a alavanca e a identidade da classe).
-            -- Out/2026: Foco cresce com a run (2 → 3 → 4), ver classPassiveTier.
-            self.player:addBuff("focus", 99, 1 + self:classPassiveTier())
+            -- Out/2026: Foco inicial cresce com a run, ver classPassiveTier.
+            -- 2/3/4 -> 0/1/2 depois que o f67ebe4 consertou a passiva (ela so
+            -- valia na 1a luta da run): com ela em toda luta e o Conduite
+            -- crescendo, o mago foi a 63% (30 runs); 1/2/3 deu 77%; 0/1/2 deu
+            -- 53% (meta 40-55%). O Foco agora vem do JOGO (Conduite, cartas).
+            local f0 = self:classPassiveTier() - 1
+            if f0 > 0 then self.player:addBuff("focus", 99, f0) end
         end
-        self:addMessage(msg("passive_conduit", { n = 1 + self:classPassiveTier() }), "info")
+        local f0 = self:classPassiveTier() - 1
+        if f0 > 0 then
+            self:addMessage(msg("passive_conduit", { n = f0 }), "info")
+        else
+            self:addMessage(msg("passive_conduit_orb"), "info")
+        end
         if love.timer then self._passiveFlashT = love.timer.getTime() end
     end
 end
