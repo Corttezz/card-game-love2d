@@ -169,11 +169,12 @@ function M.run()
     t:falsy("poison expira apos duration 0", e:hasStatus("poison"))
     t:eq("onTurnEnd sem poison = 0", e:onTurnEnd(), 0)
 
-    -- poison respeita armadura
+    -- poison IGNORA armadura (Out/2026, padrao StS — Enemy:_applyDot)
     e = Enemy:new(100, 8); e.armor = 2
     e:addStatusEffect({ name = "poison", stacks = 3, duration = 1 })
-    e:onTurnEnd()  -- 3 poison, armor 2 absorve, 1 no HP
-    t:eq("poison absorvido por armor -> HP -1", e.health, 99)
+    e:onTurnEnd()  -- 3 poison direto no HP, armadura intacta
+    t:eq("poison ignora armor -> HP -3", e.health, 97)
+    t:eq("poison nao consome armor", e.armor, 2)
 
     -- addStatusEffect acumula em vez de duplicar
     e = Enemy:new(100, 8)

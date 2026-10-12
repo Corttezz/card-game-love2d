@@ -337,11 +337,9 @@ end
 local function freeDamageThisTurn(game)
     local enemy = game.enemy
     local poison = enemy:hasStatus("poison") and enemy:getStatusStacks("poison") or 0
-    -- Bloqueio que o intent CONGELADO vai dar ao inimigo (kit Out/2026:
-    -- "bloqueia e golpeia" tambem conta, nao so o defend puro).
-    local it = enemy.getIntent and enemy:getIntent() or nil
-    local defendPrev = (it and it.armor) or 0
-    local freePoison = math.max(0, poison - defendPrev)
+    -- DoT ignora a armadura do inimigo (Out/2026, Enemy:_applyDot): o
+    -- bloqueio do intent nao desconta mais o veneno.
+    local freePoison = poison
     local p = game.player
     local focus = getFocus(p)
     local pulse = 0

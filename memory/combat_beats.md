@@ -331,7 +331,7 @@ cobrava três preços:
    `poison_stack` são do ladino, e o mago os disparava sem ter nada a ver.
 
 Hoje o fogo aplica **`burn`**, status próprio. A mecânica é a mesma de propósito
-(stacks de dano por turno, pela duração, absorvidos pela armadura) — o pedido
+(stacks de dano por turno, pela duração; desde Out/2026 IGNORAM a armadura, padrão StS — ver memory/enemies.md) — o pedido
 não era rebalancear, era parar de mentir.
 
 **Onde mora o tick:** em `Enemy:onTurnEnd`, no mesmo lugar e no mesmo instante

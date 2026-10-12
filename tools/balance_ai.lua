@@ -510,7 +510,7 @@ function AI.simulate(game, set, bctx, opts)
             end
             S.hpLoss = S.hpLoss + pdot
         end
-        -- DoT no fim do turno do inimigo (absorvido pela armadura nova)
+        -- DoT no fim do turno do inimigo (IGNORA a armadura — Enemy:_applyDot)
         if S.eHp > 0 then
             local dot = (S.poisonDur > 0 and S.poison or 0) + (S.burnDur > 0 and S.burn or 0)
             local eff = math.max(0, dot - S.eArmor)

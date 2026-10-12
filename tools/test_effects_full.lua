@@ -177,8 +177,8 @@ function M.run()
         e2.armor = 2
         e2:addStatusEffect({ name = "burn", duration = 1, stacks = 5 })
         e2:onTurnEnd()
-        t:eq("armadura absorve queimadura, como no veneno", e2.health, 47)
-        t:eq("e a armadura e consumida", e2.armor, 0)
+        t:eq("queimadura IGNORA a armadura, como o veneno (padrao StS)", e2.health, 45)
+        t:eq("e a armadura fica intacta", e2.armor, 2)
 
         -- MORTE POR DoT: os dois DoTs atravessam `_markDeathIfCrossed`, que e
         -- o que faz a morte cair NO tick que a causou (com animacao) em vez de

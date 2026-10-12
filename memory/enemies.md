@@ -128,3 +128,7 @@ perfurante 0,9); dano do mago no fim do jogo (frente de classe).
 - Tirano (A3): carga a cada 4 turnos (era 3), Fogo Infernal 2,0 → 1,7 e
   queimadura 3 → 2. Continua o maior golpe da luta e telegrafado um turno
   inteiro; classes de defesa fraca (mago/ladino) morriam no 2º ciclo.
+- DoT NO INIMIGO (veneno/queimadura) passou a IGNORAR a armadura
+  (`Enemy:_applyDot`, padrão StS, pedido da frente de classe): o tick cai logo
+  depois de o inimigo defender, e a armadura engolia o veneno do ladino.
+  Mesma regra do DoT no jogador. Piloto (balance_ai/autoplay) atualizado.

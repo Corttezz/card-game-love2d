@@ -501,12 +501,15 @@ end
 -- multiplicador de Vulneravel. A armadura absorve e e consumida.
 -- `_markDeathIfCrossed` e obrigatorio: esta aritmetica crua nao passa pelo
 -- takeDamage, e sem ele morrer de DoT volta a nao ter animacao de morte.
+--
+-- DoT IGNORA o Bloqueio (Out/2026, padrão StS): o tick cai no fim do turno do
+-- inimigo, logo depois de ele DEFENDER — com a armadura absorvendo, todo turno
+-- de defesa engolia o veneno inteiro e era o que mais travava o ladino no fim
+-- do jogo (mesma regra do DoT no jogador, Player:tickDebuffDots).
 function Enemy:_applyDot(dmg)
     if not dmg or dmg <= 0 then return 0 end
     local wasAlive = self.health > 0
-    local eff = math.max(0, dmg - self.armor)
-    self.armor = math.max(0, self.armor - dmg)
-    self.health = math.max(0, self.health - eff)
+    self.health = math.max(0, self.health - dmg)
     self:_markDeathIfCrossed(wasAlive)
     return dmg
 end
@@ -528,8 +531,8 @@ function Enemy:onTurnEnd()
             end
         end
     end
-    -- Em sequencia, nao somados: com armadura o total sai igual (ela e
-    -- consumida), e assim cada DoT tem sua propria travessia do limiar de morte.
+    -- Em sequencia, nao somados: cada DoT tem sua propria travessia do limiar
+    -- de morte.
     self:_applyDot(poisonDmg)
     self:_applyDot(burnDmg)
 
