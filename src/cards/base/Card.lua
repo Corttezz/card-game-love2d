@@ -985,18 +985,39 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
             anchorY = anchorY + (self.image and self.image:getHeight() or 144)
                 * (self.currentScale or 1)
         end
-        self.cardInfoDisplay:draw(self, x, anchorY, {
-            showRarity = false, -- Cartas na mão não mostram raridade
-            showStats = true,
-            showDescription = true,  -- Agora mostra a descrição no hover
-            below = self.tooltipBelow,
-            -- tooltipSide (mão do combate): painel AO LADO da carta, não
-            -- acima — acima ele cobria o inimigo (GameplayScene, palco).
-            side = self.tooltipSide,
-            cardX = x + offsetX,
-            cardW = imgW,
-        })
+        -- Opções reaproveitadas (o draw roda todo quadro; sem tabela nova).
+        local opts = self._tooltipOpts or {}
+        self._tooltipOpts = opts
+        opts.showRarity = false   -- cartas na mão não mostram raridade
+        opts.showStats = true
+        opts.showDescription = true
+        opts.below = self.tooltipBelow
+        -- tooltipSide (mão do combate): painel AO LADO da carta, não
+        -- acima — acima ele cobria o inimigo (GameplayScene, palco).
+        opts.side = self.tooltipSide
+        opts.cardX = x + offsetX
+        opts.cardW = imgW
+        -- deferTooltip (mão do combate): o tooltip é desenhado DEPOIS de
+        -- tudo da mão — selos "+COMBO" das vizinhas, prévia de dano, toasts
+        -- (dono, Out/2026: o selo da carta ao lado cobria o tooltip). A
+        -- cena chama drawDeferredTooltip() no passe final.
+        if self.deferTooltip then
+            self._tooltipAt = self._tooltipAt or {}
+            self._tooltipAt.x, self._tooltipAt.y = x, anchorY
+            self._tooltipPending = true
+        else
+            self.cardInfoDisplay:draw(self, x, anchorY, opts)
+        end
     end
+end
+
+-- Passe final do tooltip adiado (ver deferTooltip). Devolve true se desenhou.
+function Card:drawDeferredTooltip()
+    if not self._tooltipPending then return false end
+    self._tooltipPending = false
+    local at = self._tooltipAt
+    self.cardInfoDisplay:draw(self, at.x, at.y, self._tooltipOpts)
+    return true
 end
 
 -- ===== Editions (Fase 3.2) =====

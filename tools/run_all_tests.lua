@@ -30,6 +30,7 @@ local SUITES = {
     { group = "unit",  name = "test_journal_resize" },
     { group = "unit",  name = "test_saved_run_locale" },
     { group = "unit",  name = "test_card_top_frame" },
+    { group = "unit",  name = "test_tooltip_order" },
     { group = "unit",  name = "test_enemy_pose" },
     { group = "unit",  name = "test_enemy_stage" },
     { group = "unit",  name = "test_interior_fx" },

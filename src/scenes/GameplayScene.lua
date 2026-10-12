@@ -781,6 +781,9 @@ function GameplayScene.draw()
         card.isSelected = game:isCardSelected(card)
         -- descrição AO LADO da carta em hover (ver STAGE_CLEARANCE)
         card.tooltipSide = true
+        -- tooltip no passe FINAL da cena (acima dos selos +COMBO, da prévia
+        -- e dos toasts) — ver Card.deferTooltip / drawDeferredTooltip
+        card.deferTooltip = true
         -- LB/RB do pad andam DENTRO da mão (NavCursor.cycle)
         card.navGroup = "hand"
         if card.isSelected then offsetY = -100 * handScale() end
@@ -897,6 +900,14 @@ function GameplayScene.draw()
     -- drawJokersAsCards desenha no fim) — as cartas do turno passavam por
     -- cima dele e "não dava nem pra ler" (feedback do dono, Set/2026).
     ComboBanner.draw(topBarHeight)
+
+    -- PASSE FINAL: o tooltip da carta em hover vem por cima de TUDO da mão
+    -- (selos "+COMBO" das vizinhas, prévia de dano, toasts, quadro de
+    -- coringas) — antes era desenhado junto da própria carta e o que vinha
+    -- depois o cobria. Quadro sem hover: nada pendente.
+    for _, card in ipairs(game.hand) do
+        if card.drawDeferredTooltip then card:drawDeferredTooltip() end
+    end
 
     -- fade de entrada no castelo (estrada→interior): tela revela do preto
     if interiorFade > 0 then
