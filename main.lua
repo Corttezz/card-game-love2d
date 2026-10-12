@@ -1885,6 +1885,10 @@ function love.load(loveArgs)
     --       foco (overlay modal aberto) — é o que faz o hover de trás morrer
     --       sozinho. Ver src/ui/InputFocus.lua.
     require("src.ui.InputFocus").installMouseGate(CRTShader.screenToContent)
+    -- Teclado/pad: no modo foco o "mouse" mora no alvo focado (NavCursor).
+    require("src.ui.InputFocus").setPositionOverride(require("src.ui.NavCursor").position)
+    -- Estado corrente pra quem observa de fora (testes de fluxo, NavCursor).
+    _G.getCurrentState = function() return currentState end
 
     -- FX pipeline (shaders próprios, copyright-safe — Fase 2 do refactor Balatro).
     -- Dissolve: exhaust/destroy. Flash: impactos. Booster: pacotes selados.
@@ -1900,10 +1904,6 @@ function love.load(loveArgs)
     ScreenShake.install()
     
     -- Cria o botão de jogar cartas usando Config
-    -- Teclado/pad: no modo foco o "mouse" mora no alvo focado (NavCursor).
-    require("src.ui.InputFocus").setPositionOverride(require("src.ui.NavCursor").position)
-    -- Estado corrente pra quem observa de fora (testes de fluxo, NavCursor).
-    _G.getCurrentState = function() return currentState end
     local buttonWidth = Config.Utils.getResponsiveSize(Config.UI.PLAY_BUTTON_WIDTH_RATIO, 180, "width")
     local buttonHeight = Config.Utils.getResponsiveSize(Config.UI.PLAY_BUTTON_HEIGHT_RATIO, 60, "height")
     local buttonX = Config.Utils.getRelativePosition(Config.UI.PLAY_BUTTON_X_RATIO, love.graphics.getWidth()) - buttonWidth / 2
@@ -2012,12 +2012,24 @@ function love.load(loveArgs)
         print("[quickstart] entrando direto na batalha com " .. autoPlayClass)
         startGame(autoPlayClass)
     end
+
+    -- Fluxo de run inteiro SÓ por teclado/pad (o jogo de verdade, depois do
+    -- love.load): `love . nav_flow` — sai com 0/1 (tools/test_nav_flow.lua).
+    if loveArgs and loveArgs[1] == "nav_flow" then
+        _G.NAV_FLOW = require("tools.test_nav_flow").start()
+    end
 end
 
 -- updatePlayButtonPosition foi pra GameplayScene. Chamado aqui pra resize.
 local function updatePlayButtonPosition() GameplayScene.updatePlayButtonPosition() end
 
 function love.update(dt)
+    if _G.NAV_FLOW then _G.NAV_FLOW.step(dt) end
+    -- Analógico esquerdo + gatilhos do pad (repetição com zona morta).
+    do
+        local js = love.joystick and love.joystick.getJoysticks()[1]
+        if js then require("src.ui.NavCursor").updateStick(dt, js) end
+    end
     -- Escala de UI: higiene do frame (a batalha também escala desde Out/2026).
     require("src.ui.UiScale").reset()
     require("src.ui.UiScale").setChromeScaled(true)
@@ -2027,24 +2039,12 @@ function love.update(dt)
     -- Cartas com ícone animado (icons_anim/): blita o frame corrente no
     -- canvas vivo de cada carta animada. Roda em TODOS os estados — mão,
     -- loja, coleção, deck viewer e menu animam pela mesma referência.
-
-    -- Fluxo de run inteiro SÓ por teclado/pad (o jogo de verdade, depois do
-    -- love.load): `love . nav_flow` — sai com 0/1 (tools/test_nav_flow.lua).
-    if loveArgs and loveArgs[1] == "nav_flow" then
-        _G.NAV_FLOW = require("tools.test_nav_flow").start()
-    end
     CardFrame.update()
 
     -- Camas de clima só vivem enquanto o mundo atualiza: fora dele somem.
     require("src.systems.WeatherAudio").watchdog(dt)
 
     -- FOCO DE ENTRADA: zera a pilha de camadas do frame (higiene — um erro
-    if _G.NAV_FLOW then _G.NAV_FLOW.step(dt) end
-    -- Analógico esquerdo + gatilhos do pad (repetição com zona morta).
-    do
-        local js = love.joystick and love.joystick.getJoysticks()[1]
-        if js then require("src.ui.NavCursor").updateStick(dt, js) end
-    end
     -- no meio de um draw anterior não pode deixar o portão do mouse torto).
     local IF = require("src.ui.InputFocus")
     IF.resetLayers()
@@ -2171,6 +2171,7 @@ function love.update(dt)
 end
 
 function love.draw()
+    require("src.ui.NavCursor").beginFrame()
     require("src.ui.UiScale").reset()
     require("src.ui.UiScale").setChromeScaled(true)
     -- Abre a cena CRT: tudo que for desenhado até endScene() vai pro canvas
@@ -2187,7 +2188,6 @@ function love.draw()
     IF.resetLayers()
     IF.push(IF.SCENE)
 
-    require("src.ui.NavCursor").beginFrame()
     if currentState == "boot" then
         BootScene.draw()
     elseif currentState == "menu" then
@@ -2335,6 +2335,8 @@ function love.draw()
     -- Cursor pixel-art por cima de TUDO, mas dentro da cena CRT (warp do
     -- tubo pega o cursor também — coerência Balatro). SEM camada: o cursor
     -- segue o mouse de verdade em qualquer situação.
+    -- Anel de foco + glifos (teclado/pad), em pixels da tela.
+    require("src.ui.NavCursor").draw()
     require("src.ui.CursorManager").draw()
 
     CRTShader.endScene()
@@ -2356,8 +2358,6 @@ function love.resize(w, h)
     -- ficam so moldura e selo. Pior: `cardRewardScreen:createCardInstances()`
     -- logo abaixo chama CardFrame.render e, sem o clear ANTES, reconstroi a
     -- loja inteira lendo o cache MORTO -- ela renasce em branco mesmo
-    -- Anel de foco + glifos (teclado/pad), em pixels da tela.
-    require("src.ui.NavCursor").draw()
     -- recriando tudo. Atinge toda tela com carta: loja, mao, DeckViewer,
     -- Colecao, Gerenciador de Coringas, abertura de pacote. (Set/2026)
     CardFrame.clearCache()
@@ -2414,6 +2414,20 @@ function love.keypressed(key)
         return
     end
 
+    -- NAVEGAÇÃO POR TECLADO (src/ui/NavCursor): setas/Enter/Espaço movem e
+    -- escolhem o FOCO em qualquer tela; Q/E/Z/C/I são as ações de contexto
+    -- que a tela publicou. Telas com navegação própria (pausa, config,
+    -- confirmação, dados, fim de jogo, conquistas, zoom da coleção) seguem
+    -- recebendo as teclas como antes.
+    do
+        local NC = require("src.ui.NavCursor")
+        local it = NC.KEYS[key]
+        if it and NC.claimsInput(currentState,
+                currentState == "collection" and collectionScreen.inspectedCard ~= nil) then
+            if NC.intent(it, "keyboard") then return end
+        end
+    end
+
     -- MODAL ABERTO ENGOLE O TECLADO. Uma chamada no lugar de seis cadeias
     -- escritas à mão: o topo do registro (src/ui/InputFocus) é quem recebe,
     -- e nada vaza pro atalho de trás. Overlay novo entra aqui de graça —
@@ -2435,20 +2449,6 @@ function love.keypressed(key)
     if key == "d" and runScreen and game and game.isRunMode then
         deckViewerScreen:toggle(game)
         return
-    -- NAVEGAÇÃO POR TECLADO (src/ui/NavCursor): setas/Enter/Espaço movem e
-    -- escolhem o FOCO em qualquer tela; Q/E/Z/C/I são as ações de contexto
-    -- que a tela publicou. Telas com navegação própria (pausa, config,
-    -- confirmação, dados, fim de jogo, conquistas, zoom da coleção) seguem
-    -- recebendo as teclas como antes.
-    do
-        local NC = require("src.ui.NavCursor")
-        local it = NC.KEYS[key]
-        if it and NC.claimsInput(currentState,
-                currentState == "collection" and collectionScreen.inspectedCard ~= nil) then
-            if NC.intent(it, "keyboard") then return end
-        end
-    end
-
     end
 
     -- Tecla J abre o Gerenciador de Coringas em qualquer tela da run
@@ -2566,6 +2566,9 @@ end
 -- O botão vira TECLA e segue o caminho do teclado (src/ui/MenuKit é o mapa
 -- único de intenções). Fora de modal, só START/BACK fazem algo — e só em
 -- estado de run (no menu principal, ESC fecha o jogo; START não pode).
+-- v2 (Out/2026, Steam Deck): TODAS as telas. D-pad/A/X/Y/ombros vão pro
+-- cursor de foco (src/ui/NavCursor) onde a tela não navega sozinha; nas que
+-- navegam (MenuKit), o botão vira TECLA como antes. B = Esc (voltar/pausa).
 function love.gamepadpressed(joystick, button)
     local NC = require("src.ui.NavCursor")
     if button == "start" or button == "back" then
@@ -2590,10 +2593,16 @@ function love.gamepadpressed(joystick, button)
         NC.intent(it, "pad")
         return
     end
+    local key = ({ up = "up", down = "down", left = "left", right = "right",
+        confirm = "return", lb = "pageup", rb = "pagedown", x = "q", y = "e" })[it]
+    if key then love.keypressed(key) end
 end
 
 function love.mousereleased(x, y, button)
-    x, y = CRTShader.screenToContent(x, y)
+    -- clique sintético do NavCursor já vem em coordenada de conteúdo
+    if not require("src.ui.NavCursor").synthesizing then
+        x, y = CRTShader.screenToContent(x, y)
+    end
 
     -- Modal aberto recebe o release e NADA passa (ver love.keypressed).
     do
@@ -2601,9 +2610,6 @@ function love.mousereleased(x, y, button)
         if captor then
             if captor.mousereleased then captor:mousereleased(x, y, button) end
             return
--- v2 (Out/2026, Steam Deck): TODAS as telas. D-pad/A/X/Y/ombros vão pro
--- cursor de foco (src/ui/NavCursor) onde a tela não navega sozinha; nas que
--- navegam (MenuKit), o botão vira TECLA como antes. B = Esc (voltar/pausa).
         end
     end
 
@@ -2620,9 +2626,6 @@ function love.mousereleased(x, y, button)
     elseif currentState == "mapSelection" then
         mapScreen:mousereleased(x, y, button)
     elseif currentState == "rest" then
-    local key = ({ up = "up", down = "down", left = "left", right = "right",
-        confirm = "return", lb = "pageup", rb = "pagedown", x = "q", y = "e" })[it]
-    if key then love.keypressed(key) end
         restScreen:mousereleased(x, y, button)
     elseif currentState == "event" then
         eventScreen:mousereleased(x, y, button)
@@ -2638,7 +2641,6 @@ function love.mousereleased(x, y, button)
 end
 
 function love.mousepressed(x, y, button)
-    -- clique sintético do NavCursor já vem em coordenada de conteúdo
     if not require("src.ui.NavCursor").synthesizing then
         x, y = CRTShader.screenToContent(x, y)
     end
@@ -2726,8 +2728,10 @@ function love.wheelmoved(dx, dy)
 end
 
 function love.mousemoved(x, y, dx, dy)
-    if not require("src.ui.NavCursor").synthesizing then
-        x, y = CRTShader.screenToContent(x, y)
+    x, y = CRTShader.screenToContent(x, y)
+    -- mouse físico mexeu: o controle volta pro mouse (some o anel de foco)
+    if math.abs(dx or 0) + math.abs(dy or 0) > 1 then
+        require("src.ui.NavCursor").mouseMoved(x, y)
     end
     -- Modal aberto fica com o movimento (sem isto o arrasto de carta lá
     -- atrás continuava armando por baixo do menu).
@@ -2745,7 +2749,4 @@ function love.mousemoved(x, y, dx, dy)
     end
 end
 
--- handleGameMousePressed / handleGameMouseReleased foram pra GameplayScene.    -- mouse físico mexeu: o controle volta pro mouse (some o anel de foco)
-    if math.abs(dx or 0) + math.abs(dy or 0) > 1 then
-        require("src.ui.NavCursor").mouseMoved(x, y)
-    end
+-- handleGameMousePressed / handleGameMouseReleased foram pra GameplayScene.
