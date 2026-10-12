@@ -1,12 +1,14 @@
 -- tools/test_class_select.lua
--- Trava da seleção de classe v3 (emblemas + bloqueio/maestria, Out/2026 —
--- memory/class_emblems.md).
+-- Trava da seleção de classe v4 ("página do grimório": uma classe em foco,
+-- detalhes sob demanda, Out/2026 — memory/class_emblems.md).
 --
 -- O que garante:
 --   • o layout de ZONAS (ClassSelectLayout) é válido em todo tamanho de
 --     janela suportado (800×600 até 2560×1440) — nenhuma banda encosta;
 --   • o resize() de verdade (janela falsificada, cache de fonte limpo)
---     reposiciona botões dentro dos painéis novos e o draw não explode;
+--     reposiciona os botões no layout novo e o draw não explode;
+--   • a tela usa no máximo DUAS fontes (nome e corpo);
+--   • foco × início: o emblema pequeno só troca o foco, COMEÇAR inicia;
 --   • classe BLOQUEADA: selectClass devolve false e o callback NUNCA roda —
 --     nem por clique direto (mousepressed/released no painel);
 --   • classe LIBERADA: o callback roda com o id certo;
@@ -80,17 +82,18 @@ function M.run()
     t:falsy("heróis chibi aposentados (pasta removida)",
         love.filesystem.getInfo("assets/sprites/characters/heroes"))
 
-    -- 2. layout puro em todos os tamanhos
+    -- 2. layout puro em todos os tamanhos (no espaço VIRTUAL do UiScale,
+    --    que é onde a tela desenha)
+    local UiScale = require("src.ui.UiScale")
     for _, sz in ipairs(SIZES) do
-        local L = Layout.compute(sz[1], sz[2], 3)
+        local k = UiScale.k(sz[1], sz[2])
+        local L = Layout.compute(math.floor(sz[1] / k), math.floor(sz[2] / k), 3)
         local ok, errs = Layout.validate(L)
-        t:check(("layout válido em %dx%d%s"):format(sz[1], sz[2],
+        t:check(("layout válido em %dx%d (k=%.2f)%s"):format(sz[1], sz[2], k,
             ok and "" or (": " .. table.concat(errs, "; "))), ok)
     end
 
     installFake()
-    -- outra suite pode deixar o EventManager pausado; a seleção usa a fila
-    -- própria "class_select", que limpamos aqui
     local wasPaused = _G.EventManager.paused
     _G.EventManager.paused = false
     _G.EventManager.clear("class_select")
@@ -104,48 +107,75 @@ function M.run()
         local started = {}
         local screen = Screen:new()
         screen:show(function(id) table.insert(started, id) end, function() end)
+        t:eq("foco inicial = primeira classe liberada", screen.focus, "warrior")
 
         t:eq("selectClass(rogue bloqueado) recusa", screen:selectClass("rogue"), false)
         TK.pump(nil, 0.6)
         t:eq("nenhuma run iniciada pela bloqueada", #started, 0)
         local rp = screen:_panelOf("rogue")
-        t:truthy("painel bloqueado treme (feedback do clique)", rp and rp.shake > 0)
-        t:falsy("painel bloqueado não trava o input", screen._locked)
+        t:truthy("bloqueada treme (feedback do clique)", rp and rp.shake > 0)
+        t:falsy("bloqueada não trava o input", screen._locked)
+        t:eq("a bloqueada entra em foco (mostra a condição)", screen.focus, "rogue")
+        t:falsy("bloqueada não tem COMEÇAR", screen.buttons.start.visible)
+        t:falsy("bloqueada não tem DETALHES", screen.buttons.details.visible)
 
-        -- clique de verdade no painel bloqueado
-        local b = screen.buttons.rogue
-        mx, my = b.x + b.width / 2, b.y + b.height / 2
-        screen:update(1 / 60)
-        screen:mousepressed(mx, my, 1)
-        screen:mousereleased(mx, my, 1)
+        -- clique de verdade no emblema pequeno: só troca o foco
+        local function click(b)
+            local k = UiScale.k()
+            mx, my = (b.x + b.width / 2) * k, (b.y + b.height / 2) * k
+            screen:update(1 / 60)
+            screen:mousepressed(mx, my, 1)
+            screen:mousereleased(mx, my, 1)
+        end
+        click(screen.buttons.mage)
         TK.pump(nil, 0.6)
-        t:eq("clique no painel bloqueado não inicia run", #started, 0)
+        t:eq("clique no emblema pequeno troca o foco", screen.focus, "mage")
+        t:eq("trocar o foco não inicia run", #started, 0)
+        t:truthy("liberada tem COMEÇAR", screen.buttons.start.visible)
 
-        -- liberada
-        t:eq("selectClass(mage liberado) aceita", screen:selectClass("mage"), true)
+        -- DETALHES sob demanda
+        t:eq("página abre no resumo", screen.pageMode, "summary")
+        screen:toggleDetails()
+        t:eq("marcador abre os detalhes", screen.pageMode, "details")
+        screen:keypressed("tab")
+        t:eq("tab volta ao resumo", screen.pageMode, "summary")
+        screen:keypressed("d")
+        t:eq("tecla D passa pra próxima classe", screen.focus, "rogue")
+        screen:keypressed("a")
+        t:eq("tecla A volta", screen.focus, "mage")
+
+        -- COMEÇAR (o clique de verdade na fita)
+        click(screen.buttons.start)
         TK.pump(nil, 0.6)
-        t:eq("callback recebeu o mago", started[1], "mage")
+        t:eq("COMEÇAR inicia a run da classe em foco", started[1], "mage")
 
-        -- 4. resize real: botões acompanham os painéis novos + draw sem erro
+        -- 4. resize real: botões acompanham o layout + draw sem erro +
+        --    só DUAS fontes na tela (nome e corpo)
         lockOnly(US, { mage = true, rogue = true })
         local s2 = Screen:new()
         s2:show(function() end, function() end)
+        local realGetFont = FontManager.getFont
         for _, sz in ipairs(SIZES) do
             fakeW, fakeH = sz[1], sz[2]
             FontManager.clearCache()
             s2:resize()
-            local Lr = Layout.compute(sz[1], sz[2], 3)
-            local okLay = Layout.validate(s2.layout)
-            t:check(("resize %dx%d: layout da tela válido"):format(sz[1], sz[2]), okLay)
+            local okLay, errs = Layout.validate(s2.layout)
+            t:check(("resize %dx%d: layout da tela válido%s"):format(sz[1], sz[2],
+                okLay and "" or (": " .. table.concat(errs, "; "))), okLay)
             for i, id in ipairs(Screen.CLASS_ORDER) do
                 local btn = s2.buttons[id]
-                local pr = Lr.panels[i]
-                t:check(("resize %dx%d: botão %s cobre o painel"):format(sz[1], sz[2], id),
-                    btn and btn.x == pr.x and btn.y == pr.y and btn.width == pr.w and btn.height == pr.h)
+                local m = s2.layout.medallions[i]
+                t:check(("resize %dx%d: emblema %s no lugar"):format(sz[1], sz[2], id),
+                    btn and btn.x == m.x and btn.y == m.y and btn.width == m.w)
             end
-            local back = s2.buttons.back
-            t:check(("resize %dx%d: voltar dentro da tela"):format(sz[1], sz[2]),
-                back.y + back.height <= sz[2] and back.x >= 0 and back.x + back.width <= sz[1])
+            local st = s2.buttons.start
+            t:check(("resize %dx%d: COMEÇAR na fita"):format(sz[1], sz[2]),
+                st.x == s2.layout.start.x and st.y == s2.layout.start.y)
+            local sizes = {}
+            FontManager.getFont = function(size, ...)
+                sizes[size] = true
+                return realGetFont(size, ...)
+            end
             local canvas = love.graphics.newCanvas(sz[1], sz[2])
             love.graphics.setCanvas(canvas)
             local okDraw, e2 = pcall(function()
@@ -153,9 +183,16 @@ function M.run()
                 s2:draw()
             end)
             love.graphics.setCanvas()
+            FontManager.getFont = realGetFont
             t:check(("draw %dx%d sem erro%s"):format(sz[1], sz[2], okDraw and "" or (": " .. tostring(e2))), okDraw)
+            local n, list = 0, {}
+            for size in pairs(sizes) do n = n + 1; list[#list + 1] = size end
+            table.sort(list)
+            t:check(("%dx%d: no máximo 2 tamanhos de fonte (%s)"):format(sz[1], sz[2],
+                table.concat(list, ", ")), n <= 2)
             canvas:release()
         end
+        FontManager.getFont = realGetFont
         t:falsy("mago bloqueado reflete no painel", s2:_panelOf("mage").unlocked)
         t:truthy("guerreiro liberado tem maestria", s2:_panelOf("warrior").mastery ~= nil)
     end)

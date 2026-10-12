@@ -66,6 +66,10 @@ return {
         deck_count    = "{n} Karten",
         starter_label = "STARTKARTEN",
         locked_hint   = "Klasse gesperrt. Erfülle die Bedingung, um sie freizuschalten.",
+        start         = "REISE BEGINNEN",
+        details       = "DETAILS",
+        summary       = "ÜBERSICHT",
+        record        = "Rekord {score} Pkt · Siegel {seal} besiegt · Endlos Etage {floor}",
     },
 
     -- Requisitos de liberação de classe (UnlockSystem.getClassUnlockInfo.reqKey)
@@ -87,11 +91,14 @@ return {
 
     classes = {
         warrior = { name = "Krieger",  desc = "Spezialist für Nahkampf und Widerstandskraft",
-            passive_name = "Schwung", passive_desc = "Spiele 3+ Angriffe im selben Zug: +1 Stärke für diesen Kampf." },
+            passive_name = "Schwung", passive_desc = "Spiele 3+ Angriffe im selben Zug: +1 Stärke für diesen Kampf.",
+            passive_short = "3 Angriffe in einem Zug: +1 Stärke." },
         mage    = { name = "Magier",   desc = "Meister arkaner Künste und Elementarmanipulation",
-            passive_name = "Leitung", passive_desc = "Start mit Blitz-Orb (+1 Fokus ab Akt 3). 2+ Orb-Karten im Zug: +1 Fokus." },
+            passive_name = "Leitung", passive_desc = "Start mit Blitz-Orb (+1 Fokus ab Akt 3). 2+ Orb-Karten im Zug: +1 Fokus.",
+            passive_short = "Startet mit einem Blitz-Orb; Orbs geben Fokus." },
         rogue   = { name = "Schurke",  desc = "Beweglicher Assassine, spezialisiert auf Gift und Präzision",
-            passive_name = "Toxine", passive_desc = "1. Angriff im Zug: +1 Gift. 2+ Angriffe im Zug: dieses Gift +2 im Kampf." },
+            passive_name = "Toxine", passive_desc = "1. Angriff im Zug: +1 Gift. 2+ Angriffe im Zug: dieses Gift +2 im Kampf.",
+            passive_short = "Deine Angriffe vergiften den Gegner." },
     },
 
     top_bar = {
@@ -950,24 +957,6 @@ return {
             blood_duke        = "Blutherzog",
             eclipse_queen     = "Finsternis-Königin",
         },
-    },
-
-    -- Revelações do menu depois da corrida (UnlockShowcase, estilo Balatro).
-    unlock_showcase = {
-        title_card        = "Neue Karte freigeschaltet!",
-        title_class       = "Neue Klasse!",
-        title_mastery     = "Meisterschaft gestiegen!",
-        title_seal        = "Siegel {n} freigeschaltet",
-        title_achievement = "Erfolg!",
-        mastery_level     = "Stufe {level}",
-        mastery_sub       = "Meisterschaft: {class}",
-        mastery_cards     = "Neue Karten kommen in die Angebote.",
-        class_sub         = "Wähle diese Klasse im nächsten Lauf.",
-        seal_sub          = "{class}: {rule}",
-        card_sub          = "Die Karte kann jetzt in Angeboten erscheinen.",
-        counter           = "{i} von {n}",
-        continue          = "Weiter",
-        skip              = "Alle überspringen",
     },
 
     play_button = { label = "Karten spielen", end_turn = "Zug Beenden" },

@@ -67,6 +67,10 @@ return {
         deck_count    = "{n} cards",
         starter_label = "STARTING CARDS",
         locked_hint   = "Class locked. Meet the requirement to unlock it.",
+        start         = "BEGIN JOURNEY",
+        details       = "DETAILS",
+        summary       = "SUMMARY",
+        record        = "Best {score} pts · Seal {seal} won · Endless floor {floor}",
     },
 
     -- Requisitos de liberação de classe (UnlockSystem.getClassUnlockInfo.reqKey)
@@ -88,11 +92,14 @@ return {
 
     classes = {
         warrior = { name = "Warrior", desc = "Specialist in close combat and resilience",
-            passive_name = "Momentum", passive_desc = "Play 3+ attacks in the same turn: +1 Strength this battle." },
+            passive_name = "Momentum", passive_desc = "Play 3+ attacks in the same turn: +1 Strength this battle.",
+            passive_short = "3 attacks in a turn: +1 Strength." },
         mage    = { name = "Mage",    desc = "Master of arcane arts and elemental manipulation",
-            passive_name = "Conduit", passive_desc = "Start with a Lightning orb (+1 Focus from act 3). 2+ orb cards in a turn: +1 Focus." },
+            passive_name = "Conduit", passive_desc = "Start with a Lightning orb (+1 Focus from act 3). 2+ orb cards in a turn: +1 Focus.",
+            passive_short = "Starts with a Lightning orb; orbs grant Focus." },
         rogue   = { name = "Rogue",   desc = "Agile assassin specialized in poison and precision",
-            passive_name = "Toxins", passive_desc = "1st attack each turn: +1 Poison. 2+ attacks in a turn: that Poison +2 this battle." },
+            passive_name = "Toxins", passive_desc = "1st attack each turn: +1 Poison. 2+ attacks in a turn: that Poison +2 this battle.",
+            passive_short = "Your attacks poison the enemy." },
     },
 
     top_bar = {
@@ -953,24 +960,6 @@ return {
             blood_duke        = "Blood Duke",
             eclipse_queen     = "Eclipse Queen",
         },
-    },
-
-    -- Revelações do menu depois da corrida (UnlockShowcase, estilo Balatro).
-    unlock_showcase = {
-        title_card        = "New card unlocked!",
-        title_class       = "New class!",
-        title_mastery     = "Mastery up!",
-        title_seal        = "Seal {n} unlocked",
-        title_achievement = "Achievement!",
-        mastery_level     = "Level {level}",
-        mastery_sub       = "{class} mastery",
-        mastery_cards     = "New cards join the offers.",
-        class_sub         = "Pick this class on your next run.",
-        seal_sub          = "{class}: {rule}",
-        card_sub          = "This card can now appear in offers.",
-        counter           = "{i} of {n}",
-        continue          = "Continue",
-        skip              = "Skip all",
     },
 
     play_button = { label = "Play Cards", end_turn = "End Turn" },

@@ -66,6 +66,10 @@ return {
         deck_count    = "{n} cartes",
         starter_label = "CARTES DE DÉPART",
         locked_hint   = "Classe verrouillée. Remplis la condition pour la débloquer.",
+        start         = "COMMENCER LE VOYAGE",
+        details       = "DÉTAILS",
+        summary       = "RÉSUMÉ",
+        record        = "Record {score} pts · Sceau {seal} vaincu · Sans Fin étage {floor}",
     },
 
     -- Requisitos de liberação de classe (UnlockSystem.getClassUnlockInfo.reqKey)
@@ -87,11 +91,14 @@ return {
 
     classes = {
         warrior = { name = "Guerrier", desc = "Spécialiste du combat rapproche et de la résilience",
-            passive_name = "Élan", passive_desc = "Jouez 3+ attaques dans le même tour : +1 de Force pour ce combat." },
+            passive_name = "Élan", passive_desc = "Jouez 3+ attaques dans le même tour : +1 de Force pour ce combat.",
+            passive_short = "3 attaques en un tour : +1 de Force." },
         mage    = { name = "Mage",     desc = "Maître des arts arcaniques et manipulation élémentaire",
-            passive_name = "Conduit", passive_desc = "Départ : orbe de Foudre (+1 Concentration dès l'acte 3). 2+ orbes par tour : +1 Concentration." },
+            passive_name = "Conduit", passive_desc = "Départ : orbe de Foudre (+1 Concentration dès l'acte 3). 2+ orbes par tour : +1 Concentration.",
+            passive_short = "Commence avec un orbe de Foudre ; les orbes donnent de la Concentration." },
         rogue   = { name = "Voleur",   desc = "Assassin agile spécialisé en poison et précision",
-            passive_name = "Toxines", passive_desc = "1re attaque du tour : +1 Poison. 2+ attaques par tour : ce Poison +2." },
+            passive_name = "Toxines", passive_desc = "1re attaque du tour : +1 Poison. 2+ attaques par tour : ce Poison +2.",
+            passive_short = "Vos attaques empoisonnent l'ennemi." },
     },
 
     top_bar = {
@@ -950,24 +957,6 @@ return {
             blood_duke        = "Duc de Sang",
             eclipse_queen     = "Reine de l'Éclipse",
         },
-    },
-
-    -- Revelações do menu depois da corrida (UnlockShowcase, estilo Balatro).
-    unlock_showcase = {
-        title_card        = "Nouvelle carte débloquée !",
-        title_class       = "Nouvelle classe !",
-        title_mastery     = "Maîtrise en hausse !",
-        title_seal        = "Sceau {n} débloqué",
-        title_achievement = "Succès !",
-        mastery_level     = "Niveau {level}",
-        mastery_sub       = "Maîtrise : {class}",
-        mastery_cards     = "De nouvelles cartes rejoignent les offres.",
-        class_sub         = "Choisis cette classe à la prochaine partie.",
-        seal_sub          = "{class}: {rule}",
-        card_sub          = "Cette carte peut désormais apparaître dans les offres.",
-        counter           = "{i} sur {n}",
-        continue          = "Continuer",
-        skip              = "Tout passer",
     },
 
     play_button = { label = "Jouer Cartes", end_turn = "Fin du Tour" },

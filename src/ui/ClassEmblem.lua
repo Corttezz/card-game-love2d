@@ -5,13 +5,15 @@
 -- assets/sprites/emblems/<classe>.png; o idle é PROCEDURAL, aqui:
 --   warrior — espada cravada no escudo: brilho que corre pela lâmina
 --   mage    — orbe arcano: flutua, pulsa e solta faíscas em órbita
---   rogue   — adaga: gotas de veneno e sangue pingando da ponta
+--   rogue   — adaga: gotas de veneno e sangue pingando da ponta + fio
+--             frio correndo pela lâmina
 -- Bloqueado = silhueta escura + correntes com cadeado (locked_chains.png),
 -- sem animação nenhuma (a classe "dorme").
 --
 -- Uso:
 --   ClassEmblem.update(dt)
---   ClassEmblem.draw("mage", cx, cy, boxH, { hover = 0..1, locked = bool, flash = 0..1 })
+--   ClassEmblem.draw("mage", cx, cy, boxH, { hover = 0..1, locked = bool, flash = 0..1,
+--                                            tint = {r,g,b} })   -- tint: escurece (escolha pequena)
 -- cx/cy = centro da caixa reservada ao emblema; boxH = altura da caixa.
 -- O desenho NUNCA sai da caixa (escala quantizada em 1/4, pra a arte pixel
 -- não deformar).
@@ -76,6 +78,46 @@ function ClassEmblem.get(id)
     meta.img = img
     images[id] = meta
     return meta
+end
+
+-- GRAVURA (seleção v4): o emblema redesenhado como traço de tinta — só o
+-- contorno e as sombras do sprite, meio-tom em dither 2×2. É a "prancha" da
+-- folha do grimório; a silhueta chapada lia como mancha.
+local engravings = {}
+function ClassEmblem.engraving(id)
+    if engravings[id] ~= nil then return engravings[id] end
+    local path = ClassEmblem.PATH .. tostring(id) .. ".png"
+    local okD, src = pcall(love.image.newImageData, path)
+    if not okD or not src then
+        print("[ClassEmblem] AVISO: gravura sem fonte: " .. path)
+        engravings[id] = false
+        return false
+    end
+    local w, h = src:getDimensions()
+    local out = love.image.newImageData(w, h)
+    local function alphaAt(x, y)
+        if x < 0 or y < 0 or x >= w or y >= h then return 0 end
+        local _, _, _, a = src:getPixel(x, y)
+        return a
+    end
+    for y = 0, h - 1 do
+        for x = 0, w - 1 do
+            local r, g, b, a = src:getPixel(x, y)
+            if a > 0.08 then
+                local lum = 0.299 * r + 0.587 * g + 0.114 * b
+                local edge = alphaAt(x - 1, y) <= 0.08 or alphaAt(x + 1, y) <= 0.08
+                    or alphaAt(x, y - 1) <= 0.08 or alphaAt(x, y + 1) <= 0.08
+                local on = edge or lum < 0.22
+                    or (lum < 0.42 and (x + y) % 2 == 0)
+                    or (lum < 0.55 and x % 2 == 0 and y % 2 == 0)
+                if on then out:setPixel(x, y, 1, 1, 1, 1) end
+            end
+        end
+    end
+    local img = love.graphics.newImage(out)
+    img:setFilter("nearest", "nearest")
+    engravings[id] = img
+    return img
 end
 
 -- Shader de luz aditiva: acende só os pixels CLAROS do sprite (metal,
@@ -251,22 +293,24 @@ function ClassEmblem.draw(id, cx, cy, boxH, opts)
     love.graphics.setBlendMode("alpha")
 
     -- o sprite
-    love.graphics.setColor(1, 1, 1, 1)
+    local tint = opts.tint or { 1, 1, 1 }
+    love.graphics.setColor(tint[1], tint[2], tint[3], 1)
     love.graphics.draw(img, ox, oy + bob, 0, s, s)
 
     -- camada de luz procedural
     if sh then
         love.graphics.setBlendMode("add")
         love.graphics.setShader(sh)
-        if id == "warrior" then
-            -- brilho correndo pela lâmina: 1 passada a cada ~3.4s
-            local period = 3.4
+        if id == "warrior" or id == "rogue" then
+            -- brilho correndo pela lâmina: 1 passada a cada ~3.4s (a adaga,
+            -- mais curta e fria, a cada ~2.6s — o "fio" que cintila)
+            local period = (id == "rogue") and 2.6 or 3.4
             local ph = (t % period) / period
             if ph < 0.35 then
                 sh:send("sweep", -0.25 + (ph / 0.35) * 1.9)
-                sh:send("bandW", 0.035)
+                sh:send("bandW", (id == "rogue") and 0.028 or 0.035)
                 sh:send("strength", 0.75 + 0.25 * hover)
-                sh:send("tint", { 1.0, 0.92, 0.75 })
+                sh:send("tint", (id == "rogue") and { 0.80, 0.92, 1.0 } or { 1.0, 0.92, 0.75 })
                 sh:send("lumLo", 0.35)
                 love.graphics.setColor(1, 1, 1, 1)
                 love.graphics.draw(img, ox, oy, 0, s, s)

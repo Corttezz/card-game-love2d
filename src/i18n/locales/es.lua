@@ -66,6 +66,10 @@ return {
         deck_count    = "{n} cartas",
         starter_label = "CARTAS INICIALES",
         locked_hint   = "Clase bloqueada. Cumple el requisito para desbloquearla.",
+        start         = "COMENZAR VIAJE",
+        details       = "DETALLES",
+        summary       = "RESUMEN",
+        record        = "Récord {score} pts · Sello {seal} vencido · Sin Fin piso {floor}",
     },
 
     -- Requisitos de liberação de classe (UnlockSystem.getClassUnlockInfo.reqKey)
@@ -87,11 +91,14 @@ return {
 
     classes = {
         warrior = { name = "Guerrero", desc = "Especialista en combate cuerpo a cuerpo y resistencia",
-            passive_name = "Ímpetu", passive_desc = "Juega 3+ ataques en el mismo turno: +1 de Fuerza en esta batalla." },
+            passive_name = "Ímpetu", passive_desc = "Juega 3+ ataques en el mismo turno: +1 de Fuerza en esta batalla.",
+            passive_short = "3 ataques en un turno: +1 de Fuerza." },
         mage    = { name = "Mago",     desc = "Maestro de las artes arcanas y manipulación elemental",
-            passive_name = "Conducto", passive_desc = "Empieza con orbe de Rayo (+1 Foco desde el acto 3). 2+ cartas de orbe por turno: +1 Foco." },
+            passive_name = "Conducto", passive_desc = "Empieza con orbe de Rayo (+1 Foco desde el acto 3). 2+ cartas de orbe por turno: +1 Foco.",
+            passive_short = "Empieza con un orbe de Rayo; los orbes dan Foco." },
         rogue   = { name = "Pícaro",   desc = "Asesino ágil especializado en venenos y precisión",
-            passive_name = "Toxinas", passive_desc = "1.er ataque del turno: +1 Veneno. 2+ ataques por turno: ese Veneno +2." },
+            passive_name = "Toxinas", passive_desc = "1.er ataque del turno: +1 Veneno. 2+ ataques por turno: ese Veneno +2.",
+            passive_short = "Tus ataques envenenan al enemigo." },
     },
 
     top_bar = {
@@ -949,24 +956,6 @@ return {
             blood_duke        = "Duque de Sangre",
             eclipse_queen     = "Reina del Eclipse",
         },
-    },
-
-    -- Revelações do menu depois da corrida (UnlockShowcase, estilo Balatro).
-    unlock_showcase = {
-        title_card        = "¡Nueva carta desbloqueada!",
-        title_class       = "¡Nueva clase!",
-        title_mastery     = "¡Maestría mejorada!",
-        title_seal        = "Sello {n} liberado",
-        title_achievement = "¡Logro!",
-        mastery_level     = "Nivel {level}",
-        mastery_sub       = "Maestría de {class}",
-        mastery_cards     = "Nuevas cartas entran en las ofertas.",
-        class_sub         = "Elige esta clase en la próxima partida.",
-        seal_sub          = "{class}: {rule}",
-        card_sub          = "La carta ya puede aparecer en las ofertas.",
-        counter           = "{i} de {n}",
-        continue          = "Continuar",
-        skip              = "Saltar todo",
     },
 
     play_button = { label = "Jugar Cartas", end_turn = "Terminar Turno" },

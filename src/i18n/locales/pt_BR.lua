@@ -67,6 +67,10 @@ return {
         deck_count    = "{n} cartas",
         starter_label = "CARTAS INICIAIS",
         locked_hint   = "Classe bloqueada. Cumpra o requisito para liberar.",
+        start         = "COMEÇAR JORNADA",
+        details       = "DETALHES",
+        summary       = "RESUMO",
+        record        = "Recorde {score} pts · Selo {seal} vencido · Sem Fim andar {floor}",
     },
 
     -- Requisitos de liberação de classe (UnlockSystem.getClassUnlockInfo.reqKey)
@@ -92,18 +96,21 @@ return {
             desc = "Especialista em combate corpo a corpo e resistência",
             passive_name = "Ímpeto",
             passive_desc = "Jogue 3+ ataques no mesmo turno: +1 de Força nesta batalha.",
+            passive_short = "3 ataques num turno: +1 de Força.",
         },
         mage = {
             name = "Mago",
             desc = "Mestre das artes arcanas e manipulação elemental",
             passive_name = "Conduíte",
             passive_desc = "Começa com orbe de Raio (+1 Foco a partir do ato 3). 2+ cartas de orbe no turno: +1 Foco.",
+            passive_short = "Começa com um orbe de Raio; orbes rendem Foco.",
         },
         rogue = {
             name = "Ladino",
             desc = "Assassino ágil especializado em venenos e precisão",
             passive_name = "Toxinas",
             passive_desc = "1º ataque do turno: +1 Veneno. 2+ ataques no turno: esse Veneno +2 na luta.",
+            passive_short = "Seus ataques envenenam o inimigo.",
         },
     },
 
@@ -974,24 +981,6 @@ return {
             blood_duke        = "Duque de Sangue",
             eclipse_queen     = "Rainha do Eclipse",
         },
-    },
-
-    -- Revelações do menu depois da corrida (UnlockShowcase, estilo Balatro).
-    unlock_showcase = {
-        title_card        = "Nova carta desbloqueada!",
-        title_class       = "Nova classe!",
-        title_mastery     = "Maestria subiu!",
-        title_seal        = "Selo {n} liberado",
-        title_achievement = "Conquista!",
-        mastery_level     = "Nível {level}",
-        mastery_sub       = "Maestria de {class}",
-        mastery_cards     = "Novas cartas entram nas ofertas.",
-        class_sub         = "Escolha a classe na próxima corrida.",
-        seal_sub          = "{class}: {rule}",
-        card_sub          = "A carta agora pode aparecer nas ofertas.",
-        counter           = "{i} de {n}",
-        continue          = "Continuar",
-        skip              = "Pular tudo",
     },
 
     play_button = {

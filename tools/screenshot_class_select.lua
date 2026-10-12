@@ -1,23 +1,26 @@
 -- tools/screenshot_class_select.lua
--- Valida o "Salão dos Emblemas" (v3, Out/2026 — memory/class_emblems.md).
+-- Seleção de classe v4 ("página do grimório", Out/2026 — memory/class_emblems.md).
 -- Renderiza cada estado num CANVAS do tamanho pedido com a janela
 -- FALSIFICADA (getWidth/getHeight) — setMode repetido dentro de tool trava
--- (memory/ui_layout_invariants.md). Gera, no save dir:
+-- (memory/ui_layout_invariants.md). Passa pelo UiScale de verdade (a tela é
+-- adotada no love.load). Gera, no save dir:
 --   class_select_<W>x<H>_<estado>.png
 -- estados:
---   fresh  — perfil novo: só o guerreiro liberado (mago/ladino acorrentados)
---   mixed  — mago liberado (maestria 3/5), ladino bloqueado com progresso 2/4
---   all    — todas liberadas, hover no mago (emblema animado + aura)
---   pick   — momento da escolha (flash + anel + faíscas)
---   denied — clique numa bloqueada (tremor; NÃO inicia run)
---   seal     — Selo 7 escolhido, hover no guerreiro (recordes da classe)
---   seal_cap — Selo 7, hover no ladino que só vai até o 1 (aviso de teto)
+--   fresh    — perfil novo: só o guerreiro liberado, foco nele
+--   locked   — perfil novo, foco no ladino bloqueado (silhueta + condição)
+--   all      — todas liberadas, foco no mago (resumo)
+--   details  — mago com o marcador DETALHES aberto
+--   seal     — Selo 7, foco no guerreiro, mouse na faixa do selo (regra)
+--   seal_cap — Selo 7, foco no ladino que só vai até o 1 (aviso de teto)
+--   pick     — momento da escolha (anel + faíscas)
+--   denied   — clique em COMEÇAR numa bloqueada (tremor; NÃO inicia run)
+-- 1280x800 sai com o multiplicador do Steam Deck (125%), como no aparelho.
 -- CS_LOCALE=de troca o idioma; CS_SIZES=1024x768,1920x1080 filtra tamanhos.
---   love . screenshot_class_select
+--   love . test_one screenshot_class_select
 
 local M = {}
 
-local SIZES = { { 800, 600 }, { 1024, 768 }, { 1280, 720 }, { 1920, 1080 } }
+local SIZES = { { 1024, 768 }, { 1280, 800 }, { 1920, 1080 } }
 
 local realW, realH = love.graphics.getWidth, love.graphics.getHeight
 local fakeW, fakeH
@@ -36,10 +39,11 @@ local function restore()
     love.mouse.getPosition = realMouse
 end
 
-local function hoverPanel(screen, id)
-    if not id then mouseX, mouseY = 2, 2 return end
-    local b = screen.buttons[id]
-    mouseX, mouseY = b.x + b.width / 2, b.y + b.height / 2
+-- Mouse num retângulo VIRTUAL da tela (o UiScale divide o mouse real por k).
+local function hoverRect(r)
+    if not r then mouseX, mouseY = 2, 2 return end
+    local k = require("src.ui.UiScale").k()
+    mouseX, mouseY = (r.x + r.w / 2) * k, (r.y + r.h / 2) * k
 end
 
 -- Cenários do UnlockSystem (monkeypatch das 3 funções do contrato — vale
@@ -85,7 +89,8 @@ local function shoot(screen, w, h, name)
     love.graphics.clear(0, 0, 0, 1)
     screen:draw()
     love.graphics.setCanvas()
-    local file = ("class_select_%dx%d_%s.png"):format(w, h, name)
+    local file = ("class_select_%dx%d_%s%s.png"):format(w, h,
+        os.getenv("CS_LOCALE") and (os.getenv("CS_LOCALE") .. "_") or "", name)
     canvas:newImageData():encode("png", file)
     print("[class_select] " .. file .. " salvo")
 end
@@ -132,51 +137,63 @@ function M.run()
     end
 
     installFake()
+    local UiScale = require("src.ui.UiScale")
     local ok, err = pcall(function()
         for _, sz in ipairs(SIZES) do
             fakeW, fakeH = sz[1], sz[2]
+            UiScale.setDeviceMultiplier((sz[1] == 1280 and sz[2] == 800) and 1.25 or 1)
             require("src.ui.FontManager").clearCache()
             local Screen = require("components.ClassSelectionScreen")
-
-            for _, st in ipairs({ "fresh", "mixed", "all" }) do
+            local function fresh(st, focus)
                 scenario(US, st)
+                hoverRect(nil)
                 local screen = Screen:new()
                 screen:show(function() end, function() end)
-                hoverPanel(screen, st == "all" and "mage" or nil)
+                if focus then screen:focusClass(focus) end
                 pump(screen, 1.2)
-                shoot(screen, sz[1], sz[2], st)
-
-                if st == "all" then
-                    -- Selos: guerreiro liberou até o 10, mago até o 4, ladino até o 1.
-                    local caps = { warrior = 10, mage = 4, rogue = 1 }
-                    US.getMaxSeal = function(id) return caps[id] or 0 end
-                    US.getSealWon = function(id) return (caps[id] or 0) - 1 end
-                    US.getClassRecord = function(id)
-                        return { bestScore = id == "warrior" and 48210 or 9050,
-                            bestEndless = id == "warrior" and 19 or 0 }
-                    end
-                    local s2 = Screen:new()
-                    s2:show(function() end, function() end)
-                    s2.seal = 7
-                    s2:_clampSeal()
-                    hoverPanel(s2, "warrior")
-                    pump(s2, 0.6)
-                    shoot(s2, sz[1], sz[2], "seal")
-                    hoverPanel(s2, "rogue")
-                    pump(s2, 0.3)
-                    shoot(s2, sz[1], sz[2], "seal_cap")
-                    screen:selectClass("mage")
-                    pump(screen, 0.15)
-                    shoot(screen, sz[1], sz[2], "pick")
-                elseif st == "fresh" then
-                    local accepted = screen:selectClass("rogue")
-                    print("[class_select] clique no ladino bloqueado aceito? " .. tostring(accepted))
-                    hoverPanel(screen, "rogue")
-                    pump(screen, 0.07)
-                    shoot(screen, sz[1], sz[2], "denied")
-                end
+                return screen
             end
+
+            local s1 = fresh("fresh")
+            shoot(s1, sz[1], sz[2], "fresh")
+            local s2 = fresh("fresh", "rogue")
+            shoot(s2, sz[1], sz[2], "locked")
+            print("[class_select] COMEÇAR no ladino bloqueado aceito? " .. tostring(s2:selectClass("rogue")))
+            pump(s2, 0.07)
+            shoot(s2, sz[1], sz[2], "denied")
+
+            local s3 = fresh("all", "mage")
+            shoot(s3, sz[1], sz[2], "all")
+            s3:toggleDetails()
+            pump(s3, 0.6)
+            shoot(s3, sz[1], sz[2], "details")
+
+            -- Selos: guerreiro liberou até o 10, mago até o 4, ladino até o 1.
+            local caps = { warrior = 10, mage = 4, rogue = 1 }
+            US.getMaxSeal = function(id) return caps[id] or 0 end
+            US.getSealWon = function(id) return (caps[id] or 0) - 1 end
+            US.getClassRecord = function(id)
+                return { bestScore = id == "warrior" and 48210 or 9050,
+                    bestEndless = id == "warrior" and 19 or 0 }
+            end
+            local s4 = fresh("all")
+            s4.seal = 7
+            s4:_clampSeal()
+            hoverRect(s4.layout.seal)
+            pump(s4, 0.3)
+            shoot(s4, sz[1], sz[2], "seal")
+            hoverRect(nil)
+            s4:focusClass("rogue")
+            pump(s4, 0.6)
+            shoot(s4, sz[1], sz[2], "seal_cap")
+            US.getMaxSeal, US.getSealWon, US.getClassRecord = M._orig[4], M._orig[5], M._orig[6]
+
+            local s5 = fresh("all", "mage")
+            s5:selectClass("mage")
+            pump(s5, 0.15)
+            shoot(s5, sz[1], sz[2], "pick")
         end
+        UiScale.setDeviceMultiplier(1)
     end)
     restore()
     US.isClassUnlocked, US.getClassUnlockInfo, US.getClassMastery = M._orig[1], M._orig[2], M._orig[3]
