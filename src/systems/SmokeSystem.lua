@@ -150,8 +150,12 @@ function SmokeSystem:spawnParticle()
             currentOpacity = 0, -- Começa transparente
             fadeInProgress = 0, -- Progresso do fade in
             texture = texture,
-            rotation = love.math.random(0, math.pi * 2), -- Rotação aleatória
-            rotationSpeed = love.math.random(-0.05, 0.05), -- Velocidade de rotação muito reduzida
+            -- SEM GIRO (Out/2026, dono: "fumaça girando 360 graus na sala do
+            -- chefe"). love.math.random(a, b) devolve INTEIRO: o antigo
+            -- random(-0.05, 0.05) sorteava -0.05 ou 0.95 rad/s — uma volta a
+            -- cada ~6,6 s em metade dos fiapos. Ângulo fixo e sutil por fiapo.
+            rotation = (love.math.random() - 0.5) * 0.3,
+            rotationSpeed = 0,
             age = 0 -- Idade da partícula
         }
     

@@ -5,8 +5,8 @@ local SmokeConfig = {}
 
 -- Configurações padrão (visível mas não distrai — ambiência de arena de combate)
 SmokeConfig.DEFAULT = {
-    maxParticles = 6,            -- subiu de 4 para dar presença
-    spawnRate = 1.5,             -- spawn mais frequente
+    maxParticles = 3,            -- Out/2026: menos frequente (dono)
+    spawnRate = 4.0,
     minScale = 1.4,
     maxScale = 2.2,
     minOpacity = 0.10,           -- subiu de 0.02 (quase invisível) para 0.10
@@ -67,9 +67,11 @@ SmokeConfig.ATMOSPHERIC = {
     maxOffscreenDistance = 180
 }
 
--- Presets por ato: cor/densidade tematica (aplicado via ActSystem no futuro)
+-- Presets por ato: cor/densidade tematica. Só desenham nos salões de chefe
+-- (GameplayScene: fora da estrada). Out/2026 (dono: "diminua a frequência
+-- com que aparece"): teto de fiapos e intervalo de spawn cortados ~3x.
 SmokeConfig.ACT_1_CATACUMBS = {
-    maxParticles = 7, spawnRate = 1.4,
+    maxParticles = 3, spawnRate = 4.5,
     minScale = 1.3, maxScale = 2.0,
     minOpacity = 0.12, maxOpacity = 0.25,
     minSpeed = 15, maxSpeed = 22,
@@ -79,7 +81,7 @@ SmokeConfig.ACT_1_CATACUMBS = {
 }
 
 SmokeConfig.ACT_2_TOWER = {
-    maxParticles = 5, spawnRate = 1.8,
+    maxParticles = 2, spawnRate = 5.0,
     minScale = 1.5, maxScale = 2.4,
     minOpacity = 0.08, maxOpacity = 0.18,
     minSpeed = 22, maxSpeed = 34,
@@ -89,7 +91,7 @@ SmokeConfig.ACT_2_TOWER = {
 }
 
 SmokeConfig.ACT_3_ABYSS = {
-    maxParticles = 8, spawnRate = 1.0,
+    maxParticles = 3, spawnRate = 3.5,
     minScale = 1.7, maxScale = 2.8,
     minOpacity = 0.15, maxOpacity = 0.35,
     minSpeed = 12, maxSpeed = 20,
