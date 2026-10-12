@@ -198,7 +198,7 @@ menu → classSelection → playing
    - Usa `ActSystem.getEnemyStats(actNumber, floorInAct, nodeType)` para stats do próximo inimigo
    - Cura inter-ato 30-40% quando cruza para novo ato
 9. **Vitória**: `actNumber >= Config.TotalActs` (hoje 6) AND `floorInAct >= 8` AND `currentNode.type == "boss"` AND enemy morto AND **NÃO** `endlessMode`. Após vencer, opção de entrar em endless. O `endlessMode` desliga a vitória, então qualquer caminho que o ligue cedo demais torna o jogo invencível — foi o que aconteceu ao passar de 3 pra 6 atos (defect_doctrine 14).
-10. **Endless**: `endlessMode = true` trava checkVictory; scaling `1.18^floorsInEndless`.
+10. **Endless** (Out/2026): a tela de vitória oferece **Seguir no Endless** — `Game:enterEndless()` só aceita run com `run.campaignWon` (gravado no `checkVictory`, viaja no save), liga `endlessMode` e devolve a run ao jogo (cash out → recompensa → encruzilhada → `advanceFloorInAct` = `endless_start`; ciclos seguintes = `endless_cycle`). `run.floorsInEndless` = andar absoluto do endless (expoente `1.18^(n-1)` via 4º arg de `ActSystem.getEnemyStats`, XP, conquista `alem_da_pagina`). Morte/abandono no endless: só XP dos andares extras, **nunca** outra vitória nem derrota no perfil. Telas finais (`src/scenes/EndScreens.lua`) têm botões mouse/teclado/gamepad + resumo da run; travas `test_endless` e `test_end_screens`.
 
 ---
 

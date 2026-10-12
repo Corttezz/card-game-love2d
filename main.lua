@@ -407,11 +407,12 @@ _G.__showMapSelection = function() showMapSelection() end
 
 
 -- Continua o jogo após escolher/pular recompensa.
--- Vitoria agora e disparada por Game:checkVictory (ato 3 boss). Para decidir
--- se mostra o mapa ou nao, apenas checamos se o game ja marcou vitoria.
+-- Vitoria agora e disparada por Game:checkVictory (chefe do ultimo ato). Para
+-- decidir se mostra o mapa ou nao, apenas checamos se o game ja marcou vitoria.
+-- A run NAO e encerrada aqui (antes chamava endCurrentRun): ela fica viva na
+-- tela de vitoria para o "Seguir no Endless"; Menu/Tentar de novo descartam.
 local function continueAfterReward()
     if game.gameState == "victory" then
-        game:endCurrentRun(true)
         currentState = "victory"
     else
         showMapSelection()
@@ -460,6 +461,27 @@ showCardRewards = function()
         "rewards"
     )
 end
+
+-- Botões das telas finais (src/scenes/EndScreens.lua). No escopo do ARQUIVO,
+-- não no love.load: closures criadas lá dentro virariam upvalues dele, que
+-- vive no teto de 60 do LuaJIT.
+EndScreens.setCallbacks({
+    onRetry = function() replayRun() end,
+    onMenu = function() returnToMenu() end,
+    -- Seguir no Endless (só na vitória): a vitória JÁ foi registrada no
+    -- checkVictory; enterEndless liga o modo e devolve a run ao jogo. O chefe
+    -- final paga o cash out e a recompensa como qualquer chefe, e a
+    -- encruzilhada (showMapSelection → advanceFloorInAct) leva ao andar 1 do
+    -- endless — e volta a salvar.
+    onEndless = function()
+        if not game:enterEndless() then
+            print("[endless] enterEndless recusou (run sem vitoria registrada?)")
+            return
+        end
+        require("src.ui.EndTransition").clear()
+        showRoundEval()
+    end,
+})
 
 -- Continuar: reabre o ESTÁGIO salvo (ver setRunStage). Devolve true se tratou
 -- (o caller não precisa fazer mais nada). Hook global pelo mesmo motivo do
@@ -1007,7 +1029,8 @@ function love.load(loveArgs)
     -- Testa o fluxo de save/abandono/run nova (bug "run antiga ressuscita"):
     --   love . test_saveflow
     if loveArgs and loveArgs[1] == "test_saveflow" then
-        require("tools.test_saveflow").run()
+        local ok = require("tools.test_saveflow").run()
+        love.event.quit(ok and 0 or 1)
         return
     end
 
@@ -1964,6 +1987,8 @@ function love.update(dt)
     IF.push(IF.CHROME)
     if topBar and game then topBar:update(dt, game) end
     IF.pop()
+    -- Relógio da run (tempo no resumo da tela final).
+    if game and game.tickRunClock then game:tickRunClock(dt, currentState) end
     -- PAUSA DE VERDADE: com um modal aberto (pausa, configurações, deck,
     -- coringas, roteiro) NO COMBATE, o combate congela. Antes o turno do
     -- inimigo seguia rodando atrás do menu — dava pra morrer com a pausa
@@ -2237,6 +2262,7 @@ function love.resize(w, h)
     if packOpenScreen and packOpenScreen.resize then packOpenScreen:resize() end
     if restScreen and restScreen.resize then restScreen:resize() end
     if eventScreen and eventScreen.resize then eventScreen:resize() end
+    EndScreens.resize()
     if roundEvalScreen and roundEvalScreen.resize then roundEvalScreen:resize() end
     if collectionScreen and collectionScreen.resize then collectionScreen:resize() end
     if mapScreen and mapScreen.resize then mapScreen:resize() end
@@ -2387,20 +2413,10 @@ function love.keypressed(key)
             return
         end
         GameplayScene.keypressed(key)
-    elseif currentState == "gameOver" then
-        -- Teclas do game over
-        if key == "r" then
-            replayRun()
-        elseif key == "escape" then
-            returnToMenu()
-        end
-    elseif currentState == "victory" then
-        -- Teclas da vitória
-        if key == "space" then
-            replayRun()
-        elseif key == "escape" then
-            returnToMenu()
-        end
+    elseif currentState == "gameOver" or currentState == "victory" then
+        -- Telas finais: navegação MenuKit (setas/Enter/ESC) + R = de novo.
+        -- As ações são os callbacks de EndScreens.setCallbacks.
+        EndScreens.keypressed(key)
     end
 end
 
@@ -2415,7 +2431,9 @@ function love.gamepadpressed(joystick, button)
         leftshoulder = "pageup", rightshoulder = "pagedown",
     })[button]
     if not key then return end
-    if require("src.ui.InputFocus").captor() then
+    if require("src.ui.InputFocus").captor()
+        or currentState == "gameOver" or currentState == "victory" then
+        -- Telas finais navegam como modal (EndScreens via love.keypressed).
         love.keypressed(key)
     elseif (button == "start" or button == "back") and _G.togglePauseMenu
         and (currentState == "playing" or currentState == "mapSelection"
@@ -2458,6 +2476,8 @@ function love.mousereleased(x, y, button)
         achievementsScreen:mousereleased(x, y, button)
     elseif currentState == "credits" then
         _G.creditsScreen:mousereleased(x, y, button)
+    elseif currentState == "gameOver" or currentState == "victory" then
+        EndScreens.mousereleased(x, y, button)
     end
 end
 
@@ -2524,6 +2544,8 @@ function love.mousepressed(x, y, button)
         achievementsScreen:mousepressed(x, y, button)
     elseif currentState == "credits" then
         _G.creditsScreen:mousepressed(x, y, button)
+    elseif currentState == "gameOver" or currentState == "victory" then
+        EndScreens.mousepressed(x, y, button)
     end
 end
 

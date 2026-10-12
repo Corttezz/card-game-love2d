@@ -441,18 +441,32 @@ function RunManager:advanceFloorInAct(totalActs)
     self.currentRun.floorInAct = self.currentRun.floorInAct + 1
     self.currentRun.currentFloor = self.currentRun.currentFloor + 1
 
+    local status = "advanced"
     if self.currentRun.floorInAct > MapManager.FLOORS_PER_ACT then
         if self.currentRun.actNumber >= totalActs then
+            -- Ja estava no "ato endless": e so mais um ciclo de 8 andares
+            -- (antes repetia "endless_start" e o aviso de desbloqueio a cada
+            -- chefe do endless).
+            local jaEndless = self.currentRun.actNumber > totalActs
             self.currentRun.endlessMode = true
             self.currentRun.floorInAct = 1
             self.currentRun.actNumber = totalActs + 1 -- "ato endless"
-            return "endless_start"
+            status = jaEndless and "endless_cycle" or "endless_start"
+        else
+            self.currentRun.actNumber = self.currentRun.actNumber + 1
+            self.currentRun.floorInAct = 1
+            status = "act_complete"
         end
-        self.currentRun.actNumber = self.currentRun.actNumber + 1
-        self.currentRun.floorInAct = 1
-        return "act_complete"
     end
-    return "advanced"
+    -- Andar ABSOLUTO do endless (1 = primeiro depois do ultimo chefe). Lido
+    -- pelo ActSystem (expoente), ScoreSystem, UnlockSystem (XP) e tela final;
+    -- antes nada escrevia este campo. Mesma conta do
+    -- AchievementSystem.endlessFloor.
+    if self.currentRun.endlessMode then
+        self.currentRun.floorsInEndless = math.max(0,
+            (self.currentRun.currentFloor or 0) - totalActs * MapManager.FLOORS_PER_ACT)
+    end
+    return status
 end
 
 function RunManager:getCurrentNode()

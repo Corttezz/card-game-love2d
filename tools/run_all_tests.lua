@@ -54,7 +54,10 @@ local SUITES = {
     { group = "unit",  name = "test_confirm_dialog" },
     { group = "unit",  name = "test_credits" },
     { group = "unit",  name = "test_lifecycle" },
+    { group = "unit",  name = "test_saveflow" },
     { group = "unit",  name = "test_save_integrity" },
+    { group = "unit",  name = "test_endless" },
+    { group = "unit",  name = "test_end_screens" },
     { group = "valid", name = "check_event_i18n" },
     { group = "valid", name = "audit_feedback" },
     -- Smoke de sistema (pré-existentes)

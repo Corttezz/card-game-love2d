@@ -27,7 +27,10 @@ end
 -- Calcula (health, damage) para um inimigo segundo (act, floor, nodeType).
 -- floorInAct: 1..act.floors. Em endless, floorInAct funciona como contador de
 -- andares dentro do endless (1, 2, 3, ...).
-function ActSystem.getEnemyStats(actNumber, floorInAct, nodeType)
+-- endlessFloor (opcional): andar ABSOLUTO do endless (run.floorsInEndless).
+-- O floorInAct volta a 1 a cada ciclo de 8 andares; sem este argumento o
+-- expoente zerava a cada chefe do endless e a dificuldade nao crescia.
+function ActSystem.getEnemyStats(actNumber, floorInAct, nodeType, endlessFloor)
     nodeType = nodeType or "battle"
     local act, isEndless = ActSystem.getActConfig(actNumber)
     if not act then return { health = 20, damage = 5, kind = "battle" } end
@@ -53,7 +56,7 @@ function ActSystem.getEnemyStats(actNumber, floorInAct, nodeType)
     -- Endless multiplier (exponencial sobre base do ato 3)
     if isEndless then
         local mul = Config.Endless.scalingMultiplier or 1.18
-        local expFloors = math.max(0, floorInAct - 1)
+        local expFloors = math.max(0, (endlessFloor or floorInAct) - 1)
         local factor = mul ^ expFloors
         hp  = math.floor(hp * factor)
         dmg = math.floor(dmg * factor)

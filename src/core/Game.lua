@@ -1412,6 +1412,12 @@ function Game:enemyTurn()
     -- Turno 8+ o inimigo ganha +2 de dano por turno, ATE +10 total (teto;
     -- autoplay A4: sem teto virava sentenca). E mudanca de ESTADO: beat longo.
     self.battleTurn = (self.battleTurn or 0) + 1
+    -- Turnos da RUN inteira (resumo da tela final). Vive na run pra viajar
+    -- no save — o battleTurn zera a cada batalha.
+    if self.isRunMode and self.runManager and self.runManager.currentRun then
+        local r = self.runManager.currentRun
+        r.turnsTotal = (r.turnsTotal or 0) + 1
+    end
     if self.battleTurn >= 8 and self.battleTurn < 13 then
         CombatBeats.push("enemy.fury", beat(function()
             self.enemy.baseDamage = self.enemy.baseDamage + 2
@@ -1923,7 +1929,8 @@ function Game:nextPhase()
     if self.isRunMode and self.runManager:hasActiveRun() then
         local run = self.runManager.currentRun
         local nodeType = (run.currentNode and run.currentNode.type) or "battle"
-        local stats = ActSystem.getEnemyStats(run.actNumber, run.floorInAct, nodeType)
+        local stats = ActSystem.getEnemyStats(run.actNumber, run.floorInAct, nodeType,
+            run.endlessMode and run.floorsInEndless or nil)
         self.enemy = Enemy:new(stats.health, stats.damage)
         -- (P0.0 Jul/2026: scoreSystem:startBattle + applyClassBattleStartPassive
         -- DUPLICADOS aqui foram removidos — a passiva rodava 2x por batalha em
@@ -2068,7 +2075,8 @@ function Game:resumeRun()
 
     -- Inimigo do andar salvo (mesma receita do nextPhase run-mode):
     local nodeType = (run.currentNode and run.currentNode.type) or "battle"
-    local stats = ActSystem.getEnemyStats(run.actNumber, run.floorInAct, nodeType)
+    local stats = ActSystem.getEnemyStats(run.actNumber, run.floorInAct, nodeType,
+        run.endlessMode and run.floorsInEndless or nil)
     self.enemy = Enemy:new(stats.health, stats.damage)
     self.battleTurn = 0
     self.scoreSystem:startBattle()
@@ -2104,10 +2112,18 @@ function Game:checkGameOver()
             -- Perfil: registra a derrota UMA vez (mesmo guard do save).
             local run = self.runManager.currentRun
             local PS = require("engine.ProfileStats")
-            -- Meta-progressão ANTES do recordDefeat (que mexe no perfil).
-            self.unlockResult = UnlockSystem.onRunEnded(self:_unlockSummary(false))
-            PS.recordDefeat(run and run.actNumber, run and run.floorInAct)
-            PS.updateBestScore(self.score)
+            if run and run.campaignWon then
+                -- Morte no ENDLESS: a vitória já foi contada ao matar o
+                -- chefe final. Aqui só entra o XP dos andares extras e o
+                -- recorde — contar uma derrota faria a mesma run valer
+                -- vitória E derrota no perfil (runs = wins + losses).
+                self:_recordEndlessEnd()
+            else
+                -- Meta-progressão ANTES do recordDefeat (que mexe no perfil).
+                self.unlockResult = UnlockSystem.onRunEnded(self:_unlockSummary(false))
+                PS.recordDefeat(run and run.actNumber, run and run.floorInAct)
+                PS.updateBestScore(self.score)
+            end
         end
         return true
     end
@@ -2127,12 +2143,56 @@ function Game:abandonRun()
     end
     self._saveDeleted = true
     local run = self.runManager.currentRun
-    if run then
+    if run and run.campaignWon then
+        self:_recordEndlessEnd()
+    elseif run then
         local PS = require("engine.ProfileStats")
         self.unlockResult = UnlockSystem.onRunEnded(self:_unlockSummary(false))
         PS.recordDefeat(run.actNumber, run.floorInAct)
     end
     self.runManager:deleteSave()
+end
+
+-- Fim de uma run que JÁ VENCEU a campanha e seguiu no endless (morte ou
+-- abandono). A vitória foi registrada uma vez em checkVictory; aqui só o XP
+-- dos andares extras (computeRunXP: endless sem vitória = só o excedente) e
+-- o recorde de pontuação.
+function Game:_recordEndlessEnd()
+    local PS = require("engine.ProfileStats")
+    self.unlockResult = UnlockSystem.onRunEnded(self:_unlockSummary(false))
+    PS.updateBestScore(self.score)
+end
+
+-- "Continuar no Endless" da tela de vitória (StS/Balatro): a run segue viva
+-- depois do chefe final. SÓ vale depois de a vitória estar registrada
+-- (defect_doctrine 14: endlessMode desliga checkVictory — ligá-lo antes da
+-- vitória contar deixaria o jogo invencível). Não avança andar nem abre mapa:
+-- quem chama (main.lua) segue pro cash out → recompensa → encruzilhada, e é o
+-- advanceFloorInAct que leva a run pro primeiro andar do endless.
+function Game:enterEndless()
+    if not (self.isRunMode and self.runManager and self.runManager:hasActiveRun()) then
+        return false
+    end
+    local run = self.runManager.currentRun
+    if not run.campaignWon or run.endlessMode then return false end
+    run.endlessMode = true
+    run.floorsInEndless = 0
+    -- A run voltou a ser jogável: checkpointRun recusa gameState "victory".
+    self.gameState = "playing"
+    self._victoryRecorded = false
+    self.unlockResult = nil
+    return true
+end
+
+-- Relógio da run (resumo da tela final). Só conta com a run em jogo: menu,
+-- seleção de classe e as telas finais não são tempo de jogo.
+local CLOCK_IDLE = { menu = true, classSelection = true, gameOver = true,
+                     victory = true }
+function Game:tickRunClock(dt, state)
+    if not self.isRunMode or CLOCK_IDLE[state or ""] then return end
+    local run = self.runManager and self.runManager.currentRun
+    if not run or self.gameState ~= "playing" then return end
+    run.playSeconds = (run.playSeconds or 0) + (dt or 0)
 end
 
 -- Resumo da run pro UnlockSystem.onRunEnded (XP de maestria + marcos).
@@ -2151,8 +2211,9 @@ end
 
 function Game:checkVictory()
     -- Em run mode: vitoria so acontece ao matar boss do ato final (nao endless).
-    -- A transicao pra endless e disparada em advanceFloorInAct; checkVictory so
-    -- retorna true na primeira vez que o player bate o boss do ultimo ato.
+    -- O endless so liga DEPOIS daqui, pela escolha do jogador na tela de
+    -- vitoria (Game:enterEndless); checkVictory so retorna true na primeira
+    -- vez que o player bate o boss do ultimo ato.
     if self.isRunMode and self.runManager:hasActiveRun() then
         local run = self.runManager.currentRun
         if run.endlessMode then return false end
@@ -2166,6 +2227,9 @@ function Game:checkVictory()
             -- Perfil: registra vitória UMA vez por run.
             if not self._victoryRecorded then
                 self._victoryRecorded = true
+                -- Marca NA RUN (viaja no save): se ela seguir pro endless,
+                -- morte/abandono lá não contam outra vitória nem uma derrota.
+                run.campaignWon = true
                 local PS = require("engine.ProfileStats")
                 -- Meta-progressão ANTES do recordVictory (que mexe no perfil).
                 self.unlockResult = UnlockSystem.onRunEnded(self:_unlockSummary(true))
@@ -2174,7 +2238,8 @@ function Game:checkVictory()
                 -- Vitória ENCERRA a run em disco (a derrota já fazia isso no
                 -- checkGameOver). Sem isto o menu seguia oferecendo
                 -- "Continuar" e devolvia o jogador ao chefe final — e cada
-                -- replay contava outra vitória no perfil.
+                -- replay contava outra vitória no perfil. "Continuar no
+                -- Endless" volta a salvar (Game:enterEndless + encruzilhada).
                 if self.runManager.deleteSave then self.runManager:deleteSave() end
                 -- F4: conquistas de vitória (deck, classes, restrições).
                 AchievementSystem.onVictory(self)

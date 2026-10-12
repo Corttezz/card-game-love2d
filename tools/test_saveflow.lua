@@ -19,6 +19,7 @@ local function okp(cond, msg)
 end
 
 function M.run()
+    M._failed = false
     local I18n = require("src.i18n.I18n")
     I18n.init()
     local Game = require("src.core.Game")
@@ -94,7 +95,9 @@ function M.run()
 
     SaveManager.deleteRun()
     print(M._failed and "=== RESULTADO: FALHOU ===" or "=== RESULTADO: TUDO OK ===")
-    love.event.quit(M._failed and 1 or 0)
+    -- Devolve o resultado (contrato do run_all_tests) em vez de fechar o
+    -- processo: com love.event.quit aqui, a suite inteira parava neste teste.
+    return not M._failed
 end
 
 return M
