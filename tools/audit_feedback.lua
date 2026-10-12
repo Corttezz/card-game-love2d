@@ -72,9 +72,12 @@ local SOURCES = {
 -- Funcoes cujo corpo NAO e um if-chain por tipo, mas cujo feedback pertence a
 -- tipos especificos. Atribuicao explicita e declarada.
 local FUNCTION_ATTRIBUTION = {
+    -- Out/2026 (previa de dano): a CONTA dos coringas foi pro nucleo puro
+    -- EffectSystem:jokerSteps (sem feedback, por definicao); o proc/toast de
+    -- cada entrada — Eco incluso — sai daqui.
     ["EffectSystem:applyJokerEffects"] = {
         "damage_multiplier", "defense_multiplier",
-        "damage_bonus", "defense_bonus",
+        "damage_bonus", "defense_bonus", "echo_first_attack",
     },
 }
 
