@@ -610,6 +610,7 @@ function OrbRow.draw(game, panelX, panelY)
 
         -- Hover → tooltip com números exatos (stacks=pulso, duration=evoke —
         -- reuso do StatusTooltip; as descs de status.orb_* nomeiam os campos).
+        require("src.ui.NavCursor").target("orb:" .. tostring(x), x, y, SIZE, cellHeight())   -- foco = hover (pad)
         if mx >= x and mx <= x + SIZE and my >= y and my <= y + cellHeight() then
             if orb then
                 StatusTooltip.show("orb_" .. orb.type, mx, my, {

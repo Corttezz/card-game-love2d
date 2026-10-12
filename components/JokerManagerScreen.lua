@@ -204,6 +204,7 @@ function JokerManagerScreen:draw()
     -- X fechar
     do
         local cx, cy, cw, ch = self:_closeRect()
+        require("src.ui.NavCursor").target("close", cx, cy, cw, ch)
         local mx, my = love.mouse.getPosition()
         local hot = mx >= cx and mx <= cx + cw and my >= cy and my <= cy + ch
         Palette.set(hot and Palette.BLOOD or Palette.PANEL_FILL)
@@ -264,6 +265,8 @@ function JokerManagerScreen:draw()
         if ty + CARD_H > gridTop and ty < gridTop + gridH then
             self._cardRects[#self._cardRects + 1] =
                 { index = inst._ownedIndex, x = tx, y = ty, w = CARD_W, h = CARD_H }
+            -- foco de teclado/pad (NavCursor): o coringa da grade
+            require("src.ui.NavCursor").target("joker:" .. tostring(inst._ownedIndex), tx, ty, CARD_W, CARD_H)
             if mouseInGrid and mx >= tx and mx < tx + CARD_W
                 and my >= ty and my < ty + CARD_H then
                 hovered, hx, hy = inst, tx, ty

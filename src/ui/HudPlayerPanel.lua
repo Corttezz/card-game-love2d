@@ -265,7 +265,8 @@ function HudPlayerPanel:drawPassiveChip(game)
             math.floor(cy + (chip - (icon.size.h or icon.size.w) * s) / 2), s)
     end
 
-    -- hover → tooltip explicando a passiva
+    -- hover → tooltip explicando a passiva (foco do pad também: NavCursor)
+    require("src.ui.NavCursor").target("hud:passive", cx, cy, chip, chip)
     local mx, my = love.mouse.getPosition()
     if mx >= cx and mx <= cx + chip and my >= cy and my <= cy + chip then
         StatusTooltip.show("passive_" .. game.selectedClass, mx, my)

@@ -268,6 +268,8 @@ function StatusPill.drawRow(effects, startX, startY, opts)
             showStacksAlways = showStacks,
         }
         StatusPill.render(eff.name, x, startY, pillOpts)
+        -- tooltip alcançável pelo teclado/pad: foco = hover (NavCursor)
+        require("src.ui.NavCursor").target("pill:" .. tostring(opts.navPrefix or "") .. eff.name, x, startY, size, size)
 
         -- Hover → tooltip
         if mx >= x and mx <= x + size and my >= startY and my <= startY + size then

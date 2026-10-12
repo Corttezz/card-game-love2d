@@ -275,6 +275,7 @@ function DeckViewerScreen:draw()
     -- botão X (fechar)
     do
         local cx, cy, cw, ch = self:_closeRect()
+        require("src.ui.NavCursor").target("close", cx, cy, cw, ch)
         local mx, my = love.mouse.getPosition()
         -- Modal de inspeção aberto suprime o hover do X (igual ao grid) — o
         -- botão acendia POR BAIXO da carta ampliada.
@@ -321,6 +322,8 @@ function DeckViewerScreen:draw()
         if ty + CARD_H > gridTop and ty < gridTop + gridH then
             self._cardRects[#self._cardRects + 1] =
                 { i = i, x = tx, y = ty, w = CARD_W, h = CARD_H }
+            -- foco de teclado/pad (NavCursor): a carta da grade
+            require("src.ui.NavCursor").target("deck:" .. i, tx, ty, CARD_W, CARD_H)
             if mouseInGrid and mx >= tx and mx < tx + CARD_W
                 and my >= ty and my < ty + CARD_H then
                 hovered, hx, hy = inst, tx, ty

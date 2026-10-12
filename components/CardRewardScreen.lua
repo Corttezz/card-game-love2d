@@ -2069,6 +2069,10 @@ function CardRewardScreen:draw()
                 -- montada". Agora a mesma curva easeOutBack os traz, crescendo
                 -- a partir do CENTRO do slot. O hop/juice do hover compõe aqui.
                 local fx = self:_slotFx(slot)
+                -- relíquia/pacote: alvo do foco de teclado/pad (NavCursor); a
+                -- carta se registra sozinha no Card:draw
+                require("src.ui.NavCursor").target("offer:" .. slot, pos.x, pos.y,
+                    pos.w or self.cardWidth, pos.h or self.cardHeight)
                 local s = scale * Moveable.scaleFactor(fx) * Moveable.swellFactor(fx)
                 local lift = Moveable.hopOffset(fx)
                 local w = pos.w or self.cardWidth
@@ -2121,6 +2125,11 @@ function CardRewardScreen:draw()
 
     if self.refreshButton then
         self.refreshButton:draw()
+        -- X/Q do teclado/pad = Novas ofertas (glifo no canto do botão)
+        local rb = self.refreshButton
+        require("src.ui.NavCursor").action("x", function()
+            if rb.visible ~= false and not rb.disabled and rb.onClick then rb.onClick() end
+        end, rb.x, rb.y, rb.width, rb.height)
     end
     if self.diceButton then self.diceButton:draw() end
 
@@ -2268,6 +2277,7 @@ function CardRewardScreen:_drawShopHeader(px, py, pw)
     Palette.set(Palette.AGED_GOLD_LIGHT)
     love.graphics.setFont(FontManager.getFont(10))
     love.graphics.print("?", hx - 3, hy - 7)
+    require("src.ui.NavCursor").target("rules", hx - hr - 3, hy - hr - 3, hr * 2 + 6, hr * 2 + 6)   -- foco = hover
     local mx, my = love.mouse.getPosition()
     local myLocal = my - (self.slideOffsetY or 0)
     if mx >= hx - hr - 3 and mx <= hx + hr + 3
@@ -2349,6 +2359,7 @@ function CardRewardScreen:_drawRewardsBanner()
     Palette.set(Palette.AGED_GOLD_LIGHT)
     love.graphics.setFont(FontManager.getFont(11))
     love.graphics.print("?", hx - 3, hy - 8)
+    require("src.ui.NavCursor").target("rules", hx - hr - 3, hy - hr - 3, hr * 2 + 6, hr * 2 + 6)   -- foco = hover
     local mx, my = love.mouse.getPosition()
     local myLocal = my - (self.slideOffsetY or 0)
     if mx >= hx - hr - 3 and mx <= hx + hr + 3

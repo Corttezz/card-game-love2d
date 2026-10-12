@@ -308,6 +308,11 @@ function MapScreen:draw()
         end
     end
 
+    -- foco de teclado/pad (NavCursor): cada painel de node é um alvo
+    for i, r in ipairs(self.panelRects or {}) do
+        require("src.ui.NavCursor").target("node:" .. i, r.x, r.y, r.w, r.h)
+    end
+
     -- Sem faixa de dica no rodapé (pedido do dono, Out/2026: textos
     -- informativos poluíam a tela). Os marcos já se explicam no hover e as
     -- teclas 1/2/3 continuam funcionando — ver HintBar.ENABLED.

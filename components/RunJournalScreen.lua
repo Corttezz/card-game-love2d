@@ -468,6 +468,7 @@ function RunJournalScreen:_drawHeader(L)
     -- botão fechar
     local mx, my = love.mouse.getPosition()
     local cx, cy, cw, ch = self:_closeRect()
+    require("src.ui.NavCursor").target("close", cx, cy, cw, ch)   -- foco de teclado/pad
     local hot = mx >= cx and mx <= cx + cw and my >= cy and my <= cy + ch
     setAlpha(hot and Palette.BLOOD or Palette.PANEL_FILL, 1)
     love.graphics.rectangle("fill", cx, cy, cw, ch, 4, 4)

@@ -160,6 +160,8 @@ end
 
 function CursorManager.draw()
     if not loaded then return end
+    -- navegação por teclado/pad: o anel de foco é o cursor (src/ui/NavCursor)
+    if require("src.ui.NavCursor").isActive() then return end
     -- sem foco do mouse na janela: não desenha (o SO mostra o cursor dele)
     if love.window and love.window.hasMouseFocus
        and not love.window.hasMouseFocus() then

@@ -208,6 +208,8 @@ end
 -- StatusTooltip (show() agenda; main.lua desenha no fim do frame, por cima).
 -- Chamar ANTES de desenhar o conteúdo do bloco (o highlight fica por baixo).
 function TopBar:_hoverZone(x0, w, tipName, ctx)
+    -- cada bloco com dica é alvo do foco do teclado/pad (foco = hover)
+    require("src.ui.NavCursor").target("topbar:" .. tostring(tipName), x0, 0, w, self.height)
     local mx, my = love.mouse.getPosition()
     local hovered = mx >= x0 and mx <= x0 + w and my >= 0 and my <= self.height
     if hovered then
@@ -225,6 +227,7 @@ end
 
 function TopBar:draw()
     if not self.visible then return end
+    self:_navTargets()
 
     local screenWidth = love.graphics.getWidth()
 
@@ -406,6 +409,16 @@ function TopBar:drawGameInfo()
     end
 
     love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- Alvo do foco de teclado/pad (src/ui/NavCursor): a engrenagem — o MESMO
+-- retângulo do hit-test do clique (mousepressed).
+function TopBar:_navTargets()
+    -- (ouro/deck/pontos/roteiro registram no _hoverZone: o MESMO bloco do
+    -- clique e da dica)
+    local NavCursor = require("src.ui.NavCursor")
+    local cx, cy, sz = self:_getConfigRect()
+    NavCursor.target("topbar:gear", cx - 4, cy - 4, sz + 8, sz + 8)
 end
 
 function TopBar:_getConfigRect()

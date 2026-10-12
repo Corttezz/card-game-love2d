@@ -372,6 +372,8 @@ end
 
 local function drawJokersAsCards()
     local g = jokerFrameGeometry()
+    -- o quadro abre o Gerenciador de Coringas: alvo do foco (NavCursor)
+    require("src.ui.NavCursor").target("jokerFrame", g.x, g.y, g.w, g.h)
     local mx, my = love.mouse.getPosition()
     local frameHot = mx >= g.x and mx <= g.x + g.w and my >= g.y and my <= g.y + g.h
 
@@ -468,6 +470,18 @@ function GameplayScene._drawWorldOnlyReal(topBarHeight)
     -- LightEngine v1: luz + fork overlay (marks/pills DEPOIS do composite —
     -- este é o caminho do estado mapSelection, onde o fork está ativo)
     WorldRoad.drawOverlays(0, topBarHeight, width, height - topBarHeight)
+    -- encruzilhada: cada marco é alvo do foco de teclado/pad (NavCursor) —
+    -- a hitbox é a mesma do clique (WorldRoad.forkMousePressed)
+    local f = WorldRoad._fork
+    if f and f.markBoxes then
+        for i = 1, (f.n or 3) do
+            local b = f.markBoxes[i]
+            if b then
+                require("src.ui.NavCursor").target("fork:" .. i, b.x1, b.y1,
+                    b.x2 - b.x1, b.y2 - b.y1)
+            end
+        end
+    end
 end
 
 -- Tamanho do chefe no salão (Out/2026, dono: "em tela cheia os bosses não
@@ -749,6 +763,8 @@ function GameplayScene.draw()
         card.isSelected = game:isCardSelected(card)
         -- descrição AO LADO da carta em hover (ver STAGE_CLEARANCE)
         card.tooltipSide = true
+        -- LB/RB do pad andam DENTRO da mão (NavCursor.cycle)
+        card.navGroup = "hand"
         if card.isSelected then offsetY = -100 * handScale() end
         local rIdx = renderIdxFor(i)
         local tx = cardStartX + (rIdx - 1) * cardSpacing
@@ -808,6 +824,24 @@ function GameplayScene.draw()
     if smokeSystem and not roadOutdoor then smokeSystem:draw() end
     playButton:draw()
     if endTurnButton then endTurnButton:draw() end
+    -- Ações de contexto do teclado/pad (NavCursor): Y/E joga a seleção,
+    -- X/Q encerra o turno — o glifo mora no canto do próprio botão.
+    do
+        local NavCursor = require("src.ui.NavCursor")
+        local function press(btn)
+            return function()
+                if btn and btn.visible ~= false and not btn.disabled and btn.onClick then
+                    btn.onClick()
+                end
+            end
+        end
+        NavCursor.action("y", press(playButton), playButton.x, playButton.y,
+            playButton.width, playButton.height)
+        if endTurnButton then
+            NavCursor.action("x", press(endTurnButton), endTurnButton.x, endTurnButton.y,
+                endTurnButton.width, endTurnButton.height)
+        end
+    end
 
     -- PREVIA DE DANO (Out/2026): banda de ACAO da coluna direita, colada em
     -- cima do JOGAR — o numero que o clique vai produzir mora no botao que o

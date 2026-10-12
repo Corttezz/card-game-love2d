@@ -510,6 +510,7 @@ local function drawTitleAndFilters(self)
             love.graphics.setColor(Palette.INK[1], Palette.INK[2], Palette.INK[3], 0.6)
         end
         love.graphics.rectangle("fill", tabX, tabY, w, 28, 4, 4)
+        require("src.ui.NavCursor").target("filter:" .. f.id, tabX, tabY, w, 28)   -- foco teclado/pad
         love.graphics.setColor(Palette.PARCHMENT_DARK)
         love.graphics.rectangle("line", tabX, tabY, w, 28, 4, 4)
         love.graphics.setColor(active and Palette.INK or Palette.PARCHMENT_LIGHT)
@@ -1054,6 +1055,15 @@ function CollectionScreen:draw()
             end
         end
     end
+    -- foco de teclado/pad (NavCursor): a posição de GRADE de cada carta (a
+    -- mesma do hit-test do clique), recortada pelo scissor da grade
+    do
+        local NavCursor = require("src.ui.NavCursor")
+        for i in ipairs(self.filtered) do
+            local cx, cy = cardRect(i)
+            NavCursor.target("col:" .. i, cx, cy - self.scrollY, CARD_W, CARD_H)
+        end
+    end
     love.graphics.setScissor()
 
     -- Hovered card por cima com warp ativo
@@ -1090,6 +1100,7 @@ function CollectionScreen:draw()
     -- Fechar (X) no canto superior direito
     if not self.inspectedCard then
         local cx, cy, cw, ch = closeRect()
+        require("src.ui.NavCursor").target("close", cx, cy, cw, ch)
         local mx, my = love.mouse.getPosition()
         local hot = inRect(mx, my, cx, cy, cw, ch)
         Palette.set(hot and Palette.BLOOD or Palette.PANEL_FILL)

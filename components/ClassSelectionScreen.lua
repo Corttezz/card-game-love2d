@@ -689,6 +689,12 @@ function ClassSelectionScreen:draw()
 
     for _, p in ipairs(self.panels) do
         self:_drawClassPanel(p)
+        -- o painel é um Button invisível que não se desenha: registra o
+        -- alvo do foco de teclado/pad (NavCursor) aqui
+        local b = p.btn
+        if b and b.visible ~= false and not b.disabled then
+            require("src.ui.NavCursor").target(b, b.x, b.y, b.width, b.height)
+        end
     end
 
     -- faíscas da escolha (por cima dos painéis)

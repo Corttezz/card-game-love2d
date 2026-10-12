@@ -443,6 +443,7 @@ function EnemyHud.drawIntent(enemy, cx, topY, boxXOverride, boxYOverride, player
 
     -- Hover no box → tooltip com o NOME do golpe e o que ele faz, montado dos
     -- números congelados (intentSpec). Clareza total.
+    require("src.ui.NavCursor").target("enemy:intent", boxX, boxY, boxW, boxH)   -- foco = hover (pad)
     do
         local mx, my = love.mouse.getPosition()
         if mx >= boxX and mx <= boxX + boxW and my >= boxY and my <= boxY + boxH then

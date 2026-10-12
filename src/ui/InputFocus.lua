@@ -62,6 +62,11 @@ local stack    = {}   -- pilha de camadas de despacho
 
 -- Estado do patch de mouse (ver installMouseGate).
 local rawGetPosition, mapToContent, wrapper
+-- Navegação por teclado/pad (src/ui/NavCursor): no modo foco, o "mouse" é o
+-- centro do alvo focado — hover/tooltip/lift reagem ao foco sem mudar nada.
+local positionOverride
+
+function InputFocus.setPositionOverride(fn) positionOverride = fn end
 
 --==========================================================================
 -- Registro
@@ -279,6 +284,10 @@ function InputFocus.installMouseGate(screenToContent, rawFn)
     wrapper = function()
         local x, y = rawGetPosition()
         if mapToContent then x, y = mapToContent(x, y) end
+        if positionOverride then
+            local ox, oy = positionOverride()
+            if ox then x, y = ox, oy end
+        end
         return InputFocus.gate(x, y)
     end
 
