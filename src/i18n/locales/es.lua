@@ -550,13 +550,6 @@ return {
             mystery        = "efecto misterioso",
             remove_choice  = "elimina {n} carta A TU ELECCIÓN",
             remove_random  = "{n} carta AL AZAR del mazo",
-        },
-
-        altar_proibido = {
-            title      = "Altar Prohibido",
-            body       = "Un altar de piedra late con energía oscura. Una voz susurra: 'entrega tu sangre...'",
-            opt1       = "Sacrificar sangre",
-            opt2       = "Marcharse",
             transform_random = "transformar {n}",
             forge_random_n = "{n} forjas al azar",
             chance_card_rare = "{pct}% carta RARA",
@@ -695,6 +688,13 @@ return {
             r_no_forge = "Ninguna carta admite más forja.",
             r_read = "Las palabras cambian: '{old}' se convirtió en '{new}'.",
             r_too_small = "Tu grimorio es demasiado pequeño.",
+        },
+
+        altar_proibido = {
+            title      = "Altar Prohibido",
+            body       = "Un altar de piedra late con energía oscura. Una voz susurra: 'entrega tu sangre...'",
+            opt1       = "Sacrificar sangre",
+            opt2       = "Marcharse",
             r_got_rare = "Has obtenido una carta rara.",
             r_leave    = "Sigues adelante, ileso.",
             r_silent   = "El altar enmudece.",

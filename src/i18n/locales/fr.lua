@@ -551,13 +551,6 @@ return {
             mystery        = "effet mystérieux",
             remove_choice  = "retirez {n} carte DE VOTRE CHOIX",
             remove_random  = "{n} carte AU HASARD du deck",
-        },
-
-        altar_proibido = {
-            title      = "Autel Interdit",
-            body       = "Un autel de pierre palpite d'une énergie sombre. Une voix murmure : 'donne ton sang...'",
-            opt1       = "Sacrifier son sang",
-            opt2       = "S'en aller",
             transform_random = "transformer {n}",
             forge_random_n = "{n} forges au hasard",
             chance_card_rare = "{pct}% carte RARE",
@@ -696,6 +689,13 @@ return {
             r_no_forge = "Aucune carte ne peut plus être forgée.",
             r_read = "Les mots changent : « {old} » devient « {new} ».",
             r_too_small = "Votre grimoire est trop petit.",
+        },
+
+        altar_proibido = {
+            title      = "Autel Interdit",
+            body       = "Un autel de pierre palpite d'une énergie sombre. Une voix murmure : 'donne ton sang...'",
+            opt1       = "Sacrifier son sang",
+            opt2       = "S'en aller",
             r_got_rare = "Vous obtenez une carte rare.",
             r_leave    = "Vous poursuivez, indemne.",
             r_silent   = "L'autel se tait.",

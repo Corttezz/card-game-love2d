@@ -536,13 +536,6 @@ return {
             mystery        = "mysterious effect",
             remove_choice  = "remove {n} card YOU CHOOSE",
             remove_random  = "{n} RANDOM card from your deck",
-        },
-
-        altar_proibido = {
-            title      = "Forbidden Altar",
-            body       = "A stone altar pulses with dark energy. A voice whispers: 'give me your blood...'",
-            opt1       = "Offer your blood",
-            opt2       = "Walk away",
             transform_random = "transform {n}",
             forge_random_n = "{n} random forges",
             chance_card_rare = "{pct}% RARE card",
@@ -681,6 +674,13 @@ return {
             r_no_forge = "No card can take another forge.",
             r_read = "The words shift: '{old}' became '{new}'.",
             r_too_small = "Your grimoire is too small.",
+        },
+
+        altar_proibido = {
+            title      = "Forbidden Altar",
+            body       = "A stone altar pulses with dark energy. A voice whispers: 'give me your blood...'",
+            opt1       = "Offer your blood",
+            opt2       = "Walk away",
             r_got_rare = "You gained a rare card.",
             r_leave    = "You move on, unharmed.",
             r_silent   = "The altar falls silent.",

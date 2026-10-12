@@ -551,13 +551,6 @@ return {
             mystery        = "mysteriöse Wirkung",
             remove_choice  = "entferne {n} Karte DEINER WAHL",
             remove_random  = "{n} ZUFÄLLIGE Deckkarte",
-        },
-
-        altar_proibido = {
-            title      = "Verbotener Altar",
-            body       = "Ein Steinaltar pulsiert vor dunkler Energie. Eine Stimme flüstert: 'gib dein Blut...'",
-            opt1       = "Blut opfern",
-            opt2       = "Weggehen",
             transform_random = "{n} verwandeln",
             forge_random_n = "{n} Zufallsschmiedungen",
             chance_card_rare = "{pct}% SELTENE Karte",
@@ -696,6 +689,13 @@ return {
             r_no_forge = "Keine Karte lässt sich weiter schmieden.",
             r_read = "Die Worte verändern sich: »{old}« wurde zu »{new}«.",
             r_too_small = "Dein Grimoire ist zu klein.",
+        },
+
+        altar_proibido = {
+            title      = "Verbotener Altar",
+            body       = "Ein Steinaltar pulsiert vor dunkler Energie. Eine Stimme flüstert: 'gib dein Blut...'",
+            opt1       = "Blut opfern",
+            opt2       = "Weggehen",
             r_got_rare = "Du erhältst eine seltene Karte.",
             r_leave    = "Du ziehst unversehrt weiter.",
             r_silent   = "Der Altar verstummt.",

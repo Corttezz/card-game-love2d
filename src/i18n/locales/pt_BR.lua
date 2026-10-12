@@ -557,13 +557,6 @@ return {
             mystery        = "efeito misterioso",
             remove_choice  = "remova {n} carta À SUA ESCOLHA",
             remove_random  = "{n} carta ALEATÓRIA do baralho",
-        },
-
-        altar_proibido = {
-            title      = "Altar Proibido",
-            body       = "Um altar de pedra pulsa com energia sombria. Uma voz sussurra: 'entregue seu sangue...'",
-            opt1       = "Sacrificar sangue",
-            opt2       = "Ir embora",
             transform_random = "transformar {n}",
             forge_random_n = "{n} forjas ao acaso",
             chance_card_rare = "{pct}% carta RARA",
@@ -702,6 +695,13 @@ return {
             r_no_forge = "Nenhuma carta aceita mais forja.",
             r_read = "As palavras mudam: '{old}' virou '{new}'.",
             r_too_small = "Seu grimório é pequeno demais.",
+        },
+
+        altar_proibido = {
+            title      = "Altar Proibido",
+            body       = "Um altar de pedra pulsa com energia sombria. Uma voz sussurra: 'entregue seu sangue...'",
+            opt1       = "Sacrificar sangue",
+            opt2       = "Ir embora",
             r_got_rare = "Você adquiriu uma carta rara.",
             r_leave    = "Você segue em frente, intacto.",
             r_silent   = "O altar silencia.",
