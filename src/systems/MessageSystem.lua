@@ -46,45 +46,93 @@ function MessageSystem:update(dt)
     end
 end
 
-function MessageSystem:draw()
-    -- Toasts no canto ESQUERDO (como sempre), mas ABAIXO do quadro de
-    -- coringas do combate — em y=100 eles caíam em cima das cartas dos
-    -- jokers (frame ocupa ~y 60..230; feedback Jul/2026: "manter no
-    -- canto, só descer um pouco").
-    local FontManager = require("src.ui.FontManager")
-    local font = FontManager.getFont(12)
-    love.graphics.setFont(font)
-    local y = 244
-    for i, message in ipairs(self.messages) do
-        local color = self:getColorByType(message.type)
-
-        -- Sombra do texto
-        love.graphics.setColor(0, 0, 0, message.alpha * 0.7)
-        love.graphics.print(message.text, 12, y + 2)
-
-        -- Texto principal
-        love.graphics.setColor(color[1], color[2], color[3], message.alpha)
-        love.graphics.print(message.text, 10, y)
-
-        y = y + 25
+-- Cor de destaque por tipo (filete da placa). Paleta do grimório, não RGB
+-- cru: o azul/verde saturados de antes eram outro dialeto na mesma tela.
+local function accentFor(kind)
+    local Palette = require("src.ui.Palette")
+    if kind == "error" then return Palette.lighten(Palette.BLOOD, 0.35)
+    elseif kind == "warning" then return Palette.AGED_GOLD_LIGHT
+    elseif kind == "success" then return Palette.lighten(Palette.MOSS, 0.45)
+    elseif kind == "info" then return Palette.STEEL_LIGHT
     end
+    return Palette.PARCHMENT_LIGHT
+end
+MessageSystem.accentFor = accentFor
 
-    -- Reseta cor
+-- Geometria dos toasts para a janela atual (pura: o teste/captura confere).
+-- ZONA: coluna esquerda, do pé do quadro de coringas (31.8% da altura — era
+-- o y=244 fixo em 768) até o topo da zona da mão (62%). Escala com a altura
+-- como pausa/fim de run; o texto QUEBRA dentro da placa em vez de correr
+-- pela tela (antes: texto cru 12px em x=10, sem fundo, ilegível sobre o
+-- cenário claro).
+function MessageSystem:layout()
+    local FontManager = require("src.ui.FontManager")
+    local sw, sh = love.graphics.getWidth(), love.graphics.getHeight()
+    local u = math.max(1, math.min(1.75, sh / 768))
+    local font = FontManager.getFont(math.floor(10 * u + 0.5))
+    local padX, padY, gap = math.floor(10 * u), math.floor(6 * u), math.floor(6 * u)
+    local x = math.floor(10 * u)
+    local w = math.floor(math.min(sw * 0.30, 320 * u))
+    local zoneTop, zoneBottom = math.floor(sh * 0.318), math.floor(sh * 0.62)
+    local lh = math.floor(font:getHeight() * 1.5)
+    local out, y = {}, zoneTop
+    -- mais NOVAS embaixo (ordem de chegada); se a zona encher, as mais
+    -- antigas saem primeiro (ficam fora do layout, não por cima da mão)
+    local items = {}
+    for i, m in ipairs(self.messages) do
+        local _, lines = font:getWrap(tostring(m.text), w - padX * 2 - 4)
+        items[i] = { m = m, lines = lines, h = padY * 2 + #lines * lh }
+    end
+    local total = 0
+    for _, it in ipairs(items) do total = total + it.h + gap end
+    local first = 1
+    while total - gap > zoneBottom - zoneTop and first < #items do
+        total = total - items[first].h - gap
+        first = first + 1
+    end
+    for i = first, #items do
+        local it = items[i]
+        out[#out + 1] = { m = it.m, lines = it.lines, x = x, y = y, w = w, h = it.h,
+            padX = padX, padY = padY, lh = lh }
+        y = y + it.h + gap
+    end
+    return out, font, { x = x, y = zoneTop, w = w, h = zoneBottom - zoneTop }
+end
+
+function MessageSystem:draw()
+    local Palette = require("src.ui.Palette")
+    local plates, font = self:layout()
+    love.graphics.setFont(font)
+    local reduced = _G.gameSettings and _G.gameSettings.reducedMotion
+    for _, p in ipairs(plates) do
+        local m = p.m
+        local a = m.alpha
+        -- entrada: desliza da borda nos primeiros 0,18s (só movimento —
+        -- com reducedMotion aparece no lugar, a informação é a mesma)
+        local age = self.messageDuration - m.duration
+        local slide = (reduced or age >= 0.18) and 0 or math.floor((1 - age / 0.18) * -24)
+        local x = p.x + slide
+        Palette.set(Palette.INK, 0.86 * a)
+        love.graphics.rectangle("fill", x, p.y, p.w, p.h, 3, 3)
+        Palette.set(Palette.AGED_GOLD_DARK, 0.9 * a)
+        love.graphics.rectangle("line", x + 0.5, p.y + 0.5, p.w - 1, p.h - 1, 3, 3)
+        Palette.set(accentFor(m.type), a)
+        love.graphics.rectangle("fill", x + 2, p.y + 3, 3, p.h - 6)
+        local ty = p.y + p.padY
+        for _, line in ipairs(p.lines) do
+            Palette.set(Palette.INK, 0.8 * a)
+            love.graphics.print(line, x + p.padX + 4 + 1, ty + 1)
+            Palette.set(Palette.PARCHMENT_LIGHT, a)
+            love.graphics.print(line, x + p.padX + 4, ty)
+            ty = ty + p.lh
+        end
+    end
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-function MessageSystem:getColorByType(type)
-    if type == "error" then
-        return {1, 0.3, 0.3} -- Vermelho
-    elseif type == "warning" then
-        return {1, 1, 0.3} -- Amarelo
-    elseif type == "success" then
-        return {0.3, 1, 0.3} -- Verde
-    elseif type == "info" then
-        return {0.3, 0.7, 1} -- Azul
-    else
-        return {1, 1, 1} -- Branco
-    end
+-- Legado (consumidores antigos pediam a cor RGB por tipo).
+function MessageSystem:getColorByType(kind)
+    return accentFor(kind)
 end
 
 return MessageSystem
