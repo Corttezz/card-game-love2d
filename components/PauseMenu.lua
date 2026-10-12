@@ -36,6 +36,8 @@ local MenuKit     = require("src.ui.MenuKit")
 
 local PauseMenu = {}
 PauseMenu.__index = PauseMenu
+-- navega sozinha (MenuKit): o cursor de foco do teclado/pad não toma as teclas
+PauseMenu.ownsNavigation = true
 
 -- Métricas (px). Alturas de texto são MEDIDAS em cima destas.
 local PAD          = 22     -- respiro interno do painel

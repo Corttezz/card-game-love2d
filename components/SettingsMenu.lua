@@ -42,6 +42,8 @@ local MenuKit     = require("src.ui.MenuKit")
 
 local SettingsMenu = {}
 SettingsMenu.__index = SettingsMenu
+-- navega sozinha (MenuKit): o cursor de foco do teclado/pad não toma as teclas
+SettingsMenu.ownsNavigation = true
 
 local STEP = 0.1   -- passo dos sliders (10%)
 

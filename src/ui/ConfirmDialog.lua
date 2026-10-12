@@ -121,7 +121,7 @@ end
 function ConfirmDialog.hide() close(false) end
 
 -- Objeto registrável no InputFocus (precisa de métodos com ':').
-local handle = {}
+local handle = { ownsNavigation = true }   -- navega sozinha (setas/Enter)
 function handle:isVisible() return state.visible end
 function handle:keypressed(key) return ConfirmDialog.keypressed(key) end
 function handle:mousepressed(x, y, b) return ConfirmDialog.mousepressed(x, y, b) end
