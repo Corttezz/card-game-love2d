@@ -68,9 +68,20 @@ local hurtTime = 0
 -- Chefe na tela (spriteId) quando enemy.isBoss — o update da aura precisa
 -- saber de quem emitir sem conhecer o game. Setado no draw.
 local auraId = nil
--- Descida do flutuante na MORTE (0 = no ar, 1 = pousado). Ver poseOffsetY.
+-- QUEDA do flutuante na MORTE (0 = no ar, 1 = no chão). Ver poseOffsetY.
+-- Pedido do dono (Out/2026): quem voa, quando morre, CAI — o corpo termina
+-- deitado no chão, não evaporando no ar. Era descida LINEAR de 0.7s (lia
+-- como elevador); agora é GRAVIDADE: k = (t/dur)², impacto com quique
+-- curto + poeira, e a margem de pé passa a ser a do QUADRO da death, com o
+-- mesmo FOOT_SINK de quem pisa — o cadáver afunda 2-3px no piso e fica.
 local poseSink = 0
-local POSE_SINK_DUR = 0.7
+local fallT = 0              -- s desde o início da death
+local landT = -1             -- s desde o impacto (-1 = ainda no ar)
+EnemyRenderer.FALL_DUR = 0.42
+EnemyRenderer.FALL_DUR_REDUCED = 0.18   -- reducedMotion: queda curta, sem quique
+local BOUNCE_DUR = 0.24
+local dust = {}              -- poeira do impacto (px de tela relativos ao pé)
+local lastDrawFloating = false
 -- Quanto o pé de quem PISA afunda no chão, em px de tela. O dono pediu o pé
 -- "um pouquinho mais pra baixo do chão" (Out/2026): base do sprite cravada
 -- exatamente na linha lia como pairar — o contorno escuro do pé fica por
@@ -290,6 +301,8 @@ function EnemyRenderer.resetRun()
     buffParticles = {}
     hurtTime = 0
     poseSink = 0
+    fallT, landT = 0, -1
+    dust = {}
     arrivalT = 0
     ambientParticles = {}
     ambientSpawnTimer = 0
@@ -387,11 +400,45 @@ end
 
 function EnemyRenderer.update(dt)
     if currentAnim then currentAnim:update(dt) end
-    -- morto nao paira: o flutuante desce enquanto a death toca
+    -- morto nao paira: o flutuante CAI (gravidade) enquanto a death toca
     if currentAnimName == "death" then
-        poseSink = math.min(1, poseSink + dt / POSE_SINK_DUR)
+        fallT = fallT + dt
+        local dur = reducedMotion() and EnemyRenderer.FALL_DUR_REDUCED
+            or EnemyRenderer.FALL_DUR
+        local k = math.min(1, fallT / dur)
+        poseSink = k * k
+        if k >= 1 then
+            if landT < 0 then
+                landT = 0
+                -- poeira só pra quem caiu de verdade (o apoiado já estava no chão)
+                if lastDrawFloating and not reducedMotion() then
+                    dust = {}
+                    for i = 1, 10 do
+                        local side = (i % 2 == 0) and 1 or -1
+                        dust[i] = { x = side * (0.05 + love.math.random() * 0.25),
+                                    vx = side * (0.35 + love.math.random() * 0.55),
+                                    y = 0, vy = -(10 + love.math.random() * 18),
+                                    life = 0.45 + love.math.random() * 0.3, max = 0 }
+                        dust[i].max = dust[i].life
+                    end
+                end
+            else
+                landT = landT + dt
+            end
+        end
     else
         poseSink = 0
+        fallT, landT = 0, -1
+    end
+    for i = #dust, 1, -1 do
+        local d = dust[i]
+        d.life = d.life - dt
+        d.x = d.x + d.vx * dt * 0.4
+        d.vx = d.vx * (1 - 2.5 * dt)
+        d.y = d.y + d.vy * dt
+        d.vy = d.vy + 40 * dt
+        if d.y > 0 then d.y, d.vy = 0, 0 end
+        if d.life <= 0 then table.remove(dust, i) end
     end
     if hurtTime > 0 then hurtTime = math.max(0, hurtTime - dt) end
     if arrivalT > 0 then arrivalT = math.max(0, arrivalT - dt) end
@@ -670,7 +717,24 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         footPad = curM.framePads[frameIdx]
     end
     local sink = floating and 0 or EnemyRenderer.FOOT_SINK
-    local footY = footPad * scale + sink
+    local fallBounce = 0
+    lastDrawFloating = floating
+    if floating and currentAnimName == "death" then
+        -- caindo: a margem de pé vai da do 1º quadro (no ar) pra do QUADRO
+        -- corrente da death (o cadáver deitado tem outro ponto mais baixo),
+        -- e o afundamento chega no FOOT_SINK de quem pisa ao tocar o chão.
+        local fp = curM.framePads and curM.framePads[frameIdx]
+        if fp then footPad = footPad + (fp - footPad) * poseSink end
+        sink = EnemyRenderer.FOOT_SINK * poseSink
+        -- quique curto no impacto (meia senoide amortecida); sem quique em
+        -- reducedMotion. Nunca termina acima do chão: em landT >= BOUNCE_DUR
+        -- o deslocamento é zero.
+        if landT >= 0 and landT < BOUNCE_DUR and not reducedMotion() then
+            local k = landT / BOUNCE_DUR
+            fallBounce = -math.sin(k * math.pi) * (1 - k) * ih * scale * 0.035
+        end
+    end
+    local footY = footPad * scale + sink + fallBounce
 
     -- =========================================================
     -- CAMADAS VISUAIS (aplicadas em ordem)
@@ -826,6 +890,23 @@ function EnemyRenderer.draw(game, cx, cy, opts)
                 love.graphics.ellipse("fill", shX, shY, rx, ry)
             end
         end
+    end
+
+    -- Poeira do impacto da queda: blocos do pixel da arte saindo rente ao
+    -- chão pros dois lados (fica ATRÁS do corpo caído só no meio; nas
+    -- pontas, aparece — é ali que a poeira lê).
+    if #dust > 0 then
+        local P = math.max(1, math.floor(scale + 0.5))
+        local wBody = ((curM.cw > 0) and curM.cw or iw) * scale
+        for _, d in ipairs(dust) do
+            local a = math.max(0, d.life / d.max)
+            love.graphics.setColor(0.62, 0.58, 0.52, 0.55 * a)
+            local n = (a > 0.5) and 2 or 1
+            love.graphics.rectangle("fill",
+                math.floor(cx + d.x * wBody), math.floor(cy + d.y - P * n),
+                P * n, P * n)
+        end
+        love.graphics.setColor(1, 1, 1, 1)
     end
 
     -- Aura do chefe, camada de TRÁS (círculo no chão, eclipse, metade de

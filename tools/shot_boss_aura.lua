@@ -6,6 +6,8 @@
 --
 --   love . test_one shot_boss_aura [ato|all][:hurt|:death]
 --   (ex.: `1:death` — o test_one só repassa UM argumento)
+--   SHOT_SIZE=1920x1080 muda o tamanho da janela (um setMode só).
+--   `:death` captura 6 instantes da queda/morte + boss_full_<ato>_death_last.
 --
 -- Saída no save dir: boss_aura_<ato>.png (4 recortes lado a lado) e
 -- boss_full_<ato>.png (tela inteira do 1º instante).
@@ -74,21 +76,35 @@ local function mountAndShoot(act, mode)
         EnemyRenderer.triggerDeath(game.enemy.spriteId)
     end
     local shots = {}
-    for i = 1, 4 do
-        shots[i] = render()
-        step((mode == "death") and 0.25 or 0.33)
+    if mode == "death" then
+        -- queda do flutuante: início, meio da queda, impacto, quique,
+        -- assentado e o cadáver 2s depois (não pode voltar a pairar)
+        local marks = { 0.0, 0.18, 0.32, 0.45, 0.8, 2.6 }
+        local now = 0
+        for i, m in ipairs(marks) do
+            step(m - now)
+            now = m
+            shots[i] = render()
+        end
+    else
+        for i = 1, 4 do
+            shots[i] = render()
+            step(0.33)
+        end
     end
-    shots[1]:encode("png", "boss_full_" .. act .. ".png")
+    local tag = act .. (mode and ("_" .. mode) or "")
+    shots[1]:encode("png", "boss_full_" .. tag .. ".png")
+    shots[#shots]:encode("png", "boss_full_" .. tag .. "_last.png")
 
     -- recorte em volta do chefe (centro horizontal, faixa do palco)
     local cw, ch = math.floor(w * 0.46), math.floor(h * 0.62)
     local x0 = math.floor((w - cw) / 2)
     local y0 = math.floor(h * 0.16)
-    local strip = love.image.newImageData(cw * 4 + 12, ch)
+    local strip = love.image.newImageData((cw + 4) * #shots, ch)
     for i, img in ipairs(shots) do
         strip:paste(img, (i - 1) * (cw + 4), 0, x0, y0, cw, ch)
     end
-    strip:encode("png", "boss_aura_" .. act .. (mode and ("_" .. mode) or "") .. ".png")
+    strip:encode("png", "boss_aura_" .. tag .. ".png")
     print(string.format("[shot_boss_aura] ato %d %s ok", act, tostring(game.enemy.spriteId)))
 end
 
@@ -101,6 +117,9 @@ function M.run(which, mode)
     require("src.ui.PixelCanvas").enableNearest()
     _G.EventManager = _G.EventManager or require("engine.EventManager")
     _G.Event = _G.Event or require("engine.Event")
+    -- SHOT_SIZE=1920x1080: UM setMode antes de tudo (repetido trava em tool)
+    local sw, sh = (os.getenv("SHOT_SIZE") or ""):match("^(%d+)x(%d+)$")
+    if sw then love.window.setMode(tonumber(sw), tonumber(sh)) end
     local acts = {}
     if not which or which == "all" then
         acts = { 1, 2, 3, 4, 5, 6 }

@@ -96,6 +96,18 @@ type: project
   macia arrastava pixel do pé — `TYRANT_FEET`/`MONARCH_FEET` excluídos no
   bake (pé idêntico ao quadro 0 em todos os quadros).
 
+## Queda na morte (Out/2026)
+
+Quem voa (`pose = "floating"`), quando morre, CAI: `poseSink = (t/FALL_DUR)²`
+(0.42s; reducedMotion 0.18s sem quique), quique curto + poeira no impacto, e
+a margem de pé passa a ser a do QUADRO da death com o mesmo `FOOT_SINK` de
+quem pisa — o cadáver repousa com o pixel mais baixo 2px dentro da linha de
+chão que a cena passou (salão: scene_anchors; estrada: getRoadAnchor) e fica.
+A descida linear antiga (0.7s) usava a margem do 1º quadro da death e sem
+afundar: o corpo deitado terminava acima do chão. Trava `test_enemy_fall`
+(todo flutuante × 6 salões × 3 tamanhos + estrada × 3 escalas de palco);
+prova `SHOT_SIZE=1920x1080 love . test_one shot_boss_aura 2:death`.
+
 ## Pendente
 
 - Círculo rúnico do lich: em 1024x768 a laje do salão 2 cai atrás da mão de
