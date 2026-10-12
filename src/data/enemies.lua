@@ -85,6 +85,20 @@ Enemies.ROSTER = {
             boss = { "eclipse_queen" } },
 }
 
+-- ── ESCALA DE DANO POR ATO (calibrada pela bateria do piloto, Out/2026) ─────
+-- As curvas de dano do Config.Acts foram afinadas para o kit ANTIGO, cujo
+-- golpe médio valia ~0,76× o dano base (50% ataque, 16% forte ×1,6, resto
+-- sem dano). Os kits batem em média ~1,0–1,1× e ainda debuffam — sem esta
+-- escala o guerreiro do piloto caiu de 60% para 15% de vitória (morrendo nos
+-- chefes dos atos 3-4). O começo SOBE um pouco de propósito: a auditoria
+-- mediu 0,0–0,2 de dano sofrido por turno nos atos 1-2 (zero tensão).
+Enemies.DAMAGE_SCALE_BY_ACT = { 1.15, 1.10, 0.92, 0.88, 0.84, 0.84 }
+
+-- Chefes por cima da escala do ato: a mecânica-assinatura (carga, perfurante,
+-- revoada, peste, eclipse) já é o perigo — com o dano cheio, os chefes dos
+-- atos 4-6 respondiam por ~2/3 das mortes do piloto (bateria v4, Out/2026).
+Enemies.BOSS_DAMAGE_SCALE = 0.90
+
 -- ── KITS ────────────────────────────────────────────────────────────────────
 local W, F, V = "weak", "frail", "vulnerable"
 
@@ -219,7 +233,7 @@ Enemies.KITS = {
               debuff = { name = F, duration = 2 }, every = 3 },
             { id = "essence_drain", kind = "attack", weight = 35, mult = 0.8,
               heal = 0.06, debuff = { name = F, duration = 2 } },
-            { id = "necrotic_ray",  kind = "strong", weight = 35, mult = 1.4 },
+            { id = "necrotic_ray",  kind = "strong", weight = 35, mult = 1.3 },
             { id = "bone_volley",   kind = "multi",  weight = 30, mult = 0.4, hits = 4 },
         },
     },
@@ -277,11 +291,11 @@ Enemies.KITS = {
         moves = {
             { id = "gather_flames", kind = "charge", weight = 0, armor = 1.0,
               next = "hellfire", every = 3 },
-            { id = "hellfire",      kind = "strong", weight = 0, mult = 2.4,
-              debuff = { name = "burn", stacks = 4, duration = 3 } },
+            { id = "hellfire",      kind = "strong", weight = 0, mult = 2.0,
+              debuff = { name = "burn", stacks = 3, duration = 2 } },
             { id = "abyssal_claws", kind = "attack", weight = 50, mult = 1.1 },
             { id = "cinder_spray",  kind = "multi",  weight = 50, mult = 0.4, hits = 3,
-              debuff = { name = "burn", stacks = 2, duration = 2 } },
+              debuff = { name = "burn", stacks = 2, duration = 1 } },
         },
     },
 
@@ -314,7 +328,7 @@ Enemies.KITS = {
             { id = "eternal_winter", kind = "debuff", weight = 0, armor = 1.2,
               debuff = { { name = F, duration = 2 }, { name = W, duration = 2 } },
               every = 3 },
-            { id = "winter_blade",   kind = "strong", weight = 40, mult = 0.85, pierce = true },
+            { id = "winter_blade",   kind = "strong", weight = 40, mult = 0.7, pierce = true },
             { id = "royal_blizzard", kind = "multi",  weight = 35, mult = 0.4, hits = 4 },
             { id = "frozen_crown",   kind = "attack", weight = 25, mult = 1.2 },
         },
@@ -339,15 +353,15 @@ Enemies.KITS = {
     -- longa é dele.
     rot_colossus = {
         hpMul = 1.0,
-        passive = { regenPct = 0.03 },
+        passive = { regenPct = 0.02 },
         opener = "plague_cloud",
         moves = {
             { id = "plague_cloud", kind = "debuff", weight = 25,
-              debuff = { name = "poison", stacks = 5, duration = 3 }, maxRow = 1 },
-            { id = "colossal_slam", kind = "strong", weight = 30, mult = 1.5 },
+              debuff = { name = "poison", stacks = 4, duration = 3 }, maxRow = 1 },
+            { id = "colossal_slam", kind = "strong", weight = 30, mult = 1.35 },
             { id = "putrid_blow",  kind = "attack", weight = 30, mult = 1.0,
               debuff = { name = "poison", stacks = 3, duration = 2 } },
-            { id = "regrow",       kind = "heal",   weight = 15, heal = 0.07,
+            { id = "regrow",       kind = "heal",   weight = 15, heal = 0.05,
               armor = 0.8, maxRow = 1, minTurn = 2 },
         },
     },
@@ -364,14 +378,14 @@ Enemies.KITS = {
             { id = "veil",         kind = "defend", weight = 30, armor = 1.3, maxRow = 1 },
         },
         phases = {
-            { at = 0.5, id = "eclipse", dmgMul = 1.3, opener = "total_eclipse",
+            { at = 0.5, id = "eclipse", dmgMul = 1.15, opener = "total_eclipse",
               moves = {
                   { id = "total_eclipse", kind = "debuff", weight = 0,
                     debuff = { { name = W, duration = 2 }, { name = F, duration = 2 },
                                { name = V, duration = 1 } } },
-                  { id = "black_corona",  kind = "strong", weight = 35, mult = 1.0,
+                  { id = "black_corona",  kind = "strong", weight = 35, mult = 0.7,
                     pierce = true },
-                  { id = "star_rain",     kind = "multi",  weight = 35, mult = 0.45, hits = 4 },
+                  { id = "star_rain",     kind = "multi",  weight = 35, mult = 0.4, hits = 3 },
                   { id = "void_embrace",  kind = "attack", weight = 30, mult = 1.3,
                     heal = 0.05 },
               } },

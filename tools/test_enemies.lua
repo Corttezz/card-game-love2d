@@ -229,6 +229,10 @@ function M.run()
         local poison = q:tickDebuffDots()
         t:eq("veneno no jogador tica as pilhas", poison, 4)
         t:eq("veneno ignora o Bloqueio", q.health, q.maxHealth - 4)
+        -- DoT no jogador: pilhas SOMAM, duração fica a MAIOR (não compõe).
+        q:addDebuff("poison", 1, 2)
+        t:eq("2º veneno soma pilhas", q:getDebuffStacks("poison"), 6)
+        t:eq("2º veneno não soma duração (fica a maior)", q.debuffs[1].duration, 2)
     end
     do
         -- Integração: carta de ataque com o jogador Fraco causa 75%.
@@ -328,7 +332,14 @@ function M.run()
         CombatBeats.stopTrace()
         t:eq("carga tem beat próprio", traceCount("enemy.charge"), 1)
         t:eq("depois da carga vem o Fogo Infernal", g.enemy:getIntent().id, "hellfire")
-        t:check("Fogo Infernal é o maior golpe (×2.4)", g.enemy:getIntent().perHit >= math.floor(10 * 2.4))
+        local hellMult, maxOther = 0, 0
+        for _, m in ipairs(EnemyKits.KITS.abyss_tyrant.moves) do
+            if m.id == "hellfire" then hellMult = m.mult
+            elseif (m.mult or 0) * (m.hits or 1) > maxOther then maxOther = (m.mult or 0) * (m.hits or 1) end
+        end
+        t:eq("Fogo Infernal anunciado com o multiplicador do kit",
+            g.enemy:getIntent().perHit, math.floor(10 * hellMult))
+        t:check("Fogo Infernal é o maior golpe do Tirano", hellMult > maxOther)
         runEnemyTurn(g)
         t:check("Fogo Infernal queima o jogador", g.player:getDebuffStacks("burn") > 0)
     end
@@ -347,8 +358,10 @@ function M.run()
         t:truthy("Colosso nasce com Regeneração", g.enemy:hasStatus("regen"))
         g.enemy.health = 500
         runEnemyTurn(g)
-        t:eq("Colosso regenera 3% no fim do turno", g.enemy.health, 500 + math.floor(1000 * 0.03))
-        t:check("Nuvem Pestilenta envenena o jogador", g.player:getDebuffStacks("poison") >= 5)
+        local pct = EnemyKits.KITS.rot_colossus.passive.regenPct
+        t:eq("Colosso regenera a fração do kit no fim do turno", g.enemy.health,
+            500 + math.floor(1000 * pct))
+        t:check("Nuvem Pestilenta envenena o jogador", g.player:getDebuffStacks("poison") >= 4)
     end
     do
         -- A6 Rainha: abaixo de 50% vira o ECLIPSE (beat, kit novo, dano sobe).
