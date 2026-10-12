@@ -41,7 +41,9 @@ import urllib.request
 URL = "https://api.pixellab.ai/mcp"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ENEMIES_DIR = os.path.join(ROOT, "assets/sprites/characters/enemies")
-JOBS_FILE = os.path.join(ROOT, "tools/preview_out/enemy_anim_jobs.json")
+# ENEMY_ANIM_JOBS: arquivo de jobs alternativo (2ª fábrica em paralelo)
+JOBS_FILE = os.environ.get("ENEMY_ANIM_JOBS") or os.path.join(
+    ROOT, "tools/preview_out/enemy_anim_jobs.json")
 SCRATCH = os.environ.get("ENEMY_ANIM_SCRATCH", os.path.join(ROOT, "tools/preview_out"))
 
 FRAMES_HURT = 6    # +1 de input = 7 instalados (HURT_FPS 12 ≈ 0.58s)
@@ -295,6 +297,400 @@ ENEMIES = {
                   "then flat forward, ending as a low heap of shattered "
                   "ice plates and robes on the ground"),
     },
+    # === LEVA NOVA (Out/2026, tools/pixellab_new_enemies.py) ==============
+    # Inimigos novos por ato. `keep` escrito OLHANDO o south.png escolhido.
+    "hollow_farmer": {
+        "keep": ("wide frayed straw hat, gaunt grey face with glowing "
+                 "ember eyes, patched brown tunic and torn grey apron, "
+                 "rusty wooden pitchfork held upright in its left hand"),
+        "hurt": ("takes a heavy hit and RECOILS in pain: head snaps back, "
+                 "hat brim jolting, shoulders hunch inward, free hand "
+                 "clutches its belly, it staggers a half step but KEEPS "
+                 "GRIPPING the pitchfork, never spreads its arms — then "
+                 "it settles back into its hunched stance"),
+        "death": ("the pitchfork slips from its grip and falls flat, its "
+                  "knees buckle and the gaunt body folds forward, "
+                  "collapsing face-down into a low heap of rags on the "
+                  "ground with the straw hat resting beside it"),
+    },
+    "plague_rats": {
+        # v3 não derrubava a pilha (2 tentativas terminando de pé): quadro
+        # final pinado = só a camada de baixo da própria arte (ratos de cima
+        # caem fora). Fonte: tools/preview_out/new_enemies/plague_rats/.
+        "last_frame": "tools/preview_out/new_enemies/plague_rats/death_end.png",
+        "keep": ("pile of five brown-grey plague rats stacked on each other, "
+               "bald pink tails, red beady eyes, yellow pustules on their "
+               "fur, bared yellow teeth"),
+        "hurt": ("the pile is struck hard: the whole heap of rats flinches "
+               "and squeezes inward, rats cowering and pressing together, "
+               "tails whipping, heads ducking down, the top rat nearly "
+               "slipping off, then the pile settles back into the same "
+               "heap"),
+        "death": ("the pile FALLS APART: the top rats tumble down the "
+                  "sides and every rat drops and flops over, the heap "
+                  "spreading out sideways into ONE flat layer of limp dead "
+                  "rats lying on their sides on the ground, legs up, tails "
+                  "slack, the pile less than half its original height, "
+                  "nothing stacked anymore"),
+    },
+    "blight_bull": {
+        "keep": ("huge dark brown rotting bull with long pale curved horns, "
+               "glowing orange eyes, exposed ribs on its flanks, wheat "
+               "stalks tangled in its hide, steam from the nostrils, four "
+               "hooves"),
+        "hurt": ("struck hard: the bull's head jerks down and sideways, the "
+               "massive body flinches backward, shoulders tensing, hooves "
+               "stay planted on the ground, then it lifts its head back to "
+               "the same stance"),
+        "death": ("its front legs buckle first and it drops to its knees, "
+                "then the huge body rolls heavily onto its side and lies "
+                "flat on the ground, horns resting on the ground, glowing "
+                "eyes going dark, motionless"),
+    },
+    "wicker_effigy": {
+        "keep": ("towering giant woven from dark brown wicker branches, pale "
+               "stag skull head with large branching antlers and glowing "
+               "eyes, burning ember fire inside its woven ribcage chest, "
+               "small flames on both shoulders, long woven arms with twig "
+               "claws"),
+        "hurt": ("struck hard: the woven giant rocks backward, antlered "
+               "skull jerking to the side, twigs and sparks bursting off "
+               "its shoulders, the chest fire flaring for an instant, arms "
+               "pulling inward, feet stay planted, then it straightens "
+               "back to the same stance"),
+        "death": ("the chest fire gutters out and the woven body unravels: "
+                "its legs give way, the wicker frame sags and collapses "
+                "straight down into a low heap of broken charred branches "
+                "on the ground with the antlered skull resting on top, thin "
+                "smoke rising, motionless"),
+    },
+    "ram_cultist": {
+        "keep": ("pale ram skull mask with big curled horns, dark grey "
+               "hooded wool robes, faded purple sash, bone charms on the "
+               "chest, bronze censer on a chain in its right hand trailing "
+               "violet smoke, left hand raised open"),
+        "hurt": ("struck hard: the cultist doubles over in pain, ram skull "
+               "head snapping down and sideways, raised hand pulling in to "
+               "its chest, robes swaying, the censer swinging on its "
+               "chain, feet stay planted, then it straightens back up"),
+        "death": ("the censer drops to the ground and its smoke fades, the "
+                "cultist sinks to its knees and slumps forward, collapsing "
+                "into a low heap of dark robes on the ground with the "
+                "horned ram skull resting on top, motionless"),
+    },
+    "spectral_knight": {
+        "keep": ("ghostly knight in pale grey-violet plate armor, horned "
+               "helm with two violet eye lights, huge tall rectangular "
+               "tower shield with a faded sword crest held at its left "
+               "side, longsword with a violet glowing blade held "
+               "diagonally in its right hand, wisps of pale ghost mist"),
+        "hurt": ("struck hard: the knight staggers a step back behind its "
+               "tower shield, helm snapping sideways, violet eye lights "
+               "flickering dim, ghost mist scattering, but KEEPS GRIPPING "
+               "both the shield and the sword, feet stay planted, then it "
+               "settles back into its guard"),
+        "death": ("the whole knight TOPPLES SIDEWAYS to the right like a "
+                  "felled statue, still clutching the tower shield, and "
+                  "crashes down: body and shield land FLAT on the ground "
+                  "together, lying horizontal across the bottom of the "
+                  "frame, the shield lying flat on top of the fallen "
+                  "armor, violet eye lights going out, ghost mist fading, "
+                  "nothing upright"),
+    },
+    "storm_griffin": {
+        "keep": ("griffin with slate-grey eagle head and open hooked golden "
+               "beak, huge slate-grey and tawny feathered wings raised "
+               "high, crackling cyan lightning sparks along the wings, "
+               "tawny feathered chest, lion hind legs and tail, eagle "
+               "talons on the ground"),
+        "hurt": ("struck hard: the griffin flinches, head jerking back with "
+               "a screech, both raised wings snapping inward toward its "
+               "body, feathers ruffling, lightning sparks flickering, "
+               "talons stay on the ground, then the wings lift back to the "
+               "same raised pose"),
+        "death": ("the lightning sparks die out, the wings go limp and drop, "
+                "the griffin collapses forward onto its chest and rolls "
+                "onto its side, ending lying flat on the ground with both "
+                "wings spread limp across the ground, head down, motionless"),
+    },
+    "hellhound": {
+        "keep": ("two-headed hellhound with charred black hide, glowing "
+               "orange lava cracks across chest and legs, both snarling "
+               "heads with fangs and burning flame manes, curling tail "
+               "tipped with a flame, four clawed legs"),
+        "hurt": ("struck hard: both heads recoil and yelp, snapping back and "
+               "sideways, the body flinching low on its four legs, flame "
+               "manes flaring, paws stay on the ground, then both heads "
+               "come back up snarling in the same stance"),
+        "death": ("every flame dies: both flame manes and the tail flame "
+                "shrink and extinguish COMPLETELY, the lava cracks cool to "
+                "dark, the legs give out and the body collapses onto its "
+                "side, both heads lying flat on the ground, ending as a "
+                "motionless dark husk lying low on the ground with NO flame "
+                "anywhere"),
+    },
+    "abyss_acolyte": {
+        "keep": ("deep black hood with face hidden in shadow and two glowing "
+               "orange eyes, charred black and crimson robes with glowing "
+               "ember hem, chains wrapped around the body, open grimoire "
+               "with a burning flame held in its right hand, left hand "
+               "raised open with clawed fingers"),
+        "hurt": ("struck hard: the acolyte doubles over in pain, hood "
+               "snapping down, the raised hand pulling in to its chest, "
+               "the grimoire flame guttering, chains rattling, but KEEPS "
+               "HOLDING the grimoire, feet stay planted, then it "
+               "straightens back up"),
+        "death": ("the grimoire flame goes out and the book falls flat to the "
+                "ground, the glowing eyes fade, the empty robes crumple "
+                "straight down into a low heap of black cloth and chains on "
+                "the ground, motionless"),
+    },
+    "pit_brute": {
+        "keep": ("hulking horned pit demon with dark red muscular body "
+               "covered in glowing orange lava cracks, curved black horns, "
+               "iron spiked collar, dark iron belt and loincloth, both "
+               "hands resting on the long handle of a huge iron "
+               "sledgehammer planted head-down on the ground in front of "
+               "it"),
+        "hurt": ("struck hard: the brute's head snaps sideways with a grunt, "
+               "huge shoulders hunching, lava cracks flaring bright for an "
+               "instant, it rocks back but KEEPS BOTH HANDS on the hammer "
+               "handle, feet stay planted, then it straightens back to the "
+               "same stance"),
+        "death": ("the lava cracks cool and fade to dark, the hammer tips "
+                "over and falls flat on the ground, the brute drops heavily "
+                "to its knees and topples forward face-down, ending as a "
+                "low motionless heap of dark muscle and horns lying on the "
+                "ground beside the fallen hammer"),
+    },
+    "frost_wolf": {
+        "keep": ("gaunt frost wolf with shaggy pale blue-white fur, icicles "
+               "hanging from its jaw, chest and belly, bared fangs, icy "
+               "eyes, frosty breath wisp at the mouth, four long legs"),
+        "hurt": ("struck hard: the wolf yelps and flinches, head jerking "
+               "down and sideways, body cringing low, ears flattening, "
+               "icicles rattling, paws stay on the ground, then it raises "
+               "its head back into the same snarling stance"),
+        "death": ("the wolf's legs give out and it collapses onto its side, "
+                "sliding down until it lies flat on the ground, head "
+                "resting on the ground, frost breath fading, ending "
+                "motionless and low on the ground"),
+    },
+    "rime_shaman": {
+        "keep": ("hunched blue-grey goblin shaman in a hooded white fur pelt "
+               "cloak, pointed ears, pale glowing eyes, bone necklace and "
+               "skull charm on the belt, left hand raised in a casting "
+               "gesture, carved wooden totem staff topped with a glowing "
+               "pale blue ice crystal held upright in its right hand"),
+        "hurt": ("struck hard: the goblin flinches and cowers, hood snapping "
+               "back, raised casting hand pulling in to its chest, "
+               "shoulders hunching, but KEEPS GRIPPING the crystal staff, "
+               "feet stay planted, then it straightens back to the same "
+               "stance"),
+        "death": ("the crystal light goes out and the staff falls flat on the "
+                  "ground, the goblin FALLS OVER: it tips backward and drops "
+                  "flat onto its back, lying stretched out horizontal on the "
+                  "ground with its fur cloak spread under it, arms limp, eyes "
+                  "closed, motionless, nothing upright"),
+    },
+    "frost_troll": {
+        "keep": ("massive hulking snow troll with shaggy white fur, pale "
+               "blue skin, white beard and lower tusks, jagged ice crystal "
+               "shards growing from both shoulders, very long arms with "
+               "huge fists resting on the ground"),
+        "hurt": ("struck hard: the troll's head snaps sideways with a roar "
+               "of pain, massive shoulders hunching, one fist lifting off "
+               "the ground and pulling in, ice shards rattling, feet stay "
+               "planted, then it settles back into the same hunched stance "
+               "with fists on the ground"),
+        "death": ("the troll sways, drops heavily to its knees, then the huge "
+                  "body topples forward and lands flat face-down on the "
+                  "ground, its HEAD DROPS AND RESTS ON THE GROUND with eyes "
+                  "closed and mouth shut, long arms sprawled limp, ending as "
+                  "a low motionless mound of white fur and ice shards, no "
+                  "roaring"),
+    },
+    "ice_wyrm": {
+        "keep": ("coiled ice wyrm serpent with pale blue crystalline scales, "
+               "jagged ice spikes along its spine and coils, small frost "
+               "wings on its back, horned head with glowing cyan eye, open "
+               "fanged jaws breathing a small cloud of frost, thick coils "
+               "resting on the ground"),
+        "hurt": ("struck hard: the wyrm recoils, its raised neck whipping "
+               "back and to the side with a hiss, jaws snapping shut, the "
+               "frost breath cut off, wings flinching inward, coils "
+               "tightening on the ground, then the neck rises back into "
+               "the same pose"),
+        "death": ("the cyan eye goes dark and the frost breath stops, then "
+                  "the tall raised neck COLLAPSES: it bends and falls all the "
+                  "way down, the horned head crashing onto the ground in "
+                  "front of the coils, the neck lying flat across the coils, "
+                  "wings drooping flat, ending as a LOW flat pile of limp "
+                  "coils with the head lying on the ground, less than half "
+                  "the original height, nothing raised"),
+    },
+    "storm_harpy": {
+        "keep": ("monstrous harpy with withered dark slate-grey feathered "
+               "body, wild white hair, gaunt beaked face, huge dark "
+               "feather wings spread wide, long hooked claws held forward, "
+               "crouched on scaly bird legs with black talons"),
+        "hurt": ("struck hard: the harpy shrieks and flinches, head snapping "
+               "back, both wings snapping inward around its body, claws "
+               "pulling in to its chest, crouching lower, talons stay on "
+               "the ground, then the wings spread back open into the same "
+               "pose"),
+        "death": ("the wings go limp and droop, the harpy topples forward off "
+                "its talons and crashes face-down, ending lying flat on the "
+                "ground with both dark wings spread limp across the ground, "
+                "white hair splayed, motionless"),
+    },
+    "abyss_watcher": {
+        "keep": ("floating dark crimson jellyfish-like flesh bell crowned "
+               "with cracked black bone plates and curved horns, a cluster "
+               "of glowing orange eyes on its front with one large central "
+               "eye, a long curtain of dark crimson and black tentacles "
+               "hanging beneath"),
+        "hurt": ("struck hard: the floating bell jolts backward and squeezes "
+               "inward, all the eyes squinting shut for an instant, "
+               "tentacles whipping and curling up, then it relaxes back to "
+               "the same floating pose"),
+        "death": ("every eye goes dark and closes, the floating mass loses "
+                "its lift and sinks straight down, the tentacles crumpling "
+                "beneath it, the flesh bell deflating and collapsing onto "
+                "them, ending as a low flat heap of limp tentacles and "
+                "flesh lying on the ground with the bone crown on top, "
+                "motionless"),
+    },
+    "plague_toad": {
+        "keep": ("giant bloated plague toad squatting, warty olive and "
+               "mustard skin, round pale belly, glowing yellow-green "
+               "poison pustules on its back and shoulder, toxic slime "
+               "drooling from its wide mouth, big round eyes, splayed "
+               "webbed feet"),
+        "hurt": ("struck hard: the toad squashes down flat and wobbles, eyes "
+               "squeezing shut, throat sac puffing, slime splattering from "
+               "its mouth, then it bounces back up into the same squat"),
+        "death": ("the pustules dim and burst, the bloated body deflates and "
+                "sags, the toad flops forward and rolls onto its back with "
+                "legs limp in the air, ending flat and motionless low on "
+                "the ground"),
+    },
+    "leech_horror": {
+        "keep": ("hunched humanoid horror made of many fused glossy dark "
+               "red-brown giant leeches, a large round toothed sucker "
+               "mouth as its head with smaller sucker mouths on its "
+               "shoulders, thick leech arms with clawed tips, dripping "
+               "swamp mud and moss"),
+        "hurt": ("struck hard: the leech mass recoils and contracts, all the "
+               "sucker mouths clamping shut, the fused leeches squirming "
+               "and tightening inward, arms curling to its body, feet stay "
+               "planted, then it loosens back into the same hunched stance"),
+        "death": ("the fused leeches come apart: the body loses its shape and "
+                "slumps straight down, the leeches sliding off each other "
+                "and spilling onto the ground, ending as a low flat pile of "
+                "limp dead leeches and mud on the ground, motionless"),
+    },
+    "croc_warrior": {
+        "keep": ("upright crocodile-man warrior with dark green scaly hide, "
+               "long toothy snout, long thick tail, bone-tipped spear held "
+               "upright in its right hand, round turtle-shell shield on "
+               "its left arm, leather straps with skull and bone trinkets "
+               "and rust-orange feathers"),
+        "hurt": ("struck hard: the crocodile-man staggers a step back with a "
+               "hiss, snout jerking sideways, shoulders hunching behind "
+               "the turtle-shell shield, tail lashing, but KEEPS GRIPPING "
+               "both the spear and the shield, feet stay planted, then it "
+               "straightens back to the same stance"),
+        "death": ("the spear falls flat from its claws, the shield slides off "
+                "its arm and drops flat, the crocodile-man sinks to its "
+                "knees and topples forward face-down, ending lying flat on "
+                "the ground with its long tail stretched out behind, "
+                "motionless, nothing standing"),
+    },
+    "spore_mother": {
+        "keep": ("huge fungal matriarch with a very wide spotted rotten-red "
+               "mushroom cap, glowing green spores dripping from the gills "
+               "under the cap, two small glowing green eyes in the shadow "
+               "under the cap, bulbous olive-brown body, mossy clawed arms "
+               "with small mushrooms growing on them, thick tangled root "
+               "legs"),
+        "hurt": ("struck hard: the wide cap tilts and wobbles, the body "
+               "flinching backward, a burst of green spores puffing from "
+               "the gills, mossy arms curling inward, roots stay planted, "
+               "then it settles back into the same stance"),
+        "death": ("the green glow fades and the spores stop dripping, the "
+                "root legs buckle, the body sags and slumps straight down, "
+                "the huge cap flopping down over it, ending as a low wide "
+                "flat mound of wilted mushroom cap lying on the ground, "
+                "motionless"),
+    },
+    "dusk_bat": {
+        "keep": ("giant vampire bat hovering with huge dark purple-black "
+               "leathery wings spread wide showing crimson membranes, big "
+               "pointed ears with pink insides, glowing red eyes, small "
+               "white fangs, small clawed feet hanging below"),
+        "hurt": ("struck hard: the bat jolts backward in the air with a "
+               "screech, both wings snapping inward and folding halfway "
+               "around its body, ears flattening, then the wings spread "
+               "back open into the same hovering pose"),
+        "death": ("the red eyes go dark, the wings crumple and fold limp, the "
+                "bat drops straight down out of the air and lands sprawled "
+                "on the ground, ending lying flat on its back with both "
+                "wings spread limp across the ground, motionless"),
+    },
+    "grave_thrall": {
+        "keep": ("skeletal grave thrall with bare pale skull and faint "
+               "violet eye glow, rusted dark brown iron plate armor and "
+               "chainmail, tattered purple tabard, notched short sword in "
+               "its right hand, large battered rectangular rusted iron "
+               "tower shield held in front on its left side"),
+        "hurt": ("struck hard: the skeleton rattles and staggers a step back "
+               "behind its shield, skull snapping sideways, jaw "
+               "clattering, violet eyes flickering, but KEEPS GRIPPING the "
+               "sword and the shield, feet stay planted, then it "
+               "straightens back to the same guard"),
+        "death": ("the violet eye glow goes out, the tower shield tips over "
+                "and falls flat on the ground first, the sword drops, the "
+                "skeleton's bones give way and the armored frame collapses "
+                "straight down into a low heap of bones, rusted plates and "
+                "purple rags on the ground, the skull resting on top, "
+                "nothing standing"),
+    },
+    "dullahan": {
+        "keep": ("headless dark knight in black and crimson plate armor with "
+               "a tall violet ghost flame rising from the empty neck, "
+               "holding its own helmeted head with glowing violet eyes and "
+               "a violet flame in its left hand at chest height, long "
+               "curved blade held low in its right hand, dark red cape"),
+        "hurt": ("struck hard: the headless knight staggers a step back, the "
+               "neck flame guttering and bending sideways, shoulders "
+               "hunching, but KEEPS HOLDING its helmeted head and the "
+               "curved blade, cape swinging, feet stay planted, then it "
+               "straightens back to the same stance"),
+        "death": ("the violet neck flame shrinks and goes out completely, the "
+                "held helmet drops and rolls to the ground, the blade falls "
+                "flat, the armored body sinks to its knees and topples "
+                "forward, ending as a low heap of black and crimson armor "
+                "lying flat on the ground under the dark red cape, "
+                "motionless, no flame anywhere"),
+    },
+    "fallen_angel": {
+        "keep": ("tall fallen angel with huge tattered black feathered wings "
+               "spread wide, pale grey face with glowing white eyes, long "
+               "grey hair, broken dim gold halo floating above the head, "
+               "blackened plate armor over dark violet robes, long dark "
+               "sword held point-down in its right hand"),
+        "hurt": ("struck hard: the angel recoils, head snapping back, both "
+               "huge wings flinching inward toward its body, loose black "
+               "feathers falling, broken halo wobbling, but KEEPS GRIPPING "
+               "the sword, feet stay planted, then the wings spread back "
+               "open into the same pose"),
+        "death": ("the white eyes go dark and the broken halo crumbles and "
+                "falls, the sword drops flat, the angel falls to its knees "
+                "and collapses forward face-down, ending lying flat on the "
+                "ground with the huge black wings spread limp across the "
+                "ground over its body, motionless, nothing standing"),
+    },
     "mire_hag_placeholder_do_not_use": None,
 }
 ENEMIES.pop("mire_hag_placeholder_do_not_use")
@@ -393,6 +789,11 @@ def submit(eid, anim, seed=None):
         "first_frame_base64": b64,
         "frame_count": FRAMES_HURT if anim == "hurt" else FRAMES_DEATH,
     }
+    # `last_frame` (opcional): cadáver desenhado à parte, pra quem o v3 não
+    # derruba sozinho — vira interpolação até o quadro final pinado.
+    if anim == "death" and ENEMIES[eid].get("last_frame"):
+        with open(os.path.join(ROOT, ENEMIES[eid]["last_frame"]), "rb") as f:
+            args["last_frame_base64"] = base64.b64encode(f.read()).decode()
     if seed is not None:
         args["seed"] = seed
     text = tool_text(rpc("tools/call", {"name": "animate_image",
