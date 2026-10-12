@@ -149,6 +149,23 @@ function Rng:weighted(stream, entries)
     return entries[#entries].item
 end
 
+-- Estado de UM stream (retrato pontual: "o stream X estava aqui"). Usado
+-- pra luta retomada sortear exatamente o que a original sorteou, mesmo que
+-- outro código tenha consumido o stream no meio do caminho.
+function Rng:getStreamState(stream)
+    local gen = self.streams[stream]
+    if not gen then return nil end
+    return { state = gen:getState(), counter = self.counters[stream] or 0 }
+end
+
+function Rng:setStreamState(stream, st)
+    local gen = self.streams[stream]
+    if not (gen and type(st) == "table" and st.state) then return false end
+    local ok = pcall(function() gen:setState(st.state) end)
+    if ok then self.counters[stream] = st.counter or 0 end
+    return ok
+end
+
 -- ===== Instância ativa (escopo de run) =====
 
 function Rng.setActive(rng)

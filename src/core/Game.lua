@@ -2232,6 +2232,13 @@ function Game:nextPhase()
         -- kit dele (src/data/enemies.lua) traz golpes, vida e dano próprios.
         local EnemyRoster = require("src.systems.EnemyRoster")
         local enemyId = EnemyRoster.resolveNode(run, run.currentNode, nodeType)
+        -- Stream "enemy" no instante do spawn (que rola o 1º golpe). O
+        -- battleRng não basta: entre ele e o spawn o caminho do Continuar
+        -- consome o stream de outro jeito (o inimigo provisório do startGame
+        -- rola intent; aqui o resolveNode pode sortear) — e a luta retomada
+        -- abria com outro golpe conforme o que rodou antes (test_resume_state
+        -- falhava só dentro da suíte).
+        run.battleEnemyRng = require("src.systems.Rng").get():getStreamState("enemy")
         self.enemy = EnemyRoster.spawn(Enemy, enemyId, stats, run.actNumber)
         RunModifiers.decorateEnemy(run, self.enemy)
         EnemyRoster.remember(run, enemyId)
@@ -2419,6 +2426,9 @@ function Game:resumeRun()
     local EnemyRoster = require("src.systems.EnemyRoster")
     local nodeEnemyId = run.currentNode and run.currentNode.enemyId
     local enemyId = EnemyRoster.resolveNode(run, run.currentNode, nodeType)
+    if inBattle and run.battleEnemyRng then
+        Rng.get():setStreamState("enemy", run.battleEnemyRng)
+    end
     self.enemy = EnemyRoster.spawn(Enemy, enemyId, stats, run.actNumber)
     RunModifiers.decorateEnemy(run, self.enemy)
     self.battleTurn = 0

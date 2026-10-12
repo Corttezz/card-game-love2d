@@ -21,6 +21,7 @@ local M = {}
 local TRANSIENT_RUN = {
     rngState = "comparado à parte (estado VIVO do Rng, não o snapshot gravado)",
     battleRng = "comparado indiretamente: a luta retomada tem que repetir mão e golpe",
+    battleEnemyRng = "idem (stream do inimigo no spawn)",
 }
 
 -- ---------------------------------------------------------------------------
@@ -111,9 +112,12 @@ local function snapshot(game, battle)
         s.orbs = deepcopy(p.orbs)
         s.buffs = deepcopy(p.buffs)
         s.armor = p.armor
-    else
-        s.rng = rngStreams()
     end
+    -- Na luta: o RNG retomado tem que estar EXATAMENTE onde a luta original
+    -- estava depois de montada (mesmos sorteios consumidos, em cada stream) —
+    -- senão o golpe seguinte do inimigo já diverge, mesmo com a abertura
+    -- igual. Fora da luta: intocado.
+    s.rng = rngStreams()
     return s
 end
 
@@ -171,7 +175,7 @@ local function winBattle(game)
     game.runManager.currentRun.battlesWon = (game.runManager.currentRun.battlesWon or 0) + 1
 end
 
-local function goToNextBattle(game)
+local function goToNextBattle(game, stripEnemy)
     local rm = game.runManager
     rm:advanceFloorInAct()
     rm:generateNextNodes(3)
@@ -182,6 +186,16 @@ local function goToNextBattle(game)
     rm:chooseNode(idx, { hp = game.player.health, maxHp = game.player.maxHealth,
         gold = game.economySystem.currentGold })
     rm.currentRun.currentNode.type = "battle"
+    -- Nó SEM inimigo pré-sorteado (save antigo, ou evento que caiu pra luta
+    -- comum): o nextPhase sorteia quem luta. Era o caminho em que a luta
+    -- retomada abria com outro golpe — e o roteiro só passava por ele quando
+    -- a encruzilhada sorteada não tinha nó de luta (dependia da ordem das
+    -- suítes). Agora é forçado.
+    if stripEnemy then
+        rm.currentRun.currentNode.enemyId = nil
+    elseif not rm.currentRun.currentNode.enemyId then
+        require("src.systems.EnemyRoster").assignNodes(rm.currentRun, { rm.currentRun.currentNode })
+    end
     game:nextPhase()
 end
 
@@ -270,6 +284,18 @@ function M.run()
     game.economySystem:earnGold(3, "mid")
     local gb = check(t, "luta (meio do combate → recomeça igual)", battleSnap, game, true)
     t:eq("luta: mago retomado também tem 1 orbe", #(gb.player.orbs or {}), 1)
+
+    -- As duas origens do inimigo: pré-sorteado na encruzilhada (caminho
+    -- normal) e sorteado no nextPhase (save antigo / evento que vira luta).
+    -- Antes do conserto, só uma delas batia — e qual dependia do mapa.
+    for _, strip in ipairs({ false, true }) do
+        winBattle(game)
+        run.stage = "fork"; run.pendingNodes = nil
+        goToNextBattle(game, strip)
+        local label = strip and "luta (inimigo sorteado no nextPhase)"
+            or "luta (inimigo pré-sorteado no nó)"
+        check(t, label, snapshot(game, true), game, true)
+    end
 
     -- ===== ENDLESS =====
     winBattle(game)
