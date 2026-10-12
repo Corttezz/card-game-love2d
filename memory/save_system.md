@@ -103,7 +103,7 @@ currentRun INTEIRO, então campo novo entra de graça).
 |---|---|---|
 | classe, selo, deck (id/`up`/edição/selo), coringas + `jokerActive`, ledger de serviços (slots, compra extra, Cofre, custo da forja), ato/andar/endless/`floorsInEndless`/`campaignWon`, maldições e ciclo (`run.endless`), nós pendentes/atual (`enemyId`), `mapHistory`, roteiro, `eventHistory`, `recentEnemies`, `stage`/`stageEventId`, `shopState`, `scribeDice`, stats da tela final (`battlesWon`, `turnsTotal`, `playSeconds`, dano), flags de conquista da run (`_usedShop`...) | `currentRun` (o save É o currentRun) | direto |
 | streams do Rng + pity (`meta`) | `currentRun.rngState` | `loadRun` |
-| RNG do INÍCIO da luta | `currentRun.battleRng` (nextPhase, antes do embaralho) | luta retomada = mesma mão, mesmo golpe |
+| RNG do INÍCIO da luta | `currentRun.battleRng` (nextPhase, antes do embaralho) + `battleEnemyRng` (stream "enemy" no instante do spawn — o inimigo provisório do startGame e o resolveNode consomem o stream de jeitos diferentes) | luta retomada = mesma mão, mesmo golpe |
 | vida, vida máx., mana base, ouro | `playerState` (syncRunPlayerState) | resumeRun |
 | pontuação da run + `game.score` | `playerState.runScore` | resumeRun espelha em `game.score` (**era o bug**) |
 | "RECORDE!" da run, recibo da última luta (cash out) | `playerState.scoreRecordBroken` / `lastBattleScore` | resumeRun (novo) |
