@@ -96,3 +96,27 @@ GameplayScene, embrulhada em 6). Criatura nova = sprite + `HOME_BIOME` + kit
 
 Ver também: [[combat_beats]] · [[balance_curves]] · [[rng_and_offers]] ·
 [[enemy_pose_and_scene_anchor]].
+
+## Bateria do roster novo (Out/2026, v7 — só medição, sem ajuste)
+
+`balance_sim 30 <classe> 720000`, um processo por classe, piloto v6, roster só
+do bioma (24 criaturas novas), sem coringa extra pós-chefe, Combo v3 já na
+árvore (cortou o dano de leva grande — parte da queda vem daí).
+
+| classe | vitória | mortes por ato |
+|---|---|---|
+| guerreiro | 13/30 (43%) | A3 4 · A4 2 · A5 5 · A6 6 |
+| mago | 4/30 (13%) | A2 1 · A3 8 · A4 7 · A5 5 · A6 5 |
+| ladino | 5/30 (17%) | A2 1 · A3 8 · A4 4 · A5 11 · A6 1 |
+
+Turnos por luta / dano sofrido por turno / turnos por chefe (A1 → A6):
+- guerreiro: 2,9 · 4,6 · 5,3 · 6,2 · 7,2 · 7,7 / 0,3 · 0,5 · 1,5 · 1,1 · 1,5 · 1,8 / 5,2 · 6,8 · 6,9 · 7,8 · 8,6 · 8,5
+- mago: 2,5 · 4,6 · 6,4 · 8,0 · 12,4 · 14,3 / 0,1 · 0,6 · 1,6 · 1,4 · 0,8 · 1,1 / 4,3 · 6,9 · 9,3 · 10,8 · 18,3 · 16,0
+- ladino: 2,5 · 4,8 · 5,6 · 7,3 · 7,6 · 8,4 / 0,1 · 0,8 · 1,6 · 1,3 · 1,8 · 1,9 / 4,4 · 7,3 · 7,5 · 9,6 · 8,6 · 10,8
+
+Onde concentra: chefe do A5 (Colosso: 8 das 25 mortes do ladino, 5 do
+guerreiro), chefe do A3 (Tirano: 6 do mago, 5 do ladino), mini-chefe do A6
+(Anjo Caído: 5 do guerreiro), batalha comum do A4 (5 do mago). Mago no A5-A6
+luta 12-18 turnos (dano baixo contra vida de chefe). Candidatos a alavanca,
+NÃO aplicados: Colosso regen 2%→1,5%; Anjo Caído (lâmina 1,6, julgamento
+perfurante 0,9); dano do mago no fim do jogo (frente de classe).
