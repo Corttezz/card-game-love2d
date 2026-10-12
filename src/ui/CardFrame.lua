@@ -189,7 +189,7 @@ local function renderStandard(card, w, h, iconOverride)
 
     local ax, ay, aw, ah = artSlotBounds(card)
     CardArtSlot.draw(ax, ay, aw, ah, art, "parchment",
-        { iconOverride = iconOverride })
+        { iconOverride = iconOverride, clipTop = CardFrame.TOP_INSET })
 
     CardDecoration.draw(ax, ay, aw, ah, art.decoration, art.accent)
     local autoDec = CardDecoration.autoForBackground(art.bgPattern)
@@ -215,7 +215,7 @@ local function renderJoker(card, w, h, iconOverride)
 
     local ax, ay, aw, ah = artSlotBounds(card)
     CardArtSlot.draw(ax, ay, aw, ah, art, "tarot",
-        { iconOverride = iconOverride })
+        { iconOverride = iconOverride, clipTop = CardFrame.TOP_INSET })
     CardDecoration.draw(ax, ay, aw, ah, art.decoration or "flash", art.accent)
     -- Aplica decoração auto pelo bg pattern (mesmo comportamento de renderStandard)
     -- — ex: joker_001 tem bg=abyss → abyss_tendrils por cima do tarot card.

@@ -3,6 +3,7 @@
 -- pra revisar o enquadramento da ilustração no slot (topo × base cortados).
 --
 --   love . test_one sheet_card_art [tag]   → card_art_sheet_<tag>_<n>.png
+--   SHEET_IDS=a,b,c SHEET_SCALE=4 → só essas cartas, na escala pedida
 --
 -- 10 colunas × 5 linhas por folha (50 cartas), ordem por id.
 
@@ -18,9 +19,14 @@ function M.run(tag)
     local db = require("src.systems.CardDatabase"):new()
     db:loadData()
     local ids = {}
-    for id in pairs(db:getAllCards()) do ids[#ids + 1] = id end
-    table.sort(ids)
-    local S, COLS, ROWS, PAD = 2, 10, 5, 6
+    if os.getenv("SHEET_IDS") then
+        for id in os.getenv("SHEET_IDS"):gmatch("[^,]+") do ids[#ids + 1] = id end
+    else
+        for id in pairs(db:getAllCards()) do ids[#ids + 1] = id end
+        table.sort(ids)
+    end
+    local S, COLS, ROWS, PAD = tonumber(os.getenv("SHEET_SCALE")) or 2, 10, 5, 6
+    if os.getenv("SHEET_IDS") then COLS, ROWS = #ids, 1 end
     local cw, ch = 96 * S, 144 * S
     local per = COLS * ROWS
     local sheet = 0

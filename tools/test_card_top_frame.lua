@@ -90,33 +90,31 @@ function M.run()
                     miss <= 4)
             end
         end
-        -- 3. ENQUADRAMENTO: a ilustração em cover-fit passa da altura do slot;
-        --    o corte fica quase todo EMBAIXO (CardArtSlot.VALIGN) pra cabeças,
-        --    punhos e chamas não sumirem sob o banner. Toda carta sem override
-        --    (artScale/artOffsetY) corta no máximo ~1/4 do excesso em cima.
+        -- 3. ENQUADRAMENTO (dono: "onde começa a sombra do título ela corta"):
+        --    NENHUMA linha do sujeito pode ficar acima do topo do slot — a
+        --    primeira linha com conteúdo do ícone (bbox) cai dentro do slot;
+        --    o corte do cover-fit vai pro pé. Exceção declarada: carta com
+        --    artOffsetY/artScale no atlas (sujeito no pé da arte).
         do
             local CardArtSlot = require("src.ui.card.components.CardArtSlot")
             local CardArt = require("src.ui.CardArt")
-            local worst, worstId, n = 0, nil, 0
+            local bad, n = {}, 0
             for cid, ccd in pairs(db:getAllCards()) do
                 local inst = db:createCardInstance(ccd)
                 local art = CardArt.resolve(inst)
                 if art and art.icon and art.icon.size and not art.artScale
                     and (art.artOffsetY or 0) == 0 then
+                    n = n + 1
                     local ax, ay, aw, ah = CardFrame.artSlotBounds(inst)
                     local _, iy, sc = CardArtSlot.layout(art.icon.size.w, art.icon.size.h,
-                        ax, ay, aw, ah, art)
-                    local excess = art.icon.size.h * sc - ah
-                    if excess > 0 then
-                        n = n + 1
-                        local topCut = ay - iy
-                        local frac = topCut / excess
-                        if frac > worst then worst, worstId = frac, cid end
-                    end
+                        ax, ay, aw, ah, art, art.icon)
+                    local subjectTop = iy + CardArtSlot.contentTop(art.icon) * sc
+                    if subjectTop < ay then bad[#bad + 1] = cid .. "(" .. (ay - subjectTop) .. "px)" end
                 end
             end
-            t:truthy(("ilustração: corte de cima <= 25%% do excesso em %d cartas (pior %.2f, %s)")
-                :format(n, worst, tostring(worstId)), n > 50 and worst <= 0.25)
+            table.sort(bad)
+            t:truthy(("ilustração: o topo do sujeito fica dentro do slot em %d cartas (fora: %s)")
+                :format(n, #bad == 0 and "nenhuma" or table.concat(bad, ", ")), n > 50 and #bad == 0)
         end
 
         -- coringa

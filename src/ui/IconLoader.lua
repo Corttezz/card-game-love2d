@@ -39,6 +39,7 @@ function IconLoader.get(name)
         local h = {
             kind = "image",
             image = png,
+            path = "assets/sprites/icons/" .. name .. ".png",   -- CardArtSlot lê o bbox
             size = { w = png:getWidth(), h = png:getHeight() },
             draw = function(x, y, scale)
                 scale = scale or 1
