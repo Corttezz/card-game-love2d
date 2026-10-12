@@ -144,7 +144,11 @@ end
 function AchievementsScreen.layout(entries, sw, sh)
     local px, py, pw, ph = AchievementsScreen.panelRect(sw, sh)
     local L = { panel = { px, py, pw, ph } }
-    L.header = { px + PAD, py + 30, pw - PAD * 2, HEADER_H - 30 }
+    -- X de fechar no canto do cabeçalho (como o Deck Viewer): ESC sozinho não
+    -- se descobre, e o rodapé de dica está desligado (HintBar.ENABLED).
+    local closeS = 28
+    L.close = { px + pw - PAD - closeS, py + 28, closeS, closeS }
+    L.header = { px + PAD, py + 30, pw - PAD * 2 - closeS - 14, HEADER_H - 30 }
     local bodyY = py + HEADER_H + 4
     local bodyH = ph - HEADER_H - 4 - FOOTER_H
     local innerX, innerW = px + PAD, pw - PAD * 2
@@ -262,7 +266,8 @@ end
 function AchievementsScreen:mousereleased(x, y, button)
     if not self.visible then return false end
     local px, py, pw, ph = AchievementsScreen.panelRect()
-    if x < px or x > px + pw or y < py or y > py + ph then
+    if x < px or x > px + pw or y < py or y > py + ph
+        or (button == 1 and hit(self:_layout().close, x, y)) then
         self:hide()
         return true
     end
@@ -474,6 +479,24 @@ function AchievementsScreen:draw()
 
     -- DETALHE
     self:_drawDetail(L, self.entries[focus])
+
+    -- FECHAR (X) — mesmo desenho do Deck Viewer
+    do
+        local c = L.close
+        local mx, my = love.mouse.getPosition()
+        local hot = hit(c, mx, my)
+        setC(hot and Palette.BLOOD or Palette.PANEL_FILL)
+        love.graphics.rectangle("fill", c[1], c[2], c[3], c[4], 4, 4)
+        setC(Palette.AGED_GOLD)
+        love.graphics.setLineWidth(1)
+        love.graphics.rectangle("line", c[1], c[2], c[3], c[4], 4, 4)
+        local xf = FontManager.getFont(14)
+        love.graphics.setFont(xf)
+        setC(Palette.PARCHMENT_LIGHT)
+        love.graphics.print("X", math.floor(c[1] + (c[3] - xf:getWidth("X")) / 2),
+            math.floor(c[2] + (c[4] - xf:getHeight()) / 2))
+        if hot then require("src.ui.CursorManager").request("hand") end
+    end
 
     HintBar.draw(I18n.t("achievements.hint", nil, "ESC fecha"))
     love.graphics.pop()
