@@ -148,6 +148,8 @@ function M.run(phase)
         FlashShader.draw()
         topBar:draw()
         if dice:isVisible() then dice:draw() end
+        -- corvo narrador (explicação "?" dos dados), por cima de tudo
+        require("src.systems.Tutorial").draw()
         love.graphics.setColor(1, 1, 1, 1)
 
         name = tag .. name
@@ -321,7 +323,13 @@ function M.run(phase)
         simulate(0.35)
         snap("shop_dice_2_rolando.png")
         simulate(1.30)
-        snap("shop_dice_3_resultado.png", true)
+        snap("shop_dice_3_resultado.png")
+        -- "?" dos dados: a conversa do corvo sob demanda, na fala das apostas
+        -- (as âncoras vêm do quadro anterior, o do resultado).
+        local Tutorial = require("src.systems.Tutorial")
+        Tutorial._show("dice_help", "bets", game)
+        simulate(0.6)
+        snap("shop_dice_4_ajuda.png", true)
         return
     end
 

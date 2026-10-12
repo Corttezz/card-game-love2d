@@ -1332,7 +1332,8 @@ function CardRewardScreen:_layoutActionButtons()
     local rerollW = measuredButtonWidth(self.refreshButton)
     local skipW = measuredButtonWidth(self.skipButton)
     local diceW = self.diceButton and measuredButtonWidth(self.diceButton) or 0
-    local diceGap = self.diceButton and gap or 0
+    -- + o "?" da explicação logo à direita do botão dos dados
+    local diceGap = self.diceButton and (gap + 26) or 0
     local avail = bar.w - edge * 2
     if rerollW + diceW + diceGap + skipW + gap > avail then
         local factor = avail / (rerollW + diceW + diceGap + skipW + gap)
@@ -1360,6 +1361,26 @@ function CardRewardScreen:_layoutActionButtons()
         self.skipButton.height = h
     end
 
+end
+
+-- "?" dos dados (no gap à direita do botão, reservado em _layoutActionButtons).
+function CardRewardScreen:_diceHelpRect()
+    local b = self.diceButton
+    local r = 9
+    local cx = b.x + b.width + 13
+    local cy = b.y + math.floor(b.height / 2)
+    local rect = require("src.ui.HelpBadge").rect(cx, cy, r)
+    rect.cx, rect.cy, rect.r = cx, cy, r
+    return rect
+end
+
+-- Explicação dos Dados do Escriba (conversa "dice_help" do corvo), a
+-- qualquer momento — o dono achou a mesa confusa sem isso.
+function CardRewardScreen:openDiceHelp()
+    if not self.diceButton then return false end
+    local ok = require("src.systems.Tutorial").explain("dice_help", self.game)
+    if not ok then Sfx.play("purchaseDeny") end
+    return ok
 end
 
 -- Rótulo do botão dos dados: muda depois da jogada (uma por visita).
@@ -2125,7 +2146,17 @@ function CardRewardScreen:draw()
             if rb.visible ~= false and not rb.disabled and rb.onClick then rb.onClick() end
         end, rb.x, rb.y, rb.width, rb.height)
     end
-    if self.diceButton then self.diceButton:draw() end
+    if self.diceButton then
+        self.diceButton:draw()
+        -- "?" dos dados: explicação sob demanda (clique, H, ou Y no controle)
+        local r = self:_diceHelpRect()
+        local HelpBadge = require("src.ui.HelpBadge")
+        local mx, my = love.mouse.getPosition()
+        HelpBadge.draw(r.cx, r.cy, r.r, mx >= r.x and mx < r.x + r.w and my >= r.y and my < r.y + r.h)
+        local NavCursor = require("src.ui.NavCursor")
+        NavCursor.target("dice_help", r.x, r.y, r.w, r.h)
+        NavCursor.action("y", function() self:openDiceHelp() end, r.x, r.y, r.w, r.h)
+    end
 
     self:drawInstructions()
 
@@ -3028,6 +3059,13 @@ function CardRewardScreen:mousereleased(x, y, button)
     end
     if self.diceButton and self.diceButton:mousereleased(x, y, button) then
         return true
+    end
+    if self.diceButton and button == 1 then
+        local r = self:_diceHelpRect()
+        if x >= r.x and x < r.x + r.w and y >= r.y and y < r.y + r.h then
+            self:openDiceHelp()
+            return true
+        end
     end
 
     return false

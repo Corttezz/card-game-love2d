@@ -63,6 +63,12 @@ return {
             pick = "Victoire ! Choisissez *une* carte pour votre grimoire.",
             skip = "Ou passez : un grimoire léger pioche plus souvent ses meilleures cartes. Parfois, moins c'est mieux.",
         },
+        dice_help = {
+            what = "Les *Dés du Scribe* sont un pari facultatif : vous annoncez la somme de deux dés et misez de l'or dessus.",
+            bets = "*Bas* (somme 2 à 6) et *Haut* (8 à 12) gagnent 42 % du temps et paient 2,5× la mise. Le *Sept* gagne 17 % du temps et paie 6×.",
+            stakes = "La *mise* est ce que vous risquez, et ses valeurs augmentent à chaque acte. Si vous perdez, la maison la garde.",
+            once = "Un lancer par visite à la boutique, et le résultat est définitif tout de suite, même si vous partez et revenez. En moyenne la table est à l'équilibre : elle sert à tenter sa chance quand il manque peu pour un achat.",
+        },
         dice = {
             odds = "Deux dés, un pari. *Bas* (2 à 6) et *Haut* (8 à 12) paient 2,5× ; le *Sept* paie 6×.",
             bet = "Choisissez le pari et la mise, puis lancez. Chaque pari affiche sa probabilité.",

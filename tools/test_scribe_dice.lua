@@ -116,6 +116,44 @@ function M.run()
     t:falsy("fechou", scr:isVisible())
     t:truthy("a tela gravou a jogada no nó", ScribeDice.isUsed(run))
 
+    -- ===== 7) "?" explica os dados (conversa do corvo sob demanda) =====
+    local Tutorial = require("src.systems.Tutorial")
+    Tutorial._reset()
+    local scr2 = Screen:new()
+    scr2:show(g, function() end)
+    scr2:keypressed("h")
+    t:eq("H abre a explicacao dos dados", Tutorial.activeId(), "dice_help")
+    t:falsy("explicar de novo com conversa aberta e recusado",
+        Tutorial.explain("dice_help", g))
+    Tutorial._reset()
+    scr2:keypressed("e")
+    t:eq("Y do controle (tecla e) tambem abre", Tutorial.activeId(), "dice_help")
+    Tutorial._reset()
+    scr2:hide()
+    -- O texto nao pode mentir sobre os numeros da regra (todos os idiomas).
+    local I18n = require("src.i18n.I18n")
+    local cur = I18n.getLocale()
+    local lowPct = math.floor(ScribeDice.chance("low") * 100 + 0.5)
+    local sevenPct = math.floor(ScribeDice.chance("seven") * 100 + 0.5)
+    for _, loc in ipairs({ "pt_BR", "en", "es", "fr", "de" }) do
+        I18n.setLocale(loc, true)
+        local bets = I18n.t("tutorial.script.dice_help.bets")
+        local mult = string.format("%g", ScribeDice.payoutMult("low"))
+        local multC = mult:gsub("%.", ",")
+        t:truthy(loc .. ": chance do Baixo/Alto escrita certa (" .. lowPct .. "%)",
+            bets:find(tostring(lowPct), 1, true) ~= nil)
+        t:truthy(loc .. ": chance do Sete escrita certa", bets:find(tostring(sevenPct), 1, true) ~= nil)
+        t:truthy(loc .. ": pagamento x" .. mult .. " escrito certo",
+            bets:find(mult .. "×", 1, true) ~= nil or bets:find(multC .. "×", 1, true) ~= nil)
+        t:truthy(loc .. ": pagamento do Sete escrito certo",
+            bets:find(string.format("%g", ScribeDice.payoutMult("seven")) .. "×", 1, true) ~= nil)
+        for _, k in ipairs({ "what", "stakes", "once" }) do
+            local txt = I18n.t("tutorial.script.dice_help." .. k)
+            t:truthy(loc .. ": fala " .. k .. " traduzida", txt and not txt:find("dice_help", 1, true))
+        end
+    end
+    I18n.setLocale(cur, true)
+
     rm:deleteSave()
     return t:done()
 end

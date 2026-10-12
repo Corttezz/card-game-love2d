@@ -63,6 +63,12 @@ return {
             pick = "Vitória! Escolha *uma* carta para o grimório.",
             skip = "Ou pule: um grimório enxuto compra as melhores cartas mais vezes. Às vezes, menos é mais.",
         },
+        dice_help = {
+            what = "Os *Dados do Escriba* são uma aposta opcional: você dá um palpite sobre a soma de dois dados e arrisca ouro nele.",
+            bets = "*Baixo* (soma 2 a 6) e *Alto* (8 a 12) acertam 42% das vezes e pagam 2,5× a ficha. O *Sete* acerta 17% e paga 6×.",
+            stakes = "A *ficha* é quanto você arrisca, e os valores sobem a cada ato. Se errar, a ficha fica com a casa.",
+            once = "Uma jogada por visita à loja, e o resultado vale na hora, mesmo se você sair e voltar. Na média a mesa empata: serve para arriscar quando falta pouco para uma compra.",
+        },
         dice = {
             odds = "Dois dados, uma aposta. *Baixo* (2 a 6) e *Alto* (8 a 12) pagam 2,5×; o *Sete* paga 6×.",
             bet = "Escolha a aposta e o valor da ficha, depois lance. A chance de cada aposta está escrita nela.",

@@ -63,6 +63,12 @@ return {
             pick = "¡Victoria! Elige *una* carta para el grimorio.",
             skip = "O sáltala: un grimorio ligero roba sus mejores cartas más a menudo. A veces, menos es más.",
         },
+        dice_help = {
+            what = "Los *Dados del Escriba* son una apuesta opcional: eliges un pronóstico para la suma de dos dados y arriesgas oro en él.",
+            bets = "*Bajo* (suma 2 a 6) y *Alto* (8 a 12) aciertan el 42% de las veces y pagan 2,5× la ficha. El *Siete* acierta el 17% y paga 6×.",
+            stakes = "La *ficha* es cuánto arriesgas, y sus valores suben en cada acto. Si fallas, la casa se la queda.",
+            once = "Una tirada por visita a la tienda, y el resultado vale al instante, aunque salgas y vuelvas. De media la mesa empata: sirve para arriesgar cuando te falta poco para una compra.",
+        },
         dice = {
             odds = "Dos dados, una apuesta. *Bajo* (2 a 6) y *Alto* (8 a 12) pagan 2,5×; el *Siete* paga 6×.",
             bet = "Elige la apuesta y la ficha, y lanza. Cada apuesta muestra su probabilidad.",

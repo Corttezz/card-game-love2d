@@ -63,6 +63,12 @@ return {
             pick = "Victory! Choose *one* card for your grimoire.",
             skip = "Or skip it: a lean grimoire draws its best cards more often. Sometimes less is more.",
         },
+        dice_help = {
+            what = "The *Scribe's Dice* are an optional wager: you call the sum of two dice and stake gold on it.",
+            bets = "*Low* (sum 2 to 6) and *High* (8 to 12) hit 42% of the time and pay 2.5× the chip. *Seven* hits 17% and pays 6×.",
+            stakes = "The *chip* is how much you risk, and its values go up each act. If you miss, the house keeps it.",
+            once = "One roll per shop visit, and the result is final right away, even if you leave and come back. On average the table breaks even: use it to gamble when a purchase is just out of reach.",
+        },
         dice = {
             odds = "Two dice, one bet. *Low* (2 to 6) and *High* (8 to 12) pay 2.5×; *Seven* pays 6×.",
             bet = "Pick your bet and your chip, then roll. Each bet shows its odds right on it.",

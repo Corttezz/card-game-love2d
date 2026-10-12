@@ -292,6 +292,19 @@ Tutorial.SCRIPT = {
     { id = "dice", state = "cardReward",
       when = function() return screenVisible("dice") and anyAnchor("dice_table") end,
       lines = { { id = "odds", spot = "dice_table" }, { id = "bet", spot = "dice_bets" } } },
+    -- SOB DEMANDA (Out/2026, queixa do dono: "os dados estão confusos"):
+    -- nunca dispara sozinha (`when` falso); quem abre é o "?" dos dados
+    -- (botão da loja e o próprio modal) via Tutorial.explain, a qualquer
+    -- momento, mesmo depois de vista ou com as dicas desligadas.
+    { id = "dice_help", state = "cardReward", onDemand = true,
+      when = function() return false end,
+      lines = {
+          { id = "what", spot = function()
+              return Tutorial.anchorRect("dice_table") or Tutorial.anchorRect("shop_dice") end },
+          { id = "bets", spot = "dice_bets" },
+          { id = "stakes", spot = "dice_stakes" },
+          { id = "once" },
+      } },
     { id = "shop", state = "cardReward",
       when = function() return screenVisible("cardReward", "shop") and anyAnchor("offers") end,
       lines = { { id = "offers", spot = "offers" }, { id = "refresh", spot = "shop_refresh" },
@@ -469,6 +482,14 @@ function Tutorial._start(id, game)
     startLine(game)
     pcall(function() require("src.systems.Sfx").play("menuOpen") end)
     return true
+end
+
+-- Explicação SOB DEMANDA (o "?" de uma tela): abre a conversa `id` agora,
+-- ignorando "já vista" e o liga/desliga das dicas — foi o jogador que pediu.
+-- Recusa se outra conversa está aberta (não atropela). Devolve true se abriu.
+function Tutorial.explain(id, game)
+    if active then return false end
+    return Tutorial._start(id, game)
 end
 
 function Tutorial.activeId() return active and active.def.id end

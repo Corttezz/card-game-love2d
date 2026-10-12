@@ -63,6 +63,12 @@ return {
             pick = "Sieg! Wähle *eine* Karte für dein Grimoire.",
             skip = "Oder überspring sie: Ein schlankes Grimoire zieht seine besten Karten öfter. Manchmal ist weniger mehr.",
         },
+        dice_help = {
+            what = "Die *Würfel des Schreibers* sind eine freiwillige Wette: Du tippst auf die Summe zweier Würfel und setzt Gold darauf.",
+            bets = "*Niedrig* (Summe 2 bis 6) und *Hoch* (8 bis 12) treffen in 42 % der Fälle und zahlen 2,5× den Einsatz. Die *Sieben* trifft zu 17 % und zahlt 6×.",
+            stakes = "Der *Einsatz* ist, was du riskierst, und seine Werte steigen mit jedem Akt. Liegst du daneben, behält das Haus ihn.",
+            once = "Ein Wurf pro Ladenbesuch, und das Ergebnis gilt sofort, auch wenn du gehst und zurückkommst. Im Schnitt ist der Tisch ausgeglichen: nutze ihn, wenn dir für einen Kauf nur wenig fehlt.",
+        },
         dice = {
             odds = "Zwei Würfel, eine Wette. *Niedrig* (2 bis 6) und *Hoch* (8 bis 12) zahlen 2,5×; die *Sieben* zahlt 6×.",
             bet = "Wähle Wette und Einsatz, dann würfle. Jede Wette zeigt ihre Chance direkt an.",

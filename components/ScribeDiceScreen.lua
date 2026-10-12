@@ -75,6 +75,11 @@ function ScribeDiceScreen.layout(sw, sh)
     local L = { panel = { x = px, y = py, w = pw, h = ph }, small = small, big = big }
     local x0, y = px + PAD, py + PAD
     L.title = { x = x0, y = y, w = inner, h = titleH }; y = y + titleH + 8
+    -- "?" da explicação (Tutorial "dice_help") no canto direito da banda do
+    -- título; o título centraliza no que sobra dos dois lados.
+    local hr = big and 12 or 9
+    L.help = { cx = x0 + inner - hr - 3, cy = L.title.y + math.floor(titleH / 2), r = hr }
+    L.titleText = { x = x0 + hr * 2 + 12, y = L.title.y, w = inner - 2 * (hr * 2 + 12), h = titleH }
     L.subtitle = { x = x0, y = y, w = inner, h = subH }; y = y + subH + GAP
     L.table = { x = x0, y = y, w = inner, h = tableH }; y = y + tableH + GAP
     L.status = { x = x0, y = y, w = inner, h = statusH }; y = y + statusH + GAP
@@ -112,6 +117,12 @@ function ScribeDiceScreen.validate(L, sw, sh)
     end
     if p.x < 0 or p.y < 0 or p.x + p.w > sw or p.y + p.h > sh then
         probs[#probs + 1] = "painel fora da tela"
+    end
+    if L.help and L.titleText then
+        local hr = require("src.ui.HelpBadge").rect(L.help.cx, L.help.cy, L.help.r)
+        inside(hr, "help")
+        if MenuKit.overlaps(hr, L.titleText) then probs[#probs + 1] = "help x titulo" end
+        if MenuKit.overlaps(hr, L.subtitle) then probs[#probs + 1] = "help x subtitulo" end
     end
     local all = { { L.title, "title" }, { L.subtitle, "subtitle" }, { L.table, "table" },
         { L.status, "status" }, { L.stakeLabel, "stakeLabel" }, { L.leave, "leave" },
@@ -406,7 +417,7 @@ function ScribeDiceScreen:draw()
     UiPanel.draw(p.x, p.y, p.w, p.h)
 
     local title = I18n.t("scribe_dice.title")
-    printCentered(title, L.title, fitFont(title, L.title.w, L.title.h, 10),
+    printCentered(title, L.titleText, fitFont(title, L.titleText.w, L.title.h, 10),
         Palette.AGED_GOLD_LIGHT)
     local sub = I18n.t("scribe_dice.subtitle")
     printCentered(sub, L.subtitle, fitFont(sub, L.subtitle.w, L.subtitle.h, 6),
@@ -439,6 +450,15 @@ function ScribeDiceScreen:draw()
     -- âncoras do narrador do tutorial: a mesa e as apostas
     require("src.systems.Tutorial").anchor("dice_table", L.table.x, L.table.y, L.table.w, L.table.h)
     require("src.systems.Tutorial").anchorList("dice_bets", L.bets)
+    require("src.systems.Tutorial").anchorList("dice_stakes", L.stakes)
+    -- "?" (explicação sob demanda): clique, H, ou Y no controle.
+    do
+        local HelpBadge = require("src.ui.HelpBadge")
+        local hr = HelpBadge.rect(L.help.cx, L.help.cy, L.help.r)
+        HelpBadge.draw(L.help.cx, L.help.cy, L.help.r,
+            MenuKit.hit(hr, love.mouse.getPosition()))
+        require("src.ui.NavCursor").target("dice_help", hr.x, hr.y, hr.w, hr.h)
+    end
 
     local stakes = self:_stakes()
     local lbl = I18n.t("scribe_dice.stake")
@@ -473,9 +493,24 @@ function ScribeDiceScreen:mousepressed(x, y, button)
     return true
 end
 
+-- Abre a explicação dos dados (conversa do corvo "dice_help"), a qualquer
+-- momento: antes, depois da jogada, com as dicas desligadas.
+function ScribeDiceScreen:openHelp()
+    local ok = require("src.systems.Tutorial").explain("dice_help", self.game)
+    if not ok then Sfx.play("purchaseDeny") end
+    return ok
+end
+
 function ScribeDiceScreen:mousereleased(x, y, button)
     if not self.visible then return false end
     if self.rolling then return true end
+    if button == 1 then
+        local L0 = ScribeDiceScreen.layout(love.graphics.getWidth(), love.graphics.getHeight())
+        if MenuKit.hit(require("src.ui.HelpBadge").rect(L0.help.cx, L0.help.cy, L0.help.r), x, y) then
+            self:openHelp()
+            return true
+        end
+    end
     if self.leaveBtn:mousereleased(x, y, button) then return true end
     if self.rollBtn:mousereleased(x, y, button) then return true end
     if button ~= 1 or self:_used() then return true end
@@ -500,6 +535,8 @@ function ScribeDiceScreen:wheelmoved() return true end
 function ScribeDiceScreen:keypressed(key)
     if not self.visible then return false end
     if self.rolling then return true end
+    -- H no teclado / Y no controle (chega como "e"): explicação dos dados.
+    if key == "h" or key == "e" then self:openHelp(); return true end
     local it = MenuKit.intent(key, MenuKit.shiftDown())
     local used = self:_used()
     if it == "back" then self:hide(); return true end

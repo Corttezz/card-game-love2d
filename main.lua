@@ -2529,6 +2529,10 @@ function love.keypressed(key)
     -- engrenagem era o único caminho). Teclas próprias da tela vêm antes.
     if currentState == "cardReward" or currentState == "roundEval" then
         if key == "escape" and _G.togglePauseMenu then _G.togglePauseMenu() end
+        -- H na loja: explicação dos Dados do Escriba (o "?" do botão)
+        if key == "h" and currentState == "cardReward" and cardRewardScreen.openDiceHelp then
+            cardRewardScreen:openDiceHelp()
+        end
         return
     end
 
