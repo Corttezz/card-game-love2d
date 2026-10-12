@@ -116,6 +116,23 @@ linha de chão de cy pra deathCy junto da queda (cai pra frente). Como esse
 chão fica abaixo do topo da mão, a MÃO DESCE e sai da tela quando o inimigo
 morre nesse caso (`corpseUnderHand`). Demais salões e estrada: sem deathYr.
 
+## HUD no eixo do CORPO (todos os inimigos, Out/2026)
+
+> "o 29 e a barra estão à esquerda do corpo" (dono, inimigo de gelo)
+
+Causa: o bbox devolvido pelo `EnemyRenderer.draw` tinha `cx` = centro do
+CANVAS do sprite, e o EnemyHud ancora nele. Canvas com arma/cajado/capa/
+margem de um lado só = HUD fora do corpo (medido a 1080p: glacier_knight
+36px, obsidian 34, ember_imp 25, frost_wight 19...). Agora:
+`EnemyRenderer.bodyAxis(id)` = mediana, nas linhas 20-80% do conteúdo do
+quadro 0, do centro do maior trecho opaco de cada linha (override `axisX` em
+enemy_poses quando erra: escudo largo, quadrúpede de frente, orbe grande —
+hoje 7). O corpo é desenhado COM O EIXO no ponto pedido e o bbox devolve
+esse ponto: HUD, sombra elíptica, aura e texto flutuante ancoram no corpo;
+o billboard da viagem usa o mesmo offset. Trava `test_enemy_axis` (todo
+diretório de inimigo: HUD <= 3px da arte do eixo, eixo na âncora ±1);
+prancha `SHOT_SIZE=1920x1080 love . test_one shot_enemy_sheet`.
+
 ## Pendente
 
 - Círculo rúnico do lich: em 1024x768 a laje do salão 2 cai atrás da mão de

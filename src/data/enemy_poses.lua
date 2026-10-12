@@ -37,7 +37,10 @@
 --   idle      { fps, cycle = true } — idle assado em LOOP fechado (os 6
 --             chefes: tools/bake_boss_idle.py). Sem o campo: ping-pong no
 --             IDLE_FPS padrão do EnemyRenderer.
---   axisX     coluna (px do canvas do idle) do EIXO DO CORPO. O renderer
+--   axisX     coluna (px do canvas do idle) do EIXO DO CORPO — OVERRIDE do
+--             eixo automático (EnemyRenderer.bodyAxis, Out/2026). Declarar só
+--             quando o automático erra: escudo largo, quadrúpede de frente,
+--             cajado com orbe grande (conferido de olho com régua). O renderer
 --             centra pelo bbox do conteúdo; quando cajado de um lado e capa
 --             do outro desequilibram o bbox, o corpo sai do centro e o
 --             chefe lê TORTO (winter_monarch, Out/2026).
@@ -95,24 +98,24 @@ EnemyPoses.BY_ID = {
     -- quadros, loop fechado, pés fixos): tools/pixellab_new_enemies.py idle.
     hollow_farmer     = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- botas
     plague_rats       = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- monte de ratos no chão
-    blight_bull       = { pose = "grounded", idle = { fps = 5, cycle = true } },  -- quatro cascos
+    blight_bull       = { pose = "grounded", axisX = 56, idle = { fps = 5, cycle = true } },  -- quatro cascos
     wicker_effigy     = { pose = "grounded", idle = { fps = 5, cycle = true } },  -- pés de vime
     ram_cultist       = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- botas sob o manto
     storm_harpy       = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- agachada nos talões
-    spectral_knight   = { pose = "grounded", idle = { fps = 5, cycle = true } },  -- soleretes + escudo no chão
+    spectral_knight   = { pose = "grounded", axisX = 44, idle = { fps = 5, cycle = true } },  -- soleretes + escudo no chão
     storm_griffin     = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- garras e patas no chão
-    hellhound         = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- quatro patas
+    hellhound         = { pose = "grounded", axisX = 45, idle = { fps = 6, cycle = true } },  -- quatro patas
     abyss_acolyte     = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- barra do manto no chão
     pit_brute         = { pose = "grounded", idle = { fps = 5, cycle = true } },  -- cascos + marreta plantada
     frost_wolf        = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- quatro patas
-    rime_shaman       = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- botas de pele
+    rime_shaman       = { pose = "grounded", axisX = 47, idle = { fps = 6, cycle = true } },  -- botas de pele
     frost_troll       = { pose = "grounded", idle = { fps = 5, cycle = true } },  -- pés + punhos no chão
     ice_wyrm          = { pose = "grounded", idle = { fps = 5, cycle = true } },  -- espiras assentadas
     plague_toad       = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- agachado nas patas
     leech_horror      = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- pés de sanguessuga
-    croc_warrior      = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- pés + cauda no chão
+    croc_warrior      = { pose = "grounded", axisX = 50, idle = { fps = 6, cycle = true } },  -- pés + cauda no chão
     spore_mother      = { pose = "grounded", idle = { fps = 5, cycle = true } },  -- raízes plantadas
-    grave_thrall      = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- botas + escudo
+    grave_thrall      = { pose = "grounded", axisX = 41, idle = { fps = 6, cycle = true } },  -- botas + escudo
     dullahan          = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- botas de placa
     fallen_angel      = { pose = "grounded", idle = { fps = 5, cycle = true } },  -- botas sob o manto, asas abertas
 

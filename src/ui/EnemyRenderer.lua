@@ -58,6 +58,9 @@ local EnemyRenderer = {}
 
 -- Cache de sprites estaticos (rotacoes south/east/west/north do create_character).
 local staticCache = {}
+-- eixo do corpo por id (EnemyRenderer.bodyAxis) — declarado aqui porque
+-- o clearCache, mais acima no arquivo, também o zera
+local axisCache = {}
 local staticMiss = {}
 
 -- Estado da animacao corrente por enemyId
@@ -231,6 +234,7 @@ function EnemyRenderer.poseOffsetX(spriteId, spriteH, now, sinkK)
 end
 
 function EnemyRenderer.clearCache()
+    axisCache = {}
     staticCache = {}
     staticMiss = {}
     SpriteAnimation.clearCache()
@@ -606,10 +610,89 @@ local function clipMetrics(id, animName)
     return m
 end
 
+-- EIXO DO CORPO (Out/2026, dono: "o 29 e a barra de vida estão à esquerda
+-- do corpo"). Centrar pelo BBOX do conteúdo põe arma/cajado/cauda/capa no
+-- cálculo: o corpo sai do centro e o HUD (que ancora no cx) fica torto. O
+-- eixo é a MEDIANA, nas linhas do meio do corpo (20%-80% da altura do
+-- conteúdo), do centro do MAIOR trecho opaco contínuo de cada linha — o
+-- tronco é o trecho mais largo na maioria das linhas; cajado e cauda são
+-- trechos finos e separados. Erra com escudo largo, quadrúpede de frente e
+-- orbe grande: aí vale o override `axisX` de src/data/enemy_poses.lua.
+-- Coluna em px do canvas do idle (coordenada de CENTRO de pixel).
+function EnemyRenderer.bodyAxis(id)
+    local over = (EnemyPoses.BY_ID[id] or {}).axisX
+    if over then return over, "manual" end
+    if axisCache[id] ~= nil then return axisCache[id], "auto" end
+    local m = clipMetrics(id, "idle")
+    local axis = (m.w > 0) and (m.w / 2 + m.off - 0.5) or 0
+    local dir = "assets/sprites/characters/enemies/" .. id .. "/animations/idle/south/0.png"
+    if not love.filesystem.getInfo(dir) then
+        dir = "assets/sprites/characters/enemies/" .. id .. "/south.png"
+    end
+    local ok, data = pcall(love.image.newImageData, dir)
+    if ok and data then
+        local w, h = data:getWidth(), data:getHeight()
+        local y0, y1 = nil, nil
+        for y = 0, h - 1 do
+            for x = 0, w - 1 do
+                local _, _, _, a = data:getPixel(x, y)
+                if a > FOOT_ALPHA then
+                    y0 = y0 or y
+                    y1 = y
+                    break
+                end
+            end
+        end
+        if y0 then
+            local H = y1 - y0 + 1
+            local centers = {}
+            for y = math.floor(y0 + 0.2 * H), math.floor(y0 + 0.8 * H) do
+                local bestLen, bestC, runS = 0, nil, nil
+                for x = 0, w do
+                    local on = false
+                    if x < w then
+                        local _, _, _, a = data:getPixel(x, y)
+                        on = a > FOOT_ALPHA
+                    end
+                    if on and not runS then runS = x end
+                    if not on and runS then
+                        if x - runS > bestLen then
+                            bestLen, bestC = x - runS, (runS + x - 1) / 2
+                        end
+                        runS = nil
+                    end
+                end
+                if bestC then centers[#centers + 1] = bestC end
+            end
+            if #centers > 0 then
+                table.sort(centers)
+                local n = #centers
+                axis = (n % 2 == 1) and centers[(n + 1) / 2]
+                    or (centers[n / 2] + centers[n / 2 + 1]) / 2
+            end
+        end
+    else
+        print("[EnemyRenderer] AVISO: sem quadro 0 do idle pro eixo de " .. tostring(id)
+            .. " — usando o centro do bbox")
+    end
+    axisCache[id] = axis
+    return axis, "auto"
+end
+
+-- deslocamento horizontal (px do canvas) que leva o EIXO do corpo ao centro
+-- do canvas do idle — o que o draw e o billboard subtraem do cx
+local function axisOffset(id)
+    local m = clipMetrics(id, "idle")
+    if m.w <= 0 then return m.off end
+    return (EnemyRenderer.bodyAxis(id) + 0.5) - m.w / 2
+end
+
 -- Compat: call sites antigos (billboard da viagem etc.) pedem só o idle.
+-- O offset agora é o do EIXO DO CORPO (mesma conta do draw: o handoff
+-- viagem→batalha não pode pular de lado).
 local function contentOffsets(id)
     local m = clipMetrics(id, "idle")
-    return m.off, m.pad
+    return axisOffset(id), m.pad
 end
 
 -- Exposto pra testes de regressão (escala estável entre clips — depois da
@@ -693,12 +776,20 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     local curM = hasAnim and clipMetrics(id, currentAnimName or "idle") or idleM
     if curM.h == 0 then curM = idleM end
     local offX = curM.off
-    -- EIXO DO CORPO declarado (enemy_poses.axisX): troca o centro do bbox do
-    -- idle pelo eixo, preservando o desvio relativo de cada clip.
-    local axisX = (EnemyPoses.BY_ID[id] or {}).axisX
-    if axisX and idleM.w > 0 then
-        offX = offX + ((axisX + 0.5 - idleM.w / 2) - idleM.off)
+    -- EIXO DO CORPO (automático ou override axisX): troca o centro do bbox
+    -- do idle pelo eixo, preservando o desvio relativo de cada clip. O HUD
+    -- ancora no cx devolvido no bbox — eixo no cx = HUD sobre o corpo.
+    if idleM.w > 0 then
+        offX = offX + (axisOffset(id) - idleM.off)
     end
+    -- bodyCx: o ponto pedido É onde o EIXO DO CORPO fica. `cx` daqui em
+    -- diante é o centro do CANVAS (o sprite e a silhueta da sombra desenham
+    -- a partir dele). HUD, sombra elíptica, aura e o texto flutuante ancoram
+    -- no CORPO (bodyCx) — devolver o centro do canvas no bbox era o "29 e a
+    -- barra à esquerda do corpo" (Out/2026): o canvas tem margem/arma/capa
+    -- de um lado só, e o centro dele não é o do bicho (medido a 1080p: até
+    -- 36px de diferença no glacier_knight).
+    local bodyCx = cx
     cx = cx - math.floor(offX * scale)
 
     -- POSE (src/data/enemy_poses.lua): apoiado x flutuante. Quem tem pe
@@ -749,7 +840,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     local t = love.timer.getTime()
 
     -- (2) Partículas ambientais: spawn + draw por baixo do sprite
-    tickAmbientSpawn(cx, cy, 0)
+    tickAmbientSpawn(bodyCx, cy, 0)
     for _, p in ipairs(ambientParticles) do
         local alpha = math.max(0, math.min(1, p.life / (p.maxLife * 2)))
         love.graphics.setColor(p.tint[1], p.tint[2], p.tint[3], alpha * 0.55)
@@ -804,6 +895,9 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     -- Régua do palco (tools/test_enemy_stage): onde o pé DESTE quadro caiu,
     -- pela mesma conta que o SpriteAnimation usa (floor do y).
     lastFoot = {
+        -- eixo do corpo NA TELA (régua do HUD: tools/test_enemy_axis)
+        bodyX = drawX + (EnemyRenderer.bodyAxis(id) + 0.5 + (idleM.off - curM.off)) * scale,
+        hudCx = bodyCx,
         groundY = cy,
         footBottom = math.floor(drawY) + (ih - footPad) * scale,
         scale = scale, frame = frameIdx, pad = footPad,
@@ -811,7 +905,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     }
 
     -- posição do peito exposta pro Game (floating text de veneno etc.)
-    lastCenterX = drawX + (iw * scale) / 2
+    lastCenterX = bodyCx + jitter + atkDX + knockDX + driftX
     lastCenterY = drawY + (ih * scale) * 0.35
 
     -- (1) v8: SOMBRA PROJETADA da silhueta (ShadowEngine) — a própria
@@ -882,6 +976,9 @@ function EnemyRenderer.draw(game, cx, cy, opts)
             -- CONTEUDO (curM.cw), nao do canvas — canvas cru do PixelLab
             -- tem margem lateral gorda e a elipse saia larga demais.
             local baseW = ((curM.cw > 0) and curM.cw or iw) * scale
+            -- elipse sob o CORPO (o shX acima é o centro do canvas, que a
+            -- silhueta usa)
+            shX = bodyCx + jitter * 0.5 + shDX
             local rx = baseW * 0.46 * shK
             local ry = math.max(3, baseW * 0.060 * shK)
             local a = 0.30 * shA * sceneShadowA
@@ -922,7 +1019,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     if auraId then
         auraRect = { x = drawX, y = drawY, w = iw * scale, h = ih * scale,
                      iw = iw, ih = ih, scale = scale, groundY = cy,
-                     cx = cx + driftX }
+                     cx = bodyCx + driftX }
         BossAura.drawBack(auraId, auraRect)
     end
 
@@ -1164,9 +1261,9 @@ function EnemyRenderer.draw(game, cx, cy, opts)
 
     love.graphics.setColor(1, 1, 1, 1)
     -- Retorna bounding box do sprite pra overlays (HP bar / intent).
-    -- cx já é o eixo horizontal do sprite; pés ficam em cy; topo em drawY.
+    -- cx = EIXO DO CORPO (não o centro do canvas); pés em cy; topo em drawY.
     return {
-        cx = cx,
+        cx = bodyCx,
         topY = drawY,
         bottomY = cy,
         width = iw * scale,
