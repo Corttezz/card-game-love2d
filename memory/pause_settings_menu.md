@@ -76,3 +76,28 @@ Validação: `love . test_one test_pause_menu` (145 asserções; validate() em 7
 tamanhos × 2 idiomas × todos os estados, e teste-do-teste: sobreposição
 forçada TEM que ser acusada) · `love . screenshot_pause [de]` (canvas com
 janela falsificada, 5 tamanhos num processo, sem `setMode`).
+
+## v4 (Out/2026) — "pausa poluída" e "idioma piorou"
+
+**Pausa**: saíram as descrições das ações, a grade 2×3 do resumo (vida/ouro/
+baralho repetiam a TopBar) e o rodapé de dica. Ficou: título com filetes →
+"classe · jornada" + semente miúda → 3 ícones (os MESMOS da TopBar: deck.png,
+jester_hat, scroll) → Continuar dourada / Configurações / Salvar e sair
+(placas centradas, só o nome) → "Abandonar" como link vermelho discreto que,
+armado, vira pergunta + Sim/Não no mesmo lugar. Zonas: title/info/shortcuts/
+actions/danger. `runSummary()` segue com 6 células (dado), o desenho usa 3.
+
+**Idioma**: o `[<] valor [>]` obrigava a passar idioma por idioma. Agora é a
+4ª aba (tecla 4) com os 5 idiomas pelo NOME NATIVO (`I18n.labels`, com acento:
+"Português (Brasil)", "Español", "Français") + selo do código; atual aceso,
+1 clique/Enter escolhe, ←/→ não fazem nada nessa aba. `MAX_ROWS = 5`.
+**Não voltar a pôr idioma em ciclo** — com 5 opções o ciclo é 4 cliques pro
+pior caso, e quem não lê o idioma atual não sabe o que está ciclando.
+
+**Escala**: pausa e configurações crescem com a altura (`sh/768`, teto 1.75 —
+padrão das EndScreens). Em 2560×1440 o painel de 1× era um selo no meio.
+Configurações: `U`/`S()` no módulo, setado no `rebuild`.
+
+Sem rodapé de dica nas duas (regra do projeto); as chaves `pause.hint`/
+`settings.hint` ficaram nos locales (o teste só confere existência).
+Capturas: `love . screenshot_pause [de]` agora inclui 2560×1440.

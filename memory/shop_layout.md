@@ -64,3 +64,13 @@ Trava: `test_upgrade_tile` roda a loja nos 5 idiomas × 7 tamanhos (800×600 at�
 nenhum deles carregava informação. **How to apply:** ao adicionar algo à loja,
 coloque numa zona existente e separe por respiro — não por moldura nova. Ver
 [[ui_design_system]] e [[ui_layout_invariants]].
+
+## Ambiente (Out/2026, "mais bonita")
+
+Sem voltar ao cenário: `_drawShopAmbience` (luz âmbar em degraus do alto da
+vitrine + vinheta lateral, fora do slide) e `_drawShopShelves` (tábua de
+madeira sob cada fileira, dentro do slide — entra com as ofertas). Nenhum
+texto, nenhuma moldura nova. Seções NÃO ganharam cabeçalho de texto: a
+prateleira já separa os dois andares, e rótulo de categoria foi o ruído
+removido acima. Teto de largura da vitrine = `max(1560, sh*1.25)` (em 1440p
+um terço da tela ficava vazio).

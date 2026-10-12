@@ -50,8 +50,8 @@ card-game-love2d/
 │   ├── GameUI.lua              # HUD do gameplay (só delega ao HudManager)
 │   ├── CardRewardScreen.lua    # Loja / recompensas pós-batalha (inclui refresh). Loja = TELA CHEIA sem modal e sem cenário, zonas separadas por espaço (Out/2026) — memory/shop_layout.md
 │   ├── TopBar.lua              # Barra superior (ouro, deck, ícone config)
-│   ├── SettingsMenu.lua        # Abas Áudio/Vídeo/Jogo em altura fixa, controles [<] valor [>]; VOLTAR retorna ao Pause; SettingsMenu.applyRuntime(settings) no boot (vsync, combatSpeed → CombatBeats.speed)
-│   ├── PauseMenu.lua           # Pausa por zonas (resumo da run + seed, atalhos D/J/M, Continuar primário, abandono em 2 etapas); teclado/gamepad via src/ui/MenuKit.lua; _G.togglePauseMenu
+│   ├── SettingsMenu.lua        # Abas Áudio/Vídeo/Jogo/Idioma em altura fixa, controles [<] valor [>] (Idioma = LISTA direta, nunca ciclo); VOLTAR retorna ao Pause; SettingsMenu.applyRuntime(settings) no boot (vsync, combatSpeed → CombatBeats.speed)
+│   ├── PauseMenu.lua           # Pausa v4 limpa (classe·jornada + semente miúda, atalhos D/J/M em ícone, Continuar primário, abandono = link discreto em 2 etapas); teclado/gamepad via src/ui/MenuKit.lua; _G.togglePauseMenu
 │   ├── CreditsScreen.lua       # Créditos (LÖVE/zlib, fonte/OFL) — substituiu o "Sobre" placeholder
 │   ├── JokerSlot.lua           # Slot visual de joker ativo
 │   ├── DeckViewerScreen.lua    # Deck da run em TELA CHEIA (estilo Coleção); abre por clique no deck da TopBar OU tecla D; hover c/ tooltip + forja aplicada
