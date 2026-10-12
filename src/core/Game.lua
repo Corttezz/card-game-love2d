@@ -367,7 +367,9 @@ function Game:startNewRun(classId, opts)
     self.unlockResult = nil
 
     local runData = self.runManager:startNewRun(classId, opts)
-    self:addMessage(msg("run_started", { name = runData.className }), "success")
+    -- nome da classe no idioma atual (runData.className é o literal do dado)
+    self:addMessage(msg("run_started", { name = require("src.i18n.I18n").t(
+        "classes." .. tostring(classId) .. ".name", nil, runData.className) }), "success")
 
     -- Perfil persistente (menu mostra vitórias/melhor progresso).
     require("engine.ProfileStats").recordRunStart(classId)

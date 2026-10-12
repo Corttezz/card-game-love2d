@@ -3628,6 +3628,18 @@ end
 -- como qualquer prop, com sombra projetada única e silhueta legível no
 -- lightmap. Aqui (overlay pós-composite) fica SÓ a UI: pill com nome +
 -- descrição no hover. Sem bob: parada é LUGAR, não botão.
+-- Rótulo/descrição do marco no idioma ATUAL, pelo tipo do nó. O nó salvo
+-- carrega `label`/`desc` no idioma em que foi gerado (save antigo, troca de
+-- idioma com a run salva) — só vale como último recurso, pra tipo sem chave.
+function WorldRoad.forkLabel(node)
+    if not node then return "?" end
+    local MapManager = require("src.systems.MapManager")
+    if node.type and MapManager.NODE_META and MapManager.NODE_META[node.type] then
+        return MapManager.labelFor(node.type), MapManager.descFor(node.type)
+    end
+    return node.label or tostring(node.type or "?"), node.desc
+end
+
 local function drawForkMarks(g, x, w, camZ)
     local f = WorldRoad._fork
     if not f or not f._geo then return end
@@ -3639,7 +3651,7 @@ local function drawForkMarks(g, x, w, camZ)
             local px, py = geo.px, geo.py
             local ihs = geo.ih * geo.s
             local aMul = geo.aMul
-            local label = (node and node.label) or "?"
+            local label, desc = WorldRoad.forkLabel(node)
             local font = FontManager.getFont(13)
             love.graphics.setFont(font)
             local tw2 = font:getWidth(label)
@@ -3652,16 +3664,16 @@ local function drawForkMarks(g, x, w, camZ)
             love.graphics.rectangle("line", pxc, pyc, pw, ph, 6, 6)
             love.graphics.setColor(0.92, 0.82, 0.58, aMul)
             love.graphics.print(label, math.floor(pxc + 8), math.floor(pyc + 3))
-            if geo.hovered and node and node.desc then
+            if geo.hovered and desc and desc ~= "" then
                 local font2 = FontManager.getFont(11)
                 love.graphics.setFont(font2)
-                local dw = font2:getWidth(node.desc)
+                local dw = font2:getWidth(desc)
                 local dx2 = px - dw / 2 - 8
                 local dy2 = pyc - 22
                 love.graphics.setColor(0.09, 0.07, 0.05, 0.82 * aMul)
                 love.graphics.rectangle("fill", dx2, dy2, dw + 16, 18, 5, 5)
                 love.graphics.setColor(0.85, 0.78, 0.62, aMul)
-                love.graphics.print(node.desc, math.floor(dx2 + 8), math.floor(dy2 + 3))
+                love.graphics.print(desc, math.floor(dx2 + 8), math.floor(dy2 + 3))
             end
         end
     end

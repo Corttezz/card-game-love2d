@@ -139,6 +139,17 @@ local function castleImageFor(act, conquered)
     return img
 end
 
+-- Opção escolhida num evento, no idioma ATUAL: pela chave do evento
+-- (events.<id>.optN). O texto gravado no save (`optionLabel`) é do idioma
+-- daquela hora — fica só de fallback (evento sem chave, save antigo).
+function RunJournalScreen.optionText(e)
+    if not e then return nil end
+    if e.eventId and e.optionIndex then
+        return I18n.t("events." .. e.eventId .. ".opt" .. e.optionIndex, nil, e.optionLabel)
+    end
+    return e.optionLabel
+end
+
 local function cardNameFor(id)
     local cd = id and CardDatabase:getCard(id)
     if not cd and id then
@@ -326,7 +337,7 @@ local function primaryOutcome(e)
         end
         return name, Palette.PARCHMENT_LIGHT, #gains - 1
     end
-    if e.optionLabel then return e.optionLabel, Palette.ARCANE_LIGHT, 0 end
+    if e.optionLabel then return RunJournalScreen.optionText(e), Palette.ARCANE_LIGHT, 0 end
     return nil
 end
 
@@ -358,6 +369,7 @@ local function detailLines(e)
         })
     end
     if e.optionLabel then
+        local opt = RunJournalScreen.optionText(e)
         table.insert(lines, { t = I18n.t("run_journal.event_option",
             { option = e.optionLabel }, "Escolha: " .. e.optionLabel), c = Palette.ARCANE_LIGHT })
     end
