@@ -2,7 +2,6 @@
 -- ativos antes de qualquer require do jogo (um erro carregando modulo ja
 -- passa pelo handler). Sem `local`: love.load vive no teto de 60 upvalues.
 require("src.core.Release").install()
-if os.getenv("ASSET_AUDIT") then require("tools.asset_audit_hook") end -- TEMP auditoria de imagens
 
 local Game = require("src.core.Game")
 local CardFrame = require("src.ui.CardFrame")
