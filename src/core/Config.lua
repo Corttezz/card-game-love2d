@@ -196,16 +196,20 @@ Config.Endless = {
     -- 1º ciclo e x14 no 2º, com o dano acompanhando a vida: o endless acabava
     -- num golpe, não numa escalada. Agora é Balatro: generoso por 2-3 ciclos
     -- e EXPLODE depois (o termo quadrático garante que toda corrida termina).
-    -- Vida no fim do ciclo 1..6: x1,9 x4,7 x14 x50 x220 x1180.
+    -- Vida no fim do ciclo 1..6: x1,5 x3,0 x7 x20 x69 x290.
     -- Dano (cresce mais devagar que a vida — derrota por escalada, não por
-    -- golpe único): x1,4 x2,4 x4,3 x8,7 x19 x48.
-    HP_LIN = 0.08, HP_QUAD = 0.0015,
-    DMG_LIN = 0.045, DMG_QUAD = 0.0008,
+    -- golpe único): x1,3 x1,8 x2,7 x4,5 x8 x15.
+    -- 1a versao (LIN 0.08/0.045) matou TODO vencedor do piloto ainda no
+    -- ciclo 1 (balance_sim BALANCE_ENDLESS=48, guerreiro): o deck que mal
+    -- passa o chefe do ato 6 nao aguenta x1,9 no andar 8. Ciclo 1 tem que
+    -- ser a volta da vitoria, nao o muro.
+    HP_LIN = 0.05, HP_QUAD = 0.0015,
+    DMG_LIN = 0.03, DMG_QUAD = 0.0006,
     scalingMultiplier = 1.18, -- LEGADO: so a PONTUACAO ainda usa 1.18^n (ScoreSystem)
     -- Raridades favorecem o alto-nivel mas comum ainda aparece (sem tirar o "floor" de oferta).
     rarityWeights = { common = 10, uncommon = 35, rare = 45, legendary = 10 },
     -- Cura ao abrir cada ciclo de 8 andares (Game:nextPhase), antes de selo/maldição.
-    healPercent = 0.20,
+    healPercent = 0.30,
 }
 
 -- Total de atos (excluindo endless). Usado por RunManager:advanceFloorInAct

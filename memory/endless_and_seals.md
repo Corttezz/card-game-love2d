@@ -53,11 +53,16 @@ artigos sobre "naneinf" do Balatro. Ver memory/sts_progression_config.md.
   (Bloqueio inicial 8% da vida), Caçada (elite x2), Dízimo (loja +25%), Fome
   (cura x0,7). Ícones PixelLab (`tools/pixellab_endless_icons.py`).
 - **Curva** (`Config.Endless`, `ActSystem.endlessFactors`): fator =
-  exp(LIN·n + QUAD·n²). Vida no fim dos ciclos 1..6: x1,9 x4,7 x14 x50 x220
-  x1180; dano x1,4 x2,4 x4,3 x8,7 x19 x48. Era 1.18^n pra vida E dano (x3,2 já
+  exp(LIN·n + QUAD·n²). Vida no fim dos ciclos 1..6: x1,5 x3,0 x7 x20 x69
+  x290; dano x1,3 x1,8 x2,7 x4,5 x8 x15. Era 1.18^n pra vida E dano (x3,2 já
   no 1º ciclo, x14 no 2º, dano junto = morte num golpe). Agora: generoso por
   2-3 ciclos, e o termo quadrático garante que toda run termina.
-- Cura de ciclo: `Config.Endless.healPercent` (20%) x selo/maldição. Antes caía
+  A 1ª calibragem (LIN 0.08/0.045 → x1,9 no fim do ciclo 1) matou TODO
+  vencedor do piloto ainda no ciclo 1 (`BALANCE_ENDLESS=48`): o deck que mal
+  passa o chefe do ato 6 não aguenta. O ciclo 1 é a volta da vitória.
+  Chefe/mini-chefe escalam pelo INÍCIO do ciclo (o chefe do ciclo 1 = o do
+  ato 6; pelo andar ele vinha x1,4 e virava o muro da primeira volta).
+- Cura de ciclo: `Config.Endless.healPercent` (30%) x selo/maldição. Antes caía
   sem querer na cura do ato 6 (40% a cada 8 andares); `healEveryNFloors` era
   config morta e saiu.
 - Recompensa: pontuação (`ScoreSystem` x `RunModifiers.scoreMul`), recorde por
@@ -87,6 +92,12 @@ selo_max_guerreiro / _mago / _ladino. Texto em `tools/achievement_text.py`,
 ícones PixelLab → `tools/achievement_icons.py all`.
 
 ## Medição e travas
+
+- Bateria (guerreiro, 10-12 runs, seed 710000, piloto v6): **Selo 0 70% ·
+  Selo 10 20%** de vitória. Endless (`BALANCE_ENDLESS=48`, curva final):
+  9 vencedores, andar médio 16,4, melhor 23 — 1 parou no ciclo 1, 4 no 2,
+  4 no 3. O piloto escolhe sempre a maldição mais branda e entesoura ouro;
+  jogador humano deve ir 1-2 ciclos além.
 
 - `BALANCE_SEAL=N` e `BALANCE_ENDLESS=N` no `balance_sim` (o piloto escolhe a
   maldição de menor bônus; relatório ganha a seção "Endless").

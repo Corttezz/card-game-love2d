@@ -195,6 +195,13 @@ function M.run()
         prevF = f
     end
     t:truthy("curva sempre crescente", mono)
+    -- Chefe escala pelo INÍCIO do ciclo: o do ciclo 1 é o chefe do ato 6.
+    local A = Config.TotalActs
+    local b6 = ActSystem.getEnemyStats(A, 8, "boss")
+    local bc1 = ActSystem.getEnemyStats(A + 1, 8, "boss", 8)
+    local bc2 = ActSystem.getEnemyStats(A + 1, 8, "boss", 16)
+    t:eq("chefe do ciclo 1 = chefe do ato 6", bc1.health, b6.health)
+    t:truthy("chefe do ciclo 2 mais forte", bc2.health > bc1.health)
 
     -- ===== 5) telas =====
     local ECS = require("components.EndlessCurseScreen")

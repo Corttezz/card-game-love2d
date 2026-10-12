@@ -56,7 +56,16 @@ function ActSystem.getEnemyStats(actNumber, floorInAct, nodeType, endlessFloor)
     -- Endless: curva exp(LIN*n + QUAD*n²) sobre a base do ultimo ato
     -- (ActSystem.endlessFactors — fonte unica, lida tambem pelos testes).
     if isEndless then
-        local fh, fd = ActSystem.endlessFactors(endlessFloor or floorInAct)
+        local n = endlessFloor or floorInAct
+        -- Chefe e mini-chefe escalam pelo INÍCIO do ciclo, não pelo andar:
+        -- o chefe do ciclo N é o chefe do ato 6 refeito na força do ciclo N.
+        -- Medido (balance_sim BALANCE_ENDLESS): pelo andar, o chefe do ciclo 1
+        -- já vinha x1,4 sobre o chefe que o jogador ACABOU de vencer e virava
+        -- o muro da primeira volta.
+        if (nodeType == "boss" or nodeType == "mini_boss") and endlessFloor and floorInAct then
+            n = math.max(1, endlessFloor - floorInAct + 1)
+        end
+        local fh, fd = ActSystem.endlessFactors(n)
         hp  = math.floor(hp * fh)
         dmg = math.floor(dmg * fd)
     end
