@@ -215,7 +215,7 @@ function M.run()
         sm:keypressed("down"); sm:keypressed("return")
         t:eq("vsync desligado via setVSync(0)", vs, 0)
         t:eq("vsync persistido", SaveManager.loadSettings().vsync, false)
-        sm:keypressed("down")
+        sm:keypressed("down"); sm:keypressed("down")   -- pula Escala da interface
         local crtBefore = require("src.ui.CRTShader").isEnabled()
         sm:keypressed("return")
         t:eq("CRT alterna", require("src.ui.CRTShader").isEnabled(), not crtBefore)

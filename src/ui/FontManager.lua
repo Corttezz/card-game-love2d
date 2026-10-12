@@ -12,6 +12,7 @@ local DEFAULT_FONT_PATH = "assets/fonts/pixel.ttf"
 local FONT_PATH = DEFAULT_FONT_PATH
 local fontCache = {}
 local ttfAvailable = nil   -- nil = unchecked, true/false = resolvido
+local UiScale             -- carregado sob demanda (evita ciclo de require)
 
 local function ttfExists()
     if ttfAvailable ~= nil then return ttfAvailable end
@@ -43,14 +44,21 @@ end
 -- Obtém fonte pixel no tamanho pedido. Cache por tamanho.
 -- `setFilter("nearest", ...)` é crítico — sem isso a fonte fica borrada
 -- mesmo sendo pixel TTF.
+--
+-- Dentro do contexto da escala de UI (src/ui/UiScale.lua) a fonte nasce com
+-- `dpiscale` = escala corrente: métricas continuam em unidades lógicas (o
+-- layout não muda), mas o glifo é rasterizado no tamanho FINAL — texto
+-- nítido em 1440p/4K em vez de um bitmap de 12px esticado.
 function FontManager.getFont(size)
     size = math.max(1, math.floor(size or 12))
-    local key = tostring(size)
+    UiScale = UiScale or require("src.ui.UiScale")
+    local dpi = UiScale.fontDpi()
+    local key = dpi == 1 and tostring(size) or (size .. "@" .. dpi)
 
     if not fontCache[key] then
         local font
         if ttfExists() then
-            local ok, result = pcall(love.graphics.newFont, FONT_PATH, size)
+            local ok, result = pcall(love.graphics.newFont, FONT_PATH, size, "normal", dpi)
             if ok then
                 font = result
             else
@@ -58,7 +66,7 @@ function FontManager.getFont(size)
             end
         end
         if not font then
-            font = love.graphics.newFont(size)  -- fallback default LÖVE
+            font = love.graphics.newFont(size, "normal", dpi)  -- fallback default LÖVE
         end
         font:setFilter("nearest", "nearest")
         fontCache[key] = font

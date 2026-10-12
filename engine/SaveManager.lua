@@ -55,6 +55,8 @@ local DEFAULT_SETTINGS = {
     -- (multiplicador de VELOCIDADE exibido; CombatBeats.speed = 1/x).
     vsync         = true,
     combatSpeed   = 1,
+    -- Escala da interface (src/ui/UiScale): multiplicador sobre o Auto.
+    uiScale       = 1,
 }
 
 SaveManager.PATHS = PATHS

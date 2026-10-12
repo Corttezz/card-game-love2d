@@ -56,6 +56,7 @@ local SUITES = {
     { group = "unit",  name = "test_scribe_dice" },
     { group = "unit",  name = "test_pause_menu" },
     { group = "unit",  name = "test_toasts" },
+    { group = "unit",  name = "test_ui_scale" },
     { group = "unit",  name = "test_class_select" },
     { group = "unit",  name = "test_unlocks" },
     { group = "unit",  name = "test_confirm_dialog" },

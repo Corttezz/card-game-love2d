@@ -200,9 +200,9 @@ function PauseMenu:rebuild()
 
     local sw = love.graphics.getWidth()
     local sh = love.graphics.getHeight()
-    -- Escala do painel (padrão das EndScreens): 768 de altura = 1; telas
-    -- grandes crescem até 1.75 — em 1440p o painel de 1x virava um selo.
-    local u = math.max(1, math.min(1.75, sh / 768))
+    -- Escala: mora no UiScale (espaço virtual ~1280x720, scale(k) no
+    -- desenho). Aqui é 1:1; S() fica pra um ajuste fino futuro.
+    local u = 1
     self._u = u
     local function S(v) return math.floor(v * u + 0.5) end
     local PAD, PAD_BOTTOM, TITLE_H = S(PAD), S(PAD_BOTTOM), S(TITLE_H)

@@ -102,6 +102,10 @@ end
 function TK.bootstrap()
     _G.EventManager = _G.EventManager or require("engine.EventManager")
     _G.Event = _G.Event or require("engine.Event")
+    -- Escala de UI congelada em 1: os testes injetam cliques em coordenadas
+    -- de layout com janela falsificada; o espaço escalado tem teste próprio
+    -- (test_ui_scale, que desliga isto e restaura).
+    require("src.ui.UiScale").force(1)
     local I18n = require("src.i18n.I18n")
     if I18n.init and not TK._i18nDone then
         I18n.init()

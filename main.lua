@@ -509,6 +509,9 @@ _G.__resumeRunStage = function()
 end
 
 function love.load(loveArgs)
+    -- ESCALA DE UI: adota as telas ANTES de qualquer tool/teste/tela nascer
+    -- (lista e motivo em src/ui/UiScale.lua → adoptDefaults).
+    require("src.ui.UiScale").adoptDefaults()
     -- QUALQUER execução com argumento é ferramenta/dev (screenshot/smoke/
     -- test/preview/demo/play...) — o jogador de verdade roda `love .` sem
     -- args. A flag manda sistemas persistentes pro SANDBOX: ProfileStats
@@ -1802,6 +1805,7 @@ function love.load(loveArgs)
         IF.register("confirm",      require("src.ui.ConfirmDialog").handle)
     end
 
+
     -- API global pra ser chamada pela CardRewardScreen quando jogador compra
     -- um booster pack. Padrão Balatro (UI_definitions.lua:1629+): a loja
     -- desliza pra fora da tela enquanto o pack toma o foco. Quando o pack
@@ -1980,6 +1984,9 @@ end
 local function updatePlayButtonPosition() GameplayScene.updatePlayButtonPosition() end
 
 function love.update(dt)
+    -- Escala de UI: higiene do frame + a TopBar só escala fora da batalha.
+    require("src.ui.UiScale").reset()
+    require("src.ui.UiScale").setChromeScaled(currentState ~= "playing")
     -- Identidade CRT: animador do power (ligar/desligar da TV).
     CRTShader.update(dt)
 
@@ -2111,6 +2118,8 @@ function love.update(dt)
 end
 
 function love.draw()
+    require("src.ui.UiScale").reset()
+    require("src.ui.UiScale").setChromeScaled(currentState ~= "playing")
     -- Abre a cena CRT: tudo que for desenhado até endScene() vai pro canvas
     -- de pós-processamento e depois é redesenhado com o shader aplicado.
     CRTShader.beginScene()
@@ -2200,12 +2209,18 @@ function love.draw()
     -- Partículas atachadas a cartas (dissolve/materialize/explode).
     -- Desenhadas APÓS as cartas mas DENTRO do shake + CRT scene, assim
     -- seguem o warp do pós-processamento.
+    -- Fora da batalha/estrada elas nascem nas coordenadas VIRTUAIS das telas
+    -- de UI (loja, descanso...) — então desenham no mesmo espaço (UiScale).
+    local fxScaled = currentState ~= "playing" and currentState ~= "mapSelection"
+        and currentState ~= "boot"
+    if fxScaled then require("src.ui.UiScale").begin() end
     CardParticles.draw()
 
     -- Floating text (números de dano/cura/ouro). Acima das partículas, mas
     -- dentro do shake pra acompanhar o jiggle.
     require("src.ui.CoinBurst").draw()
     FloatingText.draw()
+    if fxScaled then require("src.ui.UiScale").finish() end
 
     -- Flash overlay fullscreen (se FlashShader.trigger foi chamado).
     FlashShader.draw()
@@ -2541,7 +2556,8 @@ function love.mousepressed(x, y, button)
         playing = true, cardReward = true, roundEval = true,
         mapSelection = true, rest = true, event = true,
     }
-    if topBar and topBarStates[currentState] and y <= (topBar.height or 52) then
+    if topBar and topBarStates[currentState]
+        and y <= (topBar.height or 52) * require("src.ui.UiScale").chromeK() then
         if topBar:mousepressed(x, y, button) then return end
     end
 

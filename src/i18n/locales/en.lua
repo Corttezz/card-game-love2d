@@ -48,6 +48,8 @@ return {
         tab_game    = "Game",
         vsync       = "VSync",
         combat_speed = "Combat pace",
+        ui_scale      = "Interface scale",
+        ui_scale_auto = "Auto",
         back        = "BACK",
         hint        = "ARROWS pick and adjust · TAB switches tab · ESC goes back",
     },

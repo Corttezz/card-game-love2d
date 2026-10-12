@@ -47,6 +47,8 @@ return {
         tab_game    = "Spiel",
         vsync       = "VSync",
         combat_speed = "Kampftempo",
+        ui_scale      = "Oberflächengröße",
+        ui_scale_auto = "Auto",
         back        = "ZURÜCK",
         hint        = "PFEILE wählen und stellen · TAB wechselt Reiter · ESC zurück",
     },

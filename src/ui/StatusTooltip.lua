@@ -114,6 +114,9 @@ function StatusTooltip.show(statusName, mouseX, mouseY, ctx)
         x = mouseX or 0,
         y = mouseY or 0,
         ctx = ctx or {},
+        -- escala de UI de quem pediu (src/ui/UiScale): o desenho acontece
+        -- depois, fora daquele contexto, e precisa voltar pro mesmo espaço
+        k = require("src.ui.UiScale").activeK(),
     }
     -- Assunto novo OU hover que saiu e voltou (gap > 0.25s) → reinicia o
     -- pop-in. Hover contínuo no mesmo assunto: animação segue de onde está.
@@ -178,6 +181,18 @@ end
 
 function StatusTooltip.draw()
     if not active then return end
+    local UiScale = require("src.ui.UiScale")
+    if (active.k or 1) ~= 1 and not UiScale.isActive() then
+        UiScale.begin(active.k)
+        local ok, err = pcall(StatusTooltip._draw)
+        UiScale.finish()
+        if not ok then error(err, 0) end
+        return
+    end
+    return StatusTooltip._draw()
+end
+
+function StatusTooltip._draw()
     local sw = love.graphics.getWidth()
     local sh = love.graphics.getHeight()
 

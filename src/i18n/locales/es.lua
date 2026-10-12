@@ -47,6 +47,8 @@ return {
         tab_game    = "Juego",
         vsync       = "VSync",
         combat_speed = "Ritmo de combate",
+        ui_scale      = "Escala de la interfaz",
+        ui_scale_auto = "Auto",
         back        = "VOLVER",
         hint        = "FLECHAS eligen y ajustan · TAB cambia pestaña · ESC vuelve",
     },

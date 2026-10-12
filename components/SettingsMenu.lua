@@ -85,6 +85,7 @@ function SettingsMenu.applyRuntime(settings)
         x = 1
     end
     require("src.systems.CombatBeats").speed = 1 / x
+    require("src.ui.UiScale").setUserMultiplier(settings.uiScale or 1)
     -- VSync: só fora das ferramentas (captura tem que ser reproduzível).
     if not _G.HEADLESS_TOOL and settings.vsync ~= nil
         and love.window and love.window.setVSync then
@@ -209,7 +210,8 @@ function SettingsMenu:_tabs()
                     FontManager.clearCache()
                     -- love.resize reposiciona TODAS as telas (inclusive esta).
                     if love.resize then
-                        love.resize(love.graphics.getWidth(), love.graphics.getHeight())
+                        local UiScale = require("src.ui.UiScale")
+                        UiScale.outside(love.resize, UiScale.realDimensions())
                     else
                         menu:rebuild()
                     end
@@ -222,6 +224,30 @@ function SettingsMenu:_tabs()
                         if not ok then print("[SettingsMenu] setVSync falhou: " .. tostring(err)) end
                     end
                 end),
+            { key = "ui_scale", kind = "cycle", label = I18n.t("settings.ui_scale"),
+              get = function()
+                  local m = tonumber(gs().uiScale) or 1
+                  if math.abs(m - 1) < 0.01 then return I18n.t("settings.ui_scale_auto") end
+                  return ("%d%%"):format(math.floor(m * 100 + 0.5))
+              end,
+              step = function(dir)
+                  local opts = require("src.ui.UiScale").OPTIONS
+                  local cur, idx = tonumber(gs().uiScale) or 1, 1
+                  for i, v in ipairs(opts) do
+                      if math.abs(v - cur) < 0.01 then idx = i end
+                  end
+                  idx = math.max(1, math.min(#opts, idx + dir))   -- sem dar a volta: é um tamanho
+                  gs().uiScale = opts[idx]
+                  require("src.ui.UiScale").setUserMultiplier(opts[idx])
+                  FontManager.clearCache()
+                  -- love.resize reposiciona TODAS as telas no espaço novo
+                  if love.resize then
+                      local UiScale = require("src.ui.UiScale")
+                      UiScale.outside(love.resize, UiScale.realDimensions())
+                  else
+                      menu:rebuild()
+                  end
+              end },
             toggle("crt", "settings.crt_shader",
                 function() return CRTShader.isEnabled() end,
                 function(v) CRTShader.setEnabled(v); gs().crtShader = v end),
@@ -315,7 +341,7 @@ function SettingsMenu:rebuild()
     if self.tab > #self.tabs then self.tab = 1 end
 
     local sw, sh = love.graphics.getWidth(), love.graphics.getHeight()
-    U = math.max(1, math.min(1.75, sh / 768))
+    U = 1   -- a escala mora no UiScale (espaço virtual); aqui é sempre 1:1
     local PAD, TITLE_H, TAB_H, ROW_H = S(PAD), S(TITLE_H), S(TAB_H), S(ROW_H)
     local ROW_GAP, ZONE_GAP, BACK_H, ARROW_W = S(ROW_GAP), S(ZONE_GAP), S(BACK_H), S(ARROW_W)
     local pw = math.max(300, math.min(S(600), sw - 32))
@@ -460,6 +486,7 @@ function SettingsMenu:_persist()
         reducedMotion = g.reducedMotion and true or false,
         screenshake   = g.screenshake or 1.0,
         combatSpeed   = tonumber(g.combatSpeed) or 1,
+        uiScale       = tonumber(g.uiScale) or 1,
         locale        = I18n.getLocale(),
     }
     for k, v in pairs(snapshot) do g[k] = v end

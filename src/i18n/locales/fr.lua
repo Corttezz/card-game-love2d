@@ -47,6 +47,8 @@ return {
         tab_game    = "Jeu",
         vsync       = "VSync",
         combat_speed = "Rythme du combat",
+        ui_scale      = "Échelle de l'interface",
+        ui_scale_auto = "Auto",
         back        = "RETOUR",
         hint        = "FLÈCHES choisir et régler · TAB change d'onglet · ÉCHAP retour",
     },

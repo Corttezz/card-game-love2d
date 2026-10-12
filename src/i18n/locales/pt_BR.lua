@@ -48,6 +48,8 @@ return {
         tab_game        = "Jogo",
         vsync           = "VSync",
         combat_speed    = "Ritmo do combate",
+        ui_scale      = "Escala da interface",
+        ui_scale_auto = "Auto",
         back            = "VOLTAR",
         hint            = "SETAS escolhem e ajustam · TAB troca a aba · ESC volta",
     },
