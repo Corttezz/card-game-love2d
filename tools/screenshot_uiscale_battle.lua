@@ -149,6 +149,7 @@ function M.run(locale)
             if game.messageSystem then
                 game.messageSystem.messages = {}
                 game:addMessage(I18n.t("messages.armor_capped", { max = 30, wasted = 4 }, "!"), "warning")
+                game.messageSystem:update(0.3)   -- entrada assentada
             end
             capture("warrior")
 

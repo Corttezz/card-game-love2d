@@ -71,7 +71,8 @@ function MessageSystem:layout()
     local u = math.max(1, math.min(1.75, sh / 768))
     local font = FontManager.getFont(math.floor(10 * u + 0.5))
     local padX, padY, gap = math.floor(10 * u), math.floor(6 * u), math.floor(6 * u)
-    local x = math.floor(10 * u)
+    -- mesma margem esquerda do quadro de coringas logo acima (frameX = 14)
+    local x = math.floor(14 * u)
     local w = math.floor(math.min(sw * 0.30, 320 * u))
     local zoneTop, zoneBottom = math.floor(sh * 0.318), math.floor(sh * 0.62)
     local lh = math.floor(font:getHeight() * 1.5)
@@ -107,11 +108,13 @@ function MessageSystem:draw()
     for _, p in ipairs(plates) do
         local m = p.m
         local a = m.alpha
-        -- entrada: desliza da borda nos primeiros 0,18s (só movimento —
-        -- com reducedMotion aparece no lugar, a informação é a mesma)
+        -- entrada: desliza nos primeiros 0,18s DENTRO da margem (sair da
+        -- borda cortava o contorno — captura de 1080p); fade junto. Com
+        -- reducedMotion aparece no lugar, a informação é a mesma.
         local age = self.messageDuration - m.duration
-        local slide = (reduced or age >= 0.18) and 0 or math.floor((1 - age / 0.18) * -24)
-        local x = p.x + slide
+        local e = (reduced or age >= 0.18) and 1 or (age / 0.18)
+        local x = p.x - math.floor((1 - e) * math.min(10, p.x))
+        a = a * (0.35 + 0.65 * e)
         Palette.set(Palette.INK, 0.86 * a)
         love.graphics.rectangle("fill", x, p.y, p.w, p.h, 3, 3)
         Palette.set(Palette.AGED_GOLD_DARK, 0.9 * a)
