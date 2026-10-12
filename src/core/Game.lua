@@ -281,6 +281,9 @@ function Game:drawForTurn()
     -- multi-jogada: contadores por turno zerados
     self._attacksThisTurn = 0
     self._impetusFiredThisTurn = false
+    self._orbCardsThisTurn = 0
+    self._conduitFiredThisTurn = false
+    self._toxinGrowFiredThisTurn = false
     -- P2.3 (Jul/2026, rebalance v2): thorn de JOKER dispara 1x/turno por
     -- joker — nova janela a cada turno do jogador (ver EffectSystem
     -- processTriggerEffect on_defend_damage).
@@ -644,8 +647,15 @@ end
 
 -- ===== PASSIVAS DE CLASSE (identidade de gameplay — Jul/2026) =====
 -- Warrior "Ímpeto":  2+ ataques no mesmo turno → +1 Força (na batalha).
--- Mage "Conduíte":   começa toda batalha com orbe de Raio (4) e Foco 2/3/4 (cresce a cada 2 atos).
--- Rogue "Toxinas":   o 1º ataque de cada turno aplica 1/2/3 de Veneno (2t, cresce a cada 2 atos).
+-- Mage "Conduíte":   começa toda batalha com orbe de Raio (4) e Foco 2/3/4 (cresce a cada 2 atos);
+--                    2+ cartas de orbe (canalizar/evocar) no mesmo turno → +1 Foco (na batalha).
+-- Rogue "Toxinas":   o 1º ataque de cada turno aplica 1/2/3 de Veneno (2t, cresce a cada 2 atos);
+--                    2+ ataques no mesmo turno → +2 nesse Veneno (na batalha).
+-- CRESCER NA LUTA (Out/2026, balanceamento de classe): so o Impeto crescia
+-- DENTRO da batalha, e a bateria mostrou o resultado — guerreiro 43%, mago
+-- 13% (lutas de 12-18 turnos no A5-A6), ladino 17% (morre no chefe do A5).
+-- As tres passivas agora tem a mesma forma: a regra de turno do Impeto,
+-- cada uma no eixo da propria classe (Forca, Foco, Veneno).
 -- Toda ativação gera toast — nada acontece invisível (lei do projeto).
 
 -- Degrau das passivas que CRESCEM com a run (Out/2026): 1 nos atos 1-2,
@@ -661,6 +671,7 @@ end
 
 function Game:applyClassBattleStartPassive()
     self._toxinAppliedThisTurn = false
+    self._toxinBonus = 0   -- Toxinas que cresceu nesta batalha
     -- P2.3: janela nova de thorn-de-joker no comeco de cada batalha.
     self._jokerThornFiredThisTurn = {}
     self._echoFiredThisTurn = false
@@ -684,14 +695,53 @@ function Game:applyClassBattleStartPassive()
     end
 end
 
+-- Quanto o Veneno das Toxinas sobe a cada turno com 2+ ataques. +1 (bateria
+-- 15 runs): ladino 17% -> 20%, ainda morrendo no chefe do A4/A5 com lutas de
+-- 8-9 turnos — a curva de veneno cresce devagar demais contra 600 de vida.
+Game.TOXIN_GROWTH = 2
+
+-- Carta de ORBE (canalizar ou evocar) — o que alimenta o Conduite.
+function Game.isOrbCard(card)
+    for _, e in ipairs((card and card.effects) or {}) do
+        if e.type == "channel_orb" or e.type == "evoke_orb" or e.type == "evoke_all_orbs" then
+            return true
+        end
+    end
+    return false
+end
+
 function Game:applyClassTurnPassives(turnContext)
-    if self.selectedClass ~= "warrior" then return end
-    -- multi-jogada: soma ataques de TODAS as jogadas do turno
+    local cls = self.selectedClass
+    if cls ~= "warrior" and cls ~= "mage" and cls ~= "rogue" then return end
+    -- multi-jogada: soma ataques/cartas de orbe de TODAS as jogadas do turno
     local attacks = self._attacksThisTurn or 0
+    local orbCards = self._orbCardsThisTurn or 0
     for _, c in ipairs(turnContext.allSelectedCards or {}) do
         if (c.attack or 0) > 0 then attacks = attacks + 1 end
+        if Game.isOrbCard(c) then orbCards = orbCards + 1 end
     end
     self._attacksThisTurn = attacks
+    self._orbCardsThisTurn = orbCards
+    if cls == "mage" then
+        if orbCards >= 2 and not self._conduitFiredThisTurn and self.player.addBuff then
+            self._conduitFiredThisTurn = true
+            self.player:addBuff("focus", 99, 1)
+            self:addMessage(msg("passive_conduit_grow"), "success")
+            if love.timer then self._passiveFlashT = love.timer.getTime() end
+            Sfx.play("comboTrigger", { pitch = 1.3, volume = 0.6 })
+        end
+        return
+    elseif cls == "rogue" then
+        if attacks >= 2 and not self._toxinGrowFiredThisTurn then
+            self._toxinGrowFiredThisTurn = true
+            self._toxinBonus = (self._toxinBonus or 0) + Game.TOXIN_GROWTH
+            self:addMessage(msg("passive_toxins_grow",
+                { n = self:classPassiveTier() + self._toxinBonus }), "success")
+            if love.timer then self._passiveFlashT = love.timer.getTime() end
+            Sfx.play("comboTrigger", { pitch = 1.3, volume = 0.6 })
+        end
+        return
+    end
     if attacks >= 2 and not self._impetusFiredThisTurn then
         self._impetusFiredThisTurn = true
         self.player:gainStrength(1)
@@ -933,8 +983,9 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
             and self.enemy:isAlive() then
             self._toxinAppliedThisTurn = true
             CombatBeats.step(sink, "passive.toxins", function()
-                -- Out/2026: Veneno cresce com a run (1 → 2 → 3).
-                local stacks = self:classPassiveTier()
+                -- Out/2026: Veneno cresce com a run (1 → 2 → 3) e na luta
+                -- (+2 a cada turno com 2+ ataques, ver applyClassTurnPassives).
+                local stacks = self:classPassiveTier() + (self._toxinBonus or 0)
                 self.enemy:addStatusEffect({ name = "poison", stacks = stacks, duration = 2 })
                 self:addMessage(msg("passive_toxins", { n = stacks }), "info")
                 local okCF, CF = pcall(require, "src.systems.CardFeel")

@@ -222,13 +222,13 @@ function DamagePreview.simulate(game, cards)
     end
 
     -- evocar um orbe (espelho de EffectSystem:_evokeOrbEffect)
+    local orbMult = EffectSystem.orbDamageMult(game)
     local function evoke(orb, why)
         if not orb then return end
         local v = (orb.value or 1) + P.focus
-        if orb.type == "lightning" or orb.type == "fire" then
-            extra("orb", (hitEnemy(v)), { orb = orb.type, why = why })
-        elseif orb.type == "dark" then
-            extra("orb", (hitEnemy(v * 2)), { orb = orb.type, why = why })
+        if orb.type == "lightning" or orb.type == "fire" or orb.type == "dark" then
+            extra("orb", (hitEnemy(EffectSystem.orbEvokeValue(orb, P.focus, orbMult))),
+                { orb = orb.type, why = why })
         elseif orb.type == "ice" then
             addArmor(v)
             extra("orb_block", v, { orb = orb.type, why = why })
@@ -327,8 +327,29 @@ function DamagePreview.simulate(game, cards)
             R.impetus = true
         end
     end
-    -- Toxinas do ladino: o 1o ataque do turno envenena (so informativo)
+    -- Conduite do mago: 2+ cartas de orbe no turno = +1 Foco ANTES das cartas
+    if game.selectedClass == "mage" and not game._conduitFiredThisTurn then
+        local n = game._orbCardsThisTurn or 0
+        local Game = require("src.core.Game")
+        for _, c in ipairs(cards) do
+            if Game.isOrbCard(c) then n = n + 1 end
+        end
+        if n >= 2 then
+            P.focus = P.focus + 1
+            R.conduit = true
+        end
+    end
+    -- Toxinas do ladino: o 1o ataque do turno envenena (so informativo); a
+    -- passiva cresce (Game.TOXIN_GROWTH) se esta leva fecha 2+ ataques no turno
     local toxinsUsed = game._toxinAppliedThisTurn
+    local toxinBonus = game._toxinBonus or 0
+    if game.selectedClass == "rogue" and not game._toxinGrowFiredThisTurn then
+        local attacks = game._attacksThisTurn or 0
+        for _, c in ipairs(cards) do
+            if (c.attack or 0) > 0 then attacks = attacks + 1 end
+        end
+        if attacks >= 2 then toxinBonus = toxinBonus + require("src.core.Game").TOXIN_GROWTH end
+    end
 
     for _, card in ipairs(cards) do
         local entry = { card = card, type = card.type }
@@ -345,6 +366,7 @@ function DamagePreview.simulate(game, cards)
                 if game.selectedClass == "rogue" and not toxinsUsed and E.health > 0 then
                     toxinsUsed = true
                     R.poison = R.poison + (game.classPassiveTier and game:classPassiveTier() or 1)
+                        + toxinBonus
                 end
                 triggers(card, "attack")
                 additionalEffects(card)

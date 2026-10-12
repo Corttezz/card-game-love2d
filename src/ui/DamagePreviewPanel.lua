@@ -258,6 +258,9 @@ local function buildLines(R, opts)
     if R.impetus then
         lines[#lines + 1] = { kind = "note", text = t("impetus", nil, "Impeto: +1 Forca") }
     end
+    if R.conduit then
+        lines[#lines + 1] = { kind = "note", text = t("conduit", nil, "Conduite: +1 Foco") }
+    end
     if R.uncertain then
         lines[#lines + 1] = { kind = "note", text = t("uncertain", nil, "+ efeito aleatorio") }
     end

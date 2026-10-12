@@ -120,9 +120,11 @@ ComboSystem.RULES = {
       bonus = { type = "defense_bonus", value = 10, once = true },
       label = "Torre de Armaduras" },
 
+    -- Out/2026 (balanceamento de classe): +2 -> +4. Unico combo do eixo do
+    -- ladino, e o veneno e o que escala contra a vida alta do A4-A6.
     { id = "poison_stack",
       rule = "min_count_tag", tag = "poison", minCount = 2,
-      bonus = { type = "apply_debuff", debuff = "poison", stacks = 2, duration = 2 },
+      bonus = { type = "apply_debuff", debuff = "poison", stacks = 4, duration = 2 },
       label = "Veneno Concentrado" },
 
     { id = "channel_burst",

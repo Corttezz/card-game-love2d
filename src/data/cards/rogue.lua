@@ -44,7 +44,7 @@ return {
         -- Rebalance Jul/2026: FIX DESC — o descarte e aleatorio (love.math.random
         -- na mao) e a desc omitia.
         cost = 1, attack = 0, defense = 9,
-        description = "Ganha 9 de Bloqueio. Descarta 1 carta aleatoria.",
+        description = "Ganha 9 de Bloqueio. Descarta 1 carta aleatória.",
         image = "assets/cards/defense/ironShield.png",
         rarity = "common", class = "rogue",
         tags = { "defend", "armor", "discard", "cycle" },
@@ -67,8 +67,11 @@ return {
     rogue_backstab = {
         id = "rogue_backstab", name = "Punhalada pelas Costas",
         type = "attack", subtype = "skill",
-        cost = 0, attack = 11, defense = 0,
-        description = "Causa 11 de dano. Inato. Exaurir.",
+        -- Out/2026 (balanceamento de classe): 11 -> 8. Gratis, inata e na
+        -- abertura de TODA luta: era o pico do ladino no A1 e nada no A5 —
+        -- o poder foi pra Toxinas, que cresce na luta.
+        cost = 0, attack = 8, defense = 0,
+        description = "Causa 8 de dano. Inato. Exaurir.",
         image = "assets/cards/attack/bloodSword.png",
         rarity = "common", class = "rogue",
         innate = true,
@@ -157,7 +160,7 @@ return {
         -- Rebalance Jul/2026: FIX DESC — descarte aleatorio nao declarado.
         type = "effect", subtype = "skill",
         cost = 1, attack = 0, defense = 0,
-        description = "Compra 3 cartas. Descarta 1 carta aleatoria.",
+        description = "Compra 3 cartas. Descarta 1 carta aleatória.",
         image = "assets/cards/defense/ironShield.png",
         rarity = "uncommon", class = "rogue",
         tags = { "draw", "discard", "cycle" },
@@ -169,11 +172,12 @@ return {
     rogue_adrenaline = {
         id = "rogue_adrenaline", name = "Adrenalina",
         type = "effect", subtype = "skill",
-        cost = 0, attack = 0, defense = 0,
+        -- Out/2026: custo 0 -> 1 (rende +1 de mana, nao +2, por luta).
+        cost = 1, attack = 0, defense = 0,
         description = "Restaura 2 de mana. Exaurir.",
         image = "assets/cards/defense/ironShield.png",
         rarity = "uncommon", class = "rogue",
-        tags = { "mana", "exhaust", "zero_cost", "cycle" },
+        tags = { "mana", "exhaust", "cycle" },
         effects = {
             { type = "restore_mana", value = 2 },
             { type = "exhaust" },
@@ -209,7 +213,7 @@ return {
         id = "rogue_calculated_gamble", name = "Aposta Calculada",
         type = "effect", subtype = "skill",
         cost = 0, attack = 0, defense = 0,
-        description = "Descarta 3 cartas aleatorias. Compra 3.",
+        description = "Descarta 3 cartas aleatórias. Compra 3.",
         image = "assets/cards/defense/ironShield.png",
         rarity = "uncommon", class = "rogue",
         tags = { "draw", "discard", "cycle", "zero_cost" },
@@ -261,7 +265,7 @@ return {
         id = "rogue_expose_weakness", name = "Expor Fraqueza",
         type = "effect", subtype = "skill",
         cost = 1, attack = 0, defense = 0,
-        description = "Aplica Vulneravel por 2 turnos. Compra 1 carta.",
+        description = "Aplica Vulnerável por 2 turnos. Compra 1 carta.",
         image = "assets/cards/effect/manaCrystal.png",
         rarity = "uncommon", class = "rogue",
         tags = { "vulnerable", "debuff", "draw" },

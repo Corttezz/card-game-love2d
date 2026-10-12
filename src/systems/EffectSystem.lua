@@ -604,22 +604,49 @@ end
 -- estes mesmos numeros; mudou a formula aqui, a tela acompanha de graca).
 -- ==============================================================================
 
--- Valor do PULSO por turno de um orbe (0 = nao pulsa; dark cresce em vez disso).
-function EffectSystem.orbPulseValue(orb, focus)
-    local ev = (orb.value or 1) + (focus or 0)
-    if orb.type == "lightning" or orb.type == "ice" then
-        return math.ceil(ev / 2)
-    elseif orb.type == "fire" or orb.type == "holy" then
-        return math.ceil(ev / 3)
+-- ORBE TAMBEM E DANO DE CARTA (Out/2026, balanceamento de classe): o dano de
+-- orbe (pulso e evoke de raio/fogo/sombra) passava ao largo dos coringas — o
+-- mago com "Deus do Abismo" via x1.5 nas cartas e nada nos orbes, que sao o
+-- eixo da classe. Bateria: mago 13% de vitoria, lutas de 12-18 turnos no
+-- A5-A6. Agora o MAIOR damage_multiplier de ataque entre os coringas ativos
+-- vale tambem pro dano de orbe (mesma lei do largest-wins, P0.9). Planos e Eco
+-- ficam de fora: sao "por carta", e orbe nao e carta. Gelo/sagrado nao mudam.
+function EffectSystem.orbDamageMult(game)
+    local best = 1
+    for _, joker in ipairs((game and game.jokerSlots) or {}) do
+        for _, e in ipairs(joker.effects or {}) do
+            if e.type == "damage_multiplier" and e.target == "attack"
+                and (e.value or 1) > best then
+                best = e.value or 1
+            end
+        end
     end
-    return 0 -- dark: nao pulsa, cresce +2/turno
+    return best
+end
+
+local DAMAGE_ORB = { lightning = true, fire = true, dark = true }
+
+-- Valor do PULSO por turno de um orbe (0 = nao pulsa; dark cresce em vez disso).
+-- `mult` = EffectSystem.orbDamageMult(game) (so nos orbes de dano).
+function EffectSystem.orbPulseValue(orb, focus, mult)
+    local ev = (orb.value or 1) + (focus or 0)
+    local v = 0
+    if orb.type == "lightning" or orb.type == "ice" then
+        v = math.ceil(ev / 2)
+    elseif orb.type == "fire" or orb.type == "holy" then
+        v = math.ceil(ev / 3)
+    end
+    -- dark: nao pulsa, cresce +2/turno
+    if DAMAGE_ORB[orb.type] and mult and mult ~= 1 then v = math.floor(v * mult) end
+    return v
 end
 
 -- Valor do EVOKE de um orbe (dark evoca em dobro).
-function EffectSystem.orbEvokeValue(orb, focus)
+function EffectSystem.orbEvokeValue(orb, focus, mult)
     local ev = (orb.value or 1) + (focus or 0)
-    if orb.type == "dark" then return ev * 2 end
-    return ev
+    local v = (orb.type == "dark") and ev * 2 or ev
+    if DAMAGE_ORB[orb.type] and mult and mult ~= 1 then v = math.floor(v * mult) end
+    return v
 end
 
 -- Aplica o efeito mecanico de um orb evocado. Mapa central de tipos:
@@ -640,26 +667,28 @@ function EffectSystem:_evokeOrbEffect(game, orb)
         focus = game.player:getBuffStacks("focus") or 0
     end
     v = v + focus
+    -- dano de orbe passa pelo maior multiplicador de coringa (orbDamageMult)
+    local dmg = EffectSystem.orbEvokeValue(orb, focus, EffectSystem.orbDamageMult(game))
     -- Game feel v1: o evoke ATERRISSA visivelmente — burst do elemento no
     -- alvo (dano → inimigo; armor/cura → painel do jogador).
     if orb.type == "lightning" then
-        game.enemy:takeDamage(v)
+        game.enemy:takeDamage(dmg)
         checkEnrage(game)
-        game:addMessage(msg("evoke_lightning", { value = v }), "success")
+        game:addMessage(msg("evoke_lightning", { value = dmg }), "success")
         CardFeel.burstAtEnemy("lightning", 1.1)
-        showEnemyDamage(v)
+        showEnemyDamage(dmg)
     elseif orb.type == "ice" then
         game.player:addArmor(v)
         game:addMessage(msg("evoke_ice", { value = v }), "info")
         CardFeel.burstAtPlayer("ice", 0.9)
     elseif orb.type == "dark" then
-        game.enemy:takeDamage(v * 2)
+        game.enemy:takeDamage(dmg)
         checkEnrage(game)
-        game:addMessage(msg("evoke_shadow", { value = v * 2 }), "success")
+        game:addMessage(msg("evoke_shadow", { value = dmg }), "success")
         CardFeel.burstAtEnemy("dark", 1.2)
-        showEnemyDamage(v * 2)
+        showEnemyDamage(dmg)
     elseif orb.type == "fire" then
-        game.enemy:takeDamage(v)
+        game.enemy:takeDamage(dmg)
         checkEnrage(game)
         -- QUEIMADURA, nao veneno (Set/2026 — o dono jogando: "por que o inimigo
         -- esta ficando com veneno na minha run de mago?"). O atalho antigo
@@ -670,9 +699,9 @@ function EffectSystem:_evokeOrbEffect(game, orb)
         -- Mecanica igual -- dano por turno pelos stacks -- com status proprio.
         game.enemy:addStatusEffect({ name = "burn", duration = 2,
             stacks = math.max(1, math.floor(v / 2)) })
-        game:addMessage(msg("evoke_fire", { value = v }), "warning")
+        game:addMessage(msg("evoke_fire", { value = dmg }), "warning")
         CardFeel.burstAtEnemy("fire", 1.1)
-        showEnemyDamage(v)
+        showEnemyDamage(dmg)
     elseif orb.type == "holy" then
         local amount = self:applyHealMultiplier(game, v)
         game.player:heal(amount)
@@ -831,6 +860,7 @@ function EffectSystem:orbPassiveTick(game, sink)
     if not p or not p.orbs or #p.orbs == 0 then return end
     sink = sink or sinkOf(game)
     local focus = (p.getBuffStacks and p:getBuffStacks("focus")) or 0
+    local mult = EffectSystem.orbDamageMult(game)
     -- UM ORBE POR VEZ (Set/2026, pedido do dono: "um exemplo e o mago com as
     -- orbes"). ANTES: o laco somava dmg/armor/heal dos 3 orbes e aplicava um
     -- numero agregado no mesmo instante — o jogador via "-7" e nao tinha como
@@ -839,7 +869,7 @@ function EffectSystem:orbPassiveTick(game, sink)
     -- Formula canonica em orbPulseValue (fonte unica com a UI).
     for i, orb in ipairs(p.orbs) do
         local idx, o = i, orb
-        local pulse = EffectSystem.orbPulseValue(o, focus)
+        local pulse = EffectSystem.orbPulseValue(o, focus, mult)
         CombatBeats.step(sink, "orb.pulse." .. tostring(o.type), function()
             -- O NUMERO sai do orbe (causa) e o IMPACTO cai no alvo (efeito).
             -- De proposito nao ha segundo numero no alvo: o valor ja foi dito

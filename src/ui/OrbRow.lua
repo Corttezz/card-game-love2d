@@ -198,15 +198,15 @@ OrbRow.UNIT_OF = UNIT_OF
 -- acumulado, e é ELE que dobra no evoke.
 -- Exposto pro tool de comparacao visual (tools/orb_compare.lua).
 
-function OrbRow.readout(orb, focus, mode)
+function OrbRow.readout(orb, focus, mode, mult)
     local EffectSystem = require("src.systems.EffectSystem")
     if mode == "evoke" then
-        return EffectSystem.orbEvokeValue(orb, focus), UNIT_OF.evoke[orb.type]
+        return EffectSystem.orbEvokeValue(orb, focus, mult), UNIT_OF.evoke[orb.type]
     end
     if orb.type == "dark" then
         return (orb.value or 1), UNIT_OF.pulse.dark
     end
-    return EffectSystem.orbPulseValue(orb, focus), UNIT_OF.pulse[orb.type]
+    return EffectSystem.orbPulseValue(orb, focus, mult), UNIT_OF.pulse[orb.type]
 end
 
 -- Glifos de unidade em VETOR, legíveis a ~9px (PNG reduzido não é).
@@ -493,6 +493,8 @@ function OrbRow.draw(game, panelX, panelY)
     local p = game.player
     local focus = (p.getBuffStacks and p:getBuffStacks("focus")) or 0
     local EffectSystem = require("src.systems.EffectSystem")
+    -- coringa multiplicador vale no dano de orbe: o numero na placa ja o inclui
+    local orbMult = EffectSystem.orbDamageMult(game)
 
     -- Zona: a fileira de orbes empilha a partir do TOPO da banda de pills.
     -- A altura da banda é do PlayerBuffPills (fonte única) — antes isso era o
@@ -576,7 +578,7 @@ function OrbRow.draw(game, panelX, panelY)
 
             -- PLACA do número, pendurada na pedra.
             local shown, unit = OrbRow.readout(orb, focus,
-                inEvokePreview and "evoke" or "pulse")
+                inEvokePreview and "evoke" or "pulse", orbMult)
             drawPlate(x + plateInset, plateY, plateW,
                 inEvokePreview and EVOKE_CYAN or color,
                 unit, shown, font)
@@ -614,8 +616,8 @@ function OrbRow.draw(game, panelX, panelY)
         if mx >= x and mx <= x + SIZE and my >= y and my <= y + cellHeight() then
             if orb then
                 StatusTooltip.show("orb_" .. orb.type, mx, my, {
-                    stacks = EffectSystem.orbPulseValue(orb, focus),
-                    duration = EffectSystem.orbEvokeValue(orb, focus),
+                    stacks = EffectSystem.orbPulseValue(orb, focus, orbMult),
+                    duration = EffectSystem.orbEvokeValue(orb, focus, orbMult),
                 })
             else
                 StatusTooltip.show("orb_empty", mx, my, {

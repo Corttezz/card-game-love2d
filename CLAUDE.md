@@ -258,7 +258,7 @@ Catálogo em `src/systems/TagSystem.lua` (`TagSystem.CATALOG`), categorias: arch
 - `triple_strike` — 3+ `strike` → +10 dano, 1×/leva
 - `defend_wall` — 2+ `defend` → cada defend ×1.5
 - `armor_tower` — 2+ `armor` → +10 defesa, 1×/leva
-- `poison_stack` — 2+ `poison` → +2 veneno no fim
+- `poison_stack` — 2+ `poison` → +4 veneno no fim
 - `channel_burst` — 3+ `channel` → evoca 1 orbe no fim
 - `cycle_motion` — `draw` + `discard` → +6 no 1º ataque
 - `finisher_chain` — `strike` + `finisher` → a carta finisher ×1.6
@@ -457,6 +457,7 @@ Nota de comportamento fixada pelos testes: `poison` decrementa **`duration`** po
 - ✅ **Pacote de lançamento** (Out/2026): desbloqueio de cartas/classes + maestria (`memory/unlocks.md`), Coleção com descobertas e sem lag, conquistas repaginadas + Steam (`memory/steam_achievements.md`), emblemas de classe, pause/configurações redesenhados (`memory/pause_settings_menu.md`), save por estágio, build de release (`memory/release_pipeline.md`).
 
 - ✅ **Balanceamento por bateria do piloto v6** (Out/2026, `love . balance_sim 30 <classe> <seed>` — rode em blocos/processos separados por classe): guerreiro 47% · ladino 43% · mago ~28% de vitória. Passivas do mago (Foco 2/3/4) e do ladino (Veneno 1/2/3) CRESCEM +1 a cada dois atos (`Game:classPassiveTier`) — fixas, as duas classes quebravam nos atos 4-6. Mago ainda abaixo da meta 40-60%: três variantes da passiva deram 20-30% (ruído ±8pp com 30 runs) — próxima suspeita é o piloto jogar orbes pior que ataques, não a classe.
+- ✅ **Passivas que CRESCEM NA LUTA** (Out/2026, depois do roster novo + Combo v3: guerreiro 43% · mago 13% · ladino 17%): as três passivas têm a forma do Ímpeto — regra de TURNO que soma na batalha. Conduíte: 2+ cartas de orbe no turno → +1 Foco. Toxinas: 2+ ataques no turno → o Veneno da passiva sobe `Game.TOXIN_GROWTH` (2). Dano de orbe (pulso/evoke de raio/fogo/sombra) passa pelo MAIOR `damage_multiplier` de coringa (`EffectSystem.orbDamageMult`, fonte única com OrbRow/DamagePreview/piloto). Ladino: Punhalada 11→8, Adrenalina custo 0→1, `poison_stack` +2→+4. Números em `memory/balance_curves.md`.
 
 Pendente:
 - **Licenças antes de vender**: SFX/música gerados no plano FREE do ElevenLabs (não permite uso comercial) — assinar e regenerar; confirmar assinatura PixelLab no período da arte; declarar conteúdo gerado por IA na Steam; documentar origem de `music.mp3`, `hoverCard.wav` e PNGs antigos. Token PixelLab vencido segue no histórico git (`3fc14ea`) — reescrever histórico se o repo for público.

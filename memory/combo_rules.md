@@ -45,7 +45,7 @@ v2 = 5*(6*1.4+6) = 72 · v3 = 5*6*1.5+10 = 55.
 | `defend_wall` | 2+ `defend` | x1.5 defesa | cartas defend |
 | `triple_strike` | 3+ `strike` | +10 dano, 1x/leva | 1o strike |
 | `armor_tower` | 2+ `armor` | +10 defesa, 1x/leva | 1a carta armor (defesa) |
-| `poison_stack` | 2+ `poison` | +2 veneno (2t) no fim | evento |
+| `poison_stack` | 2+ `poison` | +4 veneno (2t) no fim (era +2; balanceamento de classe Out/2026) | evento |
 | `channel_burst` | 3+ `channel` | evoca 1 orbe no fim | evento |
 | `cycle_motion` | `draw` + `discard` | +6 dano, 1x/leva | 1o ataque (`*`) |
 | `finisher_chain` | `strike` + `finisher` | x1.6 | so a carta finisher |
