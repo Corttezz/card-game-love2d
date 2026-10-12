@@ -149,6 +149,16 @@ elipse dos salões. Travas: `test_enemy_pose` (rabo sintético + ratos) e
 `test_enemy_stage` (régua independente com a mesma regra). Prancha dos pés:
 `SHEET_MODE=feet SHOT_SIZE=1920x1080 love . test_one shot_enemy_sheet`.
 
+**Morte de quem pisa** usa a margem DO QUADRO (regra do apoio), não só a
+do 1º quadro da death — corpo que tomba/desaba muda de base a cada quadro.
+O `groundRow` da pose vale também na death (o quadro 0 é o do idle). A
+morte dos ratos (monte afundando na estrada, cortado em linha reta) foi
+refeita por `tools/bake_pile_collapse.py`: faixas do quadro 0 caem e
+escorregam por cima das de baixo SEM redimensionar (achatar dizimava linhas
+e virava chuvisco) → monte baixo de ratos mortos na estrada. Trava:
+`test_enemy_fall` (cadáver de todo apoiado com o pé FOOT_SINK no chão).
+Prancha dos cadáveres: `SHEET_MODE=death ... shot_enemy_sheet`.
+
 ## Pendente
 
 - Círculo rúnico do lich: em 1024x768 a laje do salão 2 cai atrás da mão de

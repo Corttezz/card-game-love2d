@@ -8,6 +8,8 @@
 --
 -- SHEET_MODE=feet: recorte 2x no PÉ de cada um (contato com o chão), com
 -- tiques magenta na linha de chão → enemy_feet_sheet.png.
+-- SHEET_MODE=death: o mesmo recorte no ÚLTIMO quadro da morte (cadáver)
+-- → enemy_death_sheet.png.
 -- Saída: enemy_sheet.png no save dir (recortes lado a lado, com o nome e
 -- uma marca amarela no eixo do corpo, abaixo do pé).
 
@@ -73,7 +75,10 @@ function M.run(which)
     local canvas = love.graphics.newCanvas(w, h)
     -- SHEET_MODE=feet: recorte AMPLIADO 2x no pé (contato com o chão), com
     -- tiques magenta na linha de chão pedida, fora do corpo
-    local feet = os.getenv("SHEET_MODE") == "feet"
+    local mode = os.getenv("SHEET_MODE")
+    -- death: mata o inimigo e fotografa o ÚLTIMO quadro (cadáver) no pé
+    local death = mode == "death"
+    local feet = mode == "feet" or death
     local cw, ch = math.floor(w * 0.30), math.floor(h * 0.56)
     local fw, fh = 340, 150
     if feet then cw, ch = fw * 2, fh * 2 end
@@ -111,12 +116,24 @@ function M.run(which)
             WorldRoad.update(1 / 30)
             EnemyRenderer.update(1 / 30)
         end
+        if death then
+            love.graphics.setCanvas(canvas)
+            GameplayScene.draw()          -- carrega a idle deste id
+            love.graphics.setCanvas()
+            game.enemy.health = 0
+            EnemyRenderer.triggerDeath(id)
+            for _ = 1, 90 do EnemyRenderer.update(1 / 30) end
+        end
         love.graphics.setCanvas(canvas)
         love.graphics.clear(0, 0, 0, 1)
         GameplayScene.draw()
         -- marca: eixo do corpo (amarelo) abaixo do pé — o HUD (desenhado pelo
         -- jogo) tem que estar centrado nesta mesma coluna
         local foot = EnemyRenderer.getLastFoot()
+        if foot and death then
+            print(string.format("[cadaver] %-20s gap=%.1f frame=%s pad=%s",
+                id, foot.footBottom - foot.groundY, tostring(foot.frame), tostring(foot.pad)))
+        end
         if foot then
             print(string.format("[eixo] %-20s hud=%.1f corpo=%.1f dif=%.1f px (%.2f px da arte)",
                 id, foot.hudCx or -1, foot.bodyX or -1,
@@ -157,7 +174,8 @@ function M.run(which)
                 x0, y0, cw, ch)
         end
     end
-    local out = feet and "enemy_feet_sheet.png" or "enemy_sheet.png"
+    local out = death and "enemy_death_sheet.png"
+        or (feet and "enemy_feet_sheet.png" or "enemy_sheet.png")
     sheet:encode("png", out)
     print("[shot_enemy_sheet] " .. #ids .. " inimigos -> " .. out)
     return true

@@ -665,10 +665,10 @@ local function clipMetrics(id, animName)
     end
     -- OVERRIDE `groundRow` (enemy_poses, linha do canvas do idle) quando a
     -- regra erra: desloca o chão de TODOS os quadros pelo mesmo tanto (a
-    -- diferença medida no quadro 0 do idle). A death fica de fora: o corpo
-    -- caído tem outra base.
+    -- diferença medida no quadro 0 do idle). Vale também na death: o quadro
+    -- 0 dela é o do idle, e o cadáver assenta na mesma régua.
     local gr = (EnemyPoses.BY_ID[id] or {}).groundRow
-    if gr and animName ~= "death" then
+    if gr then
         local idle = (animName == "idle") and m or clipMetrics(id, "idle")
         local autoPad0 = (animName == "idle") and m.pad or idle._autoPad0
         if animName == "idle" then m._autoPad0 = m.pad end
@@ -883,6 +883,14 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     local footPad = curM.pad
     local frameIdx = hasAnim and currentAnim.currentFrame or 1
     if not floating and (currentAnimName or "idle") == "idle"
+        and curM.framePads and curM.framePads[frameIdx] then
+        footPad = curM.framePads[frameIdx]
+    end
+    -- MORTE de quem pisa: margem DO QUADRO (regra do apoio) — o corpo que
+    -- tomba/desaba tem a base mudando a cada quadro; com a margem só do 1º,
+    -- o cadáver deitado terminava acima do chão ou atravessando a estrada
+    -- ("os ratos morrem e ficam errado no chão", Out/2026).
+    if not floating and currentAnimName == "death"
         and curM.framePads and curM.framePads[frameIdx] then
         footPad = curM.framePads[frameIdx]
     end

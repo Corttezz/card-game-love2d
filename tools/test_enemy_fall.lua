@@ -128,12 +128,28 @@ function M.run()
     t:truthy(string.format("flutuantes caem e repousam com o pé %dpx no chão em todo salão/estrada/escala (%d casos, %d falhas)",
         SINK, checked, fails), fails == 0)
 
-    -- apoiado não muda: pé na linha (pad do 1º quadro da death + FOOT_SINK)
+    -- APOIADOS: o CADÁVER também repousa no chão (Out/2026, "os ratos
+    -- morrem e ficam errado no chão" — o monte afundava atravessando a
+    -- estrada). A margem de pé da death é a do QUADRO pela regra do apoio;
+    -- o último quadro tem que terminar FOOT_SINK px dentro do chão, sem
+    -- pairar nem atravessar, em todo inimigo que pisa e tem death.
     do
-        local s = dieAt("abyss_tyrant", floors[1], 1.0, false)
-        local rest = at(s, 1.5)
-        t:truthy(string.format("apoiado (abyss_tyrant) segue com o pé no chão na morte (gap %.1f)", rest),
-            rest >= SINK - 1 and rest <= SINK + 1.5)
+        local ROOT = "assets/sprites/characters/enemies"
+        local grounded, badG = 0, 0
+        for _, id in ipairs(love.filesystem.getDirectoryItems(ROOT)) do
+            if not EnemyPoses.isFloating(id)
+                and SpriteAnimation.exists(id, "death", "south") then
+                grounded = grounded + 1
+                local s = dieAt(id, floors[#floors], 1.0, false)
+                local rest = at(s, 2.0)
+                if not (rest >= SINK - 1 and rest <= SINK + 1.5) then
+                    badG = badG + 1
+                    print(string.format("  [cadaver] %s: gap final %.1f (alvo %d)", id, rest, SINK))
+                end
+            end
+        end
+        t:truthy(string.format("cadáver de todo apoiado repousa no chão (%d inimigos, %d falhas)",
+            grounded, badG), badG == 0 and grounded >= 20)
     end
 
     EnemyRenderer.clearCache()
