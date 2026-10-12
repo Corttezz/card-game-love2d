@@ -100,20 +100,30 @@ Cartas com efeito secundário forte recebem -1 a -3 no valor base.
 | cofre (+2 teto de juros) | 25×1.65ⁿ (teto 150) | igual |
 
 **Medido** (`love . balance_sim 12 <classe> 700000`, piloto v6, MESMO código,
-preços antigos via patch × novos; o relatório tem a seção "Economia por ato"):
+preços antigos via patch × novos — 36 runs de cada lado; o relatório tem a
+seção "Economia por ato"):
 
-| | antigo (guerreiro) | novo (guerreiro) |
+| | antigo G / M / L | novo G / M / L |
 |---|---|---|
-| renda/batalha A1 · A4 | $9,8 · $16,7 | $11,7 · $20,2 |
-| ouro na porta da loja A1 · A2 · A3 | $26 · $55 · $121 | $28 · $65 · $140 |
-| bancada na vitrine / cabia no bolso | 22% / 88% | 24% / 96% |
-| winrate (n=12, ±14pp) | 42% | 50% |
+| winrate (n=12, ±14pp) | 42% / 8% / 33% | 50% / 33% / 58% |
+| renda A1 (ganho/run no ato) | $51 / $57 / $57 | $61 / $67 / $66 |
+| gasto A1 | $13 / $13 / $14 | $13 / $17 / $17 |
+| renda A4 | $67 / $55 / $68 | $86 / $69 / $72 |
+| gasto A4 | $32 / $64 / $44 | $44 / $46 / $52 |
+| ouro na porta da loja A1 · A2 · A3 (guerreiro) | $26 · $55 · $121 | $28 · $65 · $140 |
+| bancada na vitrine / cabia no bolso (3 classes) | 23% / 88-91% | 23-24% / 96-98% |
 
 Leitura: a 1ª bancada ($20) agora cabe na loja do A1 (porta ~$28); a 2ª
 ($35) no A2. O piloto ENTESOURA do A3 em diante (porta $140+, compra no
 máximo 3 itens/loja) — isso é limite da política do bot, não falta de
 preço; não há ouro infinito (juros têm teto, bônus é por nó finito, dados
-1×/loja com EV ~1). Travas: `test_economy` (alcance dos preços),
+1×/loja com EV ~1).
+**Pendente (próximo lever):** ensinar o piloto a GASTAR do A3 em diante (hoje
+compra no máx. 3 itens/loja e só pega bancada com coringa parado) — enquanto
+ele entesoura, a bateria não mede se os preços do fim de jogo estão certos.
+A frequência da bancada na vitrine quase não mexeu com o peso 1.3 (22→24%):
+se o dono ainda sentir falta dela, o próximo passo é vaga própria, não preço.
+Travas: `test_economy` (alcance dos preços),
 `test_economy_acts` (renda por ato + bônus de risco), `smoke_shop` (reroll).
 
 ## Smoke tests de balance
