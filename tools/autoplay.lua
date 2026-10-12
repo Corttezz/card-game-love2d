@@ -1934,6 +1934,18 @@ local function doShop(game)
     local run = game.runManager.currentRun
     local act = run.actNumber or 1
     local floorInAct = run.floorInAct or 1
+    -- Livro-caixa: ouro na entrada + se a bancada de coringa estava na
+    -- vitrine e cabia no bolso (a pergunta do dono: "da pra alcancar?").
+    if runRec and runRec.eco then
+        local visit = { act = act, gold = game.economySystem.currentGold }
+        for _, o in ipairs(game.shopSystem:getCurrentOffers()) do
+            if o.effect == "add_joker_slot" then
+                visit.slotCost = o.cost
+                visit.slotAffordable = game.economySystem.currentGold >= o.cost
+            end
+        end
+        table.insert(runRec.eco.shops, visit)
+    end
     -- V5.13: politica de caixa — reserva alvo min(50, 15*ato) rendendo
     -- juros; a partir do F6 a reserva e liberada (boss a vista: ouro parado
     -- e poder desperdicado).
@@ -2258,6 +2270,33 @@ local function playRun(classId, runIdx, maxEndlessFloors, seed)
                 runRec.acquired[#runRec.acquired + 1] = { id = id, floor = floorRef() }
             end
             return origJoker(self, id, meta)
+        end
+    end
+    -- LIVRO-CAIXA (Out/2026, auditoria da economia): ouro ganho/gasto POR ATO
+    -- e por categoria, mais as visitas a loja. Sem isto o relatorio so tinha
+    -- o ouro FINAL — e "a loja e cara?" e pergunta sobre o meio da corrida.
+    runRec.eco = { earned = {}, spent = {}, byType = {}, shops = {}, slot = {} }
+    do
+        local eco, rm = game.economySystem, game.runManager
+        local function act()
+            return (rm.currentRun and rm.currentRun.actNumber) or 1
+        end
+        local origEarn, origSpend = eco.earnGold, eco.spendGold
+        eco.earnGold = function(self, amount, source)
+            local got = origEarn(self, amount, source)
+            local a = act()
+            runRec.eco.earned[a] = (runRec.eco.earned[a] or 0) + (got or 0)
+            return got
+        end
+        eco.spendGold = function(self, amount, itemType, itemId)
+            local ok = origSpend(self, amount, itemType, itemId)
+            if ok then
+                local a = act()
+                runRec.eco.spent[a] = (runRec.eco.spent[a] or 0) + amount
+                local k = tostring(itemId and itemType == "upgrade" and itemId or itemType)
+                runRec.eco.byType[k] = (runRec.eco.byType[k] or 0) + amount
+            end
+            return ok
         end
     end
 

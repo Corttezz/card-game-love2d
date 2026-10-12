@@ -281,6 +281,67 @@ function M.report(records, agg, meta)
     for _, s in ipairs(pr) do
         p("| %s | %d | %d | %s |", nameOf(s.id), s.off, s.pick, fmtPct(s.pick, s.off))
     end
+    -- ECONOMIA (Out/2026): renda e gasto por ato, ouro na porta da loja e o
+    -- alcance da bancada extra de coringa. Medias sobre as runs que CHEGARAM
+    -- ao ato (quem morreu no A2 nao puxa a media do A4 pra zero).
+    p("")
+    p("## Economia por ato (media por run que chegou ao ato)")
+    p("")
+    p("| ato | runs | batalhas | ganho | gasto | ganho/batalha | lojas | ouro na porta da loja |")
+    p("|---|---|---|---|---|---|---|---|")
+    local ea = {}
+    for _, r in ipairs(records) do
+        local e = r.eco
+        if e then
+            local seen = {}
+            for a, ba in pairs(r.byAct or {}) do seen[a] = true end
+            for a in pairs(e.earned) do seen[a] = true end
+            for a in pairs(seen) do
+                local x = ea[a] or { runs = 0, battles = 0, earned = 0, spent = 0,
+                    shops = 0, shopGold = 0 }
+                ea[a] = x
+                x.runs = x.runs + 1
+                x.battles = x.battles + (((r.byAct or {})[a] or {}).battles or 0)
+                x.earned = x.earned + (e.earned[a] or 0)
+                x.spent = x.spent + (e.spent[a] or 0)
+            end
+            for _, v in ipairs(e.shops) do
+                local x = ea[v.act]
+                if x then x.shops = x.shops + 1; x.shopGold = x.shopGold + v.gold end
+            end
+        end
+    end
+    local actList = {}
+    for a in pairs(ea) do actList[#actList + 1] = a end
+    table.sort(actList)
+    for _, a in ipairs(actList) do
+        local x = ea[a]
+        p("| %d | %d | %.1f | $%.0f | $%.0f | $%.1f | %.2f | $%.0f |", a, x.runs,
+            x.battles / x.runs, x.earned / x.runs, x.spent / x.runs,
+            x.earned / math.max(1, x.battles), x.shops / x.runs,
+            x.shopGold / math.max(1, x.shops))
+    end
+    local slotSeen, slotAff, visits = 0, 0, 0
+    local byType = {}
+    for _, r in ipairs(records) do
+        for _, v in ipairs((r.eco or {}).shops or {}) do
+            visits = visits + 1
+            if v.slotCost then
+                slotSeen = slotSeen + 1
+                if v.slotAffordable then slotAff = slotAff + 1 end
+            end
+        end
+        for k, n in pairs((r.eco or {}).byType or {}) do byType[k] = (byType[k] or 0) + n end
+    end
+    p("")
+    p("- Visitas a loja: %d | bancada de coringa na vitrine: %d (%s) | cabia no bolso: %d (%s das vezes que apareceu)",
+        visits, slotSeen, fmtPct(slotSeen, visits), slotAff, fmtPct(slotAff, slotSeen))
+    local bt = {}
+    for k, n in pairs(byType) do bt[#bt + 1] = { k = k, n = n } end
+    table.sort(bt, function(a, b) return a.n > b.n end)
+    local parts = {}
+    for _, e in ipairs(bt) do parts[#parts + 1] = string.format("%s $%.0f", e.k, e.n / math.max(1, #records)) end
+    p("- Gasto medio por run, por item: %s", table.concat(parts, " · "))
     p("")
     p("## Coringas ativos no fim da run")
     p("")
