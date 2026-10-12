@@ -1369,7 +1369,13 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     -- cx = EIXO DO CORPO (não o centro do canvas); pés em cy; topo em drawY.
     return {
         cx = bodyCx,
-        topY = drawY,
+        -- topo em REPOUSO: sem respiro (sin do relógio real), sem bob do
+        -- flutuante, sem quicada de chegada nem investida. O HUD não treme
+        -- 1px junto da respiração e a altura medida não depende de em que
+        -- milissegundo o quadro caiu (flake "chefe 5 maior que o comum" no
+        -- test_all, Out/2026). A altura do HOVER (dado da pose) fica.
+        topY = cy - ih * scale + footY
+            - ((pose.pose == "floating") and pose.hover * (1 - math.max(0, math.min(1, poseSink))) * ih * scale or 0),
         bottomY = cy,
         width = iw * scale,
         height = ih * scale,

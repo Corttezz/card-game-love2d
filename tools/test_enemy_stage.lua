@@ -320,6 +320,7 @@ function M.run()
                 t:truthy(string.format("%s: não sai da laje (pé %d >= borda %d)",
                     name, foot, floorY), foot >= floorY)
                 local h = r.bbox and (r.bbox.bottomY - r.bbox.topY) or 0
+                print(string.format("  [chefe] %s: %.1f vs comum %.1f (x%.3f)", name, h, maxRoadH, h / math.max(1, maxRoadH)))
                 t:truthy(string.format("%s: maior que o comum (%.0f > %.0f)",
                     name, h, maxRoadH), h > maxRoadH)
             end
