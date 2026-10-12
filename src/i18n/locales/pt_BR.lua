@@ -477,7 +477,7 @@ return {
         kind_generic   = "Lacre {kind}",
         choose         = "Escolha {n}",
         closing        = "Fechando...",
-        click_hint     = "Clique em uma carta para escolher",
+        click_hint     = "Escolha uma carta",
         chip_cost      = "CUSTO",
         chip_damage    = "DANO",
         chip_defense   = "DEFESA",
@@ -866,6 +866,7 @@ return {
         class_basic    = "Básica",
         footer         = "CLIQUE pra inspecionar  ·  RODA DO MOUSE pra rolar  ·  ESC volta",
         inspect_help   = "← / → Navegar    ·    ESC ou clique fora para fechar",
+        inspect_help_pad = "< / > Navegar    ·    B fecha",
     },
 
     deck_viewer = {
@@ -877,7 +878,7 @@ return {
 
     joker_manager = {
         title        = "CORINGAS",
-        subtitle     = "Clique pra ativar ou mandar pra bancada",
+        subtitle     = "Escolha um coringa pra ativar ou mandar pra bancada",
         active_count = "{n} / {max} ativos",
         active_slot  = "ATIVO {n}",
         benched      = "BANCADA",
@@ -1067,8 +1068,8 @@ return {
         passive_mage   = { name = "Passiva: Conduíte", desc = "Você começa cada batalha com um orbe de Raio (4) canalizado e 2 de Foco (+1 de Foco a cada dois atos). Jogue 2 ou mais cartas de orbe (canalizar/evocar) no mesmo turno: +1 de Foco nesta batalha." },
         passive_rogue  = { name = "Passiva: Toxinas", desc = "O primeiro ataque de cada turno aplica 1 de Veneno por 2 turnos (+1 de Veneno a cada dois atos). Jogue 2 ou mais ataques no mesmo turno: esse Veneno sobe +2 nesta batalha." },
         topbar_gold = { name = "Ouro", desc = "Compra cartas, forjas e melhorias na loja. Juros: +$1 a cada $5 guardados (máx +$5), pagos ao vencer batalhas. Próximo pagamento: +${interest}." },
-        topbar_deck = { name = "Grimório", desc = "{deck} cartas no seu grimório — {hand} na mão agora. No fim do turno a mão é descartada e você compra novas. Clique para folhear o deck." },
-        topbar_progress = { name = "Progresso da Jornada", desc = "Ato {act}, andar {floor} de {total}. No andar 7 aguarda um MINI-CHEFE; no andar {total}, o CHEFE do ato. Vença o chefe do Ato {last} para encerrar a crônica. Clique aqui para abrir o Roteiro da jornada.{mods}" },
+        topbar_deck = { name = "Grimório", desc = "{deck} cartas no seu grimório — {hand} na mão agora. No fim do turno a mão é descartada e você compra novas. Selecione para folhear o deck." },
+        topbar_progress = { name = "Progresso da Jornada", desc = "Ato {act}, andar {floor} de {total}. No andar 7 aguarda um MINI-CHEFE; no andar {total}, o CHEFE do ato. Vença o chefe do Ato {last} para encerrar a crônica. Selecione para abrir o Roteiro da jornada.{mods}" },
         topbar_config = { name = "Menu de Pausa", desc = "Pausa a jornada: configurações, salvar e voltar ao menu, ou abandonar a jornada." },
         reward_rules = { name = "Como funcionam as ofertas", desc = "As cartas oferecidas são da SUA classe. A qualidade melhora a cada ato — e a cada oferta sem RARA, a chance da próxima sobe (após um longo jejum, a rara é garantida). Cartas marcadas com AFINIDADE combinam com as tags fortes do seu grimório. Cartas que você já tem em cópias aparecem menos." },
         poison     = { name = "Veneno",     desc = "Causa {stacks} de dano no fim do turno, por {duration} turno(s)." },

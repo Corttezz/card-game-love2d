@@ -456,7 +456,7 @@ return {
         kind_generic   = "{kind}-Bündel",
         choose         = "Wähle {n}",
         closing        = "Schließt...",
-        click_hint     = "Klicke auf eine Karte zum Wählen",
+        click_hint     = "Wähle eine Karte",
         chip_cost      = "KOSTEN",
         chip_damage    = "SCHADEN",
         chip_defense   = "BLOCK",
@@ -519,7 +519,7 @@ return {
 
     joker_manager = {
         title        = "JOKER",
-        subtitle     = "Klicke zum Aktivieren oder um ihn auf die Bank zu setzen",
+        subtitle     = "Wähle einen Joker zum Aktivieren oder für die Bank",
         active_count = "{n} / {max} aktiv",
         active_slot  = "AKTIV {n}",
         benched      = "BANK",
@@ -860,6 +860,7 @@ return {
         class_basic    = "Basis",
         footer         = "KLICK inspizieren  ·  MAUSRAD scrollen  ·  ESC zurück",
         inspect_help   = "← / → Navigieren    ·    ESC oder klick außerhalb",
+        inspect_help_pad = "< / > Navigieren    ·    B schließt",
     },
 
     ["end"] = {
@@ -1033,8 +1034,8 @@ return {
         passive_mage   = { name = "Passiv: Leitung", desc = "Beginne jeden Kampf mit einem kanalisierten Blitz-Orb (4) und 2 Fokus (+1 Fokus alle zwei Akte). Spiele 2 oder mehr Orb-Karten (kanalisieren/beschwören) im selben Zug: +1 Fokus für diesen Kampf." },
         passive_rogue  = { name = "Passiv: Toxine", desc = "Der erste Angriff jeder Runde fügt 1 Gift für 2 Runden zu (+1 Gift alle zwei Akte). Spiele 2 oder mehr Angriffe im selben Zug: dieses Gift steigt um +2 für diesen Kampf." },
         topbar_gold = { name = "Gold", desc = "Kauft Karten, Schmieden und Verbesserungen im Laden. Zinsen: +$1 pro $5 gespart (max +$5), ausgezahlt nach jedem gewonnenen Kampf. Nächste Auszahlung: +${interest}." },
-        topbar_deck = { name = "Grimoire", desc = "{deck} Karten in deinem Grimoire — {hand} gerade auf der Hand. Am Zugende wird deine Hand abgeworfen und du ziehst neue Karten. Klicke, um das Deck zu durchsuchen." },
-        topbar_progress = { name = "Reisefortschritt", desc = "Akt {act}, Etage {floor} von {total}. Ein MINI-BOSS wartet auf Etage 7; der Akt-BOSS auf Etage {total}. Besiege den Boss von Akt {last}, um die Chronik zu vollenden. Klicke hier für die Reisechronik.{mods}" },
+        topbar_deck = { name = "Grimoire", desc = "{deck} Karten in deinem Grimoire — {hand} gerade auf der Hand. Am Zugende wird deine Hand abgeworfen und du ziehst neue Karten. Auswählen, um das Deck zu durchsuchen." },
+        topbar_progress = { name = "Reisefortschritt", desc = "Akt {act}, Etage {floor} von {total}. Ein MINI-BOSS wartet auf Etage 7; der Akt-BOSS auf Etage {total}. Besiege den Boss von Akt {last}, um die Chronik zu vollenden. Auswählen für die Reisechronik.{mods}" },
         topbar_config = { name = "Pausenmenü", desc = "Pausiert die Reise: Optionen, speichern und zum Menü, oder den Lauf abbrechen." },
         reward_rules = { name = "Wie Angebote funktionieren", desc = "Angebotene Karten gehören ZU DEINER Klasse. Die Qualität steigt mit jedem Akt — und jedes Angebot ohne eine SELTENE erhöht die Chance des nächsten (nach einer langen Durststrecke ist eine seltene garantiert). Mit AFFINITÄT markierte Karten passen zu den starken Tags deines Decks. Karten, die du bereits mehrfach besitzt, erscheinen seltener." },
         poison     = { name = "Gift",       desc = "Fügt {stacks} Schaden am Zugende zu, für {duration} Zug(e)." },

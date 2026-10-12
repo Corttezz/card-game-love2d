@@ -455,7 +455,7 @@ return {
         kind_generic   = "Bulto {kind}",
         choose         = "Elige {n}",
         closing        = "Cerrando...",
-        click_hint     = "Haz clic en una carta para elegir",
+        click_hint     = "Elige una carta",
         chip_cost      = "COSTE",
         chip_damage    = "DAÑO",
         chip_defense   = "BLOQUEO",
@@ -518,7 +518,7 @@ return {
 
     joker_manager = {
         title        = "COMODINES",
-        subtitle     = "Haz clic para activar o enviar al banquillo",
+        subtitle     = "Elige un comodín para activar o enviar al banquillo",
         active_count = "{n} / {max} activos",
         active_slot  = "ACTIVO {n}",
         benched      = "BANQUILLO",
@@ -859,6 +859,7 @@ return {
         class_basic    = "Básica",
         footer         = "CLIC para inspeccionar  ·  RUEDA para desplazar  ·  ESC volver",
         inspect_help   = "← / → Navegar    ·    ESC o clic fuera para cerrar",
+        inspect_help_pad = "< / > Navegar    ·    B cierra",
     },
 
     ["end"] = {
@@ -1032,8 +1033,8 @@ return {
         passive_mage   = { name = "Pasiva: Conducto", desc = "Comienza cada batalla con un orbe de Rayo (4) canalizado y 2 de Foco (+1 de Foco cada dos actos). Juega 2 o más cartas de orbe (canalizar/evocar) en el mismo turno: +1 de Foco en esta batalla." },
         passive_rogue  = { name = "Pasiva: Toxinas", desc = "El primer ataque de cada turno aplica 1 de Veneno durante 2 turnos (+1 de Veneno cada dos actos). Juega 2 o más ataques en el mismo turno: ese Veneno sube +2 en esta batalla." },
         topbar_gold = { name = "Oro", desc = "Compra cartas, forjas y mejoras en la tienda. Interés: +$1 por cada $5 ahorrados (max +$5), pagado tras cada batalla ganada. Próximo pago: +${interest}." },
-        topbar_deck = { name = "Grimorio", desc = "{deck} cartas en tu grimorio — {hand} en mano ahora. Al final del turno tu mano se descarta y robas cartas nuevas. Clic para ver el mazo." },
-        topbar_progress = { name = "Progreso del Viaje", desc = "Acto {act}, piso {floor} de {total}. Un MINI-JEFE espera en el piso 7; el JEFE del acto en el piso {total}. Derrota al jefe del Acto {last} para terminar la crónica. Pulsa aquí para abrir la Crónica del viaje.{mods}" },
+        topbar_deck = { name = "Grimorio", desc = "{deck} cartas en tu grimorio — {hand} en mano ahora. Al final del turno tu mano se descarta y robas cartas nuevas. Selecciona para ver el mazo." },
+        topbar_progress = { name = "Progreso del Viaje", desc = "Acto {act}, piso {floor} de {total}. Un MINI-JEFE espera en el piso 7; el JEFE del acto en el piso {total}. Derrota al jefe del Acto {last} para terminar la crónica. Selecciona para abrir la Crónica del viaje.{mods}" },
         topbar_config = { name = "Menú de Pausa", desc = "Pausa el viaje: ajustes, guardar y salir al menú, o abandonar la partida." },
         reward_rules = { name = "Cómo funcionan las ofertas", desc = "Las cartas ofrecidas son de TU clase. La calidad mejora cada acto — y cada oferta sin una RARA aumenta las probabilidades de la siguiente (tras una racha larga sin raras, una rara está garantizada). Las cartas marcadas con AFINIDAD coinciden con las etiquetas fuertes de tu mazo. Las cartas que ya tienes en copias aparecen menos." },
         poison     = { name = "Veneno",     desc = "Causa {stacks} de daño al final del turno, durante {duration} turno(s)." },

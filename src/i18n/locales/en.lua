@@ -459,7 +459,7 @@ return {
         kind_generic   = "{kind} Parcel",
         choose         = "Choose {n}",
         closing        = "Closing...",
-        click_hint     = "Click a card to choose",
+        click_hint     = "Choose a card",
         chip_cost      = "COST",
         chip_damage    = "DAMAGE",
         chip_defense   = "BLOCK",
@@ -845,6 +845,7 @@ return {
         class_basic    = "Basic",
         footer         = "CLICK to inspect  ·  MOUSEWHEEL to scroll  ·  ESC to return",
         inspect_help   = "← / → Navigate    ·    ESC or click outside to close",
+        inspect_help_pad = "< / > Navigate    ·    B closes",
     },
 
     deck_viewer = {
@@ -856,7 +857,7 @@ return {
 
     joker_manager = {
         title        = "JOKERS",
-        subtitle     = "Click to activate or send to the bench",
+        subtitle     = "Choose a joker to activate or send to the bench",
         active_count = "{n} / {max} active",
         active_slot  = "ACTIVE {n}",
         benched      = "BENCH",
@@ -1036,8 +1037,8 @@ return {
         passive_mage   = { name = "Passive: Conduit", desc = "You start every battle with a Lightning orb (4) channeled and 2 Focus (+1 Focus every two acts). Play 2 or more orb cards (channel/evoke) in the same turn: +1 Focus this battle." },
         passive_rogue  = { name = "Passive: Toxins", desc = "The first attack each turn applies 1 Poison for 2 turns (+1 Poison every two acts). Play 2 or more attacks in the same turn: that Poison grows +2 this battle." },
         topbar_gold = { name = "Gold", desc = "Buys cards, forges and upgrades at the shop. Interest: +$1 per $5 saved (max +$5), paid after each battle won. Next payout: +${interest}." },
-        topbar_deck = { name = "Grimoire", desc = "{deck} cards in your grimoire — {hand} in hand right now. At end of turn your hand is discarded and you draw fresh cards. Click to browse the deck." },
-        topbar_progress = { name = "Journey Progress", desc = "Act {act}, floor {floor} of {total}. A MINI-BOSS waits at floor 7; the act BOSS at floor {total}. Defeat the Act {last} boss to finish the chronicle. Click here to open the Journey Log.{mods}" },
+        topbar_deck = { name = "Grimoire", desc = "{deck} cards in your grimoire — {hand} in hand right now. At end of turn your hand is discarded and you draw fresh cards. Select to browse the deck." },
+        topbar_progress = { name = "Journey Progress", desc = "Act {act}, floor {floor} of {total}. A MINI-BOSS waits at floor 7; the act BOSS at floor {total}. Defeat the Act {last} boss to finish the chronicle. Select to open the Journey Log.{mods}" },
         topbar_config = { name = "Pause Menu", desc = "Pauses the journey: settings, save and quit to menu, or abandon the run." },
         reward_rules = { name = "How offers work", desc = "Offered cards belong to YOUR class. Quality improves each act — and every offer without a RARE raises the next one's odds (after a long dry streak, a rare is guaranteed). Cards marked AFFINITY match your deck's strong tags. Cards you already own in copies show up less often." },
         poison     = { name = "Poison",     desc = "Deals {stacks} damage at end of turn, for {duration} turn(s)." },

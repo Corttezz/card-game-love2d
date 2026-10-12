@@ -456,7 +456,7 @@ return {
         kind_generic   = "Paquet {kind}",
         choose         = "Choisissez {n}",
         closing        = "Fermeture...",
-        click_hint     = "Cliquez sur une carte pour choisir",
+        click_hint     = "Choisissez une carte",
         chip_cost      = "COÛT",
         chip_damage    = "DÉGÂTS",
         chip_defense   = "BLOCAGE",
@@ -519,7 +519,7 @@ return {
 
     joker_manager = {
         title        = "JOKERS",
-        subtitle     = "Cliquez pour activer ou envoyer sur le banc",
+        subtitle     = "Choisissez un joker à activer ou à envoyer sur le banc",
         active_count = "{n} / {max} actifs",
         active_slot  = "ACTIF {n}",
         benched      = "BANC",
@@ -860,6 +860,7 @@ return {
         class_basic    = "Basique",
         footer         = "CLIC inspecter  ·  MOLETTE défiler  ·  ESC retour",
         inspect_help   = "← / → Naviguer    ·    ESC ou clic extérieur ferme",
+        inspect_help_pad = "< / > Naviguer    ·    B ferme",
     },
 
     ["end"] = {
@@ -1033,8 +1034,8 @@ return {
         passive_mage   = { name = "Passive : Conduit", desc = "Commencez chaque combat avec un orbe de Foudre (4) canalisé et 2 de Concentration (+1 de Concentration tous les deux actes). Jouez 2 cartes d'orbe ou plus (canaliser/évoquer) dans le même tour : +1 de Concentration pour ce combat." },
         passive_rogue  = { name = "Passive : Toxines", desc = "La première attaque de chaque tour applique 1 Poison pendant 2 tours (+1 Poison tous les deux actes). Jouez 2 attaques ou plus dans le même tour : ce Poison augmente de +2 pour ce combat." },
         topbar_gold = { name = "Or", desc = "Achète cartes, forges et améliorations à la boutique. Intérêts : +$1 par $5 économisés (max +$5), versés après chaque combat gagné. Prochain versement : +${interest}." },
-        topbar_deck = { name = "Grimoire", desc = "{deck} cartes dans ton grimoire — {hand} en main maintenant. En fin de tour ta main est défaussée et tu pioches de nouvelles cartes. Clique pour parcourir le deck." },
-        topbar_progress = { name = "Progression du Voyage", desc = "Acte {act}, étage {floor} sur {total}. Un MINI-BOSS attend à l'étage 7 ; le BOSS de l'acte à l'étage {total}. Bats le boss de l'Acte {last} pour achever la chronique. Clique ici pour ouvrir la Chronique du voyage.{mods}" },
+        topbar_deck = { name = "Grimoire", desc = "{deck} cartes dans ton grimoire — {hand} en main maintenant. En fin de tour ta main est défaussée et tu pioches de nouvelles cartes. Sélectionne pour parcourir le deck." },
+        topbar_progress = { name = "Progression du Voyage", desc = "Acte {act}, étage {floor} sur {total}. Un MINI-BOSS attend à l'étage 7 ; le BOSS de l'acte à l'étage {total}. Bats le boss de l'Acte {last} pour achever la chronique. Sélectionne pour ouvrir la Chronique du voyage.{mods}" },
         topbar_config = { name = "Menu Pause", desc = "Met le voyage en pause : options, sauvegarder et quitter au menu, ou abandonner la partie." },
         reward_rules = { name = "Fonctionnement des offres", desc = "Les cartes proposées sont de TA classe. La qualité s'améliore à chaque acte — et chaque offre sans carte RARE augmente les chances de la suivante (après une longue série sans rare, une rare est garantie). Les cartes marquées AFFINITÉ correspondent aux tags forts de ton deck. Les cartes que tu possèdes déjà en plusieurs exemplaires apparaissent moins souvent." },
         poison     = { name = "Poison",     desc = "Inflige {stacks} dégâts en fin de tour, pendant {duration} tour(s)." },

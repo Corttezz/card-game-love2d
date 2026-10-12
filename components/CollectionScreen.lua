@@ -983,7 +983,9 @@ local function drawInspectModal(self)
     local closeFont = FontManager.getFont(13)
     love.graphics.setFont(closeFont)
     love.graphics.setColor(Palette.AGED_GOLD_LIGHT[1], Palette.AGED_GOLD_LIGHT[2], Palette.AGED_GOLD_LIGHT[3], anim)
-    local closeMsg = I18n.t("collection.inspect_help")
+    -- dica no idioma do aparelho (pad: D-pad + B; mouse/teclado: setas/ESC/clique)
+    local closeMsg = I18n.t(require("src.ui.NavCursor").device() == "pad"
+        and "collection.inspect_help_pad" or "collection.inspect_help")
     love.graphics.print(closeMsg, (width - closeFont:getWidth(closeMsg)) / 2, height - 30)
 
     love.graphics.setColor(1, 1, 1, 1)
