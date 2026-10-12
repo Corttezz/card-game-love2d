@@ -503,6 +503,19 @@ function GameplayScene.hallScreenK(sceneKey, w, h)
         tr.scale / GameplayScene.HALL_REF_SCALE))
 end
 
+-- O CHEFE É SEMPRE MAIOR QUE O INIMIGO COMUM (Out/2026). O salão cresce
+-- pelo cover-fit da arte (hallScreenK) e o chefe ainda encolhe ao recuar na
+-- laje (depthSizeK); a estrada cresce pelo enemyScreenK. Em 1440p as duas
+-- curvas se cruzavam e o chefe do ato 5 saía 3px MENOR que o comum mais alto
+-- (test_enemy_stage). Piso: o chefe tem pelo menos BOSS_OVER_COMMON vezes a
+-- altura que um comum (250px de arte) teria na mesma área de mundo.
+GameplayScene.BOSS_OVER_COMMON = 1.15
+function GameplayScene.bossSizeK(k, worldAreaH)
+    local floorK = GameplayScene.BOSS_OVER_COMMON * (250 / 330)
+        * WorldRoad.enemyScreenK(worldAreaH)
+    return math.max(k, floorK)
+end
+
 function GameplayScene.draw()
     corpseUnderHand = false
     local width = love.graphics.getWidth()
@@ -670,8 +683,10 @@ function GameplayScene.draw()
             shadowA = anchor.shadowA,
             lightXr = anchor.lightXr,
             -- quem recuou no piso encolhe pela perspectiva do chão
-            sizeK = SceneAnchors.depthSizeK(sceneKey, width, sceneH, artCy,
-                enemyCy, WorldRoad.ENEMY_SIZE_PERSP) * GameplayScene.hallScreenK(sceneKey, width, sceneH),
+            sizeK = GameplayScene.bossSizeK(
+                SceneAnchors.depthSizeK(sceneKey, width, sceneH, artCy,
+                    enemyCy, WorldRoad.ENEMY_SIZE_PERSP) * GameplayScene.hallScreenK(sceneKey, width, sceneH),
+                height - topBarHeight),
         })
         if InteriorDepth then InteriorDepth.noteBbox(enemyBbox) end
         -- clima mais próximo (neve/cinza/esporos) passa NA FRENTE do chefe

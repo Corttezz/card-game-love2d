@@ -200,6 +200,10 @@ function M.run()
         run.currentNode = { type = nodeType }
         game.enemy.spriteId = EnemyRenderer.resolveSpriteId(act, nodeType)
         game.enemy.isBoss = (nodeType == "boss")
+        -- estado de animação do inimigo (quicada de chegada, golpe, morte)
+        -- vem limpo: herdado de outra suíte do test_all ele mudava a altura
+        -- medida em alguns px e a comparação chefe×comum virava sorte
+        EnemyRenderer.resetRun()
         GameplayScene.resetTurnState()
         if nodeType == "boss" then GameplayScene._debugForceBossEntered() end
         WorldRoad.setBiome(act)
