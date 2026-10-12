@@ -563,7 +563,9 @@ function GameplayScene.draw()
     UiScale.outside(function()
     local width = love.graphics.getWidth()
     local height = love.graphics.getHeight()
-    local topBarHeight = uiTopBarH * uiK
+    -- WORLD_ONLY (arte de loja/key art, tools/store_art.py): mundo + inimigo
+    -- em tela cheia, sem top bar nem HUD.
+    local topBarHeight = GameplayScene.WORLD_ONLY and 0 or uiTopBarH * uiK
     if worldBattle then
         enemyCx, enemyCy = WorldRoad.getRoadAnchor(WorldRoad.BATTLE_REL,
             0, topBarHeight, width, height - topBarHeight)
@@ -700,6 +702,7 @@ function GameplayScene.draw()
         WorldRoad.drawOverlays(0, topBarHeight, width, height - topBarHeight)
     end
     end)
+    if GameplayScene.WORLD_ONLY then return end
     -- ===== UI (espaço virtual) =====
     -- O bbox do inimigo veio em pixels da tela: o HUD dele mora na UI.
     if enemyBbox and uiK ~= 1 then

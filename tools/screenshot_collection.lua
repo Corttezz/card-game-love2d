@@ -18,6 +18,11 @@ function M.run(cardId)
     local CardFrame = require("src.ui.CardFrame")
     local CollectionScreen = require("components.CollectionScreen")
 
+    -- STORE_REVEAL=1: catálogo inteiro DESCOBERTO (o sandbox de tool não
+    -- tem perfil — sem isso a grade sai toda "?"; screenshots da loja)
+    if os.getenv("STORE_REVEAL") == "1" then
+        require("src.systems.UnlockSystem").setRevealAll(true)
+    end
     local screen = CollectionScreen:new()
     screen:show(function() end)
 
@@ -25,6 +30,12 @@ function M.run(cardId)
     local target, targetIdx
     for i, inst in ipairs(screen.filtered or {}) do
         if inst.id == cardId then target = inst; targetIdx = i; break end
+    end
+    -- loja: qualquer carta serve de âncora (a ordem do grid muda com o idioma)
+    if not target and os.getenv("STORE_REVEAL") == "1" and screen.filtered
+        and screen.filtered[1] then
+        target, targetIdx = screen.filtered[1], 1
+        cardId = target.id
     end
     if not target then
         print("[screenshot_collection] carta não encontrada na coleção: " .. cardId)

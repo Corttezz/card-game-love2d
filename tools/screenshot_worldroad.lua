@@ -152,7 +152,9 @@ function M.run(mode)
         -- A ENCRUZILHADA (v5): estrada bifurcada com 3 marcos + hover no 2.
         -- "fork2" captura o MEIO da convergência (braço escolhido virando
         -- a estrada central).
-        local topBarH = 80
+        -- STORE_NOTOPBAR=1: mundo em tela cheia (screenshot de loja; a faixa
+        -- da top bar ficava preta sem o componente desenhado)
+        local topBarH = os.getenv("STORE_NOTOPBAR") == "1" and 0 or 80
         WorldRoad.clearCache()
         WorldRoad.setBiome(biomeOverride or 1)
         WorldRoad._blend = nil            -- paleta PURA do bioma pedido
@@ -162,19 +164,21 @@ function M.run(mode)
         -- tipos de lugar: "forkb" mostra os outros dois pra conferência.
         -- "forkmini": o marco PRÓPRIO do mini-chefe (Out/2026) entre a
         -- batalha e o elite, pra conferir que os três leem diferente.
-        WorldRoad.showFork(mode == "forkmini" and {
-            { type = "battle", label = "Batalha", desc = "Um inimigo bloqueia a estrada" },
-            { type = "mini_boss", label = "Mini-chefe", desc = "O guardião do ato" },
-            { type = "elite", label = "Elite", desc = "Algo forte espera" },
-        } or mode == "forkb" and {
-            { type = "elite", label = "Elite", desc = "Algo forte espera" },
-            { type = "event", label = "Evento", desc = "Um encontro estranho" },
-            { type = "battle", label = "Batalha", desc = "Um inimigo bloqueia a estrada" },
-        } or {
-            { type = "battle", label = "Batalha", desc = "Um inimigo bloqueia a estrada" },
-            { type = "rest",   label = "Descanso", desc = "Fogueira acolhedora" },
-            { type = "shop",   label = "Loja", desc = "Um mercador acena" },
-        }, function() end)
+        -- rótulos pelo i18n (mesma fonte do jogo: MapManager.labelFor/
+        -- descFor) — cravados em PT a captura saía em português em
+        -- qualquer idioma (screenshots da loja: tools/store_art.py)
+        require("src.i18n.I18n").init()
+        local MM = require("src.systems.MapManager")
+        local function nodes(types)
+            local out = {}
+            for i, t in ipairs(types) do
+                out[i] = { type = t, label = MM.labelFor(t), desc = MM.descFor(t) }
+            end
+            return out
+        end
+        WorldRoad.showFork(mode == "forkmini" and nodes({ "battle", "mini_boss", "elite" })
+            or mode == "forkb" and nodes({ "elite", "event", "battle" })
+            or nodes({ "battle", "rest", "shop" }), function() end)
         -- alguns frames pra animIn assentar + registrar markBoxes (precisa
         -- de draw pra calcular as hitboxes)
         for _ = 1, 20 do

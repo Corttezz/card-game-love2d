@@ -153,6 +153,24 @@ function M.run(mode)
         for name in pdeb:gmatch("[%w_]+") do game.player:addDebuff(name, 2, 2) end
     end
 
+    -- ENEMY_SCENE_WORLD_ONLY=1: só mundo + inimigo, sem HUD (arte de loja).
+    -- ENEMY_SCENE_TOD=0..1: hora do dia (0 = dia, 1 = anoitecer).
+    if os.getenv("ENEMY_SCENE_WORLD_ONLY") == "1" then
+        GameplayScene.WORLD_ONLY = true
+        mode = mode .. "_world"
+    end
+    local tod = tonumber(os.getenv("ENEMY_SCENE_TOD") or "")
+    if tod then
+        WorldRoad.setTimeOfDay(tod, true)
+        for _ = 1, 30 do WorldRoad.update(1 / 30); EnemyRenderer.update(1 / 30) end
+    end
+
+    -- ENEMY_SCENE_CLEAN=1: sem os toasts de início de run ("Jogo
+    -- iniciado!", ouro inicial) — quadro limpo pra screenshot de loja.
+    if os.getenv("ENEMY_SCENE_CLEAN") == "1" and game.messageSystem then
+        game.messageSystem.messages = {}
+    end
+
     if vcanvas then love.graphics.setCanvas(vcanvas) end
     love.graphics.clear(0, 0, 0, 1)
     GameplayScene.draw()

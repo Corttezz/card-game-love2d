@@ -541,6 +541,15 @@ function love.load(loveArgs)
         -- CATÁLOGO INTEIRO e as 3 classes. Teste que quer o comportamento real
         -- desliga explicitamente (test_unlocks).
         require("src.systems.UnlockSystem").setOverrideAll(true)
+        -- TOOL_WINDOW=1920x1080: janela de captura em tamanho fixo ANTES de
+        -- qualquer tool montar layout (screenshots da loja Steam:
+        -- tools/store_art.py). Tool com setMode próprio sobrescreve.
+        if os.getenv("TOOL_WINDOW") then
+            local tw, th = os.getenv("TOOL_WINDOW"):match("^(%d+)x(%d+)$")
+            if tw then
+                love.window.setMode(tonumber(tw), tonumber(th), { resizable = true })
+            end
+        end
     end
     -- Migração de perfil antigo → desbloqueios retroativos, ANTES de qualquer
     -- tela ler classe/carta liberada.
@@ -557,9 +566,9 @@ function love.load(loveArgs)
         -- A flag e lida DENTRO de I18n.init() -- 19 tools chamam init() por
         -- conta propria depois daqui, e antes disso o init relia o save por
         -- cima e desfazia o force. Setar a flag cobre todos os caminhos.
-        _G.TOOL_FORCE_LOCALE = "pt_BR"
-        print("[sandbox] captura visual: locale travado em pt_BR "
-            .. "(passe _G.TOOL_FORCE_LOCALE pra mudar)")
+        _G.TOOL_FORCE_LOCALE = os.getenv("TOOL_LOCALE") or "pt_BR"
+        print("[sandbox] captura visual: locale travado em "
+            .. _G.TOOL_FORCE_LOCALE .. " (env TOOL_LOCALE muda)")
     end
 
     -- DEBUG (caça "cartas não renderizam"): marca o BOOT no log de reward —
