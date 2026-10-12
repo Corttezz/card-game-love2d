@@ -7,6 +7,8 @@
 --
 --   NAV_PART=2 love . nav_flow        (sai com 0/1; NAV_W/NAV_H/NAV_SHOTS)
 --
+-- Cobre também: troca de Selo na seleção de classe (LB/RB) e a escolha de
+-- maldição do ciclo do endless.
 -- Trapaças declaradas (não são navegação): coleção toda revelada, coringa entregue, inimigo
 -- com 1 de vida, encruzilhadas forçadas (loja, batalha) e a batalha final
 -- marcada como chefe do último ato.
@@ -72,6 +74,9 @@ function M.script()
     if require("src.ui.ConfirmDialog").isVisible() then pad("dpleft"); pad("a"); sleep(0.3) end
     waitFor(function() return state() == "classSelection" end, 300, "classe")
     sleep(1)
+    -- SELO DO GRIMÓRIO: RB (= C no teclado) sobe um selo, glifo na seta
+    pad("rightshoulder"); pad("rightshoulder"); pad("leftshoulder")
+    snap("class_seal")
     navigateTo(function(t)
         local b = type(t.key) == "table" and t.key
         return b and b.text == "" and b.width > 150
@@ -80,6 +85,7 @@ function M.script()
     waitFor(function() return state() == "playing" end, 600, "batalha")
     local game = require("src.scenes.GameplayScene").getGame()
     local run = game.runManager.currentRun
+    check("classe: RB/RB/LB pelo pad deixou o Selo 1 (" .. tostring(run.seal) .. ")", run.seal == 1)
     sleep(4)
     waitFor(function() return game.turn == "player" and #game.hand > 0
         and not game.combatAnimationSystem:isBlocking() end, 900, "turno do jogador")
@@ -241,6 +247,32 @@ function M.script()
     waitFor(function() return state() ~= "victory" end, 600, "endless")
     check("vitória: A entra no endless (" .. tostring(state()) .. ")",
         state() ~= "victory" and run.endlessMode == true)
+
+    -- MALDIÇÃO DO CICLO (endless): cash out → espólio → a encruzilhada abre
+    -- a escolha obrigatória; D-pad até a 2ª maldição, A escolhe
+    for _ = 1, 30 do
+        if state() ~= "roundEval" then break end
+        pad("a"); sleep(0.3)
+    end
+    waitFor(function() return state() == "cardReward" end, 600, "espólio do endless")
+    sleep(1.5)
+    if navigateTo(function(t)
+        local b = type(t.key) == "table" and t.key
+        return b and b.text == I18n.t("reward.skip_no_card")
+    end, "seguir sem carta", false) then pad("a") end
+    waitFor(function() return IF.activeName() == "endlessCurse" end, 900, "maldição")
+    check("endless: a escolha de maldição abre", IF.activeName() == "endlessCurse")
+    sleep(0.6)
+    local RunModifiers = require("src.systems.RunModifiers")
+    local pend = RunModifiers.pending(run)
+    local want = pend and pend[2]
+    check("maldição: D-pad chega na 2ª opção",
+        navigateTo(function(t) return t.key == "curse:2" end, "2ª maldição", false))
+    snap("endless_curse")
+    pad("a"); sleep(0.4)
+    check("maldição: A escolhe pelo pad (" .. tostring(want) .. ")",
+        RunModifiers.pending(run) == nil and RunModifiers.curseStacks(run, want) == 1
+        and IF.activeName() ~= "endlessCurse")
     MapManager.generate = realGen
     H.finish()
 end

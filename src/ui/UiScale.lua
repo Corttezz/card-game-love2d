@@ -289,7 +289,7 @@ UiScale.SCREENS = {
     "components.MapScreen", "components.RestScreen",
     "components.EventScreen", "components.PackOpenScreen",
     "components.RoundEvalScreen", "components.PauseMenu",
-    "components.SettingsMenu",
+    "components.SettingsMenu", "components.EndlessCurseScreen",
 }
 UiScale.MODULES = { "src.scenes.EndScreens", "src.ui.ConfirmDialog", "src.ui.AchievementToast",
     -- batalha: a CENA é adotada (mão/HUD/botões); o mundo dentro dela roda

@@ -706,6 +706,18 @@ function ClassSelectionScreen:draw()
     love.graphics.setColor(1, 1, 1, 1)
 
     self:_drawSealBand()
+    -- setas do selo: Buttons invisíveis que ninguém desenha — alvo do foco
+    -- (teclado/pad) e LB/RB (Z/C) trocam o selo, glifo na própria seta
+    do
+        local NavCursor = require("src.ui.NavCursor")
+        for dir, b in pairs({ [-1] = self.buttons.sealPrev, [1] = self.buttons.sealNext }) do
+            if b and b.visible ~= false then
+                if not b.disabled then NavCursor.target(b, b.x, b.y, b.width, b.height) end
+                NavCursor.action(dir < 0 and "lb" or "rb", function() self:changeSeal(dir) end,
+                    b.x, b.y, b.width, b.height)
+            end
+        end
+    end
     if self.buttons.back then self.buttons.back:draw() end
 
     -- hint: sobre classe bloqueada, explica por que o clique não vai

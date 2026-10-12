@@ -228,7 +228,12 @@ function Screen:draw()
     local sub = I18n.t("endless.cycle_sub")
     printCentered(sub, L.subtitle, fitFont(sub, L.subtitle.w, L.subtitle.h, 6), Palette.PARCHMENT)
     for i = 1, 2 do
-        if pend[i] then self:_drawCard(i, L.cards[i], pend[i], run, L.big) end
+        if pend[i] then
+            self:_drawCard(i, L.cards[i], pend[i], run, L.big)
+            -- alvo do foco de teclado/pad (NavCursor): A escolhe = clique
+            local r = L.cards[i]
+            require("src.ui.NavCursor").target("curse:" .. i, r.x, r.y, r.w, r.h)
+        end
     end
     -- Maldições já carregadas (o peso que se acumula).
     local list = RunModifiers.curseList(run)
