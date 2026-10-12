@@ -1015,6 +1015,37 @@ return {
         pack_opened      = "{name} geöffnet",
     },
 
+    -- ======== PRÉVIA DE DANO (Out/2026, src/ui/DamagePreviewPanel.lua) ========
+    damage_preview = {
+        lethal      = "TÖDLICH",
+        absorbed    = "{n} im Block des Gegners",
+        magic       = "Magieschaden",
+        orbs        = "Beschworene Kugeln",
+        skipped     = "Gegner schon besiegt",
+        impetus     = "Schwung: zuerst +1 Stärke",
+        uncertain   = "+ Zufallseffekt",
+        with_card   = "+ {card}: {n}",
+        more_cards  = "+{n} Karten",
+        combo_badge = "+KOMBO",
+        -- o que cada combo faz (tooltip no painel; {n}/{v}/{stacks} vem da regra)
+        combo_desc  = {
+            strike_combo    = "{n}+ Schlag-Karten im selben Zug: jeder Schlag ×{v}.",
+            defend_wall     = "{n}+ Verteidigungskarten im selben Zug: jede Verteidigung ×{v}.",
+            triple_strike   = "{n}+ Schlag-Karten im selben Zug: +{v} Schaden auf den ersten Schlag (einmal pro Zug).",
+            armor_tower     = "{n}+ Rüstungskarten im selben Zug: +{v} Block auf die erste (einmal pro Zug).",
+            poison_stack    = "{n}+ Giftkarten im selben Zug: +{stacks} Gift auf den Gegner am Ende des Zugs.",
+            channel_burst   = "{n}+ Kanalisierungskarten im selben Zug: beschwört am Ende des Zugs die älteste Kugel.",
+            cycle_motion    = "Eine Zieh- und eine Abwurfkarte im selben Zug: +{v} Schaden auf den ersten Angriff.",
+            finisher_chain  = "Ein Schlag und ein Todesstoß im selben Zug: der Todesstoß verursacht ×{v}.",
+            lifesteal_burst = "Ein Schlag und eine Lebensraub-Karte im selben Zug: heilt {v} LP am Ende des Zugs.",
+            magic_focus     = "{n}+ Magiekarten im selben Zug: jede Magiekarte ×{v}.",
+            thorn_reflex    = "Eine Verteidigung und eine Dornenkarte im selben Zug: +{v} Block auf die Dornenkarte.",
+            tempestade      = "{n}+ Blitzkarten im selben Zug: +{v} Schaden auf den ersten Angriff.",
+            zero_absoluto   = "{n}+ Eiskarten im selben Zug: +{v} Block auf die erste Verteidigung.",
+            rule_mult       = "Kombo-Multiplikatoren stapeln sich nicht: auf derselben Karte zählt nur der höchste.",
+        },
+    },
+
     -- ======== COMBOS (Labels der ComboSystem-Regeln) ========
     -- Rebalance v2 (Jul/2026): inkl. der neuen 'tempestade' und 'zero_absoluto'.
     combos = {

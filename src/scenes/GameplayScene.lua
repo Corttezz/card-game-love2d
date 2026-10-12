@@ -20,6 +20,7 @@ local EnemyRenderer    = require("src.ui.EnemyRenderer")
 local EnemyHud         = require("src.ui.EnemyHud")
 local TurnBanner       = require("src.ui.TurnBanner")
 local ComboBanner      = require("src.ui.ComboBanner")
+local DamagePreviewPanel = require("src.ui.DamagePreviewPanel")
 local Sfx              = require("src.systems.Sfx")
 local SmokeConfig      = require("src.config.SmokeConfig")
 local InputFocus       = require("src.ui.InputFocus")
@@ -620,6 +621,11 @@ function GameplayScene.draw()
 
     if not traveling and not entering then
         EnemyHud.draw(game, enemyBbox, enemyCx, enemyCy)
+        -- previa: o trecho da vida que a leva selecionada arranca
+        if game.enemy and not game.enemy:isDefeated() then
+            DamagePreviewPanel.drawEnemyGhost(game,
+                EnemyHud.hpBarRect(EnemyHud.layout(game, enemyBbox, enemyCx, enemyCy)))
+        end
     end
 
     gameUI:draw(game)
@@ -724,6 +730,16 @@ function GameplayScene.draw()
     if smokeSystem and not roadOutdoor then smokeSystem:draw() end
     playButton:draw()
     if endTurnButton then endTurnButton:draw() end
+
+    -- PREVIA DE DANO (Out/2026): banda de ACAO da coluna direita, colada em
+    -- cima do JOGAR — o numero que o clique vai produzir mora no botao que o
+    -- produz. Selos "+COMBO" ficam NA carta que fecharia o combo.
+    if not entering then
+        DamagePreviewPanel.drawHandBadges(game)
+        DamagePreviewPanel.draw(game,
+            { x = playButton.x, y = playButton.y, w = playButton.width },
+            topBarHeight + 8)
+    end
 
     -- Chamariz do ENCERRAR TURNO (sem mana e nada selecionado): aro dourado
     -- pulsante + seta quicando — "sua próxima ação é aqui".
@@ -983,6 +999,9 @@ function GameplayScene.update(dt)
 
     playButton:update(dt)
     if endTurnButton then endTurnButton:update(dt) end
+
+    -- Previa de dano da selecao (+ carta em hover) — ver DamagePreviewPanel.
+    DamagePreviewPanel.update(game, hoverCard, dt)
 
     -- UX do turno multi-jogada (playtest): "joguei e nada aconteceu".
     -- JOGAR CARTAS desabilita quando não há nada selecionado NEM pagável;

@@ -146,13 +146,27 @@ local EXTRA_GAP = 3
 -- ===== HP BAR =====
 -- Por default fica sob os pés do sprite. Se `barYOverride` for passado, desenha
 -- naquele Y (usado pra posicionar HP acima do sprite, logo abaixo do intent row).
-function EnemyHud.drawHpBar(enemy, cx, groundY, spriteWidth, barYOverride)
-    if not enemy then return end
-
+-- Geometria da barra (fonte unica: o desenho abaixo e a previa de dano —
+-- src/ui/DamagePreviewPanel — leem daqui).
+local function hpBarGeom(cx, groundY, spriteWidth, barYOverride)
     local barW = math.max(160, math.min(260, spriteWidth + 40))
     local barH = 10
     local x = math.floor(cx - barW / 2)
     local y = barYOverride or math.floor(groundY + 10)
+    return x, y, barW, barH
+end
+
+-- Rect da barra de vida a partir do layout (EnemyHud.layout).
+function EnemyHud.hpBarRect(L)
+    if not L then return nil end
+    local x, y, w, h = hpBarGeom(L.cx, L.groundY, L.sw, L.hpBarY)
+    return { x = x, y = y, w = w, h = h }
+end
+
+function EnemyHud.drawHpBar(enemy, cx, groundY, spriteWidth, barYOverride)
+    if not enemy then return end
+
+    local x, y, barW, barH = hpBarGeom(cx, groundY, spriteWidth, barYOverride)
 
     -- Usa valor eased (enemy.disp.health) pra feedback Balatro-style.
     -- Enemy:update(dt) tickDa o easing. Fallback ao real se disp não existe.

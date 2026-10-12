@@ -1018,6 +1018,37 @@ return {
         pack_opened      = "{name} opened",
     },
 
+    -- ======== PRÉVIA DE DANO (Out/2026, src/ui/DamagePreviewPanel.lua) ========
+    damage_preview = {
+        lethal      = "LETHAL",
+        absorbed    = "{n} into enemy Block",
+        magic       = "Magic damage",
+        orbs        = "Evoked orbs",
+        skipped     = "enemy already down",
+        impetus     = "Momentum: +1 Strength first",
+        uncertain   = "+ random effect",
+        with_card   = "+ {card}: {n}",
+        more_cards  = "+{n} cards",
+        combo_badge = "+COMBO",
+        -- o que cada combo faz (tooltip no painel; {n}/{v}/{stacks} vem da regra)
+        combo_desc  = {
+            strike_combo    = "{n}+ Strike cards in the same play: each Strike ×{v}.",
+            defend_wall     = "{n}+ Defend cards in the same play: each Defend ×{v}.",
+            triple_strike   = "{n}+ Strike cards in the same play: +{v} damage on the first Strike (once per play).",
+            armor_tower     = "{n}+ Armor cards in the same play: +{v} Block on the first one (once per play).",
+            poison_stack    = "{n}+ Poison cards in the same play: +{stacks} Poison on the enemy when the play ends.",
+            channel_burst   = "{n}+ Channel cards in the same play: evokes the oldest orb when the play ends.",
+            cycle_motion    = "A Draw card and a Discard card in the same play: +{v} damage on the first attack.",
+            finisher_chain  = "A Strike and a Finisher in the same play: the Finisher deals ×{v}.",
+            lifesteal_burst = "A Strike and a Lifesteal card in the same play: heal {v} HP when the play ends.",
+            magic_focus     = "{n}+ Magic cards in the same play: each Magic card ×{v}.",
+            thorn_reflex    = "A Defend and a Thorns card in the same play: +{v} Block on the Thorns card.",
+            tempestade      = "{n}+ Lightning cards in the same play: +{v} damage on the first attack.",
+            zero_absoluto   = "{n}+ Ice cards in the same play: +{v} Block on the first Defend.",
+            rule_mult       = "Combo multipliers don't stack: on the same card only the highest counts.",
+        },
+    },
+
     -- ======== COMBOS (ComboSystem rule labels) ========
     -- Rebalance v2 (Jul/2026): includes the new 'tempestade' and 'zero_absoluto'.
     combos = {

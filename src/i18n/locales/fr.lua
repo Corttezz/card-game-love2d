@@ -1015,6 +1015,37 @@ return {
         pack_opened      = "{name} ouvert",
     },
 
+    -- ======== PRÉVIA DE DANO (Out/2026, src/ui/DamagePreviewPanel.lua) ========
+    damage_preview = {
+        lethal      = "LÉTAL",
+        absorbed    = "{n} dans le Blocage ennemi",
+        magic       = "Dégâts magiques",
+        orbs        = "Orbes évoqués",
+        skipped     = "l'ennemi est déjà tombé",
+        impetus     = "Élan : +1 Force d'abord",
+        uncertain   = "+ effet aléatoire",
+        with_card   = "+ {card} : {n}",
+        more_cards  = "+{n} cartes",
+        combo_badge = "+COMBO",
+        -- o que cada combo faz (tooltip no painel; {n}/{v}/{stacks} vem da regra)
+        combo_desc  = {
+            strike_combo    = "{n}+ cartes de Frappe dans le même coup : chaque Frappe ×{v}.",
+            defend_wall     = "{n}+ cartes de Défense dans le même coup : chaque Défense ×{v}.",
+            triple_strike   = "{n}+ cartes de Frappe dans le même coup : +{v} dégâts sur la première Frappe (une fois par coup).",
+            armor_tower     = "{n}+ cartes d'Armure dans le même coup : +{v} de Blocage sur la première (une fois par coup).",
+            poison_stack    = "{n}+ cartes de Poison dans le même coup : +{stacks} de Poison sur l'ennemi à la fin du coup.",
+            channel_burst   = "{n}+ cartes de Canalisation dans le même coup : évoque l'orbe le plus ancien à la fin du coup.",
+            cycle_motion    = "Une carte de Pioche et une de Défausse dans le même coup : +{v} dégâts sur la première attaque.",
+            finisher_chain  = "Une Frappe et un Coup de grâce dans le même coup : le Coup de grâce inflige ×{v}.",
+            lifesteal_burst = "Une Frappe et une carte de Vol de vie dans le même coup : soigne {v} PV à la fin du coup.",
+            magic_focus     = "{n}+ cartes Magiques dans le même coup : chaque carte Magique ×{v}.",
+            thorn_reflex    = "Une Défense et une carte d'Épines dans le même coup : +{v} de Blocage sur la carte d'Épines.",
+            tempestade      = "{n}+ cartes de Foudre dans le même coup : +{v} dégâts sur la première attaque.",
+            zero_absoluto   = "{n}+ cartes de Glace dans le même coup : +{v} de Blocage sur la première Défense.",
+            rule_mult       = "Les multiplicateurs de combo ne se cumulent pas : sur une même carte, seul le plus haut compte.",
+        },
+    },
+
     -- ======== COMBOS (labels des regles du ComboSystem) ========
     -- Rebalance v2 (Jul/2026): inclut les nouveaux 'tempestade' et 'zero_absoluto'.
     combos = {

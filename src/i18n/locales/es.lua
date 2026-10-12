@@ -1014,6 +1014,37 @@ return {
         pack_opened      = "{name} abierto",
     },
 
+    -- ======== PRÉVIA DE DANO (Out/2026, src/ui/DamagePreviewPanel.lua) ========
+    damage_preview = {
+        lethal      = "LETAL",
+        absorbed    = "{n} en el Bloqueo enemigo",
+        magic       = "Daño mágico",
+        orbs        = "Orbes evocados",
+        skipped     = "el enemigo ya cayó",
+        impetus     = "Ímpetu: +1 Fuerza antes",
+        uncertain   = "+ efecto aleatorio",
+        with_card   = "+ {card}: {n}",
+        more_cards  = "+{n} cartas",
+        combo_badge = "+COMBO",
+        -- o que cada combo faz (tooltip no painel; {n}/{v}/{stacks} vem da regra)
+        combo_desc  = {
+            strike_combo    = "{n}+ cartas de Golpe en la misma jugada: cada Golpe ×{v}.",
+            defend_wall     = "{n}+ cartas de Defensa en la misma jugada: cada Defensa ×{v}.",
+            triple_strike   = "{n}+ cartas de Golpe en la misma jugada: +{v} de daño en el primer Golpe (una vez por jugada).",
+            armor_tower     = "{n}+ cartas de Armadura en la misma jugada: +{v} de Bloqueo en la primera (una vez por jugada).",
+            poison_stack    = "{n}+ cartas de Veneno en la misma jugada: +{stacks} de Veneno al enemigo al final de la jugada.",
+            channel_burst   = "{n}+ cartas de Canalizar en la misma jugada: evoca el orbe más antiguo al final de la jugada.",
+            cycle_motion    = "Una carta de Robar y una de Descartar en la misma jugada: +{v} de daño en el primer ataque.",
+            finisher_chain  = "Un Golpe y un Remate en la misma jugada: el Remate causa ×{v}.",
+            lifesteal_burst = "Un Golpe y una carta de Robo de Vida en la misma jugada: cura {v} PV al final de la jugada.",
+            magic_focus     = "{n}+ cartas Mágicas en la misma jugada: cada carta Mágica ×{v}.",
+            thorn_reflex    = "Una Defensa y una carta de Espinas en la misma jugada: +{v} de Bloqueo en la carta de Espinas.",
+            tempestade      = "{n}+ cartas de Rayo en la misma jugada: +{v} de daño en el primer ataque.",
+            zero_absoluto   = "{n}+ cartas de Hielo en la misma jugada: +{v} de Bloqueo en la primera Defensa.",
+            rule_mult       = "Los multiplicadores de combo no se suman: en la misma carta solo vale el mayor.",
+        },
+    },
+
     -- ======== COMBOS (labels de las reglas del ComboSystem) ========
     -- Rebalance v2 (Jul/2026): incluye los nuevos 'tempestade' y 'zero_absoluto'.
     combos = {
