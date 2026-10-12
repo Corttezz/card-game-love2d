@@ -87,7 +87,7 @@ return {
 
     classes = {
         warrior = { name = "Krieger",  desc = "Spezialist für Nahkampf und Widerstandskraft",
-            passive_name = "Schwung", passive_desc = "Spiele 2+ Angriffe im selben Zug: +1 Stärke für diesen Kampf." },
+            passive_name = "Schwung", passive_desc = "Spiele 3+ Angriffe im selben Zug: +1 Stärke für diesen Kampf." },
         mage    = { name = "Magier",   desc = "Meister arkaner Künste und Elementarmanipulation",
             passive_name = "Leitung", passive_desc = "Start mit Blitz-Orb und 2 Fokus. 2+ Orb-Karten im Zug: +1 Fokus im Kampf." },
         rogue   = { name = "Schurke",  desc = "Beweglicher Assassine, spezialisiert auf Gift und Präzision",
@@ -1030,7 +1030,7 @@ return {
         intent_strong  = { name = "Schwerer Angriff", desc = "BRUTALER SCHLAG naht: {value} Schaden nächsten Zug. Verteidige dich!" },
         intent_defend  = { name = "Verteidigt", desc = "Nächsten Zug erhält der Gegner {value} Rüstung (hält 1 Zug)." },
         intent_buff    = { name = "Wird wütend", desc = "Nächsten Zug erhält der Gegner +{value} DAUERHAFTEN Schaden." },
-        passive_warrior= { name = "Passiv: Schwung", desc = "Spiele 2+ Angriffe im selben Zug: +1 Stärke für diesen Kampf." },
+        passive_warrior= { name = "Passiv: Schwung", desc = "Spiele 3+ Angriffe im selben Zug: +1 Stärke für diesen Kampf." },
         passive_mage   = { name = "Passiv: Leitung", desc = "Beginne jeden Kampf mit einem kanalisierten Blitz-Orb (4) und 2 Fokus (+1 Fokus alle zwei Akte). Spiele 2 oder mehr Orb-Karten (kanalisieren/beschwören) im selben Zug: +1 Fokus für diesen Kampf." },
         passive_rogue  = { name = "Passiv: Toxine", desc = "Der erste Angriff jeder Runde fügt 1 Gift für 2 Runden zu (+1 Gift alle zwei Akte). Spiele 2 oder mehr Angriffe im selben Zug: dieses Gift steigt um +2 für diesen Kampf." },
         topbar_gold = { name = "Gold", desc = "Kauft Karten, Schmieden und Verbesserungen im Laden. Zinsen: +$1 pro $5 gespart (max +$5), ausgezahlt nach jedem gewonnenen Kampf. Nächste Auszahlung: +${interest}." },

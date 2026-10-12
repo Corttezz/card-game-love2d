@@ -88,7 +88,7 @@ return {
 
     classes = {
         warrior = { name = "Warrior", desc = "Specialist in close combat and resilience",
-            passive_name = "Momentum", passive_desc = "Play 2+ attacks in the same turn: +1 Strength this battle." },
+            passive_name = "Momentum", passive_desc = "Play 3+ attacks in the same turn: +1 Strength this battle." },
         mage    = { name = "Mage",    desc = "Master of arcane arts and elemental manipulation",
             passive_name = "Conduit", passive_desc = "Start with a Lightning orb and 2 Focus. 2+ orb cards in a turn: +1 Focus this battle." },
         rogue   = { name = "Rogue",   desc = "Agile assassin specialized in poison and precision",
@@ -1033,7 +1033,7 @@ return {
         intent_strong  = { name = "Heavy Attack", desc = "HEAVY BLOW incoming: {value} damage next turn. Defend!" },
         intent_defend  = { name = "Will Defend", desc = "Next turn the enemy gains {value} armor (lasts 1 turn)." },
         intent_buff    = { name = "Will Enrage", desc = "Next turn the enemy gains +{value} PERMANENT damage." },
-        passive_warrior= { name = "Passive: Momentum", desc = "Play 2+ attacks in the same turn: +1 Strength this battle." },
+        passive_warrior= { name = "Passive: Momentum", desc = "Play 3+ attacks in the same turn: +1 Strength this battle." },
         passive_mage   = { name = "Passive: Conduit", desc = "You start every battle with a Lightning orb (4) channeled and 2 Focus (+1 Focus every two acts). Play 2 or more orb cards (channel/evoke) in the same turn: +1 Focus this battle." },
         passive_rogue  = { name = "Passive: Toxins", desc = "The first attack each turn applies 1 Poison for 2 turns (+1 Poison every two acts). Play 2 or more attacks in the same turn: that Poison grows +2 this battle." },
         topbar_gold = { name = "Gold", desc = "Buys cards, forges and upgrades at the shop. Interest: +$1 per $5 saved (max +$5), paid after each battle won. Next payout: +${interest}." },

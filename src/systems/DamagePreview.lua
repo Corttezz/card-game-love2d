@@ -315,14 +315,14 @@ function DamagePreview.simulate(game, cards)
         for _, e in ipairs(card.effects or {}) do one(e, false) end
     end
 
-    -- Impeto do guerreiro: 2+ ataques no turno (somando levas) = +1 Forca
+    -- Impeto do guerreiro: IMPETUS_ATTACKS (3) ataques no turno (somando levas) = +1 Forca
     -- ANTES das cartas resolverem (Game:applyClassTurnPassives).
     if game.selectedClass == "warrior" and not game._impetusFiredThisTurn then
         local attacks = game._attacksThisTurn or 0
         for _, c in ipairs(cards) do
             if (c.attack or 0) > 0 then attacks = attacks + 1 end
         end
-        if attacks >= 2 then
+        if attacks >= require("src.core.Game").IMPETUS_ATTACKS then
             P.strength = P.strength + 1
             R.impetus = true
         end

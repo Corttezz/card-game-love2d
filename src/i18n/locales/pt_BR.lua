@@ -91,7 +91,7 @@ return {
             name = "Guerreiro",
             desc = "Especialista em combate corpo a corpo e resistência",
             passive_name = "Ímpeto",
-            passive_desc = "Jogue 2+ ataques no mesmo turno: +1 de Força nesta batalha.",
+            passive_desc = "Jogue 3+ ataques no mesmo turno: +1 de Força nesta batalha.",
         },
         mage = {
             name = "Mago",
@@ -1064,7 +1064,7 @@ return {
         intent_strong  = { name = "Ataque Forte", desc = "GOLPE PESADO vindo: {value} de dano no próximo turno. Defenda-se!" },
         intent_defend  = { name = "Vai Defender", desc = "No próximo turno o inimigo ganha {value} de armadura (dura 1 turno)." },
         intent_buff    = { name = "Vai se Enfurecer", desc = "No próximo turno o inimigo ganha +{value} de dano PERMANENTE." },
-        passive_warrior= { name = "Passiva: Ímpeto", desc = "Jogue 2 ou mais ataques no mesmo turno: +1 de Força nesta batalha." },
+        passive_warrior= { name = "Passiva: Ímpeto", desc = "Jogue 3 ou mais ataques no mesmo turno: +1 de Força nesta batalha." },
         passive_mage   = { name = "Passiva: Conduíte", desc = "Você começa cada batalha com um orbe de Raio (4) canalizado e 2 de Foco (+1 de Foco a cada dois atos). Jogue 2 ou mais cartas de orbe (canalizar/evocar) no mesmo turno: +1 de Foco nesta batalha." },
         passive_rogue  = { name = "Passiva: Toxinas", desc = "O primeiro ataque de cada turno aplica 1 de Veneno por 2 turnos (+1 de Veneno a cada dois atos). Jogue 2 ou mais ataques no mesmo turno: esse Veneno sobe +2 nesta batalha." },
         topbar_gold = { name = "Ouro", desc = "Compra cartas, forjas e melhorias na loja. Juros: +$1 a cada $5 guardados (máx +$5), pagos ao vencer batalhas. Próximo pagamento: +${interest}." },

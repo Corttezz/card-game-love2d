@@ -188,3 +188,35 @@ o salto do guerreiro de 25% para 77% veio sobretudo daí. O guerreiro acima de 6
 é questão de CLASSE (já estava em 60% antes dos kits), não de inimigo. Lever
 monitorado: o Colosso (A5) concentra as mortes do ladino (regen contra veneno) —
 se passar de metade das mortes, baixar `regenPct` 0,02 → 0,015.
+
+## Balanceamento de CLASSE (Out/2026, frente combo/dano) — passivas que crescem na luta
+
+`balance_sim 30 <classe> 720000`, piloto v6, um processo por classe. Base = bateria
+v7 do roster novo (0b46c0d, Combo v3 já dentro). Final = HEAD 6485277 + Ímpeto 3 +
+Foco inteiro no pulso, com as mudanças de inimigo d0e41d4 (Colosso/Anjo/Tirano) e
+b9e677f (DoT ignora armadura) já na árvore.
+
+| classe | base v7 | fin1 (passivas crescem) | final (+Ímpeto 3, Foco inteiro) |
+|---|---|---|---|
+| guerreiro | 43% | 67% | 47% |
+| mago | 13% | 40% | 43% |
+| ladino | 17% | 40% | 50% |
+
+Turnos/luta A1→A6 (final): guerreiro 2,8 · 4,4 · 5,6 · 6,2 · 6,4 · 7,2 ·
+mago 2,7 · 5,2 · 8,2 · 9,5 · 13,9 · 14,1 · ladino 2,6 · 4,4 · 5,3 · 6,4 · 7,5 · 8,4.
+Mortes (final): guerreiro A3 6 · A4 2 · A5 6 · A6 2; mago A2 1 · A3 2 · A4 5 · A5 4 · A6 5;
+ladino A2 1 · A3 5 · A4 2 · A5 5 · A6 2.
+
+O que mudou (lado jogador): Conduíte +1 Foco por turno com 2+ cartas de orbe;
+Toxinas +2 (`Game.TOXIN_GROWTH`) por turno com 2+ ataques; Ímpeto pede 3 ataques
+(`Game.IMPETUS_ATTACKS`); dano de orbe pelo maior multiplicador de coringa
+(`EffectSystem.orbDamageMult`); Foco soma INTEIRO no pulso (depois da divisão);
+Punhalada 11→8, Adrenalina custo 1, Veneno Concentrado +4.
+
+**Mago ainda luta 14 turnos no A5-A6 — e é do PILOTO, não da classe.** Testado:
+raio pulsando o valor cheio (+dano) deixou o mago em 47% e as lutas MAIS longas
+(15-17). O diário (`autoplay 1 mage 720001`, chefe do A5) mostra o piloto passando
+o turno com 9-10 de mana e ataques na mão ("vazio 41 x jogar 4 cartas -65"),
+jogando cura/defesa contra um chefe que regenera — o mago quase não toma dano
+(0,5/turno) e o valor do piloto prefere tartaruga. Próximo passo é do piloto
+(`AI.score` subestima dano quando o HP está folgado), não do mago.

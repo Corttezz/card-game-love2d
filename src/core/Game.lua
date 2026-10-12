@@ -646,7 +646,7 @@ function Game:selectCard(card)
 end
 
 -- ===== PASSIVAS DE CLASSE (identidade de gameplay — Jul/2026) =====
--- Warrior "Ímpeto":  2+ ataques no mesmo turno → +1 Força (na batalha).
+-- Warrior "Ímpeto":  3+ ataques no mesmo turno → +1 Força (na batalha) (era 2+ até Out/2026).
 -- Mage "Conduíte":   começa toda batalha com orbe de Raio (4) e Foco 2/3/4 (cresce a cada 2 atos);
 --                    2+ cartas de orbe (canalizar/evocar) no mesmo turno → +1 Foco (na batalha).
 -- Rogue "Toxinas":   o 1º ataque de cada turno aplica 1/2/3 de Veneno (2t, cresce a cada 2 atos);
@@ -700,6 +700,12 @@ end
 -- 8-9 turnos — a curva de veneno cresce devagar demais contra 600 de vida.
 Game.TOXIN_GROWTH = 2
 
+-- Quantos ataques no turno o Impeto pede. 2 -> 3 (Out/2026): com o inimigo
+-- suavizado (d0e41d4) e o DoT ignorando armadura, a bateria combinada de 30
+-- runs deu guerreiro 67% — acima da meta 40-55%. A Forca por golpe e a
+-- curva mais forte do jogo; pedir 3 ataques a desacelera sem mexer no resto.
+Game.IMPETUS_ATTACKS = 3
+
 -- Carta de ORBE (canalizar ou evocar) — o que alimenta o Conduite.
 function Game.isOrbCard(card)
     for _, e in ipairs((card and card.effects) or {}) do
@@ -742,7 +748,7 @@ function Game:applyClassTurnPassives(turnContext)
         end
         return
     end
-    if attacks >= 2 and not self._impetusFiredThisTurn then
+    if attacks >= Game.IMPETUS_ATTACKS and not self._impetusFiredThisTurn then
         self._impetusFiredThisTurn = true
         self.player:gainStrength(1)
         self:addMessage(msg("passive_momentum"), "success")

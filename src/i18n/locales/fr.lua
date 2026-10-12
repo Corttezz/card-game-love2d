@@ -87,7 +87,7 @@ return {
 
     classes = {
         warrior = { name = "Guerrier", desc = "Spécialiste du combat rapproche et de la résilience",
-            passive_name = "Élan", passive_desc = "Jouez 2+ attaques dans le même tour : +1 de Force pour ce combat." },
+            passive_name = "Élan", passive_desc = "Jouez 3+ attaques dans le même tour : +1 de Force pour ce combat." },
         mage    = { name = "Mage",     desc = "Maître des arts arcaniques et manipulation élémentaire",
             passive_name = "Conduit", passive_desc = "Départ : orbe de Foudre et 2 Concentration. 2+ orbes par tour : +1 Concentration." },
         rogue   = { name = "Voleur",   desc = "Assassin agile spécialisé en poison et précision",
@@ -1030,7 +1030,7 @@ return {
         intent_strong  = { name = "Attaque Lourde", desc = "COUP BRUTAL en approche : {value} dégâts au prochain tour. Défends-toi !" },
         intent_defend  = { name = "Va Défendre", desc = "Au prochain tour l'ennemi gagne {value} d'armure (dure 1 tour)." },
         intent_buff    = { name = "Va s'Enrager", desc = "Au prochain tour l'ennemi gagne +{value} de dégâts PERMANENTS." },
-        passive_warrior= { name = "Passive : Élan", desc = "Jouez 2+ attaques dans le même tour : +1 de Force pour ce combat." },
+        passive_warrior= { name = "Passive : Élan", desc = "Jouez 3+ attaques dans le même tour : +1 de Force pour ce combat." },
         passive_mage   = { name = "Passive : Conduit", desc = "Commencez chaque combat avec un orbe de Foudre (4) canalisé et 2 de Concentration (+1 de Concentration tous les deux actes). Jouez 2 cartes d'orbe ou plus (canaliser/évoquer) dans le même tour : +1 de Concentration pour ce combat." },
         passive_rogue  = { name = "Passive : Toxines", desc = "La première attaque de chaque tour applique 1 Poison pendant 2 tours (+1 Poison tous les deux actes). Jouez 2 attaques ou plus dans le même tour : ce Poison augmente de +2 pour ce combat." },
         topbar_gold = { name = "Or", desc = "Achète cartes, forges et améliorations à la boutique. Intérêts : +$1 par $5 économisés (max +$5), versés après chaque combat gagné. Prochain versement : +${interest}." },

@@ -628,13 +628,19 @@ local DAMAGE_ORB = { lightning = true, fire = true, dark = true }
 
 -- Valor do PULSO por turno de um orbe (0 = nao pulsa; dark cresce em vez disso).
 -- `mult` = EffectSystem.orbDamageMult(game) (so nos orbes de dano).
+-- FOCO SOMA INTEIRO NO PULSO (Out/2026): antes o Foco entrava na base e era
+-- dividido junto (ceil((valor+Foco)/2)) — com o Conduite crescendo +1 Foco por
+-- turno, cada orbe subia meio ponto por turno e o mago arrastava lutas de 12-18
+-- turnos no A5-A6 (bateria 30 runs). Agora o Foco soma depois da divisao: +1
+-- Foco = +1 em cada pulso, a mesma taxa do +1 de Forca por golpe do Impeto.
 function EffectSystem.orbPulseValue(orb, focus, mult)
-    local ev = (orb.value or 1) + (focus or 0)
+    local base = orb.value or 1
+    local f = focus or 0
     local v = 0
     if orb.type == "lightning" or orb.type == "ice" then
-        v = math.ceil(ev / 2)
+        v = math.ceil(base / 2) + f
     elseif orb.type == "fire" or orb.type == "holy" then
-        v = math.ceil(ev / 3)
+        v = math.ceil(base / 3) + f
     end
     -- dark: nao pulsa, cresce +2/turno
     if DAMAGE_ORB[orb.type] and mult and mult ~= 1 then v = math.floor(v * mult) end

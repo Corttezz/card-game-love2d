@@ -87,7 +87,7 @@ return {
 
     classes = {
         warrior = { name = "Guerrero", desc = "Especialista en combate cuerpo a cuerpo y resistencia",
-            passive_name = "Ímpetu", passive_desc = "Juega 2+ ataques en el mismo turno: +1 de Fuerza en esta batalla." },
+            passive_name = "Ímpetu", passive_desc = "Juega 3+ ataques en el mismo turno: +1 de Fuerza en esta batalla." },
         mage    = { name = "Mago",     desc = "Maestro de las artes arcanas y manipulación elemental",
             passive_name = "Conducto", passive_desc = "Empieza con orbe de Rayo y 2 de Foco. 2+ cartas de orbe por turno: +1 Foco." },
         rogue   = { name = "Pícaro",   desc = "Asesino ágil especializado en venenos y precisión",
@@ -1029,7 +1029,7 @@ return {
         intent_strong  = { name = "Ataque Pesado", desc = "GOLPE BRUTAL en camino: {value} de daño el próximo turno. ¡Defiende!" },
         intent_defend  = { name = "Va a Defender", desc = "El próximo turno el enemigo gana {value} de armadura (dura 1 turno)." },
         intent_buff    = { name = "Va a Enfurecerse", desc = "El próximo turno el enemigo gana +{value} de daño PERMANENTE." },
-        passive_warrior= { name = "Pasiva: Ímpetu", desc = "Juega 2+ ataques en el mismo turno: +1 de Fuerza en esta batalla." },
+        passive_warrior= { name = "Pasiva: Ímpetu", desc = "Juega 3+ ataques en el mismo turno: +1 de Fuerza en esta batalla." },
         passive_mage   = { name = "Pasiva: Conducto", desc = "Comienza cada batalla con un orbe de Rayo (4) canalizado y 2 de Foco (+1 de Foco cada dos actos). Juega 2 o más cartas de orbe (canalizar/evocar) en el mismo turno: +1 de Foco en esta batalla." },
         passive_rogue  = { name = "Pasiva: Toxinas", desc = "El primer ataque de cada turno aplica 1 de Veneno durante 2 turnos (+1 de Veneno cada dos actos). Juega 2 o más ataques en el mismo turno: ese Veneno sube +2 en esta batalla." },
         topbar_gold = { name = "Oro", desc = "Compra cartas, forjas y mejoras en la tienda. Interés: +$1 por cada $5 ahorrados (max +$5), pagado tras cada batalla ganada. Próximo pago: +${interest}." },

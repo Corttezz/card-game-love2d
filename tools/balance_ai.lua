@@ -348,7 +348,7 @@ function AI.simulate(game, set, bctx, opts)
     if game.selectedClass == "warrior" and not game._impetusFiredThisTurn then
         local atks = game._attacksThisTurn or 0
         for _, c in ipairs(set) do if (c.attack or 0) > 0 then atks = atks + 1 end end
-        if atks >= 2 then S.str = S.str + 1; S.strGain = S.strGain + 1 end
+        if atks >= require("src.core.Game").IMPETUS_ATTACKS then S.str = S.str + 1; S.strGain = S.strGain + 1 end
     end
     -- Conduite do mago (Out/2026): 2+ cartas de orbe no turno = +1 Foco antes
     if game.selectedClass == "mage" and not game._conduitFiredThisTurn then
