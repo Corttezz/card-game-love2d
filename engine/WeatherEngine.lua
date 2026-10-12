@@ -108,6 +108,8 @@ WeatherEngine.PRESETS = {
 local LEAF_SHED = { kind = "leaf", fall = 0.07, fallVar = 0.4, size = 2,
                     windK = 0.24, land = 1.8, fg = 0, colors = { { 1, 1, 1 } } }
 local MAX_SHED = 20
+local RETIRE_FADE = 6       -- s pra um clima aposentado sumir (troca de bioma)
+local MAX_AGE = 75          -- s de vida máxima de qualquer partícula
 local MAX_MICRO = 24        -- micro-luzes do clima por frame (o LightEngine tem 64)
 local MAX_FF_POOLS = 6      -- poças de vagalume por frame (o LightEngine tem 28 —
                             -- as das luminárias ganham na política "mais fraca sai")
@@ -212,6 +214,8 @@ local function spawn(p, pr, camZ, fresh, kindTag)
     p.lt = 0
     p.ph = rng:random() * 6.2832
     p.lit = false
+    p.age = 0
+    p.retire = 0
     local colors = isRise and pr.rise.colors or pr.colors
     p.ci = rng:random(1, #colors)
     p.fg = (kindTag == nil) and rng:random() < (pr.fg or 0)
@@ -340,7 +344,15 @@ function WeatherEngine.update(dt, ctx)
             local pr = p.pr
             local dead = false
             local rel = p.z - camZ
-            if rel < -0.6 then
+            -- APOSENTADORIA determinística: partícula de um preset que saiu de
+            -- cena (troca de bioma) esvai em RETIRE_FADE s, e qualquer uma tem
+            -- vida máxima — floco atrás da crista caindo devagar podia passar
+            -- de 60 s (bug exposto por troca de RNG, Out/2026)
+            p.age = (p.age or 0) + dt
+            if p.pr ~= cur and not p.shed then p.retire = (p.retire or 0) + dt end
+            if (p.retire or 0) >= RETIRE_FADE or p.age >= MAX_AGE then
+                dead = true
+            elseif rel < -0.6 then
                 dead = true
             elseif p.ff then
                 -- VAGALUME: vagueia, sobe e desce devagar, a rajada empurra
@@ -611,6 +623,7 @@ function WeatherEngine.beginFrame(f)
         -- longe perde contraste (perspectiva atmosférica, como os props)
         local A = 1
         if behind then A = 0.5 elseif t < 0.25 then A = 0.62 + t * 1.5 end
+        if (p.retire or 0) > 0 then A = A * max(0, 1 - p.retire / RETIRE_FADE) end
         local kind = p.ff and "ff" or (p.rise and "ember" or pr.kind)
         local wind = p.wind or 0
 
@@ -806,6 +819,7 @@ function WeatherEngine.emitLeaf(dxFrac, z, t, hFrac, color)
     P[nP] = p
     p.pr = LEAF_SHED
     p.shed = true
+    p.age, p.retire = 0, 0
     p.rise, p.ff = false, false
     p.st, p.lt = 0, 0
     p.fg = false

@@ -191,7 +191,7 @@ function M.run()
         local snowLeft0 = 0
         for i = 1, n0 do if P0[i].pr == WeatherEngine.PRESETS.frost then snowLeft0 = snowLeft0 + 1 end end
         t:truthy("logo após a troca a neve ainda está no ar (sem pop)", snowLeft0 > 50)
-        for i = 1, 30 * 60 do
+        for i = 1, 30 * 7 do   -- RETIRE_FADE (6 s) + folga: determinístico, sem depender do RNG
             WeatherEngine.update(1 / 30, { biomeId = "abyss", camZ = 5.5, time = 3000 + i / 30, progress = 1 })
         end
         local P, np = WeatherEngine._particles()
@@ -200,7 +200,7 @@ function M.run()
             if P[i].pr == WeatherEngine.PRESETS.frost then snowLeft = snowLeft + 1 end
             if P[i].pr == WeatherEngine.PRESETS.abyss then ash = ash + 1 end
         end
-        t:eq("60 s depois a neve acabou", snowLeft, 0)
+        t:eq("7 s depois a neve aposentada acabou (fade garantido)", snowLeft, 0)
         t:truthy("e a cinza do abismo chegou (" .. ash .. ")", ash > 50)
     end
 

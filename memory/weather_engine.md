@@ -150,3 +150,16 @@ Depois de regenerar: mesmo nome, normalizar (ffmpeg volume + alimiter) e
 rodar `love . check_sfx weather`. Custo real medido: ~30 gerações ≈ 1100
 créditos. rain-light-1/2 saíram quase mudos na 1ª tentativa (−60 dB) —
 pedir "clearly audible, close" no prompt.
+
+## Correções (Out/2026, 3ª rodada)
+- **Aposentadoria determinística**: partícula de preset que saiu de cena
+  (troca de bioma) esvai em `RETIRE_FADE` = 6 s e toda partícula tem vida
+  máxima `MAX_AGE` = 75 s. Antes um floco atrás da crista podia viver >60 s
+  conforme o RNG (o teste dependia da sorte).
+- **"Bola" no poste do crepúsculo**: NÃO era luz — os quadros 1-7 de
+  `assets/sprites/world/anim/dusk_lantern_0/` tinham um blob BRANCO que
+  crescia e vazava pelos lados da lanterna (7 → 39 px no quadro 4). Corrigido
+  congelando os pixels brancos no desenho do quadro 0 (o vidro ainda pulsa).
+  Diagnóstico: capturar em movimento (`screenshot_weather 6:castle:seq`), A/B
+  com `:nolight` (o defeito persistiu → arte) e contar pixels brancos por
+  quadro. Outras anims com blob variável são fogo/porta (movimento proposital).

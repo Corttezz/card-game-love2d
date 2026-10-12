@@ -29,6 +29,7 @@ function M.run(arg)
     local WeatherEngine = require("engine.WeatherEngine")
     WeatherEngine.disabled = modes.off == true
     WeatherEngine.debugMagenta = modes.mag == true
+    if modes.nolight then require("engine.LightEngine").setEnabled(false) end
     if modes.storm or modes.strike then WeatherEngine.setIntensityOverride(1) end
 
     local width, height = love.graphics.getDimensions()
@@ -66,6 +67,21 @@ function M.run(arg)
         end
         frame()
         love.graphics.present()
+    end
+    -- seq: 16 quadros de uma VIAGEM (o que aparece/surge em movimento —
+    -- ex. luminária chegando da crista). Saída weather_<b>_seqNN.png
+    if modes.seq then
+        WorldRoad.travel({ distance = 28, duration = 6.5 })
+        for k = 1, 16 do
+            for _ = 1, 12 do WorldRoad.update(1 / 30) end
+            frame()
+            local nm = string.format("weather_%d_seq%02d.png", bio, k)
+            love.graphics.captureScreenshot(function(img) img:encode("png", nm) end)
+            love.graphics.present()
+        end
+        frame(); love.graphics.present()
+        print("[weather] seq salva (16 quadros)")
+        return true
     end
     if modes.strike then
         WeatherEngine.strike(0.30, 0.15)
