@@ -18,6 +18,7 @@ local SIZES = {
     { 800, 600 },
     { 640, 480 },
     { 1280, 400 },
+    { 2560, 1440 },
 }
 
 local function fakeWindow(w, h)
