@@ -9,12 +9,15 @@
 --
 --   ÁUDIO   Geral · Música · Efeitos                          (sliders 0-100%)
 --   VÍDEO   Tela cheia · VSync · Shader CRT · Iluminação       (toggles)
---   JOGO    Ritmo do combate · Tremor de tela · Movimento reduzido · Idioma
+--   JOGO    Ritmo do combate · Tremor de tela · Movimento reduzido
+--   IDIOMA  os 5 idiomas pelo nome nativo — 1 clique/Enter escolhe
 --
--- Todo controle tem a MESMA forma: [<] valor [>] — o "option cycle" do
--- Balatro. Isso dá teclado/gamepad de graça (←/→ ajusta, ↑/↓ escolhe a
--- linha, Tab/Q/E troca aba, ESC volta) e matou o dropdown de idioma, que
--- abria pra fora do painel em janela pequena.
+-- Todo controle de ajuste tem a MESMA forma: [<] valor [>] — o "option
+-- cycle" do Balatro (←/→ ajusta, ↑/↓ escolhe a linha, Tab/Q/E troca aba,
+-- ESC volta). O IDIOMA não: no ciclo o dono tinha que passar idioma por
+-- idioma até chegar no seu (Out/2026, "piorou"). Agora é lista direta com
+-- o atual aceso, numa aba própria — não o dropdown da v2, que abria pra
+-- fora do painel em janela pequena.
 --
 -- Visual: painel escuro-dourado canônico (UiPanel) + título dourado, igual à
 -- pausa/loja/roteiro. A v2 misturava o OSD âmbar de TV com os botões sépia
@@ -54,9 +57,17 @@ local ROW_H     = 40
 local ROW_GAP   = 6
 local ZONE_GAP  = 12
 local BACK_H    = 36
-local FOOTER_H  = 26
 local ARROW_W   = 28
-local MAX_ROWS  = 4
+
+-- Escala do painel (padrão das EndScreens/pausa): 768 de altura = 1, até
+-- 1.75 em telas grandes. Uma instância visível por vez, então mora no módulo
+-- e o rebuild a atualiza; S() vale pra layout E desenho.
+local U = 1
+local function S(v) return math.floor(v * U + 0.5) end
+local MAX_ROWS  = 5   -- a aba Idioma tem 5 linhas
+
+-- Selo curto ao lado do nome nativo (código, não bandeira: idioma não é país).
+local LANG_BADGE = { pt_BR = "PT", en = "EN", es = "ES", fr = "FR", de = "DE" }
 
 -- ===================================================================
 -- RUNTIME (estático): aplica settings que não moram em módulo próprio.
@@ -147,6 +158,29 @@ end
 --   get() → valor (slider 0..1, toggle bool, cycle texto)
 --   step(dir) muda um passo (dir = -1/+1); slider também tem set(v)
 -- ===================================================================
+-- Uma linha "choice" por idioma: get() = é o atual?; step() = escolhe.
+-- I18n.setLocale já persiste (I18n.saveSetting); o snapshot do _persist
+-- leva o locale junto pro settings.
+local function languageRows(menu)
+    local rows = {}
+    for _, code in ipairs(I18n.getAvailable()) do
+        rows[#rows + 1] = { key = "lang_" .. code, kind = "choice", code = code,
+            label = I18n.getLabel(code), badge = LANG_BADGE[code] or code:upper(),
+            get = function() return I18n.getLocale() == code end,
+            step = function()
+                if I18n.getLocale() == code then return end
+                if I18n.setLocale(code) then
+                    gs().locale = code
+                    FontManager.clearCache()
+                    menu:rebuild()   -- rótulos no idioma novo
+                else
+                    print("[SettingsMenu] idioma indisponivel: " .. tostring(code))
+                end
+            end }
+    end
+    return rows
+end
+
 function SettingsMenu:_tabs()
     local menu = self
     local function volRow(kind, labelKey)
@@ -213,22 +247,8 @@ function SettingsMenu:_tabs()
             toggle("reduced_motion", "settings.reduced_motion",
                 function() return gs().reducedMotion and true or false end,
                 function(v) gs().reducedMotion = v end),
-            { key = "language", kind = "cycle", label = I18n.t("settings.language"),
-              get = function() return I18n.getLabel(I18n.getLocale()) end,
-              step = function(dir)
-                  local list = I18n.getAvailable()
-                  local idx = 1
-                  for i, code in ipairs(list) do
-                      if code == I18n.getLocale() then idx = i break end
-                  end
-                  local code = list[((idx - 1 + dir) % #list) + 1]
-                  if I18n.setLocale(code) then
-                      gs().locale = code
-                      FontManager.clearCache()
-                      menu:rebuild()   -- rótulos no idioma novo
-                  end
-              end },
         } },
+        { key = "language", label = I18n.t("settings.language"), rows = languageRows(menu) },
     }
 end
 
@@ -295,7 +315,10 @@ function SettingsMenu:rebuild()
     if self.tab > #self.tabs then self.tab = 1 end
 
     local sw, sh = love.graphics.getWidth(), love.graphics.getHeight()
-    local pw = math.max(300, math.min(600, sw - 32))
+    U = math.max(1, math.min(1.75, sh / 768))
+    local PAD, TITLE_H, TAB_H, ROW_H = S(PAD), S(TITLE_H), S(TAB_H), S(ROW_H)
+    local ROW_GAP, ZONE_GAP, BACK_H, ARROW_W = S(ROW_GAP), S(ZONE_GAP), S(BACK_H), S(ARROW_W)
+    local pw = math.max(300, math.min(S(600), sw - 32))
     local innerW = pw - PAD * 2
 
     -- Altura: conteúdo de altura FIXA (MAX_ROWS) — a aba não muda o painel.
@@ -303,7 +326,7 @@ function SettingsMenu:rebuild()
     local rowH = ROW_H
     local function total(rh)
         return PAD + TITLE_H + TAB_H + ZONE_GAP + MAX_ROWS * (rh + ROW_GAP) - ROW_GAP
-            + ZONE_GAP + BACK_H + FOOTER_H + 8
+            + ZONE_GAP + BACK_H + PAD
     end
     while total(rowH) > sh - 24 and rowH > 30 do rowH = rowH - 2 end
     local ph = math.min(total(rowH), sh - 16)
@@ -327,28 +350,35 @@ function SettingsMenu:rebuild()
     z.content = { x = x, y = y, w = innerW, h = MAX_ROWS * (rowH + ROW_GAP) - ROW_GAP }
 
     -- Coluna de controle à direita, larga o bastante pro "DESLIGADO" em DE.
-    local ctrlW = math.min(300, math.floor(innerW * 0.56))
+    local ctrlW = math.min(S(300), math.floor(innerW * 0.56))
     self.rows = {}
     for i, def in ipairs(self.tabs[self.tab].rows) do
         local ry = y + (i - 1) * (rowH + ROW_GAP)
         local r = { x = x, y = ry, w = innerW, h = rowH, def = def }
         local cx = x + innerW - ctrlW - 8
-        local ah = rowH - 12
-        r.ctrl = { x = cx, y = ry + 6, w = ctrlW, h = ah }
-        r.left = { x = cx, y = ry + 6, w = ARROW_W, h = ah }
-        r.right = { x = cx + ctrlW - ARROW_W, y = ry + 6, w = ARROW_W, h = ah }
-        r.value = { x = cx + ARROW_W + 6, y = ry + 6, w = ctrlW - ARROW_W * 2 - 12, h = ah }
+        local ah = rowH - S(12)
+        local m = S(6)
+        r.ctrl = { x = cx, y = ry + m, w = ctrlW, h = ah }
+        r.left = { x = cx, y = ry + m, w = ARROW_W, h = ah }
+        r.right = { x = cx + ctrlW - ARROW_W, y = ry + m, w = ARROW_W, h = ah }
+        r.value = { x = cx + ARROW_W + m, y = ry + m, w = ctrlW - ARROW_W * 2 - m * 2, h = ah }
         r.label = { x = x + 12, y = ry, w = cx - (x + 12) - 12, h = rowH }
+        if def.kind == "choice" then
+            -- a linha inteira é o alvo; sem setas
+            r.left, r.right = nil, nil
+            r.ctrl = { x = x, y = ry, w = innerW, h = rowH }
+            r.value = r.ctrl
+            r.label = { x = x + S(64), y = ry, w = innerW - S(64) - S(48), h = rowH }
+        end
         self.rows[i] = r
     end
     y = z.content.y + z.content.h + ZONE_GAP
 
     local backLabel = self.onClose and I18n.t("settings.back") or I18n.t("settings.close")
-    local bw = math.min(220, innerW)
+    local bw = math.min(S(220), innerW)
     z.back = { x = math.floor(px + (pw - bw) / 2), y = y, w = bw, h = BACK_H }
     self.backButton = Button:new(z.back.x, z.back.y, bw, BACK_H, backLabel,
-        function() self:hide() end, nil, 12)
-    z.footer = { x = x, y = py + ph - FOOTER_H - 4, w = innerW, h = FOOTER_H }
+        function() self:hide() end, nil, S(12))
     self._zones = z
 
     self.focus = math.max(1, math.min(#self.rows + 1, self.focus or 1))
@@ -373,7 +403,7 @@ function SettingsMenu:validate()
         end
     end
     local prev
-    for _, name in ipairs({ "title", "tabs", "content", "back", "footer" }) do
+    for _, name in ipairs({ "title", "tabs", "content", "back" }) do
         local r = z[name]
         inside(r, "zona " .. name)
         if prev and r.y < prev.r.y + prev.r.h then
@@ -386,12 +416,14 @@ function SettingsMenu:validate()
             problems[#problems + 1] = "linha " .. i .. " passa da zona de conteudo"
         end
         if r.label.w < 40 then problems[#problems + 1] = "rotulo da linha " .. i .. " espremido" end
-        if r.value.w < 60 then problems[#problems + 1] = "valor da linha " .. i .. " espremido" end
-        if MenuKit.overlaps(r.left, r.value) or MenuKit.overlaps(r.value, r.right) then
-            problems[#problems + 1] = "controles da linha " .. i .. " se cruzam"
-        end
-        if r.label.x + r.label.w > r.ctrl.x then
-            problems[#problems + 1] = "rotulo da linha " .. i .. " invade o controle"
+        if r.def.kind ~= "choice" then
+            if r.value.w < 60 then problems[#problems + 1] = "valor da linha " .. i .. " espremido" end
+            if MenuKit.overlaps(r.left, r.value) or MenuKit.overlaps(r.value, r.right) then
+                problems[#problems + 1] = "controles da linha " .. i .. " se cruzam"
+            end
+            if r.label.x + r.label.w > r.ctrl.x then
+                problems[#problems + 1] = "rotulo da linha " .. i .. " invade o controle"
+            end
         end
         for j = i + 1, #self.rows do
             if MenuKit.overlaps(r, self.rows[j]) then
@@ -500,6 +532,7 @@ local function partAt(self, x, y)
         if MenuKit.hit(r, x, y) then return { kind = "tab", i = i } end
     end
     for i, r in ipairs(self.rows) do
+        if r.def.kind == "choice" and MenuKit.hit(r, x, y) then return { kind = "choice", i = i } end
         if MenuKit.hit(r.left, x, y) then return { kind = "left", i = i } end
         if MenuKit.hit(r.right, x, y) then return { kind = "right", i = i } end
         if MenuKit.hit(r.value, x, y) then return { kind = "value", i = i } end
@@ -534,6 +567,8 @@ function SettingsMenu:mousereleased(x, y, button)
         self.focus = part.i; self:stepRow(part.i, 1)
     elseif part.kind == "value" then
         self.focus = part.i; self:_clickValue(part.i, x)
+    elseif part.kind == "choice" then
+        self.focus = part.i; self:stepRow(part.i, 1)
     end
     return true
 end
@@ -552,7 +587,8 @@ function SettingsMenu:keypressed(key)
         local total = #self.rows + 1
         self.focus = ((self.focus - 1 + (it == "up" and -1 or 1)) % total) + 1
         Sfx.playWithVariation("menuHover", 1.0, 0.12)
-    elseif (it == "left" or it == "right") and not onBack then
+    elseif (it == "left" or it == "right") and not onBack
+        and self.rows[self.focus] and self.rows[self.focus].def.kind ~= "choice" then
         self:stepRow(self.focus, it == "left" and -1 or 1)
     elseif it == "confirm" then
         if onBack then
@@ -572,7 +608,7 @@ end
 local function drawSegments(r, value)
     local segs = 10
     local gap = 2
-    local pctW = FontManager.getFont(9):getWidth("100%") + 8
+    local pctW = FontManager.getFont(S(9)):getWidth("100%") + S(8)
     local barW = r.w - pctW
     local segW = math.max(3, math.floor((barW - gap * (segs - 1)) / segs))
     local segH = math.max(8, r.h - 14)
@@ -595,8 +631,8 @@ local function drawSegments(r, value)
     end
     local pct = ("%d%%"):format(math.floor(value * 100 + 0.5))
     Palette.set(Palette.PARCHMENT_LIGHT)
-    TextFit.print(pct, r.x + r.w - pctW + 4, r.y + math.floor((r.h - 9) / 2),
-        { size = 9, maxW = pctW - 4, align = "right" })
+    TextFit.print(pct, r.x + r.w - pctW + 4, r.y + math.floor((r.h - S(9)) / 2),
+        { size = S(9), maxW = pctW - 4, align = "right" })
 end
 
 local function drawArrow(r, glyph, hot)
@@ -604,14 +640,54 @@ local function drawArrow(r, glyph, hot)
     love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 3, 3)
     Palette.set(hot and Palette.AGED_GOLD_LIGHT or Palette.AGED_GOLD_DARK)
     love.graphics.rectangle("line", r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1, 3, 3)
-    local f = FontManager.getFont(10)
+    local f = FontManager.getFont(S(10))
     love.graphics.setFont(f)
     Palette.set(hot and Palette.INK or Palette.PARCHMENT_LIGHT)
     love.graphics.print(glyph, math.floor(r.x + (r.w - f:getWidth(glyph)) / 2),
         math.floor(r.y + (r.h - f:getHeight()) / 2))
 end
 
+-- Linha de idioma: selo do código + nome nativo; a ATUAL fica acesa
+-- (placa dourada + lâmpada cheia), as outras são só texto sobre o painel.
+local function drawChoice(r, focused)
+    local current = r.def.get()
+    if current then
+        Palette.set(Palette.AGED_GOLD, focused and 1 or 0.85)
+        love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 3, 3)
+        love.graphics.setColor(1, 1, 1, 0.18)
+        love.graphics.rectangle("fill", r.x + 2, r.y + 1, r.w - 4, 2)
+    elseif focused then
+        Palette.set(Palette.lerp(Palette.INK, Palette.PARCHMENT_DARK, 0.35))
+        love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 3, 3)
+        Palette.set(Palette.AGED_GOLD_DARK)
+        love.graphics.rectangle("line", r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1, 3, 3)
+    else
+        Palette.set(Palette.AGED_GOLD_DARK, 0.45)
+        love.graphics.rectangle("fill", r.x + 8, r.y + r.h + math.floor(S(ROW_GAP) / 2) - 1, r.w - 16, 1)
+    end
+    -- selo do código
+    local bw, bh = S(36), math.min(S(22), r.h - 10)
+    local bx, by = r.x + S(14), r.y + math.floor((r.h - bh) / 2)
+    Palette.set(current and Palette.INK or Palette.lerp(Palette.INK, Palette.PARCHMENT_DARK, 0.3))
+    love.graphics.rectangle("fill", bx, by, bw, bh, 2, 2)
+    Palette.set(current and Palette.AGED_GOLD_DARK or Palette.AGED_GOLD_DARK)
+    love.graphics.rectangle("line", bx + 0.5, by + 0.5, bw - 1, bh - 1, 2, 2)
+    Palette.set(current and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT)
+    TextFit.print(r.def.badge, bx, by + math.floor((bh - S(9)) / 2), { size = S(9), maxW = bw, align = "center" })
+    -- nome nativo
+    Palette.set(current and Palette.INK or (focused and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT_LIGHT))
+    TextFit.print(r.def.label, r.label.x, r.y + math.floor((r.h - S(12)) / 2),
+        { size = S(12), maxW = r.label.w })
+    -- lâmpada à direita: cheia = atual (lê o estado sem depender do idioma)
+    local d = S(10)
+    local lx, ly = r.x + r.w - S(14) - d, r.y + math.floor((r.h - d) / 2)
+    Palette.set(current and Palette.INK or Palette.AGED_GOLD_DARK)
+    love.graphics.rectangle(current and "fill" or "line", lx + 0.5, ly + 0.5, d - 1, d - 1)
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
 function SettingsMenu:_drawRow(i, r, focused, mx, my)
+    if r.def.kind == "choice" then return drawChoice(r, focused) end
     if focused then
         Palette.set(Palette.lerp(Palette.INK, Palette.PARCHMENT_DARK, 0.35))
         love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 3, 3)
@@ -619,11 +695,11 @@ function SettingsMenu:_drawRow(i, r, focused, mx, my)
         love.graphics.rectangle("line", r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1, 3, 3)
     else
         Palette.set(Palette.AGED_GOLD_DARK, 0.45)
-        love.graphics.rectangle("fill", r.x + 8, r.y + r.h + math.floor(ROW_GAP / 2) - 1, r.w - 16, 1)
+        love.graphics.rectangle("fill", r.x + 8, r.y + r.h + math.floor(S(ROW_GAP) / 2) - 1, r.w - 16, 1)
     end
     Palette.set(focused and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT_LIGHT)
-    TextFit.print(r.def.label, r.label.x, r.y + math.floor((r.h - 12) / 2),
-        { size = 12, maxW = r.label.w })
+    TextFit.print(r.def.label, r.label.x, r.y + math.floor((r.h - S(12)) / 2),
+        { size = S(12), maxW = r.label.w })
 
     drawArrow(r.left, "<", MenuKit.hit(r.left, mx, my))
     drawArrow(r.right, ">", MenuKit.hit(r.right, mx, my))
@@ -641,12 +717,12 @@ function SettingsMenu:_drawRow(i, r, focused, mx, my)
         end
         Palette.set(Palette.INK, 0.55)
         love.graphics.rectangle("fill", r.value.x, r.value.y, r.value.w, r.value.h, 3, 3)
-        local ty = r.value.y + math.floor((r.value.h - 10) / 2)
+        local ty = r.value.y + math.floor((r.value.h - S(10)) / 2)
         if kind == "toggle" then
             -- lâmpada acesa/apagada COLADA no texto (grupo centralizado):
             -- lê o estado antes da palavra, sem depender do idioma.
-            local d, gapL = 8, 8
-            local font, shown = TextFit.fit(text, 10, r.value.w - d - gapL - 12)
+            local d, gapL = S(8), S(8)
+            local font, shown = TextFit.fit(text, S(10), r.value.w - d - gapL - 12)
             local groupW = d + gapL + font:getWidth(shown)
             local gx = math.floor(r.value.x + (r.value.w - groupW) / 2)
             local ly = r.value.y + math.floor((r.value.h - d) / 2)
@@ -658,7 +734,7 @@ function SettingsMenu:_drawRow(i, r, focused, mx, my)
         else
             Palette.set(col)
             TextFit.print(text, r.value.x + 6, ty,
-                { size = 10, maxW = r.value.w - 12, align = "center" })
+                { size = S(10), maxW = r.value.w - 12, align = "center" })
         end
     end
 end
@@ -675,7 +751,7 @@ function SettingsMenu:draw()
 
     -- CABEÇALHO (mesma gramática da pausa)
     local title = I18n.t("settings.title")
-    local tf, shown = TextFit.fit(title, 22, z.title.w, 12)
+    local tf, shown = TextFit.fit(title, S(22), z.title.w, 12)
     love.graphics.setFont(tf)
     local tx = math.floor(z.title.x + (z.title.w - tf:getWidth(shown)) / 2)
     Palette.set(Palette.INK, 0.85)
@@ -683,7 +759,7 @@ function SettingsMenu:draw()
     Palette.set(Palette.AGED_GOLD_LIGHT)
     love.graphics.print(shown, tx, z.title.y + 4)
     Palette.set(Palette.AGED_GOLD_DARK)
-    love.graphics.rectangle("fill", z.title.x + 24, z.title.y + TITLE_H - 14, z.title.w - 48, 1)
+    love.graphics.rectangle("fill", z.title.x + 24, z.title.y + z.title.h - S(14), z.title.w - 48, 1)
 
     -- ABAS
     for i, r in ipairs(self._tabRects) do
@@ -700,12 +776,12 @@ function SettingsMenu:draw()
         Palette.set(active and Palette.AGED_GOLD_LIGHT or Palette.AGED_GOLD_DARK)
         love.graphics.rectangle("line", r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1, 3, 3)
         Palette.set(active and Palette.INK or Palette.PARCHMENT_LIGHT)
-        TextFit.print(self.tabs[i].label, r.x + 6, r.y + math.floor((r.h - 11) / 2),
-            { size = 11, maxW = r.w - 12, align = "center" })
+        TextFit.print(self.tabs[i].label, r.x + 6, r.y + math.floor((r.h - S(11)) / 2),
+            { size = S(11), maxW = r.w - 12, align = "center" })
     end
     -- base da aba ativa liga a aba ao conteúdo
     Palette.set(Palette.AGED_GOLD)
-    love.graphics.rectangle("fill", z.tabs.x, z.tabs.y + TAB_H + 3, z.tabs.w, 2)
+    love.graphics.rectangle("fill", z.tabs.x, z.tabs.y + z.tabs.h + 3, z.tabs.w, 2)
 
     -- LINHAS
     for i, r in ipairs(self.rows) do
@@ -722,11 +798,6 @@ function SettingsMenu:draw()
         local r = self.rows[self.focus]
         MenuKit.focusRing(r.x, r.y, r.w, r.h, t, 2)
     end
-
-    -- RODAPÉ
-    Palette.set(Palette.PARCHMENT)
-    TextFit.print(I18n.t("settings.hint"), z.footer.x, z.footer.y + math.floor((z.footer.h - 8) / 2),
-        { size = 8, maxW = z.footer.w, align = "center" })
 
     love.graphics.pop()
     love.graphics.setColor(1, 1, 1, 1)

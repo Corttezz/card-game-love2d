@@ -29,11 +29,12 @@ I18n.data    = {}
 -- Ordem de apresentacao do seletor de idioma (settings menu).
 I18n.available = { "pt_BR", "en", "es", "fr", "de" }
 
+-- Nome NATIVO de cada idioma (quem não lê o idioma atual acha o seu).
 I18n.labels = {
-    pt_BR = "Portugues",
+    pt_BR = "Português (Brasil)",
     en    = "English",
-    es    = "Espanol",
-    fr    = "Francais",
+    es    = "Español",
+    fr    = "Français",
     de    = "Deutsch",
 }
 
