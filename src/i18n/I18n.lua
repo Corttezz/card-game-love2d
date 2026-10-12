@@ -274,30 +274,46 @@ function I18n.cardDesc(cardOrId)
 end
 
 -- Persistencia: salva locale no save dir do LOVE.
+-- Out/2026: grava pelo caminho único e seguro do SaveManager (tmp + verificação
+-- + .bak) e lê com recuperação .tmp/.bak. Formato: `return { locale = "xx" }`
+-- (tabela, que é o que o SaveManager valida). O formato antigo `return "xx"`
+-- continua sendo lido, sem poder de código (loadDataChunk).
 function I18n.saveSetting(locale)
     if not (love and love.filesystem and love.filesystem.write) then return end
-    local content = "return " .. string.format("%q", locale) .. "\n"
-    love.filesystem.write(settingsFile(), content)
+    local ok, SaveManager = pcall(require, "engine.SaveManager")
+    if not ok then
+        print("[I18n] SaveManager indisponivel, idioma nao salvo: " .. tostring(SaveManager))
+        return
+    end
+    local content = "return { locale = " .. string.format("%q", locale) .. " }\n"
+    -- Arquivo no formato legado (`return "xx"`) sai antes: senão a rotação do
+    -- writeFile o julgaria ilegível e geraria uma cópia de quarentena à toa.
+    local f = settingsFile()
+    if love.filesystem.getInfo(f) then
+        local chunk = SaveManager.loadDataChunk(f)
+        local okc, old = pcall(chunk or error)
+        if okc and type(old) == "string" then love.filesystem.remove(f) end
+    end
+    local wrote, err = SaveManager.writeFile(f, content)
+    if not wrote then print("[I18n] Falha ao salvar idioma: " .. tostring(err)) end
 end
 
 function I18n.loadSetting()
     if not (love and love.filesystem and love.filesystem.getInfo) then return nil end
-    if not love.filesystem.getInfo(settingsFile()) then return nil end
-    -- Arquivo de dados do usuario: sem bytecode e sem acesso a globais.
-    local raw = love.filesystem.read(settingsFile())
-    local chunk, err
-    if raw and raw:byte(1) ~= 27 then
-        chunk, err = loadstring(raw, "=" .. settingsFile())
-        if chunk then setfenv(chunk, {}) end
-    else
-        err = "unreadable or binary"
+    local ok, SaveManager = pcall(require, "engine.SaveManager")
+    if not ok then return nil end
+    local f = settingsFile()
+    -- Formato legado primeiro (o chunk devolve a string direto): passar ele
+    -- pelo readDataFile o marcaria como corrompido e geraria cópia de quarentena.
+    if love.filesystem.getInfo(f) then
+        local chunk = SaveManager.loadDataChunk(f)
+        if chunk then
+            local okc, result = pcall(chunk)
+            if okc and type(result) == "string" then return result end
+        end
     end
-    if not chunk then
-        print("[I18n] Falha ao carregar settings: " .. tostring(err))
-        return nil
-    end
-    local ok, result = pcall(chunk)
-    if ok and type(result) == "string" then return result end
+    local data = SaveManager.readDataFile(f)
+    if type(data) == "table" and type(data.locale) == "string" then return data.locale end
     return nil
 end
 
