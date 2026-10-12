@@ -1340,10 +1340,22 @@ end
 -- mundo em volta ("boneco colado no cenário"). Mesma regra do salão
 -- (GameplayScene.hallScreenK): acima da área de 1080p o inimigo cresce
 -- junto, com teto 1.4; abaixo nada muda (4:3 e 1080p ficam como estão).
-WorldRoad.ENEMY_SCREEN_REF_H = 1030   -- altura da área do mundo em 1920x1080
+--
+-- v2 (Out/2026, escala de UI): com a mão/HUD crescendo junto com a tela
+-- (src/ui/UiScale), o palco empurra o encontro estrada adentro e o inimigo
+-- caía pra ~14-17% da altura em 1080p/4K — "o inimigo é a estrela da
+-- batalha". Agora ele cresce MAIS que a área: 1 até a área do 1024x768
+-- (716px, nada muda lá), +1.4x por área-base a mais, teto 2.6. Medido
+-- (tools/screenshot_uiscale_battle): estrada ≥ 25% da altura de 1080p a
+-- 4K. O billboard da viagem usa a mesma função (chegada sem pulo).
+WorldRoad.ENEMY_SCREEN_BASE_H = 716   -- altura da área do mundo em 1024x768
+WorldRoad.ENEMY_SCREEN_GROWTH = 1.4
+WorldRoad.ENEMY_SCREEN_MAX_K = 2.6
 function WorldRoad.enemyScreenK(areaH)
     if not areaH then return 1 end
-    return math.max(1, math.min(1.4, areaH / WorldRoad.ENEMY_SCREEN_REF_H))
+    local base = WorldRoad.ENEMY_SCREEN_BASE_H
+    local k = 1 + math.max(0, areaH - base) / base * WorldRoad.ENEMY_SCREEN_GROWTH
+    return math.min(WorldRoad.ENEMY_SCREEN_MAX_K, k)
 end
 
 -- Distância de parada pra que o PÉ do inimigo (no centro da estrada) caia

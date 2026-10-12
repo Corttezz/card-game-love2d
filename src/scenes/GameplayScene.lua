@@ -210,16 +210,32 @@ GameplayScene.updatePlayButtonPosition = updatePlayButtonPosition
 local ENEMY_HAND_CLEARANCE = 12
 
 
+-- ESCALA DA MÃO (Out/2026): a UI inteira escala k (UiScale), mas a mão
+-- cresce MAIS DEVAGAR — handK = 1 + (k-1)/2 (1.25 em 1080p, 1.5 em 1440p,
+-- 1.75 em 4K). Com a mão a k cheio, o palco empurrava o inimigo estrada
+-- adentro e ele lia pequeno em tela cheia (queixa antiga do dono: "o
+-- inimigo é a estrela da batalha"). Devolve o fator NO ESPAÇO DA UI
+-- (handK / k): 1 em 1024x768/1366x768.
+GameplayScene.HAND_GROWTH = 0.5
+local function handScale()
+    local k = UiScale.activeK()
+    if k <= 1 then return 1 end
+    return (1 + (k - 1) * GameplayScene.HAND_GROWTH) / k
+end
+GameplayScene.handScale = handScale
+
 local function handLayout()
     local width  = love.graphics.getWidth()
     local height = love.graphics.getHeight()
     local n = #game.hand
-    local cardY = height * 0.8
+    local hs = handScale()
+    -- a faixa da mão visível (20% da altura) encolhe junto com a carta
+    local cardY = height - height * 0.2 * hs
 
     -- largura renderizada aproximada de uma carta (BASE_SCALE do template 96px)
-    local cardW = 96 * (Config.Cards.BASE_SCALE or 1.333)
+    local cardW = 96 * (Config.Cards.BASE_SCALE or 1.333) * hs
     -- espaçamento "confortável" quando há poucas cartas (comportamento antigo)
-    local maxSpacing = Config.Utils.getResponsiveSize(Config.UI.CARD_SPACING_RATIO, 120, "width")
+    local maxSpacing = Config.Utils.getResponsiveSize(Config.UI.CARD_SPACING_RATIO, 120, "width") * hs
 
     -- O leque é centrado NO CENTRO DA TELA (feedback Jul/2026: "as cartas
     -- não estão ficando centralizadas" — centrar na área útil deixava a
@@ -266,7 +282,7 @@ local HOVER_LIFT = 130
 local STAGE_CLEARANCE = 18
 local function stageFootLimit()
     local _, _, cardY = handLayout()
-    return math.floor(cardY - HOVER_LIFT - STAGE_CLEARANCE)
+    return math.floor(cardY - HOVER_LIFT * handScale() - STAGE_CLEARANCE)
 end
 GameplayScene.stageFootLimit = stageFootLimit
 
@@ -287,8 +303,19 @@ GameplayScene.syncBattleStage = syncBattleStage
 
 local function updateCardPositions()
     local cardStartX, cardSpacing, cardY = handLayout()
+    -- tamanho da carta da mão (ver handScale); o hover multiplica baseScale
+    local base = (Config.Cards.BASE_SCALE or 1.333) * handScale()
 
     for i, card in ipairs(game.hand) do
+        if card.baseScale ~= base then
+            local wasBase = card.targetScale == card.baseScale
+            card.baseScale = base
+            if wasBase or not card.isHovered then card.targetScale = base end
+            if card.image then
+                card.width = card.image:getWidth() * base
+                card.height = card.image:getHeight() * base
+            end
+        end
         local layoutX = cardStartX + (i - 1) * cardSpacing
         -- Posição "home" estática: usada pelo bbox de hover (não acompanha o
         -- lift visual de hoverCard pra cardY-130, evitando flicker bistável).
@@ -654,6 +681,22 @@ function GameplayScene.draw()
     if enemyCx then enemyCx, enemyCy = enemyCx / uiK, enemyCy / uiK end
     topBar:draw()
 
+    -- TETO DO HOVER: no salão a laje limita o recuo do chefe, e a carta
+    -- levantada cobria o corpo dele (lich do ato 2). A carta sobe só até
+    -- o pé do inimigo — mas sempre o bastante pra aparecer INTEIRA (o
+    -- leque fica com parte da carta abaixo da tela). Na estrada o palco já
+    -- garante o pé acima do topo da carta, então o teto não morde.
+    local hoverLift = HOVER_LIFT * handScale()
+    if enemyBbox and not traveling and not entering
+        and game.enemy and not game.enemy:isDefeated() then
+        local _, _, cardY0 = handLayout()
+        local cardH = 144 * (Config.Cards.BASE_SCALE or 1.333) * handScale()
+        -- + 8% da carta: o hover cresce a carta (HOVER_SCALE_MULT) a partir do centro
+        local minLift = math.max(0, cardY0 + cardH * 1.08 - height) + 6
+        local footCap = cardY0 - enemyBbox.bottomY - 6
+        hoverLift = math.max(minLift, math.min(hoverLift, footCap))
+    end
+
     if not traveling and not entering then
         EnemyHud.draw(game, enemyBbox, enemyCx, enemyCy)
         -- previa: o trecho da vida que a leva selecionada arranca
@@ -706,7 +749,7 @@ function GameplayScene.draw()
         card.isSelected = game:isCardSelected(card)
         -- descrição AO LADO da carta em hover (ver STAGE_CLEARANCE)
         card.tooltipSide = true
-        if card.isSelected then offsetY = -100 end
+        if card.isSelected then offsetY = -100 * handScale() end
         local rIdx = renderIdxFor(i)
         local tx = cardStartX + (rIdx - 1) * cardSpacing
         local ty = cardY + offsetY
@@ -717,7 +760,7 @@ function GameplayScene.draw()
             ty = ty + height * 0.5
         end
         if card == hoverCard and not draggingCard then
-            ty = cardY - HOVER_LIFT
+            ty = cardY - hoverLift
         end
         if card.isDragging then
             local mx, my = love.mouse.getPosition()

@@ -55,9 +55,18 @@ InteriorFX, SceneLayer) roda dentro de `UiScale.outside` com a janela real
   (menos boot). Por isso as moedas do cash-out saem do lugar certo.
 `test_enemy_stage` cobre 1080p/1440p/4K com a escala ligada (régua em
 pixels da tela). Captura: `love . test_one screenshot_uiscale_battle [loc]`.
-Consequência visível: em 1440p/4K a mão maior empurra o inimigo pro fundo
-da estrada — ele fica proporcionalmente menor que em 1024x768 (o mundo tem
-teto próprio, `enemyScreenK` ≤ 1.4).
+**O inimigo é a estrela** (2ª rodada): com a mão a k cheio o palco
+empurrava o inimigo estrada adentro (~14-17% da altura). Três alavancas:
+- a MÃO cresce mais devagar que a UI: `handK = 1 + (k-1)·HAND_GROWTH(0.5)`
+  (1.25 em 1080p, 1.5 em 1440p, 1.75 em 4K) — `GameplayScene.handScale()`
+  devolve handK/k no espaço da UI; leque, faixa visível, lift e selecionada
+  encolhem junto;
+- `WorldRoad.enemyScreenK` v2: 1 até a área do 1024x768 (716px), +1.4x por
+  área-base a mais, teto 2.6 (o billboard da viagem usa a mesma função);
+- TETO DO HOVER: a carta levantada sobe só até o pé do inimigo (salão de
+  laje baixa — lich do ato 2), mas sempre o bastante pra aparecer inteira.
+Medido (bbox do sprite, inclui margem do canvas): estrada 20% (1024/1366,
+inalterado) → 25.6% 1080p · 29.6% 1440p · 26.0% 4K; chefe 38-44% em todos.
 
 ## Armadilhas
 

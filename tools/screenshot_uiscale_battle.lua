@@ -93,7 +93,16 @@ function M.run(locale)
         local k = UiScale.k()
         mx, my = ((c.layoutX or 0) + 60) * k, ((c.layoutY or 0) + 60) * k
     end
+    -- mede o inimigo (bbox em pixels da tela) pra tabela de proporção
+    local realERDraw = EnemyRenderer.draw
+    local lastBbox
+    EnemyRenderer.draw = function(...)
+        local b = realERDraw(...)
+        lastBbox = b
+        return b
+    end
     local function capture(name)
+        lastBbox = nil
         local cv = love.graphics.newCanvas(W, H)
         love.graphics.setCanvas({ cv, stencil = true })
         love.graphics.clear(0, 0, 0, 1)
@@ -105,7 +114,8 @@ function M.run(locale)
         love.graphics.setCanvas()
         local file = ("uiscale_battle_%s_%dx%d_%s.png"):format(name, W, H, locale)
         cv:newImageData():encode("png", file)
-        print("[uiscale_battle] " .. file .. "  k=" .. UiScale.k())
+        local pct = lastBbox and (lastBbox.bottomY - lastBbox.topY) / H * 100 or -1
+        print(("[uiscale_battle] %s  k=%.2f  inimigo=%.1f%% da altura"):format(file, UiScale.k(), pct))
     end
     local function scene(act, nodeType)
         local run = game.runManager.currentRun
@@ -166,6 +176,7 @@ function M.run(locale)
         end
     end)
     if not ok then print("[uiscale_battle] FALHOU: " .. tostring(err)) end
+    EnemyRenderer.draw = realERDraw
     UiScale.reset()
     love.graphics.getWidth, love.graphics.getHeight, love.graphics.getDimensions = rw, rh, rd
     love.mouse.getPosition = realMouse
