@@ -28,7 +28,7 @@ CardCostBadge.SIZE = 13
 local HW = { 1, 2, 3, 4, 5, 6, 6, 6, 5, 4, 3, 2, 1 }
 
 function CardCostBadge.draw(cost)
-    local ox, oy = 1, 2
+    local ox, oy = 1, 2 + 3   -- + CardFrame.TOP_INSET (filete do topo visível)
     local size = CardCostBadge.SIZE
     local cx = ox + 6  -- coluna central da gema
 

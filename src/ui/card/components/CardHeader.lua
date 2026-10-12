@@ -308,8 +308,8 @@ end
 function CardHeader.draw(w, cardName, rarity)
     local h  = CardHeader.computeHeight(cardName, w)
     local st = styleFor(rarity)
-    -- Banner colado ao topo da carta
-    local bx, by = 15, 0
+    -- Banner logo abaixo do filete do topo (CardFrame.TOP_INSET)
+    local bx, by = 15, 3
     local bw, bh = w - 30, h
 
     -- ===== ESTRUTURA DO BANNER (minimal — prioriza legibilidade) =====

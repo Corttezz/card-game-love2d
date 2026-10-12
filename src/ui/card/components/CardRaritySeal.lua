@@ -70,7 +70,7 @@ function CardRaritySeal.draw(w, rarity)
     rarity = rarity or "common"
     local size = CardRaritySeal.SIZE
     local ox = w - size - 1
-    local oy = 1
+    local oy = 1 + 3   -- + CardFrame.TOP_INSET
 
     local png = loadSeal(rarity)
     if png then

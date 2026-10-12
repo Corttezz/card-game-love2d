@@ -43,7 +43,7 @@ local function stamp(ox, oy, color, dx, dy)
 end
 
 function JokerMoon.draw()
-    local ox, oy = 1, 1
+    local ox, oy = 1, 1 + 3   -- + CardFrame.TOP_INSET
 
     -- Outline INK: silhueta carimbada nas 4 direções.
     stamp(ox, oy, Palette.INK, 1, 0)

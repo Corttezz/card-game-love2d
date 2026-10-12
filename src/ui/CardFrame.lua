@@ -103,6 +103,13 @@ local function getParchmentTex()
     return _parchmentTex
 end
 
+-- FILETE DO TOPO (Out/2026, dono: "o topo das cartas está cortado"): o
+-- banner do nome e as gemas de custo/raridade colavam na borda de cima do
+-- canvas, então a faixa de nó da moldura (desenhada em y=1) sumia sob o
+-- banner e a gema parecia decepada — embaixo a moldura aparecia inteira.
+-- Tudo do topo desce TOP_INSET px; a arte cede essa altura.
+CardFrame.TOP_INSET = 3
+
 local function artSlotBounds(card)
     local w, h = CardFrame.WIDTH, CardFrame.HEIGHT
     -- Slot cola direto no header e no footer (sem gap vertical).
@@ -116,7 +123,7 @@ local function artSlotBounds(card)
         headerH = CardHeader.computeHeight(card, w)  -- 18 single ou 24 wrap
         footerH = CardStatsFooter.HEIGHT             -- 20
     end
-    local top    = headerH
+    local top    = headerH + CardFrame.TOP_INSET
     local bottom = h - footerH
     return 5, top, w - 10, bottom - top
 end

@@ -235,7 +235,7 @@ end
 function JokerHeader.draw(w, cardName, rarity)
     local h  = JokerHeader.HEIGHT
     local st = styleFor(rarity)
-    local bx, by = 13, 1
+    local bx, by = 13, 1 + 3   -- + CardFrame.TOP_INSET
     local bw, bh = w - 26, h - 1
 
     -- Tenta carregar PNG de fundo joker por raridade

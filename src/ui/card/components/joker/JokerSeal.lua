@@ -25,7 +25,7 @@ end
 function JokerSeal.draw(w, rarity)
     local size = JokerSeal.SIZE
     local ox = w - size - 1
-    local oy = 1
+    local oy = 1 + 3   -- + CardFrame.TOP_INSET
 
     -- Halo dourado em volta (6 pontos cardinais)
     local cx, cy = ox + size / 2, oy + size / 2
