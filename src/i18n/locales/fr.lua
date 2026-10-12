@@ -21,9 +21,9 @@ return {
         collection      = "COLLECTION",
         settings        = "OPTIONS",
         quit            = "QUITTER",
-        instr_mouse     = "Souris - sélectionner cartes",
-        instr_space     = "Espace - piocher du paquet",
-        instr_restart   = "R - relancer le combat",
+        instr_mouse     = "Souris : sélectionner des cartes",
+        instr_space     = "Espace : piocher dans le paquet",
+        instr_restart   = "R : relancer le combat",
         instr_jokers    = "Les Jokers restent actifs jusqu'à la fin de la partie",
     },
 
@@ -65,7 +65,7 @@ return {
         deck_label    = "DECK",
         deck_count    = "{n} cartes",
         starter_label = "CARTES DE DÉPART",
-        locked_hint   = "Classe verrouillée — remplis la condition pour la débloquer.",
+        locked_hint   = "Classe verrouillée. Remplis la condition pour la débloquer.",
     },
 
     -- Requisitos de liberação de classe (UnlockSystem.getClassUnlockInfo.reqKey)
@@ -107,7 +107,7 @@ return {
 
     pause = {
         title           = "PAUSE",
-        progress        = "ACTE {act} · étage {floor}/{total} — {class}",
+        progress        = "ACTE {act} · étage {floor}/{total} · {class}",
         no_run          = "Aucun périple en cours",
         hint            = "FLÈCHES naviguent · ENTRÉE choisit · ÉCHAP reprend",
         hint_confirm    = "FLÈCHES choisir · ENTRÉE confirme · ÉCHAP annule",
@@ -169,9 +169,9 @@ return {
         role_audio    = "Musique et effets sonores",
         name_audio    = "Générés avec ElevenLabs",
         role_engine   = "Moteur",
-        name_engine   = "LÖVE 11 — licence zlib",
+        name_engine   = "LÖVE 11, licence zlib",
         role_font     = "Police",
-        name_font     = "Grimoire Pixel, d'après Press Start 2P de CodeMan38 — SIL Open Font License 1.1",
+        name_font     = "Grimoire Pixel, d'après Press Start 2P de CodeMan38 (SIL Open Font License 1.1)",
         role_inspired = "Inspiré par",
         name_inspired = "Slay the Spire · Balatro",
     },
@@ -388,19 +388,19 @@ return {
         -- Selecteur : forger
         pick_forge_title = "Forger",
         pick_forge_sub   = "Choisis une carte à améliorer.",
-        pick_forge_hint  = "Clique une carte pour forger - Retour annule",
+        pick_forge_hint  = "Clique une carte pour forger. Retour annule.",
         pick_forge_empty = "Aucune carte du grimoire ne peut aller à l'enclume.",
 
         -- Selecteur : retirer
         pick_remove_title = "Retirer une carte",
         pick_remove_sub   = "Choisis une carte à RETIRER du grimoire (définitif).",
-        pick_remove_hint  = "Clique une carte pour la retirer - Retour annule",
+        pick_remove_hint  = "Clique une carte pour la retirer. Retour annule.",
         pick_remove_empty = "Le grimoire n'a plus de pages à arracher.",
 
         -- Selecteur : dupliquer
         pick_dup_title = "Dupliquer une carte",
         pick_dup_sub   = "Choisis une carte pour en gagner une COPIE.",
-        pick_dup_hint  = "Clique une carte pour dupliquer - Retour annule",
+        pick_dup_hint  = "Clique une carte pour dupliquer. Retour annule.",
         pick_dup_empty = "Le grimoire est vide.",
 
         -- Pagination de la grille
@@ -473,7 +473,7 @@ return {
     reward = {
         shop_title         = "BOUTIQUE DES RELIQUES",
         rewards_title      = "BUTIN DE BATAILLE",
-        rewards_subtitle   = "Choisissez 1 carte pour votre grimoire — ou continuez sans",
+        rewards_subtitle   = "Choisissez 1 carte pour votre grimoire, ou continuez sans",
         skip_no_card       = "Continuer sans carte",
         affinity_badge     = "AFFINITÉ",
         affinity_line      = "Affinité avec votre deck: {tags}",
@@ -523,7 +523,7 @@ return {
         active_count = "{n} / {max} actifs",
         active_slot  = "ACTIF {n}",
         benched      = "BANC",
-        cap_reached  = "Maximum {max} jokers actifs — désactivez-en un d'abord",
+        cap_reached  = "Maximum {max} jokers actifs. Désactivez-en un d'abord",
         empty        = "Vous n'avez encore aucun joker. Achetez-en à la boutique ou gagnez-en en récompense.",
         hint         = "Clic alterne actif/banc  ·  MOLETTE défile  ·  J ou ÉCHAP ferme",
     },
@@ -580,7 +580,7 @@ return {
         },
         moinho_assombrado = {
             title = "Moulin Hanté",
-            body = "Les ailes tournent sans vent. Dedans, la meule tourne encore — et le pain qui en sort est chaud.",
+            body = "Les ailes tournent sans vent. Dedans, la meule tourne encore, et le pain qui en sort est chaud.",
             opt1 = "Manger le pain",
             opt2 = "Aiguiser",
             opt3 = "Ne pas entrer",
@@ -598,7 +598,7 @@ return {
             r_egg_empty = "L'oeuf était creux.",
             r_egg_gold = "L'oeuf était en or : +{n} $.",
             r_leave = "Un cri résonne au loin.",
-            r_loot = "+{n} $ — et des serres dans le dos.",
+            r_loot = "+{n} $. Et des serres dans le dos.",
         },
         santuario_do_vento = {
             title = "Sanctuaire du Vent",
@@ -641,7 +641,7 @@ return {
             r_catch = "Vous avez pêché « {name} » !",
             r_fell = "La glace a cédé : -{n} PV.",
             r_leave = "La glace craque, mais tient.",
-            r_plunge = "L'eau glacée guérit tout — et « {name} » coule.",
+            r_plunge = "L'eau glacée guérit tout. Et « {name} » coule.",
             r_too_small = "Votre grimoire est trop petit.",
         },
         cavaleiro_congelado = {
@@ -655,7 +655,7 @@ return {
         },
         cabana_da_bruxa = {
             title = "Cabane de la Sorcière",
-            body = "Sur pilotis, un chaudron bouillonne de vert. « Une potion qui épaissit le sang — ou un remède, si vous payez. »",
+            body = "Sur pilotis, un chaudron bouillonne de vert. « Une potion qui épaissit le sang. Ou un remède, si vous payez. »",
             opt1 = "Boire la potion",
             opt2 = "Payer le remède",
             opt3 = "Refuser",
@@ -666,7 +666,7 @@ return {
         },
         poco_das_sanguessugas = {
             title = "Mare aux Sangsues",
-            body = "De grosses sangsues attendent dans une mare sombre. On dit qu'elles retirent l'inutile — du corps comme du grimoire.",
+            body = "De grosses sangsues attendent dans une mare sombre. On dit qu'elles retirent l'inutile, du corps comme du grimoire.",
             opt1 = "Laisser faire",
             opt2 = "Passer au large",
             r_fail = "Les sangsues se détachent.",
@@ -675,14 +675,14 @@ return {
         },
         relicario_do_eclipse = {
             title = "Reliquaire de l'Éclipse",
-            body = "Un reliquaire doré au couvercle frappé d'un soleil noir. Dedans, votre écriture — une page que vous n'avez pas encore écrite.",
+            body = "Un reliquaire doré au couvercle frappé d'un soleil noir. Dedans, votre écriture : une page que vous n'avez pas encore écrite.",
             opt1 = "Copier",
             opt2 = "Piller l'or",
             opt3 = "Refermer",
             r_copy = "La page se double dans votre grimoire.",
             r_fail = "L'encre s'efface.",
             r_leave = "Le soleil noir s'assombrit.",
-            r_loot = "+{n} $ — et « {name} » reste dans le reliquaire.",
+            r_loot = "+{n} $, mais « {name} » reste dans le reliquaire.",
             r_too_small = "Votre grimoire est trop petit.",
         },
         corvo_mensageiro = {
@@ -1034,10 +1034,10 @@ return {
         passive_mage   = { name = "Passive : Conduit", desc = "Commencez chaque combat avec un orbe de Foudre (4) canalisé (et +1 de Concentration de départ tous les deux actes, dès l'acte 3). Jouez 2 cartes d'orbe ou plus (canaliser/évoquer) dans le même tour : +1 de Concentration pour ce combat." },
         passive_rogue  = { name = "Passive : Toxines", desc = "La première attaque de chaque tour applique 1 Poison pendant 2 tours (+1 Poison tous les deux actes). Jouez 2 attaques ou plus dans le même tour : ce Poison augmente de +2 pour ce combat." },
         topbar_gold = { name = "Or", desc = "Achète cartes, forges et améliorations à la boutique. Intérêts : +$1 par $5 économisés (max +$5), versés après chaque combat gagné. Prochain versement : +${interest}." },
-        topbar_deck = { name = "Grimoire", desc = "{deck} cartes dans ton grimoire — {hand} en main maintenant. En fin de tour ta main est défaussée et tu pioches de nouvelles cartes. Sélectionne pour parcourir le deck." },
+        topbar_deck = { name = "Grimoire", desc = "{deck} cartes dans ton grimoire, {hand} en main maintenant. En fin de tour ta main est défaussée et tu pioches de nouvelles cartes. Sélectionne pour parcourir le deck." },
         topbar_progress = { name = "Progression du Voyage", desc = "Acte {act}, étage {floor} sur {total}. Un MINI-BOSS attend à l'étage 7 ; le BOSS de l'acte à l'étage {total}. Bats le boss de l'Acte {last} pour achever la chronique. Sélectionne pour ouvrir la Chronique du voyage.{mods}" },
         topbar_config = { name = "Menu Pause", desc = "Met le voyage en pause : options, sauvegarder et quitter au menu, ou abandonner la partie." },
-        reward_rules = { name = "Fonctionnement des offres", desc = "Les cartes proposées sont de TA classe. La qualité s'améliore à chaque acte — et chaque offre sans carte RARE augmente les chances de la suivante (après une longue série sans rare, une rare est garantie). Les cartes marquées AFFINITÉ correspondent aux tags forts de ton deck. Les cartes que tu possèdes déjà en plusieurs exemplaires apparaissent moins souvent." },
+        reward_rules = { name = "Fonctionnement des offres", desc = "Les cartes proposées sont de TA classe. La qualité s'améliore à chaque acte, et chaque offre sans carte RARE augmente les chances de la suivante (après une longue série sans rare, une rare est garantie). Les cartes marquées AFFINITÉ correspondent aux tags forts de ton deck. Les cartes que tu possèdes déjà en plusieurs exemplaires apparaissent moins souvent." },
         poison     = { name = "Poison",     desc = "Inflige {stacks} dégâts en fin de tour, pendant {duration} tour(s)." },
         weak       = { name = "Faible",     desc = "Les dégâts infligés sont réduits de 25% pendant {duration} tour(s)." },
         vulnerable = { name = "Vulnérable", desc = "Subit 50% de dégâts en plus (poison et brûlure exclus) pendant {duration} tour(s)." },
@@ -1071,7 +1071,7 @@ return {
         block        = { name = "Blocage",
             desc = "Absorbe les {stacks} prochains dégâts. Disparaît au début du tour ennemi." },
         enraged      = { name = "Enragé",
-            desc = "Blessé (moins de 30% de vie) : inflige désormais 50% de dégâts en plus. L'attaque DÉJÀ annoncée dans l'interface ne change pas - la fureur s'applique dès la suivante." },
+            desc = "Blessé (moins de 30% de vie) : inflige désormais 50% de dégâts en plus. L'attaque DÉJÀ annoncée dans l'interface ne change pas. La fureur s'applique dès la suivante." },
     },
 
     messages = {
@@ -1133,14 +1133,14 @@ return {
         passive_conduit_grow = "Conduit : +1 Concentration !",
         passive_toxins_grow  = "Toxines renforcées : {n} Poison par tour !",
         phase_started        = "Phase {value} commencée !",
-        floor_entered = "{act} — étage {floor} ({node})",
+        floor_entered = "{act}, étage {floor} ({node})",
         burn_tick        = "Brûlure : {value} dégâts",
         poison_tick          = "Poison : {value} dégâts à l'ennemi",
         purple_seal          = "Orbe ! (Sceau Violet)",
         reshuffled           = "Défausse remélangée dans le deck",
-        run_resumed          = "Périple repris : {name} - étage {floor}",
+        run_resumed          = "Périple repris : {name}, étage {floor}",
         run_started          = "Nouveau périple en tant que {name} !",
-        select_cards         = "Sélectionnez des cartes - ou FIN DU TOUR",
+        select_cards         = "Sélectionnez des cartes ou FIN DU TOUR",
         settings_unavailable = "Menu des options indisponible",
         starting_gold        = "Or de départ : {value}",
         strength_up          = "Force +{value}",

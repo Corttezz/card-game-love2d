@@ -21,9 +21,9 @@ return {
         collection      = "COLEÇÃO",
         settings        = "CONFIGURAÇÕES",
         quit            = "SAIR",
-        instr_mouse     = "Mouse - selecionar cartas",
-        instr_space     = "Espaço - comprar do deck",
-        instr_restart   = "R - reiniciar a batalha",
+        instr_mouse     = "Mouse: selecionar cartas",
+        instr_space     = "Espaço: comprar do deck",
+        instr_restart   = "R: reiniciar a batalha",
         instr_jokers    = "Coringas ficam ativos pelo resto da jornada",
     },
 
@@ -66,7 +66,7 @@ return {
         deck_label    = "BARALHO",
         deck_count    = "{n} cartas",
         starter_label = "CARTAS INICIAIS",
-        locked_hint   = "Classe bloqueada — cumpra o requisito para liberar.",
+        locked_hint   = "Classe bloqueada. Cumpra o requisito para liberar.",
     },
 
     -- Requisitos de liberação de classe (UnlockSystem.getClassUnlockInfo.reqKey)
@@ -120,7 +120,7 @@ return {
 
     pause = {
         title           = "PAUSA",
-        progress        = "ATO {act} · andar {floor}/{total} — {class}",
+        progress        = "ATO {act} · andar {floor}/{total} · {class}",
         no_run          = "Nenhuma jornada em andamento",
         hint            = "SETAS navegam · ENTER escolhe · ESC continua",
         hint_confirm    = "SETAS escolhem · ENTER confirma · ESC cancela",
@@ -184,9 +184,9 @@ return {
         role_audio    = "Música e efeitos sonoros",
         name_audio    = "Gerados com ElevenLabs",
         role_engine   = "Motor",
-        name_engine   = "LÖVE 11 — licença zlib",
+        name_engine   = "LÖVE 11, licença zlib",
         role_font     = "Fonte",
-        name_font     = "Grimoire Pixel, baseada na Press Start 2P de CodeMan38 — SIL Open Font License 1.1",
+        name_font     = "Grimoire Pixel, baseada na Press Start 2P de CodeMan38 (SIL Open Font License 1.1)",
         role_inspired = "Inspirado por",
         name_inspired = "Slay the Spire · Balatro",
     },
@@ -409,19 +409,19 @@ return {
         -- Picker: forjar
         pick_forge_title = "Forjar",
         pick_forge_sub   = "Escolha uma carta para aprimorar.",
-        pick_forge_hint  = "Clique numa carta para forjar - Voltar cancela",
+        pick_forge_hint  = "Clique numa carta para forjar. Voltar cancela.",
         pick_forge_empty = "Nenhuma carta do grimório pode ir pra bigorna agora.",
 
         -- Picker: remover
         pick_remove_title = "Remover carta",
         pick_remove_sub   = "Escolha uma carta para REMOVER do grimório (permanente).",
-        pick_remove_hint  = "Clique numa carta para remover - Voltar cancela",
+        pick_remove_hint  = "Clique numa carta para remover. Voltar cancela.",
         pick_remove_empty = "O grimório não tem páginas para arrancar.",
 
         -- Picker: duplicar
         pick_dup_title = "Duplicar carta",
         pick_dup_sub   = "Escolha uma carta para ganhar uma CÓPIA dela.",
-        pick_dup_hint  = "Clique numa carta para duplicar - Voltar cancela",
+        pick_dup_hint  = "Clique numa carta para duplicar. Voltar cancela.",
         pick_dup_empty = "O grimório está vazio.",
 
         -- Paginacao da grade
@@ -494,7 +494,7 @@ return {
     reward = {
         shop_title         = "LOJA DE RELÍQUIAS",
         rewards_title      = "ESPÓLIOS DA BATALHA",
-        rewards_subtitle   = "Escolha 1 carta para o seu grimório — ou siga sem carta",
+        rewards_subtitle   = "Escolha 1 carta para o seu grimório ou siga sem nenhuma",
         skip_no_card       = "Seguir sem carta",
         affinity_badge     = "AFINIDADE",
         affinity_line      = "Afinidade com seu deck: {tags}",
@@ -518,7 +518,7 @@ return {
         def_bonus          = "Defesa: +{n}",
         joker_run_only     = "Coringas só podem ser adquiridos durante uma corrida",
         joker_slot_gained  = "Coringas em campo: até {n}",
-        service_refunded   = "Compra cancelada — ${n} devolvido",
+        service_refunded   = "Compra cancelada: ${n} devolvido",
         interest_cap_raised = "Teto de juros: ${n} por batalha",
         -- Split-view da loja: rotulos que antes so existiam como fallback PT
         -- cravado no CardDetailPanel/CardRewardScreen — em alemao a vitrine
@@ -586,7 +586,7 @@ return {
         },
         moinho_assombrado = {
             title = "Moinho Assombrado",
-            body = "As pás giram sem vento. Lá dentro, a mó ainda mói — e o pão que sai dela está quente.",
+            body = "As pás giram sem vento. Lá dentro, a mó ainda mói, e o pão que sai dela está quente.",
             opt1 = "Comer o pão",
             opt2 = "Afiar na mó",
             opt3 = "Não entrar",
@@ -604,7 +604,7 @@ return {
             r_egg_empty = "O ovo estava oco.",
             r_egg_gold = "O ovo era de ouro: +${n}.",
             r_leave = "Um grito ecoa ao longe.",
-            r_loot = "+${n} — e garras nas suas costas.",
+            r_loot = "+${n}. E garras nas suas costas.",
         },
         santuario_do_vento = {
             title = "Santuário do Vento",
@@ -647,7 +647,7 @@ return {
             r_catch = "Você pescou '{name}'!",
             r_fell = "O gelo cedeu: -{n} HP.",
             r_leave = "O gelo range, mas aguenta.",
-            r_plunge = "A água gelada cura tudo — e '{name}' afunda.",
+            r_plunge = "A água gelada cura tudo. E '{name}' afunda.",
             r_too_small = "Seu grimório é pequeno demais.",
         },
         cavaleiro_congelado = {
@@ -661,7 +661,7 @@ return {
         },
         cabana_da_bruxa = {
             title = "Cabana da Bruxa",
-            body = "Sobre palafitas, um caldeirão borbulha verde. 'Uma poção que engrossa o sangue — ou uma cura, se pagar.'",
+            body = "Sobre palafitas, um caldeirão borbulha verde. 'Uma poção que engrossa o sangue. Ou uma cura, se pagar.'",
             opt1 = "Beber a poção",
             opt2 = "Pagar a cura",
             opt3 = "Recusar",
@@ -672,7 +672,7 @@ return {
         },
         poco_das_sanguessugas = {
             title = "Poço das Sanguessugas",
-            body = "Sanguessugas gordas esperam numa poça escura. Dizem que tiram do corpo o que não presta — e do grimório também.",
+            body = "Sanguessugas gordas esperam numa poça escura. Dizem que tiram do corpo o que não presta. Do grimório também.",
             opt1 = "Deixar sugar",
             opt2 = "Passar longe",
             r_fail = "As sanguessugas se soltam.",
@@ -681,14 +681,14 @@ return {
         },
         relicario_do_eclipse = {
             title = "Relicário do Eclipse",
-            body = "Um relicário dourado com um sol negro no tampo. Lá dentro, sua própria letra — uma página que você ainda não escreveu.",
+            body = "Um relicário dourado com um sol negro no tampo. Lá dentro, sua própria letra: uma página que você ainda não escreveu.",
             opt1 = "Copiar",
             opt2 = "Saquear o ouro",
             opt3 = "Fechar",
             r_copy = "A página se duplica no seu grimório.",
             r_fail = "A tinta se apaga.",
             r_leave = "O sol negro escurece.",
-            r_loot = "+${n} — e '{name}' fica no relicário.",
+            r_loot = "+${n}, mas '{name}' fica no relicário.",
             r_too_small = "Seu grimório é pequeno demais.",
         },
         corvo_mensageiro = {
@@ -882,7 +882,7 @@ return {
         active_count = "{n} / {max} ativos",
         active_slot  = "ATIVO {n}",
         benched      = "BANCADA",
-        cap_reached  = "Máximo de {max} coringas ativos — desative um primeiro",
+        cap_reached  = "Máximo de {max} coringas ativos. Desative um primeiro",
         empty        = "Você ainda não tem coringas. Compre na loja ou ganhe em recompensas.",
         hint         = "Clique alterna ativo/bancada  ·  RODA rola  ·  J ou ESC fecha",
     },
@@ -1068,10 +1068,10 @@ return {
         passive_mage   = { name = "Passiva: Conduíte", desc = "Você começa cada batalha com um orbe de Raio (4) canalizado (e +1 de Foco inicial a cada dois atos, a partir do ato 3). Jogue 2 ou mais cartas de orbe (canalizar/evocar) no mesmo turno: +1 de Foco nesta batalha." },
         passive_rogue  = { name = "Passiva: Toxinas", desc = "O primeiro ataque de cada turno aplica 1 de Veneno por 2 turnos (+1 de Veneno a cada dois atos). Jogue 2 ou mais ataques no mesmo turno: esse Veneno sobe +2 nesta batalha." },
         topbar_gold = { name = "Ouro", desc = "Compra cartas, forjas e melhorias na loja. Juros: +$1 a cada $5 guardados (máx +$5), pagos ao vencer batalhas. Próximo pagamento: +${interest}." },
-        topbar_deck = { name = "Grimório", desc = "{deck} cartas no seu grimório — {hand} na mão agora. No fim do turno a mão é descartada e você compra novas. Selecione para folhear o deck." },
+        topbar_deck = { name = "Grimório", desc = "{deck} cartas no seu grimório, {hand} na mão agora. No fim do turno a mão é descartada e você compra novas. Selecione para folhear o deck." },
         topbar_progress = { name = "Progresso da Jornada", desc = "Ato {act}, andar {floor} de {total}. No andar 7 aguarda um MINI-CHEFE; no andar {total}, o CHEFE do ato. Vença o chefe do Ato {last} para encerrar a crônica. Selecione para abrir o Roteiro da jornada.{mods}" },
         topbar_config = { name = "Menu de Pausa", desc = "Pausa a jornada: configurações, salvar e voltar ao menu, ou abandonar a jornada." },
-        reward_rules = { name = "Como funcionam as ofertas", desc = "As cartas oferecidas são da SUA classe. A qualidade melhora a cada ato — e a cada oferta sem RARA, a chance da próxima sobe (após um longo jejum, a rara é garantida). Cartas marcadas com AFINIDADE combinam com as tags fortes do seu grimório. Cartas que você já tem em cópias aparecem menos." },
+        reward_rules = { name = "Como funcionam as ofertas", desc = "As cartas oferecidas são da SUA classe. A qualidade melhora a cada ato, e a cada oferta sem RARA, a chance da próxima sobe (após um longo jejum, a rara é garantida). Cartas marcadas com AFINIDADE combinam com as tags fortes do seu grimório. Cartas que você já tem em cópias aparecem menos." },
         poison     = { name = "Veneno",     desc = "Causa {stacks} de dano no fim do turno, por {duration} turno(s)." },
         weak       = { name = "Fraco",      desc = "Dano infligido reduzido em 25%. Dura {duration} turno(s)." },
         vulnerable = { name = "Vulnerável", desc = "Recebe 50% mais dano (veneno e queimadura não contam). Dura {duration} turno(s)." },
@@ -1101,11 +1101,11 @@ return {
             desc_permanent = "-{stacks} de vida no início de cada turno. Este custo ignora o Bloqueio." },
         retain_armor = { name = "Bloqueio Retido",
             desc = "Seu Bloqueio NÃO zera no início do turno. Dura {duration} turno(s).",
-            desc_permanent = "Seu Bloqueio NÃO zera no início do turno — a armadura acumula entre turnos." },
+            desc_permanent = "Seu Bloqueio NÃO zera no início do turno: a armadura acumula entre turnos." },
         block        = { name = "Bloqueio",
             desc = "Absorve os próximos {stacks} de dano. Some no início do turno do inimigo." },
         enraged      = { name = "Enfurecido",
-            desc = "Ferido (abaixo de 30% de vida): passa a causar 50% mais dano. O ataque JÁ anunciado no HUD não muda — a fúria vale a partir do próximo." },
+            desc = "Ferido (abaixo de 30% de vida): passa a causar 50% mais dano. O ataque JÁ anunciado no HUD não muda. A fúria vale a partir do próximo." },
     },
 
     -- ======== MENSAGENS IN-GAME (toasts do EffectSystem) ========
@@ -1168,14 +1168,14 @@ return {
         passive_conduit_grow = "Conduíte: +1 Foco!",
         passive_toxins_grow  = "Toxinas cresce: {n} de Veneno por turno!",
         phase_started        = "Fase {value} iniciada!",
-        floor_entered = "{act} — andar {floor} ({node})",
+        floor_entered = "{act}, andar {floor} ({node})",
         burn_tick        = "Queimadura: {value} de dano",
         poison_tick          = "Veneno: {value} de dano ao inimigo",
         purple_seal          = "Orbe! (Selo Roxo)",
         reshuffled           = "Descarte reembaralhado no deck",
-        run_resumed          = "Corrida retomada: {name} - andar {floor}",
+        run_resumed          = "Corrida retomada: {name}, andar {floor}",
         run_started          = "Nova corrida iniciada como {name}!",
-        select_cards         = "Selecione cartas — ou use ENCERRAR TURNO",
+        select_cards         = "Selecione cartas ou use ENCERRAR TURNO",
         settings_unavailable = "Menu de configurações indisponível",
         starting_gold        = "Ouro inicial: {value}",
         strength_up          = "Força +{value}",

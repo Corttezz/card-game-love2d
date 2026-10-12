@@ -21,38 +21,38 @@ return {
     settings_reset_done = "Depuis le début",
     script = {
         intro = {
-            hello = "Croâ ! Je suis *Plume*, le corbeau gardien de ce grimoire. Je vais vous apprendre à combattre — promis, ce sera bref.",
+            hello = "Croâ ! Je suis *Plume*, le corbeau gardien de ce grimoire. Je vais vous apprendre à combattre. Promis, ce sera bref.",
             enemy = "Voici votre adversaire. La barre sous lui, c'est sa *vie* : videz-la et le combat est fini.",
             intent = "Cette icône, c'est son *intention* : ce qu'il fera à la fin de votre tour. Le chiffre indique les dégâts à venir.",
             hero = "Ici, VOTRE *vie* et votre *Blocage*. Si votre vie tombe à zéro, le voyage s'arrête.",
-            hand = "Voici vos cartes — le grimoire commence avec deux seulement. *Sélectionnez-en une* pour la préparer.",
-            mana = "Chaque carte coûte du *mana* : le chiffre dans son coin. Le mana se remplit à chaque tour — dépensez-le sans compter.",
+            hand = "Voici vos cartes. Le grimoire commence avec deux seulement. *Sélectionnez-en une* pour la préparer.",
+            mana = "Chaque carte coûte du *mana* : le chiffre dans son coin. Le mana se remplit à chaque tour, alors dépensez-le sans compter.",
             preview = "Voici l'*aperçu* : les dégâts et le Blocage que votre sélection va produire, bonus compris.",
             play = "Prêt ? Allez-y : appuyez sur *Jouer Cartes* !",
         },
         end_turn = {
-            ["end"] = "Joli coup ! Quand le mana ou les idées manquent, appuyez sur *Fin du Tour*. L'ennemi agit alors — exactement comme son intention l'annonçait.",
+            ["end"] = "Joli coup ! Quand le mana ou les idées manquent, appuyez sur *Fin du Tour*. L'ennemi agit alors, exactement comme son intention l'annonçait.",
         },
         second_turn = {
             kept = "Vous voyez ? Il a fait ce qu'il avait annoncé. Lisez l'*intention* à chaque tour et protégez-vous quand un gros coup arrive.",
-            loop = "Nouvelle main à chaque tour, mana au plein. À vous de jouer — je reviendrai s'il y a du nouveau. Croâ !",
+            loop = "Nouvelle main à chaque tour, mana au plein. À vous de jouer. Je reviendrai s'il y a du nouveau. Croâ !",
         },
         boss = {
             arrive = "Voici le *boss* de l'acte. Battez-le et la route mène à la contrée suivante.",
-            signature = "Chaque boss a un coup signature — invocation, charge, coups qui percent le Blocage. Lisez l'*intention* à chaque tour.",
+            signature = "Chaque boss a un coup signature : invocation, charge, coups qui percent le Blocage... Lisez l'*intention* à chaque tour.",
         },
         elite = {
-            warn = "Attention : un *Élite*. Plus coriace qu'un ennemi ordinaire — mais la récompense est meilleure aussi.",
+            warn = "Attention : un *Élite*. Plus coriace qu'un ennemi ordinaire, mais la récompense est meilleure aussi.",
         },
         block = {
-            reset = "Vous avez gagné du *Blocage* : il absorbe le prochain coup. Mais attention : le Blocage *repart à zéro au début de votre tour* — impossible de le garder.",
+            reset = "Vous avez gagné du *Blocage* : il absorbe le prochain coup. Mais attention : le Blocage *repart à zéro au début de votre tour*. Impossible de le garder.",
         },
         combo = {
-            seal = "Regardez : des cartes de votre main *se combinent* ! Jouées ENSEMBLE dans le même tour, elles rapportent plus — l'aperçu affiche le sceau *+COMBO*.",
+            seal = "Regardez : des cartes de votre main *se combinent* ! Jouées ENSEMBLE dans le même tour, elles rapportent plus. L'aperçu affiche le sceau *+COMBO*.",
             guide = "La liste complète des combos se trouve dans le *Guide*, dans le menu Pause.",
         },
         orbs = {
-            pulse = "Vos *orbes* ! Chacun pulse à la fin de votre tour — le chiffre inscrit dessus est l'effet.",
+            pulse = "Vos *orbes* ! Chacun pulse à la fin de votre tour, et le chiffre inscrit dessus est l'effet.",
             evoke = "Canaliser avec la rangée pleine *évoque* le plus ancien, celui de la flèche, avec un effet plus fort.",
         },
         jokers = {
@@ -69,7 +69,7 @@ return {
         },
         shop = {
             offers = "La *boutique* ! Cartes, reliques et paquets, contre de l'or.",
-            refresh = "Rien ne vous plaît ? *Actualiser* change la vitrine — et coûte plus cher à chaque fois.",
+            refresh = "Rien ne vous plaît ? *Actualiser* change la vitrine, mais coûte plus cher à chaque fois.",
             dice = "Et là-bas, les *Dés du Scribe* : pariez de l'or sur un lancer de deux dés. Un lancer par boutique.",
             interest = "Ah, et l'or gardé rapporte des *intérêts* : chaque tranche de 5 $ vaut +1 $ quand vous gagnez un combat, jusqu'à +5 $.",
         },
@@ -77,7 +77,7 @@ return {
             pick = "À la *forge*, choisissez une carte à améliorer. Chaque copie évolue séparément.",
         },
         rest = {
-            choose = "Un *feu de camp*. Reposez-vous pour regagner de la vie — ou prenez le temps de *forger* une carte.",
+            choose = "Un *feu de camp*. Reposez-vous pour regagner de la vie, ou prenez le temps de *forger* une carte.",
         },
         event = {
             read = "Un *événement* ! Lisez bien : chaque choix indique ce qu'il coûte [-] et ce qu'il rapporte [+].",
@@ -91,7 +91,7 @@ return {
         },
         seals = {
             unlocked = "Victoire ! Vous pouvez maintenant briser les *Sceaux du Grimoire* : chaque sceau est une règle plus dure, et ils se cumulent.",
-            score = "Plus de sceaux, plus de points. Gagnez avec un sceau pour débloquer le suivant — avec la même classe.",
+            score = "Plus de sceaux, plus de points. Gagnez avec un sceau pour débloquer le suivant, avec la même classe.",
         },
     },
     guide = {

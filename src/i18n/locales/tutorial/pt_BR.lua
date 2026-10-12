@@ -21,38 +21,38 @@ return {
     settings_reset_done = "Do começo",
     script = {
         intro = {
-            hello = "Croac! Eu sou o *Pena*, o corvo guardião deste grimório. Vou te ensinar a lutar — prometo ser breve.",
+            hello = "Croac! Eu sou o *Pena*, o corvo guardião deste grimório. Vou te ensinar a lutar. Prometo ser breve.",
             enemy = "Este é o seu adversário. A barra sob ele é a *vida*: zere-a e a luta acaba.",
             intent = "Este ícone é a *intenção* dele: o que ele fará quando o seu turno acabar. O número é o dano que vem aí.",
             hero = "Aqui ficam a SUA *vida* e o seu *Bloqueio*. Se a vida chegar a zero, a jornada termina.",
-            hand = "Estas são as suas cartas — o grimório começa com só duas. *Selecione uma* para prepará-la.",
-            mana = "Cada carta custa *mana*: o número no canto dela. A mana enche de novo a cada turno — gaste sem dó.",
+            hand = "Estas são as suas cartas. O grimório começa com só duas. *Selecione uma* para prepará-la.",
+            mana = "Cada carta custa *mana*: o número no canto dela. A mana enche de novo a cada turno, então gaste sem dó.",
             preview = "Esta é a *prévia*: quanto dano e quanto Bloqueio a seleção vai render, já com todos os bônus.",
             play = "Pronto? Mande ver: aperte *Jogar Cartas*!",
         },
         end_turn = {
-            ["end"] = "Belo golpe! Quando acabar a mana ou as ideias, aperte *Encerrar Turno*. Aí o inimigo age — exatamente como a intenção avisou.",
+            ["end"] = "Belo golpe! Quando acabar a mana ou as ideias, aperte *Encerrar Turno*. Aí o inimigo age, exatamente como a intenção avisou.",
         },
         second_turn = {
             kept = "Viu? Ele fez o que anunciou. Leia a *intenção* a cada turno e se proteja quando o golpe for grande.",
-            loop = "Mão nova a cada turno, mana cheia de novo. Agora é com você — eu apareço quando houver novidade. Croac!",
+            loop = "Mão nova a cada turno, mana cheia de novo. Agora é com você. Eu apareço quando houver novidade. Croac!",
         },
         boss = {
             arrive = "Este é o *chefe* do ato. Vença-o e a estrada segue para a próxima terra.",
-            signature = "Todo chefe tem um golpe próprio — invocação, carga, golpe que fura o Bloqueio. Leia a *intenção* a cada turno.",
+            signature = "Todo chefe tem um golpe próprio: invocação, carga, golpe que fura o Bloqueio... Leia a *intenção* a cada turno.",
         },
         elite = {
-            warn = "Cuidado: um *Elite*. Mais forte que um inimigo comum — mas o prêmio também é melhor.",
+            warn = "Cuidado: um *Elite*. Mais forte que um inimigo comum, mas o prêmio também é melhor.",
         },
         block = {
-            reset = "Você ganhou *Bloqueio*: ele absorve o próximo golpe. Mas atenção: o Bloqueio *zera no começo do seu turno* — não dá para guardar.",
+            reset = "Você ganhou *Bloqueio*: ele absorve o próximo golpe. Mas atenção: o Bloqueio *zera no começo do seu turno*. Não dá para guardar.",
         },
         combo = {
-            seal = "Olha só: cartas da sua mão *combinam*! Jogadas JUNTAS, no mesmo turno, rendem mais — a prévia mostra o selo *+COMBO*.",
+            seal = "Olha só: cartas da sua mão *combinam*! Jogadas JUNTAS, no mesmo turno, rendem mais. A prévia mostra o selo *+COMBO*.",
             guide = "A lista completa de combos mora no *Guia*, no menu de Pausa.",
         },
         orbs = {
-            pulse = "Seus *orbes*! Cada um pulsa no fim do seu turno — o número escrito nele é o efeito.",
+            pulse = "Seus *orbes*! Cada um pulsa no fim do seu turno, e o número escrito nele é o efeito.",
             evoke = "Canalizar com a fileira cheia *evoca* o mais antigo, o da seta, num efeito maior.",
         },
         jokers = {
@@ -69,7 +69,7 @@ return {
         },
         shop = {
             offers = "A *loja*! Cartas, relíquias e pacotes, a troco de ouro.",
-            refresh = "Nada agradou? *Novas ofertas* troca a vitrine — e fica mais caro a cada vez.",
+            refresh = "Nada agradou? *Novas ofertas* troca a vitrine, mas fica mais caro a cada vez.",
             dice = "E ali, os *Dados do Escriba*: aposte ouro num lance de dois dados. Uma jogada por loja.",
             interest = "Ah: ouro guardado rende *juros*. Cada $5 no bolso vale +$1 ao vencer uma batalha, até +$5.",
         },
@@ -77,7 +77,7 @@ return {
             pick = "Na *forja*, escolha uma carta para melhorar. Cada cópia evolui separada.",
         },
         rest = {
-            choose = "Uma *fogueira*. Descanse para recuperar vida — ou use o tempo para *forjar* uma carta.",
+            choose = "Uma *fogueira*. Descanse para recuperar vida, ou use o tempo para *forjar* uma carta.",
         },
         event = {
             read = "Um *evento*! Leia com calma: cada escolha mostra o que custa [-] e o que dá [+].",
@@ -91,7 +91,7 @@ return {
         },
         seals = {
             unlocked = "Você venceu! Agora pode romper os *Selos do Grimório*: cada selo é uma regra mais dura, e eles se acumulam.",
-            score = "Mais selos, mais pontos. Vença num selo para liberar o próximo — com a mesma classe.",
+            score = "Mais selos, mais pontos. Vença num selo para liberar o próximo, com a mesma classe.",
         },
     },
     guide = {

@@ -350,7 +350,7 @@ def export_steam():
             f.write("Unachieved icon: %s\n" % e["iconUnachieved"])
             for loc in LOCALES:
                 lang = STEAM_LANG[loc]
-                f.write("  [%s] %s — %s\n" % (lang, e["name"][lang], e["desc"][lang]))
+                f.write("  [%s] %s | %s\n" % (lang, e["name"][lang], e["desc"][lang]))
             f.write("\n")
     print("steam: %d conquistas exportadas em %s" % (len(data), outdir))
 

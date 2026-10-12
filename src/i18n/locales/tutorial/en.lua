@@ -21,38 +21,38 @@ return {
     settings_reset_done = "From the top",
     script = {
         intro = {
-            hello = "Caw! I'm *Quill*, the raven who guards this grimoire. Let me teach you how to fight — I'll keep it short.",
+            hello = "Caw! I'm *Quill*, the raven who guards this grimoire. Let me teach you how to fight. I'll keep it short.",
             enemy = "This is your foe. The bar beneath it is its *health*: bring it to zero and the fight is over.",
             intent = "This icon is its *intent*: what it will do when your turn ends. The number is the damage coming your way.",
             hero = "Here are YOUR *health* and your *Block*. If your health hits zero, the journey ends.",
-            hand = "These are your cards — the grimoire starts with only two. *Select one* to ready it.",
-            mana = "Every card costs *mana*: the number in its corner. Mana refills every turn — so spend it freely.",
+            hand = "These are your cards. The grimoire starts with only two. *Select one* to ready it.",
+            mana = "Every card costs *mana*: the number in its corner. Mana refills every turn, so spend it freely.",
             preview = "This is the *preview*: how much damage and Block your selection will deal, with every bonus included.",
             play = "Ready? Go on: press *Play Cards*!",
         },
         end_turn = {
-            ["end"] = "Nice hit! When you're out of mana or ideas, press *End Turn*. Then the enemy acts — exactly as its intent warned.",
+            ["end"] = "Nice hit! When you're out of mana or ideas, press *End Turn*. Then the enemy acts, exactly as its intent warned.",
         },
         second_turn = {
             kept = "See? It did what it announced. Read the *intent* every turn and guard up when a big blow is coming.",
-            loop = "A fresh hand every turn, full mana again. Over to you — I'll pop up when there's something new. Caw!",
+            loop = "A fresh hand every turn, full mana again. Over to you. I'll pop up when there's something new. Caw!",
         },
         boss = {
             arrive = "This is the act's *boss*. Beat it and the road leads on to the next land.",
-            signature = "Every boss has a signature move — summons, charge-ups, blows that pierce Block. Read the *intent* every turn.",
+            signature = "Every boss has a signature move: summons, charge-ups, blows that pierce Block... Read the *intent* every turn.",
         },
         elite = {
-            warn = "Careful: an *Elite*. Tougher than a common foe — but the reward is better too.",
+            warn = "Careful: an *Elite*. Tougher than a common foe, but the reward is better too.",
         },
         block = {
-            reset = "You gained *Block*: it soaks up the next blow. But mind this: Block *resets at the start of your turn* — you can't save it.",
+            reset = "You gained *Block*: it soaks up the next blow. But mind this: Block *resets at the start of your turn*. You can't save it.",
         },
         combo = {
-            seal = "Look: cards in your hand *combine*! Played TOGETHER in the same turn they hit harder — the preview shows the *+COMBO* seal.",
+            seal = "Look: cards in your hand *combine*! Played TOGETHER in the same turn, they hit harder. The preview shows the *+COMBO* seal.",
             guide = "The full list of combos lives in the *Guide*, in the Pause menu.",
         },
         orbs = {
-            pulse = "Your *orbs*! Each one pulses at the end of your turn — the number written on it is the effect.",
+            pulse = "Your *orbs*! Each one pulses at the end of your turn, and the number written on it is the effect.",
             evoke = "Channeling with a full row *evokes* the oldest one, under the arrow, for a bigger effect.",
         },
         jokers = {
@@ -69,7 +69,7 @@ return {
         },
         shop = {
             offers = "The *shop*! Cards, relics and packs, for gold.",
-            refresh = "Nothing you like? *Refresh* swaps the shelf — and costs more each time.",
+            refresh = "Nothing you like? *Refresh* swaps the shelf, but it costs more each time.",
             dice = "And over there, the *Scribe's Dice*: bet gold on a roll of two dice. One roll per shop.",
             interest = "Oh, and saved gold earns *interest*: every $5 in your pocket is worth +$1 when you win a battle, up to +$5.",
         },
@@ -77,7 +77,7 @@ return {
             pick = "At the *forge*, pick a card to upgrade. Each copy improves on its own.",
         },
         rest = {
-            choose = "A *campfire*. Rest to recover health — or use the time to *forge* a card.",
+            choose = "A *campfire*. Rest to recover health, or use the time to *forge* a card.",
         },
         event = {
             read = "An *event*! Read carefully: each choice shows what it costs [-] and what it gives [+].",
@@ -91,7 +91,7 @@ return {
         },
         seals = {
             unlocked = "You won! Now you can break the *Grimoire Seals*: each seal is a harsher rule, and they stack.",
-            score = "More seals, more points. Win on a seal to unlock the next — with the same class.",
+            score = "More seals, more points. Win on a seal to unlock the next one, with the same class.",
         },
     },
     guide = {

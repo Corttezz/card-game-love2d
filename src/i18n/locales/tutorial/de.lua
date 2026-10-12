@@ -21,39 +21,39 @@ return {
     settings_reset_done = "Von vorn",
     script = {
         intro = {
-            hello = "Krah! Ich bin *Feder*, der Rabe, der dieses Grimoire hütet. Ich zeige dir, wie man kämpft — versprochen, ganz kurz.",
+            hello = "Krah! Ich bin *Feder*, der Rabe, der dieses Grimoire hütet. Ich zeige dir, wie man kämpft. Versprochen, ganz kurz.",
             enemy = "Das ist dein Gegner. Der Balken unter ihm ist sein *Leben*: Bring es auf null, und der Kampf ist vorbei.",
             intent = "Dieses Symbol ist seine *Absicht*: was er tut, wenn dein Zug endet. Die Zahl ist der Schaden, der auf dich zukommt.",
             hero = "Hier sind DEIN *Leben* und dein *Block*. Fällt dein Leben auf null, endet die Reise.",
-            hand = "Das sind deine Karten — das Grimoire beginnt mit nur zwei. *Wähle eine* aus, um sie bereitzulegen.",
-            mana = "Jede Karte kostet *Mana*: die Zahl in ihrer Ecke. Das Mana füllt sich jede Runde wieder auf — gib es ruhig aus.",
+            hand = "Das sind deine Karten. Das Grimoire beginnt mit nur zwei. *Wähle eine* aus, um sie bereitzulegen.",
+            mana = "Jede Karte kostet *Mana*: die Zahl in ihrer Ecke. Das Mana füllt sich jede Runde wieder auf, also gib es ruhig aus.",
             preview = "Das ist die *Vorschau*: wie viel Schaden und Block deine Auswahl bringt, mit allen Boni.",
             play = "Bereit? Los geht's: Drücke *Karten spielen*!",
         },
         end_turn = {
-            ["end"] = "Guter Treffer! Wenn Mana oder Ideen ausgehen, drücke *Zug Beenden*. Dann handelt der Gegner — genau wie seine Absicht angekündigt hat.",
+            ["end"] = "Guter Treffer! Wenn Mana oder Ideen ausgehen, drücke *Zug Beenden*. Dann handelt der Gegner, genau wie seine Absicht angekündigt hat.",
         },
         second_turn = {
             kept = "Siehst du? Er hat getan, was er angekündigt hat. Lies jede Runde die *Absicht* und schütze dich, wenn ein großer Schlag kommt.",
-            loop = "Jede Runde eine neue Hand und volles Mana. Jetzt bist du dran — ich melde mich, wenn es Neues gibt. Krah!",
+            loop = "Jede Runde eine neue Hand und volles Mana. Jetzt bist du dran. Ich melde mich, wenn es Neues gibt. Krah!",
         },
         boss = {
             arrive = "Das ist der *Boss* dieses Akts. Besiege ihn, und der Weg führt ins nächste Land.",
-            signature = "Jeder Boss hat einen eigenen Schlag — Beschwörung, Aufladen, Schläge, die Block durchbrechen. Lies jede Runde die *Absicht*.",
+            signature = "Jeder Boss hat einen eigenen Schlag: Beschwörung, Aufladen, Schläge, die Block durchbrechen... Lies jede Runde die *Absicht*.",
         },
         elite = {
-            warn = "Vorsicht: ein *Elite*. Stärker als ein gewöhnlicher Gegner — aber auch die Belohnung ist besser.",
+            warn = "Vorsicht: ein *Elite*. Stärker als ein gewöhnlicher Gegner, aber auch die Belohnung ist besser.",
         },
         block = {
-            reset = "Du hast *Block* bekommen: Er fängt den nächsten Schlag ab. Aber Achtung: Block *verfällt zu Beginn deines Zugs* — aufsparen geht nicht.",
+            reset = "Du hast *Block* bekommen: Er fängt den nächsten Schlag ab. Aber Achtung: Block *verfällt zu Beginn deines Zugs*. Aufsparen geht nicht.",
         },
         combo = {
-            seal = "Sieh mal: Karten auf deiner Hand *kombinieren*! ZUSAMMEN im selben Zug gespielt, bringen sie mehr — die Vorschau zeigt das Siegel *+COMBO*.",
+            seal = "Sieh mal: Karten auf deiner Hand *kombinieren*! ZUSAMMEN im selben Zug gespielt, bringen sie mehr. Die Vorschau zeigt das Siegel *+COMBO*.",
             guide = "Die vollständige Combo-Liste steht im *Leitfaden*, im Pausenmenü.",
         },
         orbs = {
-            pulse = "Deine *Orbs*! Jeder pulsiert am Ende deines Zugs — die Zahl darauf ist der Effekt.",
-            evoke = "Kanalisierst du bei voller Reihe, wird der älteste *ausgelöst* — der mit dem Pfeil — mit stärkerem Effekt.",
+            pulse = "Deine *Orbs*! Jeder pulsiert am Ende deines Zugs, und die Zahl darauf ist der Effekt.",
+            evoke = "Kanalisierst du bei voller Reihe, wird der älteste *ausgelöst*. Das ist der mit dem Pfeil, und sein Effekt ist stärker.",
         },
         jokers = {
             passive = "Ein *Joker*! Er wirkt den ganzen Lauf von selbst, ganz ohne Mana.",
@@ -69,7 +69,7 @@ return {
         },
         shop = {
             offers = "Der *Laden*! Karten, Relikte und Packungen gegen Gold.",
-            refresh = "Nichts dabei? *Erneuern* tauscht die Auslage — und kostet jedes Mal mehr.",
+            refresh = "Nichts dabei? *Erneuern* tauscht die Auslage, kostet aber jedes Mal mehr.",
             dice = "Und dort die *Würfel des Schreibers*: Setze Gold auf einen Wurf mit zwei Würfeln. Ein Wurf pro Laden.",
             interest = "Ach ja: Gespartes Gold bringt *Zinsen*. Je 5 $ in der Tasche gibt es +1 $ bei einem Sieg, bis +5 $.",
         },
@@ -77,7 +77,7 @@ return {
             pick = "In der *Schmiede* wählst du eine Karte zum Verbessern. Jede Kopie entwickelt sich einzeln.",
         },
         rest = {
-            choose = "Ein *Lagerfeuer*. Ruh dich aus, um Leben zurückzugewinnen — oder nutz die Zeit, um eine Karte zu *schmieden*.",
+            choose = "Ein *Lagerfeuer*. Ruh dich aus, um Leben zurückzugewinnen, oder nutz die Zeit, um eine Karte zu *schmieden*.",
         },
         event = {
             read = "Ein *Ereignis*! Lies in Ruhe: Jede Wahl zeigt, was sie kostet [-] und was sie bringt [+].",
@@ -91,7 +91,7 @@ return {
         },
         seals = {
             unlocked = "Gewonnen! Jetzt kannst du die *Grimoire-Siegel* brechen: Jedes Siegel ist eine härtere Regel, und sie stapeln sich.",
-            score = "Mehr Siegel, mehr Punkte. Gewinne mit einem Siegel, um das nächste freizuschalten — mit derselben Klasse.",
+            score = "Mehr Siegel, mehr Punkte. Gewinne mit einem Siegel, um das nächste freizuschalten, mit derselben Klasse.",
         },
     },
     guide = {

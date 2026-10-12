@@ -109,6 +109,7 @@ local SUITES = {
     { group = "valid", name = "test_locale_glyphs" },
     -- acento de verdade: glifos das maiusculas, ASCII-ismos por locale, glossario traduzido
     { group = "valid", name = "test_locale_accents" },
+    { group = "valid", name = "test_locale_dashes" },
 }
 
 function M.run()
