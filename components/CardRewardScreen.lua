@@ -250,7 +250,10 @@ function CardRewardScreen:updateLayout()
         local margin = math.floor(math.max(12, math.min(40, sw * 0.025)))
         -- Teto de largura: num 2560 a vitrine não se espalha até as bordas
         -- (olho viajando 2000px entre a carta e o painel de detalhe).
-        local panelW = math.floor(math.min(sw - margin * 2, 1560))
+        -- O teto acompanha a ALTURA (1560 até 1080p; 1800 em 1440p): com o
+        -- teto fixo, em 2560x1440 as cartas ficavam presas pela largura e
+        -- sobrava um terço da altura vazio em volta da vitrine.
+        local panelW = math.floor(math.min(sw - margin * 2, math.max(1560, sh * 1.25)))
         local panelX = math.floor((sw - panelW) * 0.5)
         local panelY = topBarH
         local panelH = sh - panelY - math.floor(margin * 0.6)
@@ -1985,6 +1988,7 @@ function CardRewardScreen:draw()
             love.graphics.ellipse("fill", w * 0.5, h * 0.48, w * 0.62 * k, h * 0.62 * k)
         end
         love.graphics.setColor(1, 1, 1, 1)
+        self:_drawShopAmbience()
     end
 
     -- Slide-in: tudo dentro deste push é translado pelo offset animado em show().
@@ -1995,6 +1999,7 @@ function CardRewardScreen:draw()
     -- v3 também não tem painel (banner flutuante estilo StS).
     if self.panel then
         self:_drawShopHeader(self.panel.x, self.panel.y, self.panel.w)
+        self:_drawShopShelves()
     elseif self.mode == "rewards" then
         self:_drawRewardsBanner()
     end
@@ -2159,12 +2164,88 @@ function CardRewardScreen:draw()
     end
 end
 
+-- AMBIENTE da loja (Out/2026, "mais bonita, sem poluir"): sem cenário
+-- pintado (memory/shop_layout.md — o interior vazando foi o ruído), só duas
+-- deixas físicas que não carregam texto nem moldura:
+--   • LUZ QUENTE de lampião caindo do alto sobre a vitrine (âmbar em degraus
+--     de alpha, nunca um disco liso) — a mesma direção da luz dos tiles;
+--   • PRATELEIRA de madeira sob cada fileira: as ofertas ficam EXPOSTAS em
+--     algo, e as duas fileiras viram dois "andares" sem precisar de caixa.
+-- A luz fica no fundo (fora do slide); a prateleira entra com as ofertas.
+function CardRewardScreen:_drawShopAmbience()
+    local g = self.gridArea
+    if not g then return end
+    local w = love.graphics.getWidth()
+    local cx = g.x + g.w * 0.5
+    -- luz: cone largo e baixo saindo do topo da vitrine
+    local warm = Palette.AGED_GOLD
+    for i = 10, 1, -1 do
+        local k = i / 10
+        love.graphics.setColor(warm[1], warm[2] * 0.9, warm[3] * 0.6, 0.03)
+        love.graphics.ellipse("fill", cx, g.y + g.h * 0.30, g.w * 0.58 * k, g.h * 0.55 * k)
+    end
+    -- vinheta nas bordas laterais (empurra o olho pro centro)
+    local band = math.floor(w * 0.08)
+    for i = 0, 7 do
+        love.graphics.setColor(0, 0, 0, 0.05)
+        love.graphics.rectangle("fill", 0, 0, band * (1 - i / 8), love.graphics.getHeight())
+        love.graphics.rectangle("fill", w - band * (1 - i / 8), 0, band * (1 - i / 8), love.graphics.getHeight())
+    end
+
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- Prateleira sob cada fileira (dentro do slide: entra junto com as ofertas).
+function CardRewardScreen:_drawShopShelves()
+    local rows = {}
+    for _, pos in pairs(self.cardPositions or {}) do
+        local r = rows[pos.row or 1]
+        local pw = pos.w or self.cardWidth
+        local ph = pos.h or self.cardHeight
+        if not r then
+            r = { x0 = pos.x, x1 = pos.x + pw, y = pos.y + ph }
+            rows[pos.row or 1] = r
+        else
+            r.x0 = math.min(r.x0, pos.x)
+            r.x1 = math.max(r.x1, pos.x + pw)
+            r.y = math.max(r.y, pos.y + ph)
+        end
+    end
+    local wood = Palette.lerp(Palette.RUST, Palette.INK, 0.55)
+    local woodTop = Palette.lerp(Palette.RUST, Palette.AGED_GOLD_DARK, 0.5)
+    for _, r in pairs(rows) do
+        local x = math.floor(r.x0 - 14)
+        local sw = math.floor(r.x1 - r.x0 + 28)
+        local y = math.floor(r.y + 1)
+        -- espessura acompanha a vitrine (5px em 1024, até 7px em 1440p)
+        local t = math.max(5, math.min(7, math.floor((self.cardWidth or 140) * 0.03)))
+        -- sombra projetada sob a tábua (some em degraus)
+        for i = 1, 4 do
+            Palette.set(Palette.INK, 0.22 - i * 0.04)
+            love.graphics.rectangle("fill", x + 2, y + t + i * 2, sw - 4, 2)
+        end
+        Palette.set(wood)
+        love.graphics.rectangle("fill", x, y + 1, sw, t)
+        Palette.set(woodTop)
+        love.graphics.rectangle("fill", x, y, sw, 1)
+        -- reflexo da luz no meio da tábua (mais forte sob o lampião)
+        Palette.set(Palette.AGED_GOLD_LIGHT, 0.18)
+        love.graphics.rectangle("fill", x + math.floor(sw * 0.3), y, math.floor(sw * 0.4), 1)
+        -- suportes nas pontas
+        Palette.set(Palette.INK, 0.85)
+        love.graphics.rectangle("fill", x + 6, y + t + 1, 4, 4)
+        love.graphics.rectangle("fill", x + sw - 10, y + t + 1, 4, 4)
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
 -- Cabeçalho da loja SEM CAIXA: título solto entre dois filetes + o "?" que
 -- explica as regras de oferta (pity, afinidade, raridade por ato). O ouro NÃO
 -- se repete aqui: a TopBar já mostra o cofre logo acima — o título antigo
 -- tinha "Ouro: $30" a 50px do "$30" da barra.
 function CardRewardScreen:_drawShopHeader(px, py, pw)
-    local font = FontManager.getFont(14)
+    -- cresce com a tela (14 até 1080p, 18 em 1440p): o título não vira selo
+    local font = FontManager.getFont(math.max(14, math.floor(love.graphics.getHeight() / 80)))
     love.graphics.setFont(font)
     local title = I18n.t("reward.shop_title") or "LOJA"
     local tw = font:getWidth(title)
@@ -2177,6 +2258,10 @@ function CardRewardScreen:_drawShopHeader(px, py, pw)
     Palette.set(Palette.AGED_GOLD_DARK)
     love.graphics.rectangle("fill", tx - 16 - lineW, midY, lineW, 1)
     love.graphics.rectangle("fill", tx + tw + 16 + 26, midY, lineW, 1)
+    -- losango nas pontas (mesma gramática do título da pausa)
+    Palette.set(Palette.AGED_GOLD)
+    love.graphics.rectangle("fill", tx - 16 - lineW - 3, midY - 1, 3, 3)
+    love.graphics.rectangle("fill", tx + tw + 16 + 26 + lineW, midY - 1, 3, 3)
 
     local hx, hy, hr = tx + tw + 22, midY, 9
     love.graphics.setColor(0.10, 0.08, 0.05, 1)
