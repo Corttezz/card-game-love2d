@@ -5,8 +5,7 @@
 return {
     narrator = { name = "Plume" },
     footer = {
-        click = "Cliquez pour continuer",
-        ["continue"] = "continuer",
+        ["continue"] = "Continuer",
         skip = "passer",
         disable = "Je sais jouer : couper le tutoriel",
     },

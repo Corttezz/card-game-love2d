@@ -43,7 +43,7 @@ function M.run()
                 end
             end
         end
-        for _, k in ipairs({ "click", "continue", "skip", "disable" }) do
+        for _, k in ipairs({ "continue", "skip", "disable" }) do
             if not (data.footer and data.footer[k]) then missing[#missing + 1] = loc .. ":footer." .. k end
         end
         for name in pairs(Tutorial.ACTIONS) do

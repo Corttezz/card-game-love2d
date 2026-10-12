@@ -5,8 +5,7 @@
 return {
     narrator = { name = "Quill" },
     footer = {
-        click = "Click to continue",
-        ["continue"] = "continue",
+        ["continue"] = "Continue",
         skip = "skip chat",
         disable = "I know how to play: turn the tutorial off",
     },

@@ -60,6 +60,14 @@ turno), `combo`, `orbs` (mago), `jokers`, `rewards`, `dice`, `shop`, `forge`,
   ficar vista e volta na próxima oportunidade.
 - Ferramentas (`_G.HEADLESS_TOOL`) não disparam nada sozinhas; capturas usam
   `Tutorial._show(conv, fala, game)`.
+- **Sob demanda** (economia, f318532): `Tutorial.explain(id, game)` abre uma
+  conversa `onDemand` (`when` falso) na hora, ignorando "já vista" e o
+  liga/desliga; recusa se outra conversa está aberta. Usado pelo "?" dos Dados
+  do Escriba (`dice_help`, `src/ui/HelpBadge.lua`).
+- Rodapé neutro: "Continuar" (+ glifo ENTER/A no teclado/pad, pelo último
+  dispositivo do NavCursor); nunca "Clique".
+- Textos: edite DIRETO `src/i18n/locales/tutorial/<loc>.lua` (o gerador usado
+  na 1ª escrita ficou fora do repo); sem travessão (`test_locale_dashes`).
 - Conversa nova = entrada no `SCRIPT` + `script.<conv>.<fala>` nos 5 locales
   + âncora reportada no draw do objeto + linha no recorte do teste de layout.
 

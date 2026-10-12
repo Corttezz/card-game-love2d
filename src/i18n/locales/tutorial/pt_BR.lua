@@ -5,8 +5,7 @@
 return {
     narrator = { name = "Pena" },
     footer = {
-        click = "Clique para seguir",
-        ["continue"] = "seguir",
+        ["continue"] = "Continuar",
         skip = "pular conversa",
         disable = "Já sei jogar: desligar o tutorial",
     },

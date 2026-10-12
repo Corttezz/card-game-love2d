@@ -582,10 +582,11 @@ local function footerFor(line, isFirstOfRun)
     end
     if line and line.action then
         f.right = { glyph = nil, label = I18n.t(Tutorial.ACTIONS[line.action].label), gold = true }
-    elseif dev == "mouse" then
-        f.right = { glyph = nil, label = I18n.t("tutorial.footer.click") }
     else
-        f.right = { glyph = lab("confirm"), label = I18n.t("tutorial.footer.continue") }
+        -- neutro: "Continuar"; no teclado/pad ganha o glifo do botão
+        -- (ENTER / A) pelo último dispositivo usado
+        f.right = { glyph = dev ~= "mouse" and lab("confirm") or nil,
+            label = I18n.t("tutorial.footer.continue") }
     end
     return f
 end
