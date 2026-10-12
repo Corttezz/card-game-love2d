@@ -166,7 +166,9 @@ function WeatherAudio.registerSounds(a)
     a = a or audio()
     if not a then return 0 end
     local Config = require("src.core.Config")
-    local base = (Config.Audio and Config.Audio.WEATHER_VOLUME) or 0.8
+    -- AMBIENT_VOLUME: o knob ÚNICO do ambiente (dono: "muito alto — tem que
+    -- ser ambiente de verdade"); grupo "ambient" = slider em Configurações
+    local base = Config.Audio.WEATHER_VOLUME * Config.Audio.AMBIENT_VOLUME
     local n = 0
     for _, item in ipairs(love.filesystem.getDirectoryItems(DIR)) do
         local name = item:match("^(.+)%.mp3$")
@@ -176,7 +178,7 @@ function WeatherAudio.registerSounds(a)
                      or name:find("^night") or name:find("^marsh") or name:find("crackle"))
                     and "bed" or "one")
             a:loadSound(code(name), DIR .. "/" .. item,
-                { volume = base * CAT_VOL[cat], group = "sfx", stream = false })
+                { volume = base * CAT_VOL[cat], group = "ambient", stream = false })
             n = n + 1
         end
     end

@@ -187,3 +187,19 @@ shop-bell-1/2, coin-clink-1/2/3, shop-creak-1, anvil-1/2/3, bellows-1,
 event-chime-1/2, paper-1, boss-rumble-1. Reuso de weather/: night-crickets,
 ember-pop-1, owl-1. shop-room-1/2 saíram a −62/−67 dB na 1ª geração —
 regerados com "clearly audible continuous".
+
+## Ambiente BAIXO — knob único + slider (Out/2026, dono: "muito alto")
+Todo ambiente (WeatherAudio + PlaceAudio) saiu do grupo `sfx` pro grupo
+**`ambient`** (AudioManager; slider "Ambiente" em Configurações → Áudio,
+`ambientVolume` persistido, default 1.0) e o volume base de cada som leva
+`Config.Audio.AMBIENT_VOLUME` = **0.09** (knob único). Níveis efetivos
+(arquivo × base × grupo; música do ato: pico −18.4 dBFS):
+| | antes | depois |
+|---|---|---|
+| cama do clima (média) | −32.2 dBFS (≈ música +5 dB!) | −50.0 (−31.6 sob o pico da música) |
+| cama de lugar (média) | −35.1 | −52.9 |
+| avulso do clima (pico) | −15.0 | −32.8 |
+| trovão (pico) | −8.4 | −26.3 (−7.9 sob o pico da música) |
+Antes a cama ficava ACIMA da música porque somava WEATHER×cat×sfx(0.7)
+contra música 0.6×0.3. Trava: test_weather §14 (≥28 dB sob o pico da
+música, trovão ≥5 dB, grupo/knob/slider/i18n).

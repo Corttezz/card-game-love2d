@@ -31,6 +31,7 @@ return {
         title       = "AJUSTES",
         music       = "Música",
         sfx         = "Efectos",
+        ambient     = "Ambiente",
         master      = "General",
         fullscreen  = "Pant. Comp.",
         crt_shader  = "CRT Shader",

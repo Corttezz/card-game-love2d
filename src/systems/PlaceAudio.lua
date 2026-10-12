@@ -15,7 +15,8 @@
 --      sorteados, nunca a mesma variante seguida — nada de loop fixo);
 --   3. um avulso de CHEGADA (sino da porta da loja) uma vez por entrada.
 --
--- Volume abaixo da música: Config.Audio.PLACE_VOLUME × categoria, grupo sfx.
+-- Volume bem abaixo da música: PLACE_VOLUME × AMBIENT_VOLUME × categoria,
+-- grupo "ambient" (slider próprio em Configurações).
 -- Não duplica SFX de UI: a batida da forja (forgeStrike) continua sendo da
 -- RestScreen; aqui a bigorna é DISTANTE, rara e para enquanto a cerimônia de
 -- forja toca (forgeBusy).
@@ -97,7 +98,7 @@ function PlaceAudio.registerSounds(a)
     a = a or audio()
     if not a then return 0 end
     local Config = require("src.core.Config")
-    local base = (Config.Audio and Config.Audio.PLACE_VOLUME) or 0.75
+    local base = Config.Audio.PLACE_VOLUME * Config.Audio.AMBIENT_VOLUME
     local n = 0
     for _, item in ipairs(love.filesystem.getDirectoryItems(DIR)) do
         local name = item:match("^(.+)%.mp3$")
@@ -106,7 +107,7 @@ function PlaceAudio.registerSounds(a)
                 or name:find("%-camp%-") or name:find("%-drone%-")
             a:loadSound(P .. name, DIR .. "/" .. item,
                 { volume = base * (isBed and CAT_VOL.bed or CAT_VOL.one),
-                  group = "sfx", stream = false })
+                  group = "ambient", stream = false })
             n = n + 1
         end
     end

@@ -31,6 +31,7 @@ return {
         title       = "OPTIONS",
         music       = "Musique",
         sfx         = "Effets",
+        ambient     = "Ambiance",
         master      = "Général",
         fullscreen  = "Plein Écran",
         crt_shader  = "Shader CRT",

@@ -91,14 +91,16 @@ local function clamp01(v) return math.max(0, math.min(1, v)) end
 local function round1(v) return math.floor(v * 10 + 0.5) / 10 end
 
 -- ===== volumes (AudioManager quando há áudio; gameSettings sempre) =====
-local VOL_FIELD = { master = "masterVolume", music = "musicVolume", sfx = "sfxVolume" }
-local VOL_DEFAULT = { master = 1.0, music = 0.3, sfx = 0.7 }
+local VOL_FIELD = { master = "masterVolume", music = "musicVolume", sfx = "sfxVolume",
+                    ambient = "ambientVolume" }
+local VOL_DEFAULT = { master = 1.0, music = 0.3, sfx = 0.7, ambient = 1.0 }
 
 local function getVolume(kind)
     local a = _G.audioSystem
     if a then
         if kind == "music" then return a.musicVolume or 0 end
         if kind == "sfx" then return a.sfxVolume or 0 end
+        if kind == "ambient" then return a.ambientVolume or VOL_DEFAULT.ambient end
         return a.volume or 0
     end
     local v = gs()[VOL_FIELD[kind]]
@@ -113,11 +115,12 @@ local function setVolume(kind, v)
     if a then
         if kind == "music" then a:setMusicVolume(v)
         elseif kind == "sfx" then a:setSFXVolume(v)
+        elseif kind == "ambient" then a:setAmbientVolume(v)
         else a:setVolume(v) end
     end
     -- AMOSTRA no volume novo: a música se ouve sozinha (já está tocando);
     -- sfx/master tocam um clique pelo próprio grupo ajustado.
-    if kind ~= "music" then
+    if kind ~= "music" and kind ~= "ambient" then   -- ambiente se ouve sozinho (cama tocando)
         Sfx.play("buttonClick", { pitch = 1.0 + v * 0.12 })
     end
 end
@@ -161,6 +164,7 @@ function SettingsMenu:_tabs()
             volRow("master", "settings.master"),
             volRow("music", "settings.music"),
             volRow("sfx", "settings.sfx"),
+            volRow("ambient", "settings.ambient"),
         } },
         { key = "video", label = I18n.t("settings.tab_video"), rows = {
             toggle("fullscreen", "settings.fullscreen",
@@ -416,6 +420,7 @@ function SettingsMenu:_persist()
         masterVolume  = getVolume("master"),
         musicVolume   = getVolume("music"),
         sfxVolume     = getVolume("sfx"),
+        ambientVolume = getVolume("ambient"),
         fullscreen    = love.window.getFullscreen(),
         vsync         = getVSync(),
         crtShader     = CRTShader.isEnabled(),

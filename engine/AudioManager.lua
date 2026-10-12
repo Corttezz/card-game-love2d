@@ -55,6 +55,10 @@ function AudioManager:new(opts)
         master = opts.masterVolume or 1.0,
         music  = opts.musicVolume  or 0.3,
         sfx    = opts.sfxVolume    or 0.7,
+        -- AMBIENTE (clima da estrada + ambiente dos lugares): grupo próprio,
+        -- slider "Ambiente" em Configurações. 1.0 = nível desenhado (já baixo
+        -- — Config.Audio.AMBIENT_VOLUME entra no volume base de cada som).
+        ambient = opts.ambientVolume or 1.0,
     }
 
     -- Music tracking: nome do code da música atualmente tocando + alvo de
@@ -65,6 +69,7 @@ function AudioManager:new(opts)
     -- Compat: campos públicos lidos por SettingsMenu.
     self.musicVolume = self.groups.music
     self.sfxVolume   = self.groups.sfx
+    self.ambientVolume = self.groups.ambient
     self.volume      = self.groups.master
 
     self:_initializeAudio()
@@ -327,11 +332,13 @@ function AudioManager:setGroupVolume(group, value)
     if group == "master" then self.volume = value end
     if group == "music"  then self.musicVolume = value end
     if group == "sfx"    then self.sfxVolume = value end
+    if group == "ambient" then self.ambientVolume = value end
 end
 
 function AudioManager:setMasterVolume(v) self:setGroupVolume("master", v) end
 function AudioManager:setMusicVolume(v)  self:setGroupVolume("music",  v) end
 function AudioManager:setSFXVolume(v)    self:setGroupVolume("sfx",    v) end
+function AudioManager:setAmbientVolume(v) self:setGroupVolume("ambient", v) end
 
 -- Compat: setVolume = master.
 function AudioManager:setVolume(v) self:setGroupVolume("master", v) end

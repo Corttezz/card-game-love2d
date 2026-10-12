@@ -495,6 +495,40 @@ function M.run()
         t:eq("lugares: todo som citado existe (" .. table.concat(missing, ",") .. ")", #missing, 0)
     end
 
+    -- 14. AMBIENTE BAIXO (dono: "muito alto"): knob único + grupo próprio
+    do
+        local Config = require("src.core.Config")
+        local A = Config.Audio
+        t:truthy("AMBIENT_VOLUME é baixo (" .. tostring(A.AMBIENT_VOLUME) .. " ≤ 0.12)",
+            A.AMBIENT_VOLUME and A.AMBIENT_VOLUME <= 0.12)
+        -- nível efetivo da cama (arquivos normalizados a −22 dB médio) contra
+        -- o PICO da música do ato (−3.5 dB no arquivo × volume 0.6 × grupo 0.3)
+        local function db(x) return 20 * math.log10(x) end
+        local bed = -22 + db(A.WEATHER_VOLUME * A.AMBIENT_VOLUME * 0.55)
+        local musicPeak = -3.5 + db(0.6 * 0.3)
+        t:truthy(string.format("cama do clima %.1f dB sob o pico da música (≥ 28)",
+            musicPeak - bed), musicPeak - bed >= 28)
+        local thunder = -2 + db(A.WEATHER_VOLUME * A.AMBIENT_VOLUME * 0.85)
+        t:truthy(string.format("trovão (pico) %.1f dB sob o pico da música (≥ 5)",
+            musicPeak - thunder), musicPeak - thunder >= 5)
+        for _, f in ipairs({ "src/systems/WeatherAudio.lua", "src/systems/PlaceAudio.lua" }) do
+            local src = love.filesystem.read(f) or ""
+            t:truthy(f .. ": registra no grupo ambient", src:find('group = "ambient"', 1, true) ~= nil)
+            t:truthy(f .. ": usa AMBIENT_VOLUME", src:find("AMBIENT_VOLUME", 1, true) ~= nil)
+        end
+        local sm = love.filesystem.read("components/SettingsMenu.lua") or ""
+        t:truthy("Configurações → Áudio tem o slider Ambiente",
+            sm:find('volRow("ambient", "settings.ambient")', 1, true) ~= nil)
+        local I18n = require("src.i18n.I18n")
+        for _, loc in ipairs({ "pt_BR", "en", "es", "fr", "de" }) do
+            local ok, tbl = pcall(require, "src.i18n.locales." .. loc)
+            t:truthy(loc .. ": settings.ambient traduzido",
+                ok and tbl and tbl.settings and tbl.settings.ambient ~= nil)
+        end
+        local AM = require("engine.AudioManager")
+        t:truthy("AudioManager tem setAmbientVolume", AM.setAmbientVolume ~= nil)
+    end
+
     -- 8. fonte
     do
         local src = love.filesystem.read("src/ui/WorldRoad.lua") or ""

@@ -31,6 +31,7 @@ return {
         title       = "SETTINGS",
         music       = "Music",
         sfx         = "SFX",
+        ambient     = "Ambience",
         master      = "Master",
         fullscreen  = "Fullscreen",
         crt_shader  = "CRT Shader",

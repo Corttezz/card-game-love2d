@@ -1286,6 +1286,7 @@ function love.load(loveArgs)
         masterVolume = persistedSettings.masterVolume,
         musicVolume  = persistedSettings.musicVolume,
         sfxVolume    = persistedSettings.sfxVolume,
+        ambientVolume = persistedSettings.ambientVolume,
     })
     audioSystem:printStatus()
 

@@ -190,7 +190,7 @@ function M.run()
         local closed = 0
         sm:show({ onClose = function() closed = closed + 1 end })
         t:eq("3 abas", sm:tabCount(), 3)
-        t:eq("aba Audio tem 3 linhas", #sm.rows, 3)
+        t:eq("aba Audio tem 4 linhas (geral, música, efeitos, ambiente)", #sm.rows, 4)
 
         _G.gameSettings.masterVolume = 0.5
         sm:keypressed("right")
