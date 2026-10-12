@@ -203,3 +203,18 @@ Todo ambiente (WeatherAudio + PlaceAudio) saiu do grupo `sfx` pro grupo
 Antes a cama ficava ACIMA da música porque somava WEATHER×cat×sfx(0.7)
 contra música 0.6×0.3. Trava: test_weather §14 (≥28 dB sob o pico da
 música, trovão ≥5 dB, grupo/knob/slider/i18n).
+
+## Marcos do fork sem chão assado (Out/2026)
+Os PNGs de lugar (`assets/sprites/world/*landmark*.png` + `anim/<key>[_hover]/`)
+vinham com remendo de chão (laje/terra/neve/tufo) na cor errada pro bioma —
+"colados no cenário". Removido NA ARTE: paleta das 4 linhas de baixo + flood
+4-conexo a partir do rodapé por cor próxima (tol 26), só abaixo do último
+pixel de objeto da coluna, só nas linhas majoritariamente chão (cobertura
+≥45%), com teto manual por sprite onde vazava (pilares, cortinas, mastros);
+anéis de pedra das fogueiras (frost/genérica) são objeto e ficaram. Mesmo
+mascaramento nos quadros + corte do rodapé vazio. `LMG.ORIG_H` (WorldRoad)
+guarda a altura antiga: o tamanho na tela não muda. Pads de sombra
+remedidos; marcos tomam o banho de luz do bioma (`LMG.setTint`, 16% da névoa
+como os props). Tentativa REJEITADA: shader que tingia + dither na faixa de
+baixo — virava "tapete" quadriculado mais visível que o remendo. Scripts:
+scratchpad (seg.py/apply.py); prova: `love . grade_locais`.

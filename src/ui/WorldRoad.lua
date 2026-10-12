@@ -36,7 +36,6 @@ local RoadWear = require("engine.RoadWear")
 local RoadSurface = require("engine.RoadSurface")
 local QuadMesh = require("engine.QuadMesh")
 local WeatherEngine = require("engine.WeatherEngine")
-local _NO_CRITTERS = {}   -- lista vazia (noite com vagalumes do clima)
 local Config = require("src.core.Config")
 local EnemyEmissives = require("src.data.enemy_emissives")
 -- v9.7.1: GrassField declarado AQUI (era local no meio do arquivo e o
@@ -1463,25 +1462,28 @@ local LANDMARK_HOVER_SOUND = {
 -- v11: a chave CHEIA (<bid>_landmark_<tipo>) sobrepõe a do tipo — cada arte
 -- de ato tem seu próprio pé de parede e sua própria boca de chaminé, medidos
 -- no PNG (perfil de opacidade por linha, receita do v9.5).
+-- Out/2026: REMEDIDO depois do corte do chão assado (ver LMG) — a saliência
+-- que sobra é degrau/deck/vaso; estandartes = 0 (o pé é o mastro).
 local LANDMARK_SHADOW_PAD = {
-    landmark_shop = 12, landmark_event = 5, landmark_chest = 6,
+    landmark_shop = 3, landmark_event = 3, landmark_chest = 2,
     -- v11: TODA loja e TODA tenda de ato precisa de entrada própria, mesmo
     -- quando o valor é 0 — sem ela a chave cai na família e herdaria os 12
     -- da cabana do ato 1, jogando a sombra pra fora do pé. Medido no PNG:
     -- linhas do rodapé com menos de 75% da largura máxima são saliência
     -- (degrau, deck, monte), não parede.
-    highlands_landmark_shop = 0,  abyss_landmark_shop = 9,
-    frost_landmark_shop     = 5,  marsh_landmark_shop = 5,
-    dusk_landmark_shop      = 4,
-    highlands_landmark_event = 4, abyss_landmark_event = 4,
-    frost_landmark_event     = 3, marsh_landmark_event = 4,
-    dusk_landmark_event      = 4,
-    highlands_landmark_rest = 4,  abyss_landmark_rest = 5,
-    frost_landmark_rest     = 4,  marsh_landmark_rest = 8,
+    highlands_landmark_shop = 4,  abyss_landmark_shop = 11,
+    frost_landmark_shop     = 6,  marsh_landmark_shop = 3,
+    dusk_landmark_shop      = 2,
+    highlands_landmark_event = 2, abyss_landmark_event = 1,
+    frost_landmark_event     = 3, marsh_landmark_event = 5,
+    dusk_landmark_event      = 3,
+    highlands_landmark_rest = 1,  abyss_landmark_rest = 5,
+    frost_landmark_rest     = 3,  marsh_landmark_rest = 5,
     dusk_landmark_rest      = 4,
-    highlands_landmark_battle = 3, frost_landmark_battle = 4,
-    highlands_landmark_elite  = 3, frost_landmark_elite  = 3,
-    marsh_landmark_elite      = 5, dusk_landmark_elite  = 3,
+    highlands_landmark_battle = 0, frost_landmark_battle = 0,
+    highlands_landmark_elite  = 2, frost_landmark_elite  = 1,
+    marsh_landmark_elite      = 5, dusk_landmark_elite  = 0,
+    abyss_landmark_elite      = 2, landmark_elite        = 2,
 }
 local LANDMARK_LIGHT = {
     landmark_rest  = { color = { 1.00, 0.62, 0.28 }, radiusK = 0.55, intensity = 0.55 },
@@ -1628,6 +1630,47 @@ end
 
 -- fumaça da chaminé: puffs determinísticos subindo/inchando/sumindo, no
 -- idioma do castelo (aglomerado de quadrados chunky, sem halo translúcido)
+-- ============================================================================
+-- CHÃO DOS MARCOS (Out/2026, dono: "os lugares da encruzilhada parecem
+-- colados no cenário"): os PNGs do PixelLab vinham com um remendo de chão
+-- ASSADO na base (laje, terra, monte de neve, tufo) na cor errada pro bioma.
+-- O remendo foi REMOVIDO da arte (base + quadros de anim; segmentação pela
+-- paleta do rodapé + flood por baixo do objeto, ver memory/weather_engine.md)
+-- e o rodapé vazio cortado. ORIG_H guarda a altura ANTIGA do canvas: o
+-- tamanho na tela continua o mesmo (g.scaleAt mira a altura do canvas — sem
+-- isso o objeto cresceria o tanto do remendo que saiu). O contato com o chão
+-- agora é a sombra projetada (ShadowEngine) sobre a estrada do bioma.
+-- (Uma tabela só: o escopo do arquivo está no teto de 200 locais do LuaJIT.
+-- Também guarda a lista vazia de critters — noite com vagalumes do clima.)
+-- ============================================================================
+local LMG = { NO_CRITTERS = {}, ORIG_H = {
+    abyss_landmark_battle = 68, abyss_landmark_elite = 83, abyss_landmark_event = 87,
+    abyss_landmark_rest = 52, abyss_landmark_shop = 86,
+    dusk_landmark_battle = 69, dusk_landmark_elite = 80, dusk_landmark_event = 86,
+    dusk_landmark_rest = 53, dusk_landmark_shop = 84,
+    frost_landmark_battle = 63, frost_landmark_elite = 83, frost_landmark_event = 85,
+    frost_landmark_shop = 82,
+    highlands_landmark_battle = 71, highlands_landmark_elite = 80,
+    highlands_landmark_event = 86, highlands_landmark_rest = 54, highlands_landmark_shop = 80,
+    landmark_battle = 69, landmark_chest = 54, landmark_elite = 85, landmark_event = 90,
+    landmark_miniboss = 89, landmark_shop = 87,
+    marsh_landmark_battle = 68, marsh_landmark_elite = 83, marsh_landmark_event = 88,
+    marsh_landmark_rest = 51, marsh_landmark_shop = 86,
+} }
+WorldRoad.LANDMARK_ORIG_H = LMG.ORIG_H
+-- altura de referência pro tamanho na tela (a arte foi cortada no rodapé)
+function LMG.refH(key, ih) return LMG.ORIG_H[key] or ih end
+-- banho da LUZ DO BIOMA (mesma receita dos props: 16% da cor da névoa) —
+-- o marco genérico (chefe menor, baú) lê certo em qualquer bioma
+function LMG.setTint(br, a)
+    local lt = envColor("fog")
+    local k = 0.16
+    love.graphics.setColor(
+        br * ((1 - k) + k * math.min(1.6, lt[1] * 1.9)),
+        br * ((1 - k) + k * math.min(1.6, lt[2] * 1.9)),
+        br * ((1 - k) + k * math.min(1.6, lt[3] * 1.9)), a)
+end
+
 local function drawLandmarkSmoke(key, px, py, iw, ih, s, alpha)
     local sm = lmCfg(LANDMARK_SMOKE, key)
     if not sm or ih * s < 46 then return end   -- longe demais: vira ruído
@@ -3707,7 +3750,7 @@ local function drawLandmarkFront(g, x, w, camZ)
     -- v9.5: o lugar continua VIVO depois da chegada (mesmos frames do fork)
     img = landmarkFrame(lm.key, lm.phase or lm.z) or img
     local iw, ih = img:getWidth(), img:getHeight()
-    local s = g.scaleAt(lm.size or 2.0, t, ih)
+    local s = g.scaleAt(lm.size or 2.0, t, LMG.refH(lm.key, ih))
     local py = g.crestApexY + (g.bottomY - g.crestApexY) * t
     local lx = g.cx + roadWobble(lm.z, t, w)   -- segue a curva da estrada
     -- v8: sombra projetada da silhueta (v9.5: ancorada na base da parede)
@@ -3720,7 +3763,9 @@ local function drawLandmarkFront(g, x, w, camZ)
             shY, iw * s * 0.30, math.max(2, 4 * g.persp(t)))
         love.graphics.setColor(1, 1, 1, 1)
     end
+    LMG.setTint(1, 1)
     love.graphics.draw(img, math.floor(lx - iw * s / 2), math.floor(py - ih * s), 0, s, s)
+    love.graphics.setColor(1, 1, 1, 1)
     -- v9.5: vida contínua + legibilidade noturna (mesma receita do fork)
     drawLandmarkSmoke(lm.key, lx, py, iw, ih, s, 1)
     submitLandmarkLight(lm.key, lx, py, iw, ih, s, rel, lm.z)
@@ -3871,7 +3916,7 @@ local function drawProps(g, x, w, camZ)
                 local py = g.latY(offX, tM)
                 local iw, ih = img:getWidth(), img:getHeight()
                 local size = lmCfg(LANDMARK_SIZE, key) or 2.0
-                local s = g.scaleAt(size, tM, ih)
+                local s = g.scaleAt(size, tM, LMG.refH(key, ih))
                 s = s * (0.7 + 0.3 * f.animIn)
                 if f.chosen == i and f.chosenPulse and f.chosenPulse > 0 then
                     s = s * (1 + f.chosenPulse * 0.25)
@@ -3891,7 +3936,7 @@ local function drawProps(g, x, w, camZ)
                         shY, iw * s * 0.30, math.max(2, 4 * g.persp(tM)))
                 end
                 local br = hovered and 1.10 or 1
-                love.graphics.setColor(br, br, br, aMul)
+                LMG.setTint(br, aMul)
                 love.graphics.draw(img, math.floor(px - iw * s / 2),
                     math.floor(py - ih * s), 0, s, s)
                 -- v9.5: coisinhas vivas do lugar (fumaça de chaminé) +
@@ -4662,7 +4707,7 @@ function WorldRoad.draw(x, y, w, h, actNumber)
         -- v2: à noite quem acende é o WeatherEngine (vagalume em profundidade,
         -- com som) — o critter de tela só fica de borboleta, de dia
         local skipGlow = glow and WeatherEngine.hasFireflies(b.id)
-        for _, cr in ipairs(skipGlow and _NO_CRITTERS or WorldRoad._critters) do
+        for _, cr in ipairs(skipGlow and LMG.NO_CRITTERS or WorldRoad._critters) do
             local cxr = x + cr.xr * w
             local cyy = g.latY(cxr - g.cx, cr.yr)
                 - 14 - math.sin(WorldRoad._time * 3.1 + cr.phase) * 6
