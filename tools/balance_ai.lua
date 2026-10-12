@@ -513,9 +513,7 @@ function AI.simulate(game, set, bctx, opts)
         -- DoT no fim do turno do inimigo (IGNORA a armadura — Enemy:_applyDot)
         if S.eHp > 0 then
             local dot = (S.poisonDur > 0 and S.poison or 0) + (S.burnDur > 0 and S.burn or 0)
-            local eff = math.max(0, dot - S.eArmor)
-            S.eArmor = math.max(0, S.eArmor - dot)
-            S.eHp = S.eHp - eff
+            S.eHp = S.eHp - dot
             if S.poisonDur > 0 then S.poisonDur = S.poisonDur - 1 end
             if S.burnDur > 0 then S.burnDur = S.burnDur - 1 end
         end
