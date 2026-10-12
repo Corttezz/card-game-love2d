@@ -281,7 +281,10 @@ local function openNonBattleNode(t, eventId)
         if not ev then
             -- Sorteio pelo stream "event" com histórico: evento visto não repete
             -- no MESMO ato (Events.roll libera repetição se a pool do ato esgotar).
-            ev = Events.roll(run.actNumber or 1, run.eventHistory)
+            -- Bioma da CENA (endless roda 4,5,6,1,...): evento de bioma segue
+            -- o cenario, nao o numero do ato.
+            ev = Events.roll(run.actNumber or 1, run.eventHistory,
+                require("src.systems.EnemyRoster").biomeAct(run))
             if not ev then return false end
             run.eventHistory[ev.id] = run.actNumber or 1
             -- ROTEIRO: o evento sorteado entra já; a OPÇÃO escolhida é anotada

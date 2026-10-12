@@ -43,6 +43,101 @@ local function rewardOpts(game, extra)
     return opts
 end
 
+-- ===== Helpers dos eventos de bioma (Out/2026) =====
+-- Toda escolha aleatória usa o stream "event" (reprodutível por seed).
+
+local function deckIdOf(entry)
+    return type(entry) == "table" and entry.id or entry
+end
+
+-- Remove UMA cópia aleatória (por índice — CLAUDE.md: a forja/identidade é
+-- POR CÓPIA). Nunca deixa o deck com menos de 2 cartas. Devolve o nome.
+local function removeRandom(game)
+    local deck = game.runManager.currentRun.currentDeck
+    if #deck <= 2 then return nil end
+    local idx = Rng.get():random("event", #deck)
+    local id = deckIdOf(deck[idx])
+    game.runManager:removeCardAt(idx)
+    game:synchronizeRunDeck()
+    return I18n.cardName(id)
+end
+
+-- TRANSFORMAR (StS): a cópia sorteada sai e entra uma carta aleatória da
+-- classe (mesmo cérebro de oferta das recompensas). Devolve { old, new }
+-- prontos pro texto, ou nil se o deck é pequeno demais.
+local function transformRandom(game, n)
+    local olds, news = {}, {}
+    local db = game.runManager.cardRegistry.cardDatabase
+    for _ = 1, n do
+        -- 3 candidatas e fica a primeira que NAO e coringa (coringa vai pra
+        -- colecao, nao pro deck — a troca encolheria o grimorio). A carta so
+        -- sai DEPOIS de haver substituta.
+        local rewards = game.runManager.cardRegistry:generateCardRewards(
+            game.selectedClass, 3, rewardOpts(game))
+        local pick
+        for _, r in ipairs(rewards) do
+            local cd = db:getCard(r.cardId)
+            if cd and cd.type ~= "joker" then pick = r.cardId break end
+        end
+        if not pick then break end
+        local old = removeRandom(game)
+        if not old then break end
+        game:addCardToRun(pick)
+        olds[#olds + 1] = old
+        news[#news + 1] = I18n.cardName(pick)
+    end
+    if #olds == 0 then return nil end
+    return { old = table.concat(olds, ", "), new = table.concat(news, ", ") }
+end
+
+-- Custo em VIDA MÁXIMA: nunca abaixo de 20, e a vida atual acompanha o teto.
+local function loseMaxHP(game, n)
+    local p = game.player
+    p.maxHealth = math.max(20, p.maxHealth - n)
+    if p.health > p.maxHealth then p.health = p.maxHealth end
+end
+
+-- Forja +1 numa cópia aleatória que ainda aceite forja (até 5 tentativas).
+local function forgeRandom(game, eventId)
+    local deck = game.runManager.currentRun.currentDeck
+    if #deck == 0 then return T(eventId, "r_no_forge", nil, "Nada a forjar.") end
+    for _ = 1, 5 do
+        local idx = Rng.get():random("event", #deck)
+        local lvl = game.runManager:upgradeCardAt(idx)
+        if lvl then
+            return T(eventId, "r_forged", { name = I18n.cardName(deckIdOf(deck[idx])), lvl = lvl },
+                "Carta forjada!")
+        end
+    end
+    return T(eventId, "r_no_forge", nil, "Nada a forjar.")
+end
+
+-- Coringa aleatório incomum/raro (da classe ou neutro, desbloqueado e que a
+-- run ainda não tem) — o pacto do abismo, NUNCA lendário e nunca de graça
+-- (custa vida máxima): o dono quer que o deck perfeito seja difícil. Entra
+-- pela porta canônica (addJokerToRun).
+local function grantRandomJoker(game)
+    local UnlockSystem = require("src.systems.UnlockSystem")
+    local db = game.runManager.cardRegistry.cardDatabase
+    local owned = {}
+    for _, e in ipairs(game.runManager.currentRun.jokers or {}) do
+        owned[type(e) == "table" and e.id or e] = true
+    end
+    local pool = {}
+    for id, cd in pairs(db:getAllCards()) do
+        if cd.type == "joker" and (cd.rarity == "uncommon" or cd.rarity == "rare")
+            and not owned[id] and (cd.class == nil or cd.class == "basic" or cd.class == game.selectedClass)
+            and UnlockSystem.isCardUnlocked(id) then
+            pool[#pool + 1] = id
+        end
+    end
+    table.sort(pool) -- pairs não é determinístico; o sorteio por seed é
+    if #pool == 0 then return nil end
+    local id = pool[Rng.get():random("event", #pool)]
+    game:addJokerToRun(id)
+    return I18n.cardName(id)
+end
+
 Events.POOL = {
     -- ========== Eventos de qualquer ato ==========
     {
@@ -393,6 +488,327 @@ Events.POOL = {
               apply = function() return T("mercador_sangue", "r_refuse", nil, "O mercador guarda a balanca, decepcionado.") end },
         },
     },
+
+    -- ========== Eventos de BIOMA (Out/2026) ==========
+    -- Cada um só aparece nos atos listados em `biomes` (o bioma que a cena
+    -- desenha — no endless, o da rotação 4,5,6,1,2,3; ver Events.roll). A
+    -- auditoria de conteúdo achou 14 eventos genéricos (StS tem ~50) e nenhum
+    -- falava do lugar onde o jogador estava.
+
+    -- ATO 1 — CAMPOS
+    {
+        id = "espantalho_falante",
+        biomes = { 1 },
+        title = "Espantalho Falante",
+        body  = "Um espantalho vira a cabeca de saco para voce. 'Troco uma pagina sua por uma da colheita. Ou me de palha nova... e ouro.'",
+        options = {
+            { label = "Trocar uma pagina",
+              gains = { { k = "transform_random", n = 1, fb = "1 carta aleatoria transformada" } },
+              apply = function(game)
+                  local got = transformRandom(game, 1)
+                  if not got then return T("espantalho_falante", "r_too_small", nil, "Deck pequeno demais.") end
+                  return T("espantalho_falante", "r_traded", got, "Troca feita.")
+              end },
+            { label = "Arrancar a palha dele",
+              gains = { { k = "gold", n = 35, fb = "$35" } }, costs = { { k = "max_hp", n = 4, fb = "4 HP maximo" } },
+              apply = function(game)
+                  loseMaxHP(game, 4)
+                  game.economySystem.currentGold = game.economySystem.currentGold + 35
+                  return T("espantalho_falante", "r_straw", { n = 35 }, "+35 ouro.")
+              end },
+            { label = "Seguir pela estrada",
+              apply = function() return T("espantalho_falante", "r_leave", nil, "O espantalho volta a olhar o nada.") end },
+        },
+    },
+    {
+        id = "moinho_assombrado",
+        biomes = { 1 },
+        title = "Moinho Assombrado",
+        body  = "As pas giram sem vento. La dentro, a mo ainda moi — e o pao que sai dela esta quente.",
+        options = {
+            { label = "Comer o pao",
+              gains = { { k = "heal_pct", n = 25, fb = "cura 25% do HP" } }, costs = { { k = "gold", n = 12, fb = "$12" } },
+              apply = function(game)
+                  game.economySystem.currentGold = game.economySystem.currentGold - 12
+                  local amt = math.floor(game.player.maxHealth * 0.25)
+                  game.player:heal(amt)
+                  return T("moinho_assombrado", "r_bread", { n = amt }, "Curou HP.")
+              end },
+            { label = "Afiar a lamina na mo",
+              gains = { { k = "forge_random", fb = "1 forja em carta aleatoria" } }, costs = { { k = "hp", n = 6, fb = "6 HP" } },
+              apply = function(game)
+                  game.player:loseHealth(6)
+                  return forgeRandom(game, "moinho_assombrado")
+              end },
+            { label = "Nao entrar",
+              apply = function() return T("moinho_assombrado", "r_leave", nil, "As pas continuam girando atras de voce.") end },
+        },
+    },
+
+    -- ATO 2 — PLANALTOS
+    {
+        id = "ninho_da_harpia",
+        biomes = { 2 },
+        title = "Ninho da Harpia",
+        body  = "Num rochedo, um ninho de galhos guarda ovos pintados e moedas roubadas de viajantes. A dona nao esta... por enquanto.",
+        options = {
+            { label = "Saquear o ninho",
+              gains = { { k = "gold", n = 60, fb = "$60" } }, costs = { { k = "hp", n = 10, fb = "10 HP" } },
+              apply = function(game)
+                  game.player:loseHealth(10)
+                  game.economySystem.currentGold = game.economySystem.currentGold + 60
+                  return T("ninho_da_harpia", "r_loot", { n = 60 }, "+60 ouro; as garras te pegaram.")
+              end },
+            { label = "Pegar so um ovo",
+              gains = { { k = "chance_gold", pct = 50, n = 30, fb = "50% $30" } },
+              apply = function(game)
+                  if Rng.get():random("event") < 0.5 then
+                      game.economySystem.currentGold = game.economySystem.currentGold + 30
+                      return T("ninho_da_harpia", "r_egg_gold", { n = 30 }, "+30 ouro.")
+                  end
+                  return T("ninho_da_harpia", "r_egg_empty", nil, "O ovo estava oco.")
+              end },
+            { label = "Deixar o ninho",
+              apply = function() return T("ninho_da_harpia", "r_leave", nil, "Um grito ecoa ao longe.") end },
+        },
+    },
+    {
+        id = "santuario_do_vento",
+        biomes = { 2 },
+        title = "Santuario do Vento",
+        body  = "Fitas de oracao estalam num altar de pedra. O vento pede algo para levar.",
+        options = {
+            { label = "Entregar uma pagina escolhida",
+              gains = { { k = "remove_choice", n = 1, fb = "remova 1 carta A SUA ESCOLHA" } }, costs = { { k = "gold", n = 20, fb = "$20" } },
+              apply = function(game)
+                  game.economySystem.currentGold = game.economySystem.currentGold - 20
+                  if _G.openCardPicker then
+                      _G.openCardPicker("remove")
+                      return T("santuario_do_vento", "r_taken", nil, "O vento leva a pagina.")
+                  end
+                  return T("santuario_do_vento", "r_calm", nil, "O vento se acalma.")
+              end },
+            { label = "Soltar uma pagina ao acaso",
+              gains = { { k = "gold", n = 20, fb = "$20" } }, costs = { { k = "remove_random", n = 1, fb = "1 carta ALEATORIA" } },
+              apply = function(game)
+                  local name = removeRandom(game)
+                  if not name then return T("santuario_do_vento", "r_too_small", nil, "Deck pequeno demais.") end
+                  game.economySystem.currentGold = game.economySystem.currentGold + 20
+                  return T("santuario_do_vento", "r_random", { name = name, n = 20 }, "Carta levada.")
+              end },
+            { label = "Seguir viagem",
+              apply = function() return T("santuario_do_vento", "r_leave", nil, "As fitas se aquietam.") end },
+        },
+    },
+
+    -- ATO 3 — ABISMO
+    {
+        id = "pacto_infernal",
+        biomes = { 3 },
+        title = "Pacto Infernal",
+        body  = "Um contrato flutua sobre velas negras, a pena ja molhada. 'Um servo para o seu bolso. Cobro em carne, nao em ouro.'",
+        options = {
+            { label = "Assinar com sangue",
+              gains = { { k = "joker_random", fb = "1 coringa aleatorio" } }, costs = { { k = "max_hp", n = 10, fb = "10 HP maximo" } },
+              apply = function(game)
+                  local name = grantRandomJoker(game)
+                  if not name then return T("pacto_infernal", "r_none", nil, "O contrato se desfaz em cinzas.") end
+                  loseMaxHP(game, 10)
+                  return T("pacto_infernal", "r_signed", { name = name }, "Coringa adquirido.")
+              end },
+            { label = "Queimar o contrato",
+              gains = { { k = "gold", n = 25, fb = "$25" } },
+              apply = function(game)
+                  game.economySystem.currentGold = game.economySystem.currentGold + 25
+                  return T("pacto_infernal", "r_burn", { n = 25 }, "+25 ouro.")
+              end },
+            { label = "Nao tocar",
+              apply = function() return T("pacto_infernal", "r_leave", nil, "As velas se apagam sozinhas.") end },
+        },
+    },
+    {
+        id = "fosso_de_brasas",
+        biomes = { 3 },
+        title = "Fosso de Brasas",
+        body  = "Brasas vivas cobrem o caminho. Do outro lado, uma bigorna de obsidiana brilha em vermelho.",
+        options = {
+            { label = "Atravessar as brasas",
+              gains = { { k = "forge_choice", fb = "1 forja na carta que escolher" } }, costs = { { k = "hp", n = 10, fb = "10 HP" } },
+              apply = function(game)
+                  game.player:loseHealth(10)
+                  if _G.openCardPicker then
+                      _G.openCardPicker("forge")
+                      return T("fosso_de_brasas", "r_forge", nil, "O metal canta.")
+                  end
+                  return T("fosso_de_brasas", "r_fail", nil, "A bigorna esfria.")
+              end },
+            { label = "Contornar o fosso",
+              apply = function() return T("fosso_de_brasas", "r_leave", nil, "Voce da a volta, intacto.") end },
+        },
+    },
+
+    -- ATO 4 — CIDADELA GELADA
+    {
+        id = "lago_congelado",
+        biomes = { 4 },
+        title = "Lago Congelado",
+        body  = "Alguem abriu um buraco no gelo e deixou a vara de pesca. Algo brilha la embaixo.",
+        options = {
+            { label = "Pescar",
+              gains = { { k = "chance_card_rare", pct = 50, fb = "50% carta RARA" } }, costs = { { k = "chance_hp", pct = 50, n = 8, fb = "50% perder 8 HP" } },
+              apply = function(game)
+                  if Rng.get():random("event") < 0.5 then
+                      local rewards = game.runManager.cardRegistry:generateCardRewards(
+                          game.selectedClass, 1, rewardOpts(game, { minRarity = "rare" }))
+                      if rewards[1] then
+                          game:addCardToRun(rewards[1].cardId)
+                          return T("lago_congelado", "r_catch", { name = I18n.cardName(rewards[1].cardId) }, "Pescou uma carta.")
+                      end
+                  end
+                  game.player:loseHealth(math.min(8, game.player.health - 1))
+                  return T("lago_congelado", "r_fell", { n = 8 }, "O gelo cedeu.")
+              end },
+            { label = "Mergulhar a mao na agua",
+              gains = { { k = "heal_full", fb = "cura total" } }, costs = { { k = "remove_random", n = 1, fb = "1 carta ALEATORIA" } },
+              apply = function(game)
+                  local name = removeRandom(game)
+                  if not name then return T("lago_congelado", "r_too_small", nil, "Deck pequeno demais.") end
+                  game.player:heal(game.player.maxHealth)
+                  return T("lago_congelado", "r_plunge", { name = name }, "Curado; uma carta afundou.")
+              end },
+            { label = "Atravessar com cuidado",
+              apply = function() return T("lago_congelado", "r_leave", nil, "O gelo range, mas aguenta.") end },
+        },
+    },
+    {
+        id = "cavaleiro_congelado",
+        biomes = { 4 },
+        title = "Cavaleiro Congelado",
+        body  = "Um cavaleiro dorme dentro de um bloco de gelo, a espada ainda erguida. O gelo esta fino perto do punho.",
+        options = {
+            { label = "Arrancar a espada",
+              gains = { { k = "card_rare", fb = "carta RARA" } }, costs = { { k = "hp", n = 9, fb = "9 HP" } },
+              apply = function(game)
+                  game.player:loseHealth(9)
+                  local rewards = game.runManager.cardRegistry:generateCardRewards(
+                      game.selectedClass, 1, rewardOpts(game, { minRarity = "rare" }))
+                  if rewards[1] then
+                      game:addCardToRun(rewards[1].cardId)
+                      return T("cavaleiro_congelado", "r_sword", { name = I18n.cardName(rewards[1].cardId) }, "Carta rara.")
+                  end
+                  return T("cavaleiro_congelado", "r_shatter", nil, "A espada se parte.")
+              end },
+            { label = "Rezar pelo cavaleiro",
+              gains = { { k = "heal_flat", n = 15, fb = "cura 15 HP" } },
+              apply = function(game)
+                  game.player:heal(15)
+                  return T("cavaleiro_congelado", "r_pray", { n = 15 }, "+15 HP.")
+              end },
+        },
+    },
+
+    -- ATO 5 — CORAÇÃO PÚTRIDO
+    {
+        id = "cabana_da_bruxa",
+        biomes = { 5 },
+        title = "Cabana da Bruxa",
+        body  = "Sobre palafitas, um caldeirao borbulha verde. 'Uma pocao que engrossa o sangue — ou uma cura, se pagar.'",
+        options = {
+            { label = "Beber a pocao grossa",
+              gains = { { k = "max_hp", n = 8, fb = "8 HP maximo" }, { k = "transform_random", n = 1, fb = "1 carta aleatoria transformada" } },
+              apply = function(game)
+                  local got = transformRandom(game, 1)
+                  if not got then return T("cabana_da_bruxa", "r_too_small", nil, "Deck pequeno demais.") end
+                  game.player.maxHealth = game.player.maxHealth + 8
+                  game.player.health = game.player.health + 8
+                  return T("cabana_da_bruxa", "r_brew", got, "Vida maxima +8.")
+              end },
+            { label = "Pagar pela cura",
+              gains = { { k = "heal_pct", n = 50, fb = "cura 50% do HP" } }, costs = { { k = "gold", n = 35, fb = "$35" } },
+              apply = function(game)
+                  game.economySystem.currentGold = game.economySystem.currentGold - 35
+                  local amt = math.floor(game.player.maxHealth * 0.5)
+                  game.player:heal(amt)
+                  return T("cabana_da_bruxa", "r_heal", { n = amt }, "Curou HP.")
+              end },
+            { label = "Recusar",
+              apply = function() return T("cabana_da_bruxa", "r_leave", nil, "A bruxa ri baixinho.") end },
+        },
+    },
+    {
+        id = "poco_das_sanguessugas",
+        biomes = { 5 },
+        title = "Poco das Sanguessugas",
+        body  = "Sanguessugas gordas esperam numa poca escura. Dizem que tiram do corpo o que nao presta — e do grimorio tambem.",
+        options = {
+            { label = "Deixar que suguem",
+              gains = { { k = "remove_choice", n = 1, fb = "remova 1 carta A SUA ESCOLHA" } }, costs = { { k = "hp", n = 11, fb = "11 HP" } },
+              apply = function(game)
+                  game.player:loseHealth(11)
+                  if _G.openCardPicker then
+                      _G.openCardPicker("remove")
+                      return T("poco_das_sanguessugas", "r_purge", nil, "Algo saiu de voce.")
+                  end
+                  return T("poco_das_sanguessugas", "r_fail", nil, "As sanguessugas se soltam.")
+              end },
+            { label = "Passar longe",
+              apply = function() return T("poco_das_sanguessugas", "r_leave", nil, "A poca borbulha atras de voce.") end },
+        },
+    },
+
+    -- ATO 6 — CORTE DO ECLIPSE
+    {
+        id = "relicario_do_eclipse",
+        biomes = { 6 },
+        title = "Relicario do Eclipse",
+        body  = "Um relicario dourado com um sol negro no tampo. La dentro, sua propria letra — uma pagina que voce ainda nao escreveu.",
+        options = {
+            { label = "Copiar a pagina",
+              gains = { { k = "dup_choice", n = 1, fb = "duplique 1 carta A SUA ESCOLHA" } }, costs = { { k = "max_hp", n = 6, fb = "6 HP maximo" } },
+              apply = function(game)
+                  loseMaxHP(game, 6)
+                  if _G.openCardPicker then
+                      _G.openCardPicker("duplicate")
+                      return T("relicario_do_eclipse", "r_copy", nil, "A pagina se duplica.")
+                  end
+                  return T("relicario_do_eclipse", "r_fail", nil, "A tinta se apaga.")
+              end },
+            { label = "Saquear o ouro do relicario",
+              gains = { { k = "gold", n = 80, fb = "$80" } }, costs = { { k = "remove_random", n = 1, fb = "1 carta ALEATORIA" } },
+              apply = function(game)
+                  local name = removeRandom(game)
+                  if not name then return T("relicario_do_eclipse", "r_too_small", nil, "Deck pequeno demais.") end
+                  game.economySystem.currentGold = game.economySystem.currentGold + 80
+                  return T("relicario_do_eclipse", "r_loot", { name = name, n = 80 }, "+80 ouro.")
+              end },
+            { label = "Fechar o relicario",
+              apply = function() return T("relicario_do_eclipse", "r_leave", nil, "O sol negro escurece.") end },
+        },
+    },
+    {
+        id = "corvo_mensageiro",
+        biomes = { 6 },
+        title = "Corvo Mensageiro",
+        body  = "Um corvo pousa numa lapide com uma carta lacrada no bico. O lacre tem o seu nome.",
+        options = {
+            { label = "Ler a carta",
+              gains = { { k = "transform_random", n = 2, fb = "2 cartas aleatorias transformadas" } },
+              apply = function(game)
+                  local got = transformRandom(game, 2)
+                  if not got then return T("corvo_mensageiro", "r_too_small", nil, "Deck pequeno demais.") end
+                  return T("corvo_mensageiro", "r_read", got, "Duas paginas mudaram.")
+              end },
+            { label = "Alimentar o corvo",
+              gains = { { k = "forge_random_n", n = 2, fb = "2 forjas em cartas aleatorias" } }, costs = { { k = "gold", n = 20, fb = "$20" } },
+              apply = function(game)
+                  game.economySystem.currentGold = game.economySystem.currentGold - 20
+                  forgeRandom(game, "corvo_mensageiro")
+                  return forgeRandom(game, "corvo_mensageiro")
+              end },
+            { label = "Espantar o corvo",
+              apply = function() return T("corvo_mensageiro", "r_leave", nil, "O corvo leva a carta embora.") end },
+        },
+    },
 }
 
 -- O jogador PODE pagar a opção? Lido dos custos declarados (os mesmos que
@@ -408,6 +824,13 @@ function Events.canAfford(opt, game)
         elseif c.k == "hp" and c.n then
             local hp = game and game.player and game.player.health or 0
             if hp <= c.n then return false end
+        elseif c.k == "max_hp" and c.n then
+            -- teto de vida nunca cai abaixo de 20 (loseMaxHP)
+            local mx = game and game.player and game.player.maxHealth or 0
+            if mx - c.n < 20 then return false end
+        elseif (c.k == "remove_random" or c.k == "transform_random") then
+            local run = game and game.runManager and game.runManager.currentRun
+            if not run or #(run.currentDeck or {}) <= 2 then return false end
         end
     end
     return true
@@ -423,13 +846,27 @@ function Events.get(id)
 end
 
 -- Sorteia um evento do pool para um ato especifico (ou "any").
+-- `biome` (opcional): bioma que a cena DESENHA (EnemyRoster.biomeAct) — no
+-- endless o ato passa de 6 e o bioma roda 4,5,6,1,2,3; eventos de bioma
+-- (`biomes = {..}`) seguem o cenario, nao o numero do ato. Sem o argumento,
+-- vale o proprio ato (1-6).
 -- history: run.eventHistory ({ [id] = actNumber }) — evento visto NO MESMO ATO
 -- não repete; pool esgotada no ato libera repetição (melhor que evento nenhum).
 -- Stream "event" do Rng da run (reprodutível por seed).
-function Events.roll(actNumber, history)
+local function fitsHere(e, actNumber, biome)
+    if e.act == "any" or e.act == actNumber then return true end
+    for _, b in ipairs(e.biomes or {}) do
+        if b == biome then return true end
+    end
+    return false
+end
+Events.fitsHere = fitsHere
+
+function Events.roll(actNumber, history, biome)
+    biome = biome or actNumber
     local valid = {}
     for _, e in ipairs(Events.POOL) do
-        local actOk = (e.act == "any" or e.act == actNumber)
+        local actOk = fitsHere(e, actNumber, biome)
         local seenThisAct = history and history[e.id] == actNumber
         if actOk and not seenThisAct then
             table.insert(valid, e)
@@ -437,7 +874,7 @@ function Events.roll(actNumber, history)
     end
     if #valid == 0 then
         for _, e in ipairs(Events.POOL) do
-            if e.act == "any" or e.act == actNumber then
+            if fitsHere(e, actNumber, biome) then
                 table.insert(valid, e)
             end
         end

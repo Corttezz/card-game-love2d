@@ -52,7 +52,7 @@ Ver também a seção de licenças em `memory/release_pipeline.md`.
 
 **15. ~~`rogue_envenom` aproximado~~** — ✅ resolvido na auditoria de gameplay (Abril/2026). Trigger `on_attack_debuff` implementado; `rogue_envenom` agora aplica 1 stack de poison (duration 2) a cada ataque conforme descrição.
 
-**16. Ícones de mini_boss e boss** — `NODE_META` usa `skull_crowned` pra ambos. Visualmente idênticos; diferenciar via cor/label.
+**16. ~~Ícones de mini_boss e boss~~ RESOLVIDO (Out/2026)** — mini-chefe ganhou ícone próprio `skull_horned` (NODE_META + Roteiro) e marco próprio no fork da estrada (`landmark_miniboss`, estandarte de crânio chifrudo com tochas).
 
 **17. Editions/Seals existem mas não há fonte de spawn ainda** — Fase 3 implementou pipeline completo (`card.edition`/`card.seal` + shaders + gameplay + render). Falta: tarots/spectrals que aplicam editions, e booster packs Standard que sorteiam edition+seal aleatoriamente. Será fechado na Fase 5 (Booster Pack opening).
 

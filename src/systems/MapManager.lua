@@ -47,7 +47,9 @@ MapManager.NODE_META = {
     },
     [MapManager.NODE_TYPES.MINI_BOSS] = {
         label = "Mini-Boss",
-        icon = "skull_crowned",
+        -- crânio CHIFRUDO (Out/2026, known_gaps #16): antes dividia o
+        -- skull_crowned com o chefe e os dois liam igual no mapa/roteiro.
+        icon = "skull_horned",
         sprite = nil,
         desc = "Meio do ato. Recompensa rara.",
     },

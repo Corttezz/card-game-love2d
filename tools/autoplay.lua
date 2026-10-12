@@ -1773,7 +1773,7 @@ end
 
 local function doEvent(game)
     local run = game.runManager.currentRun
-    local ev = Events.roll(run.actNumber or 1)
+    local ev = Events.roll(run.actNumber or 1, nil, require("src.systems.EnemyRoster").biomeAct(run))
     if not ev then
         log("- Evento: nenhum disponivel")
         return

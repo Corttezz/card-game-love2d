@@ -145,3 +145,25 @@ Plano de origem: `docs/plan/sts-improvements-v1.md` (Steps 1-7). Inspiração do
 - Pacote Bufão: pool de jokers da classe + neutros, pesos por raridade, dedup
   contra jokers já possuídos. Packs não-Standard: fallback deixou de ser pool global.
 - Cobertura: `love . test_one smoke_packs`.
+
+## Eventos de bioma (Out/2026)
+
+A auditoria de conteúdo achou 14 eventos genéricos (StS ~50). Entraram 12 de
+BIOMA, 2 por ato (`biomes = { N }` em `src/data/events.lua`): campos
+(espantalho_falante, moinho_assombrado), planaltos (ninho_da_harpia,
+santuario_do_vento), abismo (pacto_infernal, fosso_de_brasas), gelo
+(lago_congelado, cavaleiro_congelado), pântano (cabana_da_bruxa,
+poco_das_sanguessugas), crepúsculo (relicario_do_eclipse, corvo_mensageiro).
+
+- `Events.roll(ato, history, bioma)`: o 3º argumento é o bioma que a CENA
+  desenha (`EnemyRoster.biomeAct`) — no endless o ato passa de 6 e o bioma
+  roda 4,5,6,1,2,3. Evento de bioma nunca sai fora do cenário dele.
+- Mecânicas novas, todas no stream "event": TRANSFORMAR (a cópia só sai depois
+  de haver substituta não-coringa), custo em VIDA MÁXIMA (teto nunca < 20;
+  `canAfford` desabilita), coringa do pacto (incomum/raro, nunca lendário,
+  pago em vida máxima — o dono não quer coringa barato).
+- Rótulo `[+x / -y]` tem que caber em 476px na fonte mínima nos 5 idiomas
+  (`love . check_event_i18n`) — opção curta, token curto.
+- Arte 128×96 em `assets/sprites/ui/event_<id>.png` (PixelLab pixflux,
+  contorno preto); `test_events` exige arte e texto nos 5 idiomas pros de
+  bioma. Captura: `EVENT_ID=<id> EVENT_SIZE=1920x1080 love . screenshot_event de`.

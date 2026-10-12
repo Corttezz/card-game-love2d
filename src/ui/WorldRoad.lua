@@ -1390,13 +1390,16 @@ end
 -- Tamanhos GRANDES (feedback: "são realmente lugares, maiores que árvores")
 local LANDMARK_FOR_TYPE = {
     battle = "landmark_battle", elite = "landmark_elite",
-    mini_boss = "landmark_battle", boss = "landmark_battle",
+    -- mini-chefe tem marco PRÓPRIO (Out/2026, known_gaps #16): estandarte de
+    -- crânio chifrudo com tochas — não é "mais uma batalha" no fork.
+    mini_boss = "landmark_miniboss", boss = "landmark_battle",
     rest = "landmark_rest", shop = "landmark_shop",
     event = "landmark_event", treasure = "landmark_chest",
 }
 local LANDMARK_SIZE = {
     landmark_battle = 3.4, landmark_elite = 4.4, landmark_rest = 3.6,
     landmark_shop = 5.2, landmark_event = 5.0, landmark_chest = 2.6,
+    landmark_miniboss = 3.8,
 }
 local landmarkCache = {}
 local function getLandmark(key)
@@ -1455,6 +1458,7 @@ local LANDMARK_HOVER_SOUND = {
     landmark_battle = "forkHoverFlag",
     landmark_elite  = "forkHoverElite",
     landmark_event  = "forkHoverTent",
+    landmark_miniboss = "forkHoverElite",
 }
 -- v11: a chave CHEIA (<bid>_landmark_<tipo>) sobrepõe a do tipo — cada arte
 -- de ato tem seu próprio pé de parede e sua própria boca de chaminé, medidos
@@ -1484,6 +1488,7 @@ local LANDMARK_LIGHT = {
     landmark_elite = { color = { 0.72, 0.38, 1.00 }, radiusK = 0.45, intensity = 0.50 },
     landmark_shop  = { color = { 1.00, 0.72, 0.38 }, radiusK = 0.30, intensity = 0.45 },
     landmark_event = { color = { 0.45, 0.80, 1.00 }, radiusK = 0.30, intensity = 0.45 },
+    landmark_miniboss = { color = { 1.00, 0.45, 0.25 }, radiusK = 0.40, intensity = 0.50 },
 }
 local LANDMARK_SMOKE = {
     -- xf/yf = boca da chaminé em fração do canvas (medido no PNG)

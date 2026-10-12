@@ -147,7 +147,8 @@ function M.run(mode)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
     elseif mode == "fork" or mode == "fork2" or mode == "forkhover"
-        or mode == "forkb" or (mode and mode:match("^forkfade%d+$")) then
+        or mode == "forkb" or mode == "forkmini"
+        or (mode and mode:match("^forkfade%d+$")) then
         -- A ENCRUZILHADA (v5): estrada bifurcada com 3 marcos + hover no 2.
         -- "fork2" captura o MEIO da convergência (braço escolhido virando
         -- a estrada central).
@@ -159,7 +160,13 @@ function M.run(mode)
         for _ = 1, 30 do WorldRoad.update(1 / 30) end
         -- showFork trava em 3 braços (regra do jogo, não mexo nela), e são 5
         -- tipos de lugar: "forkb" mostra os outros dois pra conferência.
-        WorldRoad.showFork(mode == "forkb" and {
+        -- "forkmini": o marco PRÓPRIO do mini-chefe (Out/2026) entre a
+        -- batalha e o elite, pra conferir que os três leem diferente.
+        WorldRoad.showFork(mode == "forkmini" and {
+            { type = "battle", label = "Batalha", desc = "Um inimigo bloqueia a estrada" },
+            { type = "mini_boss", label = "Mini-chefe", desc = "O guardião do ato" },
+            { type = "elite", label = "Elite", desc = "Algo forte espera" },
+        } or mode == "forkb" and {
             { type = "elite", label = "Elite", desc = "Algo forte espera" },
             { type = "event", label = "Evento", desc = "Um encontro estranho" },
             { type = "battle", label = "Batalha", desc = "Um inimigo bloqueia a estrada" },

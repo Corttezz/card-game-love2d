@@ -25,6 +25,15 @@ function M.run(only)
     local Game        = require("src.core.Game")
     local Rng         = require("src.systems.Rng")
 
+    -- EVENT_SIZE=1920x1080: tela FALSIFICADA (mesmo truque do
+    -- screenshot_enemy_scene — setMode acima do desktop trava o tool).
+    local fw, fh = (os.getenv("EVENT_SIZE") or ""):match("^(%d+)x(%d+)$")
+    if fw then
+        fw, fh = tonumber(fw), tonumber(fh)
+        love.graphics.getWidth = function() return fw end
+        love.graphics.getHeight = function() return fh end
+        love.graphics.getDimensions = function() return fw, fh end
+    end
     I18n.init()
     require("src.ui.PixelCanvas").enableNearest()
     _G.EventManager = _G.EventManager or require("engine.EventManager")
@@ -36,7 +45,8 @@ function M.run(only)
     game:startNewRun("warrior")
     game:startGame()
 
-    local ev = Events.roll(1, {})
+    -- EVENT_ID=<id> captura um evento específico (eventos de bioma, Out/2026).
+    local ev = os.getenv("EVENT_ID") and Events.get(os.getenv("EVENT_ID")) or Events.roll(1, {})
     if not ev then
         print("[screenshot_event] nenhum evento sorteado")
         return false
@@ -77,6 +87,9 @@ function M.run(only)
         love.graphics.setCanvas()
 
         local name = "event_" .. loc .. ".png"
+        if os.getenv("EVENT_ID") then
+            name = ("event_%s_%s_%dx%d.png"):format(ev.id, loc, W, H)
+        end
         canvas:newImageData():encode("png", name)
         print("[screenshot_event] " .. name)
 

@@ -54,7 +54,7 @@ local KEY_STEP    = 120
 local NODE_STYLE = {
     battle    = { icon = "sword_short",   color = Palette.PARCHMENT },
     elite     = { icon = "skull",         color = Palette.RUST,  major = true },
-    mini_boss = { icon = "skull_crowned", color = Palette.BLOOD, major = true },
+    mini_boss = { icon = "skull_horned", color = Palette.BLOOD, major = true },
     boss      = { icon = "skull_crowned", color = Palette.AGED_GOLD_LIGHT, major = true, boss = true },
     shop      = { icon = "coin",          color = Palette.AGED_GOLD },
     rest      = { icon = "heart",         color = Palette.MOSS },
