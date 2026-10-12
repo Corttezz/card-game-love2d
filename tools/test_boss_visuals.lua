@@ -120,6 +120,14 @@ function M.run()
     end
 
     -- emissor emite, morte esvai, reducedMotion congela
+    -- DETERMINÍSTICO (flake no test_all, Out/2026): o emissor é Poisson no
+    -- RNG global e para com reducedMotion — outra suíte da bateria pode ter
+    -- deixado _G.gameSettings com reducedMotion ligado ou o RNG num ponto
+    -- qualquer. Fixa os dois aqui e restaura no fim.
+    local savedGS = _G.gameSettings
+    _G.gameSettings = { reducedMotion = false }
+    local savedState = love.math.getRandomState()
+    love.math.setRandomSeed(20261011)
     BossAura.reset()
     for _ = 1, 60 do BossAura.update(1 / 30, "tower_lich", false) end
     local n = BossAura._debugCount("tower_lich")
@@ -128,12 +136,12 @@ function M.run()
     local _, fade = BossAura._debugCount("tower_lich")
     t:eq("morte esvai a aura", fade, 0)
 
-    local saved = _G.gameSettings
     _G.gameSettings = { reducedMotion = true }
     BossAura.reset()
     for _ = 1, 60 do BossAura.update(1 / 30, "abyss_tyrant", false) end
     t:eq("reducedMotion: emissor parado", (BossAura._debugCount("abyss_tyrant")), 0)
-    _G.gameSettings = saved
+    _G.gameSettings = savedGS
+    love.math.setRandomState(savedState)
     BossAura.reset()
 
     -- (d) eixo do monarca: dentro do conteúdo e à ESQUERDA do centro do bbox
