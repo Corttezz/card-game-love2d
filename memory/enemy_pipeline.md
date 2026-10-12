@@ -321,3 +321,28 @@ memory/lighting_engine.md.
 - **REGRA: monstro parado NÃO treme.** O jitter constante de 13-17Hz foi
   o "fricando" apontado pelo dono; tremor só com hurtTime > 0.
 - Dano no jogador tem FloatingText "-N" sobre o painel de HP.
+
+## Leva nova (Out/2026): `tools/pixellab_new_enemies.py` — 24 inimigos, 4 por ato
+
+Fluxo que substituiu create_character + template idle:
+1. `base <id>` — `create_image_pro` com o sprite do roster do MESMO bioma como
+   `style_image` → 4 candidatos (~10 gerações). OLHAR e escolher; recusar
+   "vetor liso", nudez (harpia v1) e cópia de marca (o "beholder" do
+   abyss_watcher v1: olho central + pedúnculos + boca).
+2. `pick <id> <N>` — encaixa com pé a 2px do fundo.
+3. `idle <id>` — idle ASSADO (12 quadros, loop, `fps` + `cycle` na pose)
+   com o motor do `bake_boss_idle.py`: rig genérico tirado do bbox (respira
+   com rampa, pés fixos) + `EXTRA_MOTIONS` (asas, tentáculos). O piloto com
+   `animate_image` derivou e APAGOU o brilho dos olhos do quadro 2 em diante.
+4. hurt/death pela fábrica (`pixellab_enemy_anims.py`, specs lidas da arte).
+   Escudo/cajado são prop rígido no v3: na morte ficam cravados de pé (3
+   tentativas no spectral_knight) — aceito quando o CORPO deita.
+   Pilha que o v3 não derruba: `piledeath` (afunda na terra). Bicho que não
+   morre: cadáver desenhado à parte + `last_frame` pinado (sapo).
+   Cadáver no ar: `grounddeath`. Faísca solta: `clean`.
+
+**Canvas ≤ 80px de altura = escala inteira mínima 4** (regra do roster legado
+em `EnemyRenderer.draw`): o morcego (72px) saía GIGANTE. Bicho largo e baixo
+ganha folga transparente em cima (e os `yr` dos emissivos são recalculados).
+Validar no bioma: `ENEMY_SCENE_ID=<id> ENEMY_SCENE_VIRTUAL=1920x1080 love .
+screenshot_enemy_scene <ato>_<nodeType>`.
