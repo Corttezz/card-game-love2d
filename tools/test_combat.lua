@@ -86,6 +86,31 @@ function M.run()
         t:eq("dano = ataque + força", g.enemy.health, enemyHp - (atk2.attack + 3))
     end
 
+    -- ===== COMBO v3 no combate real: a leva grande cresce LINEAR =====
+    -- 3 golpes: Impeto (+1 Forca antes das cartas) -> x1.5 em cada golpe e o
+    -- +10 do Triplo Golpe UMA vez (na 1a carta). Antes: x1.4 e +6 em CADA carta.
+    do
+        local CardDatabase = require("src.systems.CardDatabase")
+        local db = CardDatabase:new()
+        g = TK.newRunGame("warrior"); TK.pump(g, 0.5)
+        g.enemy.health, g.enemy.maxHealth, g.enemy.armor = 500, 500, 0
+        g.player.mana = 10
+        g.hand = {}
+        local strikes = {}
+        for i = 1, 3 do
+            strikes[i] = db:createCardInstance(db:getCard("warrior_strike"))
+            g.hand[i] = strikes[i]
+        end
+        for _, c in ipairs(strikes) do g:selectCard(c) end
+        local a = strikes[1].attack
+        local expected = math.floor((a + 1) * 1.5 + 10) + 2 * math.floor((a + 1) * 1.5)
+        local preview = require("src.systems.DamagePreview").simulate(g, g.selectedCards)
+        g:playSelectedCards()
+        TK.pump(g, 6.0)
+        t:eq("v3: 3 golpes = x1.5 em cada + 10 uma vez", 500 - g.enemy.health, expected)
+        t:eq("v3: previa bate com o golpe real", preview.damage, expected)
+    end
+
     -- ===== Ciclo de turno: endTurn descarta e passa a vez =====
     g = TK.newRunGame("warrior"); TK.pump(g, 0.5)
     t:eq("turno começa no jogador", g.turn, "player")

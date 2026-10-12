@@ -64,7 +64,7 @@ coringa raro depois do chefe.
 | 2 | tower_lich | **Escudo de Gelo** a cada 3º turno (bloqueio grande + Frágil); drena (Frágil + cura) |
 | 3 | abyss_tyrant | **Reunir Chamas** (carga, a cada 3) força **Fogo Infernal** ×2,4 + Queimadura no turno seguinte |
 | 4 | winter_monarch | **Lâmina do Inverno** perfura o Bloqueio; **Inverno Eterno** a cada 3 (Frágil + Fraco) |
-| 5 | rot_colossus | Regeneração passiva 2%/turno (`regen`, beat `enemy.regen`); **Nuvem Pestilenta** envenena o jogador |
+| 5 | rot_colossus | Regeneração passiva 3%/turno (`regen`, beat `enemy.regen`); **Nuvem Pestilenta** envenena o jogador |
 | 6 | eclipse_queen | abaixo de 50% vira o **ECLIPSE** (beat `enemy.phase`, kit novo, dano ×1,3, abre com Eclipse Total) |
 
 ## Espólio do chefe

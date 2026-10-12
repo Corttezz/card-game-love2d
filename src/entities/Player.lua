@@ -56,10 +56,8 @@ function Player:takeDamage(damage, pierce)
 end
 
 -- ===== Debuffs do inimigo =====
--- DoT (poison/burn) soma PILHAS e fica com a MAIOR duração; weak/frail/
--- vulnerable somam duração. Somar as duas coisas no DoT (como o Enemy faz)
--- compunha: duas nuvens de peste = o dobro de dano pelo dobro de turnos — o
--- Colosso do ato 5 matava o piloto pela soma, não pela leitura (bateria Out/2026).
+-- DoT (poison/burn) soma pilhas E duração (mesma aritmética do Enemy);
+-- weak/frail/vulnerable somam só duração.
 local DOT_DEBUFF = { poison = true, burn = true }
 
 function Player:addDebuff(name, duration, stacks)
@@ -68,12 +66,8 @@ function Player:addDebuff(name, duration, stacks)
     self.debuffs = self.debuffs or {}
     for _, d in ipairs(self.debuffs) do
         if d.name == name then
-            if DOT_DEBUFF[name] then
-                d.stacks = (d.stacks or 0) + stacks
-                d.duration = math.max(d.duration, duration)
-            else
-                d.duration = d.duration + duration
-            end
+            d.duration = d.duration + duration
+            if DOT_DEBUFF[name] then d.stacks = (d.stacks or 0) + stacks end
             d.fresh = true
             return d
         end

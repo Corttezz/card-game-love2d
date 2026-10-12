@@ -20,7 +20,8 @@
 - [Architecture Map](architecture.md) — state machine, Game.lua orquestrador, sistemas (TagSystem/ComboSystem/MapManager/ActSystem)
 - [Gameplay Systems](gameplay_systems.md) — turnos pós-redesign, tipos de carta, efeitos data-driven, turnContext
 - [Tag System](tag_system.md) — catálogo canônico de tags e normalização
-- [Combo Rules](combo_rules.md) — 11 regras ativas do ComboSystem e como adicionar novas
+- [Combo Rules](combo_rules.md) — ComboSystem v3: as 3 leis (alvo, maior multiplicador vence, plano 1x/leva) + regras e como adicionar
+- [Damage Preview](damage_preview.md) — previa de dano: conta da carta em fonte unica, simulacao da leva, painel no JOGAR, trava test_damage_preview
 - [Run Progression](run_progression.md) — atos, tipos de nó, fluxo entre batalhas, endless mode
 - [Balance Curves](balance_curves.md) — números-alvo (HP, dano, gold, raridade) por ato
 - [Dados do Escriba](scribe_dice.md) — mini-jogo de ouro da loja (2d6, EV ~justo, 1 jogada/visita, Rng "shop" + save no frame do sorteio); tela modal em zonas, arte PixelLab + faces pixel a pixel, `test_scribe_dice`

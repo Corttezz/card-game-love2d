@@ -43,9 +43,10 @@ function M.run()
     check("strike_combo dispara com 2 ataques", #ctx1.activeCombos >= 1)
     local card = { type = "attack" }
     local dmg = ComboSystem.applyToCardValue(card, 10, ctx1)
-    check("strike_combo multiplica 10 -> 14", dmg == 14)
+    check("strike_combo multiplica 10 -> 15", dmg == 15)
 
-    -- 2. triple_strike: 3+ ataques acumula 1.4x e +6
+    -- 2. triple_strike: 3+ ataques — x1.5 em cada golpe e +10 UMA VEZ (combo
+    -- v3: o plano e por leva, na primeira carta-alvo; antes era +6 por carta)
     local ctx2 = makeContext({
         { type = "attack" },
         { type = "attack" },
@@ -58,9 +59,12 @@ function M.run()
         if c.id == "triple_strike" then hasTriple = true end
     end
     check("triple_strike dispara com 3 ataques", hasTriple)
-    local dmg2 = ComboSystem.applyToCardValue({ type = "attack" }, 10, ctx2)
-    -- 10 * 1.4 (strike_combo) + 6 (triple) = 20
-    check("triple combina multiplier e bonus: 10 -> 20", dmg2 == 20)
+    local first = ctx2.allSelectedCards[1]
+    local dmg2 = ComboSystem.applyToCardValue(first, 10, ctx2)
+    -- 10 * 1.5 (strike_combo) + 10 (triple, so na 1a carta da leva) = 25
+    check("triple: 1o golpe leva x1.5 e +10: 10 -> 25", dmg2 == 25)
+    local dmg2b = ComboSystem.applyToCardValue(ctx2.allSelectedCards[2], 10, ctx2)
+    check("triple: 2o golpe so x1.5 (plano e por leva): 10 -> 15", dmg2b == 15)
 
     -- 3. defend_wall: 2 defesas
     local ctx3 = makeContext({
@@ -69,7 +73,7 @@ function M.run()
     })
     ComboSystem.detect(ctx3)
     local def = ComboSystem.applyToCardValue({ type = "defense" }, 10, ctx3)
-    check("defend_wall multiplica 10 -> 14", def == 14)
+    check("defend_wall multiplica 10 -> 15", def == 15)
 
     -- 4. cycle_motion: pair_tags draw+discard
     local ctx4 = makeContext({
@@ -151,6 +155,42 @@ function M.run()
         if c.id == "channel_burst" then hasBurst3 = true end
     end
     check("channel_burst dispara com 3 channels", hasBurst3)
+
+    -- ===== COMBO v3: intencao, nao volume (Out/2026) =====
+    -- 11. multiplicadores de combo NAO compoem: o maior vence na carta.
+    --     O finisher magico qualificaria x1.5 (golpes), x1.6 (remate) e
+    --     x1.5 (arcano) — leva so o x1.6.
+    local fin = { type = "attack", tags = { "strike", "finisher", "magic" } }
+    local ctx11 = makeContext({
+        { type = "attack", tags = { "strike", "magic" } },
+        fin,
+    })
+    ComboSystem.detect(ctx11)
+    local v11 = ComboSystem.applyToCardValue(fin, 10, ctx11)
+    check("v3: so o MAIOR multiplicador de combo vale (10 -> 16)", v11 == 16)
+
+    -- 12. o bonus vale so pra carta que FORMA o combo: 2 magicos ligam x1.5,
+    --     mas o golpe sem tag magic nao ganha nada do arcano (so o x1.5 dos
+    --     golpes — ataque sem tag vira "strike" implicito no TagSystem).
+    local plainAtk = { type = "attack", tags = { "poison" } }
+    local ctx12 = makeContext({
+        { type = "attack", tags = { "magic" } },
+        { type = "attack", tags = { "magic" } },
+        plainAtk,
+    })
+    ComboSystem.detect(ctx12)
+    local v12 = ComboSystem.applyToCardValue(plainAtk, 10, ctx12)
+    -- (os dois magicos sem tag de golpe viram "strike" implicito: 3 golpes)
+    check("v3: carta fora do combo arcano so leva o x1.5 dos golpes (10 -> 15)", v12 == 15)
+
+    -- 13. leva grande cresce LINEAR: 5 golpes de 6 = 5*6*1.5 + 10
+    local five = {}
+    for i = 1, 5 do five[i] = { type = "attack" } end
+    local ctx13 = makeContext(five)
+    ComboSystem.detect(ctx13)
+    local total = 0
+    for _, c in ipairs(five) do total = total + ComboSystem.applyToCardValue(c, 6, ctx13) end
+    check("v3: 5 golpes de 6 = 55 (era 5*(6*1.4+6) = 72)", math.floor(total + 0.5) == 55)
 
     print(string.format("\n  TOTAL: %d pass / %d fail", pass, fail))
     return fail == 0

@@ -90,12 +90,16 @@ function Panel.update(game, hoverCard, dt)
     end
     if isBusy(game) then
         if not state.frozen and state.live then
-            state.frozen = { R = state.live, hp0 = state.live.enemyHealth }
+            state.frozen = { R = state.live, hp0 = state.live.enemyHealth, enemy = game.enemy }
         end
         state.doneT = nil
         state.hover = nil
         state.badges = {}
         return
+    end
+    -- inimigo novo (a luta acabou durante o "segura o total"): previa velha sai
+    if state.frozen and state.frozen.enemy ~= game.enemy then
+        state.frozen, state.doneT = nil, nil
     end
     if state.frozen then
         state.doneT = (state.doneT or 0) + (dt or 0)
@@ -129,11 +133,6 @@ function Panel.update(game, hoverCard, dt)
             end
         end
     end
-end
-
-function Panel.reset()
-    state.live, state.frozen, state.doneT, state.hover = nil, nil, nil, nil
-    state.badges = {}
 end
 
 -- Previa visivel agora (live ou congelada) — usada pela barra do inimigo.

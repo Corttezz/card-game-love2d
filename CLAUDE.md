@@ -251,20 +251,23 @@ Ver `memory/gameplay_systems.md` para referência completa.
 
 Catálogo em `src/systems/TagSystem.lua` (`TagSystem.CATALOG`), categorias: archetype, mechanic, element, role.
 
-**ComboSystem** detecta sinergias entre cartas do MESMO turno via `turnContext.tagCounts`:
-- `strike_combo` — 2+ `strike` → dano ×1.4
-- `triple_strike` — 3+ `strike` → +6 dano
-- `defend_wall` — 2+ `defend` → defesa ×1.4
-- `poison_stack` — 2+ `poison` → aplica poison extra
-- `channel_burst` — 3+ `channel` → evoca 1 orb
-- `cycle_motion` — `draw` + `discard` → +3 dano
-- `finisher_chain` — `strike` + `finisher` → ×1.3
-- `lifesteal_burst` — `strike` + `lifesteal` → +4 HP
-- `magic_focus` — 2+ `magic` → ×1.5
-- `thorn_reflex` — `defend` + `thorn` → +4 defesa
-- `armor_tower` — 2+ `armor` → +6 defesa
+**ComboSystem** detecta sinergias entre cartas da MESMA JOGADA (leva) via `turnContext.tagCounts`. **Combo v3 (Out/2026, "intenção, não volume")** — três leis em `ComboSystem.cardSteps`: (1) o bônus vale só pras cartas que FORMAM o combo (`appliesTo`, padrão = a tag da regra); (2) numa carta só o MAIOR multiplicador de combo vale (mesma lei dos coringas); (3) bônus plano com `once` entra UMA vez por leva, na 1ª carta-alvo. Antes a 5ª carta somava mais que a 2ª (todo bônus em toda carta, multiplicadores compondo ×1.4×1.3×1.5) e "selecionar tudo" era sempre a jogada — queixa do dono.
+- `strike_combo` — 2+ `strike` → cada strike ×1.5
+- `triple_strike` — 3+ `strike` → +10 dano, 1×/leva
+- `defend_wall` — 2+ `defend` → cada defend ×1.5
+- `armor_tower` — 2+ `armor` → +10 defesa, 1×/leva
+- `poison_stack` — 2+ `poison` → +2 veneno no fim
+- `channel_burst` — 3+ `channel` → evoca 1 orbe no fim
+- `cycle_motion` — `draw` + `discard` → +6 no 1º ataque
+- `finisher_chain` — `strike` + `finisher` → a carta finisher ×1.6
+- `lifesteal_burst` — `strike` + `lifesteal` → cura 4
+- `magic_focus` — 2+ `magic` → cada carta magic ×1.5
+- `thorn_reflex` — `defend` + `thorn` → +6 defesa na carta thorn, 1×/leva
+- `tempestade` / `zero_absoluto` — 2+ `lightning` / `ice` → +6 dano no 1º ataque / +6 defesa na 1ª defesa
 
-Combos compõem: `10 dmg` × `strike_combo 1.4` + `triple_strike 6` × `joker 2.0` = `52`. Ver `memory/combo_rules.md` para adicionar regra nova.
+Exemplo: 3 golpes de 10 com joker ×2.0 = (10×1.5+10 + 10×1.5 + 10×1.5) × 2 = `110` (v2: 120, e crescia mais rápido a cada carta — 5 golpes de 6: v2 72, v3 55). Os valores x1.5/+10 saíram da bateria (x1.4/+8 deixou o guerreiro em 30%).
+
+**Prévia de dano (Out/2026):** a conta de UMA carta mora em `DamagePreview.cardValue` (`src/systems/DamagePreview.lua`) — o combate (`Game:_resolveCardInCombat`) chama a MESMA função e só adiciona efeitos colaterais; `DamagePreview.simulate` simula a leva inteira (Ímpeto, Vulnerável/Força ganhos no meio, orbes, Bloqueio do inimigo, morte no meio). O painel (`src/ui/DamagePreviewPanel.lua`) mostra acima do JOGAR o total, LETAL, combos/coringas (hover explica) e a conta carta a carta; a barra do inimigo pisca o trecho que sai; carta que fecharia combo ganha selo `+COMBO`. Trava: `love . test_one test_damage_preview` (300 levas reais, divergência 0). Mudou `Enemy:takeDamage`, orbes ou efeitos? Atualize o `simulate`. Ver `memory/combo_rules.md` e `memory/damage_preview.md`.
 
 ---
 
@@ -471,7 +474,8 @@ O diretório `memory/` na raiz do projeto guarda notas persistentes que compleme
 - [`memory/architecture.md`](memory/architecture.md) — mapa detalhado das camadas (core/systems/components/ui/pixel art).
 - [`memory/gameplay_systems.md`](memory/gameplay_systems.md) — turnos, turnContext, efeitos processados, dois modos de deck.
 - [`memory/tag_system.md`](memory/tag_system.md) — catálogo canônico de tags.
-- [`memory/combo_rules.md`](memory/combo_rules.md) — 11 regras ativas do ComboSystem.
+- [`memory/combo_rules.md`](memory/combo_rules.md) — regras do ComboSystem v3 (alvo, maior multiplicador vence, plano 1×/leva).
+- [`memory/damage_preview.md`](memory/damage_preview.md) — prévia de dano: `DamagePreview.cardValue` fonte única, `simulate` da leva, painel no JOGAR, trava `test_damage_preview`.
 - [`memory/run_progression.md`](memory/run_progression.md) — atos, nodes, flow entre batalhas, endless.
 - [`memory/balance_curves.md`](memory/balance_curves.md) — HP/dano/gold/raridade por ato.
 - [`memory/archetypes.md`](memory/archetypes.md) — 10 builds viáveis + cartas-âncora.

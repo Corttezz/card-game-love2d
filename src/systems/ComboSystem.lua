@@ -69,27 +69,55 @@ local function raiseComboBanner(turnContext)
     notifyComboUI(turnContext.activeCombos)
 end
 
--- Regras ativas. Ordem importa: combos superiores no pipeline aplicam antes.
--- id tambem serve de chave i18n (messages.combo.<id>) no futuro.
+-- ============================================================================
+-- COMBO v3 — INTENCAO, NAO VOLUME (Out/2026)
+-- ============================================================================
+-- Queixa do dono: "o combo de muitas cartas da dano demais... vira
+-- automatico: seleciona um milhao de cartas e pronto, nao precisa pensar".
+-- A leva grande era SEMPRE a melhor porque o combo crescia mais rapido que o
+-- numero de cartas (medido: tools/balance_sim, secao "Jogadas"):
+--   * todo bonus valia pra TODA carta de ataque/defesa da leva, tivesse ela a
+--     tag do combo ou nao;
+--   * os multiplicadores de combo se MULTIPLICAVAM entre si
+--     (x1.4 golpes * x1.3 remate * x1.5 arcano = x2.73, antes dos coringas);
+--   * bonus planos (+6 do Triplo Golpe, +5 da Tempestade...) entravam UMA VEZ
+--     POR CARTA — a 5a carta somava mais que a 2a.
+-- Tres regras novas, as mesmas da camada de coringas (P0.9):
+--   1. ALVO: o bonus vale so pras cartas que FORMAM o combo (`appliesTo`,
+--      padrao = a tag da regra). "*" = qualquer carta do tipo certo.
+--   2. MAIOR MULTIPLICADOR VENCE: numa carta, so o maior multiplicador de
+--      combo conta; os outros nao compoem. Planos somam.
+--   3. PLANO E POR LEVA (`once`): o bonus fixo entra UMA vez, na primeira
+--      carta da leva que ele alcanca — premio de montar o combo, nao de
+--      empilhar cartas.
+-- Resultado: o dano cresce LINEAR com o numero de cartas; o que paga e
+-- escolher QUAIS cartas vao juntas.
+--
+-- `id` e a chave i18n (combos.<id>); `label` e fallback.
 ComboSystem.RULES = {
+    -- v3: x1.4 -> x1.5. O x1.4 compunha com os outros multiplicadores e
+    -- valia ate em carta sem a tag; sozinho e so nos golpes, x1.5 devolve o
+    -- poder que a bateria mostrou perdido (warrior 40% -> 30% com x1.4).
     { id = "strike_combo",
       rule = "min_count_tag", tag = "strike", minCount = 2,
-      bonus = { type = "damage_multiplier", value = 1.4 },
+      bonus = { type = "damage_multiplier", value = 1.5 },
       label = "Combo de Ataques" },
 
     { id = "defend_wall",
       rule = "min_count_tag", tag = "defend", minCount = 2,
-      bonus = { type = "defense_multiplier", value = 1.4 },
+      bonus = { type = "defense_multiplier", value = 1.5 },
       label = "Muralha" },
 
+    -- v3: +6 POR golpe (3 golpes = +18, 5 = +30) -> +10 uma vez por leva.
     { id = "triple_strike",
       rule = "min_count_tag", tag = "strike", minCount = 3,
-      bonus = { type = "damage_bonus", value = 6 },
+      bonus = { type = "damage_bonus", value = 10, once = true },
       label = "Triplo Golpe" },
 
+    -- v3: +6 por defesa -> +10 uma vez por leva.
     { id = "armor_tower",
       rule = "min_count_tag", tag = "armor", minCount = 2,
-      bonus = { type = "defense_bonus", value = 6 },
+      bonus = { type = "defense_bonus", value = 10, once = true },
       label = "Torre de Armaduras" },
 
     { id = "poison_stack",
@@ -102,16 +130,22 @@ ComboSystem.RULES = {
       bonus = { type = "evoke_on_combo", value = 1 },
       label = "Explosao Arcana" },
 
+    -- v3: +5 em todo ataque -> +6 no primeiro ataque da leva (as cartas de
+    -- compra/descarte quase nunca sao ataques: o premio vai pro golpe).
     { id = "cycle_motion",
       rule = "pair_tags", requires = { "draw", "discard" },
-      -- Rebalance v2 (Jul/2026, P1.2): +3 -> +5 (warrior/rogue ganharam
-      -- massa de draw+discard; o combo precisava pagar o setup).
-      bonus = { type = "damage_bonus", value = 5 },
+      appliesTo = "*",
+      bonus = { type = "damage_bonus", value = 6, once = true },
       label = "Em Movimento" },
 
+    -- v3: x1.3 em todo ataque -> x1.6 so no REMATE (a carta finisher). Com
+    -- o maior-vence, um x1.3 perderia sempre pro x1.5 do Combo de Ataques
+    -- (todo finisher tambem e golpe) — o remate precisa valer mais pra que
+    -- montar golpe + finisher seja uma decisao.
     { id = "finisher_chain",
       rule = "pair_tags", requires = { "strike", "finisher" },
-      bonus = { type = "damage_multiplier", value = 1.3 },
+      appliesTo = "finisher",
+      bonus = { type = "damage_multiplier", value = 1.6 },
       label = "Remate" },
 
     { id = "lifesteal_burst",
@@ -126,23 +160,27 @@ ComboSystem.RULES = {
       -- com o nome da carta mage_arcane_focus).
       label = "Convergencia Arcana" },
 
+    -- v3: +6 em toda defesa -> +6 uma vez, na carta de espinhos.
     { id = "thorn_reflex",
       rule = "pair_tags", requires = { "defend", "thorn" },
-      -- Rebalance v2 (Jul/2026, P1.2): +4 -> +6 (agora ha massa critica de
-      -- thorn em CARTA: Escudo de Espinhos + thorn_cloak + flame_barrier).
-      bonus = { type = "defense_bonus", value = 6 },
+      appliesTo = "thorn",
+      bonus = { type = "defense_bonus", value = 6, once = true },
       label = "Reflexos Espinhados" },
 
-    -- Rebalance v2 (Jul/2026, P1.3): combos elementais novos — payoff das
-    -- tags lightning/ice (ja no CATALOG) pro Canalizador do mago.
+    -- Rebalance v2 (Jul/2026, P1.3): combos elementais — payoff das tags
+    -- lightning/ice pro Canalizador do mago. v3: +5 por ataque -> +6 uma vez.
     { id = "tempestade",
       rule = "min_count_tag", tag = "lightning", minCount = 2,
-      bonus = { type = "damage_bonus", value = 5 },
+      appliesTo = "*",
+      bonus = { type = "damage_bonus", value = 6, once = true },
       label = "Tempestade" },
 
+    -- Nao ha DEFESA com tag ice no catalogo: o Bloqueio vai pra primeira
+    -- defesa da leva ("*"), como antes ia pra todas.
     { id = "zero_absoluto",
       rule = "min_count_tag", tag = "ice", minCount = 2,
-      bonus = { type = "defense_bonus", value = 5 },
+      appliesTo = "*",
+      bonus = { type = "defense_bonus", value = 6, once = true },
       label = "Zero Absoluto" },
 }
 
@@ -196,36 +234,76 @@ end
 -- Aplica combos de valor (damage_*/defense_*) sobre um valor base para uma carta.
 -- Chamado pelo Game:processCardInCombat depois do applyCardEffects e ANTES dos jokers.
 -- Isso garante que jokers com multiplicador multipliquem o valor ja potencializado.
+-- Tags que a CARTA precisa ter pro bonus valer nela (combo v3).
+-- nil = qualquer carta do tipo certo.
+local function targetTags(rule)
+    if rule.appliesTo == "*" then return nil end
+    if rule.appliesTo then
+        return type(rule.appliesTo) == "table" and rule.appliesTo or { rule.appliesTo }
+    end
+    if rule.tag then return { rule.tag } end
+    return rule.requires   -- par sem alvo declarado: qualquer tag do par
+end
+
+-- O tipo de carta que o bonus alcanca (dano -> ataque, defesa -> defesa).
+local BONUS_CARD_TYPE = {
+    damage_multiplier = "attack", damage_bonus = "attack",
+    defense_multiplier = "defense", defense_bonus = "defense",
+}
+
+-- A carta FORMA o combo `rule`? (tipo certo + tag do alvo)
+function ComboSystem.cardIsTarget(rule, card)
+    local b = rule.bonus or {}
+    if not card or BONUS_CARD_TYPE[b.type] ~= card.type then return false end
+    local tags = targetTags(rule)
+    if not tags then return true end
+    for _, tag in ipairs(tags) do
+        if TagSystem.cardHasTag(card, tag) then return true end
+    end
+    return false
+end
+
+-- Bonus `once`: so a PRIMEIRA carta-alvo da leva (ordem de resolucao).
+local function isFirstTarget(rule, card, turnContext)
+    for _, c in ipairs(turnContext.allSelectedCards or {}) do
+        if ComboSystem.cardIsTarget(rule, c) then return c == card end
+    end
+    return true
+end
+
 -- Versao PURA (sem banner): devolve (valor, passos). `passos` e a lista de
 -- { combo, op = "mult"|"add", value, after } que a previa de dano
 -- (src/systems/DamagePreview.lua) mostra ao jogador — a MESMA conta que o
 -- combate faz, entao previa == resultado por construcao.
+-- Ordem: o MAIOR multiplicador de combo da carta (so ele) e depois os planos
+-- (plano nao e multiplicado: +8 e +8).
 function ComboSystem.cardSteps(card, baseValue, turnContext)
     local steps = {}
     if not turnContext or not turnContext.activeCombos then return baseValue, steps end
-    local v = baseValue
+    local bestMult, adds = nil, {}
     for _, combo in ipairs(turnContext.activeCombos) do
         local b = combo.bonus
-        if b then
-            local op, val
-            if card.type == "attack" then
-                if b.type == "damage_multiplier" then op = "mult"
-                elseif b.type == "damage_bonus" then op = "add" end
-            elseif card.type == "defense" then
-                if b.type == "defense_multiplier" then op = "mult"
-                elseif b.type == "defense_bonus" then op = "add" end
-            end
-            if op == "mult" then
-                val = b.value or 1
-                v = v * val
-            elseif op == "add" then
-                val = b.value or 0
-                v = v + val
-            end
-            if op then
-                steps[#steps + 1] = { combo = combo, op = op, value = val, after = v }
+        if b and ComboSystem.cardIsTarget(combo, card) then
+            if b.type == "damage_multiplier" or b.type == "defense_multiplier" then
+                if not bestMult or (b.value or 1) > (bestMult.bonus.value or 1) then
+                    bestMult = combo
+                end
+            elseif (b.type == "damage_bonus" or b.type == "defense_bonus")
+                and (not b.once or isFirstTarget(combo, card, turnContext)) then
+                adds[#adds + 1] = combo
             end
         end
+    end
+    local v = baseValue
+    if bestMult then
+        v = v * (bestMult.bonus.value or 1)
+        steps[#steps + 1] = { combo = bestMult, op = "mult",
+            value = bestMult.bonus.value or 1, after = v }
+    end
+    for _, combo in ipairs(adds) do
+        v = v + (combo.bonus.value or 0)
+        steps[#steps + 1] = { combo = combo, op = "add",
+            value = combo.bonus.value or 0, after = v }
     end
     return v, steps
 end

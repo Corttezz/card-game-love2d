@@ -174,6 +174,18 @@ function M.run()
     settle(GS, 0.6)
     capture("lethal")
 
+    -- 4b. mago: orbes canalizando/evocando e cartas magicas (extras do painel)
+    game.selectedClass = "mage"
+    game.player.strength = 0
+    game.jokerSlots = {}
+    game.player.orbs = { { type = "lightning", value = 4 }, { type = "dark", value = 5 } }
+    setupHand(game, { "mage_zap", "mage_twin_bolts", "mage_dualcast",
+        "mage_mind_spike", "mage_magic_barrier" }, 4)
+    settle(GS, 0.6)
+    capture("mage")
+    game.selectedClass = "warrior"
+    game.player.orbs = {}
+
     -- 5. no meio da resolucao
     game.enemy.health = game.enemy.maxHealth
     setupHand(game, { "warrior_strike", "warrior_twin_strike", "warrior_bash",

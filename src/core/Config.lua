@@ -161,7 +161,7 @@ Config.Acts = {
         number = 4, name = "Cidadela Gelada", floors = 8,
         enemyHP    = function(f) return 250 + f * 22 end, -- f=1: 272, f=8: 426
         enemyDmg   = function(f) return 22 + f * 3.0 end, -- f=1: 25, f=8: 46  (teto 60)
-        bossHP = 600, bossDmg = 33,   -- Out/2026 kits: chefe mais curto; o perigo vem do kit
+        bossHP = 660, bossDmg = 32,
         eliteHPMul = 1.75, eliteDmgMul = 1.45,
         rarityWeights = { common = 10, uncommon = 40, rare = 38, legendary = 12 },
         interActHeal = 0.40,
@@ -170,7 +170,7 @@ Config.Acts = {
         number = 5, name = "Coracao Putrido", floors = 8,
         enemyHP    = function(f) return 380 + f * 32 end, -- f=1: 412, f=8: 636
         enemyDmg   = function(f) return 27 + f * 3.5 end, -- f=1: 30, f=8: 55  (teto 70)
-        bossHP = 880, bossDmg = 38,   -- (regenera: luta longa é dele)
+        bossHP = 990, bossDmg = 38,
         eliteHPMul = 1.80, eliteDmgMul = 1.50,
         rarityWeights = { common = 5,  uncommon = 35, rare = 44, legendary = 16 },
         interActHeal = 0.40,
@@ -179,7 +179,7 @@ Config.Acts = {
         number = 6, name = "Corte do Eclipse", floors = 8,
         enemyHP    = function(f) return 560 + f * 45 end, -- f=1: 605, f=8: 920
         enemyDmg   = function(f) return 32 + f * 4.0 end, -- f=1: 36, f=8: 64  (teto 80)
-        bossHP = 1200, bossDmg = 46,  -- era 1430/45: esponja de 16 turnos (auditoria)
+        bossHP = 1430, bossDmg = 45,
         eliteHPMul = 1.85, eliteDmgMul = 1.50,
         rarityWeights = { common = 0,  uncommon = 28, rare = 50, legendary = 22 },
         interActHeal = 0.40,

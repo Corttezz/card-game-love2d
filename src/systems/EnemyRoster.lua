@@ -98,20 +98,13 @@ end
 -- Monta o inimigo: escala vida/dano pelo kit e instala o kit (rola o 1º
 -- intent). `Enemy` vem por parâmetro pra este módulo não depender da
 -- entidade (testes injetam a classe real).
--- `act` (opcional) aplica a escala de dano do ato (DAMAGE_SCALE_BY_ACT);
--- endless usa a do último ato.
-function EnemyRoster.spawn(Enemy, id, stats, act)
+function EnemyRoster.spawn(Enemy, id, stats)
     local kit = EnemyKits.KITS[id]
     if not kit then
         print("[EnemyRoster] sem kit para '" .. tostring(id) .. "' — inimigo genérico")
     end
-    local scales = EnemyKits.DAMAGE_SCALE_BY_ACT or {}
-    local actScale = 1
-    if act then actScale = scales[math.min(math.max(1, act), #scales)] or 1 end
     local hp = math.max(1, math.floor((stats.health or 20) * ((kit and kit.hpMul) or 1)))
-    if stats.kind == "boss" then actScale = actScale * (EnemyKits.BOSS_DAMAGE_SCALE or 1) end
-    local dmg = math.max(1, math.floor((stats.damage or 5)
-        * ((kit and kit.dmgMul) or 1) * actScale))
+    local dmg = math.max(1, math.floor((stats.damage or 5) * ((kit and kit.dmgMul) or 1)))
     local enemy = Enemy:new(hp, dmg, kit and id or "generic")
     enemy.spriteId = id
     return enemy

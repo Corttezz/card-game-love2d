@@ -331,6 +331,16 @@ function M.run()
         t:eq("procs: rótulo do flat", procs[2].label, "+3")
         t:eq("predictJokerProcs bate com o real", es:predictJokerProcs(g, atkCard), 3)
         t:eq("predictJokerProcs: carta de efeito não proca", es:predictJokerProcs(g, { type = "effect" }), 0)
+
+        -- Previa de dano (Out/2026): jokerSteps e o NUCLEO PURO de
+        -- applyJokerEffects — mesmo valor, nada mexido no game.
+        local msgs = #(g.messages or {})
+        local pv, entries, echoUsed = es:jokerSteps(g, atkCard, 10, nil, false)
+        t:eq("jokerSteps: mesmo valor do combate (25)", pv, 25)
+        t:eq("jokerSteps: uma entrada por joker que mexeu", #entries, 3)
+        t:eq("jokerSteps: entrada do maior multiplicador", entries[1].op, "mult")
+        t:falsy("jokerSteps: sem Eco nesta mesa", echoUsed)
+        t:eq("jokerSteps: nao emite toast (puro)", #(g.messages or {}), msgs)
     end
 
     -- ===== ECO: dobra a PRIMEIRA carta de ataque do turno (Set/2026) =====
