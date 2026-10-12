@@ -76,7 +76,7 @@ function M.run(arg)
         cs:show(function() end, function() end); simulate(cs, 1.0); return cs
     end)
     add("settings", function()
-        local sm = require("components.SettingsMenu"):new(); sm:show(); simulate(sm, 0.5); return sm
+        local sm = require("components.SettingsMenu"):new(); sm:show(); sm:setTab(2); simulate(sm, 0.5); return sm
     end)
     add("pause", function()
         local p = require("components.PauseMenu"):new(); p:show(game, {}); simulate(p, 0.5); return p
