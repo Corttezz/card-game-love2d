@@ -21,10 +21,10 @@ end
 -- Cache dos ícones de intent (preguiçoso). Mapa kind -> ícone: o kind é a
 -- categoria de LEITURA do golpe (src/data/enemies.lua).
 local INTENT_ICON = {
-    attack = "intent_attack", strong = "intent_attack", multi = "intent_attack",
+    attack = "intent_attack", strong = "intent_attack", multi = "intent_multi",
     defend = "intent_defense", defense = "intent_defense",
-    buff = "status_strength", heal = "status_regen",
-    debuff = "status_weak", charge = "status_fury", summon = "claw",
+    buff = "intent_buff", heal = "intent_heal",
+    debuff = "intent_debuff", charge = "intent_charge", summon = "intent_summon",
 }
 local intentIcons = {}
 local function getIconByName(name)
@@ -42,7 +42,7 @@ end
 
 -- Ícone do status de um debuff (pequeno, ao lado do número).
 local DEBUFF_ICON = {
-    weak = "status_weak", vulnerable = "status_vulnerable", frail = "armor_plate",
+    weak = "status_weak", vulnerable = "status_vulnerable", frail = "status_frail",
     poison = "status_poison", burn = "status_burn",
 }
 
@@ -83,6 +83,11 @@ function EnemyHud.intentSpec(enemy, player)
 
     local extras = {}
     local lines = {}
+    -- PERFURANTE: ícone próprio (lança furando placa) logo depois do número
+    -- — o risco vermelho sobre o ícone do ataque lia como "ataque cancelado".
+    if it.pierce and (it.perHit or 0) > 0 then
+        extras[#extras + 1] = "intent_pierce"
+    end
     if (it.armor or 0) > 0 and kind ~= "defend" then
         extras[#extras + 1] = "intent_defense"
     end
@@ -409,16 +414,6 @@ function EnemyHud.drawIntent(enemy, cx, topY, boxXOverride, boxYOverride, player
         local iconX = boxX + padX + math.floor((iconSize - iw * scale) / 2)
         local iconY = boxY + padY + math.floor((iconSize - iconH * scale) / 2)
         icon.draw(iconX, iconY, scale)
-    end
-
-    -- PERFURANTE: o golpe atravessa o Bloqueio — barra vermelha cortando o
-    -- canto do ícone (a mesma leitura do "escudo quebrado").
-    if spec.pierce then
-        love.graphics.setColor(1, 0.25, 0.2, 0.95)
-        love.graphics.setLineWidth(3)
-        local ix, iy = boxX + padX, boxY + padY
-        love.graphics.line(ix + iconSize - 4, iy + 2, ix + 4, iy + iconSize - 2)
-        love.graphics.setLineWidth(1)
     end
 
     -- Hover no box → tooltip com o NOME do golpe e o que ele faz, montado dos
