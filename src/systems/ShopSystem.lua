@@ -458,6 +458,46 @@ function ShopSystem:getCurrentOffers()
     return self.currentOffers
 end
 
+-- Cópia só-dados de uma oferta (sem cardInstance, funções ou objetos com
+-- metatable): é o que cabe no save via SaveManager.serialize.
+local function plainCopy(v, depth)
+    local t = type(v)
+    if t == "number" or t == "string" or t == "boolean" then return v end
+    if t ~= "table" or depth > 4 or getmetatable(v) then return nil end
+    local out = {}
+    for k, x in pairs(v) do
+        local kt = type(k)
+        if (kt == "string" or kt == "number") and k ~= "cardInstance" then
+            out[k] = plainCopy(x, depth + 1)
+        end
+    end
+    return out
+end
+
+-- VITRINE NO SAVE (anti-save-scum, Out/2026): a loja/recompensa gerada para
+-- um nó é estado da run. Antes, "Salvar e sair" + Continuar regerava as
+-- ofertas com o RNG já avançado — restock grátis, reroll zerado e itens
+-- comprados de volta à prateleira. exportState/importState levam ofertas
+-- (com `purchased`), preços (forja inclusa) e o contador/custo de reroll.
+function ShopSystem:exportState()
+    local offers = {}
+    for i, o in ipairs(self.currentOffers or {}) do offers[i] = plainCopy(o, 0) end
+    return {
+        mode = self.mode,
+        offers = offers,
+        refreshCount = self.refreshCount,
+        refreshCost = self.refreshCost,
+    }
+end
+
+function ShopSystem:importState(st)
+    local offers = {}
+    for i, o in ipairs((st and st.offers) or {}) do offers[i] = plainCopy(o, 0) end
+    self.currentOffers = offers
+    self.refreshCount = (st and st.refreshCount) or 0
+    self.refreshCost = (st and st.refreshCost) or REROLL_BASE
+end
+
 function ShopSystem:getRefreshCost()
     return self.refreshCost
 end

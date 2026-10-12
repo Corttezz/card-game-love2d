@@ -573,6 +573,52 @@ end
 --   "rewards" = pós-batalha, 3 cartas, sem reroll. Skip = continuar sem bônus.
 --   "shop"    = SHOP node, 4 cartas + 1 voucher + 2 packs, reroll exponencial,
 --               Skip dá +3 ouro de bônus.
+-- ============================================================================
+-- VITRINE NO SAVE (anti-save-scum, Out/2026)
+-- ============================================================================
+-- A loja/recompensa gerada para um nó mora em `currentRun.shopState`, com a
+-- chave do nó. Continuar no mesmo nó RESTAURA (nunca regera); sair do nó
+-- limpa. Chave = modo + ato + andar + nº de nós já escolhidos (mapHistory
+-- cresce a cada nó, então dois nós nunca colidem).
+local function offerNodeKey(run, mode)
+    return ("%s|%d|%d|%d"):format(tostring(mode), run.actNumber or 1,
+        run.floorInAct or 1, #(run.mapHistory or {}))
+end
+CardRewardScreen._offerNodeKey = offerNodeKey
+
+function CardRewardScreen:_run()
+    local rm = self.game and self.game.runManager
+    return rm and rm.currentRun
+end
+
+function CardRewardScreen:_restoreOffers(run)
+    local st = run and run.shopState
+    if not st then return false end
+    if st.key ~= offerNodeKey(run, self.mode) then
+        run.shopState = nil -- resíduo de outro nó
+        return false
+    end
+    self.shopSystem:importState(st)
+    print("[CardRewardScreen] vitrine restaurada do save (" .. st.key .. ")")
+    return true
+end
+
+-- Espelha a vitrine viva no currentRun. `writeNow` grava o checkpoint na
+-- hora; sem ele, o próximo checkpoint (Salvar e sair) leva o estado.
+function CardRewardScreen:_persistOffers(writeNow)
+    local run = self:_run()
+    if not run then return end
+    local st = self.shopSystem:exportState()
+    st.key = offerNodeKey(run, self.mode)
+    run.shopState = st
+    if writeNow and self.game.checkpointRun then self.game:checkpointRun() end
+end
+
+function CardRewardScreen:_clearPersistedOffers()
+    local run = self:_run()
+    if run then run.shopState = nil end
+end
+
 function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
     self.visible = true
     self.game = game
@@ -613,7 +659,10 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
     })
 
     self.shopSystem:setMode(self.mode)
-    self.shopSystem:generateOffers()
+    -- Vitrine JÁ gerada para este nó (Continuar após "Salvar e sair") volta
+    -- idêntica — ofertas, VENDIDO, preços e reroll. Só gera se não houver.
+    local restored = self:_restoreOffers(run)
+    if not restored then self.shopSystem:generateOffers() end
     self.shopOffers = self.shopSystem:getCurrentOffers()
     self.modeConfig = self.shopSystem:getModeConfig()
 
@@ -629,6 +678,14 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
     -- Regra "escolha 1" (rewards): flag zera a cada abertura — sem isto a
     -- SEGUNDA recompensa da run nasceria travada.
     self._rewardTaken = false
+    if restored and self.mode == "rewards" then
+        for _, o in ipairs(self.shopOffers) do
+            if o.purchased and o.type == "card" then self._rewardTaken = true end
+        end
+    end
+    -- Vitrine nova: entra no save JÁ (checkpoint com o RNG pós-geração), pra
+    -- que nem um fechamento abrupto da janela permita re-sortear.
+    if not restored then self:_persistOffers(true) end
 
     Debug.log("[CardRewardScreen] Aberta em modo", self.mode, "com", #self.shopOffers, "ofertas")
 
@@ -791,6 +848,7 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
                 self.shopSystem:refreshOffers()
                 self.shopOffers = self.shopSystem:getCurrentOffers()
                 for i, o in ipairs(self.shopOffers) do o._slot = i end
+                self:_persistOffers()
 
                 self:createCardInstances()
                 self:createOfferButtons()
@@ -987,6 +1045,10 @@ function CardRewardScreen:purchaseOffer(offer, offerId)
         -- Marca purchased ANTES de qualquer side-effect (pack open, addCardToRun)
         -- pra evitar duplo-buy caso input leak durante overlay/animação.
         offer.purchased = true
+        -- VENDIDO entra no currentRun na hora: qualquer save daqui em diante
+        -- (Salvar e sair, toggle de coringa) já leva o slot vendido junto
+        -- com o ouro gasto e a carta no deck.
+        self:_persistOffers()
 
         -- F4 (Voto de Pobreza): qualquer compra em LOJA marca a run.
         if self.mode == "shop" and self.game.runManager
@@ -1580,6 +1642,7 @@ function CardRewardScreen:_refundDeckService(offer)
     end
 
     offer.purchased = false
+    self:_persistOffers()
     self.game:addMessage(
         I18n.t("reward.service_refunded", { n = offer.cost },
             "Compra cancelada - $" .. tostring(offer.cost) .. " devolvido"),
@@ -1700,6 +1763,7 @@ function CardRewardScreen:_exitWithFlourish(keepInst)
     if reducedMotion() then
         playFirstSfx({ "shopLeaveWhoosh", "menuClose" })
         self:hide()
+        self:_clearPersistedOffers()
         if cb then cb() end
         return
     end
@@ -1721,6 +1785,9 @@ function CardRewardScreen:_exitWithFlourish(keepInst)
     EventManager.parallel(EXIT_HOLD, function()
         if not self.visible then return end
         self:hide()
+        -- Saiu do nó: a vitrine deixa de existir (o próximo save, na
+        -- encruzilhada, já não a carrega).
+        self:_clearPersistedOffers()
         if cb then cb() end
     end, EXITQ)
 end

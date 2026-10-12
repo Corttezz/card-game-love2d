@@ -493,7 +493,17 @@ function Game:setJokerActive(ownedIndex, active)
     local ok, reason = self.runManager:setJokerActive(ownedIndex, active)
     if ok then
         self:rebuildJokerSlots()
-        if self.runManager.saveRun then self.runManager:saveRun() end
+        -- Fora da luta, checkpoint (sincroniza ouro/HP): o saveRun cru
+        -- gravava o deck/vitrine ATUAIS com o ouro do checkpoint anterior —
+        -- comprar na loja, trocar coringa e fechar a janela devolvia o ouro
+        -- com a compra no bolso. Na luta segue cru: o save do INÍCIO dela
+        -- (vida cheia do começo) é o que vale.
+        local run = self.runManager.currentRun
+        if run and run.stage ~= "battle" and self.checkpointRun then
+            self:checkpointRun()
+        elseif self.runManager.saveRun then
+            self.runManager:saveRun()
+        end
     end
     return ok, reason
 end

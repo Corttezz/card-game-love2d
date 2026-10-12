@@ -17,7 +17,7 @@ type: project
 - `hasRun()` / `deleteRun()`.
 - `serialize(value)` — exposto pra debug (recursivo, suporta string/number/bool/table).
 
-**Atomic write:** escreve `<path>.tmp`, valida via `love.filesystem.load` (parse ok), só então grava `<path>`. Se crash no meio, save real fica intacto. Limpa `.tmp` órfão na operação seguinte.
+**Atomic write (Out/2026, real):** `SaveManager.writeFile(path, text)` — `.tmp` lido de volta e validado, principal BOM rotaciona pra `.bak` (1 geração), promoção por `os.rename` com fallback verificado. Leitura `readDataFile`: principal → `.tmp` → `.bak`; principal ilegível copiado pra `.corrupt-<ts>`. Perfil (`profile.lua`, via ProfileStats) usa o mesmo caminho; sem geração legível = modo recuperação (não grava). Detalhes e lista do Steam Auto-Cloud em `memory/release_pipeline.md`. Trava: `test_save_integrity`.
 
 **Migrations:**
 - `Migrations.CURRENT_VERSION = "1.1"` (atualizar quando schema mudar).
@@ -73,3 +73,18 @@ Regras que nasceram com isso:
 - `startGame(classId)` faz checkpoint na hora (run nova nasce salva).
 - Save ilegível: `SaveManager.quarantineRun()` → `run.save.lua.corrupt` + aviso
   (ConfirmDialog em modo aviso); o Continuar some do menu.
+
+## Vitrine persistida (anti-save-scum, Out/2026)
+
+Loja e recompensa geradas para um nó moram em `currentRun.shopState`
+(`{key, mode, offers, refreshCount, refreshCost}`; key = modo|ato|andar|#mapHistory).
+`CardRewardScreen:show` RESTAURA se a chave bate (nunca regera) e, quando
+gera, faz checkpoint na hora (RNG pós-geração no disco). Compra/estorno/reroll
+espelham no currentRun; sair do nó (`_exitWithFlourish`) limpa. Antes o
+Continuar regerava com o RNG avançado: restock grátis, reroll zerado, item
+comprado de volta e — na recompensa — uma 2ª carta. `Game:setJokerActive`
+fora da luta usa `checkpointRun` (o saveRun cru gravava a compra com o ouro
+antigo). Eventos já eram seguros: o RNG do evento é salvo na abertura e a
+escolha marca `event_done`. Pacote: não há pausa durante a abertura (captor
+de input); fechar a janela no meio volta ao save da abertura da loja, e o
+pacote, rerolado pelo mesmo estado do stream `shop`, sai idêntico.

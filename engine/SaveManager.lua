@@ -5,7 +5,7 @@
 -- Diferenças vs Balatro:
 --   - Sem thread (LÖVE/OpenAL não justifica pra escala atual).
 --   - Sem string_packer custom — usa serialize() para Lua source code.
---   - Atomic write simulado: escreve .tmp, valida parse, então finaliza.
+--   - Atomic write real: .tmp verificado + rename + uma geração .bak (ver writeFile).
 --   - Versioning + migrations runner integrado em loadRun.
 
 local SaveManager = {}
@@ -88,34 +88,151 @@ local function serialize(o, indent)
 end
 SaveManager.serialize = serialize
 
--- Atomic write. Estratégia: escreve em <path>.tmp, faz parse-check, depois
--- promove pra <path>. Crash no meio do write deixa só o .tmp órfão (limpo
--- no próximo write ou ignorável).
-local function atomicWrite(path, data)
-    local serialized = "return " .. serialize(data)
-    local tmpPath = path .. ".tmp"
+-- Escrita atômica de VERDADE (Out/2026 — auditoria de integridade de save).
+--
+-- O que havia antes: escrevia <path>.tmp, validava e depois REESCREVIA o
+-- <path> final com `love.filesystem.write` — um crash nessa segunda escrita
+-- deixava o arquivo final truncado, e o perfil (que nem passava por aqui)
+-- era gravado direto. Perfil truncado → load caía nos defaults → o próximo
+-- save gravava os defaults por cima: conquistas, desbloqueios e vitórias
+-- perdidos de uma vez.
+--
+-- Protocolo agora (para TODO arquivo persistente: perfil, run, settings):
+--   1. escreve <path>.tmp e LÊ DE VOLTA: bytes iguais + parse + devolve tabela;
+--   2. se o <path> atual é válido, ele vira <path>.bak (uma geração só);
+--      se é inválido, nunca vira .bak (o .bak é a última versão BOA) — vai
+--      pra <path>.corrupt-<timestamp> antes de ser substituído;
+--   3. promove o .tmp com `os.rename` (rename é atômico no mesmo volume).
+--      love.filesystem não tem rename, então o caminho real sai de
+--      `getSaveDirectory()`. No Windows o rename falha com destino existente
+--      (por isso o destino é removido antes) e falha com caminho não-ASCII
+--      (os.rename usa a codepage ANSI; usuário "José" existe) — o FALLBACK
+--      escreve o final direto e confere lendo de volta. Nesse fallback a
+--      janela de risco é coberta pelos outros dois: o .tmp (novo, válido) e o
+--      .bak (anterior, válido) seguem no disco até o final conferir.
+--   Leitura (readDataFile): <path> → <path>.tmp → <path>.bak, o primeiro que
+--   parseia. Principal ilegível é copiado pra .corrupt-<ts> e AVISA alto.
+SaveManager.quarantined = {}  -- path → arquivo .corrupt já gerado nesta sessão
 
-    local ok, err = love.filesystem.write(tmpPath, serialized)
-    if not ok then
-        return false, "tmp write: " .. tostring(err)
+-- Valida o TEXTO de um save: parseia, roda sem ambiente, devolve tabela.
+local function decodeData(raw, name)
+    if type(raw) ~= "string" or raw == "" then return nil, "vazio" end
+    if raw:byte(1) == 27 then return nil, "binary chunk refused" end
+    local chunk, err = loadstring(raw, "=" .. (name or "save"))
+    if not chunk then return nil, err end
+    setfenv(chunk, {})
+    local ok, value = pcall(chunk)
+    if not ok then return nil, tostring(value) end
+    if type(value) ~= "table" then return nil, "nao devolveu tabela" end
+    return value
+end
+SaveManager.decodeData = decodeData
+
+-- Rename no disco real (sobrescrevível nos testes pra simular o fallback).
+function SaveManager._rename(fromRel, toRel)
+    local fs = love.filesystem
+    local dir = fs.getSaveDirectory and fs.getSaveDirectory()
+    if not (dir and dir ~= "" and os and os.rename) then return false end
+    local ok = os.rename(dir .. "/" .. fromRel, dir .. "/" .. toRel)
+    return ok and true or false
+end
+
+local function quarantine(path, raw)
+    if SaveManager.quarantined[path] then return SaveManager.quarantined[path] end
+    local dest = ("%s.corrupt-%s"):format(path, os.date("%Y%m%d-%H%M%S"))
+    if raw and love.filesystem.write(dest, raw) then
+        SaveManager.quarantined[path] = dest
+        print("[SaveManager] !!! " .. path .. " ILEGIVEL — copia preservada em " .. dest)
+        return dest
+    end
+    return nil
+end
+
+-- Grava `text` em `path` com o protocolo acima. `validate(text)` opcional
+-- (default: decodeData). Devolve true ou false, motivo.
+function SaveManager.writeFile(path, text, validate)
+    local fs = love.filesystem
+    validate = validate or function(t) return decodeData(t, path) end
+    local tmpPath, bakPath = path .. ".tmp", path .. ".bak"
+
+    local ok, err = fs.write(tmpPath, text)
+    if not ok then return false, "tmp write: " .. tostring(err) end
+    local back = fs.read(tmpPath)
+    if back ~= text then
+        fs.remove(tmpPath)
+        return false, "tmp readback divergiu"
+    end
+    local good, perr = validate(back)
+    if not good then
+        fs.remove(tmpPath)
+        return false, "tmp parse: " .. tostring(perr)
     end
 
-    -- Validação: se tmp não parseia, abortamos sem promover.
-    local chunk, parseErr = love.filesystem.load(tmpPath)
-    if not chunk then
-        love.filesystem.remove(tmpPath)
-        return false, "tmp parse: " .. tostring(parseErr)
+    -- Rotação: o principal atual só vira .bak se for BOM.
+    if fs.getInfo(path) then
+        local cur = fs.read(path)
+        if cur and validate(cur) then
+            if fs.getInfo(bakPath) then fs.remove(bakPath) end
+            if not SaveManager._rename(path, bakPath) then
+                fs.write(bakPath, cur)
+            end
+        else
+            quarantine(path, cur)
+        end
     end
 
-    -- Promove tmp → final.
-    local ok2, err2 = love.filesystem.write(path, serialized)
-    if not ok2 then
-        love.filesystem.remove(tmpPath)
-        return false, "final write: " .. tostring(err2)
+    -- Promoção.
+    if fs.getInfo(path) then fs.remove(path) end
+    local promoted = SaveManager._rename(tmpPath, path)
+    if not promoted then
+        local ok2, err2 = fs.write(path, text)
+        if not ok2 or fs.read(path) ~= text then
+            -- .tmp (válido) fica no disco: readDataFile o encontra.
+            return false, "final write: " .. tostring(err2)
+        end
     end
-
-    love.filesystem.remove(tmpPath)
+    if fs.read(path) ~= text then
+        return false, "final readback divergiu"
+    end
+    if fs.getInfo(tmpPath) then fs.remove(tmpPath) end
     return true
+end
+
+-- Atomic write de uma tabela (serializa + writeFile).
+local function atomicWrite(path, data)
+    return SaveManager.writeFile(path, "return " .. serialize(data))
+end
+
+-- Lê um arquivo de dados com recuperação. Devolve value, info:
+--   info.source      "main" | "tmp" | "bak" | nil (nada legível)
+--   info.existed     algum dos três arquivos existia
+--   info.mainCorrupt o principal existia e não parseou
+--   info.corruptCopy caminho da cópia .corrupt-<ts>
+function SaveManager.readDataFile(path)
+    local fs = love.filesystem
+    local info = { existed = false, mainCorrupt = false }
+    local order = { { "main", path }, { "tmp", path .. ".tmp" }, { "bak", path .. ".bak" } }
+    for _, entry in ipairs(order) do
+        local which, p = entry[1], entry[2]
+        if fs.getInfo(p) then
+            info.existed = true
+            local raw = fs.read(p)
+            local value, err = decodeData(raw, p)
+            if value then
+                info.source = which
+                if which ~= "main" then
+                    print(("[SaveManager] !!! %s RECUPERADO de %s"):format(path, p))
+                end
+                return value, info
+            end
+            print(("[SaveManager] parse falhou em %s: %s"):format(p, tostring(err)))
+            if which == "main" then
+                info.mainCorrupt = true
+                info.corruptCopy = quarantine(path, raw)
+            end
+        end
+    end
+    return nil, info
 end
 
 -- Carrega um arquivo de DADOS do save dir sem dar a ele poder de codigo.
@@ -132,22 +249,11 @@ function SaveManager.loadDataChunk(path)
     return chunk
 end
 
--- Lê arquivo Lua serializado, retorna `default` em caso de ausência ou corrupção.
+-- Lê arquivo Lua serializado (com recuperação .tmp/.bak), retorna `default`
+-- em caso de ausência ou corrupção total.
 local function safeRead(path, default)
-    if not love.filesystem.getInfo(path) then return default end
-
-    local chunk, err = SaveManager.loadDataChunk(path)
-    if not chunk then
-        print("[SaveManager] parse falhou em " .. path .. ": " .. tostring(err))
-        return default
-    end
-
-    local ok, value = pcall(chunk)
-    if not ok or type(value) ~= "table" then
-        print("[SaveManager] save corrompido em " .. path)
-        return default
-    end
-
+    local value = SaveManager.readDataFile(path)
+    if value == nil then return default end
     return value
 end
 
@@ -209,26 +315,44 @@ end
 -- pra análise). Sem isto o botão Continuar ficava no menu pra sempre e cada
 -- clique falhava calado. Devolve true se havia algo pra mover.
 function SaveManager.quarantineRun()
-    local info = love.filesystem.getInfo(PATHS.run)
-    if not info then return false end
-    local raw = love.filesystem.read(PATHS.run)
-    if raw then love.filesystem.write(PATHS.run .. ".corrupt", raw) end
-    love.filesystem.remove(PATHS.run)
-    print("[SaveManager] save de run ilegivel movido para " .. PATHS.run .. ".corrupt")
-    return true
-end
-
-function SaveManager.hasRun()
-    return love.filesystem.getInfo(PATHS.run) ~= nil
-end
-
-function SaveManager.deleteRun()
-    if love.filesystem.getInfo(PATHS.run) then
-        love.filesystem.remove(PATHS.run)
+    local fs = love.filesystem
+    local base = PATHS.run
+    local any = false
+    for _, p in ipairs({ base, base .. ".tmp", base .. ".bak" }) do
+        if fs.getInfo(p) then
+            any = true
+            -- Só o principal vira .corrupt (o legado que o dono manda pra
+            -- análise); .tmp/.bak de um save que nem assim carregou saem
+            -- junto, senão o Continuar "ressuscitaria" pelo fallback.
+            if p == base then
+                local raw = fs.read(p)
+                if raw then fs.write(base .. ".corrupt", raw) end
+            end
+            fs.remove(p)
+        end
     end
-    -- Limpa eventual .tmp órfão.
-    if love.filesystem.getInfo(PATHS.run .. ".tmp") then
-        love.filesystem.remove(PATHS.run .. ".tmp")
+    if any then
+        print("[SaveManager] save de run ilegivel movido para " .. base .. ".corrupt")
+    end
+    return any
+end
+
+-- Há run se QUALQUER geração existe: um crash entre a rotação e a promoção
+-- deixa só .tmp/.bak, e readDataFile sabe carregá-los.
+function SaveManager.hasRun()
+    local fs = love.filesystem
+    local base = PATHS.run
+    return fs.getInfo(base) ~= nil or fs.getInfo(base .. ".tmp") ~= nil
+        or fs.getInfo(base .. ".bak") ~= nil
+end
+
+-- Apaga TODAS as gerações: run abandonada/morta com .bak no disco voltaria
+-- no Continuar pelo fallback de leitura.
+function SaveManager.deleteRun()
+    local fs = love.filesystem
+    local base = PATHS.run
+    for _, p in ipairs({ base, base .. ".tmp", base .. ".bak" }) do
+        if fs.getInfo(p) then fs.remove(p) end
     end
 end
 

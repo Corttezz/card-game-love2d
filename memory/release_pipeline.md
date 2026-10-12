@@ -100,9 +100,36 @@ DEV em silencio). `test_release` trava que o repo e DEV.
 `SaveManager.loadDataChunk(path)`: le texto, recusa bytecode (`\27`),
 `loadstring` + `setfenv(chunk, {})`. Antes, `love.filesystem.load` dava a um
 save baixado da internet / sincronizado pelo Steam Cloud acesso a `os`/`io`.
-I18n.loadSetting idem. **Pendente**: `engine/ProfileStats.lua` ainda usa
-`love.filesystem.load` direto (arquivo de outra frente na leva de Out/2026) —
-trocar por `SaveManager.loadDataChunk(PATH)`.
+I18n.loadSetting idem. ProfileStats le via `SaveManager.readDataFile` (mesma
+regra, com recuperacao — secao abaixo).
+
+## Escrita atomica e recuperacao (Out/2026)
+
+`SaveManager.writeFile(path, text)` e o UNICO caminho de gravacao de perfil,
+run e settings: `<path>.tmp` lido de volta (bytes + parse + tabela) → o
+principal atual, se BOM, vira `<path>.bak` (uma geracao; principal ruim vai
+pra `<path>.corrupt-<ts>` e nunca vira .bak) → promocao por `os.rename` no
+`getSaveDirectory()` (love.filesystem nao tem rename). Fallback quando o
+rename falha (Windows: destino existente, caminho nao-ASCII na codepage
+ANSI): escreve o final direto e confere lendo de volta; .tmp e .bak cobrem a
+janela. Leitura (`readDataFile`): principal → .tmp → .bak, aviso alto no
+console. Perfil sem nenhuma geracao legivel = **modo recuperacao**
+(`ProfileStats.isRecoveryMode()`): joga com defaults em memoria e NUNCA grava
+por cima do arquivo danificado. `deleteRun`/`quarantineRun` apagam as tres
+geracoes (senao a run abandonada voltava pelo .bak). Trava:
+`love . test_one test_save_integrity`. (`i18n_settings.lua` ainda grava
+direto — so guarda o locale; trocar quando a frente de i18n liberar o arquivo.)
+
+**Steam Auto-Cloud** (configurar no app admin, root `WinAppDataRoaming`,
+subdir `Grimoire/`):
+- SINCRONIZAR: `profile.lua` (conquistas, desbloqueios, maestria, vitorias),
+  `run.save.lua` (run em andamento), `unlocks.lua`/`achievements.lua` se
+  existirem (legado do MIGRATE_FILES).
+- NAO sincronizar: `settings.lua` e `i18n_settings.lua` (volume, fullscreen,
+  vsync e idioma sao por maquina), `*.tmp`, `*.bak`, `*.corrupt*`,
+  `logs/`, crash logs, `migrated_from_dev.txt`, `*_debug.log`,
+  `selftest_result.txt`, e todo `*.tool.lua` (sandbox de ferramenta).
+  Padroes de inclusao explicitos (`profile.lua`, `run.save.lua`), nunca `*`.
 
 ## Riscos de publicacao encontrados (Out/2026)
 

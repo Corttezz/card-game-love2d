@@ -18,6 +18,17 @@ local ProfileStats = {}
 
 local PATH = "profile.lua"
 
+-- MODO RECUPERAÇÃO (Out/2026): o perfil existia no disco e NENHUMA geração
+-- (principal, .tmp, .bak) parseou. Antes o load caía nos defaults e o
+-- próximo save gravava os defaults POR CIMA — conquistas, desbloqueios e
+-- vitórias perdidos. Agora o jogo segue com o perfil em memória, mas NUNCA
+-- grava: o arquivo danificado fica intacto (e copiado em .corrupt-<ts>)
+-- para recuperação manual.
+local recoveryMode = false
+local recoveryWarned = false
+-- SÓ TESTES: com caminho próprio, o save funciona mesmo sob HEADLESS_TOOL.
+local testPath = nil
+
 local DEFAULTS = {
     runs      = 0,   -- runs iniciadas
     wins      = 0,   -- vitórias (boss do ato final morto)
@@ -44,20 +55,21 @@ local function load()
     cache.counters = {}
     cache.cardsSeen = {}
     cache.winsByClass = {}
-    if love.filesystem.getInfo(PATH) then
-        -- Perfil e DADO, nunca codigo: loadDataChunk recusa bytecode e roda
-        -- o chunk sem acesso a os/io (mesma regra dos outros saves).
-        local chunk, err = SaveManager.loadDataChunk(PATH)
-        if chunk then
-            local ok, data = pcall(chunk)
-            if ok and type(data) == "table" then
-                for k, v in pairs(data) do cache[k] = v end
-            else
-                print("[ProfileStats] perfil corrompido em " .. PATH .. ", usando padrao")
-            end
-        else
-            print("[ProfileStats] parse falhou em " .. PATH .. ": " .. tostring(err))
+    -- Perfil e DADO, nunca codigo: readDataFile recusa bytecode e roda o
+    -- chunk sem acesso a os/io; se o principal não parseia, tenta .tmp/.bak.
+    local data, info = SaveManager.readDataFile(testPath or PATH)
+    if data then
+        for k, v in pairs(data) do cache[k] = v end
+        if info.source ~= "main" then
+            print("[ProfileStats] !!! perfil RECUPERADO de " .. tostring(info.source)
+                .. " (principal ilegivel" .. (info.corruptCopy
+                    and (", copia em " .. info.corruptCopy) or "") .. ")")
         end
+    elseif info.existed then
+        recoveryMode = true
+        print("[ProfileStats] !!!!!! PERFIL ILEGIVEL E SEM BACKUP VALIDO — modo"
+            .. " recuperacao: o jogo NAO vai gravar o perfil nesta sessao para"
+            .. " nao apagar o progresso. Copia: " .. tostring(info.corruptCopy))
     end
     return cache
 end
@@ -65,8 +77,32 @@ end
 local function save()
     if not cache then return end
     -- Tools headless (screenshots/smokes) não podem poluir o perfil real.
-    if _G.HEADLESS_TOOL then return end
-    love.filesystem.write(PATH, "return " .. SaveManager.serialize(cache))
+    if _G.HEADLESS_TOOL and not testPath then return end
+    if recoveryMode then
+        if not recoveryWarned then
+            recoveryWarned = true
+            print("[ProfileStats] modo recuperacao: gravacao do perfil RECUSADA")
+        end
+        return
+    end
+    local ok, err = SaveManager.writeFile(testPath or PATH,
+        "return " .. SaveManager.serialize(cache))
+    if not ok then print("[ProfileStats] falha ao salvar perfil: " .. tostring(err)) end
+end
+
+-- true quando o perfil não carregou e o jogo se recusa a gravá-lo.
+function ProfileStats.isRecoveryMode()
+    load()
+    return recoveryMode
+end
+
+-- SÓ TESTES: aponta o perfil para outro arquivo (nil = volta ao real) e
+-- zera cache/modo recuperação, forçando releitura do disco.
+function ProfileStats._setPathForTests(path)
+    testPath = path
+    cache = nil
+    recoveryMode = false
+    recoveryWarned = false
 end
 
 function ProfileStats.get()
