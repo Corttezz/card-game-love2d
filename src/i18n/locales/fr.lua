@@ -1084,6 +1084,7 @@ return {
         buff_applied         = "Bonus : {name} ({stacks}x, {duration}t)",
         card_add_failed      = "Échec de l'ajout de la carte au deck !",
         card_added           = "Carte ajoutée : {name}",
+        card_discovered      = "Nouvelle carte découverte : {name}",
         card_removed         = "Carte retirée : {name}",
         channeled            = "Canalise {name} ({value})",
         combo_announce       = "COMBO ! {combo}",
@@ -1362,6 +1363,7 @@ return {
         toast_card  = "CARTE DÉBLOQUÉE : {name}",
         locked       = "VERROUILLÉE",
         undiscovered = "NON DÉCOUVERTE",
+        new_badge = "NOUVELLE",   -- selo da carta inédita na vitrine (DiscoveryMark)
         discovered_count = "{n}/{total} découvertes",
         hint = {
             mastery      = "Maîtrise {class}, niveau {level}",

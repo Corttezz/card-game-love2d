@@ -392,23 +392,30 @@ function Game:addCardToRun(cardId, meta)
         return false
     end
 
+    -- Inédita AQUI = chegou sem passar por vitrine (evento, transformação):
+    -- ninguém mostrou o selo "NOVA", então o anúncio vira o toast + chime.
+    -- Oferta de recompensa/loja/pacote já descobriu antes e devolve false.
+    -- ANTES do onCardSeen: ele grava cardsSeen, que também conta como vista.
+    local discovered = UnlockSystem.markDiscovered(cardId)
+    if discovered then require("src.ui.DiscoveryMark").chime() end
     -- F4: registro de descoberta (Bibliotecário).
     AchievementSystem.onCardSeen(self, cardId)
-    UnlockSystem.markDiscovered(cardId)
 
     -- Bifurca jokers: nunca entram no deck. Vão direto para jokerSlots
     -- + currentRun.jokers (padrão Balatro G.jokers).
     local cardData = self.deckManager.cardDatabase:getCard(cardId)
     if cardData and cardData.type == "joker" then
+        if discovered then
+            self:addMessage(msg("card_discovered", { name = I18nMod.cardName(cardData or cardId) }), "success")
+        end
         return self:addJokerToRun(cardId, meta)
     end
 
     local success = self.runManager:addCardToDeck(cardId, meta)
     
     if success then
-        local cardData = self.deckManager.cardDatabase:getCard(cardId)
-        local cardName = cardData and cardData.name or cardId
-        self:addMessage(msg("card_added", { name = cardName }), "success")
+        self:addMessage(msg(discovered and "card_discovered" or "card_added",
+            { name = I18nMod.cardName(cardData or cardId) }), "success")
         
         -- Mostra estatísticas do deck atualizado
         local deckStats = self.runManager:getCurrentRunStats()

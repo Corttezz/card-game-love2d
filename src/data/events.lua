@@ -40,6 +40,9 @@ local function rewardOpts(game, extra)
     opts.actNumber = (run and run.actNumber) or 1
     opts.runManager = game.runManager
     opts.stream = "event"
+    -- Candidata sorteada não conta como vista: só a carta ENTREGUE é
+    -- descoberta (Game:addCardToRun anuncia a inédita).
+    opts.discover = false
     return opts
 end
 

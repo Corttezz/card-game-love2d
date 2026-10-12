@@ -1083,6 +1083,7 @@ return {
         buff_applied         = "Mejora: {name} ({stacks}x, {duration}t)",
         card_add_failed      = "¡Error al añadir la carta al mazo!",
         card_added           = "Carta añadida: {name}",
+        card_discovered      = "Nueva carta descubierta: {name}",
         card_removed         = "Carta eliminada: {name}",
         channeled            = "Canaliza {name} ({value})",
         combo_announce       = "¡COMBO! {combo}",
@@ -1361,6 +1362,7 @@ return {
         toast_card  = "CARTA DESBLOQUEADA: {name}",
         locked       = "BLOQUEADA",
         undiscovered = "SIN DESCUBRIR",
+        new_badge = "NUEVA",   -- selo da carta inédita na vitrine (DiscoveryMark)
         discovered_count = "{n}/{total} descubiertas",
         hint = {
             mastery      = "Maestría de {class}, nivel {level}",

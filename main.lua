@@ -1391,6 +1391,7 @@ function love.load(loveArgs)
         audioSystem:loadSound("menuHover", "audio/sfx/menu-hover.mp3", Config.Audio.MENU_HOVER_VOLUME)
         audioSystem:loadSound("collectionFlip", "audio/sfx/collection-flip.mp3", Config.Audio.COLLECTION_FLIP_VOLUME)
         audioSystem:loadSound("purchaseConfirm", "audio/sfx/purchase-confirm.mp3", Config.Audio.PURCHASE_CONFIRM_VOLUME)
+        audioSystem:loadSound("cardDiscovered", "audio/sfx/card-discovered.mp3", Config.Audio.CARD_DISCOVERED_VOLUME)
         audioSystem:loadSound("purchaseDeny", "audio/sfx/purchase-deny.mp3", Config.Audio.PURCHASE_DENY_VOLUME)
         -- clima do WorldRoad (camas, avulsos, trovões): registro por SCAN de
         -- audio/sfx/weather/ — ver src/systems/WeatherAudio.lua

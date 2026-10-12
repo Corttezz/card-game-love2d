@@ -216,10 +216,14 @@ function CardRegistry:pickRewardCard(opts)
     if #entries == 0 then return nil end
 
     local picked = rng:weighted(stream, entries)
-    -- Ofertada = vista: passa a aparecer revelada na Coleção.
-    UnlockSystem.markDiscovered(picked.cardId)
+    -- Ofertada = vista: passa a aparecer revelada na Coleção. discover=false
+    -- (eventos): a candidata só é vista se o evento a ENTREGAR — aí quem
+    -- descobre é o Game:addCardToRun, que anuncia a carta inédita.
+    local isNew = false
+    if opts.discover ~= false then isNew = UnlockSystem.markDiscovered(picked.cardId) end
     return {
         cardId = picked.cardId,
+        isNew = isNew or nil,     -- inédita: selo "NOVA" na oferta (DiscoveryMark)
         rarity = rarity,
         affinity = picked.affinityTags ~= nil,
         affinityTags = picked.affinityTags,
@@ -271,6 +275,7 @@ function CardRegistry:generateCardRewards(classId, numCards, opts)
             ownedJokerIds = opts.ownedJokerIds,
             rng = opts.rng,
             stream = opts.stream or "card",
+            discover = opts.discover,
             _tagCounts = tagCounts,
         })
         if pick then

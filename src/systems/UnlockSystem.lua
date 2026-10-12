@@ -14,7 +14,8 @@
 -- contra ESTA lista — não mude assinatura sem avisar as frentes):
 --   UnlockSystem.isCardUnlocked(cardId) -> bool
 --   UnlockSystem.isCardDiscovered(cardId) -> bool
---   UnlockSystem.markDiscovered(cardId)
+--   UnlockSystem.markDiscovered(cardId) -> bool   (true = era inédita)
+--   UnlockSystem.takeFreshInCollection() -> { [id]=true }
 --   UnlockSystem.isClassUnlocked(classId) -> bool
 --   UnlockSystem.isClassUnlockedReal(classId) -> bool   (ignora override)
 --   UnlockSystem.getClassUnlockInfo(classId) -> { unlocked, reqKey, vars, progress, goal }
@@ -274,10 +275,27 @@ end
 
 -- Marca como vista. NÃO grava em disco (seria 1 write por oferta): o perfil é
 -- descarregado nos pontos de flush já existentes (fim de batalha, fim de run).
+-- Devolve true quando a carta era INÉDITA: quem mostra a oferta usa isso pro
+-- selo "NOVA" (src/ui/DiscoveryMark.lua) — a descoberta já virou, então a
+-- pergunta tem que ser feita AQUI, no instante da virada, e não depois.
+-- A carta inédita também entra em `freshInCollection` (persistido): a Coleção
+-- pulsa a entrada uma vez na próxima visita (takeFreshInCollection).
 function UnlockSystem.markDiscovered(cardId)
-    if not cardId then return end
-    local u = state()
+    if not cardId then return false end
+    local u, s = state()
+    if u.discovered[cardId] or (s.cardsSeen and s.cardsSeen[cardId]) then return false end
     u.discovered[cardId] = true
+    u.freshInCollection = u.freshInCollection or {}
+    u.freshInCollection[cardId] = true
+    return true
+end
+
+-- Coleção: cartas descobertas desde a última visita (e esvazia a lista).
+function UnlockSystem.takeFreshInCollection()
+    local u = state()
+    local fresh = u.freshInCollection or {}
+    u.freshInCollection = {}
+    return fresh
 end
 
 local function classUnlockedReal(classId, u, s)

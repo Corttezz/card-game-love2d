@@ -65,6 +65,7 @@ local SUITES = {
     { group = "unit",  name = "test_class_select" },
     { group = "unit",  name = "test_navcursor" },
     { group = "unit",  name = "test_unlocks" },
+    { group = "unit",  name = "test_discovery_mark" },
     { group = "unit",  name = "test_confirm_dialog" },
     { group = "unit",  name = "test_credits" },
     { group = "unit",  name = "test_lifecycle" },

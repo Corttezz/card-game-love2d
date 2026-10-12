@@ -557,6 +557,7 @@ Config.Audio = {
     MENU_HOVER_VOLUME = 0.15,
     COLLECTION_FLIP_VOLUME = 0.5,
     PURCHASE_CONFIRM_VOLUME = 0.6,
+    CARD_DISCOVERED_VOLUME = 0.55,   -- carta inédita na vitrine (DiscoveryMark)
     AMBIENT_VOLUME = 0.09,        -- KNOB ÚNICO do ambiente (clima + lugares): camas ~-32 dB sob o pico da música (dono: "muito alto"; era 1.0 e no grupo sfx)
     PLACE_VOLUME = 0.75,          -- ambiente dos lugares (PlaceAudio): camas×0.42, avulsos×0.32 — abaixo da música
     WEATHER_VOLUME = 0.8,         -- clima do WorldRoad (WeatherAudio): camas×0.55, avulsos×0.40, trovão×0.85

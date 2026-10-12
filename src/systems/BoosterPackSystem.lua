@@ -107,8 +107,11 @@ function BoosterPackSystem.generateContents(pack)
         local cardData = cardId and cd:getCard(cardId)
         if not cardData then return end
         local instance = cd:createCardInstance(cardData)
-        -- Pacote aberto = carta vista (Coleção revela).
-        require("src.systems.UnlockSystem").markDiscovered(cardId)
+        -- Pacote aberto = carta vista (Coleção revela). Inédita ganha o
+        -- selo "NOVA" + varredura de luz (src/ui/DiscoveryMark.lua).
+        if require("src.systems.UnlockSystem").markDiscovered(cardId) then
+            instance.isNewDiscovery = true
+        end
         instance.shopOffer = nil  -- contraste com cards na shop
         if withModifiers then
             local edition = pollEdition()

@@ -928,6 +928,8 @@ function CardRewardScreen:createCardInstances()
         local cardInstance = self.cardDatabase:createCardInstance(cardData)
 
         if cardInstance then
+            -- Inédita (offer.isNew, gravado no sorteio): selo + luz no draw.
+            cardInstance.isNewDiscovery = offer.isNew or nil
             local pos = self.cardPositions[offer._slot] or { x = 0, y = 0 }
 
             -- Fill do slot: em "rewards" a carta é a estrela e sobra folga

@@ -192,6 +192,8 @@ function CollectionScreen:show(onClose)
     -- 1ª leva um pouco maior (preenche o que está na tela de cara);
     -- o resto flui no update sem travar
     self:_refreshDiscovery()
+    -- descobertas desde a última visita: pulsam quando entram na tela
+    self._fresh = UnlockSystem.takeFreshInCollection()
     self:_buildInstances(0.012)
     self:_applyFilter()
 end
@@ -616,6 +618,11 @@ local function drawCardMini(instance, x, y, hoverScale, alpha, mouseUV, hoverStr
         instance._cachedArt = ok and a or { bgPattern = nil }
     end
     CardAnimationLayer.draw(instance, instance._cachedArt, px, py, drawScale, drawScale)
+    -- Descoberta desde a última visita: pulsa UMA vez (src/ui/DiscoveryMark)
+    if instance._freshPulse and not require("src.ui.DiscoveryMark")
+            .drawCollectionPulse(instance.id, instance.image, px, py, drawScale) then
+        instance._freshPulse = nil
+    end
     love.graphics.setColor(1, 1, 1, 1)
     instance.image = _prevImage
 end
@@ -1051,6 +1058,10 @@ function CollectionScreen:draw()
                 if inst._hidden then
                     drawMystery(self, inst, anim.rx, anim.ry, anim.hs)
                 else
+                    if self._fresh and self._fresh[inst.id] then
+                        inst._freshPulse = true
+                        self._fresh[inst.id] = nil
+                    end
                     -- Cards não-hover: sem warp (mouseUV zero, hoverStrength zero)
                     drawCardMini(inst, anim.rx, anim.ry, anim.hs, 1, { 0, 0 }, 0)
                 end

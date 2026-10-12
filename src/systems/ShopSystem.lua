@@ -330,6 +330,7 @@ function ShopSystem:generateCardOffer()
         affinity = pick.affinity or nil,
         affinityTags = pick.affinityTags,
         fromPity = pick.fromPity,
+        isNew = pick.isNew,       -- carta inédita: selo "NOVA" (vai pro save junto)
     }
 end
 

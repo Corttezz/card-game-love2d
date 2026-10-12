@@ -966,6 +966,12 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
         self:_drawSealIndicator(drawX, drawY)
     end
 
+    -- Carta INÉDITA na vitrine: luz + marcador "NOVA" (src/ui/DiscoveryMark).
+    if self.isNewDiscovery then
+        require("src.ui.DiscoveryMark").drawOnCard(self, self.image, drawX, drawY,
+            mouseUV, hoverAmt, timeNow)
+    end
+
     -- Restaura transformações
     love.graphics.pop()
 
