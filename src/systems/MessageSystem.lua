@@ -11,8 +11,17 @@ function MessageSystem:new()
     return instance
 end
 
+-- Aviso VAZIO não existe (dono: "não toastar resultado zero"). O mesmo texto
+-- repetido não empilha: o aviso que já está na tela renova e vira o mais novo.
 function MessageSystem:addMessage(text, type)
+    if text == nil or text == "" then return end
     type = type or "info"
+    for i, m in ipairs(self.messages) do
+        if m.text == text then
+            table.remove(self.messages, i)
+            break
+        end
+    end
     local message = {
         text = text,
         type = type,
@@ -24,7 +33,7 @@ function MessageSystem:addMessage(text, type)
     table.insert(self.messages, message)
     
     -- Remove mensagens antigas se exceder o limite
-    if #self.messages > self.maxMessages then
+    while #self.messages > self.maxMessages do
         table.remove(self.messages, 1)
     end
 end
@@ -46,15 +55,19 @@ function MessageSystem:update(dt)
     end
 end
 
--- Cor de destaque por tipo (filete da placa). Paleta do grimório, não RGB
--- cru: o azul/verde saturados de antes eram outro dialeto na mesma tela.
+-- Cor do TEXTO por tipo (dono, Out/2026: "coloque cores diferentes como
+-- era antes"): ouro = dinheiro, verde = cura/ganho, vermelho = perigo,
+-- laranja = aviso de regra, azul = informação, violeta = orbe/magia.
 local function accentFor(kind)
     local Palette = require("src.ui.Palette")
-    if kind == "error" then return Palette.lighten(Palette.BLOOD, 0.35)
-    elseif kind == "warning" then return Palette.AGED_GOLD_LIGHT
-    elseif kind == "success" then return Palette.lighten(Palette.MOSS, 0.45)
-    elseif kind == "info" then return Palette.STEEL_LIGHT
+    if kind == "error" or kind == "danger" then return Palette.TOAST_DANGER
+    elseif kind == "warning" then return Palette.TOAST_WARN
+    elseif kind == "success" then return Palette.TOAST_GOOD
+    elseif kind == "gold" then return Palette.TOAST_GOLD
+    elseif kind == "arcane" then return Palette.TOAST_ARCANE
+    elseif kind == "info" then return Palette.TOAST_INFO
     end
+    print("[MessageSystem] tipo de aviso desconhecido: " .. tostring(kind))
     return Palette.PARCHMENT_LIGHT
 end
 MessageSystem.accentFor = accentFor
@@ -70,7 +83,8 @@ function MessageSystem:layout()
     local sw, sh = love.graphics.getWidth(), love.graphics.getHeight()
     local u = math.max(1, math.min(1.75, sh / 768))
     local font = FontManager.getFont(math.floor(10 * u + 0.5))
-    local padX, padY, gap = math.floor(10 * u), math.floor(6 * u), math.floor(6 * u)
+    -- sem placa: o respiro é só o do contorno do texto
+    local padX, padY, gap = math.floor(2 * u), math.floor(2 * u), math.floor(4 * u)
     -- mesma margem esquerda do quadro de coringas logo acima (frameX = 14)
     local x = math.floor(14 * u)
     local w = math.floor(math.min(sw * 0.30, 320 * u))
@@ -82,7 +96,7 @@ function MessageSystem:layout()
         local okR, _, jy, _, jh = pcall(GS.jokerFrameRect)
         if okR and jy and jh then zoneTop = math.max(zoneTop, math.floor(jy + jh + 8)) end
     end
-    local lh = math.floor(font:getHeight() * 1.5)
+    local lh = math.floor(font:getHeight() * 1.35)
     local out, y = {}, zoneTop
     -- mais NOVAS embaixo (ordem de chegada); se a zona encher, as mais
     -- antigas saem primeiro (ficam fora do layout, não por cima da mão)
@@ -107,33 +121,35 @@ function MessageSystem:layout()
     return out, font, { x = x, y = zoneTop, w = w, h = zoneBottom - zoneTop }
 end
 
+-- Texto colorido com contorno de tinta (8 direções), SEM placa: a placa
+-- escura de antes pesava a coluna e apagava a cor do tipo.
 function MessageSystem:draw()
     local Palette = require("src.ui.Palette")
     local plates, font = self:layout()
     love.graphics.setFont(font)
     local reduced = _G.gameSettings and _G.gameSettings.reducedMotion
+    local o = math.max(1, math.floor(font:getHeight() / 12 + 0.5))
     for _, p in ipairs(plates) do
         local m = p.m
         local a = m.alpha
-        -- entrada: desliza nos primeiros 0,18s DENTRO da margem (sair da
-        -- borda cortava o contorno — captura de 1080p); fade junto. Com
-        -- reducedMotion aparece no lugar, a informação é a mesma.
+        -- entrada: desliza nos primeiros 0,18s DENTRO da margem; fade junto.
+        -- Com reducedMotion aparece no lugar, a informação é a mesma.
         local age = self.messageDuration - m.duration
         local e = (reduced or age >= 0.18) and 1 or (age / 0.18)
-        local x = p.x - math.floor((1 - e) * math.min(10, p.x))
+        local x = p.x + p.padX - math.floor((1 - e) * math.min(10, p.x))
         a = a * (0.35 + 0.65 * e)
-        Palette.set(Palette.INK, 0.86 * a)
-        love.graphics.rectangle("fill", x, p.y, p.w, p.h, 3, 3)
-        Palette.set(Palette.AGED_GOLD_DARK, 0.9 * a)
-        love.graphics.rectangle("line", x + 0.5, p.y + 0.5, p.w - 1, p.h - 1, 3, 3)
-        Palette.set(accentFor(m.type), a)
-        love.graphics.rectangle("fill", x + 2, p.y + 3, 3, p.h - 6)
+        local c = accentFor(m.type)
         local ty = p.y + p.padY
         for _, line in ipairs(p.lines) do
-            Palette.set(Palette.INK, 0.8 * a)
-            love.graphics.print(line, x + p.padX + 4 + 1, ty + 1)
-            Palette.set(Palette.PARCHMENT_LIGHT, a)
-            love.graphics.print(line, x + p.padX + 4, ty)
+            Palette.set(Palette.INK, 0.9 * a)
+            for dx = -o, o, o do
+                for dy = -o, o, o do
+                    if dx ~= 0 or dy ~= 0 then love.graphics.print(line, x + dx, ty + dy) end
+                end
+            end
+            love.graphics.print(line, x + o, ty + o * 2)
+            love.graphics.setColor(c[1], c[2], c[3], a)
+            love.graphics.print(line, x, ty)
             ty = ty + p.lh
         end
     end

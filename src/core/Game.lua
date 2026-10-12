@@ -181,9 +181,6 @@ function Game:startGame()
     for i = 1, Config.Game.INITIAL_HAND_SIZE + self:getShopServiceCount("card_draw_upgrade") do
         self:drawCard((i - 1) * 0.08)
     end
-
-    self:addMessage(msg("game_start"), "success")
-    self:addMessage(msg("starting_gold", { value = self.economySystem.currentGold }), "info")
 end
 
 -- Move cartas com `innate=true` para o topo do deck (ordem preservada entre elas).
@@ -225,7 +222,6 @@ function Game:drawCard(staggerDelay)
         self:shuffleDeck()
         -- Innate sempre fica no topo: shuffleDeck embaralhou junto, então re-promover.
         self:promoteInnateCardsToTop()
-        self:addMessage(msg("reshuffled"), "info")
         Sfx.play("deckStart") -- reusa SFX de embaralhamento inicial
     end
     if #self.deck > 0 then
@@ -322,8 +318,6 @@ end
 -- Novos métodos para gerenciamento de decks
 function Game:setDeck(deckId)
     self.currentDeckId = deckId
-    self:addMessage(msg("deck_changed",
-        { name = self.deckManager:getDeckInfo(deckId).name or deckId }), "info")
 end
 
 function Game:getCurrentDeckInfo()
@@ -368,8 +362,6 @@ function Game:startNewRun(classId, opts)
 
     local runData = self.runManager:startNewRun(classId, opts)
     -- nome da classe no idioma atual (runData.className é o literal do dado)
-    self:addMessage(msg("run_started", { name = require("src.i18n.I18n").t(
-        "classes." .. tostring(classId) .. ".name", nil, runData.className) }), "success")
 
     -- Perfil persistente (menu mostra vitórias/melhor progresso).
     require("engine.ProfileStats").recordRunStart(classId)
@@ -414,13 +406,10 @@ function Game:addCardToRun(cardId, meta)
     local success = self.runManager:addCardToDeck(cardId, meta)
     
     if success then
-        self:addMessage(msg(discovered and "card_discovered" or "card_added",
-            { name = I18nMod.cardName(cardData or cardId) }), "success")
-        
-        -- Mostra estatísticas do deck atualizado
-        local deckStats = self.runManager:getCurrentRunStats()
-        if deckStats then
-            self:addMessage(msg("deck_size", { value = deckStats.deckSize }), "info")
+        -- Carta comum que entrou no deck não vira aviso (o jogador acabou de
+        -- escolhê-la); só a INÉDITA anuncia.
+        if discovered then
+            self:addMessage(msg("card_discovered", { name = I18nMod.cardName(cardData or cardId) }), "success")
         end
         
         -- CRÍTICO: Reconstrói completamente o deck jogável
@@ -478,11 +467,10 @@ function Game:addJokerToRun(cardId, meta)
     self:rebuildJokerSlots()
 
     if activated then
-        self:addMessage(msg("joker_activated", { name = cardData.name or cardId }), "success")
         Sfx.play("jokerActivate")
     else
         self:addMessage(msg("joker_benched",
-            { name = cardData.name or cardId }), "info")
+            { name = I18nMod.cardName(cardData) }), "info")
         Sfx.play("cardSelect")
     end
     return true
@@ -552,14 +540,7 @@ end
 function Game:removeCardFromRun(cardId)
     if not self.isRunMode then return false end
     
-    local success = self.runManager:removeCardFromDeck(cardId)
-    if success then
-        local cardData = self.deckManager.cardDatabase:getCard(cardId)
-        local cardName = cardData and cardData.name or cardId
-        self:addMessage(msg("card_removed", { name = cardName }), "info")
-    end
-    
-    return success
+    return self.runManager:removeCardFromDeck(cardId)
 end
 
 -- Retorna estatísticas da corrida atual
@@ -704,12 +685,6 @@ function Game:applyClassBattleStartPassive()
             local f0 = self:classPassiveTier() - 1
             if f0 > 0 then self.player:addBuff("focus", 99, f0) end
         end
-        local f0 = self:classPassiveTier() - 1
-        if f0 > 0 then
-            self:addMessage(msg("passive_conduit", { n = f0 }), "info")
-        else
-            self:addMessage(msg("passive_conduit_orb"), "info")
-        end
         if love.timer then self._passiveFlashT = love.timer.getTime() end
     end
 end
@@ -770,7 +745,6 @@ function Game:applyClassTurnPassives(turnContext)
     if attacks >= Game.IMPETUS_ATTACKS and not self._impetusFiredThisTurn then
         self._impetusFiredThisTurn = true
         self.player:gainStrength(1)
-        self:addMessage(msg("passive_momentum"), "success")
         if love.timer then self._passiveFlashT = love.timer.getTime() end
         Sfx.play("comboTrigger", { pitch = 1.3, volume = 0.6 })
     end
@@ -934,9 +908,6 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
         for _, e in ipairs(entries) do
             self.effectSystem:notifyJokerProc(self, e.joker, e.label, e.kind, procs)
         end
-        for _, e in ipairs(entries) do
-            if e.text then self:addMessage(e.text, "info") end
-        end
         result.jokerProcs = procs
         return v
     end
@@ -948,12 +919,12 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
         if card.seal == "Gold" then
             if self.economySystem and self.economySystem.earnGold then
                 self.economySystem:earnGold(3, "seal_gold")
-                self:addMessage(msg("gold_seal", { value = 3 }), "info")
+                self:addMessage(msg("gold_seal", { value = 3 }), "gold")
             end
         elseif card.seal == "Purple" then
             if self.player and self.player.addOrb then
                 self.player:addOrb({ type = "lightning", value = 1 })
-                self:addMessage(msg("purple_seal"), "info")
+                self:addMessage(msg("purple_seal"), "arcane")
             end
         elseif card.seal == "Blue" then
             -- Marca pra puxar 1 carta extra no próximo drawForTurn.
@@ -987,7 +958,6 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
             -- do autoplay v3) — e escapa da remocao permanente da run.
             if card.exhaust and card.id then
                 table.insert(self._exhaustedThisBattle, card.id)
-                self:addMessage(msg("exhausted", { name = card.name or card.id }), "warning")
                 Sfx.play("cardExhaust")
             end
             if card.type ~= "joker" and not card.exhaust then
@@ -1013,7 +983,6 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
                 -- (+2 a cada turno com 2+ ataques, ver applyClassTurnPassives).
                 local stacks = self:classPassiveTier() + (self._toxinBonus or 0)
                 self.enemy:addStatusEffect({ name = "poison", stacks = stacks, duration = 2 })
-                self:addMessage(msg("passive_toxins", { n = stacks }), "info")
                 local okCF, CF = pcall(require, "src.systems.CardFeel")
                 if okCF then CF.burstAtEnemy("poison", 0.8) end
                 if love.timer then self._passiveFlashT = love.timer.getTime() end
@@ -1041,8 +1010,6 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
         applySealSideEffects()
 
         result.damage = damage
-        self:addMessage(msg("damage_dealt", { value = damage }), "success")
-
     elseif card.type == "defense" then
         -- (FRAGIL, debuff do inimigo: -25% por ultimo, dentro de cardValue.)
         local defense = computeCardValue()
@@ -1080,8 +1047,6 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
         applySealSideEffects()
 
         result.defense = defense
-        self:addMessage(msg("block_gained", { value = defense }), "info")
-        
     elseif card.type == "joker" then
         -- Joker chegou via hand: leak arquitetural. Pós-Fase joker-split,
         -- jokers devem ser adquiridos via Game:addJokerToRun direto, nunca
@@ -1107,8 +1072,6 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
         else
             card.passive(self) -- Executa efeito especial
         end
-        self:addMessage(msg("effect_played", { name = card.name }), "success")
-
         result.effect = true
     end
 
@@ -1120,7 +1083,6 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
     -- da run ao final da batalha. Tratamos aqui antes do push pro discard.
     if card.exhaust and card.id then
         table.insert(self._exhaustedThisBattle, card.id)
-        self:addMessage(msg("exhausted", { name = card.name or card.id }), "warning")
         Sfx.play("cardExhaust")
     end
 
@@ -1194,19 +1156,14 @@ end
 -- Move a mão pro descarte no fim do turno do jogador (cartas `retain` ficam).
 function Game:discardHandEndOfTurn()
     local kept = {}
-    local discarded = 0
     for _, card in ipairs(self.hand) do
         if card.retain then
             table.insert(kept, card)
         else
             table.insert(self.discard, card)
-            discarded = discarded + 1
         end
     end
     self.hand = kept
-    if discarded > 0 then
-        self:addMessage(msg("discarded", { value = discarded }), "info")
-    end
 end
 
 -- ENFURECIDO: o instante em que o inimigo cruza os 30% de vida.
@@ -1235,8 +1192,6 @@ function Game:_announceEnrageIfPending(sink)
     local body = function()
         if self.enemy ~= enemyRef then return end
         local I18n = require("src.i18n.I18n")
-        self:addMessage(I18n.t("messages.enemy_enraged", { value = 50 },
-            "Ferido! O inimigo passa a causar {value}% mais dano"), "warning")
         Sfx.playWithVariation("enemyBuffRoar", 0.88, 0.05)
         if enemyRef.juice_up then enemyRef:juice_up(0.45, 0.12) end
         local okER, ER = pcall(require, "src.ui.EnemyRenderer")
@@ -1580,7 +1535,6 @@ function Game:enemyTurn()
             local armorGain = it.armor
             self.enemy:addArmor(armorGain)
             Sfx.play("armorSound")
-            self:addMessage(msg("enemy_defends", { value = armorGain }), "info")
             if ER and ER.triggerDefend then ER.triggerDefend() end
             -- Game feel v1: o escudo MATERIALIZA no corpo dele (burst azul-aco).
             local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
@@ -1611,8 +1565,6 @@ function Game:enemyTurn()
             if pierce then
                 self:addMessage(I18n.t("enemy_kit.msg.pierce", { value = damage },
                     "Golpe atravessa o Bloqueio: {value}!"), "warning")
-            else
-                self:addMessage(msg("enemy_hit", { value = damage }), "warning")
             end
             if _G.triggerShake then
                 local intensity = math.min(14, 4 + damage * 0.25)
@@ -1684,8 +1636,6 @@ function Game:enemyTurn()
             self.player:addDebuff(d.name, d.duration, d.stacks)
             local statusName = I18n.t("status." .. d.name .. ".name", nil,
                 I18n.t("enemy_kit.status." .. d.name .. ".name", nil, d.name))
-            self:addMessage(I18n.t("enemy_kit.msg.debuffed", { name = statusName },
-                "Debuff: " .. statusName), "warning")
             Sfx.playWithVariation("enemyBuffRoar", 0.8, 0.05)
             if _G.triggerShake then _G.triggerShake(3, 0.12) end
             local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
@@ -1704,7 +1654,6 @@ function Game:enemyTurn()
             -- Game feel v1: buff tem RUGIDO proprio (antes reusava enemyAttack
             -- grave — soava como golpe, confundia) + aura vermelha subindo.
             Sfx.playWithVariation("enemyBuffRoar", 1.0, 0.06)
-            self:addMessage(msg("enemy_enrages", { value = it.strength }), "warning")
             if self.enemy.juice_up then self.enemy:juice_up(0.4, 0.1) end
             if ER and ER.triggerBuff then ER.triggerBuff() end
             local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
@@ -1719,8 +1668,6 @@ function Game:enemyTurn()
             local healed = self.enemy:healSelf(it.heal)
             if healed <= 0 then return end
             Sfx.playWithVariation("enemyBuffRoar", 1.15, 0.05)
-            self:addMessage(I18n.t("enemy_kit.msg.healed", { value = healed },
-                "Inimigo recupera {value} de vida"), "warning")
             local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
             if okCF then CardFeel.burstAtEnemy("heal", 1.0) end
             float("+" .. healed, { color = { 0.45, 0.9, 0.5, 1 }, fontSize = 20 })
@@ -1746,8 +1693,6 @@ function Game:enemyTurn()
         -- turno — o jogador tem a mao inteira pra se preparar.
         CombatBeats.push("enemy.charge", beat(function()
             Sfx.playWithVariation("enemyBuffRoar", 0.7, 0.04)
-            self:addMessage(I18n.t("enemy_kit.msg.charging", nil,
-                "O inimigo carrega um golpe devastador!"), "warning")
             if self.enemy.juice_up then self.enemy:juice_up(0.5, 0.12) end
             if ER and ER.triggerBuff then ER.triggerBuff() end
             if _G.triggerShake then _G.triggerShake(5, 0.3) end
@@ -1779,7 +1724,6 @@ function Game:_pushEnemyTurnTail(beat)
         if poisonDmg and poisonDmg > 0 then
             -- Pitch random pra poison "chiar" diferente cada tick.
             Sfx.playWithVariation("poisonTick", 1.0, 0.2)
-            self:addMessage(msg("poison_tick", { value = poisonDmg }), "success")
             local okER, ER = pcall(require, "src.ui.EnemyRenderer")
             if okER and ER.triggerPoison then
                 ER.triggerPoison()
@@ -1821,8 +1765,6 @@ function Game:_pushEnemyTurnTail(beat)
             local healed = self.enemy:tickRegen()
             if healed and healed > 0 then
                 local I18n = require("src.i18n.I18n")
-                self:addMessage(I18n.t("enemy_kit.msg.healed", { value = healed },
-                    "Inimigo recupera {value} de vida"), "warning")
                 local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
                 if okCF then CardFeel.burstAtEnemy("heal", 0.8) end
                 local okER, ER = pcall(require, "src.ui.EnemyRenderer")
@@ -1896,8 +1838,6 @@ function Game:_pushEnemyTurnTail(beat)
         if total <= 0 then return end
         self.scoreSystem:recordDamageTaken(total)
         local I18n = require("src.i18n.I18n")
-        self:addMessage(I18n.t("enemy_kit.msg.player_dot", { value = total },
-            "Voce perde {value} de vida"), "warning")
         Sfx.playWithVariation("poisonTick", 0.85, 0.15)
         local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
         if okCF then
@@ -1973,7 +1913,7 @@ function Game:_onEnemyDeath()
     local best = ProfileStats.get().bestScore or 0
     if best > 0 and self.score > best and not self.scoreSystem.recordBroken then
         self.scoreSystem.recordBroken = true
-        self:addMessage(msg("new_record"), "success")
+        self:addMessage(msg("new_record"), "gold")
         Sfx.play("comboTrigger")
     end
 
@@ -2128,8 +2068,6 @@ function Game:resetHandAndDeck()
             self:drawCard((i - 1) * 0.08)  -- stagger pra cascata visual
         end
     end
-
-    self:addMessage(msg("hand_reset"), "info")
 end
 
 -- Cap de Bloqueio POR ATO (auditoria Jul/2026): base 30 no A1, +10/ato
@@ -2250,12 +2188,6 @@ function Game:nextPhase()
         self.battleTurn = 0
         -- isBoss nunca era setado (só lido) — bosses agora rendem maiores
         self.enemy.isBoss = (nodeType == "boss" or nodeType == "mini_boss")
-        -- Log com nome do ato
-        self:addMessage(require("src.i18n.I18n").t("messages.floor_entered", {
-            act = ActSystem.getActName(run.actNumber, run.floorInAct),
-            floor = run.floorInAct,
-            node = require("src.i18n.I18n").t("node_type." .. nodeType .. ".label", nil, nodeType),
-        }), "info")
     else
         local newHealth = Config.Game.ENEMY_BASE_HEALTH + (self.currentPhase - 1) * Config.Game.ENEMY_HEALTH_SCALING
         local newDamage = Config.Game.ENEMY_BASE_DAMAGE + (self.currentPhase - 1) * Config.Game.ENEMY_DAMAGE_SCALING
@@ -2274,9 +2206,13 @@ function Game:nextPhase()
                 or ActSystem.getInterActHealPercent(run.actNumber - 1)
             pct = (pct or 0) * require("src.systems.RunModifiers").healMul(run, "act")
             if pct and pct > 0 then
-                local heal = math.floor(self.player.maxHealth * pct)
-                self.player:heal(heal)
-                self:addMessage(msg("act_transition_heal", { value = heal }), "success")
+                local before = self.player.health
+                self.player:heal(math.floor(self.player.maxHealth * pct))
+                -- vida cheia: nada curado, nada a dizer
+                local heal = self.player.health - before
+                if heal > 0 then
+                    self:addMessage(msg("act_transition_heal", { value = heal }), "success")
+                end
             end
             Sfx.play("actComplete")
         end
@@ -2286,8 +2222,6 @@ function Game:nextPhase()
             self:addMessage(msg("health_restored", { value = Config.Game.PLAYER_HEALTH_RESTORE }), "success")
         end
     end
-
-    self:addMessage(msg("phase_started", { value = self.currentPhase }), "info")
 
     -- CHECKPOINT (F1 do UI Overhaul): persiste a run a cada andar novo —
     -- fecha o gap "save/load existe mas sem botão Continuar".
@@ -2444,10 +2378,6 @@ function Game:resumeRun()
         -- carimbava um enemyId numa LOJA/descanso retomados).
         if run.currentNode then run.currentNode.enemyId = nodeEnemyId end
     end
-
-    self:addMessage(msg("run_resumed", {
-        name = ActSystem.getActName(run.actNumber, run.floorInAct),
-        floor = run.floorInAct }), "success")
     return true
 end
 

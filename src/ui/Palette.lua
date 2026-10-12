@@ -53,6 +53,17 @@ Palette.AGED_GOLD_DARK  = hex("#7a5e20")   -- dourado escuro (divisores sutis)
 Palette.MOSS            = hex("#4a6030")   -- verde musgo (effect / poison)
 Palette.RUST            = hex("#8b4a1e")   -- laranja ferrugem
 
+-- ===== Avisos do combate (MessageSystem) =====
+-- Texto colorido por TIPO com contorno de tinta, sem placa (dono, Out/2026:
+-- "cores diferentes como era antes"). Claros o bastante pra ler sobre o
+-- cenário iluminado; o contorno INK separa do fundo.
+Palette.TOAST_DANGER = hex("#ff6e5c")   -- dano, perigo, erro
+Palette.TOAST_WARN   = hex("#ffa851")   -- aviso de regra (bloqueio no teto, fúria)
+Palette.TOAST_GOOD   = hex("#9be36e")   -- cura, ganho, descoberta
+Palette.TOAST_INFO   = hex("#86c8ff")   -- informação
+Palette.TOAST_GOLD   = hex("#ffd75e")   -- ouro
+Palette.TOAST_ARCANE = hex("#d8b8ff")   -- orbe, magia
+
 -- ===== ACENTO DE COMBO (ComboBanner) =====
 -- Violeta arcano: precisa ser lido EM UM PISCAR como "coisa diferente" ao
 -- lado do ouro (turno do jogador) e do sangue (turno do inimigo) do

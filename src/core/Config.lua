@@ -83,8 +83,8 @@ Config.Game = {
     BASE_SCORE_PER_PHASE = 100,
 
     -- Sistema de mensagens
-    MAX_MESSAGES = 5,
-    MESSAGE_DURATION = 3.0,
+    MAX_MESSAGES = 3,         -- avisos visíveis de uma vez (MessageSystem)
+    MESSAGE_DURATION = 2.4,
 }
 
 -- ===== Fase 5: Atos, curvas de dificuldade e endless =====

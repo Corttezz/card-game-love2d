@@ -130,10 +130,6 @@ function Screen:choose(i)
         if self.game.checkpointRun then self.game:checkpointRun() end
         Sfx.play("debuffApplied")
         Sfx.play("coinTotalThud")
-        if self.game.addMessage then
-            self.game:addMessage(I18n.t("endless.curse_taken", {
-                name = I18n.t("endless_curses." .. id .. ".name") }), "warning")
-        end
         self.visible = false
     end
 end

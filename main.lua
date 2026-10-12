@@ -382,11 +382,6 @@ showMapSelection = function()
         if status == "endless_start" then
             game:addMessage(I18n.t("messages.endless_unlocked", nil,
                 "Modo Endless desbloqueado!"), "success")
-        elseif status == "act_complete" then
-            local stats = game.runManager:getCurrentRunStats()
-            game:addMessage(I18n.t("messages.act_complete",
-                { n = (stats and stats.floor) or "?" },
-                "Ato completo!"), "success")
         end
         game.runManager:generateNextNodes(3)
     end

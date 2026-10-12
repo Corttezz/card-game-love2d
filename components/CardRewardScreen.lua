@@ -820,7 +820,6 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
             if self._closing then return end
             if self.mode == "shop" and skipBonus > 0 and self.game.economySystem then
                 self.game.economySystem:earnGold(skipBonus, "shop_skip")
-                self.game:addMessage(I18n.t("messages.shop_skipped", { n = skipBonus }), "info")
             end
             -- Saída pela porta da frente: cartas queimam, painel desliza,
             -- som anuncia. _exitWithFlourish chama hide + onSkipped no fim.
@@ -874,8 +873,6 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
                 -- Custo novo = rótulo novo = largura nova (o "($12)" é mais
                 -- largo que "($5)"). Re-mede antes que o fitText trunque.
                 self:_layoutActionButtons()
-
-                self.game:addMessage(I18n.t("reward.shop_refreshed"), "info")
             else
                 self.game:addMessage(I18n.t("reward.refresh_fail"), "error")
                 Sfx.play("purchaseDeny")
@@ -1073,7 +1070,6 @@ function CardRewardScreen:purchaseOffer(offer, offerId)
             self.game.runManager.currentRun._usedShop = true
         end
 
-        local offerName = offer.type == "card" and I18n.cardName({ id = offer.id, name = offer.name }) or offer.name
         -- Screen jiggle no momento da compra (Fase 6.4) — feedback tátil leve.
         if _G.jiggleScreen then _G.jiggleScreen(0.25) end
 
@@ -1091,13 +1087,11 @@ function CardRewardScreen:purchaseOffer(offer, offerId)
             -- TopBar, encolhendo — comunica "foi pro seu deck" sem texto.
             self:_startFlyToDeck(offer)
             self.game:addCardToRun(offer.id)
-            self.game:addMessage(I18n.t("reward.bought", { name = offerName }), "success")
         elseif offer.type == "upgrade" then
             -- Floreio ANTES do applyUpgrade: a forja abre o picker por cima
             -- da loja, e o gesto tem que já estar no ar quando ele entrar.
             self:_startRelicFlourish(offer)
             self:applyUpgrade(offer)
-            self.game:addMessage(I18n.t("reward.bought", { name = offerName }), "success")
         elseif offer.type == "booster_pack" then
             -- Fase 5: abre o pack imediatamente via PackOpenScreen overlay.
             -- main.lua expõe _G.openBoosterPack(packData, onComplete) que orquestra.
@@ -1126,12 +1120,10 @@ function CardRewardScreen:purchaseOffer(offer, offerId)
                             })
                         end
                     end
-                    self.game:addMessage(I18n.t("messages.pack_cards_added", { n = #(selected or {}) }), "success")
                 end)
             else
                 Debug.warn("[CardRewardScreen] _G.openBoosterPack não setado — pack ignorado")
             end
-            self.game:addMessage(I18n.t("messages.pack_opened", { name = offerName }), "info")
         end
         Sfx.play("purchaseConfirm")
 
@@ -1681,7 +1673,7 @@ function CardRewardScreen:_refundDeckService(offer)
     self.game:addMessage(
         I18n.t("reward.service_refunded", { n = offer.cost },
             "Compra cancelada - $" .. tostring(offer.cost) .. " devolvido"),
-        "warning")
+        "gold")
     Sfx.play("purchaseDeny")
 
     -- A tela pode ter fechado enquanto o picker estava aberto (não acontece
@@ -1739,7 +1731,7 @@ function CardRewardScreen:applyUpgrade(upgrade)
             and self.game.economySystem:getInterestCap()) or 0
         self.game:addMessage(
             I18n.t("reward.interest_cap_raised", { n = teto },
-                "Teto de juros: " .. tostring(teto)), "success")
+                "Teto de juros: " .. tostring(teto)), "gold")
 
     elseif upgrade.effect == "increase_draw" then
         -- GRIMÓRIO: +1 carta comprada por turno, pelo resto da run. O ledger

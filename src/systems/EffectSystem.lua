@@ -143,11 +143,6 @@ local function debuffTheme(name)
     return "magic"
 end
 
--- Nome do status TRADUZIDO, pro toast nao imprimir a chave crua ("poison").
-local function statusName(name)
-    return I18n.t("status." .. tostring(name) .. ".name", nil, tostring(name))
-end
-
 -- Formata multiplicador sem ".0" (2.0 → "×2", 1.5 → "×1.5").
 local function multLabel(v)
     return "×" .. string.format("%g", v or 1)
@@ -262,9 +257,6 @@ function EffectSystem:applyJokerEffects(game, card, baseValue, turnContext)
     local procs = {}
     for _, e in ipairs(entries) do
         pushJokerProc(game, procs, e.joker, e.label, e.kind)
-    end
-    for _, e in ipairs(entries) do
-        if e.text then game:addMessage(e.text, "info") end
     end
     return finalValue, procs
 end
@@ -417,7 +409,6 @@ function EffectSystem:processEffectCard(game, effect)
     if t == "instant_heal" then
         local amount = self:applyHealMultiplier(game, v)
         game.player:heal(amount)
-        game:addMessage(msg("healed", { value = amount }), "success")
         -- Game feel v1: cura SOA (shimmer) e brilha verde no painel do jogador.
         Sfx.play("healShimmer")
         CardFeel.burstAtPlayer("heal", 1.0)
@@ -427,30 +418,25 @@ function EffectSystem:processEffectCard(game, effect)
         -- Custo em sangue: HP direto, ignora armor (F0 gameplay-overhaul —
         -- cartas tipo Sangria prometem "Perde N HP" e precisam cumprir).
         game.player:loseHealth(v)
-        game:addMessage(msg("hp_cost", { value = v }), "warning")
         return true
 
     elseif t == "restore_mana" then
         game.player.mana = math.min(game.player.maxMana, game.player.mana + v)
-        game:addMessage(msg("mana_restored", { value = v }), "info")
         return true
 
     elseif t == "increase_max_mana" then
         game.player.maxMana = game.player.maxMana + v
         game.player.mana = game.player.mana + v
-        game:addMessage(msg("max_mana_up", { value = v }), "success")
         return true
 
     elseif t == "add_armor" then
         game.player:addArmor(v)
-        game:addMessage(msg("armor_up", { value = v }), "info")
         return true
 
     elseif t == "magic_damage" then
         game.enemy:takeDamage(v)
         checkEnrage(game)
         game.score = game.score + v
-        game:addMessage(msg("magic_damage", { value = v }), "success")
         -- Game feel v1: dano mágico de effect card também estoura no inimigo
         -- (cartas de ATAQUE já ganham burst via CombatSequence; efeito não).
         CardFeel.burstAtEnemy("magic", 0.9)
@@ -459,7 +445,6 @@ function EffectSystem:processEffectCard(game, effect)
 
     elseif t == "draw_cards" then
         for i = 1, v do game:drawCard((i - 1) * 0.08) end
-        game:addMessage(msg("drew_cards", { value = v }), "info")
         return true
 
     elseif t == "apply_debuff" then
@@ -476,8 +461,6 @@ function EffectSystem:processEffectCard(game, effect)
         if debuff.name == "poison" then
             require("src.systems.AchievementSystem").onPoisonApplied(game, game.enemy)
         end
-        game:addMessage(msg("debuff_applied",
-            { name = statusName(debuff.name), duration = debuff.duration }), "warning")
         Sfx.play("debuffApplied")
         -- Game feel v1: o debuff APARECE no corpo do inimigo com a cor dele
         -- (veneno verde, weak lavanda, vulnerable rosado, queimadura laranja).
@@ -502,21 +485,18 @@ function EffectSystem:processEffectCard(game, effect)
                 discarded = discarded + 1
             end
         end
-        game:addMessage(msg("discarded", { value = discarded }), "info")
         return true
 
     -- ===== Fase 2: novos efeitos =====
 
     elseif t == "gain_strength" then
         game.player:gainStrength(v)
-        game:addMessage(msg("strength_up", { value = v }), "success")
         Sfx.play("strengthGain")
         CardFeel.burstAtPlayer("buff", 0.9)
         return true
 
     elseif t == "gain_dexterity" then
         game.player:gainDexterity(v)
-        game:addMessage(msg("dexterity_up", { value = v }), "success")
         Sfx.play("strengthGain", { pitch = 1.15 })
         CardFeel.burstAtPlayer("armor", 0.9)
         return true
@@ -528,8 +508,6 @@ function EffectSystem:processEffectCard(game, effect)
         local stacks = effect.stacks or 1
         local duration = effect.duration or 3
         game.player:addBuff(name, duration, stacks)
-        game:addMessage(msg("buff_applied",
-            { name = name, stacks = stacks, duration = duration }), "success")
         return true
 
     elseif t == "channel_orb" then
@@ -554,9 +532,8 @@ function EffectSystem:processEffectCard(game, effect)
             self:_stepEvokeOrb(game, sinkOf(game), k)
         end
         if count > 0 then
-            CombatBeats.step(sinkOf(game), "orb.evoke_all_done", function()
-                game:addMessage(msg("evoked_orbs", { value = count }), "success")
-            end, "MICRO")
+            -- respiro depois da rajada de evocações (o feedback é o do orbe)
+            CombatBeats.step(sinkOf(game), "orb.evoke_all_done", function() end, "MICRO")
         end
         return true
 
@@ -565,7 +542,6 @@ function EffectSystem:processEffectCard(game, effect)
         game.enemy:takeDamage(v)
         checkEnrage(game)
         game.score = game.score + v
-        game:addMessage(msg("magic_damage", { value = v }), "success")
         CardFeel.burstAtEnemy("magic", 1.2)
         showEnemyDamage(v)
         return true
@@ -581,7 +557,6 @@ function EffectSystem:processEffectCard(game, effect)
             { type = "channel_orb", orbType = "lightning", value = 3 },
         }
         local pick = pool[require("src.systems.Rng").get():random("misc", #pool)]
-        game:addMessage(msg("mystery"), "info")
         return self:processEffectCard(game, pick)
 
     elseif t == "strength_scaling" or t == "dexterity_scaling"
@@ -680,17 +655,14 @@ function EffectSystem:_evokeOrbEffect(game, orb)
     if orb.type == "lightning" then
         game.enemy:takeDamage(dmg)
         checkEnrage(game)
-        game:addMessage(msg("evoke_lightning", { value = dmg }), "success")
         CardFeel.burstAtEnemy("lightning", 1.1)
         showEnemyDamage(dmg)
     elseif orb.type == "ice" then
         game.player:addArmor(v)
-        game:addMessage(msg("evoke_ice", { value = v }), "info")
         CardFeel.burstAtPlayer("ice", 0.9)
     elseif orb.type == "dark" then
         game.enemy:takeDamage(dmg)
         checkEnrage(game)
-        game:addMessage(msg("evoke_shadow", { value = dmg }), "success")
         CardFeel.burstAtEnemy("dark", 1.2)
         showEnemyDamage(dmg)
     elseif orb.type == "fire" then
@@ -705,13 +677,11 @@ function EffectSystem:_evokeOrbEffect(game, orb)
         -- Mecanica igual -- dano por turno pelos stacks -- com status proprio.
         game.enemy:addStatusEffect({ name = "burn", duration = 2,
             stacks = math.max(1, math.floor(v / 2)) })
-        game:addMessage(msg("evoke_fire", { value = dmg }), "warning")
         CardFeel.burstAtEnemy("fire", 1.1)
         showEnemyDamage(dmg)
     elseif orb.type == "holy" then
         local amount = self:applyHealMultiplier(game, v)
         game.player:heal(amount)
-        game:addMessage(msg("evoke_holy", { value = amount }), "success")
         CardFeel.burstAtPlayer("holy", 1.0)
     end
 end
@@ -758,7 +728,8 @@ function EffectSystem:_stepChannelOrb(game, orb, sink)
         CombatBeats.extendCurrent("ORB")
         notifyOrbUI("notifyEvoke", 1, overflow, "overflow")
         self:_evokeOrbEffect(game, overflow)
-        game:addMessage(msg("orb_overflow", { name = overflow.type }), "warning")
+        game:addMessage(msg("orb_overflow", { name = I18n.t("status.orb_" .. tostring(overflow.type)
+            .. ".name", nil, tostring(overflow.type)) }), "arcane")
         Sfx.play("orbEvoke", { pitch = OVERFLOW_PITCH })
     end, "MICRO")
 
@@ -766,7 +737,6 @@ function EffectSystem:_stepChannelOrb(game, orb, sink)
         p:addOrb(orb)
         local slot = #p.orbs
         require("src.systems.AchievementSystem").onOrbChanneled(game)  -- Conduite Pleno
-        game:addMessage(msg("channeled", { name = orb.type, value = orb.value }), "info")
         -- Contavel como o cash out: um som por orbe, pitch subindo com o slot.
         Sfx.play("orbChannel",
             { pitch = CHANNEL_PITCH_BASE + (slot - 1) * CHANNEL_PITCH_STEP })
@@ -886,14 +856,12 @@ function EffectSystem:orbPassiveTick(game, sink)
                 if pulse > 0 and game.enemy and game.enemy:isAlive() then
                     game.enemy:takeDamage(pulse)
                     checkEnrage(game)
-                    game:addMessage(msg("orb_pulse_dmg", { value = pulse }), "info")
                     landed = true
                 end
             elseif o.type == "ice" then
                 notifyOrbUI("notifyPulse", idx, "+" .. pulse, "armor")
                 if pulse > 0 then
                     p:addArmor(pulse)
-                    game:addMessage(msg("orb_pulse_armor", { value = pulse }), "info")
                     landed = true
                 end
             elseif o.type == "holy" then
@@ -901,7 +869,6 @@ function EffectSystem:orbPassiveTick(game, sink)
                 if pulse > 0 then
                     local amount = self:applyHealMultiplier(game, pulse)
                     p:heal(amount)
-                    game:addMessage(msg("orb_pulse_heal", { value = amount }), "info")
                     landed = true
                 end
             elseif o.type == "dark" then
@@ -924,7 +891,6 @@ end
 function EffectSystem.announceBurnTick(game, dmg)
     if not dmg or dmg <= 0 then return end
     Sfx.play("impactFire", { pitch = 1.15 })
-    game:addMessage(msg("burn_tick", { value = dmg }), "warning")
     CardFeel.burstAtEnemy("fire", 0.9)
     local okER, ER = pcall(require, "src.ui.EnemyRenderer")
     if okER then
@@ -986,7 +952,6 @@ function EffectSystem:fireThornReflect(game)
     local enemy = game.enemy
     if not enemy or not enemy.isAlive or not enemy:isAlive() then return 0 end
     enemy:takeDamage(v)
-    game:addMessage(msg("reflect", { value = v }), "warning")
     -- Game feel v1: espinhos têm som metálico próprio + burst no inimigo
     -- (o dano refletido é VISÍVEL chegando nele).
     Sfx.play("thornReflect")
@@ -1113,7 +1078,6 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
     if t == "on_attack_heal" and triggerType == "attack" then
         local amount = self:applyHealMultiplier(game, v, context and context.procSink)
         game.player:heal(amount)
-        game:addMessage(msg("lifesteal", { value = amount }), "success")
         -- Game feel v1: lifesteal SOA (shimmer discreto) e o joker fonte tica.
         -- healShimmerSoft: alias registrado mais baixo (opts.volume mutaria o base).
         Sfx.play("healShimmerSoft")
@@ -1155,9 +1119,6 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
         if fired and game.player and game.player.addBuff then
             -- duration 1 = "dura ate o inicio do meu proximo turno".
             game.player:addBuff("thorn", 1, v)
-            local total = game.player:getBuffStacks("thorn")
-            game:addMessage(I18n.t("messages.thorn_ready", { value = total },
-                "Espinhos armados: {value}"), "info")
             pushJokerProc(game, context and context.procSink, joker,
                 "+" .. v .. " " .. I18n.t("status.thorn.name", nil, "Espinhos"), "buff")
             local okCF, CF = pcall(require, "src.systems.CardFeel")
@@ -1185,14 +1146,12 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
     elseif t == "strength_per_turn" and triggerType == "turn_start" then
         -- Demon Form: Força cumulativa por turno (identidade StS clássica).
         game.player:gainStrength(v)
-        game:addMessage(msg("demon_form", { value = v }), "success")
         pushJokerProc(game, context and context.procSink,
             context and context.sourceJoker, "+" .. v .. " Forca", "buff")
 
     elseif t == "regen_per_turn" and triggerType == "turn_start" then
         local amount = self:applyHealMultiplier(game, v, context and context.procSink)
         game.player:heal(amount)
-        game:addMessage(msg("regen", { value = amount }), "success")
         pushJokerProc(game, context and context.procSink,
             context and context.sourceJoker, "+" .. amount .. " PV", "heal")
 
@@ -1200,7 +1159,6 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
         -- Custo auto-infligido: HP direto, SEM passar pela armadura (senão
         -- o downside de cartas tipo Berserk é fictício — auditoria F0).
         game.player:loseHealth(v)
-        game:addMessage(msg("penalty", { value = v }), "warning")
         pushJokerProc(game, context and context.procSink,
             context and context.sourceJoker, "-" .. v .. " PV", "damage")
 
@@ -1211,7 +1169,6 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
         for i = 1, n do
             game:drawCard((i - 1) * 0.06)
         end
-        game:addMessage(msg("extra_draw", { value = n }), "info")
         pushJokerProc(game, context and context.procSink,
             context and context.sourceJoker, "+" .. n .. " cartas", "buff")
 
@@ -1225,7 +1182,6 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
                 stacks = effect.stacks or 1,
                 duration = effect.duration or 2,
             })
-            game:addMessage(msg("applied", { name = name }), "warning")
             Sfx.play("debuffApplied")
             -- Game feel v1: o debuff APARECE no corpo do inimigo + joker tica.
             local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
