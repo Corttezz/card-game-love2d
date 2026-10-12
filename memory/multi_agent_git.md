@@ -47,6 +47,12 @@ unset GIT_INDEX_FILE
   toca a cópia de trabalho nem os paths dos outros).
 - `update-ref` com o valor antigo é o "compare-and-swap": se recusar, outro
   agente entrou; refaça `read-tree HEAD` + apply.
+- O `old` do CAS tem que ser capturado ANTES do `read-tree`, e é o MESMO
+  commit lido pela árvore. Capturar `old` de novo na hora do commit (depois
+  de rodar a suíte por minutos) faz o CAS passar com árvore velha: o cc9c24f
+  (Out/2026) tinha pai 2c29fe7 e árvore de b141c04 — desfez o NavCursor e o
+  UiScale até ser trocado por ec84a87. Conserto: `git diff <base> <tree>` →
+  `read-tree <HEAD novo>` + `apply --cached --3way` → commit-tree → CAS.
 
 ## Antes de commitar: o diff não pode DESFAZER ninguém
 
