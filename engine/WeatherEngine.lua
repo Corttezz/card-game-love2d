@@ -832,9 +832,6 @@ function WeatherEngine.emitLeaf(dxFrac, z, t, hFrac, color)
     p.vf = LEAF_SHED.fall * (0.7 + rng:random() * 0.6)
     p.tint = p.tint or {}
     p.tint[1], p.tint[2], p.tint[3] = color[1], color[2], color[3]
-    -- chave de ordem válida já na entrada (a tabela é reciclada e trazia
-    -- o sortRel da partícula morta); o lote do frame seguinte reordena
-    p.sortRel = z - camZ0
     -- A folha nasce DURANTE o draw do WorldRoad (slot da árvore), depois da
     -- ordenação do quadro: entra já na posição certa (fundo → frente) em vez
     -- de ficar no fim com o sortRel velho da tabela reaproveitada — o lote
