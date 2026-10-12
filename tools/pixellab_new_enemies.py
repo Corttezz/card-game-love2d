@@ -497,6 +497,32 @@ def cmd_bake_pile_death(eid, keep=10, frames=8):
     print(f"[pile-death] {eid}: {frames + 1} quadros")
 
 
+def cmd_ground_death(eid):
+    """Assenta o cadáver: se o último quadro da morte termina com a base
+    ACIMA da linha do pé do quadro 0 (tripwire CORPO FLUTUANDO — o
+    abyss_watcher afundava os tentáculos mas parava 9px no ar), desce os
+    quadros 1..N progressivamente (k/N do vão) até a base encostar."""
+    from PIL import Image
+    d = os.path.join(ENEMIES_DIR, eid, "animations/death/south")
+    fs = sorted((f for f in os.listdir(d) if f.endswith(".png")),
+                key=lambda f: int(f.split(".")[0]))
+    f0 = Image.open(os.path.join(d, fs[0])).convert("RGBA")
+    floor = f0.getbbox()[3]
+    last = Image.open(os.path.join(d, fs[-1])).convert("RGBA")
+    gap = floor - last.getbbox()[3]
+    if gap <= 0:
+        print(f"[ground] {eid}: já no chão")
+        return
+    n = len(fs) - 1
+    for k, f in enumerate(fs[1:], start=1):
+        im = Image.open(os.path.join(d, f)).convert("RGBA")
+        dy = int(round(gap * k / n))
+        out = Image.new("RGBA", im.size, (0, 0, 0, 0))
+        out.paste(im.crop((0, 0, im.width, im.height - dy)), (0, dy))
+        out.save(os.path.join(d, f))
+    print(f"[ground] {eid}: cadáver desceu {gap}px (progressivo)")
+
+
 def cmd_sheet(ids):
     for eid in ids:
         F.sheet(eid)
@@ -520,6 +546,8 @@ if __name__ == "__main__":
         cmd_clean(a[0], a[1], int(a[2]) if len(a) > 2 else 8)
     elif c == "piledeath":
         cmd_bake_pile_death(a[0], int(a[1]) if len(a) > 1 else 10)
+    elif c == "grounddeath":
+        cmd_ground_death(a[0])
     elif c == "contact":
         contact(a[0])
     elif c == "sheet":

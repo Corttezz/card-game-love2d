@@ -368,6 +368,133 @@ function M.run()
         t:eq("todo som citado existe no disco (" .. table.concat(missing, ",") .. ")", #missing, 0)
     end
 
+    -- 13. LUGARES: fora da estrada o clima cala e entra o ambiente do lugar
+    do
+        local PA = require("src.systems.PlaceAudio")
+        local WA = require("src.systems.WeatherAudio")
+        -- decisão pura
+        t:eq("estrada (batalha)", PA.placeFor("playing", {}), "road")
+        t:eq("salão do chefe", PA.placeFor("playing", { bossRoom = true }), "boss")
+        t:eq("mapa/encruzilhada", PA.placeFor("mapSelection", {}), "road")
+        t:eq("loja", PA.placeFor("cardReward", { nodeType = "shop" }), "shop")
+        t:eq("recompensa", PA.placeFor("cardReward", { nodeType = "battle" }), "reward")
+        t:eq("cash out", PA.placeFor("roundEval", {}), "reward")
+        t:eq("descanso", PA.placeFor("rest", { restMode = "choose" }), "rest")
+        t:eq("forja", PA.placeFor("rest", { restMode = "forge" }), "forge")
+        t:eq("evento", PA.placeFor("event", {}), "event")
+        t:eq("menu = silêncio", PA.placeFor("menu", {}), nil)
+
+        local fakeNow = 0
+        local realGet = love.timer.getTime
+        love.timer.getTime = function() return fakeNow end
+        local playing = {}   -- src -> code
+        local gainOf = {}
+        local function newSrc(code)
+            local s = { code = code, t0 = fakeNow, off = 0, pitch = 1, stopped = false }
+            function s:getDuration() return 6 end
+            function s:tell() return (fakeNow - self.t0) * self.pitch + self.off end
+            function s:isPlaying() return not self.stopped and self:tell() < 6 end
+            function s:seek(o) self.off = o end
+            function s:getPitch() return self.pitch end
+            function s:stop() self.stopped = true end
+            return s
+        end
+        local saved = _G.audioSystem
+        local started = {}
+        _G.audioSystem = {
+            play = function(_, code, opts)
+                local s = newSrc(code)
+                s.pitch = (opts and opts.pitch) or 1
+                started[#started + 1] = code
+                playing[s] = code
+                gainOf[s] = opts and opts.gain or 1
+                return s
+            end,
+            setInstanceGain = function(_, code, src, g) gainOf[src] = g or 1 end,
+        }
+        WA._reset(); PA._reset()
+        local roadSt = { biomeId = "highlands", intensity = 1, storm = 0.5, night = 0.5,
+                         rain = 1, gust = 0.8 }
+        local function audible(prefix)
+            local sum = 0
+            for s, code in pairs(playing) do
+                if s:isPlaying() and code:sub(1, #prefix) == prefix then
+                    sum = sum + (gainOf[s] or 0)
+                end
+            end
+            return sum
+        end
+        local function run(secs, state, ctx, roadTicks)
+            for _ = 1, math.floor(secs * 30) do
+                fakeNow = fakeNow + 1 / 30
+                PA.apply(1 / 30, state, ctx)
+                if roadTicks then WA.update(1 / 30, roadSt) end
+                WA.watchdog(1 / 30)   -- como o love.update faz todo frame
+            end
+        end
+        run(6, "playing", {}, true)
+        t:truthy(string.format("na estrada a chuva soa (%.2f)", audible("wx:rain")), audible("wx:rain") > 0.3)
+        -- entra na loja COM o mundo ainda atualizando por baixo
+        local n0 = #started
+        run(1.5, "cardReward", { nodeType = "shop" }, true)
+        t:truthy(string.format("loja: chuva da estrada calou em 1.5 s (%.3f)", audible("wx:rain")),
+            audible("wx:rain") < 0.02)
+        t:truthy(string.format("loja: cama da loja tocando (%.2f)", audible("pl:shop-room")),
+            audible("pl:shop-room") > 0.3)
+        local bell = false
+        for k = n0 + 1, #started do if started[k]:find("shop%-bell") then bell = true end end
+        t:truthy("loja: sino da porta na entrada", bell)
+        -- volta pra estrada
+        run(3, "mapSelection", {}, true)
+        t:truthy("de volta à estrada: cama da loja sumiu", audible("pl:shop-room") < 0.02)
+        t:truthy("de volta à estrada: chuva voltou", audible("wx:rain") > 0.3)
+        -- cada lugar: cama própria
+        for _, c in ipairs({ { "rest", { restMode = "choose" }, "pl:rest-camp" },
+                             { "rest", { restMode = "forge" }, "pl:forge-fire" },
+                             { "event", {}, "pl:event-drone" },
+                             { "playing", { bossRoom = true }, "pl:boss-room" } }) do
+            run(2, c[1], c[2], false)
+            t:truthy(string.format("%s/%s: cama %s (%.2f) e estrada calada", c[1],
+                tostring(c[2].restMode or c[2].bossRoom), c[3], audible(c[3])),
+                audible(c[3]) > 0.2 and audible("wx:rain") < 0.02)
+        end
+        -- menu: nada
+        run(2, "menu", {}, false)
+        t:truthy(string.format("menu: nenhum ambiente (%.3f)", audible("pl:") + audible("wx:")),
+            audible("pl:") + audible("wx:") < 0.02)
+        -- sem repetição seguida dentro de cada família
+        local prevFam, rep = {}, false
+        for _, c in ipairs(started) do
+            local fam = c:match("^pl:(.-)%-%d+$")
+            if fam then
+                if prevFam[fam] == c and c ~= "pl:boss-room-1" and c ~= "pl:shop-creak-1"
+                   and c ~= "pl:bellows-1" and c ~= "pl:paper-1" and c ~= "pl:boss-rumble-1" then
+                    rep = true
+                end
+                prevFam[fam] = c
+            end
+        end
+        t:falsy("lugares: variante nunca repete seguida (famílias com 2+)", rep)
+        PA._reset(); WA._reset()
+        _G.audioSystem = saved
+        love.timer.getTime = realGet
+        -- todo som citado existe
+        local missing = {}
+        for _, cfg in pairs(PA.PLACES) do
+            local defs = {}
+            for _, b in ipairs(cfg.beds) do defs[#defs + 1] = b end
+            for _, o in ipairs(cfg.ones) do defs[#defs + 1] = o end
+            if cfg.enter then defs[#defs + 1] = cfg.enter end
+            for _, d in ipairs(defs) do
+                local dir = d.prefix == "pl:" and "audio/sfx/place/" or "audio/sfx/weather/"
+                for _, v in ipairs(d.vars) do
+                    if not love.filesystem.getInfo(dir .. v .. ".mp3") then missing[#missing + 1] = v end
+                end
+            end
+        end
+        t:eq("lugares: todo som citado existe (" .. table.concat(missing, ",") .. ")", #missing, 0)
+    end
+
     -- 8. fonte
     do
         local src = love.filesystem.read("src/ui/WorldRoad.lua") or ""

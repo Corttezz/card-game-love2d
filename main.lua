@@ -1372,6 +1372,9 @@ function love.load(loveArgs)
         -- clima do WorldRoad (camas, avulsos, trovões): registro por SCAN de
         -- audio/sfx/weather/ — ver src/systems/WeatherAudio.lua
         require("src.systems.WeatherAudio").registerSounds(audioSystem)
+        -- ambiente de cada LUGAR (loja/forja/descanso/evento/salão) — ver
+        -- src/systems/PlaceAudio.lua
+        require("src.systems.PlaceAudio").registerSounds(audioSystem)
         audioSystem:loadSound("battleVictory", "audio/sfx/battle-victory.mp3", Config.Audio.BATTLE_VICTORY_VOLUME)
         audioSystem:loadSound("goldGain", "audio/sfx/gold-gain.mp3", Config.Audio.GOLD_GAIN_VOLUME)
         audioSystem:loadSound("nodeSelect", "audio/sfx/node-select.mp3", Config.Audio.NODE_SELECT_VOLUME)
@@ -2014,6 +2017,15 @@ function love.update(dt)
         local run = game and game.runManager and game.runManager.currentRun
         local node = run and run.currentNode
         require("src.systems.MusicDirector").apply(currentState, run, node and node.type)
+        -- Ambiente por LUGAR, mesmo padrão observador: fecha o clima da
+        -- estrada fora dela e toca a cama do lugar (src/systems/PlaceAudio.lua)
+        local nt = node and node.type
+        require("src.systems.PlaceAudio").apply(dt, currentState, {
+            nodeType = nt,
+            restMode = restScreen and restScreen.mode,
+            forgeBusy = restScreen and restScreen.forge ~= nil,
+            bossRoom = require("src.scenes.GameplayScene").inBossRoom(nt),
+        })
     end
     CardParticles.update(dt)
     FlashShader.update(dt)

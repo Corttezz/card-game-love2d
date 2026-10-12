@@ -190,7 +190,7 @@ local function startVoice(bed, def)
     local a = audio()
     if not a then return end
     local name = WeatherAudio.pick("bed:" .. def.family, def.vars)
-    local c = code(name)
+    local c = (def.prefix or "wx:") .. name
     local src = a:play(c, { loop = false, gain = 0,
         pitch = 1 + (rng:random() * 2 - 1) * 0.06 })
     if not src then return end
@@ -207,11 +207,12 @@ local function stopVoice(v)
     if v.src:isPlaying() then v.src:stop() end
 end
 
-local function tickBed(bed, def, target, dt)
+local function tickBed(bed, def, target, dt, rate)
     local a = audio()
-    -- ganho da cama anda devagar rumo ao alvo (sem degrau ao mudar clima)
+    -- ganho da cama anda devagar rumo ao alvo (sem degrau ao mudar clima);
+    -- rate opcional: sair da estrada pra um LUGAR corta em ~1 s
     local d = target - bed.cur
-    local step = GAIN_RATE * dt
+    local step = (rate or GAIN_RATE) * dt
     bed.cur = bed.cur + math.max(-step, math.min(step, d))
     local live = 0
     local i = 1
@@ -263,9 +264,17 @@ end
 -- ----------------------------------------------------------------------------
 -- UPDATE — chamado pelo WorldRoad.update com o estado do WeatherEngine
 -- ----------------------------------------------------------------------------
+-- PORTÃO DE LUGAR (PlaceAudio): o clima da estrada só soa NA estrada. Fora
+-- dela (loja, forja, descanso, evento, recompensa, salão do chefe) as camas
+-- descem em ~1 s e avulsos/trovão calam — mesmo com o mundo ainda
+-- atualizando por baixo da tela.
+WeatherAudio.roadActive = true
+local GATE_RATE = 1.0
+
 function WeatherAudio.update(dt, s)
     now = now + dt
     lastUpdate = love.timer.getTime()
+    local gate = WeatherAudio.roadActive
     local cfg = WeatherAudio.BIOMES[s.biomeId]
     if s.biomeId ~= curBiome then
         curBiome = s.biomeId
@@ -278,18 +287,20 @@ function WeatherAudio.update(dt, s)
         for _, def in ipairs(cfg.beds) do
             local fam = def.family
             beds[fam] = beds[fam] or { cur = 0, voices = {} }
-            local tgt = math.max(0, math.min(1, def.gain(s)))
+            local tgt = gate and math.max(0, math.min(1, def.gain(s))) or 0
             -- a mesma família pode aparecer em 2 biomas com variantes
             -- diferentes: a definição corrente manda
             wanted[fam] = true
-            tickBed(beds[fam], def, tgt, dt)
+            tickBed(beds[fam], def, tgt, dt, (not gate) and GATE_RATE or nil)
         end
     end
     for fam, bed in pairs(beds) do
-        if not wanted[fam] then tickBed(bed, { family = fam, vars = {} }, 0, dt) end
+        if not wanted[fam] then
+            tickBed(bed, { family = fam, vars = {} }, 0, dt, (not gate) and GATE_RATE or nil)
+        end
     end
     -- avulsos
-    if cfg and audio() then
+    if gate and cfg and audio() then
         for idx, def in ipairs(cfg.ones) do
             local st = ones[idx]
             if not st then
@@ -310,7 +321,7 @@ function WeatherAudio.update(dt, s)
         end
     end
     -- trovão pendente (o WeatherEngine já esperou o atraso da distância)
-    if s.thunder and not reduced then WeatherAudio.thunder(s.thunder) end
+    if gate and s.thunder and not reduced then WeatherAudio.thunder(s.thunder) end
 end
 
 -- trovão pela distância do raio (0 = em cima, 1 = horizonte)
@@ -330,12 +341,17 @@ end
 -- vagalume perto acendeu: brilho baixinho, no máximo 1 a cada 2.5 s
 function WeatherAudio.fireflyBlink(nearK)
     local a = audio()
-    if not a or now - lastFirefly < 2.5 then return end
+    if not a or not WeatherAudio.roadActive or now - lastFirefly < 2.5 then return end
     lastFirefly = now
     local name = WeatherAudio.pick("firefly", WeatherAudio.FIREFLY)
     a:play(code(name), { pitch = 0.95 + rng:random() * 0.35,
         gain = 0.18 + 0.20 * (nearK or 0.5) })
 end
+
+-- motor de camas compartilhado (PlaceAudio usa o mesmo: vozes em crossfade,
+-- variante nunca repetida). def = { family, vars, prefix }
+WeatherAudio.tickBed = tickBed
+WeatherAudio.stopVoice = stopVoice
 
 -- main.lua chama todo frame: mundo parado de atualizar = camas somem
 function WeatherAudio.watchdog(dt)

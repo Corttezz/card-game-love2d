@@ -163,3 +163,27 @@ pedir "clearly audible, close" no prompt.
   Diagnóstico: capturar em movimento (`screenshot_weather 6:castle:seq`), A/B
   com `:nolight` (o defeito persistiu → arte) e contar pixels brancos por
   quadro. Outras anims com blob variável são fogo/porta (movimento proposital).
+
+## PlaceAudio — ambiente por LUGAR (Out/2026, src/systems/PlaceAudio.lua)
+Dono: "ao entrar na loja/forja/descanso/evento o som da estrada não pode
+continuar". Observador como o MusicDirector (`PlaceAudio.apply(dt, state,
+ctx)` todo frame no love.update; `placeFor` é pura): road (playing ao ar
+livre, mapSelection) / boss (salão — `GameplayScene.inBossRoom`) / shop
+(cardReward+nó shop) / reward (recompensa, cash out) / rest / forge
+(RestScreen.mode == "forge") / event / nil (menu etc.).
+- Portão: `WeatherAudio.roadActive` — fora da estrada as camas do clima
+  descem em ~1 s e avulsos/trovão/vagalume calam, MESMO com o WorldRoad
+  ainda atualizando por baixo (era isso que vazava; o watchdog só pegava o
+  mundo parado).
+- Camas do lugar usam o MESMO motor (`WeatherAudio.tickBed`, def.prefix):
+  vozes em crossfade de variantes, sem loop fixo. Sino da loja só na ENTRADA.
+  Bigorna da forja cala durante a cerimônia (`forgeBusy`) — o forgeStrike da
+  RestScreen não dobra.
+- Trava: test_weather §13 (decisão por estado, chuva cala em 1.5 s na loja
+  com o mundo tickando, cama do lugar sobe, volta restaura, menu mudo).
+Sons a REGENERAR (ElevenLabs FREE) em `audio/sfx/place/`: shop-room-1/2,
+forge-fire-1/2, rest-camp-1/2, event-drone-1/2, boss-room-1 (camas 6 s);
+shop-bell-1/2, coin-clink-1/2/3, shop-creak-1, anvil-1/2/3, bellows-1,
+event-chime-1/2, paper-1, boss-rumble-1. Reuso de weather/: night-crickets,
+ember-pop-1, owl-1. shop-room-1/2 saíram a −62/−67 dB na 1ª geração —
+regerados com "clearly audible continuous".

@@ -81,6 +81,11 @@ function GameplayScene.isInteriorNode(nodeType, entered)
     return nodeType == "boss" and entered == true
 end
 
+-- leitura do estado (PlaceAudio: salão do chefe não toca o clima da estrada)
+function GameplayScene.inBossRoom(nodeType)
+    return GameplayScene.isInteriorNode(nodeType, bossEntered)
+end
+
 -- Só pra ferramentas de captura: salta a cerimônia da porta e mostra o
 -- salão do chefe direto (tools/screenshot_enemy_scene.lua). Nunca chamado
 -- pelo jogo — a cutscene é parte do clímax.

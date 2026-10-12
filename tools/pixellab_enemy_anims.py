@@ -570,10 +570,12 @@ ENEMIES = {
         "hurt": ("struck hard: the toad squashes down flat and wobbles, eyes "
                "squeezing shut, throat sac puffing, slime splattering from "
                "its mouth, then it bounces back up into the same squat"),
-        "death": ("the pustules dim and burst, the bloated body deflates and "
-                "sags, the toad flops forward and rolls onto its back with "
-                "legs limp in the air, ending flat and motionless low on "
-                "the ground"),
+        "death": ("the toad gives a last croak and DIES: the pustules go "
+                  "dark and deflate, the bloated body sags and collapses, "
+                  "the toad FLIPS OVER onto its back with its pale belly "
+                  "up and its four legs limp in the air, sinking into a "
+                  "low flat sprawl on the ground, eyes closed, ending "
+                  "less than half its original height, motionless"),
     },
     "leech_horror": {
         "keep": ("hunched humanoid horror made of many fused glossy dark "
