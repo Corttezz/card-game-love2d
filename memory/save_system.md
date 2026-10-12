@@ -88,3 +88,44 @@ antigo). Eventos já eram seguros: o RNG do evento é salvo na abertura e a
 escolha marca `event_done`. Pacote: não há pausa durante a abertura (captor
 de input); fechar a janela no meio volta ao save da abertura da loja, e o
 pacote, rerolado pelo mesmo estado do stream `shop`, sai idêntico.
+
+## Inventário: o que o Continuar precisa trazer de volta (Out/2026)
+
+Bug do dono que originou: "cliquei em Continuar e os PONTOS zeraram". O
+`runScore` até viajava no save, mas a TopBar, a tela final, o recorde do
+perfil e o XP de maestria leem `game.score`, que o `startGame` zera e só o
+fim da PRÓXIMA luta reescrevia. Trava de tudo abaixo:
+`love . test_one test_resume_state` (retrato profundo antes/depois em
+cashout, rewards, fork, shop, rest, event, luta e endless; o retrato copia o
+currentRun INTEIRO, então campo novo entra de graça).
+
+| Estado | Onde vive | Volta como |
+|---|---|---|
+| classe, selo, deck (id/`up`/edição/selo), coringas + `jokerActive`, ledger de serviços (slots, compra extra, Cofre, custo da forja), ato/andar/endless/`floorsInEndless`/`campaignWon`, maldições e ciclo (`run.endless`), nós pendentes/atual (`enemyId`), `mapHistory`, roteiro, `eventHistory`, `recentEnemies`, `stage`/`stageEventId`, `shopState`, `scribeDice`, stats da tela final (`battlesWon`, `turnsTotal`, `playSeconds`, dano), flags de conquista da run (`_usedShop`...) | `currentRun` (o save É o currentRun) | direto |
+| streams do Rng + pity (`meta`) | `currentRun.rngState` | `loadRun` |
+| RNG do INÍCIO da luta | `currentRun.battleRng` (nextPhase, antes do embaralho) | luta retomada = mesma mão, mesmo golpe |
+| vida, vida máx., mana base, ouro | `playerState` (syncRunPlayerState) | resumeRun |
+| pontuação da run + `game.score` | `playerState.runScore` | resumeRun espelha em `game.score` (**era o bug**) |
+| "RECORDE!" da run, recibo da última luta (cash out) | `playerState.scoreRecordBroken` / `lastBattleScore` | resumeRun (novo) |
+| ouro ganho/gasto na run | `playerState.goldEarned`/`goldSpent` | resumeRun (novo) |
+| conquistas, contadores, cartas vistas, dicas do tutorial, desbloqueios, maestria | `profile.lua` (ProfileStats) | `checkpointRun` agora faz `flush` (antes "Salvar e sair" perdia os contadores) |
+
+**Derivado, nunca salvo** (recalculado no resume — salvar duplicaria a
+fonte): teto de Bloqueio (ato), teto de juros (serviço Cofre), slots de
+coringa (serviços + edição negativa), `jokerSlots`, `retainArmor`, baralho
+jogável (`buildPlayableDeck`), nível da passiva de classe (ato).
+
+**Transitório de luta, de propósito fora** (retomar = refazer a luta do
+COMEÇO, padrão StS; o `battleRng` garante que é a MESMA luta): mão/pilhas,
+mana atual, Bloqueio, Força/Destreza, orbes, buffs/debuffs, vida/intent do
+inimigo, `_exhaustedThisBattle`, flags de turno, `battleTurn`,
+`ScoreSystem._battle`. Fora da luta o inimigo provisório do resumeRun é
+descartado e o RNG volta ao estado salvo (sair e voltar na loja não muda a
+próxima luta; o nó não ganha `enemyId`). Também fora: `purchaseHistory`
+(não exibido), `currentPhase` (só modo clássico).
+
+Achados na mesma auditoria: a passiva do mago (orbe + Foco) era aplicada no
+`nextPhase` ANTES do `resetTransientStats` e apagada — só a 1ª luta da run
+(e as retomadas, em dobro) tinha Conduíte. Agora roda depois do reset, uma
+vez. `serialize` agora escapa chave reservada (`end`) e ±inf/NaN — antes um
+desses derrubava o save inteiro na validação do writeFile.

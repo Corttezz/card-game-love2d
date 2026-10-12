@@ -70,6 +70,7 @@ local SUITES = {
     { group = "unit",  name = "test_lifecycle" },
     { group = "unit",  name = "test_saveflow" },
     { group = "unit",  name = "test_save_integrity" },
+    { group = "unit",  name = "test_resume_state" },
     { group = "unit",  name = "test_endless" },
     { group = "unit",  name = "test_end_screens" },
     { group = "valid", name = "check_event_i18n" },

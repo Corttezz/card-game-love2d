@@ -2169,13 +2169,26 @@ function Game:nextPhase()
     -- F3: score antigo (BASE_SCORE_PER_PHASE) morreu — a batalha já foi
     -- pontuada em _onEnemyDeath via ScoreSystem (TINTA×SELO).
     self.scoreSystem:startBattle()
-    self:applyClassBattleStartPassive()
+    -- (A passiva de classe roda DEPOIS do resetHandAndDeck, mais abaixo:
+    -- aqui ela era apagada pelo resetTransientStats — o mago ganhava o toast
+    -- do Conduíte e abria sem orbe nem Foco em toda luta depois da 1ª.)
 
     -- F2 gameplay-overhaul: FOLHA ÚNICA de pagamento. O RoundEvalScreen
     -- (cash-out Balatro: vitória + bônus HP + juros) é O pagamento da
     -- batalha. O earnBattleGold daqui era um SEGUNDO salário (~50/batalha
     -- na fase 5, com "streak" falso via currentPhase) que deixava o jogador
     -- rico demais pra loja significar escolha.
+
+    -- RNG do INÍCIO da batalha (Out/2026): o Continuar no meio de uma luta
+    -- refaz a luta do começo — e tem que ser a MESMA luta (mesma mão, mesmo
+    -- primeiro golpe do inimigo). O save deste andar sai no FIM do nextPhase,
+    -- com o embaralho e o sorteio do inimigo já consumidos; sem este retrato,
+    -- sair e voltar re-embaralhava a mão inicial (save-scum da abertura).
+    if self.isRunMode and self.runManager:hasActiveRun() then
+        local st = require("src.systems.Rng").get():getState()
+        st.meta = nil -- pity etc. seguem do estado vivo (não volta no tempo)
+        self.runManager.currentRun.battleRng = st
+    end
 
     self.player:resetMaxMana()
     -- Mana CHEIA ao entrar na batalha (autoplay A3: quem gastava tudo no
@@ -2184,6 +2197,7 @@ function Game:nextPhase()
     self:syncArmorCap()
     self:syncInterestCap()
     self:resetHandAndDeck()
+    self:applyClassBattleStartPassive()
 
     -- Stats do inimigo baseadas no ato + node atual (Fase 5 via ActSystem).
     -- Em run mode: usa runManager.currentRun (actNumber, floorInAct, currentNode).
@@ -2283,9 +2297,15 @@ function Game:syncRunPlayerState()
     -- Continuar — o recorde do perfil sobrevivia, a run não).
     if self.scoreSystem then
         run.playerState.runScore = self.scoreSystem.runScore or 0
+        -- "RECORDE!" dourado pelo resto da run e o recibo da última batalha
+        -- (o cash out retomado mostrava a pontuação vazia).
+        run.playerState.scoreRecordBroken = self.scoreSystem.recordBroken or nil
+        run.playerState.lastBattleScore = self.scoreSystem.lastBattle
     end
     if self.economySystem then
         run.playerState.gold = self.economySystem.currentGold
+        run.playerState.goldEarned = self.economySystem.totalGoldEarned
+        run.playerState.goldSpent = self.economySystem.goldSpent
     end
 end
 
@@ -2302,6 +2322,9 @@ function Game:checkpointRun()
     end
     self:syncRunPlayerState()
     self.runManager:saveRun()
+    -- Contadores do perfil (cartas jogadas, vistas/descobertas) só iam pro
+    -- disco no fim de batalha/conquista: "Salvar e sair" os perdia.
+    require("engine.ProfileStats").flush()
 end
 
 -- Retoma uma run carregada (chamar DEPOIS de runManager:loadRun()):
@@ -2311,6 +2334,21 @@ function Game:resumeRun()
     if not run then return false end
     self.isRunMode = true
     self.selectedClass = run.classId
+
+    -- RNG: o setup abaixo (embaralho do startGame, sorteio do primeiro golpe
+    -- do inimigo) CONSOME os streams misc/enemy. Retomando DENTRO da luta, o
+    -- RNG volta ao início dela (battleRng, gravado no nextPhase) e a luta sai
+    -- idêntica. Em qualquer outro estágio o inimigo é descartado e o RNG volta
+    -- ao estado salvo — sair e voltar na loja não pode mudar a próxima luta.
+    local Rng = require("src.systems.Rng")
+    local savedRng = Rng.get():getState()
+    local inBattle = (run.stage == nil or run.stage == "battle")
+        and not (run.pendingNodes and #run.pendingNodes > 0)
+    if inBattle and run.battleRng then
+        local r = Rng.fromState(run.battleRng)
+        r.meta = savedRng.meta
+        Rng.setActive(r)
+    end
 
     -- startGame monta o deck da run (initializeDeck usa run.currentDeck) e
     -- os jokers (_syncJokersFromRun) — mas reseta player/economia/inimigo.
@@ -2339,6 +2377,19 @@ function Game:resumeRun()
     if ps and ps.runScore and self.scoreSystem then
         self.scoreSystem.runScore = ps.runScore
     end
+    -- BUG do dono (Out/2026, "voltei e meus PONTOS zeraram"): a TopBar, a
+    -- tela final e o recorde do perfil leem `game.score`, que o startGame
+    -- zera e só o fim da PRÓXIMA batalha reescrevia. Morrer antes disso
+    -- gravava 0 como pontuação da run.
+    self.score = (self.scoreSystem and self.scoreSystem.runScore) or 0
+    if ps and self.scoreSystem then
+        self.scoreSystem.recordBroken = ps.scoreRecordBroken and true or false
+        self.scoreSystem.lastBattle = ps.lastBattleScore
+    end
+    if ps and self.economySystem then
+        self.economySystem.totalGoldEarned = ps.goldEarned or self.economySystem.totalGoldEarned
+        self.economySystem.goldSpent = ps.goldSpent or self.economySystem.goldSpent
+    end
 
     -- Inimigo do andar salvo (mesma receita do nextPhase run-mode):
     local nodeType = (run.currentNode and run.currentNode.type) or "battle"
@@ -2349,13 +2400,22 @@ function Game:resumeRun()
     -- O MESMO inimigo do nó salvo (currentNode.enemyId) — o Continuar não
     -- re-sorteia (EnemyRoster).
     local EnemyRoster = require("src.systems.EnemyRoster")
+    local nodeEnemyId = run.currentNode and run.currentNode.enemyId
     local enemyId = EnemyRoster.resolveNode(run, run.currentNode, nodeType)
     self.enemy = EnemyRoster.spawn(Enemy, enemyId, stats, run.actNumber)
     RunModifiers.decorateEnemy(run, self.enemy)
     self.battleTurn = 0
-    self.scoreSystem:startBattle()
-    self:applyClassBattleStartPassive()
+    -- (startBattle + passiva de classe já rodaram no startGame, com a classe
+    -- e o ato da run carregada. Rodar de novo aqui dava ao mago DOIS orbes e
+    -- Foco em dobro em toda luta retomada.)
     self.enemy.isBoss = (nodeType == "boss" or nodeType == "mini_boss")
+    if not inBattle then
+        local r = Rng.fromState(savedRng)
+        Rng.setActive(r)
+        -- O inimigo provisório não pode deixar rastro no nó (resolveNode
+        -- carimbava um enemyId numa LOJA/descanso retomados).
+        if run.currentNode then run.currentNode.enemyId = nodeEnemyId end
+    end
 
     self:addMessage(msg("run_resumed", {
         name = ActSystem.getActName(run.actNumber, run.floorInAct),

@@ -67,10 +67,24 @@ SaveManager.DEFAULT_SETTINGS = DEFAULT_SETTINGS
 -- Serializa table Lua para source code retornável via `return`.
 -- Suporta number/boolean/string/table com keys string ou number.
 -- Cycles não são suportados (saves do jogo são DAGs).
+-- Palavras reservadas não podem ser chave nua (`end = 1` não parseia — e o
+-- writeFile recusaria o save inteiro por causa de uma chave).
+local LUA_KEYWORDS = {}
+for w in ([[and break do else elseif end false for function goto if in
+    local nil not or repeat return then true until while]]):gmatch("%a+") do
+    LUA_KEYWORDS[w] = true
+end
+
 local function serialize(o, indent)
     indent = indent or ""
     local t = type(o)
-    if t == "number" or t == "boolean" then
+    if t == "number" then
+        -- tostring(math.huge) = "inf", que relido vira a variável `inf` (nil).
+        if o ~= o then return "0/0" end
+        if o == math.huge then return "1/0" end
+        if o == -math.huge then return "-1/0" end
+        return tostring(o)
+    elseif t == "boolean" then
         return tostring(o)
     elseif t == "string" then
         return string.format("%q", o)
@@ -79,10 +93,10 @@ local function serialize(o, indent)
         local next_indent = indent .. "  "
         for k, v in pairs(o) do
             local keyStr
-            if type(k) == "string" and k:match("^[%a_][%w_]*$") then
+            if type(k) == "string" and k:match("^[%a_][%w_]*$") and not LUA_KEYWORDS[k] then
                 keyStr = k .. " = "
             else
-                keyStr = "[" .. (type(k) == "string" and string.format("%q", k) or tostring(k)) .. "] = "
+                keyStr = "[" .. (type(k) == "string" and string.format("%q", k) or serialize(k)) .. "] = "
             end
             parts[#parts + 1] = next_indent .. keyStr .. serialize(v, next_indent) .. ",\n"
         end
