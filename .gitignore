@@ -15,3 +15,7 @@ __pycache__/
 # Build de release (tools/build_release.py)
 build/
 /build_info.lua
+
+# Binarios de terceiros baixados pelo dono (rcedit, Steamworks) - ver memory/release_pipeline.md
+/vendor/
+tools/vendor/

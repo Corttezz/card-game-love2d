@@ -913,7 +913,7 @@ local function rollProp(p, z, forcedSide, noLum)
                 if r2 <= 0 then p.kind = kind; break end
             end
             WorldRoad._nextLumZ[p.side] = z + LUM_STEP + rng:random() * LUM_JIT
-            if os.getenv("GF_DEBUG") then
+            if require("src.core.Release").isDev() and os.getenv("GF_DEBUG") then
                 print(string.format("[lum] FIRE side=%+d z=%.1f rel=%.1f kind=%s next=%.1f",
                     p.side, z, z - (WorldRoad._camZ or 0), p.kind,
                     WorldRoad._nextLumZ[p.side]))
@@ -4300,7 +4300,7 @@ local function drawProps(g, x, w, camZ)
             if py >= baseY - 2 then front[#front + 1] = p
             else behind[#behind + 1] = p end
         end
-        if os.getenv("GF_DEBUG") then
+        if require("src.core.Release").isDev() and os.getenv("GF_DEBUG") then
             print(string.format("[depth] baseY=%.0f  front=%d behind=%d",
                 baseY, #front, #behind))
             for _, p in ipairs(front) do

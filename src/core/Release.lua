@@ -288,7 +288,12 @@ function Release.errorhandler(msg)
     -- Tool/teste (`love . <arg>`) que quebra SAI com codigo 1: o handler
     -- padrao abre a tela azul e espera alguem fechar — uma suite quebrada
     -- ficava pendurada ate o timeout de quem a chamou.
-    if Release.DEV and _G.HEADLESS_TOOL then
+    -- Erro ANTES do love.load (require quebrado no topo do main.lua) ainda
+    -- nao tem HEADLESS_TOOL: olha o argumento cru — senao o build de release
+    -- ficava 30 min pendurado na tela azul do test_all da copia limpa.
+    local okArgs, gameArgs = pcall(function() return love.arg.parseGameArguments(arg) end)
+    local toolRun = _G.HEADLESS_TOOL or (okArgs and type(gameArgs) == "table" and gameArgs[1] ~= nil)
+    if Release.DEV and toolRun then
         print(trace)
         return function() return 1 end
     end
@@ -465,6 +470,9 @@ function Release.install()
     love.errorhandler = Release.errorhandler
     Release.installLogging()
     if Release.RELEASE then pcall(Release.migrateDevSaves) end
+    -- Laco com teto de quadros fora de foco + shutdown ordenado. ANTES do
+    -- selftest, que envolve o love.run vigente (o smoke roda o laco real).
+    require("src.core.AppLoop").install()
     if Release.selftestRequested() then installSelftest() end
 end
 

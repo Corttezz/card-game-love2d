@@ -44,12 +44,22 @@ SELFTEST_IDENTITY = "grimoire-selftest"
 
 RUNTIME_ROOT_FILES = {"conf.lua", "main.lua"}
 RUNTIME_DIRS = ("components/", "engine/", "src/", "shaders/", "assets/", "audio/")
+# .ico: so serve ao rcedit (icone do .exe); a janela usa assets/branding/icon.png.
 EXCLUDE_EXT = {".md", ".py", ".sh", ".bat", ".mp4", ".ogv", ".psd", ".aseprite",
-               ".ase", ".xcf", ".kra", ".blend", ".bak", ".tmp", ".log"}
+               ".ase", ".xcf", ".kra", ".blend", ".bak", ".tmp", ".log", ".ico"}
 EXCLUDE_NAMES = {"Thumbs.db", ".DS_Store", "desktop.ini"}
-# Diretorios de asset sem nenhuma referencia no codigo (auditado em Out/2026;
-# o relatorio do build lista candidatos novos a cada execucao).
-EXCLUDE_PREFIXES = ("assets/sprites/tilesets/act1_catacumbs/",)
+# Diretorios de asset sem nenhuma referencia no codigo (o relatorio do build
+# lista candidatos novos a cada execucao). Vazio desde a limpeza de Out/2026,
+# que apagou do repo o que estava aqui (tileset act1_catacumbs).
+EXCLUDE_PREFIXES = ()
+# Arquivos fora do runtime que a SUITE le (so entram na copia de verificacao,
+# nunca no pacote): test_achievements confere icones/metadados Steam.
+VERIFY_EXTRA_PREFIXES = ("tools/", "steam/achievements/")
+# Steamworks (opcional): DLLs que o dono baixa e solta aqui (gitignored).
+# Ver memory/release_pipeline.md, secao "Steamworks / luasteam".
+STEAM_VENDOR_DIR = os.path.join(ROOT, "vendor", "steam")
+STEAM_DLLS = ["luasteam.dll", "steam_api64.dll"]
+RCEDIT_VENDOR = os.path.join(ROOT, "tools", "vendor", "rcedit-x64.exe")
 # Ja comprimidos: zip STORED (deflate nao ganha nada e so atrasa o load).
 STORED_EXT = {".png", ".mp3", ".ogg", ".wav", ".jpg", ".jpeg", ".ttf", ".otf"}
 LOVE_RUNTIME = ["love.dll", "lua51.dll", "mpg123.dll", "msvcp120.dll",
@@ -428,7 +438,8 @@ def main():
     # 4) suite completa contra o codigo limpo
     if not args.skip_tests:
         verify = os.path.join(BUILD, "verify")
-        verify_files = runtime + [f for f in all_files if f.startswith("tools/") and f.endswith(".lua")]
+        verify_files = runtime + [f for f in all_files if f.startswith(VERIFY_EXTRA_PREFIXES)
+                                  and os.path.splitext(f)[1].lower() not in (".py", ".md", ".sh")]
         copy_tree(verify_files, verify, strip=True)
         env = dict(os.environ, CARDGAME_IDENTITY="card-game-build-verify")
         code, outp = run([lovec, ".", "test_all"], cwd=verify, env=env, timeout=1800)
@@ -452,7 +463,8 @@ def main():
 
     exe_base = os.path.join(BUILD, "_love_base.exe")
     shutil.copy2(love_exe, exe_base)
-    rcedit = os.environ.get("RCEDIT") or shutil.which("rcedit") or shutil.which("rcedit-x64")
+    rcedit = (os.environ.get("RCEDIT") or shutil.which("rcedit") or shutil.which("rcedit-x64")
+              or (RCEDIT_VENDOR if os.path.isfile(RCEDIT_VENDOR) else None))
     icon = os.path.join(ROOT, "assets", "branding", "icon.ico")
     if rcedit and os.path.isfile(icon):
         code, outp = run([rcedit, exe_base, "--set-icon", icon,
@@ -465,7 +477,8 @@ def main():
         log("  icone/versao do .exe aplicados (rcedit)")
     else:
         log("  [aviso] rcedit nao encontrado: o .exe fica com o icone do LOVE "
-            "(defina RCEDIT=caminho\\rcedit-x64.exe)")
+            "(baixe rcedit-x64.exe de github.com/electron/rcedit/releases pra "
+            "tools/vendor/ ou defina RCEDIT=caminho\\rcedit-x64.exe)")
 
     win_dir = os.path.join(out_dir, "windows")
     os.makedirs(win_dir)
@@ -481,6 +494,24 @@ def main():
     if not os.path.isfile(notices):
         die("dist/THIRD_PARTY_NOTICES.txt ausente (OFL da fonte exige o aviso no pacote)")
     shutil.copy2(notices, win_dir)
+
+    # Steamworks: luasteam + steam_api64 ao lado do exe (require("luasteam")
+    # acha a DLL pelo diretorio do executavel). Sem elas o jogo roda igual e o
+    # SteamBridge avisa "Steam INATIVA" no log — mas o BUILD tambem avisa alto.
+    steam_found = [d for d in STEAM_DLLS if os.path.isfile(os.path.join(STEAM_VENDOR_DIR, d))]
+    if len(steam_found) == len(STEAM_DLLS):
+        for d in STEAM_DLLS:
+            shutil.copy2(os.path.join(STEAM_VENDOR_DIR, d), win_dir)
+        log("  Steamworks: luasteam.dll + steam_api64.dll incluidas")
+    elif steam_found:
+        die("vendor/steam/ incompleto: tem " + ", ".join(steam_found)
+            + " mas precisa de " + " + ".join(STEAM_DLLS))
+    else:
+        log("  " + "!" * 72)
+        log("  [AVISO STEAM] vendor/steam/ sem " + " + ".join(STEAM_DLLS) + ":")
+        log("  o pacote sai SEM Steamworks (conquistas Steam nao desbloqueiam;")
+        log("  o perfil local funciona). Ver memory/release_pipeline.md.")
+        log("  " + "!" * 72)
 
     steam_content = os.path.join(BUILD, "steam", "windows", "content")
     if os.path.exists(steam_content):

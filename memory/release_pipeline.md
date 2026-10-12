@@ -17,9 +17,11 @@ python tools/build_release.py --allow-dirty  # permite working tree sujo
 
 Exige working tree limpo (o pacote sai dos arquivos RASTREADOS pelo git:
 o que nao foi commitado nao entra). LOVE em `C:\Program Files\LOVE` (ou
-`--love-dir` / `LOVE_DIR`). Icone do .exe: defina `RCEDIT=...\rcedit-x64.exe`
-(https://github.com/electron/rcedit); sem ele o .exe fica com o coracao do
-LOVE (a JANELA ja usa `assets/branding/icon.png` via conf.lua).
+`--love-dir` / `LOVE_DIR`). Icone + versao do .exe via rcedit, procurado em
+`RCEDIT=...\rcedit-x64.exe`, no PATH ou em `tools/vendor/rcedit-x64.exe`
+(gitignored; baixar de https://github.com/electron/rcedit/releases — v2.0.0
+em Out/2026). Sem ele: aviso e o .exe fica com o coracao do LOVE (a JANELA
+usa `assets/branding/icon.png` via conf.lua de qualquer jeito).
 
 Saida:
 - `build/release/<versao>/Grimoire.love` — zip (png/mp3 STORED, texto deflate)
@@ -36,8 +38,8 @@ Tamanho em 0.9.2: .love 58,7 MB, pasta windows 68,4 MB.
 
 1. **Selecao**: `git ls-files` ∩ runtime (conf/main + components/ engine/ src/
    shaders/ assets/ audio/). Fora: tools/, docs/, memory/, scratchpads,
-   .md/.py/.sh/.bat, .mp4 (modulo video desligado), README*, e
-   `EXCLUDE_PREFIXES` (tileset act1_catacumbs, sem referencia).
+   .md/.py/.sh/.bat, .mp4 (modulo video desligado), .ico (so serve ao
+   rcedit), README*, e `EXCLUDE_PREFIXES` (vazio desde a limpeza de assets).
 2. **Strip de comentarios** com lexer Lua proprio (strings curtas com escape,
    longas `[[ ]]`/`[==[ ]==]`, comentarios longos, shebang). **Quebras de
    linha preservadas**: linha N do pacote = linha N do repo, entao o crash
@@ -47,8 +49,10 @@ Tamanho em 0.9.2: .love 58,7 MB, pasta windows 68,4 MB.
 3. **Prova de equivalencia**: o proprio lovec compila original e limpo e
    compara `string.dump(f, true)` byte a byte. Diferenca = build reprovado.
    (Testado com adulteracao proposital: pega.)
-4. **test_all na copia limpa** (inclui tools/ so nessa copia, identidade
-   `card-game-build-verify`).
+4. **test_all na copia limpa** (inclui `VERIFY_EXTRA_PREFIXES` = tools/ +
+   steam/achievements/ so nessa copia — test_achievements le os icones e o
+   json da Steam; identidade `card-game-build-verify`). Teste novo que le
+   arquivo fora do runtime? Acrescente o prefixo la, NAO enfraqueca o teste.
 5. **Empacota**: escreve `build_info.lua` (a flag de RELEASE), zip, funde.
 6. **Smoke do executavel fundido**: `GRIMOIRE_SELFTEST=1` (boot real, pula o
    splash por tecla, renderiza as 128 cartas, abre run das 3 classes, desenha
@@ -81,7 +85,7 @@ DEV em silencio). `test_release` trava que o repo e DEV.
 | `print` | console (+ ring buffer) | `logs/last_session.log` (+ `previous_session.log`), buffer, teto 2 MB |
 | `Debug.log/warn` | sim | silenciado (`Debug.err` vai pro log) |
 | feel_debug.log / reward_debug.log | sim | nao gravam |
-| GF_DEBUG (prova magenta da grama) | env var | ignorado |
+| GF_DEBUG (prova magenta da grama) | env var | ignorado (`Release.isDev()` no WorldRoad) |
 | erro fatal | crash log + handler padrao do LOVE | crash log + tela traduzida (`crash.*`) com caminho do log; Esc fecha, C copia |
 
 - `CARDGAME_IDENTITY` sobrepoe a identidade nos dois modos (frentes paralelas
@@ -94,6 +98,44 @@ DEV em silencio). `test_release` trava que o repo e DEV.
   **Arquivo de save NOVO? acrescente em `Release.MIGRATE_FILES`.**
 - Crash log: `crashes/crash_<data>.txt` = versao/commit/OS/GPU + stacktrace +
   ultimas 300 linhas impressas.
+
+## Laco principal e encerramento — `src/core/AppLoop.lua` (Out/2026)
+
+`Release.install()` troca o `love.run` ANTES do wrapper do selftest (que
+envolve o laco vigente — o smoke do exe exercita o laco real). Medido no exe
+de release, menu, 10 s por estado (`TotalProcessorTime` do PID lancado, com
+outras frentes rodando balance_sim na maquina — foco oscila 18-44% entre
+medicoes nos DOIS builds, e o mesmo caminho de codigo):
+
+| estado | antes | depois |
+|---|---|---|
+| foco (menu, vsync) | 21-35% | igual (sem mudanca de proposito) |
+| minimizado | 26-34% | **0,5-4%** (8 fps, sem draw) |
+| visivel sem foco | 25-35% | **5,6%** (15 fps) |
+
+Regras: foco+vsync = igual ao padrao; vsync DESLIGADO = teto na taxa do
+monitor (60..240); `dt` com teto 0,25 s; ferramentas (`HEADLESS_TOOL`)
+nunca estrangulam. Trava: `test_app_loop`. Testado e DESCARTADO: dormir
+antes do `present` com foco (ate 1/hz - 4 ms) — a CPU subiu (28-36% vs
+20-22%): o custo do menu e trabalho real da cena, nao spin do driver.
+
+**Encerramento**: o evento `quit` passa por `AppLoop.shutdown()` depois de
+`love.quit` (se alguem definir um e nao cancelar): grava monitor/posicao da
+janela (`WindowPlacement.remember` → settings.lua), `SteamBridge.shutdown()`,
+`Release.flushLog()`. Fica no laco e NAO num `function love.quit` do main.lua
+(um love.quit definido depois por outra frente o apagaria em silencio).
+Saves sao sincronos (atomicWrite) — nao ha escrita pendente a esperar.
+
+**Monitor**: `src/core/WindowPlacement.lua` — settings.lua ganha
+`windowDisplay/windowX/windowY` (chaves extras, `loadSettings` preserva). No
+boot a janela vai pro monitor salvo antes do setFullscreen/setMode; monitor
+que sumiu cai no 1; posicao que nao cabe centraliza.
+
+**Erro antes do love.load em DEV com argumento** (ex.: modulo novo NAO
+rastreado pelo git → a copia do build nao o tem → `require` quebra na 1a
+linha do main.lua): o errorhandler olha o argumento cru e sai com 1. Antes
+abria a tela azul e o build ficava pendurado ate o timeout de 30 min.
+Lembrete: o build so empacota arquivo RASTREADO — `git add` o modulo novo.
 
 ## Save e DADO, nao codigo
 
@@ -171,14 +213,45 @@ subdir `Grimoire/`):
   Upload: `steamcmd +login <conta> +run_app_build <repo>\steam\app_build_windows.vdf +quit`.
   Primeira vez com `"Preview" "1"`. `SetLive` vazio: publicar pela pagina de
   Builds (ou branch beta).
-- `steam/steam_appid.dev.txt` (480 = Spacewar): so serve se um dia o jogo
-  usar a Steamworks API (hoje NAO usa — luasteam nao esta integrado, entao
-  conquistas Steam/Cloud API nao existem). Para testar com API: copiar como
-  `steam_appid.txt` ao lado do exe LOCAL. O depot exclui `steam_appid.txt`.
-- Steam Cloud sem API: configurar "Steam Auto-Cloud" no Steamworks com root
-  `WinAppDataRoaming`, subdir `Grimoire`, padroes `*.lua` (exclua `logs/`,
-  `crashes/`).
+- `steam/steam_appid.dev.txt` (480 = Spacewar): pra testar a API num exe
+  LOCAL, copiar como `steam_appid.txt` ao lado dele. O depot exclui
+  `steam_appid.txt` (em producao a Steam injeta o AppID).
 - Launch option: executavel `Grimoire.exe`, sem argumentos (release ignora).
+
+### Steamworks / luasteam — o que o DONO precisa fazer
+
+O codigo ja esta pronto (`SteamBridge` + `AchievementSystem.install` +
+`runCallbacks` no love.update + shutdown no AppLoop). Falta binario e painel:
+
+1. **luasteam** (github.com/uspgamedev/luasteam/releases): baixar o build
+   **Windows x64 para LuaJIT** (o LOVE 11.x e LuaJIT 2.1) → `luasteam.dll`.
+2. **Steamworks SDK** (partner.steamgames.com → SDK, conta de parceiro):
+   `sdk/redistributable_bin/win64/steam_api64.dll` da MESMA versao de SDK
+   contra a qual o luasteam foi compilado (ver release notes do luasteam).
+3. Soltar os dois em `vendor/steam/` na raiz do repo (gitignored — nao
+   commitar binario). O build copia pra `windows/` e pro depot e loga
+   `Steamworks: ... incluidas`; sem eles imprime o bloco `[AVISO STEAM]`
+   (nao e silencioso) e o jogo roda so com conquistas locais. So um dos
+   dois presente = build REPROVADO.
+4. Trocar `APP_ID` / `DEPOT_ID` em `steam/app_build_windows.vdf` e
+   `steam/depot_build_windows.vdf` pelos do painel.
+5. Teste local: `steam/steam_appid.dev.txt` (480) ou um com o AppID real
+   copiado como `steam_appid.txt` ao lado do `Grimoire.exe` LOCAL, Steam
+   aberta, e procurar `[SteamBridge] Steam ATIVA` em
+   `%APPDATA%/Grimoire/logs/last_session.log`.
+6. Cadastrar as conquistas (checklist em memory/steam_achievements.md).
+
+### Steam Cloud — Auto-Cloud (sem API)
+
+Steamworks → App Admin → Cloud: root `WinAppDataRoaming`, subdir `Grimoire`.
+- **sincronizar**: `profile.lua`, `unlocks.lua`, `achievements.lua`,
+  `run.save.lua`, `i18n_settings.lua` (perfil + run em andamento + idioma);
+- **NAO sincronizar**: `settings.lua` (volume, fullscreen, vsync e MONITOR
+  da janela sao da maquina — o monitor 2 do PC nao existe no notebook),
+  `logs/`, `crashes/`, `*.tmp`, `*.tool.lua`, `migrated_from_dev.txt`.
+Use padroes explicitos por arquivo (NAO `*.lua`, que pegaria settings.lua).
+Conferir os nomes contra `Release.MIGRATE_FILES` e `PATHS` do
+`engine/SaveManager.lua` antes de publicar — save novo entra nas duas listas.
 
 ## Checklist da loja (a fazer pelo dono)
 
@@ -200,7 +273,8 @@ Arte da loja (tamanhos atuais do Steamworks — conferir no painel):
 
 ## Pendencias de release conhecidas
 
-- Icone do .exe depende de rcedit (nao instalado nesta maquina).
+- Icone do .exe: rcedit em `tools/vendor/` (gitignored) — maquina nova
+  precisa baixar de novo (ver Comando).
 - Assinatura de codigo (Authenticode) do .exe: opcional na Steam, reduz
   alerta do SmartScreen fora dela.
 - PNG legados enormes (`assets/icons/*.png` ~2 MB cada desenhados a escala

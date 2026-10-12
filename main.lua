@@ -1257,22 +1257,27 @@ function love.load(loveArgs)
     -- captura tem que ser reproduzível entre máquinas com monitores
     -- diferentes. Sem este guard, o default fullscreen vazaria pros tools.
     if not _G.HEADLESS_TOOL then
+        -- Reabre no monitor onde o jogador fechou (src/core/WindowPlacement).
+        local WindowPlacement = require("src.core.WindowPlacement")
+        local display = WindowPlacement.restore(persistedSettings)
         if persistedSettings.fullscreen then
             love.window.setFullscreen(true)
         else
             -- 85% do desktop e centralizada. Pedir a área TOTAL põe a barra
             -- de título atrás da barra de tarefas (Windows) ou do menu bar
             -- (macOS); pedir mais que a área útil trava o `setMode`.
-            local okDim, dw, dh = pcall(love.window.getDesktopDimensions, 1)
+            local okDim, dw, dh = pcall(love.window.getDesktopDimensions, display)
             if okDim then
                 local alvoW, alvoH = Config.Utils.tamanhoJanelaInicial(
                     dw, dh, love.graphics.getWidth())
                 if alvoW then
                     local _, _, flags = love.window.getMode()
                     flags.centered = true
+                    flags.display = display
                     love.window.setMode(alvoW, alvoH, flags)
                 end
             end
+            WindowPlacement.restorePosition(persistedSettings, display)
         end
     end
 
