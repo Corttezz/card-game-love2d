@@ -203,22 +203,31 @@ end
 
 -- ===== navegação =====
 -- Vizinho espacial: menor distância na direção, desvio lateral pesa 2x.
+-- Duas passadas: primeiro só dentro do cone de 45° (o que está "naquela
+-- direção" de verdade); sem ninguém no cone, qualquer um à frente — senão um
+-- alvo quase alinhado longe perdia pra um vizinho de outra fileira e havia
+-- botão que a seta nunca alcançava (Continuar da loja vindo do pacote).
 local function neighbor(list, from, dx, dy)
     local fx, fy = center(from)
-    local best, bd
-    for _, t in ipairs(list) do
-        if t.key ~= from.key then
-            local cx, cy = center(t)
-            local vx, vy = cx - fx, cy - fy
-            local along = vx * dx + vy * dy
-            if along > 2 then
-                local side = math.abs(vx * dy) + math.abs(vy * dx)
-                local d = along + side * 2
-                if not bd or d < bd then best, bd = t, d end
+    local function pass(cone)
+        local best, bd
+        for _, t in ipairs(list) do
+            if t.key ~= from.key then
+                local cx, cy = center(t)
+                local vx, vy = cx - fx, cy - fy
+                local along = vx * dx + vy * dy
+                if along > 2 then
+                    local side = math.abs(vx * dy) + math.abs(vy * dx)
+                    if not cone or side <= along then
+                        local d = along + side * 2
+                        if not bd or d < bd then best, bd = t, d end
+                    end
+                end
             end
         end
+        return best
     end
-    return best
+    return pass(true) or pass(false)
 end
 
 local DIRS = { up = { 0, -1 }, down = { 0, 1 }, left = { -1, 0 }, right = { 1, 0 } }
@@ -396,7 +405,7 @@ function NavCursor.drawGlyph(label, x, y, size)
     size = size or 16
     local FontManager = require("src.ui.FontManager")
     local Palette = require("src.ui.Palette")
-    local f = FontManager.getFont(math.max(8, math.floor(size * 0.5)))
+    local f = FontManager.getFont(math.max(10, math.floor(size * 0.55)))
     local g = love.graphics
     g.setFont(f)
     if device == "pad" then
@@ -437,13 +446,14 @@ function NavCursor.draw()
     if not active then return end
     local t = current()
     local k = require("src.ui.UiScale").k()
-    local size = math.floor(22 * k)
+    -- glifo legível no Deck (7"): nunca menor que 26px de tela
+    local size = math.max(26, math.floor(22 * k))
     if t then
         local MenuKit = require("src.ui.MenuKit")
         MenuKit.focusRing(t.x, t.y, t.w, t.h, love.timer.getTime(), math.floor(3 * k))
         -- glifo de confirmar POR FORA do canto superior direito (dentro ele
         -- cobria o selo de preço/custo das cartas)
-        local lw = math.max(size, math.floor(size * 0.5) * #labelFor("confirm") + 8)
+        local lw = math.max(size, math.floor(size * 0.55) * #labelFor("confirm") + 8)
         NavCursor.drawGlyph(labelFor("confirm"), t.x + t.w - lw * 0.5, t.y - size * 0.85, size)
     end
     local IF = require("src.ui.InputFocus")

@@ -38,6 +38,13 @@ UiScale.MIN_AUTO, UiScale.MAX_AUTO = 1, 2.5
 UiScale.OPTIONS = { 0.8, 0.9, 1, 1.25, 1.5 }
 
 local userMul = 1
+-- Aparelho de tela pequena e densa: o Steam Deck (1280x800 em 7") dá k=1 pela
+-- conta da janela, e o texto de 8px fica com ~1mm. O Steam exporta
+-- SteamDeck=1 no Deck: lá o Auto já começa em 125% (8px → 10px efetivos).
+-- O jogador ainda ajusta por cima (multiplicador das Configurações).
+local deviceMul = (os.getenv("SteamDeck") == "1") and 1.25 or 1
+function UiScale.setDeviceMultiplier(m) deviceMul = tonumber(m) or 1 end
+function UiScale.deviceMultiplier() return deviceMul end
 local forcedK = nil          -- testes: UiScale.force(1) congela o espaço
 local depth = 0
 local saved = nil            -- funções originais enquanto o contexto vale
@@ -76,7 +83,7 @@ function UiScale.k(w, h)
     end
     -- degraus de 1/4: fonte pixel e arte nearest ficam com blocos iguais
     -- (1366x768 daria 1.067 — tudo 7% maior e serrilhado à toa → 1)
-    local k = math.floor(UiScale.auto(w, h) * userMul * 4 + 0.001) / 4
+    local k = math.floor(UiScale.auto(w, h) * deviceMul * userMul * 4 + 0.001) / 4
     return clamp(k, 0.75, 3)
 end
 

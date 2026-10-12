@@ -2484,8 +2484,11 @@ function love.keypressed(key)
         return
     end
     if currentState == "collection" then
+        -- Esc com o ZOOM aberto só fecha o zoom (antes também saía da
+        -- coleção — Esc/B "pulava" uma tela; achado no fluxo por pad)
+        local wasInspecting = collectionScreen.inspectedCard ~= nil
         if collectionScreen.keypressed then collectionScreen:keypressed(key) end
-        if key == "escape" then
+        if key == "escape" and not wasInspecting then
             currentState = "menu"
             collectionScreen:hide()
             menu:show()

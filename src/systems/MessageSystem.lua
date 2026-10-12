@@ -75,6 +75,13 @@ function MessageSystem:layout()
     local x = math.floor(14 * u)
     local w = math.floor(math.min(sw * 0.30, 320 * u))
     local zoneTop, zoneBottom = math.floor(sh * 0.318), math.floor(sh * 0.62)
+    -- nunca por cima do quadro de coringas (tela baixa — Steam Deck com a
+    -- escala de UI em 125% — o quadro passa dos 31.8% da altura)
+    local okGS, GS = pcall(require, "src.scenes.GameplayScene")
+    if okGS and GS.jokerFrameRect then
+        local okR, _, jy, _, jh = pcall(GS.jokerFrameRect)
+        if okR and jy and jh then zoneTop = math.max(zoneTop, math.floor(jy + jh + 8)) end
+    end
     local lh = math.floor(font:getHeight() * 1.5)
     local out, y = {}, zoneTop
     -- mais NOVAS embaixo (ordem de chegada); se a zona encher, as mais

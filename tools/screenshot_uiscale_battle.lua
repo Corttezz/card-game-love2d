@@ -15,7 +15,10 @@ local M = {}
 
 local SIZES = {
     { 1024, 768 }, { 1366, 768 }, { 1920, 1080 }, { 2560, 1440 }, { 3840, 2160 },
+    { 1280, 800, deck = true },   -- Steam Deck: Auto em 125% (UiScale deviceMul)
 }
+-- DECK=1 no ambiente: só o tamanho do Steam Deck
+if os.getenv("DECK") == "1" then SIZES = { { 1280, 800, deck = true } } end
 
 function M.run(locale)
     locale = locale or "pt_BR"
@@ -112,7 +115,8 @@ function M.run(locale)
         require("src.ui.FloatingText").draw()
         UiScale.finish()
         love.graphics.setCanvas()
-        local file = ("uiscale_battle_%s_%dx%d_%s.png"):format(name, W, H, locale)
+        local file = ("uiscale_battle_%s_%dx%d%s_%s.png"):format(name, W, H,
+            UiScale.deviceMultiplier() ~= 1 and "deck" or "", locale)
         cv:newImageData():encode("png", file)
         local pct = lastBbox and (lastBbox.bottomY - lastBbox.topY) / H * 100 or -1
         print(("[uiscale_battle] %s  k=%.2f  inimigo=%.1f%% da altura"):format(file, UiScale.k(), pct))
@@ -131,6 +135,7 @@ function M.run(locale)
     local ok, err = pcall(function()
         for _, sz in ipairs(SIZES) do
             W, H = sz[1], sz[2]
+            UiScale.setDeviceMultiplier(sz.deck and 1.25 or 1)
             FontManager.clearCache()
             WorldRoad.clearCache()
             initScene()
@@ -178,6 +183,7 @@ function M.run(locale)
     end)
     if not ok then print("[uiscale_battle] FALHOU: " .. tostring(err)) end
     EnemyRenderer.draw = realERDraw
+    UiScale.setDeviceMultiplier(1)
     UiScale.reset()
     love.graphics.getWidth, love.graphics.getHeight, love.graphics.getDimensions = rw, rh, rd
     love.mouse.getPosition = realMouse

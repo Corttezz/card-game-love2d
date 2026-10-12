@@ -619,7 +619,14 @@ function PauseMenu:_drawShortcut(s, focused)
     love.graphics.setColor(1, 1, 1, focused and 1 or 0.78)
     icon(ix, iy)
     Palette.set(focused and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT)
-    TextFit.print(s.label, s.x + 2, s.y + s.h - S(self, 15), { size = S(self, 8), maxW = s.w - 4, align = "center" })
+    -- rótulo apertado (4 atalhos em painel estreito, Steam Deck): sai o
+    -- "[J]" antes de virar "Coringa..." — a tecla é atalho, o nome é a info
+    local label = s.label
+    local lf = FontManager.getFont(S(self, 8))
+    if lf:getWidth(label) > s.w - 4 then
+        label = label:gsub("%s*%[[^%]]*%]%s*$", "")
+    end
+    TextFit.print(label, s.x + 2, s.y + s.h - S(self, 15), { size = S(self, 8), maxW = s.w - 4, align = "center" })
 end
 
 function PauseMenu:_drawRow(row, focused, t)

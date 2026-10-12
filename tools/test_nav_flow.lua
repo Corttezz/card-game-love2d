@@ -9,6 +9,8 @@
 -- Enter/A, e confere que o foco nunca cai fora da tela.
 --
 --   love . nav_flow                (sai com 0/1)
+--   NAV_PART=2 love . nav_flow     (2º roteiro: coleção, conquistas, coringas,
+--                                   deck, roteiro, pacote, vitória → endless)
 --
 -- Trapaças declaradas (não são navegação): inimigo com 1 de vida (a luta não
 -- é o que se testa) e o tipo dos nós da encruzilhada forçado (loja, descanso,
@@ -300,16 +302,27 @@ function M.script()
     pad("b")
     check("B fecha a pausa", IF.activeName() ~= "pause")
 
+    M.finish()
+end
+
+function M.finish()
     check("o foco nunca saiu da tela (" .. offscreen .. " quadros fora)", offscreen == 0)
     print(("  TOTAL: %d pass / %d fail"):format(pass, fail))
     love.event.quit(fail == 0 and 0 or 1)
 end
 
+-- ajudantes pro 2º roteiro (tools/test_nav_flow2.lua)
+M.frames, M.sleep, M.key, M.pad = frames, sleep, key, pad
+M.waitFor, M.navigateTo, M.check, M.snap = waitFor, navigateTo, check, snap
+M.isButtonText, M.isKey, M.state = isButtonText, isKey, state
+
 function M.start()
     -- tamanho da janela por ambiente (uma chamada só, no começo)
     local W, H = tonumber(os.getenv("NAV_W")), tonumber(os.getenv("NAV_H"))
     if W and H then love.window.setMode(W, H, { resizable = true }) ; if love.resize then love.resize(W, H) end end
-    local co = coroutine.create(M.script)
+    -- NAV_PART=2: o 2º roteiro (tools/test_nav_flow2.lua)
+    local script = os.getenv("NAV_PART") == "2" and require("tools.test_nav_flow2").script or M.script
+    local co = coroutine.create(script)
     local self = {}
     function self.step(dt)
         if coroutine.status(co) == "dead" then return end

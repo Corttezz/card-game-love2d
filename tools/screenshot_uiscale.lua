@@ -13,7 +13,10 @@ local M = {}
 
 local SIZES = {
     { 1024, 768 }, { 1366, 768 }, { 1920, 1080 }, { 2560, 1440 }, { 3840, 2160 },
+    { 1280, 800, deck = true },   -- Steam Deck: Auto em 125% (UiScale deviceMul)
 }
+-- DECK=1 no ambiente: só o tamanho do Steam Deck
+if os.getenv("DECK") == "1" then SIZES = { { 1280, 800, deck = true } } end
 
 local function fakeWindow(w, h)
     local rw, rh, rd = love.graphics.getWidth, love.graphics.getHeight, love.graphics.getDimensions
@@ -125,6 +128,7 @@ function M.run(arg)
     for _, sz in ipairs(SIZES) do
         local w, h = sz[1], sz[2]
         local restore = fakeWindow(w, h)
+        UiScale.setDeviceMultiplier(sz.deck and 1.25 or 1)
         FontManager.clearCache()
         for _, shot in ipairs(shots) do
             local ok, err = pcall(function()
@@ -138,7 +142,8 @@ function M.run(arg)
                     local tb = TopBar:new(); tb:setGame(game); tb:update(1 / 30, game); tb:draw()
                 end
                 love.graphics.setCanvas()
-                local name = ("uiscale_%s_%dx%d_%s.png"):format(shot.name, w, h, locale)
+                local name = ("uiscale_%s_%dx%d%s_%s.png"):format(shot.name, w, h,
+                    sz.deck and "deck" or "", locale)
                 canvas:newImageData():encode("png", name)
                 print("[uiscale] " .. name .. "  k=" .. UiScale.k(w, h))
                 if screen.hide then pcall(screen.hide, screen) end
@@ -151,6 +156,7 @@ function M.run(arg)
         end
         restore()
     end
+    UiScale.setDeviceMultiplier(1)
     FontManager.clearCache()
     return true
 end
