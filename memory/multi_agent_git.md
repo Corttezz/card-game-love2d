@@ -40,8 +40,11 @@ unset GIT_INDEX_FILE
   sempre tem hunks de OUTRO agente na cópia de trabalho.
 - NUNCA `git add -A`, `git add .`, `git commit -a`, `git stash`, `git checkout -- <arq>`,
   `git reset --hard` — mexem no trabalho dos outros.
-- O índice compartilhado fica intocado; depois do commit `git status` mostra
-  seus arquivos como "modificados" contra o índice velho — é cosmético.
+- Depois do commit, o índice COMPARTILHADO ainda guarda a versão velha dos
+  seus arquivos: um `git commit` simples de outro agente desfaria você (é
+  exatamente o defeito do aed62ee). Sincronize SÓ os seus caminhos:
+  `git reset -q -- <seus arquivos>` (põe o índice = HEAD nesses paths, não
+  toca a cópia de trabalho nem os paths dos outros).
 - `update-ref` com o valor antigo é o "compare-and-swap": se recusar, outro
   agente entrou; refaça `read-tree HEAD` + apply.
 
