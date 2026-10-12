@@ -1,0 +1,23 @@
+-- Dés du Scribe (pari facultatif de la boutique) — fr
+return {
+    title      = "Dés du Scribe",
+    subtitle   = "Un lancer par visite. La maison paie ce qui est écrit.",
+    open       = "Dés du Scribe",
+    open_used  = "Dés (joué)",
+    bet_low    = "Bas",
+    bet_seven  = "Sept",
+    bet_high   = "Haut",
+    range_low  = "somme 2 à 6",
+    range_seven = "somme 7",
+    range_high = "somme 8 à 12",
+    chance     = "{n}% de chances",
+    pays       = "paie x{m}",
+    stake      = "Mise",
+    roll       = "Lancer ${n}",
+    leave      = "Partir",
+    win        = "{sum} ! Vous empochez ${n}",
+    lose       = "{sum}. La maison garde ${n}",
+    used       = "La table a déjà été jouée à cette visite.",
+    poor       = "Pas assez d'or pour cette mise.",
+    pick       = "Choisissez le pari et la mise.",
+}

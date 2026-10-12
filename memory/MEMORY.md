@@ -23,6 +23,7 @@
 - [Combo Rules](combo_rules.md) — 11 regras ativas do ComboSystem e como adicionar novas
 - [Run Progression](run_progression.md) — atos, tipos de nó, fluxo entre batalhas, endless mode
 - [Balance Curves](balance_curves.md) — números-alvo (HP, dano, gold, raridade) por ato
+- [Dados do Escriba](scribe_dice.md) — mini-jogo de ouro da loja (2d6, EV ~justo, 1 jogada/visita, Rng "shop" + save no frame do sorteio); tela modal em zonas, arte PixelLab + faces pixel a pixel, `test_scribe_dice`
 - [Archetypes](archetypes.md) — 10 builds viáveis com tags e cartas-âncora
 - [Pixel Art System](pixel_art_system.md) — arte procedural (Palette → CardFrame → CRTShader)
 - [UI Pixel Chrome](ui_pixel_system.md) — botões/menus pixel, Press Start 2P

@@ -1,0 +1,23 @@
+-- Dados del Escriba (apuesta opcional de la tienda) — es
+return {
+    title      = "Dados del Escriba",
+    subtitle   = "Una tirada por visita. La casa paga lo que está escrito.",
+    open       = "Dados del Escriba",
+    open_used  = "Dados (jugado)",
+    bet_low    = "Bajo",
+    bet_seven  = "Siete",
+    bet_high   = "Alto",
+    range_low  = "suma 2 a 6",
+    range_seven = "suma 7",
+    range_high = "suma 8 a 12",
+    chance     = "{n}% de probabilidad",
+    pays       = "paga x{m}",
+    stake      = "Apuesta",
+    roll       = "Tirar ${n}",
+    leave      = "Salir",
+    win        = "¡Salió {sum}! Te llevas ${n}",
+    lose       = "Salió {sum}. La casa se queda ${n}",
+    used       = "La mesa ya se jugó en esta visita.",
+    poor       = "Oro insuficiente para esta apuesta.",
+    pick       = "Elige la apuesta y el valor.",
+}

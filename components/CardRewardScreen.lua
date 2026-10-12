@@ -531,7 +531,7 @@ function CardRewardScreen:validateLayout()
             end
         end
 
-        for _, b in ipairs({ self.skipButton, self.refreshButton }) do
+        for _, b in ipairs({ self.skipButton, self.refreshButton, self.diceButton or false }) do
             if b then
                 contains(self.actionBar,
                     { x = b.x, y = b.y, w = b.width, h = b.height },
@@ -919,6 +919,17 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
         end
     )
     end  -- end if canReroll
+
+    -- DADOS DO ESCRIBA (Out/2026): a aposta opcional mora no rodapé de ações,
+    -- ao lado do reroll — é uma AÇÃO da loja, não uma oferta da vitrine.
+    -- Abre o modal (components/ScribeDiceScreen); regra em ScribeDice.lua.
+    self.diceButton = nil
+    if self.mode == "shop" and _G.openScribeDice then
+        self.diceButton = Button:new(0, 0, 130, 32, "", function()
+            _G.openScribeDice(self.game, function() self:_refreshDiceButton() end)
+        end)
+        self:_refreshDiceButton()
+    end
 
     -- Geometria definitiva do rodapé de ações (larguras medidas pelos rótulos
     -- já finais, incluindo o custo do reroll e o bônus do skip).
@@ -1362,11 +1373,20 @@ function CardRewardScreen:_layoutActionButtons()
 
     local rerollW = measuredButtonWidth(self.refreshButton)
     local skipW = measuredButtonWidth(self.skipButton)
+    local diceW = self.diceButton and measuredButtonWidth(self.diceButton) or 0
+    local diceGap = self.diceButton and gap or 0
     local avail = bar.w - edge * 2
-    if rerollW + skipW + gap > avail then
-        local factor = avail / (rerollW + skipW + gap)
+    if rerollW + diceW + diceGap + skipW + gap > avail then
+        local factor = avail / (rerollW + diceW + diceGap + skipW + gap)
         rerollW = math.floor(rerollW * factor)
         skipW = math.floor(skipW * factor)
+        diceW = math.floor(diceW * factor)
+    end
+    if self.diceButton then
+        self.diceButton.x = bar.x + edge + (self.refreshButton and (rerollW + gap) or 0)
+        self.diceButton.y = y
+        self.diceButton.width = diceW
+        self.diceButton.height = h
     end
 
     if self.refreshButton then
@@ -1382,6 +1402,15 @@ function CardRewardScreen:_layoutActionButtons()
         self.skipButton.height = h
     end
 
+end
+
+-- Rótulo do botão dos dados: muda depois da jogada (uma por visita).
+function CardRewardScreen:_refreshDiceButton()
+    if not self.diceButton then return end
+    local ScribeDice = require("src.systems.ScribeDice")
+    local used = ScribeDice.isUsed(self:_run())
+    self.diceButton.text = I18n.t(used and "scribe_dice.open_used" or "scribe_dice.open")
+    self:_layoutActionButtons()
 end
 
 -- Pré-foca a primeira oferta de carta ao abrir a loja.
@@ -1840,6 +1869,7 @@ function CardRewardScreen:hide()
     self.cardButtons = {}
     self.skipButton = nil
     self.refreshButton = nil
+    self.diceButton = nil
     self._flyCards = {}
     self._goldPopups = {}
 
@@ -1943,6 +1973,7 @@ function CardRewardScreen:update(dt)
     if self.refreshButton then
         self.refreshButton:update(dt)
     end
+    if self.diceButton then self.diceButton:update(dt) end
 
     -- Buttons attached da carta selecionada (Balatro pattern: filhos da carta).
     if self._selectionButtons then
@@ -2127,6 +2158,7 @@ function CardRewardScreen:draw()
     if self.refreshButton then
         self.refreshButton:draw()
     end
+    if self.diceButton then self.diceButton:draw() end
 
     self:drawInstructions()
 
@@ -2966,6 +2998,9 @@ function CardRewardScreen:mousepressed(x, y, button)
     if self.refreshButton and self.refreshButton:mousepressed(x, y, button) then
         return true
     end
+    if self.diceButton and self.diceButton:mousepressed(x, y, button) then
+        return true
+    end
 
     -- Click fora de qualquer card/button enquanto há seleção → desselleciona
     -- (Balatro: re-clicar na mesma carta também alterna; aqui aceitamos ambos).
@@ -3003,6 +3038,9 @@ function CardRewardScreen:mousereleased(x, y, button)
     end
 
     if self.refreshButton and self.refreshButton:mousereleased(x, y, button) then
+        return true
+    end
+    if self.diceButton and self.diceButton:mousereleased(x, y, button) then
         return true
     end
 

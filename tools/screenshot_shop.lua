@@ -42,6 +42,9 @@ function M.run(phase)
     -- SEM argumento = contact sheet (todos os frames num run só).
     -- "resize" = tortura de redimensionamento (ver bloco no fim).
     local resizeRun = (phase == "resize")
+    -- "dice" = Dados do Escriba: loja com o botão + mesa aberta + rolando +
+    -- resultado (SHOP_DICE_BET low|seven|high escolhe a aposta).
+    local diceRun = (phase == "dice")
     phase = not resizeRun and tonumber(phase) or nil
     local targetT = (phase and PHASE_TIMES[phase]) or 1.20
 
@@ -87,6 +90,11 @@ function M.run(phase)
     local topBar = require("components.TopBar"):new()
     topBar:setGame(game)
 
+    -- Dados do Escriba: o tool não passa pelo love.load, então a ponte que o
+    -- main.lua instala é recriada aqui (sem ela a loja nem mostra o botão).
+    local dice = require("components.ScribeDiceScreen"):new()
+    _G.openScribeDice = function(g, cb) dice:show(g, cb) end
+
     local screen = CardRewardScreen:new(game.shopSystem)
     screen:show(game,
         function(_) end,
@@ -121,6 +129,7 @@ function M.run(phase)
             CardParticles.update(stepDt)
             screen:update(stepDt)
             topBar:update(stepDt, game)
+            if dice:isVisible() then dice:update(stepDt) end
             elapsed = elapsed + stepDt
         end
     end
@@ -138,6 +147,7 @@ function M.run(phase)
         FloatingText.draw()
         FlashShader.draw()
         topBar:draw()
+        if dice:isVisible() then dice:draw() end
         love.graphics.setColor(1, 1, 1, 1)
 
         name = tag .. name
@@ -292,6 +302,26 @@ function M.run(phase)
         end
         print(failures == 0 and "=== RESIZE OK: nenhuma violacao ==="
             or ("=== RESIZE FALHOU: " .. failures .. " violacao(oes) ==="))
+        return
+    end
+
+    -- ===== Dados do Escriba =====
+    if diceRun then
+        love.mouse.setPosition(6, 6)
+        simulate(1.20)
+        dumpActions()
+        snap("shop_dice_0_loja.png")
+        _G.openScribeDice(game, function() end)
+        local bets = { low = 1, seven = 2, high = 3 }
+        dice.bet = bets[os.getenv("SHOP_DICE_BET") or "high"] or 3
+        dice.row, dice.col = 1, dice.bet
+        simulate(0.40)
+        snap("shop_dice_1_mesa.png")
+        dice:_roll()
+        simulate(0.35)
+        snap("shop_dice_2_rolando.png")
+        simulate(1.30)
+        snap("shop_dice_3_resultado.png", true)
         return
     end
 

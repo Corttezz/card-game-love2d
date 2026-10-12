@@ -250,6 +250,17 @@ Config.Economy = {
     VICTORY_GOLD_BASE    = 5,  -- pago no ato 1 (inalterado)
     VICTORY_GOLD_PER_ACT = 2,  -- +$2 por ato: A1 $5 ... A6 $15
     FULL_HP_BONUS        = 3,  -- bonus por terminar a batalha sem perder HP
+
+    -- DADOS DO ESCRIBA (Out/2026): aposta opcional da loja, uma por visita.
+    -- Logica e o PORQUE de cada numero em src/systems/ScribeDice.lua.
+    -- PAYOUT = retorno total na vitoria; EV = chance x PAYOUT ~ 1,0 (justo):
+    -- Baixo/Alto 15/36 x 2,5 = 1,04 · Sete 6/36 x 6 = 1,00.
+    -- test_scribe_dice trava o EV entre 0,9 e 1,1 — aposta nao e mina.
+    DICE = {
+        PAYOUT = { low = 2.5, seven = 6, high = 2.5 },
+        STAKES = { 4, 8, 16 },  -- fichas do ato 1
+        STAKE_PER_ACT = 0.3,    -- +30% por ato: A6 = 10 / 20 / 40
+    },
 }
 
 -- Ouro da vitoria no ato `act` (FONTE UNICA — Game:_buildRoundEvalSources

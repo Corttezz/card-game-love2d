@@ -53,6 +53,7 @@ local SUITES = {
     { group = "unit",  name = "test_autoplay_pilot" },
     { group = "unit",  name = "test_sim_memory" },
     { group = "unit",  name = "test_economy_acts" },
+    { group = "unit",  name = "test_scribe_dice" },
     { group = "unit",  name = "test_pause_menu" },
     { group = "unit",  name = "test_toasts" },
     { group = "unit",  name = "test_class_select" },

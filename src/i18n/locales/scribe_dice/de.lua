@@ -1,0 +1,23 @@
+-- Würfel des Schreibers (optionale Wette im Laden) — de
+return {
+    title      = "Würfel des Schreibers",
+    subtitle   = "Ein Wurf pro Besuch. Das Haus zahlt, was geschrieben steht.",
+    open       = "Würfel des Schreibers",
+    open_used  = "Würfel (gespielt)",
+    bet_low    = "Niedrig",
+    bet_seven  = "Sieben",
+    bet_high   = "Hoch",
+    range_low  = "Summe 2 bis 6",
+    range_seven = "Summe 7",
+    range_high = "Summe 8 bis 12",
+    chance     = "{n}% Chance",
+    pays       = "zahlt x{m}",
+    stake      = "Einsatz",
+    roll       = "Würfeln ${n}",
+    leave      = "Gehen",
+    win        = "{sum}! Du gewinnst ${n}",
+    lose       = "{sum}. Das Haus behält ${n}",
+    used       = "An diesem Tisch wurde bei diesem Besuch schon gespielt.",
+    poor       = "Nicht genug Gold für diesen Einsatz.",
+    pick       = "Wähle Wette und Einsatz.",
+}

@@ -1,0 +1,23 @@
+-- Scribe's Dice (optional shop wager) — en
+return {
+    title      = "Scribe's Dice",
+    subtitle   = "One throw per visit. The house pays what is written.",
+    open       = "Scribe's Dice",
+    open_used  = "Dice (thrown)",
+    bet_low    = "Low",
+    bet_seven  = "Seven",
+    bet_high   = "High",
+    range_low  = "sum 2 to 6",
+    range_seven = "sum 7",
+    range_high = "sum 8 to 12",
+    chance     = "{n}% chance",
+    pays       = "pays x{m}",
+    stake      = "Wager",
+    roll       = "Throw ${n}",
+    leave      = "Leave",
+    win        = "Rolled {sum}! You take ${n}",
+    lose       = "Rolled {sum}. The house keeps ${n}",
+    used       = "The table has been played this visit.",
+    poor       = "Not enough gold for this wager.",
+    pick       = "Choose a bet and a wager.",
+}

@@ -1673,6 +1673,13 @@ function love.load(loveArgs)
         if _G.runJournalScreen then _G.runJournalScreen:toggle(game) end
     end
 
+    -- DADOS DO ESCRIBA (aposta opcional da loja). _G pelo teto de upvalues;
+    -- quem abre (CardRewardScreen) passa o game e o callback de fechamento.
+    _G.scribeDiceScreen = require("components.ScribeDiceScreen"):new()
+    _G.openScribeDice = function(g, onClose)
+        _G.scribeDiceScreen:show(g, onClose)
+    end
+
     -- Menu de PAUSA (engrenagem da TopBar, padrão StS): Continuar /
     -- Configurações / Salvar e voltar ao menu / Abandonar run (confirmado).
     pauseMenu = require("components.PauseMenu"):new()
@@ -1785,6 +1792,7 @@ function love.load(loveArgs)
         IF.register("event",        eventScreen,             { keepChrome = true })
         IF.register("roundEval",    roundEvalScreen,         { keepChrome = true })
         IF.register("packOpen",     packOpenScreen)
+        IF.register("scribeDice",   _G.scribeDiceScreen)
         IF.register("deckViewer",   deckViewerScreen)
         IF.register("jokerManager", _G.jokerManagerScreen)
         IF.register("runJournal",   _G.runJournalScreen)
@@ -2209,6 +2217,15 @@ function love.draw()
     -- Deck Viewer global (F5): overlay em qualquer tela da run
     if deckViewerScreen and deckViewerScreen:isVisible() then
         IF.push("deckViewer"); deckViewerScreen:draw(); IF.pop()
+    end
+
+    -- Dados do Escriba: modal sobre a loja (update na camada dele, aqui
+    -- mesmo — o layout é por frame e o mouse só existe pra quem tem foco).
+    if _G.scribeDiceScreen and _G.scribeDiceScreen:isVisible() then
+        IF.push("scribeDice")
+        _G.scribeDiceScreen:update(love.timer.getDelta())
+        _G.scribeDiceScreen:draw()
+        IF.pop()
     end
 
     -- Gerenciador de Coringas: overlay em qualquer tela da run

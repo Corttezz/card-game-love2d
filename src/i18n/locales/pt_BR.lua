@@ -1285,4 +1285,7 @@ return {
 
     -- Kit dos inimigos (golpes nomeados, tooltip do intent, debuffs no jogador)
     enemy_kit = require("src.i18n.locales.enemy_kit.pt_BR"),
+
+    -- Dados do Escriba (aposta opcional da loja)
+    scribe_dice = require("src.i18n.locales.scribe_dice.pt_BR"),
 }
