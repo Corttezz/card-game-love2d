@@ -37,20 +37,46 @@ local function framePadsOf(id)
     table.sort(files, function(a, b)
         return tonumber(a:match("%d+")) < tonumber(b:match("%d+"))
     end)
+    -- REGRA DO APOIO (Out/2026, "os ratos parecem flutuar"), reimplementada
+    -- AQUI de forma independente do renderer: o chão é a linha mais baixa
+    -- com >= M pixels "sólidos" (coluna opaca contínua de >= 5px terminando
+    -- ali). Ponta de rabo/lâmina/farrapo fina não conta. Override
+    -- `groundRow` da pose desloca todos os quadros pela diferença do 1º.
+    local function groundRow(data)
+        local w, h = data:getWidth(), data:getHeight()
+        local run, rows, minX, maxX, low = {}, {}, w, -1, -1
+        for x = 0, w - 1 do run[x] = 0 end
+        for y = 0, h - 1 do
+            local n = 0
+            for x = 0, w - 1 do
+                local _, _, _, a = data:getPixel(x, y)
+                if a > 0.1 then
+                    run[x] = run[x] + 1
+                    minX = math.min(minX, x); maxX = math.max(maxX, x); low = y
+                    if run[x] >= 5 then n = n + 1 end
+                else
+                    run[x] = 0
+                end
+            end
+            rows[y] = n
+        end
+        local M = math.max(3, math.floor(0.06 * (maxX - minX + 1)))
+        for y = h - 1, 0, -1 do
+            if rows[y] >= M then return y, h end
+        end
+        return low, h
+    end
     local pads = {}
     for _, f in ipairs(files) do
         local data = love.image.newImageData(dir .. "/" .. f)
-        local w, h = data:getWidth(), data:getHeight()
-        local pad = h
-        for y = h - 1, 0, -1 do
-            local hit = false
-            for x = 0, w - 1 do
-                local _, _, _, a = data:getPixel(x, y)
-                if a > 0.1 then hit = true; break end
-            end
-            if hit then pad = (h - 1) - y; break end
-        end
-        pads[#pads + 1] = pad
+        local g, h = groundRow(data)
+        pads[#pads + 1] = (h - 1) - g
+    end
+    local gr = (require("src.data.enemy_poses").BY_ID[id] or {}).groundRow
+    if gr and #pads > 0 then
+        local h0 = love.image.newImageData(dir .. "/" .. files[1]):getHeight()
+        local delta = ((h0 - 1) - gr) - pads[1]
+        for i = 1, #pads do pads[i] = pads[i] + delta end
     end
     return pads
 end

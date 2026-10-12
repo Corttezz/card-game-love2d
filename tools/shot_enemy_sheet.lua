@@ -6,6 +6,8 @@
 --
 --   SHOT_SIZE=1920x1080 love . test_one shot_enemy_sheet [id1,id2,...]
 --
+-- SHEET_MODE=feet: recorte 2x no PÉ de cada um (contato com o chão), com
+-- tiques magenta na linha de chão → enemy_feet_sheet.png.
 -- Saída: enemy_sheet.png no save dir (recortes lado a lado, com o nome e
 -- uma marca amarela no eixo do corpo, abaixo do pé).
 
@@ -69,7 +71,13 @@ function M.run(which)
 
     local w, h = love.graphics.getDimensions()
     local canvas = love.graphics.newCanvas(w, h)
+    -- SHEET_MODE=feet: recorte AMPLIADO 2x no pé (contato com o chão), com
+    -- tiques magenta na linha de chão pedida, fora do corpo
+    local feet = os.getenv("SHEET_MODE") == "feet"
     local cw, ch = math.floor(w * 0.30), math.floor(h * 0.56)
+    local fw, fh = 340, 150
+    if feet then cw, ch = fw * 2, fh * 2 end
+    local feetCanvas = feet and love.graphics.newCanvas(cw, ch) or nil
     local cols = 6
     local rows = math.ceil(#ids / cols)
     local sheet = love.image.newImageData(cols * (cw + 4), rows * (ch + 4))
@@ -121,16 +129,37 @@ function M.run(which)
         end
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.setFont(font)
-        love.graphics.print(id .. "  (ato " .. act .. ")", w / 2 - cw / 2 + 6, h * 0.14 + 4)
-        love.graphics.setCanvas()
-        local img = canvas:newImageData()
-        local x0 = math.floor((w - cw) / 2)
-        local y0 = math.floor(h * 0.14)
-        sheet:paste(img, ((n - 1) % cols) * (cw + 4), math.floor((n - 1) / cols) * (ch + 4),
-            x0, y0, cw, ch)
+        local img
+        if feet and foot then
+            love.graphics.setColor(1, 0, 1, 1)
+            local gx = math.floor(foot.bodyX)
+            love.graphics.rectangle("fill", gx - fw / 2, foot.groundY, 12, 1)
+            love.graphics.rectangle("fill", gx + fw / 2 - 12, foot.groundY, 12, 1)
+            love.graphics.setCanvas(feetCanvas)
+            love.graphics.clear(0, 0, 0, 1)
+            love.graphics.setColor(1, 1, 1, 1)
+            local q = love.graphics.newQuad(gx - fw / 2, foot.groundY - fh * 0.75, fw, fh,
+                canvas:getDimensions())
+            canvas:setFilter("nearest", "nearest")
+            love.graphics.draw(canvas, q, 0, 0, 0, 2, 2)
+            love.graphics.print(id, 6, 4)
+            love.graphics.setCanvas()
+            img = feetCanvas:newImageData()
+            sheet:paste(img, ((n - 1) % cols) * (cw + 4), math.floor((n - 1) / cols) * (ch + 4),
+                0, 0, cw, ch)
+        else
+            love.graphics.print(id .. "  (ato " .. act .. ")", w / 2 - cw / 2 + 6, h * 0.14 + 4)
+            love.graphics.setCanvas()
+            img = canvas:newImageData()
+            local x0 = math.floor((w - cw) / 2)
+            local y0 = math.floor(h * 0.14)
+            sheet:paste(img, ((n - 1) % cols) * (cw + 4), math.floor((n - 1) / cols) * (ch + 4),
+                x0, y0, cw, ch)
+        end
     end
-    sheet:encode("png", "enemy_sheet.png")
-    print("[shot_enemy_sheet] " .. #ids .. " inimigos -> enemy_sheet.png")
+    local out = feet and "enemy_feet_sheet.png" or "enemy_sheet.png"
+    sheet:encode("png", out)
+    print("[shot_enemy_sheet] " .. #ids .. " inimigos -> " .. out)
     return true
 end
 

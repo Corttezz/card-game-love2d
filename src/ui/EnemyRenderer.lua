@@ -522,6 +522,60 @@ local clipMetricsCache = {}
 -- varreduras — 1º quadro e por quadro — senão as margens discordam.
 local FOOT_ALPHA = 0.1
 function EnemyRenderer._clearClipMetrics() clipMetricsCache = {} end
+-- LINHA DE CHÃO do quadro (Out/2026, dono: "os ratos parecem flutuar").
+-- O pé era o pixel opaco MAIS BAIXO — e no monte de ratos esse pixel é a
+-- ponta de um rabo enrolado abaixo dos corpos: cravado o rabo no chão, os
+-- corpos pairavam. Agora o chão é a linha mais baixa com pelo menos M
+-- pixels "sólidos", onde sólido = coluna opaca contínua de >= GROUND_T px
+-- terminando ali (bota, casco, pata e base de corpo são verticais e grossos;
+-- ponta de rabo, de lâmina e farrapo de capa são finos). Devolve a linha
+-- (nil se vazio) e o trecho horizontal do apoio (footL, footR) nas 4 linhas
+-- de cima dela — a largura da pegada pra sombra de contato.
+local GROUND_T = 5
+EnemyRenderer.GROUND_T = GROUND_T
+local function groundOf(data)
+    local w, h = data:getWidth(), data:getHeight()
+    local minX, maxX, low = w, -1, -1
+    local run = {}
+    local solidRows = {}
+    for x = 0, w - 1 do run[x] = 0 end
+    for y = 0, h - 1 do
+        local sx = nil
+        for x = 0, w - 1 do
+            local _, _, _, a = data:getPixel(x, y)
+            if a > FOOT_ALPHA then
+                run[x] = run[x] + 1
+                if x < minX then minX = x end
+                if x > maxX then maxX = x end
+                low = y
+                if run[x] >= GROUND_T then
+                    sx = sx or {}
+                    sx[#sx + 1] = x
+                end
+            else
+                run[x] = 0
+            end
+        end
+        solidRows[y] = sx
+    end
+    if low < 0 then return nil end
+    local M = math.max(3, math.floor(0.06 * (maxX - minX + 1)))
+    local g = low
+    for y = h - 1, 0, -1 do
+        if solidRows[y] and #solidRows[y] >= M then g = y; break end
+    end
+    local fl, fr = maxX, minX
+    for y = math.max(0, g - 3), g do
+        for _, x in ipairs(solidRows[y] or {}) do
+            if x < fl then fl = x end
+            if x > fr then fr = x end
+        end
+    end
+    if fr < fl then fl, fr = minX, maxX end
+    return g, fl, fr, low
+end
+EnemyRenderer._groundOf = groundOf
+
 local function clipMetrics(id, animName)
     animName = animName or "idle"
     local key = id .. "|" .. animName
@@ -571,6 +625,12 @@ local function clipMetrics(id, animName)
                 -- chão. Quem flutua por DESIGN (espectros/alados) sobe
                 -- por dado, não por margem de canvas: src/data/enemy_poses.
                 m.pad = (hpx - 1) - maxY
+                -- chão pela regra do apoio (ignora rabo/lâmina/farrapo)
+                local g, fl, fr = groundOf(data)
+                if g then
+                    m.pad = (hpx - 1) - g
+                    m.footL, m.footR = fl, fr
+                end
             end
         end
     end
@@ -596,18 +656,26 @@ local function clipMetrics(id, animName)
                 local ok, data = pcall(love.image.newImageData, fdir .. "/" .. f)
                 local pad = m.pad
                 if ok and data then
-                    local wpx, hpx = data:getWidth(), data:getHeight()
-                    local found = false
-                    for yy = hpx - 1, 0, -1 do
-                        for xx = 0, wpx - 1 do
-                            local _, _, _, a = data:getPixel(xx, yy)
-                            if a > FOOT_ALPHA then found = true; break end
-                        end
-                        if found then pad = (hpx - 1) - yy; break end
-                    end
+                    local g = groundOf(data)
+                    if g then pad = (data:getHeight() - 1) - g end
                 end
                 m.framePads[#m.framePads + 1] = pad
             end
+        end
+    end
+    -- OVERRIDE `groundRow` (enemy_poses, linha do canvas do idle) quando a
+    -- regra erra: desloca o chão de TODOS os quadros pelo mesmo tanto (a
+    -- diferença medida no quadro 0 do idle). A death fica de fora: o corpo
+    -- caído tem outra base.
+    local gr = (EnemyPoses.BY_ID[id] or {}).groundRow
+    if gr and animName ~= "death" then
+        local idle = (animName == "idle") and m or clipMetrics(id, "idle")
+        local autoPad0 = (animName == "idle") and m.pad or idle._autoPad0
+        if animName == "idle" then m._autoPad0 = m.pad end
+        if autoPad0 and m.h > 0 then
+            local delta = ((idle.h - 1) - gr) - autoPad0
+            m.pad = m.pad + delta
+            for i = 1, #m.framePads do m.framePads[i] = m.framePads[i] + delta end
         end
     end
     clipMetricsCache[key] = m
@@ -975,14 +1043,39 @@ function EnemyRenderer.draw(game, cx, cy, opts)
                     end
                 end
             end)
+        -- PEGADA (footL..footR do quadro 0 do clip, regra do apoio): onde o
+        -- bicho de fato toca o chão. Bota, casco, monte de ratos — a sombra
+        -- de contato mede ISSO, não o canvas nem o corpo inteiro.
+        local footW, footCx = nil, nil
+        if curM.footL and curM.footR then
+            footW = (curM.footR - curM.footL + 1) * scale
+            footCx = cx + ((curM.footL + curM.footR + 1) / 2 - curM.w / 2) * scale
+                + jitter * 0.5
+        end
+        -- CONTATO na estrada (Out/2026, "os ratos parecem flutuar"): a
+        -- silhueta projetada vai pra longe do sol e não escurece o chão
+        -- DEBAIXO do pé — bicho largo e baixo ficava sem contato nenhum.
+        -- Três faixas em degrau, na grade do pixel da arte, da largura da
+        -- pegada. Só quem pisa (quem flutua mostra o vão, não contato).
+        if drawn and footW and not floating then
+            local P = math.max(1, math.floor(scale + 0.5))
+            local a = 0.26 * sceneShadowA
+            local yBase = math.floor(shY - P)
+            for i, k in ipairs({ 0.62, 1.0, 0.80 }) do
+                local wk = math.floor(footW * 1.06 * k / P + 0.5) * P
+                love.graphics.setColor(0, 0, 0, a * ((i == 2) and 1 or 0.7))
+                love.graphics.rectangle("fill", math.floor(footCx - wk / 2),
+                    yBase + (i - 1) * P - P, wk, P)
+            end
+        end
         if not drawn then
-            -- Interiores: sem sol unico, elipse rasteira. A largura sai do
-            -- CONTEUDO (curM.cw), nao do canvas — canvas cru do PixelLab
-            -- tem margem lateral gorda e a elipse saia larga demais.
-            local baseW = ((curM.cw > 0) and curM.cw or iw) * scale
-            -- elipse sob o CORPO (o shX acima é o centro do canvas, que a
+            -- Interiores: sem sol unico, elipse rasteira. A largura sai da
+            -- PEGADA (ou do conteúdo), nao do canvas — canvas cru do
+            -- PixelLab tem margem lateral gorda e a elipse saia larga demais.
+            local baseW = footW or (((curM.cw > 0) and curM.cw or iw) * scale)
+            -- elipse sob o APOIO (o shX acima é o centro do canvas, que a
             -- silhueta usa)
-            shX = bodyCx + jitter * 0.5 + shDX
+            shX = (footCx or (bodyCx + jitter * 0.5)) + shDX
             local rx = baseW * 0.46 * shK
             local ry = math.max(3, baseW * 0.060 * shK)
             local a = 0.30 * shA * sceneShadowA

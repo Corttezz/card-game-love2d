@@ -37,6 +37,10 @@
 --   idle      { fps, cycle = true } — idle assado em LOOP fechado (os 6
 --             chefes: tools/bake_boss_idle.py). Sem o campo: ping-pong no
 --             IDLE_FPS padrão do EnemyRenderer.
+--   groundRow linha (px do canvas do idle) do CHÃO — override da regra do
+--             apoio (EnemyRenderer: linha mais baixa com coluna opaca grossa,
+--             que ignora rabo/lâmina/farrapo finos). Declarar só quando a
+--             regra erra (rabo GROSSO deitado, base que não é o pé).
 --   axisX     coluna (px do canvas do idle) do EIXO DO CORPO — OVERRIDE do
 --             eixo automático (EnemyRenderer.bodyAxis, Out/2026). Declarar só
 --             quando o automático erra: escudo largo, quadrúpede de frente,
@@ -97,7 +101,11 @@ EnemyPoses.BY_ID = {
     -- Idle de TODOS assado por deslocamento a partir do south.png (12
     -- quadros, loop fechado, pés fixos): tools/pixellab_new_enemies.py idle.
     hollow_farmer     = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- botas
-    plague_rats       = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- monte de ratos no chão
+    -- groundRow 89: patas da frente (y 84-89 do canvas). O rabo enrolado
+    -- desce até 93 e, com linha grossa deitada na horizontal, a regra do
+    -- apoio não o separa do corpo — cravado o rabo, o monte pairava ("os
+    -- ratos parecem flutuar", Out/2026). O rabo fica 4px À FRENTE do pé.
+    plague_rats       = { pose = "grounded", groundRow = 89, idle = { fps = 6, cycle = true } },  -- monte de ratos no chão
     blight_bull       = { pose = "grounded", axisX = 56, idle = { fps = 5, cycle = true } },  -- quatro cascos
     wicker_effigy     = { pose = "grounded", idle = { fps = 5, cycle = true } },  -- pés de vime
     ram_cultist       = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- botas sob o manto

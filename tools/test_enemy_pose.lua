@@ -325,6 +325,26 @@ function M.run()
             total <= 14)
     end
 
+    -- (d) REGRA DO APOIO (Out/2026, "os ratos parecem flutuar"): o chao e a
+    -- linha mais baixa com coluna opaca GROSSA, nao o pixel mais baixo. Um
+    -- corpo 20x20 com um rabo de 2px pendurado 6px abaixo pisa na base do
+    -- CORPO; e o override groundRow dos ratos vale (rabo grosso deitado).
+    do
+        local ER = require("src.ui.EnemyRenderer")
+        local d = love.image.newImageData(40, 40)
+        for y = 5, 24 do for x = 10, 29 do d:setPixel(x, y, 1, 1, 1, 1) end end
+        for y = 25, 30 do d:setPixel(14, y, 1, 1, 1, 1); d:setPixel(15, y, 1, 1, 1, 1) end
+        local g, fl, fr, low = ER._groundOf(d)
+        t:eq("rabo fino abaixo do corpo nao vira o pe (chao na base do corpo)", g, 24)
+        t:eq("...o pixel mais baixo continua sendo o rabo", low, 30)
+        t:truthy("...pegada = largura do corpo (" .. fl .. ".." .. fr .. ")",
+            fl == 10 and fr == 29)
+        ER.clearCache()
+        local m = ER.debugClipMetrics("plague_rats", "idle")
+        t:eq("plague_rats: chao no groundRow 89 (patas), nao no rabo",
+            (m.h - 1) - m.pad, 89)
+    end
+
     -- get() normaliza e nunca devolve nil (fallback anunciado, nao mudo).
     local unknown = EnemyPoses.get("nao_existe_no_roster")
     t:eq("id desconhecido cai em grounded", unknown.pose, "grounded")

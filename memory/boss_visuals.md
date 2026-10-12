@@ -133,6 +133,22 @@ o billboard da viagem usa o mesmo offset. Trava `test_enemy_axis` (todo
 diretório de inimigo: HUD <= 3px da arte do eixo, eixo na âncora ±1);
 prancha `SHOT_SIZE=1920x1080 love . test_one shot_enemy_sheet`.
 
+## Chão pela REGRA DO APOIO + sombra de contato (Out/2026)
+
+> "os ratos parecem flutuar" (plague_rats)
+
+O pé era o pixel opaco mais baixo; no monte de ratos é a ponta do rabo
+enrolado, e os corpos pairavam. Agora (`EnemyRenderer` `groundOf`) o chão é a
+linha mais baixa com >= M px "sólidos" (coluna opaca contínua >= 5px; M =
+max(3, 6% da largura)) — ponta de rabo/lâmina/farrapo fina não conta. Rabo
+GROSSO deitado (os ratos) a regra não separa: override `groundRow` na pose
+(ratos = 89, patas). A pegada (footL..footR) dimensiona uma sombra de
+CONTATO em degraus de pixel da arte sob quem pisa na estrada (a silhueta
+projetada vai pra longe do sol e não escurecia o chão debaixo do pé) e a
+elipse dos salões. Travas: `test_enemy_pose` (rabo sintético + ratos) e
+`test_enemy_stage` (régua independente com a mesma regra). Prancha dos pés:
+`SHEET_MODE=feet SHOT_SIZE=1920x1080 love . test_one shot_enemy_sheet`.
+
 ## Pendente
 
 - Círculo rúnico do lich: em 1024x768 a laje do salão 2 cai atrás da mão de
