@@ -1707,6 +1707,8 @@ function love.load(loveArgs)
     -- MALDIÇÃO do endless (escolha 1-de-2 a cada ciclo). Abre sozinha quando
     -- o mapa aparece com escolha pendente (EndlessCurseScreen.watch).
     _G.endlessCurseScreen = require("components.EndlessCurseScreen"):new()
+    -- Revelações do menu (Balatro): o que a run liberou, um painel por vez.
+    _G.unlockShowcase = require("components.UnlockShowcase"):new()
 
     -- Menu de PAUSA (engrenagem da TopBar, padrão StS): Continuar /
     -- Configurações / Salvar e voltar ao menu / Abandonar run (confirmado).
@@ -1831,6 +1833,7 @@ function love.load(loveArgs)
         IF.register("pause",        pauseMenu)
         IF.register("settings",     settingsMenu)
         -- Confirmação genérica (Jogar com save, sair do jogo): por cima de tudo.
+        IF.register("unlockShowcase", _G.unlockShowcase)
         IF.register("confirm",      require("src.ui.ConfirmDialog").handle)
         -- Guia (combos/glossário) e, por cima de TUDO, a placa de dica do
         -- tutorial: enquanto ela está na tela, o clique/tecla/A é dela.
@@ -2328,6 +2331,17 @@ function love.draw()
     -- cobre o overlay também.
     if pauseMenu then IF.push("pause"); pauseMenu:draw(); IF.pop() end
     if settingsMenu then IF.push("settings"); settingsMenu:draw(); IF.pop() end
+    -- Revelações do menu: observa o estado e abre sozinha (fila no perfil).
+    if _G.unlockShowcase then
+        local US = _G.unlockShowcase
+        US:watch(currentState, love.timer.getDelta())
+        if US:isVisible() then
+            IF.push("unlockShowcase")
+            US:update(love.timer.getDelta())
+            US:draw()
+            IF.pop()
+        end
+    end
     IF.push("confirm"); require("src.ui.ConfirmDialog").draw(); IF.pop()
     -- Guia e placa de dica do tutorial (pixels reais; a placa escala sozinha).
     if _G.guideScreen and _G.guideScreen:isVisible() then

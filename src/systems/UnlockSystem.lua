@@ -557,6 +557,9 @@ function UnlockSystem.onRunEnded(summary)
         sealUnlocked = sealUnlocked,   -- novo Selo liberado pra esta classe (ou nil)
     }
     UnlockSystem.lastResult = result
+    -- Revelações do menu (Balatro): o que esta run liberou entra na fila do
+    -- perfil e aparece, um painel por vez, quando o jogador voltar ao menu.
+    require("src.systems.UnlockQueue").addRunResult(result)
     print(string.format("[UnlockSystem] fim de run (%s): +%d XP, +%d nivel(is), %d carta(s), %d classe(s) novas",
         tostring(classId), xp, levelsGained, #newCards, #newClasses))
     return result

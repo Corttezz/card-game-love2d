@@ -234,6 +234,8 @@ function AchievementSystem.unlock(id, game)
     set[id] = true
     datesSet()[id] = os.time()
     ProfileStats.flush()
+    -- Também entra na fila de revelações do menu (UnlockShowcase).
+    require("src.systems.UnlockQueue").addAchievement(id)
 
     local okT, Toast = pcall(require, "src.ui.AchievementToast")
     if okT then

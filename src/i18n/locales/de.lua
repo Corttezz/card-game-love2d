@@ -952,6 +952,24 @@ return {
         },
     },
 
+    -- Revelações do menu depois da corrida (UnlockShowcase, estilo Balatro).
+    unlock_showcase = {
+        title_card        = "Neue Karte freigeschaltet!",
+        title_class       = "Neue Klasse!",
+        title_mastery     = "Meisterschaft gestiegen!",
+        title_seal        = "Siegel {n} freigeschaltet",
+        title_achievement = "Erfolg!",
+        mastery_level     = "Stufe {level}",
+        mastery_sub       = "Meisterschaft: {class}",
+        mastery_cards     = "Neue Karten kommen in die Angebote.",
+        class_sub         = "Wähle diese Klasse im nächsten Lauf.",
+        seal_sub          = "{class}: {rule}",
+        card_sub          = "Die Karte kann jetzt in Angeboten erscheinen.",
+        counter           = "{i} von {n}",
+        continue          = "Weiter",
+        skip              = "Alle überspringen",
+    },
+
     play_button = { label = "Karten spielen", end_turn = "Zug Beenden" },
 
     window_title = "Grimoire",
