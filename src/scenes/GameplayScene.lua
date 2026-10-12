@@ -96,6 +96,27 @@ function GameplayScene.inBossRoom(nodeType)
     return GameplayScene.isInteriorNode(nodeType, bossEntered)
 end
 
+-- A cena está QUIETA? (tutorial: o narrador só fala com tudo parado) —
+-- sem viagem, sem cerimônia da porta (no chefe, só depois dela), sem banner
+-- de turno, sem investida nem pouso do inimigo.
+function GameplayScene.isQuiet()
+    if turnStage ~= nil or TurnBanner.isActive() then return false end
+    if GameplayScene.SCENE_MODE == "worldroad"
+        and (WorldRoad.isTraveling() or WorldRoad.isEntering()) then
+        return false
+    end
+    local run = game and game.runManager and game.runManager.currentRun
+    local nt = run and run.currentNode and run.currentNode.type
+    if nt == "boss" and GameplayScene.SCENE_MODE == "worldroad" and not bossEntered then
+        return false
+    end
+    if EnemyRenderer.isAttacking() then return false end
+    if EnemyRenderer.getArrivalOffset and EnemyRenderer.getArrivalOffset() ~= 0 then
+        return false
+    end
+    return true
+end
+
 -- Só pra ferramentas de captura: salta a cerimônia da porta e mostra o
 -- salão do chefe direto (tools/screenshot_enemy_scene.lua). Nunca chamado
 -- pelo jogo — a cutscene é parte do clímax.
@@ -731,6 +752,14 @@ function GameplayScene.draw()
 
     if not traveling and not entering then
         EnemyHud.draw(game, enemyBbox, enemyCx, enemyCy)
+        -- âncoras do narrador do tutorial: o corpo e a barra de vida
+        if enemyBbox and game.enemy and not game.enemy:isDefeated() then
+            local T = require("src.systems.Tutorial")
+            T.anchor("enemy", enemyBbox.cx - enemyBbox.width / 2, enemyBbox.topY,
+                enemyBbox.width, enemyBbox.bottomY - enemyBbox.topY)
+            local hp = EnemyHud.hpBarRect(EnemyHud.layout(game, enemyBbox, enemyCx, enemyCy))
+            if hp then T.anchor("enemy_hp", hp.x, hp.y, hp.w, hp.h) end
+        end
         -- previa: o trecho da vida que a leva selecionada arranca
         if game.enemy and not game.enemy:isDefeated() then
             DamagePreviewPanel.drawEnemyGhost(game,

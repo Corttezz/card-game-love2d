@@ -706,6 +706,11 @@ function ClassSelectionScreen:draw()
     love.graphics.setColor(1, 1, 1, 1)
 
     self:_drawSealBand()
+    -- âncora do narrador do tutorial: só com selo já liberado
+    if self.layout and self.layout.seal and self:_sealCap() > 0 then
+        local r = self.layout.seal
+        require("src.systems.Tutorial").anchor("seal_band", r.x, r.y, r.w, r.h)
+    end
     -- setas do selo: Buttons invisíveis que ninguém desenha — alvo do foco
     -- (teclado/pad) e LB/RB (Z/C) trocam o selo, glifo na própria seta
     do

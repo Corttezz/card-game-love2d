@@ -235,6 +235,7 @@ function Screen:draw()
             require("src.ui.NavCursor").target("curse:" .. i, r.x, r.y, r.w, r.h)
         end
     end
+    require("src.systems.Tutorial").anchorList("curse_options", L.cards)
     -- Maldições já carregadas (o peso que se acumula).
     local list = RunModifiers.curseList(run)
     local parts = {}

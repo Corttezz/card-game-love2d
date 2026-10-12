@@ -230,6 +230,13 @@ function M.run(mode)
         overlays(0, topBarH, width, height - topBarH)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
+        -- TUT_TIP=fork:paths — o narrador do tutorial apontando os marcos
+        if os.getenv("TUT_TIP") then
+            local Tutorial = require("src.systems.Tutorial")
+            local conv, line = os.getenv("TUT_TIP"):match("^([%w_]+):?([%w_]*)$")
+            Tutorial._show(conv, line ~= "" and line or nil)
+            Tutorial.draw()
+        end
     elseif mode == "poke" then
         -- v9.7: CENÁRIO INTERATIVO — varre cliques fora dos marcos
         -- (árvores/postes/cercas/nuvens) e captura ~0.17s depois, no meio

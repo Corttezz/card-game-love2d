@@ -1,45 +1,99 @@
--- Onboarding (src/systems/Tutorial + components/GuideScreen): dicas ancoradas,
--- Guia de combos/glossário, tooltip da mana. Arquivo próprio por locale;
--- plugado no principal como `tutorial = require(...)`.
+-- Onboarding v2 (src/systems/Tutorial + src/ui/Narrator + components/GuideScreen):
+-- roteiro do corvo narrador (script.<conversa>.<fala>, *ênfase* em sangue),
+-- rodapé do balão, Guia de combos/glossário, tooltip da mana. Arquivo próprio
+-- por locale; plugado no principal como `tutorial = require(...)`.
 return {
-    tips = {
-        battle_hand = { title = "Vos cartes",
-            body = "Sélectionnez les cartes à jouer ; le chiffre dans le coin de chacune est son coût en mana. Votre grimoire commence avec 2 cartes seulement — chaque victoire en offre une nouvelle." },
-        battle_mana = { title = "Mana",
-            body = "Ce que vous pouvez dépenser par tour. Elle se remplit au début de chaque tour — le surplus ne se garde pas." },
-        battle_intent = { title = "L'ennemi prévient",
-            body = "Cette icône montre ce qu'il fera au prochain tour : le chiffre est le dégât (×N = plusieurs coups). Pointez l'icône pour voir le nom et l'effet." },
-        battle_play = { title = "Jouer les cartes",
-            body = "Résout maintenant les cartes choisies. L'aperçu au-dessus montre les dégâts et le blocage exacts. Vous pouvez jouer plusieurs fois par tour." },
-        battle_end_turn = { title = "Fin du tour",
-            body = "Quand vous avez fini, terminez le tour : la main est défaussée et l'ennemi exécute le coup annoncé." },
-        block = { title = "Blocage",
-            body = "Absorbe les dégâts du prochain coup ennemi — et RETOMBE à zéro au début de votre tour. Défendez-vous quand l'attaque annoncée est forte." },
-        combo = { title = "Combo possible",
-            body = "Les cartes qui se combinent rapportent plus jouées ENSEMBLE (sceau +COMBO). La liste complète est dans le Guide, dans le menu Pause." },
-        orbs = { title = "Orbes",
-            body = "Chaque orbe pulse à la fin de votre tour (valeur sur sa plaque). Canaliser avec la rangée pleine évoque le plus ancien — celui de la flèche." },
-        jokers = { title = "Jokers",
-            body = "Ils valent pour toute la partie, sans mana. Seuls les ACTIFS de ce cadre fonctionnent ; les autres attendent sur le banc. Ouvrez ce cadre pour les échanger." },
-        boss = { title = "Boss de l'acte",
-            body = "Chaque boss a un coup signature (invocation, charge, perforant...). Lisez l'intention à chaque tour — l'avertissement précède le coup." },
-        rewards = { title = "Butin",
-            body = "Choisissez UNE carte pour le grimoire — ou aucune. Un grimoire léger pioche plus souvent ses meilleures cartes." },
-        shop = { title = "Boutique",
-            body = "Cartes, reliques et paquets contre de l'or. Renouveler la vitrine coûte plus à chaque fois. Intérêts : chaque tranche de 5 $ rapporte 1 $ à la prochaine victoire." },
-        rest = { title = "Campement",
-            body = "Reposez-vous pour soigner OU forgez une carte (+1 niveau). Une seule des deux par feu de camp." },
-        event = { title = "Événement",
-            body = "Chaque option indique ce qu'elle donne [+] et ce qu'elle coûte [-]. Une option grisée est hors de portée pour l'instant." },
-        fork = { title = "Carrefour",
-            body = "Choisissez la prochaine étape. Élite : plus de risque, meilleure récompense. Repos, boutique et événement sont sans combat." },
+    narrator = { name = "Plume" },
+    footer = {
+        click = "Cliquez pour continuer",
+        ["continue"] = "continuer",
+        skip = "passer",
+        disable = "Je sais jouer : couper le tutoriel",
     },
-    dismiss_mouse = "Cliquez pour continuer",
-    dismiss_pad = "A pour continuer",
-    settings_tips = "Conseils du tutoriel",
-    settings_reset = "Revoir les conseils",
-    settings_reset_value = "{n} vus",
-    settings_reset_done = "Réinitialisés",
+    act = {
+        select = "Sélectionnez une carte",
+        play = "Appuyez sur Jouer Cartes",
+        end_turn = "Appuyez sur Fin du Tour",
+    },
+    settings_tips = "Tutoriel du corbeau",
+    settings_reset = "Relancer le tutoriel",
+    settings_reset_value = "{n} échanges vus",
+    settings_reset_done = "Depuis le début",
+    script = {
+        intro = {
+            hello = "Croâ ! Je suis *Plume*, le corbeau gardien de ce grimoire. Je vais vous apprendre à combattre — promis, ce sera bref.",
+            enemy = "Voici votre adversaire. La barre sous lui, c'est sa *vie* : videz-la et le combat est fini.",
+            intent = "Cette icône, c'est son *intention* : ce qu'il fera à la fin de votre tour. Le chiffre indique les dégâts à venir.",
+            hero = "Ici, VOTRE *vie* et votre *Blocage*. Si votre vie tombe à zéro, le voyage s'arrête.",
+            hand = "Voici vos cartes — le grimoire commence avec deux seulement. *Sélectionnez-en une* pour la préparer.",
+            mana = "Chaque carte coûte du *mana* : le chiffre dans son coin. Le mana se remplit à chaque tour — dépensez-le sans compter.",
+            preview = "Voici l'*aperçu* : les dégâts et le Blocage que votre sélection va produire, bonus compris.",
+            play = "Prêt ? Allez-y : appuyez sur *Jouer Cartes* !",
+        },
+        end_turn = {
+            ["end"] = "Joli coup ! Quand le mana ou les idées manquent, appuyez sur *Fin du Tour*. L'ennemi agit alors — exactement comme son intention l'annonçait.",
+        },
+        second_turn = {
+            kept = "Vous voyez ? Il a fait ce qu'il avait annoncé. Lisez l'*intention* à chaque tour et protégez-vous quand un gros coup arrive.",
+            loop = "Nouvelle main à chaque tour, mana au plein. À vous de jouer — je reviendrai s'il y a du nouveau. Croâ !",
+        },
+        boss = {
+            arrive = "Voici le *boss* de l'acte. Battez-le et la route mène à la contrée suivante.",
+            signature = "Chaque boss a un coup signature — invocation, charge, coups qui percent le Blocage. Lisez l'*intention* à chaque tour.",
+        },
+        elite = {
+            warn = "Attention : un *Élite*. Plus coriace qu'un ennemi ordinaire — mais la récompense est meilleure aussi.",
+        },
+        block = {
+            reset = "Vous avez gagné du *Blocage* : il absorbe le prochain coup. Mais attention : le Blocage *repart à zéro au début de votre tour* — impossible de le garder.",
+        },
+        combo = {
+            seal = "Regardez : des cartes de votre main *se combinent* ! Jouées ENSEMBLE dans le même tour, elles rapportent plus — l'aperçu affiche le sceau *+COMBO*.",
+            guide = "La liste complète des combos se trouve dans le *Guide*, dans le menu Pause.",
+        },
+        orbs = {
+            pulse = "Vos *orbes* ! Chacun pulse à la fin de votre tour — le chiffre inscrit dessus est l'effet.",
+            evoke = "Canaliser avec la rangée pleine *évoque* le plus ancien, celui de la flèche, avec un effet plus fort.",
+        },
+        jokers = {
+            passive = "Un *Joker* ! Il agit tout seul pendant toute la partie, sans coûter de mana.",
+            bench = "Seuls les *actifs* de ce cadre fonctionnent ; les autres attendent sur le banc. Ouvrez le cadre pour les échanger.",
+        },
+        rewards = {
+            pick = "Victoire ! Choisissez *une* carte pour votre grimoire.",
+            skip = "Ou passez : un grimoire léger pioche plus souvent ses meilleures cartes. Parfois, moins c'est mieux.",
+        },
+        dice = {
+            odds = "Deux dés, un pari. *Bas* (2 à 6) et *Haut* (8 à 12) paient 2,5× ; le *Sept* paie 6×.",
+            bet = "Choisissez le pari et la mise, puis lancez. Chaque pari affiche sa probabilité.",
+        },
+        shop = {
+            offers = "La *boutique* ! Cartes, reliques et paquets, contre de l'or.",
+            refresh = "Rien ne vous plaît ? *Actualiser* change la vitrine — et coûte plus cher à chaque fois.",
+            dice = "Et là-bas, les *Dés du Scribe* : pariez de l'or sur un lancer de deux dés. Un lancer par boutique.",
+            interest = "Ah, et l'or gardé rapporte des *intérêts* : chaque tranche de 5 $ vaut +1 $ quand vous gagnez un combat, jusqu'à +5 $.",
+        },
+        forge = {
+            pick = "À la *forge*, choisissez une carte à améliorer. Chaque copie évolue séparément.",
+        },
+        rest = {
+            choose = "Un *feu de camp*. Reposez-vous pour regagner de la vie — ou prenez le temps de *forger* une carte.",
+        },
+        event = {
+            read = "Un *événement* ! Lisez bien : chaque choix indique ce qu'il coûte [-] et ce qu'il rapporte [+].",
+        },
+        fork = {
+            paths = "Une *croisée des chemins*. Chaque borne est une voie : combat, *Élite*, repos, boutique ou événement. À vous de choisir.",
+        },
+        endless = {
+            cycle = "Au-delà du dernier boss s'étend l'*Infini*. À chaque cycle de huit étages, vous choisissez une *malédiction*.",
+            grow = "Les ennemis grandissent à chaque cycle, sans limite. Jusqu'où tiendra votre grimoire ?",
+        },
+        seals = {
+            unlocked = "Victoire ! Vous pouvez maintenant briser les *Sceaux du Grimoire* : chaque sceau est une règle plus dure, et ils se cumulent.",
+            score = "Plus de sceaux, plus de points. Gagnez avec un sceau pour débloquer le suivant — avec la même classe.",
+        },
+    },
     guide = {
         title = "GUIDE DU GRIMOIRE",
         tab_combos = "Combos",

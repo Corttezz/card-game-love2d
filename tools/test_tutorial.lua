@@ -1,16 +1,18 @@
 -- tools/test_tutorial.lua
--- TRAVA do onboarding (Out/2026): dicas ancoradas (src/systems/Tutorial +
--- src/ui/TipPlate), Guia de combos/glossário (components/GuideScreen) e o
--- tooltip da mana.
---   1. toda dica tem título e corpo nos 5 idiomas;
---   2. a dica dispara UMA vez, na ordem, só com o combate parado, e espera a
---      condição se manter (não pisca);
---   3. "vista" persiste no perfil, "Rever as dicas" zera, desligar cala;
---   4. clique, Enter/A e Esc/B fecham (a placa é dona do input);
---   5. a placa nunca sai da tela, nunca cobre o objeto que explica nem a
---      TopBar — em 4 tamanhos de janela, pt_BR e de (o idioma mais longo);
---   6. o Guia lista TODO combo do ComboSystem (nome, requisito, efeito) e
---      todo verbete do glossário, nos 5 idiomas.
+-- TRAVA do onboarding v2 (Out/2026): o corvo narrador (src/systems/Tutorial +
+-- src/ui/Narrator) e o Guia de combos/glossário (components/GuideScreen).
+--   1. toda fala do roteiro (e rodapé/ações) existe nos 5 idiomas;
+--   2. ROTEIRO: a 1ª batalha anda na ordem certa, cada fala de AÇÃO espera o
+--      jogador fazer a coisa, nada fala com a cena em movimento (cutscene,
+--      viagem, banner, vez do inimigo), duas conversas nunca se sobrepõem;
+--   3. CHEFE: a conversa do chefe só vem DEPOIS da cerimônia da porta e
+--      antes do 1º turno acabar — nunca no meio da luta;
+--   4. ENTRADA: na fala, o tutorial é dono da entrada (avança/pula); na ação,
+--      só passa o clique dentro do recorte e só o atalho da ação pedida;
+--   5. pular conversa, desligar o tutorial, "Recomeçar" e persistência em disco;
+--   6. LAYOUT: corvo + balão dentro da tela, sem cobrir o recorte nem a TopBar,
+--      pra toda fala do roteiro, em 4 tamanhos × pt_BR/de;
+--   7. o Guia lista todo combo e todo verbete nos 5 idiomas.
 --
 --   love . test_one test_tutorial
 
@@ -21,11 +23,11 @@ local M = {}
 local LOCALES = { "pt_BR", "en", "es", "fr", "de" }
 
 function M.run()
-    local t = TK.new("tutorial: dicas ancoradas, guia, persistência")
+    local t = TK.new("tutorial: corvo narrador, roteiro, foco, guia")
     TK.bootstrap()
     local I18n = require("src.i18n.I18n")
     local Tutorial = require("src.systems.Tutorial")
-    local TipPlate = require("src.ui.TipPlate")
+    local Narrator = require("src.ui.Narrator")
     local ProfileStats = require("engine.ProfileStats")
     local UiScale = require("src.ui.UiScale")
 
@@ -33,19 +35,25 @@ function M.run()
     local missing = {}
     for _, loc in ipairs(LOCALES) do
         local data = require("src.i18n.locales.tutorial." .. loc)
-        for _, def in ipairs(Tutorial.TIPS) do
-            local tip = data.tips and data.tips[def.id]
-            if not (tip and tip.title and tip.body and tip.body ~= "") then
-                missing[#missing + 1] = loc .. ":" .. def.id
+        for _, conv in ipairs(Tutorial.SCRIPT) do
+            for _, line in ipairs(conv.lines) do
+                local s = data.script and data.script[conv.id] and data.script[conv.id][line.id]
+                if not (type(s) == "string" and #s > 10) then
+                    missing[#missing + 1] = loc .. ":" .. conv.id .. "." .. line.id
+                end
             end
         end
-        if not (data.status and data.status.mana and data.status.mana.desc) then
-            missing[#missing + 1] = loc .. ":status.mana"
+        for _, k in ipairs({ "click", "continue", "skip", "disable" }) do
+            if not (data.footer and data.footer[k]) then missing[#missing + 1] = loc .. ":footer." .. k end
         end
+        for name in pairs(Tutorial.ACTIONS) do
+            if not (data.act and data.act[name]) then missing[#missing + 1] = loc .. ":act." .. name end
+        end
+        if not (data.narrator and data.narrator.name) then missing[#missing + 1] = loc .. ":narrator" end
     end
-    t:eq("toda dica (e o verbete da mana) existe nos 5 idiomas", table.concat(missing, ","), "")
+    t:eq("toda fala, rodapé e ação existem nos 5 idiomas", table.concat(missing, ","), "")
 
-    -- ===== 2. disparo: ordem, uma vez, combate parado =====
+    -- ===== 2. roteiro da 1ª batalha =====
     local prevProfile = ProfileStats._swapForTests({})
     Tutorial._reset()
     Tutorial._forceForTests(true)
@@ -53,135 +61,304 @@ function M.run()
     TK.pump(g, 0.5)
     g.turn = "player"
     g._enemyActing = false
+    g.battleTurn = 0
+    g.selectedCards = {}
     local function anchorsNow()
-        -- âncoras reportadas como o draw faria (identidade = pixels reais)
         love.graphics.origin()
         Tutorial.anchor("hand", 300, 560, 400, 180)
         Tutorial.anchor("mana", 940, 680, 60, 60)
         Tutorial.anchor("intent", 470, 160, 90, 48)
+        Tutorial.anchor("enemy", 440, 200, 150, 200)
+        Tutorial.anchor("enemy_hp", 440, 410, 150, 12)
         Tutorial.anchor("play", 820, 600, 150, 46)
         Tutorial.anchor("end_turn", 820, 654, 150, 33)
         Tutorial.anchor("player_panel", 14, 660, 220, 90)
+        Tutorial.anchor("preview", 760, 470, 220, 90)
         Tutorial.anchor("jokers", 14, 88, 260, 140)
     end
-    local function step(state, secs)
-        local n = math.floor((secs or 0.5) / (1 / 30))
-        for _ = 1, n do anchorsNow(); Tutorial.update(1 / 30, state, g) end
+    local function step(secs)
+        local n = math.max(1, math.floor((secs or 0.5) / (1 / 30)))
+        for _ = 1, n do anchorsNow(); Tutorial.update(1 / 30, "playing", g) end
+    end
+    local function talkThrough()
+        -- 1º Enter completa o texto, 2º passa pra próxima fala
+        Tutorial.overlay:keypressed("return")
+        Tutorial.overlay:keypressed("return")
     end
 
-    step("playing", 0.1)
-    t:eq("dica não aparece antes da condição se manter (sem piscar)", Tutorial.activeId(), nil)
-    step("playing", 0.5)
-    t:eq("1ª dica da 1ª batalha: a mão", Tutorial.activeId(), "battle_hand")
-    t:truthy("a placa é dona do input (InputFocus)", Tutorial.overlay:isVisible())
-    Tutorial.overlay:mousepressed(10, 10, 1)
-    t:eq("clique fecha a dica", Tutorial.activeId(), nil)
-    t:truthy("dica fechada fica VISTA no perfil", ProfileStats.isTipSeen("battle_hand"))
-    step("playing", 1.0)
-    t:eq("depois vem a mana", Tutorial.activeId(), "battle_mana")
-    Tutorial.overlay:keypressed("return")   -- Enter / A do gamepad
-    t:eq("Enter/A fecha", Tutorial.activeId(), nil)
-    step("playing", 1.0)
-    t:eq("depois o intent do inimigo", Tutorial.activeId(), "battle_intent")
-    Tutorial.overlay:keypressed("escape")   -- Esc / B
-    t:eq("Esc/B fecha", Tutorial.activeId(), nil)
-
-    -- Vez do inimigo: nada aparece (o combate não é interrompido).
-    g.turn = "enemy"
+    -- cena em movimento (viagem/porta/banner): ninguém fala
+    Tutorial._quiet = false
+    step(1.0)
+    t:eq("cena em movimento: o narrador espera", Tutorial.activeId(), nil)
+    Tutorial._quiet = true
+    step(0.2)
+    t:eq("condição precisa se manter (sem piscar)", Tutorial.activeId(), nil)
+    step(0.6)
+    t:eq("1ª batalha: o corvo se apresenta", Tutorial.activeId(), "intro")
+    t:eq("abre na fala de apresentação", Tutorial.activeLine(), "hello")
+    t:truthy("na fala, o tutorial é dono da entrada (InputFocus)", Tutorial.overlay:isVisible())
+    t:eq("na fala, o modo é 'talk'", Tutorial.mode(), "talk")
+    Tutorial.overlay:keypressed("return")
+    t:eq("1º Enter só completa o texto (máquina de escrever)", Tutorial.activeLine(), "hello")
+    Tutorial.overlay:keypressed("return")
+    t:eq("2º Enter: próxima fala (o inimigo)", Tutorial.activeLine(), "enemy")
+    Tutorial.overlay:mousepressed(500, 300, 1)
+    Tutorial.overlay:mousepressed(500, 300, 1)
+    t:eq("clique também avança (intenção)", Tutorial.activeLine(), "intent")
+    talkThrough()
+    t:eq("depois o herói", Tutorial.activeLine(), "hero")
+    talkThrough()
+    t:eq("depois a mão (ação: selecionar)", Tutorial.activeLine(), "hand")
+    Narrator.finishReveal()
+    t:eq("fala de ação: modo 'action'", Tutorial.mode(), "action")
+    t:falsy("na ação, o tutorial LARGA o modal (o jogo recebe o clique)", Tutorial.overlay:isVisible())
+    Tutorial.draw()   -- calcula o recorte da fala
+    t:truthy("clique FORA do recorte é barrado", Tutorial.blocksPointer(50, 50, "pressed"))
+    t:truthy("...e o release dele também", Tutorial.blocksPointer(50, 50, "released"))
+    t:falsy("clique DENTRO do recorte passa", Tutorial.blocksPointer(500, 640, "pressed"))
+    t:falsy("...e o release dele também", Tutorial.blocksPointer(900, 100, "released"))
+    t:truthy("atalho de outra ação (Q = encerrar) é barrado", Tutorial.blocksKey("q"))
+    t:falsy("navegação passa (setas/Enter)", Tutorial.blocksKey("left") or Tutorial.blocksKey("return"))
+    Tutorial.overlay:keypressed("return")
+    t:eq("Enter não pula uma ação", Tutorial.activeLine(), "hand")
     g.selectedCards = { g.hand[1] }
-    step("playing", 1.0)
-    t:eq("na vez do inimigo nenhuma dica aparece", Tutorial.activeId(), nil)
-    g.turn = "player"
-    step("playing", 1.0)
-    t:eq("com carta selecionada: o JOGAR", Tutorial.activeId(), "battle_play")
-    Tutorial.dismiss()
+    step(0.1)
+    t:eq("selecionou: a fala segue (mana)", Tutorial.activeLine(), "mana")
+    talkThrough()
+    t:eq("depois a prévia de dano", Tutorial.activeLine(), "preview")
+    talkThrough()
+    t:eq("depois o JOGAR (ação)", Tutorial.activeLine(), "play")
+    Narrator.finishReveal()
+    t:falsy("na ação de jogar, E/Y (jogar) passa", Tutorial.blocksKey("e"))
+    t:truthy("na ação de jogar, Q/X (encerrar) não passa", Tutorial.blocksKey("q"))
+    -- jogar: a carta sai da mão
+    table.remove(g.hand, 1)
     g.selectedCards = {}
+    step(0.1)
+    t:eq("jogou: a conversa da apresentação termina", Tutorial.activeId(), nil)
+    t:truthy("apresentação fica VISTA no perfil", ProfileStats.isTipSeen("intro"))
 
-    -- Sem âncora (objeto não desenhado), a dica espera: nunca aponta pro nada.
-    Tutorial._reset()
-    g.player.armor = 5
-    for _ = 1, 40 do Tutorial.update(1 / 30, "playing", g) end
-    t:eq("sem âncora visível, a dica não aparece", Tutorial.activeId(), nil)
-    step("playing", 1.0)
-    t:truthy("com Bloqueio na mesa, a dica do Bloqueio aparece (ancorada no painel)",
-        Tutorial.activeId() == "block" or Tutorial.activeId() == "battle_end_turn")
-
-    -- Visto não volta.
-    Tutorial.dismiss()
-    local seenNow = Tutorial.activeId()
-    for _, id in ipairs({ "battle_hand", "battle_mana", "battle_intent", "battle_play" }) do
-        t:truthy("'" .. id .. "' segue vista", ProfileStats.isTipSeen(id))
+    -- jogou a carta DIRETO na fala de "selecione": a fala de jogar não espera
+    -- uma 2ª jogada (a conversa mede contra a mão do começo)
+    do
+        local handBackup = {}
+        for i, c in ipairs(g.hand) do handBackup[i] = c end
+        Tutorial._show("intro", "hand", g)
+        table.remove(g.hand, 1)
+        step(0.1)
+        t:eq("jogou na fala de selecionar: segue pra mana", Tutorial.activeLine(), "mana")
+        talkThrough(); talkThrough()
+        step(0.1)
+        t:eq("...e a fala de jogar passa sozinha (conversa termina)", Tutorial.activeId(), nil)
+        g.hand = handBackup
+        g.selectedCards = {}
+        Tutorial._reset()
     end
-    t:eq("(nenhuma dica presa aberta)", seenNow, nil)
 
-    -- ===== 3. desligar, rever =====
-    Tutorial._forceForTests(false)
-    Tutorial._allowHeadless = true
+    -- vez do inimigo: ninguém fala
+    g.player.mana = 1
+    g.turn = "enemy"
+    step(1.0)
+    t:eq("na vez do inimigo o narrador cala", Tutorial.activeId(), nil)
+    g.turn = "player"
+    step(1.0)
+    t:eq("de volta ao turno (mana gasta, sem seleção): ENCERRAR", Tutorial.activeId(), "end_turn")
+    Narrator.finishReveal()
+    t:falsy("na ação de encerrar, Q/X passa", Tutorial.blocksKey("q"))
+    g.turn = "enemy"
+    step(0.1)
+    t:eq("encerrou: conversa termina", Tutorial.activeId(), nil)
+    g.turn = "player"
+    g.battleTurn = 1
+    g.player.mana = g.player.maxMana or 3
+    step(1.0)
+    t:eq("2º turno: o corvo fecha o ciclo (intenção cumprida)", Tutorial.activeId(), "second_turn")
+
+    -- duas conversas nunca ao mesmo tempo
+    g.player.armor = 5
+    step(0.6)
+    t:eq("com uma conversa aberta, outra não começa", Tutorial.activeId(), "second_turn")
+    Tutorial.overlay:keypressed("escape")
+    t:eq("Esc/B pula a conversa inteira", Tutorial.activeId(), nil)
+    t:truthy("conversa pulada fica vista", ProfileStats.isTipSeen("second_turn"))
+    step(1.0)
+    t:eq("depois do respiro, a próxima (Bloqueio)", Tutorial.activeId(), "block")
+    Tutorial.skipConversation()
+    g.player.armor = 0
+
+    -- ===== 2b. voz: pool FIXO, solto no fim da conversa =====
+    -- Cada blip reusa uma das BLIP_COUNT fontes do corvo (stop+play); antes,
+    -- o pool do AudioManager crescia até 8 clones por variação e nunca
+    -- devolvia — 20 conversas esgotavam vozes do OpenAL e a música calava.
+    do
+        local createdAudio = false
+        if not _G.audioSystem then
+            local AM = require("engine.AudioManager")
+            _G.audioSystem = AM:new()
+            _G.audioSystem:setGroupVolume("master", 0)
+            createdAudio = true
+        end
+        local audioOn = _G.audioSystem:isAudioAvailable()
+        local before = love.audio.getActiveSourceCount()
+        local maxVoices = 0
+        for _ = 1, 20 do
+            Tutorial._start("intro", g)
+            for _ = 1, 120 do   -- 4s de máquina de escrever = dezenas de blips
+                Narrator.update(1 / 30)
+                maxVoices = math.max(maxVoices, Narrator.voiceCount())
+            end
+            Tutorial.skipConversation()
+        end
+        t:check("o corvo nunca segura mais que " .. Narrator.BLIP_COUNT .. " fontes (20 conversas)",
+            maxVoices <= Narrator.BLIP_COUNT)
+        if audioOn then
+            t:check("com áudio, os blips tocaram de verdade (pool usado)", maxVoices > 0)
+        end
+        t:eq("fim da conversa: as fontes do corvo são soltas", Narrator.voiceCount(), 0)
+        t:check("fontes ativas não acumulam depois de 20 conversas",
+            love.audio.getActiveSourceCount() <= before)
+        Tutorial._reset()
+        if createdAudio then _G.audioSystem = nil end
+    end
+
+    -- ===== 3. chefe: só depois da porta, no 1º turno =====
+    local GameplayScene = require("src.scenes.GameplayScene")
+    local prevSceneGame = GameplayScene.getGame()
+    GameplayScene.init({ game = g })
+    GameplayScene.resetTurnState()
+    Tutorial._quiet = nil          -- a cena de verdade decide
+    local run = g.runManager.currentRun
+    run.currentNode = { type = "boss" }
+    g.battleTurn = 0
+    local realMode = GameplayScene.SCENE_MODE
+    GameplayScene.SCENE_MODE = "worldroad"
+    step(1.0)
+    t:falsy("chefe: cena NÃO está quieta antes da cerimônia da porta", GameplayScene.isQuiet())
+    t:eq("chefe: nada de narrador durante a cutscene", Tutorial.activeId(), nil)
+    GameplayScene._debugForceBossEntered()
+    t:truthy("chefe: depois da porta, a cena aquieta", GameplayScene.isQuiet())
+    step(1.0)
+    t:eq("chefe: a conversa vem depois da porta, no 1º turno", Tutorial.activeId(), "boss")
+    Tutorial.skipConversation()
+    ProfileStats.resetTips()
+    for _, id in ipairs({ "intro", "end_turn", "second_turn", "block", "combo", "orbs", "jokers" }) do
+        ProfileStats.markTipSeen(id)
+    end
+    g.battleTurn = 2
+    step(1.0)
+    t:eq("chefe no meio da luta (turno 3): não é hora", Tutorial.activeId(), nil)
+    GameplayScene.SCENE_MODE = realMode
+    -- a cena é estado de MÓDULO: devolve como estava (suítes seguintes)
+    GameplayScene.init({ game = prevSceneGame })
+    GameplayScene.resetTurnState()
+    run.currentNode = { type = "battle" }
+    Tutorial._quiet = true
+
+    -- ===== 5. desligar / recomeçar / disco =====
     _G.gameSettings = _G.gameSettings or {}
     local prevTips = _G.gameSettings.tipsEnabled
-    _G.gameSettings.tipsEnabled = false
+    Tutorial._forceForTests(false)
+    Tutorial._allowHeadless = true
     ProfileStats.resetTips()
     Tutorial._reset()
-    step("playing", 1.0)
-    t:eq("dicas desligadas: nada aparece", Tutorial.activeId(), nil)
+    g.battleTurn = 0
+    step(1.0)
+    t:eq("religado: a apresentação volta", Tutorial.activeId(), "intro")
+    -- link "Já sei jogar: desligar o tutorial" (só na 1ª fala)
+    Tutorial.draw()
+    Tutorial.overlay:keypressed("q")
+    t:eq("Q/X na 1ª fala: desliga o tutorial", _G.gameSettings.tipsEnabled, false)
+    t:eq("e fecha a conversa", Tutorial.activeId(), nil)
+    Tutorial._reset()
+    step(1.0)
+    t:eq("desligado: o corvo não volta", Tutorial.activeId(), nil)
     _G.gameSettings.tipsEnabled = true
-    step("playing", 1.0)
-    t:eq("religadas + 'Rever': a primeira volta", Tutorial.activeId(), "battle_hand")
-    Tutorial.dismiss()
-    t:eq("Rever as dicas devolve quantas esquecia", Tutorial.resetAll(), 1)
+    t:check("'Recomeçar o tutorial' devolve quantas esquecia", Tutorial.resetAll() >= 1)
     t:eq("perfil zerado", ProfileStats.tipsSeenCount(), 0)
     _G.gameSettings.tipsEnabled = prevTips
     Tutorial._allowHeadless = nil
+    Tutorial._quiet = nil
     Tutorial._reset()
     ProfileStats._swapForTests(prevProfile)
 
-    -- Persistência em DISCO (caminho de teste: o perfil real não é tocado).
     do
         local path = "profile_tutorial_test.tool.lua"
         love.filesystem.remove(path)
         ProfileStats._setPathForTests(path)
-        ProfileStats.markTipSeen("combo")
+        ProfileStats.markTipSeen("intro")
         ProfileStats._setPathForTests(path)     -- força reler do disco
-        t:truthy("dica vista sobrevive a reabrir o jogo (disco)", ProfileStats.isTipSeen("combo"))
+        t:truthy("conversa vista sobrevive a reabrir o jogo (disco)", ProfileStats.isTipSeen("intro"))
         ProfileStats.resetTips()
         ProfileStats._setPathForTests(path)
-        t:falsy("reset também vai pro disco", ProfileStats.isTipSeen("combo"))
+        t:falsy("recomeçar também vai pro disco", ProfileStats.isTipSeen("intro"))
         ProfileStats._setPathForTests(nil)
         love.filesystem.remove(path)
     end
 
-    -- ===== 5. zonas: a placa em 4 tamanhos × pt_BR/de =====
+    -- ===== 6. layout em 4 tamanhos × pt_BR/de =====
     local origW, origH, origD = love.graphics.getWidth, love.graphics.getHeight, love.graphics.getDimensions
     local origReal = UiScale.realDimensions
-    local bad = {}
-    for _, sz in ipairs({ { 1024, 768 }, { 1280, 720 }, { 1920, 1080 }, { 2560, 1440 } }) do
+    local bad, checked = {}, 0
+    for _, sz in ipairs({ { 1024, 768 }, { 1280, 800 }, { 1920, 1080 }, { 2560, 1440 } }) do
         local W, H = sz[1], sz[2]
         love.graphics.getWidth = function() return W end
         love.graphics.getHeight = function() return H end
         love.graphics.getDimensions = function() return W, H end
         UiScale.realDimensions = function() return W, H end
         local k = UiScale.k(W, H)
-        -- âncoras nas posições REAIS dos objetos (proporções do HUD)
+        -- recortes nas posições REAIS dos objetos (proporções do HUD/telas)
         local A = {
-            hand = { x = W * 0.28, y = H - 200 * k, w = W * 0.40, h = 190 * k },
+            hand = { x = W * 0.30, y = H - 200 * k, w = W * 0.40, h = 190 * k },
             mana = { x = W - 90 * k, y = H - 90 * k, w = 60 * k, h = 60 * k },
             intent = { x = W / 2 - 45 * k, y = H * 0.22, w = 90 * k, h = 48 * k },
+            enemy = { x = W / 2 - 80 * k, y = H * 0.25, w = 160 * k, h = 230 * k },
             play = { x = W * 0.80, y = H * 0.78, w = 150 * k, h = 46 * k },
             end_turn = { x = W * 0.80, y = H * 0.78 + 54 * k, w = 150 * k, h = 33 * k },
             player_panel = { x = 14 * k, y = H - 110 * k, w = 220 * k, h = 90 * k },
-            jokers = { x = 14 * k, y = 88 * k, w = 260 * k, h = 140 * k },
-            orbs = { x = 14 * k, y = H - 240 * k, w = 174 * k, h = 78 * k },
+            preview = { x = W * 0.74, y = H * 0.62, w = 230 * k, h = 90 * k },
+            jokers = { x = 14 * k, y = 88 * k, w = 290 * k, h = 160 * k },
+            orbs = { x = 14 * k, y = H - 200 * k, w = 174 * k, h = 78 * k },
+            offers = { x = W * 0.25, y = H * 0.28, w = W * 0.50, h = H * 0.36 },
+            reward_skip = { x = W / 2 - 80 * k, y = H * 0.70, w = 160 * k, h = 36 * k },
+            shop_refresh = { x = W * 0.62, y = H * 0.84, w = 170 * k, h = 36 * k },
+            shop_dice = { x = W * 0.42, y = H * 0.84, w = 130 * k, h = 32 * k },
+            dice_table = { x = W * 0.32, y = H * 0.25, w = W * 0.36, h = H * 0.22 },
+            dice_bets = { x = W * 0.32, y = H * 0.52, w = W * 0.36, h = H * 0.10 },
+            forge_cards = { x = W * 0.25, y = H * 0.25, w = W * 0.50, h = H * 0.40 },
+            rest_options = { x = W / 2 - 200 * k, y = H * 0.55, w = 400 * k, h = 60 * k },
+            event_options = { x = W * 0.30, y = H * 0.55, w = W * 0.40, h = H * 0.22 },
+            curse_options = { x = W * 0.28, y = H * 0.28, w = W * 0.44, h = H * 0.40 },
+            seal_band = { x = W * 0.30, y = H * 0.80, w = W * 0.40, h = 44 * k },
         }
+        local function rectFor(spot)
+            if spot == nil then return nil end
+            if type(spot) == "function" then
+                return { x = W * 0.35, y = H * 0.45, w = W * 0.30, h = H * 0.20 }   -- marcos do fork
+            end
+            if type(spot) == "string" then return A[spot] end
+            local x1, y1, x2, y2
+            for _, id in ipairs(spot) do
+                local a = A[id]
+                if a then
+                    x1 = math.min(x1 or a.x, a.x); y1 = math.min(y1 or a.y, a.y)
+                    x2 = math.max(x2 or (a.x + a.w), a.x + a.w); y2 = math.max(y2 or (a.y + a.h), a.y + a.h)
+                end
+            end
+            return x1 and { x = x1, y = y1, w = x2 - x1, h = y2 - y1 }
+        end
         for _, loc in ipairs({ "pt_BR", "de" }) do
             I18n.setLocale(loc, true)
-            for _, def in ipairs(Tutorial.TIPS) do
-                local key = def.id:match("^battle_(.+)$") or def.id
-                local anchor = A[key] or A[({ block = "player_panel", combo = "hand" })[key] or ""]
-                    or { x = W / 2 - 200 * k, y = 70 * k, w = 400 * k, h = 36 * k }
-                local L = Tutorial.layoutFor(def.id, anchor)
-                local ok, errs = TipPlate.validate(L)
-                if not ok then
-                    bad[#bad + 1] = ("%dx%d %s %s: %s"):format(W, H, loc, def.id, table.concat(errs, "; "))
+            for _, conv in ipairs(Tutorial.SCRIPT) do
+                for i, line in ipairs(conv.lines) do
+                    local spot = rectFor(line.spot)
+                    local text = Tutorial.lineText(conv, line)
+                    local L = Tutorial.layoutFor(text, spot, line, conv.id == "intro" and i == 1)
+                    local ok, errs = Narrator.validate(L, W, H, spot, Tutorial.avoidZones())
+                    checked = checked + 1
+                    if not ok then
+                        bad[#bad + 1] = ("%dx%d %s %s.%s: %s"):format(W, H, loc, conv.id, line.id,
+                            table.concat(errs, "; "))
+                    end
                 end
             end
         end
@@ -189,10 +366,11 @@ function M.run()
     love.graphics.getWidth, love.graphics.getHeight, love.graphics.getDimensions = origW, origH, origD
     UiScale.realDimensions = origReal
     I18n.setLocale("pt_BR", true)
-    for i = 1, math.min(4, #bad) do print("     " .. bad[i]) end
-    t:eq("placa nunca sai da tela, cobre o objeto ou a TopBar (4 tamanhos × pt/de)", #bad, 0)
+    for i = 1, math.min(6, #bad) do print("     " .. bad[i]) end
+    t:eq(("narrador nunca sai da tela, cobre o recorte ou a TopBar (%d falas × tamanhos × idiomas)")
+        :format(checked), #bad, 0)
 
-    -- ===== 6. Guia =====
+    -- ===== 7. Guia =====
     local GuideScreen = require("components.GuideScreen")
     local ComboSystem = require("src.systems.ComboSystem")
     local gbad = {}
@@ -201,9 +379,7 @@ function M.run()
         local combos = GuideScreen.comboEntries("warrior")
         if #combos ~= #ComboSystem.RULES then gbad[#gbad + 1] = loc .. ": nº de combos" end
         for _, e in ipairs(combos) do
-            if e.title == e.id or e.effect == "" then
-                gbad[#gbad + 1] = loc .. ":" .. e.id
-            end
+            if e.title == e.id or e.effect == "" then gbad[#gbad + 1] = loc .. ":" .. e.id end
         end
         local gl = GuideScreen.glossaryEntries()
         if #gl ~= #require("src.data.keywords") then gbad[#gbad + 1] = loc .. ": glossário" end
@@ -219,8 +395,6 @@ function M.run()
         if e.examples ~= "" then withEx = withEx + 1 end
     end
     t:check("Guia: combos trazem cartas de exemplo", withEx >= #ComboSystem.RULES - 2)
-
-    -- Guia: abre, troca aba, fecha pelo teclado/pad
     local gs = GuideScreen:new()
     gs:show(g)
     gs:keypressed("right")

@@ -2160,6 +2160,27 @@ function CardRewardScreen:draw()
     -- (UI_definitions.lua:382 card_focus_button) attached compactos sob a carta.
     self:_drawSelectionOverlay()
 
+    -- âncoras do narrador do tutorial (ofertas, pular, renovar, dados)
+    do
+        local T = require("src.systems.Tutorial")
+        -- só os slots que TÊM oferta (cardPositions guarda o layout inteiro)
+        local occupied = {}
+        for i, offer in ipairs(self.shopOffers or {}) do
+            local p = (offer._slot and self.cardPositions[offer._slot]) or self.cardPositions[i]
+            if p then
+                -- recompensas: o slot não guarda tamanho (é o cardWidth/Height)
+                occupied[#occupied + 1] = { x = p.x, y = p.y,
+                    w = p.w or self.cardWidth, h = p.h or self.cardHeight }
+            end
+        end
+        T.anchorList("offers", occupied)
+        if self.mode == "rewards" and self.skipButton then T.anchorList("reward_skip", { self.skipButton }) end
+        if self.mode == "shop" then
+            if self.refreshButton then T.anchorList("shop_refresh", { self.refreshButton }) end
+            if self.diceButton then T.anchorList("shop_dice", { self.diceButton }) end
+        end
+    end
+
     -- FX de compra por cima de tudo (carta voando pro deck + popups -$N).
     self:_drawPurchaseFx()
 

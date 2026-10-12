@@ -1,45 +1,99 @@
--- Onboarding (src/systems/Tutorial + components/GuideScreen): dicas ancoradas,
--- Guia de combos/glossário, tooltip da mana. Arquivo próprio por locale;
--- plugado no principal como `tutorial = require(...)`.
+-- Onboarding v2 (src/systems/Tutorial + src/ui/Narrator + components/GuideScreen):
+-- roteiro do corvo narrador (script.<conversa>.<fala>, *ênfase* em sangue),
+-- rodapé do balão, Guia de combos/glossário, tooltip da mana. Arquivo próprio
+-- por locale; plugado no principal como `tutorial = require(...)`.
 return {
-    tips = {
-        battle_hand = { title = "Suas cartas",
-            body = "Selecione as cartas que quer jogar; o número no canto de cada uma é o custo em mana. Seu grimório começa com só 2 cartas — cada vitória oferece uma nova." },
-        battle_mana = { title = "Mana",
-            body = "É o que você pode gastar por turno. Volta cheia no começo de cada turno — mana que sobra não acumula." },
-        battle_intent = { title = "O inimigo avisa",
-            body = "Este ícone é o que ele fará no próximo turno: o número é o dano (×N = vários golpes). Aponte para o ícone para ver o nome e o efeito do golpe." },
-        battle_play = { title = "Jogar Cartas",
-            body = "Resolve as cartas selecionadas agora. A prévia acima mostra o dano e o bloqueio exatos. Você pode jogar várias vezes no mesmo turno." },
-        battle_end_turn = { title = "Encerrar Turno",
-            body = "Quando terminar, encerre o turno: a mão é descartada e o inimigo executa o golpe anunciado." },
-        block = { title = "Bloqueio",
-            body = "Absorve o dano do próximo golpe inimigo — e ZERA no começo do seu turno. Defenda quando o ataque anunciado for grande." },
-        combo = { title = "Combo à vista",
-            body = "Cartas que combinam rendem mais quando jogadas JUNTAS (selo +COMBO). A lista completa está no Guia, na Pausa." },
-        orbs = { title = "Orbes",
-            body = "Cada orbe pulsa no fim do seu turno (valor na placa). Canalizar com a fileira cheia evoca o mais antigo — o da seta." },
-        jokers = { title = "Coringas",
-            body = "Valem pela run inteira, sem gastar mana. Só os ATIVOS deste quadro funcionam; os outros ficam na bancada. Abra este quadro para trocá-los." },
-        boss = { title = "Chefe do ato",
-            body = "Todo chefe tem um golpe-assinatura (invocação, carga, perfurante...). Leia o intent a cada turno — o aviso vem antes do golpe." },
-        rewards = { title = "Espólios",
-            body = "Escolha UMA carta para o grimório — ou siga sem nenhuma. Um grimório enxuto compra suas melhores cartas mais vezes." },
-        shop = { title = "Loja",
-            body = "Cartas, relíquias e pacotes por ouro. Rerolar a vitrine custa mais a cada vez. Juros: cada $5 guardados rendem $1 na próxima vitória." },
-        rest = { title = "Acampamento",
-            body = "Descanse para curar OU forje uma carta (+1 nível). Só uma das duas por fogueira." },
-        event = { title = "Evento",
-            body = "Cada opção diz o que dá [+] e o que custa [-]. Opção cinza é a que você ainda não pode pagar." },
-        fork = { title = "Encruzilhada",
-            body = "Escolha o próximo lugar. Elite: mais risco e prêmio melhor. Descanso, loja e evento não têm luta." },
+    narrator = { name = "Pena" },
+    footer = {
+        click = "Clique para seguir",
+        ["continue"] = "seguir",
+        skip = "pular conversa",
+        disable = "Já sei jogar: desligar o tutorial",
     },
-    dismiss_mouse = "Clique para continuar",
-    dismiss_pad = "A para continuar",
-    settings_tips = "Dicas do tutorial",
-    settings_reset = "Rever as dicas",
-    settings_reset_value = "{n} vistas",
-    settings_reset_done = "Recomeçadas",
+    act = {
+        select = "Selecione uma carta",
+        play = "Aperte Jogar Cartas",
+        end_turn = "Aperte Encerrar Turno",
+    },
+    settings_tips = "Tutorial do corvo",
+    settings_reset = "Recomeçar o tutorial",
+    settings_reset_value = "{n} conversas vistas",
+    settings_reset_done = "Do começo",
+    script = {
+        intro = {
+            hello = "Croac! Eu sou o *Pena*, o corvo guardião deste grimório. Vou te ensinar a lutar — prometo ser breve.",
+            enemy = "Este é o seu adversário. A barra sob ele é a *vida*: zere-a e a luta acaba.",
+            intent = "Este ícone é a *intenção* dele: o que ele fará quando o seu turno acabar. O número é o dano que vem aí.",
+            hero = "Aqui ficam a SUA *vida* e o seu *Bloqueio*. Se a vida chegar a zero, a jornada termina.",
+            hand = "Estas são as suas cartas — o grimório começa com só duas. *Selecione uma* para prepará-la.",
+            mana = "Cada carta custa *mana*: o número no canto dela. A mana enche de novo a cada turno — gaste sem dó.",
+            preview = "Esta é a *prévia*: quanto dano e quanto Bloqueio a seleção vai render, já com todos os bônus.",
+            play = "Pronto? Mande ver: aperte *Jogar Cartas*!",
+        },
+        end_turn = {
+            ["end"] = "Belo golpe! Quando acabar a mana ou as ideias, aperte *Encerrar Turno*. Aí o inimigo age — exatamente como a intenção avisou.",
+        },
+        second_turn = {
+            kept = "Viu? Ele fez o que anunciou. Leia a *intenção* a cada turno e se proteja quando o golpe for grande.",
+            loop = "Mão nova a cada turno, mana cheia de novo. Agora é com você — eu apareço quando houver novidade. Croac!",
+        },
+        boss = {
+            arrive = "Este é o *chefe* do ato. Vença-o e a estrada segue para a próxima terra.",
+            signature = "Todo chefe tem um golpe próprio — invocação, carga, golpe que fura o Bloqueio. Leia a *intenção* a cada turno.",
+        },
+        elite = {
+            warn = "Cuidado: um *Elite*. Mais forte que um inimigo comum — mas o prêmio também é melhor.",
+        },
+        block = {
+            reset = "Você ganhou *Bloqueio*: ele absorve o próximo golpe. Mas atenção: o Bloqueio *zera no começo do seu turno* — não dá para guardar.",
+        },
+        combo = {
+            seal = "Olha só: cartas da sua mão *combinam*! Jogadas JUNTAS, no mesmo turno, rendem mais — a prévia mostra o selo *+COMBO*.",
+            guide = "A lista completa de combos mora no *Guia*, no menu de Pausa.",
+        },
+        orbs = {
+            pulse = "Seus *orbes*! Cada um pulsa no fim do seu turno — o número escrito nele é o efeito.",
+            evoke = "Canalizar com a fileira cheia *evoca* o mais antigo, o da seta, num efeito maior.",
+        },
+        jokers = {
+            passive = "Um *Coringa*! Ele age sozinho pela jornada inteira, sem gastar mana.",
+            bench = "Só os *ativos* deste quadro funcionam; os outros esperam na bancada. Abra o quadro para trocá-los.",
+        },
+        rewards = {
+            pick = "Vitória! Escolha *uma* carta para o grimório.",
+            skip = "Ou pule: um grimório enxuto compra as melhores cartas mais vezes. Às vezes, menos é mais.",
+        },
+        dice = {
+            odds = "Dois dados, uma aposta. *Baixo* (2 a 6) e *Alto* (8 a 12) pagam 2,5×; o *Sete* paga 6×.",
+            bet = "Escolha a aposta e o valor da ficha, depois lance. A chance de cada aposta está escrita nela.",
+        },
+        shop = {
+            offers = "A *loja*! Cartas, relíquias e pacotes, a troco de ouro.",
+            refresh = "Nada agradou? *Novas ofertas* troca a vitrine — e fica mais caro a cada vez.",
+            dice = "E ali, os *Dados do Escriba*: aposte ouro num lance de dois dados. Uma jogada por loja.",
+            interest = "Ah: ouro guardado rende *juros*. Cada $5 no bolso vale +$1 ao vencer uma batalha, até +$5.",
+        },
+        forge = {
+            pick = "Na *forja*, escolha uma carta para melhorar. Cada cópia evolui separada.",
+        },
+        rest = {
+            choose = "Uma *fogueira*. Descanse para recuperar vida — ou use o tempo para *forjar* uma carta.",
+        },
+        event = {
+            read = "Um *evento*! Leia com calma: cada escolha mostra o que custa [-] e o que dá [+].",
+        },
+        fork = {
+            paths = "Uma *encruzilhada*. Cada marco é um caminho: batalha, *Elite*, descanso, loja ou evento. Escolha o seu.",
+        },
+        endless = {
+            cycle = "Além do último chefe, o *Sem Fim*. A cada ciclo de oito andares, você escolhe uma *maldição*.",
+            grow = "Os inimigos crescem a cada ciclo, sem limite. Até onde o seu grimório aguenta?",
+        },
+        seals = {
+            unlocked = "Você venceu! Agora pode romper os *Selos do Grimório*: cada selo é uma regra mais dura, e eles se acumulam.",
+            score = "Mais selos, mais pontos. Vença num selo para liberar o próximo — com a mesma classe.",
+        },
+    },
     guide = {
         title = "GUIA DO GRIMÓRIO",
         tab_combos = "Combos",

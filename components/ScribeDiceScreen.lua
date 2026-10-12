@@ -436,6 +436,9 @@ function ScribeDiceScreen:draw()
     end
 
     for i = 1, 3 do self:_drawBet(i, L.bets[i], used) end
+    -- âncoras do narrador do tutorial: a mesa e as apostas
+    require("src.systems.Tutorial").anchor("dice_table", L.table.x, L.table.y, L.table.w, L.table.h)
+    require("src.systems.Tutorial").anchorList("dice_bets", L.bets)
 
     local stakes = self:_stakes()
     local lbl = I18n.t("scribe_dice.stake")

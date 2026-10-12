@@ -1,45 +1,99 @@
--- Onboarding (src/systems/Tutorial + components/GuideScreen): dicas ancoradas,
--- Guia de combos/glossário, tooltip da mana. Arquivo próprio por locale;
--- plugado no principal como `tutorial = require(...)`.
+-- Onboarding v2 (src/systems/Tutorial + src/ui/Narrator + components/GuideScreen):
+-- roteiro do corvo narrador (script.<conversa>.<fala>, *ênfase* em sangue),
+-- rodapé do balão, Guia de combos/glossário, tooltip da mana. Arquivo próprio
+-- por locale; plugado no principal como `tutorial = require(...)`.
 return {
-    tips = {
-        battle_hand = { title = "Tus cartas",
-            body = "Selecciona las cartas que quieras jugar; el número de la esquina de cada una es su coste de maná. Tu grimorio empieza con solo 2 cartas: cada victoria ofrece una nueva." },
-        battle_mana = { title = "Maná",
-            body = "Es lo que puedes gastar por turno. Se recarga al inicio de cada turno; el maná que sobra no se acumula." },
-        battle_intent = { title = "El enemigo avisa",
-            body = "Este icono es lo que hará el próximo turno: el número es el daño (×N = varios golpes). Apunta al icono para ver el nombre y el efecto." },
-        battle_play = { title = "Jugar cartas",
-            body = "Resuelve ahora las cartas seleccionadas. La vista previa de arriba muestra el daño y el bloqueo exactos. Puedes jugar varias veces en el mismo turno." },
-        battle_end_turn = { title = "Terminar turno",
-            body = "Cuando termines, acaba el turno: la mano se descarta y el enemigo ejecuta el golpe anunciado." },
-        block = { title = "Bloqueo",
-            body = "Absorbe el daño del próximo golpe enemigo, y se REINICIA al inicio de tu turno. Defiéndete cuando el ataque anunciado sea grande." },
-        combo = { title = "Combo disponible",
-            body = "Las cartas que combinan rinden más jugadas JUNTAS (sello +COMBO). La lista completa está en la Guía, en la Pausa." },
-        orbs = { title = "Orbes",
-            body = "Cada orbe pulsa al final de tu turno (valor en su placa). Canalizar con la fila llena evoca el más antiguo, el de la flecha." },
-        jokers = { title = "Comodines",
-            body = "Duran toda la partida y no cuestan maná. Solo los ACTIVOS de este marco funcionan; el resto espera en el banco. Abre este marco para cambiarlos." },
-        boss = { title = "Jefe del acto",
-            body = "Cada jefe tiene un golpe característico (invocación, carga, perforante...). Lee la intención cada turno: el aviso llega antes del golpe." },
-        rewards = { title = "Botín",
-            body = "Elige UNA carta para el grimorio, o ninguna. Un grimorio ligero roba sus mejores cartas más a menudo." },
-        shop = { title = "Tienda",
-            body = "Cartas, reliquias y sobres por oro. Renovar el escaparate cuesta más cada vez. Interés: cada $5 guardados rinden $1 en la próxima victoria." },
-        rest = { title = "Campamento",
-            body = "Descansa para curarte O forja una carta (+1 nivel). Solo una de las dos por hoguera." },
-        event = { title = "Evento",
-            body = "Cada opción dice lo que da [+] y lo que cuesta [-]. Una opción gris es la que aún no puedes pagar." },
-        fork = { title = "Encrucijada",
-            body = "Elige el próximo lugar. Élite: más riesgo y mejor premio. Descanso, tienda y evento no tienen combate." },
+    narrator = { name = "Pluma" },
+    footer = {
+        click = "Haz clic para seguir",
+        ["continue"] = "seguir",
+        skip = "saltar charla",
+        disable = "Ya sé jugar: apagar el tutorial",
     },
-    dismiss_mouse = "Clic para continuar",
-    dismiss_pad = "A para continuar",
-    settings_tips = "Consejos del tutorial",
-    settings_reset = "Volver a ver consejos",
-    settings_reset_value = "{n} vistos",
-    settings_reset_done = "Reiniciados",
+    act = {
+        select = "Selecciona una carta",
+        play = "Pulsa Jugar Cartas",
+        end_turn = "Pulsa Terminar Turno",
+    },
+    settings_tips = "Tutorial del cuervo",
+    settings_reset = "Reiniciar el tutorial",
+    settings_reset_value = "{n} charlas vistas",
+    settings_reset_done = "Desde el principio",
+    script = {
+        intro = {
+            hello = "¡Cruac! Soy *Pluma*, el cuervo guardián de este grimorio. Te enseñaré a luchar; prometo ser breve.",
+            enemy = "Este es tu adversario. La barra bajo él es su *vida*: déjala en cero y la lucha termina.",
+            intent = "Este icono es su *intención*: lo que hará cuando acabe tu turno. El número es el daño que se viene.",
+            hero = "Aquí están TU *vida* y tu *Bloqueo*. Si la vida llega a cero, el viaje termina.",
+            hand = "Estas son tus cartas; el grimorio empieza con solo dos. *Selecciona una* para prepararla.",
+            mana = "Cada carta cuesta *maná*: el número de su esquina. El maná se recarga cada turno, así que gástalo sin miedo.",
+            preview = "Esta es la *vista previa*: cuánto daño y cuánto Bloqueo dará tu selección, con todos los bonus.",
+            play = "¿Listo? Adelante: ¡pulsa *Jugar Cartas*!",
+        },
+        end_turn = {
+            ["end"] = "¡Buen golpe! Cuando se acaben el maná o las ideas, pulsa *Terminar Turno*. Entonces actúa el enemigo, tal como avisó su intención.",
+        },
+        second_turn = {
+            kept = "¿Ves? Hizo lo que anunció. Lee la *intención* cada turno y protégete cuando venga un golpe fuerte.",
+            loop = "Mano nueva cada turno y el maná lleno otra vez. Ahora te toca a ti; apareceré cuando haya novedades. ¡Cruac!",
+        },
+        boss = {
+            arrive = "Este es el *jefe* del acto. Derrótalo y el camino sigue hacia la próxima tierra.",
+            signature = "Cada jefe tiene un golpe propio: invocación, carga, golpes que atraviesan el Bloqueo. Lee la *intención* cada turno.",
+        },
+        elite = {
+            warn = "Cuidado: un *Élite*. Más fuerte que un enemigo común, pero el premio también es mejor.",
+        },
+        block = {
+            reset = "Ganaste *Bloqueo*: absorbe el próximo golpe. Pero ojo: el Bloqueo *se reinicia al empezar tu turno*; no se puede guardar.",
+        },
+        combo = {
+            seal = "Mira: ¡cartas de tu mano *combinan*! Jugadas JUNTAS en el mismo turno rinden más; la vista previa muestra el sello *+COMBO*.",
+            guide = "La lista completa de combos está en la *Guía*, en el menú de Pausa.",
+        },
+        orbs = {
+            pulse = "¡Tus *orbes*! Cada uno pulsa al final de tu turno; el número escrito en él es el efecto.",
+            evoke = "Canalizar con la fila llena *evoca* el más antiguo, el de la flecha, con un efecto mayor.",
+        },
+        jokers = {
+            passive = "¡Un *Comodín*! Actúa solo durante toda la partida, sin gastar maná.",
+            bench = "Solo funcionan los *activos* de este marco; los demás esperan en el banco. Abre el marco para cambiarlos.",
+        },
+        rewards = {
+            pick = "¡Victoria! Elige *una* carta para el grimorio.",
+            skip = "O sáltala: un grimorio ligero roba sus mejores cartas más a menudo. A veces, menos es más.",
+        },
+        dice = {
+            odds = "Dos dados, una apuesta. *Bajo* (2 a 6) y *Alto* (8 a 12) pagan 2,5×; el *Siete* paga 6×.",
+            bet = "Elige la apuesta y la ficha, y lanza. Cada apuesta muestra su probabilidad.",
+        },
+        shop = {
+            offers = "¡La *tienda*! Cartas, reliquias y sobres, a cambio de oro.",
+            refresh = "¿Nada te gusta? *Actualizar* cambia el escaparate, y cuesta más cada vez.",
+            dice = "Y allí, los *Dados del Escriba*: apuesta oro a una tirada de dos dados. Una tirada por tienda.",
+            interest = "Ah, y el oro guardado da *intereses*: cada $5 en el bolsillo vale +$1 al ganar una batalla, hasta +$5.",
+        },
+        forge = {
+            pick = "En la *forja*, elige una carta para mejorar. Cada copia evoluciona por separado.",
+        },
+        rest = {
+            choose = "Una *hoguera*. Descansa para recuperar vida, o aprovecha el tiempo para *forjar* una carta.",
+        },
+        event = {
+            read = "¡Un *evento*! Lee con calma: cada opción muestra lo que cuesta [-] y lo que da [+].",
+        },
+        fork = {
+            paths = "Una *encrucijada*. Cada hito es un camino: batalla, *Élite*, descanso, tienda o evento. Elige el tuyo.",
+        },
+        endless = {
+            cycle = "Más allá del último jefe está el *Infinito*. En cada ciclo de ocho pisos eliges una *maldición*.",
+            grow = "Los enemigos crecen en cada ciclo, sin límite. ¿Hasta dónde llegará tu grimorio?",
+        },
+        seals = {
+            unlocked = "¡Ganaste! Ahora puedes romper los *Sellos del Grimorio*: cada sello es una regla más dura, y se acumulan.",
+            score = "Más sellos, más puntos. Gana con un sello para liberar el siguiente, con la misma clase.",
+        },
+    },
     guide = {
         title = "GUÍA DEL GRIMORIO",
         tab_combos = "Combos",

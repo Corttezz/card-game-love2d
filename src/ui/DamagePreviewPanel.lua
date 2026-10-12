@@ -547,6 +547,7 @@ function Panel.draw(game, anchor, topLimit)
     love.graphics.setColor(1, 1, 1, 1)
     -- geometria do ultimo quadro (tools de captura miram o hover por aqui)
     Panel.lastRect = { x = x, y = y, w = w, h = h, firstRowY = y + pad + headH }
+    require("src.systems.Tutorial").anchor("preview", x, y, w, h)
     return Panel.lastRect
 end
 

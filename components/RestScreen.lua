@@ -1658,6 +1658,12 @@ function RestScreen:draw()
     if self.forge then self:_drawForge(px, py, pw, ph) end
 
     for _, b in ipairs(self.buttons) do b:draw() end
+    -- âncoras do narrador do tutorial: as escolhas do acampamento / a forja
+    if self.mode == "choose" then
+        require("src.systems.Tutorial").anchorList("rest_options", self.buttons)
+    elseif self.mode == "forge" and not self.forge then
+        require("src.systems.Tutorial").anchorList("forge_cards", self.cardEntries)
+    end
 
     -- Painel de bigorna da carta sob o mouse (preview de ganho + descrição).
     if self.mode ~= "choose" and not self.resultText and not self.busy

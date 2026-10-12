@@ -449,6 +449,7 @@ function EventScreen:draw()
 
     -- Botoes (opções)
     for _, b in ipairs(self.buttons) do b:draw() end
+    require("src.systems.Tutorial").anchorList("event_options", self.buttons)
 
     -- Feedback apos escolha
     if self.resultText then

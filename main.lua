@@ -1842,7 +1842,8 @@ function love.load(loveArgs)
         IF.register("guide",        _G.guideScreen)
         IF.register("tutorialTip",  require("src.systems.Tutorial").overlay)
         require("src.systems.Tutorial").setScreens({
-            cardReward = cardRewardScreen, rest = restScreen, event = eventScreen })
+            cardReward = cardRewardScreen, rest = restScreen, event = eventScreen,
+            dice = _G.scribeDiceScreen, endless = _G.endlessCurseScreen })
     end
 
 
@@ -2449,6 +2450,8 @@ function love.keypressed(key)
             return
         end
     end
+    -- Tutorial pedindo uma AÇÃO: atalho de OUTRA ação (Q/E) não passa.
+    if require("src.systems.Tutorial").blocksKey(key) then return end
 
     -- F5: tecla D abre o deck da run em qualquer tela dela
     -- Telas da run onde D/J/M funcionam: TODAS (antes descanso, evento e
@@ -2603,6 +2606,8 @@ function love.gamepadpressed(joystick, button)
     if it == "back" then love.keypressed("escape") return end
     if NC.claimsInput(currentState,
             currentState == "collection" and collectionScreen.inspectedCard ~= nil) then
+        -- X/Y do pad (encerrar/jogar) também respeitam a ação do tutorial
+        if require("src.systems.Tutorial").blocksKey(it) then return end
         NC.intent(it, "pad")
         return
     end
@@ -2625,6 +2630,7 @@ function love.mousereleased(x, y, button)
             return
         end
     end
+    if require("src.systems.Tutorial").blocksPointer(x, y, "released") then return end
 
     if currentState == "menu" then
         menu:mousereleased(x, y, button)
@@ -2672,6 +2678,9 @@ function love.mousepressed(x, y, button)
             return
         end
     end
+    -- Tutorial pedindo uma AÇÃO ("selecione uma carta"): só passa o clique
+    -- que cai dentro do recorte iluminado (src/systems/Tutorial).
+    if require("src.systems.Tutorial").blocksPointer(x, y, "pressed") then return end
 
     -- TopBar consome cliques na faixa superior (engrenagem/deck) em todos os
     -- estados onde é desenhada. (Nunca era roteada — o clique da engrenagem

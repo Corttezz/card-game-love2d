@@ -84,11 +84,12 @@ function M.run(only)
         love.graphics.origin()
         love.graphics.clear(0, 0, 0, 1)
         screen:draw()
-        -- TUT_TIP=<id>: a placa de dica do tutorial por cima (onboarding)
+        -- TUT_TIP=<conversa>[:<fala>]: o narrador do tutorial por cima
         if os.getenv("TUT_TIP") then
             local Tutorial = require("src.systems.Tutorial")
             Tutorial.setScreens({ event = screen })
-            Tutorial._show(os.getenv("TUT_TIP"))
+            local conv, line = os.getenv("TUT_TIP"):match("^([%w_]+):?([%w_]*)$")
+            Tutorial._show(conv, line ~= "" and line or nil, game)
             Tutorial.draw()
         end
         love.graphics.setCanvas()

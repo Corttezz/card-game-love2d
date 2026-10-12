@@ -53,7 +53,7 @@ function M.run(mode)
     local Button = require("components.Button")
 
     local game = Game:new()
-    game:startNewRun("warrior")
+    game:startNewRun(os.getenv("ENEMY_SCENE_CLASS") or "warrior")
     game:startGame()
 
     -- Força o node/ato pedidos (o mapa normalmente decide isto).
@@ -171,17 +171,26 @@ function M.run(mode)
         game.messageSystem.messages = {}
     end
 
+    -- TUT_SELECT=1: uma carta selecionada (a prévia de dano aparece)
+    if os.getenv("TUT_SELECT") then
+        game.selectedCards = { game.hand[1] }
+        if game.hand[1] then game.hand[1].isSelected = true end
+        -- a prévia só existe depois do update dela (o jogo roda isto todo quadro)
+        require("src.ui.DamagePreviewPanel").update(game, nil, 1)
+    end
     if vcanvas then love.graphics.setCanvas(vcanvas) end
     love.graphics.clear(0, 0, 0, 1)
     GameplayScene.draw()
-    -- TUT_TIP=<id>: desenha a placa de dica do tutorial por cima (as âncoras
-    -- acabaram de ser reportadas por este draw). TUT_LOCALE troca o idioma.
+    -- TUT_TIP=<conversa>[:<fala>]: o narrador do tutorial por cima (as
+    -- âncoras acabaram de ser reportadas por este draw). TUT_LOCALE troca o
+    -- idioma.
     if os.getenv("TUT_TIP") then
         local Tutorial = require("src.systems.Tutorial")
-        if os.getenv("TUT_SELECT") then game.selectedCards = { game.hand[1] } end
-        Tutorial._show(os.getenv("TUT_TIP"))
+        local conv, line = os.getenv("TUT_TIP"):match("^([%w_]+):?([%w_]*)$")
+        Tutorial._show(conv, line ~= "" and line or nil, game)
         Tutorial.draw()
-        mode = mode .. "_tip_" .. os.getenv("TUT_TIP") .. "_" .. (os.getenv("TUT_LOCALE") or "pt_BR")
+        mode = mode .. "_tut_" .. conv .. "_" .. (line or "") .. "_" .. (os.getenv("TUT_LOCALE") or "pt_BR")
+            .. "_" .. love.graphics.getWidth() .. "x" .. love.graphics.getHeight()
     end
     -- Tooltip do golpe: 2ª passada com o mouse em cima do intent (a 1ª
     -- passada calcula o layout real do cluster).

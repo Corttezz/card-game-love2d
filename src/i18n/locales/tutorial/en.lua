@@ -1,45 +1,99 @@
--- Onboarding (src/systems/Tutorial + components/GuideScreen): dicas ancoradas,
--- Guia de combos/glossário, tooltip da mana. Arquivo próprio por locale;
--- plugado no principal como `tutorial = require(...)`.
+-- Onboarding v2 (src/systems/Tutorial + src/ui/Narrator + components/GuideScreen):
+-- roteiro do corvo narrador (script.<conversa>.<fala>, *ênfase* em sangue),
+-- rodapé do balão, Guia de combos/glossário, tooltip da mana. Arquivo próprio
+-- por locale; plugado no principal como `tutorial = require(...)`.
 return {
-    tips = {
-        battle_hand = { title = "Your cards",
-            body = "Select the cards you want to play; the number in each card's corner is its mana cost. Your grimoire starts with just 2 cards — every victory offers a new one." },
-        battle_mana = { title = "Mana",
-            body = "What you can spend each turn. It refills at the start of every turn — leftover mana does not carry over." },
-        battle_intent = { title = "The enemy warns you",
-            body = "This icon is what it will do next turn: the number is the damage (×N = several hits). Point at the icon to see the move name and effect." },
-        battle_play = { title = "Play Cards",
-            body = "Resolves the selected cards now. The preview above shows the exact damage and block. You can play several times in the same turn." },
-        battle_end_turn = { title = "End Turn",
-            body = "When you are done, end the turn: your hand is discarded and the enemy performs the move it announced." },
-        block = { title = "Block",
-            body = "Absorbs damage from the enemy's next attack — and RESETS at the start of your turn. Defend when the announced attack is big." },
-        combo = { title = "Combo available",
-            body = "Cards that combine pay off more when played TOGETHER (+COMBO seal). The full list is in the Guide, in the Pause menu." },
-        orbs = { title = "Orbs",
-            body = "Each orb pulses at the end of your turn (value on its plate). Channeling with a full row evokes the oldest one — the one under the arrow." },
-        jokers = { title = "Jokers",
-            body = "They last the whole run and cost no mana. Only the ACTIVE ones in this frame work; the rest wait on the bench. Open this frame to swap them." },
-        boss = { title = "Act boss",
-            body = "Every boss has a signature move (summons, charge-ups, armor-piercing...). Read the intent every turn — the warning comes before the blow." },
-        rewards = { title = "Spoils",
-            body = "Pick ONE card for your grimoire — or take none. A lean grimoire draws its best cards more often." },
-        shop = { title = "Shop",
-            body = "Cards, relics and packs for gold. Rerolling the shelf costs more each time. Interest: every $5 saved earns $1 at the next victory." },
-        rest = { title = "Campfire",
-            body = "Rest to heal OR forge a card (+1 level). Only one of the two per campfire." },
-        event = { title = "Event",
-            body = "Each option states what it gives [+] and what it costs [-]. A greyed-out option is one you cannot afford yet." },
-        fork = { title = "Crossroads",
-            body = "Choose your next stop. Elite: more risk, better reward. Rest, shop and event have no fight." },
+    narrator = { name = "Quill" },
+    footer = {
+        click = "Click to continue",
+        ["continue"] = "continue",
+        skip = "skip chat",
+        disable = "I know how to play: turn the tutorial off",
     },
-    dismiss_mouse = "Click to continue",
-    dismiss_pad = "A to continue",
-    settings_tips = "Tutorial tips",
-    settings_reset = "Show tips again",
-    settings_reset_value = "{n} seen",
-    settings_reset_done = "Reset",
+    act = {
+        select = "Select a card",
+        play = "Press Play Cards",
+        end_turn = "Press End Turn",
+    },
+    settings_tips = "Raven tutorial",
+    settings_reset = "Restart the tutorial",
+    settings_reset_value = "{n} chats seen",
+    settings_reset_done = "From the top",
+    script = {
+        intro = {
+            hello = "Caw! I'm *Quill*, the raven who guards this grimoire. Let me teach you how to fight — I'll keep it short.",
+            enemy = "This is your foe. The bar beneath it is its *health*: bring it to zero and the fight is over.",
+            intent = "This icon is its *intent*: what it will do when your turn ends. The number is the damage coming your way.",
+            hero = "Here are YOUR *health* and your *Block*. If your health hits zero, the journey ends.",
+            hand = "These are your cards — the grimoire starts with only two. *Select one* to ready it.",
+            mana = "Every card costs *mana*: the number in its corner. Mana refills every turn — so spend it freely.",
+            preview = "This is the *preview*: how much damage and Block your selection will deal, with every bonus included.",
+            play = "Ready? Go on: press *Play Cards*!",
+        },
+        end_turn = {
+            ["end"] = "Nice hit! When you're out of mana or ideas, press *End Turn*. Then the enemy acts — exactly as its intent warned.",
+        },
+        second_turn = {
+            kept = "See? It did what it announced. Read the *intent* every turn and guard up when a big blow is coming.",
+            loop = "A fresh hand every turn, full mana again. Over to you — I'll pop up when there's something new. Caw!",
+        },
+        boss = {
+            arrive = "This is the act's *boss*. Beat it and the road leads on to the next land.",
+            signature = "Every boss has a signature move — summons, charge-ups, blows that pierce Block. Read the *intent* every turn.",
+        },
+        elite = {
+            warn = "Careful: an *Elite*. Tougher than a common foe — but the reward is better too.",
+        },
+        block = {
+            reset = "You gained *Block*: it soaks up the next blow. But mind this: Block *resets at the start of your turn* — you can't save it.",
+        },
+        combo = {
+            seal = "Look: cards in your hand *combine*! Played TOGETHER in the same turn they hit harder — the preview shows the *+COMBO* seal.",
+            guide = "The full list of combos lives in the *Guide*, in the Pause menu.",
+        },
+        orbs = {
+            pulse = "Your *orbs*! Each one pulses at the end of your turn — the number written on it is the effect.",
+            evoke = "Channeling with a full row *evokes* the oldest one, under the arrow, for a bigger effect.",
+        },
+        jokers = {
+            passive = "A *Joker*! It works on its own for the whole run, at no mana cost.",
+            bench = "Only the *active* ones in this frame work; the rest wait on the bench. Open the frame to swap them.",
+        },
+        rewards = {
+            pick = "Victory! Choose *one* card for your grimoire.",
+            skip = "Or skip it: a lean grimoire draws its best cards more often. Sometimes less is more.",
+        },
+        dice = {
+            odds = "Two dice, one bet. *Low* (2 to 6) and *High* (8 to 12) pay 2.5×; *Seven* pays 6×.",
+            bet = "Pick your bet and your chip, then roll. Each bet shows its odds right on it.",
+        },
+        shop = {
+            offers = "The *shop*! Cards, relics and packs, for gold.",
+            refresh = "Nothing you like? *Refresh* swaps the shelf — and costs more each time.",
+            dice = "And over there, the *Scribe's Dice*: bet gold on a roll of two dice. One roll per shop.",
+            interest = "Oh, and saved gold earns *interest*: every $5 in your pocket is worth +$1 when you win a battle, up to +$5.",
+        },
+        forge = {
+            pick = "At the *forge*, pick a card to upgrade. Each copy improves on its own.",
+        },
+        rest = {
+            choose = "A *campfire*. Rest to recover health — or use the time to *forge* a card.",
+        },
+        event = {
+            read = "An *event*! Read carefully: each choice shows what it costs [-] and what it gives [+].",
+        },
+        fork = {
+            paths = "A *crossroads*. Each marker is a path: battle, *Elite*, rest, shop or event. Pick yours.",
+        },
+        endless = {
+            cycle = "Beyond the final boss lies the *Endless*. Every cycle of eight floors, you choose a *curse*.",
+            grow = "Enemies grow every cycle, with no limit. How far can your grimoire go?",
+        },
+        seals = {
+            unlocked = "You won! Now you can break the *Grimoire Seals*: each seal is a harsher rule, and they stack.",
+            score = "More seals, more points. Win on a seal to unlock the next — with the same class.",
+        },
+    },
     guide = {
         title = "GRIMOIRE GUIDE",
         tab_combos = "Combos",
