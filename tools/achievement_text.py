@@ -26,7 +26,9 @@ ORDER = ["primeiro_chefe", "capitulo_final", "primeira_pagina", "vitoria_guerrei
          "grimorio_bolso", "enciclopedia", "voto_pobreza", "asceta", "tinta_crua",
          "sem_rascunhos", "relampago", "fio_navalha", "imaculado", "miasma", "muralha",
          "tinta_viva", "golpe_tinta", "conduite_pleno", "maos_limpas", "velas_10k",
-         "escriba", "ferreiro", "veterano", "bibliotecario", "alem_da_pagina"]
+         "escriba", "ferreiro", "veterano", "bibliotecario", "alem_da_pagina",
+         "ciclo_3", "ciclo_5", "ciclo_10", "primeiro_selo", "selo_max_guerreiro",
+         "selo_max_mago", "selo_max_ladino"]
 
 T = {}
 T["pt_BR"] = {
@@ -60,6 +62,13 @@ T["pt_BR"] = {
     "veterano": ("Veterano das Páginas", "Vença 10 corridas."),
     "bibliotecario": ("Bibliotecário", "Descubra todas as cartas do grimório."),
     "alem_da_pagina": ("Além da Última Página", "Alcance o andar 10 do modo infinito."),
+    "ciclo_3": ("Três Voltas", "Feche o ciclo 3 do modo infinito."),
+    "ciclo_5": ("Cinco Voltas", "Feche o ciclo 5 do modo infinito."),
+    "ciclo_10": ("Ouroboros", "Feche o ciclo 10 do modo infinito."),
+    "primeiro_selo": ("Lacre Rompido", "Vença uma corrida com um Selo do Grimório."),
+    "selo_max_guerreiro": ("Último Selo: Guerreiro", "Vença com o Guerreiro no Selo 10."),
+    "selo_max_mago": ("Último Selo: Mago", "Vença com o Mago no Selo 10."),
+    "selo_max_ladino": ("Último Selo: Ladino", "Vença com o Ladino no Selo 10."),
 }
 T["en"] = {
     "primeiro_chefe": ("Broken Crown", "Defeat your first boss."),
@@ -92,6 +101,13 @@ T["en"] = {
     "veterano": ("Veteran of the Pages", "Win 10 runs."),
     "bibliotecario": ("Librarian", "Discover every card in the grimoire."),
     "alem_da_pagina": ("Beyond the Last Page", "Reach floor 10 of endless mode."),
+    "ciclo_3": ("Three Turns", "Close cycle 3 of endless mode."),
+    "ciclo_5": ("Five Turns", "Close cycle 5 of endless mode."),
+    "ciclo_10": ("Ouroboros", "Close cycle 10 of endless mode."),
+    "primeiro_selo": ("Broken Seal", "Win a run with a Grimoire Seal."),
+    "selo_max_guerreiro": ("Last Seal: Warrior", "Win with the Warrior on Seal 10."),
+    "selo_max_mago": ("Last Seal: Mage", "Win with the Mage on Seal 10."),
+    "selo_max_ladino": ("Last Seal: Rogue", "Win with the Rogue on Seal 10."),
 }
 T["es"] = {
     "primeiro_chefe": ("Corona Rota", "Derrota a tu primer jefe."),
@@ -124,6 +140,13 @@ T["es"] = {
     "veterano": ("Veterano de las Páginas", "Gana 10 partidas."),
     "bibliotecario": ("Bibliotecario", "Descubre todas las cartas del grimorio."),
     "alem_da_pagina": ("Más Allá de la Última Página", "Alcanza el piso 10 del modo infinito."),
+    "ciclo_3": ("Tres Vueltas", "Cierra el ciclo 3 del modo infinito."),
+    "ciclo_5": ("Cinco Vueltas", "Cierra el ciclo 5 del modo infinito."),
+    "ciclo_10": ("Uróboros", "Cierra el ciclo 10 del modo infinito."),
+    "primeiro_selo": ("Lacre Roto", "Gana una partida con un Sello del Grimorio."),
+    "selo_max_guerreiro": ("Último Sello: Guerrero", "Gana con el Guerrero en el Sello 10."),
+    "selo_max_mago": ("Último Sello: Mago", "Gana con el Mago en el Sello 10."),
+    "selo_max_ladino": ("Último Sello: Pícaro", "Gana con el Pícaro en el Sello 10."),
 }
 T["fr"] = {
     "primeiro_chefe": ("Couronne Brisée", "Vainquez votre premier boss."),
@@ -156,6 +179,13 @@ T["fr"] = {
     "veterano": ("Vétéran des Pages", "Remportez 10 périples."),
     "bibliotecario": ("Bibliothécaire", "Découvrez toutes les cartes du grimoire."),
     "alem_da_pagina": ("Au-delà de la Dernière Page", "Atteignez l'étage 10 du mode infini."),
+    "ciclo_3": ("Trois Tours", "Bouclez le cycle 3 du mode infini."),
+    "ciclo_5": ("Cinq Tours", "Bouclez le cycle 5 du mode infini."),
+    "ciclo_10": ("Ouroboros", "Bouclez le cycle 10 du mode infini."),
+    "primeiro_selo": ("Sceau Brisé", "Gagnez une partie avec un Sceau du Grimoire."),
+    "selo_max_guerreiro": ("Dernier Sceau : Guerrier", "Gagnez avec le Guerrier au Sceau 10."),
+    "selo_max_mago": ("Dernier Sceau : Mage", "Gagnez avec le Mage au Sceau 10."),
+    "selo_max_ladino": ("Dernier Sceau : Voleur", "Gagnez avec le Voleur au Sceau 10."),
 }
 T["de"] = {
     "primeiro_chefe": ("Zerbrochene Krone", "Besiege deinen ersten Boss."),
@@ -188,6 +218,13 @@ T["de"] = {
     "veterano": ("Veteran der Seiten", "Gewinne 10 Läufe."),
     "bibliotecario": ("Bibliothekar", "Entdecke alle Karten des Grimoires."),
     "alem_da_pagina": ("Jenseits der Letzten Seite", "Erreiche Etage 10 im Endlosmodus."),
+    "ciclo_3": ("Drei Runden", "Schließe Zyklus 3 des Endlosmodus ab."),
+    "ciclo_5": ("Fünf Runden", "Schließe Zyklus 5 des Endlosmodus ab."),
+    "ciclo_10": ("Ouroboros", "Schließe Zyklus 10 des Endlosmodus ab."),
+    "primeiro_selo": ("Gebrochenes Siegel", "Gewinne einen Lauf mit einem Grimoire-Siegel."),
+    "selo_max_guerreiro": ("Letztes Siegel: Krieger", "Gewinne mit dem Krieger auf Siegel 10."),
+    "selo_max_mago": ("Letztes Siegel: Magier", "Gewinne mit dem Magier auf Siegel 10."),
+    "selo_max_ladino": ("Letztes Siegel: Schurke", "Gewinne mit dem Schurken auf Siegel 10."),
 }
 
 # Rotulos da galeria/toast (mesmas chaves nos 5 locales).

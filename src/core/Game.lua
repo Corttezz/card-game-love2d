@@ -154,7 +154,9 @@ function Game:startGame()
     self:applyClassBattleStartPassive()
 
     self.economySystem:resetForNewRun()
-    self.economySystem.currentGold = 10
+    -- Selo "Bolsa Leve" começa sem ouro (RunModifiers.startingGold).
+    self.economySystem.currentGold = require("src.systems.RunModifiers").startingGold(
+        self.isRunMode and self.runManager and self.runManager.currentRun, 10)
 
     self:syncArmorCap()
     self:syncInterestCap()
@@ -352,7 +354,8 @@ end
 -- ===== SISTEMA SLAY THE SPIRE =====
 
 -- Inicia uma nova corrida com uma classe
-function Game:startNewRun(classId)
+-- opts.seal = Selo do Grimório escolhido na seleção de classe (0..10).
+function Game:startNewRun(classId, opts)
     self.isRunMode = true
     self.selectedClass = classId
     
@@ -360,7 +363,7 @@ function Game:startNewRun(classId)
     UnlockSystem.ensure()
     self.unlockResult = nil
 
-    local runData = self.runManager:startNewRun(classId)
+    local runData = self.runManager:startNewRun(classId, opts)
     self:addMessage(msg("run_started", { name = runData.className }), "success")
 
     -- Perfil persistente (menu mostra vitórias/melhor progresso).
@@ -1955,7 +1958,9 @@ function Game:_buildRoundEvalSources()
     end
     table.insert(sources, {
         label = I18n.t("round_eval.src_victory", nil, "Vitoria"),
-        dollars = Config.Economy.victoryGold(act),
+        dollars = math.max(1, Config.Economy.victoryGold(act) + require(
+            "src.systems.RunModifiers").victoryGoldDelta(
+            self.isRunMode and self.runManager and self.runManager.currentRun)),
         color = {1, 0.85, 0.30, 1},
     })
 
@@ -2129,12 +2134,16 @@ function Game:nextPhase()
         local nodeType = (run.currentNode and run.currentNode.type) or "battle"
         local stats = ActSystem.getEnemyStats(run.actNumber, run.floorInAct, nodeType,
             run.endlessMode and run.floorsInEndless or nil)
+        -- Selo do Grimório / maldições do endless multiplicam POR CIMA.
+        local RunModifiers = require("src.systems.RunModifiers")
+        stats = RunModifiers.enemyStats(run, stats, nodeType)
         -- QUEM luta (Out/2026): o inimigo foi sorteado quando o nó nasceu
         -- (EnemyRoster, stream "enemy") e mora em currentNode.enemyId — o
         -- kit dele (src/data/enemies.lua) traz golpes, vida e dano próprios.
         local EnemyRoster = require("src.systems.EnemyRoster")
         local enemyId = EnemyRoster.resolveNode(run, run.currentNode, nodeType)
         self.enemy = EnemyRoster.spawn(Enemy, enemyId, stats, run.actNumber)
+        RunModifiers.decorateEnemy(run, self.enemy)
         EnemyRoster.remember(run, enemyId)
         -- (P0.0 Jul/2026: scoreSystem:startBattle + applyClassBattleStartPassive
         -- DUPLICADOS aqui foram removidos — a passiva rodava 2x por batalha em
@@ -2161,7 +2170,11 @@ function Game:nextPhase()
     if self.isRunMode and self.runManager:hasActiveRun() then
         local run = self.runManager.currentRun
         if run.floorInAct == 1 and run.actNumber > 1 then
-            local pct = ActSystem.getInterActHealPercent(run.actNumber - 1)
+            -- Endless: a cura do CICLO é a do Config.Endless (antes caía na
+            -- do ato 6 e curava 40% a cada 8 andares). Selo/maldição reduzem.
+            local pct = run.endlessMode and (Config.Endless.healPercent or 0)
+                or ActSystem.getInterActHealPercent(run.actNumber - 1)
+            pct = (pct or 0) * require("src.systems.RunModifiers").healMul(run, "act")
             if pct and pct > 0 then
                 local heal = math.floor(self.player.maxHealth * pct)
                 self.player:heal(heal)
@@ -2272,11 +2285,14 @@ function Game:resumeRun()
     local nodeType = (run.currentNode and run.currentNode.type) or "battle"
     local stats = ActSystem.getEnemyStats(run.actNumber, run.floorInAct, nodeType,
         run.endlessMode and run.floorsInEndless or nil)
+    local RunModifiers = require("src.systems.RunModifiers")
+    stats = RunModifiers.enemyStats(run, stats, nodeType)
     -- O MESMO inimigo do nó salvo (currentNode.enemyId) — o Continuar não
     -- re-sorteia (EnemyRoster).
     local EnemyRoster = require("src.systems.EnemyRoster")
     local enemyId = EnemyRoster.resolveNode(run, run.currentNode, nodeType)
     self.enemy = EnemyRoster.spawn(Enemy, enemyId, stats, run.actNumber)
+    RunModifiers.decorateEnemy(run, self.enemy)
     self.battleTurn = 0
     self.scoreSystem:startBattle()
     self:applyClassBattleStartPassive()
@@ -2399,6 +2415,7 @@ function Game:_unlockSummary(victory)
         endlessMode = run.endlessMode or false,
         floorsInEndless = run.floorsInEndless or 0,
         score = self.score or 0,
+        seal = run.seal or 0,
     }
 end
 

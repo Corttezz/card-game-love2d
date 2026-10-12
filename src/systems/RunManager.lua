@@ -23,7 +23,8 @@ function RunManager:new()
 end
 
 -- Inicia uma nova corrida com a classe selecionada
-function RunManager:startNewRun(classId)
+-- opts.seal = Selo do Grimório (0..10) escolhido na seleção de classe.
+function RunManager:startNewRun(classId, opts)
     local selectedClass = self.cardRegistry:getClassInfo(classId)
     if not selectedClass then
         error("Classe nao encontrada: " .. tostring(classId))
@@ -64,6 +65,8 @@ function RunManager:startNewRun(classId)
         actNumber = 1,
         floorInAct = 1,
         endlessMode = false,
+        -- Selo do Grimório (Out/2026) — regras cumulativas, ver RunModifiers.
+        seal = math.max(0, math.floor((opts and opts.seal) or 0)),
 
         -- Nodes: pendingNodes = lista de 2-3 escolhas ativas; currentNode = o escolhido
         pendingNodes = nil,
@@ -386,7 +389,8 @@ function RunManager:generateNextNodes(numNodes)
     local MapManager = require("src.systems.MapManager")
     local act = self.currentRun.actNumber or 1
     local floorInAct = self.currentRun.floorInAct or 1
-    self.currentRun.pendingNodes = MapManager.generate(floorInAct, act, numNodes or 3)
+    self.currentRun.pendingNodes = MapManager.generate(floorInAct, act, numNodes or 3,
+        { eliteMul = require("src.systems.RunModifiers").eliteWeightMul(self.currentRun) })
     -- Inimigo de cada nó de combate decidido JÁ (stream "enemy", sem repetir
     -- o último): prévia, batalha e Continuar leem o mesmo (EnemyRoster).
     require("src.systems.EnemyRoster").assignNodes(self.currentRun,
@@ -456,6 +460,10 @@ function RunManager:advanceFloorInAct(totalActs)
             self.currentRun.floorInAct = 1
             self.currentRun.actNumber = totalActs + 1 -- "ato endless"
             status = jaEndless and "endless_cycle" or "endless_start"
+            -- Ciclo novo do endless = escolha de maldição aberta (1 de 2).
+            -- Mora AQUI (e não na tela) pra que piloto, testes e Continuar
+            -- vejam o mesmo estado: a escolha pendente viaja no save.
+            require("src.systems.RunModifiers").beginEndlessCycle(self.currentRun)
         else
             self.currentRun.actNumber = self.currentRun.actNumber + 1
             self.currentRun.floorInAct = 1

@@ -54,6 +54,7 @@ local SUITES = {
     { group = "unit",  name = "test_sim_memory" },
     { group = "unit",  name = "test_economy_acts" },
     { group = "unit",  name = "test_scribe_dice" },
+    { group = "unit",  name = "test_endless_seals" },
     { group = "unit",  name = "test_pause_menu" },
     { group = "unit",  name = "test_toasts" },
     { group = "unit",  name = "test_ui_scale" },

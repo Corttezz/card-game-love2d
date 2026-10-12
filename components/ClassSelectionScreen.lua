@@ -58,6 +58,7 @@ function ClassSelectionScreen:new()
     instance._starterCache = {}   -- classId -> {cardInstance, ...}
     instance._locked = false      -- input travado durante o FX de escolha
     instance._sparks = {}         -- faíscas do momento da escolha
+    instance.seal = 0             -- Selo do Grimório escolhido (0 = sem selo)
 
     -- Callbacks
     instance.onClassSelected = nil
@@ -139,6 +140,18 @@ function ClassSelectionScreen:createClassButtons()
         end
     end
 
+    -- SELO DO GRIMÓRIO: setas da banda S (o texto é desenhado à parte).
+    local sp, sn = lay.sealPrev, lay.sealNext
+    -- Setas desenhadas à mão (_drawSealArrow): o Button "tv" num quadrado
+    -- de 40px não cabia nem um "<" e virava "...".
+    self.buttons.sealPrev = Button:new(sp.x, sp.y, sp.w, sp.h, "",
+        function() self:changeSeal(-1) end)
+    self.buttons.sealPrev:setVariant("invisible")
+    self.buttons.sealNext = Button:new(sn.x, sn.y, sn.w, sn.h, "",
+        function() self:changeSeal(1) end)
+    self.buttons.sealNext:setVariant("invisible")
+    self:_clampSeal()
+
     local b = lay.back
     self.buttons.back = Button:new(b.x, b.y, b.w, b.h,
         I18n.t("class_select.back"),
@@ -163,6 +176,52 @@ end
 
 function ClassSelectionScreen:resize()
     self:createClassButtons()
+end
+
+-- ===== Selos do Grimório =====
+-- Maior selo que ALGUMA classe liberada pode usar (o seletor é um só; ao
+-- escolher a classe o selo é limitado ao teto DELA — ver selectClass).
+function ClassSelectionScreen:_sealCap()
+    local cap = 0
+    for _, classId in ipairs(CLASS_ORDER) do
+        if UnlockSystem.isClassUnlocked(classId) then
+            cap = math.max(cap, UnlockSystem.getMaxSeal(classId))
+        end
+    end
+    return cap
+end
+
+function ClassSelectionScreen:_clampSeal()
+    self.seal = math.max(0, math.min(self.seal or 0, self:_sealCap()))
+    if self.buttons.sealPrev then self.buttons.sealPrev:setEnabled(self.seal > 0) end
+    if self.buttons.sealNext then self.buttons.sealNext:setEnabled(self.seal < self:_sealCap()) end
+end
+
+function ClassSelectionScreen:changeSeal(delta)
+    if self._locked then return end
+    local before = self.seal
+    self.seal = (self.seal or 0) + delta
+    self:_clampSeal()
+    if self.seal ~= before then
+        Sfx.play("cardSelect", { pitch = 0.9 + self.seal * 0.03 })
+    else
+        Sfx.play("error", { volume = 0.5 })
+    end
+end
+
+-- Selo efetivo pra uma classe: o escolhido, limitado ao teto dela.
+function ClassSelectionScreen:sealFor(classId)
+    return math.min(self.seal or 0, UnlockSystem.getMaxSeal(classId))
+end
+
+function ClassSelectionScreen:keypressed(key)
+    if key == "escape" or key == "backspace" then
+        self:goBackToMenu()
+    elseif key == "left" or key == "a" or key == "q" then
+        self:changeSeal(-1)
+    elseif key == "right" or key == "d" or key == "e" then
+        self:changeSeal(1)
+    end
 end
 
 function ClassSelectionScreen:_panelOf(classId)
@@ -209,14 +268,14 @@ function ClassSelectionScreen:selectClass(classId)
         EM.parallel(0.45, function()
             self._locked = false
             if self.onClassSelected then
-                self.onClassSelected(classId)
+                self.onClassSelected(classId, self:sealFor(classId))
             else
                 Debug.warn("onClassSelected callback nil em selectClass(" .. tostring(classId) .. ")")
             end
         end, "class_select")
     else
         if self.onClassSelected then
-            self.onClassSelected(classId)
+            self.onClassSelected(classId, self:sealFor(classId))
         else
             Debug.warn("onClassSelected callback nil em selectClass(" .. tostring(classId) .. ")")
         end
@@ -640,6 +699,7 @@ function ClassSelectionScreen:draw()
     end
     love.graphics.setColor(1, 1, 1, 1)
 
+    self:_drawSealBand()
     if self.buttons.back then self.buttons.back:draw() end
 
     -- hint: sobre classe bloqueada, explica por que o clique não vai
@@ -650,6 +710,90 @@ function ClassSelectionScreen:draw()
         end
     end
     HintBar.draw(hint)
+end
+
+-- Banda S: [<]  (selo)  SELO 3 · Mercado Caro  [>]
+--                      regra do selo / teto da classe em foco
+function ClassSelectionScreen:_drawSealBand()
+    local r = self.layout and self.layout.seal
+    if not r then return end
+    local ts = self.layout.ts
+    local cap = self:_sealCap()
+    local inner = { x = self.layout.sealPrev.x + self.layout.sealPrev.w + 8, y = r.y,
+        w = r.w - 2 * (self.layout.sealPrev.w + 8), h = r.h }
+    love.graphics.setColor(0.06, 0.04, 0.03, 0.72)
+    love.graphics.rectangle("fill", inner.x, inner.y, inner.w, inner.h, 5, 5)
+    Palette.set(self.seal > 0 and Palette.BLOOD or Palette.AGED_GOLD_DARK)
+    love.graphics.rectangle("line", inner.x, inner.y, inner.w, inner.h, 5, 5)
+
+    local icon = IconLoader.get("seal_grimoire")
+    local iconS = math.floor(inner.h - 8)
+    local tx = inner.x + 8
+    if icon and icon.image then
+        love.graphics.setColor(1, 1, 1, self.seal > 0 and 1 or 0.45)
+        local sc = iconS / icon.image:getWidth()
+        love.graphics.draw(icon.image, tx, inner.y + 4, 0, sc, sc)
+    end
+    tx = tx + iconS + 8
+    local textW = inner.x + inner.w - 8 - tx
+
+    local title, sub
+    if cap == 0 then
+        title = I18n.t("seal_ui.title")
+        sub = I18n.t("seal_ui.locked_all")
+    elseif self.seal == 0 then
+        title = I18n.t("seal_ui.none")
+        sub = I18n.t("seal_ui.hint", { n = cap })
+    else
+        local def = require("src.systems.RunModifiers").SEALS[self.seal]
+        title = I18n.t("seal_ui.label", { n = self.seal }) .. " · "
+            .. I18n.t("seals." .. def.id .. ".name")
+        sub = I18n.t("seals." .. def.id .. ".desc")
+        if self.seal > 1 then
+            sub = sub .. " " .. I18n.t("seal_ui.cumulative", { n = self.seal - 1 })
+        end
+    end
+    -- Classe em foco: o teto dela (se for MENOR que o selo escolhido) ou os
+    -- RECORDES dela — selo vencido, andar do endless e pontuação.
+    for _, p in ipairs(self.panels) do
+        if p.hovered and p.unlocked then
+            local name = p.info and p.info.name or p.classId
+            if UnlockSystem.getMaxSeal(p.classId) < self.seal then
+                sub = I18n.t("seal_ui.class_cap", { class = name,
+                    n = UnlockSystem.getMaxSeal(p.classId) })
+            else
+                local rec = UnlockSystem.getClassRecord(p.classId)
+                sub = I18n.t("seal_ui.record", { class = name,
+                    seal = math.max(0, UnlockSystem.getSealWon(p.classId)),
+                    floor = rec.bestEndless, score = rec.bestScore })
+            end
+        end
+    end
+    local half = math.floor(inner.h / 2)
+    Palette.set(self.seal > 0 and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT_LIGHT)
+    printWrapped(title, { x = tx, y = inner.y + 2, w = textW, h = half }, math.floor(12 * ts), 8, "left")
+    Palette.set(Palette.PARCHMENT)
+    printWrapped(sub, { x = tx, y = inner.y + half, w = textW, h = inner.h - half - 2 },
+        math.floor(9 * ts), 6, "left")
+    love.graphics.setColor(1, 1, 1, 1)
+    self:_drawSealArrow(self.layout.sealPrev, -1, self.seal > 0)
+    self:_drawSealArrow(self.layout.sealNext, 1, self.seal < cap)
+end
+
+-- Seta do seletor: placa escura + triângulo; apagada quando não há pra onde ir.
+function ClassSelectionScreen:_drawSealArrow(r, dir, enabled)
+    local mx, my = love.mouse.getPosition()
+    local hot = enabled and mx >= r.x and mx < r.x + r.w and my >= r.y and my < r.y + r.h
+    love.graphics.setColor(0.06, 0.04, 0.03, hot and 0.95 or 0.72)
+    love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 5, 5)
+    Palette.set(hot and Palette.AGED_GOLD_LIGHT or Palette.AGED_GOLD_DARK, enabled and 1 or 0.4)
+    love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 5, 5)
+    local cx, cy = r.x + r.w / 2, r.y + r.h / 2
+    local a = math.floor(math.min(r.w, r.h) * 0.22)
+    Palette.set(enabled and (hot and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT_LIGHT)
+        or Palette.AGED_GOLD_DARK, enabled and 1 or 0.45)
+    love.graphics.polygon("fill", cx + dir * a, cy, cx - dir * a, cy - a * 1.2, cx - dir * a, cy + a * 1.2)
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 -- ===== backdrop vivo =====

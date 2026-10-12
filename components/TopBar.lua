@@ -184,7 +184,10 @@ function TopBar:_layout()
     if run then
         local l1 = run.endlessMode and I18n.t("top_bar.endless")
             or I18n.t("top_bar.act", { n = 8 })
-        add("progress", l1, I18n.t("top_bar.floor", { x = 8, total = 8 }))
+        -- Linha 2 mede com o sufixo REAL de selo/endless (RunModsText.short).
+        local mods = require("src.ui.RunModsText").short(run, true)
+        add("progress", l1, I18n.t("top_bar.floor", { x = 8, total = 8 })
+            .. (mods ~= "" and (" · " .. mods) or ""))
     end
     -- (engrenagem fica FORA do grupo: fixa no canto direito — _getConfigRect)
 
@@ -374,8 +377,11 @@ function TopBar:drawGameInfo()
         local act = run.actNumber or 1
         local floorIn = run.floorInAct or 1
 
+        local RunModsText = require("src.ui.RunModsText")
         self:_hoverZone(progressX - 6, L.progress.w, "topbar_progress", {
             act = act, floor = floorIn, total = total,
+            last = require("src.core.Config").TotalActs,
+            mods = RunModsText.long(run),
         })
 
         local icon = IconLoader.get("scroll")
@@ -393,8 +399,10 @@ function TopBar:drawGameInfo()
 
         Palette.set(Palette.PARCHMENT)
         love.graphics.setFont(FontManager.getFont(9))
-        love.graphics.print(I18n.t("top_bar.floor", { x = floorIn, total = total }),
-            progressX + 34, centerY + 6)
+        -- Selo do Grimório / ciclo e maldições do endless: sufixo na linha 2.
+        local mods = RunModsText.short(run, true)
+        love.graphics.print(I18n.t("top_bar.floor", { x = floorIn, total = total })
+            .. (mods ~= "" and (" · " .. mods) or ""), progressX + 34, centerY + 6)
     end
 
     love.graphics.setColor(1, 1, 1, 1)

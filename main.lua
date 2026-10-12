@@ -86,14 +86,15 @@ local smokeSystem -- Sistema de partículas de smoke
 local audioSystem -- Sistema de áudio
 
 -- Função para iniciar o jogo com classe selecionada
-local function startGame(classId)
+-- seal = Selo do Grimório escolhido na seleção de classe (0..10).
+local function startGame(classId, seal)
     currentState = "playing"
 
     -- Flash de transição (Fase 6.5) — passa pra batalha com piscada branca.
     if FlashShader and FlashShader.trigger then FlashShader.trigger(0.5, 0.4) end
 
     -- Inicia corrida com a classe selecionada
-    game:startNewRun(classId)
+    game:startNewRun(classId, { seal = seal or 0 })
 
     game:startGame()
     -- A corrida NOVA nasce salva. Sem isto o primeiro save só vinha no andar
@@ -177,14 +178,20 @@ local function replayRun()
         classe = game.runManager.currentRun.classId
     end
     if classe then
-        startGame(classe)
+        -- Mesmo Selo da run que acabou (limitado ao que a classe já liberou
+        -- — vencer com o selo k pode ter acabado de abrir o k+1, mas repetir
+        -- é repetir).
+        local run = game and game.runManager and game.runManager.currentRun
+        local seal = math.min((run and run.seal) or 0,
+            require("src.systems.UnlockSystem").getMaxSeal(classe))
+        startGame(classe, seal)
     else
         print("[replay] run sem classe conhecida — abrindo a selecao de classe")
         currentState = "classSelection"
         -- MESMOS callbacks do Jogar: sem eles a escolha de classe e o Voltar
         -- só avisavam no console — tela sem saída.
         classSelectionScreen:show(
-            function(classId) startGame(classId) end,
+            function(classId, seal) startGame(classId, seal) end,
             function() returnToMenu() end)
     end
 end
@@ -1543,9 +1550,9 @@ function love.load(loveArgs)
         Sfx.play("menuOpen")
         currentState = "classSelection"
         classSelectionScreen:show(
-            function(classId) -- onClassSelected
-                print("Main: Class selected: " .. tostring(classId))
-                startGame(classId)
+            function(classId, seal) -- onClassSelected
+                print("Main: Class selected: " .. tostring(classId) .. " selo " .. tostring(seal))
+                startGame(classId, seal)
             end,
             function() -- onBackToMenu
                 print("Main: Back to menu clicked")
@@ -1686,6 +1693,10 @@ function love.load(loveArgs)
         _G.scribeDiceScreen:show(g, onClose)
     end
 
+    -- MALDIÇÃO do endless (escolha 1-de-2 a cada ciclo). Abre sozinha quando
+    -- o mapa aparece com escolha pendente (EndlessCurseScreen.watch).
+    _G.endlessCurseScreen = require("components.EndlessCurseScreen"):new()
+
     -- Menu de PAUSA (engrenagem da TopBar, padrão StS): Continuar /
     -- Configurações / Salvar e voltar ao menu / Abandonar run (confirmado).
     pauseMenu = require("components.PauseMenu"):new()
@@ -1799,6 +1810,7 @@ function love.load(loveArgs)
         IF.register("roundEval",    roundEvalScreen,         { keepChrome = true })
         IF.register("packOpen",     packOpenScreen)
         IF.register("scribeDice",   _G.scribeDiceScreen)
+        IF.register("endlessCurse", _G.endlessCurseScreen)
         IF.register("deckViewer",   deckViewerScreen)
         IF.register("jokerManager", _G.jokerManagerScreen)
         IF.register("runJournal",   _G.runJournalScreen)
@@ -2249,6 +2261,18 @@ function love.draw()
         _G.scribeDiceScreen:update(love.timer.getDelta())
         _G.scribeDiceScreen:draw()
         IF.pop()
+    end
+
+    -- Maldição do ciclo do endless: observa o estado e abre sozinha.
+    if _G.endlessCurseScreen then
+        local ECS = _G.endlessCurseScreen
+        ECS.watch(ECS, game, currentState)
+        if ECS:isVisible() then
+            IF.push("endlessCurse")
+            ECS:update(love.timer.getDelta())
+            ECS:draw()
+            IF.pop()
+        end
     end
 
     -- Gerenciador de Coringas: overlay em qualquer tela da run

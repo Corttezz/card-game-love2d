@@ -450,7 +450,10 @@ function RunJournalScreen:_drawHeader(L)
             floor = run.floorInAct or 1,
             total = MapManager.FLOORS_PER_ACT,
             stops = #(run.mapHistory or {}),
-        }, "ato " .. (run.actNumber or 1) .. " - andar " .. (run.floorInAct or 1)),
+        }, "ato " .. (run.actNumber or 1) .. " - andar " .. (run.floorInAct or 1))
+            -- Selo do Grimório / ciclo e maldições do endless
+            .. ((function() local m = require("src.ui.RunModsText").short(run)
+                return m ~= "" and ("  ·  " .. m) or "" end)()),
             70, ty + tf:getHeight() + 12, { size = 10, maxW = maxW, align = "center" })
 
         local T = self.totals or {}

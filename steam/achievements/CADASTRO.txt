@@ -332,3 +332,80 @@ Unachieved icon: icons/ACH_ALEM_DA_PAGINA_locked.png
   [french] Au-delà de la Dernière Page — Atteignez l'étage 10 du mode infini.
   [german] Jenseits der Letzten Seite — Erreiche Etage 10 im Endlosmodus.
 
+API Name ......: ACH_CICLO_3
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_CICLO_3.png
+Unachieved icon: icons/ACH_CICLO_3_locked.png
+  [brazilian] Três Voltas — Feche o ciclo 3 do modo infinito.
+  [english] Three Turns — Close cycle 3 of endless mode.
+  [spanish] Tres Vueltas — Cierra el ciclo 3 del modo infinito.
+  [french] Trois Tours — Bouclez le cycle 3 du mode infini.
+  [german] Drei Runden — Schließe Zyklus 3 des Endlosmodus ab.
+
+API Name ......: ACH_CICLO_5
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_CICLO_5.png
+Unachieved icon: icons/ACH_CICLO_5_locked.png
+  [brazilian] Cinco Voltas — Feche o ciclo 5 do modo infinito.
+  [english] Five Turns — Close cycle 5 of endless mode.
+  [spanish] Cinco Vueltas — Cierra el ciclo 5 del modo infinito.
+  [french] Cinq Tours — Bouclez le cycle 5 du mode infini.
+  [german] Fünf Runden — Schließe Zyklus 5 des Endlosmodus ab.
+
+API Name ......: ACH_CICLO_10
+Hidden ........: yes
+Set by ........: Client
+Achieved icon .: icons/ACH_CICLO_10.png
+Unachieved icon: icons/ACH_CICLO_10_locked.png
+  [brazilian] Ouroboros — Feche o ciclo 10 do modo infinito.
+  [english] Ouroboros — Close cycle 10 of endless mode.
+  [spanish] Uróboros — Cierra el ciclo 10 del modo infinito.
+  [french] Ouroboros — Bouclez le cycle 10 du mode infini.
+  [german] Ouroboros — Schließe Zyklus 10 des Endlosmodus ab.
+
+API Name ......: ACH_PRIMEIRO_SELO
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_PRIMEIRO_SELO.png
+Unachieved icon: icons/ACH_PRIMEIRO_SELO_locked.png
+  [brazilian] Lacre Rompido — Vença uma corrida com um Selo do Grimório.
+  [english] Broken Seal — Win a run with a Grimoire Seal.
+  [spanish] Lacre Roto — Gana una partida con un Sello del Grimorio.
+  [french] Sceau Brisé — Gagnez une partie avec un Sceau du Grimoire.
+  [german] Gebrochenes Siegel — Gewinne einen Lauf mit einem Grimoire-Siegel.
+
+API Name ......: ACH_SELO_MAX_GUERREIRO
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_SELO_MAX_GUERREIRO.png
+Unachieved icon: icons/ACH_SELO_MAX_GUERREIRO_locked.png
+  [brazilian] Último Selo: Guerreiro — Vença com o Guerreiro no Selo 10.
+  [english] Last Seal: Warrior — Win with the Warrior on Seal 10.
+  [spanish] Último Sello: Guerrero — Gana con el Guerrero en el Sello 10.
+  [french] Dernier Sceau : Guerrier — Gagnez avec le Guerrier au Sceau 10.
+  [german] Letztes Siegel: Krieger — Gewinne mit dem Krieger auf Siegel 10.
+
+API Name ......: ACH_SELO_MAX_MAGO
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_SELO_MAX_MAGO.png
+Unachieved icon: icons/ACH_SELO_MAX_MAGO_locked.png
+  [brazilian] Último Selo: Mago — Vença com o Mago no Selo 10.
+  [english] Last Seal: Mage — Win with the Mage on Seal 10.
+  [spanish] Último Sello: Mago — Gana con el Mago en el Sello 10.
+  [french] Dernier Sceau : Mage — Gagnez avec le Mage au Sceau 10.
+  [german] Letztes Siegel: Magier — Gewinne mit dem Magier auf Siegel 10.
+
+API Name ......: ACH_SELO_MAX_LADINO
+Hidden ........: no
+Set by ........: Client
+Achieved icon .: icons/ACH_SELO_MAX_LADINO.png
+Unachieved icon: icons/ACH_SELO_MAX_LADINO_locked.png
+  [brazilian] Último Selo: Ladino — Vença com o Ladino no Selo 10.
+  [english] Last Seal: Rogue — Win with the Rogue on Seal 10.
+  [spanish] Último Sello: Pícaro — Gana con el Pícaro en el Sello 10.
+  [french] Dernier Sceau : Voleur — Gagnez avec le Voleur au Sceau 10.
+  [german] Letztes Siegel: Schurke — Gewinne mit dem Schurken auf Siegel 10.
+

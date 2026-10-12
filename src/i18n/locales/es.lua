@@ -329,6 +329,13 @@ return {
             veterano = { name = "Veterano de las Páginas", desc = "Gana 10 partidas." },
             bibliotecario = { name = "Bibliotecario", desc = "Descubre todas las cartas del grimorio." },
             alem_da_pagina = { name = "Más Allá de la Última Página", desc = "Alcanza el piso 10 del modo infinito." },
+            ciclo_3 = { name = "Tres Vueltas", desc = "Cierra el ciclo 3 del modo infinito." },
+            ciclo_5 = { name = "Cinco Vueltas", desc = "Cierra el ciclo 5 del modo infinito." },
+            ciclo_10 = { name = "Uróboros", desc = "Cierra el ciclo 10 del modo infinito." },
+            primeiro_selo = { name = "Lacre Roto", desc = "Gana una partida con un Sello del Grimorio." },
+            selo_max_guerreiro = { name = "Último Sello: Guerrero", desc = "Gana con el Guerrero en el Sello 10." },
+            selo_max_mago = { name = "Último Sello: Mago", desc = "Gana con el Mago en el Sello 10." },
+            selo_max_ladino = { name = "Último Sello: Pícaro", desc = "Gana con el Pícaro en el Sello 10." },
         },
         hint = "ESC cierra | flechas o clic eligen",
         secret_name = "???",
@@ -370,7 +377,7 @@ return {
         camp_sub     = "La hoguera crepita. Recupera el aliento o trabaja el acero.",
         camp_hint    = "Elige: descansar O forjar (una vez por campamento)",
         heal_title   = "Descansar",
-        heal_sub     = "+30% PV",
+        heal_sub     = "+{n}% PV",
         heal_result  = "Curó {n} PV.",
         forge_title  = "Forjar",
         forge_sub    = "+1 nivel en una carta",
@@ -1026,7 +1033,7 @@ return {
         passive_rogue  = { name = "Pasiva: Toxinas", desc = "El primer ataque de cada turno aplica 1 de Veneno durante 2 turnos (+1 de Veneno cada dos actos)." },
         topbar_gold = { name = "Oro", desc = "Compra cartas, forjas y mejoras en la tienda. Interés: +$1 por cada $5 ahorrados (max +$5), pagado tras cada batalla ganada. Próximo pago: +${interest}." },
         topbar_deck = { name = "Grimorio", desc = "{deck} cartas en tu grimorio — {hand} en mano ahora. Al final del turno tu mano se descarta y robas cartas nuevas. Clic para ver el mazo." },
-        topbar_progress = { name = "Progreso del Viaje", desc = "Acto {act}, piso {floor} de {total}. Un MINI-JEFE espera en el piso 7; el JEFE del acto en el piso {total}. Derrota al jefe del Acto 3 para terminar la crónica. Pulsa aquí para abrir la Crónica del viaje." },
+        topbar_progress = { name = "Progreso del Viaje", desc = "Acto {act}, piso {floor} de {total}. Un MINI-JEFE espera en el piso 7; el JEFE del acto en el piso {total}. Derrota al jefe del Acto {last} para terminar la crónica. Pulsa aquí para abrir la Crónica del viaje.{mods}" },
         topbar_config = { name = "Menú de Pausa", desc = "Pausa el viaje: ajustes, guardar y salir al menú, o abandonar la partida." },
         reward_rules = { name = "Cómo funcionan las ofertas", desc = "Las cartas ofrecidas son de TU clase. La calidad mejora cada acto — y cada oferta sin una RARA aumenta las probabilidades de la siguiente (tras una racha larga sin raras, una rara está garantizada). Las cartas marcadas con AFINIDAD coinciden con las etiquetas fuertes de tu mazo. Las cartas que ya tienes en copias aparecen menos." },
         poison     = { name = "Veneno",     desc = "Causa {stacks} de daño al final del turno, durante {duration} turno(s)." },
@@ -1413,4 +1420,10 @@ return {
 
     -- Dados do Escriba (aposta opcional da loja)
     scribe_dice = require("src.i18n.locales.scribe_dice.es"),
+
+    -- Selos do Grimório e maldições do endless (RunModifiers)
+    seals = require("src.i18n.locales.run_modifiers.es").seals,
+    seal_ui = require("src.i18n.locales.run_modifiers.es").seal_ui,
+    endless_curses = require("src.i18n.locales.run_modifiers.es").endless_curses,
+    endless = require("src.i18n.locales.run_modifiers.es").endless,
 }

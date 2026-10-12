@@ -37,6 +37,12 @@ AchievementSystem.CLASS_WIN = {
     warrior = "vitoria_guerreiro", mage = "vitoria_mago", rogue = "vitoria_ladino",
 }
 AchievementSystem.TIERS = { "natural", "build", "skill", "collection" }
+-- Vitoria no Selo maximo, por classe (Selos do Grimorio, Out/2026).
+AchievementSystem.SEAL_MAX_WIN = {
+    warrior = "selo_max_guerreiro", mage = "selo_max_mago", rogue = "selo_max_ladino",
+}
+-- Marcos de ciclo do endless (andar absoluto; o alvo mora no catalogo).
+AchievementSystem.ENDLESS_MARKS = { "ciclo_3", "ciclo_5", "ciclo_10" }
 
 -- Limiares (uma fonte so: descricoes no i18n citam estes numeros).
 AchievementSystem.T = {
@@ -359,6 +365,12 @@ function AchievementSystem.onBattleWon(game)
         if ef >= AchievementSystem.T.ENDLESS_FLOOR then
             AchievementSystem.unlock("alem_da_pagina", game)
         end
+        -- Ciclos do endless: mesmo contador, alvos do catalogo.
+        for _, id in ipairs(AchievementSystem.ENDLESS_MARKS) do
+            local d = defsById[id]
+            if d and ef > before then reportProgress(id, before, ef) end
+            if d and ef >= d.progress.target then AchievementSystem.unlock(id, game) end
+        end
     end
     ProfileStats.flush()
 end
@@ -372,6 +384,12 @@ function AchievementSystem.onVictory(game)
     local classId = run.classId or game.selectedClass
     if AchievementSystem.CLASS_WIN[classId] then
         AchievementSystem.unlock(AchievementSystem.CLASS_WIN[classId], game)
+    end
+    -- Selos do Grimorio: qualquer selo vencido; o 10 por classe.
+    local seal = run.seal or 0
+    if seal >= 1 then AchievementSystem.unlock("primeiro_selo", game) end
+    if seal >= 10 and AchievementSystem.SEAL_MAX_WIN[classId] then
+        AchievementSystem.unlock(AchievementSystem.SEAL_MAX_WIN[classId], game)
     end
     local won = AchievementSystem.progressOf("trindade")
     if won and won >= 3 then AchievementSystem.unlock("trindade", game) end

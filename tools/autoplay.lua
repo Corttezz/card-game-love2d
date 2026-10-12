@@ -1681,7 +1681,9 @@ local function doRest(game)
     local floorInAct = game.runManager.currentRun.floorInAct or 1
     local nearBoss = floorInAct >= 6
     if p.health <= p.maxHealth * (nearBoss and 0.75 or 0.6) then
-        local amt = math.floor(p.maxHealth * 0.30)
+        -- Mesma conta da fogueira do jogo (Selo/maldição reduzem a cura).
+        local amt = math.floor(p.maxHealth * 0.30 * require("src.systems.RunModifiers")
+            .healMul(game.runManager.currentRun, "rest"))
         p:heal(amt)
         log("- Acampamento: **descansei** +%d HP → %d/%d", amt, p.health, p.maxHealth)
     else
@@ -2206,7 +2208,8 @@ local function playRun(classId, runIdx, maxEndlessFloors, seed)
     EventManager.clear()
     drainPresentation()
     local game = Game:new()
-    game:startNewRun(classId)
+    -- BALANCE_SEAL=N: mede a corrida no Selo do Grimório N (0 = jogo base).
+    game:startNewRun(classId, { seal = tonumber(os.getenv("BALANCE_SEAL") or "0") or 0 })
 
     -- SEED FIXA (Set/2026) — sem isto, medir "antes x depois" de uma mudanca
     -- de balanco compara duas amostras DIFERENTES e o ruido engole o efeito.
@@ -2332,11 +2335,19 @@ local function playRun(classId, runIdx, maxEndlessFloors, seed)
         if game:checkVictory() then
             outcome = ("VENCEU O JOGO em %s (score %d)"):format(label, game.score)
             runRec.won = true
-            break
+            -- Endless medido (BALANCE_ENDLESS > 0): segue pelo mesmo botão da
+            -- tela de vitória. Vitória já contada; a run continua.
+            if (maxEndlessFloors or 0) > 0 and game.enterEndless and game:enterEndless() then
+                runRec.endless = true
+                log("- Vitoria: **seguindo no endless** (ate %d andares)", maxEndlessFloors)
+            else
+                break
+            end
         end
         if run.endlessMode and (run.floorsInEndless or 0) >= (maxEndlessFloors or 0) then
             outcome = ("parou no endless F%d (score %d)"):format(
                 run.floorsInEndless or 0, game.score)
+            runRec.endlessFloors = run.floorsInEndless or 0
             break
         end
 
@@ -2366,6 +2377,22 @@ local function playRun(classId, runIdx, maxEndlessFloors, seed)
             if not game.runManager:getPendingNodes() then
                 game.runManager:advanceFloorInAct()
                 game.runManager:generateNextNodes(3)
+            end
+            -- Endless: ciclo novo abre escolha de maldição (a tela do jogo
+            -- obriga). Piloto pega a de MENOR bônus de pontos = a mais branda.
+            do
+                local RM = require("src.systems.RunModifiers")
+                local pend = RM.pending(game.runManager.currentRun)
+                if pend then
+                    local best, bestS = pend[1], math.huge
+                    for _, id in ipairs(pend) do
+                        local c = RM.getCurse(id)
+                        if c and c.score < bestS then best, bestS = id, c.score end
+                    end
+                    RM.chooseCurse(game.runManager.currentRun, best)
+                    log("- Endless: maldicao escolhida **%s** (ciclo %d)", best,
+                        RM.cycle(game.runManager.currentRun))
+                end
             end
             local pending = game.runManager:getPendingNodes()
             local idx, node = chooseNode(game, pending)
@@ -2414,6 +2441,8 @@ local function playRun(classId, runIdx, maxEndlessFloors, seed)
     runRec.score = game.score
     runRec.hpEnd, runRec.maxHp = game.player.health, game.player.maxHealth
     runRec.gold = game.economySystem.currentGold
+    runRec.endlessFloors = run.endlessMode and (run.floorsInEndless or 0) or 0
+    runRec.curses = require("src.systems.RunModifiers").totalCurseStacks(run)
     runRec.battles = battleStats.battles
     runRec.turns = battleStats.turns
     runRec.byAct = battleStats.byAct
@@ -2559,7 +2588,9 @@ end
 -- Roda UMA run e devolve o registro estruturado. pcall por fora fica com quem
 -- chama (a bateria conta CRASH como resultado proprio).
 function M.playRunRecord(classId, runIdx, seed)
-    local outcome = playRun(classId, runIdx, 3, seed)
+    -- BALANCE_ENDLESS=N: depois da vitória, segue N andares no endless.
+    local outcome = playRun(classId, runIdx,
+        tonumber(os.getenv("BALANCE_ENDLESS") or "0") or 0, seed)
     local rec = M.lastRecord or {}
     rec.outcome = rec.outcome or outcome
     return rec

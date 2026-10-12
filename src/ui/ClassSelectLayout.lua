@@ -16,6 +16,7 @@
 --   │          │          │          │   passive (mecânica-chave)
 --   │          │          │          │   cards   (flex — cartas iniciais)
 --   ├──────────┴──────────┴──────────┴─────────────┤
+--   │ S — Selo do Grimório  [<]  Selo 3 · regra  [>]│
 --   │ B — voltar                                   │
 --   │ H — hint bar                                 │
 --   └──────────────────────────────────────────────┘
@@ -30,6 +31,7 @@ L.MARGIN     = 14
 L.GAP        = 12
 L.TITLE_H    = 48
 L.BACK_H     = 44
+L.SEAL_H     = 42      -- banda do seletor de Selo (×ts)
 L.HINT_H     = 42
 L.PAD        = 12      -- respiro interno do painel
 L.INNER_GAP  = 6
@@ -63,13 +65,17 @@ function L.compute(sw, sh, n)
     local titleH = math.floor(L.TITLE_H * ts)
     out.title = rect(0, L.MARGIN, sw, titleH)
 
-    local hintH = math.floor(L.HINT_H * ts)
+    -- Faixa de dica desligada no jogo (HintBar.ENABLED = false, Out/2026):
+    -- a banda vira só margem e o espaço volta pros painéis e pro Selo.
+    local hintOn = require("src.ui.HintBar").ENABLED
+    local hintH = hintOn and math.floor(L.HINT_H * ts) or L.MARGIN
     out.hint = rect(0, sh - hintH, sw, hintH)
     local backH = L.BACK_H
     local backW = math.min(260, math.max(180, sw * 0.22))
 
+    local sealH = math.floor(L.SEAL_H * ts)
     local top = L.MARGIN + titleH + L.GAP
-    local bottom = sh - hintH - backH - L.GAP * 2
+    local bottom = sh - hintH - backH - sealH - L.GAP * 3
     local availH = bottom - top
     local ph = math.min(availH, math.floor(L.PANEL_H_MAX * ts))
     local py = top + math.floor((availH - ph) / 2)
@@ -79,7 +85,12 @@ function L.compute(sw, sh, n)
     local rowW = n * pw + (n - 1) * colGap
     local px0 = math.floor((sw - rowW) / 2)
 
-    out.back = rect((sw - backW) / 2, py + ph + L.GAP, backW, backH)
+    local sealW = math.min(rowW, math.floor(620 * ts), sw - 32)
+    out.seal = rect((sw - sealW) / 2, py + ph + L.GAP, sealW, sealH)
+    local arrowW = math.floor(sealH * 0.9)
+    out.sealPrev = rect(out.seal.x, out.seal.y, arrowW, sealH)
+    out.sealNext = rect(out.seal.x + out.seal.w - arrowW, out.seal.y, arrowW, sealH)
+    out.back = rect((sw - backW) / 2, out.seal.y + sealH + L.GAP, backW, backH)
 
     -- bandas internas (iguais pros 3 painéis)
     local pad = L.PAD
@@ -139,7 +150,7 @@ function L.validate(lay)
     local screen = { x = 0, y = 0, w = lay.sw, h = lay.sh }
     local function err(msg) errs[#errs + 1] = msg end
 
-    for _, key in ipairs({ "title", "back", "hint" }) do
+    for _, key in ipairs({ "title", "seal", "back", "hint" }) do
         if not inside(lay[key], screen) then err(key .. " fora da tela") end
     end
     if lay.emblemH < L.EMBLEM_MIN then
@@ -149,6 +160,7 @@ function L.validate(lay)
         if not inside(p, screen) then err("painel " .. i .. " fora da tela") end
         if overlaps(p, lay.title) then err("painel " .. i .. " invade o titulo") end
         if overlaps(p, lay.back) then err("painel " .. i .. " invade o voltar") end
+        if overlaps(p, lay.seal) then err("painel " .. i .. " invade o selo") end
         if overlaps(p, lay.hint) then err("painel " .. i .. " invade a hint") end
         for j = i + 1, #lay.panels do
             if overlaps(p, lay.panels[j]) then err(("paineis %d e %d se sobrepoem"):format(i, j)) end
@@ -167,6 +179,8 @@ function L.validate(lay)
         if cw > p.cards.w then err(("painel %d: cartas (%d) mais largas que a banda (%d)"):format(i, cw, p.cards.w)) end
     end
     if overlaps(lay.back, lay.hint) then err("voltar invade a hint") end
+    if overlaps(lay.seal, lay.back) then err("selo invade o voltar") end
+    if overlaps(lay.sealPrev, lay.sealNext) then err("setas do selo se sobrepoem") end
     return #errs == 0, errs
 end
 

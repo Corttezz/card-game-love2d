@@ -113,11 +113,24 @@ function EndScreens.summary(kind, game)
             { act = run.actNumber or 1, floor = run.floorInAct or 1 }))
     end
 
+    -- Selo do Grimório / ciclo e maldições: junto do "até onde chegou".
+    do
+        local mods = require("src.ui.RunModsText").short(run)
+        if mods ~= "" then cells[#cells].value = cells[#cells].value .. " · " .. mods end
+    end
+
     local subtitle
     if kind == "victory" then
         add("label_fate", I18n.t("end_screen.fate_victory"))
         subtitle = I18n.t("end_screen.victory_sub",
             { acts = require("src.core.Config").TotalActs or 6 })
+        -- Vencer com o selo k abre o k+1 desta classe: o jogador PRECISA ler
+        -- isso aqui, é o convite pra próxima corrida.
+        local ur = game and game.unlockResult
+        if ur and ur.sealUnlocked then
+            subtitle = subtitle .. "  " .. I18n.t("seal_ui.unlocked",
+                { n = ur.sealUnlocked, class = className })
+        end
     else
         local name = enemyName(game)
         add("label_killed_by", name)

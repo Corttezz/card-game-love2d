@@ -30,6 +30,10 @@ local FROZEN = {
     velas_10k = "ACH_VELAS_10K", escriba = "ACH_ESCRIBA", ferreiro = "ACH_FERREIRO",
     veterano = "ACH_VETERANO", bibliotecario = "ACH_BIBLIOTECARIO",
     alem_da_pagina = "ACH_ALEM_DA_PAGINA",
+    -- Out/2026: pos-jogo (ciclos do endless + Selos do Grimorio)
+    ciclo_3 = "ACH_CICLO_3", ciclo_5 = "ACH_CICLO_5", ciclo_10 = "ACH_CICLO_10",
+    primeiro_selo = "ACH_PRIMEIRO_SELO", selo_max_guerreiro = "ACH_SELO_MAX_GUERREIRO",
+    selo_max_mago = "ACH_SELO_MAX_MAGO", selo_max_ladino = "ACH_SELO_MAX_LADINO",
 }
 
 local UI_KEYS = { "hint", "secret_name", "secret_desc", "toast_label", "tier_natural",

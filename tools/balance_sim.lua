@@ -342,6 +342,30 @@ function M.report(records, agg, meta)
     local parts = {}
     for _, e in ipairs(bt) do parts[#parts + 1] = string.format("%s $%.0f", e.k, e.n / math.max(1, #records)) end
     p("- Gasto medio por run, por item: %s", table.concat(parts, " · "))
+    -- ENDLESS (BALANCE_ENDLESS=N): ate onde os vencedores chegam depois da
+    -- vitoria — o ciclo em que a curva exponencial encerra a corrida.
+    local endl = {}
+    for _, r in ipairs(records) do
+        if r.endless then endl[#endl + 1] = r end
+    end
+    if #endl > 0 then
+        p("")
+        p("## Endless (vencedores que seguiram)")
+        p("")
+        local sum, best = 0, 0
+        local byCycle = {}
+        for _, r in ipairs(endl) do
+            local f = r.endlessFloors or 0
+            sum, best = sum + f, math.max(best, f)
+            local c = math.floor(math.max(0, f - 1) / 8) + 1
+            byCycle[c] = (byCycle[c] or 0) + 1
+        end
+        p("- Runs: %d | andar medio %.1f | melhor %d", #endl, sum / #endl, best)
+        local cs = {}
+        for c, n in pairs(byCycle) do cs[#cs + 1] = c end
+        table.sort(cs)
+        for _, c in ipairs(cs) do p("- terminou no ciclo %d: %d run(s)", c, byCycle[c]) end
+    end
     p("")
     p("## Coringas ativos no fim da run")
     p("")

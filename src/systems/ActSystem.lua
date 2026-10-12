@@ -53,16 +53,25 @@ function ActSystem.getEnemyStats(actNumber, floorInAct, nodeType, endlessFloor)
         end
     end
 
-    -- Endless multiplier (exponencial sobre base do ato 3)
+    -- Endless: curva exp(LIN*n + QUAD*n²) sobre a base do ultimo ato
+    -- (ActSystem.endlessFactors — fonte unica, lida tambem pelos testes).
     if isEndless then
-        local mul = Config.Endless.scalingMultiplier or 1.18
-        local expFloors = math.max(0, (endlessFloor or floorInAct) - 1)
-        local factor = mul ^ expFloors
-        hp  = math.floor(hp * factor)
-        dmg = math.floor(dmg * factor)
+        local fh, fd = ActSystem.endlessFactors(endlessFloor or floorInAct)
+        hp  = math.floor(hp * fh)
+        dmg = math.floor(dmg * fd)
     end
 
     return { health = hp, damage = dmg, kind = nodeType }
+end
+
+-- Multiplicadores (vida, dano) do endless no andar absoluto `n` (1 = primeiro
+-- andar depois do ultimo chefe). Ver a curva em Config.Endless.
+function ActSystem.endlessFactors(n)
+    local E = Config.Endless
+    n = math.max(0, (n or 1) - 1)
+    local fh = math.exp((E.HP_LIN or 0) * n + (E.HP_QUAD or 0) * n * n)
+    local fd = math.exp((E.DMG_LIN or 0) * n + (E.DMG_QUAD or 0) * n * n)
+    return fh, fd
 end
 
 -- Retorna os pesos de raridade ativos (shop e recompensa usam esses).

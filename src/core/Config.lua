@@ -190,11 +190,22 @@ Config.Endless = {
     -- HP e dano crescem exponencial DEPOIS do ultimo ato (Config.TotalActs).
     -- O contador de endless comeca em floorInAct=1 com actNumber=TotalActs+1
     -- (ver RunManager:advanceFloorInAct).
-    scalingMultiplier = 1.18, -- HP e dmg *= 1.18 por andar
+    --
+    -- CURVA (Out/2026, memory/endless_and_seals.md): fator = exp(LIN*n + QUAD*n²),
+    -- n = andar absoluto do endless. Era 1.18^n pra vida E dano — x3,2 já no
+    -- 1º ciclo e x14 no 2º, com o dano acompanhando a vida: o endless acabava
+    -- num golpe, não numa escalada. Agora é Balatro: generoso por 2-3 ciclos
+    -- e EXPLODE depois (o termo quadrático garante que toda corrida termina).
+    -- Vida no fim do ciclo 1..6: x1,9 x4,7 x14 x50 x220 x1180.
+    -- Dano (cresce mais devagar que a vida — derrota por escalada, não por
+    -- golpe único): x1,4 x2,4 x4,3 x8,7 x19 x48.
+    HP_LIN = 0.08, HP_QUAD = 0.0015,
+    DMG_LIN = 0.045, DMG_QUAD = 0.0008,
+    scalingMultiplier = 1.18, -- LEGADO: so a PONTUACAO ainda usa 1.18^n (ScoreSystem)
     -- Raridades favorecem o alto-nivel mas comum ainda aparece (sem tirar o "floor" de oferta).
     rarityWeights = { common = 10, uncommon = 35, rare = 45, legendary = 10 },
-    -- Interactos virtuais: endless nao tem "atos", mas cura simbolica a cada 5 andares.
-    healEveryNFloors = 5, healPercent = 0.20,
+    -- Cura ao abrir cada ciclo de 8 andares (Game:nextPhase), antes de selo/maldição.
+    healPercent = 0.20,
 }
 
 -- Total de atos (excluindo endless). Usado por RunManager:advanceFloorInAct

@@ -1,5 +1,5 @@
 {
-  "count": 30,
+  "count": 37,
   "achievements": [
     {
       "apiName": "ACH_PRIMEIRO_CHEFE",
@@ -659,6 +659,160 @@
         "spanish": "Alcanza el piso 10 del modo infinito.",
         "french": "Atteignez l'étage 10 du mode infini.",
         "german": "Erreiche Etage 10 im Endlosmodus."
+      }
+    },
+    {
+      "apiName": "ACH_CICLO_3",
+      "id": "ciclo_3",
+      "tier": "collection",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_CICLO_3.png",
+      "iconUnachieved": "icons/ACH_CICLO_3_locked.png",
+      "name": {
+        "brazilian": "Três Voltas",
+        "english": "Three Turns",
+        "spanish": "Tres Vueltas",
+        "french": "Trois Tours",
+        "german": "Drei Runden"
+      },
+      "desc": {
+        "brazilian": "Feche o ciclo 3 do modo infinito.",
+        "english": "Close cycle 3 of endless mode.",
+        "spanish": "Cierra el ciclo 3 del modo infinito.",
+        "french": "Bouclez le cycle 3 du mode infini.",
+        "german": "Schließe Zyklus 3 des Endlosmodus ab."
+      }
+    },
+    {
+      "apiName": "ACH_CICLO_5",
+      "id": "ciclo_5",
+      "tier": "collection",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_CICLO_5.png",
+      "iconUnachieved": "icons/ACH_CICLO_5_locked.png",
+      "name": {
+        "brazilian": "Cinco Voltas",
+        "english": "Five Turns",
+        "spanish": "Cinco Vueltas",
+        "french": "Cinq Tours",
+        "german": "Fünf Runden"
+      },
+      "desc": {
+        "brazilian": "Feche o ciclo 5 do modo infinito.",
+        "english": "Close cycle 5 of endless mode.",
+        "spanish": "Cierra el ciclo 5 del modo infinito.",
+        "french": "Bouclez le cycle 5 du mode infini.",
+        "german": "Schließe Zyklus 5 des Endlosmodus ab."
+      }
+    },
+    {
+      "apiName": "ACH_CICLO_10",
+      "id": "ciclo_10",
+      "tier": "collection",
+      "hidden": true,
+      "iconAchieved": "icons/ACH_CICLO_10.png",
+      "iconUnachieved": "icons/ACH_CICLO_10_locked.png",
+      "name": {
+        "brazilian": "Ouroboros",
+        "english": "Ouroboros",
+        "spanish": "Uróboros",
+        "french": "Ouroboros",
+        "german": "Ouroboros"
+      },
+      "desc": {
+        "brazilian": "Feche o ciclo 10 do modo infinito.",
+        "english": "Close cycle 10 of endless mode.",
+        "spanish": "Cierra el ciclo 10 del modo infinito.",
+        "french": "Bouclez le cycle 10 du mode infini.",
+        "german": "Schließe Zyklus 10 des Endlosmodus ab."
+      }
+    },
+    {
+      "apiName": "ACH_PRIMEIRO_SELO",
+      "id": "primeiro_selo",
+      "tier": "skill",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_PRIMEIRO_SELO.png",
+      "iconUnachieved": "icons/ACH_PRIMEIRO_SELO_locked.png",
+      "name": {
+        "brazilian": "Lacre Rompido",
+        "english": "Broken Seal",
+        "spanish": "Lacre Roto",
+        "french": "Sceau Brisé",
+        "german": "Gebrochenes Siegel"
+      },
+      "desc": {
+        "brazilian": "Vença uma corrida com um Selo do Grimório.",
+        "english": "Win a run with a Grimoire Seal.",
+        "spanish": "Gana una partida con un Sello del Grimorio.",
+        "french": "Gagnez une partie avec un Sceau du Grimoire.",
+        "german": "Gewinne einen Lauf mit einem Grimoire-Siegel."
+      }
+    },
+    {
+      "apiName": "ACH_SELO_MAX_GUERREIRO",
+      "id": "selo_max_guerreiro",
+      "tier": "skill",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_SELO_MAX_GUERREIRO.png",
+      "iconUnachieved": "icons/ACH_SELO_MAX_GUERREIRO_locked.png",
+      "name": {
+        "brazilian": "Último Selo: Guerreiro",
+        "english": "Last Seal: Warrior",
+        "spanish": "Último Sello: Guerrero",
+        "french": "Dernier Sceau : Guerrier",
+        "german": "Letztes Siegel: Krieger"
+      },
+      "desc": {
+        "brazilian": "Vença com o Guerreiro no Selo 10.",
+        "english": "Win with the Warrior on Seal 10.",
+        "spanish": "Gana con el Guerrero en el Sello 10.",
+        "french": "Gagnez avec le Guerrier au Sceau 10.",
+        "german": "Gewinne mit dem Krieger auf Siegel 10."
+      }
+    },
+    {
+      "apiName": "ACH_SELO_MAX_MAGO",
+      "id": "selo_max_mago",
+      "tier": "skill",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_SELO_MAX_MAGO.png",
+      "iconUnachieved": "icons/ACH_SELO_MAX_MAGO_locked.png",
+      "name": {
+        "brazilian": "Último Selo: Mago",
+        "english": "Last Seal: Mage",
+        "spanish": "Último Sello: Mago",
+        "french": "Dernier Sceau : Mage",
+        "german": "Letztes Siegel: Magier"
+      },
+      "desc": {
+        "brazilian": "Vença com o Mago no Selo 10.",
+        "english": "Win with the Mage on Seal 10.",
+        "spanish": "Gana con el Mago en el Sello 10.",
+        "french": "Gagnez avec le Mage au Sceau 10.",
+        "german": "Gewinne mit dem Magier auf Siegel 10."
+      }
+    },
+    {
+      "apiName": "ACH_SELO_MAX_LADINO",
+      "id": "selo_max_ladino",
+      "tier": "skill",
+      "hidden": false,
+      "iconAchieved": "icons/ACH_SELO_MAX_LADINO.png",
+      "iconUnachieved": "icons/ACH_SELO_MAX_LADINO_locked.png",
+      "name": {
+        "brazilian": "Último Selo: Ladino",
+        "english": "Last Seal: Rogue",
+        "spanish": "Último Sello: Pícaro",
+        "french": "Dernier Sceau : Voleur",
+        "german": "Letztes Siegel: Schurke"
+      },
+      "desc": {
+        "brazilian": "Vença com o Ladino no Selo 10.",
+        "english": "Win with the Rogue on Seal 10.",
+        "spanish": "Gana con el Pícaro en el Sello 10.",
+        "french": "Gagnez avec le Voleur au Sceau 10.",
+        "german": "Gewinne mit dem Schurken auf Siegel 10."
       }
     }
   ]

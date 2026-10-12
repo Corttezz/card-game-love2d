@@ -100,6 +100,11 @@ function ScoreSystem:finishBattle(game)
     if run and run.endlessMode then
         tinta = math.floor(tinta * (1.18 ^ (run.floorsInEndless or 0)))
     end
+    -- Selo do Grimório (+10%/nível) e maldições do endless (+N% por acúmulo):
+    -- quem aceita a regra mais dura pontua mais (RunModifiers.scoreMul).
+    if run then
+        tinta = math.floor(tinta * require("src.systems.RunModifiers").scoreMul(run))
+    end
 
     -- ===== SELO =====
     local selo = 1.0

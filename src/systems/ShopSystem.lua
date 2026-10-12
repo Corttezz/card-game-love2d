@@ -238,8 +238,15 @@ function ShopSystem:generateOffers()
     -- Dedup por geração: a mesma carta nunca aparece 2x na mesma vitrine.
     self._offeredCardIds = {}
     local cfg = self:getModeConfig()
+    local RunModifiers = require("src.systems.RunModifiers")
+    local run = self.context.runManager and self.context.runManager.currentRun
 
-    for _ = 1, cfg.cards do
+    -- Selo "Escolha Curta": recompensa pós-batalha com uma carta a menos.
+    local nCards = cfg.cards
+    if self.mode == "rewards" then
+        nCards = math.max(1, nCards + RunModifiers.rewardCardsDelta(run))
+    end
+    for _ = 1, nCards do
         local offer = self:generateCardOffer()
         if offer then table.insert(self.currentOffers, offer) end
     end
@@ -274,6 +281,13 @@ function ShopSystem:generateOffers()
     for _ = 1, cfg.boosters do
         local offer = self:generateBoosterOffer()
         if offer then table.insert(self.currentOffers, offer) end
+    end
+
+    -- Selo "Mercado Caro" / maldição "Dízimo": UM ponto de ajuste pra toda a
+    -- vitrine (carta, relíquia, forja, pacote). Ofertas restauradas do save
+    -- vêm por importState e não passam aqui — nunca encarecem duas vezes.
+    for _, o in ipairs(self.currentOffers) do
+        o.cost = RunModifiers.price(run, o.cost)
     end
 end
 
@@ -513,7 +527,10 @@ function ShopSystem:importState(st)
 end
 
 function ShopSystem:getRefreshCost()
-    return self.refreshCost
+    -- O contador cru fica no estado (save); o preço exibido/cobrado passa pelo
+    -- mesmo multiplicador da vitrine.
+    local rm = self.context and self.context.runManager
+    return require("src.systems.RunModifiers").price(rm and rm.currentRun, self.refreshCost)
 end
 
 -- Tabela de tipos de booster pack — exposta pra Fase 5 (BoosterPackSystem) ler.

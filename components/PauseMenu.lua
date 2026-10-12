@@ -130,6 +130,9 @@ function PauseMenu:runSummary()
             total = MapManager.FLOORS_PER_ACT,
         })
     end
+    -- Selo do Grimório / ciclo e maldições do endless (RunModsText).
+    local mods = require("src.ui.RunModsText").short(run)
+    if mods ~= "" then journey = journey .. " · " .. mods end
     local p = game.player
     local hp = p and (math.floor(p.health or 0) .. "/" .. math.floor(p.maxHealth or 0)) or "-"
     local gold = game.economySystem and game.economySystem.currentGold or 0

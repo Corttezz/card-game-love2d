@@ -25,6 +25,9 @@
 --   UnlockSystem.onUnlock(fn)            -- fn(kind "card"|"class", id)
 --   UnlockSystem.setOverrideAll(bool)    -- tools/autoplay: catálogo inteiro
 --   UnlockSystem.setRevealAll(bool)      -- tools de captura: coleção toda revelada
+--   UnlockSystem.getMaxSeal(classId) -> 0..10   (maior Selo SELECIONÁVEL)
+--   UnlockSystem.getSealWon(classId) -> -1..10  (maior Selo VENCIDO; -1 = nunca venceu)
+--   UnlockSystem.getClassRecord(classId) -> { bestScore, bestEndless }  (recordes por classe)
 
 local ProfileStats = require("engine.ProfileStats")
 local Data = require("src.data.unlocks")
@@ -130,7 +133,41 @@ local function state()
     u.actsCleared = u.actsCleared or 0
     u.bestActReached = u.bestActReached or 0
     u.victories = u.victories or 0
+    -- Selos do Grimório (Out/2026): maior selo VENCIDO por classe. Ausente =
+    -- nunca venceu. Perfil antigo com vitória da classe conta como selo 0
+    -- vencido (não punir quem já jogou — mesma regra do migrateLegacy).
+    if type(u.sealsWon) ~= "table" then
+        u.sealsWon = {}
+        for classId, won in pairs(s.winsByClass or {}) do
+            if won then u.sealsWon[classId] = 0 end
+        end
+    end
     return u, s
+end
+
+-- ===== Selos do Grimório =====
+-- Desbloqueio POR CLASSE, um degrau por vitória (StS: Ascensão N+1 só depois
+-- de vencer a N com o MESMO personagem). Vencer com o selo k libera o k+1.
+local SEAL_MAX = 10
+
+function UnlockSystem.getSealWon(classId)
+    local u = state()
+    local w = u.sealsWon[classId]
+    return w == nil and -1 or w
+end
+
+-- Recordes POR CLASSE (pós-jogo, Out/2026): melhor pontuação e andar mais
+-- fundo do endless. Gravados em onRunEnded (toda run termina por lá).
+function UnlockSystem.getClassRecord(classId)
+    local u = state()
+    u.records = u.records or {}
+    local r = u.records[classId] or {}
+    return { bestScore = r.bestScore or 0, bestEndless = r.bestEndless or 0 }
+end
+
+function UnlockSystem.getMaxSeal(classId)
+    if overrideAll then return SEAL_MAX end
+    return math.min(SEAL_MAX, UnlockSystem.getSealWon(classId) + 1)
 end
 
 -- Garante o estado (e a migração) ANTES de qualquer contador do perfil mudar.
@@ -443,9 +480,26 @@ function UnlockSystem.onRunEnded(summary)
         u.mastery[classId] = (u.mastery[classId] or 0) + xp
     end
     -- Vitória: chefe do último ato vencido (onBossDefeated normalmente já fez).
+    if classId then
+        u.records = u.records or {}
+        local rec = u.records[classId] or {}
+        rec.bestScore = math.max(rec.bestScore or 0, math.floor(summary.score or 0))
+        if summary.endlessMode then
+            rec.bestEndless = math.max(rec.bestEndless or 0, summary.floorsInEndless or 0)
+        end
+        u.records[classId] = rec
+    end
+    local sealUnlocked = nil
     if summary.victory then
         u.actsCleared = math.max(u.actsCleared, totalActs())
         u.victories = u.victories + 1
+        if classId then
+            local beforeMax = UnlockSystem.getMaxSeal(classId)
+            local won = u.sealsWon[classId]
+            u.sealsWon[classId] = math.max(won == nil and -1 or won, summary.seal or 0)
+            local afterMax = UnlockSystem.getMaxSeal(classId)
+            if afterMax > beforeMax then sealUnlocked = afterMax end
+        end
     end
     u.bestActReached = math.max(u.bestActReached, summary.actNumber or 0)
 
@@ -482,6 +536,7 @@ function UnlockSystem.onRunEnded(summary)
         newCards = newCards, newClasses = newClasses, levelsGained = levelsGained,
         xpGained = xp, classId = classId, before = before, after = after,
         bundles = bundles, victory = summary.victory and true or false,
+        sealUnlocked = sealUnlocked,   -- novo Selo liberado pra esta classe (ou nil)
     }
     UnlockSystem.lastResult = result
     print(string.format("[UnlockSystem] fim de run (%s): +%d XP, +%d nivel(is), %d carta(s), %d classe(s) novas",

@@ -10,6 +10,9 @@
 --   all    — todas liberadas, hover no mago (emblema animado + aura)
 --   pick   — momento da escolha (flash + anel + faíscas)
 --   denied — clique numa bloqueada (tremor; NÃO inicia run)
+--   seal     — Selo 7 escolhido, hover no guerreiro (recordes da classe)
+--   seal_cap — Selo 7, hover no ladino que só vai até o 1 (aviso de teto)
+-- CS_LOCALE=de troca o idioma; CS_SIZES=1024x768,1920x1080 filtra tamanhos.
 --   love . screenshot_class_select
 
 local M = {}
@@ -91,9 +94,17 @@ function M.run()
     _G.EventManager = require("engine.EventManager")
     _G.Event = require("engine.Event")
     require("src.i18n.I18n").init()
+    if os.getenv("CS_LOCALE") then require("src.i18n.I18n").setLocale(os.getenv("CS_LOCALE")) end
+    if os.getenv("CS_SIZES") then
+        SIZES = {}
+        for w, h in os.getenv("CS_SIZES"):gmatch("(%d+)x(%d+)") do
+            SIZES[#SIZES + 1] = { tonumber(w), tonumber(h) }
+        end
+    end
     require("src.ui.PixelCanvas").enableNearest()
     local US = require("src.systems.UnlockSystem")
-    M._orig = { US.isClassUnlocked, US.getClassUnlockInfo, US.getClassMastery }
+    M._orig = { US.isClassUnlocked, US.getClassUnlockInfo, US.getClassMastery,
+        US.getMaxSeal, US.getSealWon, US.getClassRecord }
 
     -- TIRA DE ANIMAÇÃO: cada emblema em 8 instantes (0.15s) + versão
     -- acorrentada — valida o idle procedural sem precisar de vídeo.
@@ -136,6 +147,24 @@ function M.run()
                 shoot(screen, sz[1], sz[2], st)
 
                 if st == "all" then
+                    -- Selos: guerreiro liberou até o 10, mago até o 4, ladino até o 1.
+                    local caps = { warrior = 10, mage = 4, rogue = 1 }
+                    US.getMaxSeal = function(id) return caps[id] or 0 end
+                    US.getSealWon = function(id) return (caps[id] or 0) - 1 end
+                    US.getClassRecord = function(id)
+                        return { bestScore = id == "warrior" and 48210 or 9050,
+                            bestEndless = id == "warrior" and 19 or 0 }
+                    end
+                    local s2 = Screen:new()
+                    s2:show(function() end, function() end)
+                    s2.seal = 7
+                    s2:_clampSeal()
+                    hoverPanel(s2, "warrior")
+                    pump(s2, 0.6)
+                    shoot(s2, sz[1], sz[2], "seal")
+                    hoverPanel(s2, "rogue")
+                    pump(s2, 0.3)
+                    shoot(s2, sz[1], sz[2], "seal_cap")
                     screen:selectClass("mage")
                     pump(screen, 0.15)
                     shoot(screen, sz[1], sz[2], "pick")
@@ -151,6 +180,7 @@ function M.run()
     end)
     restore()
     US.isClassUnlocked, US.getClassUnlockInfo, US.getClassMastery = M._orig[1], M._orig[2], M._orig[3]
+    US.getMaxSeal, US.getSealWon, US.getClassRecord = M._orig[4], M._orig[5], M._orig[6]
     if not ok then print("[class_select] ERRO: " .. tostring(err)) end
     love.event.quit()
 end

@@ -97,4 +97,24 @@ return {
     { id = "alem_da_pagina",   steam = "ACH_ALEM_DA_PAGINA",   tier = "collection", hidden = true,
       name = "Alem da Ultima Pagina", desc = "Alcance o andar 10 do modo infinito.",
       progress = { stat = "bestEndlessFloor", target = 10 } },
+
+    -- ===== POS-JOGO (Out/2026): endless em ciclos + Selos do Grimorio =====
+    -- Marcos do endless contam ANDARES (8 por ciclo): o ciclo 3 fecha no 24.
+    { id = "ciclo_3",          steam = "ACH_CICLO_3",          tier = "collection",
+      name = "Tres Voltas", desc = "Feche o ciclo 3 do modo infinito.",
+      progress = { stat = "bestEndlessFloor", target = 24 } },
+    { id = "ciclo_5",          steam = "ACH_CICLO_5",          tier = "collection",
+      name = "Cinco Voltas", desc = "Feche o ciclo 5 do modo infinito.",
+      progress = { stat = "bestEndlessFloor", target = 40 } },
+    { id = "ciclo_10",         steam = "ACH_CICLO_10",         tier = "collection", hidden = true,
+      name = "Ouroboros", desc = "Feche o ciclo 10 do modo infinito.",
+      progress = { stat = "bestEndlessFloor", target = 80 } },
+    { id = "primeiro_selo",    steam = "ACH_PRIMEIRO_SELO",    tier = "skill",
+      name = "Lacre Rompido", desc = "Venca uma corrida com um Selo do Grimorio." },
+    { id = "selo_max_guerreiro", steam = "ACH_SELO_MAX_GUERREIRO", tier = "skill",
+      name = "Ultimo Selo: Guerreiro", desc = "Venca com o Guerreiro no Selo 10." },
+    { id = "selo_max_mago",    steam = "ACH_SELO_MAX_MAGO",    tier = "skill",
+      name = "Ultimo Selo: Mago", desc = "Venca com o Mago no Selo 10." },
+    { id = "selo_max_ladino",  steam = "ACH_SELO_MAX_LADINO",  tier = "skill",
+      name = "Ultimo Selo: Ladino", desc = "Venca com o Ladino no Selo 10." },
 }

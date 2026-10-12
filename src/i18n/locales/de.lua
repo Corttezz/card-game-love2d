@@ -329,6 +329,13 @@ return {
             veterano = { name = "Veteran der Seiten", desc = "Gewinne 10 Läufe." },
             bibliotecario = { name = "Bibliothekar", desc = "Entdecke alle Karten des Grimoires." },
             alem_da_pagina = { name = "Jenseits der Letzten Seite", desc = "Erreiche Etage 10 im Endlosmodus." },
+            ciclo_3 = { name = "Drei Runden", desc = "Schließe Zyklus 3 des Endlosmodus ab." },
+            ciclo_5 = { name = "Fünf Runden", desc = "Schließe Zyklus 5 des Endlosmodus ab." },
+            ciclo_10 = { name = "Ouroboros", desc = "Schließe Zyklus 10 des Endlosmodus ab." },
+            primeiro_selo = { name = "Gebrochenes Siegel", desc = "Gewinne einen Lauf mit einem Grimoire-Siegel." },
+            selo_max_guerreiro = { name = "Letztes Siegel: Krieger", desc = "Gewinne mit dem Krieger auf Siegel 10." },
+            selo_max_mago = { name = "Letztes Siegel: Magier", desc = "Gewinne mit dem Magier auf Siegel 10." },
+            selo_max_ladino = { name = "Letztes Siegel: Schurke", desc = "Gewinne mit dem Schurken auf Siegel 10." },
         },
         hint = "ESC schließt | Pfeile oder Klick wählen",
         secret_name = "???",
@@ -371,7 +378,7 @@ return {
         camp_sub     = "Das Feuer knistert. Atme durch oder bearbeite den Stahl.",
         camp_hint    = "Wähle: rasten ODER schmieden (einmal pro Lager)",
         heal_title   = "Rasten",
-        heal_sub     = "+30% LP",
+        heal_sub     = "+{n}% LP",
         heal_result  = "{n} LP geheilt.",
         forge_title  = "Schmieden",
         forge_sub    = "+1 Stufe auf eine Karte",
@@ -1027,7 +1034,7 @@ return {
         passive_rogue  = { name = "Passiv: Toxine", desc = "Der erste Angriff jeder Runde fügt 1 Gift für 2 Runden zu (+1 Gift alle zwei Akte)." },
         topbar_gold = { name = "Gold", desc = "Kauft Karten, Schmieden und Verbesserungen im Laden. Zinsen: +$1 pro $5 gespart (max +$5), ausgezahlt nach jedem gewonnenen Kampf. Nächste Auszahlung: +${interest}." },
         topbar_deck = { name = "Grimoire", desc = "{deck} Karten in deinem Grimoire — {hand} gerade auf der Hand. Am Zugende wird deine Hand abgeworfen und du ziehst neue Karten. Klicke, um das Deck zu durchsuchen." },
-        topbar_progress = { name = "Reisefortschritt", desc = "Akt {act}, Etage {floor} von {total}. Ein MINI-BOSS wartet auf Etage 7; der Akt-BOSS auf Etage {total}. Besiege den Boss von Akt 3, um die Chronik zu vollenden. Klicke hier für die Reisechronik." },
+        topbar_progress = { name = "Reisefortschritt", desc = "Akt {act}, Etage {floor} von {total}. Ein MINI-BOSS wartet auf Etage 7; der Akt-BOSS auf Etage {total}. Besiege den Boss von Akt {last}, um die Chronik zu vollenden. Klicke hier für die Reisechronik.{mods}" },
         topbar_config = { name = "Pausenmenü", desc = "Pausiert die Reise: Optionen, speichern und zum Menü, oder den Lauf abbrechen." },
         reward_rules = { name = "Wie Angebote funktionieren", desc = "Angebotene Karten gehören ZU DEINER Klasse. Die Qualität steigt mit jedem Akt — und jedes Angebot ohne eine SELTENE erhöht die Chance des nächsten (nach einer langen Durststrecke ist eine seltene garantiert). Mit AFFINITÄT markierte Karten passen zu den starken Tags deines Decks. Karten, die du bereits mehrfach besitzt, erscheinen seltener." },
         poison     = { name = "Gift",       desc = "Fügt {stacks} Schaden am Zugende zu, für {duration} Zug(e)." },
@@ -1414,4 +1421,10 @@ return {
 
     -- Dados do Escriba (aposta opcional da loja)
     scribe_dice = require("src.i18n.locales.scribe_dice.de"),
+
+    -- Selos do Grimório e maldições do endless (RunModifiers)
+    seals = require("src.i18n.locales.run_modifiers.de").seals,
+    seal_ui = require("src.i18n.locales.run_modifiers.de").seal_ui,
+    endless_curses = require("src.i18n.locales.run_modifiers.de").endless_curses,
+    endless = require("src.i18n.locales.run_modifiers.de").endless,
 }

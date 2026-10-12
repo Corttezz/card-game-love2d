@@ -220,7 +220,7 @@ function RestScreen:buildChooseButtons()
     local rightX = math.floor(px + pw / 2 + gap / 2)
 
     local p = self.game and self.game.player
-    local healAmt = p and math.floor(p.maxHealth * 0.30) or 0
+    local healAmt = p and math.floor(p.maxHealth * self:_healPct()) or 0
     local healTo = p and math.min(p.health + healAmt, p.maxHealth) or 0
     local healDetail = p
         and (I18n.t("rest.hp_abbr") .. " " .. p.health .. "/" .. p.maxHealth
@@ -234,7 +234,7 @@ function RestScreen:buildChooseButtons()
     local heal = {
         x = leftX, y = cy, w = cw, h = chh,
         icon = "heart", title = I18n.t("rest.heal_title"),
-        sub = I18n.t("rest.heal_sub"),
+        sub = I18n.t("rest.heal_sub", { n = math.floor(self:_healPct() * 100 + 0.5) }),
         detail = full and I18n.t("rest.heal_full") or healDetail,
         muted = full,
     }
@@ -268,9 +268,16 @@ function RestScreen:_markCampUsed()
     if run and run.stage == "rest" then run.stage = "rest_done" end
 end
 
+-- Fração curada pela fogueira: 30% base, reduzida pelo Selo "Cura Escassa" /
+-- maldição "Fome" (RunModifiers). Prévia e cura leem a MESMA conta.
+function RestScreen:_healPct()
+    local rm = self.game and self.game.runManager
+    return 0.30 * require("src.systems.RunModifiers").healMul(rm and rm.currentRun, "rest")
+end
+
 function RestScreen:doHeal()
     self:_markCampUsed()
-    local amt = math.floor(self.game.player.maxHealth * 0.30)
+    local amt = math.floor(self.game.player.maxHealth * self:_healPct())
     self.game.player:heal(amt)
     self.resultText = I18n.t("rest.heal_result", { n = amt })
     self.resultTimer = 1.5

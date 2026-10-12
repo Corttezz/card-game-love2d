@@ -152,6 +152,13 @@ function MapManager.generate(floorInAct, actNumber, numNodes, opts)
     numNodes = numNodes or 3
     opts = opts or {}
     local weights = MapManager.weightsFor(floorInAct, actNumber)
+    -- Selo "Cerco" / maldição "Caçada": elite mais frequente (opts.eliteMul,
+    -- injetado pelo RunManager a partir de RunModifiers).
+    if opts.eliteMul and opts.eliteMul ~= 1 then
+        for _, w in ipairs(weights) do
+            if w.type == MapManager.NODE_TYPES.ELITE then w.weight = w.weight * opts.eliteMul end
+        end
+    end
 
     -- Floor boss/mini-boss: um unico no, nao ha escolha
     if floorInAct == MapManager.FLOORS_PER_ACT or floorInAct == MapManager.FLOORS_PER_ACT - 1 then
