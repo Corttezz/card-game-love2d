@@ -119,9 +119,10 @@ local function pushJokerProc(game, sink, joker, label, kind)
 end
 
 -- API pública do proc direto (Game usa pro retain_armor do Bastião, que
--- dispara fora do EffectSystem — em Player:onTurnStart).
-function EffectSystem:notifyJokerProc(game, joker, label, kind)
-    pushJokerProc(game, nil, joker, label, kind)
+-- dispara fora do EffectSystem — em Player:onTurnStart). Com `sink`, o proc
+-- entra no array da carta (Game:_resolveCardInCombat, conta via DamagePreview).
+function EffectSystem:notifyJokerProc(game, joker, label, kind, sink)
+    pushJokerProc(game, sink, joker, label, kind)
 end
 
 -- TEMA VISUAL DE CADA DEBUFF. `CardFeel.THEMES` e indexado por TAG de carta
@@ -152,17 +153,18 @@ local function multLabel(v)
     return "×" .. string.format("%g", v or 1)
 end
 
--- turnContext (opcional, Fase 3+): tabela com { allSelectedCards, tagCounts,
--- activeCombos, cardsProcessed, turnNumber }. Se presente, combos amplificam o
--- valor ANTES dos jokers (multiplicador-sobre-multiplicador nao vira produtorio).
---
--- RETORNO (game feel v1): (finalValue, procs) — procs é o array de contribuições
--- de joker pro tick sequencial estilo Balatro. Chamadas antigas que só leem o
--- primeiro retorno continuam funcionando.
-function EffectSystem:applyJokerEffects(game, card, baseValue, turnContext)
+-- NUCLEO PURO (Out/2026, previa de dano): a mesma conta de sempre, sem tocar
+-- em nada — devolve (valor, entradas, ecoUsado). Cada entrada e
+-- { joker, op = "mult"|"add", value, label, kind, text, after }. A previa
+-- (src/systems/DamagePreview.lua) le as entradas pra explicar o numero; o
+-- combate (applyJokerEffects, abaixo) as transforma em toast + proc. Uma
+-- conta so: previa == resultado por construcao.
+-- `echoFired` = o Eco ja disparou neste turno (estado do turno, passado pela
+-- previa que simula a leva; o combate passa o flag real do game).
+function EffectSystem:jokerSteps(game, card, baseValue, turnContext, echoFired)
     local finalValue = baseValue
-    local msgs = {}
-    local procs = {}
+    local entries = {}
+    local echoUsed = false
 
     -- P0.9 (Jul/2026, rebalance v2 — LARGEST-MULTIPLIER-WINS): entre os jokers
     -- ativos, APENAS o MAIOR damage_multiplier e o MAIOR defense_multiplier
@@ -173,7 +175,7 @@ function EffectSystem:applyJokerEffects(game, card, baseValue, turnContext)
     -- de COMBO e vulnerable sao camadas distintas do pipeline e ficam fora
     -- da regra. NAO reintroduzir produto em cadeia aqui.
     local bestMult, bestMultJoker = nil, nil
-    for _, joker in ipairs(game.jokerSlots) do
+    for _, joker in ipairs(game.jokerSlots or {}) do
         if joker.effects then
             for _, effect in ipairs(joker.effects) do
                 local isMatchingMult =
@@ -193,8 +195,9 @@ function EffectSystem:applyJokerEffects(game, card, baseValue, turnContext)
         local newValue, m = self:processEffect(bestMult, card, finalValue, turnContext)
         if newValue ~= finalValue then
             finalValue = newValue
-            if m then table.insert(msgs, m) end
-            pushJokerProc(game, procs, bestMultJoker, multLabel(bestMult.value), "mult")
+            entries[#entries + 1] = { joker = bestMultJoker, op = "mult",
+                value = bestMult.value or 1, label = multLabel(bestMult.value),
+                kind = "mult", text = m, after = finalValue }
         end
     end
 
@@ -207,43 +210,61 @@ function EffectSystem:applyJokerEffects(game, card, baseValue, turnContext)
     -- damage_multiplier attack 1.5) — queixa do dono: "qual a diferenca entre
     -- deus do abismo e forma de eco? nenhuma, e uma e lendaria a outra rara".
     -- E com o largest-wins ter os dois nao somava nada: max(1.5,1.5) = 1.5.
-    if card.type == "attack" and not game._echoFiredThisTurn then
-        for _, joker in ipairs(game.jokerSlots) do
+    if card.type == "attack" and not echoFired then
+        for _, joker in ipairs(game.jokerSlots or {}) do
             for _, effect in ipairs(joker.effects or {}) do
                 if effect.type == "echo_first_attack" then
-                    game._echoFiredThisTurn = true
+                    echoUsed = true
                     local fator = effect.value or 2
                     finalValue = finalValue * fator
-                    table.insert(msgs, msg("echo_first", { value = fator }))
-                    pushJokerProc(game, procs, joker, multLabel(fator), "mult")
+                    entries[#entries + 1] = { joker = joker, op = "mult", value = fator,
+                        label = multLabel(fator), kind = "mult",
+                        text = msg("echo_first", { value = fator }), after = finalValue }
                     break
                 end
             end
-            if game._echoFiredThisTurn then break end
+            if echoUsed then break end
         end
     end
 
-    for _, joker in ipairs(game.jokerSlots) do
+    for _, joker in ipairs(game.jokerSlots or {}) do
         if joker.effects then
             for _, effect in ipairs(joker.effects) do
                 -- Multiplicadores ja resolvidos acima (so o maior conta).
                 if effect.type ~= "damage_multiplier" and effect.type ~= "defense_multiplier"
                     and effect.type ~= "echo_first_attack" then
-                    local newValue, msg = self:processEffect(effect, card, finalValue, turnContext)
+                    local newValue, m = self:processEffect(effect, card, finalValue, turnContext)
                     if newValue ~= finalValue then
                         local delta = newValue - finalValue
                         finalValue = newValue
-                        if msg then table.insert(msgs, msg) end
-                        pushJokerProc(game, procs, joker,
-                            (delta >= 0 and "+" or "") .. string.format("%g", delta), "chips")
+                        entries[#entries + 1] = { joker = joker, op = "add", value = delta,
+                            label = (delta >= 0 and "+" or "") .. string.format("%g", delta),
+                            kind = "chips", text = m, after = finalValue }
                     end
                 end
             end
         end
     end
+    return finalValue, entries, echoUsed
+end
 
-    for _, msg in ipairs(msgs) do
-        game:addMessage(msg, "info")
+-- turnContext (opcional, Fase 3+): tabela com { allSelectedCards, tagCounts,
+-- activeCombos, cardsProcessed, turnNumber }. Se presente, combos amplificam o
+-- valor ANTES dos jokers (multiplicador-sobre-multiplicador nao vira produtorio).
+--
+-- RETORNO (game feel v1): (finalValue, procs) — procs é o array de contribuições
+-- de joker pro tick sequencial estilo Balatro. Chamadas antigas que só leem o
+-- primeiro retorno continuam funcionando.
+function EffectSystem:applyJokerEffects(game, card, baseValue, turnContext)
+    local finalValue, entries, echoUsed = self:jokerSteps(game, card, baseValue,
+        turnContext, game._echoFiredThisTurn)
+    if echoUsed then game._echoFiredThisTurn = true end
+    local procs = {}
+    for _, e in ipairs(entries) do
+        pushJokerProc(game, procs, e.joker, e.label, e.kind)
+    end
+    for _, e in ipairs(entries) do
+        if e.text then game:addMessage(e.text, "info") end
     end
     return finalValue, procs
 end

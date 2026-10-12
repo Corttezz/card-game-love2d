@@ -196,27 +196,45 @@ end
 -- Aplica combos de valor (damage_*/defense_*) sobre um valor base para uma carta.
 -- Chamado pelo Game:processCardInCombat depois do applyCardEffects e ANTES dos jokers.
 -- Isso garante que jokers com multiplicador multipliquem o valor ja potencializado.
-function ComboSystem.applyToCardValue(card, baseValue, turnContext)
-    if not turnContext or not turnContext.activeCombos then return baseValue end
+-- Versao PURA (sem banner): devolve (valor, passos). `passos` e a lista de
+-- { combo, op = "mult"|"add", value, after } que a previa de dano
+-- (src/systems/DamagePreview.lua) mostra ao jogador — a MESMA conta que o
+-- combate faz, entao previa == resultado por construcao.
+function ComboSystem.cardSteps(card, baseValue, turnContext)
+    local steps = {}
+    if not turnContext or not turnContext.activeCombos then return baseValue, steps end
     local v = baseValue
     for _, combo in ipairs(turnContext.activeCombos) do
         local b = combo.bonus
         if b then
+            local op, val
             if card.type == "attack" then
-                if b.type == "damage_multiplier" then
-                    v = v * (b.value or 1)
-                elseif b.type == "damage_bonus" then
-                    v = v + (b.value or 0)
-                end
+                if b.type == "damage_multiplier" then op = "mult"
+                elseif b.type == "damage_bonus" then op = "add" end
             elseif card.type == "defense" then
-                if b.type == "defense_multiplier" then
-                    v = v * (b.value or 1)
-                elseif b.type == "defense_bonus" then
-                    v = v + (b.value or 0)
-                end
+                if b.type == "defense_multiplier" then op = "mult"
+                elseif b.type == "defense_bonus" then op = "add" end
+            end
+            if op == "mult" then
+                val = b.value or 1
+                v = v * val
+            elseif op == "add" then
+                val = b.value or 0
+                v = v + val
+            end
+            if op then
+                steps[#steps + 1] = { combo = combo, op = op, value = val, after = v }
             end
         end
     end
+    return v, steps
+end
+
+-- Porta do banner pra quem calcula pela versao pura (Game via DamagePreview).
+ComboSystem.raiseBanner = raiseComboBanner
+
+function ComboSystem.applyToCardValue(card, baseValue, turnContext)
+    local v = ComboSystem.cardSteps(card, baseValue, turnContext)
     -- causa e efeito: o banner sobe no exato momento em que o numero sobe
     if v ~= baseValue then raiseComboBanner(turnContext) end
     return v

@@ -10,6 +10,7 @@ local EconomySystem = require("src.systems.EconomySystem")
 local ShopSystem = require("src.systems.ShopSystem")
 local TagSystem = require("src.systems.TagSystem")
 local ComboSystem = require("src.systems.ComboSystem")
+local DamagePreview = require("src.systems.DamagePreview")
 local ScoreSystem = require("src.systems.ScoreSystem")
 local AchievementSystem = require("src.systems.AchievementSystem")
 local UnlockSystem = require("src.systems.UnlockSystem")
@@ -775,32 +776,10 @@ function Game:playSelectedCards()
     )
 end
 
--- ===== Editions (Fase 3.2) =====
--- Aplica modifiers de edition no valor já calculado. Foil é flat; Holo/Polychrome
--- são multiplicativos; Negative não muda o valor (o efeito é +1 slot de joker,
--- aplicado em recomputeMaxJokerSlots).
-local EDITION_FLAT = { foil = 5 }
-local EDITION_MULT = { holo = 1.2, polychrome = 1.5 }
-
-local function applyEditionToValue(value, card)
-    if not card or not card.edition then return value end
-    local flat = EDITION_FLAT[card.edition]
-    if flat then value = value + flat end
-    local mult = EDITION_MULT[card.edition]
-    if mult then value = value * mult end
-    return value
-end
-
--- ===== Seals (Fase 3.3) =====
--- Red: ×2 valor (retrigger via mult). Outros são side-effect post-play.
-local SEAL_VALUE_MULT = { Red = 2.0 }
-
-local function applySealToValue(value, card)
-    if not card or not card.seal then return value end
-    local mult = SEAL_VALUE_MULT[card.seal]
-    if mult then return value * mult end
-    return value
-end
+-- ===== Editions (Fase 3.2) / Seals (Fase 3.3) =====
+-- As tabelas de valor (Foil +5, Holo x1.2, Polychrome x1.5, selo Red x2)
+-- moram em DamagePreview (fonte unica da conta da carta). Negative nao mexe
+-- no valor: o efeito e +1 slot de joker (recomputeMaxJokerSlots).
 
 -- Conta cartas Negative no deck atual e ajusta maxJokerSlots = base + N.
 -- Chamar após startGame, addCardToRun, e qualquer mudança de deck.
@@ -859,36 +838,28 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
     result.beats = sink
     turnContext = turnContext or self._currentTurnContext
 
-    -- Pipeline unificado attack/defense: effects → stat → combo → jokers → edition → seal.
-    local function computeCardValue(baseValue, statBonus)
-        local v = self.effectSystem:applyCardEffects(self, card, baseValue)
-        -- "Causa X de dano N vezes" (auditoria de cartas Out/2026): a Forca
-        -- entra em CADA golpe, como a descricao promete — antes a base era
-        -- multiplicada pelos golpes e a Forca somada uma vez so.
-        v = v + (statBonus or 0) * EffectSystem.hitCount(card)
-        v = ComboSystem.applyToCardValue(card, v, turnContext)
-        -- Game feel v1: applyJokerEffects também devolve os PROCS (quem
-        -- contribuiu com o quê) — o CombatSequence tica os jokers em sequência.
-        local procs
-        v, procs = self:applyJokerEffects(card, v, turnContext)
-        result.jokerProcs = procs
-        v = applyEditionToValue(v, card)
-        v = applySealToValue(v, card)
-        return math.floor(v)
-    end
-
-    -- Auditoria Jul/2026: strength_scaling/dexterity_scaling deixaram de ser
-    -- flag-only — a carta com a flag conta o stat em DOBRO (identidade real da
-    -- Lamina Pesada/Medalhao Estelar; a desc "Escala com Forca" era promessa
-    -- vazia: toda carta ja soma o stat 1x). O DOBRO acontece AQUI (fonte unica
-    -- do statBonus) — nao reintroduzir soma no EffectSystem.
-    local function scaledStat(stat, scalingType)
-        local s = stat or 0
-        if s == 0 or not card.effects then return s end
-        for _, e in ipairs(card.effects) do
-            if e.type == scalingType then return s * 2 end
+    -- Pipeline unificado attack/defense: effects → stat → combo → jokers →
+    -- edition → seal → Fraco/Fragil. A CONTA mora em DamagePreview.cardValue
+    -- (fonte unica, Out/2026): a previa que o jogador ve antes de jogar e esta
+    -- mesma funcao — aqui so entram os efeitos colaterais (Eco gasto, toast e
+    -- tick dos coringas, banner do combo). Forca por golpe e scaling em dobro
+    -- (auditoria Jul/2026) tambem moram la — nao reintroduzir soma aqui.
+    local function computeCardValue()
+        local v, steps, entries, echoUsed = DamagePreview.cardValue(self, card,
+            turnContext, DamagePreview.liveState(self))
+        if echoUsed then self._echoFiredThisTurn = true end
+        for _, s in ipairs(steps) do
+            if s.kind == "combo" then ComboSystem.raiseBanner(turnContext) break end
         end
-        return s
+        local procs = {}
+        for _, e in ipairs(entries) do
+            self.effectSystem:notifyJokerProc(self, e.joker, e.label, e.kind, procs)
+        end
+        for _, e in ipairs(entries) do
+            if e.text then self:addMessage(e.text, "info") end
+        end
+        result.jokerProcs = procs
+        return v
     end
 
     -- Side-effects de seal (não envolvem valor da carta): ouro, orbs, draw extra.
@@ -946,13 +917,8 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
             return result
         end
 
-        local damage = computeCardValue(card.attack,
-            scaledStat(self.player.strength, "strength_scaling"))
-        -- FRACO (debuff do inimigo, Out/2026): o ataque sai 25% menor — por
-        -- ultimo, depois de jokers/combos, como no StS.
-        if self.player.applyWeakToAttack then
-            damage = self.player:applyWeakToAttack(damage)
-        end
+        -- (FRACO, debuff do inimigo: -25% por ultimo, dentro de cardValue.)
+        local damage = computeCardValue()
 
         self.enemy:takeDamage(damage)
         AchievementSystem.onCardDamage(self, card, damage)   -- Golpe de Tinta
@@ -998,12 +964,8 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
         self:addMessage(msg("damage_dealt", { value = damage }), "success")
 
     elseif card.type == "defense" then
-        local defense = computeCardValue(card.defense,
-            scaledStat(self.player.dexterity, "dexterity_scaling"))
-        -- FRAGIL (debuff do inimigo, Out/2026): a defesa rende 25% menos.
-        if self.player.applyFrailToBlock then
-            defense = self.player:applyFrailToBlock(defense)
-        end
+        -- (FRAGIL, debuff do inimigo: -25% por ultimo, dentro de cardValue.)
+        local defense = computeCardValue()
 
         -- Auditoria Jul/2026: o cap de Bloqueio (30) truncava EM SILENCIO —
         -- o jogador via "+20" e "+17" na mesma leva e nunca sabia que 7
