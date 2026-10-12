@@ -90,7 +90,7 @@ Cartas com efeito secundário forte recebem -1 a -3 no valor base.
 | carta lendária | $30 | **$21** |
 | pacote (5 tipos) | $4 | igual |
 | reroll | 5, 7, 9… teto 30 | **4, 6, 8…** teto 30 |
-| bancada de coringa (2/run) | $30, $60 | **$20, $35** (peso 0.9 → 1.3) |
+| bancada de coringa (2/run) | $30, $60, ~23% das lojas | **$20, $35, FIXA em toda loja** até o teto |
 | grimório +1 compra (2/run) | $25, $55 | **$22, $44** |
 | cristal +1 mana | $25 | igual |
 | elixir +10 vida | $5 | igual |
@@ -121,8 +121,10 @@ preço; não há ouro infinito (juros têm teto, bônus é por nó finito, dados
 **Pendente (próximo lever):** ensinar o piloto a GASTAR do A3 em diante (hoje
 compra no máx. 3 itens/loja e só pega bancada com coringa parado) — enquanto
 ele entesoura, a bateria não mede se os preços do fim de jogo estão certos.
-A frequência da bancada na vitrine quase não mexeu com o peso 1.3 (22→24%):
-se o dono ainda sentir falta dela, o próximo passo é vaga própria, não preço.
+A frequência da bancada quase não mexeu com o peso 1.3 (22→24%), então ela
+ganhou VAGA PRÓPRIA (Out/2026): a loja tem 3 relíquias — tesoura e bancada
+fixas + 1 sorteada — e 1 pacote (era 2+2; 3+2 encolhia todas as cartas e
+cortava os nomes). Fixa indisponível devolve a vaga ao sorteio.
 Travas: `test_economy` (alcance dos preços),
 `test_economy_acts` (renda por ato + bônus de risco), `smoke_shop` (reroll).
 

@@ -37,14 +37,14 @@ function M.run()
     check("rewards: nenhum upgrade", typeCounts.upgrade == 0)
     check("rewards: nenhum booster", typeCounts.booster_pack == 0)
 
-    -- Modo shop: 4 cartas + 1 voucher + 2 packs.
+    -- Modo shop: 4 cartas + 3 reliquias + 1 pack.
     shop:setMode("shop")
     cfg = shop:getModeConfig()
     check("shop: 4 cartas", cfg.cards == 4)
-    -- 2 (era 1) desde os SERVIÇOS da loja (Set/2026): uma vaga fixa da tesoura
-    -- + uma rotativa. Ver tools/test_shop_services.lua.
-    check("shop: 2 vagas de reliquia", cfg.upgrades == 2)
-    check("shop: 2 boosters", cfg.boosters == 2)
+    -- 3 desde Out/2026: tesoura e bancada de coringa FIXAS + uma rotativa;
+    -- packs 2 -> 1 pra fileira 2 seguir com 4 celulas. Ver test_shop_services.
+    check("shop: 3 vagas de reliquia", cfg.upgrades == 3)
+    check("shop: 1 booster", cfg.boosters == 1)
     check("shop: canReroll true", cfg.canReroll == true)
     check("shop: skipBonus 3", cfg.skipBonus == 3)
 

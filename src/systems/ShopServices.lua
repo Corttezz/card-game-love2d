@@ -40,9 +40,12 @@ ShopServices.CATALOG = {
     -- em ~1 de cada 6 lojas e a mecânica viraria decoração.
     { id = "remove_card",    effect = "remove_card",    picker = "remove",    weight = 0,   fixture = true },
     { id = "duplicate_card", effect = "duplicate_card", picker = "duplicate", weight = 0.8 },
-    -- 1.3 (era 0.9): com seis candidatos na vaga rotativa ela aparecia em ~20%
-    -- das lojas (medido) — "dá pra alcançar?" depende de ELA APARECER.
-    { id = "joker_slot",     effect = "add_joker_slot", weight = 1.3 },
+    -- A BANCADA DE CORINGA também é FIXA (Out/2026). Na vaga rotativa ela
+    -- aparecia em ~23% das lojas mesmo com peso 1.3 (medido no balance_sim) —
+    -- e a queixa do dono era justamente não conseguir ALCANÇÁ-LA. Fixa, ela
+    -- está em toda loja até o teto de compras (`maxPerRun`); batido o teto,
+    -- isAvailable a recusa e a vaga volta pro sorteio das outras relíquias.
+    { id = "joker_slot",     effect = "add_joker_slot", weight = 0,   fixture = true },
     { id = "card_draw_upgrade", effect = "increase_draw", weight = 0.8 },
     -- COFRE: levanta o teto dos juros. Peso menor que o resto de propósito —
     -- é a relíquia mais cara e a que o jogador precisa ver CEDO pra ela valer

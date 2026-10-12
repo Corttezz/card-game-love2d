@@ -1,7 +1,8 @@
 -- src/systems/ShopSystem.lua
 -- Sistema de loja inspirado no TFT e Balatro. Pós-redesign Fase 4:
 --   • Modo "rewards": gera 3 cartas (post-battle).
---   • Modo "shop":    gera 4 cartas + 1 voucher (upgrade) + 2 booster packs.
+--   • Modo "shop":    gera 4 cartas + 3 relíquias (tesoura e bancada fixas
+--                     + 1 sorteada) + 1 booster pack.
 --   • Reroll linear 4→6→8→...→30 (base + 2 por reroll, teto 30).
 --   • Booster packs como ofertas próprias (Fase 5 implementa abertura).
 
@@ -101,8 +102,14 @@ local MODE_CONFIG = {
         -- (CardRewardScreen:updateLayout) — com 2+2 as duas fileiras passam a
         -- ter 4 colunas e ficam alinhadas coluna a coluna, o que antes (3
         -- contra 4) não acontecia.
-        upgrades = 2,
-        boosters = 2,
+        -- 3 (Out/2026): tesoura e bancada de coringa são FIXAS; a terceira
+        -- vaga sorteia o resto. Fixa indisponível (deck no osso, bancada no
+        -- teto) devolve a vaga ao sorteio — sempre 3 relíquias na prateleira.
+        -- Pacotes 2 -> 1 pra fileira 2 continuar com 4 células alinhadas à
+        -- fileira 1: com 3+2 as 5 células encolhiam TODAS as cartas da loja
+        -- e cortavam o nome das relíquias ("Ban...") em 1024x768.
+        upgrades = 3,
+        boosters = 1,
         canReroll = true,
         canSkip = true,
         skipBonus = 3,  -- ouro extra ao pular a loja

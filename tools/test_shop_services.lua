@@ -136,18 +136,39 @@ function M.run()
     -- Deck acima do minimo pra tesoura poder aparecer.
     for _ = 1, 4 do game.runManager:addCardToDeck("warrior_strike") end
 
-    local semTesoura, repetida = 0, 0
+    local semTesoura, semBancada, repetida = 0, 0, 0
     for _ = 1, 12 do
         local shop = openShop(game, "shop")
         local ids = upgradeIds(shop:getCurrentOffers())
         if not ids.remove_card then semTesoura = semTesoura + 1 end
+        if not ids.joker_slot then semBancada = semBancada + 1 end
         for _, n in pairs(ids) do if n > 1 then repetida = repetida + 1 end end
     end
     t:eq("tesoura aparece em TODA vitrine de loja", semTesoura, 0)
+    -- Out/2026 (queixa do dono: "nao consigo alcancar a bancada"): FIXA.
+    t:eq("bancada de coringa aparece em TODA vitrine de loja", semBancada, 0)
+
+    -- Teto de compras batido: a bancada SOME e a vaga volta pro sorteio
+    -- (a prateleira continua com 3 reliquias, nenhuma delas a bancada).
+    for _ = 1, Config.Offers.SERVICES.joker_slot.maxPerRun do
+        game.runManager:registerService("joker_slot")
+    end
+    local comBancada, nUpg = 0, 0
+    for _ = 1, 8 do
+        local shop = openShop(game, "shop")
+        local ids = upgradeIds(shop:getCurrentOffers())
+        if ids.joker_slot then comBancada = comBancada + 1 end
+        for _, n in pairs(ids) do nUpg = nUpg + n end
+    end
+    t:eq("bancada no teto: some da vitrine", comBancada, 0)
+    t:eq("bancada no teto: vaga devolvida ao sorteio (3 por loja)", nUpg, 8 * 3)
+    -- devolve o estado pros asserts abaixo
+    game = TK.newRunGame("warrior")
+    for _ = 1, 4 do game.runManager:addCardToDeck("warrior_strike") end
     t:eq("nenhuma reliquia aparece duas vezes na mesma loja", repetida, 0)
 
     local shopCfg = ShopSystem:new():getModeConfig()
-    t:eq("loja abre 2 vagas de reliquia", shopCfg.upgrades, 2)
+    t:eq("loja abre 3 vagas de reliquia", shopCfg.upgrades, 3)
 
     local semServico = true
     for _ = 1, 6 do
@@ -194,10 +215,14 @@ function M.run()
         rmPeso:addJokerToRun("joker_001")
     end
     local pesoComBancada = ShopServices.weight("joker_slot", rmPeso)
-    t:truthy("bancada de coringa pesa MAIS quando ha coringa parado",
-        pesoComBancada > pesoLivre)
+    -- Desde Out/2026 a bancada e FIXA (peso 0, fora do sorteio); o
+    -- multiplicador de pressao continua valendo se ela voltar a rotacionar.
+    t:truthy("bancada de coringa nunca pesa MENOS com coringa parado",
+        pesoComBancada >= pesoLivre)
     t:eq("sem coringa parado, o peso e o do catalogo",
         pesoLivre, ShopServices.get("joker_slot").weight)
+    t:truthy("bancada de coringa e fixa na prateleira",
+        ShopServices.get("joker_slot").fixture == true)
 
     -- ========================================================================
     -- 4. EFEITO REAL: slot de coringa e compra extra
