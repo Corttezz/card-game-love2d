@@ -275,6 +275,21 @@ function SettingsMenu:_tabs()
             toggle("reduced_motion", "settings.reduced_motion",
                 function() return gs().reducedMotion and true or false end,
                 function(v) gs().reducedMotion = v end),
+            -- Onboarding (src/systems/Tutorial): liga/desliga as dicas e
+            -- "Rever as dicas" esquece as já vistas (perfil).
+            { key = "tips", kind = "toggle", label = I18n.t("tutorial.settings_tips"),
+              get = function() return gs().tipsEnabled ~= false end,
+              step = function() gs().tipsEnabled = not (gs().tipsEnabled ~= false) end },
+            { key = "tips_reset", kind = "cycle", label = I18n.t("tutorial.settings_reset"),
+              get = function()
+                  local n = require("engine.ProfileStats").tipsSeenCount()
+                  if n == 0 then return I18n.t("tutorial.settings_reset_done") end
+                  return I18n.t("tutorial.settings_reset_value", { n = n })
+              end,
+              step = function()
+                  require("src.systems.Tutorial").resetAll()
+                  gs().tipsEnabled = true
+              end },
         } },
         { key = "language", label = I18n.t("settings.language"), rows = languageRows(menu) },
     }
@@ -489,6 +504,7 @@ function SettingsMenu:_persist()
         screenshake   = g.screenshake or 1.0,
         combatSpeed   = tonumber(g.combatSpeed) or 1,
         uiScale       = tonumber(g.uiScale) or 1,
+        tipsEnabled   = g.tipsEnabled ~= false,
         locale        = I18n.getLocale(),
     }
     for k, v in pairs(snapshot) do g[k] = v end

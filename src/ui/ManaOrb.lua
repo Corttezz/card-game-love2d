@@ -71,6 +71,17 @@ function ManaOrb:draw(player)
     local cx, cy = self.x, self.y
     local r = self.radius
 
+    -- Hover → tooltip explicando a mana (auditoria de onboarding: o orbe
+    -- mostrava "2/3" e nada dizia o que era).
+    do
+        local mx, my = love.mouse.getPosition()
+        local dx, dy = mx - cx, my - cy
+        if dx * dx + dy * dy <= r * r then
+            require("src.ui.StatusTooltip").show("mana", mx, my,
+                { stacks = math.floor(actual), duration = maxMana })
+        end
+    end
+
     -- Sombra no chão
     love.graphics.setColor(0, 0, 0, 0.45)
     love.graphics.ellipse("fill", cx, cy + r + 2, r * 0.8, 4)

@@ -169,6 +169,8 @@ menu → classSelection → playing
 - `r` (reinicia) e `1/2/3/4`/`0` (presets de smoke) só existem no **modo clássico em DEV** — numa run eram armadilha (R recriava o player e o checkpoint gravava isso). A tecla `f` foi removida: fullscreen só por **Configurações → Vídeo** ou arrastando a borda.
 - **Gamepad**: só dentro de modais (D-pad/A/B/ombros) + START/BACK pausa durante a run.
 - `esc` no menu principal pede confirmação antes de sair; "Jogar" com corrida salva pede confirmação.
+- `g`: abre o **Guia** (combos gerados do ComboSystem + glossário de palavras-chave) em qualquer tela da run; também pelo atalho "Guia [G]" da Pausa (`components/GuideScreen.lua`).
+- **Dicas de tutorial** (`src/systems/Tutorial.lua`, `memory/onboarding.md`): 1ª vez de cada assunto, ANCORADAS no objeto (placa com seta, nunca rodapé), uma por vez com o combate parado; clique/Enter/A/Esc fecham; vistas no perfil; Configurações → Jogo liga/desliga e "Rever as dicas". Objeto novo que mereça dica: reporte `Tutorial.anchor(id, ...)` no draw dele.
 - `d` / `j` / `m`: abrem, em qualquer tela da run (inclusive descanso, evento e cash out), o **Deck Viewer**, o **Gerenciador de Coringas** e o **Roteiro da jornada**. Os três também abrem por clique no bloco correspondente (deck / quadro de coringas / indicador de ATO).
 - `esc`: abre/fecha o **PauseMenu** nos estados de run (playing/mapSelection/rest/event) — sair, salvar e abandonar são decisões DENTRO do pause. Em gameOver/victory volta ao menu direto.
 

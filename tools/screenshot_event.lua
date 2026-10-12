@@ -84,6 +84,13 @@ function M.run(only)
         love.graphics.origin()
         love.graphics.clear(0, 0, 0, 1)
         screen:draw()
+        -- TUT_TIP=<id>: a placa de dica do tutorial por cima (onboarding)
+        if os.getenv("TUT_TIP") then
+            local Tutorial = require("src.systems.Tutorial")
+            Tutorial.setScreens({ event = screen })
+            Tutorial._show(os.getenv("TUT_TIP"))
+            Tutorial.draw()
+        end
         love.graphics.setCanvas()
 
         local name = "event_" .. loc .. ".png"

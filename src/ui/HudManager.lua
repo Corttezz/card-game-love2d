@@ -73,6 +73,20 @@ function HudManager:draw(game)
         -- slots vazios ensinam o cap de 3 — padrão StS/Defect).
         OrbRow.draw(game, self.playerPanel.x, self.playerPanel.y)
         self.manaOrb:draw(game.player)
+
+        -- Âncoras das dicas do tutorial (src/systems/Tutorial): o painel do
+        -- herói (Bloqueio), o orbe de mana e a faixa dos orbes logo acima das
+        -- pills — mesma geometria que acabou de ser desenhada.
+        local Tutorial = require("src.systems.Tutorial")
+        local pp, mo = self.playerPanel, self.manaOrb
+        Tutorial.anchor("player_panel", pp.x, pp.y, pp.width, pp.height)
+        if mo.x and mo.radius then
+            Tutorial.anchor("mana", mo.x - mo.radius, mo.y - mo.radius, mo.radius * 2, mo.radius * 2)
+        end
+        if #(game.player.orbs or {}) > 0 then
+            local bandTop = PlayerBuffPills.getBandTop(pp.y)
+            Tutorial.anchor("orbs", pp.x, bandTop - 84, 3 * 58, 78)
+        end
     end
 
     love.graphics.setColor(oldR, oldG, oldB, oldA)

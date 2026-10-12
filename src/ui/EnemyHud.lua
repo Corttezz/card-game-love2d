@@ -438,6 +438,9 @@ function EnemyHud.drawIntent(enemy, cx, topY, boxXOverride, boxYOverride, player
         icon.draw(iconX, iconY, scale)
     end
 
+    -- Âncora da dica "o inimigo anuncia o golpe" (src/systems/Tutorial).
+    require("src.systems.Tutorial").anchor("intent", boxX, boxY, boxW, boxH)
+
     -- Hover no box → tooltip com o NOME do golpe e o que ele faz, montado dos
     -- números congelados (intentSpec). Clareza total.
     do

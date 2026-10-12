@@ -195,6 +195,9 @@ local function shortcutDefs(self)
           action = open(self.callbacks.onOpenJokers) },
         { key = "journal", hotkey = "m", icon = "scroll", label = I18n.t("pause.shortcut_journal"),
           action = open(self.callbacks.onOpenJournal) },
+        -- Guia de combos + glossário (onboarding, Out/2026)
+        { key = "guide",   hotkey = "g", icon = "question", label = I18n.t("tutorial.guide.pause_shortcut"),
+          action = open(self.callbacks.onOpenGuide) },
     }
 end
 

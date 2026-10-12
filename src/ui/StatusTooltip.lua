@@ -160,6 +160,11 @@ local function resolveTexts(statusName, ctx)
         and I18n.t("enemy_kit.status." .. statusName .. ".name", nil, "") ~= "" then
         ns = "enemy_kit.status."
     end
+    -- Verbetes do onboarding (mana...) moram em `tutorial.status`.
+    if ns == "status." and I18n.t("status." .. statusName .. ".name", nil, "") == ""
+        and I18n.t("tutorial.status." .. statusName .. ".name", nil, "") ~= "" then
+        ns = "tutorial.status."
+    end
     local nameKey = ns .. statusName .. ".name"
     local descKey = ns .. statusName .. ".desc"
     local name = I18n.t(nameKey, nil, capitalize(statusName))

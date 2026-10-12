@@ -41,6 +41,7 @@ function M.run(mode)
 
     local I18n = require("src.i18n.I18n")
     I18n.init()
+    if os.getenv("TUT_LOCALE") then I18n.setLocale(os.getenv("TUT_LOCALE"), true) end
     require("src.ui.PixelCanvas").enableNearest()
 
     local Game = require("src.core.Game")
@@ -155,6 +156,15 @@ function M.run(mode)
     if vcanvas then love.graphics.setCanvas(vcanvas) end
     love.graphics.clear(0, 0, 0, 1)
     GameplayScene.draw()
+    -- TUT_TIP=<id>: desenha a placa de dica do tutorial por cima (as âncoras
+    -- acabaram de ser reportadas por este draw). TUT_LOCALE troca o idioma.
+    if os.getenv("TUT_TIP") then
+        local Tutorial = require("src.systems.Tutorial")
+        if os.getenv("TUT_SELECT") then game.selectedCards = { game.hand[1] } end
+        Tutorial._show(os.getenv("TUT_TIP"))
+        Tutorial.draw()
+        mode = mode .. "_tip_" .. os.getenv("TUT_TIP") .. "_" .. (os.getenv("TUT_LOCALE") or "pt_BR")
+    end
     -- Tooltip do golpe: 2ª passada com o mouse em cima do intent (a 1ª
     -- passada calcula o layout real do cluster).
     if os.getenv("ENEMY_SCENE_HOVER") == "1" then

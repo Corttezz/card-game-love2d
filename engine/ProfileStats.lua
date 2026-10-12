@@ -42,6 +42,7 @@ local DEFAULTS = {
     counters = {},      -- { cardsPlayed = N, forges = N }
     cardsSeen = {},     -- { [cardId] = true } (Bibliotecário)
     winsByClass = {},   -- { warrior = true, ... } (Trindade)
+    tipsSeen = {},      -- { [tipId] = true } dicas do tutorial já vistas (src/systems/Tutorial)
 }
 
 local cache = nil
@@ -55,6 +56,7 @@ local function load()
     cache.counters = {}
     cache.cardsSeen = {}
     cache.winsByClass = {}
+    cache.tipsSeen = {}
     -- Perfil e DADO, nunca codigo: readDataFile recusa bytecode e roda o
     -- chunk sem acesso a os/io; se o principal não parseia, tenta .tmp/.bak.
     local data, info = SaveManager.readDataFile(testPath or PATH)
@@ -173,6 +175,39 @@ function ProfileStats.markSeen(cardId)
     s.cardsSeen[cardId] = true
 end
 
+-- ===== Dicas do tutorial (Out/2026) =====
+-- Cada dica aparece UMA vez por perfil. Marcar grava na hora (é raro: ~15
+-- dicas na vida do jogador) — fechar o jogo logo depois não pode re-mostrar.
+function ProfileStats.isTipSeen(id)
+    local s = load()
+    return s.tipsSeen ~= nil and s.tipsSeen[id] == true
+end
+
+function ProfileStats.markTipSeen(id)
+    if not id then return end
+    local s = load()
+    s.tipsSeen = s.tipsSeen or {}
+    if s.tipsSeen[id] then return end
+    s.tipsSeen[id] = true
+    save()
+end
+
+-- Configurações → Jogo → "Rever as dicas": esquece todas. Devolve quantas.
+function ProfileStats.resetTips()
+    local s = load()
+    local n = 0
+    for _ in pairs(s.tipsSeen or {}) do n = n + 1 end
+    s.tipsSeen = {}
+    save()
+    return n
+end
+
+function ProfileStats.tipsSeenCount()
+    local n = 0
+    for _ in pairs(load().tipsSeen or {}) do n = n + 1 end
+    return n
+end
+
 function ProfileStats.flush()
     save()
 end
@@ -188,6 +223,7 @@ function ProfileStats._swapForTests(tbl)
         tbl.counters = tbl.counters or {}
         tbl.cardsSeen = tbl.cardsSeen or {}
         tbl.winsByClass = tbl.winsByClass or {}
+        tbl.tipsSeen = tbl.tipsSeen or {}
         for k, v in pairs(DEFAULTS) do
             if tbl[k] == nil and type(v) ~= "table" then tbl[k] = v end
         end

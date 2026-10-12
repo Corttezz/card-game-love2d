@@ -1421,6 +1421,8 @@ return {
 
     -- Kit dos inimigos (golpes nomeados, tooltip do intent, debuffs no jogador)
     enemy_kit = require("src.i18n.locales.enemy_kit.en"),
+    -- Onboarding: dicas ancoradas, Guia de combos/glossario, tooltip da mana
+    tutorial = require("src.i18n.locales.tutorial.en"),
 
     -- Dados do Escriba (aposta opcional da loja)
     scribe_dice = require("src.i18n.locales.scribe_dice.en"),

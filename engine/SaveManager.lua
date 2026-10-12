@@ -57,6 +57,8 @@ local DEFAULT_SETTINGS = {
     combatSpeed   = 1,
     -- Escala da interface (src/ui/UiScale): multiplicador sobre o Auto.
     uiScale       = 1,
+    -- Dicas do tutorial (src/systems/Tutorial): Configurações → Jogo.
+    tipsEnabled   = true,
 }
 
 SaveManager.PATHS = PATHS

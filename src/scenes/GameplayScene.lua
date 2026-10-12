@@ -839,6 +839,7 @@ function GameplayScene.draw()
     if game.messageSystem then game.messageSystem:draw() end
 
     drawJokersAsCards()
+    GameplayScene._reportTutorialAnchors()
 
     -- Banner de COMBO: DEPOIS da mão e depois do combatAnimationSystem (que
     -- drawJokersAsCards desenha no fim) — as cartas do turno passavam por
@@ -1271,6 +1272,37 @@ function GameplayScene.keypressed(key)
     elseif key == "0" then
         if smokeSystem then smokeSystem:clear() end
     end
+end
+
+-- Âncoras das dicas do tutorial (src/systems/Tutorial): mão, JOGAR, ENCERRAR
+-- TURNO e o quadro de coringas, reportados no MESMO espaço em que acabaram de
+-- ser desenhados (o Tutorial converte pra pixels reais).
+function GameplayScene._reportTutorialAnchors()
+    if not game then return end
+    local Tutorial = require("src.systems.Tutorial")
+    local x1, y1, x2, y2
+    for _, c in ipairs(game.hand or {}) do
+        if c.renderX and c.renderY then
+            local cw = (c.image and c.image.getWidth and c.image:getWidth() or 96)
+                * (c.scale or c.baseScale or 1.333)
+            local ch = (c.image and c.image.getHeight and c.image:getHeight() or 144)
+                * (c.scale or c.baseScale or 1.333)
+            x1 = math.min(x1 or c.renderX, c.renderX)
+            y1 = math.min(y1 or c.renderY, c.renderY)
+            x2 = math.max(x2 or (c.renderX + cw), c.renderX + cw)
+            y2 = math.max(y2 or (c.renderY + ch), c.renderY + ch)
+        end
+    end
+    if x1 then Tutorial.anchor("hand", x1, y1, x2 - x1, y2 - y1) end
+    if playButton then
+        Tutorial.anchor("play", playButton.x, playButton.y, playButton.width, playButton.height)
+    end
+    if endTurnButton then
+        Tutorial.anchor("end_turn", endTurnButton.x, endTurnButton.y,
+            endTurnButton.width, endTurnButton.height)
+    end
+    local g = jokerFrameGeometry()
+    if g and g.w and g.w > 0 then Tutorial.anchor("jokers", g.x, g.y, g.w, g.h) end
 end
 
 return GameplayScene

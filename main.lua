@@ -1685,6 +1685,12 @@ function love.load(loveArgs)
     _G.toggleRunJournal = function()
         if _G.runJournalScreen then _G.runJournalScreen:toggle(game) end
     end
+    -- GUIA (combos + glossário): atalho da pausa OU tecla G. _G pelo teto de
+    -- upvalues do love.load.
+    _G.guideScreen = require("components.GuideScreen"):new()
+    _G.toggleGuide = function()
+        if _G.guideScreen then _G.guideScreen:toggle(game) end
+    end
 
     -- DADOS DO ESCRIBA (aposta opcional da loja). _G pelo teto de upvalues;
     -- quem abre (CardRewardScreen) passa o game e o callback de fechamento.
@@ -1723,6 +1729,9 @@ function love.load(loveArgs)
             end,
             onOpenJournal = function()
                 if _G.toggleRunJournal then _G.toggleRunJournal() end
+            end,
+            onOpenGuide = function()
+                if _G.toggleGuide then _G.toggleGuide() end
             end,
             onSaveQuit = function()
                 -- Run ativa fica GUARDADA. checkpointRun (não saveRun cru!):
@@ -1818,6 +1827,12 @@ function love.load(loveArgs)
         IF.register("settings",     settingsMenu)
         -- Confirmação genérica (Jogar com save, sair do jogo): por cima de tudo.
         IF.register("confirm",      require("src.ui.ConfirmDialog").handle)
+        -- Guia (combos/glossário) e, por cima de TUDO, a placa de dica do
+        -- tutorial: enquanto ela está na tela, o clique/tecla/A é dela.
+        IF.register("guide",        _G.guideScreen)
+        IF.register("tutorialTip",  require("src.systems.Tutorial").overlay)
+        require("src.systems.Tutorial").setScreens({
+            cardReward = cardRewardScreen, rest = restScreen, event = eventScreen })
     end
 
 
@@ -2062,6 +2077,7 @@ function love.update(dt)
     FloatingText.update(dt)
     require("src.ui.CoinBurst").update(dt)
     require("src.ui.AchievementToast").update(dt); require("src.systems.SteamBridge").update()
+    require("src.systems.Tutorial").update(dt, currentState, game)
     if audioSystem then audioSystem:update(dt) end
     -- Trilha por contexto: o diretor observa o estado e troca de faixa com
     -- crossfade. Idempotente — chamar todo frame é o desenho, não descuido
@@ -2307,6 +2323,11 @@ function love.draw()
     if pauseMenu then IF.push("pause"); pauseMenu:draw(); IF.pop() end
     if settingsMenu then IF.push("settings"); settingsMenu:draw(); IF.pop() end
     IF.push("confirm"); require("src.ui.ConfirmDialog").draw(); IF.pop()
+    -- Guia e placa de dica do tutorial (pixels reais; a placa escala sozinha).
+    if _G.guideScreen and _G.guideScreen:isVisible() then
+        IF.push("guide"); _G.guideScreen:draw(); IF.pop()
+    end
+    IF.push("tutorialTip"); require("src.systems.Tutorial").draw(); IF.pop()
 
     -- Toast de conquista: acima de overlays, abaixo do cursor (qualquer estado).
     require("src.ui.AchievementToast").draw()
@@ -2439,6 +2460,12 @@ function love.keypressed(key)
     -- Tecla M abre o Roteiro da jornada em qualquer tela da run
     if key == "m" and runScreen and game and game.isRunMode then
         _G.toggleRunJournal()
+        return
+    end
+
+    -- Tecla G abre o Guia (combos + glossário) em qualquer tela da run
+    if key == "g" and runScreen and game and game.isRunMode and _G.toggleGuide then
+        _G.toggleGuide()
         return
     end
 
