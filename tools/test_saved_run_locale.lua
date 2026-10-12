@@ -42,9 +42,13 @@ function M.run()
         local WorldRoad = require("src.ui.WorldRoad")
         local MapManager = require("src.systems.MapManager")
         local label, desc = WorldRoad.forkLabel(node)
-        t:eq("marco da encruzilhada no idioma novo", label, MapManager.labelFor(node.type))
-        t:truthy("…e não o texto gravado em PT (" .. tostring(ptLabel) .. " → " .. tostring(label) .. ")",
-            label ~= ptLabel)
+        local deWant = I18n.t("node_type." .. node.type .. ".label", nil, "")
+        t:truthy("o tipo tem rótulo em de", deWant ~= "")
+        t:eq("marco da encruzilhada no idioma novo (" .. tostring(ptLabel) .. " → " .. tostring(label) .. ")",
+            label, deWant)
+        -- prova de que NÃO é o texto gravado: um nó com rótulo gravado falso
+        t:eq("o texto gravado no nó é ignorado quando o tipo tem chave",
+            (WorldRoad.forkLabel({ type = node.type, label = "GRAVADO-PT" })), deWant)
         t:eq("descrição do marco no idioma novo", desc, MapManager.descFor(node.type))
         t:eq("nó de tipo desconhecido cai no texto gravado",
             (WorldRoad.forkLabel({ type = "tipo_inexistente", label = "X" })), "X")

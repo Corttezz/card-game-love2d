@@ -3631,11 +3631,24 @@ end
 -- Rótulo/descrição do marco no idioma ATUAL, pelo tipo do nó. O nó salvo
 -- carrega `label`/`desc` no idioma em que foi gerado (save antigo, troca de
 -- idioma com a run salva) — só vale como último recurso, pra tipo sem chave.
+-- Cache por (idioma, tipo): roda a cada quadro no draw da encruzilhada e o
+-- I18n.t aloca (test_perf_budget: 386 KB/quadro sem o cache). Troca de
+-- idioma invalida sozinha (a chave inclui o locale). Mora em campo do
+-- módulo, não em `local`: o arquivo está no teto de 200 locais do LuaJIT.
+WorldRoad._forkLabelCache = { locale = nil, byType = {} }
 function WorldRoad.forkLabel(node)
     if not node then return "?" end
     local MapManager = require("src.systems.MapManager")
     if node.type and MapManager.NODE_META and MapManager.NODE_META[node.type] then
-        return MapManager.labelFor(node.type), MapManager.descFor(node.type)
+        local cache = WorldRoad._forkLabelCache
+        local loc = require("src.i18n.I18n").getLocale()
+        if loc ~= cache.locale then cache.locale, cache.byType = loc, {} end
+        local c = cache.byType[node.type]
+        if not c then
+            c = { MapManager.labelFor(node.type), MapManager.descFor(node.type) }
+            cache.byType[node.type] = c
+        end
+        return c[1], c[2]
     end
     return node.label or tostring(node.type or "?"), node.desc
 end
