@@ -2117,7 +2117,7 @@ function Game:nextPhase()
         -- kit dele (src/data/enemies.lua) traz golpes, vida e dano próprios.
         local EnemyRoster = require("src.systems.EnemyRoster")
         local enemyId = EnemyRoster.resolveNode(run, run.currentNode, nodeType)
-        self.enemy = EnemyRoster.spawn(Enemy, enemyId, stats)
+        self.enemy = EnemyRoster.spawn(Enemy, enemyId, stats, run.actNumber)
         EnemyRoster.remember(run, enemyId)
         -- (P0.0 Jul/2026: scoreSystem:startBattle + applyClassBattleStartPassive
         -- DUPLICADOS aqui foram removidos — a passiva rodava 2x por batalha em
@@ -2259,7 +2259,7 @@ function Game:resumeRun()
     -- re-sorteia (EnemyRoster).
     local EnemyRoster = require("src.systems.EnemyRoster")
     local enemyId = EnemyRoster.resolveNode(run, run.currentNode, nodeType)
-    self.enemy = EnemyRoster.spawn(Enemy, enemyId, stats)
+    self.enemy = EnemyRoster.spawn(Enemy, enemyId, stats, run.actNumber)
     self.battleTurn = 0
     self.scoreSystem:startBattle()
     self:applyClassBattleStartPassive()
