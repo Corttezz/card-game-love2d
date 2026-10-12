@@ -375,6 +375,7 @@ return {
         forge_title  = "Forge",
         forge_sub    = "+1 level on one card",
         forge_detail = "Improves what the card HAS (no cap)",
+        heal_full    = "Full HP: resting heals nothing",
 
         -- Picker: forge
         pick_forge_title = "Forge",

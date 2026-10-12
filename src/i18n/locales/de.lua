@@ -372,6 +372,7 @@ return {
         forge_title  = "Schmieden",
         forge_sub    = "+1 Stufe auf eine Karte",
         forge_detail = "Verbessert, was die Karte HAT (ohne Limit)",
+        heal_full    = "Volle LP: Rasten heilt nichts",
 
         -- Auswahl: schmieden
         pick_forge_title = "Schmieden",

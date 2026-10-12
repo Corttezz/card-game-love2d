@@ -227,11 +227,16 @@ function RestScreen:buildChooseButtons()
              .. "  ->  " .. healTo .. "/" .. p.maxHealth)
         or ""
 
+    -- Vida cheia: descansar continua possível (StS também deixa), mas a
+    -- carta AVISA no próprio objeto e apaga — antes oferecia "+30% HP" sem
+    -- dizer que não curaria nada (auditoria de UI, Out/2026).
+    local full = p and p.health >= p.maxHealth
     local heal = {
         x = leftX, y = cy, w = cw, h = chh,
         icon = "heart", title = I18n.t("rest.heal_title"),
         sub = I18n.t("rest.heal_sub"),
-        detail = healDetail,
+        detail = full and I18n.t("rest.heal_full") or healDetail,
+        muted = full,
     }
     heal.btn = Button:new(leftX, cy, cw, chh, "",
         function() self:doHeal() end)
@@ -1537,7 +1542,7 @@ local function drawChoiceCard(c)
 
     local tf = FontManager.getFont(16)
     love.graphics.setFont(tf)
-    Palette.set(hover and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT_LIGHT)
+    Palette.set(hover and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT_LIGHT, c.muted and 0.5 or 1)
     love.graphics.print(c.title,
         math.floor(c.x + c.w / 2 - tf:getWidth(c.title) / 2), y + 96)
 
@@ -1548,9 +1553,24 @@ local function drawChoiceCard(c)
     TextFit.print(c.sub, c.x + 12, y + 126,
         { size = 10, maxW = c.w - 24, align = "center" })
 
-    Palette.set(Palette.PARCHMENT)
-    TextFit.print(c.detail, c.x + 12, y + 154,
-        { size = 10, maxW = c.w - 24, align = "center" })
+    -- detail QUEBRA em até 2 linhas (o da forja — "Melhora o que a carta
+    -- TEM (sem limite)" — era cortado com reticências numa linha só); só
+    -- se nem assim couber a fonte desce.
+    local size, lines, df = 10
+    repeat
+        df = FontManager.getFont(size)
+        lines = select(2, df:getWrap(c.detail or "", c.w - 24))
+        size = size - 1
+    until #lines <= 2 or size < 8
+    love.graphics.setFont(df)
+    Palette.set(c.muted and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT)
+    local lh = math.floor(df:getHeight() * 1.35)
+    local dy = y + 150
+    for i = 1, math.min(2, #lines) do
+        local line = lines[i]
+        love.graphics.print(line, math.floor(c.x + c.w / 2 - df:getWidth(line) / 2), dy)
+        dy = dy + lh
+    end
 end
 
 function RestScreen:draw()

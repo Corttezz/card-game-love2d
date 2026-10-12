@@ -393,6 +393,7 @@ return {
         forge_title  = "Forjar",
         forge_sub    = "+1 nível em uma carta",
         forge_detail = "Melhora o que a carta TEM (sem limite)",
+        heal_full    = "Vida cheia: descansar não cura nada",
 
         -- Picker: forjar
         pick_forge_title = "Forjar",

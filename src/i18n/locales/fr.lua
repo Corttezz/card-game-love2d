@@ -372,6 +372,7 @@ return {
         forge_title  = "Forger",
         forge_sub    = "+1 niveau sur une carte",
         forge_detail = "Améliore ce que la carte A (sans limite)",
+        heal_full    = "PV au maximum : se reposer ne soigne rien",
 
         -- Selecteur : forger
         pick_forge_title = "Forger",
