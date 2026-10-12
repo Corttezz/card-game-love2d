@@ -10,6 +10,7 @@
 --   love . screenshot_enemy_scene 6_battle     → dusk_shade (flutuante)
 --
 -- ENEMY_SCENE_ID=<id> força o sprite (vale pra arte nova fora do roster).
+-- ENEMY_SCENE_INTENT="kind=multi,perHit=5,hits=3" força o intent do HUD.
 -- Sufixo "_hud" desenha a cena SEM o HUD/mão (default inclui tudo, que é o
 -- que o jogador vê). Saída: enemy_scene_<modo>.png no save dir.
 --
@@ -65,6 +66,7 @@ function M.run(mode)
     game.enemy.spriteId = (forcedId and forcedId ~= "") and forcedId
         or EnemyRenderer.resolveSpriteId(act, nodeType)
     game.enemy.isBoss = (nodeType == "boss")
+
 
     -- KIT DO INIMIGO (Out/2026): monta o inimigo pelo roster (kit + stats do
     -- ato) e, com ENEMY_SCENE_MOVE=<id do golpe>, anuncia aquele golpe — é o
@@ -122,6 +124,27 @@ function M.run(mode)
         lastL = L
         return L
     end
+    -- ENEMY_SCENE_INTENT="kind=multi,perHit=5,hits=3,pierce=1,debuff=frail":
+    -- força o intent mostrado no HUD (validação dos ícones de intent).
+    local intentSpec = os.getenv("ENEMY_SCENE_INTENT")
+    if intentSpec and intentSpec ~= "" then
+        local it = { perHit = 0, hits = 0, armor = 0, strength = 0, heal = 0,
+            summon = 0, debuffs = {} }
+        for k, v in intentSpec:gmatch("(%w+)=([%w_]+)") do
+            if k == "debuff" then
+                it.debuffs[#it.debuffs + 1] = { name = v, stacks = 2, duration = 2 }
+            elseif k == "kind" then it.kind = v
+            elseif k == "pierce" or k == "charge" then it[k] = (v == "1")
+            else it[k] = tonumber(v) or v end
+        end
+        it.id = it.id or it.kind
+        it.raw = it.perHit
+        mode = mode .. "_intent_" .. it.kind .. ((it.pierce and "_pierce") or "")
+        game.enemy.intent = it
+        game.enemy.nextIntent = it.kind
+        game.enemy.nextIntentDamage = it.raw
+    end
+
     if vcanvas then love.graphics.setCanvas(vcanvas) end
     love.graphics.clear(0, 0, 0, 1)
     GameplayScene.draw()
