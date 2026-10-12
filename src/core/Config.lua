@@ -251,6 +251,20 @@ Config.Economy = {
     VICTORY_GOLD_PER_ACT = 2,  -- +$2 por ato: A1 $5 ... A6 $15
     FULL_HP_BONUS        = 3,  -- bonus por terminar a batalha sem perder HP
 
+    -- BONUS DE RISCO (Out/2026, auditoria da economia): elite, mini-chefe e
+    -- chefe pagavam EXATAMENTE o mesmo que uma luta comum — o mapa prometia
+    -- risco e a bolsa nao pagava. Agora pagam uma linha a mais na folha do
+    -- cash out, proporcional a vitoria do ato.
+    --   elite: +1x a vitoria do ato · chefe do ato: +1x · mini-chefe: nada
+    -- O mini-chefe fica de fora DE PROPOSITO: ele e obrigatorio em todo ato,
+    -- entao bonus nele e so renda fixa disfarcada. A 1a versao (mini +1x,
+    -- chefe +2x) subiu a renda do A1 de $9,8 para $13,6/batalha e o winrate
+    -- do guerreiro do piloto de 42% para 83% na mesma bateria — risco tem que
+    -- ser ESCOLHA (elite) ou marco (chefe), nao imposto sobre a rota.
+    ELITE_BONUS_MULT    = 1,
+    MINIBOSS_BONUS_MULT = 0,
+    BOSS_BONUS_MULT     = 1,
+
     -- DADOS DO ESCRIBA (Out/2026): aposta opcional da loja, uma por visita.
     -- Logica e o PORQUE de cada numero em src/systems/ScribeDice.lua.
     -- PAYOUT = retorno total na vitoria; EV = chance x PAYOUT ~ 1,0 (justo):
@@ -270,6 +284,19 @@ function Config.Economy.victoryGold(act)
     act = math.max(1, math.floor(tonumber(act) or 1))
     return Config.Economy.VICTORY_GOLD_BASE
         + Config.Economy.VICTORY_GOLD_PER_ACT * (act - 1)
+end
+
+-- Bonus de risco do no (elite/mini_boss/boss) no ato `act`. 0 pra luta comum.
+function Config.Economy.nodeBonus(nodeType, act)
+    local mult = 0
+    if nodeType == "elite" then
+        mult = Config.Economy.ELITE_BONUS_MULT or 0
+    elseif nodeType == "mini_boss" then
+        mult = Config.Economy.MINIBOSS_BONUS_MULT or 0
+    elseif nodeType == "boss" then
+        mult = Config.Economy.BOSS_BONUS_MULT or 0
+    end
+    return math.floor(mult * Config.Economy.victoryGold(act))
 end
 
 -- ===== Ofertas de carta (recompensas + loja): pity e afinidade =====
@@ -334,10 +361,14 @@ Config.Offers = {
         -- 12, 19, 29, 45, 60(teto) — duplicar carta forjada é forte demais
         -- pra custar o mesmo que remover uma ruim.
         duplicate_card = { base = 12, mult = 1.55, max = 60, maxPerRun = 0 },
-        -- 30, 60 — o teto de 2 leva a bancada de 3 pra 5 coringas ATIVOS.
-        joker_slot     = { base = 30, mult = 2.0,  max = 90, maxPerRun = 2 },
-        -- 25, 55 — +1 carta por turno é motor puro; 2 é o teto.
-        card_draw_upgrade   = { base = 25, mult = 2.2,  max = 80, maxPerRun = 2 },
+        -- 20, 35 (era 30, 60 — Out/2026, queixa do dono: "a bancada de
+        -- coringa é cara demais"). Medido na bateria: o ouro na porta da loja
+        -- no ato 1 é ~$26, então $30 empurrava a PRIMEIRA bancada pro ato 2+
+        -- e a segunda ($60) pro ato 4. Com 20/35 a primeira cabe no ato 1 e
+        -- a segunda no ato 2-3. O teto de 2 leva a bancada de 3 pra 5 ATIVOS.
+        joker_slot     = { base = 20, mult = 1.75, max = 60, maxPerRun = 2 },
+        -- 22, 44 (era 25, 55) — +1 carta por turno é motor puro; 2 é o teto.
+        card_draw_upgrade   = { base = 22, mult = 2.0,  max = 60, maxPerRun = 2 },
         -- 25, 41, 68, 113, 150(teto) — ver INTEREST_CAP_* logo abaixo.
         -- SEM teto de compras (`maxPerRun = 0`): o pedido foi "aumentar
         -- sempre". Quem segura é o PREÇO, e ele segura de verdade — as cinco

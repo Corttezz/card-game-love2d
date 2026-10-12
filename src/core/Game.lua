@@ -1968,6 +1968,23 @@ function Game:_buildRoundEvalSources()
         })
     end
 
+    -- 2b) Bônus de RISCO do nó (Out/2026): elite e chefe do ato pagam uma
+    -- linha a mais (Config.Economy.nodeBonus) — antes pagavam igual a luta
+    -- comum e o mapa prometia um risco que a bolsa não cobria.
+    do
+        local run = self.isRunMode and self.runManager and self.runManager.currentRun
+        local nt = run and run.currentNode and run.currentNode.type
+        local bonus = Config.Economy.nodeBonus(nt, act)
+        if bonus > 0 then
+            table.insert(sources, {
+                label = I18n.t(nt == "boss" and "round_eval.src_boss" or "round_eval.src_elite",
+                    nil, nt == "boss" and "Chefe" or "Elite"),
+                dollars = bonus,
+                color = {0.95, 0.55, 0.30, 1},
+            })
+        end
+    end
+
     -- 3) Juros Balatro ($1 a cada $5, cap $5) — FONTE ÚNICA no
     -- EconomySystem:calculateInterest (a TopBar mostra o mesmo número).
     if self.economySystem then

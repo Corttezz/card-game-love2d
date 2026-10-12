@@ -193,6 +193,8 @@ return {
         total        = "TOTAL : ${n}",
         src_victory  = "Victoire",
         src_full_hp  = "PV au max",
+        src_elite    = "Élite vaincue",
+        src_boss     = "Boss vaincu",
         src_interest = "Intérêts (1$ pour 5$)",
         cash_out = "Encaisser ${n}",
     },

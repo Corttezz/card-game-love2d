@@ -208,6 +208,8 @@ return {
         total        = "TOTAL: ${n}",
         src_victory  = "Vitória",
         src_full_hp  = "HP cheio",
+        src_elite    = "Elite derrotada",
+        src_boss     = "Chefe derrotado",
         src_interest = "Juros (1$ a cada 5$)",
         cash_out = "Resgatar ${n}",
     },

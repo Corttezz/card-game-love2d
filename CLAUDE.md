@@ -301,7 +301,7 @@ Toda batalha é uma **fila de beats**: cada acontecimento (dano, buff/debuff no 
 Máquina de estados: `idle → cards_flying → processing → damage_dealing → complete`. Bloqueia a lógica do jogo via `isBlocking()`. Usa easing out-quart, escalas aumentadas (1.3x) no centro, números de dano flutuantes. Timings em `self.timings`.
 
 ### EconomySystem + ShopSystem
-`economySystem.currentGold` inicia em 10 na run. `earnBattleGold(phase, healthLost, consecutiveWins)` gera ouro + juros estilo TFT (10% do cofre, máx 50). Shop gera ofertas (70% cartas, 30% upgrades) com raridade 70%/25%/5% (common/uncommon/rare). `rollRarity` da shop é diferente do `CardRegistry:rollRarity()` (37/37/25/1 legendary).
+Ouro inicial $10; renda pela folha do cash out (`Game:_buildRoundEvalSources`): vitória `Config.Economy.victoryGold(ato)`, HP cheio, bônus de risco de elite/chefe (`Config.Economy.nodeBonus` — mini-chefe NÃO paga, é obrigatório) e juros Balatro `floor(ouro/5)` com teto comprável (Cofre). Loja: 4 cartas (raridade por ato, mesmo `pickRewardCard` das recompensas) + 2 relíquias (tesoura fixa + 1 rotativa, custos em `Config.Offers.SERVICES`) + 2 pacotes; reroll 4+2n. Tabela de preços antes/depois e números medidos em [`memory/balance_curves.md`](memory/balance_curves.md). **Dados do Escriba** (aposta opcional, 1/loja, EV ~justo, save no frame do sorteio): [`memory/scribe_dice.md`](memory/scribe_dice.md).
 
 ### HUD (redesign STS + Balatro)
 `HudManager` orquestra `HudPlayerPanel` (flat sepia com shield PNG pro armor), `PlayerBuffPills` (row acima do painel com strength/dexterity/focus), `OrbRow` (fileira de orbes ACIMA das pills — ver abaixo), e `ManaOrb` (canto inf-direito Balatro-style).

@@ -193,6 +193,8 @@ return {
         total        = "GESAMT: ${n}",
         src_victory  = "Sieg",
         src_full_hp  = "Volle LP",
+        src_elite    = "Elite besiegt",
+        src_boss     = "Boss besiegt",
         src_interest = "Zinsen (1$ je 5$)",
         cash_out = "Einlösen ${n}",
     },

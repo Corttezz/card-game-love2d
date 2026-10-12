@@ -40,7 +40,9 @@ ShopServices.CATALOG = {
     -- em ~1 de cada 6 lojas e a mecânica viraria decoração.
     { id = "remove_card",    effect = "remove_card",    picker = "remove",    weight = 0,   fixture = true },
     { id = "duplicate_card", effect = "duplicate_card", picker = "duplicate", weight = 0.8 },
-    { id = "joker_slot",     effect = "add_joker_slot", weight = 0.9 },
+    -- 1.3 (era 0.9): com seis candidatos na vaga rotativa ela aparecia em ~20%
+    -- das lojas (medido) — "dá pra alcançar?" depende de ELA APARECER.
+    { id = "joker_slot",     effect = "add_joker_slot", weight = 1.3 },
     { id = "card_draw_upgrade", effect = "increase_draw", weight = 0.8 },
     -- COFRE: levanta o teto dos juros. Peso menor que o resto de propósito —
     -- é a relíquia mais cara e a que o jogador precisa ver CEDO pra ela valer

@@ -61,6 +61,35 @@ function M.run()
     t:eq("reset zera goldSpent", eco.goldSpent, 0)
     t:eq("reset limpa histórico", #eco.purchaseHistory, 0)
 
+    -- ===== ALCANCE dos preços (auditoria Out/2026, queixa do dono) =====
+    -- Âncora MEDIDA na bateria (balance_sim, 36 runs): ouro na porta da loja
+    -- no ato 1 ≈ $26, renda ≈ $10/batalha no ato 1. Estes asserts não fixam
+    -- os números exatos — fixam a PROMESSA: a primeira bancada de coringa
+    -- cabe numa loja do ato 1, a segunda em ~3 batalhas a mais, a lendária
+    -- não fica fora da prateleira e o reroll não custa mais que duas comuns.
+    local Config = require("src.core.Config")
+    local ShopServices = require("src.systems.ShopServices")
+    local ShopSystem = require("src.systems.ShopSystem")
+    local PORTA_A1, RENDA_A1 = 26, 10
+    local fakeRm = { currentRun = { currentDeck = {} }, n = 0,
+        getServiceCount = function(self) return self.n end }
+    local slot1 = ShopServices.cost("joker_slot", fakeRm)
+    fakeRm.n = 1
+    local slot2 = ShopServices.cost("joker_slot", fakeRm)
+    t:truthy(("1ª bancada ($%d) cabe na porta da loja do A1 ($%d)"):format(slot1, PORTA_A1),
+        slot1 <= PORTA_A1)
+    t:truthy(("2ª bancada ($%d) ≤ 1ª + 2 batalhas do A1"):format(slot2), slot2 <= slot1 + 2 * RENDA_A1)
+    local shop = ShopSystem:new()
+    t:truthy("lendária ≤ porta do A1", shop:calculateCardCost("legendary") <= PORTA_A1)
+    t:truthy("reroll inicial ≤ 2 comuns",
+        shop:getRefreshCost() <= 2 * shop:calculateCardCost("common"))
+    -- Bônus de risco existe e é proporcional ao ato (sem ouro infinito: é
+    -- pago 1x por nó vencido, e nós são finitos).
+    t:truthy("elite paga bônus", Config.Economy.nodeBonus("elite", 1) > 0)
+    t:eq("luta comum sem bônus", Config.Economy.nodeBonus("battle", 1), 0)
+    t:truthy("chefe paga ao menos o que a elite paga",
+        Config.Economy.nodeBonus("boss", 3) >= Config.Economy.nodeBonus("elite", 3))
+
     return t:done()
 end
 

@@ -78,20 +78,20 @@ function M.run()
     -- Reroll linear Balatro-style: 5 → 7 → 9 → 11 (base + 2/reroll).
     shop = ShopSystem:new()
     shop:setMode("shop")
-    check("reroll inicial = 5", shop:getRefreshCost() == 5)
+    check("reroll inicial = 4", shop:getRefreshCost() == 4)
     shop:refreshOffers()
-    check("após 1 reroll, custo > 5", shop:getRefreshCost() > 5)
+    check("após 1 reroll, custo > 4", shop:getRefreshCost() > 4)
     shop:refreshOffers()
     local after2 = shop:getRefreshCost()
     shop:refreshOffers()
     local after3 = shop:getRefreshCost()
     check("reroll cresce monotonicamente", after3 > after2)
-    -- 5 + 2*3 = 11 (linear). Verifica magnitude correta.
-    check("3 rerolls produz 11 (5 + 2*3)", after3 == 11)
+    -- 4 + 2*3 = 10 (linear). Verifica magnitude correta.
+    check("3 rerolls produz 10 (4 + 2*3)", after3 == 10)
 
     -- setMode reseta reroll.
     shop:setMode("shop")
-    check("setMode reseta refresh count", shop:getRefreshCost() == 5)
+    check("setMode reseta refresh count", shop:getRefreshCost() == 4)
 
     -- BOOSTER_PACK_TYPES: catálogo exposto.
     local types = ShopSystem.getBoosterTypes()

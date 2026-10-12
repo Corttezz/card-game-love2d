@@ -193,6 +193,8 @@ return {
         total        = "TOTAL: ${n}",
         src_victory  = "Victoria",
         src_full_hp  = "Vida llena",
+        src_elite    = "Élite derrotada",
+        src_boss     = "Jefe derrotado",
         src_interest = "Intereses (1$ por cada 5$)",
         cash_out = "Cobrar ${n}",
     },

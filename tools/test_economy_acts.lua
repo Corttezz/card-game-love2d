@@ -87,6 +87,25 @@ function M.run()
     t:eq("o Game paga no ato " .. totalAtos .. " o mesmo que a formula",
         aN, Config.Economy.victoryGold(totalAtos))
 
+    -- ===== 3) bonus de RISCO do no (Out/2026) =====
+    -- Elite e chefe pagam uma linha a mais; luta comum e mini-chefe nao. Medido
+    -- na folha do Game (nao so na formula), pelo rotulo traduzido da linha.
+    local I18n = require("src.i18n.I18n")
+    local function bonusPago(nodeType, act)
+        game.runManager.currentRun.actNumber = act
+        game.runManager.currentRun.currentNode = { type = nodeType }
+        local want = I18n.t(nodeType == "boss" and "round_eval.src_boss" or "round_eval.src_elite")
+        for _, s in ipairs(game:_buildRoundEvalSources() or {}) do
+            if s.label == want then return s.dollars end
+        end
+        return 0
+    end
+    t:eq("luta comum: sem bonus", bonusPago("battle", 2), 0)
+    t:eq("elite no ato 2 paga +1x a vitoria", bonusPago("elite", 2), Config.Economy.victoryGold(2))
+    -- mini-chefe e obrigatorio em todo ato: bonus nele seria renda fixa.
+    t:eq("mini-chefe sem bonus (obrigatorio = nao e risco)", bonusPago("mini_boss", 3), 0)
+    t:eq("chefe paga +1x a vitoria", bonusPago("boss", 4), Config.Economy.victoryGold(4))
+
     return t:done()
 end
 

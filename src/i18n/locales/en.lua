@@ -195,6 +195,8 @@ return {
         total        = "TOTAL: ${n}",
         src_victory  = "Victory",
         src_full_hp  = "Full HP",
+        src_elite    = "Elite slain",
+        src_boss     = "Boss slain",
         src_interest = "Interest ($1 per $5)",
         cash_out = "Cash out ${n}",
     },

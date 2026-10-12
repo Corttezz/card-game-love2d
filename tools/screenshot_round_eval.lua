@@ -54,6 +54,10 @@ function M.run(phase, locale)
         game.economySystem.currentGold = 25
     end
 
+    -- ROUND_NODE=elite|boss|mini_boss: folha com o bônus de risco do nó.
+    if os.getenv("ROUND_NODE") then
+        game.runManager.currentRun.currentNode = { type = os.getenv("ROUND_NODE") }
+    end
     -- Sources de teste com 3 fontes (Vitória + HP cheio + Juros).
     local sources = game:_buildRoundEvalSources()
 

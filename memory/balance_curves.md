@@ -67,12 +67,54 @@ Valores boostados no rebalance pós-playtest — cada carta pesa mais, dado que 
 
 Cartas com efeito secundário forte recebem -1 a -3 no valor base.
 
-## Economia
+## Economia (auditoria Out/2026 — fontes: Config.Economy, Config.Offers, ShopSystem)
 
-- Ouro inicial: 10
-- Battle gold: `10 + floor*5 + bonus_sem_dano(5) + juros(10% * currentGold, cap 50)`
-- Shop card cost: `3 × rarityMultiplier` (common:1, uncommon:2, rare:3, legendary:5)
-- Shop refresh: `2 + refreshCount`
+> O bloco antigo daqui ("10 + floor*5", juros 10%, legendary ×5, refresh 2+n)
+> estava MORTO havia meses — nenhum desses números existia mais no código.
+
+**Renda** (cash out, `Game:_buildRoundEvalSources`):
+- Ouro inicial $10.
+- Vitória `5 + 2×(ato-1)` (A1 $5 … A6 $15) · HP cheio +$3 · juros `floor(ouro/5)`,
+  teto $5 (+2 por Cofre comprado).
+- **Bônus de risco** (Out/2026): elite +1× a vitória do ato, chefe do ato +1×.
+  Mini-chefe NÃO paga: é obrigatório, bônus nele é renda fixa disfarçada (a
+  1ª versão com mini +1×/chefe +2× subiu o winrate do guerreiro do piloto de
+  42% → 83%).
+- Pular a loja +$3. Dados do Escriba: EV ~justo, 1 jogada/loja ([[scribe_dice]]).
+
+**Preços** (antes → depois da auditoria):
+
+| item | antes | depois |
+|---|---|---|
+| carta comum / incomum / rara | $3 / $6 / $9 | igual |
+| carta lendária | $30 | **$21** |
+| pacote (5 tipos) | $4 | igual |
+| reroll | 5, 7, 9… teto 30 | **4, 6, 8…** teto 30 |
+| bancada de coringa (2/run) | $30, $60 | **$20, $35** (peso 0.9 → 1.3) |
+| grimório +1 compra (2/run) | $25, $55 | **$22, $44** |
+| cristal +1 mana | $25 | igual |
+| elixir +10 vida | $5 | igual |
+| forja | 5×1.35ⁿ (teto 60) | igual |
+| tesoura (remover) | 8×1.45ⁿ (teto 45) | igual |
+| prensa (duplicar) | 12×1.55ⁿ (teto 60) | igual |
+| cofre (+2 teto de juros) | 25×1.65ⁿ (teto 150) | igual |
+
+**Medido** (`love . balance_sim 12 <classe> 700000`, piloto v6, MESMO código,
+preços antigos via patch × novos; o relatório tem a seção "Economia por ato"):
+
+| | antigo (guerreiro) | novo (guerreiro) |
+|---|---|---|
+| renda/batalha A1 · A4 | $9,8 · $16,7 | $11,7 · $20,2 |
+| ouro na porta da loja A1 · A2 · A3 | $26 · $55 · $121 | $28 · $65 · $140 |
+| bancada na vitrine / cabia no bolso | 22% / 88% | 24% / 96% |
+| winrate (n=12, ±14pp) | 42% | 50% |
+
+Leitura: a 1ª bancada ($20) agora cabe na loja do A1 (porta ~$28); a 2ª
+($35) no A2. O piloto ENTESOURA do A3 em diante (porta $140+, compra no
+máximo 3 itens/loja) — isso é limite da política do bot, não falta de
+preço; não há ouro infinito (juros têm teto, bônus é por nó finito, dados
+1×/loja com EV ~1). Travas: `test_economy` (alcance dos preços),
+`test_economy_acts` (renda por ato + bônus de risco), `smoke_shop` (reroll).
 
 ## Smoke tests de balance
 

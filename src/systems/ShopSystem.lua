@@ -2,7 +2,7 @@
 -- Sistema de loja inspirado no TFT e Balatro. Pós-redesign Fase 4:
 --   • Modo "rewards": gera 3 cartas (post-battle).
 --   • Modo "shop":    gera 4 cartas + 1 voucher (upgrade) + 2 booster packs.
---   • Reroll exponencial 5→7→10→14→20 (multiplicador 1.4).
+--   • Reroll linear 4→6→8→...→30 (base + 2 por reroll, teto 30).
 --   • Booster packs como ofertas próprias (Fase 5 implementa abertura).
 
 local ShopSystem = {}
@@ -117,7 +117,9 @@ local CLASSIC_UPGRADE_WEIGHT = {
 }
 local FORGE_WEIGHT = 1.2
 
-local REROLL_BASE = 5
+-- 4 (era 5, Out/2026): o reroll custava mais que uma carta comum ($3) e
+-- o piloto rerolava em ~0 lojas por corrida — a ação existia só no papel.
+local REROLL_BASE = 4
 local REROLL_MULT = 1.4
 -- Cap pra reroll cost: sem isso o jogador pode trapar gold infinitamente em
 -- rerolls (5→7→10→...→2.4M após 20 cliques). Balatro tem cap análogo.
@@ -425,7 +427,9 @@ end
 
 function ShopSystem:calculateCardCost(rarity)
     local rarityMultipliers = {
-        common = 1, uncommon = 2, rare = 3, legendary = 10,
+        -- legendary 7 (era 10 = $30, Out/2026): o salto rara $9 → lendária
+        -- $30 tirava a lendária da loja na prática (ouro na porta ~$26 no A1).
+        common = 1, uncommon = 2, rare = 3, legendary = 7,
     }
     return self.cardCostBase * (rarityMultipliers[rarity] or 1)
 end
