@@ -58,11 +58,11 @@ ComboSystem.raiseBanner = raiseComboBanner
 -- na fila; `cap` = teto de cartas anteriores contadas (o bônus para de subir).
 -- `tag` só ilustra o Guia de combos (exemplos de carta), não decide nada.
 ComboSystem.RULES = {
-    { id = "volley", kind = "attack",  step = 2, cap = 3, tag = "strike",
+    { id = "volley", kind = "attack",  step = 3, cap = 3, tag = "strike",
       bonusType = "damage_bonus",  label = "Saraivada" },
-    { id = "wall",   kind = "defense", step = 2, cap = 3, tag = "defend",
+    { id = "wall",   kind = "defense", step = 5, cap = 3, tag = "defend",
       bonusType = "defense_bonus", label = "Muralha" },
-    { id = "pair",   kind = "same",    step = 3, cap = 2,
+    { id = "pair",   kind = "same",    step = 4, cap = 2,
       bonusType = "card_bonus",    label = "Par" },
 }
 

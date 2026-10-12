@@ -121,7 +121,11 @@ function M.run()
     local a24, f24 = fa(24); t:truthy("floor 24 -> ato 3 andar 8", a24 == 3 and f24 == 8)
 
     -- ===================== ACTSYSTEM =====================
-    -- battle: curva do ato (HP e dano floored)
+    -- battle: curva do ato (HP e dano floored). A CURVA crua e testada sem a
+    -- forca global do inimigo (Config.Game.ENEMY_POWER); o knob tem teste
+    -- proprio logo abaixo.
+    local savedPower = Config.Game.ENEMY_POWER
+    Config.Game.ENEMY_POWER = nil
     local s = ActSystem.getEnemyStats(1, 1, "battle")
     t:eq("ato1 andar1 battle HP = 14", s.health, 14)
     t:eq("ato1 andar1 battle dano = 4", s.damage, 4)
@@ -138,6 +142,11 @@ function M.run()
 
     -- elite: multiplica battle
     t:eq("elite ato1 andar1 HP = floor(14*1.4)=19", ActSystem.getEnemyStats(1, 1, "elite").health, 19)
+    Config.Game.ENEMY_POWER = { damage = 0.5, health = 0.5 }
+    local half = ActSystem.getEnemyStats(1, 8, "boss")
+    t:eq("ENEMY_POWER escala a vida", half.health, math.floor(110 * 0.5))
+    t:eq("ENEMY_POWER escala o dano", half.damage, math.floor(12 * 0.5))
+    Config.Game.ENEMY_POWER = savedPower
 
     -- endless: floor 1 == base do ULTIMO ato (fator 1.0), depois 1.18^(f-1).
     -- Ancorado em Config.TotalActs: a campanha foi de 3 pra 6 atos em Set/2026

@@ -60,6 +60,16 @@ Config.Game = {
     ENEMY_HEALTH_SCALING = 15,
     ENEMY_DAMAGE_SCALING = 3,
 
+    -- FORÇA DO INIMIGO na run (Out/2026, combos simples): as 13 regras de
+    -- combo por tag davam ~40% do dano e ~50% do Bloqueio das cartas, e a
+    -- curva de inimigos foi calibrada COM elas. Trocadas por Saraivada/
+    -- Muralha/Par (pequenas e legíveis), o piloto caiu de 55% para 0-5% com o
+    -- guerreiro; compensar do lado do jogador (+60% de Bloqueio, +20% de
+    -- ataque, combos 2x) não voltou. Escalar o inimigo voltou: dano x0,8 e
+    -- vida x0,85 em TODA a run (endless incluso, a curva continua contínua).
+    -- Ponto único: ActSystem.getEnemyStats.
+    ENEMY_POWER = { damage = 0.8, health = 0.85 },
+
     -- Jogador: Fase 5 reduziu HP inicial (60 vs 100). Deck pequeno + curva mais
     -- apertada cria pressao pra tomar decisoes boas nas escolhas de nos.
     PLAYER_MAX_HEALTH = 60,

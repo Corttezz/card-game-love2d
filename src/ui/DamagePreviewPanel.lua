@@ -201,7 +201,8 @@ local function buildLines(R, opts)
         local what = ""
         if b.type == "damage_multiplier" or b.type == "defense_multiplier" then
             what = "×" .. fmtNum(b.value)
-        elseif b.type == "damage_bonus" or b.type == "defense_bonus" then
+        elseif b.type == "damage_bonus" or b.type == "defense_bonus"
+            or b.type == "card_bonus" then
             what = "+" .. fmtNum(b.value)
         end
         lines[#lines + 1] = { kind = "combo", text = comboName(combo), right = what,
@@ -258,9 +259,6 @@ local function buildLines(R, opts)
     end
     if R.impetus then
         lines[#lines + 1] = { kind = "note", text = t("impetus", nil, "Impeto: +1 Forca") }
-    end
-    if R.conduit then
-        lines[#lines + 1] = { kind = "note", text = t("conduit", nil, "Conduite: +1 Foco") }
     end
     if R.uncertain then
         lines[#lines + 1] = { kind = "note", text = t("uncertain", nil, "+ efeito aleatorio") }
@@ -592,7 +590,8 @@ function Panel.drawHandBadges(game)
     if not next(state.badges) then return end
     local font = FontManager.getResponsiveFont(0.014, 11)
     love.graphics.setFont(font)
-    for _, c in ipairs(game.hand or {}) do
+    local hand = game.hand or {}
+    for i, c in ipairs(hand) do
         local added = state.badges[c]
         local label
         if added then
@@ -602,10 +601,21 @@ function Panel.drawHandBadges(game)
             end
             label = table.concat(parts, " ")
         end
-        local tw = label and font:getWidth(label) or 0
         if added and c.renderX then
             local cw = (c.image and c.image.getWidth and c.image:getWidth() or 96)
                 * (c.scale or c.baseScale or 1.333)
+            -- mao espremida: o selo nao pode invadir o vizinho — cai pro total
+            local room = cw - 4
+            local nxt = hand[i + 1]
+            if nxt and nxt.renderX and nxt.renderX > c.renderX then
+                room = math.min(room, nxt.renderX - c.renderX - 6)
+            end
+            if font:getWidth(label) > room then
+                local sum = 0
+                for _, a in ipairs(added) do sum = sum + (a.value or 0) end
+                label = "+" .. fmtNum(sum)
+            end
+            local tw = font:getWidth(label)
             local bx = math.floor(c.renderX + cw / 2 - tw / 2 - 4)
             local by = math.floor(c.renderY - font:getHeight() - 10)
             setColor(Palette.INK, 0.9)

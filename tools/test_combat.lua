@@ -126,15 +126,6 @@ function M.run()
             gm:playSelectedCards()
             TK.pump(gm, 8.0)
         end
-        -- Conduite: 2 cartas de orbe no turno = +1 Foco (uma vez por turno)
-        local gm = TK.newRunGame("mage"); TK.pump(gm, 0.5)
-        gm.enemy.health, gm.enemy.maxHealth = 999, 999
-        local f0 = gm.player:getBuffStacks("focus")
-        playIds(gm, { "mage_zap", "mage_lightning" })
-        t:eq("Conduite: 2 cartas de orbe = +1 Foco", gm.player:getBuffStacks("focus"), f0 + 1)
-        playIds(gm, { "mage_zap", "mage_lightning" })
-        t:eq("Conduite: so 1x por turno", gm.player:getBuffStacks("focus"), f0 + 1)
-
         -- Toxinas: 2 ataques no turno = +1 no Veneno da passiva (na batalha)
         local gr = TK.newRunGame("rogue"); TK.pump(gr, 0.5)
         gr.enemy.health, gr.enemy.maxHealth = 999, 999
@@ -145,7 +136,7 @@ function M.run()
         t:eq("Toxinas: 1o ataque aplica tier+bonus de Veneno",
             gr.enemy:getStatusStacks("poison"), gr:classPassiveTier() + G.TOXIN_GROWTH)
 
-        -- Orbe pelo coringa: o maior damage_multiplier vale no evoke
+        -- Orbe NAO passa pelo coringa multiplicador (saiu com os combos simples)
         local go = TK.newRunGame("mage"); TK.pump(go, 0.5)
         go.enemy.health, go.enemy.maxHealth, go.enemy.armor = 999, 999, 0
         go.enemy.statusEffects = {}
@@ -155,7 +146,7 @@ function M.run()
         go.player.buffs = {}
         local hp0 = go.enemy.health
         go.effectSystem:_evokeOrbEffect(go, table.remove(go.player.orbs, 1))
-        t:eq("evoke de raio 6 com coringa x1.5 = 9", hp0 - go.enemy.health, 9)
+        t:eq("evoke de raio 6 com coringa x1.5 continua 6", hp0 - go.enemy.health, 6)
     end
 
     -- ===== Ciclo de turno: endTurn descarta e passa a vez =====

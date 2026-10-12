@@ -277,8 +277,6 @@ function Game:drawForTurn()
     -- multi-jogada: contadores por turno zerados
     self._attacksThisTurn = 0
     self._impetusFiredThisTurn = false
-    self._orbCardsThisTurn = 0
-    self._conduitFiredThisTurn = false
     self._toxinGrowFiredThisTurn = false
     -- P2.3 (Jul/2026, rebalance v2): thorn de JOKER dispara 1x/turno por
     -- joker — nova janela a cada turno do jogador (ver EffectSystem
@@ -637,15 +635,16 @@ end
 
 -- ===== PASSIVAS DE CLASSE (identidade de gameplay — Jul/2026) =====
 -- Warrior "Ímpeto":  3+ ataques no mesmo turno → +1 Força (na batalha) (era 2+ até Out/2026).
--- Mage "Conduíte":   começa toda batalha com orbe de Raio (4) e Foco 2/3/4 (cresce a cada 2 atos);
---                    2+ cartas de orbe (canalizar/evocar) no mesmo turno → +1 Foco (na batalha).
+-- Mage "Conduíte":   começa toda batalha com orbe de Raio (4) e Foco 0/1/2 (cresce a cada 2 atos).
 -- Rogue "Toxinas":   o 1º ataque de cada turno aplica 1/2/3 de Veneno (2t, cresce a cada 2 atos);
 --                    2+ ataques no mesmo turno → +2 nesse Veneno (na batalha).
 -- CRESCER NA LUTA (Out/2026, balanceamento de classe): so o Impeto crescia
 -- DENTRO da batalha, e a bateria mostrou o resultado — guerreiro 43%, mago
 -- 13% (lutas de 12-18 turnos no A5-A6), ladino 17% (morre no chefe do A5).
--- As tres passivas agora tem a mesma forma: a regra de turno do Impeto,
--- cada uma no eixo da propria classe (Forca, Foco, Veneno).
+-- Impeto e Toxinas tem a mesma forma (regra de turno que soma na batalha).
+-- O Conduite TAMBEM crescia (+1 Foco por turno com 2+ cartas de orbe) ate os
+-- combos simples + ENEMY_POWER: com o inimigo mais fraco o mago foi a 73-90%
+-- e o crescimento saiu (mago 47%, bateria 30 runs).
 -- Toda ativação gera toast — nada acontece invisível (lei do projeto).
 
 -- Degrau das passivas que CRESCEM com a run (Out/2026): 1 nos atos 1-2,
@@ -700,38 +699,16 @@ Game.TOXIN_GROWTH = 2
 -- curva mais forte do jogo; pedir 3 ataques a desacelera sem mexer no resto.
 Game.IMPETUS_ATTACKS = 3
 
--- Carta de ORBE (canalizar ou evocar) — o que alimenta o Conduite.
-function Game.isOrbCard(card)
-    for _, e in ipairs((card and card.effects) or {}) do
-        if e.type == "channel_orb" or e.type == "evoke_orb" or e.type == "evoke_all_orbs" then
-            return true
-        end
-    end
-    return false
-end
-
 function Game:applyClassTurnPassives(turnContext)
     local cls = self.selectedClass
-    if cls ~= "warrior" and cls ~= "mage" and cls ~= "rogue" then return end
-    -- multi-jogada: soma ataques/cartas de orbe de TODAS as jogadas do turno
+    if cls ~= "warrior" and cls ~= "rogue" then return end
+    -- multi-jogada: soma ataques de TODAS as jogadas do turno
     local attacks = self._attacksThisTurn or 0
-    local orbCards = self._orbCardsThisTurn or 0
     for _, c in ipairs(turnContext.allSelectedCards or {}) do
         if (c.attack or 0) > 0 then attacks = attacks + 1 end
-        if Game.isOrbCard(c) then orbCards = orbCards + 1 end
     end
     self._attacksThisTurn = attacks
-    self._orbCardsThisTurn = orbCards
-    if cls == "mage" then
-        if orbCards >= 2 and not self._conduitFiredThisTurn and self.player.addBuff then
-            self._conduitFiredThisTurn = true
-            self.player:addBuff("focus", 99, 1)
-            self:addMessage(msg("passive_conduit_grow"), "success")
-            if love.timer then self._passiveFlashT = love.timer.getTime() end
-            Sfx.play("comboTrigger", { pitch = 1.3, volume = 0.6 })
-        end
-        return
-    elseif cls == "rogue" then
+    if cls == "rogue" then
         if attacks >= 2 and not self._toxinGrowFiredThisTurn then
             self._toxinGrowFiredThisTurn = true
             self._toxinBonus = (self._toxinBonus or 0) + Game.TOXIN_GROWTH

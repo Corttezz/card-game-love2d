@@ -238,3 +238,30 @@ foram medidos COM o defeito. Mesmo HEAD, seed 720000:
 Sanidade 20 runs no mesmo HEAD: guerreiro 50%, ladino 55%. O ruído entre
 variantes vizinhas é grande (1/2/3 deu MAIS que 2/3/4) — com 30 runs o erro
 padrão é ~9pp. Mortes do mago (adotado): A2 1 · A3 1 · A4 1 · A5 7 · A6 4.
+
+## Combos simples + força do inimigo (Out/2026)
+
+Decisão do dono: combos fortes e não explicados saem; entram Saraivada (+3 por
+ataque anterior), Muralha (+5 de Bloqueio por defesa anterior) e Par (+4 por
+cópia anterior), bônus plano. `balance_sim 30 <classe> 720000`.
+
+| passo | guerreiro | mago | ladino |
+|---|---|---|---|
+| antes (f67ebe4 + 06211da, combos por tag) | 50%* | 53% | 55%* |
+| só os combos simples (sem compensar) | 0–5% | ~40% (parcial) | 20% |
+| + combos 2x, +60% Bloqueio, +20% ataque (só jogador) | 5–20% | — | — |
+| + ENEMY_POWER dano x0,8 / vida x0,85 (mago com crescimento) | 53% | 73–90% | 50% |
+| **final**: + mago sem crescimento/sem orbe x coringa/Foco dividido | **53%** | **60%** | **50%** |
+
+\* 20 runs. Variantes do mago no inimigo mais fraco: Conduíte pedindo 3
+cartas 73%, cap de 3 crescimentos 90% (parcial), sem orbe x coringa 75%, Foco
+dividido 75%, os três + 3 cartas 62% (parcial), sem crescimento 47% (30 runs).
+O final deu 60% no mesmo pacote (ruído ~9pp).
+
+Final, turnos/luta A1→A6: guerreiro 2,8 · 4,7 · 6,1 · 6,9 · 6,9 · 7,7; mago 2,6 ·
+4,8 · 5,9 · 7,3 · 9,8 · 10,8 (era 14 no A6); ladino 2,5 · 4,4 · 5,0 · 5,8 · 6,7 · 7,7.
+Mortes: guerreiro A3 4 · A4 3 · A5 7; mago A3 1 · A4 4 · A5 2 · A6 5; ladino A3 2 ·
+A5 10 · A6 3 (o chefe do A5 ainda é a parede do ladino). Parte do dano das cartas
+que vem de combo: guerreiro 17% (era 37%), mago 20% (era 55%), ladino 31% (era 48%);
+Bloqueio de combo 14–21% (era ~50%). Cartas por jogada ~3,2–3,5 (inalterado: a mana
+é quem limita).

@@ -70,6 +70,12 @@ function ActSystem.getEnemyStats(actNumber, floorInAct, nodeType, endlessFloor)
         dmg = math.floor(dmg * fd)
     end
 
+    -- força global do inimigo (Config.Game.ENEMY_POWER — combos simples)
+    local pw = Config.Game and Config.Game.ENEMY_POWER
+    if pw then
+        hp  = math.floor(hp * (pw.health or 1))
+        dmg = math.floor(dmg * (pw.damage or 1))
+    end
     return { health = hp, damage = dmg, kind = nodeType }
 end
 

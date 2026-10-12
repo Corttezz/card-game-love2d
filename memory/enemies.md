@@ -132,3 +132,13 @@ perfurante 0,9); dano do mago no fim do jogo (frente de classe).
   (`Enemy:_applyDot`, padrão StS, pedido da frente de classe): o tick cai logo
   depois de o inimigo defender, e a armadura engolia o veneno do ladino.
   Mesma regra do DoT no jogador. Piloto (balance_ai/autoplay) atualizado.
+
+## Força global do inimigo (Out/2026, combos simples)
+
+`Config.Game.ENEMY_POWER = { damage = 0.8, health = 0.85 }`, aplicado em
+`ActSystem.getEnemyStats` (a run inteira, endless incluso). Origem: a troca dos
+13 combos por tag (que davam ~40% do dano e ~50% do Bloqueio das cartas) por
+Saraivada/Muralha/Par derrubou o piloto (guerreiro 55% -> 0-5%); compensar só no
+jogador não voltou, escalar o inimigo voltou. Os testes de curva (test_progression,
+smoke_acts) medem a curva CRUA com o knob desligado e testam o knob à parte.
+Detalhes: memory/combo_rules.md e memory/balance_curves.md.

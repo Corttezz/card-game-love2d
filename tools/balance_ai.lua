@@ -324,14 +324,12 @@ function AI.simulate(game, set, bctx, opts)
         S.poison = S.poison + st
         S.poisonDur = S.poisonDur + dur
     end
-    -- dano de orbe passa pelo maior multiplicador de coringa (orbDamageMult)
-    local orbMult = EffectSystem.orbDamageMult(game)
     local function evoke(o)
         local v = (o.value or 1) + S.focus
         if o.type == "lightning" or o.type == "dark" then
-            hit(EffectSystem.orbEvokeValue(o, S.focus, orbMult))
+            hit(EffectSystem.orbEvokeValue(o, S.focus))
         elseif o.type == "fire" then
-            hit(EffectSystem.orbEvokeValue(o, S.focus, orbMult)); S.burn = S.burn + math.max(1, math.floor(v / 2)); S.burnDur = S.burnDur + 2
+            hit(EffectSystem.orbEvokeValue(o, S.focus)); S.burn = S.burn + math.max(1, math.floor(v / 2)); S.burnDur = S.burnDur + 2
         elseif o.type == "ice" then S.armor = math.min(S.maxArmor, S.armor + v)
         elseif o.type == "holy" then heal(v) end
     end
@@ -349,16 +347,6 @@ function AI.simulate(game, set, bctx, opts)
         local atks = game._attacksThisTurn or 0
         for _, c in ipairs(set) do if (c.attack or 0) > 0 then atks = atks + 1 end end
         if atks >= require("src.core.Game").IMPETUS_ATTACKS then S.str = S.str + 1; S.strGain = S.strGain + 1 end
-    end
-    -- Conduite do mago (Out/2026): 2+ cartas de orbe no turno = +1 Foco antes
-    if game.selectedClass == "mage" and not game._conduitFiredThisTurn then
-        local n = game._orbCardsThisTurn or 0
-        for _, c in ipairs(set) do
-            if hasEff(c, "channel_orb") or hasEff(c, "evoke_orb") or hasEff(c, "evoke_all_orbs") then
-                n = n + 1
-            end
-        end
-        if n >= 2 then S.focus = S.focus + 1; S.focusGain = S.focusGain + 1 end
     end
     -- Toxinas do ladino (Out/2026): 2+ ataques no turno = +TOXIN_GROWTH na passiva
     local toxin = (game.classPassiveTier and game:classPassiveTier() or 1) + (game._toxinBonus or 0)
@@ -469,7 +457,7 @@ function AI.simulate(game, set, bctx, opts)
     if endsTurn and S.eHp > 0 then
         -- pulso dos orbes (fim do turno do jogador, ANTES do inimigo)
         for _, o in ipairs(S.orbs) do
-            local pv = EffectSystem.orbPulseValue({ type = o.type, value = o.value }, S.focus, orbMult)
+            local pv = EffectSystem.orbPulseValue({ type = o.type, value = o.value }, S.focus)
             if o.type == "lightning" or o.type == "fire" then hit(pv)
             elseif o.type == "ice" then S.armor = math.min(S.maxArmor, S.armor + pv)
             elseif o.type == "holy" then heal(pv)
@@ -565,7 +553,7 @@ function AI.score(game, set, S, bctx)
     -- e a sombra crescendo descontam da vida
     local orbDpt, orbBlk, orbHeal = 0, 0, 0
     for _, o in ipairs(S.orbs) do
-        local pv = EffectSystem.orbPulseValue({ type = o.type, value = o.value }, S.focus, EffectSystem.orbDamageMult(game))
+        local pv = EffectSystem.orbPulseValue({ type = o.type, value = o.value }, S.focus)
         if o.type == "lightning" or o.type == "fire" then
             orbDpt = orbDpt + pv
             eLeft = eLeft - ((o.value or 1) + S.focus) * 0.5

@@ -23,7 +23,6 @@ M.ALLOWED = {
     ["messages.joker_benched"]       = "coringa foi pra bancada, não pro campo",
     ["messages.no_mana"]             = "ação recusada",
     ["messages.select_cards"]        = "ação recusada",
-    ["messages.passive_conduit_grow"] = "passiva da classe subiu de nível",
     ["messages.passive_toxins_grow"] = "passiva da classe subiu de nível",
     ["messages.blue_seal"]           = "selo explica a compra extra",
     ["messages.gold_seal"]           = "selo explica o ouro no meio da luta",

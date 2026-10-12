@@ -185,7 +185,7 @@ menu → classSelection → playing
    - **Attack path**: `damage = card.attack` → `applyCardEffects` (strength_scaling/multi_hit) → `+player.strength` → `ComboSystem.applyToCardValue` → `applyJokerEffects` → floor. Depois processa `card.effects` secundários (`apply_debuff`, etc.).
    - **Defense path**: idem com `player.dexterity`.
    - **Joker/Effect**: passive roda; joker vai pros slots.
-5. `onCombatAnimationComplete` → `ComboSystem.applyOnceEffects` (heal/debuff/evoke) → `turn = "enemy"`.
+5. `onCombatAnimationComplete` → `ComboSystem.applyOnceEffects` (hoje só o banner — combos simples não têm prêmio de fim de jogada) → `turn = "enemy"`.
 6. `Game:enemyTurn()` — executa o golpe CONGELADO do **kit** do inimigo (`src/data/enemies.lua`, ver `memory/enemies.md`): bloqueio > golpe(s) > espinhos > debuffs no jogador > força/cura/invocação/carga, um beat cada:
    - `performAttack` (considera `weak`)
    - `takeDamage` aplica no player
@@ -253,21 +253,12 @@ Ver `memory/gameplay_systems.md` para referência completa.
 
 Catálogo em `src/systems/TagSystem.lua` (`TagSystem.CATALOG`), categorias: archetype, mechanic, element, role.
 
-**ComboSystem** detecta sinergias entre cartas da MESMA JOGADA (leva) via `turnContext.tagCounts`. **Combo v3 (Out/2026, "intenção, não volume")** — três leis em `ComboSystem.cardSteps`: (1) o bônus vale só pras cartas que FORMAM o combo (`appliesTo`, padrão = a tag da regra); (2) numa carta só o MAIOR multiplicador de combo vale (mesma lei dos coringas); (3) bônus plano com `once` entra UMA vez por leva, na 1ª carta-alvo. Antes a 5ª carta somava mais que a 2ª (todo bônus em toda carta, multiplicadores compondo ×1.4×1.3×1.5) e "selecionar tudo" era sempre a jogada — queixa do dono.
-- `strike_combo` — 2+ `strike` → cada strike ×1.5
-- `triple_strike` — 3+ `strike` → +10 dano, 1×/leva
-- `defend_wall` — 2+ `defend` → cada defend ×1.5
-- `armor_tower` — 2+ `armor` → +10 defesa, 1×/leva
-- `poison_stack` — 2+ `poison` → +4 veneno no fim
-- `channel_burst` — 3+ `channel` → evoca 1 orbe no fim
-- `cycle_motion` — `draw` + `discard` → +6 no 1º ataque
-- `finisher_chain` — `strike` + `finisher` → a carta finisher ×1.6
-- `lifesteal_burst` — `strike` + `lifesteal` → cura 4
-- `magic_focus` — 2+ `magic` → cada carta magic ×1.5
-- `thorn_reflex` — `defend` + `thorn` → +6 defesa na carta thorn, 1×/leva
-- `tempestade` / `zero_absoluto` — 2+ `lightning` / `ice` → +6 dano no 1º ataque / +6 defesa na 1ª defesa
+**Combos SIMPLES (Out/2026, decisão do dono: "combos muito fortes e não explicados"):** as 13 regras por TAG saíram. `ComboSystem.RULES` tem TRÊS regras, todas bônus PLANO por posição na jogada (ordem de seleção), somado depois da Força e antes dos coringas:
+- **Saraivada** (`volley`) — cada ATAQUE ganha +3 por ataque antes dele na jogada (2º +3, 3º +6, 4º+ +9)
+- **Muralha** (`wall`) — cada DEFESA ganha +5 de Bloqueio por defesa antes dela (até +15)
+- **Par** (`pair`) — cada cópia repetida da MESMA carta ganha +4 por cópia anterior (até +8)
 
-Exemplo: 3 golpes de 10 com joker ×2.0 = (10×1.5+10 + 10×1.5 + 10×1.5) × 2 = `110` (v2: 120, e crescia mais rápido a cada carta — 5 golpes de 6: v2 72, v3 55). Os valores x1.5/+10 saíram da bateria (x1.4/+8 deixou o guerreiro em 30%).
+Carta com a tag `combo` conta como duas na fila. Coringas de combo (`combo_boost`): Chuva de Lâminas / Muro de Escudos / Espelho Gêmeo dobram uma regra. Sem prêmio de fim de jogada. Como os combos antigos davam ~40% do dano e ~50% do Bloqueio e a curva de inimigos fora calibrada com eles, a força do inimigo caiu junto: `Config.Game.ENEMY_POWER = { damage = 0.8, health = 0.85 }` (`ActSystem.getEnemyStats`). Ver `memory/combo_rules.md`.
 
 **Prévia de dano (Out/2026):** a conta de UMA carta mora em `DamagePreview.cardValue` (`src/systems/DamagePreview.lua`) — o combate (`Game:_resolveCardInCombat`) chama a MESMA função e só adiciona efeitos colaterais; `DamagePreview.simulate` simula a leva inteira (Ímpeto, Vulnerável/Força ganhos no meio, orbes, Bloqueio do inimigo, morte no meio). O painel (`src/ui/DamagePreviewPanel.lua`) mostra acima do JOGAR o total, LETAL, combos/coringas (hover explica) e a conta carta a carta; a barra do inimigo pisca o trecho que sai; carta que fecharia combo ganha selo `+COMBO`. Trava: `love . test_one test_damage_preview` (300 levas reais, divergência 0). Mudou `Enemy:takeDamage`, orbes ou efeitos? Atualize o `simulate`. Ver `memory/combo_rules.md` e `memory/damage_preview.md`.
 
@@ -458,7 +449,7 @@ Nota de comportamento fixada pelos testes: `poison` decrementa **`duration`** po
 - ✅ **Pacote de lançamento** (Out/2026): desbloqueio de cartas/classes + maestria (`memory/unlocks.md`), Coleção com descobertas e sem lag, conquistas repaginadas + Steam (`memory/steam_achievements.md`), emblemas de classe, pause/configurações redesenhados (`memory/pause_settings_menu.md`), save por estágio, build de release (`memory/release_pipeline.md`).
 
 - ✅ **Balanceamento por bateria do piloto v6** (Out/2026, `love . balance_sim 30 <classe> <seed>` — rode em blocos/processos separados por classe): guerreiro 47% · ladino 43% · mago ~28% de vitória. Passivas do mago (Foco inicial 2/3/4 na época; hoje 0/1/2) e do ladino (Veneno 1/2/3) CRESCEM +1 a cada dois atos (`Game:classPassiveTier`) — fixas, as duas classes quebravam nos atos 4-6. Mago ainda abaixo da meta 40-60%: três variantes da passiva deram 20-30% (ruído ±8pp com 30 runs) — próxima suspeita é o piloto jogar orbes pior que ataques, não a classe.
-- ✅ **Passivas que CRESCEM NA LUTA** (Out/2026, depois do roster novo + Combo v3: guerreiro 43% · mago 13% · ladino 17%): as três passivas têm a forma do Ímpeto — regra de TURNO que soma na batalha. Conduíte: 2+ cartas de orbe no turno → +1 Foco. Toxinas: 2+ ataques no turno → o Veneno da passiva sobe `Game.TOXIN_GROWTH` (2). Dano de orbe (pulso/evoke de raio/fogo/sombra) passa pelo MAIOR `damage_multiplier` de coringa (`EffectSystem.orbDamageMult`, fonte única com OrbRow/DamagePreview/piloto). Ladino: Punhalada 11→8, Adrenalina custo 0→1, `poison_stack` +2→+4. Ímpeto pede 3 ataques (`Game.IMPETUS_ATTACKS`; com 2 o guerreiro foi a 67%). Foco soma inteiro no pulso de orbe. Bateria final 30/classe: guerreiro 47% · mago 43% · ladino 50%; mago ainda luta ~14 turnos no A5-A6 por política do piloto (passa turno com mana e ataque na mão). Depois do f67ebe4 (a passiva do mago só valia na 1ª luta da run) o mago foi a 63%: Foco INICIAL do Conduíte passou de 2/3/4 para 0/1/2 por ato → mago 53% (guerreiro 50%, ladino 55% em 20 runs no mesmo HEAD). Números em `memory/balance_curves.md`.
+- ✅ **Passivas que CRESCEM NA LUTA** (Out/2026, depois do roster novo + Combo v3: guerreiro 43% · mago 13% · ladino 17%): as três passivas têm a forma do Ímpeto — regra de TURNO que soma na batalha. Conduíte: 2+ cartas de orbe no turno → +1 Foco. Toxinas: 2+ ataques no turno → o Veneno da passiva sobe `Game.TOXIN_GROWTH` (2). Dano de orbe (pulso/evoke de raio/fogo/sombra) passa pelo MAIOR `damage_multiplier` de coringa (`EffectSystem.orbDamageMult`, fonte única com OrbRow/DamagePreview/piloto). Ladino: Punhalada 11→8, Adrenalina custo 0→1, `poison_stack` +2→+4. Ímpeto pede 3 ataques (`Game.IMPETUS_ATTACKS`; com 2 o guerreiro foi a 67%). Foco soma inteiro no pulso de orbe. Bateria final 30/classe: guerreiro 47% · mago 43% · ladino 50%; mago ainda luta ~14 turnos no A5-A6 por política do piloto (passa turno com mana e ataque na mão). Depois do f67ebe4 (a passiva do mago só valia na 1ª luta da run) o mago foi a 63%: Foco INICIAL do Conduíte passou de 2/3/4 para 0/1/2 por ato → mago 53% (guerreiro 50%, ladino 55% em 20 runs no mesmo HEAD). Números em `memory/balance_curves.md`. **Revisto com os combos simples (Out/2026):** com `ENEMY_POWER` o mago foi a 73-90% e o crescimento do Conduíte, o orbe pelo multiplicador de coringa e o Foco inteiro no pulso SAÍRAM (mago 47%); Ímpeto e Toxinas continuam crescendo.
 
 Pendente:
 - **Licenças antes de vender**: SFX/música gerados no plano FREE do ElevenLabs (não permite uso comercial) — assinar e regenerar; confirmar assinatura PixelLab no período da arte; declarar conteúdo gerado por IA na Steam; documentar origem de `music.mp3`, `hoverCard.wav` e PNGs antigos. Token PixelLab vencido segue no histórico git (`3fc14ea`) — reescrever histórico se o repo for público.
@@ -479,7 +470,7 @@ O diretório `memory/` na raiz do projeto guarda notas persistentes que compleme
 - [`memory/architecture.md`](memory/architecture.md) — mapa detalhado das camadas (core/systems/components/ui/pixel art).
 - [`memory/gameplay_systems.md`](memory/gameplay_systems.md) — turnos, turnContext, efeitos processados, dois modos de deck.
 - [`memory/tag_system.md`](memory/tag_system.md) — catálogo canônico de tags.
-- [`memory/combo_rules.md`](memory/combo_rules.md) — regras do ComboSystem v3 (alvo, maior multiplicador vence, plano 1×/leva).
+- [`memory/combo_rules.md`](memory/combo_rules.md) — combos simples (Saraivada/Muralha/Par), coringas de combo e o `ENEMY_POWER` que caiu junto.
 - [`memory/damage_preview.md`](memory/damage_preview.md) — prévia de dano: `DamagePreview.cardValue` fonte única, `simulate` da leva, painel no JOGAR, trava `test_damage_preview`.
 - [`memory/run_progression.md`](memory/run_progression.md) — atos, nodes, flow entre batalhas, endless.
 - [`memory/balance_curves.md`](memory/balance_curves.md) — HP/dano/gold/raridade por ato.

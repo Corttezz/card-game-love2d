@@ -24,6 +24,9 @@ function M.run()
     check("ha mais de um ato", Config.TotalActs >= 3)
 
     -- 2. Curva ato 1 (rebalanced): f=1 -> hp 14, f=8 -> hp 56
+    -- curva crua: sem a forca global do inimigo (Config.Game.ENEMY_POWER)
+    local savedPower = Config.Game.ENEMY_POWER
+    Config.Game.ENEMY_POWER = nil
     local s1 = ActSystem.getEnemyStats(1, 1, "battle")
     check("ato 1, floor 1 battle: hp = 14", s1.health == 14)
     local s8 = ActSystem.getEnemyStats(1, 8, "battle")
@@ -38,6 +41,7 @@ function M.run()
     -- 4. Elite: HP * eliteHPMul (f=4 -> 8+4*6=32; *1.6 = 51)
     local e = ActSystem.getEnemyStats(1, 4, "elite")
     check("elite ato 1 f=4: hp = floor(32*1.4)", e.health == math.floor(32 * 1.4))
+    Config.Game.ENEMY_POWER = savedPower
 
     -- 5. Endless comeca UM ATO DEPOIS do ultimo, seja ele qual for, e parte
     -- da curva do ultimo ato da campanha.

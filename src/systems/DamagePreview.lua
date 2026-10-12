@@ -223,12 +223,11 @@ function DamagePreview.simulate(game, cards)
     end
 
     -- evocar um orbe (espelho de EffectSystem:_evokeOrbEffect)
-    local orbMult = EffectSystem.orbDamageMult(game)
     local function evoke(orb, why)
         if not orb then return end
         local v = (orb.value or 1) + P.focus
         if orb.type == "lightning" or orb.type == "fire" or orb.type == "dark" then
-            extra("orb", (hitEnemy(EffectSystem.orbEvokeValue(orb, P.focus, orbMult))),
+            extra("orb", (hitEnemy(EffectSystem.orbEvokeValue(orb, P.focus))),
                 { orb = orb.type, why = why })
         elseif orb.type == "ice" then
             addArmor(v)
@@ -326,18 +325,6 @@ function DamagePreview.simulate(game, cards)
         if attacks >= require("src.core.Game").IMPETUS_ATTACKS then
             P.strength = P.strength + 1
             R.impetus = true
-        end
-    end
-    -- Conduite do mago: 2+ cartas de orbe no turno = +1 Foco ANTES das cartas
-    if game.selectedClass == "mage" and not game._conduitFiredThisTurn then
-        local n = game._orbCardsThisTurn or 0
-        local Game = require("src.core.Game")
-        for _, c in ipairs(cards) do
-            if Game.isOrbCard(c) then n = n + 1 end
-        end
-        if n >= 2 then
-            P.focus = P.focus + 1
-            R.conduit = true
         end
     end
     -- Toxinas do ladino: o 1o ataque do turno envenena (so informativo); a

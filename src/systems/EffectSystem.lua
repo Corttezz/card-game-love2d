@@ -579,55 +579,26 @@ end
 -- estes mesmos numeros; mudou a formula aqui, a tela acompanha de graca).
 -- ==============================================================================
 
--- ORBE TAMBEM E DANO DE CARTA (Out/2026, balanceamento de classe): o dano de
--- orbe (pulso e evoke de raio/fogo/sombra) passava ao largo dos coringas — o
--- mago com "Deus do Abismo" via x1.5 nas cartas e nada nos orbes, que sao o
--- eixo da classe. Bateria: mago 13% de vitoria, lutas de 12-18 turnos no
--- A5-A6. Agora o MAIOR damage_multiplier de ataque entre os coringas ativos
--- vale tambem pro dano de orbe (mesma lei do largest-wins, P0.9). Planos e Eco
--- ficam de fora: sao "por carta", e orbe nao e carta. Gelo/sagrado nao mudam.
-function EffectSystem.orbDamageMult(game)
-    local best = 1
-    for _, joker in ipairs((game and game.jokerSlots) or {}) do
-        for _, e in ipairs(joker.effects or {}) do
-            if e.type == "damage_multiplier" and e.target == "attack"
-                and (e.value or 1) > best then
-                best = e.value or 1
-            end
-        end
-    end
-    return best
-end
-
-local DAMAGE_ORB = { lightning = true, fire = true, dark = true }
-
 -- Valor do PULSO por turno de um orbe (0 = nao pulsa; dark cresce em vez disso).
--- `mult` = EffectSystem.orbDamageMult(game) (so nos orbes de dano).
--- FOCO SOMA INTEIRO NO PULSO (Out/2026): antes o Foco entrava na base e era
--- dividido junto (ceil((valor+Foco)/2)) — com o Conduite crescendo +1 Foco por
--- turno, cada orbe subia meio ponto por turno e o mago arrastava lutas de 12-18
--- turnos no A5-A6 (bateria 30 runs). Agora o Foco soma depois da divisao: +1
--- Foco = +1 em cada pulso, a mesma taxa do +1 de Forca por golpe do Impeto.
-function EffectSystem.orbPulseValue(orb, focus, mult)
-    local base = orb.value or 1
-    local f = focus or 0
-    local v = 0
+-- Combos simples (Out/2026): com o inimigo mais fraco (Config.Game.ENEMY_POWER)
+-- o mago foi a 73-90% com o pacote de crescimento (Conduite +1 Foco por turno,
+-- orbe pelo multiplicador de coringa, Foco inteiro no pulso). Sem os tres:
+-- 47% (bateria 30 runs). O Foco volta a entrar na base, dividido junto.
+function EffectSystem.orbPulseValue(orb, focus)
+    local ev = (orb.value or 1) + (focus or 0)
     if orb.type == "lightning" or orb.type == "ice" then
-        v = math.ceil(base / 2) + f
+        return math.ceil(ev / 2)
     elseif orb.type == "fire" or orb.type == "holy" then
-        v = math.ceil(base / 3) + f
+        return math.ceil(ev / 3)
     end
-    -- dark: nao pulsa, cresce +2/turno
-    if DAMAGE_ORB[orb.type] and mult and mult ~= 1 then v = math.floor(v * mult) end
-    return v
+    return 0 -- dark: nao pulsa, cresce +2/turno
 end
 
 -- Valor do EVOKE de um orbe (dark evoca em dobro).
-function EffectSystem.orbEvokeValue(orb, focus, mult)
+function EffectSystem.orbEvokeValue(orb, focus)
     local ev = (orb.value or 1) + (focus or 0)
-    local v = (orb.type == "dark") and ev * 2 or ev
-    if DAMAGE_ORB[orb.type] and mult and mult ~= 1 then v = math.floor(v * mult) end
-    return v
+    if orb.type == "dark" then return ev * 2 end
+    return ev
 end
 
 -- Aplica o efeito mecanico de um orb evocado. Mapa central de tipos:
@@ -648,8 +619,7 @@ function EffectSystem:_evokeOrbEffect(game, orb)
         focus = game.player:getBuffStacks("focus") or 0
     end
     v = v + focus
-    -- dano de orbe passa pelo maior multiplicador de coringa (orbDamageMult)
-    local dmg = EffectSystem.orbEvokeValue(orb, focus, EffectSystem.orbDamageMult(game))
+    local dmg = EffectSystem.orbEvokeValue(orb, focus)
     -- Game feel v1: o evoke ATERRISSA visivelmente — burst do elemento no
     -- alvo (dano → inimigo; armor/cura → painel do jogador).
     if orb.type == "lightning" then
@@ -836,7 +806,6 @@ function EffectSystem:orbPassiveTick(game, sink)
     if not p or not p.orbs or #p.orbs == 0 then return end
     sink = sink or sinkOf(game)
     local focus = (p.getBuffStacks and p:getBuffStacks("focus")) or 0
-    local mult = EffectSystem.orbDamageMult(game)
     -- UM ORBE POR VEZ (Set/2026, pedido do dono: "um exemplo e o mago com as
     -- orbes"). ANTES: o laco somava dmg/armor/heal dos 3 orbes e aplicava um
     -- numero agregado no mesmo instante — o jogador via "-7" e nao tinha como
@@ -845,7 +814,7 @@ function EffectSystem:orbPassiveTick(game, sink)
     -- Formula canonica em orbPulseValue (fonte unica com a UI).
     for i, orb in ipairs(p.orbs) do
         local idx, o = i, orb
-        local pulse = EffectSystem.orbPulseValue(o, focus, mult)
+        local pulse = EffectSystem.orbPulseValue(o, focus)
         CombatBeats.step(sink, "orb.pulse." .. tostring(o.type), function()
             -- O NUMERO sai do orbe (causa) e o IMPACTO cai no alvo (efeito).
             -- De proposito nao ha segundo numero no alvo: o valor ja foi dito
