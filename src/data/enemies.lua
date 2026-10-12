@@ -270,9 +270,9 @@ Enemies.KITS = {
         opener = "abyssal_claws",
         moves = {
             { id = "gather_flames", kind = "charge", weight = 0, armor = 1.0,
-              next = "hellfire", every = 3 },
-            { id = "hellfire",      kind = "strong", weight = 0, mult = 2.0,
-              debuff = { name = "burn", stacks = 3, duration = 2 } },
+              next = "hellfire", every = 4 },
+            { id = "hellfire",      kind = "strong", weight = 0, mult = 1.7,
+              debuff = { name = "burn", stacks = 2, duration = 2 } },
             { id = "abyssal_claws", kind = "attack", weight = 50, mult = 1.1 },
             { id = "cinder_spray",  kind = "multi",  weight = 50, mult = 0.4, hits = 3,
               debuff = { name = "burn", stacks = 2, duration = 1 } },
@@ -333,7 +333,7 @@ Enemies.KITS = {
     -- longa é dele.
     rot_colossus = {
         hpMul = 1.0,
-        passive = { regenPct = 0.02 },
+        passive = { regenPct = 0.015 },
         opener = "plague_cloud",
         moves = {
             { id = "plague_cloud", kind = "debuff", weight = 25,
@@ -630,10 +630,10 @@ Enemies.KITS = {
     fallen_angel = {    -- anjo caído: lâmina alta e asas profanas
         opener = "unholy_wings",
         moves = {
-            { id = "fallen_blade",  kind = "strong", weight = 30, mult = 1.6 },
-            { id = "unholy_wings",  kind = "buff",   weight = 20, strength = 0.25, armor = 0.8,
+            { id = "fallen_blade",  kind = "strong", weight = 30, mult = 1.35 },
+            { id = "unholy_wings",  kind = "buff",   weight = 20, strength = 0.2, armor = 0.8,
               maxRow = 1 },
-            { id = "judgment",      kind = "strong", weight = 25, mult = 0.9, pierce = true },
+            { id = "judgment",      kind = "strong", weight = 25, mult = 0.7, pierce = true },
             { id = "feather_storm", kind = "multi",  weight = 25, mult = 0.4, hits = 3 },
         },
     },

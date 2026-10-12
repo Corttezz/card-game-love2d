@@ -61,9 +61,9 @@ coringa raro depois do chefe.
 |---|---|---|
 | 1 | carrion_king | abre e repete (a cada 4) o **Chamado da Revoada**: +2 `swarm`; a **Revoada** bate 2 + corvos vezes e deixa Fraco |
 | 2 | tower_lich | **Escudo de Gelo** a cada 3º turno (bloqueio grande + Frágil); drena (Frágil + cura) |
-| 3 | abyss_tyrant | **Reunir Chamas** (carga, a cada 3) força **Fogo Infernal** ×2,4 + Queimadura no turno seguinte |
+| 3 | abyss_tyrant | **Reunir Chamas** (carga, a cada 4) força **Fogo Infernal** ×1,7 + Queimadura 2 no turno seguinte |
 | 4 | winter_monarch | **Lâmina do Inverno** perfura o Bloqueio; **Inverno Eterno** a cada 3 (Frágil + Fraco) |
-| 5 | rot_colossus | Regeneração passiva 2%/turno (`regen`, beat `enemy.regen`); **Nuvem Pestilenta** envenena o jogador |
+| 5 | rot_colossus | Regeneração passiva 1,5%/turno (`regen`, beat `enemy.regen`); **Nuvem Pestilenta** envenena o jogador |
 | 6 | eclipse_queen | abaixo de 50% vira o **ECLIPSE** (beat `enemy.phase`, kit novo, dano ×1,3, abre com Eclipse Total) |
 
 ## Sem espólio extra no chefe (decisão do dono, Out/2026)
@@ -120,3 +120,11 @@ guerreiro), chefe do A3 (Tirano: 6 do mago, 5 do ladino), mini-chefe do A6
 luta 12-18 turnos (dano baixo contra vida de chefe). Candidatos a alavanca,
 NÃO aplicados: Colosso regen 2%→1,5%; Anjo Caído (lâmina 1,6, julgamento
 perfurante 0,9); dano do mago no fim do jogo (frente de classe).
+
+### Ajuste pós-v7 (Out/2026, pedido do lead — sem bateria cheia, a combinada é da frente combate-clareza)
+- Colosso (A5): regen 2% → 1,5%/turno (8 das 25 mortes do ladino).
+- Anjo Caído (mini A6): Lâmina Caída 1,6 → 1,35, Julgamento perfurante 0,9 → 0,7,
+  Asas Profanas força 0,25 → 0,2 (5 mortes do guerreiro).
+- Tirano (A3): carga a cada 4 turnos (era 3), Fogo Infernal 2,0 → 1,7 e
+  queimadura 3 → 2. Continua o maior golpe da luta e telegrafado um turno
+  inteiro; classes de defesa fraca (mago/ladino) morriam no 2º ciclo.
