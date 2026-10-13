@@ -83,6 +83,36 @@ SFX = [
             "shuffle with magical sparkle on top, refresh action sound"
         ),
     },
+    # ===== Assinaturas dos coringas de COMBO (Out/2026) — vão pra
+    # audio/sfx/joker-sig/<card_id>.mp3 (registro por SCAN no main.lua).
+    # Free tier: regerar com plano pago antes de vender (known_gaps §0b).
+    {
+        "id": "joker_combo_volley", "dir": "audio/sfx/joker-sig",
+        "duration": 0.9,
+        "prompt": (
+            "Three quick steel daggers thrown in rapid succession, three "
+            "sharp whooshing swishes ending in three small metallic thunks "
+            "into wood, rhythmic, retro dark fantasy card game"
+        ),
+    },
+    {
+        "id": "joker_combo_wall", "dir": "audio/sfx/joker-sig",
+        "duration": 0.9,
+        "prompt": (
+            "Two heavy bronze round shields slamming together edge to edge, "
+            "deep resonant metallic clang with a short low ring, sturdy "
+            "defensive wall locking into place, dark fantasy"
+        ),
+    },
+    {
+        "id": "joker_combo_pair", "dir": "audio/sfx/joker-sig",
+        "duration": 0.9,
+        "prompt": (
+            "Two magical playing cards snapping down on a table one after "
+            "another, followed by a mirrored twin crystal chime echoing "
+            "twice, mysterious and satisfying, card game"
+        ),
+    },
 ]
 
 
@@ -108,7 +138,9 @@ def generate(item, api_key):
     with urllib.request.urlopen(req, timeout=60) as resp:
         data = resp.read()
 
-    out = os.path.join(OUT_DIR, item["id"] + ".mp3")
+    out_dir = item.get("dir", OUT_DIR)
+    os.makedirs(out_dir, exist_ok=True)
+    out = os.path.join(out_dir, item["id"] + ".mp3")
     with open(out, "wb") as f:
         f.write(data)
     print(f"[ok]  {out} ({len(data)} bytes)")

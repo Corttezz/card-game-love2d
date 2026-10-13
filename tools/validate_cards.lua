@@ -207,8 +207,34 @@ function M.run()
     print("\n-- atlas entries without a matching card (" .. #deadEntries .. ") --")
     for _, id in ipairs(deadEntries) do print("  " .. id) end
 
+    -- ===== Trava de CARTA VIVA e de ASSINATURA SONORA (Out/2026) =====
+    -- Doutrina de criação de carta (memory/card_icon_animation.md,
+    -- memory/card_feel.md): toda carta tem ícone ANIMADO (icons_anim/<icon>/
+    -- com frames) e todo coringa tem assinatura em audio/sfx/joker-sig/<id>.
+    -- Os 3 coringas de combo entraram sem nenhum dos dois — nada pegou,
+    -- porque a cobertura (128/128) era só convenção.
+    local noAnim, noSig = {}, {}
+    for id, card in pairs(all) do
+        local entry = CardArtAtlas[id]
+        local icon = entry and entry.icon
+        if icon and not love.filesystem.getInfo(
+                "assets/sprites/icons_anim/" .. icon .. "/frame_000.png") then
+            table.insert(noAnim, id .. " (" .. icon .. ")")
+        end
+        if card.type == "joker" and not love.filesystem.getInfo(
+                "audio/sfx/joker-sig/" .. id .. ".mp3") then
+            table.insert(noSig, id)
+        end
+    end
+    table.sort(noAnim); table.sort(noSig)
+    print("\n-- cartas SEM icone animado (" .. #noAnim .. ") --")
+    for _, x in ipairs(noAnim) do print("  " .. x) end
+    print("\n-- coringas SEM assinatura sonora (" .. #noSig .. ") --")
+    for _, x in ipairs(noSig) do print("  " .. x) end
+
     local artOk = #missingArt == 0 and #dupIcons == 0
                   and #brokenIcons == 0 and #deadEntries == 0
+                  and #noAnim == 0 and #noSig == 0
 
     -- ===== Trava de CORINGA CLONADO (Set/2026) =====
     -- O dono achou jogando: "qual a diferenca entre deus do abismo e forma de
@@ -272,8 +298,9 @@ function M.run()
     print("\n==== Done ====")
     if not artOk then
         print("FALHOU: arte de carta. Toda carta precisa de entrada propria em "
-            .. "src/data/card_art.lua e de um icone que nao seja usado por "
-            .. "outra carta.")
+            .. "src/data/card_art.lua, de um icone que nao seja usado por "
+            .. "outra carta, de icone ANIMADO (icons_anim/) e, se coringa, "
+            .. "de assinatura em audio/sfx/joker-sig/.")
     end
     if #cloneJokers > 0 then
         print("FALHOU: coringa clonado. Dois coringas que a MESMA run pode "

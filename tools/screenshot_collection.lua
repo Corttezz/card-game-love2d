@@ -25,6 +25,19 @@ function M.run(cardId)
     end
     local screen = CollectionScreen:new()
     screen:show(function() end)
+    -- COLLECTION_FILTER=joker|attack|...: aba da coleção (coringa só aparece
+    -- na aba de coringas)
+    -- a coleção monta as instâncias em ONDAS (orçamento por frame); a carta
+    -- alvo pode estar no fim da lista (coringas) — termina a montagem antes
+    for _ = 1, 200 do
+        if screen._buildDone then break end
+        screen:_buildInstances(1)
+    end
+    screen:_applyFilter()
+    if os.getenv("COLLECTION_FILTER") then
+        screen.filter = os.getenv("COLLECTION_FILTER")
+        screen:_applyFilter()
+    end
 
     -- Acha a carta alvo na lista filtrada e rola até ela
     local target, targetIdx
@@ -34,6 +47,8 @@ function M.run(cardId)
     -- loja: qualquer carta serve de âncora (a ordem do grid muda com o idioma)
     if not target and os.getenv("STORE_REVEAL") == "1" and screen.filtered
         and screen.filtered[1] then
+        print("[screenshot_collection] AVISO: " .. cardId
+            .. " fora da aba atual — usando a 1a carta (" .. screen.filtered[1].id .. ")")
         target, targetIdx = screen.filtered[1], 1
         cardId = target.id
     end

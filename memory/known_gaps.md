@@ -22,6 +22,8 @@ type: project
 - PNGs antigos: `assets/cards/**` (theRock, bloodSword, rage, secondWind, seeingRed, ironShield, manaCrystal, potionOfHealing, back), `assets/icons/*.png` (armor/attack/coin/deck/mana), `assets/jokers/*`, `assets/backgrounds/step1.png`
 Ver também a seção de licenças em `memory/release_pipeline.md`.
 
+**0b. SFX gerados no ElevenLabs FREE (sem uso comercial) — regerar com plano pago antes de vender.** Lista dos que entraram depois do levantamento geral (o lote antigo está em `memory/release_pipeline.md`): `audio/sfx/joker-sig/joker_combo_volley.mp3`, `joker_combo_wall.mp3`, `joker_combo_pair.mp3` (Out/2026, coringas de combo; prompts em `tools/generate_sfx.py`, regerar com `python tools/generate_sfx.py <id>`).
+
 **1. Cartas ainda com `effects = {}`** — 12 cartas (starter/básicas): `warrior_strike`, `warrior_defend`, `rogue_strike`, `rogue_defend`, `attack_001`, `defense_001`, etc. Isso é **intencional**: são âncoras de tag (`#strike` / `#defend`) sem efeito adicional, balanceadas por combos. Rodar `love . validate_cards` para ver lista atualizada.
 
 **2. Fallback de imagem `theRock.png`** usado em muitas cartas — não é estilo, é falta de arte. Pipeline de sprite via pixel-mcp está em `memory/sprite_design_queue.md`. Ao gerar PNGs, substituir campo `image` no `src/data/cards/*.lua`.

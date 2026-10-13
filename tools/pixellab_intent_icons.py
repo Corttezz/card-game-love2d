@@ -84,8 +84,10 @@ SPECS = {
 
 def cmd_gen(name, seed=None):
     size, desc = SPECS[name]
-    args = {"description": f"{desc}. {STYLE}", "width": size, "height": size,
-            "no_background": True, "style_image_base64": N.b64(STYLE_BOARD)}
+    card = name in CARD_SPECS
+    args = {"description": desc if card else f"{desc}. {STYLE}",
+            "width": size, "height": size, "no_background": True,
+            "style_image_base64": N.b64(CARD_STYLE_REF if card else STYLE_BOARD)}
     if seed is not None:
         args["seed"] = int(seed)
     text = N.call("create_image_pro", args)
@@ -101,9 +103,41 @@ def cmd_gen(name, seed=None):
         if f.startswith("cand_"):
             os.remove(os.path.join(d, f))
     n = N.download_all(done, os.path.join(d, "cand_{}.png"))
-    unroll(d, n)
+    if size <= 42:
+        unroll(d, n)   # só a folha 8x8 de canvas pequeno vem enrolada
     N.ledger_add(name, "icon_v2", None)
     contact(name, n)
+
+
+# ---------------------------------------------------------------------------
+# ÍCONES DE CARTA (64x64) — mesmo pipeline de candidatos. O slot da carta
+# corta o ícone por "cover" (88x107 a partir de 64x64): só ~52px do MEIO
+# aparecem. Composição LARGA = sujeito decepado nas bordas (os 3 coringas de
+# combo v1: cartas e escudos cortados ao meio). Prompt pede o sujeito
+# estreito, centrado, margem vazia dos lados.
+CARD_STYLE = ("single centered subject in a NARROW vertical composition, "
+              "everything fits inside the middle 40 pixels of the width, "
+              "empty transparent margins on the left and right, dark fantasy "
+              "grimoire card illustration pixel art, crisp dark 1px outline, "
+              "earthy desaturated palette with aged gold, detailed shading, "
+              "light from the upper left, hard-edged pixel clusters, no text, "
+              "no background, matches the reference icon style")
+CARD_SPECS = {
+    "combo_volley": (64, "three slender steel throwing daggers falling point "
+                     "down in a tight vertical cluster, one slightly above the "
+                     "other two, aged gold crossguards, motion streaks above "
+                     "them, a rain of blades"),
+    "combo_wall": (64, "two tall kite shields locked edge to edge in a tight "
+                   "shield wall, front one bronze with iron studs, the one "
+                   "behind darker, both tall and narrow, a defensive wall"),
+    "combo_pair": (64, "an ornate gilded hand mirror standing upright, oval "
+                   "glass showing the reflection of a second identical "
+                   "mirror inside it, twin reflection, mystical violet glint "
+                   "on the glass"),
+}
+for _k, (_sz, _d) in CARD_SPECS.items():
+    SPECS[_k] = (_sz, _d + ". " + CARD_STYLE)
+CARD_STYLE_REF = os.path.join(ICONS, "joker_shield.png")
 
 
 def unroll(d, n):
@@ -165,7 +199,7 @@ def cmd_pick(name, n):
             r, g, b, a = px[x, y]
             px[x, y] = (r, g, b, 255) if a >= 128 else (0, 0, 0, 0)
     im.save(os.path.join(ICONS, name + ".png"))
-    print(f"[pick] {name} <- cand_{n}")
+    print(f"[pick] {name} <- cand_{n}  bbox={im.getbbox()}")
 
 
 def cmd_board():

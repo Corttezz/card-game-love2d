@@ -1082,6 +1082,11 @@ ANIMS = {
                  "lenses brightening and dimming slowly"),
         "fps": 9,
     },
+    # ===== Coringas de COMBO (Out/2026, uncommon = sutil, 1 elemento) =====
+    # Os 3 coringas de combo (combo_volley/wall/pair) têm idle ASSADO por
+    # tools/bake_icon_glint.py, não PixelLab: o v3 entortou as adagas e
+    # ondulou a borda das cartas (reprovado no olho, Out/2026). Não
+    # recolocar aqui — um replace_existing apagaria o assado.
 }
 
 def token():

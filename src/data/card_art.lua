@@ -149,9 +149,9 @@ return {
     effect_mystery_card     = { icon = "question",               bg = "arcane",  accent = "PURPLE",       decoration = "sparks", artOffsetY = -9 },  -- sujeito no PÉ da arte (CardArtSlot.VALIGN)
     joker_005               = { icon = "jester_hat",             bg = "abyss",   accent = "AGED_GOLD",    effect = "holo" },
     -- coringas de combo (Out/2026): arte PixelLab (combo_volley/wall/pair)
-    joker_combo_volley      = { icon = "combo_volley",           bg = "storm",   accent = "AGED_GOLD",    effect = "holo" },
-    joker_combo_wall        = { icon = "combo_wall",             bg = "metal",   accent = "AGED_GOLD",    effect = "holo" },
-    joker_combo_pair        = { icon = "combo_pair",             bg = "arcane",  accent = "AGED_GOLD",    effect = "holo" },
+    joker_combo_volley      = { icon = "combo_volley",           bg = "storm",   accent = "AGED_GOLD",    decoration = "sparks" },
+    joker_combo_wall        = { icon = "combo_wall",             bg = "metal",   accent = "AGED_GOLD",    decoration = "dust" },
+    joker_combo_pair        = { icon = "combo_pair",             bg = "arcane",  accent = "AGED_GOLD",    decoration = "sparks" },
 
     -- ===== ORFAS (2026-09-12): 12 cartas que nao tinham entrada e caiam no
     -- fallback por tipo do CardArt.resolve — todas do mesmo tipo dividiam o
