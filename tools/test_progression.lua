@@ -125,7 +125,9 @@ function M.run()
     -- forca global do inimigo (Config.Game.ENEMY_POWER); o knob tem teste
     -- proprio logo abaixo.
     local savedPower = Config.Game.ENEMY_POWER
+    local savedByActRaw = Config.Game.ENEMY_POWER_BY_ACT
     Config.Game.ENEMY_POWER = nil
+    Config.Game.ENEMY_POWER_BY_ACT = nil
     local s = ActSystem.getEnemyStats(1, 1, "battle")
     t:eq("ato1 andar1 battle HP = 14", s.health, 14)
     t:eq("ato1 andar1 battle dano = 4", s.damage, 4)
@@ -146,6 +148,18 @@ function M.run()
     local half = ActSystem.getEnemyStats(1, 8, "boss")
     t:eq("ENEMY_POWER escala a vida", half.health, math.floor(110 * 0.5))
     t:eq("ENEMY_POWER escala o dano", half.damage, math.floor(12 * 0.5))
+    -- curva por ato compoe com a global e arredonda UMA vez; endless herda o ultimo ato
+    local savedByAct = savedByActRaw
+    Config.Game.ENEMY_POWER_BY_ACT = { [1] = { damage = 0.5, health = 0.5 }, [6] = { damage = 2, health = 2 } }
+    t:eq("ENEMY_POWER_BY_ACT compoe a vida (ato 1)", ActSystem.getEnemyStats(1, 8, "boss").health, math.floor(110 * 0.25))
+    t:eq("ENEMY_POWER_BY_ACT compoe o dano (ato 1)", ActSystem.getEnemyStats(1, 8, "boss").damage, math.floor(12 * 0.25))
+    t:eq("ENEMY_POWER_BY_ACT ausente no ato = 1,0", ActSystem.getEnemyStats(2, 8, "boss").health, math.floor(220 * 0.5))
+    -- endless (ato 7) herda o fator do ato 6: 0,5 (global) x 2 (ato 6) = curva crua
+    local e7 = ActSystem.getEnemyStats(7, 1, "battle", 1)
+    Config.Game.ENEMY_POWER = nil; Config.Game.ENEMY_POWER_BY_ACT = nil
+    t:eq("ENEMY_POWER_BY_ACT: endless herda o ultimo ato", e7.health,
+        ActSystem.getEnemyStats(7, 1, "battle", 1).health)
+    Config.Game.ENEMY_POWER_BY_ACT = savedByAct
     Config.Game.ENEMY_POWER = savedPower
 
     -- endless: floor 1 == base do ULTIMO ato (fator 1.0), depois 1.18^(f-1).

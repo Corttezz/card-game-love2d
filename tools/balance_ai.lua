@@ -349,7 +349,8 @@ function AI.simulate(game, set, bctx, opts)
         if atks >= require("src.core.Game").IMPETUS_ATTACKS then S.str = S.str + 1; S.strGain = S.strGain + 1 end
     end
     -- Toxinas do ladino (Out/2026): 2+ ataques no turno = +TOXIN_GROWTH na passiva
-    local toxin = (game.classPassiveTier and game:classPassiveTier() or 1) + (game._toxinBonus or 0)
+    local toxin = math.max(1, (game.classPassiveTier and game:classPassiveTier() or 1)
+        + (require("src.core.Game").ROGUE_POISON_OFFSET or 0)) + (game._toxinBonus or 0)
     if game.selectedClass == "rogue" and not game._toxinGrowFiredThisTurn then
         local atks = game._attacksThisTurn or 0
         for _, c in ipairs(set) do if (c.attack or 0) > 0 then atks = atks + 1 end end

@@ -265,3 +265,159 @@ A5 10 · A6 3 (o chefe do A5 ainda é a parede do ladino). Parte do dano das car
 que vem de combo: guerreiro 17% (era 37%), mago 20% (era 55%), ladino 31% (era 48%);
 Bloqueio de combo 14–21% (era ~50%). Cartas por jogada ~3,2–3,5 (inalterado: a mana
 é quem limita).
+
+## Calibração do relógio instantâneo (12/Out/2026, HEAD 50097b7, selo 0)
+
+`python tools/balance.py --runs 30 --pilots expert_full` (= o piloto v6 original:
+busca de combate + deck por simulação com 2 replays e todas as candidatas),
+MESMAS seeds 720001–720030 da bateria serial de `a113c57`, agora em 15,7 min de
+parede (12 processos, ~108 s de CPU por run) em vez de ~2 h por classe:
+
+| classe | serial a113c57 (relógio de quadros) | expert_full instantâneo | IC 95% |
+|---|---|---|---|
+| guerreiro | 53% | **53%** (16/30) | 36–70% |
+| mago | 60% | **57%** (17/30) | 39–73% |
+| ladino | 50% | **43%** (13/30) | 27–61% |
+
+Diferença de 0–2 runs por classe: o relógio instantâneo reproduz a medição
+antiga dentro do ruído (o piloto por simulação de deck consulta `love.timer`
+pra orçamento, então não é bit-a-bit — a paridade bit-a-bit é do
+`test_instant_parity`, com o piloto average). Deck final 13–16; turnos/luta
+A1→A6 2,6 · 4,6 · 5,7 · 6,6 · 7,7 · 8,9; mortes A3 8 · A4 7 · A5 21 · A6 8 —
+**o Colosso (A5) é 18 das 44 mortes** (12 das 17 do ladino). Duração estimada
+67–82 min por run (o StS vence em 35–60).
+
+Os outros pilotos no mesmo HEAD (`s2-head-fast`, 30/classe): naive 0% (morre
+A2 80%), average 0–3% (A2 32% · A3 41% · A4 22%), expert_fast 0–3% (A3 53%);
+`expert` (deck por simulação com 1 replay e 2 candidatas) 19–25% (n=16). Ou
+seja: HEAD está NA BANDA pro melhor piloto (45–60%) e abaixo pra todos os
+outros — a diferença é o deck (17–18 cartas contra 13–15) e a qualidade da
+jogada, não a seed. Muros dos pilotos rápidos: tower_lich (A2) 38 e
+storm_griffin (mini A2) 32 das 270 mortes, abyss_tyrant (A3) 31.
+
+### Sweep A — força global do inimigo × vida do tower_lich (pilotos rápidos)
+
+`python tools/balance_tune.py --runs 30 --pilots naive,average,expert_fast
+--enemy-power 0.8,0.85 … 0.55,0.6 --boss-hp-id "" tower_lich=0.8` (12 pontos,
+8 min de parede). `average` aqui ainda é o v5 ("pega sempre algo", deck 18–19):
+
+| ENEMY_POWER (dano,vida) | naive G/M/L | average G/M/L | expert_fast G/M/L | onde o average morre |
+|---|---|---|---|---|
+| 0,80/0,85 (HEAD) | 0/0/0 | 3/0/0 | 3/0/0 | A2 32% · A3 41% |
+| 0,75/0,80 | 0/0/0 | 0/0/0 | 10/0/3 | A3 57% |
+| 0,70/0,75 | 0/0/0 | 0/0/3 | 17/0/3 | A3 54% |
+| 0,65/0,70 | 0/0/0 | 3/0/0 | 23/3/13 | A3 58% |
+| 0,60/0,65 | 0/0/0 | 13/0/7 | 37/10/10 | A3 42% · A4 21% |
+| 0,55/0,60 | 0/0/0 | 7/3/0 | 37/10/27 | A3 37% · A5 36% |
+
+tower_lich ×0,8 não muda nada mensurável (±1 run). **Baixar o inimigo NÃO
+salva o deck gordo**: de 0,8 a 0,55 o `average` sai de 0–3% para 0–13% e só
+troca a morte de A2 por A3/A5 — perde 17–20 de vida por luta no A3 em todo
+ponto da grade, contra 6,5 do expert_full. Enquanto isso o expert_fast vai a
+37% e o expert_full iria muito acima da banda (a 0,75/0,82 o `expert` barato
+já dava 30/40/63%, `cc_n5`). O que separa os pilotos é o DECK (expert_full:
+6,7 cartas na 8ª batalha, 13 no fim; average: 13,9 na 8ª, 18–19 no fim) e a
+QUALIDADE das cartas que entram (expert_fast tem deck de 16–18 e também
+morre no A3). Muro dos pilotos rápidos a 0,7/0,75: elites do A3 47 mortes
+(`eliteHPMul` 1,7 × base 165 = 280 de vida já no 1º andar do ato, mais que o
+chefe do A2), abyss_tyrant 42, abyss_watcher 31, obsidian_sentinel 24.
+Leitura do lead: sinal de DESIGN (o jogo pune deck normal mais que o StS), não
+defeito de piloto — ver Sweep B.
+
+### Sweep B/C — mão, mana, deck fino e o diagnóstico por luta
+
+Piloto `average` recalibrado 7 vezes na sessão (ver [[balance_pipeline]]): barra
+de escolha (76–85% das recompensas em vez de 90–100%), 1 carta por loja (era
+até 5 numa loja do A1), score por VALOR em vez de por tag, bônus de cura.
+Nenhuma versão passou de 0–7% em HEAD, 0,75/0,8 ou 0,7/0,75; mão 6 e mana 4
+(`--hand 6 --mana 4`) deram +0–7 pp no average e +10 pp no expert_fast
+guerreiro (43%). Melhor célula do sweep B: 0,7/0,75 + mão 6 + mana 4 →
+average 7/3/0, expert_fast 43/10/10, naive 0.
+
+**Diagnóstico por turno** (`battleLog[].diag`, `python <scratch>/diag.py`;
+HEAD, A3, média por luta):
+
+| piloto | turnos/luta | dano/turno | golpe anunciado | escudo no golpe | cobriu | furou/golpe | vida/luta | mana sobrando | carta pagável sobrando |
+|---|---|---|---|---|---|---|---|---|---|
+| naive | 2,7 | 48 | 20,7 | 5,6 | 9% | 15,9 | 19,8 | 0,09 | 0,02 |
+| average v5 (tag) | 6,0 | 30 | 21,2 | 23,7 | 59% | 6,0 | 18,8 | 0,15 | 0,11 |
+| average v7 (valor) | 3,6 | 59 | 20,2 | 11,2 | 23% | 11,3 | 18,2 | 0,38 | 0,21 |
+| expert_fast | 4,1 | 48 | 19,6 | 10,8 | 26% | 10,9 | 14,1 | 0,61 | 0,90 |
+| **expert_full** | 5,6 | 40 | 19,8 | 16,3 | 51% | 7,1 | **6,9** | 0,58 | 0,78 |
+
+O average NÃO é cego: lê o intent (cobre 59% dos golpes, mais que o
+expert_full) e gasta a mana. Ele perde porque **não se sustenta**: mesma
+cobertura, 7 de furo por golpe, e ainda assim 18,8 de vida por luta contra
+6,9 — o expert_full escolhe CURA (Gota Curativa 49×, Poção de Cura 33×, Elmo
+do Valor 43× em 36 runs), básicas baratas (attack_002, Baluarte, defense_001),
+forja 3,5×/run (average 1,3) e SEGURA carta (0,8 pagável não jogada por turno
+— só joga o que o plano pede). A composição do deck final é a mesma
+(50% ataque · 29% defesa · 20% efeito, valor base até MENOR: 3,6 de
+ataque/carta contra 4,1). Quem tenta ser agressivo (average v7, expert_fast,
+naive: 48–59 de dano/turno) cobre 9–26% dos golpes e morre no A3 do mesmo
+jeito. **Resumo pro dono dos números:** o jogo em HEAD só é vencível com
+sustento + forja + escolha por simulação; carta tomada por valor-de-face
+perde 100% — no StS quem pega a maioria das cartas ainda vence 10–25%.
+
+### Adotado (Stage 2 final, 12/Out/2026): `ENEMY_POWER` 0,75/0,8 + ato 3 ×0,9
+
+Baterias `s2-ef-075-a3` (expert_full), `s2-sweepC-p02` (naive/expert_fast) e
+`s2-final-average` (average, depois do conserto do motor — abaixo), 30 runs
+por classe×piloto, seeds 720001–720030, selo 0:
+
+| piloto | banda | guerreiro | mago | ladino | mortes por ato (90 runs) | turnos/luta A1→A6 | min/run (est.) |
+|---|---|---|---|---|---|---|---|
+| naive | <5% ✓ | 0% | 0% | 0% | A1 1 · A2 52 · A3 35 · A4 2 | 2,3 · 3,2 · 3,6 · — | ~15 |
+| average (normal) | 12–25% ✗ | 10% [3–26] | 0% [0–11] | 7% [2–21] | A2 10 · A3 32 · A4 19 · A5 19 · A6 5 | 2,3 · 3,2 · 3,6 · 4,2 · 5,7 | 25–34 |
+| expert_fast | 30–50% ✗ | 13% [5–30] | 0% [0–11] | 0% [0–11] | A2 6 · A3 31 · A4 31 · A5 16 · A6 2 | idem | ~35 |
+| **expert_full** | 45–60% ✓ | **57% [39–73]** | **53% [36–70]** | **53% [36–70]** | A3 2 · A4 6 · **A5 27** · A6 6 | 2,4 · 4,5 · 5,1 · 6,7 · 7,4 · 9,0 (chefe A6 11,4) | 72 / 81 / 67 (vitória ~84) |
+
+Vida perdida por luta do expert_full A1→A6: 0,4 · 2,6 · 4,1 · 5,1 · 11,1 · 7,5;
+deck final 14–15; dano 72% carta · 14% orbe · 12% DoT; valor de ataque
+48% base · 24% combo · 18% stat · 10% coringa. Mortes: Colosso (A5 boss) 18,
+Mãe dos Esporos (A5 mini) 7 — o A5 é o degrau seguinte a olhar, mas está na
+banda de "onde o expert morre" (A5–A6). Pontos abaixo (0,7/0,75 + A3) só
+levam o expert_fast a 17/3/7 e o average a 7/0/0 — não vale tirar o
+expert_full da banda por isso.
+
+**Conserto do piloto `steps` no fecho (Out/2026):** o banco do
+`test_balance_pipeline` flagrou o average perdendo 70 de vida (morte em 9
+turnos) no elite A1-F4 em que o naive vence em 2: com o deck inteiro na mão,
+`chooseMotorCard` gastava as 3 manas em Grito de Comando (compra 2 do baralho
+vazio → a própria carta volta), Força +24 e zero dano. Regra nova: motor de
+compra só com algo pra comprar (deck+descarte ≥ 1) e nunca com a ÚLTIMA mana
+(custo 0 passa). Só o `average` usa `steps`; a bateria refeita deu 10/0/7
+(era 7/0/3 — dentro do ruído, a leitura não muda).
+
+### Propostas pro dono (NÃO aplicadas): abrir 10–25% pro jogador normal
+
+O sweep provou que nenhum knob de inimigo move o average/expert_fast sem
+jogar o expert_full pra fora da banda. O que separa os pilotos é SUSTENTO
+(18,8 de vida/luta contra 6,9 com a mesma cobertura de intent) e a
+qualidade da escolha. As três mudanças menores que atacam isso, em ordem de
+custo:
+
+1. **Cura garantida cedo e mais acessível.** Hoje a cura é carta rara de
+   achar (o expert_full "caça" Gota Curativa/Poção de Cura/Elmo do Valor).
+   Garantir 1 oferta de cura (ou sustento: lifesteal/regen) na recompensa do
+   1º elite ou do chefe do A1, e dar peso extra a cartas `heal` na afinidade
+   quando o deck tem < 2 fontes — é exatamente o que o average recalibrado
+   faz por fora e ainda assim só chega a 7%; se a OFERTA existir, ele
+   escolhe sozinho. Medir com `average` antes/depois (knob barato: peso em
+   `CardRegistry`/`ShopSystem`).
+2. **Descanso que cura mais e/ou consumível de cura.** Rest hoje cura 30%
+   da vida máxima (`RestScreen:_healPct`, igual ao StS — mas o StS tem
+   poções e relíquias de sustento que aqui não existem); subir pra ~40% OU
+   introduzir uma poção consumível (1 slot, cura 20%, cai de elite) dá ao
+   jogador que lê o intent a margem que falta no A3–A4 — onde o average
+   perde 12–16 de vida por luta e morre em 64 das 90 runs.
+3. **Elites do A3–A4 menos punitivas no 1º andar do ato.** `eliteHPMul` 1,7
+   logo na entrada do ato (280 de vida no A3) é mais que o chefe anterior;
+   escalar o multiplicador de elite pelo andar (1,4 no 1º andar → 1,7 no
+   último) ou ligar a elite a uma recompensa de sustento garantida (item 1)
+   corta o muro sem tocar a curva do chefe que o expert_full já acha justa.
+
+Alvo de aceite: average 12–25% e expert_fast 30–50% com expert_full ainda
+45–60% (`python tools/balance.py --runs 30 --pilots naive,average,expert_fast`
++ `--pilots expert_full`, mesmas seeds). Combos e coringas ficam como estão
+([[combo_rules]] — o dono quer o poder vindo deles).

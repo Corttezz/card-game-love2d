@@ -681,7 +681,7 @@ function Game:applyClassBattleStartPassive()
             -- valia na 1a luta da run): com ela em toda luta e o Conduite
             -- crescendo, o mago foi a 63% (30 runs); 1/2/3 deu 77%; 0/1/2 deu
             -- 53% (meta 40-55%). O Foco agora vem do JOGO (Conduite, cartas).
-            local f0 = self:classPassiveTier() - 1
+            local f0 = self:classPassiveTier() + Game.MAGE_FOCUS_OFFSET
             if f0 > 0 then self.player:addBuff("focus", 99, f0) end
         end
         if love.timer then self._passiveFlashT = love.timer.getTime() end
@@ -692,6 +692,15 @@ end
 -- 15 runs): ladino 17% -> 20%, ainda morrendo no chefe do A4/A5 com lutas de
 -- 8-9 turnos — a curva de veneno cresce devagar demais contra 600 de vida.
 Game.TOXIN_GROWTH = 2
+
+-- Deslocamento das passivas que crescem com a run sobre o degrau de
+-- classPassiveTier (1/2/3). Foco inicial do mago = degrau + MAGE_FOCUS_OFFSET
+-- (-1 -> 0/1/2, ver applyClassBattleStartPassive); Veneno das Toxinas =
+-- degrau + ROGUE_POISON_OFFSET (+ o que cresceu na luta). Sao os knobs do
+-- sweep (BALANCE_MAGE_FOCUS / BALANCE_ROGUE_POISON em tools/balance_sim.lua);
+-- o piloto (tools/balance_ai.lua) espelha a mesma conta.
+Game.MAGE_FOCUS_OFFSET = -1
+Game.ROGUE_POISON_OFFSET = 0
 
 -- Quantos ataques no turno o Impeto pede. 2 -> 3 (Out/2026): com o inimigo
 -- suavizado (d0e41d4) e o DoT ignorando armadura, a bateria combinada de 30
@@ -958,7 +967,8 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
             CombatBeats.step(sink, "passive.toxins", function()
                 -- Out/2026: Veneno cresce com a run (1 → 2 → 3) e na luta
                 -- (+2 a cada turno com 2+ ataques, ver applyClassTurnPassives).
-                local stacks = self:classPassiveTier() + (self._toxinBonus or 0)
+                local stacks = math.max(1, self:classPassiveTier() + Game.ROGUE_POISON_OFFSET
+                    + (self._toxinBonus or 0))
                 self.enemy:addStatusEffect({ name = "poison", stacks = stacks, duration = 2 })
                 local okCF, CF = pcall(require, "src.systems.CardFeel")
                 if okCF then CF.burstAtEnemy("poison", 0.8) end

@@ -70,6 +70,13 @@ def run_point(args, knobs, label):
         cmd += ["--combo", knobs["combo"]]
     if knobs.get("player_hp"):
         cmd += ["--player-hp", knobs["player_hp"]]
+    for k, flag in (("enemy_power_act", "--enemy-power-act"), ("boss_hp_id", "--boss-hp-id"),
+                    ("combo_joker", "--combo-joker"), ("mage_focus", "--mage-focus"),
+                    ("rogue_poison", "--rogue-poison"), ("hand", "--hand"), ("mana", "--mana")):
+        if knobs.get(k):
+            cmd += [flag, knobs[k]]
+    if args.dir:
+        cmd += ["--dir", args.dir]
     subprocess.run(cmd, cwd=ROOT, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
     with open(os.path.join(args.out, label, "results.json"), encoding="utf-8") as f:
         return json.load(f)
@@ -87,18 +94,30 @@ def main():
     ap.add_argument("--boss-hp", nargs="*", default=[""])
     ap.add_argument("--combo", nargs="*", default=[""])
     ap.add_argument("--player-hp", nargs="*", default=[""])
+    ap.add_argument("--enemy-power-act", nargs="*", default=[""], help='"2:0.9,0.9;3:0.85,0.85"')
+    ap.add_argument("--boss-hp-id", nargs="*", default=[""], help='"tower_lich=0.8"')
+    ap.add_argument("--combo-joker", nargs="*", default=[""])
+    ap.add_argument("--mage-focus", nargs="*", default=[""])
+    ap.add_argument("--rogue-poison", nargs="*", default=[""])
+    ap.add_argument("--hand", nargs="*", default=[""])
+    ap.add_argument("--mana", nargs="*", default=[""])
+    ap.add_argument("--dir", default="", help="arvore do jogo (worktree) a medir")
     ap.add_argument("--targets", default=TARGETS)
     ap.add_argument("--label", default=time.strftime("tune-%Y%m%d-%H%M%S"))
     ap.add_argument("--out", default=os.path.join(ROOT, "reports", "balance"))
     args = ap.parse_args()
 
     targets = load_targets(args.targets)
-    grid = list(itertools.product(args.enemy_power, args.boss_hp, args.combo, args.player_hp))
+    grid = list(itertools.product(args.enemy_power, args.boss_hp, args.combo, args.player_hp,
+                                  args.enemy_power_act, args.boss_hp_id, args.combo_joker,
+                                  args.mage_focus, args.rogue_poison, args.hand, args.mana))
     print(f"[tune] {len(grid)} pontos x ({args.runs} runs x {args.classes} x {args.pilots})")
     results = []
     t0 = time.time()
-    for i, (ep, bh, cb, php) in enumerate(grid, 1):
-        knobs = {"enemy_power": ep, "boss_hp": bh, "combo": cb, "player_hp": php}
+    for i, (ep, bh, cb, php, epa, bid, cj, mf, rp, hd, mn) in enumerate(grid, 1):
+        knobs = {"enemy_power": ep, "boss_hp": bh, "combo": cb, "player_hp": php,
+                 "enemy_power_act": epa, "boss_hp_id": bid, "combo_joker": cj,
+                 "mage_focus": mf, "rogue_poison": rp, "hand": hd, "mana": mn}
         label = f"{args.label}-p{i:02d}"
         tp = time.time()
         res = run_point(args, knobs, label)
@@ -112,6 +131,14 @@ def main():
         for pilot, cls, wr, lo, hi, pen in det:
             flag = "" if pen == 0 else f"  <- fora da banda {lo:.0%}-{hi:.0%}"
             print(f"         {pilot:12s} {cls:8s} {wr:5.0%}{flag}")
+        # contexto além da vitória: quem mata (muro) e ritmo das lutas tardias
+        rep = res["report"]
+        by_enemy = list(rep.get("deaths", {}).get("by_enemy", {}).items())[:3]
+        acts = rep.get("acts", {})
+        late = " · ".join(f"A{a} {acts[a]['turns_per_fight']}t/{acts[a]['boss_turns']}b"
+                          for a in sorted(acts) if a in acts)
+        print(f"         muros: {', '.join(f'{k} {v}' for k, v in by_enemy)} | turnos/luta(/chefe): {late}")
+        results[-1]["walls"] = dict(by_enemy)
     results.sort(key=lambda r: r["score"])
     print(f"\n[tune] melhores configuracoes ({(time.time()-t0)/60:.1f} min):")
     for r in results[:5]:

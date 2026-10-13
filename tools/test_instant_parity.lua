@@ -48,7 +48,7 @@ local function firstDiff(a, b)
     return nil
 end
 
-function M.run()
+local function body()
     local t = TK.new("relogio instantaneo: paridade com o relogio de quadros")
     TK.bootstrap()
     local BS = require("tools.balance_sim")
@@ -108,12 +108,28 @@ function M.run()
 
     print(("  tempo: quadros %.2fs x instantaneo %.2fs (x%.1f)"):format(
         tFrames, tInstant, tFrames / math.max(1e-6, tInstant)))
-    t:check("relogio instantaneo nao e mais lento que o de quadros", tInstant <= tFrames)
+    -- Tempo e BENCHMARK, nao trava: com outras suites em paralelo a medida
+    -- oscila (0,83 s x 1,28 s numa rodada de 3 suites) e a asserção flipava.
+    -- A paridade (acima) e o que o teste garante; throughput mora no
+    -- tools/balance.py (runs/s/core no rodape do relatorio).
+    if tInstant > tFrames then
+        print(("  AVISO: instantaneo %.2fs > quadros %.2fs nesta rodada (carga da maquina?)")
+            :format(tInstant, tFrames))
+    end
     t:eq("nenhum dreno estourou o teto de saltos", Instant.stats.stalls, 0)
 
     Instant.uninstall(Autoplay)
     CombatBeats.speed, Autoplay.pumpDt = savedSpeed, savedDt
     return t:done()
+end
+
+-- Os stubs do balance_sim.setup() sao desfeitos mesmo se o corpo falhar:
+-- as suites seguintes do test_all rodam no mesmo processo.
+function M.run()
+    local ok, res = pcall(body)
+    require("tools.balance_sim").teardown()
+    if not ok then error(res, 0) end
+    return res
 end
 
 return M

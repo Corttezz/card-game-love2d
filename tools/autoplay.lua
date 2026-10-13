@@ -51,7 +51,10 @@ M.quiet = false
 --            "search" (v6: busca sobre os subconjuntos da mao, balance_ai)
 --   build  : "greedy" (pega sempre uma carta, a mais rara/cara) | "v5"
 --            (raridade + afinidade + arquetipo; so pula com deck > 18 e
---            carta comum — o jogador que "pega sempre algo") | "heuristic"
+--            carta comum — o jogador que "pega sempre algo") | "normal"
+--            (mesmo score, mas pula quando o score fica abaixo de uma barra
+--            que sobe `pickBar` por carta acima de 6 — pega ~60-70% das
+--            ofertas; tira carta na loja a partir de `trimAt`) | "heuristic"
 --            (AI.wantsCard: entra quem melhora a media do deck, margem
 --            cresce com o tamanho) | "sim" (v6: joga as proximas lutas com
 --            e sem a carta — o jogador que SENTE o deck inchar)
@@ -67,7 +70,16 @@ M.quiet = false
 M.PILOTS = {
     naive = { combat = "naive", build = "greedy", path = "random", shop = "impulsive",
         rest = "always_rest", event = "first", bench = false },
-    average = { combat = "steps", build = "v5", path = "heuristic", shop = "policy",
+    -- AVERAGE = o jogador NORMAL (Out/2026, pedido do lead): pega ~60-70% das
+    -- cartas (a barra sobe com o deck: `pickBar` por carta acima de 6), usa a
+    -- raridade/afinidade da oferta, tira uma carta na loja a partir de
+    -- `trimAt` cartas, forja na fogueira quando esta de vida (rest=policy).
+    average = { combat = "steps", build = "normal", path = "heuristic", shop = "policy",
+        rest = "policy", event = "policy", bench = true,
+        pickBase = 0, pickBar = 0.35, shopCards = 1, trimAt = 12 },
+    -- O average antigo ("pega sempre algo"; so pula com deck > 18 e carta
+    -- comum) fica como referencia do que o jogo faz com um deck de 18-19.
+    average_v5 = { combat = "steps", build = "v5", path = "heuristic", shop = "policy",
         rest = "policy", event = "policy", bench = true },
     expert = { combat = "search", build = "sim", path = "heuristic", shop = "policy",
         rest = "policy", event = "policy", bench = true },
@@ -81,7 +93,7 @@ M.PILOTS = {
 }
 -- legados → perfil
 M.PILOTS.v6 = M.PILOTS.expert
-M.PILOTS.v5 = M.PILOTS.average
+M.PILOTS.v5 = M.PILOTS.average_v5
 M.PILOTS.v6c = { combat = "search", build = "v5", path = "heuristic", shop = "policy",
     rest = "policy", event = "policy", bench = true }
 M.PILOTS.v6b = { combat = "steps", build = "sim", path = "heuristic", shop = "policy",
@@ -620,10 +632,27 @@ end
 
 -- Carta de motor pagavel: effect com draw_cards, ou restore_mana que rende
 -- mais mana do que custa.
+--
+-- Out/2026 — O MOTOR AINDA PODIA COMER A MANA INTEIRA. O teto de 3 levas
+-- (conserto Set/2026) vale 3 mana — a mana base. Flagrado pelo banco do
+-- test_balance_pipeline com o deck normal de 5 cartas no elite A1-F4
+-- (harvest_reaper): a mao JA tinha o deck inteiro, Grito de Comando
+-- (compra 2, +1 Forca, custo 1) voltava do reembaralho a cada leva, o
+-- steps gastava 3x1 mana nele por turno, Forca chegou a +24 e o inimigo
+-- ficou em 35/35 por 9 turnos ate o jogador morrer — o naive mata em 2.
+-- Duas regras de jogador: (a) nao se compra de um baralho VAZIO (deck +
+-- descarte sem nada alem da propria carta e um reembaralho em vao);
+-- (b) a ULTIMA mana nunca vai numa compra pura — compra e meio, e o que
+-- se compra ainda precisa de mana pra ser jogado. Quem rende mana
+-- (restore_mana > custo) continua passando.
 local function chooseMotorCard(game)
+    local pool = #(game.deck or {}) + #(game.discard or {})
     for _, c in ipairs(game.hand) do
         if c.type == "effect" and (c.cost or 0) <= game.player.mana then
-            if hasEffect(c, "draw_cards") then return c end
+            if hasEffect(c, "draw_cards") and pool >= 1
+                and ((c.cost or 0) == 0 or game.player.mana - (c.cost or 0) >= 1) then
+                return c
+            end
             if hasEffect(c, "restore_mana") then
                 local v = 0
                 for _, e in ipairs(c.effects or {}) do
@@ -1067,6 +1096,13 @@ local function playBattle(game, label)
     local bctx = AI.newBattle(game)
     -- livro de dano desta batalha (fonte → dano efetivo no inimigo)
     ledger = {}
+    -- DIAGNOSTICO DE COMBATE (Out/2026, pedido do lead): por turno, o que o
+    -- piloto fez contra o intent anunciado — escudo x golpe quando o intent e
+    -- ataque (cobriu? furou quanto?), mana sobrando, carta pagavel nao jogada,
+    -- escudo gasto em turno sem golpe. Vai no battleLog (`diag`) e o
+    -- balance_report/diag.py compara pilotos por ato.
+    local diag = { atkTurns = 0, inc = 0, armorOnAtk = 0, unblocked = 0, blockedTurns = 0,
+        manaLeft = 0, leftover = 0, wastedBlock = 0, dealt = 0, enemyDealt = 0 }
     local deckSizeAtStart = #((game.runManager.currentRun or {}).currentDeck or {})
     while game.enemy:isAlive() and game.player:isAlive() do
         turnCount = turnCount + 1
@@ -1312,6 +1348,17 @@ local function playBattle(game, label)
         -- pega custo de sangue de Berserk/Sangria (ignora armor por design)
         local dmgTakenBeforeEnemy =
             (game.scoreSystem._battle and game.scoreSystem._battle.damageTaken) or 0
+        diag.manaLeft = diag.manaLeft + (game.player.mana or 0)
+        diag.leftover = diag.leftover + leftoverPlayable
+        if (nextVal or 0) > 0 then
+            diag.atkTurns = diag.atkTurns + 1
+            diag.inc = diag.inc + nextVal
+            diag.armorOnAtk = diag.armorOnAtk + armorBeforeEnemy
+            diag.unblocked = diag.unblocked + math.max(0, nextVal - armorBeforeEnemy)
+            if armorBeforeEnemy >= nextVal then diag.blockedTurns = diag.blockedTurns + 1 end
+        else
+            diag.wastedBlock = diag.wastedBlock + armorBeforeEnemy
+        end
 
         if game.enemy:isAlive() and game.turn == "player" then
             game:endTurn()
@@ -1357,6 +1404,8 @@ local function playBattle(game, label)
 
         bctx.turns = bctx.turns + 1
         bctx.dealt = bctx.dealt + math.max(0, enemyBefore - game.enemy.health)
+        diag.dealt = diag.dealt + math.max(0, enemyBefore - game.enemy.health)
+        diag.enemyDealt = diag.enemyDealt + math.max(0, enemyDealt)
         if (nextVal or 0) > 0 then
             bctx.hitTurns = bctx.hitTurns + 1
             bctx.incSum = bctx.incSum + nextVal
@@ -1412,7 +1461,7 @@ local function playBattle(game, label)
             hpLost = math.max(0, dmgTakenBefore - game.player.health),
             hpEnd = math.max(0, game.player.health), maxHp = game.player.maxHealth,
             deckSize = deckSizeAtStart,
-            dmg = ledger,
+            dmg = ledger, diag = diag,
         }
     end
     ledger = nil
@@ -1489,6 +1538,64 @@ local function archetypeScore(game, cardData)
     for _, t in ipairs(TagSystem.getCardTags(cardData or {})) do
         s = s + (prior[t] or 0)
     end
+    return s
+end
+
+-- Piloto NORMAL (build = "normal"): a carta so entra (recompensa OU loja) se o
+-- score NORMALIZADO passa de uma barra que sobe com o deck. A afinidade crua
+-- cresce com o deck (cada copia da tag soma), o que faria a barra nunca
+-- morder — aqui vale no maximo 3. Escala medida no diario: comum do arquetipo
+-- 12-14, incomum 16-18, rara 20+, comum fora do arquetipo 2-5. Barra =
+-- pickBase + pickBar por carta acima de 6 (perfil `average`: 12 + 0,5/carta
+-- -> com 6 cartas entra a comum boa do arquetipo, com 10 so incomum+, com 16
+-- incomum com afinidade ou rara, com 22 so rara).
+--
+-- v2 (mesma sessao): o score por TAG era o defeito — Conjuracao Dupla (4 tags
+-- do arquetipo do mago) pontuava 20 e entrou 83x em 90 runs; o expert_full,
+-- que decide por simulacao, pega cura, basicas baratas e forja 3x mais. O
+-- normal agora le a carta como um jogador le: VALOR (AI.cardWorth = pontos
+-- de auditoria da carta + necessidades do deck: defesa abaixo de 30%,
+-- ataque abaixo de 35%, escalada no A2+) + um empurrao de raridade (humano
+-- gosta de rara). Barra = media do deck + margem que sobe com o tamanho
+-- (pickBar por carta acima de 8; pickBase e a folga inicial, negativa =
+-- aceita carta mediana enquanto o deck e pequeno).
+local function normalBar(game, dctx)
+    local p = prof()
+    dctx = dctx or AI.deckContext(game)
+    return dctx.avg + (p.pickBase or -1.5) + math.max(0, dctx.n - 8) * (p.pickBar or 0.35)
+end
+local function hasHeal(cd)
+    for _, e in ipairs((cd and cd.effects) or {}) do
+        if e.type == "instant_heal" or e.type == "on_attack_heal" or e.type == "regen_per_turn" then
+            return true
+        end
+    end
+    return false
+end
+local function normalCardScore(game, offer, cd, dctx)
+    dctx = dctx or AI.deckContext(game)
+    local s = AI.cardWorth(game, cd, dctx, false)
+        + (RARITY_SCORE[offer.rarity or (cd and cd.rarity) or "common"] or 1) * 0.5
+    -- SUSTENTO: o diagnostico (s2-diag) mostrou o expert_full perdendo 6,9 de
+    -- vida por luta no A3 contra 18,8 do average com a MESMA cobertura de
+    -- escudo — a diferenca e cura no deck (Gota Curativa 49x, Pocao 33x em 36
+    -- runs). Um jogador normal tambem pega cura quando nao tem nenhuma.
+    if hasHeal(cd) then
+        local heals = 0
+        for _, id in ipairs(dctx.ids or {}) do
+            if hasHeal(game.deckManager.cardDatabase:getCard(id)) then heals = heals + 1 end
+        end
+        if heals < 2 then s = s + 3 end
+    end
+    -- PROPORCAO: o jogador normal mantem ~1/3 de defesa (o deck vencedor do
+    -- expert_full fecha em 50% ataque / 29% defesa / 20% efeito). So pelo
+    -- valor, o deck virava 68% ataque e cobria 23% dos golpes no A3 — e o
+    -- test_balance_pipeline flagrou o steps perdendo mais que o naive com
+    -- esse deck (sem escudo na mao nao ha intent que salve).
+    local n = math.max(1, dctx.n)
+    local isBlock = cd and (cd.type == "defense")
+    if isBlock and dctx.blockCards / n < 0.35 then s = s + 3 end
+    if cd and cd.type == "attack" and dctx.attackCards / n > 0.55 then s = s - 3 end
     return s
 end
 
@@ -1830,6 +1937,10 @@ local function doRewards(game)
             end
         end
     else
+    -- v5 e NORMAL: raridade + afinidade + arquetipo. O NORMAL ainda compara o
+    -- score com uma barra que sobe com o deck (pickBar por carta acima de 6):
+    -- ate 6 cartas entra tudo; com 10, uma comum sem afinidade ja fica;
+    -- com 14 so incomum com afinidade ou rara. Coringa sempre entra.
     for _, o in ipairs(offers) do
         if o.type == "card" and game.economySystem:canAfford(o.cost) then
             local cd = game.deckManager.cardDatabase:getCard(o.id)
@@ -1837,6 +1948,28 @@ local function doRewards(game)
                 + classTagAffinity(game, cd)
                 + archetypeScore(game, cd) * 2 - o.cost * 0.5
             if s > bestScore then best, bestScore = o, s end
+        end
+    end
+    if prof().build == "normal" then
+        -- NORMAL escolhe pelo VALOR (nao pelo score por tag acima): a melhor
+        -- carta pagavel pelo cardWorth + raridade, e so entra se passa a barra.
+        local dctx = AI.deckContext(game)
+        best, bestScore = nil, -math.huge
+        for _, o in ipairs(offers) do
+            if o.type == "card" and game.economySystem:canAfford(o.cost) then
+                local cd = game.deckManager.cardDatabase:getCard(o.id)
+                local s = normalCardScore(game, o, cd, dctx)
+                if s > bestScore then best, bestScore = o, s end
+            end
+        end
+        if best then
+            local cd = game.deckManager.cardDatabase:getCard(best.id)
+            local bar = normalBar(game, dctx)
+            if not (cd and cd.type == "joker") and bestScore < bar then
+                log("- Recompensa: pulei (%s valor %.1f < barra %.1f, deck %d media %.1f)",
+                    best.name, bestScore, bar, dctx.n, dctx.avg)
+                best = nil
+            end
         end
     end
     end
@@ -2243,6 +2376,15 @@ local function doShop(game)
         end
         local s = (RARITY_SCORE[o.rarity or "common"] or 1) * 2
             + classTagAffinity(game, cd) + archetypeScore(game, cd) * 2
+        -- NORMAL: a mesma conta da recompensa vale na loja (coringa passa);
+        -- >= 6 = compra (limiar do laco de compra abaixo), ordenado pelo valor.
+        if prof().build == "normal" then
+            if cd and cd.type == "joker" then return 99 end
+            local dctx = AI.deckContext(game)
+            local w, bar = normalCardScore(game, o, cd, dctx), normalBar(game, dctx)
+            if w < bar then return -1 end
+            return 6 + (w - bar)
+        end
         -- disciplina de deck: >18 cartas, so rare+ entra
         local deckSize = #deckIdList(game)
         if deckSize > 18 and (RARITY_SCORE[o.rarity or "common"] or 1) < 6 then
@@ -2386,7 +2528,7 @@ local function doShop(game)
     for _, o in ipairs(offers) do
         if bought >= 3 then break end
         if o.type == "upgrade" and o.effect == "remove_card"
-            and #deckIdList(game) >= 14
+            and #deckIdList(game) >= (prof().trimAt or 14)
             and game.economySystem:canAfford(o.cost)
             and spendable() >= o.cost then
             game.economySystem:spendGold(o.cost, o.type, o.id)
@@ -2481,18 +2623,25 @@ local function doShop(game)
     table.sort(cardOffers, function(a, b)
         return scoreCardOffer(a) > scoreCardOffer(b)
     end)
+    -- NORMAL: no maximo `shopCards` cartas (nao coringa) por visita — o
+    -- jogador normal nao leva a vitrine inteira (ate 5 cartas numa loja do
+    -- A1 na bateria s2-avg-n3: era a loja, mais que a recompensa, que
+    -- inchava o deck).
+    local cardsThisVisit, cardCap = 0, prof().shopCards or 99
     for _, o in ipairs(cardOffers) do
         if bought >= 3 then break end
         local s = scoreCardOffer(o)
+        local cd = game.deckManager.cardDatabase:getCard(o.id)
+        local isJoker = cd and cd.type == "joker"
         if s >= 6 and game.economySystem:canAfford(o.cost)
-            and spendable() >= o.cost then
+            and spendable() >= o.cost and (isJoker or cardsThisVisit < cardCap) then
             game.economySystem:spendGold(o.cost, o.type, o.id)
             game:addCardToRun(o.id)
             run._usedShop = true
             bought = bought + 1
+            if not isJoker then cardsThisVisit = cardsThisVisit + 1 end
             log("- Loja: comprei **%s** ($%d, score %.1f)", o.name, o.cost, s)
-            local cd = game.deckManager.cardDatabase:getCard(o.id)
-            if cd and cd.type == "joker" then boughtJoker = true end
+            if isJoker then boughtJoker = true end
         end
     end
 
@@ -2890,6 +3039,12 @@ function M.run(runsArg, classArg, seedArg)
     local I18n = require("src.i18n.I18n")
     I18n.init()
     installDotMeter()
+    -- AUTOPLAY_PILOT=<perfil>: diario de UM piloto especifico (o padrao e o
+    -- expert). E o jeito de ler o que o average/naive decidiu em cada no.
+    if os.getenv("AUTOPLAY_PILOT") and os.getenv("AUTOPLAY_PILOT") ~= "" then
+        M.setPilot(os.getenv("AUTOPLAY_PILOT"))
+    end
+    log("- Piloto: **%s**", tostring(M.policy))
 
     -- silencia print interno do jogo? nao — deixa no console, o diario e a parte.
 

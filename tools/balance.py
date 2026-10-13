@@ -21,6 +21,11 @@ coringas; forja; compras; duracao estimada da run em minutos.
 """
 import argparse, json, os, subprocess, sys, tempfile, time, shutil
 
+# O relatorio tem Δ/×/– e o console do Windows e cp1252: sem isto o print
+# final derrubava o script DEPOIS de gravar o report (Out/2026).
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
@@ -59,6 +64,13 @@ def main():
     ap.add_argument("--boss-hp", default="", help="multiplicador da vida de chefe/mini-chefe")
     ap.add_argument("--combo", default="", help='"volley=3,wall=5,pair=4" (step das regras)')
     ap.add_argument("--player-hp", default="")
+    ap.add_argument("--enemy-power-act", default="", help='"2:0.9,0.9;3:0.85,0.85" (ato:dano,vida -> ENEMY_POWER_BY_ACT)')
+    ap.add_argument("--boss-hp-id", default="", help='"tower_lich=0.8,storm_griffin=0.9" (hpMul do kit)')
+    ap.add_argument("--combo-joker", default="", help="multiplicador dos coringas de combo")
+    ap.add_argument("--mage-focus", default="", help="Game.MAGE_FOCUS_OFFSET (-1 = 0/1/2)")
+    ap.add_argument("--rogue-poison", default="", help="Game.ROGUE_POISON_OFFSET")
+    ap.add_argument("--hand", default="", help="mao inicial = compra por turno")
+    ap.add_argument("--mana", default="", help="mana maxima do jogador")
     ap.add_argument("--clock", default="instant", choices=["instant", "frames"])
     ap.add_argument("--dir", default=ROOT, help="arvore do jogo (snapshot/worktree)")
     ap.add_argument("--label", default="")
@@ -91,13 +103,20 @@ def main():
         env["BALANCE_COMBO"] = args.combo
     if args.player_hp:
         env["BALANCE_PLAYER_HP"] = args.player_hp
+    for flag, var in (("enemy_power_act", "BALANCE_ENEMY_POWER_ACT"), ("boss_hp_id", "BALANCE_BOSS_HP_ID"),
+                      ("combo_joker", "BALANCE_COMBO_JOKER"), ("mage_focus", "BALANCE_MAGE_FOCUS"),
+                      ("rogue_poison", "BALANCE_ROGUE_POISON"), ("hand", "BALANCE_HAND"),
+                      ("mana", "BALANCE_MANA")):
+        if getattr(args, flag):
+            env[var] = getattr(args, flag)
 
-    # Um job = (piloto, classe, bloco de seeds). Pilotos caros (expert) ganham
-    # mais blocos pra equilibrar; o escalonador abaixo roda ate `procs` por vez.
+    # Um job = (piloto, classe, bloco de seeds). Blocos pequenos (~2 por core)
+    # pra cauda curta; pilotos caros (expert) ganham mais blocos pra equilibrar;
+    # o escalonador abaixo roda ate `procs` por vez.
     jobs = []
     for pilot in pilots:
         for cls in classes:
-            blocks = max(1, args.procs // max(1, len(pilots) * len(classes)))
+            blocks = max(1, -(-2 * args.procs // max(1, len(pilots) * len(classes))))
             if pilot in ("expert", "expert_full"):
                 blocks = max(blocks, min(args.runs, args.procs))
             for j, (start, size) in enumerate(split(args.runs, blocks)):
@@ -160,7 +179,10 @@ def main():
         "runs": len(records), "runsPerSecondWall": round(len(records) / max(1e-6, wall), 2),
         "runsPerSecondPerCore": round(len(records) / max(1e-6, cpu), 3),
         "knobs": {"enemyPower": args.enemy_power, "bossHp": args.boss_hp, "combo": args.combo,
-                  "playerHp": args.player_hp},
+                  "playerHp": args.player_hp, "enemyPowerAct": args.enemy_power_act,
+                  "bossHpId": args.boss_hp_id, "comboJoker": args.combo_joker,
+                  "mageFocus": args.mage_focus, "roguePoison": args.rogue_poison,
+                  "hand": args.hand, "mana": args.mana},
         "anomalies": sum(len(m.get("anomalies", [])) for m in metas),
         "instantStalls": sum(m.get("instantStalls", 0) for m in metas),
         "failedBlocks": len(failed),

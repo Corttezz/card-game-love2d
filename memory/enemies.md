@@ -135,8 +135,17 @@ perfurante 0,9); dano do mago no fim do jogo (frente de classe).
 
 ## Força global do inimigo (Out/2026, combos simples)
 
-`Config.Game.ENEMY_POWER = { damage = 0.8, health = 0.85 }`, aplicado em
-`ActSystem.getEnemyStats` (a run inteira, endless incluso). Origem: a troca dos
+`Config.Game.ENEMY_POWER = { damage = 0.75, health = 0.8 }` +
+`ENEMY_POWER_BY_ACT = { [3] = { damage = 0.9, health = 0.9 } }` (Stage 2,
+Out/2026 — eram 0,8/0,85 sem curva por ato), aplicados em
+`ActSystem.getEnemyStats` (compõem e arredondam UMA vez; a run inteira, endless
+herda o ato 6). O ato 3 ganhou o ×0,9 porque era o degrau mais duro da run:
+vida base 150+15f (×2 sobre o fim do A2) com elite ×1,7 → 280 de vida no 1º
+andar do ato, mais que o chefe do A2; nas baterias dos pilotos rápidos as
+elites do A3 (obsidian_sentinel, pit_brute) + abyss_tyrant + abyss_watcher
+eram 47+42+31 das 270 mortes. Com os números novos o expert_full fica em
+57/53/53% e morre no A5 (Colosso 18, Mãe dos Esporos 7 de 41 mortes) — ver
+[[balance_curves]]. Origem do knob global: a troca dos
 13 combos por tag (que davam ~40% do dano e ~50% do Bloqueio das cartas) por
 Saraivada/Muralha/Par derrubou o piloto (guerreiro 55% -> 0-5%); compensar só no
 jogador não voltou, escalar o inimigo voltou. Os testes de curva (test_progression,

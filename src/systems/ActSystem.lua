@@ -70,11 +70,18 @@ function ActSystem.getEnemyStats(actNumber, floorInAct, nodeType, endlessFloor)
         dmg = math.floor(dmg * fd)
     end
 
-    -- força global do inimigo (Config.Game.ENEMY_POWER — combos simples)
+    -- força global do inimigo (Config.Game.ENEMY_POWER — combos simples) e
+    -- curva POR ATO (Config.Game.ENEMY_POWER_BY_ACT[ato] = {damage, health},
+    -- opcional; endless herda o último ato). Os dois compõem e arredondam
+    -- UMA vez, pra não perder ponto de vida duas vezes no floor.
     local pw = Config.Game and Config.Game.ENEMY_POWER
-    if pw then
-        hp  = math.floor(hp * (pw.health or 1))
-        dmg = math.floor(dmg * (pw.damage or 1))
+    local byAct = Config.Game and Config.Game.ENEMY_POWER_BY_ACT
+    local pa = byAct and byAct[math.min(actNumber or 1, Config.TotalActs or #byAct)]
+    if pw or pa then
+        local hm = ((pw and pw.health) or 1) * ((pa and pa.health) or 1)
+        local dm = ((pw and pw.damage) or 1) * ((pa and pa.damage) or 1)
+        hp  = math.floor(hp * hm)
+        dmg = math.floor(dmg * dm)
     end
     return { health = hp, damage = dmg, kind = nodeType }
 end

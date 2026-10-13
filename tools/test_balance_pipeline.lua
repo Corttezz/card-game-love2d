@@ -30,7 +30,7 @@ local function silent(fn, ...)
     return ok, a, b
 end
 
-function M.run()
+local function body()
     local t = TK.new("pipeline de balanceamento: pilotos, determinismo, throughput, registro")
     TK.bootstrap()
     local BS = require("tools.balance_sim")
@@ -155,6 +155,15 @@ function M.run()
     Instant.uninstall(Autoplay)
     Autoplay.setPilot("expert")
     return t:done()
+end
+
+-- Os stubs do balance_sim.setup() sao desfeitos mesmo se o corpo falhar:
+-- as suites seguintes do test_all rodam no mesmo processo.
+function M.run()
+    local ok, res = pcall(body)
+    require("tools.balance_sim").teardown()
+    if not ok then error(res, 0) end
+    return res
 end
 
 return M

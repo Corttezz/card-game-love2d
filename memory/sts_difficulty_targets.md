@@ -125,5 +125,34 @@ rápidos), e o custo de inchar o deck (carta média mais forte OU recompensa
 que não obriga a pegar). O sweep (`tools/balance_tune.py`) mede a primeira;
 a segunda é decisão de design.
 
+## 6. Stage 2 (Out/2026) — o que o sweep decidiu e o que ficou aberto
+
+Medido com o pipeline instantâneo (`memory/balance_curves.md`, seções
+"Calibração", "Sweep A", "Sweep B/C"):
+
+| piloto | banda | HEAD (0,8/0,85) | **adotado: 0,75/0,8 + A3 ×0,9** | onde morre |
+|---|---|---|---|---|
+| naive | <5% | 0 / 0 / 0 | 0 / 0 / 0 | A2–A3 ✓ |
+| average (normal) | 12–25% | 0 / 0 / 0 | 10 / 0 / 7 | A3–A5 (alvo A2–A4 ~, taxa ✗) |
+| expert_fast | 30–50% | 3 / 0 / 0 | 13 / 0 / 0 | A3–A5 ✓ (taxa ✗) |
+| expert_full | 45–60% | 53 / 57 / 43 | **57 / 53 / 53** | A5 (Colosso) ✓ |
+
+(G / M / L, 30 runs por célula, ±17 pp.) Lutas tardias no adotado: A5 7,4
+turnos, A6 9,0 (chefe 11,4) — na banda 7–10, chefe do A6 ainda longo.
+Duração estimada do expert_full 73 min (vitória 84) contra 45–70 do alvo.
+
+**O que NÃO se resolve no inimigo:** average e expert_fast ficam fora da
+banda em toda a grade (0,8 → 0,55; mão 6; mana 4) — o average v5 só troca a
+morte de A2 por A3/A5. O diagnóstico por turno mostrou que o average lê o
+intent e gasta a mana; perde por falta de SUSTENTO e por escolher carta pelo
+valor de face (o expert_full escolhe cura, básicas baratas, forja 3× mais e
+segura carta). Ou seja: as bandas 12–25 / 30–50 pedem mudança de DESIGN (cura
+mais acessível, forja mais barata/frequente, ou cartas de valor-de-face que
+valham o que mostram), não mais nerf de monstro — abaixo de 0,7 o expert_full
+sai da banda por cima. Selos continuam sendo a escada pra quem quer mais.
+As três propostas concretas (cura garantida cedo, descanso 40% / poção,
+elite do 1º andar mais branda) estão em [[balance_curves]] ("Propostas pro
+dono") — decisão do dono, nada aplicado.
+
 Ver [[balance_pipeline]] (como medir), [[balance_curves]] (números atuais),
 [[sts_run_economy]] / [[sts_progression_config]] (StS em detalhe).

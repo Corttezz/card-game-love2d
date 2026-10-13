@@ -24,8 +24,13 @@
 -- tools/balance_tune.py usa todos):
 --   BALANCE_ENEMY_POWER="dano,vida"    Config.Game.ENEMY_POWER (ex: "0.8,0.85")
 --   BALANCE_BOSS_HP=<mult>             vida de chefe e mini-chefe (ex: 1.15)
---   BALANCE_COMBO="volley=3,wall=5"    `step` das regras de combo por id
+--   BALANCE_COMBO="volley=3:3,wall=5"  `step[:cap]` das regras de combo por id
+--   BALANCE_COMBO_JOKER=<mult>         multiplicador dos coringas de combo (combo_boost)
+--   BALANCE_ENEMY_POWER_ACT="2:0.9,0.9;3:0.85,0.85"  Config.Game.ENEMY_POWER_BY_ACT (ato:dano,vida)
+--   BALANCE_BOSS_HP_ID="tower_lich=0.8" multiplica o hpMul do kit (chefe/criatura por id)
+--   BALANCE_MAGE_FOCUS=<n> / BALANCE_ROGUE_POISON=<n>  Game.MAGE_FOCUS_OFFSET / ROGUE_POISON_OFFSET
 --   BALANCE_PLAYER_HP=<n>              vida inicial do jogador
+--   BALANCE_HAND=<n> / BALANCE_MANA=<n>  mao+compra por turno / mana maxima
 --   BALANCE_SEAL=<n> / BALANCE_ENDLESS=<n>   selo da run / andares de endless
 --
 -- O CATALOGO INTEIRO e medido: se o UnlockSystem (frente de progressao)
@@ -430,9 +435,15 @@ function M.setup(policy)
     -- canvas por instancia, refeito a cada replay da simulacao de deck)
     -- era o maior custo de CPU e de memoria. Uma moldura unica compartilhada
     -- mantem largura/altura validas pra geometria do CombatSequence.
+    -- Os originais ficam guardados pra M.teardown(): as suites que chamam
+    -- setup() (test_instant_parity, test_balance_pipeline) rodam no MESMO
+    -- processo que as seguintes, e um render que nunca enche o cache do
+    -- CardFrame vazava pra elas (test_class_select flake, Out/2026).
+    M._saved = M._saved or {}
     do
         local CardFrame = require("src.ui.CardFrame")
         local shared = love.graphics.newCanvas(96, 144)
+        M._saved.cardFrameRender = M._saved.cardFrameRender or CardFrame.render
         CardFrame.render = function() return shared end
         print("[balance_sim] moldura de carta compartilhada (bateria sem render)")
     end
@@ -441,7 +452,9 @@ function M.setup(policy)
     -- acumulava esses comandos de desenho e o processo crescia em degraus de
     -- dezenas de MB por run ate passar de 1 GB — com o heap Lua em ~10 MB.
     -- Medido: com a faixa desligada o working set fica plano entre runs.
-    require("src.ui.ComboBanner").show = function() end
+    local ComboBanner = require("src.ui.ComboBanner")
+    M._saved.comboBannerShow = M._saved.comboBannerShow or ComboBanner.show
+    ComboBanner.show = function() end
 
     local Autoplay = require("tools.autoplay")
     -- TURBO (BALANCE_TURBO=1): relogio em passos de 0,1s e beats do combate
@@ -476,23 +489,86 @@ function M.setup(policy)
             end
             print("[balance_sim] BOSS_HP x" .. bh)
         end
+        -- BALANCE_COMBO="volley=1:2,wall=1:2,pair=3" — step[:cap] por regra
         local combo = os.getenv("BALANCE_COMBO")
         if combo and combo ~= "" then
             local CS = require("src.systems.ComboSystem")
-            for id, v in combo:gmatch("(%w+)=([%d%.]+)") do
+            for id, v, cap in combo:gmatch("(%w+)=([%d%.]+):?(%d*)") do
                 local rule = CS.RULE_BY_ID and CS.RULE_BY_ID[id]
                 if rule then
                     rule.step = tonumber(v)
-                    print("[balance_sim] COMBO " .. id .. ".step = " .. v)
+                    if cap ~= "" then rule.cap = tonumber(cap) end
+                    print("[balance_sim] COMBO " .. id .. ".step = " .. v
+                        .. (cap ~= "" and (" cap = " .. cap) or ""))
                 else
                     print("[balance_sim] AVISO: combo desconhecido '" .. id .. "'")
                 end
             end
         end
+        -- BALANCE_COMBO_JOKER=<mult>: os coringas de combo (combo_boost) passam
+        -- a valer este multiplicador em vez do da carta (ComboSystem.boostFor).
+        local cj = tonumber(os.getenv("BALANCE_COMBO_JOKER") or "")
+        if cj then
+            local CS = require("src.systems.ComboSystem")
+            local orig = CS.boostFor
+            CS.boostFor = function(game, ruleId)
+                local best = orig(game, ruleId)
+                return best > 1 and cj or 1
+            end
+            print("[balance_sim] COMBO_JOKER x" .. cj)
+        end
+        -- BALANCE_ENEMY_POWER_ACT="2:0.9,0.9;3:0.85,0.85" — Config.Game.ENEMY_POWER_BY_ACT
+        local epa = os.getenv("BALANCE_ENEMY_POWER_ACT")
+        if epa and epa ~= "" then
+            local t = {}
+            for a, d, h in epa:gmatch("(%d+):([%d%.]+),([%d%.]+)") do
+                t[tonumber(a)] = { damage = tonumber(d), health = tonumber(h) }
+                print("[balance_sim] ENEMY_POWER ato " .. a .. ": dano " .. d .. " vida " .. h)
+            end
+            require("src.core.Config").Game.ENEMY_POWER_BY_ACT = t
+        end
+        -- BALANCE_BOSS_HP_ID="tower_lich=0.8,storm_griffin=0.9" — hpMul do kit
+        local bid = os.getenv("BALANCE_BOSS_HP_ID")
+        if bid and bid ~= "" then
+            local Kits = require("src.data.enemies").KITS
+            for id, m in bid:gmatch("([%w_]+)=([%d%.]+)") do
+                if Kits[id] then
+                    Kits[id].hpMul = (Kits[id].hpMul or 1) * tonumber(m)
+                    print("[balance_sim] BOSS_HP_ID " .. id .. " hpMul = " .. Kits[id].hpMul)
+                else
+                    print("[balance_sim] AVISO: kit desconhecido '" .. id .. "'")
+                end
+            end
+        end
+        -- BALANCE_MAGE_FOCUS / BALANCE_ROGUE_POISON: deslocamento das passivas
+        -- que crescem com a run (Game.MAGE_FOCUS_OFFSET / ROGUE_POISON_OFFSET).
+        local mf = tonumber(os.getenv("BALANCE_MAGE_FOCUS") or "")
+        if mf then
+            require("src.core.Game").MAGE_FOCUS_OFFSET = mf
+            print("[balance_sim] MAGE_FOCUS_OFFSET = " .. mf)
+        end
+        local rp = tonumber(os.getenv("BALANCE_ROGUE_POISON") or "")
+        if rp then
+            require("src.core.Game").ROGUE_POISON_OFFSET = rp
+            print("[balance_sim] ROGUE_POISON_OFFSET = " .. rp)
+        end
         local php = tonumber(os.getenv("BALANCE_PLAYER_HP") or "")
         if php then
             require("src.core.Config").Game.PLAYER_MAX_HEALTH = php
             print("[balance_sim] PLAYER_MAX_HEALTH = " .. php)
+        end
+        -- BALANCE_HAND=<n>: mao inicial = compra por turno (sao o mesmo numero
+        -- por design); BALANCE_MANA=<n>: mana maxima do jogador.
+        local hand = tonumber(os.getenv("BALANCE_HAND") or "")
+        if hand then
+            local CG = require("src.core.Config").Game
+            CG.INITIAL_HAND_SIZE, CG.CARDS_PER_TURN = hand, hand
+            print("[balance_sim] HAND/CARDS_PER_TURN = " .. hand)
+        end
+        local mana = tonumber(os.getenv("BALANCE_MANA") or "")
+        if mana then
+            require("src.core.Config").Game.PLAYER_MAX_MANA = mana
+            print("[balance_sim] PLAYER_MAX_MANA = " .. mana)
         end
     end
     Autoplay.setPilot(policy or os.getenv("BALANCE_PILOT") or "expert")
@@ -506,6 +582,16 @@ function M.setup(policy)
         require("tools.instant_engine").install(Autoplay)
     end
     return Autoplay
+end
+
+-- Desfaz os stubs de setup() (CardFrame.render, ComboBanner.show) — pra suite
+-- que roda outros testes depois no mesmo processo. Idempotente.
+function M.teardown()
+    local s = M._saved
+    if not s then return end
+    if s.cardFrameRender then require("src.ui.CardFrame").render = s.cardFrameRender end
+    if s.comboBannerShow then require("src.ui.ComboBanner").show = s.comboBannerShow end
+    M._saved = nil
 end
 
 -- Grava os registros em JSON (BALANCE_JSON). Cada registro e o `runRec` do
@@ -573,7 +659,11 @@ function M.run(runsArg, classArg, seedArg, policyArg)
         wallSeconds = os.time() - wall0, runsPerSecond = #records / math.max(1e-6, cpu),
         instantStalls = Instant.stats.stalls, instantIters = Instant.stats.iters,
         knobs = { enemyPower = os.getenv("BALANCE_ENEMY_POWER"), bossHp = os.getenv("BALANCE_BOSS_HP"),
-            combo = os.getenv("BALANCE_COMBO"), playerHp = os.getenv("BALANCE_PLAYER_HP") },
+            combo = os.getenv("BALANCE_COMBO"), playerHp = os.getenv("BALANCE_PLAYER_HP"),
+            enemyPowerAct = os.getenv("BALANCE_ENEMY_POWER_ACT"), bossHpId = os.getenv("BALANCE_BOSS_HP_ID"),
+            comboJoker = os.getenv("BALANCE_COMBO_JOKER"), mageFocus = os.getenv("BALANCE_MAGE_FOCUS"),
+            roguePoison = os.getenv("BALANCE_ROGUE_POISON"), hand = os.getenv("BALANCE_HAND"),
+            mana = os.getenv("BALANCE_MANA") },
         totalActs = require("src.core.Config").TotalActs }
     local agg = M.aggregate(records)
     local text = M.report(records, agg, meta)

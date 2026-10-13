@@ -48,9 +48,23 @@ As regras por tag davam ~40% do dano e ~50% do Bloqueio das cartas, e a curva de
 inimigos tinha sido calibrada com elas. Só trocar os combos derrubou o guerreiro
 do piloto de 55% para 0–5% (bisect: só o ComboSystem). Compensar no jogador
 (+60% de Bloqueio, +20% de ataque, combos 2×, +10 de vida) não voltou;
-`Config.Game.ENEMY_POWER = { damage = 0.8, health = 0.85 }` (em
+`Config.Game.ENEMY_POWER = { damage = 0.8, health = 0.85 }` (Stage 2 de Out/2026
+baixou pra 0,75/0,8 + ato 3 ×0,9 — ver [[balance_curves]]) (em
 `ActSystem.getEnemyStats`, a run inteira) voltou. Números em
 `memory/balance_curves.md`.
+
+## Candidato `wip/combo-nerf` (340a004) — medido e NÃO adotado (Out/2026)
+
+Saraivada/Muralha +1 (cap 2), Par +3, coringas de combo ×3, Colosso regen
+1%, mago Foco 0/0/1. Bateria `s2-nerf-fast` × `s2-head-fast` (30 runs ×
+3 classes × naive/average/expert_fast, mesmas seeds): idêntica dentro do
+ruído (0–3% em todo par) — os pilotos rápidos morrem no A2–A3 antes de o
+combo pesar. Não medido com expert_full (15 min de bateria) porque a leitura
+do diagnóstico ([[balance_curves]], Sweep B/C) inverteu a direção: o jogo já
+está duro demais pra quem não joga por simulação, e o dono quer o poder VINDO
+dos coringas de combo — enfraquecer o combo agora anda contra os dois.
+Ficam só os knobs (`BALANCE_COMBO="volley=1:2"`, `BALANCE_COMBO_JOKER=3`)
+pra quando a dificuldade base estiver no lugar. Branch apagado.
 
 ## Adicionar regra
 
