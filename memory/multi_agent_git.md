@@ -75,3 +75,20 @@ base × cópia de trabalho, bloco a bloco por regex) e grave com
 `git hash-object -w` + `git update-index --cacheinfo`. E **teste a árvore
 do commit** antes de dar update-ref: `git checkout-index -a --prefix=<wt>/`
 num diretório limpo + `love . test_all` lá dentro.
+
+## Incidente 13/Out/2026: `git checkout HEAD -- <arquivo>` no checkout compartilhado
+
+Um agente "limpou" `src/ui/BossCinematic.lua` com `git checkout HEAD -- ...`
+no working copy COMPARTILHADO e apagou os hunks não commitados de OUTRO
+agente no mesmo arquivo. Regras que saem disso:
+
+1. **Nunca `git checkout -- <path>`, `git restore`, `git stash` ou `git reset
+   --hard` no checkout compartilhado.** Quem precisa de arquivo limpo cria um
+   `git worktree` próprio (`git worktree add ../card-game-<frente> HEAD`) e
+   desenvolve lá; o commit continua por composição sobre HEAD (índice
+   privado + CAS).
+2. Hunks em andamento de arquivo COMPARTILHADO entre frentes ficam também
+   num patch no scratchpad (`<frente>_wip_<arquivo>.patch`) atualizado a
+   cada passo, pra sobreviver a acidente alheio.
+3. Ao avisar o colega, mande o caminho de recuperação (blob no índice
+   privado dele: `git checkout <hash> -- <path>` depois do commit).
