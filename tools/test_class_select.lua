@@ -181,6 +181,28 @@ function M.run()
             t:truthy("hover levanta a carta (sobe da folha)", (c1.liftOffset or 0) < 0)
             t:truthy("hover abre o tooltip (CardInfoDisplay)",
                 c1.cardInfoDisplay and c1.cardInfoDisplay.lastRect ~= nil)
+            -- UM tooltip só: passa pra 2ª carta → só ela tem tooltip
+            local drawn = {}
+            local function spy(inst, i)
+                local real = inst.drawDeferredTooltip
+                inst.drawDeferredTooltip = function(self, ...)
+                    local ok = real(self, ...)
+                    if ok then drawn[#drawn + 1] = i end
+                    return ok
+                end
+                return real
+            end
+            local real1, real2 = spy(p3.cards[1], 1), spy(p3.cards[2], 2)
+            local r2 = rects[2]
+            mx, my = (r2.x + r2.w / 2) * k, (r2.y + r2.h * 0.6) * k
+            for _ = 1, 12 do frame() end
+            drawn = {}
+            frame()
+            t:eq("hover na 2ª carta: exatamente um tooltip", #drawn, 1)
+            t:eq("o tooltip é o da 2ª carta", drawn[1], 2)
+            t:falsy("a 1ª saiu do hover", c1.isHovered)
+            mx, my = (r1.x + r1.w / 2) * k, (r1.y + r1.h * 0.6) * k
+            for _ = 1, 12 do frame() end
             -- clique esquerdo abre a inspeção
             s3:mousepressed(mx, my, 1)
             s3:mousereleased(mx, my, 1)
@@ -188,6 +210,9 @@ function M.run()
             t:eq("inspeção na carta clicada", s3.inspectModal.card, c1)
             t:truthy("handle do InputFocus visível (captura teclado/pad)", s3.inspectHandle.isVisible())
             t:truthy("handle navega sozinho (NavCursor não anda por trás)", s3.inspectHandle.ownsNavigation)
+            drawn = {}
+            frame()
+            t:eq("inspeção aberta: nenhum tooltip de carta inicial", #drawn, 0)
             s3.inspectHandle:keypressed("right")
             t:eq("seta passa pra próxima inicial", s3.inspectModal.card, p3.cards[2])
             s3.inspectHandle:keypressed("escape")
@@ -212,6 +237,7 @@ function M.run()
             t:falsy("resumo: sem hover em carta inicial", c1.isHovered)
             s3:mousepressed(mx, my, 1)
             t:falsy("resumo: clique ali não inspeciona", s3.inspectModal:isVisible())
+            p3.cards[1].drawDeferredTooltip, p3.cards[2].drawDeferredTooltip = real1, real2
             canvas:release()
             mx, my = 1, 1
         end

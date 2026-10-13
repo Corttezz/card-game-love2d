@@ -523,11 +523,16 @@ function ClassSelectionScreen:draw()
         local r = lay.seal
         require("src.systems.Tutorial").anchor("seal_band", r.x, r.y, r.w, r.h)
     end
-    -- tooltip da carta inicial em hover: por cima da folha e do herói
-    local fp = self:_panelOf(self.focus)
-    if fp and self.pageMode == "details" then
-        for _, inst in ipairs(fp.cards) do
-            if inst.drawDeferredTooltip then inst:drawDeferredTooltip() end
+    -- tooltip da carta inicial: UM dono só (a carta sob o mouse/foco, como
+    -- a mão do combate); com a inspeção aberta, nenhum
+    local owner = self:tooltipOwner()
+    for _, p in ipairs(self.panels) do
+        for _, inst in ipairs(p.cards) do
+            if inst == owner and inst.drawDeferredTooltip then
+                inst:drawDeferredTooltip()
+            else
+                inst._tooltipPending = false
+            end
         end
     end
     self.inspectModal:draw()
@@ -1060,6 +1065,25 @@ function ClassSelectionScreen:_starterAt(x, y)
         if r and x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h then return i end
     end
     return nil
+end
+
+-- A carta inicial dona do tooltip: a que está sob o mouse/foco agora. Se a
+-- caixa de hover de duas se tocar (a que sobe invade a vizinha), vence a que
+-- contém o ponteiro; sem ponteiro dentro, nenhuma.
+function ClassSelectionScreen:tooltipOwner()
+    if self.pageMode ~= "details" or self.inspectModal:isVisible() then return nil end
+    local p = self:_panelOf(self.focus)
+    if not (p and p.unlocked) then return nil end
+    local mx, my = love.mouse.getPosition()
+    local hovered
+    for i, inst in ipairs(p.cards) do
+        if inst.isHovered then
+            local r = self._starterRects and self._starterRects[i]
+            if r and mx >= r.x and mx <= r.x + r.w then return inst end
+            hovered = hovered or inst
+        end
+    end
+    return hovered
 end
 
 function ClassSelectionScreen:_updateStarters(dt)

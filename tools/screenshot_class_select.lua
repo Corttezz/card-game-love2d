@@ -175,6 +175,12 @@ function M.run()
                 hoverRect({ x = r1.x, y = r1.y + r1.h * 0.2, w = r1.w, h = r1.h * 0.6 })
                 pump(s3, 0.6)
                 shoot(s3, sz[1], sz[2], "starter_hover")
+                local r2 = s3._starterRects[2]
+                if r2 then
+                    hoverRect({ x = r2.x, y = r2.y + r2.h * 0.2, w = r2.w, h = r2.h * 0.6 })
+                    pump(s3, 0.6)
+                    shoot(s3, sz[1], sz[2], "starter_hover2")
+                end
                 s3:openInspect(1)
                 hoverRect(nil)
                 pump(s3, 0.6)
