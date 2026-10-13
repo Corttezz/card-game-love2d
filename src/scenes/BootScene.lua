@@ -4,6 +4,11 @@
 -- e usamos o PNG de splash como background em vez de vortex shader.
 --
 -- Fases internas:
+--   "intro"   (~5s)   — ABERTURA (Out/2026, IntroTube): página de pergaminho
+--                       com o televisor pequeno datilografando o título;
+--                       mergulha no tubo e só então o CRT de tela cheia liga
+--                       (callbacks.onTubeOn). Desligada em tools/testes
+--                       (callbacks.intro = false, default sob HEADLESS_TOOL).
 --   "loading" (~0.5s) — barra de progresso pixel sépia, fade-in.
 --   "splash"  (~3.0s) — burst central + carta materializa/dissolve + cascade
 --                       de 12 mini-cartas + flash final + transição menu.
@@ -24,6 +29,7 @@ local Sfx             = require("src.systems.Sfx")
 local FlashShader     = require("src.ui.FlashShader")
 local CardBack        = require("src.ui.CardBack")
 local TvOsd           = require("src.ui.TvOsd")
+local IntroTube       = require("src.scenes.IntroTube")
 
 local BootScene = {}
 
@@ -345,6 +351,7 @@ function BootScene.init(callbacks)
     state.sealCharge      = 0
     state.titleLetters    = {}
     state.onComplete      = callbacks.onComplete
+    state.onTubeOn        = callbacks.onTubeOn
     sigil.flare           = 0
     shards                = {}
     -- semente do boot: muda a cada abertura; BOOT_SEED (tools) fixa
@@ -361,8 +368,27 @@ function BootScene.init(callbacks)
         state.bgAlpha = 1
     end
 
-    -- SOM: a TV LIGANDO — casa com o warm-up do CRTShader.powerOn(1.8) disparado
-    -- em main.lua no mesmo instante (ponto → linha → abre → assenta).
+    -- ABERTURA antes da sintonia: página + televisor pequeno (IntroTube).
+    -- Quando ela mergulha no tubo, o CRT de tela cheia LIGA (onTubeOn:
+    -- main.lua reabilita o shader e dispara powerOn) e o loading começa.
+    local intro = callbacks.intro
+    if intro == nil then intro = not _G.HEADLESS_TOOL end
+    if intro then
+        state.phase = "intro"
+        if callbacks.onIntroStart then callbacks.onIntroStart() end
+        IntroTube.init({ onDone = function()
+            state.phase = "loading"
+            BootScene._tubeOn()
+        end })
+    else
+        BootScene._tubeOn()
+    end
+end
+
+-- A TV LIGANDO: som + warm-up do CRT (main.lua passa onTubeOn com o
+-- CRTShader.powerOn(1.8): ponto → linha → abre → assenta).
+function BootScene._tubeOn()
+    if state.onTubeOn then state.onTubeOn() end
     Sfx.play("bootTvPowerOn")
 end
 
@@ -546,6 +572,7 @@ end
 
 function BootScene.update(dt)
     if state.phase == "done" then return end
+    if state.phase == "intro" then IntroTube.update(dt) return end
 
     updateSigil(dt)    -- pulso de absorção decai
 
@@ -813,6 +840,7 @@ end
 
 function BootScene.draw()
     if state.phase == "done" then return end
+    if state.phase == "intro" then IntroTube.draw() return end
 
     drawBackground()
 
@@ -850,6 +878,7 @@ end
 
 function BootScene.skip()
     if state.phase == "done" then return end
+    if state.phase == "intro" then IntroTube.skip() end
     state.skipped = true
     if _G.EventManager then _G.EventManager.clear(QUEUE) end
     BootScene._finish()
@@ -871,12 +900,20 @@ function BootScene._finish()
     if state.onComplete then state.onComplete() end
 end
 
+-- Pular na abertura pula SÓ a abertura (cai na sintonia); pular de novo
+-- pula o boot inteiro.
 function BootScene.keypressed(_)
+    if state.phase == "intro" then IntroTube.skip() return end
     if state.phase ~= "done" then BootScene.skip() end
 end
 
 function BootScene.mousepressed(_, _, _)
+    if state.phase == "intro" then IntroTube.skip() return end
     if state.phase ~= "done" then BootScene.skip() end
+end
+
+function BootScene.resize()
+    if IntroTube.resize then IntroTube.resize() end
 end
 
 function BootScene.isDone() return state.phase == "done" end

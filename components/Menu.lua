@@ -404,6 +404,7 @@ function Menu:draw()
 
     -- Perfil persistente (vitórias/melhor progresso) + versão no rodapé —
     -- o menu "lembra de você" (repaginada Jul/2026).
+    self:_drawRibbon()
     self:_drawProfilePlaque()
     self:_drawVersionFooter()
 
@@ -664,7 +665,7 @@ function Menu:_drawProfilePlaque()
     local iconSize = 14
     local totalW = tw + (icon and (iconSize + 6) or 0)
     local x = sw - 12 - totalW
-    local y = sh - 22
+    local y = sh - 22 - Menu.RIBBON_H
 
     if icon and icon.draw and icon.size then
         local sc = iconSize / icon.size.w
@@ -682,6 +683,62 @@ function Menu:_drawProfilePlaque()
 end
 
 -- Versão + engine no rodapé esquerdo (discreto, alpha baixo).
+-- ===== A FITA (Out/2026, dono a partir de heyparker.ai: "a fita, com o
+-- nosso visual") =====
+-- Faixa de tinta no pé da tela com borda de 4 px de ouro envelhecido e o
+-- texto (título · subtítulo · versão) rolando sem emenda, como um ticker.
+-- O rodapé (versão, créditos, placa de perfil) sobe RIBBON_H pra não
+-- colidir. reducedMotion = parada.
+Menu.RIBBON_H = 26
+Menu.RIBBON_BORDER = 4
+Menu.RIBBON_SPEED = 38          -- px/s
+
+function Menu:ribbonRect()
+    local W, H = love.graphics.getWidth(), love.graphics.getHeight()
+    return { x = 0, y = H - Menu.RIBBON_H - 2, w = W, h = Menu.RIBBON_H }
+end
+
+function Menu:footerY()
+    return love.graphics.getHeight() - 22 - Menu.RIBBON_H
+end
+
+function Menu:_ribbonText()
+    local f = FontManager.getFont(9)
+    local parts = { self:_title(), self:_subtitle(), "v" .. (Config.VERSION or "?") }
+    local txt = table.concat(parts, "   ·   ") .. "   ·   "
+    return txt, f:getWidth(txt), f
+end
+
+function Menu:_drawRibbon()
+    local a = (self.intro.alphaBg or 1)
+    if a <= 0.05 then return end
+    local R = self:ribbonRect()
+    local B = Menu.RIBBON_BORDER
+    local ink, gold = Palette.INK, Palette.AGED_GOLD_DARK
+    love.graphics.setColor(ink[1], ink[2], ink[3], 0.92 * a)
+    love.graphics.rectangle("fill", R.x, R.y, R.w, R.h)
+    love.graphics.setColor(gold[1], gold[2], gold[3], 0.95 * a)
+    love.graphics.rectangle("fill", R.x, R.y, R.w, B)
+    love.graphics.rectangle("fill", R.x, R.y + R.h - B, R.w, B)
+    local txt, tw, f = self:_ribbonText()
+    if tw <= 0 then return end
+    local reduced = (_G.gameSettings and _G.gameSettings.reducedMotion) or false
+    local off = reduced and 0 or (love.timer.getTime() * Menu.RIBBON_SPEED) % tw
+    love.graphics.setFont(f)
+    love.graphics.push("all")
+    love.graphics.intersectScissor(R.x, R.y + B, R.w, R.h - 2 * B)
+    local ty = R.y + math.floor((R.h - f:getHeight()) / 2)
+    local P = Palette.PARCHMENT
+    love.graphics.setColor(P[1], P[2], P[3], 0.9 * a)
+    local x = -off
+    while x < R.w do
+        love.graphics.print(txt, math.floor(x), ty)
+        x = x + tw
+    end
+    love.graphics.pop()
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
 function Menu:_drawVersionFooter()
     local a = (self.intro.alphaBg or 1) * 0.65
     if a <= 0.05 then return end
@@ -690,7 +747,7 @@ function Menu:_drawVersionFooter()
     love.graphics.setColor(Palette.PARCHMENT_DARK[1], Palette.PARCHMENT_DARK[2],
         Palette.PARCHMENT_DARK[3], a)
     local ver = "v" .. (Config.VERSION or "?") .. " · LOVE2D"
-    local y = love.graphics.getHeight() - 22
+    local y = self:footerY()
     love.graphics.print(ver, 12, y)
 
     -- Link "Créditos" logo depois da versão (substitui o antigo "Sobre"

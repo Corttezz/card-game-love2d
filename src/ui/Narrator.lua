@@ -230,6 +230,9 @@ local function blip()
     src:play()
 end
 
+-- A VOZ fora do narrador (abertura datilografada, src/scenes/IntroTube.lua).
+function Narrator.playBlip() blip() end
+
 function Narrator.update(dt)
     S.t = S.t + dt
     if S.hopT > 0 then S.hopT = math.max(0, S.hopT - dt) end

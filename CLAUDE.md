@@ -42,10 +42,11 @@ card-game-love2d/
 │   ├── polychrome.glsl         # Próprio (edition Polychrome — hue cycle saturado)
 │   └── negative.glsl           # Próprio (edition Negative — invertido + halo)
 ├── src/scenes/                 # Scenes extraídas de main.lua (padrão init(deps) + update/draw/input)
+│   ├── IntroTube.lua           # ABERTURA (Out/2026): página de pergaminho + o nosso televisor pequeno (mesmo crt.glsl via `CRTShader.renderTube`) datilografando título/subtítulo e mergulhando no tubo; o CRT de tela cheia liga SÓ no mergulho (`BootScene` fase `intro`, `onTubeOn`) — memory/intro_tube.md
 │   ├── GameplayScene.lua       # Estado "playing": combate + mão + jokers + drag/reorder
 │   └── EndScreens.lua          # drawGameOver + drawVictory
 ├── components/                 # UI de alto nível (telas, widgets)
-│   ├── Menu.lua                # Menu principal
+│   ├── Menu.lua                # Menu principal (+ FITA ticker no pé com borda de 4 px; rodapé sobe `Menu.RIBBON_H`) — memory/intro_tube.md
 │   ├── ClassSelectionScreen.lua# Seleção de classe por EMBLEMA (não personagem) + estado bloqueado/maestria via UnlockSystem — memory/class_emblems.md
 │   ├── GameUI.lua              # HUD do gameplay (só delega ao HudManager)
 │   ├── CardRewardScreen.lua    # Loja / recompensas pós-batalha (inclui refresh). Loja = Balcão do Mercador (ShopScene/ShopLayout/ShelfItem em src/ui/shop/); v5: vitrine posicionada por parâmetros centrais `ShopLayout.SHELF/TABLE/PLAQUE` em px de arte, preço = plaquinha de latão sob a carta e etiqueta pendurada pela borda da bancada nos objetos (balança no hover), cavalete com volume, hover sem levitar (pacote/poção/cristal flutuam), sons e faíscas por objeto, artes v5 (`assets/sprites/shop/v5`), pergaminho medido (texto nunca corta), zona de leitura do CRT (`CRTShader.setCalmRect`), memory/shop_layout.md v5

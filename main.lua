@@ -1926,7 +1926,7 @@ function love.load(loveArgs)
     -- Identidade CRT: o jogo ABRE como uma TV ligando — ponto → linha
     -- quente → a imagem abre revelando o splash (docs/plan/crt-identity-v1).
     CRTShader.setPower(0)
-    CRTShader.powerOn(1.8)   -- v3.6: warm-up tem mais estágios (rolo de sync)
+    -- (o powerOn(1.8) vive no onTubeOn do BootScene.init: a ABERTURA vem antes)
 
     -- MOUSE ATRAVÉS DO VIDRO + PORTÃO DE FOCO. Duas verdades, o MESMO ponto
     -- único: todo mundo que lê love.mouse.getPosition/getX/getY enxerga
@@ -2058,6 +2058,19 @@ function love.load(loveArgs)
     -- Inicia BootScene (splash/loading). Quando termina, troca pra menu e
     -- dispara intro animado + música.
     BootScene.init({
+        -- ABERTURA (Out/2026): a página com o televisor pequeno é desenhada
+        -- SEM o CRT de tela cheia (o tubo pequeno usa o mesmo shader por
+        -- CRTShader.renderTube); no mergulho o CRT volta e liga com o
+        -- warm-up v3.6 (ponto → linha → abre → rolo de sync → assenta).
+        onIntroStart = function()
+            BootScene._crtWasEnabled = CRTShader.isEnabled()
+            CRTShader.setEnabled(false)
+        end,
+        onTubeOn = function()
+            if BootScene._crtWasEnabled then CRTShader.setEnabled(true) end
+            CRTShader.setPower(0)
+            CRTShader.powerOn(1.8)
+        end,
         onComplete = function()
             currentState = "menu"
             menu:show()

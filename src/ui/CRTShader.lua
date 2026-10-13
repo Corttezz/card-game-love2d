@@ -315,6 +315,37 @@ function CRTShader.screenToContent(x, y)
     return sx * w, sy * h
 end
 
+-- ABERTURA (Out/2026): desenha `src` dentro de `dst` passando pelo MESMO
+-- shader do tubo (gabinete, curvatura, scanlines), com a resolução do
+-- canvas de destino: é o nosso televisor em tamanho pequeno, na página.
+-- Tubo ligado e estável, sem surto nem tremidinha. false = sem shader.
+function CRTShader.renderTube(src, dst)
+    if not shader or not src or not dst then return false end
+    local w, h = dst:getDimensions()
+    love.graphics.push("all")
+    love.graphics.setCanvas(dst)
+    love.graphics.origin()
+    love.graphics.setScissor()
+    love.graphics.clear(0, 0, 0, 1)
+    love.graphics.setShader(shader)
+    shader:send("time", love.timer.getTime())
+    shader:send("resolution", { w, h })
+    shader:send("strength", math.max(0.6, strength > 0.01 and strength or 0.75))
+    shader:send("power", 1)
+    shader:send("powerDir", 1)
+    shader:send("glitch", 0)
+    shader:send("glitchY", 0.5)
+    shader:send("degrade", 0)
+    shader:send("calmRect", { 0, 0, 0, 0 })
+    shader:send("calmRect2", { 0, 0, 0, 0 })
+    shader:send("caScale", 1)
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(src, 0, 0)
+    love.graphics.setShader()
+    love.graphics.pop()
+    return true
+end
+
 -- Abre uma "cena" — tudo que desenhar depois é capturado no canvas.
 function CRTShader.beginScene()
     if not shader or not enabled then return end
