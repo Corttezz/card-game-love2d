@@ -557,11 +557,34 @@ function M.run()
         for _ = 1, 90 do frame() end
         t:eq("revelado: nenhuma banda de bruma", WeatherEngine.stats.hazeBands or 0, 0)
     end
-    -- salão: interior não tem clima do domo
+    -- salão: o clima do domo não responde; quem responde é o InteriorFX
+    -- (hook de chefes-visual-3, e37a148) — mesmo limiar, mesma propriedade
     g.enemy.intentVisibility = "hidden"
     g.enemy.fogContext.hall = true
-    t:eq("salão do chefe não empurra o clima", IV.worldFog(), 0)
+    t:eq("salão do chefe não empurra o clima do domo", IV.worldFog(), 0)
+    t:near("salão: hallFog = boost da tabela", IV.hallFog(), Fog.worldBoost.hidden, 1e-9)
     g.enemy.fogContext.hall = false
+    t:eq("estrada: hallFog = 0", IV.hallFog(), 0)
+    do
+        local InteriorFX = require("src.ui.InteriorFX")
+        t:eq("hook instalado no InteriorFX", InteriorFX.fogHook, IV.hallFog)
+        local hall = InteriorFX.hallFor(4)
+        g.enemy.fogContext.hall = true
+        InteriorFX.clear()
+        local function hallFrames(n) for _ = 1, n do InteriorFX.update(1 / 30, hall) end end
+        g.enemy.intentVisibility = "hidden"
+        hallFrames(15)
+        t:check("salão, hidden, 0,5 s: renderedFog >= limiar", InteriorFX.renderedFog() >= TH)
+        g.enemy.intentVisibility = "type_only"
+        hallFrames(30)
+        t:check("salão, type_only: renderedFog >= limiar", InteriorFX.renderedFog() >= TH)
+        g.enemy.intentVisibility = "full"
+        hallFrames(45)
+        t:check("salão, revelado, 1,5 s: renderedFog < limiar", InteriorFX.renderedFog() < TH)
+        InteriorFX.clear()
+        t:eq("InteriorFX.clear zera a névoa", InteriorFX.renderedFog(), 0)
+        g.enemy.fogContext.hall = false
+    end
     -- inimigo morto não empurra
     local hp0 = g.enemy.health
     g.enemy.health = 0

@@ -61,8 +61,13 @@ nevasca fecha quando o número some), não como um interruptor de UI.
   renderedFog ≥ limiar 0,5 s depois de encoberto (menos que os beats entre o
   anúncio e a vez voltar) e < limiar 1,5 s depois de revelado, e bandas > 0
   só com véu. Hook ativo quando o inimigo ATIVO (último que resolveu) está
-  vivo, fora do salão e encoberto. Salão não tem clima do domo (a bruma do
-  InteriorFX é da frente chefes-visual; lá fica só o véu do HUD).
+  vivo e encoberto. **Salão do chefe**: o clima do domo não existe lá; o
+  consumidor é o `InteriorFX.fogHook` (chefes-visual-3, e37a148) instalado
+  com `IntentVisibility.hallFog` — névoa do chão alpha ×(1+1,5·véu) e altura
+  ×(1+0,8·véu) + camada na frente do chefe (`drawFront`, 0,35·véu), mesmo
+  `veilCur` a 4/s e `InteriorFX.renderedFog()` com o mesmo limiar. `worldFog`
+  responde só na estrada e `hallFog` só no salão (um motor nunca puxa névoa
+  do estado do outro).
 - **Subjetivo, não cego** (lead): o TIPO só some no pico da nevasca —
   `heavy` é multiplicado por `stormCurve` (smooth 0.60..0.92 do progresso, a
   janela do `stormFor`; salão = 1). Frações esperadas (frost): andar 1 =

@@ -189,16 +189,22 @@ function IntentVisibility.noteActive(enemy) active = enemy end
 function IntentVisibility.activeEnemy() return active end
 function IntentVisibility.reset() active = nil end
 
--- 0..1 de intensidade EXTRA pro WeatherEngine (hook instalado abaixo). Zero
--- fora de luta, com o inimigo morto, no salão (interior não tem clima do
--- domo) ou com o número à mostra.
-function IntentVisibility.worldFog()
-    local e = active
-    if not e or not e.fogContext or e.fogContext.hall then return 0 end
+-- 0..1 de névoa EXTRA que o mundo deve mostrar agora. Zero fora de luta, com
+-- o inimigo morto ou com o número à mostra. Dois consumidores, um por cena:
+--   worldFog  → WeatherEngine (estrada: nevasca + bruma de tela)
+--   hallFog   → InteriorFX (salão do chefe: névoa do chão + camada na frente
+--               do chefe, hook de chefes-visual-3, e37a148)
+-- Cada um só responde na SUA cena, para o outro motor não puxar névoa de
+-- um estado que não é dele.
+local function fogOf(e, wantHall)
+    if not e or not e.fogContext then return 0 end
+    if (e.fogContext.hall == true) ~= wantHall then return 0 end
     if e.isAlive and not e:isAlive() then return 0 end
     local lvl = e.intentVisibility or "full"
     return (FogData.worldBoost or {})[lvl] or 0
 end
+function IntentVisibility.worldFog() return fogOf(active, false) end
+function IntentVisibility.hallFog() return fogOf(active, true) end
 
 -- Cor do véu desenhado sobre o intent (tinta do bioma; véu do inimigo sem
 -- bioma de névoa usa violeta neutro).
@@ -215,6 +221,10 @@ do
     local ok, WeatherEngine = pcall(require, "engine.WeatherEngine")
     if ok and type(WeatherEngine) == "table" then
         WeatherEngine.fogHook = IntentVisibility.worldFog
+    end
+    local okI, InteriorFX = pcall(require, "src.ui.InteriorFX")
+    if okI and type(InteriorFX) == "table" then
+        InteriorFX.fogHook = IntentVisibility.hallFog
     end
 end
 
