@@ -330,6 +330,7 @@ function M.run()
         BC.setStage(stage)
         local sawOmen, sawUnveil, sawCrown, maxShown, nChars = false, false, false, 0, nil
         local tReveal, elq = nil, 0
+        local nEyes, sawTurnInOmen, sawEyesClose = nil, false, false
         while BC.isActive() and elq < nomQ + 2 do
             BC.update(DT, gq, { inHall = true })
             elq = elq + DT
@@ -342,7 +343,17 @@ function M.run()
                 if d.crown.shown > maxShown then maxShown = d.crown.shown end
             end
             if not tReveal and not BC.hidesBoss() then tReveal = elq end
+            -- olhos demais em volta do salão (lead): contagem, viram no omen, fecham na revelação
+            if d.hallEyes then
+                nEyes = #d.hallEyes.list
+                if d.fx.omen and d.hallEyes.turned then sawTurnInOmen = true end
+                if d.fx.unveil and d.hallEyes.close then sawEyesClose = true end
+            end
         end
+        t:truthy("rainha: olhos demais em volta do salao (20-40 pares, " .. tostring(nEyes) .. ")",
+            nEyes and nEyes >= 20 and nEyes <= 40)
+        t:truthy("rainha: todos os olhos viram pro jogador ainda no pressentimento", sawTurnInOmen)
+        t:truthy("rainha: os olhos fecham quando ela se revela", sawEyesClose)
         t:truthy("rainha: pressentimento (omen) tocou", sawOmen)
         t:truthy("rainha: manifestacao (unveil) tocou", sawUnveil)
         t:truthy("rainha: coroacao (cartao proprio) tocou", sawCrown)

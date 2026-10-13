@@ -150,6 +150,7 @@ local deathFor = nil   -- inimigo cuja morte já foi encenada (não repete)
 -- SOBREVIVE ao fim da entrada (luta + cash out) e o cartão da coroação
 local eclipse = nil    -- { level, cur, dawn, t, gaze, lastPhase, active }
 local crownCard = nil  -- { t, dur, name, chars, cadence, shown, ... }
+local hallEyes = nil   -- olhos demais em volta do salão { list, t, turned, turnAt, close }
 local flyAnim = nil    -- SpriteAnimation idle do chefe pros rasantes
 local flyAnimId = nil
 -- partículas (px de tela)
@@ -284,6 +285,7 @@ local function finish()
     hit = nil
     edge = nil
     crownCard = nil
+    hallEyes = nil
     fx = {}
     flakes = {}
     sfxQueue = {}
@@ -422,7 +424,7 @@ function BossCinematic._debug()
     return { seq = seq, dark = dark, eyes = eyes, fly = fly, title = title,
              slowmo = slowmo, desat = desat, landed = landed,
              mist = mist, hit = hit, edge = edge, loops = loops, fx = fx,
-             eclipse = eclipse, crown = crownCard,
+             eclipse = eclipse, crown = crownCard, hallEyes = hallEyes,
              feathers = #feathers, dust = #dust, crows = #crows, wind = #wind }
 end
 
@@ -654,9 +656,59 @@ local function updateMist(dt)
     end
 end
 
+-- POSTERIZAÇÃO da névoa (revisão do lead, Out/2026): a soma de dezenas de
+-- puffs translúcidos dava um gradiente LISO ("forma vetorial suave" = cara
+-- de IA em pixel art). As camadas vão pra um canvas e voltam pela
+-- shaders/posterize.glsl: 4 degraus por canal + dither Bayer na grade da
+-- arte. Sem canvas/shader (headless, falha de compilação) desenha direto e
+-- AVISA uma vez.
+local mistCanvas, posterShader, posterTried = nil, nil, false
+local function ensurePoster(w, h)
+    if not posterTried then
+        posterTried = true
+        local ok, sh = pcall(love.graphics.newShader, "shaders/posterize.glsl")
+        if ok then posterShader = sh else
+            print("[BossCinematic] shaders/posterize.glsl não carregou: " .. tostring(sh)
+                .. " — névoa sem degraus")
+        end
+    end
+    if not posterShader then return nil end
+    if not mistCanvas or mistCanvas:getWidth() ~= w or mistCanvas:getHeight() ~= h then
+        local ok, c = pcall(love.graphics.newCanvas, w, h)
+        if not ok then return nil end
+        mistCanvas = c
+        mistCanvas:setFilter("nearest", "nearest")
+    end
+    return mistCanvas
+end
+
+local drawMistRaw
 -- Desenha as camadas `layers` (tabela de booleanos por layer) em coords da arte.
 local function drawMist(layers)
     if not mist or mist.a <= 0.01 or not stage or not stage.tr then return end
+    local w, h = stage.w or love.graphics.getWidth(), stage.h or love.graphics.getHeight()
+    local canvas = ensurePoster(w, h)
+    if not canvas then return drawMistRaw(layers) end
+    local prev = love.graphics.getCanvas()
+    love.graphics.push("all")
+    love.graphics.origin()
+    love.graphics.setCanvas(canvas)
+    love.graphics.clear(0, 0, 0, 0)
+    love.graphics.setScissor()
+    drawMistRaw(layers)
+    love.graphics.pop()
+    if prev then love.graphics.setCanvas(prev) else love.graphics.setCanvas() end
+    posterShader:send("levels", 4)
+    posterShader:send("block", px())
+    love.graphics.setShader(posterShader)
+    love.graphics.setBlendMode("alpha", "premultiplied")
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(canvas, 0, 0)
+    love.graphics.setBlendMode("alpha")
+    love.graphics.setShader()
+end
+
+drawMistRaw = function(layers)
     local tr = stage.tr
     local S = tr.scale
     local imgs = ensureFog()
@@ -1361,6 +1413,61 @@ local STRAY_EYES = {
     { u = 0.425, v = 0.36, at = 1.30, gap = 1.8, size = 0.8 },
     { u = 0.575, v = 0.27, at = 1.50, gap = 2.2, size = 1 },
 }
+-- OLHOS DEMAIS v2 (lead): 20-40 pares de 4-8 px EM VOLTA do salão (colunas,
+-- atrás das estátuas, teto), gerados no omen; cada par abre num instante
+-- próprio, TODOS viram pro jogador no mesmo instante (`turnAt`, pouco antes
+-- da manifestação — um acontecimento por instante) e fecham quando ela se
+-- revela. Olho = 2×1 blocos (B = pixel da arte) com pupila de 1 bloco.
+-- (`hallEyes` é declarado no bloco de ESTADO do topo, pro _debug/finish)
+local function spawnHallEyes(omenDur)
+    local n = 20 + love.math.random(0, 20)
+    hallEyes = { list = {}, t = 0, turned = false, turnAt = omenDur - 0.35, close = nil }
+    for i = 1, n do
+        local zone = love.math.random()
+        local u, v
+        if zone < 0.38 then u, v = 0.02 + love.math.random() * 0.33, 0.10 + love.math.random() * 0.58
+        elseif zone < 0.76 then u, v = 0.65 + love.math.random() * 0.33, 0.10 + love.math.random() * 0.58
+        else u, v = 0.08 + love.math.random() * 0.84, 0.01 + love.math.random() * 0.08 end
+        hallEyes.list[i] = { u = u, v = v, openAt = 0.3 + love.math.random() * (omenDur - 0.9),
+                             gap = 1 + love.math.random(0, 1), size = 1 + love.math.random(0, 1),
+                             look = love.math.random(0, 2) - 1, blink = love.math.random() * 7 }
+    end
+end
+local function drawHallEyes()
+    local he = hallEyes
+    local tr = stage and stage.tr
+    if not he or not tr then return end
+    local P = px()
+    local t = he.t
+    local closeK = he.close and smooth(clamp01(he.close / 0.3)) or 0
+    if closeK >= 1 then return end
+    for i, e in ipairs(he.list) do
+        local open = smooth(clamp01((t - e.openAt) / 0.25)) * (1 - closeK)
+        local blink = (math.floor((t * 2 + e.blink)) % 9 == 0) and 0.15 or 1
+        local a = open * blink
+        if a > 0.02 then
+            local B = P * e.size
+            local ex = tr.ox + e.u * 400 * tr.scale
+            local ey = tr.oy + e.v * 256 * tr.scale
+            local gap = (2 + e.gap) * B
+            -- viraram pro jogador: pupila pro centro-baixo da tela
+            local look = he.turned and 0 or e.look
+            local pupil = he.turned and 1 or (look + 1)   -- coluna 0..1 dentro de 2 blocos
+            glowBlob(ex, ey, gap * 2.4, B * 4, MAGENTA, 0.22 * a, 1 + i % 3)
+            for side = -1, 1, 2 do
+                local x0 = math.floor((ex + side * gap / 2) / B) * B - B
+                local y0 = math.floor(ey / B) * B
+                love.graphics.setColor(MAGENTA[1], MAGENTA[2] * 0.9, MAGENTA[3], a)
+                love.graphics.rectangle("fill", x0, y0, 2 * B, B)
+                love.graphics.setColor(0.06, 0.01, 0.08, a)
+                love.graphics.rectangle("fill", x0 + math.min(1, pupil) * B * (he.turned and 0.5 or 1)
+                    + (he.turned and B * 0.25 or 0), y0, B * (he.turned and 0.5 or 1), B)
+            end
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
 local function drawStrayEyes(t, fade)
     local tr = stage and stage.tr
     if not tr or fade <= 0.01 then return end
@@ -1595,6 +1702,9 @@ local function queenEnter(st)
     if kind == "omen" then
         fx.omen = { t = 0, dur = math.max(0.3, st.dur or 3.5), steps = st.steps or 4, nextStep = 1 }
         ensureEclipse().active = true
+        spawnHallEyes(fx.omen.dur)
+        -- o instante em que TODOS os olhos viram pro jogador
+        queueSfx(math.max(0.1, fx.omen.dur - 0.35), "bossBlinkClick", nil, 0.6)
         darkEase = { from = dark, to = st.to or 0.80, t = 0, dur = fx.omen.dur }
         play("bossEclipseOmen", nil)
         playLoop("bossEclipseHum")
@@ -1632,6 +1742,7 @@ end
 
 local function queenExit(st)
     if st.kind == "omen" then fx.omen = nil end
+    if st.kind == "coronation" then hallEyes = nil end
     if st.kind == "unveil" then
         fx.unveil = nil
         -- sem `descend` depois: mostra o chefe
@@ -1712,6 +1823,14 @@ local function queenUpdate(dt, game, ctx)
         local o = fx.omen
         o.t = o.t + dt
     end
+    if hallEyes then
+        local he = hallEyes
+        he.t = he.t + dt
+        if not he.turned and he.t >= he.turnAt then he.turned = true end
+        -- fecham quando ela se revela (meio do unveil); somem no fim do passo
+        if fx.unveil and not he.close and fx.unveil.t > fx.unveil.dur * 0.6 then he.close = 0 end
+        if he.close then he.close = he.close + dt end
+    end
     if fx.unveil then
         fx.unveil.t = fx.unveil.t + dt
         if fx.unveil.anim then fx.unveil.anim:update(dt) end
@@ -1766,6 +1885,7 @@ local function queenDrawBack(w, h)
     if not (eclipse and eclipse.active) then return end
     local e = eclipse
     drawOmen(w, h)
+    drawHallEyes()
     -- fase 2 na luta: o eclipse fechado + íris olhando de vez em quando
     if not seq and e.dawn <= 0 then
         local gazeOpen = 0
@@ -1779,6 +1899,20 @@ local function queenDrawBack(w, h)
     end
     drawPhaseShift()
     drawUnveil(w, h)
+    -- COROAÇÃO: no instante do nome o eclipse FLAREIA e o halo sobre a
+    -- cabeça dela sangra (compensa o clip `crown` modesto com LUZ)
+    if crownCard and crownCard.flashT and stage.bbox then
+        local env = 1 - clamp01(crownCard.flashT / 1.6)
+        if env > 0.02 then
+            drawEclipseClosing(0.9 * env, crownCard.t + 20, 0)
+            local bb = stage.bbox
+            local hy = bb.topY + (bb.bottomY - bb.topY) * 0.10
+            local rr = (bb.width or 120) * (0.22 + 0.10 * (1 - env))
+            drawBrokenHalo(bb.cx, hy, rr, rr * 0.32, px(), GOLD, 0.9 * env, crownCard.flashT * 3, 13)
+            drawBrokenHalo(bb.cx, hy, rr * 1.35, rr * 0.45, px(), MAGENTA, 0.6 * env, -crownCard.flashT * 2, 17)
+            glowBlob(bb.cx, hy, rr * 4, rr * 2, GOLD, 0.35 * env, 2)
+        end
+    end
     if seq and seq.bossId == QUEEN_ID then drawDawnV2(w, h) end
 end
 
