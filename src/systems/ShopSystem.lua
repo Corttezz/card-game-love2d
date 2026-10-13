@@ -186,6 +186,35 @@ function ShopSystem:setContext(ctx)
     self.context = ctx or {}
 end
 
+-- Contexto da run pro cérebro de ofertas — FONTE ÚNICA entre a tela
+-- (CardRewardScreen:show) e o piloto (tools/autoplay primeShopContext). Antes
+-- o piloto montava o seu sem o piso de raridade de elite/chefe nem os pesos
+-- por ato, e media uma vitrine diferente da do jogador (wip/sustain, Out/2026).
+--   mode "rewards": elite → piso uncommon, boss → piso rare (P0.7); nodeType
+--   viaja no contexto pra vaga de sustento (Config.Offers.SUSTAIN_GUARANTEE).
+function ShopSystem.runContext(game, mode)
+    local run = game.runManager and game.runManager.currentRun
+    local actNumber = (run and run.actNumber) or 1
+    local nodeType = run and run.currentNode and run.currentNode.type or nil
+    local minRarity = nil
+    if mode == "rewards" and nodeType == "elite" then
+        minRarity = "uncommon"
+    elseif mode == "rewards" and nodeType == "boss" then
+        minRarity = "rare"
+    end
+    local ActSystem = require("src.systems.ActSystem")
+    return {
+        classId = (run and run.classId) or game.selectedClass,
+        deckIds = (game.runManager and game.runManager.getDeckCardIds)
+            and game.runManager:getDeckCardIds() or nil,
+        runManager = game.runManager, -- forja (custo crescente) + dedup de joker (P0.10)
+        actNumber = actNumber,        -- P0.5: cap de afinidade progressivo por ato
+        rarityWeights = ActSystem.getRarityWeights(actNumber),
+        minRarity = minRarity,
+        nodeType = mode == "rewards" and nodeType or nil,
+    }
+end
+
 -- Inicializa o pool de upgrades disponíveis na loja.
 -- (O pool de CARTAS por raridade foi aposentado: ofertas de carta saem do
 -- CardRegistry.pickRewardCard, que filtra por classe e aplica pity/afinidade.)
@@ -245,8 +274,19 @@ function ShopSystem:generateOffers()
     if self.mode == "rewards" then
         nCards = math.max(1, nCards + RunModifiers.rewardCardsDelta(run))
     end
-    for _ = 1, nCards do
-        local offer = self:generateCardOffer()
+    -- wip/sustain (Config.Offers.SUSTAIN_GUARANTEE): na recompensa de
+    -- elite/chefe, enquanto o deck tem < SUSTAIN_MIN_SOURCES fontes de
+    -- sustento, a 1ª vaga é reservada a uma carta de sustento.
+    local Offers = require("src.core.Config").Offers or {}
+    local sustainSlot = false
+    if self.mode == "rewards" and Offers.SUSTAIN_GUARANTEE
+        and (self.context.nodeType == "elite" or self.context.nodeType == "boss")
+        and self.cardRegistry.countSustain
+        and self.cardRegistry:countSustain(self.context.deckIds) < (Offers.SUSTAIN_MIN_SOURCES or 2) then
+        sustainSlot = true
+    end
+    for i = 1, nCards do
+        local offer = self:generateCardOffer(sustainSlot and i == 1 and { requireSustain = true } or nil)
         if offer then table.insert(self.currentOffers, offer) end
     end
 
@@ -290,10 +330,11 @@ function ShopSystem:generateOffers()
     end
 end
 
-function ShopSystem:generateCardOffer()
+function ShopSystem:generateCardOffer(extra)
     -- Delegado pro CardRegistry (pity + afinidade + anti-duplicata + filtro de
     -- classe). Stream "shop": rolls da loja não mexem na sequência de rewards.
     local pick = self.cardRegistry:pickRewardCard({
+        requireSustain = extra and extra.requireSustain or nil, -- wip/sustain: vaga reservada
         classId = self.context.classId,
         -- P0.3/P0.4: pesos de raridade POR ATO injetados via contexto
         -- (CardRewardScreen:show → ActSystem.getRarityWeights). O fixo
@@ -330,6 +371,7 @@ function ShopSystem:generateCardOffer()
         affinityTags = pick.affinityTags,
         fromPity = pick.fromPity,
         isNew = pick.isNew,       -- carta inédita: selo "NOVA" (vai pro save junto)
+        sustainSlot = (extra and extra.requireSustain) and true or nil, -- wip/sustain (contagem do piloto)
     }
 end
 

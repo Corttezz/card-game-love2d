@@ -570,6 +570,32 @@ function M.setup(policy)
             require("src.core.Config").Game.PLAYER_MAX_MANA = mana
             print("[balance_sim] PLAYER_MAX_MANA = " .. mana)
         end
+        -- wip/sustain (Out/2026): as 3 propostas de sustento, cada uma por flag.
+        -- BALANCE_REST_HEAL=0.4 (fogueira), BALANCE_POTIONS=1 (poção de elite),
+        -- BALANCE_ELITE_RAMP=1 (vida da elite cresce com o andar),
+        -- BALANCE_SUSTAIN=1[:bonus] (vaga de sustento em elite/chefe + peso
+        -- extra pra sustento com < 2 fontes; bonus default 1.0).
+        do
+            local CG = require("src.core.Config").Game
+            local CO = require("src.core.Config").Offers
+            local rh = tonumber(os.getenv("BALANCE_REST_HEAL") or "")
+            if rh then CG.REST_HEAL_PCT = rh; print("[balance_sim] REST_HEAL_PCT = " .. rh) end
+            if os.getenv("BALANCE_POTIONS") == "1" then
+                CG.POTIONS = true
+                print(("[balance_sim] POTIONS ligadas (%d vaga, cura %d%%)"):format(CG.POTION_SLOTS or 1, (CG.POTION_HEAL_PCT or 0.2) * 100))
+            end
+            if os.getenv("BALANCE_ELITE_RAMP") == "1" then
+                CG.ELITE_RAMP = true
+                print("[balance_sim] ELITE_RAMP ligado (" .. tostring(CG.ELITE_RAMP_START) .. " -> eliteHPMul)")
+            end
+            local su = os.getenv("BALANCE_SUSTAIN")
+            if su and su ~= "" and su ~= "0" then
+                local bonus = tonumber(su:match(":([%d%.]+)")) or 1.0
+                CO.SUSTAIN_GUARANTEE = true
+                CO.SUSTAIN_WEIGHT_BONUS = bonus
+                print("[balance_sim] SUSTAIN: vaga garantida em elite/chefe + peso x" .. (1 + bonus) .. " com < " .. (CO.SUSTAIN_MIN_SOURCES or 2) .. " fontes")
+            end
+        end
     end
     Autoplay.setPilot(policy or os.getenv("BALANCE_PILOT") or "expert")
     Autoplay.quiet = true

@@ -272,7 +272,9 @@ end
 -- maldição "Fome" (RunModifiers). Prévia e cura leem a MESMA conta.
 function RestScreen:_healPct()
     local rm = self.game and self.game.runManager
-    return 0.30 * require("src.systems.RunModifiers").healMul(rm and rm.currentRun, "rest")
+    -- Fração em Config.Game.REST_HEAL_PCT (fonte única com o piloto; wip/sustain mede 0,40).
+    return (require("src.core.Config").Game.REST_HEAL_PCT or 0.30)
+        * require("src.systems.RunModifiers").healMul(rm and rm.currentRun, "rest")
 end
 
 function RestScreen:doHeal()

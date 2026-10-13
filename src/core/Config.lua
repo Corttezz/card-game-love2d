@@ -96,6 +96,19 @@ Config.Game = {
     PLAYER_MAX_MANA = 3,
     PLAYER_HEALTH_RESTORE = 20,
 
+    -- ===== Propostas de SUSTENTO medidas pela bateria (Out/2026). Estas tres
+    -- NAO foram adotadas (descanso 40% e elite em rampa nao moveram nada; a
+    -- pocao so ajudou o expert) e ficam atras de flags cujo default e o jogo
+    -- atual. A bateria liga por env (BALANCE_REST_HEAL / BALANCE_POTIONS /
+    -- BALANCE_ELITE_RAMP / BALANCE_SUSTAIN em tools/balance_sim.lua). A que
+    -- FOI adotada e Config.Offers.SUSTAIN_*. Numeros em memory/balance_curves.md.
+    REST_HEAL_PCT = 0.30,    -- cura da fogueira (fracao da vida maxima; StS = 30%)
+    POTIONS = false,         -- pocao: cai de ELITE, POTION_SLOTS vagas, cura POTION_HEAL_PCT
+    POTION_SLOTS = 1,
+    POTION_HEAL_PCT = 0.20,
+    ELITE_RAMP = false,      -- vida da elite cresce com o andar do ato
+    ELITE_RAMP_START = 1.4,  -- multiplicador no 1o andar (-> act.eliteHPMul no 8o)
+
     -- Forja de cartas: 0 = SEM CAP (upgrade infinito — pedido Jul/2026; o
     -- custo crescente da forja paga + 1 forja grátis por fogueira seguram o
     -- balance). Valor > 0 restaura um teto de níveis por carta.
@@ -351,6 +364,17 @@ Config.Offers = {
 
     DUPE_PENALTY   = 0.5, -- peso da carta cai pela metade quando você já tem cópias
     DUPE_THRESHOLD = 2,   -- ...a partir desta quantidade de cópias no deck
+
+    -- SUSTENTO garantido cedo (Out/2026, ADOTADO — unico lever que moveu o
+    -- piloto mediano: +10 a +17pp, memory/balance_curves.md). Com menos de
+    -- SUSTAIN_MIN_SOURCES cartas de sustento no deck (cura/roubo de vida/
+    -- regeneração — CardRegistry.isSustainCard): GUARANTEE reserva a 1ª vaga
+    -- da recompensa de elite/chefe pra uma carta de sustento; WEIGHT_BONUS
+    -- multiplica o peso delas em QUALQUER oferta (1.0 = peso dobrado; 0 =
+    -- desligado). Mexe só na OFERTA: nenhuma carta mudou de valor.
+    SUSTAIN_GUARANTEE   = true,
+    SUSTAIN_WEIGHT_BONUS = 1.0,
+    SUSTAIN_MIN_SOURCES = 2,
 
     -- Forja (upgrade de carta) COMPRADA na loja: custo cresce a cada forja
     -- paga na run. A forja da fogueira continua grátis (o custo é a ESCOLHA:

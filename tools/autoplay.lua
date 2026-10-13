@@ -1108,6 +1108,7 @@ local function playBattle(game, label)
     local diag = { atkTurns = 0, inc = 0, armorOnAtk = 0, unblocked = 0, blockedTurns = 0,
         manaLeft = 0, leftover = 0, wastedBlock = 0, dealt = 0, enemyDealt = 0 }
     local deckSizeAtStart = #((game.runManager.currentRun or {}).currentDeck or {})
+    local potionsBefore = ((game.runManager.currentRun or {}).potions) or 0 -- wip/sustain
     while game.enemy:isAlive() and game.player:isAlive() do
         turnCount = turnCount + 1
         if turnCount > 40 then
@@ -1135,6 +1136,26 @@ local function playBattle(game, label)
             turnCount, game.player.health, game.player.maxHealth,
             game.player.armor, game.player.mana,
             kind:upper(), tostring(shownValue or ""), handSummary(game))
+
+        -- wip/sustain: POÇÃO (Config.Game.POTIONS). Regra de jogador: bebe
+        -- quando a vida está baixa ou quando o golpe anunciado a deixaria
+        -- baixa — naive só abaixo de 30% (quem abriu o jogo esquece a poção).
+        do
+            local run = game.runManager and game.runManager.currentRun
+            if game.usePotion and run and (run.potions or 0) > 0 then
+                local p = game.player
+                local inc = game.enemy.getIncomingDamage and game.enemy:getIncomingDamage(p) or 0
+                local low = naiveCombat() and 0.30 or 0.40
+                if p.health <= p.maxHealth * low
+                    or (not naiveCombat() and (p.health - math.max(0, inc - (p.armor or 0))) <= p.maxHealth * 0.25) then
+                    local okP, amt = game:usePotion()
+                    if okP then
+                        battleStats.potionsUsed = (battleStats.potionsUsed or 0) + 1
+                        log("  → bebi a poção: +%d HP (%d/%d)", amt or 0, p.health, p.maxHealth)
+                    end
+                end
+            end
+        end
 
         local hpBefore = game.player.health
         local enemyBefore = game.enemy.health
@@ -1474,6 +1495,10 @@ local function playBattle(game, label)
             dmg = ledger, diag = diag,
         }
     end
+    do -- wip/sustain: poção que caiu desta luta (elite)
+        local pots = ((game.runManager.currentRun or {}).potions) or 0
+        if pots > potionsBefore then battleStats.potionsFound = (battleStats.potionsFound or 0) + (pots - potionsBefore) end
+    end
     ledger = nil
 
     if won then
@@ -1791,13 +1816,13 @@ end
 -- Injeta o contexto real da run na loja (classe + deck → afinidade/pity e
 -- oferta de Forja, que exige context.runManager — sem isso o bot via uma
 -- vitrine diferente da do jogador).
-local function primeShopContext(game)
+-- wip/sustain (Out/2026): a conta e a de ShopSystem.runContext — a MESMA da
+-- CardRewardScreen. Antes o piloto nao passava o piso de raridade de
+-- elite/chefe nem os pesos por ato: media uma vitrine diferente da do jogador.
+local function primeShopContext(game, mode)
     if game.shopSystem.setContext then
-        game.shopSystem:setContext({
-            classId = game.selectedClass,
-            deckIds = deckIdList(game),
-            runManager = game.runManager,
-        })
+        local ShopSystem = require("src.systems.ShopSystem")
+        game.shopSystem:setContext(ShopSystem.runContext(game, mode or game.shopSystem.mode or "shop"))
     end
 end
 
@@ -1908,10 +1933,11 @@ end
 
 local function doRewards(game)
     game.shopSystem:setMode("rewards")
-    primeShopContext(game)
+    primeShopContext(game, "rewards")
     game.shopSystem:generateOffers()
     local offers = game.shopSystem:getCurrentOffers()
     for _, o in ipairs(offers) do if o.type == "card" then recOffer(o.id) end end
+    for _, o in ipairs(offers) do if o.sustainSlot then battleStats.sustainSlots = (battleStats.sustainSlots or 0) + 1 end end -- wip/sustain
 
     local best, bestScore = nil, -1
     if prof().build == "greedy" then
@@ -2105,7 +2131,8 @@ local function doRest(game)
     -- NAIVE: sempre descansa (nunca forja), mesmo com a vida cheia.
     if prof().rest == "always_rest" or p.health <= p.maxHealth * (nearBoss and 0.75 or 0.6) then
         -- Mesma conta da fogueira do jogo (Selo/maldição reduzem a cura).
-        local amt = math.floor(p.maxHealth * 0.30 * require("src.systems.RunModifiers")
+        local restPct = require("src.core.Config").Game.REST_HEAL_PCT or 0.30
+        local amt = math.floor(p.maxHealth * restPct * require("src.systems.RunModifiers")
             .healMul(game.runManager.currentRun, "rest"))
         p:heal(amt)
         log("- Acampamento: **descansei** +%d HP → %d/%d", amt, p.health, p.maxHealth)
@@ -2119,7 +2146,7 @@ local function doRest(game)
                 bestId, tostring(lvl), bestS)
         else
             log("- Acampamento: nada forjavel — descansei mesmo cheio")
-            p:heal(math.floor(p.maxHealth * 0.30))
+            p:heal(math.floor(p.maxHealth * (require("src.core.Config").Game.REST_HEAL_PCT or 0.30)))
         end
     end
 end
@@ -2347,7 +2374,7 @@ end
 
 local function doShop(game)
     game.shopSystem:setMode("shop")
-    primeShopContext(game)
+    primeShopContext(game, "shop")
     game.shopSystem:generateOffers()
 
     local run = game.runManager.currentRun
@@ -2800,6 +2827,7 @@ local function playRun(classId, runIdx, maxEndlessFloors, seed, opts)
         focusMaxByAct = {},   -- [act] = foco maximo visto (mago)
         thornReflect = 0, thornTurns = 0,
         multJokersMax = 0, multEffective = 1,
+        potionsUsed = 0, potionsFound = 0, sustainSlots = 0, -- wip/sustain
         plays = { n = 0, cards = 0, max = 0, hist = {}, withCombo = 0,
             atk = 0, atkCombo = 0, def = 0, defCombo = 0 },
         -- pipeline (Out/2026): dano por fonte, composicao do valor da carta,
@@ -2960,6 +2988,7 @@ local function playRun(classId, runIdx, maxEndlessFloors, seed, opts)
     runRec.endlessFloors = run.endlessMode and (run.floorsInEndless or 0) or 0
     runRec.curses = require("src.systems.RunModifiers").totalCurseStacks(run)
     runRec.battles = battleStats.battles
+    runRec.potionsUsed, runRec.potionsFound, runRec.sustainSlots = battleStats.potionsUsed, battleStats.potionsFound, battleStats.sustainSlots -- wip/sustain
     runRec.turns = battleStats.turns
     runRec.byAct = battleStats.byAct
     runRec.plays = battleStats.plays
@@ -3291,6 +3320,7 @@ function M._resetBattleStats()
         armorCapHits = 0, byAct = {},
         focusMaxByAct = {}, thornReflect = 0, thornTurns = 0,
         multJokersMax = 0, multEffective = 1,
+        potionsUsed = 0, potionsFound = 0, sustainSlots = 0, -- wip/sustain
         plays = { n = 0, cards = 0, max = 0, hist = {}, withCombo = 0,
             atk = 0, atkCombo = 0, def = 0, defCombo = 0 },
         dmg = {}, dmgParts = {}, battleLog = {},

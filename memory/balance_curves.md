@@ -421,3 +421,40 @@ Alvo de aceite: average 12–25% e expert_fast 30–50% com expert_full ainda
 45–60% (`python tools/balance.py --runs 30 --pilots naive,average,expert_fast`
 + `--pilots expert_full`, mesmas seeds). Combos e coringas ficam como estão
 ([[combo_rules]] — o dono quer o poder vindo deles).
+
+## Decisão (13/Out/2026): sustento garantido ADOTADO; o resto fica atrás de flag
+
+Bateria das propostas (30 runs/classe, seeds 720000+, G/M/L, IC ±17pp;
+`reports/balance/sus-*`), medida em `wip/sustain` (7fce337, ANTES da névoa
+de intenção), e a baseline da névoa em `f79510a` (`reports/balance/fog-*`):
+
+| variante (env) | expert_full | average | expert_fast |
+|---|---|---|---|
+| base sem névoa | 57 / 63 / 80 | 3 / 0 / 0 | 7 / 3 / 3 |
+| **base COM névoa** (f79510a) | **67 / 57 / 50** | 10 / 3 / 7 | 10 / 3 / 3 |
+| `BALANCE_SUSTAIN=1` | 53 / 83 / 90 | **20 / 10 / 7** | 13 / 13 / 17 |
+| `BALANCE_REST_HEAL=0.4` | 53 / 60 / 80 | 0 / 0 / 3 | 3 / 3 / 3 |
+| `BALANCE_POTIONS=1` | 70 / 70 / 77 | 3 / 3 / 3 | 10 / 7 / 7 |
+| `BALANCE_ELITE_RAMP=1` | 60 / 53 / 80 | 7 / 0 / 0 | 7 / 0 / 3 |
+| sustain + potions | 63 / 80 / 90 | 20 / 7 / 13 | 23 / 10 / 17 |
+| as quatro | 70 / 83 / 90 | 7 / 10 / 13 | 27 / 7 / 7 |
+
+Leitura: (1) descanso 40% e elite em rampa não movem nada; (2) a poção só
+ajuda o expert (sobe 57→70 no guerreiro) — é lever de quem já lê o jogo;
+(3) **sustento garantido é o único que move o jogador mediano** (+10 a
++17pp) e não é carta: é a OFERTA que passa a mostrar cura/lifesteal/regen
+cedo (`Config.Offers.SUSTAIN_GUARANTEE/WEIGHT_BONUS`, `CardRegistry.
+isSustainCard`, vaga reservada em elite/chefe via `pickRewardCard
+requireSustain`); (4) a névoa de intenção já derruba o expert do ladino de
+80→50 e do mago de 63→57 nos atos 4/6, o contrapeso natural pro estouro que
+o sustento mostrou SEM névoa (83/90). **Adotado:** só `SUSTAIN` (guarantee
++ peso ×2 com < 2 fontes). Potion/rest/ramp continuam atrás dos flags com
+default = jogo atual (`test_sustain_knobs` prova que desligados nada muda).
+
+**Pendente de medir** (uma bateria, `python tools/balance.py --runs 30
+--classes all --pilots expert_full` + `--pilots naive,average,expert_fast`
+no HEAD, sem `--env`): sustento + névoa JUNTOS. Expectativa: expert_full
+~55-70 / 65-75 / 55-65. Se mago/ladino passarem de 65%, o ajuste é no
+INIMIGO dos atos 5-6 (`ENEMY_POWER_BY_ACT`), nunca em carta. A bateria foi
+interrompida a pedido do dono (abria janelas enquanto ele trabalhava) —
+rodar só com a máquina livre.

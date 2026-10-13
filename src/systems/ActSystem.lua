@@ -48,7 +48,18 @@ function ActSystem.getEnemyStats(actNumber, floorInAct, nodeType, endlessFloor)
         hp  = math.floor(act.enemyHP(floorInAct))
         dmg = math.floor(act.enemyDmg(floorInAct))
         if nodeType == "elite" then
-            hp  = math.floor(hp * (act.eliteHPMul or 1.5))
+            local hpMul = act.eliteHPMul or 1.5
+            -- wip/sustain (Config.Game.ELITE_RAMP): a elite do 1º andar vale
+            -- ELITE_RAMP_START e sobe linearmente até eliteHPMul no 8º — hoje
+            -- a elite entra com ×1,7 já no 1º andar do A3 (280 de vida, mais
+            -- que o chefe do A2). Só rebaixa; ato com eliteHPMul menor que o
+            -- START fica como está.
+            if Config.Game and Config.Game.ELITE_RAMP and hpMul > (Config.Game.ELITE_RAMP_START or hpMul) then
+                local t = math.max(0, math.min(1, ((floorInAct or 1) - 1) / 7))
+                local start = Config.Game.ELITE_RAMP_START
+                hpMul = start + (hpMul - start) * t
+            end
+            hp  = math.floor(hp * hpMul)
             dmg = math.floor(dmg * (act.eliteDmgMul or 1.25))
         end
     end

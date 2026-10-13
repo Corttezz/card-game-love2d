@@ -74,6 +74,8 @@ def main():
     ap.add_argument("--clock", default="instant", choices=["instant", "frames"])
     ap.add_argument("--dir", default=ROOT, help="arvore do jogo (snapshot/worktree)")
     ap.add_argument("--label", default="")
+    ap.add_argument("--env", action="append", default=[], metavar="KEY=VAL",
+                    help="knob extra pro balance_sim (ex: --env BALANCE_POTIONS=1); repetivel")
     ap.add_argument("--out", default=os.path.join(ROOT, "reports", "balance"))
     ap.add_argument("--keep-logs", action="store_true")
     ap.add_argument("--quiet", action="store_true", help="nao imprime o relatorio inteiro")
@@ -109,6 +111,9 @@ def main():
                       ("mana", "BALANCE_MANA")):
         if getattr(args, flag):
             env[var] = getattr(args, flag)
+    for kv in args.env:
+        k, _, v = kv.partition("=")
+        env[k] = v
 
     # Um job = (piloto, classe, bloco de seeds). Blocos pequenos (~2 por core)
     # pra cauda curta; pilotos caros (expert) ganham mais blocos pra equilibrar;
@@ -182,7 +187,7 @@ def main():
                   "playerHp": args.player_hp, "enemyPowerAct": args.enemy_power_act,
                   "bossHpId": args.boss_hp_id, "comboJoker": args.combo_joker,
                   "mageFocus": args.mage_focus, "roguePoison": args.rogue_poison,
-                  "hand": args.hand, "mana": args.mana},
+                  "hand": args.hand, "mana": args.mana, "env": args.env},
         "anomalies": sum(len(m.get("anomalies", [])) for m in metas),
         "instantStalls": sum(m.get("instantStalls", 0) for m in metas),
         "failedBlocks": len(failed),

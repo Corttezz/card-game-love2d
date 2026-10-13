@@ -15,6 +15,7 @@ local SUITES = {
     { group = "unit",  name = "test_entities" },
     { group = "unit",  name = "test_economy" },
     { group = "unit",  name = "test_progression" },
+    { group = "unit",  name = "test_sustain_knobs" },
     { group = "unit",  name = "test_forge" },
     { group = "unit",  name = "test_forge_resize" },
     { group = "unit",  name = "test_cards" },

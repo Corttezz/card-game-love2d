@@ -1866,6 +1866,19 @@ end
 -- Centraliza efeitos colaterais de morte do inimigo (anim + sfx + pausa).
 -- Chamado tanto por processCardInCombat (kill via ataque) quanto por enemyTurn
 -- (kill via poison DoT). Idempotente: se ja rodou nesta morte, nao duplica.
+-- wip/sustain: bebe uma poção (cura POTION_HEAL_PCT da vida máxima) no turno
+-- do jogador. Devolve true se bebeu. Dado puro: nada de UI por enquanto.
+function Game:usePotion()
+    local run = self.isRunMode and self.runManager and self.runManager.currentRun
+    if not (run and Config.Game.POTIONS and (run.potions or 0) > 0) then return false end
+    if self.turn ~= "player" or not self.player or not self.player:isAlive() then return false end
+    if self.player.health >= self.player.maxHealth then return false end
+    run.potions = run.potions - 1
+    local amt = math.floor(self.player.maxHealth * (Config.Game.POTION_HEAL_PCT or 0.2))
+    self.player:heal(amt)
+    return true, amt
+end
+
 function Game:_onEnemyDeath()
     if self._deathHandled then return end
     self._deathHandled = true
@@ -1906,6 +1919,16 @@ function Game:_onEnemyDeath()
         local run = self.isRunMode and self.runManager and self.runManager.currentRun
         if run and run.currentNode and run.currentNode.type == "boss" then
             UnlockSystem.onBossDefeated(run.actNumber, self)
+        end
+        -- wip/sustain (Config.Game.POTIONS, medido e NAO adotado): elite
+        -- vencida deixa uma POÇÃO (run.potions, até POTION_SLOTS); usar =
+        -- Game:usePotion no turno do jogador. Sem UI — só o piloto a bebe.
+        if run and Config.Game.POTIONS and run.currentNode and run.currentNode.type == "elite" then
+            local slots = Config.Game.POTION_SLOTS or 1
+            if (run.potions or 0) < slots then
+                run.potions = (run.potions or 0) + 1
+                print(("[Game] poção encontrada (%d/%d)"):format(run.potions, slots))
+            end
         end
     end
 

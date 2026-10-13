@@ -629,36 +629,13 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
     self.mode = mode or "rewards"
 
     -- Contexto da run pro cérebro de ofertas (classe filtra pool; deck liga
-    -- afinidade e anti-duplicata — "as escolhas anteriores importam").
+    -- afinidade e anti-duplicata — "as escolhas anteriores importam"). P0.7:
+    -- elite/chefe pisam a raridade só em modo rewards; P0.3/P0.4: pesos de
+    -- raridade por ato; P0.5: cap de afinidade por ato. A conta mora em
+    -- ShopSystem.runContext — a MESMA que o piloto usa (wip/sustain).
     local run = game.runManager and game.runManager.currentRun
-
-    local actNumber = (run and run.actNumber) or 1
-
-    -- P0.7 (rebalance Jul/2026): elites/bosses pisam a raridade da recompensa
-    -- — o mapa promete risco, a vitrine paga. Só em modo rewards (a loja do
-    -- SHOP node não é recompensa de combate).
-    local minRarity = nil
-    if self.mode == "rewards" and run and run.currentNode then
-        local nt = run.currentNode.type
-        if nt == "elite" then
-            minRarity = "uncommon"
-        elseif nt == "boss" then
-            minRarity = "rare"
-        end
-    end
-
-    -- P0.3/P0.4: pesos de raridade POR ATO (Config.Acts via ActSystem — antes
-    -- era o fixo 70/25/5 da loja; a tabela por ato era código morto).
-    local ActSystem = require("src.systems.ActSystem")
-    self.shopSystem:setContext({
-        classId = (run and run.classId) or game.selectedClass,
-        deckIds = (game.runManager and game.runManager.getDeckCardIds)
-            and game.runManager:getDeckCardIds() or nil,
-        runManager = game.runManager, -- forja (custo crescente) + dedup de joker (P0.10)
-        actNumber = actNumber,        -- P0.5: cap de afinidade progressivo por ato
-        rarityWeights = ActSystem.getRarityWeights(actNumber),
-        minRarity = minRarity,
-    })
+    local ShopSystem = require("src.systems.ShopSystem")
+    self.shopSystem:setContext(ShopSystem.runContext(game, self.mode))
 
     self.shopSystem:setMode(self.mode)
     -- Vitrine JÁ gerada para este nó (Continuar após "Salvar e sair") volta

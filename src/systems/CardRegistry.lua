@@ -115,6 +115,26 @@ end
 
 -- Conta as tags do deck atual (por cópia — 3 cartas de veneno = veneno forte).
 -- Alimenta a afinidade das ofertas: escolhas anteriores importam.
+-- wip/sustain: carta de SUSTENTO = devolve vida ao longo da run (cura
+-- instantânea, roubo de vida, regeneração). Fonte única pra oferta garantida
+-- (Config.Offers.SUSTAIN_*) e pro peso extra; o piloto tem a própria leitura.
+local SUSTAIN_EFFECTS = { instant_heal = true, on_attack_heal = true, regen_per_turn = true }
+function CardRegistry.isSustainCard(cd)
+    if not cd then return false end
+    for _, e in ipairs(cd.effects or {}) do
+        if SUSTAIN_EFFECTS[e.type] then return true end
+    end
+    return false
+end
+
+function CardRegistry:countSustain(deckIds)
+    local n = 0
+    for _, id in ipairs(deckIds or {}) do
+        if CardRegistry.isSustainCard(self.cardDatabase:getCard(id)) then n = n + 1 end
+    end
+    return n
+end
+
 function CardRegistry:countDeckTags(deckIds)
     local counts = {}
     for _, id in ipairs(deckIds or {}) do
@@ -160,7 +180,33 @@ function CardRegistry:pickRewardCard(opts)
             if #pool > 0 then rarity = r; break end
         end
     end
+    -- wip/sustain: vaga RESERVADA a sustento (opts.requireSustain) — filtra a
+    -- pool; se a raridade sorteada não tem sustento, desce a escada; se a
+    -- classe não tem nenhum, a vaga volta a ser comum (nunca trava a oferta).
+    if opts.requireSustain then
+        local function onlySustain(ids)
+            local out = {}
+            for _, id in ipairs(ids) do
+                if CardRegistry.isSustainCard(self.cardDatabase:getCard(id)) then out[#out + 1] = id end
+            end
+            return out
+        end
+        local filtered = onlySustain(pool)
+        if #filtered == 0 then
+            for _, r in ipairs({ "uncommon", "common", "rare" }) do
+                filtered = onlySustain(self:_poolFor(opts.classId, r))
+                if #filtered > 0 then rarity = r; break end
+            end
+        end
+        if #filtered > 0 then pool = filtered end
+    end
     if #pool == 0 then return nil end
+    -- wip/sustain: peso extra pra sustento enquanto o deck tem poucas fontes.
+    local sustainBonus = 0
+    if (cfg.SUSTAIN_WEIGHT_BONUS or 0) > 0
+        and self:countSustain(opts.deckIds) < (cfg.SUSTAIN_MIN_SOURCES or 2) then
+        sustainBonus = cfg.SUSTAIN_WEIGHT_BONUS
+    end
 
     local tagCounts = opts._tagCounts or self:countDeckTags(opts.deckIds)
     local copies = {}
@@ -205,6 +251,9 @@ function CardRegistry:pickRewardCard(opts)
             -- Anti-saturação: cópias demais no deck ⇒ oferta perde peso.
             if (copies[cardId] or 0) >= cfg.DUPE_THRESHOLD then
                 weight = weight * cfg.DUPE_PENALTY
+            end
+            if sustainBonus > 0 and CardRegistry.isSustainCard(cd) then
+                weight = weight * (1 + sustainBonus)
             end
 
             table.insert(entries, {
