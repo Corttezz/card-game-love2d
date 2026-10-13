@@ -458,3 +458,22 @@ no HEAD, sem `--env`): sustento + névoa JUNTOS. Expectativa: expert_full
 INIMIGO dos atos 5-6 (`ENEMY_POWER_BY_ACT`), nunca em carta. A bateria foi
 interrompida a pedido do dono (abria janelas enquanto ele trabalhava) —
 rodar só com a máquina livre.
+
+### Sustento + névoa medidos JUNTOS no HEAD (13/Out/2026, `reports/balance/head-sustain-fog-*`)
+
+| HEAD (sustento ON, névoa A4/A6) | expert_full | average | expert_fast |
+|---|---|---|---|
+| sem env | **60 / 80 / 83** | **13 / 7 / 13** | 20 / 17 / 13 |
+| `BALANCE_ENEMY_POWER_ACT=3:0.9,0.9;5:1.1,1.1;6:1.15,1.15` (`head-a56-*`) | 43 / 70 / 73 | 3 / 3 / 3 | 7 / 3 / 3 |
+
+Leitura: o sustento levou o mediano pra banda (12–25) em duas classes e o
+expert_fast dobrou; mago/ladino expert ficaram acima do teto (45–60) morrendo
+só nos atos 5–6. O candidato de endurecer os atos 5–6 não serve: derruba o
+guerreiro expert pra fora da banda (43) enquanto mago/ladino seguem acima, e
+DESABA o mediano (13→3) e o expert_fast (20→7), porque quem chega ao A5 no
+limite morre lá. **Decisão (lead): HEAD fica como está.** A dificuldade-base
+(Selo 0) serve o jogador mediano; o expert tem os Selos 1–10 como escada
+(papel da Ascensão no StS, [[endless_and_seals]]). Nota pra depois: a
+assimetria de classe no late game (guerreiro mais frágil que mago/ladino nos
+atos 5–6) é problema de CLASSE, não de curva de inimigo; se for atacar, é
+por kit/passiva do guerreiro ou por Selo, nunca por `ENEMY_POWER` global.
