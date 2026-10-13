@@ -495,6 +495,45 @@ function M.run()
     weather(105)
     t:near("revelado: a nevasca volta ao normal", WeatherEngine.intensity(), calm, 0.02)
 
+    -- CADEIA REAL (lead): o anúncio escondido acontece no turno do inimigo
+    -- (beat enemy.next_intent) e a bruma precisa ter fechado ANTES de a vez
+    -- voltar ao jogador (turn.player_ready). O espectro do gelo tem véu com
+    -- chance 1: todo anúncio sai type_only, sem depender da rolagem.
+    do
+        local CombatBeats = require("src.systems.CombatBeats")
+        g.enemy.intentVisibility = "full"
+        g.enemy._revealTurns = 0
+        g.enemy.fogContext.hall = false
+        g.enemy.health = 500
+        g.player.health, g.player.armor = g.player.maxHealth, 0
+        IV.noteActive(g.enemy)
+        WeatherEngine.reset()
+        weather(60)
+        t:check("(pré) número à mostra, bruma aberta", WeatherEngine.renderedFog() < TH)
+        CombatBeats.startTrace()
+        g.turn = "enemy"
+        g._enemyActing = false
+        g:enemyTurn()
+        local fogAtReturn, visAtReturn, frames = nil, nil, 0
+        for k = 1, 300 do
+            TK.pump(g, 1 / 30)
+            WeatherEngine.update(1 / 30, { biomeId = "frost", camZ = 5.5, progress = 0.6, time = 200 + k / 30 })
+            frames = k
+            if g.turn == "player" and not g._enemyActing and not CombatBeats.isBusy() then
+                fogAtReturn = WeatherEngine.renderedFog()
+                visAtReturn = g.enemy:getIntentVisibility()
+                break
+            end
+        end
+        t:truthy("a vez voltou ao jogador (" .. frames .. " quadros)", fogAtReturn ~= nil)
+        t:eq("o anúncio novo veio encoberto (véu do espectro)", visAtReturn, "type_only")
+        t:check(string.format("quando a vez volta a bruma JÁ fechou (renderedFog %.2f >= %.2f)",
+            fogAtReturn or 0, TH), (fogAtReturn or 0) >= TH)
+        local sawNext = false
+        for _, l in ipairs(CombatBeats.log) do if l == "enemy.next_intent" then sawNext = true end end
+        t:truthy("o anúncio passou pelo beat enemy.next_intent", sawNext)
+    end
+
     -- a bruma é DESENHADA (bandas no flushAll) quando há véu, e não há
     -- banda alguma com o número à mostra
     do
