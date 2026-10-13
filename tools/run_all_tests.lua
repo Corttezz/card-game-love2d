@@ -73,6 +73,9 @@ local SUITES = {
     { group = "unit",  name = "test_balance_pipeline" },
     { group = "unit",  name = "test_economy_acts" },
     { group = "unit",  name = "test_scribe_dice" },
+    -- props vivos da loja v3 (lanterna em degraus, copo dos dados lendo a
+    -- jogada da visita, mariposa, reducedMotion sem perder informacao)
+    { group = "unit",  name = "test_shop_props" },
     { group = "unit",  name = "test_endless_seals" },
     { group = "unit",  name = "test_pause_menu" },
     { group = "unit",  name = "test_toasts" },
