@@ -176,6 +176,15 @@ function M.run()
     t:near("dessaturacao zerada", BC.desatAmount(), 0, 1e-3)
     BC.update(DT, gd, { inHall = true })
     t:falsy("nao reencena a MESMA morte", BC.isActive())
+    -- Continuar no cash out/espólios: o inimigo já nasce morto e a morte
+    -- NÃO se reencena (markDeathSeen, chamado pelo __resumeRunStage)
+    BC.reset()
+    local gr = fakeBoss("carrion_king")
+    gr._deathHandled = true
+    BC.markDeathSeen(gr)
+    BC.update(DT, gr, { inHall = true })
+    t:falsy("Continuar com o chefe morto: morte nao reencena", BC.isActive())
+    t:falsy("Continuar com o chefe morto: espolios livres", BC.holdsEnd())
     -- mini-boss na estrada: isBoss sem salao
     BC.reset()
     local gm = fakeBoss("carrion_king")

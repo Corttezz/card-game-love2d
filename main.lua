@@ -502,6 +502,8 @@ _G.__resumeRunStage = function()
         game.enemy.health = 0
         game._deathHandled, game._deathStaged = true, true
         require("src.ui.EnemyRenderer").triggerDeath(game.enemy.spriteId)
+        -- chefe: o salão abre com o corpo no chão, sem reencenar a morte
+        require("src.ui.BossCinematic").markDeathSeen(game)
     end
     if action == "cashout" then showRoundEval() return true end
     if action == "rewards" then showCardRewards() return true end

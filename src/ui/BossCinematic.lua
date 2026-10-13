@@ -378,6 +378,14 @@ function BossCinematic.startDeath(game)
     return true
 end
 
+-- Continuar no cash out/espólios de um chefe: o inimigo é montado JÁ morto
+-- (`_deathHandled`) — a morte NÃO se reencena (retomar é retomar onde
+-- estava). Marca o inimigo como "morte já vista".
+function BossCinematic.markDeathSeen(game)
+    local e = game and game.enemy
+    if e then deathFor = e end
+end
+
 function BossCinematic.isActive() return seq ~= nil end
 function BossCinematic.phase() return seq and seq.phase or nil end
 function BossCinematic.hidesBoss() return seq ~= nil and bossHidden end
@@ -1019,13 +1027,18 @@ local function drawRoots()
                 local a, b = root.pts[i], root.pts[i + 1]
                 local ex = lerp(a[1], b[1], segK)
                 local ey = lerp(a[2], b[2], segK)
-                local steps = math.max(2, math.floor(math.abs(ex - a[1]) / 2 + 1))
+                -- 1 bloco por px da arte (a 2 px virava linha pontilhada) e
+                -- corpo num tom entre a partícula e o brilho (o escuro sumia
+                -- no piso do salão 5 — recorte 1:1 do lead)
+                local steps = math.max(2, math.floor(math.max(math.abs(ex - a[1]), math.abs(ey - a[2])) + 1))
+                local br, bg, bb = lerp(PAL.particle[1], PAL.glow[1], 0.45),
+                    lerp(PAL.particle[2], PAL.glow[2], 0.45), lerp(PAL.particle[3], PAL.glow[3], 0.45)
                 for st2 = 0, steps do
                     local q = st2 / steps
                     local x = tr.ox + math.floor(lerp(a[1], ex, q)) * tr.scale
                     local y = tr.oy + math.floor(lerp(a[2], ey, q)) * tr.scale
                     local bx, by = math.floor(x / P) * P, math.floor(y / P) * P
-                    love.graphics.setColor(PAL.particle[1], PAL.particle[2], PAL.particle[3], fade)
+                    love.graphics.setColor(br, bg, bb, fade)
                     love.graphics.rectangle("fill", bx - P, by - P, 3 * P, 3 * P)
                     if st2 % 3 == 0 then
                         -- nó claro (brilho do elemento) a cada 3 blocos
@@ -1067,7 +1080,8 @@ local function drawWhiteout()
     if level <= 0.01 then return end
     -- 5 degraus (sem gradiente), teto 0.8: o salão nunca some de todo — a
     -- nevasca é TEXTURA (rajadas de névoa correndo), não uma chapa branca
-    local q = math.min(0.82, math.floor(level * 5) / 5)
+    -- (teto 0,72: a 0,82 as colunas do salão já não se liam a 1:1 — revisão do lead)
+    local q = math.min(0.72, math.floor(level * 5) / 5)
     love.graphics.setColor(0.90, 0.95, 1.0, q)
     love.graphics.rectangle("fill", 0, 0, w, h)
     -- RAJADAS: as texturas de névoa (3 degraus de alpha com dither) correndo

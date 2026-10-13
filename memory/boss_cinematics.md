@@ -150,6 +150,37 @@ devolve nil em `roundEval` (o tema do chefe segue pelo salão; a faixa do ato
 novo entra na encruzilhada). Travas: `test_hand_deal` (2b) + `test_music`;
 prova: `boss_cine_death_hall.png` do `shot_boss_cinematic death`.
 
+## O nó de chefe inteiro (auditoria Out/2026, pedido do lead)
+
+1. **Caminhada** (`WorldRoad.travel`, 6,5 s): castelo cresce; cortina da mão
+   abaixada; HUD do herói fica; tema do chefe já toca (`playing` + `boss`).
+2. **Porta** (`WorldRoad.enterCastle`, 1,4 s + fade 0,9 s): HUD some junto;
+   cliques engolidos; som do portão.
+3. **Salão vazio → entrada** (`_onBossEntered` → `BossCinematic.startIntro`,
+   6-9 s; genérica se o chefe não tiver roteiro): cartão nome+epíteto; pular
+   depois de 1 s.
+4. **Cartas dadas** (HandDeal, 0,11 s/carta) → botões + HUD → luta.
+5. **Morte** (`_deathHandled` no salão → `startDeath`): câmera lenta, rajada,
+   dessaturação, corpo no chão; segura espólios (`holdsEnd`). Mesa fechada.
+6. **Cash out** (`roundEval`, desenha `GameplayScene.draw` com mesa fechada):
+   SALÃO + corpo; música mantida (pick → nil).
+7. **Espólios** (`cardReward` → `drawWorldOnly` = "hall"): salão + corpo;
+   chefe não dá coringa (decisão do dono); música mantida.
+8. **Encruzilhada** (`showMapSelection` → `advanceFloorInAct`, `journalEnd`):
+   o nó muda → `isInteriorNode` cai → estrada; cura inter-ato no `nextPhase`
+   do andar seguinte; faixa do ato novo entra aqui.
+9. **Continuar** no meio: `battle` → salão direto SEM entrada
+   (`_debugForceBossEntered`); `cashout`/`rewards` → inimigo nasce morto
+   (`__resumeRunStage`: health 0, `_deathHandled`, clip de morte) e
+   `BossCinematic.markDeathSeen` impede reencenar a morte; `worldOnlyMode`
+   = "hall". Trava em `test_boss_cinematic`.
+
+Ajustes da revisão do lead (Out/2026): whiteout do monarca com teto 0,72
+(a 0,82 as colunas não se liam a 1:1); raízes do colosso a 1 bloco por px
+da arte em ambos os eixos e corpo a meio caminho do brilho (a 2 px e escuro
+viravam linha pontilhada). Recortes 1:1 em `tools/preview_out/boss_cinematic/
+{monarch_whiteout,colossus_roots}_1to1.png`.
+
 ## Cortina da mão + distribuição (Out/2026, bug do dono)
 
 > "a mão, os botões e o HUD aparecem no meio da porta e da entrada"
