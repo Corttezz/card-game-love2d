@@ -26,6 +26,8 @@
 
 local ShopLayout = {}
 
+local ShopPerspective = require("src.ui.shop.ShopPerspective")
+
 local function clamp(v, lo, hi) return math.max(lo, math.min(hi, v)) end
 local function rect(x, y, w, h)
     return { x = math.floor(x), y = math.floor(y), w = math.floor(w), h = math.floor(h) }
@@ -33,17 +35,23 @@ end
 
 ShopLayout.TOPBAR_H = 56
 ShopLayout.CARD_RATIO = 1.5
--- Loja v3c (queixa do dono: "as cartas ainda estão apontadas pra frente"):
--- a carta fica PARALELA à borda do fundo. Base e topo seguem a diagonal da
--- mesa (slope até o ponto de fuga), a borda direita é mais curta (foge) e a
--- largura encolhe (escorço). No hover a carta gira MAIS: o lado direito
--- afunda (encolhe e recua), o esquerdo sobe, e ela levanta um pouco.
+-- Loja "reta" (13/Out/2026, queixa do dono: "as cartas não estão seguindo a
+-- mesma reta"): a carta, o trilho do cavalete, a plaquinha de raridade e a
+-- etiqueta de preço moram no MESMO frame (ShopPerspective.edgeFrame): a
+-- base de toda carta fica sobre a BORDA PINTADA do degrau do fundo
+-- (ART.ledgeEdge, medida na pintura), as quatro colineares. O topo foge pro
+-- ponto de fuga (perspectiva de verdade: a borda direita sai mais curta
+-- sozinha, sem fator inventado). No hover a carta NÃO gira: sai do cavalete
+-- na perpendicular da borda (CARD_LIFT px), cresce CARD_HOVER_SCALE e volta
+-- pelo mesmo caminho.
 ShopLayout.CARD_FORESHORTEN = 0.82   -- largura aparente / largura frontal
-ShopLayout.CARD_RK = 0.93            -- altura da borda direita / esquerda (repouso)
-ShopLayout.CARD_RK_HOVER = 0.76      -- idem no hover (o lado direito afunda)
-ShopLayout.CARD_W_HOVER = 0.86       -- largura no hover (gira mais)
-ShopLayout.CARD_TOP_HOVER = -0.6     -- inclinação do topo no hover / da borda do fundo (negativo: o topo desce pra direita)
-ShopLayout.CARD_LIFT = 12            -- quanto a carta levanta no hover (lado esquerdo; o direito 1/3)
+ShopLayout.CARD_HOVER_SCALE = 1.06   -- escala da carta levantada
+ShopLayout.CARD_LIFT_MIN = 10        -- quanto a carta sai do cavalete (px de UI)
+ShopLayout.CARD_LIFT = 14
+-- plaquinha de latão da raridade: comum não leva placa (prancha
+-- lojareta_placas: a fileira sem a placa da comum leu mais limpa e a
+-- raridade da carta comum já está no pergaminho)
+ShopLayout.PLATE_COMMON = false
 -- Trilho do cavalete em px de ARTE e quanto dele cobre a carta: só a borda
 -- inferior da moldura (o rodapé com tipo e valor é informação, fica à vista).
 ShopLayout.RAIL_ART = 4
@@ -67,6 +75,12 @@ end
 -- ============================================================================
 ShopLayout.ART = {
     w = 688, h = 384,
+    -- BORDA do degrau do fundo (a última linha iluminada do tampo do degrau,
+    -- antes da face escura): y = y0 + k*(x - x0). Medida na pintura por
+    -- coluna (x 80..441, maior queda de luminância numa janela de ±4 px em
+    -- torno da reta) + mínimos quadrados: rms 0,7 px, 6,83 graus, passa a
+    -- 1 px do ponto de fuga. test_shop_layout refaz a medida na PNG.
+    ledgeEdge = { x0 = 100, y0 = 190.857, k = -0.119775 },
     -- borda do fundo (prateleira atrás do balcão) onde os cavaletes apoiam
     ledgeMask = { 56, 182, 476, 132, 486, 150, 66, 200 },
     -- tampo do balcão (sem a pilha de livros/moedas do canto e sem a caveira)
@@ -140,11 +154,11 @@ ShopLayout.bboxOf = bboxOf
 -- Etiqueta de preço PENDURADA (a das cartas, que o dono gostou), agora
 -- também nos objetos: cordão de `len` px a partir de (ax, ay), cartão w x h
 -- cisalhado na diagonal (`slope`). `box` = caixa ocupada (validação/hit).
-local function hangingTag(ax, ay, lineH, slope)
+local function hangingTag(ax, ay, lineH, slope, len)
     local bandH = lineH + 6
     local w = clamp(math.floor(bandH * 1.8), 26, 38)
     local h = math.floor(w * 0.66)
-    local len = 4
+    len = len or 4
     local skew = math.abs(slope) * w
     local tag = { ax = math.floor(ax), ay = math.floor(ay), len = len, w = w, h = h, slope = slope }
     tag.box = rect(ax - w / 2 - 4, ay - skew / 2, w + 8, len + h + skew + 2)
@@ -152,47 +166,67 @@ local function hangingTag(ax, ay, lineH, slope)
 end
 ShopLayout.hangingTag = hangingTag
 
--- Faixa da raridade da carta: retângulo CISALHADO na diagonal logo abaixo do
--- cavalete. `band` = { x, y (topo na ponta esquerda), w, h, slope };
--- `plate` = a caixa ocupada (validação/hit-test). O preço mora SÓ na
--- etiqueta pendurada da ponta direita (informação repetida é ruído).
-local function cardPlates(cx, topY, w, lineH, slope)
-    local bandH = lineH + 6
-    local x = cx - w / 2
-    local band = { x = math.floor(x), y = math.floor(topY - slope * w / 2), w = math.floor(w), h = bandH, slope = slope }
-    local ys = { band.y, band.y + slope * band.w, band.y + bandH, band.y + slope * band.w + bandH }
-    local plate = bboxOf({ band.x, band.x + band.w, band.x, band.x + band.w }, ys)
-    local tw = clamp(math.floor(bandH * 1.8), 26, 38)
-    local ax = band.x + band.w - math.floor(tw * 0.5) + 2
-    local tag = hangingTag(ax, band.y + slope * (ax - band.x) + band.h, lineH, slope)
-    return { plate = plate, band = band, tag = tag }
+-- Placas da carta, TODAS no frame da borda (f):
+--   rarity = plaquinha de latão pregada na FRENTE do trilho, centrada
+--            (vTop = altura do topo dela acima da borda, h, maxW);
+--   tag    = etiqueta de preço pendurada da PONTA DIREITA do trilho, presa
+--            na quina de baixo (sobre a borda pintada), com o cordão longo o
+--            bastante pra passar ABAIXO da plaquinha (em carta estreita as
+--            duas não cabem lado a lado: empilhar não corta texto nenhum);
+--   plate  = caixa ocupada por trilho + plaquinha (validação/hit-test).
+local function railPlates(f, qw, lipH, lineH, side)
+    local railW = qw + 8
+    local ph = lineH + 4
+    local maxW = qw + 4
+    local vTop = math.floor(lipH * 0.55)
+    local rarity = { u0 = -maxW / 2, w = maxW, h = ph, vTop = vTop, slope = f.k }
+    rarity.x, rarity.y = ShopLayout.frameAtF(f, -maxW / 2, vTop)
+    local xs, ys = {}, {}
+    for _, p in ipairs({ { -railW / 2, lipH }, { railW / 2, lipH }, { -railW / 2, vTop - ph }, { railW / 2, vTop - ph } }) do
+        local x, y = ShopLayout.frameAtF(f, p[1], p[2])
+        xs[#xs + 1], ys[#ys + 1] = x, y
+    end
+    local plate = bboxOf(xs, ys)
+    local tw = clamp(math.floor((lineH + 6) * 1.8), 26, 38)
+    local u = (side == "left") and (-railW / 2 + math.floor(tw * 0.5) + 1) or (railW / 2 - math.floor(tw * 0.5) - 1)
+    local len = ph - vTop + 3
+    if side == "out" then
+        -- presa na quina da PONTA do trilho, por fora: cordão curto, ao lado
+        -- da plaquinha (quando embaixo dela há um objeto da mesa)
+        u, len = railW / 2 + math.floor(tw * 0.5) - 1, 4
+    end
+    local ax, ay = ShopLayout.frameAtF(f, u, 0)
+    local tag = hangingTag(ax, ay, lineH, f.k, len)
+    tag.u = u
+    return { plate = plate, rarity = rarity, tag = tag, railW = railW }
 end
 
--- Os 4 cantos da carta (TL, TR, BR, BL) no cavalete, em px de tela.
--- Em repouso a borda de CIMA da carta acompanha a linha da borda do fundo da
--- mesa (slope); a borda direita é mais curta (foge), então a BASE gira mais
--- que a borda: a carta está virada pro fundo, de pé no cavalete.
---   hover 0..1: gira mais (topo quase reto: o canto esquerdo sobe, o direito
---   afunda e encolhe), lift px (o lado esquerdo sobe tudo, o direito 1/3)
+function ShopLayout.frameAtF(f, u, v)
+    return f.ox + u, f.oy + f.k * u - (v or 0)
+end
+
+-- Os 4 cantos da carta (TL, TR, BR, BL), px de tela, no frame da borda:
+-- base sobre a borda (vb acima dela, dentro do trilho), topo fugindo pro
+-- ponto de fuga. hover 0..1 (já com easing) escala em torno do centro da
+-- base; lift px desloca na PERPENDICULAR da borda. Nenhum dos dois gira.
 function ShopLayout.cardQuad(c, hover, lift)
     hover, lift = hover or 0, lift or 0
-    local s = c.slope
-    local w = c.qw * (1 + (ShopLayout.CARD_W_HOVER - 1) * hover)
-    local h = c.qh
-    local rk = ShopLayout.CARD_RK + (ShopLayout.CARD_RK_HOVER - ShopLayout.CARD_RK) * hover
-    local topS = s * (1 + (ShopLayout.CARD_TOP_HOVER - 1) * hover)
-    local baseS = topS - (1 - rk) * h / w
-    local xl = c.footX - c.qw / 2
-    local xr = xl + w
-    local yl = c.foot + s * (xl - c.footX)
-    local yr = yl + baseS * w
-    local liftL, liftR = lift, lift / 3
-    return xl, yl - h - liftL, xr, yr - h * rk - liftR, xr, yr - liftR, xl, yl - liftL
-end
-
--- Inclinação da BASE da carta em repouso (o trilho do cavalete segue ela).
-function ShopLayout.cardBaseSlope(c)
-    return c.slope - (1 - ShopLayout.CARD_RK) * c.qh / c.qw
+    local f = c.frame
+    local w, h = c.qw, c.qh
+    local blx, bly = ShopLayout.frameAtF(f, -w / 2, c.vb)
+    local brx, bry = ShopLayout.frameAtF(f, w / 2, c.vb)
+    local tlx, tly = blx, bly - h
+    local kTop = (f.vpy - tly) / (f.vpx - tlx)
+    local trx, try_ = brx, tly + kTop * w
+    local cx, cy = ShopLayout.frameAtF(f, 0, c.vb)
+    local sc = 1 + (ShopLayout.CARD_HOVER_SCALE - 1) * hover
+    local dx, dy = f.nx * lift, f.ny * lift
+    local function T(x, y) return cx + (x - cx) * sc + dx, cy + (y - cy) * sc + dy end
+    local x0, y0 = T(tlx, tly)
+    local x1, y1 = T(trx, try_)
+    local x2, y2 = T(brx, bry)
+    local x3, y3 = T(blx, bly)
+    return x0, y0, x1, y1, x2, y2, x3, y3
 end
 
 function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
@@ -228,28 +262,36 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
         for i = 1, nCards do
             local a = A.cards[math.min(i, #A.cards)]
             local ax = x1 + (a.x - A.cards[1].x) * xFit
-            local fx, fy = toScreen(cv, ax, a.y)
-            local slope = ShopLayout.slopeArt(ax, a.y)
             local h = math.floor(cardH0 * a.s * sizeFit)
             local w = math.floor(h / ShopLayout.CARD_RATIO)
             local qw = math.floor(w * ShopLayout.CARD_FORESHORTEN)
-            -- trilho do cavalete (RAIL_ART px de arte); a carta senta nele
-            -- e ele cobre só RAIL_COVER_ART px da borda de baixo da moldura
+            -- UM frame por carta: origem na borda pintada sob o centro dela
+            local c = { kind = "card", art = { x = ax }, depth = a.s, qw = qw, qh = h }
+            local f = ShopPerspective.edgeFrame(c, cv)
+            c.frame, c.art.y, c.slope = f, f.art.y, f.k
+            -- trilho do cavalete (RAIL_ART px de arte) com a quina de baixo
+            -- da frente SOBRE a borda; a carta senta nele e ele cobre só
+            -- RAIL_COVER_ART px da borda de baixo da moldura
             local lipH = math.floor(ShopLayout.RAIL_ART * cv.s + 0.5)
-            local foot = math.floor(fy - (ShopLayout.RAIL_ART - ShopLayout.RAIL_COVER_ART) * cv.s)
-            local c = { footX = math.floor(fx), foot = foot, slope = slope, qw = qw, qh = h }
+            c.vb = (ShopLayout.RAIL_ART - ShopLayout.RAIL_COVER_ART) * cv.s
+            c.lipH = lipH
+            c.footX = f.ox
+            local _, footY = ShopLayout.frameAtF(f, 0, c.vb)
+            c.foot = math.floor(footY)
             local x0, y0, xa, ya, x2, y2, x3, y3 = ShopLayout.cardQuad(c, 0, 0)
-            local r = bboxOf({ x0, xa, x2, x3 }, { y0, ya, y2, y3 })
-            local stand = rect(fx - qw / 2 - 4, fy - lipH, qw + 8, lipH)
-            local plates = cardPlates(fx, fy + 4, math.max(qw, 70), lineH, slope)
-            c.baseSlope = ShopLayout.cardBaseSlope(c)
-            c.kind, c.art, c.depth = "card", { x = ax, y = a.y }, a.s
-            c.rect, c.stand, c.lipH = r, stand, lipH
+            c.rect = bboxOf({ x0, xa, x2, x3 }, { y0, ya, y2, y3 })
+            local plates = railPlates(f, qw, lipH, lineH, "right")
+            c.railW = plates.railW
+            do
+                local lx, ly = ShopLayout.frameAtF(f, -plates.railW / 2, lipH)
+                local rx, ry = ShopLayout.frameAtF(f, plates.railW / 2, 0)
+                c.stand = rect(lx, math.min(ly, ry), rx - lx, math.max(ly, ry) - math.min(ly, ry) + 1)
+            end
             c.standVariant = ((i - 1) % 3) + 1
-            c.plate, c.band, c.tag = plates.plate, plates.band, plates.tag
-            -- levanta proporcional à carta (até CARD_LIFT): em 800x600 o selo NOVA
-            -- da carta levantada encostaria na placa de título
-            c.lift = clamp(math.floor(h * 0.06), 6, ShopLayout.CARD_LIFT)
+            c.plate, c.rarity, c.tag = plates.plate, plates.rarity, plates.tag
+            c.lineH = lineH
+            -- sai do cavalete proporcional à carta (CARD_LIFT_MIN..CARD_LIFT)
+            c.lift = clamp(math.floor(h * 0.075), ShopLayout.CARD_LIFT_MIN, ShopLayout.CARD_LIFT)
             cards[i] = c
         end
     end
@@ -351,8 +393,9 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
     local bell = counterObj(A.bell, 0.8, true)
     local dice = counterObj(A.dice, 0.8, false)
 
-    -- etiqueta da carta: canto DIREITO da faixa; se ali ela cairia sobre o
-    -- sino/copo (4:3 aperta a carta 1 contra o copo), passa pro canto esquerdo
+    -- etiqueta da carta: ponta DIREITA do trilho; se ali ela cairia sobre o
+    -- sino/copo (4:3 aperta a carta 1 contra o copo) ou sobre um objeto da
+    -- mesa (o pacote sob a carta 4 em 16:9), passa pra ponta esquerda
     local function hits(tg, o)
         local tr = tg.box
         for _, r in ipairs({ o.rect, o.plate }) do
@@ -363,10 +406,16 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
         return false
     end
     for _, c in ipairs(cards) do
-        if c.tag and (hits(c.tag, dice) or hits(c.tag, bell)) then
-            local b = c.band
-            local ax = b.x + math.floor(c.tag.w * 0.5) + 2
-            c.tag = hangingTag(ax, b.y + b.slope * (ax - b.x) + b.h, lineH, b.slope)
+        local function blocked(tg)
+            local b = hits(tg, dice) or hits(tg, bell)
+            for _, o in ipairs(objects) do b = b or hits(tg, o) end
+            return b
+        end
+        if c.tag and blocked(c.tag) then
+            for _, side in ipairs({ "left", "out" }) do
+                local tg = railPlates(c.frame, c.qw, c.lipH, lineH, side).tag
+                if not blocked(tg) then c.tag = tg break end
+            end
         end
     end
 
@@ -440,12 +489,12 @@ function ShopLayout.validate(L)
 
     -- pé no que está pintado
     for i, c in ipairs(L.cards) do
-        local ax, ay = toArt(cv, c.footX, c.stand.y + c.stand.h)
+        local ax, ay = toArt(cv, c.frame.ox, c.frame.oy)
         if not pointInPoly(ax, ay, A.ledgeMask) then
             fail("cavalete %d: base (%d,%d na arte) fora da borda do fundo", i, ax, ay)
         end
         if c.foot < c.stand.y or c.foot > c.stand.y + c.stand.h then fail("carta %d: pe fora do suporte", i) end
-        local reach = c.lift + ShopLayout.BADGE_RESERVE
+        local reach = c.lift + math.ceil(c.qh * (ShopLayout.CARD_HOVER_SCALE - 1)) + ShopLayout.BADGE_RESERVE
         local lifted = { x = c.rect.x, y = c.rect.y - reach, w = c.rect.w, h = c.rect.h + reach }
         if not inside(L.wall, lifted) then fail("carta %d levantada %s escapa da parede", i, fmt(lifted)) end
         if c.plate.x + c.plate.w > L.limitX then fail("placa da carta %d invade o pergaminho", i) end
@@ -509,7 +558,8 @@ function ShopLayout.validate(L)
     for i, c in ipairs(L.cards) do
         local r = union(c.rect, c.plate)
         if overlaps(r, L.scroll) then fail("carta %d invade o pergaminho", i) end
-        if overlaps({ x = r.x, y = r.y - ShopLayout.BADGE_RESERVE - c.lift, w = r.w, h = r.h }, L.sign) then
+        local grow = math.ceil(c.qh * (ShopLayout.CARD_HOVER_SCALE - 1))
+        if overlaps({ x = r.x, y = r.y - ShopLayout.BADGE_RESERVE - c.lift - grow, w = r.w, h = r.h }, L.sign) then
             fail("carta %d (com selo) invade a placa de titulo", i)
         end
     end

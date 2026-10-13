@@ -214,3 +214,38 @@ cartas "apontadas pra frente", suporte feio e fora da diagonal.
   moldura: o rodapé (tipo e valor) fica à vista (`RAIL_ART`/`RAIL_COVER_ART`).
 - Copo de dados: sombra de contato na largura do copo; "DADOS" no hover sai
   ABAIXO do copo (acima batia na etiqueta da carta 1).
+
+## Loja "reta" (13/Out/2026, feedback do dono)
+
+Queixa: "as cartas não estão seguindo a mesma reta; o texto COMUM, RARA etc
+está feio; o hover das cartas está estranho" (captura com duas retas
+vermelhas na diagonal da mesa: base da carta e faixa fora delas).
+
+- **Uma reta por carta**: `ShopPerspective.edgeFrame(slot, cv)` = origem na
+  BORDA PINTADA do degrau do fundo sob o centro da carta + inclinação k da
+  borda + vetores u/n + escala. Carta (`ShopLayout.cardQuad`), trilho do
+  cavalete (`drawStandArt`, em px de arte), plaquinha de raridade, etiqueta,
+  sombra no trilho: tudo `frameAt(f, u, v)` = translate(origem)+shear(0, k).
+  A borda é `ART.ledgeEdge` (medida na PNG: última linha clara do tampo do
+  degrau, 6,83 graus, rms 0,7 px, passa no VP). A quina de baixo do trilho
+  fica SOBRE ela; as 4 bases são colineares. O topo da carta foge pro VP
+  (a borda direita sai mais curta pela perspectiva, sem CARD_RK inventado).
+- **Plaquinha de latão** pregada na frente do trilho (4 tons + 2 pregos),
+  raridade em fonte 8 (mín. 7) na cor dela clareada até contraste >= 4,5 com
+  o latão (`ShelfItem.rarityInk`). Comum SEM placa (`ShopLayout.PLATE_COMMON
+  = false`: prancha `diag_plates_*` mostrou a fileira mais limpa). Etiqueta
+  de preço pendurada da ponta direita do trilho com cordão longo o bastante
+  pra passar ABAIXO da plaquinha (carta estreita não cabe as duas lado a
+  lado; empilhar nunca corta texto).
+- **Hover**: mesmo ângulo, sai na PERPENDICULAR da borda 10..14 px
+  (`c.lift`), escala 1,06 em torno do centro da base, sombra no trilho
+  crescendo. Tempo linear (`ShelfItem.HOVER_TIME` 0,18 s) + smoothstep: ida e
+  volta pelo mesmo caminho, sem salto (vale pros objetos também).
+- Travas: `test_shop_layout` mede a borda NA PNG e exige base/trilho/placa/
+  etiqueta a <= 0,5 grau entre si e da borda, trilho a <= 1 px de arte da
+  reta, hover sem deslocamento ao longo da borda; `test_shop_scene` exige
+  hover sem torção, passo por quadro <= 15% do lift, caminho simétrico e
+  contraste das placas.
+- Prova: `SHOP_STATES=rest,hovercard,guides,hoverstrip,plates love . test_one
+  screenshot_shop_diag <loc>` (guides = linhas guia só na captura;
+  hoverstrip = 8 quadros 1:1).

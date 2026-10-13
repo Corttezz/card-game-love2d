@@ -128,7 +128,51 @@ function M.run()
         pump(screen, 0.5)
         t:eq("cena marca a carta sob o mouse", scene.hovered, card2)
         t:eq("tela espelha hoveredOffer", screen.hoveredOffer, card2.offer)
-        t:truthy("carta em hover LEVANTA (10..12 px)", card2:liftPx() >= 9.5 and card2:liftPx() <= 12.5)
+        t:truthy(("carta em hover sai do cavalete 10..14 px (%.1f)"):format(card2:liftPx()),
+            card2:liftPx() >= 10 - 0.01 and card2:liftPx() <= 14 + 0.01)
+        do
+            -- Loja "reta": hover sem torção (ângulo da base igual ao repouso) e
+            -- sem salto: passo por quadro limitado, ida e volta pelo mesmo caminho
+            local ShelfItem = require("src.ui.shop.ShelfItem")
+            local ShopPerspective = require("src.ui.shop.ShopPerspective")
+            local probe = ShelfItem.new("card", card2.offer, 99)
+            probe:setGeometry(card2.geom)
+            local function baseDeg()
+                local _, _, _, _, x2, y2, x3, y3 = probe:cardCorners()
+                return ShopPerspective.angleOf(x3, y3, x2, y2)
+            end
+            local rest = baseDeg()
+            local ins, outs, maxStep, maxTwist = {}, {}, 0, 0
+            local prev = probe:liftPx()
+            for f = 1, 20 do
+                probe:update(ShelfItem.HOVER_TIME / 12, true)
+                ins[f] = probe:liftPx()
+                maxStep = math.max(maxStep, math.abs(ins[f] - prev)); prev = ins[f]
+                maxTwist = math.max(maxTwist, math.abs(baseDeg() - rest))
+            end
+            for f = 1, 20 do
+                probe:update(ShelfItem.HOVER_TIME / 12, false)
+                outs[f] = probe:liftPx()
+                maxStep = math.max(maxStep, math.abs(outs[f] - prev)); prev = outs[f]
+                maxTwist = math.max(maxTwist, math.abs(baseDeg() - rest))
+            end
+            local lift = card2.geom.lift
+            -- smoothstep em 12 quadros: passo máximo 1,5/12 do lift por quadro
+            t:truthy(("hover sem salto (maior passo %.2f px de %d)"):format(maxStep, lift), maxStep <= lift * 0.15)
+            t:truthy(("hover sem torcao (%.3f graus)"):format(maxTwist), maxTwist <= 0.01)
+            t:truthy("hover: 1o quadro anda pouco (easing, nao pulo)", ins[1] <= lift * 0.05)
+            local sym = 0
+            for f = 1, 11 do sym = math.max(sym, math.abs(ins[f] - outs[12 - f])) end
+            t:truthy(("hover volta pelo MESMO caminho (%.3f px)"):format(sym), sym <= 0.05)
+            t:near("hover assenta de volta no cavalete", outs[20], 0, 1e-6)
+            -- plaquinha de latão: comum sem placa; as outras com contraste >= 4,5
+            t:falsy("comum sem plaquinha", ShelfItem.showsRarityPlate("common"))
+            for _, rar in ipairs({ "uncommon", "rare", "legendary" }) do
+                t:truthy(rar .. " com plaquinha", ShelfItem.showsRarityPlate(rar))
+                local cr = ShelfItem.contrast(ShelfItem.rarityInk(rar), ShelfItem.BRASS.face)
+                t:truthy(("%s: contraste %.2f >= 4,5 sobre o latao"):format(rar, cr), cr >= 4.5)
+            end
+        end
         t:eq("pergaminho segue a SELECAO, nao o hover (leitura estavel)",
             screen.detailPayload.offer, screen.selectedOffer)
 

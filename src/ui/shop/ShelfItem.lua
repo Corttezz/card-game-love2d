@@ -47,6 +47,15 @@ end
 
 local DENY_TIME = 0.45
 
+-- Hover (Loja "reta"): tempo LINEAR + easing simétrico. A volta percorre o
+-- mesmo caminho da ida, quadro a quadro, sem salto no começo nem no fim (a
+-- aproximação exponencial antiga saía com o passo maior no primeiro quadro).
+ShelfItem.HOVER_TIME = 0.18
+function ShelfItem.ease(t)
+    t = clamp(t, 0, 1)
+    return t * t * (3 - 2 * t)
+end
+
 -- madeira da pintura (amostrada em counter_scene.png: lábio da borda do fundo)
 local WOOD = {
     hi   = { 255 / 255, 206 / 255, 103 / 255 },
@@ -84,7 +93,8 @@ function ShelfItem.new(kind, offer, slot)
     self.kind = kind
     self.offer = offer
     self.slot = slot
-    self.hover = 0
+    self.hover = 0               -- 0..1 COM easing (o que se desenha)
+    self.hoverT = 0              -- 0..1 linear no tempo (ida e volta pelo mesmo caminho)
     self.hot = false
     self.selected = false
     self.entry = { v = 1 }       -- 0..1 entrada (tabela: sobrevive ao rebuild)
@@ -108,13 +118,14 @@ function ShelfItem.stepPendulum(tg, dt)
 end
 
 function ShelfItem:exportFx()
-    return { hover = self.hover, hot = self.hot, juice = self.juice, entry = self.entry,
+    return { hover = self.hover, hoverT = self.hoverT, hot = self.hot, juice = self.juice, entry = self.entry,
              slide = self.slide, deny = self.deny, dustSeed = self.dustSeed, tag = self.tag }
 end
 
 function ShelfItem:importFx(fx)
     if not fx then return end
     self.hover, self.hot, self.juice = fx.hover, fx.hot, fx.juice
+    self.hoverT = fx.hoverT or fx.hover or 0
     self.entry = fx.entry or self.entry
     self.slide = fx.slide or self.slide
     self.deny = fx.deny or 0
@@ -200,8 +211,13 @@ function ShelfItem:update(dt, hovered)
     elseif target == 0 then
         self.hot = false
     end
-    if reduced then self.hover = target
-    else self.hover = self.hover + (target - self.hover) * math.min(1, dt * 12) end
+    if reduced then self.hoverT = target
+    else
+        local step = dt / ShelfItem.HOVER_TIME
+        if target > self.hoverT then self.hoverT = math.min(target, self.hoverT + step)
+        else self.hoverT = math.max(target, self.hoverT - step) end
+    end
+    self.hover = ShelfItem.ease(self.hoverT)
     Moveable.updateJuice(self, dt)
     ShelfItem.stepPendulum(self.tag, dt)
     if self.deny > 0 then self.deny = math.max(0, self.deny - dt) end
@@ -426,14 +442,9 @@ function ShelfItem:drawPlateFor(ctx)
     local shake = self:_shake()
     local alpha = (ctx.alpha or 1) * self:entered()
     local sx0 = self.slide.x or 0
-    if self.kind == "card" and g.band and self.offer.rarity then
-        local TextCase = require("src.i18n.TextCase")
-        local rar = self.offer.rarity
-        local c = Palette.forRarity(rar)
-        local lit = (rar == "common" or rar == "basic") and c or Palette.lighten(c, 0.35)
-        local b = g.band
-        ShelfItem.drawBand({ x = b.x + sx0, y = b.y, w = b.w, h = b.h, slope = b.slope },
-            TextCase.upper(I18n.t("rarity." .. rar, nil, rar)), lit, { alpha = alpha, shakeX = shake })
+    if self.kind == "card" and g.frame and not self.sold then self:drawRailShadow(alpha) end
+    if self.kind == "card" and g.rarity and self.offer.rarity and ShelfItem.showsRarityPlate(self.offer.rarity) then
+        ShelfItem.drawRarityPlate(g, self.offer.rarity, sx0 + shake, alpha)
     end
     if self.sold or not g.tag then return end
     local tg = g.tag
@@ -445,6 +456,122 @@ function ShelfItem:drawPlateFor(ctx)
     end
     ShelfItem.drawHangingTag({ ax = tg.ax + sx0, ay = tg.ay - lift, len = tg.len, w = tg.w, h = tg.h, slope = tg.slope },
         self.tag.angle, "$" .. tostring(self.offer.cost or 0), ctx.afford and self.deny <= 0, alpha, sale, shake)
+end
+
+-- Sombra da carta levantada NO TRILHO: cresce com o hover (a carta sai do
+-- cavalete e a luz da vela a projeta no tampo do trilho). Mesmo frame.
+function ShelfItem:drawRailShadow(alpha)
+    local e = reducedMotion() and 0 or self.hover
+    if e <= 0.02 then return end
+    local g = self.geom
+    local f = g.frame
+    local w = g.qw * (0.92 + 0.12 * e)
+    local vTop, vBot = g.lipH, math.floor(g.lipH * 0.45)
+    withShear(f.ox + (self.slide.x or 0) - floor(w / 2) + 2, f.oy + f.k * (2 - floor(w / 2)) - vTop, f.k, function()
+        Palette.set(Palette.INK, 0.55 * e * (alpha or 1))
+        love.graphics.rectangle("fill", 0, 0, floor(w), vTop - vBot)
+    end)
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- ---------------------------------------------------------------------------
+-- PLAQUINHA DE RARIDADE (Loja "reta"): latão escuro pregado na frente do
+-- trilho do cavalete, no MESMO frame da carta (shear(0, k) na origem da
+-- borda). 4 tons de latão + contorno de tinta + 2 pregos; a raridade em
+-- fonte pequena, na cor dela clareada até contraste >= 4,5:1 com o latão.
+-- ---------------------------------------------------------------------------
+ShelfItem.BRASS = {
+    hi   = Palette.AGED_GOLD_LIGHT,
+    rim  = Palette.AGED_GOLD,
+    dark = Palette.AGED_GOLD_DARK,
+    face = Palette.lerp(Palette.AGED_GOLD_DARK, Palette.INK, 0.4),
+}
+
+local function lum(c)
+    local function ch(v) return v <= 0.03928 and v / 12.92 or ((v + 0.055) / 1.055) ^ 2.4 end
+    return 0.2126 * ch(c[1]) + 0.7152 * ch(c[2]) + 0.0722 * ch(c[3])
+end
+function ShelfItem.contrast(a, b)
+    local la, lb = lum(a), lum(b)
+    if la < lb then la, lb = lb, la end
+    return (la + 0.05) / (lb + 0.05)
+end
+
+local inkCache = {}
+function ShelfItem.rarityInk(rar)
+    if inkCache[rar] then return inkCache[rar] end
+    local c = Palette.forRarity(rar)
+    local face = ShelfItem.BRASS.face
+    for _ = 1, 40 do
+        if ShelfItem.contrast(c, face) >= 4.6 then break end
+        c = Palette.lighten(c, 0.08)
+    end
+    inkCache[rar] = c
+    return c
+end
+
+function ShelfItem.showsRarityPlate(rar)
+    if rar == "common" or rar == "basic" then return ShopLayout.PLATE_COMMON and true or false end
+    return true
+end
+
+ShelfItem.PLATE_PAD = 8   -- prego (2 px) + folga, de cada lado
+function ShelfItem.rarityPlateFont(text, maxW)
+    return TextFit.fit(text, 8, maxW - ShelfItem.PLATE_PAD * 2, 7)
+end
+
+-- Caixa (px de tela, no frame: x,y = canto de cima à esquerda; w, h) da
+-- plaquinha com o texto da raridade. Pura (sem desenhar): o teste mede.
+function ShelfItem.rarityPlateBox(g, rar)
+    local R = g.rarity
+    local text = I18n.t("rarity." .. rar, nil, rar)
+    local font, fitted = ShelfItem.rarityPlateFont(text, R.w)
+    local w = math.min(R.w, font:getWidth(fitted) + ShelfItem.PLATE_PAD * 2)
+    local h = R.h
+    local x, y = ShopLayout.frameAtF(g.frame, -floor(w / 2), R.vTop)
+    return { x = floor(x), y = y, w = w, h = h, slope = g.frame.k, font = font, text = fitted }
+end
+
+function ShelfItem.drawRarityPlate(g, rar, dx, alpha)
+    local b = ShelfItem.rarityPlateBox(g, rar)
+    local B = ShelfItem.BRASS
+    local a = alpha or 1
+    withShear(b.x + (dx or 0), b.y, b.slope, function()
+        local w, h = b.w, b.h
+        -- sombra curta no degrau (vela à esquerda: cai pra direita)
+        Palette.set(Palette.INK, 0.45 * a)
+        love.graphics.rectangle("fill", 2, h, w - 1, 1)
+        Palette.set(Palette.INK, a)
+        love.graphics.rectangle("fill", -1, -1, w + 2, h + 2)
+        Palette.set(B.dark, a)
+        love.graphics.rectangle("fill", 0, 0, w, h)
+        -- latão em 4 tons: aresta de cima clara, laterais, face escura, pé escuro
+        Palette.set(B.rim, a)
+        love.graphics.rectangle("fill", 0, 0, w, h - 1)
+        Palette.set(B.hi, a)
+        love.graphics.rectangle("fill", 1, 0, w - 2, 1)
+        Palette.set(B.face, a)
+        love.graphics.rectangle("fill", 1, 1, w - 2, h - 2)
+        Palette.set(B.dark, a)
+        love.graphics.rectangle("fill", 1, h - 2, w - 2, 1)
+        -- pregos (2x2: cabeça clara em cima à esquerda)
+        local ny = floor(h / 2) - 1
+        for _, nx in ipairs({ 2, w - 4 }) do
+            Palette.set(B.dark, a)
+            love.graphics.rectangle("fill", nx, ny, 2, 2)
+            Palette.set(B.hi, a)
+            love.graphics.rectangle("fill", nx, ny, 1, 1)
+        end
+        love.graphics.setFont(b.font)
+        local tx = floor((w - b.font:getWidth(b.text)) / 2)
+        local ty = floor((h - b.font:getHeight()) / 2) + 1
+        Palette.set(Palette.INK, 0.9 * a)
+        love.graphics.print(b.text, tx, ty + 1)
+        local c = ShelfItem.rarityInk(rar)
+        love.graphics.setColor(c[1], c[2], c[3], a)
+        love.graphics.print(b.text, tx, ty)
+    end)
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 -- Nome/efeito no hover (objetos da mesa). L = layout (limites).
@@ -478,20 +605,22 @@ function ShelfItem:drawStandArt(L, part, alpha)
     local cv = L.cover
     local a = alpha or 1
     local sx0 = (self.slide.x or 0) / cv.s
-    local fx = (g.footX - cv.ox) / cv.s + sx0
-    local fy0 = (g.stand.y + g.stand.h - cv.oy) / cv.s    -- linha de contato na borda
+    -- o MESMO frame da carta, em px de arte: origem na borda pintada,
+    -- inclinação k da borda; y(x) = fy + k*(x - fx) é a quina de baixo da
+    -- frente do trilho (sobre a borda)
+    local f = g.frame
+    local fx = (f.ox - cv.ox) / cv.s + sx0
+    local fy = (f.oy - cv.oy) / cv.s
+    local half = (g.railW or (g.qw + 8)) / cv.s / 2
+    local x0 = floor(fx - half)
+    local x1 = math.ceil(fx + half) - 1
     local qw = g.qw / cv.s
-    local x0 = floor(fx - qw / 2) - 2
-    local x1 = math.ceil(fx + qw / 2) + 2
-    -- o trilho segue a BASE da carta (virada pro fundo), apoiado pela ponta
-    -- esquerda na borda pintada
-    local s = g.baseSlope or g.slope
-    local fy = fy0 + (g.slope - s) * (x0 + 2 - fx)
+    local s = f.k
     local lip = ShopLayout.RAIL_ART
     if part == "back" then
         -- perna de trás: desce do terço de cima da carta (à direita) até a borda
         local hArt = g.qh / cv.s
-        local topX, topY = x1 - 3, fy + s * (x1 - 3 - fx) - hArt * ShopLayout.CARD_RK * 0.55
+        local topX, topY = x1 - 3, fy + s * (x1 - 3 - fx) - hArt * 0.55
         local botX, botY = x1 + 4, fy + s * (x1 + 4 - fx) - 1
         local n = math.max(1, floor(botY - topY))
         for i = 0, n do
@@ -573,9 +702,12 @@ function ShelfItem:drawCard(ctx)
     local x0, y0, x1, y1, x2, y2, x3, y3 = self:cardCorners()
     local dim = ctx.afford and 1 or 0.6
     local a = alpha * (1 - clamp(inst.dissolve or 0, 0, 1))
-    -- sombra da carta na parede/estante atrás (deslocada pra direita: vela à esquerda)
-    love.graphics.setColor(0, 0, 0, 0.32 * a)
-    love.graphics.polygon("fill", x0 + 5, y0 + 4, x1 + 5, y1 + 4, x2 + 5, y2 + 2, x3 + 5, y3 + 2)
+    -- sombra da carta na parede/estante atrás (deslocada pra direita: vela à
+    -- esquerda); levantada, a carta se afasta da parede e a sombra abre
+    local e = reducedMotion() and 0 or self.hover
+    local sdx, sdy = 5 + 3 * e, 4 + 3 * e
+    love.graphics.setColor(0, 0, 0, (0.32 - 0.08 * e) * a)
+    love.graphics.polygon("fill", x0 + sdx, y0 + sdy, x1 + sdx, y1 + sdy, x2 + sdx, y2 + sdy - 2, x3 + sdx, y3 + sdy - 2)
     local CardMesh = require("src.ui.CardMesh")
     local shader = CardMesh.getShader()
     local glowK = math.max(self.hover * 0.8, self.selected and 0.9 or 0)

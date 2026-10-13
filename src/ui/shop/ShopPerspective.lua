@@ -51,6 +51,59 @@ function ShopPerspective.slopeAt(cv, sx, sy)
 end
 
 -- ============================================================================
+-- FRAME DA BORDA (Loja "reta", 13/Out/2026). Queixa do dono: "as cartas não
+-- estão seguindo a mesma reta". Antes a carta usava uma homografia própria
+-- (base girada mais que a borda), o trilho seguia a base, e a faixa de
+-- raridade/etiqueta outra conta: três ângulos na mesma carta.
+--
+-- Agora TUDO da carta (carta, trilho do cavalete, plaquinha de raridade,
+-- etiqueta de preço, sombra) mora num frame só:
+--   origem  = o ponto da BORDA PINTADA (ShopLayout.ART.ledgeEdge, medida na
+--             pintura) sob o centro da carta, em px de tela;
+--   k       = inclinação da borda (a MESMA reta para as 4 cartas: as bases
+--             são colineares com a borda pintada, não só paralelas);
+--   u, n    = vetor unitário da borda e a perpendicular "pra cima";
+--   s       = escala do cover-fit (px de tela por px de arte).
+-- Local (u, v): u = deslocamento horizontal ao longo da borda, v = altura
+-- pra cima (as verticais da pintura continuam verticais). frameAt(f, u, v)
+-- = (ox + u, oy + k*u - v): é exatamente translate(origem) + shear(0, k).
+-- ============================================================================
+function ShopPerspective.edgeY(ax)
+    local E = require("src.ui.shop.ShopLayout").ART.ledgeEdge
+    return E.y0 + E.k * (ax - E.x0)
+end
+
+function ShopPerspective.edgeFrame(slot, cv)
+    local E = require("src.ui.shop.ShopLayout").ART.ledgeEdge
+    local ax = slot.art and slot.art.x or slot.x
+    -- origem em px de tela inteiro (a passada da arte e a da UI concordam)
+    local ox = floor(cv.ox + ax * cv.s + 0.5)
+    local axr = (ox - cv.ox) / cv.s
+    local ay = E.y0 + E.k * (axr - E.x0)
+    local oy = cv.oy + ay * cv.s
+    local k = E.k
+    local n = math.sqrt(1 + k * k)
+    local VP = ShopPerspective.VP
+    return {
+        ox = ox, oy = oy, k = k,
+        ux = 1 / n, uy = k / n,          -- ao longo da borda (pra direita)
+        nx = k / n, ny = -1 / n,         -- perpendicular, pra cima
+        s = cv.s,
+        art = { x = axr, y = ay },
+        vpx = cv.ox + VP.x * cv.s, vpy = cv.oy + VP.y * cv.s,
+    }
+end
+
+function ShopPerspective.frameAt(f, u, v)
+    return f.ox + u, f.oy + f.k * u - (v or 0)
+end
+
+-- Ângulo (graus) do segmento (x0,y0)-(x1,y1): a trava de "uma reta só".
+function ShopPerspective.angleOf(x0, y0, x1, y1)
+    return math.deg(math.atan2(y1 - y0, x1 - x0))
+end
+
+-- ============================================================================
 -- POSE dos objetos (artes ANTIGAS, frontais ou de três quartos):
 --   flip  = espelha (sx = -1): a arte vista "da direita" passa a mostrar o
 --           lado esquerdo, como a mesa (pedido do dono pra bancada de coringa)

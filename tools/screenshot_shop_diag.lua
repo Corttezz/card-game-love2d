@@ -2,7 +2,14 @@
 -- Capturas da Loja v3c (balcão na diagonal) em ESTADOS, fiéis à escala de UI
 -- (janela falsificada + canvas, como o screenshot_uiscale):
 --   rest        repouso (a 1ª oferta nasce selecionada)
---   hovercard   mouse sobre a 2ª carta (gira: direita afunda, esquerda sobe)
+--   hovercard   mouse sobre a 2ª carta (sai do cavalete na perpendicular, sem girar)
+--   hoverstrip  PRANCHA 1:1 de 8 quadros do hover da 2ª carta (4 entrando,
+--               4 saindo) -> diag_hoverstrip_<W>x<H>_<loc>.png
+--   guides      repouso com LINHAS GUIA por cima (só na prova): vermelho = a
+--               borda pintada medida, ciano = base de cada carta, amarelo =
+--               quina do trilho -> diag_guides_<W>x<H>_<loc>.png (recorte 1:1)
+--   plates      prancha das duas opções da plaquinha de raridade (em cima:
+--               comum SEM placa; embaixo: todas com placa)
 --   hoverjoker  mouse sobre a bancada de coringa (MESMO sprite, levantado + contorno)
 --   selectjoker bancada selecionada: o pergaminho mostra o MESMO sprite
 --   hoverdice   mouse sobre o copo de dados (contorno + nome no hover)
@@ -106,15 +113,108 @@ function M.run(arg)
                     end
                 end
                 local canvas = love.graphics.newCanvas(w, h)
-                love.graphics.setCanvas(canvas)
-                love.graphics.clear(0.16, 0.12, 0.09, 1)
-                s:draw()
-                UiScale.setChromeScaled(true)
-                local tb = TopBar:new(); tb:setGame(game); tb:update(1 / 30, game); tb:draw()
-                love.graphics.setCanvas()
+                local function render(overlay)
+                    love.graphics.setCanvas(canvas)
+                    love.graphics.clear(0.16, 0.12, 0.09, 1)
+                    s:draw()
+                    UiScale.setChromeScaled(true)
+                    local tb = TopBar:new(); tb:setGame(game); tb:update(1 / 30, game); tb:draw()
+                    UiScale.setChromeScaled(false)
+                    if overlay then
+                        love.graphics.push("all")
+                        love.graphics.origin()
+                        love.graphics.scale(k, k)
+                        overlay()
+                        love.graphics.pop()
+                    end
+                    love.graphics.setCanvas()
+                    return canvas:newImageData()
+                end
+                -- região das cartas (px reais) pra recortes 1:1
+                local function cardsBox(pad)
+                    local L = s.scene.L
+                    local x0, y0, x1, y1 = math.huge, math.huge, -math.huge, -math.huge
+                    for _, c in ipairs(L.cards) do
+                        x0 = math.min(x0, c.rect.x, c.plate.x); x1 = math.max(x1, c.rect.x + c.rect.w, c.plate.x + c.plate.w)
+                        y0 = math.min(y0, c.rect.y - c.lift - 14); y1 = math.max(y1, c.tag.box.y + c.tag.box.h, c.plate.y + c.plate.h)
+                    end
+                    local X0, Y0 = math.max(0, math.floor((x0 - pad) * k)), math.max(0, math.floor((y0 - pad) * k))
+                    local X1, Y1 = math.min(w, math.ceil((x1 + pad) * k)), math.min(h, math.ceil((y1 + pad) * k))
+                    return X0, Y0, X1 - X0, Y1 - Y0
+                end
+                local function crop(img, X, Y, W, H)
+                    local out = love.image.newImageData(W, H)
+                    out:paste(img, 0, 0, X, Y, W, H)
+                    return out
+                end
                 local name = ("diag_%s_%dx%d_%s.png"):format(state, w, h, locale)
-                canvas:newImageData():encode("png", name)
-                print("[shop_diag] " .. name .. "  k=" .. k)
+                if state == "hoverstrip" then
+                    local ShelfItem = require("src.ui.shop.ShelfItem")
+                    local it = itemWhere(function(i) return i.kind == "card" and i.index == 2 end)
+                    local c = it.geom
+                    local X0 = math.floor((c.rect.x - 16) * k)
+                    local Y0 = math.floor((c.rect.y - c.lift - 26) * k)
+                    local W = math.ceil((c.rect.w + 40) * k)
+                    local H = math.ceil((c.tag.box.y + c.tag.box.h + 6 - (c.rect.y - c.lift - 26)) * k)
+                    local dt = ShelfItem.HOVER_TIME / 12
+                    -- 4 entrando (2, 4, 7, 12 de 12 quadros) e 4 saindo (3, 6, 9, 12)
+                    local plan = { { true, 2 }, { true, 2 }, { true, 3 }, { true, 5 },
+                                   { false, 3 }, { false, 3 }, { false, 3 }, { false, 3 } }
+                    local strip = love.image.newImageData(W * 8 + 7 * 4, H)
+                    local cx, cy = it:center()
+                    local lifts = {}
+                    for f, step in ipairs(plan) do
+                        if step[1] then mouseX, mouseY = cx * k, cy * k else mouseX, mouseY = 4, 4 end
+                        for _ = 1, step[2] do
+                            _G.EventManager.update(dt)
+                            s:update(dt)
+                        end
+                        lifts[#lifts + 1] = ("%.1f"):format(it:liftPx())
+                        strip:paste(render(), (f - 1) * (W + 4), 0, X0, Y0, W, H)
+                    end
+                    strip:encode("png", name)
+                    print("[shop_diag] " .. name .. "  lift por quadro: " .. table.concat(lifts, " "))
+                elseif state == "guides" then
+                    local ShopLayout = require("src.ui.shop.ShopLayout")
+                    local L = s.scene.L
+                    local cv, E = L.cover, ShopLayout.ART.ledgeEdge
+                    local img = render(function()
+                        love.graphics.setLineWidth(2 / k)
+                        love.graphics.setLineStyle("rough")
+                        love.graphics.setColor(1, 0.15, 0.15, 0.9)
+                        local function ey(ax) return cv.oy + (E.y0 + E.k * (ax - E.x0)) * cv.s end
+                        love.graphics.line(cv.ox + 40 * cv.s, ey(40), cv.ox + 480 * cv.s, ey(480))
+                        for _, c in ipairs(L.cards) do
+                            local _, _, _, _, x2, y2, x3, y3 = ShopLayout.cardQuad(c, 0, 0)
+                            love.graphics.setLineWidth(1 / k)
+                            love.graphics.setColor(0.2, 1, 1, 0.95)
+                            love.graphics.line(x3 - 6, y3 - 6 * c.frame.k, x2 + 6, y2 + 6 * c.frame.k)
+                            love.graphics.setLineWidth(2 / k)
+                            love.graphics.setColor(1, 0.9, 0.1, 1)
+                            for _, u in ipairs({ -c.railW / 2, c.railW / 2 }) do
+                                local px, py = ShopLayout.frameAtF(c.frame, u, 0)
+                                love.graphics.rectangle("fill", px - 1.5, py - 1.5, 3, 3)
+                            end
+                        end
+                    end)
+                    crop(img, cardsBox(10)):encode("png", name)
+                    print("[shop_diag] " .. name)
+                elseif state == "plates" then
+                    local ShopLayout = require("src.ui.shop.ShopLayout")
+                    local old = ShopLayout.PLATE_COMMON
+                    local X, Y, W, H = cardsBox(8)
+                    local board = love.image.newImageData(W, H * 2 + 6)
+                    ShopLayout.PLATE_COMMON = false
+                    board:paste(render(), 0, 0, X, Y, W, H)
+                    ShopLayout.PLATE_COMMON = true
+                    board:paste(render(), 0, H + 6, X, Y, W, H)
+                    ShopLayout.PLATE_COMMON = old
+                    board:encode("png", name)
+                    print("[shop_diag] " .. name)
+                else
+                    render():encode("png", name)
+                    print("[shop_diag] " .. name .. "  k=" .. k)
+                end
                 if s.hide then pcall(s.hide, s) end
             end)
             if not ok then
