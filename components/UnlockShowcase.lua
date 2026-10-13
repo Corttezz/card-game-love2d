@@ -162,8 +162,13 @@ end
 -- ===================================================================
 
 function Showcase:new()
-    return setmetatable({ visible = false, t = 0, idx = 0, total = 0,
-        focus = 1, menuTime = 0, item = nil }, Showcase)
+    local self = setmetatable({ visible = false, t = 0, idx = 0, total = 0,
+        focus = 1, menuTime = 0, item = nil, cardFocus = false }, Showcase)
+    -- Inspeção da Coleção (carta grande + descrição) por cima do painel; Esc/B
+    -- fecha SÓ ela — o painel continua. A revelação é o captor do InputFocus,
+    -- então o roteamento é interno (mousepressed/keypressed abaixo).
+    self.inspectModal = require("src.ui.CardInspectModal"):new()
+    return self
 end
 
 function Showcase:isVisible() return self.visible end
@@ -178,7 +183,11 @@ function Showcase:_enterItem()
     self.t = 0
     self.focus = 1
     self.pressed = nil
+    self.pressedCard = nil
+    self.cardFocus = false
     self.cardInst = nil
+    self._cardBox = nil
+    self.inspectModal.card = nil
     local s = self.item and SOUND[self.item.kind]
     if s then Sfx.play(s[1], s[2]) end
 end
@@ -199,6 +208,8 @@ function Showcase:hide()
     self.visible = false
     self.item = nil
     self.cardInst = nil
+    self._cardBox = nil
+    self.inspectModal.card = nil
     Sfx.play("menuClose")
 end
 
@@ -242,6 +253,29 @@ function Showcase:update(dt)
     self.t = self.t + (dt or 0)
     local L = Showcase.layout(love.graphics.getWidth(), love.graphics.getHeight())
     local mx, my = love.mouse.getPosition()
+    self.inspectModal:update(dt or 0)
+    -- A carta revelada é uma Card DE VERDADE: hover levanta/inclina, anima o
+    -- ícone e abre o tooltip ao lado (Card:draw cuida). O hover vale desde o
+    -- começo — só o CLIQUE espera o INPUT_DELAY — e cede à inspeção aberta.
+    -- Com o foco do teclado/pad na carta, o "mouse" mora no centro dela.
+    if self.item and self.item.kind == "card" then
+        local inst = self:_card()
+        if inst and inst.image then
+            local r = self:_cardRect(L)
+            if inst.baseScale ~= r.s then
+                inst.baseScale, inst.currentScale, inst.targetScale = r.s, r.s, r.s
+            end
+            inst.layoutX, inst.layoutY = r.x, r.y
+            local hx, hy = mx, my
+            if self.cardFocus then hx, hy = r.x + r.w / 2, r.y + r.h * 0.6 end
+            -- só vira alvo de hover depois de DESENHADA no lugar: antes disso
+            -- self.x/y = 0 e a caixa de hover (união home+render) ia do canto
+            -- da tela até a carta (mesma armadilha do _csLaid da seleção de classe)
+            local allowed = self.t > 0.1 and inst._showcaseLaid == true
+                and not self.inspectModal:isVisible()
+            inst:updateMouse(hx, hy, dt or 0, allowed)
+        end
+    end
     if mx ~= self._mx or my ~= self._my then
         local first = self._mx == nil
         self._mx, self._my = mx, my
@@ -264,9 +298,40 @@ local function buttonAt(L, x, y)
     end
 end
 
+-- A carta revelada está sob (x, y)? (hover já em curso conta — a carta sobe)
+function Showcase:_cardAt(x, y)
+    if not (self.item and self.item.kind == "card") then return false end
+    local inst = self:_card()
+    if not inst then return false end
+    if inst.isHovered then return true end
+    local r = self._cardBox
+    return r ~= nil and x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
+end
+
+-- Abre a inspeção da Coleção na carta revelada (clique / botão direito /
+-- A com a carta em foco / gatilho). Devolve true se abriu.
+function Showcase:openInspect()
+    if not self:_ready() or self.inspectModal:isVisible() then return false end
+    local inst = self.item and self.item.kind == "card" and self:_card()
+    if not inst then return false end
+    inst:updateMouse(-1e4, -1e4, 0, false)
+    self.inspectModal:show(inst, { inst }, 1)
+    return true
+end
+
 function Showcase:mousepressed(x, y, button)
     if not self.visible then return false end
-    if button == 1 and self:_ready() then
+    if self.inspectModal:isVisible() then
+        self.inspectModal:mousepressed(x, y, button)
+        return true
+    end
+    if not self:_ready() then return true end
+    if self:_cardAt(x, y) then
+        if button == 2 then self:openInspect()
+        elseif button == 1 then self.pressedCard = true end
+        return true
+    end
+    if button == 1 then
         self.pressed = buttonAt(Showcase.layout(love.graphics.getWidth(), love.graphics.getHeight()), x, y)
     end
     return true
@@ -274,7 +339,17 @@ end
 
 function Showcase:mousereleased(x, y, button)
     if not self.visible then return false end
+    if self.inspectModal:isVisible() then
+        self.inspectModal:mousereleased(x, y, button)
+        return true
+    end
     if button ~= 1 then return true end
+    local pressedCard = self.pressedCard
+    self.pressedCard = nil
+    if pressedCard then
+        if self:_cardAt(x, y) then self:openInspect() end
+        return true
+    end
     local L = Showcase.layout(love.graphics.getWidth(), love.graphics.getHeight())
     local i = self:_ready() and buttonAt(L, x, y)
     local pressed = self.pressed
@@ -287,16 +362,45 @@ function Showcase:wheelmoved() return true end
 
 function Showcase:keypressed(key)
     if not self.visible then return false end
+    -- inspeção aberta: as teclas são dela (Esc/B fecha SÓ a inspeção)
+    if self.inspectModal:isVisible() then
+        self.inspectModal:keypressed(key)
+        return true
+    end
     if not self:_ready() then return true end
+    local hasCard = self.item and self.item.kind == "card"
     local it = MenuKit.intent(key, MenuKit.shiftDown())
-    if it == "left" or it == "up" or it == "tab_prev" then
-        if self.focus ~= 1 then Sfx.playWithVariation("menuHover", 1.0, 0.12) end
-        self.focus = 1
-    elseif it == "right" or it == "down" or it == "tab_next" then
-        if self.focus ~= 2 then Sfx.playWithVariation("menuHover", 1.0, 0.12) end
-        self.focus = 2
+    if key == "i" then
+        -- gatilho do pad / tecla I: inspeciona a carta sob o mouse ou em foco
+        local inst = hasCard and self:_card()
+        if inst and (self.cardFocus or inst.isHovered) then self:openInspect() end
+    elseif it == "up" then
+        -- pra cima sai dos botões e põe o foco na carta revelada
+        if hasCard and not self.cardFocus then
+            self.cardFocus = true
+            Sfx.playWithVariation("menuHover", 1.0, 0.12)
+        elseif not hasCard and self.focus ~= 1 then
+            Sfx.playWithVariation("menuHover", 1.0, 0.12); self.focus = 1
+        end
+    elseif it == "down" then
+        if self.cardFocus then
+            self.cardFocus = false
+            Sfx.playWithVariation("menuHover", 1.0, 0.12)
+        elseif self.focus ~= 2 then
+            Sfx.playWithVariation("menuHover", 1.0, 0.12); self.focus = 2
+        end
+    elseif it == "left" or it == "tab_prev" then
+        if self.focus ~= 1 or self.cardFocus then Sfx.playWithVariation("menuHover", 1.0, 0.12) end
+        self.focus, self.cardFocus = 1, false
+    elseif it == "right" or it == "tab_next" then
+        if self.focus ~= 2 or self.cardFocus then Sfx.playWithVariation("menuHover", 1.0, 0.12) end
+        self.focus, self.cardFocus = 2, false
     elseif it == "confirm" then
-        self:_activate(self.focus == 2 and "skip" or "continue")
+        if self.cardFocus then
+            self:openInspect()
+        else
+            self:_activate(self.focus == 2 and "skip" or "continue")
+        end
     elseif it == "back" then
         self:_activate("skip")
     end
@@ -308,21 +412,52 @@ end
 -- ===================================================================
 
 local cardDb = nil
-local function cardImage(self, id)
+-- A Card DE VERDADE do item revelado (lazy; false = não montou).
+function Showcase:_card()
     if self.cardInst == nil then
         self.cardInst = false
+        local id = self.item and self.item.id
         local CardDatabase = require("src.systems.CardDatabase")
         cardDb = cardDb or CardDatabase:new()
-        local cd = cardDb:getCard(id)
+        local cd = id and cardDb:getCard(id)
         if cd then
             local ok, inst = pcall(function() return cardDb:createCardInstance(cd) end)
-            if ok and inst then self.cardInst = inst
-            else print("[UnlockShowcase] AVISO: falha ao montar a carta " .. tostring(id)) end
+            if ok and inst then
+                self.cardInst = inst
+                inst.isRewardCard = true      -- hover SOBE (sai da folha)
+                inst.tooltipSide, inst.deferTooltip = true, true
+                inst.navGroup = "showcase"
+            else
+                print("[UnlockShowcase] AVISO: falha ao montar a carta " .. tostring(id))
+            end
         else
             print("[UnlockShowcase] AVISO: carta desconhecida na fila: " .. tostring(id))
         end
     end
-    return self.cardInst and self.cardInst.image
+    return self.cardInst or nil
+end
+
+-- Retângulo de REPOUSO da carta no palco (coords virtuais) + escala.
+-- Escala inteira a partir de 2x (a arte é pixel); abaixo disso, livre.
+function Showcase:_cardRect(L)
+    local st = L.stage
+    -- folga pro LIFT do hover (a carta sobe isto): sem ela, em 1024x768 a carta
+    -- levantada cobria o título e o contador "1 de 5"
+    local Config = require("src.core.Config")
+    local lift = (Config.Cards.LIFT_AMOUNT or 25) + (Config.Cards.DEPTH_OFFSET or 15)
+    local s = math.min((st.h - lift) / 144, st.w / 96)
+    if s >= 2 then s = math.floor(s) end
+    local w, h = 96 * s, 144 * s
+    local r = { x = math.floor(st.x + (st.w - w) / 2),
+                y = math.floor(st.y + lift + (st.h - lift - h) / 2),
+                w = w, h = h, s = s }
+    self._cardBox = r
+    return r
+end
+
+local function cardImage(self, id)
+    local inst = self:_card()
+    return inst and inst.image
 end
 
 -- ===================================================================
@@ -602,7 +737,36 @@ function Showcase:draw()
     local r = math.min(st.w, st.h) * 0.62
     local seed = (self.idx or 1) * 17 + #tostring(it.id or it.classId or "")
     drawGlow(cx, cy, r, t, math.min(1, t / 0.3))
-    self:_drawStageItem(it, st, t)
+    local inst = (it.kind == "card") and self:_card() or nil
+    if inst and inst.image then
+        -- carta DE VERDADE (Card:draw): hover levanta/inclina, ícone vivo,
+        -- tooltip ao lado (adiado pro fim), alvo do NavCursor. Pop em volta
+        -- do centro do palco; varredura e clarão na posição de repouso.
+        local cr = self:_cardRect(L)
+        local motion = not reducedMotion()
+        local e = motion and Easing.backOut(math.min(1, t / 0.45)) or 1
+        love.graphics.push()
+        love.graphics.translate(cx, cy)
+        love.graphics.scale(math.max(0.01, e), math.max(0.01, e))
+        love.graphics.translate(-cx, -cy)
+        inst:draw(cr.x, cr.y, false, false)
+        inst._showcaseLaid = true
+        require("src.ui.DiscoveryMark").drawSweep(inst.image, cr.x, cr.y, cr.s, t, 1, true)
+        local flash = math.max(0, 1 - t / 0.35)
+        if flash > 0 then
+            love.graphics.setBlendMode("add")
+            love.graphics.setColor(1, 1, 1, 0.85 * flash)
+            love.graphics.draw(inst.image, cr.x, cr.y, 0, cr.s, cr.s)
+            love.graphics.setBlendMode("alpha")
+        end
+        love.graphics.pop()
+        love.graphics.setColor(1, 1, 1, 1)
+        if self.cardFocus and self:_ready() then
+            MenuKit.focusRing(cr.x, cr.y, cr.w, cr.h, t)
+        end
+    else
+        self:_drawStageItem(it, st, t)
+    end
     drawSparkles(cx, cy, r, t, math.min(1, math.max(0, (t - 0.2) / 0.4)), seed)
 
     -- nome + descrição (até 2 linhas)
@@ -627,12 +791,15 @@ function Showcase:draw()
         drawButton(b, labels[i], i == self.focus)
         NavCursor.target("showcase:" .. b.key, b.x, b.y, b.w, b.h, { key = "showcase:" .. b.key })
     end
-    if self:_ready() then
+    if self:_ready() and not self.cardFocus then
         local b = L.buttons[self.focus]
         MenuKit.focusRing(b.x, b.y, b.w, b.h, t)
     end
 
+    -- tooltip da carta por cima de tudo do painel; a inspeção por cima do tooltip
+    if inst and not self.inspectModal:isVisible() then inst:drawDeferredTooltip() end
     love.graphics.pop()
+    self.inspectModal:draw()
     love.graphics.setColor(1, 1, 1, 1)
 end
 

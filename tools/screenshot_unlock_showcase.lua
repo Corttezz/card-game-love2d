@@ -67,6 +67,30 @@ function M.run(arg)
                 -- assentado (t = 1 s) por padrão; SHOWCASE_T captura no meio
                 local tCap = tonumber(os.getenv("SHOWCASE_T") or "") or 1.0
                 for _ = 1, math.max(1, math.floor(tCap * 30 + 0.5)) do s:update(1 / 30) end
+                -- SHOWCASE_HOVER=1: mouse sobre a carta revelada (sobe + tooltip);
+                -- SHOWCASE_INSPECT=1: a inspeção da Coleção aberta nela.
+                local mode = ""
+                if it.kind == "card" and (os.getenv("SHOWCASE_HOVER") == "1" or os.getenv("SHOWCASE_INSPECT") == "1") then
+                    love.graphics.setCanvas(canvas); s:draw(); love.graphics.setCanvas()
+                    local r = s._cardBox
+                    if r then
+                        local k = UiScale.k(w, h)
+                        local rm = love.mouse.getPosition
+                        love.mouse.getPosition = function() return (r.x + r.w / 2) * k, (r.y + r.h * 0.6) * k end
+                        for _ = 1, 20 do
+                            s:update(1 / 30)
+                            love.graphics.setCanvas(canvas); s:draw(); love.graphics.setCanvas()
+                        end
+                        if os.getenv("SHOWCASE_INSPECT") == "1" then
+                            s:openInspect()
+                            for _ = 1, 20 do s:update(1 / 30) end
+                            mode = "_inspect"
+                        else
+                            mode = "_hover"
+                        end
+                        love.mouse.getPosition = rm
+                    end
+                end
                 love.graphics.setCanvas(canvas)
                 love.graphics.clear(0, 0, 0, 1)
                 menu:draw()
@@ -74,7 +98,7 @@ function M.run(arg)
                 love.graphics.setCanvas()
                 local L = Showcase.layout(w / UiScale.k(w, h), h / UiScale.k(w, h))
                 local probs = Showcase.validate(L, w / UiScale.k(w, h), h / UiScale.k(w, h))
-                local suffix = os.getenv("SHOWCASE_T") and ("_t" .. math.floor(tCap * 1000)) or ""
+                local suffix = (os.getenv("SHOWCASE_T") and ("_t" .. math.floor(tCap * 1000)) or "") .. mode
                 local name = ("showcase_%s_%dx%d_%s%s.png"):format(it.kind, w, h, loc, suffix)
                 canvas:newImageData():encode("png", name)
                 print(("[showcase] %s  k=%.2f problemas=%d"):format(name, UiScale.k(w, h), #probs))

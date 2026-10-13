@@ -154,6 +154,87 @@ function M.run()
             saw.card and saw.mastery and saw.seal and saw.achievement)
         t:eq("Continuar ate o fim esvazia a fila", UQ.count(), 0)
 
+        -- ===== 4b. A carta revelada e uma Card de verdade (dono, Out/2026) =====
+        -- hover = sobe + tooltip ao lado; clique / botao direito / I / Enter
+        -- com a carta em foco = inspecao da Colecao; Esc fecha SO a inspecao.
+        do
+            UQ.clear()
+            UQ.push({ kind = "card", id = "warrior_bastion" })
+            UQ.push({ kind = "achievement", id = "primeiro_chefe" })
+            local s3 = Showcase:new()
+            s3:watch("menu", 1)
+            t:eq("painel da carta aberto", s3.item.kind, "card")
+            local realMouse = love.mouse.getPosition
+            local mx, my = 1, 1
+            love.mouse.getPosition = function() return mx, my end
+            local function frame(n)
+                for _ = 1, (n or 1) do
+                    s3:update(1 / 30)
+                    love.graphics.setCanvas(canvas)
+                    s3:draw()
+                    love.graphics.setCanvas()
+                end
+            end
+            local okI, errI = pcall(function()
+                frame(12)                       -- pop assentado, INPUT_DELAY passado
+                local inst, r = s3:_card(), s3._cardBox
+                t:truthy("carta montada e posicionada no palco", inst ~= nil and r ~= nil)
+                t:truthy("carta e alvo de hover (isRewardCard: sobe)", inst and inst.isRewardCard)
+                mx, my = r.x + r.w / 2, r.y + r.h * 0.6
+                frame(12)
+                t:truthy("mouse na carta: hover", inst.isHovered)
+                t:truthy("hover levanta a carta", (inst.liftOffset or 0) < 0)
+                t:truthy("hover abre o tooltip (CardInfoDisplay)",
+                    inst.cardInfoDisplay and inst.cardInfoDisplay.lastRect ~= nil)
+                -- clique esquerdo abre a inspecao; Esc fecha SO ela
+                s3:mousepressed(mx, my, 1); s3:mousereleased(mx, my, 1)
+                t:truthy("clique na carta abre a inspecao", s3.inspectModal:isVisible())
+                t:eq("inspecao na carta revelada", s3.inspectModal.card, inst)
+                frame(2)
+                t:falsy("inspecao aberta: a carta nao segue o mouse", inst.isHovered)
+                s3:keypressed("escape")
+                t:falsy("Esc fecha a inspecao", s3.inspectModal:isVisible())
+                t:truthy("...e o painel continua aberto", s3:isVisible())
+                t:eq("...sem esvaziar a fila", UQ.count(), 2)
+                -- botao direito (gatilho do pad)
+                frame(6)
+                s3:mousepressed(mx, my, 2)
+                t:truthy("botao direito inspeciona", s3.inspectModal:isVisible())
+                s3:keypressed("escape")
+                -- tecla I com a carta em hover
+                frame(6)
+                s3:keypressed("i")
+                t:truthy("tecla I (gatilho) inspeciona a carta em hover", s3.inspectModal:isVisible())
+                s3:keypressed("escape")
+                -- teclado/pad: pra cima poe o foco na carta, Enter/A inspeciona
+                mx, my = 1, 1
+                frame(6)
+                s3:keypressed("up")
+                t:truthy("seta pra cima foca a carta", s3.cardFocus)
+                frame(6)
+                t:truthy("carta em foco se comporta como em hover", inst.isHovered)
+                s3:keypressed("return")
+                t:truthy("Enter (A) com a carta em foco inspeciona", s3.inspectModal:isVisible())
+                s3:keypressed("escape")
+                s3:keypressed("down")
+                t:falsy("seta pra baixo devolve o foco aos botoes", s3.cardFocus)
+                -- Continuar segue funcionando (clique no botao, fora da carta)
+                frame(6)
+                local L3 = Showcase.layout(love.graphics.getWidth(), love.graphics.getHeight())
+                local b1 = L3.buttons[1]
+                mx, my = b1.x + b1.w / 2, b1.y + b1.h / 2
+                frame(2)
+                s3:mousepressed(mx, my, 1); s3:mousereleased(mx, my, 1)
+                t:eq("Continuar avanca pro proximo painel", s3.item.kind, "achievement")
+                s3:update(0.3)
+                s3:keypressed("escape")
+                t:falsy("Esc sem inspecao: pula tudo e fecha", s3:isVisible())
+            end)
+            love.mouse.getPosition = realMouse
+            UQ.clear()
+            t:truthy("4b sem excecao" .. (okI and "" or (": " .. tostring(errI))), okI)
+        end
+
         -- ===== 5. Layout e textos =====
         for _, sz in ipairs({ { 1024, 768 }, { 1280, 720 }, { 1366, 768 }, { 1280, 800 } }) do
             local probs = Showcase.validate(Showcase.layout(sz[1], sz[2]), sz[1], sz[2])
