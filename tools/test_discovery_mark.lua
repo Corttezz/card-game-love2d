@@ -127,14 +127,24 @@ function M.run()
         local canvas = love.graphics.newCanvas(400, 480)
         local now = 0
         DiscoveryMark.clock = function() return now end
+        -- TUDO no tempo simulado: o relógio do DiscoveryMark é injetado e o
+        -- love.timer congela durante o draw (ícone animado, camada de
+        -- animação da carta, wobble do shader). Antes o teste dependia do
+        -- relógio de parede e falhava no test_all sob carga. reducedMotion
+        -- explícito: outra suite pode ter deixado ligado.
+        _G.gameSettings.reducedMotion = false
+        local realGetTime = love.timer.getTime
         local function render()
+            love.timer.getTime = function() return 1000 end
             love.graphics.push("all")
             love.graphics.setCanvas(canvas)
             love.graphics.clear(0, 0, 0, 0)
             love.graphics.origin()
-            card:draw(100, 120, false, true)
+            local okD, errD = pcall(card.draw, card, 100, 120, false, true)
             love.graphics.setCanvas()
             love.graphics.pop()
+            love.timer.getTime = realGetTime
+            if not okD then error(errD, 0) end
             return canvas:newImageData()
         end
         local function aboveTop(img)
@@ -171,7 +181,7 @@ function M.run()
         local reducedMid = render()
         t:truthy("reducedMotion: sem varredura", same(reducedMid, rest))
         t:truthy("reducedMotion: marcador fica", aboveTop(reducedMid) > 4)
-        _G.gameSettings.reducedMotion = nil
+        _G.gameSettings.reducedMotion = false
 
         -- Coleção: o pulso acontece e termina (uma vez só)
         now = 0

@@ -101,9 +101,15 @@ function MessageSystem:layout()
     -- mais NOVAS embaixo (ordem de chegada); se a zona encher, as mais
     -- antigas saem primeiro (ficam fora do layout, não por cima da mão)
     local items = {}
+    local wrapW = w - padX * 2 - 4
     for i, m in ipairs(self.messages) do
-        local _, lines = font:getWrap(tostring(m.text), w - padX * 2 - 4)
-        items[i] = { m = m, lines = lines, h = padY * 2 + #lines * lh }
+        -- quebra cacheada por mensagem (o draw roda todo quadro; getWrap
+        -- alocava uma tabela nova por aviso por quadro)
+        if m._wrapFont ~= font or m._wrapW ~= wrapW then
+            local _, lines = font:getWrap(tostring(m.text), wrapW)
+            m._wrapFont, m._wrapW, m._lines = font, wrapW, lines
+        end
+        items[i] = { m = m, lines = m._lines, h = padY * 2 + #m._lines * lh }
     end
     local total = 0
     for _, it in ipairs(items) do total = total + it.h + gap end
@@ -124,6 +130,7 @@ end
 -- Texto colorido com contorno de tinta (8 direções), SEM placa: a placa
 -- escura de antes pesava a coluna e apagava a cor do tipo.
 function MessageSystem:draw()
+    if #self.messages == 0 then return end   -- sem aviso: nem layout (zero alocação)
     local Palette = require("src.ui.Palette")
     local plates, font = self:layout()
     love.graphics.setFont(font)
