@@ -209,6 +209,24 @@ function M.run()
         t:falsy("carta fora da pilha", HandDeal.holds(c))
     end
 
+    -- ===== 2b. depois do chefe: cash out e espólios DENTRO do salão =====
+    -- (dono, Out/2026): o "só o mundo" atrás das telas de espólios é o
+    -- salão com o cadáver enquanto o nó for o do chefe; a estrada só volta
+    -- quando a encruzilhada troca o nó.
+    t:eq("salão aberto: mundo-só = salão", GS.worldOnlyMode(), "hall")
+    game.enemy.health = 0
+    game._deathHandled = true
+    GS.update(DT)
+    t:eq("chefe morto: cash out/espólios no salão", GS.worldOnlyMode(), "hall")
+    t:truthy("chefe morto: mesa fechada (sem mão por cima do corpo)", HandDeal.hidesHand())
+    local okDraw, errDraw = pcall(GS.drawWorldOnly)
+    t:truthy("drawWorldOnly no salão desenha sem erro: " .. tostring(errDraw), okDraw)
+    run.currentNode = { type = "battle" }   -- a encruzilhada trocou o nó
+    t:eq("nó deixado: mundo-só = estrada", GS.worldOnlyMode(), "road")
+    run.currentNode = { type = "boss" }
+    game.enemy.health = 10
+    game._deathHandled = false
+
     -- ===== 3. salão sem roteiro próprio: entrada genérica =====
     local g2 = TK.newRunGame("warrior")
     local run2 = g2.runManager.currentRun

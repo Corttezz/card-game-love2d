@@ -101,6 +101,11 @@ function MusicDirector.pick(state, run, nodeType)
         -- música por 4 segundos e voltaria — pior que não trocar.
         return (nodeType == "shop") and "musicShop" or nil
     end
+    -- Cash out = pausa dentro da luta que acabou de acabar: mantém o que
+    -- toca. No chefe isso é o tema do chefe seguindo pelo salão (cash out e
+    -- espólios acontecem DENTRO dele, Out/2026); a faixa do ato novo só entra
+    -- na encruzilhada, quando o nó é deixado.
+    if state == "roundEval" then return nil end
 
     if state == "rest" then return "musicRest" end
 

@@ -52,6 +52,12 @@ function M.run()
          MD.pick("cardReward", { actNumber = 2 }, "battle"), nil)
     t:eq("recompensa pos-boss NAO troca de musica",
          MD.pick("cardReward", { actNumber = 1 }, "boss"), nil)
+    -- Cash out no salão do chefe: o tema do chefe segue (o salão persiste até
+    -- a encruzilhada); cash out comum também não troca.
+    t:eq("cash out pos-boss NAO troca de musica",
+         MD.pick("roundEval", { actNumber = 1 }, "boss"), nil)
+    t:eq("cash out pos-batalha NAO troca de musica",
+         MD.pick("roundEval", { actNumber = 2 }, "battle"), nil)
 
     -- Todo código que `pick` pode devolver precisa existir de verdade: ou na
     -- tabela de faixas, ou como o `menuMusic` que o main.lua registra à parte.

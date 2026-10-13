@@ -136,6 +136,20 @@ lovec . test_one shot_boss_cinematic both` + `python tools/boss_cinematic_sheet.
 `test_boss_cinematic` roda entrada e morte de TODO chefe (normal + reduced)
 e cobra nome/epíteto nos 5 locales.
 
+## Cash out e espólios DENTRO do salão (Out/2026, dono)
+
+Depois da morte do chefe, o fundo do cash out (`roundEval`, que desenha
+`GameplayScene.draw` com a mesa fechada) e dos espólios (`cardReward`, que
+desenha `GameplayScene.drawWorldOnly`) é o SALÃO com o cadáver, nunca a
+estrada: `GameplayScene.worldOnlyMode()` devolve `"hall"` enquanto o nó for
+o do chefe com a porta já aberta (`inBossRoom` e não `isEntering`), e
+`drawWorldOnly` então roda o `draw()` em `WORLD_ONLY` (corta antes da UI).
+A estrada só volta quando a encruzilhada troca o nó (`advanceFloorInAct`) —
+a encruzilhada em si é a saída, na estrada. Música: `MusicDirector.pick`
+devolve nil em `roundEval` (o tema do chefe segue pelo salão; a faixa do ato
+novo entra na encruzilhada). Travas: `test_hand_deal` (2b) + `test_music`;
+prova: `boss_cine_death_hall.png` do `shot_boss_cinematic death`.
+
 ## Cortina da mão + distribuição (Out/2026, bug do dono)
 
 > "a mão, os botões e o HUD aparecem no meio da porta e da entrada"

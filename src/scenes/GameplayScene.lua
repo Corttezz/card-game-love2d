@@ -500,7 +500,32 @@ end
 
 -- v5 (Encruzilhada): desenha SÓ o mundo (estrada + fork), sem inimigo, HUD
 -- ou mão — usado pelo estado mapSelection quando a escolha acontece in-world.
+-- O que "só o mundo" significa AGORA: "hall" = o salão do chefe (porta já
+-- aberta; o cadáver fica lá) ou "road" = a estrada. Decisão pura, testável
+-- (test_hand_deal): o cash out e os espólios do chefe acontecem DENTRO do
+-- salão (dono, Out/2026) — a estrada só volta quando o nó é deixado (a
+-- encruzilhada troca o nó e `isInteriorNode` cai sozinho).
+function GameplayScene.worldOnlyMode()
+    local run = game and game.runManager and game.runManager.currentRun
+    local nt = run and run.currentNode and run.currentNode.type
+    if GameplayScene.SCENE_MODE == "worldroad" and GameplayScene.inBossRoom(nt)
+        and not WorldRoad.isEntering() then
+        return "hall"
+    end
+    return "road"
+end
+
 function GameplayScene.drawWorldOnly()
+    if GameplayScene.worldOnlyMode() == "hall" then
+        -- salão + cadáver + clima, sem HUD/mão (WORLD_ONLY corta antes da UI;
+        -- a cortina da mão já está fechada depois da morte do chefe)
+        local saved = GameplayScene.WORLD_ONLY
+        GameplayScene.WORLD_ONLY = true
+        local ok, err = pcall(GameplayScene.draw)
+        GameplayScene.WORLD_ONLY = saved
+        if not ok then error(err, 0) end
+        return
+    end
     -- mundo puro: janela REAL (a TopBar está no espaço da UI → × k)
     local tbReal = (topBar.height or 80) * UiScale.activeK()
     return UiScale.outside(GameplayScene._drawWorldOnlyReal, tbReal)

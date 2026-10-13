@@ -237,6 +237,15 @@ function M.run(mode)
         record("death", function()
             return not BossCinematic.isActive() and game:isDeathSettled()
         end, 0.8)
+        -- o fundo do cash out/espólios do chefe: só o mundo = o SALÃO com o
+        -- cadáver (GameplayScene.worldOnlyMode == "hall"), nunca a estrada
+        love.graphics.setCanvas(vcanvas)
+        love.graphics.clear(0, 0, 0, 1)
+        GameplayScene.drawWorldOnly()
+        love.graphics.setCanvas()
+        vcanvas:newImageData():encode("png", "boss_cine_death_hall.png")
+        print("[shot_boss_cinematic] fundo dos espólios: worldOnlyMode="
+            .. tostring(GameplayScene.worldOnlyMode()) .. " -> boss_cine_death_hall.png")
     end
 
     for _, e in ipairs(events) do print("[shot_boss_cinematic] " .. e) end
