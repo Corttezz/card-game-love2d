@@ -246,6 +246,47 @@ function M.run(mode)
         vcanvas:newImageData():encode("png", "boss_cine_death_hall.png")
         print("[shot_boss_cinematic] fundo dos espólios: worldOnlyMode="
             .. tostring(GameplayScene.worldOnlyMode()) .. " -> boss_cine_death_hall.png")
+        -- as DUAS telas pós-chefe DENTRO do salão, como o main.lua as desenha
+        -- (roundEval: GameplayScene.draw + painel; cardReward: drawWorldOnly +
+        -- espólios), com a TopBar por cima — boss_cine_{cashout,rewards}_hall.png
+        local UiScale = require("src.ui.UiScale")
+        _G.topBar = topBar
+        local function shotUI(path, world, ui)
+            love.graphics.setCanvas(vcanvas)
+            love.graphics.clear(0, 0, 0, 1)
+            world()
+            UiScale.begin(); ui(); topBar:draw(); UiScale.finish()
+            love.graphics.setCanvas()
+            vcanvas:newImageData():encode("png", path)
+            print("[shot_boss_cinematic] " .. path)
+        end
+        local okRE, RoundEvalScreen = pcall(require, "components.RoundEvalScreen")
+        if okRE then
+            local re = RoundEvalScreen:new()
+            local sources = game:_buildRoundEvalSources()
+            re:show(game, sources, function() end)
+            -- captura com a CONTAGEM FECHADA (linha a linha + voo das moedas):
+            -- a linha do tempo roda na fila do EventManager, que o step() tica
+            local guardRE = 0
+            repeat
+                step(); UiScale.begin(); re:update(DT); UiScale.finish()
+                guardRE = guardRE + 1
+            until (re.cashOutReady and (re.coinsAccumulated or 0) >= (re.totalDollars or 0))
+                or guardRE > 30 * 15
+            local expected = 0
+            for _, src in ipairs(sources) do expected = expected + (src.dollars or 0) end
+            print(("[shot_boss_cinematic] cash out: %d fontes, total $%d (esperado $%d), contagem %s em %.1fs")
+                :format(#sources, re.totalDollars or -1, expected,
+                    re.cashOutReady and "fechada" or "ABERTA (timeout)", guardRE * DT))
+            shotUI("boss_cine_cashout_hall.png", GameplayScene.draw, function() re:draw() end)
+        end
+        local okCR, CardRewardScreen = pcall(require, "components.CardRewardScreen")
+        if okCR then
+            local cr = CardRewardScreen:new()
+            cr:show(game, function() end, function() end, "rewards")
+            for _ = 1, 30 do step(); UiScale.begin(); cr:update(DT); UiScale.finish() end
+            shotUI("boss_cine_rewards_hall.png", GameplayScene.drawWorldOnly, function() cr:draw() end)
+        end
     end
 
     for _, e in ipairs(events) do print("[shot_boss_cinematic] " .. e) end
