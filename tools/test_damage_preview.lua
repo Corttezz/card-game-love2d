@@ -157,6 +157,37 @@ function M.run()
     t:truthy("2o golpe igual ganharia Par", ids.pair ~= nil)
     t:eq("1a carta nao ganha nada", #DamagePreview.combosAddedBy({}, c, g), 0)
 
+    -- ===== PREVIA SEM EFEITO COLATERAL (bug do dono, Out/2026) =====
+    -- Calice do Sabio (heal_multiplier 1.5) soltava "×1.5 PV" do nada no
+    -- hover: a previa chamava applyHealMultiplier SEM sink e o proc disparava
+    -- direto no JokerProcFx, todo quadro. A previa roda N vezes = 0 procs;
+    -- jogar a carta de verdade = exatamente 1.
+    do
+        local gm = TK.newRunGame("mage"); TK.pump(gm, 0.5)
+        gm:addJokerToRun("mage_sacred_chalice")
+        gm:rebuildJokerSlots()
+        local JokerProcFx = require("src.ui.JokerProcFx")
+        local savedTick = JokerProcFx.tick
+        local ticks = {}
+        JokerProcFx.tick = function(proc) ticks[#ticks + 1] = proc and proc.label or "?" end
+        local potion = db:createCardInstance(db:getCard("effect_healing_potion"))
+        gm.player.health = 10
+        for _ = 1, 120 do
+            DamagePreview.simulate(gm, { potion })
+            DamagePreview.cardValue(gm, potion, DamagePreview.buildContext({ potion }, gm))
+        end
+        TK.pump(gm, 1.0)  -- proc direto agendado no EventManager apareceria aqui
+        t:eq("previa 120x com o Calice equipado: zero procs", #ticks, 0)
+        gm.hand[#gm.hand + 1] = potion
+        gm.player.mana = 3
+        gm:selectCard(potion)
+        gm:playSelectedCards()
+        TK.pump(gm, 4)
+        t:eq("jogar a pocao com o Calice: exatamente 1 proc", #ticks, 1)
+        t:eq("rotulo do proc do Calice", ticks[1], "×1.5 PV")
+        JokerProcFx.tick = savedTick
+    end
+
     return t:done()
 end
 

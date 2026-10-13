@@ -184,6 +184,17 @@ local function simPlayer(game)
     return st
 end
 
+-- Cura com os coringas de cura, SEM efeito colateral. A previa roda todo
+-- quadro (hover/selecao); EffectSystem:applyHealMultiplier sem sink dispara
+-- o proc DIRETO no JokerProcFx — foi assim que o Calice do Sabio ficou
+-- soltando "×1.5 PV" do nada enquanto o jogador so passava o mouse (bug do
+-- dono, Out/2026). O sink descartavel engole o proc; a conta e a mesma.
+local function previewHeal(game, v)
+    local es = game.effectSystem
+    if not (es and es.applyHealMultiplier) then return v end
+    return es:applyHealMultiplier(game, v, {})
+end
+
 function DamagePreview.simulate(game, cards)
     local R = { damage = 0, blocked = 0, block = 0, heal = 0, thorn = 0, poison = 0,
         lethal = false, cards = {}, extras = {}, uncertain = false }
@@ -233,9 +244,7 @@ function DamagePreview.simulate(game, cards)
             addArmor(v)
             extra("orb_block", v, { orb = orb.type, why = why })
         elseif orb.type == "holy" then
-            local h = game.effectSystem and game.effectSystem.applyHealMultiplier
-                and game.effectSystem:applyHealMultiplier(game, v) or v
-            R.heal = R.heal + h
+            R.heal = R.heal + previewHeal(game, v)
         end
     end
     local function channel(orb)
@@ -267,9 +276,7 @@ function DamagePreview.simulate(game, cards)
             local n = #P.orbs
             for _ = 1, n do evoke(table.remove(P.orbs, 1), "evoke") end
         elseif t == "instant_heal" then
-            local h = game.effectSystem and game.effectSystem.applyHealMultiplier
-                and game.effectSystem:applyHealMultiplier(game, v) or v
-            R.heal = R.heal + h
+            R.heal = R.heal + previewHeal(game, v)
         elseif t == "mystery" then
             R.uncertain = true
         end
@@ -287,9 +294,7 @@ function DamagePreview.simulate(game, cards)
     local function triggers(card, kind)
         local function one(e, fromJoker, joker)
             if kind == "attack" and e.type == "on_attack_heal" then
-                local h = game.effectSystem and game.effectSystem.applyHealMultiplier
-                    and game.effectSystem:applyHealMultiplier(game, e.value or 0) or (e.value or 0)
-                R.heal = R.heal + h
+                R.heal = R.heal + previewHeal(game, e.value or 0)
             elseif kind == "attack" and e.type == "on_attack_debuff" then
                 local name = e.debuffName or "poison"
                 if name == "vulnerable" then E.vuln = true end
