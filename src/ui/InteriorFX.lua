@@ -571,9 +571,11 @@ local function flicker(i)
     local base = 0.62 + 0.22 * math.sin(time * 11 + i * 2.4)
         + 0.12 * math.sin(time * 27 + i * 7.1)
         + 0.06 * math.sin(time * 53 + i * 3.3)
+    -- rajada: a chama FLAREIA (sobe até +85%) e treme forte enquanto o
+    -- chefe passa, depois assenta
     local g = InteriorFX.gustLevel()
     if g > 0 then
-        base = base * (1 - g * (0.45 + 0.35 * (0.5 + 0.5 * math.sin(time * 31 + i * 2.1))))
+        base = base * (1 + g * (0.85 - 0.45 * (0.5 + 0.5 * math.sin(time * 31 + i * 2.1))))
     end
     return base
 end

@@ -777,6 +777,9 @@ function GameplayScene.draw()
     -- ENTRADA DO CHEFE: o salão abre VAZIO — HUD do inimigo, painel do herói,
     -- mão, botões e coringas esperam o nome do chefe (BossCinematic.hidesHud).
     local cineHide = BossCinematic.hidesHud()
+    -- mão/botões/coringas/prévia somem na ENTRADA e na MORTE (na morte o
+    -- HUD de vida fica: o corpo caindo é o que se vê, não há o que jogar)
+    local cineHand = BossCinematic.hidesHand()
     -- ===== UI (espaço virtual) =====
     -- O bbox do inimigo veio em pixels da tela: o HUD dele mora na UI.
     if enemyBbox and uiK ~= 1 then
@@ -894,7 +897,7 @@ function GameplayScene.draw()
     -- fade) a mão NÃO é desenhada — é cutscene, não turno. Mesma convenção
     -- do EnemyHud acima. Layout/updateRender continuam rodando de propósito:
     -- a mão não congela nem salta quando a cerimônia termina.
-    if not entering and not cineHide then
+    if not entering and not cineHand then
         -- Desenha não-dragadas (ordem normal), depois hover, depois dragged por cima
         for _, card in ipairs(game.hand) do
             if not card.isDragging and card ~= hoverCard then
@@ -925,13 +928,13 @@ function GameplayScene.draw()
     local roadOutdoor = GameplayScene.SCENE_MODE == "worldroad"
         and not lastInterior
     if smokeSystem and not roadOutdoor then smokeSystem:draw() end
-    if not cineHide then
+    if not cineHand then
         playButton:draw()
         if endTurnButton then endTurnButton:draw() end
     end
     -- Ações de contexto do teclado/pad (NavCursor): Y/E joga a seleção,
     -- X/Q encerra o turno — o glifo mora no canto do próprio botão.
-    if not cineHide then
+    if not cineHand then
         local NavCursor = require("src.ui.NavCursor")
         local function press(btn)
             return function()
@@ -951,7 +954,7 @@ function GameplayScene.draw()
     -- PREVIA DE DANO (Out/2026): banda de ACAO da coluna direita, colada em
     -- cima do JOGAR — o numero que o clique vai produzir mora no botao que o
     -- produz. Selos "+COMBO" ficam NA carta que fecharia o combo.
-    if not entering and not cineHide then
+    if not entering and not cineHand then
         DamagePreviewPanel.drawHandBadges(game)
         DamagePreviewPanel.draw(game,
             { x = playButton.x, y = playButton.y, w = playButton.width },
@@ -960,7 +963,7 @@ function GameplayScene.draw()
 
     -- Chamariz do ENCERRAR TURNO (sem mana e nada selecionado): aro dourado
     -- pulsante + seta quicando — "sua próxima ação é aqui".
-    if GameplayScene._endTurnCallout and endTurnButton and not cineHide then
+    if GameplayScene._endTurnCallout and endTurnButton and not cineHand then
         local t = love.timer.getTime()
         local pulse = 0.5 + 0.5 * math.sin(t * 4.2)
         love.graphics.setColor(1, 0.85, 0.30, 0.35 + 0.45 * pulse)
@@ -975,9 +978,11 @@ function GameplayScene.draw()
         love.graphics.setLineWidth(1)
         love.graphics.setColor(1, 1, 1, 1)
     end
-    if game.messageSystem then game.messageSystem:draw() end
+    -- toasts ficam na FILA durante a cinemática (sem tick, sem desenho):
+    -- "carta desbloqueada" por cima do chefe caindo quebrava a cena
+    if game.messageSystem and not cineHand then game.messageSystem:draw() end
 
-    if not cineHide then drawJokersAsCards() end
+    if not cineHand then drawJokersAsCards() end
     GameplayScene._reportTutorialAnchors()
 
     -- Banner de COMBO: DEPOIS da mão e depois do combatAnimationSystem (que
@@ -1291,7 +1296,9 @@ function GameplayScene.update(dt)
     gameUI:update(dt, game)
     -- topBar:update movido pro main.lua (ticka em todos os estados)
 
-    if game.messageSystem then game.messageSystem:update(dt) end
+    if game.messageSystem and not BossCinematic.isActive() then
+        game.messageSystem:update(dt)
+    end
     if game.enemy then game.enemy:update(dt) end
 end
 

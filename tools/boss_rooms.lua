@@ -94,6 +94,7 @@ function M.run(startAct)
             game = game, topBar = topBar, gameUI = GameUI:new(),
             playButton = Button:new(w * 0.80, h * 0.80, 150, 46, "Jogar"),
         })
+        GameplayScene.setGame(game)   -- zera cinemática/turno da sala anterior
         GameplayScene._debugForceBossEntered()
         WorldRoad.setBiome(a)
         WorldRoad.setTimeOfDay(1, true)
@@ -101,6 +102,7 @@ function M.run(startAct)
             tostring(game.enemy.spriteId)))
     end
 
+    require("src.systems.ScreenShake").install()
     mount(act)
 
     love.update = function(dt)
@@ -112,6 +114,10 @@ function M.run(startAct)
             frames = 0
         end
         if _G.EventManager.update then _G.EventManager.update(dt) end
+        -- cinemática do chefe (I = entrada, K = morte): relógio dela ANTES do
+        -- EnemyRenderer (câmera lenta = escala do dt dele)
+        require("src.ui.BossCinematic").update(dt, _G.game, { inHall = true })
+        require("src.systems.ScreenShake").update(dt)
         WorldRoad.update(dt)
         EnemyRenderer.update(dt)
         InteriorFX.update(dt, InteriorFX.hallFor(act))
@@ -137,8 +143,11 @@ function M.run(startAct)
     end
     drawFrame = function()
         love.graphics.clear(0, 0, 0, 1)
+        local Shake = require("src.systems.ScreenShake")
+        Shake.push()
         GameplayScene.draw()
-        local label = string.format("ATO %d/%d  %s   |  1-6 / <- -> troca  H dano  K morte  J volta  ESC sai",
+        Shake.pop()
+        local label = string.format("ATO %d/%d  %s   |  1-6 / <- -> troca  I entrada  K morte  ENTER pula  H dano  J volta  ESC sai",
             act, total, tostring(_G.game and _G.game.enemy and _G.game.enemy.spriteId))
         local font = FontManager.getFont(10)
         love.graphics.setFont(font)
@@ -183,8 +192,21 @@ function M.run(startAct)
             mount((act - 2) % total + 1)
         elseif key == "h" then
             EnemyRenderer.triggerHurt()
+        elseif key == "i" then
+            -- ENTRADA do chefe a partir do salão VAZIO (sala remontada)
+            mount(act)
+            GameplayScene._debugStartBossIntro()
         elseif key == "k" then
-            EnemyRenderer.triggerDeath(_G.game.enemy.spriteId)
+            -- MORTE pelo pipeline real (beat enemy.death → _onEnemyDeath →
+            -- clip + cinemática de morte no salão)
+            local g = _G.game
+            if g.enemy:isAlive() then
+                g.enemy.armor = 0
+                g.enemy:takeDamage(g.enemy.health + 1)
+                g:settleEnemyDamage(nil)
+            end
+        elseif key == "return" or key == "space" then
+            require("src.ui.BossCinematic").skip()
         elseif key == "j" then
             mount(act)
         end

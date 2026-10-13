@@ -264,6 +264,9 @@ function BossCinematic.isActive() return seq ~= nil end
 function BossCinematic.phase() return seq and seq.phase or nil end
 function BossCinematic.hidesBoss() return seq ~= nil and bossHidden end
 function BossCinematic.hidesHud() return seq ~= nil and hudHidden end
+-- mão, botões, coringas e prévia somem em QUALQUER fase (na morte o HUD de
+-- vida/TopBar fica, mas não há o que jogar)
+function BossCinematic.hidesHand() return seq ~= nil end
 function BossCinematic.holdsEnd() return seq ~= nil and seq.phase == "death" end
 function BossCinematic.lockInput() return seq ~= nil end
 function BossCinematic.elapsed() return seq and seq.t or 0 end
@@ -780,24 +783,55 @@ local function drawEyes(w, h)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
+-- Olhos do chefe no sprite (fração do canvas), pra acendê-los no rasante.
+local EYE_ANCHORS = { { 0.435, 0.24 }, { 0.545, 0.24 } }
+
 local function drawFly(w, h)
     if not fly or not flyAnim or not stage then return end
     local k = clamp01(fly.t / fly.dur)
     local x, y, sw, sh, s = flyPos(fly, k, w, h)
-    -- fantasmas: cópias ATRÁS no tempo (tinta violeta de corvo, alpha caindo)
     local tr = fly.trail
     local n = fly.ghosts or 0
+    -- RASTRO DE LUZ pelo caminho: faixa aditiva fraca ligando as últimas
+    -- posições (o escuro do salão fica; o caminho do voo lê)
+    love.graphics.setBlendMode("add")
+    for i = 2, #tr do
+        local a0, a1 = tr[i - 1], tr[i]
+        local a = 0.10 * (i / #tr)
+        love.graphics.setColor(0.55, 0.45, 0.85, a)
+        local yy = math.min(a0.y, a1.y) + sh * 0.35
+        love.graphics.rectangle("fill", math.min(a0.x, a1.x), yy,
+            math.abs(a1.x - a0.x) + sw * 0.6, sh * 0.3)
+    end
+    -- fantasmas: cópias ATRÁS no tempo, claras (violeta de corvo em aditivo)
     for g = n, 1, -1 do
-        local idx = #tr - g * 2
-        local p = tr[idx]
+        local p = tr[#tr - g * 2]
         if p then
-            local a = 0.42 * (1 - (g - 1) / math.max(1, n)) * (1 - dark * 0.3)
-            flyAnim:draw(p.x, p.y, s, { CROW_SHEEN[1], CROW_SHEEN[2], CROW_SHEEN[3], a })
+            local a = 0.55 * (1 - (g - 1) / math.max(1, n))
+            flyAnim:draw(p.x, p.y, s, { CROW_SHEEN[1] + 0.2, CROW_SHEEN[2] + 0.15, CROW_SHEEN[3] + 0.3, a })
         end
     end
-    -- o chefe em si, escurecido pelo salão
-    local lit = 1 - dark * 0.68
-    flyAnim:draw(x, y, s, { lit * 0.92, lit * 0.92, lit * 1.05, 1 })
+    -- RIM LIGHT: a silhueta deslocada em 4 direções, aditiva, antes do corpo
+    local P = math.max(1, math.floor(s + 0.5))
+    for _, off in ipairs({ { -P, 0 }, { P, 0 }, { 0, -P }, { 0, P } }) do
+        flyAnim:draw(x + off[1], y + off[2], s, { 0.62, 0.50, 0.95, 0.32 })
+    end
+    love.graphics.setBlendMode("alpha")
+    -- o chefe em si, AUTO-ILUMINADO (não escurece com o salão)
+    flyAnim:draw(x, y, s, { 1, 0.97, 1.02, 1 })
+    -- olhos acesos (brasa aditiva nas âncoras dos olhos)
+    love.graphics.setBlendMode("add")
+    local glow = 0.8 + 0.2 * math.sin(fly.t * 23)
+    for _, e in ipairs(EYE_ANCHORS) do
+        local ex = math.floor(x + e[1] * sw)
+        local ey = math.floor(y + e[2] * sh)
+        love.graphics.setColor(EYE_HALO[1], EYE_HALO[2], EYE_HALO[3], 0.35 * glow)
+        love.graphics.rectangle("fill", ex - 2 * P, ey - 2 * P, 4 * P, 4 * P)
+        love.graphics.setColor(EYE_CORE[1], EYE_CORE[2], EYE_CORE[3], 0.95 * glow)
+        love.graphics.rectangle("fill", ex - P, ey - P, 2 * P, 2 * P)
+    end
+    love.graphics.setBlendMode("alpha")
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 local function drawWind()

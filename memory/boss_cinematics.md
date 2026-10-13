@@ -26,6 +26,7 @@ corvos, dessaturação breve, o corpo fica no salão e SÓ DEPOIS cash out.
 | sons | `audio/sfx/boss/` (ElevenLabs FREE — regenerar; known_gaps §0b), registrados sob demanda em `loadSounds`; fallback por `Sfx.has` (sceneRustle / sceneStoneThud / enemyBuffRoar) |
 | i18n | `src/i18n/locales/boss_cinematics/<loc>.lua` (`skip`, `<id>.name/.epithet`), 1 require por locale principal |
 | trava | `tools/test_boss_cinematic.lua` (75 asserções) |
+| ao vivo | `love . boss_rooms` (ou `lovec`): **I** = entrada a partir do salão vazio, **K** = morte pelo pipeline real (beat → clip → cinemática), **ENTER** pula; a sala remonta com `GameplayScene.setGame` (zera a cinemática anterior) |
 | prova visual | `CARDGAME_HEADLESS=1 CARDGAME_IDENTITY=boss-cine lovec . shot_boss_cinematic both` → quadros em `%APPDATA%/LOVE/boss-cine/`; `python tools/boss_cinematic_sheet.py <save_dir>` → `tools/preview_out/boss_cinematic/` (prancha 12+6 e GIFs) |
 
 ## Regras
@@ -47,5 +48,14 @@ corvos, dessaturação breve, o corpo fica no salão e SÓ DEPOIS cash out.
   do quadro (laço com orçamento de tempo do prewarm do WorldRoad trava com
   relógio parado — custou um processo preso nesta sessão).
 - `love.exe` sem console engole o print: rode ferramentas com `lovec`.
+- **Mão/botões/coringas/prévia somem nas DUAS fases** (`hidesHand`); na morte
+  o HUD de vida e a TopBar ficam (`hidesHud` é só da entrada). **Toasts ficam
+  na fila** durante a cinemática (MessageSystem sem tick nem draw): a "carta
+  desbloqueada" do chefe vencido aparecia por cima do corpo caindo.
+- Rasante: o chefe é AUTO-ILUMINADO (rim light aditiva violeta, olhos de
+  brasa nas âncoras dos emissivos, fantasmas claros, rastro de luz) — o salão
+  continua a 0.86 de escuro; as arandelas FLAREIAM (`InteriorFX.gust`) na
+  passagem. Revisão do lead: com o sprite escurecido junto do salão o voo não
+  lia.
 
 [[boss_visuals]] · [[boss_halls]] · [[combat_beats]] · [[input_focus]] · [[onboarding]]
