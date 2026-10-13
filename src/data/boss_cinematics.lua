@@ -33,18 +33,45 @@
 --                                 boss_cinematics.<id>.*)
 --   hud    { }                    HUD/mão voltam (fim da entrada)
 --
+--   land   também aceita: `ring` (ice/frost/lava/spores/petal: cores da
+--          onda de choque), `particle` (feather/shard/ember/spore/petal) +
+--          `burst` (quantas), `sound` (impacto), `clip` (one-shot no palco;
+--          default "land"), `crows` (0 = sem corvos nem penas assentando)
+--
+-- Passos de ENTRADA por ELEMENTO (os outros 5 chefes, Out/2026):
+--   runes      { n }                      runas no chão acendem uma a uma;
+--                                         o círculo fecha e fica até o `land`
+--   rise       { clip, storm }            chefe SOBE do piso (recorte na linha
+--                                         do chão, fagulhas do elemento, loop
+--                                         `storm`); termina visível no palco
+--   door_burst { u, v, debris, shake, lights }  portão do fundo estoura
+--   firewall   { v, h, hold }             cortina de chamas em bandas; `hold`
+--                                         = quanto fica depois do passo
+--   chains     { n }                      correntes caem das paredes
+--   walk_in    { clip, stomp, sound }     chefe cresce do fundo (backY) até o
+--                                         palco; `stomp` = tremor por passo
+--   whiteout   { peak }                   nevasca (5 degraus, teto 0.8)
+--   silhouette { clip }                   chefe em preto dentro do branco
+--   settle     { }                        nevasca cai; chefe visível
+--   heartbeat  { rate, boost, hold }      pulses do salão aceleram + vinheta
+--   roots      { n, u, v }                raízes rastejam do ponto (u,v)
+--   eclipse    { u, v, to }               disco cobre a abertura + coroa
+--   descend    { clip, u, v, backlit, lights }  chefe desce de (u,v) ao palco
+--
 -- Passos de MORTE:
 --   slowmo { scale, release }     EnemyRenderer em câmera lenta por `dur`,
 --                                 volta ao normal em `release` s
---   burst  { feathers, crows }    rajada a partir do corpo
+--   burst  { n|feathers, crows, particle, sound }  rajada a partir do corpo
 --   desat  { peak, rise, fall }   dessaturação da cena: sobe em `rise`,
 --                                 segura, cai em `fall`
+--   lava   { }                    poça de lava cresce sob o corpo (tirano)
+--   dawn   { u, v }               luz morna volta na abertura (rainha)
 --   hold   { }                    o corpo fica no salão; espólios esperam
 --
--- Chefes APOIADOS (atos 3, 4, 5) pedem outra entrada (porta estourando,
--- subir do chão) — o formato aceita `kind`s novos; o runner avisa por
--- `kind` desconhecido e segue (fallback silencioso é proibido). Hoje só o
--- rei-carniça tem roteiro; chefe sem entrada aqui luta como antes.
+-- Todo chefe tem `palette` (body/glow/ember/flash/ghost/rim/particle/
+-- particle2): névoa, brilhos, flash e partículas usam ela. O runner avisa
+-- `kind` desconhecido e segue (fallback silencioso é proibido). Chefe SEM
+-- roteiro aqui ganha a entrada genérica (BossCinematic.GENERIC).
 --
 -- `reduced` = versão curta pra reducedMotion (mesma linguagem, sem varrer).
 
@@ -270,6 +297,54 @@ return {
         deathReduced = {
             { kind = "burst",  dur = 0,    n = 12, particle = "spore", sound = "bossSporeCollapse" },
             { kind = "desat",  dur = 0,    peak = 0.35, rise = 0.30, fall = 0.80 },
+            { kind = "hold",   dur = 0.90 },
+        },
+    },
+
+    -- ATO 6 — Rainha do Eclipse (flutua): o ECLIPSE pintado na abertura do
+    -- fundo (200,58 da arte) fecha de vez — o salão escurece até a coroa de
+    -- raios, névoa magenta, zumbido — e a rainha DESCE da abertura de asas
+    -- abertas (clip `descend`), em contraluz (silhueta → cor cheia ao
+    -- pousar), até o palco; a luz volta com ela. Impacto = pouso leve +
+    -- onda de pétalas. Morte: vira pétalas e o eclipse ABRE (luz morna na
+    -- abertura cresce sobre o corpo).
+    eclipse_queen = {
+        palette = {
+            body = { 0.14, 0.04, 0.18 }, glow = { 0.85, 0.25, 0.75 }, ember = { 1.00, 0.55, 0.85 },
+            flash = { 0.95, 0.45, 0.90 }, ghost = { 0.70, 0.30, 0.80 }, rim = { 1.00, 0.50, 0.90 },
+            particle = { 0.55, 0.15, 0.45 }, particle2 = { 1.00, 0.60, 0.85 },
+        },
+        intro = {
+            { kind = "dark",    dur = 0.90, to = 0.86 },
+            { kind = "eclipse", dur = 1.60, u = 0.50, v = 0.227, to = 0.90 },
+            { kind = "descend", dur = 1.80, from = "opening", u = 0.50, v = 0.25, backlit = true,
+              clip = "descend", lights = 0.30 },
+            { kind = "land",    dur = 0.55, shake = 9, dust = 0, crows = 0, ring = "petal",
+              particle = "petal", burst = 18, sound = "bossFeathersSettle" },
+            { kind = "title",   dur = 2.30, clip = "roar" },
+            { kind = "hud",     dur = 0 },
+        },
+        introReduced = {
+            { kind = "dark",    dur = 0.30, to = 0.80 },
+            { kind = "eclipse", dur = 0.70, u = 0.50, v = 0.227, to = 0.80 },
+            { kind = "descend", dur = 0.80, from = "opening", u = 0.50, v = 0.25, backlit = true,
+              clip = "descend", lights = 0.30 },
+            { kind = "land",    dur = 0.40, shake = 3, dust = 0, crows = 0, ring = "petal",
+              particle = "petal", burst = 6, sound = "bossFeathersSettle" },
+            { kind = "title",   dur = 1.50 },
+            { kind = "hud",     dur = 0 },
+        },
+        death = {
+            { kind = "burst",  dur = 0,    n = 30, particle = "petal", sound = "bossEclipseBreak" },
+            { kind = "dawn",   dur = 0,    u = 0.50, v = 0.227 },
+            { kind = "desat",  dur = 0,    peak = 0.55, rise = 0.45, fall = 1.30 },
+            { kind = "slowmo", dur = 1.60, scale = 0.32, release = 0.35 },
+            { kind = "hold",   dur = 1.20 },
+        },
+        deathReduced = {
+            { kind = "burst",  dur = 0,    n = 12, particle = "petal", sound = "bossEclipseBreak" },
+            { kind = "dawn",   dur = 0,    u = 0.50, v = 0.227 },
+            { kind = "desat",  dur = 0,    peak = 0.40, rise = 0.30, fall = 0.80 },
             { kind = "hold",   dur = 0.90 },
         },
     },

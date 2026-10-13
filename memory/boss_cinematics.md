@@ -1,6 +1,6 @@
 ---
 name: boss_cinematics
-description: Out/2026. Cinemática de chefe (entrada no salão VAZIO + morte em câmera lenta) — roteiro por dados (src/data/boss_cinematics.lua), runner BossCinematic, como a cena/InputFocus/main.lua se encaixam, pular, reducedMotion, Continuar, prova visual. Protótipo só no carrion_king.
+description: Out/2026. Cinemática de chefe (entrada no salão VAZIO + morte em câmera lenta) — roteiro por dados (src/data/boss_cinematics.lua), runner BossCinematic, como a cena/InputFocus/main.lua se encaixam, pular, reducedMotion, Continuar, prova visual. Os 6 chefes com entrada e morte por elemento (Out/2026); cortina da mão (HandDeal).
 type: project
 ---
 
@@ -106,30 +106,35 @@ corvos, dessaturação breve, o corpo fica no salão e SÓ DEPOIS cash out.
   pelo grupo sfx do AudioManager. `BossCinematic.SOUNDS` é conferido pelo
   teste (todo arquivo existe).
 
-## Entradas dos outros 5 chefes — PROPOSTA (dono autorizou implementar)
+## Entradas dos outros 5 chefes — IMPLEMENTADAS (Out/2026, commits 9e347e4 → rainha)
 
 Mesma espinha (salão vazio → presença → chegada → impacto → cartão → HUD),
-linguagem própria por chefe. Passos novos marcados com ★ (o runner avisa
-kind desconhecido até existirem). Tempos ~6-7 s, reduced ~3 s.
+linguagem própria por chefe. Dados em `src/data/boss_cinematics.lua` (o
+cabeçalho documenta todos os kinds e campos); cada chefe tem `palette`
+(névoa, brilhos, flash e partículas usam ela) e os dois roteiros de morte.
 
-| chefe | conceito | passos (dados) |
+| chefe | entrada (dados) | morte |
 |---|---|---|
-| **tower_lich** (A2, flutua) | O salão gela: cristais de geada sobem pelas colunas, o círculo rúnico do chão acende runa por runa, e o lich SOBE do piso dentro de uma tempestade de neve/geada, cajado por último, orbe acendendo. Impacto = o círculo completa + onda de gelo. | `dark 0.8` → ★`runes {n=5, dur 1.6}` (círculo da BossAura.floor acende em sequência, mist branco-azul) → ★`rise {from="floor", dur 1.4, storm="frost"}` (chefe sobe do piso: scissor na linha do chão do chão pra cima NÃO — recorte pela silhueta: desenha o clip idle deslocado pra baixo e vai subindo, com névoa cobrindo o pé) → `land {shake 8, ring="ice"}` → `title` → `hud` |
-| **abyss_tyrant** (A3, pisa) | A porta do fundo (portão-caveira) ESTOURA: lascas e brasas, uma PAREDE DE FOGO INFERNAL sobe atrás, correntes caem das paredes e ele atravessa o fogo andando (apoiado — sem voo). Impacto = pisada: shake forte, rachadura de lava no chão. | `dark 0.7` → ★`door_burst {u=0.5, v=0.55, dur 0.6, debris=18}` → ★`firewall {dur 1.6, h=0.5}` (cortina de chamas em bandas, HallAnim-like) → ★`walk_in {from="back", dur 1.6}` (sprite cresce do backYr até yr pela depthSizeK) → ★`chains {n=4}` (correntes caem e balançam, kind opcional) → `land {shake 18, ring="lava"}` → `title` → `hud` |
-| **winter_monarch** (A4, pisa) | NEVASCA: o salão vira branco (whiteout em 3 degraus de dither), o vento uiva, as chamas azuis quase apagam; a silhueta escura aparece dentro do branco, cada vez mais nítida, e a nevasca assenta revelando o monarca já no palco. Impacto = o cajado bate no chão: cristais erguem do piso. | `dark 0.3` → ★`whiteout {dur 2.0, peak 0.9}` → ★`silhouette {dur 1.4}` (chefe desenhado em preto sólido, alpha subindo, dentro do branco) → ★`settle {dur 0.8}` (whiteout cai, neve do InteriorFX ×3) → `land {shake 10, ring="frost", staff=true}` → `title` → `hud` |
-| **rot_colossus** (A5, pisa) | O coração de raízes do fundo BATE mais forte e mais rápido (pulses do hall 5), raízes rastejam do túnel pelo chão (bandas de pixel), esporos e vaga-lumes fogem; o colosso EMERGE do túnel ao fundo e vem pra frente arrastando os pés (chão treme a cada passo). Impacto = último passo: lama/esporos explodem. | `dark 0.6` → ★`heartbeat {dur 1.8, rate 2.4}` (pulse do InteriorFX acelera) → ★`roots {n=6, dur 1.2}` → ★`walk_in {from="back", dur 2.0, stomp=0.5}` (shake a cada passo) → `land {shake 16, ring="spores"}` → `title` → `hud` |
-| **eclipse_queen** (A6, flutua) | O ECLIPSE pintado na abertura do fundo fecha de vez: o salão escurece até a coroa de raios, pétalas caem, e a rainha DESCE da abertura de asas abertas, em contraluz (silhueta magenta), até o palco; a luz volta com ela. Impacto = pouso leve + onda magenta. | `dark 0.9` → ★`eclipse {dur 1.6}` (disco cobre, coroa de raios, mist magenta) → ★`descend {from="opening", u=0.5, v=0.25, dur 1.8, backlit=true}` (sprite desce com alpha de contraluz → cor cheia no fim) → `land {shake 9, ring="petal"}` → `title` → `hud` |
+| **tower_lich** (A2, flutua) | `dark` → `runes n=5` (glifos 3×5 em blocos de ~1,6 px da arte, círculo pontilhado fecha e FICA até o pouso) → `rise clip=rise storm=bossFrostStorm` (recorte na linha do chão, geada branca subindo) → `land ring=ice particle=shard` → `title clip=roar` | lascas (`shard`) + `bossFrostShatter`, slowmo, desat |
+| **abyss_tyrant** (A3, pisa) | `dark` → `door_burst` (flash+onda no portão, lascas, brasas, salão acende) → `firewall hold=2.3` (bandas de blobs de brasa, fica de pé enquanto ele atravessa) → `chains n=4` (elos 2×3 blocos, gancho) → `walk_in clip=stride stomp=0.55` → `land ring=lava particle=ember` → `title clip=roar` | brasas + `lava` (poça cresce sob o corpo, bolhas) + `bossLavaImplosion`, desat curta |
+| **winter_monarch** (A4, pisa) | `dark` → `whiteout peak=0.9` (5 degraus, teto 0,8; rajadas de névoa em 2 camadas, flocos esticados, uivo em loop) → `silhouette clip=walk` (preto dentro do branco, andando no lugar) → `settle` → `land ring=frost clip=roar` (cajado bate: cristais) → `title` | 34 lascas + `bossFrostShatter` |
+| **rot_colossus** (A5, pisa) | `dark` → `heartbeat rate=2.4 boost=2.2` (InteriorFX.pulseBoost + vinheta por batida) → `roots n=6` (segmentos de 3 blocos com nós, esmaecem 1,5 s depois do pouso) → `walk_in clip=emerge stomp=0.5 sound=bossEmergeTear` → `land ring=spores particle=spore` → `title clip=roar` | esporos (flutuam) + `bossSporeCollapse` |
+| **eclipse_queen** (A6, flutua) | `dark` → `eclipse u=.5 v=.227` (disco + coroa pontilhada, zumbido) → `descend clip=descend backlit` (silhueta → cor cheia) → `land ring=petal particle=petal` → `title clip=roar` | pétalas + `bossEclipseBreak` + `dawn` (luz morna cresce na abertura, feixe até o corpo) |
 
-Mortes (mesma máquina `death`): lich se desfaz em geada (burst "frost"), tirano
-afunda na lava do chão (slowmo + desat quente), monarca estilhaça (burst de
-cristais), colosso desaba e vira esporos, rainha vira pétalas e o eclipse
-abre. Cada uma = `burst {kind=...}` novo + `desat` com tom próprio.
+Infra que entrou pra isso: `land.ring` (RING_STYLES: cores da onda),
+`land.particle/burst/sound/clip/crows`, `burst.particle/sound`, kinds de
+morte `lava`/`dawn`, `ownAnim(clip, dur)` (o clip ocupa o passo inteiro;
+sem clip, idle), `footInfo()` = onde o EnemyRenderer vai desenhar (os
+desenhadores "fora do lugar" terminam EXATAMENTE ali). Chefes apoiados
+nunca voam. Clips PixelLab de cada um em `animations/<clip>/south/`
+(quadros fora do modelo descartados: carrion `dive` 7-8, rainha `descend`
+7-8; colosso `roar` regerado sem nuvens brancas).
 
-Infra comum necessária antes: `land.ring` escolhe cor/forma da onda,
-`burst.kind` escolhe a partícula, `walk_in`/`rise`/`descend` precisam de um
-"desenhador do chefe fora do lugar" genérico (hoje o rasante usa o clip idle
-próprio — vira `drawBossAt(x, y, opts)` compartilhado). Chefes apoiados
-NUNCA voam.
+Prova visual por chefe: `BOSS_CINE_ACT=n CARDGAME_HEADLESS=1 CARDGAME_IDENTITY=x
+lovec . test_one shot_boss_cinematic both` + `python tools/boss_cinematic_sheet.py
+<save_dir> tools/preview_out/boss_cinematic <id>` → `boss_cine_{intro,death}_<id>_sheet.png`.
+`test_boss_cinematic` roda entrada e morte de TODO chefe (normal + reduced)
+e cobra nome/epíteto nos 5 locales.
 
 ## Cortina da mão + distribuição (Out/2026, bug do dono)
 

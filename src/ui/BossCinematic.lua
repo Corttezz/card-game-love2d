@@ -64,7 +64,9 @@ BossCinematic.INTRO_KINDS = { dark = true, eyes = true, flyby = true, land = tru
                               descend = true }
 BossCinematic.DEATH_KINDS = { slowmo = true, burst = true, desat = true, hold = true,
                               -- elemento engolindo o corpo (tirano: poça de lava)
-                              lava = true }
+                              lava = true,
+                              -- a luz volta na abertura do fundo (rainha: o eclipse abre)
+                              dawn = true }
 
 -- Sons (audio/sfx/boss/, registrados sob demanda; fallback por Sfx.has).
 local SOUNDS = {
@@ -1291,6 +1293,10 @@ local function enterStep(st)
     elseif kind == "lava" then
         -- poça de lava cresce sob o corpo até o fim da morte (bolhas no update)
         fx.lava = { t = 0, dur = math.max(0.5, remainingDuration(seq.idx)), bubble = 0 }
+    elseif kind == "dawn" then
+        -- o eclipse abre: luz morna cresce na abertura do fundo até o fim da morte
+        fx.dawn = { t = 0, dur = math.max(0.5, remainingDuration(seq.idx)),
+                    u = st.u or 0.5, v = st.v or 0.23 }
     -- ===== outros chefes =====
     elseif kind == "runes" then
         fx.runes = { n = st.n or 5, t = 0, dur = math.max(0.3, st.dur or 1.5) }
@@ -1617,6 +1623,7 @@ function BossCinematic.update(dt, game, ctx)
         end
     end
     if fx.ecl then fx.ecl.t = fx.ecl.t + dt end
+    if fx.dawn then fx.dawn.t = fx.dawn.t + dt end
     if fx.lava then
         local lv = fx.lava
         lv.t = lv.t + dt
@@ -1970,6 +1977,30 @@ local function drawCrows()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
+-- O eclipse ABRE (morte da rainha): luz morna crescendo na abertura do
+-- fundo, em blobs, com um feixe fraco descendo sobre o corpo.
+local function drawDawn(w, h)
+    local d = fx.dawn
+    if not d or not stage or not stage.tr then return end
+    local tr = stage.tr
+    local k = smooth(clamp01(d.t / d.dur))
+    local cx = tr.ox + d.u * 400 * tr.scale
+    local cy = tr.oy + d.v * 256 * tr.scale
+    local r = 14 * tr.scale
+    local warm = { 1.0, 0.86, 0.62 }
+    glowBlob(cx, cy, r * 7 * (0.6 + 0.4 * k), r * 5 * (0.6 + 0.4 * k), warm, 0.45 * k, 1)
+    glowBlob(cx, cy, r * 3.2, r * 2.6, { 1, 0.95, 0.85 }, 0.55 * k, 3)
+    if stage.bbox then
+        -- feixe em degraus até o corpo
+        local by = (stage.cy or stage.bbox.bottomY)
+        for i = 0, 3 do
+            local q = (i + 0.5) / 4
+            glowBlob(lerp(cx, stage.bbox.cx, q), lerp(cy, by, q), r * (2 + i), r * 2.2, warm,
+                0.16 * k * (1 - i * 0.15), 1 + i % 3)
+        end
+    end
+end
+
 -- Atrás do chefe: escuridão, olhos, rasante com rastro, vento, penas em voo.
 function BossCinematic.drawBack()
     local w = (stage and stage.w) or love.graphics.getWidth()
@@ -1984,6 +2015,7 @@ function BossCinematic.drawBack()
     drawRunes()
     drawFirewall(w, h)
     drawEclipse(w, h)
+    drawDawn(w, h)
     drawEyes(w, h)
     drawMist({ [2] = true })
     drawWalk(w, h)
