@@ -173,6 +173,15 @@ Prancha dos cadáveres: `SHEET_MODE=death ... shot_enemy_sheet`.
   wicker_effigy (ombros + peito), hellhound (crina + rabo), abyss_acolyte
   (livro). Chefes com fogo têm a BossAura por cima.
 
+**Cadáver apagado (2ª leva):** só o olho rastreado não bastava — o
+espantalho tem a CARA inteira clara de abóbora (fenda laranja + dentes) e o
+dono ainda viu o morto "de olho aceso e sorriso brilhando". `tools/corpse_dim.py`:
+nos 4 últimos quadros da death tudo que é LUZ pintada (claro + saturado:
+olho, boca, gema, núcleo, brasa, chama) perde a luz progressivamente, em
+todos os 45; rosto declarado (FACES: espantalho) ganha pálpebra fechada e a
+cara vai pra sombra. Prova pela cena real: `SHEET_MODE=death ...
+shot_enemy_sheet [id]`.
+
 ## Pendente
 
 - Círculo rúnico do lich: em 1024x768 a laje do salão 2 cai atrás da mão de
