@@ -320,6 +320,63 @@ SFX = [
             "A dark eclipse breaking apart with a bright crystalline crack and a rush of returning light, shimmering tail"
         ),
     },
+    # ---- Rainha do Eclipse v2 (chefe final, frente rainha-eclipse, Out/2026) ----
+    {
+        "id": "boss_eclipse_omen", "dir": "audio/sfx/boss",
+        "duration": 4.5,
+        "prompt": (
+            "The sound of a world dying before an eclipse: a deep descending drone, distant church bells played in reverse, "
+            "air being sucked out of a cathedral, electric light flickering with dry ticks, ending in a hollow near-silent hum"
+        ),
+    },
+    {
+        "id": "boss_eclipse_unveil", "dir": "audio/sfx/boss",
+        "duration": 3.5,
+        "prompt": (
+            "A slow dark revelation: rising sacred female choir swell with a cold glassy shimmer, huge silk cloak unfurling, "
+            "many layered whispered breaths underneath, building to a soft deep impact"
+        ),
+    },
+    {
+        "id": "boss_crown_tick", "dir": "audio/sfx/boss",
+        "duration": 0.5,
+        "prompt": (
+            "A single tiny crystal bell tick, very short, pure and crystalline, with a brief cathedral reverb tail"
+        ),
+    },
+    {
+        "id": "boss_eclipse_crown", "dir": "audio/sfx/boss",
+        "duration": 4.0,
+        "prompt": (
+            "Coronation sting: reversed choir swell into one huge sacred choir chord with a tubular bell strike and a deep "
+            "sub drum hit, then a long dark cathedral reverb tail with a faint dissonant whisper"
+        ),
+    },
+    {
+        "id": "boss_eclipse_phase", "dir": "audio/sfx/boss",
+        "duration": 2.5,
+        "prompt": (
+            "An eclipse snapping shut: a deep whoomp, bells sucked backwards, a choir gasp, sudden sub-bass drop and a "
+            "hollow metallic ring fading in a stone hall"
+        ),
+    },
+    {
+        "id": "boss_eclipse_fade", "dir": "audio/sfx/boss",
+        "duration": 4.5,
+        "prompt": (
+            "A woman's voice holding one high sung note that slowly dissolves into ash and wind, reversed choir fading out, "
+            "soft ember crackles, ending in silence"
+        ),
+    },
+    # A FAIXA do chefe final (audio/music/music-boss-eclipse.mp3) foi gerada
+    # pelo MESMO endpoint com loop=true, 30 s, e pós-processada (highpass 25 Hz,
+    # loudnorm -15, emenda no corte de 8,3 s -> 28 s). Prompt:
+    #   "Sacred dark orchestral loop, 58 BPM, D minor. A large cathedral choir
+    #    sings a slow solemn hymn in the foreground, pipe organ holds deep
+    #    chords, tubular bells toll on the downbeat, a huge slow taiko drum hits
+    #    every two bars. Midway the choir turns dissonant and a cold whispered
+    #    breath passes under it before the hymn returns. Choir loud and close,
+    #    seamless loop"
 ]
 
 

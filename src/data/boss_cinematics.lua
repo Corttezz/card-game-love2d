@@ -57,6 +57,15 @@
 --   roots      { n, u, v }                raízes rastejam do ponto (u,v)
 --   eclipse    { u, v, to }               disco cobre a abertura + coroa
 --   descend    { clip, u, v, backlit, lights }  chefe desce de (u,v) ao palco
+--   RAINHA v2 (chefe final, frente rainha-eclipse, Out/2026):
+--   omen       { to, steps }              pressentimento: a luz do vão morre
+--                                         em degraus, o eclipse vira íris, a
+--                                         coroa sangra, cinzas caem
+--   unveil     { clip, u, v }             manifestação: olhos demais no escuro,
+--                                         silhueta em casulo que se abre em
+--                                         contraluz, sombra maior que ela
+--   coronation { clip, cadence }          cartão único: letras uma a uma com
+--                                         sino, halos quebrados, stinger
 --
 -- Passos de MORTE:
 --   slowmo { scale, release }     EnemyRenderer em câmera lenta por `dur`,
@@ -301,13 +310,25 @@ return {
         },
     },
 
-    -- ATO 6 — Rainha do Eclipse (flutua): o ECLIPSE pintado na abertura do
-    -- fundo (200,58 da arte) fecha de vez — o salão escurece até a coroa de
-    -- raios, névoa magenta, zumbido — e a rainha DESCE da abertura de asas
-    -- abertas (clip `descend`), em contraluz (silhueta → cor cheia ao
-    -- pousar), até o palco; a luz volta com ela. Impacto = pouso leve +
-    -- onda de pétalas. Morte: vira pétalas e o eclipse ABRE (luz morna na
-    -- abertura cresce sobre o corpo).
+    -- ATO 6 — Rainha do Eclipse (flutua), o CHEFE FINAL — v2 (Out/2026,
+    -- frente rainha-eclipse; dono: "algo mais macabro, mais estiloso,
+    -- entradas mais marcantes"). Três atos próprios, ~14 s:
+    --   1. PRESSENTIMENTO (`omen`): o salão muda antes de ela existir — a luz
+    --      do vão morre em 4 degraus (tique por degrau, silêncio entre eles),
+    --      o eclipse pintado vira uma ÍRIS que olha o jogador, a coroa sangra,
+    --      cinzas começam a cair, névoa magenta.
+    --   2. MANIFESTAÇÃO (`unveil` + `descend`): olhos demais acendem no escuro
+    --      do vão, a silhueta em casulo de asas (clip `unveil`) se abre em
+    --      contraluz com a sombra no mármore maior que ela e um halo quebrado;
+    --      o `descend` a traz ao palco (silhueta → cor cheia).
+    --   3. COROAÇÃO (`coronation`): cartão único — letras uma a uma com sino,
+    --      halos quebrados ladeando, stinger coral na última letra.
+    -- LUTA: BossCinematic observa a fase do kit (src/data/enemies.lua, nunca
+    -- alterado) e fecha o eclipse do salão 6 (InteriorFX.setEclipse) + halo
+    -- quebrado nela. MORTE: cinzas que sobem, `dawn` v2 (a luz chega em
+    -- degraus pelo vão, o disco abre num crescente, o mármore acende) e a
+    -- voz dela se apagando (`bossEclipseFade`); o corpo fica no salão.
+    -- Música própria: `musicBossEclipse` (MusicDirector, só no salão dela).
     eclipse_queen = {
         palette = {
             body = { 0.14, 0.04, 0.18 }, glow = { 0.85, 0.25, 0.75 }, ember = { 1.00, 0.55, 0.85 },
@@ -315,37 +336,41 @@ return {
             particle = { 0.55, 0.15, 0.45 }, particle2 = { 1.00, 0.60, 0.85 },
         },
         intro = {
-            { kind = "dark",    dur = 0.90, to = 0.86 },
-            { kind = "eclipse", dur = 1.60, u = 0.50, v = 0.227, to = 0.90 },
-            { kind = "descend", dur = 1.80, from = "opening", u = 0.50, v = 0.25, backlit = true,
+            { kind = "dark",       dur = 0.60, to = 0.45 },
+            { kind = "omen",       dur = 3.60, to = 0.82, steps = 4 },
+            { kind = "unveil",     dur = 3.20, u = 0.50, v = 0.30, clip = "unveil" },
+            { kind = "descend",    dur = 1.70, from = "opening", u = 0.50, v = 0.30, backlit = true,
               clip = "descend", lights = 0.30 },
-            { kind = "land",    dur = 0.55, shake = 9, dust = 0, crows = 0, ring = "petal",
-              particle = "petal", burst = 18, sound = "bossFeathersSettle" },
-            { kind = "title",   dur = 2.30, clip = "roar" },
-            { kind = "hud",     dur = 0 },
+            { kind = "land",       dur = 0.60, shake = 9, dust = 0, crows = 0, ring = "petal",
+              particle = "petal", burst = 22, sound = "bossFeathersSettle" },
+            { kind = "coronation", dur = 4.40, clip = "crown", cadence = 0.085 },
+            { kind = "hud",        dur = 0 },
         },
+        -- reducedMotion: os três atos continuam (toda a informação), curtos:
+        -- degraus sem íris móvel, casulo sem tremor, letras em cascata rápida.
         introReduced = {
-            { kind = "dark",    dur = 0.30, to = 0.80 },
-            { kind = "eclipse", dur = 0.70, u = 0.50, v = 0.227, to = 0.80 },
-            { kind = "descend", dur = 0.80, from = "opening", u = 0.50, v = 0.25, backlit = true,
+            { kind = "dark",       dur = 0.30, to = 0.45 },
+            { kind = "omen",       dur = 1.40, to = 0.80, steps = 4 },
+            { kind = "unveil",     dur = 1.20, u = 0.50, v = 0.30, clip = "unveil" },
+            { kind = "descend",    dur = 0.80, from = "opening", u = 0.50, v = 0.30, backlit = true,
               clip = "descend", lights = 0.30 },
-            { kind = "land",    dur = 0.40, shake = 3, dust = 0, crows = 0, ring = "petal",
+            { kind = "land",       dur = 0.40, shake = 3, dust = 0, crows = 0, ring = "petal",
               particle = "petal", burst = 6, sound = "bossFeathersSettle" },
-            { kind = "title",   dur = 1.50 },
-            { kind = "hud",     dur = 0 },
+            { kind = "coronation", dur = 2.60, clip = "crown" },
+            { kind = "hud",        dur = 0 },
         },
         death = {
-            { kind = "burst",  dur = 0,    n = 30, particle = "petal", sound = "bossEclipseBreak" },
+            { kind = "burst",  dur = 0,    n = 34, particle = "ash", sound = "bossEclipseBreak" },
             { kind = "dawn",   dur = 0,    u = 0.50, v = 0.227 },
-            { kind = "desat",  dur = 0,    peak = 0.55, rise = 0.45, fall = 1.30 },
-            { kind = "slowmo", dur = 1.60, scale = 0.32, release = 0.35 },
-            { kind = "hold",   dur = 1.20 },
+            { kind = "desat",  dur = 0,    peak = 0.55, rise = 0.45, fall = 1.40 },
+            { kind = "slowmo", dur = 1.70, scale = 0.32, release = 0.35 },
+            { kind = "hold",   dur = 1.80 },
         },
         deathReduced = {
-            { kind = "burst",  dur = 0,    n = 12, particle = "petal", sound = "bossEclipseBreak" },
+            { kind = "burst",  dur = 0,    n = 14, particle = "ash", sound = "bossEclipseBreak" },
             { kind = "dawn",   dur = 0,    u = 0.50, v = 0.227 },
             { kind = "desat",  dur = 0,    peak = 0.40, rise = 0.30, fall = 0.80 },
-            { kind = "hold",   dur = 0.90 },
+            { kind = "hold",   dur = 1.10 },
         },
     },
 }

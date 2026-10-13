@@ -293,6 +293,68 @@ function M.run()
     _G.gameSettings.reducedMotion = false
     BC.reset()
 
+    -- ===== 6d. RAINHA DO ECLIPSE v2 (chefe final, frente rainha-eclipse) =====
+    -- Escala: entrada de 12 a 18 s com os três atos (omen → unveil →
+    -- coronation); reducedMotion curta mas com os três; letras do cartão
+    -- chegam uma a uma e TODAS aparecem; a luta observa a fase do kit e
+    -- fecha o eclipse do salão (InteriorFX.setEclipse) sem virar cinemática;
+    -- a morte deixa a alvorada ligada (persiste no cash out) e o Continuar
+    -- com a rainha morta nasce em alvorada.
+    do
+        local IFX = require("src.ui.InteriorFX")
+        local function hasKind(steps, kind)
+            for _, st in ipairs(steps or {}) do if st.kind == kind then return true end end
+            return false
+        end
+        local qd = Data.eclipse_queen
+        local nomQ = BC.duration(qd.intro)
+        t:truthy("rainha: entrada entre 12 e 18 s (" .. string.format("%.1f", nomQ) .. ")",
+            nomQ >= 12 and nomQ <= 18)
+        t:truthy("rainha: entrada mais longa que a dos outros chefes",
+            nomQ > BC.duration(Data.carrion_king.intro) + 3)
+        for _, k in ipairs({ "omen", "unveil", "descend", "coronation" }) do
+            t:truthy("rainha: intro tem " .. k, hasKind(qd.intro, k))
+            t:truthy("rainha (reduced): intro tem " .. k .. " (toda a informacao)", hasKind(qd.introReduced, k))
+        end
+        t:truthy("rainha: cartao proprio (coronation), nao o title comum", not hasKind(qd.intro, "title"))
+        t:truthy("rainha (reduced): roteiro curto", BC.duration(qd.introReduced) < nomQ * 0.6)
+        t:truthy("rainha: morte vira cinzas (particle=ash)", qd.death[1].particle == "ash")
+        t:truthy("rainha: morte abre o eclipse (dawn)", hasKind(qd.death, "dawn") and hasKind(qd.deathReduced, "dawn"))
+
+        -- entrada inteira: fases observadas e letras todas
+        _G.gameSettings.reducedMotion = false
+        BC.reset()
+        local gq = fakeBoss("eclipse_queen")
+        gq.enemy.health, gq.enemy.maxHealth, gq.enemy._phaseIdx = 300, 300, 0
+        t:truthy("rainha: entrada aceita", BC.startIntro(gq))
+        BC.setStage(stage)
+        local sawOmen, sawUnveil, sawCrown, maxShown, nChars = false, false, false, 0, nil
+        local tReveal, elq = nil, 0
+        while BC.isActive() and elq < nomQ + 2 do
+            BC.update(DT, gq, { inHall = true })
+            elq = elq + DT
+            local d = BC._debug()
+            if d.fx.omen then sawOmen = true end
+            if d.fx.unveil then sawUnveil = true end
+            if d.crown then
+                sawCrown = true
+                nChars = #d.crown.chars
+                if d.crown.shown > maxShown then maxShown = d.crown.shown end
+            end
+            if not tReveal and not BC.hidesBoss() then tReveal = elq end
+        end
+        t:truthy("rainha: pressentimento (omen) tocou", sawOmen)
+        t:truthy("rainha: manifestacao (unveil) tocou", sawUnveil)
+        t:truthy("rainha: coroacao (cartao proprio) tocou", sawCrown)
+        t:truthy("rainha: TODAS as letras do nome chegaram (" .. tostring(maxShown) .. "/" .. tostring(nChars) .. ")",
+            nChars and maxShown == nChars)
+        t:truthy("rainha: ela so aparece depois do pressentimento + manifestacao (>6s)",
+            tReveal ~= nil and tReveal > 6)
+        t:falsy("rainha: cartao sumiu no fim", BC._debug().crown ~= nil)
+        t:near("rainha: eclipse da luta comeca aberto", BC.eclipseLevel(), 0, 1e-3)
+
+    end
+
     -- ===== 7. i18n: todo chefe com roteiro tem nome + epiteto nos 5 locales =====
     for _, loc in ipairs({ "pt_BR", "en", "es", "fr", "de" }) do
         local ok, tbl = pcall(require, "src.i18n.locales.boss_cinematics." .. loc)

@@ -60,7 +60,9 @@ BossCinematic.INTRO_KINDS = { dark = true, eyes = true, flyby = true, land = tru
                               runes = true, rise = true, whiteout = true, silhouette = true,
                               settle = true, door_burst = true, firewall = true, chains = true,
                               walk_in = true, heartbeat = true, roots = true, eclipse = true,
-                              descend = true }
+                              descend = true,
+                              -- rainha do eclipse v2 (pressentimento, manifestação, coroação)
+                              omen = true, unveil = true, coronation = true }
 BossCinematic.DEATH_KINDS = { slowmo = true, burst = true, desat = true, hold = true,
                               -- elemento engolindo o corpo (tirano: poça de lava)
                               lava = true,
@@ -98,6 +100,13 @@ local SOUNDS = {
     bossEclipseHum     = { "audio/sfx/boss/boss_eclipse_hum.mp3",      0.55, loop = true },
     bossDescendWings   = { "audio/sfx/boss/boss_descend_wings.mp3",    0.75 },
     bossEclipseBreak   = { "audio/sfx/boss/boss_eclipse_break.mp3",    0.80 },
+    -- rainha do eclipse v2 (frente rainha-eclipse, Out/2026)
+    bossEclipseOmen    = { "audio/sfx/boss/boss_eclipse_omen.mp3",    0.75 },
+    bossEclipseUnveil  = { "audio/sfx/boss/boss_eclipse_unveil.mp3",  0.75 },
+    bossCrownTick      = { "audio/sfx/boss/boss_crown_tick.mp3",      0.55 },
+    bossEclipseCrown   = { "audio/sfx/boss/boss_eclipse_crown.mp3",   0.90 },
+    bossEclipsePhase   = { "audio/sfx/boss/boss_eclipse_phase.mp3",   0.85 },
+    bossEclipseFade    = { "audio/sfx/boss/boss_eclipse_fade.mp3",    0.80 },
 }
 local soundsLoaded = false
 BossCinematic.SOUNDS = SOUNDS   -- teste confere que todo arquivo existe
@@ -137,6 +146,10 @@ local fx = {}
 local flakes = {}
 local ownAnims = {}
 local deathFor = nil   -- inimigo cuja morte já foi encenada (não repete)
+-- RAINHA DO ECLIPSE v2 (seção própria mais abaixo): estado do eclipse que
+-- SOBREVIVE ao fim da entrada (luta + cash out) e o cartão da coroação
+local eclipse = nil    -- { level, cur, dawn, t, gaze, lastPhase, active }
+local crownCard = nil  -- { t, dur, name, chars, cadence, shown, ... }
 local flyAnim = nil    -- SpriteAnimation idle do chefe pros rasantes
 local flyAnimId = nil
 -- partículas (px de tela)
@@ -270,6 +283,7 @@ local function finish()
     mist = nil
     hit = nil
     edge = nil
+    crownCard = nil
     fx = {}
     flakes = {}
     sfxQueue = {}
@@ -283,6 +297,8 @@ function BossCinematic.reset()
     landed = false
     deathFor = nil
     stage = nil
+    eclipse = nil
+    if InteriorFX.setEclipse then InteriorFX.setEclipse(0, 0) end   -- rainha: salão limpo
 end
 
 local function copySteps(list)
@@ -351,6 +367,7 @@ function BossCinematic.startIntro(game)
     clearFx()
     landed = false
     deathFor = nil
+    eclipse = nil   -- salão novo: o eclipse da luta anterior não vale aqui
     begin("intro", steps, id, reduced, d)
     -- o salão nasce ESCURO: a cena ainda está no fade do preto
     dark = 0.86
@@ -405,6 +422,7 @@ function BossCinematic._debug()
     return { seq = seq, dark = dark, eyes = eyes, fly = fly, title = title,
              slowmo = slowmo, desat = desat, landed = landed,
              mist = mist, hit = hit, edge = edge, loops = loops, fx = fx,
+             eclipse = eclipse, crown = crownCard,
              feathers = #feathers, dust = #dust, crows = #crows, wind = #wind }
 end
 
@@ -446,8 +464,8 @@ local function spawnFeather(x, y, vx, vy, kind)
         sway = love.math.random() * math.pi * 2,
         life = 1.4 + love.math.random() * 1.2, max = 0,
         light = love.math.random() < 0.35,
-        -- brasa/esporo FLUTUAM (sobem devagar); pena/lasca/pétala caem
-        float = (kind == "ember" or kind == "spore"),
+        -- brasa/esporo/cinza FLUTUAM (sobem devagar); pena/lasca/pétala caem
+        float = (kind == "ember" or kind == "spore" or kind == "ash"),
     }
     local f = feathers[#feathers]
     f.max = f.life
@@ -1190,9 +1208,603 @@ local function bossClip(name, fps)
     return false
 end
 
+-- ---------------------------------------------------------------------------
+-- RAINHA DO ECLIPSE v2 (Out/2026, frente rainha-eclipse) — o chefe FINAL.
+-- Pedido do dono: "algo mais macabro, mais estiloso, entradas mais marcantes,
+-- música tipo Radagon/Besta Prístina". Três atos próprios na entrada:
+--   1. PRESSENTIMENTO (`omen`): o salão muda antes de ela existir — a luz do
+--      vão morre em DEGRAUS (um tique por degrau, silêncio entre eles), o
+--      eclipse pintado vira uma ÍRIS que olha o jogador (pupila em fenda que
+--      acompanha), a coroa SANGRA (gotas magenta caem em blocos), pétalas
+--      pretas (cinzas) começam a cair, a névoa magenta sobe.
+--   2. MANIFESTAÇÃO (`unveil` + `descend`): ela não entra, se REVELA — olhos
+--      demais acendem no escuro do vão (pares que não são dela), a silhueta
+--      aparece em casulo de asas (clip `unveil`) e se abre em contraluz, com a
+--      SOMBRA no mármore maior que ela e um halo QUEBRADO sobre a cabeça; o
+--      `descend` existente a traz ao palco.
+--   3. COROAÇÃO (`coronation`): cartão ÚNICO — as letras chegam uma a uma com
+--      um tique de sino por letra (pitch subindo), halos quebrados ladeando,
+--      stinger coral na última letra, flash magenta, o eclipse pulsa.
+-- Durante a LUTA (sem seq) o módulo OBSERVA a fase do kit (`_phaseIdx`,
+-- dado em src/data/enemies.lua, nunca alterado aqui) e muda SÓ o visual:
+-- `InteriorFX.setEclipse(level, dawn)` fecha o vão do salão 6, a íris olha
+-- de vez em quando, o halo quebrado fica sobre a cabeça dela na 2ª fase, e a
+-- virada de fase tem um instante próprio (`phaseShift`). Na MORTE o `dawn`
+-- v2 abre o eclipse em degraus pelo vão, as pétalas viram CINZAS que sobem e
+-- a voz dela se apaga (`bossEclipseFade`); o estado de alvorada persiste no
+-- cash out/espólios (e no Continuar, via markDeathSeen).
+-- reducedMotion = roteiro curto com TODA a informação (dados em
+-- src/data/boss_cinematics.lua, introReduced/deathReduced).
+-- ---------------------------------------------------------------------------
+-- (`eclipse` e `crownCard` são declarados no bloco de ESTADO do topo: o
+-- finish()/_debug() ficam acima desta seção e precisam enxergá-los)
+local QUEEN_ID = "eclipse_queen"
+local GOLD   = { 0.96, 0.80, 0.42 }
+local MAGENTA = { 0.92, 0.28, 0.78 }
+local ASH_GRAY = { 0.62, 0.58, 0.60 }
+local WARM = { 1.0, 0.86, 0.62 }
+
+local function ensureEclipse()
+    if not eclipse then
+        eclipse = { level = 0, cur = 0, dawn = 0, t = 0, nextGaze = 6 + love.math.random() * 5,
+                    gaze = nil, lastPhase = 0, active = false }
+    end
+    return eclipse
+end
+
+function BossCinematic.eclipseLevel() return eclipse and eclipse.cur or 0 end
+function BossCinematic.eclipseDawn() return eclipse and eclipse.dawn or 0 end
+-- ferramenta/prova visual: a íris olha AGORA (shot_boss_cinematic phases)
+function BossCinematic._debugGaze()
+    local e = ensureEclipse()
+    e.gaze = { t = 0, dur = 1.6 }
+end
+
+-- Centro do eclipse PINTADO na arte do salão 6 (200,58 da PNG 400×256).
+local function eclipseCenter()
+    local tr = stage and stage.tr
+    if not tr then return nil end
+    return tr.ox + 0.5 * 400 * tr.scale, tr.oy + 0.2266 * 256 * tr.scale, 14 * tr.scale
+end
+
+-- Halo QUEBRADO: anel pontilhado com falhas (hash estável por dente), gira
+-- devagar, e "sangra": alguns dentes escorrem pra baixo. Blocos na grade.
+local function drawBrokenHalo(cx, cy, r, ry, P, col, a, t, seed)
+    local n = math.max(14, math.floor(2 * math.pi * r / P))
+    for i = 0, n - 1 do
+        local h = hash2(i + (seed or 0), 3.7)
+        if h > 0.32 and bayer(i, math.floor(i / 3)) < a then
+            local ang = i / n * math.pi * 2 + (t or 0) * 0.35
+            local bx = math.floor((cx + math.cos(ang) * r) / P) * P
+            local by = math.floor((cy + math.sin(ang) * ry) / P) * P
+            love.graphics.setColor(col[1], col[2], col[3], 0.9)
+            love.graphics.rectangle("fill", bx, by, P, P)
+            -- sangra: dentes da metade de baixo escorrem (1 a 3 blocos)
+            if math.sin(ang) > 0.2 and h > 0.78 then
+                local drip = 1 + math.floor(((t or 0) * 1.5 + h * 7) % 3)
+                for d = 1, drip do
+                    love.graphics.setColor(col[1] * 0.8, col[2] * 0.5, col[3] * 0.8, 0.9 * (1 - d / 4))
+                    love.graphics.rectangle("fill", bx, by + d * P, P, P)
+                end
+            end
+        end
+    end
+end
+
+-- A ÍRIS: pupila em fenda magenta dentro do disco negro, acompanha
+-- (deriva lenta + sacadas). `open` 0..1 = quanto a fenda está aberta.
+local function drawIris(cx, cy, r, P, open, t)
+    if open <= 0.02 then return end
+    local w = math.max(P, math.floor(r * 0.22 / P) * P)
+    local hh = math.floor(r * 1.2 * open / P) * P
+    if hh < P then return end
+    local saccade = math.floor(t * 0.7) % 3 - 1
+    local track = math.floor(1.8 * math.sin(t * 0.6) + saccade * 0.7 + 0.5)
+    local px0 = math.floor((cx + track * P * 1.5) / P) * P - w / 2
+    local py0 = math.floor(cy / P) * P - hh / 2
+    glowBlob(cx, cy, r * 2.2, r * 2.2, MAGENTA, 0.35 * open, 2)
+    love.graphics.setColor(MAGENTA[1], MAGENTA[2], MAGENTA[3], 0.95)
+    love.graphics.rectangle("fill", px0, py0, w, hh)
+    love.graphics.setColor(1.0, 0.78, 0.95, 0.95)
+    love.graphics.rectangle("fill", px0 + w / 2 - P / 2, py0 + hh * 0.3, P, math.max(P, hh * 0.2))
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- Disco do eclipse FECHANDO com coroa que sangra (omen/fase 2): `k` = quanto
+-- cobre (0 = só a pintura, 1 = disco cheio + coroa larga).
+local function drawEclipseClosing(k, t, irisOpen)
+    local cx, cy, r = eclipseCenter()
+    if not cx then return end
+    local P = px()
+    local rr = r * (0.9 + 0.5 * k)
+    if k > 0.01 then
+        love.graphics.setColor(0.02, 0.0, 0.04, 0.92 * k)
+        love.graphics.circle("fill", cx, cy, rr, 28)
+        local breathe = 0.85 + 0.15 * math.sin(t * 2.4)
+        drawBrokenHalo(cx, cy, rr + 2 * P, rr + 2 * P, P, PAL.glow, 0.85 * k * breathe, t, 1)
+        drawBrokenHalo(cx, cy, rr + 6 * P, rr + 5 * P, P, PAL.flash, 0.45 * k * breathe, -t * 0.6, 9)
+        glowBlob(cx, cy, rr * 6, rr * 4, PAL.glow, 0.30 * k, 2)
+    end
+    -- a íris olha mesmo com o eclipse aberto (luta, fase 1: o disco pintado)
+    drawIris(cx, cy, rr, P, irisOpen or 0, t)
+end
+
+-- Sombra MAIOR que ela no mármore: o eclipse atrás projeta a silhueta no
+-- chão em direção à câmera — o quadro atual espelhado a partir da linha do
+-- chão, 1,6× mais largo e ACHATADO (0,55×: cabe entre o pé e a borda da
+-- tela), corpo violeta escuro + cópia aditiva magenta (no salão a 0,8 de
+-- escuro só o aditivo se lê).
+local function drawBigShadow(anim, bodyCx, floorY, s, a)
+    if not anim or not anim.frames then return end
+    local img = anim.frames[anim.currentFrame]
+    if not img then return end
+    local iw, ih = img:getWidth(), img:getHeight()
+    local sx, sy = s * 1.6, s * 0.55
+    local rx, ry = math.floor(bodyCx - iw * sx / 2), math.floor(floorY + ih * sy)
+    love.graphics.setColor(PAL.body[1] * 0.5, PAL.body[2] * 0.3, PAL.body[3] * 0.6, a)
+    love.graphics.draw(img, rx, ry, 0, sx, -sy)
+    love.graphics.setBlendMode("add")
+    love.graphics.setColor(PAL.glow[1], PAL.glow[2], PAL.glow[3], a * 0.55)
+    love.graphics.draw(img, rx, ry, 0, sx, -sy)
+    love.graphics.setBlendMode("alpha")
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- Pares de olhos QUE NÃO SÃO DELA no escuro do vão (unveil): posição em
+-- fração da arte em volta da silhueta, cada par acende num instante e some
+-- quando ela se ilumina. Olho = 3×2 blocos magenta com fenda escura.
+local STRAY_EYES = {
+    { u = 0.445, v = 0.19, at = 0.25, gap = 2.5, size = 1 },
+    { u = 0.555, v = 0.42, at = 0.55, gap = 2.0, size = 1 },
+    { u = 0.465, v = 0.52, at = 0.85, gap = 1.5, size = 0.7 },
+    { u = 0.540, v = 0.12, at = 1.05, gap = 3.0, size = 1.3 },
+    { u = 0.425, v = 0.36, at = 1.30, gap = 1.8, size = 0.8 },
+    { u = 0.575, v = 0.27, at = 1.50, gap = 2.2, size = 1 },
+}
+local function drawStrayEyes(t, fade)
+    local tr = stage and stage.tr
+    if not tr or fade <= 0.01 then return end
+    local P = px()
+    for i, e in ipairs(STRAY_EYES) do
+        local open = clamp01((t - e.at) / 0.35)
+        -- pisca de vez em quando (hash do tempo)
+        local blink = (math.floor((t * 3 + i * 1.3)) % 7 == 0) and 0.2 or 1
+        local a = open * fade * blink
+        if a > 0.02 then
+            local B = math.max(P, math.floor(2 * P * e.size + 0.5))
+            local ex = tr.ox + e.u * 400 * tr.scale
+            local ey = tr.oy + e.v * 256 * tr.scale
+            local gap = e.gap * B * 2
+            glowBlob(ex, ey, gap * 2.6, B * 7, MAGENTA, 0.45 * a, 1 + i % 3)
+            for side = -1, 1, 2 do
+                local x0 = math.floor((ex + side * gap / 2) / B) * B - B
+                local y0 = math.floor(ey / B) * B
+                love.graphics.setColor(MAGENTA[1], MAGENTA[2], MAGENTA[3], a)
+                love.graphics.rectangle("fill", x0, y0, 3 * B, 2 * B)
+                love.graphics.setColor(0.08, 0.01, 0.10, a)
+                love.graphics.rectangle("fill", x0 + B, y0, B, 2 * B)
+            end
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- ===== OMEN (pressentimento) =====
+local function drawOmen(w, h)
+    local o = fx.omen
+    if not o or not stage or not stage.tr then return end
+    local k = clamp01(o.t / o.dur)
+    -- degraus: a cobertura do eclipse e a luz morrendo saltam juntos
+    local stepK = math.floor(k * o.steps + 1e-6) / o.steps
+    local irisOpen = (o.t > o.dur * 0.45) and smooth(clamp01((o.t - o.dur * 0.45) / 0.5)) or 0
+    if seq and seq.reduced then irisOpen = (o.t > o.dur * 0.4) and 1 or 0 end
+    drawEclipseClosing(0.25 + 0.75 * stepK, o.t, irisOpen)
+    -- a luz do vão morre em DEGRAUS: faixa escura sobre o feixe pintado
+    -- (x 160..240 da arte: as bordas caem na parede escura, nunca no branco)
+    local tr = stage.tr
+    local cover = stepK * 0.85
+    if cover > 0.01 then
+        love.graphics.setColor(0.04, 0.01, 0.06, cover)
+        love.graphics.rectangle("fill", tr.ox + 160 * tr.scale, tr.oy - 4 * tr.scale, 80 * tr.scale, 196 * tr.scale)
+        love.graphics.setColor(0.04, 0.01, 0.06, cover * 0.7)
+        love.graphics.rectangle("fill", tr.ox + 148 * tr.scale, tr.oy + 192 * tr.scale, 104 * tr.scale, 70 * tr.scale)
+    end
+end
+
+-- ===== UNVEIL (manifestação) =====
+local function drawUnveil(w, h)
+    local u = fx.unveil
+    local dx, dy, s = footInfo()
+    if not u or not dx or not u.anim then return end
+    local tr = stage.tr
+    local k = clamp01(u.t / u.dur)
+    local iw, ih = u.anim:getSize()
+    local sw, sh = iw * s, ih * s
+    local x = (tr and (tr.ox + u.u * 400 * tr.scale) or (w * u.u)) - sw / 2
+    local y = (tr and (tr.oy + u.v * 256 * tr.scale) or (h * u.v)) - sh * 0.5 + math.sin(u.t * 1.6) * 2
+    local bodyCx = x + sw / 2
+    -- silhueta aparece (0..0.35), fica preta, e ganha contraluz de borda
+    local appear = smooth(clamp01(k / 0.3))
+    local lit = smooth(clamp01((k - 0.55) / 0.4)) * 0.10     -- quase preta: a cor cheia é do descend
+    local rim = 0.15 + 0.55 * smooth(clamp01((k - 0.4) / 0.4))
+    -- o eclipse fechado continua sangrando atrás dela
+    drawEclipseClosing(1, u.t + 10, 0)
+    -- olhos demais no escuro, somem quando ela acende
+    drawStrayEyes(u.t, 1 - smooth(clamp01((k - 0.6) / 0.25)))
+    -- sombra no mármore maior que ela (cresce com a revelação)
+    local floorY = stage.cy or (dy + sh)
+    drawBigShadow(u.anim, bodyCx, floorY, s, 0.55 * appear)
+    -- brilho magenta atrás do casulo; CONTRALUZ = a silhueta deslocada em
+    -- 4 direções em aditivo (borda de luz) e o corpo quase preto por cima
+    glowBlob(bodyCx, y + sh * 0.5, sw * 2.0, sh * 1.4, PAL.glow, 0.28 * appear, 1)
+    local P = px()
+    love.graphics.setBlendMode("add")
+    for _, off in ipairs({ { -P, 0 }, { P, 0 }, { 0, -P }, { 0, P } }) do
+        u.anim:draw(x + off[1], y + off[2], s, { PAL.rim[1], PAL.rim[2], PAL.rim[3], rim * appear * 0.8 })
+    end
+    love.graphics.setBlendMode("alpha")
+    u.anim:draw(x, y, s, { 0.03 + lit, 0.01 + lit * 0.6, 0.05 + lit, appear })
+    -- halo quebrado sobre a cabeça (chega no fim)
+    local halo = smooth(clamp01((k - 0.7) / 0.3))
+    if halo > 0.02 then
+        drawBrokenHalo(bodyCx, y + sh * 0.14, sw * 0.22, sw * 0.08, px(), GOLD, 0.8 * halo, u.t, 5)
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- ===== CORONATION (cartão de nome ÚNICO) =====
+local utf8lib = require("utf8")
+local function splitChars(s)
+    local out = {}
+    for _, c in utf8lib.codes(s) do out[#out + 1] = utf8lib.char(c) end
+    return out
+end
+
+local function drawCrownCard(w, h)
+    local c = crownCard
+    if not c then return end
+    local a
+    if c.t < 0.2 then a = smooth(c.t / 0.2)
+    elseif c.t > c.dur - 0.5 then a = 1 - smooth(clamp01((c.t - (c.dur - 0.5)) / 0.5))
+    else a = 1 end
+    local uk = require("src.ui.UiScale").activeK()
+    local P = math.max(2, math.floor(2 * uk + 0.5))
+    local cy = math.floor(h * 0.79)
+    -- faixa de tinta NEGRA com borda magenta fina (não a sépia dos outros)
+    love.graphics.setColor(0.03, 0.01, 0.05, 0.80 * a)
+    love.graphics.rectangle("fill", 0, cy - c.size * 1.1, w, c.size * 2.7)
+    love.graphics.setColor(MAGENTA[1], MAGENTA[2], MAGENTA[3], 0.55 * a)
+    love.graphics.rectangle("fill", 0, cy - c.size * 1.1, w, P)
+    love.graphics.rectangle("fill", 0, cy + c.size * 1.6 - P, w, P)
+    -- NOME: letra a letra, cada uma cai 6px e assenta
+    local font = FontManager.getFont(c.size)
+    love.graphics.setFont(font)
+    local total = font:getWidth(c.name)
+    local x = math.floor(w / 2 - total / 2)
+    local shown = math.min(#c.chars, math.floor(c.t / c.cadence))
+    for i = 1, shown do
+        local ch = c.chars[i]
+        local age = c.t - i * c.cadence
+        local pop = smooth(clamp01(age / 0.14))
+        local dy = (1 - pop) * -6 * uk
+        local la = a * pop
+        love.graphics.setColor(MAGENTA[1], MAGENTA[2], MAGENTA[3], 0.85 * la)
+        love.graphics.print(ch, x + P, cy + dy + P)
+        love.graphics.setColor(GOLD[1], GOLD[2], GOLD[3], la)
+        love.graphics.print(ch, x, cy + dy)
+        x = x + font:getWidth(ch)
+    end
+    -- halos quebrados ladeando o nome (giram em sentidos opostos)
+    local hr = c.size * 1.25
+    local hx = total / 2 + hr + c.size * 0.7
+    local ha = a * smooth(clamp01((c.t - 0.3) / 0.5))
+    drawBrokenHalo(w / 2 - hx, cy + c.size * 0.5, hr, hr * 0.45, P, GOLD, 0.8 * ha, c.t, 21)
+    drawBrokenHalo(w / 2 + hx, cy + c.size * 0.5, hr, hr * 0.45, P, GOLD, 0.8 * ha, -c.t, 33)
+    -- EPÍTETO: letra a letra depois do nome, magenta claro
+    local nameDone = #c.chars * c.cadence
+    if c.epithet ~= "" and c.t > nameDone + 0.25 then
+        local ef = FontManager.getFont(math.max(12, math.floor(c.size * 0.42)))
+        love.graphics.setFont(ef)
+        local echars = c.echars
+        local etot = ef:getWidth(c.epithet)
+        local ex = math.floor(w / 2 - etot / 2)
+        local ey = cy + c.size * 1.0
+        local eshown = math.min(#echars, math.floor((c.t - nameDone - 0.25) / (c.cadence * 0.6)))
+        for i = 1, eshown do
+            local ch = echars[i]
+            love.graphics.setColor(0, 0, 0, 0.7 * a)
+            love.graphics.print(ch, ex + 1, ey + 1)
+            love.graphics.setColor(1.0, 0.70, 0.92, a)
+            love.graphics.print(ch, ex, ey)
+            ex = ex + ef:getWidth(ch)
+        end
+    end
+    -- FLASH da coroação (última letra): 3 degraus, magenta
+    if c.flashT then
+        local ft = c.flashT
+        local fa = (ft < 0.06) and 0.5 or ((ft < 0.14) and 0.28 or ((ft < 0.24) and 0.10 or 0))
+        if fa > 0 then
+            love.graphics.setColor(PAL.flash[1], PAL.flash[2], PAL.flash[3], fa)
+            love.graphics.rectangle("fill", 0, 0, w, h)
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- ===== VIRADA DE FASE (luta) e ALVORADA v2 (morte) =====
+local function drawPhaseShift()
+    local ps = fx.phaseShift
+    if not ps then return end
+    local k = clamp01(ps.t / ps.dur)
+    local cx, cy, r = eclipseCenter()
+    if not cx then return end
+    -- o eclipse SALTA fechado: coroa larga que esvaece e pétalas
+    local P = px()
+    local env = 1 - k
+    drawBrokenHalo(cx, cy, r * (1.6 + 1.6 * easeOut(k)) + 2 * P, r * (1.4 + 1.4 * easeOut(k)), P,
+        PAL.flash, 0.9 * env, ps.t, 44)
+    glowBlob(cx, cy, r * 9 * (0.5 + k), r * 6 * (0.5 + k), PAL.glow, 0.45 * env, 3)
+end
+
+local function drawDawnV2(w, h)
+    local d = fx.dawn
+    local e = eclipse
+    if not d or not stage or not stage.tr or not e then return end
+    local tr = stage.tr
+    local k = smooth(clamp01(d.t / d.dur))
+    local cx, cy, r = eclipseCenter()
+    -- 1) o disco pintado ABRE: um crescente de luz cresce pelo lado direito
+    local P = px()
+    local open = clamp01(k * 1.3)
+    if open > 0.02 then
+        love.graphics.setColor(WARM[1], WARM[2], WARM[3], 0.95)
+        local n = math.max(16, math.floor(2 * math.pi * r / P))
+        for i = 0, n - 1 do
+            local ang = i / n * math.pi * 2
+            if math.cos(ang) > 1 - 2 * open then
+                for rr = 0, r, P do
+                    local bx = math.floor((cx + math.cos(ang) * rr) / P) * P
+                    local by = math.floor((cy + math.sin(ang) * rr) / P) * P
+                    if bayer(bx / P, by / P) < 0.5 + open * 0.5 then
+                        love.graphics.rectangle("fill", bx, by, P, P)
+                    end
+                end
+            end
+        end
+    end
+    -- 2) a luz chega em DEGRAUS pelo vão: 5 bandas, uma por vez, de cima pra baixo
+    local bands = 5
+    local lit = math.floor(k * bands + 1e-6)
+    for b = 0, lit - 1 do
+        local y0 = tr.oy + (b / bands) * 200 * tr.scale
+        local hh = (1 / bands) * 200 * tr.scale
+        glowBlob(cx, y0 + hh / 2, 90 * tr.scale, hh * 1.6, WARM, 0.22 * (1 - b * 0.08), 1 + b % 3)
+    end
+    glowBlob(cx, cy, r * 7 * (0.6 + 0.4 * k), r * 5 * (0.6 + 0.4 * k), WARM, 0.45 * k, 1)
+    glowBlob(cx, cy, r * 3.2, r * 2.6, { 1, 0.95, 0.85 }, 0.55 * k, 3)
+    -- 3) o chão de mármore acende em volta do corpo
+    if stage.bbox then
+        local by = (stage.cy or stage.bbox.bottomY)
+        glowBlob(stage.bbox.cx, by, (stage.bbox.width or 120) * 2.2, 40 * tr.scale, WARM, 0.25 * k, 2)
+    end
+end
+
+-- ===== passos da rainha (enter/exit) =====
+local function queenEnter(st)
+    local kind = st.kind
+    if kind == "omen" then
+        fx.omen = { t = 0, dur = math.max(0.3, st.dur or 3.5), steps = st.steps or 4, nextStep = 1 }
+        ensureEclipse().active = true
+        darkEase = { from = dark, to = st.to or 0.80, t = 0, dur = fx.omen.dur }
+        play("bossEclipseOmen", nil)
+        playLoop("bossEclipseHum")
+        mistTarget(1, fx.omen.dur * 0.8)
+        -- um tique por degrau de luz morrendo (silêncio entre eles)
+        for i = 1, fx.omen.steps do
+            queueSfx(i * fx.omen.dur / (fx.omen.steps + 0.5), "bossBlinkClick", nil, 0.7 + i * 0.05)
+        end
+        return true
+    elseif kind == "unveil" then
+        fx.unveil = { t = 0, dur = math.max(0.4, st.dur or 3.0), u = st.u or 0.5, v = st.v or 0.3,
+                      anim = ownAnim(st.clip or "unveil", st.dur) }
+        play("bossEclipseUnveil", nil)
+        InteriorFX.gust(0.5, fx.unveil.dur)
+        if _G.triggerShake and not seq.reduced then _G.triggerShake(2, fx.unveil.dur) end
+        return true
+    elseif kind == "coronation" then
+        mistTarget(0.25, 1.6)
+        bossClip(st.clip or "crown", 8)
+        local id = seq.bossId
+        local name = I18n.t("boss_cinematics." .. id .. ".name", nil,
+            I18n.t("end_screen.enemy." .. id, nil, id))
+        local epithet = I18n.t("boss_cinematics." .. id .. ".epithet", nil, "")
+        local h = love.graphics.getHeight()
+        local size = math.max(26, math.min(64, math.floor(h * 0.058)))
+        local up = require("src.i18n.TextCase").upper(name)
+        crownCard = { t = 0, dur = st.dur or 4, name = up, epithet = epithet, size = size,
+                      chars = splitChars(up), echars = splitChars(epithet),
+                      cadence = seq.reduced and 0.035 or (st.cadence or 0.085),
+                      shown = 0, stung = false, flashT = nil }
+        return true
+    end
+    return false
+end
+
+local function queenExit(st)
+    if st.kind == "omen" then fx.omen = nil end
+    if st.kind == "unveil" then
+        fx.unveil = nil
+        -- sem `descend` depois: mostra o chefe
+        if not (seq.steps[seq.idx + 1] and seq.steps[seq.idx + 1].kind == "descend") then
+            bossHidden = false
+            landed = true
+        end
+    end
+    if st.kind == "coronation" then crownCard = nil end
+end
+
+-- gancho do kind `dawn` (existente): a rainha ganha a alvorada v2
+local function queenDawnStart(st)
+    if not (seq and seq.bossId == QUEEN_ID) then return end
+    local e = ensureEclipse()
+    e.active = true
+    e.dawnEase = { t = 0, dur = math.max(0.5, fx.dawn and fx.dawn.dur or 2) }
+    play("bossEclipseFade", nil)
+    stopLoop("bossEclipseHum")
+end
+
+local function startPhaseShift()
+    fx.phaseShift = { t = 0, dur = 1.4 }
+    play("bossEclipsePhase", nil)
+    if _G.triggerShake and not reducedMotion() then _G.triggerShake(10, 0.4) end
+    InteriorFX.gust(0.8, 0.8)
+    -- pétalas pretas despencam do vão
+    if stage and stage.tr and not reducedMotion() then
+        local cx, cy = eclipseCenter()
+        for _ = 1, 16 do
+            spawnFeather(cx + (love.math.random() - 0.5) * 60 * px(), cy + (love.math.random() - 0.5) * 20,
+                (love.math.random() - 0.5) * 50, 20 + love.math.random() * 40, "petal")
+        end
+    end
+end
+
+-- Observador da LUTA: fase do kit → visual do salão (só visual; o kit e os
+-- números são de src/data/enemies.lua e não se mexe neles aqui).
+local function queenUpdate(dt, game, ctx)
+    local en = game and game.enemy
+    local isQueen = en and en.spriteId == QUEEN_ID and ctx and ctx.inHall
+    if isQueen then
+        local e = ensureEclipse()
+        e.active = true
+        e.t = e.t + dt
+        local phase = en._phaseIdx or 0
+        if phase > e.lastPhase and e.lastPhase >= 0 and en.health and en.health > 0 then
+            startPhaseShift()
+        end
+        e.lastPhase = phase
+        e.level = (phase > 0) and 1 or 0
+        if en.health and en.health <= 0 and e.dawn <= 0 and not e.dawnEase and (deathFor == en) then
+            e.dawn = 1   -- Continuar com a rainha morta: alvorada pronta
+        end
+        -- a íris olha o jogador de vez em quando (luta, sem cinemática)
+        if not seq and e.dawn <= 0 and not reducedMotion() then
+            e.nextGaze = e.nextGaze - dt
+            if e.nextGaze <= 0 and not e.gaze then
+                e.gaze = { t = 0, dur = 1.6 }
+                e.nextGaze = 7 + love.math.random() * 6
+            end
+        end
+    end
+    if not eclipse then return end
+    local e = eclipse
+    if e.gaze then
+        e.gaze.t = e.gaze.t + dt
+        if e.gaze.t >= e.gaze.dur then e.gaze = nil end
+    end
+    if e.dawnEase then
+        e.dawnEase.t = e.dawnEase.t + dt
+        e.dawn = math.max(e.dawn, smooth(clamp01(e.dawnEase.t / e.dawnEase.dur)))
+        if e.dawnEase.t >= e.dawnEase.dur then e.dawnEase = nil; e.dawn = 1 end
+    end
+    e.cur = e.cur + (e.level - e.cur) * math.min(1, dt * 1.5)
+    if InteriorFX.setEclipse then InteriorFX.setEclipse(e.cur, e.dawn) end
+    if fx.omen then
+        local o = fx.omen
+        o.t = o.t + dt
+    end
+    if fx.unveil then
+        fx.unveil.t = fx.unveil.t + dt
+        if fx.unveil.anim then fx.unveil.anim:update(dt) end
+        -- cinzas caindo do vão durante a manifestação
+        if stage and stage.tr and not reducedMotion() and love.math.random() < 0.35 then
+            local cx, cy = eclipseCenter()
+            spawnFeather(cx + (love.math.random() - 0.5) * 50 * px(), cy + 10 * px(),
+                (love.math.random() - 0.5) * 20, 25 + love.math.random() * 30, "ash_fall")
+        end
+    end
+    if fx.phaseShift then
+        fx.phaseShift.t = fx.phaseShift.t + dt
+        if fx.phaseShift.t >= fx.phaseShift.dur then fx.phaseShift = nil end
+    end
+    if crownCard then
+        local c = crownCard
+        c.t = c.t + dt
+        local shown = math.min(#c.chars, math.floor(c.t / c.cadence))
+        if shown > c.shown then
+            for i = c.shown + 1, shown do
+                play("bossCrownTick", nil, math.min(1.6, 0.85 + i * 0.045), 0)
+            end
+            c.shown = shown
+            if shown == #c.chars and not c.stung then
+                c.stung = true
+                c.flashT = 0
+                play("bossEclipseCrown", "bossRevealSting")
+                if _G.triggerShake and not seq.reduced then _G.triggerShake(6, 0.3) end
+                if not seq.reduced then
+                    local okC, CRT = pcall(require, "src.ui.CRTShader")
+                    if okC and CRT.jolt then CRT.jolt(0.10) end
+                end
+            end
+        end
+        if c.flashT then c.flashT = c.flashT + dt end
+    end
+    -- cinzas subindo do corpo durante a alvorada (morte)
+    if fx.dawn and seq and seq.bossId == QUEEN_ID and stage and stage.bbox
+        and not reducedMotion() then
+        local wdt = (stage.bbox.width or 120)
+        for _ = 1, 2 do
+            if love.math.random() < 0.6 then
+                spawnFeather(stage.bbox.cx + (love.math.random() - 0.5) * wdt,
+                    (stage.cy or stage.bbox.bottomY) - love.math.random() * 40,
+                    (love.math.random() - 0.5) * 30, -45 - love.math.random() * 70, "ash")
+            end
+        end
+    end
+end
+
+local function queenDrawBack(w, h)
+    if not (eclipse and eclipse.active) then return end
+    local e = eclipse
+    drawOmen(w, h)
+    -- fase 2 na luta: o eclipse fechado + íris olhando de vez em quando
+    if not seq and e.dawn <= 0 then
+        local gazeOpen = 0
+        if e.gaze then
+            local g = e.gaze
+            gazeOpen = math.min(smooth(clamp01(g.t / 0.3)), smooth(clamp01((g.dur - g.t) / 0.3)))
+        end
+        if e.cur > 0.02 or gazeOpen > 0 then
+            drawEclipseClosing(e.cur, e.t, gazeOpen)
+        end
+    end
+    drawPhaseShift()
+    drawUnveil(w, h)
+    if seq and seq.bossId == QUEEN_ID then drawDawnV2(w, h) end
+end
+
+local function queenDrawFront()
+    if not (eclipse and eclipse.active and stage and stage.bbox) then return end
+    local e = eclipse
+    -- halo quebrado sobre a cabeça dela na 2ª fase (viva, no palco)
+    if e.cur > 0.05 and e.dawn <= 0 and not bossHidden and landed then
+        local bb = stage.bbox
+        local hx = bb.cx
+        local hy = bb.topY + (bb.bottomY - bb.topY) * 0.10
+        drawBrokenHalo(hx, hy, (bb.width or 120) * 0.22, (bb.width or 120) * 0.07, px(),
+            MAGENTA, 0.75 * e.cur, e.t, 7)
+        love.graphics.setColor(1, 1, 1, 1)
+    end
+end
+
+local function queenDrawUI(w, h)
+    drawCrownCard(w, h)
+end
+
 local function enterStep(st)
     local kind = st.kind
-    if kind == "dark" then
+    if queenEnter(st) then
+        -- (rainha v2: omen / unveil / coronation — seção acima)
+    elseif kind == "dark" then
         darkEase = { from = dark, to = st.to or 0, t = 0, dur = math.max(0.01, st.dur or 0.3) }
     elseif kind == "eyes" then
         eyes = { u = st.u or 0.5, v = st.v or 0.4, size = st.size or 0.05,
@@ -1308,6 +1920,7 @@ local function enterStep(st)
         -- o eclipse abre: luz morna cresce na abertura do fundo até o fim da morte
         fx.dawn = { t = 0, dur = math.max(0.5, remainingDuration(seq.idx)),
                     u = st.u or 0.5, v = st.v or 0.23 }
+        queenDawnStart(st)   -- rainha: alvorada v2 (degraus, cinzas, voz apagando)
     -- ===== outros chefes =====
     elseif kind == "runes" then
         fx.runes = { n = st.n or 5, t = 0, dur = math.max(0.3, st.dur or 1.5) }
@@ -1409,6 +2022,7 @@ local function enterStep(st)
 end
 
 local function exitStep(st)
+    queenExit(st)
     if st.kind == "eyes" then eyes = nil; stopLoop("bossEyesRumble") end
     if st.kind == "flyby" then
         if st.land then
@@ -1650,6 +2264,7 @@ function BossCinematic.update(dt, game, ctx)
     end
     if fx.desc then fx.desc.t = fx.desc.t + dt; if fx.desc.anim then fx.desc.anim:update(dt) end end
     updateMist(dt)
+    queenUpdate(dt, game, ctx)
     if hit then
         hit.t = hit.t + dt
         if hit.t >= hit.dur then hit = nil end
@@ -1924,6 +2539,15 @@ local function drawFeathers()
                 love.graphics.rectangle("fill", math.floor(f.x) - P, math.floor(f.y) - P, 3 * P, 3 * P)
                 love.graphics.setBlendMode("alpha")
             end
+        elseif kind == "ash" or kind == "ash_fall" then
+            -- CINZA (rainha): pétala que vira cinza — 2×2 que esmaece de
+            -- magenta pra cinza conforme vive, com um bloco mais claro
+            local q = 1 - clamp01(f.life / f.max)
+            local gr, gg, gb = lerp(PAL.particle[1], 0.62, q), lerp(PAL.particle[2], 0.58, q), lerp(PAL.particle[3], 0.60, q)
+            love.graphics.setColor(gr, gg, gb, a)
+            love.graphics.rectangle("fill", math.floor(f.x), math.floor(f.y), 2 * P, 2 * P)
+            love.graphics.setColor(lerp(PAL.glow[1], 0.85, q), lerp(PAL.glow[2], 0.82, q), lerp(PAL.glow[3], 0.84, q), a * 0.8)
+            love.graphics.rectangle("fill", math.floor(f.x) + (f.light and P or 0), math.floor(f.y), P, P)
         elseif kind == "petal" then
             love.graphics.setColor(c[1], c[2], c[3], a)
             love.graphics.rectangle("fill", math.floor(f.x), math.floor(f.y), 2 * P, 2 * P)
@@ -2025,7 +2649,9 @@ function BossCinematic.drawBack()
     drawRunes()
     drawFirewall(w, h)
     drawEclipse(w, h)
-    drawDawn(w, h)
+    -- a rainha tem a alvorada v2 (seção RAINHA): o dawn genérico fica pros outros
+    if not (seq and seq.bossId == QUEEN_ID) then drawDawn(w, h) end
+    queenDrawBack(w, h)
     drawEyes(w, h)
     drawMist({ [2] = true })
     drawWalk(w, h)
@@ -2065,6 +2691,7 @@ function BossCinematic.drawFront()
     drawDust()
     if not (seq and seq.phase == "intro") then drawFeathers() end
     drawCrows()
+    queenDrawFront()
     -- nevasca por cima de tudo do mundo, e a silhueta DENTRO do branco
     drawWhiteout()
     drawSilhouette(stage.w, stage.h)
@@ -2119,6 +2746,7 @@ function BossCinematic.drawUI()
         end
         love.graphics.setColor(1, 1, 1, 1)
     end
+    queenDrawUI(w, h)
     -- dica de pular: pequena, canto inferior direito, só depois de SKIP_AFTER
     if BossCinematic.canSkip() then
         local k = clamp01((seq.t - BossCinematic.SKIP_AFTER) / 0.4)

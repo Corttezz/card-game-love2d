@@ -91,6 +91,20 @@ CLIPS = {
                     "settles back into its standing stance"),
     },
     "eclipse_queen": {
+        # v2 (Out/2026, frente rainha-eclipse): `unveil` = manifestação (ela
+        # se fecha num casulo de asas e se REVELA ao abri-las), `crown` =
+        # coroação (braços erguidos recebendo a coroa, no cartão de nome).
+        "unveil": (8, "folds both enormous bat-wings forward wrapping them "
+                      "tightly around her body like a closed cocoon that hides "
+                      "her face and crown, holds the cocoon still for a moment, "
+                      "then slowly unfurls the wings wide open revealing her "
+                      "face with a cold stare, settling into her floating "
+                      "stance"),
+        "crown": (8, "raises both arms slowly upward with open palms as if "
+                     "receiving a crown from above, head tilting back, the "
+                     "bat-wing cloak spreading to its full span and trembling, "
+                     "holds the cold triumphant pose, then lowers the arms "
+                     "back into her floating stance"),
         "descend": (8, "descends slowly from above with her huge bat-wing cloak "
                        "unfurling wide, arms spread, head bowed then lifting, "
                        "then folds the wings and settles into her floating "
