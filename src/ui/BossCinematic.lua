@@ -786,19 +786,38 @@ function BossCinematic.worldZoom()
     return 1 + 0.06 * math.sin(math.pi * k), hit.cx, hit.cy
 end
 
+local heartVig = nil
+local HV_W, HV_H = 192, 108
+-- vinheta do coração: alpha elíptico quantizado em 4 degraus com dither
+-- Bayer no limiar (borda esfarelada, sem aresta reta)
+local function ensureHeartVignette()
+    if heartVig then return heartVig end
+    local data = love.image.newImageData(HV_W, HV_H)
+    for y = 0, HV_H - 1 do
+        for x = 0, HV_W - 1 do
+            local dx, dy = (x + 0.5) / HV_W * 2 - 1, (y + 0.5) / HV_H * 2 - 1
+            local r = math.sqrt(dx * dx + dy * dy * 1.15)
+            local v = clamp01((r - 0.62) / 0.5)
+            v = v * v
+            local q = math.floor(v * 4 + bayer(x, y) * 0.9) / 4
+            data:setPixel(x, y, 1, 1, 1, math.min(1, q))
+        end
+    end
+    heartVig = love.graphics.newImage(data)
+    heartVig:setFilter("nearest", "nearest")
+    return heartVig
+end
+
 local function drawScreenFx()
     local hf = BossCinematic.heartFlash and BossCinematic.heartFlash() or 0
     if hf > 0.01 then
+        -- vinheta ELÍPTICA em 4 degraus com dither (textura gerada uma vez,
+        -- nearest, esticada na tela): nada de moldura retangular (lia como
+        -- borda de debug — revisão do lead)
         local w, h = love.graphics.getWidth(), love.graphics.getHeight()
-        local uk = require("src.ui.UiScale").activeK()
-        for i, bw in ipairs({ 60, 30 }) do
-            local b = math.floor(bw * uk)
-            love.graphics.setColor(PAL.flash[1], PAL.flash[2], PAL.flash[3], hf * (0.5 * i))
-            love.graphics.rectangle("fill", 0, 0, w, b)
-            love.graphics.rectangle("fill", 0, h - b, w, b)
-            love.graphics.rectangle("fill", 0, 0, b, h)
-            love.graphics.rectangle("fill", w - b, 0, b, h)
-        end
+        local img = ensureHeartVignette()
+        love.graphics.setColor(PAL.flash[1], PAL.flash[2], PAL.flash[3], hf * 1.6)
+        love.graphics.draw(img, 0, 0, 0, w / img:getWidth(), h / img:getHeight())
         love.graphics.setColor(1, 1, 1, 1)
     end
     if not hit then return end
@@ -1194,68 +1213,110 @@ local function startRoots(st)
             tx = 20 + (i - 0.5) / n * 360 + (love.math.random() - 0.5) * 30
             ty = 236 + love.math.random() * 16
         end
+        -- caminho em SEGMENTOS de 12-20 px da arte com cotovelos (±25°),
+        -- nó em cada junta e raminho curto em algumas: raiz, não vetor
         local pts = { { ox, oy } }
-        for k = 1, 7 do
-            local q = k / 7
-            -- raiz que desce da parede faz uma barriga pra fora antes de entrar
-            local bulge = mouths and math.sin(q * math.pi) * (ox < 200 and -1 or 1) * 14 or 0
-            pts[#pts + 1] = { lerp(ox, tx, q) + bulge + (love.math.random() - 0.5) * 12 * q,
-                              lerp(oy, ty, q) + (love.math.random() - 0.5) * 6 }
+        local twigs = {}
+        local cx, cy = ox, oy
+        local total = math.sqrt((tx - ox) ^ 2 + (ty - oy) ^ 2)
+        local walked = 0
+        local guard = 0
+        while walked < total - 6 and guard < 40 do
+            guard = guard + 1
+            local seg = 12 + love.math.random() * 8
+            local remain = total - walked
+            if remain - seg < 8 then seg = remain end
+            local ang = math.atan2(ty - cy, tx - cx) + (love.math.random() - 0.5) * 0.9
+            cx, cy = cx + math.cos(ang) * seg, cy + math.sin(ang) * seg
+            walked = walked + seg
+            pts[#pts + 1] = { cx, cy }
+            if love.math.random() < 0.45 and #pts > 2 then
+                local ta = ang + (love.math.random() < 0.5 and 1 or -1) * (0.9 + love.math.random() * 0.6)
+                twigs[#twigs + 1] = { at = #pts, len = 4 + love.math.random() * 5, ang = ta }
+            end
         end
-        fx.roots.list[i] = { pts = pts }
+        pts[#pts] = { tx, ty }
+        fx.roots.list[i] = { pts = pts, twigs = twigs, side = (ox < 200) and -1 or 1 }
     end
     playLoop("bossRootsCrawl")
 end
 
 -- Raízes rastejando: segmentos de 3 blocos com nós claros; crescem em
 -- `dur` e, quando `retractT` liga, encolhem de volta pra boca (0,7 s).
+-- cores das raízes: as do próprio castle_hall_5 (marrom-esverdeado escuro),
+-- tom de dither um degrau acima, aresta clara só do lado da luz (o centro do
+-- salão, onde o coração bate); o verde do elemento fica SÓ na ponta que agarra
+local ROOT_A, ROOT_B, ROOT_EDGE = { 0.09, 0.14, 0.08 }, { 0.13, 0.20, 0.11 }, { 0.25, 0.39, 0.18 }
+
+-- um PINCEL de `wcells` células (px da arte) perpendicular ao caminho:
+-- dither em xadrez entre dois tons, aresta clara na célula do lado da luz
+local function rootBrush(tr, x, y, nx, ny, wcells, lightSide, tipK)
+    local S = tr.scale
+    local cell = math.ceil(S)
+    local half = (wcells - 1) / 2
+    for i = 0, wcells - 1 do
+        local ax = math.floor(x + nx * (i - half))
+        local ay = math.floor(y + ny * (i - half))
+        local col
+        local edgeIdx = (lightSide > 0) and (wcells - 1) or 0
+        if i == edgeIdx and wcells >= 2 then
+            col = ROOT_EDGE
+        elseif (ax + ay) % 2 == 0 then
+            col = ROOT_A
+        else
+            col = ROOT_B
+        end
+        if tipK and tipK > 0 then
+            -- ponta que agarra: vai pro verde do elemento
+            col = { lerp(col[1], PAL.glow[1], tipK), lerp(col[2], PAL.glow[2], tipK), lerp(col[3], PAL.glow[3], tipK) }
+        end
+        love.graphics.setColor(col[1], col[2], col[3], 1)
+        love.graphics.rectangle("fill", math.floor(tr.ox + ax * S), math.floor(tr.oy + ay * S), cell, cell)
+    end
+end
+
+-- Raízes GROSSAS v3: largura 5 → 2 células da arte da boca à ponta (+1 nos
+-- nós), caminho com cotovelos, raminhos nas juntas, textura por dither, sem
+-- brilho aditivo. Crescem em `dur` e, com `retractT`, encolhem de volta.
 local function drawRoots()
     local r = fx.roots
     if not r or not stage or not stage.tr then return end
-    local P = px()
     local tr = stage.tr
     local k = clamp01(r.t / r.dur)
     if r.retractT then k = k * (1 - smooth(clamp01(r.retractT / 0.7))) end
     if k <= 0 then return end
-    -- RAÍZES GROSSAS (dono: "raízes grossas"): corpo escuro de 5 px da arte
-    -- na boca afinando até 2 na ponta, aresta clara de cima (luz do
-    -- elemento) e nós; nunca um fio de 1 bloco (lia como laser)
-    local S = tr.scale
-    local bodyC = { PAL.particle[1] * 0.75, PAL.particle[2] * 0.75, PAL.particle[3] * 0.75 }
-    local edgeC = { lerp(PAL.particle[1], PAL.glow[1], 0.5), lerp(PAL.particle[2], PAL.glow[2], 0.5),
-                    lerp(PAL.particle[3], PAL.glow[3], 0.5) }
-    for ri, root in ipairs(r.list) do
+    for _, root in ipairs(r.list) do
         local nseg = #root.pts - 1
         local grown = k * nseg
-        local n = 0
+        local lightSide = -(root.side or 1)   -- a luz vem do centro do salão
         for i = 1, nseg do
             local segK = clamp01(grown - (i - 1))
             if segK > 0 then
                 local a, b = root.pts[i], root.pts[i + 1]
                 local ex, ey = lerp(a[1], b[1], segK), lerp(a[2], b[2], segK)
-                local steps = math.max(2, math.floor(math.max(math.abs(ex - a[1]), math.abs(ey - a[2])) + 1))
+                local dx, dy = b[1] - a[1], b[2] - a[2]
+                local L = math.max(0.001, math.sqrt(dx * dx + dy * dy))
+                local nx, ny = -dy / L, dx / L
+                local steps = math.max(1, math.floor(L * segK + 0.5))
                 for st2 = 0, steps do
-                    local q = st2 / steps
-                    local along = ((i - 1) + segK * q) / nseg       -- 0 boca .. 1 ponta
-                    local wob = math.sin(along * 9 + ri * 1.3 + r.t * 0.8) * 1.2
-                    local W = math.max(P, math.floor(lerp(5, 2, along) * S / P + 0.5) * P)
-                    local x = tr.ox + (lerp(a[1], ex, q) + wob) * S
-                    local y = tr.oy + lerp(a[2], ey, q) * S
-                    local bx, by = math.floor((x - W / 2) / P) * P, math.floor((y - W / 2) / P) * P
-                    love.graphics.setColor(bodyC[1], bodyC[2], bodyC[3], 1)
-                    love.graphics.rectangle("fill", bx, by, W, W)
-                    -- aresta clara (cima/esquerda): a raiz tem volume
-                    love.graphics.setColor(edgeC[1], edgeC[2], edgeC[3], 0.9)
-                    love.graphics.rectangle("fill", bx, by, W, P)
-                    love.graphics.rectangle("fill", bx, by, P, W)
-                    n = n + 1
-                    if n % 9 == 0 then
-                        -- nó: bloco mais largo e um brilho do elemento
-                        love.graphics.setColor(bodyC[1], bodyC[2], bodyC[3], 1)
-                        love.graphics.rectangle("fill", bx - P, by - P, W + 2 * P, W + 2 * P)
-                        love.graphics.setColor(PAL.glow[1], PAL.glow[2], PAL.glow[3], 0.8)
-                        love.graphics.rectangle("fill", bx + P, by, P, P)
-                    end
+                    local q = st2 / math.max(1, steps)
+                    local along = ((i - 1) + segK * q) / nseg
+                    local wcells = math.floor(lerp(5, 2, along) + 0.5)
+                    -- nó: a junta é um degrau mais grossa
+                    if (st2 <= 1 or st2 >= steps - 1) and i > 1 then wcells = wcells + 1 end
+                    local tipK = (along > 0.88) and (along - 0.88) / 0.12 or 0
+                    rootBrush(tr, lerp(a[1], ex, q), lerp(a[2], ey, q), nx, ny, wcells, lightSide, tipK)
+                end
+            end
+        end
+        -- raminhos curtos nas juntas já crescidas
+        for _, tw in ipairs(root.twigs or {}) do
+            if grown >= tw.at - 1 then
+                local o = root.pts[tw.at]
+                local tx2, ty2 = math.cos(tw.ang), math.sin(tw.ang)
+                for st2 = 0, math.floor(tw.len) do
+                    rootBrush(tr, o[1] + tx2 * st2, o[2] + ty2 * st2, -ty2, tx2,
+                        (st2 < tw.len * 0.5) and 2 or 1, lightSide, 0)
                 end
             end
         end
