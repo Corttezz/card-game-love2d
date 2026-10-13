@@ -143,6 +143,183 @@ SFX = [
             "resonant tail, menacing, retro dark fantasy RPG"
         ),
     },
+    # ===== Cinemática de CHEFE, rodada 3 (Out/2026): som na sequência inteira.
+    {
+        "id": "boss_eyes_rumble", "dir": "audio/sfx/boss",
+        "duration": 3.0,
+        "prompt": (
+            "Deep subterranean rumble, slow and menacing, continuous low drone with a faint ember crackle, seamless loop, dark fantasy dungeon, no melody"
+        ),
+    },
+    {
+        "id": "boss_blink_click", "dir": "audio/sfx/boss",
+        "duration": 0.5,
+        "prompt": (
+            "A single dry wet click, like a giant eyelid snapping shut and open once, close and intimate, creature sound, short"
+        ),
+    },
+    {
+        "id": "boss_crows_caw", "dir": "audio/sfx/boss",
+        "duration": 1.6,
+        "prompt": (
+            "A murder of crows cawing and flapping in panic inside a stone hall, several birds, echoing, dark fantasy"
+        ),
+    },
+    {
+        "id": "boss_land_impact", "dir": "audio/sfx/boss",
+        "duration": 1.1,
+        "prompt": (
+            "Huge winged creature slamming down onto stone, heavy deep thud with stone debris rattling and a short low rumble tail, dark fantasy boss landing"
+        ),
+    },
+    {
+        "id": "boss_feathers_settle", "dir": "audio/sfx/boss",
+        "duration": 1.3,
+        "prompt": (
+            "Dozens of feathers fluttering and settling softly onto a stone floor after a gust, delicate rustling, quiet tail"
+        ),
+    },
+    {
+        "id": "boss_death_thud", "dir": "audio/sfx/boss",
+        "duration": 0.9,
+        "prompt": (
+            "A massive body collapsing onto stone in slow motion, deep muffled thud with bones cracking, long low tail, dark fantasy"
+        ),
+    },
+    {
+        "id": "boss_feather_burst", "dir": "audio/sfx/boss",
+        "duration": 0.8,
+        "prompt": (
+            "A violent burst of feathers exploding outward with a whoosh of air, fast rustle, dark fantasy creature death"
+        ),
+    },
+    {
+        "id": "boss_crows_flee", "dir": "audio/sfx/boss",
+        "duration": 1.6,
+        "prompt": (
+            "A flock of crows screeching and fleeing fast, wings beating away into the distance, echo of a stone hall"
+        ),
+    },
+    {
+        "id": "boss_hold_ambience", "dir": "audio/sfx/boss",
+        "duration": 2.8,
+        "prompt": (
+            "Eerie quiet after a battle in a stone hall: distant wind, a slow drip of water, faint ember crackle, somber, seamless loop, no melody"
+        ),
+    },
+    # ===== Entradas/mortes dos outros 5 chefes (Out/2026).
+    {
+        "id": "boss_rune_ignite", "dir": "audio/sfx/boss",
+        "duration": 0.6,
+        "prompt": (
+            "A single arcane rune igniting with a cold crystalline chime and a short icy hiss, magical, dark fantasy"
+        ),
+    },
+    {
+        "id": "boss_frost_storm", "dir": "audio/sfx/boss",
+        "duration": 2.6,
+        "prompt": (
+            "A swirling blizzard of ice and arcane wind building up inside a stone hall, crackling frost, howling gust, seamless loop, dark fantasy"
+        ),
+    },
+    {
+        "id": "boss_frost_shatter", "dir": "audio/sfx/boss",
+        "duration": 1.0,
+        "prompt": (
+            "A large ice statue shattering into thousands of shards with a crystalline crash and tinkling fragments scattering on stone"
+        ),
+    },
+    {
+        "id": "boss_door_burst", "dir": "audio/sfx/boss",
+        "duration": 1.2,
+        "prompt": (
+            "A massive iron and bone gate exploding outward with a deep boom, splintering wood, stone debris and a roaring blast of fire behind it"
+        ),
+    },
+    {
+        "id": "boss_hellfire_wall", "dir": "audio/sfx/boss",
+        "duration": 2.6,
+        "prompt": (
+            "A towering wall of hellfire roaring and crackling with deep bass rumble, embers popping, demonic, seamless loop"
+        ),
+    },
+    {
+        "id": "boss_chains_rattle", "dir": "audio/sfx/boss",
+        "duration": 1.4,
+        "prompt": (
+            "Heavy iron chains dropping and rattling against stone walls, clanking and swinging, echo of a large hall"
+        ),
+    },
+    {
+        "id": "boss_lava_implosion", "dir": "audio/sfx/boss",
+        "duration": 1.2,
+        "prompt": (
+            "A giant armored body sinking into lava with a hiss, bubbling magma and a deep implosive whump, fading embers"
+        ),
+    },
+    {
+        "id": "boss_blizzard_whiteout", "dir": "audio/sfx/boss",
+        "duration": 2.8,
+        "prompt": (
+            "A fierce whiteout blizzard howling through a frozen hall, icy wind gusts, snow hissing, seamless loop"
+        ),
+    },
+    {
+        "id": "boss_ice_crackle", "dir": "audio/sfx/boss",
+        "duration": 1.0,
+        "prompt": (
+            "Ice forming rapidly and cracking across a stone floor, sharp crystalline crackles and creaks, cold"
+        ),
+    },
+    {
+        "id": "boss_heartbeat", "dir": "audio/sfx/boss",
+        "duration": 1.2,
+        "prompt": (
+            "A single enormous wet heartbeat of a giant rotting heart, deep thump thump with a squelch, echo in a cave"
+        ),
+    },
+    {
+        "id": "boss_roots_crawl", "dir": "audio/sfx/boss",
+        "duration": 2.2,
+        "prompt": (
+            "Thick wooden roots creeping and cracking across a stone floor, creaking wood, wet snapping, mud squelching, seamless loop"
+        ),
+    },
+    {
+        "id": "boss_emerge_tear", "dir": "audio/sfx/boss",
+        "duration": 1.3,
+        "prompt": (
+            "A giant creature tearing itself free from a tangle of roots and mud, wood splintering, wet suction, deep groan"
+        ),
+    },
+    {
+        "id": "boss_spore_collapse", "dir": "audio/sfx/boss",
+        "duration": 1.3,
+        "prompt": (
+            "A huge rotten body collapsing and bursting into a cloud of spores, wet squelch, soft puffing release, cave echo"
+        ),
+    },
+    {
+        "id": "boss_eclipse_hum", "dir": "audio/sfx/boss",
+        "duration": 2.8,
+        "prompt": (
+            "A deep ominous cosmic hum as a solar eclipse closes, low drone with a dark choir undertone and faint crackling corona, seamless loop"
+        ),
+    },
+    {
+        "id": "boss_descend_wings", "dir": "audio/sfx/boss",
+        "duration": 1.6,
+        "prompt": (
+            "Enormous leathery bat wings unfurling and beating slowly as a figure descends from above, deep wing thumps, fabric rustling"
+        ),
+    },
+    {
+        "id": "boss_eclipse_break", "dir": "audio/sfx/boss",
+        "duration": 1.2,
+        "prompt": (
+            "A dark eclipse breaking apart with a bright crystalline crack and a rush of returning light, shimmering tail"
+        ),
+    },
 ]
 
 

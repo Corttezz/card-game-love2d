@@ -36,6 +36,7 @@ HandDeal.TAIL = 0.30
 local curtain = false      -- cortina abaixada
 local hudMode = false      -- HUD também espera (latched enquanto a cortina está abaixada)
 local uiHidden = false     -- botões/HUD esperam (da cortina até o fim da distribuição)
+local closed = false       -- a luta acabou atrás da cortina: mesa fechada até a próxima cortina
 local deal = nil           -- { cards, idx, t }
 local held = {}            -- card -> true (ainda na pilha)
 
@@ -44,19 +45,26 @@ local function hasEM()
 end
 
 function HandDeal.reset()
-    curtain, hudMode, uiHidden = false, false, false
+    curtain, hudMode, uiHidden, closed = false, false, false, false
     deal = nil
     held = {}
 end
 
 -- Começa a distribuição: toda carta da mão volta pra pilha (invisível) e
--- sai de lá uma por vez no update. Sem carta ou sem luta (inimigo morto,
--- espólios a caminho) não há o que dar: a UI volta direto.
+-- sai de lá uma por vez no update. Sem luta (inimigo morto atrás da
+-- cortina — a morte do chefe — espólios a caminho) a MESA FICA FECHADA:
+-- não se dá carta pra um cadáver, e a mão/botões não voltam por cima do
+-- corpo no salão; a próxima cortina (andar novo) reabre.
 local function beginDeal(game)
     held = {}
     local cards = {}
     local alive = game and game.enemy and (not game.enemy.isAlive or game.enemy:isAlive())
-    if game and game.hand and alive then
+    if not alive then
+        deal = nil
+        closed = true
+        return
+    end
+    if game and game.hand then
         for _, c in ipairs(game.hand) do
             if c.cancelDissolveAnim then c:cancelDissolveAnim() end
             c.dissolve = 1
@@ -99,6 +107,7 @@ function HandDeal.setCurtain(down, game, opts)
         if not curtain then
             curtain = true
             uiHidden = true
+            closed = false
             deal = nil   -- distribuição interrompida: as cartas que faltavam ficam na pilha
         end
         return
@@ -127,17 +136,18 @@ function HandDeal.update(dt, game)
     end
 end
 
-function HandDeal.hidesHand() return curtain end
+function HandDeal.hidesHand() return curtain or closed end
 function HandDeal.holds(card) return held[card] == true end
-function HandDeal.hidesUI() return curtain or uiHidden end
-function HandDeal.hidesHud() return hudMode and (curtain or uiHidden) end
-function HandDeal.isBusy() return curtain or deal ~= nil end
+function HandDeal.hidesUI() return curtain or uiHidden or closed end
+function HandDeal.hidesHud() return hudMode and (curtain or uiHidden or closed) end
+function HandDeal.isBusy() return curtain or closed or deal ~= nil end
 function HandDeal.isDealing() return deal ~= nil end
+function HandDeal.isClosed() return closed end
 
 -- Quantas cartas da mão estão VISÍVEIS (nem cortina, nem na pilha). Pros
 -- testes e pras ferramentas de captura.
 function HandDeal.visibleCount(game)
-    if curtain or not game or not game.hand then return 0 end
+    if curtain or closed or not game or not game.hand then return 0 end
     local n = 0
     for _, c in ipairs(game.hand) do
         if not held[c] then n = n + 1 end

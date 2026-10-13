@@ -10,8 +10,7 @@
 --   * MORTE: detectada pelo update (chefe no SALÃO com _deathHandled), segura
 --     espólios (holdsEnd), câmera lenta no EnemyRenderer e volta a 1; não
 --     reencena a mesma morte; mini-boss NA ESTRADA (isBoss sem salão) não
---     vira cinemática; chefe sem roteiro ganha a entrada GENÉRICA, inimigo
---     comum não inicia nada;
+--     vira cinemática; chefe sem roteiro não inicia nada;
 --   * CENA: a porta (GameplayScene._onBossEntered) inicia a entrada e a cena
 --     deixa de estar quieta (tutorial espera); o CONTINUAR (ResumeFlow.apply)
 --     abre o salão SEM entrada; setGame zera tudo;
@@ -227,6 +226,12 @@ function M.run()
     t:truthy("Continuar: salao direto", GS.inBossRoom("boss"))
     t:falsy("Continuar: SEM entrada (retomar e retomar NA luta)", BC.isActive())
     GS.setGame(game)
+
+    -- ===== 6b. sons da cinemática: todo arquivo declarado existe =====
+    for code, spec in pairs(BC.SOUNDS) do
+        t:truthy("som " .. code .. " existe em " .. spec[1],
+            love.filesystem.getInfo(spec[1]) ~= nil)
+    end
 
     -- ===== 7. i18n =====
     for _, loc in ipairs({ "pt_BR", "en", "es", "fr", "de" }) do

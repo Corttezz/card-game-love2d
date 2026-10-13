@@ -100,13 +100,23 @@ function M.run()
     HandDeal.update(HandDeal.STAGGER * 5 + HandDeal.TAIL, g)
     t:eq("carta que saiu da mão é ignorada", HandDeal.visibleCount(g), 3)
     t:falsy("termina mesmo assim", HandDeal.isDealing())
-    -- inimigo morto: nada a dar, UI volta direto
+    -- inimigo morto atrás da cortina (morte do chefe): MESA FECHADA — nada
+    -- de carta nem botão por cima do corpo; a próxima cortina reabre
     local gd = { hand = { fakeCard() }, enemy = { isAlive = function() return false end } }
-    HandDeal.setCurtain(true, gd)
+    HandDeal.setCurtain(true, gd, { hud = true })
     HandDeal.setCurtain(false, gd)
     t:falsy("inimigo morto: sem distribuição", HandDeal.isDealing())
-    t:falsy("inimigo morto: UI livre", HandDeal.hidesUI())
+    t:truthy("inimigo morto: mesa fechada", HandDeal.isClosed())
+    t:truthy("inimigo morto: mão não volta", HandDeal.hidesHand())
+    t:truthy("inimigo morto: botões não voltam", HandDeal.hidesUI())
+    t:truthy("inimigo morto: HUD (modo hud) não volta", HandDeal.hidesHud())
+    t:eq("inimigo morto: 0 visíveis", HandDeal.visibleCount(gd), 0)
     t:eq("inimigo morto: carta intacta", gd.hand[1].dissolve, 0)
+    gd.enemy.isAlive = function() return true end
+    HandDeal.setCurtain(true, gd)
+    t:falsy("cortina nova reabre a mesa", HandDeal.isClosed())
+    HandDeal.setCurtain(false, gd)
+    t:truthy("e distribui de novo", HandDeal.isDealing())
     _G.EventManager, _G.Event = savedEM, savedEv
 
     -- ===== 2. cena: viagem → porta → entrada do chefe → distribuição =====

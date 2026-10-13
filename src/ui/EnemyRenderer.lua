@@ -166,6 +166,9 @@ local function idleSpec(enemyId)
 end
 EnemyRenderer._idleSpec = idleSpec
 
+-- fps dos clips de cinemática pedidos por playClip (nome -> fps)
+local clipFps = {}
+
 local function ensureAnim(enemyId, animName)
     if currentAnim and currentEnemyId == enemyId and currentAnimName == animName
        and not currentAnim:isFinished() then
@@ -191,6 +194,11 @@ local function ensureAnim(enemyId, animName)
     elseif animName == "death" then
         fps = DEATH_FPS
         opts = { loop = false }
+    elseif animName ~= "idle" then
+        -- CLIP DE CINEMÁTICA (pouso, rugido, subida... — BossCinematic via
+        -- playClip): one-shot no fps pedido, volta pro idle ao terminar.
+        fps = clipFps[animName] or 10
+        opts = { loop = false, onComplete = backToIdle }
     end
 
     local anim = SpriteAnimation.new(enemyId, animName, "south", fps, opts)
@@ -342,6 +350,20 @@ function EnemyRenderer.triggerAttack(kind, onApex)
             ensureAnim(currentEnemyId, clip)
         end
     end
+end
+
+-- CLIP ONE-SHOT da cinemática (BossCinematic): toca `name` no fps dado e
+-- volta pro idle. Nunca por cima da morte. hasClip diz se está instalado.
+function EnemyRenderer.hasClip(id, name)
+    return id ~= nil and name ~= nil and SpriteAnimation.exists(id, name, "south")
+end
+function EnemyRenderer.playClip(name, fps)
+    if not currentEnemyId or currentAnimName == "death" then return false end
+    if not EnemyRenderer.hasClip(currentEnemyId, name) then return false end
+    clipFps[name] = fps or 10
+    currentAnim = nil
+    ensureAnim(currentEnemyId, name)
+    return currentAnimName == name
 end
 
 function EnemyRenderer.triggerPoison() poisonTime = 0.5 end

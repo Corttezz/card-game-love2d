@@ -158,6 +158,7 @@ local spawnAcc = 0
 local emberAcc = 0
 local time = 0
 local gust = nil   -- rajada nas chamas { k, t, dur } (InteriorFX.gust)
+local pulseBoost = nil   -- coração acelerado { k, t, dur } (InteriorFX.pulseBoost)
 
 -- Recursos gerados uma vez (ImageData → Image, nearest): textura de névoa
 -- pontilhada e vinheta pontilhada, ambas na resolução da arte.
@@ -415,6 +416,10 @@ step = function(dt, hall)
         gust.t = gust.t + dt
         if gust.t >= gust.dur then gust = nil end
     end
+    if pulseBoost then
+        pulseBoost.t = pulseBoost.t + dt
+        if pulseBoost.t >= pulseBoost.dur then pulseBoost = nil end
+    end
     local cfg = HALLS[hall or 1]
     if not cfg then return end
 
@@ -557,6 +562,16 @@ end
 -- pintadas BAIXAREM e tremerem — envelope rápido na subida, decaimento até
 -- `dur`. Só mexe no brilho aditivo das chamas (a pintura fica). O estado
 -- (`gust`) mora no topo do arquivo: `step` tica o relógio dele.
+-- PULSO ACELERADO (BossCinematic, colosso): os `pulses` do salão batem mais
+-- rápido e mais forte por `dur` s (o coração de raízes do hall 5).
+function InteriorFX.pulseBoost(k, dur)
+    pulseBoost = { k = math.max(1, k or 2), t = 0, dur = math.max(0.1, dur or 1) }
+end
+function InteriorFX.pulseBoostK()
+    if not pulseBoost then return 1 end
+    return 1 + (pulseBoost.k - 1) * math.max(0, 1 - pulseBoost.t / pulseBoost.dur)
+end
+
 function InteriorFX.gust(strength, dur)
     gust = { k = math.max(0, math.min(1, strength or 1)), t = 0, dur = math.max(0.05, dur or 0.5) }
 end
@@ -606,9 +621,10 @@ function InteriorFX.draw(hall)
         for i, pz in ipairs(cfg.pulses) do
             local a
             if pz.beat then
-                -- tum (forte) … tum (fraco) … pausa
-                local ph = (time * pz[5]) % 1
-                a = pz[6] * (math.exp(-((ph - 0.08) / 0.05) ^ 2)
+                -- tum (forte) … tum (fraco) … pausa (acelera/engrossa com o boost)
+                local pk = InteriorFX.pulseBoostK()
+                local ph = (time * pz[5] * pk) % 1
+                a = pz[6] * pk * (math.exp(-((ph - 0.08) / 0.05) ^ 2)
                     + 0.6 * math.exp(-((ph - 0.30) / 0.06) ^ 2))
             else
                 a = pz[6] * (0.5 + 0.5 * math.sin(time * pz[5] + i * 1.7))

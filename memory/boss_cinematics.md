@@ -79,7 +79,34 @@ corvos, dessaturação breve, o corpo fica no salão e SÓ DEPOIS cash out.
   inteira; + shake/jiggle/poeira/corvos/penas já existentes. reducedMotion:
   só a vinheta suave. **Sem gradiente liso em nada.**
 
-## Entradas dos outros 5 chefes — PROPOSTA (aguarda aprovação do dono)
+## v3 do rei-carniça (dono, 2ª olhada ao vivo)
+
+- **Olhos**: amêndoa 12×7 (aro de brasa escura, íris, núcleo), pupila em
+  fenda que ACOMPANHA (deriva senoidal + sacadas), halo em blob, calor
+  subindo em blobs finos tremendo, abertura lenta (0.6 s) do meio; rumor
+  grave em LOOP enquanto abertos (`playLoop`, para no exit) + clique a cada
+  piscada.
+- **Rasante = vulto**: passagens com `scale` crescente (0.8 longe → 1.55
+  colada na câmera → pouso), fantasmas com atraso de 1 quadro quando perto,
+  riscos de velocidade longos em 3 degraus pela faixa inteira, brilho
+  próprio aditivo, whoosh de borda (`drawEdge`: blobs na borda de entrada
+  e de saída), rajada empurra a névoa 230 px/s e flareia as chamas; clip
+  PixelLab `dive` a 14 fps quando instalado (senão idle 2.6×).
+- **Clips PixelLab** (`tools/pixellab_boss_cine.py run <id>`): animate_image
+  com frame 0 = idle real (on-model por construção) → `animations/<clip>/south/`.
+  carrion_king: `dive` (rasante), `land` (pouso), `roar` (cartão).
+  `EnemyRenderer.playClip(name, fps)` toca one-shot e volta pro idle;
+  `hasClip` decide. Prancha: `python tools/pixellab_boss_cine.py sheet <id>`.
+- **Som em tudo** (`audio/sfx/boss/`, ElevenLabs FREE — regerar): olhos
+  (ignite + rumble loop + blink click), rasante (wing pass com pitch por
+  distância, crows caw na 1ª), pouso (land impact, feathers settle 0.45 s
+  depois, caw), cartão (sting); morte (death thud no slowmo, feather burst +
+  crows flee no burst, hold ambience em loop no hold). Fila própria
+  `queueSfx` (relógio da cinemática) e `loops` parados no `finish`. Volume
+  pelo grupo sfx do AudioManager. `BossCinematic.SOUNDS` é conferido pelo
+  teste (todo arquivo existe).
+
+## Entradas dos outros 5 chefes — PROPOSTA (dono autorizou implementar)
 
 Mesma espinha (salão vazio → presença → chegada → impacto → cartão → HUD),
 linguagem própria por chefe. Passos novos marcados com ★ (o runner avisa
