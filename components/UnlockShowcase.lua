@@ -586,7 +586,11 @@ function Showcase:_drawItem(it, st)
             love.graphics.setColor(1, 1, 1, 1)
             local fx = self.cardInst and self.cardInst.visualEffect
             if fx == "holo" or fx == "glow" then
-                require("src.ui.HoloShader").draw(img, x, y, fx == "holo" and 0.75 or 0.35, 0, s, s)
+                -- Palco de revelação = interação plena: força de hover e a
+                -- varredura correndo (HoloShader v2; rara prata, lendária ouro).
+                local HoloShader = require("src.ui.HoloShader")
+                HoloShader.draw(img, x, y, HoloShader.strengthFor(fx, 1), 0, s, s, 0, 0,
+                    { kind = (fx == "holo") and 1 or 0, anim = 1 })
             else
                 love.graphics.draw(img, x, y, 0, s, s)
             end

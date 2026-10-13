@@ -876,6 +876,10 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
         -- aplica o shader da edition (foil/holo/polychrome/negative). Tem prioridade
         -- sobre o rarity glow legacy (fx=="holo"/"glow").
         local editionShader, editionStrength = self:_getEditionShader()
+        -- Edition holo segue a MESMA régua da lendária (HoloShader v2): tênue e
+        -- estática em repouso, varredura só na interação. As outras editions
+        -- (foil/polychrome/negative) não mudam.
+        local holoGate = self:_holoGate(hoverAmt)
         local offCanvas = self:_getOffscreenCanvas()
         local prevCanvas = love.graphics.getCanvas()
         love.graphics.setCanvas(offCanvas)
@@ -894,7 +898,10 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
         end
         love.graphics.pop()
         love.graphics.setCanvas(prevCanvas)
-        if editionShader and editionShader.draw then
+        if editionShader == HoloShader then
+            HoloShader.draw(offCanvas, drawX, drawY, HoloShader.strengthFor("holo", holoGate),
+                0, 1, 1, 0, 0, { kind = 1, anim = holoGate })
+        elseif editionShader and editionShader.draw then
             editionShader.draw(offCanvas, drawX, drawY, editionStrength, 0, 1, 1)
         else
             love.graphics.draw(offCanvas, drawX, drawY)
@@ -918,7 +925,12 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
         -- mesh seria desenhado FORA do offCanvas (que tem só w×h pixels),
         -- resultando em canvas vazio → HoloShader.draw em nada → carta invisível.
         -- Fix: push("all") + origin() pra zerar transform dentro do offCanvas.
-        local strength = (fx == "holo") and 0.75 or 0.35
+        --
+        -- Força GATEADA pela interação (HoloShader v2, Out/2026): rara 0 em
+        -- repouso (carta CRUA) → 0.25 no hover; lendária 0.08 (aro tênue,
+        -- estático) → 0.5. A varredura só corre com anim > 0 — idle = estático.
+        local holoGate = self:_holoGate(hoverAmt)
+        local strength = HoloShader.strengthFor(fx, holoGate)
         local offCanvas = self:_getOffscreenCanvas()
         local prevCanvas = love.graphics.getCanvas()
         love.graphics.setCanvas(offCanvas)
@@ -939,7 +951,8 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
         love.graphics.setCanvas(prevCanvas)
         -- Agora aplica HoloShader sobre o canvas já warpado (transform externa
         -- já restaurada — drawX/drawY são coords locais pré-scale).
-        HoloShader.draw(offCanvas, drawX, drawY, strength, 0, 1, 1)
+        HoloShader.draw(offCanvas, drawX, drawY, strength, 0, 1, 1, 0, 0,
+            { kind = (fx == "holo") and 1 or 0, anim = holoGate })
     else
         -- Fallback sem shader (shader não carregou): draw direto
         if self.saleDim then love.graphics.setColor(0.55, 0.52, 0.48, 1) end
@@ -1026,12 +1039,24 @@ function Card:drawDeferredTooltip()
     return true
 end
 
+-- Interação que liga o reflexo rara/lendária (HoloShader v2): o hoverStrength
+-- (0..1, eased) OU a carta selecionada pra jogar — a mesma regra do ícone
+-- animado ("só na interação", dono Jul/2026). Em repouso devolve 0.
+function Card:_holoGate(hoverAmt)
+    local gate = hoverAmt or self.hoverStrength or 0
+    if self.isSelected then gate = 1 end
+    if gate > 1 then gate = 1 elseif gate < 0 then gate = 0 end
+    return gate
+end
+
 -- ===== Editions (Fase 3.2) =====
 
 -- Mapping edition → (shader, strength_default).
+-- holo: a força vem de HoloShader.strengthFor("holo", gate) no draw (0.08 em
+-- repouso → 0.5 na interação); o valor aqui só marca a edition como válida.
 local EDITION_SHADERS = {
     foil       = { shader = FoilShader,       strength = 0.6 },
-    holo       = { shader = HoloShader,       strength = 0.75 },
+    holo       = { shader = HoloShader,       strength = 0.5 },
     polychrome = { shader = PolychromeShader, strength = 0.7 },
     negative   = { shader = NegativeShader,   strength = 1.0 },
 }

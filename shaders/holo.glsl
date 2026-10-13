@@ -1,90 +1,101 @@
 // shaders/holo.glsl
-// Foil/Holo iridescente. Multi-banda rainbow + specular sweep + shimmer FBM.
-// Implementação própria (não derivada do Balatro): foco em sensação Pokemon TCG /
-// Magic foil — bandas que parecem reagir ao "ângulo" simulado pela posição UV.
+// Brilho das cartas raras/lendárias (src/ui/HoloShader.lua) — v2, Out/2026.
+//
+// A v1 (Abr/2026) era um arco-íris multi-banda misturado na carta INTEIRA,
+// animado o tempo todo. Nunca tinha sido vista em jogo (o load() não era
+// chamado); quando foi ligada, lavava a cor da arte e punha a mesma listra em
+// todas as cartas — contra duas regras do dono: "idle = estático" e "foil que
+// lava a cor, nunca".
+//
+// v2 = REFLEXO, não sobreposição de cor:
+//   • só acende no ARO da carta (silhueta medida pelo alpha: faixa de 6 px,
+//     meia-luz até 9 px) e, DENTRO da faixa de varredura, nos pixels de
+//     brilho da arte (luminância alta — metal, papel claro). O resto da
+//     ilustração sai IDÊNTICO ao texel: nada de hue-shift sobre a arte.
+//   • ADITIVO (base + tinta × quantidade), nunca mix — a matiz da arte fica.
+//   • varredura em DEGRAUS na grade de pixels da carta (núcleo 2 px, meia-luz
+//     2 px, rastro em dither 2x2), diagonal "\" como a da carta inédita.
+//     Só se move com `anim` > 0 (hover/selecionada); em repouso é estática.
+//   • rara (kind 0) = glint prata-azulado; lendária (kind 1) = dourado
+//     prismático (3 matizes em degraus ao longo da faixa).
 //
 // Uniforms:
-//   time     (number) — segundos
-//   strength (number) — 0..1 (0 desliga; rare~0.35, legendary~0.75)
+//   time     (number) — segundos (só move a faixa quando anim > 0)
+//   strength (number) — 0..1 (rara ~0.25 no hover; lendária 0.08 repouso → 0.5)
+//   kind     (number) — 0 rara, 1 lendária
+//   anim     (number) — 0..1 (hover/selecionada)
+//   cardSize (vec2)   — tamanho da textura em px (grade da arte)
 
 extern number time;
 extern number strength;
+extern number kind;
+extern number anim;
+extern vec2 cardSize;
 
-// HSV → RGB (gera arco-íris).
-vec3 hsv2rgb(vec3 c) {
-    vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
-    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+float bayer2(vec2 p) {
+    float i = mod(p.x, 2.0) + mod(p.y, 2.0) * 2.0;
+    if (i == 0.0) return 0.125;
+    if (i == 1.0) return 0.625;
+    if (i == 2.0) return 0.875;
+    return 0.375;
 }
 
-// Hash + value noise (compactos, separados de dissolve.glsl pra viver standalone).
-float h21(vec2 p) {
-    p = fract(p * vec2(91.345, 213.567));
-    p += dot(p, p + 33.71);
-    return fract(p.x * p.y);
-}
-float vn(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    vec2 u = f * f * (3.0 - 2.0 * f);
-    float a = h21(i);
-    float b = h21(i + vec2(1.0, 0.0));
-    float c = h21(i + vec2(0.0, 1.0));
-    float d = h21(i + vec2(1.0, 1.0));
-    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
-}
-float fbm2(vec2 p) {
-    float v = 0.0; float a = 0.5;
-    for (int i = 0; i < 3; i++) { v += a * vn(p); p *= 2.13; a *= 0.5; }
-    return v;
+// 1 se algum vizinho a `d` px (4 direções) é transparente — ou seja, o pixel
+// está a menos de `d` px da borda da silhueta.
+float nearEdge(Image tex, vec2 uv, vec2 ts, float d) {
+    float a = 1.0;
+    a = min(a, Texel(tex, uv + vec2( d, 0.0) * ts).a);
+    a = min(a, Texel(tex, uv + vec2(-d, 0.0) * ts).a);
+    a = min(a, Texel(tex, uv + vec2(0.0,  d) * ts).a);
+    a = min(a, Texel(tex, uv + vec2(0.0, -d) * ts).a);
+    return (a < 0.5) ? 1.0 : 0.0;
 }
 
 vec4 effect(vec4 colour, Image tex, vec2 uv, vec2 sc) {
     vec4 base = Texel(tex, uv);
-    if (base.a < 0.02 || strength < 0.01) {
+    if (base.a < 0.02 || strength < 0.005) {
         return base * colour;
     }
+    vec2 ts = 1.0 / cardSize;
+    vec2 px = floor(uv * cardSize);
 
-    // "Pseudo-normal": projeta UV centralizado pra simular curvatura de carta.
-    // Resultado: gradient orientation muda conforme você se move pela superfície.
-    vec2 cuv = uv - 0.5;
-    float r = length(cuv);
-    float angle = atan(cuv.y, cuv.x);
+    // aro: cheio até 6 px da borda, meia-luz até 9
+    float frame = 0.0;
+    if (nearEdge(tex, uv, ts, 6.0) > 0.5) frame = 1.0;
+    else if (nearEdge(tex, uv, ts, 9.0) > 0.5) frame = 0.5;
 
-    // Banda 1 — diagonal lenta (movimento global suave).
-    float band1 = uv.x * 1.6 + uv.y * 0.8 + time * 0.18;
+    // brilhos da arte (só contam dentro da faixa de varredura)
+    float lum = dot(base.rgb, vec3(0.299, 0.587, 0.114));
+    float hi = (frame <= 0.0 && lum > 0.74) ? 0.7 : 0.0;
 
-    // Banda 2 — radial pulsante (foil "respirando" do centro).
-    float band2 = r * 4.0 - time * 0.35;
+    // faixa de varredura em degraus, diagonal "\" (desce 2 px por coluna)
+    float band = 0.0;
+    if (anim > 0.001) {
+        float span = cardSize.x + cardSize.y * 0.5 + 60.0;
+        float pos = mod(time * 34.0, span) - 30.0;
+        float d = (px.x + floor(px.y * 0.5)) - pos;
+        float ad = abs(d);
+        if (ad < 2.0) band = 1.0;
+        else if (ad < 4.0) band = 0.5;
+        else if (d < 0.0 && ad < 10.0) {
+            float k = 1.0 - (ad - 4.0) / 6.0;
+            if (k > bayer2(px)) band = 0.3;
+        }
+    }
 
-    // Banda 3 — angular (rainbow rotaciona ao redor do centro).
-    float band3 = angle / (2.0 * 3.14159265) + time * 0.05;
+    // aro: 0.6 × força (rara no hover 0.15, lendária 0.05 em repouso → 0.3) —
+    // com 0.35 o glint prata da rara sumia dentro do dourado da moldura e
+    // rara/lendária só se distinguiam pela faixa. Faixa: 1.2 × força.
+    float amt = strength * (frame * 0.6 + max(frame, hi) * band * anim * 1.2);
+    if (amt <= 0.0) return base * colour;
 
-    // Combina em hue final (cada banda contribui pra mistura iridescente).
-    float hue = fract(band1 * 0.55 + band2 * 0.25 + band3 * 0.20);
-
-    // Saturação cai um pouco no centro (highlight branco brilhante no meio).
-    float sat = mix(0.95, 0.6, smoothstep(0.0, 0.15, r));
-    vec3 rainbow = hsv2rgb(vec3(hue, sat, 1.0));
-
-    // Specular sweep: faixa diagonal brilhante que cruza a carta lentamente.
-    float sweep = fract(band1 * 0.5);
-    sweep = smoothstep(0.45, 0.5, sweep) * (1.0 - smoothstep(0.5, 0.55, sweep));
-    vec3 specular = vec3(sweep) * 0.5;
-
-    // Shimmer FBM: textura granular fina, animada — simula glitter holográfico.
-    vec2 shimmerUV = uv * 80.0 + vec2(time * 1.3, -time * 0.9);
-    float shimmer = fbm2(shimmerUV);
-    shimmer = smoothstep(0.74, 0.92, shimmer);
-    vec3 sparkle = vec3(shimmer) * 0.8;
-
-    // Mix final: base recebe overlay de rainbow + specular + sparkle, escalado por strength.
-    float overlayMix = strength * 0.42;
-    vec3 outRgb = mix(base.rgb, rainbow, overlayMix);
-    outRgb += (specular + sparkle) * strength;
-
-    // Boost sutil de brilho geral (foil "vivo").
-    outRgb = clamp(outRgb * (1.0 + strength * 0.08), 0.0, 1.6);
-
+    vec3 tint = (kind < 0.5) ? vec3(0.78, 0.88, 1.0) : vec3(1.0, 0.86, 0.50);
+    if (kind > 0.5 && band > 0.0) {
+        // lendária: prismático em degraus ao longo da faixa
+        float h = mod(floor((px.x + px.y * 0.5) / 6.0), 3.0);
+        tint = (h == 0.0) ? vec3(1.0, 0.85, 0.45)
+             : (h == 1.0) ? vec3(1.0, 0.62, 0.72) : vec3(0.58, 0.95, 0.90);
+    }
+    vec3 outRgb = min(base.rgb + tint * amt, vec3(1.0));
     return vec4(outRgb, base.a) * colour;
 }
