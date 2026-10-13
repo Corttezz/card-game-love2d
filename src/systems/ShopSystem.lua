@@ -328,6 +328,37 @@ function ShopSystem:generateOffers()
     for _, o in ipairs(self.currentOffers) do
         o.cost = RunModifiers.price(run, o.cost)
     end
+
+    -- Oferta do dia (Config.Offers.DAILY_SALE): depois do multiplicador do
+    -- selo, pra desconto ser sobre o preco que o jogador veria.
+    self:applyDailySale()
+end
+
+-- OFERTA DO DIA (Loja v3 F4, Out/2026). So no modo "shop" (a recompensa e
+-- gratis), so com a flag ligada. UMA oferta com preco > 0 e sorteada no
+-- stream "shop" do Rng da run (reprodutivel por seed; nunca love.math.random)
+-- e marcada:
+--   offer.saleDiscount = pct      (0.25)
+--   offer.basePrice    = preco cheio (a cena risca este)
+--   offer.cost         = floor(preco x (1 - pct))
+-- Chamado no fim de generateOffers, entao o reroll sorteia OUTRA oferta;
+-- as ofertas vao pro save por exportState (plainCopy leva numeros), logo
+-- Continuar devolve a mesma etiqueta no mesmo objeto.
+function ShopSystem:applyDailySale()
+    local Offers = require("src.core.Config").Offers or {}
+    if not Offers.DAILY_SALE or self.mode ~= "shop" then return nil end
+    local pct = tonumber(Offers.DAILY_SALE_PCT) or 0.25
+    local eligible = {}
+    for i, o in ipairs(self.currentOffers) do
+        if (o.cost or 0) > 0 and not o.saleDiscount then eligible[#eligible + 1] = i end
+    end
+    if #eligible == 0 then return nil end
+    local idx = eligible[Rng.get():random("shop", #eligible)]
+    local o = self.currentOffers[idx]
+    o.basePrice = o.cost
+    o.saleDiscount = pct
+    o.cost = math.floor(o.cost * (1 - pct))
+    return o
 end
 
 function ShopSystem:generateCardOffer(extra)

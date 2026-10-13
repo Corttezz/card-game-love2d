@@ -108,6 +108,9 @@ local SUITES = {
     { group = "smoke", name = "smoke_upgrades" },
     { group = "smoke", name = "smoke_shop" },
     { group = "unit",  name = "test_shop_services" },
+    -- oferta do dia (Loja v3 F4): 1 e so 1 etiqueta com a flag, 0 sem,
+    -- reroll re-sorteia, seed reproduz, save preserva
+    { group = "unit",  name = "test_shop_sale" },
     { group = "smoke", name = "smoke_packs" },
     { group = "smoke", name = "smoke_turn_order" },
     { group = "smoke", name = "smoke_ui_turn" },

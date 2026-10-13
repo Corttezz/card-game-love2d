@@ -376,6 +376,16 @@ Config.Offers = {
     SUSTAIN_WEIGHT_BONUS = 1.0,
     SUSTAIN_MIN_SOURCES = 2,
 
+    -- OFERTA DO DIA (Loja v3 F4, Out/2026): UMA oferta da vitrine da loja
+    -- (carta, reliquia ou pacote), sorteada no stream "shop" do Rng, sai
+    -- DAILY_SALE_PCT mais barata (preco = floor(preco x (1 - pct))) e ganha
+    -- a etiqueta vermelha torta. O reroll sorteia de novo; viaja no save com
+    -- a vitrine. Mexe SO em preco. Default DESLIGADO ate a bateria
+    -- (reports/balance/shop-sale-*, memory/balance_curves.md "Oferta do
+    -- dia"); knob BALANCE_SHOP_SALE=1 em tools/balance_sim.lua.
+    DAILY_SALE     = false,
+    DAILY_SALE_PCT = 0.25,
+
     -- Forja (upgrade de carta) COMPRADA na loja: custo cresce a cada forja
     -- paga na run. A forja da fogueira continua grátis (o custo é a ESCOLHA:
     -- forjar OU descansar).

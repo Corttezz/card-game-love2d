@@ -32,6 +32,7 @@
 --   BALANCE_PLAYER_HP=<n>              vida inicial do jogador
 --   BALANCE_HAND=<n> / BALANCE_MANA=<n>  mao+compra por turno / mana maxima
 --   BALANCE_SEAL=<n> / BALANCE_ENDLESS=<n>   selo da run / andares de endless
+--   BALANCE_SHOP_SALE=1[:pct]          oferta do dia (Config.Offers.DAILY_SALE, 1 oferta por loja -25%)
 --
 -- O CATALOGO INTEIRO e medido: se o UnlockSystem (frente de progressao)
 -- existir, a bateria liga o override "tudo desbloqueado" — senao a amostra
@@ -595,6 +596,16 @@ function M.setup(policy)
                 CO.SUSTAIN_WEIGHT_BONUS = bonus
                 print("[balance_sim] SUSTAIN: vaga garantida em elite/chefe + peso x" .. (1 + bonus) .. " com < " .. (CO.SUSTAIN_MIN_SOURCES or 2) .. " fontes")
             end
+            -- Loja v3 F4: BALANCE_SHOP_SALE=1[:pct] — oferta do dia (UMA
+            -- oferta da loja com desconto, Config.Offers.DAILY_SALE).
+            local ss = os.getenv("BALANCE_SHOP_SALE")
+            if ss and ss ~= "" and ss ~= "0" then
+                local pct = tonumber(ss:match(":([%d%.]+)"))
+                CO.DAILY_SALE = true
+                if pct then CO.DAILY_SALE_PCT = pct end
+                print(("[balance_sim] SHOP_SALE: oferta do dia ligada (%d%% de desconto em 1 oferta por loja)"):format(
+                    (CO.DAILY_SALE_PCT or 0.25) * 100))
+            end
         end
     end
     Autoplay.setPilot(policy or os.getenv("BALANCE_PILOT") or "expert")
@@ -689,7 +700,7 @@ function M.run(runsArg, classArg, seedArg, policyArg)
             enemyPowerAct = os.getenv("BALANCE_ENEMY_POWER_ACT"), bossHpId = os.getenv("BALANCE_BOSS_HP_ID"),
             comboJoker = os.getenv("BALANCE_COMBO_JOKER"), mageFocus = os.getenv("BALANCE_MAGE_FOCUS"),
             roguePoison = os.getenv("BALANCE_ROGUE_POISON"), hand = os.getenv("BALANCE_HAND"),
-            mana = os.getenv("BALANCE_MANA") },
+            mana = os.getenv("BALANCE_MANA"), shopSale = os.getenv("BALANCE_SHOP_SALE") },
         totalActs = require("src.core.Config").TotalActs }
     local agg = M.aggregate(records)
     local text = M.report(records, agg, meta)
