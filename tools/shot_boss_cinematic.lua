@@ -4,7 +4,9 @@
 -- e a sequência de entrada + morte tocando, quadro a quadro, num canvas
 -- falsificado (nada precisa aparecer na janela — roda com CARDGAME_HEADLESS=1).
 --
---   love . test_one shot_boss_cinematic [intro|death|both|arrival]
+--   love . test_one shot_boss_cinematic [intro|death|both|arrival|phases]
+--     phases = a LUTA por fases do chefe (rainha do eclipse): fase 1, íris
+--     olhando, virada pelo funil real de dano, eclipse fechado + halo
 --     (pelo test_one: não há entrada própria no dispatcher do main.lua —
 --     `love . shot_boss_cinematic` abre o JOGO normal e fica esperando)
 --     arrival = o caminho REAL do andar do chefe: a cena caminha até o
@@ -212,6 +214,51 @@ function M.run(mode)
             return sawIntro and not BossCinematic.isActive() and not HandDeal.isBusy()
         end, 0.6)
         for _, e in ipairs(events) do print("[shot_boss_cinematic] " .. e) end
+        print("[shot_boss_cinematic] save dir: " .. saveDir)
+        love.event.quit()
+        return
+    end
+
+    if mode == "phases" then
+        -- LUTA por fases (rainha do eclipse, ato 6): salão direto, luta
+        -- QUIETA (fase 1), a íris olhando, a VIRADA de fase pelo funil real
+        -- de dano (Enemy:_checkPhase marca, BossCinematic observa) e o
+        -- eclipse fechado — boss_cine_phases_NNN.png + timeline.
+        GameplayScene._debugForceBossEntered()
+        for _ = 1, 60 do step() end
+        local lines, n = {}, 0
+        local function shot(label)
+            local path = ("boss_cine_phases_%03d.png"):format(n)
+            draw(path)
+            lines[#lines + 1] = ("%03d t=%.2f step=%s lvl=%.2f dawn=%.2f"):format(
+                n, simT - 100, label, BossCinematic.eclipseLevel(), BossCinematic.eclipseDawn())
+            log(path .. " " .. label)
+            n = n + 1
+        end
+        local function run(secs) for _ = 1, math.floor(secs / DT + 0.5) do step() end end
+        shot("fase1")
+        if BossCinematic._debugGaze then BossCinematic._debugGaze() end
+        run(0.7)
+        shot("fase1_iris")
+        run(1.2)
+        -- virada: dano até cruzar a fração da fase (kit intocado: o dado diz onde)
+        local e = game.enemy
+        local ph = e.kit and e.kit.phases and e.kit.phases[1]
+        local at = (ph and ph.at) or 0.5
+        e.armor = 0
+        e:takeDamage(math.floor(e.maxHealth * (1 - at)) + 1)
+        game:settleEnemyDamage(nil)
+        run(0.25)
+        shot("virada")
+        run(0.9)
+        shot("virada_fim")
+        run(2.5)
+        shot("fase2")
+        run(1.5)
+        shot("fase2_halo")
+        love.filesystem.write("boss_cine_phases_timeline.txt", table.concat(lines, "\n"))
+        print(("[shot_boss_cinematic] phases: %d quadros (fase do kit = %s)"):format(
+            n, tostring(e._phaseIdx)))
         print("[shot_boss_cinematic] save dir: " .. saveDir)
         love.event.quit()
         return

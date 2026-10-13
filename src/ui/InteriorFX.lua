@@ -166,6 +166,13 @@ local pulseBoost = nil   -- coração acelerado { k, t, dur } (InteriorFX.pulseB
 -- engrossa a névoa do chão + uma camada na FRENTE do chefe (drawFront).
 InteriorFX.fogHook = nil
 local veilCur = 0
+-- ECLIPSE DA RAINHA (Out/2026, frente rainha-eclipse; só o salão 6):
+-- `level` 0..1 = o eclipse FECHOU (2ª fase do kit: a luz do vão morre em
+-- degraus, o chão/névoa viram violeta, as poeiras do feixe ficam magenta);
+-- `dawn` 0..1 = ALVORADA (rainha morta: o vão e o mármore acendem em luz
+-- morna). Quem decide é BossCinematic (observa a fase do kit); aqui só se
+-- desenha. Em coordenadas da ARTE, como tudo neste módulo.
+local eclipseLvl, eclipseDawn = 0, 0
 
 -- Recursos gerados uma vez (ImageData → Image, nearest): textura de névoa
 -- pontilhada e vinheta pontilhada, ambas na resolução da arte.
@@ -310,6 +317,7 @@ end
 function InteriorFX.clear()
     gust = nil
     veilCur = 0
+    eclipseLvl, eclipseDawn = 0, 0
     for i = #particles, 1, -1 do particles[i] = nil end
     spawnAcc = 0
     emberAcc = 0
@@ -569,6 +577,13 @@ local function drawParticles(tr, front)
                 cell(ox, oy, s, px, py, 1)
             else
                 local tw = 0.65 + 0.35 * math.sin(time * 2.2 + p.phase)
+                if k == "motes" and (eclipseLvl > 0.01 or eclipseDawn > 0.01) then
+                    -- poeira do feixe: magenta no eclipse, âmbar na alvorada
+                    c = { c[1] + (0.85 - c[1]) * eclipseLvl, c[2] + (0.30 - c[2]) * eclipseLvl,
+                          c[3] + (0.75 - c[3]) * eclipseLvl }
+                    c = { c[1] + (1.0 - c[1]) * eclipseDawn, c[2] + (0.82 - c[2]) * eclipseDawn,
+                          c[3] + (0.50 - c[3]) * eclipseDawn }
+                end
                 love.graphics.setColor(c[1], c[2], c[3], a * tw * (front and 0.95 or 0.7))
                 cell(ox, oy, s, px, py, 1)
             end
@@ -598,6 +613,54 @@ function InteriorFX.gustLevel()
     local p = gust.t / gust.dur
     local env = (p < 0.15) and (p / 0.15) or (1 - (p - 0.15) / 0.85)
     return gust.k * math.max(0, env)
+end
+
+-- ECLIPSE (rainha, salão 6): nível de fechamento e alvorada, 0..1 cada.
+function InteriorFX.setEclipse(level, dawn)
+    eclipseLvl = math.max(0, math.min(1, level or 0))
+    eclipseDawn = math.max(0, math.min(1, dawn or 0))
+end
+function InteriorFX.eclipseState() return eclipseLvl, eclipseDawn end
+
+-- O que o eclipse faz com a cor da névoa do chão do salão 6: violeta no
+-- fechamento, morna na alvorada (fonte única pra draw e drawFront).
+local function eclipseFogColor(fc)
+    if eclipseLvl <= 0.01 and eclipseDawn <= 0.01 then return fc end
+    local r = fc[1] + (0.42 - fc[1]) * eclipseLvl
+    local g = fc[2] + (0.16 - fc[2]) * eclipseLvl
+    local b = fc[3] + (0.50 - fc[3]) * eclipseLvl
+    r = r + (0.82 - r) * eclipseDawn
+    g = g + (0.66 - g) * eclipseDawn
+    b = b + (0.46 - b) * eclipseDawn
+    return { r, g, b }
+end
+
+-- Fechamento/alvorada sobre a PINTURA do salão 6: a luz do vão morre em 4
+-- DEGRAUS (faixa escura sobre o feixe, x 160..240 da arte — as bordas caem
+-- na parede escura, nunca no branco — e sobre o reflexo no mármore); na
+-- alvorada o feixe pintado e o reflexo são redesenhados em aditivo morno
+-- (a própria arte, não um disco).
+local function drawEclipseOnHall(hall, img, tr)
+    if hall ~= 6 then return end
+    local s, ox, oy = tr.scale, tr.ox, tr.oy
+    if eclipseLvl > 0.01 then
+        local q = math.floor(eclipseLvl * 4 + 1e-6) / 4
+        if q > 0 then
+            love.graphics.setColor(0.05, 0.01, 0.07, 0.80 * q)
+            love.graphics.rectangle("fill", ox + 160 * s, oy - 4 * s, 80 * s, 196 * s)
+            love.graphics.setColor(0.05, 0.01, 0.07, 0.60 * q)
+            love.graphics.rectangle("fill", ox + 148 * s, oy + 192 * s, 104 * s, 70 * s)
+        end
+    end
+    if eclipseDawn > 0.01 and img then
+        love.graphics.setBlendMode("add")
+        local a = 0.55 * eclipseDawn * (0.9 + 0.1 * math.sin(time * 0.8))
+        love.graphics.setColor(1.0, 0.86, 0.62, a)
+        love.graphics.draw(img, quadFor(hall, "dawnBeam", { 170, 0, 62, 196 }), ox + 170 * s, oy, 0, s, s)
+        love.graphics.setColor(1.0, 0.80, 0.55, a * 0.7)
+        love.graphics.draw(img, quadFor(hall, "dawnFloor", { 140, 190, 120, 66 }), ox + 140 * s, oy + 190 * s, 0, s, s)
+        love.graphics.setBlendMode("alpha")
+    end
 end
 
 local function flicker(i)
@@ -653,9 +716,12 @@ function InteriorFX.draw(hall)
         love.graphics.setBlendMode("alpha")
     end
 
+    -- 1b) eclipse da rainha (salão 6): vão morrendo em degraus / alvorada
+    drawEclipseOnHall(hall, img, tr)
+
     -- 2) névoa rente ao chão: duas camadas pontilhadas em sentidos opostos
     local fog = cfg.fog
-    local fc = fog.color
+    local fc = eclipseFogColor(fog.color)
     -- névoa de intenção: mais densa e mais alta (sobe do chão)
     local veilH = 1 + 0.8 * veilCur
     local sy = fog.h * veilH / FOG_H
@@ -700,7 +766,7 @@ function InteriorFX.drawFront(hall, clipTop)
     if veilCur > 0.01 and fogImg then
         local cfg = HALLS[hall or 1]
         local fog = cfg.fog
-        local fc = fog.color
+        local fc = eclipseFogColor(fog.color)
         local s, ox, oy = tr.scale, tr.ox, tr.oy
         local reduced = _G.gameSettings and _G.gameSettings.reducedMotion
         local hh = fog.h * 2.2

@@ -355,6 +355,65 @@ function M.run()
 
     end
 
+    -- ===== 6d-b. RAINHA: luta por fases + alvorada no SALAO (InteriorFX) =====
+    do
+        local IFX = require("src.ui.InteriorFX")
+        local qd = Data.eclipse_queen
+        _G.gameSettings.reducedMotion = false
+        BC.reset()
+        local gq = fakeBoss("eclipse_queen")
+        gq.enemy.health, gq.enemy.maxHealth, gq.enemy._phaseIdx = 300, 300, 0
+        BC.startIntro(gq)
+        BC.setStage(stage)
+        pump(BC.SKIP_AFTER + 0.2, gq)
+        t:truthy("rainha (luta): entrada pulada", BC.skip())
+
+        -- LUTA: a fase do kit fecha o eclipse do salao SEM cinematica
+        for _ = 1, 30 do BC.update(DT, gq, { inHall = true }) end
+        t:falsy("rainha: luta nao e cinematica", BC.isActive())
+        gq.enemy._phaseIdx = 1      -- Enemy:_checkPhase marcou a 2a fase (kit intocado)
+        BC.update(DT, gq, { inHall = true })
+        t:truthy("rainha: virada de fase tem instante proprio (phaseShift)", BC._debug().fx.phaseShift ~= nil)
+        t:falsy("rainha: a virada nao trava a entrada do jogador", BC.lockInput())
+        for _ = 1, 180 do BC.update(DT, gq, { inHall = true }) end
+        t:truthy("rainha: eclipse fechado na 2a fase (" .. string.format("%.2f", BC.eclipseLevel()) .. ")",
+            BC.eclipseLevel() > 0.9)
+        local lvl, dawn0 = IFX.eclipseState()
+        t:truthy("rainha: o salao 6 recebeu o fechamento (InteriorFX.setEclipse)", lvl > 0.9)
+        t:near("rainha: sem alvorada enquanto viva", dawn0, 0, 1e-3)
+        t:falsy("rainha: instante da virada acabou sozinho", BC._debug().fx.phaseShift ~= nil)
+
+        -- MORTE: cinzas + alvorada, e a alvorada FICA (cash out no salao)
+        gq.enemy.health = 0
+        gq._deathHandled = true
+        BC.update(DT, gq, { inHall = true })
+        t:truthy("rainha: morte detectada", BC.isActive() and BC.phase() == "death")
+        runUntilDone(gq, BC.duration(qd.death) + 2)
+        t:falsy("rainha: morte terminou", BC.isActive())
+        t:near("rainha: alvorada completa depois da morte", BC.eclipseDawn(), 1, 1e-3)
+        BC.update(DT, gq, { inHall = true })
+        local _, dawn1 = IFX.eclipseState()
+        t:truthy("rainha: alvorada persiste no salao depois da cinematica", dawn1 > 0.99)
+
+        -- CONTINUAR com a rainha morta: nasce em alvorada, sem reencenar
+        BC.reset()
+        local gc = fakeBoss("eclipse_queen")
+        gc.enemy.health, gc.enemy.maxHealth, gc.enemy._phaseIdx = 0, 300, 1
+        gc._deathHandled = true
+        BC.markDeathSeen(gc)
+        BC.setStage(stage)
+        for _ = 1, 5 do BC.update(DT, gc, { inHall = true }) end
+        t:falsy("rainha: Continuar morta nao reencena", BC.isActive())
+        t:near("rainha: Continuar morta = alvorada pronta", BC.eclipseDawn(), 1, 1e-3)
+
+        -- reset zera o estado do salao (outro chefe/outra run nao herda)
+        BC.reset()
+        local lvl2, dawn2 = IFX.eclipseState()
+        t:near("rainha: reset zera o eclipse do salao (nivel)", lvl2, 0, 1e-3)
+        t:near("rainha: reset zera o eclipse do salao (alvorada)", dawn2, 0, 1e-3)
+        IFX.clear()
+    end
+
     -- ===== 7. i18n: todo chefe com roteiro tem nome + epiteto nos 5 locales =====
     for _, loc in ipairs({ "pt_BR", "en", "es", "fr", "de" }) do
         local ok, tbl = pcall(require, "src.i18n.locales.boss_cinematics." .. loc)

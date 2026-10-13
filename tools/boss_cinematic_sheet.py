@@ -93,7 +93,8 @@ def main():
     #   python tools/boss_cinematic_sheet.py <save_dir> <out_dir> <tag>
     tag = ("_" + sys.argv[3]) if len(sys.argv) > 3 else ""
     # arrival = porta → entrada → distribuição das cartas (shot_boss_cinematic arrival)
-    for phase, n, cols in (("intro", 12, 4), ("death", 6, 3), ("arrival", 16, 4)):
+    # phases = luta por fases (shot_boss_cinematic phases): 6 instantes
+    for phase, n, cols in (("intro", 12, 4), ("death", 6, 3), ("arrival", 16, 4), ("phases", 6, 3)):
         frames = frames_of(save_dir, phase)
         if not frames:
             print("[sheet] fase sem quadros:", phase)
