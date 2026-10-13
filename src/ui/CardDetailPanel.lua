@@ -35,6 +35,7 @@
 --     staleHint = string,  -- rodapé discreto quando stale
 --     chrome    = bool,    -- desenha o painel de fundo (default true)
 --     parchment = bool,    -- tinta sobre papel (pergaminho da Loja v3)
+--     artMaxH   = number,  -- teto da altura da arte (pergaminho curto)
 --   }
 
 local CardDetailPanel = {}
@@ -394,6 +395,9 @@ function CardDetailPanel.draw(rect, payload, opts)
     if descLineCount <= 3 then artFrac = 0.60
     elseif descLineCount <= 6 then artFrac = 0.52 end
     local artH = math.floor((h - footerH) * artFrac)
+    -- Loja v3: o pergaminho limita a arte (a carta grande repetia a da
+    -- prateleira e roubava o espaço do texto, que é quem decide).
+    if opts.artMaxH then artH = math.min(artH, math.floor(opts.artMaxH)) end
     local artY = y + PAD
     local artW = textW
     if payload.kind == "card" then

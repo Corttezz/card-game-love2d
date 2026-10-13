@@ -1274,6 +1274,12 @@ function CardRewardScreen:_diceHelpRect()
     local r = 9
     local cx = b.x + b.width + 13
     local cy = b.y + math.floor(b.height / 2)
+    -- Loja v3: o "?" dos dados mora no canto da placa do cabeçalho, ao lado
+    -- do título (nunca solto no balcão).
+    if self.mode == "shop" and self.scene and self.scene.L and self.scene.L.diceHelp then
+        local d = self.scene.L.diceHelp
+        cx, cy = d.x + math.floor(d.w / 2), d.y + math.floor(d.h / 2)
+    end
     local rect = require("src.ui.HelpBadge").rect(cx, cy, r)
     rect.cx, rect.cy, rect.r = cx, cy, r
     return rect
@@ -2318,7 +2324,7 @@ end
 -- ============================================================================
 -- `rect`/`parchment` (Loja v3): o ShopScene chama com o miolo do pergaminho
 -- e a paleta tinta-sobre-papel; sem argumentos é a coluna escura de sempre.
-function CardRewardScreen:_drawDetailPanel(rect, parchment)
+function CardRewardScreen:_drawDetailPanel(rect, parchment, artMaxH)
     local dp = rect or self.detailPanel
     if not dp then return end
 
@@ -2350,6 +2356,7 @@ function CardRewardScreen:_drawDetailPanel(rect, parchment)
         canAfford = canAfford,
         chrome    = not parchment,
         parchment = parchment,
+        artMaxH   = artMaxH,
         footerH   = footerH,
         emptyHint = I18n.t("reward.detail_empty", nil,
             "Passe o mouse sobre uma oferta para ver os detalhes"),

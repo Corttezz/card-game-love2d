@@ -15,7 +15,7 @@ poeira) são desenhadas pixel a pixel aqui, na mesma paleta sépia: abaixo de
 
 Saídas em assets/sprites/shop/:
   shelf_top_{left,mid,right}.png, shelf_bottom_{left,mid,right}.png,
-  counter_{left,mid,right}.png, bell.png (4 quadros 32x32 lado a lado),
+  bell.png (4 quadros 32x32 lado a lado),
   ledger.png (2 quadros 40x32: fechado, entreaberto), scroll_frame.png
   (9-slice), card_stand_{1,2,3}.png, price_tag.png, nail.png, hook.png,
   dust_mark.png
@@ -50,11 +50,6 @@ SPECS = {
         desc="long dark wooden shelf board seen from the front, flat top "
              "surface, plank with wood grain and three iron nails along the "
              "front edge, straight horizontal, fills the full width"),
-    "counter": dict(
-        w=256, h=72,
-        desc="front of a wooden merchant counter, flat top plank with a lighter "
-             "worn edge, dark paneled front with iron studs, straight "
-             "horizontal, fills the full width"),
     "bell": dict(
         w=32, h=32,
         desc="small brass service bell on a dark wooden base, round dome with "
@@ -252,9 +247,10 @@ def install_scroll():
 
 def install():
     _ensure()
+    # (o balcão saiu do PixelLab: o tampo é desenhado liso pela cena — a arte
+    # gerada tinha cerca/grade na frente e o rótulo não se lia por cima)
     for name, prefix, cap in (("shelf_top", "shelf_top", 40),
-                              ("shelf_bottom", "shelf_bottom", 40),
-                              ("counter", "counter", 48)):
+                              ("shelf_bottom", "shelf_bottom", 40)):
         if os.path.exists(os.path.join(RAW_DIR, f"{name}.png")):
             _slice3(name, prefix, cap)
     if os.path.exists(os.path.join(RAW_DIR, "bell.png")):
@@ -414,6 +410,47 @@ def pixels():
     print("[pixels] card_stand_1..3, price_tag, nail, hook, dust_mark")
 
 
+# ============================================================================
+# prancha de quadros (prova visual da F2): junta os PNGs do screenshot_shop fx
+# ============================================================================
+def sheet(tag, out_name, names, cols=3, scale=0.5):
+    """names: lista de sufixos (fx_buy_0.png...) no save dir do LOVE."""
+    from PIL import Image, ImageDraw
+    save = os.path.join(os.environ.get("APPDATA", ""), "LOVE",
+                        os.environ.get("CARDGAME_IDENTITY", "card-game"))
+    ims = []
+    for n in names:
+        p = os.path.join(save, tag + n)
+        if os.path.exists(p):
+            im = Image.open(p).convert("RGB")
+            im = im.resize((int(im.width * scale), int(im.height * scale)), Image.LANCZOS)
+            ims.append((n, im))
+        else:
+            print("[sheet] faltando", p)
+    if not ims:
+        return
+    w, h = ims[0][1].size
+    rows = (len(ims) + cols - 1) // cols
+    out = Image.new("RGB", (cols * (w + 8) + 8, rows * (h + 28) + 8), (30, 22, 16))
+    d = ImageDraw.Draw(out)
+    for i, (n, im) in enumerate(ims):
+        x = 8 + (i % cols) * (w + 8)
+        y = 8 + (i // cols) * (h + 28)
+        out.paste(im, (x, y + 20))
+        d.text((x + 2, y + 4), n, fill=(216, 201, 163))
+    dest = os.path.join(RAW_DIR, out_name)
+    out.save(dest)
+    print("[sheet]", dest, out.size)
+
+
+def cmd_sheet(tag):
+    sheet(tag, "lojacena_f2_compra.png",
+          ["fx_buy_0.png"] + [f"fx_buy_{i}.png" for i in range(1, 7)] +
+          ["fx_deny_1.png", "fx_deny_2.png", "fx_deny_3.png"], cols=3, scale=0.5)
+    sheet(tag, "lojacena_f2_sino.png",
+          [f"fx_bell_{i}.png" for i in range(1, 9)], cols=3, scale=0.5)
+
+
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "help"
     if cmd == "queue":
@@ -424,5 +461,7 @@ if __name__ == "__main__":
         install()
     elif cmd == "pixels":
         pixels()
+    elif cmd == "sheet":
+        cmd_sheet(sys.argv[2] if len(sys.argv) > 2 else "")
     else:
         print(__doc__)

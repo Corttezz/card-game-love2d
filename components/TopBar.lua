@@ -104,6 +104,13 @@ end
 --
 -- O FloatingText é global (atualizado/desenhado em main.lua:1333/1462), então
 -- funciona em QUALQUER estado — inclusive por cima da loja e do cash out.
+-- Pisca o NÚMERO do ouro na direção dada (+1 ganho, -1 gasto/recusa) sem
+-- que o valor mude — a loja usa quando o jogador tenta comprar sem ouro
+-- (Loja v3: etiqueta treme, cofre pisca, nada de toast).
+function TopBar:flashGold(dir)
+    self._goldFlash = { dir = ((dir or -1) > 0) and 1 or -1, t = 0.6 }
+end
+
 function TopBar:_onGoldDelta(delta)
     if delta > 0 then
         local mag = math.min(1, delta / 25)

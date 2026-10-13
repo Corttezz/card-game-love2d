@@ -154,6 +154,7 @@ function ShopScene.new(screen)
     self.t = 0
     self.light = { dx = 0, target = 0, timer = 0 }
     self.bell = { ringing = 0 }
+    self.cTags = { bell = { angle = 0, vel = 0 }, ledger = { angle = 0, vel = 0 } }
     self.ledgerHover = 0
     self.diceHover = 0
     self.bellHover = 0
@@ -321,6 +322,11 @@ function ShopScene:update(dt)
     local overBell = not blocked and inRect(C.bell, mx, my)
     local overDice = not blocked and self.screen.diceButton ~= nil and inRect(C.dice, mx, my)
     local overLedger = not blocked and inRect(C.ledger, mx, my)
+    if overBell and not self._bellHot and not reducedMotion() then self.cTags.bell.vel = self.cTags.bell.vel + 2.2 end
+    if overLedger and not self._ledgerHot and not reducedMotion() then self.cTags.ledger.vel = self.cTags.ledger.vel + 2.2 end
+    self._bellHot, self._ledgerHot = overBell, overLedger
+    ShelfItem.stepPendulum(self.cTags.bell, dt)
+    ShelfItem.stepPendulum(self.cTags.ledger, dt)
     self.bellHover = lerpHover(self.bellHover, overBell)
     self.diceHover = lerpHover(self.diceHover, overDice)
     self.ledgerHover = lerpHover(self.ledgerHover, overLedger)
@@ -394,10 +400,7 @@ function ShopScene:onDenied(offer)
     local it = offer and self.bySlot[offer._slot]
     if it then it:deny() end
     local tb = _G.topBar
-    if tb then
-        if tb.flashGold then tb:flashGold(-1)
-        else tb._goldFlash = { dir = -1, t = 0.6 } end
-    end
+    if tb and tb.flashGold then tb:flashGold(-1) end
 end
 
 -- Sino: as prateleiras deslizam pra fora (esquerda) e voltam repostas, um
@@ -566,7 +569,7 @@ function ShopScene:_drawSign()
     -- pro layout pra validação e hit-test).
     local HelpBadge = require("src.ui.HelpBadge")
     local r = 9
-    local cx = math.min(tx + tw + 16 + lineW + 16, s.x + s.w - r - 4)
+    local cx = math.min(tx + tw + 16 + lineW + 16, L.diceHelp.x - r - 8)
     local cy = midY
     local h = { x = cx - r - 3, y = cy - r - 3, w = r * 2 + 6, h = r * 2 + 6 }
     L.help = h
@@ -625,7 +628,9 @@ function ShopScene:_drawShelves(list)
     for _, it in ipairs(cards) do it:drawObject(self:_itemCtx(it)) end
     for _, it in ipairs(cards) do
         if not it.sold then it:drawStand(true, 1) end
-        it:drawTag(self:_itemCtx(it))
+        local ctx = self:_itemCtx(it)
+        it:drawTag(ctx)
+        it:drawLabel(ctx)
     end
 
     -- ===== gancho (sob a tábua de cima) + prateleira de baixo =====
@@ -654,42 +659,50 @@ function ShopScene:_drawShelves(list)
             NavCursor.target("offer:" .. it.slot, it.rect.x, it.rect.y, it.rect.w, it.rect.h)
         end
     end
-    for _, it in ipairs(relics) do it:drawTag(self:_itemCtx(it)) end
-    for _, it in ipairs(packs) do it:drawTag(self:_itemCtx(it)) end
+    for _, it in ipairs(relics) do
+        local ctx = self:_itemCtx(it)
+        it:drawTag(ctx)
+        it:drawLabel(ctx)
+    end
+    for _, it in ipairs(packs) do
+        local ctx = self:_itemCtx(it)
+        it:drawTag(ctx)
+        it:drawLabel(ctx)
+    end
     love.graphics.setColor(1, 1, 1, 1)
-end
-
--- Rótulo a giz na frente do balcão, sob o objeto (informação ANCORADA).
-function ShopScene:_chalkLabel(text, cx, color, maxW)
-    local C = self.L.counter
-    local font, fitted = TextFit.fit(text, clamp(math.floor(C.labelH * 0.5), 7, 10), maxW)
-    love.graphics.setFont(font)
-    local tw = font:getWidth(fitted)
-    local y = C.labelY + math.floor((C.labelH - font:getHeight()) / 2)
-    Palette.set(Palette.INK, 0.7)
-    love.graphics.print(fitted, math.floor(cx - tw / 2) + 1, y + 1)
-    Palette.set(color or Palette.PARCHMENT_LIGHT, 0.9)
-    love.graphics.print(fitted, math.floor(cx - tw / 2), y)
 end
 
 function ShopScene:_drawCounter()
     local L = self.L
     local C = L.counter
     local sc = self.screen
-    -- tampo + frente
-    local top = C.plank.y
-    if not drawStrip("counter", C.x, top, C.w, C.y + C.h - top, true) then
-        local wood = Palette.lerp(Palette.RUST, Palette.INK, 0.5)
-        Palette.set(Palette.darken(wood, 0.6))
-        love.graphics.rectangle("fill", C.x, C.plank.y + C.plank.h, C.w, C.frontH)
-        Palette.set(wood)
-        love.graphics.rectangle("fill", C.x, C.plank.y, C.w, C.plank.h)
-        Palette.set(Palette.lerp(Palette.RUST, Palette.AGED_GOLD_DARK, 0.5))
-        love.graphics.rectangle("fill", C.x, C.plank.y, C.w, 1)
-    end
-
-    local eco = sc.game and sc.game.economySystem
     local mx, my = self:_mouseLocal()
+    local eco = sc.game and sc.game.economySystem
+
+    -- TAMPO LISO: tábua clara em cima, frente escura chapada, sombra sob o
+    -- beiral. (A arte gerada tinha cerca/grade na frente e nada se lia por
+    -- cima — anti-pattern "somar textura sob texto".)
+    local P, F = C.plank, C.front
+    local wood = Palette.lerp(Palette.RUST, Palette.INK, 0.45)
+    local woodTop = Palette.lerp(Palette.RUST, Palette.AGED_GOLD_DARK, 0.45)
+    Palette.set(Palette.darken(wood, 0.55))
+    love.graphics.rectangle("fill", F.x, F.y, F.w, F.h)
+    for i = 1, 3 do
+        Palette.set(Palette.INK, 0.25 - i * 0.06)
+        love.graphics.rectangle("fill", F.x, F.y + i * 2 - 2, F.w, 2)
+    end
+    Palette.set(wood)
+    love.graphics.rectangle("fill", P.x, P.y, P.w, P.h)
+    Palette.set(woodTop)
+    love.graphics.rectangle("fill", P.x, P.y, P.w, 2)
+    Palette.set(Palette.AGED_GOLD_LIGHT, 0.16)
+    love.graphics.rectangle("fill", P.x + math.floor(P.w * 0.3), P.y, math.floor(P.w * 0.4), 1)
+    Palette.set(Palette.INK)
+    love.graphics.rectangle("fill", P.x, P.y + P.h - 1, P.w, 1)
+    -- cantoneiras de ferro nas pontas da frente
+    Palette.set(Palette.STEEL)
+    love.graphics.rectangle("fill", F.x + 6, F.y + 4, 4, F.h - 8)
+    love.graphics.rectangle("fill", F.x + F.w - 10, F.y + 4, 4, F.h - 8)
 
     -- ===== sino (novas ofertas) =====
     local bellR = C.bell
@@ -701,7 +714,7 @@ function ShopScene:_drawCounter()
         local seq = { 2, 3, 2, 4, 3, 2, 1 }
         frame = seq[math.min(#seq, 1 + math.floor((0.9 - self.bell.ringing) * 12))] or 1
     end
-    local lift = -self.bellHover * 2
+    local lift = -self.bellHover * 3
     if bell then
         local fw, fh = bell:getWidth() / 4, bell:getHeight()
         local k = bellR.w / fw
@@ -712,27 +725,25 @@ function ShopScene:_drawCounter()
         Palette.set(canRing and Palette.AGED_GOLD or Palette.STEEL)
         love.graphics.ellipse("fill", bellR.x + bellR.w / 2, bellR.y + bellR.h * 0.55 + lift, bellR.w * 0.4, bellR.h * 0.35)
     end
-    -- preço do sino a giz (o nome vai no tooltip; "Novas ofertas" inteiro não
-    -- cabe sob um objeto de 40px sem atropelar o vizinho)
-    self:_chalkLabel("$" .. tostring(cost), bellR.x + bellR.w / 2,
-        canRing and Palette.PARCHMENT_LIGHT or Palette.lighten(Palette.BLOOD, 0.3),
-        math.max(24, C.dice.x - bellR.x - 6))
+    -- etiqueta do sino pendurada do beiral do tampo (a MESMA das prateleiras)
+    local bt = C.bellTag
+    ShelfItem.drawTagCard(bt, bt.ax, bt.ay, self.cTags.bell.angle, 1,
+        { afford = canRing, text = "$" .. tostring(cost) })
 
     -- ===== copo de dados =====
     if sc.diceButton then
         local dr = C.dice
-        local P = getProps()
+        local Pp = getProps()
         local drawn = false
-        if P and P.drawDiceCup then
+        if Pp and Pp.drawDiceCup then
             local run = sc._run and sc:_run() or nil
             local ScribeDice = require("src.systems.ScribeDice")
             local st = ScribeDice.state(run)
-            local ok, err = pcall(P.drawDiceCup, dr, { hover = self.diceHover, used = ScribeDice.isUsed(run),
+            local ok, err = pcall(Pp.drawDiceCup, dr, { hover = self.diceHover, used = ScribeDice.isUsed(run),
                 total = st and st.total or nil, run = run, t = self.t, reduced = reducedMotion() })
             if ok then drawn = true else print("[ShopScene] ShopProps.drawDiceCup: " .. tostring(err)) end
         end
         if not drawn then
-            -- placeholder: copo de couro deitado com dois pontinhos
             local cup = Palette.lerp(Palette.RUST, Palette.INK, 0.35)
             Palette.set(Palette.INK)
             love.graphics.rectangle("fill", dr.x + dr.w * 0.2 - 1, dr.y + dr.h * 0.25 - 1 - self.diceHover * 2, dr.w * 0.6 + 2, dr.h * 0.75 + 2)
@@ -751,7 +762,7 @@ function ShopScene:_drawCounter()
         local fw, fh = ledger:getWidth() / 2, ledger:getHeight()
         local k = math.min(lr.w / fw, lr.h / fh)
         love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.draw(ledger, quad("ledger", open and fw or 0, 0, fw, fh, ledger:getWidth(), ledger:getHeight()), lr.x + (lr.w - fw * k) / 2, lr.y + lr.h - fh * k - self.ledgerHover * 2, 0, k, k)
+        love.graphics.draw(ledger, quad("ledger", open and fw or 0, 0, fw, fh, ledger:getWidth(), ledger:getHeight()), lr.x + (lr.w - fw * k) / 2, lr.y + lr.h - fh * k - self.ledgerHover * 3, 0, k, k)
     else
         Palette.set(Palette.INK)
         love.graphics.rectangle("fill", lr.x - 1, lr.y - 1, lr.w + 2, lr.h + 2)
@@ -760,24 +771,17 @@ function ShopScene:_drawCounter()
         Palette.set(Palette.PARCHMENT_LIGHT)
         love.graphics.rectangle("fill", lr.x + 2, lr.y + lr.h - 4, lr.w - 4, 2)
     end
-    if sc.skipButton then
-        -- rótulo centrado no LIVRO, empurrado pra esquerda se bater na ponta
-        -- do balcão; nunca invade a zona do copo de dados
-        local zoneX0 = C.dice.x + C.dice.w + 8
-        local zoneW = C.x + C.w - 6 - zoneX0
-        local txt = sc.skipButton.text or ""
-        local font = TextFit.fit(txt, clamp(math.floor(C.labelH * 0.5), 7, 10), zoneW)
-        local tw = font:getWidth(txt)
-        local cx = math.min(lr.x + lr.w / 2, C.x + C.w - 6 - tw / 2)
-        cx = math.max(cx, zoneX0 + tw / 2)
-        self:_chalkLabel(txt, cx, Palette.AGED_GOLD_LIGHT, zoneW)
-    end
+    -- etiqueta do livro: o bônus de seguir viagem ("+$3")
+    local bonus = (sc.modeConfig and sc.modeConfig.skipBonus) or 0
+    local lt = C.ledgerTag
+    ShelfItem.drawTagCard(lt, lt.ax, lt.ay, self.cTags.ledger.angle, 1,
+        { afford = true, text = (bonus > 0) and ("+$" .. tostring(bonus)) or "" })
 
     -- tooltips dos objetos do balcão (foco = hover)
     if self.hoverCounter then
         local okST, StatusTooltip = pcall(require, "src.ui.StatusTooltip")
         if okST and StatusTooltip.show then
-            local ctx = { n = cost, bonus = (sc.modeConfig and sc.modeConfig.skipBonus) or 0 }
+            local ctx = { n = cost, bonus = bonus }
             StatusTooltip.show("shop_" .. self.hoverCounter, mx, my + (sc.slideOffsetY or 0), ctx)
         end
     end
@@ -854,8 +858,16 @@ function ShopScene:_drawScroll()
         love.graphics.rectangle("fill", n.x + 2, n.y, n.w - 4, n.h)
     end
     love.graphics.setColor(1, 1, 1, 1)
+    -- PAPEL QUASE LISO sob o texto: a arte do rolo tem grão e bordas
+    -- queimadas que viram ruído atrás de letra pequena. Uma lavada de cor
+    -- de pergaminho (90%) deixa só ~6% da variação da arte passar.
+    local paper = Palette.lerp(Palette.PARCHMENT_LIGHT, Palette.PARCHMENT, 0.28)
+    local B = S.body
+    love.graphics.setColor(paper[1], paper[2], paper[3], 0.90)
+    love.graphics.rectangle("fill", B.x - 6, B.y - 4, B.w + 12, B.h + 8)
+    love.graphics.setColor(1, 1, 1, 1)
     if self.screen._drawDetailPanel then
-        self.screen:_drawDetailPanel(S.body, true)
+        self.screen:_drawDetailPanel(S.body, true, S.artMaxH)
     end
 end
 

@@ -193,15 +193,7 @@ function ShelfItem:update(dt, hovered)
 
     -- pêndulo amortecido da etiqueta
     local tg = self.tag
-    if reduced then
-        tg.angle, tg.vel = 0, 0
-    else
-        local h = math.min(dt, 1 / 30)
-        local acc = -TAG_OMEGA2 * math.sin(tg.angle) - TAG_DAMP * tg.vel
-        tg.vel = tg.vel + acc * h
-        tg.angle = tg.angle + tg.vel * h
-        if math.abs(tg.angle) < 0.002 and math.abs(tg.vel) < 0.02 then tg.angle, tg.vel = 0, 0 end
-    end
+    ShelfItem.stepPendulum(tg, dt)
     if tg.deny > 0 then tg.deny = math.max(0, tg.deny - dt) end
     if tg.torn then
         local t = tg.torn
@@ -263,14 +255,11 @@ end
 -- ============================================================================
 -- DRAW
 -- ============================================================================
+-- A etiqueta pendura do BEIRAL da tábua (não do objeto): o objeto levanta
+-- no hover e ela fica, balançando com o impulso.
 function ShelfItem:_tagAnchor()
     local g = self.geom.tag
-    local ax, ay = g.ax, g.ay
-    if self.kind == "card" then
-        -- a etiqueta está amarrada NA carta: sobe junto
-        ay = ay - self:liftPx()
-    end
-    return ax, ay, g.len
+    return g.ax, g.ay, g.len
 end
 
 -- Suporte de madeira da carta (parte de trás = atrás da carta; o lábio da
@@ -284,13 +273,14 @@ function ShelfItem:drawStand(front, alpha)
         local iw, ih = img:getWidth(), img:getHeight()
         local sx, sy = st.w / iw, st.h / ih
         if front then
-            -- só as linhas de baixo do lábio (metade inferior da arte)
+            -- o LÁBIO da frente (60% de baixo da arte) cobre a base da carta:
+            -- é ele que diz "apoiada", não flutuando
             local q = ShelfItem._frontQuads[img]
             if not q then
-                q = love.graphics.newQuad(0, ih * 0.5, iw, ih * 0.5, iw, ih)
+                q = love.graphics.newQuad(0, ih * 0.4, iw, ih * 0.6, iw, ih)
                 ShelfItem._frontQuads[img] = q
             end
-            love.graphics.draw(img, q, st.x, st.y + st.h * 0.5, 0, sx, sy)
+            love.graphics.draw(img, q, st.x, st.y + st.h * 0.4, 0, sx, sy)
         else
             love.graphics.draw(img, st.x, st.y, 0, sx, sy)
         end
@@ -298,7 +288,7 @@ function ShelfItem:drawStand(front, alpha)
         local wood = Palette.lerp(Palette.RUST, Palette.INK, 0.5)
         if front then
             Palette.set(wood, alpha)
-            love.graphics.rectangle("fill", st.x, st.y + st.h * 0.5, st.w, st.h * 0.5)
+            love.graphics.rectangle("fill", st.x, st.y + st.h * 0.4, st.w, st.h * 0.6)
         else
             Palette.set(Palette.INK, alpha)
             love.graphics.rectangle("fill", st.x - 1, st.y - 1, st.w + 2, st.h + 2)
@@ -372,6 +362,87 @@ function ShelfItem:drawObject(ctx)
     end
 end
 
+-- Uma etiqueta pendurada (barbante de 1 px + cartão + texto) desenhada em
+-- (x0, y0) = ponto onde o barbante prende, girada `rot`. Compartilhada pelo
+-- balcão (sino "$4", livro "+$3"): a MESMA etiqueta das prateleiras.
+--   g    = { len, w, h }
+--   opts = { afford = bool, denyK = 0..1, sale = bool, basePrice = n, text = "$N" }
+local function drawTagCard(g, x0, y0, rot, a, opts)
+    opts = opts or {}
+    local afford = opts.afford ~= false
+    local denyK = opts.denyK or 0
+    love.graphics.push()
+    love.graphics.translate(x0, y0)
+    love.graphics.rotate(rot)
+    -- barbante
+    Palette.set(Palette.PARCHMENT_DARK, a)
+    love.graphics.rectangle("fill", 0, 0, 1, g.len)
+    -- cartão (oferta do dia: a etiqueta vermelha torta da loja-vida, F4)
+    local sale = opts.sale
+    local img = art("price_tag")
+    local tx, ty = -math.floor(g.w / 2), g.len
+    local saleDrawn = false
+    if sale then
+        local okP, ShopProps = pcall(require, "src.ui.shop.ShopProps")
+        if okP and ShopProps and ShopProps.saleTag and ShopProps.saleTag.draw then
+            love.graphics.push()
+            love.graphics.translate(0, ty)
+            love.graphics.rotate(-0.1)
+            love.graphics.translate(0, -ty)
+            local tint = afford and 1 or 0.75
+            love.graphics.setColor(tint, tint, tint, a)
+            ShopProps.saleTag.draw(tx, ty, g.w / (ShopProps.saleTag.W or 24))
+            saleDrawn = true
+        end
+    end
+    if saleDrawn then
+        -- (o pop vem depois do preço, que roda junto com a etiqueta torta)
+    elseif img then
+        local tint = afford and 1 or 0.75
+        love.graphics.setColor(tint, tint * (denyK > 0 and 0.55 or 1), tint * (denyK > 0 and 0.55 or 1), a)
+        love.graphics.draw(img, tx, ty, 0, g.w / img:getWidth(), g.h / img:getHeight())
+    else
+        Palette.set(Palette.INK, a)
+        love.graphics.rectangle("fill", tx - 1, ty - 1, g.w + 2, g.h + 2)
+        Palette.set(afford and Palette.PARCHMENT_LIGHT or Palette.PARCHMENT, a)
+        love.graphics.rectangle("fill", tx, ty, g.w, g.h)
+    end
+    -- texto
+    local txt = opts.text or ""
+    local font, fitted = TextFit.fit(txt, clamp(math.floor(g.h * 0.55), 8, 14), g.w - 4, 7)
+    love.graphics.setFont(font)
+    local col = (afford and denyK <= 0) and Palette.INK or Palette.BLOOD
+    if saleDrawn and afford and denyK <= 0 then col = Palette.PARCHMENT_LIGHT end
+    Palette.set(col, a)
+    love.graphics.print(fitted, tx + math.floor((g.w - font:getWidth(fitted)) / 2),
+        ty + math.floor((g.h - font:getHeight()) / 2) + 1)
+    -- preço cheio riscado, miúdo, no canto de cima (só quando cabe)
+    if sale and opts.basePrice and g.h >= 20 then
+        local small = FontManager.getFont(7)
+        local base = "$" .. tostring(opts.basePrice)
+        love.graphics.setFont(small)
+        local bw = small:getWidth(base)
+        local bx, by = tx + g.w - bw - 2, ty + 1
+        Palette.set(Palette.INK, a * 0.8)
+        love.graphics.print(base, bx, by)
+        love.graphics.rectangle("fill", bx - 1, by + math.floor(small:getHeight() / 2), bw + 2, 1)
+    end
+    if saleDrawn then love.graphics.pop() end
+    love.graphics.pop()
+    love.graphics.setColor(1, 1, 1, 1)
+end
+ShelfItem.drawTagCard = drawTagCard
+
+-- Pêndulo amortecido de uma etiqueta (estado em `tg` = { angle, vel }).
+function ShelfItem.stepPendulum(tg, dt)
+    if reducedMotion() then tg.angle, tg.vel = 0, 0 return end
+    local h = math.min(dt, 1 / 30)
+    local acc = -TAG_OMEGA2 * math.sin(tg.angle) - TAG_DAMP * tg.vel
+    tg.vel = tg.vel + acc * h
+    tg.angle = tg.angle + tg.vel * h
+    if math.abs(tg.angle) < 0.002 and math.abs(tg.vel) < 0.02 then tg.angle, tg.vel = 0, 0 end
+end
+
 -- Etiqueta pendurada: barbante de 1 px + cartão + preço. Treme vermelha no
 -- deny; some (e cai) depois da compra.
 function ShelfItem:drawTag(ctx)
@@ -379,37 +450,12 @@ function ShelfItem:drawTag(ctx)
     if not g then return end
     local tg = self.tag
     local alpha = (ctx.alpha or 1) * self:entered()
-
+    local opts = { afford = ctx.afford, sale = self.offer and self.offer.saleDiscount,
+                   basePrice = self.offer and self.offer.basePrice,
+                   text = "$" .. tostring(self.offer and self.offer.cost or 0) }
     local function drawCard(x0, y0, rot, a, denyK)
-        love.graphics.push()
-        love.graphics.translate(x0, y0)
-        love.graphics.rotate(rot)
-        -- barbante
-        Palette.set(Palette.PARCHMENT_DARK, a)
-        love.graphics.rectangle("fill", 0, 0, 1, g.len)
-        -- cartão
-        local img = art("price_tag")
-        local tx, ty = -math.floor(g.w / 2), g.len
-        if img then
-            local tint = ctx.afford and 1 or 0.75
-            love.graphics.setColor(tint, tint * (denyK > 0 and 0.55 or 1), tint * (denyK > 0 and 0.55 or 1), a)
-            love.graphics.draw(img, tx, ty, 0, g.w / img:getWidth(), g.h / img:getHeight())
-        else
-            Palette.set(Palette.INK, a)
-            love.graphics.rectangle("fill", tx - 1, ty - 1, g.w + 2, g.h + 2)
-            Palette.set(ctx.afford and Palette.PARCHMENT_LIGHT or Palette.PARCHMENT, a)
-            love.graphics.rectangle("fill", tx, ty, g.w, g.h)
-        end
-        -- preço
-        local cost = self.offer and self.offer.cost or 0
-        local txt = "$" .. tostring(cost)
-        local font, fitted = TextFit.fit(txt, clamp(math.floor(g.h * 0.55), 8, 14), g.w - 6)
-        love.graphics.setFont(font)
-        local col = (ctx.afford and denyK <= 0) and Palette.INK or Palette.BLOOD
-        Palette.set(col, a)
-        love.graphics.print(fitted, tx + math.floor((g.w - font:getWidth(fitted)) / 2),
-            ty + math.floor((g.h - font:getHeight()) / 2) + 1)
-        love.graphics.pop()
+        opts.denyK = denyK
+        drawTagCard(g, x0, y0, rot, a, opts)
     end
 
     if tg.torn then
@@ -430,6 +476,94 @@ function ShelfItem:drawTag(ctx)
     end
     drawCard(ax, ay, rot, alpha, denyK)
     love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- Rótulo ANCORADO no objeto, na banda sob a tábua, à esquerda da etiqueta:
+-- carta = raridade (+ AFINIDADE); relíquia = efeito curto do UpgradeTile
+-- ("+1 SLOT"); pacote = nome. Sem isso o jogador não sabe o que é o livro
+-- de $22 sem passar o mouse.
+function ShelfItem:drawLabel(ctx)
+    local lb = self.geom and self.geom.label
+    if not lb or self.sold then return end
+    local alpha = (ctx.alpha or 1) * self:entered()
+    if alpha <= 0.01 then return end
+    local offer = self.offer
+    if self.kind == "card" then
+        local size = clamp(math.floor(lb.h * 0.32), 7, 9)
+        local y = lb.y
+        if offer.rarity then
+            local TextCase = require("src.i18n.TextCase")
+            local txt = TextCase.upper(I18n.t("rarity." .. offer.rarity, nil, offer.rarity))
+            local font, fitted = TextFit.fit(txt, size, lb.w)
+            love.graphics.setFont(font)
+            local c = Palette.forRarity(offer.rarity)
+            FontManager.drawWithOutline(fitted, lb.x, y, { c[1], c[2], c[3], alpha }, 0.85 * alpha)
+            y = y + font:getHeight() + 3
+        end
+        if offer.affinity then
+            local txt = I18n.t("reward.affinity_badge")
+            local font, fitted = TextFit.fit(txt, size - 1, lb.w)
+            love.graphics.setFont(font)
+            local c = Palette.AGED_GOLD_LIGHT
+            FontManager.drawWithOutline(fitted, lb.x, y, { c[1], c[2], c[3], alpha }, 0.85 * alpha)
+        end
+    elseif self.kind == "relic" then
+        local txt = UpgradeTile.effectLabel(offer) or offer.name or "?"
+        local h = math.min(15, lb.h)
+        local ShopEngraving = require("src.ui.ShopEngraving")
+        local th = UpgradeTile.theme(offer)
+        -- placa gravada quando o texto cabe inteiro (a placa reserva 26px
+        -- pras pontas); senão texto contornado em até duas linhas — nunca
+        -- "+1 ..." truncado
+        local _, fitted = TextFit.fit(txt, 8, lb.w - 26)
+        if fitted == txt then
+            love.graphics.setColor(1, 1, 1, alpha)
+            ShopEngraving.effectStrip(lb.x, lb.y + math.floor((lb.h - h) / 2), lb.w, h, txt,
+                { accent = th.accent, alpha = alpha, seed = ShopEngraving.seedOf(offer.id) })
+        else
+            ShelfItem.drawWrapped(txt, lb, th.text or Palette.PARCHMENT_LIGHT, alpha)
+        end
+    else
+        ShelfItem.drawWrapped(offer.name or "?", lb, Palette.PARCHMENT_LIGHT, alpha)
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- Texto contornado em até DUAS linhas dentro do rect (quebra em espaço; o
+-- que não couber na segunda linha é elidido). Fonte 7..9 pela altura.
+function ShelfItem.drawWrapped(txt, lb, color, alpha)
+    local size = clamp(math.floor(lb.h * 0.3), 7, 9)
+    local font = FontManager.getFont(size)
+    local lines = {}
+    if font:getWidth(txt) <= lb.w then
+        lines[1] = txt
+    else
+        local cur = ""
+        for word in tostring(txt):gmatch("%S+") do
+            local try = (cur == "") and word or (cur .. " " .. word)
+            if font:getWidth(try) <= lb.w or cur == "" then
+                cur = try
+            else
+                lines[#lines + 1] = cur
+                cur = word
+                if #lines == 1 then break end
+            end
+        end
+        -- resto (inclusive o que sobrou depois da quebra) vai pra última linha
+        local rest = tostring(txt):sub(#table.concat(lines, " ") + 1):gsub("^%s+", "")
+        if #lines == 0 then rest = txt end
+        if rest ~= "" then
+            local _, fitted = TextFit.fit(rest, size, lb.w, size)
+            lines[#lines + 1] = fitted
+        end
+    end
+    local lh = font:getHeight() + 2
+    local y0 = lb.y + math.floor((lb.h - #lines * lh) / 2)
+    love.graphics.setFont(font)
+    for i, l in ipairs(lines) do
+        FontManager.drawWithOutline(l, lb.x, y0 + (i - 1) * lh,
+            { color[1], color[2], color[3], alpha }, 0.85 * alpha)
+    end
 end
 
 -- Marca de poeira no lugar do objeto + "VENDIDO" a giz (i18n reward.sold).

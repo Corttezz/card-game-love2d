@@ -109,10 +109,21 @@ animada, novas ofertas, dados integrados". Plano em
   da oferta do dia) é de `src/ui/shop/ShopProps.lua` (frente loja-vida),
   chamada por contrato opcional (`update/drawBack/drawLantern/flameAnchor/
   lookDx/lightLevel/drawDiceCup/drawFront`); ausente = placeholder + aviso.
-- Arte em `assets/sprites/shop/`: tábuas/balcão/sino/livro/pergaminho vindos
-  do PixelLab (`tools/pixellab_shop_props.py queue|poll|install`, fatiados
-  em left/mid/right e quadros), suportes/etiqueta/prego/gancho/poeira
-  desenhados pixel a pixel pelo mesmo script (`pixels`).
+- Arte em `assets/sprites/shop/`: tábuas/sino/livro/pergaminho vindos do
+  PixelLab (`tools/pixellab_shop_props.py queue|poll|install`, fatiados em
+  left/mid/right e quadros), suportes/etiqueta/prego/gancho/poeira
+  desenhados pixel a pixel pelo mesmo script (`pixels`). O BALCÃO é
+  procedural (tampo liso): a arte gerada tinha cerca na frente e nada se
+  lia por cima. O pergaminho leva uma lavada de cor de papel (90%) sob o
+  texto: grão da arte ≤ 6% atrás de letra pequena.
+- Etiquetas e rótulos (revisão da F2): a etiqueta de preço pendura do
+  BEIRAL da tábua, sob o objeto, nunca sobre a arte (o selo de raridade da
+  carta fica à vista); o rótulo mora na mesma banda, à esquerda: raridade
+  (+ AFINIDADE) na carta, efeito curto ("+1 SLOT") na relíquia, nome no
+  pacote. Sino e livro-razão têm a MESMA etiqueta pendurada do tampo ("$4",
+  "+$3"); o "?" dos dados mora na placa do cabeçalho, ao lado do das regras.
+  Altura do pergaminho = conteúdo (arte ≤ 0,78 da carta da prateleira +
+  bloco de texto), não a tela inteira.
 - Travas: `test_shop_layout` (7 tamanhos x 5 idiomas, tela nasce e cresce)
   e `test_shop_scene` (entrada, hover + som na borda, sem ouro, compra +
   voo pro destino, sino, reducedMotion, alvos do pad). Capturas:

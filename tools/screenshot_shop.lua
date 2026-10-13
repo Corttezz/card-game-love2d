@@ -9,6 +9,10 @@
 --       shop_5_comprada.png       pós-compra (slot VENDIDO + carta voando)
 --
 --   love . screenshot_shop <n>    → fase única, pra iterar rápido
+--   love . screenshot_shop perf   → ms por quadro (SHOP_FRAMES, SHOP_W/H)
+--   love . screenshot_shop fx     → Loja v3: quadros de compra / recusa / sino
+--                                   (SHOP_TAG prefixa; prancha via
+--                                   python tools/pixellab_shop_props.py sheet)
 --
 -- Saída: save dir do LÖVE (~/AppData/Roaming/LOVE/card-game/ no Windows).
 
@@ -45,7 +49,16 @@ function M.run(phase)
     -- "dice" = Dados do Escriba: loja com o botão + mesa aberta + rolando +
     -- resultado (SHOP_DICE_BET low|seven|high escolhe a aposta).
     local diceRun = (phase == "dice")
-    phase = not resizeRun and tonumber(phase) or nil
+    -- "fx" = Loja v3: quadros de uma COMPRA (hover → etiqueta arrancada →
+    -- objeto voando → poeira + VENDIDO), de uma recusa SEM OURO (etiqueta
+    -- tremendo) e de um toque no SINO (prateleiras saindo e voltando repostas
+    -- uma a uma). Vira prancha com tools/pixellab_shop_props.py sheet.
+    local fxRun = (phase == "fx")
+    -- "perf" = mede ms por quadro (update + draw) da loja parada e em hover,
+    -- SHOP_FRAMES quadros (300). Mesmo tool na arvore antiga = comparacao
+    -- justa (F5: <= loja antiga + 1 ms em 1440p).
+    local perfRun = (phase == "perf")
+    phase = not (resizeRun or fxRun or perfRun) and tonumber(phase) or nil
     local targetT = (phase and PHASE_TIMES[phase]) or 1.20
 
     -- Tamanho de janela por ambiente (SHOP_W/SHOP_H) — uma chamada só, no
@@ -59,6 +72,11 @@ function M.run(phase)
 
     I18n.init()
     if os.getenv("SHOP_LOCALE") then I18n.setLocale(os.getenv("SHOP_LOCALE")) end
+    -- SHOP_SALE=1 liga a oferta do dia (F4, atrás de flag) pra ver a etiqueta.
+    if os.getenv("SHOP_SALE") == "1" then
+        local Offers = require("src.core.Config").Offers
+        if Offers then Offers.DAILY_SALE = true end
+    end
     require("src.ui.PixelCanvas").enableNearest()
     CRTShader.load()
     DissolveShader.load()
@@ -304,6 +322,93 @@ function M.run(phase)
         end
         print(failures == 0 and "=== RESIZE OK: nenhuma violacao ==="
             or ("=== RESIZE FALHOU: " .. failures .. " violacao(oes) ==="))
+        return
+    end
+
+    -- ===== medicao de quadro =====
+    if perfRun then
+        local frames = tonumber(os.getenv("SHOP_FRAMES")) or 300
+        love.mouse.setPosition(6, 6)
+        simulate(1.5)
+        local function measure(label)
+            -- aquece (fontes, canvases) e depois mede
+            for _ = 1, 20 do
+                screen:update(stepDt); love.graphics.clear(0, 0, 0, 1); screen:draw(); topBar:draw(); love.graphics.present()
+            end
+            local t0 = love.timer.getTime()
+            for _ = 1, frames do
+                EventManager.update(stepDt)
+                screen:update(stepDt)
+                topBar:update(stepDt, game)
+                love.graphics.clear(0, 0, 0, 1)
+                screen:draw()
+                topBar:draw()
+                love.graphics.present()
+            end
+            local ms = (love.timer.getTime() - t0) / frames * 1000
+            print(("[shop_perf] %s %dx%d: %.3f ms/quadro (%d quadros)"):format(
+                label, love.graphics.getWidth(), love.graphics.getHeight(), ms, frames))
+            return ms
+        end
+        measure("repouso")
+        hoverSlot(2)
+        measure("hover")
+        love.event.quit()
+        return
+    end
+
+    -- ===== Loja v3: quadros de compra / recusa / sino =====
+    if fxRun then
+        love.mouse.setPosition(6, 6)
+        simulate(1.4)
+        local scene = screen.scene
+        local function itemOfKind(kind, idx)
+            local n = 0
+            for _, it in ipairs(scene.items) do
+                if it.kind == kind and not it.sold then
+                    n = n + 1
+                    if n == (idx or 1) then return it end
+                end
+            end
+        end
+        local function clickItem(it)
+            local cx, cy = it:center()
+            love.mouse.setPosition(cx, cy + it.rect.h * 0.3)
+            simulate(0.45)
+            local mx, my = love.mouse.getPosition()
+            screen:mousepressed(mx, my, 1)
+            screen:mousereleased(mx, my, 1)
+        end
+        -- compra de carta
+        local card = itemOfKind("card", 2)
+        local cx, cy = card:center()
+        love.mouse.setPosition(cx, cy + card.rect.h * 0.3)
+        simulate(0.5)
+        snap("fx_buy_0.png")
+        clickItem(card)
+        local last = 0
+        for i, tt in ipairs({ 0.04, 0.12, 0.22, 0.34, 0.50, 0.90 }) do
+            simulate(tt - last); last = tt
+            snap(("fx_buy_%d.png"):format(i))
+        end
+        -- recusa sem ouro
+        game.economySystem.currentGold = 0
+        local relic = itemOfKind("relic", 1)
+        clickItem(relic)
+        simulate(0.06); snap("fx_deny_1.png")
+        simulate(0.14); snap("fx_deny_2.png")
+        simulate(0.30); snap("fx_deny_3.png")
+        -- sino
+        game.economySystem.currentGold = 60
+        love.mouse.setPosition(6, 6)
+        simulate(0.4)
+        screen.refreshButton.onClick()
+        last = 0
+        local times = { 0.08, 0.22, 0.36, 0.60, 0.80, 0.95, 1.10, 1.45 }
+        for i, tt in ipairs(times) do
+            simulate(tt - last); last = tt
+            snap(("fx_bell_%d.png"):format(i), i == #times)
+        end
         return
     end
 
