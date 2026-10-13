@@ -69,3 +69,19 @@ agora é um OBJETO:
 - `love . screenshot_class_select` — `class_select_<W>x<H>_<estado>.png`
   (fresh/mixed/all/pick/denied em 4 tamanhos) + `class_emblems_strip.png`
   (8 instantes de cada emblema + versão acorrentada).
+
+# v4 — faixa de escolha (Out/2026)
+
+- Emblemas pequenos (`out.medallions`) = 20% da zona esquerda, teto 104 px
+  (era 17%: o dono achou os de 1024x768 "pequenos" — lá 89 → 104, e como a
+  escala do ClassEmblem anda em 1/4 o desenho cresce ~25-30%). De 1280 pra
+  cima nada muda (já batia no teto). Antes/depois: `screenshot_class_select`
+  com `CS_SIZES=1024x768`.
+- O "?" do corvo (`HelpBadge`, raio `L.HELP_R`) mora no layout (`out.help`,
+  à direita da faixa) e o `validate()` falha se ele invadir escolha,
+  marcador DETALHES, página, selo ou voltar — antes a tela o posicionava
+  sozinha e o emblema maior podia empurrá-lo sem ninguém medir.
+- `test_class_select` roda a página de DETALHES em RELÓGIO SIMULADO (como o
+  `test_discovery_mark`): o hover longo numa inicial do mago tem que entregar
+  o canvas vivo do CardFrame — ver memory/card_icon_animation.md (stub de
+  render vazando entre suites).

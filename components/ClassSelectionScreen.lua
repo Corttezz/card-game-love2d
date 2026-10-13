@@ -167,9 +167,9 @@ function ClassSelectionScreen:createClassButtons()
     -- tem folga até o marcador; junto do "voltar" ele brigaria com o selo).
     -- Reabre a conversa da seleção a qualquer momento (Tutorial.explain).
     do
-        local c, r = lay.chooser, 13
-        self._help = { cx = c.x + c.w + 28 + r, cy = c.y + math.floor(c.h / 2), r = r }
-        self.buttons.help = invisible(HelpBadge.rect(self._help.cx, self._help.cy, r), function()
+        local h, r = lay.help, Layout.HELP_R
+        self._help = { cx = h.x + math.floor(h.w / 2), cy = h.y + math.floor(h.h / 2), r = r }
+        self.buttons.help = invisible(h, function()
             require("src.systems.Tutorial").explain("class_select")
         end)
     end

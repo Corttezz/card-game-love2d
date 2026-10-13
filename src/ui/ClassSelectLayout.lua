@@ -28,6 +28,7 @@ L.TAB_W, L.TAB_H = 30, 120  -- marcador "detalhes" (fita vertical na borda da p�
 L.CTA_H = 40
 L.EMBLEM_MIN = 120
 L.CARD_W_SRC, L.CARD_H_SRC = 96, 144   -- canvas da carta (cartas iniciais nos detalhes)
+L.HELP_R = 13               -- raio do "?" do corvo (HelpBadge), à direita da escolha
 
 local function rect(x, y, w, h)
     return { x = math.floor(x), y = math.floor(y), w = math.floor(w), h = math.floor(h) }
@@ -65,7 +66,10 @@ function L.compute(sw, sh, n)
     local heroTop = M + L.BACK_H + 16
     out.hero = rect(zx, heroTop, zr - zx, chooserY - 12 - heroTop)
 
-    local md = math.floor(math.max(64, math.min(104, (zr - zx) * 0.17)))
+    -- Emblemas pequenos: 20% da zona esquerda (era 17%; o dono achou os de
+    -- 1024x768 "pequenos" — lá 89 → 104 px, +17%). O teto de 104 segue o
+    -- mesmo, então de 1280 pra cima nada muda; só as janelas estreitas crescem.
+    local md = math.floor(math.max(64, math.min(104, (zr - zx) * 0.20)))
     local gap = math.floor(md * 0.30)
     out.medallions = {}
     for i = 1, n do
@@ -73,6 +77,12 @@ function L.compute(sw, sh, n)
     end
     local chooserW = n * md + (n - 1) * gap
     out.chooser = rect(zx, chooserY, chooserW, L.CHOOSER_H)
+    -- "?" do corvo narrador: à direita da faixa das classes (caixa clicável do
+    -- HelpBadge.rect = raio + 3 de folga). Mora no layout pra o validate()
+    -- garantir que o emblema maior não o empurra pra cima do marcador/página.
+    local hr = L.HELP_R + 3
+    out.help = rect(out.chooser.x + out.chooser.w + 28 + L.HELP_R - hr,
+        chooserY + L.CHOOSER_H / 2 - hr, 2 * hr, 2 * hr)
 
     -- SELO: no alto da zona esquerda, alinhado à direita (o voltar fica na
     -- ponta oposta). Só existe com selo liberado — a tela decide; a banda é
@@ -99,8 +109,11 @@ function L.validate(lay)
     local errs = {}
     local function err(msg) errs[#errs + 1] = msg end
     local screen = { x = 0, y = 0, w = lay.sw, h = lay.sh }
-    for _, key in ipairs({ "page", "start", "details", "back", "hero", "chooser", "seal" }) do
+    for _, key in ipairs({ "page", "start", "details", "back", "hero", "chooser", "seal", "help" }) do
         if not inside(lay[key], screen) then err(key .. " fora da tela") end
+    end
+    for _, key in ipairs({ "chooser", "details", "page", "seal", "back" }) do
+        if overlaps(lay.help, lay[key]) then err("'?' invade " .. key) end
     end
     if lay.hero.h < L.EMBLEM_MIN then err(("heroi baixo demais: %d"):format(lay.hero.h)) end
     if lay.seal.w < L.SEAL_MIN_W then err(("selo estreito: %d"):format(lay.seal.w)) end

@@ -120,16 +120,77 @@ local SUITES = {
     { group = "valid", name = "test_locale_dashes" },
 }
 
+-- GUARDA DE VAZAMENTO ENTRE SUITES (Out/2026). Suites e tools monkeypatcham
+-- funções compartilhadas (relógio, janela falsa, mouse, print, render de
+-- carta). O que ainda estiver trocado ao FIM da suite é restaurado aqui e
+-- vira uma linha `[leak]` no relatório — porque o sintoma aparece em OUTRA
+-- suite, longe da causa: tools/balance_sim.setup (test_instant_parity e
+-- test_balance_pipeline) trocava CardFrame.render por um stub e
+-- test_class_select, oito suites depois, caía em CardFrame.lua:423 uma vez a
+-- cada nove rodadas, conforme o horário (memory/card_icon_animation.md).
+-- Restaurar aqui é a rede; a suite que vaza continua sendo a dona do defeito.
+local GUARDED = {
+    { "CardFrame.render",            "src.ui.CardFrame",   "render" },
+    { "CardFrame.liveImage",         "src.ui.CardFrame",   "liveImage" },
+    { "CardFrame.getAnimation",      "src.ui.CardFrame",   "getAnimation" },
+    { "ComboBanner.show",            "src.ui.ComboBanner", "show" },
+    { "love.timer.getTime",          love.timer,           "getTime" },
+    { "love.graphics.getWidth",      love.graphics,        "getWidth" },
+    { "love.graphics.getHeight",     love.graphics,        "getHeight" },
+    { "love.graphics.getDimensions", love.graphics,        "getDimensions" },
+    { "love.mouse.getPosition",      love.mouse,           "getPosition" },
+    { "print",                       _G,                   "print" },
+}
+
+local function guardedTable(spec)
+    if type(spec[2]) == "string" then
+        local ok, mod = pcall(require, spec[2])
+        return ok and type(mod) == "table" and mod or nil
+    end
+    return spec[2]
+end
+
+local function snapshotGuarded()
+    local snap = {}
+    for i, g in ipairs(GUARDED) do
+        local tbl = guardedTable(g)
+        snap[i] = tbl and tbl[g[3]] or nil
+    end
+    return snap
+end
+
+-- Restaura o que mudou; devolve a lista de nomes vazados (vazia = limpo).
+local function restoreGuarded(snap)
+    local leaked = {}
+    for i, g in ipairs(GUARDED) do
+        local tbl = guardedTable(g)
+        if tbl and snap[i] ~= nil and tbl[g[3]] ~= snap[i] then
+            tbl[g[3]] = snap[i]
+            leaked[#leaked + 1] = g[1]
+        end
+    end
+    return leaked
+end
+M._snapshotGuarded, M._restoreGuarded = snapshotGuarded, restoreGuarded
+
 function M.run()
     local results = {}
     local passed, failed, crashed = 0, 0, 0
+    local leaks = {}
 
     for _, suite in ipairs(SUITES) do
         print("\n========================================")
         print("  SUITE: " .. suite.name .. "  [" .. suite.group .. "]")
         print("========================================")
         local mod = require("tools." .. suite.name)
+        local snap = snapshotGuarded()
         local ok, res = pcall(mod.run)
+        local leaked = restoreGuarded(snap)
+        if #leaked > 0 then
+            print("  [leak] " .. suite.name .. " deixou trocado: "
+                .. table.concat(leaked, ", ") .. " — restaurado pelo runner")
+            leaks[#leaks + 1] = { name = suite.name, what = leaked }
+        end
         local status
         if not ok then
             status = "CRASH"
@@ -152,6 +213,12 @@ function M.run()
     for _, r in ipairs(results) do
         local mark = (r.status == "PASS") and "  OK  " or ("[" .. r.status .. "]")
         print(string.format("  %s  %-18s %s", mark, r.name, r.group))
+    end
+    if #leaks > 0 then
+        print("\n  Vazamentos de monkeypatch restaurados pelo runner (a suite é a dona do defeito):")
+        for _, l in ipairs(leaks) do
+            print("    [leak] " .. l.name .. ": " .. table.concat(l.what, ", "))
+        end
     end
     print(string.format("\n  %d suites: %d PASS / %d FAIL / %d CRASH",
         #results, passed, failed, crashed))

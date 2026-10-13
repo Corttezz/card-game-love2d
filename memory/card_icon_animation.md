@@ -109,6 +109,22 @@ memory/card_creation_flow.md), não um extra. Duas regras inegociáveis:
 
 ## Pegadinhas
 
+- **Stub de `CardFrame.render` vazando entre suites = flake de 1 em 9**
+  (Out/2026): `tools/balance_sim.setup` troca `CardFrame.render` por um stub
+  que devolve um canvas compartilhado SEM preencher o cache do CardFrame;
+  `test_instant_parity`/`test_balance_pipeline` chamavam o setup e não
+  restauravam, então `test_class_select` (8 suites depois) montava o set de
+  frames como `{nil, c2..c9}` — `#` diz 9 e o blit caía no slot vazio só
+  quando `floor(t*fps) % 9 == 0`: "Drawable expected, got nil" em
+  `CardFrame.lua:423`, uma rodada a cada ~nove, por horário. Parecia carga.
+  Travas: `liveImage` recusa set sem frame 0 (avisa 1× por carta e fica no
+  estático), `frameIndex` nunca vira NaN, `blitFrame` com slot vazio marca
+  `broken` e o set sai do cache; o runner (`run_all_tests`) restaura
+  funções compartilhadas vazadas e imprime `[leak] <suite>`; o teste de
+  `test_class_select` roda em relógio simulado (como `test_discovery_mark`).
+  Regressão: `test_card_live_hover` §4. O teto do `animCache` virou MACIO:
+  só expulsa animação parada há `STALE_SECS` — 25+ cartas vivas no mesmo
+  quadro não se expulsam (thrash de 8 composições por quadro).
 - **Reprovar/apagar animação SÓ entre runs da fábrica**: um `run` em
   andamento carrega o jobs file na memória; apagar frames/entrada no meio
   faz o pre-check re-baixar o group velho (caso joker_vampire v2 zumbi).

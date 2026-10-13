@@ -366,6 +366,31 @@ function CardFrame.render(card)
     return cache[key]
 end
 
+-- (Declarados ANTES de getAnimation/liveImage: local Lua só existe abaixo da
+-- definição — mesma pegadinha do notifyOrbUI no EffectSystem.)
+local warned = {}     -- key → true: um aviso por carta, não um por quadro
+
+local function warnOnce(key, msg)
+    if warned[key] then return end
+    warned[key] = true
+    print("[CardFrame] " .. msg .. " (" .. tostring(key) .. ")")
+end
+
+-- Set de frames VÁLIDO = canvases 1..n todos presentes, n ≥ 1. Um buraco
+-- aqui não dá erro na hora: `#` ainda devolve n e o blit cai no slot vazio
+-- só quando o relógio aponta pra ele — defeito de 1 em n quadros, por
+-- horário (Out/2026: CardFrame.render estubado por tools/balance_sim.setup
+-- vazava pras suites seguintes; o set nascia {nil, c2..c9} e test_class_select
+-- caía em `draw(nil)` uma vez a cada nove rodadas).
+local function validSet(canvases)
+    local n = #canvases
+    if n == 0 then return false end
+    for i = 1, n do
+        if canvases[i] == nil then return false end
+    end
+    return true
+end
+
 -- Retorna { canvases, fps, live } se a carta tem ícone animado; nil caso
 -- contrário. v10.6: é AQUI que o set completo é construído (lazy, no
 -- primeiro hover/inspeção) — ~9 composições de UMA carta ≈ poucos ms,
@@ -385,6 +410,10 @@ function CardFrame.getAnimation(card)
         end
     end
     cache[key] = cache[key] or canvases[1]
+    if not validSet(canvases) then
+        warnOnce(key, "getAnimation: set de frames incompleto")
+        return nil
+    end
     local live = PixelCanvas.new(CardFrame.WIDTH, CardFrame.HEIGHT)
     animCache[key] = { canvases = canvases, fps = frames.fps,
                        live = live, lastIdx = 0, lastReq = love.timer.getTime() }
@@ -407,9 +436,27 @@ end
 local BUILD_PER_CALL = 1
 local STALE_SECS = 0.35
 local MAX_LIVE = 24
+-- Régua dos testes (test_card_live_hover): teto e janela de "em uso".
+CardFrame.MAX_LIVE, CardFrame.STALE_SECS = MAX_LIVE, STALE_SECS
 local building = {}   -- key → { frames, fps, canvases, i }
 
+-- Índice do frame no instante t. Nunca NaN: n = 0 ou t não-finito → 1.
+local function frameIndex(anim, t)
+    local n = #anim.canvases
+    if n <= 0 then return 1 end
+    local x = t * anim.fps
+    if x ~= x or x == math.huge or x == -math.huge then return 1 end
+    return math.floor(x) % n + 1
+end
+
+-- Devolve false (e marca a animação) se o slot pedido estiver vazio — quem
+-- chama descarta o set e volta pro estático. Jamais derruba o quadro.
 local function blitFrame(anim, idx)
+    local src = anim.canvases[idx]
+    if not src then
+        anim.broken = true
+        return false
+    end
     anim.lastIdx = idx
     -- push("all") preserva canvas/blend/cor de quem chamou (update global OU
     -- liveImage no meio de um draw com canvas ativo).
@@ -420,19 +467,29 @@ local function blitFrame(anim, idx)
     -- alpha — o conteúdo já veio de um canvas).
     love.graphics.setBlendMode("replace", "premultiplied")
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.draw(anim.canvases[idx], 0, 0)
+    love.graphics.draw(src, 0, 0)
     love.graphics.pop()
+    return true
 end
 
-local function evictLRU()
-    while true do
-        local n, oldestKey, oldestT = 0, nil, math.huge
+-- Teto MACIO: só descarta animação que ninguém pediu há STALE_SECS. Com mais
+-- de MAX_LIVE cartas animadas interagidas no MESMO quadro (coleção com a
+-- inspeção + grid, mão cheia + coringas), descartar uma viva a faria ser
+-- recomposta no quadro seguinte (8 composições) pra ser descartada de novo —
+-- thrash que piscava o estático no lugar do vivo. Passar do teto por um
+-- instante custa só memória; o excesso sai assim que fica parado.
+local function evictLRU(now)
+    local n = 0
+    for _ in pairs(animCache) do n = n + 1 end
+    while n > MAX_LIVE do
+        local oldestKey, oldestT = nil, math.huge
         for k, a in pairs(animCache) do
-            n = n + 1
-            if (a.lastReq or 0) < oldestT then oldestT = a.lastReq or 0; oldestKey = k end
+            local t = a.lastReq or 0
+            if t < oldestT then oldestT, oldestKey = t, k end
         end
-        if n <= MAX_LIVE or not oldestKey then return end
+        if not oldestKey or (now - oldestT) <= STALE_SECS then return end
         animCache[oldestKey] = nil
+        n = n - 1
     end
 end
 
@@ -451,7 +508,13 @@ function CardFrame.liveImage(card)
         anim.lastReq = now
         if stale then
             -- update() parou de blitar enquanto ninguém olhava: sincroniza já.
-            blitFrame(anim, math.floor(now * anim.fps) % #anim.canvases + 1)
+            blitFrame(anim, frameIndex(anim, now))
+        end
+        if anim.broken then
+            -- slot vazio achado no blit: fora do cache, carta segue estática.
+            warnOnce(key, "animação com frame vazio descartada")
+            animCache[key] = nil
+            return nil
         end
         return anim.live
     end
@@ -469,6 +532,13 @@ function CardFrame.liveImage(card)
                 print("[CardFrame] liveImage: render falhou para " .. key .. ": " .. tostring(err))
                 return nil
             end
+        end
+        -- O frame 0 do set É o canvas estático do cache. Sem ele (render
+        -- substituído por um stub, cache limpo no meio) o set nasceria com
+        -- buraco na posição 1 — ver validSet. Avisa e fica no estático.
+        if not cache[key] then
+            warnOnce(key, "render não preencheu o cache; sem animação")
+            return nil
         end
         b = { frames = frames.frames, fps = frames.fps,
               canvases = { cache[key] }, i = 1 }
@@ -491,11 +561,15 @@ function CardFrame.liveImage(card)
     if b.i < #b.frames then return nil end
 
     building[key] = nil
+    if not validSet(b.canvases) then
+        warnOnce(key, "set de frames incompleto; sem animação")
+        return nil
+    end
     anim = { canvases = b.canvases, fps = b.fps, lastIdx = 0, lastReq = now,
              live = PixelCanvas.new(CardFrame.WIDTH, CardFrame.HEIGHT) }
     animCache[key] = anim
-    blitFrame(anim, math.floor(now * anim.fps) % #anim.canvases + 1)
-    evictLRU()
+    blitFrame(anim, frameIndex(anim, now))
+    evictLRU(now)
     return anim.live
 end
 
@@ -505,12 +579,18 @@ end
 -- nada (liveImage ressincroniza quando ela volta a ser pedida).
 function CardFrame.update()
     local t = love.timer.getTime()
-    for _, anim in pairs(animCache) do
-        if (t - (anim.lastReq or t)) <= STALE_SECS then
-            local idx = math.floor(t * anim.fps) % #anim.canvases + 1
+    local n = 0
+    for key, anim in pairs(animCache) do
+        n = n + 1
+        if anim.broken then
+            animCache[key] = nil
+        elseif (t - (anim.lastReq or t)) <= STALE_SECS then
+            local idx = frameIndex(anim, t)
             if idx ~= anim.lastIdx then blitFrame(anim, idx) end
         end
     end
+    -- o excesso sobre o teto macio sai quando as cartas ficam paradas
+    if n > MAX_LIVE then evictLRU(t) end
 end
 
 -- Quantos sets de animação estão vivos em memória (régua/teste de perf).

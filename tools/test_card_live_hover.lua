@@ -110,6 +110,124 @@ function M.run()
     t:falsy("o limiar 1.001 nao esta cravado na CollectionScreen",
         colecao:find("1%.001") ~= nil)
 
+    -- ===================================================================
+    -- 4. ROBUSTEZ DO CANVAS VIVO (Out/2026) — a trava do flake
+    -- ===================================================================
+    -- test_class_select caia em CardFrame.lua:423 ("Drawable expected, got
+    -- nil") uma vez a cada ~nove rodadas do test_all: tools/balance_sim.setup
+    -- (test_instant_parity / test_balance_pipeline) trocava CardFrame.render
+    -- por um stub que devolve um canvas compartilhado SEM preencher o cache
+    -- do CardFrame. O set de frames nascia {nil, c2..c9}, `#` dizia 9 e o
+    -- blit caia no slot vazio quando floor(t*fps) % 9 == 0 — relogio de
+    -- parede, por isso "flake". Aqui: render estubado nunca estoura e avisa;
+    -- render real anima; relogio nao-finito nao vira indice NaN; e o teto do
+    -- cache e MACIO (MAX_LIVE+ cartas em uso no mesmo quadro nao se expulsam).
+    local CardDatabase = require("src.systems.CardDatabase")
+    local CardArt = require("src.ui.CardArt")
+    local IconFramesLoader = require("src.ui.IconFramesLoader")
+    local db = CardDatabase:new()
+    local animated = {}
+    for _, cd in pairs(db:getAllCards()) do
+        local art = CardArt.resolve(cd)
+        if art.iconName and IconFramesLoader.has(art.iconName) then
+            animated[#animated + 1] = cd
+        end
+    end
+    table.sort(animated, function(a, b) return a.id < b.id end)
+    t:truthy(("catalogo tem mais cartas animadas que o teto do cache (%d > %d)")
+        :format(#animated, CardFrame.MAX_LIVE), #animated > CardFrame.MAX_LIVE)
+
+    local realGetTime, realPrint = love.timer.getTime, print
+    local now, avisos = 0, 0
+    love.timer.getTime = function() return now end
+    print = function(...)
+        local s = tostring((...))
+        if s:find("[CardFrame]", 1, true) then avisos = avisos + 1 end
+        realPrint(...)
+    end
+    local okSec, errSec = pcall(function()
+        local card = db:createCardInstance(animated[1])
+        CardFrame.invalidate(card)
+
+        -- (a) render estubado como no balance_sim: nunca estoura, fica no estatico
+        local realRender = CardFrame.render
+        local shared = love.graphics.newCanvas(96, 144)
+        CardFrame.render = function() return shared end
+        local okAll, live = true, nil
+        for _ = 1, 40 do
+            local ok, res = pcall(CardFrame.liveImage, card)
+            okAll = okAll and ok
+            live = live or res
+        end
+        CardFrame.render = realRender
+        t:truthy("render estubado: liveImage nunca estoura", okAll)
+        t:falsy("render estubado: sem canvas vivo (carta segue estatica)", live)
+        t:truthy("render estubado: AVISOU (fallback silencioso e proibido)", avisos >= 1)
+
+        -- (b) com o render de verdade o vivo volta — set inteiro, sem buraco
+        CardFrame.invalidate(card)
+        local got
+        for _ = 1, 60 do
+            got = CardFrame.liveImage(card)
+            if got then break end
+        end
+        t:truthy("render real: liveImage devolve o canvas vivo", got ~= nil)
+        local anim = CardFrame.getAnimation(card)
+        local holes = 0
+        if anim then
+            for i = 1, #anim.canvases do
+                if anim.canvases[i] == nil then holes = holes + 1 end
+            end
+        end
+        t:eq("set de frames sem buraco", holes, 0)
+
+        -- (c) relogio nao-finito nunca vira indice NaN
+        now = 1 / 0
+        t:truthy("relogio infinito: liveImage segue de pe", (pcall(CardFrame.liveImage, card)))
+        now = 0
+
+        -- (d) teto MACIO: MAX_LIVE+ cartas vivas no MESMO quadro ficam todas
+        local N = math.min(#animated - 1, CardFrame.MAX_LIVE + 6)
+        local insts = {}
+        for i = 1, N do insts[i] = db:createCardInstance(animated[i]) end
+        local allLive = false
+        for _ = 1, 80 do
+            allLive = true
+            for i = 1, N do
+                if not CardFrame.liveImage(insts[i]) then allLive = false end
+            end
+            if allLive then break end
+        end
+        t:truthy(N .. " cartas animadas pedidas no mesmo quadro: todas vivas (sem thrash)", allLive)
+        t:truthy("cache passa do teto enquanto todas estao em uso",
+            CardFrame._liveCount() >= N)
+        -- paradas por mais de STALE_SECS, o excesso sai no proximo tick
+        now = now + CardFrame.STALE_SECS * 4
+        CardFrame.update()
+        t:truthy("paradas: cache volta ao teto", CardFrame._liveCount() <= CardFrame.MAX_LIVE)
+        -- quem continua em uso nao e descartada pelo teto: pede uma que ainda
+        -- esta no cache (vira "fresca"), monta uma animacao NOVA (estoura o
+        -- teto de novo) — sai uma PARADA, nunca a fresca
+        now = now + CardFrame.STALE_SECS * 4
+        local kept, fresh
+        for i = 1, N do
+            local l = CardFrame.liveImage(insts[i])
+            if l then kept, fresh = insts[i], l; break end
+        end
+        t:truthy("fixture: sobrou carta viva no cache", kept ~= nil)
+        local extra = db:createCardInstance(animated[N + 1])
+        for _ = 1, 40 do
+            if CardFrame.liveImage(extra) then break end
+        end
+        t:truthy("carta em uso sobrevive ao teto (sai a parada)",
+            kept ~= nil and CardFrame.liveImage(kept) == fresh)
+        t:truthy("cache no teto depois de montar a nova",
+            CardFrame._liveCount() <= CardFrame.MAX_LIVE)
+    end)
+    love.timer.getTime, print = realGetTime, realPrint
+    CardFrame.clearCache()
+    t:check("robustez: sem excecao" .. (okSec and "" or (": " .. tostring(errSec))), okSec)
+
     return t:done()
 end
 

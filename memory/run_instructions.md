@@ -6,6 +6,15 @@ originSessionId: e544765f-309d-4fc7-89e3-58b3dabfa059
 ---
 **Executar:** `love .` a partir de `/home/cortez/projects/card-game-love2d/`. O `conf.lua` está na raiz e define a janela (1024×768, resizable).
 
+**Suíte sem janela (Out/2026):** `CARDGAME_HEADLESS=1 love . test_all` — a
+janela nasce 1x1 fora da tela (conf.lua) e o `main.lua` a troca por uma de
+1024x768 ESCONDIDA (um `setMode` só + `tools/headless_window.hide`). Sem
+isso dez suites que desenham no backbuffer real (GameplayScene/LightEngine,
+NavCursor, forja, CRT) falhavam iguais em toda rodada — parecia carga, era
+a janela de 1 px. O runner também restaura monkeypatch vazado entre suites
+e imprime `[leak] <suite>: <função>`; o vazamento continua sendo defeito da
+suite dona. `CARDGAME_IDENTITY=<nome>` isola o save dir por processo.
+
 **Smoke tests (rápidos, sem abrir janela visual):**
 - `love . smoke_tags` — valida TagSystem (22 checks)
 - `love . smoke_effects` — valida efeitos Fase 2 (25 checks)

@@ -159,12 +159,29 @@ function M.run()
             local backs = 0
             local s3 = Screen:new()
             s3:show(function() end, function() backs = backs + 1 end)
+            -- mago em foco: as iniciais dele têm ícone ANIMADO (o canvas vivo
+            -- do CardFrame entra no hover — é o que a trava abaixo mede)
+            s3:focusClass("mage")
+            TK.pump(nil, 0.6)
             local canvas = love.graphics.newCanvas(1280, 720)
+            -- TUDO em tempo SIMULADO (padrão do test_discovery_mark, e8ff073):
+            -- o relógio de parede entrava pelo CardFrame (índice do frame,
+            -- ressincronização "stale") e pela ondulação da carta; sob carga
+            -- (test_all com a máquina ocupada) o resultado mudava de rodada
+            -- pra rodada. Aqui cada frame() avança 1/60 s, sempre.
+            local simNow = 1000
+            local realGetTime = love.timer.getTime
             local function frame()
+                simNow = simNow + 1 / 60
+                love.timer.getTime = function() return simNow end
                 love.graphics.setCanvas(canvas)
-                s3:update(1 / 60)
-                s3:draw()
+                local okF, errF = pcall(function()
+                    s3:update(1 / 60)
+                    s3:draw()
+                end)
                 love.graphics.setCanvas()
+                love.timer.getTime = realGetTime
+                if not okF then error(errF, 0) end
             end
             s3:toggleDetails()
             frame()
@@ -181,6 +198,24 @@ function M.run()
             t:truthy("hover levanta a carta (sobe da folha)", (c1.liftOffset or 0) < 0)
             t:truthy("hover abre o tooltip (CardInfoDisplay)",
                 c1.cardInfoDisplay and c1.cardInfoDisplay.lastRect ~= nil)
+            -- CARTA VIVA no hover: o set monta 1 frame por quadro (9 PNGs + 8
+            -- composições ≈ 20 quadros) e a imagem estática VOLTA ao fim de
+            -- cada draw (swap temporário — regra do dono, idle = estático).
+            -- Era aqui que o test_all caía em CardFrame.lua:423 quando o
+            -- CardFrame.render chegava estubado de uma suite anterior.
+            do
+                local CardFrame = require("src.ui.CardFrame")
+                local CardArt = require("src.ui.CardArt")
+                local IFL = require("src.ui.IconFramesLoader")
+                local art = CardArt.resolve(c1)
+                t:truthy("fixture: a 1ª inicial do mago tem ícone animado",
+                    art.iconName and IFL.has(art.iconName) or false)
+                local static1 = c1.image
+                for _ = 1, 40 do frame() end
+                t:truthy("hover longo: carta inicial animada tem canvas vivo",
+                    CardFrame.liveImage(c1) ~= nil)
+                t:eq("fora do draw a carta volta à imagem estática", c1.image, static1)
+            end
             -- UM tooltip só: passa pra 2ª carta → só ela tem tooltip
             local drawn = {}
             local function spy(inst, i)

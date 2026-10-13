@@ -545,6 +545,28 @@ function love.load(loveArgs)
                 love.window.setMode(tonumber(tw), tonumber(th), { resizable = true })
             end
         end
+        -- SEM JANELA VISÍVEL, MAS COM JANELA DE TRABALHO (Out/2026). Com
+        -- CARDGAME_HEADLESS=1 o conf.lua faz a janela nascer 1x1 fora da
+        -- tela. Pra bateria de balanceamento bastava; pra suíte não: dez
+        -- suites desenham no backbuffer REAL (GameplayScene/LightEngine com
+        -- scissor negativo, NavCursor sem alvo, grade da forja com uma carta
+        -- só, mouse do CRT, vitrine de desbloqueio) e falhavam IGUAIS em três
+        -- rodadas — parecia carga, era a janela. UMA chamada de setMode
+        -- (repetir dentro de tool trava — memory/ui_layout_invariants.md) pro
+        -- tamanho de referência das capturas, no mesmo lugar fora de qualquer
+        -- monitor, e escondida da barra de tarefas (user32, idempotente).
+        -- Quem pede TOOL_WINDOW já escolheu o tamanho e não entra aqui.
+        local HW = require("tools.headless_window")
+        if HW.active() and not os.getenv("TOOL_WINDOW") then
+            local okM, errM = pcall(love.window.setMode, 1024, 768, {
+                borderless = true, resizable = false, vsync = false,
+                x = -32000, y = -32000,
+            })
+            if not okM then
+                print("[sandbox] janela headless 1024x768 falhou: " .. tostring(errM))
+            end
+            HW.hide()
+        end
     end
     -- Migração de perfil antigo → desbloqueios retroativos, ANTES de qualquer
     -- tela ler classe/carta liberada.
