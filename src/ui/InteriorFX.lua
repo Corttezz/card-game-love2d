@@ -159,6 +159,13 @@ local emberAcc = 0
 local time = 0
 local gust = nil   -- rajada nas chamas { k, t, dur } (InteriorFX.gust)
 local pulseBoost = nil   -- coração acelerado { k, t, dur } (InteriorFX.pulseBoost)
+-- NÉVOA DE INTENÇÃO no salão (Out/2026, frente "intenção oculta"): o HUD
+-- esconde o intent com "?" e o mundo tem que MOSTRAR o porquê — mesmo
+-- contrato do WeatherEngine.fogHook. `fogHook` (função 0..1) é instalada
+-- por src/systems/IntentVisibility; `veilCur` persegue o alvo a 4/s e
+-- engrossa a névoa do chão + uma camada na FRENTE do chefe (drawFront).
+InteriorFX.fogHook = nil
+local veilCur = 0
 
 -- Recursos gerados uma vez (ImageData → Image, nearest): textura de névoa
 -- pontilhada e vinheta pontilhada, ambas na resolução da arte.
@@ -302,6 +309,7 @@ end
 
 function InteriorFX.clear()
     gust = nil
+    veilCur = 0
     for i = #particles, 1, -1 do particles[i] = nil end
     spawnAcc = 0
     emberAcc = 0
@@ -419,6 +427,16 @@ step = function(dt, hall)
     if pulseBoost then
         pulseBoost.t = pulseBoost.t + dt
         if pulseBoost.t >= pulseBoost.dur then pulseBoost = nil end
+    end
+    -- névoa de intenção: persegue o alvo do hook a 4/s (mesma cadência do
+    -- WeatherEngine); sem hook, zero
+    do
+        local target = 0
+        if InteriorFX.fogHook then
+            local ok, v = pcall(InteriorFX.fogHook)
+            if ok and type(v) == "number" then target = math.max(0, math.min(1, v)) end
+        end
+        veilCur = veilCur + (target - veilCur) * math.min(1, dt * 4)
     end
     local cfg = HALLS[hall or 1]
     if not cfg then return end
@@ -638,12 +656,15 @@ function InteriorFX.draw(hall)
     -- 2) névoa rente ao chão: duas camadas pontilhadas em sentidos opostos
     local fog = cfg.fog
     local fc = fog.color
-    local sy = fog.h / FOG_H
+    -- névoa de intenção: mais densa e mais alta (sobe do chão)
+    local veilH = 1 + 0.8 * veilCur
+    local sy = fog.h * veilH / FOG_H
     for layer = 1, 2 do
         local speed = (layer == 1 and 3 or -5) * (fog.speed or 1)
         local off = math.floor((time * speed) % FOG_W)
-        local yy = oy + (fog.y + (layer - 1) * fog.h * 0.35) * s
-        love.graphics.setColor(fc[1], fc[2], fc[3], fog.alpha * (layer == 1 and 1 or 0.7))
+        local yy = oy + (fog.y - fog.h * (veilH - 1) + (layer - 1) * fog.h * 0.35) * s
+        love.graphics.setColor(fc[1], fc[2], fc[3],
+            math.min(1, fog.alpha * (1 + 1.5 * veilCur)) * (layer == 1 and 1 or 0.7))
         -- dois ladrilhos de FOG_W cobrem os 400px da arte com rolagem
         for k = -1, 2 do
             love.graphics.draw(fogImg, ox + (k * FOG_W - off) * s, yy, 0, s, s * sy)
@@ -672,8 +693,32 @@ function InteriorFX.drawFront(hall, clipTop)
     local sx, sy, sw, sh = love.graphics.getScissor()
     love.graphics.intersectScissor(0, top, w, h - top)
     drawParticles(tr, true)
+    -- NÉVOA DE INTENÇÃO na frente do chefe: uma 3ª camada da névoa do
+    -- chão, mais alta (do piso até o meio do corpo), na cor do `fog` do
+    -- salão, com alpha 0.35 × véu — lê "névoa ENTRE mim e ele", não "chão
+    -- enevoado". reducedMotion: parada, nunca ausente.
+    if veilCur > 0.01 and fogImg then
+        local cfg = HALLS[hall or 1]
+        local fog = cfg.fog
+        local fc = fog.color
+        local s, ox, oy = tr.scale, tr.ox, tr.oy
+        local reduced = _G.gameSettings and _G.gameSettings.reducedMotion
+        local hh = fog.h * 2.2
+        local off = reduced and 0 or math.floor((time * 4 * (fog.speed or 1)) % FOG_W)
+        local yy = oy + (fog.y + fog.h - hh) * s
+        love.graphics.setColor(fc[1], fc[2], fc[3], 0.35 * veilCur)
+        for k = -1, 2 do
+            love.graphics.draw(fogImg, ox + (k * FOG_W - off) * s, yy, 0, s, s * hh / FOG_H)
+        end
+    end
     if sx then love.graphics.setScissor(sx, sy, sw, sh) else love.graphics.setScissor() end
     love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- Véu de névoa de intenção efetivamente desenhado (0..1), pra trava do
+-- test_intent_visibility (limiar IntentVisibility.FOG_THRESHOLD).
+function InteriorFX.renderedFog()
+    return veilCur
 end
 
 return InteriorFX

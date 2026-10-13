@@ -142,6 +142,31 @@ function M.run()
     love.graphics.getWidth, love.graphics.getHeight = realW, realH
     InteriorFX.clear()
 
+    -- ===== névoa de intenção no salão (fogHook / renderedFog) =====
+    -- Mesmo contrato do WeatherEngine.fogHook: o véu persegue o alvo a 4/s,
+    -- engrossa a névoa do chão e põe uma camada NA FRENTE do chefe; clear()
+    -- zera; sem hook, zero. A trava de limiar mora em test_intent_visibility.
+    t:eq("sem hook: véu zero", InteriorFX.renderedFog(), 0)
+    InteriorFX.fogHook = function() return 1 end
+    for _ = 1, 60 do InteriorFX.update(1 / 30, 4) end
+    t:truthy("hook=1: véu assenta acima de 0.9 em 2 s (" .. string.format("%.2f", InteriorFX.renderedFog()) .. ")",
+        InteriorFX.renderedFog() > 0.9)
+    t:noerror("salão com véu desenha (chão + camada da frente)", function()
+        love.graphics.setCanvas(canvas)
+        InteriorFX.draw(4)
+        InteriorFX.drawFront(4, 80)
+        love.graphics.setCanvas()
+    end)
+    InteriorFX.fogHook = function() return 0 end
+    for _ = 1, 15 do InteriorFX.update(1 / 30, 4) end
+    t:truthy("hook=0: véu cai (não some num corte)",
+        InteriorFX.renderedFog() < 0.9 and InteriorFX.renderedFog() > 0.05)
+    InteriorFX.fogHook = function() return "lixo" end
+    t:noerror("hook que devolve lixo não derruba o update", function() InteriorFX.update(1 / 30, 4) end)
+    InteriorFX.fogHook = nil
+    InteriorFX.clear()
+    t:eq("clear zera o véu", InteriorFX.renderedFog(), 0)
+
     return t:done()
 end
 
