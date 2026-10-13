@@ -70,6 +70,16 @@ agora é um OBJETO:
   (fresh/mixed/all/pick/denied em 4 tamanhos) + `class_emblems_strip.png`
   (8 instantes de cada emblema + versão acorrentada).
 
+# Limpeza do warrior.png (Out/2026)
+
+O PNG do guerreiro trazia RESTOS de outra imagem embaixo do escudo (pontas
+brancas de presa/garra e manchas laranja + barra vermelha escura, linhas
+96-116) — o dono viu "pixels de outra coisa" sob o aro. Limpo por máscara:
+círculo do escudo (centro 64,57 · raio 49) + faixa da lâmina (x 56-72 abaixo
+da linha 96, sem pixel quente) + pomo (linhas ≤ 14). Mago e ladino conferidos
+a 4× e limpos. Regra: emblema = SÓ o objeto; ao gerar/regenerar, abrir o PNG
+a 4× sobre fundo liso antes de usar (`tools/preview_out/emblem_<id>_x4.png`).
+
 # v4 — faixa de escolha (Out/2026)
 
 - Emblemas pequenos (`out.medallions`) = 20% da zona esquerda, teto 104 px
