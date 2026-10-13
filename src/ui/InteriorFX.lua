@@ -102,6 +102,11 @@ local HALLS = {
         -- fumaça saindo das pontas dos braseiros; borbulhas nas poças
         smoke = { { 38, 121 }, { 104, 145 }, { 297, 145 }, { 361, 121 } },
         bubbles = { { 122, 176, 36, 10 }, { 243, 176, 36, 10 }, { 172, 173, 58, 3 } },
+        -- ÂNCORAS das correntes do tirano (BossCinematic `bonds`): as argolas
+        -- pintadas nos pilares com caveiras e as pontas dos chifres do
+        -- portão-caveira (px da arte). As correntes são do salão, não do céu.
+        chainAnchors = { pillarL = { 56, 92 }, pillarR = { 344, 92 },
+                         hornL = { 134, 74 }, hornR = { 266, 74 } },
     },
     -- ATO 4 — cidadela glacial: dois braseiros de chama azul-branca.
     [4] = {

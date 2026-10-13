@@ -264,6 +264,54 @@ function M.run(mode)
         return
     end
 
+    if mode == "fight" then
+        -- LUTA do tirano (ato 3): correntes do salão inteiras, arrebentando
+        -- nos limiares de vida (0.72 / 0.52 / 0.38) e SOLTO no ENFURECIDO —
+        -- boss_cine_fight_NNN.png + timeline. Entrada tocada inteira antes.
+        GameplayScene._debugStartBossIntro()
+        local guardI = 0
+        while BossCinematic.isActive() and guardI < 30 * 20 do
+            step(); guardI = guardI + 1
+            -- desenha (sem gravar): o palco medido é o que ancora as correntes
+            love.graphics.setCanvas(vcanvas); GameplayScene.draw(); love.graphics.setCanvas()
+        end
+        for _ = 1, 45 do step() end
+        local lines, n = {}, 0
+        local function shot(label)
+            local path = ("boss_cine_fight_%03d.png"):format(n)
+            draw(path)
+            local d = BossCinematic._debug()
+            local broken = 0
+            if d.bond then for _, ch in ipairs(d.bond.chains) do if ch.broken then broken = broken + 1 end end end
+            lines[#lines + 1] = ("%03d t=%.2f step=%s hp=%d/%d rompidas=%d solto=%s"):format(
+                n, simT - 100, label, game.enemy.health, game.enemy.maxHealth, broken,
+                tostring(d.bond and d.bond.loose or false))
+            n = n + 1
+        end
+        shot("intact")
+        local mh = game.enemy.maxHealth
+        for _, frac in ipairs({ 0.70, 0.50, 0.36 }) do
+            game.enemy.health = math.floor(mh * frac)
+            for i = 1, 24 do
+                step()
+                if i == 4 then shot(("snap_%d"):format(math.floor(frac * 100))) end
+            end
+            shot(("after_%d"):format(math.floor(frac * 100)))
+        end
+        game.enemy.health = math.floor(mh * 0.25)
+        pcall(game.enemy.addStatusEffect, game.enemy, { name = "enraged", stacks = 1, duration = 999 })
+        for i = 1, 40 do
+            step()
+            if i == 4 then shot("snap_enraged") end
+        end
+        shot("loose")
+        love.filesystem.write("boss_cine_fight_timeline.txt", table.concat(lines, "\n"))
+        for _, l in ipairs(lines) do print("[shot_boss_cinematic] " .. l) end
+        print("[shot_boss_cinematic] save dir: " .. saveDir)
+        love.event.quit()
+        return
+    end
+
     if mode == "intro" or mode == "both" then
         GameplayScene._debugStartBossIntro()
         assert(BossCinematic.isActive(), "entrada não começou (chefe sem roteiro?)")

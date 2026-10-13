@@ -47,7 +47,10 @@
 --   door_burst { u, v, debris, shake, lights }  portão do fundo estoura
 --   firewall   { v, h, hold }             cortina de chamas em bandas; `hold`
 --                                         = quanto fica depois do passo
---   chains     { n }                      correntes caem das paredes
+--   chains     { }                        as correntes do salão (`bonds` do
+--                                         chefe) nascem FROUXAS: ele entra
+--                                         arrastando e elas esticam no `land`;
+--                                         na luta arrebentam por `breakAt`
 --   walk_in    { clip, stomp, sound }     chefe cresce do fundo (backY) até o
 --                                         palco; `stomp` = tremor por passo
 --   whiteout   { peak }                   nevasca (5 degraus, teto 0.8)
@@ -198,11 +201,25 @@ return {
             flash = { 1.00, 0.55, 0.20 }, ghost = { 0.90, 0.40, 0.20 }, rim = { 1.00, 0.50, 0.20 },
             particle = { 0.35, 0.12, 0.06 }, particle2 = { 1.00, 0.60, 0.20 },
         },
+        -- CORRENTES DO SALÃO (v2, Out/2026; dono: "as correntes saem do céu,
+        -- poderiam ser parte da fase, ligadas a ele"): cada corrente vai de
+        -- uma âncora PINTADA do castle_hall_3 (InteriorFX.HALLS[3].chainAnchors)
+        -- a um ponto do corpo dele (grip = fração do canvas do sprite: pulsos
+        -- e pescoço). Ele entra arrastando, elas esticam no pouso; na luta
+        -- arrebentam uma a uma nos limiares de vida (`breakAt`; "enraged" =
+        -- o ENFURECIDO de 30% que o jogo já tem) e, todas rompidas, ele está
+        -- solto. Só leitura: nenhum número de dano/vida muda.
+        bonds = {
+            { anchor = "pillarL", grip = { 0.19, 0.73 }, breakAt = 0.72, front = true },
+            { anchor = "pillarR", grip = { 0.81, 0.73 }, breakAt = 0.52, front = true },
+            { anchor = "hornL",   grip = { 0.47, 0.34 }, breakAt = 0.38, front = false },
+            { anchor = "hornR",   grip = { 0.53, 0.34 }, breakAt = "enraged", front = false },
+        },
         intro = {
             { kind = "dark",       dur = 0.70, to = 0.86 },
             { kind = "door_burst", dur = 0.50, u = 0.50, v = 0.46, debris = 18, shake = 18, lights = 0.40 },
             { kind = "firewall",   dur = 1.20, v = 0.58, h = 0.34, hold = 2.30 },
-            { kind = "chains",     dur = 0.20, n = 4 },
+            { kind = "chains",     dur = 0.20 },
             { kind = "walk_in",    dur = 1.80, from = "back", clip = "stride", stomp = 0.55 },
             { kind = "land",       dur = 0.60, shake = 18, dust = 18, crows = 0, ring = "lava",
               particle = "ember", burst = 20 },
@@ -213,6 +230,7 @@ return {
             { kind = "dark",       dur = 0.30, to = 0.80 },
             { kind = "door_burst", dur = 0.40, u = 0.50, v = 0.46, debris = 6, shake = 5, lights = 0.40 },
             { kind = "firewall",   dur = 0.60, v = 0.58, h = 0.30, hold = 1.00 },
+            { kind = "chains",     dur = 0.10 },
             { kind = "walk_in",    dur = 0.90, from = "back", clip = "stride" },
             { kind = "land",       dur = 0.40, shake = 4, dust = 6, crows = 0, ring = "lava",
               particle = "ember", burst = 8 },

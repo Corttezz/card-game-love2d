@@ -567,6 +567,114 @@ function M.run()
         BC.reset()
     end
 
+    -- ===== 6g. TIRANO DO ABISMO v2: correntes do salão (frente chefes-ajustes) =====
+    -- As correntes são do castle_hall_3 (âncoras pintadas) e dele (pulsos/
+    -- pescoço): nascem frouxas no `chains`, esticam no `land`, e na LUTA
+    -- arrebentam nos limiares de vida (0.72 / 0.52 / 0.38 / ENFURECIDO);
+    -- todas rompidas = solto. Continuar nasce com as correntes já rompidas
+    -- pela vida; morte solta todas; inimigo sem `bonds` não tem corrente.
+    do
+        local IFX = require("src.ui.InteriorFX")
+        local td = Data.abyss_tyrant
+        t:truthy("tirano: dado tem 4 correntes (bonds)", td.bonds ~= nil and #td.bonds == 4)
+        local anchors = IFX.HALLS[3].chainAnchors
+        t:truthy("tirano: salao 3 tem chainAnchors", anchors ~= nil)
+        for _, b in ipairs(td.bonds or {}) do
+            t:truthy("tirano: ancora '" .. tostring(b.anchor) .. "' pintada no salao 3",
+                anchors and anchors[b.anchor] ~= nil)
+            t:truthy("tirano: grip de '" .. tostring(b.anchor) .. "' dentro do sprite",
+                b.grip and b.grip[1] >= 0 and b.grip[1] <= 1 and b.grip[2] >= 0 and b.grip[2] <= 1)
+        end
+        local hasEnraged = false
+        for _, b in ipairs(td.bonds or {}) do if b.breakAt == "enraged" then hasEnraged = true end end
+        t:truthy("tirano: a ultima corrente e o ENFURECIDO (estado que o jogo ja tem)", hasEnraged)
+        local function tyrant(hp)
+            local g = fakeBoss("abyss_tyrant")
+            g.enemy.health, g.enemy.maxHealth = hp, 100
+            g.enemy.statusEffects = {}
+            g.enemy.hasStatus = function(self, name)
+                for _, e in ipairs(self.statusEffects) do if e.name == name then return true end end
+                return false
+            end
+            return g
+        end
+        local function brokenCount()
+            local d = BC._debug()
+            if not d.bond then return -1 end
+            local n = 0
+            for _, ch in ipairs(d.bond.chains) do if ch.broken then n = n + 1 end end
+            return n
+        end
+        local stage3 = {}
+        for k2, v2 in pairs(stage) do stage3[k2] = v2 end
+        stage3.hall = 3
+        -- ENTRADA: nascem frouxas, esticam no pouso, chegam inteiras
+        _G.gameSettings.reducedMotion = false
+        BC.reset()
+        local gt = tyrant(100)
+        t:truthy("tirano: entrada aceita", BC.startIntro(gt))
+        BC.setStage(stage3)
+        local nomT = BC.duration(td.intro)
+        local elt, sawDrag, sawTaut = 0, false, false
+        while BC.isActive() and elt < nomT + 2 do
+            BC.update(DT, gt, { inHall = true })
+            elt = elt + DT
+            local d = BC._debug()
+            if d.bond and d.bond.state == "drag" then sawDrag = true end
+            if d.bond and d.bond.state == "taut" then sawTaut = true end
+        end
+        t:truthy("tirano: entra ARRASTANDO as correntes (drag)", sawDrag)
+        t:truthy("tirano: correntes esticam no pouso (taut)", sawTaut)
+        t:truthy("tirano: correntes sobrevivem ao fim da entrada", BC._debug().bond ~= nil)
+        t:eq("tirano: todas inteiras no comeco da luta", brokenCount(), 0)
+        -- LUTA: limiares de vida arrebentam uma a uma
+        BC.update(DT, gt, { inHall = true })
+        t:eq("tirano: 100% de vida = 0 rompidas", brokenCount(), 0)
+        gt.enemy.health = 70
+        BC.update(DT, gt, { inHall = true })
+        t:eq("tirano: 70% = 1 rompida", brokenCount(), 1)
+        t:truthy("tirano: faisca ao arrebentar (brasas)", BC._debug().feathers > 0)
+        gt.enemy.health = 50
+        BC.update(DT, gt, { inHall = true })
+        t:eq("tirano: 50% = 2 rompidas", brokenCount(), 2)
+        gt.enemy.health = 36
+        BC.update(DT, gt, { inHall = true })
+        t:eq("tirano: 36% = 3 rompidas", brokenCount(), 3)
+        t:falsy("tirano: ainda preso (nao esta solto)", BC._debug().bond.loose)
+        gt.enemy.statusEffects = { { name = "enraged" } }
+        BC.update(DT, gt, { inHall = true })
+        t:eq("tirano: ENFURECIDO = 4 rompidas", brokenCount(), 4)
+        t:truthy("tirano: SOLTO com todas rompidas", BC._debug().bond.loose)
+        t:falsy("tirano: nada disso e cinematica (luta segue)", BC.isActive())
+        -- a vida continua a mesma: so leitura
+        t:eq("tirano: vida intocada pelas correntes", gt.enemy.health, 36)
+        -- CONTINUAR no meio da luta: nasce com as correntes ja rompidas, sem entrada
+        BC.reset()
+        BC.setStage(stage3)
+        local gr2 = tyrant(45)
+        BC.update(DT, gr2, { inHall = true })
+        t:falsy("tirano (Continuar): sem entrada", BC.isActive())
+        t:truthy("tirano (Continuar): correntes nascem prontas", BC._debug().bond ~= nil)
+        t:eq("tirano (Continuar): 45% = 2 ja rompidas", brokenCount(), 2)
+        t:eq("tirano (Continuar): esticadas", BC._debug().bond.state, "taut")
+        t:falsy("tirano (Continuar): sem faisca ao nascer", BC._debug().feathers > 0)
+        -- MORTE: solta todas
+        gr2._deathHandled = true
+        gr2.enemy.health = 0
+        BC.update(DT, gr2, { inHall = true })
+        t:eq("tirano: morte solta todas as correntes", brokenCount(), 4)
+        -- fora do salao / outro chefe: sem correntes
+        BC.reset()
+        BC.setStage(stage3)
+        BC.update(DT, tyrant(80), { inHall = false })
+        t:falsy("tirano fora do salao: sem correntes", BC._debug().bond ~= nil)
+        BC.reset()
+        BC.setStage(stage3)
+        BC.update(DT, fakeBoss("carrion_king"), { inHall = true })
+        t:falsy("chefe sem bonds: sem correntes", BC._debug().bond ~= nil)
+        BC.reset()
+    end
+
     -- ===== 7. i18n: todo chefe com roteiro tem nome + epiteto nos 5 locales =====
     for _, loc in ipairs({ "pt_BR", "en", "es", "fr", "de" }) do
         local ok, tbl = pcall(require, "src.i18n.locales.boss_cinematics." .. loc)

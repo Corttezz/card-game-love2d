@@ -118,6 +118,11 @@ local SOUNDS = {
     colossusCrumble    = { "audio/sfx/boss/colossus_crumble.mp3",      0.85 },
     -- monarca v2 (Out/2026): o cajado bate no gelo ainda em silhueta
     monarchStrike      = { "audio/sfx/boss/monarch_strike.mp3",        0.85 },
+    -- tirano v2 (Out/2026): correntes do salão arrastadas, esticando, arrebentando
+    tyrantChainDrag    = { "audio/sfx/boss/tyrant_chain_drag.mp3",     0.70 },
+    tyrantChainTaut    = { "audio/sfx/boss/tyrant_chain_taut.mp3",     0.80 },
+    tyrantChainSnap    = { "audio/sfx/boss/tyrant_chain_snap.mp3",     0.85 },
+    tyrantUnchained    = { "audio/sfx/boss/tyrant_unchained.mp3",      0.85 },
 }
 local soundsLoaded = false
 BossCinematic.SOUNDS = SOUNDS   -- teste confere que todo arquivo existe
@@ -157,6 +162,11 @@ local fx = {}
 local flakes = {}
 local ownAnims = {}
 local deathFor = nil   -- inimigo cuja morte já foi encenada (não repete)
+-- TIRANO: correntes do salão presas ao chefe — fora de `fx`, vivem a luta
+-- inteira (bond) + inimigo pra quem ensureBond já tentou (triedFor). Numa
+-- TABELA, não em locais soltos: LuaJIT aceita 200 locais por função e este
+-- arquivo passou de 200 no escopo de arquivo (boot quebra na compilação).
+local T3 = { bond = nil, triedFor = nil }   -- (ver seção TIRANO)
 -- RAINHA DO ECLIPSE v2 (seção própria mais abaixo): estado do eclipse que
 -- SOBREVIVE ao fim da entrada (luta + cash out) e o cartão da coroação
 local eclipse = nil    -- { level, cur, dawn, t, gaze, lastPhase, active }
@@ -309,6 +319,7 @@ function BossCinematic.reset()
     clearFx()
     landed = false
     deathFor = nil
+    T3.bond = nil
     stage = nil
     eclipse = nil
     if InteriorFX.setEclipse then InteriorFX.setEclipse(0, 0) end   -- rainha: salão limpo
@@ -382,6 +393,7 @@ function BossCinematic.startIntro(game)
     deathFor = nil
     eclipse = nil   -- salão novo: o eclipse da luta anterior não vale aqui
     begin("intro", steps, id, reduced, d)
+    T3.bond = nil   -- as correntes nascem no passo `chains` da entrada
     -- o salão nasce ESCURO: a cena ainda está no fade do preto
     dark = 0.86
     bossHidden = true
@@ -436,6 +448,7 @@ function BossCinematic._debug()
              slowmo = slowmo, desat = desat, landed = landed,
              mist = mist, hit = hit, edge = edge, loops = loops, fx = fx,
              eclipse = eclipse, crown = crownCard, hallEyes = hallEyes,
+             bond = T3.bond,
              feathers = #feathers, dust = #dust, crows = #crows, wind = #wind }
 end
 
@@ -1021,6 +1034,7 @@ local function drawWalk(w, h)
     love.graphics.setColor(0, 0, 0, 0.35 * e)
     love.graphics.ellipse("fill", bodyCx, groundY, iw * sk * 0.3, math.max(3, iw * sk * 0.05))
     glowBlob(bodyCx, y + ih * sk * 0.6, iw * sk * 1.5, ih * sk * 0.9, PAL.glow, 0.22, 2)
+    wk.pos = { x = x, y = y, s = sk }
     drawOwn(wk.anim, x, y, sk, { 0.7 + 0.3 * e, 0.7 + 0.3 * e, 0.7 + 0.3 * e, 1 }, 0.12)
 end
 
@@ -1148,38 +1162,6 @@ local function drawFirewall(w, h)
     end
     -- brilho de lava no chão
     glowBlob(w / 2, tr.oy + (f.v * 256 + 30) * S, w * 1.1, 40 * S, PAL.ember, 0.25 * env, 2)
-end
-
-local function drawChains(w, h)
-    local c = fx.chains
-    if not c then return end
-    local P = px()
-    for _, ch in ipairs(c.list) do
-        local drop = easeOut(clamp01((c.t - ch.delay) / 0.4))
-        if drop > 0 then
-            -- elo = 2 blocos de largura × 3 de altura, claro/escuro alternando
-            -- (1 bloco de largura lia como fio, não corrente)
-            local len = math.floor(ch.len * drop / P) * P
-            local sway = math.sin(c.t * 2.6 + ch.phase) * 10 * P * (1 - drop * 0.5)
-            local link = 0
-            for yy = 0, len, 3 * P do
-                local k = yy / math.max(1, len)
-                local x = math.floor((ch.x + sway * k) / P) * P
-                local lit = (link % 2 == 0)
-                love.graphics.setColor(0.30, 0.28, 0.32, 0.95)
-                love.graphics.rectangle("fill", x - P, yy, 2 * P, 3 * P)
-                love.graphics.setColor(lit and 0.66 or 0.48, lit and 0.62 or 0.46, lit and 0.66 or 0.50, 0.95)
-                love.graphics.rectangle("fill", x - P, yy, 2 * P, P)
-                love.graphics.rectangle("fill", x - P, yy + P, P, P)
-                link = link + 1
-            end
-            -- gancho na ponta
-            local hx = math.floor((ch.x + sway) / P) * P
-            love.graphics.setColor(0.70, 0.66, 0.70, 0.95)
-            love.graphics.rectangle("fill", hx - 2 * P, len, 4 * P, P)
-        end
-    end
-    love.graphics.setColor(1, 1, 1, 1)
 end
 
 -- ---------------------------------------------------------------------------
@@ -1627,6 +1609,252 @@ local function drawCrumble()
         love.graphics.draw(img, p.quad, x, y, 0, s, s)
     end
     love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- ---------------------------------------------------------------------------
+-- TIRANO DO ABISMO v2 — CORRENTES DO SALÃO (Out/2026; dono: "as correntes
+-- saem do céu; poderiam se manter dentro da fase com esse boneco, ser parte
+-- de alguma mecânica ligando ele"). As correntes pertencem ao castle_hall_3
+-- E a ele: ancoradas nas argolas pintadas dos pilares e nas pontas dos
+-- chifres do portão-caveira (InteriorFX.HALLS[3].chainAnchors, px da arte)
+-- e presas aos PULSOS e ao PESCOÇO (`bonds` no dado: grip = fração do canvas
+-- do sprite). Na entrada ele chega ARRASTANDO as correntes (frouxas,
+-- balançando) e elas se ESTICAM com um tranco quando ele para no palco. Na
+-- luta, a cada limiar de vida (`breakAt`: 0.72 / 0.52 / 0.38 e o ENFURECIDO
+-- de 30%, estado que o jogo já tem) uma corrente ARREBENTA (faísca, som,
+-- tremor) e fica pendurada da argola, com o toco na algema; com todas
+-- rompidas ele está SOLTO (aura maior, brasas subindo do chão). Nada disso
+-- muda dano ou vida: é leitura. O estado (`T3.bond`) mora fora de `fx`:
+-- sobrevive ao fim da cinemática e nasce pronto no Continuar (T3.ensureBond:
+-- correntes já rompidas pela vida atual, sem faísca).
+-- ---------------------------------------------------------------------------
+T3.CHAIN_DARK, T3.CHAIN_LIT, T3.CHAIN_DIM = { 0.30, 0.28, 0.32 }, { 0.66, 0.62, 0.66 }, { 0.48, 0.46, 0.50 }
+
+function T3.makeBond(id, enemy, state)
+    local d = Data[id]
+    if not (d and d.bonds) then return nil end
+    local cfg = stage and stage.hall and InteriorFX.HALLS[stage.hall]
+    local anchors = cfg and cfg.chainAnchors
+    if not anchors then
+        print("[BossCinematic] bonds: salão " .. tostring(stage and stage.hall) .. " sem chainAnchors — sem correntes")
+        return nil
+    end
+    local b = { id = id, enemy = enemy, state = state or "taut", chains = {}, loose = false, looseT = 0, t = 0 }
+    for i, spec in ipairs(d.bonds) do
+        local a = anchors[spec.anchor]
+        if not a then
+            print("[BossCinematic] bonds: âncora '" .. tostring(spec.anchor) .. "' não existe no salão")
+        else
+            b.chains[#b.chains + 1] = { ax = a[1], ay = a[2], gx = spec.grip[1], gy = spec.grip[2],
+                breakAt = spec.breakAt, front = spec.front ~= false, broken = false,
+                phase = i * 1.7, snapT = nil, sx = nil, sy = nil }
+        end
+    end
+    return b
+end
+
+function T3.hpRatio(enemy)
+    local mh = enemy and enemy.maxHealth
+    if not mh or mh <= 0 then return 1 end
+    return clamp01((enemy.health or mh) / mh)
+end
+
+function T3.chainShouldBreak(ch, enemy)
+    if ch.breakAt == "enraged" then
+        if enemy and enemy.hasStatus and enemy:hasStatus("enraged") then return true end
+        return T3.hpRatio(enemy) < 0.3
+    end
+    return T3.hpRatio(enemy) <= (ch.breakAt or 0)
+end
+
+-- ponto do punho/pescoço na tela: segue o walker da entrada; depois o
+-- EnemyRenderer (último quadro); antes de ele entrar, espera no fundo
+function T3.bondGrip(ch)
+    local f0 = spriteFrame0(T3.bond.id)
+    local iw, ih = (f0 and f0.iw) or 120, (f0 and f0.ih) or 120
+    local wk = fx.walker
+    if wk and wk.pos then
+        return wk.pos.x + ch.gx * iw * wk.pos.s, wk.pos.y + ch.gy * ih * wk.pos.s
+    end
+    local dx, dy, s = footInfo()
+    if dx and not bossHidden then
+        return dx + ch.gx * iw * s, dy + ch.gy * ih * s
+    end
+    local sc = (s or 2) * 0.55
+    local bx = (stage.bbox and stage.bbox.cx) or stage.w / 2
+    local by = stage.backY or stage.cy or stage.h * 0.7
+    return bx + (ch.gx - 0.5) * iw * sc, by - (1 - ch.gy) * ih * sc
+end
+
+function T3.snapChain(ch, loud)
+    ch.broken = true
+    ch.snapT = 0
+    if not loud then return end
+    local sx, sy = ch.sx, ch.sy
+    if not sx and stage then sx, sy = T3.bondGrip(ch) end
+    if not sx then return end
+    for _ = 1, (reducedMotion() and 5 or 14) do
+        local a = love.math.random() * math.pi * 2
+        local sp = 90 + love.math.random() * 200
+        spawnFeather(sx, sy, math.cos(a) * sp, math.sin(a) * sp - 60, "ember")
+    end
+end
+
+-- vínculo fora da entrada (Continuar na luta, troca de inimigo)
+function T3.ensureBond(game, ctx)
+    local e = game and game.enemy
+    local id = e and e.spriteId
+    if not (ctx.inHall and e and e.isBoss and id and Data[id] and Data[id].bonds) then
+        if T3.bond and (not e or T3.bond.enemy ~= e) then T3.bond = nil end
+        return
+    end
+    if T3.bond then
+        if T3.bond.enemy == nil then T3.bond.enemy = e end
+        if T3.bond.enemy == e then return end
+    end
+    if seq and seq.phase == "intro" then return end
+    if not (stage and stage.hall) then return end   -- sem palco medido ainda: tenta no próximo quadro
+    if T3.triedFor == e then return end
+    T3.triedFor = e
+    T3.bond = T3.makeBond(id, e, "taut")
+    if not T3.bond then return end
+    for _, ch in ipairs(T3.bond.chains) do
+        if T3.chainShouldBreak(ch, e) then ch.broken = true; ch.snapT = 10 end
+    end
+    local all = true
+    for _, ch in ipairs(T3.bond.chains) do if not ch.broken then all = false end end
+    T3.bond.loose = all
+    T3.bond.looseT = all and 10 or 0
+end
+
+function T3.updateBond(dt, game)
+    if not T3.bond then return end
+    T3.bond.t = T3.bond.t + dt
+    if T3.bond.tautT then T3.bond.tautT = T3.bond.tautT + dt end
+    for _, ch in ipairs(T3.bond.chains) do
+        if ch.snapT then ch.snapT = ch.snapT + dt end
+    end
+    if T3.bond.loose then T3.bond.looseT = T3.bond.looseT + dt end
+    if seq and seq.phase == "intro" then return end   -- na entrada a vida ainda não conta
+    local e = T3.bond.enemy or (game and game.enemy)
+    if not e then return end
+    local dead = (game and game._deathHandled) or ((e.health or 1) <= 0)
+    local snapped = 0
+    for _, ch in ipairs(T3.bond.chains) do
+        if not ch.broken and (dead or T3.chainShouldBreak(ch, e)) then
+            T3.snapChain(ch, true)
+            snapped = snapped + 1
+        end
+    end
+    if snapped > 0 then
+        play("tyrantChainSnap", "bossChainsRattle", 0.95 + love.math.random() * 0.1, 0)
+        if _G.triggerShake then _G.triggerShake(dead and 4 or 7, 0.3) end
+        InteriorFX.gust(0.5, 0.5)
+    end
+    if not T3.bond.loose then
+        local all = true
+        for _, ch in ipairs(T3.bond.chains) do if not ch.broken then all = false end end
+        if all then
+            T3.bond.loose = true
+            T3.bond.looseT = 0
+            if not dead then
+                play("tyrantUnchained", "enemyBuffRoar")
+                if _G.triggerShake then _G.triggerShake(12, 0.5) end
+                InteriorFX.gust(1.0, 1.0)
+                if _G.jiggleScreen and not reducedMotion() then _G.jiggleScreen(0.8) end
+            end
+        end
+    end
+    -- SOLTO: brasas sobem do chão em volta dele enquanto vive
+    if T3.bond.loose and not dead and stage and stage.bbox and not reducedMotion()
+        and love.math.random() < dt * 6 then
+        local b = stage.bbox
+        spawnFeather(b.cx + (love.math.random() - 0.5) * (b.width or 120) * 1.3,
+            (stage.cy or b.bottomY) - love.math.random() * 6,
+            (love.math.random() - 0.5) * 30, -40 - love.math.random() * 60, "ember")
+    end
+end
+
+-- elos ao longo de uma bezier quadrática (controle no meio, caído `sag`):
+-- elo = 2×3 blocos, claro/escuro alternando (1 bloco lia como fio)
+function T3.drawChainLinks(x0, y0, x1, y1, sag, P, swayK, phase)
+    local mx = (x0 + x1) / 2 + math.sin(T3.bond.t * 1.7 + phase) * swayK
+    local my = (y0 + y1) / 2 + sag
+    local len = math.sqrt((x1 - x0) ^ 2 + (y1 - y0) ^ 2) + sag
+    local n = math.max(2, math.floor(len / (3 * P)))
+    for i = 0, n do
+        local q = i / n
+        local x = (1 - q) ^ 2 * x0 + 2 * (1 - q) * q * mx + q ^ 2 * x1
+        local y = (1 - q) ^ 2 * y0 + 2 * (1 - q) * q * my + q ^ 2 * y1
+        local bx, by = math.floor(x / P) * P - P, math.floor(y / P) * P - P
+        love.graphics.setColor(T3.CHAIN_DARK[1], T3.CHAIN_DARK[2], T3.CHAIN_DARK[3], 0.95)
+        love.graphics.rectangle("fill", bx, by, 2 * P, 3 * P)
+        local c = (i % 2 == 0) and T3.CHAIN_LIT or T3.CHAIN_DIM
+        love.graphics.setColor(c[1], c[2], c[3], 0.95)
+        love.graphics.rectangle("fill", bx, by, 2 * P, P)
+        love.graphics.rectangle("fill", bx, by + P, P, P)
+    end
+end
+
+function T3.drawBond(front)
+    if not T3.bond or not stage or not stage.tr then return end
+    local tr = stage.tr
+    local P = px()
+    for _, ch in ipairs(T3.bond.chains) do
+        if ch.front == front then
+            local ax, ay = tr.ox + ch.ax * tr.scale, tr.oy + ch.ay * tr.scale
+            local gx, gy = T3.bondGrip(ch)
+            ch.sx, ch.sy = gx, gy
+            local len = math.sqrt((gx - ax) ^ 2 + (gy - ay) ^ 2)
+            -- argola na âncora pintada
+            love.graphics.setColor(T3.CHAIN_LIT[1], T3.CHAIN_LIT[2], T3.CHAIN_LIT[3], 0.95)
+            love.graphics.rectangle("fill", math.floor(ax / P) * P - P, math.floor(ay / P) * P - P, 3 * P, 3 * P)
+            love.graphics.setColor(0.12, 0.10, 0.12, 1)
+            love.graphics.rectangle("fill", math.floor(ax / P) * P, math.floor(ay / P) * P, P, P)
+            if not ch.broken then
+                local slack = (T3.bond.state == "drag") and 0.32 or 0.05
+                -- ao esticar (pouso) a corrente dá um TRANCO e assenta
+                if T3.bond.state == "taut" and T3.bond.tautT and T3.bond.tautT < 0.5 then
+                    slack = slack + 0.22 * (1 - T3.bond.tautT / 0.5) * math.abs(math.cos(T3.bond.tautT * 20))
+                end
+                T3.drawChainLinks(ax, ay, gx, gy, len * slack, P, (T3.bond.state == "drag") and 12 or 2, ch.phase)
+            else
+                -- ponta pendurada da argola: pêndulo que amortece
+                local st = ch.snapT or 10
+                local L = len * 0.28
+                local th = 0.9 * math.exp(-st * 0.9) * math.sin(st * 6) + math.sin(T3.bond.t * 0.9 + ch.phase) * 0.06
+                local dirX = (gx > ax) and 1 or -1
+                local ex, ey = ax + math.sin(th) * L * dirX, ay + math.cos(th) * L
+                T3.drawChainLinks(ax, ay, ex, ey, 0, P, 0, ch.phase)
+                -- toco na algema: elos curtos balançando com o corpo
+                local cx2 = gx + math.sin(T3.bond.t * 2.3 + ch.phase) * 2 * P
+                T3.drawChainLinks(gx, gy, cx2, gy + 8 * P, 0, P, 0, ch.phase)
+                if st < 0.35 then
+                    -- faísca do rompimento no punho
+                    local a = 1 - st / 0.35
+                    glowBlob(gx, gy, 26 * P, 16 * P, PAL.ember, 0.8 * a, 3)
+                    glowBlob(gx, gy, 12 * P, 8 * P, { 1, 0.95, 0.7 }, 0.9 * a, 1)
+                end
+            end
+            -- algema no punho/pescoço
+            love.graphics.setColor(T3.CHAIN_LIT[1], T3.CHAIN_LIT[2], T3.CHAIN_LIT[3], 0.95)
+            love.graphics.rectangle("fill", math.floor(gx / P) * P - P, math.floor(gy / P) * P - P, 3 * P, 2 * P)
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- aura do tirano SOLTO (atrás do corpo): brilho maior pulsando na cor da brasa
+function T3.drawLooseAura()
+    if not (T3.bond and T3.bond.loose and stage and stage.bbox) then return end
+    local e = T3.bond.enemy
+    if e and (e.health or 1) <= 0 then return end
+    local k = smooth(clamp01(T3.bond.looseT / 0.8))
+    local b = stage.bbox
+    local pulse = 0.8 + 0.2 * math.sin(T3.bond.t * 5)
+    local w, h = (b.width or 120) * 2.2, (b.bottomY - b.topY) * 1.3
+    glowBlob(b.cx, b.topY + (b.bottomY - b.topY) * 0.55, w, h, PAL.glow, 0.30 * k * pulse, 2)
+    glowBlob(b.cx, b.bottomY - 4, w * 0.8, h * 0.25, PAL.ember, 0.35 * k * pulse, 1)
 end
 
 local function drawEclipse(w, h)
@@ -2498,6 +2726,10 @@ local function enterStep(st)
         end
         bossHidden = false
         landed = true
+        if T3.bond and T3.bond.state == "drag" then
+            T3.bond.state = "taut"; T3.bond.tautT = 0
+            queueSfx(0.05, "tyrantChainTaut", "bossChainsRattle")
+        end
         darkEase = { from = dark, to = 0, t = 0, dur = math.max(0.15, (st.dur or 0.5) * 0.6) }
         mistTarget(0.35, 0.45)
         edge = nil
@@ -2636,14 +2868,10 @@ local function enterStep(st)
         playLoop("bossHellfireWall")
         InteriorFX.gust(0.7, fx.fire.total)
     elseif kind == "chains" then
-        local w = (stage and stage.w) or 1920
-        fx.chains = { t = 0, list = {} }
-        for i = 1, (st.n or 4) do
-            fx.chains.list[i] = { x = w * (0.12 + 0.76 * (i - 0.5) / (st.n or 4)) + (love.math.random() - 0.5) * 40,
-                                  len = (stage and stage.h or 1080) * (0.35 + love.math.random() * 0.3),
-                                  delay = (i - 1) * 0.12, phase = love.math.random() * 6.28 }
-        end
-        play("bossChainsRattle", nil)
+        -- as correntes do salão: ele entra ARRASTANDO (frouxas) e elas esticam no pouso
+        -- (sem palco medido — ferramenta sem draw — o T3.ensureBond cria depois, já esticadas)
+        T3.bond = (stage and stage.hall) and T3.makeBond(seq.bossId, nil, "drag") or nil
+        if T3.bond then play("tyrantChainDrag", "bossChainsRattle") end
     elseif kind == "walk_in" then
         fx.walker = { t = 0, dur = math.max(0.4, st.dur or 1.8), anim = ownAnim(st.clip, st.dur),
                       stomp = st.stomp, nextStomp = st.stomp or 1e9 }
@@ -2879,7 +3107,6 @@ function BossCinematic.update(dt, game, ctx)
         end
         if fx.fire.t >= fx.fire.total then fx.fire = nil; stopLoop("bossHellfireWall") end
     end
-    if fx.chains then fx.chains.t = fx.chains.t + dt end
     if fx.walker then
         local wk = fx.walker
         wk.t = wk.t + dt
@@ -2947,6 +3174,8 @@ function BossCinematic.update(dt, game, ctx)
     end
     if fx.desc then fx.desc.t = fx.desc.t + dt; if fx.desc.anim then fx.desc.anim:update(dt) end end
     updateMist(dt)
+    T3.ensureBond(game, ctx)
+    T3.updateBond(dt, game)
     queenUpdate(dt, game, ctx)
     if hit then
         hit.t = hit.t + dt
@@ -3337,6 +3566,8 @@ function BossCinematic.drawBack()
     queenDrawBack(w, h)
     drawEyes(w, h)
     drawMist({ [2] = true })
+    T3.drawLooseAura()
+    T3.drawBond(false)
     drawWalk(w, h)
     drawAssemble()
     drawRise(w, h)
@@ -3370,7 +3601,7 @@ end
 function BossCinematic.drawFront()
     if not stage then return end
     drawMist({ [3] = true })
-    drawChains(stage.w, stage.h)
+    T3.drawBond(true)
     drawLavaPool()
     drawCracks()
     drawCrumble()
