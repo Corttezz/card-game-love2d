@@ -34,6 +34,7 @@ extern number degrade;
 // identidade, não borram letra). CRTShader.setCalmRect, zerado a cada quadro.
 extern vec4 calmRect;
 extern vec4 calmRect2;   // 2ª zona (botão de texto miúdo no canto, ex. CONTINUAR)
+extern number caScale;   // 1 = normal; a loja pede 0,45 (texto miúdo em toda a tela)
 
 // Largura do gabinete em px (a moldura vive AQUI, fora do conteúdo).
 const float BEZEL_PX = 20.0;
@@ -291,7 +292,7 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     // PIXELS, não em fração da tela — em uv, 1440p deslocava 1,5-6 px e
     // borrava o texto. Centro 0,9 px, canto +3,2 px (≈ o que 1280p tinha).
     float caPx = (0.9 + mix(1.6, 3.5, deg) * r2 * 4.0) * strength * caBoost;
-    caPx *= 1.0 - calm;
+    caPx *= (1.0 - calm) * caScale;
     float caOffset = caPx / max(1.0, resolution.x);
     vec4 colR = Texel(tex, suv + vec2(caOffset, 0.0));
     vec4 colG = Texel(tex, suv);

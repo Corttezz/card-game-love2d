@@ -518,6 +518,8 @@ return {
         detail_prefocus     = "Hover to compare",
         detail_stale        = "last offer you looked at",
         detail_buy          = "BUY",
+        buy_sold            = "SOLD",
+        buy_no_gold         = "NO GOLD",
     },
 
     event = {
@@ -1067,6 +1069,7 @@ return {
         topbar_deck = { name = "Grimoire", desc = "{deck} cards in your grimoire, {hand} in hand right now. At end of turn your hand is discarded and you draw fresh cards. Select to browse the deck." },
         topbar_progress = { name = "Journey Progress", desc = "Act {act}, floor {floor} of {total}. A MINI-BOSS waits at floor 7; the act BOSS at floor {total}. Defeat the Act {last} boss to finish the chronicle. Select to open the Journey Log.{mods}" },
         topbar_config = { name = "Pause Menu", desc = "Pauses the journey: settings, save and quit to menu, or abandon the run." },
+        scribe_dice_help = { name = "Scribe's Dice", desc = "One bet per visit: click the dice cup on the counter. This button opens the raven's explanation." },
         reward_rules = { name = "How offers work", desc = "Offered cards belong to YOUR class. Quality improves each act, and every offer without a RARE raises the next one's odds (after a long dry streak, a rare is guaranteed). Cards marked AFFINITY match your deck's strong tags. Cards you already own in copies show up less often." },
         -- Loja v3: tooltips dos objetos do balcão (foco = hover)
         shop_bell   = { name = "Bell: new offers", desc = "Ring the bell and the merchant restocks both shelves. Costs ${n} on this visit and rises by $2 each ring." },

@@ -104,11 +104,11 @@ ShopPerspective.POSE = {
     remove_card       = { flip = false, shear = 1.0 },
     joker_slot        = { flip = true,  shear = 0.5 },
     health_upgrade    = { flip = false, shear = 0 },     -- arte v4 na diagonal
-    mana_upgrade      = { flip = true,  shear = 0.5 },
+    mana_upgrade      = { flip = false, shear = 0 },     -- arte v5 (cristal redondo)
     card_draw_upgrade = { flip = true,  shear = 0.5 },
     interest_cap      = { flip = true,  shear = 0.5 },
     forge_card        = { flip = true,  shear = 0.5 },
-    duplicate_card    = { flip = true,  shear = 0.5 },
+    duplicate_card    = { flip = false, shear = 0 },     -- arte v5 (prensa já de canto)
     damage_upgrade    = { flip = false, shear = 1.0 },
     defense_upgrade   = { flip = false, shear = 1.0 },
     bell              = { flip = false, shear = 0 },
@@ -139,19 +139,52 @@ end
 -- e os pacotes. Quando existe, substitui a antiga na mesa E no pergaminho
 -- (a mesma peça nos dois lugares).
 ShopPerspective.V4_DIR = "assets/sprites/shop/v4/"
+-- v5 (Out/2026): capas de pacote refeitas como pacotes de verdade, cristal e
+-- prensa novos. A v5 vale antes da v4.
+ShopPerspective.V5_DIR = "assets/sprites/shop/v5/"
 local function v4Art(id)
     if not id then return nil end
-    local p = ShopPerspective.V4_DIR .. id .. ".png"
-    if love.filesystem.getInfo(p) then return ImageCache.tryGet(p), p end
+    for _, dir in ipairs({ ShopPerspective.V5_DIR, ShopPerspective.V4_DIR }) do
+        local p = dir .. id .. ".png"
+        if love.filesystem.getInfo(p) then return ImageCache.tryGet(p), p end
+    end
     return nil
 end
 ShopPerspective.v4Art = v4Art
+
+-- Animação v5 (PixelLab animate_object sobre a arte v5/v4, quadro 0 = o PNG
+-- estático): assets/sprites/shop/v5_anim/<id>/<i>.png, 8 fps. Só no HOVER
+-- (regra do dono: animação na interação). Mesmo tamanho de canvas do PNG.
+ShopPerspective.V5_ANIM_DIR = "assets/sprites/shop/v5_anim/"
+ShopPerspective.ANIM_FPS = 8
+local animFrames = {}
+function ShopPerspective.animFrames(id)
+    if not id then return nil end
+    if animFrames[id] ~= nil then return animFrames[id] or nil end
+    local frames = {}
+    for i = 0, 63 do
+        local p = ShopPerspective.V5_ANIM_DIR .. id .. "/" .. i .. ".png"
+        if not love.filesystem.getInfo(p) then break end
+        frames[#frames + 1] = ImageCache.tryGet(p)
+    end
+    animFrames[id] = (#frames > 1) and frames or false
+    return animFrames[id] or nil
+end
 
 function ShopPerspective.spriteFor(kind, offer, animate, t)
     local id = offer and offer.id
     if kind == "relic" or kind == "pack" then
         local img, p = v4Art(id)
-        if img then return img, p end
+        if img then
+            if animate and kind == "relic" then
+                local fr = ShopPerspective.animFrames(id)
+                if fr then
+                    local k = math.floor((t or 0) * ShopPerspective.ANIM_FPS) % #fr + 1
+                    return fr[k] or img, p
+                end
+            end
+            return img, p
+        end
     end
     if kind == "relic" then
         local UpgradeTile = require("src.ui.UpgradeTile")
@@ -407,28 +440,39 @@ function ShopPerspective.drawContactShadow(o, mask, alpha)
     local bottom = prof.y1 + 1
     local fx, fy = floor(o.fx), floor(o.fy)
     local halfW = (prof.x1 - prof.x0 + 1) * s / 2
-    local tol = math.max(2, 3 * s)          -- coluna "encosta" se a base está a ≤ 3 px do pé
+    -- v5 r2 (dono: "sombras parecem riscos pretos soltos"): a sombra segue
+    -- o CONTORNO DE BAIXO da silhueta coluna a coluna (livro aberto, cristal
+    -- na base de pedra, tesoura: bases irregulares), contínua, sem buracos:
+    -- coluna cuja base está até `tol` acima do pé recebe sombra NA base dela
+    -- (densidade cai com a altura); acima disso, a coluna pendura sobre a
+    -- mesa e não toca. Os gaps pequenos (1 px) entre colunas são fechados.
+    local tol = math.max(4, 6 * s)
     local n = 0
     local right = nil
     local lightK = 1 - clamp((o.lift or 0) / 6, 0, 0.6)  -- levantado: sombra mais rala
+    local lastY = nil
     for dx = floor(fx - halfW) - 1, math.ceil(fx + halfW) + 1 do
         local lx = dx + 0.5 - fx
         local sx = cx + lx / (o.flip and -s or s)
         local b = prof.bottom[floor(sx)]
+        local by = nil
         if b then
             local gap = (bottom - (b + 1)) * s
-            if gap <= tol then
-                local by = fy + k * lx - gap
-                local yy = floor(by)
-                for row = 0, 1 do
-                    local dens = (row == 0) and 1.0 or 0.6
-                    if dithered(dx, yy + row, dens * lightK) and (not mask or inPoly(dx + 0.5, yy + row + 0.5, mask)) then
-                        n = n + 1; pts[n] = { dx + 0.5, yy + row + 0.5 }
-                    end
-                end
-                right = dx
-            end
+            if gap <= tol then by = floor(fy + k * lx - gap) end
+        elseif lastY then
+            by = lastY                      -- buraco de 1 coluna: fecha
         end
+        if by then
+            local gapK = b and clamp(1 - ((bottom - (b + 1)) * s) / (tol + 1), 0.35, 1) or 0.6
+            for row = 0, 1 do
+                local dens = ((row == 0) and 1.0 or 0.55) * gapK
+                if dithered(dx, by + row, dens * lightK) and (not mask or inPoly(dx + 0.5, by + row + 0.5, mask)) then
+                    n = n + 1; pts[n] = { dx + 0.5, by + row + 0.5 }
+                end
+            end
+            right = dx
+        end
+        lastY = b and by or nil
     end
     -- cauda pra direita, ao longo da diagonal (vela à esquerda): rala e curta
     if right then

@@ -515,6 +515,8 @@ return {
         detail_prefocus     = "Survolez pour comparer",
         detail_stale        = "dernière offre consultée",
         detail_buy          = "ACHETER",
+        buy_sold            = "VENDU",
+        buy_no_gold         = "SANS OR",
     },
 
     deck_viewer = {
@@ -1064,6 +1066,7 @@ return {
         topbar_deck = { name = "Grimoire", desc = "{deck} cartes dans ton grimoire, {hand} en main maintenant. En fin de tour ta main est défaussée et tu pioches de nouvelles cartes. Sélectionne pour parcourir le deck." },
         topbar_progress = { name = "Progression du Voyage", desc = "Acte {act}, étage {floor} sur {total}. Un MINI-BOSS attend à l'étage 7 ; le BOSS de l'acte à l'étage {total}. Bats le boss de l'Acte {last} pour achever la chronique. Sélectionne pour ouvrir la Chronique du voyage.{mods}" },
         topbar_config = { name = "Menu Pause", desc = "Met le voyage en pause : options, sauvegarder et quitter au menu, ou abandonner la partie." },
+        scribe_dice_help = { name = "Dés du Scribe", desc = "Un pari par visite : cliquez sur le gobelet à dés du comptoir. Ce bouton ouvre l'explication du corbeau." },
         reward_rules = { name = "Fonctionnement des offres", desc = "Les cartes proposées sont de TA classe. La qualité s'améliore à chaque acte, et chaque offre sans carte RARE augmente les chances de la suivante (après une longue série sans rare, une rare est garantie). Les cartes marquées AFFINITÉ correspondent aux tags forts de ton deck. Les cartes que tu possèdes déjà en plusieurs exemplaires apparaissent moins souvent." },
         -- Loja v3: tooltips dos objetos do balcão (foco = hover)
         shop_bell   = { name = "Cloche des nouvelles offres", desc = "Sonnez la cloche et le marchand regarnit les deux étagères. Coûte ${n} lors de cette visite et augmente de $2 à chaque coup." },

@@ -191,17 +191,19 @@ def compose(wall_path, out, warm=False):
             px[x, y] = tone(base * light(x, y) + 0.6, x, y)
         px[x, y_st] = INK if x % RUN else RAMP[1]
         px[x, y_se - 1] = HI if light(x, y_se) > 0.62 else RAMP[7]       # aresta da frente, iluminada
-        # face da frente: tábua escura
+        # face da frente: madeira VISÍVEL (v5: era uma faixa quase preta),
+        # mesma rampa do tampo, um tom e meio mais escura, veio reto
         for y in range(y_se, y_sf):
             v = y - y_se
             t = wood_front.at(x + 37, v)
-            base = 1.4 + 1.4 * t - 0.08 * v
+            base = 2.4 + 1.4 * t - 0.12 * v
             px[x, y] = tone(base * light(x, y) + 0.3, x, y)
-        px[x, y_se] = RAMP[2]
+        px[x, y_se] = RAMP[3]
         px[x, y_sf - 1] = INK
-        # vão atrás do balcão: sombra funda
+        # vão atrás do balcão: sombra curta do degrau sobre a mesa
         for y in range(y_sf, y_tb):
-            px[x, y] = RAMP[0] if (y - y_sf) > 2 or BAYER[y % 4][x % 4] < 10 else INK
+            k = y - y_sf
+            px[x, y] = RAMP[0] if k == 0 or (k == 1 and BAYER[y % 4][x % 4] < 12) else (RAMP[1] if BAYER[y % 4][x % 4] < 10 else RAMP[2])
         # ===== tampo da mesa =====
         depth = y_te - y_tb
         for y in range(y_tb, y_te):

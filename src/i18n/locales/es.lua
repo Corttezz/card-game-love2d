@@ -514,6 +514,8 @@ return {
         detail_prefocus     = "Pasa el ratón para comparar",
         detail_stale        = "última oferta observada",
         detail_buy          = "COMPRAR",
+        buy_sold            = "VENDIDO",
+        buy_no_gold         = "SIN ORO",
     },
 
     deck_viewer = {
@@ -1063,6 +1065,7 @@ return {
         topbar_deck = { name = "Grimorio", desc = "{deck} cartas en tu grimorio, {hand} en mano ahora. Al final del turno tu mano se descarta y robas cartas nuevas. Selecciona para ver el mazo." },
         topbar_progress = { name = "Progreso del Viaje", desc = "Acto {act}, piso {floor} de {total}. Un MINI-JEFE espera en el piso 7; el JEFE del acto en el piso {total}. Derrota al jefe del Acto {last} para terminar la crónica. Selecciona para abrir la Crónica del viaje.{mods}" },
         topbar_config = { name = "Menú de Pausa", desc = "Pausa el viaje: ajustes, guardar y salir al menú, o abandonar la partida." },
+        scribe_dice_help = { name = "Dados del Escriba", desc = "Una apuesta por visita: pulsa el cubilete de la mesa. Este botón abre la explicación del cuervo." },
         reward_rules = { name = "Cómo funcionan las ofertas", desc = "Las cartas ofrecidas son de TU clase. La calidad mejora cada acto, y cada oferta sin una RARA aumenta las probabilidades de la siguiente (tras una racha larga sin raras, una rara está garantizada). Las cartas marcadas con AFINIDAD coinciden con las etiquetas fuertes de tu mazo. Las cartas que ya tienes en copias aparecen menos." },
         -- Loja v3: tooltips dos objetos do balcão (foco = hover)
         shop_bell   = { name = "Campana de nuevas ofertas", desc = "Toca la campana y el mercader repone las dos estanterías. Cuesta ${n} en esta visita y sube $2 con cada toque." },

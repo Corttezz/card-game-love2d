@@ -515,6 +515,8 @@ return {
         detail_prefocus     = "Zum Vergleichen darübergehen",
         detail_stale        = "zuletzt betrachtetes Angebot",
         detail_buy          = "KAUFEN",
+        buy_sold            = "VERKAUFT",
+        buy_no_gold         = "KEIN GOLD",
     },
 
     deck_viewer = {
@@ -1064,6 +1066,7 @@ return {
         topbar_deck = { name = "Grimoire", desc = "{deck} Karten in deinem Grimoire, {hand} gerade auf der Hand. Am Zugende wird deine Hand abgeworfen und du ziehst neue Karten. Auswählen, um das Deck zu durchsuchen." },
         topbar_progress = { name = "Reisefortschritt", desc = "Akt {act}, Etage {floor} von {total}. Ein MINI-BOSS wartet auf Etage 7; der Akt-BOSS auf Etage {total}. Besiege den Boss von Akt {last}, um die Chronik zu vollenden. Auswählen für die Reisechronik.{mods}" },
         topbar_config = { name = "Pausenmenü", desc = "Pausiert die Reise: Optionen, speichern und zum Menü, oder den Lauf abbrechen." },
+        scribe_dice_help = { name = "Würfel des Schreibers", desc = "Eine Wette pro Besuch: klicke auf den Würfelbecher auf dem Tresen. Dieser Knopf öffnet die Erklärung des Raben." },
         reward_rules = { name = "Wie Angebote funktionieren", desc = "Angebotene Karten gehören ZU DEINER Klasse. Die Qualität steigt mit jedem Akt, und jedes Angebot ohne eine SELTENE erhöht die Chance des nächsten (nach einer langen Durststrecke ist eine seltene garantiert). Mit AFFINITÄT markierte Karten passen zu den starken Tags deines Decks. Karten, die du bereits mehrfach besitzt, erscheinen seltener." },
         -- Loja v3: tooltips dos objetos do balcão (foco = hover)
         shop_bell   = { name = "Glocke für neue Angebote", desc = "Läute die Glocke und der Händler füllt beide Regale neu. Kostet ${n} bei diesem Besuch und steigt mit jedem Läuten um $2." },

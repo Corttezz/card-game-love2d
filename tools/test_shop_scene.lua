@@ -122,7 +122,7 @@ function M.run()
         local realAudio = _G.audioSystem
         _G.audioSystem = {
             sources = { hoverCard = true, cardSelect = true, hoverRelic = true },
-            play = function(_, name, opts) rec[#rec + 1] = { name = name, opts = opts } end,
+            play = function(_, name, opts) rec[#rec + 1] = { name = name, opts = opts, tb = (name == "cardSelect" or name == "hoverCard") and debug.traceback("", 2) or nil } end,
             playSound = function(_, name) rec[#rec + 1] = { name = name } end,
         }
         local cx, cy = card2:center()
@@ -242,7 +242,7 @@ function M.run()
         t:eq("pergaminho segue a SELECAO, nao o hover (leitura estavel)",
             screen.detailPayload.offer, screen.selectedOffer)
 
-        local relic = itemOf(screen, function(it) return it.kind == "relic" end)
+        local relic = itemOf(screen, function(it) return it.kind == "relic" and not it:floats() end)
         t:truthy("ha uma reliquia na mesa", relic ~= nil)
         rec = {}
         -- v3c: hover = o MESMO sprite (fonte, espelho, cisalhamento), só levantado
@@ -263,6 +263,7 @@ function M.run()
         t:near("hover: mesmo pe (y)", hovParams.fy, restParams.fy, 1e-6)
         t:near("hover: mesma escala", hovParams.s, restParams.s, 1e-9)
         t:near("v5: hover do objeto sem levantar (apoio na mesa)", relic:liftPx(), 0, 1e-9)
+
         -- quadro da animação no hover tem o MESMO tamanho do PNG estático
         t:eq("hover: quadro animado do mesmo tamanho", hovParams.img:getWidth(), restParams.img:getWidth())
         local joker = itemOf(screen, function(it) return it.offer and it.offer.id == "joker_slot" end)
@@ -293,8 +294,37 @@ function M.run()
         t:eq("nenhuma sombra em elipse (objeto flutuando)", ellipses, 0)
         local hovers = 0
         for _, c in ipairs(rec) do if c.name == "hoverCard" or c.name == "hoverRelic" then hovers = hovers + 1 end end
-        t:eq("hover-enter da reliquia toca UMA vez", hovers, 1)
+        local names = {}
+        for _, c in ipairs(rec) do names[#names + 1] = tostring(c.name); if c.tb and os.getenv("SHOP_TB") then print(c.name, c.tb) end end
+        t:eq("hover-enter da reliquia toca UMA vez [" .. table.concat(names, ",") .. "]", hovers, 1)
         t:falsy("call site nao crava volume", rec[1] and rec[1].opts and rec[1].opts.volume ~= nil)
+        -- v5 r2: o pacote FLUTUA no hover (dono); a etiqueta balança
+        local packIt = itemOf(screen, function(it) return it.kind == "pack" end)
+        if packIt then
+            mouseX, mouseY = packIt:center()
+            pump(screen, 0.5)
+            t:truthy(("pacote flutua no hover (%.1f px)"):format(packIt:liftPx()), packIt:liftPx() >= 4)
+            t:truthy("etiqueta do pacote balancou no hover", math.abs(packIt.tag.angle) > 0 or math.abs(packIt.tag.vel) > 0)
+            mouseX, mouseY = 5, 5
+            pump(screen, 1.2)
+            t:near("pacote volta a mesa", packIt:liftPx(), 0, 1e-6)
+        end
+        -- som de hover por objeto: poção/cristal/pacote têm código próprio
+        local probeP = require("src.ui.shop.ShelfItem").new("relic", { id = "health_upgrade", cost = 1 }, 90)
+        t:eq("hover da pocao toca o som dela", probeP:hoverSfx()[1], "shopPotionBubble")
+        t:truthy("pocao flutua", probeP:floats())
+        t:eq("compra da pocao toca o som dela", probeP:buySfx()[1], "shopPotionDrink")
+        -- pergaminho enrola/desenrola ao trocar a oferta mostrada
+        local before = screen.selectedOffer
+        local other = itemOf(screen, function(it) return it.kind == "card" and it.offer ~= before end)
+        screen:setSelectedOffer(other.offer)
+        pump(screen, 2 / 60)
+        t:truthy(("pergaminho enrola ao trocar (%.2f)"):format(scene.scrollOpen), scene.scrollOpen < 0.5)
+        pump(screen, 0.5)
+        t:near("pergaminho reabre", scene.scrollOpen, 1, 1e-6)
+        t:noerror("draw com o pergaminho no meio do caminho", function()
+            scene.scrollOpen = 0.4; screen:draw(); scene.scrollOpen = 1
+        end)
         rec = {}
         mouseX, mouseY = 5, 5
         pump(screen, 0.3)

@@ -1504,6 +1504,22 @@ function love.load(loveArgs)
             cardDeselect    = { "audio/sfx/card-deselect.mp3",     0.16 },
             eventEnterWind  = { "audio/sfx/event-enter-wind.mp3",  0.20 },
             eventChoiceSeal = { "audio/sfx/event-choice-seal.mp3", 0.22 },
+            -- Loja v5 (Out/2026): sino, copo, hover e compra por objeto
+            shopBellHover     = { "audio/sfx/shop-bell-hover.mp3",     0.30 },
+            shopBellRing      = { "audio/sfx/shop-bell-ring.mp3",      0.45 },
+            shopDicePickup    = { "audio/sfx/shop-dice-pickup.mp3",    0.35 },
+            shopPackLift      = { "audio/sfx/shop-pack-lift.mp3",      0.35 },
+            shopPotionBubble  = { "audio/sfx/shop-potion-bubble.mp3",  0.35 },
+            shopCrystalHum    = { "audio/sfx/shop-crystal-hum.mp3",    0.35 },
+            shopPressClunk    = { "audio/sfx/shop-press-clunk.mp3",    0.35 },
+            shopScissorsSnip  = { "audio/sfx/shop-scissors-snip.mp3",  0.35 },
+            shopAnvilRing     = { "audio/sfx/shop-anvil-ring.mp3",     0.32 },
+            shopChestCoins    = { "audio/sfx/shop-chest-coins.mp3",    0.35 },
+            shopBookFlip      = { "audio/sfx/shop-book-flip.mp3",      0.35 },
+            shopRelicTake     = { "audio/sfx/shop-relic-take.mp3",     0.35 },
+            shopPackOpenTear  = { "audio/sfx/shop-pack-open-tear.mp3", 0.45 },
+            shopPotionDrink   = { "audio/sfx/shop-potion-drink.mp3",   0.45 },
+            shopCrystalShatter = { "audio/sfx/shop-crystal-shatter.mp3", 0.45 },
         }) do
             if love.filesystem.getInfo(cfg[1]) then
                 audioSystem:loadSound(code, cfg[1], cfg[2])

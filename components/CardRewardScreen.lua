@@ -1988,7 +1988,13 @@ function CardRewardScreen:_drawShop()
         local HelpBadge = require("src.ui.HelpBadge")
         local mx, my = love.mouse.getPosition()
         my = my - (self.slideOffsetY or 0)
-        HelpBadge.draw(r.cx, r.cy, r.r, mx >= r.x and mx < r.x + r.w and my >= r.y and my < r.y + r.h)
+        local hotDice = mx >= r.x and mx < r.x + r.w and my >= r.y and my < r.y + r.h
+        HelpBadge.draw(r.cx, r.cy, r.r, hotDice)
+        if hotDice then
+            -- v5 r2: diz DE QUÊ é esta ajuda (o "?" parecia repetido)
+            local okST, StatusTooltip = pcall(require, "src.ui.StatusTooltip")
+            if okST and StatusTooltip.show then StatusTooltip.show("scribe_dice_help", mx, my + (self.slideOffsetY or 0)) end
+        end
         NavCursor.target("dice_help", r.x, r.y, r.w, r.h)
         NavCursor.action("lb", function() self:openDiceHelp() end, r.x, r.y, r.w, r.h)
     end

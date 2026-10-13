@@ -107,6 +107,8 @@ function ShopScene.new(screen)
     self.bell = { ringing = 0, hover = 0, hot = false }
     self.dice = { hover = 0, hot = false }
     self.flies = {}
+    self.sparks = {}
+    self.scrollOpen = 1        -- 0 = enrolado, 1 = aberto (anima ao trocar de oferta)
     self.hovered = nil
     return self
 end
@@ -227,9 +229,7 @@ function ShopScene:update(dt)
     for _, it in ipairs(self.items) do
         local entered = it:update(dt, it == hovered, mx, my)
         if entered then
-            local codes = (it.kind == "pack") and { "hoverPack", "hoverCard" }
-                or (it.kind == "relic") and { "hoverRelic", "hoverCard" } or { "hoverCard" }
-            playFirst(codes, { pitch = 0.95 + (math.random() * 2 - 1) * 0.18 })
+            playFirst(it:hoverSfx(), { pitch = 0.97 + (math.random() * 2 - 1) * 0.08 })
         end
     end
     for _, it in ipairs(self.outgoing or {}) do it:update(dt, false) end
@@ -246,14 +246,39 @@ function ShopScene:update(dt)
     Moveable.initJuice(self.bell); Moveable.initJuice(self.dice)
     local overBell = not blocked and (inRect(L.bell.rect, mx, my) or inRect(L.bell.plate, mx, my))
     local overDice = not blocked and (inRect(L.dice.rect, mx, my) or inRect(L.dice.plate, mx, my))
+    local bellWasHot, diceWasHot = self.bell.hot, self.dice.hot
     hoverOf(self.bell, L.bell, overBell)
     hoverOf(self.dice, L.dice, overDice)
+    -- sininho no hover do sino, chocalho no hover do copo (dono)
+    if self.bell.hot and not bellWasHot then playFirst({ "shopBellHover", "hoverRelic" }) end
+    if self.dice.hot and not diceWasHot then playFirst({ "shopDicePickup", "hoverRelic" }) end
+    self.bell.tagSwing = self.bell.tagSwing or { angle = 0, vel = 0 }
+    if self.bell.hot and not bellWasHot and not reducedMotion() then
+        self.bell.tagSwing.vel = self.bell.tagSwing.vel + 2.4
+    end
+    ShelfItem.stepPendulum(self.bell.tagSwing, dt)
     self.hoverCounter = (overBell and "bell") or (overDice and "dice") or nil
     if self.bell.ringing > 0 then self.bell.ringing = math.max(0, self.bell.ringing - dt) end
 
     for i = #self.flies, 1, -1 do
         if self.flies[i]._done then table.remove(self.flies, i) end
     end
+    -- faíscas da compra (pixel art: quadradinhos com gravidade)
+    for i = #self.sparks, 1, -1 do
+        local sp = self.sparks[i]
+        sp.t = sp.t + dt
+        sp.vy = sp.vy + 420 * dt
+        sp.x, sp.y = sp.x + sp.vx * dt, sp.y + sp.vy * dt
+        if sp.t >= sp.life then table.remove(self.sparks, i) end
+    end
+    -- pergaminho: enrola e desenrola ao trocar a oferta mostrada
+    local shown = self.screen._detailShownOffer
+    if shown ~= self._scrollShown then
+        self._scrollShown = shown
+        if not reducedMotion() and self._scrollEverShown then self.scrollOpen = 0 end
+        self._scrollEverShown = true
+    end
+    if self.scrollOpen < 1 then self.scrollOpen = math.min(1, self.scrollOpen + dt / 0.28) end
 
     local P = getProps()
     if P and P.update then
@@ -292,8 +317,30 @@ function ShopScene:onPurchased(offer)
     -- o pacote não voa: ele ABRE (PackOpenScreen) no lugar
     local payload = (it.kind ~= "pack") and it:flyPayload() or nil
     it:markSold()
-    playFirst({ "coinTotalThud", "purchaseConfirm" })
-    playFirst({ "sceneWoodKnock" }, { pitch = 1.1, volume = 0.5 })
+    -- som e FAÍSCAS por objeto (dono: "animação de compra pra cada item"):
+    -- a cor vem do tema da relíquia (UpgradeTile.theme) ou do tipo
+    playFirst(it:buySfx())
+    if it.kind == "card" then playFirst({ "sceneWoodKnock" }, { pitch = 1.1, volume = 0.5 }) end
+    if not reducedMotion() then
+        local cx, cy = it:center()
+        local col = Palette.AGED_GOLD_LIGHT
+        if it.kind == "relic" then
+            local okT, th = pcall(require("src.ui.UpgradeTile").theme, offer)
+            if okT and th then col = th.glow end
+        elseif it.kind == "pack" then
+            local okP, PT = pcall(require, "src.ui.PackThemes")
+            local th = okP and PT.get and PT.get(offer.kind) or nil
+            col = th and th.accent or col
+        end
+        local n = (it.kind == "card") and 10 or 18
+        for i = 1, n do
+            local ang = (i / n) * math.pi * 2 + math.random() * 0.4
+            local sp = 60 + math.random() * 120
+            self.sparks[#self.sparks + 1] = { x = cx, y = cy, vx = math.cos(ang) * sp, vy = math.sin(ang) * sp - 90,
+                t = 0, life = 0.45 + math.random() * 0.3, col = col, size = (i % 3 == 0) and 3 or 2 }
+        end
+        Moveable.juice_up(it, 0.12, 0.03)
+    end
     if payload and not reducedMotion() then
         local tx, ty, ts = self:_flyTarget(offer, it.kind)
         payload.alpha, payload.rot = 1, 0
@@ -322,6 +369,8 @@ end
 -- entram deslizando pela direita, um a um. Dados já trocaram.
 function ShopScene:reroll(newOffers)
     self.bell.ringing = 0.9
+    playFirst({ "shopBellRing", "shopReroll" })
+    Moveable.juice_up(self.bell, 0.2, 0.08)
     EventManager.clear(REROLLQ)
     if reducedMotion() or not self.L then
         self.outgoing = nil
@@ -547,8 +596,9 @@ function ShopScene:_drawTable(list)
             order[#order + 1] = { foot = it.foot, item = it }
             local r = it.rect
             rects[#rects + 1] = { x = r.x + (it.slide.x or 0) - 16, y = r.y - 24, w = r.w + 60, h = r.h + 36 }
-            if it.geom and it.geom.plaque then
-                local b = it.geom.plaque.box
+            local pb = it.geom and (it.geom.tag or it.geom.plaque)
+            if pb then
+                local b = pb.box
                 rects[#rects + 1] = { x = b.x + (it.slide.x or 0) - 8, y = b.y - 8, w = b.w + 16, h = b.h + 12 }
             end
         end
@@ -558,7 +608,8 @@ function ShopScene:_drawTable(list)
     for _, o in ipairs({ L.bell, L.dice }) do
         local r = o.rect
         rects[#rects + 1] = { x = r.x - 16, y = r.y - 24, w = r.w + 90, h = r.h + 36 }
-        if o.plaque then rects[#rects + 1] = { x = o.plaque.box.x - 8, y = o.plaque.box.y - 8, w = o.plaque.box.w + 16, h = o.plaque.box.h + 12 } end
+        local pb = o.tag or o.plaque
+        if pb then rects[#rects + 1] = { x = pb.box.x - 8, y = pb.box.y - 8, w = pb.box.w + 16, h = pb.box.h + 12 } end
     end
     table.sort(order, function(a, b) return a.foot < b.foot end)
     local box = artBoxOf(L, rects, 4)
@@ -630,27 +681,25 @@ function ShopScene:_drawBellArt()
     }
     ShopPerspective.drawContactShadow(o, L.art.tableMask, 1)
     ShopPerspective.drawUpright(o)
+    local tx, ty = ShopPerspective.tiePoint(o, 0.06)
+    self.bell.tieArt = { math.floor(tx), math.floor(ty) }
 end
 
--- plaquinha do sino (o mesmo latão das ofertas), na grade da arte
-function ShopScene:_bellPlaque()
-    local B = self.L.bell
-    if not B.plaque then return nil end
-    local cost, canRing = self:_bellCost()
-    return ShelfItem.plaqueArt(B.plaque, "$" .. tostring(cost), nil, self.L.cover), canRing
-end
-
+-- etiqueta pendurada do sino (cordão do sino até a aresta e pela face)
 function ShopScene:_drawBellPlaqueArt()
-    local Q, canRing = self:_bellPlaque()
-    if Q then ShelfItem.drawPlaqueArt(Q, 0, { alpha = 1, afford = canRing }) end
+    local B = self.L.bell
+    if not B.tag then return end
+    local _, canRing = self:_bellCost()
+    local sw = ShelfItem.swingArt(self.bell.tagSwing and self.bell.tagSwing.angle or 0)
+    ShelfItem.drawTagArt(B.tag, sw, 0, canRing, false, 1, self.bell.tieArt)
 end
 
 function ShopScene:_drawBellPlaqueText()
-    local Q, canRing = self:_bellPlaque()
-    if Q then
-        Q.deny = not canRing
-        ShelfItem.drawPlaqueText(self.L, Q, 0, ShelfItem.priceInk(canRing, false), 1, 0)
-    end
+    local B = self.L.bell
+    if not B.tag then return end
+    local cost, canRing = self:_bellCost()
+    local sw = ShelfItem.swingArt(self.bell.tagSwing and self.bell.tagSwing.angle or 0)
+    ShelfItem.drawTagText(self.L, B.tag, sw, 0, "$" .. tostring(cost), canRing, false, 1, 0)
 end
 
 -- Copo de dados (ShopProps) na resolução da arte, com contato na base e os
@@ -887,9 +936,25 @@ function ShopScene:_drawScroll()
     -- sombra do rolo na parede (deslocada pra direita-baixo: luz à esquerda)
     love.graphics.setColor(0, 0, 0, 0.35)
     love.graphics.rectangle("fill", ox + (C.x0 + 2) * px, oy + 3 * px, (C.x1 - C.x0 + 1) * px, (C.H - 2) * px)
+    -- v5 r2 (dono: "o pergaminho pode abrir e fechar ao trocar de carta"):
+    -- openK = quanto do papel está desenrolado; o rolo de baixo SOBE até o
+    -- de cima enquanto o papel some, e o texto é recortado pelo papel visível
+    local openK = self.scrollOpen or 1
+    openK = openK * openK * (3 - 2 * openK)
+    local paperRows = C.bot - C.top + 1
+    local visRows = math.floor(paperRows * openK + 0.5)
+    local bottomY = oy + (C.top + visRows) * px      -- topo do rolo de baixo agora
     if scrollCache.canvas then
         love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.draw(scrollCache.canvas, ox, oy, 0, px, px)
+        if visRows >= paperRows then
+            love.graphics.draw(scrollCache.canvas, ox, oy, 0, px, px)
+        else
+            local cw, ch = scrollCache.canvas:getDimensions()
+            local qTop = quad("scroll_top", 0, 0, cw, C.top + visRows, cw, ch)
+            love.graphics.draw(scrollCache.canvas, qTop, ox, oy, 0, px, px)
+            local qBot = quad("scroll_bot", 0, C.bot + 1, cw, ch - C.bot - 1, cw, ch)
+            love.graphics.draw(scrollCache.canvas, qBot, ox, bottomY, 0, px, px)
+        end
     else
         Palette.set(Palette.PARCHMENT)
         love.graphics.rectangle("fill", S.x, S.y, S.w, S.h)
@@ -900,7 +965,14 @@ function ShopScene:_drawScroll()
         love.graphics.draw(nail, n.x, n.y, 0, n.w / nail:getWidth(), n.h / nail:getHeight())
     end
     if self.screen._drawDetailPanel then
-        self.screen:_drawDetailPanel(S.body, true, S.artMaxH, ShopScene.portrait)
+        if visRows < paperRows then
+            love.graphics.push("all")
+            love.graphics.intersectScissor(S.x, oy + C.top * px, S.w, math.max(0, visRows * px))
+            self.screen:_drawDetailPanel(S.body, true, S.artMaxH, ShopScene.portrait)
+            love.graphics.pop()
+        else
+            self.screen:_drawDetailPanel(S.body, true, S.artMaxH, ShopScene.portrait)
+        end
     end
     -- ZONA DE LEITURA do CRT (v5): o texto miúdo do pergaminho fica sem
     -- aberração cromática nem surto (a curvatura e as scanlines continuam)
@@ -911,8 +983,11 @@ function ShopScene:_drawScroll()
         CRT.setCalmRect(S.x * k, (S.y + oy) * k, S.w * k, S.h * k)
         local cb = L.continueBtn
         if CRT.setCalmRect2 then CRT.setCalmRect2(cb.x * k, (cb.y + oy) * k, cb.w * k, cb.h * k) end
+        -- a loja inteira é leitura miúda (preços, nomes das cartas): a
+        -- aberração cai a 45% (v5 r2); o tubo continua curvo e com scanlines
+        if CRT.setChromaScale then CRT.setChromaScale(0.45) end
     end
-    self:_drawBuyRibbon()
+    if openK > 0.98 then self:_drawBuyRibbon() end
 end
 
 -- COMPRAR = fita vermelha atravessada no rodapé do papel, com selo de cera à
@@ -974,7 +1049,17 @@ function ShopScene:_drawBuyRibbon()
         end
     end
     -- texto gravado na fita
+    -- v5 r2 (briefing item 6): apagada, a fita DIZ o motivo (vendido / sem
+    -- ouro) em vez de só desbotar; o preço continua visível
     local txt = (b and b.text) or I18n.t("reward.detail_buy", nil, "COMPRAR")
+    if disabled then
+        local offer = self.screen.selectedOffer
+        if offer and offer.purchased then
+            txt = I18n.t("reward.buy_sold", nil, "VENDIDO")
+        elseif offer then
+            txt = I18n.t("reward.buy_no_gold", nil, "SEM OURO") .. " · $" .. tostring(offer.cost or 0)
+        end
+    end
     local tx0 = scx + sr + 2 * px
     local tw = x + w - notch - tx0 - 2 * px
     local font, fitted = require("src.ui.TextFit").fit(txt, math.max(10, math.floor(h * 0.42)), tw, 8)
@@ -1024,6 +1109,11 @@ function ShopScene:draw()
 end
 
 function ShopScene:drawFlies()
+    for _, sp in ipairs(self.sparks) do
+        local k = 1 - sp.t / sp.life
+        love.graphics.setColor(sp.col[1], sp.col[2], sp.col[3], math.min(1, k * 1.6))
+        love.graphics.rectangle("fill", math.floor(sp.x), math.floor(sp.y), sp.size, sp.size)
+    end
     for _, f in ipairs(self.flies) do
         love.graphics.setColor(1, 1, 1, f.alpha or 1)
         love.graphics.draw(f.img, f.x, f.y, f.rot or 0, f.flip and -f.scale or f.scale, f.scale, f.ox or 0, f.oy or 0)

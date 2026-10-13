@@ -48,6 +48,7 @@ local degradePeak = 1.0       -- pico 0.55..1.0 sorteado por evento
 -- o surto somem. Quem desenha texto miúdo pede A CADA QUADRO; endScene zera.
 local calmRect = { 0, 0, 0, 0 }
 local calmRect2 = { 0, 0, 0, 0 }
+local caScale = 1
 
 -- Carrega o shader e cria canvas de cena. Chamar em love.load.
 function CRTShader.load()
@@ -254,6 +255,10 @@ function CRTShader.setCalmRect2(x, y, w, h)
     calmRect2[1], calmRect2[2], calmRect2[3], calmRect2[4] = x or 0, y or 0, w or 0, h or 0
 end
 function CRTShader.getCalmRect2() return calmRect2[1], calmRect2[2], calmRect2[3], calmRect2[4] end
+-- Escala da aberração cromática neste quadro (telas de leitura: a loja
+-- pede 0,45; curvatura/scanlines ficam). Volta a 1 em endScene.
+function CRTShader.setChromaScale(k) caScale = math.max(0, math.min(1, k or 1)) end
+function CRTShader.getChromaScale() return caScale end
 
 -- Intensidade do efeito (0..1).
 function CRTShader.setStrength(s)
@@ -341,6 +346,8 @@ function CRTShader.endScene(target)
     shader:send("degrade", degradeAmount)
     shader:send("calmRect", calmRect)
     shader:send("calmRect2", calmRect2)
+    shader:send("caScale", caScale)
+    caScale = 1
     calmRect[1], calmRect[2], calmRect[3], calmRect[4] = 0, 0, 0, 0
     calmRect2[1], calmRect2[2], calmRect2[3], calmRect2[4] = 0, 0, 0, 0
     love.graphics.setColor(1, 1, 1, 1)

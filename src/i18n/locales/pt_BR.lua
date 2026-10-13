@@ -539,6 +539,8 @@ return {
         detail_prefocus     = "Passe o mouse pra comparar",
         detail_stale        = "última oferta observada",
         detail_buy          = "COMPRAR",
+        buy_sold            = "VENDIDO",
+        buy_no_gold         = "SEM OURO",
     },
 
     event = {
@@ -1098,6 +1100,7 @@ return {
         topbar_deck = { name = "Grimório", desc = "{deck} cartas no seu grimório, {hand} na mão agora. No fim do turno a mão é descartada e você compra novas. Selecione para folhear o deck." },
         topbar_progress = { name = "Progresso da Jornada", desc = "Ato {act}, andar {floor} de {total}. No andar 7 aguarda um MINI-CHEFE; no andar {total}, o CHEFE do ato. Vença o chefe do Ato {last} para encerrar a crônica. Selecione para abrir o Roteiro da jornada.{mods}" },
         topbar_config = { name = "Menu de Pausa", desc = "Pausa a jornada: configurações, salvar e voltar ao menu, ou abandonar a jornada." },
+        scribe_dice_help = { name = "Dados do Escriba", desc = "Uma aposta por visita: clique no copo de dados da mesa. Este botão abre a explicação do corvo." },
         reward_rules = { name = "Como funcionam as ofertas", desc = "As cartas oferecidas são da SUA classe. A qualidade melhora a cada ato, e a cada oferta sem RARA, a chance da próxima sobe (após um longo jejum, a rara é garantida). Cartas marcadas com AFINIDADE combinam com as tags fortes do seu grimório. Cartas que você já tem em cópias aparecem menos." },
         -- Loja v3: tooltips dos objetos do balcão (foco = hover)
         shop_bell   = { name = "Sino de novas ofertas", desc = "Toque o sino e o mercador repõe as duas prateleiras. Custa ${n} nesta visita e sobe $2 a cada toque." },

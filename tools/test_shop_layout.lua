@@ -148,7 +148,9 @@ function M.run()
         local function evenStep(list)
             local step = list[2] - list[1]
             for i = 3, #list do
-                if math.abs((list[i] - list[i - 1]) - step) > 1.01 then return false end
+                -- v5 r2: cada carta e 1,2% menor que a anterior: o passo encolhe
+                -- ate 2 px de ARTE por carta (a tela multiplica pelo cover-fit)
+                if math.abs((list[i] - list[i - 1]) - step) > 2.01 * L.cover.s then return false end
             end
             return step > 0
         end
@@ -156,7 +158,9 @@ function M.run()
         for i, c in ipairs(L.cards) do cardsX[i] = c.frame.ox end
         local SH, TB = ShopLayout.SHELF, ShopLayout.TABLE
         t:truthy(("%dx%d: cartas com passo constante na borda"):format(s[1], s[2]), evenStep(cardsX))
-        t:truthy(("%dx%d: cartas do mesmo tamanho"):format(s[1], s[2]), L.cards[1].qh == L.cards[#L.cards].qh)
+        -- v5 r2: a da direita um sopro menor (1,2%/carta), nunca escada
+        t:truthy(("%dx%d: cartas quase do mesmo tamanho (4a >= 96%% da 1a)"):format(s[1], s[2]),
+            L.cards[#L.cards].qh >= L.cards[1].qh * 0.96 and L.cards[#L.cards].qh <= L.cards[1].qh)
         -- v5: GRUPO de cavaletes (vão = SHELF.gap, ou gapMin na janela
         -- estreita), não uma escada de vãos largos; a subida da fileira
         -- inteira fica suave
@@ -242,28 +246,37 @@ function M.run()
             -- da aresta (vínculo físico com o próprio cavalete)
             local pq = c.plaque
             t:truthy(tag .. "carta " .. i .. ": plaquinha no eixo da carta", math.abs(pq.cx - f.art.x) <= 1)
-            t:truthy(tag .. "carta " .. i .. ": plaquinha colada na aresta (<= 2 linhas abaixo)",
-                pq.y0 - Ls.shelfEdge >= 1 and pq.y0 - Ls.shelfEdge <= 2)
-            t:truthy(tag .. "carta " .. i .. ": plaquinha cabe na face do degrau",
-                pq.y0 + pq.h <= Ls.shelfFace - 1)
+            t:truthy(tag .. "carta " .. i .. ": plaquinha colada na aresta (<= 1 linha abaixo)",
+                pq.y0 - Ls.shelfEdge >= 0 and pq.y0 - Ls.shelfEdge <= 1)
+            t:truthy(tag .. "carta " .. i .. ": plaquinha nao passa do vao (acaba antes da mesa)",
+                pq.y0 + pq.h <= Ls.tableBack)
+            -- v5 r2: a face do degrau e um DEGRAU baixo, nao uma prateleira
+            t:truthy(tag .. "face do degrau baixa (<= 8 linhas)", Ls.shelfFace - Ls.shelfEdge <= 8)
+            t:truthy(tag .. "vao degrau-mesa curto (<= 4 linhas)", Ls.tableBack - Ls.shelfFace <= 4)
             t:truthy(tag .. "carta " .. i .. ": plaquinha nao passa do trilho",
                 pq.x0 >= c.railX0 and pq.x0 + pq.w - 1 <= c.railX1)
         end
         for j, o in ipairs(L.objects) do
             t:near(tag .. "objeto " .. j .. " segue a diagonal", o.slope, ShopLayout.slopeArt(o.art.x, o.art.y), 1e-6)
-            local pq = o.plaque
-            t:near(tag .. "plaquinha do objeto " .. j .. " na diagonal", pq.slope, o.slope, 1e-9)
-            -- vínculo: centrada no pé, À FRENTE dele (no tampo), colada
-            t:truthy(tag .. "plaquinha do objeto " .. j .. " no eixo do pe", math.abs(pq.cx - o.art.x) <= 1)
-            t:truthy(tag .. "plaquinha do objeto " .. j .. " a frente do pe (1.." .. ShopLayout.PLAQUE.ahead .. " px)",
-                pq.y0 - o.art.y0 >= 1 and pq.y0 - o.art.y0 <= ShopLayout.PLAQUE.ahead)
-            -- longe da aresta da frente (objeto não atravessa a borda da mesa)
-            local front = ShopLayout.lineY(Ls.tableEdge, pq.x0) - (ShopLayout.lineY(pq.y0, pq.x0) + pq.h)
-            t:truthy(("%splaquinha do objeto %d a %d px da aresta da frente (>= %d)"):format(tag, j, front, TB.frontMargin),
-                front >= TB.frontMargin)
+            local tg = o.tag
+            t:near(tag .. "etiqueta do objeto " .. j .. " na diagonal", tg.slope, o.slope, 1e-9)
+            -- v5 r2: cordão até a ARESTA da frente e cartão pendurado na FACE
+            t:truthy(tag .. "etiqueta do objeto " .. j .. " cai pela aresta (ponto na ultima linha do tampo)",
+                tg.edge.y == ShopLayout.lineY(Ls.tableEdge, tg.edge.x) - 1)
+            t:truthy(tag .. "etiqueta do objeto " .. j .. " pendurada abaixo da aresta",
+                ShopLayout.lineY(tg.y0, tg.hole.x) > ShopLayout.lineY(Ls.tableEdge, tg.hole.x))
+            t:truthy(tag .. "etiqueta do objeto " .. j .. " perto do pe (drift <= 8 px)", math.abs(tg.edge.x - o.art.x) <= 8)
+            local footGap = ShopLayout.lineY(Ls.tableEdge, math.floor(o.art.x)) - o.art.y
+            t:truthy(("%sobjeto %d a %d px da aresta da frente (>= %d)"):format(tag, j, footGap, TB.frontMargin), footGap >= TB.frontMargin)
         end
-        t:truthy(tag .. "sino com plaquinha de preco na diagonal", L.bell.plaque ~= nil and L.bell.plaque.slope < 0)
-        t:falsy(tag .. "copo sem preco (nao e mercadoria)", L.dice.plaque ~= nil)
+        t:truthy(tag .. "sino com etiqueta de preco pendurada", L.bell.tag ~= nil and L.bell.tag.edge ~= nil)
+        t:falsy(tag .. "copo sem preco (nao e mercadoria)", L.dice.tag ~= nil)
+        for i, c in ipairs(L.cards) do
+            t:truthy(tag .. "carta " .. i .. ": etiqueta NOVA acima do canto, do lado de fora",
+                c.newTag ~= nil and c.newTag.hole.y < (c.rect.y - L.cover.oy) / L.cover.s
+                and ((i <= #L.cards / 2) == (c.newTag.side == "right")))
+        end
+        t:truthy(tag .. "mariposa tem ponto de luz (invisivel) na vitrine", L.lantern ~= nil and L.lantern.invisible == true)
         -- CONTINUAR inteiro na tela, com respiro (o CRT come a moldura)
         local cb = L.continueBtn
         t:truthy(tag .. "CONTINUAR visivel com respiro da borda",
@@ -298,7 +311,7 @@ function M.run()
     local A = ShopLayout.ART
     t:truthy("centro do tampo esta no tampo", ShopLayout.pointInPoly(330, 250, A.tableMask))
     t:falsy("a parede nao esta no tampo", ShopLayout.pointInPoly(40, 150, A.tableMask))
-    t:truthy("meio do degrau esta no degrau", ShopLayout.pointInPoly(260, 152, A.ledgeMask))
+    t:truthy("meio do degrau esta no degrau", ShopLayout.pointInPoly(260, 160, A.ledgeMask))
 
     -- ===== 2) a tela real: nasce pequena e cresce, nos 5 idiomas =====
     installFakeWindow()

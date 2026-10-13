@@ -892,10 +892,28 @@ function PackOpenScreen:draw()
         -- interactive=false: aqui o sleeve não é um item de prateleira, é
         -- cenário — o hover do PackSleeve não deve reagir ao mouse parado no
         -- centro da tela. O tilt do wobble entra por `rotation`.
-        PackSleeve.drawAt(self.pack.id, self.pack.kind, cx, cy, scale, alpha, {
-            interactive = false,  -- aqui o sleeve é cenário, não item de prateleira
-            rotation = self._sleeveTilt or 0,
-        })
+        -- Loja v5 (dono: "animação do PixelLab de abertura do pacote"): a
+        -- capa v5 (a mesma da mesa) ABRE quadro a quadro até o estouro
+        -- (assets/sprites/shop/v5_anim/<pack>/), em escala inteira; sem os
+        -- quadros, a capa antiga de sempre.
+        local okSP, SP = pcall(require, "src.ui.shop.ShopPerspective")
+        local frames = okSP and SP.animFrames and SP.animFrames(self.pack.id) or nil
+        if frames then
+            local k = math.max(0, math.min(1, (self._elapsed or 0) / TIMING.sleeveExplode))
+            local idx = math.min(#frames, math.floor(k * (#frames - 1) + 1 + 1e-6))
+            if reducedMotion() then idx = 1 end
+            local img = frames[idx]
+            local iw, ih = img:getWidth(), img:getHeight()
+            local isc = math.max(2, math.floor(scale * 3 + 0.5))
+            love.graphics.setColor(1, 1, 1, alpha)
+            love.graphics.draw(img, math.floor(cx), math.floor(cy), self._sleeveTilt or 0, isc, isc, iw / 2, ih / 2)
+            love.graphics.setColor(1, 1, 1, 1)
+        else
+            PackSleeve.drawAt(self.pack.id, self.pack.kind, cx, cy, scale, alpha, {
+                interactive = false,  -- aqui o sleeve é cenário, não item de prateleira
+                rotation = self._sleeveTilt or 0,
+            })
+        end
     end
 
     -- 1a) Onda de choque do estouro (atrás do burst, na frente do sleeve).

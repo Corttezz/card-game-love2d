@@ -406,3 +406,58 @@ O que mudou (commit 1, composição/apoio/etiquetas):
 Validado: `nav_flow` 30/30 (loja pelo teclado: setas, compra, saída).
 Sem validação nesta frente: o jogo rodando na janela real (as capturas vêm
 do tool com janela falsificada + canvas, CRT incluso) e gamepad físico.
+
+## v5 rodada 2: bancada física, estados e os pedidos de voz (13/Out/2026)
+
+Segundo briefing do dono + três recados de voz. Causas confirmadas no código
+(eebf5870): a face do degrau tinha 12 linhas + 13 de vão quase preto
+(`G`/`LINES`: 196→208→221); o cavalete era um trilho de 4 linhas sem tampo
+nem encostos; todos os objetos tinham o pé na mesma reta (`relicDepth`
+{0,-1,0} com passo 4); a sombra de contato só nascia em coluna com base a
+≤3 px do pé (livro aberto e cristal viravam tracinhos); a fita COMPRAR
+desbotava sem dizer por quê; o `caPx` do CRT valia inteiro em cima de preços
+e nomes de carta.
+
+- **Degrau**: face de 8 linhas com MADEIRA à vista (rampa do tampo um tom
+  e meio mais escura), vão de 4 linhas de sombra; retas 188/198/206/210/306.
+  Mesa 11 px mais funda. Travas: face ≤ 8, vão ≤ 4.
+- **Cavalete = bloco** (`RAIL_ART` 6: tampo de 2 linhas + face de 3 + pé),
+  ressalto cobrindo 3 px da moldura (`RAIL_COVER_ART`), dois ENCOSTOS de
+  3x5 nas pontas (`railPad` 4), sombra da carta no tampo do bloco (linha
+  atrás da carta um tom mais escura), sombra de contato do bloco só na base
+  (2 linhas, 3 colunas). Só a SELEÇÃO acende a aresta em ouro (hover tem o
+  anel na carta).
+- **Mesa**: profundidades DESENHADAS por vaga (`TABLE.*depth`, passo 5):
+  copo -1,2, sino +1, relíquias +0,6/-1,4/+0,8, pacote -0,6. Pé ≥ 6 px da
+  aresta (trava).
+- **Sombra de contato contínua** (`drawContactShadow`): segue o contorno de
+  baixo coluna a coluna, tolerância 6 px com densidade caindo, buracos de 1
+  coluna fechados.
+- **Etiquetas** (recado de voz, gosto do dono): objetos e sino voltaram à
+  ETIQUETA PENDURADA, agora com o cordão amarrado na BASE do objeto, correndo
+  pela mesa até a aresta da frente (`CORD_DRIFT` 7 à direita) e caindo pela
+  FACE da bancada (`TAG_DROP` 4); balança no hover e o mouse em cima dela
+  empurra o pêndulo. Cartas: plaquinha pregada fica; o selo vermelho NOVA
+  virou etiqueta pendurada ACIMA do topo, no canto de fora, dentro da
+  largura da carta (`cardNewTag`). `test_shop_layout` trava a queda pela
+  aresta e a posição da NOVA.
+- **Carta da direita "pra dentro"**: `SHELF.depthStep` 1,2%/carta (4ª = 96,4%).
+- **Estados**: fita COMPRAR apagada DIZ o motivo (`reward.buy_sold` /
+  `reward.buy_no_gold · $N`, 5 locales); latão oxidado sem ouro; "?" dos
+  dados com tooltip `status.scribe_dice_help`.
+- **CRT**: `caScale` (shader) = 0,45 na loja inteira
+  (`CRTShader.setChromaScale`, volta a 1 em `endScene`).
+- **Vida**: mariposa de volta rondando um ponto de luz invisível no alto à
+  esquerda (`L.lantern.invisible`); pergaminho ENROLA e desenrola ao trocar
+  a oferta (`scrollOpen`, 0,28 s, rolo de baixo sobe, texto recortado);
+  pacote/poção/cristal FLUTUAM no hover (`ShelfItem.floats`, +7 px e
+  balanço); faíscas de compra na cor do tema + som POR OBJETO
+  (`ShelfItem.HOVER_SFX/BUY_SFX`, 15 sons novos em `audio/sfx/shop-*.mp3`,
+  registro por scan no main.lua); sininho no hover do sino, sino de verdade
+  no reroll, chocalho no copo.
+- **Artes v5** (`assets/sprites/shop/v5/`, PixelLab `tools/pixellab_shop_v5.py`):
+  5 capas de pacote como PACOTES (envelope grosso, topo serrilhado, lombada,
+  estilo do bufão v4), cristal de mana e prensa refeitos (pose sem
+  cisalhamento). Animações em `v5_anim/<id>/`: poção borbulhando no hover
+  (`ShopPerspective.animFrames`, 8 fps) e os 5 pacotes ABRINDO no
+  PackOpenScreen até o estouro (capa v5 em escala inteira).

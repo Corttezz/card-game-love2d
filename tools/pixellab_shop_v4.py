@@ -40,10 +40,13 @@ RUN = 8                     # inclinação 1:8 (uma linha a cada 8 colunas)
 # (arredondamento: linha = y0 - floor(x / 8), passo na coluna múltipla de 8)
 # ---------------------------------------------------------------------------
 G = {
-    "shelf_top": 186,      # topo da face de cima do degrau (aresta de trás)
-    "shelf_edge": 196,     # aresta da FRENTE do tampo do degrau: base das cartas
-    "shelf_face": 208,     # fim da face da frente do degrau
-    "table_back": 221,     # aresta de trás do tampo da mesa
+    # v5 rodada 2 (dono: "faixa escura muito grossa abaixo das cartas"): a
+    # face do degrau caiu de 12 pra 8 linhas, o vão escuro de 13 pra 4; a
+    # mesa ficou 11 px mais funda. Espelhado em ShopLayout.LINES.
+    "shelf_top": 188,      # topo da face de cima do degrau (aresta de trás)
+    "shelf_edge": 198,     # aresta da FRENTE do tampo do degrau: base das cartas
+    "shelf_face": 206,     # fim da face da frente do degrau
+    "table_back": 210,     # aresta de trás do tampo da mesa
     "table_edge": 306,     # aresta da frente do tampo
 }
 
