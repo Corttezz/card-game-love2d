@@ -522,7 +522,7 @@ CardFrame.render(instance)           -- orquestra 7 componentes, cacheia 96×144
 instance.image = canvas
 instance.visualEffect = "holo" | "glow" | nil
     ↓
-Card:draw()                          -- HoloShader em rare/legendary
+Card:draw()                          -- HoloShader em rare/legendary (load() no boot do main.lua — ficou 6 meses sem ser chamado; trava: test_holo_shader)
     ↓
 CRTShader                            -- pós-processamento full-screen
 ```

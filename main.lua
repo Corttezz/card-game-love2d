@@ -1937,6 +1937,15 @@ function love.load(loveArgs)
     FoilShader.load()
     PolychromeShader.load()
     NegativeShader.load()
+    -- Holo das cartas RARAS/LENDÁRIAS (CLAUDE.md §14: glow 0.35 / holo 0.75) e
+    -- da edition "holo". O módulo nasceu em Abr/2026 (a182eae) documentado
+    -- como ativo e NUNCA teve o load() chamado: isAvailable() ficava false,
+    -- Card:draw caía no draw cru e a edition holo era descartada em silêncio.
+    -- Trava: test_holo_shader. (require inline: main.lua está no teto de
+    -- upvalues do love.load — ver §9.)
+    if not require("src.ui.HoloShader").load() then
+        print("[main] AVISO: HoloShader indisponível — raras/lendárias sem holo, edition holo sem efeito")
+    end
 
     -- Screen shake como sistema → registra _G.triggerShake pra back-compat.
     ScreenShake.install()
