@@ -104,7 +104,7 @@ ShopLayout.TABLE = {
 -- bancada; o cartão fica pendurado na face, TAG_DROP linhas abaixo da
 -- aresta, e balança no hover (px inteiros, sem rotação).
 ShopLayout.TAG_W, ShopLayout.TAG_H = 16, 9
-ShopLayout.TAG_DROP = 4
+ShopLayout.TAG_DROP = 11      -- (dono: "muito pertinho da borda")
 ShopLayout.CORD_DRIFT = 7
 ShopLayout.SWING = 3
 ShopLayout.PLAQUE = {
@@ -310,11 +310,16 @@ local function cardNewTag(cv, c, side)
     ax, ay = math.floor(ax + 0.5), math.floor(ay + 0.5)
     local W = ShopLayout.TAG_W + 6             -- cabe "NOVA"/"NEW"/"NEU" na fonte 8
     local hx = ax + ((side == "left") and (W / 2 + 1) or -(W / 2 + 1))
-    local hy = ay - 13
+    local hy = ay - 12
     local x0 = hx - math.floor(W / 2)
     local y0 = hy + math.floor(hx / ShopLayout.RUN)
-    local T = artTag(cv, ax, ay, x0, y0, W)
+    -- (dono: "o cordão da carta nova está estranho"): a etiqueta pende de um
+    -- PREGO na parede acima dela (cordão curto pra baixo), não do canto da
+    -- carta; vermelha, pra não se confundir com as de preço
+    local T = artTag(cv, hx, hy - 6, x0, y0, W)
     T.side = side
+    T.nail = true
+    T.red = true
     return T
 end
 ShopLayout.cardNewTag = cardNewTag

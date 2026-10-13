@@ -880,7 +880,9 @@ function PackOpenScreen:draw()
 
     -- Vinheta sutil pra focar no centro (NÃO é backdrop preto, é gradient leve).
     -- Mantém a loja por trás visível mas levemente escurecida nos cantos.
-    love.graphics.setColor(0, 0, 0, 0.35)
+    -- (dono: "ele teleportou pro bioma de fora"): a loja fica atrás,
+    -- ESCURECIDA (0,6), em vez de deslizar pra fora e mostrar a estrada
+    love.graphics.setColor(0, 0, 0, 0.6)
     love.graphics.rectangle("fill", 0, 0, sw, sh)
 
     -- 1) Sleeve no centro. Materializa subindo de dissolve=1 (invisível) pra
@@ -904,7 +906,7 @@ function PackOpenScreen:draw()
             if reducedMotion() then idx = 1 end
             local img = frames[idx]
             local iw, ih = img:getWidth(), img:getHeight()
-            local isc = math.max(2, math.floor(scale * 3 + 0.5))
+            local isc = math.max(3, math.floor(scale * 4 + 0.5))
             love.graphics.setColor(1, 1, 1, alpha)
             love.graphics.draw(img, math.floor(cx), math.floor(cy), self._sleeveTilt or 0, isc, isc, iw / 2, ih / 2)
             love.graphics.setColor(1, 1, 1, 1)

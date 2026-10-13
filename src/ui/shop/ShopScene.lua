@@ -625,6 +625,7 @@ function ShopScene:_drawTable(list)
                 self:_drawBellPlaqueArt()
             elseif e.dice then
                 self:_drawDiceArt()
+                self:_drawDiceTagArt()
             end
         end
     end)
@@ -691,7 +692,8 @@ function ShopScene:_drawBellPlaqueArt()
     if not B.tag then return end
     local _, canRing = self:_bellCost()
     local sw = ShelfItem.swingArt(self.bell.tagSwing and self.bell.tagSwing.angle or 0)
-    ShelfItem.drawTagArt(B.tag, sw, 0, canRing, false, 1, self.bell.tieArt)
+    local tg = ShelfItem.grownTag(B.tag, I18n.t("shop.bell_plate"), self.bell.hover, self.L.cover)
+    ShelfItem.drawTagArt(tg, sw, 0, canRing, false, 1, self.bell.tieArt)
 end
 
 function ShopScene:_drawBellPlaqueText()
@@ -699,7 +701,10 @@ function ShopScene:_drawBellPlaqueText()
     if not B.tag then return end
     local cost, canRing = self:_bellCost()
     local sw = ShelfItem.swingArt(self.bell.tagSwing and self.bell.tagSwing.angle or 0)
-    ShelfItem.drawTagText(self.L, B.tag, sw, 0, "$" .. tostring(cost), canRing, false, 1, 0)
+    local k = self.bell.hover
+    local tg = ShelfItem.grownTag(B.tag, I18n.t("shop.bell_plate"), k, self.L.cover)
+    ShelfItem.drawTagText(self.L, tg, sw, 0, "$" .. tostring(cost), canRing, false, 1, 0,
+        I18n.t("shop.bell_plate"), math.max(0, (k - 0.6) / 0.4))
 end
 
 -- Copo de dados (ShopProps) na resolução da arte, com contato na base e os
@@ -743,18 +748,30 @@ function ShopScene:_drawDiceArt()
     end
 end
 
--- Nome do sino / copo SÓ no hover (faixa de pergaminho na diagonal).
+-- Copo de dados: não tem preço, mas no hover uma etiqueta "DADOS" pende da
+-- aresta na frente dele (mesmo objeto físico das outras; some ao sair).
+function ShopScene:_diceTag()
+    local D = self.L.dice
+    if self.dice.hover <= 0.02 then return nil end
+    if not D.hoverTag then D.hoverTag = ShopLayout.objectTag(self.L.cover, D.art.x) end
+    local tg = ShelfItem.grownTag(D.hoverTag, I18n.t("shop.dice_plate"), 1, self.L.cover)
+    return tg, math.min(1, self.dice.hover * 1.4)
+end
+
+function ShopScene:_drawDiceTagArt()
+    local tg, a = self:_diceTag()
+    if not tg then return end
+    local D = self.L.dice
+    local cv = self.L.cover
+    local tie = { math.floor((D.footX - cv.ox) / cv.s) + 6, math.floor((D.foot - cv.oy) / cv.s) }
+    ShelfItem.drawTagArt(tg, 0, 0, true, false, a, tie)
+end
+
+-- rótulos do balcão: tudo mora nas etiquetas (sino = 2ª linha; copo = etiqueta de hover)
 function ShopScene:_drawCounterLabels()
-    local L = self.L
-    local lift = ShopLayout.LIFT
-    if self.bell.hover > 0.05 then
-        ShelfItem.drawHoverName(I18n.t("shop.bell_plate"), L.bell.footX, L.bell.rect.y - lift * self.bell.hover,
-            L.bell.slope, math.min(1, self.bell.hover * 1.4), L.limitX, 8)
-    end
-    if self.dice.hover > 0.05 then
-        ShelfItem.drawHoverName(I18n.t("shop.dice_plate"), L.dice.footX, L.dice.rect.y,
-            L.dice.slope, math.min(1, self.dice.hover * 1.4), L.limitX, 8)
-    end
+    local tg, a = self:_diceTag()
+    if not tg then return end
+    ShelfItem.drawTagText(self.L, tg, 0, 0, I18n.t("shop.dice_plate"), true, false, a, 0)
 end
 
 -- ============================================================================

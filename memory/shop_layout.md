@@ -461,3 +461,23 @@ e nomes de carta.
   cisalhamento). Animações em `v5_anim/<id>/`: poção borbulhando no hover
   (`ShopPerspective.animFrames`, 8 fps) e os 5 pacotes ABRINDO no
   PackOpenScreen até o estouro (capa v5 em escala inteira).
+
+### v5 r2, acabamento (coordenador + dono, mesmo dia)
+
+- **Rótulo de hover mora na etiqueta** ("nada flutua"): a etiqueta pendurada
+  CRESCE no hover (`ShelfItem.grownTag`: alarga em torno do mesmo furo e
+  desce `LABEL_ROWS` 8 linhas) e a 2ª linha traz o nome/efeito (+1 SLOT,
+  NOVAS OFERTAS...); selecionado fica aberta. O copo, sem preço, ganha uma
+  etiqueta "DADOS" só no hover. `drawHoverLabel` e a faixa de pergaminho
+  solta saíram.
+- **Etiqueta mais baixa**: `TAG_DROP` 11 (o dono não via a queda pela
+  aresta com 4).
+- **NOVA**: VERMELHA (estilo `sale`), pendurada de um PREGO na parede 6 px
+  acima dela (`newTag.nail`), não mais do canto da carta.
+- **Sombra sob item levantado** (`drawContactShadow`, `lifted`): fica no
+  tampo, CHEIA e sem dither (3 linhas, alpha 0,75); apoiado continua as 2
+  linhas de contato em dither.
+- **Pacote abre DENTRO da loja**: `_G.openBoosterPack` (main.lua) não desliza
+  a loja pra fora no modo shop (mostrava a estrada do bioma atrás do
+  pacote); o PackOpenScreen escurece a loja a 0,6 e abre a capa v5 quadro a
+  quadro (4x) até o estouro.

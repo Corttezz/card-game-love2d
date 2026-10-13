@@ -449,7 +449,13 @@ function ShopPerspective.drawContactShadow(o, mask, alpha)
     local tol = math.max(4, 6 * s)
     local n = 0
     local right = nil
-    local lightK = 1 - clamp((o.lift or 0) / 6, 0, 0.6)  -- levantado: sombra mais rala
+    -- Levantado (dono, Out/2026: "a sombra embaixo da poção não fica
+    -- preenchida"): a sombra fica NO TAMPO, cheia e sem dither, com 3
+    -- linhas (o objeto no ar projeta uma mancha fechada); apoiado, as 2
+    -- linhas de contato em dither de sempre.
+    local lifted = (o.lift or 0) > 0.5
+    local lightK = 1
+    local rows = lifted and 2 or 1
     local lastY = nil
     for dx = floor(fx - halfW) - 1, math.ceil(fx + halfW) + 1 do
         local lx = dx + 0.5 - fx
@@ -464,8 +470,9 @@ function ShopPerspective.drawContactShadow(o, mask, alpha)
         end
         if by then
             local gapK = b and clamp(1 - ((bottom - (b + 1)) * s) / (tol + 1), 0.35, 1) or 0.6
-            for row = 0, 1 do
-                local dens = ((row == 0) and 1.0 or 0.55) * gapK
+            for row = 0, rows do
+                local dens = ((row == 0) and 1.0 or (lifted and 0.9 or 0.55)) * gapK
+                if lifted and row < rows then dens = 1 end
                 if dithered(dx, by + row, dens * lightK) and (not mask or inPoly(dx + 0.5, by + row + 0.5, mask)) then
                     n = n + 1; pts[n] = { dx + 0.5, by + row + 0.5 }
                 end
@@ -492,7 +499,7 @@ function ShopPerspective.drawContactShadow(o, mask, alpha)
     for i = n + 1, #pts do pts[i] = nil end
     if n == 0 then return end
     local ink = Palette.darken and Palette.darken(Palette.INK, 0.35) or Palette.INK
-    love.graphics.setColor(ink[1], ink[2], ink[3], 0.9 * (alpha or 1))
+    love.graphics.setColor(ink[1], ink[2], ink[3], (lifted and 0.75 or 0.9) * (alpha or 1))
     love.graphics.points(pts)
     love.graphics.setColor(1, 1, 1, 1)
 end

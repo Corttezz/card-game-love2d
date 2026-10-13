@@ -713,7 +713,7 @@ end
 -- dx = balanço/deslize (px de arte, inteiro), dy = levantar (px de arte);
 -- tie = {x, y} de onde o cordão sai (nil = tg.cordX/cordY).
 function ShelfItem.drawTagArt(tg, dx, dy, afford, sale, a, tie)
-    local W, H = tg.w or ShopLayout.TAG_W, ShopLayout.TAG_H
+    local W, H = tg.w or ShopLayout.TAG_W, tg.h or ShopLayout.TAG_H
     local x0 = tg.x0 + dx
     local holeX = x0 + floor(W / 2)
     local holeY = lineY(tg.y0, holeX) - dy
@@ -722,6 +722,12 @@ function ShelfItem.drawTagArt(tg, dx, dy, afford, sale, a, tie)
         -- frente e CAI pela face até o furo (duas direções)
         ShelfItem.drawCordArt(tie[1], tie[2], tg.edge.x, tg.edge.y, a)
         ShelfItem.drawCordArt(tg.edge.x, tg.edge.y, holeX, holeY, a)
+    elseif tg.nail then
+        -- prego na parede (2 px de ferro) e o cordão descendo até o furo
+        ShelfItem.drawCordArt(tg.cordX, tg.cordY, holeX, holeY, a)
+        px(Palette.INK, a, tg.cordX - 1, tg.cordY - 1, 3, 1)
+        px(Palette.STEEL_LIGHT or Palette.PARCHMENT_LIGHT, a, tg.cordX, tg.cordY - 1, 1, 1)
+        px(Palette.INK, a, tg.cordX, tg.cordY, 1, 1)
     else
         local cx, cy = tg.cordX, tg.cordY - dy
         if tie then cx, cy = tie[1], tie[2] end
@@ -746,13 +752,13 @@ function ShelfItem.drawTagArt(tg, dx, dy, afford, sale, a, tie)
 end
 
 -- Texto da etiqueta (grade da UI, cisalhado), por cima da arte.
-function ShelfItem.drawTagText(L, tg, dx, dy, text, afford, sale, a, shakeX)
+function ShelfItem.drawTagText(L, tg, dx, dy, text, afford, sale, a, shakeX, line2, a2)
     local cv = L.cover
-    local W, H = tg.w or ShopLayout.TAG_W, ShopLayout.TAG_H
+    local W, H0 = tg.w or ShopLayout.TAG_W, ShopLayout.TAG_H
     local x0 = tg.x0 + dx
     local sx = cv.ox + (x0 + 1) * cv.s + (shakeX or 0)
     local sy = cv.oy + (lineY(tg.y0, x0 + 1) - dy + 1) * cv.s
-    local w, h = (W - 2) * cv.s, (H - 3) * cv.s
+    local w, h = (W - 2) * cv.s, (H0 - 3) * cv.s
     local font, fitted = TextFit.fit(text, 8, w - 1, 7)
     local _, _, ink = ShelfItem.tagStyle(afford, sale)
     withShear(floor(sx), floor(sy), ShopLayout.K, function()
@@ -760,8 +766,38 @@ function ShelfItem.drawTagText(L, tg, dx, dy, text, afford, sale, a, shakeX)
         Palette.set(ink, a)
         love.graphics.print(fitted, floor((w - font:getWidth(fitted)) / 2) + 1,
             floor((h - font:getHeight()) / 2) + 1)
+        -- 2ª linha (rótulo de hover) na parte que a etiqueta cresceu
+        if line2 and (tg.h or H0) > H0 + 4 then
+            local f2, t2 = TextFit.fit(line2, 8, w - 1, 7)
+            local h2 = ((tg.h or H0) - H0 - 1) * cv.s
+            love.graphics.setFont(f2)
+            Palette.set(Palette.INK, (a2 or a))
+            love.graphics.print(t2, floor((w - f2:getWidth(t2)) / 2) + 1,
+                (H0 - 2) * cv.s + floor((h2 - f2:getHeight()) / 2))
+        end
     end)
     love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- Etiqueta CRESCIDA pro hover (coordenador, Out/2026: "nada flutua", o
+-- rótulo "+1 SLOT" aparecia solto no ar): a mesma etiqueta pendurada
+-- ganha uma 2ª linha com o nome/efeito, alargando em torno do MESMO furo e
+-- descendo pela face da bancada. `k` 0..1 = quanto cresceu.
+ShelfItem.LABEL_ROWS = 8
+function ShelfItem.grownTag(tg, label, k, cv)
+    if not label or label == "" or k <= 0.02 then return tg end
+    local W0, H0 = tg.w or ShopLayout.TAG_W, ShopLayout.TAG_H
+    local f = TextFit.fit(label, 8, 56 * cv.s, 7)
+    local need = math.ceil(f:getWidth(label) / cv.s) + 4
+    local W = math.max(W0, math.min(60, need))
+    local W1 = W0 + math.floor((W - W0) * k + 0.5)
+    local holeX = tg.x0 + math.floor(W0 / 2)
+    local g = {}
+    for kk, v in pairs(tg) do g[kk] = v end
+    g.w = W1
+    g.h = H0 + math.floor(ShelfItem.LABEL_ROWS * k + 0.5)
+    g.x0 = holeX - math.floor(W1 / 2)
+    return g
 end
 
 -- balanço do pêndulo em px de arte (inteiro: a etiqueta anda na grade)
@@ -792,13 +828,21 @@ function ShelfItem:drawPlateArt(L, ctx)
             ShelfItem.drawPlaqueArt(Q, sdx, { selected = self.selected, sale = sale, alpha = alpha, rar = rar, afford = afford })
         end
         if self:isNew() and g.newTag then
-            ShelfItem.drawTagArt(g.newTag, sdx + ShelfItem.swingArt(self.tag.angle), 0, true, false, alpha)
+            ShelfItem.drawTagArt(g.newTag, sdx + ShelfItem.swingArt(self.tag.angle), 0, true, true, alpha)
         end
     elseif g.tag then
         local lift = floor(self:liftPx() / cv.s + 0.5)
         local tie = self._tieArt and { self._tieArt[1], self._tieArt[2] - lift } or nil
-        ShelfItem.drawTagArt(g.tag, sdx + ShelfItem.swingArt(self.tag.angle), 0, afford, sale, alpha, tie)
+        local tg = ShelfItem.grownTag(g.tag, self:labelText(), self:labelK(), cv)
+        ShelfItem.drawTagArt(tg, sdx + ShelfItem.swingArt(self.tag.angle), 0, afford, sale, alpha, tie)
     end
+end
+
+-- quanto a etiqueta cresceu pro rótulo (0..1): segue o hover; selecionado
+-- fica aberta (o pergaminho já explica, mas a etiqueta diz o que é)
+function ShelfItem:labelK()
+    if self.kind == "card" or self.sold then return 0 end
+    return math.max(self.hover, self.selected and 1 or 0)
 end
 
 -- Texto das placas (grade da UI, depois do artPass).
@@ -818,11 +862,13 @@ function ShelfItem:drawPlateText(L, ctx)
         end
         if self:isNew() and g.newTag then
             ShelfItem.drawTagText(L, g.newTag, sdx + ShelfItem.swingArt(self.tag.angle), 0,
-                I18n.t("unlocks.new_badge", nil, "NOVA"), true, false, alpha, 0)
+                I18n.t("unlocks.new_badge", nil, "NOVA"), true, true, alpha, 0)
         end
     elseif g.tag then
-        ShelfItem.drawTagText(L, g.tag, sdx + ShelfItem.swingArt(self.tag.angle), 0,
-            self:priceText(), afford, sale, alpha, self:_shake())
+        local k = self:labelK()
+        local tg = ShelfItem.grownTag(g.tag, self:labelText(), k, cv)
+        ShelfItem.drawTagText(L, tg, sdx + ShelfItem.swingArt(self.tag.angle), 0,
+            self:priceText(), afford, sale, alpha, self:_shake(), self:labelText(), alpha * clamp((k - 0.6) / 0.4, 0, 1))
     end
 end
 
@@ -850,6 +896,9 @@ end
 
 -- Nome/efeito no hover (objetos da mesa). L = layout (limites).
 function ShelfItem:drawHoverLabel(L, ctx)
+    -- v5 r2: o rótulo mora na 2ª linha da etiqueta pendurada (grownTag);
+    -- faixa solta no ar não existe mais (coordenador: "nada flutua")
+    if true then return end
     if self.kind == "card" or self.sold then return end
     local a = clamp(self.hover * 1.4 - 0.2, 0, 1) * (ctx.alpha or 1)
     if self.selected and self.hover < 0.05 then return end

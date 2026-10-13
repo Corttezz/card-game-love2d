@@ -1890,8 +1890,10 @@ function love.load(loveArgs)
     _G.openBoosterPack = function(pack, onComplete)
         if not packOpenScreen or not packOpenScreen.show then return end
 
-        -- 1) Loja sai de cena.
-        if cardRewardScreen and cardRewardScreen.slideOut then
+        -- 1) Loja sai de cena (recompensa). Na LOJA ela FICA, escurecida
+        -- pelo PackOpenScreen: deslizar pra fora mostrava a estrada do bioma
+        -- atras do pacote (dono, Out/2026: "teleportou pro mundo de fora").
+        if cardRewardScreen and cardRewardScreen.slideOut and cardRewardScreen.mode ~= "shop" then
             cardRewardScreen:slideOut()
         end
 
