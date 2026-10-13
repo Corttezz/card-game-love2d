@@ -372,3 +372,37 @@ O que mudou (commit 1, composição/apoio/etiquetas):
   pacote ~ 2/3 da carta) os sprites já têm tamanhos coerentes; o destaque
   do frasco/pacote foi tratado com a luz da cena, não com escala
   fracionária (que misturaria tamanhos de pixel).
+
+### v5 commit 3: pergaminho, estados, CRT sobre texto, ajuda dos dados
+
+- **Pergaminho medido** (`CardDetailPanel.draw` devolve `{fits,
+  contentBottom, artH, font}`): o bloco de texto é medido com as mesmas
+  regras do desenho; cede primeiro a ARTE (até 45% do teto), depois um
+  degrau de fonte (descrição nunca < 8). `line()` só escreve linha que cabe
+  inteira (antes a última podia invadir o COMPRAR). Hierarquia: arte >
+  nome (maior, sangue) > legenda tipo · raridade > custo/stats > descrição
+  > voz do grimório. O preço saiu da legenda (`opts.priceOnButton`): está
+  na fita COMPRAR · $N e na plaquinha. Papel um degrau menos claro
+  (`buildScroll` warm 0,93/0,86/0,74); legenda com contraste >= 4,5 no papel
+  (`CardDetailPanel.onPaper`: "Comum"/"Relíquia" saíam cinza claro).
+  Trava: `test_shop_scene` §9, ofertas + 12 cartas de descrição mais longa
+  x 5 idiomas x 4 tamanhos = 400 painéis sem corte.
+- **Estados**: sem ouro = plaquinha de latão OXIDADO (`BRASS_DENY`) com o
+  valor em vermelho claro (só a cor do texto quase não se distinguia) e a
+  arte escurece pouco (0,8, era 0,6); a fita COMPRAR relê o ouro no próprio
+  quadro (`_drawBuyRibbon` chama `_refreshBuyButton`: antes ficava acesa
+  sem ouro até a próxima compra); VENDIDO a giz NO apoio (era no meio da
+  parede).
+- **CRT** (`shaders/crt.glsl` `calmRect`/`calmRect2`,
+  `CRTShader.setCalmRect/setCalmRect2`, zeradas em `endScene`): no
+  pergaminho e no CONTINUAR a aberração cromática e o surto somem (borda
+  suave 24 px); curvatura, scanlines e grille continuam. Quem pede passa px
+  REAIS (`UiScale.activeK()`). Prova: `SHOP_STATES=crt,crtnocalm`.
+- **Os dois "?"**: o 2º é o dos DADOS do Escriba; ganhou um dado de 16 px ao
+  lado (sem rótulo parecia um "?" repetido).
+- CONTINUAR: visível com respiro >= 8 px em todas as resoluções (trava no
+  layout) e sem aberração (zona 2 do CRT).
+
+Validado: `nav_flow` 30/30 (loja pelo teclado: setas, compra, saída).
+Sem validação nesta frente: o jogo rodando na janela real (as capturas vêm
+do tool com janela falsificada + canvas, CRT incluso) e gamepad físico.

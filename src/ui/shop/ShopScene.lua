@@ -434,9 +434,17 @@ function ShopScene:_drawSign()
     local ty = math.floor(s.y + (s.h - font:getHeight()) / 2)
     FontManager.drawWithOutline(title, tx, ty, Palette.AGED_GOLD_LIGHT, 0.9)
     local midY = ty + math.floor(font:getHeight() / 2)
+    -- v5: o 2º "?" é o dos DADOS do Escriba; sem rótulo ele parecia um "?"
+    -- repetido. Um dado de 16 px à esquerda dele diz de quê é a ajuda.
+    local faces = ImageCache.tryGet("assets/sprites/shop/die_faces.png")
+    if faces and L.diceHelp then
+        if not self._dieQuad then self._dieQuad = love.graphics.newQuad(64, 0, 16, 16, faces:getDimensions()) end
+        love.graphics.setColor(1, 1, 1, 0.95)
+        love.graphics.draw(faces, self._dieQuad, L.diceHelp.x - 18, math.floor(midY - 8))
+    end
     local HelpBadge = require("src.ui.HelpBadge")
     local r = 9
-    local cx = math.min(tx + tw + 22, L.diceHelp.x - r - 8)
+    local cx = math.min(tx + tw + 22, L.diceHelp.x - 18 - r - 8)
     local h = { x = cx - r - 3, y = midY - r - 3, w = r * 2 + 6, h = r * 2 + 6 }
     L.help = h
     local mx, my = self:_mouseLocal()
@@ -633,13 +641,16 @@ function ShopScene:_bellPlaque()
 end
 
 function ShopScene:_drawBellPlaqueArt()
-    local Q = self:_bellPlaque()
-    if Q then ShelfItem.drawPlaqueArt(Q, 0, { alpha = 1 }) end
+    local Q, canRing = self:_bellPlaque()
+    if Q then ShelfItem.drawPlaqueArt(Q, 0, { alpha = 1, afford = canRing }) end
 end
 
 function ShopScene:_drawBellPlaqueText()
     local Q, canRing = self:_bellPlaque()
-    if Q then ShelfItem.drawPlaqueText(self.L, Q, 0, ShelfItem.priceInk(canRing, false), 1, 0) end
+    if Q then
+        Q.deny = not canRing
+        ShelfItem.drawPlaqueText(self.L, Q, 0, ShelfItem.priceInk(canRing, false), 1, 0)
+    end
 end
 
 -- Copo de dados (ShopProps) na resolução da arte, com contato na base e os
@@ -738,7 +749,9 @@ local function buildScroll(S, px)
     if not ok then return nil, C end
     canvas:setFilter("nearest", "nearest")
     local P = Palette
-    local warm = { 1.0, 0.94, 0.82 }                      -- luz âmbar da cena
+    -- luz âmbar da cena, um degrau abaixo do papel cru (v5, briefing item
+    -- 8: o pergaminho dominava a tela; o texto em tinta segue >= 7:1)
+    local warm = { 0.93, 0.86, 0.74 }
     local function tint(c, k)
         return { c[1] * warm[1] * k, c[2] * warm[2] * k, c[3] * warm[3] * k }
     end
@@ -889,6 +902,16 @@ function ShopScene:_drawScroll()
     if self.screen._drawDetailPanel then
         self.screen:_drawDetailPanel(S.body, true, S.artMaxH, ShopScene.portrait)
     end
+    -- ZONA DE LEITURA do CRT (v5): o texto miúdo do pergaminho fica sem
+    -- aberração cromática nem surto (a curvatura e as scanlines continuam)
+    local okC, CRT = pcall(require, "src.ui.CRTShader")
+    if okC and CRT.setCalmRect then
+        local k = require("src.ui.UiScale").activeK()
+        local oy = self.screen.slideOffsetY or 0
+        CRT.setCalmRect(S.x * k, (S.y + oy) * k, S.w * k, S.h * k)
+        local cb = L.continueBtn
+        if CRT.setCalmRect2 then CRT.setCalmRect2(cb.x * k, (cb.y + oy) * k, cb.w * k, cb.h * k) end
+    end
     self:_drawBuyRibbon()
 end
 
@@ -898,6 +921,9 @@ end
 function ShopScene:_drawBuyRibbon()
     local L = self.L
     local S = L.scroll
+    -- estado do COMPRAR lido AGORA (ouro pode ter mudado desde o último
+    -- refresh: antes a fita seguia acesa sem ouro até a próxima compra)
+    if self.screen._refreshBuyButton then self.screen:_refreshBuyButton() end
     local b = self.screen.buyButton
     local r = S.buy
     local px = scrollPx(L)

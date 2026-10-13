@@ -26,6 +26,7 @@ local CardRewardScreen = require("components.CardRewardScreen")
 local EventManager     = require("engine.EventManager")
 local FontManager      = require("src.ui.FontManager")
 local I18n             = require("src.i18n.I18n")
+local ShelfItemM       = require("src.ui.shop.ShelfItem")
 
 local realW, realH = love.graphics.getWidth, love.graphics.getHeight
 local realMouse = love.mouse.getPosition
@@ -178,7 +179,7 @@ function M.run()
                 t:truthy(rar .. " com gema de raridade", ShelfItem.showsGem(rar))
             end
             for _, af in ipairs({ true, false }) do
-                local cr = ShelfItem.contrast(ShelfItem.priceInk(af, false), ShelfItem.BRASS.face)
+                local cr = ShelfItem.contrast(ShelfItem.priceInk(af, false), ShelfItem.plaqueFace(af))
                 t:truthy(("preco %s: contraste %.2f >= 4,5 no latao"):format(af and "normal" or "sem ouro", cr), cr >= 4.5)
             end
             -- a plaquinha final cabe no que o layout reservou e mostra o preço exato
@@ -329,6 +330,20 @@ function M.run()
         pump(screen, 0.1)
         screen:_refreshBuyButton()
         t:truthy("sem ouro: COMPRAR apagado", screen.buyButton.disabled)
+        -- v5: a plaquinha sem ouro troca de TOM (latão oxidado), não só a cor
+        -- do texto; e a fita do COMPRAR lê o ouro no próprio desenho
+        t:truthy("sem ouro: latao da plaquinha muda de tom",
+            ShelfItemM.plaqueFace(false)[1] < ShelfItemM.plaqueFace(true)[1] - 0.1)
+        screen.buyButton:setEnabled(true)
+        screen:draw()
+        t:truthy("sem ouro: a fita COMPRAR se apaga no proprio quadro", screen.buyButton.disabled)
+        -- papel: legenda (tipo/raridade) com contraste >= 4,5 no pergaminho
+        local CDP = require("src.ui.CardDetailPanel")
+        for _, rar in ipairs({ "common", "uncommon", "rare", "legendary" }) do
+            local c = CDP.onPaper(require("src.ui.Palette").darken(require("src.ui.Palette").forRarity(rar), 0.55))
+            t:truthy(rar .. ": raridade legivel no papel (>= 4,5)",
+                ShelfItemM.contrast(c, require("src.ui.Palette").PARCHMENT_LIGHT) >= 4.5)
+        end
         screen:purchaseOffer(card2.offer, card2.offer.id)
         t:falsy("sem ouro: a compra NAO passa", card2.offer.purchased)
         t:truthy("sem ouro: a placa treme (deny)", card2.deny > 0)
@@ -474,6 +489,76 @@ function M.run()
         t:falsy("reducedMotion: sino troca na hora (sem deslize)", sc2.outgoing ~= nil)
         t:eq("reducedMotion: objetos parados", sc2.items[1].slide.x, 0)
         screen2:hide()
+
+        -- ================= 9. pergaminho (v5): textos longos nos 5 idiomas =================
+        -- Para cada idioma e tamanho, as ofertas da vitrine + as 12 cartas de
+        -- DESCRIÇÃO mais longa do jogo naquele idioma: o conteúdo inteiro
+        -- cabe no miolo do pergaminho (acima do COMPRAR), sem cortar texto e
+        -- sem descer a descrição abaixo de 8 px. O preço não se repete na
+        -- legenda (está no COMPRAR). O CRT recebe a zona de leitura.
+        _G.gameSettings.reducedMotion = false
+        local CardDetailPanel = require("src.ui.CardDetailPanel")
+        local ShopScene = require("src.ui.shop.ShopScene")
+        local worstLocale, panelChecks, panelFails = nil, 0, 0
+        for _, code in ipairs(I18n.getAvailable()) do
+            I18n.setLocale(code)
+            for _, sz in ipairs({ { 1024, 768 }, { 1280, 720 }, { 1366, 768 }, { 1280, 800 } }) do
+                fakeW, fakeH = sz[1], sz[2]
+                FontManager.clearCache()
+                TK.seedRng(4242)
+                local sc3 = openShop(t, 60)
+                local L3 = sc3.scene.L
+                local db = sc3.cardDatabase
+                local cards = {}
+                for id, cd in pairs(db:getAllCards()) do
+                    if cd.type ~= "joker" then
+                        local d = I18n.cardDesc({ id = id, description = cd.description }) or ""
+                        cards[#cards + 1] = { id = id, cd = cd, len = #d }
+                    end
+                end
+                table.sort(cards, function(a, b) return a.len > b.len end)
+                local payloads = {}
+                for i = 1, math.min(12, #cards) do
+                    local cd = cards[i].cd
+                    payloads[#payloads + 1] = { kind = "card", instance = db:createCardInstance(cd),
+                        offer = { id = cards[i].id, name = cd.name, description = cd.description,
+                                  rarity = cd.rarity or "common", cost = 99 } }
+                end
+                for _, o in ipairs(sc3.shopOffers) do
+                    local kind = (o.type == "card" and "card") or (o.type == "upgrade" and "voucher") or "pack"
+                    payloads[#payloads + 1] = { kind = kind, offer = o, instance = o.cardInstance }
+                end
+                for _, pl in ipairs(payloads) do
+                    local r = CardDetailPanel.draw(L3.scroll.body, pl, { parchment = true, chrome = false,
+                        artMaxH = L3.scroll.artMaxH, priceOnButton = true, objectArt = ShopScene.portrait,
+                        canAfford = true })
+                    panelChecks = panelChecks + 1
+                    local ok = r and r.fits and r.contentBottom <= L3.scroll.buy.y - 4 and r.font.desc >= 8
+                    if not ok then
+                        panelFails = panelFails + 1
+                        worstLocale = worstLocale or ("%s %dx%d %s (fim %s, COMPRAR %d)"):format(code, sz[1], sz[2],
+                            tostring(pl.offer.id), tostring(r and r.contentBottom), L3.scroll.buy.y)
+                    end
+                end
+                -- a legenda não repete o preço (a fita COMPRAR mostra)
+                sc3:draw()
+                local fit = sc3._detailFit
+                t:truthy(("%s %dx%d: pergaminho da loja mede e cabe"):format(code, sz[1], sz[2]), fit ~= nil and fit.fits)
+                local CRT = require("src.ui.CRTShader")
+                local cx, cy, cw, ch = CRT.getCalmRect()
+                t:truthy(("%s %dx%d: CRT recebe a zona de leitura do pergaminho"):format(code, sz[1], sz[2]),
+                    cw > 0 and math.abs(cx - L3.scroll.x) < 1 and math.abs(cw - L3.scroll.w) < 1)
+                local _, _, cw2 = CRT.getCalmRect2()
+                t:truthy(("%s %dx%d: CRT recebe a zona de leitura do CONTINUAR"):format(code, sz[1], sz[2]), cw2 > 0)
+                CRT.setCalmRect(0, 0, 0, 0); CRT.setCalmRect2(0, 0, 0, 0)
+                sc3:hide()
+            end
+        end
+        I18n.setLocale("pt_BR")
+        fakeW, fakeH = 1280, 720
+        FontManager.clearCache()
+        t:eq(("pergaminho: %d paineis (5 idiomas x 4 tamanhos) cabem sem cortar [%s]"):format(panelChecks,
+            tostring(worstLocale)), panelFails, 0)
     end)
 
     _G.gameSettings.reducedMotion = prevReduced or false

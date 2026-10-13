@@ -174,7 +174,26 @@ function M.run(arg)
                     return out
                 end
                 local name = ("diag_%s_%dx%d_%s.png"):format(state, w, h, locale)
-                if state == "hoverstrip" then
+                if state == "crt" or state == "crtnocalm" then
+                    -- através do tubo, no PIOR quadro (surto no pico): "crt" com a
+                    -- zona de leitura do pergaminho (v5), "crtnocalm" sem ela
+                    local CRT = require("src.ui.CRTShader")
+                    CRT.load(); CRT.setEnabled(true); CRT.setStrength(0.75); CRT.setPower(1)
+                    CRT.setDegrade(1)
+                    CRT.beginScene()
+                    love.graphics.clear(0.16, 0.12, 0.09, 1)
+                    s:draw()
+                    UiScale.setChromeScaled(true)
+                    local tb = TopBar:new(); tb:setGame(game); tb:update(1 / 30, game); tb:draw()
+                    UiScale.setChromeScaled(false)
+                    if state == "crtnocalm" then CRT.setCalmRect(0, 0, 0, 0); CRT.setCalmRect2(0, 0, 0, 0) end
+                    CRT.endScene(canvas)
+                    love.graphics.setCanvas()
+                    CRT.setDegrade(0)
+                    CRT.setEnabled(false)
+                    canvas:newImageData():encode("png", name)
+                    print("[shop_diag] " .. name)
+                elseif state == "hoverstrip" then
                     local ShelfItem = require("src.ui.shop.ShelfItem")
                     local it = itemWhere(function(i) return i.kind == "card" and i.index == 2 end)
                     local c = it.geom

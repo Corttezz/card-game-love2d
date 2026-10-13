@@ -36,6 +36,7 @@
 --     chrome    = bool,    -- desenha o painel de fundo (default true)
 --     parchment = bool,    -- tinta sobre papel (pergaminho da Loja v3)
 --     artMaxH   = number,  -- teto da altura da arte (pergaminho curto)
+--     priceOnButton = bool, -- o preço está no botão de compra: some da legenda
 --     objectArt = fn(payload, x, y, w, h, alpha) -> bool  -- desenha a arte de
 --                 relíquia/pacote no lugar da composição padrão (Loja v3c: o
 --                 pergaminho mostra o MESMO sprite da mesa); false = padrão
@@ -65,14 +66,29 @@ local DARK_PAL = {
     typeColor = function(c) return Palette.lighten(c, 0.45) end,
     rarity = function(r) return Palette.forRarity(r) end,
 }
+-- Contraste mínimo no papel (v5: "Comum" e "Relíquia" saíam cinza claro).
+local function lumC(c)
+    local function ch(v) return v <= 0.03928 and v / 12.92 or ((v + 0.055) / 1.055) ^ 2.4 end
+    return 0.2126 * ch(c[1]) + 0.7152 * ch(c[2]) + 0.0722 * ch(c[3])
+end
+local function onPaper(c)
+    local bg = Palette.PARCHMENT_LIGHT
+    for _ = 1, 30 do
+        local a, b = lumC(c), lumC(bg)
+        if (math.max(a, b) + 0.05) / (math.min(a, b) + 0.05) >= 4.5 then break end
+        c = Palette.darken(c, 0.88)
+    end
+    return c
+end
+CardDetailPanel.onPaper = onPaper
 local PARCHMENT_PAL = {
-    name = Palette.BLOOD_DARK, body = Palette.INK, dim = Palette.PARCHMENT_DARK,
+    name = Palette.BLOOD_DARK, body = Palette.INK, dim = onPaper(Palette.PARCHMENT_DARK),
     sep = Palette.PARCHMENT_DARK, divider = Palette.AGED_GOLD_DARK, head = Palette.RUST,
     price = Palette.AGED_GOLD_DARK, mana = Palette.MANA_DEEP or Palette.INK,
     defense = Palette.STEEL, affinity = Palette.RUST,
-    typeColor = function(c) return Palette.darken(c, 0.75) end,
-    -- comum é PARCHMENT_LIGHT: some no papel. Tudo escurece pra ler.
-    rarity = function(r) return Palette.darken(Palette.forRarity(r), 0.55) end,
+    typeColor = function(c) return onPaper(Palette.darken(c, 0.75)) end,
+    -- comum é PARCHMENT_LIGHT: some no papel. Tudo escurece até >= 4,5:1.
+    rarity = function(r) return onPaper(Palette.darken(Palette.forRarity(r), 0.55)) end,
 }
 
 local function reducedMotion()
@@ -286,7 +302,9 @@ local function line(text, font, color, x, y, w, limit, alpha, align)
     local lh = font:getHeight() + LINE_GAP
     for i, l in ipairs(lines) do
         local ly = y + (i - 1) * lh
-        if ly > limit then return ly end
+        -- v5: a linha inteira tem que caber (antes só o topo era conferido e a
+        -- última linha podia invadir o botão)
+        if ly + font:getHeight() > limit then return ly end
         love.graphics.printf(l, x, ly, w, align or "left")
     end
     return y + #lines * lh
@@ -365,42 +383,105 @@ function CardDetailPanel.draw(rect, payload, opts)
     local offer = payload.offer
     local inst = payload.instance
 
-    -- Descrição resolvida ANTES da arte: quanto texto existe decide quanto
-    -- espaço sobra pra ilustração (ver artFrac abaixo).
+    -- ===== CONTEÚDO (resolvido ANTES de medir/desenhar) =====
     local desc = payload.kind == "card"
         and I18n.cardDesc({ id = offer.id, description = offer.description })
         or offer.description
     if not desc or desc == "" then
         desc = I18n.t("card_info.no_desc", nil, "")
     end
-
-    -- ===== Arte (topo) =====
-    -- Fração ADAPTATIVA: com pouco texto a carta cresce e ocupa o painel; com
-    -- muito (descrição longa + lista de efeitos) ela cede espaço. Fração fixa
-    -- deixava um vão morto no pé do painel nas cartas de descrição curta —
-    -- exatamente o "espaço morto" reportado.
-    local descLineCount = #wrapLines(desc, FontManager.getFont(F.desc), textW)
+    local displayName = payload.kind == "card"
+        and I18n.cardName({ id = offer.id, name = offer.name })
+        or offer.name or "?"
     local extras = (payload.kind == "card") and extraEffects(inst, desc) or {}
-    if #extras > 0 then
-        descLineCount = descLineCount + math.min(4, #extras) + 1
-    elseif payload.kind == "voucher" then
-        -- Relíquia agora traz chip de efeito + linha de grimório abaixo da
-        -- descrição: a arte tem que ceder a mesma altura que eles ocupam,
-        -- senão o texto encosta no rodapé dos botões de compra.
-        local flavor = UpgradeTile.flavor(offer)
-        if UpgradeTile.effectLabel(offer) then descLineCount = descLineCount + 2 end
-        if flavor then
-            descLineCount = descLineCount
-                + #wrapLines(flavor, FontManager.getFont(F.tiny), textW)
+    local chipTxt = (payload.kind == "voucher") and UpgradeTile.effectLabel(offer) or nil
+    local flavor = (payload.kind == "voucher") and UpgradeTile.flavor(offer) or nil
+    -- Linha meta: TIPO · RARIDADE (· PREÇO). Loja v5: o preço já está no
+    -- botão COMPRAR · $N logo abaixo e na plaquinha do objeto; repetir na
+    -- legenda era a terceira cópia (opts.priceOnButton tira daqui).
+    local typeLabel = typeLabelFor(payload)
+    local rarityLabel = offer.rarity and I18n.t("rarity." .. offer.rarity, nil, offer.rarity) or nil
+    local priceLabel = (offer.cost or 0) > 0 and ("$" .. tostring(offer.cost))
+        or I18n.t("reward.detail_free", nil, "Grátis")
+    local typeColor = inst and PAL.typeColor(Palette.forCardType(inst.type)) or PAL.dim
+    local segs = { { typeLabel, typeColor } }
+    if rarityLabel then segs[#segs + 1] = { rarityLabel, PAL.rarity(offer.rarity) } end
+    if not opts.priceOnButton then
+        segs[#segs + 1] = { priceLabel, opts.canAfford == false and Palette.BLOOD or PAL.price }
+    end
+    local sep = "  ·  "
+    local joined = segs[1][1]
+    for i = 2, #segs do joined = joined .. sep .. segs[i][1] end
+    local statParts = {}
+    if payload.kind == "card" and inst then
+        statParts[#statParts + 1] = { I18n.t("card_info.cost", nil, "Custo: ") .. tostring(inst.cost or 0), PAL.mana }
+        if inst.type == "attack" and (inst.attack or 0) > 0 then
+            statParts[#statParts + 1] = { I18n.t("card_info.damage", nil, "Dano: ") .. tostring(inst.attack), Palette.BLOOD }
+        elseif inst.type == "defense" and (inst.defense or 0) > 0 then
+            statParts[#statParts + 1] = { I18n.t("card_info.defense", nil, "Defesa: ") .. tostring(inst.defense), PAL.defense }
         end
     end
-    local artFrac = 0.44
-    if descLineCount <= 3 then artFrac = 0.60
-    elseif descLineCount <= 6 then artFrac = 0.52 end
-    local artH = math.floor((h - footerH) * artFrac)
-    -- Loja v3: o pergaminho limita a arte (a carta grande repetia a da
-    -- prateleira e roubava o espaço do texto, que é quem decide).
-    if opts.artMaxH then artH = math.min(artH, math.floor(opts.artMaxH)) end
+    local affinityTxt = (offer.affinity and offer.affinityTags)
+        and I18n.t("reward.affinity_line", { tags = table.concat(offer.affinityTags, ", ") },
+            "Afinidade com seu deck: " .. table.concat(offer.affinityTags, ", ")) or nil
+
+    -- ===== MEDIDA (Loja v5, briefing item 8: "o conteúdo não pode colidir
+    -- com o botão, sair do painel ou exigir uma fonte minúscula"). Mede o
+    -- bloco de texto com as MESMAS regras do desenho; quem cede primeiro é
+    -- a ARTE (até 45% do teto), depois um degrau de fonte (nunca abaixo de
+    -- 8 na descrição). O texto nunca é cortado no meio sem aviso.
+    local function linesH(text, font, w)
+        return #wrapLines(text, font, w) * (font:getHeight() + LINE_GAP)
+    end
+    local function statsLayout(Fx)
+        if #statParts == 0 then return 0, nil, false end
+        local texts = {}
+        for _, p in ipairs(statParts) do texts[#texts + 1] = p[1] end
+        local half = math.floor(textW / math.max(1, #statParts)) - 8
+        local f, _, fits = fitFont(texts, half, Fx.stat, math.max(6, Fx.stat - 4))
+        if fits or #statParts == 1 then return f:getHeight() + 8, f, true end
+        f = fitFont(texts, textW, Fx.stat, math.max(6, Fx.stat - 4))
+        return (f:getHeight() + 4) * #statParts + 4, f, false
+    end
+    local function textBlockH(Fx)
+        local hgt = linesH(displayName, FontManager.getFont(Fx.name), textW) + 8
+        local mf = fitFont({ joined }, textW, Fx.meta, math.max(6, Fx.meta - 3))
+        hgt = hgt + mf:getHeight() + 10
+        hgt = hgt + (statsLayout(Fx))
+        if chipTxt then hgt = hgt + FontManager.getFont(Fx.stat):getHeight() + 16 end
+        hgt = hgt + 8 + linesH(desc, FontManager.getFont(Fx.desc), textW)
+        if flavor then hgt = hgt + 6 + linesH('"' .. flavor .. '"', FontManager.getFont(Fx.tiny), textW) end
+        if #extras > 0 then
+            local ft = FontManager.getFont(Fx.tiny)
+            hgt = hgt + 4 + ft:getHeight() + LINE_GAP
+            for i, txt in ipairs(extras) do
+                if i <= 4 then hgt = hgt + linesH("- " .. txt, ft, textW - 6) end
+            end
+        end
+        if affinityTxt then hgt = hgt + 4 + linesH(affinityTxt, FontManager.getFont(Fx.tiny), textW) end
+        return hgt
+    end
+    local avail = h - footerH - PAD * 2 - 18
+    -- Fração ADAPTATIVA da arte (com pouco texto a arte cresce), teto do
+    -- pergaminho (opts.artMaxH) e piso de 45% do teto.
+    local artCap = math.floor((h - footerH) * 0.60)
+    if opts.artMaxH then artCap = math.min(artCap, math.floor(opts.artMaxH)) end
+    local artMin = math.floor(artCap * 0.45)
+    local tiers = { F }
+    for _, tf in ipairs({ { name = 13, meta = 9, stat = 11, desc = 9, tiny = 8 },
+                          { name = 11, meta = 8, stat = 9, desc = 8, tiny = 7 } }) do
+        if tf.desc < tiers[#tiers].desc or tf.name < tiers[#tiers].name then tiers[#tiers + 1] = tf end
+    end
+    local artH, textH, fits
+    for _, tf in ipairs(tiers) do
+        F = tf
+        textH = textBlockH(F)
+        artH = math.min(artCap, avail - textH)
+        fits = artH >= artMin
+        if fits then break end
+    end
+    if not fits then artH = artMin end
+    artH = math.max(0, math.floor(artH))
     local artY = y + PAD
     local artW = textW
     if payload.kind == "card" then
@@ -413,52 +494,18 @@ function CardDetailPanel.draw(rect, payload, opts)
         drawVoucherArt(offer, textX, artY, artW, artH, alpha)
     end
 
-    -- Respiro real entre a arte e a legenda: colados, os dois liam como duas
-    -- faixas empilhadas em vez de uma composição só.
+    -- Respiro real entre a arte e a legenda.
     local cy = artY + artH + 18
+    local textTop = cy
 
-    -- ===== Nome =====
-    local displayName = payload.kind == "card"
-        and I18n.cardName({ id = offer.id, name = offer.name })
-        or offer.name or "?"
+    -- ===== Nome (o título: maior peso) =====
     cy = line(displayName, FontManager.getFont(F.name), PAL.name,
               textX, cy, textW, bottom, alpha, "center")
-
     divider(textX, cy + 2, textW, alpha, PAL.divider)
     cy = cy + 8
 
-    -- ===== Linha meta: TIPO · RARIDADE · PREÇO =====
-    -- Raridade vive AQUI e no badge do slot: o jogador vê o que está
-    -- comprando sem depender de decorar cores de borda.
+    -- ===== Meta: TIPO · RARIDADE (peso menor, centrado) =====
     do
-        local typeLabel = typeLabelFor(payload)
-        local rarityLabel = offer.rarity
-            and I18n.t("rarity." .. offer.rarity, nil, offer.rarity) or nil
-        local priceLabel = (offer.cost or 0) > 0 and ("$" .. tostring(offer.cost))
-            or I18n.t("reward.detail_free", nil, "Grátis")
-
-        -- Cor do tipo CLAREADA: as cores canônicas (STEEL #4a5260, BLOOD
-        -- #8b1e1e) foram desenhadas pra acentuar molduras claras de carta —
-        -- cruas sobre o miolo INK do painel ficam quase ilegíveis (defeito
-        -- visto na captura: "DEFESA" sumindo no fundo).
-        local typeColor = inst and PAL.typeColor(Palette.forCardType(inst.type))
-            or PAL.dim
-        local segs = { { typeLabel, typeColor } }
-        if rarityLabel then
-            table.insert(segs, { rarityLabel, PAL.rarity(offer.rarity) })
-        end
-        -- O PREÇO entra na legenda em vez de ocupar uma linha centrada só
-        -- dele: eram três faixas empilhadas (nome / meta / preço) onde cabia
-        -- uma legenda só. Cor segue a regra de sempre — dourado se dá pra
-        -- pagar, sangue se não.
-        table.insert(segs, { priceLabel,
-            opts.canAfford == false and Palette.BLOOD or PAL.price })
-
-        -- Segmentos coloridos centrados, separados por "·". A fonte encolhe
-        -- se a linha inteira (tipo + separador + raridade) não couber.
-        local sep = "  ·  "
-        local joined = segs[1][1]
-        for i = 2, #segs do joined = joined .. sep .. segs[i][1] end
         local metaFont = fitFont({ joined }, textW, F.meta, math.max(6, F.meta - 3))
         love.graphics.setFont(metaFont)
         local total = 0
@@ -480,136 +527,97 @@ function CardDetailPanel.draw(rect, payload, opts)
         cy = cy + metaFont:getHeight() + 10
     end
 
-    -- ===== Stats (custo de mana / dano / armadura / forja) =====
-    if payload.kind == "card" and inst then
-        local parts = {}
-        table.insert(parts, {
-            I18n.t("card_info.cost", nil, "Custo: ") .. tostring(inst.cost or 0),
-            PAL.mana })
-        if inst.type == "attack" and (inst.attack or 0) > 0 then
-            table.insert(parts, {
-                I18n.t("card_info.damage", nil, "Dano: ") .. tostring(inst.attack),
-                Palette.BLOOD })
-        elseif inst.type == "defense" and (inst.defense or 0) > 0 then
-            table.insert(parts, {
-                I18n.t("card_info.defense", nil, "Defesa: ") .. tostring(inst.defense),
-                PAL.defense })
-        end
-        -- Lado a lado SÓ se os dois rótulos couberem de fato na metade da
-        -- coluna; senão a fonte encolhe e, em último caso, empilha. Sem isso
-        -- o printf quebrava "Verteid.: 10" e o "10" caía sobre a descrição.
-        local texts = {}
-        for _, p in ipairs(parts) do texts[#texts + 1] = p[1] end
-        local half = math.floor(textW / math.max(1, #parts)) - 8
-        local statFont, _, fits = fitFont(texts, half, F.stat, math.max(6, F.stat - 4))
+    -- ===== Stats (custo de mana / dano / armadura) =====
+    if #statParts > 0 then
+        local hgt, statFont, side = statsLayout(F)
         love.graphics.setFont(statFont)
-        local lineH = statFont:getHeight() + 4
-
-        if fits or #parts == 1 then
-            local gap = math.floor(textW / math.max(1, #parts))
-            for i, p in ipairs(parts) do
+        if side then
+            local gap = math.floor(textW / math.max(1, #statParts))
+            for i, p in ipairs(statParts) do
                 setC(p[2], alpha)
                 love.graphics.printf(p[1], textX + (i - 1) * gap, cy, gap,
-                    #parts == 1 and "center" or (i == 1 and "left" or "right"))
+                    #statParts == 1 and "center" or (i == 1 and "left" or "right"))
             end
-            cy = cy + lineH + 4
         else
-            statFont = fitFont(texts, textW, F.stat, math.max(6, F.stat - 4))
-            love.graphics.setFont(statFont)
-            lineH = statFont:getHeight() + 4
-            for _, p in ipairs(parts) do
+            local yy = cy
+            for _, p in ipairs(statParts) do
                 setC(p[2], alpha)
-                love.graphics.printf(p[1], textX, cy, textW, "center")
-                cy = cy + lineH
+                love.graphics.printf(p[1], textX, yy, textW, "center")
+                yy = yy + statFont:getHeight() + 4
             end
-            cy = cy + 4
         end
+        cy = cy + hgt
     end
 
     -- ===== Chip do EFEITO (relíquia) =====
-    -- O painel da relíquia era nome + "Relíquia · $5" + uma linha de texto, e
-    -- depois meio painel de vazio — enquanto o da carta tem custo, dano e
-    -- lista de efeitos. Aqui o NÚMERO ganha o mesmo peso que tem no tile:
-    -- uma placa com a cor do efeito, para o jogador comparar de longe.
-    if payload.kind == "voucher" then
-        local chipTxt = UpgradeTile.effectLabel(offer)
-        if chipTxt then
-            local th = UpgradeTile.theme(offer)
-            local f = FontManager.getFont(F.stat)
-            local chipH = f:getHeight() + 10
-            local chipW = math.min(textW, f:getWidth(chipTxt) + 28)
-            local chipX = textX + math.floor((textW - chipW) / 2)
-            setC(Palette.darken(Palette.INK, 0.2), alpha * 0.85)
-            love.graphics.rectangle("fill", chipX, cy, chipW, chipH, 3, 3)
-            setC(th.accent, alpha * 0.9)
-            love.graphics.setLineWidth(1)
-            love.graphics.rectangle("line", chipX + 0.5, cy + 0.5, chipW - 1, chipH - 1, 3, 3)
-            love.graphics.setFont(f)
-            setC(th.text, alpha)
-            love.graphics.printf(chipTxt, chipX, cy + 5, chipW, "center")
-            cy = cy + chipH + 6
-        end
+    if chipTxt then
+        local th = UpgradeTile.theme(offer)
+        local f = FontManager.getFont(F.stat)
+        local chipH = f:getHeight() + 10
+        local chipW = math.min(textW, f:getWidth(chipTxt) + 28)
+        local chipX = textX + math.floor((textW - chipW) / 2)
+        setC(Palette.darken(Palette.INK, 0.2), alpha * 0.85)
+        love.graphics.rectangle("fill", chipX, cy, chipW, chipH, 3, 3)
+        setC(th.accent, alpha * 0.9)
+        love.graphics.setLineWidth(1)
+        love.graphics.rectangle("line", chipX + 0.5, cy + 0.5, chipW - 1, chipH - 1, 3, 3)
+        love.graphics.setFont(f)
+        setC(th.text, alpha)
+        love.graphics.printf(chipTxt, chipX, cy + 5, chipW, "center")
+        cy = cy + chipH + 6
     end
 
     divider(textX, cy, textW, alpha * 0.8, PAL.divider)
     cy = cy + 8
 
-    -- ===== Descrição =====
-    cy = line(desc, FontManager.getFont(F.desc), PAL.body,
-              textX, cy, textW, bottom, alpha)
+    -- ===== Descrição (o corpo: as regras) =====
+    cy = line(desc, FontManager.getFont(F.desc), PAL.body, textX, cy, textW, bottom, alpha)
 
-    -- ===== Linha de grimório (relíquia) =====
-    -- Ocupa o vão que sobrava sob a descrição curta com a coisa certa: voz,
-    -- não enchimento. Cai fora sozinha se não houver espaço.
-    if payload.kind == "voucher" then
-        local flavor = UpgradeTile.flavor(offer)
-        if flavor and cy < bottom - 10 then
-            cy = cy + 6
-            line('"' .. flavor .. '"', FontManager.getFont(F.tiny),
-                 PAL.dim, textX, cy, textW, bottom, alpha * 0.9, "center")
-        end
+    -- ===== Linha de grimório (relíquia): voz, peso mínimo =====
+    if flavor then
+        cy = cy + 6
+        cy = line('"' .. flavor .. '"', FontManager.getFont(F.tiny),
+                  PAL.dim, textX, cy, textW, bottom, alpha * 0.9, "center")
     end
 
-    -- ===== Efeitos (até 4, como na inspeção) =====
+    -- ===== Efeitos que a descrição AINDA não diz (até 4) =====
     if #extras > 0 then
         cy = cy + 4
         cy = line(I18n.t("card_info.effects", nil, "Efeitos"),
-                  FontManager.getFont(F.tiny), PAL.head,
-                  textX, cy, textW, bottom, alpha)
+                  FontManager.getFont(F.tiny), PAL.head, textX, cy, textW, bottom, alpha)
         local effFont = FontManager.getFont(F.tiny)
         for i, txt in ipairs(extras) do
-            if i > 4 or cy > bottom then break end
-            cy = line("- " .. txt, effFont, PAL.body,
-                      textX + 6, cy, textW - 6, bottom, alpha)
+            if i > 4 then break end
+            cy = line("- " .. txt, effFont, PAL.body, textX + 6, cy, textW - 6, bottom, alpha)
         end
     end
 
     -- ===== Afinidade: POR QUE esta oferta apareceu =====
-    if offer.affinity and offer.affinityTags and cy < bottom then
+    if affinityTxt then
         cy = cy + 4
-        line(I18n.t("reward.affinity_line", { tags = table.concat(offer.affinityTags, ", ") },
-                    "Afinidade com seu deck: " .. table.concat(offer.affinityTags, ", ")),
-             FontManager.getFont(F.tiny), PAL.affinity,
-             textX, cy, textW, bottom, alpha)
+        cy = line(affinityTxt, FontManager.getFont(F.tiny), PAL.affinity, textX, cy, textW, bottom, alpha)
     end
 
-    -- Rodapé discreto de contexto (pré-foco / última observada). Ancorado no
-    -- pé do painel: o bloco INTEIRO é medido antes (pode quebrar em 2 linhas
-    -- num painel estreito) — com printf multi-linha ele saía pela borda de
-    -- baixo com as linhas coladas.
+    -- Rodapé discreto de contexto (pré-foco / última observada), ancorado no
+    -- pé do painel; só se couber sem encostar no texto.
     if opts.stale and opts.staleHint then
         local f = FontManager.getFont(F.tiny)
         local lines = wrapLines(opts.staleHint, f, textW)
         local lh = f:getHeight() + LINE_GAP
         local topY = y + h - footerH - 8 - #lines * lh
-        love.graphics.setFont(f)
-        setC(PAL.dim, (opts.parchment and 0.8 or 0.45) * alpha)
-        for i, l in ipairs(lines) do
-            love.graphics.printf(l, textX, topY + (i - 1) * lh, textW, "center")
+        if topY >= cy + 4 then
+            love.graphics.setFont(f)
+            setC(PAL.dim, (opts.parchment and 0.8 or 0.45) * alpha)
+            for i, l in ipairs(lines) do
+                love.graphics.printf(l, textX, topY + (i - 1) * lh, textW, "center")
+            end
         end
     end
 
     love.graphics.setColor(1, 1, 1, 1)
+    -- devolve a medida (test_shop_scene confere que nada sai do painel)
+    return { fits = fits and cy <= bottom + 1, contentBottom = cy, bottom = bottom, artH = artH,
+             textTop = textTop, font = F }
 end
 
 return CardDetailPanel

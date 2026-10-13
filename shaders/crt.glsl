@@ -27,6 +27,13 @@ extern number glitchY;
 // do surto — vinheta/CA/ruído/flicker sobem e uma hum bar rola. Agendado
 // em Lua (CRTShader.update: a cada 8-20s por 0.6-2s, envelope suave).
 extern number degrade;
+// ZONA DE LEITURA (Loja v5, briefing: "reduza a aberração cromática sobre
+// textos pequenos, valores e descrições"): retângulo em px do CONTEÚDO
+// (x, y, w, h; w <= 0 = nenhuma) onde a aberração e o surto somem, com
+// borda suave de 24 px. Curvatura, scanlines e grille continuam (são a
+// identidade, não borram letra). CRTShader.setCalmRect, zerado a cada quadro.
+extern vec4 calmRect;
+extern vec4 calmRect2;   // 2ª zona (botão de texto miúdo no canto, ex. CONTINUAR)
 
 // Largura do gabinete em px (a moldura vive AQUI, fora do conteúdo).
 const float BEZEL_PX = 20.0;
@@ -263,6 +270,19 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
         suv.y += (rand(vec2(floor(time * 60.0), 7.0)) - 0.5) * 0.0016 * glitch;
     }
 
+    // ====== ZONA DE LEITURA ======
+    float calm = 0.0;
+    vec2 cp = suv * resolution;
+    if (calmRect.z > 0.0) {
+        vec2 dd = max(max(calmRect.xy - cp, cp - (calmRect.xy + calmRect.zw)), vec2(0.0));
+        calm = 1.0 - smoothstep(0.0, 24.0, length(dd));
+    }
+    if (calmRect2.z > 0.0) {
+        vec2 dd2 = max(max(calmRect2.xy - cp, cp - (calmRect2.xy + calmRect2.zw)), vec2(0.0));
+        calm = max(calm, 1.0 - smoothstep(0.0, 24.0, length(dd2)));
+    }
+    float deg = degrade * (1.0 - calm);
+
     // ====== ABERRAÇÃO CROMÁTICA (cresce com a distância do centro) ======
     // caBoost: no warm-up o canhão ainda não convergiu — CA bem maior
     // v3.7: 0.0022→0.0010 — CA de canto borrava texto na periferia
@@ -270,7 +290,8 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     // v4 (Out/2026, legibilidade em 1080p/1440p): a aberração é medida em
     // PIXELS, não em fração da tela — em uv, 1440p deslocava 1,5-6 px e
     // borrava o texto. Centro 0,9 px, canto +3,2 px (≈ o que 1280p tinha).
-    float caPx = (0.9 + mix(1.6, 3.5, degrade) * r2 * 4.0) * strength * caBoost;
+    float caPx = (0.9 + mix(1.6, 3.5, deg) * r2 * 4.0) * strength * caBoost;
+    caPx *= 1.0 - calm;
     float caOffset = caPx / max(1.0, resolution.x);
     vec4 colR = Texel(tex, suv + vec2(caOffset, 0.0));
     vec4 colG = Texel(tex, suv);
@@ -301,16 +322,16 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     // v3.7 (feedback do dono): cantos acumulavam dome×vignette×glassShadow
     // ≈ -38% e dificultavam leitura — coeficientes e piso suavizados.
     // v3.10: no SURTO o domo volta aos valores antigos (0.05/0.10, piso 0.85)
-    float dome = 1.0 - (mix(0.03, 0.05, degrade) * r2 * 2.0
-        + mix(0.05, 0.10, degrade) * r2 * r2 * 8.0) * strength;
-    dome = clamp(dome, mix(0.93, 0.85, degrade), 1.0);
+    float dome = 1.0 - (mix(0.03, 0.05, deg) * r2 * 2.0
+        + mix(0.05, 0.10, deg) * r2 * r2 * 8.0) * strength;
+    dome = clamp(dome, mix(0.93, 0.85, deg), 1.0);
     vec2 sheenPos = (suv - vec2(0.5, 0.24)) * vec2(1.0, 2.1);
     float sheen = exp(-dot(sheenPos, sheenPos) * 3.2) * 0.045 * strength;
 
     // sombra do vidro recuado — DIRECIONAL: a moldura de cima projeta
     // mais sombra no vidro. v3.7: 0.28→0.16 topo, 0.08→0.05 base (a faixa
     // superior escondia o texto da TopBar). v3.10: surto restaura a antiga.
-    float shadowW = mix(mix(0.05, 0.08, degrade), mix(0.16, 0.28, degrade),
+    float shadowW = mix(mix(0.05, 0.08, deg), mix(0.16, 0.28, deg),
         clamp(1.0 - tuv.y, 0.0, 1.0));
     float glassShadow = 1.0 - shadowW * strength
         * smoothstep(-0.020, -0.001, dTube);
@@ -318,7 +339,7 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     // ====== VIGNETTE + FLICKER + NOISE ======
     // v3.9 (dono): o surto é fenômeno de PERIFERIA — no centro a imagem
     // fica idêntica ao baseline. Máscara radial: 0 no centro, 1 nos cantos.
-    float dEdge = degrade * smoothstep(0.04, 0.32, r2);
+    float dEdge = deg * smoothstep(0.04, 0.32, r2);
 
     vec2 vPos = (suv - 0.5) * 0.45;
     float vignette = clamp(1.0 - dot(vPos, vPos), 0.0, 1.0);
@@ -326,7 +347,7 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     // escurecimento. v3.10: no SURTO volta EXATAMENTE à antiga (0.55);
     // radial por natureza, centro intacto.
     vignette = mix(1.0, pow(vignette, 2.0),
-        mix(0.30, 0.55, degrade) * strength);
+        mix(0.30, 0.55, deg) * strength);
     float flickAmp = 0.008 * (1.0 + 2.5 * dEdge);
     float flicker = (1.0 - flickAmp * strength)
         + flickAmp * strength * sin(time * 60.0);

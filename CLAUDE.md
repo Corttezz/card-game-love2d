@@ -48,7 +48,7 @@ card-game-love2d/
 │   ├── Menu.lua                # Menu principal
 │   ├── ClassSelectionScreen.lua# Seleção de classe por EMBLEMA (não personagem) + estado bloqueado/maestria via UnlockSystem — memory/class_emblems.md
 │   ├── GameUI.lua              # HUD do gameplay (só delega ao HudManager)
-│   ├── CardRewardScreen.lua    # Loja / recompensas pós-batalha (inclui refresh). Loja v3 = Balcão do Mercador em perspectiva (ShopScene/ShopLayout/ShelfItem em src/ui/shop/), memory/shop_layout.md v3
+│   ├── CardRewardScreen.lua    # Loja / recompensas pós-batalha (inclui refresh). Loja = Balcão do Mercador (ShopScene/ShopLayout/ShelfItem em src/ui/shop/); v5: vitrine posicionada por parâmetros centrais `ShopLayout.SHELF/TABLE/PLAQUE` em px de arte, preço = plaquinha de latão presa no dono, hover sem levitar, pergaminho medido (texto nunca corta), zona de leitura do CRT (`CRTShader.setCalmRect`), memory/shop_layout.md v5
 │   ├── TopBar.lua              # Barra superior (ouro, deck, ícone config)
 │   ├── SettingsMenu.lua        # Abas Áudio/Vídeo/Jogo/Idioma em altura fixa, controles [<] valor [>] (Idioma = LISTA direta, nunca ciclo); VOLTAR retorna ao Pause; SettingsMenu.applyRuntime(settings) no boot (vsync, combatSpeed → CombatBeats.speed)
 │   ├── PauseMenu.lua           # Pausa v4 limpa (classe·jornada + semente miúda, atalhos D/J/M em ícone, Continuar primário, abandono = link discreto em 2 etapas); teclado/gamepad via src/ui/MenuKit.lua; _G.togglePauseMenu

@@ -2420,7 +2420,9 @@ function CardRewardScreen:_drawDetailPanel(rect, parchment, artMaxH, objectArt)
         hint = I18n.t("reward.detail_stale", nil, "ultima oferta observada")
     end
 
-    CardDetailPanel.draw(dp, payload, {
+    -- v5: guarda a medida (test_shop_scene: nada sai do pergaminho)
+    self._detailFit = CardDetailPanel.draw(dp, payload, {
+        priceOnButton = parchment and true or false,
         alpha     = math.max(0, math.min(1, self._detailAnim or 1)),
         stale     = hint ~= nil,
         canAfford = canAfford,

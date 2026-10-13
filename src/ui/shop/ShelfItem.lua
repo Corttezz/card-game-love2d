@@ -431,6 +431,18 @@ ShelfItem.BRASS = {
     dark = Palette.lerp(Palette.AGED_GOLD_DARK, Palette.INK, 0.35),
     face = Palette.lerp(Palette.AGED_GOLD, Palette.AGED_GOLD_DARK, 0.2),
 }
+-- SEM OURO: o latão escurece (oxidado) e o valor sai em vermelho CLARO. A
+-- troca de tom da placa inteira lê de longe; só a cor do texto (vermelho
+-- escuro sobre latão) ficava quase igual à tinta normal.
+ShelfItem.BRASS_DENY = {
+    hi   = Palette.AGED_GOLD_DARK,
+    rim  = Palette.INK,
+    dark = Palette.INK,
+    face = Palette.lerp(Palette.AGED_GOLD_DARK, Palette.INK, 0.5),
+}
+function ShelfItem.plaqueFace(afford)
+    return (afford == false) and ShelfItem.BRASS_DENY.face or ShelfItem.BRASS.face
+end
 
 local function lum(c)
     local function ch(v) return v <= 0.03928 and v / 12.92 or ((v + 0.055) / 1.055) ^ 2.4 end
@@ -442,14 +454,15 @@ function ShelfItem.contrast(a, b)
     return (la + 0.05) / (lb + 0.05)
 end
 
--- Cor `c` ESCURECIDA até contraste >= 4,6 com a face do latão (gravado).
+-- Cor `c` levada até contraste >= 4,6 com a face (escurece no latão claro,
+-- clareia no latão oxidado do "sem ouro").
 local inkCache = {}
-function ShelfItem.inkOnBrass(key, c)
+function ShelfItem.inkOnBrass(key, c, face, lighten)
     if inkCache[key] then return inkCache[key] end
-    local face = ShelfItem.BRASS.face
+    face = face or ShelfItem.BRASS.face
     for _ = 1, 40 do
         if ShelfItem.contrast(c, face) >= 4.6 then break end
-        c = Palette.darken(c, 0.9)
+        c = lighten and Palette.lighten(c, 0.08) or Palette.darken(c, 0.9)
     end
     inkCache[key] = c
     return c
@@ -458,7 +471,9 @@ end
 -- Tinta do valor: normal (tinta), sem ouro (vermelho escuro legível),
 -- oferta do dia (tinta; o canto vermelho dobrado é que marca).
 function ShelfItem.priceInk(afford, sale)
-    if not afford then return ShelfItem.inkOnBrass("deny", Palette.BLOOD) end
+    if not afford then
+        return ShelfItem.inkOnBrass("deny", Palette.lighten(Palette.BLOOD, 0.35), ShelfItem.BRASS_DENY.face, true)
+    end
     return ShelfItem.inkOnBrass("price", Palette.INK)
 end
 
@@ -491,7 +506,7 @@ end
 --   st = { selected, sale, alpha, rar }
 function ShelfItem.drawPlaqueArt(Q, dx, st)
     dx = dx or 0
-    local B = ShelfItem.BRASS
+    local B = (st.afford == false) and ShelfItem.BRASS_DENY or ShelfItem.BRASS
     local a = st.alpha or 1
     local x0, x1 = Q.x0 + dx, Q.x0 + dx + Q.w - 1
     local rim = st.selected and Palette.AGED_GOLD_LIGHT or Palette.INK
@@ -563,8 +578,8 @@ function ShelfItem.drawPlaqueText(L, Q, dx, ink, alpha, shakeX)
         love.graphics.setFont(Q.font)
         local tx = floor((w - Q.font:getWidth(Q.text)) / 2) + 1
         local ty = floor((h - Q.font:getHeight()) / 2) + 1
-        -- gravado: realce claro 1 px abaixo, tinta por cima
-        Palette.set(ShelfItem.BRASS.hi, 0.55 * a)
+        -- gravado: realce 1 px abaixo, tinta por cima
+        Palette.set(Q.deny and Palette.INK or ShelfItem.BRASS.hi, 0.55 * a)
         love.graphics.print(Q.text, tx, ty + 1)
         love.graphics.setColor(ink[1], ink[2], ink[3], a)
         love.graphics.print(Q.text, tx, ty)
@@ -601,6 +616,7 @@ function ShelfItem:drawPlateArt(L, ctx)
     ShelfItem.drawPlaqueArt(Q, sdx, {
         selected = self.selected, sale = self.offer and self.offer.saleDiscount and true or false,
         alpha = (ctx.alpha or 1) * self:entered(), rar = rar,
+        afford = ctx.afford and self.deny <= 0,
     })
 end
 
@@ -612,6 +628,7 @@ function ShelfItem:drawPlateText(L, ctx)
     if not Q then return end
     local sdx = floor((self.slide.x or 0) / cv.s + 0.5)
     local sale = self.offer and self.offer.saleDiscount and true or false
+    Q.deny = not (ctx.afford and self.deny <= 0)
     ShelfItem.drawPlaqueText(L, Q, sdx, ShelfItem.priceInk(ctx.afford and self.deny <= 0, sale),
         (ctx.alpha or 1) * self:entered(), self:_shake())
 end
@@ -758,7 +775,7 @@ function ShelfItem:drawCard(ctx)
         if okCF and CardFrame.liveImage then img = CardFrame.liveImage(inst) or img end
     end
     local x0, y0, x1, y1, x2, y2, x3, y3 = self:cardCorners()
-    local dim = ctx.afford and 1 or 0.6
+    local dim = ctx.afford and 1 or 0.8   -- v5: sem ouro escurece pouco (a arte segue legível); o preço vermelho é o aviso
     local a = alpha * (1 - clamp(inst.dissolve or 0, 0, 1))
     -- (a sombra da carta na parede é pixel art na grade: drawCardShadowArt,
     -- numa passada da arte ANTES das cartas)
@@ -848,7 +865,7 @@ function ShelfItem:drawObjectArt(L, ctx)
     o.alpha = alpha
     -- luz da cena (ShopLayout.ambientAt): o objeto recebe a MESMA queda de
     -- luz da mesa pintada (vela à esquerda), em vez da luz própria do sprite
-    local dim = ctx.afford and 1 or 0.6
+    local dim = ctx.afford and 1 or 0.8   -- v5: sem ouro escurece pouco (a arte segue legível); o preço vermelho é o aviso
     local amb = ShopLayout.ambientAt((self.geom.footX - L.cover.ox) / L.cover.s, (self.geom.foot - L.cover.oy) / L.cover.s)
     o.color = { dim * amb[1], dim * amb[2], dim * amb[3] }
     local sale = self.offer and self.offer.saleDiscount
@@ -890,7 +907,9 @@ function ShelfItem:drawSoldText(ctx)
     local r = self.rect
     local alpha = ctx.alpha or 1
     local cx = g.footX + (self.slide.x or 0)
-    local baseY = (self.kind == "card") and (g.foot - g.qh * 0.45) or (g.foot - r.h * 0.35)
+    -- v5: o VENDIDO fica NO apoio (logo acima do trilho / do pé), não
+    -- solto no meio da parede
+    local baseY = (self.kind == "card") and (g.foot - 12) or (g.foot - 10)
     local txt = I18n.t("reward.sold")
     local font, fitted = TextFit.fit(txt, clamp(floor(r.w * 0.13), 8, 14), r.w)
     love.graphics.setFont(font)

@@ -44,6 +44,10 @@ local degradeTimer = 6.0      -- primeiro surto cedo, mas não imediato
 local degradeActive = 0       -- tempo restante do surto corrente
 local degradeDur = 1.0        -- duração total do surto corrente
 local degradePeak = 1.0       -- pico 0.55..1.0 sorteado por evento
+-- Zona de leitura (Loja v5): retângulo em px do conteúdo onde a aberração e
+-- o surto somem. Quem desenha texto miúdo pede A CADA QUADRO; endScene zera.
+local calmRect = { 0, 0, 0, 0 }
+local calmRect2 = { 0, 0, 0, 0 }
 
 -- Carrega o shader e cria canvas de cena. Chamar em love.load.
 function CRTShader.load()
@@ -238,6 +242,19 @@ function CRTShader.update(dt)
     end
 end
 
+-- Pede a ZONA DE LEITURA deste quadro (px REAIS do conteúdo: quem desenha
+-- dentro do UiScale multiplica por UiScale.activeK()). Uma por quadro; a
+-- última chamada vence. Zerada em endScene.
+function CRTShader.setCalmRect(x, y, w, h)
+    calmRect[1], calmRect[2], calmRect[3], calmRect[4] = x or 0, y or 0, w or 0, h or 0
+end
+function CRTShader.getCalmRect() return calmRect[1], calmRect[2], calmRect[3], calmRect[4] end
+-- 2ª zona (botão com texto miúdo perto do canto, onde a aberração é maior)
+function CRTShader.setCalmRect2(x, y, w, h)
+    calmRect2[1], calmRect2[2], calmRect2[3], calmRect2[4] = x or 0, y or 0, w or 0, h or 0
+end
+function CRTShader.getCalmRect2() return calmRect2[1], calmRect2[2], calmRect2[3], calmRect2[4] end
+
 -- Intensidade do efeito (0..1).
 function CRTShader.setStrength(s)
     strength = math.max(0, math.min(1, s or 0))
@@ -322,6 +339,10 @@ function CRTShader.endScene(target)
     shader:send("glitch", glitchAmount)
     shader:send("glitchY", glitchBandY)
     shader:send("degrade", degradeAmount)
+    shader:send("calmRect", calmRect)
+    shader:send("calmRect2", calmRect2)
+    calmRect[1], calmRect[2], calmRect[3], calmRect[4] = 0, 0, 0, 0
+    calmRect2[1], calmRect2[2], calmRect2[3], calmRect2[4] = 0, 0, 0, 0
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.draw(sceneCanvas, 0, 0)
     love.graphics.setShader()
