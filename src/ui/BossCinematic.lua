@@ -82,6 +82,10 @@ local desat = nil      -- { peak, rise, fall, total, t }
 local bossHidden = false
 local hudHidden = false
 local landed = false
+local mist = nil       -- névoa colorida do salão { puffs, a, target, speed }
+local mistGustDir = 1  -- pra onde a rajada do rasante empurra a névoa
+local hit = nil        -- efeito de tela do pouso { t, dur, cx, cy }
+local spawnMist        -- definida na seção NÉVOA (startIntro fica acima dela)
 local deathFor = nil   -- inimigo cuja morte já foi encenada (não repete)
 local flyAnim = nil    -- SpriteAnimation idle do chefe pros rasantes
 local flyAnimId = nil
@@ -192,6 +196,8 @@ local function finish()
     desat = nil
     bossHidden = false
     hudHidden = false
+    mist = nil
+    hit = nil
     EnemyRenderer.setTimeScale(1)
 end
 
@@ -240,6 +246,7 @@ function BossCinematic.startIntro(game)
     dark = 0.86
     bossHidden = true
     hudHidden = true
+    spawnMist()
     return true
 end
 
@@ -279,6 +286,7 @@ function BossCinematic.darkness() return dark end
 function BossCinematic._debug()
     return { seq = seq, dark = dark, eyes = eyes, fly = fly, title = title,
              slowmo = slowmo, desat = desat, landed = landed,
+             mist = mist, hit = hit,
              feathers = #feathers, dust = #dust, crows = #crows, wind = #wind }
 end
 
@@ -398,6 +406,229 @@ local function updateFx(dt)
 end
 
 -- ---------------------------------------------------------------------------
+-- NÉVOA COLORIDA (revisão do dono: "algo nebuloso, com cor, mais drama").
+-- Puffs = texturas de névoa GERADAS (value noise + 3 degraus de alpha com
+-- dither Bayer 4×4, borda esfarelada — nada de retângulo, nada de gradiente
+-- liso), desenhadas na GRADE DA ARTE do salão (posição truncada em px da
+-- PNG, escala = cover-fit × tamanho do puff), em 3 camadas com paralaxe:
+-- duas atrás do chefe (fundas/rentes) e uma na frente, fina. Cada puff
+-- desenha o CORPO (alpha, violeta escuro) e um BRILHO aditivo (violeta ou
+-- brasa) — é esse brilho que "sangra" cor na pedra. A rajada do rasante
+-- empurra a névoa (InteriorFX.gustLevel × direção do voo). reducedMotion:
+-- névoa parada.
+-- ---------------------------------------------------------------------------
+local BAYER4 = { 0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5 }
+local function bayer(x, y)
+    return (BAYER4[(y % 4) * 4 + (x % 4) + 1] + 0.5) / 16
+end
+local function hash2(x, y)
+    local n = math.sin(x * 127.1 + y * 311.7) * 43758.5453
+    return n - math.floor(n)
+end
+local function vnoise(x, y)
+    local xi, yi = math.floor(x), math.floor(y)
+    local xf, yf = x - xi, y - yi
+    local u, v = xf * xf * (3 - 2 * xf), yf * yf * (3 - 2 * yf)
+    local a, b = hash2(xi, yi), hash2(xi + 1, yi)
+    local c, d = hash2(xi, yi + 1), hash2(xi + 1, yi + 1)
+    return (a + (b - a) * u) * (1 - v) + (c + (d - c) * u) * v
+end
+local function fbm(x, y)
+    return 0.55 * vnoise(x, y) + 0.30 * vnoise(x * 2.1 + 5.2, y * 2.1 + 1.3)
+        + 0.15 * vnoise(x * 4.3 + 9.1, y * 4.3 + 3.7)
+end
+
+local fogImgs = nil
+local FOG_W, FOG_H = 72, 36
+local function ensureFog()
+    if fogImgs then return fogImgs end
+    fogImgs = {}
+    for i = 1, 3 do
+        local data = love.image.newImageData(FOG_W, FOG_H)
+        for y = 0, FOG_H - 1 do
+            for x = 0, FOG_W - 1 do
+                local n = fbm(x / FOG_W * 3 + i * 7.3, y / FOG_H * 2 + i * 3.1)
+                local dx, dy = (x + 0.5) / FOG_W * 2 - 1, (y + 0.5) / FOG_H * 2 - 1
+                local r = math.sqrt(dx * dx + dy * dy * 1.3)
+                local v = n * math.max(0, math.min(1, 1.35 - r * 1.1))
+                local th = bayer(x, y) * 0.18
+                local a = 0
+                if v > 0.50 + th then a = 1
+                elseif v > 0.35 + th then a = 0.66
+                elseif v > 0.22 + th then a = 0.33 end
+                data:setPixel(x, y, 1, 1, 1, a)
+            end
+        end
+        local img = love.graphics.newImage(data)
+        img:setFilter("nearest", "nearest")
+        fogImgs[i] = img
+    end
+    return fogImgs
+end
+
+local MIST_BODY  = { 0.22, 0.13, 0.38 }
+local MIST_GLOW  = { 0.58, 0.36, 0.98 }
+local MIST_EMBER = { 1.00, 0.50, 0.16 }
+
+-- layer 1 = fundo (lento, pequeno), 2 = rente ao chefe, 3 = frente (fino)
+spawnMist = function()
+    ensureFog()
+    mist = { puffs = {}, a = 0, target = 0, speed = 1 }
+    local function puff(layer, n)
+        for _ = 1, n do
+            local far = (layer == 1)
+            mist.puffs[#mist.puffs + 1] = {
+                layer = layer,
+                x = -60 + love.math.random() * 480,
+                y = (far and 70 or 110) + love.math.random() * (far and 110 or 120),
+                vx = (far and 2 or 4) * (love.math.random() < 0.5 and -1 or 1) * (0.6 + love.math.random() * 0.8),
+                s = (far and 0.9 or 1.3) + love.math.random() * 0.6,
+                a = (layer == 3) and 0.22 or (far and 0.42 or 0.56),
+                img = 1 + love.math.random(0, 2),
+                flip = love.math.random() < 0.5,
+                ember = love.math.random() < 0.22,
+                bob = love.math.random() * 6.28,
+            }
+        end
+    end
+    puff(1, 9)
+    puff(2, 10)
+    puff(3, 5)
+end
+
+local function mistTarget(target, secs)
+    if not mist then return end
+    mist.target = target
+    mist.speed = 1 / math.max(0.05, secs or 1)
+end
+
+local function updateMist(dt)
+    if not mist then return end
+    if mist.a < mist.target then mist.a = math.min(mist.target, mist.a + dt * mist.speed)
+    elseif mist.a > mist.target then mist.a = math.max(mist.target, mist.a - dt * mist.speed) end
+    if reducedMotion() then return end
+    local g = InteriorFX.gustLevel() * mistGustDir
+    for _, pf in ipairs(mist.puffs) do
+        local par = (pf.layer == 1) and 0.5 or ((pf.layer == 2) and 1 or 1.7)
+        pf.x = pf.x + (pf.vx + g * 60) * par * dt
+        pf.bob = pf.bob + dt * 0.7
+        if pf.x > 430 then pf.x = -90 elseif pf.x < -100 then pf.x = 420 end
+    end
+end
+
+-- Desenha as camadas `layers` (tabela de booleanos por layer) em coords da arte.
+local function drawMist(layers)
+    if not mist or mist.a <= 0.01 or not stage or not stage.tr then return end
+    local tr = stage.tr
+    local S = tr.scale
+    local imgs = ensureFog()
+    for _, pf in ipairs(mist.puffs) do
+        if layers[pf.layer] then
+            local img = imgs[pf.img]
+            local sx = pf.s * S * (pf.flip and -1 or 1)
+            local sy = pf.s * S
+            local x = tr.ox + math.floor(pf.x + (pf.flip and FOG_W * pf.s or 0)) * S
+            local y = tr.oy + math.floor(pf.y + math.sin(pf.bob) * 3) * S
+            local a = pf.a * mist.a
+            love.graphics.setColor(MIST_BODY[1], MIST_BODY[2], MIST_BODY[3], a)
+            love.graphics.draw(img, x, y, 0, sx, sy)
+            love.graphics.setBlendMode("add")
+            local gc = pf.ember and MIST_EMBER or MIST_GLOW
+            love.graphics.setColor(gc[1], gc[2], gc[3], a * (pf.ember and 0.22 or 0.30))
+            love.graphics.draw(img, x, y, 0, sx, sy)
+            love.graphics.setBlendMode("alpha")
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- Blob de brilho (névoa aditiva) centrado em (cx, cy), largura w, altura h —
+-- substitui qualquer "retângulo de luz": a borda é a da textura esfarelada.
+local function glowBlob(cx, cy, w, h, color, a, idx)
+    local img = ensureFog()[idx or 1]
+    love.graphics.setBlendMode("add")
+    love.graphics.setColor(color[1], color[2], color[3], a)
+    love.graphics.draw(img, math.floor(cx - w / 2), math.floor(cy - h / 2), 0, w / FOG_W, h / FOG_H)
+    love.graphics.setBlendMode("alpha")
+end
+
+-- ---------------------------------------------------------------------------
+-- EFEITO DE TELA DO POUSO: flash na cor do chefe (3 degraus no tempo, sem
+-- gradiente), onda de choque em anel pontilhado (blocos na grade, dither
+-- Bayer no esvaecer), pulso de vinheta em bandas, solavanco no CRT e soco
+-- de zoom no MUNDO (1.0 → 1.06 → 1.0, translação inteira). reducedMotion:
+-- só o pulso de vinheta, suave.
+-- ---------------------------------------------------------------------------
+local HIT_COLOR = { 0.72, 0.52, 1.00 }
+local function startHit(cx, cy)
+    hit = { t = 0, dur = 0.60, cx = cx, cy = cy }
+    if not reducedMotion() then
+        local okC, CRT = pcall(require, "src.ui.CRTShader")
+        if okC and CRT.jolt then CRT.jolt(0.16) end
+    end
+end
+
+-- (k, cx, cy) do soco de zoom em px do MUNDO, ou nil.
+function BossCinematic.worldZoom()
+    if not hit or reducedMotion() then return nil end
+    local k = clamp01(hit.t / 0.32)
+    if k >= 1 then return nil end
+    return 1 + 0.06 * math.sin(math.pi * k), hit.cx, hit.cy
+end
+
+local function drawScreenFx()
+    if not hit then return end
+    local w, h = love.graphics.getWidth(), love.graphics.getHeight()
+    local t = hit.t
+    local reduced = reducedMotion()
+    local uk = require("src.ui.UiScale").activeK()
+    local cx, cy = hit.cx / uk, hit.cy / uk
+    local P = math.max(2, math.floor(2 * uk + 0.5))
+    if not reduced then
+        -- FLASH na cor do chefe, 3 degraus
+        local fa = (t < 0.06) and 0.55 or ((t < 0.13) and 0.30 or ((t < 0.22) and 0.12 or 0))
+        if fa > 0 then
+            love.graphics.setColor(HIT_COLOR[1], HIT_COLOR[2], HIT_COLOR[3], fa)
+            love.graphics.rectangle("fill", 0, 0, w, h)
+        end
+        -- ONDA DE CHOQUE: dois anéis de blocos, o de dentro atrasado
+        for ring = 0, 1 do
+            local rt = t - ring * 0.08
+            if rt > 0 then
+                local k = clamp01(rt / hit.dur)
+                local r = easeOut(k) * w * 0.55
+                local a = 1 - k
+                local col = (ring == 0) and MIST_EMBER or HIT_COLOR
+                local n = math.max(24, math.floor(2 * math.pi * r / P))
+                for i = 0, n - 1 do
+                    -- dither: cada bloco cai fora conforme o anel esvaece
+                    if bayer(i, ring + math.floor(i / 4)) < a then
+                        local ang = i / n * math.pi * 2
+                        local bx = math.floor((cx + math.cos(ang) * r) / P) * P
+                        local by = math.floor((cy + math.sin(ang) * r * 0.78) / P) * P
+                        love.graphics.setColor(col[1], col[2], col[3], 0.85)
+                        love.graphics.rectangle("fill", bx, by, P, P)
+                    end
+                end
+            end
+        end
+    end
+    -- VINHETA em bandas (3 molduras), esvaece com o tempo
+    local va = (1 - clamp01(t / hit.dur)) * (reduced and 0.35 or 0.6)
+    if va > 0.02 then
+        for i, bw in ipairs({ 48, 28, 12 }) do
+            love.graphics.setColor(0.05, 0.02, 0.08, va * (0.18 * i))
+            local b = math.floor(bw * uk)
+            love.graphics.rectangle("fill", 0, 0, w, b)
+            love.graphics.rectangle("fill", 0, h - b, w, b)
+            love.graphics.rectangle("fill", 0, 0, b, h)
+            love.graphics.rectangle("fill", w - b, 0, b, h)
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- ---------------------------------------------------------------------------
 -- GEOMETRIA DO RASANTE
 -- ---------------------------------------------------------------------------
 -- Canto superior esquerdo do sprite do rasante no parâmetro k (0..1).
@@ -449,6 +680,7 @@ local function enterStep(st)
     elseif kind == "eyes" then
         eyes = { u = st.u or 0.5, v = st.v or 0.4, size = st.size or 0.04,
                  blinks = st.blinks or {}, t = 0, dur = st.dur or 2 }
+        mistTarget(1, 1.2)
         play("bossEyesIgnite", nil)
     elseif kind == "flyby" then
         eyes = nil
@@ -459,6 +691,7 @@ local function enterStep(st)
         if st.lights then
             darkEase = { from = dark, to = st.lights, t = 0, dur = fly.dur }
         end
+        mistGustDir = (fly.from == "left") and 1 or -1
         InteriorFX.gust(1.0, fly.dur + 0.35)
         play("bossWingPass", "sceneRustle", 0.92 + love.math.random() * 0.16, 0)
     elseif kind == "land" then
@@ -466,6 +699,7 @@ local function enterStep(st)
         bossHidden = false
         landed = true
         darkEase = { from = dark, to = 0, t = 0, dur = math.max(0.15, (st.dur or 0.5) * 0.6) }
+        mistTarget(0.35, 0.45)
         EnemyRenderer.triggerArrival()
         if _G.triggerShake and (st.shake or 0) > 0 then _G.triggerShake(st.shake, 0.38) end
         if _G.jiggleScreen and not seq.reduced then _G.jiggleScreen(1.0) end
@@ -477,7 +711,8 @@ local function enterStep(st)
             spawnDust(gx, gy, st.dust or 12, stage.bbox.width or 120)
             local body = stage.bbox.topY + (stage.bbox.bottomY - stage.bbox.topY) * 0.45
             spawnCrows(gx, body, st.crows or 5, 260)
-            for _ = 1, 6 do
+            startHit(gx, body)
+            for _ = 1, 12 do
                 spawnFeather(gx + (love.math.random() - 0.5) * (stage.bbox.width or 120),
                     body + (love.math.random() - 0.5) * 40,
                     (love.math.random() - 0.5) * 60, -20 + love.math.random() * 10)
@@ -485,6 +720,7 @@ local function enterStep(st)
         end
         InteriorFX.gust(0.6, 0.5)
     elseif kind == "title" then
+        mistTarget(0, 1.6)
         local id = seq.bossId
         local name = I18n.t("boss_cinematics." .. id .. ".name", nil,
             I18n.t("end_screen.enemy." .. id, nil, id))
@@ -645,6 +881,11 @@ function BossCinematic.update(dt, game, ctx)
         if desat.t >= desat.total then desat = nil end
     end
 
+    updateMist(dt)
+    if hit then
+        hit.t = hit.t + dt
+        if hit.t >= hit.dur then hit = nil end
+    end
     updateFx(dt)
 end
 
@@ -752,14 +993,11 @@ local function drawEyes(w, h)
         local cx = math.floor(ex + side * gap / 2)
         local x0 = cx - ew / 2
         local y0 = ey - eh / 2
-        -- halo (aditivo, dois degraus) — só com o olho bem aberto
-        love.graphics.setBlendMode("add")
-        local ha = 0.16 * glow * (rows / 5)
-        love.graphics.setColor(EYE_HALO[1], EYE_HALO[2], EYE_HALO[3], ha * 0.5)
-        love.graphics.rectangle("fill", x0 - 3 * B, y0 - 3 * B, ew + 6 * B, eh + 6 * B)
-        love.graphics.setColor(EYE_HALO[1], EYE_HALO[2], EYE_HALO[3], ha)
-        love.graphics.rectangle("fill", x0 - B, y0 - B, ew + 2 * B, eh + 2 * B)
-        love.graphics.setBlendMode("alpha")
+        -- halo: BLOB de névoa aditiva (borda esfarelada, nunca retângulo),
+        -- cresce com a abertura do olho e respira
+        local ha = 0.55 * glow * (rows / 5)
+        glowBlob(cx, ey, ew * 3.2, eh * 3.4, EYE_HALO, ha * 0.55, 1 + (side + 1) / 2)
+        glowBlob(cx, ey, ew * 1.8, eh * 2.0, EYE_CORE, ha * 0.45, 3)
         -- fileiras do meio pra fora
         local lo = 3 - math.floor((rows - 1) / 2)
         local hi = 3 + math.floor(rows / 2)
@@ -792,17 +1030,16 @@ local function drawFly(w, h)
     local x, y, sw, sh, s = flyPos(fly, k, w, h)
     local tr = fly.trail
     local n = fly.ghosts or 0
-    -- RASTRO DE LUZ pelo caminho: faixa aditiva fraca ligando as últimas
-    -- posições (o escuro do salão fica; o caminho do voo lê)
-    love.graphics.setBlendMode("add")
-    for i = 2, #tr do
-        local a0, a1 = tr[i - 1], tr[i]
-        local a = 0.10 * (i / #tr)
-        love.graphics.setColor(0.55, 0.45, 0.85, a)
-        local yy = math.min(a0.y, a1.y) + sh * 0.35
-        love.graphics.rectangle("fill", math.min(a0.x, a1.x), yy,
-            math.abs(a1.x - a0.x) + sw * 0.6, sh * 0.3)
+    -- RASTRO: blobs de névoa aditiva (violeta, uma brasa de vez em quando)
+    -- deixados ao longo do caminho — a trilha do voo é nebulosa, sem
+    -- retângulo nem quadro visível (revisão do dono: "efeito de túnel")
+    for i = 1, #tr, 2 do
+        local p = tr[i]
+        local a = 0.26 * (i / #tr)
+        local col = (i % 6 == 1) and MIST_EMBER or MIST_GLOW
+        glowBlob(p.x + sw * 0.5, p.y + sh * 0.5, sw * 1.15, sh * 0.75, col, a, 1 + i % 3)
     end
+    love.graphics.setBlendMode("add")
     -- fantasmas: cópias ATRÁS no tempo, claras (violeta de corvo em aditivo)
     for g = n, 1, -1 do
         local p = tr[#tr - g * 2]
@@ -910,7 +1147,9 @@ function BossCinematic.drawBack()
         love.graphics.rectangle("fill", 0, 0, w, h)
     end
     if not stage then return end
+    drawMist({ [1] = true })
     drawEyes(w, h)
+    drawMist({ [2] = true })
     drawWind()
     drawFly(w, h)
     if seq and seq.phase == "intro" then drawFeathers() end
@@ -920,6 +1159,7 @@ end
 -- Na frente do chefe: poeira do pouso, corvos espantados, penas da morte.
 function BossCinematic.drawFront()
     if not stage then return end
+    drawMist({ [3] = true })
     drawDust()
     if not (seq and seq.phase == "intro") then drawFeathers() end
     drawCrows()
@@ -938,6 +1178,7 @@ local function titleAlpha()
 end
 
 function BossCinematic.drawUI()
+    drawScreenFx()
     if not seq then return end
     local w, h = love.graphics.getWidth(), love.graphics.getHeight()
     if title then

@@ -114,6 +114,16 @@ function CRTShader.blip()
     end }
 end
 
+-- SOLAVANCO externo (BossCinematic, pouso do chefe): a faixa de glitch do
+-- agendador, só que AGORA. Sem tubo ligado, nada (o tool de captura não
+-- usa o CRT).
+function CRTShader.jolt(dur)
+    if not enabled or not shader then return end
+    glitchActive = dur or 0.16
+    glitchBandY = 0.35 + love.math.random() * 0.3
+    glitchAmount = 1.0
+end
+
 -- Tick do animador (chamar no love.update).
 function CRTShader.update(dt)
     -- agendador da tremidinha (só com o tubo ligado e estável)

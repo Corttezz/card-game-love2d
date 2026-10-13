@@ -58,4 +58,50 @@ corvos, dessaturação breve, o corpo fica no salão e SÓ DEPOIS cash out.
   passagem. Revisão do lead: com o sprite escurecido junto do salão o voo não
   lia.
 
+## Rodada 3 (dono, ao vivo): "efeito de túnel", nebuloso com cor, efeito de tela
+
+- **"Checkered/boxy" nos rasantes** era o RASTRO em retângulos aditivos e os
+  halos retangulares dos olhos. Regra: **nenhum `rectangle` de luz** — brilho
+  é `glowBlob` (textura de névoa gerada: value noise + 3 degraus de alpha com
+  dither Bayer 4×4, borda esfarelada). Rim light = a própria silhueta
+  deslocada (alpha-tested por natureza). Fantasmas = o sprite.
+- **Névoa colorida** (`spawnMist`/`drawMist`): 24 puffs em 3 camadas com
+  paralaxe (2 atrás, 1 na frente, fina), posição truncada na grade da arte,
+  corpo violeta escuro + brilho aditivo violeta/brasa (é o brilho que sangra
+  cor na pedra). Sobe nos olhos (1.2 s), a rajada do rasante empurra
+  (`InteriorFX.gustLevel × direção`), cai a 0.35 no pouso e some no cartão.
+  reducedMotion: parada.
+- **Efeito de tela do pouso** (`startHit` → `drawScreenFx` na UI +
+  `BossCinematic.worldZoom` aplicado pelo GameplayScene só no MUNDO): flash
+  na cor do chefe em 3 degraus de tempo, 2 anéis de choque em blocos na
+  grade com dither Bayer no esvaecer, vinheta em 3 bandas, `CRTShader.jolt`
+  (faixa de glitch agora) e soco de zoom 1.0→1.06→1.0 com translação
+  inteira; + shake/jiggle/poeira/corvos/penas já existentes. reducedMotion:
+  só a vinheta suave. **Sem gradiente liso em nada.**
+
+## Entradas dos outros 5 chefes — PROPOSTA (aguarda aprovação do dono)
+
+Mesma espinha (salão vazio → presença → chegada → impacto → cartão → HUD),
+linguagem própria por chefe. Passos novos marcados com ★ (o runner avisa
+kind desconhecido até existirem). Tempos ~6-7 s, reduced ~3 s.
+
+| chefe | conceito | passos (dados) |
+|---|---|---|
+| **tower_lich** (A2, flutua) | O salão gela: cristais de geada sobem pelas colunas, o círculo rúnico do chão acende runa por runa, e o lich SOBE do piso dentro de uma tempestade de neve/geada, cajado por último, orbe acendendo. Impacto = o círculo completa + onda de gelo. | `dark 0.8` → ★`runes {n=5, dur 1.6}` (círculo da BossAura.floor acende em sequência, mist branco-azul) → ★`rise {from="floor", dur 1.4, storm="frost"}` (chefe sobe do piso: scissor na linha do chão do chão pra cima NÃO — recorte pela silhueta: desenha o clip idle deslocado pra baixo e vai subindo, com névoa cobrindo o pé) → `land {shake 8, ring="ice"}` → `title` → `hud` |
+| **abyss_tyrant** (A3, pisa) | A porta do fundo (portão-caveira) ESTOURA: lascas e brasas, uma PAREDE DE FOGO INFERNAL sobe atrás, correntes caem das paredes e ele atravessa o fogo andando (apoiado — sem voo). Impacto = pisada: shake forte, rachadura de lava no chão. | `dark 0.7` → ★`door_burst {u=0.5, v=0.55, dur 0.6, debris=18}` → ★`firewall {dur 1.6, h=0.5}` (cortina de chamas em bandas, HallAnim-like) → ★`walk_in {from="back", dur 1.6}` (sprite cresce do backYr até yr pela depthSizeK) → ★`chains {n=4}` (correntes caem e balançam, kind opcional) → `land {shake 18, ring="lava"}` → `title` → `hud` |
+| **winter_monarch** (A4, pisa) | NEVASCA: o salão vira branco (whiteout em 3 degraus de dither), o vento uiva, as chamas azuis quase apagam; a silhueta escura aparece dentro do branco, cada vez mais nítida, e a nevasca assenta revelando o monarca já no palco. Impacto = o cajado bate no chão: cristais erguem do piso. | `dark 0.3` → ★`whiteout {dur 2.0, peak 0.9}` → ★`silhouette {dur 1.4}` (chefe desenhado em preto sólido, alpha subindo, dentro do branco) → ★`settle {dur 0.8}` (whiteout cai, neve do InteriorFX ×3) → `land {shake 10, ring="frost", staff=true}` → `title` → `hud` |
+| **rot_colossus** (A5, pisa) | O coração de raízes do fundo BATE mais forte e mais rápido (pulses do hall 5), raízes rastejam do túnel pelo chão (bandas de pixel), esporos e vaga-lumes fogem; o colosso EMERGE do túnel ao fundo e vem pra frente arrastando os pés (chão treme a cada passo). Impacto = último passo: lama/esporos explodem. | `dark 0.6` → ★`heartbeat {dur 1.8, rate 2.4}` (pulse do InteriorFX acelera) → ★`roots {n=6, dur 1.2}` → ★`walk_in {from="back", dur 2.0, stomp=0.5}` (shake a cada passo) → `land {shake 16, ring="spores"}` → `title` → `hud` |
+| **eclipse_queen** (A6, flutua) | O ECLIPSE pintado na abertura do fundo fecha de vez: o salão escurece até a coroa de raios, pétalas caem, e a rainha DESCE da abertura de asas abertas, em contraluz (silhueta magenta), até o palco; a luz volta com ela. Impacto = pouso leve + onda magenta. | `dark 0.9` → ★`eclipse {dur 1.6}` (disco cobre, coroa de raios, mist magenta) → ★`descend {from="opening", u=0.5, v=0.25, dur 1.8, backlit=true}` (sprite desce com alpha de contraluz → cor cheia no fim) → `land {shake 9, ring="petal"}` → `title` → `hud` |
+
+Mortes (mesma máquina `death`): lich se desfaz em geada (burst "frost"), tirano
+afunda na lava do chão (slowmo + desat quente), monarca estilhaça (burst de
+cristais), colosso desaba e vira esporos, rainha vira pétalas e o eclipse
+abre. Cada uma = `burst {kind=...}` novo + `desat` com tom próprio.
+
+Infra comum necessária antes: `land.ring` escolhe cor/forma da onda,
+`burst.kind` escolhe a partícula, `walk_in`/`rise`/`descend` precisam de um
+"desenhador do chefe fora do lugar" genérico (hoje o rasante usa o clip idle
+próprio — vira `drawBossAt(x, y, opts)` compartilhado). Chefes apoiados
+NUNCA voam.
+
 [[boss_visuals]] · [[boss_halls]] · [[combat_beats]] · [[input_focus]] · [[onboarding]]

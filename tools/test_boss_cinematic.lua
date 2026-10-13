@@ -93,12 +93,23 @@ function M.run()
     BC.setStage(stage)
     local nominal = BC.duration(Data.carrion_king.intro)
     local tLand, tHud, el = nil, nil, 0
+    local sawMist, sawZoom, sawHit = false, false, false
     while BC.isActive() and el < nominal + 2 do
         BC.update(DT, g, { inHall = true })
         el = el + DT
         if not tLand and not BC.hidesBoss() then tLand = el end
         if not tHud and not BC.hidesHud() then tHud = el end
+        local d = BC._debug()
+        if d.mist and d.mist.a > 0.5 then sawMist = true end
+        if d.hit then sawHit = true end
+        if BC.worldZoom() then sawZoom = true end
     end
+    t:truthy("nevoa colorida sobe durante os olhos/rasantes", sawMist)
+    t:truthy("pouso dispara o efeito de tela", sawHit)
+    t:truthy("pouso dispara o soco de zoom do mundo", sawZoom)
+    t:falsy("efeito de tela acabou no fim", BC._debug().hit ~= nil)
+    t:falsy("zoom acabou no fim", BC.worldZoom() ~= nil)
+    t:falsy("nevoa foi embora no fim", BC._debug().mist ~= nil)
     t:falsy("entrada termina sozinha", BC.isActive())
     t:truthy("chefe pousa ANTES do fim", tLand ~= nil and tLand < nominal)
     t:truthy("chefe fica escondido por um bom tempo (olhos + rasantes)", tLand ~= nil and tLand > 2.0)
@@ -127,7 +138,14 @@ function M.run()
     BC.reset()
     BC.startIntro(g)
     BC.setStage(stage)
-    local elR = runUntilDone(g, 20)
+    local sawZoomR = false
+    local elR = 0
+    while BC.isActive() and elR < 20 do
+        BC.update(DT, g, { inHall = true })
+        elR = elR + DT
+        if BC.worldZoom() then sawZoomR = true end
+    end
+    t:falsy("reducedMotion: sem soco de zoom", sawZoomR)
     t:truthy("reducedMotion: entrada curta (" .. string.format("%.2f", elR) .. "s)",
         elR < nominal * 0.7)
     t:near("reducedMotion: duracao = roteiro curto", elR,

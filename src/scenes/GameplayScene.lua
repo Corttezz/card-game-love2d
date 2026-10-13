@@ -608,6 +608,14 @@ function GameplayScene.draw()
     local height = love.graphics.getHeight()
     -- morte do chefe: o mundo passa por um canvas e volta dessaturado
     local worldPass = BossCinematic.beginWorldPass()
+    -- soco de zoom do pouso do chefe (BossCinematic.worldZoom): só o MUNDO,
+    -- em volta do ponto de impacto, translação inteira
+    local zk, zcx, zcy = BossCinematic.worldZoom()
+    if zk then
+        love.graphics.push()
+        love.graphics.translate(math.floor(zcx - zcx * zk), math.floor(zcy - zcy * zk))
+        love.graphics.scale(zk)
+    end
     -- WORLD_ONLY (arte de loja/key art, tools/store_art.py): mundo + inimigo
     -- em tela cheia, sem top bar nem HUD.
     local topBarHeight = GameplayScene.WORLD_ONLY and 0 or uiTopBarH * uiK
@@ -771,6 +779,7 @@ function GameplayScene.draw()
     if GameplayScene.SCENE_MODE == "worldroad" and not interior then
         WorldRoad.drawOverlays(0, topBarHeight, width, height - topBarHeight)
     end
+    if zk then love.graphics.pop() end
     if worldPass then BossCinematic.endWorldPass() end
     end)
     if GameplayScene.WORLD_ONLY then return end
