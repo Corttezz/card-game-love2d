@@ -183,7 +183,7 @@ local function ensureAnim(enemyId, animName)
     if animName == "hurt" then
         fps = HURT_FPS
         opts = { loop = false, onComplete = backToIdle }
-    elseif animName == "attack" then
+    elseif animName == "attack" or animName == "attack_strong" then
         -- ONE-SHOT (bug playtest Jul/2026: caía no default loop+pingpong e o
         -- inimigo repetia o golpe pra sempre). Toca uma vez e volta pro idle.
         fps = ATTACK_FPS
@@ -323,9 +323,23 @@ end
 function EnemyRenderer.triggerAttack(kind, onApex)
     attackFx = { t = 0, kind = kind or "attack", onApex = onApex,
                  apexFired = false }
-    if currentEnemyId and currentAnimName ~= "death"
-        and SpriteAnimation.exists(currentEnemyId, "attack", "south") then
-        ensureAnim(currentEnemyId, "attack")
+    -- Clip do golpe (Out/2026: todos os 45 têm; tools/bake_attack.py): 9
+    -- quadros a 12 fps, golpe no quadro 4 = apex da investida (0,34s). Forte
+    -- usa `attack_strong` (amplitude 1,6x) quando existe. REINICIA a cada
+    -- golpe: no multi-golpe o 2º hit chega com o clip anterior ainda na
+    -- volta, e o ensureAnim reaproveitaria o clip em andamento (golpe
+    -- dessincronizado do apex).
+    if currentEnemyId and currentAnimName ~= "death" then
+        local clip = nil
+        if kind == "strong" and SpriteAnimation.exists(currentEnemyId, "attack_strong", "south") then
+            clip = "attack_strong"
+        elseif SpriteAnimation.exists(currentEnemyId, "attack", "south") then
+            clip = "attack"
+        end
+        if clip then
+            currentAnim = nil
+            ensureAnim(currentEnemyId, clip)
+        end
     end
 end
 

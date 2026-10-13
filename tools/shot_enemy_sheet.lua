@@ -85,7 +85,9 @@ function M.run(which)
     local feetCanvas = feet and love.graphics.newCanvas(cw, ch) or nil
     -- strip: 6 instantes do idle por inimigo (uma linha cada) — prova de
     -- que fumaça/raio/gota/brilho pintados SE MEXEM na cena real
-    local stripMode = mode == "strip"
+    -- attack: 6 instantes do GOLPE (preparo → apex → volta), na cena real
+    local attackMode = mode == "attack" or mode == "attack_strong"
+    local stripMode = mode == "strip" or attackMode
     if stripMode then cw, ch = math.floor(w * 0.20), math.floor(h * 0.42) end
     local cols = 6
     local rows = stripMode and #ids or math.ceil(#ids / cols)
@@ -121,8 +123,17 @@ function M.run(which)
             EnemyRenderer.update(1 / 30)
         end
         if stripMode then
+            if attackMode then
+                love.graphics.setCanvas(canvas)
+                GameplayScene.draw()          -- carrega a idle deste id
+                love.graphics.setCanvas()
+                EnemyRenderer.triggerAttack(mode == "attack_strong" and "strong" or "attack",
+                    function() end)
+            end
+            -- golpe: t = 0.06 0.18 0.30 0.36 0.50 0.76 s (apex em 0.34)
+            local steps = attackMode and { 2, 4, 4, 2, 4, 8 } or { 8, 8, 8, 8, 8, 8 }
             for i = 1, 6 do
-                for _ = 1, 8 do EnemyRenderer.update(1 / 30) end
+                for _ = 1, steps[i] do EnemyRenderer.update(1 / 30) end
                 love.graphics.setCanvas(canvas)
                 love.graphics.clear(0, 0, 0, 1)
                 GameplayScene.draw()
@@ -196,7 +207,8 @@ function M.run(which)
             love.graphics.setCanvas()
         end
     end
-    local out = stripMode and "enemy_strip_sheet.png" or death and "enemy_death_sheet.png"
+    local out = attackMode and ("enemy_" .. mode .. "_sheet.png")
+        or stripMode and "enemy_strip_sheet.png" or death and "enemy_death_sheet.png"
         or (feet and "enemy_feet_sheet.png" or "enemy_sheet.png")
     sheet:encode("png", out)
     print("[shot_enemy_sheet] " .. #ids .. " inimigos -> " .. out)
