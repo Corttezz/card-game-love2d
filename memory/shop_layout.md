@@ -75,56 +75,58 @@ prateleira já separa os dois andares, e rótulo de categoria foi o ruído
 removido acima. Teto de largura da vitrine = `max(1560, sh*1.25)` (em 1440p
 um terço da tela ficava vazio).
 
-## v3: o Balcão do Mercador (Out/2026)
+## v3b: o Balcão do Mercador EM PERSPECTIVA (Out/2026)
 
-Pedido do dono (captura em 1440p): "estante de cima e de baixo, itens em
-cima dela de forma bem realista, hover e descrição do lado direito, bem
-animada, novas ofertas, dados integrados". Plano em
-`docs/plan/shop-v3-balcao.md`. A loja virou uma CENA, não uma grade:
+Pedido do dono (referência `docs/plan/shop_reference_gpt.png`, plano §12):
+"as coisas na diagonal, o cenário bem parecido com isso pra dar sensação de
+profundidade; hoje está preso a um todo plano". A v3 "estante + prateleira
++ balcão tileável" (commits 10b87ff1/d756449f) durou um dia: a loja virou
+UMA PINTURA com objetos apoiados nela.
 
-- **Geometria pura** em `src/ui/shop/ShopLayout.lua`: `layout(sw, sh,
-  nCards, nRelics)` devolve as zonas (`sign` / `shelfTop` / `shelfBottom` /
-  `counter` / `scroll` / `lantern`) e o retângulo de cada objeto (carta +
-  suporte + etiqueta; relíquia + etiqueta; pacote + gancho; sino / copo /
-  livro no tampo). `validate(L)` exige zonas disjuntas, PÉ de todo objeto
-  dentro da tábua (ou do suporte apoiado nela), pacote pendurado sem tocar a
-  prateleira, nada fora da tela. Falta espaço = a ESCALA cede (800x600 tem
-  carta de ~90px, 1440p de ~250px), as bandas nunca trocam de lugar.
-- **Cena** em `src/ui/shop/ShopScene.lua` (parede, feixe de luz em degraus
-  que "olha" pro hover, placa com o "?" das regras, tábuas tileáveis,
-  balcão, lanterna, pergaminho 9-slice com o `CardDetailPanel` em
-  `parchment = true`), **objeto** em `src/ui/shop/ShelfItem.lua` (hover
-  levanta 4..6px, etiqueta em pêndulo amortecido, deny = tremor vermelho,
-  compra = etiqueta arrancada + marca de poeira + VENDIDO a giz).
-- `components/CardRewardScreen.lua` modo `"shop"` DELEGA update/draw/hit à
-  cena e guarda só a economia (purchaseOffer, serviços, persistência, saída).
-  Os campos históricos (`panel`, `cardPositions`, `slotCount`, `gridArea`,
-  `detailPanel`, `actionBar`) continuam espelhados: tools, testes e o
-  tutorial leem deles. `skipButton`/`refreshButton`/`diceButton` são hitboxes
-  INVISÍVEIS sobre livro-razão / sino / copo (o onClick e o alvo do
-  NavCursor continuam sendo deles; o rótulo vira giz no balcão).
-- Clique no objeto COMPRA (press + release no mesmo objeto); direito
-  inspeciona; A/Enter no foco do pad é o mesmo clique; X = sino, Y = livro.
-- Vida ambiente (lanterna, copo de dados com faces, mariposa, teia, etiqueta
-  da oferta do dia) é de `src/ui/shop/ShopProps.lua` (frente loja-vida),
-  chamada por contrato opcional (`update/drawBack/drawLantern/flameAnchor/
-  lookDx/lightLevel/drawDiceCup/drawFront`); ausente = placeholder + aviso.
-- Arte em `assets/sprites/shop/`: tábuas/sino/livro/pergaminho vindos do
-  PixelLab (`tools/pixellab_shop_props.py queue|poll|install`, fatiados em
-  left/mid/right e quadros), suportes/etiqueta/prego/gancho/poeira
-  desenhados pixel a pixel pelo mesmo script (`pixels`). O BALCÃO é
-  procedural (tampo liso): a arte gerada tinha cerca na frente e nada se
-  lia por cima. O pergaminho leva uma lavada de cor de papel (90%) sob o
-  texto: grão da arte ≤ 6% atrás de letra pequena.
-- Etiquetas e rótulos (revisão da F2): a etiqueta de preço pendura do
-  BEIRAL da tábua, sob o objeto, nunca sobre a arte (o selo de raridade da
-  carta fica à vista); o rótulo mora na mesma banda, à esquerda: raridade
-  (+ AFINIDADE) na carta, efeito curto ("+1 SLOT") na relíquia, nome no
-  pacote. Sino e livro-razão têm a MESMA etiqueta pendurada do tampo ("$4",
-  "+$3"); o "?" dos dados mora na placa do cabeçalho, ao lado do das regras.
-  Altura do pergaminho = conteúdo (arte ≤ 0,78 da carta da prateleira +
-  bloco de texto), não a tela inteira.
-- Travas: `test_shop_layout` (7 tamanhos x 5 idiomas, tela nasce e cresce)
-  e `test_shop_scene` (entrada, hover + som na borda, sem ouro, compra +
-  voo pro destino, sino, reducedMotion, alvos do pad). Capturas:
-  `SHOP_W=.. SHOP_H=.. love . screenshot_shop`.
+- **A cena é uma pintura**: `assets/sprites/shop/counter_scene.png`
+  (688x384, PixelLab `create_image_pro` com a referência do dono como guia
+  de composição; `tools/pixellab_shop_props.py scene queue|poll`), desenhada
+  em cover-fit (mesma conta do `SceneBackground` dos salões). Balcão em três
+  quartos, estantes de frascos atrás, vela e caveira à esquerda, lanterna
+  pintada no alto (o pulso de luz usa `ShopProps.lightLevel`; o sprite da
+  lanterna NÃO é desenhado), pano vermelho, livros e moedas no canto.
+- **Slots em coordenadas da ARTE** (`ShopLayout.ART`): 4 cavaletes na borda
+  do fundo (a esquerda é mais perto: escala 1,0 → 0,85) e 4 objetos na mesa
+  em diagonal esquerda-frente → direita-fundo; sino e copo de dados à
+  esquerda. `layout()` converte arte→tela e `validate()` confere pé dentro
+  das MÁSCARAS pintadas (`ledgeMask`/`tableMask`, ponto-no-polígono), placas
+  sem se tocar, nada sobre carta/pergaminho/CONTINUAR/placa de título.
+  Janela estreita (4:3): o cover-fit corta a esquerda, a diagonal DESLIZA pra
+  direita e, se ainda não cabe antes do pergaminho, COMPRIME (espaçamento e
+  escala); a ordem e a profundidade nunca mudam. 9 tamanhos x 5 idiomas em
+  `test_shop_layout`.
+- **Cartas em cavaletes** (`card_stand_N.png`) com perspectiva FIXA do
+  `card_perspective.glsl` (uniform `mouse = {0.8, 0}`, amount 0,7: a borda
+  direita foge, como a mesa) e **placa de latão** procedural sob cada uma:
+  raridade em cima (cor da raridade, escurecida), preço embaixo; selo NOVA
+  do `DiscoveryMark` no topo. Hover levanta 8 px + brilho de borda;
+  selecionado = brilho firme; sem ouro = preço vermelho e a placa treme.
+- **Objetos NOVOS na mesa** (`assets/sprites/shop/objects/<id>.png`, 64 px,
+  PixelLab pixen com "no table, no candle": o pixflux desenhava uma vela ao
+  lado de tudo): tesoura sobre carta cortada, bancada de coringa, frasco,
+  cristal, bigorna, prensa, grimório, arca, 5 fardos (pack_<id>) e o sino.
+  Placa: efeito curto (`UpgradeTile.effectLabel`) ou nome do pacote + preço.
+  Pacote não voa: abre o PackOpenScreen.
+- **Pergaminho à direita** (9-slice + papel liso + `CardDetailPanel`
+  `parchment`/`artMaxH`) com o botão **COMPRAR · $N** no rodapé. Clicar no
+  objeto SELECIONA (`setSelectedOffer`, sem toggle); a compra é no COMPRAR
+  (ou Enter/A nele). A primeira oferta já nasce selecionada e, depois de
+  uma compra, o pergaminho passa pra próxima disponível. **CONTINUAR** é o
+  `skipButton` visível no canto inferior direito; sino e copo são objetos
+  na mesa com placa ("NOVAS OFERTAS $4" / "DADOS"), os Buttons deles são
+  hitboxes invisíveis; os dois "?" ficam na placa de título.
+- Sino: objetos antigos deslizam pra fora da mesa pela esquerda, os novos
+  entram pela direita um a um (stagger 60 ms), tudo por `item.slide.x`
+  (tabela, sobrevive ao rebuild do primeiro update).
+- O que saiu: tábuas tileáveis, balcão procedural, etiquetas penduradas
+  (o dono gostou; voltam como detalhe se sobrar tempo), feixe de luz na
+  parede (a pintura já é iluminada).
+- Travas: `test_shop_layout` (515 asserts) e `test_shop_scene` (82).
+  Capturas fiéis à escala: `love . test_one screenshot_uiscale pt_BR:shop`;
+  quadros de compra/sino: `SHOP_W=1280 SHOP_H=720 love . screenshot_shop fx`
+  + `python tools/pixellab_shop_props.py sheet <tag>`.

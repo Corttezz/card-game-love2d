@@ -238,6 +238,8 @@ return {
             hint_idle   = "Un lancer par visite. Cliquez pour miser.",
             hint_rolled = "Lancer fait : {a} et {b}, total {sum}.",
         },
+        bell_plate = "NOUVELLES OFFRES",
+        dice_plate = "DÉS",
         sale_tag  = "OFFRE DU JOUR",
         sale_hint = "Offre du jour : {pct}% de moins pendant cette visite.",
     },

@@ -238,6 +238,8 @@ return {
             hint_idle   = "Ein Wurf pro Besuch. Klicken zum Setzen.",
             hint_rolled = "Gewürfelt: {a} und {b}, Summe {sum}.",
         },
+        bell_plate = "NEUE ANGEBOTE",
+        dice_plate = "WÜRFEL",
         sale_tag  = "ANGEBOT DES TAGES",
         sale_hint = "Angebot des Tages: {pct}% günstiger bei diesem Besuch.",
     },

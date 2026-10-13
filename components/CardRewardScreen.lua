@@ -257,21 +257,20 @@ function CardRewardScreen:updateLayout()
         end
         self.slotCount = nCards + nVouchers + nPacks
 
-        -- zonas no vocabulário antigo: vitrine = as duas estantes; detalhe =
-        -- miolo do pergaminho; rodapé de ações = balcão
-        self.gridArea = { x = L.shelfTop.x, y = L.shelfTop.y, w = L.shelfTop.w,
-                          h = L.shelfBottom.y + L.shelfBottom.h - L.shelfTop.y }
+        -- zonas no vocabulário antigo: vitrine = a mesa (até o pergaminho);
+        -- detalhe = miolo do pergaminho; rodapé de ações = o CONTINUAR
+        self.gridArea = { x = L.wall.x, y = L.wall.y, w = L.limitX - L.wall.x, h = L.wall.h }
         self.detailPanel = L.scroll.body
         self.detailFooterH = 0
-        self.actionBar = L.counter
+        self.actionBar = L.continueBtn
         self.cardsContainer = nil
         self.voucherContainer = nil
         self.packsContainer = nil
         self.buttonsContainer = nil
         self.buttonsColX = nil
         self.buttonsColY = nil
-        self.skipButtonX = L.counter.ledger.x
-        self.skipButtonY = L.counter.ledger.y
+        self.skipButtonX = L.continueBtn.x
+        self.skipButtonY = L.continueBtn.y
 
     else
         -- ========== Modo rewards v3 "StS FLUTUANTE" (Jul/2026) ==========
@@ -370,12 +369,17 @@ function CardRewardScreen:validateLayout()
             return bad
         end
         for _, msg in ipairs(ShopLayout.validate(L)) do bad[#bad + 1] = msg end
-        for _, b in ipairs({ self.skipButton, self.refreshButton, self.diceButton or false }) do
-            if b then
-                contains(self.actionBar,
-                    { x = b.x, y = b.y, w = b.width, h = b.height },
-                    "botao '" .. tostring(b.text) .. "'")
-            end
+        if self.skipButton then
+            contains(L.continueBtn, { x = self.skipButton.x, y = self.skipButton.y,
+                w = self.skipButton.width, h = self.skipButton.height }, "botao CONTINUAR")
+        end
+        if self.buyButton then
+            contains(L.scroll, { x = self.buyButton.x, y = self.buyButton.y,
+                w = self.buyButton.width, h = self.buyButton.height }, "botao COMPRAR")
+        end
+        if self.refreshButton then
+            contains(L.bell.rect, { x = self.refreshButton.x, y = self.refreshButton.y,
+                w = self.refreshButton.width, h = self.refreshButton.height }, "hitbox do sino")
         end
     else
         for i = 1, (self.slotCount or 0) do
@@ -389,8 +393,10 @@ function CardRewardScreen:validateLayout()
         end
     end
 
-    -- Slots da mesma fileira nunca se sobrepõem.
-    for i = 1, (self.slotCount or 0) - 1 do
+    -- Slots da mesma fileira nunca se sobrepõem (espólios: a fileira é
+    -- reta; na loja v3b os objetos ficam numa DIAGONAL em perspectiva e a
+    -- prova de sobreposição mora em ShopLayout.validate).
+    for i = 1, (self.mode ~= "shop") and ((self.slotCount or 0) - 1) or 0 do
         local a, b = self.cardPositions[i], self.cardPositions[i + 1]
         if a and b and a.row == b.row then
             local aRight = a.x + (a.w or self.cardWidth)
@@ -703,6 +709,18 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
         end
     )
     end  -- end if canReroll
+
+    -- COMPRAR (Loja v3b): clicar no objeto SELECIONA; a compra é confirmada
+    -- aqui, no rodapé do pergaminho (ou Enter/A com o foco nele).
+    self.buyButton = nil
+    if self.mode == "shop" then
+        self.buyButton = Button:new(0, 0, 160, 38, "", function()
+            local toBuy = self.selectedOffer
+            if not toBuy or toBuy.purchased then return end
+            self:purchaseOffer(toBuy, toBuy.id)
+        end, nil, 12)
+        self.buyButton:setColorScheme("red")
+    end
 
     -- DADOS DO ESCRIBA (Out/2026): a aposta opcional mora no rodapé de ações,
     -- ao lado do reroll — é uma AÇÃO da loja, não uma oferta da vitrine.
@@ -1020,6 +1038,12 @@ function CardRewardScreen:purchaseOffer(offer, offerId)
             self.onCardPurchased(offer)
         end
 
+        -- Loja v3b: o pergaminho passa pra próxima oferta disponível
+        if self.mode == "shop" then
+            self.selectedOffer, self.selectedIdx = nil, nil
+            self:_prefocusDetail()
+        end
+
         -- REGRA "ESCOLHA 1" (rewards, StS): pegar UMA carta ENCERRA os
         -- espólios — os botões morrem na hora, as cartas restantes DISSOLVEM
         -- (queima Balatro) e a tela fecha sozinha seguindo o fluxo (mesmo
@@ -1045,6 +1069,18 @@ end
 -- buy_button como CHILD da carta, popup info side-anchored via align_h_popup.
 function CardRewardScreen:setSelectedOffer(offer, idx)
     if not offer then return end
+    if self.mode == "shop" then
+        -- Loja v3b: selecionar foca o pergaminho e arma o COMPRAR; clicar de
+        -- novo não desfaz (a leitura fica estável até outra escolha).
+        if self.selectedOffer == offer then return end
+        self.selectedOffer = offer
+        self.selectedIdx = idx
+        self._detailPrefocus = false
+        if self.scene then self.scene:_syncSelection() end
+        self:_refreshBuyButton()
+        Sfx.play("cardSelect", { pitch = 1.05 + (math.random() * 2 - 1) * 0.06 })
+        return
+    end
     -- Re-clicar na mesma → toggle off (Balatro card.lua:4610-4623).
     if self.selectedOffer == offer then
         self:clearSelection()
@@ -1217,15 +1253,19 @@ function CardRewardScreen:_layoutActionButtons()
     -- testes chamam, e o alvo do NavCursor (Button:draw registra mesmo
     -- invisível). O texto deles vira o rótulo a giz sob o objeto.
     if self.mode == "shop" and self.scene and self.scene.L then
-        local C = self.scene.L.counter
-        local function place(btn, r)
+        local L = self.scene.L
+        local function place(btn, r, invisible)
             if not btn then return end
             btn.x, btn.y, btn.width, btn.height = r.x, r.y, r.w, r.h
-            btn:setVariant("invisible")
+            if invisible then btn:setVariant("invisible") end
         end
-        place(self.refreshButton, C.bell)
-        place(self.diceButton, C.dice)
-        place(self.skipButton, C.ledger)
+        place(self.refreshButton, L.bell.rect, true)
+        place(self.diceButton, L.dice.rect, true)
+        -- CONTINUAR: botão de verdade no canto inferior direito (referência)
+        place(self.skipButton, L.continueBtn, false)
+        -- COMPRAR: no rodapé do pergaminho
+        place(self.buyButton, L.scroll.buy, false)
+        self:_refreshBuyButton()
         return
     end
 
@@ -1324,9 +1364,32 @@ function CardRewardScreen:_prefocusDetail()
             }
             self._detailPrefocus = true
             self._detailShownOffer = offer
+            -- Loja v3b: o pergaminho nasce com uma oferta SELECIONADA (COMPRAR
+            -- armado), como na referência; o jogador troca clicando noutra.
+            self.selectedOffer = offer
+            self.selectedIdx = offer._slot
+            if self.scene then self.scene:_syncSelection() end
+            self:_refreshBuyButton()
             return
         end
     end
+end
+
+-- Rótulo e estado do COMPRAR: "COMPRAR · $N" da oferta selecionada; apagado
+-- sem seleção ou sem ouro (o preço fica vermelho na placa, sem toast).
+function CardRewardScreen:_refreshBuyButton()
+    local b = self.buyButton
+    if not b then return end
+    local offer = self.selectedOffer
+    if not offer or offer.purchased then
+        b.text = I18n.t("reward.detail_buy", nil, "COMPRAR")
+        b:setEnabled(false)
+        return
+    end
+    local verb = I18n.t("reward.detail_buy", nil, "COMPRAR")
+    b.text = verb .. " · $" .. tostring(offer.cost or 0)
+    local afford = self.game and self.game.economySystem and self.game.economySystem:canAfford(offer.cost or 0)
+    b:setEnabled(afford ~= false)
 end
 
 -- Zera a memória do painel de detalhe. Obrigatório sempre que o CONJUNTO de
@@ -1766,6 +1829,7 @@ function CardRewardScreen:hide()
     self._flyCards = {}
     self._goldPopups = {}
     self._armedItem = nil
+    self.buyButton = nil
     if self.scene then self.scene:clear() end
 
     self:cancelPurchase()
@@ -1869,6 +1933,7 @@ function CardRewardScreen:update(dt)
         self.refreshButton:update(dt)
     end
     if self.diceButton then self.diceButton:update(dt) end
+    if self.buyButton then self.buyButton:update(dt) end
 
     -- Buttons attached da carta selecionada (Balatro pattern: filhos da carta).
     if self._selectionButtons then
@@ -1903,6 +1968,10 @@ function CardRewardScreen:_drawShop()
         NavCursor.action("x", function()
             if rb.visible ~= false and not rb.disabled and rb.onClick then rb.onClick() end
         end, rb.x, rb.y, rb.width, rb.height)
+    end
+    if self.buyButton then
+        self:_refreshBuyButton()
+        self.buyButton:draw()
     end
     if self.skipButton then
         self.skipButton:draw()
@@ -2829,7 +2898,8 @@ function CardRewardScreen:mousepressed(x, y, button)
     if self.diceButton and self.diceButton:mousepressed(x, y, button) then
         return true
     end
-    -- Loja v3: pressionar sobre um objeto da prateleira arma a compra (o
+    if self.buyButton and self.buyButton:mousepressed(x, y, button) then return true end
+    -- Loja v3b: pressionar sobre um objeto da mesa arma a seleção (o
     -- release confirma, como os botões).
     if self.mode == "shop" and self.scene and button == 1 then
         local it = self.scene:itemAt(x, y - (self.slideOffsetY or 0))
@@ -2881,13 +2951,14 @@ function CardRewardScreen:mousereleased(x, y, button)
     if self.diceButton and self.diceButton:mousereleased(x, y, button) then
         return true
     end
-    -- Loja v3: soltar sobre o MESMO objeto compra.
+    if self.buyButton and self.buyButton:mousereleased(x, y, button) then return true end
+    -- Loja v3b: soltar sobre o MESMO objeto SELECIONA (pergaminho + COMPRAR).
     if self.mode == "shop" and self.scene and button == 1 and self._armedItem then
         local armed = self._armedItem
         self._armedItem = nil
         local it = self.scene:itemAt(x, y - (self.slideOffsetY or 0))
         if it == armed and it.offer and not it.offer.purchased then
-            self:purchaseOffer(it.offer, it.offer.id)
+            self:setSelectedOffer(it.offer, it.slot)
             return true
         end
     end

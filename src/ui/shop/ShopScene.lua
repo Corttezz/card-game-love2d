@@ -1,32 +1,24 @@
 -- src/ui/shop/ShopScene.lua
--- O BALCÃO DO MERCADOR (Loja v3, docs/plan/shop-v3-balcao.md): a CENA da loja.
+-- O BALCÃO DO MERCADOR EM PERSPECTIVA (Loja v3b, docs/plan/shop-v3-balcao.md
+-- §12, referência docs/plan/shop_reference_gpt.png): a CENA da loja.
 --
 -- Camadas, do fundo pra frente:
---   parede de madeira escura (véu) → luz âmbar da lanterna (cone em degraus,
---   que "olha" pro objeto em hover) → vida de fundo (ShopProps: teia, poeira)
---   → placa com o título e o "?" das regras → ESTANTE DE CIMA (tábua + cartas
---   em pé nos suportes + etiquetas) → PRATELEIRA DE BAIXO (tábua + relíquias
---   apoiadas + pacote no gancho + etiquetas) → marcas de poeira dos vendidos
---   → BALCÃO (tampo + sino + copo de dados + livro-razão + rótulos a giz) →
---   lanterna → PERGAMINHO de inspeção (prego + rolo + CardDetailPanel) →
---   vida de frente (mariposa). Os objetos que VOAM na compra são desenhados
---   pela tela fora do slide (drawFlies), por cima da TopBar.
+--   a PINTURA (assets/sprites/shop/counter_scene.png em cover-fit, como os
+--   salões de chefe) → pulso da lanterna pintada (ShopProps.lightLevel) →
+--   placa de título com os dois "?" → CARTAS nos cavaletes da borda do fundo
+--   (perspectiva fixa, placa de latão sob cada uma) → OBJETOS sobre a mesa em
+--   diagonal (relíquias, pacote, sino, copo de dados), ordenados pelo pé
+--   (mais fundo primeiro), cada um com a placa → marcas de poeira dos
+--   vendidos → PERGAMINHO de detalhe à direita (CardDetailPanel em tinta
+--   sobre papel + o botão COMPRAR da tela) → vida de frente (mariposa).
+--   O CONTINUAR é um Button da tela no canto inferior direito; os objetos
+--   que VOAM na compra são desenhados pela tela fora do slide (drawFlies).
 --
--- O que NÃO mora aqui: regra de economia (quem pode comprar, quanto custa o
--- sino, o que a compra faz) — isso é da CardRewardScreen/ShopSystem. A cena
--- recebe ofertas e avisos (onPurchased/onDenied/reroll) e só ANIMA.
---
--- Geometria: tudo vem de ShopLayout.layout() (puro, validado por
--- test_shop_layout). Recalculada em layout() — chamada no show e no resize.
---
--- Teclado/pad: cada objeto é NavCursor.target (a carta se registra sozinha
--- no Card:draw; relíquia/pacote aqui; sino/dados/livro pelos botões
--- invisíveis da tela, que moram nos retângulos do balcão). Ação principal
--- (Y) = livro-razão; X = sino.
---
--- Vida ambiente (lanterna com chama, copo de dados, mariposa, teia) é da
--- frente loja-vida: `src/ui/shop/ShopProps.lua`, chamado quando existe.
--- Sem ele, lanterna e copo são placeholders simples (e um aviso no boot).
+-- O que NÃO mora aqui: regra de economia. A cena recebe ofertas e avisos
+-- (onPurchased/onDenied/reroll/select) e só ANIMA. Geometria: ShopLayout
+-- (arte→tela), validada por test_shop_layout. Vida ambiente: ShopProps
+-- (loja-vida), chamado pelo contrato opcional — a lanterna pintada dispensa
+-- o sprite, então só flameAnchor/lightLevel/drawDiceCup/drawFront/update.
 
 local ShopScene = {}
 ShopScene.__index = ShopScene
@@ -40,12 +32,15 @@ local I18n         = require("src.i18n.I18n")
 local Moveable     = require("engine.Moveable")
 local EventManager = require("engine.EventManager")
 local Sfx          = require("src.systems.Sfx")
-local TextFit      = require("src.ui.TextFit")
 
 local FLYQ    = "shop_fly"
 local REROLLQ = "shop_reroll"
 
--- Quads cacheados por chave (newQuad por frame é alocação à toa).
+local function clamp(v, lo, hi) return math.max(lo, math.min(hi, v)) end
+local function reducedMotion()
+    return (_G.gameSettings and _G.gameSettings.reducedMotion) or false
+end
+
 local quads = {}
 local function quad(key, x, y, w, h, sw, sh)
     local q = quads[key]
@@ -58,14 +53,6 @@ local function quad(key, x, y, w, h, sw, sh)
     return q
 end
 
-local function clamp(v, lo, hi) return math.max(lo, math.min(hi, v)) end
-
-local function reducedMotion()
-    return (_G.gameSettings and _G.gameSettings.reducedMotion) or false
-end
-
--- Assets grandes da cena (tábuas, balcão, sino, livro, pergaminho, prego,
--- gancho). Arquivo ausente AVISA uma vez e o desenho cai no procedural.
 local artWarned = {}
 local function art(name)
     local img = ImageCache.tryGet("assets/sprites/shop/" .. name .. ".png")
@@ -76,7 +63,6 @@ local function art(name)
     return img
 end
 
--- Vida ambiente (frente loja-vida). Módulo opcional: ausente = placeholder.
 local propsChecked, props = false, nil
 local function getProps()
     if propsChecked then return props end
@@ -89,14 +75,12 @@ local function getProps()
             if not okL then print("[ShopScene] ShopProps.load falhou: " .. tostring(err)) end
         end
     else
-        print("[ShopScene] src/ui/shop/ShopProps.lua ausente — lanterna e copo de dados em placeholder")
+        print("[ShopScene] src/ui/shop/ShopProps.lua ausente — copo de dados em placeholder")
     end
     return props
 end
 ShopScene._getProps = getProps
 
--- Primeiro código registrado (contrato Sfx.has: som novo entra quando o
--- arquivo chegar). Sem áudio nenhum, não avisa (headless).
 local sfxWarned = {}
 local function playFirst(codes, opts)
     for _, c in ipairs(codes) do
@@ -111,38 +95,6 @@ local function playFirst(codes, opts)
     end
 end
 
--- Tilable em X com pontas: left | mid (esticado ou repetido) | right.
-local function drawStrip(prefix, x, y, w, h, tile)
-    local l, m, r = art(prefix .. "_left"), art(prefix .. "_mid"), art(prefix .. "_right")
-    if not (l and m and r) then return false end
-    local k = h / l:getHeight()
-    local lw, rw = l:getWidth() * k, r:getWidth() * k
-    love.graphics.draw(l, x, y, 0, k, k)
-    love.graphics.draw(r, x + w - rw, y, 0, k, k)
-    local midW = w - lw - rw
-    if midW > 0 then
-        if tile then
-            local mw = m:getWidth() * k
-            local mx = x + lw
-            local n = math.ceil(midW / mw)
-            for i = 0, n - 1 do
-                local sx = mx + i * mw
-                local remaining = (x + w - rw) - sx
-                if remaining >= mw then
-                    love.graphics.draw(m, sx, y, 0, k, k)
-                else
-                    love.graphics.draw(m, quad("strip_" .. prefix, 0, 0, remaining / k, m:getHeight(), m:getWidth(), m:getHeight()), sx, y, 0, k, k)
-                end
-            end
-        else
-            love.graphics.draw(m, x + lw, y, 0, midW / m:getWidth(), k)
-        end
-    end
-    return true
-end
-
--- ============================================================================
--- CONSTRUÇÃO
 -- ============================================================================
 function ShopScene.new(screen)
     local self = setmetatable({}, ShopScene)
@@ -150,14 +102,9 @@ function ShopScene.new(screen)
     self.items = {}
     self.bySlot = {}
     self.outgoing = nil
-    self.shelfSlide = 0
     self.t = 0
-    self.light = { dx = 0, target = 0, timer = 0 }
-    self.bell = { ringing = 0 }
-    self.cTags = { bell = { angle = 0, vel = 0 }, ledger = { angle = 0, vel = 0 } }
-    self.ledgerHover = 0
-    self.diceHover = 0
-    self.bellHover = 0
+    self.bell = { ringing = 0, hover = 0, hot = false }
+    self.dice = { hover = 0, hot = false }
     self.flies = {}
     self.hovered = nil
     return self
@@ -188,9 +135,6 @@ function ShopScene:_applyGeometry()
     end
 end
 
--- (Re)constrói os itens a partir das ofertas. O estado de animação por slot
--- (balanço da etiqueta, etiqueta caindo, hover) sobrevive ao rebuild — a tela
--- reconstrói a cada compra e a cada resize.
 function ShopScene:setOffers(offers)
     local fx = {}
     for _, it in ipairs(self.items) do fx[it.slot] = it:exportFx() end
@@ -212,10 +156,14 @@ function ShopScene:setOffers(offers)
         end
     end
     if self.L then self:_applyGeometry() end
+    self:_syncSelection()
 end
 
--- Instâncias de carta vivas (a tela espelha em cardInstances: dissolve da
--- saída, selo de descoberta, testes).
+function ShopScene:_syncSelection()
+    local sel = self.screen.selectedOffer
+    for _, it in ipairs(self.items) do it.selected = (sel ~= nil and it.offer == sel) end
+end
+
 function ShopScene:cardInstances()
     local out = {}
     for _, it in ipairs(self.items) do
@@ -224,8 +172,6 @@ function ShopScene:cardInstances()
     return out
 end
 
--- Posições por slot no formato histórico da tela (x, y, w, h, row, kind):
--- tools e testes antigos leem cardPositions.
 function ShopScene:slotPositions()
     local out = {}
     for _, it in ipairs(self.items) do
@@ -244,7 +190,6 @@ function ShopScene:clear()
     self.items, self.bySlot, self.outgoing = {}, {}, nil
     self.flies = {}
     self.hovered = nil
-    self.shelfSlide = 0
 end
 
 -- ============================================================================
@@ -252,8 +197,7 @@ end
 -- ============================================================================
 function ShopScene:_mouseLocal()
     local mx, my = love.mouse.getPosition()
-    my = my - (self.screen.slideOffsetY or 0)
-    return mx, my
+    return mx, my - (self.screen.slideOffsetY or 0)
 end
 
 local function inRect(r, x, y)
@@ -265,72 +209,47 @@ function ShopScene:update(dt)
     self.t = self.t + dt
     local L = self.L
     local mx, my = self:_mouseLocal()
-    local sx = mx - self.shelfSlide     -- os objetos vivem dentro do slide da estante
-    local sliding = math.abs(self.shelfSlide) > 1 or math.abs(self.screen.slideOffsetY or 0) > 1
     local blocked = self.screen._closing or self.outgoing ~= nil
+        or math.abs(self.screen.slideOffsetY or 0) > 1
 
-    -- hover das cartas (tilt 3D é da própria Card)
     local hovered = nil
-    for _, it in ipairs(self.items) do
-        if it.card and not it.sold and it.rect then
-            it.card:updateMouse(sx, my, dt, not blocked)
-            if it.card.isHovered and not hovered then hovered = it end
-        end
-    end
-    if not hovered and not blocked then
-        for _, it in ipairs(self.items) do
-            if it.kind ~= "card" and it:hit(sx, my) then hovered = it break end
+    if not blocked then
+        -- objetos da frente primeiro (quem está na frente ganha o mouse)
+        for k = #self.items, 1, -1 do
+            local it = self.items[k]
+            if it.rect and it:hit(mx, my) then hovered = it break end
         end
     end
     self.hovered = hovered
+    self:_syncSelection()
 
     for _, it in ipairs(self.items) do
         local entered = it:update(dt, it == hovered)
-        if entered and not sliding then
+        if entered then
             local codes = (it.kind == "pack") and { "hoverPack", "hoverCard" }
-                or (it.kind == "relic") and { "hoverRelic", "hoverCard" } or nil
-            if codes then playFirst(codes, { pitch = 0.95 + (math.random() * 2 - 1) * 0.18 }) end
+                or (it.kind == "relic") and { "hoverRelic", "hoverCard" } or { "hoverCard" }
+            playFirst(codes, { pitch = 0.95 + (math.random() * 2 - 1) * 0.18 })
         end
     end
     for _, it in ipairs(self.outgoing or {}) do it:update(dt, false) end
 
-    -- a luz "olha" pro objeto em degraus (estado com alvo, perseguição a 4/s)
-    local lt = self.light
-    if hovered and hovered.rect then
-        local cx = hovered.rect.x + hovered.rect.w / 2
-        local fx = L.lantern.x + L.lantern.w / 2
-        local steps = clamp(math.floor((cx - fx) / (L.leftW * 0.5) * ShopLayout.LIGHT_STEPS + 0.5),
-            -ShopLayout.LIGHT_STEPS, ShopLayout.LIGHT_STEPS)
-        lt.target = steps * ShopLayout.LIGHT_STEP
-    else
-        lt.target = 0
+    -- sino e copo
+    local function hoverOf(obj, r, on)
+        if on and not obj.hot then
+            obj.hot = true
+            if not reducedMotion() then Moveable.juice_up(obj, 0.06, 0.02) end
+        elseif not on then obj.hot = false end
+        if reducedMotion() then obj.hover = on and 1 or 0
+        else obj.hover = obj.hover + ((on and 1 or 0) - obj.hover) * math.min(1, dt * 12) end
+        Moveable.updateJuice(obj, dt)
     end
-    lt.timer = lt.timer + dt
-    if lt.timer >= 0.25 then
-        lt.timer = 0
-        if lt.dx < lt.target then lt.dx = math.min(lt.target, lt.dx + ShopLayout.LIGHT_STEP)
-        elseif lt.dx > lt.target then lt.dx = math.max(lt.target, lt.dx - ShopLayout.LIGHT_STEP) end
-    end
-    if reducedMotion() then lt.dx = lt.target end
-
-    -- balcão: hover dos três objetos
-    local C = L.counter
-    local function lerpHover(cur, on)
-        if reducedMotion() then return on and 1 or 0 end
-        return cur + ((on and 1 or 0) - cur) * math.min(1, dt * 12)
-    end
-    local overBell = not blocked and inRect(C.bell, mx, my)
-    local overDice = not blocked and self.screen.diceButton ~= nil and inRect(C.dice, mx, my)
-    local overLedger = not blocked and inRect(C.ledger, mx, my)
-    if overBell and not self._bellHot and not reducedMotion() then self.cTags.bell.vel = self.cTags.bell.vel + 2.2 end
-    if overLedger and not self._ledgerHot and not reducedMotion() then self.cTags.ledger.vel = self.cTags.ledger.vel + 2.2 end
-    self._bellHot, self._ledgerHot = overBell, overLedger
-    ShelfItem.stepPendulum(self.cTags.bell, dt)
-    ShelfItem.stepPendulum(self.cTags.ledger, dt)
-    self.bellHover = lerpHover(self.bellHover, overBell)
-    self.diceHover = lerpHover(self.diceHover, overDice)
-    self.ledgerHover = lerpHover(self.ledgerHover, overLedger)
-    self.hoverCounter = (overBell and "bell") or (overDice and "dice") or (overLedger and "ledger") or nil
+    Moveable.initJuice(self.bell); Moveable.initJuice(self.dice)
+    local overBell = not blocked and (inRect(L.bell.rect, mx, my) or inRect(L.bell.plate, mx, my))
+    local overDice = not blocked and self.screen.diceButton ~= nil
+        and (inRect(L.dice.rect, mx, my) or inRect(L.dice.plate, mx, my))
+    hoverOf(self.bell, L.bell, overBell)
+    hoverOf(self.dice, L.dice, overDice)
+    self.hoverCounter = (overBell and "bell") or (overDice and "dice") or nil
     if self.bell.ringing > 0 then self.bell.ringing = math.max(0, self.bell.ringing - dt) end
 
     for i = #self.flies, 1, -1 do
@@ -341,9 +260,9 @@ function ShopScene:update(dt)
     if P and P.update then
         local run = self.screen._run and self.screen:_run() or nil
         local hx, hy
-        if hovered and hovered.rect then hx, hy = hovered.rect.x + hovered.rect.w / 2, hovered.rect.y + hovered.rect.h / 2 end
+        if hovered and hovered.rect then hx, hy = hovered:center() end
         local ok, err = pcall(P.update, dt, L, { t = self.t, reduced = reducedMotion(), hoverX = hx, hoverY = hy,
-            run = run, cupHover = self.diceHover })
+            run = run, cupHover = self.dice.hover })
         if not ok then print("[ShopScene] ShopProps.update: " .. tostring(err)) end
     end
 end
@@ -351,22 +270,19 @@ end
 -- ============================================================================
 -- EVENTOS (chamados pela tela)
 -- ============================================================================
--- Destino do voo por tipo de compra (espaço da UI, fora do slide).
 function ShopScene:_flyTarget(offer, kind)
     local sw, sh = love.graphics.getWidth(), love.graphics.getHeight()
     local tb = _G.topBar
     if kind == "card" then
         local cd = self.screen.cardDatabase and self.screen.cardDatabase:getCard(offer.id)
-        if cd and cd.type == "joker" then
-            return math.floor(sw * 0.10), 26, 0.18       -- quadro de coringas (topo-esquerda da batalha)
-        end
+        if cd and cd.type == "joker" then return math.floor(sw * 0.10), 26, 0.18 end
         if tb and tb._layout then
             local ok, Lt = pcall(tb._layout, tb)
             if ok and Lt and Lt.deck then return Lt.deck.x + 24, 26, 0.12 end
         end
         return 205, 6, 0.12
     elseif kind == "relic" then
-        return 60, sh - 70, 0.4                           -- painel do jogador (canto inferior esquerdo)
+        return 60, sh - 70, 0.4
     end
     return sw / 2, sh / 2, 0.3
 end
@@ -374,13 +290,13 @@ end
 function ShopScene:onPurchased(offer)
     local it = offer and self.bySlot[offer._slot]
     if not it then return end
-    local payload = it:flyPayload()
+    -- o pacote não voa: ele ABRE (PackOpenScreen) no lugar
+    local payload = (it.kind ~= "pack") and it:flyPayload() or nil
     it:markSold()
     playFirst({ "coinTotalThud", "purchaseConfirm" })
     playFirst({ "sceneWoodKnock" }, { pitch = 1.1, volume = 0.5 })
     if payload and not reducedMotion() then
         local tx, ty, ts = self:_flyTarget(offer, it.kind)
-        payload.x = payload.x + self.shelfSlide
         payload.alpha, payload.rot = 1, 0
         self.flies[#self.flies + 1] = payload
         local dur = 0.45
@@ -395,78 +311,74 @@ function ShopScene:onPurchased(offer)
     end
 end
 
--- Sem ouro: etiqueta treme vermelha, ouro da TopBar pisca. Sem toast.
+-- Sem ouro: a placa treme (preço vermelho), o ouro da TopBar pisca. Sem toast.
 function ShopScene:onDenied(offer)
     local it = offer and self.bySlot[offer._slot]
-    if it then it:deny() end
+    if it then it:denyPurchase() end
     local tb = _G.topBar
     if tb and tb.flashGold then tb:flashGold(-1) end
 end
 
--- Sino: as prateleiras deslizam pra fora (esquerda) e voltam repostas, um
--- objeto por vez. Os DADOS já trocaram (a tela regenerou as ofertas antes de
--- chamar); aqui só a coreografia. reducedMotion = troca na hora.
+-- Sino: os objetos antigos deslizam pra fora da mesa (esquerda) e os novos
+-- entram deslizando pela direita, um a um. Dados já trocaram.
 function ShopScene:reroll(newOffers)
     self.bell.ringing = 0.9
     EventManager.clear(REROLLQ)
     if reducedMotion() or not self.L then
         self.outgoing = nil
-        self.shelfSlide = 0
         self:setOffers(newOffers)
+        for _, it in ipairs(self.items) do it.slide.x = 0; it.entry.v = 1 end
         return
     end
     self.outgoing = self.items
-    self.items, self.bySlot = {}, {}      -- setOffers não herda fx dos que estão saindo
+    self.items, self.bySlot = {}, {}
     self:setOffers(newOffers)
-    for _, it in ipairs(self.items) do it.entry.v = 0 end
-    local off = -(self.L.leftW + 260)
-    self.shelfSlide = 0
-    EventManager.parallelEase(self, "shelfSlide", off, 0.34, "ease_in", REROLLQ)
-    EventManager.parallel(0.36, function()
-        self.outgoing = nil
-        self.shelfSlide = off
-        EventManager.parallelEase(self, "shelfSlide", 0, 0.40, "ease_out", REROLLQ)
-    end, REROLLQ)
+    local off = self.L.limitX + 80
+    for _, it in ipairs(self.outgoing) do
+        local sl = it.slide
+        EventManager.parallelEase(sl, "x", -(self.L.limitX + 120), 0.34, "ease_in", REROLLQ)
+    end
     for i, it in ipairs(self.items) do
-        local entry = it.entry
-        EventManager.parallel(0.72 + (i - 1) * 0.06, function()
-            EventManager.parallelEase(entry, "v", 1, 0.26, "back_out", REROLLQ)
-            Moveable.juice_up(it, 0.10, 0.03)
+        it.slide.x = off
+        it.entry.v = 1
+        local sl, entry = it.slide, it.entry
+        EventManager.parallel(0.36 + (i - 1) * 0.06, function()
+            EventManager.parallelEase(sl, "x", 0, 0.34, "ease_out", REROLLQ)
+            Moveable.juice_up(it, 0.08, 0.02)
             playFirst({ "cardShelfPlace", "cardDraw" }, { pitch = 0.94 + (i - 1) * 0.04 })
+            entry.v = 1
         end, REROLLQ)
     end
+    EventManager.parallel(0.36, function() self.outgoing = nil end, REROLLQ)
 end
 
--- Entrada da loja: os objetos pousam um a um (mesma cadência do sino).
+-- Entrada da loja: os objetos deslizam pra mesa um a um.
 function ShopScene:enter()
-    if reducedMotion() then
-        for _, it in ipairs(self.items) do it.entry.v = 1 end
+    if reducedMotion() or not self.L then
+        for _, it in ipairs(self.items) do it.entry.v = 1; it.slide.x = 0 end
         return
     end
+    local off = self.L.limitX + 80
     for i, it in ipairs(self.items) do
-        local entry = it.entry
-        entry.v = 0
-        EventManager.parallel(0.40 + (i - 1) * 0.07, function()
-            EventManager.parallelEase(entry, "v", 1, 0.26, "back_out", REROLLQ)
-            Moveable.juice_up(it, 0.10, 0.03)
+        it.slide.x = off
+        local sl = it.slide
+        EventManager.parallel(0.25 + (i - 1) * 0.06, function()
+            EventManager.parallelEase(sl, "x", 0, 0.34, "ease_out", REROLLQ)
+            Moveable.juice_up(it, 0.08, 0.02)
             playFirst({ "cardShelfPlace", "cardDraw" }, { pitch = 0.94 + (i - 1) * 0.04 })
         end, REROLLQ)
     end
 end
 
 function ShopScene:isBusy()
-    return self.outgoing ~= nil or math.abs(self.shelfSlide) > 1
+    return self.outgoing ~= nil
 end
 
--- Item sob um ponto (coordenadas da UI, já sem o slide da tela).
 function ShopScene:itemAt(mx, my)
     if self.outgoing or self.screen._closing then return nil end
-    local sx = mx - self.shelfSlide
-    for _, it in ipairs(self.items) do
-        if it.card and not it.sold and it.card.isHovered then return it end
-    end
-    for _, it in ipairs(self.items) do
-        if not it.sold and it.rect and it:hit(sx, my) then return it end
+    for k = #self.items, 1, -1 do
+        local it = self.items[k]
+        if not it.sold and it.rect and it:hit(mx, my) then return it end
     end
     return nil
 end
@@ -474,73 +386,30 @@ end
 -- ============================================================================
 -- DRAW
 -- ============================================================================
-function ShopScene:_drawWall()
+function ShopScene:_drawPainting()
     local L = self.L
+    local img = art("counter_scene")
     local w, h = love.graphics.getWidth(), love.graphics.getHeight()
-    local base = Palette.darken(Palette.INK, 0.6)
-    Palette.set(base)
-    love.graphics.rectangle("fill", 0, 0, w, h)
-    -- tábuas verticais discretas (véu, não textura): linha mais escura a cada ~56px
-    Palette.set(Palette.INK, 0.35)
-    local step = 56
-    for x = L.wall.x % step, w, step do
-        love.graphics.rectangle("fill", x, 0, 1, h)
+    if img then
+        local cv = L.cover
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.draw(img, cv.ox, cv.oy, 0, cv.s, cv.s)
+    else
+        Palette.set(Palette.darken(Palette.INK, 0.6))
+        love.graphics.rectangle("fill", 0, 0, w, h)
     end
-    Palette.set(Palette.RUST, 0.04)
-    for x = (L.wall.x + 28) % step, w, step do
-        love.graphics.rectangle("fill", x, 0, 2, h)
-    end
-    -- vinheta lateral
-    local band = math.floor(w * 0.08)
-    for i = 0, 6 do
-        love.graphics.setColor(0, 0, 0, 0.06)
-        love.graphics.rectangle("fill", 0, 0, band * (1 - i / 7), h)
-        love.graphics.rectangle("fill", w - band * (1 - i / 7), 0, band * (1 - i / 7), h)
-    end
-    love.graphics.setColor(1, 1, 1, 1)
-end
-
-function ShopScene:_flameAnchor()
-    local L = self.L
+    -- pulso da lanterna pintada (nível em degraus do ShopProps)
     local P = getProps()
-    if P and P.flameAnchor then
-        local ok, x, y = pcall(P.flameAnchor, L.lantern)
-        if ok and x and y then return x, y end
-    end
-    return L.lantern.x + L.lantern.w / 2, L.lantern.y + L.lantern.h * 0.6
-end
-
--- Cone de luz âmbar na parede, em degraus de alpha (nunca disco liso),
--- deslocado em passos na direção do objeto em hover.
-function ShopScene:_drawLight()
-    local L = self.L
-    local fx, fy = self:_flameAnchor()
-    local P = getProps()
-    local dx, level = self.light.dx, 1
-    if P and P.lookDx then
-        local ok, v = pcall(P.lookDx, L.lantern)
-        if ok and type(v) == "number" then dx = v end
-    end
+    local level = 1
     if P and P.lightLevel then
         local ok, v = pcall(P.lightLevel)
         if ok and type(v) == "number" then level = v end
     end
-    -- FEIXE: trapézios aninhados saindo da chama, abrindo pra esquerda sobre
-    -- as estantes (a lanterna fica entre a prateleira e o pergaminho). Quatro
-    -- degraus de alpha — posterizado como o light_dither, nunca um disco liso
-    -- (o dono tirou "as bolas de luz" do salão do chefe). O deslocamento em
-    -- passos (dx) move a boca do feixe, não a chama.
+    local f = L.lantern.flame
     local warm = Palette.AGED_GOLD
-    local by = L.counter.y + 4
-    local reach = L.leftW * (0.95 + 0.05 * level)
-    local right = L.lantern.w * 1.6 * level
-    for i = 4, 1, -1 do
-        local k = i / 4
-        love.graphics.setColor(warm[1], warm[2] * 0.9, warm[3] * 0.55, 0.035)
-        love.graphics.polygon("fill",
-            fx - 5, fy, fx + 5, fy,
-            fx + right * k, by,
-            fx - reach * k + dx * 3, by)
+    for i = 3, 1, -1 do
+        love.graphics.setColor(warm[1], warm[2] * 0.85, warm[3] * 0.5, 0.05 * (level - 0.6))
+        love.graphics.circle("fill", f.x, f.y, L.lantern.w * (0.6 + i * 0.5) * level)
     end
     love.graphics.setColor(1, 1, 1, 1)
 end
@@ -548,34 +417,28 @@ end
 function ShopScene:_drawSign()
     local L = self.L
     local s = L.sign
+    -- tábua escura atrás do título (lê sobre qualquer trecho da pintura)
+    Palette.set(Palette.INK, 0.72)
+    love.graphics.rectangle("fill", s.x, s.y, s.w, s.h)
+    Palette.set(Palette.AGED_GOLD_DARK, 0.9)
+    love.graphics.rectangle("fill", s.x, s.y + s.h - 1, s.w, 1)
+    love.graphics.rectangle("fill", s.x, s.y, s.w, 1)
     local font = FontManager.getFont(math.max(13, math.floor(love.graphics.getHeight() / 80)))
     love.graphics.setFont(font)
     local title = I18n.t("reward.shop_title")
     local tw = font:getWidth(title)
-    local tx = math.floor(s.x + (s.w - tw) / 2)
+    local tx = s.x + 14
     local ty = math.floor(s.y + (s.h - font:getHeight()) / 2)
     FontManager.drawWithOutline(title, tx, ty, Palette.AGED_GOLD_LIGHT, 0.9)
     local midY = ty + math.floor(font:getHeight() / 2)
-    local lineW = math.min(120, math.floor(s.w * 0.12))
-    Palette.set(Palette.AGED_GOLD_DARK)
-    love.graphics.rectangle("fill", tx - 16 - lineW, midY, lineW, 1)
-    love.graphics.rectangle("fill", tx + tw + 16, midY, lineW, 1)
-    Palette.set(Palette.AGED_GOLD)
-    love.graphics.rectangle("fill", tx - 16 - lineW - 3, midY - 1, 3, 3)
-    love.graphics.rectangle("fill", tx + tw + 16 + lineW, midY - 1, 3, 3)
-
-    -- "?" das regras de oferta (pity, afinidade, raridade por ato): logo
-    -- depois do filete da direita (geometria derivada do texto; o rect vai
-    -- pro layout pra validação e hit-test).
     local HelpBadge = require("src.ui.HelpBadge")
     local r = 9
-    local cx = math.min(tx + tw + 16 + lineW + 16, L.diceHelp.x - r - 8)
-    local cy = midY
-    local h = { x = cx - r - 3, y = cy - r - 3, w = r * 2 + 6, h = r * 2 + 6 }
+    local cx = math.min(tx + tw + 22, L.diceHelp.x - r - 8)
+    local h = { x = cx - r - 3, y = midY - r - 3, w = r * 2 + 6, h = r * 2 + 6 }
     L.help = h
     local mx, my = self:_mouseLocal()
     local hot = inRect(h, mx, my)
-    HelpBadge.draw(cx, cy, r, hot)
+    HelpBadge.draw(cx, midY, r, hot)
     require("src.ui.NavCursor").target("rules", h.x, h.y, h.w, h.h)
     if hot then
         local okST, StatusTooltip = pcall(require, "src.ui.StatusTooltip")
@@ -586,20 +449,6 @@ function ShopScene:_drawSign()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-function ShopScene:_drawBoard(prefix, b)
-    if drawStrip(prefix, b.x, b.y, b.w, b.h, false) then return end
-    local wood = Palette.lerp(Palette.RUST, Palette.INK, 0.55)
-    for i = 1, 3 do
-        Palette.set(Palette.INK, 0.2 - i * 0.05)
-        love.graphics.rectangle("fill", b.x + 2, b.y + b.h + i * 2, b.w - 4, 2)
-    end
-    Palette.set(wood)
-    love.graphics.rectangle("fill", b.x, b.y, b.w, b.h)
-    Palette.set(Palette.lerp(Palette.RUST, Palette.AGED_GOLD_DARK, 0.5))
-    love.graphics.rectangle("fill", b.x, b.y, b.w, 1)
-    love.graphics.setColor(1, 1, 1, 1)
-end
-
 function ShopScene:_itemCtx(it)
     local afford = true
     local eco = self.screen.game and self.screen.game.economySystem
@@ -607,212 +456,116 @@ function ShopScene:_itemCtx(it)
     return { t = self.t, afford = afford, alpha = 1, reduced = reducedMotion() }
 end
 
-function ShopScene:_drawShelves(list)
-    local L = self.L
+function ShopScene:_drawCards(list)
     local NavCursor = require("src.ui.NavCursor")
-    local cards, relics, packs = {}, {}, {}
     for _, it in ipairs(list) do
-        if it.rect then
-            if it.kind == "card" then cards[#cards + 1] = it
-            elseif it.kind == "relic" then relics[#relics + 1] = it
-            else packs[#packs + 1] = it end
+        if it.rect and it.kind == "card" then
+            if not it.sold then it:drawStand(false, 1) end
+            it:drawDust({ alpha = 1 })
+            local ctx = self:_itemCtx(it)
+            it:drawObject(ctx)
+            if not it.sold then
+                it:drawStand(true, 1)
+                local r = it.rect
+                NavCursor.target(it.card or ("offer:" .. it.slot), r.x + (it.slide.x or 0), r.y, r.w, r.h)
+            end
+            it:drawPlateFor(ctx)
         end
     end
-
-    -- ===== estante de cima =====
-    self:_drawBoard("shelf_top", L.board1)
-    for _, it in ipairs(cards) do
-        if not it.sold then it:drawStand(false, 1) end
-        it:drawDust({ alpha = 1 })
-    end
-    for _, it in ipairs(cards) do it:drawObject(self:_itemCtx(it)) end
-    for _, it in ipairs(cards) do
-        if not it.sold then it:drawStand(true, 1) end
-        local ctx = self:_itemCtx(it)
-        it:drawTag(ctx)
-        it:drawLabel(ctx)
-    end
-
-    -- ===== gancho (sob a tábua de cima) + prateleira de baixo =====
-    local hook = art("hook")
-    local hk = L.pack.hook
-    if hook then
-        love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.draw(hook, hk.x, hk.y, 0, hk.w / hook:getWidth(), hk.h / hook:getHeight())
-    else
-        Palette.set(Palette.STEEL)
-        love.graphics.rectangle("fill", hk.x + hk.w / 2 - 1, hk.y, 2, hk.h - 3)
-        love.graphics.rectangle("fill", hk.x + hk.w / 2 - 1, hk.y + hk.h - 4, 5, 2)
-    end
-    self:_drawBoard("shelf_bottom", L.board2)
-    for _, it in ipairs(relics) do it:drawDust({ alpha = 1 }) end
-    for _, it in ipairs(packs) do it:drawDust({ alpha = 1 }) end
-    for _, it in ipairs(relics) do
-        it:drawObject(self:_itemCtx(it))
-        if not it.sold then
-            NavCursor.target("offer:" .. it.slot, it.rect.x, it.rect.y, it.rect.w, it.rect.h)
-        end
-    end
-    for _, it in ipairs(packs) do
-        it:drawObject(self:_itemCtx(it))
-        if not it.sold then
-            NavCursor.target("offer:" .. it.slot, it.rect.x, it.rect.y, it.rect.w, it.rect.h)
-        end
-    end
-    for _, it in ipairs(relics) do
-        local ctx = self:_itemCtx(it)
-        it:drawTag(ctx)
-        it:drawLabel(ctx)
-    end
-    for _, it in ipairs(packs) do
-        local ctx = self:_itemCtx(it)
-        it:drawTag(ctx)
-        it:drawLabel(ctx)
-    end
-    love.graphics.setColor(1, 1, 1, 1)
 end
 
-function ShopScene:_drawCounter()
+function ShopScene:_drawTable(list)
+    local NavCursor = require("src.ui.NavCursor")
     local L = self.L
-    local C = L.counter
-    local sc = self.screen
-    local mx, my = self:_mouseLocal()
-    local eco = sc.game and sc.game.economySystem
-
-    -- TAMPO LISO: tábua clara em cima, frente escura chapada, sombra sob o
-    -- beiral. (A arte gerada tinha cerca/grade na frente e nada se lia por
-    -- cima — anti-pattern "somar textura sob texto".)
-    local P, F = C.plank, C.front
-    local wood = Palette.lerp(Palette.RUST, Palette.INK, 0.45)
-    local woodTop = Palette.lerp(Palette.RUST, Palette.AGED_GOLD_DARK, 0.45)
-    Palette.set(Palette.darken(wood, 0.55))
-    love.graphics.rectangle("fill", F.x, F.y, F.w, F.h)
-    for i = 1, 3 do
-        Palette.set(Palette.INK, 0.25 - i * 0.06)
-        love.graphics.rectangle("fill", F.x, F.y + i * 2 - 2, F.w, 2)
+    -- tudo que está sobre a mesa, ordenado pelo pé (fundo → frente)
+    local order = {}
+    for _, it in ipairs(list) do
+        if it.rect and it.kind ~= "card" then order[#order + 1] = { foot = it.foot, item = it } end
     end
-    Palette.set(wood)
-    love.graphics.rectangle("fill", P.x, P.y, P.w, P.h)
-    Palette.set(woodTop)
-    love.graphics.rectangle("fill", P.x, P.y, P.w, 2)
-    Palette.set(Palette.AGED_GOLD_LIGHT, 0.16)
-    love.graphics.rectangle("fill", P.x + math.floor(P.w * 0.3), P.y, math.floor(P.w * 0.4), 1)
-    Palette.set(Palette.INK)
-    love.graphics.rectangle("fill", P.x, P.y + P.h - 1, P.w, 1)
-    -- cantoneiras de ferro nas pontas da frente
-    Palette.set(Palette.STEEL)
-    love.graphics.rectangle("fill", F.x + 6, F.y + 4, 4, F.h - 8)
-    love.graphics.rectangle("fill", F.x + F.w - 10, F.y + 4, 4, F.h - 8)
+    order[#order + 1] = { foot = L.bell.foot, bell = true }
+    if self.screen.diceButton then order[#order + 1] = { foot = L.dice.foot, dice = true } end
+    table.sort(order, function(a, b) return a.foot < b.foot end)
+    for _, e in ipairs(order) do
+        if e.item then
+            local it = e.item
+            it:drawDust({ alpha = 1 })
+            local ctx = self:_itemCtx(it)
+            it:drawObject(ctx)
+            it:drawPlateFor(ctx)
+            if not it.sold then
+                local r = it.rect
+                NavCursor.target("offer:" .. it.slot, r.x + (it.slide.x or 0), r.y, r.w, r.h)
+            end
+        elseif e.bell then
+            self:_drawBell()
+        elseif e.dice then
+            self:_drawDice()
+        end
+    end
+end
 
-    -- ===== sino (novas ofertas) =====
-    local bellR = C.bell
+function ShopScene:_drawBell()
+    local L, sc = self.L, self.screen
+    local B = L.bell
+    local eco = sc.game and sc.game.economySystem
     local cost = sc.shopSystem and sc.shopSystem.getRefreshCost and sc.shopSystem:getRefreshCost() or 0
     local canRing = (not eco) or eco:canAfford(cost)
-    local bell = art("bell")
+    local bell = ShelfItem.art("assets/sprites/shop/objects/bell.png", true) or art("bell")
     local frame = 1
     if self.bell.ringing > 0 and not reducedMotion() then
         local seq = { 2, 3, 2, 4, 3, 2, 1 }
         frame = seq[math.min(#seq, 1 + math.floor((0.9 - self.bell.ringing) * 12))] or 1
     end
-    local lift = -self.bellHover * 3
+    local lift = reducedMotion() and 0 or (self.bell.hover * 4 - Moveable.hopOffset(self.bell))
+    local s = Moveable.scaleFactor(self.bell)
+    local r = B.rect
+    love.graphics.setColor(0, 0, 0, 0.4)
+    love.graphics.ellipse("fill", B.footX, B.foot - 1, r.w * 0.35, math.max(2, r.h * 0.07))
     if bell then
-        local fw, fh = bell:getWidth() / 4, bell:getHeight()
-        local k = bellR.w / fw
-        if canRing then love.graphics.setColor(1, 1, 1, 1) else love.graphics.setColor(0.55, 0.5, 0.45, 0.8) end
-        love.graphics.draw(bell, quad("bell", (frame - 1) * fw, 0, fw, fh, bell:getWidth(), bell:getHeight()),
-            bellR.x, bellR.y + lift, 0, k, k)
+        local frames = (bell:getWidth() >= bell:getHeight() * 3) and 4 or 1
+        local fw, fh = bell:getWidth() / frames, bell:getHeight()
+        local k = (r.w / fw) * s
+        if canRing then love.graphics.setColor(1, 1, 1, 1) else love.graphics.setColor(0.55, 0.5, 0.45, 0.9) end
+        local q = quad("bell", (math.min(frame, frames) - 1) * fw, 0, fw, fh, bell:getWidth(), bell:getHeight())
+        love.graphics.draw(bell, q, B.footX - fw * k / 2, B.foot - fh * k - lift, 0, k, k)
     else
         Palette.set(canRing and Palette.AGED_GOLD or Palette.STEEL)
-        love.graphics.ellipse("fill", bellR.x + bellR.w / 2, bellR.y + bellR.h * 0.55 + lift, bellR.w * 0.4, bellR.h * 0.35)
+        love.graphics.ellipse("fill", B.footX, B.foot - r.h * 0.45 - lift, r.w * 0.4, r.h * 0.35)
     end
-    -- etiqueta do sino pendurada do beiral do tampo (a MESMA das prateleiras)
-    local bt = C.bellTag
-    ShelfItem.drawTagCard(bt, bt.ax, bt.ay, self.cTags.bell.angle, 1,
-        { afford = canRing, text = "$" .. tostring(cost) })
-
-    -- ===== copo de dados =====
-    if sc.diceButton then
-        local dr = C.dice
-        local Pp = getProps()
-        local drawn = false
-        if Pp and Pp.drawDiceCup then
-            local run = sc._run and sc:_run() or nil
-            local ScribeDice = require("src.systems.ScribeDice")
-            local st = ScribeDice.state(run)
-            local ok, err = pcall(Pp.drawDiceCup, dr, { hover = self.diceHover, used = ScribeDice.isUsed(run),
-                total = st and st.total or nil, run = run, t = self.t, reduced = reducedMotion() })
-            if ok then drawn = true else print("[ShopScene] ShopProps.drawDiceCup: " .. tostring(err)) end
-        end
-        if not drawn then
-            local cup = Palette.lerp(Palette.RUST, Palette.INK, 0.35)
-            Palette.set(Palette.INK)
-            love.graphics.rectangle("fill", dr.x + dr.w * 0.2 - 1, dr.y + dr.h * 0.25 - 1 - self.diceHover * 2, dr.w * 0.6 + 2, dr.h * 0.75 + 2)
-            Palette.set(cup)
-            love.graphics.rectangle("fill", dr.x + dr.w * 0.2, dr.y + dr.h * 0.25 - self.diceHover * 2, dr.w * 0.6, dr.h * 0.75)
-            Palette.set(Palette.PARCHMENT_LIGHT)
-            love.graphics.rectangle("fill", dr.x + dr.w * 0.22, dr.y + dr.h * 0.25 - self.diceHover * 2, dr.w * 0.56, 2)
-        end
-    end
-
-    -- ===== livro-razão (seguir viagem) =====
-    local lr = C.ledger
-    local ledger = art("ledger")
-    local open = self.ledgerHover > 0.5
-    if ledger then
-        local fw, fh = ledger:getWidth() / 2, ledger:getHeight()
-        local k = math.min(lr.w / fw, lr.h / fh)
-        love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.draw(ledger, quad("ledger", open and fw or 0, 0, fw, fh, ledger:getWidth(), ledger:getHeight()), lr.x + (lr.w - fw * k) / 2, lr.y + lr.h - fh * k - self.ledgerHover * 3, 0, k, k)
-    else
-        Palette.set(Palette.INK)
-        love.graphics.rectangle("fill", lr.x - 1, lr.y - 1, lr.w + 2, lr.h + 2)
-        Palette.set(Palette.lerp(Palette.BLOOD_DARK, Palette.RUST, 0.4))
-        love.graphics.rectangle("fill", lr.x, lr.y, lr.w, lr.h)
-        Palette.set(Palette.PARCHMENT_LIGHT)
-        love.graphics.rectangle("fill", lr.x + 2, lr.y + lr.h - 4, lr.w - 4, 2)
-    end
-    -- etiqueta do livro: o bônus de seguir viagem ("+$3")
-    local bonus = (sc.modeConfig and sc.modeConfig.skipBonus) or 0
-    local lt = C.ledgerTag
-    ShelfItem.drawTagCard(lt, lt.ax, lt.ay, self.cTags.ledger.angle, 1,
-        { afford = true, text = (bonus > 0) and ("+$" .. tostring(bonus)) or "" })
-
-    -- tooltips dos objetos do balcão (foco = hover)
-    if self.hoverCounter then
-        local okST, StatusTooltip = pcall(require, "src.ui.StatusTooltip")
-        if okST and StatusTooltip.show then
-            local ctx = { n = cost, bonus = bonus }
-            StatusTooltip.show("shop_" .. self.hoverCounter, mx, my + (sc.slideOffsetY or 0), ctx)
-        end
-    end
-    love.graphics.setColor(1, 1, 1, 1)
+    ShelfItem.drawPlate(B.plate, {
+        { I18n.t("shop.bell_plate"), Palette.INK },
+        { "$" .. tostring(cost), canRing and Palette.INK or Palette.BLOOD },
+    })
 end
 
-function ShopScene:_drawLantern()
-    local L = self.L
+function ShopScene:_drawDice()
+    local L, sc = self.L, self.screen
+    local D = L.dice
     local P = getProps()
-    if P and P.drawLantern then
-        local ok, err = pcall(P.drawLantern, L.lantern, { t = self.t, lookDx = self.light.dx, reduced = reducedMotion() })
-        if ok then return end
-        print("[ShopScene] ShopProps.drawLantern: " .. tostring(err))
+    local drawn = false
+    local run = sc._run and sc:_run() or nil
+    local ScribeDice = require("src.systems.ScribeDice")
+    local st = ScribeDice.state(run)
+    if P and P.drawDiceCup then
+        local ok, err = pcall(P.drawDiceCup, D.rect, { hover = self.dice.hover, used = ScribeDice.isUsed(run),
+            total = st and st.total or nil, run = run, t = self.t, reduced = reducedMotion() })
+        if ok then drawn = true else print("[ShopScene] ShopProps.drawDiceCup: " .. tostring(err)) end
     end
-    -- placeholder: armação escura + vidro âmbar + chama em 3 degraus
-    local r = L.lantern
-    local gx, gy, gw, gh = r.x + r.w * 0.2, r.y + r.h * 0.25, r.w * 0.6, r.h * 0.5
-    Palette.set(Palette.INK)
-    love.graphics.rectangle("fill", gx - 2, gy - 2, gw + 4, gh + 4)
-    love.graphics.rectangle("fill", r.x + r.w * 0.45, r.y, r.w * 0.1, r.h * 0.25)
-    local step = reducedMotion() and 1 or (1 + math.floor(self.t * 6) % 3)
-    local flame = Palette.lerp(Palette.AGED_GOLD, Palette.PARCHMENT_LIGHT, 0.3 * step)
-    Palette.set(Palette.lerp(Palette.RUST, Palette.AGED_GOLD, 0.5), 0.6)
-    love.graphics.rectangle("fill", gx, gy, gw, gh)
-    Palette.set(flame)
-    love.graphics.rectangle("fill", gx + gw * 0.35, gy + gh * (0.55 - 0.1 * step), gw * 0.3, gh * (0.3 + 0.1 * step))
-    love.graphics.setColor(1, 1, 1, 1)
+    if not drawn then
+        local dr = D.rect
+        local cup = Palette.lerp(Palette.RUST, Palette.INK, 0.35)
+        Palette.set(Palette.INK)
+        love.graphics.rectangle("fill", dr.x + dr.w * 0.2 - 1, dr.y + dr.h * 0.25 - 1, dr.w * 0.6 + 2, dr.h * 0.75 + 2)
+        Palette.set(cup)
+        love.graphics.rectangle("fill", dr.x + dr.w * 0.2, dr.y + dr.h * 0.25, dr.w * 0.6, dr.h * 0.75)
+    end
+    ShelfItem.drawPlate(D.plate, {
+        { I18n.t("shop.dice_plate"), Palette.INK },
+        { (st and st.used and st.total) and tostring(st.total) or "", Palette.INK },
+    })
 end
 
--- Pergaminho de inspeção: prego + rolo (9-slice) + o CardDetailPanel da tela
--- dentro do miolo (tinta sobre pergaminho).
+-- Pergaminho de inspeção: prego + rolo (9-slice) + papel liso + CardDetailPanel.
 function ShopScene:_drawScroll()
     local L = self.L
     local S = L.scroll
@@ -820,12 +573,9 @@ function ShopScene:_drawScroll()
     local n = S.nail
     local frame = art("scroll_frame")
     if frame then
-        -- 9-slice: os rolos (cilindros horizontais) esticam só em X e têm a
-        -- altura que o layout reservou (rollerH / footH); o papel do meio
-        -- estica nos dois eixos; as bordas do papel só em Y.
         local fw, fh = frame:getWidth(), frame:getHeight()
-        local rollerA = math.floor(fh * 0.17)   -- rolo de cima na arte
-        local footA = math.floor(fh * 0.21)     -- rolo de baixo + borla
+        local rollerA = math.floor(fh * 0.17)
+        local footA = math.floor(fh * 0.21)
         local edge = math.floor(fw * 0.12)
         local kx = S.w / fw
         local kyTop = S.rollerH / rollerA
@@ -846,25 +596,16 @@ function ShopScene:_drawScroll()
         love.graphics.rectangle("fill", S.x - 1, S.y - 1, S.w + 2, S.h + 2)
         Palette.set(Palette.PARCHMENT)
         love.graphics.rectangle("fill", S.x, S.y, S.w, S.h)
-        Palette.set(Palette.PARCHMENT_DARK)
-        love.graphics.rectangle("fill", S.x, S.y, S.w, 10)
-        love.graphics.rectangle("fill", S.x, S.y + S.h - 10, S.w, 10)
     end
     if nail then
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.draw(nail, n.x, n.y, 0, n.w / nail:getWidth(), n.h / nail:getHeight())
-    else
-        Palette.set(Palette.STEEL)
-        love.graphics.rectangle("fill", n.x + 2, n.y, n.w - 4, n.h)
     end
-    love.graphics.setColor(1, 1, 1, 1)
-    -- PAPEL QUASE LISO sob o texto: a arte do rolo tem grão e bordas
-    -- queimadas que viram ruído atrás de letra pequena. Uma lavada de cor
-    -- de pergaminho (90%) deixa só ~6% da variação da arte passar.
+    -- papel quase liso sob o texto e o botão (grão da arte <= 6%)
     local paper = Palette.lerp(Palette.PARCHMENT_LIGHT, Palette.PARCHMENT, 0.28)
     local B = S.body
     love.graphics.setColor(paper[1], paper[2], paper[3], 0.90)
-    love.graphics.rectangle("fill", B.x - 6, B.y - 4, B.w + 12, B.h + 8)
+    love.graphics.rectangle("fill", B.x - 6, B.y - 4, B.w + 12, (S.buy.y + S.buy.h) - B.y + 10)
     love.graphics.setColor(1, 1, 1, 1)
     if self.screen._drawDetailPanel then
         self.screen:_drawDetailPanel(S.body, true, S.artMaxH)
@@ -877,23 +618,17 @@ function ShopScene:draw()
     local P = getProps()
     local ctx = { t = self.t, reduced = reducedMotion() }
 
-    self:_drawWall()
-    self:_drawLight()
-    if P and P.drawBack then
-        local ok, err = pcall(P.drawBack, L, ctx)
-        if not ok then print("[ShopScene] ShopProps.drawBack: " .. tostring(err)) end
-    end
+    self:_drawPainting()
     self:_drawSign()
-
-    love.graphics.push()
-    love.graphics.translate(math.floor(self.shelfSlide), 0)
-    self:_drawShelves(self.outgoing or self.items)
-    love.graphics.pop()
-
-    self:_drawCounter()
-    self:_drawLantern()
+    self:_drawCards(self.outgoing or self.items)
+    if self.outgoing then
+        -- objetos saindo e entrando ao mesmo tempo (deslize do sino)
+        self:_drawTable(self.outgoing)
+        self:_drawTable(self.items)
+    else
+        self:_drawTable(self.items)
+    end
     self:_drawScroll()
-
     if P and P.drawFront then
         local ok, err = pcall(P.drawFront, L, ctx)
         if not ok then print("[ShopScene] ShopProps.drawFront: " .. tostring(err)) end
@@ -901,8 +636,6 @@ function ShopScene:draw()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Objetos voando pro destino: chamado pela tela FORA do slide (por cima da
--- TopBar, que é o destino da carta).
 function ShopScene:drawFlies()
     for _, f in ipairs(self.flies) do
         love.graphics.setColor(1, 1, 1, f.alpha or 1)

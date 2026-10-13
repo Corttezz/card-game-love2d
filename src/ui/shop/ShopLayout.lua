@@ -1,28 +1,28 @@
 -- src/ui/shop/ShopLayout.lua
--- GEOMETRIA PURA do Balcão do Mercador (Loja v3, docs/plan/shop-v3-balcao.md).
+-- GEOMETRIA PURA do Balcão do Mercador em PERSPECTIVA (Loja v3b,
+-- docs/plan/shop-v3-balcao.md §12, referência docs/plan/shop_reference_gpt.png).
 --
--- A loja é uma CENA: estante de cima (cartas em pé em suportes), prateleira
--- de baixo (relíquias apoiadas + pacote pendurado num gancho), balcão na
--- frente (sino / copo de dados / livro-razão) e o pergaminho de inspeção
--- pendurado num prego à direita, com a lanterna na parede entre os dois.
+-- A cena é UMA PINTURA (assets/sprites/shop/counter_scene.png, 688x384):
+-- balcão de madeira em três quartos, estantes de frascos ao fundo, vela e
+-- caveira à esquerda, lanterna pendurada no alto, pano vermelho na borda.
+-- Ela é desenhada em cover-fit (mesma conta do SceneBackground dos salões de
+-- chefe) e TUDO que fica sobre ela é posicionado em COORDENADAS DA ARTE:
+--   * 4 cavaletes de carta na diagonal da BORDA DO FUNDO (o plano nasce na
+--     esquerda, mais perto, e foge pra direita: escala 1,0 → 0,85);
+--   * 4 posições de objeto sobre o TAMPO, em diagonal esquerda-frente →
+--     direita-fundo (relíquias + pacote);
+--   * sino e copo de dados à esquerda, na mesa.
+-- Cada slot tem âncora do PÉ, escala por profundidade e inclinação; o
+-- layout converte arte→tela e `validate` confere que o pé está DENTRO do
+-- tampo pintado (máscaras em coordenadas da arte, como as âncoras dos
+-- salões), que nada se sobrepõe e que o pergaminho/botões não invadem a
+-- mesa. Quando a janela é estreita (4:3, 800x600) a diagonal se COMPRIME
+-- (espaçamento e escala cedem), nunca a ordem.
 --
--- REGRAS (memory/ui_layout_invariants.md §1):
---   * ZONAS, nunca ancoragem vizinho-a-vizinho: cada objeto pertence a UMA
---     zona e as zonas são disjuntas por construção.
---   * quando falta espaço (800x600) quem cede é a ESCALA dos objetos; as
---     bandas nunca trocam de lugar. Quando sobra, a sobra vira RESPIRO entre
---     as bandas (teto por vão) — nunca um terço da tela escuro.
---   * todo objeto apoiado tem o PÉ dentro da tábua (ou do suporte que está
---     na tábua); o pacote é a única peça PENDURADA e não pode tocar a tábua.
---   * informação ANCORADA no objeto: a etiqueta de preço pendura do BEIRAL da
---     tábua onde o objeto está, logo abaixo dele (nunca sobre a arte: o selo
---     de raridade da carta fica à vista); o rótulo (raridade / efeito / nome)
---     mora na mesma banda, à esquerda da etiqueta.
---   * validate() é a prova geométrica — roda nos testes em 7 tamanhos.
---
--- Este módulo não desenha nem lê o estado do jogo: recebe (sw, sh, nCards,
--- nRelics) e devolve retângulos. Quem desenha é ShopScene; quem anima é
--- ShelfItem. Recalculado a cada resize (e barato o bastante por frame).
+-- Fora da pintura (grade da UI): a placa de título com os dois "?", o
+-- PERGAMINHO de detalhe à direita (com o botão COMPRAR) e o botão CONTINUAR
+-- no canto inferior direito. Texto e placas de latão são desenhados por
+-- cima, na grade da UI, nunca na arte.
 
 local ShopLayout = {}
 
@@ -31,254 +31,277 @@ local function rect(x, y, w, h)
     return { x = math.floor(x), y = math.floor(y), w = math.floor(w), h = math.floor(h) }
 end
 
--- Proporções do catálogo de arte (assets/sprites/shop + cartas 96x144).
-ShopLayout.CARD_RATIO   = 1.5      -- h/w da carta
-ShopLayout.PACK_RATIO   = 1.5      -- sleeve 128x192
-ShopLayout.LIFT_RESERVE = 14       -- quanto a carta sobe no hover (px no espaço da UI)
-ShopLayout.BADGE_RESERVE = 12      -- selo "NOVA" acima da carta (DiscoveryMark) não invade a placa
-ShopLayout.RELIC_LIFT   = 8
-ShopLayout.TOPBAR_H     = 56
+ShopLayout.TOPBAR_H = 56
+ShopLayout.CARD_RATIO = 1.5
+-- Perspectiva das cartas no cavalete (uniformes do card_perspective.glsl):
+-- o observador está à esquerda-frente, a borda direita da carta foge.
+ShopLayout.CARD_TILT = { 0.8, 0.0 }
+ShopLayout.CARD_TILT_AMOUNT = 0.7
+ShopLayout.LIFT = 8            -- quanto um objeto levanta no hover (px da UI)
+ShopLayout.BADGE_RESERVE = 12  -- selo "NOVA" acima da carta
 
--- Quantos "degraus" o cone de luz pode andar (ver ShopScene.lightOffset).
-ShopLayout.LIGHT_STEP   = 7
-ShopLayout.LIGHT_STEPS  = 2
+-- ============================================================================
+-- A ARTE: âncoras em pixels da pintura (688x384). Medidas na grade de 32px
+-- (tools/preview_out/shop_props/lojacena/scene/lojacena_scene_grid.png).
+-- ============================================================================
+ShopLayout.ART = {
+    w = 688, h = 384,
+    -- borda do fundo (prateleira atrás do balcão) onde os cavaletes apoiam
+    ledgeMask = { 56, 182, 476, 132, 486, 150, 66, 200 },
+    -- tampo do balcão (sem a pilha de livros/moedas do canto e sem a caveira)
+    tableMask = { 128, 205, 478, 162, 556, 236, 262, 338, 130, 332 },
+    -- cavaletes: pé no centro da base, escala por profundidade
+    cards = {
+        { x = 118, y = 180, s = 1.00 },
+        { x = 214, y = 170, s = 0.95 },
+        { x = 308, y = 160, s = 0.90 },
+        { x = 400, y = 150, s = 0.85 },
+    },
+    cardH = 94,          -- altura da carta em px da arte na escala 1,0 (a carta cobre a estante atrás, como na referência)
+    -- objetos na mesa (3 relíquias + pacote), esquerda-frente → direita-fundo
+    objects = {
+        { x = 232, y = 302, s = 1.00 },
+        { x = 310, y = 280, s = 0.95 },
+        { x = 385, y = 258, s = 0.90 },
+        { x = 455, y = 236, s = 0.85 },
+    },
+    objSize = 70,        -- sprite dos objetos (px da arte) na escala 1,0
+    -- sino na frente-esquerda, copo atrás dele (mais fundo, menor)
+    bell = { x = 160, y = 324, s = 0.75 },
+    dice = { x = 150, y = 252, s = 0.65 },
+    lantern = { x = 448, y = 40, w = 50, h = 64 },   -- a pintada (chama ~ (471, 70))
+    flame = { x = 471, y = 72 },
+}
 
--- Etiqueta de preço (price_tag.png é 24x16) em função da largura do objeto.
--- Piso 30: "$20" na fonte 8 são 24 px + folga; abaixo disso o preço vira
--- "..." (visto no Steam Deck, 1280x800 a k=1,25).
-local function tagSize(objW)
-    local w = clamp(math.floor(objW * 0.28), 30, 36)
-    return w, math.floor(w * 0.66)
+-- cover-fit idêntico ao SceneBackground.getCoverTransform
+local function coverTransform(sw, sh, aw, ah)
+    local s = math.max(sw / aw, sh / ah)
+    local dw, dh = aw * s, ah * s
+    return { s = s, dw = dw, dh = dh, ox = (sw - dw) / 2, oy = (sh - dh) / 2 }
+end
+ShopLayout.coverTransform = coverTransform
+
+local function toScreen(cv, ax, ay)
+    return cv.ox + ax * cv.s, cv.oy + ay * cv.s
+end
+ShopLayout.toScreen = toScreen
+
+local function toArt(cv, x, y)
+    return (x - cv.ox) / cv.s, (y - cv.oy) / cv.s
 end
 
--- nCards: cartas na estante de cima; nRelics: relíquias apoiadas na
--- prateleira de baixo (o pacote ocupa a última célula, pendurado).
+local function pointInPoly(px, py, poly)
+    local inside = false
+    local n = #poly / 2
+    local j = n
+    for i = 1, n do
+        local xi, yi = poly[i * 2 - 1], poly[i * 2]
+        local xj, yj = poly[j * 2 - 1], poly[j * 2]
+        if ((yi > py) ~= (yj > py)) and (px < (xj - xi) * (py - yi) / (yj - yi) + xi) then
+            inside = not inside
+        end
+        j = i
+    end
+    return inside
+end
+ShopLayout.pointInPoly = pointInPoly
+
+-- Placa de latão sob o pé (duas linhas: rótulo + preço). Larga o bastante
+-- pro rótulo ("NOVAS OFERTAS", "+10 VIDA MÁX") e nunca mais larga que o vão
+-- até o vizinho.
+local function plateFor(cx, footY, w, lineH, maxW)
+    local h = lineH * 2 + 8
+    if maxW then w = math.min(w, maxW) end
+    return rect(cx - w / 2, footY + 4, w, h)
+end
+
 function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
     opts = opts or {}
     nCards = math.max(1, nCards or 4)
     nRelics = math.max(0, nRelics or 3)
+    local A = ShopLayout.ART
     local topBarH = opts.topBarH or ShopLayout.TOPBAR_H
 
-    local margin = clamp(math.floor(sw * 0.025), 12, 40)
-    local panelW = math.floor(math.min(sw - margin * 2, math.max(1560, sh * 1.25)))
-    local panelX = math.floor((sw - panelW) * 0.5)
-    local panelY = topBarH
-    local panelH = sh - panelY - math.floor(margin * 0.6)
-    local wall = rect(panelX, panelY, panelW, panelH)
+    local margin = clamp(math.floor(sw * 0.02), 10, 32)
+    local wall = rect(0, topBarH, sw, sh - topBarH)
+    local cv = coverTransform(sw, sh, A.w, A.h)
 
-    -- ===== colunas: [estantes + balcão] | lanterna | pergaminho =====
-    local gap = clamp(math.floor(sw * 0.02), 14, 36)
-    local scrollW = clamp(math.floor(panelW * 0.26), 220, 350)
-    local lanternW = clamp(math.floor(panelW * 0.07), 56, 96)
-    local leftW = panelW - scrollW - lanternW - gap * 2
-    if leftW < 340 then
-        -- janela estreita: o pergaminho e a lanterna cedem ANTES da vitrine
-        -- virar miniatura
-        local need = 340 - leftW
-        local fromLantern = math.min(need, lanternW - 36)
-        lanternW = lanternW - fromLantern
-        scrollW = math.max(150, scrollW - (need - fromLantern))
-        leftW = panelW - scrollW - lanternW - gap * 2
-    end
-    local leftX = panelX
-    local scrollX = panelX + panelW - scrollW
+    -- ===== coluna da direita: pergaminho + CONTINUAR =====
+    local scrollW = clamp(math.floor(sw * 0.26), 210, 340)
+    local scrollX = sw - margin - scrollW
+    local contW = clamp(math.floor(sw * 0.17), 150, 230)
+    local contH = 40
+    local continueBtn = rect(sw - margin - contW, sh - margin - contH, contW, contH)
+    local limitX = scrollX - 10          -- nada da mesa passa daqui
 
-    -- ===== células (as duas prateleiras dividem a MESMA grade de colunas) =====
-    local cols = math.max(nCards, nRelics + 1)
-    local gapX = clamp(math.floor(leftW * 0.02), 8, 20)
-    local innerPad = clamp(math.floor(leftW * 0.03), 10, 30)
-    local cellW = math.floor((leftW - innerPad * 2 - gapX * (cols - 1)) / cols)
-    local fill = 0.86
-
-    local signH = 30
-    local boardT = clamp(math.floor(leftW * 0.022), 12, 22)   -- espessura da tábua
-
-    local cardW = math.floor(cellW * fill)
-    local cardH = math.floor(cardW * ShopLayout.CARD_RATIO)
-    local relicH = math.floor(cardH * 0.70)
-    local objH = clamp(math.floor(cardH * 0.36), 48, 96)      -- sino / copo / livro
-
-    -- bandas derivadas do tamanho da carta (recalculadas se a escala ceder)
-    local standH, tagW, tagH, bandH, plankT, frontH
-    local function derive()
-        standH = clamp(math.floor(cardW * 0.16), 12, 24)
-        tagW, tagH = tagSize(cardW)
-        -- banda sob a tábua: etiqueta pendurada (len 4) OU duas linhas de rótulo
-        bandH = math.max(tagH + 10, 26)
-        plankT = clamp(math.floor(objH * 0.22), 12, 22)
-        frontH = math.max(tagH + 12, 28)
-    end
-    derive()
-
-    -- Altura que a coluna esquerda pede; se não cabe, a ESCALA cede.
-    local gapMin = 10
-    local function need()
-        local top = ShopLayout.BADGE_RESERVE + ShopLayout.LIFT_RESERVE + cardH
-            + math.ceil(standH / 2) + boardT + bandH
-        local bottom = ShopLayout.RELIC_LIFT + relicH + boardT + bandH
-        local counter = objH + plankT + frontH
-        return signH + top + gapMin + bottom + gapMin + counter, top, bottom, counter
-    end
-    local total = need()
-    -- As bandas fixas (suporte, etiqueta, tampo) têm piso e não encolhem na
-    -- mesma proporção: itera até caber, tirando da carta o que sobrou.
-    for _ = 1, 4 do
-        if total <= panelH then break end
-        local f = (panelH - signH - gapMin * 2) / (total - signH - gapMin * 2)
-        cardH = math.max(48, math.floor(cardH * math.min(f, 0.98)))
-        cardW = math.floor(cardH / ShopLayout.CARD_RATIO)
-        relicH = math.max(30, math.floor(relicH * math.min(f, 0.98)))
-        objH = math.max(40, math.floor(objH * math.min(f, 0.98)))
-        derive()
-        total = need()
-    end
-    local topZoneH, bottomZoneH, counterH
-    total, topZoneH, bottomZoneH, counterH = need()
-
-    -- Sobra vertical = RESPIRO entre as bandas (teto por vão) + margem no
-    -- topo; o que ainda sobrar fica sob o balcão (só em janela larga com k=1,
-    -- que o UiScale evita em 1080p+).
-    local slack = math.max(0, panelH - total)
-    local gapTB = gapMin + math.min(56, math.floor(slack * 0.30))
-    local gapBC = gapMin + math.min(56, math.floor(slack * 0.30))
-    local topMargin = math.min(40, math.floor(slack * 0.16))
-
-    local sign = rect(leftX, panelY, leftW, signH)
-    local shelfTop = rect(leftX, panelY + signH + topMargin, leftW, topZoneH)
-    local shelfBottom = rect(leftX, shelfTop.y + shelfTop.h + gapTB, leftW, bottomZoneH)
-    local counter = rect(leftX, shelfBottom.y + shelfBottom.h + gapBC, leftW, counterH)
-
-    local board1 = rect(leftX, shelfTop.y + shelfTop.h - bandH - boardT, leftW, boardT)
-    local board2 = rect(leftX, shelfBottom.y + shelfBottom.h - bandH - boardT, leftW, boardT)
-    local band1 = rect(leftX, board1.y + board1.h, leftW, bandH)
-    local band2 = rect(leftX, board2.y + board2.h, leftW, bandH)
-
-    -- Etiqueta pendurada do beiral da tábua, encostada à direita do objeto;
-    -- o rótulo ocupa o resto da banda, à esquerda.
-    local function hangingTag(objRect, board)
-        return { ax = objRect.x + objRect.w - math.floor(tagW * 0.5) - 1, ay = board.y + board.h,
-                 len = 4, w = tagW, h = tagH }
-    end
-    local function labelRect(objRect, band)
-        return rect(objRect.x, band.y + 3, math.max(10, objRect.w - tagW - 6), band.h - 6)
-    end
-
-    -- ===== estante de cima: cartas em suportes =====
+    -- ===== cavaletes =====
+    local lineH = clamp(math.floor(8 * cv.s / 1.875), 8, 11) + 2
+    local cardH0 = A.cardH * cv.s
     local cards = {}
-    for i = 1, nCards do
-        local cellX = leftX + innerPad + (i - 1) * (cellW + gapX)
-        local x = cellX + math.floor((cellW - cardW) / 2)
-        local standW = math.floor(cardW * 0.74)
-        local stand = rect(x + (cardW - standW) / 2, board1.y - standH, standW, standH)
-        -- a carta entra no rasgo do suporte: pé no meio do suporte, o lábio da
-        -- frente (metade de baixo) cobre a base da carta
-        local foot = stand.y + math.floor(standH * 0.5)
-        local r = rect(x, foot - cardH, cardW, cardH)
-        cards[i] = {
-            kind = "card", cell = rect(cellX, shelfTop.y, cellW, shelfTop.h),
-            rect = r, foot = foot, stand = stand, board = board1, band = band1,
-            standVariant = ((i - 1) % 3) + 1,
-            tag = hangingTag(r, board1), label = labelRect(r, band1),
-            lift = ShopLayout.LIFT_RESERVE,
-        }
+    -- em 4:3 o cover-fit corta a esquerda da pintura: a diagonal inteira
+    -- desliza pra direita (em px da arte) até a primeira carta caber na tela
+    local leftArt = (6 - cv.ox) / cv.s
+    local cardShift = math.max(0, leftArt + (A.cardH * cv.s / ShopLayout.CARD_RATIO) / 2 / cv.s - A.cards[1].x)
+    local function buildCards(xFit, sizeFit)
+        cards = {}
+        local x1 = A.cards[1].x + cardShift
+        for i = 1, nCards do
+            local a = A.cards[math.min(i, #A.cards)]
+            local ax = x1 + (a.x - A.cards[1].x) * xFit
+            local fx, fy = toScreen(cv, ax, a.y)
+            local h = math.floor(cardH0 * a.s * sizeFit)
+            local w = math.floor(h / ShopLayout.CARD_RATIO)
+            local standH = clamp(math.floor(h * 0.12), 8, 20)
+            local standW = math.floor(w * 0.8)
+            local stand = rect(fx - standW / 2, fy - standH, standW, standH)
+            local foot = stand.y + math.floor(standH * 0.5)
+            local r = rect(fx - w / 2, foot - h, w, h)
+            cards[i] = {
+                kind = "card", art = { x = ax, y = a.y }, depth = a.s,
+                rect = r, foot = foot, footX = math.floor(fx), stand = stand,
+                standVariant = ((i - 1) % 3) + 1,
+                plate = plateFor(fx, fy + 2, math.max(math.floor(w * 0.95), 70), lineH),
+                tilt = ShopLayout.CARD_TILT, tiltAmount = ShopLayout.CARD_TILT_AMOUNT,
+                lift = ShopLayout.LIFT,
+            }
+        end
+    end
+    buildCards(1, 1)
+    -- janela estreita: comprime a diagonal (e, se ainda não cabe, a escala)
+    local function cardsRight()
+        local c = cards[#cards]
+        return math.max(c.rect.x + c.rect.w, c.plate.x + c.plate.w)
+    end
+    if cardsRight() > limitX then
+        local x1 = cards[1].rect.x
+        local fit = clamp((limitX - x1 - cards[#cards].rect.w) / (cardsRight() - x1 - cards[#cards].rect.w), 0.5, 1)
+        buildCards(fit, 1)
+        -- vizinhas se tocando? encolhe junto
+        for _ = 1, 3 do
+            local touching = false
+            for i = 2, #cards do
+                if cards[i].rect.x < cards[i - 1].plate.x + cards[i - 1].plate.w + 2 then touching = true end
+            end
+            if not touching and cardsRight() <= limitX then break end
+            fit = fit * 0.92
+            buildCards(fit, math.max(0.7, fit))
+        end
     end
 
-    -- ===== prateleira de baixo: relíquias apoiadas + pacote no gancho =====
-    local relics = {}
-    local relicW = math.floor(cellW * fill)
-    for j = 1, nRelics do
-        local cellX = leftX + innerPad + (j - 1) * (cellW + gapX)
-        local x = cellX + math.floor((cellW - relicW) / 2)
-        local r = rect(x, board2.y - relicH, relicW, relicH)
-        relics[j] = {
-            kind = "relic", cell = rect(cellX, shelfBottom.y, cellW, shelfBottom.h),
-            rect = r, foot = board2.y, board = board2, band = band2,
-            tag = hangingTag(r, board2), label = labelRect(r, band2),
-            lift = ShopLayout.RELIC_LIFT,
-        }
+    -- ===== objetos na mesa =====
+    local objSize0 = A.objSize * cv.s
+    local objects = {}
+    local objShift = math.max(0, leftArt + (A.objSize * 0.75) - A.objects[1].x)
+    local function buildObjects(xFit, sizeFit)
+        objects = {}
+        local x1 = A.objects[1].x + objShift
+        local n = nRelics + 1
+        for j = 1, n do
+            local a = A.objects[math.min(j, #A.objects)]
+            local ax = x1 + (a.x - A.objects[1].x) * xFit
+            local fx, fy = toScreen(cv, ax, a.y)
+            local size = math.floor(objSize0 * a.s * sizeFit)
+            local r = rect(fx - size / 2, fy - size, size, size)
+            objects[j] = {
+                kind = (j <= nRelics) and "relic" or "pack",
+                art = { x = ax, y = a.y }, depth = a.s,
+                rect = r, foot = math.floor(fy), footX = math.floor(fx),
+                plate = plateFor(fx, fy, clamp(math.floor(size * 1.3), 96, 150), lineH),
+                lift = ShopLayout.LIFT,
+            }
+        end
+        -- a placa nunca passa do vão até a vizinha (as placas ficam em
+        -- alturas diferentes, mas lado a lado leem como uma fileira)
+        for j = 2, n do
+            local a, b = objects[j - 1], objects[j]
+            local gapW = b.footX - a.footX - 6
+            if a.plate.w > gapW then a.plate = plateFor(a.footX, a.foot, gapW, lineH) end
+            if b.plate.w > gapW then b.plate = plateFor(b.footX, b.foot, gapW, lineH) end
+        end
+    end
+    buildObjects(1, 1)
+    local function objectsRight()
+        local o = objects[#objects]
+        return math.max(o.rect.x + o.rect.w, o.plate.x + o.plate.w)
+    end
+    if objectsRight() > limitX then
+        local x1 = objects[1].rect.x
+        local fit = clamp((limitX - x1 - objects[#objects].rect.w) / (objectsRight() - x1 - objects[#objects].rect.w), 0.5, 1)
+        buildObjects(fit, 1)
+        for _ = 1, 3 do
+            local touching = false
+            for j = 2, #objects do
+                if objects[j].plate.x < objects[j - 1].plate.x + objects[j - 1].plate.w + 2 then touching = true end
+            end
+            if not touching and objectsRight() <= limitX then break end
+            fit = fit * 0.92
+            buildObjects(fit, math.max(0.7, fit))
+        end
+    end
+    local relics, pack = {}, nil
+    for _, o in ipairs(objects) do
+        if o.kind == "relic" then relics[#relics + 1] = o else pack = o end
     end
 
-    local packCol = nRelics + 1
-    local packCellX = leftX + innerPad + (packCol - 1) * (cellW + gapX)
-    local hookW, hookH = 10, 14
-    local hook = rect(packCellX + cellW / 2 - hookW / 2, band1.y + band1.h, hookW, hookH)
-    local packTop = hook.y + hook.h - 3
-    local packMaxH = board2.y - 6 - packTop          -- pendurado: nunca encosta na tábua
-    local packH = math.max(24, math.min(packMaxH, math.floor(cellW * fill * ShopLayout.PACK_RATIO)))
-    local packW = math.floor(packH / ShopLayout.PACK_RATIO)
-    local packR = rect(packCellX + cellW / 2 - packW / 2, packTop, packW, packH)
-    -- a célula do pacote começa no gancho (sob a banda da estante de cima)
-    local packCellY = band1.y + band1.h
-    local pack = {
-        kind = "pack", cell = rect(packCellX, packCellY, cellW, shelfBottom.y + shelfBottom.h - packCellY),
-        rect = packR, hook = hook, board = board2, band = band2, hanging = true,
-        -- o pacote não toca a tábua: a etiqueta pendura do beiral da tábua de
-        -- baixo como as das relíquias (mesma linha de leitura), nome ao lado
-        tag = hangingTag(packR, board2), label = labelRect(packR, band2),
-        lift = 0,
-    }
+    -- ===== sino e copo (esquerda da mesa) =====
+    local function counterObj(a, sizeK)
+        local fx, fy = toScreen(cv, a.x, a.y)
+        local size = math.floor(objSize0 * a.s * sizeK)
+        return {
+            art = { x = a.x, y = a.y }, depth = a.s,
+            rect = rect(fx - size / 2, fy - size, size, size),
+            foot = math.floor(fy), footX = math.floor(fx),
+            plate = plateFor(fx, fy, clamp(math.floor(size * 1.5), 96, 150), lineH),
+            lift = ShopLayout.LIFT,
+        }
+    end
+    local bell = counterObj(A.bell, 0.9)
+    local dice = counterObj(A.dice, 0.9)
 
-    -- ===== balcão: sino | copo de dados | livro-razão (apoiados no tampo) =====
-    local plank = rect(counter.x, counter.y + objH, counter.w, plankT)
-    local front = rect(counter.x, plank.y + plank.h, counter.w, frontH)
-    local objFoot = plank.y + math.floor(plankT * 0.6)   -- pé afunda no tampo (perspectiva)
-    local cpad = clamp(math.floor(counter.w * 0.04), 12, 48)
-    local bellS = objH
-    local diceS = objH
-    local ledgerW = math.floor(objH * 1.25)
-    local ledgerH = math.floor(ledgerW * 0.8)
-    local bell = rect(counter.x + cpad, objFoot - bellS, bellS, bellS)
-    local dice = rect(bell.x + bell.w + cpad * 1.6, objFoot - diceS, diceS, diceS)
-    local ledger = rect(counter.x + counter.w - cpad - ledgerW, objFoot - ledgerH, ledgerW, ledgerH)
-    counter.plank, counter.front, counter.foot = plank, front, objFoot
-    counter.bell, counter.dice, counter.ledger = bell, dice, ledger
-    -- etiquetas do balcão: penduradas do beiral do tampo, sob o objeto
-    counter.bellTag = { ax = bell.x + bell.w - math.floor(tagW * 0.5), ay = plank.y + plank.h,
-                        len = 4, w = tagW, h = tagH }
-    counter.ledgerTag = { ax = ledger.x + ledger.w - math.floor(tagW * 0.5), ay = plank.y + plank.h,
-                          len = 4, w = tagW, h = tagH }
+    -- ===== placa de título (sobre a pintura, canto superior esquerdo) =====
+    local sign = rect(margin, topBarH + 4, math.floor(sw * 0.42), 30)
+    local help = rect(sign.x + sign.w - 56, sign.y + 4, 22, 22)
+    local diceHelp = rect(sign.x + sign.w - 26, sign.y + 4, 22, 22)
 
-    -- ===== pergaminho (prego + rolo) — altura pelo CONTEÚDO, não pela tela =====
-    local nail = rect(scrollX + scrollW / 2 - 4, panelY + 4, 8, 10)
+    -- ===== pergaminho (prego + rolo + miolo + COMPRAR), altura pelo conteúdo =====
+    local nail = rect(scrollX + scrollW / 2 - 4, topBarH + 4, 8, 10)
     local rollerH = clamp(math.floor(scrollW * 0.10), 18, 40)
     local footH = math.floor(rollerH * 1.3)
     local inset = clamp(math.floor(scrollW * 0.13), 12, 48)
-    -- a carta no pergaminho é MENOR que a da prateleira (ela repete a arte;
-    -- quem decide é o texto) e o bloco de texto tem altura própria
-    local artH = math.floor(cardH * 0.78)
-    local textH = clamp(math.floor(panelH * 0.34), 150, 240)
-    local scrollH = math.min(panelH - (nail.y + nail.h - 2 - panelY) - 4,
-        rollerH + 8 + artH + textH + footH + 12)
+    local artH = math.floor(cards[1].rect.h * 0.95)
+    local textH = clamp(math.floor(sh * 0.26), 120, 190)
+    local buyH = 38
+    local maxH = continueBtn.y - 10 - (nail.y + nail.h - 2)
+    local scrollH = math.min(maxH, rollerH + 8 + artH + textH + buyH + 10 + footH + 12)
     local scroll = rect(scrollX, nail.y + nail.h - 2, scrollW, scrollH)
     scroll.nail = nail
     scroll.rollerH, scroll.footH, scroll.inset = rollerH, footH, inset
     scroll.artMaxH = artH
+    scroll.buy = rect(scroll.x + inset, scroll.y + scroll.h - footH - 8 - buyH, scroll.w - inset * 2, buyH)
     scroll.body = rect(scroll.x + inset, scroll.y + rollerH + 6,
-        scroll.w - inset * 2, scroll.h - rollerH - footH - 12)
+        scroll.w - inset * 2, scroll.buy.y - 8 - (scroll.y + rollerH + 6))
 
-    -- ===== lanterna: entre a prateleira e o pergaminho, na altura da estante =====
-    local lantern = rect(leftX + leftW + gap, shelfTop.y + 2, lanternW,
-        clamp(math.floor(lanternW * 1.6), 90, 160))
-
-    -- "?" das regras (ao lado do título, posição final derivada do texto no
-    -- draw) e "?" dos dados, no canto direito da placa.
-    local help = rect(sign.x + sign.w - 56, sign.y + 4, 22, 22)
-    local diceHelp = rect(sign.x + sign.w - 26, sign.y + 4, 22, 22)
+    -- lanterna pintada (ShopProps usa o rect pra mariposa/poeira; o sprite
+    -- não é desenhado: a chama já está na arte)
+    local lx, ly = toScreen(cv, A.lantern.x, A.lantern.y)
+    local lantern = rect(lx, ly, A.lantern.w * cv.s, A.lantern.h * cv.s)
+    local flx, fly = toScreen(cv, A.flame.x, A.flame.y)
+    lantern.flame = { x = math.floor(flx), y = math.floor(fly) }
 
     return {
-        sw = sw, sh = sh, wall = wall, sign = sign,
-        shelfTop = shelfTop, shelfBottom = shelfBottom, counter = counter,
-        scroll = scroll, lantern = lantern,
-        board1 = board1, board2 = board2, band1 = band1, band2 = band2,
-        cards = cards, relics = relics, pack = pack,
-        cardW = cardW, cardH = cardH, relicH = relicH, cellW = cellW,
-        leftW = leftW, tagW = tagW, tagH = tagH,
-        help = help, diceHelp = diceHelp,
+        sw = sw, sh = sh, wall = wall, cover = cv, art = A,
+        sign = sign, help = help, diceHelp = diceHelp,
+        cards = cards, relics = relics, pack = pack, objects = objects,
+        bell = bell, dice = dice,
+        scroll = scroll, continueBtn = continueBtn, lantern = lantern,
+        limitX = limitX,
+        cardW = cards[1].rect.w, cardH = cards[1].rect.h,
+        leftW = limitX,
     }
 end
 
 -- ============================================================================
--- VALIDAÇÃO — a prova que layout por acumulação nunca tem
+-- VALIDAÇÃO
 -- ============================================================================
 local function inside(outer, inner, tol)
     tol = tol or 1
@@ -286,129 +309,95 @@ local function inside(outer, inner, tol)
         and inner.x + inner.w <= outer.x + outer.w + tol
         and inner.y + inner.h <= outer.y + outer.h + tol
 end
-
 local function overlaps(a, b)
     return a.x < b.x + b.w and b.x < a.x + a.w and a.y < b.y + b.h and b.y < a.y + a.h
 end
-
-local function tagRect(tag)
-    return { x = tag.ax - tag.w / 2, y = tag.ay + tag.len, w = tag.w, h = tag.h }
-end
-ShopLayout.tagRect = tagRect
-
 local function fmt(r) return ("(%d,%d %dx%d)"):format(r.x, r.y, r.w, r.h) end
+local function union(a, b)
+    local x0, y0 = math.min(a.x, b.x), math.min(a.y, b.y)
+    local x1, y1 = math.max(a.x + a.w, b.x + b.w), math.max(a.y + a.h, b.y + b.h)
+    return { x = x0, y = y0, w = x1 - x0, h = y1 - y0 }
+end
 
 function ShopLayout.validate(L)
     local bad = {}
     local function fail(msg, ...) bad[#bad + 1] = msg:format(...) end
     local screen = { x = 0, y = 0, w = L.sw, h = L.sh }
+    local A, cv = L.art, L.cover
 
-    if not inside(screen, L.wall) then fail("parede %s fora da tela", fmt(L.wall)) end
-    for _, name in ipairs({ "sign", "shelfTop", "shelfBottom", "counter", "scroll", "lantern" }) do
-        if not inside(L.wall, L[name]) then
-            fail("zona %s %s escapa da parede %s", name, fmt(L[name]), fmt(L.wall))
+    -- pé no que está pintado
+    for i, c in ipairs(L.cards) do
+        local ax, ay = toArt(cv, c.footX, c.stand.y + c.stand.h)
+        if not pointInPoly(ax, ay, A.ledgeMask) then
+            fail("cavalete %d: base (%d,%d na arte) fora da borda do fundo", i, ax, ay)
+        end
+        if c.foot < c.stand.y or c.foot > c.stand.y + c.stand.h then fail("carta %d: pe fora do suporte", i) end
+        local reach = c.lift + ShopLayout.BADGE_RESERVE
+        local lifted = { x = c.rect.x, y = c.rect.y - reach, w = c.rect.w, h = c.rect.h + reach }
+        if not inside(L.wall, lifted) then fail("carta %d levantada %s escapa da parede", i, fmt(lifted)) end
+        if c.plate.x + c.plate.w > L.limitX then fail("placa da carta %d invade o pergaminho", i) end
+        if c.rect.w < 40 or c.rect.h < 60 then fail("carta %d ilegivel (%dx%d)", i, c.rect.w, c.rect.h) end
+        if i > 1 then
+            local prev = L.cards[i - 1]
+            if overlaps(prev.plate, c.plate) then fail("placas das cartas %d e %d se tocam", i - 1, i) end
+            if prev.rect.x + prev.rect.w > c.rect.x + 2 then fail("cartas %d e %d se sobrepoem", i - 1, i) end
         end
     end
-    if L.scroll.nail and not inside(L.wall, L.scroll.nail) then fail("prego fora da parede") end
+    local all = {}
+    for j, o in ipairs(L.objects) do
+        local ax, ay = toArt(cv, o.footX, o.foot)
+        if not pointInPoly(ax, ay, A.tableMask) then
+            fail("objeto %d: pe (%d,%d na arte) fora do tampo", j, ax, ay)
+        end
+        if not inside(L.wall, o.rect) then fail("objeto %d fora da parede", j) end
+        if o.plate.x + o.plate.w > L.limitX then fail("placa do objeto %d invade o pergaminho", j) end
+        if o.rect.w < 28 then fail("objeto %d minusculo (%dpx)", j, o.rect.w) end
+        if j > 1 and overlaps(L.objects[j - 1].plate, o.plate) then fail("placas dos objetos %d e %d se tocam", j - 1, j) end
+        all[#all + 1] = { name = "objeto " .. j, r = union(o.rect, o.plate) }
+    end
+    for _, e in ipairs({ { "sino", L.bell }, { "copo", L.dice } }) do
+        local o = e[2]
+        local ax, ay = toArt(cv, o.footX, o.foot)
+        if not pointInPoly(ax, ay, A.tableMask) then fail("%s: pe (%d,%d na arte) fora do tampo", e[1], ax, ay) end
+        all[#all + 1] = { name = e[1], r = union(o.rect, o.plate) }
+    end
+    if overlaps(union(L.bell.rect, L.bell.plate), union(L.dice.rect, L.dice.plate)) then
+        fail("sino e copo se sobrepoem")
+    end
+    -- mesa x cartas: um objeto da mesa não pode cobrir uma carta
+    for _, e in ipairs(all) do
+        for i, c in ipairs(L.cards) do
+            if overlaps(e.r, union(c.rect, c.plate)) then fail("%s cobre a carta %d", e.name, i) end
+        end
+    end
+
+    -- coluna da direita
+    for _, name in ipairs({ "scroll", "continueBtn", "sign" }) do
+        if not inside(L.wall, L[name]) then fail("%s %s fora da parede", name, fmt(L[name])) end
+    end
+    if not inside(L.wall, L.scroll.nail) then fail("prego fora da parede") end
+    if overlaps(L.scroll, L.continueBtn) then fail("pergaminho invade o CONTINUAR") end
+    if L.scroll.body.w < 130 then fail("pergaminho estreito demais (%dpx)", L.scroll.body.w) end
+    if L.scroll.body.h < L.scroll.artMaxH + 50 then fail("pergaminho baixo demais pro conteudo (%d)", L.scroll.body.h) end
+    if not inside(L.scroll, L.scroll.buy) then fail("COMPRAR fora do pergaminho") end
+    if overlaps(L.scroll.buy, L.scroll.body) then fail("COMPRAR invade o texto do pergaminho") end
+    for _, e in ipairs(all) do
+        if overlaps(e.r, L.scroll) then fail("%s invade o pergaminho", e.name) end
+        if overlaps(e.r, L.continueBtn) then fail("%s invade o CONTINUAR", e.name) end
+        if overlaps(e.r, L.sign) then fail("%s invade a placa de titulo", e.name) end
+    end
+    for i, c in ipairs(L.cards) do
+        local r = union(c.rect, c.plate)
+        if overlaps(r, L.scroll) then fail("carta %d invade o pergaminho", i) end
+        if overlaps({ x = r.x, y = r.y - ShopLayout.BADGE_RESERVE - c.lift, w = r.w, h = r.h }, L.sign) then
+            fail("carta %d (com selo) invade a placa de titulo", i)
+        end
+    end
     for _, name in ipairs({ "help", "diceHelp" }) do
         if not inside(L.sign, L[name]) then fail("'?' (%s) fora da placa", name) end
     end
-    if overlaps(L.help, L.diceHelp) then fail("os dois '?' da placa se sobrepoem") end
-
-    -- zonas disjuntas e em ordem
-    if overlaps(L.shelfTop, L.shelfBottom) then fail("estante de cima invade a prateleira de baixo") end
-    if L.counter.y < L.shelfBottom.y + L.shelfBottom.h then fail("balcao (y=%d) sobe na prateleira (fim %d)", L.counter.y, L.shelfBottom.y + L.shelfBottom.h) end
-    if L.sign.y + L.sign.h > L.shelfTop.y then fail("placa invade a estante") end
-    for _, name in ipairs({ "shelfTop", "shelfBottom", "counter", "sign" }) do
-        if overlaps(L[name], L.scroll) then fail("%s invade o pergaminho", name) end
-        if overlaps(L[name], L.lantern) then fail("%s invade a lanterna", name) end
-    end
-    if overlaps(L.lantern, L.scroll) then fail("lanterna invade o pergaminho") end
-    if L.scroll.body.w < 130 then fail("pergaminho estreito demais (%dpx)", L.scroll.body.w) end
-    if L.scroll.body.h < L.scroll.artMaxH + 60 then fail("pergaminho baixo demais pro conteudo (%d)", L.scroll.body.h) end
-    -- espaço morto: nenhum vão entre bandas da coluna esquerda passa de 60px
-    local gapTB = L.shelfBottom.y - (L.shelfTop.y + L.shelfTop.h)
-    local gapBC = L.counter.y - (L.shelfBottom.y + L.shelfBottom.h)
-    if gapTB > 70 then fail("vao estante/prateleira de %dpx (teto 70)", gapTB) end
-    if gapBC > 70 then fail("vao prateleira/balcao de %dpx (teto 70)", gapBC) end
-    local tail = L.wall.y + L.wall.h - (L.counter.y + L.counter.h)
-    if tail < -1 then fail("balcao sai da parede por %dpx", -tail) end
-    if tail > math.max(70, L.wall.h * 0.2) then fail("faixa morta sob o balcao: %dpx", tail) end
-
-    -- cartas: suporte na tábua, pé no suporte, retângulo (levantado) na zona,
-    -- etiqueta pendurada do beiral e rótulo na banda sem se tocarem
-    local prev
-    for i, c in ipairs(L.cards) do
-        local s, b = c.stand, c.board
-        if s.y + s.h < b.y or s.y + s.h > b.y + b.h then
-            fail("carta %d: suporte (base y=%d) fora da tabua [%d,%d]", i, s.y + s.h, b.y, b.y + b.h)
-        end
-        if c.foot < s.y or c.foot > s.y + s.h then
-            fail("carta %d: pe (y=%d) fora do suporte [%d,%d]", i, c.foot, s.y, s.y + s.h)
-        end
-        local reach = c.lift + ShopLayout.BADGE_RESERVE
-        local lifted = { x = c.rect.x, y = c.rect.y - reach, w = c.rect.w, h = c.rect.h + reach }
-        if not inside(L.shelfTop, lifted) then fail("carta %d levantada + selo %s escapa da estante %s", i, fmt(lifted), fmt(L.shelfTop)) end
-        if not inside(c.cell, c.rect, 0) then fail("carta %d %s fora da celula %s", i, fmt(c.rect), fmt(c.cell)) end
-        local tr = tagRect(c.tag)
-        if c.tag.ay ~= b.y + b.h then fail("carta %d: etiqueta nao pendura do beiral da tabua", i) end
-        if not inside(c.band, tr, 2) then fail("carta %d: etiqueta %s fora da banda %s", i, fmt(tr), fmt(c.band)) end
-        if overlaps(tr, c.rect) then fail("carta %d: etiqueta cobre a carta", i) end
-        if not inside(c.band, c.label, 1) then fail("carta %d: rotulo fora da banda", i) end
-        if c.label.x + c.label.w > tr.x then fail("carta %d: rotulo passa por baixo da etiqueta", i) end
-        if prev and overlaps(prev, c.rect) then fail("cartas %d e %d se sobrepoem", i - 1, i) end
-        if c.rect.w < 40 or c.rect.h < 60 then fail("carta %d ilegivel (%dx%d)", i, c.rect.w, c.rect.h) end
-        prev = c.rect
-    end
-
-    prev = nil
-    for j, r in ipairs(L.relics) do
-        if r.foot < r.board.y or r.foot > r.board.y + r.board.h then
-            fail("reliquia %d: pe (y=%d) fora da tabua [%d,%d]", j, r.foot, r.board.y, r.board.y + r.board.h)
-        end
-        local lifted = { x = r.rect.x, y = r.rect.y - r.lift, w = r.rect.w, h = r.rect.h + r.lift }
-        if not inside(L.shelfBottom, lifted) then fail("reliquia %d levantada %s escapa da prateleira %s", j, fmt(lifted), fmt(L.shelfBottom)) end
-        if not inside(r.cell, r.rect, 0) then fail("reliquia %d fora da celula", j) end
-        local tr = tagRect(r.tag)
-        if not inside(r.band, tr, 2) then fail("reliquia %d: etiqueta fora da banda", j) end
-        if overlaps(tr, r.rect) then fail("reliquia %d: etiqueta cobre o objeto", j) end
-        if r.label.x + r.label.w > tr.x then fail("reliquia %d: rotulo passa por baixo da etiqueta", j) end
-        if prev and overlaps(prev, r.rect) then fail("reliquias %d e %d se sobrepoem", j - 1, j) end
-        if r.rect.w < 30 or r.rect.h < 30 then fail("reliquia %d minuscula (%dx%d)", j, r.rect.w, r.rect.h) end
-        prev = r.rect
-    end
-
-    local p = L.pack
-    if p.rect.y > p.hook.y + p.hook.h then fail("pacote solto do gancho (y=%d > %d)", p.rect.y, p.hook.y + p.hook.h) end
-    if p.rect.y + p.rect.h >= p.board.y then fail("pacote pendurado encosta na tabua (fim %d >= %d)", p.rect.y + p.rect.h, p.board.y) end
-    if not inside(p.cell, p.rect, 0) then fail("pacote %s fora da celula %s", fmt(p.rect), fmt(p.cell)) end
-    if prev and overlaps(prev, p.rect) then fail("pacote sobrepoe a ultima reliquia") end
-    if p.rect.w < 24 then fail("pacote minusculo (%dpx)", p.rect.w) end
-    local ptr = tagRect(p.tag)
-    if overlaps(ptr, p.rect) then fail("pacote: etiqueta cobre o pacote") end
-    if not inside(p.band, ptr, 2) then fail("pacote: etiqueta fora da banda") end
-
-    -- balcão: objetos apoiados no tampo, em ordem, sem se tocar; etiquetas na frente
-    local C = L.counter
-    local order = { { "sino", C.bell }, { "dados", C.dice }, { "livro", C.ledger } }
-    local last
-    for _, e in ipairs(order) do
-        local name, r = e[1], e[2]
-        if not inside(C, r) then fail("%s %s fora do balcao %s", name, fmt(r), fmt(C)) end
-        local foot = r.y + r.h
-        if foot < C.plank.y or foot > C.plank.y + C.plank.h then
-            fail("%s: pe (y=%d) fora do tampo [%d,%d]", name, foot, C.plank.y, C.plank.y + C.plank.h)
-        end
-        if r.h < 32 then fail("%s miudo (%dpx)", name, r.h) end
-        if last and r.x < last.r.x + last.r.w + 4 then fail("%s encosta em %s", name, last.name) end
-        last = { name = name, r = r }
-    end
-    for _, e in ipairs({ { "sino", C.bellTag }, { "livro", C.ledgerTag } }) do
-        local tr = tagRect(e[2])
-        if not inside(C.front, tr, 2) then fail("etiqueta do %s %s fora da frente do balcao %s", e[1], fmt(tr), fmt(C.front)) end
-    end
-    if overlaps(tagRect(C.bellTag), tagRect(C.ledgerTag)) then fail("etiquetas do balcao se tocam") end
-
+    if overlaps(L.help, L.diceHelp) then fail("os dois '?' se sobrepoem") end
+    if not inside(screen, L.wall) then fail("parede fora da tela") end
     return bad
 end
 

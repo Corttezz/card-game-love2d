@@ -240,6 +240,8 @@ return {
             hint_idle   = "One roll per visit. Click to wager.",
             hint_rolled = "Rolled this visit: {a} and {b}, total {sum}.",
         },
+        bell_plate = "NEW OFFERS",
+        dice_plate = "DICE",
         sale_tag  = "TODAY'S DEAL",
         sale_hint = "Today's deal: {pct}% off on this visit.",
     },

@@ -451,6 +451,215 @@ def cmd_sheet(tag):
           [f"fx_bell_{i}.png" for i in range(1, 9)], cols=3, scale=0.5)
 
 
+# ============================================================================
+# v3b: a PINTURA do balcão em perspectiva (docs/plan/shop_reference_gpt.png)
+# ============================================================================
+SCENE_DIR = os.path.join(RAW_DIR, "scene")
+SCENE_JOBS = os.path.join(SCENE_DIR, "lojacena_scene_jobs.json")
+REF = os.path.join(ROOT, "docs/plan/shop_reference_gpt.png")
+
+SCENE_PROMPT = (
+    "pixel art interior of a medieval relic merchant shop seen in three-quarter "
+    "perspective: a large dark wooden counter top fills the lower two thirds of "
+    "the picture running diagonally from lower-left to upper-right, its surface "
+    "EMPTY and clean; behind it a raised wooden ledge in front of tall shelves "
+    "crowded with glass jars, bottles, potions and small chests; a lit candle in "
+    "a brass holder at the left, a hanging iron lantern glowing at the upper "
+    "right, a red cloth with gold trim draped over the counter edge, stacked old "
+    "books and a few gold coins at the lower left corner, warm candlelight from "
+    "the upper left, deep shadows, limited sepia palette with warm gold and dark "
+    "red accents, crisp 1px outlines, no anti-aliasing, no text, no letters, no "
+    "signs, no cards, no people")
+
+
+def scene_queue(which=None):
+    import base64
+    os.makedirs(SCENE_DIR, exist_ok=True)
+    jobs = json.load(open(SCENE_JOBS)) if os.path.exists(SCENE_JOBS) else {}
+    ref64 = base64.b64encode(open(REF, "rb").read()).decode()
+    specs = {
+        # pro 16:9 (688x384 = 1 candidata), com a referência como guia de COMPOSIÇÃO
+        "pro_ref": ("create_image_pro", {
+            "description": SCENE_PROMPT, "width": 688, "height": 384,
+            "no_background": False,
+            "reference_images": [{"base64": ref64,
+                                  "usage": "scene composition, camera angle and lighting only; leave the counter top and the back ledge EMPTY, no cards, no objects, no text"}],
+        }),
+        # pro 16:9 sem referência (prompt puro)
+        "pro_plain": ("create_image_pro", {
+            "description": SCENE_PROMPT, "width": 688, "height": 384,
+            "no_background": False,
+        }),
+        # pixflux 400x225 (barato, 1 geração)
+        "flux": ("create_image_pixflux", {
+            "description": SCENE_PROMPT, "width": 400, "height": 224,
+            "no_background": False, "view": "low top-down",
+            "shading": "detailed shading", "text_guidance_scale": 9,
+        }),
+    }
+    for name, (tool_name, args) in specs.items():
+        if which and name not in which:
+            continue
+        text = F.tool_text(F.rpc("tools/call", {"name": tool_name, "arguments": args}, timeout=300))
+        m = re.search(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", text)
+        jobs[name] = m.group(0) if m else None
+        print(f"[scene queue] {name}: {jobs[name]}  ({text[:100]!r})", flush=True)
+        json.dump(jobs, open(SCENE_JOBS, "w"), indent=1)
+        time.sleep(2)
+
+
+def scene_poll(wait=True):
+    jobs = json.load(open(SCENE_JOBS))
+    pending = {n: j for n, j in jobs.items() if j}
+    t0 = time.time()
+    while pending and time.time() - t0 < 1500:
+        for name, jid in list(pending.items()):
+            dest = os.path.join(SCENE_DIR, f"{name}.png")
+            if os.path.exists(dest):
+                del pending[name]
+                continue
+            try:
+                text = F.tool_text(F.rpc("tools/call", {"name": "get_image", "arguments": {"job_id": jid}}))
+            except Exception as e:  # noqa
+                print(f"[scene poll] {name}: erro {e}", flush=True)
+                continue
+            low = text.lower()
+            if "status: failed" in low or "status: error" in low:
+                print(f"[scene poll] {name}: FALHOU {text[:200]!r}", flush=True)
+                del pending[name]
+            elif "completed" in low:
+                if _download(text, dest):
+                    print(f"[scene poll] {name}: salvo {dest}", flush=True)
+                else:
+                    print(f"[scene poll] {name}: sem URL: {text[:300]!r}", flush=True)
+                del pending[name]
+        if pending and wait:
+            time.sleep(15)
+        elif not wait:
+            break
+    print("[scene poll] pendentes:", list(pending))
+
+
+# ============================================================================
+# v3b: OBJETOS novos da mesa (relíquias, pacotes, sino) — mesma luz e ângulo
+# ============================================================================
+OBJ_DIR = os.path.join(RAW_DIR, "objects")
+OBJ_JOBS = os.path.join(OBJ_DIR, "lojacena_obj_jobs.json")
+OBJ_OUT = os.path.join(OUT_DIR, "objects")
+
+# "candlelight" no prompt fazia o modelo DESENHAR uma vela ao lado de cada
+# objeto (12 de 14 vieram com vela): a luz é descrita sem nomear a fonte.
+OBJ_STYLE = ("single object alone floating on a fully transparent background, "
+             "seen in three-quarter view from the front-left, lit warmly from "
+             "the upper left, limited sepia palette with warm gold and dark red "
+             "accents, crisp 1px dark outline, no anti-aliasing, pixel art, no "
+             "table, no floor, no base plank, no shadow plate, no candle, no "
+             "flame, no fire, nothing else in the picture")
+
+OBJECTS = {
+    "remove_card":      "pair of iron scissors lying on top of a playing card cut in half",
+    "joker_slot":       "small ornate wooden display stand holding a jester playing card",
+    "health_upgrade":   "red glass potion flask with a cork and a small gold cross label",
+    "mana_upgrade":     "cluster of glowing blue crystals on a small stone base",
+    "forge_card":       "small iron anvil with a hammer resting on it and a glowing ember at its foot",
+    "duplicate_card":   "small wooden hand press with two identical playing cards under it",
+    "card_draw_upgrade": "open leather-bound grimoire book with faintly glowing runes on the pages",
+    "interest_cap":     "small iron-bound treasure chest, lid slightly open, gold coins spilling",
+    "pack_standard":    "bundle of parchment tied with leather straps and a red wax seal",
+    "pack_buffoon":     "bundle wrapped in red and gold striped cloth tied with cord, a small jester mask on the wax seal",
+    "pack_arcana":      "bundle wrapped in deep blue cloth tied with cord, a golden eye on the wax seal",
+    "pack_celestial":   "bundle wrapped in midnight blue cloth tied with silver cord, a silver crescent moon seal",
+    "pack_spectral":    "bundle wrapped in pale green shroud cloth tied with cord, a bone skull seal",
+    "bell":             "brass service bell on a small dark wooden base",
+}
+OBJ_SIZE = {"pack_standard": (64, 72), "pack_buffoon": (64, 72), "pack_arcana": (64, 72),
+            "pack_celestial": (64, 72), "pack_spectral": (64, 72)}
+
+
+def objects_queue(which=None, model="pixflux"):
+    os.makedirs(OBJ_DIR, exist_ok=True)
+    jobs = json.load(open(OBJ_JOBS)) if os.path.exists(OBJ_JOBS) else {}
+    for name, desc in OBJECTS.items():
+        if which and name not in which:
+            continue
+        w, h = OBJ_SIZE.get(name, (64, 64))
+        if model == "pixen":
+            # pixen: sprite limpo, menos propenso a inventar vela ao lado
+            args = {"description": desc + ", " + OBJ_STYLE, "width": w, "height": h,
+                    "no_background": True, "outline": "single color black outline",
+                    "view": "low top-down", "detail": "medium detail"}
+            tool_name = "create_image_pixen"
+        else:
+            args = {"description": desc + ", " + OBJ_STYLE, "width": w, "height": h,
+                    "no_background": True, "outline": "single color black outline",
+                    "shading": "medium shading", "view": "low top-down",
+                    "text_guidance_scale": 9}
+            tool_name = "create_image_pixflux"
+        text = F.tool_text(F.rpc("tools/call", {"name": tool_name, "arguments": args}))
+        m = re.search(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", text)
+        jobs[name] = m.group(0) if m else None
+        print(f"[obj queue] {name}: {jobs[name]}", flush=True)
+        json.dump(jobs, open(OBJ_JOBS, "w"), indent=1)
+        time.sleep(1.5)
+
+
+def objects_poll(wait=True):
+    jobs = json.load(open(OBJ_JOBS))
+    pending = {n: j for n, j in jobs.items() if j}
+    t0 = time.time()
+    while pending and time.time() - t0 < 900:
+        for name, jid in list(pending.items()):
+            dest = os.path.join(OBJ_DIR, f"{name}.png")
+            if os.path.exists(dest):
+                del pending[name]
+                continue
+            try:
+                text = F.tool_text(F.rpc("tools/call", {"name": "get_image", "arguments": {"job_id": jid}}))
+            except Exception as e:  # noqa
+                print(f"[obj poll] {name}: erro {e}", flush=True)
+                continue
+            low = text.lower()
+            if "status: failed" in low or "status: error" in low:
+                print(f"[obj poll] {name}: FALHOU {text[:200]!r}", flush=True)
+                del pending[name]
+            elif "completed" in low:
+                if _download(text, dest):
+                    print(f"[obj poll] {name}: salvo", flush=True)
+                del pending[name]
+        if pending and wait:
+            time.sleep(8)
+        elif not wait:
+            break
+    print("[obj poll] pendentes:", list(pending))
+
+
+def objects_sheet():
+    from PIL import Image
+    names = [n for n in OBJECTS if os.path.exists(os.path.join(OBJ_DIR, f"{n}.png"))]
+    ims = [Image.open(os.path.join(OBJ_DIR, f"{n}.png")).convert("RGBA") for n in names]
+    S = 3
+    cols = 5
+    cw, ch = 72 * S, 80 * S
+    rows = (len(ims) + cols - 1) // cols
+    sheet = Image.new("RGBA", (cols * cw, rows * ch), (60, 45, 30, 255))
+    for i, im in enumerate(ims):
+        r = im.resize((im.width * S, im.height * S), Image.NEAREST)
+        sheet.paste(r, ((i % cols) * cw + 8, (i // cols) * ch + 8), r)
+    dest = os.path.join(OBJ_DIR, "lojacena_objects_sheet.png")
+    sheet.save(dest)
+    print("[obj sheet]", dest, names)
+
+
+def objects_install(names=None):
+    os.makedirs(OBJ_OUT, exist_ok=True)
+    for n in (names or OBJECTS):
+        src = os.path.join(OBJ_DIR, f"{n}.png")
+        if os.path.exists(src):
+            from PIL import Image
+            Image.open(src).convert("RGBA").save(os.path.join(OBJ_OUT, f"{n}.png"))
+            print("[obj install]", n)
+
+
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "help"
     if cmd == "queue":
@@ -463,5 +672,23 @@ if __name__ == "__main__":
         pixels()
     elif cmd == "sheet":
         cmd_sheet(sys.argv[2] if len(sys.argv) > 2 else "")
+    elif cmd == "objects":
+        sub = sys.argv[2] if len(sys.argv) > 2 else "queue"
+        if sub == "queue":
+            objects_queue(sys.argv[3:] or None)
+        elif sub == "pixen":
+            objects_queue(sys.argv[3:] or None, model="pixen")
+        elif sub == "sheet":
+            objects_sheet()
+        elif sub == "install":
+            objects_install(sys.argv[3:] or None)
+        else:
+            objects_poll(wait="--nowait" not in sys.argv)
+    elif cmd == "scene":
+        sub = sys.argv[2] if len(sys.argv) > 2 else "queue"
+        if sub == "queue":
+            scene_queue(sys.argv[3:] or None)
+        else:
+            scene_poll(wait="--nowait" not in sys.argv)
     else:
         print(__doc__)

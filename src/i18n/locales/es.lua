@@ -238,6 +238,8 @@ return {
             hint_idle   = "Una tirada por visita. Haz clic para apostar.",
             hint_rolled = "Tirada hecha: {a} y {b}, suma {sum}.",
         },
+        bell_plate = "NUEVAS OFERTAS",
+        dice_plate = "DADOS",
         sale_tag  = "OFERTA DEL DÍA",
         sale_hint = "Oferta del día: {pct}% más barata en esta visita.",
     },

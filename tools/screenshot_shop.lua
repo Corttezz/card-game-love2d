@@ -328,6 +328,8 @@ function M.run(phase)
     -- ===== medicao de quadro =====
     if perfRun then
         local frames = tonumber(os.getenv("SHOP_FRAMES")) or 300
+        -- sem vsync: com ele a medida vira 1/Hz do monitor (4,17 ms a 240 Hz)
+        if love.window.setVSync then love.window.setVSync(0) end
         love.mouse.setPosition(6, 6)
         simulate(1.5)
         local function measure(label)
@@ -378,6 +380,9 @@ function M.run(phase)
             local mx, my = love.mouse.getPosition()
             screen:mousepressed(mx, my, 1)
             screen:mousereleased(mx, my, 1)
+            -- v3b: clicar seleciona; a compra é no COMPRAR do pergaminho
+            simulate(0.2)
+            if screen.buyButton and screen.buyButton.onClick then screen.buyButton.onClick() end
         end
         -- compra de carta
         local card = itemOfKind("card", 2)

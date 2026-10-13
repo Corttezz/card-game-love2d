@@ -1,16 +1,18 @@
 -- tools/test_shop_layout.lua
--- Trava GEOMÉTRICA do Balcão do Mercador (Loja v3, src/ui/shop/ShopLayout.lua).
+-- Trava GEOMÉTRICA do Balcão do Mercador em perspectiva (Loja v3b,
+-- src/ui/shop/ShopLayout.lua).
 --
--- 1) ShopLayout.validate em 7 tamanhos (800x600 até 2560x1440): zonas
---    disjuntas (estantes / balcão / pergaminho / lanterna), PÉ de todo objeto
---    dentro da tábua (ou do suporte que está na tábua), pacote PENDURADO sem
---    tocar a prateleira, nada fora da tela, carta legível.
+-- 1) ShopLayout.validate em 9 tamanhos (800x600 até 2560x1440, mais o Steam
+--    Deck e o 4:3 a k=0,75): pé de todo cavalete na BORDA DO FUNDO pintada e
+--    de todo objeto no TAMPO pintado (máscaras em coordenadas da arte),
+--    nada se sobrepõe (placas, objetos x cartas, pergaminho, CONTINUAR,
+--    placa de título), nada fora da tela, carta legível.
 -- 2) A tela REAL (CardRewardScreen em modo shop) nasce e CRESCE/ENCOLHE com
 --    a janela falsificada, nos 5 idiomas, e continua íntegra: o caminho do
 --    love.resize (FontManager/CardFrame limpos + updateLayout + rebuild).
--- 3) Quando falta espaço quem cede é a ESCALA dos objetos, nunca a posição
---    das bandas (800x600 tem carta menor que 1920x1080, com a mesma ordem
---    placa → estante → prateleira → balcão).
+-- 3) Quando falta largura (4:3), a DIAGONAL se comprime (espaçamento e
+--    escala cedem), nunca a ordem nem a profundidade (escala decresce da
+--    esquerda pra direita).
 --
 --   love . test_one test_shop_layout
 
@@ -25,7 +27,7 @@ local I18n             = require("src.i18n.I18n")
 
 local SIZES = {
     { 800, 600 }, { 1024, 768 }, { 1280, 720 }, { 1366, 768 },
-    { 1600, 900 }, { 1920, 1080 }, { 2560, 1440 },
+    { 1600, 900 }, { 1920, 1080 }, { 2560, 1440 }, { 1067, 800 }, { 1280, 800 },
 }
 
 local realW, realH = love.graphics.getWidth, love.graphics.getHeight
@@ -48,8 +50,6 @@ local function pump(screen, secs)
     end
 end
 
--- O que o jogo faz no love.resize (main.lua): limpa fontes/canvas, recalcula
--- o layout e reconstrói as instâncias.
 local function resizeTo(screen, w, h)
     fakeW, fakeH = w, h
     FontManager.clearCache()
@@ -66,40 +66,46 @@ local function first(bad) return #bad > 0 and bad[1] or "ok" end
 function M.run()
     TK.bootstrap()
     I18n.init()
-    local t = TK.new("loja v3: geometria do balcao (zonas, pe na tabua, 7 tamanhos x 5 idiomas)")
+    local t = TK.new("loja v3b: geometria do balcao em perspectiva (9 tamanhos x 5 idiomas)")
 
     -- ===== 1) layout puro =====
     for _, s in ipairs(SIZES) do
         local L = ShopLayout.layout(s[1], s[2], 4, 3)
         local bad = ShopLayout.validate(L)
         t:eq(("%dx%d: layout puro integro (%s)"):format(s[1], s[2], first(bad)), #bad, 0)
-        -- ordem das bandas nunca muda
-        t:truthy(("%dx%d: placa > estante > prateleira > balcao"):format(s[1], s[2]),
-            L.sign.y < L.shelfTop.y and L.shelfTop.y + L.shelfTop.h <= L.shelfBottom.y
-            and L.shelfBottom.y + L.shelfBottom.h <= L.counter.y)
-        t:truthy(("%dx%d: pergaminho a direita de tudo"):format(s[1], s[2]),
-            L.scroll.x >= L.counter.x + L.counter.w and L.scroll.x >= L.lantern.x + L.lantern.w)
-        -- o pacote pendurado nunca toca a tabua de baixo
-        t:truthy(("%dx%d: pacote pendurado nao toca a prateleira"):format(s[1], s[2]),
-            L.pack.rect.y + L.pack.rect.h < L.board2.y)
-        -- todo objeto do balcao com o pe no tampo
-        for _, k in ipairs({ "bell", "dice", "ledger" }) do
-            local r = L.counter[k]
-            t:truthy(("%dx%d: %s apoiado no tampo"):format(s[1], s[2], k),
-                r.y + r.h >= L.counter.plank.y and r.y + r.h <= L.counter.plank.y + L.counter.plank.h)
+        -- profundidade: a escala decresce da esquerda pra direita (diagonal)
+        t:truthy(("%dx%d: cartas encolhem pro fundo"):format(s[1], s[2]),
+            L.cards[1].rect.h > L.cards[#L.cards].rect.h and L.cards[1].rect.x < L.cards[#L.cards].rect.x)
+        t:truthy(("%dx%d: objetos encolhem pro fundo e sobem"):format(s[1], s[2]),
+            L.objects[1].rect.w > L.objects[#L.objects].rect.w and L.objects[1].foot > L.objects[#L.objects].foot)
+        -- tudo da mesa à esquerda do pergaminho
+        for j, o in ipairs(L.objects) do
+            t:truthy(("%dx%d: objeto %d a esquerda do pergaminho"):format(s[1], s[2], j),
+                o.plate.x + o.plate.w <= L.scroll.x)
         end
+        t:truthy(("%dx%d: COMPRAR dentro do pergaminho, acima do rodape"):format(s[1], s[2]),
+            L.scroll.buy.y + L.scroll.buy.h <= L.scroll.y + L.scroll.h - L.scroll.footH + 2)
+        t:truthy(("%dx%d: CONTINUAR no canto inferior direito"):format(s[1], s[2]),
+            L.continueBtn.x + L.continueBtn.w <= s[1] and L.continueBtn.y + L.continueBtn.h <= s[2]
+            and L.continueBtn.x > s[1] * 0.6 and L.continueBtn.y > s[2] * 0.8)
     end
-    -- quem cede e a escala: a carta encolhe em 800x600, as bandas ficam
-    local small = ShopLayout.layout(800, 600, 4, 3)
-    local big = ShopLayout.layout(1920, 1080, 4, 3)
-    t:truthy("800x600 tem carta menor que 1920x1080", small.cardW < big.cardW)
-    t:truthy("a carta nunca fica ilegivel (>= 60px) nem em 800x600", small.cardW >= 60)
-    -- menos reliquias / mais cartas tambem fecham
-    for _, cfg in ipairs({ { 4, 2 }, { 4, 0 }, { 5, 3 }, { 3, 3 } }) do
+    -- quem cede e a escala/espacamento: 4:3 tem carta menor que 16:9
+    local narrow = ShopLayout.layout(1024, 768, 4, 3)
+    local wide = ShopLayout.layout(1366, 768, 4, 3)
+    t:truthy("4:3 comprime a diagonal (ultima carta mais a esquerda que em 16:9)",
+        narrow.cards[4].rect.x < wide.cards[4].rect.x)
+    t:truthy("a carta nunca fica ilegivel (>= 60px) nem em 800x600",
+        ShopLayout.layout(800, 600, 4, 3).cards[1].rect.w >= 60)
+    for _, cfg in ipairs({ { 4, 2 }, { 4, 0 }, { 3, 3 } }) do
         local L = ShopLayout.layout(1024, 768, cfg[1], cfg[2])
         local bad = ShopLayout.validate(L)
         t:eq(("%d cartas + %d reliquias: integro (%s)"):format(cfg[1], cfg[2], first(bad)), #bad, 0)
     end
+    -- pé dentro das máscaras pintadas (ponto-no-polígono funciona)
+    local A = ShopLayout.ART
+    t:truthy("centro do tampo esta no tampo", ShopLayout.pointInPoly(330, 250, A.tableMask))
+    t:falsy("a caveira (canto) nao esta no tampo", ShopLayout.pointInPoly(40, 150, A.tableMask))
+    t:truthy("meio da borda do fundo esta na borda", ShopLayout.pointInPoly(260, 165, A.ledgeMask))
 
     -- ===== 2) a tela real: nasce pequena e cresce, nos 5 idiomas =====
     installFakeWindow()
@@ -116,25 +122,25 @@ function M.run()
             t:eq(("%s 800x600: loja integra ao NASCER (%s)"):format(code, first(bad0)), #bad0, 0)
             t:truthy(code .. ": a cena existe", screen.scene ~= nil and screen.scene.L ~= nil)
             t:eq(code .. ": 8 slots (4 cartas + 3 reliquias + 1 pacote)", screen.slotCount, 8)
+            t:truthy(code .. ": COMPRAR existe", screen.buyButton ~= nil)
             for _, s in ipairs(SIZES) do
                 resizeTo(screen, s[1], s[2])
                 pump(screen, 0.05)
                 local bad = screen:validateLayout()
                 t:eq(("%s %dx%d apos resize (%s)"):format(code, s[1], s[2], first(bad)), #bad, 0)
-                -- os objetos acompanharam a tabua (pe no suporte / na tabua)
                 for _, it in ipairs(screen.scene.items) do
                     if it.rect and it.kind == "card" then
-                        t:truthy(("%s %dx%d: carta %d apoiada no suporte"):format(code, s[1], s[2], it.slot),
+                        t:truthy(("%s %dx%d: carta %d apoiada no cavalete"):format(code, s[1], s[2], it.slot),
                             it.foot >= it.geom.stand.y and it.foot <= it.geom.stand.y + it.geom.stand.h)
                     end
                 end
-                -- os botoes invisiveis do balcao cobrem os objetos
-                local C = screen.scene.L.counter
-                t:truthy(("%s %dx%d: livro-razao = botao Continuar"):format(code, s[1], s[2]),
-                    screen.skipButton and screen.skipButton.x == C.ledger.x and screen.skipButton.y == C.ledger.y)
-                t:truthy(("%s %dx%d: sino = botao Novas ofertas"):format(code, s[1], s[2]),
-                    screen.refreshButton and screen.refreshButton.x == C.bell.x)
-                -- desenhar nao lanca em nenhum tamanho
+                local L = screen.scene.L
+                t:truthy(("%s %dx%d: CONTINUAR = botao Continuar"):format(code, s[1], s[2]),
+                    screen.skipButton and screen.skipButton.x == L.continueBtn.x and screen.skipButton.y == L.continueBtn.y)
+                t:truthy(("%s %dx%d: sino = hitbox Novas ofertas"):format(code, s[1], s[2]),
+                    screen.refreshButton and screen.refreshButton.x == L.bell.rect.x)
+                t:truthy(("%s %dx%d: COMPRAR no rodape do pergaminho"):format(code, s[1], s[2]),
+                    screen.buyButton.x == L.scroll.buy.x and screen.buyButton.y == L.scroll.buy.y)
                 t:noerror(("%s %dx%d: draw"):format(code, s[1], s[2]), function() screen:draw() end)
             end
             screen:hide()
