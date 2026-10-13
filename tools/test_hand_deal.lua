@@ -336,6 +336,9 @@ function M.run()
 
     GS.setGame(game)
     _G.gameSettings = savedSettings
+    -- higiene: cada cena montada deixa ~8 eventos pendentes pra sempre no
+    -- EventManager (quicada/distribuição); não vazar pras suítes seguintes
+    if _G.EventManager and _G.EventManager.clear then _G.EventManager.clear() end
     return t:done()
 end
 

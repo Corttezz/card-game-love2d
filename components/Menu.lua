@@ -32,12 +32,11 @@ function Menu:new()
     instance.visible = true
 
     -- Estado de intro animation. Modificado por enterWithIntro().
-    -- alphaTitle / alphaSubtitle / alphaButtons[name] são interpolados via
+    -- alphaTitle / alphaButtons[name] são interpolados via
     -- EventManager.ease pra fade-in stagger Balatro-style.
     instance.intro = {
         active        = false,
         alphaTitle    = 1,
-        alphaSubtitle = 1,
         alphaButtons  = { continueRun = 1, play = 1, collection = 1, achievements = 1, settings = 1, quit = 1 },
         alphaBg       = 1,
         titleScale    = 1,
@@ -89,7 +88,6 @@ function Menu:new()
 end
 
 function Menu:_title()    return I18n.t("menu.title") end
-function Menu:_subtitle() return I18n.t("menu.subtitle") end
 
 function Menu:createButtons()
     -- Usa coordenadas relativas à resolução da tela
@@ -374,18 +372,9 @@ function Menu:draw()
     -- Título
     self:drawTitle()
 
-    -- Subtítulo
-    local saA = self.intro.alphaSubtitle or 1
-    love.graphics.setColor(Palette.PARCHMENT[1], Palette.PARCHMENT[2], Palette.PARCHMENT[3], saA)
-    local subtitleFont = FontManager.getResponsiveFont(Config.UI.SUBTITLE_FONT_RATIO, 14)
-    love.graphics.setFont(subtitleFont)
-    local subtitle = self:_subtitle()
-    local subtitleWidth = subtitleFont:getWidth(subtitle)
-    -- 0.355: com o botão Continuar presente a coluna de botões começa em
-    -- ~0.42H — o subtítulo em 0.42 colidia com ele.
-    love.graphics.print(subtitle,
-        math.floor(love.graphics.getWidth() / 2 - subtitleWidth / 2),
-        math.floor(love.graphics.getHeight() * 0.355))
+    -- (o subtítulo "Cartas arcanas. Decisões fatais." que ficava aqui foi
+    -- REMOVIDO em 13/Out a pedido do dono: "tira essas coisas embaixo de
+    -- Grimoire"; a frase vive só na tela do computador da abertura)
 
     -- Desenha botões. Durante intro: cada botão fica invisível até seu alpha
     -- passar de 0.1, depois faz slide-up de 12px com back_out (efeito "pop in").
@@ -1087,7 +1076,6 @@ function Menu:enterWithIntro()
     self.intro.active        = true
     self.intro.alphaBg       = 0
     self.intro.alphaTitle    = 0
-    self.intro.alphaSubtitle = 0
     self.intro.titleScale    = 0.85
     for k in pairs(self.intro.alphaButtons) do
         self.intro.alphaButtons[k] = 0
@@ -1099,7 +1087,6 @@ function Menu:enterWithIntro()
         -- Sem EventManager: snap pra 1.
         self.intro.alphaBg = 1
         self.intro.alphaTitle = 1
-        self.intro.alphaSubtitle = 1
         self.intro.titleScale = 1
         for k in pairs(self.intro.alphaButtons) do
             self.intro.alphaButtons[k] = 1
@@ -1114,7 +1101,6 @@ function Menu:enterWithIntro()
         -- paralelo. ease bloqueante faria fade-in sequencial absurdamente longo.
         EM.parallelEase(self.intro, "alphaBg",       1, 0.35, "smooth",   "menu_intro")
         EM.parallelEase(self.intro, "alphaTitle",    1, 0.55, "smooth",   "menu_intro")
-        EM.parallelEase(self.intro, "alphaSubtitle", 1, 0.55, "smooth",   "menu_intro")
         EM.parallelEase(self.intro, "titleScale",    1, 0.55, "back_out", "menu_intro")
 
         -- Stagger botões: 0.08s offset entre cada (delays absolutos).

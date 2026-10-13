@@ -196,6 +196,7 @@ function M.run()
     local menu = Menu:new()
     menu:show(function() end, function() end)
     t:truthy("menu nao tem mais a fita ticker", menu.ribbonRect == nil and Menu.RIBBON_H == nil)
+    t:truthy("menu nao tem mais o subtitulo sob o titulo", menu._subtitle == nil)
     t:noerror("menu desenha sem a fita", function() menu:draw() end)
     if menu.hide then menu:hide() end
 

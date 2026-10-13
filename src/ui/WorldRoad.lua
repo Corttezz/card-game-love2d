@@ -4797,6 +4797,13 @@ end
 -- GameplayScene (setGame). Volta o mundo pro estado de INÍCIO de run:
 -- bioma 1, câmera no zero, sem viagem/entrada/fork/encounter pendentes.
 function WorldRoad.resetRun()
+    -- O sorteio cosmético (props, nuvens) nasce de `_rng`, um gerador do
+    -- módulo semeado UMA vez no load: sem reseed, a run nova (e a cena de
+    -- qualquer teste) dependia de quantos props o processo já tinha sorteado
+    -- antes. 13/Out: um caso a mais no test_hand_deal deslocou a sequência e
+    -- o mesmo código mediu 38,1 → 41,4 KB/frame no test_perf_budget. Run
+    -- nova = mundo igual, sempre.
+    WorldRoad._rng:setSeed(0xC0FFEE)
     WorldRoad._camZ = 0
     WorldRoad._segBase = 0
     WorldRoad._segBasePrev = nil

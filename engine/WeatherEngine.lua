@@ -967,6 +967,9 @@ function WeatherEngine.hasFireflies(bid)
 end
 
 function WeatherEngine.reset()
+    -- gerador próprio reseedado: run nova (e cena de teste) sempre igual,
+    -- não dependente de quantas partículas o processo já sorteou
+    rng:setSeed(9173)
     for i = 1, nP do P[i].tint = nil end
     nP = 0
     prefill = true
