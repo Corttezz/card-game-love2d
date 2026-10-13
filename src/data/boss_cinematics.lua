@@ -184,4 +184,48 @@ return {
             { kind = "hold",   dur = 0.90 },
         },
     },
+
+    -- ATO 4 — Monarca do Inverno (pisa): NEVASCA. O salão vira branco em
+    -- 3 degraus de dither, o vento uiva, os braseiros azuis quase apagam; a
+    -- silhueta escura do monarca aparece DENTRO do branco, cada vez mais
+    -- nítida, e a nevasca assenta revelando ele já no palco. Impacto = o
+    -- cajado bate no chão (clip `roar`): cristais erguem do piso, onda de
+    -- geada. Morte: estilhaça em cristais.
+    winter_monarch = {
+        palette = {
+            body = { 0.10, 0.16, 0.28 }, glow = { 0.55, 0.80, 1.00 }, ember = { 0.85, 0.95, 1.00 },
+            flash = { 0.88, 0.95, 1.00 }, ghost = { 0.60, 0.80, 1.00 }, rim = { 0.70, 0.90, 1.00 },
+            particle = { 0.60, 0.75, 0.90 }, particle2 = { 0.92, 0.97, 1.00 },
+        },
+        intro = {
+            { kind = "dark",       dur = 0.30, to = 0.50 },
+            { kind = "whiteout",   dur = 1.60, peak = 0.90 },
+            { kind = "silhouette", dur = 1.20, clip = "walk" },
+            { kind = "settle",     dur = 0.80 },
+            { kind = "land",       dur = 0.60, shake = 10, dust = 8, crows = 0, ring = "frost",
+              clip = "roar", particle = "shard", burst = 16, sound = "bossIceCrackle" },
+            { kind = "title",      dur = 2.20 },
+            { kind = "hud",        dur = 0 },
+        },
+        introReduced = {
+            { kind = "dark",       dur = 0.30, to = 0.45 },
+            { kind = "whiteout",   dur = 0.80, peak = 0.70 },
+            { kind = "settle",     dur = 0.50 },
+            { kind = "land",       dur = 0.40, shake = 3, dust = 4, crows = 0, ring = "frost",
+              clip = "roar", particle = "shard", burst = 6, sound = "bossIceCrackle" },
+            { kind = "title",      dur = 1.50 },
+            { kind = "hud",        dur = 0 },
+        },
+        death = {
+            { kind = "burst",  dur = 0,    n = 34, particle = "shard", sound = "bossFrostShatter" },
+            { kind = "desat",  dur = 0,    peak = 0.65, rise = 0.40, fall = 1.20 },
+            { kind = "slowmo", dur = 1.40, scale = 0.35, release = 0.35 },
+            { kind = "hold",   dur = 1.10 },
+        },
+        deathReduced = {
+            { kind = "burst",  dur = 0,    n = 12, particle = "shard", sound = "bossFrostShatter" },
+            { kind = "desat",  dur = 0,    peak = 0.45, rise = 0.30, fall = 0.80 },
+            { kind = "hold",   dur = 0.90 },
+        },
+    },
 }

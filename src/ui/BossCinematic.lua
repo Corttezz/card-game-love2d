@@ -1055,15 +1055,46 @@ local function drawWhiteout()
     if wo.fade then level = level * (1 - smooth(clamp01(wo.fade.t / wo.fade.dur))) end
     wo.level = level
     if level <= 0.01 then return end
-    -- 3 degraus (sem gradiente): o branco sobe em patamares
-    local q = math.floor(level * 3 + 0.5) / 3
-    love.graphics.setColor(0.92, 0.96, 1.0, q)
+    -- 5 degraus (sem gradiente), teto 0.8: o salão nunca some de todo — a
+    -- nevasca é TEXTURA (rajadas de névoa correndo), não uma chapa branca
+    local q = math.min(0.82, math.floor(level * 5) / 5)
+    love.graphics.setColor(0.90, 0.95, 1.0, q)
     love.graphics.rectangle("fill", 0, 0, w, h)
-    -- flocos
+    -- RAJADAS: as texturas de névoa (3 degraus de alpha com dither) correndo
+    -- da direita pra esquerda em duas camadas, azul-gelo sobre o branco e
+    -- branco aditivo por cima — é o vento que se vê
+    local imgs = ensureFog()
+    local t = wo.t
+    local gw = w * 0.42
+    local gh = gw * (FOG_H / FOG_W)
+    for layer = 1, 2 do
+        local speed = (layer == 1) and 520 or 760
+        local rows = (layer == 1) and 4 or 3
+        for row = 0, rows - 1 do
+            local y = h * (row + 0.5) / rows - gh / 2 + math.sin(t * 2.1 + row + layer) * gh * 0.15
+            local off = (t * speed + row * gw * 0.47 + layer * 131) % (gw * 1.1)
+            for i = -1, math.ceil(w / (gw * 1.1)) + 1 do
+                local x = i * gw * 1.1 - off
+                local img = imgs[1 + (i + row + layer) % 3]
+                love.graphics.setBlendMode("alpha")
+                love.graphics.setColor(0.62, 0.78, 0.96, 0.22 * level)
+                love.graphics.draw(img, math.floor(x), math.floor(y), 0, gw / FOG_W, gh / FOG_H)
+                love.graphics.setBlendMode("add")
+                love.graphics.setColor(1, 1, 1, 0.16 * level)
+                love.graphics.draw(img, math.floor(x + gw * 0.3), math.floor(y + gh * 0.2), 0,
+                    gw / FOG_W * 0.8, gh / FOG_H * 0.8)
+            end
+        end
+    end
+    love.graphics.setBlendMode("alpha")
+    -- flocos: blocos azul-gelo esticados na direção do vento (riscos curtos)
     local P = px()
     for _, fl in ipairs(flakes) do
-        love.graphics.setColor(1, 1, 1, 0.9)
-        love.graphics.rectangle("fill", math.floor(fl.x / P) * P, math.floor(fl.y / P) * P, P, P)
+        local bx, by = math.floor(fl.x / P) * P, math.floor(fl.y / P) * P
+        love.graphics.setColor(0.55, 0.72, 0.92, 0.85)
+        love.graphics.rectangle("fill", bx, by, 3 * P, P)
+        love.graphics.setColor(0.92, 0.97, 1.0, 0.95)
+        love.graphics.rectangle("fill", bx, by, P, P)
     end
     love.graphics.setColor(1, 1, 1, 1)
 end
