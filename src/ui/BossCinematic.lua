@@ -1809,27 +1809,41 @@ local function drawHallEyes()
     local t = he.t
     local closeK = he.close and smooth(clamp01(he.close / 0.3)) or 0
     if closeK >= 1 then return end
+    -- brilho de UM quadro no instante em que todos viram (he.flash > 0)
+    local flash = (he.flash or 0) > 0
     for i, e in ipairs(he.list) do
-        local open = smooth(clamp01((t - e.openAt) / 0.25)) * (1 - closeK)
-        local blink = (math.floor((t * 2 + e.blink)) % 9 == 0) and 0.15 or 1
-        local a = open * blink
-        if a > 0.02 then
-            local B = P * e.size
+        -- abre em 2 quadros: fechado → fresta (1 linha) → aberto (2 linhas)
+        local age = t - e.openAt
+        local rows = (age < 0) and 0 or ((age < 0.09) and 1 or 2)
+        if closeK > 0 then rows = (closeK < 0.5) and math.min(rows, 1) or 0 end
+        local blink = (math.floor((t * 2 + e.blink)) % 9 == 0) and 1 or 2
+        rows = math.min(rows, blink)
+        if rows > 0 then
+            local B = P
+            local W = (e.size >= 2) and 4 or 3        -- perto = 4×2, longe = 3×2
             local ex = tr.ox + e.u * 400 * tr.scale
             local ey = tr.oy + e.v * 256 * tr.scale
-            local gap = (2 + e.gap) * B
-            -- viraram pro jogador: pupila pro centro-baixo da tela
-            local look = he.turned and 0 or e.look
-            local pupil = he.turned and 1 or (look + 1)   -- coluna 0..1 dentro de 2 blocos
-            glowBlob(ex, ey, gap * 2.4, B * 4, MAGENTA, 0.22 * a, 1 + i % 3)
+            local gap = (W + 1 + e.gap) * B
+            -- viraram pro jogador: pupila no centro; antes, cada par olha pra um lado
+            local pupilCol = he.turned and math.floor((W - 1) / 2) or math.max(0, math.min(W - 1, 1 + e.look))
+            local hh = rows * B
+            local yTop = math.floor(ey / B) * B - (rows == 2 and B or 0)
+            if flash then
+                glowBlob(ex, ey, gap * 2.6, B * 8, { 1, 0.9, 1 }, 0.75, 1 + i % 3)
+            else
+                glowBlob(ex, ey, gap * 2.2, B * 5, MAGENTA, 0.28, 1 + i % 3)
+            end
             for side = -1, 1, 2 do
-                local x0 = math.floor((ex + side * gap / 2) / B) * B - B
-                local y0 = math.floor(ey / B) * B
-                love.graphics.setColor(MAGENTA[1], MAGENTA[2] * 0.9, MAGENTA[3], a)
-                love.graphics.rectangle("fill", x0, y0, 2 * B, B)
-                love.graphics.setColor(0.06, 0.01, 0.08, a)
-                love.graphics.rectangle("fill", x0 + math.min(1, pupil) * B * (he.turned and 0.5 or 1)
-                    + (he.turned and B * 0.25 or 0), y0, B * (he.turned and 0.5 or 1), B)
+                local x0 = math.floor((ex + side * gap / 2) / B) * B - math.floor(W / 2) * B
+                -- halo magenta de 1 px em volta do núcleo
+                love.graphics.setColor(MAGENTA[1], MAGENTA[2], MAGENTA[3], 0.95)
+                love.graphics.rectangle("fill", x0 - 1, yTop - 1, W * B + 2, hh + 2)
+                -- núcleo magenta quase branco
+                love.graphics.setColor(1.0, 0.86, 0.97, 1)
+                love.graphics.rectangle("fill", x0, yTop, W * B, hh)
+                -- pupila escura de 1 bloco (fresta: só a linha de baixo)
+                love.graphics.setColor(0.10, 0.01, 0.12, 1)
+                love.graphics.rectangle("fill", x0 + pupilCol * B, yTop, B, hh)
             end
         end
     end
@@ -2194,7 +2208,8 @@ local function queenUpdate(dt, game, ctx)
     if hallEyes then
         local he = hallEyes
         he.t = he.t + dt
-        if not he.turned and he.t >= he.turnAt then he.turned = true end
+        if not he.turned and he.t >= he.turnAt then he.turned = true; he.flash = 2 end
+        if he.flash and he.flash > 0 then he.flash = he.flash - 1 end
         -- fecham quando ela se revela (meio do unveil); somem no fim do passo
         if fx.unveil and not he.close and fx.unveil.t > fx.unveil.dur * 0.6 then he.close = 0 end
         if he.close then he.close = he.close + dt end
