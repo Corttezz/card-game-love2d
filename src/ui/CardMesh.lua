@@ -125,6 +125,7 @@ function CardMesh.setUniforms(shader, mouseUV, hover, time, image)
     -- o modo quadrilátero (loja) é estado do shader COMPARTILHADO: zera aqui
     -- pra nenhum outro chamador herdar a homografia da última carta da loja
     shader:send("quadOn", 0)
+    shader:send("silhouette", 0)
 end
 
 -- Loja v3c: liga o modo QUADRILÁTERO depois do setUniforms. r0..r2 = linhas

@@ -4,8 +4,9 @@
 --
 --   1. entrada: os objetos deslizam pra mesa e a tela espelha as cartas; o
 --      pergaminho nasce com a primeira oferta SELECIONADA e o COMPRAR armado;
---   2. hover: o objeto levanta, o pergaminho troca de conteúdo; som de hover
---      UMA vez na borda, nunca durante o deslize da tela;
+--   2. hover (v5): NADA levanta (carta nem objeto): o ponto de apoio fica
+--      parado; a carta gira em torno da base (tilt com a base presa); som de
+--      hover UMA vez na borda, nunca durante o deslize da tela;
 --   3. clique SELECIONA (não compra): pergaminho + brilho + COMPRAR · $N;
 --   4. sem ouro: COMPRAR apagado e a compra pelo botão não passa, a placa
 --      treme (deny), sem toast;
@@ -128,8 +129,7 @@ function M.run()
         pump(screen, 0.5)
         t:eq("cena marca a carta sob o mouse", scene.hovered, card2)
         t:eq("tela espelha hoveredOffer", screen.hoveredOffer, card2.offer)
-        t:truthy(("carta em hover sai do cavalete 10..14 px (%.1f)"):format(card2:liftPx()),
-            card2:liftPx() >= 10 - 0.01 and card2:liftPx() <= 14 + 0.01)
+        t:near("v5: carta em hover NAO sai do cavalete (sem levitar)", card2:liftPx(), 0, 1e-9)
         do
             -- Loja "reta": hover sem torção (ângulo da base igual ao repouso) e
             -- sem salto: passo por quadro limitado, ida e volta pelo mesmo caminho
@@ -156,22 +156,36 @@ function M.run()
                 maxStep = math.max(maxStep, math.abs(outs[f] - prev)); prev = outs[f]
                 maxTwist = math.max(maxTwist, math.abs(baseDeg() - rest))
             end
-            local lift = card2.geom.lift
-            -- smoothstep em 12 quadros: passo máximo 1,5/12 do lift por quadro
-            t:truthy(("hover sem salto (maior passo %.2f px de %d)"):format(maxStep, lift), maxStep <= lift * 0.15)
+            -- v5: o hover não move a carta (nenhum quadro, nenhum px)
+            t:truthy(("hover: apoio parado em todos os quadros (maior passo %.3f px)"):format(maxStep), maxStep <= 1e-9)
             t:truthy(("hover sem torcao (%.3f graus)"):format(maxTwist), maxTwist <= 0.01)
-            t:truthy("hover: 1o quadro anda pouco (easing, nao pulo)", ins[1] <= lift * 0.05)
+            -- a curva do destaque continua simétrica (entra e sai pelo mesmo caminho)
+            local hv = {}
+            local p2 = ShelfItem.new("card", card2.offer, 97)
+            p2:setGeometry(card2.geom)
+            for f = 1, 12 do p2:update(ShelfItem.HOVER_TIME / 12, true); hv[f] = p2.hover end
             local sym = 0
-            for f = 1, 11 do sym = math.max(sym, math.abs(ins[f] - outs[12 - f])) end
-            t:truthy(("hover volta pelo MESMO caminho (%.3f px)"):format(sym), sym <= 0.05)
-            t:near("hover assenta de volta no cavalete", outs[20], 0, 1e-6)
-            -- plaquinha de latão: comum sem placa; as outras com contraste >= 4,5
-            t:falsy("comum sem plaquinha", ShelfItem.showsRarityPlate("common"))
-            for _, rar in ipairs({ "uncommon", "rare", "legendary" }) do
-                t:truthy(rar .. " com plaquinha", ShelfItem.showsRarityPlate(rar))
-                local cr = ShelfItem.contrast(ShelfItem.rarityInk(rar), ShelfItem.BRASS.face)
-                t:truthy(("%s: contraste %.2f >= 4,5 sobre o latao"):format(rar, cr), cr >= 4.5)
+            for f = 1, 11 do
+                p2:update(ShelfItem.HOVER_TIME / 12, false)
+                sym = math.max(sym, math.abs(p2.hover - hv[12 - f]))
             end
+            t:truthy("hover: destaque entra suave (1o quadro < 5%)", hv[1] < 0.05)
+            t:truthy(("hover: destaque sai pelo mesmo caminho (%.4f)"):format(sym), sym <= 1e-6)
+            -- PLAQUINHA DE PREÇO: um latão só; comum sem gema; valor legível
+            -- (contraste >= 4,5) com e sem ouro
+            t:falsy("comum sem gema", ShelfItem.showsGem("common"))
+            for _, rar in ipairs({ "uncommon", "rare", "legendary" }) do
+                t:truthy(rar .. " com gema de raridade", ShelfItem.showsGem(rar))
+            end
+            for _, af in ipairs({ true, false }) do
+                local cr = ShelfItem.contrast(ShelfItem.priceInk(af, false), ShelfItem.BRASS.face)
+                t:truthy(("preco %s: contraste %.2f >= 4,5 no latao"):format(af and "normal" or "sem ouro", cr), cr >= 4.5)
+            end
+            -- a plaquinha final cabe no que o layout reservou e mostra o preço exato
+            local Q = ShelfItem.plaqueArt(card2.geom.plaque, card2:priceText(), card2.offer.rarity, scene.L.cover)
+            t:eq("plaquinha mostra o preco exato da oferta", Q.text, "$" .. tostring(card2.offer.cost))
+            t:truthy("plaquinha final dentro da reservada",
+                Q.x0 >= card2.geom.plaque.x0 and Q.x0 + Q.w <= card2.geom.plaque.x0 + card2.geom.plaque.w)
             -- Loja v4: TILT 3D do hover por cima da pose (a conta da mão,
             -- Card.hoverTilt). Mouse levado pro espaço da carta pela homografia
             -- de repouso: canto sup. direito -> (+1, -1); centro -> 0; sai -> 0.
@@ -203,6 +217,22 @@ function M.run()
             hoverAt(0.5, 0.5, 1.0)
             t:truthy(("tilt: centro = carta reta (%.3f, %.3f)"):format(tp.tilt.x, tp.tilt.y),
                 math.abs(tp.tilt.x) < 0.05 and math.abs(tp.tilt.y) < 0.05)
+            -- v5: BASE PRESA. O press do shader (espelho ShelfItem.warpUV) não
+            -- mexe nenhum ponto da base em modo quad; o topo, sim.
+            local worstBase, topMove = 0, 0
+            for _, m in ipairs({ { 1, -1 }, { -1, 1 }, { 1, 1 }, { -1, -1 }, { 0, 1 } }) do
+                for _, u in ipairs({ 0, 0.25, 0.5, 0.75, 1 }) do
+                    local wu, wv = ShelfItem.warpUV(u, 1, m[1], m[2], 1, 0.7, true)
+                    worstBase = math.max(worstBase, math.abs(wu - u), math.abs(wv - 1))
+                    local tu, tv = ShelfItem.warpUV(u, 0, m[1], m[2], 1, 0.7, true)
+                    topMove = math.max(topMove, math.abs(tu - u), math.abs(tv))
+                end
+            end
+            t:truthy(("tilt: base presa no trilho (desvio %.6f)"):format(worstBase), worstBase <= 1e-9)
+            t:truthy(("tilt: o topo responde ao mouse (%.4f)"):format(topMove), topMove > 0.01)
+            local wu0 = select(2, ShelfItem.warpUV(0.5, 1, 0, 1, 1, 0, false))
+            t:truthy("tilt: fora do modo quad (mao/recompensa) nada muda", math.abs(wu0 - 1) > 1e-4)
+            t:near("tilt: sem parallax (a carta nao anda com o mouse)", tp.tilt.ox, 0, 1e-9)
             hoverAt(0.92, 0.08, 1.0)
             for _ = 1, 60 do tp:update(1 / 60, false) end
             t:truthy(("tilt: ao sair volta suave a pose (%.3f, %.3f)"):format(tp.tilt.x, tp.tilt.y),
@@ -231,7 +261,7 @@ function M.run()
         t:near("hover: mesmo pe (x)", hovParams.fx, restParams.fx, 1e-6)
         t:near("hover: mesmo pe (y)", hovParams.fy, restParams.fy, 1e-6)
         t:near("hover: mesma escala", hovParams.s, restParams.s, 1e-9)
-        t:truthy("hover: objeto levanta 4..6 px", relic:liftPx() >= 4 and relic:liftPx() <= 6.01)
+        t:near("v5: hover do objeto sem levantar (apoio na mesa)", relic:liftPx(), 0, 1e-9)
         -- quadro da animação no hover tem o MESMO tamanho do PNG estático
         t:eq("hover: quadro animado do mesmo tamanho", hovParams.img:getWidth(), restParams.img:getWidth())
         local joker = itemOf(screen, function(it) return it.offer and it.offer.id == "joker_slot" end)

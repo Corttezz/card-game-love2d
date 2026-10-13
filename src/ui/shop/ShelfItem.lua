@@ -101,26 +101,14 @@ function ShelfItem.new(kind, offer, slot)
     self.slide = { x = 0 }       -- deslize de reposição (sino)
     self.sold = offer and offer.purchased or false
     self.deny = 0
-    self.tag = { angle = 0, vel = 0 }   -- etiqueta pendurada
     self.tilt = { x = 0, y = 0, ox = 0, oy = 0 }   -- tilt 3D do hover (carta)
     Moveable.initJuice(self)
     return self
 end
 
--- Pêndulo amortecido (~1,25 Hz, assenta em ~0,6 s).
-local TAG_OMEGA2, TAG_DAMP = 62, 5.5
-function ShelfItem.stepPendulum(tg, dt)
-    if reducedMotion() then tg.angle, tg.vel = 0, 0 return end
-    local h = math.min(dt, 1 / 30)
-    local acc = -TAG_OMEGA2 * math.sin(tg.angle) - TAG_DAMP * tg.vel
-    tg.vel = tg.vel + acc * h
-    tg.angle = tg.angle + tg.vel * h
-    if math.abs(tg.angle) < 0.002 and math.abs(tg.vel) < 0.02 then tg.angle, tg.vel = 0, 0 end
-end
-
 function ShelfItem:exportFx()
     return { hover = self.hover, hoverT = self.hoverT, hot = self.hot, juice = self.juice, entry = self.entry,
-             slide = self.slide, deny = self.deny, dustSeed = self.dustSeed, tag = self.tag, tilt = self.tilt }
+             slide = self.slide, deny = self.deny, dustSeed = self.dustSeed, tilt = self.tilt }
 end
 
 function ShelfItem:importFx(fx)
@@ -131,7 +119,6 @@ function ShelfItem:importFx(fx)
     self.slide = fx.slide or self.slide
     self.deny = fx.deny or 0
     self.dustSeed = fx.dustSeed
-    self.tag = fx.tag or self.tag
     self.tilt = fx.tilt or self.tilt
 end
 
@@ -207,11 +194,13 @@ end
 -- tilt 3D da mão e das recompensas (Card.hoverTilt, a mesma conta): o mouse
 -- vai pro espaço da carta pela inversa da homografia de REPOUSO (o alvo não
 -- foge do cursor) e o card_perspective.glsl aplica o "press" antes da
--- homografia, então a diagonal fica e o canto sob o cursor afunda. Tilt e
--- parallax com amortecimento exponencial (entra e sai suave); reducedMotion
--- zera o movimento.
+-- homografia, então a diagonal fica e o canto sob o cursor afunda. Tilt com
+-- amortecimento exponencial (entra e sai suave); reducedMotion zera.
+-- v5 (briefing: "mantenha o ponto de apoio estável"): SEM parallax (a carta
+-- inteira andando junto com o mouse tirava a base do trilho) e, no shader,
+-- a base fica PRESA no modo quad: o tilt gira a carta em torno do apoio.
 ShelfItem.TILT_EASE = 12          -- 1/s (≈ 90% em 0,19 s)
-ShelfItem.TILT_PARALLAX = 0.5     -- fração do MOVE_RANGE da mão (px)
+ShelfItem.TILT_PARALLAX = 0       -- v5: a base não sai do trilho
 function ShelfItem:cardMouseUV(mx, my)
     local g = self.geom
     if not (g and g.frame and mx) then return nil end
@@ -219,6 +208,18 @@ function ShelfItem:cardMouseUV(mx, my)
     local sx = self.slide.x or 0
     local r0, r1, r2 = ShopPerspective.homography(x0 + sx, y0, x1 + sx, y1, x2 + sx, y2, x3 + sx, y3)
     return ShopPerspective.unmapH(r0, r1, r2, mx, my)
+end
+
+-- Espelho em Lua do vertex shader (shaders/card_perspective.glsl): ponto
+-- (u, v) do canvas da carta -> (u, v) deformado pelo press/wobble. Com
+-- `quad` (carta no cavalete) a base fica presa. MANTENHA EM SINCRONIA.
+function ShelfItem.warpUV(u, v, mx, my, hover, t, quad)
+    local cx, cy = u - 0.5, v - 0.5
+    local press = -(cx * mx + cy * my) * hover * 0.12
+    local wob = math.sin(t * 2 + cx * 4) * 0.005 * hover + math.cos(t * 1.7 + cy * 4) * 0.005 * hover
+    local k = press + wob
+    if quad then k = k * (1 - v) end
+    return u + cx * k, v + cy * k
 end
 
 function ShelfItem:updateTilt(dt, hovered, mx, my)
@@ -248,9 +249,6 @@ function ShelfItem:update(dt, hovered, mx, my)
     if target == 1 and not self.hot then
         self.hot = true
         entered = true
-        if not reduced then
-            self.tag.vel = self.tag.vel + 2.4
-        end
     elseif target == 0 then
         self.hot = false
     end
@@ -263,16 +261,16 @@ function ShelfItem:update(dt, hovered, mx, my)
     self.hover = ShelfItem.ease(self.hoverT)
     Moveable.updateJuice(self, dt)
     if self.kind == "card" then self:updateTilt(dt, target == 1, mx, my) end
-    ShelfItem.stepPendulum(self.tag, dt)
     if self.deny > 0 then self.deny = math.max(0, self.deny - dt) end
     return entered
 end
 
--- Quanto o objeto está levantado (px de tela). Sem juice de escala: o hover
--- é o MESMO sprite, só mais alto.
+-- Quanto o objeto está levantado (px de tela). v5: o hover NÃO levanta
+-- (geom.lift = 0: nada levita sobre o apoio); só o pulinho curto da chegada
+-- na mesa (juice da entrada/sino) sai do chão.
 function ShelfItem:liftPx()
     if reducedMotion() then return 0 end
-    local maxLift = (self.geom and self.geom.lift) or 5
+    local maxLift = (self.geom and self.geom.lift) or 0
     return self.hover * maxLift - Moveable.hopOffset(self)
 end
 
@@ -410,89 +408,212 @@ end
 ShelfItem.px = px
 local lineY = ShopLayout.lineY
 
--- Cordão de 1 px de arte (Bresenham) com sombra de tinta à direita.
-function ShelfItem.drawCordArt(x0, y0, x1, y1, a)
-    x0, y0, x1, y1 = floor(x0), floor(y0), floor(x1), floor(y1)
-    local dx, dy = math.abs(x1 - x0), -math.abs(y1 - y0)
-    local sx, sy = x0 < x1 and 1 or -1, y0 < y1 and 1 or -1
-    local err = dx + dy
-    local pts, ink = {}, {}
-    local x, y = x0, y0
-    for _ = 1, 400 do
-        pts[#pts + 1] = { x + 0.5, y + 0.5 }
-        ink[#ink + 1] = { x + 1.5, y + 0.5 }
-        if x == x1 and y == y1 then break end
-        local e2 = 2 * err
-        if e2 >= dy then err = err + dy; x = x + sx end
-        if e2 <= dx then err = err + dx; y = y + sy end
+-- ---------------------------------------------------------------------------
+-- PLAQUINHA DE PREÇO (Loja v5). Queixa do briefing: "as pequenas etiquetas
+-- brancas deslocadas para baixo e para a direita parecem flutuar". Um
+-- tratamento só para todo preço da vitrine: latão envelhecido (4 tons) com o
+-- valor GRAVADO em tinta escura (lê sobre a madeira escura do móvel sem
+-- branco puro), na GRADE da arte (degraus 1:8, mesma fase das arestas
+-- pintadas). O VÍNCULO é o lugar (ShopLayout.plaque):
+--   carta  = pregada na FACE do degrau, sob a própria carta (dois pregos);
+--   objeto = em pé no TAMPO, logo à frente do pé (topo de 1 px visto de
+--            cima + sombra de contato no tampo).
+-- Raridade da carta = uma GEMA na cor dela, à esquerda do preço (comum sem
+-- gema). O nome da raridade está no pergaminho e no selo da própria carta:
+-- três placas repetindo a mesma coisa era o ruído que o briefing pede pra
+-- tirar. Selecionado: o contorno do latão vira OURO (a mesma cor do
+-- contorno do objeto selecionado). Sem ouro: valor em vermelho legível e a
+-- plaquinha treme. Oferta do dia: canto vermelho dobrado.
+-- ---------------------------------------------------------------------------
+ShelfItem.BRASS = {
+    hi   = Palette.AGED_GOLD_LIGHT,
+    rim  = Palette.AGED_GOLD_DARK,
+    dark = Palette.lerp(Palette.AGED_GOLD_DARK, Palette.INK, 0.35),
+    face = Palette.lerp(Palette.AGED_GOLD, Palette.AGED_GOLD_DARK, 0.2),
+}
+
+local function lum(c)
+    local function ch(v) return v <= 0.03928 and v / 12.92 or ((v + 0.055) / 1.055) ^ 2.4 end
+    return 0.2126 * ch(c[1]) + 0.7152 * ch(c[2]) + 0.0722 * ch(c[3])
+end
+function ShelfItem.contrast(a, b)
+    local la, lb = lum(a), lum(b)
+    if la < lb then la, lb = lb, la end
+    return (la + 0.05) / (lb + 0.05)
+end
+
+-- Cor `c` ESCURECIDA até contraste >= 4,6 com a face do latão (gravado).
+local inkCache = {}
+function ShelfItem.inkOnBrass(key, c)
+    if inkCache[key] then return inkCache[key] end
+    local face = ShelfItem.BRASS.face
+    for _ = 1, 40 do
+        if ShelfItem.contrast(c, face) >= 4.6 then break end
+        c = Palette.darken(c, 0.9)
     end
-    local c = Palette.INK
-    love.graphics.setColor(c[1], c[2], c[3], 0.6 * (a or 1))
-    love.graphics.points(ink)
-    c = Palette.PARCHMENT_DARK
-    love.graphics.setColor(c[1], c[2], c[3], a or 1)
-    love.graphics.points(pts)
+    inkCache[key] = c
+    return c
 end
 
--- Estilo da etiqueta: preço normal, sem ouro (tinta vermelha), oferta do dia.
-local function tagStyle(afford, sale)
-    if sale then return Palette.BLOOD, Palette.BLOOD_DARK, Palette.PARCHMENT_LIGHT end
-    if afford then return Palette.PARCHMENT_LIGHT, Palette.PARCHMENT_DARK, Palette.INK end
-    return Palette.PARCHMENT, Palette.PARCHMENT_DARK, Palette.BLOOD
+-- Tinta do valor: normal (tinta), sem ouro (vermelho escuro legível),
+-- oferta do dia (tinta; o canto vermelho dobrado é que marca).
+function ShelfItem.priceInk(afford, sale)
+    if not afford then return ShelfItem.inkOnBrass("deny", Palette.BLOOD) end
+    return ShelfItem.inkOnBrass("price", Palette.INK)
 end
 
--- Etiqueta (cartão + furo + cordão), px de ARTE. tg = ShopLayout.artTag;
--- dx = balanço/deslize (px de arte, inteiro), dy = levantar (px de arte);
--- tie = {x, y} de onde o cordão sai (nil = tg.cordX/cordY).
-function ShelfItem.drawTagArt(tg, dx, dy, afford, sale, a, tie)
-    local W, H = ShopLayout.TAG_W, ShopLayout.TAG_H
-    local x0 = tg.x0 + dx
-    local holeX = x0 + floor(W / 2)
-    local holeY = lineY(tg.y0, holeX) - dy
-    local cx, cy = tg.cordX + dx, tg.cordY - dy
-    if tie then cx, cy = tie[1], tie[2] end
-    ShelfItem.drawCordArt(cx, cy, holeX, holeY, a)
-    local face, low = tagStyle(afford, sale)
-    for x = x0, x0 + W - 1 do
-        local top = lineY(tg.y0, x) - dy
-        local edge = (x == x0 or x == x0 + W - 1)
-        -- sombra curta no tampo (luz à esquerda: cai à direita/baixo)
-        px(Palette.INK, 0.45 * a, x + 1, top + H, 1, 1)
-        if edge then
-            px(Palette.INK, a, x, top, 1, H)
+function ShelfItem.showsGem(rar)
+    return rar ~= nil and rar ~= "common" and rar ~= "basic"
+end
+
+-- Geometria FINAL (px de arte) + fonte/texto: largura pelo texto, centrada
+-- no eixo do dono. Pura: o teste mede.
+function ShelfItem.plaqueArt(pq, text, rar, cv)
+    local P = ShopLayout.PLAQUE
+    local gem = ShelfItem.showsGem(rar) and (P.gem + 1) or 0
+    local maxText = math.max(4, (pq.w - P.padX * 2 - gem)) * cv.s
+    local font, fitted = TextFit.fit(text, P.font, maxText, P.fontMin)
+    local w = math.min(pq.w, math.ceil(font:getWidth(fitted) / cv.s) + P.padX * 2 + gem)
+    local x0 = math.floor(pq.cx - w / 2 + 0.5)
+    return { x0 = x0, w = w, y0 = pq.y0, h = pq.h, font = font, text = fitted, gem = gem,
+             kind = pq.kind }
+end
+
+-- Caixa da plaquinha FINAL em px de TELA.
+function ShelfItem.plaqueBox(pq, text, rar, cv)
+    local Q = ShelfItem.plaqueArt(pq, text, rar, cv)
+    local b = ShopLayout.stepBox(cv, Q.x0, Q.w, Q.y0, Q.h)
+    b.font, b.text, b.art = Q.font, Q.text, Q
+    return b
+end
+
+-- Latão na grade (dentro do artPass). dx = deslize em px de arte.
+--   st = { selected, sale, alpha, rar }
+function ShelfItem.drawPlaqueArt(Q, dx, st)
+    dx = dx or 0
+    local B = ShelfItem.BRASS
+    local a = st.alpha or 1
+    local x0, x1 = Q.x0 + dx, Q.x0 + dx + Q.w - 1
+    local rim = st.selected and Palette.AGED_GOLD_LIGHT or Palette.INK
+    local object = (Q.kind == "object")
+    for x = x0, x1 do
+        local top = lineY(Q.y0, x - dx)
+        if object then
+            -- sombra de contato no tampo (luz à esquerda: cai embaixo/direita)
+            px(Palette.INK, 0.55 * a, x + 1, top + Q.h, 1, 1)
+            if ShopPerspective.dithered(x, top + Q.h + 1, 0.4) then
+                px(Palette.INK, 0.35 * a, x + 1, top + Q.h + 1, 1, 1)
+            end
+            -- topo da plaquinha (visto de cima): 1 linha de latão
+            px(B.rim, a, x, top - 1, 1, 1)
         else
-            px(Palette.INK, a, x, top, 1, 1)
-            px(face, a, x, top + 1, 1, H - 3)
-            px(low, a, x, top + H - 2, 1, 1)
-            px(Palette.INK, a, x, top + H - 1, 1, 1)
+            px(Palette.INK, 0.45 * a, x + 1, top + Q.h, 1, 1)     -- sombra na face do degrau
+        end
+        if x == x0 or x == x1 then
+            px(rim, a, x, top, 1, Q.h)
+        else
+            px(rim, a, x, top, 1, 1)
+            px(B.hi, a, x, top + 1, 1, 1)
+            px(B.face, a, x, top + 2, 1, Q.h - 4)
+            px(B.dark, a, x, top + Q.h - 2, 1, 1)
+            px(rim, a, x, top + Q.h - 1, 1, 1)
         end
     end
-    px(Palette.INK, 0.9 * a, holeX, holeY + 1, 1, 1)
+    if not object then
+        -- dois pregos (a placa está PREGADA no móvel)
+        for _, x in ipairs({ x0 + 1, x1 - 1 }) do
+            px(B.hi, a, x, lineY(Q.y0, x - dx) + math.floor(Q.h / 2), 1, 1)
+        end
+    end
+    if Q.gem > 0 and st.rar then
+        local P = ShopLayout.PLAQUE
+        local gx = x0 + P.padX
+        local mid = lineY(Q.y0, gx - dx) + math.floor(Q.h / 2)
+        local c = Palette.forRarity(st.rar)
+        local hi = Palette.lighten(c, 0.35)
+        local lo = Palette.darken(c, 0.6)
+        -- losango 3x3 com contorno de tinta (lê até a lendária, dourada, no latão)
+        for _, q in ipairs({ { -1, 0 }, { 3, 0 }, { 1, -2 }, { 1, 2 }, { 0, -1 }, { 2, -1 }, { 0, 1 }, { 2, 1 } }) do
+            px(Palette.INK, a, gx + q[1], mid + q[2], 1, 1)
+        end
+        px(hi, a, gx + 1, mid - 1, 1, 1)
+        px(c, a, gx, mid, 1, 1); px(hi, a, gx + 1, mid, 1, 1); px(c, a, gx + 2, mid, 1, 1)
+        px(lo, a, gx + 1, mid + 1, 1, 1)
+    end
+    if st.sale then
+        -- canto de cima à esquerda dobrado em vermelho (oferta do dia)
+        local top = lineY(Q.y0, x0 - dx)
+        px(Palette.BLOOD, a, x0, top, 2, 1)
+        px(Palette.BLOOD, a, x0, top + 1, 1, 1)
+    end
 end
 
--- Texto da etiqueta (grade da UI, cisalhado), por cima da arte.
-function ShelfItem.drawTagText(L, tg, dx, dy, text, afford, sale, a, shakeX)
+-- Texto da plaquinha (grade da UI, cisalhado 1:8), depois do artPass.
+function ShelfItem.drawPlaqueText(L, Q, dx, ink, alpha, shakeX)
+    dx = dx or 0
     local cv = L.cover
-    local W, H = ShopLayout.TAG_W, ShopLayout.TAG_H
-    local x0 = tg.x0 + dx
-    local sx = cv.ox + (x0 + 1) * cv.s + (shakeX or 0)
-    local sy = cv.oy + (lineY(tg.y0, x0 + 1) - dy + 1) * cv.s
-    local w, h = (W - 2) * cv.s, (H - 3) * cv.s
-    local font, fitted = TextFit.fit(text, 7, w - 1, 7)
-    local _, _, ink = tagStyle(afford, sale)
+    local P = ShopLayout.PLAQUE
+    local tx0 = Q.x0 + dx + P.padX + Q.gem
+    local sx = cv.ox + tx0 * cv.s + (shakeX or 0)
+    local sy = cv.oy + (lineY(Q.y0, tx0 - dx) + 1) * cv.s
+    local w = (Q.w - P.padX * 2 - Q.gem) * cv.s
+    local h = (Q.h - 2) * cv.s
+    local a = alpha or 1
     withShear(floor(sx), floor(sy), ShopLayout.K, function()
-        love.graphics.setFont(font)
-        Palette.set(ink, a)
-        love.graphics.print(fitted, floor((w - font:getWidth(fitted)) / 2) + 1,
-            floor((h - font:getHeight()) / 2) + 1)
+        love.graphics.setFont(Q.font)
+        local tx = floor((w - Q.font:getWidth(Q.text)) / 2) + 1
+        local ty = floor((h - Q.font:getHeight()) / 2) + 1
+        -- gravado: realce claro 1 px abaixo, tinta por cima
+        Palette.set(ShelfItem.BRASS.hi, 0.55 * a)
+        love.graphics.print(Q.text, tx, ty + 1)
+        love.graphics.setColor(ink[1], ink[2], ink[3], a)
+        love.graphics.print(Q.text, tx, ty)
     end)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- balanço do pêndulo em px de arte (inteiro: a etiqueta anda na grade)
-function ShelfItem.swingArt(angle)
-    local s = ShopLayout.SWING
-    return clamp(math.floor(math.sin(angle or 0) * 6 + 0.5), -s, s)
+function ShelfItem:priceText()
+    return "$" .. tostring(self.offer and self.offer.cost or 0)
+end
+
+function ShelfItem:_plaque(cv)
+    local g = self.geom
+    if not (g and g.plaque) then return nil end
+    local rar = (self.kind == "card") and self.offer and self.offer.rarity or nil
+    return ShelfItem.plaqueArt(g.plaque, self:priceText(), rar, cv), rar
+end
+
+function ShelfItem:_shake()
+    if self.deny > 0 and not reducedMotion() then
+        local k = (DENY_TIME - self.deny) / DENY_TIME
+        return math.sin(k * math.pi * 4) * 3 * (1 - k)
+    end
+    return 0
+end
+
+-- Plaquinha no canvas da ARTE (dentro do artPass).
+function ShelfItem:drawPlateArt(L, ctx)
+    if self.sold then return end
+    local cv = L.cover
+    local Q, rar = self:_plaque(cv)
+    if not Q then return end
+    local sdx = floor((self.slide.x or 0) / cv.s + 0.5)
+    ShelfItem.drawPlaqueArt(Q, sdx, {
+        selected = self.selected, sale = self.offer and self.offer.saleDiscount and true or false,
+        alpha = (ctx.alpha or 1) * self:entered(), rar = rar,
+    })
+end
+
+-- Valor da plaquinha (grade da UI, depois do artPass).
+function ShelfItem:drawPlateText(L, ctx)
+    if self.sold then return end
+    local cv = L.cover
+    local Q = self:_plaque(cv)
+    if not Q then return end
+    local sdx = floor((self.slide.x or 0) / cv.s + 0.5)
+    local sale = self.offer and self.offer.saleDiscount and true or false
+    ShelfItem.drawPlaqueText(L, Q, sdx, ShelfItem.priceInk(ctx.afford and self.deny <= 0, sale),
+        (ctx.alpha or 1) * self:entered(), self:_shake())
 end
 
 -- Rótulo de HOVER: faixa de pergaminho miúda, na diagonal, ancorada acima do
@@ -515,164 +636,6 @@ function ShelfItem:labelText()
     if self.kind == "relic" then return UpgradeTile.effectLabel(offer) or offer.name or "?" end
     if self.kind == "pack" then return offer.name or "?" end
     return nil
-end
-
-function ShelfItem:_shake()
-    if self.deny > 0 and not reducedMotion() then
-        local k = (DENY_TIME - self.deny) / DENY_TIME
-        return math.sin(k * math.pi * 4) * 3 * (1 - k)
-    end
-    return 0
-end
-
--- Placas no canvas da ARTE (chamado dentro do artPass): plaquinha de
--- raridade (carta), etiqueta + cordão (todas).
-function ShelfItem:drawPlateArt(L, ctx)
-    local g = self.geom
-    if not g or self.sold then return end
-    local cv = L.cover
-    local alpha = (ctx.alpha or 1) * self:entered()
-    local sdx = floor((self.slide.x or 0) / cv.s + 0.5)
-    if self.kind == "card" and g.rarity and self.offer.rarity and ShelfItem.showsRarityPlate(self.offer.rarity) then
-        ShelfItem.drawRarityPlateArt(g, self.offer.rarity, cv, sdx, alpha)
-    end
-    if not g.tag then return end
-    local sale = self.offer and self.offer.saleDiscount and true or false
-    local lift = (self.kind ~= "card") and floor(self:liftPx() / cv.s + 0.5) or 0
-    local tie = nil
-    if self.kind ~= "card" and self._tieArt then tie = { self._tieArt[1], self._tieArt[2] } end
-    ShelfItem.drawTagArt(g.tag, sdx + ShelfItem.swingArt(self.tag.angle), lift,
-        ctx.afford and self.deny <= 0, sale, alpha, tie)
-end
-
--- Texto das placas (grade da UI, depois do artPass).
-function ShelfItem:drawPlateText(L, ctx)
-    local g = self.geom
-    if not g or self.sold then return end
-    local cv = L.cover
-    local shake = self:_shake()
-    local alpha = (ctx.alpha or 1) * self:entered()
-    local sdx = floor((self.slide.x or 0) / cv.s + 0.5)
-    if self.kind == "card" and g.rarity and self.offer.rarity and ShelfItem.showsRarityPlate(self.offer.rarity) then
-        ShelfItem.drawRarityPlateText(g, self.offer.rarity, cv, sdx, alpha, shake)
-    end
-    if not g.tag then return end
-    local sale = self.offer and self.offer.saleDiscount and true or false
-    local lift = (self.kind ~= "card") and floor(self:liftPx() / cv.s + 0.5) or 0
-    ShelfItem.drawTagText(L, g.tag, sdx + ShelfItem.swingArt(self.tag.angle), lift,
-        "$" .. tostring(self.offer.cost or 0), ctx.afford and self.deny <= 0, sale, alpha, shake)
-end
-
--- ---------------------------------------------------------------------------
--- PLAQUINHA DE RARIDADE (Loja "reta"): latão escuro pregado na frente do
--- trilho do cavalete, no MESMO frame da carta (shear(0, k) na origem da
--- borda). 4 tons de latão + contorno de tinta + 2 pregos; a raridade em
--- fonte pequena, na cor dela clareada até contraste >= 4,5:1 com o latão.
--- ---------------------------------------------------------------------------
-ShelfItem.BRASS = {
-    hi   = Palette.AGED_GOLD_LIGHT,
-    rim  = Palette.AGED_GOLD,
-    dark = Palette.AGED_GOLD_DARK,
-    face = Palette.lerp(Palette.AGED_GOLD_DARK, Palette.INK, 0.4),
-}
-
-local function lum(c)
-    local function ch(v) return v <= 0.03928 and v / 12.92 or ((v + 0.055) / 1.055) ^ 2.4 end
-    return 0.2126 * ch(c[1]) + 0.7152 * ch(c[2]) + 0.0722 * ch(c[3])
-end
-function ShelfItem.contrast(a, b)
-    local la, lb = lum(a), lum(b)
-    if la < lb then la, lb = lb, la end
-    return (la + 0.05) / (lb + 0.05)
-end
-
-local inkCache = {}
-function ShelfItem.rarityInk(rar)
-    if inkCache[rar] then return inkCache[rar] end
-    local c = Palette.forRarity(rar)
-    local face = ShelfItem.BRASS.face
-    for _ = 1, 40 do
-        if ShelfItem.contrast(c, face) >= 4.6 then break end
-        c = Palette.lighten(c, 0.08)
-    end
-    inkCache[rar] = c
-    return c
-end
-
-function ShelfItem.showsRarityPlate(rar)
-    if rar == "common" or rar == "basic" then return ShopLayout.PLATE_COMMON and true or false end
-    return true
-end
-
-ShelfItem.PLATE_PAD = 3   -- px de ARTE de cada lado: contorno + prego + folga
-function ShelfItem.rarityPlateFont(text, maxW, s)
-    s = s or 2
-    return TextFit.fit(text, 8, maxW - ShelfItem.PLATE_PAD * 2 * s, 7)
-end
-
--- Geometria da plaquinha (px de ARTE) + fonte/texto. Pura: o teste mede.
-function ShelfItem.rarityPlateArt(g, rar, cv)
-    local R = g.rarity
-    local text = I18n.t("rarity." .. rar, nil, rar)
-    local font, fitted = ShelfItem.rarityPlateFont(text, R.maxW or R.w * cv.s, cv.s)
-    local wArt = math.min(R.w, math.ceil(font:getWidth(fitted) / cv.s) + ShelfItem.PLATE_PAD * 2)
-    local x0 = R.x0 + floor((R.w - wArt) / 2)
-    return { x0 = x0, w = wArt, y0 = R.y0, h = R.h, font = font, text = fitted }
-end
-
--- Caixa da plaquinha em px de TELA (x,y = canto de cima à esquerda).
-function ShelfItem.rarityPlateBox(g, rar, cv)
-    local P = ShelfItem.rarityPlateArt(g, rar, cv)
-    local b = ShopLayout.stepBox(cv, P.x0, P.w, P.y0, P.h)
-    b.slope, b.font, b.text = ShopLayout.K, P.font, P.text
-    return b
-end
-
--- Latão em 4 tons na grade: contorno de tinta, aresta de cima clara, face
--- escura, pé escuro, dois pregos.
-function ShelfItem.drawRarityPlateArt(g, rar, cv, dx, alpha)
-    local P = ShelfItem.rarityPlateArt(g, rar, cv)
-    local B = ShelfItem.BRASS
-    local a = alpha or 1
-    local x0, x1 = P.x0 + (dx or 0), P.x0 + (dx or 0) + P.w - 1
-    for x = x0, x1 do
-        local top = lineY(P.y0, x)
-        px(Palette.INK, 0.4 * a, x + 1, top + P.h, 1, 1)          -- sombra na face do degrau
-        if x == x0 or x == x1 then
-            px(Palette.INK, a, x, top, 1, P.h)
-        else
-            px(Palette.INK, a, x, top, 1, 1)
-            px(B.hi, a, x, top + 1, 1, 1)
-            px(B.face, a, x, top + 2, 1, P.h - 4)
-            px(B.dark, a, x, top + P.h - 2, 1, 1)
-            px(Palette.INK, a, x, top + P.h - 1, 1, 1)
-        end
-    end
-    for _, x in ipairs({ x0 + 1, x1 - 1 }) do
-        local mid = lineY(P.y0, x) + floor(P.h / 2)
-        px(B.hi, a, x, mid, 1, 1)
-    end
-end
-
-function ShelfItem.drawRarityPlateText(g, rar, cv, dx, alpha, shakeX)
-    local P = ShelfItem.rarityPlateArt(g, rar, cv)
-    local x0 = P.x0 + (dx or 0) + 2
-    local sx = cv.ox + x0 * cv.s + (shakeX or 0)
-    local sy = cv.oy + (lineY(P.y0, x0) + 2) * cv.s
-    local w = (P.w - 4) * cv.s
-    local h = (P.h - 4) * cv.s
-    local a = alpha or 1
-    withShear(floor(sx), floor(sy), ShopLayout.K, function()
-        love.graphics.setFont(P.font)
-        local tx = floor((w - P.font:getWidth(P.text)) / 2)
-        local ty = floor((h - P.font:getHeight()) / 2) + 1
-        Palette.set(Palette.INK, 0.9 * a)
-        love.graphics.print(P.text, tx, ty + 1)
-        local c = ShelfItem.rarityInk(rar)
-        love.graphics.setColor(c[1], c[2], c[3], a)
-        love.graphics.print(P.text, tx, ty)
-    end)
-    love.graphics.setColor(1, 1, 1, 1)
 end
 
 -- Nome/efeito no hover (objetos da mesa). L = layout (limites).
@@ -720,7 +683,11 @@ function ShelfItem:drawStandArt(L, part, alpha)
             end
         end
     end
-    local cardL, cardR = x0 + 3, x1 - 3
+    -- destaque NA BASE do expositor (v5): hover acende a aresta do trilho
+    -- em pergaminho; selecionado, em ouro (a mesma cor do contorno da carta
+    -- e do aro da plaquinha). Nada se mexe: só a cor.
+    local edgeC = (self.selected and Palette.AGED_GOLD_LIGHT)
+        or (hov > 0.3 and Palette.PARCHMENT_LIGHT) or WOOD.hi
     for x = x0, x1 do
         local base = lineY(E, x)
         local top = base - R
@@ -728,11 +695,9 @@ function ShelfItem:drawStandArt(L, part, alpha)
             px(Palette.INK, a, x, top - 1, 1, R + 1)
         else
             px(Palette.INK, a, x, top - 1, 1, 1)
-            -- carta levantada: a sombra dela cai no topo do trilho
             -- trilho ESCURO (destaca do tampo claro do degrau): aresta de
             -- cima clara de 1 px, face em dois tons, pé de tinta
-            local shaded = hov > 0.3 and x >= cardL and x <= cardR
-            px(shaded and WOOD.mid or WOOD.hi, a, x, top, 1, 1)
+            px(edgeC, a, x, top, 1, 1)
             px(WOOD.mid, a, x, top + 1, 1, 1)
             px(WOOD.dark, a, x, top + 2, 1, R - 3)
             px(WOOD.deep, a, x, base - 1, 1, 1)
@@ -767,19 +732,22 @@ function ShelfItem:drawCard(ctx)
     local x0, y0, x1, y1, x2, y2, x3, y3 = self:cardCorners()
     local dim = ctx.afford and 1 or 0.6
     local a = alpha * (1 - clamp(inst.dissolve or 0, 0, 1))
-    -- sombra da carta na parede/estante atrás (deslocada pra direita: vela à
-    -- esquerda); levantada, a carta se afasta da parede e a sombra abre
+    -- sombra da carta na parede atrás: luz da esquerda, então ela cai à
+    -- DIREITA e fica PRESA na base (v5: a carta encosta no trilho, a sombra
+    -- nasce do apoio e abre só no topo). Acompanha o tilt de leve.
     local e = reducedMotion() and 0 or self.hover
-    -- a sombra acompanha o tilt (canto apertado -> sombra pro lado oposto,
-    -- como Card:draw com SHADOW_PRESS_SHIFT)
     local T = self.tilt or { x = 0, y = 0 }
-    local sdx = 5 + 3 * e - T.x * 6 * e
-    local sdy = 4 + 3 * e - T.y * 4 * e
-    love.graphics.setColor(0, 0, 0, (0.32 - 0.08 * e) * a)
-    love.graphics.polygon("fill", x0 + sdx, y0 + sdy, x1 + sdx, y1 + sdy, x2 + sdx, y2 + sdy - 2, x3 + sdx, y3 + sdy - 2)
+    local tdx = 6 - T.x * 3 * e
+    local tdy = 3 - T.y * 2 * e
+    love.graphics.setColor(0, 0, 0, 0.30 * a)
+    love.graphics.polygon("fill", x0 + tdx, y0 + tdy, x1 + tdx, y1 + tdy, x2 + 2, y2 - 2, x3 + 2, y3 - 2)
     local CardMesh = require("src.ui.CardMesh")
     local shader = CardMesh.getShader()
-    local glowK = math.max(self.hover * 0.8, self.selected and 0.9 or 0)
+    -- contorno: SELECIONADO = ouro firme; só HOVER = pergaminho mais fraco
+    -- (as duas coisas ao mesmo tempo: vale a seleção). Mesma regra dos
+    -- objetos da mesa (drawObjectArt).
+    local glowK = self.selected and 0.85 or (self.hover * 0.55)
+    local glowC = self.selected and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT_LIGHT
     if shader then
         local iw, ih = img:getWidth(), img:getHeight()
         local mesh = CardMesh.getMesh(iw, ih)
@@ -791,14 +759,29 @@ function ShelfItem:drawCard(ctx)
         local hv = reducedMotion() and 0 or self.hover
         CardMesh.setUniforms(shader, { T.x, T.y }, hv, ctx.t or 0, img)
         if glowK > 0.01 then
-            local gc = Palette.AGED_GOLD_LIGHT
-            love.graphics.setColor(gc[1], gc[2], gc[3], glowK * a * 0.7)
-            for _, d in ipairs({ { 2, 0 }, { -2, 0 }, { 0, 2 }, { 0, -2 } }) do
-                local r0, r1, r2 = ShopPerspective.homography(x0 + d[1], y0 + d[2], x1 + d[1], y1 + d[2],
-                    x2 + d[1], y2 + d[2], x3 + d[1], y3 + d[2])
-                CardMesh.setQuad(shader, r0, r1, r2)
-                love.graphics.draw(mesh, 0, 0)
+            -- anel SÓLIDO de 1 px de arte (silhueta da carta, acompanha o tilt)
+            local gc = glowC
+            local d0 = math.max(2, math.floor((self.geom.frame and self.geom.frame.s or 2) + 0.5))
+            shader:send("silhouette", 1)
+            love.graphics.setColor(gc[1], gc[2], gc[3], glowK * a)
+            -- selecionado: anel de 2 px de arte (firme); só hover: 1 px
+            local rings = self.selected and { d0 * 2, d0 } or { d0 }
+            for ri, dd in ipairs(rings) do
+                -- selecionado: ouro POR FORA e um filete de tinta colado na
+                -- carta (separa o anel da moldura dourada da própria carta)
+                if self.selected and ri == 2 then
+                    love.graphics.setColor(Palette.INK[1], Palette.INK[2], Palette.INK[3], glowK * a)
+                else
+                    love.graphics.setColor(gc[1], gc[2], gc[3], glowK * a)
+                end
+                for _, d in ipairs({ { dd, 0 }, { -dd, 0 }, { 0, dd }, { 0, -dd } }) do
+                    local r0, r1, r2 = ShopPerspective.homography(x0 + d[1], y0 + d[2], x1 + d[1], y1 + d[2],
+                        x2 + d[1], y2 + d[2], x3 + d[1], y3 + d[2])
+                    CardMesh.setQuad(shader, r0, r1, r2)
+                    love.graphics.draw(mesh, 0, 0)
+                end
             end
+            shader:send("silhouette", 0)
         end
         local r0, r1, r2 = ShopPerspective.homography(x0, y0, x1, y1, x2, y2, x3, y3)
         CardMesh.setQuad(shader, r0, r1, r2)
@@ -845,16 +828,14 @@ function ShelfItem:drawObjectArt(L, ctx)
     local dim = ctx.afford and 1 or 0.6
     o.color = { dim, dim, dim }
     local sale = self.offer and self.offer.saleDiscount
-    o.outline = math.max(self.hover, self.selected and 1 or 0, sale and 0.7 or 0)
+    -- selecionado = ouro firme; hover = pergaminho (a mesma regra da carta)
+    o.outline = math.max(self.hover * 0.8, self.selected and 1 or 0, sale and 0.7 or 0)
     o.outlineColor = (self.selected and Palette.AGED_GOLD_LIGHT)
         or (sale and Palette.lerp(Palette.AGED_GOLD_LIGHT, Palette.ORANGE, 0.5))
         or Palette.PARCHMENT_LIGHT
     ShopPerspective.drawContactShadow(o, L.art.tableMask, alpha)
     ShopPerspective.drawUpright(o)
     self._artBox = ShopPerspective.uprightBox(o)
-    local tx, ty = ShopPerspective.tiePoint(o, 0.32)
-    self._tieArt = { floor(tx), floor(ty) }
-    self._tie = { L.cover.ox + tx * L.cover.s, L.cover.oy + ty * L.cover.s }
 end
 
 -- Marca de poeira no lugar do objeto (arte, na diagonal) — o "VENDIDO" a giz

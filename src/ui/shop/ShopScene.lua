@@ -246,14 +246,8 @@ function ShopScene:update(dt)
     Moveable.initJuice(self.bell); Moveable.initJuice(self.dice)
     local overBell = not blocked and (inRect(L.bell.rect, mx, my) or inRect(L.bell.plate, mx, my))
     local overDice = not blocked and (inRect(L.dice.rect, mx, my) or inRect(L.dice.plate, mx, my))
-    local bellWasHot = self.bell.hot
     hoverOf(self.bell, L.bell, overBell)
     hoverOf(self.dice, L.dice, overDice)
-    self.bell.tagSwing = self.bell.tagSwing or { angle = 0, vel = 0 }
-    if self.bell.hot and not bellWasHot and not reducedMotion() then
-        self.bell.tagSwing.vel = self.bell.tagSwing.vel + 2.4
-    end
-    ShelfItem.stepPendulum(self.bell.tagSwing, dt)
     self.hoverCounter = (overBell and "bell") or (overDice and "dice") or nil
     if self.bell.ringing > 0 then self.bell.ringing = math.max(0, self.bell.ringing - dt) end
 
@@ -492,7 +486,6 @@ function ShopScene:_drawCards(list)
             rects[#rects + 1] = { x = r.x + sx - 12, y = r.y - 16, w = r.w + 30, h = r.h + 30 }
             local g = it.geom
             if g and g.plate then rects[#rects + 1] = { x = g.plate.x + sx - 8, y = g.plate.y, w = g.plate.w + 24, h = g.plate.h + 4 } end
-            if g and g.tag then rects[#rects + 1] = { x = g.tag.box.x + sx - 8, y = g.tag.box.y - 4, w = g.tag.box.w + 16, h = g.tag.box.h + 8 } end
         end
     end
     if #cards == 0 then return end
@@ -540,8 +533,8 @@ function ShopScene:_drawTable(list)
             order[#order + 1] = { foot = it.foot, item = it }
             local r = it.rect
             rects[#rects + 1] = { x = r.x + (it.slide.x or 0) - 16, y = r.y - 24, w = r.w + 60, h = r.h + 36 }
-            if it.geom and it.geom.tag then
-                local b = it.geom.tag.box
+            if it.geom and it.geom.plaque then
+                local b = it.geom.plaque.box
                 rects[#rects + 1] = { x = b.x + (it.slide.x or 0) - 8, y = b.y - 8, w = b.w + 16, h = b.h + 12 }
             end
         end
@@ -551,7 +544,7 @@ function ShopScene:_drawTable(list)
     for _, o in ipairs({ L.bell, L.dice }) do
         local r = o.rect
         rects[#rects + 1] = { x = r.x - 16, y = r.y - 24, w = r.w + 90, h = r.h + 36 }
-        if o.tag then rects[#rects + 1] = { x = o.tag.box.x - 8, y = o.tag.box.y - 8, w = o.tag.box.w + 16, h = o.tag.box.h + 12 } end
+        if o.plaque then rects[#rects + 1] = { x = o.plaque.box.x - 8, y = o.plaque.box.y - 8, w = o.plaque.box.w + 16, h = o.plaque.box.h + 12 } end
     end
     table.sort(order, function(a, b) return a.foot < b.foot end)
     local box = artBoxOf(L, rects, 4)
@@ -564,7 +557,7 @@ function ShopScene:_drawTable(list)
                 it:drawPlateArt(L, self:_itemCtx(it))
             elseif e.bell then
                 self:_drawBellArt()
-                self:_drawBellTagArt()
+                self:_drawBellPlaqueArt()
             elseif e.dice then
                 self:_drawDiceArt()
             end
@@ -580,7 +573,7 @@ function ShopScene:_drawTable(list)
                 NavCursor.target("offer:" .. it.slot, r.x + (it.slide.x or 0), r.y, r.w, r.h)
             end
         elseif e.bell then
-            self:_drawBellTag()
+            self:_drawBellPlaqueText()
         end
     end
     for _, e in ipairs(order) do
@@ -597,7 +590,10 @@ function ShopScene:_bellCost()
 end
 
 -- Sino: a arte de sempre (objects/bell.png), em pé na diagonal, contato na
--- base; sem ouro, apagado. Hover = mesmo sprite levantado + contorno.
+-- base; sem ouro, apagado. Hover = mesmo sprite + contorno (v5: sem
+-- levantar). Escala 1 da grade (v5: era 0,755 do sprite: pixel fracionário
+-- ao lado de objetos em escala 1; um sino de balcão ~ 40% da altura da
+-- carta, que é o que o sprite dá em escala 1).
 function ShopScene:_drawBellArt()
     local L = self.L
     local B = L.bell
@@ -612,39 +608,31 @@ function ShopScene:_drawBellArt()
     local o = {
         img = img, prof = prof,
         fx = (B.footX - cv.ox) / cv.s, fy = (B.foot - cv.oy) / cv.s,
-        s = (B.size / cv.s) / math.max(prof.x1 - prof.x0 + 1, prof.y1 - prof.y0 + 1),
+        s = 1,
         k = B.slope * (pz.shear or 1), flip = pz.flip, lift = lift / cv.s,
         outline = self.bell.hover,
         color = canRing and { 1, 1, 1 } or { 0.55, 0.5, 0.45 },
     }
     ShopPerspective.drawContactShadow(o, L.art.tableMask, 1)
     ShopPerspective.drawUpright(o)
-    local tx, ty = ShopPerspective.tiePoint(o, 0.25)
-    self.bell.tieArt = { math.floor(tx), math.floor(ty) }
 end
 
-function ShopScene:_bellTagState()
-    local cv = self.L.cover
-    local lift = reducedMotion() and 0 or math.floor(self.bell.hover * ShopLayout.LIFT / cv.s + 0.5)
-    self.bell.tagSwing = self.bell.tagSwing or { angle = 0, vel = 0 }
-    return lift, ShelfItem.swingArt(self.bell.tagSwing.angle)
-end
-
--- etiqueta do sino na grade da arte (dentro do artPass da mesa)
-function ShopScene:_drawBellTagArt()
+-- plaquinha do sino (o mesmo latão das ofertas), na grade da arte
+function ShopScene:_bellPlaque()
     local B = self.L.bell
-    if not B.tag then return end
-    local _, canRing = self:_bellCost()
-    local lift, sw = self:_bellTagState()
-    ShelfItem.drawTagArt(B.tag, sw, lift, canRing, false, 1, self.bell.tieArt)
-end
-
-function ShopScene:_drawBellTag()
-    local B = self.L.bell
-    if not B.tag then return end
+    if not B.plaque then return nil end
     local cost, canRing = self:_bellCost()
-    local lift, sw = self:_bellTagState()
-    ShelfItem.drawTagText(self.L, B.tag, sw, lift, "$" .. tostring(cost), canRing, false, 1, 0)
+    return ShelfItem.plaqueArt(B.plaque, "$" .. tostring(cost), nil, self.L.cover), canRing
+end
+
+function ShopScene:_drawBellPlaqueArt()
+    local Q = self:_bellPlaque()
+    if Q then ShelfItem.drawPlaqueArt(Q, 0, { alpha = 1 }) end
+end
+
+function ShopScene:_drawBellPlaqueText()
+    local Q, canRing = self:_bellPlaque()
+    if Q then ShelfItem.drawPlaqueText(self.L, Q, 0, ShelfItem.priceInk(canRing, false), 1, 0) end
 end
 
 -- Copo de dados (ShopProps) na resolução da arte, com contato na base e os
@@ -665,17 +653,19 @@ function ShopScene:_drawDiceArt()
     -- o copo (frame 32 px, corpo de 22) encosta na mesa pela base inteira
     local lying = st and st.used and st.dice
     contactBand(L, fx, fy, lying and 15 or 11, D.slope, 1)
-    if lying then
-        -- dois dados jogados à direita do copo, na diagonal
-        for _, off in ipairs({ 30, 50 }) do
-            contactBand(L, fx + off, fy + D.slope * off, 8, D.slope, 1)
-        end
+    -- dados À FRENTE do copo (ShopLayout.TABLE.dice.diceAt): jogados, os
+    -- dois; parado, um de enfeite (o copo sozinho lia como caneca sem preço)
+    local at = ShopLayout.TABLE.dice.diceAt
+    for i = 1, (lying and 2 or 1) do
+        local p = at[i]
+        contactBand(L, fx + p[1], fy + p[2] + D.slope * p[1], 8, D.slope, 1)
     end
     local drawn = false
     if P and P.drawDiceCup then
         local ok, err = pcall(P.drawDiceCup, artRect, { hover = self.dice.hover, used = ScribeDice.isUsed(run),
             total = st and st.total or nil, run = run, t = self.t, reduced = reducedMotion(),
-            slope = D.slope, outline = self.dice.hover, silhouette = ShopPerspective.silhouette() })
+            slope = D.slope, outline = self.dice.hover * 0.8, silhouette = ShopPerspective.silhouette(),
+            dicePos = ShopLayout.TABLE.dice.diceAt, idleDie = 5 })
         if ok then drawn = true else print("[ShopScene] ShopProps.drawDiceCup: " .. tostring(err)) end
     end
     if not drawn then
@@ -695,8 +685,7 @@ function ShopScene:_drawCounterLabels()
             L.bell.slope, math.min(1, self.bell.hover * 1.4), L.limitX, 8)
     end
     if self.dice.hover > 0.05 then
-        local fh = FontManager.getFont(9):getHeight() + 7
-        ShelfItem.drawHoverName(I18n.t("shop.dice_plate"), L.dice.footX, L.dice.foot + fh + 10,
+        ShelfItem.drawHoverName(I18n.t("shop.dice_plate"), L.dice.footX, L.dice.rect.y,
             L.dice.slope, math.min(1, self.dice.hover * 1.4), L.limitX, 8)
     end
 end

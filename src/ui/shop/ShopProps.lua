@@ -399,15 +399,28 @@ function DiceCup:draw(x, y, scale, opts)
     end
     love.graphics.setColor(1, 1, 1, 1)
     drawFrame(s, self.frame, cx, cy, scale)
-    if self.state == "rolled" and self.dice then
+    -- dados: jogados (rolled) ou um dado de enfeite parado (opts.idleDie,
+    -- Loja v5: o copo sozinho lia como uma CANECA sem preço). opts.dicePos =
+    -- posições {dx, dy} do PÉ de cada dado relativas ao pé do copo (a loja
+    -- põe os dados À FRENTE do copo, longe do sino); sem ela, à direita.
+    local show = (self.state == "rolled" and self.dice) and self.dice
+        or (opts.idleDie and { opts.idleDie }) or nil
+    if show then
         local faces = sheet("dieFaces", DiceCup.DIE, DiceCup.DIE)
         if faces then
             local off = (DiceCup.FW / 2 + 6) * scale
-            for i = 1, 2 do
-                local dx = math.floor(x + off)
-                local dy = math.floor(y + slope * off - (DiceCup.DIE + 2) * scale)
+            for i = 1, #show do
+                local p = opts.dicePos and opts.dicePos[i]
+                local dx, dy
+                if p then
+                    dx = math.floor(x + p[1] * scale - DiceCup.DIE / 2 * scale)
+                    dy = math.floor(y + p[2] * scale + slope * p[1] * scale - DiceCup.DIE * scale)
+                else
+                    dx = math.floor(x + off)
+                    dy = math.floor(y + slope * off - (DiceCup.DIE + 2) * scale)
+                end
                 love.graphics.setColor(1, 1, 1, 1)
-                drawFrame(faces, self.dice[i], dx, dy, scale)
+                drawFrame(faces, show[i], dx, dy, scale)
                 off = off + (DiceCup.DIE + 4) * scale
             end
         end
@@ -618,7 +631,8 @@ function ShopProps.drawDiceCup(rect, ctx)
     ctx = ctx or {}
     local sc = math.max(1, math.floor(rect.h / DiceCup.FH))
     S.cup:draw(math.floor(rect.x + rect.w / 2), math.floor(rect.y + rect.h), sc,
-        { slope = ctx.slope, outline = ctx.outline, silhouette = ctx.silhouette })
+        { slope = ctx.slope, outline = ctx.outline, silhouette = ctx.silhouette,
+          dicePos = ctx.dicePos, idleDie = ctx.idleDie })
 end
 
 function ShopProps.drawFront(L, ctx)

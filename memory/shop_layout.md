@@ -295,3 +295,53 @@ estranho".
   seguem na abertura do pacote e na coleção. O arcana v4 saiu ~15% mais alto
   que os outros (todas as 16 candidatas); cabe na fileira (validate ok).
   Prova: `SHOP_STATES=items`.
+
+## v5: espaço da bancada, apoio e preço preso no dono (13/Out/2026)
+
+Briefing do dono (12 itens): a vitrine parecia "montagem de elementos
+posicionados independentemente sobre uma imagem". Causas confirmadas no
+código da v4 (ab572ebc):
+
+| sintoma | causa |
+|---|---|
+| escada acentuada nas cartas | `ART.cards` com passo FIXO de 98 px de arte para cartas de 52: vão de 46 px e 12 px de subida por carta (36 px na fileira) |
+| etiquetas brancas flutuando | `railPlates`: etiqueta pendurada da PONTA DIREITA do trilho, empurrada pra baixo da plaquinha de raridade, caindo no vão escuro entre o degrau e a mesa; objetos com etiqueta deitada à direita-frente presa por um cordão de 1 px quase invisível |
+| fila rígida na mesa | `ART.objects` com passo constante de 78 e TODOS os pés na mesma reta (`LINES.objects`) |
+| carta "levitando" no hover | `cardQuad(c, hover, lift)` tirava a carta 10-14 px do trilho + escala 1,06; parallax do tilt (`TILT_PARALLAX` 0,5) andava com a carta inteira; o press do `card_perspective.glsl` subia a BASE 3% da altura |
+| sino com pixel diferente | `_drawBellArt` com escala `34/45 = 0,755` do sprite, ao lado de objetos em escala 1 |
+
+O que mudou (commit 1, composição/apoio/etiquetas):
+
+- **Parâmetros centrais** em `ShopLayout.SHELF / TABLE / PLAQUE` (px de
+  arte): vão entre cavaletes (10, cede até 4 na janela estreita), folga do
+  trilho, reta-base da mesa, passo de profundidade, grupos e vãos, altura e
+  fonte da plaquinha. Nada de coordenada de tela solta.
+- **Cartas = GRUPO** centrado na zona da vitrine (borda visível esquerda até
+  o pergaminho): passo = trilho + vão. Subida da fileira 25 px de arte
+  (era 36). Âncora = centro da base (`c.anchor`), dentro do trilho.
+- **Hover sem levitar**: `CARD_LIFT = 0`, `CARD_HOVER_SCALE = 1`, objetos
+  `LIFT = 0`; tilt sem parallax; no shader, modo quad multiplica o
+  deslocamento por `(1 - uv.y)` (base PRESA, espelho Lua `ShelfItem.warpUV`).
+- **Preço = plaquinha de latão** (um tratamento só): carta = pregada na FACE
+  do degrau, centrada sob a carta, com a GEMA da raridade (comum sem gema);
+  objeto/sino = em pé no tampo, centrada logo à frente do pé, com topo e
+  sombra de contato. Valor gravado em tinta (contraste >= 4,5, travado),
+  sem ouro em vermelho escuro, oferta do dia = canto vermelho dobrado,
+  selecionado = aro dourado. Plaquinha de raridade e etiqueta pendurada
+  SAÍRAM (raridade por extenso fica no pergaminho e no selo da carta).
+- **Mesa em três grupos** (`ShopLayout.tableRow`): ferramentas (copo, sino)
+  | serviços (relíquias em V raso: a do meio 4 px atrás) | pacote. Vão
+  dentro do grupo < vão entre grupos (travado). Copo ganhou um dado de
+  enfeite À FRENTE (lia como caneca sem preço); os dados jogados também vão
+  à frente (antes caíam em cima do sino).
+- **Destaque**: hover = anel de pergaminho 1 px de arte (silhueta da carta
+  pelo shader, acompanha o tilt) + aresta do trilho clara; selecionado =
+  anel dourado com filete de tinta + aresta do trilho e aro da plaquinha em
+  ouro. Objetos: mesmo código de cor no contorno.
+- Travas novas: `test_shop_layout` (vão, subida, grupos, V raso, âncora
+  dentro do trilho, hover sem deslocar nada, plaquinha no eixo/na face/no
+  tampo, distância da aresta da frente, CONTINUAR com respiro) e
+  `test_shop_scene` (base presa no tilt, sem parallax, sem lift, contraste
+  do preço, texto exato da plaquinha). Capturas:
+  `SHOP_STATES=rest,hovercard,hoverjoker,selectcard,bought,broke love .
+  test_one screenshot_shop_diag <loc>`.

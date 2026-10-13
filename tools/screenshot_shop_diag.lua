@@ -79,6 +79,7 @@ function M.run(arg)
                 local Rng = require("src.systems.Rng")
                 Rng.setActive(Rng.new(tonumber(os.getenv("SHOP_SEED")) or 4242))
                 _G.openScribeDice = _G.openScribeDice or function() end
+                _G.openCardPicker = _G.openCardPicker or function(_, cb) if cb then pcall(cb) end end
                 mouseX, mouseY = 4, 4
                 local s = require("components.CardRewardScreen"):new(game.shopSystem)
                 s:show(game, function() end, function() end, "shop")
@@ -101,7 +102,28 @@ function M.run(arg)
                     mouseX, mouseY = cx * k, cy * k
                     sim(0.6)
                 end
-                if state == "hoverdice" and s.scene and s.scene.L then
+                if state == "broke" then
+                    -- sem ouro: plaquinhas em vermelho, COMPRAR apagado
+                    game.economySystem.currentGold = 1
+                    sim(0.2)
+                elseif state == "selectcard" then
+                    local it = itemWhere(function(i) return i.kind == "card" and i.index == 3 end)
+                    if it then s:setSelectedOffer(it.offer) end
+                    sim(0.4)
+                elseif state == "bought" then
+                    -- comprou a carta 2 e a relíquia 1: VENDIDO no lugar
+                    for _, pred in ipairs({
+                        function(i) return i.kind == "card" and i.index == 2 end,
+                        function(i) return i.kind == "relic" and i.index == 2 end }) do
+                        local it = itemWhere(pred)
+                        if it then
+                            s:setSelectedOffer(it.offer)
+                            if s.buyButton and s.buyButton.onClick then pcall(s.buyButton.onClick) end
+                            sim(0.8)
+                        end
+                    end
+                    sim(0.6)
+                elseif state == "hoverdice" and s.scene and s.scene.L then
                     local D = s.scene.L.dice
                     mouseX, mouseY = (D.rect.x + D.rect.w / 2) * k, (D.rect.y + D.rect.h * 0.6) * k
                     sim(0.6)
@@ -140,7 +162,7 @@ function M.run(arg)
                     local x0, y0, x1, y1 = math.huge, math.huge, -math.huge, -math.huge
                     for _, c in ipairs(L.cards) do
                         x0 = math.min(x0, c.rect.x, c.plate.x); x1 = math.max(x1, c.rect.x + c.rect.w, c.plate.x + c.plate.w)
-                        y0 = math.min(y0, c.rect.y - c.lift - 14); y1 = math.max(y1, c.tag.box.y + c.tag.box.h, c.plate.y + c.plate.h)
+                        y0 = math.min(y0, c.rect.y - c.lift - 14); y1 = math.max(y1, c.plate.y + c.plate.h)
                     end
                     local X0, Y0 = math.max(0, math.floor((x0 - pad) * k)), math.max(0, math.floor((y0 - pad) * k))
                     local X1, Y1 = math.min(w, math.ceil((x1 + pad) * k)), math.min(h, math.ceil((y1 + pad) * k))
@@ -159,7 +181,7 @@ function M.run(arg)
                     local X0 = math.floor((c.rect.x - 16) * k)
                     local Y0 = math.floor((c.rect.y - c.lift - 26) * k)
                     local W = math.ceil((c.rect.w + 40) * k)
-                    local H = math.ceil((c.tag.box.y + c.tag.box.h + 6 - (c.rect.y - c.lift - 26)) * k)
+                    local H = math.ceil((c.plate.y + c.plate.h + 6 - (c.rect.y - c.lift - 26)) * k)
                     local dt = ShelfItem.HOVER_TIME / 12
                     -- 4 entrando (2, 4, 7, 12 de 12 quadros) e 4 saindo (3, 6, 9, 12)
                     local plan = { { true, 2 }, { true, 2 }, { true, 3 }, { true, 5 },
@@ -222,10 +244,10 @@ function M.run(arg)
                     -- batentes, plaquinha, etiqueta; sem nada por cima
                     local it = itemWhere(function(i) return i.kind == "card" and i.index == 2 end)
                     local c = it.geom
-                    local x0 = math.min(c.plate.x, c.tag.box.x) - 10
-                    local x1 = math.max(c.plate.x + c.plate.w, c.tag.box.x + c.tag.box.w) + 14
+                    local x0 = c.plate.x - 10
+                    local x1 = c.plate.x + c.plate.w + 14
                     local y0 = c.plate.y - 50
-                    local y1 = math.max(c.plate.y + c.plate.h, c.tag.box.y + c.tag.box.h) + 8
+                    local y1 = c.plate.y + c.plate.h + 8
                     local X, Y = math.floor(x0 * k), math.floor(y0 * k)
                     crop(render(), X, Y, math.ceil((x1 - x0) * k), math.ceil((y1 - y0) * k)):encode("png", name)
                     print("[shop_diag] " .. name)
