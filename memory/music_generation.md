@@ -133,6 +133,7 @@ finais e dos iniciais (fade colado pelo modelo; saudável entre 0,5× e 2,0×) e
 | `music-act1` | 0,78k | alaúde dedilhado (melodia AGUDA) + viola + tambor de moldura, 76 BPM, dórico — refeito em Set/2026 pra sair de cima do menu (0,51k); ver [[known_gaps]] |
 | `music-act2` | 1,49k | cordas em arco + saltério + sino distante, 60 BPM, eólio |
 | `music-shop` | 0,24k | alaúde + viola da gamba + tambor de mão, 85 BPM, mixolídio |
+| `music-boss-eclipse` | 0,78k | **chefe final** (Out/2026): coral de catedral + órgão + sinos tubulares + taiko lento, 58 BPM, ré menor, virada dissonante com respiração; 30 s pedidos (o endpoint aceitou) → highpass 25 Hz (o cru tinha DC -0,015) + loudnorm -15 + emenda no corte de 8,3 s (razão 1,00) → 28 s; salto 0,0013 |
 
 **A loja foi refeita uma segunda vez** (o dono: *"a música dentro da loja está
 totalmente quebrada, toda bizarra"*). A versão anterior tinha brilho 6,01k —
@@ -179,6 +180,7 @@ idempotente.
 | loja | `musicShop` |
 | descanso | `musicRest` |
 | recompensa pós-batalha | **`nil` = mantém o que está tocando** |
+| salão da **Rainha do Eclipse** (porta aberta: `GameplayScene.inBossRoom`, 4º arg `inHall` do `pick`) | `musicBossEclipse`, fade rápido; cash out/espólios mantêm |
 
 A última linha é uma decisão, não um esquecimento: `cardReward` serve loja E
 recompensa pós-luta com o mesmo state. Trocar de música na recompensa daria

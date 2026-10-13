@@ -43,6 +43,24 @@ function M.run()
     -- Elite NÃO é boss (já foi confundido com boss uma vez, no destino de cena).
     t:eq("elite nao usa tema de boss", MD.pick("playing", { actNumber = 1 }, "elite"), "musicAct1")
 
+    -- CHEFE FINAL (Rainha do Eclipse, Out/2026): faixa própria SÓ no salão
+    -- dela — na caminhada até o castelo é o tema comum; os outros chefes
+    -- nunca a pegam; cash out e espólios dentro do salão mantêm.
+    local rainha = { actNumber = Config.TotalActs, currentNode = { type = "boss", enemyId = "eclipse_queen" } }
+    local rei = { actNumber = 1, currentNode = { type = "boss", enemyId = "carrion_king" } }
+    t:eq("rainha no salao = faixa do chefe final", MD.pick("playing", rainha, "boss", true), "musicBossEclipse")
+    t:eq("rainha na estrada (porta fechada) = tema comum", MD.pick("playing", rainha, "boss", false), "musicBoss")
+    t:eq("outro chefe no salao = tema comum", MD.pick("playing", rei, "boss", true), "musicBoss")
+    t:eq("save antigo sem enemyId no ultimo ato = chefe final",
+         MD.pick("playing", { actNumber = Config.TotalActs, currentNode = { type = "boss" } }, "boss", true),
+         "musicBossEclipse")
+    t:eq("endless sem enemyId nao e o chefe final",
+         MD.pick("playing", { actNumber = Config.TotalActs, endlessMode = true, currentNode = { type = "boss" } }, "boss", true),
+         "musicBoss")
+    t:eq("cash out no salao da rainha mantem a faixa", MD.pick("roundEval", rainha, "boss", true), nil)
+    t:eq("espolios no salao da rainha mantem a faixa", MD.pick("cardReward", rainha, "boss", true), nil)
+    t:eq("sem probe de salao, boss = tema comum (apply sem cena)", MD.pick("playing", rainha, "boss"), "musicBoss")
+
     -- Descanso e loja.
     t:eq("descanso", MD.pick("rest", { actNumber = 2 }, "rest"), "musicRest")
     t:eq("loja",     MD.pick("cardReward", { actNumber = 2 }, "shop"), "musicShop")
@@ -68,6 +86,8 @@ function M.run()
         { "menu", nil, nil },
         { "playing", { actNumber = 1 }, "boss" }, { "rest", { actNumber = 1 }, "rest" },
         { "cardReward", { actNumber = 1 }, "shop" },
+        -- chefe final DENTRO do salão (4º arg = inHall)
+        { "playing", { actNumber = Config.TotalActs, currentNode = { type = "boss", enemyId = "eclipse_queen" } }, "boss", true },
     }
     -- Um caso de combate POR ATO: assim a varredura cresce junto com a
     -- campanha e uma faixa de ato novo nunca fica orfa por esquecimento.
@@ -75,7 +95,7 @@ function M.run()
         casos[#casos + 1] = { "playing", { actNumber = a }, "battle" }
     end
     for _, case in ipairs(casos) do
-        local code = MD.pick(case[1], case[2], case[3])
+        local code = MD.pick(case[1], case[2], case[3], case[4])
         if code then produced[code] = true end
     end
     for code in pairs(produced) do

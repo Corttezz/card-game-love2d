@@ -136,6 +136,59 @@ lovec . test_one shot_boss_cinematic both` + `python tools/boss_cinematic_sheet.
 `test_boss_cinematic` roda entrada e morte de TODO chefe (normal + reduced)
 e cobra nome/epíteto nos 5 locales.
 
+## Rainha do Eclipse v2 — o chefe FINAL (Out/2026, frente rainha-eclipse)
+
+> "No 6 eu gostei bastante, mas ainda tem muito que melhorar. Esse é o boss
+> final. Algo mais macabro, mais estiloso, música tipo Radagon/Besta
+> Prístina, entradas mais marcantes." (dono)
+
+Entrada de **14,1 s** (reduced 6,7 s, com os três atos), pulável após 1 s:
+
+| ato | kind | o que acontece |
+|---|---|---|
+| 1. pressentimento | `omen` (3,6 s, `steps=4`) | a luz do vão **morre em 4 degraus** (tique por degrau, silêncio entre eles: `bossBlinkClick` agendado), o eclipse pintado vira **íris** (pupila em fenda magenta que acompanha), a coroa **sangra** (dentes do halo quebrado escorrem em blocos), cinzas caem, névoa magenta sobe; `bossEclipseOmen` + loop `bossEclipseHum` |
+| 2. manifestação | `unveil` (3,2 s, clip `unveil`) + `descend` | **olhos demais** (6 pares que não são dela, `STRAY_EYES`) acendem no escuro do vão e somem quando ela acende; a silhueta em **casulo de asas** se abre em contraluz (borda = silhueta deslocada em 4 direções, aditiva; corpo quase preto), **sombra no mármore maior que ela** (quadro espelhado 1,35×1,7, corpo violeta + cópia aditiva), halo quebrado dourado sobre a cabeça; o `descend` existente traz do vão ao palco |
+| 3. coroação | `coronation` (4,4 s, clip `crown`, `cadence=0.085`) | cartão **próprio** (não o `title`): faixa negra com fio magenta, nome em ouro com sombra magenta **letra a letra** (`bossCrownTick` com pitch subindo), halos quebrados girando em sentidos opostos ladeando, epíteto letra a letra depois, **stinger** `bossEclipseCrown` + flash em 3 degraus + jolt do CRT na última letra |
+
+Tudo mora na seção "RAINHA DO ECLIPSE v2" de `src/ui/BossCinematic.lua`
+(`queenEnter/queenExit/queenUpdate/queenDrawBack/queenDrawFront/queenDrawUI`,
+um gancho de uma linha em cada ponto do runner). Paleta própria
+magenta/dourado/negro (`GOLD`, `MAGENTA`, `WARM`).
+
+**Luta por fases (só visual; o kit em `src/data/enemies.lua` NÃO muda):**
+`queenUpdate` observa `enemy._phaseIdx` com `ctx.inHall`; a virada ganha um
+instante próprio (`fx.phaseShift`: coroa larga esvaecendo, pétalas do vão,
+`bossEclipsePhase`, shake) e `eclipse.level` → `InteriorFX.setEclipse(level,
+dawn)`: no salão 6 a luz do vão morre em 4 degraus (faixa x 160..240 da arte,
+bordas na parede), a névoa do chão vira violeta, as poeiras do feixe ficam
+magenta; `queenDrawFront` põe o **halo quebrado magenta** sobre a cabeça dela;
+a íris olha o jogador de vez em quando (`eclipse.gaze`, Poisson ~7-13 s;
+`_debugGaze()` pra captura). O estado SOBREVIVE ao fim da entrada
+(módulo, zerado em `reset()`/`startIntro`).
+
+**Morte v2:** `burst` com partícula **`ash`** (pétala 2×2 que esmaece de
+magenta pra cinza e SOBE), `dawn` v2 (`drawDawnV2`: o disco pintado abre num
+**crescente** de luz, a luz chega em **5 bandas** pelo vão de cima pra baixo, o
+mármore acende em volta do corpo; `InteriorFX` redesenha o feixe e o reflexo
+em aditivo morno), `bossEclipseFade` (a voz dela apagando), slowmo 1,7 s, hold
+1,8 s. A alvorada **persiste** no cash out/espólios; Continuar com a rainha
+morta nasce em alvorada (`queenUpdate`: `deathFor == enemy` e vida 0).
+
+**Música:** `musicBossEclipse` (`audio/music/music-boss-eclipse.mp3`, coral +
+órgão + sinos + taiko com virada dissonante, 28 s em loop) só no salão dela:
+`MusicDirector.pick(state, run, nodeType, inHall)` — na caminhada toca a
+`musicBoss`; a porta abre → `GameplayScene.inBossRoom` → faixa dela com fade
+rápido, segue por luta, morte e cash out (`roundEval` → nil). Validação:
+`love . check_loop eclipse` (salto 0,0013, razão 1,04x, DC 0,0014, brilho 0,78k).
+
+Clips PixelLab (`tools/pixellab_boss_cine.py run eclipse_queen`): `unveil`
+(asas fecham em casulo nos quadros 3-5 e reabrem) e `crown` (braços erguidos).
+Travas: `test_boss_cinematic` (§6d: escala 12-18 s, três atos também no
+reduced, todas as letras chegam, fase fecha o salão sem cinemática, alvorada
+persiste, Continuar morta, reset limpa) + `test_music`. Provas:
+`BOSS_CINE_ACT=6 ... shot_boss_cinematic both|phases` →
+`tools/preview_out/boss_cinematic/boss_cine_{intro,death,phases}_eclipse_queen_sheet.png` (+GIF).
+
 ## Cash out e espólios DENTRO do salão (Out/2026, dono)
 
 Depois da morte do chefe, o fundo do cash out (`roundEval`, que desenha

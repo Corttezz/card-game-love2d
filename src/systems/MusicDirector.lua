@@ -30,6 +30,11 @@ MusicDirector.TRACKS = {
     musicAct5 = "music-act5.mp3",
     musicAct6 = "music-act6.mp3",
     musicBoss = "music-boss.mp3",
+    -- chefe FINAL (Rainha do Eclipse): coral + órgão + sinos + taiko, só no
+    -- SALÃO dela (entrada, luta, morte, cash out); os outros chefes seguem na
+    -- `musicBoss`. Gerada em Out/2026 (frente rainha-eclipse) — ver
+    -- memory/boss_cinematics.md e known_gaps §0b (free tier: regerar).
+    musicBossEclipse = "music-boss-eclipse.mp3",
     musicShop = "music-shop.mp3",
     musicRest = "music-rest.mp3",
 }
@@ -71,6 +76,7 @@ local FALLBACK = {
     musicAct5 = "musicAct4",
     musicAct6 = "musicAct5",
     musicBoss = "musicAct3",
+    musicBossEclipse = "musicBoss",
     musicShop = "musicAct1",
     musicRest = "musicAct1",
     menuMusic = nil,
@@ -86,9 +92,25 @@ local function resolve(code)
     return nil
 end
 
+-- O chefe final tem faixa própria, e SÓ dentro do salão dele: na caminhada
+-- até o castelo toca o tema comum de chefe; quando a porta abre
+-- (GameplayScene.inBossRoom) a faixa da rainha entra com o PRESSENTIMENTO
+-- da cinemática e segue pela luta, morte e cash out (roundEval devolve nil).
+MusicDirector.FINAL_BOSS_ID = "eclipse_queen"
+MusicDirector.FINAL_BOSS_TRACK = "musicBossEclipse"
+
+local function isFinalBoss(run)
+    local node = run and run.currentNode
+    if node and node.enemyId then return node.enemyId == MusicDirector.FINAL_BOSS_ID end
+    -- save antigo sem enemyId: o chefe do último ato da campanha
+    local Config = require("src.core.Config")
+    return run ~= nil and (run.actNumber or 1) == (Config.TotalActs or 6) and not run.endlessMode
+end
+
 -- Deriva o código da faixa a partir de (estado da tela, run corrente).
 -- Pública para que os testes possam exercitar a decisão sem áudio nenhum.
-function MusicDirector.pick(state, run, nodeType)
+-- `inHall` = a cena está DENTRO do salão do chefe (porta já aberta).
+function MusicDirector.pick(state, run, nodeType, inHall)
     if state == "boot" or state == "menu" or state == "classSelection"
         or state == "collection" or state == "achievements" or state == "credits"
         or state == "gameOver" or state == "victory" then
@@ -109,7 +131,10 @@ function MusicDirector.pick(state, run, nodeType)
 
     if state == "rest" then return "musicRest" end
 
-    if state == "playing" and nodeType == "boss" then return "musicBoss" end
+    if state == "playing" and nodeType == "boss" then
+        if inHall and isFinalBoss(run) then return MusicDirector.FINAL_BOSS_TRACK end
+        return "musicBoss"
+    end
 
     -- Uma faixa por ato. O `resolve` cuida do resto: enquanto o mp3 de um ato
     -- não existe, a cadeia de FALLBACK desce pro ato anterior — soltar o
@@ -131,10 +156,24 @@ local function tocandoAgora()
     return a and a.currentMusic or nil
 end
 
+-- Está no salão do chefe? Pergunta à cena (GameplayScene.inBossRoom), que o
+-- main.lua já carregou; `hallProbe` é substituível (testes sem cena).
+MusicDirector.hallProbe = nil
+local function inHallNow(nodeType)
+    if MusicDirector.hallProbe then return MusicDirector.hallProbe(nodeType) and true or false end
+    if nodeType ~= "boss" then return false end
+    local ok, GS = pcall(require, "src.scenes.GameplayScene")
+    if ok and GS and GS.inBossRoom then
+        local ok2, res = pcall(GS.inBossRoom, nodeType)
+        return ok2 and res and true or false
+    end
+    return false
+end
+
 function MusicDirector.apply(state, run, nodeType)
     if not MusicDirector.enabled then return end
 
-    local wanted = MusicDirector.pick(state, run, nodeType)
+    local wanted = MusicDirector.pick(state, run, nodeType, inHallNow(nodeType))
     if not wanted then return end
 
     local code = resolve(wanted)
@@ -181,7 +220,8 @@ function MusicDirector.apply(state, run, nodeType)
     -- metade era o menu estar 2,9 dB mais alto que todas as outras faixas —
     -- ver o registro em main.lua).
     local saindoDoMenu = (atual == "menuMusic" and code ~= "menuMusic")
-    local fade = (code == "musicBoss" or saindoDoMenu) and FADE_FAST or FADE_SLOW
+    local fade = (code == "musicBoss" or code == MusicDirector.FINAL_BOSS_TRACK or saindoDoMenu)
+        and FADE_FAST or FADE_SLOW
     -- Log de troca: sem isto, "a música está errada" não tem como ser
     -- diagnosticado a não ser adivinhando (foi o que aconteceu).
     print(string.format("[Musica] %s -> %s (estado=%s, no=%s)",
