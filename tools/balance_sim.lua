@@ -1,16 +1,32 @@
 -- tools/balance_sim.lua
 -- BATERIA DE BALANCEAMENTO (Out/2026): muitas runs seedadas por classe pelo
--- piloto v6 (tools/autoplay.lua + tools/balance_ai.lua) e um relatorio
+-- piloto (tools/autoplay.lua + tools/balance_ai.lua) e um relatorio
 -- AGREGADO — winrate por classe, onde se morre e contra o que, impacto de
 -- cada carta e coringa.
 --
---   love . balance_sim [runsPorClasse] [classes] [seedBase] [politica]
+--   love . balance_sim [runsPorClasse] [classes] [seedBase] [piloto]
 --     classes   = all | warrior | mage | rogue | warrior,rogue
---     politica  = v6 (padrao) | v5   (A/B da qualidade do proprio piloto)
---   ex: love . balance_sim 40 all 500000
+--     piloto    = expert (padrao) | expert_fast | average | naive | expert_full
+--                 (v5/v6/v6b/v6c legados continuam valendo)
+--   ex: love . balance_sim 40 all 500000 average
 --
 -- Saida: console + arquivo (BALANCE_OUT, padrao balance_sim_report.md no save
 -- dir). Com BALANCE_OUT apontando pra um caminho do projeto, grava la.
+-- BALANCE_JSON=<arquivo>: grava TODOS os registros de run em JSON (uma
+-- lista) — e o que tools/balance.py junta de varios processos.
+--
+-- RELOGIO: por padrao a bateria roda no relogio INSTANTANEO
+-- (tools/instant_engine.lua — fila drenada por saltos, mesma regra, paridade
+-- travada em test_instant_parity). BALANCE_CLOCK=frames volta ao avanco por
+-- quadros (1/30 s) do piloto original.
+--
+-- KNOBS de A/B sem editar o jogo (lidos no setup; o sweep de
+-- tools/balance_tune.py usa todos):
+--   BALANCE_ENEMY_POWER="dano,vida"    Config.Game.ENEMY_POWER (ex: "0.8,0.85")
+--   BALANCE_BOSS_HP=<mult>             vida de chefe e mini-chefe (ex: 1.15)
+--   BALANCE_COMBO="volley=3,wall=5"    `step` das regras de combo por id
+--   BALANCE_PLAYER_HP=<n>              vida inicial do jogador
+--   BALANCE_SEAL=<n> / BALANCE_ENDLESS=<n>   selo da run / andares de endless
 --
 -- O CATALOGO INTEIRO e medido: se o UnlockSystem (frente de progressao)
 -- existir, a bateria liga o override "tudo desbloqueado" — senao a amostra
@@ -425,10 +441,85 @@ function M.setup(policy)
     require("src.ui.ComboBanner").show = function() end
 
     local Autoplay = require("tools.autoplay")
-    Autoplay.policy = policy
+    -- TURBO (BALANCE_TURBO=1): relogio em passos de 0,1s e beats do combate
+    -- 4x mais curtos. So muda QUANTAS vezes a fila e bombeada, nao a regra.
+    -- A/B rapido da forca do inimigo sem editar o Config:
+    -- BALANCE_ENEMY_POWER="dano,vida" (ex: "0.72,0.8")
+    local ep = os.getenv("BALANCE_ENEMY_POWER")
+    if ep and ep ~= "" then
+        local d, h = ep:match("([%d%.]+),([%d%.]+)")
+        if d then
+            require("src.core.Config").Game.ENEMY_POWER = { damage = tonumber(d), health = tonumber(h) }
+            print("[balance_sim] ENEMY_POWER dano " .. d .. " vida " .. h)
+        end
+    end
+    if os.getenv("BALANCE_TURBO") == "1" then
+        Autoplay.pumpDt = 0.1
+        require("src.systems.CombatBeats").speed = 0.25
+        print("[balance_sim] TURBO ligado (pumpDt 0.1, beats x0.25)")
+    end
+    -- Knobs do sweep (tools/balance_tune.py). Cada um AVISA o valor aplicado.
+    do
+        local bh = tonumber(os.getenv("BALANCE_BOSS_HP") or "")
+        if bh and bh ~= 1 then
+            local AS = require("src.systems.ActSystem")
+            local orig = AS.getEnemyStats
+            AS.getEnemyStats = function(actNumber, floorInAct, nodeType, endlessFloor)
+                local st = orig(actNumber, floorInAct, nodeType, endlessFloor)
+                if nodeType == "boss" or nodeType == "mini_boss" then
+                    st.health = math.floor(st.health * bh)
+                end
+                return st
+            end
+            print("[balance_sim] BOSS_HP x" .. bh)
+        end
+        local combo = os.getenv("BALANCE_COMBO")
+        if combo and combo ~= "" then
+            local CS = require("src.systems.ComboSystem")
+            for id, v in combo:gmatch("(%w+)=([%d%.]+)") do
+                local rule = CS.RULE_BY_ID and CS.RULE_BY_ID[id]
+                if rule then
+                    rule.step = tonumber(v)
+                    print("[balance_sim] COMBO " .. id .. ".step = " .. v)
+                else
+                    print("[balance_sim] AVISO: combo desconhecido '" .. id .. "'")
+                end
+            end
+        end
+        local php = tonumber(os.getenv("BALANCE_PLAYER_HP") or "")
+        if php then
+            require("src.core.Config").Game.PLAYER_MAX_HEALTH = php
+            print("[balance_sim] PLAYER_MAX_HEALTH = " .. php)
+        end
+    end
+    Autoplay.setPilot(policy or os.getenv("BALANCE_PILOT") or "expert")
     Autoplay.quiet = true
     Autoplay.installHooks()
+    -- Relogio instantaneo por padrao (ver cabecalho).
+    if (os.getenv("BALANCE_CLOCK") or "instant") == "frames" then
+        require("tools.instant_engine").uninstall(Autoplay)
+        print("[balance_sim] relogio de QUADROS")
+    else
+        require("tools.instant_engine").install(Autoplay)
+    end
     return Autoplay
+end
+
+-- Grava os registros em JSON (BALANCE_JSON). Cada registro e o `runRec` do
+-- piloto: resultado, morte, batalhas (battleLog), dano por fonte, deck,
+-- coringas, ofertas/aquisicoes, forjas, compras, economia por ato.
+local function writeJson(records, meta)
+    local path = os.getenv("BALANCE_JSON")
+    if not path or path == "" then return end
+    local J = require("tools.jsonlite")
+    local f = io.open(path, "w")
+    if not f then
+        print("[balance_sim] AVISO: nao consegui gravar JSON em " .. path)
+        return
+    end
+    f:write(J.encode({ meta = meta, records = records }))
+    f:close()
+    print("[balance_sim] json: " .. path)
 end
 
 function M.run(runsArg, classArg, seedArg, policyArg)
@@ -440,8 +531,10 @@ function M.run(runsArg, classArg, seedArg, policyArg)
         for c in carg:gmatch("[^,]+") do classes[#classes + 1] = c end
     end
     local seed = tonumber(seedArg or os.getenv("BALANCE_SEED") or "500000") or 500000
-    local policy = policyArg or os.getenv("BALANCE_POLICY") or "v6"
+    local policy = policyArg or os.getenv("BALANCE_PILOT") or os.getenv("BALANCE_POLICY") or "expert"
     local Autoplay = M.setup(policy)
+    local Instant = require("tools.instant_engine")
+    local wall0 = os.time()
 
     -- silencia o print do jogo durante a bateria (milhares de toasts por run
     -- deixavam a bateria lenta e o log ilegivel); o resumo por run sai aqui.
@@ -453,6 +546,7 @@ function M.run(runsArg, classArg, seedArg, policyArg)
     for _, cls in ipairs(classes) do
         for i = 1, runs do
             local s = seed + i
+            local tRun0 = os.clock()
             print = function() end
             local ok, rec = pcall(Autoplay.playRunRecord, cls, i, s)
             print = realPrint
@@ -460,16 +554,31 @@ function M.run(runsArg, classArg, seedArg, policyArg)
                 rec = { class = cls, seed = s, crash = true, outcome = "CRASH " .. tostring(rec),
                     floors = 0, offered = {}, acquired = {} }
             end
+            rec.pilot = rec.pilot or policy
+            rec.seal = rec.seal or tonumber(os.getenv("BALANCE_SEAL") or "0") or 0
+            rec.cpuSeconds = os.clock() - tRun0
             records[#records + 1] = rec
             realPrint(string.format("[balance_sim] %s #%d seed %d: %s (andares %d) t=%.0fs",
                 cls, i, s, tostring(rec.outcome), rec.floors or 0, os.clock() - t0))
         end
     end
+    local cpu = os.clock() - t0
+    local meta = { policy = policy, pilot = policy, runs = runs, seed = seed,
+        classes = classes, seal = tonumber(os.getenv("BALANCE_SEAL") or "0") or 0,
+        label = os.getenv("BALANCE_LABEL") or "", anomalies = Autoplay.getAnomalies(),
+        clock = Autoplay.clockMode or "frames", cpuSeconds = cpu,
+        wallSeconds = os.time() - wall0, runsPerSecond = #records / math.max(1e-6, cpu),
+        instantStalls = Instant.stats.stalls, instantIters = Instant.stats.iters,
+        knobs = { enemyPower = os.getenv("BALANCE_ENEMY_POWER"), bossHp = os.getenv("BALANCE_BOSS_HP"),
+            combo = os.getenv("BALANCE_COMBO"), playerHp = os.getenv("BALANCE_PLAYER_HP") },
+        totalActs = require("src.core.Config").TotalActs }
     local agg = M.aggregate(records)
-    local text = M.report(records, agg, { policy = policy, runs = runs, seed = seed,
-        label = os.getenv("BALANCE_LABEL") or "", anomalies = Autoplay.getAnomalies() })
+    local text = M.report(records, agg, meta)
     print(text)
+    print(string.format("[balance_sim] %d runs em %.1fs de CPU (%.2f runs/s, relogio %s)",
+        #records, cpu, meta.runsPerSecond, meta.clock))
     writeOut(text)
+    writeJson(records, meta)
     M.lastRecords, M.lastAgg = records, agg
     love.event.quit()
 end

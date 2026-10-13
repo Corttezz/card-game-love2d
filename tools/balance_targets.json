@@ -1,0 +1,17 @@
+{
+  "_doc": "Bandas-alvo por piloto (memory/sts_difficulty_targets.md). winrate em fracao; death_acts = atos onde a MAIORIA das mortes deve cair; pilot_weight pondera o score do sweep (tools/balance_tune.py).",
+  "winrate": {
+    "naive":       { "lo": 0.00, "hi": 0.05 },
+    "average":     { "lo": 0.12, "hi": 0.25 },
+    "expert_fast": { "lo": 0.30, "hi": 0.50 },
+    "expert":      { "lo": 0.45, "hi": 0.60 }
+  },
+  "death_acts": {
+    "naive":       [1, 2],
+    "average":     [2, 3, 4],
+    "expert_fast": [3, 4, 5],
+    "expert":      [5, 6]
+  },
+  "pilot_weight": { "naive": 0.5, "average": 1.0, "expert_fast": 1.0, "expert": 1.5 },
+  "run_length_minutes": { "win_lo": 40, "win_hi": 75, "loss_novice_lo": 15, "loss_novice_hi": 30 }
+}

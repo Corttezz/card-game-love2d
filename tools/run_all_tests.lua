@@ -56,6 +56,11 @@ local SUITES = {
     { group = "unit",  name = "test_input_focus" },
     { group = "unit",  name = "test_autoplay_pilot" },
     { group = "unit",  name = "test_sim_memory" },
+    -- pipeline de balanceamento: relogio instantaneo == relogio de quadros
+    -- (traco turno a turno), pilotos naive/average/expert, determinismo,
+    -- throughput e o registro que o relatorio Python le
+    { group = "unit",  name = "test_instant_parity" },
+    { group = "unit",  name = "test_balance_pipeline" },
     { group = "unit",  name = "test_economy_acts" },
     { group = "unit",  name = "test_scribe_dice" },
     { group = "unit",  name = "test_endless_seals" },

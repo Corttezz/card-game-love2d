@@ -824,7 +824,11 @@ end
 
 -- Entra no deck? (recompensa/loja). Margem: deck pequeno aceita carta "media";
 -- deck grande so aceita quem MELHORA a media.
-function AI.wantsCard(game, cd, dctx)
+-- `marginMul` (pipeline Out/2026): o piloto expert_fast usa a MESMA conta
+-- com margem maior — medido, a margem 1x deixa o deck em 16-19 cartas onde a
+-- simulacao (expert) para em 10-13, e e o tamanho do deck que separa as
+-- taxas de vitoria dos dois.
+function AI.wantsCard(game, cd, dctx, marginMul)
     dctx = dctx or AI.deckContext(game)
     if not cd then return false, -99 end
     if cd.type == "joker" then return true, 99 end
@@ -834,6 +838,8 @@ function AI.wantsCard(game, cd, dctx)
     elseif dctx.n < 14 then margin = 0.0
     elseif dctx.n < 20 then margin = 1.0
     else margin = 2.5 end
+    if marginMul and margin > 0 then margin = margin * marginMul end
+    if marginMul and dctx.n >= 10 then margin = margin + (marginMul - 1) * 1.5 end
     return w >= dctx.avg + margin, w
 end
 

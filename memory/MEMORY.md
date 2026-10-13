@@ -25,6 +25,8 @@
 - [Damage Preview](damage_preview.md) — previa de dano: conta da carta em fonte unica, simulacao da leva, painel no JOGAR, trava test_damage_preview
 - [Run Progression](run_progression.md) — atos, tipos de nó, fluxo entre batalhas, endless mode
 - [Balance Curves](balance_curves.md) — números-alvo (HP, dano, gold, raridade) por ato
+- ⚠️ [Pipeline de balanceamento instantânea](balance_pipeline.md) — **medir o jogo em minutos**: relógio por saltos (tools/instant_engine.lua, paridade travada), pilotos naive/average/expert como PERFIL, `python tools/balance.py` (todos os cores, JSON+MD em reports/balance/), `balance_tune.py` (sweep contra bandas). Throughput e armadilhas (DT < 2,5 s; RNG próprio do piloto).
+- [Bandas-alvo de dificuldade (StS)](sts_difficulty_targets.md) — o StS em números (curva de inimigo, mapa, economia, deck 10→30, 9% de vitória por run em A0, 66% vencem alguma vez, ato 2 é o filtro), mapa 6×8 ↔ 3×16 e BANDAS por piloto (naive <5%, average 12–25%, expert 45–60%); primeira medição: só o expert por simulação vence (25%), deck é a alavanca
 - [Dados do Escriba](scribe_dice.md) — mini-jogo de ouro da loja (2d6, EV ~justo, 1 jogada/visita, Rng "shop" + save no frame do sorteio); tela modal em zonas, arte PixelLab + faces pixel a pixel, `test_scribe_dice`
 - [Endless + Selos do Grimório](endless_and_seals.md) — pós-jogo: Selos 1-10 por classe (cumulativos, só multiplicam por cima via RunModifiers) + endless em ciclos de 8 com maldição 1-de-2 empilhável e curva exp-quadrática; pesquisa Balatro/StS/MT/Hades; `test_endless_seals`
 - [Archetypes](archetypes.md) — 10 builds viáveis com tags e cartas-âncora
