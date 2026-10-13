@@ -56,18 +56,18 @@ function ShelfItem.ease(t)
     return t * t * (3 - 2 * t)
 end
 
--- madeira da pintura (amostrada em counter_scene.png: lábio da borda do fundo)
+-- madeira da cena v4 (a rampa de tools/shop_v4_compose.py)
 local WOOD = {
-    hi   = { 255 / 255, 206 / 255, 103 / 255 },
-    lite = { 180 / 255, 100 / 255, 43 / 255 },
-    mid  = { 82 / 255, 39 / 255, 24 / 255 },
-    dark = { 54 / 255, 24 / 255, 20 / 255 },
-    deep = { 25 / 255, 9 / 255, 14 / 255 },
+    hi   = { 246 / 255, 196 / 255, 112 / 255 },
+    lite = { 180 / 255, 110 / 255, 52 / 255 },
+    mid  = { 112 / 255, 60 / 255, 33 / 255 },
+    dark = { 60 / 255, 29 / 255, 21 / 255 },
+    deep = { 18 / 255, 8 / 255, 10 / 255 },
 }
 ShelfItem.WOOD = WOOD
--- maior lado da silhueta / tamanho do slot (as artes antigas têm pouca borda
--- vazia: 1,0 deixava a tesoura do tamanho de uma carta)
-ShelfItem.OBJECT_SCALE = 0.84
+-- v4: o objeto entra na grade da cena em ESCALA INTEIRA (1 = pixel do
+-- sprite = pixel da pintura). Só arte bem maior que o slot cai pra 1/n.
+ShelfItem.OBJECT_SCALE = 1
 
 local ART = {}
 local artWarned = {}
@@ -268,7 +268,8 @@ function ShelfItem:uprightParams(L, animate, t)
     local fy = (g.foot - cv.oy) / cv.s
     local sizeArt = (g.size or g.rect.w) / cv.s * (pose.size or 1) * ShelfItem.OBJECT_SCALE
     local cw, ch = prof.x1 - prof.x0 + 1, prof.y1 - prof.y0 + 1
-    local s = sizeArt / math.max(cw, ch, 1)
+    local m = math.max(cw, ch, 1)
+    local s = (m <= sizeArt * 1.35) and 1 or 1 / math.ceil(m / sizeArt)
     return { img = img, prof = prof, fx = fx, fy = fy, s = s, k = pose.slope, flip = pose.flip,
              lift = self:liftPx() / cv.s }
 end
@@ -351,58 +352,103 @@ function ShelfItem.drawBand(b, text, color, opts)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Etiqueta pendurada (preço): cordão + cartão miúdo, cisalhado na diagonal,
--- balançando no hover (pêndulo). `sale` = etiqueta vermelha da oferta do dia.
-function ShelfItem.drawHangingTag(g, angle, text, afford, a, sale, shakeX)
-    love.graphics.push()
-    love.graphics.translate(g.ax + (shakeX or 0), g.ay)
-    love.graphics.rotate(angle or 0)
-    Palette.set(Palette.PARCHMENT_DARK, a)
-    love.graphics.rectangle("fill", 0, 0, 1, g.len)
-    love.graphics.translate(0, g.len)
-    love.graphics.shear(0, g.slope or 0)
-    local tx = -floor(g.w / 2)
-    Palette.set(Palette.INK, a)
-    love.graphics.rectangle("fill", tx - 1, -1, g.w + 2, g.h + 2)
-    local face = sale and Palette.BLOOD or (afford and Palette.PARCHMENT_LIGHT or Palette.PARCHMENT)
-    Palette.set(face, a)
-    love.graphics.rectangle("fill", tx, 0, g.w, g.h)
-    Palette.set(sale and Palette.BLOOD_DARK or Palette.PARCHMENT_DARK, a)
-    love.graphics.rectangle("fill", tx, g.h - 1, g.w, 1)
-    -- furo do cordão
-    Palette.set(Palette.INK, 0.8 * a)
-    love.graphics.rectangle("fill", -1, 1, 2, 1)
-    local font, fitted = TextFit.fit(text, 7, g.w - 2, 7)
-    love.graphics.setFont(font)
-    local color = sale and Palette.PARCHMENT_LIGHT or (afford and Palette.INK or Palette.BLOOD)
-    Palette.set(color, a)
-    love.graphics.print(fitted, tx + floor((g.w - font:getWidth(fitted)) / 2),
-        floor((g.h - font:getHeight()) / 2) + 2)
-    love.graphics.pop()
+-- ---------------------------------------------------------------------------
+-- PIXEL ART NA GRADE DA CENA (v4): etiqueta, cordão, plaquinha e cavalete são
+-- desenhados no canvas da ARTE (dentro de ShopPerspective.artPass) como
+-- retângulos em DEGRAUS: a coluna x tem o topo em ShopLayout.lineY(y0, x),
+-- a mesma fase das arestas pintadas (degraus de 8 px, todos iguais). O texto
+-- sai depois, na grade da UI, cisalhado pela mesma inclinação.
+-- ---------------------------------------------------------------------------
+local function px(c, a, x, y, w, h)
+    love.graphics.setColor(c[1], c[2], c[3], a)
+    love.graphics.rectangle("fill", x, y, w or 1, h or 1)
+end
+ShelfItem.px = px
+local lineY = ShopLayout.lineY
+
+-- Cordão de 1 px de arte (Bresenham) com sombra de tinta à direita.
+function ShelfItem.drawCordArt(x0, y0, x1, y1, a)
+    x0, y0, x1, y1 = floor(x0), floor(y0), floor(x1), floor(y1)
+    local dx, dy = math.abs(x1 - x0), -math.abs(y1 - y0)
+    local sx, sy = x0 < x1 and 1 or -1, y0 < y1 and 1 or -1
+    local err = dx + dy
+    local pts, ink = {}, {}
+    local x, y = x0, y0
+    for _ = 1, 400 do
+        pts[#pts + 1] = { x + 0.5, y + 0.5 }
+        ink[#ink + 1] = { x + 1.5, y + 0.5 }
+        if x == x1 and y == y1 then break end
+        local e2 = 2 * err
+        if e2 >= dy then err = err + dy; x = x + sx end
+        if e2 <= dx then err = err + dx; y = y + sy end
+    end
+    local c = Palette.INK
+    love.graphics.setColor(c[1], c[2], c[3], 0.6 * (a or 1))
+    love.graphics.points(ink)
+    c = Palette.PARCHMENT_DARK
+    love.graphics.setColor(c[1], c[2], c[3], a or 1)
+    love.graphics.points(pts)
+end
+
+-- Estilo da etiqueta: preço normal, sem ouro (tinta vermelha), oferta do dia.
+local function tagStyle(afford, sale)
+    if sale then return Palette.BLOOD, Palette.BLOOD_DARK, Palette.PARCHMENT_LIGHT end
+    if afford then return Palette.PARCHMENT_LIGHT, Palette.PARCHMENT_DARK, Palette.INK end
+    return Palette.PARCHMENT, Palette.PARCHMENT_DARK, Palette.BLOOD
+end
+
+-- Etiqueta (cartão + furo + cordão), px de ARTE. tg = ShopLayout.artTag;
+-- dx = balanço/deslize (px de arte, inteiro), dy = levantar (px de arte);
+-- tie = {x, y} de onde o cordão sai (nil = tg.cordX/cordY).
+function ShelfItem.drawTagArt(tg, dx, dy, afford, sale, a, tie)
+    local W, H = ShopLayout.TAG_W, ShopLayout.TAG_H
+    local x0 = tg.x0 + dx
+    local holeX = x0 + floor(W / 2)
+    local holeY = lineY(tg.y0, holeX) - dy
+    local cx, cy = tg.cordX + dx, tg.cordY - dy
+    if tie then cx, cy = tie[1], tie[2] end
+    ShelfItem.drawCordArt(cx, cy, holeX, holeY, a)
+    local face, low = tagStyle(afford, sale)
+    for x = x0, x0 + W - 1 do
+        local top = lineY(tg.y0, x) - dy
+        local edge = (x == x0 or x == x0 + W - 1)
+        -- sombra curta no tampo (luz à esquerda: cai à direita/baixo)
+        px(Palette.INK, 0.45 * a, x + 1, top + H, 1, 1)
+        if edge then
+            px(Palette.INK, a, x, top, 1, H)
+        else
+            px(Palette.INK, a, x, top, 1, 1)
+            px(face, a, x, top + 1, 1, H - 3)
+            px(low, a, x, top + H - 2, 1, 1)
+            px(Palette.INK, a, x, top + H - 1, 1, 1)
+        end
+    end
+    px(Palette.INK, 0.9 * a, holeX, holeY + 1, 1, 1)
+end
+
+-- Texto da etiqueta (grade da UI, cisalhado), por cima da arte.
+function ShelfItem.drawTagText(L, tg, dx, dy, text, afford, sale, a, shakeX)
+    local cv = L.cover
+    local W, H = ShopLayout.TAG_W, ShopLayout.TAG_H
+    local x0 = tg.x0 + dx
+    local sx = cv.ox + (x0 + 1) * cv.s + (shakeX or 0)
+    local sy = cv.oy + (lineY(tg.y0, x0 + 1) - dy + 1) * cv.s
+    local w, h = (W - 2) * cv.s, (H - 3) * cv.s
+    local font, fitted = TextFit.fit(text, 7, w - 1, 7)
+    local _, _, ink = tagStyle(afford, sale)
+    withShear(floor(sx), floor(sy), ShopLayout.K, function()
+        love.graphics.setFont(font)
+        Palette.set(ink, a)
+        love.graphics.print(fitted, floor((w - font:getWidth(fitted)) / 2) + 1,
+            floor((h - font:getHeight()) / 2) + 1)
+    end)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Cordão (1 px, com barriga) do ponto de amarração no objeto até o furo da
--- etiqueta: é ele que diz "este preço é DESTE objeto".
-function ShelfItem.drawCord(x0, y0, x1, y1, a)
-    local n = math.max(2, floor(math.max(math.abs(x1 - x0), math.abs(y1 - y0))))
-    local sag = math.min(6, n * 0.15)
-    local pts = {}
-    for i = 0, n do
-        local t = i / n
-        local x = x0 + (x1 - x0) * t
-        local y = y0 + (y1 - y0) * t + sag * 4 * t * (1 - t)
-        pts[#pts + 1] = floor(x) + 0.5
-        pts[#pts + 1] = floor(y) + 0.5
-    end
-    Palette.set(Palette.INK, 0.7 * (a or 1))
-    love.graphics.setLineWidth(2)
-    love.graphics.setLineStyle("rough")
-    love.graphics.line(pts)
-    Palette.set(Palette.PARCHMENT_DARK, a or 1)
-    love.graphics.setLineWidth(1)
-    love.graphics.line(pts)
-    love.graphics.setColor(1, 1, 1, 1)
+-- balanço do pêndulo em px de arte (inteiro: a etiqueta anda na grade)
+function ShelfItem.swingArt(angle)
+    local s = ShopLayout.SWING
+    return clamp(math.floor(math.sin(angle or 0) * 6 + 0.5), -s, s)
 end
 
 -- Rótulo de HOVER: faixa de pergaminho miúda, na diagonal, ancorada acima do
@@ -435,43 +481,42 @@ function ShelfItem:_shake()
     return 0
 end
 
--- Etiqueta de preço (+ faixa de raridade nas cartas). ctx = { afford, alpha }
-function ShelfItem:drawPlateFor(ctx)
+-- Placas no canvas da ARTE (chamado dentro do artPass): plaquinha de
+-- raridade (carta), etiqueta + cordão (todas).
+function ShelfItem:drawPlateArt(L, ctx)
     local g = self.geom
-    if not g then return end
-    local shake = self:_shake()
+    if not g or self.sold then return end
+    local cv = L.cover
     local alpha = (ctx.alpha or 1) * self:entered()
-    local sx0 = self.slide.x or 0
-    if self.kind == "card" and g.frame and not self.sold then self:drawRailShadow(alpha) end
+    local sdx = floor((self.slide.x or 0) / cv.s + 0.5)
     if self.kind == "card" and g.rarity and self.offer.rarity and ShelfItem.showsRarityPlate(self.offer.rarity) then
-        ShelfItem.drawRarityPlate(g, self.offer.rarity, sx0 + shake, alpha)
+        ShelfItem.drawRarityPlateArt(g, self.offer.rarity, cv, sdx, alpha)
     end
-    if self.sold or not g.tag then return end
-    local tg = g.tag
+    if not g.tag then return end
     local sale = self.offer and self.offer.saleDiscount and true or false
-    -- o objeto levantado puxa a etiqueta junto (ela está presa nele)
-    local lift = (self.kind ~= "card") and self:liftPx() or 0
-    if self.kind ~= "card" and ctx.tie then
-        ShelfItem.drawCord(ctx.tie[1], ctx.tie[2], tg.ax + sx0 + shake, tg.ay - lift, alpha)
-    end
-    ShelfItem.drawHangingTag({ ax = tg.ax + sx0, ay = tg.ay - lift, len = tg.len, w = tg.w, h = tg.h, slope = tg.slope },
-        self.tag.angle, "$" .. tostring(self.offer.cost or 0), ctx.afford and self.deny <= 0, alpha, sale, shake)
+    local lift = (self.kind ~= "card") and floor(self:liftPx() / cv.s + 0.5) or 0
+    local tie = nil
+    if self.kind ~= "card" and self._tieArt then tie = { self._tieArt[1], self._tieArt[2] } end
+    ShelfItem.drawTagArt(g.tag, sdx + ShelfItem.swingArt(self.tag.angle), lift,
+        ctx.afford and self.deny <= 0, sale, alpha, tie)
 end
 
--- Sombra da carta levantada NO TRILHO: cresce com o hover (a carta sai do
--- cavalete e a luz da vela a projeta no tampo do trilho). Mesmo frame.
-function ShelfItem:drawRailShadow(alpha)
-    local e = reducedMotion() and 0 or self.hover
-    if e <= 0.02 then return end
+-- Texto das placas (grade da UI, depois do artPass).
+function ShelfItem:drawPlateText(L, ctx)
     local g = self.geom
-    local f = g.frame
-    local w = g.qw * (0.92 + 0.12 * e)
-    local vTop, vBot = g.lipH, math.floor(g.lipH * 0.45)
-    withShear(f.ox + (self.slide.x or 0) - floor(w / 2) + 2, f.oy + f.k * (2 - floor(w / 2)) - vTop, f.k, function()
-        Palette.set(Palette.INK, 0.55 * e * (alpha or 1))
-        love.graphics.rectangle("fill", 0, 0, floor(w), vTop - vBot)
-    end)
-    love.graphics.setColor(1, 1, 1, 1)
+    if not g or self.sold then return end
+    local cv = L.cover
+    local shake = self:_shake()
+    local alpha = (ctx.alpha or 1) * self:entered()
+    local sdx = floor((self.slide.x or 0) / cv.s + 0.5)
+    if self.kind == "card" and g.rarity and self.offer.rarity and ShelfItem.showsRarityPlate(self.offer.rarity) then
+        ShelfItem.drawRarityPlateText(g, self.offer.rarity, cv, sdx, alpha, shake)
+    end
+    if not g.tag then return end
+    local sale = self.offer and self.offer.saleDiscount and true or false
+    local lift = (self.kind ~= "card") and floor(self:liftPx() / cv.s + 0.5) or 0
+    ShelfItem.drawTagText(L, g.tag, sdx + ShelfItem.swingArt(self.tag.angle), lift,
+        "$" .. tostring(self.offer.cost or 0), ctx.afford and self.deny <= 0, sale, alpha, shake)
 end
 
 -- ---------------------------------------------------------------------------
@@ -515,61 +560,73 @@ function ShelfItem.showsRarityPlate(rar)
     return true
 end
 
-ShelfItem.PLATE_PAD = 8   -- prego (2 px) + folga, de cada lado
-function ShelfItem.rarityPlateFont(text, maxW)
-    return TextFit.fit(text, 8, maxW - ShelfItem.PLATE_PAD * 2, 7)
+ShelfItem.PLATE_PAD = 3   -- px de ARTE de cada lado: contorno + prego + folga
+function ShelfItem.rarityPlateFont(text, maxW, s)
+    s = s or 2
+    return TextFit.fit(text, 8, maxW - ShelfItem.PLATE_PAD * 2 * s, 7)
 end
 
--- Caixa (px de tela, no frame: x,y = canto de cima à esquerda; w, h) da
--- plaquinha com o texto da raridade. Pura (sem desenhar): o teste mede.
-function ShelfItem.rarityPlateBox(g, rar)
+-- Geometria da plaquinha (px de ARTE) + fonte/texto. Pura: o teste mede.
+function ShelfItem.rarityPlateArt(g, rar, cv)
     local R = g.rarity
     local text = I18n.t("rarity." .. rar, nil, rar)
-    local font, fitted = ShelfItem.rarityPlateFont(text, R.w)
-    local w = math.min(R.w, font:getWidth(fitted) + ShelfItem.PLATE_PAD * 2)
-    local h = R.h
-    local x, y = ShopLayout.frameAtF(g.frame, -floor(w / 2), R.vTop)
-    return { x = floor(x), y = y, w = w, h = h, slope = g.frame.k, font = font, text = fitted }
+    local font, fitted = ShelfItem.rarityPlateFont(text, R.maxW or R.w * cv.s, cv.s)
+    local wArt = math.min(R.w, math.ceil(font:getWidth(fitted) / cv.s) + ShelfItem.PLATE_PAD * 2)
+    local x0 = R.x0 + floor((R.w - wArt) / 2)
+    return { x0 = x0, w = wArt, y0 = R.y0, h = R.h, font = font, text = fitted }
 end
 
-function ShelfItem.drawRarityPlate(g, rar, dx, alpha)
-    local b = ShelfItem.rarityPlateBox(g, rar)
+-- Caixa da plaquinha em px de TELA (x,y = canto de cima à esquerda).
+function ShelfItem.rarityPlateBox(g, rar, cv)
+    local P = ShelfItem.rarityPlateArt(g, rar, cv)
+    local b = ShopLayout.stepBox(cv, P.x0, P.w, P.y0, P.h)
+    b.slope, b.font, b.text = ShopLayout.K, P.font, P.text
+    return b
+end
+
+-- Latão em 4 tons na grade: contorno de tinta, aresta de cima clara, face
+-- escura, pé escuro, dois pregos.
+function ShelfItem.drawRarityPlateArt(g, rar, cv, dx, alpha)
+    local P = ShelfItem.rarityPlateArt(g, rar, cv)
     local B = ShelfItem.BRASS
     local a = alpha or 1
-    withShear(b.x + (dx or 0), b.y, b.slope, function()
-        local w, h = b.w, b.h
-        -- sombra curta no degrau (vela à esquerda: cai pra direita)
-        Palette.set(Palette.INK, 0.45 * a)
-        love.graphics.rectangle("fill", 2, h, w - 1, 1)
-        Palette.set(Palette.INK, a)
-        love.graphics.rectangle("fill", -1, -1, w + 2, h + 2)
-        Palette.set(B.dark, a)
-        love.graphics.rectangle("fill", 0, 0, w, h)
-        -- latão em 4 tons: aresta de cima clara, laterais, face escura, pé escuro
-        Palette.set(B.rim, a)
-        love.graphics.rectangle("fill", 0, 0, w, h - 1)
-        Palette.set(B.hi, a)
-        love.graphics.rectangle("fill", 1, 0, w - 2, 1)
-        Palette.set(B.face, a)
-        love.graphics.rectangle("fill", 1, 1, w - 2, h - 2)
-        Palette.set(B.dark, a)
-        love.graphics.rectangle("fill", 1, h - 2, w - 2, 1)
-        -- pregos (2x2: cabeça clara em cima à esquerda)
-        local ny = floor(h / 2) - 1
-        for _, nx in ipairs({ 2, w - 4 }) do
-            Palette.set(B.dark, a)
-            love.graphics.rectangle("fill", nx, ny, 2, 2)
-            Palette.set(B.hi, a)
-            love.graphics.rectangle("fill", nx, ny, 1, 1)
+    local x0, x1 = P.x0 + (dx or 0), P.x0 + (dx or 0) + P.w - 1
+    for x = x0, x1 do
+        local top = lineY(P.y0, x)
+        px(Palette.INK, 0.4 * a, x + 1, top + P.h, 1, 1)          -- sombra na face do degrau
+        if x == x0 or x == x1 then
+            px(Palette.INK, a, x, top, 1, P.h)
+        else
+            px(Palette.INK, a, x, top, 1, 1)
+            px(B.hi, a, x, top + 1, 1, 1)
+            px(B.face, a, x, top + 2, 1, P.h - 4)
+            px(B.dark, a, x, top + P.h - 2, 1, 1)
+            px(Palette.INK, a, x, top + P.h - 1, 1, 1)
         end
-        love.graphics.setFont(b.font)
-        local tx = floor((w - b.font:getWidth(b.text)) / 2)
-        local ty = floor((h - b.font:getHeight()) / 2) + 1
+    end
+    for _, x in ipairs({ x0 + 1, x1 - 1 }) do
+        local mid = lineY(P.y0, x) + floor(P.h / 2)
+        px(B.hi, a, x, mid, 1, 1)
+    end
+end
+
+function ShelfItem.drawRarityPlateText(g, rar, cv, dx, alpha, shakeX)
+    local P = ShelfItem.rarityPlateArt(g, rar, cv)
+    local x0 = P.x0 + (dx or 0) + 2
+    local sx = cv.ox + x0 * cv.s + (shakeX or 0)
+    local sy = cv.oy + (lineY(P.y0, x0) + 2) * cv.s
+    local w = (P.w - 4) * cv.s
+    local h = (P.h - 4) * cv.s
+    local a = alpha or 1
+    withShear(floor(sx), floor(sy), ShopLayout.K, function()
+        love.graphics.setFont(P.font)
+        local tx = floor((w - P.font:getWidth(P.text)) / 2)
+        local ty = floor((h - P.font:getHeight()) / 2) + 1
         Palette.set(Palette.INK, 0.9 * a)
-        love.graphics.print(b.text, tx, ty + 1)
+        love.graphics.print(P.text, tx, ty + 1)
         local c = ShelfItem.rarityInk(rar)
         love.graphics.setColor(c[1], c[2], c[3], a)
-        love.graphics.print(b.text, tx, ty)
+        love.graphics.print(P.text, tx, ty)
     end)
     love.graphics.setColor(1, 1, 1, 1)
 end
@@ -590,99 +647,63 @@ function ShelfItem:drawHoverLabel(L, ctx)
 end
 
 -- ---------------------------------------------------------------------------
--- CAVALETE da carta (pixel art procedural na resolução da arte): perna de
--- trás saindo à direita da carta (parte "back") e o lábio da frente com a
--- sombra de contato na borda do fundo (parte "front"). Tudo na diagonal.
+-- CAVALETE da carta (v4, queixa do dono: "o suporte tem poucos pixels e faz
+-- escadinha"). Pixel art própria na GRADE da cena, inclinação 1:8 na mesma
+-- fase da aresta pintada do degrau (ShopLayout.lineY): degraus de 8 px todos
+-- iguais. Trilho de madeira de RAIL_ART linhas (aresta clara de 1 px, dois
+-- tons de face, pé escuro), contorno de tinta, dois batentes curtos nas
+-- pontas segurando a carta, sombra de contato (dither) à direita no tampo do
+-- degrau (a luz vem da esquerda). part "back" não desenha nada (a perna de
+-- trás da v3 era uma diagonal livre: escadinha).
 -- ---------------------------------------------------------------------------
-local function px(c, a, x, y, w, h)
-    love.graphics.setColor(c[1], c[2], c[3], a)
-    love.graphics.rectangle("fill", x, y, w or 1, h or 1)
-end
-
 function ShelfItem:drawStandArt(L, part, alpha)
     local g = self.geom
-    if not (g and g.stand) then return end
+    if not (g and g.railX0) or part ~= "front" then return end
     local cv = L.cover
     local a = alpha or 1
-    local sx0 = (self.slide.x or 0) / cv.s
-    -- o MESMO frame da carta, em px de arte: origem na borda pintada,
-    -- inclinação k da borda; y(x) = fy + k*(x - fx) é a quina de baixo da
-    -- frente do trilho (sobre a borda)
-    local f = g.frame
-    local fx = (f.ox - cv.ox) / cv.s + sx0
-    local fy = (f.oy - cv.oy) / cv.s
-    local half = (g.railW or (g.qw + 8)) / cv.s / 2
-    local x0 = floor(fx - half)
-    local x1 = math.ceil(fx + half) - 1
-    local qw = g.qw / cv.s
-    local s = f.k
-    local lip = ShopLayout.RAIL_ART
-    if part == "back" then
-        -- perna de trás: desce do terço de cima da carta (à direita) até a borda
-        local hArt = g.qh / cv.s
-        local topX, topY = x1 - 3, fy + s * (x1 - 3 - fx) - hArt * 0.55
-        local botX, botY = x1 + 4, fy + s * (x1 + 4 - fx) - 1
-        local n = math.max(1, floor(botY - topY))
-        for i = 0, n do
-            local t = i / n
-            local x = floor(topX + (botX - topX) * t)
-            local y = floor(topY + (botY - topY) * t)
-            px(WOOD.deep, a, x - 1, y, 1, 1)
-            px(WOOD.mid, a, x, y, 3, 1)
-            px(WOOD.lite, a * 0.8, x, y, 1, 1)
-            px(WOOD.deep, a, x + 3, y, 1, 1)
-        end
-        return
-    end
-    -- sombra de contato do cavalete na borda (direita = longe da vela)
-    local mask = L.art.ledgeMask
-    local inPoly = ShopLayout.pointInPoly
-    local pts = {}
-    for x = x0, x1 + floor(qw * 0.25) do
-        local y = floor(fy + s * (x + 0.5 - fx))
-        local tail = x > x1
-        local dens = tail and 0.5 * (1 - (x - x1) / (qw * 0.25 + 1)) or 0.85
-        for row = 0, 1 do
-            local d = (row == 0) and dens or dens * 0.45
-            if ShopPerspective.dithered(x, y + row, d) and inPoly(x + 0.5, y + row + 0.5, mask) then
-                pts[#pts + 1] = { x + 0.5, y + row + 0.5 }
+    local sdx = floor((self.slide.x or 0) / cv.s + 0.5)
+    local x0, x1 = g.railX0 + sdx, g.railX1 + sdx
+    local E = ShopLayout.LINES.shelfEdge
+    local R, P = ShopLayout.RAIL_ART, ShopLayout.POST_H
+    local hov = reducedMotion() and 0 or self.hover
+    -- sombra de contato no tampo do degrau, à direita do trilho
+    for i = 1, 4 do
+        local x = x1 + i
+        local base = lineY(E, x)
+        for y = base - R - 1, base - 1 do
+            if ShopPerspective.dithered(x, y, 0.75 - i * 0.16) then
+                px(Palette.INK, 0.8 * a, x, y, 1, 1)
             end
         end
     end
-    if #pts > 0 then
-        local ink = Palette.darken(Palette.INK, 0.35)
-        love.graphics.setColor(ink[1], ink[2], ink[3], 0.78 * a)
-        love.graphics.points(pts)
-    end
-    -- trilho da frente: régua cisalhada com FACE DE CIMA (clara, aresta
-    -- iluminada pela vela) e FACE DA FRENTE (escura), pontas com contorno
-    local top = math.max(2, floor(lip * 0.45))
+    local cardL, cardR = x0 + 3, x1 - 3
     for x = x0, x1 do
-        local y = floor(fy + s * (x + 0.5 - fx)) - lip
-        local edge = (x == x0 or x == x1)
-        px(WOOD.deep, a, x, y - 1, 1, 1)
-        if edge then
-            px(WOOD.deep, a, x, y, 1, lip)
+        local base = lineY(E, x)
+        local top = base - R
+        if x == x0 or x == x1 then
+            px(Palette.INK, a, x, top - 1, 1, R + 1)
         else
-            px(WOOD.hi, a * 0.85, x, y, 1, 1)
-            px(WOOD.lite, a, x, y + 1, 1, top - 1)
-            px(WOOD.mid, a, x, y + top, 1, math.max(1, lip - top - 1))
-            px(WOOD.dark, a, x, y + lip - 1, 1, 1)
+            px(Palette.INK, a, x, top - 1, 1, 1)
+            -- carta levantada: a sombra dela cai no topo do trilho
+            -- trilho ESCURO (destaca do tampo claro do degrau): aresta de
+            -- cima clara de 1 px, face em dois tons, pé de tinta
+            local shaded = hov > 0.3 and x >= cardL and x <= cardR
+            px(shaded and WOOD.mid or WOOD.hi, a, x, top, 1, 1)
+            px(WOOD.mid, a, x, top + 1, 1, 1)
+            px(WOOD.dark, a, x, top + 2, 1, R - 3)
+            px(WOOD.deep, a, x, base - 1, 1, 1)
         end
-        px(WOOD.deep, a, x, y + lip, 1, 1)
     end
-    -- dois batentes baixos nas PONTAS (seguram a moldura, nunca o rodapé)
-    for _, x in ipairs({ x0 + 1, x1 - 2 }) do
-        local y = floor(fy + s * (x + 0.5 - fx)) - lip
-        px(WOOD.deep, a, x - 1, y - 3, 3, 3)
-        px(WOOD.lite, a, x, y - 2, 1, 2)
+    -- batentes nas pontas (2 colunas fora da carta), em pé sobre o trilho
+    for _, bx in ipairs({ x0 + 1, x1 - 2 }) do
+        for x = bx, bx + 1 do
+            local top = lineY(E, x) - R - P
+            px(Palette.INK, a, x, top - 1, 1, 1)
+            px((x == bx) and WOOD.lite or WOOD.mid, a, x, top, 1, P)
+        end
+        px(Palette.INK, a, bx - 1, lineY(E, bx - 1) - R - P, 1, P)
+        px(Palette.INK, a, bx + 2, lineY(E, bx + 2) - R - P, 1, P)
     end
-    -- pés nas pontas, apoiados na borda
-    for _, x in ipairs({ x0 + 1, x1 - 2 }) do
-        local y = floor(fy + s * (x + 0.5 - fx))
-        px(WOOD.deep, a, x, y, 2, 1)
-    end
-    love.graphics.setColor(1, 1, 1, 1)
 end
 
 -- ---------------------------------------------------------------------------
@@ -780,6 +801,7 @@ function ShelfItem:drawObjectArt(L, ctx)
     ShopPerspective.drawUpright(o)
     self._artBox = ShopPerspective.uprightBox(o)
     local tx, ty = ShopPerspective.tiePoint(o, 0.32)
+    self._tieArt = { floor(tx), floor(ty) }
     self._tie = { L.cover.ox + tx * L.cover.s, L.cover.oy + ty * L.cover.s }
 end
 

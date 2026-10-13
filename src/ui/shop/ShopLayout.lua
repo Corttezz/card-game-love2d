@@ -1,28 +1,26 @@
 -- src/ui/shop/ShopLayout.lua
--- GEOMETRIA PURA do Balcão do Mercador em PERSPECTIVA (Loja v3b,
--- docs/plan/shop-v3-balcao.md §12, referência docs/plan/shop_reference_gpt.png).
+-- GEOMETRIA PURA do Balcão do Mercador (Loja v4, docs/plan/shop-v4-estudo.md;
+-- histórico v3b/v3c em memory/shop_layout.md).
 --
--- A cena é UMA PINTURA (assets/sprites/shop/counter_scene.png, 688x384):
--- balcão de madeira em três quartos, estantes de frascos ao fundo, vela e
--- caveira à esquerda, lanterna pendurada no alto, pano vermelho na borda.
--- Ela é desenhada em cover-fit (mesma conta do SceneBackground dos salões de
--- chefe) e TUDO que fica sobre ela é posicionado em COORDENADAS DA ARTE:
---   * 4 cavaletes de carta na diagonal da BORDA DO FUNDO (o plano nasce na
---     esquerda, mais perto, e foge pra direita: escala 1,0 → 0,85);
---   * 4 posições de objeto sobre o TAMPO, em diagonal esquerda-frente →
---     direita-fundo (relíquias + pacote);
---   * sino e copo de dados à esquerda, na mesa.
--- Cada slot tem âncora do PÉ, escala por profundidade e inclinação; o
--- layout converte arte→tela e `validate` confere que o pé está DENTRO do
--- tampo pintado (máscaras em coordenadas da arte, como as âncoras dos
--- salões), que nada se sobrepõe e que o pergaminho/botões não invadem a
--- mesa. Quando a janela é estreita (4:3, 800x600) a diagonal se COMPRIME
--- (espaçamento e escala cedem), nunca a ordem.
+-- A cena é UMA PINTURA 640x360 (assets/sprites/shop/counter_scene.png, montada
+-- por tools/shop_v4_compose.py): parede calma do PixelLab em cima e, na frente,
+-- DUAS superfícies limpas desenhadas na grade com as arestas em 1:8 (o degrau
+-- das cartas e a mesa dos objetos). Desenhada em cover-fit de múltiplo inteiro
+-- (2 no espaço virtual 1280x720 = 3 px em 1080p, 4 em 1440p) e TUDO que fica
+-- sobre ela é posicionado em COORDENADAS DA ARTE:
+--   * 4 cavaletes de carta na aresta da frente do degrau, passo constante;
+--   * 4 objetos (3 relíquias + pacote) com o pé numa reta 1:8 do tampo,
+--     passo constante;
+--   * copo e sino agrupados na ponta esquerda da mesa.
+-- `validate` confere que o pé está DENTRO da superfície (máscaras em
+-- coordenadas da arte), que nada se sobrepõe e que o pergaminho/botões não
+-- invadem a mesa. Janela estreita (4:3, 800x600): a fileira desliza e, se não
+-- cabe, se COMPRIME (espaçamento e escala cedem), nunca a ordem.
 --
 -- Fora da pintura (grade da UI): a placa de título com os dois "?", o
 -- PERGAMINHO de detalhe à direita (com o botão COMPRAR) e o botão CONTINUAR
--- no canto inferior direito. Texto e placas de latão são desenhados por
--- cima, na grade da UI, nunca na arte.
+-- no canto inferior direito. Texto e placas são desenhados por cima, na
+-- grade da UI, na mesma inclinação.
 
 local ShopLayout = {}
 
@@ -59,58 +57,73 @@ ShopLayout.RAIL_COVER_ART = 2
 ShopLayout.LIFT = 5                  -- objetos da mesa levantam 4-6 px no hover
 ShopLayout.BADGE_RESERVE = 12  -- selo "NOVA" acima da carta
 
--- PONTO DE FUGA do eixo longo do balcão, medido na pintura (coordenadas da
--- arte): borda do fundo y=181 em x=180 -> y=150 em x=440 (sobe ~6,8 graus);
--- borda da frente y=316 em x=260 -> y=281 em x=440 (sobe ~11 graus). As duas
--- retas se encontram aqui. A "diagonal" num ponto da mesa é a reta até ele.
-ShopLayout.VP = { x = 2187, y = -58 }
-function ShopLayout.slopeArt(ax, ay)
-    local VP = ShopLayout.VP
-    return (VP.y - ay) / (VP.x - ax)
+-- ============================================================================
+-- Loja v4 (13/Out/2026, docs/plan/shop-v4-estudo.md): UMA inclinação de pixel
+-- art, 1:8 (sobe 1 px de arte a cada 8 px pra direita, ~7,1 graus), igual nas
+-- duas superfícies e em tudo que mora nelas. Inclinação inteira = degraus
+-- todos de 8 px: a escadinha irregular dos 6,83 graus da v3 some. Sem ponto de
+-- fuga (projeção oblíqua paralela, como a pixel art de mesa costuma ser):
+-- as retas são paralelas e a escala não muda ao longo delas.
+-- ============================================================================
+ShopLayout.RUN = 8
+ShopLayout.K = -1 / ShopLayout.RUN
+function ShopLayout.slopeArt() return ShopLayout.K end
+
+-- y (arte) da reta "y0 - x/8" na coluna x, em DEGRAUS (como a pintura é
+-- desenhada por tools/shop_v4_compose.py). A contínua difere < 1 px.
+function ShopLayout.lineY(y0, x) return y0 - math.floor(x / ShopLayout.RUN) end
+
+-- ============================================================================
+-- A ARTE: 640x360 (tools/shop_v4_compose.py). Parede do PixelLab em cima; o
+-- DEGRAU das cartas e a MESA dos objetos desenhados na grade, arestas em 1:8.
+-- Retas "y = y0 - x/8" (y0 = altura na coluna 0):
+-- ============================================================================
+local LINES = {
+    shelfTop = 186,      -- aresta de trás do tampo do degrau
+    shelfEdge = 196,     -- aresta da FRENTE do degrau: base das cartas
+    shelfFace = 208,     -- fim da face da frente do degrau
+    tableBack = 221,     -- aresta de trás do tampo da mesa
+    tableEdge = 306,     -- aresta da frente do tampo
+    objects = 290,       -- pé dos objetos da mesa
+}
+ShopLayout.LINES = LINES
+-- faixa entre duas retas (arte), estendida além das bordas da pintura
+local function band(y0a, y0b, pad)
+    pad = pad or 0
+    return { -40, y0a + 5 - pad, 680, y0a - 85 - pad, 680, y0b - 85 + pad, -40, y0b + 5 + pad }
+end
+ShopLayout.ART = {
+    w = 640, h = 360,
+    -- base das cartas: a aresta da frente do degrau (contínua)
+    ledgeEdge = { x0 = 0, y0 = LINES.shelfEdge, k = ShopLayout.K },
+    ledgeMask = band(LINES.shelfTop, LINES.shelfEdge, 2),
+    tableMask = band(LINES.tableBack, LINES.tableEdge, 0),
+    -- cavaletes: passo constante ao longo da borda
+    cards = { { x = 110 }, { x = 208 }, { x = 306 }, { x = 404 } },
+    cardH = 96,          -- altura da carta em px da arte (192 px virtuais)
+    -- objetos da mesa (3 relíquias + pacote): passo constante, pé na reta
+    objects = { { x = 168 }, { x = 246 }, { x = 324 }, { x = 402 } },
+    objSize = 64,        -- sprite na escala 1 da grade (pixel = pixel da cena)
+    -- sino e copo agrupados na ponta esquerda da mesa (copo um pouco atrás)
+    bell = { x = 100, y0 = LINES.objects + 4, size = 34 },
+    dice = { x = 60, y0 = LINES.objects - 10, size = 32 },
+}
+for _, o in ipairs(ShopLayout.ART.objects) do o.y = LINES.objects - o.x / ShopLayout.RUN; o.s = 1 end
+for _, c in ipairs(ShopLayout.ART.cards) do c.s = 1 end
+for _, k in ipairs({ "bell", "dice" }) do
+    local o = ShopLayout.ART[k]
+    o.y = o.y0 - o.x / ShopLayout.RUN
+    o.s = 1
 end
 
--- ============================================================================
--- A ARTE: âncoras em pixels da pintura (688x384). Medidas na grade de 32px
--- (tools/preview_out/shop_props/lojacena/scene/lojacena_scene_grid.png).
--- ============================================================================
-ShopLayout.ART = {
-    w = 688, h = 384,
-    -- BORDA do degrau do fundo (a última linha iluminada do tampo do degrau,
-    -- antes da face escura): y = y0 + k*(x - x0). Medida na pintura por
-    -- coluna (x 80..441, maior queda de luminância numa janela de ±4 px em
-    -- torno da reta) + mínimos quadrados: rms 0,7 px, 6,83 graus, passa a
-    -- 1 px do ponto de fuga. test_shop_layout refaz a medida na PNG.
-    ledgeEdge = { x0 = 100, y0 = 190.857, k = -0.119775 },
-    -- borda do fundo (prateleira atrás do balcão) onde os cavaletes apoiam
-    ledgeMask = { 56, 182, 476, 132, 486, 150, 66, 200 },
-    -- tampo do balcão (sem a pilha de livros/moedas do canto e sem a caveira)
-    tableMask = { 128, 205, 478, 162, 556, 236, 262, 338, 130, 332 },
-    -- cavaletes: pé no centro da base, escala por profundidade
-    cards = {
-        { x = 118, y = 180, s = 1.00 },
-        { x = 214, y = 170, s = 0.95 },
-        { x = 308, y = 160, s = 0.90 },
-        { x = 398, y = 146, s = 0.85 },
-    },
-    cardH = 94,          -- altura da carta em px da arte na escala 1,0 (a carta cobre a estante atrás, como na referência)
-    -- objetos na mesa (3 relíquias + pacote), esquerda-frente → direita-fundo
-    objects = {
-        { x = 232, y = 302, s = 1.00 },
-        { x = 310, y = 280, s = 0.95 },
-        { x = 385, y = 258, s = 0.90 },
-        { x = 448, y = 250, s = 0.85 },
-    },
-    objSize = 86,        -- sprite dos objetos (px da arte) na escala 1,0 (~1,25x a primeira versão: ~180 px em 1080p)
-    -- sino na frente-esquerda, copo atrás dele (mais fundo, menor)
-    bell = { x = 160, y = 324, s = 0.75 },
-    dice = { x = 150, y = 252, s = 0.65 },
-    lantern = { x = 448, y = 40, w = 50, h = 64 },   -- a pintada (chama ~ (471, 70))
-    flame = { x = 471, y = 72 },
-}
-
 -- cover-fit idêntico ao SceneBackground.getCoverTransform
+-- cover-fit em MÚLTIPLO INTEIRO quando o recorte extra é pequeno (<= 20%):
+-- 1280x720 virtual -> 2 (3 px em 1080p, 4 em 1440p). Janela de outra
+-- proporção (4:3) cai no fracionário em vez de cortar meia mesa.
 local function coverTransform(sw, sh, aw, ah)
-    local s = math.max(sw / aw, sh / ah)
+    local need = math.max(sw / aw, sh / ah)
+    local si = math.ceil(need - 1e-6)
+    local s = (si / need <= 1.2) and si or need
     local dw, dh = aw * s, ah * s
     return { s = s, dw = dw, dh = dh, ox = (sw - dw) / 2, oy = (sh - dh) / 2 }
 end
@@ -151,54 +164,84 @@ local function bboxOf(xs, ys)
 end
 ShopLayout.bboxOf = bboxOf
 
--- Etiqueta de preço PENDURADA (a das cartas, que o dono gostou), agora
--- também nos objetos: cordão de `len` px a partir de (ax, ay), cartão w x h
--- cisalhado na diagonal (`slope`). `box` = caixa ocupada (validação/hit).
-local function hangingTag(ax, ay, lineH, slope, len)
-    local bandH = lineH + 6
-    local w = clamp(math.floor(bandH * 1.8), 26, 38)
-    local h = math.floor(w * 0.66)
-    len = len or 4
-    local skew = math.abs(slope) * w
-    local tag = { ax = math.floor(ax), ay = math.floor(ay), len = len, w = w, h = h, slope = slope }
-    tag.box = rect(ax - w / 2 - 4, ay - skew / 2, w + 8, len + h + skew + 2)
-    return tag
-end
-ShopLayout.hangingTag = hangingTag
+-- ============================================================================
+-- PLAQUINHAS NA GRADE DA ARTE (v4). Queixa do dono: "o suporte da carta tem
+-- poucos pixels e está fazendo escadinha". Trilho, plaquinha de raridade e
+-- etiqueta de preço são desenhados no canvas da ARTE (ShopPerspective.artPass)
+-- como retângulos em DEGRAUS da grade: a coluna x tem o topo na reta
+-- lineY(y0, x) (mesma fase das arestas pintadas). Só o TEXTO sai na grade da
+-- UI, cisalhado na mesma inclinação, por cima.
+-- ============================================================================
+ShopLayout.TAG_W, ShopLayout.TAG_H = 15, 8     -- etiqueta de preço (px de arte)
+ShopLayout.PLATE_H = 8                         -- plaquinha de raridade
+ShopLayout.POST_H = 3                          -- batentes do trilho (acima dele)
+ShopLayout.SWING = 2                           -- folga do balanço da etiqueta
+local lineY = ShopLayout.lineY
 
--- Placas da carta, TODAS no frame da borda (f):
---   rarity = plaquinha de latão pregada na FRENTE do trilho, centrada
---            (vTop = altura do topo dela acima da borda, h, maxW);
---   tag    = etiqueta de preço pendurada da PONTA DIREITA do trilho, presa
---            na quina de baixo (sobre a borda pintada), com o cordão longo o
---            bastante pra passar ABAIXO da plaquinha (em carta estreita as
---            duas não cabem lado a lado: empilhar não corta texto nenhum);
---   plate  = caixa ocupada por trilho + plaquinha (validação/hit-test).
-local function railPlates(f, qw, lipH, lineH, side)
-    local railW = qw + 8
-    local ph = lineH + 4
-    local maxW = qw + 4
-    local vTop = math.floor(lipH * 0.55)
-    local rarity = { u0 = -maxW / 2, w = maxW, h = ph, vTop = vTop, slope = f.k }
-    rarity.x, rarity.y = ShopLayout.frameAtF(f, -maxW / 2, vTop)
-    local xs, ys = {}, {}
-    for _, p in ipairs({ { -railW / 2, lipH }, { railW / 2, lipH }, { -railW / 2, vTop - ph }, { railW / 2, vTop - ph } }) do
-        local x, y = ShopLayout.frameAtF(f, p[1], p[2])
-        xs[#xs + 1], ys[#ys + 1] = x, y
-    end
-    local plate = bboxOf(xs, ys)
-    local tw = clamp(math.floor((lineH + 6) * 1.8), 26, 38)
-    local u = (side == "left") and (-railW / 2 + math.floor(tw * 0.5) + 1) or (railW / 2 - math.floor(tw * 0.5) - 1)
-    local len = ph - vTop + 3
+-- Caixa (px de TELA) de um retângulo em degraus: colunas x0..x0+w-1, topo
+-- na reta de intercepto y0, h linhas.
+function ShopLayout.stepBox(cv, x0, w, y0, h)
+    local yl, yr = lineY(y0, x0), lineY(y0, x0 + w - 1)
+    local top, bot = math.min(yl, yr), math.max(yl, yr) + h
+    local sx, sy = toScreen(cv, x0, top)
+    return rect(sx, sy, w * cv.s, (bot - top) * cv.s)
+end
+local stepBox = ShopLayout.stepBox
+
+-- Etiqueta pendurada: cordão do ponto (cordX, cordY) da arte até o furo no
+-- meio do topo do cartão (x0, topo na reta y0). `box` = cartão + balanço +
+-- cordão em px de tela (validação e hit-test).
+local function artTag(cv, cordX, cordY, x0, y0)
+    local W, H, S = ShopLayout.TAG_W, ShopLayout.TAG_H, ShopLayout.SWING
+    local T = { x0 = x0, y0 = y0, cordX = cordX, cordY = cordY, slope = ShopLayout.K }
+    local b = stepBox(cv, x0 - S, W + S * 2, y0, H)
+    local hx, hy = toScreen(cv, cordX, cordY)
+    local top = math.min(b.y, math.floor(hy))
+    T.box = rect(math.min(b.x, hx - 1), top, math.max(b.x + b.w, hx + 1) - math.min(b.x, hx - 1), b.y + b.h - top)
+    T.w, T.h = W * cv.s, H * cv.s              -- px de tela (compat)
+    T.ax, T.ay = hx, hy
+    T.len = (lineY(y0, x0 + math.floor(W / 2)) - cordY) * cv.s
+    return T
+end
+ShopLayout.artTag = artTag
+
+-- Etiqueta de um objeto da mesa: o cartão deitado no tampo à direita-frente
+-- do pé (o cordão sai da silhueta; o ponto exato vem no draw, tiePoint).
+local function objectTag(cv, ax, ay, sizeArt)
+    local W = ShopLayout.TAG_W
+    local cx = math.floor(ax + sizeArt * 0.30 + 0.5)
+    local x0 = cx - math.floor(W / 2)
+    local topRow = math.floor(ay) + 1
+    return artTag(cv, cx, math.floor(ay) - 6, x0, topRow + math.floor(x0 / ShopLayout.RUN))
+end
+ShopLayout.objectTag = objectTag
+
+-- Placas da carta (trilho [x0, x1] na grade, aresta = LINES.shelfEdge):
+--   rarity = plaquinha pregada na FACE do degrau, logo abaixo do trilho,
+--            centrada; a largura final sai do texto (maxW = trilho)
+--   tag    = etiqueta pendurada da ponta DIREITA do trilho, abaixo da
+--            plaquinha ("left": ponta esquerda; "out": ao lado da ponta)
+--   plate  = caixa de trilho + batentes + plaquinha (validação/hit-test)
+local function railPlates(c, cv, side)
+    local E = ShopLayout.LINES.shelfEdge
+    local x0, x1 = c.railX0, c.railX1
+    local W, PH = ShopLayout.TAG_W, ShopLayout.PLATE_H
+    local rarity = { x0 = x0, w = x1 - x0 + 1, y0 = E + 1, h = PH, slope = ShopLayout.K }
+    rarity.x, rarity.y = toScreen(cv, x0, lineY(E + 1, x0))
+    rarity.maxW = (x1 - x0 + 1) * cv.s
+    local up = ShopLayout.RAIL_ART + ShopLayout.POST_H
+    local plate = stepBox(cv, x0, x1 - x0 + 1, E - up, up + 1 + PH)
+    local tag
     if side == "out" then
-        -- presa na quina da PONTA do trilho, por fora: cordão curto, ao lado
-        -- da plaquinha (quando embaixo dela há um objeto da mesa)
-        u, len = railW / 2 + math.floor(tw * 0.5) - 1, 4
+        local tx = x1 + 2
+        tag = artTag(cv, tx + math.floor(W / 2), lineY(E, tx) - 1, tx, E + 1)
+    else
+        local tx = (side == "left") and x0 or (x1 - W + 1)
+        local cx = tx + math.floor(W / 2)
+        tag = artTag(cv, cx, lineY(E, cx), tx, E + 2 + PH + 1)
     end
-    local ax, ay = ShopLayout.frameAtF(f, u, 0)
-    local tag = hangingTag(ax, ay, lineH, f.k, len)
-    tag.u = u
-    return { plate = plate, rarity = rarity, tag = tag, railW = railW }
+    tag.side = side
+    return { plate = plate, rarity = rarity, tag = tag, railW = (x1 - x0 + 1) * cv.s }
 end
 
 function ShopLayout.frameAtF(f, u, v)
@@ -206,8 +249,8 @@ function ShopLayout.frameAtF(f, u, v)
 end
 
 -- Os 4 cantos da carta (TL, TR, BR, BL), px de tela, no frame da borda:
--- base sobre a borda (vb acima dela, dentro do trilho), topo fugindo pro
--- ponto de fuga. hover 0..1 (já com easing) escala em torno do centro da
+-- base sobre a borda (vb acima dela, dentro do trilho), topo PARALELO à
+-- base (a mesma reta 1:8: projeção oblíqua, sem ponto de fuga). hover 0..1 (já com easing) escala em torno do centro da
 -- base; lift px desloca na PERPENDICULAR da borda. Nenhum dos dois gira.
 function ShopLayout.cardQuad(c, hover, lift)
     hover, lift = hover or 0, lift or 0
@@ -216,8 +259,7 @@ function ShopLayout.cardQuad(c, hover, lift)
     local blx, bly = ShopLayout.frameAtF(f, -w / 2, c.vb)
     local brx, bry = ShopLayout.frameAtF(f, w / 2, c.vb)
     local tlx, tly = blx, bly - h
-    local kTop = (f.vpy - tly) / (f.vpx - tlx)
-    local trx, try_ = brx, tly + kTop * w
+    local trx, try_ = brx, tly + f.k * w
     local cx, cy = ShopLayout.frameAtF(f, 0, c.vb)
     local sc = 1 + (ShopLayout.CARD_HOVER_SCALE - 1) * hover
     local dx, dy = f.nx * lift, f.ny * lift
@@ -256,8 +298,11 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
     -- desliza pra direita (em px da arte) até a primeira carta caber na tela
     local leftArt = (6 - cv.ox) / cv.s
     local cardShift = math.max(0, leftArt + (A.cardH * cv.s / ShopLayout.CARD_RATIO) / 2 / cv.s - A.cards[1].x)
+    local vFit, lastX, lastS = 1, 1, 1
     local function buildCards(xFit, sizeFit)
         cards = {}
+        lastX, lastS = xFit, sizeFit
+        sizeFit = sizeFit * vFit
         local x1 = A.cards[1].x + cardShift
         for i = 1, nCards do
             local a = A.cards[math.min(i, #A.cards)]
@@ -280,13 +325,14 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
             c.foot = math.floor(footY)
             local x0, y0, xa, ya, x2, y2, x3, y3 = ShopLayout.cardQuad(c, 0, 0)
             c.rect = bboxOf({ x0, xa, x2, x3 }, { y0, ya, y2, y3 })
-            local plates = railPlates(f, qw, lipH, lineH, "right")
+            -- trilho na GRADE da arte (colunas inteiras), centrado na carta
+            local railArt = math.floor(qw / cv.s + 0.5) + 6
+            c.railX0 = math.floor(f.art.x - railArt / 2 + 0.5)
+            c.railX1 = c.railX0 + railArt - 1
+            local plates = railPlates(c, cv, "right")
             c.railW = plates.railW
-            do
-                local lx, ly = ShopLayout.frameAtF(f, -plates.railW / 2, lipH)
-                local rx, ry = ShopLayout.frameAtF(f, plates.railW / 2, 0)
-                c.stand = rect(lx, math.min(ly, ry), rx - lx, math.max(ly, ry) - math.min(ly, ry) + 1)
-            end
+            c.stand = ShopLayout.stepBox(cv, c.railX0, railArt, ShopLayout.LINES.shelfEdge - ShopLayout.RAIL_ART,
+                ShopLayout.RAIL_ART + 1)
             c.standVariant = ((i - 1) % 3) + 1
             c.plate, c.rarity, c.tag = plates.plate, plates.rarity, plates.tag
             c.lineH = lineH
@@ -299,7 +345,7 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
     -- janela estreita: comprime a diagonal (e, se ainda não cabe, a escala)
     local function cardsRight()
         local c = cards[#cards]
-        return math.max(c.rect.x + c.rect.w, c.plate.x + c.plate.w)
+        return math.max(c.rect.x + c.rect.w, c.plate.x + c.plate.w, c.tag.box.x + c.tag.box.w)
     end
     if cardsRight() > limitX then
         local x1 = cards[1].rect.x
@@ -316,11 +362,30 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
             buildCards(fit, math.max(0.7, fit))
         end
     end
+    -- e na VERTICAL: a 1:8 sobe a carta da direita; levantada (com o selo)
+    -- ela não pode passar da TopBar nem da placa de título (4:3 desliza a
+    -- fileira pra direita, que é mais alto). Quem cede é a altura.
+    local signBox = { x = margin, y = topBarH + 4, w = math.floor(sw * 0.42), h = 30 }
+    for _ = 1, 4 do
+        local worst = 1
+        for _, c in ipairs(cards) do
+            local reach = c.lift + math.ceil(c.qh * (ShopLayout.CARD_HOVER_SCALE - 1)) + ShopLayout.BADGE_RESERVE
+            local ceil = topBarH + 2
+            if c.rect.x < signBox.x + signBox.w then ceil = signBox.y + signBox.h + 2 end
+            local d = ceil - (c.rect.y - reach)
+            if d > 0 then worst = math.min(worst, (c.qh - d - 2) / c.qh) end
+        end
+        if worst >= 1 then break end
+        vFit = vFit * worst
+        buildCards(lastX, lastS)
+    end
 
     -- ===== objetos na mesa =====
     local objSize0 = A.objSize * cv.s
     local objects = {}
-    local objShift = math.max(0, leftArt + (A.objSize * 0.75) - A.objects[1].x)
+    -- a fileira da mesa (copo, sino, objetos) desliza INTEIRA quando o
+    -- cover-fit corta a esquerda (4:3): o copo continua na ponta
+    local objShift = math.max(0, leftArt + A.dice.size * 0.6 - A.dice.x)
     local function buildObjects(xFit, sizeFit)
         objects = {}
         local x1 = A.objects[1].x + objShift
@@ -328,18 +393,18 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
         for j = 1, n do
             local a = A.objects[math.min(j, #A.objects)]
             local ax = x1 + (a.x - A.objects[1].x) * xFit
-            local fx, fy = toScreen(cv, ax, a.y)
-            local slope = ShopLayout.slopeArt(ax, a.y)
+            local ay = ShopLayout.LINES.objects - ax / ShopLayout.RUN
+            local fx, fy = toScreen(cv, ax, ay)
+            local slope = ShopLayout.K
             local size = math.floor(objSize0 * a.s * sizeFit)
             local skew = math.abs(slope) * size / 2
             local r = rect(fx - size / 2, fy - size - skew, size, size + skew * 2)
             local isPack = j > nRelics
-            -- etiqueta presa à base, do lado direito, na diagonal
-            local tx = fx + size * 0.30
-            local tag = hangingTag(tx, fy + slope * (tx - fx) - 2, lineH, slope)
+            -- etiqueta deitada no tampo, à direita-frente do pé
+            local tag = objectTag(cv, ax, ay, size / cv.s)
             objects[j] = {
                 kind = isPack and "pack" or "relic",
-                art = { x = ax, y = a.y }, depth = a.s, slope = slope,
+                art = { x = ax, y = ay }, depth = a.s, slope = slope,
                 rect = r, foot = math.floor(fy), footX = math.floor(fx), size = size,
                 tag = tag, plate = tag.box,
                 lift = ShopLayout.LIFT,
@@ -371,27 +436,28 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
     end
 
     -- ===== sino e copo (esquerda da mesa) =====
-    local function counterObj(a, sizeK, withTag)
-        local fx, fy = toScreen(cv, a.x, a.y)
-        local size = math.floor(objSize0 * a.s * sizeK)
-        local slope = ShopLayout.slopeArt(a.x, a.y)
+    local function counterObj(a, withTag)
+        local ax = a.x + objShift
+        local ay = a.y0 - ax / ShopLayout.RUN
+        local fx, fy = toScreen(cv, ax, ay)
+        local size = math.floor(a.size * cv.s)
+        local slope = ShopLayout.K
         local o = {
-            art = { x = a.x, y = a.y }, depth = a.s, slope = slope, size = size,
+            art = { x = ax, y = ay }, depth = a.s, slope = slope, size = size,
             rect = rect(fx - size / 2, fy - size, size, size),
             foot = math.floor(fy), footX = math.floor(fx),
             lift = ShopLayout.LIFT,
         }
         if withTag then
-            local tx = fx + size * 0.28
-            o.tag = hangingTag(tx, fy + slope * (tx - fx) - 2, lineH, slope)
+            o.tag = objectTag(cv, ax, ay, a.size)
             o.plate = o.tag.box
         else
             o.plate = rect(fx - 1, fy, 2, 2)
         end
         return o
     end
-    local bell = counterObj(A.bell, 0.8, true)
-    local dice = counterObj(A.dice, 0.8, false)
+    local bell = counterObj(A.bell, true)
+    local dice = counterObj(A.dice, false)
 
     -- etiqueta da carta: ponta DIREITA do trilho; se ali ela cairia sobre o
     -- sino/copo (4:3 aperta a carta 1 contra o copo) ou sobre um objeto da
@@ -413,7 +479,7 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
         end
         if c.tag and blocked(c.tag) then
             for _, side in ipairs({ "left", "out" }) do
-                local tg = railPlates(c.frame, c.qw, c.lipH, lineH, side).tag
+                local tg = railPlates(c, cv, side).tag
                 if not blocked(tg) then c.tag = tg break end
             end
         end
@@ -443,12 +509,9 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
     scroll.body = rect(scroll.x + inset, scroll.y + rollerH + 6,
         scroll.w - inset * 2, scroll.buy.y - 8 - (scroll.y + rollerH + 6))
 
-    -- lanterna pintada (ShopProps usa o rect pra mariposa/poeira; o sprite
-    -- não é desenhado: a chama já está na arte)
-    local lx, ly = toScreen(cv, A.lantern.x, A.lantern.y)
-    local lantern = rect(lx, ly, A.lantern.w * cv.s, A.lantern.h * cv.s)
-    local flx, fly = toScreen(cv, A.flame.x, A.flame.y)
-    lantern.flame = { x = math.floor(flx), y = math.floor(fly) }
+    -- v4: sem lanterna pintada (a parede nova é calma; a luz vem da
+    -- esquerda, fora do quadro). ShopProps aceita lantern = nil.
+    local lantern = nil
 
     return {
         sw = sw, sh = sh, wall = wall, cover = cv, art = A,

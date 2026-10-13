@@ -1,30 +1,23 @@
 -- src/ui/shop/ShopPerspective.lua
--- A PERSPECTIVA ÚNICA DA MESA do Balcão do Mercador (Loja v3c).
+-- A INCLINAÇÃO ÚNICA DA MESA do Balcão do Mercador (Loja v4).
 --
--- Queixa do dono (13/Out/2026): "os itens não seguem a diagonal da mesa; até
--- a badge do nome tem que seguir a diagonal; TUDO: os preços, as próprias
--- cartas" e "a sensação de que os itens estão flutuando é a pior coisa".
+-- v4 (13/Out/2026, docs/plan/shop-v4-estudo.md): o ponto de fuga da v3c deu
+-- uma borda a 6,83 graus, que na grade da arte vira escadinha irregular
+-- (degraus de 8 e 9 px misturados). Agora tudo segue UMA inclinação de pixel
+-- art, 1:8 (sobe 1 px de arte a cada 8 px pra direita): as arestas das duas
+-- superfícies (pintadas na grade por tools/shop_v4_compose.py), a carta, o
+-- cavalete, a plaquinha, a etiqueta, as sombras e os objetos. As verticais
+-- continuam verticais (projeção oblíqua).
 --
--- Uma transformação só, medida na pintura (assets/sprites/shop/counter_scene.png,
--- coordenadas da ARTE 688x384):
---   * a borda do fundo (onde os cavaletes apoiam) sobe ~6,8° pra direita;
---   * a borda da frente do tampo sobe ~11° pra direita;
---   * as duas fogem pro MESMO ponto de fuga VP = (2187, -58).
--- Logo a "diagonal" num ponto qualquer da mesa é a reta até o VP: a
--- inclinação ali é slope = (VP.y - y) / (VP.x - x) (negativa: sobe pra
--- direita). As verticais continuam verticais (a pintura é em perspectiva de
--- dois pontos com o terceiro no infinito). Então todo objeto em pé recebe um
--- CISALHAMENTO vertical (love.graphics.shear(0, slope)) em torno do pé, e
--- tudo que é texto/placa/etiqueta/carta/cavalete usa o mesmo slope.
---
--- Os objetos são desenhados num canvas na resolução da ARTE (688x384) e
--- sobem pro tamanho da tela com nearest, junto da pintura: o cisalhamento
--- acontece em pixel de arte, então o objeto inclinado continua pixel art de
--- verdade (pixel quadrado, escada nítida), na mesma grade do cenário.
+-- Os objetos são desenhados num canvas na resolução da ARTE (640x360) em
+-- ESCALA 1 (pixel do sprite = pixel da cena) e sobem pro tamanho da tela com
+-- nearest, junto da pintura. Arte antiga frontal recebe cisalhamento inteiro
+-- (1:8 ou 1:16: degraus regulares); a arte nova (elixir, pacotes) já vem
+-- desenhada na diagonal e não é cisalhada.
 --
 -- Sombra de CONTATO (nada flutua): faixa curta e escura colada na base de
--- cada coluna que toca a mesa, cauda pra direita ao longo da diagonal (a vela
--- está à esquerda), dither Bayer, sem borda suave, cortada pela máscara do
+-- cada coluna que toca a mesa, cauda pra direita ao longo da diagonal (a luz
+-- vem da esquerda), dither Bayer, sem borda suave, cortada pela máscara do
 -- tampo. Nada de elipse.
 
 local ShopPerspective = {}
@@ -35,13 +28,8 @@ local Palette    = require("src.ui.Palette")
 local floor = math.floor
 local function clamp(v, lo, hi) return math.max(lo, math.min(hi, v)) end
 
--- Ponto de fuga do eixo longo do balcão (medido: borda do fundo y=181 em
--- x=180 → y=150 em x=440; borda da frente y=316 em x=260 → y=281 em x=440).
-ShopPerspective.VP = { x = 2187, y = -58 }
-
-function ShopPerspective.slopeArt(ax, ay)
-    local VP = ShopPerspective.VP
-    return (VP.y - ay) / (VP.x - ax)
+function ShopPerspective.slopeArt()
+    return require("src.ui.shop.ShopLayout").K
 end
 
 -- slope em coordenadas de TELA (o cover-fit é escala uniforme: o slope é o
@@ -83,14 +71,12 @@ function ShopPerspective.edgeFrame(slot, cv)
     local oy = cv.oy + ay * cv.s
     local k = E.k
     local n = math.sqrt(1 + k * k)
-    local VP = ShopPerspective.VP
     return {
         ox = ox, oy = oy, k = k,
         ux = 1 / n, uy = k / n,          -- ao longo da borda (pra direita)
         nx = k / n, ny = -1 / n,         -- perpendicular, pra cima
         s = cv.s,
         art = { x = axr, y = ay },
-        vpx = cv.ox + VP.x * cv.s, vpy = cv.oy + VP.y * cv.s,
     }
 end
 
@@ -104,29 +90,29 @@ function ShopPerspective.angleOf(x0, y0, x1, y1)
 end
 
 -- ============================================================================
--- POSE dos objetos (artes ANTIGAS, frontais ou de três quartos):
+-- POSE dos objetos:
 --   flip  = espelha (sx = -1): a arte vista "da direita" passa a mostrar o
 --           lado esquerdo, como a mesa (pedido do dono pra bancada de coringa)
---   shear = fração do slope da mesa aplicada como cisalhamento (1 = a base
---           inteira na diagonal; menos quando a arte de três quartos já traz
---           parte da inclinação depois do espelho)
---   size  = escala relativa (o pacote é alto: ocupa menos)
+--   shear = fração da inclinação 1:8 aplicada como cisalhamento: SÓ 1 (1:8),
+--           0,5 (1:16) ou 0 (arte já desenhada na diagonal). Fração qualquer
+--           daria degraus irregulares (o defeito da v3c).
+--   size  = escala relativa
 -- A MESMA pose vale em repouso, em hover e no pergaminho (só o pergaminho
 -- dispensa o cisalhamento: lá a peça é retrato, não está na mesa).
 -- ============================================================================
 ShopPerspective.POSE = {
     remove_card       = { flip = false, shear = 1.0 },
-    joker_slot        = { flip = true,  shear = 0.6 },
-    health_upgrade    = { flip = false, shear = 1.0 },
-    mana_upgrade      = { flip = true,  shear = 0.8 },
-    card_draw_upgrade = { flip = true,  shear = 0.6 },
-    interest_cap      = { flip = true,  shear = 0.6 },
-    forge_card        = { flip = true,  shear = 0.7 },
-    duplicate_card    = { flip = true,  shear = 0.6 },
+    joker_slot        = { flip = true,  shear = 0.5 },
+    health_upgrade    = { flip = false, shear = 0 },     -- arte v4 na diagonal
+    mana_upgrade      = { flip = true,  shear = 0.5 },
+    card_draw_upgrade = { flip = true,  shear = 0.5 },
+    interest_cap      = { flip = true,  shear = 0.5 },
+    forge_card        = { flip = true,  shear = 0.5 },
+    duplicate_card    = { flip = true,  shear = 0.5 },
     damage_upgrade    = { flip = false, shear = 1.0 },
     defense_upgrade   = { flip = false, shear = 1.0 },
-    bell              = { flip = false, shear = 1.0 },
-    pack              = { flip = false, shear = 1.0, size = 0.95 },
+    bell              = { flip = false, shear = 0 },
+    pack              = { flip = false, shear = 0 },     -- arte v4 na diagonal
 }
 local DEFAULT_POSE = { flip = false, shear = 1.0 }
 
@@ -149,7 +135,24 @@ local function warnOnce(key, msg)
     print("[ShopPerspective] " .. msg)
 end
 
+-- Arte v4 desenhada NA DIAGONAL da mesa (assets/sprites/shop/v4/): o elixir
+-- e os pacotes. Quando existe, substitui a antiga na mesa E no pergaminho
+-- (a mesma peça nos dois lugares).
+ShopPerspective.V4_DIR = "assets/sprites/shop/v4/"
+local function v4Art(id)
+    if not id then return nil end
+    local p = ShopPerspective.V4_DIR .. id .. ".png"
+    if love.filesystem.getInfo(p) then return ImageCache.tryGet(p), p end
+    return nil
+end
+ShopPerspective.v4Art = v4Art
+
 function ShopPerspective.spriteFor(kind, offer, animate, t)
+    local id = offer and offer.id
+    if kind == "relic" or kind == "pack" then
+        local img, p = v4Art(id)
+        if img then return img, p end
+    end
     if kind == "relic" then
         local UpgradeTile = require("src.ui.UpgradeTile")
         local img = UpgradeTile.spriteFor(offer and offer.id, animate, t)

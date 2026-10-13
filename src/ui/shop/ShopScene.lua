@@ -410,11 +410,13 @@ function ShopScene:_drawPainting()
         local ok, v = pcall(P.lightLevel)
         if ok and type(v) == "number" then level = v end
     end
-    local f = L.lantern.flame
-    local warm = Palette.AGED_GOLD
-    for i = 3, 1, -1 do
-        love.graphics.setColor(warm[1], warm[2] * 0.85, warm[3] * 0.5, 0.05 * (level - 0.6))
-        love.graphics.circle("fill", f.x, f.y, L.lantern.w * (0.6 + i * 0.5) * level)
+    local f = L.lantern and L.lantern.flame
+    if f then
+        local warm = Palette.AGED_GOLD
+        for i = 3, 1, -1 do
+            love.graphics.setColor(warm[1], warm[2] * 0.85, warm[3] * 0.5, 0.05 * (level - 0.6))
+            love.graphics.circle("fill", f.x, f.y, L.lantern.w * (0.6 + i * 0.5) * level)
+        end
     end
     love.graphics.setColor(1, 1, 1, 1)
 end
@@ -475,9 +477,9 @@ local function artBoxOf(L, rects, pad)
              w = (x1 - x0) / cv.s + pad * 2, h = (y1 - y0) / cv.s + pad * 2 }
 end
 
--- Cartas nos cavaletes: perna de trás (arte) → carta (homografia, tela) →
--- lábio da frente + sombra de contato (arte) → faixa da raridade + etiqueta
--- (tela, na diagonal). A carta mais perto (esquerda) é desenhada por último.
+-- Cartas nos cavaletes: carta (homografia, tela) → trilho, batentes, sombra
+-- de contato, plaquinha e etiqueta (arte, na grade da cena) → texto das
+-- placas (UI, cisalhado na mesma inclinação).
 function ShopScene:_drawCards(list)
     local NavCursor = require("src.ui.NavCursor")
     local L = self.L
@@ -488,15 +490,13 @@ function ShopScene:_drawCards(list)
             local sx = it.slide.x or 0
             local r = it.rect
             rects[#rects + 1] = { x = r.x + sx - 12, y = r.y - 16, w = r.w + 30, h = r.h + 30 }
+            local g = it.geom
+            if g and g.plate then rects[#rects + 1] = { x = g.plate.x + sx - 8, y = g.plate.y, w = g.plate.w + 24, h = g.plate.h + 4 } end
+            if g and g.tag then rects[#rects + 1] = { x = g.tag.box.x + sx - 8, y = g.tag.box.y - 4, w = g.tag.box.w + 16, h = g.tag.box.h + 8 } end
         end
     end
     if #cards == 0 then return end
     local box = artBoxOf(L, rects, 4)
-    ShopPerspective.artPass(L, box, function()
-        for _, it in ipairs(cards) do
-            if not it.sold then it:drawStandArt(L, "back", it:entered()) end
-        end
-    end)
     for k = #cards, 1, -1 do
         local it = cards[k]
         it:drawCard(self:_itemCtx(it))
@@ -508,11 +508,14 @@ function ShopScene:_drawCards(list)
     ShopPerspective.artPass(L, box, function()
         for _, it in ipairs(cards) do
             if it.sold then it:drawDustArt(L)
-            else it:drawStandArt(L, "front", it:entered()) end
+            else
+                it:drawStandArt(L, "front", it:entered())
+                it:drawPlateArt(L, self:_itemCtx(it))
+            end
         end
     end)
     for _, it in ipairs(cards) do
-        it:drawPlateFor(self:_itemCtx(it))
+        it:drawPlateText(L, self:_itemCtx(it))
         it:drawSoldText({ alpha = 1 })
     end
 end
@@ -537,6 +540,10 @@ function ShopScene:_drawTable(list)
             order[#order + 1] = { foot = it.foot, item = it }
             local r = it.rect
             rects[#rects + 1] = { x = r.x + (it.slide.x or 0) - 16, y = r.y - 24, w = r.w + 60, h = r.h + 36 }
+            if it.geom and it.geom.tag then
+                local b = it.geom.tag.box
+                rects[#rects + 1] = { x = b.x + (it.slide.x or 0) - 8, y = b.y - 8, w = b.w + 16, h = b.h + 12 }
+            end
         end
     end
     order[#order + 1] = { foot = L.bell.foot, bell = true }
@@ -544,6 +551,7 @@ function ShopScene:_drawTable(list)
     for _, o in ipairs({ L.bell, L.dice }) do
         local r = o.rect
         rects[#rects + 1] = { x = r.x - 16, y = r.y - 24, w = r.w + 90, h = r.h + 36 }
+        if o.tag then rects[#rects + 1] = { x = o.tag.box.x - 8, y = o.tag.box.y - 8, w = o.tag.box.w + 16, h = o.tag.box.h + 12 } end
     end
     table.sort(order, function(a, b) return a.foot < b.foot end)
     local box = artBoxOf(L, rects, 4)
@@ -553,8 +561,10 @@ function ShopScene:_drawTable(list)
                 local it = e.item
                 it:drawDustArt(L)
                 it:drawObjectArt(L, self:_itemCtx(it))
+                it:drawPlateArt(L, self:_itemCtx(it))
             elseif e.bell then
                 self:_drawBellArt()
+                self:_drawBellTagArt()
             elseif e.dice then
                 self:_drawDiceArt()
             end
@@ -563,9 +573,7 @@ function ShopScene:_drawTable(list)
     for _, e in ipairs(order) do
         if e.item then
             local it = e.item
-            local ctx = self:_itemCtx(it)
-            ctx.tie = it._tie
-            it:drawPlateFor(ctx)
+            it:drawPlateText(L, self:_itemCtx(it))
             it:drawSoldText({ alpha = 1 })
             if not it.sold then
                 local r = it.rect
@@ -612,19 +620,31 @@ function ShopScene:_drawBellArt()
     ShopPerspective.drawContactShadow(o, L.art.tableMask, 1)
     ShopPerspective.drawUpright(o)
     local tx, ty = ShopPerspective.tiePoint(o, 0.25)
-    self.bell.tie = { cv.ox + tx * cv.s, cv.oy + ty * cv.s }
+    self.bell.tieArt = { math.floor(tx), math.floor(ty) }
+end
+
+function ShopScene:_bellTagState()
+    local cv = self.L.cover
+    local lift = reducedMotion() and 0 or math.floor(self.bell.hover * ShopLayout.LIFT / cv.s + 0.5)
+    self.bell.tagSwing = self.bell.tagSwing or { angle = 0, vel = 0 }
+    return lift, ShelfItem.swingArt(self.bell.tagSwing.angle)
+end
+
+-- etiqueta do sino na grade da arte (dentro do artPass da mesa)
+function ShopScene:_drawBellTagArt()
+    local B = self.L.bell
+    if not B.tag then return end
+    local _, canRing = self:_bellCost()
+    local lift, sw = self:_bellTagState()
+    ShelfItem.drawTagArt(B.tag, sw, lift, canRing, false, 1, self.bell.tieArt)
 end
 
 function ShopScene:_drawBellTag()
     local B = self.L.bell
     if not B.tag then return end
     local cost, canRing = self:_bellCost()
-    local lift = reducedMotion() and 0 or (self.bell.hover * ShopLayout.LIFT)
-    local tg = B.tag
-    self.bell.tagSwing = self.bell.tagSwing or { angle = 0, vel = 0 }
-    if self.bell.tie then ShelfItem.drawCord(self.bell.tie[1], self.bell.tie[2], tg.ax, tg.ay - lift, 1) end
-    ShelfItem.drawHangingTag({ ax = tg.ax, ay = tg.ay - lift, len = tg.len, w = tg.w, h = tg.h, slope = tg.slope },
-        self.bell.tagSwing.angle, "$" .. tostring(cost), canRing, 1, false, 0)
+    local lift, sw = self:_bellTagState()
+    ShelfItem.drawTagText(self.L, B.tag, sw, lift, "$" .. tostring(cost), canRing, false, 1, 0)
 end
 
 -- Copo de dados (ShopProps) na resolução da arte, com contato na base e os

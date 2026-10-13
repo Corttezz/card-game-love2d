@@ -1,13 +1,15 @@
 -- tools/screenshot_shop_diag.lua
--- Capturas da Loja v3c (balcão na diagonal) em ESTADOS, fiéis à escala de UI
+-- Capturas da Loja (v4: balcão em 1:8) em ESTADOS, fiéis à escala de UI
 -- (janela falsificada + canvas, como o screenshot_uiscale):
 --   rest        repouso (a 1ª oferta nasce selecionada)
 --   hovercard   mouse sobre a 2ª carta (sai do cavalete na perpendicular, sem girar)
 --   hoverstrip  PRANCHA 1:1 de 8 quadros do hover da 2ª carta (4 entrando,
 --               4 saindo) -> diag_hoverstrip_<W>x<H>_<loc>.png
---   guides      repouso com LINHAS GUIA por cima (só na prova): vermelho = a
---               borda pintada medida, ciano = base de cada carta, amarelo =
---               quina do trilho -> diag_guides_<W>x<H>_<loc>.png (recorte 1:1)
+--   guides      repouso com LINHAS GUIA por cima (só na prova): vermelho =
+--               aresta do degrau, laranja = aresta da mesa, verde = reta dos
+--               pés, ciano = base de cada carta, amarelo = pontas do trilho,
+--               magenta = pés -> diag_guides_<W>x<H>_<loc>.png (tela inteira)
+--   stand       recorte 1:1 do cavalete da carta 2 (trilho/plaquinha/etiqueta)
 --   plates      prancha das duas opções da plaquinha de raridade (em cima:
 --               comum SEM placa; embaixo: todas com placa)
 --   hoverjoker  mouse sobre a bancada de coringa (MESMO sprite, levantado + contorno)
@@ -175,29 +177,55 @@ function M.run(arg)
                     strip:encode("png", name)
                     print("[shop_diag] " .. name .. "  lift por quadro: " .. table.concat(lifts, " "))
                 elseif state == "guides" then
+                    -- LINHAS GUIA (v4): vermelho = aresta do degrau (1:8), laranja =
+                    -- aresta da mesa, verde = reta dos pés dos objetos, ciano =
+                    -- base de cada carta, amarelo = pontas do trilho na grade,
+                    -- magenta = pé de cada objeto. Tela inteira.
                     local ShopLayout = require("src.ui.shop.ShopLayout")
                     local L = s.scene.L
-                    local cv, E = L.cover, ShopLayout.ART.ledgeEdge
+                    local cv, Ls = L.cover, ShopLayout.LINES
                     local img = render(function()
-                        love.graphics.setLineWidth(2 / k)
                         love.graphics.setLineStyle("rough")
-                        love.graphics.setColor(1, 0.15, 0.15, 0.9)
-                        local function ey(ax) return cv.oy + (E.y0 + E.k * (ax - E.x0)) * cv.s end
-                        love.graphics.line(cv.ox + 40 * cv.s, ey(40), cv.ox + 480 * cv.s, ey(480))
+                        local function line(y0, col)
+                            love.graphics.setLineWidth(2 / k)
+                            love.graphics.setColor(col[1], col[2], col[3], 0.9)
+                            love.graphics.line(cv.ox, cv.oy + y0 * cv.s, cv.ox + 640 * cv.s, cv.oy + (y0 - 80) * cv.s)
+                        end
+                        line(Ls.shelfEdge, { 1, 0.15, 0.15 })
+                        line(Ls.tableEdge, { 1, 0.55, 0.1 })
+                        line(Ls.objects, { 0.3, 1, 0.3 })
                         for _, c in ipairs(L.cards) do
                             local _, _, _, _, x2, y2, x3, y3 = ShopLayout.cardQuad(c, 0, 0)
                             love.graphics.setLineWidth(1 / k)
                             love.graphics.setColor(0.2, 1, 1, 0.95)
                             love.graphics.line(x3 - 6, y3 - 6 * c.frame.k, x2 + 6, y2 + 6 * c.frame.k)
-                            love.graphics.setLineWidth(2 / k)
                             love.graphics.setColor(1, 0.9, 0.1, 1)
-                            for _, u in ipairs({ -c.railW / 2, c.railW / 2 }) do
-                                local px, py = ShopLayout.frameAtF(c.frame, u, 0)
+                            for _, ax in ipairs({ c.railX0, c.railX1 + 1 }) do
+                                local px, py = ShopLayout.toScreen(cv, ax, Ls.shelfEdge - ax / 8)
                                 love.graphics.rectangle("fill", px - 1.5, py - 1.5, 3, 3)
                             end
                         end
+                        love.graphics.setColor(1, 0.2, 1, 1)
+                        for _, o in ipairs(L.objects) do
+                            love.graphics.rectangle("fill", o.footX - 2, o.foot - 2, 4, 4)
+                        end
+                        for _, o in ipairs({ L.bell, L.dice }) do
+                            love.graphics.rectangle("fill", o.footX - 2, o.foot - 2, 4, 4)
+                        end
                     end)
-                    crop(img, cardsBox(10)):encode("png", name)
+                    img:encode("png", name)
+                    print("[shop_diag] " .. name)
+                elseif state == "stand" then
+                    -- recorte 1:1 (px reais) do cavalete da carta 2: trilho,
+                    -- batentes, plaquinha, etiqueta; sem nada por cima
+                    local it = itemWhere(function(i) return i.kind == "card" and i.index == 2 end)
+                    local c = it.geom
+                    local x0 = math.min(c.plate.x, c.tag.box.x) - 10
+                    local x1 = math.max(c.plate.x + c.plate.w, c.tag.box.x + c.tag.box.w) + 14
+                    local y0 = c.plate.y - 50
+                    local y1 = math.max(c.plate.y + c.plate.h, c.tag.box.y + c.tag.box.h) + 8
+                    local X, Y = math.floor(x0 * k), math.floor(y0 * k)
+                    crop(render(), X, Y, math.ceil((x1 - x0) * k), math.ceil((y1 - y0) * k)):encode("png", name)
                     print("[shop_diag] " .. name)
                 elseif state == "plates" then
                     local ShopLayout = require("src.ui.shop.ShopLayout")

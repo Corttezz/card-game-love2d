@@ -1,6 +1,6 @@
 -- tools/test_shop_layout.lua
--- Trava GEOMÉTRICA do Balcão do Mercador em perspectiva (Loja v3b,
--- src/ui/shop/ShopLayout.lua).
+-- Trava GEOMÉTRICA do Balcão do Mercador (Loja v4, inclinação única 1:8,
+-- src/ui/shop/ShopLayout.lua). As arestas são MEDIDAS na pintura.
 --
 -- 1) ShopLayout.validate em 9 tamanhos (800x600 até 2560x1440, mais o Steam
 --    Deck e o 4:3 a k=0,75): pé de todo cavalete na BORDA DO FUNDO pintada e
@@ -11,8 +11,7 @@
 --    a janela falsificada, nos 5 idiomas, e continua íntegra: o caminho do
 --    love.resize (FontManager/CardFrame limpos + updateLayout + rebuild).
 -- 3) Quando falta largura (4:3), a DIAGONAL se comprime (espaçamento e
---    escala cedem), nunca a ordem nem a profundidade (escala decresce da
---    esquerda pra direita).
+--    escala cedem), nunca a ordem; passo constante ao longo da reta.
 --
 --   love . test_one test_shop_layout
 
@@ -66,57 +65,86 @@ end
 
 local function first(bad) return #bad > 0 and bad[1] or "ok" end
 
--- A BORDA DO DEGRAU DO FUNDO medida NA PINTURA (independente da constante do
--- layout): por coluna x 80..441, a maior queda de luminância (linha clara do
--- tampo do degrau -> face escura) numa janela de ±4 px em torno de uma reta
--- aproximada lida a olho (188 em x=118, -0,1175); mínimos quadrados.
-local function measurePaintedEdge()
-    local data = love.image.newImageData("assets/sprites/shop/counter_scene.png")
+-- AS ARESTAS MEDIDAS NA PINTURA (independente das constantes do layout):
+-- por coluna x, a última linha CLARA do tampo (o realce de 1 px que o
+-- tools/shop_v4_compose.py desenha) logo antes de uma linha escura, numa
+-- janela de ±6 px em torno de y0 - x/8. Devolve a reta de mínimos quadrados,
+-- o MAIOR desvio entre a linha real e lineY() e quantos degraus internos
+-- não têm 8 px (escadinha irregular).
+local function measureEdge(data, y0)
     local function lum(x, y)
         local r, g, b = data:getPixel(x, y)
-        return (r + g + b) / 3
+        return 0.299 * r + 0.587 * g + 0.114 * b
     end
     local n, sx, sy, sxx, sxy = 0, 0, 0, 0, 0
-    for x = 80, 441 do
-        local y0 = 188 - 0.1175 * (x - 118)
+    local worst, runs, last, runLen = 0, {}, nil, 0
+    for x = 0, data:getWidth() - 1 do
+        local yc = y0 - x / 8
         local best, bestY = -1e9, nil
-        for y = math.floor(y0) - 4, math.floor(y0) + 4 do
-            local d = lum(x, y) - lum(x, y + 1)
-            if d > best then best, bestY = d, y end
+        for y = math.floor(yc) - 6, math.floor(yc) + 6 do
+            if y >= 0 and y + 1 < data:getHeight() then
+                local d = lum(x, y) - lum(x, y + 1)
+                if d > best then best, bestY = d, y end
+            end
+        end
+        worst = math.max(worst, math.abs(bestY - (ShopLayout.lineY(y0, x) - 1)))
+        if bestY == last then runLen = runLen + 1
+        else
+            if last then runs[#runs + 1] = runLen end
+            last, runLen = bestY, 1
         end
         n = n + 1
         sx, sy, sxx, sxy = sx + x, sy + bestY, sxx + x * x, sxy + x * bestY
     end
     local k = (n * sxy - sx * sy) / (n * sxx - sx * sx)
-    return { a = (sy - k * sx) / n, k = k }
+    local irregular = 0
+    for i = 2, #runs do if runs[i] ~= 8 then irregular = irregular + 1 end end
+    return { a = (sy - k * sx) / n + 1, k = k, worst = worst, steps = #runs, irregular = irregular }
 end
 
 function M.run()
     TK.bootstrap()
     I18n.init()
-    local t = TK.new("loja v3b: geometria do balcao em perspectiva (9 tamanhos x 5 idiomas)")
+    local t = TK.new("loja v4: geometria do balcao 1:8 (9 tamanhos x 5 idiomas)")
 
-    PAINT = measurePaintedEdge()
-    t:truthy(("borda pintada medida: %.2f graus"):format(math.deg(math.atan(-PAINT.k))),
-        math.abs(math.deg(math.atan(-PAINT.k)) - 6.83) < 0.5)
-    do
-        local E = ShopLayout.ART.ledgeEdge
-        t:truthy("ART.ledgeEdge = a borda medida (inclinacao)", math.abs(E.k - PAINT.k) < 0.002)
-        t:truthy("ART.ledgeEdge = a borda medida (altura em x=118/398)",
-            math.abs(E.y0 + E.k * (118 - E.x0) - (PAINT.a + PAINT.k * 118)) < 0.5
-            and math.abs(E.y0 + E.k * (398 - E.x0) - (PAINT.a + PAINT.k * 398)) < 0.5)
+    local data = love.image.newImageData("assets/sprites/shop/counter_scene.png")
+    t:eq("pintura 640x360", data:getWidth() * 1000 + data:getHeight(), 640360)
+    local Ls = ShopLayout.LINES
+    PAINT = measureEdge(data, Ls.shelfEdge)
+    local FRONT = measureEdge(data, Ls.tableEdge)
+    for name, E in pairs({ ["degrau (cartas)"] = PAINT, ["mesa (objetos)"] = FRONT }) do
+        t:truthy(("%s: aresta medida a %.2f graus (1:8 = 7,13)"):format(name, math.deg(math.atan(-E.k))),
+            math.abs(math.deg(math.atan(-E.k)) - math.deg(math.atan(1 / 8))) < 0.5)
+        t:eq(name .. ": aresta = lineY() em TODA coluna (desvio em px de arte)", E.worst, 0)
+        t:eq(name .. ": degraus todos de 8 px (sem escadinha irregular)", E.irregular, 0)
     end
+    t:truthy("as duas superficies paralelas (mesma inclinacao)", math.abs(PAINT.k - FRONT.k) < 0.002)
+    t:near("ShopLayout.K = 1:8", ShopLayout.K, -1 / 8, 1e-12)
 
     -- ===== 1) layout puro =====
     for _, s in ipairs(SIZES) do
         local L = ShopLayout.layout(s[1], s[2], 4, 3)
         local bad = ShopLayout.validate(L)
         t:eq(("%dx%d: layout puro integro (%s)"):format(s[1], s[2], first(bad)), #bad, 0)
-        -- profundidade: a escala decresce da esquerda pra direita (diagonal)
-        t:truthy(("%dx%d: cartas encolhem pro fundo"):format(s[1], s[2]),
-            L.cards[1].rect.h > L.cards[#L.cards].rect.h and L.cards[1].rect.x < L.cards[#L.cards].rect.x)
-        t:truthy(("%dx%d: objetos encolhem pro fundo e sobem"):format(s[1], s[2]),
-            L.objects[1].rect.w > L.objects[#L.objects].rect.w and L.objects[1].foot > L.objects[#L.objects].foot)
+        -- projeção oblíqua: escala CONSTANTE ao longo da reta e PASSO constante
+        -- (centro a centro, ±1 px); a fileira sobe pra direita
+        local function evenStep(list)
+            local step = list[2] - list[1]
+            for i = 3, #list do
+                if math.abs((list[i] - list[i - 1]) - step) > 1.01 then return false end
+            end
+            return step > 0
+        end
+        local cardsX, objsX = {}, {}
+        for i, c in ipairs(L.cards) do cardsX[i] = c.frame.ox end
+        for j, o in ipairs(L.objects) do objsX[j] = o.footX end
+        t:truthy(("%dx%d: cartas com passo constante na borda"):format(s[1], s[2]), evenStep(cardsX))
+        t:truthy(("%dx%d: cartas do mesmo tamanho"):format(s[1], s[2]), L.cards[1].qh == L.cards[#L.cards].qh)
+        t:truthy(("%dx%d: objetos com passo constante na mesa"):format(s[1], s[2]), evenStep(objsX))
+        t:truthy(("%dx%d: objetos sobem pra direita (na reta)"):format(s[1], s[2]),
+            L.objects[1].foot > L.objects[#L.objects].foot)
+        t:truthy(("%dx%d: sino e copo agrupados na ponta esquerda"):format(s[1], s[2]),
+            L.dice.footX < L.bell.footX and L.bell.footX < L.objects[1].footX)
         -- tudo da mesa à esquerda do pergaminho
         for j, o in ipairs(L.objects) do
             t:truthy(("%dx%d: objeto %d a esquerda do pergaminho"):format(s[1], s[2], j),
@@ -137,8 +165,9 @@ function M.run()
             local f = c.frame
             local x0, y0, x1, y1, x2, y2, x3, y3 = ShopLayout.cardQuad(c, 0, 0)
             local baseDeg = ShopPerspective.angleOf(x3, y3, x2, y2)
-            local rlx, rly = ShopLayout.frameAtF(f, -c.railW / 2, 0)
-            local rrx, rry = ShopLayout.frameAtF(f, c.railW / 2, 0)
+            -- trilho na grade: quinas de baixo das duas pontas (colunas inteiras)
+            local rlx, rly = ShopLayout.toScreen(cv, c.railX0, Ls.shelfEdge - c.railX0 / 8)
+            local rrx, rry = ShopLayout.toScreen(cv, c.railX1 + 1, Ls.shelfEdge - (c.railX1 + 1) / 8)
             local railDeg = ShopPerspective.angleOf(rlx, rly, rrx, rry)
             local plateDeg = math.deg(math.atan(c.rarity.slope))
             local tagDeg = math.deg(math.atan(c.tag.slope))
@@ -155,13 +184,14 @@ function M.run()
             -- reta medida na pintura, nas duas pontas
             for _, p in ipairs({ { rlx, rly }, { rrx, rry } }) do
                 local ax, ay = (p[1] - cv.ox) / cv.s, (p[2] - cv.oy) / cv.s
-                local d = ay - (PAINT.a + PAINT.k * ax)
+                local d = ay - (ShopLayout.lineY(Ls.shelfEdge, math.floor(ax)) - 0.5)
                 t:truthy(("%scarta %d: trilho sobre a borda pintada (%.2f px de arte)"):format(tag, i, d), math.abs(d) <= 1.0)
             end
             -- a base da carta fica DENTRO do trilho (cobre <= 3 px de arte)
             t:truthy(tag .. "carta " .. i .. ": trilho cobre <= 3 px de arte da carta",
                 c.vb <= ShopLayout.RAIL_ART * cv.s + 0.01 and (ShopLayout.RAIL_ART * cv.s - c.vb) <= 3 * cv.s + 0.01)
-            t:truthy(tag .. "carta " .. i .. ": borda direita mais curta (foge pro ponto de fuga)", (y2 - y1) < (y3 - y0))
+            t:truthy(tag .. "carta " .. i .. ": bordas laterais iguais (projecao obliqua, sem ponto de fuga)",
+                math.abs((y2 - y1) - (y3 - y0)) < 0.01)
             t:truthy(tag .. "carta " .. i .. ": diagonal sobe pra direita", c.slope < -0.05)
             -- HOVER: mesmo ângulo, sai na perpendicular da borda, escala 1,06
             local h0, h1, h2, h3, h4, h5, h6, h7 = ShopLayout.cardQuad(c, 1, c.lift)
@@ -178,16 +208,13 @@ function M.run()
         for j, o in ipairs(L.objects) do
             t:near(tag .. "objeto " .. j .. " segue a diagonal", o.slope, ShopLayout.slopeArt(o.art.x, o.art.y), 1e-6)
             t:near(tag .. "etiqueta do objeto " .. j .. " na diagonal", o.tag.slope, o.slope, 1e-9)
-            t:truthy(tag .. "objeto " .. j .. " sem placa de 2 linhas (etiqueta pendurada)", o.tag.w <= 38)
+            t:truthy(tag .. "objeto " .. j .. " sem placa de 2 linhas (etiqueta da grade)", o.tag.h <= ShopLayout.TAG_H * L.cover.s + 0.01)
         end
         t:truthy(tag .. "sino com etiqueta de preco na diagonal", L.bell.tag ~= nil and L.bell.tag.slope < 0)
         t:falsy(tag .. "copo sem etiqueta (nome so no hover)", L.dice.tag ~= nil)
     end
-    -- a perspectiva única: borda do fundo mais rasa que a da frente (mesmo VP)
-    t:truthy("borda do fundo (~-6,8 graus) mais rasa que a da frente (~-11 graus)",
-        math.abs(ShopLayout.slopeArt(180, 181)) < math.abs(ShopLayout.slopeArt(260, 316)))
-    t:near("borda do fundo medida: ~6,8 graus", math.deg(math.atan(-ShopLayout.slopeArt(180, 181))), 6.8, 0.6)
-    t:near("borda da frente medida: ~11 graus", math.deg(math.atan(-ShopLayout.slopeArt(260, 316))), 11, 0.8)
+    -- inclinação única 1:8 em qualquer ponto
+    t:near("slopeArt = 1:8 em qualquer ponto", ShopLayout.slopeArt(180, 181), ShopLayout.slopeArt(260, 316), 1e-12)
     -- quem cede e a escala/espacamento: 4:3 tem carta menor que 16:9
     local narrow = ShopLayout.layout(1024, 768, 4, 3)
     local wide = ShopLayout.layout(1366, 768, 4, 3)
@@ -203,8 +230,8 @@ function M.run()
     -- pé dentro das máscaras pintadas (ponto-no-polígono funciona)
     local A = ShopLayout.ART
     t:truthy("centro do tampo esta no tampo", ShopLayout.pointInPoly(330, 250, A.tableMask))
-    t:falsy("a caveira (canto) nao esta no tampo", ShopLayout.pointInPoly(40, 150, A.tableMask))
-    t:truthy("meio da borda do fundo esta na borda", ShopLayout.pointInPoly(260, 165, A.ledgeMask))
+    t:falsy("a parede nao esta no tampo", ShopLayout.pointInPoly(40, 150, A.tableMask))
+    t:truthy("meio do degrau esta no degrau", ShopLayout.pointInPoly(260, 152, A.ledgeMask))
 
     -- ===== 2) a tela real: nasce pequena e cresce, nos 5 idiomas =====
     installFakeWindow()

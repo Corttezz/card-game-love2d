@@ -249,3 +249,33 @@ vermelhas na diagonal da mesa: base da carta e faixa fora delas).
 - Prova: `SHOP_STATES=rest,hovercard,guides,hoverstrip,plates love . test_one
   screenshot_shop_diag <loc>` (guides = linhas guia só na captura;
   hoverstrip = 8 quadros 1:1).
+
+## v4: inclinação 1:8, cenário simples, tudo na grade (13/Out/2026)
+
+Estudo e prancha: `docs/plan/shop-v4-estudo.md` + `shop_v4_estudo.png`.
+Queixa: "suporte com escadinha", "cenário mais simples e mais da arte do
+jogo, só duas bancadas", "elixir e pacotes ruins na diagonal", "hover
+estranho".
+
+- **Uma inclinação de pixel art, 1:8** (`ShopLayout.K = -1/8`, sem ponto de
+  fuga): degrau, mesa, carta, trilho, plaquinha, etiqueta, sombras. Toda
+  reta em degraus usa `ShopLayout.lineY(y0, x) = y0 - floor(x/8)` (MESMA
+  fase da pintura). Cisalhamento de arte antiga: só 1:8 ou 1:16 (`POSE.shear`
+  1 / 0,5 / 0). Fração qualquer = escada irregular (o defeito da v3c).
+- **Pintura 640x360** montada por `tools/shop_v4_compose.py`: parede do
+  PixelLab (`tools/pixellab_shop_v4.py queue walls`, estilo do
+  `castle_hall_1`) + degrau e mesa desenhados na grade (textura reta
+  deslocada 1 linha a cada 8 colunas, rampa de 8 tons sépia, realce de 1 px
+  na aresta da frente). Nada SOBRE as superfícies. Retas em
+  `ShopLayout.LINES` (espelhadas em `G` do tool: mudou uma, mude a outra e
+  recomponha). Cover-fit em MÚLTIPLO INTEIRO (2 no virtual 1280x720) quando
+  o recorte extra é <= 20%.
+- **Objetos em escala 1** na grade (pixel do sprite = pixel da mesa); a
+  etiqueta, a plaquinha e o cavalete são pixel art no canvas da arte
+  (`drawPlateArt`, `drawStandArt`); só o texto vai pra UI (`drawPlateText`).
+  Etiqueta balança em px inteiros (`swingArt`), sem rotação.
+- Sem lanterna pintada: `L.lantern = nil` (sem mariposa nem pulso).
+- Travas: `test_shop_layout` MEDE as duas arestas na PNG (desvio 0 de
+  `lineY` em toda coluna, degraus todos de 8 px), passo constante de cartas
+  e objetos, sino+copo na ponta, bordas laterais da carta iguais.
+  Prova: `SHOP_STATES=rest,guides,stand love . test_one screenshot_shop_diag`.
