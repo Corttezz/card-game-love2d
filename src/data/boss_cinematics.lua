@@ -228,4 +228,49 @@ return {
             { kind = "hold",   dur = 0.90 },
         },
     },
+
+    -- ATO 5 — Colosso Pútrido (pisa): o coração de raízes do fundo BATE
+    -- mais forte e mais rápido (pulses do salão 5 + vinheta na cor por
+    -- batida), raízes rastejam da boca do túnel pelo chão, e o colosso
+    -- EMERGE do túnel (clip `emerge`) vindo do fundo até o palco, arrastando
+    -- os pés (chão treme a cada passo). Impacto = último passo: esporos
+    -- explodem. Morte: desaba e vira esporos (flutuam).
+    rot_colossus = {
+        palette = {
+            body = { 0.08, 0.14, 0.08 }, glow = { 0.45, 0.85, 0.35 }, ember = { 0.80, 0.95, 0.45 },
+            flash = { 0.55, 0.85, 0.35 }, ghost = { 0.40, 0.70, 0.30 }, rim = { 0.50, 0.90, 0.40 },
+            particle = { 0.25, 0.40, 0.18 }, particle2 = { 0.65, 0.90, 0.45 },
+        },
+        intro = {
+            { kind = "dark",      dur = 0.60, to = 0.70 },
+            { kind = "heartbeat", dur = 1.80, rate = 2.4, boost = 2.2, hold = 2.6 },
+            { kind = "roots",     dur = 1.20, n = 6, u = 0.50, v = 0.62 },
+            { kind = "walk_in",   dur = 2.00, from = "back", clip = "emerge", stomp = 0.50,
+              sound = "bossEmergeTear" },
+            { kind = "land",      dur = 0.60, shake = 16, dust = 20, crows = 0, ring = "spores",
+              particle = "spore", burst = 22 },
+            { kind = "title",     dur = 2.30, clip = "roar" },
+            { kind = "hud",       dur = 0 },
+        },
+        introReduced = {
+            { kind = "dark",      dur = 0.30, to = 0.60 },
+            { kind = "heartbeat", dur = 0.80, rate = 2.4, boost = 1.8 },
+            { kind = "walk_in",   dur = 0.90, from = "back", clip = "emerge", sound = "bossEmergeTear" },
+            { kind = "land",      dur = 0.40, shake = 4, dust = 6, crows = 0, ring = "spores",
+              particle = "spore", burst = 8 },
+            { kind = "title",     dur = 1.50 },
+            { kind = "hud",       dur = 0 },
+        },
+        death = {
+            { kind = "burst",  dur = 0,    n = 30, particle = "spore", sound = "bossSporeCollapse" },
+            { kind = "desat",  dur = 0,    peak = 0.50, rise = 0.45, fall = 1.30 },
+            { kind = "slowmo", dur = 1.50, scale = 0.35, release = 0.35 },
+            { kind = "hold",   dur = 1.20 },
+        },
+        deathReduced = {
+            { kind = "burst",  dur = 0,    n = 12, particle = "spore", sound = "bossSporeCollapse" },
+            { kind = "desat",  dur = 0,    peak = 0.35, rise = 0.30, fall = 0.80 },
+            { kind = "hold",   dur = 0.90 },
+        },
+    },
 }

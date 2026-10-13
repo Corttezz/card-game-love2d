@@ -997,12 +997,17 @@ local function drawChains(w, h)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
+-- Raízes rastejando da boca do túnel pelo chão: segmentos de 3 blocos com
+-- nós claros; depois do pouso esmaecem em 1,5 s (ficam durante o cartão,
+-- não somem num corte no HUD).
 local function drawRoots()
     local r = fx.roots
     if not r or not stage or not stage.tr then return end
     local P = px()
     local tr = stage.tr
     local k = clamp01(r.t / r.dur)
+    local fade = r.fadeT and (1 - clamp01(r.fadeT / 1.5)) or 1
+    if fade <= 0 then return end
     for _, root in ipairs(r.list) do
         local nseg = #root.pts - 1
         local grown = k * nseg
@@ -1017,11 +1022,14 @@ local function drawRoots()
                     local q = st2 / steps
                     local x = tr.ox + math.floor(lerp(a[1], ex, q)) * tr.scale
                     local y = tr.oy + math.floor(lerp(a[2], ey, q)) * tr.scale
-                    love.graphics.setColor(PAL.particle[1], PAL.particle[2], PAL.particle[3], 1)
-                    love.graphics.rectangle("fill", math.floor(x / P) * P, math.floor(y / P) * P, 2 * P, 2 * P)
-                    if st2 % 2 == 0 then
-                        love.graphics.setColor(PAL.glow[1], PAL.glow[2], PAL.glow[3], 0.6)
-                        love.graphics.rectangle("fill", math.floor(x / P) * P, math.floor(y / P) * P, P, P)
+                    local bx, by = math.floor(x / P) * P, math.floor(y / P) * P
+                    love.graphics.setColor(PAL.particle[1], PAL.particle[2], PAL.particle[3], fade)
+                    love.graphics.rectangle("fill", bx - P, by - P, 3 * P, 3 * P)
+                    if st2 % 3 == 0 then
+                        -- nó claro (brilho do elemento) a cada 3 blocos
+                        love.graphics.setColor(PAL.glow[1], PAL.glow[2], PAL.glow[3], 0.7 * fade)
+                        love.graphics.rectangle("fill", bx, by - P, P, P)
+                        love.graphics.rectangle("fill", bx - P, by, 3 * P, P)
                     end
                 end
             end
@@ -1201,6 +1209,7 @@ local function enterStep(st)
     elseif kind == "land" then
         fly = nil
         fx.runes = nil
+        if fx.roots then fx.roots.fadeT = 0 end
         bossHidden = false
         landed = true
         darkEase = { from = dark, to = 0, t = 0, dur = math.max(0.15, (st.dur or 0.5) * 0.6) }
@@ -1600,7 +1609,13 @@ function BossCinematic.update(dt, game, ctx)
         end
         if hb.t >= hb.dur then fx.heart = nil end
     end
-    if fx.roots then fx.roots.t = fx.roots.t + dt end
+    if fx.roots then
+        fx.roots.t = fx.roots.t + dt
+        if fx.roots.fadeT then
+            fx.roots.fadeT = fx.roots.fadeT + dt
+            if fx.roots.fadeT >= 1.5 then fx.roots = nil end
+        end
+    end
     if fx.ecl then fx.ecl.t = fx.ecl.t + dt end
     if fx.lava then
         local lv = fx.lava
