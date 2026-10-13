@@ -1820,6 +1820,11 @@ function love.load(loveArgs)
     do
         local IF = require("src.ui.InputFocus")
         IF.clear()
+        -- Cinemática do chefe (entrada/morte): captura clique/tecla/A pra
+        -- PULAR e tira o Enter do NavCursor, mas fica EMBAIXO de tudo —
+        -- pausa, deck, coringas continuam ganhando dela. O combate NÃO
+        -- congela com ela no topo (exceção no love.update).
+        IF.register("bossCinematic", require("src.ui.BossCinematic").overlay)
         IF.register("map",          mapScreen,               { keepChrome = true })
         IF.register("rest",         restScreen,              { keepChrome = true })
         IF.register("event",        eventScreen,             { keepChrome = true })
@@ -2075,7 +2080,11 @@ function love.update(dt)
     -- inimigo seguia rodando atrás do menu — dava pra morrer com a pausa
     -- aberta (e "Salvar e sair" gravava o morto). O relógio do combate é o
     -- EventManager (beats, eases, compra) + o GameplayScene.update.
+    -- Exceção: a CINEMÁTICA do chefe é captora (pular/pausar vêm pra ela),
+    -- mas o relógio da cena tem que correr — é ela quem anima a entrada e
+    -- a morte (src/ui/BossCinematic). Pausa por cima dela congela normal.
     local combatFrozen = IF.freezesCombat(currentState)
+        and IF.activeName() ~= "bossCinematic"
     -- Infra global (antes do dispatch de estado): event queue, particles,
     -- flash fade, screen shake decay.
     -- Callbacks do EventManager são lógica de jogo/UI (beats, floating text,

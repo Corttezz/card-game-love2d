@@ -1433,6 +1433,7 @@ return {
 
     -- Kit dos inimigos (golpes nomeados, tooltip do intent, debuffs no jogador)
     enemy_kit = require("src.i18n.locales.enemy_kit.fr"),
+    boss_cinematics = require("src.i18n.locales.boss_cinematics.fr"),
     -- Onboarding: dicas ancoradas, Guia de combos/glossario, tooltip da mana
     tutorial = require("src.i18n.locales.tutorial.fr"),
 

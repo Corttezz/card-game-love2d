@@ -157,6 +157,7 @@ local particles = {}
 local spawnAcc = 0
 local emberAcc = 0
 local time = 0
+local gust = nil   -- rajada nas chamas { k, t, dur } (InteriorFX.gust)
 
 -- Recursos gerados uma vez (ImageData → Image, nearest): textura de névoa
 -- pontilhada e vinheta pontilhada, ambas na resolução da arte.
@@ -299,6 +300,7 @@ function InteriorFX.hallFor(act)
 end
 
 function InteriorFX.clear()
+    gust = nil
     for i = #particles, 1, -1 do particles[i] = nil end
     spawnAcc = 0
     emberAcc = 0
@@ -409,6 +411,10 @@ end
 
 step = function(dt, hall)
     time = time + dt
+    if gust then
+        gust.t = gust.t + dt
+        if gust.t >= gust.dur then gust = nil end
+    end
     local cfg = HALLS[hall or 1]
     if not cfg then return end
 
@@ -547,10 +553,29 @@ local function drawParticles(tr, front)
     end
 end
 
+-- RAJADA (BossCinematic): o chefe passando em rasante faz as chamas
+-- pintadas BAIXAREM e tremerem — envelope rápido na subida, decaimento até
+-- `dur`. Só mexe no brilho aditivo das chamas (a pintura fica). O estado
+-- (`gust`) mora no topo do arquivo: `step` tica o relógio dele.
+function InteriorFX.gust(strength, dur)
+    gust = { k = math.max(0, math.min(1, strength or 1)), t = 0, dur = math.max(0.05, dur or 0.5) }
+end
+function InteriorFX.gustLevel()
+    if not gust then return 0 end
+    local p = gust.t / gust.dur
+    local env = (p < 0.15) and (p / 0.15) or (1 - (p - 0.15) / 0.85)
+    return gust.k * math.max(0, env)
+end
+
 local function flicker(i)
-    return 0.62 + 0.22 * math.sin(time * 11 + i * 2.4)
+    local base = 0.62 + 0.22 * math.sin(time * 11 + i * 2.4)
         + 0.12 * math.sin(time * 27 + i * 7.1)
         + 0.06 * math.sin(time * 53 + i * 3.3)
+    local g = InteriorFX.gustLevel()
+    if g > 0 then
+        base = base * (1 - g * (0.45 + 0.35 * (0.5 + 0.5 * math.sin(time * 31 + i * 2.1))))
+    end
+    return base
 end
 
 -- Fundo do salão: luz respirando nas chamas/vãos PINTADOS, névoa no chão,

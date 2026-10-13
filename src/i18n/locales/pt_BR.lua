@@ -1480,6 +1480,8 @@ return {
 
     -- Kit dos inimigos (golpes nomeados, tooltip do intent, debuffs no jogador)
     enemy_kit = require("src.i18n.locales.enemy_kit.pt_BR"),
+    -- Cinemática de chefe (nome + epíteto no cartão, dica de pular)
+    boss_cinematics = require("src.i18n.locales.boss_cinematics.pt_BR"),
     -- Onboarding: dicas ancoradas, Guia de combos/glossario, tooltip da mana
     tutorial = require("src.i18n.locales.tutorial.pt_BR"),
 

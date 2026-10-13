@@ -300,6 +300,7 @@ local ATK_TOTAL  = ATK_WINDUP + ATK_LUNGE + ATK_RECOIL
 -- do game morto) dispararia DENTRO da run nova. Chamado pelo rebind da
 -- GameplayScene (setGame).
 function EnemyRenderer.resetRun()
+    timeScale = 1
     attackFx = nil
     poisonTime, defendTime, buffTime, knockTime, slashTime = 0, 0, 0, 0, 0
     buffParticles = {}
@@ -420,7 +421,15 @@ local function spawnAmbientParticle(cx, cy, tint)
     })
 end
 
+-- CÂMERA LENTA (BossCinematic, morte do chefe): o relógio DESTE módulo —
+-- clip, queda, quique, aura — corre a `timeScale`. O resto da cena (beats,
+-- partículas da UI) segue normal: é o CORPO que cai devagar, não o jogo.
+local timeScale = 1
+function EnemyRenderer.setTimeScale(k) timeScale = math.max(0.02, k or 1) end
+function EnemyRenderer.getTimeScale() return timeScale end
+
 function EnemyRenderer.update(dt)
+    dt = dt * timeScale
     if currentAnim then currentAnim:update(dt) end
     -- morto nao paira: o flutuante CAI (gravidade) enquanto a death toca
     if currentAnimName == "death" then
@@ -992,6 +1001,9 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         -- eixo do corpo NA TELA (régua do HUD: tools/test_enemy_axis)
         bodyX = drawX + (EnemyRenderer.bodyAxis(id) + 0.5 + (idleM.off - curM.off)) * scale,
         hudCx = bodyCx,
+        -- canto do canvas do sprite na tela (BossCinematic pousa o rasante
+        -- EXATAMENTE onde o próximo draw vai desenhar o chefe)
+        drawX = drawX,
         groundY = cy,
         footBottom = math.floor(drawY) + (ih - footPad) * scale,
         scale = scale, frame = frameIdx, pad = footPad,

@@ -308,6 +308,9 @@ Ouro inicial $10; renda pela folha do cash out (`Game:_buildRoundEvalSources`): 
 
 O painel do canto de inimigo (antigo `HudEnemyPanel`) foi aposentado. `GameUI.lua` só delega pro `HudManager`. Ver [`memory/ui_rendering.md`](memory/ui_rendering.md) e [`tools/preview_battle_hud.lua`](tools/preview_battle_hud.lua).
 
+### Cinemática de chefe (`src/ui/BossCinematic.lua` + `src/data/boss_cinematics.lua`, Out/2026)
+Porta abre → salão abre **VAZIO** → entrada do chefe dentro do salão (olhos no escuro, rasantes com rastro, pouso, cartão nome+epíteto) → HUD → luta; morte em câmera lenta + rajada + dessaturação + corpo no salão **antes** do cash out. Roteiro por dados (passos `{kind, dur}`), pular após 1 s, `reducedMotion` = roteiro curto, Continuar NUNCA repete a entrada. Overlay registrado PRIMEIRO no InputFocus; `main.lua` tem a exceção que deixa o relógio correr com ela no topo. Protótipo só no `carrion_king`. Ver [`memory/boss_cinematics.md`](memory/boss_cinematics.md).
+
 ### Fim de run (`src/ui/EndTransition.lua`)
 Morte e vitória desligam o CRT e só trocam de tela no CALLBACK do desligamento. O gatilho é uma **condição** (`game:checkGameOver()` continua verdadeiro todo frame), não um evento — sem trava de reentrada cada frame reiniciava a animação e o callback nunca chegava ao fim: **tela preta permanente, sem input, só fechando o jogo** (bug do dono, Set/2026). A trava mora no módulo, fora do closure do `love.load`, porque precisava ser testável (`love . test_one test_end_transition`). **Regra geral: animação com callback disparada por CONDIÇÃO precisa de trava; disparada por EVENTO não.**
 

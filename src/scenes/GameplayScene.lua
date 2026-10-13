@@ -31,6 +31,10 @@ local InputFocus       = require("src.ui.InputFocus")
 -- inimigo volta dividido por k pro HUD; o limite do palco vai multiplicado
 -- por k pro WorldRoad. Ver memory/ui_scale.md.
 local UiScale          = require("src.ui.UiScale")
+-- Cinemática do chefe (Out/2026): entrada no salão vazio + morte em câmera
+-- lenta. A cena pergunta a ela o que esconder (chefe/HUD) e quando os
+-- espólios podem entrar — ver src/ui/BossCinematic.lua.
+local BossCinematic    = require("src.ui.BossCinematic")
 
 local GameplayScene = {}
 
@@ -110,6 +114,8 @@ function GameplayScene.isQuiet()
     if nt == "boss" and GameplayScene.SCENE_MODE == "worldroad" and not bossEntered then
         return false
     end
+    -- entrada/morte do chefe tocando: o narrador espera a cena terminar
+    if BossCinematic.isActive() then return false end
     if EnemyRenderer.isAttacking() then return false end
     if EnemyRenderer.getArrivalOffset and EnemyRenderer.getArrivalOffset() ~= 0 then
         return false
@@ -122,6 +128,21 @@ end
 -- pelo jogo — a cutscene é parte do clímax.
 function GameplayScene._debugForceBossEntered()
     bossEntered = true
+end
+
+-- A PORTA TERMINOU DE ABRIR: o salão passa a existir e a ENTRADA do chefe
+-- toca dentro dele (src/ui/BossCinematic — chefe sem roteiro luta direto).
+-- Só a cerimônia chama isto; o Continuar usa _debugForceBossEntered, de
+-- propósito: retomar dentro da luta é retomar NA luta, sem repetir a entrada.
+function GameplayScene._onBossEntered()
+    bossEntered = true
+    BossCinematic.startIntro(game)
+end
+
+-- Ferramentas/testes: salão aberto E entrada tocando (prova visual da
+-- cinemática sem passar pela viagem e pela porta).
+function GameplayScene._debugStartBossIntro()
+    GameplayScene._onBossEntered()
 end
 
 -- Seta smokeSystem depois de init (usado quando smoke muda em runtime).
@@ -148,6 +169,7 @@ function GameplayScene.resetTurnState()
     turnStage = nil
     turnStageT = 0
     bossEntered = false
+    BossCinematic.reset()
     GameplayScene._endTurnCallout = false
     -- Sem isto, o 1º frame da run NOVA compararia com o andar da run
     -- MORTA e dispararia uma viagem/chegada espúria na estrada.
@@ -584,6 +606,8 @@ function GameplayScene.draw()
     UiScale.outside(function()
     local width = love.graphics.getWidth()
     local height = love.graphics.getHeight()
+    -- morte do chefe: o mundo passa por um canvas e volta dessaturado
+    local worldPass = BossCinematic.beginWorldPass()
     -- WORLD_ONLY (arte de loja/key art, tools/store_art.py): mundo + inimigo
     -- em tela cheia, sem top bar nem HUD.
     local topBarHeight = GameplayScene.WORLD_ONLY and 0 or uiTopBarH * uiK
@@ -627,6 +651,9 @@ function GameplayScene.draw()
             -- de trás — tudo ATRÁS do chefe (ver InteriorFX)
             InteriorFX.draw(hallAct)
             interiorHall = hallAct
+            -- entrada do chefe: escuridão, olhos no vão, rasantes com rastro
+            -- (atrás de onde o chefe vai pousar)
+            BossCinematic.drawBack()
         end
     elseif GameplayScene.SCENE_MODE == "worldroad" then
         -- Endless: biomas extras (4+) ciclam a cada 8 andares via currentFloor
@@ -686,7 +713,11 @@ function GameplayScene.draw()
         -- salão: poça de oclusão em degraus sob os pés (contato com o piso),
         -- ANTES do chefe (require inline: estado do salão fica no módulo)
         local InteriorDepth = interiorHall and require("src.ui.InteriorDepth")
-        if InteriorDepth then
+        -- CHEFE AINDA NÃO POUSOU (BossCinematic): nada dele chega à tela —
+        -- o draw roda num canvas descartado só pra MEDIR onde ele vai ficar
+        -- (bbox + canto do sprite), que é onde o rasante final termina.
+        local cineHidden = BossCinematic.hidesBoss()
+        if InteriorDepth and not cineHidden then
             InteriorDepth.drawContact(interiorHall, game.enemy and game.enemy.spriteId,
                 enemyCx, enemyCy)
         end
@@ -701,17 +732,35 @@ function GameplayScene.draw()
             deathCy = math.max(enemyCy, dy)
         end
         corpseUnderHand = deathCy ~= nil and deathCy > tetoY
-        enemyBbox = EnemyRenderer.draw(game, enemyCx, enemyCy, {
-            deathCy = deathCy,
-            shadowA = anchor.shadowA,
-            lightXr = anchor.lightXr,
-            -- quem recuou no piso encolhe pela perspectiva do chão
-            sizeK = GameplayScene.bossSizeK(
-                SceneAnchors.depthSizeK(sceneKey, width, sceneH, artCy,
-                    enemyCy, WorldRoad.ENEMY_SIZE_PERSP) * GameplayScene.hallScreenK(sceneKey, width, sceneH),
-                height - topBarHeight),
-        })
+        local function drawEnemy()
+            return EnemyRenderer.draw(game, enemyCx, enemyCy, {
+                deathCy = deathCy,
+                shadowA = anchor.shadowA,
+                lightXr = anchor.lightXr,
+                -- quem recuou no piso encolhe pela perspectiva do chão
+                sizeK = GameplayScene.bossSizeK(
+                    SceneAnchors.depthSizeK(sceneKey, width, sceneH, artCy,
+                        enemyCy, WorldRoad.ENEMY_SIZE_PERSP) * GameplayScene.hallScreenK(sceneKey, width, sceneH),
+                    height - topBarHeight),
+            })
+        end
+        if cineHidden then
+            enemyBbox = BossCinematic.measure(drawEnemy)
+        else
+            enemyBbox = drawEnemy()
+        end
         if InteriorDepth then InteriorDepth.noteBbox(enemyBbox) end
+        if interiorHall then
+            -- palco da cinemática (medido NESTE frame) + poeira/corvos/penas
+            -- na frente do chefe
+            BossCinematic.setStage({
+                cx = enemyCx, cy = enemyCy, bbox = enemyBbox or nil,
+                foot = EnemyRenderer.getLastFoot(), hall = interiorHall,
+                w = width, h = height,
+                tr = SceneBackground.getCoverTransform(sceneKey, width, sceneH),
+            })
+            BossCinematic.drawFront()
+        end
         -- clima mais próximo (neve/cinza/esporos) passa NA FRENTE do chefe
         if interiorHall then InteriorFX.drawFront(interiorHall, topBarHeight) end
     end
@@ -722,8 +771,12 @@ function GameplayScene.draw()
     if GameplayScene.SCENE_MODE == "worldroad" and not interior then
         WorldRoad.drawOverlays(0, topBarHeight, width, height - topBarHeight)
     end
+    if worldPass then BossCinematic.endWorldPass() end
     end)
     if GameplayScene.WORLD_ONLY then return end
+    -- ENTRADA DO CHEFE: o salão abre VAZIO — HUD do inimigo, painel do herói,
+    -- mão, botões e coringas esperam o nome do chefe (BossCinematic.hidesHud).
+    local cineHide = BossCinematic.hidesHud()
     -- ===== UI (espaço virtual) =====
     -- O bbox do inimigo veio em pixels da tela: o HUD dele mora na UI.
     if enemyBbox and uiK ~= 1 then
@@ -750,7 +803,7 @@ function GameplayScene.draw()
         hoverLift = math.max(minLift, math.min(hoverLift, footCap))
     end
 
-    if not traveling and not entering then
+    if not traveling and not entering and not cineHide then
         EnemyHud.draw(game, enemyBbox, enemyCx, enemyCy)
         -- âncoras do narrador do tutorial: o corpo e a barra de vida
         if enemyBbox and game.enemy and not game.enemy:isDefeated() then
@@ -767,7 +820,7 @@ function GameplayScene.draw()
         end
     end
 
-    gameUI:draw(game)
+    if not cineHide then gameUI:draw(game) end
 
     -- Banner de turno (por cima do HUD, por baixo da mão/tooltips)
     TurnBanner.draw()
@@ -841,7 +894,7 @@ function GameplayScene.draw()
     -- fade) a mão NÃO é desenhada — é cutscene, não turno. Mesma convenção
     -- do EnemyHud acima. Layout/updateRender continuam rodando de propósito:
     -- a mão não congela nem salta quando a cerimônia termina.
-    if not entering then
+    if not entering and not cineHide then
         -- Desenha não-dragadas (ordem normal), depois hover, depois dragged por cima
         for _, card in ipairs(game.hand) do
             if not card.isDragging and card ~= hoverCard then
@@ -872,11 +925,13 @@ function GameplayScene.draw()
     local roadOutdoor = GameplayScene.SCENE_MODE == "worldroad"
         and not lastInterior
     if smokeSystem and not roadOutdoor then smokeSystem:draw() end
-    playButton:draw()
-    if endTurnButton then endTurnButton:draw() end
+    if not cineHide then
+        playButton:draw()
+        if endTurnButton then endTurnButton:draw() end
+    end
     -- Ações de contexto do teclado/pad (NavCursor): Y/E joga a seleção,
     -- X/Q encerra o turno — o glifo mora no canto do próprio botão.
-    do
+    if not cineHide then
         local NavCursor = require("src.ui.NavCursor")
         local function press(btn)
             return function()
@@ -896,7 +951,7 @@ function GameplayScene.draw()
     -- PREVIA DE DANO (Out/2026): banda de ACAO da coluna direita, colada em
     -- cima do JOGAR — o numero que o clique vai produzir mora no botao que o
     -- produz. Selos "+COMBO" ficam NA carta que fecharia o combo.
-    if not entering then
+    if not entering and not cineHide then
         DamagePreviewPanel.drawHandBadges(game)
         DamagePreviewPanel.draw(game,
             { x = playButton.x, y = playButton.y, w = playButton.width },
@@ -905,7 +960,7 @@ function GameplayScene.draw()
 
     -- Chamariz do ENCERRAR TURNO (sem mana e nada selecionado): aro dourado
     -- pulsante + seta quicando — "sua próxima ação é aqui".
-    if GameplayScene._endTurnCallout and endTurnButton then
+    if GameplayScene._endTurnCallout and endTurnButton and not cineHide then
         local t = love.timer.getTime()
         local pulse = 0.5 + 0.5 * math.sin(t * 4.2)
         love.graphics.setColor(1, 0.85, 0.30, 0.35 + 0.45 * pulse)
@@ -922,7 +977,7 @@ function GameplayScene.draw()
     end
     if game.messageSystem then game.messageSystem:draw() end
 
-    drawJokersAsCards()
+    if not cineHide then drawJokersAsCards() end
     GameplayScene._reportTutorialAnchors()
 
     -- Banner de COMBO: DEPOIS da mão e depois do combatAnimationSystem (que
@@ -937,6 +992,10 @@ function GameplayScene.draw()
     for _, card in ipairs(game.hand) do
         if card.drawDeferredTooltip then card:drawDeferredTooltip() end
     end
+
+    -- cartão com o nome do chefe + dica de pular (por cima da UI, por baixo
+    -- dos fades)
+    BossCinematic.drawUI()
 
     -- fade de entrada no castelo (estrada→interior): tela revela do preto
     if interiorFade > 0 then
@@ -987,6 +1046,15 @@ function GameplayScene.update(dt)
 
     -- Partículas são tickadas centralmente em main.lua via CardParticles.update.
 
+    -- Cinemática do chefe (entrada/morte): relógio próprio, ANTES do
+    -- EnemyRenderer — a câmera lenta da morte é a escala do dt dele neste
+    -- frame. `inHall` decide se a morte vira cinemática (o mini-boss também
+    -- tem isBoss, mas luta na estrada).
+    do
+        local runC = game.runManager and game.runManager.currentRun
+        local ntC = runC and runC.currentNode and runC.currentNode.type
+        BossCinematic.update(dt, game, { inHall = GameplayScene.inBossRoom(ntC) })
+    end
     UiScale.outside(EnemyRenderer.update, dt)
     -- FX de interior (tochas) tickam quando o node atual é de castelo;
     -- transição estrada↔interior dispara fade de entrada (portão)
@@ -1058,7 +1126,7 @@ function GameplayScene.update(dt)
                 WorldRoad.travel({
                     onComplete = function()
                         WorldRoad.enterCastle({
-                            onComplete = function() bossEntered = true end,
+                            onComplete = GameplayScene._onBossEntered,
                         })
                     end,
                 })
@@ -1105,13 +1173,17 @@ function GameplayScene.update(dt)
     -- Vitoria (boss do ato final) espera a MESMA coisa que os espolios: a
     -- criatura cair na tela. `isReadyForEndScreen` = combate parado (inclui a
     -- fila de beats) E morte assentada. A regra mora no Game pra ser testavel.
-    if game:checkVictory() and game:isReadyForEndScreen() then
+    -- Morte de CHEFE: a cinemática (câmera lenta, rajada, corpo no salão)
+    -- segura espólios e vitória até terminar — BossCinematic.holdsEnd.
+    if game:checkVictory() and game:isReadyForEndScreen()
+        and not BossCinematic.holdsEnd() then
         Sfx.play("runVictory")
         setCurrentState("victory")
         return
     end
 
-    if game:isPhaseCleared() and game:isReadyForEndScreen() then
+    if game:isPhaseCleared() and game:isReadyForEndScreen()
+        and not BossCinematic.holdsEnd() then
         onPhaseCleared()
         return
     end
@@ -1232,6 +1304,13 @@ function GameplayScene.mousepressed(x, y, button)
     if GameplayScene.SCENE_MODE == "worldroad" and WorldRoad.isEntering() then
         return true
     end
+    -- entrada/morte do chefe: clique PULA (depois de 1s) e nada passa. No
+    -- jogo o InputFocus já entrega o clique ao overlay dela; isto cobre
+    -- quem chama a cena direto (ferramentas, testes).
+    if BossCinematic.lockInput() then
+        if button == 1 then BossCinematic.skip() end
+        return true
+    end
     -- v9.7.1: retorna se CONSUMIU o clique — o que sobrar vira poke no
     -- cenário do WorldRoad (main.lua → pokeSceneAt, mapa vivo)
     if topBar:mousepressed(x, y, button) then return true end
@@ -1343,6 +1422,13 @@ function GameplayScene.keypressed(key)
     -- é Configurações → Tela cheia.
     if key == "escape" then
         onReturnToMenu()
+        return
+    end
+    -- cinemática do chefe: Enter/Espaço pulam, o resto não passa
+    if BossCinematic.lockInput() then
+        if key == "return" or key == "kpenter" or key == "space" then
+            BossCinematic.skip()
+        end
         return
     end
     if game and game.isRunMode then return end

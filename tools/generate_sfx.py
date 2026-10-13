@@ -113,6 +113,36 @@ SFX = [
             "later, eerie and satisfying, dark fantasy card game"
         ),
     },
+    # ===== Cinemática de CHEFE (Out/2026) — audio/sfx/boss/, registrados
+    # sob demanda pelo src/ui/BossCinematic.lua (Sfx.has decide o fallback).
+    # Free tier: regerar com plano pago antes de vender (known_gaps §0b).
+    {
+        "id": "boss_eyes_ignite", "dir": "audio/sfx/boss",
+        "duration": 1.4,
+        "prompt": (
+            "Two embers igniting in a pitch dark stone hall, low sinister "
+            "rumble swelling under a soft crackle, a distant crow croak, "
+            "ominous dark fantasy, retro pixel RPG"
+        ),
+    },
+    {
+        "id": "boss_wing_pass", "dir": "audio/sfx/boss",
+        "duration": 0.8,
+        "prompt": (
+            "Giant raven wings beating once as a huge bird sweeps past the "
+            "listener at high speed, heavy feathered whoosh with a gust of "
+            "wind and rustling feathers, dark fantasy"
+        ),
+    },
+    {
+        "id": "boss_reveal_sting", "dir": "audio/sfx/boss",
+        "duration": 2.6,
+        "prompt": (
+            "Dark orchestral boss reveal sting: a heavy low brass hit with "
+            "a short choir swell and a flock of crows cawing, then a deep "
+            "resonant tail, menacing, retro dark fantasy RPG"
+        ),
+    },
 ]
 
 
