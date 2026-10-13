@@ -522,6 +522,51 @@ function M.run()
         BC.reset()
     end
 
+    -- ===== 6f. MONARCA DO INVERNO v2 (frente chefes-ajustes) =====
+    -- A silhueta na nevasca dura 3,5 a 4 s (era 1,2), cresce de longe, o
+    -- cajado bate AINDA em silhueta (impacto de tela enquanto o chefe real
+    -- está escondido) e só depois a neve assenta; o `land` não bate de novo.
+    do
+        local md = Data.winter_monarch
+        local silStep
+        for _, st in ipairs(md.intro) do if st.kind == "silhouette" then silStep = st end end
+        t:truthy("monarca: silhueta dura 3,5 a 4 s (" .. tostring(silStep and silStep.dur) .. ")",
+            silStep ~= nil and silStep.dur >= 3.5 and silStep.dur <= 4.0)
+        t:truthy("monarca: silhueta cresce de longe (far < 0.6)", silStep and silStep.far and silStep.far < 0.6)
+        t:truthy("monarca: cajado bate ainda em silhueta (strike antes do fim)",
+            silStep and silStep.strike and silStep.strike < silStep.dur)
+        local landStep
+        for _, st in ipairs(md.intro) do if st.kind == "land" then landStep = st end end
+        t:truthy("monarca: land nao bate de novo (clip=false, hit=false)",
+            landStep and landStep.clip == false and landStep.hit == false)
+        _G.gameSettings.reducedMotion = false
+        BC.reset()
+        local gm2 = fakeBoss("winter_monarch")
+        t:truthy("monarca: entrada aceita", BC.startIntro(gm2))
+        BC.setStage(stage)
+        local nomM = BC.duration(md.intro)
+        local elm, silTime, tStrikeHit, tShow, maxWhite = 0, 0, nil, nil, 0
+        local silSolid = false
+        while BC.isActive() and elm < nomM + 2 do
+            BC.update(DT, gm2, { inHall = true })
+            elm = elm + DT
+            local d = BC._debug()
+            if d.fx.sil then
+                silTime = silTime + DT
+                if d.fx.sil.t > 0.5 then silSolid = true end
+                if d.fx.sil.struck and not tStrikeHit then tStrikeHit = elm end
+            end
+            if d.fx.white and d.fx.white.level then maxWhite = math.max(maxWhite, d.fx.white.level) end
+            if not tShow and not BC.hidesBoss() then tShow = elm end
+        end
+        t:truthy("monarca: silhueta na tela por >= 3,5 s (" .. string.format("%.2f", silTime) .. ")", silTime >= 3.5)
+        t:truthy("monarca: o golpe do cajado acontece em silhueta", tStrikeHit ~= nil)
+        t:truthy("monarca: golpe ANTES de o chefe real aparecer", tStrikeHit and tShow and tStrikeHit < tShow)
+        t:truthy("monarca: chefe so aparece depois de 5 s de nevasca + vulto", tShow ~= nil and tShow > 5)
+        t:truthy("monarca: silhueta solida", silSolid)
+        BC.reset()
+    end
+
     -- ===== 7. i18n: todo chefe com roteiro tem nome + epiteto nos 5 locales =====
     for _, loc in ipairs({ "pt_BR", "en", "es", "fr", "de" }) do
         local ok, tbl = pcall(require, "src.i18n.locales.boss_cinematics." .. loc)

@@ -51,7 +51,12 @@
 --   walk_in    { clip, stomp, sound }     chefe cresce do fundo (backY) até o
 --                                         palco; `stomp` = tremor por passo
 --   whiteout   { peak }                   nevasca (5 degraus, teto 0.8)
---   silhouette { clip }                   chefe em preto dentro do branco
+--   silhouette { clip, far, strike, strikeClip, hitDelay }
+--                                         vulto preto SÓLIDO com borda fria
+--                                         dentro do branco: longe e pequeno
+--                                         (`far`), cresce andando; em `strike`
+--                                         bate o cajado ainda em silhueta
+--   land.clip=false / land.hit=false      sem clip / sem impacto de tela
 --   settle     { }                        nevasca cai; chefe visível
 --   heartbeat  { rate, boost, hold }      pulses do salão aceleram + vinheta
 --   roots      { n, u, v }                raízes rastejam do ponto (u,v)
@@ -241,22 +246,33 @@ return {
             flash = { 0.88, 0.95, 1.00 }, ghost = { 0.60, 0.80, 1.00 }, rim = { 0.70, 0.90, 1.00 },
             particle = { 0.60, 0.75, 0.90 }, particle2 = { 0.92, 0.97, 1.00 },
         },
+        -- v2 (Out/2026, dono: "a silhueta na nevasca poderia durar mais e
+        -- ficar mais marcada"): a fase de silhueta vai de 1,2 s pra 3,8 s —
+        -- vulto preto SÓLIDO com borda fria de 1 px, longe e pequeno no
+        -- branco (`far`), cresce andando (clip `walk`), o cajado bate uma
+        -- vez AINDA em silhueta (`strike` + clip `roar`: flash frio, onda de
+        -- geada, lascas) e só então a neve assenta e a cor entra (`settle`).
+        -- O `land` que vem depois é a revelação (sem segundo golpe: clip e
+        -- impacto de tela desligados).
         intro = {
             { kind = "dark",       dur = 0.30, to = 0.50 },
-            { kind = "whiteout",   dur = 1.60, peak = 0.90 },
-            { kind = "silhouette", dur = 1.20, clip = "walk" },
-            { kind = "settle",     dur = 0.80 },
-            { kind = "land",       dur = 0.60, shake = 10, dust = 8, crows = 0, ring = "frost",
-              clip = "roar", particle = "shard", burst = 16, sound = "bossIceCrackle" },
+            { kind = "whiteout",   dur = 1.40, peak = 0.90 },
+            { kind = "silhouette", dur = 3.80, clip = "walk", far = 0.38,
+              strike = 2.75, strikeClip = "roar", hitDelay = 0.35 },
+            { kind = "settle",     dur = 0.90 },
+            { kind = "land",       dur = 0.55, shake = 5, dust = 6, crows = 0, ring = "frost",
+              clip = false, hit = false, particle = "shard", burst = 8, sound = "bossIceCrackle" },
             { kind = "title",      dur = 2.20 },
             { kind = "hud",        dur = 0 },
         },
         introReduced = {
             { kind = "dark",       dur = 0.30, to = 0.45 },
             { kind = "whiteout",   dur = 0.80, peak = 0.70 },
+            { kind = "silhouette", dur = 1.50, clip = "walk", far = 0.5,
+              strike = 1.00, strikeClip = "roar", hitDelay = 0.25 },
             { kind = "settle",     dur = 0.50 },
             { kind = "land",       dur = 0.40, shake = 3, dust = 4, crows = 0, ring = "frost",
-              clip = "roar", particle = "shard", burst = 6, sound = "bossIceCrackle" },
+              clip = false, hit = false, particle = "shard", burst = 6, sound = "bossIceCrackle" },
             { kind = "title",      dur = 1.50 },
             { kind = "hud",        dur = 0 },
         },

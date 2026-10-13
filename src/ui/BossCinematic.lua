@@ -116,6 +116,8 @@ local SOUNDS = {
     colossusAssemble   = { "audio/sfx/boss/colossus_assemble.mp3",     0.80 },
     colossusCrack      = { "audio/sfx/boss/colossus_crack.mp3",        0.85 },
     colossusCrumble    = { "audio/sfx/boss/colossus_crumble.mp3",      0.85 },
+    -- monarca v2 (Out/2026): o cajado bate no gelo ainda em silhueta
+    monarchStrike      = { "audio/sfx/boss/monarch_strike.mp3",        0.85 },
 }
 local soundsLoaded = false
 BossCinematic.SOUNDS = SOUNDS   -- teste confere que todo arquivo existe
@@ -1040,13 +1042,91 @@ local function drawDescend(w, h)
     drawOwn(d.anim, x, y, s, { lit, lit, lit, 1 }, 0.3 * (1 - e) + 0.05)
 end
 
+-- SILHUETA v2 (monarca; dono: "poderia durar mais tempo, mais marcada"):
+-- vulto preto SÓLIDO com borda fria de 1 px da arte, que aparece LONGE e
+-- pequeno no branco (`far` × escala, na borda de trás do piso) e cresce
+-- andando (clip `clip` em loop, mesma geometria do walk_in) até o palco; em
+-- `strike` o cajado bate AINDA em silhueta (clip `strikeClip`: flash frio,
+-- onda de geada, tremor, lascas no pé) e só o `settle` deixa a neve
+-- assentar e a cor entrar. Nada de transparência que lave o vulto.
+local function enterSilhouette(st)
+    local id = seq.bossId
+    local walk
+    if st.clip and SpriteAnimation.exists(id, st.clip, "south") then
+        walk = SpriteAnimation.new(id, st.clip, "south", st.fps or 9)      -- em loop
+    else
+        if st.clip then print("[BossCinematic] silhouette: clip '" .. tostring(st.clip) .. "' ausente — idle") end
+        walk = ownAnim(nil, nil)
+    end
+    local dur = math.max(0.3, st.dur or 1.2)
+    local strikeAt = st.strike and math.min(st.strike, dur - 0.2) or nil
+    local sil = { t = 0, dur = dur, anim = walk, far = st.far or 0.4,
+                  strikeAt = strikeAt, struck = false, hitDelay = st.hitDelay or 0.35 }
+    if strikeAt and st.strikeClip then
+        if SpriteAnimation.exists(id, st.strikeClip, "south") then
+            sil.strikeAnim = SpriteAnimation.new(id, st.strikeClip, "south", 10, { loop = false })
+            local n = sil.strikeAnim:getFrameCount()
+            sil.strikeAnim.fps = math.max(4, n / math.max(0.3, dur - strikeAt))
+            sil.strikeAnim.frameTime = 1 / sil.strikeAnim.fps
+        else
+            print("[BossCinematic] silhouette: strikeClip '" .. tostring(st.strikeClip) .. "' ausente — bate no idle")
+        end
+    end
+    fx.sil = sil
+end
+
+local function updateSilhouette(dt)
+    local si = fx.sil
+    if not si then return end
+    si.t = si.t + dt
+    local striking = si.strikeAt and si.t >= si.strikeAt
+    if striking and si.strikeAnim then si.strikeAnim:update(dt)
+    elseif si.anim then si.anim:update(dt) end
+    if striking and not si.struck and si.t >= si.strikeAt + si.hitDelay then
+        si.struck = true
+        if stage and stage.bbox then
+            local gx, gy = stage.bbox.cx, stage.cy or stage.bbox.bottomY
+            startHit(gx, stage.bbox.topY + (stage.bbox.bottomY - stage.bbox.topY) * 0.6, "frost")
+            for _ = 1, (seq.reduced and 6 or 14) do
+                spawnFeather(gx + (love.math.random() - 0.5) * (stage.bbox.width or 120) * 0.8, gy - 4,
+                    (love.math.random() - 0.5) * 90, -60 - love.math.random() * 90, "shard")
+            end
+        end
+        if _G.triggerShake then _G.triggerShake(seq.reduced and 4 or 11, 0.35) end
+        play("monarchStrike", "bossIceCrackle")
+        InteriorFX.gust(1.0, 0.6)
+    end
+end
+
 local function drawSilhouette(w, h)
     local si = fx.sil
     local dx, dy, s = footInfo()
-    if not si or not dx or not si.anim then return end
-    local k = smooth(clamp01(si.t / si.dur))
-    local sway = math.sin(si.t * 3) * 2
-    drawOwn(si.anim, dx + sway, dy, s, { 0.02, 0.03, 0.06, k }, 0)
+    if not si or not dx then return end
+    local striking = si.strikeAt and si.t >= si.strikeAt
+    local anim = (striking and si.strikeAnim) or si.anim
+    if not anim then return end
+    local P = px()
+    -- entra em 0,35 s (sai do branco) e fica SÓLIDO
+    local a = smooth(clamp01(si.t / 0.35))
+    local walkDur = si.strikeAt or si.dur
+    local e = smooth(clamp01(si.t / walkDur))
+    local iw, ih = anim:getSize()
+    local sk = s * lerp(si.far, 1, e)
+    local bodyCx = stage.bbox and stage.bbox.cx or (dx + iw * s / 2)
+    local backY = stage.backY or ((stage.cy or dy + ih * s) - ih * s * 0.25)
+    local groundY = lerp(backY, stage.cy or (dy + ih * s), e)
+    local padBelow = (dy + ih * s) - (stage.cy or (dy + ih * s))
+    local x = bodyCx - (bodyCx - dx) * (sk / s)
+    local y = groundY + padBelow * (sk / s) - ih * sk
+    if not striking then x = x + math.sin(si.t * 3) * 2 * (0.4 + 0.6 * e) end
+    x, y = math.floor(x), math.floor(y)
+    -- borda fria de 1 px: a própria silhueta deslocada em 4 direções
+    local cold = { 0.70, 0.86, 1.00, a }
+    for _, off in ipairs({ { -P, 0 }, { P, 0 }, { 0, -P }, { 0, P } }) do
+        anim:draw(x + off[1], y + off[2], sk, cold)
+    end
+    anim:draw(x, y, sk, { 0.02, 0.03, 0.06, a })
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 local function drawFirewall(w, h)
@@ -2422,7 +2502,7 @@ local function enterStep(st)
         mistTarget(0.35, 0.45)
         edge = nil
         EnemyRenderer.triggerArrival()
-        bossClip(st.clip or "land", 12)
+        if st.clip ~= false then bossClip(st.clip or "land", 12) end
         if _G.triggerShake and (st.shake or 0) > 0 then _G.triggerShake(st.shake, 0.38) end
         if _G.jiggleScreen and not seq.reduced then _G.jiggleScreen(1.0) end
         -- som do impacto por chefe (`sound`); corvos/penas só pra quem os tem
@@ -2439,7 +2519,9 @@ local function enterStep(st)
             spawnDust(gx, gy, st.dust or 12, stage.bbox.width or 120)
             local body = stage.bbox.topY + (stage.bbox.bottomY - stage.bbox.topY) * 0.45
             if crowsN > 0 then spawnCrows(gx, body, crowsN, 260) end
-            startHit(gx, body, st.ring)
+            -- `hit=false`: o impacto de tela já aconteceu antes (monarca: o
+            -- golpe do cajado ainda em silhueta)
+            if st.hit ~= false then startHit(gx, body, st.ring) end
             -- lascas do impacto: pena (rei-carniça), lasca de gelo, brasa,
             -- esporo, pétala — `particle` do passo
             for _ = 1, (st.burst or 12) do
@@ -2521,7 +2603,7 @@ local function enterStep(st)
         InteriorFX.gust(1.0, st.dur or 1.8)
         mistTarget(0.8, 0.8)
     elseif kind == "silhouette" then
-        fx.sil = { t = 0, dur = math.max(0.3, st.dur or 1.2), anim = ownAnim(st.clip, st.dur) }
+        enterSilhouette(st)
     elseif kind == "settle" then
         if fx.white then fx.white.fade = { t = 0, dur = math.max(0.2, st.dur or 0.8) } end
         fx.sil = nil
@@ -2768,7 +2850,7 @@ function BossCinematic.update(dt, game, ctx)
             end
         end
     end
-    if fx.sil then fx.sil.t = fx.sil.t + dt; if fx.sil.anim then fx.sil.anim:update(dt) end end
+    updateSilhouette(dt)
     if fx.white then
         fx.white.t = fx.white.t + dt
         if fx.white.fade then
