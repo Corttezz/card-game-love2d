@@ -55,6 +55,12 @@
 --   settle     { }                        nevasca cai; chefe visível
 --   heartbeat  { rate, boost, hold }      pulses do salão aceleram + vinheta
 --   roots      { n, u, v }                raízes rastejam do ponto (u,v)
+--              { n, from="walls", grasp } ...ou descem das bocas pintadas do
+--                                         salão (InteriorFX rootMouths) e
+--                                         AGARRAM o corpo; retraem no `land`
+--   assemble   { block }                  o corpo se MONTA de blocos do próprio
+--                                         sprite puxados do chão, pés → cabeça
+--   land.cracks = true                    o chão racha em volta do pé
 --   eclipse    { u, v, to }               disco cobre a abertura + coroa
 --   descend    { clip, u, v, backlit, lights }  chefe desce de (u,v) ao palco
 --   RAINHA v2 (chefe final, frente rainha-eclipse, Out/2026):
@@ -74,6 +80,8 @@
 --   desat  { peak, rise, fall }   dessaturação da cena: sobe em `rise`,
 --                                 segura, cai em `fall`
 --   lava   { }                    poça de lava cresce sob o corpo (tirano)
+--   crumble { delay, roots, block } raízes agarram e soltam; o corpo desaba
+--                                 em pedaços que viram monte e esporos (colosso)
 --   dawn   { u, v }               luz morna volta na abertura (rainha)
 --   hold   { }                    o corpo fica no salão; espólios esperam
 --
@@ -265,12 +273,16 @@ return {
         },
     },
 
-    -- ATO 5 — Colosso Pútrido (pisa): o coração de raízes do fundo BATE
-    -- mais forte e mais rápido (pulses do salão 5 + vinheta na cor por
-    -- batida), raízes rastejam da boca do túnel pelo chão, e o colosso
-    -- EMERGE do túnel (clip `emerge`) vindo do fundo até o palco, arrastando
-    -- os pés (chão treme a cada passo). Impacto = último passo: esporos
-    -- explodem. Morte: desaba e vira esporos (flutuam).
+    -- ATO 5 — Colosso Pútrido (pisa). v2 (Out/2026, dono: "do nada
+    -- surgindo, não fez sentido"): o SALÃO É ELE. O coração de raízes do
+    -- fundo acelera (pulses do salão 5 + vinheta por batida), raízes descem
+    -- das PAREDES e do teto (`roots from=walls`, bocas em InteriorFX.HALLS[5]
+    -- .rootMouths) e agarram o palco; ossos e entulho do chão são puxados e
+    -- se juntam formando a silhueta DE BAIXO PRA CIMA (`assemble`: blocos
+    -- do próprio sprite, pés → tronco → cabeça); as raízes se retraem, ele
+    -- ergue a cabeça (clip `roar` no `land`) e o chão racha em volta
+    -- (`land.cracks`). Morte = o processo ao contrário (`crumble`): raízes
+    -- agarram e soltam, o corpo desaba em pedaços e esporos.
     rot_colossus = {
         palette = {
             body = { 0.08, 0.14, 0.08 }, glow = { 0.45, 0.85, 0.35 }, ember = { 0.80, 0.95, 0.45 },
@@ -279,34 +291,39 @@ return {
         },
         intro = {
             { kind = "dark",      dur = 0.60, to = 0.70 },
-            { kind = "heartbeat", dur = 1.80, rate = 2.4, boost = 2.2, hold = 2.6 },
-            { kind = "roots",     dur = 1.20, n = 6, u = 0.50, v = 0.62 },
-            { kind = "walk_in",   dur = 2.00, from = "back", clip = "emerge", stomp = 0.50,
-              sound = "bossEmergeTear" },
-            { kind = "land",      dur = 0.60, shake = 16, dust = 20, crows = 0, ring = "spores",
-              particle = "spore", burst = 22 },
-            { kind = "title",     dur = 2.30, clip = "roar" },
+            { kind = "heartbeat", dur = 1.60, rate = 2.4, boost = 2.2, hold = 4.2 },
+            { kind = "roots",     dur = 1.10, n = 7, from = "walls", grasp = true },
+            { kind = "assemble",  dur = 2.60, block = 5 },
+            { kind = "land",      dur = 0.70, shake = 16, dust = 20, crows = 0, ring = "spores",
+              particle = "spore", burst = 22, clip = "roar", cracks = true,
+              sound = "colossusCrack" },
+            { kind = "title",     dur = 2.30, clip = false },
             { kind = "hud",       dur = 0 },
         },
         introReduced = {
             { kind = "dark",      dur = 0.30, to = 0.60 },
-            { kind = "heartbeat", dur = 0.80, rate = 2.4, boost = 1.8 },
-            { kind = "walk_in",   dur = 0.90, from = "back", clip = "emerge", sound = "bossEmergeTear" },
+            { kind = "heartbeat", dur = 0.80, rate = 2.4, boost = 1.8, hold = 1.4 },
+            { kind = "roots",     dur = 0.50, n = 5, from = "walls", grasp = true },
+            { kind = "assemble",  dur = 1.20, block = 6 },
             { kind = "land",      dur = 0.40, shake = 4, dust = 6, crows = 0, ring = "spores",
-              particle = "spore", burst = 8 },
-            { kind = "title",     dur = 1.50 },
+              particle = "spore", burst = 8, clip = "roar", cracks = true,
+              sound = "colossusCrack" },
+            { kind = "title",     dur = 1.50, clip = false },
             { kind = "hud",       dur = 0 },
         },
+        -- morte: sem slowmo do EnemyRenderer — o desabamento em pedaços É a
+        -- câmera lenta (o chefe real fica escondido e volta sob o monte)
         death = {
-            { kind = "burst",  dur = 0,    n = 30, particle = "spore", sound = "bossSporeCollapse" },
-            { kind = "desat",  dur = 0,    peak = 0.50, rise = 0.45, fall = 1.30 },
-            { kind = "slowmo", dur = 1.50, scale = 0.35, release = 0.35 },
-            { kind = "hold",   dur = 1.20 },
+            { kind = "desat",   dur = 0,    peak = 0.50, rise = 0.45, fall = 1.30 },
+            { kind = "burst",   dur = 0,    n = 14, particle = "spore", sound = "bossSporeCollapse" },
+            { kind = "crumble", dur = 3.00, delay = 0.70, roots = 6, block = 5 },
+            { kind = "hold",    dur = 1.10 },
         },
         deathReduced = {
-            { kind = "burst",  dur = 0,    n = 12, particle = "spore", sound = "bossSporeCollapse" },
-            { kind = "desat",  dur = 0,    peak = 0.35, rise = 0.30, fall = 0.80 },
-            { kind = "hold",   dur = 0.90 },
+            { kind = "desat",   dur = 0,    peak = 0.35, rise = 0.30, fall = 0.80 },
+            { kind = "burst",   dur = 0,    n = 8, particle = "spore", sound = "bossSporeCollapse" },
+            { kind = "crumble", dur = 1.60, delay = 0.30, roots = 4, block = 6 },
+            { kind = "hold",    dur = 0.90 },
         },
     },
 

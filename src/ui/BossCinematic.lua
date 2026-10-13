@@ -62,10 +62,14 @@ BossCinematic.INTRO_KINDS = { dark = true, eyes = true, flyby = true, land = tru
                               walk_in = true, heartbeat = true, roots = true, eclipse = true,
                               descend = true,
                               -- rainha do eclipse v2 (pressentimento, manifestação, coroação)
-                              omen = true, unveil = true, coronation = true }
+                              omen = true, unveil = true, coronation = true,
+                              -- colosso: o corpo se MONTA de pedaços puxados do chão
+                              assemble = true }
 BossCinematic.DEATH_KINDS = { slowmo = true, burst = true, desat = true, hold = true,
                               -- elemento engolindo o corpo (tirano: poça de lava)
                               lava = true,
+                              -- colosso: as raízes soltam e o corpo desaba em pedaços
+                              crumble = true,
                               -- a luz volta na abertura do fundo (rainha: o eclipse abre)
                               dawn = true }
 
@@ -107,6 +111,11 @@ local SOUNDS = {
     bossEclipseCrown   = { "audio/sfx/boss/boss_eclipse_crown.mp3",   0.90 },
     bossEclipsePhase   = { "audio/sfx/boss/boss_eclipse_phase.mp3",   0.85 },
     bossEclipseFade    = { "audio/sfx/boss/boss_eclipse_fade.mp3",    0.80 },
+    -- colosso v2 (Out/2026): madeira rangendo + ossos se juntando, chão
+    -- rachando, corpo desabando em pedaços
+    colossusAssemble   = { "audio/sfx/boss/colossus_assemble.mp3",     0.80 },
+    colossusCrack      = { "audio/sfx/boss/colossus_crack.mp3",        0.85 },
+    colossusCrumble    = { "audio/sfx/boss/colossus_crumble.mp3",      0.85 },
 }
 local soundsLoaded = false
 BossCinematic.SOUNDS = SOUNDS   -- teste confere que todo arquivo existe
@@ -1074,48 +1083,407 @@ local function drawChains(w, h)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Raízes rastejando da boca do túnel pelo chão: segmentos de 3 blocos com
--- nós claros; depois do pouso esmaecem em 1,5 s (ficam durante o cartão,
--- não somem num corte no HUD).
+-- ---------------------------------------------------------------------------
+-- COLOSSO PÚTRIDO v2 (Out/2026, veredito do dono: "do nada surgindo, não
+-- fez sentido"). O salão É ele: o coração acelera, raízes descem das
+-- PAREDES e do teto (bocas pintadas em InteriorFX.HALLS[5].rootMouths, em
+-- px da arte) até o palco e AGARRAM; ossos e entulho do chão são puxados e
+-- se juntam formando a silhueta DE BAIXO PRA CIMA (`assemble`: blocos do
+-- próprio quadro 0 do idle voando de pontos do piso até o lugar EXATO onde
+-- o EnemyRenderer vai desenhá-lo). As raízes se RETRAEM, ele ergue a
+-- cabeça (clip `roar` no `land`) e o chão racha em volta (`land.cracks`).
+-- Morte = o processo ao contrário (`crumble`): as raízes agarram, soltam, e
+-- o corpo desaba em pedaços com gravidade, vira monte e esporos, e o monte
+-- esvaece sobre o cadáver real. Tudo na grade do sprite (blocos de `block`
+-- px da arte), nada de gradiente.
+-- ---------------------------------------------------------------------------
+local frame0Cache = {}
+-- quadro 0 do idle: Image (desenho por quad) + ImageData (quais blocos têm pixel)
+local function spriteFrame0(id)
+    if frame0Cache[id] ~= nil then return frame0Cache[id] or nil end
+    local dir = "assets/sprites/characters/enemies/" .. tostring(id) .. "/animations/idle/south"
+    local files = love.filesystem.getDirectoryItems(dir)
+    table.sort(files, function(a, b)
+        local na, nb = tonumber(a:match("^(%d+)")), tonumber(b:match("^(%d+)"))
+        if na and nb then return na < nb end
+        return a < b
+    end)
+    local first
+    for _, f in ipairs(files) do if f:match("%.png$") then first = f; break end end
+    local okD, data = false, nil
+    if first then okD, data = pcall(love.image.newImageData, dir .. "/" .. first) end
+    if not (okD and data) then
+        print("[BossCinematic] sem quadro 0 do idle em " .. dir .. " — sem pedaços")
+        frame0Cache[id] = false
+        return nil
+    end
+    local img = love.graphics.newImage(data)
+    img:setFilter("nearest", "nearest")
+    frame0Cache[id] = { img = img, data = data, iw = data:getWidth(), ih = data:getHeight() }
+    return frame0Cache[id]
+end
+
+-- Blocos B×B do quadro 0 com pixel: { qx, qy, w, h, quad, row } — `row` =
+-- 0 no topo do CORPO, 1 no pé (ordem de montagem/queda).
+local function spritePieces(id, B)
+    local f0 = spriteFrame0(id)
+    if not f0 then return nil end
+    local pieces = {}
+    local top, bottom = f0.ih, 0
+    for by = 0, f0.ih - 1, B do
+        for bx = 0, f0.iw - 1, B do
+            local w, h = math.min(B, f0.iw - bx), math.min(B, f0.ih - by)
+            local has = false
+            for y = by, by + h - 1 do
+                for x = bx, bx + w - 1 do
+                    local _, _, _, a = f0.data:getPixel(x, y)
+                    if a > 0.1 then has = true; break end
+                end
+                if has then break end
+            end
+            if has then
+                pieces[#pieces + 1] = { qx = bx, qy = by, w = w, h = h,
+                    quad = love.graphics.newQuad(bx, by, w, h, f0.iw, f0.ih) }
+                if by < top then top = by end
+                if by + h > bottom then bottom = by + h end
+            end
+        end
+    end
+    for _, p in ipairs(pieces) do
+        p.row = (p.qy + p.h * 0.5 - top) / math.max(1, bottom - top)
+    end
+    return pieces, f0
+end
+
+-- Raízes: `from="walls"` nascem nas bocas pintadas do salão (InteriorFX.
+-- HALLS[hall].rootMouths) e vão AGARRAR o corpo (`grasp`: alvo dentro do
+-- bbox do palco, em px da arte); sem isso, do ponto (u,v) pra pontos do
+-- chão (v1). Retração por `retractT` (crescimento ao contrário, 0.7 s).
+local function startRoots(st)
+    local n = st.n or 6
+    fx.roots = { t = 0, dur = math.max(0.3, st.dur or 1.2), list = {} }
+    local tr = stage and stage.tr
+    local mouths = (st.from == "walls") and stage and stage.hall
+        and InteriorFX.HALLS[stage.hall] and InteriorFX.HALLS[stage.hall].rootMouths or nil
+    if st.from == "walls" and not mouths then
+        print("[BossCinematic] roots from=walls: salão sem rootMouths — saindo de (u,v)")
+    end
+    -- alvo: o corpo (bbox em px da arte) ou o chão
+    local bx0, bx1, by0, by1
+    if st.grasp and stage and stage.bbox and tr then
+        local b = stage.bbox
+        local wdt = (b.width or 120) * 0.55
+        bx0 = (b.cx - wdt / 2 - tr.ox) / tr.scale
+        bx1 = (b.cx + wdt / 2 - tr.ox) / tr.scale
+        by0 = (b.topY + (b.bottomY - b.topY) * 0.15 - tr.oy) / tr.scale
+        by1 = (b.bottomY - (b.bottomY - b.topY) * 0.15 - tr.oy) / tr.scale
+    end
+    for i = 1, n do
+        local ox, oy
+        if mouths then
+            local m = mouths[1 + (i - 1) % #mouths]
+            ox, oy = m[1] + (love.math.random() - 0.5) * 6, m[2]
+        else
+            ox, oy = (st.u or 0.5) * 400, (st.v or 0.62) * 256
+        end
+        local tx, ty
+        if bx0 then
+            tx = lerp(bx0, bx1, (i - 0.5) / n) + (love.math.random() - 0.5) * 8
+            ty = lerp(by0, by1, love.math.random())
+        else
+            tx = 20 + (i - 0.5) / n * 360 + (love.math.random() - 0.5) * 30
+            ty = 236 + love.math.random() * 16
+        end
+        local pts = { { ox, oy } }
+        for k = 1, 7 do
+            local q = k / 7
+            -- raiz que desce da parede faz uma barriga pra fora antes de entrar
+            local bulge = mouths and math.sin(q * math.pi) * (ox < 200 and -1 or 1) * 14 or 0
+            pts[#pts + 1] = { lerp(ox, tx, q) + bulge + (love.math.random() - 0.5) * 12 * q,
+                              lerp(oy, ty, q) + (love.math.random() - 0.5) * 6 }
+        end
+        fx.roots.list[i] = { pts = pts }
+    end
+    playLoop("bossRootsCrawl")
+end
+
+-- Raízes rastejando: segmentos de 3 blocos com nós claros; crescem em
+-- `dur` e, quando `retractT` liga, encolhem de volta pra boca (0,7 s).
 local function drawRoots()
     local r = fx.roots
     if not r or not stage or not stage.tr then return end
     local P = px()
     local tr = stage.tr
     local k = clamp01(r.t / r.dur)
-    local fade = r.fadeT and (1 - clamp01(r.fadeT / 1.5)) or 1
-    if fade <= 0 then return end
-    for _, root in ipairs(r.list) do
+    if r.retractT then k = k * (1 - smooth(clamp01(r.retractT / 0.7))) end
+    if k <= 0 then return end
+    -- RAÍZES GROSSAS (dono: "raízes grossas"): corpo escuro de 5 px da arte
+    -- na boca afinando até 2 na ponta, aresta clara de cima (luz do
+    -- elemento) e nós; nunca um fio de 1 bloco (lia como laser)
+    local S = tr.scale
+    local bodyC = { PAL.particle[1] * 0.75, PAL.particle[2] * 0.75, PAL.particle[3] * 0.75 }
+    local edgeC = { lerp(PAL.particle[1], PAL.glow[1], 0.5), lerp(PAL.particle[2], PAL.glow[2], 0.5),
+                    lerp(PAL.particle[3], PAL.glow[3], 0.5) }
+    for ri, root in ipairs(r.list) do
         local nseg = #root.pts - 1
         local grown = k * nseg
+        local n = 0
         for i = 1, nseg do
             local segK = clamp01(grown - (i - 1))
             if segK > 0 then
                 local a, b = root.pts[i], root.pts[i + 1]
-                local ex = lerp(a[1], b[1], segK)
-                local ey = lerp(a[2], b[2], segK)
-                -- 1 bloco por px da arte (a 2 px virava linha pontilhada) e
-                -- corpo num tom entre a partícula e o brilho (o escuro sumia
-                -- no piso do salão 5 — recorte 1:1 do lead)
+                local ex, ey = lerp(a[1], b[1], segK), lerp(a[2], b[2], segK)
                 local steps = math.max(2, math.floor(math.max(math.abs(ex - a[1]), math.abs(ey - a[2])) + 1))
-                local br, bg, bb = lerp(PAL.particle[1], PAL.glow[1], 0.45),
-                    lerp(PAL.particle[2], PAL.glow[2], 0.45), lerp(PAL.particle[3], PAL.glow[3], 0.45)
                 for st2 = 0, steps do
                     local q = st2 / steps
-                    local x = tr.ox + math.floor(lerp(a[1], ex, q)) * tr.scale
-                    local y = tr.oy + math.floor(lerp(a[2], ey, q)) * tr.scale
-                    local bx, by = math.floor(x / P) * P, math.floor(y / P) * P
-                    love.graphics.setColor(br, bg, bb, fade)
-                    love.graphics.rectangle("fill", bx - P, by - P, 3 * P, 3 * P)
-                    if st2 % 3 == 0 then
-                        -- nó claro (brilho do elemento) a cada 3 blocos
-                        love.graphics.setColor(PAL.glow[1], PAL.glow[2], PAL.glow[3], 0.7 * fade)
-                        love.graphics.rectangle("fill", bx, by - P, P, P)
-                        love.graphics.rectangle("fill", bx - P, by, 3 * P, P)
+                    local along = ((i - 1) + segK * q) / nseg       -- 0 boca .. 1 ponta
+                    local wob = math.sin(along * 9 + ri * 1.3 + r.t * 0.8) * 1.2
+                    local W = math.max(P, math.floor(lerp(5, 2, along) * S / P + 0.5) * P)
+                    local x = tr.ox + (lerp(a[1], ex, q) + wob) * S
+                    local y = tr.oy + lerp(a[2], ey, q) * S
+                    local bx, by = math.floor((x - W / 2) / P) * P, math.floor((y - W / 2) / P) * P
+                    love.graphics.setColor(bodyC[1], bodyC[2], bodyC[3], 1)
+                    love.graphics.rectangle("fill", bx, by, W, W)
+                    -- aresta clara (cima/esquerda): a raiz tem volume
+                    love.graphics.setColor(edgeC[1], edgeC[2], edgeC[3], 0.9)
+                    love.graphics.rectangle("fill", bx, by, W, P)
+                    love.graphics.rectangle("fill", bx, by, P, W)
+                    n = n + 1
+                    if n % 9 == 0 then
+                        -- nó: bloco mais largo e um brilho do elemento
+                        love.graphics.setColor(bodyC[1], bodyC[2], bodyC[3], 1)
+                        love.graphics.rectangle("fill", bx - P, by - P, W + 2 * P, W + 2 * P)
+                        love.graphics.setColor(PAL.glow[1], PAL.glow[2], PAL.glow[3], 0.8)
+                        love.graphics.rectangle("fill", bx + P, by, P, P)
                     end
                 end
             end
         end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- MONTAGEM (colosso): cada bloco do quadro 0 sai de um ponto do piso
+-- (px da arte, faixa do chão do salão) e voa até o seu lugar no sprite;
+-- pés primeiro, cabeça por último. Em voo é escuro como osso velho e ganha
+-- a cor ao encaixar; um brilho do elemento cresce atrás do corpo montado.
+local function enterAssemble(st)
+    local id = seq.bossId
+    local pieces, f0 = spritePieces(id, st.block or 5)
+    local dur = math.max(0.6, st.dur or 2.4)
+    if not pieces then
+        print("[BossCinematic] assemble: sem sprite pra " .. tostring(id) .. " — o chefe aparece no land")
+        fx.asm = { t = 0, dur = dur, pieces = {}, flight = 0.5, arrived = 0 }
+        return
+    end
+    local flight = math.min(0.6, dur * 0.3)
+    local asm = { t = 0, dur = dur, pieces = pieces, f0 = f0, flight = flight, arrived = 0 }
+    for _, p in ipairs(pieces) do
+        p.t0 = (1 - p.row) * (dur - flight) * 0.9 + love.math.random() * (dur - flight) * 0.1
+        p.ax = 60 + love.math.random() * 280          -- de onde é puxado (chão da arte)
+        p.ay = 206 + love.math.random() * 42
+        p.lift = 16 + love.math.random() * 50
+    end
+    fx.asm = asm
+    play("colossusAssemble", "bossEmergeTear")
+    queueSfx(dur * 0.6, "bossEmergeTear", nil, 0.85)
+    InteriorFX.gust(0.5, dur)
+    if _G.triggerShake and not seq.reduced then _G.triggerShake(3, dur) end
+end
+
+local function drawAssemble()
+    local a = fx.asm
+    local dx, dy, s = footInfo()
+    if not a or not a.f0 or not dx or not stage.tr then return end
+    local tr = stage.tr
+    local P = px()
+    local k = clamp01(a.t / a.dur)
+    local iw, ih = a.f0.iw, a.f0.ih
+    glowBlob(dx + iw * s / 2, dy + ih * s * (1 - 0.45 * k), iw * s * 1.4,
+        math.max(10, ih * s * 0.8 * k), PAL.glow, 0.22 * k, 2)
+    local img = a.f0.img
+    local arrived = 0
+    for _, p in ipairs(a.pieces) do
+        local tk = (a.t - p.t0) / a.flight
+        if tk >= 1 then
+            arrived = arrived + 1
+            love.graphics.setColor(1, 1, 1, 1)
+            love.graphics.draw(img, p.quad, dx + p.qx * s, dy + p.qy * s, 0, s, s)
+        elseif tk > 0 then
+            local e = smooth(tk)
+            local sx = tr.ox + p.ax * tr.scale
+            local sy = tr.oy + p.ay * tr.scale
+            local tx, ty = dx + p.qx * s, dy + p.qy * s
+            local x = lerp(sx, tx, e)
+            local y = lerp(sy, ty, e) - math.sin(math.pi * e) * p.lift * (s / 2)
+            x, y = math.floor(x / P) * P, math.floor(y / P) * P
+            local lit = 0.45 + 0.55 * e
+            love.graphics.setColor(lit, lit, lit, 0.6 + 0.4 * e)
+            love.graphics.draw(img, p.quad, x, y, 0, s, s)
+            if not seq.reduced then
+                -- rastro curto: um bloco de brilho atrás do pedaço puxado
+                love.graphics.setColor(PAL.glow[1], PAL.glow[2], PAL.glow[3], 0.4 * (1 - e))
+                love.graphics.rectangle("fill", math.floor(lerp(sx, x, 0.88) / P) * P,
+                    math.floor(lerp(sy, y, 0.88) / P) * P, P, P)
+            end
+        end
+    end
+    a.arrived = arrived
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- RACHADURAS no chão em volta do pé (land.cracks): 7 fendas em blocos
+-- escuros na grade, crescendo em 0,45 s (achatadas em y: chão visto de
+-- frente), ponta recém-aberta com um bloco de brilho. Ficam até o cartão e
+-- esmaecem com ele.
+local function startCracks(gx, gy, wdt)
+    local list = {}
+    local n = 7
+    for i = 1, n do
+        local ang = (i - 0.5) / n * math.pi * 2 + (love.math.random() - 0.5) * 0.5
+        local len = wdt * (0.35 + love.math.random() * 0.45)
+        local pts = { { gx, gy } }
+        local x, y = gx, gy
+        local segs = 5 + love.math.random(0, 3)
+        for sgi = 1, segs do
+            local a2 = ang + (love.math.random() - 0.5) * 0.9
+            x = x + math.cos(a2) * len / segs
+            y = y + math.sin(a2) * len / segs * 0.42
+            pts[#pts + 1] = { x, y }
+        end
+        list[i] = { pts = pts, delay = love.math.random() * 0.12 }
+    end
+    fx.cracks = { t = 0, list = list, grow = 0.45 }
+end
+
+local function drawCracks()
+    local c = fx.cracks
+    if not c then return end
+    local P = px()
+    local fade = c.fadeT and (1 - clamp01(c.fadeT / 2.4)) or 1
+    if fade <= 0 then return end
+    for _, cr in ipairs(c.list) do
+        local nseg = #cr.pts - 1
+        local grown = clamp01((c.t - cr.delay) / c.grow) * nseg
+        for i = 1, nseg do
+            local segK = clamp01(grown - (i - 1))
+            if segK > 0 then
+                local a, b = cr.pts[i], cr.pts[i + 1]
+                local ex, ey = lerp(a[1], b[1], segK), lerp(a[2], b[2], segK)
+                local steps = math.max(2, math.floor(math.max(math.abs(ex - a[1]), math.abs(ey - a[2])) / P + 1))
+                for st2 = 0, steps do
+                    local q = st2 / steps
+                    local bx = math.floor(lerp(a[1], ex, q) / P) * P
+                    local by = math.floor(lerp(a[2], ey, q) / P) * P
+                    -- fenda escura com a luz do coração vazando por baixo
+                    -- (chão do salão 5 é escuro: só o escuro não se lia)
+                    love.graphics.setColor(0.02, 0.03, 0.02, 0.95 * fade)
+                    love.graphics.rectangle("fill", bx, by, P, P)
+                    if i <= 2 then love.graphics.rectangle("fill", bx, by + P, P, P) end
+                    if st2 % 2 == 0 then
+                        love.graphics.setColor(PAL.glow[1], PAL.glow[2], PAL.glow[3], 0.55 * fade)
+                        love.graphics.rectangle("fill", bx, by + ((i <= 2) and 2 or 1) * P, P, P)
+                    end
+                end
+                if segK < 1 then
+                    love.graphics.setColor(PAL.glow[1], PAL.glow[2], PAL.glow[3], 0.7 * fade)
+                    love.graphics.rectangle("fill", math.floor(ex / P) * P, math.floor(ey / P) * P, P, P)
+                end
+            end
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- DESABAMENTO (morte do colosso): o chefe real some, o corpo em pé fica como
+-- blocos; as raízes das paredes agarram e, no `delay`, soltam — os blocos
+-- caem (cabeça primeiro) com gravidade, quicam uma vez, viram um monte na
+-- linha do chão e soltam esporos; ao fim o monte esvaece sobre o cadáver
+-- que o EnemyRenderer já desenha.
+local function enterCrumble(st)
+    local id = seq.bossId
+    local pieces, f0 = spritePieces(id, st.block or 5)
+    local dx, dy, s = footInfo()
+    if not (pieces and dx) then
+        print("[BossCinematic] crumble: sem sprite/palco pra " .. tostring(id) .. " — morte sem pedaços")
+        return
+    end
+    bossHidden = true
+    local dur = math.max(0.8, st.dur or 2.4)
+    local delay = math.min(st.delay or 0.6, dur * 0.4)
+    local groundY = (stage.cy or (dy + f0.ih * s))
+    local cx = dx + f0.iw * s / 2
+    local cr = { t = 0, dur = dur, delay = delay, pieces = pieces, f0 = f0, s = s,
+                 groundY = groundY, thuds = 0 }
+    for _, p in ipairs(pieces) do
+        p.t0 = delay + p.row * (dur - delay) * 0.5 + love.math.random() * 0.15
+        p.x, p.y = dx + p.qx * s, dy + p.qy * s
+        p.vx = (love.math.random() - 0.5) * 70
+        p.vy = -20 - love.math.random() * 40
+        local off = (p.x + p.w * s / 2 - cx) / math.max(1, f0.iw * s / 2)
+        -- monte: mais alto no meio
+        p.ground = groundY - (1 - math.min(1, math.abs(off))) * f0.ih * s * 0.12 * love.math.random()
+        p.state = "held"
+        p.bounced = false
+    end
+    fx.crumble = cr
+    if st.roots ~= false then
+        startRoots({ from = "walls", n = st.roots or 6, dur = math.max(0.2, delay), grasp = true })
+    end
+    queueSfx(delay, "colossusCrumble", "bossSporeCollapse")
+    if _G.triggerShake and not seq.reduced then _G.triggerShake(4, 0.3) end
+end
+
+local function updateCrumble(dt)
+    local cr = fx.crumble
+    if not cr then return end
+    cr.t = cr.t + dt
+    if cr.t >= cr.delay and fx.roots and not fx.roots.retractT then fx.roots.retractT = 0 end
+    local s = cr.s
+    for _, p in ipairs(cr.pieces) do
+        if p.state == "held" and cr.t >= p.t0 then p.state = "fall" end
+        if p.state == "fall" then
+            p.vy = p.vy + 900 * dt
+            p.x = p.x + p.vx * dt
+            p.y = p.y + p.vy * dt
+            if p.y + p.h * s >= p.ground then
+                p.y = p.ground - p.h * s
+                if not p.bounced and p.vy > 140 then
+                    p.bounced = true
+                    p.vy = -p.vy * 0.22
+                    p.vx = p.vx * 0.5
+                else
+                    p.state = "rest"
+                    p.vx, p.vy = 0, 0
+                    if not reducedMotion() and love.math.random() < 0.35 then
+                        spawnFeather(p.x + p.w * s / 2, p.y, (love.math.random() - 0.5) * 30,
+                            -20 - love.math.random() * 40, "spore")
+                    end
+                    if cr.thuds < 5 and love.math.random() < 0.08 then
+                        cr.thuds = cr.thuds + 1
+                        play("sceneStoneThud", nil, 0.6 + love.math.random() * 0.2, 0)
+                    end
+                end
+            end
+        end
+    end
+    if cr.fadeT then cr.fadeT = cr.fadeT + dt end
+end
+
+local function drawCrumble()
+    local cr = fx.crumble
+    if not cr then return end
+    local P = px()
+    local s = cr.s
+    local fade = cr.fadeT and (1 - clamp01(cr.fadeT / 0.7)) or 1
+    if fade <= 0 then return end
+    local img = cr.f0.img
+    for _, p in ipairs(cr.pieces) do
+        local lit = (p.state == "held") and 1 or 0.78
+        local x, y = p.x, p.y
+        if p.state ~= "held" then x, y = math.floor(x / P) * P, math.floor(y / P) * P end
+        love.graphics.setColor(lit, lit, lit, fade)
+        love.graphics.draw(img, p.quad, x, y, 0, s, s)
     end
     love.graphics.setColor(1, 1, 1, 1)
 end
@@ -1968,7 +2336,10 @@ local function enterStep(st)
     elseif kind == "land" then
         fly = nil
         fx.runes = nil
-        if fx.roots then fx.roots.fadeT = 0 end
+        if fx.roots and not fx.roots.retractT then fx.roots.retractT = 0 end
+        if st.cracks and stage and stage.bbox then
+            startCracks(stage.bbox.cx, stage.cy or stage.bbox.bottomY, stage.bbox.width or 120)
+        end
         bossHidden = false
         landed = true
         darkEase = { from = dark, to = 0, t = 0, dur = math.max(0.15, (st.dur or 0.5) * 0.6) }
@@ -2004,7 +2375,8 @@ local function enterStep(st)
         InteriorFX.gust(0.6, 0.5)
     elseif kind == "title" then
         mistTarget(0, 1.6)
-        bossClip(st.clip or "roar", 10)
+        if fx.cracks then fx.cracks.fadeT = 0 end
+        if st.clip ~= false then bossClip(st.clip or "roar", 10) end
         play("bossRevealSting", "enemyBuffRoar")
         local id = seq.bossId
         local name = I18n.t("boss_cinematics." .. id .. ".name", nil,
@@ -2123,20 +2495,11 @@ local function enterStep(st)
         if InteriorFX.pulseBoost then InteriorFX.pulseBoost(st.boost or 2.0, fx.heart.dur) end
         mistTarget(1, 1.0)
     elseif kind == "roots" then
-        fx.roots = { t = 0, dur = math.max(0.4, st.dur or 1.2), list = {} }
-        local ox, oy = (st.u or 0.5) * 400, (st.v or 0.62) * 256
-        for i = 1, (st.n or 6) do
-            local tx = 20 + (i - 0.5) / (st.n or 6) * 360 + (love.math.random() - 0.5) * 30
-            local ty = 236 + love.math.random() * 16
-            local pts = { { ox, oy } }
-            for k = 1, 7 do
-                local q = k / 7
-                pts[#pts + 1] = { lerp(ox, tx, q) + (love.math.random() - 0.5) * 14 * q,
-                                  lerp(oy, ty, q) + (love.math.random() - 0.5) * 5 }
-            end
-            fx.roots.list[i] = { pts = pts }
-        end
-        playLoop("bossRootsCrawl")
+        startRoots(st)
+    elseif kind == "assemble" then
+        enterAssemble(st)
+    elseif kind == "crumble" then
+        enterCrumble(st)
     elseif kind == "eclipse" then
         fx.ecl = { t = 0, dur = math.max(0.3, st.dur or 1.6), u = st.u or 0.5, v = st.v or 0.23 }
         darkEase = { from = dark, to = st.to or 0.9, t = 0, dur = fx.ecl.dur }
@@ -2174,6 +2537,12 @@ local function exitStep(st)
         if st.storm then stopLoop(st.storm) end
     end
     if st.kind == "walk_in" then fx.walker = nil; bossHidden = false; landed = true end
+    if st.kind == "assemble" then fx.asm = nil; bossHidden = false; landed = true end
+    -- o monte esvaece sobre o cadáver real (que volta a ser desenhado agora)
+    if st.kind == "crumble" then
+        bossHidden = false
+        if fx.crumble then fx.crumble.fadeT = 0 end
+    end
     if st.kind == "descend" then fx.desc = nil; bossHidden = false; landed = true
         stopLoop("bossEclipseHum") end
     -- runas ficam acesas até o chefe pousar (`land` as apaga)
@@ -2375,10 +2744,32 @@ function BossCinematic.update(dt, game, ctx)
     end
     if fx.roots then
         fx.roots.t = fx.roots.t + dt
-        if fx.roots.fadeT then
-            fx.roots.fadeT = fx.roots.fadeT + dt
-            if fx.roots.fadeT >= 1.5 then fx.roots = nil end
+        if fx.roots.retractT then
+            fx.roots.retractT = fx.roots.retractT + dt
+            if fx.roots.retractT >= 0.7 then fx.roots = nil; stopLoop("bossRootsCrawl") end
         end
+    end
+    if fx.asm then
+        local a = fx.asm
+        a.t = a.t + dt
+        -- esporos soltos do corpo que se monta
+        if stage and stage.bbox and not reducedMotion() and love.math.random() < dt * 5 then
+            local b = stage.bbox
+            spawnFeather(b.cx + (love.math.random() - 0.5) * (b.width or 120) * 0.6,
+                b.bottomY - (b.bottomY - b.topY) * clamp01(a.t / a.dur) * love.math.random(),
+                (love.math.random() - 0.5) * 30, -20 - love.math.random() * 40, "spore")
+        end
+    end
+    if fx.cracks then
+        fx.cracks.t = fx.cracks.t + dt
+        if fx.cracks.fadeT then
+            fx.cracks.fadeT = fx.cracks.fadeT + dt
+            if fx.cracks.fadeT >= 2.4 then fx.cracks = nil end
+        end
+    end
+    if fx.crumble then
+        updateCrumble(dt)
+        if fx.crumble.fadeT and fx.crumble.fadeT >= 0.7 then fx.crumble = nil end
     end
     if fx.ecl then fx.ecl.t = fx.ecl.t + dt end
     if fx.dawn then fx.dawn.t = fx.dawn.t + dt end
@@ -2789,6 +3180,7 @@ function BossCinematic.drawBack()
     drawEyes(w, h)
     drawMist({ [2] = true })
     drawWalk(w, h)
+    drawAssemble()
     drawRise(w, h)
     drawDescend(w, h)
     drawWind()
@@ -2822,6 +3214,8 @@ function BossCinematic.drawFront()
     drawMist({ [3] = true })
     drawChains(stage.w, stage.h)
     drawLavaPool()
+    drawCracks()
+    drawCrumble()
     drawDust()
     if not (seq and seq.phase == "intro") then drawFeathers() end
     drawCrows()

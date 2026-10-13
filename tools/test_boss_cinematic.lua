@@ -425,6 +425,103 @@ function M.run()
         IFX.clear()
     end
 
+    -- ===== 6e. COLOSSO PÚTRIDO v2 (frente chefes-ajustes) =====
+    -- O salão É ele: raízes descem das bocas pintadas do salão 5 e agarram,
+    -- o corpo se MONTA de blocos do próprio sprite (pés → cabeça) e só então
+    -- aparece; o chão racha no `land`. Morte: o chefe real some, as raízes
+    -- agarram e soltam, o corpo desaba em pedaços e o monte esvaece sobre o
+    -- cadáver (chefe visível de novo no fim).
+    do
+        local IFX = require("src.ui.InteriorFX")
+        local function hasKind(steps, kind)
+            for _, st in ipairs(steps or {}) do if st.kind == kind then return true end end
+            return false
+        end
+        local cd = Data.rot_colossus
+        t:truthy("colosso: intro monta o corpo (assemble)", hasKind(cd.intro, "assemble")
+            and hasKind(cd.introReduced, "assemble"))
+        t:falsy("colosso: intro nao surge do nada (sem walk_in)", hasKind(cd.intro, "walk_in"))
+        t:truthy("colosso: raizes vem das paredes e agarram",
+            (function()
+                for _, st in ipairs(cd.intro) do
+                    if st.kind == "roots" then return st.from == "walls" and st.grasp == true end
+                end
+                return false
+            end)())
+        t:truthy("colosso: salao 5 tem bocas de raiz (rootMouths)",
+            IFX.HALLS[5].rootMouths ~= nil and #IFX.HALLS[5].rootMouths >= 5)
+        t:truthy("colosso: morte desaba em pedacos (crumble)", hasKind(cd.death, "crumble")
+            and hasKind(cd.deathReduced, "crumble"))
+        t:falsy("colosso: morte sem slowmo do EnemyRenderer (o desabamento e a camera lenta)",
+            hasKind(cd.death, "slowmo"))
+        local stage5 = {}
+        for k2, v2 in pairs(stage) do stage5[k2] = v2 end
+        stage5.hall = 5
+        _G.gameSettings.reducedMotion = false
+        BC.reset()
+        local gc = fakeBoss("rot_colossus")
+        t:truthy("colosso: entrada aceita", BC.startIntro(gc))
+        BC.setStage(stage5)
+        local nomC = BC.duration(cd.intro)
+        local elc, tShow, sawRoots, pieces, sawCracks, allArrived = 0, nil, false, 0, false, false
+        local hiddenWhileAssembling = true
+        while BC.isActive() and elc < nomC + 2 do
+            BC.update(DT, gc, { inHall = true })
+            elc = elc + DT
+            local d = BC._debug()
+            if d.fx.roots and #d.fx.roots.list > 0 then sawRoots = true end
+            if d.fx.asm then
+                pieces = math.max(pieces, #d.fx.asm.pieces)
+                if not BC.hidesBoss() then hiddenWhileAssembling = false end
+                -- ultimo instante da montagem: todo bloco ja partiu e chegou
+                if d.fx.asm.t >= d.fx.asm.dur - DT then
+                    local ok = true
+                    for _, p in ipairs(d.fx.asm.pieces) do
+                        if d.fx.asm.t - p.t0 < d.fx.asm.flight then ok = false; break end
+                    end
+                    allArrived = allArrived or ok
+                end
+            end
+            if d.fx.cracks then sawCracks = true end
+            if not tShow and not BC.hidesBoss() then tShow = elc end
+        end
+        t:truthy("colosso: raizes das paredes cresceram", sawRoots)
+        t:truthy("colosso: corpo em blocos do sprite (" .. pieces .. " pedacos)", pieces > 100)
+        t:truthy("colosso: escondido ENQUANTO se monta", hiddenWhileAssembling)
+        t:truthy("colosso: todo bloco chegou antes do land", allArrived)
+        t:truthy("colosso: chao rachou no land", sawCracks)
+        t:truthy("colosso: aparece so depois de raizes + montagem (>4s)", tShow ~= nil and tShow > 4)
+        t:falsy("colosso: rachaduras esmaeceram ate o fim", BC._debug().fx.cracks ~= nil)
+        -- morte
+        BC.reset()
+        BC.setStage(stage5)
+        local gcd = fakeBoss("rot_colossus")
+        gcd._deathHandled = true
+        BC.update(DT, gcd, { inHall = true })
+        t:truthy("colosso: morte detectada", BC.isActive() and BC.phase() == "death")
+        t:truthy("colosso: morte ESCONDE o chefe real (o corpo em pedacos e o que se ve)", BC.hidesBoss())
+        local sawGrasp, sawFall, sawRest = false, false, false
+        local eld2 = 0
+        while BC.isActive() and eld2 < 8 do
+            BC.update(DT, gcd, { inHall = true })
+            eld2 = eld2 + DT
+            local d = BC._debug()
+            if d.fx.roots then sawGrasp = true end
+            if d.fx.crumble then
+                for _, p in ipairs(d.fx.crumble.pieces) do
+                    if p.state == "fall" then sawFall = true end
+                    if p.state == "rest" then sawRest = true end
+                end
+            end
+        end
+        t:truthy("colosso: raizes agarram na morte", sawGrasp)
+        t:truthy("colosso: pedacos caem", sawFall)
+        t:truthy("colosso: pedacos viram monte no chao", sawRest)
+        t:falsy("colosso: chefe real volta no fim (cadaver sob o monte)", BC.hidesBoss())
+        t:falsy("colosso: espolios liberados", BC.holdsEnd())
+        BC.reset()
+    end
+
     -- ===== 7. i18n: todo chefe com roteiro tem nome + epiteto nos 5 locales =====
     for _, loc in ipairs({ "pt_BR", "en", "es", "fr", "de" }) do
         local ok, tbl = pcall(require, "src.i18n.locales.boss_cinematics." .. loc)

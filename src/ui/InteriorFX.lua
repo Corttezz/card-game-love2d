@@ -137,6 +137,11 @@ local HALLS = {
         fireflies = { n = 6, region = { 120, 110, 160, 100 }, color = { 0.86, 0.98, 0.50 } },
         fog = { y = 190, h = 46, color = { 0.20, 0.36, 0.12 }, alpha = 0.55, speed = 0.35 },
         vignette = 0.80,
+        -- BOCAS das raízes da entrada do colosso (BossCinematic `roots
+        -- from="walls"`): de onde elas descem — as gotejantes do teto do
+        -- túnel e a face interna das duas árvores-parede (px da arte).
+        rootMouths = { { 160, 2 }, { 240, 2 }, { 100, 62 }, { 300, 62 },
+                       { 200, 0 }, { 92, 124 }, { 308, 124 } },
     },
     -- ATO 6 — corte do eclipse: sem fogo pintado (a luz é o vão do fundo);
     -- poeira só DENTRO do feixe.
