@@ -2533,6 +2533,13 @@ function love.keypressed(key)
         return
     end
 
+    -- Tecla V na batalha: prévia de dano resumo ↔ detalhes (lembrado em
+    -- Configurações → Jogo). O clique na placa faz o mesmo (love.mousepressed).
+    if key == "v" and currentState == "playing" then
+        require("src.ui.DamagePreviewPanel").toggleDetails()
+        return
+    end
+
     -- Round Eval absorve teclas (enter/space = Resgatar) enquanto visível.
     if roundEvalScreen and roundEvalScreen:isVisible() then
         if roundEvalScreen:keypressed(key) then return end
@@ -2754,6 +2761,10 @@ function love.mousepressed(x, y, button)
     elseif currentState == "classSelection" then
         classSelectionScreen:mousepressed(x, y, button)
     elseif currentState == "playing" then
+        -- Placa da prévia de dano: clique alterna resumo ↔ detalhes (ela
+        -- fica na banda de ação, acima do JOGAR — antes da cena pra não
+        -- virar poke no cenário nem drag de carta).
+        if require("src.ui.DamagePreviewPanel").mousepressed(x, y, button) then return end
         -- v9.7.1: clique que NENHUM elemento de gameplay consumiu cutuca
         -- o cenário (mapa vivo estilo Hearthstone — árvore/poste/nuvem)
         if not GameplayScene.mousepressed(x, y, button) and button == 1 then

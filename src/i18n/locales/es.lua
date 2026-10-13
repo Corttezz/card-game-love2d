@@ -1207,6 +1207,9 @@ return {
         with_card   = "+ {card}: {n}",
         more_cards  = "+{n} cartas",
         combo_badge = "+COMBO",
+        -- placa resumo <-> detalhes (clique / V / foco+A)
+        details_show = "ver detalles",
+        details_hide = "ocultar detalles",
         -- o que cada combo faz (tooltip no painel; {v}/{max} vem da regra)
         combo_desc  = {
             volley = "Cada ataque después del primero en la misma jugada: +{v} de daño por ataque anterior (hasta +{max}).",

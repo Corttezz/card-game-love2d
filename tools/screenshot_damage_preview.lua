@@ -8,14 +8,26 @@
 -- Saidas (save dir), prefixo dmgprev_<W>x<H>_<locale>_:
 --   sel2.png      2 golpes (combo de ataques) + hover numa 3a carta
 --   sel3.png      3 cartas: golpes + defesa (ataque e bloqueio juntos)
---   sel5.png      5 cartas com coringa, Forca e armadura no inimigo
---   combo_tooltip.png  hover numa linha de combo do painel (o que ele faz)
+--   sel5.png      5 cartas com coringa, Forca e armadura no inimigo (RESUMO)
+--   sel5_details.png  a mesma leva com DETALHES (clique na placa / tecla V)
+--   combo_tooltip.png  hover numa ficha de combo da placa (o que ele faz)
 --   lethal.png    leva que mata (rotulo LETAL)
 --   resolving.png no meio da resolucao (total correndo + combo)
 
 local M = {}
 
+-- Sem janela (CARDGAME_HEADLESS=1, dono jogando): PREVIEW_W/H viram uma
+-- tela FALSIFICADA — canvas desse tamanho com getWidth/getHeight mentindo
+-- (mesmo truque de screenshot_enemy_scene) e o PNG sai do canvas.
+local vcanvas
+
 local function shot(name)
+    if vcanvas then
+        love.graphics.setCanvas()
+        vcanvas:newImageData():encode("png", name .. ".png")
+        print("[screenshot] " .. name .. ".png salvo")
+        return
+    end
     love.graphics.captureScreenshot(function(imageData)
         imageData:encode("png", name .. ".png")
         print("[screenshot] " .. name .. ".png salvo")
@@ -98,17 +110,36 @@ local function setupHand(game, ids, nSel, keepHp)
     for i = 1, nSel do game:selectCard(game.hand[i]) end
 end
 
+-- Sem janela, love.mouse.setPosition nao alcanca nada (janela 1x1 fora da
+-- tela): o mouse vira um ponto FALSO injetado no portao do InputFocus — e o
+-- que todo hover do jogo le (love.mouse.getPosition).
+local fakeMouse
+local function mouseTo(x, y)
+    if fakeMouse then fakeMouse.x, fakeMouse.y = x, y else love.mouse.setPosition(x, y) end
+end
+
 local function hoverOn(GameplayScene, card)
     -- move o mouse pro centro da carta em repouso
     local x = (card.layoutX or card.x or 0) + 64
     local y = (card.layoutY or card.y or 0) + 60
-    love.mouse.setPosition(x, y)
+    mouseTo(x, y)
     if GameplayScene.mousemoved then GameplayScene.mousemoved(x, y, 0, 0) end
 end
 
 function M.run()
     local W, H = tonumber(os.getenv("PREVIEW_W")), tonumber(os.getenv("PREVIEW_H"))
-    if W and H then love.window.setMode(W, H, { resizable = true }) end
+    if W and H then
+        if os.getenv("CARDGAME_HEADLESS") == "1" then
+            vcanvas = love.graphics.newCanvas(W, H)
+            fakeMouse = { x = 5, y = 5 }
+            require("src.ui.InputFocus").installMouseGate(nil, function() return fakeMouse.x, fakeMouse.y end)
+            love.graphics.getWidth = function() return W end
+            love.graphics.getHeight = function() return H end
+            love.graphics.getDimensions = function() return W, H end
+        else
+            love.window.setMode(W, H, { resizable = true })
+        end
+    end
     W, H = love.graphics.getWidth(), love.graphics.getHeight()
     local locale = os.getenv("PREVIEW_LOCALE") or "pt_BR"
     local prefix = string.format("dmgprev_%dx%d_%s_", W, H, locale)
@@ -118,6 +149,7 @@ function M.run()
     db:loadData()
 
     local function capture(name)
+        if vcanvas then love.graphics.setCanvas(vcanvas) end
         love.graphics.clear(0, 0, 0, 1)
         GS.draw()
         require("src.ui.StatusTooltip").draw()   -- o main desenha no fim do quadro
@@ -133,7 +165,7 @@ function M.run()
     capture("sel2")
 
     -- 2. golpes + defesa
-    love.mouse.setPosition(5, 5); GS.mousemoved(5, 5, 0, 0)
+    mouseTo(5, 5); GS.mousemoved(5, 5, 0, 0)
     setupHand(game, { "warrior_strike", "warrior_defend", "warrior_shield_slam",
         "warrior_strike", "warrior_iron_wave" }, 3)
     settle(GS, 0.6)
@@ -146,15 +178,22 @@ function M.run()
     setupHand(game, { "warrior_strike", "warrior_twin_strike", "warrior_bash",
         "warrior_heavy_blade", "warrior_defend", "warrior_quick_strike" }, 5)
     settle(GS, 0.6)
+    -- RESUMO (default) e DETALHES (clique na placa / V) da MESMA leva
+    -- (detalhes primeiro: o lastRect que o hover abaixo mira e o do RESUMO)
+    local Panel = require("src.ui.DamagePreviewPanel")
+    Panel.setDetails(true)
+    capture("sel5_details")
+    Panel.setDetails(false)
+    settle(GS, 0.1)
     capture("sel5")
 
-    -- 3b. hover numa linha de COMBO do painel: tooltip com o que ele faz
-    local PR = require("src.ui.DamagePreviewPanel").lastRect
+    -- 3b. hover numa FICHA de combo da placa (resumo): tooltip com o que ele faz
+    local PR = Panel.lastRect
     if PR then
-        local fy = PR.firstRowY + math.floor(love.graphics.getHeight() * 0.03)
-        local fx = PR.x + 30
+        local fy = PR.firstRowY + 6
+        local fx = PR.x + 14
         -- a 1a linha pode ser LETAL; desce uma linha se for o caso
-        love.mouse.setPosition(fx, fy)
+        mouseTo(fx, fy)
         GS.mousemoved(fx, fy, 0, 0)
         settle(GS, 0.3)
         -- o tooltip tem pop-in por TEMPO REAL: agenda um quadro e espera
@@ -163,7 +202,7 @@ function M.run()
             love.timer.sleep(0.08)
         end
         capture("combo_tooltip")
-        love.mouse.setPosition(5, 5); GS.mousemoved(5, 5, 0, 0)
+        mouseTo(5, 5); GS.mousemoved(5, 5, 0, 0)
     end
 
     -- 4. leva letal

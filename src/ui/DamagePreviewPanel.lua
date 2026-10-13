@@ -5,11 +5,17 @@
 --
 -- Tres lugares, cada um ANCORADO no objeto de que fala (lei do projeto: nada
 -- de tarja de rodape):
---   1. PAINEL acima do botao JOGAR (banda de ACAO da coluna direita): o total
---      que o inimigo vai perder, o Bloqueio que voce ganha e, carta a carta,
---      a conta que explica o numero — base -> Forca -> combo (dourado) ->
---      coringa (violeta) -> edicao/selo -> Fraco. Durante a resolucao o painel
---      congela a previa e mostra o total CORRENDO ate fechar.
+--   1. PLACA acima do botao JOGAR (banda de ACAO da coluna direita). Dois
+--      estados, lembrados em Configuracoes (`previewDetails`):
+--        RESUMO (padrao, Out/2026 — dono: "grande e confuso"): so o que o
+--        clique produz — dano, Bloqueio, LETAL — e uma linha de combos/
+--        coringas em fichas pequenas; em hover numa carta, o total COM ela.
+--        DETALHES (clique na placa / tecla V / foco + A no pad): a conta
+--        carta a carta — base -> Forca -> combo (dourado) -> coringa
+--        (violeta) -> edicao/selo -> Fraco, com tooltip nas linhas.
+--      Durante a resolucao a placa congela a previa e mostra o total
+--      CORRENDO ate fechar. Bandas da placa em `Panel.layout` (puro, com
+--      `validate` — a trava tools/test_preview_plate.lua roda em 5 tamanhos).
 --   2. BARRA DE VIDA do inimigo: o trecho que a leva vai arrancar pisca por
 --      cima da barra (e o numero "-34" ao lado). Letal = a barra inteira.
 --   3. CARTAS DA MAO: a carta que fecharia um combo NOVO com a selecao atual
@@ -37,6 +43,51 @@ local state = {
 }
 
 local HOLD_AFTER = 1.6   -- s que o total final fica na tela apos resolver
+
+-- ===========================================================================
+-- RESUMO x DETALHES (lembrado em _G.gameSettings.previewDetails)
+-- ===========================================================================
+
+function Panel.detailsOn()
+    local gs = _G.gameSettings
+    return (gs and gs.previewDetails) and true or false
+end
+
+function Panel.setDetails(on)
+    on = on and true or false
+    _G.gameSettings = _G.gameSettings or {}
+    _G.gameSettings.previewDetails = on
+    -- mesmo caminho do Tutorial.disable: le o arquivo, muda UMA chave, grava
+    -- (sem passar pelo snapshot do SettingsMenu, que so roda quando ele fecha)
+    local ok, err = pcall(function()
+        local SM = require("engine.SaveManager")
+        local cur = SM.loadSettings() or {}
+        cur.previewDetails = on
+        local okS, e = SM.saveSettings(cur)
+        if not okS then error(e) end
+    end)
+    if not ok then print("[DamagePreviewPanel] falha ao salvar previewDetails: " .. tostring(err)) end
+    return on
+end
+
+function Panel.toggleDetails()
+    local on = Panel.setDetails(not Panel.detailsOn())
+    local okS, Sfx = pcall(require, "src.systems.Sfx")
+    if okS and Sfx and Sfx.play then Sfx.play(on and "menuOpen" or "menuClose") end
+    return on
+end
+
+-- Clique na placa (main.lua, estado playing, ANTES da cena): alterna. `x, y`
+-- em pixels reais — a placa guarda o proprio retangulo real no draw (mesmo
+-- truque do NavCursor.target: transformPoint dentro do UiScale).
+Panel.hitRect = nil
+function Panel.mousepressed(x, y, button)
+    local r = Panel.hitRect
+    if button ~= 1 or not r then return false end
+    if x < r.x or x > r.x + r.w or y < r.y or y > r.y + r.h then return false end
+    Panel.toggleDetails()
+    return true
+end
 
 local function setColor(c, a)
     love.graphics.setColor(c[1], c[2], c[3], (c[4] or 1) * (a or 1))
@@ -84,6 +135,7 @@ end
 -- ===========================================================================
 
 function Panel.update(game, hoverCard, dt)
+    Panel.hitRect = nil   -- so vale o retangulo do ULTIMO draw
     if not game or not game.enemy or not game.player then
         state.live, state.frozen, state.hover = nil, nil, nil
         return
@@ -331,50 +383,194 @@ local function drawIcon(name, x, y, size)
     h.draw(x, y, s)
 end
 
+-- ===========================================================================
+-- LAYOUT (puro): as bandas da placa, empilhadas de cima pra baixo
+-- ===========================================================================
+-- m = { anchor = {x, y, w}, topLimit, gap, pad, minW, maxW, headH, hintH,
+--       rows = { {kind, h}, ... } }
+-- Devolve { x, y, w, h, bands = { head, rows[i], hint } } com cada banda em
+-- { y, h }. Largura: a do botao (minW), ate maxW. A placa termina `gap` px
+-- acima do botao; quem cede quando falta altura sao as LINHAS (o chamador
+-- corta antes — ver `fitRows`), nunca o cabecalho nem a dica.
+function Panel.layout(m)
+    local pad = m.pad
+    local w = math.min(m.maxW, math.max(m.minW, m.anchor.w))
+    local bottom = m.anchor.y - m.gap
+    local h = pad * 2 + m.headH + (m.hintH or 0)
+    local total = 0
+    for _, r in ipairs(m.rows or {}) do total = total + r.h end
+    if total > 0 then h = h + math.floor(pad / 2) + total end
+    local x = math.floor(m.anchor.x + m.anchor.w - w)
+    local y = math.floor(bottom - h)
+    local L = { x = x, y = y, w = w, h = h, bands = { rows = {} } }
+    local cy = y + pad
+    L.bands.head = { y = cy, h = m.headH }
+    cy = cy + m.headH
+    if total > 0 then cy = cy + math.floor(pad / 2) end
+    for i, r in ipairs(m.rows or {}) do
+        L.bands.rows[i] = { y = cy, h = r.h, kind = r.kind }
+        cy = cy + r.h
+    end
+    L.bands.hint = { y = cy, h = m.hintH or 0 }
+    return L
+end
+
+-- Altura disponivel pra linhas (o resto e cabecalho + dica + bordas).
+local function rowsAvail(m)
+    return (m.anchor.y - m.gap) - (m.topLimit or 0) - m.pad * 2 - m.headH
+        - (m.hintH or 0) - math.floor(m.pad / 2)
+end
+
+-- Invariantes da placa (a trava roda isto em varios tamanhos de janela):
+-- dentro da tela, acima do botao, abaixo do limite, bandas sem sobreposicao
+-- e todas dentro da placa. Devolve (ok, motivo).
+function Panel.validate(L, m)
+    if L.x < 0 or L.y < (m.topLimit or 0) then return false, "placa acima do limite / fora da tela" end
+    if L.x + L.w > m.anchor.x + m.anchor.w + 0.5 then return false, "placa passa da borda do botao" end
+    if L.y + L.h > m.anchor.y - m.gap + 0.5 then return false, "placa invade o botao" end
+    if L.w < m.anchor.w - 0.5 then return false, "placa mais estreita que o botao" end
+    local prev = L.y
+    local seq = { L.bands.head }
+    for _, r in ipairs(L.bands.rows) do seq[#seq + 1] = r end
+    seq[#seq + 1] = L.bands.hint
+    for i, b in ipairs(seq) do
+        if b.y < prev - 0.5 then return false, "banda " .. i .. " sobrepoe a anterior" end
+        if b.y + b.h > L.y + L.h + 0.5 then return false, "banda " .. i .. " sai da placa" end
+        prev = b.y + b.h
+    end
+    return true
+end
+
+-- Corta linhas ate caberem em `avail`: as de CARTA cedem primeiro (vira
+-- "+N cartas"), o resto cede do fim. Usa `lineH(l)`.
+local function fitRows(lines, avail, lineH, lh)
+    local total = 0
+    for _, l in ipairs(lines) do total = total + lineH(l) end
+    if total <= avail then return lines end
+    local kept, dropped, used = {}, 0, 0
+    for _, l in ipairs(lines) do
+        local hgt = lineH(l)
+        if l.kind == "card" and used + hgt > avail - lh then
+            dropped = dropped + 1
+        elseif used + hgt <= avail then
+            kept[#kept + 1] = l
+            used = used + hgt
+        end
+    end
+    if dropped > 0 then
+        kept[#kept + 1] = { kind = "note", text = t("more_cards", { n = dropped },
+            "+" .. dropped .. " cartas") }
+    end
+    return kept
+end
+
+-- Fichas da linha de RESUMO: um icone + o bonus por combo (dourado) e por
+-- coringa (violeta). Cada ficha guarda combo/joker pro tooltip.
+local function summaryChips(R)
+    local chips = {}
+    for _, combo in ipairs(R.combos or {}) do
+        local b = combo.bonus or {}
+        local what = ""
+        if b.type == "damage_multiplier" or b.type == "defense_multiplier" then
+            what = "×" .. fmtNum(b.value)
+        elseif b.value then
+            what = "+" .. fmtNum(b.value)
+        end
+        chips[#chips + 1] = { icon = "combo_" .. tostring(combo.id), text = what,
+            color = COL_COMBO, combo = combo, name = comboName(combo) }
+    end
+    local seenJ = {}
+    for _, e in ipairs(R.cards or {}) do
+        for _, st in ipairs(e.steps or {}) do
+            if st.kind == "joker" and st.joker and not seenJ[st.joker] then
+                seenJ[st.joker] = true
+                chips[#chips + 1] = { icon = "jester_hat",
+                    text = (st.op == "mult" and "×" or "+") .. fmtNum(st.value),
+                    color = COL_JOKER, joker = st.joker, name = I18n.cardName(st.joker) }
+            end
+        end
+    end
+    return chips
+end
+
+local function chipTooltip(c, x, y, w, h, game)
+    rowTooltip({ combo = c.combo, joker = c.joker }, x, y, w, h, game)
+end
+
 -- `anchor` = { x, y, w } (topo e largura do botao Jogar). `topLimit` = y
--- minimo que o painel pode ocupar (abaixo da top bar / quadro de coringas).
+-- minimo que a placa pode ocupar (abaixo da top bar / quadro de coringas).
 function Panel.draw(game, anchor, topLimit)
     if not game or not anchor then return end
     local R, frozen = Panel.current()
     if not R then return end
     local sw = love.graphics.getWidth()
     local sh = love.graphics.getHeight()
+    local expanded = Panel.detailsOn()
 
     local bigFont = FontManager.getResponsiveFont(0.034, 36)
     local font = FontManager.getResponsiveFont(0.0165, 18)
     local small = FontManager.getResponsiveFont(0.0135, 15)
+    local tiny = FontManager.getResponsiveFont(0.0115, 12)
     local pad = math.max(6, math.floor(sh * 0.010))
     local lh = font:getHeight() + math.max(3, math.floor(sh * 0.004))
     local slh = small:getHeight() + math.max(2, math.floor(sh * 0.003))
     local iconS = small:getHeight()
+    local chipS = math.floor(small:getHeight() * 1.6)   -- icone da ficha de combo legivel
+    local bigH = bigFont:getHeight()
+    local headH = bigH + math.floor(pad / 2)
+    local hintH = tiny:getHeight() + 3
 
-    -- largura: a do botao, crescendo ate 36% da tela se o texto pedir
-    local maxW = math.floor(math.min(sw * 0.36, anchor.x + anchor.w - 8))
-    local w = math.max(anchor.w, math.floor(sw * 0.24))
-    w = math.min(w, maxW)
-    local innerW = w - pad * 2
-
-    local lines = frozen and {} or buildLines(R, { hover = state.hover })
-    if frozen then
-        for _, combo in ipairs(R.combos or {}) do
-            lines[#lines + 1] = { kind = "combo", text = comboName(combo) }
-        end
-    end
+    -- largura: a do botao; detalhes crescem ate 36% da tela, resumo ate 30%
+    local maxW = math.floor(math.min(sw * (expanded and 0.36 or 0.30), anchor.x + anchor.w - 8))
+    local minW = expanded and math.floor(sw * 0.24) or anchor.w
 
     -- LETAL cabe no cabecalho? (mede o mesmo que o desenho abaixo)
+    local dmgText
+    if frozen then
+        local dealt = math.max(0, (state.frozen.hp0 or 0) - (game.enemy.health or 0))
+        dmgText = dealt .. "/" .. R.damage
+    else
+        dmgText = tostring(R.damage)
+    end
+    local showDmg = R.damage > 0 or (R.block or 0) == 0
+    local headW = 0
+    if showDmg then headW = headW + bigH + 4 + bigFont:getWidth(dmgText) + pad end
+    if (R.block or 0) > 0 then headW = headW + bigH + 4 + bigFont:getWidth("+" .. R.block) + pad end
+    local lethalText = t("lethal", nil, "LETAL")
     local lethalRow = false
     if R.lethal then
-        local hw = 0
-        local dmgW = frozen and bigFont:getWidth("000/" .. R.damage) or bigFont:getWidth(tostring(R.damage))
-        if R.damage > 0 or (R.block or 0) == 0 then hw = hw + bigFont:getHeight() + 4 + dmgW + pad end
-        if (R.block or 0) > 0 then hw = hw + bigFont:getHeight() + 4 + bigFont:getWidth("+" .. R.block) + pad end
-        if hw + font:getWidth(t("lethal", nil, "LETAL")) > innerW then
+        local need = headW + font:getWidth(lethalText)
+        if need + pad * 2 <= maxW then
+            minW = math.max(minW, math.min(maxW, need + pad * 2))
+        else
             lethalRow = true
-            table.insert(lines, 1, { kind = "lethal", text = t("lethal", nil, "LETAL") })
         end
+    else
+        minW = math.max(minW, math.min(maxW, headW + pad))
     end
 
-    -- altura de cada linha (card = nome + fichas)
+    -- LINHAS: resumo = fichas + hover; detalhes = a conta inteira
+    local lines
+    if frozen then
+        lines = {}
+        local chips = summaryChips(R)
+        if #chips > 0 then lines[1] = { kind = "chips", chips = chips } end
+    elseif expanded then
+        lines = buildLines(R, { hover = state.hover })
+    else
+        lines = {}
+        local chips = summaryChips(R)
+        if #chips > 0 then lines[#lines + 1] = { kind = "chips", chips = chips } end
+        if R.uncertain then
+            lines[#lines + 1] = { kind = "note", text = t("uncertain", nil, "+ efeito aleatorio") }
+        end
+        if state.hover then
+            local hl = buildLines({ cards = {}, combos = {} }, { hover = state.hover })
+            if hl[1] then lines[#lines + 1] = hl[1] end
+        end
+    end
+    if lethalRow then table.insert(lines, 1, { kind = "lethal", text = lethalText }) end
+
     local function lineH(l)
         if l.kind == "card" then
             local hgt = lh
@@ -382,40 +578,21 @@ function Panel.draw(game, anchor, topLimit)
             if l.note then hgt = hgt + slh end
             return hgt
         end
+        if l.kind == "chips" then return chipS + 2 end
         return (l.kind == "note" or l.kind == "hover") and slh or lh
     end
 
-    local headH = bigFont:getHeight() + pad
-    local bottom = anchor.y - math.max(6, math.floor(sh * 0.01))
-    local avail = bottom - (topLimit or 0) - pad * 2 - headH
-    -- falta espaco: as linhas de CARTA cedem primeiro (o total fica sempre)
-    local total = 0
-    for _, l in ipairs(lines) do total = total + lineH(l) end
-    if total > avail then
-        local kept = {}
-        local dropped = 0
-        local used = 0
-        for _, l in ipairs(lines) do
-            local hgt = lineH(l)
-            if l.kind == "card" and used + hgt > avail - lh then
-                dropped = dropped + 1
-            elseif used + hgt <= avail then
-                kept[#kept + 1] = l
-                used = used + hgt
-            end
-        end
-        if dropped > 0 then
-            kept[#kept + 1] = { kind = "note", text = t("more_cards", { n = dropped },
-                "+" .. dropped .. " cartas") }
-        end
-        lines = kept
-        total = 0
-        for _, l in ipairs(lines) do total = total + lineH(l) end
-    end
+    local m = { anchor = anchor, topLimit = topLimit or 0, gap = math.max(6, math.floor(sh * 0.01)),
+        pad = pad, minW = minW, maxW = maxW, headH = headH, hintH = hintH, rows = {} }
+    lines = fitRows(lines, rowsAvail(m), lineH, lh)
+    for i, l in ipairs(lines) do m.rows[i] = { kind = l.kind, h = lineH(l) } end
+    local L = Panel.layout(m)
+    local x, y, w, h = L.x, L.y, L.w, L.h
+    local innerW = w - pad * 2
 
-    local h = pad * 2 + headH + total + (#lines > 0 and math.floor(pad / 2) or 0)
-    local x = math.floor(anchor.x + anchor.w - w)
-    local y = math.floor(bottom - h)
+    -- hover na placa (afordancia do clique): aro mais claro
+    local mx, my = love.mouse.getPosition()
+    local over = mx >= x and mx <= x + w and my >= y and my <= y + h
 
     -- moldura (dialeto do StatusTooltip: pergaminho escuro, tinta, ouro)
     love.graphics.setColor(0, 0, 0, 0.5)
@@ -427,23 +604,15 @@ function Panel.draw(game, anchor, topLimit)
     setColor(Palette.INK, 1)
     love.graphics.setLineWidth(1)
     love.graphics.rectangle("line", x, y, w, h, 5, 5)
-    setColor(R.lethal and COL_LETHAL or Palette.AGED_GOLD_DARK, 0.9)
+    setColor(R.lethal and COL_LETHAL or (over and Palette.AGED_GOLD_LIGHT or Palette.AGED_GOLD_DARK), 0.9)
     love.graphics.rectangle("line", x + 3, y + 3, w - 6, h - 6, 3, 3)
 
     -- CABECALHO: dano (espada) e bloqueio (escudo), grandes
     local cx = x + pad
-    local cy = y + pad
-    local bigH = bigFont:getHeight()
+    local cy = L.bands.head.y
     love.graphics.setFont(bigFont)
-    local dmgText
-    if frozen then
-        local dealt = math.max(0, (state.frozen.hp0 or 0) - (game.enemy.health or 0))
-        dmgText = dealt .. "/" .. R.damage
-    else
-        dmgText = tostring(R.damage)
-    end
-    if R.damage > 0 or (R.block or 0) == 0 then
-        drawIcon("intent_attack", cx, cy + math.floor((bigH - bigH) / 2), bigH)
+    if showDmg then
+        drawIcon("intent_attack", cx, cy, bigH)
         cx = cx + bigH + 4
         FontManager.drawWithOutline(dmgText, cx, cy, { COL_ATK[1] * 1.6, COL_ATK[2] * 1.4,
             COL_ATK[3] * 1.4, 1 }, 0.95)
@@ -460,19 +629,50 @@ function Panel.draw(game, anchor, topLimit)
     -- rotulo LETAL a direita do cabecalho (sem espaco: virou linha, la em cima)
     if R.lethal and not lethalRow then
         love.graphics.setFont(font)
-        local lt = t("lethal", nil, "LETAL")
-        FontManager.drawWithOutline(lt, x + w - pad - font:getWidth(lt),
+        FontManager.drawWithOutline(lethalText, x + w - pad - font:getWidth(lethalText),
             cy + math.floor((bigH - font:getHeight()) / 2), { 1, 0.45, 0.55, 1 }, 0.95)
     end
 
     -- LINHAS
-    local ly = y + pad + headH
     if #lines > 0 then
+        local sepY = L.bands.rows[1].y - math.floor(pad / 4) - 1
         setColor(Palette.AGED_GOLD_DARK, 0.8)
-        love.graphics.line(x + pad, ly - math.floor(pad / 2), x + w - pad, ly - math.floor(pad / 2))
+        love.graphics.line(x + pad, sepY, x + w - pad, sepY)
     end
-    for _, l in ipairs(lines) do
-        if l.kind == "combo" or l.kind == "joker" then
+    for i, l in ipairs(lines) do
+        local ly = L.bands.rows[i].y
+        if l.kind == "chips" then
+            -- RESUMO: icone + "Nome +18" por combo/coringa; sem espaco cai
+            -- pra "+18"; sem espaco de novo, so os icones (tooltip explica)
+            love.graphics.setFont(small)
+            local gap = 8
+            local function labelOf(c, mode)
+                if mode == 2 then return c.name .. " " .. c.text end
+                if mode == 1 then return c.text end
+                return ""
+            end
+            local function width(mode)
+                local tw = 0
+                for k, c in ipairs(l.chips) do
+                    local lab = labelOf(c, mode)
+                    tw = tw + chipS + (lab ~= "" and (3 + small:getWidth(lab)) or 0)
+                    if k > 1 then tw = tw + gap end
+                end
+                return tw
+            end
+            local mode = 2
+            while mode > 0 and width(mode) > innerW do mode = mode - 1 end
+            local chx = x + pad
+            local ty = ly + math.floor((chipS - small:getHeight()) / 2)
+            for _, c in ipairs(l.chips) do
+                local lab = labelOf(c, mode)
+                local cw = chipS + (lab ~= "" and (3 + small:getWidth(lab)) or 0)
+                drawIcon(c.icon, chx, ly, chipS)
+                if lab ~= "" then plain(lab, chx + chipS + 3, ty, c.color) end
+                chipTooltip(c, chx, ly, cw, chipS, game)
+                chx = chx + cw + gap
+            end
+        elseif l.kind == "combo" or l.kind == "joker" then
             love.graphics.setFont(font)
             local col = l.kind == "combo" and COL_COMBO or COL_JOKER
             local right = l.right or ""
@@ -483,7 +683,6 @@ function Panel.draw(game, anchor, topLimit)
                 FontManager.drawWithOutline(right, x + w - pad - rw, ly, col, 0.8)
             end
             rowTooltip(l, x, ly, w, lh, game)
-            ly = ly + lh
         elseif l.kind == "card" or l.kind == "extra" then
             love.graphics.setFont(font)
             local right = l.right or ""
@@ -494,7 +693,7 @@ function Panel.draw(game, anchor, topLimit)
             local rc = l.color or COL_TEXT
             FontManager.drawWithOutline(right, x + w - pad - rw, ly,
                 { math.min(1, rc[1] * 1.6), math.min(1, rc[2] * 1.4), math.min(1, rc[3] * 1.4), a }, 0.9)
-            ly = ly + lh
+            local cy2 = ly + lh
             if l.chips and #l.chips > 0 then
                 love.graphics.setFont(small)
                 local gap = 5
@@ -502,32 +701,30 @@ function Panel.draw(game, anchor, topLimit)
                 local chips = l.chips
                 if chipsWidth(small, chips, iconS, gap) > innerW then
                     local cut = {}
-                    for i = 1, #chips do cut[i] = chips[i] end
+                    for k = 1, #chips do cut[k] = chips[k] end
                     while #cut > 2 and chipsWidth(small, cut, iconS, gap) > innerW do
                         table.remove(cut, #cut - 1)
                     end
                     chips = cut
                 end
                 local chx = x + pad + 6
-                for i, c in ipairs(chips) do
+                for _, c in ipairs(chips) do
                     if c.icon then
-                        drawIcon(c.icon, chx, ly, iconS)
+                        drawIcon(c.icon, chx, cy2, iconS)
                         chx = chx + iconS + 1
                     end
-                    plain(c.text, chx, ly, c.color)
+                    plain(c.text, chx, cy2, c.color)
                     chx = chx + small:getWidth(c.text) + gap
                 end
-                ly = ly + slh
+                cy2 = cy2 + slh
             end
             if l.note then
                 love.graphics.setFont(small)
-                plain(fit(small, l.note, innerW - 6), x + pad + 6, ly, COL_DIM)
-                ly = ly + slh
+                plain(fit(small, l.note, innerW - 6), x + pad + 6, cy2, COL_DIM)
             end
         elseif l.kind == "note" then
             love.graphics.setFont(small)
             plain(fit(small, l.text, innerW), x + pad, ly, COL_DIM)
-            ly = ly + slh
         elseif l.kind == "hover" then
             -- o NUMERO vem primeiro: o nome do combo e que cede espaco
             love.graphics.setFont(small)
@@ -539,16 +736,35 @@ function Panel.draw(game, anchor, topLimit)
                 local r2 = fit(small, right, room)
                 plain(r2, x + w - pad - small:getWidth(r2), ly, COL_COMBO)
             end
-            ly = ly + slh
         elseif l.kind == "lethal" then
             love.graphics.setFont(font)
             FontManager.drawWithOutline(l.text, x + pad, ly, { 1, 0.45, 0.55, 1 }, 0.9)
-            ly = ly + lh
         end
     end
+
+    -- DICA (banda propria, canto inferior direito): como alternar
+    do
+        local NavCursor = require("src.ui.NavCursor")
+        local glyph = NavCursor.device() == "pad" and NavCursor.PAD_LABEL.confirm or "V"
+        local label = (expanded and t("details_hide", nil, "ocultar") or t("details_show", nil, "ver detalhes"))
+            .. " [" .. glyph .. "]"
+        love.graphics.setFont(tiny)
+        label = fit(tiny, label, innerW)
+        plain(label, x + w - pad - tiny:getWidth(label), L.bands.hint.y + 1,
+            over and Palette.AGED_GOLD_LIGHT or COL_DIM, over and 1 or 0.8)
+        -- alvo do cursor de foco (pad: A alterna, pelo MESMO clique do mouse)
+        NavCursor.target(Panel, x, y, w, h, { key = "dmg_preview_plate", group = "action" })
+    end
     love.graphics.setColor(1, 1, 1, 1)
+
     -- geometria do ultimo quadro (tools de captura miram o hover por aqui)
-    Panel.lastRect = { x = x, y = y, w = w, h = h, firstRowY = y + pad + headH }
+    Panel.lastRect = { x = x, y = y, w = w, h = h,
+        firstRowY = L.bands.rows[1] and L.bands.rows[1].y or (y + h),
+        expanded = expanded, layout = L, metrics = m }
+    local rx1, ry1 = love.graphics.transformPoint(x, y)
+    local rx2, ry2 = love.graphics.transformPoint(x + w, y + h)
+    Panel.hitRect = { x = math.min(rx1, rx2), y = math.min(ry1, ry2),
+        w = math.abs(rx2 - rx1), h = math.abs(ry2 - ry1) }
     require("src.systems.Tutorial").anchor("preview", x, y, w, h)
     return Panel.lastRect
 end

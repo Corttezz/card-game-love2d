@@ -59,6 +59,11 @@ local DEFAULT_SETTINGS = {
     uiScale       = 1,
     -- Dicas do tutorial (src/systems/Tutorial): Configurações → Jogo.
     tipsEnabled   = true,
+    -- Prévia de dano (src/ui/DamagePreviewPanel): false = só o resumo (dano,
+    -- Bloqueio, LETAL, fichas de combo); true = a conta carta a carta.
+    -- Alterna na própria placa (clique / V / foco+A); sem linha em
+    -- Configurações → Jogo (aba de altura fixa, 5 linhas — test_pause_menu).
+    previewDetails = false,
 }
 
 SaveManager.PATHS = PATHS

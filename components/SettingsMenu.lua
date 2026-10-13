@@ -505,6 +505,7 @@ function SettingsMenu:_persist()
         combatSpeed   = tonumber(g.combatSpeed) or 1,
         uiScale       = tonumber(g.uiScale) or 1,
         tipsEnabled   = g.tipsEnabled ~= false,
+        previewDetails = g.previewDetails and true or false,
         locale        = I18n.getLocale(),
     }
     for k, v in pairs(snapshot) do g[k] = v end
