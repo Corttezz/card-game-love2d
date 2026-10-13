@@ -5,9 +5,20 @@
 -- Um painel por vez sobre o menu escurecido, na ordem da fila
 -- (src/systems/UnlockQueue.lua): carta nova (com a moldura, grande), classe
 -- nova (emblema), nível de maestria, Selo liberado, conquista. Cada painel tem
--- título curto, o item grande com um efeito de revelação (raios girando,
--- "pop" e clarão), nome, uma linha do que ele significa, o contador "2 de 5"
--- e os botões Continuar (clique / A / Enter) e Pular tudo (Esc / B).
+-- título curto, o item grande com um efeito de revelação, nome, uma linha do
+-- que ele significa, o contador "2 de 5" e os botões Continuar (clique / A /
+-- Enter) e Pular tudo (Esc / B).
+--
+-- REVELAÇÃO NA GRADE DA ARTE (v2, Out/2026 — o dono achou os raios v1,
+-- triângulos vetoriais translúcidos girando, "muito tosco"): o palco é um
+-- shader por célula de 2 px (shaders/reveal_stage.glsl — halo posterizado com
+-- dither Bayer + espinhos de 1 célula girando em saltos), faíscas de 1-2
+-- células que piscam, e o item desenhado num canvas de MEIA resolução (1 px
+-- do canvas = 1 célula) — assim selo, emblema, ícone e carta nascem na mesma
+-- grade, a varredura de luz da carta inédita (DiscoveryMark) passa por todos
+-- com a mesma faixa chunky, e o clarão é a SILHUETA do item em aditivo, não
+-- um retângulo branco. Cartas raras/lendárias mantêm o holo delas.
+-- reducedMotion: halo parado, sem espinhos, faíscas, varredura nem pop.
 --
 -- Abre SOZINHO: watch() roda todo frame e, com o jogador no menu, nenhum
 -- outro modal na frente e fila não vazia, mostra. A fila mora no perfil, então
@@ -314,61 +325,137 @@ local function cardImage(self, id)
     return self.cardInst and self.cardInst.image
 end
 
--- Raios dourados girando atrás do item (o "palco" do Balatro).
-local function drawRays(cx, cy, r, t, alpha)
-    local n = 12
-    local rot = reducedMotion() and 0 or t * 0.35
-    for i = 0, n - 1 do
-        local a0 = rot + i * (2 * math.pi / n)
-        local a1 = a0 + math.pi / n * 0.55
-        Palette.set(Palette.AGED_GOLD_LIGHT, 0.10 * alpha)
-        love.graphics.polygon("fill", cx, cy,
-            cx + math.cos(a0) * r, cy + math.sin(a0) * r,
-            cx + math.cos(a1) * r, cy + math.sin(a1) * r)
+-- ===================================================================
+-- PALCO na grade da arte
+-- ===================================================================
+
+-- Célula da grade (px virtuais): 1 px da arte das cartas em 1024x768.
+Showcase.CELL = 2
+
+local stageShader, stageShaderTried, whitePx
+local function getStageShader()
+    if stageShaderTried then return stageShader end
+    stageShaderTried = true
+    local ok, s = pcall(love.graphics.newShader, "shaders/reveal_stage.glsl")
+    if ok then stageShader = s
+    else print("[UnlockShowcase] AVISO: shader do palco falhou: " .. tostring(s)) end
+    local data = love.image.newImageData(1, 1)
+    data:setPixel(0, 0, 1, 1, 1, 1)
+    whitePx = love.graphics.newImage(data)
+    whitePx:setFilter("nearest", "nearest")
+    return stageShader
+end
+
+local function rgb(c) return { c[1], c[2], c[3] } end
+
+-- Halo posterizado + espinhos girando, tudo por célula (o shader).
+local function drawGlow(cx, cy, r, t, alpha)
+    local sh = getStageShader()
+    if not sh then return end
+    local motion = not reducedMotion()
+    local size = math.floor(r * 2)
+    sh:send("size", { size, size })
+    sh:send("cell", Showcase.CELL)
+    sh:send("levels", 4)
+    sh:send("rays", 12)
+    sh:send("rot", motion and t * 0.22 or 0)
+    sh:send("rayOn", motion and 1 or 0)
+    sh:send("pulse", motion and (0.86 + 0.14 * math.sin(t * 2.4)) or 1)
+    sh:send("glowCol", rgb(Palette.AGED_GOLD))
+    sh:send("rayCol", rgb(Palette.AGED_GOLD_LIGHT))
+    love.graphics.setShader(sh)
+    love.graphics.setColor(1, 1, 1, alpha)
+    love.graphics.draw(whitePx, math.floor(cx - size / 2), math.floor(cy - size / 2), 0, size, size)
+    love.graphics.setShader()
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- Faíscas douradas: pontos de 1 célula que piscam (cruz de 3 no pico), em
+-- posições fixas por item (hash do seed) — nunca por cima do centro do palco.
+local function hash(seed, i, k)
+    local v = math.sin(i * 127.1 + k * 311.7 + seed * 74.7) * 43758.5453
+    return v - math.floor(v)
+end
+
+local function drawSparkles(cx, cy, r, t, alpha, seed)
+    if reducedMotion() then return end
+    local cell = Showcase.CELL
+    local function snap(v) return math.floor(v / cell) * cell end
+    for i = 1, 14 do
+        local ang = hash(seed, i, 1) * math.pi * 2
+        local rad = r * (0.42 + 0.56 * hash(seed, i, 2))
+        local phase = hash(seed, i, 3) * math.pi * 2
+        local speed = 1.6 + hash(seed, i, 4) * 1.8
+        local b = math.sin(t * speed + phase)
+        if b > 0.45 then
+            local x, y = snap(cx + math.cos(ang) * rad), snap(cy + math.sin(ang) * rad)
+            Palette.set(b > 0.9 and Palette.PARCHMENT_LIGHT or Palette.AGED_GOLD_LIGHT, alpha)
+            love.graphics.rectangle("fill", x, y, cell, cell)
+            if b > 0.8 then
+                Palette.set(Palette.AGED_GOLD_LIGHT, alpha * 0.8)
+                love.graphics.rectangle("fill", x - cell, y, cell, cell)
+                love.graphics.rectangle("fill", x + cell, y, cell, cell)
+                love.graphics.rectangle("fill", x, y - cell, cell, cell)
+                love.graphics.rectangle("fill", x, y + cell, cell, cell)
+            end
+        end
     end
-    Palette.set(Palette.AGED_GOLD, 0.16 * alpha)
-    love.graphics.circle("fill", cx, cy, r * 0.42)
-    Palette.set(Palette.AGED_GOLD_LIGHT, 0.10 * alpha)
-    love.graphics.circle("fill", cx, cy, r * 0.62)
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- Disco em DEGRAUS (coords do canvas do palco, 1 px = 1 célula): linhas
+-- horizontais de largura inteira — círculo vetorial liso destoava da grade.
+local function steppedDisc(cx, cy, r)
+    cx, cy, r = math.floor(cx), math.floor(cy), math.floor(r)
+    for dy = -r, r do
+        local half = math.floor(math.sqrt(math.max(0, r * r - dy * dy)))
+        love.graphics.rectangle("fill", cx - half, cy + dy, half * 2 + 1, 1)
+    end
 end
 
 -- Selo de cera (os selos não têm arte própria): disco sangue + número.
 local function drawSeal(n, cx, cy, size)
     local r = size / 2
     Palette.set(Palette.INK, 0.6)
-    love.graphics.circle("fill", cx + 4, cy + 5, r)
+    steppedDisc(cx + 2, cy + 3, r)
     Palette.set(Palette.BLOOD_DARK)
-    love.graphics.circle("fill", cx, cy, r)
+    steppedDisc(cx, cy, r)
     Palette.set(Palette.BLOOD)
-    love.graphics.circle("fill", cx, cy, r * 0.82)
+    steppedDisc(cx, cy, r * 0.82)
     Palette.set(Palette.BLOOD_DARK)
-    love.graphics.setLineWidth(3)
-    love.graphics.circle("line", cx, cy, r * 0.66)
-    love.graphics.setLineWidth(1)
-    local f = FontManager.getFont(math.max(16, math.floor(size * 0.36)))
+    steppedDisc(cx, cy, r * 0.68)
+    Palette.set(Palette.BLOOD)
+    steppedDisc(cx, cy, r * 0.60)
+    local f = FontManager.getFont(math.max(8, math.floor(size * 0.36)))
     love.graphics.setFont(f)
     local s = tostring(n or "?")
     Palette.set(Palette.INK, 0.8)
-    love.graphics.print(s, math.floor(cx - f:getWidth(s) / 2) + 2, math.floor(cy - f:getHeight() / 2) + 2)
+    love.graphics.print(s, math.floor(cx - f:getWidth(s) / 2) + 1, math.floor(cy - f:getHeight() / 2) + 1)
     Palette.set(Palette.AGED_GOLD_LIGHT)
     love.graphics.print(s, math.floor(cx - f:getWidth(s) / 2), math.floor(cy - f:getHeight() / 2))
 end
 
--- Desenha o item no palco; devolve o retângulo da arte (pro clarão).
+-- Desenha o item no CANVAS do palco (coords do canvas: 1 px = 1 célula);
+-- devolve o retângulo da arte nessas coords. Escalas inteiras quando ≥ 1.
 function Showcase:_drawItem(it, st)
     local cx, cy = st.x + st.w / 2, st.y + st.h / 2
     if it.kind == "card" then
         local img = cardImage(self, it.id)
         if img then
             local s = math.min(st.h / img:getHeight(), st.w / img:getWidth())
-            if s >= 2 then s = math.floor(s) end
+            if s >= 1 then s = math.floor(s) end
             local w, h = img:getWidth() * s, img:getHeight() * s
-            local bob = reducedMotion() and 0 or math.sin(self.t * 2) * 3
+            local x, y = math.floor(cx - w / 2), math.floor(cy - h / 2)
             love.graphics.setColor(0, 0, 0, 0.45)
-            love.graphics.rectangle("fill", cx - w / 2 + 6, cy - h / 2 + 8 + bob, w, h, 4, 4)
+            love.graphics.rectangle("fill", x + 3, y + 4, w, h)
             love.graphics.setColor(1, 1, 1, 1)
-            love.graphics.draw(img, math.floor(cx - w / 2), math.floor(cy - h / 2 + bob), 0, s, s)
-            return { x = cx - w / 2, y = cy - h / 2 + bob, w = w, h = h }
+            local fx = self.cardInst and self.cardInst.visualEffect
+            if fx == "holo" or fx == "glow" then
+                require("src.ui.HoloShader").draw(img, x, y, fx == "holo" and 0.75 or 0.35, 0, s, s)
+            else
+                love.graphics.draw(img, x, y, 0, s, s)
+            end
+            return { x = x, y = y, w = w, h = h, image = img, scale = s }
         end
     elseif it.kind == "class" or it.kind == "mastery" then
         local ClassEmblem = require("src.ui.ClassEmblem")
@@ -390,6 +477,75 @@ function Showcase:_drawItem(it, st)
         return { x = cx - size / 2, y = cy - size / 2, w = size, h = size }
     end
     return nil
+end
+
+-- Canvas do palco em meia resolução (1 px = 1 célula), reaproveitado.
+local stageCanvas, snapCanvas, stageCW, stageCH
+local function getStageCanvas(w, h)
+    if not stageCanvas or stageCW ~= w or stageCH ~= h then
+        stageCanvas = love.graphics.newCanvas(w, h)
+        stageCanvas:setFilter("nearest", "nearest")
+        snapCanvas = love.graphics.newCanvas(w, h)
+        snapCanvas:setFilter("nearest", "nearest")
+        stageCW, stageCH = w, h
+    end
+    return stageCanvas, snapCanvas
+end
+
+-- Item + varredura + clarão de silhueta, com o pop. `st` = zona do palco.
+function Showcase:_drawStageItem(it, st, t)
+    local cell = Showcase.CELL
+    local cw, ch = math.floor(st.w / cell), math.floor(st.h / cell)
+    if cw < 8 or ch < 8 then return end
+    local cv, snap = getStageCanvas(cw, ch)
+    love.graphics.push("all")
+    love.graphics.origin()
+    love.graphics.setScissor()
+    love.graphics.setCanvas(cv)
+    love.graphics.clear(0, 0, 0, 0)
+    love.graphics.setBlendMode("alpha")
+    love.graphics.setColor(1, 1, 1, 1)
+    local art = self:_drawItem(it, { x = 0, y = 0, w = cw, h = ch })
+    -- varredura de luz (a mesma da carta inédita) por cima do item, na grade
+    if art then
+        local DiscoveryMark = require("src.ui.DiscoveryMark")
+        if art.image then
+            DiscoveryMark.drawSweep(art.image, art.x, art.y, art.scale, t, 1, true)
+        else
+            -- itens sem imagem única (emblema, selo, ícone): varre uma cópia
+            -- do canvas do palco; a faixa segue a silhueta do que foi desenhado
+            love.graphics.setCanvas(snap)
+            love.graphics.clear(0, 0, 0, 0)
+            love.graphics.draw(cv, 0, 0)
+            love.graphics.setCanvas(cv)
+            DiscoveryMark.drawSweep(snap, 0, 0, 1, t, 1, true)
+        end
+    end
+    love.graphics.pop()
+
+    local motion = not reducedMotion()
+    local cx, cy = st.x + st.w / 2, st.y + st.h / 2
+    local k = math.min(1, t / 0.45)
+    local e = motion and Easing.backOut(k) or 1
+    local bob = (motion and it.kind == "card") and math.floor(math.sin(t * 2) * 3 / cell) * cell or 0
+    love.graphics.push()
+    love.graphics.translate(cx, cy + bob)
+    love.graphics.scale(math.max(0.01, e), math.max(0.01, e))
+    love.graphics.translate(-cx, -cy)
+    local dx, dy = math.floor(cx - cw * cell / 2), math.floor(cy - ch * cell / 2)
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(cv, dx, dy, 0, cell, cell)
+    -- clarão: a silhueta do item em aditivo (não um retângulo por cima)
+    local flash = math.max(0, 1 - t / 0.35)
+    if flash > 0 then
+        love.graphics.setBlendMode("add")
+        love.graphics.setColor(1, 1, 1, 0.85 * flash)
+        love.graphics.draw(cv, dx, dy, 0, cell, cell)
+        love.graphics.setBlendMode("alpha")
+    end
+    love.graphics.pop()
+    love.graphics.setColor(1, 1, 1, 1)
+    return art ~= nil
 end
 
 local function drawButton(b, label, focused)
@@ -440,23 +596,14 @@ function Showcase:draw()
     TextFit.print(I18n.t("unlock_showcase.counter", { i = self.idx, n = self.total }),
         L.counter.x, L.counter.y, { size = 10, maxW = L.counter.w, align = "center", minSize = 8 })
 
-    -- palco: raios + item com pop e clarão
+    -- palco: halo + espinhos na grade, item com pop, varredura e clarão, faíscas
     local st = L.stage
     local cx, cy = st.x + st.w / 2, st.y + st.h / 2
-    local k = math.min(1, t / 0.45)
-    local e = reducedMotion() and 1 or Easing.backOut(k)
-    drawRays(cx, cy, math.min(st.w, st.h) * 0.62, t, math.min(1, t / 0.3))
-    love.graphics.push()
-    love.graphics.translate(cx, cy)
-    love.graphics.scale(math.max(0.01, e), math.max(0.01, e))
-    love.graphics.translate(-cx, -cy)
-    local art = self:_drawItem(it, st)
-    love.graphics.pop()
-    local flash = math.max(0, 1 - t / 0.35)
-    if art and flash > 0 then
-        love.graphics.setColor(1, 1, 1, 0.75 * flash)
-        love.graphics.rectangle("fill", art.x, art.y, art.w, art.h, 4, 4)
-    end
+    local r = math.min(st.w, st.h) * 0.62
+    local seed = (self.idx or 1) * 17 + #tostring(it.id or it.classId or "")
+    drawGlow(cx, cy, r, t, math.min(1, t / 0.3))
+    self:_drawStageItem(it, st, t)
+    drawSparkles(cx, cy, r, t, math.min(1, math.max(0, (t - 0.2) / 0.4)), seed)
 
     -- nome + descrição (até 2 linhas)
     Palette.set(Palette.PARCHMENT_LIGHT)

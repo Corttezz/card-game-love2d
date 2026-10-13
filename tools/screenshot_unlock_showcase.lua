@@ -5,8 +5,11 @@
 --
 --   love . test_one screenshot_unlock_showcase          → pt_BR + de
 --   love . test_one screenshot_unlock_showcase fr       → um idioma
+--   SHOWCASE_T=0.45 …                                   → instante da captura
+--     (segundos desde a entrada do painel; padrão 1.0 = assentado. Um valor
+--     no meio da revelação mostra pop, varredura de luz e clarão.)
 --
--- Saída: showcase_<tipo>_<W>x<H>_<loc>.png no save dir.
+-- Saída: showcase_<tipo>_<W>x<H>_<loc>[_t<ms>].png no save dir.
 
 local M = {}
 
@@ -61,8 +64,9 @@ function M.run(arg)
                 local s = Showcase:new()
                 s:watch("menu", 1)
                 s.idx, s.total = i, #ITEMS
-                -- meio da revelação e depois assentado: captura o assentado
-                for _ = 1, 30 do s:update(1 / 30) end
+                -- assentado (t = 1 s) por padrão; SHOWCASE_T captura no meio
+                local tCap = tonumber(os.getenv("SHOWCASE_T") or "") or 1.0
+                for _ = 1, math.max(1, math.floor(tCap * 30 + 0.5)) do s:update(1 / 30) end
                 love.graphics.setCanvas(canvas)
                 love.graphics.clear(0, 0, 0, 1)
                 menu:draw()
@@ -70,7 +74,8 @@ function M.run(arg)
                 love.graphics.setCanvas()
                 local L = Showcase.layout(w / UiScale.k(w, h), h / UiScale.k(w, h))
                 local probs = Showcase.validate(L, w / UiScale.k(w, h), h / UiScale.k(w, h))
-                local name = ("showcase_%s_%dx%d_%s.png"):format(it.kind, w, h, loc)
+                local suffix = os.getenv("SHOWCASE_T") and ("_t" .. math.floor(tCap * 1000)) or ""
+                local name = ("showcase_%s_%dx%d_%s%s.png"):format(it.kind, w, h, loc, suffix)
                 canvas:newImageData():encode("png", name)
                 print(("[showcase] %s  k=%.2f problemas=%d"):format(name, UiScale.k(w, h), #probs))
             end
