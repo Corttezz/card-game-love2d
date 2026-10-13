@@ -133,9 +133,10 @@ UMA PINTURA com objetos apoiados nela.
 
 ### Fechamento (fase C)
 
-- **Placas**: carta = FAIXA DE TINTA com a raridade na cor (clareada) + placa
-  de latão do preço logo abaixo (texto escuro) + etiqueta pendurada do canto
-  da placa balançando no hover (detalhe); objeto = placa de latão com efeito
+- **Placas**: carta = FAIXA DE TINTA com a raridade na cor (clareada) e o
+  preço SÓ na etiqueta pendurada do canto dela, balançando no hover (o latão
+  com o mesmo "$3" ao lado era informação repetida; se a etiqueta cairia
+  sobre o sino/copo, vai pro canto esquerdo); objeto = placa de latão com efeito
   curto / nome do pacote (quebra em 2 linhas, nunca reticências) + preço.
   Oferta do dia: etiqueta vermelha PRESA à placa (torta no canto) + brilho
   âmbar no objeto. O copo de dados está SEMPRE na mesa (o clique é que

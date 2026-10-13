@@ -119,16 +119,21 @@ end
 -- de latão do preço logo abaixo (texto escuro), como na referência. `plate`
 -- é a pilha inteira (validação); `band`/`price` são as partes (desenho);
 -- `tag` é a etiqueta pendurada do canto da placa (detalhe que o dono gostou).
+-- O preço da carta mora SÓ na etiqueta pendurada (o latão repetia o mesmo
+-- "$3" ao lado: informação repetida é ruído). `plate` cobre faixa + etiqueta
+-- (validação e hit-test).
 local function cardPlates(cx, footY, w, lineH)
     local bandH = lineH + 6
     local band = rect(cx - w / 2, footY + 4, w, bandH)
-    local price = rect(cx - w / 2, band.y + band.h + 2, w, bandH)
-    local tagW = clamp(math.floor(bandH * 1.3), 18, 28)
+    local tagW = clamp(math.floor(bandH * 1.8), 26, 38)
+    local tagH = math.floor(tagW * 0.66)
+    -- pendura do canto DIREITO da faixa (o lado esquerdo da carta 1 fica
+    -- sobre o copo de dados na janela 4:3)
+    local tag = { ax = band.x + band.w - math.floor(tagW * 0.5) + 2, ay = band.y + band.h,
+                  len = 4, w = tagW, h = tagH }
     return {
-        plate = rect(band.x, band.y, w, price.y + price.h - band.y),
-        band = band, price = price,
-        tag = { ax = price.x + price.w - math.floor(tagW * 0.5) - 2, ay = price.y + price.h,
-                len = 3, w = tagW, h = math.floor(tagW * 0.66) },
+        plate = band,
+        band = band, tag = tag,
     }
 end
 
@@ -178,7 +183,7 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
                 kind = "card", art = { x = ax, y = a.y }, depth = a.s,
                 rect = r, foot = foot, footX = math.floor(fx), stand = stand,
                 standVariant = ((i - 1) % 3) + 1,
-                plate = plates.plate, band = plates.band, price = plates.price, tag = plates.tag,
+                plate = plates.plate, band = plates.band, tag = plates.tag,
                 tilt = ShopLayout.CARD_TILT, tiltAmount = ShopLayout.CARD_TILT_AMOUNT,
                 lift = ShopLayout.LIFT,
             }
@@ -278,6 +283,23 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
     end
     local bell = counterObj(A.bell, 0.8)
     local dice = counterObj(A.dice, 0.8)
+
+    -- etiqueta da carta: canto DIREITO da faixa; se ali ela cairia sobre o
+    -- sino/copo (4:3 aperta a carta 1 contra o copo), passa pro canto esquerdo
+    local function hits(tg, o)
+        local tr = { x = tg.ax - tg.w / 2 - 4, y = tg.ay, w = tg.w + 8, h = tg.len + tg.h + 2 }
+        for _, r in ipairs({ o.rect, o.plate }) do
+            if tr.x < r.x + r.w and r.x < tr.x + tr.w and tr.y < r.y + r.h and r.y < tr.y + tr.h then
+                return true
+            end
+        end
+        return false
+    end
+    for _, c in ipairs(cards) do
+        if c.tag and (hits(c.tag, dice) or hits(c.tag, bell)) then
+            c.tag.ax = c.band.x + math.floor(c.tag.w * 0.5) + 2
+        end
+    end
 
     -- ===== placa de título (sobre a pintura, canto superior esquerdo) =====
     local sign = rect(margin, topBarH + 4, math.floor(sw * 0.42), 30)
@@ -385,10 +407,18 @@ function ShopLayout.validate(L)
     if overlaps(union(L.bell.rect, L.bell.plate), union(L.dice.rect, L.dice.plate)) then
         fail("sino e copo se sobrepoem")
     end
-    -- mesa x cartas: um objeto da mesa não pode cobrir uma carta
+    -- mesa x cartas: um objeto da mesa não pode cobrir uma carta, a faixa
+    -- da raridade nem a etiqueta de preço pendurada dela
     for _, e in ipairs(all) do
         for i, c in ipairs(L.cards) do
             if overlaps(e.r, union(c.rect, c.plate)) then fail("%s cobre a carta %d", e.name, i) end
+            if c.tag then
+                local tg = c.tag
+                local tr = { x = tg.ax - tg.w / 2 - 4, y = tg.ay, w = tg.w + 8, h = tg.len + tg.h + 2 }
+                if overlaps(e.r, tr) then fail("%s cobre a etiqueta da carta %d", e.name, i) end
+                if not inside(L.wall, tr) then fail("etiqueta da carta %d fora da parede", i) end
+                if tr.x + tr.w > L.limitX then fail("etiqueta da carta %d invade o pergaminho", i) end
+            end
         end
     end
 

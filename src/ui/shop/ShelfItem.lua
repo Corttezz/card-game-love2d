@@ -346,9 +346,10 @@ function ShelfItem:drawPlateFor(ctx)
     local alpha = (ctx.alpha or 1) * self:entered()
     local sx0 = self.slide.x or 0
     local lines = self:plateLines(ctx)
-    if self.kind == "card" and self.geom.band and self.geom.price then
-        -- faixa escura com a raridade (cor clareada sobre tinta: contraste)
-        local b, pr = self.geom.band, self.geom.price
+    if self.kind == "card" and self.geom.band then
+        -- faixa escura com a raridade (cor clareada sobre tinta: contraste);
+        -- o preço mora só na etiqueta pendurada do canto dela
+        local b = self.geom.band
         local rar = lines[1]
         if rar and rar[1] ~= "" then
             local c = Palette.forRarity(self.offer.rarity or "common")
@@ -357,8 +358,6 @@ function ShelfItem:drawPlateFor(ctx)
             ShelfItem.drawPlate({ x = b.x + sx0, y = b.y, w = b.w, h = b.h }, { { rar[1], lit } },
                 { alpha = alpha, shakeX = shake, ink = true })
         end
-        ShelfItem.drawPlate({ x = pr.x + sx0, y = pr.y, w = pr.w, h = pr.h }, { lines[2] },
-            { alpha = alpha, shakeX = shake })
         if not self.sold and self.geom.tag then
             local g = self.geom.tag
             drawHangingTag({ ax = g.ax + sx0 + shake, ay = g.ay, len = g.len, w = g.w, h = g.h },
