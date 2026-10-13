@@ -198,3 +198,47 @@ Em 1 s o jogador lê o que está à venda e quanto custa; tudo que é clicável
 PARECE clicável sem texto; nada na tela existe só por ser bonito, exceto a
 mariposa; 7 tamanhos × 5 idiomas sem sobreposição; run inteira sem mouse
 passa pela loja; frame ≤ loja atual + 1 ms em 1440p.
+
+## 12. REDIRECIONAMENTO (13/Out/2026, referência do dono: `docs/plan/shop_reference_gpt.png`)
+
+O dono gerou uma imagem de referência e pediu: "as coisas na diagonal, os
+itens dispostos na diagonal, o cenário bem parecido com isso pra dar
+sensação de profundidade. Hoje a gente está muito preso a um todo plano,
+está estranho. A etiqueta de preço a gente pode manter. Teria que gerar
+novas artes pra cada coisa (+1 slot, +vida, pacote) pra ficarem dispostas na
+diagonal da melhor forma."
+
+O que muda em relação às seções 3-4:
+
+- **A cena é UMA pintura em perspectiva** (balcão de madeira visto de
+  três quartos, estantes com frascos ao fundo, velas, pano vermelho,
+  lanterna pendurada, livros e moedas nas bordas), gerada no PixelLab e
+  desenhada em cover-fit como os salões de chefe (`InteriorFX`: tudo em
+  coordenadas da ARTE). As prateleiras procedurais e o balcão tileável
+  saem.
+- **Slots em coordenadas da arte**, não zonas de tela: 4 cavaletes de
+  carta na diagonal do fundo (direita mais perto, maior) e 4 posições de
+  objeto na mesa em diagonal (esquerda-frente → direita-fundo). Cada slot
+  tem âncora do pé, escala por profundidade e inclinação; `ShopLayout`
+  passa a converter arte→tela e `validate` confere que o pé está no
+  tampo pintado.
+- **Cartas em perspectiva** nos cavaletes (`shaders/card_perspective.glsl`
+  já existe), com placa de latão sob o cavalete: raridade em cima
+  (RARA/COMUM, cor) e preço embaixo. "NOVA!" vermelho no topo do cavalete.
+- **Relíquias e pacote como objetos NOVOS na mesa**, cada um gerado com a
+  mesma luz e o mesmo ângulo do balcão (tesoura sobre carta cortada,
+  bancada de coringa, frasco, fardo amarrado...), com placa de latão
+  (efeito curto + preço). O pacote ganha brilho quando é a oferta do dia
+  ou está em hover.
+- **Pergaminho de detalhe à direita** com a arte grande, nome, tipo ·
+  preço, texto e botão **COMPRAR · $N** (clique no objeto SELECIONA; a
+  compra é no botão, como na referência). CONTINUAR em botão no canto
+  inferior direito. Sino (novas ofertas) e copo de dados ficam como
+  objetos na mesa, à esquerda, com placa.
+- Mantém-se: etiqueta pendurada balançando (pode ficar como detalhe nas
+  cartas), compra voando pro destino, marca de "VENDIDO", lanterna com
+  flicker, poeira, mariposa, oferta do dia, i18n, zonas disjuntas, 7
+  tamanhos × 5 idiomas, nav sem mouse, reducedMotion.
+- Resolução: a pintura nasce em pixel art de baixa resolução (ex.: 640×360
+  ou 960×540) e sobe por múltiplo inteiro (nearest), como os salões;
+  texto e placas são desenhados por cima na grade da UI.
