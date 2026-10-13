@@ -47,6 +47,7 @@ local SUITES = {
     { group = "unit",  name = "test_card_live_hover" },
     { group = "unit",  name = "test_holo_shader" },
     { group = "unit",  name = "test_preview_plate" },
+    { group = "unit",  name = "test_boot_entry" },
     { group = "unit",  name = "test_pixelcanvas_state" },
     { group = "unit",  name = "test_screen_exits" },
     { group = "unit",  name = "test_music" },

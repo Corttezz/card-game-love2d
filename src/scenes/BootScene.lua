@@ -58,9 +58,40 @@ local LOADING_BAR = { w = 320, h = 18, pad = 2 }
 local MINI_SIZE   = { w = 56, h = 84 }
 local NUM_MINI    = 34
 
--- Diagonal ratio do spawn radius das mini-cartas (baseado em max(W,H)).
--- 0.7 = bordas extremas, faz o voo parecer "vindo de longe".
-local SPAWN_RADIUS_RATIO = 0.7
+-- v14 (Out/2026, dono: "as cartas entram coordenadas demais, pouco
+-- aleatórias"): o redemoinho deixou de ser uma curva paramétrica igual pra
+-- todas (stagger fixo 0.075 s, ângulos em cadeia i·0.7, mesmo expoente) e
+-- virou FÍSICA por carta, SEMEADA por boot:
+--   • nascimento em rajadas (intervalos exponenciais + pausas ocasionais);
+--   • lançamento tangencial com velocidade/quiralidade/entrada próprias;
+--   • atração da lua ∝ 1/r^PULL_POW + arrasto → espiral que aperta sozinha,
+--     cada carta com a sua (algumas passam raspando, outras caem reto);
+--   • giro próprio amortecido somado à tangente; escala própria;
+--   • leve OVERSHOOT: a carta passa um pouco do centro antes de ser puxada
+--     de volta e absorvida (nada de colapso seco no ponto);
+--   • absorção solta LASCAS na grade de pixels da arte (4-7 quadradinhos
+--     do tamanho de 1 px da arte, vida curta) — pixel-nativo, sem glow.
+-- A semente é guardada em state.seed (log no console; BOOT_SEED força).
+local PHYS = {
+    pullG     = 2.6e6,   -- força da lua (px/s² · r^pow) — escala com a tela
+    pullPow   = 1.25,    -- expoente do falloff (1 = gravidade 2D, >1 aperta)
+    drag      = 0.35,    -- arrasto longe (1/s); perto da lua sobe ×3.5
+    captureR  = 0.55,    -- fração do raio da lua onde a carta é absorvida
+    maxLife   = 3.2,     -- teto de voo (s) — nenhuma carta fica orbitando
+    chiralCCW = 0.82,    -- fração que gira no sentido "da maioria"
+    -- ENVELOPE: a física dá o giro orgânico; a chegada é GARANTIDA por um
+    -- raio-teto r ≤ r0·(1 − u^pw) (u = idade/vida, pw sorteado por carta).
+    -- Sem isso uma carta lançada rápido demais orbita ou foge da tela.
+    lifeMin   = 1.05, lifeMax = 1.75,
+}
+local SHARDS_ON_ABSORB = true
+
+-- RNG do boot (independente do RNG da run e do cosmético global).
+local rng = love.math.newRandomGenerator(1)
+local function rnd(a, b)
+    if a == nil then return rng:random() end
+    return a + (b - a) * rng:random()
+end
 
 -- ============== Fundo "PAREDE-SELO" (v9, Jul/2026) ==============
 -- Feedback do dono consolidado: nada de plasma do Balatro por cima, nada de
@@ -74,6 +105,51 @@ local bg = {
     dir = "assets/sprites/scenes/boot_anim",
     chamber = nil, loaded = false, glowShader = nil,
 }
+
+-- Lascas da absorção: { x, y, vx, vy, age, life, tone }
+local shards = {}
+local function spawnShards(x, y, n)
+    if not SHARDS_ON_ABSORB then return end
+    local px = bg._s or 4
+    for _ = 1, n do
+        local a = rnd(0, math.pi * 2)
+        local v = rnd(40, 130) * px / 4
+        shards[#shards + 1] = {
+            x = x, y = y, vx = math.cos(a) * v, vy = math.sin(a) * v,
+            age = 0, life = rnd(0.22, 0.45), tone = rnd(),
+        }
+    end
+end
+local function updateShards(dt)
+    for i = #shards, 1, -1 do
+        local sh = shards[i]
+        sh.age = sh.age + dt
+        sh.x, sh.y = sh.x + sh.vx * dt, sh.y + sh.vy * dt
+        sh.vx, sh.vy = sh.vx * (1 - 2.5 * dt), sh.vy * (1 - 2.5 * dt)
+        if sh.age >= sh.life then table.remove(shards, i) end
+    end
+end
+local function drawShards()
+    if #shards == 0 then return end
+    local px = bg._s or 4
+    local g = Palette.AGED_GOLD_LIGHT
+    local pl = Palette.PARCHMENT_LIGHT
+    for _, sh in ipairs(shards) do
+        local k = sh.age / sh.life
+        -- na grade da arte: floor pra múltiplo do pixel da arte
+        local qx = math.floor(sh.x / px) * px
+        local qy = math.floor(sh.y / px) * px
+        local c = sh.tone > 0.5 and g or pl
+        love.graphics.setColor(c[1], c[2], c[3], (1 - k) * 0.95)
+        love.graphics.rectangle("fill", qx, qy, px, px)
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- Diagonal ratio do spawn radius das mini-cartas (baseado em max(W,H)).
+-- 0.7 = bordas extremas, faz o voo parecer "vindo de longe".
+local SPAWN_RADIUS_RATIO = 0.7
+
 
 -- ÂNCORA NA ARTE (pixels da imagem 256×192). A arte é a NOITE DO GRIMOIRE
 -- (v10, PixelLab): colinas + silhueta do castelo + LUA dourada. A lua é o
@@ -275,6 +351,13 @@ function BootScene.init(callbacks)
     state.titleLetters    = {}
     state.onComplete      = callbacks.onComplete
     sigil.flare           = 0
+    shards                = {}
+    -- semente do boot: muda a cada abertura; BOOT_SEED (tools) fixa
+    state.seed = callbacks.seed or tonumber(os.getenv("BOOT_SEED"))
+        or (os.time() + math.floor((love.timer.getTime() * 1000) % 100000))
+    state.absorbed = 0
+    rng:setSeed(state.seed)
+    print(("[boot] semente do redemoinho: %d"):format(state.seed))
 
     -- Background fade-in (não-bloqueante para não travar o resto).
     if _G.EventManager then
@@ -360,19 +443,37 @@ local function startSplashSequence()
     --     com wobble sutil), nada de tumble aleatório;
     --   • escala/alpha: pop-in no nascimento, encolhe com o raio, e o
     --     fade final acontece DENTRO do disco (some na luz, não no ar).
-    local armBase = math.random() * math.pi * 2
-    for i = 1, NUM_MINI do
-        local delay = 1.80 + (i - 1) * 0.075
+    -- v14: NASCIMENTO EM RAJADAS (intervalo exponencial, média 0.07 s, com
+    -- pausa ocasional) — nada de metrônomo. Quiralidade da maioria sorteada
+    -- por boot; cada carta recebe lançamento, giro e escala próprios.
+    local reduced = _G.gameSettings and _G.gameSettings.reducedMotion
+    local chir = rng:random() < 0.5 and 1 or -1
+    local tSpawn = 1.80
+    local lastSpawn = tSpawn
+    local nCards = reduced and 0 or NUM_MINI
+    for i = 1, nCards do
+        if i > 1 then
+            local gap = -math.log(1 - rng:random() * 0.98) * 0.07
+            if rng:random() < 0.10 then gap = gap + rnd(0.18, 0.32) end
+            tSpawn = tSpawn + math.min(0.45, gap)
+        end
+        lastSpawn = tSpawn
+        local delay = tSpawn
+        -- sorteios FORA do callback: a ordem dos eventos não muda a semente
+        local angle0 = rnd(0, math.pi * 2)
+        local side = (rng:random() < PHYS.chiralCCW) and chir or -chir
+        local tang = rnd(0.55, 1.0)        -- quão tangencial é o lançamento
+        local speedK = rnd(0.75, 1.25)
+        local life = rnd(PHYS.lifeMin, PHYS.lifeMax)
+        local envPow = rnd(1.3, 2.1)
+        local spinV = rnd(-2.6, 2.6)
+        local scale0 = rnd(0.82, 1.18)
+        local sizeK = rnd(0.9, 1.12)
+        local pitch = 0.85 + rnd(0, 0.5)
         EM.parallel(delay, function()
             local W, H = love.graphics.getWidth(), love.graphics.getHeight()
-            local angle0 = armBase + i * 0.7 + (math.random() - 0.5) * 0.18
-
-            -- v13.2 (feedback: "parece que algumas aparecem do nada"): a
-            -- carta nasce LOGO ALÉM DA BORDA da tela na direção do próprio
-            -- ângulo — entra voando de fora, nunca materializa no meio da
-            -- cena. Ray-cast do centro da lua até sair do retângulo da
-            -- tela (+margem de meia carta).
             local sx, sy = chamberAnchor(SIGIL_IX, SIGIL_IY)
+            -- nasce logo além da borda da tela na direção do próprio ângulo
             local dx, dy = math.cos(angle0), math.sin(angle0)
             local margin = 70
             local tExit = math.huge
@@ -381,37 +482,30 @@ local function startSplashSequence()
             if dy > 1e-6 then tExit = math.min(tExit, (H + margin - sy) / dy)
             elseif dy < -1e-6 then tExit = math.min(tExit, (-margin - sy) / dy) end
             if tExit == math.huge then tExit = math.max(W, H) * 0.7 end
-            local radius = tExit + math.random() * 40
-
+            local r0 = tExit + 10
+            local K = H / 768   -- a física escala com a tela
+            -- velocidade inicial: tangente (quiralidade) + componente pra dentro
+            local v0 = (170 + 160 * speedK) * K
+            local tx, ty = -dy * side, dx * side
+            local ix, iy = -dx, -dy
             local mc = {
-                angle0   = angle0,
-                swirl    = math.pi * (1.5 + math.random() * 0.5),
-                radius   = radius,
-                angle    = 0,      -- derivado no update (θ0 + swirl·u^2.2)
-                dist     = radius,
-                rot      = 0,      -- derivado (tangente da espiral)
-                wobble   = math.random() * math.pi * 2,
-                alpha    = 0,
-                fadeMul  = 1,
-                scale    = 0,
-                age      = 0,
-                lifespan = 1.05 + math.random() * 0.30, -- voo com pompa
-                trail    = {},   -- rastro de fósforo (ghosting CRT)
-                _trailT  = 0,
-                _alive   = true,
+                x = sx + dx * r0, y = sy + dy * r0,
+                vx = (tx * tang + ix * (1 - tang) * 0.8) * v0,
+                vy = (ty * tang + iy * (1 - tang) * 0.8) * v0,
+                r0 = r0, K = K, life = life, envPow = envPow,
+                spin = rnd(0, math.pi * 2) * 0.15, spinV = spinV,
+                scale0 = scale0, sizeK = sizeK,
+                rot = 0, scale = 0, alpha = 0, fadeMul = 1,
+                age = 0, passed = false,
+                trail = {}, _trailT = 0, _alive = true,
             }
-            mc.angle = mc.angle0
             table.insert(state.miniCards, mc)
-
-            -- Alpha sobe nos primeiros 0.15s (materializa na borda).
             EM.parallelEase(mc, "alpha", 1.0, 0.15, "smooth", QUEUE)
-
-            local pitch = 0.85 + i * 0.022
             Sfx.play("cardDraw", { pitch = pitch, volume = 0.42 })
         end, QUEUE)
     end
-    -- fim da cascade: último spawn + voo mais longo (~1.35s)
-    local tCascadeEnd = 1.80 + (NUM_MINI - 1) * 0.075 + 1.40
+    -- fim da cascade: último nascimento + voo típico (~1.5 s)
+    local tCascadeEnd = lastSpawn + 1.50
 
     -- TÍTULO LETRA-A-LETRA (feedback do dono): cada letra "carimba" na tela
     -- com pop back_out + tick sonoro em pitch crescente. Começa DEPOIS da
@@ -423,7 +517,8 @@ local function startSplashSequence()
             local L = state.titleLetters[i]
             if L then
                 EM.parallelEase(L, "alpha", 1.0, 0.15, "smooth",   QUEUE)
-                EM.parallelEase(L, "scale", 1.0, 0.30, "back_out", QUEUE)
+                if reduced then L.scale = 1
+                else EM.parallelEase(L, "scale", 1.0, 0.30, "back_out", QUEUE) end
                 if L.ch ~= " " then
                     Sfx.play("cardDraw", { pitch = 0.9 + i * 0.035, volume = 0.35 })
                 end
@@ -436,6 +531,7 @@ local function startSplashSequence()
     -- do clímax (feedback: "já muda direto pro menu, isso está errado").
     local tFlash = tTitleEnd + 1.0
     EM.parallel(tFlash, function()
+        if reduced then sigil.flare = 1; Sfx.play("bootImpact"); return end
         if FlashShader and FlashShader.trigger then
             FlashShader.trigger(1.0, 0.5)
         else
@@ -469,54 +565,80 @@ function BootScene.update(dt)
     elseif state.phase == "splash" then
         state.splashTime = state.splashTime + dt
 
-        -- Atualiza mini-cartas: tumble rotation + scale curve não-monotônica
-        -- (pop-in → hold → collapse). Coords absolutas são derivadas no draw
-        -- via liveCenter() + polar (angle, distFrom).
+        -- v14 FÍSICA por carta (ver PHYS): atração da lua + arrasto +
+        -- giro amortecido. Coords ABSOLUTAS (a âncora da lua é lida por
+        -- frame — resize não quebra). Absorção = raio de captura ou teto.
+        local sx, sy = chamberAnchor(SIGIL_IX, SIGIL_IY)
+        local moonR = SEAL_RADIUS_IMG * (bg._s or 4)
+        local capR = moonR * PHYS.captureR
         for i = #state.miniCards, 1, -1 do
             local mc = state.miniCards[i]
             mc.age = mc.age + dt
-            local u = math.min(1, mc.age / mc.lifespan)
+            local K = mc.K or 1
+            local ddx, ddy = sx - mc.x, sy - mc.y
+            local r = math.sqrt(ddx * ddx + ddy * ddy)
+            local rr = math.max(r, moonR * 0.6)
+            -- atração ∝ 1/r^pow (K² porque força é px/s²)
+            local a = PHYS.pullG * K * K / (rr ^ PHYS.pullPow)
+            mc.vx = mc.vx + (ddx / math.max(r, 1)) * a * dt
+            mc.vy = mc.vy + (ddy / math.max(r, 1)) * a * dt
+            -- arrasto (mais forte perto da lua: a espiral aperta e assenta)
+            local dr = PHYS.drag * (1 + 2.5 * math.max(0, 1 - r / (moonR * 3)))
+            mc.vx = mc.vx * math.max(0, 1 - dr * dt)
+            mc.vy = mc.vy * math.max(0, 1 - dr * dt)
+            mc.x, mc.y = mc.x + mc.vx * dt, mc.y + mc.vy * dt
+            -- ENVELOPE de chegada: raio-teto cai com u^pw; se a física
+            -- deixou a carta além dele, ela é puxada radialmente pro teto
+            -- (o giro fica, a chegada é garantida)
+            local u = math.min(1, mc.age / mc.life)
+            local rEnv = mc.r0 * (1 - u ^ mc.envPow)
+            local ex, ey = sx - mc.x, sy - mc.y
+            local rNow = math.sqrt(ex * ex + ey * ey)
+            if rNow > rEnv and rNow > 1 then
+                local k = rEnv / rNow
+                mc.x, mc.y = sx - ex * k, sy - ey * k
+                -- mata a componente radial pra fora (sem "elástico")
+                local nx, ny = ex / rNow, ey / rNow
+                local vr = mc.vx * nx + mc.vy * ny
+                if vr < 0 then mc.vx, mc.vy = mc.vx - vr * nx, mc.vy - vr * ny end
+            end
+            r = rNow
+            if r < moonR * 1.2 then mc.passed = true end
 
-            -- v13 DRENO: raio desaba com u^1.7 (lento no início, DESPENCA
-            -- no fim) e o giro aperta com u^2.2 (o arco acontece perto da
-            -- lua — enrolar de redemoinho, não deriva constante).
-            local rk = 1 - u ^ 1.5
-            mc.dist = mc.radius * rk
-            mc.angle = mc.angle0 + mc.swirl * (u ^ 2.2)
+            -- orientação: surfa a velocidade + giro próprio amortecido
+            mc.spinV = mc.spinV * math.max(0, 1 - 0.9 * dt)
+            mc.spin = mc.spin + mc.spinV * dt
+            local head = math.atan2(mc.vy, mc.vx) + math.pi / 2
+            mc.rot = head + mc.spin
 
-            -- orientação: SURFA a tangente da espiral + wobble respirando
-            mc.rot = mc.angle + math.pi / 2
-                + math.sin(mc.age * 3 + mc.wobble) * 0.14
-
-            -- escala: pop-in nos primeiros 12%, depois ENCOLHE com o raio
-            -- (afundando no portal); nunca o colapso brusco antigo.
-            local pop = math.min(1, u / 0.12)
+            -- escala: pop-in nos primeiros 0.12 s, depois encolhe com o raio
+            local pop = math.min(1, mc.age / 0.12)
             pop = pop * pop * (3 - 2 * pop)
-            mc.scale = pop * (0.30 + 0.70 * rk ^ 0.9)
+            local rk = math.min(1, r / (mc.r0 * 0.6))
+            mc.scale = pop * mc.scale0 * (0.22 + 0.78 * rk ^ 0.8)
 
-            -- fade final DENTRO do disco (últimos 15% — some na luz antes
-            -- de "sentar" parada no miolo)
-            mc.fadeMul = u > 0.85 and math.max(0, 1 - (u - 0.85) / 0.15) or 1
+            -- fade final DENTRO do disco (some na luz, não no ar)
+            mc.fadeMul = r < moonR and math.max(0.15, r / moonR) or 1
 
-            -- Rastro de FÓSFORO (ghosting de tubo CRT): amostra a pose a
-            -- cada ~30ms, 5 fantasmas — no mergulho final vira um ARCO
-            -- luminoso seguindo a espiral.
+            -- Rastro de FÓSFORO (ghosting CRT): pose a cada ~30 ms, 5 fantasmas
             mc._trailT = mc._trailT + dt
             if mc._trailT >= 0.03 then
                 mc._trailT = 0
-                table.insert(mc.trail, 1, { angle = mc.angle, dist = mc.dist,
-                    rot = mc.rot, scale = mc.scale })
+                table.insert(mc.trail, 1, { x = mc.x, y = mc.y, rot = mc.rot, scale = mc.scale })
                 if #mc.trail > 5 then table.remove(mc.trail) end
             end
 
-            -- Mini-carta chegou: ABSORVIDA pelo selo — pulso de brilho na
-            -- energia (dentro do shader; o destino responde).
-            if mc.age >= mc.lifespan then
+            -- ABSORVIDA: dentro do raio de captura (ou teto de voo — nenhuma
+            -- carta fica orbitando a lua pra sempre)
+            if r < capR or mc.age >= mc.life + 0.4 or mc.age >= PHYS.maxLife then
                 mc._alive = false
                 table.remove(state.miniCards, i)
+                state.absorbed = (state.absorbed or 0) + 1
                 bumpSigil()
+                spawnShards(sx, sy, math.floor(rnd(4, 8)))
             end
         end
+        updateShards(dt)
     end
 end
 
@@ -617,19 +739,18 @@ local function drawSplash()
         -- 5 fantasmas com falloff acentuado: o velho quase some — o rastro
         -- lê como arco de luz na espiral, não como carta duplicada.
         local ghostA = { 0.26, 0.17, 0.11, 0.06, 0.035 }
+        local cw, ch = MINI_SIZE.w * (mc.sizeK or 1), MINI_SIZE.h * (mc.sizeK or 1)
         for gi = #mc.trail, 1, -1 do
             local g = mc.trail[gi]
-            local gx = sx + math.cos(g.angle) * g.dist
-            local gy = sy + math.sin(g.angle) * g.dist
-            drawCardShape(gx, gy, MINI_SIZE.w, MINI_SIZE.h,
+            drawCardShape(g.x, g.y, cw, ch,
                 mc.alpha * mc.fadeMul * (ghostA[gi] or 0.03),
                 g.scale * 0.97, g.rot, 0)
         end
-        local x = sx + math.cos(mc.angle) * mc.dist
-        local y = sy + math.sin(mc.angle) * mc.dist
-        drawCardShape(x, y, MINI_SIZE.w, MINI_SIZE.h,
-            mc.alpha * mc.fadeMul, mc.scale, mc.rot, 0)
+        drawCardShape(mc.x, mc.y, cw, ch, mc.alpha * mc.fadeMul, mc.scale, mc.rot, 0)
     end
+    -- lascas da absorção (grade da arte), por cima das cartas
+    love.graphics.setShader()
+    drawShards()
 
     -- (v11: a carta central FOI REMOVIDA — feedback do dono: "pode deixar
     -- direto já no ponto focal da lua". A cena abre contemplativa e o
@@ -745,6 +866,7 @@ function BootScene._finish()
     state.flashAlpha = 0
     state.titleLetters = {}
     sigil.flare = 0
+    shards = {}
     -- SYNC (feedback): mata qualquer SFX de boot (raio/rumble/impacto) ANTES do
     -- menu + música entrarem — o barulho de raio vazava pro menu. stopGroup só
     -- corta o grupo "sfx"; a música (grupo "music") não é afetada.
@@ -763,5 +885,15 @@ function BootScene.mousepressed(_, _, _)
 end
 
 function BootScene.isDone() return state.phase == "done" end
+function BootScene.seed() return state.seed end
+function BootScene.cardsInFlight() return #state.miniCards end
+function BootScene.absorbedCount() return state.absorbed or 0 end
+function BootScene.cardPositions()
+    local out = {}
+    for i, mc in ipairs(state.miniCards) do out[i] = { mc.x, mc.y, mc.rot, mc.scale } end
+    return out
+end
+function BootScene.splashTime() return state.splashTime end
+function BootScene.phase() return state.phase end
 
 return BootScene

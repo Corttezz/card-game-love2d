@@ -15,6 +15,17 @@ local TvOsd = require("src.ui.TvOsd")
 local Menu = {}
 Menu.__index = Menu
 
+-- Movimento reduzido (Configurações → Jogo): a cena fica ESTÁTICA — nada
+-- deriva, pisca, respira ou varre. Informação nenhuma some (só movimento).
+local function reducedMotion()
+    return _G.gameSettings and _G.gameSettings.reducedMotion and true or false
+end
+-- Relógio da cena: congelado em movimento reduzido (tudo que oscila lê daqui).
+local function sceneClock()
+    if reducedMotion() then return 0 end
+    return love.timer.getTime()
+end
+
 function Menu:new()
     local instance = setmetatable({}, Menu)
     instance.buttons = {}
@@ -48,16 +59,23 @@ function Menu:new()
     -- some em ~3.5s como TV de verdade.
     instance.osdTimer = 0
     -- Motes de poeira dourada derivando (vida ambiente barata).
+    -- v3 (Out/2026): 60% vivem no FEIXE de luz da lanterna (cone do teto ao
+    -- livro — `shaft = true` mantém o mote dentro do cone no update), o resto
+    -- vaga pela sala. Poeira que só se vê onde há luz, como numa sala real.
     instance.motes = {}
-    for i = 1, 14 do
+    for i = 1, 26 do
         instance.motes[i] = {
             ax = math.random(), ay = math.random(),
-            speed = 0.006 + math.random() * 0.012,   -- sobe devagar
-            drift = (math.random() - 0.5) * 0.008,
+            speed = 0.004 + math.random() * 0.010,   -- sobe devagar
+            drift = (math.random() - 0.5) * 0.006,
             phase = math.random() * math.pi * 2,
             size = 1 + math.random(2),
+            shaft = i <= 16,
         }
     end
+    -- Flare das velas (0..1, decai): a sala reage — entrada no menu e clique
+    -- nas cartas fazem as chamas crescerem por um instante.
+    instance._candleFlare = 0
 
     -- Cria os botões do menu
     instance:createButtons()
@@ -225,7 +243,8 @@ function Menu:update(dt)
     -- DynaText do título (lazy-init em ensure). update progredindo timer interno
     -- pra que pop_in cascade + rotate wobble animem por frame.
     self:_ensureTitleDyna()
-    if self._titleDyna then self._titleDyna:update(dt) end
+    -- (wobble do título também para em movimento reduzido)
+    if self._titleDyna and not reducedMotion() then self._titleDyna:update(dt) end
 
     for _, button in pairs(self.buttons) do
         button:update(dt)
@@ -242,12 +261,31 @@ function Menu:update(dt)
         end
     end
 
-    -- Poeira dourada deriva pra cima (wrap vertical).
+    -- Flare das velas decai (entrada / clique nas cartas acendem).
+    self._candleFlare = math.max(0, (self._candleFlare or 0) - dt * 0.9)
+
+    -- Movimento reduzido: a sala fica parada (poeira, parallax, brasas).
+    if reducedMotion() then
+        self.embers = {}
+        self._parX, self._parY = 0, 0
+        return
+    end
+
+    -- Poeira dourada deriva pra cima (wrap vertical). Motes do FEIXE ficam
+    -- dentro do cone da lanterna (meia-largura cresce com a descida).
+    local tf = self._sceneTf
     for _, m in ipairs(self.motes or {}) do
         m.ay = m.ay - m.speed * dt * 10
         m.ax = m.ax + m.drift * dt * 10
-        if m.ay < -0.02 then m.ay = 1.02; m.ax = math.random() end
-        if m.ax < -0.02 then m.ax = 1.02 elseif m.ax > 1.02 then m.ax = -0.02 end
+        if m.shaft and tf then
+            local x0, hw = self:_shaftBounds(tf, m.ay)
+            if m.ay < 0.03 then m.ay = 0.72; m.ax = x0 + (math.random() - 0.5) * 2 * hw end
+            if m.ax < x0 - hw then m.ax = x0 - hw; m.drift = math.abs(m.drift)
+            elseif m.ax > x0 + hw then m.ax = x0 + hw; m.drift = -math.abs(m.drift) end
+        else
+            if m.ay < -0.02 then m.ay = 1.02; m.ax = math.random() end
+            if m.ax < -0.02 then m.ax = 1.02 elseif m.ax > 1.02 then m.ax = -0.02 end
+        end
     end
 
     -- v2.1: PARALLAX suavizado (mouse → alvo; lerp evita tranco).
@@ -262,10 +300,12 @@ function Menu:update(dt)
     end
 
     -- v2.1: BRASAS subindo das velas (faísca ocasional, vida curta).
+    -- Com flare (entrada/clique) as velas cospem mais.
     self.embers = self.embers or {}
     self._emberTimer = (self._emberTimer or 0) - dt
-    if self._emberTimer <= 0 and #self.embers < 10 then
-        self._emberTimer = 0.28 + math.random() * 0.5
+    local flare = self._candleFlare or 0
+    if self._emberTimer <= 0 and #self.embers < (flare > 0.3 and 18 or 10) then
+        self._emberTimer = (0.28 + math.random() * 0.5) * (1 - 0.6 * flare)
         table.insert(self.embers, {
             candle = math.random(2),            -- índice da âncora
             offX = (math.random() - 0.5) * 10,
@@ -319,6 +359,9 @@ function Menu:draw()
 
     -- Brasas das velas (na frente do glow, atrás das cartas).
     self:_drawEmbers()
+
+    -- Vinheta respirando (degraus; estática em movimento reduzido).
+    self:_drawVignette(self.intro.alphaBg or 1)
 
     -- Cartas decorativas flutuantes (Balatro-style demo).
     self:_drawFloatingCards()
@@ -389,8 +432,9 @@ end
 -- Desenhado POR CIMA do Button — o widget global fica intocado.
 function Menu:_drawButtonCrtFx(btn)
     if not btn.hover or btn.disabled then return end
-    local t = love.timer.getTime()
+    local t = sceneClock()
     local x, y, w, h = btn.x, btn.y, btn.width, btn.height
+    local static = reducedMotion()
 
     -- (a) varredura: banda clara de 10px descendo pelo botão (loop 0.9s)
     local bandH = 10
@@ -402,6 +446,20 @@ function Menu:_drawButtonCrtFx(btn)
     love.graphics.rectangle("fill", x, sweepY - 4, w, bandH + 8)
     love.graphics.setScissor()
 
+    -- (a2) GLINT pixel: um brilho de 2 px corre a borda de cima do botão em
+    -- passos de 4 px (grade), com um rastro de 1 px — reflexo de metal, não
+    -- gradiente. Estático em movimento reduzido (fica parado no canto).
+    do
+        local span = w + 24
+        local gx = x - 12 + (static and 0 or math.floor(((t * 160) % span) / 4) * 4)
+        local gy = y - 1
+        love.graphics.setColor(1, 0.97, 0.85, 0.95)
+        love.graphics.rectangle("fill", gx, gy, 4, 2)
+        love.graphics.setColor(1, 0.90, 0.55, 0.55)
+        love.graphics.rectangle("fill", gx - 8, gy, 8, 1)
+        love.graphics.rectangle("fill", gx + 4, gy, 4, 1)
+    end
+
     -- (b) glow de fósforo: contorno duplo pulsante (âmbar quente)
     local pulse = 0.35 + 0.20 * math.sin(t * 5)
     love.graphics.setColor(0.95, 0.78, 0.32, pulse * 0.5)
@@ -409,8 +467,8 @@ function Menu:_drawButtonCrtFx(btn)
     love.graphics.setColor(0.95, 0.78, 0.32, pulse * 0.22)
     love.graphics.rectangle("line", x - 3.5, y - 3.5, w + 7, h + 7)
 
-    -- (c) seta OSD piscando (TV menu style)
-    if math.floor(t * 2.4) % 2 == 0 then
+    -- (c) seta OSD piscando (TV menu style) — fixa em movimento reduzido
+    if static or math.floor(t * 2.4) % 2 == 0 then
         local g = TvOsd.AMBER
         local ax = x - 18
         local ay = y + h / 2
@@ -427,7 +485,7 @@ end
 -- amarelo-quente pra laranja antes de apagar.
 function Menu:_drawEmbers()
     local tf = self._sceneTf
-    if not tf or not self.embers then return end
+    if not tf or not self.embers or reducedMotion() then return end
     local a0 = (self.intro.alphaBg or 1)
     if a0 <= 0.05 then return end
     local ANCH = { { 0.209, 0.44 }, { 0.770, 0.44 } }
@@ -446,15 +504,114 @@ function Menu:_drawEmbers()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
+-- ===== v3: FEIXE da lanterna =====
+-- A lanterna pendurada no teto da arte (x 0.50, y 0.04 do PNG) ilumina o
+-- livro (y ~0.70). O cone é desenhado em 3 DEGRAUS aditivos (nada de
+-- gradiente suave) e balança devagar com noise. Devolve, pra uma altura
+-- normalizada `ay`, o centro x e a meia-largura do cone (normalizados).
+local SHAFT = { xr = 0.50, topY = 0.04, botY = 0.72, hwTop = 0.012, hwBot = 0.17 }
+function Menu:_shaftBounds(tf, ay)
+    local W, H = love.graphics.getWidth(), love.graphics.getHeight()
+    local k = math.max(0, math.min(1, (ay - SHAFT.topY) / (SHAFT.botY - SHAFT.topY)))
+    local sway = reducedMotion() and 0 or (love.math.noise(sceneClock() * 0.35, 3.1) - 0.5) * 0.02 * k
+    local x0 = (tf.ox + (SHAFT.xr + sway) * tf.dw) / W
+    local hw = (SHAFT.hwTop + (SHAFT.hwBot - SHAFT.hwTop) * k) * tf.dw / W
+    return x0, hw
+end
+
+function Menu:_drawLightShaft(tf, bgAlpha)
+    local W, H = love.graphics.getWidth(), love.graphics.getHeight()
+    local flare = self._candleFlare or 0
+    local breath = reducedMotion() and 0.5 or (0.5 + 0.5 * love.math.noise(sceneClock() * 0.8, 11.7))
+    -- NA GRADE DA ARTE: o cone é uma pilha de linhas de 1 px da arte, cada
+    -- uma com largura em múltiplos de 1 px da arte — bordas em escada, como
+    -- o resto do cenário (um polígono antialiased lia como forma vetorial).
+    local px = tf.dh / 256
+    local yt = math.floor(SHAFT.topY * 256)
+    local yb = math.floor(SHAFT.botY * 256)
+    love.graphics.setBlendMode("add")
+    for step = 1, 3 do
+        local shrink = 1 - (step - 1) * 0.33
+        local alpha = (0.030 + 0.012 * breath + 0.03 * flare) * bgAlpha
+        love.graphics.setColor(1, 0.86, 0.55, alpha)
+        for iy = yt, yb, 2 do   -- linhas de 2 px da arte (pilha mais barata)
+            local ay = iy / 256
+            local x0, hw = self:_shaftBounds(tf, ay)
+            local halfPx = math.max(1, math.floor(hw * W * shrink / px))
+            local cxPx = math.floor(x0 * W / px)
+            -- linhas que se ENCOSTAM exatamente (sem fresta nem sobreposição —
+            -- em blend aditivo qualquer uma das duas vira risca horizontal)
+            local y0 = math.floor(tf.oy + iy * px)
+            local y1 = math.floor(tf.oy + (iy + 2) * px)
+            love.graphics.rectangle("fill", (cxPx - halfPx) * px, y0, halfPx * 2 * px, y1 - y0)
+        end
+    end
+    love.graphics.setBlendMode("alpha")
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- ===== v3: VINHETA que respira =====
+-- Bordas escurecem em 3 molduras DEGRAU (sem gradiente), com período lento
+-- (~7 s) — a sala "respira" com a luz das velas. Estática em movimento reduzido.
+function Menu:_drawVignette(bgAlpha)
+    local W, H = love.graphics.getWidth(), love.graphics.getHeight()
+    local t = sceneClock()
+    local breath = reducedMotion() and 0.5 or (0.5 + 0.5 * math.sin(t * (2 * math.pi / 7)))
+    local base = (0.10 + 0.06 * breath) * bgAlpha
+    local inset = math.floor(math.min(W, H) * 0.045)
+    love.graphics.setLineWidth(1)
+    for step = 0, 2 do
+        local a = base * (1 - step * 0.33)
+        local d = inset * step
+        love.graphics.setColor(0, 0, 0, a)
+        -- moldura (4 faixas) — degrau sólido, não gradiente
+        love.graphics.rectangle("fill", d, d, W - d * 2, inset)
+        love.graphics.rectangle("fill", d, H - d - inset, W - d * 2, inset)
+        love.graphics.rectangle("fill", d, d + inset, inset, H - d * 2 - inset * 2)
+        love.graphics.rectangle("fill", W - d - inset, d + inset, inset, H - d * 2 - inset * 2)
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- ===== v3: a PÁGINA se mexe =====
+-- O canto da página direita do livro (recorte do PNG) levanta 1-2 px da arte
+-- em passos secos, de vez em quando — correnteza de ar na sala. Nada de
+-- deformação suave: é o pixel subindo um degrau.
+local PAGE_QUAD = { x = 250, y = 168, w = 42, h = 20 }   -- px da arte 400×256
+function Menu:_drawPageFlutter(tf, bgAlpha)
+    if reducedMotion() then return end
+    local ImageCache = require("src.ui.ImageCache")
+    local img = ImageCache.get("assets/sprites/scenes/menu.png")
+    if not img then return end
+    local t = sceneClock()
+    -- passo seco a 8 Hz; "rajada" rara (noise > 0.72) levanta 1 ou 2 px
+    local n = love.math.noise(math.floor(t * 8) * 0.37, 5.5)
+    local lift = n > 0.80 and 2 or (n > 0.70 and 1 or 0)
+    if lift == 0 then return end
+    local iw, ih = img:getDimensions()
+    local sx = tf.dw / iw
+    local q = self._pageQuad
+    if not q then
+        q = love.graphics.newQuad(PAGE_QUAD.x, PAGE_QUAD.y, PAGE_QUAD.w, PAGE_QUAD.h, iw, ih)
+        self._pageQuad = q
+    end
+    local x = tf.ox + PAGE_QUAD.x * sx
+    local y = tf.oy + (PAGE_QUAD.y - lift) * (tf.dh / ih)
+    love.graphics.setColor(1, 1, 1, bgAlpha)
+    love.graphics.draw(img, q, math.floor(x), math.floor(y), 0, sx, tf.dh / ih)
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
 -- ===== v2: poeira dourada =====
 function Menu:_drawMotes()
     local a = (self.intro.alphaBg or 1)
     if a <= 0.05 then return end
     local W, H = love.graphics.getWidth(), love.graphics.getHeight()
-    local t = love.timer.getTime()
+    local t = sceneClock()
     local g = Palette.AGED_GOLD_LIGHT
     for _, m in ipairs(self.motes or {}) do
         local twinkle = 0.25 + 0.20 * math.sin(t * 1.7 + m.phase)
+        if m.shaft then twinkle = twinkle + 0.18 end   -- na luz, a poeira brilha
         love.graphics.setColor(g[1], g[2], g[3], twinkle * a)
         love.graphics.rectangle("fill",
             math.floor(m.ax * W), math.floor(m.ay * H), m.size, m.size)
@@ -583,11 +740,11 @@ function Menu:drawBackground()
     local width = love.graphics.getWidth()
     local height = love.graphics.getHeight()
     local bgAlpha = self.intro.alphaBg or 1
-    local t = love.timer.getTime()
+    local t = sceneClock()
 
     local SceneBackground = require("src.ui.SceneBackground")
     -- CAMADA 1: cenário com parallax (mouse desloca a sala) + crossfade de
-    -- vela entre os frames do ciclo (BG_SEQ).
+    -- vela entre os frames do ciclo (BG_SEQ). Movimento reduzido: frame fixo.
     local fromScene, toScene, mix = bgFrame(t)
     local ok, tf = SceneBackground.drawParallaxCrossfade(fromScene, toScene, mix,
         width, height, 0.30,
@@ -595,8 +752,14 @@ function Menu:drawBackground()
     if ok then
         self._sceneTf = tf
 
+        -- CAMADA 1b: a página do livro levanta de vez em quando (correnteza)
+        self:_drawPageFlutter(tf, bgAlpha)
+
         -- CAMADA 2: luz das velas (glow radial pulsando com noise orgânico)
         self:_drawCandleGlow(tf, t, bgAlpha)
+
+        -- CAMADA 2b: feixe da lanterna do teto sobre o livro (degraus)
+        self:_drawLightShaft(tf, bgAlpha)
 
         -- CAMADA 3: respiração quente global (flicker de sala à vela)
         local flick = 0.030 + 0.028 * love.math.noise(t * 1.9, 7.3)
@@ -655,13 +818,15 @@ end
 function Menu:_drawCandleGlow(tf, t, bgAlpha)
     ensureGlowImage(self)
     love.graphics.setBlendMode("add")
+    local flare = self._candleFlare or 0
     for _, a in ipairs(CANDLE_ANCHORS) do
         local x = tf.ox + a.xr * tf.dw
         local y = tf.oy + a.yr * tf.dh
-        -- flicker orgânico (noise, não seno — vela real não é metrônomo)
-        local flick = 0.70 + 0.30 * love.math.noise(t * 5.5, a.phase)
+        -- flicker orgânico (noise, não seno — vela real não é metrônomo);
+        -- flare (entrada/clique): a chama cresce e clareia por um instante
+        local flick = (0.70 + 0.30 * love.math.noise(t * 5.5, a.phase)) * (1 + 0.6 * flare)
         local r = tf.dw * 0.075
-            * (0.92 + 0.14 * love.math.noise(t * 2.8, a.phase + 9))
+            * (0.92 + 0.14 * love.math.noise(t * 2.8, a.phase + 9)) * (1 + 0.35 * flare)
         -- halo largo alaranjado
         love.graphics.setColor(1, 0.55, 0.18, 0.26 * flick * bgAlpha)
         love.graphics.draw(self._glowImg, x, y, 0, r * 2 / 128, r * 2 / 128, 64, 64)
@@ -685,6 +850,7 @@ function Menu:_drawSmokeLayer(t, bgAlpha)
     local ImageCache = require("src.ui.ImageCache")
     local W, H = love.graphics.getWidth(), love.graphics.getHeight()
     local par = (self._parX or 0) * -26   -- parallax frontal mais forte
+    t = t + 400   -- fase (t=0 em movimento reduzido ainda espalha os novelos)
     for _, wsp in ipairs(SMOKE_WISPS) do
         local img = ImageCache.get(wsp.img)
         if img then
@@ -740,8 +906,8 @@ function Menu:drawTitle()
     -- entrada + rotate wobble idle + shadow integrada. Substitui love.graphics.print
     -- direto pra dar movimento "vivo" característico do polish do Balatro.
     if self._titleDyna then
-        local pulse = 0.85 + math.sin(love.timer.getTime() * 1.2) * 0.15
-        if alpha < 0.99 then pulse = 1 end -- intro: sem pulse
+        local pulse = 0.85 + math.sin(sceneClock() * 1.2) * 0.15
+        if alpha < 0.99 or reducedMotion() then pulse = 1 end -- intro/estático: sem pulse
         local g = Palette.AGED_GOLD_LIGHT
         local c = self._titleDyna.colours[1]
         c[1], c[2], c[3], c[4] = g[1] * pulse, g[2] * pulse, g[3] * pulse, alpha
@@ -758,7 +924,7 @@ function Menu:_drawFloatingCards()
     if not self.floatingCards then return end
     local W = love.graphics.getWidth()
     local H = love.graphics.getHeight()
-    local t = love.timer.getTime()
+    local t = sceneClock()
 
     -- Tamanho das cartas decorativas: ~12% da largura (mais visíveis).
     local cardW = math.floor(W * 0.12)
@@ -906,6 +1072,8 @@ function Menu:enterWithIntro()
     self.visible = true
     -- OSD do aparelho reaparece (como TV real ao trocar de canal).
     self.osdTimer = 0
+    -- as velas reagem à entrada (flare que decai em ~1 s)
+    self._candleFlare = 1
 
     -- Reset alphas pra 0.
     self.intro.active        = true
@@ -992,6 +1160,7 @@ function Menu:mousepressed(x, y, button)
                 and math.abs(x - fc._cx) <= fc._w / 2
                 and math.abs(y - fc._cy) <= fc._h / 2 then
                 fc.spinT = 1
+                self._candleFlare = math.max(self._candleFlare or 0, 0.6)
                 Sfx.play("cardSelect", { pitch = 1.1 + math.random() * 0.2 })
                 break
             end
