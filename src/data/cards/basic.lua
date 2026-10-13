@@ -101,13 +101,15 @@ return {
         id = "warrior_spot_weakness", name = "Achar a Brecha",
         type = "effect", subtype = "common",
         cost = 1, attack = 0, defense = 0,
-        description = "Aplica Vulnerável por 2 turnos. Ganha 2 de Força.",
+        description = "Aplica Vulnerável por 2 turnos. Ganha 2 de Força. Revela a intenção por 2 turnos.",
         image = "assets/cards/attack/theRock.png",
         rarity = "uncommon", class = "warrior",
         tags = { "vulnerable", "strength", "debuff" },
         effects = {
             { type = "apply_debuff", value = "vulnerable", stacks = 1, duration = 2 },
             { type = "gain_strength", value = 2, description = "+2 Forca" },
+            -- Névoa de intenção (Out/2026): achar a brecha é VER o golpe
+            { type = "reveal_intent", value = 2 },
         },
     },
 
@@ -230,7 +232,7 @@ return {
         id = "effect_scroll_wisdom", name = "Pergaminho da Sabedoria",
         type = "effect", subtype = "scroll",
         cost = 1, attack = 0, defense = 0,
-        description = "Compra 3 cartas do deck.",
+        description = "Compra 3 cartas do deck. Revela a intenção por 2 turnos.",
         image = "assets/cards/effect/manaCrystal.png",
         -- Rebalance Jul/2026: common -> uncommon (nerf preventivo — pos-fix do pool volta a ser
         -- ofertavel; draw 3 por 1 mana em common dominaria mage_arcane_sight e viraria auto-include)
@@ -238,6 +240,9 @@ return {
         tags = { "draw", "cycle" },
         effects = {
             { type = "draw_cards", value = 3, description = "Compra 3 cartas" },
+            -- Névoa de intenção (Out/2026): o contador NEUTRO — toda classe
+            -- tem acesso a uma leitura da nevasca
+            { type = "reveal_intent", value = 2 },
         },
     },
 }

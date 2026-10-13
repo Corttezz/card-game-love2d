@@ -265,13 +265,15 @@ return {
         id = "rogue_expose_weakness", name = "Expor Fraqueza",
         type = "effect", subtype = "skill",
         cost = 1, attack = 0, defense = 0,
-        description = "Aplica Vulnerável por 2 turnos. Compra 1 carta.",
+        description = "Aplica Vulnerável por 2 turnos. Compra 1 carta. Revela a intenção por 2 turnos.",
         image = "assets/cards/effect/manaCrystal.png",
         rarity = "uncommon", class = "rogue",
         tags = { "vulnerable", "debuff", "draw" },
         effects = {
             { type = "apply_debuff", value = "vulnerable", stacks = 1, duration = 2 },
             { type = "draw_cards", value = 1 },
+            -- Névoa de intenção (Out/2026): expor a fraqueza é expor o golpe
+            { type = "reveal_intent", value = 2 },
         },
     },
     rogue_shadow_dance = {

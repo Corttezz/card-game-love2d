@@ -152,6 +152,14 @@ return {
         charge   = "En charge : le prochain coup sera dévastateur.",
         debuff   = "Applique {name} pendant {duration} tour(s).",
         dot      = "Applique {name} : {stacks} dégâts par tour pendant {duration} tour(s).",
+        -- brume d'intention (src/systems/IntentVisibility.lua)
+        veil_title  = "Brume",
+        veil_number = "La brume cache le nombre de ce coup. Vous voyez le type, pas le poids.",
+        veil_all    = "La brume cache l'intention. Quelque chose arrive, et vous ne savez pas quoi.",
+        veil_enemy  = "{name} se cache dans la brume : son annonce même arrive voilée.",
+        veil_hint   = "Les cartes Révéler et la pulsation de l'orbe de Foudre dissipent la brume.",
+        unknown_value = "?",
+        veil_debuff = "Apporte {name}.",
     },
 
     status = {

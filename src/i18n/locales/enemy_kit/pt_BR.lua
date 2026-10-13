@@ -153,6 +153,14 @@ return {
         charge   = "Carregando: o próximo golpe será devastador.",
         debuff   = "Aplica {name} por {duration} turno(s).",
         dot      = "Aplica {name}: {stacks} de dano por turno, por {duration} turno(s).",
+        -- névoa de intenção (src/systems/IntentVisibility.lua)
+        veil_title  = "Névoa",
+        veil_number = "A névoa esconde o número deste golpe. O tipo você vê; o peso, não.",
+        veil_all    = "A névoa esconde a intenção. Algo vem, e você não sabe o quê.",
+        veil_enemy  = "{name} se esconde na bruma: o próprio anúncio vem encoberto.",
+        veil_hint   = "Cartas de Revelar e o pulso do orbe de Raio dissipam a névoa.",
+        unknown_value = "?",
+        veil_debuff = "Traz {name}.",
     },
 
     status = {

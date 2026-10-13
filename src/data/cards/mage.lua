@@ -378,12 +378,14 @@ return {
         -- tempo — nicho distinto de torn_pages (C0 draw2 discard1 reciclavel).
         type = "effect", subtype = "skill",
         cost = 0, attack = 0, defense = 0,
-        description = "Compra 2 cartas. Exaurir.",
+        description = "Compra 2 cartas. Revela a intenção por 2 turnos. Exaurir.",
         image = "assets/cards/effect/manaCrystal.png",
         rarity = "uncommon", class = "mage",
         tags = { "draw", "cycle", "utility", "zero_cost", "exhaust" },
         effects = {
             { type = "draw_cards", value = 2 },
+            -- Névoa de intenção (Out/2026): "visão" arcana VÊ através da nevasca
+            { type = "reveal_intent", value = 2 },
             { type = "exhaust" },
         },
     },

@@ -173,9 +173,20 @@ end
 
 local function curProgress() return overrideP or progress end
 
+-- NÉVOA DE INTENÇÃO (Out/2026): quando o intent do inimigo está encoberto,
+-- o clima da tela ENGROSSA pra que a leitura venha do mundo, não de um
+-- interruptor de UI. O estado decide e o clima acompanha (o relógio do clima
+-- é visual e não pode ser a regra — src/systems/IntentVisibility.lua).
+-- `fogHook` é instalado por quem sabe o estado e devolve 0..1 de intensidade
+-- extra; `veilCur` persegue esse alvo em ~0,7 s (fecha e abre com respiro).
+WeatherEngine.fogHook = nil
+local veilCur = 0
+local function veilBoost() return veilCur end
+function WeatherEngine.veilBoost() return veilCur end
+
 local function intensityOf(pr)
     if overrideI then return overrideI end
-    return WeatherEngine.intensityFor(curProgress())
+    return min(1, WeatherEngine.intensityFor(curProgress()) + veilBoost())
 end
 
 function WeatherEngine.intensity()
@@ -185,7 +196,9 @@ end
 function WeatherEngine.storm()
     if not cur or not cur.storm then return 0 end
     if overrideI then return smooth(0.6, 0.95, overrideI) end
-    return stormFor(cur, curProgress(), time)
+    -- a névoa oculta também fecha a tempestade (nevasca: rastro na rajada,
+    -- `dark`) — nunca acima de 1
+    return min(1, max(stormFor(cur, curProgress(), time), veilBoost()))
 end
 
 function WeatherEngine.night() return night end
@@ -319,6 +332,16 @@ function WeatherEngine.update(dt, ctx)
     camZ0 = camZ
     windP = ctx.windP or GrassField.PRESETS[id] or GrassField.PRESETS.fields
     local rm = reduced()
+    -- névoa de intenção: persegue o alvo do hook (ver veilBoost)
+    do
+        local target = 0
+        if WeatherEngine.fogHook then
+            local ok, v = pcall(WeatherEngine.fogHook)
+            if ok and type(v) == "number" then target = min(1, max(0, v)) end
+        end
+        veilCur = veilCur + (target - veilCur) * min(1, (dt or 0) * 1.5)
+        if abs(target - veilCur) < 0.002 then veilCur = target end
+    end
 
     local I = cur and intensityOf(cur) or 0
     local want = cur and floor(cur.count * I * (rm and 0.35 or 1) + 0.5) or 0
@@ -858,6 +881,7 @@ function WeatherEngine.reset()
     strike, thunderAt, pendingThunder, pendingBlink = nil, nil, nil, nil
     curId, cur = nil, nil
     geo = nil
+    veilCur = 0
 end
 
 -- tools/teste

@@ -24,6 +24,9 @@ local SUITES = {
     { group = "unit",  name = "test_beats" },
     { group = "unit",  name = "test_enemy_death" },
     { group = "unit",  name = "test_enemies" },
+    -- névoa de intenção: bioma/véu/revelação, intent segue congelado, HUD "?",
+    -- contadores, clima acompanha, piloto não espia (memory/intent_visibility.md)
+    { group = "unit",  name = "test_intent_visibility" },
     { group = "unit",  name = "test_tutorial" },
     { group = "unit",  name = "test_events" },
     { group = "unit",  name = "test_journal" },

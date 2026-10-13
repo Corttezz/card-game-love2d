@@ -467,6 +467,22 @@ function EffectSystem:processEffectCard(game, effect)
         CardFeel.burstAtEnemy(debuffTheme(debuff.name), 0.8)
         return true
 
+    elseif t == "reveal_intent" then
+        -- NÉVOA DE INTENÇÃO (Out/2026): dissipa o véu sobre o anúncio do
+        -- inimigo neste turno e nos `value - 1` seguintes. O golpe não muda
+        -- (continua congelado) — só a LEITURA volta. Fora da névoa a carta
+        -- não faz nada visível, de propósito: é um contador barato, não um
+        -- efeito de dano.
+        if game.enemy and game.enemy.revealIntent then
+            local wasHidden = game.enemy:getIntentVisibility() ~= "full"
+            game.enemy:revealIntent(math.max(1, math.floor(v > 0 and v or 1)))
+            if wasHidden then
+                game:addMessage(I18n.t("messages.intent_revealed", nil, "Intent revealed"), "info")
+                Sfx.play("effectChime")
+            end
+        end
+        return true
+
     elseif t == "discard_cards" then
         -- BUG FIX (Jul/2026): a carta descartada tem que IR PRO DISCARD, não
         -- sumir. table.remove(game.hand) só a arrancava da mão — nunca entrava
@@ -826,6 +842,12 @@ function EffectSystem:orbPassiveTick(game, sink)
                     game.enemy:takeDamage(pulse)
                     checkEnrage(game)
                     landed = true
+                    -- O clarão do RAIO rasga a névoa de intenção: o PRÓXIMO
+                    -- anúncio do inimigo vem inteiro (IntentVisibility). É o
+                    -- contador do mago sem carta nova.
+                    if o.type == "lightning" and game.enemy.revealNextIntent then
+                        game.enemy:revealNextIntent(1)
+                    end
                 end
             elseif o.type == "ice" then
                 notifyOrbUI("notifyPulse", idx, "+" .. pulse, "armor")

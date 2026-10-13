@@ -101,6 +101,10 @@ return {
             locked = "Die anderen Klassen liegen in Ketten und werden durchs Spielen befreit. {list}",
             details = "Und dieses Lesezeichen öffnet die *Details* der Klasse: Startkarten und Zahlen.",
         },
+        fog = {
+            veil = "Der *Nebel* hat sich geschlossen. Du siehst noch die ART seines Zugs, aber nicht die Zahl. Der Zug steht schon fest, nur das Lesen fehlt.",
+            counter = "Wenn der Schneesturm aufreißt, kommt die Zahl zurück. *Enthüllen*-Karten und der Puls des Blitz-Orbs vertreiben den Nebel ebenfalls für eine Runde.",
+        },
         seals = {
             unlocked = "Gewonnen! Jetzt kannst du die *Grimoire-Siegel* brechen: Jedes Siegel ist eine härtere Regel, und sie stapeln sich.",
             score = "Mehr Siegel, mehr Punkte. Gewinne mit einem Siegel, um das nächste freizuschalten, mit derselben Klasse.",

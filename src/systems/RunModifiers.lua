@@ -104,6 +104,16 @@ function RunModifiers.decorateEnemy(run, enemy)
         enemy.armor = (enemy.armor or 0) + b
         enemy.maxArmor = math.max(enemy.maxArmor or 0, enemy.armor)
     end
+    -- NÉVOA DE INTENÇÃO (Out/2026): o bioma do ato decide quanto do intent o
+    -- HUD mostra (src/data/intent_fog.lua). O 1º golpe já rolou dentro do
+    -- setKit, antes de o inimigo saber onde nasceu — re-resolve com o contexto.
+    -- É o único ponto por onde TODO inimigo de run passa (batalha nova e
+    -- Continuar), por isso mora aqui e não nos dois spawns do Game.
+    if enemy.refreshIntentVisibility then
+        local IntentVisibility = require("src.systems.IntentVisibility")
+        enemy.fogContext = IntentVisibility.contextFor(run)
+        enemy:refreshIntentVisibility()
+    end
 end
 
 -- ===== Mapa / loja / cura / ouro =====

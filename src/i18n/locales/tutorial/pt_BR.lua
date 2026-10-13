@@ -101,6 +101,10 @@ return {
             locked = "As outras classes estão acorrentadas e se libertam jogando. {list}",
             details = "E este marcador abre os *detalhes* da classe: as cartas iniciais e os números.",
         },
+        fog = {
+            veil = "A *névoa* fechou. Você ainda vê o TIPO do golpe dele, mas não o número. O golpe já está decidido, só a leitura sumiu.",
+            counter = "Quando a nevasca abre, o número volta. Cartas de *Revelar* e o pulso do orbe de Raio também dissipam a névoa por um turno.",
+        },
         seals = {
             unlocked = "Você venceu! Agora pode romper os *Selos do Grimório*: cada selo é uma regra mais dura, e eles se acumulam.",
             score = "Mais selos, mais pontos. Vença num selo para liberar o próximo, com a mesma classe.",

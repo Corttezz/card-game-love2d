@@ -106,6 +106,9 @@ local PROCESSED_EFFECT_TYPES = {
     -- P2.1 (Jul/2026, rebalance v2): trigger turn_start que canaliza orbe
     -- (mage_electrodynamics). Ver EffectSystem:processTriggerEffect.
     channel_per_turn = true,
+    -- Névoa de intenção (Out/2026): revela o anúncio do inimigo por N turnos
+    -- (src/systems/IntentVisibility.lua). Ver EffectSystem:processEffectCard.
+    reveal_intent = true,
     -- Removidos: tag_observer_multiplier / tag_stack_bonus (declarados em
     -- versão anterior do plano combo-aware mas nunca implementados em
     -- EffectSystem). Reintroduzir só quando algum joker realmente precisar.

@@ -19,6 +19,14 @@
 --   phases           { { at = 0.5, id, dmgMul, moves, opener } } — troca de
 --                    kit ao cruzar a fração de vida (Rainha do Eclipse).
 --   passive          { regenPct } — estado permanente desde o 1º turno.
+--   veil             { level = "type_only" | "hidden", chance = 0..1 } — a
+--                    criatura ESCONDE o próprio intent (Out/2026): o HUD mostra
+--                    o ícone sem número (type_only) ou só "?" (hidden), em
+--                    `chance` dos anúncios (padrão 1). Combina com a névoa do
+--                    bioma (src/data/intent_fog.lua) pelo pior nível; cartas
+--                    de Revelar e o pulso do orbe de Raio dissipam. Vale
+--                    também dentro de uma fase (Rainha no Eclipse). O golpe
+--                    continua congelado: só a LEITURA muda.
 --
 -- ── GOLPE ───────────────────────────────────────────────────────────────────
 --   id        chave i18n `enemy_kit.moves.<id>` (nome + descrição no tooltip).
@@ -232,6 +240,8 @@ Enemies.KITS = {
     },
     dusk_shade = {
         opener = "whisper",
+        -- sombra: a silhueta some na bruma — o golpe é visto, o peso não
+        veil = { level = "type_only", chance = 0.7 },
         moves = {
             { id = "shadow_blade", kind = "attack", weight = 35, mult = 1.1 },
             { id = "fade",         kind = "defend", weight = 15, armor = 1.2, maxRow = 1 },
@@ -282,6 +292,8 @@ Enemies.KITS = {
     -- ===================== ATO 4 — CIDADELA GELADA =====================
     frost_wight = {
         opener = "freezing_touch",
+        -- espectro da neve: anda DENTRO da nevasca — o número nunca aparece
+        veil = { level = "type_only", chance = 1 },
         moves = {
             { id = "freezing_touch", kind = "attack", weight = 30, mult = 0.8,
               debuff = { name = F, duration = 2 }, maxRow = 1 },
@@ -358,7 +370,9 @@ Enemies.KITS = {
             { id = "veil",         kind = "defend", weight = 30, armor = 1.3, maxRow = 1 },
         },
         phases = {
+            -- no ECLIPSE a corte escurece: metade dos anúncios some por inteiro
             { at = 0.5, id = "eclipse", dmgMul = 1.15, opener = "total_eclipse",
+              veil = { level = "hidden", chance = 0.5 },
               moves = {
                   { id = "total_eclipse", kind = "debuff", weight = 0,
                     debuff = { { name = W, duration = 2 }, { name = F, duration = 2 },
@@ -519,6 +533,8 @@ Enemies.KITS = {
     },
     rime_shaman = {     -- xamã do totem: enfraquece e se protege
         opener = "chill_hex",
+        -- o totem sopra geada por cima do anúncio: metade dos turnos sem número
+        veil = { level = "type_only", chance = 0.5 },
         moves = {
             { id = "chill_hex", kind = "attack", weight = 30, mult = 0.6,
               debuff = { name = W, duration = 2 }, maxRow = 1 },

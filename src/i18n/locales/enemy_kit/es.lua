@@ -152,6 +152,14 @@ return {
         charge   = "Cargando: el próximo golpe será devastador.",
         debuff   = "Aplica {name} durante {duration} turno(s).",
         dot      = "Aplica {name}: {stacks} de daño por turno durante {duration} turno(s).",
+        -- niebla de intención (src/systems/IntentVisibility.lua)
+        veil_title  = "Niebla",
+        veil_number = "La niebla esconde el número de este golpe. Ves el tipo, no el peso.",
+        veil_all    = "La niebla esconde la intención. Algo viene, y no sabes qué.",
+        veil_enemy  = "{name} se esconde en la bruma: su propio anuncio llega velado.",
+        veil_hint   = "Las cartas de Revelar y el pulso del orbe de Rayo disipan la niebla.",
+        unknown_value = "?",
+        veil_debuff = "Trae {name}.",
     },
 
     status = {

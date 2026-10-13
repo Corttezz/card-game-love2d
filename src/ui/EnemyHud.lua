@@ -137,10 +137,51 @@ function EnemyHud.intentSpec(enemy, player)
         I18n.t("status.intent_" .. tostring(kind) .. ".name", nil, tostring(kind)))
     -- Golpe pesado tem hierarquia visual (maior, pulsa mais rápido).
     local heavy = (kind == "strong") or (kind == "charge")
+
+    -- NÉVOA DE INTENÇÃO (Out/2026, src/systems/IntentVisibility.lua): o que
+    -- o HUD pode mostrar deste anúncio. O intent continua congelado e inteiro
+    -- em `it`; aqui só se decide o que SAI do spec — nenhum número escondido
+    -- pode vazar pelo texto, pelo tooltip ou pela medida do box.
+    local visibility = (enemy.getIntentVisibility and enemy:getIntentVisibility()) or "full"
+    local veilColor = nil
+    if visibility ~= "full" then
+        local IV = require("src.systems.IntentVisibility")
+        veilColor = IV.veilColor(enemy)
+        -- nome da criatura: a tabela de nomes mora em end_screen.enemy.<id>
+        local enemyName = I18n.t("end_screen.enemy." .. tostring(enemy.spriteId or enemy.kitId), nil,
+            tostring(enemy.spriteId or enemy.kitId or "?"))
+        lines = {}
+        if visibility == "hidden" then
+            kind, text, extras, heavy = "unknown", nil, {}, false
+            title = I18n.t("enemy_kit.intent.veil_title")
+            lines[#lines + 1] = I18n.t("enemy_kit.intent.veil_all")
+        else
+            -- type_only: o ÍCONE fica, o número vira "?"; perfurante e os
+            -- NOMES dos debuffs seguem (são tipo, não peso) — durações não.
+            text = I18n.t("enemy_kit.intent.unknown_value", nil, "?")
+            title = I18n.t("status.intent_" .. tostring(kind) .. ".name", nil,
+                I18n.t("enemy_kit.moves." .. tostring(kind) .. ".name", nil, tostring(kind)))
+            lines[#lines + 1] = I18n.t("enemy_kit.intent.veil_number")
+            if it.pierce and (it.perHit or 0) > 0 then
+                lines[#lines + 1] = I18n.t("enemy_kit.intent.pierce")
+            end
+            for _, d in ipairs(it.debuffs or {}) do
+                local nm = I18n.t("enemy_kit.status." .. d.name .. "_self.name", nil,
+                    I18n.t("enemy_kit.status." .. d.name .. ".name", nil, d.name))
+                lines[#lines + 1] = I18n.t("enemy_kit.intent.veil_debuff", { name = nm })
+            end
+        end
+        if enemy.intentVeilCause == "veil" then
+            lines[#lines + 1] = I18n.t("enemy_kit.intent.veil_enemy", { name = enemyName })
+        end
+        lines[#lines + 1] = I18n.t("enemy_kit.intent.veil_hint")
+    end
     return {
-        kind = kind, value = value or 0, text = text, extras = extras,
+        kind = kind, value = (visibility == "full") and (value or 0) or 0,
+        text = text, extras = extras,
         pierce = it.pierce and true or false, heavy = heavy,
         title = title, body = table.concat(lines, " "),
+        visibility = visibility, veilColor = veilColor,
     }
 end
 
@@ -463,6 +504,9 @@ function EnemyHud.drawIntent(enemy, cx, topY, boxXOverride, boxYOverride, player
         if kind == "defend" then numColor = { 0.65, 0.75, 0.9, 1 }
         elseif kind == "buff" then numColor = { 1, 0.85, 0.4, 1 }
         elseif kind == "heal" then numColor = { 0.5, 0.95, 0.55, 1 } end
+        -- número escondido pela névoa: "?" em pergaminho pálido, sem a cor
+        -- semântica (um "?" vermelho leria como dano desconhecido mas certo)
+        if spec.visibility ~= "full" then numColor = { 0.88, 0.88, 0.92, 1 } end
         FontManager.drawWithOutline(txt, tx, ty, numColor, 0.95)
         cursorX = tx + g.tw
     end
@@ -484,6 +528,12 @@ function EnemyHud.drawIntent(enemy, cx, topY, boxXOverride, boxYOverride, player
             ex = ex + EXTRA_ICON + EXTRA_GAP
         end
     end
+
+    -- NÉVOA: bruma correndo por cima do box quando a visibilidade não é cheia
+    -- (e o aro piscando quando ela cai — src/ui/IntentVeil). Por cima do
+    -- conteúdo e por baixo do flash de execução.
+    require("src.ui.IntentVeil").draw(boxX, boxY, boxW, boxH, spec.visibility,
+        spec.veilColor, enemy)
 
     -- FLASH DE EXECUÇÃO: lavagem branca + borda acesa enquanto o zoom decai
     -- ("o anúncio virou ação"). Desenhado por cima de tudo do box.

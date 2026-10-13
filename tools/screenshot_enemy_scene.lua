@@ -90,6 +90,23 @@ function M.run(mode)
         for name in (os.getenv("ENEMY_SCENE_DEBUFFS") or ""):gmatch("[^,]+") do
             game.player:addDebuff(name, 2, (name == "poison" or name == "burn") and 4 or 1)
         end
+        -- ENEMY_SCENE_VISIBILITY=full|type_only|hidden[:veil]: NÉVOA DE
+        -- INTENÇÃO (src/systems/IntentVisibility). Dá ao inimigo o contexto
+        -- do bioma (como RunModifiers.decorateEnemy faria) e força o nível —
+        -- a captura prova o box com "?", o véu correndo e a nevasca
+        -- engrossando pelo hook do WeatherEngine (o loop de update abaixo
+        -- deixa o clima perseguir o alvo). ":veil" marca a causa como véu
+        -- da criatura (tooltip cita o nome dela).
+        local vis = os.getenv("ENEMY_SCENE_VISIBILITY")
+        if vis and vis ~= "" then
+            local IV = require("src.systems.IntentVisibility")
+            local level, cause = vis:match("^([%a_]+):?(%a*)$")
+            game.enemy.fogContext = IV.contextFor(run)
+            game.enemy.intentVisibility = level
+            game.enemy.intentVeilCause = (cause == "veil") and "veil" or "fog"
+            IV.noteActive(game.enemy)
+            mode = mode .. "_vis_" .. level .. ((cause == "veil") and "_veil" or "")
+        end
     end
 
     _G.game = game
@@ -114,6 +131,12 @@ function M.run(mode)
         WorldRoad.update(1 / 30)
         EnemyRenderer.update(1 / 30)
         local IFX = require("src.ui.InteriorFX"); IFX.update(1 / 30, IFX.hallFor(act))
+    end
+    if os.getenv("ENEMY_SCENE_VISIBILITY") then
+        -- prova numérica do hook: a nevasca engrossou junto com a névoa?
+        local WE = require("engine.WeatherEngine")
+        print(string.format("[screenshot] clima: intensidade=%.2f (boost da névoa=%.2f) partículas=%d",
+            WE.intensity(), WE.veilBoost(), WE.count()))
     end
 
     -- Layout real do cluster do intent, capturado do próprio draw.

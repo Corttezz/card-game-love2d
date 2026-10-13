@@ -2,6 +2,7 @@ local Config = require("src.core.Config")
 local ValueEasing = require("src.ui.ValueEasing")
 local EnemyKits = require("src.data.enemies")
 local Rng = require("src.systems.Rng")
+local IntentVisibility = require("src.systems.IntentVisibility")
 
 local Enemy = {}
 Enemy.__index = Enemy
@@ -53,6 +54,7 @@ function Enemy:setKit(kitId)
     self._rollIndex = 0
     self._forcedNext = nil
     self._pendingPhase = nil
+    self._revealTurns = 0
     if kitId ~= "generic" then
         -- Armadura do inimigo escala com o dano dele: o teto fixo de 20 virava
         -- "nada" no ato 6 (golpe do jogador passa de 100).
@@ -219,7 +221,86 @@ function Enemy:rollIntent(player)
     self.intent = intent
     self.nextIntent = intent.kind
     self.nextIntentDamage = D
+    -- NÉVOA (Out/2026): quanto deste anúncio o HUD pode mostrar. Decidido
+    -- AQUI, uma vez por intent, e nunca mais mexido até o próximo anúncio —
+    -- o número congelado continua sendo o que acontece (intentHitDamage não
+    -- olha isto). Ver src/systems/IntentVisibility.lua.
+    self:refreshIntentVisibility()
     return self.nextIntent
+end
+
+-- ===== Visibilidade do intent (névoa do bioma / véu / revelação) =====
+-- Véu declarado no kit (ou na fase corrente): { level, chance }.
+function Enemy:veilSpec()
+    local ph = (self._phaseIdx or 0) > 0 and self.kit and self.kit.phases
+        and self.kit.phases[self._phaseIdx]
+    if ph and ph.veil then return ph.veil end
+    return self.kit and self.kit.veil or nil
+end
+
+-- (Re)resolve a visibilidade do intent CORRENTE. Chamado no anúncio e por
+-- RunModifiers.decorateEnemy (o 1º golpe rola dentro do setKit, antes de o
+-- inimigo saber em que bioma nasceu).
+function Enemy:refreshIntentVisibility()
+    local level, cause = IntentVisibility.resolve(self)
+    self.intentVisibility = level
+    self.intentVeilCause = cause
+    IntentVisibility.noteActive(self)
+    return level
+end
+
+function Enemy:getIntentVisibility()
+    return self.intentVisibility or "full"
+end
+
+-- Revela o intent de agora e os `turns - 1` anúncios seguintes (carta de
+-- Revelar). `turns` nil/1 = só o corrente.
+function Enemy:revealIntent(turns)
+    turns = turns or 1
+    self.intentVisibility = "full"
+    self.intentVeilCause = "reveal"
+    self._revealTurns = math.max(self._revealTurns or 0, turns - 1)
+end
+
+-- Revela só os PRÓXIMOS `turns` anúncios (pulso do orbe de Raio: acontece no
+-- fim do turno do jogador, quando o intent corrente já vai ser executado).
+function Enemy:revealNextIntent(turns)
+    self._revealTurns = math.max(self._revealTurns or 0, turns or 1)
+end
+
+-- O intent como o JOGADOR tem direito de ver — a única leitura que piloto e
+-- UI podem fazer quando a névoa está fechada. Nunca inclui número escondido:
+--   full       → o próprio intent congelado (mesma tabela de getIntent)
+--   type_only  → kind, pierce, debuffs (nomes) e flags; números = nil
+--   hidden     → { kind = "unknown" }
+-- `visibility` vem sempre preenchido.
+function Enemy:getKnownIntent(player)
+    local it = self:getIntent()
+    local lvl = self:getIntentVisibility()
+    if lvl == "full" then
+        local copy = {}
+        for k, v in pairs(it) do copy[k] = v end
+        copy.visibility = "full"
+        return copy
+    end
+    if lvl == "hidden" then
+        return { kind = "unknown", id = "unknown", visibility = "hidden", hidden = true }
+    end
+    local known = { id = it.id, kind = it.kind, visibility = "type_only", hidden = true,
+        pierce = it.pierce, charge = it.charge }
+    if it.debuffs then
+        known.debuffs = {}
+        for i, d in ipairs(it.debuffs) do known.debuffs[i] = { name = d.name } end
+    end
+    return known
+end
+
+-- Dano total que o jogador PODE saber que vem: número só com visibilidade
+-- cheia; nil quando a névoa esconde (o piloto estima por
+-- expectedDamagePerTurn, como um jogador faria).
+function Enemy:getKnownIncomingDamage(player)
+    if self:getIntentVisibility() ~= "full" then return nil end
+    return self:getIncomingDamage(player)
 end
 
 -- Anuncia um golpe ESPECÍFICO do kit (testes e ferramentas de captura).

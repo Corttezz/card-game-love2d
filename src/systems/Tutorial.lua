@@ -303,6 +303,19 @@ Tutorial.SCRIPT = {
       latch = function(g) return firstTurn(g) and nodeType(g) == "elite" end,
       ready = function(g) return battleQuiet(g) end,
       lines = { { id = "warn", spot = { "enemy", "enemy_hp" } } } },
+    -- NÉVOA DE INTENÇÃO (Out/2026): a 1ª vez que o número do intent some
+    -- (nevasca do bioma ou véu da criatura — src/systems/IntentVisibility).
+    { id = "fog", state = "playing", after = "intro",
+      latch = function(g)
+          local e = g.enemy
+          return g.turn == "player" and e and e.getIntentVisibility
+              and e:getIntentVisibility() ~= "full"
+      end,
+      ready = function(g)
+          return battleQuiet(g) and anyAnchor("intent")
+              and g.enemy and g.enemy:getIntentVisibility() ~= "full"
+      end,
+      lines = { { id = "veil", spot = "intent" }, { id = "counter", spot = "intent" } } },
     -- ===== Assuntos que chegam com a corrida =====
     { id = "block", state = "playing", after = "intro", sameTurn = true,
       latch = function(g) return g.turn == "player" and (g.player.armor or 0) > 0 end,

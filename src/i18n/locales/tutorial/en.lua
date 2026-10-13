@@ -101,6 +101,10 @@ return {
             locked = "The other classes are in chains, and playing sets them free. {list}",
             details = "And this bookmark opens the class *details*: starting cards and numbers.",
         },
+        fog = {
+            veil = "The *fog* has closed in. You still see the TYPE of its move, but not the number. The move is already decided, only the reading is gone.",
+            counter = "When the blizzard opens, the number returns. *Reveal* cards and the Lightning orb pulse also clear the fog for a turn.",
+        },
         seals = {
             unlocked = "You won! Now you can break the *Grimoire Seals*: each seal is a harsher rule, and they stack.",
             score = "More seals, more points. Win on a seal to unlock the next one, with the same class.",

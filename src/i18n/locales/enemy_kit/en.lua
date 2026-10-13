@@ -152,6 +152,14 @@ return {
         charge   = "Charging: the next attack will be devastating.",
         debuff   = "Applies {name} for {duration} turn(s).",
         dot      = "Applies {name}: {stacks} damage per turn for {duration} turn(s).",
+        -- intent fog (src/systems/IntentVisibility.lua)
+        veil_title  = "Fog",
+        veil_number = "The fog hides this move's number. You see the type, not the weight.",
+        veil_all    = "The fog hides the intent. Something is coming, and you cannot tell what.",
+        veil_enemy  = "{name} hides in the mist: its own announcement comes veiled.",
+        veil_hint   = "Reveal cards and the Lightning orb pulse clear the fog.",
+        unknown_value = "?",
+        veil_debuff = "Brings {name}.",
     },
 
     status = {

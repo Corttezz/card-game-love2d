@@ -101,6 +101,10 @@ return {
             locked = "Les autres classes sont enchaînées, et c'est en jouant qu'on les libère. {list}",
             details = "Et ce signet ouvre les *détails* de la classe : cartes de départ et chiffres.",
         },
+        fog = {
+            veil = "La *brume* s'est refermée. Vous voyez encore le TYPE de son coup, mais pas le nombre. Le coup est déjà décidé, seule la lecture a disparu.",
+            counter = "Quand le blizzard s'ouvre, le nombre revient. Les cartes *Révéler* et la pulsation de l'orbe de Foudre dissipent aussi la brume pour un tour.",
+        },
         seals = {
             unlocked = "Victoire ! Vous pouvez maintenant briser les *Sceaux du Grimoire* : chaque sceau est une règle plus dure, et ils se cumulent.",
             score = "Plus de sceaux, plus de points. Gagnez avec un sceau pour débloquer le suivant, avec la même classe.",

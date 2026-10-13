@@ -308,6 +308,9 @@ function M.run()
             { "elite", "playing", { "intro" }, function() run.currentNode = { type = "elite" }; g.battleTurn = 0 end,
               function() run.currentNode = { type = "battle" } end },
             { "block", "playing", { "intro" }, function() g.player.armor = 5 end, function() g.player.armor = 0 end },
+            -- névoa de intenção: o número do intent sumiu (IntentVisibility)
+            { "fog", "playing", { "intro" }, function() g.enemy.intentVisibility = "type_only" end,
+              function() g.enemy.intentVisibility = "full" end },
             { "orbs", "playing", { "intro" }, function()
                 g.player.orbs = { { type = "lightning" } }; Tutorial.anchor("orbs", 14, 500, 170, 78)
                 Tutorial._scenarioAnchors = nil end, function() g.player.orbs = {} end },

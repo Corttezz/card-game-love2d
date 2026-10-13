@@ -152,6 +152,14 @@ return {
         charge   = "Lädt auf: der nächste Angriff wird verheerend.",
         debuff   = "Verursacht {name} für {duration} Runde(n).",
         dot      = "Verursacht {name}: {stacks} Schaden pro Runde für {duration} Runde(n).",
+        -- Absichtsnebel (src/systems/IntentVisibility.lua)
+        veil_title  = "Nebel",
+        veil_number = "Der Nebel verbirgt die Zahl dieses Zugs. Die Art siehst du, das Gewicht nicht.",
+        veil_all    = "Der Nebel verbirgt die Absicht. Etwas kommt, und du weißt nicht was.",
+        veil_enemy  = "{name} versteckt sich im Dunst: die eigene Ankündigung kommt verhüllt.",
+        veil_hint   = "Enthüllen-Karten und der Puls des Blitz-Orbs vertreiben den Nebel.",
+        unknown_value = "?",
+        veil_debuff = "Bringt {name}.",
     },
 
     status = {

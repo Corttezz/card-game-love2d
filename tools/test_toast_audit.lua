@@ -29,6 +29,7 @@ M.ALLOWED = {
     ["messages.purple_seal"]         = "selo explica o orbe novo",
     ["messages.armor_capped"]        = "bloqueio desperdiçado no teto",
     ["messages.enemy_fury"]          = "regra anti-arrasto (turno 8+)",
+    ["messages.intent_revealed"]     = "a névoa sobre o intent se abriu (carta de Revelar)",
     ["enemy_kit.msg.pierce"]         = "golpe ignorou o bloqueio",
     ["enemy_kit.msg.summoned"]       = "revoada cresceu",
     ["enemy_kit.phases.*"]           = "chefe mudou de fase",
