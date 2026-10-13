@@ -33,12 +33,28 @@ end
 
 ShopLayout.TOPBAR_H = 56
 ShopLayout.CARD_RATIO = 1.5
--- Perspectiva das cartas no cavalete (uniformes do card_perspective.glsl):
--- o observador está à esquerda-frente, a borda direita da carta foge.
-ShopLayout.CARD_TILT = { 0.8, 0.0 }
-ShopLayout.CARD_TILT_AMOUNT = 0.7
-ShopLayout.LIFT = 8            -- quanto um objeto levanta no hover (px da UI)
+-- Loja v3c (queixa do dono: "as cartas ainda estão apontadas pra frente"):
+-- a carta fica PARALELA à borda do fundo. Base e topo seguem a diagonal da
+-- mesa (slope até o ponto de fuga), a borda direita é mais curta (foge) e a
+-- largura encolhe (escorço). No hover a carta gira MAIS: o lado direito
+-- afunda (encolhe e recua), o esquerdo sobe, e ela levanta um pouco.
+ShopLayout.CARD_FORESHORTEN = 0.86   -- largura aparente / largura frontal
+ShopLayout.CARD_RK = 0.93            -- altura da borda direita / esquerda (repouso)
+ShopLayout.CARD_RK_HOVER = 0.84      -- idem no hover (o lado direito afunda)
+ShopLayout.CARD_W_HOVER = 0.95       -- largura no hover (gira mais)
+ShopLayout.CARD_LIFT = 8             -- quanto a carta levanta no hover (lado esquerdo; o direito 1/3)
+ShopLayout.LIFT = 5                  -- objetos da mesa levantam 4-6 px no hover
 ShopLayout.BADGE_RESERVE = 12  -- selo "NOVA" acima da carta
+
+-- PONTO DE FUGA do eixo longo do balcão, medido na pintura (coordenadas da
+-- arte): borda do fundo y=181 em x=180 -> y=150 em x=440 (sobe ~6,8 graus);
+-- borda da frente y=316 em x=260 -> y=281 em x=440 (sobe ~11 graus). As duas
+-- retas se encontram aqui. A "diagonal" num ponto da mesa é a reta até ele.
+ShopLayout.VP = { x = 2187, y = -58 }
+function ShopLayout.slopeArt(ax, ay)
+    local VP = ShopLayout.VP
+    return (VP.y - ay) / (VP.x - ax)
+end
 
 -- ============================================================================
 -- A ARTE: âncoras em pixels da pintura (688x384). Medidas na grade de 32px
@@ -106,35 +122,61 @@ local function pointInPoly(px, py, poly)
 end
 ShopLayout.pointInPoly = pointInPoly
 
--- Placa de latão sob o pé (`nLines` linhas: rótulo + preço; o pacote leva
--- 3 pro nome quebrar em duas). Larga o bastante pro rótulo ("NOVAS
--- OFERTAS", "+10 VIDA MÁX") e nunca mais larga que o vão até o vizinho.
-local function plateFor(cx, footY, w, lineH, maxW, nLines)
-    local h = lineH * (nLines or 2) + 8
-    if maxW then w = math.min(w, maxW) end
-    return rect(cx - w / 2, footY + 4, w, h)
+local function bboxOf(xs, ys)
+    local x0, y0, x1, y1 = math.huge, math.huge, -math.huge, -math.huge
+    for i = 1, #xs do
+        x0 = math.min(x0, xs[i]); x1 = math.max(x1, xs[i])
+        y0 = math.min(y0, ys[i]); y1 = math.max(y1, ys[i])
+    end
+    return rect(x0, y0, x1 - x0 + 1, y1 - y0 + 1)
+end
+ShopLayout.bboxOf = bboxOf
+
+-- Etiqueta de preço PENDURADA (a das cartas, que o dono gostou), agora
+-- também nos objetos: cordão de `len` px a partir de (ax, ay), cartão w x h
+-- cisalhado na diagonal (`slope`). `box` = caixa ocupada (validação/hit).
+local function hangingTag(ax, ay, lineH, slope)
+    local bandH = lineH + 6
+    local w = clamp(math.floor(bandH * 1.8), 26, 38)
+    local h = math.floor(w * 0.66)
+    local len = 4
+    local skew = math.abs(slope) * w
+    local tag = { ax = math.floor(ax), ay = math.floor(ay), len = len, w = w, h = h, slope = slope }
+    tag.box = rect(ax - w / 2 - 4, ay - skew / 2, w + 8, len + h + skew + 2)
+    return tag
+end
+ShopLayout.hangingTag = hangingTag
+
+-- Faixa da raridade da carta: retângulo CISALHADO na diagonal logo abaixo do
+-- cavalete. `band` = { x, y (topo na ponta esquerda), w, h, slope };
+-- `plate` = a caixa ocupada (validação/hit-test). O preço mora SÓ na
+-- etiqueta pendurada da ponta direita (informação repetida é ruído).
+local function cardPlates(cx, topY, w, lineH, slope)
+    local bandH = lineH + 6
+    local x = cx - w / 2
+    local band = { x = math.floor(x), y = math.floor(topY - slope * w / 2), w = math.floor(w), h = bandH, slope = slope }
+    local ys = { band.y, band.y + slope * band.w, band.y + bandH, band.y + slope * band.w + bandH }
+    local plate = bboxOf({ band.x, band.x + band.w, band.x, band.x + band.w }, ys)
+    local tw = clamp(math.floor(bandH * 1.8), 26, 38)
+    local ax = band.x + band.w - math.floor(tw * 0.5) + 2
+    local tag = hangingTag(ax, band.y + slope * (ax - band.x) + band.h, lineH, slope)
+    return { plate = plate, band = band, tag = tag }
 end
 
--- Carta: FAIXA ESCURA com a raridade (cor da raridade sobre tinta) e a placa
--- de latão do preço logo abaixo (texto escuro), como na referência. `plate`
--- é a pilha inteira (validação); `band`/`price` são as partes (desenho);
--- `tag` é a etiqueta pendurada do canto da placa (detalhe que o dono gostou).
--- O preço da carta mora SÓ na etiqueta pendurada (o latão repetia o mesmo
--- "$3" ao lado: informação repetida é ruído). `plate` cobre faixa + etiqueta
--- (validação e hit-test).
-local function cardPlates(cx, footY, w, lineH)
-    local bandH = lineH + 6
-    local band = rect(cx - w / 2, footY + 4, w, bandH)
-    local tagW = clamp(math.floor(bandH * 1.8), 26, 38)
-    local tagH = math.floor(tagW * 0.66)
-    -- pendura do canto DIREITO da faixa (o lado esquerdo da carta 1 fica
-    -- sobre o copo de dados na janela 4:3)
-    local tag = { ax = band.x + band.w - math.floor(tagW * 0.5) + 2, ay = band.y + band.h,
-                  len = 4, w = tagW, h = tagH }
-    return {
-        plate = band,
-        band = band, tag = tag,
-    }
+-- Os 4 cantos da carta (TL, TR, BR, BL) no cavalete, em px de tela.
+--   hover 0..1 (gira mais), lift px (o lado esquerdo sobe tudo, o direito 1/3)
+function ShopLayout.cardQuad(c, hover, lift)
+    hover, lift = hover or 0, lift or 0
+    local s = c.slope
+    local w = c.qw * (1 + (ShopLayout.CARD_W_HOVER - 1) * hover)
+    local h = c.qh
+    local rk = ShopLayout.CARD_RK + (ShopLayout.CARD_RK_HOVER - ShopLayout.CARD_RK) * hover
+    local xl = c.footX - c.qw / 2
+    local xr = xl + w
+    local yl = c.foot + s * (xl - c.footX)
+    local yr = c.foot + s * (xr - c.footX)
+    local liftL, liftR = lift, lift / 3
+    return xl, yl - h - liftL, xr, yr - h * rk - liftR, xr, yr - liftR, xl, yl - liftL
 end
 
 function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
@@ -171,22 +213,24 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
             local a = A.cards[math.min(i, #A.cards)]
             local ax = x1 + (a.x - A.cards[1].x) * xFit
             local fx, fy = toScreen(cv, ax, a.y)
+            local slope = ShopLayout.slopeArt(ax, a.y)
             local h = math.floor(cardH0 * a.s * sizeFit)
             local w = math.floor(h / ShopLayout.CARD_RATIO)
-            local standH = clamp(math.floor(h * 0.12), 8, 20)
-            local standW = math.floor(w * 0.8)
-            local stand = rect(fx - standW / 2, fy - standH, standW, standH)
-            local foot = stand.y + math.floor(standH * 0.5)
-            local r = rect(fx - w / 2, foot - h, w, h)
-            local plates = cardPlates(fx, fy + 2, math.max(math.floor(w * 0.95), 70), lineH)
-            cards[i] = {
-                kind = "card", art = { x = ax, y = a.y }, depth = a.s,
-                rect = r, foot = foot, footX = math.floor(fx), stand = stand,
-                standVariant = ((i - 1) % 3) + 1,
-                plate = plates.plate, band = plates.band, tag = plates.tag,
-                tilt = ShopLayout.CARD_TILT, tiltAmount = ShopLayout.CARD_TILT_AMOUNT,
-                lift = ShopLayout.LIFT,
-            }
+            local qw = math.floor(w * ShopLayout.CARD_FORESHORTEN)
+            -- lábio do cavalete: cobre o pé da carta (px de tela)
+            local lipH = clamp(math.floor(h * 0.07), 5, 14)
+            local foot = math.floor(fy - lipH * 0.5)
+            local c = { footX = math.floor(fx), foot = foot, slope = slope, qw = qw, qh = h }
+            local x0, y0, xa, ya, x2, y2, x3, y3 = ShopLayout.cardQuad(c, 0, 0)
+            local r = bboxOf({ x0, xa, x2, x3 }, { y0, ya, y2, y3 })
+            local stand = rect(fx - qw / 2 - 4, fy - lipH, qw + 8, lipH)
+            local plates = cardPlates(fx, fy + 4, math.max(qw, 70), lineH, slope)
+            c.kind, c.art, c.depth = "card", { x = ax, y = a.y }, a.s
+            c.rect, c.stand, c.lipH = r, stand, lipH
+            c.standVariant = ((i - 1) % 3) + 1
+            c.plate, c.band, c.tag = plates.plate, plates.band, plates.tag
+            c.lift = ShopLayout.CARD_LIFT
+            cards[i] = c
         end
     end
     buildCards(1, 1)
@@ -223,26 +267,21 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
             local a = A.objects[math.min(j, #A.objects)]
             local ax = x1 + (a.x - A.objects[1].x) * xFit
             local fx, fy = toScreen(cv, ax, a.y)
+            local slope = ShopLayout.slopeArt(ax, a.y)
             local size = math.floor(objSize0 * a.s * sizeFit)
-            local r = rect(fx - size / 2, fy - size, size, size)
+            local skew = math.abs(slope) * size / 2
+            local r = rect(fx - size / 2, fy - size - skew, size, size + skew * 2)
             local isPack = j > nRelics
+            -- etiqueta presa à base, do lado direito, na diagonal
+            local tx = fx + size * 0.30
+            local tag = hangingTag(tx, fy + slope * (tx - fx) - 2, lineH, slope)
             objects[j] = {
                 kind = isPack and "pack" or "relic",
-                art = { x = ax, y = a.y }, depth = a.s,
-                rect = r, foot = math.floor(fy), footX = math.floor(fx),
-                -- o pacote leva 3 linhas: o nome quebra em duas, nunca reticências
-                plate = plateFor(fx, fy, clamp(math.floor(size * 1.1), 100, 150), lineH, nil, isPack and 3 or 2),
-                plateLines = isPack and 3 or 2,
+                art = { x = ax, y = a.y }, depth = a.s, slope = slope,
+                rect = r, foot = math.floor(fy), footX = math.floor(fx), size = size,
+                tag = tag, plate = tag.box,
                 lift = ShopLayout.LIFT,
             }
-        end
-        -- a placa nunca passa do vão até a vizinha (as placas ficam em
-        -- alturas diferentes, mas lado a lado leem como uma fileira)
-        for j = 2, n do
-            local a, b = objects[j - 1], objects[j]
-            local gapW = b.footX - a.footX - 6
-            if a.plate.w > gapW then a.plate = plateFor(a.footX, a.foot, gapW, lineH, nil, a.plateLines) end
-            if b.plate.w > gapW then b.plate = plateFor(b.footX, b.foot, gapW, lineH, nil, b.plateLines) end
         end
     end
     buildObjects(1, 1)
@@ -270,24 +309,32 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
     end
 
     -- ===== sino e copo (esquerda da mesa) =====
-    local function counterObj(a, sizeK)
+    local function counterObj(a, sizeK, withTag)
         local fx, fy = toScreen(cv, a.x, a.y)
         local size = math.floor(objSize0 * a.s * sizeK)
-        return {
-            art = { x = a.x, y = a.y }, depth = a.s,
+        local slope = ShopLayout.slopeArt(a.x, a.y)
+        local o = {
+            art = { x = a.x, y = a.y }, depth = a.s, slope = slope, size = size,
             rect = rect(fx - size / 2, fy - size, size, size),
             foot = math.floor(fy), footX = math.floor(fx),
-            plate = plateFor(fx, fy, clamp(math.floor(size * 1.3), 100, 150), lineH),
             lift = ShopLayout.LIFT,
         }
+        if withTag then
+            local tx = fx + size * 0.28
+            o.tag = hangingTag(tx, fy + slope * (tx - fx) - 2, lineH, slope)
+            o.plate = o.tag.box
+        else
+            o.plate = rect(fx - 1, fy, 2, 2)
+        end
+        return o
     end
-    local bell = counterObj(A.bell, 0.8)
-    local dice = counterObj(A.dice, 0.8)
+    local bell = counterObj(A.bell, 0.8, true)
+    local dice = counterObj(A.dice, 0.8, false)
 
     -- etiqueta da carta: canto DIREITO da faixa; se ali ela cairia sobre o
     -- sino/copo (4:3 aperta a carta 1 contra o copo), passa pro canto esquerdo
     local function hits(tg, o)
-        local tr = { x = tg.ax - tg.w / 2 - 4, y = tg.ay, w = tg.w + 8, h = tg.len + tg.h + 2 }
+        local tr = tg.box
         for _, r in ipairs({ o.rect, o.plate }) do
             if tr.x < r.x + r.w and r.x < tr.x + tr.w and tr.y < r.y + r.h and r.y < tr.y + tr.h then
                 return true
@@ -297,7 +344,9 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
     end
     for _, c in ipairs(cards) do
         if c.tag and (hits(c.tag, dice) or hits(c.tag, bell)) then
-            c.tag.ax = c.band.x + math.floor(c.tag.w * 0.5) + 2
+            local b = c.band
+            local ax = b.x + math.floor(c.tag.w * 0.5) + 2
+            c.tag = hangingTag(ax, b.y + b.slope * (ax - b.x) + b.h, lineH, b.slope)
         end
     end
 
@@ -413,8 +462,7 @@ function ShopLayout.validate(L)
         for i, c in ipairs(L.cards) do
             if overlaps(e.r, union(c.rect, c.plate)) then fail("%s cobre a carta %d", e.name, i) end
             if c.tag then
-                local tg = c.tag
-                local tr = { x = tg.ax - tg.w / 2 - 4, y = tg.ay, w = tg.w + 8, h = tg.len + tg.h + 2 }
+                local tr = c.tag.box
                 if overlaps(e.r, tr) then fail("%s cobre a etiqueta da carta %d", e.name, i) end
                 if not inside(L.wall, tr) then fail("etiqueta da carta %d fora da parede", i) end
                 if tr.x + tr.w > L.limitX then fail("etiqueta da carta %d invade o pergaminho", i) end

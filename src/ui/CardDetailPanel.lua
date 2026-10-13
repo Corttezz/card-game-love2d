@@ -36,6 +36,9 @@
 --     chrome    = bool,    -- desenha o painel de fundo (default true)
 --     parchment = bool,    -- tinta sobre papel (pergaminho da Loja v3)
 --     artMaxH   = number,  -- teto da altura da arte (pergaminho curto)
+--     objectArt = fn(payload, x, y, w, h, alpha) -> bool  -- desenha a arte de
+--                 relíquia/pacote no lugar da composição padrão (Loja v3c: o
+--                 pergaminho mostra o MESMO sprite da mesa); false = padrão
 --   }
 
 local CardDetailPanel = {}
@@ -402,6 +405,8 @@ function CardDetailPanel.draw(rect, payload, opts)
     local artW = textW
     if payload.kind == "card" then
         drawCardArt(inst, textX, artY, artW, artH, alpha)
+    elseif opts.objectArt and opts.objectArt(payload, textX, artY, artW, artH, alpha) then
+        -- a loja desenha o MESMO sprite da mesa (mesma arte, mesmo espelho)
     elseif payload.kind == "pack" then
         drawPackArt(offer, textX, artY, artW, artH, alpha)
     else

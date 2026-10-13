@@ -50,6 +50,7 @@
 -- poeira) — mesma vida do menu v3 e do LuminaireEngine; nada interpola.
 
 local ImageCache = require("src.ui.ImageCache")
+local Palette    = require("src.ui.Palette")
 local Sfx        = require("src.systems.Sfx")
 
 local ShopProps = {}
@@ -375,30 +376,39 @@ function DiceCup:width(scale)
     return DiceCup.FW * scale
 end
 
--- x,y = PÉ do copo (base-centro). Dados jogados à direita, no mesmo chão.
-function DiceCup:draw(x, y, scale)
+-- x,y = PÉ do copo (base-centro). Dados jogados à direita, ao longo da
+-- diagonal da mesa (`opts.slope`). Sem sombra aqui: a loja desenha a sombra
+-- de CONTATO (ShopPerspective, dither colado na base; elipse = flutuando).
+-- `opts.outline` 0..1 = contorno claro de 1 px (hover).
+function DiceCup:draw(x, y, scale, opts)
     scale = scale or 1
+    opts = opts or {}
+    local slope = opts.slope or 0
     local s = sheet("diceCup", DiceCup.FW, DiceCup.FH)
     if not s then return end
-    love.graphics.setColor(1, 1, 1, 1)
     local cx = math.floor(x - DiceCup.FW / 2 * scale)
     local cy = math.floor(y - DiceCup.FH * scale)
-    -- sombra curta no pé
-    love.graphics.setColor(0, 0, 0, 0.30)
-    love.graphics.ellipse("fill", math.floor(x), math.floor(y) - 1, 12 * scale, 3 * scale, 12)
+    if (opts.outline or 0) > 0.01 and opts.silhouette then
+        love.graphics.setShader(opts.silhouette)
+        local c = Palette.PARCHMENT_LIGHT
+        love.graphics.setColor(c[1], c[2], c[3], opts.outline)
+        for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+            drawFrame(s, self.frame, cx + d[1], cy + d[2], scale)
+        end
+        love.graphics.setShader()
+    end
     love.graphics.setColor(1, 1, 1, 1)
     drawFrame(s, self.frame, cx, cy, scale)
     if self.state == "rolled" and self.dice then
         local faces = sheet("dieFaces", DiceCup.DIE, DiceCup.DIE)
         if faces then
-            local dx = math.floor(x + (DiceCup.FW / 2 + 6) * scale)
-            local dy = math.floor(y - (DiceCup.DIE + 2) * scale)
+            local off = (DiceCup.FW / 2 + 6) * scale
             for i = 1, 2 do
-                love.graphics.setColor(0, 0, 0, 0.30)
-                love.graphics.ellipse("fill", dx + DiceCup.DIE / 2 * scale, math.floor(y) - 1, 8 * scale, 2 * scale, 10)
+                local dx = math.floor(x + off)
+                local dy = math.floor(y + slope * off - (DiceCup.DIE + 2) * scale)
                 love.graphics.setColor(1, 1, 1, 1)
                 drawFrame(faces, self.dice[i], dx, dy, scale)
-                dx = dx + (DiceCup.DIE + 4) * scale
+                off = off + (DiceCup.DIE + 4) * scale
             end
         end
     end
@@ -605,8 +615,10 @@ end
 
 function ShopProps.drawDiceCup(rect, ctx)
     if not S then ShopProps.load() end
+    ctx = ctx or {}
     local sc = math.max(1, math.floor(rect.h / DiceCup.FH))
-    S.cup:draw(math.floor(rect.x + rect.w / 2), math.floor(rect.y + rect.h), sc)
+    S.cup:draw(math.floor(rect.x + rect.w / 2), math.floor(rect.y + rect.h), sc,
+        { slope = ctx.slope, outline = ctx.outline, silhouette = ctx.silhouette })
 end
 
 function ShopProps.drawFront(L, ctx)

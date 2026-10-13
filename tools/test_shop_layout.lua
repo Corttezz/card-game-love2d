@@ -88,7 +88,36 @@ function M.run()
         t:truthy(("%dx%d: CONTINUAR no canto inferior direito"):format(s[1], s[2]),
             L.continueBtn.x + L.continueBtn.w <= s[1] and L.continueBtn.y + L.continueBtn.h <= s[2]
             and L.continueBtn.x > s[1] * 0.6 and L.continueBtn.y > s[2] * 0.8)
+        -- v3c: TUDO na diagonal da mesa (uma perspectiva só: slope até o VP)
+        local tag = ("%dx%d: "):format(s[1], s[2])
+        for i, c in ipairs(L.cards) do
+            local want = ShopLayout.slopeArt(c.art.x, c.art.y)
+            t:near(tag .. "carta " .. i .. " segue a diagonal (slope)", c.slope, want, 1e-6)
+            t:truthy(tag .. "carta " .. i .. ": diagonal sobe pra direita", c.slope < -0.05)
+            local x0, y0, x1, y1, x2, y2, x3, y3 = ShopLayout.cardQuad(c, 0, 0)
+            t:truthy(tag .. "carta " .. i .. ": base na diagonal (canto direito mais alto)", y2 < y3)
+            t:truthy(tag .. "carta " .. i .. ": borda direita mais curta (foge)", (y2 - y1) < (y3 - y0))
+            local h0, h1, h2, h3, h4, h5, h6, h7 = ShopLayout.cardQuad(c, 1, c.lift)
+            t:truthy(tag .. "carta " .. i .. ": hover afunda a direita", (h5 - h3) < (y2 - y1))
+            t:truthy(tag .. "carta " .. i .. ": hover sobe a esquerda", h1 < y0 and h7 < y3)
+            t:truthy(tag .. "carta " .. i .. ": hover sobe mais a esquerda que a direita",
+                (y3 - h7) > (y2 - h5))
+            t:near(tag .. "faixa da carta " .. i .. " na diagonal", c.band.slope, c.slope, 1e-9)
+            t:near(tag .. "etiqueta da carta " .. i .. " na diagonal", c.tag.slope, c.slope, 1e-9)
+        end
+        for j, o in ipairs(L.objects) do
+            t:near(tag .. "objeto " .. j .. " segue a diagonal", o.slope, ShopLayout.slopeArt(o.art.x, o.art.y), 1e-6)
+            t:near(tag .. "etiqueta do objeto " .. j .. " na diagonal", o.tag.slope, o.slope, 1e-9)
+            t:truthy(tag .. "objeto " .. j .. " sem placa de 2 linhas (etiqueta pendurada)", o.tag.w <= 38)
+        end
+        t:truthy(tag .. "sino com etiqueta de preco na diagonal", L.bell.tag ~= nil and L.bell.tag.slope < 0)
+        t:falsy(tag .. "copo sem etiqueta (nome so no hover)", L.dice.tag ~= nil)
     end
+    -- a perspectiva única: borda do fundo mais rasa que a da frente (mesmo VP)
+    t:truthy("borda do fundo (~-6,8 graus) mais rasa que a da frente (~-11 graus)",
+        math.abs(ShopLayout.slopeArt(180, 181)) < math.abs(ShopLayout.slopeArt(260, 316)))
+    t:near("borda do fundo medida: ~6,8 graus", math.deg(math.atan(-ShopLayout.slopeArt(180, 181))), 6.8, 0.6)
+    t:near("borda da frente medida: ~11 graus", math.deg(math.atan(-ShopLayout.slopeArt(260, 316))), 11, 0.8)
     -- quem cede e a escala/espacamento: 4:3 tem carta menor que 16:9
     local narrow = ShopLayout.layout(1024, 768, 4, 3)
     local wide = ShopLayout.layout(1366, 768, 4, 3)

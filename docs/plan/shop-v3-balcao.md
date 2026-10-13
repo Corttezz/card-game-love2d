@@ -242,3 +242,15 @@ O que muda em relação às seções 3-4:
 - Resolução: a pintura nasce em pixel art de baixa resolução (ex.: 640×360
   ou 960×540) e sobe por múltiplo inteiro (nearest), como os salões;
   texto e placas são desenhados por cima na grade da UI.
+
+## 13. v3c (13/Out/2026): reprovação do dono e correção
+
+1. Tesoura/bancada/elixir/pacotes voltam às artes antigas, assentadas na
+   diagonal (cisalhamento + espelho quando a arte é vista "da direita").
+2. Nada flutua: sombra de contato com dither colada na base, dentro do tampo.
+3. TUDO segue a mesma perspectiva (ponto de fuga medido na pintura): objetos,
+   etiquetas, faixas, cartas (homografia) e cavaletes.
+4. Placa de 2 linhas sai: preço na etiqueta pendurada presa por cordão; nome
+   só no hover, numa faixa de pergaminho na diagonal.
+5. Hover = mesmo sprite levantado com contorno; o pergaminho mostra o mesmo.
+Detalhes e travas em `memory/shop_layout.md` (seção v3c).

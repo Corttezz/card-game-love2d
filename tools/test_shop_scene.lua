@@ -135,10 +135,52 @@ function M.run()
         local relic = itemOf(screen, function(it) return it.kind == "relic" end)
         t:truthy("ha uma reliquia na mesa", relic ~= nil)
         rec = {}
+        -- v3c: hover = o MESMO sprite (fonte, espelho, cisalhamento), só levantado
+        local L = scene.L
+        local restPose = relic:pose()
+        local restParams = relic:uprightParams(L, false, 0)
         cx, cy = relic:center()
         mouseX, mouseY = cx, cy
         pump(screen, 0.5)
         t:eq("cena marca a reliquia", scene.hovered, relic)
+        local hovPose = relic:pose()
+        local hovParams = relic:uprightParams(L, true, 1.3)
+        t:eq("hover: mesma arte (fonte do sprite)", hovPose.src, restPose.src)
+        t:eq("hover: mesmo espelho", hovPose.flip, restPose.flip)
+        t:near("hover: mesmo cisalhamento (diagonal)", hovPose.slope, restPose.slope, 1e-9)
+        t:truthy("arte antiga do voucher (nao objects/)", tostring(restPose.src):find("sprites/vouchers/", 1, true) ~= nil)
+        t:near("hover: mesmo pe (x)", hovParams.fx, restParams.fx, 1e-6)
+        t:near("hover: mesmo pe (y)", hovParams.fy, restParams.fy, 1e-6)
+        t:near("hover: mesma escala", hovParams.s, restParams.s, 1e-9)
+        t:truthy("hover: objeto levanta 4..6 px", relic:liftPx() >= 4 and relic:liftPx() <= 6.01)
+        -- quadro da animação no hover tem o MESMO tamanho do PNG estático
+        t:eq("hover: quadro animado do mesmo tamanho", hovParams.img:getWidth(), restParams.img:getWidth())
+        local joker = itemOf(screen, function(it) return it.offer and it.offer.id == "joker_slot" end)
+        if joker then t:truthy("bancada de coringa espelhada (segue a bancada)", joker:pose().flip) end
+
+        -- nada flutua: todo pé de coluna encostado (e a sombra) DENTRO do tampo pintado
+        local ShopPerspective = require("src.ui.shop.ShopPerspective")
+        local ShopLayout = require("src.ui.shop.ShopLayout")
+        for _, it in ipairs(scene.items) do
+            if it.kind ~= "card" and it.rect then
+                local o = it:uprightParams(L, false, 0)
+                local pts = ShopPerspective.contactPoints(o)
+                local out = 0
+                for _, p in ipairs(pts) do
+                    if not ShopLayout.pointInPoly(p[1], p[2], L.art.tableMask) then out = out + 1 end
+                end
+                t:truthy(("objeto %s encosta na mesa (%d colunas de contato)"):format(it.offer.id, #pts), #pts >= 3)
+                t:eq(("objeto %s: contato dentro do tampo"):format(it.offer.id), out, 0)
+            end
+        end
+        -- sombra de contato, nunca elipse
+        local realEllipse = love.graphics.ellipse
+        local ellipses = 0
+        love.graphics.ellipse = function(...) ellipses = ellipses + 1 return realEllipse(...) end
+        local okDraw = pcall(function() screen:draw() end)
+        love.graphics.ellipse = realEllipse
+        t:truthy("draw da loja sem erro", okDraw)
+        t:eq("nenhuma sombra em elipse (objeto flutuando)", ellipses, 0)
         local hovers = 0
         for _, c in ipairs(rec) do if c.name == "hoverCard" or c.name == "hoverRelic" then hovers = hovers + 1 end end
         t:eq("hover-enter da reliquia toca UMA vez", hovers, 1)

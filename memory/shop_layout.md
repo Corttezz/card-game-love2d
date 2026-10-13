@@ -157,3 +157,39 @@ UMA PINTURA com objetos apoiados nela.
 - **UiScale**: `components.CardRewardScreen` já estava em `UiScale.SCREENS`;
   as capturas fiéis saem de `love . test_one screenshot_uiscale pt_BR:shop`
   (o `screenshot_shop` captura a k=1: compare layouts, não o tamanho).
+
+## v3c: TUDO na diagonal, nada flutua (13/Out/2026, feedback do dono)
+
+Queixas: objetos novos "estranhos" com elipse de sombra ("voando em cima da
+bancada"), hover trocava a imagem (o pergaminho desenhava a arte antiga com
+pedestal ao lado do objeto novo da mesa), placa de latão de 2 linhas feia,
+cartas "apontadas pra frente", suporte feio e fora da diagonal.
+
+- **Perspectiva única** (`ShopLayout.VP` = ponto de fuga (2187, -58) em px da
+  arte, medido nas bordas pintadas: fundo ~6,8°, frente ~11°). A diagonal num
+  ponto é a reta até o VP: `ShopLayout.slopeArt(ax, ay)`. Objetos, sombras,
+  etiquetas, faixas de raridade, cartas e cavaletes usam esse slope.
+- **Artes ANTIGAS** (`vouchers/<id>.png` + `vouchers_anim/` no hover;
+  `packs/pack_*.png`) em pé, com pose por id (`ShopPerspective.POSE`: espelho
+  pras artes vistas "da direita", ex. bancada de coringa; fração do
+  cisalhamento). `shop/objects/` ficou só com o sino.
+- **Canvas na resolução da arte** (`ShopPerspective.artPass`): objetos,
+  sombras e cavaletes são rasterizados em 688x384 e sobem com nearest junto
+  da pintura: o cisalhamento sai em pixel quadrado, na grade do cenário.
+- **Sombra de CONTATO** (`drawContactShadow`): perfil da silhueta (base real
+  de cada coluna), dither Bayer, cauda curta pra direita (vela à esquerda),
+  cortada pelo `tableMask`. Elipse proibida (`test_shop_scene` conta).
+- **Hover** = mesmo sprite/pose/espelho/cisalhamento, +5 px e contorno claro
+  de 1 px de arte (shader de silhueta). `ShelfItem:pose()` travado no teste.
+  O pergaminho usa `CardDetailPanel opts.objectArt` = o mesmo sprite.
+- **Rótulos**: preço = etiqueta pendurada (a das cartas) presa ao objeto por
+  um cordão até a borda da silhueta (`tiePoint`); nome/efeito = faixa de
+  pergaminho na diagonal SÓ no hover. Sino com etiqueta "$N"; copo sem.
+- **Cartas**: paralelas à borda do fundo, 4 cantos por `ShopLayout.cardQuad`
+  e homografia no `card_perspective.glsl` (`quadOn` + `hRow0..2`;
+  `CardMesh.setUniforms` zera `quadOn` sempre: o shader é compartilhado).
+  Hover: a direita afunda (encolhe/recua), a esquerda sobe, levanta 8 px.
+  Cavalete procedural em px de arte: trilho com face de cima/da frente,
+  dois batentes, perna de trás, pés e sombra de contato na borda.
+- Capturas por estado: `love . test_one screenshot_shop_diag <loc>`
+  (`SHOP_SIZES`, `SHOP_STATES=rest,hovercard,hoverjoker,selectjoker`).

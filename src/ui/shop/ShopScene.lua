@@ -25,6 +25,7 @@ ShopScene.__index = ShopScene
 
 local ShopLayout   = require("src.ui.shop.ShopLayout")
 local ShelfItem    = require("src.ui.shop.ShelfItem")
+local ShopPerspective = require("src.ui.shop.ShopPerspective")
 local Palette      = require("src.ui.Palette")
 local FontManager  = require("src.ui.FontManager")
 local ImageCache   = require("src.ui.ImageCache")
@@ -237,7 +238,6 @@ function ShopScene:update(dt)
     local function hoverOf(obj, r, on)
         if on and not obj.hot then
             obj.hot = true
-            if not reducedMotion() then Moveable.juice_up(obj, 0.06, 0.02) end
         elseif not on then obj.hot = false end
         if reducedMotion() then obj.hover = on and 1 or 0
         else obj.hover = obj.hover + ((on and 1 or 0) - obj.hover) * math.min(1, dt * 12) end
@@ -246,8 +246,14 @@ function ShopScene:update(dt)
     Moveable.initJuice(self.bell); Moveable.initJuice(self.dice)
     local overBell = not blocked and (inRect(L.bell.rect, mx, my) or inRect(L.bell.plate, mx, my))
     local overDice = not blocked and (inRect(L.dice.rect, mx, my) or inRect(L.dice.plate, mx, my))
+    local bellWasHot = self.bell.hot
     hoverOf(self.bell, L.bell, overBell)
     hoverOf(self.dice, L.dice, overDice)
+    self.bell.tagSwing = self.bell.tagSwing or { angle = 0, vel = 0 }
+    if self.bell.hot and not bellWasHot and not reducedMotion() then
+        self.bell.tagSwing.vel = self.bell.tagSwing.vel + 2.4
+    end
+    ShelfItem.stepPendulum(self.bell.tagSwing, dt)
     self.hoverCounter = (overBell and "bell") or (overDice and "dice") or nil
     if self.bell.ringing > 0 then self.bell.ringing = math.max(0, self.bell.ringing - dt) end
 
@@ -455,114 +461,219 @@ function ShopScene:_itemCtx(it)
     return { t = self.t, afford = afford, alpha = 1, reduced = reducedMotion() }
 end
 
+-- caixa (arte) da união das caixas de tela dadas, com folga
+local function artBoxOf(L, rects, pad)
+    local cv = L.cover
+    local x0, y0, x1, y1 = math.huge, math.huge, -math.huge, -math.huge
+    for _, r in ipairs(rects) do
+        x0 = math.min(x0, r.x); y0 = math.min(y0, r.y)
+        x1 = math.max(x1, r.x + r.w); y1 = math.max(y1, r.y + r.h)
+    end
+    if x0 == math.huge then return nil end
+    pad = pad or 6
+    return { x = (x0 - cv.ox) / cv.s - pad, y = (y0 - cv.oy) / cv.s - pad,
+             w = (x1 - x0) / cv.s + pad * 2, h = (y1 - y0) / cv.s + pad * 2 }
+end
+
+-- Cartas nos cavaletes: perna de trás (arte) → carta (homografia, tela) →
+-- lábio da frente + sombra de contato (arte) → faixa da raridade + etiqueta
+-- (tela, na diagonal). A carta mais perto (esquerda) é desenhada por último.
 function ShopScene:_drawCards(list)
     local NavCursor = require("src.ui.NavCursor")
+    local L = self.L
+    local cards, rects = {}, {}
     for _, it in ipairs(list) do
         if it.rect and it.kind == "card" then
-            if not it.sold then it:drawStand(false, 1) end
-            it:drawDust({ alpha = 1 })
-            local ctx = self:_itemCtx(it)
-            it:drawObject(ctx)
-            if not it.sold then
-                it:drawStand(true, 1)
-                local r = it.rect
-                NavCursor.target(it.card or ("offer:" .. it.slot), r.x + (it.slide.x or 0), r.y, r.w, r.h)
-            end
-            it:drawPlateFor(ctx)
+            cards[#cards + 1] = it
+            local sx = it.slide.x or 0
+            local r = it.rect
+            rects[#rects + 1] = { x = r.x + sx - 12, y = r.y - 16, w = r.w + 30, h = r.h + 30 }
         end
+    end
+    if #cards == 0 then return end
+    local box = artBoxOf(L, rects, 4)
+    ShopPerspective.artPass(L, box, function()
+        for _, it in ipairs(cards) do
+            if not it.sold then it:drawStandArt(L, "back", it:entered()) end
+        end
+    end)
+    for k = #cards, 1, -1 do
+        local it = cards[k]
+        it:drawCard(self:_itemCtx(it))
+        if not it.sold then
+            local r = it.rect
+            NavCursor.target(it.card or ("offer:" .. it.slot), r.x + (it.slide.x or 0), r.y, r.w, r.h)
+        end
+    end
+    ShopPerspective.artPass(L, box, function()
+        for _, it in ipairs(cards) do
+            if it.sold then it:drawDustArt(L)
+            else it:drawStandArt(L, "front", it:entered()) end
+        end
+    end)
+    for _, it in ipairs(cards) do
+        it:drawPlateFor(self:_itemCtx(it))
+        it:drawSoldText({ alpha = 1 })
     end
 end
 
+-- Contato de um objeto simples (copo, dados): faixa dither colada na base.
+local function contactBand(L, fx, fy, halfW, slope, alpha)
+    local prof = { x0 = 0, x1 = math.max(1, math.floor(halfW * 2)) - 1, y0 = 0, y1 = 0, bottom = {} }
+    for x = prof.x0, prof.x1 do prof.bottom[x] = 0 end
+    ShopPerspective.drawContactShadow({ prof = prof, fx = fx, fy = fy, s = 1, k = slope, flip = false },
+        L.art.tableMask, alpha)
+end
+
+-- Tudo que está sobre a mesa, numa passada só na resolução da ARTE,
+-- ordenado pelo pé (fundo → frente); depois, na grade da UI, as etiquetas,
+-- o VENDIDO a giz e o nome do objeto em hover (por cima de tudo).
 function ShopScene:_drawTable(list)
     local NavCursor = require("src.ui.NavCursor")
     local L = self.L
-    -- tudo que está sobre a mesa, ordenado pelo pé (fundo → frente)
-    local order = {}
+    local order, rects = {}, {}
     for _, it in ipairs(list) do
-        if it.rect and it.kind ~= "card" then order[#order + 1] = { foot = it.foot, item = it } end
+        if it.rect and it.kind ~= "card" then
+            order[#order + 1] = { foot = it.foot, item = it }
+            local r = it.rect
+            rects[#rects + 1] = { x = r.x + (it.slide.x or 0) - 16, y = r.y - 24, w = r.w + 60, h = r.h + 36 }
+        end
     end
     order[#order + 1] = { foot = L.bell.foot, bell = true }
-    -- o copo está SEMPRE na mesa (o clique é que depende de _G.openScribeDice)
     order[#order + 1] = { foot = L.dice.foot, dice = true }
+    for _, o in ipairs({ L.bell, L.dice }) do
+        local r = o.rect
+        rects[#rects + 1] = { x = r.x - 16, y = r.y - 24, w = r.w + 90, h = r.h + 36 }
+    end
     table.sort(order, function(a, b) return a.foot < b.foot end)
+    local box = artBoxOf(L, rects, 4)
+    ShopPerspective.artPass(L, box, function()
+        for _, e in ipairs(order) do
+            if e.item then
+                local it = e.item
+                it:drawDustArt(L)
+                it:drawObjectArt(L, self:_itemCtx(it))
+            elseif e.bell then
+                self:_drawBellArt()
+            elseif e.dice then
+                self:_drawDiceArt()
+            end
+        end
+    end)
     for _, e in ipairs(order) do
         if e.item then
             local it = e.item
-            it:drawDust({ alpha = 1 })
             local ctx = self:_itemCtx(it)
-            it:drawObject(ctx)
+            ctx.tie = it._tie
             it:drawPlateFor(ctx)
+            it:drawSoldText({ alpha = 1 })
             if not it.sold then
                 local r = it.rect
                 NavCursor.target("offer:" .. it.slot, r.x + (it.slide.x or 0), r.y, r.w, r.h)
             end
         elseif e.bell then
-            self:_drawBell()
-        elseif e.dice then
-            self:_drawDice()
+            self:_drawBellTag()
         end
     end
+    for _, e in ipairs(order) do
+        if e.item then e.item:drawHoverLabel(L, { alpha = 1 }) end
+    end
+    self:_drawCounterLabels()
 end
 
-function ShopScene:_drawBell()
-    local L, sc = self.L, self.screen
-    local B = L.bell
+function ShopScene:_bellCost()
+    local sc = self.screen
     local eco = sc.game and sc.game.economySystem
     local cost = sc.shopSystem and sc.shopSystem.getRefreshCost and sc.shopSystem:getRefreshCost() or 0
-    local canRing = (not eco) or eco:canAfford(cost)
-    local bell = ShelfItem.art("assets/sprites/shop/objects/bell.png", true) or art("bell")
-    local frame = 1
-    if self.bell.ringing > 0 and not reducedMotion() then
-        local seq = { 2, 3, 2, 4, 3, 2, 1 }
-        frame = seq[math.min(#seq, 1 + math.floor((0.9 - self.bell.ringing) * 12))] or 1
-    end
-    local lift = reducedMotion() and 0 or (self.bell.hover * 4 - Moveable.hopOffset(self.bell))
-    local s = Moveable.scaleFactor(self.bell)
-    local r = B.rect
-    love.graphics.setColor(0, 0, 0, 0.4)
-    love.graphics.ellipse("fill", B.footX, B.foot - 1, r.w * 0.35, math.max(2, r.h * 0.07))
-    if bell then
-        local frames = (bell:getWidth() >= bell:getHeight() * 3) and 4 or 1
-        local fw, fh = bell:getWidth() / frames, bell:getHeight()
-        local k = (r.w / fw) * s
-        if canRing then love.graphics.setColor(1, 1, 1, 1) else love.graphics.setColor(0.55, 0.5, 0.45, 0.9) end
-        local q = quad("bell", (math.min(frame, frames) - 1) * fw, 0, fw, fh, bell:getWidth(), bell:getHeight())
-        love.graphics.draw(bell, q, B.footX - fw * k / 2, B.foot - fh * k - lift, 0, k, k)
-    else
-        Palette.set(canRing and Palette.AGED_GOLD or Palette.STEEL)
-        love.graphics.ellipse("fill", B.footX, B.foot - r.h * 0.45 - lift, r.w * 0.4, r.h * 0.35)
-    end
-    ShelfItem.drawPlate(B.plate, {
-        { I18n.t("shop.bell_plate"), Palette.INK },
-        { "$" .. tostring(cost), canRing and Palette.INK or Palette.BLOOD },
-    })
+    return cost, (not eco) or eco:canAfford(cost)
 end
 
-function ShopScene:_drawDice()
+-- Sino: a arte de sempre (objects/bell.png), em pé na diagonal, contato na
+-- base; sem ouro, apagado. Hover = mesmo sprite levantado + contorno.
+function ShopScene:_drawBellArt()
+    local L = self.L
+    local B = L.bell
+    local cv = L.cover
+    local _, canRing = self:_bellCost()
+    local img, src = ShopPerspective.spriteFor("bell")
+    if not img then return end
+    local prof = ShopPerspective.profile(src, img)
+    if not prof then return end
+    local pz = ShopPerspective.poseFor("bell")
+    local lift = reducedMotion() and 0 or (self.bell.hover * ShopLayout.LIFT - Moveable.hopOffset(self.bell))
+    local o = {
+        img = img, prof = prof,
+        fx = (B.footX - cv.ox) / cv.s, fy = (B.foot - cv.oy) / cv.s,
+        s = (B.size / cv.s) / math.max(prof.x1 - prof.x0 + 1, prof.y1 - prof.y0 + 1),
+        k = B.slope * (pz.shear or 1), flip = pz.flip, lift = lift / cv.s,
+        outline = self.bell.hover,
+        color = canRing and { 1, 1, 1 } or { 0.55, 0.5, 0.45 },
+    }
+    ShopPerspective.drawContactShadow(o, L.art.tableMask, 1)
+    ShopPerspective.drawUpright(o)
+    local tx, ty = ShopPerspective.tiePoint(o, 0.25)
+    self.bell.tie = { cv.ox + tx * cv.s, cv.oy + ty * cv.s }
+end
+
+function ShopScene:_drawBellTag()
+    local B = self.L.bell
+    if not B.tag then return end
+    local cost, canRing = self:_bellCost()
+    local lift = reducedMotion() and 0 or (self.bell.hover * ShopLayout.LIFT)
+    local tg = B.tag
+    self.bell.tagSwing = self.bell.tagSwing or { angle = 0, vel = 0 }
+    if self.bell.tie then ShelfItem.drawCord(self.bell.tie[1], self.bell.tie[2], tg.ax, tg.ay - lift, 1) end
+    ShelfItem.drawHangingTag({ ax = tg.ax, ay = tg.ay - lift, len = tg.len, w = tg.w, h = tg.h, slope = tg.slope },
+        self.bell.tagSwing.angle, "$" .. tostring(cost), canRing, 1, false, 0)
+end
+
+-- Copo de dados (ShopProps) na resolução da arte, com contato na base e os
+-- dados jogados ao longo da diagonal.
+function ShopScene:_drawDiceArt()
     local L, sc = self.L, self.screen
     local D = L.dice
+    local cv = L.cover
     local P = getProps()
-    local drawn = false
     local run = sc._run and sc:_run() or nil
     local ScribeDice = require("src.systems.ScribeDice")
     local st = ScribeDice.state(run)
+    local fx, fy = (D.footX - cv.ox) / cv.s, (D.foot - cv.oy) / cv.s
+    local lift = reducedMotion() and 0 or (self.dice.hover * ShopLayout.LIFT) / cv.s
+    local hArt = D.rect.h / cv.s
+    local artRect = { x = fx - hArt / 2, y = fy - hArt - lift, w = hArt, h = hArt }
+    contactBand(L, fx, fy, 6, D.slope, 1)
+    if st and st.used and st.dice then
+        -- dois dados jogados à direita do copo, na diagonal
+        contactBand(L, fx + 14, fy + D.slope * 14, 4, D.slope, 1)
+        contactBand(L, fx + 24, fy + D.slope * 24, 4, D.slope, 1)
+    end
+    local drawn = false
     if P and P.drawDiceCup then
-        local ok, err = pcall(P.drawDiceCup, D.rect, { hover = self.dice.hover, used = ScribeDice.isUsed(run),
-            total = st and st.total or nil, run = run, t = self.t, reduced = reducedMotion() })
+        local ok, err = pcall(P.drawDiceCup, artRect, { hover = self.dice.hover, used = ScribeDice.isUsed(run),
+            total = st and st.total or nil, run = run, t = self.t, reduced = reducedMotion(),
+            slope = D.slope, outline = self.dice.hover, silhouette = ShopPerspective.silhouette() })
         if ok then drawn = true else print("[ShopScene] ShopProps.drawDiceCup: " .. tostring(err)) end
     end
     if not drawn then
-        local dr = D.rect
         local cup = Palette.lerp(Palette.RUST, Palette.INK, 0.35)
-        Palette.set(Palette.INK)
-        love.graphics.rectangle("fill", dr.x + dr.w * 0.2 - 1, dr.y + dr.h * 0.25 - 1, dr.w * 0.6 + 2, dr.h * 0.75 + 2)
         Palette.set(cup)
-        love.graphics.rectangle("fill", dr.x + dr.w * 0.2, dr.y + dr.h * 0.25, dr.w * 0.6, dr.h * 0.75)
+        love.graphics.rectangle("fill", math.floor(fx - 5), math.floor(fy - 12 - lift), 10, 12)
+        love.graphics.setColor(1, 1, 1, 1)
     end
-    ShelfItem.drawPlate(D.plate, {
-        { I18n.t("shop.dice_plate"), Palette.INK },
-        { (st and st.used and st.total) and tostring(st.total) or "", Palette.INK },
-    })
+end
+
+-- Nome do sino / copo SÓ no hover (faixa de pergaminho na diagonal).
+function ShopScene:_drawCounterLabels()
+    local L = self.L
+    local lift = ShopLayout.LIFT
+    if self.bell.hover > 0.05 then
+        ShelfItem.drawHoverName(I18n.t("shop.bell_plate"), L.bell.footX, L.bell.rect.y - lift * self.bell.hover,
+            L.bell.slope, math.min(1, self.bell.hover * 1.4), L.limitX, 8)
+    end
+    if self.dice.hover > 0.05 then
+        ShelfItem.drawHoverName(I18n.t("shop.dice_plate"), L.dice.footX, L.dice.rect.y - lift * self.dice.hover,
+            L.dice.slope, math.min(1, self.dice.hover * 1.4), L.limitX, 8)
+    end
 end
 
 -- Pergaminho de inspeção: prego + rolo (9-slice) + papel liso + CardDetailPanel.
@@ -608,8 +719,19 @@ function ShopScene:_drawScroll()
     love.graphics.rectangle("fill", B.x - 6, B.y - 4, B.w + 12, (S.buy.y + S.buy.h) - B.y + 10)
     love.graphics.setColor(1, 1, 1, 1)
     if self.screen._drawDetailPanel then
-        self.screen:_drawDetailPanel(S.body, true, S.artMaxH)
+        self.screen:_drawDetailPanel(S.body, true, S.artMaxH, ShopScene.portrait)
     end
+end
+
+-- Retrato do objeto no pergaminho: o MESMO sprite (e o mesmo espelho) da
+-- mesa. A queixa "na bancada está de um jeito e, quando passo o mouse, fica
+-- de outro" era o pergaminho desenhando a arte com pedestal e halo do
+-- UpgradeTile ao lado do objeto novo da mesa.
+function ShopScene.portrait(payload, x, y, w, h, alpha)
+    local offer = payload and payload.offer
+    if not offer then return false end
+    local kind = (payload.kind == "pack") and "pack" or "relic"
+    return ShelfItem.drawPortrait(kind, offer, x, y, w, h, alpha)
 end
 
 function ShopScene:draw()
@@ -639,7 +761,7 @@ end
 function ShopScene:drawFlies()
     for _, f in ipairs(self.flies) do
         love.graphics.setColor(1, 1, 1, f.alpha or 1)
-        love.graphics.draw(f.img, f.x, f.y, f.rot or 0, f.scale, f.scale, f.ox or 0, f.oy or 0)
+        love.graphics.draw(f.img, f.x, f.y, f.rot or 0, f.flip and -f.scale or f.scale, f.scale, f.ox or 0, f.oy or 0)
     end
     love.graphics.setColor(1, 1, 1, 1)
 end

@@ -2393,7 +2393,7 @@ end
 -- ============================================================================
 -- `rect`/`parchment` (Loja v3): o ShopScene chama com o miolo do pergaminho
 -- e a paleta tinta-sobre-papel; sem argumentos é a coluna escura de sempre.
-function CardRewardScreen:_drawDetailPanel(rect, parchment, artMaxH)
+function CardRewardScreen:_drawDetailPanel(rect, parchment, artMaxH, objectArt)
     local dp = rect or self.detailPanel
     if not dp then return end
 
@@ -2426,6 +2426,7 @@ function CardRewardScreen:_drawDetailPanel(rect, parchment, artMaxH)
         chrome    = not parchment,
         parchment = parchment,
         artMaxH   = artMaxH,
+        objectArt = objectArt,
         footerH   = footerH,
         emptyHint = I18n.t("reward.detail_empty", nil,
             "Passe o mouse sobre uma oferta para ver os detalhes"),

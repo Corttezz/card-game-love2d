@@ -122,6 +122,19 @@ function CardMesh.setUniforms(shader, mouseUV, hover, time, image)
     shader:send("hover", hover or 0)
     shader:send("time", time or 0)
     shader:send("cardSize", { image:getWidth(), image:getHeight() })
+    -- o modo quadrilátero (loja) é estado do shader COMPARTILHADO: zera aqui
+    -- pra nenhum outro chamador herdar a homografia da última carta da loja
+    shader:send("quadOn", 0)
+end
+
+-- Loja v3c: liga o modo QUADRILÁTERO depois do setUniforms. r0..r2 = linhas
+-- da homografia (ShopPerspective.homography) em coordenadas do mundo: o mesh
+-- é desenhado em (0, 0) sem escala e cai exatamente nos 4 cantos.
+function CardMesh.setQuad(shader, r0, r1, r2)
+    shader:send("hRow0", r0)
+    shader:send("hRow1", r1)
+    shader:send("hRow2", r2)
+    shader:send("quadOn", 1)
 end
 
 -- Helper de draw completo (setShader + uniforms + mesh + setShader nil).

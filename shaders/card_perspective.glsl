@@ -11,11 +11,22 @@
 //   hover    (number) — intensidade 0..1 do efeito (smoothed)
 //   time     (number) — segundos acumulados pro wobble
 //   cardSize (vec2)   — largura/altura do canvas em pixels
+//   quadOn   (number) — 1 = modo QUADRILÁTERO (Loja v3c: carta no cavalete
+//                      em perspectiva real). A carta inteira é mapeada pela
+//                      homografia hRow0..2 (quadrado unitário → 4 cantos em
+//                      coordenadas do mundo); o press/wobble somam por cima.
+//                      0 = comportamento antigo. CardMesh.setUniforms zera
+//                      SEMPRE (o shader é compartilhado: quem não usa o modo
+//                      nunca herda o quadrilátero da loja).
 
 extern vec2 mouse;
 extern number hover;
 extern number time;
 extern vec2 cardSize;
+extern number quadOn;
+extern vec3 hRow0;
+extern vec3 hRow1;
+extern vec3 hRow2;
 
 #ifdef VERTEX
 vec4 position(mat4 transform_projection, vec4 vertex_position) {
@@ -40,6 +51,12 @@ vec4 position(mat4 transform_projection, vec4 vertex_position) {
     // Vertex próximo do mouse: pressAmount negativo → vertex CONTRAI (move pro centro).
     // Vertex oposto: pressAmount positivo → vertex EXPANDE (afasta do centro).
     vec2 warped = vertex_position.xy + centered * cardSize * (pressAmount + wobble);
+
+    if (quadOn > 0.5) {
+        vec3 q = vec3(warped / cardSize, 1.0);
+        float w = dot(hRow2, q);
+        warped = vec2(dot(hRow0, q), dot(hRow1, q)) / w;
+    }
 
     return transform_projection * vec4(warped, vertex_position.zw);
 }
