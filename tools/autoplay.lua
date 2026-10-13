@@ -716,8 +716,12 @@ local function chooseBatch(game, turnState)
     local hand = game.hand
     local enemy = game.enemy
     local manaLeft = p.mana
-    -- Dano TOTAL do intent (multi-golpe soma; Vulneravel congelado entra).
-    local incoming = enemy.getIncomingDamage and enemy:getIncomingDamage(p) or 0
+    -- Dano TOTAL do intent (multi-golpe soma; Vulneravel congelado entra) —
+    -- como o JOGADOR o conhece: com a névoa de intenção (Out/2026) o número
+    -- escondido vira a média do kit (AI.knownThreat). A medição (diag)
+    -- continua lendo o real.
+    local threat = AI.knownThreat(enemy, p)
+    local incoming = threat.perHit * threat.hits
     local hpRatio = p.health / p.maxHealth
     local run = (game.runManager and game.runManager.currentRun) or {}
     local floorInAct = run.floorInAct or 1
@@ -1113,6 +1117,12 @@ local function playBattle(game, label)
 
         local kind, value, itLog = game.enemy:getIntentPreview(game.player)
         if itLog and (itLog.hits or 0) > 1 then value = tostring(value) .. "x" .. itLog.hits end
+        -- névoa de intenção: o diário mostra o que o jogador viu ("?"); a
+        -- assinatura de paridade abaixo segue com o valor real (é de regra)
+        local shownValue = value
+        if game.enemy.getKnownIncomingDamage and game.enemy:getKnownIncomingDamage(game.player) == nil then
+            shownValue = "?"
+        end
 
         -- TRACO DE PARIDADE (tools/test_instant_parity.lua): assinatura do
         -- estado de REGRA no inicio de cada turno. Dois relogios diferentes
@@ -1124,7 +1134,7 @@ local function playBattle(game, label)
         log("- T%d: HP %d/%d armor %d | mana %d | intent %s %s | mao: %s",
             turnCount, game.player.health, game.player.maxHealth,
             game.player.armor, game.player.mana,
-            kind:upper(), tostring(value or ""), handSummary(game))
+            kind:upper(), tostring(shownValue or ""), handSummary(game))
 
         local hpBefore = game.player.health
         local enemyBefore = game.enemy.health

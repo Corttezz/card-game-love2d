@@ -281,6 +281,54 @@ local function copyOrbs(list)
     return out
 end
 
+-- NÉVOA DE INTENÇÃO (Out/2026, src/systems/IntentVisibility.lua): o piloto
+-- DECIDE com o que o jogador VÊ. Devolve o golpe que vem como ele é
+-- conhecido: { perHit, hits, pierce, armor, known }.
+--   full       números congelados (Vulnerável congelado entra, como no HUD);
+--   type_only  o TIPO é conhecido: golpe de dano vira a média do kit
+--              (expectedDamagePerTurn) em 1 golpe; defender vira o bloqueio
+--              padrão; buff/cura/debuff/carga = 0 de dano; perfurante é tipo,
+--              então segue conhecido;
+--   hidden     média do kit, sem perfurante nem bloqueio.
+-- MEDIÇÃO (diag/incSum do autoplay) continua lendo o real — só a escolha de
+-- cartas passa por aqui. Sem kit (testes antigos) cai no contrato legado.
+local DAMAGE_KINDS = { attack = true, strong = true, multi = true }
+function AI.knownThreat(e, p)
+    local th = { perHit = 0, hits = 0, pierce = false, armor = 0, known = true }
+    local it = e.getKnownIntent and e:getKnownIntent(p) or (e.getIntent and e:getIntent()) or nil
+    if not it then
+        local kind = e.nextIntent or "attack"
+        if kind == "attack" or kind == "strong" then
+            th.perHit, th.hits = e.nextIntentDamage or e.damage or 0, 1
+            if kind == "strong" then th.perHit = math.floor(th.perHit * 1.6) end
+        elseif kind == "defend" then
+            th.armor = e.getDefendAmount and e:getDefendAmount() or 6
+        end
+        return th
+    end
+    if it.hidden then
+        th.known = false
+        local vis = it.visibility or "hidden"
+        local expected = math.ceil(e.expectedDamagePerTurn and e:expectedDamagePerTurn() or (e.damage or 0))
+        if vis == "hidden" or DAMAGE_KINDS[it.kind] then
+            th.perHit, th.hits = expected, 1
+        end
+        if vis == "type_only" then
+            th.pierce = it.pierce and true or false
+            if it.kind == "defend" then
+                th.armor = e.getDefendAmount and e:getDefendAmount() or 0
+            end
+        end
+        return th
+    end
+    th.perHit, th.hits, th.pierce = it.perHit or 0, it.hits or 0, it.pierce and true or false
+    if it.vuln and p and p.hasDebuff and p:hasDebuff("vulnerable") then
+        th.perHit = math.floor(th.perHit * 1.5)
+    end
+    th.armor = it.armor or 0
+    return th
+end
+
 function AI.simulate(game, set, bctx, opts)
     opts = opts or {}
     local p, e = game.player, game.enemy
@@ -474,24 +522,11 @@ function AI.simulate(game, set, bctx, opts)
         local eArmorAtk = 0  -- armadura do inimigo EXPIRA no inicio do turno dele
         S.eArmor = eArmorAtk
         -- Intent CONGELADO do kit (Out/2026): golpes x dano por golpe,
-        -- perfurante, bloqueio do proprio inimigo e debuffs no jogador.
-        local it = e.getIntent and e:getIntent() or nil
-        local perHit, hits, pierce = 0, 0, false
-        if it then
-            perHit, hits, pierce = it.perHit or 0, it.hits or 0, it.pierce and true or false
-            if it.vuln and p.hasDebuff and p:hasDebuff("vulnerable") then
-                perHit = math.floor(perHit * 1.5)
-            end
-            S.eArmor = it.armor or 0
-        else
-            local kind = e.nextIntent or "attack"
-            if kind == "attack" or kind == "strong" then
-                perHit, hits = e.nextIntentDamage or e.damage or 0, 1
-                if kind == "strong" then perHit = math.floor(perHit * 1.6) end
-            elseif kind == "defend" then
-                S.eArmor = e.getDefendAmount and e:getDefendAmount() or 6
-            end
-        end
+        -- perfurante, bloqueio do proprio inimigo e debuffs no jogador — como
+        -- o JOGADOR o conhece (névoa de intenção: AI.knownThreat).
+        local th = AI.knownThreat(e, p)
+        local perHit, hits, pierce = th.perHit, th.hits, th.pierce
+        S.eArmor = th.armor
         if S.weak and perHit > 0 then perHit = math.floor(perHit * 0.75) end
         local dmg = perHit * hits
         if dmg > 0 then

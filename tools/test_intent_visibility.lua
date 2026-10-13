@@ -498,6 +498,35 @@ function M.run()
     g.enemy.intentVisibility = "full"
     t:eq("full: getKnownIntent carrega visibility", g.enemy:getKnownIntent(g.player).visibility, "full")
 
+    -- o piloto de verdade (tools/balance_ai.knownThreat) decide pelo conhecido
+    local AI = require("tools.balance_ai")
+    g.enemy:forceIntent("wight_claw", g.player)
+    local realHit = g.enemy:intentHitDamage(g.player)
+    local expected = math.ceil(g.enemy:expectedDamagePerTurn())
+    g.enemy.intentVisibility = "full"
+    local th = AI.knownThreat(g.enemy, g.player)
+    t:eq("piloto full: lê o número congelado", th.perHit * th.hits, realHit)
+    t:truthy("piloto full: known", th.known)
+    g.enemy.intentVisibility = "type_only"
+    th = AI.knownThreat(g.enemy, g.player)
+    t:falsy("piloto type_only: NÃO é conhecido", th.known)
+    t:eq("piloto type_only: estima pela média do kit", th.perHit * th.hits, expected)
+    g.enemy.intentVisibility = "hidden"
+    th = AI.knownThreat(g.enemy, g.player)
+    t:falsy("piloto hidden: NÃO é conhecido", th.known)
+    t:eq("piloto hidden: estima pela média do kit", th.perHit * th.hits, expected)
+    t:eq("piloto hidden: sem bloqueio nem perfurante", (th.armor or 0) + (th.pierce and 1 or 0), 0)
+    g.enemy:forceIntent("freezing_touch", g.player)   -- golpe de dano que aplica Frágil
+    g.enemy.intentVisibility = "type_only"
+    th = AI.knownThreat(g.enemy, g.player)
+    t:eq("piloto type_only (ataque): dano estimado", th.perHit * th.hits, expected)
+    g.enemy.intentVisibility = "full"
+    -- e o autoplay escolhe cartas por esse caminho (fonte, não só a API)
+    local src = love.filesystem.read("tools/autoplay.lua") or ""
+    t:truthy("autoplay.chooseBatch decide por AI.knownThreat", src:find("AI.knownThreat(enemy, p)", 1, true))
+    t:truthy("autoplay mantém a MEDIÇÃO (diag) no dano real",
+        src:find("game.enemy:getIncomingDamage(game.player)", 1, true))
+
     -- ======================================================================
     -- 10. TUTORIAL
     -- ======================================================================

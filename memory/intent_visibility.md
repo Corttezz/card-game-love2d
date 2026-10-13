@@ -58,12 +58,20 @@ nevasca fecha quando o número some), não como um interruptor de UI.
 
 ## Pilotos
 
-`tools/balance_ai.lua` e `tools/autoplay.lua` ainda leem `getIntent()` (número
-real). A API justa está pronta: `getKnownIntent(player)` /
-`getKnownIncomingDamage(player)` (nil = escondido) + `expectedDamagePerTurn()`
-como estimativa. Patch sugerido enviado à frente sim-instant (Out/2026);
-quando aplicado, acrescentar em `test_intent_visibility` a trava "piloto não
-lê número escondido" (hoje a trava cobre só a API).
+**DECISÃO usa o conhecido, MEDIÇÃO usa o real** (combinado com a frente
+sim-instant, Out/2026). `AI.knownThreat(enemy, player)` em `tools/balance_ai.lua`
+é a fonte única do golpe "como o jogador o vê" ({ perHit, hits, pierce, armor,
+known }): full = números congelados; type_only = tipo conhecido, dano estimado
+pela média do kit (`expectedDamagePerTurn`, 1 golpe) ou 0 pra defesa/buff/cura,
+bloqueio padrão se o tipo é defender, perfurante segue conhecido; hidden = média
+do kit, sem perfurante nem bloqueio. Quem usa: `AI.simulate` (busca v6) e
+`autoplay.chooseBatch` (`incoming`, emergência, planDefense). O diário do turno
+imprime "?" quando `getKnownIncomingDamage` é nil. O bloco `diag` do autoplay
+(cobriu/furou, `incSum`) e o `stateSignature` da paridade continuam com
+`getIncomingDamage`/`getIntent` reais — são métrica de regra, não de visão.
+Trava em `test_intent_visibility` §9 (API + knownThreat + fonte do autoplay).
+As baselines de `memory/balance_curves.md` foram medidas SEM névoa: o commit
+dos pilotos é a fronteira se o A4/A6 mudar.
 
 ## Afinar
 
