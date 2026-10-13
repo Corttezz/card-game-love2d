@@ -73,3 +73,53 @@ pro jogo". Contrato e prompt em `docs/plan/intro-computer-prompt.md`.
   mergulho cobrindo a janela e fallback. Prova sintetica em
   `tools/preview_out/intro/` (computador desenhado por script, nao e a arte
   final).
+
+## A carta na fenda (Out/2026, "todos os efeitos do site")
+
+No site, depois do texto uma mão enfia um DISQUETE no Macintosh e só então a
+câmera mergulha na tela (que mostra um redemoinho de carregamento). Aqui,
+com a arte do computador: fase `insert` entre `page` e `dive`: o VERSO de
+uma carta (`src/ui/CardBack`) vem do canto inferior direito já girada,
+endireita no caminho (ease in-out, `T.insert` 1,1 s) e some pela FENDA do
+disquete. O truque é um `setScissor` na linha da fenda: o que sobe além
+dela está "dentro" do gabinete, e sobra 5% da carta para fora. Sons:
+`cardDraw` na partida e `buttonClick` ao entrar (78% do caminho); depois um
+flash de fósforo na tela (`T.insertHold` 0,35 s) e o mergulho. O redemoinho
+do site é a nossa sintonia do boot, que já acontece dentro do tubo.
+
+A fenda vem de `slot` nos dados (`tools/intro_computer_import.py` acha a
+faixa de tinta larga e baixa abaixo da tela, ≥ 18% da largura, ≤ 8% da
+altura); sem `slot`, `IntroTube.SLOT_FALLBACK` (fração da arte). Televisor
+do shader (sem arte) e `reducedMotion` não têm a fase. Capturas
+`3b_carta`/`3c_flash` no `screenshot_intro`; trava `test_intro_tube` 5c.
+
+Efeitos do site mapeados: datilografia com cursor (feito), dica de rolar
+(= "pressione qualquer tecla"), rosto na tela ("Meet Parker", não
+reproduzido: a tela mostra o título), disquete (= a carta), redemoinho
+(= sintonia), mergulho na tela (feito), fita ticker (feito).
+
+## A arte instalada (13/Out/2026)
+
+`assets/sprites/intro/computer.png` (640×773, paleta sépia) veio do
+**Higgsfield Unlimited pelo navegador** (Seedream 4.5, 3:4, custo zero):
+driver `E:/dev/projects/Tiktok-accounts/pipeline/4_video/higgsfield_unlimited.js`
+(`sessao` na porta 9222 + `gerar <fila.json> --dir=<pasta>`), prompt de
+`docs/plan/intro-computer-prompt.md` com o Macintosh REAL do heyparker.ai
+(quadro 0 da sequência do hero, `framerusercontent.com/images/<id>.png`)
+como referência. O job NÃO aceitou a referência (0 de 1) e mesmo assim
+devolveu um Macintosh fiel; a tela saiu roxa `#8a1a8a`, não `#ff00ff`, por
+isso o importador casa pelo MATIZ. O render cru trouxe base + drive externo
++ emblema dourado + rebites + manchas: o dono pediu para tirar ("achei
+feio"), então o corte é na linha de baixo do gabinete (y 1934 do render
+1728×2304) e o corpo bege é pintado LISO (`(229,203,154)`), preservando
+bezel, fenda (retângulo 830..1500 × 1565..1750, com o canto esquerdo até
+905 também liso) e contornos. Fonte limpa em
+`assets/sprites/intro/computer_source.png`; renders crus (ilustração e
+pixel art, descartada: degraus falsos "cara de IA") em
+`tools/preview_out/intro_hf/` (untracked). Reinstalar: `python
+tools/intro_computer_import.py assets/sprites/intro/computer_source.png
+--width 640 --palette`.
+
+Pedido do dono (13/Out): "antes do zoom apague o que tá escrito": o texto
+da tela some junto com o flash da carta (`textAlpha()`); no televisor do
+shader, nos últimos 0,3 s da espera. O mergulho é sempre em tela vazia.

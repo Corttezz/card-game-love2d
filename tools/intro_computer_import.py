@@ -15,7 +15,9 @@ Contrato da arte (ver docs/plan/intro-computer-prompt.md):
       [--palette]         # quantiza nas cores do Palette (sépia do jogo)
 
 Escreve assets/sprites/intro/computer.png e src/data/intro_computer.lua
-({ image, w, h, screen = {x, y, w, h} }). A abertura (IntroTube) usa isso
+({ image, w, h, screen = {x, y, w, h}, slot = {x, y, w, h} }). `slot` e a
+FENDA do disquete (faixa escura e larga abaixo da tela), por onde a CARTA
+entra antes do mergulho; se nao for achada, o jogo usa uma fracao fixa. A abertura (IntroTube) usa isso
 quando existe; sem o arquivo, cai no televisor do shader.
 """
 import os
@@ -37,8 +39,10 @@ PALETTE = [
 
 
 def is_magenta(px):
+    """magenta/roxo saturado: o gerador raramente devolve #ff00ff exato
+    (veio #8a1a8a numa rodada), entao vale o MATIZ, nao o valor"""
     r, g, b = px[:3]
-    return r > 200 and b > 200 and g < 80
+    return r > 90 and b > 90 and g < 0.55 * min(r, b)
 
 
 def find_screen(im):
@@ -60,19 +64,69 @@ def find_screen(im):
     return (x0, y0, x1 - x0 + 1, y1 - y0 + 1), n
 
 
+def longest_dark_run(px, y, w):
+    """maior trecho continuo de pixels escuros (tinta) na linha y: (x0, comprimento)"""
+    best = (0, 0)
+    start = None
+    for x in range(w + 1):
+        dark = False
+        if x < w:
+            p = px[x, y]
+            dark = (len(p) < 4 or p[3] > 64) and (p[0] + p[1] + p[2]) < 180
+        if dark and start is None:
+            start = x
+        elif not dark and start is not None:
+            if x - start > best[1]:
+                best = (start, x - start)
+            start = None
+    return best
+
+
+def find_slot(im, screen):
+    """a FENDA do disquete: faixa de tinta larga e baixa, bem abaixo da tela"""
+    px = im.load()
+    w, h = im.size
+    sx, sy, sw, sh = screen
+    y_from = sy + sh + int(h * 0.08)
+    groups = []
+    cur = None
+    for y in range(y_from, h):
+        x0, ln = longest_dark_run(px, y, w)
+        if ln >= w * 0.18:
+            if cur is None:
+                cur = [y, y, x0, x0 + ln]
+            else:
+                cur[1] = y
+                cur[2] = min(cur[2], x0)
+                cur[3] = max(cur[3], x0 + ln)
+        elif cur is not None:
+            groups.append(cur)
+            cur = None
+    if cur is not None:
+        groups.append(cur)
+    # a fenda tem espessura (>= 3 px) e nao e o contorno de baixo do gabinete
+    cands = [(g[3] - g[2], g) for g in groups
+             if 3 <= (g[1] - g[0] + 1) <= h * 0.08 and g[1] < h * 0.96]
+    if not cands:
+        return None
+    _, g = max(cands)
+    return (g[2], g[0], g[3] - g[2], g[1] - g[0] + 1)
+
+
 def crop_to_content(im):
     """recorta pela caixa opaca; fundo liso vira transparente pela cor do canto"""
     im = im.convert("RGBA")
     px = im.load()
     corner = px[0, 0]
     if corner[3] > 0:
-        # fundo liso: qualquer pixel igual ao canto (tolerância) vira transparente
+        # fundo liso: INUNDA a partir dos 4 cantos (so o que esta LIGADO ao
+        # canto some; o gabinete, que e creme tambem, nao e tocado). A
+        # tolerancia e larga porque o gerador poe vinheta no fundo.
+        from PIL import ImageDraw
         w, h = im.size
-        for y in range(h):
-            for x in range(w):
-                p = px[x, y]
-                if abs(p[0] - corner[0]) + abs(p[1] - corner[1]) + abs(p[2] - corner[2]) < 24:
-                    px[x, y] = (0, 0, 0, 0)
+        for seed in ((0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)):
+            ImageDraw.floodfill(im, seed, (0, 0, 0, 0), thresh=48)
+        px = im.load()
     bb = im.getbbox()
     return im.crop(bb) if bb else im
 
@@ -124,6 +178,9 @@ def main(argv):
                 px[x, y] = (0, 0, 0, 0)
     if do_pal:
         im = quantize(im)
+    slot = find_slot(im, (sx, sy, sw, sh))
+    if not slot:
+        print("[intro] AVISO: nao achei a FENDA do disquete abaixo da tela; a carta entra pela fracao SLOT_FALLBACK")
     os.makedirs(os.path.dirname(out_img), exist_ok=True)
     im.save(out_img)
     rel = os.path.relpath(out_img, ROOT).replace("\\", "/")
@@ -134,8 +191,10 @@ def main(argv):
         f.write(f'    image = "{rel}",\n')
         f.write(f"    w = {im.width}, h = {im.height},\n")
         f.write(f"    screen = {{ x = {sx}, y = {sy}, w = {sw}, h = {sh} }},\n")
+        if slot:
+            f.write(f"    slot = {{ x = {slot[0]}, y = {slot[1]}, w = {slot[2]}, h = {slot[3]} }},\n")
         f.write("}\n")
-    print(f"[intro] {rel} {im.width}x{im.height}; tela {sw}x{sh} em ({sx},{sy}); dados em {os.path.relpath(out_lua, ROOT)}")
+    print(f"[intro] {rel} {im.width}x{im.height}; tela {sw}x{sh} em ({sx},{sy}); fenda {slot}; dados em {os.path.relpath(out_lua, ROOT)}")
     return 0
 
 

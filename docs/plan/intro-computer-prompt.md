@@ -40,7 +40,10 @@ Regras que NÃO podem faltar (o importador depende delas):
 - tela em **magenta puro `#ff00ff`**, lisa e retangular (é o que o script
   detecta e recorta; vira a janela onde o jogo desenha o tubo);
 - fundo **liso** (o script corta pela cor do canto) ou transparente;
-- computador inteiro no quadro, sem cortar pés nem topo; sem texto na arte.
+- computador inteiro no quadro, sem cortar pés nem topo; sem texto na arte;
+- a FENDA do disquete desenhada em tinta escura, larga e baixa, abaixo da
+  tela (o importador a detecta e grava `slot`; é por ela que a carta entra
+  antes do mergulho; se não achar, o jogo usa `IntroTube.SLOT_FALLBACK`).
 
 ## Instalar
 

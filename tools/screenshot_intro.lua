@@ -43,8 +43,14 @@ function M.run(arg)
     local function run(secs) for _ = 1, math.floor(secs * 60) do IntroTube.update(dt) end end
     run(0.5);  shot("1_pagina")
     run(1.2);  shot("2_titulo")
-    for _ = 1, 60 * 8 do IntroTube.update(dt); if IntroTube.phase() == "dive" then break end end
+    for _ = 1, 60 * 8 do IntroTube.update(dt); if IntroTube.phase() ~= "page" then break end end
     shot("3_texto")
+    if IntroTube.phase() == "insert" then
+        -- com a arte: a carta entra pela fenda e a tela pisca antes do mergulho
+        IntroTube.update(IntroTube.T.insert * 0.55); shot("3b_carta")
+        IntroTube.update(IntroTube.T.insert * 0.45 + IntroTube.T.insertHold * 0.15); shot("3c_flash")
+        for _ = 1, 60 * 2 do IntroTube.update(dt); if IntroTube.phase() == "dive" then break end end
+    end
     IntroTube.update(IntroTube.T.dive * 0.45); shot("4_mergulho")
     IntroTube.update(IntroTube.T.dive * 0.45); shot("5_tubo")
     -- fita do menu

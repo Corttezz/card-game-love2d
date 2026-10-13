@@ -28,6 +28,8 @@ IntroTube.T = {
     typeAt = 0.80,        -- começa a datilografar o título
     gapSub = 0.35,        -- pausa entre título e subtítulo
     hold   = 0.90,        -- segura com o texto completo
+    insert = 1.10,        -- a CARTA viaja até a fenda do disquete (só com a arte)
+    insertHold = 0.35,    -- clique + flash da tela depois de entrar
     dive   = 1.00,        -- mergulho no tubo
     cps    = 22,          -- caracteres por segundo (mais lento que o corvo: é cena)
 }
@@ -41,6 +43,10 @@ IntroTube.TV_FRAC  = 0.46   -- largura do televisor / largura da janela
 -- do retângulo da tela da arte e o mergulho é na tela.
 IntroTube.DATA_PATH = "src/data/intro_computer.lua"
 IntroTube.ART_FRAC  = 0.70   -- altura do computador / altura da janela
+-- A FENDA do disquete: no site uma mão enfia um disquete antes do mergulho;
+-- aqui uma CARTA (o verso, src/ui/CardBack) entra pela fenda. `slot` vem
+-- do importador (faixa escura abaixo da tela); sem ele, esta fração da arte.
+IntroTube.SLOT_FALLBACK = { x = 0.52, y = 0.80, w = 0.34, h = 0.03 }
 IntroTube.BEZEL_PX = 20     -- = BEZEL_PX do crt.glsl (gabinete dentro do canvas)
 IntroTube.CORNER   = 0.012  -- raio relativo da abertura (= cornerR do shader)
 
@@ -105,8 +111,8 @@ end
 function IntroTube.init(opts)
     opts = opts or {}
     S = {
-        phase = "page",            -- page | dive | done
-        t = 0, diveT = 0,
+        phase = "page",            -- page | insert | dive | done
+        t = 0, diveT = 0, insT = 0, insSfx = 0,
         title = opts.title or I18n.t("menu.title"),
         sub = opts.subtitle or I18n.t("menu.subtitle"),
         shownTitle = 0, shownSub = 0, acc = 0, pauseT = 0, letters = 0,
@@ -127,6 +133,7 @@ function IntroTube.phase() return S.phase end
 function IntroTube.isDone() return S.phase == "done" end
 function IntroTube.typed() return S.shownTitle, S.shownSub end
 function IntroTube.diveProgress() return S.phase == "dive" and S.diveT / IntroTube.T.dive or (S.phase == "done" and 1 or 0) end
+function IntroTube.insertProgress() return S.phase == "insert" and math.min(1, S.insT / IntroTube.T.insert) or 0 end
 
 local function finish()
     if S.phase == "done" then return end
@@ -147,6 +154,10 @@ end
 local function blip()
     local ok, Narrator = pcall(require, "src.ui.Narrator")
     if ok and Narrator.playBlip then Narrator.playBlip() end
+end
+local function sfx(name)
+    local ok, Sfx = pcall(require, "src.systems.Sfx")
+    if ok and Sfx.play then pcall(Sfx.play, name) end
 end
 
 local function typeStep(dt)
@@ -183,9 +194,16 @@ function IntroTube.update(dt)
         if S.doneTyping then
             S.holdT = S.holdT + dt
             if S.holdT >= IntroTube.T.hold then
-                if reducedMotion() then finish() else S.phase = "dive"; S.diveT = 0 end
+                if reducedMotion() then finish()
+                elseif IntroTube.computerArt() then S.phase = "insert"; S.insT = 0
+                else S.phase = "dive"; S.diveT = 0 end
             end
         end
+    elseif S.phase == "insert" then
+        S.insT = S.insT + dt
+        if S.insSfx == 0 then S.insSfx = 1; sfx("cardDraw") end
+        if S.insSfx == 1 and S.insT >= IntroTube.T.insert * 0.78 then S.insSfx = 2; sfx("buttonClick") end
+        if S.insT >= IntroTube.T.insert + IntroTube.T.insertHold then S.phase = "dive"; S.diveT = 0 end
     elseif S.phase == "dive" then
         S.diveT = S.diveT + dt
         if S.diveT >= IntroTube.T.dive then finish() end
@@ -210,9 +228,12 @@ function IntroTube.geometry(W, H)
         local sw, sh = d.screen.w * k, d.screen.h * k
         local tw, th = math.max(8, math.floor(sw)), math.max(8, math.floor(sh))
         local sEnd = math.max(W / sw, H / sh)
+        local F = IntroTube.SLOT_FALLBACK
+        local sl = d.slot or { x = d.w * F.x, y = d.h * F.y, w = d.w * F.w, h = d.h * F.h }
         return { art = k, ax = ax, ay = ay, aw = aw, ah = ah, sx = sx, sy = sy, sw = sw, sh = sh,
                  tw = tw, th = th, cx = sx + sw / 2, cy = sy + sh / 2, sEnd = sEnd,
-                 innerW = sw, innerH = sh, mode = "art" }
+                 innerW = sw, innerH = sh, mode = "art",
+                 slot = { x = ax + sl.x * k, y = ay + sl.y * k, w = sl.w * k, h = sl.h * k } }
     end
     local tw = math.floor(W * IntroTube.TV_FRAC)
     local th = math.floor(tw * 0.75)
@@ -247,9 +268,27 @@ local function sub(str, n)
     return off and str:sub(1, off - 1) or str
 end
 
+-- O texto some ANTES do zoom (dono, Out/2026: "antes do zoom apague o que
+-- tá escrito"): com a arte, apaga junto com o flash da carta; no televisor
+-- do shader, nos últimos 0,3 s da espera. No mergulho a tela está vazia.
+local function textAlpha()
+    local T = IntroTube.T
+    if S.phase == "page" then
+        if S.doneTyping and not IntroTube.computerArt() and not reducedMotion() then
+            return math.max(0, math.min(1, (T.hold - S.holdT) / 0.3))
+        end
+        return 1
+    elseif S.phase == "insert" then
+        if S.insT <= T.insert then return 1 end
+        return math.max(0, 1 - (S.insT - T.insert) / T.insertHold)
+    end
+    return 0
+end
+
 -- O programa que passa na tela do televisor: fósforo escuro + texto
 -- datilografado + cursor. Em px do canvas do tubo.
 local function drawTubeContent(tw, th, alpha)
+    local ta = alpha * textAlpha()
     local ink = Palette.INK
     love.graphics.clear(ink[1] * 0.55, ink[2] * 0.55, ink[3] * 0.6, 1)
     -- brilho frio do fósforo no centro (degraus, sem gradiente contínuo)
@@ -268,9 +307,9 @@ local function drawTubeContent(tw, th, alpha)
     love.graphics.setFont(titleF)
     local w1 = titleF:getWidth(t1)
     local x1 = math.floor((tw - w1) / 2)
-    Palette.set(Palette.INK, 0.8 * alpha)
+    Palette.set(Palette.INK, 0.8 * ta)
     love.graphics.print(t1, x1 + 2, y1 + 2)
-    Palette.set(Palette.PARCHMENT_LIGHT, alpha)
+    Palette.set(Palette.PARCHMENT_LIGHT, ta)
     love.graphics.print(t1 .. (typingTitle and cur or ""), x1, y1)
     if S.shownTitle >= S.lenTitle then
         -- o subtítulo cabe na ABERTURA do tubo: encolhe a fonte e, se ainda
@@ -284,7 +323,7 @@ local function drawTubeContent(tw, th, alpha)
         local shown = t2 .. (showCur and cur or "")
         local _, lines = f2:getWrap(shown, inner)
         love.graphics.setFont(f2)
-        Palette.set(Palette.PARCHMENT, alpha)
+        Palette.set(Palette.PARCHMENT, ta)
         local y2 = y1 + titleF:getHeight() + math.floor(th * 0.06)
         for i, ln in ipairs(lines) do
             if i <= math.max(#fullLines, 1) + 1 then
@@ -292,6 +331,48 @@ local function drawTubeContent(tw, th, alpha)
             end
         end
     end
+    -- a carta entrou: a tela "lê" o disco num flash de fósforo que apaga
+    if S.phase == "insert" and S.insT > IntroTube.T.insert then
+        local k = 1 - (S.insT - IntroTube.T.insert) / IntroTube.T.insertHold
+        Palette.set(Palette.PARCHMENT_LIGHT, 0.85 * math.max(0, math.min(1, k)) * alpha)
+        love.graphics.rectangle("fill", 0, 0, tw, th)
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- A CARTA entra na fenda do disquete (o disquete do site, no nosso visual):
+-- vem do canto inferior direito já girada, endireita no caminho e some pela
+-- FENDA. O truque é um recorte na linha da fenda: tudo acima dela está
+-- "dentro" do gabinete, então a carta desaparece conforme sobe. Em px da
+-- janela (durante a fase insert o computador está em escala 1).
+local function drawInsertCard(G, W, H)
+    if S.phase ~= "insert" or not G.slot then return end
+    local T = IntroTube.T
+    local u = easeInOutCubic(math.min(1, S.insT / T.insert))
+    local sl = G.slot
+    local cw = math.max(24, sl.w * 0.82)
+    local ch = cw * 1.5
+    local x0, y0 = W + cw * 0.8, H + ch * 0.6
+    local x1, y1 = sl.x + sl.w / 2, sl.y - ch / 2 + ch * 0.05
+    local x, y = x0 + (x1 - x0) * u, y0 + (y1 - y0) * u
+    local rot = -0.38 * (1 - u)
+    local okCB, CardBack = pcall(require, "src.ui.CardBack")
+    if not okCB or not CardBack.draw then
+        warnOnce("cardback", "CardBack indisponivel: abertura sem a carta na fenda")
+        return
+    end
+    love.graphics.push("all")
+    love.graphics.setScissor(0, math.floor(sl.y), W, math.max(1, H - math.floor(sl.y)))
+    local ink = Palette.INK
+    love.graphics.setColor(ink[1], ink[2], ink[3], 0.35)
+    love.graphics.push()
+    love.graphics.translate(x + 8, y + 10)
+    love.graphics.rotate(rot)
+    love.graphics.rectangle("fill", -cw / 2, -ch / 2, cw, ch, 4, 4)
+    love.graphics.pop()
+    love.graphics.setColor(1, 1, 1, 1)
+    CardBack.draw(x, y, cw, ch, { rot = rot, alpha = 1 })
+    love.graphics.pop()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
@@ -412,6 +493,7 @@ function IntroTube.draw()
         end
         love.graphics.setColor(1, 1, 1, tvAlpha)
         love.graphics.draw(d.img, G.ax, G.ay, 0, G.art, G.art)
+        drawInsertCard(G, W, H)
         love.graphics.pop()
         love.graphics.setColor(1, 1, 1, 1)
     end

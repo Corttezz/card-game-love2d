@@ -24,6 +24,11 @@ function M.run()
     _G.gameSettings = _G.gameSettings or {}
     local prevReduced = _G.gameSettings.reducedMotion
     _G.gameSettings.reducedMotion = false
+    -- as secoes 1-5 sao do televisor do shader: sem a arte do computador,
+    -- mesmo que o jogo ja tenha src/data/intro_computer.lua instalado
+    local prevData = IntroTube.DATA_PATH
+    IntroTube.DATA_PATH = "tut_intro_nao_existe.lua"
+    IntroTube.reloadArt()
 
     -- ===== 1. fases e datilografia =====
     local done = 0
@@ -103,8 +108,8 @@ function M.run()
         end)
         idata:encode("png", "tut_intro_computer.png")
         love.filesystem.write("tut_intro_computer.lua",
-            'return { image = "tut_intro_computer.png", w = 120, h = 150, screen = { x = 20, y = 20, w = 80, h = 60 } }')
-        local prevPath = IntroTube.DATA_PATH
+            'return { image = "tut_intro_computer.png", w = 120, h = 150, screen = { x = 20, y = 20, w = 80, h = 60 }, slot = { x = 55, y = 120, w = 50, h = 4 } }')
+        local prevPath = "tut_intro_nao_existe.lua"   -- de volta ao modo tubo, mesmo com a arte instalada
         IntroTube.DATA_PATH = "tut_intro_computer.lua"
         IntroTube.reloadArt()
         local d = IntroTube.computerArt()
@@ -120,10 +125,39 @@ function M.run()
         end
         IntroTube.init({})
         t:noerror("draw com a arte (pagina)", function() IntroTube.draw() end)
-        for _ = 1, 60 * 6 do IntroTube.update(dt); if IntroTube.phase() == "dive" then break end end
+        for _ = 1, 60 * 10 do IntroTube.update(dt); if IntroTube.phase() == "dive" then break end end
         IntroTube.update(IntroTube.T.dive / 2)
         t:noerror("draw com a arte (mergulho)", function() IntroTube.draw() end)
         IntroTube.skip()
+
+        -- ===== 5c. a CARTA entra na fenda do disquete antes do mergulho =====
+        IntroTube.init({})
+        local sawInsert = false
+        for _ = 1, 60 * 10 do IntroTube.update(dt); if IntroTube.phase() == "insert" then sawInsert = true break end end
+        t:truthy("com a arte, depois do texto vem a fase insert (carta na fenda)", sawInsert)
+        local G2 = IntroTube.geometry(1280, 720)
+        t:truthy("a fenda dos dados fica abaixo da tela e dentro do computador",
+            G2.slot and G2.slot.y > G2.sy + G2.sh and G2.slot.y + G2.slot.h <= G2.ay + G2.ah + 0.5)
+        IntroTube.update(IntroTube.T.insert * 0.5)
+        t:near("meio do caminho da carta", IntroTube.insertProgress(), 0.5, 0.05)
+        t:noerror("draw com a carta entrando", function() IntroTube.draw() end)
+        IntroTube.update(IntroTube.T.insert * 0.6)
+        t:noerror("draw com o flash da tela", function() IntroTube.draw() end)
+        IntroTube.update(IntroTube.T.insertHold)
+        t:eq("depois da fenda vem o mergulho", IntroTube.phase(), "dive")
+        IntroTube.skip()
+        -- sem a fenda nos dados: fracao de fallback, ainda abaixo da tela
+        love.filesystem.write("tut_intro_computer.lua",
+            'return { image = "tut_intro_computer.png", w = 120, h = 150, screen = { x = 20, y = 20, w = 80, h = 60 } }')
+        IntroTube.reloadArt()
+        local G3 = IntroTube.geometry(1280, 720)
+        t:truthy("sem slot nos dados: fenda de fallback abaixo da tela", G3.slot and G3.slot.y > G3.sy + G3.sh)
+        -- reducedMotion: sem carta, sem mergulho
+        _G.gameSettings.reducedMotion = true
+        IntroTube.init({})
+        for _ = 1, 60 * 4 do IntroTube.update(dt); if IntroTube.phase() == "done" then break end end
+        t:eq("reducedMotion com a arte: termina sem insert nem dive", IntroTube.phase(), "done")
+        _G.gameSettings.reducedMotion = false
         IntroTube.DATA_PATH = prevPath
         IntroTube.reloadArt()
         t:truthy("sem dados: volta ao televisor do shader", IntroTube.geometry(1280, 720).mode == "tube")
@@ -164,6 +198,8 @@ function M.run()
     if menu.hide then menu:hide() end
 
     _G.gameSettings.reducedMotion = prevReduced or false
+    IntroTube.DATA_PATH = prevData
+    IntroTube.reloadArt()
     return t:done()
 end
 
