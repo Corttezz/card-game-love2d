@@ -83,8 +83,12 @@ function M.run(which)
     local fw, fh = 340, 150
     if feet then cw, ch = fw * 2, fh * 2 end
     local feetCanvas = feet and love.graphics.newCanvas(cw, ch) or nil
+    -- strip: 6 instantes do idle por inimigo (uma linha cada) — prova de
+    -- que fumaça/raio/gota/brilho pintados SE MEXEM na cena real
+    local stripMode = mode == "strip"
+    if stripMode then cw, ch = math.floor(w * 0.20), math.floor(h * 0.42) end
     local cols = 6
-    local rows = math.ceil(#ids / cols)
+    local rows = stripMode and #ids or math.ceil(#ids / cols)
     local sheet = love.image.newImageData(cols * (cw + 4), rows * (ch + 4))
     local font = FontManager.getFont(14)
 
@@ -115,6 +119,22 @@ function M.run(which)
         for _ = 1, 60 do
             WorldRoad.update(1 / 30)
             EnemyRenderer.update(1 / 30)
+        end
+        if stripMode then
+            for i = 1, 6 do
+                for _ = 1, 8 do EnemyRenderer.update(1 / 30) end
+                love.graphics.setCanvas(canvas)
+                love.graphics.clear(0, 0, 0, 1)
+                GameplayScene.draw()
+                love.graphics.setCanvas()
+                local f = EnemyRenderer.getLastFoot()
+                local img = canvas:newImageData()
+                local bx = f and f.bodyX or w / 2
+                local gy = f and f.groundY or h * 0.76
+                local x0 = math.max(0, math.min(w - cw, math.floor(bx - cw / 2)))
+                local y0 = math.max(0, math.min(h - ch, math.floor(gy - ch * 0.92)))
+                sheet:paste(img, (i - 1) * (cw + 4), (n - 1) * (ch + 4), x0, y0, cw, ch)
+            end
         end
         if death then
             love.graphics.setCanvas(canvas)
@@ -164,7 +184,7 @@ function M.run(which)
             img = feetCanvas:newImageData()
             sheet:paste(img, ((n - 1) % cols) * (cw + 4), math.floor((n - 1) / cols) * (ch + 4),
                 0, 0, cw, ch)
-        else
+        elseif not stripMode then
             love.graphics.print(id .. "  (ato " .. act .. ")", w / 2 - cw / 2 + 6, h * 0.14 + 4)
             love.graphics.setCanvas()
             img = canvas:newImageData()
@@ -172,9 +192,11 @@ function M.run(which)
             local y0 = math.floor(h * 0.14)
             sheet:paste(img, ((n - 1) % cols) * (cw + 4), math.floor((n - 1) / cols) * (ch + 4),
                 x0, y0, cw, ch)
+        else
+            love.graphics.setCanvas()
         end
     end
-    local out = death and "enemy_death_sheet.png"
+    local out = stripMode and "enemy_strip_sheet.png" or death and "enemy_death_sheet.png"
         or (feet and "enemy_feet_sheet.png" or "enemy_sheet.png")
     sheet:encode("png", out)
     print("[shot_enemy_sheet] " .. #ids .. " inimigos -> " .. out)
