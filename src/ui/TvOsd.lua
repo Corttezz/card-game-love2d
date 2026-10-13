@@ -44,6 +44,9 @@ end
 -- Desenha chuvisco fullscreen com a opacidade dada (0..1).
 function TvOsd.staticNoise(alpha)
     if (alpha or 0) <= 0.01 then return end
+    -- chuvisco é artefato do TUBO: com o CRT desligado em Configurações
+    -- (Out/2026, níveis) não existe sinal pra chiar
+    if not require("src.ui.CRTShader").isEnabled() then return end
     ensureNoise()
     local W, H = love.graphics.getWidth(), love.graphics.getHeight()
     local t = love.timer.getTime()

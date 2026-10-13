@@ -250,9 +250,15 @@ function SettingsMenu:_tabs()
                       menu:rebuild()
                   end
               end },
-            toggle("crt", "settings.crt_shader",
-                function() return CRTShader.isEnabled() end,
-                function(v) CRTShader.setEnabled(v); gs().crtShader = v end),
+            -- CRT em 3 níveis (Out/2026): Desligado / Baixo / Normal. Mesma
+            -- linha do toggle antigo; Enter no Normal dá a volta pro Desligado.
+            { key = "crt", kind = "cycle", label = I18n.t("settings.crt_shader"),
+              get = function() return I18n.t("settings.crt_" .. CRTShader.getLevel()) end,
+              step = function(dir)
+                  local lv = CRTShader.setLevel(CRTShader.nextLevel(CRTShader.getLevel(), dir))
+                  gs().crtLevel = lv
+                  gs().crtShader = lv ~= "off"
+              end },
             toggle("lighting", "settings.lighting",
                 function() return gs().lighting ~= false end,
                 function(v) gs().lighting = v end),
@@ -499,6 +505,7 @@ function SettingsMenu:_persist()
         fullscreen    = love.window.getFullscreen(),
         vsync         = getVSync(),
         crtShader     = CRTShader.isEnabled(),
+        crtLevel      = CRTShader.getLevel(),
         lighting      = g.lighting ~= false,
         reducedMotion = g.reducedMotion and true or false,
         screenshake   = g.screenshake or 1.0,

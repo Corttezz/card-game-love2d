@@ -35,6 +35,10 @@ return {
         master      = "Master",
         fullscreen  = "Fullscreen",
         crt_shader  = "CRT Shader",
+        -- níveis do CRT (Vídeo): Desligado / Baixo / Normal
+        crt_off = "Off",
+        crt_low = "Low",
+        crt_normal = "Normal",
         lighting  = "Lighting",
         screenshake = "Screen shake",
         reduced_motion = "Reduced motion",

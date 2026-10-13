@@ -35,6 +35,10 @@ return {
         master      = "General",
         fullscreen  = "Pant. Comp.",
         crt_shader  = "CRT Shader",
+        -- níveis do CRT (Vídeo): Desligado / Baixo / Normal
+        crt_off = "Apagado",
+        crt_low = "Bajo",
+        crt_normal = "Normal",
         lighting  = "Iluminación",
         screenshake = "Vibración",
         language    = "Idioma",

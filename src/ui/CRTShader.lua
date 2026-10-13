@@ -59,9 +59,56 @@ function CRTShader.load()
     return true
 end
 
--- Toggle liga/desliga.
+-- ===== NÍVEIS (Out/2026: Configurações → Vídeo → CRT) =====
+-- Desligado / Baixo / Normal. "Baixo" mantém o gabinete e a coreografia do
+-- tubo, mas curvatura, scanlines, grille, aberração e vinheta caem pra
+-- metade — texto nítido em 1080p/1440p pra quem acha o tubo cheio pesado.
+-- A ordem do ciclo é off → low → normal (Normal + 1 dá a volta pro Off:
+-- Enter no Normal DESLIGA, como o toggle antigo fazia).
+CRTShader.LEVELS = { "off", "low", "normal" }
+CRTShader.LEVEL_STRENGTH = { off = 0, low = 0.35, normal = 0.75 }
+local level = "normal"
+
+function CRTShader.setLevel(name)
+    if not CRTShader.LEVEL_STRENGTH[name] then
+        print("[CRTShader] nível desconhecido '" .. tostring(name) .. "' — usando normal")
+        name = "normal"
+    end
+    level = name
+    enabled = name ~= "off"
+    strength = CRTShader.LEVEL_STRENGTH[name]
+    return name
+end
+
+function CRTShader.getLevel()
+    if not enabled then return "off" end
+    return level == "off" and "normal" or level
+end
+
+-- Próximo nível no ciclo (dir ±1), com volta.
+function CRTShader.nextLevel(name, dir)
+    local idx = 3
+    for i, n in ipairs(CRTShader.LEVELS) do if n == name then idx = i end end
+    idx = ((idx - 1 + (dir or 1)) % #CRTShader.LEVELS) + 1
+    return CRTShader.LEVELS[idx]
+end
+
+-- Nível a partir dos settings salvos: `crtLevel` novo; save antigo só tinha
+-- o booleano `crtShader` (false = desligado).
+function CRTShader.levelFromSettings(s)
+    s = s or {}
+    if s.crtLevel and CRTShader.LEVEL_STRENGTH[s.crtLevel] then return s.crtLevel end
+    if s.crtShader == false then return "off" end
+    return "normal"
+end
+
+-- Toggle liga/desliga (API antiga; ligar volta ao nível que estava).
 function CRTShader.setEnabled(v)
-    enabled = v
+    enabled = v and true or false
+    if enabled then
+        if level == "off" then level = "normal" end
+        strength = CRTShader.LEVEL_STRENGTH[level]
+    end
 end
 
 function CRTShader.isEnabled()
@@ -259,10 +306,12 @@ function CRTShader.beginScene()
     love.graphics.clear(0, 0, 0, 1)
 end
 
--- Fecha a cena e desenha com o shader aplicado.
-function CRTShader.endScene()
+-- Fecha a cena e desenha com o shader aplicado. `target` (opcional): canvas
+-- de destino em vez da tela — ferramentas de captura sem janela renderizam
+-- o tubo num canvas falsificado (screenshot_crt_levels, test_crt_levels).
+function CRTShader.endScene(target)
     if not shader or not enabled then return end
-    love.graphics.setCanvas()
+    love.graphics.setCanvas(target)
     love.graphics.setShader(shader)
     local w, h = love.graphics.getDimensions()
     shader:send("time", love.timer.getTime())

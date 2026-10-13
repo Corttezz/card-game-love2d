@@ -243,8 +243,13 @@ function Menu:update(dt)
     -- DynaText do título (lazy-init em ensure). update progredindo timer interno
     -- pra que pop_in cascade + rotate wobble animem por frame.
     self:_ensureTitleDyna()
-    -- (wobble do título também para em movimento reduzido)
-    if self._titleDyna and not reducedMotion() then self._titleDyna:update(dt) end
+    -- Movimento reduzido: o update SEGUE (a cascata de pop_in precisa dele
+    -- pra revelar as letras — congelar o update deixava só o "G"), mas o
+    -- wobble de rotação desliga.
+    if self._titleDyna then
+        self._titleDyna.rotate = not reducedMotion()
+        self._titleDyna:update(dt)
+    end
 
     for _, button in pairs(self.buttons) do
         button:update(dt)
@@ -436,15 +441,18 @@ function Menu:_drawButtonCrtFx(btn)
     local x, y, w, h = btn.x, btn.y, btn.width, btn.height
     local static = reducedMotion()
 
-    -- (a) varredura: banda clara de 10px descendo pelo botão (loop 0.9s)
-    local bandH = 10
-    local sweepY = y - bandH + ((t * (h + bandH) / 0.9) % (h + bandH))
-    love.graphics.setScissor(x, y, w, h)
-    love.graphics.setColor(1, 1, 0.92, 0.10)
-    love.graphics.rectangle("fill", x, sweepY, w, bandH)
-    love.graphics.setColor(1, 1, 0.92, 0.05)
-    love.graphics.rectangle("fill", x, sweepY - 4, w, bandH + 8)
-    love.graphics.setScissor()
+    -- (a) varredura: banda clara de 10px descendo pelo botão (loop 0.9s).
+    -- Artefato de TUBO: só com o CRT ligado em Configurações (níveis, Out/2026).
+    if require("src.ui.CRTShader").isEnabled() then
+        local bandH = 10
+        local sweepY = y - bandH + ((t * (h + bandH) / 0.9) % (h + bandH))
+        love.graphics.setScissor(x, y, w, h)
+        love.graphics.setColor(1, 1, 0.92, 0.10)
+        love.graphics.rectangle("fill", x, sweepY, w, bandH)
+        love.graphics.setColor(1, 1, 0.92, 0.05)
+        love.graphics.rectangle("fill", x, sweepY - 4, w, bandH + 8)
+        love.graphics.setScissor()
+    end
 
     -- (a2) GLINT pixel: um brilho de 2 px corre a borda de cima do botão em
     -- passos de 4 px (grade), com um rastro de 1 px — reflexo de metal, não

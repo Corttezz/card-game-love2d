@@ -43,6 +43,9 @@ local DEFAULT_SETTINGS = {
     -- `love.load` também aumenta a janela de quem escolheu NÃO usar fullscreen.
     fullscreen   = true,
     crtShader    = true,
+    -- CRT em níveis (Out/2026): "off" | "low" | "normal". `crtShader` fica
+    -- como espelho booleano (save antigo só tinha ele: false → "off").
+    crtLevel     = "normal",
     locale       = "pt_BR",
     -- Acessibilidade Balatro-style (G.SETTINGS.reduced_motion / screenshake).
     -- screenshake: multiplicador 0..1 da intensidade do shake (1 = full).

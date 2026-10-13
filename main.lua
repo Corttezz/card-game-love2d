@@ -1909,6 +1909,9 @@ function love.load(loveArgs)
     -- dentro da cena CRT — sofre o warp do tubo junto com o mundo)
     require("src.ui.CursorManager").load()
     if persistedSettings.crtShader == false then CRTShader.setEnabled(false) end
+    -- Níveis do CRT (Out/2026): Desligado / Baixo / Normal — `crtLevel`
+    -- novo; save antigo só tinha o booleano (false → off).
+    CRTShader.setLevel(CRTShader.levelFromSettings(persistedSettings))
     -- Identidade CRT: o jogo ABRE como uma TV ligando — ponto → linha
     -- quente → a imagem abre revelando o splash (docs/plan/crt-identity-v1).
     CRTShader.setPower(0)

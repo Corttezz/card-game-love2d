@@ -267,8 +267,11 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     // caBoost: no warm-up o canhão ainda não convergiu — CA bem maior
     // v3.7: 0.0022→0.0010 — CA de canto borrava texto na periferia
     // v3.10: no SURTO o canto volta EXATAMENTE ao valor antigo (0.0022)
-    float caOffset = (0.0006 + mix(0.0010, 0.0022, degrade) * r2 * 4.0)
-        * strength * caBoost;
+    // v4 (Out/2026, legibilidade em 1080p/1440p): a aberração é medida em
+    // PIXELS, não em fração da tela — em uv, 1440p deslocava 1,5-6 px e
+    // borrava o texto. Centro 0,9 px, canto +3,2 px (≈ o que 1280p tinha).
+    float caPx = (0.9 + mix(1.6, 3.5, degrade) * r2 * 4.0) * strength * caBoost;
+    float caOffset = caPx / max(1.0, resolution.x);
     vec4 colR = Texel(tex, suv + vec2(caOffset, 0.0));
     vec4 colG = Texel(tex, suv);
     vec4 colB = Texel(tex, suv - vec2(caOffset, 0.0));
