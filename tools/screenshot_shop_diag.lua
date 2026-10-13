@@ -10,6 +10,8 @@
 --               pés, ciano = base de cada carta, amarelo = pontas do trilho,
 --               magenta = pés -> diag_guides_<W>x<H>_<loc>.png (tela inteira)
 --   stand       recorte 1:1 do cavalete da carta 2 (trilho/plaquinha/etiqueta)
+--   tilt        prancha do hover: repouso + mouse no centro e nos 4 cantos
+--   items       a fileira da mesa com o elixir e cada um dos 5 pacotes
 --   plates      prancha das duas opções da plaquinha de raridade (em cima:
 --               comum SEM placa; embaixo: todas com placa)
 --   hoverjoker  mouse sobre a bancada de coringa (MESMO sprite, levantado + contorno)
@@ -226,6 +228,57 @@ function M.run(arg)
                     local y1 = math.max(c.plate.y + c.plate.h, c.tag.box.y + c.tag.box.h) + 8
                     local X, Y = math.floor(x0 * k), math.floor(y0 * k)
                     crop(render(), X, Y, math.ceil((x1 - x0) * k), math.ceil((y1 - y0) * k)):encode("png", name)
+                    print("[shop_diag] " .. name)
+                elseif state == "tilt" then
+                    -- PRANCHA DO HOVER (v4): a carta 2 com o mouse em 5 pontos
+                    -- (centro + 4 cantos, mapeados pela homografia de REPOUSO)
+                    -- e o repouso na frente: o tilt 3D da mão por cima da pose
+                    local ShopLayout = require("src.ui.shop.ShopLayout")
+                    local SP = require("src.ui.shop.ShopPerspective")
+                    local it = itemWhere(function(i) return i.kind == "card" and i.index == 2 end)
+                    local c = it.geom
+                    local X0 = math.floor((c.rect.x - 22) * k)
+                    local Y0 = math.floor((c.rect.y - c.lift - 26) * k)
+                    local W = math.ceil((c.rect.w + 52) * k)
+                    local H = math.ceil((c.rect.h + c.lift + 40) * k)
+                    local r0, r1, r2 = SP.homography(ShopLayout.cardQuad(c, 0, 0))
+                    local pts = { { "repouso" }, { "centro", 0.5, 0.5 }, { "sup. esq.", 0.08, 0.08 },
+                        { "sup. dir.", 0.92, 0.08 }, { "inf. esq.", 0.08, 0.92 }, { "inf. dir.", 0.92, 0.92 } }
+                    local board = love.image.newImageData(W * #pts + (#pts - 1) * 4, H)
+                    for i, pt in ipairs(pts) do
+                        if pt[2] then
+                            local x, y = SP.mapH(r0, r1, r2, pt[2], pt[3])
+                            mouseX, mouseY = x * k, y * k
+                        else
+                            mouseX, mouseY = 4, 4
+                        end
+                        sim(0.7)
+                        board:paste(render(), (i - 1) * (W + 4), 0, X0, Y0, W, H)
+                        print(("[shop_diag] tilt %s uv=(%.2f, %.2f)"):format(pt[1], it.tilt.x, it.tilt.y))
+                    end
+                    board:encode("png", name)
+                    print("[shop_diag] " .. name)
+                elseif state == "items" then
+                    -- PRANCHA ELIXIR + 5 PACOTES na mesa (arte v4 na diagonal):
+                    -- a relíquia 1 vira o elixir e o pacote troca de id a cada
+                    -- quadro; recorte da fileira da mesa
+                    local L = s.scene.L
+                    local relic = itemWhere(function(i) return i.kind == "relic" and i.index == 1 end)
+                    local pack = itemWhere(function(i) return i.kind == "pack" end)
+                    if relic then relic.offer.id = "health_upgrade" end
+                    local o1, o4 = L.objects[1], L.objects[#L.objects]
+                    local X0 = math.floor((o1.rect.x - 30) * k)
+                    local Y0 = math.floor((o4.rect.y - 40) * k)
+                    local W = math.ceil((o4.rect.x + o4.rect.w + 40) * k) - X0
+                    local H = math.ceil((o1.foot + 30) * k) - Y0
+                    local ids = { "pack_standard", "pack_arcana", "pack_buffoon", "pack_celestial", "pack_spectral" }
+                    local board = love.image.newImageData(W, H * #ids + (#ids - 1) * 4)
+                    for i, id in ipairs(ids) do
+                        if pack then pack.offer.id = id end
+                        sim(0.1)
+                        board:paste(render(), 0, (i - 1) * (H + 4), X0, Y0, W, H)
+                    end
+                    board:encode("png", name)
                     print("[shop_diag] " .. name)
                 elseif state == "plates" then
                     local ShopLayout = require("src.ui.shop.ShopLayout")

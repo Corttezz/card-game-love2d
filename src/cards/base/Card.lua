@@ -429,6 +429,36 @@ function Card:use(target)
     self.passive(target)
 end
 
+-- TILT 3D Balatro-style a partir do mouse RELATIVO à carta (relX, relY em
+-- 0..1, cortados). Conta PURA e única: a mão/recompensas (updateMouse) e a
+-- loja (ShelfItem, carta no cavalete em diagonal) usam a mesma.
+--   nx, ny      posição normalizada em [-1, 1]
+--   depth       1 no centro, cai pras bordas (sensação de profundidade)
+--   tiltX/Y     inclinação (rad); uvX/uvY = tilt normalizado em [-1, 1]
+--               (é o `mouse` do card_perspective.glsl)
+--   offsetX/Y   parallax (px), shadowX/Y + shadowScale (sombra), rot (z)
+function Card.hoverTilt(relX, relY)
+    if relX < 0 then relX = 0 elseif relX > 1 then relX = 1 end
+    if relY < 0 then relY = 0 elseif relY > 1 then relY = 1 end
+    local C = Config.Cards
+    local nx, ny = (relX - 0.5) * 2, (relY - 0.5) * 2
+    local centerDistance = math.sqrt(nx * nx + ny * ny)
+    local depth = 1 - (centerDistance * 0.3)
+    local tiltX = nx * C.TILT_RANGE + (nx * C.DEPTH_TILT_X * depth)
+    local tiltY = ny * C.TILT_RANGE + (ny * C.DEPTH_TILT_Y * depth)
+    local range = C.TILT_RANGE or 0.15
+    local function n1(v) v = v / range; if v > 1 then return 1 elseif v < -1 then return -1 end return v end
+    return {
+        nx = nx, ny = ny, depth = depth, centerDistance = centerDistance,
+        tiltX = tiltX, tiltY = tiltY, uvX = n1(tiltX), uvY = n1(tiltY),
+        offsetX = nx * C.MOVE_RANGE * depth, offsetY = ny * C.MOVE_RANGE * depth,
+        shadowX = C.SHADOW_OFFSET_BASE_X + (nx * C.SHADOW_STRETCH_X * depth),
+        shadowY = C.SHADOW_OFFSET_BASE_Y + (ny * C.SHADOW_STRETCH_Y * depth),
+        shadowScale = C.SHADOW_SCALE_BASE - (centerDistance * C.SHADOW_SCALE_VARIATION),
+        rot = nx * 0.05 * depth,
+    }
+end
+
 function Card:updateMouse(mx, my, dt, isHovered)
     -- Bbox de detecção: UNIÃO da posição home (layoutX/Y) com a renderizada
     -- (self.x/y animado). Cobrindo as duas, o usuário consegue:
@@ -503,32 +533,17 @@ function Card:updateMouse(mx, my, dt, isHovered)
         -- *** Efeito de movimento 3D Balatro-style ***
         -- Tilt relativo à posição renderizada (animada): cursor "puxa" a carta
         -- visualmente, mesmo se o mouse estiver fora do bbox visível (clamp).
-        local mouseXRelative = (mx - self.x) / cardWidth
-        local mouseYRelative = (my - (self.y + offsetY)) / cardHeight
-        if mouseXRelative < 0 then mouseXRelative = 0 elseif mouseXRelative > 1 then mouseXRelative = 1 end
-        if mouseYRelative < 0 then mouseYRelative = 0 elseif mouseYRelative > 1 then mouseYRelative = 1 end
+        -- (a conta mora em Card.hoverTilt: a loja usa a mesma)
+        local ht = Card.hoverTilt((mx - self.x) / cardWidth, (my - (self.y + offsetY)) / cardHeight)
+        local depthMultiplier = ht.depth
 
-        -- Normaliza para [-1, 1] para efeitos mais naturais
-        local normalizedX = (mouseXRelative - 0.5) * 2
-        local normalizedY = (mouseYRelative - 0.5) * 2
-
-        -- *** Efeito de profundidade baseado na posição do mouse ***
-        -- Quanto mais próximo do centro, mais "profunda" a carta fica
-        local centerDistance = math.sqrt(normalizedX^2 + normalizedY^2)
-        local depthMultiplier = 1 - (centerDistance * 0.3)
-        
         -- Deslocamento baseado na profundidade percebida
-        self.offsetHoverX = normalizedX * Config.Cards.MOVE_RANGE * depthMultiplier
-        self.offsetHoverY = normalizedY * Config.Cards.MOVE_RANGE * depthMultiplier
-        
+        self.offsetHoverX = ht.offsetX
+        self.offsetHoverY = ht.offsetY
+
         -- *** Efeito de rotação 3D Balatro-style ***
-        local tiltRange = Config.Cards.TILT_RANGE
-        local depthTiltX = Config.Cards.DEPTH_TILT_X
-        local depthTiltY = Config.Cards.DEPTH_TILT_Y
-        
-        -- Inclinação baseada na posição do mouse + profundidade
-        self.tiltX = normalizedX * tiltRange + (normalizedX * depthTiltX * depthMultiplier)
-        self.tiltY = normalizedY * tiltRange + (normalizedY * depthTiltY * depthMultiplier)
+        self.tiltX = ht.tiltX
+        self.tiltY = ht.tiltY
         
         -- *** Efeito de elevação (carta "levanta" do fundo) ***
         -- noHoverLift: usado em shop/relic onde cartas devem ficar paradas
@@ -546,23 +561,13 @@ function Card:updateMouse(mx, my, dt, isHovered)
         end
         
         -- *** Sombra dinâmica baseada na profundidade ***
-        local shadowOffsetBaseX = Config.Cards.SHADOW_OFFSET_BASE_X
-        local shadowOffsetBaseY = Config.Cards.SHADOW_OFFSET_BASE_Y
-        local shadowStretchX = Config.Cards.SHADOW_STRETCH_X
-        local shadowStretchY = Config.Cards.SHADOW_STRETCH_Y
-        
-        -- Sombra se move conforme a profundidade da carta
-        self.shadowOffsetX = shadowOffsetBaseX + (normalizedX * shadowStretchX * depthMultiplier)
-        self.shadowOffsetY = shadowOffsetBaseY + (normalizedY * shadowStretchY * depthMultiplier)
-        
-        -- Escala da sombra varia com a profundidade
-        local shadowScaleBase = Config.Cards.SHADOW_SCALE_BASE
-        local shadowScaleVariation = Config.Cards.SHADOW_SCALE_VARIATION
-        self.shadowScale = shadowScaleBase - (centerDistance * shadowScaleVariation)
-        
+        self.shadowOffsetX = ht.shadowX
+        self.shadowOffsetY = ht.shadowY
+        self.shadowScale = ht.shadowScale
+
         -- *** Efeito de perspectiva adicional ***
         -- A carta parece "girar" ligeiramente em 3D
-        self.perspectiveRotation = normalizedX * 0.05 * depthMultiplier
+        self.perspectiveRotation = ht.rot
 
     else
         self.isHovered = false

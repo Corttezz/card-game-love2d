@@ -102,6 +102,7 @@ function ShelfItem.new(kind, offer, slot)
     self.sold = offer and offer.purchased or false
     self.deny = 0
     self.tag = { angle = 0, vel = 0 }   -- etiqueta pendurada
+    self.tilt = { x = 0, y = 0, ox = 0, oy = 0 }   -- tilt 3D do hover (carta)
     Moveable.initJuice(self)
     return self
 end
@@ -119,7 +120,7 @@ end
 
 function ShelfItem:exportFx()
     return { hover = self.hover, hoverT = self.hoverT, hot = self.hot, juice = self.juice, entry = self.entry,
-             slide = self.slide, deny = self.deny, dustSeed = self.dustSeed, tag = self.tag }
+             slide = self.slide, deny = self.deny, dustSeed = self.dustSeed, tag = self.tag, tilt = self.tilt }
 end
 
 function ShelfItem:importFx(fx)
@@ -131,6 +132,7 @@ function ShelfItem:importFx(fx)
     self.deny = fx.deny or 0
     self.dustSeed = fx.dustSeed
     self.tag = fx.tag or self.tag
+    self.tilt = fx.tilt or self.tilt
 end
 
 function ShelfItem:setGeometry(g)
@@ -170,8 +172,10 @@ function ShelfItem:entered() return clamp(self.entry.v or 1, 0, 1) end
 function ShelfItem:cardCorners()
     local g = self.geom
     local x0, y0, x1, y1, x2, y2, x3, y3 = ShopLayout.cardQuad(g, reducedMotion() and 0 or self.hover, self:liftPx())
-    local sx = self.slide.x or 0
-    return x0 + sx, y0, x1 + sx, y1, x2 + sx, y2, x3 + sx, y3
+    -- parallax do tilt (a carta segue um pouco o cursor, como na mão)
+    local sx = (self.slide.x or 0) + (self.tilt and self.tilt.ox or 0)
+    local sy = self.tilt and self.tilt.oy or 0
+    return x0 + sx, y0 + sy, x1 + sx, y1 + sy, x2 + sx, y2 + sy, x3 + sx, y3 + sy
 end
 
 -- Hit-test: carta = o quadrilátero dela; objeto = caixa + etiqueta.
@@ -198,7 +202,46 @@ function ShelfItem:center()
 end
 
 -- ---------------------------------------------------------------------------
-function ShelfItem:update(dt, hovered)
+-- HOVER DA CARTA (Loja v4, pedido do dono: "quando mexer nas pontas, a
+-- carta ir mexendo junto"). A pose diagonal é a BASE; por cima dela entra o
+-- tilt 3D da mão e das recompensas (Card.hoverTilt, a mesma conta): o mouse
+-- vai pro espaço da carta pela inversa da homografia de REPOUSO (o alvo não
+-- foge do cursor) e o card_perspective.glsl aplica o "press" antes da
+-- homografia, então a diagonal fica e o canto sob o cursor afunda. Tilt e
+-- parallax com amortecimento exponencial (entra e sai suave); reducedMotion
+-- zera o movimento.
+ShelfItem.TILT_EASE = 12          -- 1/s (≈ 90% em 0,19 s)
+ShelfItem.TILT_PARALLAX = 0.5     -- fração do MOVE_RANGE da mão (px)
+function ShelfItem:cardMouseUV(mx, my)
+    local g = self.geom
+    if not (g and g.frame and mx) then return nil end
+    local x0, y0, x1, y1, x2, y2, x3, y3 = ShopLayout.cardQuad(g, 0, 0)
+    local sx = self.slide.x or 0
+    local r0, r1, r2 = ShopPerspective.homography(x0 + sx, y0, x1 + sx, y1, x2 + sx, y2, x3 + sx, y3)
+    return ShopPerspective.unmapH(r0, r1, r2, mx, my)
+end
+
+function ShelfItem:updateTilt(dt, hovered, mx, my)
+    local T = self.tilt
+    local tx, ty, ox, oy = 0, 0, 0, 0
+    if hovered and not reducedMotion() then
+        local u, v = self:cardMouseUV(mx, my)
+        if u then
+            local Card = require("src.cards.base.Card")
+            local ht = Card.hoverTilt(u, v)
+            tx, ty = ht.uvX, ht.uvY
+            ox, oy = ht.offsetX * ShelfItem.TILT_PARALLAX, ht.offsetY * ShelfItem.TILT_PARALLAX
+        end
+    end
+    if reducedMotion() then T.x, T.y, T.ox, T.oy = 0, 0, 0, 0 return end
+    local k = 1 - math.exp(-ShelfItem.TILT_EASE * dt)
+    T.x = T.x + (tx - T.x) * k
+    T.y = T.y + (ty - T.y) * k
+    T.ox = T.ox + (ox - T.ox) * k
+    T.oy = T.oy + (oy - T.oy) * k
+end
+
+function ShelfItem:update(dt, hovered, mx, my)
     local reduced = reducedMotion()
     local target = (hovered and not self.sold) and 1 or 0
     local entered = false
@@ -219,6 +262,7 @@ function ShelfItem:update(dt, hovered)
     end
     self.hover = ShelfItem.ease(self.hoverT)
     Moveable.updateJuice(self, dt)
+    if self.kind == "card" then self:updateTilt(dt, target == 1, mx, my) end
     ShelfItem.stepPendulum(self.tag, dt)
     if self.deny > 0 then self.deny = math.max(0, self.deny - dt) end
     return entered
@@ -726,7 +770,11 @@ function ShelfItem:drawCard(ctx)
     -- sombra da carta na parede/estante atrás (deslocada pra direita: vela à
     -- esquerda); levantada, a carta se afasta da parede e a sombra abre
     local e = reducedMotion() and 0 or self.hover
-    local sdx, sdy = 5 + 3 * e, 4 + 3 * e
+    -- a sombra acompanha o tilt (canto apertado -> sombra pro lado oposto,
+    -- como Card:draw com SHADOW_PRESS_SHIFT)
+    local T = self.tilt or { x = 0, y = 0 }
+    local sdx = 5 + 3 * e - T.x * 6 * e
+    local sdy = 4 + 3 * e - T.y * 4 * e
     love.graphics.setColor(0, 0, 0, (0.32 - 0.08 * e) * a)
     love.graphics.polygon("fill", x0 + sdx, y0 + sdy, x1 + sdx, y1 + sdy, x2 + sdx, y2 + sdy - 2, x3 + sdx, y3 + sdy - 2)
     local CardMesh = require("src.ui.CardMesh")
@@ -737,7 +785,11 @@ function ShelfItem:drawCard(ctx)
         local mesh = CardMesh.getMesh(iw, ih)
         mesh:setTexture(img)
         love.graphics.setShader(shader)
-        CardMesh.setUniforms(shader, { 0, 0 }, 0, ctx.t or 0, img)
+        -- tilt do hover POR CIMA da pose (o press do shader roda no espaço da
+        -- carta, antes da homografia do quadrilátero)
+        local T = self.tilt or { x = 0, y = 0 }
+        local hv = reducedMotion() and 0 or self.hover
+        CardMesh.setUniforms(shader, { T.x, T.y }, hv, ctx.t or 0, img)
         if glowK > 0.01 then
             local gc = Palette.AGED_GOLD_LIGHT
             love.graphics.setColor(gc[1], gc[2], gc[3], glowK * a * 0.7)

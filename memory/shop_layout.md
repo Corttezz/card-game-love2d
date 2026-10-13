@@ -279,3 +279,19 @@ estranho".
   `lineY` em toda coluna, degraus todos de 8 px), passo constante de cartas
   e objetos, sino+copo na ponta, bordas laterais da carta iguais.
   Prova: `SHOP_STATES=rest,guides,stand love . test_one screenshot_shop_diag`.
+- **Hover da carta com tilt 3D** (v4, commit 2): a pose diagonal é a base;
+  `Card.hoverTilt(relX, relY)` (a conta ÚNICA do tilt, extraída do
+  `Card:updateMouse`) recebe o mouse levado pro espaço da carta pela INVERSA
+  da homografia de repouso (`ShopPerspective.unmapH`) e o
+  `card_perspective.glsl` aplica o press antes da homografia (o modo quad já
+  compõe). Amortecimento exp (`ShelfItem.TILT_EASE`), parallax de meio
+  `MOVE_RANGE`, sombra segue o tilt. reducedMotion zera. Trava em
+  `test_shop_scene` (cantos, centro, saída, base sem torção). Prova:
+  `SHOP_STATES=tilt,hoverstrip`.
+- **Elixir e 5 pacotes desenhados na diagonal** (`assets/sprites/shop/v4/`,
+  `tools/shop_v4_items.py` + `pixellab_shop_v4.py queue items`: pro com a
+  antiga como identidade + guia cisalhada 1:8). `ShopPerspective.spriteFor`
+  prefere a v4 (mesa e pergaminho); POSE.shear = 0 pra elas. Os PNGs antigos
+  seguem na abertura do pacote e na coleção. O arcana v4 saiu ~15% mais alto
+  que os outros (todas as 16 candidatas); cabe na fileira (validate ok).
+  Prova: `SHOP_STATES=items`.

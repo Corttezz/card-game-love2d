@@ -499,6 +499,24 @@ function ShopPerspective.homography(x0, y0, x1, y1, x2, y2, x3, y3)
     return { a, b, x0 }, { d, e, y0 }, { g, h, 1 }
 end
 
+-- Inversa: ponto (x, y) da tela -> (u, v) do quadrado unitário (o mouse no
+-- espaço da carta, pro tilt do hover). nil se a matriz for singular.
+function ShopPerspective.unmapH(r0, r1, r2, x, y)
+    local a, b, c = r0[1], r0[2], r0[3]
+    local d, e, f = r1[1], r1[2], r1[3]
+    local g, h, i = r2[1], r2[2], r2[3]
+    local A, B, C = e * i - f * h, -(d * i - f * g), d * h - e * g
+    local det = a * A + b * B + c * C
+    if math.abs(det) < 1e-12 then return nil end
+    local D, E, F = -(b * i - c * h), a * i - c * g, -(a * h - b * g)
+    local G, H, I = b * f - c * e, -(a * f - c * d), a * e - b * d
+    local u = (A * x + D * y + G) / det
+    local v = (B * x + E * y + H) / det
+    local w = (C * x + F * y + I) / det
+    if math.abs(w) < 1e-12 then return nil end
+    return u / w, v / w
+end
+
 -- Mapeia (u, v) do quadrado unitário pelo resultado de homography().
 function ShopPerspective.mapH(r0, r1, r2, u, v)
     local w = r2[1] * u + r2[2] * v + r2[3]

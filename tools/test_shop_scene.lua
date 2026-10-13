@@ -172,6 +172,41 @@ function M.run()
                 local cr = ShelfItem.contrast(ShelfItem.rarityInk(rar), ShelfItem.BRASS.face)
                 t:truthy(("%s: contraste %.2f >= 4,5 sobre o latao"):format(rar, cr), cr >= 4.5)
             end
+            -- Loja v4: TILT 3D do hover por cima da pose (a conta da mão,
+            -- Card.hoverTilt). Mouse levado pro espaço da carta pela homografia
+            -- de repouso: canto sup. direito -> (+1, -1); centro -> 0; sai -> 0.
+            local Card = require("src.cards.base.Card")
+            local ht = Card.hoverTilt(1, 0)
+            t:truthy("Card.hoverTilt: canto sup. direito = (+1, -1) no shader", ht.uvX == 1 and ht.uvY == -1)
+            t:near("Card.hoverTilt: centro = sem tilt", Card.hoverTilt(0.5, 0.5).uvX, 0, 1e-9)
+            local tp = ShelfItem.new("card", card2.offer, 98)
+            tp:setGeometry(card2.geom)
+            local r0, r1, r2 = ShopPerspective.homography(require("src.ui.shop.ShopLayout").cardQuad(card2.geom, 0, 0))
+            local function hoverAt(u, v, secs)
+                local mx, my = ShopPerspective.mapH(r0, r1, r2, u, v)
+                for _ = 1, math.floor(secs * 60) do tp:update(1 / 60, true, mx, my) end
+            end
+            local _, _, _, _, bx2, by2, bx3, by3 = tp:cardCorners()
+            local restBase = ShopPerspective.angleOf(bx3, by3, bx2, by2)
+            hoverAt(0.92, 0.08, 1.0)
+            t:truthy(("tilt: mouse no canto sup. direito inclina pra la (%.2f, %.2f)"):format(tp.tilt.x, tp.tilt.y),
+                tp.tilt.x > 0.8 and tp.tilt.y < -0.8)
+            local _, _, _, _, hx2, hy2, hx3, hy3 = tp:cardCorners()
+            t:near("tilt: a pose diagonal continua (base no mesmo angulo)",
+                ShopPerspective.angleOf(hx3, hy3, hx2, hy2), restBase, 0.01)
+            hoverAt(0.08, 0.92, 1.0)
+            t:truthy(("tilt: canto inf. esquerdo (%.2f, %.2f)"):format(tp.tilt.x, tp.tilt.y),
+                tp.tilt.x < -0.8 and tp.tilt.y > 0.8)
+            -- amortecido: um quadro depois de trocar de canto ainda não chegou
+            hoverAt(0.92, 0.92, 1 / 60)
+            t:truthy(("tilt amortecido (1 quadro: %.2f)"):format(tp.tilt.x), tp.tilt.x < 0)
+            hoverAt(0.5, 0.5, 1.0)
+            t:truthy(("tilt: centro = carta reta (%.3f, %.3f)"):format(tp.tilt.x, tp.tilt.y),
+                math.abs(tp.tilt.x) < 0.05 and math.abs(tp.tilt.y) < 0.05)
+            hoverAt(0.92, 0.08, 1.0)
+            for _ = 1, 60 do tp:update(1 / 60, false) end
+            t:truthy(("tilt: ao sair volta suave a pose (%.3f, %.3f)"):format(tp.tilt.x, tp.tilt.y),
+                math.abs(tp.tilt.x) < 0.01 and math.abs(tp.tilt.y) < 0.01 and math.abs(tp.tilt.ox) < 0.05)
         end
         t:eq("pergaminho segue a SELECAO, nao o hover (leitura estavel)",
             screen.detailPayload.offer, screen.selectedOffer)
@@ -396,6 +431,7 @@ function M.run()
         pump(screen2, 0.3)
         t:eq("reducedMotion: hover marca o objeto (informacao)", sc2.hovered, c1)
         t:eq("reducedMotion: hover sem levantar (movimento)", c1:liftPx(), 0)
+        t:truthy("reducedMotion: hover sem tilt", c1.tilt.x == 0 and c1.tilt.y == 0)
         click(screen2, c1)
         t:eq("reducedMotion: clique seleciona", screen2.selectedOffer, c1.offer)
         buy(screen2)

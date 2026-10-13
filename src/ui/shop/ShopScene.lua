@@ -225,7 +225,7 @@ function ShopScene:update(dt)
     self:_syncSelection()
 
     for _, it in ipairs(self.items) do
-        local entered = it:update(dt, it == hovered)
+        local entered = it:update(dt, it == hovered, mx, my)
         if entered then
             local codes = (it.kind == "pack") and { "hoverPack", "hoverCard" }
                 or (it.kind == "relic") and { "hoverRelic", "hoverCard" } or { "hoverCard" }
