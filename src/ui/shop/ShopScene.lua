@@ -607,8 +607,11 @@ function ShopScene:_drawTable(list)
             rects[#rects + 1] = { x = r.x + (it.slide.x or 0) - 16, y = r.y - 24, w = r.w + 60, h = r.h + 36 }
             local pb = it.geom and (it.geom.tag or it.geom.plaque)
             if pb then
+                -- folga larga: a etiqueta CRESCE no hover (rótulo até 92 px de
+                -- arte) e desce 8 linhas; recorte curto cortava o rótulo
                 local b = pb.box
-                rects[#rects + 1] = { x = b.x + (it.slide.x or 0) - 8, y = b.y - 8, w = b.w + 16, h = b.h + 12 }
+                local cv = L.cover
+                rects[#rects + 1] = { x = b.x + (it.slide.x or 0) - 50 * cv.s, y = b.y - 8, w = b.w + 100 * cv.s, h = b.h + 12 * cv.s }
             end
         end
     end
@@ -618,7 +621,8 @@ function ShopScene:_drawTable(list)
         local r = o.rect
         rects[#rects + 1] = { x = r.x - 16, y = r.y - 24, w = r.w + 90, h = r.h + 36 }
         local pb = o.tag or o.plaque
-        if pb then rects[#rects + 1] = { x = pb.box.x - 8, y = pb.box.y - 8, w = pb.box.w + 16, h = pb.box.h + 12 } end
+        if pb then rects[#rects + 1] = { x = pb.box.x - 50 * L.cover.s, y = pb.box.y - 8, w = pb.box.w + 100 * L.cover.s, h = pb.box.h + 12 * L.cover.s } end
+        if o.hoverTag then local b = o.hoverTag.box; rects[#rects + 1] = { x = b.x - 50 * L.cover.s, y = b.y - 8, w = b.w + 100 * L.cover.s, h = b.h + 12 * L.cover.s } end
     end
     table.sort(order, function(a, b) return a.foot < b.foot end)
     local box = artBoxOf(L, rects, 4)

@@ -806,6 +806,21 @@ function ShelfItem.swingArt(angle)
 end
 
 
+-- Etiqueta NOVA com a largura do TEXTO do idioma (fr "NOUVELLE" não cabia
+-- nos 22 px fixos e saía cortada): alarga em torno do mesmo furo.
+function ShelfItem.newTagFor(tg, cv)
+    local txt = I18n.t("unlocks.new_badge", nil, "NOVA")
+    local f = TextFit.fit(txt, 8, 60 * cv.s, 7)
+    local need = math.ceil(f:getWidth(txt) / cv.s) + 5
+    local W0 = tg.w or ShopLayout.TAG_W
+    if need <= W0 then return tg end
+    local g = {}
+    for k, v in pairs(tg) do g[k] = v end
+    g.w = need
+    g.x0 = tg.x0 + math.floor(W0 / 2) - math.floor(need / 2)
+    return g
+end
+
 function ShelfItem:isNew()
     return self.kind == "card" and self.card and self.card.isNewDiscovery and true or false
 end
@@ -827,7 +842,7 @@ function ShelfItem:drawPlateArt(L, ctx)
             ShelfItem.drawPlaqueArt(Q, sdx, { selected = self.selected, sale = sale, alpha = alpha, rar = rar, afford = afford })
         end
         if self:isNew() and g.newTag then
-            ShelfItem.drawTagArt(g.newTag, sdx + ShelfItem.swingArt(self.tag.angle), 0, true, true, alpha)
+            ShelfItem.drawTagArt(ShelfItem.newTagFor(g.newTag, cv), sdx + ShelfItem.swingArt(self.tag.angle), 0, true, true, alpha)
         end
     elseif g.tag then
         local lift = floor(self:liftPx() / cv.s + 0.5)
@@ -860,7 +875,7 @@ function ShelfItem:drawPlateText(L, ctx)
             ShelfItem.drawPlaqueText(L, Q, sdx, ShelfItem.priceInk(afford, sale), alpha, self:_shake())
         end
         if self:isNew() and g.newTag then
-            ShelfItem.drawTagText(L, g.newTag, sdx + ShelfItem.swingArt(self.tag.angle), 0,
+            ShelfItem.drawTagText(L, ShelfItem.newTagFor(g.newTag, cv), sdx + ShelfItem.swingArt(self.tag.angle), 0,
                 I18n.t("unlocks.new_badge", nil, "NOVA"), true, true, alpha, 0)
         end
     elseif g.tag then
