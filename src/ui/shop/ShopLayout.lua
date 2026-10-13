@@ -38,11 +38,16 @@ ShopLayout.CARD_RATIO = 1.5
 -- mesa (slope até o ponto de fuga), a borda direita é mais curta (foge) e a
 -- largura encolhe (escorço). No hover a carta gira MAIS: o lado direito
 -- afunda (encolhe e recua), o esquerdo sobe, e ela levanta um pouco.
-ShopLayout.CARD_FORESHORTEN = 0.86   -- largura aparente / largura frontal
+ShopLayout.CARD_FORESHORTEN = 0.82   -- largura aparente / largura frontal
 ShopLayout.CARD_RK = 0.93            -- altura da borda direita / esquerda (repouso)
-ShopLayout.CARD_RK_HOVER = 0.84      -- idem no hover (o lado direito afunda)
-ShopLayout.CARD_W_HOVER = 0.95       -- largura no hover (gira mais)
-ShopLayout.CARD_LIFT = 8             -- quanto a carta levanta no hover (lado esquerdo; o direito 1/3)
+ShopLayout.CARD_RK_HOVER = 0.76      -- idem no hover (o lado direito afunda)
+ShopLayout.CARD_W_HOVER = 0.86       -- largura no hover (gira mais)
+ShopLayout.CARD_TOP_HOVER = -0.6     -- inclinação do topo no hover / da borda do fundo (negativo: o topo desce pra direita)
+ShopLayout.CARD_LIFT = 12            -- quanto a carta levanta no hover (lado esquerdo; o direito 1/3)
+-- Trilho do cavalete em px de ARTE e quanto dele cobre a carta: só a borda
+-- inferior da moldura (o rodapé com tipo e valor é informação, fica à vista).
+ShopLayout.RAIL_ART = 4
+ShopLayout.RAIL_COVER_ART = 2
 ShopLayout.LIFT = 5                  -- objetos da mesa levantam 4-6 px no hover
 ShopLayout.BADGE_RESERVE = 12  -- selo "NOVA" acima da carta
 
@@ -164,19 +169,30 @@ local function cardPlates(cx, topY, w, lineH, slope)
 end
 
 -- Os 4 cantos da carta (TL, TR, BR, BL) no cavalete, em px de tela.
---   hover 0..1 (gira mais), lift px (o lado esquerdo sobe tudo, o direito 1/3)
+-- Em repouso a borda de CIMA da carta acompanha a linha da borda do fundo da
+-- mesa (slope); a borda direita é mais curta (foge), então a BASE gira mais
+-- que a borda: a carta está virada pro fundo, de pé no cavalete.
+--   hover 0..1: gira mais (topo quase reto: o canto esquerdo sobe, o direito
+--   afunda e encolhe), lift px (o lado esquerdo sobe tudo, o direito 1/3)
 function ShopLayout.cardQuad(c, hover, lift)
     hover, lift = hover or 0, lift or 0
     local s = c.slope
     local w = c.qw * (1 + (ShopLayout.CARD_W_HOVER - 1) * hover)
     local h = c.qh
     local rk = ShopLayout.CARD_RK + (ShopLayout.CARD_RK_HOVER - ShopLayout.CARD_RK) * hover
+    local topS = s * (1 + (ShopLayout.CARD_TOP_HOVER - 1) * hover)
+    local baseS = topS - (1 - rk) * h / w
     local xl = c.footX - c.qw / 2
     local xr = xl + w
     local yl = c.foot + s * (xl - c.footX)
-    local yr = c.foot + s * (xr - c.footX)
+    local yr = yl + baseS * w
     local liftL, liftR = lift, lift / 3
     return xl, yl - h - liftL, xr, yr - h * rk - liftR, xr, yr - liftR, xl, yl - liftL
+end
+
+-- Inclinação da BASE da carta em repouso (o trilho do cavalete segue ela).
+function ShopLayout.cardBaseSlope(c)
+    return c.slope - (1 - ShopLayout.CARD_RK) * c.qh / c.qw
 end
 
 function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
@@ -217,19 +233,23 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
             local h = math.floor(cardH0 * a.s * sizeFit)
             local w = math.floor(h / ShopLayout.CARD_RATIO)
             local qw = math.floor(w * ShopLayout.CARD_FORESHORTEN)
-            -- lábio do cavalete: cobre o pé da carta (px de tela)
-            local lipH = clamp(math.floor(h * 0.07), 5, 14)
-            local foot = math.floor(fy - lipH * 0.5)
+            -- trilho do cavalete (RAIL_ART px de arte); a carta senta nele
+            -- e ele cobre só RAIL_COVER_ART px da borda de baixo da moldura
+            local lipH = math.floor(ShopLayout.RAIL_ART * cv.s + 0.5)
+            local foot = math.floor(fy - (ShopLayout.RAIL_ART - ShopLayout.RAIL_COVER_ART) * cv.s)
             local c = { footX = math.floor(fx), foot = foot, slope = slope, qw = qw, qh = h }
             local x0, y0, xa, ya, x2, y2, x3, y3 = ShopLayout.cardQuad(c, 0, 0)
             local r = bboxOf({ x0, xa, x2, x3 }, { y0, ya, y2, y3 })
             local stand = rect(fx - qw / 2 - 4, fy - lipH, qw + 8, lipH)
             local plates = cardPlates(fx, fy + 4, math.max(qw, 70), lineH, slope)
+            c.baseSlope = ShopLayout.cardBaseSlope(c)
             c.kind, c.art, c.depth = "card", { x = ax, y = a.y }, a.s
             c.rect, c.stand, c.lipH = r, stand, lipH
             c.standVariant = ((i - 1) % 3) + 1
             c.plate, c.band, c.tag = plates.plate, plates.band, plates.tag
-            c.lift = ShopLayout.CARD_LIFT
+            -- levanta proporcional à carta (até CARD_LIFT): em 800x600 o selo NOVA
+            -- da carta levantada encostaria na placa de título
+            c.lift = clamp(math.floor(h * 0.06), 6, ShopLayout.CARD_LIFT)
             cards[i] = c
         end
     end
@@ -363,9 +383,10 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
     local artH = math.floor(cards[1].rect.h * 0.95)
     local textH = clamp(math.floor(sh * 0.26), 120, 190)
     local buyH = 38
-    local maxH = continueBtn.y - 10 - (nail.y + nail.h - 2)
+    local cordH = clamp(math.floor(sh * 0.025), 10, 22)
+    local maxH = continueBtn.y - 10 - (nail.y + nail.h + cordH)
     local scrollH = math.min(maxH, rollerH + 8 + artH + textH + buyH + 10 + footH + 12)
-    local scroll = rect(scrollX, nail.y + nail.h - 2, scrollW, scrollH)
+    local scroll = rect(scrollX, nail.y + nail.h + cordH, scrollW, scrollH)
     scroll.nail = nail
     scroll.rollerH, scroll.footH, scroll.inset = rollerH, footH, inset
     scroll.artMaxH = artH

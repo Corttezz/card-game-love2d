@@ -128,7 +128,7 @@ function M.run()
         pump(screen, 0.5)
         t:eq("cena marca a carta sob o mouse", scene.hovered, card2)
         t:eq("tela espelha hoveredOffer", screen.hoveredOffer, card2.offer)
-        t:truthy("carta em hover LEVANTA (6..9 px)", card2:liftPx() >= 5.5 and card2:liftPx() <= 9.5)
+        t:truthy("carta em hover LEVANTA (10..12 px)", card2:liftPx() >= 9.5 and card2:liftPx() <= 12.5)
         t:eq("pergaminho segue a SELECAO, nao o hover (leitura estavel)",
             screen.detailPayload.offer, screen.selectedOffer)
 

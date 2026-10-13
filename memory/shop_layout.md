@@ -193,3 +193,24 @@ cartas "apontadas pra frente", suporte feio e fora da diagonal.
   dois batentes, perna de trás, pés e sombra de contato na borda.
 - Capturas por estado: `love . test_one screenshot_shop_diag <loc>`
   (`SHOP_SIZES`, `SHOP_STATES=rest,hovercard,hoverjoker,selectjoker`).
+
+### v3c parte 2: pergaminho coeso + carta girada de verdade
+
+- **Pergaminho** = um rolo procedural no tamanho de pixel da pintura
+  (`ShopScene` `buildScroll`, cache por tamanho): o papel sai de DENTRO do
+  rolo de cima e entra no de baixo, os dois rolos são cilindros do mesmo
+  papel com a mesma largura; só as pontas do bastão (ponteira de latão)
+  saem pros lados. Pendurado num cordão em V até o prego (o rolo começa
+  `cordH` abaixo do prego). Papel uniforme no miolo (o texto mora ali),
+  bordas escurecendo em degraus com dither, lado longe da lanterna um
+  degrau mais escuro. `scroll_frame.png` (9-slice) saiu.
+- **COMPRAR** = fita vermelha com selo de cera DENTRO do papel; o Button
+  vira hitbox invisível (clique, teclado, pad e NavCursor continuam nele);
+  sem ouro a fita desbota.
+- **Carta**: em repouso a borda de CIMA acompanha a borda do fundo da mesa e
+  a base gira mais (virada pro fundo); no hover o topo inclina pra baixo à
+  direita, a direita encolhe e a carta levanta (`h*0.06`, até 12 px).
+  O trilho do cavalete segue a base da carta e cobre só 2 px de arte da
+  moldura: o rodapé (tipo e valor) fica à vista (`RAIL_ART`/`RAIL_COVER_ART`).
+- Copo de dados: sombra de contato na largura do copo; "DADOS" no hover sai
+  ABAIXO do copo (acima batia na etiqueta da carta 1).

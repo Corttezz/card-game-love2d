@@ -1263,8 +1263,9 @@ function CardRewardScreen:_layoutActionButtons()
         place(self.diceButton, L.dice.rect, true)
         -- CONTINUAR: botão de verdade no canto inferior direito (referência)
         place(self.skipButton, L.continueBtn, false)
-        -- COMPRAR: no rodapé do pergaminho
-        place(self.buyButton, L.scroll.buy, false)
+        -- COMPRAR: fita com selo de cera no rodapé do pergaminho (o
+        -- ShopScene desenha; o Button vira hitbox + alvo do NavCursor)
+        place(self.buyButton, L.scroll.buy, true)
         self:_refreshBuyButton()
         return
     end

@@ -640,12 +640,16 @@ function ShopScene:_drawDiceArt()
     local fx, fy = (D.footX - cv.ox) / cv.s, (D.foot - cv.oy) / cv.s
     local lift = reducedMotion() and 0 or (self.dice.hover * ShopLayout.LIFT) / cv.s
     local hArt = D.rect.h / cv.s
-    local artRect = { x = fx - hArt / 2, y = fy - hArt - lift, w = hArt, h = hArt }
-    contactBand(L, fx, fy, 6, D.slope, 1)
-    if st and st.used and st.dice then
+    -- +1: a última linha do frame do copo é vazia (base real na linha 30 de 32)
+    local artRect = { x = fx - hArt / 2, y = fy + 1 - hArt - lift, w = hArt, h = hArt }
+    -- o copo (frame 32 px, corpo de 22) encosta na mesa pela base inteira
+    local lying = st and st.used and st.dice
+    contactBand(L, fx, fy, lying and 15 or 11, D.slope, 1)
+    if lying then
         -- dois dados jogados à direita do copo, na diagonal
-        contactBand(L, fx + 14, fy + D.slope * 14, 4, D.slope, 1)
-        contactBand(L, fx + 24, fy + D.slope * 24, 4, D.slope, 1)
+        for _, off in ipairs({ 30, 50 }) do
+            contactBand(L, fx + off, fy + D.slope * off, 8, D.slope, 1)
+        end
     end
     local drawn = false
     if P and P.drawDiceCup then
@@ -671,56 +675,275 @@ function ShopScene:_drawCounterLabels()
             L.bell.slope, math.min(1, self.bell.hover * 1.4), L.limitX, 8)
     end
     if self.dice.hover > 0.05 then
-        ShelfItem.drawHoverName(I18n.t("shop.dice_plate"), L.dice.footX, L.dice.rect.y - lift * self.dice.hover,
+        local fh = FontManager.getFont(9):getHeight() + 7
+        ShelfItem.drawHoverName(I18n.t("shop.dice_plate"), L.dice.footX, L.dice.foot + fh + 10,
             L.dice.slope, math.min(1, self.dice.hover * 1.4), L.limitX, 8)
     end
 end
 
--- Pergaminho de inspeção: prego + rolo (9-slice) + papel liso + CardDetailPanel.
+-- ============================================================================
+-- PERGAMINHO (Loja v3c, queixa do dono: "o papel parece fora dos rolos; não
+-- está coeso com o ambiente"). UM rolo só, pixel art procedural no TAMANHO
+-- DE PIXEL DA PINTURA (cover-fit arredondado):
+--   * o papel começa ENROLADO no rolo de cima e termina enrolado no de baixo:
+--     os rolos são cilindros do MESMO papel, com a mesma largura; só as
+--     pontas do bastão de madeira (com a ponteira) saem pros lados;
+--   * cordão do prego da parede até as duas pontas do bastão de cima;
+--   * papel na luz da cena: bordas mais escuras em degraus (dither), a
+--     lanterna (à esquerda, no alto) aquece o canto de cima-esquerda, o canto
+--     de baixo-direita cai na sombra; grão fixo;
+--   * COMPRAR é uma FITA vermelha com selo de cera, no rodapé DO papel.
+-- Cache por tamanho (o papel é estático: 1 draw por quadro).
+-- ============================================================================
+local scrollCache = { key = nil, canvas = nil }
+
+local function scrollPx(L)
+    return math.max(1, math.floor(L.cover.s + 0.5))
+end
+
+-- geometria do rolo em CÉLULAS (px de arte)
+function ShopScene.scrollCells(S, px)
+    local W, H = math.floor(S.w / px), math.floor(S.h / px)
+    local knob = math.max(4, math.floor(W * 0.06))
+    local roll = math.max(6, math.floor(S.rollerH / px))
+    return { W = W, H = H, knob = knob, roll = roll,
+             x0 = knob, x1 = W - knob - 1,          -- papel (inclusive)
+             top = roll, bot = H - roll - 1 }       -- papel plano (inclusive)
+end
+
+local function hash01(x, y)
+    local n = math.sin(x * 12.9898 + y * 78.233) * 43758.5453
+    return n - math.floor(n)
+end
+
+local function buildScroll(S, px)
+    local C = ShopScene.scrollCells(S, px)
+    local ok, canvas = pcall(love.graphics.newCanvas, C.W, C.H)
+    if not ok then return nil, C end
+    canvas:setFilter("nearest", "nearest")
+    local P = Palette
+    local warm = { 1.0, 0.94, 0.82 }                      -- luz âmbar da cena
+    local function tint(c, k)
+        return { c[1] * warm[1] * k, c[2] * warm[2] * k, c[3] * warm[3] * k }
+    end
+    local paperL, paperM, paperD = P.PARCHMENT_LIGHT, P.PARCHMENT, P.PARCHMENT_DARK
+    local woodHi, woodMid, woodDark, woodDeep = ShelfItem.WOOD.lite, ShelfItem.WOOD.mid,
+        ShelfItem.WOOD.dark, ShelfItem.WOOD.deep
+    local brass, brassD = P.AGED_GOLD, P.AGED_GOLD_DARK
+    love.graphics.push("all")
+    love.graphics.setCanvas(canvas)
+    love.graphics.origin()
+    love.graphics.setScissor()
+    love.graphics.clear(0, 0, 0, 0)
+    local function cell(c, x, y, w, h, a)
+        love.graphics.setColor(c[1], c[2], c[3], a or 1)
+        love.graphics.rectangle("fill", x, y, w or 1, h or 1)
+    end
+    local dith = ShopPerspective.dithered
+    -- ===== papel plano =====
+    local lx, ly = C.x0 - C.W * 0.3, C.top - C.H * 0.15     -- lanterna (fora, à esquerda no alto)
+    local R = math.sqrt(C.W * C.W + C.H * C.H)
+    for y = C.top, C.bot do
+        for x = C.x0, C.x1 do
+            local d = math.min(x - C.x0, C.x1 - x)          -- distância da borda lateral
+            local dy = math.min(y - C.top, C.bot - y)
+            -- luz: degraus da distância até a lanterna
+            local l = 1 - math.sqrt((x - lx) ^ 2 + (y - ly) ^ 2) / R
+            local base = tint(paperL, 0.96)
+            if l > 0.62 then base = tint(paperL, 1.0)
+            elseif l > 0.56 and dith(x, y, (l - 0.56) / 0.06) then base = tint(paperL, 1.0) end
+            -- bordas mais escuras em degraus (papel velho); o lado direito,
+            -- longe da lanterna, um degrau a mais
+            local far = (x - C.x0) / math.max(1, C.x1 - C.x0)
+            if d == 0 then base = tint(paperD, 0.6)
+            elseif d == 1 then base = tint(paperD, 0.82)
+            elseif d == 2 then base = tint(paperM, 0.86)
+            elseif d <= 4 and dith(x, y, far > 0.5 and 0.6 or 0.35) then base = tint(paperM, 0.9) end
+            if dy == 0 then base = tint(paperD, 0.55) end
+            -- grão fixo
+            local g = hash01(x, y)
+            if g > 0.94 then base = { base[1] * 0.93, base[2] * 0.93, base[3] * 0.93 } end
+            cell(base, x, y)
+        end
+    end
+    -- sombra do rolo de cima no papel (o papel SAI de dentro dele)
+    for x = C.x0, C.x1 do
+        cell(tint(paperD, 0.6), x, C.top, 1, 1, 0.9)
+        if dith(x, C.top + 1, 0.5) then cell(tint(paperD, 0.75), x, C.top + 1, 1, 1, 0.8) end
+        cell(tint(paperD, 0.62), x, C.bot, 1, 1, 0.9)
+    end
+    -- ===== rolos (cilindro do MESMO papel, mesma largura) + bastão =====
+    local function roller(y0)
+        local h = C.roll
+        local rodT = math.max(3, math.floor(h * 0.45))
+        local rodY = y0 + math.floor((h - rodT) / 2)
+        -- bastão: ponta esquerda e direita (fora do papel) com ponteira de latão
+        for _, side in ipairs({ { 0, C.x0 - 1 }, { C.x1 + 1, C.W - 1 } }) do
+            local a0, a1 = side[1], side[2]
+            for x = a0, a1 do
+                local tip = (x == 0 or x == C.W - 1)
+                cell(woodDeep, x, rodY - 1, 1, rodT + 2)
+                if not tip then
+                    cell(woodHi, x, rodY, 1, 1)
+                    cell(woodMid, x, rodY + 1, 1, math.max(1, rodT - 2))
+                    cell(woodDark, x, rodY + rodT - 1, 1, 1)
+                end
+            end
+            -- ponteira (bola de latão um pouco mais alta que o bastão)
+            local bw = math.max(2, C.knob - 1)
+            local bx = (a0 == 0) and 0 or (C.W - bw)
+            cell(woodDeep, bx, rodY - 2, bw, rodT + 4)
+            cell(brass, bx, rodY - 1, bw, rodT + 2)
+            cell(brassD, bx, rodY + rodT, bw, 1)
+            cell(P.AGED_GOLD_LIGHT, bx + (a0 == 0 and 0 or bw - 1), rodY - 1, 1, 2)
+        end
+        -- cilindro de papel: degraus de luz por linha (claro no meio)
+        for i = 0, h - 1 do
+            local t = (i + 0.5) / h
+            local k
+            local c
+            if t < 0.12 or t > 0.9 then c = tint(paperD, 0.45)
+            elseif t < 0.26 then c = tint(paperD, 0.75)
+            elseif t < 0.4 then c = tint(paperM, 0.92)
+            elseif t < 0.55 then c = tint(paperL, 1.0)
+            elseif t < 0.72 then c = tint(paperM, 0.85)
+            else c = tint(paperD, 0.62) end
+            cell(c, C.x0, y0 + i, C.x1 - C.x0 + 1, 1)
+            cell(tint(paperD, 0.55), C.x0, y0 + i, 1, 1)
+            cell(tint(paperD, 0.55), C.x1, y0 + i, 1, 1)
+        end
+        -- volta do papel: a borda enrolada (espiral) nas pontas
+        for i = 1, h - 2 do
+            if i % 2 == 0 then
+                cell(tint(paperD, 0.7), C.x0 + 1, y0 + i, 1, 1)
+                cell(tint(paperD, 0.7), C.x1 - 1, y0 + i, 1, 1)
+            end
+        end
+        -- contorno
+        cell(woodDeep, C.x0, y0 - 1, C.x1 - C.x0 + 1, 1, 0.9)
+        cell(woodDeep, C.x0, y0 + h, C.x1 - C.x0 + 1, 1, 0.6)
+    end
+    roller(0)
+    roller(C.H - C.roll)
+    love.graphics.pop()
+    return canvas, C
+end
+
 function ShopScene:_drawScroll()
     local L = self.L
     local S = L.scroll
-    local nail = art("nail")
+    local px = scrollPx(L)
+    local key = S.w .. "x" .. S.h .. "@" .. px .. ":" .. S.rollerH
+    if scrollCache.key ~= key then
+        scrollCache.key = key
+        scrollCache.canvas, scrollCache.cells = buildScroll(S, px)
+    end
+    local C = scrollCache.cells or ShopScene.scrollCells(S, px)
+    local ox = S.x + math.floor((S.w - C.W * px) / 2)
+    local oy = S.y
+    -- cordão do prego até as duas pontas do bastão de cima
     local n = S.nail
-    local frame = art("scroll_frame")
-    if frame then
-        local fw, fh = frame:getWidth(), frame:getHeight()
-        local rollerA = math.floor(fh * 0.17)
-        local footA = math.floor(fh * 0.21)
-        local edge = math.floor(fw * 0.12)
-        local kx = S.w / fw
-        local kyTop = S.rollerH / rollerA
-        local kyBot = S.footH / footA
+    local nx, ny = n.x + n.w / 2, n.y + n.h - 2
+    local rodY = oy + (math.floor((C.roll - math.max(2, math.floor(C.roll * 0.4))) / 2)) * px
+    for _, ex in ipairs({ ox + px, ox + (C.W - 1) * px }) do
+        Palette.set(Palette.INK, 0.8)
+        love.graphics.setLineWidth(math.max(2, px))
+        love.graphics.setLineStyle("rough")
+        love.graphics.line(nx, ny, ex, rodY)
+        Palette.set(Palette.PARCHMENT_DARK, 0.9)
+        love.graphics.setLineWidth(math.max(1, px - 1))
+        love.graphics.line(nx, ny, ex, rodY)
+    end
+    love.graphics.setLineWidth(1)
+    -- sombra do rolo na parede (deslocada pra direita-baixo: luz à esquerda)
+    love.graphics.setColor(0, 0, 0, 0.35)
+    love.graphics.rectangle("fill", ox + (C.x0 + 2) * px, oy + 3 * px, (C.x1 - C.x0 + 1) * px, (C.H - 2) * px)
+    if scrollCache.canvas then
         love.graphics.setColor(1, 1, 1, 1)
-        local function q(x, y, w, h) return quad("scroll_" .. x .. "_" .. y, x, y, w, h, fw, fh) end
-        love.graphics.draw(frame, q(0, 0, fw, rollerA), S.x, S.y, 0, kx, kyTop)
-        local paperA = fh - rollerA - footA
-        local bodyTop = S.y + S.rollerH
-        local midH = S.h - S.rollerH - S.footH
-        local ky = midH / paperA
-        love.graphics.draw(frame, q(0, rollerA, edge, paperA), S.x, bodyTop, 0, kx, ky)
-        love.graphics.draw(frame, q(fw - edge, rollerA, edge, paperA), S.x + S.w - edge * kx, bodyTop, 0, kx, ky)
-        love.graphics.draw(frame, q(edge, rollerA, fw - edge * 2, paperA), S.x + edge * kx, bodyTop, 0, kx, ky)
-        love.graphics.draw(frame, q(0, fh - footA, fw, footA), S.x, S.y + S.h - S.footH, 0, kx, kyBot)
+        love.graphics.draw(scrollCache.canvas, ox, oy, 0, px, px)
     else
-        Palette.set(Palette.INK)
-        love.graphics.rectangle("fill", S.x - 1, S.y - 1, S.w + 2, S.h + 2)
         Palette.set(Palette.PARCHMENT)
         love.graphics.rectangle("fill", S.x, S.y, S.w, S.h)
     end
+    local nail = art("nail")
     if nail then
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.draw(nail, n.x, n.y, 0, n.w / nail:getWidth(), n.h / nail:getHeight())
     end
-    -- papel quase liso sob o texto e o botão (grão da arte <= 6%)
-    local paper = Palette.lerp(Palette.PARCHMENT_LIGHT, Palette.PARCHMENT, 0.28)
-    local B = S.body
-    love.graphics.setColor(paper[1], paper[2], paper[3], 0.90)
-    love.graphics.rectangle("fill", B.x - 6, B.y - 4, B.w + 12, (S.buy.y + S.buy.h) - B.y + 10)
-    love.graphics.setColor(1, 1, 1, 1)
     if self.screen._drawDetailPanel then
         self.screen:_drawDetailPanel(S.body, true, S.artMaxH, ShopScene.portrait)
     end
+    self:_drawBuyRibbon()
+end
+
+-- COMPRAR = fita vermelha atravessada no rodapé do papel, com selo de cera à
+-- esquerda (o Button da tela vira hitbox invisível: clique, teclado e pad
+-- continuam nele). Sem ouro: fita desbotada e selo apagado.
+function ShopScene:_drawBuyRibbon()
+    local L = self.L
+    local S = L.scroll
+    local b = self.screen.buyButton
+    local r = S.buy
+    local px = scrollPx(L)
+    local disabled = b and b.disabled
+    local hot = b and b.hover and not disabled
+    local lift = (hot and not reducedMotion()) and px or 0
+    local x, y, w, h = r.x, r.y - lift, r.w, r.h
+    local red = disabled and Palette.lerp(Palette.BLOOD_DARK, Palette.PARCHMENT_DARK, 0.45) or Palette.BLOOD
+    local redD = disabled and Palette.lerp(Palette.BLOOD_DARK, Palette.INK, 0.4) or Palette.BLOOD_DARK
+    local redL = hot and Palette.lighten(Palette.BLOOD, 0.25) or Palette.lerp(Palette.BLOOD, Palette.PARCHMENT_LIGHT, 0.18)
+    local notch = 2 * px
+    -- sombra no papel
+    love.graphics.setColor(0, 0, 0, 0.25)
+    love.graphics.rectangle("fill", x + px, y + 2 * px, w, h)
+    -- fita: corpo + rabos em V nas pontas (degraus de pixel)
+    local rows = math.floor(h / px)
+    for i = 0, rows - 1 do
+        local yy = y + i * px
+        local t = i / math.max(1, rows - 1)
+        local cut = math.floor((1 - math.abs(t - 0.5) * 2) * notch / px + 0.5) * px  -- V no meio
+        local c = (i == 0) and redL or ((i >= rows - 1) and redD or red)
+        love.graphics.setColor(c[1], c[2], c[3], 1)
+        love.graphics.rectangle("fill", x + cut, yy, w - cut * 2, px)
+    end
+    Palette.set(Palette.INK, 0.7)
+    love.graphics.rectangle("fill", x + notch, y - px, w - notch * 2, px)
+    love.graphics.rectangle("fill", x + notch, y + rows * px, w - notch * 2, px)
+    -- selo de cera à esquerda, sobre a fita
+    local sr = math.floor(h * 0.55)
+    local scx, scy = x + notch + sr, y + h / 2
+    local wax = disabled and Palette.lerp(Palette.BLOOD_DARK, Palette.INK, 0.5) or Palette.lerp(Palette.BLOOD, Palette.ORANGE, 0.12)
+    local step = px
+    for yy = -sr, sr, step do
+        for xx = -sr, sr, step do
+            local d = math.sqrt(xx * xx + yy * yy)
+            -- borda irregular da cera (pingos)
+            local edge = sr - ((math.floor((xx + yy) / step) % 3 == 0) and step or 0)
+            if d <= edge then
+                local c = wax
+                if d > edge - step * 1.1 then c = Palette.BLOOD_DARK
+                elseif d > sr * 0.62 and d < sr * 0.62 + step * 1.2 then
+                    c = (xx + yy < 0) and Palette.lerp(wax, Palette.PARCHMENT_LIGHT, 0.35) or Palette.BLOOD_DARK
+                elseif d < sr * 0.3 then c = Palette.BLOOD_DARK
+                elseif xx + yy < -sr * 0.7 then c = Palette.lerp(wax, Palette.PARCHMENT_LIGHT, 0.3) end
+                love.graphics.setColor(c[1], c[2], c[3], 1)
+                love.graphics.rectangle("fill", math.floor(scx + xx), math.floor(scy + yy), step, step)
+            end
+        end
+    end
+    -- texto gravado na fita
+    local txt = (b and b.text) or I18n.t("reward.detail_buy", nil, "COMPRAR")
+    local tx0 = scx + sr + 2 * px
+    local tw = x + w - notch - tx0 - 2 * px
+    local font, fitted = require("src.ui.TextFit").fit(txt, math.max(10, math.floor(h * 0.42)), tw, 8)
+    love.graphics.setFont(font)
+    local tx = math.floor(tx0 + (tw - font:getWidth(fitted)) / 2)
+    local ty = math.floor(y + (h - font:getHeight()) / 2) + 1
+    Palette.set(Palette.INK, 0.8)
+    love.graphics.print(fitted, tx + 1, ty + 1)
+    Palette.set(disabled and Palette.PARCHMENT or Palette.PARCHMENT_LIGHT, disabled and 0.7 or 1)
+    love.graphics.print(fitted, tx, ty)
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 -- Retrato do objeto no pergaminho: o MESMO sprite (e o mesmo espelho) da

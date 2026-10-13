@@ -479,12 +479,15 @@ function ShelfItem:drawStandArt(L, part, alpha)
     local a = alpha or 1
     local sx0 = (self.slide.x or 0) / cv.s
     local fx = (g.footX - cv.ox) / cv.s + sx0
-    local fy = (g.stand.y + g.stand.h - cv.oy) / cv.s     -- linha de contato na borda
-    local s = g.slope
+    local fy0 = (g.stand.y + g.stand.h - cv.oy) / cv.s    -- linha de contato na borda
     local qw = g.qw / cv.s
     local x0 = floor(fx - qw / 2) - 2
     local x1 = math.ceil(fx + qw / 2) + 2
-    local lip = math.max(3, floor(g.lipH / cv.s + 0.5) + 1)
+    -- o trilho segue a BASE da carta (virada pro fundo), apoiado pela ponta
+    -- esquerda na borda pintada
+    local s = g.baseSlope or g.slope
+    local fy = fy0 + (g.slope - s) * (x0 + 2 - fx)
+    local lip = ShopLayout.RAIL_ART
     if part == "back" then
         -- perna de trás: desce do terço de cima da carta (à direita) até a borda
         local hArt = g.qh / cv.s
@@ -539,13 +542,11 @@ function ShelfItem:drawStandArt(L, part, alpha)
         end
         px(WOOD.deep, a, x, y + lip, 1, 1)
     end
-    -- dois batentes que seguram a carta (sobem do trilho)
-    for _, f in ipairs({ 0.16, 0.84 }) do
-        local x = floor(x0 + (x1 - x0) * f)
+    -- dois batentes baixos nas PONTAS (seguram a moldura, nunca o rodapé)
+    for _, x in ipairs({ x0 + 1, x1 - 2 }) do
         local y = floor(fy + s * (x + 0.5 - fx)) - lip
-        px(WOOD.deep, a, x - 1, y - 4, 4, 4)
-        px(WOOD.lite, a, x, y - 3, 2, 3)
-        px(WOOD.hi, a * 0.85, x, y - 3, 1, 1)
+        px(WOOD.deep, a, x - 1, y - 3, 3, 3)
+        px(WOOD.lite, a, x, y - 2, 1, 2)
     end
     -- pés nas pontas, apoiados na borda
     for _, x in ipairs({ x0 + 1, x1 - 2 }) do

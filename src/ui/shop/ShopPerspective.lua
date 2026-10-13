@@ -365,7 +365,7 @@ function ShopPerspective.drawContactShadow(o, mask, alpha)
                 local by = fy + k * lx - gap
                 local yy = floor(by)
                 for row = 0, 1 do
-                    local dens = (row == 0) and 0.85 or 0.4
+                    local dens = (row == 0) and 1.0 or 0.6
                     if dithered(dx, yy + row, dens * lightK) and (not mask or inPoly(dx + 0.5, yy + row + 0.5, mask)) then
                         n = n + 1; pts[n] = { dx + 0.5, yy + row + 0.5 }
                     end
@@ -392,7 +392,7 @@ function ShopPerspective.drawContactShadow(o, mask, alpha)
     for i = n + 1, #pts do pts[i] = nil end
     if n == 0 then return end
     local ink = Palette.darken and Palette.darken(Palette.INK, 0.35) or Palette.INK
-    love.graphics.setColor(ink[1], ink[2], ink[3], 0.78 * (alpha or 1))
+    love.graphics.setColor(ink[1], ink[2], ink[3], 0.9 * (alpha or 1))
     love.graphics.points(pts)
     love.graphics.setColor(1, 1, 1, 1)
 end

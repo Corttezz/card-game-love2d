@@ -100,8 +100,16 @@ function M.run()
             local h0, h1, h2, h3, h4, h5, h6, h7 = ShopLayout.cardQuad(c, 1, c.lift)
             t:truthy(tag .. "carta " .. i .. ": hover afunda a direita", (h5 - h3) < (y2 - y1))
             t:truthy(tag .. "carta " .. i .. ": hover sobe a esquerda", h1 < y0 and h7 < y3)
-            t:truthy(tag .. "carta " .. i .. ": hover sobe mais a esquerda que a direita",
-                (y3 - h7) > (y2 - h5))
+            t:truthy(tag .. "carta " .. i .. ": hover: topo esquerdo sobe e o direito afunda (gira)",
+                h1 < y0 and h3 >= y1 - 0.5)
+            -- repouso: a borda de CIMA acompanha a borda do fundo da mesa
+            t:near(tag .. "carta " .. i .. ": topo na linha da borda do fundo", (y1 - y0) / (x1 - x0), c.slope, 0.01)
+            t:truthy(tag .. "carta " .. i .. ": base gira mais que a borda (virada pro fundo)",
+                (y2 - y3) / (x2 - x3) < c.slope - 0.05)
+            -- o trilho cobre só a borda de baixo da moldura (rodapé à vista)
+            t:truthy(tag .. "carta " .. i .. ": trilho cobre <= 3 px de arte da carta",
+                (c.stand.y + c.stand.h - c.foot) <= ShopLayout.RAIL_ART * L.cover.s + 1
+                and (c.foot - c.stand.y) <= 3 * L.cover.s + 1)
             t:near(tag .. "faixa da carta " .. i .. " na diagonal", c.band.slope, c.slope, 1e-9)
             t:near(tag .. "etiqueta da carta " .. i .. " na diagonal", c.tag.slope, c.slope, 1e-9)
         end

@@ -5,6 +5,7 @@
 --   hovercard   mouse sobre a 2ª carta (gira: direita afunda, esquerda sobe)
 --   hoverjoker  mouse sobre a bancada de coringa (MESMO sprite, levantado + contorno)
 --   selectjoker bancada selecionada: o pergaminho mostra o MESMO sprite
+--   hoverdice   mouse sobre o copo de dados (contorno + nome no hover)
 --
 --   love . test_one screenshot_shop_diag pt_BR
 --   SHOP_SIZES=1280x720 love . test_one screenshot_shop_diag en
@@ -42,7 +43,7 @@ function M.run(arg)
         sizes[#sizes + 1] = { tonumber(w), tonumber(h) }
     end
     local wanted = {}
-    for s in (os.getenv("SHOP_STATES") or "rest,hovercard,hoverjoker,selectjoker"):gmatch("[%w_]+") do
+    for s in (os.getenv("SHOP_STATES") or "rest,hovercard,hoverjoker,selectjoker,hoverdice"):gmatch("[%w_]+") do
         wanted[#wanted + 1] = s
     end
 
@@ -89,7 +90,11 @@ function M.run(arg)
                     mouseX, mouseY = cx * k, cy * k
                     sim(0.6)
                 end
-                if state == "hovercard" then
+                if state == "hoverdice" and s.scene and s.scene.L then
+                    local D = s.scene.L.dice
+                    mouseX, mouseY = (D.rect.x + D.rect.w / 2) * k, (D.rect.y + D.rect.h * 0.6) * k
+                    sim(0.6)
+                elseif state == "hovercard" then
                     hoverItem(itemWhere(function(it) return it.kind == "card" and it.index == 2 end))
                 elseif state == "hoverjoker" or state == "selectjoker" then
                     local it = itemWhere(function(it) return it.offer and it.offer.id == "joker_slot" end)
