@@ -715,6 +715,34 @@ function ShelfItem:drawStandArt(L, part, alpha)
     end
 end
 
+-- Sombra da carta na PAREDE atrás (v5, briefing item 6: sombra de pixel
+-- art, direção de luz única). A luz vem da esquerda: a carta projeta uma
+-- faixa de 3 px de arte à DIREITA dela, nascendo no apoio (base) e
+-- abrindo pra cima, em dither Bayer (densidade cai pra longe da carta).
+ShelfItem.CARD_SHADOW = { w = 3, top = 4, density = { 0.75, 0.5, 0.28 }, alpha = 0.85 }
+function ShelfItem:drawCardShadowArt(L, alpha)
+    if self.sold then return end
+    local g = self.geom
+    if not (g and g.frame) then return end
+    local cv = L.cover
+    local S = ShelfItem.CARD_SHADOW
+    local a = (alpha or 1) * self:entered() * S.alpha
+    local _, _, x1, y1, x2, y2 = ShopLayout.cardQuad(g, 0, 0)
+    local sdx = (self.slide.x or 0)
+    local rx = floor((x1 + sdx - cv.ox) / cv.s)
+    local topA = (y1 - cv.oy) / cv.s
+    local baseA = (y2 - cv.oy) / cv.s
+    for i = 1, S.w do
+        local x = rx + i
+        -- a sombra desce na mesma 1:8 da carta e nasce 1 linha acima da base
+        local yt = floor(topA + S.top + i * ShopLayout.K)
+        local yb = floor(baseA - 1 + i * ShopLayout.K)
+        for y = yt, yb do
+            if ShopPerspective.dithered(x, y, S.density[i]) then px(Palette.INK, a, x, y, 1, 1) end
+        end
+    end
+end
+
 -- ---------------------------------------------------------------------------
 -- CARTA no cavalete (px de tela, homografia)
 -- ---------------------------------------------------------------------------
@@ -732,15 +760,8 @@ function ShelfItem:drawCard(ctx)
     local x0, y0, x1, y1, x2, y2, x3, y3 = self:cardCorners()
     local dim = ctx.afford and 1 or 0.6
     local a = alpha * (1 - clamp(inst.dissolve or 0, 0, 1))
-    -- sombra da carta na parede atrás: luz da esquerda, então ela cai à
-    -- DIREITA e fica PRESA na base (v5: a carta encosta no trilho, a sombra
-    -- nasce do apoio e abre só no topo). Acompanha o tilt de leve.
-    local e = reducedMotion() and 0 or self.hover
-    local T = self.tilt or { x = 0, y = 0 }
-    local tdx = 6 - T.x * 3 * e
-    local tdy = 3 - T.y * 2 * e
-    love.graphics.setColor(0, 0, 0, 0.30 * a)
-    love.graphics.polygon("fill", x0 + tdx, y0 + tdy, x1 + tdx, y1 + tdy, x2 + 2, y2 - 2, x3 + 2, y3 - 2)
+    -- (a sombra da carta na parede é pixel art na grade: drawCardShadowArt,
+    -- numa passada da arte ANTES das cartas)
     local CardMesh = require("src.ui.CardMesh")
     local shader = CardMesh.getShader()
     -- contorno: SELECIONADO = ouro firme; só HOVER = pergaminho mais fraco
@@ -825,8 +846,11 @@ function ShelfItem:drawObjectArt(L, ctx)
     local o = self:uprightParams(L, self.hover > 0.5 or self.selected, ctx.t or 0)
     if not o then return end
     o.alpha = alpha
+    -- luz da cena (ShopLayout.ambientAt): o objeto recebe a MESMA queda de
+    -- luz da mesa pintada (vela à esquerda), em vez da luz própria do sprite
     local dim = ctx.afford and 1 or 0.6
-    o.color = { dim, dim, dim }
+    local amb = ShopLayout.ambientAt((self.geom.footX - L.cover.ox) / L.cover.s, (self.geom.foot - L.cover.oy) / L.cover.s)
+    o.color = { dim * amb[1], dim * amb[2], dim * amb[3] }
     local sale = self.offer and self.offer.saleDiscount
     -- selecionado = ouro firme; hover = pergaminho (a mesma regra da carta)
     o.outline = math.max(self.hover * 0.8, self.selected and 1 or 0, sale and 0.7 or 0)

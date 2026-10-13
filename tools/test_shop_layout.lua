@@ -72,17 +72,19 @@ local function first(bad) return #bad > 0 and bad[1] or "ok" end
 -- o MAIOR desvio entre a linha real e lineY() e quantos degraus internos
 -- não têm 8 px (escadinha irregular).
 local function measureEdge(data, y0)
+    -- o PNG tem margem (ART.pad) em volta do miolo: mede em coordenadas do miolo
+    local P = ShopLayout.ART.pad
     local function lum(x, y)
-        local r, g, b = data:getPixel(x, y)
+        local r, g, b = data:getPixel(x + P.x, y + P.y)
         return 0.299 * r + 0.587 * g + 0.114 * b
     end
     local n, sx, sy, sxx, sxy = 0, 0, 0, 0, 0
     local worst, runs, last, runLen = 0, {}, nil, 0
-    for x = 0, data:getWidth() - 1 do
+    for x = 0, ShopLayout.ART.w - 1 do
         local yc = y0 - x / 8
         local best, bestY = -1e9, nil
         for y = math.floor(yc) - 6, math.floor(yc) + 6 do
-            if y >= 0 and y + 1 < data:getHeight() then
+            if y >= 0 and y + 1 < ShopLayout.ART.h then
                 local d = lum(x, y) - lum(x, y + 1)
                 if d > best then best, bestY = d, y end
             end
@@ -108,7 +110,22 @@ function M.run()
     local t = TK.new("loja v4: geometria do balcao 1:8 (9 tamanhos x 5 idiomas)")
 
     local data = love.image.newImageData("assets/sprites/shop/counter_scene.png")
-    t:eq("pintura 640x360", data:getWidth() * 1000 + data:getHeight(), 640360)
+    local PAD = ShopLayout.ART.pad
+    t:eq("pintura = miolo 640x360 + margem", data:getWidth() * 1000 + data:getHeight(),
+        (640 + 2 * PAD.x) * 1000 + 360 + 2 * PAD.y)
+    -- v5: escala INTEIRA da cena nas resoluções suportadas (virtual pelo UiScale)
+    local UiScale = require("src.ui.UiScale")
+    for _, r in ipairs({ { 1024, 768 }, { 1280, 720 }, { 1366, 768 }, { 1920, 1080 }, { 2560, 1440 }, { 1280, 800 } }) do
+        local k = UiScale.k(r[1], r[2])
+        local vw, vh = math.floor(r[1] / k + 0.5), math.floor(r[2] / k + 0.5)
+        local cv = ShopLayout.coverTransform(vw, vh, 640, 360, PAD)
+        t:truthy(("%dx%d: pixel da cena inteiro (s=%.3f, %.3f px reais)"):format(r[1], r[2], cv.s, cv.s * k),
+            cv.integer and math.abs(cv.s * k - math.floor(cv.s * k + 0.5)) < 1e-6)
+        -- a pintura com margem cobre a janela inteira
+        t:truthy(("%dx%d: pintura cobre a janela"):format(r[1], r[2]),
+            cv.ox - PAD.x * cv.s <= 0 and cv.oy - PAD.y * cv.s <= 0
+            and cv.ox + (640 + PAD.x) * cv.s >= vw and cv.oy + (360 + PAD.y) * cv.s >= vh)
+    end
     local Ls = ShopLayout.LINES
     PAINT = measureEdge(data, Ls.shelfEdge)
     local FRONT = measureEdge(data, Ls.tableEdge)
@@ -252,6 +269,17 @@ function M.run()
         t:truthy(tag .. "CONTINUAR visivel com respiro da borda",
             cb.x >= 8 and cb.y >= 8 and cb.x + cb.w <= s[1] - 8 and cb.y + cb.h <= s[2] - 8)
     end
+    -- v5: luz da cena nos sprites = a queda da pintura (vela à esquerda):
+    -- mais escuro pra direita, nunca abaixo de 0,7 (o objeto continua legível)
+    local aL, aR = ShopLayout.ambientAt(80, 260), ShopLayout.ambientAt(420, 230)
+    t:truthy(("luz ambiente cai pra direita (%.2f -> %.2f)"):format(aL[1], aR[1]), aR[1] < aL[1])
+    t:truthy("luz ambiente entre 0,7 e 1", aR[1] >= 0.7 and aL[1] <= 1)
+    -- sombra da carta: só à DIREITA (luz da esquerda), 3 px, sem invadir a vizinha
+    local ShelfItem = require("src.ui.shop.ShelfItem")
+    local Lg = ShopLayout.layout(1280, 720, 4, 3)
+    local gapArt = Lg.cards[2].railX0 - Lg.cards[1].railX1 - 1 + 2 * ShopLayout.SHELF.railPad
+    t:truthy(("sombra da carta (%d px) cabe no vao ate a vizinha (%d px)"):format(ShelfItem.CARD_SHADOW.w, gapArt),
+        ShelfItem.CARD_SHADOW.w < gapArt)
     -- inclinação única 1:8 em qualquer ponto
     t:near("slopeArt = 1:8 em qualquer ponto", ShopLayout.slopeArt(180, 181), ShopLayout.slopeArt(260, 316), 1e-12)
     -- quem cede e a escala/espacamento: 4:3 tem carta menor que 16:9

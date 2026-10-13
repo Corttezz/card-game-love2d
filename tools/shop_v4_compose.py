@@ -82,6 +82,78 @@ def light(x, y):
     return 1.0 - 0.55 * (x / W) - 0.15 * (y / H)
 
 
+# Loja v5: MARGEM em volta do miolo 640x360 (as coordenadas da arte, as
+# retas G e o ShopLayout continuam no miolo). Com ela o cover-fit fica em
+# múltiplo INTEIRO também em 1366x768, 1024x768 e 1280x800 (antes caíam no
+# fracionário 2,13-2,22: pixel de 2 e 3 px misturados). Espelhado em
+# ShopLayout.ART.pad.
+PX, PY = 24, 24
+
+
+class Off:
+    """Acesso ao pixel em coordenadas do MIOLO (x, y podem ser negativos)."""
+
+    def __init__(self, px):
+        self.px = px
+
+    def __getitem__(self, k):
+        return self.px[k[0] + PX, k[1] + PY]
+
+    def __setitem__(self, k, v):
+        self.px[k[0] + PX, k[1] + PY] = v
+
+
+def extend_wall(wall):
+    """Parede 640x360 -> (640+2PX)x(360+2PY) espelhando as bordas (o pilar de
+    madeira dos cantos fica mais largo; o alto fica sob a TopBar)."""
+    out = Image.new("RGB", (W + 2 * PX, H + 2 * PY))
+    out.paste(wall, (PX, PY))
+    src = wall.load()
+    o = out.load()
+    for y in range(H + 2 * PY):
+        sy = min(H - 1, max(0, y - PY))
+        if y - PY < 0:
+            sy = min(H - 1, PY - y - 1)
+        for x in range(W + 2 * PX):
+            sx = x - PX
+            if sx < 0:
+                sx = -sx - 1
+            elif sx >= W:
+                sx = 2 * W - sx - 1
+            if x - PX < 0 or x - PX >= W or y - PY < 0:
+                o[x, y] = src[sx, sy]
+    return out
+
+
+def calm_wall(c, x, y):
+    """Loja v5 (briefing item 7): o fundo dá contexto, não disputa com a
+    vitrine. Contraste puxado pra um tom escuro médio, saturação menor e uma
+    POÇA DE LUZ em degraus sobre a área de exposição (centro ~ x 250, y 150 do
+    miolo); fora dela, a parede (frascos, cortina) desce de degrau em degrau.
+    Degraus com dither Bayer, nada de blur."""
+    r, g, b = c
+    l = 0.299 * r + 0.587 * g + 0.114 * b
+    # menos saturação e menos contraste
+    r, g, b = (r * 0.72 + l * 0.28, g * 0.72 + l * 0.28, b * 0.72 + l * 0.28)
+    mid = (34, 22, 20)
+    r, g, b = (r * 0.78 + mid[0] * 0.22, g * 0.78 + mid[1] * 0.22, b * 0.78 + mid[2] * 0.22)
+    dx, dy = (x - 250) / 330.0, (y - 150) / 190.0
+    d = (dx * dx + dy * dy) ** 0.5
+    steps = [(0.55, 0.86), (0.80, 0.74), (1.05, 0.64), (9.0, 0.56)]
+    k = steps[-1][1]
+    for i, (lim, kk) in enumerate(steps):
+        if d < lim:
+            k = kk
+            # degrau com dither na faixa de transição
+            if i > 0 and d < steps[i - 1][0] + 0.06 and BAYER[y % 4][x % 4] < 8:
+                k = steps[i - 1][1]
+            break
+    # frascos e prateleira do alto: um degrau a mais de sombra
+    if y < 100:
+        k *= 0.86
+    return (int(r * k), int(g * k), int(b * k))
+
+
 def compose(wall_path, out, warm=False):
     wood_top = Tex(os.path.join(RAW, "wood_top.png"))
     wood_front = Tex(os.path.join(RAW, "wood_front.png"), rows=(14, 80))
@@ -89,16 +161,21 @@ def compose(wall_path, out, warm=False):
         wall = Image.open(wall_path).convert("RGB").resize((W, H), Image.NEAREST)
     else:
         wall = Image.new("RGB", (W, H), (30, 18, 16))
+    wall = extend_wall(wall)
+    wp = wall.load()
+    for yy in range(H + 2 * PY):
+        for xx in range(W + 2 * PX):
+            wp[xx, yy] = calm_wall(wp[xx, yy], xx - PX, yy - PY)
     img = wall.copy()
-    px = img.load()
-    wpx = wall.load()
+    px = Off(img.load())
+    wpx = Off(wall.load())
 
-    for x in range(W):
+    for x in range(-PX, W + PX):
         y_st, y_se = yl(G["shelf_top"], x), yl(G["shelf_edge"], x)
         y_sf, y_tb = yl(G["shelf_face"], x), yl(G["table_back"], x)
         y_te = yl(G["table_edge"], x)
         # parede: escurece em degraus ao descer pro degrau (sombra do móvel)
-        for y in range(0, y_st):
+        for y in range(-PY, y_st):
             d = y_st - y
             if d < 22:
                 k = 0.45 + 0.55 * (d / 22.0)
@@ -138,13 +215,15 @@ def compose(wall_path, out, warm=False):
         px[x, y_te - 2] = RAMP[6] if light(x, y_te) > 0.55 else RAMP[5]
         px[x, y_te - 1] = HI if light(x, y_te) > 0.7 else RAMP[7]
         # ===== frente do balcão (painéis) =====
-        for y in range(y_te, H):
+        for y in range(y_te, H + PY):
             v = y - y_te
-            t = wood_front.at(x, v)
+            # textura em espelho vertical (a margem de baixo passa da altura dela)
+            vv = v % (2 * wood_front.h)
+            t = wood_front.at(x, vv if vv < wood_front.h else 2 * wood_front.h - vv - 1)
             base = 0.6 + 2.0 * t - 0.012 * v
             px[x, y] = tone(base * light(x, y), x, y)
         px[x, y_te] = INK
-        if y_te + 1 < H:
+        if y_te + 1 < H + PY:
             px[x, y_te + 1] = RAMP[2]
     img.save(out)
     print("[compose]", out)

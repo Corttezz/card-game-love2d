@@ -128,7 +128,11 @@ local function band(y0a, y0b, pad)
     return { -40, y0a + 5 - pad, 680, y0a - 85 - pad, 680, y0b - 85 + pad, -40, y0b + 5 + pad }
 end
 ShopLayout.ART = {
+    -- MIOLO 640x360 (as coordenadas de tudo); o PNG tem `pad` px de pintura
+    -- a mais de cada lado (v5): o cover-fit escolhe escala INTEIRA sempre
+    -- que a pintura inteira cobre a janela (1366x768, 1024x768, 1280x800).
     w = 640, h = 360,
+    pad = { x = 24, y = 24 },
     -- base das cartas: a aresta da frente do degrau (contínua)
     ledgeEdge = { x0 = 0, y0 = LINES.shelfEdge, k = ShopLayout.K },
     ledgeMask = band(LINES.shelfTop, LINES.shelfEdge, 2),
@@ -137,15 +141,28 @@ ShopLayout.ART = {
     cardH = 96,          -- altura da carta em px da arte (192 px virtuais)
 }
 
--- cover-fit em MÚLTIPLO INTEIRO quando o recorte extra é pequeno (<= 20%):
--- 1280x720 virtual -> 2 (3 px em 1080p, 4 em 1440p). Janela de outra
--- proporção (4:3) cai no fracionário em vez de cortar meia mesa.
-local function coverTransform(sw, sh, aw, ah)
+-- cover-fit em MÚLTIPLO INTEIRO (v5, item 10 do briefing: pixel da cena
+-- sempre do mesmo tamanho). Ordem:
+--   1. o MAIOR inteiro em que a pintura com margem (miolo + pad) ainda
+--      cobre a janela: 1366x768 / 1024x768 / 1280x800 virtuais -> 2;
+--   2. o inteiro logo acima se o recorte extra é pequeno (<= 20%);
+--   3. fracionário (janela de proporção estranha), em vez de cortar meia
+--      mesa.
+-- O miolo fica centrado; ox/oy = canto do MIOLO na tela.
+local function coverTransform(sw, sh, aw, ah, pad)
+    pad = pad or { x = 0, y = 0 }
     local need = math.max(sw / aw, sh / ah)
-    local si = math.ceil(need - 1e-6)
-    local s = (si / need <= 1.2) and si or need
+    local s
+    local sf = math.floor(need + 1e-6)
+    if sf >= 1 and sw / sf <= aw + 2 * pad.x + 1e-6 and sh / sf <= ah + 2 * pad.y + 1e-6 then
+        s = sf
+    else
+        local si = math.ceil(need - 1e-6)
+        s = (si / need <= 1.2) and si or need
+    end
     local dw, dh = aw * s, ah * s
-    return { s = s, dw = dw, dh = dh, ox = (sw - dw) / 2, oy = (sh - dh) / 2 }
+    return { s = s, dw = dw, dh = dh, ox = (sw - dw) / 2, oy = (sh - dh) / 2, pad = pad,
+             integer = (s == math.floor(s)) }
 end
 ShopLayout.coverTransform = coverTransform
 
@@ -186,6 +203,19 @@ end
 ShopLayout.bboxOf = bboxOf
 
 local lineY = ShopLayout.lineY
+
+-- LUZ DA CENA (v5): a mesma queda da pintura (tools/shop_v4_compose.py,
+-- light(): vela à esquerda, o lado direito cai). Os sprites dos objetos têm
+-- luz própria; multiplicados por este tom (suavizado, levemente quente)
+-- eles assentam na mesma luz da mesa e o pacote da ponta direita deixa de
+-- brilhar mais que a vitrine.
+ShopLayout.AMBIENT = { strength = 0.6, lift = 0.15, warm = { 1.0, 0.96, 0.90 } }
+function ShopLayout.ambientAt(ax, ay)
+    local A = ShopLayout.AMBIENT
+    local l = 1 - 0.55 * (ax / ShopLayout.ART.w) - 0.15 * (ay / ShopLayout.ART.h) + A.lift
+    local k = clamp(1 + (math.min(1, l) - 1) * A.strength, 0.7, 1)
+    return { k * A.warm[1], k * A.warm[2], k * A.warm[3] }
+end
 
 -- Caixa (px de TELA) de um retângulo em degraus: colunas x0..x0+w-1, topo
 -- na reta de intercepto y0, h linhas.
@@ -278,7 +308,7 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
 
     local margin = clamp(math.floor(sw * 0.02), 10, 32)
     local wall = rect(0, topBarH, sw, sh - topBarH)
-    local cv = coverTransform(sw, sh, A.w, A.h)
+    local cv = coverTransform(sw, sh, A.w, A.h, A.pad)
 
     -- ===== coluna da direita: pergaminho + CONTINUAR =====
     local scrollW = clamp(math.floor(sw * 0.26), 210, 340)

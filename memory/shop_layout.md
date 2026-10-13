@@ -345,3 +345,30 @@ O que mudou (commit 1, composição/apoio/etiquetas):
   do preço, texto exato da plaquinha). Capturas:
   `SHOP_STATES=rest,hovercard,hoverjoker,selectcard,bought,broke love .
   test_one screenshot_shop_diag <loc>`.
+
+### v5 commit 2: escala inteira, fundo calmo, luz e sombras de pixel
+
+- **Pintura com MARGEM**: `counter_scene.png` agora é 688x408 = miolo
+  640x360 + `ART.pad` 24 px de cada lado (parede espelhada nas bordas,
+  superfícies e painéis continuam pela conta 1:8). Todas as coordenadas
+  continuam no MIOLO. `coverTransform` escolhe o MAIOR inteiro em que a
+  pintura com margem cobre a janela: 1366x768, 1024x768 e 1280x800
+  (virtuais) caíam em 2,13-2,22 (pixel de 2 e 3 px misturados) e agora são
+  2. Trava: `test_shop_layout` (pixel inteiro e cobertura nas 6 resoluções).
+  Recompor: `python tools/pixellab_shop_v4.py compose
+  tools/preview_out/shop_v4/raw/wall_b.png assets/sprites/shop/counter_scene.png`.
+- **Fundo que não disputa** (`calm_wall` no compose): parede com menos
+  saturação e contraste e uma POÇA DE LUZ em degraus (dither) sobre a área
+  de exposição; frascos/cortina um degrau mais escuros. Sem blur.
+- **Luz da cena nos sprites** (`ShopLayout.ambientAt`): objetos e sino
+  multiplicados pela mesma queda da pintura (vela à esquerda), suavizada e
+  quente, piso 0,7. O pacote da ponta direita deixou de ser o objeto mais
+  claro da mesa.
+- **Sombra da carta em pixel art** (`ShelfItem:drawCardShadowArt`): faixa
+  de 3 px de arte à DIREITA da carta, nascendo no apoio, dither Bayer, numa
+  passada da arte ANTES das cartas. O polígono liso deslocado saiu.
+- Escala dos objetos: TODOS em escala 1 da grade (sino incluso). Pela
+  medida física (carta = 96 px de arte; sino de balcão ~40%, frasco ~60%,
+  pacote ~ 2/3 da carta) os sprites já têm tamanhos coerentes; o destaque
+  do frasco/pacote foi tratado com a luz da cena, não com escala
+  fracionária (que misturaria tamanhos de pixel).

@@ -391,8 +391,10 @@ function ShopScene:_drawPainting()
     local w, h = love.graphics.getWidth(), love.graphics.getHeight()
     if img then
         local cv = L.cover
+        local pad = L.art.pad or { x = 0, y = 0 }
         love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.draw(img, cv.ox, cv.oy, 0, cv.s, cv.s)
+        -- o PNG tem margem (pad) em volta do miolo: o canto do miolo é (ox, oy)
+        love.graphics.draw(img, cv.ox - pad.x * cv.s, cv.oy - pad.y * cv.s, 0, cv.s, cv.s)
     else
         Palette.set(Palette.darken(Palette.INK, 0.6))
         love.graphics.rectangle("fill", 0, 0, w, h)
@@ -490,6 +492,10 @@ function ShopScene:_drawCards(list)
     end
     if #cards == 0 then return end
     local box = artBoxOf(L, rects, 4)
+    -- sombras das cartas na parede (pixel art, grade da cena) ANTES delas
+    ShopPerspective.artPass(L, box, function()
+        for _, it in ipairs(cards) do it:drawCardShadowArt(L, 1) end
+    end)
     for k = #cards, 1, -1 do
         local it = cards[k]
         it:drawCard(self:_itemCtx(it))
@@ -611,7 +617,8 @@ function ShopScene:_drawBellArt()
         s = 1,
         k = B.slope * (pz.shear or 1), flip = pz.flip, lift = lift / cv.s,
         outline = self.bell.hover,
-        color = canRing and { 1, 1, 1 } or { 0.55, 0.5, 0.45 },
+        color = canRing and ShopLayout.ambientAt((B.footX - cv.ox) / cv.s, (B.foot - cv.oy) / cv.s)
+            or { 0.55, 0.5, 0.45 },
     }
     ShopPerspective.drawContactShadow(o, L.art.tableMask, 1)
     ShopPerspective.drawUpright(o)
