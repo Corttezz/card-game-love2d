@@ -185,11 +185,7 @@ return {
 
     msg = {
         pierce         = "Le coup transperce votre Blocage : {value} dégâts !",
-        debuffed       = "Vous êtes {name} !",
         strength_float = "+{value} DÉGÂTS",
-        healed         = "L'ennemi récupère {value} PV",
         summoned       = "La nuée grandit : +{value} corbeau(x)",
-        charging       = "L'ennemi charge un coup dévastateur !",
-        player_dot     = "Vous perdez {value} PV (poison/brûlure)",
     },
 }

@@ -185,11 +185,7 @@ return {
 
     msg = {
         pierce         = "The blow pierces your Block: {value} damage!",
-        debuffed       = "You are {name}!",
         strength_float = "+{value} DMG",
-        healed         = "The enemy recovers {value} HP",
         summoned       = "The murder grows: +{value} crow(s)",
-        charging       = "The enemy is charging a devastating attack!",
-        player_dot     = "You lose {value} HP (poison/burn)",
     },
 }

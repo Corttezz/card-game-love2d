@@ -17,14 +17,9 @@ return {
         profile_wins    = "Siege: {n}",
         profile_runs    = "Läufe: {n}",
         profile_best    = "Bestwert: Akt {act} · Etage {floor}",
-        profile_nobest  = "Noch kein Lauf beendet",
         collection      = "SAMMLUNG",
         settings        = "OPTIONEN",
         quit            = "BEENDEN",
-        instr_mouse     = "Maus: Karten wählen",
-        instr_space     = "Leertaste: Karte ziehen",
-        instr_restart   = "R: Kampf neu starten",
-        instr_jokers    = "Joker bleiben den ganzen Lauf aktiv",
     },
 
     settings = {
@@ -58,18 +53,13 @@ return {
     },
 
     class_select = {
-        passive_label = "PASSIV",
         title       = "WÄHLE DEINEN ARCHETYP",
         description = "Jeder Pfad bietet einzigartige Karten und Taktiken.",
         back        = "ZURÜCK",
         locked        = "GESPERRT",
         mastery       = "MEISTERSCHAFT {level}",
         mastery_max   = "MAX. MEISTERSCHAFT",
-        hp_label      = "LP",
-        deck_label    = "DECK",
-        deck_count    = "{n} Karten",
         starter_label = "STARTKARTEN",
-        locked_hint   = "Klasse gesperrt. Erfülle die Bedingung, um sie freizuschalten.",
         start         = "REISE BEGINNEN",
         details       = "DETAILS",
         summary       = "ÜBERSICHT",
@@ -435,7 +425,6 @@ return {
     },
 
     card_info = {
-        rarity_label = "RARITÄT: ",
         cost         = "Kosten: ",
         damage       = "Schaden: ",
         defense      = "Verteid.: ",
@@ -492,19 +481,13 @@ return {
         refresh            = "Erneuern (${n})",
         buy                = "Kaufen (${n})",
         cancel             = "Abbruch",
-        confirm_title      = "Kauf bestätigen",
         insufficient_gold  = "Nicht genug Gold!",
-        gold_transition    = "Gold: ${from} -> ${to}",
         instructions       = "Klicke auf ein Angebot zum Kaufen · D zeigt dein Deck",
-        shop_refreshed     = "Laden erneuert!",
         refresh_fail       = "Nicht genug Gold zum Erneuern!",
         sold               = "VERKAUFT",
         bought             = "Gekauft: {name}",
         extra_draw         = "Extra-Karten pro Zug: +{n}",
-        atk_bonus          = "Angriffsschaden: +{n}",
         def_bonus          = "Verteidigung: +{n}",
-        buy_and_use        = "Nutzen (${n})",
-        open_pack          = "Öffnen (${n})",
         select_card        = "Auswählen",
         joker_run_only     = "Joker gibt es nur während eines Laufs",
         instructions_shop  = "Mauszeiger liest · KLICK wählt · im Panel bestätigen · RECHTS prüfen",
@@ -869,7 +852,6 @@ return {
         filter_joker   = "JOKER",
         filter_effect  = "EFFEKTE",
         class_basic    = "Basis",
-        footer         = "KLICK inspizieren  ·  MAUSRAD scrollen  ·  ESC zurück",
         inspect_help   = "← / → Navigieren    ·    ESC oder klick außerhalb",
         inspect_help_pad = "< / > Navigieren    ·    B schließt",
     },
@@ -906,13 +888,11 @@ return {
     game_over = {
         title        = "GAME OVER",
         final_score  = "Endpunktzahl: {score}",
-        instructions = "Drücke R für Neustart oder ESC für Menü",
     },
 
     victory = {
         title        = "SIEG!",
         final_score  = "Endpunktzahl: {score}",
-        instructions = "Drücke LEERTASTE für neue Runde oder ESC für Menü",
     },
 
     -- Telas finais v2 (Out/2026): botões, resumo da run e Endless.

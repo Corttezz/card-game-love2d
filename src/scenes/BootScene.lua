@@ -17,7 +17,6 @@
 --   BootScene.update(dt) / BootScene.draw() / BootScene.keypressed(key)
 
 local Palette         = require("src.ui.Palette")
-local PixelCanvas     = require("src.ui.PixelCanvas")
 local FontManager     = require("src.ui.FontManager")
 local SceneBackground = require("src.ui.SceneBackground")
 local I18n            = require("src.i18n.I18n")
@@ -54,7 +53,6 @@ local state = {
 }
 
 -- Tamanhos lógicos (em pixels da janela; LÖVE escala automaticamente).
-local LOADING_BAR = { w = 320, h = 18, pad = 2 }
 local MINI_SIZE   = { w = 56, h = 84 }
 local NUM_MINI    = 34
 
@@ -146,9 +144,6 @@ local function drawShards()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Diagonal ratio do spawn radius das mini-cartas (baseado em max(W,H)).
--- 0.7 = bordas extremas, faz o voo parecer "vindo de longe".
-local SPAWN_RADIUS_RATIO = 0.7
 
 
 -- ÂNCORA NA ARTE (pixels da imagem 256×192). A arte é a NOITE DO GRIMOIRE
@@ -728,8 +723,8 @@ local function drawSplash()
     local W, H = love.graphics.getWidth(), love.graphics.getHeight()
     local cx, _ = liveCenter()
     -- v7: o DESTINO das cartas é o SIGILO (não o centro vazio da tela) — elas
-    -- são visivelmente absorvidas por ele, que responde com flare + anéis.
-    local sx, sy = chamberAnchor(SIGIL_IX, SIGIL_IY)
+    -- são visivelmente absorvidas por ele, que responde com flare + anéis
+    -- (o alvo é lido por quem move cada carta, via chamberAnchor).
 
     -- Mini-cartas primeiro (z-order: ficam atrás da central). Coords em polar
     -- (angle, distFrom) a partir do selo — âncora live, resize não quebra.

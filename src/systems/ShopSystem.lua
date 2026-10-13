@@ -126,8 +126,7 @@ local FORGE_WEIGHT = 1.2
 
 -- 4 (era 5, Out/2026): o reroll custava mais que uma carta comum ($3) e
 -- o piloto rerolava em ~0 lojas por corrida — a ação existia só no papel.
-local REROLL_BASE = 4
-local REROLL_MULT = 1.4
+local REROLL_BASE = 4   -- custo = REROLL_BASE + 2*n (ver updateRefreshCost)
 -- Cap pra reroll cost: sem isso o jogador pode trapar gold infinitamente em
 -- rerolls (5→7→10→...→2.4M após 20 cliques). Balatro tem cap análogo.
 local REROLL_MAX = 30

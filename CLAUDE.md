@@ -91,11 +91,10 @@ card-game-love2d/
 │   │   ├── DeckManager.lua     # Modo clássico: decks estáticos
 │   │   ├── RunManager.lua      # Modo Slay the Spire + save/load via love.filesystem
 │   │   ├── EffectSystem.lua    # Efeitos data-driven (jokers, effect cards, triggers)
-│   │   ├── CombatSequence.lua  # Combate via EventManager (substitui CombatAnimationSystem)
+│   │   ├── CombatSequence.lua  # Coreografia do combate via EventManager (voo das cartas, impacto, dissolve) sobre a fila do CombatBeats
 │   │   ├── CardFeel.lua        # Game feel v1: tema AV por carta (tag→som+burst temático) — memory/card_feel.md
 │   │   ├── ScreenShake.lua     # Shake global (_G.triggerShake via .install())
 │   │   ├── CardParticles.lua   # Partículas attach-to-card (dissolve/materialize)
-│   │   ├── CardRevealSequence.lua # Orquestrador pack-opening (explode + materialize)
 │   │   ├── EconomySystem.lua   # Ouro, juros tipo TFT
 │   │   ├── ShopSystem.lua      # Ofertas da loja (cartas + upgrades + refresh)
 │   │   ├── (áudio → engine/AudioManager.lua; facade Sfx.lua abaixo)
@@ -103,8 +102,7 @@ card-game-love2d/
 │   │   ├── Sfx.lua             # Wrapper thin: Sfx.play("name") ao invés do guard repetido
 │   │   ├── MessageSystem.lua   # Toasts in-game com fade
 │   │   ├── ParticleSystem.lua  # Partículas genéricas
-│   │   ├── SmokeSystem.lua     # Smoke atmosférico (4 presets)
-│   │   └── Timer.lua           # Timer simples
+│   │   └── SmokeSystem.lua     # Smoke atmosférico (4 presets)
 │   ├── ui/
 │   │   ├── WorldRoad.lua       # Circle Land: mundo-domo que gira (inimigo emerge da curva, castelo cresce) — memory/worldroad_scene.md
 │   │   ├── Theme.lua           # Paleta de cores + utilitários (gradient, interpolate)
@@ -119,8 +117,7 @@ card-game-love2d/
 │   │   ├── StatusPill.lua      # Componente único de pill circular (usado por EnemyHud + PlayerBuffPills)
 │   │   ├── StatusTooltip.lua   # Tooltip global sépia com explicação de status effects
 │   │   ├── CardInfoDisplay.lua # Tooltip de carta no hover
-│   │   ├── UpgradeTile.lua     # Tile da RELÍQUIA (upgrade da loja): bandas nome/arte/chip/preço + layout()/validate() puros
-│   │   └── Animation.lua       # Easing helpers
+│   │   └── UpgradeTile.lua     # Tile da RELÍQUIA (upgrade da loja): bandas nome/arte/chip/preço + layout()/validate() puros
 │   └── config/
 │       └── SmokeConfig.lua     # Presets de smoke (default/subtle/atmospheric/intense)
 ├── assets/
@@ -292,8 +289,8 @@ O antigo `src/systems/AudioSystem.lua` virou `engine/AudioManager.lua`; a instâ
 ### Ritmo do combate (`src/systems/CombatBeats.lua`, Set/2026)
 Toda batalha é uma **fila de beats**: cada acontecimento (dano, buff/debuff no inimigo, proc de joker, pulso/evoke de orbe, veneno, compra) ocupa um instante só dele e SEGURA o próximo. `CombatSequence:isBlocking()` inclui `CombatBeats.isBusy()`. Os tempos vivem numa tabela única (`CombatBeats.HOLD`) com `CombatBeats.speed` como knob global. Sem `_G.EventManager` o push roda síncrono (API antiga preservada pra testes/autoplay). Ver [`memory/combat_beats.md`](memory/combat_beats.md).
 
-### CombatAnimationSystem (`src/systems/CombatAnimationSystem.lua`)
-Máquina de estados: `idle → cards_flying → processing → damage_dealing → complete`. Bloqueia a lógica do jogo via `isBlocking()`. Usa easing out-quart, escalas aumentadas (1.3x) no centro, números de dano flutuantes. Timings em `self.timings`.
+### CombatSequence (`src/systems/CombatSequence.lua`)
+Coreografia visual do combate sobre o `EventManager`: cartas voam pro centro (easing out-quart, escala 1.3x), cada uma resolve no apex (`onCardProcessed` → `Game:processCardInCombat`), dissolve depois dos procs de joker (`card._expectedProcs`) e os números de dano flutuam. `Game` ainda guarda a instância em `combatAnimationSystem` (nome histórico do módulo antigo, apagado em Abril/2026) e o fluxo de turno espera `isBlocking()`, que inclui `CombatBeats.isBusy()`. Os TEMPOS não moram aqui: vivem em `CombatBeats.HOLD` (seção acima).
 
 ### EconomySystem + ShopSystem
 Ouro inicial $10; renda pela folha do cash out (`Game:_buildRoundEvalSources`): vitória `Config.Economy.victoryGold(ato)`, HP cheio, bônus de risco de elite/chefe (`Config.Economy.nodeBonus` — mini-chefe NÃO paga, é obrigatório) e juros Balatro `floor(ouro/5)` com teto comprável (Cofre). Loja: 4 cartas (raridade por ato, mesmo `pickRewardCard` das recompensas) + 3 relíquias (tesoura e bancada de coringa FIXAS até o teto + 1 rotativa, custos em `Config.Offers.SERVICES`) + 1 pacote; reroll 4+2n. Tabela de preços antes/depois e números medidos em [`memory/balance_curves.md`](memory/balance_curves.md). **Dados do Escriba** (aposta opcional, 1/loja, EV ~justo, save no frame do sorteio): [`memory/scribe_dice.md`](memory/scribe_dice.md).
@@ -347,7 +344,7 @@ Ver [`memory/card_feel.md`](memory/card_feel.md). Regras-chave: (1) o TEMA da ca
 - **Decisões de RUN usam os streams do `Rng`** (`src/systems/Rng.lua`): `Rng.get():random("card"|"shop"|"map"|"event"|"enemy"|"misc", ...)` — NUNCA `love.math.random` em ofertas/mapa/eventos/economia (quebra a reprodutibilidade por seed e o anti-save-scum). Visual/cosmético (partículas, smoke, jiggle) continua no RNG global. Estado salvo em `run.rngState`; pity de raridade mora em `rng.meta.cardPity`. Ver `memory/rng_and_offers.md`.
 - **`DynaText` com `bump`**: SEMPRE declare `bump_phase` (0.42 nas telas de título). O default histórico 200 defasa letras vizinhas em ~-1,06 rad e ESPALHA o texto ("RUND E NAUSW E RTUNG"); fase pequena faz o salto VIAJAR pela palavra. Texto que o jogador LÊ pra decidir (total, número, contador) não leva bump nenhum — informação quer linha de base estável. `love . test_one test_dynatext_bump` trava isso.
 - **Juice visual** (kick de scale/rot em objetos) via `Moveable.juice_up(obj, 0.3, 0.1)` ou `obj:juice_up(...)` se já tiver o método. Card já compõe — use nos momentos "algo aconteceu".
-- **Card FX** (dissolve/materialize/explode/flip) já disponíveis: `card:start_dissolve(...)`, `card:start_materialize(...)`, `card:explode(...)`, `card:flip(...)`. Sequências prontas em `src/systems/CardRevealSequence.lua`. Ver `memory/card_fx_pipeline.md`.
+- **Card FX** (dissolve/materialize/explode/flip) já disponíveis: `card:start_dissolve(...)`, `card:start_materialize(...)`, `card:explode(...)`, `card:flip(...)`. A coreografia de abertura de pacote mora em `components/PackOpenScreen.lua` (o antigo `CardRevealSequence.lua` nunca foi usado e saiu em Out/2026). Ver `memory/card_fx_pipeline.md`.
 - **Shaders**: `shaders/dissolve.glsl`, `flash.glsl`, `booster.glsl`, `holo.glsl` foram **reescritos do zero** (Fase 2 do refactor Balatro, Abril/2026) com matemática própria — value noise hash-based + FBM + multi-banda iridescente. Copyright-safe. Novos: `foil.glsl`, `polychrome.glsl`, `negative.glsl` pra editions (Fase 3).
 
 ### Anti-patterns observados (a evitar ao editar)

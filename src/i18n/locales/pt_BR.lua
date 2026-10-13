@@ -17,14 +17,9 @@ return {
         profile_wins    = "Vitórias: {n}",
         profile_runs    = "Corridas: {n}",
         profile_best    = "Melhor: Ato {act} · Andar {floor}",
-        profile_nobest  = "Nenhuma corrida concluída ainda",
         collection      = "COLEÇÃO",
         settings        = "CONFIGURAÇÕES",
         quit            = "SAIR",
-        instr_mouse     = "Mouse: selecionar cartas",
-        instr_space     = "Espaço: comprar do deck",
-        instr_restart   = "R: reiniciar a batalha",
-        instr_jokers    = "Coringas ficam ativos pelo resto da jornada",
     },
 
     settings = {
@@ -59,18 +54,13 @@ return {
     },
 
     class_select = {
-        passive_label = "PASSIVA",
         title       = "ESCOLHA SEU ARQUÉTIPO",
         description = "Cada caminho oferece cartas e táticas únicas.",
         back        = "VOLTAR AO MENU",
         locked        = "BLOQUEADA",
         mastery       = "MAESTRIA {level}",
         mastery_max   = "MAESTRIA MÁXIMA",
-        hp_label      = "VIDA",
-        deck_label    = "BARALHO",
-        deck_count    = "{n} cartas",
         starter_label = "CARTAS INICIAIS",
-        locked_hint   = "Classe bloqueada. Cumpra o requisito para liberar.",
         start         = "COMEÇAR JORNADA",
         details       = "DETALHES",
         summary       = "RESUMO",
@@ -456,7 +446,6 @@ return {
     },
 
     card_info = {
-        rarity_label = "RARIDADE: ",
         cost         = "Custo: ",
         damage       = "Dano: ",
         defense      = "Defesa: ",
@@ -512,20 +501,14 @@ return {
         continue           = "Continuar",
         refresh            = "Novas ofertas (${n})",
         buy                = "Comprar (${n})",
-        buy_and_use        = "Usar (${n})",
-        open_pack          = "Abrir (${n})",
         select_card        = "Selecionar",
         cancel             = "Cancelar",
-        confirm_title      = "Confirmar Compra",
         insufficient_gold  = "Ouro insuficiente!",
-        gold_transition    = "Ouro: ${from} -> ${to}",
         instructions       = "Clique escolhe · botão DIREITO inspeciona · D abre seu deck",
-        shop_refreshed     = "Loja atualizada!",
         refresh_fail       = "Ouro insuficiente!",
         sold               = "VENDIDO",
         bought             = "Comprou: {name}",
         extra_draw         = "Cartas extras por turno: +{n}",
-        atk_bonus          = "Dano de ataque: +{n}",
         def_bonus          = "Defesa: +{n}",
         joker_run_only     = "Coringas só podem ser adquiridos durante uma corrida",
         joker_slot_gained  = "Coringas em campo: até {n}",
@@ -875,7 +858,6 @@ return {
         filter_joker   = "CORINGAS",
         filter_effect  = "EFEITOS",
         class_basic    = "Básica",
-        footer         = "CLIQUE pra inspecionar  ·  RODA DO MOUSE pra rolar  ·  ESC volta",
         inspect_help   = "← / → Navegar    ·    ESC ou clique fora para fechar",
         inspect_help_pad = "< / > Navegar    ·    B fecha",
     },
@@ -930,13 +912,11 @@ return {
     game_over = {
         title        = "GAME OVER",
         final_score  = "Pontuação Final: {score}",
-        instructions = "Pressione R para tentar novamente ou ESC para voltar ao menu",
     },
 
     victory = {
         title        = "VITÓRIA!",
         final_score  = "Pontuação Final: {score}",
-        instructions = "Pressione ESPAÇO para jogar novamente ou ESC para voltar ao menu",
     },
 
     -- Telas finais v2 (Out/2026): botões, resumo da run e Endless.

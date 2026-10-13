@@ -519,7 +519,7 @@ end
 -- normalizada `ay`, o centro x e a meia-largura do cone (normalizados).
 local SHAFT = { xr = 0.50, topY = 0.04, botY = 0.72, hwTop = 0.012, hwBot = 0.17 }
 function Menu:_shaftBounds(tf, ay)
-    local W, H = love.graphics.getWidth(), love.graphics.getHeight()
+    local W = love.graphics.getWidth()
     local k = math.max(0, math.min(1, (ay - SHAFT.topY) / (SHAFT.botY - SHAFT.topY)))
     local sway = reducedMotion() and 0 or (love.math.noise(sceneClock() * 0.35, 3.1) - 0.5) * 0.02 * k
     local x0 = (tf.ox + (SHAFT.xr + sway) * tf.dw) / W
@@ -528,7 +528,7 @@ function Menu:_shaftBounds(tf, ay)
 end
 
 function Menu:_drawLightShaft(tf, bgAlpha)
-    local W, H = love.graphics.getWidth(), love.graphics.getHeight()
+    local W = love.graphics.getWidth()
     local flare = self._candleFlare or 0
     local breath = reducedMotion() and 0.5 or (0.5 + 0.5 * love.math.noise(sceneClock() * 0.8, 11.7))
     -- NA GRADE DA ARTE: o cone é uma pilha de linhas de 1 px da arte, cada

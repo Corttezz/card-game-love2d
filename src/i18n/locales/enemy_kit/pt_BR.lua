@@ -186,11 +186,7 @@ return {
 
     msg = {
         pierce         = "Golpe atravessa o Bloqueio: {value} de dano!",
-        debuffed       = "Você está {name}!",
         strength_float = "+{value} DANO",
-        healed         = "O inimigo recupera {value} de vida",
         summoned       = "A revoada cresce: +{value} corvo(s)",
-        charging       = "O inimigo está carregando um golpe devastador!",
-        player_dot     = "Você perde {value} de vida (veneno/queimadura)",
     },
 }

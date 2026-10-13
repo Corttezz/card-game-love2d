@@ -60,7 +60,9 @@ Ver também a seção de licenças em `memory/release_pipeline.md`.
 
 **18. ~~Forge mostra IDs crus~~** — ✅ resolvido junto com o item 10. Jul/2026 adicionou ainda o preview de forja no hover ("ATQ 8 → 10 · DEF 4 → 6").
 
-**19. Forge não tem cinemática (dissolve+materialize)** — funcionalmente upgrada via `RunManager:upgradeCard`, mas a animação Balatro-style (carta entra → +N flutua → juice + sfx) ainda não está implementada. Reutilizar `CardRevealSequence`.
+**19. Forge não tem cinemática (dissolve+materialize)** — funcionalmente upgrada via `RunManager:upgradeCard`, mas a animação Balatro-style (carta entra → +N flutua → juice + sfx) ainda não está implementada. Ponto de partida: a coreografia do `PackOpenScreen` (explode + materialize por carta) e os Card FX do `Card.lua` (`start_dissolve/start_materialize`) — o módulo `CardRevealSequence` que esta nota citava nunca foi usado e foi apagado na limpeza de Out/2026.
+
+**19b. `Card.offsetHoverY` é calculado e nunca desenhado** — `Card:updateMouse` escreve `self.offsetHoverY` (deslocamento vertical pela posição do mouse, `MOVE_RANGE × depthMultiplier`), mas `Card:draw` só aplica `offsetHoverX`; o Y do hover vem só do lift/bob. Achado pelo luacheck na limpeza de Out/2026 (o local morto saiu, o campo segue escrito). Não é bug visível — decidir se o deslocamento Y entra (Balatro inclina/desloca nos dois eixos) ou se o campo some, é decisão da frente de UI.
 
 **20. Tarots/Spectrals/Planets ainda não existem** — Fase 5 adicionou `BoosterPackSystem` que gera Standard (cards normais + edition/seal) e Buffoon (jokers). Arcana/Celestial/Spectral packs caem em fallback genérico hoje. Fica pendente: (a) `src/data/cards/tarots.lua` com 6+ tarots que aplicam edition/seal em carta selecionada, (b) inventory em `run.tarots` (max 2), (c) UI de "usar tarot" que pede pra escolher carta do deck. Quando feito, atualizar `BoosterPackSystem.poolForKind` pra Arcana → tarots, Celestial → planets, Spectral → spectrals.
 

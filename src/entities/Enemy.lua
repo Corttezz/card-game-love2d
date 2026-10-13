@@ -1,4 +1,3 @@
-local Config = require("src.core.Config")
 local ValueEasing = require("src.ui.ValueEasing")
 local EnemyKits = require("src.data.enemies")
 local Rng = require("src.systems.Rng")

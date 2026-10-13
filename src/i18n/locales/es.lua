@@ -17,14 +17,9 @@ return {
         profile_wins    = "Victorias: {n}",
         profile_runs    = "Partidas: {n}",
         profile_best    = "Mejor: Acto {act} · Piso {floor}",
-        profile_nobest  = "Ninguna partida completada aún",
         collection      = "COLECCIÓN",
         settings        = "AJUSTES",
         quit            = "SALIR",
-        instr_mouse     = "Ratón: seleccionar cartas",
-        instr_space     = "Espacio: robar del mazo",
-        instr_restart   = "R: reiniciar la batalla",
-        instr_jokers    = "Los comodines permanecen activos toda la partida",
     },
 
     settings = {
@@ -58,18 +53,13 @@ return {
     },
 
     class_select = {
-        passive_label = "PASIVA",
         title       = "ELIGE TU ARQUETIPO",
         description = "Cada camino ofrece cartas y tácticas únicas.",
         back        = "VOLVER AL MENÚ",
         locked        = "BLOQUEADA",
         mastery       = "MAESTRÍA {level}",
         mastery_max   = "MAESTRÍA MÁXIMA",
-        hp_label      = "VIDA",
-        deck_label    = "MAZO",
-        deck_count    = "{n} cartas",
         starter_label = "CARTAS INICIALES",
-        locked_hint   = "Clase bloqueada. Cumple el requisito para desbloquearla.",
         start         = "COMENZAR VIAJE",
         details       = "DETALLES",
         summary       = "RESUMEN",
@@ -434,7 +424,6 @@ return {
     },
 
     card_info = {
-        rarity_label = "RAREZA: ",
         cost         = "Coste: ",
         damage       = "Daño: ",
         defense      = "Defensa: ",
@@ -491,19 +480,13 @@ return {
         refresh            = "Actualizar (${n})",
         buy                = "Comprar (${n})",
         cancel             = "Cancelar",
-        confirm_title      = "Confirmar Compra",
         insufficient_gold  = "¡Oro insuficiente!",
-        gold_transition    = "Oro: ${from} -> ${to}",
         instructions       = "Clic: comprar · Renovar: nuevas ofertas · Continuar: seguir",
-        shop_refreshed     = "¡Tienda actualizada!",
         refresh_fail       = "¡Oro insuficiente para actualizar!",
         sold               = "VENDIDO",
         bought             = "Comprado: {name}",
         extra_draw         = "Cartas extra por turno: +{n}",
-        atk_bonus          = "Daño de ataque: +{n}",
         def_bonus          = "Defensa: +{n}",
-        buy_and_use        = "Usar (${n})",
-        open_pack          = "Abrir (${n})",
         select_card        = "Seleccionar",
         joker_run_only     = "Los comodines solo se consiguen durante una partida",
         instructions_shop  = "Pasa el ratón para leer · CLIC selecciona · confirma en el panel · DERECHO inspecciona",
@@ -868,7 +851,6 @@ return {
         filter_joker   = "COMODINES",
         filter_effect  = "EFECTOS",
         class_basic    = "Básica",
-        footer         = "CLIC para inspeccionar  ·  RUEDA para desplazar  ·  ESC volver",
         inspect_help   = "← / → Navegar    ·    ESC o clic fuera para cerrar",
         inspect_help_pad = "< / > Navegar    ·    B cierra",
     },
@@ -905,13 +887,11 @@ return {
     game_over = {
         title        = "FIN DE LA PARTIDA",
         final_score  = "Puntuación Final: {score}",
-        instructions = "Pulsa R para reintentar o ESC para volver al menú",
     },
 
     victory = {
         title        = "¡VICTORIA!",
         final_score  = "Puntuación Final: {score}",
-        instructions = "Pulsa ESPACIO para jugar de nuevo o ESC para volver al menú",
     },
 
     -- Telas finais v2 (Out/2026): botões, resumo da run e Endless.

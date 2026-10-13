@@ -55,7 +55,6 @@ local REL_CREST     = 26     -- distância de mundo em que algo está NA crista
 local EMERGE_BAND   = 9      -- faixa de rel além da crista onde o corpo emerge
 local T_POW         = 1.35   -- aceleração crista→base (o "giro" do disco)
 local ROAD_HALF     = 0.15   -- meia-largura da estrada na base (fração de w)
-local BRICK_LEN     = 0.72   -- comprimento de uma fileira de tijolos (mundo)
 local PROP_SPACING  = 1.05  -- denso: cenário COMPLETO (feedback: "sentimento
                             -- de que tem todo um cenário já pronto"; ciclo 19
                             -- baixou de 1.45 — "poucas coisas espalhadas")
@@ -2924,7 +2923,6 @@ end
 -- ============================================================================
 local GROUND_TEX_W, GROUND_TEX_H = 128, 96
 local GROUND_TEX_SCALE = 5          -- px de tela por texel (chunky)
-local GROUND_SCROLL = 11            -- px de rolagem por unidade de mundo
 
 local groundTexCache = {}
 local function getGroundTexture(bid)
@@ -3201,34 +3199,6 @@ local function drawTerrainDetail(g, x, w, camZ)
     -- (v7.1: os tufos estáticos que ficavam aqui foram PROMOVIDOS ao motor
     -- dedicado engine/GrassField.lua — lâminas individuais com física de
     -- vento, chamado via drawGrass depois da estrada.)
-    love.graphics.setColor(1, 1, 1, 1)
-end
-
--- TREELINE DA CRISTA (referência print 1): fileira de silhuetas de árvore
--- sentadas NA curva do horizonte, emoldurando o mundo. Estáticas (anel
--- "infinitamente longe" do planeta). Pula a zona da estrada e do castelo.
-local function drawCrestTreeline(g, x, w)
-    local b = rawBiome()
-    local roadGapHalf = ROAD_HALF * w * 0.06 + 26
-    local castleGapHalf = w * 0.11
-    for i = 0, math.floor(w / 58) do
-        local sx = x + i * 58 + (i % 3) * 14
-        local dx = math.abs(sx - g.cx)
-        if dx > roadGapHalf and dx > castleGapHalf then
-            local cy = g.crestYAt(sx)
-            if cy < g.bottomY - 40 then
-                local kind = (i % 4 == 0) and "tree" or "pine"
-                local img = getSprite(kind, i % 3, b.id)
-                if img then
-                    local iw, ih = img:getWidth(), img:getHeight()
-                    local s = g.scaleAt(KIND_SIZE[kind] * 0.62, 0.14, ih)
-                    love.graphics.setColor(0.72, 0.72, 0.72, 1)   -- levemente na sombra
-                    love.graphics.draw(img, math.floor(sx - iw * s / 2),
-                        math.floor(cy - ih * s + 3), 0, s, s)
-                end
-            end
-        end
-    end
     love.graphics.setColor(1, 1, 1, 1)
 end
 

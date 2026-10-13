@@ -21,17 +21,10 @@ local Events = require("src.data.events")
 local Config = require("src.core.Config")
 local FontManager = require("src.ui.FontManager")
 local Theme = require("src.ui.Theme")
-local BackgroundConfig = require("src.core.BackgroundConfig")
 local SmokeSystem = require("src.systems.SmokeSystem")
 local SmokeConfig = require("src.config.SmokeConfig")
-local ParticleSystem = require("src.systems.ParticleSystem")
-local EnemyRenderer = require("src.ui.EnemyRenderer")
-local EnemyHud = require("src.ui.EnemyHud")
-local SceneLayer = require("src.ui.SceneLayer")
 local AudioManager = require("engine.AudioManager")
 local SaveManager  = require("engine.SaveManager")
-local SceneBackground = require("src.ui.SceneBackground")
-local PixelBackground = require("src.ui.PixelBackground")
 local CRTShader = require("src.ui.CRTShader")
 local I18n = require("src.i18n.I18n")
 local Sfx = require("src.systems.Sfx")
@@ -45,7 +38,6 @@ local PolychromeShader = require("src.ui.PolychromeShader")
 local NegativeShader = require("src.ui.NegativeShader")
 local Debug = require("src.core.Debug")
 local PackOpenScreen = require("components.PackOpenScreen")
-local BoosterPackSystem = require("src.systems.BoosterPackSystem")
 local FloatingText = require("src.ui.FloatingText")
 local RoundEvalScreen = require("components.RoundEvalScreen")
 local CardParticles = require("src.systems.CardParticles")
@@ -81,7 +73,6 @@ local currentState = "boot" -- boot (splash), menu, classSelection, playing, gam
 -- Screen shake agora vive em src/systems/ScreenShake.lua.
 -- _G.triggerShake é registrado em love.load via ScreenShake.install() pra
 -- manter back-compat com sistemas que já usam.
-local gameBackground -- Cache da imagem de background
 local smokeSystem -- Sistema de partículas de smoke
 local audioSystem -- Sistema de áudio
 
@@ -206,7 +197,7 @@ local function applyActSmoke()
     if not run then return end
     -- Presets de smoke existem só pros 3 primeiros atos; os atos 4-6 herdam o
     -- do irmão de clima (mesma escolha do salão de chefe em GameplayScene).
-    local preset = "default"
+    local preset
     local porAto = { "act1", "act2", "act3", "act1", "act2", "act3" }
     if run.endlessMode then preset = "act3"
     else preset = porAto[run.actNumber] or "act3" end
@@ -1575,16 +1566,16 @@ function love.load(loveArgs)
     -- Inicializa o menu
     menu = Menu:new()
     menu:setPlayCallback(function()
-        print("Menu: Play button clicked, showing class selection...")
+        Debug.log("[main] Jogar: abrindo a seleção de classe")
         Sfx.play("menuOpen")
         currentState = "classSelection"
         classSelectionScreen:show(
             function(classId, seal) -- onClassSelected
-                print("Main: Class selected: " .. tostring(classId) .. " selo " .. tostring(seal))
+                Debug.log("[main] classe escolhida: " .. tostring(classId) .. " selo " .. tostring(seal))
                 startGame(classId, seal)
             end,
             function() -- onBackToMenu
-                print("Main: Back to menu clicked")
+                Debug.log("[main] voltar ao menu")
                 currentState = "menu"
                 menu:show()
             end
@@ -1595,7 +1586,7 @@ function love.load(loveArgs)
     menu:setContinueCallback(function()
         Sfx.play("menuOpen")
         if not game.runManager:loadRun() then
-            print("Continuar: nenhum save válido")
+            print("[main] AVISO: Continuar sem save válido — run posta em quarentena, diálogo ao jogador")
             -- Save ilegível sai do caminho (vira .corrupt) e o jogador SABE:
             -- antes o Continuar ficava no menu e cada clique falhava calado.
             require("engine.SaveManager").quarantineRun()
@@ -1987,9 +1978,6 @@ function love.load(loveArgs)
         end
     end)
     
-    -- Carrega o background do jogo uma vez
-    gameBackground = BackgroundConfig.loadBackground("GAMEPLAY")
-    
     -- Inicializa o sistema de smoke
     smokeSystem = SmokeSystem:new()
     
@@ -2071,9 +2059,6 @@ function love.load(loveArgs)
         _G.NAV_FLOW = require("tools.test_nav_flow").start()
     end
 end
-
--- updatePlayButtonPosition foi pra GameplayScene. Chamado aqui pra resize.
-local function updatePlayButtonPosition() GameplayScene.updatePlayButtonPosition() end
 
 function love.update(dt)
     if _G.NAV_FLOW then _G.NAV_FLOW.step(dt) end

@@ -185,11 +185,7 @@ return {
 
     msg = {
         pierce         = "¡El golpe atraviesa tu Bloqueo: {value} de daño!",
-        debuffed       = "¡Estás {name}!",
         strength_float = "+{value} DAÑO",
-        healed         = "El enemigo recupera {value} de vida",
         summoned       = "La bandada crece: +{value} cuervo(s)",
-        charging       = "¡El enemigo está cargando un golpe devastador!",
-        player_dot     = "Pierdes {value} de vida (veneno/quemadura)",
     },
 }

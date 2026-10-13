@@ -308,7 +308,9 @@ local ATK_TOTAL  = ATK_WINDUP + ATK_LUNGE + ATK_RECOIL
 -- do game morto) dispararia DENTRO da run nova. Chamado pelo rebind da
 -- GameplayScene (setGame).
 function EnemyRenderer.resetRun()
-    timeScale = 1
+    -- (o `local timeScale` so e declarado mais abaixo: atribuir aqui criava um
+    -- GLOBAL homonimo e nao resetava a camera lenta de verdade)
+    EnemyRenderer.setTimeScale(1)
     attackFx = nil
     poisonTime, defendTime, buffTime, knockTime, slashTime = 0, 0, 0, 0, 0
     buffParticles = {}
@@ -410,7 +412,7 @@ end
 function EnemyRenderer.triggerHurt()
     -- Guard: nao sobrescrever death anim com hurt. A death e "terminal" —
     -- uma vez acionada, nao volta pra hurt/idle. Sem esse guard, o hurt
-    -- disparado pelo CombatAnimationSystem apos o dano fatal reiniciava
+    -- disparado pelo CombatSequence apos o dano fatal reiniciava
     -- a animacao e a morte nunca aparecia em tela.
     if currentAnimName == "death" then return end
     hurtTime = 0.20
@@ -529,7 +531,6 @@ function EnemyRenderer.update(dt)
     if ambientSpawnTimer <= 0 and currentEnemyId then
         ambientSpawnTimer = 0.28 + love.math.random() * 0.20
         -- posição central só pra spawn; o draw usa a posição real do inimigo
-        local tint = AMBIENT_TINTS[currentEnemyId] or { 0.6, 0.6, 0.6 }
         -- Nota: spawn com placeholder cx=0 cy=0; reajustado em draw via offset
         -- (hack leve pq update nao sabe a pos; deixa particula nascer em 0,0
         -- e draw translada pro cx,cy). Mais simples: spawn direto em draw.
@@ -860,7 +861,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     end
 
     -- Resolve sprite ou anim
-    local iw, ih = 0, 0
+    local iw, ih
     local hasAnim = (currentAnim ~= nil)
     if hasAnim then
         iw, ih = currentAnim:getSize()

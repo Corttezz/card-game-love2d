@@ -41,7 +41,6 @@ local Data            = require("src.data.boss_cinematics")
 local I18n            = require("src.i18n.I18n")
 local FontManager     = require("src.ui.FontManager")
 local Sfx             = require("src.systems.Sfx")
-local SceneBackground = require("src.ui.SceneBackground")
 local SpriteAnimation = require("src.ui.SpriteAnimation")
 local EnemyRenderer   = require("src.ui.EnemyRenderer")
 local EnemyPoses      = require("src.data.enemy_poses")
@@ -427,8 +426,6 @@ function BossCinematic.setStage(st) stage = st end
 -- ---------------------------------------------------------------------------
 -- PARTÍCULAS
 -- ---------------------------------------------------------------------------
-local FEATHER_DARK  = { 0.20, 0.16, 0.32 }
-local FEATHER_LIGHT = { 0.58, 0.50, 0.90 }
 local CROW_BODY     = { 0.09, 0.07, 0.13 }
 local CROW_SHEEN    = { 0.36, 0.31, 0.56 }
 local WIND_COLOR    = { 0.78, 0.74, 0.90 }
@@ -1474,7 +1471,6 @@ function BossCinematic.update(dt, game, ctx)
                 seq.idx = seq.idx + 1
             else
                 seq.stepT = seq.stepT + remaining
-                remaining = 0
                 break
             end
         end

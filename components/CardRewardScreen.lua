@@ -70,8 +70,6 @@ local Config = require("src.core.Config")
 local Debug = require("src.core.Debug")
 local FontManager = require("src.ui.FontManager")
 local HintBar = require("src.ui.HintBar")
-local Panel9 = require("src.ui.Panel9")
-local Theme = require("src.ui.Theme")
 local Palette = require("src.ui.Palette")
 local PixelCanvas = require("src.ui.PixelCanvas")
 local Button = require("components.Button")
@@ -1871,10 +1869,9 @@ function CardRewardScreen:update(dt)
         if #self.shopOffers > 0 then
             self:createCardInstances()
             self:createOfferButtons()
-            if self.mode == "shop" then
-                -- updateLayout() já remediu o rodapé e reconstruiu os botões
-                -- de compra; aqui não sobra nada de shop pra fazer.
-            else
+            -- Na loja, updateLayout() já remediu o rodapé e reconstruiu os
+            -- botões de compra; só as recompensas têm botão pra recentrar.
+            if self.mode ~= "shop" then
                 if self.skipButton then
                     -- rewards: recentra pela LARGURA MEDIDA (não o -90 fixo)
                     self.skipButton.x = math.floor(love.graphics.getWidth() / 2
@@ -2357,7 +2354,6 @@ function CardRewardScreen:_drawRewardsBanner()
     local g = Palette.AGED_GOLD
     for _, side in ipairs({ -1, 1 }) do
         local x0 = cx + side * gap
-        local x1 = cx + side * (gap + lineW)
         for seg = 0, 7 do
             local a = 0.85 * (1 - seg / 8)
             local sx0 = x0 + side * (lineW / 8) * seg

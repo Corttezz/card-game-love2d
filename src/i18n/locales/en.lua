@@ -17,14 +17,9 @@ return {
         profile_wins    = "Wins: {n}",
         profile_runs    = "Runs: {n}",
         profile_best    = "Best: Act {act} · Floor {floor}",
-        profile_nobest  = "No run finished yet",
         collection      = "COLLECTION",
         settings        = "SETTINGS",
         quit            = "QUIT",
-        instr_mouse     = "Mouse: select cards",
-        instr_space     = "Space: draw from deck",
-        instr_restart   = "R: restart the battle",
-        instr_jokers    = "Jokers stay active for the rest of the run",
     },
 
     settings = {
@@ -59,18 +54,13 @@ return {
     },
 
     class_select = {
-        passive_label = "PASSIVE",
         title       = "CHOOSE YOUR ARCHETYPE",
         description = "Each path offers unique cards and tactics.",
         back        = "BACK TO MENU",
         locked        = "LOCKED",
         mastery       = "MASTERY {level}",
         mastery_max   = "MAX MASTERY",
-        hp_label      = "HP",
-        deck_label    = "DECK",
-        deck_count    = "{n} cards",
         starter_label = "STARTING CARDS",
-        locked_hint   = "Class locked. Meet the requirement to unlock it.",
         start         = "BEGIN JOURNEY",
         details       = "DETAILS",
         summary       = "SUMMARY",
@@ -438,7 +428,6 @@ return {
     },
 
     card_info = {
-        rarity_label = "RARITY: ",
         cost         = "Cost: ",
         damage       = "Damage: ",
         defense      = "Defense: ",
@@ -494,20 +483,14 @@ return {
         continue           = "Continue",
         refresh            = "Refresh (${n})",
         buy                = "Buy (${n})",
-        buy_and_use        = "Use (${n})",
-        open_pack          = "Open (${n})",
         select_card        = "Select",
         cancel             = "Cancel",
-        confirm_title      = "Confirm Purchase",
         insufficient_gold  = "Not enough gold!",
-        gold_transition    = "Gold: ${from} -> ${to}",
         instructions       = "Click picks · RIGHT-click inspects · D opens your deck",
-        shop_refreshed     = "Shop refreshed!",
         refresh_fail       = "Not enough gold to refresh!",
         sold               = "SOLD",
         bought             = "Bought: {name}",
         extra_draw         = "Extra cards per turn: +{n}",
-        atk_bonus          = "Attack damage: +{n}",
         def_bonus          = "Defense: +{n}",
         joker_run_only     = "Jokers can only be acquired during a run",
         joker_slot_gained  = "Jokers on stage: up to {n}",
@@ -854,7 +837,6 @@ return {
         filter_joker   = "JOKERS",
         filter_effect  = "EFFECTS",
         class_basic    = "Basic",
-        footer         = "CLICK to inspect  ·  MOUSEWHEEL to scroll  ·  ESC to return",
         inspect_help   = "← / → Navigate    ·    ESC or click outside to close",
         inspect_help_pad = "< / > Navigate    ·    B closes",
     },
@@ -909,13 +891,11 @@ return {
     game_over = {
         title        = "GAME OVER",
         final_score  = "Final Score: {score}",
-        instructions = "Press R to try again or ESC to return to the menu",
     },
 
     victory = {
         title        = "VICTORY!",
         final_score  = "Final Score: {score}",
-        instructions = "Press SPACE to play again or ESC to return to the menu",
     },
 
     -- Telas finais v2 (Out/2026): botões, resumo da run e Endless.

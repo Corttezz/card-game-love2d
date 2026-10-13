@@ -1114,7 +1114,7 @@ function ClassSelectionScreen:tooltipOwner()
     if self.pageMode ~= "details" or self.inspectModal:isVisible() then return nil end
     local p = self:_panelOf(self.focus)
     if not (p and p.unlocked) then return nil end
-    local mx, my = love.mouse.getPosition()
+    local mx = love.mouse.getPosition()
     local hovered
     for i, inst in ipairs(p.cards) do
         if inst.isHovered then

@@ -624,7 +624,6 @@ function Panel.draw(game, anchor, topLimit)
         local bt = "+" .. R.block
         FontManager.drawWithOutline(bt, cx, cy, { COL_DEF[1] * 1.3, COL_DEF[2] * 1.3,
             COL_DEF[3] * 1.3, 1 }, 0.95)
-        cx = cx + bigFont:getWidth(bt) + pad
     end
     -- rotulo LETAL a direita do cabecalho (sem espaco: virou linha, la em cima)
     if R.lethal and not lethalRow then

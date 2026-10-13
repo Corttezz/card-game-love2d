@@ -51,7 +51,7 @@ Config.Game = {
 
     -- Fases: Fase 5 trocou o cap de 10 por estrutura de atos (ver Config.Acts).
     -- VICTORY_PHASES mantido por retrocompatibilidade (usado no modo classic sem run).
-    VICTORY_PHASES = 24, -- 3 atos x 8 andares
+    VICTORY_PHASES = 24, -- so o modo classico (sem run); a campanha usa Config.TotalActs x 8 andares
     HEALTH_RESTORE_INTERVAL = 3,
 
     -- Fallback de inimigos (modo classic sem run). Run mode usa Config.Acts.

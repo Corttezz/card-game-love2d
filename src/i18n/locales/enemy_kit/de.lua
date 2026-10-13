@@ -185,11 +185,7 @@ return {
 
     msg = {
         pierce         = "Der Hieb durchbricht deinen Block: {value} Schaden!",
-        debuffed       = "Du bist {name}!",
         strength_float = "+{value} SCHADEN",
-        healed         = "Der Gegner heilt {value} LP",
         summoned       = "Der Schwarm wächst: +{value} Krähe(n)",
-        charging       = "Der Gegner lädt einen verheerenden Angriff auf!",
-        player_dot     = "Du verlierst {value} LP (Gift/Verbrennung)",
     },
 }

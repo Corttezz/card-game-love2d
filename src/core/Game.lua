@@ -523,14 +523,10 @@ end
 -- Sincroniza o deck jogável com o deck da corrida
 function Game:synchronizeRunDeck()
     if self.isRunMode and self.runManager:hasActiveRun() then
-        -- Reconstrói o deck jogável a partir do deck da corrida
+        -- Reconstrói o deck jogável a partir do deck da corrida. Em plena
+        -- batalha a mão atual fica como está: as cartas novas aparecem quando
+        -- a mão for recarregada ou nos próximos turnos.
         self.deck = self.runManager:buildPlayableDeck()
-
-        -- Força a atualização do estado do jogo
-        if self.gameState == "playing" then
-            -- Se estamos jogando, mantém a mão atual mas adiciona as novas possibilidades
-            -- As cartas novas aparecerão quando a mão for recarregada ou em próximos turnos
-        end
     end
 end
 
@@ -936,7 +932,7 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
     if card.type == "attack" then
         -- Guard: inimigo ja morto nao recebe mais dano (evita "batendo no cadaver"
         -- quando o player encadeia multiplas cartas de ataque e a primeira ja mata).
-        -- Retorna vazio pra CombatAnimationSystem nao spawnar damage number nem shake.
+        -- Retorna vazio pra CombatSequence nao spawnar damage number nem shake.
         if self.enemy.health <= 0 then
             if turnContext then table.insert(turnContext.cardsProcessed, card) end
             -- Exhaust TAMBEM precisa do bookkeeping aqui: sem isso a carta sai
@@ -1751,7 +1747,6 @@ function Game:_pushEnemyTurnTail(beat)
         CombatBeats.push("enemy.regen", beat(function()
             local healed = self.enemy:tickRegen()
             if healed and healed > 0 then
-                local I18n = require("src.i18n.I18n")
                 local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
                 if okCF then CardFeel.burstAtEnemy("heal", 0.8) end
                 local okER, ER = pcall(require, "src.ui.EnemyRenderer")
@@ -1824,7 +1819,6 @@ function Game:_pushEnemyTurnTail(beat)
         local total = (poison or 0) + (burn or 0)
         if total <= 0 then return end
         self.scoreSystem:recordDamageTaken(total)
-        local I18n = require("src.i18n.I18n")
         Sfx.playWithVariation("poisonTick", 0.85, 0.15)
         local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
         if okCF then
@@ -2372,7 +2366,7 @@ function Game:addMessage(text, type)
     if self.messageSystem then
         self.messageSystem:addMessage(text, type)
     end
-    print(text) -- Mantém no console também
+    Debug.log("[toast] " .. tostring(text)) -- eco no console só em DEV
 end
 
 function Game:checkGameOver()
