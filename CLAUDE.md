@@ -314,6 +314,9 @@ Porta abre → salão abre **VAZIO** → entrada do chefe dentro do salão (olho
 ### Fim de run (`src/ui/EndTransition.lua`)
 Morte e vitória desligam o CRT e só trocam de tela no CALLBACK do desligamento. O gatilho é uma **condição** (`game:checkGameOver()` continua verdadeiro todo frame), não um evento — sem trava de reentrada cada frame reiniciava a animação e o callback nunca chegava ao fim: **tela preta permanente, sem input, só fechando o jogo** (bug do dono, Set/2026). A trava mora no módulo, fora do closure do `love.load`, porque precisava ser testável (`love . test_one test_end_transition`). **Regra geral: animação com callback disparada por CONDIÇÃO precisa de trava; disparada por EVENTO não.**
 
+### Cortina da mão (`src/ui/HandDeal.lua`, Out/2026)
+Mão, botões, coringas e prévia NÃO existem durante cutscene (viagem, porta, salão à espera do chefe, entrada/morte do chefe, quicada de chegada); no caminho do castelo o HUD espera junto. Quando a cortina sobe as cartas são DADAS uma a uma da pilha e só depois entram botões/HUD. Chefe sem roteiro ganha a entrada genérica (`BossCinematic.GENERIC`) — nunca "luta como antes" com a mão na tela. Trava: `test_hand_deal`. Ver [`memory/boss_cinematics.md`](memory/boss_cinematics.md).
+
 ### Smoke
 `SmokeSystem` spawna partículas que sobem lentamente. 4 presets em `SmokeConfig`. Pode ser alterado em runtime via teclas 1-4.
 

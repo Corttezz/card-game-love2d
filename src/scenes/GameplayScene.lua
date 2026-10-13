@@ -35,6 +35,10 @@ local UiScale          = require("src.ui.UiScale")
 -- lenta. A cena pergunta a ela o que esconder (chefe/HUD) e quando os
 -- espólios podem entrar — ver src/ui/BossCinematic.lua.
 local BossCinematic    = require("src.ui.BossCinematic")
+-- Cortina da mão + distribuição das cartas depois de toda cutscene (viagem,
+-- porta, entrada do chefe): a mão, os botões e o HUD só existem quando há
+-- luta — ver src/ui/HandDeal.lua.
+local HandDeal         = require("src.ui.HandDeal")
 
 local GameplayScene = {}
 
@@ -116,6 +120,8 @@ function GameplayScene.isQuiet()
     end
     -- entrada/morte do chefe tocando: o narrador espera a cena terminar
     if BossCinematic.isActive() then return false end
+    -- cartas ainda sendo dadas: o narrador espera a mão na mesa
+    if HandDeal.isBusy() then return false end
     if EnemyRenderer.isAttacking() then return false end
     if EnemyRenderer.getArrivalOffset and EnemyRenderer.getArrivalOffset() ~= 0 then
         return false
@@ -170,6 +176,7 @@ function GameplayScene.resetTurnState()
     turnStageT = 0
     bossEntered = false
     BossCinematic.reset()
+    HandDeal.reset()
     GameplayScene._endTurnCallout = false
     -- Sem isto, o 1º frame da run NOVA compararia com o andar da run
     -- MORTA e dispararia uma viagem/chegada espúria na estrada.
@@ -764,7 +771,7 @@ function GameplayScene.draw()
             BossCinematic.setStage({
                 cx = enemyCx, cy = enemyCy, bbox = enemyBbox or nil,
                 foot = EnemyRenderer.getLastFoot(), hall = interiorHall,
-                w = width, h = height,
+                w = width, h = height, backY = backY, artCy = artCy,
                 tr = SceneBackground.getCoverTransform(sceneKey, width, sceneH),
             })
             BossCinematic.drawFront()
@@ -785,10 +792,17 @@ function GameplayScene.draw()
     if GameplayScene.WORLD_ONLY then return end
     -- ENTRADA DO CHEFE: o salão abre VAZIO — HUD do inimigo, painel do herói,
     -- mão, botões e coringas esperam o nome do chefe (BossCinematic.hidesHud).
-    local cineHide = BossCinematic.hidesHud()
+    -- No salão o HUD também espera a DISTRIBUIÇÃO das cartas (HandDeal:
+    -- cartas primeiro, botões e HUD depois — ordem de mesa).
+    local cineHide = BossCinematic.hidesHud() or HandDeal.hidesHud()
     -- mão/botões/coringas/prévia somem na ENTRADA e na MORTE (na morte o
     -- HUD de vida fica: o corpo caindo é o que se vê, não há o que jogar)
-    local cineHand = BossCinematic.hidesHand()
+    -- e atrás da CORTINA (viagem, porta, salão à espera do chefe).
+    local cineHand = BossCinematic.hidesHand() or HandDeal.hidesHand()
+    -- botões, coringas, prévia e toasts esperam a última carta ser dada
+    local uiWait = cineHand or HandDeal.hidesUI()
+    -- pilha do deck: onde as cartas ainda não dadas esperam
+    local deckX, deckY = game:getDeckOrigin()
     -- ===== UI (espaço virtual) =====
     -- O bbox do inimigo veio em pixels da tela: o HUD dele mora na UI.
     if enemyBbox and uiK ~= 1 then
@@ -893,7 +907,10 @@ function GameplayScene.draw()
         if card == hoverCard and not draggingCard then
             ty = cardY - hoverLift
         end
-        if card.isDragging then
+        if HandDeal.holds(card) then
+            -- ainda na pilha: espera a vez dela (sai voando da pilha ao ser dada)
+            card:setRenderPos(deckX, deckY)
+        elseif card.isDragging then
             local mx, my = love.mouse.getPosition()
             card:setRenderPos(mx + card.dragOffsetX, my + card.dragOffsetY)
         else
@@ -909,7 +926,7 @@ function GameplayScene.draw()
     if not entering and not cineHand then
         -- Desenha não-dragadas (ordem normal), depois hover, depois dragged por cima
         for _, card in ipairs(game.hand) do
-            if not card.isDragging and card ~= hoverCard then
+            if not card.isDragging and card ~= hoverCard and not HandDeal.holds(card) then
                 local canPlay = game:canPlayCard(card)
                 card:draw(card.renderX, card.renderY, canPlay)
             end
@@ -937,13 +954,13 @@ function GameplayScene.draw()
     local roadOutdoor = GameplayScene.SCENE_MODE == "worldroad"
         and not lastInterior
     if smokeSystem and not roadOutdoor then smokeSystem:draw() end
-    if not cineHand then
+    if not uiWait then
         playButton:draw()
         if endTurnButton then endTurnButton:draw() end
     end
     -- Ações de contexto do teclado/pad (NavCursor): Y/E joga a seleção,
     -- X/Q encerra o turno — o glifo mora no canto do próprio botão.
-    if not cineHand then
+    if not uiWait then
         local NavCursor = require("src.ui.NavCursor")
         local function press(btn)
             return function()
@@ -963,7 +980,7 @@ function GameplayScene.draw()
     -- PREVIA DE DANO (Out/2026): banda de ACAO da coluna direita, colada em
     -- cima do JOGAR — o numero que o clique vai produzir mora no botao que o
     -- produz. Selos "+COMBO" ficam NA carta que fecharia o combo.
-    if not entering and not cineHand then
+    if not entering and not uiWait then
         DamagePreviewPanel.drawHandBadges(game)
         DamagePreviewPanel.draw(game,
             { x = playButton.x, y = playButton.y, w = playButton.width },
@@ -972,7 +989,7 @@ function GameplayScene.draw()
 
     -- Chamariz do ENCERRAR TURNO (sem mana e nada selecionado): aro dourado
     -- pulsante + seta quicando — "sua próxima ação é aqui".
-    if GameplayScene._endTurnCallout and endTurnButton and not cineHand then
+    if GameplayScene._endTurnCallout and endTurnButton and not uiWait then
         local t = love.timer.getTime()
         local pulse = 0.5 + 0.5 * math.sin(t * 4.2)
         love.graphics.setColor(1, 0.85, 0.30, 0.35 + 0.45 * pulse)
@@ -989,9 +1006,9 @@ function GameplayScene.draw()
     end
     -- toasts ficam na FILA durante a cinemática (sem tick, sem desenho):
     -- "carta desbloqueada" por cima do chefe caindo quebrava a cena
-    if game.messageSystem and not cineHand then game.messageSystem:draw() end
+    if game.messageSystem and not uiWait then game.messageSystem:draw() end
 
-    if not cineHand then drawJokersAsCards() end
+    if not uiWait then drawJokersAsCards() end
     GameplayScene._reportTutorialAnchors()
 
     -- Banner de COMBO: DEPOIS da mão e depois do combatAnimationSystem (que
@@ -1160,6 +1177,28 @@ function GameplayScene.update(dt)
         UiScale.outside(SceneLayer.update, dt)
     end
 
+    -- CORTINA DA MÃO (Out/2026, bug do dono: mão/botões/HUD apareciam no
+    -- meio da porta e da entrada do chefe). Abaixada em toda cutscene:
+    -- viagem na estrada, cerimônia da porta, salão à espera do chefe,
+    -- entrada/morte do chefe e a quicada de chegada. Quando sobe, as cartas
+    -- são DADAS uma a uma e só depois entram botões e HUD (HandDeal). No
+    -- caminho do castelo (porta + salão) o HUD espera junto. Avaliada
+    -- DEPOIS do gatilho da viagem acima: o andar novo já nasce atrás dela.
+    do
+        local runH = game.runManager and game.runManager.currentRun
+        local ntH = runH and runH.currentNode and runH.currentNode.type
+        local wr = GameplayScene.SCENE_MODE == "worldroad"
+        local entering = wr and WorldRoad.isEntering()
+        local bossWait = wr and ntH == "boss" and not bossEntered
+        local arriving = EnemyRenderer.getArrivalOffset
+            and EnemyRenderer.getArrivalOffset() ~= 0
+        local down = (wr and WorldRoad.isTraveling()) or entering or bossWait
+            or BossCinematic.isActive() or arriving or false
+        HandDeal.setCurtain(down, game,
+            { hud = entering or GameplayScene.inBossRoom(ntH) })
+        HandDeal.update(dt, game)
+    end
+
     -- CHECKPOINT DA MORTE (Set/2026): antes de qualquer gate de desfecho, o
     -- inimigo morto que ainda nao foi encenado vira acontecimento. E a mesma
     -- rede do `enemy.enrage_check` do turno do inimigo — nenhuma fonte de dano
@@ -1247,9 +1286,11 @@ function GameplayScene.update(dt)
     for _, card in ipairs(game.hand) do
         if card.isDragging then anyDragging = true; break end
     end
+    -- atrás da cortina / durante a distribuição não há carta pra apontar
+    local handClosed = HandDeal.isBusy()
     for i, card in ipairs(game.hand) do
         card.index = i
-        local allowHover = (not anyDragging) and (hoverCard == nil)
+        local allowHover = (not anyDragging) and (hoverCard == nil) and not handClosed
         card:updateMouse(mx, my, dt, allowHover)
         if card.isHovered then hoverCard = card end
     end
@@ -1273,7 +1314,8 @@ function GameplayScene.update(dt)
                 break
             end
         end
-        local myTurn = game.turn == "player" and not blocking
+        -- cartas ainda sendo dadas: nada é jogável nem auto-encerra
+        local myTurn = game.turn == "player" and not blocking and not handClosed
         if playButton.setEnabled then
             playButton:setEnabled(myTurn and (hasSelection or anyPlayable))
         end
@@ -1330,6 +1372,11 @@ function GameplayScene.mousepressed(x, y, button)
     -- v9.7.1: retorna se CONSUMIU o clique — o que sobrar vira poke no
     -- cenário do WorldRoad (main.lua → pokeSceneAt, mapa vivo)
     if topBar:mousepressed(x, y, button) then return true end
+
+    -- Cortina abaixada ou cartas sendo dadas: não há botão, coringa nem
+    -- carta pra clicar (a carta invisível ainda está na mão lógica — sem
+    -- isto um clique cego a selecionava). O clique segue pro cenário.
+    if HandDeal.isBusy() then return false end
 
     -- Clique no quadro de coringas (topo-esquerdo) abre o Gerenciador.
     if button == 1 then

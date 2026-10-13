@@ -89,14 +89,18 @@ def main():
     save_dir = sys.argv[1]
     out_dir = sys.argv[2] if len(sys.argv) > 2 else os.path.join("tools", "preview_out", "boss_cinematic")
     os.makedirs(out_dir, exist_ok=True)
-    for phase, n, cols in (("intro", 12, 4), ("death", 6, 3)):
+    # sufixo opcional pros arquivos de saída (um chefe por pasta/prefixo):
+    #   python tools/boss_cinematic_sheet.py <save_dir> <out_dir> <tag>
+    tag = ("_" + sys.argv[3]) if len(sys.argv) > 3 else ""
+    # arrival = porta → entrada → distribuição das cartas (shot_boss_cinematic arrival)
+    for phase, n, cols in (("intro", 12, 4), ("death", 6, 3), ("arrival", 16, 4)):
         frames = frames_of(save_dir, phase)
         if not frames:
             print("[sheet] fase sem quadros:", phase)
             continue
         times = timeline_of(save_dir, phase)
-        sheet(frames, times, n, cols, os.path.join(out_dir, "boss_cine_%s_sheet.png" % phase))
-        gif(frames, os.path.join(out_dir, "boss_cine_%s.gif" % phase))
+        sheet(frames, times, n, cols, os.path.join(out_dir, "boss_cine_%s%s_sheet.png" % (phase, tag)))
+        gif(frames, os.path.join(out_dir, "boss_cine_%s%s.gif" % (phase, tag)))
     return 0
 
 

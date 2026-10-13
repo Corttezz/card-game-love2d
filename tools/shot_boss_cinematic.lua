@@ -4,7 +4,14 @@
 -- e a sequência de entrada + morte tocando, quadro a quadro, num canvas
 -- falsificado (nada precisa aparecer na janela — roda com CARDGAME_HEADLESS=1).
 --
---   love . shot_boss_cinematic [intro|death|both]
+--   love . test_one shot_boss_cinematic [intro|death|both|arrival]
+--     (pelo test_one: não há entrada própria no dispatcher do main.lua —
+--     `love . shot_boss_cinematic` abre o JOGO normal e fica esperando)
+--     arrival = o caminho REAL do andar do chefe: a cena caminha até o
+--     castelo, a PORTA abre, a entrada toca e as cartas são DADAS (HandDeal)
+--     — grava da porta ao fim da distribuição (prova do bug "mão/HUD no
+--     meio da cutscene")
+--   BOSS_CINE_ACT=3            ato/chefe (default 1 = rei-carniça)
 --   BOSS_CINE_SIZE=1920x1080   tamanho do canvas (default 1920x1080)
 --   BOSS_CINE_FPS=15           quadros gravados por segundo simulado
 --   BOSS_CINE_REDUCED=1        versão reducedMotion
@@ -20,7 +27,12 @@ local M = {}
 function M.run(mode)
     mode = mode or "both"
     io.stdout:setvbuf("no")   -- progresso visível mesmo com stdout redirecionado
-    local function log(s) print("[shot_boss_cinematic] " .. s) end
+    -- também no save dir (shot_log.txt): sem console o print some
+    local function log(s)
+        print("[shot_boss_cinematic] " .. s)
+        pcall(love.filesystem.append, "shot_log.txt", s .. "\n")
+    end
+    love.filesystem.write("shot_log.txt", "")
     local vw, vh = (os.getenv("BOSS_CINE_SIZE") or "1920x1080"):match("^(%d+)x(%d+)$")
     vw, vh = tonumber(vw) or 1920, tonumber(vh) or 1080
     local fps = tonumber(os.getenv("BOSS_CINE_FPS") or "") or 15
@@ -70,15 +82,26 @@ function M.run(mode)
     local Enemy = require("src.entities.Enemy")
 
     log("game")
+    local act = tonumber(os.getenv("BOSS_CINE_ACT") or "") or 1
     local game = Game:new()
     game:startNewRun("warrior")
     game:startGame()
     local run = game.runManager.currentRun
-    run.actNumber = 1
-    run.floorInAct = 8
+    run.actNumber = act
+    run.floorInAct = (mode == "arrival") and 7 or 8
     run.currentNode = { type = "boss" }
-    game.enemy = EnemyRoster.spawn(Enemy, "carrion_king", ActSystem.getEnemyStats(1, 8, "boss"))
+    local bossId = EnemyRenderer.resolveSpriteId(act, "boss")
+    local stats = ActSystem.getEnemyStats(act, 8, "boss")
+    local okSp, spawned = pcall(EnemyRoster.spawn, Enemy, bossId, stats)
+    if okSp and spawned then
+        game.enemy = spawned
+    else
+        game.enemy = Enemy:new(stats.health, stats.damage)
+        if game.enemy.rollNextIntent then pcall(game.enemy.rollNextIntent, game.enemy) end
+    end
+    game.enemy.spriteId = bossId
     game.enemy.isBoss = true
+    game.messageSystem = nil   -- sem toasts de início de run por cima da cena
     _G.game = game
 
     log("ui")
@@ -97,14 +120,15 @@ function M.run(mode)
     log("setGame")
     GameplayScene.setGame(game)
     log("setBiome")
-    WorldRoad.setBiome(1)
+    WorldRoad.setBiome(act)
     WorldRoad.setTimeOfDay(1, true)
     log("prewarm 90")
     local IFX = require("src.ui.InteriorFX")
+    local HandDeal = require("src.ui.HandDeal")
     for _ = 1, 90 do
         WorldRoad.update(DT)
         EnemyRenderer.update(DT)
-        IFX.update(DT, IFX.hallFor(1))
+        IFX.update(DT, IFX.hallFor(act))
     end
 
     local saveDir = love.filesystem.getSaveDirectory()
@@ -140,9 +164,12 @@ function M.run(mode)
                 draw(path)
                 local d = BossCinematic._debug()
                 local stepName = d.seq and d.seq.steps[d.seq.idx] and d.seq.steps[d.seq.idx].kind or "-"
-                lines[#lines + 1] = ("%03d t=%.2f step=%s dark=%.2f hidesBoss=%s hidesHud=%s"):format(
+                if not d.seq and WorldRoad.isEntering() then stepName = "door"
+                elseif not d.seq and HandDeal.isDealing() then stepName = "deal" end
+                lines[#lines + 1] = ("%03d t=%.2f step=%s dark=%.2f hidesBoss=%s hidesHud=%s hand=%d ui=%s"):format(
                     n, simT - t0, stepName, d.dark, tostring(BossCinematic.hidesBoss()),
-                    tostring(BossCinematic.hidesHud()))
+                    tostring(BossCinematic.hidesHud() or HandDeal.hidesHud()),
+                    HandDeal.visibleCount(game), tostring(not HandDeal.hidesUI()))
                 n = n + 1
             end
             if skipAt and phase == "intro" and not skipped and simT - t0 >= skipAt then
@@ -160,6 +187,34 @@ function M.run(mode)
         love.filesystem.write(("boss_cine_%s_timeline.txt"):format(phase), table.concat(lines, "\n"))
         print(("[shot_boss_cinematic] %s: %d quadros, %.2fs simulados"):format(phase, n, simT - t0))
         return n
+    end
+
+    if mode == "arrival" then
+        -- caminho REAL: andar 7 → 8 dispara a caminhada; a câmera chega, a
+        -- porta abre (WorldRoad.enterCastle), a entrada toca e as cartas
+        -- são dadas. A caminhada (6.5 s) não é gravada; da porta em diante é.
+        log("arrival: ancora o andar")
+        step()
+        run.floorInAct = 8
+        step()
+        assert(WorldRoad.isTraveling(), "a cena não viajou (andar não mudou?)")
+        log("arrival: caminhando até o castelo (não gravado)")
+        local guard = 0
+        while not WorldRoad.isEntering() and guard < 30 * 20 do
+            step(); guard = guard + 1
+            if guard % 60 == 0 then log(("arrival: viagem %.1fs"):format(guard / 30)) end
+        end
+        assert(WorldRoad.isEntering(), "a porta não abriu")
+        log("arrival: porta — gravando")
+        local sawIntro = false
+        record("arrival", function()
+            if BossCinematic.isActive() then sawIntro = true end
+            return sawIntro and not BossCinematic.isActive() and not HandDeal.isBusy()
+        end, 0.6)
+        for _, e in ipairs(events) do print("[shot_boss_cinematic] " .. e) end
+        print("[shot_boss_cinematic] save dir: " .. saveDir)
+        love.event.quit()
+        return
     end
 
     if mode == "intro" or mode == "both" then

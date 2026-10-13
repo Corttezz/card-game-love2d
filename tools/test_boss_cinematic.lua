@@ -10,7 +10,8 @@
 --   * MORTE: detectada pelo update (chefe no SALÃO com _deathHandled), segura
 --     espólios (holdsEnd), câmera lenta no EnemyRenderer e volta a 1; não
 --     reencena a mesma morte; mini-boss NA ESTRADA (isBoss sem salão) não
---     vira cinemática; chefe sem roteiro não inicia nada;
+--     vira cinemática; chefe sem roteiro ganha a entrada GENÉRICA, inimigo
+--     comum não inicia nada;
 --   * CENA: a porta (GameplayScene._onBossEntered) inicia a entrada e a cena
 --     deixa de estar quieta (tutorial espera); o CONTINUAR (ResumeFlow.apply)
 --     abre o salão SEM entrada; setGame zera tudo;
@@ -182,10 +183,20 @@ function M.run()
     gm._deathHandled = true
     BC.update(DT, gm, { inHall = false })
     t:falsy("fora do salao nao ha cinematica", BC.isActive())
-    -- chefe sem roteiro
+    -- chefe sem roteiro próprio: entrada GENÉRICA (salão vazio → impacto →
+    -- nome); quem não é chefe não tem entrada
     BC.reset()
-    t:falsy("chefe sem roteiro nao inicia entrada", BC.startIntro(fakeBoss("tower_lich")))
-    t:falsy("chefe sem roteiro: inativo", BC.isActive())
+    t:truthy("chefe sem roteiro ganha a entrada generica", BC.startIntro(fakeBoss("__nobody__")))
+    t:truthy("generica: ativa", BC.isActive())
+    t:truthy("generica: salao vazio no comeco", BC.hidesBoss())
+    BC.setStage(stage)
+    local elG = runUntilDone(fakeBoss("__nobody__"), 10)
+    t:near("generica: duracao = soma nominal", elG, BC.duration(BC.GENERIC.intro), 0.1)
+    BC.reset()
+    local common = fakeBoss("carrion_king")
+    common.enemy.isBoss = false
+    t:falsy("inimigo comum nao inicia entrada", BC.startIntro(common))
+    t:falsy("inimigo comum: inativo", BC.isActive())
     -- vivo: nao e morte
     BC.reset()
     BC.update(DT, fakeBoss("carrion_king"), { inHall = true })

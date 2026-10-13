@@ -27,7 +27,7 @@ corvos, dessaturação breve, o corpo fica no salão e SÓ DEPOIS cash out.
 | i18n | `src/i18n/locales/boss_cinematics/<loc>.lua` (`skip`, `<id>.name/.epithet`), 1 require por locale principal |
 | trava | `tools/test_boss_cinematic.lua` (75 asserções) |
 | ao vivo | `love . boss_rooms` (ou `lovec`): **I** = entrada a partir do salão vazio, **K** = morte pelo pipeline real (beat → clip → cinemática), **ENTER** pula; a sala remonta com `GameplayScene.setGame` (zera a cinemática anterior) |
-| prova visual | `CARDGAME_HEADLESS=1 CARDGAME_IDENTITY=boss-cine lovec . shot_boss_cinematic both` → quadros em `%APPDATA%/LOVE/boss-cine/`; `python tools/boss_cinematic_sheet.py <save_dir>` → `tools/preview_out/boss_cinematic/` (prancha 12+6 e GIFs) |
+| prova visual | `CARDGAME_HEADLESS=1 CARDGAME_IDENTITY=boss-cine lovec . test_one shot_boss_cinematic both` (pelo test_one: o main.lua não tem entrada própria pra ele) → quadros em `%APPDATA%/LOVE/boss-cine/`; `python tools/boss_cinematic_sheet.py <save_dir>` → `tools/preview_out/boss_cinematic/` (prancha 12+6 e GIFs) |
 
 ## Regras
 
@@ -103,5 +103,40 @@ Infra comum necessária antes: `land.ring` escolhe cor/forma da onda,
 "desenhador do chefe fora do lugar" genérico (hoje o rasante usa o clip idle
 próprio — vira `drawBossAt(x, y, opts)` compartilhado). Chefes apoiados
 NUNCA voam.
+
+## Cortina da mão + distribuição (Out/2026, bug do dono)
+
+> "a mão, os botões e o HUD aparecem no meio da porta e da entrada"
+
+`src/ui/HandDeal.lua`, dirigido pelo `GameplayScene.update` (bloco "CORTINA
+DA MÃO", avaliado DEPOIS do gatilho da viagem — o andar novo nasce atrás
+dela). Cortina abaixada em TODA cutscene: viagem na estrada, cerimônia da
+porta, salão à espera do chefe (`bossEntered=false`), `BossCinematic.isActive()`
+(entrada E morte) e a quicada de chegada (`EnemyRenderer.getArrivalOffset`).
+Com ela abaixada: zero carta, zero botão, zero coringa, zero prévia/toast; no
+caminho do castelo (porta + salão, `opts.hud`) o HUD do herói e o do inimigo
+esperam também — na estrada o HUD fica (é status, não cutscene).
+
+Quando sobe: as cartas da mão voltam pra PILHA (`dissolve=1`, renderPos no
+`game:getDeckOrigin()`) e saem uma a uma (`STAGGER` 0.11 s, materialize +
+`cardDraw` com pitch subindo); botões/coringas/HUD só `TAIL` 0.3 s depois da
+última. Linha do tempo própria (sem EventManager a carta aparece na hora).
+Cortina que desce no meio interrompe (quem faltava fica na pilha) e a subida
+seguinte redistribui do zero. Inimigo morto (espólios a caminho) = sem
+distribuição. Atrás da cortina a mão não recebe hover nem clique
+(`HandDeal.isBusy`), o auto-encerrar não roda e o narrador espera
+(`GameplayScene.isQuiet`).
+
+**Chefe sem roteiro próprio** ganha a entrada GENÉRICA (`BossCinematic.GENERIC`:
+escuro → impacto no palco → cartão com o nome → HUD): o salão nunca mais abre
+com o chefe já parado e a mão na tela. Inimigo comum não tem entrada.
+
+Travas: `test_hand_deal` (módulo puro; cena real viagem → porta → entrada →
+distribuição com ZERO carta até o fim da entrada, uma carta por compasso,
+botões/HUD depois da última; genérica; estrada: inimigo chega → cartas, HUD
+fica; clique cego não seleciona) e `test_boss_cinematic`. Prova visual:
+`CARDGAME_HEADLESS=1 CARDGAME_IDENTITY=boss-cine lovec . test_one shot_boss_cinematic arrival`
+(`BOSS_CINE_ACT=n` escolhe o chefe) → `python tools/boss_cinematic_sheet.py
+<save_dir> [out_dir] [tag]` monta `boss_cine_arrival_sheet.png` + GIF.
 
 [[boss_visuals]] · [[boss_halls]] · [[combat_beats]] · [[input_focus]] · [[onboarding]]

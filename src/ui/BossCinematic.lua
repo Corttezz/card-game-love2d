@@ -225,16 +225,41 @@ local function begin(phase, steps, bossId, reduced)
             bossId = bossId, reduced = reduced }
 end
 
--- ENTRADA. Só com chefe de verdade que tem roteiro; senão não faz nada e a
--- luta começa como antes (devolve false).
+-- ENTRADA GENÉRICA — chefe SEM roteiro próprio (chefe novo que ainda não
+-- ganhou o dele). O salão abre VAZIO, um compasso de escuro, o chefe aparece
+-- no palco com impacto, cartão com o nome. Nunca mais "luta como antes" com
+-- a mão já na tela (bug do dono, Out/2026).
+BossCinematic.GENERIC = {
+    intro = {
+        { kind = "dark",  dur = 0.70, to = 0.60 },
+        { kind = "land",  dur = 0.55, shake = 8, dust = 10, crows = 0 },
+        { kind = "title", dur = 1.80 },
+        { kind = "hud",   dur = 0 },
+    },
+    introReduced = {
+        { kind = "dark",  dur = 0.35, to = 0.45 },
+        { kind = "land",  dur = 0.40, shake = 3, dust = 4, crows = 0 },
+        { kind = "title", dur = 1.30 },
+        { kind = "hud",   dur = 0 },
+    },
+}
+
+-- ENTRADA. Chefe com roteiro usa o dele; chefe sem roteiro usa o GENÉRICO.
+-- Quem não é chefe não tem entrada (devolve false).
 function BossCinematic.startIntro(game)
     local e = game and game.enemy
     local id = e and e.spriteId
-    if not (e and e.isBoss and BossCinematic.hasIntro(id)) then return false end
-    for _, err in ipairs(BossCinematic.validate(id)) do
-        print("[BossCinematic] " .. err)
-    end
+    if not (e and e.isBoss and id) then return false end
     local d = Data[id]
+    if d and not BossCinematic.hasIntro(id) then d = nil end
+    if d then
+        for _, err in ipairs(BossCinematic.validate(id)) do
+            print("[BossCinematic] " .. err)
+        end
+    else
+        print("[BossCinematic] chefe sem roteiro próprio: " .. tostring(id) .. " — entrada genérica")
+        d = BossCinematic.GENERIC
+    end
     local reduced = reducedMotion()
     local steps = (reduced and d.introReduced) or d.intro
     finish()
