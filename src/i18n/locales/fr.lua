@@ -231,6 +231,17 @@ return {
         event     = { label = "Événement", desc = "Rencontre mystérieuse. Tentez votre chance." },
     },
 
+    -- Loja v3 (Balcão do Mercador): objetos do balcão e oferta do dia.
+    shop = {
+        dice_cup = {
+            name        = "Dés du Scribe",
+            hint_idle   = "Un lancer par visite. Cliquez pour miser.",
+            hint_rolled = "Lancer fait : {a} et {b}, total {sum}.",
+        },
+        sale_tag  = "OFFRE DU JOUR",
+        sale_hint = "Offre du jour : {pct}% de moins pendant cette visite.",
+    },
+
     shop_items = {
         pack_standard  = { name = "Ballot du Marchand",      desc = "3 cartes au hasard ; choisissez-en 1. Seules à porter un sceau." },
         pack_buffoon   = { name = "Étui du Saltimbanque",    desc = "2 jokers ; choisissez-en 1. La troupe ne voyage pas pour rien." },
@@ -1052,6 +1063,10 @@ return {
         topbar_progress = { name = "Progression du Voyage", desc = "Acte {act}, étage {floor} sur {total}. Un MINI-BOSS attend à l'étage 7 ; le BOSS de l'acte à l'étage {total}. Bats le boss de l'Acte {last} pour achever la chronique. Sélectionne pour ouvrir la Chronique du voyage.{mods}" },
         topbar_config = { name = "Menu Pause", desc = "Met le voyage en pause : options, sauvegarder et quitter au menu, ou abandonner la partie." },
         reward_rules = { name = "Fonctionnement des offres", desc = "Les cartes proposées sont de TA classe. La qualité s'améliore à chaque acte, et chaque offre sans carte RARE augmente les chances de la suivante (après une longue série sans rare, une rare est garantie). Les cartes marquées AFFINITÉ correspondent aux tags forts de ton deck. Les cartes que tu possèdes déjà en plusieurs exemplaires apparaissent moins souvent." },
+        -- Loja v3: tooltips dos objetos do balcão (foco = hover)
+        shop_bell   = { name = "Cloche des nouvelles offres", desc = "Sonnez la cloche et le marchand regarnit les deux étagères. Coûte ${n} lors de cette visite et augmente de $2 à chaque coup." },
+        shop_ledger = { name = "Livre de comptes", desc = "Clôture le compte et reprend la route. Quitter la boutique rapporte +${bonus} d'or." },
+        shop_dice   = { name = "Gobelet à dés", desc = "Les Dés du Scribe : une mise par visite. Cliquez pour ouvrir la table." },
         poison     = { name = "Poison",     desc = "Inflige {stacks} dégâts en fin de tour, pendant {duration} tour(s)." },
         weak       = { name = "Faible",     desc = "Les dégâts infligés sont réduits de 25% pendant {duration} tour(s)." },
         vulnerable = { name = "Vulnérable", desc = "Subit 50% de dégâts en plus (poison et brûlure exclus) pendant {duration} tour(s)." },

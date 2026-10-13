@@ -233,6 +233,17 @@ return {
         event     = { label = "Event",     desc = "Mysterious encounter. Take the risk." },
     },
 
+    -- Loja v3 (Balcão do Mercador): objetos do balcão e oferta do dia.
+    shop = {
+        dice_cup = {
+            name        = "Scribe's Dice",
+            hint_idle   = "One roll per visit. Click to wager.",
+            hint_rolled = "Rolled this visit: {a} and {b}, total {sum}.",
+        },
+        sale_tag  = "TODAY'S DEAL",
+        sale_hint = "Today's deal: {pct}% off on this visit.",
+    },
+
     shop_items = {
         pack_standard  = { name = "Merchant's Bundle",     desc = "3 random cards; pick 1. Only these come sealed." },
         pack_buffoon   = { name = "Harlequin's Case",      desc = "2 jokers; pick 1. The troupe travels for a price." },
@@ -1055,6 +1066,10 @@ return {
         topbar_progress = { name = "Journey Progress", desc = "Act {act}, floor {floor} of {total}. A MINI-BOSS waits at floor 7; the act BOSS at floor {total}. Defeat the Act {last} boss to finish the chronicle. Select to open the Journey Log.{mods}" },
         topbar_config = { name = "Pause Menu", desc = "Pauses the journey: settings, save and quit to menu, or abandon the run." },
         reward_rules = { name = "How offers work", desc = "Offered cards belong to YOUR class. Quality improves each act, and every offer without a RARE raises the next one's odds (after a long dry streak, a rare is guaranteed). Cards marked AFFINITY match your deck's strong tags. Cards you already own in copies show up less often." },
+        -- Loja v3: tooltips dos objetos do balcão (foco = hover)
+        shop_bell   = { name = "Bell: new offers", desc = "Ring the bell and the merchant restocks both shelves. Costs ${n} on this visit and rises by $2 each ring." },
+        shop_ledger = { name = "Ledger", desc = "Closes the account and moves on. Leaving the shop pays +${bonus} gold." },
+        shop_dice   = { name = "Dice cup", desc = "The Scribe's Dice: one wager per visit. Click to open the table." },
         poison     = { name = "Poison",     desc = "Deals {stacks} damage at end of turn, for {duration} turn(s)." },
         weak       = { name = "Weak",       desc = "Damage dealt reduced by 25% for {duration} turn(s)." },
         vulnerable = { name = "Vulnerable", desc = "Takes 50% more damage (poison and burn excluded) for {duration} turn(s)." },

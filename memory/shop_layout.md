@@ -74,3 +74,46 @@ texto, nenhuma moldura nova. Seções NÃO ganharam cabeçalho de texto: a
 prateleira já separa os dois andares, e rótulo de categoria foi o ruído
 removido acima. Teto de largura da vitrine = `max(1560, sh*1.25)` (em 1440p
 um terço da tela ficava vazio).
+
+## v3: o Balcão do Mercador (Out/2026)
+
+Pedido do dono (captura em 1440p): "estante de cima e de baixo, itens em
+cima dela de forma bem realista, hover e descrição do lado direito, bem
+animada, novas ofertas, dados integrados". Plano em
+`docs/plan/shop-v3-balcao.md`. A loja virou uma CENA, não uma grade:
+
+- **Geometria pura** em `src/ui/shop/ShopLayout.lua`: `layout(sw, sh,
+  nCards, nRelics)` devolve as zonas (`sign` / `shelfTop` / `shelfBottom` /
+  `counter` / `scroll` / `lantern`) e o retângulo de cada objeto (carta +
+  suporte + etiqueta; relíquia + etiqueta; pacote + gancho; sino / copo /
+  livro no tampo). `validate(L)` exige zonas disjuntas, PÉ de todo objeto
+  dentro da tábua (ou do suporte apoiado nela), pacote pendurado sem tocar a
+  prateleira, nada fora da tela. Falta espaço = a ESCALA cede (800x600 tem
+  carta de ~90px, 1440p de ~250px), as bandas nunca trocam de lugar.
+- **Cena** em `src/ui/shop/ShopScene.lua` (parede, feixe de luz em degraus
+  que "olha" pro hover, placa com o "?" das regras, tábuas tileáveis,
+  balcão, lanterna, pergaminho 9-slice com o `CardDetailPanel` em
+  `parchment = true`), **objeto** em `src/ui/shop/ShelfItem.lua` (hover
+  levanta 4..6px, etiqueta em pêndulo amortecido, deny = tremor vermelho,
+  compra = etiqueta arrancada + marca de poeira + VENDIDO a giz).
+- `components/CardRewardScreen.lua` modo `"shop"` DELEGA update/draw/hit à
+  cena e guarda só a economia (purchaseOffer, serviços, persistência, saída).
+  Os campos históricos (`panel`, `cardPositions`, `slotCount`, `gridArea`,
+  `detailPanel`, `actionBar`) continuam espelhados: tools, testes e o
+  tutorial leem deles. `skipButton`/`refreshButton`/`diceButton` são hitboxes
+  INVISÍVEIS sobre livro-razão / sino / copo (o onClick e o alvo do
+  NavCursor continuam sendo deles; o rótulo vira giz no balcão).
+- Clique no objeto COMPRA (press + release no mesmo objeto); direito
+  inspeciona; A/Enter no foco do pad é o mesmo clique; X = sino, Y = livro.
+- Vida ambiente (lanterna, copo de dados com faces, mariposa, teia, etiqueta
+  da oferta do dia) é de `src/ui/shop/ShopProps.lua` (frente loja-vida),
+  chamada por contrato opcional (`update/drawBack/drawLantern/flameAnchor/
+  lookDx/lightLevel/drawDiceCup/drawFront`); ausente = placeholder + aviso.
+- Arte em `assets/sprites/shop/`: tábuas/balcão/sino/livro/pergaminho vindos
+  do PixelLab (`tools/pixellab_shop_props.py queue|poll|install`, fatiados
+  em left/mid/right e quadros), suportes/etiqueta/prego/gancho/poeira
+  desenhados pixel a pixel pelo mesmo script (`pixels`).
+- Travas: `test_shop_layout` (7 tamanhos x 5 idiomas, tela nasce e cresce)
+  e `test_shop_scene` (entrada, hover + som na borda, sem ouro, compra +
+  voo pro destino, sino, reducedMotion, alvos do pad). Capturas:
+  `SHOP_W=.. SHOP_H=.. love . screenshot_shop`.

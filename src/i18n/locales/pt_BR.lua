@@ -250,6 +250,17 @@ return {
     },
 
     -- Ofertas da loja cujo texto mora em ShopSystem (packs + upgrades).
+    -- Loja v3 (Balcão do Mercador): objetos do balcão e oferta do dia.
+    shop = {
+        dice_cup = {
+            name        = "Dados do Escriba",
+            hint_idle   = "Uma jogada por visita. Clique pra apostar.",
+            hint_rolled = "Jogada feita: {a} e {b}, soma {sum}.",
+        },
+        sale_tag  = "OFERTA DO DIA",
+        sale_hint = "Oferta do dia: {pct}% mais barata nesta visita.",
+    },
+
     shop_items = {
         pack_standard  = { name = "Fardo do Mercador",      desc = "3 cartas ao acaso; escolha 1. Só aqui elas vêm com selo." },
         pack_buffoon   = { name = "Estojo do Saltimbanco",  desc = "2 coringas; escolha 1. A trupe não viaja de graça." },
@@ -1086,6 +1097,10 @@ return {
         topbar_progress = { name = "Progresso da Jornada", desc = "Ato {act}, andar {floor} de {total}. No andar 7 aguarda um MINI-CHEFE; no andar {total}, o CHEFE do ato. Vença o chefe do Ato {last} para encerrar a crônica. Selecione para abrir o Roteiro da jornada.{mods}" },
         topbar_config = { name = "Menu de Pausa", desc = "Pausa a jornada: configurações, salvar e voltar ao menu, ou abandonar a jornada." },
         reward_rules = { name = "Como funcionam as ofertas", desc = "As cartas oferecidas são da SUA classe. A qualidade melhora a cada ato, e a cada oferta sem RARA, a chance da próxima sobe (após um longo jejum, a rara é garantida). Cartas marcadas com AFINIDADE combinam com as tags fortes do seu grimório. Cartas que você já tem em cópias aparecem menos." },
+        -- Loja v3: tooltips dos objetos do balcão (foco = hover)
+        shop_bell   = { name = "Sino de novas ofertas", desc = "Toque o sino e o mercador repõe as duas prateleiras. Custa ${n} nesta visita e sobe $2 a cada toque." },
+        shop_ledger = { name = "Livro-razão", desc = "Fecha a conta e segue viagem. Sair da loja rende +${bonus} de ouro." },
+        shop_dice   = { name = "Copo de dados", desc = "Os Dados do Escriba: uma aposta por visita. Clique pra abrir a mesa." },
         poison     = { name = "Veneno",     desc = "Causa {stacks} de dano no fim do turno, por {duration} turno(s)." },
         weak       = { name = "Fraco",      desc = "Dano infligido reduzido em 25%. Dura {duration} turno(s)." },
         vulnerable = { name = "Vulnerável", desc = "Recebe 50% mais dano (veneno e queimadura não contam). Dura {duration} turno(s)." },

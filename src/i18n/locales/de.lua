@@ -231,6 +231,17 @@ return {
         event     = { label = "Ereignis",  desc = "Mysteriöse Begegnung. Wage es." },
     },
 
+    -- Loja v3 (Balcão do Mercador): objetos do balcão e oferta do dia.
+    shop = {
+        dice_cup = {
+            name        = "Würfel des Schreibers",
+            hint_idle   = "Ein Wurf pro Besuch. Klicken zum Setzen.",
+            hint_rolled = "Gewürfelt: {a} und {b}, Summe {sum}.",
+        },
+        sale_tag  = "ANGEBOT DES TAGES",
+        sale_hint = "Angebot des Tages: {pct}% günstiger bei diesem Besuch.",
+    },
+
     shop_items = {
         pack_standard  = { name = "Händlerbündel",   desc = "3 zufällige Karten; wähle 1. Nur hier mit Siegel." },
         pack_buffoon   = { name = "Gauklerkiste",      desc = "2 Joker; wähle 1. Die Truppe reist nicht umsonst." },
@@ -1052,6 +1063,10 @@ return {
         topbar_progress = { name = "Reisefortschritt", desc = "Akt {act}, Etage {floor} von {total}. Ein MINI-BOSS wartet auf Etage 7; der Akt-BOSS auf Etage {total}. Besiege den Boss von Akt {last}, um die Chronik zu vollenden. Auswählen für die Reisechronik.{mods}" },
         topbar_config = { name = "Pausenmenü", desc = "Pausiert die Reise: Optionen, speichern und zum Menü, oder den Lauf abbrechen." },
         reward_rules = { name = "Wie Angebote funktionieren", desc = "Angebotene Karten gehören ZU DEINER Klasse. Die Qualität steigt mit jedem Akt, und jedes Angebot ohne eine SELTENE erhöht die Chance des nächsten (nach einer langen Durststrecke ist eine seltene garantiert). Mit AFFINITÄT markierte Karten passen zu den starken Tags deines Decks. Karten, die du bereits mehrfach besitzt, erscheinen seltener." },
+        -- Loja v3: tooltips dos objetos do balcão (foco = hover)
+        shop_bell   = { name = "Glocke für neue Angebote", desc = "Läute die Glocke und der Händler füllt beide Regale neu. Kostet ${n} bei diesem Besuch und steigt mit jedem Läuten um $2." },
+        shop_ledger = { name = "Kassenbuch", desc = "Schließt die Rechnung ab und zieht weiter. Den Laden zu verlassen bringt +${bonus} Gold." },
+        shop_dice   = { name = "Würfelbecher", desc = "Die Würfel des Schreibers: ein Einsatz pro Besuch. Klicken, um den Tisch zu öffnen." },
         poison     = { name = "Gift",       desc = "Fügt {stacks} Schaden am Zugende zu, für {duration} Zug(e)." },
         weak       = { name = "Schwach",    desc = "Verursachter Schaden um 25% reduziert für {duration} Zug(e)." },
         vulnerable = { name = "Verwundbar", desc = "Erleidet 50% mehr Schaden (Gift und Brand ausgenommen) für {duration} Zug(e)." },

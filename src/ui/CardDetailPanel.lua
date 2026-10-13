@@ -34,6 +34,7 @@
 --     emptyHint = string,  -- texto do estado neutro
 --     staleHint = string,  -- rodapé discreto quando stale
 --     chrome    = bool,    -- desenha o painel de fundo (default true)
+--     parchment = bool,    -- tinta sobre papel (pergaminho da Loja v3)
 --   }
 
 local CardDetailPanel = {}
@@ -47,6 +48,28 @@ local UpgradeTile        = require("src.ui.UpgradeTile")
 local I18n               = require("src.i18n.I18n")
 
 local PAD = 14
+
+-- PALETAS. O painel nasceu como coluna escura (texto claro). Na Loja v3 ele
+-- vira o PERGAMINHO de inspeção pendurado no prego: tinta sobre papel. Em vez
+-- de duplicar o desenho, as cores saem de uma tabela escolhida por
+-- opts.parchment (ver ShopScene._drawScroll).
+local DARK_PAL = {
+    name = Palette.AGED_GOLD_LIGHT, body = Palette.PARCHMENT_LIGHT, dim = Palette.PARCHMENT,
+    sep = Palette.PARCHMENT_DARK, divider = Palette.AGED_GOLD, head = Palette.AGED_GOLD,
+    price = Palette.AGED_GOLD_LIGHT, mana = Palette.MANA_LIGHT or Palette.PARCHMENT_LIGHT,
+    defense = Palette.STEEL_LIGHT, affinity = Palette.AGED_GOLD_LIGHT,
+    typeColor = function(c) return Palette.lighten(c, 0.45) end,
+    rarity = function(r) return Palette.forRarity(r) end,
+}
+local PARCHMENT_PAL = {
+    name = Palette.BLOOD_DARK, body = Palette.INK, dim = Palette.PARCHMENT_DARK,
+    sep = Palette.PARCHMENT_DARK, divider = Palette.AGED_GOLD_DARK, head = Palette.RUST,
+    price = Palette.AGED_GOLD_DARK, mana = Palette.MANA_DEEP or Palette.INK,
+    defense = Palette.STEEL, affinity = Palette.RUST,
+    typeColor = function(c) return Palette.darken(c, 0.75) end,
+    -- comum é PARCHMENT_LIGHT: some no papel. Tudo escurece pra ler.
+    rarity = function(r) return Palette.darken(Palette.forRarity(r), 0.55) end,
+}
 
 local function reducedMotion()
     return (_G.gameSettings and _G.gameSettings.reducedMotion) or false
@@ -83,8 +106,8 @@ local function setC(color, a)
     love.graphics.setColor(color[1], color[2], color[3], (color[4] or 1) * (a or 1))
 end
 
-local function divider(x, y, w, alpha)
-    setC(Palette.AGED_GOLD, 0.55 * alpha)
+local function divider(x, y, w, alpha, color)
+    setC(color or Palette.AGED_GOLD, 0.55 * alpha)
     love.graphics.rectangle("fill", x, y, w, 1)
 end
 
@@ -307,6 +330,7 @@ function CardDetailPanel.draw(rect, payload, opts)
     end
 
     local F = fontTier(w)
+    local PAL = opts.parchment and PARCHMENT_PAL or DARK_PAL
     local textX = x + PAD
     local textW = w - PAD * 2
     local footerH = opts.footerH or 0
@@ -326,7 +350,7 @@ function CardDetailPanel.draw(rect, payload, opts)
         local lh = font:getHeight() + LINE_GAP
         local blockY = y + math.floor((h - #lines * lh) / 2)
         love.graphics.setFont(font)
-        setC(Palette.PARCHMENT, 0.55 * alpha)
+        setC(PAL.dim, 0.75 * alpha)
         for i, l in ipairs(lines) do
             love.graphics.printf(l, textX, blockY + (i - 1) * lh, textW, "center")
         end
@@ -388,10 +412,10 @@ function CardDetailPanel.draw(rect, payload, opts)
     local displayName = payload.kind == "card"
         and I18n.cardName({ id = offer.id, name = offer.name })
         or offer.name or "?"
-    cy = line(displayName, FontManager.getFont(F.name), Palette.AGED_GOLD_LIGHT,
+    cy = line(displayName, FontManager.getFont(F.name), PAL.name,
               textX, cy, textW, bottom, alpha, "center")
 
-    divider(textX, cy + 2, textW, alpha)
+    divider(textX, cy + 2, textW, alpha, PAL.divider)
     cy = cy + 8
 
     -- ===== Linha meta: TIPO · RARIDADE · PREÇO =====
@@ -408,18 +432,18 @@ function CardDetailPanel.draw(rect, payload, opts)
         -- #8b1e1e) foram desenhadas pra acentuar molduras claras de carta —
         -- cruas sobre o miolo INK do painel ficam quase ilegíveis (defeito
         -- visto na captura: "DEFESA" sumindo no fundo).
-        local typeColor = inst and Palette.lighten(Palette.forCardType(inst.type), 0.45)
-            or Palette.PARCHMENT
+        local typeColor = inst and PAL.typeColor(Palette.forCardType(inst.type))
+            or PAL.dim
         local segs = { { typeLabel, typeColor } }
         if rarityLabel then
-            table.insert(segs, { rarityLabel, Palette.forRarity(offer.rarity) })
+            table.insert(segs, { rarityLabel, PAL.rarity(offer.rarity) })
         end
         -- O PREÇO entra na legenda em vez de ocupar uma linha centrada só
         -- dele: eram três faixas empilhadas (nome / meta / preço) onde cabia
         -- uma legenda só. Cor segue a regra de sempre — dourado se dá pra
         -- pagar, sangue se não.
         table.insert(segs, { priceLabel,
-            opts.canAfford == false and Palette.BLOOD or Palette.AGED_GOLD_LIGHT })
+            opts.canAfford == false and Palette.BLOOD or PAL.price })
 
         -- Segmentos coloridos centrados, separados por "·". A fonte encolhe
         -- se a linha inteira (tipo + separador + raridade) não couber.
@@ -439,7 +463,7 @@ function CardDetailPanel.draw(rect, payload, opts)
             love.graphics.print(sg[1], sx, cy)
             sx = sx + metaFont:getWidth(sg[1])
             if i < #segs then
-                setC(Palette.PARCHMENT_DARK, alpha)
+                setC(PAL.sep, alpha)
                 love.graphics.print(sep, sx, cy)
                 sx = sx + metaFont:getWidth(sep)
             end
@@ -452,7 +476,7 @@ function CardDetailPanel.draw(rect, payload, opts)
         local parts = {}
         table.insert(parts, {
             I18n.t("card_info.cost", nil, "Custo: ") .. tostring(inst.cost or 0),
-            Palette.MANA_LIGHT or Palette.PARCHMENT_LIGHT })
+            PAL.mana })
         if inst.type == "attack" and (inst.attack or 0) > 0 then
             table.insert(parts, {
                 I18n.t("card_info.damage", nil, "Dano: ") .. tostring(inst.attack),
@@ -460,7 +484,7 @@ function CardDetailPanel.draw(rect, payload, opts)
         elseif inst.type == "defense" and (inst.defense or 0) > 0 then
             table.insert(parts, {
                 I18n.t("card_info.defense", nil, "Defesa: ") .. tostring(inst.defense),
-                Palette.STEEL_LIGHT })
+                PAL.defense })
         end
         -- Lado a lado SÓ se os dois rótulos couberem de fato na metade da
         -- coluna; senão a fonte encolhe e, em último caso, empilha. Sem isso
@@ -518,11 +542,11 @@ function CardDetailPanel.draw(rect, payload, opts)
         end
     end
 
-    divider(textX, cy, textW, alpha * 0.8)
+    divider(textX, cy, textW, alpha * 0.8, PAL.divider)
     cy = cy + 8
 
     -- ===== Descrição =====
-    cy = line(desc, FontManager.getFont(F.desc), Palette.PARCHMENT_LIGHT,
+    cy = line(desc, FontManager.getFont(F.desc), PAL.body,
               textX, cy, textW, bottom, alpha)
 
     -- ===== Linha de grimório (relíquia) =====
@@ -533,7 +557,7 @@ function CardDetailPanel.draw(rect, payload, opts)
         if flavor and cy < bottom - 10 then
             cy = cy + 6
             line('"' .. flavor .. '"', FontManager.getFont(F.tiny),
-                 Palette.PARCHMENT, textX, cy, textW, bottom, alpha * 0.8, "center")
+                 PAL.dim, textX, cy, textW, bottom, alpha * 0.9, "center")
         end
     end
 
@@ -541,12 +565,12 @@ function CardDetailPanel.draw(rect, payload, opts)
     if #extras > 0 then
         cy = cy + 4
         cy = line(I18n.t("card_info.effects", nil, "Efeitos"),
-                  FontManager.getFont(F.tiny), Palette.AGED_GOLD,
+                  FontManager.getFont(F.tiny), PAL.head,
                   textX, cy, textW, bottom, alpha)
         local effFont = FontManager.getFont(F.tiny)
         for i, txt in ipairs(extras) do
             if i > 4 or cy > bottom then break end
-            cy = line("- " .. txt, effFont, Palette.PARCHMENT,
+            cy = line("- " .. txt, effFont, PAL.body,
                       textX + 6, cy, textW - 6, bottom, alpha)
         end
     end
@@ -556,7 +580,7 @@ function CardDetailPanel.draw(rect, payload, opts)
         cy = cy + 4
         line(I18n.t("reward.affinity_line", { tags = table.concat(offer.affinityTags, ", ") },
                     "Afinidade com seu deck: " .. table.concat(offer.affinityTags, ", ")),
-             FontManager.getFont(F.tiny), Palette.AGED_GOLD_LIGHT,
+             FontManager.getFont(F.tiny), PAL.affinity,
              textX, cy, textW, bottom, alpha)
     end
 
@@ -570,7 +594,7 @@ function CardDetailPanel.draw(rect, payload, opts)
         local lh = f:getHeight() + LINE_GAP
         local topY = y + h - footerH - 8 - #lines * lh
         love.graphics.setFont(f)
-        setC(Palette.PARCHMENT, 0.45 * alpha)
+        setC(PAL.dim, (opts.parchment and 0.8 or 0.45) * alpha)
         for i, l in ipairs(lines) do
             love.graphics.printf(l, textX, topY + (i - 1) * lh, textW, "center")
         end

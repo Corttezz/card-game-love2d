@@ -85,6 +85,10 @@ local EventManager = require("engine.EventManager")
 local DissolveShader = require("src.ui.DissolveShader")
 local ImageCache = require("src.ui.ImageCache")
 local ShopServices = require("src.systems.ShopServices")
+-- Loja v3 (Balcão do Mercador): o modo "shop" DELEGA cena/animação a
+-- src/ui/shop/ShopScene; a geometria pura mora em ShopLayout.
+local ShopScene = require("src.ui.shop.ShopScene")
+local ShopLayout = require("src.ui.shop.ShopLayout")
 
 -- Acessibilidade: com reducedMotion ligado, transições da tela resolvem
 -- instantaneamente (o conteúdo continua idêntico, só não desliza/piscando).
@@ -213,173 +217,61 @@ function CardRewardScreen:updateLayout()
     self.cardPositions = {}
 
     if self.mode == "shop" then
-        -- ================= SPLIT-VIEW (Jul/2026) =================
-        -- Feedback do dono: "não está muito boa a visualização das cartas".
-        -- O layout antigo empilhava cartas grandes em fileiras e escondia a
-        -- informação real em painéis FLUTUANTES fora da janela — pra entender
-        -- uma oferta o jogador tinha que varrer o mouse e perseguir popups.
-        --
-        -- Agora são 2 COLUNAS + 1 RODAPÉ:
-        --   [ GRADE COMPACTA DE OFERTAS ]   [ DETALHE FIXO ]
-        --     4 cartas (fileira 1)            carta GRANDE
-        --     voucher + 2 packs (fileira 2)   nome/custo/raridade/efeitos
-        --   [ Novas ofertas ($N) ....... OURO $N ....... Continuar (+3g) ]
-        --
-        -- A grade decide, o painel explica. O painel NUNCA muda de lugar —
-        -- só de conteúdo (ver _resolveDetailPayload).
-        --
-        -- ⚠️ A coluna vertical de ações (18% da largura) FOI EMBORA: com 128px
-        -- úteis o Button truncava "Novas ofertas ($5)" em "Novas ofer..." —
-        -- e o problema é estrutural, não de chute de largura (a fonte pixel é
-        -- ~1px/char por tamanho: 18 chars não cabem nem no MIN_FONT=8). Numa
-        -- faixa horizontal cada botão recebe a largura MEDIDA do seu rótulo,
-        -- em qualquer locale (o alemão "Erneuern" é curto, o PT é o pior
-        -- caso), e a grade ainda ganha ~150px de volta.
-        -- TELA CHEIA, SEM MODAL (Out/2026 — "a loja está meio poluída"):
-        -- a loja era um painel com moldura dupla POR CIMA do interior da loja,
-        -- e dentro dele mais três caixas (barra de título, vitrine, rodapé) —
-        -- cinco retângulos dourados aninhados e uma cena viva vazando pelas
-        -- bordas. Agora a loja OCUPA a área de jogo, como a de Balatro e a do
-        -- Slay the Spire: as zonas existem (cabeçalho / vitrine / detalhe /
-        -- ações), mas são separadas por RESPIRO, não por moldura. O retângulo
-        -- `panel` continua existindo como a área útil sob a TopBar — é ele
-        -- que as zonas fatiam e o validateLayout confere.
-        local topBarH = 56  -- TopBar.height + padding folga
-        local margin = math.floor(math.max(12, math.min(40, sw * 0.025)))
-        -- Teto de largura: num 2560 a vitrine não se espalha até as bordas
-        -- (olho viajando 2000px entre a carta e o painel de detalhe).
-        -- O teto acompanha a ALTURA (1560 até 1080p; 1800 em 1440p): com o
-        -- teto fixo, em 2560x1440 as cartas ficavam presas pela largura e
-        -- sobrava um terço da altura vazio em volta da vitrine.
-        local panelW = math.floor(math.min(sw - margin * 2, math.max(1560, sh * 1.25)))
-        local panelX = math.floor((sw - panelW) * 0.5)
-        local panelY = topBarH
-        local panelH = sh - panelY - math.floor(margin * 0.6)
-
-        local titleH = 34     -- cabeçalho solto (título + "?")
-        local pad = 0         -- sem moldura, sem padding de moldura
-        -- Respiro entre vitrine e detalhe: é ele que separa as zonas agora.
-        local colGap = math.floor(math.max(16, math.min(40, sw * 0.02)))
-        self.panel = { x = panelX, y = panelY, w = panelW, h = panelH }
+        -- ================= BALCÃO DO MERCADOR (Loja v3, Out/2026) =================
+        -- A geometria inteira sai de ShopLayout.layout() (puro, validado em
+        -- test_shop_layout): estante de cima (cartas em suportes), prateleira
+        -- de baixo (relíquias + pacote no gancho), balcão (sino / dados /
+        -- livro-razão), pergaminho de inspeção e lanterna. Aqui só se espelha
+        -- o resultado nos campos históricos da tela (panel, cardPositions,
+        -- slotCount, gridArea, detailPanel, actionBar) que tools, testes e o
+        -- tutorial ainda leem.
+        self.scene = self.scene or ShopScene.new(self)
+        local L = self.scene:layout()
+        self.panel = L.wall
+        self.cardWidth, self.cardHeight = L.cardW, L.cardH
+        self.slotLabelH = 0
 
         local nCards = cfg.cards or 4
-        local nVouchers = cfg.upgrades or 1
-        local nPacks = cfg.boosters or 2
-
-        local barH = 46       -- rodapé de ações
-        local barGap = 10
-        local contentY = panelY + titleH + pad
-        local contentH = math.max(120, panelH - titleH - pad * 2 - barH - barGap)
-
-        -- ===== Colunas (proporções responsivas, clampadas em px) =====
-        local detailW  = math.floor(math.max(230, math.min(380, panelW * 0.29)))
-        local gridX    = panelX + pad
-        local detailX  = panelX + panelW - pad - detailW
-        local gridW    = detailX - colGap - gridX
-        -- Janela estreita: o detalhe cede espaço antes da grade ficar
-        -- inutilizável (uma carta ilegível não ajuda ninguém a escolher).
-        if gridW < 200 then
-            detailW = math.max(150, detailW - (200 - gridW))
-            detailX = panelX + panelW - pad - detailW
-            gridW   = detailX - colGap - gridX
-        end
-
-        -- ===== Grade: 2 fileiras (cartas | voucher+packs) =====
-        local gridGapX = 10
-        -- 26 (era 16): com a puladinha pra cima, a carta da fileira 2 sobe
-        -- ~12px de lift + ~13px de crescimento. Um respiro curto fazia ela
-        -- entrar na faixa de rótulos da fileira 1.
-        local rowGapMin = 26
-        -- Faixa de rótulos SOB cada slot: raridade (sempre) + afinidade
-        -- (quando existe). Antes esses marcadores só existiam em "rewards" —
-        -- na loja o jogador não via a raridade do que estava comprando.
-        -- 30px (não 26): a carta em hover cresce 6% A PARTIR DO CENTRO, ou
-        -- seja avança ~7px pra baixo — com a faixa curta ela cobria o rótulo
-        -- de raridade do próprio slot.
-        local labelH = 30
-        local cols = math.max(nCards, nVouchers + nPacks)
-        local cellW = math.floor((gridW - gridGapX * (cols - 1)) / math.max(1, cols))
-        local cellH = math.floor(cellW * 1.45)
-        -- topReserve entra JÁ no cap de altura: quando a altura é o gargalo
-        -- (ex. 1280×720), sem isso a célula cresce até zerar a margem e a
-        -- carta em hover fura a borda do container.
-        local topReserve = 26   -- lift (12) + crescimento pra cima (~13)
-        local maxCellH = math.floor((contentH - topReserve - rowGapMin - labelH * 2) / 2)
-        if cellH > maxCellH then
-            cellH = math.max(60, maxCellH)
-            cellW = math.floor(cellH / 1.45)
-        end
-        cellW = math.max(48, cellW)
-
-        -- Sobra vertical: primeiro reserva a margem superior, DEPOIS vira
-        -- respiro entre as fileiras (até um teto) — nesta ordem, senão o
-        -- rowGap engole tudo e a fileira de cima cola na borda.
-        -- A margem existe porque a carta LEVANTA ~15px no hover (DEPTH_OFFSET)
-        -- e não pode furar o container.
-        local slackRaw = math.max(0, contentH - (cellH * 2 + labelH * 2 + rowGapMin))
-        local topMargin = math.min(topReserve, slackRaw)
-        local rowGap = rowGapMin + math.max(0, math.min(54, slackRaw - topMargin))
-        local blockH = cellH * 2 + labelH * 2 + rowGap
-        local gridTop = contentY + topMargin
-            + math.floor(math.max(0, contentH - blockH - topMargin) / 2)
-
-        self.cardWidth  = cellW
-        self.cardHeight = cellH
-        self.slotLabelH = labelH
-
-        local row1Y = gridTop
-        local row2Y = gridTop + cellH + labelH + rowGap
-
-        -- A fileira 1 define o VÃO da vitrine; a fileira 2 ocupa exatamente o
-        -- mesmo vão. Antes ela era centralizada com a MESMA largura de célula
-        -- das cartas e, sendo 3 contra 4, sobrava um vazio grande dos lados —
-        -- as duas fileiras não conversavam ("a divisão está estranha").
-        -- Agora as bordas externas das duas coincidem.
-        local rowSpan = nCards * cellW + math.max(0, nCards - 1) * gridGapX
-        local rowLeft = gridX + math.floor((gridW - rowSpan) / 2)
-
+        local nVouchers = cfg.upgrades or 3
+        local nPacks = cfg.boosters or 1
         for i = 1, nCards do
-            self.cardPositions[i] = {
-                x = rowLeft + (i - 1) * (cellW + gridGapX), y = row1Y,
-                w = cellW, h = cellH, row = 1, kind = "card",
-            }
+            local c = L.cards[i]
+            if c then
+                self.cardPositions[i] = { x = c.rect.x, y = c.rect.y, w = c.rect.w, h = c.rect.h,
+                                          row = 1, kind = "card" }
+            end
         end
+        for j = 1, nVouchers do
+            local r = L.relics[j]
+            if r then
+                self.cardPositions[nCards + j] = { x = r.rect.x, y = r.rect.y, w = r.rect.w, h = r.rect.h,
+                                                   row = 2, kind = "voucher" }
+            end
+        end
+        for p = 1, nPacks do
+            if p == 1 then
+                local r = L.pack.rect
+                self.cardPositions[nCards + nVouchers + p] = { x = r.x, y = r.y, w = r.w, h = r.h,
+                                                               row = 2, kind = "pack" }
+            end
+        end
+        self.slotCount = nCards + nVouchers + nPacks
 
-        -- ORDEM DOS SLOTS preservada (cartas → vouchers → packs): offer._slot
-        -- vem do índice em shopOffers, que o ShopSystem gera nessa ordem.
-        local nRow2 = nVouchers + nPacks
-        local cellW2 = cellW
-        if nRow2 > 0 then
-            cellW2 = math.floor((rowSpan - gridGapX * (nRow2 - 1)) / nRow2)
-        end
-        for k = 1, nRow2 do
-            local isVoucher = k <= nVouchers
-            self.cardPositions[nCards + k] = {
-                x = rowLeft + (k - 1) * (cellW2 + gridGapX), y = row2Y,
-                w = cellW2, h = cellH, row = 2,
-                kind = isVoucher and "voucher" or "pack",
-            }
-        end
-
-        -- Containers. A grade virou UM container só (antes eram três — cards,
-        -- voucher e packs — que fragmentavam a leitura).
-        self.gridArea = { x = gridX, y = contentY, w = gridW, h = contentH }
-        self.detailPanel = { x = detailX, y = contentY, w = detailW, h = contentH }
-        self.detailFooterH = 58   -- rodapé reservado pros botões Comprar/Cancelar
-        self.actionBar = { x = panelX + pad, y = contentY + contentH + barGap,
-                           w = panelW - pad * 2, h = barH }
+        -- zonas no vocabulário antigo: vitrine = as duas estantes; detalhe =
+        -- miolo do pergaminho; rodapé de ações = balcão
+        self.gridArea = { x = L.shelfTop.x, y = L.shelfTop.y, w = L.shelfTop.w,
+                          h = L.shelfBottom.y + L.shelfBottom.h - L.shelfTop.y }
+        self.detailPanel = L.scroll.body
+        self.detailFooterH = 0
+        self.actionBar = L.counter
         self.cardsContainer = nil
         self.voucherContainer = nil
         self.packsContainer = nil
-        self.buttonsContainer = nil   -- a coluna vertical de ações não existe mais
+        self.buttonsContainer = nil
         self.buttonsColX = nil
         self.buttonsColY = nil
-
-        self.slotCount = nCards + nVouchers + nPacks
-
-        -- Skip button no rodapé do painel (fallback; em shop ele vive na coluna).
-        self.skipButtonX = panelX + panelW * 0.5 - 90
-        self.skipButtonY = panelY + panelH - 50
+        self.skipButtonX = L.counter.ledger.x
+        self.skipButtonY = L.counter.ledger.y
 
     else
         -- ========== Modo rewards v3 "StS FLUTUANTE" (Jul/2026) ==========
@@ -468,79 +360,21 @@ function CardRewardScreen:validateLayout()
     contains(screen, self.panel, "painel")
 
     if self.mode == "shop" then
-        contains(self.panel, self.gridArea, "grade")
-        contains(self.panel, self.detailPanel, "painel de detalhe")
-        contains(self.panel, self.actionBar, "rodape de acoes")
-
-        -- Sem moldura, quem separa as ZONAS é o respiro: vitrine e detalhe
-        -- nunca se tocam, e o rodapé de ações fica abaixo das duas.
-        local g, d, a = self.gridArea, self.detailPanel, self.actionBar
-        if g and d and g.x + g.w > d.x then
-            bad[#bad + 1] = string.format("vitrine (ate x=%d) invade o detalhe (x=%d)",
-                g.x + g.w, d.x)
+        -- A prova geométrica do balcão mora em ShopLayout.validate (zonas
+        -- disjuntas, pé de todo objeto na tábua, pacote pendurado sem tocar
+        -- a prateleira, nada fora da tela). Aqui só o que é da tela: os
+        -- botões invisíveis do balcão têm que estar sobre os objetos.
+        local L = self.scene and self.scene.L
+        if not L then
+            bad[#bad + 1] = "loja sem layout (updateLayout nao rodou)"
+            return bad
         end
-        if a then
-            for _, z in ipairs({ g, d }) do
-                if z and z.y + z.h > a.y then
-                    bad[#bad + 1] = string.format("zona (ate y=%d) invade o rodape (y=%d)",
-                        z.y + z.h, a.y)
-                end
-            end
-        end
-
-        -- Slots + faixa de rótulos + reserva do lift cabem na grade?
-        local labelH = self.slotLabelH or 0
-        for i = 1, (self.slotCount or 0) do
-            local p = self.cardPositions[i]
-            if p then
-                contains(self.gridArea, {
-                    x = p.x, y = p.y - SHOP_HOVER_LIFT,
-                    w = p.w or self.cardWidth,
-                    h = (p.h or self.cardHeight) + labelH + SHOP_HOVER_LIFT,
-                }, "slot " .. i)
-            end
-        end
-
-        -- Bandas INTERNAS do tile de relíquia (nome/arte/chip/preço): a
-        -- não-sobreposição do conteúdo é provada aqui, não olhada na captura.
-        for _, offer in ipairs(self.shopOffers or {}) do
-            local p = offer._slot and self.cardPositions[offer._slot]
-            if offer.type == "upgrade" and p then
-                for _, msg in ipairs(UpgradeTile.validate(p.x, p.y,
-                    p.w or self.cardWidth, p.h or self.cardHeight, offer.cost)) do
-                    bad[#bad + 1] = "reliquia: " .. msg
-                end
-            end
-        end
-
-        -- Fileira 1 (com rótulos) não pode encostar na fileira 2 levantada.
-        local r1, r2
-        for i = 1, (self.slotCount or 0) do
-            local p = self.cardPositions[i]
-            if p and p.row == 1 then r1 = p elseif p and p.row == 2 and not r2 then r2 = p end
-        end
-        if r1 and r2 then
-            local r1Bottom = r1.y + (r1.h or self.cardHeight) + labelH
-            local r2Top = r2.y - SHOP_HOVER_LIFT
-            if r2Top < r1Bottom then
-                bad[#bad + 1] = string.format(
-                    "fileira 2 levantada (y=%d) invade os rotulos da fileira 1 (y=%d)",
-                    r2Top, r1Bottom)
-            end
-        end
-
+        for _, msg in ipairs(ShopLayout.validate(L)) do bad[#bad + 1] = msg end
         for _, b in ipairs({ self.skipButton, self.refreshButton, self.diceButton or false }) do
             if b then
                 contains(self.actionBar,
                     { x = b.x, y = b.y, w = b.width, h = b.height },
                     "botao '" .. tostring(b.text) .. "'")
-            end
-        end
-        if self.selectedOffer then
-            for i, b in ipairs(self._selectionButtons or {}) do
-                contains(self.detailPanel,
-                    { x = b.x, y = b.y, w = b.width, h = b.height },
-                    "botao de compra " .. i)
             end
         end
     else
@@ -672,6 +506,8 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
     self:createCardInstances()
     self:createOfferButtons()
     self:_resetDetail()
+    -- Loja v3: os objetos pousam na prateleira um a um (a cena cuida).
+    if self.mode == "shop" and self.scene then self.scene:enter() end
 
     -- ===== DEBUG: arquivo novo por abertura + radiografia do momento =====
     if REWARD_DBG then
@@ -737,7 +573,7 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
     -- (print do dono: só banner+marcadores). A entrada do rewards é a QUEDA
     -- (_entryOy) — dissolve fica 0 desde o início, visibilidade garantida
     -- sem corrida com o EventManager.
-    if self.mode ~= "rewards" then
+    if self.mode ~= "rewards" and self.mode ~= "shop" then
         local stagger = 0.08
         for i, cardInstance in ipairs(self.cardInstances) do
             cardInstance.dissolve = 1
@@ -828,7 +664,15 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
                 for i, o in ipairs(self.shopOffers) do o._slot = i end
                 self:_persistOffers()
 
-                self:createCardInstances()
+                if self.scene then
+                    -- Loja v3: as prateleiras deslizam pra fora e voltam
+                    -- repostas (os DADOS já trocaram acima: quem lê
+                    -- shopOffers depois do clique vê a vitrine nova).
+                    self.scene:reroll(self.shopOffers)
+                    self:_mirrorScene()
+                else
+                    self:createCardInstances()
+                end
                 self:createOfferButtons()
                 self:clearSelection()
                 self:_resetDetail()
@@ -848,6 +692,10 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
                 -- Custo novo = rótulo novo = largura nova (o "($12)" é mais
                 -- largo que "($5)"). Re-mede antes que o fitText trunque.
                 self:_layoutActionButtons()
+            elseif self.scene then
+                -- sino sem badalo: nada de toast, o ouro da TopBar pisca
+                self.scene:onDenied(nil)
+                Sfx.play("purchaseDeny")
             else
                 self.game:addMessage(I18n.t("reward.refresh_fail"), "error")
                 Sfx.play("purchaseDeny")
@@ -881,7 +729,52 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
     end
 end
 
+-- Uma instância de Card pra oferta (loja e espólios usam a MESMA fábrica).
+-- Posição/escala são de quem chama: na loja o ShelfItem apoia a carta no
+-- suporte; nos espólios createCardInstances centraliza no slot.
+function CardRewardScreen:_makeCardInstance(offer)
+    local cardData = self.cardDatabase:getCard(offer.id)
+    if not cardData then
+        Debug.err("[CardRewardScreen] Card data not found for", offer.id)
+        return nil
+    end
+    local inst = self.cardDatabase:createCardInstance(cardData)
+    if not inst then
+        Debug.err("[CardRewardScreen] Could not create card instance for", offer.id)
+        return nil
+    end
+    inst.isNewDiscovery = offer.isNew or nil
+    if not inst.description and offer.description then
+        inst.description = offer.description
+    end
+    inst.isRewardCard = false
+    inst.shopOffer = offer
+    inst.noHoverLift = true
+    if inst.cardInfoDisplay then
+        inst.cardInfoDisplay:configure({ showRarity = true, showStats = true, showDescription = true })
+    end
+    offer.cardInstance = inst
+    return inst
+end
+
+-- Espelha a cena nos campos históricos (cardInstances / offer.cardInstance):
+-- a cerimônia de saída dissolve as instâncias, o selo de descoberta e os
+-- testes leem daqui.
+function CardRewardScreen:_mirrorScene()
+    if not self.scene then return end
+    self.cardInstances = self.scene:cardInstances()
+end
+
 function CardRewardScreen:createCardInstances()
+    if self.mode == "shop" then
+        -- Loja v3: os objetos da prateleira (ShelfItem) são donos das cartas.
+        -- updateLayout() já criou a cena; sem ela (chamada fora de ordem)
+        -- cria aqui — layout vem no primeiro draw/update.
+        self.scene = self.scene or ShopScene.new(self)
+        self.scene:setOffers(self.shopOffers)
+        self:_mirrorScene()
+        return
+    end
     self.cardInstances = {}
 
     -- F2: itera pelas ofertas usando o _slot FIXO de cada uma — depois de uma
@@ -975,6 +868,8 @@ end
 
 function CardRewardScreen:createOfferButtons()
     self.cardButtons = {}
+    -- Loja v3: clicar no OBJETO compra (ShopScene:itemAt no mousereleased).
+    if self.mode == "shop" then return end
 
     -- F2: botão invisível ancorado no _slot fixo da oferta.
     local maxSlots = self.slotCount or 3
@@ -1006,7 +901,13 @@ function CardRewardScreen:purchaseOffer(offer, offerId)
     if self.mode == "rewards" and self._rewardTaken then return end
 
     if not self.game.economySystem:canAfford(offer.cost) then
-        self.game:addMessage(I18n.t("reward.insufficient_gold"), "error")
+        if self.mode == "shop" and self.scene then
+            -- Loja v3: a etiqueta treme vermelha e o ouro da TopBar pisca.
+            -- Sem toast (decisão do plano §4.4).
+            self.scene:onDenied(offer)
+        else
+            self.game:addMessage(I18n.t("reward.insufficient_gold"), "error")
+        end
         Sfx.play("purchaseDeny")
         return
     end
@@ -1057,10 +958,17 @@ function CardRewardScreen:purchaseOffer(offer, offerId)
             end
         end
 
+        -- Loja v3: etiqueta arrancada + objeto voando pro destino + poeira e
+        -- VENDIDO no lugar — tudo na cena, ANTES do rebuild dos itens (que
+        -- lê offer.purchased e troca o objeto pela marca de poeira).
+        if self.mode == "shop" and self.scene then
+            self.scene:onPurchased(offer)
+        end
+
         if offer.type == "card" then
             -- Feedback visual F2 (Balatro): a carta VOA até o ícone de deck na
             -- TopBar, encolhendo — comunica "foi pro seu deck" sem texto.
-            self:_startFlyToDeck(offer)
+            if not (self.mode == "shop" and self.scene) then self:_startFlyToDeck(offer) end
             self.game:addCardToRun(offer.id)
         elseif offer.type == "upgrade" then
             -- Floreio ANTES do applyUpgrade: a forja abre o picker por cima
@@ -1100,7 +1008,8 @@ function CardRewardScreen:purchaseOffer(offer, offerId)
                 Debug.warn("[CardRewardScreen] _G.openBoosterPack não setado — pack ignorado")
             end
         end
-        Sfx.play("purchaseConfirm")
+        -- Loja v3: a cena já tocou o baque da moeda + madeira.
+        if not (self.mode == "shop" and self.scene) then Sfx.play("purchaseConfirm") end
 
         -- offer.purchased já foi setado antes do side-effect
 
@@ -1169,7 +1078,10 @@ end
 -- Largura ~50% da carta dividida em 2; altura 32px.
 function CardRewardScreen:_buildSelectionButtons(offer, idx)
     self._selectionButtons = {}
-    if self.mode ~= "shop" and not self.cardPositions[idx] then return end
+    -- Loja v3: não há botão de confirmação; a oferta selecionada só fica
+    -- travada no pergaminho (tools/testes antigos ainda chamam).
+    if self.mode == "shop" then return end
+    if not self.cardPositions[idx] then return end
 
     -- Reforma Jul/2026 (feedback "aquele P e aquele X"): 90px + fonte 12 NÃO
     -- cabia "PEGAR" e o TextFit degradava até virar UMA LETRA. Largura agora
@@ -1298,6 +1210,24 @@ end
 function CardRewardScreen:_layoutActionButtons()
     local bar = self.actionBar
     if not bar then return end
+
+    -- Loja v3: sino / copo de dados / livro-razão são OBJETOS no balcão
+    -- (ShopScene desenha). Os Buttons continuam existindo como hitbox
+    -- invisível sobre cada objeto: mantêm o clique, o onClick que tools e
+    -- testes chamam, e o alvo do NavCursor (Button:draw registra mesmo
+    -- invisível). O texto deles vira o rótulo a giz sob o objeto.
+    if self.mode == "shop" and self.scene and self.scene.L then
+        local C = self.scene.L.counter
+        local function place(btn, r)
+            if not btn then return end
+            btn.x, btn.y, btn.width, btn.height = r.x, r.y, r.w, r.h
+            btn:setVariant("invisible")
+        end
+        place(self.refreshButton, C.bell)
+        place(self.diceButton, C.dice)
+        place(self.skipButton, C.ledger)
+        return
+    end
 
     local h = math.min(40, bar.h - 6)
     local y = bar.y + math.floor((bar.h - h) / 2)
@@ -1510,6 +1440,9 @@ function CardRewardScreen:_startRelicFlourish(offer)
 
     local fx = self:_slotFx(offer._slot)
     Moveable.juice_up(fx, 0.35, 0.08)
+    -- Loja v3: o objeto voa pelo ShopScene (onPurchased); aqui fica só o
+    -- EFEITO escrito subindo — a informação que a compra vende.
+    if self.scene then return end
 
     local sprite = ImageCache.tryGet(
         "assets/sprites/vouchers/" .. tostring(offer.id) .. ".png")
@@ -1826,6 +1759,8 @@ function CardRewardScreen:hide()
     self.diceButton = nil
     self._flyCards = {}
     self._goldPopups = {}
+    self._armedItem = nil
+    if self.scene then self.scene:clear() end
 
     self:cancelPurchase()
     self:_resetDetail()
@@ -1895,7 +1830,10 @@ function CardRewardScreen:update(dt)
 
     -- Hover/click nas cartas e seus invisible-buttons sempre rodam
     -- (sem modal bloqueando entrada). Selection overlay coexiste com hover.
-    do
+    if self.mode == "shop" and self.scene then
+        -- Loja v3: a cena move os objetos (hover das cartas incluso).
+        self.scene:update(dt)
+    else
         -- Cartas são desenhadas DENTRO do translate do slide — o mouse vai
         -- pro espaço local antes do hit-test (em repouso o offset é 0, então
         -- isso só muda o comportamento durante o slide-in/slideOut).
@@ -1908,10 +1846,8 @@ function CardRewardScreen:update(dt)
         end
     end
 
-    -- Hover → alimenta o painel de detalhe fixo do split-view.
+    -- Hover → alimenta o pergaminho de detalhe.
     self:_updateHoverState()
-    -- ...e o destaque dos slots que não são carta (voucher/pacote).
-    self:_updateSlotFx(dt)
     self:_resolveDetailPayload()
     self._detailAnim = math.min(1, (self._detailAnim or 1) + dt * 7)
 
@@ -1942,8 +1878,74 @@ function CardRewardScreen:easeOutBack(t)
     return 1 + c3 * math.pow(t - 1, 3) + c1 * math.pow(t - 1, 2)
 end
 
+-- ============================================================================
+-- DRAW DA LOJA (Balcão do Mercador) — a cena desenha; a tela só junta os
+-- botões invisíveis do balcão, as ações do pad, o FX de compra e o tutorial.
+-- ============================================================================
+function CardRewardScreen:_drawShop()
+    local NavCursor = require("src.ui.NavCursor")
+    love.graphics.push()
+    love.graphics.translate(0, self.slideOffsetY or 0)
+
+    self.scene:draw()
+
+    -- hitboxes invisíveis (registram o alvo do NavCursor) + ações do pad:
+    -- X = sino (novas ofertas), Y = livro-razão (seguir viagem)
+    if self.refreshButton then
+        self.refreshButton:draw()
+        local rb = self.refreshButton
+        NavCursor.action("x", function()
+            if rb.visible ~= false and not rb.disabled and rb.onClick then rb.onClick() end
+        end, rb.x, rb.y, rb.width, rb.height)
+    end
+    if self.skipButton then
+        self.skipButton:draw()
+        local sb = self.skipButton
+        NavCursor.action("y", function()
+            if sb.visible ~= false and not sb.disabled and sb.onClick then sb.onClick() end
+        end, sb.x, sb.y, sb.width, sb.height)
+    end
+    if self.diceButton then
+        self.diceButton:draw()
+        -- "?" dos dados: explicação sob demanda (clique, H, ou LB no controle)
+        local r = self:_diceHelpRect()
+        local HelpBadge = require("src.ui.HelpBadge")
+        local mx, my = love.mouse.getPosition()
+        my = my - (self.slideOffsetY or 0)
+        HelpBadge.draw(r.cx, r.cy, r.r, mx >= r.x and mx < r.x + r.w and my >= r.y and my < r.y + r.h)
+        NavCursor.target("dice_help", r.x, r.y, r.w, r.h)
+        NavCursor.action("lb", function() self:openDiceHelp() end, r.x, r.y, r.w, r.h)
+    end
+
+    love.graphics.pop()
+
+    -- âncoras do narrador do tutorial (ofertas, sino, dados)
+    do
+        local T = require("src.systems.Tutorial")
+        local occupied = {}
+        for i, offer in ipairs(self.shopOffers or {}) do
+            local p = (offer._slot and self.cardPositions[offer._slot]) or self.cardPositions[i]
+            if p then occupied[#occupied + 1] = { x = p.x, y = p.y, w = p.w, h = p.h } end
+        end
+        T.anchorList("offers", occupied)
+        if self.refreshButton then T.anchorList("shop_refresh", { self.refreshButton }) end
+        if self.diceButton then T.anchorList("shop_dice", { self.diceButton }) end
+    end
+
+    -- FX por cima de tudo: popups "-$N" / efeito ganho + objeto voando pro
+    -- destino (TopBar é o destino da carta, então fora do slide).
+    self:_drawPurchaseFx()
+    self.scene:drawFlies()
+
+    if self.inspectModal then
+        self.inspectModal:update(love.timer.getDelta())
+        self.inspectModal:draw()
+    end
+end
+
 function CardRewardScreen:draw()
     if not self.visible then return end
+    if self.mode == "shop" and self.scene then return self:_drawShop() end
 
     local w, h = love.graphics.getDimensions()
     -- Backdrop FIXO (não desliza com o conteúdo) — fica sempre cobrindo o
@@ -1956,35 +1958,14 @@ function CardRewardScreen:draw()
         love.graphics.setColor(0.02, 0.015, 0.01, 0.60)
         love.graphics.rectangle("fill", 0, 0, w, h)
         love.graphics.setColor(1, 1, 1, 1)
-    else
-        -- LOJA SEM CENÁRIO (Out/2026): o interior pintado da loja vazava pelas
-        -- bordas do modal antigo como uma moldura de ruído — estantes e
-        -- moedas pela metade, competindo com as ofertas. Testadas três saídas
-        -- (memory/shop_layout.md); venceu a superfície lisa: escura, com uma
-        -- luz central suave que aponta pra vitrine sem desenhar nada.
-        Palette.set(Palette.darken(Palette.INK, 0.55))
-        love.graphics.rectangle("fill", 0, 0, w, h)
-        local steps = 24
-        for i = steps, 1, -1 do
-            local k = i / steps
-            love.graphics.setColor(Palette.INK[1] * 1.6, Palette.INK[2] * 1.6,
-                Palette.INK[3] * 1.6, 0.10)
-            love.graphics.ellipse("fill", w * 0.5, h * 0.48, w * 0.62 * k, h * 0.62 * k)
-        end
-        love.graphics.setColor(1, 1, 1, 1)
-        self:_drawShopAmbience()
     end
 
     -- Slide-in: tudo dentro deste push é translado pelo offset animado em show().
     love.graphics.push()
     love.graphics.translate(0, self.slideOffsetY or 0)
 
-    -- LOJA: nenhuma moldura em volta — só o cabeçalho solto. Modo rewards
-    -- v3 também não tem painel (banner flutuante estilo StS).
-    if self.panel then
-        self:_drawShopHeader(self.panel.x, self.panel.y, self.panel.w)
-        self:_drawShopShelves()
-    elseif self.mode == "rewards" then
+    -- Modo rewards v3 não tem painel (banner flutuante estilo StS).
+    if self.mode == "rewards" then
         self:_drawRewardsBanner()
     end
 
@@ -2189,126 +2170,9 @@ function CardRewardScreen:draw()
     end
 end
 
--- AMBIENTE da loja (Out/2026, "mais bonita, sem poluir"): sem cenário
--- pintado (memory/shop_layout.md — o interior vazando foi o ruído), só duas
--- deixas físicas que não carregam texto nem moldura:
---   • LUZ QUENTE de lampião caindo do alto sobre a vitrine (âmbar em degraus
---     de alpha, nunca um disco liso) — a mesma direção da luz dos tiles;
---   • PRATELEIRA de madeira sob cada fileira: as ofertas ficam EXPOSTAS em
---     algo, e as duas fileiras viram dois "andares" sem precisar de caixa.
--- A luz fica no fundo (fora do slide); a prateleira entra com as ofertas.
-function CardRewardScreen:_drawShopAmbience()
-    local g = self.gridArea
-    if not g then return end
-    local w = love.graphics.getWidth()
-    local cx = g.x + g.w * 0.5
-    -- luz: cone largo e baixo saindo do topo da vitrine
-    local warm = Palette.AGED_GOLD
-    for i = 10, 1, -1 do
-        local k = i / 10
-        love.graphics.setColor(warm[1], warm[2] * 0.9, warm[3] * 0.6, 0.03)
-        love.graphics.ellipse("fill", cx, g.y + g.h * 0.30, g.w * 0.58 * k, g.h * 0.55 * k)
-    end
-    -- vinheta nas bordas laterais (empurra o olho pro centro)
-    local band = math.floor(w * 0.08)
-    for i = 0, 7 do
-        love.graphics.setColor(0, 0, 0, 0.05)
-        love.graphics.rectangle("fill", 0, 0, band * (1 - i / 8), love.graphics.getHeight())
-        love.graphics.rectangle("fill", w - band * (1 - i / 8), 0, band * (1 - i / 8), love.graphics.getHeight())
-    end
-
-    love.graphics.setColor(1, 1, 1, 1)
-end
-
--- Prateleira sob cada fileira (dentro do slide: entra junto com as ofertas).
-function CardRewardScreen:_drawShopShelves()
-    local rows = {}
-    for _, pos in pairs(self.cardPositions or {}) do
-        local r = rows[pos.row or 1]
-        local pw = pos.w or self.cardWidth
-        local ph = pos.h or self.cardHeight
-        if not r then
-            r = { x0 = pos.x, x1 = pos.x + pw, y = pos.y + ph }
-            rows[pos.row or 1] = r
-        else
-            r.x0 = math.min(r.x0, pos.x)
-            r.x1 = math.max(r.x1, pos.x + pw)
-            r.y = math.max(r.y, pos.y + ph)
-        end
-    end
-    local wood = Palette.lerp(Palette.RUST, Palette.INK, 0.55)
-    local woodTop = Palette.lerp(Palette.RUST, Palette.AGED_GOLD_DARK, 0.5)
-    for _, r in pairs(rows) do
-        local x = math.floor(r.x0 - 14)
-        local sw = math.floor(r.x1 - r.x0 + 28)
-        local y = math.floor(r.y + 1)
-        -- espessura acompanha a vitrine (5px em 1024, até 7px em 1440p)
-        local t = math.max(5, math.min(7, math.floor((self.cardWidth or 140) * 0.03)))
-        -- sombra projetada sob a tábua (some em degraus)
-        for i = 1, 4 do
-            Palette.set(Palette.INK, 0.22 - i * 0.04)
-            love.graphics.rectangle("fill", x + 2, y + t + i * 2, sw - 4, 2)
-        end
-        Palette.set(wood)
-        love.graphics.rectangle("fill", x, y + 1, sw, t)
-        Palette.set(woodTop)
-        love.graphics.rectangle("fill", x, y, sw, 1)
-        -- reflexo da luz no meio da tábua (mais forte sob o lampião)
-        Palette.set(Palette.AGED_GOLD_LIGHT, 0.18)
-        love.graphics.rectangle("fill", x + math.floor(sw * 0.3), y, math.floor(sw * 0.4), 1)
-        -- suportes nas pontas
-        Palette.set(Palette.INK, 0.85)
-        love.graphics.rectangle("fill", x + 6, y + t + 1, 4, 4)
-        love.graphics.rectangle("fill", x + sw - 10, y + t + 1, 4, 4)
-    end
-    love.graphics.setColor(1, 1, 1, 1)
-end
-
--- Cabeçalho da loja SEM CAIXA: título solto entre dois filetes + o "?" que
--- explica as regras de oferta (pity, afinidade, raridade por ato). O ouro NÃO
--- se repete aqui: a TopBar já mostra o cofre logo acima — o título antigo
--- tinha "Ouro: $30" a 50px do "$30" da barra.
-function CardRewardScreen:_drawShopHeader(px, py, pw)
-    -- cresce com a tela (14 até 1080p, 18 em 1440p): o título não vira selo
-    local font = FontManager.getFont(math.max(14, math.floor(love.graphics.getHeight() / 80)))
-    love.graphics.setFont(font)
-    local title = I18n.t("reward.shop_title") or "LOJA"
-    local tw = font:getWidth(title)
-    local tx = math.floor(px + (pw - tw) / 2)
-    local ty = math.floor(py + 12)
-    FontManager.drawWithOutline(title, tx, ty, Palette.AGED_GOLD_LIGHT, 0.9)
-    -- filetes curtos dos dois lados (respiro, não moldura)
-    local midY = ty + math.floor(font:getHeight() / 2)
-    local lineW = math.min(120, math.floor(pw * 0.12))
-    Palette.set(Palette.AGED_GOLD_DARK)
-    love.graphics.rectangle("fill", tx - 16 - lineW, midY, lineW, 1)
-    love.graphics.rectangle("fill", tx + tw + 16 + 26, midY, lineW, 1)
-    -- losango nas pontas (mesma gramática do título da pausa)
-    Palette.set(Palette.AGED_GOLD)
-    love.graphics.rectangle("fill", tx - 16 - lineW - 3, midY - 1, 3, 3)
-    love.graphics.rectangle("fill", tx + tw + 16 + 26 + lineW, midY - 1, 3, 3)
-
-    local hx, hy, hr = tx + tw + 22, midY, 9
-    love.graphics.setColor(0.10, 0.08, 0.05, 1)
-    love.graphics.circle("fill", hx, hy, hr)
-    Palette.set(Palette.AGED_GOLD)
-    love.graphics.setLineWidth(1)
-    love.graphics.circle("line", hx, hy, hr)
-    Palette.set(Palette.AGED_GOLD_LIGHT)
-    love.graphics.setFont(FontManager.getFont(10))
-    love.graphics.print("?", hx - 3, hy - 7)
-    require("src.ui.NavCursor").target("rules", hx - hr - 3, hy - hr - 3, hr * 2 + 6, hr * 2 + 6)   -- foco = hover
-    local mx, my = love.mouse.getPosition()
-    local myLocal = my - (self.slideOffsetY or 0)
-    if mx >= hx - hr - 3 and mx <= hx + hr + 3
-        and myLocal >= hy - hr - 3 and myLocal <= hy + hr + 3 then
-        local okST, StatusTooltip = pcall(require, "src.ui.StatusTooltip")
-        if okST and StatusTooltip.show then
-            StatusTooltip.show("reward_rules", mx, my)
-        end
-    end
-    love.graphics.setColor(1, 1, 1, 1)
-end
+-- (_drawShopAmbience / _drawShopShelves / _drawShopHeader saíram na Loja v3:
+-- a parede, a luz, as tábuas e a placa com o "?" das regras moram no
+-- ShopScene.)
 
 -- Banner flutuante do modo rewards (v3 StS): título grande com outline ink,
 -- filetes ornamentais com losango dos dois lados, subtítulo com respiro e o
@@ -2452,8 +2316,10 @@ end
 -- ============================================================================
 -- PAINEL DE DETALHE FIXO — a coluna que explica a oferta em foco
 -- ============================================================================
-function CardRewardScreen:_drawDetailPanel()
-    local dp = self.detailPanel
+-- `rect`/`parchment` (Loja v3): o ShopScene chama com o miolo do pergaminho
+-- e a paleta tinta-sobre-papel; sem argumentos é a coluna escura de sempre.
+function CardRewardScreen:_drawDetailPanel(rect, parchment)
+    local dp = rect or self.detailPanel
     if not dp then return end
 
     local payload = self.detailPayload
@@ -2482,6 +2348,8 @@ function CardRewardScreen:_drawDetailPanel()
         alpha     = math.max(0, math.min(1, self._detailAnim or 1)),
         stale     = hint ~= nil,
         canAfford = canAfford,
+        chrome    = not parchment,
+        parchment = parchment,
         footerH   = footerH,
         emptyHint = I18n.t("reward.detail_empty", nil,
             "Passe o mouse sobre uma oferta para ver os detalhes"),
@@ -2710,6 +2578,18 @@ end
 function CardRewardScreen:_updateHoverState()
     local newHovered, newInst, newKind = nil, nil, nil
 
+    if self.mode == "shop" and self.scene then
+        local it = self.scene.hovered
+        if it and it.offer and not it.offer.purchased then
+            newHovered, newInst = it.offer, it.card
+            newKind = (it.kind == "relic") and "voucher" or it.kind
+        end
+        if newHovered ~= self.hoveredOffer then
+            self.hoveredOffer, self.hoveredInst, self.hoveredKind = newHovered, newInst, newKind
+        end
+        return
+    end
+
     for _, inst in ipairs(self.cardInstances or {}) do
         if inst and inst.isHovered then
             -- F2: a oferta vem da própria instância (shopOffers[i] mostrava
@@ -2771,66 +2651,9 @@ function CardRewardScreen:_slotFx(slot)
     return fx
 end
 
--- Som de hover do slot NAO-carta (reliquia / pacote).
---
--- TRES defeitos somavam na queixa "o barulho de hover nos upgrades e nos
--- pacotes esta estranho" (dono, Set/2026). O hover da CARTA, que o dono nao
--- reclamou, e a referencia de "certo" -- e usa a mesma amostra:
---
--- 1) VOLUME 14x. O call site passava `volume = 0.42`, e opts.volume
---    SUBSTITUI o baseVolume do registro (engine/AudioManager.lua), nao
---    multiplica. A carta toca a MESMA amostra SEM volume no call site, ou
---    seja em Config.Audio.HOVER_VOLUME = 0.03. Medido em audio/hoverCard.wav:
---    pico 0.795 -> o slot saia a 0.334 de amplitude contra 0.024 da carta.
---    E literalmente a queixa "barulho da carta sai muito alto" que ja tinha
---    sido corrigida em Card.lua:502 e voltou a nascer aqui.
--- 2) SOM SEM O JOGADOR MEXER O MOUSE. A loja entra deslizando de -altura ate
---    0 em 0.43s e o hit-test desconta `slideOffsetY`: os slots passam POR
---    BAIXO de um mouse parado e disparam hover-enter sozinhos. A 0.03
---    ninguem ouvia; a 0.42 vira um estalo do nada ao abrir a loja.
--- 3) PITCH GRAVE DEMAIS. 0.92 +- 0.12 chega a 0.80. A amostra e um clique de
---    ~20ms (onset 7ms, pico em 19ms, cai a 10% em 1ms); esticada pra grave le
---    como arrastada. A carta usa 0.95 +- 0.18.
---
--- Nao ha calibracao nova no call site -- quem manda e o baseVolume do
--- registro, que e onde a calibracao do projeto mora. E o codigo dedicado vem
--- primeiro pelo contrato de playFirstSfx: no dia em que hoverRelic/hoverPack
--- forem registrados, passam a tocar sozinhos sem tocar neste arquivo.
-function CardRewardScreen:_playSlotHoverSfx(offer)
-    -- Mouse parado + tela em movimento nao e hover do jogador.
-    if math.abs(self.slideOffsetY or 0) > 1 then return end
-    local codes = (offer.type == "booster_pack")
-        and { "hoverPack", "hoverCard" }
-        or  { "hoverRelic", "hoverCard" }
-    playFirstSfx(codes, { pitch = 0.95 + (math.random() * 2 - 1) * 0.18 })
-end
-
-function CardRewardScreen:_updateSlotFx(dt)
-    local hoveredSlot = self.hoveredOffer and self.hoveredOffer._slot
-    for _, offer in ipairs(self.shopOffers or {}) do
-        if offer.type ~= "card" and offer._slot then
-            local fx = self:_slotFx(offer._slot)
-            local target = (not offer.purchased and hoveredSlot == offer._slot) and 1 or 0
-            if target == 1 and not fx._hot then
-                fx._hot = true
-                Moveable.hop_up(fx, 7, 0.30)
-                Moveable.juice_up(fx, 0.10, 0.02)
-                self:_playSlotHoverSfx(offer)
-            elseif target == 0 then
-                fx._hot = false
-            end
-            -- reducedMotion: o destaque troca NA HORA (a informação "é este
-            -- que está em foco" não pode depender de animação), só não há
-            -- interpolação nem pulinho.
-            if reducedMotion() then
-                fx.hover = target
-            else
-                fx.hover = fx.hover + (target - fx.hover) * math.min(1, dt * 12)
-            end
-            Moveable.updateJuice(fx, dt)
-        end
-    end
-end
+-- (_playSlotHoverSfx / _updateSlotFx saíram na Loja v3: o hover da relíquia
+-- e do pacote — som na borda de entrada, nunca durante o deslize — mora no
+-- ShopScene:update / ShelfItem:update.)
 
 -- ============================================================================
 -- PAINEL DE DETALHE FIXO (split-view da loja)
@@ -2956,6 +2779,14 @@ function CardRewardScreen:mousepressed(x, y, button)
 
     -- Clique DIREITO numa oferta → inspeção completa (mesma da Coleção).
     if button == 2 then
+        if self.mode == "shop" and self.scene then
+            local it = self.scene:itemAt(x, y - (self.slideOffsetY or 0))
+            if it and it.card then
+                self.inspectModal = self.inspectModal or require("src.ui.CardInspectModal"):new()
+                self.inspectModal:show(it.card)
+                return true
+            end
+        end
         for _, inst in ipairs(self.cardInstances or {}) do
             if inst and inst.isHovered and inst.shopOffer
                 and not inst.shopOffer.purchased then
@@ -2991,6 +2822,16 @@ function CardRewardScreen:mousepressed(x, y, button)
     if self.diceButton and self.diceButton:mousepressed(x, y, button) then
         return true
     end
+    -- Loja v3: pressionar sobre um objeto da prateleira arma a compra (o
+    -- release confirma, como os botões).
+    if self.mode == "shop" and self.scene and button == 1 then
+        local it = self.scene:itemAt(x, y - (self.slideOffsetY or 0))
+        if it then
+            self._armedItem = it
+            return true
+        end
+    end
+    self._armedItem = nil
 
     -- Click fora de qualquer card/button enquanto há seleção → desselleciona
     -- (Balatro: re-clicar na mesma carta também alterna; aqui aceitamos ambos).
@@ -3032,6 +2873,16 @@ function CardRewardScreen:mousereleased(x, y, button)
     end
     if self.diceButton and self.diceButton:mousereleased(x, y, button) then
         return true
+    end
+    -- Loja v3: soltar sobre o MESMO objeto compra.
+    if self.mode == "shop" and self.scene and button == 1 and self._armedItem then
+        local armed = self._armedItem
+        self._armedItem = nil
+        local it = self.scene:itemAt(x, y - (self.slideOffsetY or 0))
+        if it == armed and it.offer and not it.offer.purchased then
+            self:purchaseOffer(it.offer, it.offer.id)
+            return true
+        end
     end
     if self.diceButton and button == 1 then
         local r = self:_diceHelpRect()

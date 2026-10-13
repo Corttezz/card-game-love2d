@@ -231,6 +231,17 @@ return {
         event     = { label = "Evento",    desc = "Encuentro misterioso. Arriésgate." },
     },
 
+    -- Loja v3 (Balcão do Mercador): objetos do balcão e oferta do dia.
+    shop = {
+        dice_cup = {
+            name        = "Dados del Escriba",
+            hint_idle   = "Una tirada por visita. Haz clic para apostar.",
+            hint_rolled = "Tirada hecha: {a} y {b}, suma {sum}.",
+        },
+        sale_tag  = "OFERTA DEL DÍA",
+        sale_hint = "Oferta del día: {pct}% más barata en esta visita.",
+    },
+
     shop_items = {
         pack_standard  = { name = "Fardo del Mercader",      desc = "3 cartas al azar; elige 1. Solo aquí llevan sello." },
         pack_buffoon   = { name = "Estuche del Juglar",      desc = "2 comodines; elige 1. La troupe no viaja gratis." },
@@ -1051,6 +1062,10 @@ return {
         topbar_progress = { name = "Progreso del Viaje", desc = "Acto {act}, piso {floor} de {total}. Un MINI-JEFE espera en el piso 7; el JEFE del acto en el piso {total}. Derrota al jefe del Acto {last} para terminar la crónica. Selecciona para abrir la Crónica del viaje.{mods}" },
         topbar_config = { name = "Menú de Pausa", desc = "Pausa el viaje: ajustes, guardar y salir al menú, o abandonar la partida." },
         reward_rules = { name = "Cómo funcionan las ofertas", desc = "Las cartas ofrecidas son de TU clase. La calidad mejora cada acto, y cada oferta sin una RARA aumenta las probabilidades de la siguiente (tras una racha larga sin raras, una rara está garantizada). Las cartas marcadas con AFINIDAD coinciden con las etiquetas fuertes de tu mazo. Las cartas que ya tienes en copias aparecen menos." },
+        -- Loja v3: tooltips dos objetos do balcão (foco = hover)
+        shop_bell   = { name = "Campana de nuevas ofertas", desc = "Toca la campana y el mercader repone las dos estanterías. Cuesta ${n} en esta visita y sube $2 con cada toque." },
+        shop_ledger = { name = "Libro de cuentas", desc = "Cierra la cuenta y sigue el viaje. Salir de la tienda da +${bonus} de oro." },
+        shop_dice   = { name = "Cubilete de dados", desc = "Los Dados del Escriba: una apuesta por visita. Haz clic para abrir la mesa." },
         poison     = { name = "Veneno",     desc = "Causa {stacks} de daño al final del turno, durante {duration} turno(s)." },
         weak       = { name = "Débil",      desc = "El daño infligido se reduce en un 25% durante {duration} turno(s)." },
         vulnerable = { name = "Vulnerable", desc = "Recibe un 50% más de daño (veneno y quemadura no cuentan) durante {duration} turno(s)." },
