@@ -104,7 +104,11 @@ function CardInfoDisplay.collectKeywords(desc)
     local lower = TextCase.lower(desc)
     local ok, Keywords = pcall(require, "src.data.keywords")
     if not ok then
-        print("[CardInfoDisplay] glossario nao carregou: " .. tostring(Keywords))
+        -- Chamado a cada hover: require quebrado avisaria todo quadro.
+        if not CardInfoDisplay._warnedKeywords then
+            CardInfoDisplay._warnedKeywords = true
+            print("[CardInfoDisplay] AVISO: glossario nao carregou: " .. tostring(Keywords))
+        end
         return hits
     end
     local loc = I18n.getLocale()

@@ -3,9 +3,8 @@
 -- Scroll vertical com mouse wheel, filtros por classe, tooltip no hover.
 -- Acessível pelo botão "COLEÇÃO" no menu principal, ESC volta.
 
-local Config       = require("src.core.Config")
+local Debug        = require("src.core.Debug")
 local FontManager  = require("src.ui.FontManager")
-local Theme        = require("src.ui.Theme")
 local Palette      = require("src.ui.Palette")
 local PixelBackground = require("src.ui.PixelBackground")
 local PixelCanvas  = require("src.ui.PixelCanvas")
@@ -118,7 +117,7 @@ function CollectionScreen:_buildInstances(budgetSecs)
         self._buildDone = true
         self._buildList = nil
         self._buildDb = nil
-        print("[CollectionScreen] " .. #self.cardInstances .. " cartas carregadas")
+        Debug.log("[CollectionScreen] " .. #self.cardInstances .. " cartas carregadas")
     end
     -- mantém grid/scroll coerentes com a lista parcial que cresce
     self:_applyFilter()

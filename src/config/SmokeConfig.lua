@@ -1,6 +1,8 @@
 -- src/config/SmokeConfig.lua
 -- Configurações para o sistema de smoke
 
+local Debug = require("src.core.Debug")
+
 local SmokeConfig = {}
 
 -- Configurações padrão (visível mas não distrai — ambiência de arena de combate)
@@ -116,7 +118,7 @@ function SmokeConfig.applyToSystem(smokeSystem, preset)
     if smokeSystem then
         local config = SmokeConfig.getConfig(preset)
         smokeSystem:setConfig(config)
-        print("Smoke config aplicada:", preset)
+        Debug.log("[SmokeConfig] preset aplicado:", preset)
     end
 end
 

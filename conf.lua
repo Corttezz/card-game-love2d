@@ -47,7 +47,9 @@ function love.conf(t)
     -- contexto grafico. O que importa e que NADA fica visivel.
     -- (love.window.minimize() no load NAO serve: o SDL re-mostra a janela e
     -- ela volta pra barra de tarefas — medido.)
-    if os.getenv("CARDGAME_HEADLESS") == "1" then
+    -- So em DEV: no pacote a variavel de ambiente do jogador nao pode sumir
+    -- com a janela (o dispatcher de tools nem existe la).
+    if os.getenv("CARDGAME_HEADLESS") == "1" and not (Release and Release.isRelease()) then
         t.window.width, t.window.height = 1, 1
         t.window.minwidth, t.window.minheight = 1, 1
         t.window.borderless = true

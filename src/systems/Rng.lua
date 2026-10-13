@@ -104,9 +104,13 @@ end
 function Rng:_gen(stream)
     local gen = self.streams[stream]
     if not gen then
-        -- Stream desconhecido é bug de chamada — avisa e cai no misc pra não
-        -- crashar gameplay (mas o log denuncia).
-        print("[Rng] stream desconhecido: " .. tostring(stream) .. " (usando 'misc')")
+        -- Stream desconhecido é bug de chamada — avisa (uma vez por nome) e
+        -- cai no misc pra não crashar gameplay (mas o log denuncia).
+        Rng._warnedStream = Rng._warnedStream or {}
+        if not Rng._warnedStream[stream] then
+            Rng._warnedStream[stream] = true
+            print("[Rng] AVISO: stream desconhecido: " .. tostring(stream) .. " (usando 'misc')")
+        end
         gen = self.streams.misc
         stream = "misc"
     end

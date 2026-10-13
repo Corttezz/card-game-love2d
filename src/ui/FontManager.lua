@@ -32,7 +32,7 @@ function FontManager.setFontPath(path)
     FONT_PATH = newPath
     ttfAvailable = nil   -- forca recheck
     fontCache = {}        -- invalida cache, sera regenerado on-demand
-    print("[FontManager] font path agora: " .. FONT_PATH)
+    require("src.core.Debug").log("[FontManager] font path agora: " .. FONT_PATH)
 end
 
 function FontManager.getFontPath() return FONT_PATH end

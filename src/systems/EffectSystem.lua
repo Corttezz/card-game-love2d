@@ -357,8 +357,8 @@ function EffectSystem:applyCardEffects(game, card, baseValue)
             finalValue = finalValue + v
 
         elseif t == "multi_hit" and card.type == "attack" then
-            -- Ataque multiplo (N hits). Implementado via multiplicacao simples aqui;
-            -- animacao/feel sera refinado quando integrarmos com CombatAnimationSystem.
+            -- Ataque multiplo (N hits): aqui so o VALOR (multiplicacao simples);
+            -- os golpes separados sao coreografados pelo CombatSequence/CombatBeats.
             finalValue = finalValue * math.max(1, v)
         end
         -- strength_scaling/dexterity_scaling: flag-only, ver comentário acima.

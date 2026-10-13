@@ -32,7 +32,7 @@ BackgroundConfig.BACKGROUNDS = {
 function BackgroundConfig.loadBackground(backgroundKey)
     local config = BackgroundConfig.BACKGROUNDS[backgroundKey]
     if not config then
-        print("ERRO: Background nao encontrado:", backgroundKey)
+        print("[BackgroundConfig] AVISO: background nao encontrado:", backgroundKey)
         return nil
     end
 
@@ -41,7 +41,7 @@ function BackgroundConfig.loadBackground(backgroundKey)
     if success then
         return image
     else
-        print("ERRO: Nao foi possivel carregar background:", config.path)
+        print("[BackgroundConfig] AVISO: nao foi possivel carregar background:", config.path)
         return nil
     end
 end
@@ -75,9 +75,6 @@ function BackgroundConfig.drawBackground(background, config, width, height, offs
         drawX = offsetX + (width - bgWidth * scale) / 2
         drawY = offsetY + (height - bgHeight * scale) / 2
     elseif config.scaleMode == "stretch" then
-        scale = 1
-        drawX = offsetX
-        drawY = offsetY
         love.graphics.draw(background, offsetX, offsetY, 0, width / bgWidth, height / bgHeight)
         return true
     end

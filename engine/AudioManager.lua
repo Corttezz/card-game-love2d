@@ -16,8 +16,8 @@
 local AudioManager = {}
 AudioManager.__index = AudioManager
 
-local DEFAULT_GROUP = "sfx"
 local MAX_CLONES_PER_SOUND = 8 -- evita explosão de polifonia em loops descontrolados.
+local warnedMissing = {}       -- code → true: som nao registrado avisa UMA vez, nao a cada play
 
 local function detectWSL2()
     local file = io.open("/proc/version", "r")
@@ -77,7 +77,6 @@ function AudioManager:new(opts)
 end
 
 function AudioManager:_initializeAudio()
-    print("[AudioManager] Inicializando...")
     if self.isWSL2 then
         print("[AudioManager] WSL2 detectado")
     end
@@ -171,7 +170,10 @@ function AudioManager:play(code, opts)
     if not self.audioAvailable then return nil end
     local entry = self.sources[code]
     if not entry then
-        print("[AudioManager] som não carregado:", code)
+        if not warnedMissing[code] then
+            warnedMissing[code] = true
+            print("[AudioManager] AVISO: som não carregado:", code)
+        end
         return nil
     end
 

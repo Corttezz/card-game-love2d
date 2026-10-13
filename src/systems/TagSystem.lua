@@ -76,10 +76,15 @@ function TagSystem.implicitTagFor(cardType)
     return IMPLICIT_BY_TYPE[cardType]
 end
 
--- Valida uma tag contra o catalogo. Retorna true se valida, false+log se nao.
+-- Valida uma tag contra o catalogo. Retorna true se valida, false+log se nao
+-- (um aviso por tag: a mesma carta e instanciada dezenas de vezes por run).
+local warnedTag = {}
 function TagSystem.isValid(tag)
     if not TagSystem.CATALOG[tag] then
-        print("[TagSystem] tag desconhecida: " .. tostring(tag))
+        if not warnedTag[tag] then
+            warnedTag[tag] = true
+            print("[TagSystem] AVISO: tag desconhecida: " .. tostring(tag))
+        end
         return false
     end
     return true

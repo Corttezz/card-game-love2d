@@ -99,13 +99,18 @@ CombatBeats.speed = 1.0
 -- nem ORDEM — os beats continuam iguais, os passos continuam em sequência.
 
 -- Resolve um hold: número cru, nome da tabela, ou nil (= INSTANT).
+local warnedHold = {}
 function CombatBeats.hold(h)
     if h == nil then return 0 end
     if type(h) == "number" then return h * CombatBeats.speed end
     local v = CombatBeats.HOLD[h]
     if not v then
-        -- Fallback silencioso é proibido (CLAUDE.md §9): hold desconhecido AVISA.
-        print("[CombatBeats] hold desconhecido: '" .. tostring(h) .. "' (usando MICRO)")
+        -- Fallback silencioso é proibido (CLAUDE.md §9): hold desconhecido AVISA
+        -- (uma vez por nome — o mesmo beat roda a cada turno).
+        if not warnedHold[h] then
+            warnedHold[h] = true
+            print("[CombatBeats] AVISO: hold desconhecido: '" .. tostring(h) .. "' (usando MICRO)")
+        end
         v = CombatBeats.HOLD.MICRO
     end
     return v * CombatBeats.speed

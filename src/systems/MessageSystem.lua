@@ -58,6 +58,7 @@ end
 -- Cor do TEXTO por tipo (dono, Out/2026: "coloque cores diferentes como
 -- era antes"): ouro = dinheiro, verde = cura/ganho, vermelho = perigo,
 -- laranja = aviso de regra, azul = informação, violeta = orbe/magia.
+local warnedKind = {}
 local function accentFor(kind)
     local Palette = require("src.ui.Palette")
     if kind == "error" or kind == "danger" then return Palette.TOAST_DANGER
@@ -67,7 +68,11 @@ local function accentFor(kind)
     elseif kind == "arcane" then return Palette.TOAST_ARCANE
     elseif kind == "info" then return Palette.TOAST_INFO
     end
-    print("[MessageSystem] tipo de aviso desconhecido: " .. tostring(kind))
+    -- Chamado a cada draw do toast: um aviso por tipo, nao um por quadro.
+    if not warnedKind[kind] then
+        warnedKind[kind] = true
+        print("[MessageSystem] AVISO: tipo de aviso desconhecido: " .. tostring(kind))
+    end
     return Palette.PARCHMENT_LIGHT
 end
 MessageSystem.accentFor = accentFor

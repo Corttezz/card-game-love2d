@@ -313,7 +313,7 @@ function RunManager:_instanceFromJokerEntry(entry)
     end
     local cardData = self.cardDatabase:getCard(id)
     if not cardData then
-        print("AVISO: Joker não encontrado no banco de dados: " .. tostring(id))
+        print("[RunManager] AVISO: joker não encontrado no banco de dados: " .. tostring(id))
         return nil
     end
     local instance = self.cardDatabase:createCardInstance(cardData)
@@ -1077,7 +1077,7 @@ function RunManager:buildPlayableDeck()
             if seal then cardInstance.seal = seal end
             table.insert(playableCards, cardInstance)
         else
-            print("AVISO: Carta não encontrada no banco de dados: " .. cardId)
+            print("[RunManager] AVISO: carta não encontrada no banco de dados: " .. tostring(cardId))
         end
     end
 

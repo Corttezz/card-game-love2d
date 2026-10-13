@@ -83,7 +83,7 @@ DEV em silencio). `test_release` trava que o repo e DEV.
 | argumentos / dispatcher de tools | normal | `Release.filterArgs` → `{}` |
 | atalhos `r`, `0-4` (GameplayScene) | sim | desligados |
 | `print` | console (+ ring buffer) | `logs/last_session.log` (+ `previous_session.log`), buffer, teto 2 MB |
-| `Debug.log/warn` | sim | silenciado (`Debug.err` vai pro log) |
+| `Debug.log/trace` | sim | silenciado (`Debug.warn`/`Debug.err` vao pro log — warn e fallback, e fallback silencioso e proibido; Out/2026) |
 | feel_debug.log / reward_debug.log | sim | nao gravam |
 | GF_DEBUG (prova magenta da grama) | env var | ignorado (`Release.isDev()` no WorldRoad) |
 | erro fatal | crash log + handler padrao do LOVE | crash log + tela traduzida (`crash.*`) com caminho do log; Esc fecha, C copia |

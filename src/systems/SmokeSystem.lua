@@ -1,6 +1,8 @@
 -- src/systems/SmokeSystem.lua
 -- Sistema de partículas de smoke para efeitos de fundo sutis
 
+local Debug = require("src.core.Debug")
+
 local SmokeSystem = {}
 
 -- Configurações do sistema
@@ -42,7 +44,7 @@ function SmokeSystem:initialize()
     self.particles = {}
     self.lastSpawnTime = 0
     
-    print("SmokeSystem inicializado com", #self.textures, "texturas")
+    Debug.log("[SmokeSystem] inicializado com", #self.textures, "texturas")
 end
 
 function SmokeSystem:loadTextures()
@@ -59,9 +61,9 @@ function SmokeSystem:loadTextures()
             -- Configura a textura para alpha blending
             texture:setFilter("linear", "linear")
             table.insert(self.textures, texture)
-            print("Smoke texture carregada:", path)
+            Debug.log("[SmokeSystem] textura carregada:", path)
         else
-            print("ERRO: Não foi possível carregar smoke texture:", path)
+            print("[SmokeSystem] AVISO: não foi possível carregar textura:", path)
         end
     end
 end
