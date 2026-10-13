@@ -46,3 +46,30 @@ de 4 px. Pedido: "a mesma coisa, com o nosso visual".
 antes de entrar nele, com o mesmo shader (não um mock). **How to apply:**
 tempos em `IntroTube.T`; frase = chaves de menu (sem chave nova); se o CRT
 não compila, o televisor vira moldura plana AVISADA.
+
+## Modo ARTE: o computador gerado (Out/2026)
+
+Dono: "gerar literalmente o computador do site da Parker (Higgsfield), com
+as nossas cores; o primeiro quadro e esse computador, depois da zoom e vai
+pro jogo". Contrato e prompt em `docs/plan/intro-computer-prompt.md`.
+
+- A arte entra por `python tools/intro_computer_import.py <render.png>
+  --width 640 --palette`: recorta pela cor do canto, reduz com nearest,
+  acha a TELA pintada de magenta puro `#ff00ff` (bbox; avisa se < 85%
+  cheia), fura a tela (transparente), quantiza na paleta sepia e grava
+  `assets/sprites/intro/computer.png` + `src/data/intro_computer.lua`
+  (`{ image, w, h, screen = {x,y,w,h} }`).
+- `IntroTube.computerArt()` carrega esses dados quando existem
+  (`IntroTube.DATA_PATH`; cache, `reloadArt()`); `geometry()` devolve
+  `mode = "art"`: computador com `ART_FRAC` (70%) da altura da janela,
+  `sx/sy/sw/sh` = a tela em px, `sEnd` = escala pra TELA encher a janela.
+  O tubo e renderizado no tamanho da tela + gabinete do shader e so a
+  ABERTURA (quad sem os 20 px de bezel) entra na tela; a PNG vai por cima;
+  tudo escala em torno do centro da tela no mergulho. Sem o arquivo de
+  dados: `mode = "tube"` (televisor do shader, como antes).
+- Capturas: `INTRO_DATA=<lua> love . test_one screenshot_intro pt_BR:1920x1080`
+  (sufixo `_art` nos arquivos). Trava: `test_intro_tube` 5b escreve uma arte
+  sintetica no save dir e verifica modo, encaixe, tela dentro da arte,
+  mergulho cobrindo a janela e fallback. Prova sintetica em
+  `tools/preview_out/intro/` (computador desenhado por script, nao e a arte
+  final).

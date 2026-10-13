@@ -23,6 +23,9 @@ function M.run(arg)
     love.graphics.getHeight = function() return H end
     love.graphics.getDimensions = function() return W, H end
     local IntroTube = require("src.scenes.IntroTube")
+    -- INTRO_DATA=<caminho relativo à fonte> força outra arte de computador
+    -- (ex.: tools/preview_out/intro_synth/intro_computer.lua)
+    if os.getenv("INTRO_DATA") then IntroTube.DATA_PATH = os.getenv("INTRO_DATA"); IntroTube.reloadArt() end
     _G.gameSettings = _G.gameSettings or {}
     _G.gameSettings.reducedMotion = false
     IntroTube.init({})
@@ -32,7 +35,7 @@ function M.run(arg)
         love.graphics.clear(0, 0, 0, 1)
         IntroTube.draw()
         love.graphics.setCanvas()
-        local f = ("intro_%s_%dx%d_%s.png"):format(name, W, H, locale)
+        local f = ("intro_%s%s_%dx%d_%s.png"):format(name, os.getenv("INTRO_DATA") and "_art" or "", W, H, locale)
         canvas:newImageData():encode("png", f)
         print("[screenshot_intro] " .. f)
     end

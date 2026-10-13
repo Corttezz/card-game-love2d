@@ -94,6 +94,41 @@ function M.run()
     IntroTube.skip()
     t:noerror("draw depois de done (nao desenha)", function() IntroTube.draw() end)
 
+    -- ===== 5b. ARTE do computador (dados + PNG no save dir) =====
+    do
+        local idata = love.image.newImageData(120, 150)
+        idata:mapPixel(function(x, y)
+            if x >= 20 and x < 100 and y >= 20 and y < 80 then return 0, 0, 0, 0 end   -- a tela (transparente)
+            return 0.72, 0.63, 0.41, 1
+        end)
+        idata:encode("png", "tut_intro_computer.png")
+        love.filesystem.write("tut_intro_computer.lua",
+            'return { image = "tut_intro_computer.png", w = 120, h = 150, screen = { x = 20, y = 20, w = 80, h = 60 } }')
+        local prevPath = IntroTube.DATA_PATH
+        IntroTube.DATA_PATH = "tut_intro_computer.lua"
+        IntroTube.reloadArt()
+        local d = IntroTube.computerArt()
+        t:truthy("arte do computador carrega do arquivo de dados", d ~= nil and d.img ~= nil)
+        for _, s in ipairs({ { 1024, 768 }, { 1920, 1080 }, { 2560, 1440 } }) do
+            local G = IntroTube.geometry(s[1], s[2])
+            t:eq(("%dx%d: modo arte"):format(s[1], s[2]), G.mode, "art")
+            t:truthy(("%dx%d: computador cabe (<= 70%% da altura)"):format(s[1], s[2]), G.ah <= s[2] * 0.70 + 1)
+            t:truthy(("%dx%d: a TELA da arte esta dentro do computador"):format(s[1], s[2]),
+                G.sx >= G.ax and G.sy >= G.ay and G.sx + G.sw <= G.ax + G.aw and G.sy + G.sh <= G.ay + G.ah)
+            t:truthy(("%dx%d: no fim do mergulho a tela cobre a janela"):format(s[1], s[2]),
+                G.sw * G.sEnd >= s[1] - 0.5 and G.sh * G.sEnd >= s[2] - 0.5)
+        end
+        IntroTube.init({})
+        t:noerror("draw com a arte (pagina)", function() IntroTube.draw() end)
+        for _ = 1, 60 * 6 do IntroTube.update(dt); if IntroTube.phase() == "dive" then break end end
+        IntroTube.update(IntroTube.T.dive / 2)
+        t:noerror("draw com a arte (mergulho)", function() IntroTube.draw() end)
+        IntroTube.skip()
+        IntroTube.DATA_PATH = prevPath
+        IntroTube.reloadArt()
+        t:truthy("sem dados: volta ao televisor do shader", IntroTube.geometry(1280, 720).mode == "tube")
+    end
+
     -- ===== 6. BootScene =====
     local BootScene = require("src.scenes.BootScene")
     local on, complete = 0, 0

@@ -32,11 +32,51 @@ IntroTube.T = {
     cps    = 22,          -- caracteres por segundo (mais lento que o corvo: é cena)
 }
 IntroTube.TV_FRAC  = 0.46   -- largura do televisor / largura da janela
+-- ARTE DO COMPUTADOR (dono, Out/2026: "gerar literalmente o computador do
+-- site da Parker, nas nossas cores; o primeiro quadro é ele e depois dá
+-- zoom"). Quando src/data/intro_computer.lua existe (gerado por
+-- tools/intro_computer_import.py, ver docs/plan/intro-computer-prompt.md),
+-- a abertura desenha ESSA arte no lugar do televisor do shader: o tubo
+-- (sem o gabinete do shader, só a abertura curva com scanlines) vai DENTRO
+-- do retângulo da tela da arte e o mergulho é na tela.
+IntroTube.DATA_PATH = "src/data/intro_computer.lua"
+IntroTube.ART_FRAC  = 0.70   -- altura do computador / altura da janela
 IntroTube.BEZEL_PX = 20     -- = BEZEL_PX do crt.glsl (gabinete dentro do canvas)
 IntroTube.CORNER   = 0.012  -- raio relativo da abertura (= cornerR do shader)
 
 local S = {}
 local utf8 = require("utf8")
+
+-- carrega a arte do computador (nil = usar o televisor do shader)
+local artCache = { path = nil, data = false }
+function IntroTube.computerArt()
+    local path = IntroTube.DATA_PATH
+    if artCache.path == path then return artCache.data or nil end
+    artCache.path = path
+    artCache.data = false
+    if not (path and love.filesystem.getInfo(path)) then return nil end
+    local ok, chunk = pcall(love.filesystem.load, path)
+    if not ok or not chunk then
+        print("[IntroTube] dados do computador ilegiveis: " .. tostring(chunk))
+        return nil
+    end
+    local okR, d = pcall(chunk)
+    if not okR or type(d) ~= "table" or not d.image or not d.screen then
+        print("[IntroTube] dados do computador invalidos em " .. path)
+        return nil
+    end
+    local okI, img = pcall(love.graphics.newImage, d.image)
+    if not okI then
+        print("[IntroTube] arte do computador nao carregou: " .. tostring(img))
+        return nil
+    end
+    img:setFilter("nearest", "nearest")
+    d.img = img
+    d.w, d.h = img:getWidth(), img:getHeight()
+    artCache.data = d
+    return d
+end
+function IntroTube.reloadArt() artCache.path = nil end
 
 local function reducedMotion()
     return (_G.gameSettings and _G.gameSettings.reducedMotion) or false
@@ -156,7 +196,24 @@ end
 -- Draw
 -- ===================================================================
 -- Geometria do televisor na janela (px): canvas do tubo e escala do mergulho.
+-- Com a ARTE: `art` = escala da imagem, `ax/ay` = canto dela, `sx/sy/sw/sh`
+-- = a tela em px da janela; o tubo é renderizado no tamanho da tela mais o
+-- gabinete do shader (que fica de fora, recortado).
 function IntroTube.geometry(W, H)
+    local d = IntroTube.computerArt()
+    if d then
+        local k = math.min((H * IntroTube.ART_FRAC) / d.h, (W * 0.62) / d.w)
+        k = math.max(0.1, k)
+        local aw, ah = d.w * k, d.h * k
+        local ax, ay = W / 2 - aw / 2, H * 0.50 - ah / 2
+        local sx, sy = ax + d.screen.x * k, ay + d.screen.y * k
+        local sw, sh = d.screen.w * k, d.screen.h * k
+        local tw, th = math.max(8, math.floor(sw)), math.max(8, math.floor(sh))
+        local sEnd = math.max(W / sw, H / sh)
+        return { art = k, ax = ax, ay = ay, aw = aw, ah = ah, sx = sx, sy = sy, sw = sw, sh = sh,
+                 tw = tw, th = th, cx = sx + sw / 2, cy = sy + sh / 2, sEnd = sEnd,
+                 innerW = sw, innerH = sh, mode = "art" }
+    end
     local tw = math.floor(W * IntroTube.TV_FRAC)
     local th = math.floor(tw * 0.75)
     local cx, cy = W / 2, H * 0.47
@@ -165,7 +222,7 @@ function IntroTube.geometry(W, H)
     local B = IntroTube.BEZEL_PX
     local innerW, innerH = tw - 2 * B, th - 2 * B
     local sEnd = math.max(W / innerW, H / innerH)
-    return { tw = tw, th = th, cx = cx, cy = cy, sEnd = sEnd, innerW = innerW, innerH = innerH }
+    return { tw = tw, th = th, cx = cx, cy = cy, sEnd = sEnd, innerW = innerW, innerH = innerH, mode = "tube" }
 end
 
 local function ensureCanvases(tw, th)
@@ -317,11 +374,49 @@ function IntroTube.draw()
         love.graphics.rectangle("fill", 0, 0, W, H)
     end
 
-    -- o televisor: conteúdo -> tubo (shader) -> na página
-    local c = ensureCanvases(G.tw, G.th)
     local pop = reducedMotion() and 1 or (0.92 + 0.08 * easeOutBack(math.min(1, S.t / T.tvPop)))
     local scale = pop * (1 + (G.sEnd - 1) * dive)
     local tvAlpha = fade
+    if G.mode == "art" then
+        -- a ARTE do computador: tubo (recortado, sem gabinete) dentro da
+        -- tela, a imagem por cima; tudo escala em torno do centro da tela
+        local B = IntroTube.BEZEL_PX
+        local c = ensureCanvases(G.tw + 2 * B, G.th + 2 * B)
+        local d = IntroTube.computerArt()
+        love.graphics.push()
+        love.graphics.translate(G.cx, G.cy)
+        love.graphics.scale(scale, scale)
+        love.graphics.translate(-G.cx, -G.cy)
+        if dive < 1 then
+            local sh = Palette.INK
+            love.graphics.setColor(sh[1], sh[2], sh[3], 0.40 * tvAlpha * (1 - dive))
+            love.graphics.rectangle("fill", G.ax + 10, G.ay + 12, G.aw, G.ah, 6, 6)
+        end
+        if c then
+            love.graphics.push("all")
+            love.graphics.setCanvas(c.content)
+            love.graphics.origin()
+            love.graphics.clear(0, 0, 0, 1)
+            love.graphics.translate(B, B)
+            drawTubeContent(G.tw, G.th, 1)
+            love.graphics.pop()
+            local CRT = require("src.ui.CRTShader")
+            local okTube = CRT.renderTube and CRT.renderTube(c.content, c.tube)
+            local src = okTube and c.tube or c.content
+            if not okTube then warnOnce("shader", "crt.glsl indisponivel: tela do computador sem curvatura") end
+            local cw, ch = src:getDimensions()
+            S.quad = S.quad or love.graphics.newQuad(0, 0, 1, 1, 1, 1)
+            S.quad:setViewport(B, B, cw - 2 * B, ch - 2 * B, cw, ch)
+            love.graphics.setColor(1, 1, 1, tvAlpha)
+            love.graphics.draw(src, S.quad, G.sx, G.sy, 0, G.sw / (cw - 2 * B), G.sh / (ch - 2 * B))
+        end
+        love.graphics.setColor(1, 1, 1, tvAlpha)
+        love.graphics.draw(d.img, G.ax, G.ay, 0, G.art, G.art)
+        love.graphics.pop()
+        love.graphics.setColor(1, 1, 1, 1)
+    end
+    -- o televisor do shader (sem a arte): conteúdo -> tubo (shader) -> na página
+    local c = (G.mode == "tube") and ensureCanvases(G.tw, G.th) or nil
     if c then
         love.graphics.push("all")
         love.graphics.setCanvas(c.content)
@@ -366,6 +461,7 @@ end
 function IntroTube.keypressed() if S.phase ~= "done" then IntroTube.skip() end end
 function IntroTube.mousepressed() if S.phase ~= "done" then IntroTube.skip() end end
 function IntroTube.resize() S.canvases = nil; pageKey = nil end
+function IntroTube.mode() return IntroTube.geometry(love.graphics.getWidth(), love.graphics.getHeight()).mode end
 function IntroTube._state() return S end
 
 return IntroTube

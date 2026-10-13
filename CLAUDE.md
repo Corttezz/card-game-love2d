@@ -42,7 +42,7 @@ card-game-love2d/
 │   ├── polychrome.glsl         # Próprio (edition Polychrome — hue cycle saturado)
 │   └── negative.glsl           # Próprio (edition Negative — invertido + halo)
 ├── src/scenes/                 # Scenes extraídas de main.lua (padrão init(deps) + update/draw/input)
-│   ├── IntroTube.lua           # ABERTURA (Out/2026): página de pergaminho + o nosso televisor pequeno (mesmo crt.glsl via `CRTShader.renderTube`) datilografando título/subtítulo e mergulhando no tubo; o CRT de tela cheia liga SÓ no mergulho (`BootScene` fase `intro`, `onTubeOn`) — memory/intro_tube.md
+│   ├── IntroTube.lua           # ABERTURA (Out/2026): página de pergaminho + o nosso televisor pequeno (mesmo crt.glsl via `CRTShader.renderTube`) datilografando título/subtítulo e mergulhando no tubo; o CRT de tela cheia liga SÓ no mergulho (`BootScene` fase `intro`, `onTubeOn`); com `src/data/intro_computer.lua` (arte do computador gerada + tela magenta, instalada por `tools/intro_computer_import.py`) o tubo vai DENTRO da tela da arte e o zoom é na tela — memory/intro_tube.md
 │   ├── GameplayScene.lua       # Estado "playing": combate + mão + jokers + drag/reorder
 │   └── EndScreens.lua          # drawGameOver + drawVictory
 ├── components/                 # UI de alto nível (telas, widgets)
