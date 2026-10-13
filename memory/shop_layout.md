@@ -506,3 +506,20 @@ em `CardRewardScreen:_drawShop`; textos nos 5 `locales/tutorial/*.lua`;
   (dither Bayer nas bordas) centrada no pacote (`sleeveCenter`). A loja
   continua viva atrás (sem slideOut no modo shop) e volta intacta ao fechar.
 - `screenshot_shop_diag`: estado `hoverpotion`.
+
+### v5 r2e: nearest de verdade, NOVA do teto, ficha sem corte
+
+- **Qualidade das relíquias "do canto"** (dono: "no hover melhora"): o jogo
+  real NÃO liga `setDefaultFilter("nearest")` (só os tools chamam
+  `PixelCanvas.enableNearest`), então o PNG estático do voucher era amostrado
+  LINEAR sob o cisalhamento 1:8/1:16 (borrão); os quadros do hover
+  (IconFramesLoader) já eram nearest. `ShopPerspective.spriteFor` passa toda
+  imagem por `crisp()` (setFilter nearest); `ShopScene.art`/`ShelfItem.art`
+  idem (pintura, poeira, sino). Capturas nunca mostraram o defeito porque o
+  tool liga o nearest: ao caçar borrão, lembre disso.
+- **NOVA pende do TETO** (dono): cordão vertical do alto da parede visível
+  (`ceilingY`, logo abaixo da TopBar) até o furo; a placa de título passou a
+  ser desenhada DEPOIS da cena (cordões passam atrás dela).
+- **Ficha cortada**: o recorte da passada das cartas só subia 16 px acima da
+  carta; agora inclui a caixa da NOVA e a coluna do cordão até o teto.
+- `screenshot_shop_diag`: `SHOP_NEW=1` força a etiqueta NOVA nas 4 cartas.

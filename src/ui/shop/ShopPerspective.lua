@@ -171,7 +171,26 @@ function ShopPerspective.animFrames(id)
     return animFrames[id] or nil
 end
 
+-- (dono, Out/2026: "a qualidade da imagem dos do canto está ruim; no hover
+-- melhora"): o jogo real NÃO liga o filtro padrão nearest (só os tools),
+-- então o PNG estático vinha LINEAR e o cisalhamento 1:8/1:16 borrava;
+-- os quadros animados do hover já eram nearest. Toda imagem da mesa passa
+-- por aqui antes de desenhar.
+local function crisp(img)
+    if img and img.setFilter then
+        local mn = img:getFilter()
+        if mn ~= "nearest" then img:setFilter("nearest", "nearest") end
+    end
+    return img
+end
+ShopPerspective.crisp = crisp
+
 function ShopPerspective.spriteFor(kind, offer, animate, t)
+    local img, p = ShopPerspective._spriteFor(kind, offer, animate, t)
+    return crisp(img), p
+end
+
+function ShopPerspective._spriteFor(kind, offer, animate, t)
     local id = offer and offer.id
     if kind == "relic" or kind == "pack" then
         local img, p = v4Art(id)

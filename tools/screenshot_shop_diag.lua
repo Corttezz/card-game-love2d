@@ -90,6 +90,12 @@ function M.run(arg)
                     end
                 end
                 sim(1.4)
+                -- SHOP_NEW=1: todas as cartas como descoberta nova (etiqueta NOVA)
+                if os.getenv("SHOP_NEW") == "1" and s.scene then
+                    for _, it in ipairs(s.scene.items) do
+                        if it.card then it.card.isNewDiscovery = true end
+                    end
+                end
                 local k = UiScale.k(w, h)
                 local function itemWhere(pred)
                     for _, it in ipairs(s.scene and s.scene.items or {}) do

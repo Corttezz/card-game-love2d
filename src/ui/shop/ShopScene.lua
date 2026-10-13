@@ -57,6 +57,7 @@ end
 local artWarned = {}
 local function art(name)
     local img = ImageCache.tryGet("assets/sprites/shop/" .. name .. ".png")
+    if img and img.setFilter and img:getFilter() ~= "nearest" then img:setFilter("nearest", "nearest") end
     if not img and not artWarned[name] then
         artWarned[name] = true
         print("[ShopScene] assets/sprites/shop/" .. name .. ".png ausente — desenho procedural")
@@ -545,6 +546,14 @@ function ShopScene:_drawCards(list)
             rects[#rects + 1] = { x = r.x + sx - 12, y = r.y - 16, w = r.w + 30, h = r.h + 30 }
             local g = it.geom
             if g and g.plate then rects[#rects + 1] = { x = g.plate.x + sx - 8, y = g.plate.y, w = g.plate.w + 24, h = g.plate.h + 4 } end
+            -- etiqueta NOVA + cordão até o teto (dono: "a ficha está cortada":
+            -- o recorte da passada só subia 16 px acima da carta)
+            if g and g.newTag then
+                local b = g.newTag.box
+                local cv = L.cover
+                local top = math.min(b.y, cv.oy + g.newTag.cordY * cv.s)
+                rects[#rects + 1] = { x = b.x + sx - 8, y = top - 4, w = b.w + 16, h = b.y + b.h - top + 8 }
+            end
         end
     end
     if #cards == 0 then return end
@@ -1108,7 +1117,6 @@ function ShopScene:draw()
     local ctx = { t = self.t, reduced = reducedMotion() }
 
     self:_drawPainting()
-    self:_drawSign()
     self:_drawCards(self.outgoing or self.items)
     if self.outgoing then
         -- objetos saindo e entrando ao mesmo tempo (deslize do sino)
@@ -1117,6 +1125,10 @@ function ShopScene:draw()
     else
         self:_drawTable(self.items)
     end
+    -- a placa de título é INTERFACE: fica por cima da cena (os cordões das
+    -- etiquetas NOVA descem do teto e passam atrás dela); o validate garante
+    -- que nenhuma peça da vitrine invade a placa
+    self:_drawSign()
     self:_drawScroll()
     if P and P.drawFront then
         local ok, err = pcall(P.drawFront, L, ctx)

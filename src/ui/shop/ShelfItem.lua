@@ -82,6 +82,7 @@ local function art(path, quiet)
         end
         return nil
     end
+    if img.setFilter and img:getFilter() ~= "nearest" then img:setFilter("nearest", "nearest") end
     ART[path] = img
     return img
 end
@@ -722,12 +723,10 @@ function ShelfItem.drawTagArt(tg, dx, dy, afford, sale, a, tie)
         -- frente e CAI pela face até o furo (duas direções)
         ShelfItem.drawCordArt(tie[1], tie[2], tg.edge.x, tg.edge.y, a)
         ShelfItem.drawCordArt(tg.edge.x, tg.edge.y, holeX, holeY, a)
-    elseif tg.nail then
-        -- prego na parede (2 px de ferro) e o cordão descendo até o furo
-        ShelfItem.drawCordArt(tg.cordX, tg.cordY, holeX, holeY, a)
-        px(Palette.INK, a, tg.cordX - 1, tg.cordY - 1, 3, 1)
-        px(Palette.STEEL_LIGHT or Palette.PARCHMENT_LIGHT, a, tg.cordX, tg.cordY - 1, 1, 1)
-        px(Palette.INK, a, tg.cordX, tg.cordY, 1, 1)
+    elseif tg.ceiling then
+        -- cordão vertical descendo do TETO da cena até o furo (balança
+        -- junto com o cartão: o pé do cordão acompanha dx)
+        ShelfItem.drawCordArt(tg.cordX + dx, tg.cordY, holeX, holeY, a)
     else
         local cx, cy = tg.cordX, tg.cordY - dy
         if tie then cx, cy = tie[1], tie[2] end

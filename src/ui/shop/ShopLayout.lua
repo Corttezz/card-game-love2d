@@ -303,7 +303,7 @@ ShopLayout.objectTag = objectTag
 -- esquerdo), SEMPRE dentro da largura da própria carta (a vizinha da
 -- direita é 7 px mais alta pela 1:8: fora da largura ela cobria o canto da
 -- vizinha). Cordão curto do canto até o furo.
-local function cardNewTag(cv, c, side)
+local function cardNewTag(cv, c, side, ceilingY)
     local x0q, y0q, x1q, y1q = ShopLayout.cardQuad(c, 0, 0)
     local cxs, cys = (side == "left") and x0q or x1q, (side == "left") and y0q or y1q
     local ax, ay = toArt(cv, cxs, cys)
@@ -313,12 +313,12 @@ local function cardNewTag(cv, c, side)
     local hy = ay - 12
     local x0 = hx - math.floor(W / 2)
     local y0 = hy + math.floor(hx / ShopLayout.RUN)
-    -- (dono: "o cordão da carta nova está estranho"): a etiqueta pende de um
-    -- PREGO na parede acima dela (cordão curto pra baixo), não do canto da
-    -- carta; vermelha, pra não se confundir com as de preço
-    local T = artTag(cv, hx, hy - 6, x0, y0, W)
+    -- (dono: "o NOVA em cima da carta precisa vir do teto"): o cordão desce
+    -- do TETO da cena (alto da pintura visível, `ceilingY` em px de arte)
+    -- até o furo; vermelha, pra não se confundir com as de preço
+    local T = artTag(cv, hx, math.min(hy - 6, ceilingY or (hy - 6)), x0, y0, W)
     T.side = side
-    T.nail = true
+    T.ceiling = true
     T.red = true
     return T
 end
@@ -458,7 +458,9 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
             c.lineH = lineH
             c.lift = 0
             c.depthScale = 1 - (i - 1) * SH.depthStep
-            c.newTag = cardNewTag(cv, c, (i <= nCards / 2) and "right" or "left")
+            -- teto = alto da parede visível (logo abaixo da TopBar), em px de arte
+            local ceilingY = math.floor((topBarH - cv.oy) / cv.s)
+            c.newTag = cardNewTag(cv, c, (i <= nCards / 2) and "right" or "left", ceilingY)
             cards[i] = c
         end
     end
