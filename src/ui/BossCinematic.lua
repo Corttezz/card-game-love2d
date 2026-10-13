@@ -670,8 +670,20 @@ end
 -- de zoom no MUNDO (1.0 → 1.06 → 1.0, translação inteira). reducedMotion:
 -- só o pulso de vinheta, suave.
 -- ---------------------------------------------------------------------------
-local function startHit(cx, cy)
-    hit = { t = 0, dur = 0.60, cx = cx, cy = cy }
+-- Cores dos dois anéis da onda de choque por ESTILO (`land.ring` no dado):
+-- sem estilo, a paleta do chefe (brasa + flash).
+local RING_STYLES = {
+    ice    = { { 0.78, 0.94, 1.00 }, { 0.42, 0.78, 1.00 } },
+    frost  = { { 0.90, 0.97, 1.00 }, { 0.62, 0.86, 1.00 } },
+    lava   = { { 1.00, 0.52, 0.12 }, { 1.00, 0.86, 0.38 } },
+    spores = { { 0.55, 0.86, 0.32 }, { 0.86, 0.96, 0.52 } },
+    petal  = { { 0.96, 0.46, 0.76 }, { 0.74, 0.32, 0.92 } },
+}
+local function startHit(cx, cy, ring)
+    if ring and not RING_STYLES[ring] then
+        print("[BossCinematic] land.ring desconhecido: " .. tostring(ring) .. " — paleta do chefe")
+    end
+    hit = { t = 0, dur = 0.60, cx = cx, cy = cy, ring = ring and RING_STYLES[ring] or nil }
     if not reducedMotion() then
         local okC, CRT = pcall(require, "src.ui.CRTShader")
         if okC and CRT.jolt then CRT.jolt(0.16) end
@@ -722,7 +734,8 @@ local function drawScreenFx()
                 local k = clamp01(rt / hit.dur)
                 local r = easeOut(k) * w * 0.55
                 local a = 1 - k
-                local col = (ring == 0) and PAL.ember or PAL.flash
+                local col = hit.ring and hit.ring[ring + 1]
+                    or ((ring == 0) and PAL.ember or PAL.flash)
                 local n = math.max(24, math.floor(2 * math.pi * r / P))
                 for i = 0, n - 1 do
                     -- dither: cada bloco cai fora conforme o anel esvaece
@@ -815,10 +828,15 @@ local RUNE_GLYPHS = {
     { "#.#", "###", "#.#", ".#.", ".#." },
 }
 
+-- Runas no chão em volta do palco: bloco = ~1.6 px da ARTE do salão (3×5
+-- blocos por glifo, legível a 1080p), halo em blob, e o círculo pontilhado
+-- que as liga fecha quando todas acenderam — e FICA aceso durante a subida
+-- (o passo seguinte é que o apaga, ver `land`).
 local function drawRunes()
     local r = fx.runes
     if not r or not stage or not stage.bbox then return end
     local P = px()
+    local B = math.max(P, math.floor(((stage.tr and stage.tr.scale) or 4) * 1.6 + 0.5))
     local cx, cy = stage.bbox.cx, (stage.cy or stage.bbox.bottomY)
     local rx = math.max(80, (stage.bbox.width or 120) * 1.1)
     local ry = rx * 0.22
@@ -826,16 +844,17 @@ local function drawRunes()
         local lit = clamp01((r.t - (i - 1) * r.dur / r.n) / 0.25)
         if lit > 0 then
             local ang = -math.pi / 2 + (i - 1) / r.n * math.pi * 2
-            local gx = math.floor((cx + math.cos(ang) * rx) / P) * P
-            local gy = math.floor((cy + math.sin(ang) * ry) / P) * P
+            local gx = math.floor((cx + math.cos(ang) * rx) / B) * B
+            local gy = math.floor((cy + math.sin(ang) * ry) / B) * B
             local glyph = RUNE_GLYPHS[1 + (i - 1) % #RUNE_GLYPHS]
             local pulse = 0.75 + 0.25 * math.sin(r.t * 6 + i)
-            glowBlob(gx, gy, 12 * P, 7 * P, PAL.glow, 0.55 * lit * pulse, 1 + i % 3)
+            glowBlob(gx, gy, 14 * B, 9 * B, PAL.glow, 0.60 * lit * pulse, 1 + i % 3)
+            glowBlob(gx, gy, 7 * B, 5 * B, PAL.ember, 0.35 * lit * pulse, 3)
             for row = 1, 5 do
                 for col = 1, 3 do
                     if glyph[row]:sub(col, col) == "#" then
-                        love.graphics.setColor(PAL.glow[1], PAL.glow[2], PAL.glow[3], lit)
-                        love.graphics.rectangle("fill", gx + (col - 2) * P, gy + (row - 3) * P, P, P)
+                        love.graphics.setColor(PAL.ember[1], PAL.ember[2], PAL.ember[3], lit)
+                        love.graphics.rectangle("fill", gx + (col - 2) * B, gy + (row - 3) * B, B, B)
                     end
                 end
             end
@@ -844,7 +863,9 @@ local function drawRunes()
     -- o círculo que liga as runas fecha quando todas acenderam
     local all = clamp01((r.t - r.dur) / 0.4 + 1)
     if r.t > r.dur * 0.9 then
-        dotRing(cx, cy, rx, ry, P, PAL.glow, 0.7 * all)
+        local breathe = 0.8 + 0.2 * math.sin(r.t * 4)
+        dotRing(cx, cy, rx, ry, P, PAL.glow, 0.75 * all * breathe)
+        dotRing(cx, cy, rx + 3 * P, ry + 2 * P, P, PAL.ember, 0.35 * all * breathe)
     end
     love.graphics.setColor(1, 1, 1, 1)
 end
@@ -1136,6 +1157,7 @@ local function enterStep(st)
         if st.caw then play("bossCrowsCaw", nil, 0.95, 0.08) end
     elseif kind == "land" then
         fly = nil
+        fx.runes = nil
         bossHidden = false
         landed = true
         darkEase = { from = dark, to = 0, t = 0, dur = math.max(0.15, (st.dur or 0.5) * 0.6) }
@@ -1145,20 +1167,27 @@ local function enterStep(st)
         bossClip(st.clip or "land", 12)
         if _G.triggerShake and (st.shake or 0) > 0 then _G.triggerShake(st.shake, 0.38) end
         if _G.jiggleScreen and not seq.reduced then _G.jiggleScreen(1.0) end
-        play("bossLandImpact", "bootImpact")
-        queueSfx(0.45, "bossFeathersSettle", nil)
-        queueSfx(0.15, "bossCrowsCaw", nil, 1.05)
+        -- som do impacto por chefe (`sound`); corvos/penas só pra quem os tem
+        play(st.sound or "bossLandImpact", "bootImpact")
+        local crowsN = st.crows or 5
+        if crowsN > 0 then
+            queueSfx(0.45, "bossFeathersSettle", nil)
+            queueSfx(0.15, "bossCrowsCaw", nil, 1.05)
+        end
+        if st.after then queueSfx(st.afterDelay or 0.4, st.after, nil) end
         if stage and stage.bbox then
             local gx = stage.bbox.cx
             local gy = stage.cy or stage.bbox.bottomY
             spawnDust(gx, gy, st.dust or 12, stage.bbox.width or 120)
             local body = stage.bbox.topY + (stage.bbox.bottomY - stage.bbox.topY) * 0.45
-            spawnCrows(gx, body, st.crows or 5, 260)
-            startHit(gx, body)
-            for _ = 1, 12 do
+            if crowsN > 0 then spawnCrows(gx, body, crowsN, 260) end
+            startHit(gx, body, st.ring)
+            -- lascas do impacto: pena (rei-carniça), lasca de gelo, brasa,
+            -- esporo, pétala — `particle` do passo
+            for _ = 1, (st.burst or 12) do
                 spawnFeather(gx + (love.math.random() - 0.5) * (stage.bbox.width or 120),
                     body + (love.math.random() - 0.5) * 40,
-                    (love.math.random() - 0.5) * 60, -20 + love.math.random() * 10)
+                    (love.math.random() - 0.5) * 60, -20 + love.math.random() * 10, st.particle)
             end
         end
         InteriorFX.gust(0.6, 0.5)
@@ -1327,7 +1356,7 @@ local function exitStep(st)
     if st.kind == "walk_in" then fx.walker = nil; bossHidden = false; landed = true end
     if st.kind == "descend" then fx.desc = nil; bossHidden = false; landed = true
         stopLoop("bossEclipseHum") end
-    if st.kind == "runes" then fx.runes = nil end
+    -- runas ficam acesas até o chefe pousar (`land` as apaga)
     if st.kind == "roots" then stopLoop("bossRootsCrawl") end
     if st.kind == "firewall" and (st.hold or 0) == 0 then fx.fire = nil; stopLoop("bossHellfireWall") end
 end
@@ -1458,7 +1487,23 @@ function BossCinematic.update(dt, game, ctx)
 
     -- kinds dos outros chefes
     if fx.runes then fx.runes.t = fx.runes.t + dt end
-    if fx.riser then fx.riser.t = fx.riser.t + dt; if fx.riser.anim then fx.riser.anim:update(dt) end end
+    if fx.riser then
+        local r = fx.riser
+        r.t = r.t + dt
+        if r.anim then r.anim:update(dt) end
+        -- a tempestade em volta do corpo que sobe: fagulhas do elemento
+        -- (kind "ember" FLUTUA e usa PAL.ember — geada branca no lich) saindo
+        -- da linha do chão, mais densas no começo da subida
+        if stage and stage.bbox and not reducedMotion() then
+            local n = (r.t < r.dur * 0.6) and 3 or 1
+            local gy = stage.cy or stage.bbox.bottomY
+            local wdt = (stage.bbox.width or 120) * 0.9
+            for _ = 1, n do
+                spawnFeather(stage.bbox.cx + (love.math.random() - 0.5) * wdt, gy - love.math.random() * 8,
+                    (love.math.random() - 0.5) * 70, -60 - love.math.random() * 120, "ember")
+            end
+        end
+    end
     if fx.sil then fx.sil.t = fx.sil.t + dt; if fx.sil.anim then fx.sil.anim:update(dt) end end
     if fx.white then
         fx.white.t = fx.white.t + dt

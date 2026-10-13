@@ -94,4 +94,46 @@ return {
             { kind = "hold",   dur = 0.90 },
         },
     },
+
+    -- ATO 2 — Lich da Torre (flutua): o salão GELA. O círculo rúnico do
+    -- chão acende runa por runa (névoa branco-azul sobe), e o lich SOBE do
+    -- piso dentro de uma tempestade de geada, cajado por último (clip
+    -- `rise`), recortado na linha do chão. Impacto = o círculo completa +
+    -- onda de gelo. Morte: se desfaz em geada (lascas) e esfria a cena.
+    tower_lich = {
+        palette = {
+            body = { 0.08, 0.12, 0.26 }, glow = { 0.45, 0.80, 1.00 }, ember = { 0.82, 0.95, 1.00 },
+            flash = { 0.70, 0.88, 1.00 }, ghost = { 0.50, 0.70, 1.00 }, rim = { 0.60, 0.85, 1.00 },
+            particle = { 0.55, 0.70, 0.86 }, particle2 = { 0.86, 0.96, 1.00 },
+        },
+        intro = {
+            { kind = "dark",  dur = 0.80, to = 0.86 },
+            { kind = "runes", dur = 1.60, n = 5 },
+            { kind = "rise",  dur = 1.40, from = "floor", storm = "bossFrostStorm", clip = "rise" },
+            { kind = "land",  dur = 0.55, shake = 8, dust = 6, crows = 0, ring = "ice",
+              particle = "shard", burst = 16, sound = "bossIceCrackle" },
+            { kind = "title", dur = 2.20, clip = "roar" },
+            { kind = "hud",   dur = 0 },
+        },
+        introReduced = {
+            { kind = "dark",  dur = 0.30, to = 0.80 },
+            { kind = "runes", dur = 0.80, n = 5 },
+            { kind = "rise",  dur = 0.70, from = "floor", clip = "rise" },
+            { kind = "land",  dur = 0.40, shake = 3, dust = 3, crows = 0, ring = "ice",
+              particle = "shard", burst = 6, sound = "bossIceCrackle" },
+            { kind = "title", dur = 1.50 },
+            { kind = "hud",   dur = 0 },
+        },
+        death = {
+            { kind = "burst",  dur = 0,    n = 30, particle = "shard", sound = "bossFrostShatter" },
+            { kind = "desat",  dur = 0,    peak = 0.60, rise = 0.40, fall = 1.20 },
+            { kind = "slowmo", dur = 1.40, scale = 0.35, release = 0.35 },
+            { kind = "hold",   dur = 1.10 },
+        },
+        deathReduced = {
+            { kind = "burst",  dur = 0,    n = 12, particle = "shard", sound = "bossFrostShatter" },
+            { kind = "desat",  dur = 0,    peak = 0.45, rise = 0.30, fall = 0.80 },
+            { kind = "hold",   dur = 0.90 },
+        },
+    },
 }

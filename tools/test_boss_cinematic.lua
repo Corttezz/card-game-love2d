@@ -233,16 +233,69 @@ function M.run()
             love.filesystem.getInfo(spec[1]) ~= nil)
     end
 
-    -- ===== 7. i18n =====
+    -- ===== 6c. TODO chefe com roteiro: entrada e morte tocam inteiras =====
+    -- (chefe escondido no começo e visível antes do fim, HUD só depois do
+    -- chefe, duração = soma nominal, escuro zerado, relógio normal; morte
+    -- segura espólios e solta; reducedMotion usa o roteiro curto)
+    local ids = {}
+    for id in pairs(Data) do ids[#ids + 1] = id end
+    table.sort(ids)
+    for _, id in ipairs(ids) do
+        for _, reduced in ipairs({ false, true }) do
+            local tag = id .. (reduced and " (reduced)" or "")
+            _G.gameSettings.reducedMotion = reduced
+            BC.reset()
+            local gb = fakeBoss(id)
+            t:truthy(tag .. ": entrada aceita", BC.startIntro(gb))
+            t:truthy(tag .. ": chefe escondido no comeco", BC.hidesBoss())
+            BC.setStage(stage)
+            local steps = reduced and (Data[id].introReduced or Data[id].intro) or Data[id].intro
+            local nom = BC.duration(steps)
+            local elB, tL, tH = 0, nil, nil
+            while BC.isActive() and elB < nom + 2 do
+                BC.update(DT, gb, { inHall = true })
+                elB = elB + DT
+                if not tL and not BC.hidesBoss() then tL = elB end
+                if not tH and not BC.hidesHud() then tH = elB end
+            end
+            t:falsy(tag .. ": entrada termina sozinha", BC.isActive())
+            t:truthy(tag .. ": chefe aparece antes do fim", tL ~= nil and tL < nom)
+            t:truthy(tag .. ": HUD so depois do chefe", tH ~= nil and tL ~= nil and tH > tL)
+            t:near(tag .. ": duracao = soma nominal", elB, nom, 0.1)
+            t:near(tag .. ": escuro zerado", BC.darkness(), 0, 1e-3)
+            t:eq(tag .. ": relogio normal", ER.getTimeScale(), 1)
+            -- morte
+            BC.reset()
+            BC.setStage(stage)
+            local gdb = fakeBoss(id)
+            gdb._deathHandled = true
+            BC.update(DT, gdb, { inHall = true })
+            t:truthy(tag .. ": morte detectada", BC.isActive() and BC.phase() == "death")
+            t:truthy(tag .. ": morte segura espolios", BC.holdsEnd())
+            local dsteps = reduced and (Data[id].deathReduced or Data[id].death) or Data[id].death
+            local nomD = BC.duration(dsteps)
+            local elD = DT + runUntilDone(gdb, nomD + 2)
+            t:falsy(tag .. ": morte termina", BC.isActive())
+            t:near(tag .. ": duracao da morte = soma nominal", elD, nomD, 0.1)
+            t:eq(tag .. ": relogio restaurado apos a morte", ER.getTimeScale(), 1)
+            t:falsy(tag .. ": espolios liberados", BC.holdsEnd())
+        end
+    end
+    _G.gameSettings.reducedMotion = false
+    BC.reset()
+
+    -- ===== 7. i18n: todo chefe com roteiro tem nome + epiteto nos 5 locales =====
     for _, loc in ipairs({ "pt_BR", "en", "es", "fr", "de" }) do
         local ok, tbl = pcall(require, "src.i18n.locales.boss_cinematics." .. loc)
         t:truthy("locale " .. loc .. " carrega", ok and type(tbl) == "table")
         if ok and type(tbl) == "table" then
             t:truthy(loc .. ": dica de pular com {key}",
                 type(tbl.skip) == "string" and tbl.skip:find("{key}", 1, true) ~= nil)
-            local ck = tbl.carrion_king
-            t:truthy(loc .. ": nome do carrion_king", ck and type(ck.name) == "string" and ck.name ~= "")
-            t:truthy(loc .. ": epiteto do carrion_king", ck and type(ck.epithet) == "string" and ck.epithet ~= "")
+            for _, id in ipairs(ids) do
+                local ck = tbl[id]
+                t:truthy(loc .. ": nome do " .. id, ck and type(ck.name) == "string" and ck.name ~= "")
+                t:truthy(loc .. ": epiteto do " .. id, ck and type(ck.epithet) == "string" and ck.epithet ~= "")
+            end
         end
     end
 
