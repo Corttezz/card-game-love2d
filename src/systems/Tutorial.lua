@@ -356,9 +356,13 @@ Tutorial.SCRIPT = {
           { id = "stakes", spot = "dice_stakes" },
           { id = "once" },
       } },
+    -- Loja v5 (Out/2026): a conversa segue a vitrine nova: ofertas nos
+    -- cavaletes/balcão, PREÇO em cada peça (plaquinha sob a carta, etiqueta
+    -- pendurada na frente do balcão), clique = pergaminho + fita COMPRAR.
     { id = "shop", state = "cardReward",
       when = function() return screenVisible("cardReward", "shop") and anyAnchor("offers") end,
-      lines = { { id = "offers", spot = "offers" }, { id = "refresh", spot = "shop_refresh" },
+      lines = { { id = "offers", spot = "offers" }, { id = "price", spot = "shop_prices" },
+          { id = "buy", spot = "shop_scroll" }, { id = "refresh", spot = "shop_refresh" },
           { id = "dice", spot = "shop_dice" }, { id = "interest" } } },
     { id = "forge", state = "rest",
       when = function() return screenVisible("rest", "forge") and anyAnchor("forge_cards") end,

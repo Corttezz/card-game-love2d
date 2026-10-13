@@ -73,7 +73,9 @@ return {
             bet = "Elige la apuesta y la ficha, y lanza. Cada apuesta muestra su probabilidad.",
         },
         shop = {
-            offers = "¡La *tienda*! Cartas, reliquias y sobres, a cambio de oro.",
+            offers = "¡La *tienda*! Cartas en sus atriles, reliquias y un sobre sobre el mostrador, a cambio de oro.",
+            price = "Cada pieza lleva su *precio*: placa de latón bajo la carta, etiqueta colgando del frente del mostrador para el resto. En rojo, lo que aún no puedes pagar.",
+            buy = "Pulsa una pieza para leerla en el *pergamino*; la compra es la cinta *COMPRAR*. Pasa el ratón y los objetos cuentan lo que hacen.",
             refresh = "¿Nada te gusta? *Actualizar* cambia el escaparate, y cuesta más cada vez.",
             dice = "Y allí, los *Dados del Escriba*: apuesta oro a una tirada de dos dados. Una tirada por tienda.",
             interest = "Ah, y el oro guardado da *intereses*: cada $5 en el bolsillo vale +$1 al ganar una batalla, hasta +$5.",

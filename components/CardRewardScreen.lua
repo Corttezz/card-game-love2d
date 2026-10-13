@@ -2004,13 +2004,30 @@ function CardRewardScreen:_drawShop()
     -- âncoras do narrador do tutorial (ofertas, sino, dados)
     do
         local T = require("src.systems.Tutorial")
-        local occupied = {}
+        local occupied, prices = {}, {}
         for i, offer in ipairs(self.shopOffers or {}) do
             local p = (offer._slot and self.cardPositions[offer._slot]) or self.cardPositions[i]
             if p then occupied[#occupied + 1] = { x = p.x, y = p.y, w = p.w, h = p.h } end
         end
+        -- v5: o recorte das ofertas inclui o CAVALETE/etiqueta de cada peça, e
+        -- as placas de preço (plaquinha da carta, etiqueta pendurada do
+        -- objeto e do sino) têm recorte próprio pra fala do preço
+        local L = self.scene and self.scene.L
+        for _, it in ipairs(self.scene and self.scene.items or {}) do
+            local g = it.geom
+            if g and g.plate and not it.sold then
+                local b = (g.tag or g.plaque) and (g.tag or g.plaque).box or g.plate
+                occupied[#occupied + 1] = g.plate
+                prices[#prices + 1] = b
+            end
+        end
+        if L and L.bell and L.bell.tag then prices[#prices + 1] = L.bell.tag.box end
         T.anchorList("offers", occupied)
-        if self.refreshButton then T.anchorList("shop_refresh", { self.refreshButton }) end
+        T.anchorList("shop_prices", prices)
+        if L and L.scroll then T.anchorList("shop_scroll", { L.scroll }) end
+        if self.refreshButton then
+            T.anchorList("shop_refresh", { self.refreshButton, L and L.bell and L.bell.tag and L.bell.tag.box or nil })
+        end
         if self.diceButton then T.anchorList("shop_dice", { self.diceButton }) end
     end
 

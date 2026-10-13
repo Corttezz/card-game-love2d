@@ -73,7 +73,9 @@ return {
             bet = "Choisissez le pari et la mise, puis lancez. Chaque pari affiche sa probabilité.",
         },
         shop = {
-            offers = "La *boutique* ! Cartes, reliques et paquets, contre de l'or.",
+            offers = "La *boutique* ! Des cartes sur leurs chevalets, des reliques et un paquet sur le comptoir, contre de l'or.",
+            price = "Chaque pièce porte son *prix* : plaque de laiton sous la carte, étiquette pendue au devant du comptoir pour le reste. En rouge, ce que vous ne pouvez pas encore payer.",
+            buy = "Cliquez sur une pièce pour la lire sur le *parchemin* ; l'achat se fait sur le ruban *ACHETER*. Survolez-les et les objets disent ce qu'ils font.",
             refresh = "Rien ne vous plaît ? *Actualiser* change la vitrine, mais coûte plus cher à chaque fois.",
             dice = "Et là-bas, les *Dés du Scribe* : pariez de l'or sur un lancer de deux dés. Un lancer par boutique.",
             interest = "Ah, et l'or gardé rapporte des *intérêts* : chaque tranche de 5 $ vaut +1 $ quand vous gagnez un combat, jusqu'à +5 $.",

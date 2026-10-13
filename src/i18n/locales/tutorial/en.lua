@@ -73,7 +73,9 @@ return {
             bet = "Pick your bet and your chip, then roll. Each bet shows its odds right on it.",
         },
         shop = {
-            offers = "The *shop*! Cards, relics and packs, for gold.",
+            offers = "The *shop*! Cards on their stands, relics and a pack on the counter, all for gold.",
+            price = "Every piece wears its *price*: a brass plate under each card, a hanging tag on the counter front for the rest. Red means you cannot afford it yet.",
+            buy = "Click a piece to read it on the *scroll*; the purchase is the *BUY* ribbon. Hover and the objects tell you what they do.",
             refresh = "Nothing you like? *Refresh* swaps the shelf, but it costs more each time.",
             dice = "And over there, the *Scribe's Dice*: bet gold on a roll of two dice. One roll per shop.",
             interest = "Oh, and saved gold earns *interest*: every $5 in your pocket is worth +$1 when you win a battle, up to +$5.",

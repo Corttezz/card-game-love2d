@@ -73,7 +73,9 @@ return {
             bet = "Escolha a aposta e o valor da ficha, depois lance. A chance de cada aposta está escrita nela.",
         },
         shop = {
-            offers = "A *loja*! Cartas, relíquias e pacotes, a troco de ouro.",
+            offers = "A *loja*! Cartas nos cavaletes, relíquias e um pacote sobre o balcão, a troco de ouro.",
+            price = "O *preço* está em cada peça: placa de latão sob a carta, etiqueta pendurada na frente do balcão para o resto. Em vermelho, o que você ainda não pode pagar.",
+            buy = "Clique numa peça para lê-la no *pergaminho*; a compra é na fita *COMPRAR*. Passe o mouse e os objetos contam o que fazem.",
             refresh = "Nada agradou? *Novas ofertas* troca a vitrine, mas fica mais caro a cada vez.",
             dice = "E ali, os *Dados do Escriba*: aposte ouro num lance de dois dados. Uma jogada por loja.",
             interest = "Ah: ouro guardado rende *juros*. Cada $5 no bolso vale +$1 ao vencer uma batalha, até +$5.",

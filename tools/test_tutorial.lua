@@ -565,6 +565,8 @@ function M.run()
             offers = { x = W * 0.25, y = H * 0.28, w = W * 0.50, h = H * 0.36 },
             reward_skip = { x = W / 2 - 80 * k, y = H * 0.70, w = 160 * k, h = 36 * k },
             shop_refresh = { x = W * 0.62, y = H * 0.84, w = 170 * k, h = 36 * k },
+            shop_prices = { x = W * 0.12, y = H * 0.50, w = W * 0.55, h = H * 0.34 },
+            shop_scroll = { x = W * 0.73, y = H * 0.13, w = W * 0.24, h = H * 0.70 },
             shop_dice = { x = W * 0.42, y = H * 0.84, w = 130 * k, h = 32 * k },
             dice_table = { x = W * 0.32, y = H * 0.25, w = W * 0.36, h = H * 0.22 },
             dice_bets = { x = W * 0.32, y = H * 0.52, w = W * 0.36, h = H * 0.10 },

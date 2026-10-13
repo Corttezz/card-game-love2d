@@ -73,7 +73,9 @@ return {
             bet = "Wähle Wette und Einsatz, dann würfle. Jede Wette zeigt ihre Chance direkt an.",
         },
         shop = {
-            offers = "Der *Laden*! Karten, Relikte und Packungen gegen Gold.",
+            offers = "Der *Laden*! Karten auf Ständern, Relikte und eine Packung auf dem Tresen, alles gegen Gold.",
+            price = "Jedes Stück trägt seinen *Preis*: ein Messingschild unter der Karte, ein Anhänger vorn am Tresen für den Rest. Rot heißt: noch nicht bezahlbar.",
+            buy = "Klicke ein Stück an, um es auf der *Schriftrolle* zu lesen; gekauft wird über das Band *KAUFEN*. Fahre darüber und die Gegenstände erklären sich.",
             refresh = "Nichts dabei? *Erneuern* tauscht die Auslage, kostet aber jedes Mal mehr.",
             dice = "Und dort die *Würfel des Schreibers*: Setze Gold auf einen Wurf mit zwei Würfeln. Ein Wurf pro Laden.",
             interest = "Ach ja: Gespartes Gold bringt *Zinsen*. Je 5 $ in der Tasche gibt es +1 $ bei einem Sieg, bis +5 $.",

@@ -481,3 +481,13 @@ e nomes de carta.
   a loja pra fora no modo shop (mostrava a estrada do bioma atrás do
   pacote); o PackOpenScreen escurece a loja a 0,6 e abre a capa v5 quadro a
   quadro (4x) até o estouro.
+
+### Tutorial do corvo na loja v5 (dono: "ajuste também o tutorial do corvo")
+
+Conversa `shop` do `Tutorial.SCRIPT` ganhou duas falas: `price` (recorte
+`shop_prices` = plaquinhas das cartas + etiquetas penduradas dos objetos e do
+sino) e `buy` (recorte `shop_scroll` = o pergaminho com a fita COMPRAR);
+`offers` passou a descrever cavaletes/balcão e o recorte inclui o cavalete e
+a etiqueta de cada peça; `shop_refresh` inclui a etiqueta do sino. Âncoras
+em `CardRewardScreen:_drawShop`; textos nos 5 `locales/tutorial/*.lua`;
+`test_tutorial` tem os recortes `shop_prices`/`shop_scroll` na mesa falsa.
