@@ -37,6 +37,27 @@ function love.conf(t)
     t.window.x = nil                            -- The x-coordinate of the window's position in the specified display (number)
     t.window.y = nil                            -- The y-coordinate of the window's position in the specified display (number)
 
+    -- SIMULACAO SEM JANELA (Out/2026, pipeline de balanceamento): o dono viu
+    -- "varias janelas do Grimoire" abrindo durante as baterias paralelas.
+    -- Com CARDGAME_HEADLESS=1 (tools/balance.py seta; `love . balance_sim`
+    -- aceita tambem) a janela nasce com 1x1, sem borda e fora de qualquer
+    -- monitor; tools/headless_window.lua (balance_sim.setup) ainda a esconde
+    -- via user32 pra sumir da barra de tarefas. Nao da pra tirar a janela de
+    -- vez (t.window = nil): o jogo e os tools criam canvas/imagem, que exigem
+    -- contexto grafico. O que importa e que NADA fica visivel.
+    -- (love.window.minimize() no load NAO serve: o SDL re-mostra a janela e
+    -- ela volta pra barra de tarefas — medido.)
+    if os.getenv("CARDGAME_HEADLESS") == "1" then
+        t.window.width, t.window.height = 1, 1
+        t.window.minwidth, t.window.minheight = 1, 1
+        t.window.borderless = true
+        t.window.resizable = false
+        t.window.vsync = false
+        t.window.x, t.window.y = -32000, -32000
+        t.window.icon = nil
+        t.console = false
+    end
+
     t.modules.audio = true                      -- Enable the audio module (boolean)
     t.modules.data = true                       -- Enable the data module (boolean)
     t.modules.event = true                      -- Enable the event module (boolean)

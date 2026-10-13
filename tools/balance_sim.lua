@@ -417,6 +417,9 @@ end
 -- Prepara o processo pra bateria (tambem usado por tools/leak_probe.lua).
 -- Devolve o modulo do piloto pronto.
 function M.setup(policy)
+    -- CARDGAME_HEADLESS=1: janela 1x1 fora da tela (conf.lua) + escondida da
+    -- barra de tarefas (tools/headless_window.lua). Primeiro de tudo.
+    require("tools.headless_window").hide()
     _G.EventManager = require("engine.EventManager")
     _G.Event = require("engine.Event")
     local I18n = require("src.i18n.I18n")

@@ -51,7 +51,10 @@ def main():
     ap.add_argument("--seeds", "--seed", dest="seed", type=int, default=720000, help="seed base (run i usa seed+i)")
     ap.add_argument("--seal", type=int, default=0)
     ap.add_argument("--endless", type=int, default=0, help="andares de endless depois da vitoria")
-    ap.add_argument("--procs", type=int, default=os.cpu_count() or 4)
+    # Teto padrao: cores - 2 (regra do dono: a maquina continua usavel e o
+    # jogo dele nao engasga). PIDs dos processos vao para <out>/<label>/pids.txt
+    # para dar para parar a bateria por PID (nunca por nome).
+    ap.add_argument("--procs", type=int, default=max(1, (os.cpu_count() or 4) - 2))
     ap.add_argument("--enemy-power", default="", help='"dano,vida" (Config.Game.ENEMY_POWER)')
     ap.add_argument("--boss-hp", default="", help="multiplicador da vida de chefe/mini-chefe")
     ap.add_argument("--combo", default="", help='"volley=3,wall=5,pair=4" (step das regras)')
@@ -72,7 +75,11 @@ def main():
     work = tempfile.mkdtemp(prefix="balance_")
 
     env = dict(os.environ)
+    env["CARDGAME_HEADLESS"] = "1"      # janela 1x1 fora da tela (conf.lua) + escondida (tools/headless_window.lua)
     env["BALANCE_CLOCK"] = args.clock
+    pids_path = os.path.join(outdir, "pids.txt")
+    with open(pids_path, "w", encoding="utf-8") as f:
+        f.write(f"{os.getpid()} balance.py\n")
     env["BALANCE_SEAL"] = str(args.seal)
     env["BALANCE_ENDLESS"] = str(args.endless)
     env["BALANCE_LABEL"] = label
@@ -114,6 +121,9 @@ def main():
             [LOVE, ".", "balance_sim", str(job["size"]), job["cls"], str(args.seed + job["start"]), job["pilot"]],
             cwd=args.dir, env=e, stdout=log, stderr=subprocess.STDOUT)
         job["proc"], job["log"], job["json"] = p, log, e["BALANCE_JSON"]
+        job["t0"] = time.time()
+        with open(pids_path, "a", encoding="utf-8") as f:
+            f.write(f"{p.pid} lovec {tag}\n")
         running.append(job)
 
     total = len(jobs)

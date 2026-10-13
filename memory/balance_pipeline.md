@@ -88,6 +88,26 @@ de inchar o deck é que precisa de atenção.
   próprias por replay, `CardFrame.render`/`ComboBanner.show` stubados.
 - Blocos de bateria com `CARDGAME_IDENTITY` próprio: saves `*.tool.lua`
   isolados; o save do jogador nunca é tocado.
+- **Zero janela visível** (requisito do dono: "várias janelas do Grimoire"
+  apareciam durante as baterias). `CARDGAME_HEADLESS=1` → `conf.lua` cria a
+  janela 1×1, sem borda, em (−32000, −32000); `tools/headless_window.lua`
+  (chamado no `balance_sim.setup`) troca o título por um único e esconde a
+  própria janela via FFI `user32.ShowWindow(SW_HIDE)` — some da barra de
+  tarefas. Esconder de FORA (balance.py/ctypes) e `love.window.minimize()` no
+  load NÃO funcionam: o SDL re-mostra a janela se o hide chega antes do fim
+  da criação (medido com user32 `IsWindowVisible`). Não dá pra
+  `t.window = nil`: o jogo cria canvas/imagens, que exigem contexto gráfico.
+  `balance.py` seta o env; `love . balance_sim` direto aceita o env também.
+  **Solução real, ainda não feita:** `t.window = nil` + `t.modules.graphics =
+  false` sob o env, com o caminho headless do jogo sem tocar em
+  `love.graphics` (CardDatabase/CardFrame criam canvas por carta,
+  ImageCache/IconLoader carregam PNG, CombatSequence lê `getWidth`,
+  `balance_sim.setup` cria o canvas compartilhado). É refactor de guardas em
+  ~6 módulos; até lá a janela 1×1 escondida é o que garante "zero visível".
+- **Processos registrados e limitados**: `balance.py` usa por padrão
+  `cores − 2` processos e grava `reports/balance/<label>/pids.txt` (o seu
+  PID + cada `lovec`). Parar uma bateria = matar ESSES PIDs, nunca por nome
+  (o `love.exe .` do dono pode estar aberto).
 
 ## Comandos
 
