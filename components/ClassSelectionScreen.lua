@@ -34,6 +34,7 @@ local ClassEmblem = require("src.ui.ClassEmblem")
 local ClassHeroFx = require("src.ui.ClassHeroFx")
 local GrimoirePage = require("src.ui.GrimoirePage")
 local Layout = require("src.ui.ClassSelectLayout")
+local HelpBadge = require("src.ui.HelpBadge")
 local UnlockSystem = require("src.systems.UnlockSystem")
 local Debug = require("src.core.Debug")
 local I18n = require("src.i18n.I18n")
@@ -162,6 +163,16 @@ function ClassSelectionScreen:createClassButtons()
     self.buttons.sealPrev = invisible(lay.sealPrev, function() self:changeSeal(-1) end)
     self.buttons.sealNext = invisible(lay.sealNext, function() self:changeSeal(1) end)
     self.buttons.back = invisible(lay.back, function() self:goBackToMenu() end)
+    -- "?" do corvo narrador: à direita da escolha de classe (a banda do pé
+    -- tem folga até o marcador; junto do "voltar" ele brigaria com o selo).
+    -- Reabre a conversa da seleção a qualquer momento (Tutorial.explain).
+    do
+        local c, r = lay.chooser, 13
+        self._help = { cx = c.x + c.w + 28 + r, cy = c.y + math.floor(c.h / 2), r = r }
+        self.buttons.help = invisible(HelpBadge.rect(self._help.cx, self._help.cy, r), function()
+            require("src.systems.Tutorial").explain("class_select")
+        end)
+    end
     self:_clampSeal()
     self:_syncButtons()
 
@@ -504,7 +515,7 @@ function ClassSelectionScreen:draw()
         local b = p.btn
         if b then NavCursor.target(b, b.x, b.y, b.width, b.height) end
     end
-    for _, key in ipairs({ "start", "details", "sealPrev", "sealNext", "back" }) do
+    for _, key in ipairs({ "start", "details", "sealPrev", "sealNext", "back", "help" }) do
         local b = self.buttons[key]
         if b and b.visible ~= false and not b.disabled then
             NavCursor.target(b, b.x, b.y, b.width, b.height)
@@ -523,6 +534,8 @@ function ClassSelectionScreen:draw()
         local r = lay.seal
         require("src.systems.Tutorial").anchor("seal_band", r.x, r.y, r.w, r.h)
     end
+    self:_drawHelp()
+    self:_reportTutorialAnchors()
     -- tooltip da carta inicial: UM dono só (a carta sob o mouse/foco, como
     -- a mão do combate); com a inspeção aberta, nenhum
     local owner = self:tooltipOwner()
@@ -967,6 +980,33 @@ function ClassSelectionScreen:_drawStartRibbon()
     ink(Palette.PARCHMENT_LIGHT)
     TextFit.print(label, r.x + 8, y + math.floor((r.h - f:getHeight()) / 2),
         { size = size, minSize = size - 2, maxW = r.w - 16, align = "center" })
+end
+
+-- "?" do narrador (HelpBadge, o mesmo dos dados da loja).
+function ClassSelectionScreen:_drawHelp()
+    local h, b = self._help, self.buttons.help
+    if not (h and b) then return end
+    HelpBadge.draw(h.cx, h.cy, h.r, b.hover, FontManager.getFont(self.layout.bodyFont))
+end
+
+-- Âncoras do corvo narrador (conversa "class_select" em src/systems/Tutorial):
+-- emblema grande, fita do COMEÇAR, marcador DETALHES, as classes acorrentadas.
+function ClassSelectionScreen:_reportTutorialAnchors()
+    local T = require("src.systems.Tutorial")
+    local lay = self.layout
+    local hb = self._heroBox or self:_heroGeometry()
+    T.anchor("class_hero", hb.cx - hb.w / 2, hb.cy - hb.h / 2, hb.w, hb.h)
+    if self.buttons.start and self.buttons.start.visible ~= false then
+        T.anchor("class_start", lay.start.x, lay.start.y, lay.start.w, lay.start.h)
+    end
+    if self.buttons.details and self.buttons.details.visible ~= false then
+        T.anchor("class_details", lay.details.x, lay.details.y, lay.details.w, lay.details.h)
+    end
+    local locked = {}
+    for _, p in ipairs(self.panels) do
+        if not p.unlocked then locked[#locked + 1] = p.medallion end
+    end
+    T.anchorList("class_locked", locked)
 end
 
 function ClassSelectionScreen:_drawBack()

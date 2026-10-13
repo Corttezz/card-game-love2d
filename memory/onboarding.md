@@ -35,6 +35,12 @@ sem sentido".
 1ª vez: `boss` e `elite` (1º turno, depois da entrada), `block` (zera no seu
 turno), `combo`, `orbs` (mago), `jokers`, `rewards`, `dice`, `shop`, `forge`,
 `rest`, `event`, `fork`, `endless`, `seals` (com selo liberado).
+Na seleção de classe (1ª visita): `class_select` (emblema grande → passiva
+do Guerreiro lida de `classes.warrior.passive_*` → fita COMEÇAR → classes
+acorrentadas com o requisito LIDO de `UnlockSystem.getClassUnlockInfo`, fala
+pulada se nenhuma estiver bloqueada → marcador DETALHES); o "?" ao lado da
+escolha reabre (`Tutorial.explain`). Falas aceitam `vars()` (dado vivo) e
+`cond()` (pular).
 
 ## Regras
 

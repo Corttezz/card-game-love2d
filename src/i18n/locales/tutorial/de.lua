@@ -47,8 +47,8 @@ return {
             reset = "Du hast *Block* bekommen: Er fängt den nächsten Schlag ab. Aber Achtung: Block *verfällt zu Beginn deines Zugs*. Aufsparen geht nicht.",
         },
         combo = {
-            seal = "Sieh mal: Karten auf deiner Hand *kombinieren*! ZUSAMMEN im selben Zug gespielt, bringen sie mehr. Die Vorschau zeigt das Siegel *+COMBO*.",
-            guide = "Die vollständige Combo-Liste steht im *Leitfaden*, im Pausenmenü.",
+            seal = "Spiel mehrere Karten ZUSAMMEN: Jeder Angriff nach dem ersten macht mehr Schaden (*Salve*), jede Verteidigung nach der ersten gibt mehr Block (*Bollwerk*), und gleiche Karten zählen mehr (*Paar*).",
+            guide = "Das Siegel über einer Karte zeigt den Bonus, den sie jetzt bekäme. Die ganze Liste steht im *Leitfaden*, im Pausenmenü.",
         },
         orbs = {
             pulse = "Deine *Orbs*! Jeder pulsiert am Ende deines Zugs, und die Zahl darauf ist der Effekt.",
@@ -94,6 +94,13 @@ return {
             cycle = "Hinter dem letzten Boss liegt *Endlos*. In jedem Zyklus aus acht Etagen wählst du einen *Fluch*.",
             grow = "Die Gegner wachsen mit jedem Zyklus, ohne Grenze. Wie weit trägt dich dein Grimoire?",
         },
+        class_select = {
+            welcome = "Krah! Bevor die Reise beginnt, wähle, wer das Grimoire führt. Für den Anfang gibt es nichts Besseres als den *Krieger*.",
+            warrior = "Der Krieger schlägt hart zu und steckt viel ein. Seine Passive heißt *{passive}*: {rule}",
+            start = "Fang hier an. Wenn du bereit bist, öffnest du die Reise mit diesem Band.",
+            locked = "Die anderen Klassen liegen in Ketten und werden durchs Spielen befreit. {list}",
+            details = "Und dieses Lesezeichen öffnet die *Details* der Klasse: Startkarten und Zahlen.",
+        },
         seals = {
             unlocked = "Gewonnen! Jetzt kannst du die *Grimoire-Siegel* brechen: Jedes Siegel ist eine härtere Regel, und sie stapeln sich.",
             score = "Mehr Siegel, mehr Punkte. Gewinne mit einem Siegel, um das nächste freizuschalten, mit derselben Klasse.",
@@ -104,7 +111,7 @@ return {
         tab_combos = "Combos",
         tab_glossary = "Glossar",
         examples = "Z. B.: {cards}",
-        intro = "Combos gelten für Karten, die ZUSAMMEN gespielt werden. Das Siegel +COMBO auf der Hand zeigt, wenn einer bereit ist.",
+        intro = "Combos gelten für Karten, die ZUSAMMEN gespielt werden. Das Siegel über einer Karte auf der Hand zeigt, wie viel Combo-Bonus sie bekäme.",
         close_hint = "Esc / B schließt · < > Reiter",
         pause_shortcut = "Leitfaden [G]",
     },

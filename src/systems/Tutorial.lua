@@ -324,10 +324,43 @@ Tutorial.SCRIPT = {
     { id = "endless", state = "*",
       when = function() return screenVisible("endless") and anyAnchor("curse_options") end,
       lines = { { id = "cycle", spot = "curse_options" }, { id = "grow" } } },
+    -- Seleção de classe, 1ª visita: o Guerreiro (única aberta), a fita de
+    -- começar, as acorrentadas (requisito LIDO do UnlockSystem) e o marcador
+    -- de detalhes. Reabre pelo "?" da tela (Tutorial.explain).
+    { id = "class_select", state = "classSelection",
+      when = function() return anyAnchor("class_hero") and anyAnchor("class_start") end,
+      lines = {
+          { id = "welcome", spot = "class_hero" },
+          { id = "warrior", spot = "class_hero", vars = function()
+              local I18n = require("src.i18n.I18n")
+              return { passive = I18n.t("classes.warrior.passive_name"),
+                       rule = I18n.t("classes.warrior.passive_short") }
+          end },
+          { id = "start", spot = "class_start" },
+          { id = "locked", spot = "class_locked", cond = function() return Tutorial.lockedClassesText() ~= "" end,
+            vars = function() return { list = Tutorial.lockedClassesText() } end },
+          { id = "details", spot = "class_details" },
+      } },
     { id = "seals", state = "classSelection",
       when = function() return anyAnchor("seal_band") end,
       lines = { { id = "unlocked", spot = "seal_band" }, { id = "score", spot = "seal_band" } } },
 }
+
+-- "*Mago*: Vença o chefe do Ato 2. *Ladino*: ..." — classes bloqueadas
+-- com o requisito REAL (UnlockSystem.getClassUnlockInfo); "" se nenhuma.
+function Tutorial.lockedClassesText()
+    local I18n = require("src.i18n.I18n")
+    local US = require("src.systems.UnlockSystem")
+    local parts = {}
+    for _, id in ipairs({ "warrior", "mage", "rogue" }) do
+        local info = US.getClassUnlockInfo(id)
+        if info and not info.unlocked then
+            parts[#parts + 1] = "*" .. I18n.t("classes." .. id .. ".name") .. "*: "
+                .. I18n.t(info.reqKey, info.vars) .. "."
+        end
+    end
+    return table.concat(parts, " ")
+end
 
 local function byId(id)
     for _, d in ipairs(Tutorial.SCRIPT) do if d.id == id then return d end end
@@ -372,9 +405,16 @@ local function eligible(def, state, game)
     return res and true or false
 end
 
+-- `line.vars()` (opcional) preenche a fala com dado VIVO (requisito de
+-- classe do UnlockSystem, passiva da classe): o texto nunca crava número.
 local function lineText(conv, line)
     local I18n = require("src.i18n.I18n")
-    return I18n.t("tutorial.script." .. conv.id .. "." .. line.id, nil, conv.id .. "." .. line.id)
+    local vars
+    if line.vars then
+        local ok, v = pcall(line.vars)
+        if ok then vars = v else print("[Tutorial] vars da fala '" .. line.id .. "' falharam: " .. tostring(v)) end
+    end
+    return I18n.t("tutorial.script." .. conv.id .. "." .. line.id, vars, conv.id .. "." .. line.id)
 end
 Tutorial.lineText = lineText
 
@@ -402,10 +442,20 @@ local function finish(markSeen)
 end
 
 -- Próxima fala (ou fim da conversa).
+-- `line.cond()` (opcional) falso = a fala não se aplica agora (ex.: nenhuma
+-- classe bloqueada) e é pulada.
+local function lineApplies(line)
+    if not line.cond then return true end
+    local ok, res = pcall(line.cond)
+    return ok and res and true or false
+end
+
 local function nextLine(game)
     if not active then return end
-    if active.line < #active.def.lines then
-        active.line = active.line + 1
+    local i = active.line + 1
+    while i <= #active.def.lines and not lineApplies(active.def.lines[i]) do i = i + 1 end
+    if i <= #active.def.lines then
+        active.line = i
         startLine(game)
     else
         finish(true)

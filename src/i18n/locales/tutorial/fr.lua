@@ -47,8 +47,8 @@ return {
             reset = "Vous avez gagné du *Blocage* : il absorbe le prochain coup. Mais attention : le Blocage *repart à zéro au début de votre tour*. Impossible de le garder.",
         },
         combo = {
-            seal = "Regardez : des cartes de votre main *se combinent* ! Jouées ENSEMBLE dans le même tour, elles rapportent plus. L'aperçu affiche le sceau *+COMBO*.",
-            guide = "La liste complète des combos se trouve dans le *Guide*, dans le menu Pause.",
+            seal = "Jouez plusieurs cartes ENSEMBLE : chaque attaque après la première frappe plus fort (*Salve*), chaque défense après la première donne plus de Blocage (*Rempart*), et les cartes identiques valent plus (*Paire*).",
+            guide = "Le sceau au-dessus d'une carte montre le bonus qu'elle gagnerait maintenant. La liste complète est dans le *Guide*, dans le menu Pause.",
         },
         orbs = {
             pulse = "Vos *orbes* ! Chacun pulse à la fin de votre tour, et le chiffre inscrit dessus est l'effet.",
@@ -94,6 +94,13 @@ return {
             cycle = "Au-delà du dernier boss s'étend l'*Infini*. À chaque cycle de huit étages, vous choisissez une *malédiction*.",
             grow = "Les ennemis grandissent à chaque cycle, sans limite. Jusqu'où tiendra votre grimoire ?",
         },
+        class_select = {
+            welcome = "Croâ ! Avant le voyage, choisissez qui portera le grimoire. Pour commencer, rien ne vaut le *Guerrier*.",
+            warrior = "Le Guerrier frappe fort et encaisse les coups. Sa passive, c'est *{passive}* : {rule}",
+            start = "Commencez par ici. Quand vous êtes prêt, ouvrez le voyage avec ce ruban.",
+            locked = "Les autres classes sont enchaînées, et c'est en jouant qu'on les libère. {list}",
+            details = "Et ce signet ouvre les *détails* de la classe : cartes de départ et chiffres.",
+        },
         seals = {
             unlocked = "Victoire ! Vous pouvez maintenant briser les *Sceaux du Grimoire* : chaque sceau est une règle plus dure, et ils se cumulent.",
             score = "Plus de sceaux, plus de points. Gagnez avec un sceau pour débloquer le suivant, avec la même classe.",
@@ -104,7 +111,7 @@ return {
         tab_combos = "Combos",
         tab_glossary = "Glossaire",
         examples = "Ex. : {cards}",
-        intro = "Les combos comptent entre cartes jouées ENSEMBLE, dans la même main. Le sceau +COMBO vous prévient quand un combo est prêt.",
+        intro = "Les combos comptent entre cartes jouées ENSEMBLE, dans le même coup. Le sceau au-dessus d'une carte en main montre le bonus de combo qu'elle gagnerait.",
         close_hint = "Échap / B ferme · < > onglets",
         pause_shortcut = "Guide [G]",
     },

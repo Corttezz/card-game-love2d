@@ -3,7 +3,7 @@
 -- jornada — uma PNG por fala da conversa, num tamanho de janela FALSIFICADO.
 --
 --   love . test_one screenshot_tutorial <cena>:<locale>:<WxH>
---   cenas: rewards · shop · dice · rest · forge · endless · seals
+--   cenas: rewards · shop · dice · rest · forge · endless · seals · class
 --   ex.:   love . test_one screenshot_tutorial shop:de:1920x1080
 --
 -- Saída (save dir): tut_<cena>_<fala>_<locale>_<W>x<H>.png
@@ -76,6 +76,17 @@ function M.run(arg)
         drawScreen = function() topBar:draw(); screen:draw() end
         Tutorial.setScreens({ endless = screen })
         assert(RM.pending(run), "sem maldição pendente")
+    elseif scene == "class" then
+        -- 1ª visita de verdade: perfil novo, sem o override de ferramenta
+        -- (mago e ladino acorrentados)
+        local US = require("src.systems.UnlockSystem")
+        require("engine.ProfileStats")._swapForTests({ runs = 0, wins = 0 })
+        US.setOverrideAll(false)
+        US._resetForTests()
+        screen = require("components.ClassSelectionScreen"):new()
+        screen:show(function() end, function() end)
+        convId = "class_select"
+        drawScreen = function() screen:draw() end
     elseif scene == "seals" then
         local CSS = require("components.ClassSelectionScreen")
         CSS._sealCap = function() return 3 end   -- selos já liberados

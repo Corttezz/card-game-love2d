@@ -254,6 +254,106 @@ function M.run()
     run.currentNode = { type = "battle" }
     Tutorial._quiet = true
 
+    -- ===== 4b. seleção de classe (1ª visita) =====
+    -- Perfil NOVO de verdade (sem o override de ferramenta): só o Guerreiro
+    -- aberto; o texto das acorrentadas tem que ser o requisito REAL.
+    do
+        local UnlockSystem = require("src.systems.UnlockSystem")
+        local prevOverride = UnlockSystem.isOverrideAll()
+        local prevProf = ProfileStats._swapForTests({ runs = 0, wins = 0 })
+        UnlockSystem.setOverrideAll(false)
+        UnlockSystem._resetForTests()
+        local txt = Tutorial.lockedClassesText()
+        local missingReq = {}
+        for _, id in ipairs({ "mage", "rogue" }) do
+            local info = UnlockSystem.getClassUnlockInfo(id)
+            t:falsy("perfil novo: " .. id .. " bloqueado", info.unlocked)
+            local req = I18n.t(info.reqKey, info.vars)
+            if not txt:find(req, 1, true) then missingReq[#missingReq + 1] = id end
+        end
+        t:eq("acorrentadas: o corvo lê o requisito do UnlockSystem (mago e ladino)",
+            table.concat(missingReq, ","), "")
+        t:falsy("acorrentadas: o Guerreiro (aberto) não entra na lista",
+            txt:find(I18n.t("classes.warrior.name"), 1, true))
+
+        -- tela de verdade em 3 tamanhos: âncoras na tela, corvo sem cobrir nada
+        local CSS = require("components.ClassSelectionScreen")
+        local origW, origH, origD = love.graphics.getWidth, love.graphics.getHeight, love.graphics.getDimensions
+        local origReal = UiScale.realDimensions
+        local badCS = {}
+        for _, sz in ipairs({ { 1024, 768 }, { 1280, 800 }, { 1920, 1080 } }) do
+            local W, H = sz[1], sz[2]
+            love.graphics.getWidth = function() return W end
+            love.graphics.getHeight = function() return H end
+            love.graphics.getDimensions = function() return W, H end
+            UiScale.realDimensions = function() return W, H end
+            Tutorial._reset()
+            local scr = CSS:new()
+            scr:show(function() end, function() end)
+            local cv = love.graphics.newCanvas(W, H)
+            love.graphics.setCanvas(cv)
+            love.graphics.origin()
+            scr:draw()
+            love.graphics.setCanvas()
+            local tag = W .. "x" .. H
+            for _, id in ipairs({ "class_hero", "class_start", "class_details", "class_locked" }) do
+                local a = Tutorial.anchorRect(id)
+                if not a then
+                    badCS[#badCS + 1] = tag .. " sem âncora " .. id
+                elseif a.x < 0 or a.y < 0 or a.x + a.w > W or a.y + a.h > H then
+                    badCS[#badCS + 1] = tag .. " " .. id .. " fora da tela"
+                end
+            end
+            -- o "?" não invade a escolha, a página, o selo nem o voltar
+            local hb = scr.buttons.help
+            local hr = { x = hb.x, y = hb.y, w = hb.width, h = hb.height }
+            for _, k in ipairs({ "chooser", "page", "seal", "back", "details", "start" }) do
+                if Narrator.overlap(hr, scr.layout[k]) > 0 then badCS[#badCS + 1] = tag .. " '?' cobre " .. k end
+            end
+            -- a conversa inteira, fala a fala, sem o corvo cobrir o recorte
+            Tutorial._show("class_select", nil, nil)
+            local conv = Tutorial.byId("class_select")
+            for i, line in ipairs(conv.lines) do
+                local spot = Tutorial.spotRect(line.spot)
+                local L = Tutorial.layoutFor(Tutorial.lineText(conv, line), spot, line, false)
+                local ok, errs = Narrator.validate(L, W, H, spot, Tutorial.avoidZones())
+                if not ok then badCS[#badCS + 1] = tag .. " " .. line.id .. ": " .. table.concat(errs, "; ") end
+                if line.spot and not spot then badCS[#badCS + 1] = tag .. " " .. line.id .. " sem recorte" end
+            end
+            -- ordem: boas-vindas → guerreiro → começar → acorrentadas → detalhes
+            local seq = { Tutorial.activeLine() }
+            for _ = 1, 8 do
+                Tutorial.advance(); Tutorial.advance()
+                if Tutorial.activeLine() and Tutorial.activeLine() ~= seq[#seq] then seq[#seq + 1] = Tutorial.activeLine() end
+            end
+            if tag == "1024x768" then
+                t:eq("seleção de classe: ordem das falas", table.concat(seq, ">"),
+                    "welcome>warrior>start>locked>details")
+            end
+            Tutorial._reset()
+        end
+        love.graphics.getWidth, love.graphics.getHeight, love.graphics.getDimensions = origW, origH, origD
+        UiScale.realDimensions = origReal
+        for i = 1, math.min(6, #badCS) do print("     " .. badCS[i]) end
+        t:eq("seleção de classe: âncoras na tela e corvo sem cobrir o recorte (3 tamanhos)", #badCS, 0)
+
+        -- tudo liberado: a fala das acorrentadas é PULADA
+        UnlockSystem.setOverrideAll(true)
+        t:eq("nenhuma classe bloqueada: lista vazia", Tutorial.lockedClassesText(), "")
+        Tutorial._show("class_select", "start", nil)
+        Tutorial.advance(); Tutorial.advance()
+        t:eq("nenhuma bloqueada: de 'começar' vai direto pros detalhes", Tutorial.activeLine(), "details")
+        Tutorial._reset()
+        -- "?" da tela reabre mesmo vista e com o tutorial desligado
+        ProfileStats.markTipSeen("class_select")
+        t:truthy("'?' (explain) reabre a conversa já vista", Tutorial.explain("class_select"))
+        Tutorial._reset()
+
+        UnlockSystem.setOverrideAll(prevOverride)
+        ProfileStats._swapForTests(prevProf)
+        UnlockSystem._resetForTests()
+    end
+
     -- ===== 5. desligar / recomeçar / disco =====
     _G.gameSettings = _G.gameSettings or {}
     local prevTips = _G.gameSettings.tipsEnabled

@@ -47,8 +47,8 @@ return {
             reset = "Você ganhou *Bloqueio*: ele absorve o próximo golpe. Mas atenção: o Bloqueio *zera no começo do seu turno*. Não dá para guardar.",
         },
         combo = {
-            seal = "Olha só: cartas da sua mão *combinam*! Jogadas JUNTAS, no mesmo turno, rendem mais. A prévia mostra o selo *+COMBO*.",
-            guide = "A lista completa de combos mora no *Guia*, no menu de Pausa.",
+            seal = "Jogue várias cartas JUNTAS: cada ataque depois do primeiro ganha dano (*Saraivada*), cada defesa depois da primeira ganha Bloqueio (*Muralha*) e cartas iguais valem mais (*Par*).",
+            guide = "O selo em cima da carta mostra o bônus que ela ganharia agora. A lista completa está no *Guia*, no menu de Pausa.",
         },
         orbs = {
             pulse = "Seus *orbes*! Cada um pulsa no fim do seu turno, e o número escrito nele é o efeito.",
@@ -94,6 +94,13 @@ return {
             cycle = "Além do último chefe, o *Sem Fim*. A cada ciclo de oito andares, você escolhe uma *maldição*.",
             grow = "Os inimigos crescem a cada ciclo, sem limite. Até onde o seu grimório aguenta?",
         },
+        class_select = {
+            welcome = "Croac! Antes da jornada, escolha quem vai empunhar o grimório. Para começar, ninguém melhor que o *Guerreiro*.",
+            warrior = "O Guerreiro bate firme e aguenta pancada. A passiva dele é *{passive}*: {rule}",
+            start = "Comece por aqui. Quando estiver pronto, é só abrir a jornada nesta fita.",
+            locked = "As outras classes estão acorrentadas e se libertam jogando. {list}",
+            details = "E este marcador abre os *detalhes* da classe: as cartas iniciais e os números.",
+        },
         seals = {
             unlocked = "Você venceu! Agora pode romper os *Selos do Grimório*: cada selo é uma regra mais dura, e eles se acumulam.",
             score = "Mais selos, mais pontos. Vença num selo para liberar o próximo, com a mesma classe.",
@@ -104,7 +111,7 @@ return {
         tab_combos = "Combos",
         tab_glossary = "Glossário",
         examples = "Ex.: {cards}",
-        intro = "Combos valem entre cartas jogadas JUNTAS, na mesma leva. O selo +COMBO na mão avisa quando um está montado.",
+        intro = "Combos valem entre cartas jogadas JUNTAS, na mesma leva. O selo em cima da carta da mão mostra quanto ela ganharia de combo.",
         close_hint = "Esc / B fecha · < > abas",
         pause_shortcut = "Guia [G]",
     },

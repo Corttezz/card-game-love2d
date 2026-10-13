@@ -47,8 +47,8 @@ return {
             reset = "You gained *Block*: it soaks up the next blow. But mind this: Block *resets at the start of your turn*. You can't save it.",
         },
         combo = {
-            seal = "Look: cards in your hand *combine*! Played TOGETHER in the same turn, they hit harder. The preview shows the *+COMBO* seal.",
-            guide = "The full list of combos lives in the *Guide*, in the Pause menu.",
+            seal = "Play several cards TOGETHER: each attack after the first deals more damage (*Volley*), each defense after the first gives more Block (*Wall*), and matching cards are worth more (*Pair*).",
+            guide = "The seal above a card shows the bonus it would get right now. The full list is in the *Guide*, in the Pause menu.",
         },
         orbs = {
             pulse = "Your *orbs*! Each one pulses at the end of your turn, and the number written on it is the effect.",
@@ -94,6 +94,13 @@ return {
             cycle = "Beyond the final boss lies the *Endless*. Every cycle of eight floors, you choose a *curse*.",
             grow = "Enemies grow every cycle, with no limit. How far can your grimoire go?",
         },
+        class_select = {
+            welcome = "Caw! Before the journey, choose who will wield the grimoire. To begin, nobody beats the *Warrior*.",
+            warrior = "The Warrior hits hard and takes a beating. The Warrior's passive is *{passive}*: {rule}",
+            start = "Start here. When you're ready, open the journey with this ribbon.",
+            locked = "The other classes are in chains, and playing sets them free. {list}",
+            details = "And this bookmark opens the class *details*: starting cards and numbers.",
+        },
         seals = {
             unlocked = "You won! Now you can break the *Grimoire Seals*: each seal is a harsher rule, and they stack.",
             score = "More seals, more points. Win on a seal to unlock the next one, with the same class.",
@@ -104,7 +111,7 @@ return {
         tab_combos = "Combos",
         tab_glossary = "Glossary",
         examples = "E.g.: {cards}",
-        intro = "Combos count between cards played TOGETHER, in the same play. The +COMBO seal in your hand tells you when one is ready.",
+        intro = "Combos count between cards played TOGETHER, in the same play. The seal above a card in your hand shows how much combo bonus it would get.",
         close_hint = "Esc / B closes · < > tabs",
         pause_shortcut = "Guide [G]",
     },
