@@ -130,3 +130,29 @@ UMA PINTURA com objetos apoiados nela.
   Capturas fiéis à escala: `love . test_one screenshot_uiscale pt_BR:shop`;
   quadros de compra/sino: `SHOP_W=1280 SHOP_H=720 love . screenshot_shop fx`
   + `python tools/pixellab_shop_props.py sheet <tag>`.
+
+### Fechamento (fase C)
+
+- **Placas**: carta = FAIXA DE TINTA com a raridade na cor (clareada) + placa
+  de latão do preço logo abaixo (texto escuro) + etiqueta pendurada do canto
+  da placa balançando no hover (detalhe); objeto = placa de latão com efeito
+  curto / nome do pacote (quebra em 2 linhas, nunca reticências) + preço.
+  Oferta do dia: etiqueta vermelha PRESA à placa (torta no canto) + brilho
+  âmbar no objeto. O copo de dados está SEMPRE na mesa (o clique é que
+  depende de `_G.openScribeDice`; `screenshot_uiscale` registra um stub).
+- **Perf** (`SHOP_W=2560 SHOP_H=1440 SHOP_FRAMES=400 love . screenshot_shop
+  perf`, vsync desligado, k=1): balcão em perspectiva 1,2 a 1,6 ms/quadro
+  contra 1,7 a 1,9 da vitrine antiga (b82efa13, mesmo tool numa worktree).
+  Meta era ≤ antiga + 1 ms. Com vsync a medida vira 1/Hz do monitor (4,17 ms
+  a 240 Hz): o modo perf desliga.
+- **Teclado/pad**: cartas registram no draw da cena (chave = instância com
+  `shopOffer`), relíquia/pacote em `NavCursor.target("offer:<slot>")`,
+  COMPRAR/CONTINUAR são Buttons, sino/copo hitboxes invisíveis; X = sino,
+  Y = CONTINUAR, LB = "?" dos dados. `CARDGAME_IDENTITY=<limpa> love .
+  nav_flow` atravessa a loja (A na carta seleciona, A no COMPRAR compra,
+  CONTINUAR pelo foco): 30/30. Com a identidade `lojacena` (run.tool.lua
+  salvo pelas capturas) o fluxo morre na seleção de classe, antes da loja:
+  rode com identidade limpa.
+- **UiScale**: `components.CardRewardScreen` já estava em `UiScale.SCREENS`;
+  as capturas fiéis saem de `love . test_one screenshot_uiscale pt_BR:shop`
+  (o `screenshot_shop` captura a k=1: compare layouts, não o tamanho).

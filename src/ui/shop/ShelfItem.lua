@@ -77,13 +77,25 @@ function ShelfItem.new(kind, offer, slot)
     self.slide = { x = 0 }       -- deslize de reposição (sino)
     self.sold = offer and offer.purchased or false
     self.deny = 0
+    self.tag = { angle = 0, vel = 0 }   -- etiqueta pendurada da placa (detalhe)
     Moveable.initJuice(self)
     return self
 end
 
+-- Pêndulo amortecido (~1,25 Hz, assenta em ~0,6 s).
+local TAG_OMEGA2, TAG_DAMP = 62, 5.5
+function ShelfItem.stepPendulum(tg, dt)
+    if reducedMotion() then tg.angle, tg.vel = 0, 0 return end
+    local h = math.min(dt, 1 / 30)
+    local acc = -TAG_OMEGA2 * math.sin(tg.angle) - TAG_DAMP * tg.vel
+    tg.vel = tg.vel + acc * h
+    tg.angle = tg.angle + tg.vel * h
+    if math.abs(tg.angle) < 0.002 and math.abs(tg.vel) < 0.02 then tg.angle, tg.vel = 0, 0 end
+end
+
 function ShelfItem:exportFx()
     return { hover = self.hover, hot = self.hot, juice = self.juice, entry = self.entry,
-             slide = self.slide, deny = self.deny, dustSeed = self.dustSeed }
+             slide = self.slide, deny = self.deny, dustSeed = self.dustSeed, tag = self.tag }
 end
 
 function ShelfItem:importFx(fx)
@@ -93,6 +105,7 @@ function ShelfItem:importFx(fx)
     self.slide = fx.slide or self.slide
     self.deny = fx.deny or 0
     self.dustSeed = fx.dustSeed
+    self.tag = fx.tag or self.tag
 end
 
 function ShelfItem:setGeometry(g)
@@ -151,13 +164,17 @@ function ShelfItem:update(dt, hovered)
     if target == 1 and not self.hot then
         self.hot = true
         entered = true
-        if not reduced then Moveable.juice_up(self, 0.06, 0.02) end
+        if not reduced then
+            Moveable.juice_up(self, 0.06, 0.02)
+            self.tag.vel = self.tag.vel + 2.4
+        end
     elseif target == 0 then
         self.hot = false
     end
     if reduced then self.hover = target
     else self.hover = self.hover + (target - self.hover) * math.min(1, dt * 12) end
     Moveable.updateJuice(self, dt)
+    ShelfItem.stepPendulum(self.tag, dt)
     if self.deny > 0 then self.deny = math.max(0, self.deny - dt) end
     return entered
 end
@@ -202,21 +219,26 @@ function ShelfItem.drawPlate(p, lines, opts)
     local a = opts.alpha or 1
     local shake = opts.shakeX or 0
     local x, y, w, h = math.floor(p.x + shake), p.y, p.w, p.h
-    -- sombra, borda escura, latão com luz em cima
+    -- sombra, borda escura, latão com luz em cima (ou FAIXA DE TINTA, pra
+    -- texto colorido por cima: a raridade da carta)
     Palette.set(Palette.INK, 0.5 * a)
     love.graphics.rectangle("fill", x + 2, y + 3, w, h)
     Palette.set(Palette.INK, a)
     love.graphics.rectangle("fill", x - 1, y - 1, w + 2, h + 2)
     local top = Palette.lerp(Palette.AGED_GOLD, Palette.AGED_GOLD_LIGHT, 0.35)
     local bot = Palette.AGED_GOLD_DARK
+    if opts.ink then
+        top = Palette.lerp(Palette.INK, Palette.PARCHMENT_DARK, 0.22)
+        bot = Palette.INK
+    end
     for row = 0, h - 1 do
         local c = Palette.lerp(top, bot, row / math.max(1, h - 1))
         love.graphics.setColor(c[1], c[2], c[3], a)
         love.graphics.rectangle("fill", x, y + row, w, 1)
     end
-    Palette.set(Palette.AGED_GOLD_LIGHT, 0.6 * a)
+    Palette.set(opts.ink and Palette.PARCHMENT_DARK or Palette.AGED_GOLD_LIGHT, 0.6 * a)
     love.graphics.rectangle("fill", x + 1, y + 1, w - 2, 1)
-    Palette.set(Palette.AGED_GOLD_DARK, 0.9 * a)
+    Palette.set(opts.ink and Palette.INK or Palette.AGED_GOLD_DARK, 0.9 * a)
     love.graphics.rectangle("fill", x + 1, y + h - 2, w - 2, 1)
     -- rebites nos cantos
     Palette.set(Palette.INK, 0.8 * a)
@@ -234,7 +256,11 @@ function ShelfItem.drawPlate(p, lines, opts)
             love.graphics.setFont(font)
             local tx = x + math.floor((w - font:getWidth(fitted)) / 2)
             local ty = y + 3 + (i - 1) * lineH + math.floor((lineH - font:getHeight()) / 2)
-            Palette.set(Palette.AGED_GOLD_LIGHT, 0.45 * a)
+            if opts.ink then
+                Palette.set(Palette.INK, 0.9 * a)
+            else
+                Palette.set(Palette.AGED_GOLD_LIGHT, 0.45 * a)
+            end
             love.graphics.print(fitted, tx, ty + 1)
             local c = ln[2] or Palette.INK
             love.graphics.setColor(c[1], c[2], c[3], a)
@@ -260,15 +286,53 @@ function ShelfItem:plateLines(ctx)
     elseif self.kind == "relic" then
         lines[1] = { UpgradeTile.effectLabel(offer) or offer.name or "?", Palette.INK }
     else
-        lines[1] = { offer.name or "?", Palette.INK }
+        -- nome do pacote em até DUAS linhas (quebra em espaço), nunca "..."
+        local p = self.geom and self.geom.plate
+        local name = offer.name or "?"
+        local font = FontManager.getFont(8)
+        local maxW = p and (p.w - 8) or 120
+        if font:getWidth(name) <= maxW or not name:find(" ") then
+            lines[1] = { name, Palette.INK }
+        else
+            local l1, l2 = "", ""
+            for word in name:gmatch("%S+") do
+                local try = (l1 == "") and word or (l1 .. " " .. word)
+                if l2 == "" and font:getWidth(try) <= maxW then l1 = try
+                else l2 = (l2 == "") and word or (l2 .. " " .. word) end
+            end
+            lines[1] = { l1, Palette.INK }
+            lines[2] = { l2, Palette.INK }
+        end
     end
+    local n = #lines + 1
     if self.sold then
-        lines[2] = { I18n.t("reward.sold"), Palette.BLOOD_DARK }
+        lines[n] = { I18n.t("reward.sold"), Palette.BLOOD_DARK }
     else
         local price = "$" .. tostring(offer.cost or 0)
-        lines[2] = { price, (ctx.afford and self.deny <= 0) and Palette.INK or Palette.BLOOD }
+        lines[n] = { price, (ctx.afford and self.deny <= 0) and Palette.INK or Palette.BLOOD }
     end
     return lines
+end
+
+-- Etiqueta pendurada (detalhe): cartão miúdo com o preço, balançando no
+-- hover. Pendura do canto direito da placa de preço.
+local function drawHangingTag(g, angle, text, afford, a)
+    love.graphics.push()
+    love.graphics.translate(g.ax, g.ay)
+    love.graphics.rotate(angle)
+    Palette.set(Palette.PARCHMENT_DARK, a)
+    love.graphics.rectangle("fill", 0, 0, 1, g.len)
+    local tx, ty = -math.floor(g.w / 2), g.len
+    Palette.set(Palette.INK, a)
+    love.graphics.rectangle("fill", tx - 1, ty - 1, g.w + 2, g.h + 2)
+    Palette.set(afford and Palette.PARCHMENT_LIGHT or Palette.PARCHMENT, a)
+    love.graphics.rectangle("fill", tx, ty, g.w, g.h)
+    local font, fitted = TextFit.fit(text, 7, g.w - 2, 7)
+    love.graphics.setFont(font)
+    Palette.set(afford and Palette.INK or Palette.BLOOD, a)
+    love.graphics.print(fitted, tx + math.floor((g.w - font:getWidth(fitted)) / 2),
+        ty + math.floor((g.h - font:getHeight()) / 2) + 1)
+    love.graphics.pop()
 end
 
 function ShelfItem:drawPlateFor(ctx)
@@ -280,8 +344,45 @@ function ShelfItem:drawPlateFor(ctx)
         shake = math.sin(k * math.pi * 4) * 3 * (1 - k)
     end
     local alpha = (ctx.alpha or 1) * self:entered()
-    local pr = { x = p.x + (self.slide.x or 0), y = p.y, w = p.w, h = p.h }
-    ShelfItem.drawPlate(pr, self:plateLines(ctx), { alpha = alpha, shakeX = shake })
+    local sx0 = self.slide.x or 0
+    local lines = self:plateLines(ctx)
+    if self.kind == "card" and self.geom.band and self.geom.price then
+        -- faixa escura com a raridade (cor clareada sobre tinta: contraste)
+        local b, pr = self.geom.band, self.geom.price
+        local rar = lines[1]
+        if rar and rar[1] ~= "" then
+            local c = Palette.forRarity(self.offer.rarity or "common")
+            local lit = (self.offer.rarity == "common" or self.offer.rarity == "basic") and c
+                or Palette.lighten(c, 0.35)
+            ShelfItem.drawPlate({ x = b.x + sx0, y = b.y, w = b.w, h = b.h }, { { rar[1], lit } },
+                { alpha = alpha, shakeX = shake, ink = true })
+        end
+        ShelfItem.drawPlate({ x = pr.x + sx0, y = pr.y, w = pr.w, h = pr.h }, { lines[2] },
+            { alpha = alpha, shakeX = shake })
+        if not self.sold and self.geom.tag then
+            local g = self.geom.tag
+            drawHangingTag({ ax = g.ax + sx0 + shake, ay = g.ay, len = g.len, w = g.w, h = g.h },
+                self.tag.angle, "$" .. tostring(self.offer.cost or 0), ctx.afford and self.deny <= 0, alpha)
+        end
+    else
+        ShelfItem.drawPlate({ x = p.x + sx0, y = p.y, w = p.w, h = p.h }, lines,
+            { alpha = alpha, shakeX = shake })
+    end
+    -- oferta do dia (F4): a etiqueta vermelha PRESA à placa, torta no canto
+    if self.offer and self.offer.saleDiscount and not self.sold then
+        local okP, ShopProps = pcall(require, "src.ui.shop.ShopProps")
+        if okP and ShopProps and ShopProps.saleTag and ShopProps.saleTag.draw then
+            local tw = math.max(24, math.floor(p.h * 0.9))
+            local k = tw / (ShopProps.saleTag.W or 24)
+            love.graphics.push()
+            love.graphics.translate(p.x + sx0 + p.w - tw * 0.55, p.y - 4)
+            love.graphics.rotate(-0.22)
+            love.graphics.setColor(1, 1, 1, alpha)
+            ShopProps.saleTag.draw(0, 0, k)
+            love.graphics.pop()
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 -- Suporte/cavalete de madeira (card_stand_N.png). `front` = lábio da frente.
@@ -421,15 +522,6 @@ function ShelfItem:drawObject(ctx)
                 k, alpha * dim, { hover = self.hover, key = "shelf_pack_" .. tostring(self.slot) })
         end
         self._drawRect = { x = r.x + sx0, y = r.y - lift, w = r.w, h = r.h }
-    end
-    -- etiqueta da oferta do dia (F4) presa no canto do objeto
-    if sale then
-        local okP, ShopProps = pcall(require, "src.ui.shop.ShopProps")
-        if okP and ShopProps and ShopProps.saleTag and ShopProps.saleTag.draw then
-            local tw = math.max(24, math.floor(r.w * 0.45))
-            love.graphics.setColor(1, 1, 1, alpha)
-            ShopProps.saleTag.draw(cx + r.w * 0.2, self.foot - r.h - lift - 4, tw / (ShopProps.saleTag.W or 24))
-        end
     end
     love.graphics.setColor(1, 1, 1, 1)
 end

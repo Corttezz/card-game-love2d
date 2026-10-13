@@ -85,6 +85,9 @@ function M.run(arg)
         local p = require("components.PauseMenu"):new(); p:show(game, {}); simulate(p, 0.5); return p
     end)
     add("shop", function()
+        -- Dados do Escriba: o tool não passa pelo love.load; o stub deixa a
+        -- loja registrar o botão (o copo é desenhado mesmo sem ele)
+        _G.openScribeDice = _G.openScribeDice or function() end
         local s = require("components.CardRewardScreen"):new(game.shopSystem)
         s:show(game, function() end, function() end, "shop"); simulate(s, 1.4)
         return s, true

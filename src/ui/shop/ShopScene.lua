@@ -245,8 +245,7 @@ function ShopScene:update(dt)
     end
     Moveable.initJuice(self.bell); Moveable.initJuice(self.dice)
     local overBell = not blocked and (inRect(L.bell.rect, mx, my) or inRect(L.bell.plate, mx, my))
-    local overDice = not blocked and self.screen.diceButton ~= nil
-        and (inRect(L.dice.rect, mx, my) or inRect(L.dice.plate, mx, my))
+    local overDice = not blocked and (inRect(L.dice.rect, mx, my) or inRect(L.dice.plate, mx, my))
     hoverOf(self.bell, L.bell, overBell)
     hoverOf(self.dice, L.dice, overDice)
     self.hoverCounter = (overBell and "bell") or (overDice and "dice") or nil
@@ -483,7 +482,8 @@ function ShopScene:_drawTable(list)
         if it.rect and it.kind ~= "card" then order[#order + 1] = { foot = it.foot, item = it } end
     end
     order[#order + 1] = { foot = L.bell.foot, bell = true }
-    if self.screen.diceButton then order[#order + 1] = { foot = L.dice.foot, dice = true } end
+    -- o copo está SEMPRE na mesa (o clique é que depende de _G.openScribeDice)
+    order[#order + 1] = { foot = L.dice.foot, dice = true }
     table.sort(order, function(a, b) return a.foot < b.foot end)
     for _, e in ipairs(order) do
         if e.item then

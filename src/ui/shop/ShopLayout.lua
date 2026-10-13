@@ -55,7 +55,7 @@ ShopLayout.ART = {
         { x = 118, y = 180, s = 1.00 },
         { x = 214, y = 170, s = 0.95 },
         { x = 308, y = 160, s = 0.90 },
-        { x = 400, y = 150, s = 0.85 },
+        { x = 398, y = 146, s = 0.85 },
     },
     cardH = 94,          -- altura da carta em px da arte na escala 1,0 (a carta cobre a estante atrás, como na referência)
     -- objetos na mesa (3 relíquias + pacote), esquerda-frente → direita-fundo
@@ -63,9 +63,9 @@ ShopLayout.ART = {
         { x = 232, y = 302, s = 1.00 },
         { x = 310, y = 280, s = 0.95 },
         { x = 385, y = 258, s = 0.90 },
-        { x = 455, y = 236, s = 0.85 },
+        { x = 448, y = 250, s = 0.85 },
     },
-    objSize = 70,        -- sprite dos objetos (px da arte) na escala 1,0
+    objSize = 86,        -- sprite dos objetos (px da arte) na escala 1,0 (~1,25x a primeira versão: ~180 px em 1080p)
     -- sino na frente-esquerda, copo atrás dele (mais fundo, menor)
     bell = { x = 160, y = 324, s = 0.75 },
     dice = { x = 150, y = 252, s = 0.65 },
@@ -106,13 +106,30 @@ local function pointInPoly(px, py, poly)
 end
 ShopLayout.pointInPoly = pointInPoly
 
--- Placa de latão sob o pé (duas linhas: rótulo + preço). Larga o bastante
--- pro rótulo ("NOVAS OFERTAS", "+10 VIDA MÁX") e nunca mais larga que o vão
--- até o vizinho.
-local function plateFor(cx, footY, w, lineH, maxW)
-    local h = lineH * 2 + 8
+-- Placa de latão sob o pé (`nLines` linhas: rótulo + preço; o pacote leva
+-- 3 pro nome quebrar em duas). Larga o bastante pro rótulo ("NOVAS
+-- OFERTAS", "+10 VIDA MÁX") e nunca mais larga que o vão até o vizinho.
+local function plateFor(cx, footY, w, lineH, maxW, nLines)
+    local h = lineH * (nLines or 2) + 8
     if maxW then w = math.min(w, maxW) end
     return rect(cx - w / 2, footY + 4, w, h)
+end
+
+-- Carta: FAIXA ESCURA com a raridade (cor da raridade sobre tinta) e a placa
+-- de latão do preço logo abaixo (texto escuro), como na referência. `plate`
+-- é a pilha inteira (validação); `band`/`price` são as partes (desenho);
+-- `tag` é a etiqueta pendurada do canto da placa (detalhe que o dono gostou).
+local function cardPlates(cx, footY, w, lineH)
+    local bandH = lineH + 6
+    local band = rect(cx - w / 2, footY + 4, w, bandH)
+    local price = rect(cx - w / 2, band.y + band.h + 2, w, bandH)
+    local tagW = clamp(math.floor(bandH * 1.3), 18, 28)
+    return {
+        plate = rect(band.x, band.y, w, price.y + price.h - band.y),
+        band = band, price = price,
+        tag = { ax = price.x + price.w - math.floor(tagW * 0.5) - 2, ay = price.y + price.h,
+                len = 3, w = tagW, h = math.floor(tagW * 0.66) },
+    }
 end
 
 function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
@@ -156,11 +173,12 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
             local stand = rect(fx - standW / 2, fy - standH, standW, standH)
             local foot = stand.y + math.floor(standH * 0.5)
             local r = rect(fx - w / 2, foot - h, w, h)
+            local plates = cardPlates(fx, fy + 2, math.max(math.floor(w * 0.95), 70), lineH)
             cards[i] = {
                 kind = "card", art = { x = ax, y = a.y }, depth = a.s,
                 rect = r, foot = foot, footX = math.floor(fx), stand = stand,
                 standVariant = ((i - 1) % 3) + 1,
-                plate = plateFor(fx, fy + 2, math.max(math.floor(w * 0.95), 70), lineH),
+                plate = plates.plate, band = plates.band, price = plates.price, tag = plates.tag,
                 tilt = ShopLayout.CARD_TILT, tiltAmount = ShopLayout.CARD_TILT_AMOUNT,
                 lift = ShopLayout.LIFT,
             }
@@ -202,11 +220,14 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
             local fx, fy = toScreen(cv, ax, a.y)
             local size = math.floor(objSize0 * a.s * sizeFit)
             local r = rect(fx - size / 2, fy - size, size, size)
+            local isPack = j > nRelics
             objects[j] = {
-                kind = (j <= nRelics) and "relic" or "pack",
+                kind = isPack and "pack" or "relic",
                 art = { x = ax, y = a.y }, depth = a.s,
                 rect = r, foot = math.floor(fy), footX = math.floor(fx),
-                plate = plateFor(fx, fy, clamp(math.floor(size * 1.3), 96, 150), lineH),
+                -- o pacote leva 3 linhas: o nome quebra em duas, nunca reticências
+                plate = plateFor(fx, fy, clamp(math.floor(size * 1.1), 100, 150), lineH, nil, isPack and 3 or 2),
+                plateLines = isPack and 3 or 2,
                 lift = ShopLayout.LIFT,
             }
         end
@@ -215,8 +236,8 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
         for j = 2, n do
             local a, b = objects[j - 1], objects[j]
             local gapW = b.footX - a.footX - 6
-            if a.plate.w > gapW then a.plate = plateFor(a.footX, a.foot, gapW, lineH) end
-            if b.plate.w > gapW then b.plate = plateFor(b.footX, b.foot, gapW, lineH) end
+            if a.plate.w > gapW then a.plate = plateFor(a.footX, a.foot, gapW, lineH, nil, a.plateLines) end
+            if b.plate.w > gapW then b.plate = plateFor(b.footX, b.foot, gapW, lineH, nil, b.plateLines) end
         end
     end
     buildObjects(1, 1)
@@ -251,12 +272,12 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
             art = { x = a.x, y = a.y }, depth = a.s,
             rect = rect(fx - size / 2, fy - size, size, size),
             foot = math.floor(fy), footX = math.floor(fx),
-            plate = plateFor(fx, fy, clamp(math.floor(size * 1.5), 96, 150), lineH),
+            plate = plateFor(fx, fy, clamp(math.floor(size * 1.3), 100, 150), lineH),
             lift = ShopLayout.LIFT,
         }
     end
-    local bell = counterObj(A.bell, 0.9)
-    local dice = counterObj(A.dice, 0.9)
+    local bell = counterObj(A.bell, 0.8)
+    local dice = counterObj(A.dice, 0.8)
 
     -- ===== placa de título (sobre a pintura, canto superior esquerdo) =====
     local sign = rect(margin, topBarH + 4, math.floor(sw * 0.42), 30)
