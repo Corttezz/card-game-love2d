@@ -38,6 +38,7 @@ local STABLE_FOR = 0.45   -- condição precisa valer por este tempo (s)
 local GAP_AFTER = 0.40    -- respiro depois de fechar uma conversa (s)
 local ANCHOR_TTL = 0.25   -- âncora reportada há mais que isto = sumiu
 local FADE_IN, FADE_OUT = 0.22, 0.20
+local HOLD_MAX = 3.0      -- dica de luta armada segura o auto-encerrar até isto
 
 local anchors = {}        -- id -> { x, y, w, h, t }
 local screens = {}        -- telas de estado (main.lua: setScreens)
@@ -45,6 +46,7 @@ local active = nil        -- conversa em curso
 local closing = nil       -- { L, size, t } — painel saindo
 local pendingId, pendingSince = nil, 0
 local cooldown = 0
+local latched = {}        -- id -> { t = hora do gatilho, turn = battleTurn }
 local forceTest = false   -- testes: ignora gameSettings/headless
 local blockedPress = false
 
@@ -154,6 +156,20 @@ local function battleIdle(game)
 end
 Tutorial.battleIdle = battleIdle
 
+-- Hora quieta pras dicas de CONTEXTO: igual à de cima, mas mão vazia vale
+-- (jogou a última carta — o Bloqueio dela ainda pede explicação).
+local function battleQuiet(game)
+    if not game or game.gameState ~= "playing" then return false end
+    if game.turn ~= "player" or game._enemyActing then return false end
+    if not (game.enemy and game.enemy:isAlive() and game.player and game.player:isAlive()) then
+        return false
+    end
+    local cs = game.combatAnimationSystem
+    if cs and cs.isBlocking and cs:isBlocking() then return false end
+    return sceneQuiet()
+end
+Tutorial.battleQuiet = battleQuiet
+
 local function firstTurn(game) return (game.battleTurn or 0) == 0 end
 
 -- A mão tem um combo montável? (mesma detecção do turno, sobre a mão toda)
@@ -253,37 +269,59 @@ Tutorial.SCRIPT = {
           { id = "preview", spot = "preview" },
           { id = "play", spot = "play", action = "play" },
       } },
+    -- ===== Dicas de CONTEXTO da luta: armam na 1ª ocorrência =====
+    -- `latch` = o gatilho (a coisa ACONTECEU — sem exigir cena quieta);
+    -- `ready` = a hora de falar (cena quieta + objeto desenhado). O gatilho
+    -- fica ARMADO com a hora em que aconteceu e a conversa sai no 1º momento
+    -- quieto seguinte, em ordem de gatilho — nunca "quando der" numa luta
+    -- futura. `sameTurn`: o assunto é do turno (Bloqueio, combo na mão) e o
+    -- gatilho cai se o turno passar sem hora de falar. Defeito que isto mata
+    -- (playtest do dono, Out/2026): a dica do Bloqueio só chegava depois de o
+    -- jogador já ter usado Bloqueio várias vezes — ela exigia "ENCERRAR já
+    -- visto" E armadura > 0 numa hora quieta, e a armadura zera no turno
+    -- seguinte; o ENCERRAR ganhava a vez e a janela fechava.
     { id = "end_turn", state = "playing", after = "intro",
-      when = function(g)
-          return battleIdle(g) and #(g.selectedCards or {}) == 0
+      latch = function(g)
+          return battleQuiet(g) and #(g.selectedCards or {}) == 0
+              and (g.player.mana or 0) < (g.player.maxMana or 3)
+      end,
+      ready = function(g)
+          return battleQuiet(g) and #(g.selectedCards or {}) == 0
               and (g.player.mana or 0) < (g.player.maxMana or 3) and anyAnchor("end_turn")
       end,
       lines = { { id = "end", spot = "end_turn", action = "end_turn" } } },
     { id = "second_turn", state = "playing", after = "end_turn",
-      when = function(g) return battleIdle(g) and (g.battleTurn or 0) >= 1 end,
+      latch = function(g) return g.turn == "player" and (g.battleTurn or 0) >= 1 end,
+      ready = function(g) return battleQuiet(g) end,
       lines = { { id = "kept", spot = "intent" }, { id = "loop", spot = "hand" } } },
     -- ===== Batalhas especiais (no 1º turno, depois da entrada) =====
     { id = "boss", state = "playing", after = "intro",
-      when = function(g) return battleIdle(g) and firstTurn(g) and nodeType(g) == "boss" end,
+      latch = function(g) return firstTurn(g) and nodeType(g) == "boss" end,
+      ready = function(g) return battleQuiet(g) end,
       lines = { { id = "arrive", spot = { "enemy", "enemy_hp" } }, { id = "signature", spot = "intent" } } },
     { id = "elite", state = "playing", after = "intro",
-      when = function(g) return battleIdle(g) and firstTurn(g) and nodeType(g) == "elite" end,
+      latch = function(g) return firstTurn(g) and nodeType(g) == "elite" end,
+      ready = function(g) return battleQuiet(g) end,
       lines = { { id = "warn", spot = { "enemy", "enemy_hp" } } } },
     -- ===== Assuntos que chegam com a corrida =====
-    { id = "block", state = "playing", after = "end_turn",
-      when = function(g) return battleIdle(g) and (g.player.armor or 0) > 0 end,
+    { id = "block", state = "playing", after = "intro", sameTurn = true,
+      latch = function(g) return g.turn == "player" and (g.player.armor or 0) > 0 end,
+      ready = function(g) return battleQuiet(g) and anyAnchor("player_panel") end,
       lines = { { id = "reset", spot = "player_panel" } } },
-    { id = "combo", state = "playing", after = "end_turn",
-      when = function(g) return battleIdle(g) and handHasCombo(g) end,
+    { id = "combo", state = "playing", after = "intro", sameTurn = true,
+      latch = function(g) return battleIdle(g) and handHasCombo(g) end,
+      ready = function(g) return battleIdle(g) and anyAnchor("hand") end,
       lines = { { id = "seal", spot = "hand" }, { id = "guide" } } },
-    { id = "orbs", state = "playing", after = "end_turn",
-      when = function(g) return battleIdle(g) and #((g.player and g.player.orbs) or {}) > 0 end,
+    { id = "orbs", state = "playing", after = "intro",
+      latch = function(g) return #((g.player and g.player.orbs) or {}) > 0 end,
+      ready = function(g) return battleQuiet(g) and anyAnchor("orbs") end,
       lines = { { id = "pulse", spot = "orbs" }, { id = "evoke", spot = "orbs" } } },
     { id = "jokers", state = "playing", after = "intro",
-      when = function(g)
+      latch = function(g)
           local r = run(g)
-          return battleIdle(g) and r and #(r.jokers or {}) > 0 and anyAnchor("jokers")
+          return r and #(r.jokers or {}) > 0
       end,
+      ready = function(g) return battleQuiet(g) and anyAnchor("jokers") end,
       lines = { { id = "passive", spot = "jokers" }, { id = "bench", spot = "jokers" } } },
     -- ===== Telas da jornada =====
     { id = "rewards", state = "cardReward",
@@ -383,6 +421,7 @@ function Tutorial.isSeen(id) return PS().isTipSeen(id) end
 
 function Tutorial.resetAll()
     active, closing, pendingId, cooldown = nil, nil, nil, 0
+    latched = {}
     return PS().resetTips()
 end
 
@@ -394,6 +433,7 @@ local function stateMatches(def, state)
 end
 
 local function eligible(def, state, game)
+    if def.latch or def.onDemand then return false end   -- essas saem pela fila de gatilhos
     if not stateMatches(def, state) then return false end
     if Tutorial.isSeen(def.id) then return false end
     if def.after and not Tutorial.isSeen(def.after) then return false end
@@ -407,6 +447,81 @@ end
 
 -- `line.vars()` (opcional) preenche a fala com dado VIVO (requisito de
 -- classe do UnlockSystem, passiva da classe): o texto nunca crava número.
+-- Gatilhos: arma (1ª ocorrência) e expira. Roda TODO quadro, inclusive com
+-- outra conversa aberta ou outro modal — a ocorrência no meio da apresentação
+-- conta, e sai logo depois dela.
+local function safeCall(fn, def, game)
+    local ok, res = pcall(fn, game, screens)
+    if not ok then
+        print("[Tutorial] gatilho da conversa '" .. def.id .. "' falhou: " .. tostring(res))
+        return false
+    end
+    return res and true or false
+end
+
+local function updateLatches(state, game)
+    local now = love.timer.getTime()
+    local turn = game and game.battleTurn
+    for _, def in ipairs(Tutorial.SCRIPT) do
+        local l = latched[def.id]
+        if l then
+            if not stateMatches(def, state) or Tutorial.isSeen(def.id)
+                or (def.sameTurn and turn ~= l.turn) then
+                latched[def.id] = nil
+            end
+        elseif def.latch and stateMatches(def, state) and game
+            and not Tutorial.isSeen(def.id)
+            and not (active and active.def == def)
+            and (not def.after or Tutorial.isSeen(def.after))
+            and safeCall(def.latch, def, game) then
+            latched[def.id] = { t = now, turn = turn }
+        end
+    end
+end
+
+-- A próxima conversa: roteiro fixo primeiro (apresentação, telas), depois os
+-- gatilhos armados que estão prontos, do mais antigo pro mais novo.
+local function nextCandidate(state, game)
+    for _, def in ipairs(Tutorial.SCRIPT) do
+        if eligible(def, state, game) then return def end
+    end
+    local best, bestT
+    for id, l in pairs(latched) do
+        local def = byId(id)
+        if def and (not bestT or l.t < bestT)
+            and (not def.ready or safeCall(def.ready, def, game)) then
+            best, bestT = def, l.t
+        end
+    end
+    return best
+end
+
+-- A luta espera o corvo: com dica de luta ARMADA (ou falando), o turno não
+-- passa sozinho (GameplayScene: auto-encerrar). Sem isto, jogar a última
+-- carta encerrava o turno em 0,2s e a dica do Bloqueio perdia a vez.
+function Tutorial.holdsTurn()
+    if not Tutorial.enabled() then return false end
+    if active and active.def.state == "playing" then return true end
+    -- teto: gatilho armado segura no máximo HOLD_MAX s se a dica não fica
+    -- pronta (objeto que não chegou a ser desenhado nunca trava a luta)
+    local now = love.timer.getTime()
+    for id, l in pairs(latched) do
+        local def = byId(id)
+        if def and def.state == "playing" and (now - l.t < HOLD_MAX
+            or (def.ready and safeCall(def.ready, def, active and active.game))) then
+            return true
+        end
+    end
+    return false
+end
+
+function Tutorial.latchedIds()
+    local ids = {}
+    for id in pairs(latched) do ids[#ids + 1] = id end
+    table.sort(ids)
+    return ids
+end
+
 local function lineText(conv, line)
     local I18n = require("src.i18n.I18n")
     local vars
@@ -476,6 +591,7 @@ end
 -- Chamado todo frame pelo main.lua (love.update).
 function Tutorial.update(dt, state, game)
     Narrator.update(dt)
+    if Tutorial.enabled() then updateLatches(state, game) else latched = {} end
     if closing then
         closing.t = closing.t + dt
         if closing.t >= FADE_OUT then closing = nil end
@@ -507,10 +623,7 @@ function Tutorial.update(dt, state, game)
         if not (okD or okE) then pendingId = nil return end
     end
 
-    local found
-    for _, def in ipairs(Tutorial.SCRIPT) do
-        if eligible(def, state, game) then found = def break end
-    end
+    local found = nextCandidate(state, game)
     if not found then pendingId = nil return end
     if pendingId ~= found.id then
         pendingId, pendingSince = found.id, 0
@@ -525,6 +638,7 @@ end
 function Tutorial._start(id, game)
     local def = byId(id)
     if not def then print("[Tutorial] conversa desconhecida: " .. tostring(id)) return false end
+    latched[id] = nil   -- o gatilho foi atendido
     active = { def = def, line = 1, shownAt = love.timer.getTime(), game = game,
         base = { hand = game and #(game.hand or {}) or nil } }
     pendingId = nil
@@ -600,6 +714,7 @@ end
 function Tutorial._forceForTests(b) forceTest = b and true or false end
 function Tutorial._reset()
     active, closing, pendingId, pendingSince, cooldown = nil, nil, nil, 0, 0
+    latched = {}
     blockedPress = false
     anchors = {}
     Narrator._reset()

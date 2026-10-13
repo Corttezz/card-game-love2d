@@ -221,6 +221,147 @@ function M.run()
         if createdAudio then _G.audioSystem = nil end
     end
 
+    -- ===== 2c. HORA CERTA: cada dica sai na 1ª ocorrência do gatilho =====
+    -- Playtest do dono (Out/2026): a dica do Bloqueio chegou depois de ele já
+    -- ter usado Bloqueio várias vezes. Regra: gatilho arma na hora em que a
+    -- coisa acontece e a conversa sai no 1º momento quieto seguinte, no mesmo
+    -- turno; várias pendentes saem em fila, na ordem dos gatilhos.
+    TK.pump(g, 0.1)
+    local timing = {}
+    do
+        -- (a) 1ª batalha: defesa jogada na fala de JOGAR da apresentação →
+        -- Bloqueio no turno 1, ANTES do ENCERRAR e antes de o inimigo agir
+        ProfileStats.resetTips()
+        Tutorial._reset()
+        g.turn, g._enemyActing, g.battleTurn = "player", false, 0
+        g.player.armor, g.player.mana = 0, g.player.maxMana or 3
+        g.selectedCards = {}
+        local handBackup = {}
+        for i, c in ipairs(g.hand) do handBackup[i] = c end
+        Tutorial._quiet = true
+        anchorsNow()
+        Tutorial._show("intro", "play", g)
+        -- jogou: a carta sai da mão, a resolução corre (cena NÃO quieta) e a
+        -- armadura entra no meio da resolução
+        Tutorial._quiet = false
+        table.remove(g.hand, 1)
+        g.player.mana = (g.player.maxMana or 3) - 1
+        step(0.1)
+        t:eq("jogou na apresentação: a conversa termina", Tutorial.activeId(), nil)
+        g.player.armor = 6
+        step(0.2)
+        t:eq("Bloqueio armado no meio da resolução (sem falar com a cena andando)", Tutorial.activeId(), nil)
+        t:truthy("Bloqueio armado: a luta não encerra o turno sozinha (mão vazia)", Tutorial.holdsTurn())
+        Tutorial._quiet = true
+        local tFire
+        for i = 1, 60 do
+            step(1 / 30)
+            if Tutorial.activeId() then tFire = i / 30 break end
+        end
+        t:eq("defesa no turno 1: a dica do Bloqueio vem ANTES do Encerrar Turno", Tutorial.activeId(), "block")
+        t:eq("...ainda no turno 1, antes de o inimigo agir", g.turn .. ":" .. tostring(g.battleTurn), "player:0")
+        t:check("...e sai em até 1,5s do momento quieto", tFire and tFire <= 1.5)
+        Tutorial.skipConversation()
+        step(1.0)
+        t:eq("na fila, logo depois: Encerrar Turno (mesma janela)", Tutorial.activeId(), "end_turn")
+        Tutorial.skipConversation()
+        t:falsy("fila vazia: o turno volta a poder encerrar sozinho", Tutorial.holdsTurn())
+        g.hand = handBackup
+        g.player.armor = 0
+        timing[#timing + 1] = "block (na apresentação) → " .. string.format("%.2fs", tFire or -1)
+
+        -- (b) cada dica de contexto, isolada: o tempo do gatilho até a fala
+        local US = require("src.systems.UnlockSystem")
+        local function scenario(id, state, prereq, arm, disarm)
+            ProfileStats.resetTips()
+            for _, p in ipairs(prereq or {}) do ProfileStats.markTipSeen(p) end
+            Tutorial._reset()
+            g.turn, g._enemyActing = "player", false
+            arm()
+            local fired
+            for i = 1, 60 do
+                anchorsNow()
+                if state ~= "playing" then
+                    for k, r in pairs(Tutorial._scenarioAnchors or {}) do
+                        Tutorial.anchor(k, r[1], r[2], r[3], r[4])
+                    end
+                end
+                Tutorial.update(1 / 30, state, g)
+                if Tutorial.activeId() then fired = i / 30 break end
+            end
+            local got = Tutorial.activeId()
+            Tutorial.skipConversation()
+            if disarm then disarm() end
+            Tutorial._scenarioAnchors = nil
+            timing[#timing + 1] = ("%-12s → %s"):format(id, fired and string.format("%.2fs", fired) or "NÃO saiu")
+            return got == id and fired and fired <= 1.5, got
+        end
+        local function A(t2) Tutorial._scenarioAnchors = t2 end
+        local run = g.runManager.currentRun
+        local cases = {
+            { "end_turn", "playing", { "intro" }, function()
+                g.selectedCards = {}; g.player.mana = 1 end, function() g.player.mana = g.player.maxMana or 3 end },
+            { "second_turn", "playing", { "intro", "end_turn" }, function() g.battleTurn = 1 end,
+              function() g.battleTurn = 0 end },
+            { "boss", "playing", { "intro" }, function() run.currentNode = { type = "boss" }; g.battleTurn = 0 end,
+              function() run.currentNode = { type = "battle" } end },
+            { "elite", "playing", { "intro" }, function() run.currentNode = { type = "elite" }; g.battleTurn = 0 end,
+              function() run.currentNode = { type = "battle" } end },
+            { "block", "playing", { "intro" }, function() g.player.armor = 5 end, function() g.player.armor = 0 end },
+            { "orbs", "playing", { "intro" }, function()
+                g.player.orbs = { { type = "lightning" } }; Tutorial.anchor("orbs", 14, 500, 170, 78)
+                Tutorial._scenarioAnchors = nil end, function() g.player.orbs = {} end },
+            { "jokers", "playing", { "intro" }, function() run.jokers = { "joker_x" } end,
+              function() run.jokers = {} end },
+            { "rewards", "cardReward", {}, function()
+                Tutorial.setScreens({ cardReward = { visible = true, mode = "rewards" } })
+                A({ offers = { 200, 200, 600, 300 }, reward_skip = { 400, 600, 200, 40 } }) end },
+            { "shop", "cardReward", {}, function()
+                Tutorial.setScreens({ cardReward = { visible = true, mode = "shop" } })
+                A({ offers = { 100, 120, 600, 400 } }) end },
+            { "dice", "cardReward", { "shop" }, function()
+                Tutorial.setScreens({ cardReward = { visible = true, mode = "shop" }, dice = { visible = true } })
+                A({ dice_table = { 300, 200, 400, 180 } }) end },
+            { "rest", "rest", {}, function()
+                Tutorial.setScreens({ rest = { visible = true, mode = "choose" } })
+                A({ rest_options = { 300, 400, 400, 80 } }) end },
+            { "forge", "rest", {}, function()
+                Tutorial.setScreens({ rest = { visible = true, mode = "forge" } })
+                A({ forge_cards = { 250, 200, 500, 300 } }) end },
+            { "event", "event", {}, function()
+                Tutorial.setScreens({ event = { visible = true } })
+                A({ event_options = { 300, 420, 420, 160 } }) end },
+            { "endless", "mapSelection", {}, function()
+                Tutorial.setScreens({ endless = { visible = true } })
+                A({ curse_options = { 280, 200, 460, 300 } }) end },
+            { "class_select", "classSelection", {}, function()
+                A({ class_hero = { 100, 200, 200, 200 }, class_start = { 650, 700, 300, 40 } }) end },
+            { "seals", "classSelection", { "class_select" }, function()
+                A({ seal_band = { 300, 20, 400, 40 } }) end },
+        }
+        -- combo: duas cópias da mesma carta na mão (Par)
+        cases[#cases + 1] = { "combo", "playing", { "intro" }, function()
+            g._handBackup = g.hand
+            local c = g.hand[1]
+            local c2 = setmetatable({}, getmetatable(c))
+            for k, v in pairs(c) do c2[k] = v end
+            g.hand = { c, c2 }
+        end, function() g.hand = g._handBackup end }
+        local late = {}
+        for _, c in ipairs(cases) do
+            local ok, got = scenario(c[1], c[2], c[3], c[4], c[5])
+            if not ok then late[#late + 1] = c[1] .. "(" .. tostring(got) .. ")" end
+        end
+        Tutorial.setScreens({})
+        print("     tempo do gatilho até a fala:")
+        for _, l in ipairs(timing) do print("       " .. l) end
+        t:eq("toda dica de contexto sai em até 1,5s do 1º gatilho (" .. #cases .. " casos)",
+            table.concat(late, ","), "")
+        ProfileStats.resetTips()
+        for _, id in ipairs({ "intro", "end_turn", "second_turn" }) do ProfileStats.markTipSeen(id) end
+        Tutorial._reset()
+    end
+
     -- ===== 3. chefe: só depois da porta, no 1º turno =====
     local GameplayScene = require("src.scenes.GameplayScene")
     local prevSceneGame = GameplayScene.getGame()

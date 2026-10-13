@@ -1205,7 +1205,8 @@ function GameplayScene.update(dt)
         -- coreografia flipa game.turn cedo — sem isso auto-encerrava
         -- durante a investida do inimigo) e banner fora da tela.
         if GameplayScene._endTurnCallout and turnStage == nil
-            and not TurnBanner.isActive() then
+            and not TurnBanner.isActive()
+            and not require("src.systems.Tutorial").holdsTurn() then
             GameplayScene._autoEndT = (GameplayScene._autoEndT or 0) + dt
             if GameplayScene._autoEndT >= 0.2 then
                 GameplayScene._autoEndT = 0

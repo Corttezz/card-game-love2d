@@ -44,6 +44,17 @@ escolha reabre (`Tutorial.explain`). Falas aceitam `vars()` (dado vivo) e
 
 ## Regras
 
+- **Gatilho × hora de falar** (playtest do dono, Out/2026: "a dica do
+  Bloqueio veio depois de eu já ter usado Bloqueio várias vezes"): dica de
+  CONTEXTO da luta tem `latch` (a coisa aconteceu, sem exigir cena quieta) e
+  `ready` (cena quieta + objeto desenhado). O gatilho ARMA com a hora em que
+  aconteceu, inclusive no meio de outra conversa (Bloqueio na fala de JOGAR
+  da apresentação) e a conversa sai no 1º momento quieto seguinte, em fila
+  pela ordem dos gatilhos. `sameTurn` (Bloqueio, combo) cai se o turno
+  passar. Mão vazia conta como hora quieta (`battleQuiet`) e, com dica de
+  luta armada, o auto-encerrar do turno espera (`Tutorial.holdsTurn`, teto
+  de 3s). Causa antiga: `after = "end_turn"` + condição viva (armadura > 0
+  numa hora quieta) + auto-encerrar em 0,2s com a mão vazia.
 - **Momento**: batalha só com `battleIdle` = vez do jogador, fila de beats
   vazia, mão na mesa e `GameplayScene.isQuiet()` (sem viagem, sem cerimônia
   da porta — no chefe só com `bossEntered` —, sem banner de turno, sem
