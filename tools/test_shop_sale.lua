@@ -1,9 +1,10 @@
 -- tools/test_shop_sale.lua
 -- Trava da OFERTA DO DIA (Loja v3 F4, Out/2026 — ShopSystem:applyDailySale,
 -- Config.Offers.DAILY_SALE):
---   1. flag DESLIGADA (default): nenhuma oferta traz saleDiscount — o jogo
---      atual não muda e os streams do Rng não andam;
---   2. flag LIGADA: UMA e só uma oferta da loja com saleDiscount = pct,
+--   1. flag DESLIGADA (setada à mão: o default é LIGADA desde 13/Out/2026,
+--      decisão de UX do dono após a bateria shop-sale): nenhuma oferta traz
+--      saleDiscount e os streams do Rng não andam;
+--   2. flag LIGADA (default): UMA e só uma oferta da loja com saleDiscount = pct,
 --      preço = floor(preço cheio × (1 - pct)), basePrice guardado;
 --   3. a recompensa pós-batalha (grátis) NUNCA ganha etiqueta;
 --   4. o reroll sorteia de novo (continua 1 e só 1; muda de objeto ao longo
@@ -153,11 +154,13 @@ function M.run()
     -- ===== 6) asset =====
     t:truthy("asset price_tag_sale.png existe", love.filesystem.getInfo("assets/sprites/shop/price_tag_sale.png") ~= nil)
 
-    -- ===== 7) knob =====
+    -- ===== 7) knob e default =====
     Offers.DAILY_SALE = false
     local src = love.filesystem.read("tools/balance_sim.lua") or ""
     t:truthy("balance_sim lê BALANCE_SHOP_SALE", src:find('BALANCE_SHOP_SALE', 1, true) ~= nil)
     t:truthy("balance_sim liga Config.Offers.DAILY_SALE", src:find('CO.DAILY_SALE = true', 1, true) ~= nil)
+    t:truthy("balance_sim desliga com BALANCE_SHOP_SALE=0", src:find('CO.DAILY_SALE = false', 1, true) ~= nil)
+    t:eq("default do jogo: oferta do dia LIGADA (decisão de UX, 13/Out/2026)", saved.on, true)
 
     Offers.DAILY_SALE, Offers.DAILY_SALE_PCT = saved.on, saved.pct
     return t:done()

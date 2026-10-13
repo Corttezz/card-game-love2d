@@ -32,7 +32,7 @@
 --   BALANCE_PLAYER_HP=<n>              vida inicial do jogador
 --   BALANCE_HAND=<n> / BALANCE_MANA=<n>  mao+compra por turno / mana maxima
 --   BALANCE_SEAL=<n> / BALANCE_ENDLESS=<n>   selo da run / andares de endless
---   BALANCE_SHOP_SALE=1[:pct]          oferta do dia (Config.Offers.DAILY_SALE, 1 oferta por loja -25%)
+--   BALANCE_SHOP_SALE=0 | 1[:pct]      oferta do dia (Config.Offers.DAILY_SALE, ligada por padrao): 0 desliga, 1[:pct] liga/ajusta
 --
 -- O CATALOGO INTEIRO e medido: se o UnlockSystem (frente de progressao)
 -- existir, a bateria liga o override "tudo desbloqueado" — senao a amostra
@@ -596,10 +596,13 @@ function M.setup(policy)
                 CO.SUSTAIN_WEIGHT_BONUS = bonus
                 print("[balance_sim] SUSTAIN: vaga garantida em elite/chefe + peso x" .. (1 + bonus) .. " com < " .. (CO.SUSTAIN_MIN_SOURCES or 2) .. " fontes")
             end
-            -- Loja v3 F4: BALANCE_SHOP_SALE=1[:pct] — oferta do dia (UMA
-            -- oferta da loja com desconto, Config.Offers.DAILY_SALE).
+            -- Loja v3 F4: BALANCE_SHOP_SALE=0 desliga a oferta do dia (ligada
+            -- por padrao desde 13/Out); 1[:pct] liga/ajusta o desconto.
             local ss = os.getenv("BALANCE_SHOP_SALE")
-            if ss and ss ~= "" and ss ~= "0" then
+            if ss == "0" then
+                CO.DAILY_SALE = false
+                print("[balance_sim] SHOP_SALE: oferta do dia DESLIGADA")
+            elseif ss and ss ~= "" then
                 local pct = tonumber(ss:match(":([%d%.]+)"))
                 CO.DAILY_SALE = true
                 if pct then CO.DAILY_SALE_PCT = pct end

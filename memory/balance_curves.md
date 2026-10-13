@@ -477,3 +477,42 @@ limite morre lá. **Decisão (lead): HEAD fica como está.** A dificuldade-base
 assimetria de classe no late game (guerreiro mais frágil que mago/ladino nos
 atos 5–6) é problema de CLASSE, não de curva de inimigo; se for atacar, é
 por kit/passiva do guerreiro ou por Selo, nunca por `ENEMY_POWER` global.
+
+## Oferta do dia (Loja v3 F4, 13/Out/2026): medida e LIGADA por UX
+
+`Config.Offers.DAILY_SALE` (**true** desde 13/Out/2026, decisão do dono):
+1 oferta da vitrine da loja sorteada no stream `shop` sai a −25%
+(`offer.saleDiscount`, `basePrice`, `cost = floor(cheio × 0,75)`), reroll
+re-sorteia, viaja no save (`ShopSystem:applyDailySale`, trava
+`test_shop_sale`). Bateria única em b82efa13 (flag ainda desligada no
+default, ligada pelo env): `python tools/balance.py --runs 30 --classes all
+--pilots average,expert_full --env BALANCE_SHOP_SALE=1 --label shop-sale
+--procs 6` (`reports/balance/shop-sale`, seeds 720000+, 31 min), contra o
+HEAD sem env (`head-sustain-fog-full` / `head-sustain-fog-fast`, mesmas
+seeds).
+
+| classe | piloto | HEAD sem env | oferta do dia | dif | IC 95% da dif |
+|---|---|---|---|---|---|
+| guerreiro | average | 13% [5–30] (4/30) | 13% [5–30] (4/30) | +0 pp | [−17, +17] |
+| mago | average | 7% [2–21] (2/30) | 7% [2–21] (2/30) | +0 pp | [−13, +13] |
+| ladino | average | 13% [5–30] (4/30) | 3% [1–17] (1/30) | −10 pp | [−24, +4] |
+| **todas** | **average** | **11% [6–19] (10/90)** | **8% [4–15] (7/90)** | **−3 pp** | **[−12, +5]** |
+| guerreiro | expert_full | 60% [42–75] (18/30) | 67% [49–81] (20/30) | +7 pp | [−18, +31] |
+| mago | expert_full | 80% [63–90] (24/30) | 83% [66–93] (25/30) | +3 pp | [−16, +23] |
+| ladino | expert_full | 83% [66–93] (25/30) | 77% [59–88] (23/30) | −7 pp | [−27, +14] |
+| **todas** | **expert_full** | **74% [65–82] (67/90)** | **76% [66–83] (68/90)** | **+1 pp** | **[−12, +14]** |
+
+Economia (por run, só compras PAGAS): average 18,4 → 17,8 compras, $227 →
+$211 gastos, $7,73 → $7,28 por carta; expert_full 17,6 → 18,9 compras,
+$234 → $243, 0,94 → 1,01 compras por visita à loja. Mortes por ato e turnos
+por luta iguais aos da baseline dentro do ruído.
+
+Leitura: **ruído puro.** Nenhuma diferença sai do IC (±13 a ±17 pp por
+classe, ±12 pp no agregado); o expert compra 1 item a mais por run e o
+average gasta $16 a menos, que é exatamente o desconto de 1 oferta em ~13
+lojas. A oferta do dia não é lever de dificuldade, é textura de loja
+(etiqueta vermelha, "hoje vale a pena"). **Decisão (dono, 13/Out/2026):
+LIGADA por padrão como UX, sem efeito de dificuldade e sem rebalanceamento.**
+Pra medir a variante sem ela: `--env BALANCE_SHOP_SALE=0`. Toda bateria a
+partir de 13/Out já inclui a oferta do dia; as baselines `head-sustain-fog-*`
+e anteriores foram medidas SEM ela (diferença dentro do ruído, acima).
