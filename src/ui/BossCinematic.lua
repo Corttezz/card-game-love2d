@@ -62,7 +62,9 @@ BossCinematic.INTRO_KINDS = { dark = true, eyes = true, flyby = true, land = tru
                               settle = true, door_burst = true, firewall = true, chains = true,
                               walk_in = true, heartbeat = true, roots = true, eclipse = true,
                               descend = true }
-BossCinematic.DEATH_KINDS = { slowmo = true, burst = true, desat = true, hold = true }
+BossCinematic.DEATH_KINDS = { slowmo = true, burst = true, desat = true, hold = true,
+                              -- elemento engolindo o corpo (tirano: poça de lava)
+                              lava = true }
 
 -- Sons (audio/sfx/boss/, registrados sob demanda; fallback por Sfx.has).
 local SOUNDS = {
@@ -970,16 +972,26 @@ local function drawChains(w, h)
     for _, ch in ipairs(c.list) do
         local drop = easeOut(clamp01((c.t - ch.delay) / 0.4))
         if drop > 0 then
+            -- elo = 2 blocos de largura × 3 de altura, claro/escuro alternando
+            -- (1 bloco de largura lia como fio, não corrente)
             local len = math.floor(ch.len * drop / P) * P
             local sway = math.sin(c.t * 2.6 + ch.phase) * 10 * P * (1 - drop * 0.5)
-            for yy = 0, len, 2 * P do
+            local link = 0
+            for yy = 0, len, 3 * P do
                 local k = yy / math.max(1, len)
                 local x = math.floor((ch.x + sway * k) / P) * P
-                love.graphics.setColor(0.42, 0.40, 0.44, 0.9)
-                love.graphics.rectangle("fill", x, yy, P, 2 * P)
-                love.graphics.setColor(0.62, 0.60, 0.64, 0.9)
-                love.graphics.rectangle("fill", x, yy, P, P)
+                local lit = (link % 2 == 0)
+                love.graphics.setColor(0.30, 0.28, 0.32, 0.95)
+                love.graphics.rectangle("fill", x - P, yy, 2 * P, 3 * P)
+                love.graphics.setColor(lit and 0.66 or 0.48, lit and 0.62 or 0.46, lit and 0.66 or 0.50, 0.95)
+                love.graphics.rectangle("fill", x - P, yy, 2 * P, P)
+                love.graphics.rectangle("fill", x - P, yy + P, P, P)
+                link = link + 1
             end
+            -- gancho na ponta
+            local hx = math.floor((ch.x + sway) / P) * P
+            love.graphics.setColor(0.70, 0.66, 0.70, 0.95)
+            love.graphics.rectangle("fill", hx - 2 * P, len, 4 * P, P)
         end
     end
     love.graphics.setColor(1, 1, 1, 1)
@@ -1236,6 +1248,9 @@ local function enterStep(st)
     elseif kind == "hold" then
         -- o corpo fica, espólios esperam (holdsEnd); ambiente quieto por cima
         playLoop("bossHoldAmbience")
+    elseif kind == "lava" then
+        -- poça de lava cresce sob o corpo até o fim da morte (bolhas no update)
+        fx.lava = { t = 0, dur = math.max(0.5, remainingDuration(seq.idx)), bubble = 0 }
     -- ===== outros chefes =====
     elseif kind == "runes" then
         fx.runes = { n = st.n or 5, t = 0, dur = math.max(0.3, st.dur or 1.5) }
@@ -1556,6 +1571,20 @@ function BossCinematic.update(dt, game, ctx)
     end
     if fx.roots then fx.roots.t = fx.roots.t + dt end
     if fx.ecl then fx.ecl.t = fx.ecl.t + dt end
+    if fx.lava then
+        local lv = fx.lava
+        lv.t = lv.t + dt
+        -- bolhas de lava estourando na poça (brasas que sobem e apagam)
+        lv.bubble = lv.bubble + dt
+        if stage and stage.bbox and not reducedMotion() and lv.bubble > 0.09 then
+            lv.bubble = 0
+            local k = clamp01(lv.t / lv.dur)
+            local wdt = (stage.bbox.width or 120) * (0.4 + 0.8 * k)
+            spawnFeather(stage.bbox.cx + (love.math.random() - 0.5) * wdt,
+                (stage.cy or stage.bbox.bottomY) - love.math.random() * 6,
+                (love.math.random() - 0.5) * 30, -30 - love.math.random() * 60, "ember")
+        end
+    end
     if fx.desc then fx.desc.t = fx.desc.t + dt; if fx.desc.anim then fx.desc.anim:update(dt) end end
     updateMist(dt)
     if hit then
@@ -1922,10 +1951,29 @@ function BossCinematic.drawBack()
 end
 
 -- Na frente do chefe: poeira do pouso, corvos espantados, penas da morte.
+-- Poça de lava engolindo o corpo (morte do tirano): blobs de brasa na
+-- linha do chão, crescendo com o tempo, núcleo mais claro tremendo —
+-- na FRENTE do corpo, pra cobrir a base dele.
+local function drawLavaPool()
+    local lv = fx.lava
+    if not lv or not stage or not stage.bbox then return end
+    local k = smooth(clamp01(lv.t / lv.dur))
+    local cx = stage.bbox.cx
+    local cy = (stage.cy or stage.bbox.bottomY)
+    local wdt = (stage.bbox.width or 120) * (0.5 + 1.1 * k)
+    local hgt = (stage.bbox.height or 200) * (0.08 + 0.22 * k)
+    local fl = 0.85 + 0.15 * math.sin(lv.t * 9)
+    glowBlob(cx, cy - hgt * 0.15, wdt * 1.3, hgt * 1.6, PAL.glow, 0.45 * k * fl, 1)
+    glowBlob(cx, cy - hgt * 0.2, wdt, hgt, PAL.ember, 0.55 * k * fl, 2)
+    glowBlob(cx + math.sin(lv.t * 3) * wdt * 0.1, cy - hgt * 0.25, wdt * 0.5, hgt * 0.6,
+        { 1, 0.92, 0.6 }, 0.35 * k * fl, 3)
+end
+
 function BossCinematic.drawFront()
     if not stage then return end
     drawMist({ [3] = true })
     drawChains(stage.w, stage.h)
+    drawLavaPool()
     drawDust()
     if not (seq and seq.phase == "intro") then drawFeathers() end
     drawCrows()

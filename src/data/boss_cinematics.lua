@@ -136,4 +136,52 @@ return {
             { kind = "hold",   dur = 0.90 },
         },
     },
+
+    -- ATO 3 — Tirano do Abismo (pisa): o portão-caveira do fundo ESTOURA
+    -- (lascas, brasas, flash), uma PAREDE DE FOGO INFERNAL sobe atrás do
+    -- palco, correntes caem das paredes e ele ATRAVESSA o fogo andando (clip
+    -- `stride`, cresce do fundo até o palco, o chão treme a cada passo).
+    -- Impacto = pisada: tremor forte, onda de lava. Morte: afunda na lava
+    -- (poça de brasa cresce sob o corpo, bolhas, câmera lenta quente).
+    abyss_tyrant = {
+        palette = {
+            body = { 0.16, 0.06, 0.04 }, glow = { 1.00, 0.45, 0.12 }, ember = { 1.00, 0.72, 0.25 },
+            flash = { 1.00, 0.55, 0.20 }, ghost = { 0.90, 0.40, 0.20 }, rim = { 1.00, 0.50, 0.20 },
+            particle = { 0.35, 0.12, 0.06 }, particle2 = { 1.00, 0.60, 0.20 },
+        },
+        intro = {
+            { kind = "dark",       dur = 0.70, to = 0.86 },
+            { kind = "door_burst", dur = 0.50, u = 0.50, v = 0.46, debris = 18, shake = 18, lights = 0.40 },
+            { kind = "firewall",   dur = 1.20, v = 0.58, h = 0.34, hold = 2.30 },
+            { kind = "chains",     dur = 0.20, n = 4 },
+            { kind = "walk_in",    dur = 1.80, from = "back", clip = "stride", stomp = 0.55 },
+            { kind = "land",       dur = 0.60, shake = 18, dust = 18, crows = 0, ring = "lava",
+              particle = "ember", burst = 20 },
+            { kind = "title",      dur = 2.30, clip = "roar" },
+            { kind = "hud",        dur = 0 },
+        },
+        introReduced = {
+            { kind = "dark",       dur = 0.30, to = 0.80 },
+            { kind = "door_burst", dur = 0.40, u = 0.50, v = 0.46, debris = 6, shake = 5, lights = 0.40 },
+            { kind = "firewall",   dur = 0.60, v = 0.58, h = 0.30, hold = 1.00 },
+            { kind = "walk_in",    dur = 0.90, from = "back", clip = "stride" },
+            { kind = "land",       dur = 0.40, shake = 4, dust = 6, crows = 0, ring = "lava",
+              particle = "ember", burst = 8 },
+            { kind = "title",      dur = 1.50 },
+            { kind = "hud",        dur = 0 },
+        },
+        death = {
+            { kind = "burst",  dur = 0,    n = 24, particle = "ember", sound = "bossLavaImplosion" },
+            { kind = "lava",   dur = 0 },
+            { kind = "desat",  dur = 0,    peak = 0.45, rise = 0.50, fall = 1.20 },
+            { kind = "slowmo", dur = 1.50, scale = 0.35, release = 0.35 },
+            { kind = "hold",   dur = 1.20 },
+        },
+        deathReduced = {
+            { kind = "burst",  dur = 0,    n = 10, particle = "ember", sound = "bossLavaImplosion" },
+            { kind = "lava",   dur = 0 },
+            { kind = "desat",  dur = 0,    peak = 0.35, rise = 0.30, fall = 0.80 },
+            { kind = "hold",   dur = 0.90 },
+        },
+    },
 }
