@@ -130,6 +130,9 @@ function IntroTube.init(opts)
 end
 
 function IntroTube.phase() return S.phase end
+-- true quando a abertura terminou PELO mergulho (não por pular nem por
+-- reducedMotion): o CRT do jogo pode ligar já aceso, sem o apagão.
+function IntroTube.endedWithDive() return S.dove == true end
 function IntroTube.isDone() return S.phase == "done" end
 function IntroTube.typed() return S.shownTitle, S.shownSub end
 function IntroTube.diveProgress() return S.phase == "dive" and S.diveT / IntroTube.T.dive or (S.phase == "done" and 1 or 0) end
@@ -206,7 +209,7 @@ function IntroTube.update(dt)
         if S.insT >= IntroTube.T.insert + IntroTube.T.insertHold then S.phase = "dive"; S.diveT = 0 end
     elseif S.phase == "dive" then
         S.diveT = S.diveT + dt
-        if S.diveT >= IntroTube.T.dive then finish() end
+        if S.diveT >= IntroTube.T.dive then S.dove = true; finish() end
     end
 end
 
@@ -227,11 +230,16 @@ function IntroTube.geometry(W, H)
         local sx, sy = ax + d.screen.x * k, ay + d.screen.y * k
         local sw, sh = d.screen.w * k, d.screen.h * k
         local tw, th = math.max(8, math.floor(sw)), math.max(8, math.floor(sh))
-        local sEnd = math.max(W / sw, H / sh)
+        -- fim do mergulho: a TELA da arte cai EXATAMENTE na abertura do CRT
+        -- de tela cheia (janela menos o gabinete de B px), eixo a eixo
+        local B = IntroTube.BEZEL_PX
+        local sEndX, sEndY = (W - 2 * B) / sw, (H - 2 * B) / sh
+        local sEnd = math.max(sEndX, sEndY)
         local F = IntroTube.SLOT_FALLBACK
         local sl = d.slot or { x = d.w * F.x, y = d.h * F.y, w = d.w * F.w, h = d.h * F.h }
         return { art = k, ax = ax, ay = ay, aw = aw, ah = ah, sx = sx, sy = sy, sw = sw, sh = sh,
                  tw = tw, th = th, cx = sx + sw / 2, cy = sy + sh / 2, sEnd = sEnd,
+                 sEndX = sEndX, sEndY = sEndY,
                  innerW = sw, innerH = sh, mode = "art",
                  slot = { x = ax + sl.x * k, y = ay + sl.y * k, w = sl.w * k, h = sl.h * k } }
     end
@@ -462,11 +470,22 @@ function IntroTube.draw()
         -- a ARTE do computador: tubo (recortado, sem gabinete) dentro da
         -- tela, a imagem por cima; tudo escala em torno do centro da tela
         local B = IntroTube.BEZEL_PX
-        local c = ensureCanvases(G.tw + 2 * B, G.th + 2 * B)
         local d = IntroTube.computerArt()
+        -- MERGULHO (dono, 13/Out: "a transição da borda do zoom para a do
+        -- jogo tem que ficar melhor"): a tela da arte termina EXATAMENTE na
+        -- abertura do CRT de tela cheia: escala por eixo (a tela 4:3 vira a
+        -- janela 16:9 no caminho), o centro da tela caminha até o centro da
+        -- janela e o tubo é renderizado na resolução FINAL (W×H) e encolhido
+        -- até a tela, de modo que o último quadro do mergulho é, pixel a
+        -- pixel, o primeiro do CRT do jogo (que liga já aceso, sem apagão:
+        -- BootScene._tubeOn(seamless)).
+        local sxK = pop * (1 + (G.sEndX - 1) * dive)
+        local syK = pop * (1 + (G.sEndY - 1) * dive)
+        local px, py = G.cx + (W / 2 - G.cx) * dive, G.cy + (H / 2 - G.cy) * dive
+        local c = (dive > 0) and ensureCanvases(W, H) or ensureCanvases(G.tw + 2 * B, G.th + 2 * B)
         love.graphics.push()
-        love.graphics.translate(G.cx, G.cy)
-        love.graphics.scale(scale, scale)
+        love.graphics.translate(px, py)
+        love.graphics.scale(sxK, syK)
         love.graphics.translate(-G.cx, -G.cy)
         if dive < 1 then
             local sh = Palette.INK
@@ -479,7 +498,8 @@ function IntroTube.draw()
             love.graphics.origin()
             love.graphics.clear(0, 0, 0, 1)
             love.graphics.translate(B, B)
-            drawTubeContent(G.tw, G.th, 1)
+            local cw0, ch0 = c.content:getDimensions()
+            drawTubeContent(cw0 - 2 * B, ch0 - 2 * B, 1)
             love.graphics.pop()
             local CRT = require("src.ui.CRTShader")
             local okTube = CRT.renderTube and CRT.renderTube(c.content, c.tube)

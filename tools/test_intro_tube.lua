@@ -9,7 +9,7 @@
 --   5. draw em todas as fases sem erro (com e sem canvas);
 --   6. BootScene com intro ligada passa pela fase "intro" antes de "loading"
 --      e chama onTubeOn exatamente uma vez; com intro desligada chama direto;
---   7. a fita do Menu existe, tem borda e fica acima do rodapé.
+--   7. o Menu desenha SEM a fita ticker (removida a pedido do dono).
 --   love . test_one test_intro_tube
 
 local TK = require("tools.testkit")
@@ -120,15 +120,22 @@ function M.run()
             t:truthy(("%dx%d: computador cabe (<= 70%% da altura)"):format(s[1], s[2]), G.ah <= s[2] * 0.70 + 1)
             t:truthy(("%dx%d: a TELA da arte esta dentro do computador"):format(s[1], s[2]),
                 G.sx >= G.ax and G.sy >= G.ay and G.sx + G.sw <= G.ax + G.aw and G.sy + G.sh <= G.ay + G.ah)
-            t:truthy(("%dx%d: no fim do mergulho a tela cobre a janela"):format(s[1], s[2]),
-                G.sw * G.sEnd >= s[1] - 0.5 and G.sh * G.sEnd >= s[2] - 0.5)
+            local B = IntroTube.BEZEL_PX
+            t:truthy(("%dx%d: no fim do mergulho a tela cai na abertura do CRT (janela menos o gabinete)"):format(s[1], s[2]),
+                math.abs(G.sw * G.sEndX - (s[1] - 2 * B)) < 0.5 and math.abs(G.sh * G.sEndY - (s[2] - 2 * B)) < 0.5)
         end
         IntroTube.init({})
         t:noerror("draw com a arte (pagina)", function() IntroTube.draw() end)
         for _ = 1, 60 * 10 do IntroTube.update(dt); if IntroTube.phase() == "dive" then break end end
         IntroTube.update(IntroTube.T.dive / 2)
         t:noerror("draw com a arte (mergulho)", function() IntroTube.draw() end)
+        t:truthy("no meio do mergulho ainda nao terminou pelo mergulho", not IntroTube.endedWithDive())
+        IntroTube.update(IntroTube.T.dive)
+        t:eq("mergulho completo termina", IntroTube.phase(), "done")
+        t:truthy("terminou PELO mergulho (CRT liga aceso)", IntroTube.endedWithDive())
+        IntroTube.init({})
         IntroTube.skip()
+        t:truthy("pular nao conta como mergulho", not IntroTube.endedWithDive())
 
         -- ===== 5c. a CARTA entra na fenda do disquete antes do mergulho =====
         IntroTube.init({})
@@ -184,17 +191,12 @@ function M.run()
     t:eq("sem intro: onTubeOn na hora", on2, 1)
     BootScene.skip()
 
-    -- ===== 7. fita do menu =====
+    -- ===== 7. menu SEM fita (dono, 13/Out: "tira isso, deixa sem nada") =====
     local Menu = require("components.Menu")
     local menu = Menu:new()
     menu:show(function() end, function() end)
-    local R = menu:ribbonRect()
-    local H = love.graphics.getHeight()
-    t:truthy("fita existe e tem altura", R and R.h >= 16)
-    t:truthy("fita no pe da tela", R.y + R.h <= H and R.y >= H - 40)
-    t:truthy("rodape da versao acima da fita", menu:footerY() + 12 <= R.y)
-    t:truthy("borda da fita de 4 px (como o site)", Menu.RIBBON_BORDER == 4)
-    t:noerror("menu desenha com a fita", function() menu:draw() end)
+    t:truthy("menu nao tem mais a fita ticker", menu.ribbonRect == nil and Menu.RIBBON_H == nil)
+    t:noerror("menu desenha sem a fita", function() menu:draw() end)
     if menu.hide then menu:hide() end
 
     _G.gameSettings.reducedMotion = prevReduced or false

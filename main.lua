@@ -95,6 +95,9 @@ local function startGame(classId, seal)
     game:checkpointRun()
     gameUI:show()
     classSelectionScreen:hide()
+    -- a primeira luta CHEGA (viagem na estrada + cortina + cartas dadas),
+    -- em vez de nascer pronta na tela (dono, 13/Out)
+    GameplayScene.requestArrival()
 
     -- Aplica smoke do ato 1 assim que a primeira batalha comeca
     if smokeSystem then
@@ -2066,10 +2069,16 @@ function love.load(loveArgs)
             BootScene._crtWasEnabled = CRTShader.isEnabled()
             CRTShader.setEnabled(false)
         end,
-        onTubeOn = function()
+        onTubeOn = function(seamless)
             if BootScene._crtWasEnabled then CRTShader.setEnabled(true) end
-            CRTShader.setPower(0)
-            CRTShader.powerOn(1.8)
+            if seamless then
+                -- o mergulho terminou com o tubo aceso na abertura do CRT:
+                -- continuidade, sem apagão (dono, 13/Out)
+                CRTShader.setPower(1)
+            else
+                CRTShader.setPower(0)
+                CRTShader.powerOn(1.8)
+            end
         end,
         onComplete = function()
             currentState = "menu"

@@ -52,6 +52,11 @@ local setCurrentState, onPhaseCleared, onReturnToMenu
 -- State interno
 local hoverCard = nil
 local lastFloorKey = nil   -- detecta troca de andar → dispara viagem na estrada
+-- CHEGADA DA PRIMEIRA LUTA (dono, 13/Out: "quando clica em Jogar a tela já
+-- é o inimigo na frente com as cartas, sem nenhuma animação"): a run NOVA
+-- pede a mesma viagem/chegada/cortina de todo andar. Só o `startGame` do
+-- main.lua liga (Continuar NÃO: resumeWorld ancora o andar e não repete).
+local pendingArrival = false
 local lastInterior = nil   -- detecta estrada→interior → fade de entrada
 local interiorFade = 0     -- alpha do fade preto (1 → 0 em ~0.9s)
 -- v10.4: no BOSS o interior (sala) só existe DEPOIS que a cerimônia da porta
@@ -211,7 +216,13 @@ function GameplayScene.resumeWorld(g)
     -- floor-1 DE PROPÓSITO (pode dar 0 quando o ato acabou de virar): o nó
     -- escolhido sempre lê como troca de andar e a caminhada acontece.
     lastFloorKey = act .. ":" .. (atFork and (floor - 1) or floor)
+    pendingArrival = false
 end
+
+-- Run NOVA (main.lua startGame): a primeira luta chega pela estrada como
+-- qualquer andar (inimigo emerge da curva, quicada, cortina, cartas dadas).
+function GameplayScene.requestArrival() pendingArrival = true end
+function GameplayScene.hasPendingArrival() return pendingArrival end
 
 -- Introspecção pra testes de regressão (smoke_ui_turn).
 function GameplayScene.getGame() return game end
@@ -1168,8 +1179,10 @@ function GameplayScene.update(dt)
         else
             floorKey = "classic:" .. (game.currentPhase or 1)
         end
-        if lastFloorKey ~= nil and floorKey ~= lastFloorKey
+        local firstArrival = pendingArrival and lastFloorKey == nil
+        if ((lastFloorKey ~= nil and floorKey ~= lastFloorKey) or firstArrival)
            and not WorldRoad.isTraveling() then
+            pendingArrival = false
             local run2 = game.runManager and game.runManager.currentRun
             local nt = run2 and run2.currentNode and run2.currentNode.type
             if nt == "boss" then

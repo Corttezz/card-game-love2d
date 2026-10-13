@@ -289,6 +289,51 @@ function M.run()
     t:falsy("clique na mão atrás da cortina não consome", GS.mousepressed(700, 560, 1))
     HandDeal.setCurtain(false, g4)
 
+    -- ===== 6. run NOVA: a 1ª luta CHEGA pela estrada (dono, 13/Out) =====
+    -- "quando clica em Jogar a tela já é o inimigo com as cartas, sem
+    -- animação": startGame pede requestArrival e o 1º andar viaja como
+    -- qualquer outro; Continuar (resumeWorld) nunca repete a chegada.
+    local g5 = TK.newRunGame("warrior")
+    local run5 = g5.runManager.currentRun
+    run5.actNumber, run5.floorInAct = 1, 1
+    run5.currentNode = { type = "battle" }
+    mountScene(g5)
+    GS.requestArrival()
+    t:truthy("pedido de chegada registrado", GS.hasPendingArrival())
+    GS.update(DT)
+    t:truthy("run nova: a 1ª luta viaja pela estrada", WorldRoad.isTraveling())
+    t:truthy("run nova: cortina abaixada na viagem", HandDeal.hidesHand())
+    t:falsy("pedido consumido", GS.hasPendingArrival())
+    local el5, vis5Before, arrived5 = 0, 0, nil
+    while el5 < 20 do
+        GS.update(DT)
+        el5 = el5 + DT
+        if not arrived5 and not WorldRoad.isTraveling() then arrived5 = el5 end
+        local vis = HandDeal.visibleCount(g5)
+        if not arrived5 then vis5Before = math.max(vis5Before, vis) end
+        if vis == #g5.hand and not HandDeal.isBusy() then break end
+    end
+    t:truthy("run nova: inimigo chegou", arrived5 ~= nil)
+    t:eq("run nova: 0 cartas antes da chegada", vis5Before, 0)
+    t:eq("run nova: todas dadas no fim", HandDeal.visibleCount(g5), #g5.hand)
+    -- Continuar: sem pedido, ancorado, nada viaja
+    local g6 = TK.newRunGame("warrior")
+    local run6 = g6.runManager.currentRun
+    run6.actNumber, run6.floorInAct = 1, 1
+    run6.currentNode = { type = "battle" }
+    mountScene(g6)
+    GS.requestArrival()
+    GS.resumeWorld(g6)
+    t:falsy("Continuar limpa o pedido de chegada", GS.hasPendingArrival())
+    GS.update(DT); GS.update(DT)
+    t:falsy("Continuar: a 1ª luta nao viaja", WorldRoad.isTraveling())
+    -- sem pedido (testes/tools): como sempre, nasce pronta
+    local g7 = TK.newRunGame("warrior")
+    g7.runManager.currentRun.currentNode = { type = "battle" }
+    mountScene(g7)
+    GS.update(DT); GS.update(DT)
+    t:falsy("sem pedido: nasce pronta (comportamento dos tools)", WorldRoad.isTraveling())
+
     GS.setGame(game)
     _G.gameSettings = savedSettings
     return t:done()

@@ -43,10 +43,10 @@ card-game-love2d/
 │   └── negative.glsl           # Próprio (edition Negative — invertido + halo)
 ├── src/scenes/                 # Scenes extraídas de main.lua (padrão init(deps) + update/draw/input)
 │   ├── IntroTube.lua           # ABERTURA (Out/2026): página de pergaminho + o nosso televisor pequeno (mesmo crt.glsl via `CRTShader.renderTube`) datilografando título/subtítulo e mergulhando no tubo; o CRT de tela cheia liga SÓ no mergulho (`BootScene` fase `intro`, `onTubeOn`); com `src/data/intro_computer.lua` (arte do computador gerada + tela magenta, instalada por `tools/intro_computer_import.py`) o tubo vai DENTRO da tela da arte, uma CARTA entra pela fenda do disquete (fase `insert`, recorte na linha da fenda) e o zoom é na tela — memory/intro_tube.md
-│   ├── GameplayScene.lua       # Estado "playing": combate + mão + jokers + drag/reorder
+│   ├── GameplayScene.lua       # Estado "playing": combate + mão + jokers + drag/reorder; run NOVA pede `requestArrival()` (main.lua startGame) e a 1ª luta CHEGA pela estrada como todo andar (viagem, quicada, cortina, cartas dadas); Continuar nunca (resumeWorld limpa)
 │   └── EndScreens.lua          # drawGameOver + drawVictory
 ├── components/                 # UI de alto nível (telas, widgets)
-│   ├── Menu.lua                # Menu principal (+ FITA ticker no pé com borda de 4 px; rodapé sobe `Menu.RIBBON_H`) — memory/intro_tube.md
+│   ├── Menu.lua                # Menu principal (a fita ticker de Out/2026 foi REMOVIDA a pedido do dono: nada sob o título além do rodapé de sempre)
 │   ├── ClassSelectionScreen.lua# Seleção de classe por EMBLEMA (não personagem) + estado bloqueado/maestria via UnlockSystem — memory/class_emblems.md
 │   ├── GameUI.lua              # HUD do gameplay (só delega ao HudManager)
 │   ├── CardRewardScreen.lua    # Loja / recompensas pós-batalha (inclui refresh). Loja = Balcão do Mercador (ShopScene/ShopLayout/ShelfItem em src/ui/shop/); v5: vitrine posicionada por parâmetros centrais `ShopLayout.SHELF/TABLE/PLAQUE` em px de arte, preço = plaquinha de latão sob a carta e etiqueta pendurada pela borda da bancada nos objetos (balança no hover), cavalete com volume, hover sem levitar (pacote/poção/cristal flutuam), sons e faíscas por objeto, artes v5 (`assets/sprites/shop/v5`), pergaminho medido (texto nunca corta), zona de leitura do CRT (`CRTShader.setCalmRect`), memory/shop_layout.md v5

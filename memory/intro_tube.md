@@ -37,10 +37,10 @@ de 4 px. Pedido: "a mesma coisa, com o nosso visual".
   `BOOT`: `love . test_one screenshot_intro [loc]:[WxH]` captura 5 quadros +
   a fita. Trava: `test_intro_tube` (fases, geometria em 6 tamanhos, pular,
   reducedMotion, BootScene com/sem intro, fita).
-- **Fita** (`Menu:_drawRibbon`): faixa de tinta no pé da tela, borda de 4 px
-  `AGED_GOLD_DARK` (`Menu.RIBBON_BORDER`), texto `título · subtítulo · vN`
-  rolando a 38 px/s sem emenda (parado em reducedMotion); versão/créditos e
-  placa de perfil sobem `Menu.RIBBON_H` (`Menu:footerY()`).
+- **Fita**: existiu (ticker `título · subtítulo · vN` no pé do menu, borda
+  de 4 px) e foi REMOVIDA em 13/Out a pedido do dono ("tira essas coisas
+  embaixo de Grimório, deixa sem nada, volta como antes"). O rodapé do menu
+  voltou ao lugar de sempre; não reintroduzir.
 
 **Why:** o jogo já "vive numa TV"; a abertura mostra o aparelho de fora
 antes de entrar nele, com o mesmo shader (não um mock). **How to apply:**
@@ -123,3 +123,19 @@ tools/intro_computer_import.py assets/sprites/intro/computer_source.png
 Pedido do dono (13/Out): "antes do zoom apague o que tá escrito": o texto
 da tela some junto com o flash da carta (`textAlpha()`); no televisor do
 shader, nos últimos 0,3 s da espera. O mergulho é sempre em tela vazia.
+
+## Borda do zoom = borda do jogo (13/Out, dono: "a transição tem que ficar melhor")
+
+Antes o mergulho escalava a tela da arte (4:3) até COBRIR a janela e o
+CRT de tela cheia ligava do apagão (`setPower(0)` + `powerOn(1.8)`):
+corte seco entre a borda da arte e o gabinete do shader. Agora, no modo
+arte: (1) `geometry` devolve `sEndX/sEndY` = a tela cai EXATAMENTE na
+abertura do CRT (janela menos `BEZEL_PX` por lado), escala POR EIXO (a
+tela 4:3 vira 16:9 no caminho) e o centro da tela caminha até o centro da
+janela; (2) durante o mergulho o tubo é renderizado na resolução FINAL
+(canvas W×H, `renderTube`) e encolhido até a tela, então o último quadro
+é pixel a pixel o primeiro do CRT do jogo; (3) `IntroTube.endedWithDive()`
+→ `BootScene._tubeOn(seamless)` → `onTubeOn(true)` no main.lua liga o CRT
+já aceso (`setPower(1)`); pular ou reducedMotion seguem ligando do apagão.
+Trava: `test_intro_tube` (tela × sEndX/sEndY = abertura; endedWithDive só
+pelo mergulho).
