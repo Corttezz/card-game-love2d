@@ -17,8 +17,6 @@
 --   iconOverride = handle → substitui artData.icon (frames animados do CardFrame;
 --                           mesmo contrato { size = {w,h}, draw(x, y, scale) })
 
-local PixelCanvas = require("src.ui.PixelCanvas")
-
 local CardArtSlot = {}
 
 -- Escala inteira que cobre o slot (pixel-perfect, sem blur). Usa ceil pra

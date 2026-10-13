@@ -11,7 +11,6 @@ MapScreen.__index = MapScreen
 
 local FontManager   = require("src.ui.FontManager")
 local Palette       = require("src.ui.Palette")
-local IconLoader    = require("src.ui.IconLoader")
 local EnemyRenderer = require("src.ui.EnemyRenderer")
 local Sfx           = require("src.systems.Sfx")
 local I18n          = require("src.i18n.I18n")

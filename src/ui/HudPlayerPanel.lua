@@ -46,7 +46,6 @@ function HudPlayerPanel:update(dt, player)
 end
 
 function HudPlayerPanel:updatePosition()
-    local sw = love.graphics.getWidth()
     local sh = love.graphics.getHeight()
     self.width = PANEL_W
     self.height = PANEL_H
@@ -228,7 +227,6 @@ end
 -- A passiva existe DURANTE o combate, não só na tela de seleção: chip com
 -- o ícone da classe à direita do painel; hover → tooltip com nome+regra;
 -- brilha ~1s quando a passiva DISPARA (Game seta _passiveFlashT).
-local IconLoader = require("src.ui.IconLoader")
 local StatusTooltip = require("src.ui.StatusTooltip")
 local CLASS_CHIP_ICONS = { warrior = "sword_great", mage = "orb", rogue = "dagger" }
 

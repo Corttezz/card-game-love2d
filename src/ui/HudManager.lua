@@ -117,17 +117,4 @@ function HudManager:getEnemyPanel()
     return self.enemyPanel
 end
 
--- Função para animar transições (opcional)
-function HudManager:animateIn(duration, callback)
-    duration = duration or 0.5
-    -- Implementar animação de entrada se necessário
-    if callback then callback() end
-end
-
-function HudManager:animateOut(duration, callback)
-    duration = duration or 0.5
-    -- Implementar animação de saída se necessário
-    if callback then callback() end
-end
-
 return HudManager

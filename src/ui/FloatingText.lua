@@ -15,7 +15,6 @@
 local FloatingText = {}
 
 local FontManager = require("src.ui.FontManager")
-local Palette     = require("src.ui.Palette")
 
 -- Lista de texts ativos. Removidos quando duration vence.
 local active = {}

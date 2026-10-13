@@ -220,9 +220,8 @@ function CardDatabase:createEffectFunction(effects)
     local I18n = require("src.i18n.I18n")
     return function(game)
         for _, effect in ipairs(effects or {}) do
-            if game.effectSystem and game.effectSystem:processEffectCard(game, effect) then
-                -- processado
-            else
+            local processed = game.effectSystem and game.effectSystem:processEffectCard(game, effect)
+            if not processed then
                 local text = I18n.effectDesc(effect)
                 if text and text ~= "" then
                     game:addMessage(text, "info")

@@ -730,7 +730,7 @@ function RunJournalScreen:_drawTip(tip)
     for i, l in ipairs(tip.lines) do
         local size = l.big and 12 or 9
         setAlpha(l.c, 1)
-        local _, fh = TextFit.print(l.t, r.x + tip.padX, ty,
+        TextFit.print(l.t, r.x + tip.padX, ty,
             { size = size, maxW = r.w - tip.padX * 2, minSize = l.big and 9 or 8 })
         ty = ty + FontManager.getFont(size):getHeight() + tip.gap
     end

@@ -30,11 +30,9 @@
 local RoundEvalScreen = {}
 RoundEvalScreen.__index = RoundEvalScreen
 
-local Config       = require("src.core.Config")
 local Debug        = require("src.core.Debug")
 local FontManager  = require("src.ui.FontManager")
 local Palette      = require("src.ui.Palette")
-local PixelCanvas  = require("src.ui.PixelCanvas")
 local Button       = require("components.Button")
 local Sfx          = require("src.systems.Sfx")
 local EventManager = require("engine.EventManager")

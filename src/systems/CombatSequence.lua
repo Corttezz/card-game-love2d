@@ -19,7 +19,6 @@
 local Sfx = require("src.systems.Sfx")
 local FontManager = require("src.ui.FontManager")
 local DissolveShader = require("src.ui.DissolveShader")
-local Config = require("src.core.Config")
 local CardFeel = require("src.systems.CardFeel")
 local JokerProcFx = require("src.ui.JokerProcFx")
 

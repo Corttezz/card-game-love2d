@@ -12,7 +12,6 @@
 
 local PixelIcons  = require("src.ui.PixelIcons")
 local PixelCanvas = require("src.ui.PixelCanvas")
-local ImageCache  = require("src.ui.ImageCache")
 
 local IconLoader = {}
 

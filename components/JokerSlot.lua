@@ -4,8 +4,6 @@
 local JokerSlot = {}
 JokerSlot.__index = JokerSlot
 
-local Theme = require("src.ui.Theme")
-local FontManager = require("src.ui.FontManager")
 local Moveable = require("engine.Moveable")
 
 function JokerSlot:new(x, y, size)
@@ -38,7 +36,6 @@ function JokerSlot:update(dt)
     
     -- Atualiza hover
     local mx, my = love.mouse.getPosition()
-    local wasHovered = self.hover
     self.hover = mx > self.x and mx < self.x + self.size and
                  my > self.y and my < self.y + self.size
     
@@ -86,8 +83,6 @@ function JokerSlot:draw()
 end
 
 function JokerSlot:drawOccupiedSlot()
-    local halfSize = self.size / 2
-    
     -- IMAGEM DA CARTA (principal)
     if self.joker and self.joker.image then
         -- Calcula o tamanho da imagem para caber no slot

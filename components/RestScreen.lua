@@ -210,7 +210,7 @@ end
 function RestScreen:buildChooseButtons()
     self.buttons = {}
     self.choiceCards = {}
-    local px, py, pw, ph = self:panelRect()
+    local px, py, pw = self:panelRect()
 
     -- Duas escolhas-cartão grandes dentro do painel
     local cw, chh = 250, 200

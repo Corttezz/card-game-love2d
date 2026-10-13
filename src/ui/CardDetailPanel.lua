@@ -43,7 +43,6 @@ local Palette            = require("src.ui.Palette")
 local CardMesh           = require("src.ui.CardMesh")
 local CardArt            = require("src.ui.CardArt")
 local CardAnimationLayer = require("src.ui.card.CardAnimationLayer")
-local ImageCache         = require("src.ui.ImageCache")
 local UpgradeTile        = require("src.ui.UpgradeTile")
 local I18n               = require("src.i18n.I18n")
 
@@ -267,7 +266,6 @@ local function line(text, font, color, x, y, w, limit, alpha, align)
 end
 
 local function typeLabelFor(payload)
-    local offer = payload.offer
     if payload.kind == "pack" then
         return I18n.t("reward.detail_type_pack", nil, "Pacote")
     elseif payload.kind == "voucher" then
@@ -470,7 +468,7 @@ function CardDetailPanel.draw(rect, payload, opts)
         local texts = {}
         for _, p in ipairs(parts) do texts[#texts + 1] = p[1] end
         local half = math.floor(textW / math.max(1, #parts)) - 8
-        local statFont, statSize, fits = fitFont(texts, half, F.stat, math.max(6, F.stat - 4))
+        local statFont, _, fits = fitFont(texts, half, F.stat, math.max(6, F.stat - 4))
         love.graphics.setFont(statFont)
         local lineH = statFont:getHeight() + 4
 

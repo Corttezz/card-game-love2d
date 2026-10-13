@@ -368,7 +368,6 @@ function ScribeDiceScreen:_drawBet(i, r, used)
     local lineH = math.floor(r.h / 3)
     local nameF = fitFont(I18n.t("scribe_dice.bet_" .. id), r.w - 12,
         r.h > 90 and 18 or (r.h > 66 and 14 or 12), 8)
-    local smallF = FontManager.getFont(r.h > 90 and 12 or (r.h > 66 and 10 or 8))
     printCentered(I18n.t("scribe_dice.bet_" .. id), { x = r.x, y = r.y + 4, w = r.w, h = lineH },
         nameF, Palette.AGED_GOLD_LIGHT, a)
     local pct = math.floor(ScribeDice.chance(id) * 100 + 0.5)

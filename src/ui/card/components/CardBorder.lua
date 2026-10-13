@@ -60,15 +60,6 @@ local function drawRotatedSprite(img, rot, x, y, w, h)
     end
 end
 
--- ===== Bolt com shine =====
-local function drawBolt(x, y)
-    PixelCanvas.rect(x - 1, y - 1, 5, 5, Palette.INK)
-    PixelCanvas.rect(x, y, 3, 3, Palette.AGED_GOLD)
-    PixelCanvas.pixel(x, y, Palette.AGED_GOLD_LIGHT)
-    PixelCanvas.pixel(x + 2, y + 2, Palette.AGED_GOLD_DARK)
-    PixelCanvas.pixel(x + 1, y + 1, Palette.INK)
-end
-
 -- ===== Scrollwork L-shape 6×6 =====
 local function drawCornerScroll(ox, oy, dx, dy, variant)
     variant = variant or 1
@@ -96,53 +87,6 @@ local function drawCornerScroll(ox, oy, dx, dy, variant)
     }
     for _, p in ipairs(pattern) do
         PixelCanvas.pixel(ox + dx * p[1], oy + dy * p[2], colors[p[3]])
-    end
-end
-
--- ===== Knotwork seccionado (padrão com gaps deliberados pra parecer desgastado) =====
--- Pattern básico: pontos duplos alternando com single, com gaps ocasionais.
--- Usa seed pra variar cada carta.
-local function drawKnotworkH(y, startX, endX, seed, rareMode)
-    local x = startX
-    local skip = false
-    while x < endX - 2 do
-        -- Determinístico: "desgaste" a cada N passos baseado em seed
-        local wear = ((x * 7 + seed * 13) % 31 < 4)
-        if wear then
-            -- Skip: só uma marquinha escura
-            PixelCanvas.pixel(x, y, Palette.PARCHMENT_DARK)
-            x = x + 4
-        else
-            -- Pattern rich knot: 3-pixel piece
-            PixelCanvas.pixel(x, y, Palette.AGED_GOLD_DARK)
-            PixelCanvas.pixel(x + 1, y, Palette.AGED_GOLD_LIGHT)
-            PixelCanvas.pixel(x + 2, y, Palette.AGED_GOLD_DARK)
-            if rareMode and ((x + seed) % 6 == 0) then
-                PixelCanvas.pixel(x + 1, y - 1, Palette.AGED_GOLD)
-                PixelCanvas.pixel(x + 1, y + 1, Palette.AGED_GOLD)
-            end
-            x = x + 4
-        end
-    end
-end
-
-local function drawKnotworkV(x, startY, endY, seed, rareMode)
-    local y = startY
-    while y < endY - 2 do
-        local wear = ((y * 11 + seed * 17) % 29 < 4)
-        if wear then
-            PixelCanvas.pixel(x, y, Palette.PARCHMENT_DARK)
-            y = y + 4
-        else
-            PixelCanvas.pixel(x, y, Palette.AGED_GOLD_DARK)
-            PixelCanvas.pixel(x, y + 1, Palette.AGED_GOLD_LIGHT)
-            PixelCanvas.pixel(x, y + 2, Palette.AGED_GOLD_DARK)
-            if rareMode and ((y + seed) % 6 == 0) then
-                PixelCanvas.pixel(x - 1, y + 1, Palette.AGED_GOLD)
-                PixelCanvas.pixel(x + 1, y + 1, Palette.AGED_GOLD)
-            end
-            y = y + 4
-        end
     end
 end
 
@@ -285,30 +229,8 @@ local function drawRarityCorners(w, h, rarity, seed)
     end
 end
 
--- ===== Bolts variados (1-2 por lado, posição variável) =====
-local function drawAsymmetricBolts(w, h, seed)
-    -- Top: 1 ou 2 bolts em posição variável
-    local topCount = 1 + (seed % 2)
-    for i = 0, topCount - 1 do
-        local bx = 15 + ((seed * (i + 1) * 7) % (w - 30))
-        drawBolt(bx, 1)
-    end
-    -- Bottom
-    local botCount = 1 + ((seed * 3) % 2)
-    for i = 0, botCount - 1 do
-        local bx = 15 + ((seed * (i + 1) * 11) % (w - 30))
-        drawBolt(bx, h - 4)
-    end
-    -- Left
-    drawBolt(1, 15 + ((seed * 13) % (h - 30)))
-    -- Right
-    drawBolt(w - 4, 15 + ((seed * 17) % (h - 30)))
-end
-
 function CardBorder.draw(w, h, cardType, rarity, cardId)
     local sprites = loadSprites()
-    local typeColor   = Palette.forCardType(cardType) or Palette.PARCHMENT_DARK
-    local rarityColor = Palette.forRarity(rarity) or Palette.PARCHMENT_DARK
 
     -- Seed determinístico por carta
     local seed = 1
@@ -366,8 +288,7 @@ function CardBorder.draw(w, h, cardType, rarity, cardId)
     if sprites.edge_medallion then
         local med = sprites.edge_medallion
         local ms = 10
-        local sw, sh = med:getWidth(), med:getHeight()
-        local s = ms / sw
+        local s = ms / med:getWidth()
         love.graphics.setColor(1, 1, 1, 1)
         -- Top middle
         love.graphics.draw(med, math.floor((w - ms) / 2), 0, 0, s, s)

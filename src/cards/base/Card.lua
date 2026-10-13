@@ -13,9 +13,6 @@ local CardMesh = require("src.ui.CardMesh")
 local Moveable = require("engine.Moveable")
 local DissolveShader = require("src.ui.DissolveShader")
 local CardParticles = require("src.systems.CardParticles")
-local Palette = require("src.ui.Palette")
-local PixelCanvas = require("src.ui.PixelCanvas")
-local FontManager = require("src.ui.FontManager")
 
 local Card = {}
 Card.__index = Card
@@ -516,9 +513,6 @@ function Card:updateMouse(mx, my, dt, isHovered)
         local normalizedY = (mouseYRelative - 0.5) * 2
 
         -- *** Efeito de profundidade baseado na posição do mouse ***
-        local depthStrength = Config.Cards.PERSPECTIVE_STRENGTH
-        local depthOffset = Config.Cards.DEPTH_OFFSET
-        
         -- Quanto mais próximo do centro, mais "profunda" a carta fica
         local centerDistance = math.sqrt(normalizedX^2 + normalizedY^2)
         local depthMultiplier = 1 - (centerDistance * 0.3)
@@ -736,7 +730,6 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
 
     -- shoveOffset: aparada lateral da defesa (game feel v3.3; decai sozinho)
     local offsetX = (self.offsetHoverX or 0) + Moveable.shoveOffset(self)
-    local offsetY = self.offsetHoverY or 0
 
     local tiltX = self.tiltX or 0
     local tiltY = (self.tiltY or 0) + (self._velTilt or 0)

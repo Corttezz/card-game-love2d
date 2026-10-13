@@ -38,8 +38,6 @@ local focusExplicit = false       -- o jogador ANDOU até ele (vs. escolha autom
 local lastMouseX, lastMouseY
 NavCursor.synthesizing = false    -- main.lua: clique sintético não passa pela lente do CRT
 
-local function clamp(v, a, b) return math.max(a, math.min(b, v)) end
-
 function NavCursor.isActive() return active end
 function NavCursor.device() return device end
 

@@ -88,7 +88,7 @@ end
 -- duplo onde sombras de árvores vizinhas se cruzam. Zero stencil.
 local SMEAR = { { -1, 0 }, { 0.7, -0.5 }, { 0.35, 0.55 } }
 local SCALE = 3
-local scratch, batching, batchPrev, selfBatch
+local scratch, batching, batchPrev
 local soloAlphaK   -- opacidade do composite de um batch solo (ver endBatch)
 
 local function ensureScratch()

@@ -171,13 +171,9 @@ Theme.Utils = {
             local angle1 = (i - 1) * angleStep
             local angle2 = i * angleStep
             
-            -- Interpola cor baseada na distância
-            local t1 = 0
-            local t2 = 1
-            
-            local color1 = Theme.Utils.interpolateColor(innerColor, outerColor, t1)
-            local color2 = Theme.Utils.interpolateColor(innerColor, outerColor, t2)
-            
+            -- Cor do centro (t=0); o polígono é chapado, sem gradiente real por segmento
+            local color1 = Theme.Utils.interpolateColor(innerColor, outerColor, 0)
+
             -- Desenha segmento
             love.graphics.setColor(color1)
             love.graphics.polygon("fill", 
