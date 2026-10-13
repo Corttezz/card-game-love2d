@@ -446,16 +446,17 @@ function ShopPerspective.drawContactShadow(o, mask, alpha)
     -- coluna cuja base está até `tol` acima do pé recebe sombra NA base dela
     -- (densidade cai com a altura); acima disso, a coluna pendura sobre a
     -- mesa e não toca. Os gaps pequenos (1 px) entre colunas são fechados.
-    local tol = math.max(4, 6 * s)
-    local n = 0
-    local right = nil
     -- Levantado (dono, Out/2026: "a sombra embaixo da poção não fica
-    -- preenchida"): a sombra fica NO TAMPO, cheia e sem dither, com 3
-    -- linhas (o objeto no ar projeta uma mancha fechada); apoiado, as 2
+    -- preenchida"): a sombra fica NO TAMPO como a PEGADA inteira da
+    -- silhueta (toda coluna, sem tolerância de altura), cheia e sem dither,
+    -- 4 linhas (o objeto no ar projeta uma mancha fechada); apoiado, as 2
     -- linhas de contato em dither de sempre.
     local lifted = (o.lift or 0) > 0.5
+    local tol = lifted and 1e9 or math.max(4, 6 * s)
+    local n = 0
+    local right = nil
     local lightK = 1
-    local rows = lifted and 2 or 1
+    local rows = lifted and 3 or 1
     local lastY = nil
     for dx = floor(fx - halfW) - 1, math.ceil(fx + halfW) + 1 do
         local lx = dx + 0.5 - fx
@@ -469,7 +470,7 @@ function ShopPerspective.drawContactShadow(o, mask, alpha)
             by = lastY                      -- buraco de 1 coluna: fecha
         end
         if by then
-            local gapK = b and clamp(1 - ((bottom - (b + 1)) * s) / (tol + 1), 0.35, 1) or 0.6
+            local gapK = lifted and 1 or (b and clamp(1 - ((bottom - (b + 1)) * s) / (tol + 1), 0.35, 1) or 0.6)
             for row = 0, rows do
                 local dens = ((row == 0) and 1.0 or (lifted and 0.9 or 0.55)) * gapK
                 if lifted and row < rows then dens = 1 end
@@ -499,7 +500,7 @@ function ShopPerspective.drawContactShadow(o, mask, alpha)
     for i = n + 1, #pts do pts[i] = nil end
     if n == 0 then return end
     local ink = Palette.darken and Palette.darken(Palette.INK, 0.35) or Palette.INK
-    love.graphics.setColor(ink[1], ink[2], ink[3], (lifted and 0.75 or 0.9) * (alpha or 1))
+    love.graphics.setColor(ink[1], ink[2], ink[3], (lifted and 0.95 or 0.9) * (alpha or 1))
     love.graphics.points(pts)
     love.graphics.setColor(1, 1, 1, 1)
 end

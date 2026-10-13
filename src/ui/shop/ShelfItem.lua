@@ -248,7 +248,7 @@ end
 -- meio flutuando; talvez a poção e o cristal também"): sobem FLOAT_LIFT px
 -- e balançam devagar. Cartas e os outros objetos ficam apoiados.
 ShelfItem.FLOAT_IDS = { health_upgrade = true, mana_upgrade = true }
-ShelfItem.FLOAT_LIFT = 7
+ShelfItem.FLOAT_LIFT = 12
 function ShelfItem:floats()
     if self.kind == "pack" then return true end
     return self.kind == "relic" and self.offer and ShelfItem.FLOAT_IDS[self.offer.id] or false
@@ -787,9 +787,9 @@ ShelfItem.LABEL_ROWS = 8
 function ShelfItem.grownTag(tg, label, k, cv)
     if not label or label == "" or k <= 0.02 then return tg end
     local W0, H0 = tg.w or ShopLayout.TAG_W, ShopLayout.TAG_H
-    local f = TextFit.fit(label, 8, 56 * cv.s, 7)
+    local f = TextFit.fit(label, 8, 88 * cv.s, 7)
     local need = math.ceil(f:getWidth(label) / cv.s) + 4
-    local W = math.max(W0, math.min(60, need))
+    local W = math.max(W0, math.min(92, need))
     local W1 = W0 + math.floor((W - W0) * k + 0.5)
     local holeX = tg.x0 + math.floor(W0 / 2)
     local g = {}
