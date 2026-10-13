@@ -149,6 +149,73 @@ function M.run()
         TK.pump(nil, 0.6)
         t:eq("COMEÇAR inicia a run da classe em foco", started[1], "mage")
 
+        -- 3b. CARTAS INICIAIS nos DETALHES: carta de verdade (hover = lift +
+        --     tooltip ao lado), clique/botão direito = inspeção da Coleção,
+        --     Esc fecha sem voltar ao menu, setas passam entre as iniciais.
+        do
+            lockOnly(US, {})
+            fakeW, fakeH = 1280, 720
+            FontManager.clearCache()
+            local backs = 0
+            local s3 = Screen:new()
+            s3:show(function() end, function() backs = backs + 1 end)
+            local canvas = love.graphics.newCanvas(1280, 720)
+            local function frame()
+                love.graphics.setCanvas(canvas)
+                s3:update(1 / 60)
+                s3:draw()
+                love.graphics.setCanvas()
+            end
+            s3:toggleDetails()
+            frame()
+            local rects = s3._starterRects or {}
+            t:truthy("detalhes: cartas iniciais posicionadas", #rects >= 2)
+            local p3 = s3:_panelOf(s3.focus)
+            local c1 = p3.cards[1]
+            -- mouse (coords FÍSICAS: o UiScale divide por k) sobre a 1ª carta
+            local k = UiScale.k()
+            local r1 = rects[1]
+            mx, my = (r1.x + r1.w / 2) * k, (r1.y + r1.h * 0.6) * k
+            for _ = 1, 12 do frame() end
+            t:truthy("hover na carta inicial: carta em hover", c1.isHovered)
+            t:truthy("hover levanta a carta (sobe da folha)", (c1.liftOffset or 0) < 0)
+            t:truthy("hover abre o tooltip (CardInfoDisplay)",
+                c1.cardInfoDisplay and c1.cardInfoDisplay.lastRect ~= nil)
+            -- clique esquerdo abre a inspeção
+            s3:mousepressed(mx, my, 1)
+            s3:mousereleased(mx, my, 1)
+            t:truthy("clique abre a inspeção", s3.inspectModal:isVisible())
+            t:eq("inspeção na carta clicada", s3.inspectModal.card, c1)
+            t:truthy("handle do InputFocus visível (captura teclado/pad)", s3.inspectHandle.isVisible())
+            t:truthy("handle navega sozinho (NavCursor não anda por trás)", s3.inspectHandle.ownsNavigation)
+            s3.inspectHandle:keypressed("right")
+            t:eq("seta passa pra próxima inicial", s3.inspectModal.card, p3.cards[2])
+            s3.inspectHandle:keypressed("escape")
+            t:falsy("Esc fecha a inspeção", s3.inspectModal:isVisible())
+            t:eq("Esc com a inspeção aberta não volta ao menu", backs, 0)
+            -- botão direito (gatilho do pad / tecla I via NavCursor.click(2))
+            for _ = 1, 3 do frame() end
+            s3:mousepressed(mx, my, 2)
+            t:truthy("botão direito também inspeciona", s3.inspectModal:isVisible())
+            s3.inspectHandle:keypressed("return")
+            t:falsy("A/Enter fecha", s3.inspectModal:isVisible())
+            -- com a fala do corvo na tela, nada abre por cima
+            local T = require("src.systems.Tutorial")
+            local ov = T.overlay
+            local prevVis = ov and ov.isVisible
+            if ov then ov.isVisible = function() return true end end
+            t:falsy("corvo falando: inspeção não abre", s3:openInspect(1))
+            if ov then ov.isVisible = prevVis end
+            -- no resumo as cartas não existem pro mouse
+            s3:toggleDetails()
+            for _ = 1, 3 do frame() end
+            t:falsy("resumo: sem hover em carta inicial", c1.isHovered)
+            s3:mousepressed(mx, my, 1)
+            t:falsy("resumo: clique ali não inspeciona", s3.inspectModal:isVisible())
+            canvas:release()
+            mx, my = 1, 1
+        end
+
         -- 4. resize real: botões acompanham o layout + draw sem erro +
         --    só DUAS fontes na tela (nome e corpo)
         lockOnly(US, { mage = true, rogue = true })
@@ -172,8 +239,20 @@ function M.run()
             t:check(("resize %dx%d: COMEÇAR na fita"):format(sz[1], sz[2]),
                 st.x == s2.layout.start.x and st.y == s2.layout.start.y)
             local sizes = {}
+            -- ícones com letra (o "?" do narrador) não contam como TEXTO
+            local paused = false
+            local okHB, HB = pcall(require, "src.ui.HelpBadge")
+            local realHB = okHB and HB.draw
+            if realHB then
+                HB.draw = function(...)
+                    paused = true
+                    local r = { realHB(...) }
+                    paused = false
+                    return unpack(r)
+                end
+            end
             FontManager.getFont = function(size, ...)
-                sizes[size] = true
+                if not paused then sizes[size] = true end
                 return realGetFont(size, ...)
             end
             local canvas = love.graphics.newCanvas(sz[1], sz[2])
@@ -184,6 +263,7 @@ function M.run()
             end)
             love.graphics.setCanvas()
             FontManager.getFont = realGetFont
+            if realHB then HB.draw = realHB end
             t:check(("draw %dx%d sem erro%s"):format(sz[1], sz[2], okDraw and "" or (": " .. tostring(e2))), okDraw)
             local n, list = 0, {}
             for size in pairs(sizes) do n = n + 1; list[#list + 1] = size end

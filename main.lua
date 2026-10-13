@@ -1838,6 +1838,8 @@ function love.load(loveArgs)
         -- Guia (combos/glossário) e, por cima de TUDO, a placa de dica do
         -- tutorial: enquanto ela está na tela, o clique/tecla/A é dela.
         IF.register("guide",        _G.guideScreen)
+        -- Inspeção das cartas iniciais da seleção de classe (DETALHES).
+        IF.register("classInspect", classSelectionScreen.inspectHandle)
         IF.register("tutorialTip",  require("src.systems.Tutorial").overlay)
         require("src.systems.Tutorial").setScreens({
             cardReward = cardRewardScreen, rest = restScreen, event = eventScreen,

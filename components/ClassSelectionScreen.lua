@@ -27,7 +27,6 @@ local Palette = require("src.ui.Palette")
 local SceneBackground = require("src.ui.SceneBackground")
 local CardRegistry = require("src.systems.CardRegistry")
 local CardDatabase = require("src.systems.CardDatabase")
-local CardFrame = require("src.ui.CardFrame")
 local IconLoader = require("src.ui.IconLoader")
 local RadialGlow = require("src.ui.RadialGlow")
 local TextFit = require("src.ui.TextFit")
@@ -72,6 +71,19 @@ function ClassSelectionScreen:new()
     instance._pick = 0            -- anel do momento da escolha
     instance._sealTip = 0         -- regra do selo visível por um instante
     instance.seal = 0
+    -- Inspeção das cartas iniciais (a MESMA da Coleção/Deck). O handle é
+    -- registrado no InputFocus (main.lua): aberto, ele captura teclado/pad/
+    -- mouse e o NavCursor não anda por trás. Tudo passa pelos métodos da tela
+    -- (adotados pelo UiScale: coordenadas virtuais).
+    instance.inspectModal = require("src.ui.CardInspectModal"):new()
+    instance.inspectHandle = {
+        ownsNavigation = true,
+        isVisible = function() return instance.visible and instance.inspectModal:isVisible() end,
+        hide = function() instance.inspectModal:hide() end,
+        keypressed = function(_, key) instance:keypressed(key) end,
+        mousepressed = function(_, x, y, b) instance:mousepressed(x, y, b) end,
+        mousereleased = function(_, x, y, b) instance:mousereleased(x, y, b) end,
+    }
 
     instance.onClassSelected = nil
     instance.onBackToMenu = nil
@@ -257,6 +269,12 @@ function ClassSelectionScreen:toggleDetails()
 end
 
 function ClassSelectionScreen:keypressed(key)
+    if self.inspectModal:isVisible() then
+        -- Esc/Enter/A/B fecham, setas (A/D) passam entre as cartas iniciais
+        local k = (key == "backspace") and "escape" or key
+        self.inspectModal:keypressed(k)
+        return
+    end
     if key == "escape" or key == "backspace" then
         self:goBackToMenu()
     elseif key == "a" then
@@ -339,6 +357,7 @@ function ClassSelectionScreen:show(onClassSelected, onBackToMenu)
     self._locked = false
     self.pageMode = "summary"
     self.focus = nil
+    self.inspectModal.card, self.inspectModal.anim = nil, 0
     ClassHeroFx.reset()
     if _G.EventManager then _G.EventManager.clear("class_select") end
     self:updatePositions()
@@ -407,6 +426,9 @@ function ClassSelectionScreen:update(dt)
     self._fade = math.min(1, self._fade + dt / 0.25)
     self._pick = math.max(0, self._pick - dt / 0.45)
     self._sealTip = math.max(0, self._sealTip - dt)
+
+    self.inspectModal:update(dt)
+    self:_updateStarters(dt)
 
     self._heroBox = self:_heroGeometry()
     local fp = self:_panelOf(self.focus)
@@ -501,6 +523,14 @@ function ClassSelectionScreen:draw()
         local r = lay.seal
         require("src.systems.Tutorial").anchor("seal_band", r.x, r.y, r.w, r.h)
     end
+    -- tooltip da carta inicial em hover: por cima da folha e do herói
+    local fp = self:_panelOf(self.focus)
+    if fp and self.pageMode == "details" then
+        for _, inst in ipairs(fp.cards) do
+            if inst.drawDeferredTooltip then inst:drawDeferredTooltip() end
+        end
+    end
+    self.inspectModal:draw()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
@@ -793,22 +823,39 @@ function ClassSelectionScreen:_drawDetailsPage(p, r, y, a)
     -- cartas iniciais (as de verdade, animadas)
     ink(Palette.PARCHMENT_DARK, a)
     TextFit.print(I18n.t("class_select.starter_label"), r.x, y, { size = body, minSize = body, maxW = r.w })
-    y = y + lh
+    -- folga pro LIFT do hover: a carta sobe nesse vão, sem cobrir o rótulo
+    y = y + lh + (Config.Cards.LIFT_AMOUNT or 25) + (Config.Cards.DEPTH_OFFSET or 15)
     local masteryH = lh * 3
     local availH = r.y + r.h - masteryH - y
     local n = #p.cards
-    local s = math.min(availH / Layout.CARD_H_SRC, (r.w - (n - 1) * 10) / (n * Layout.CARD_W_SRC))
+    local s = math.min(availH / Layout.CARD_H_SRC, (r.w - (n - 1) * 14) / (n * Layout.CARD_W_SRC))
     s = math.max(0.4, math.floor(s * 4) / 4)
+    -- cartas DE VERDADE (Card:draw): hover levanta/inclina, anima o ícone e
+    -- abre o tooltip ao lado; clique/A/botão direito = inspeção. O foco do
+    -- NavCursor vem do próprio Card:draw.
     local cx = r.x
-    for _, inst in ipairs(p.cards) do
-        local img = (CardFrame.liveImage and CardFrame.liveImage(inst)) or inst.image
-        if img then
-            love.graphics.setColor(0, 0, 0, 0.25 * a)
-            love.graphics.draw(img, cx + 3, y + 4, 0, s, s)
-            love.graphics.setColor(1, 1, 1, a)
-            love.graphics.draw(img, cx, y, 0, s, s)
+    self._starterRects = {}
+    for i, inst in ipairs(p.cards) do
+        local w, h = Layout.CARD_W_SRC * s, Layout.CARD_H_SRC * s
+        self._starterRects[i] = { x = cx, y = y, w = w, h = h }
+        if inst.image then
+            if inst.baseScale ~= s then
+                inst.baseScale, inst.currentScale, inst.targetScale = s, s, s
+            end
+            inst.layoutX, inst.layoutY = cx, y
+            -- só vira alvo de hover depois de desenhada no lugar: antes disso
+            -- self.x/y = 0 e a caixa de hover (união home+render) ia do
+            -- canto da tela até a carta
+            inst._csLaid = true
+            inst.isRewardCard = true          -- hover SOBE (a carta sai da folha)
+            inst.tooltipSide, inst.deferTooltip = true, true
+            inst.navGroup = "class_starters"
+            inst:draw(cx, y, false, false)
         end
-        cx = cx + math.floor(Layout.CARD_W_SRC * s) + 10
+        cx = cx + math.floor(w) + 14
+    end
+    if #self._starterRects > 0 then
+        require("src.systems.Tutorial").anchorList("class_starters", self._starterRects)
     end
 
     -- maestria + recorde, no pé da folha
@@ -975,13 +1022,71 @@ function ClassSelectionScreen:_drawLivingBackdrop(width, height)
 end
 
 function ClassSelectionScreen:mousepressed(x, y, button)
-    if not self.visible or self._locked then return end
+    if not self.visible then return end
+    if self.inspectModal:isVisible() then
+        self.inspectModal:mousepressed(x, y, button)
+        return
+    end
+    if self._locked then return end
+    -- carta inicial: clique esquerdo OU direito (gatilho do pad) inspeciona
+    local idx = self:_starterAt(x, y)
+    if idx and (button == 1 or button == 2) then
+        self:openInspect(idx)
+        return
+    end
     for _, btn in pairs(self.buttons) do btn:mousepressed(x, y, button) end
 end
 
 function ClassSelectionScreen:mousereleased(x, y, button)
-    if not self.visible or self._locked then return end
+    if not self.visible then return end
+    if self.inspectModal:isVisible() then
+        self.inspectModal:mousereleased(x, y, button)
+        return
+    end
+    if self._locked then return end
     for _, btn in pairs(self.buttons) do btn:mousereleased(x, y, button) end
+end
+
+-- ===== Cartas iniciais (DETALHES) =====
+
+-- Índice da carta inicial sob (x, y), só com os detalhes abertos.
+function ClassSelectionScreen:_starterAt(x, y)
+    if self.pageMode ~= "details" then return nil end
+    local p = self:_panelOf(self.focus)
+    if not (p and p.unlocked) then return nil end
+    for i, inst in ipairs(p.cards) do
+        if inst.isHovered then return i end
+        local r = self._starterRects and self._starterRects[i]
+        if r and x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h then return i end
+    end
+    return nil
+end
+
+function ClassSelectionScreen:_updateStarters(dt)
+    local open = self.pageMode == "details" and not self.inspectModal:isVisible() and not self._locked
+    local mx, my = love.mouse.getPosition()
+    for _, p in ipairs(self.panels) do
+        local live = open and p.classId == self.focus and p.unlocked
+        for _, inst in ipairs(p.cards) do
+            if inst.updateMouse and inst.image and inst.baseScale then
+                inst:updateMouse(mx, my, dt, (live and inst._csLaid) and true or false)
+            end
+        end
+    end
+end
+
+-- Abre a inspeção (a da Coleção) na carta i da classe em foco; as setas
+-- passam pelas outras iniciais. Nunca por cima de uma fala do corvo.
+function ClassSelectionScreen:openInspect(i)
+    local p = self:_panelOf(self.focus)
+    if not (p and p.unlocked and p.cards[i]) then return false end
+    local T = require("src.systems.Tutorial")
+    if T.overlay and T.overlay.isVisible and T.overlay:isVisible() then return false end
+    for _, inst in ipairs(p.cards) do
+        if inst.updateMouse then inst:updateMouse(-1e4, -1e4, 0, false) end
+    end
+    self.inspectModal:show(p.cards[i], p.cards, i)
+    return true
 end
 
 return ClassSelectionScreen

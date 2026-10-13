@@ -10,6 +10,8 @@
 --   locked   — perfil novo, foco no ladino bloqueado (silhueta + condição)
 --   all      — todas liberadas, foco no mago (resumo)
 --   details  — mago com o marcador DETALHES aberto
+--   starter_hover — carta inicial em hover (lift + tooltip ao lado)
+--   inspect  — a inspeção da Coleção aberta na carta inicial
 --   seal     — Selo 7, foco no guerreiro, mouse na faixa do selo (regra)
 --   seal_cap — Selo 7, foco no ladino que só vai até o 1 (aviso de teto)
 --   pick     — momento da escolha (anel + faíscas)
@@ -167,6 +169,18 @@ function M.run()
             s3:toggleDetails()
             pump(s3, 0.6)
             shoot(s3, sz[1], sz[2], "details")
+            -- carta inicial em hover (lift + tooltip ao lado) e a inspeção
+            local r1 = s3._starterRects and s3._starterRects[1]
+            if r1 then
+                hoverRect({ x = r1.x, y = r1.y + r1.h * 0.2, w = r1.w, h = r1.h * 0.6 })
+                pump(s3, 0.6)
+                shoot(s3, sz[1], sz[2], "starter_hover")
+                s3:openInspect(1)
+                hoverRect(nil)
+                pump(s3, 0.6)
+                shoot(s3, sz[1], sz[2], "inspect")
+                s3.inspectModal:hide()
+            end
 
             -- Selos: guerreiro liberou até o 10, mago até o 4, ladino até o 1.
             local caps = { warrior = 10, mage = 4, rogue = 1 }
