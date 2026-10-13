@@ -1937,7 +1937,7 @@ function love.load(loveArgs)
     FoilShader.load()
     PolychromeShader.load()
     NegativeShader.load()
-    -- Holo das cartas RARAS/LENDÁRIAS (CLAUDE.md §14: glow 0.35 / holo 0.75) e
+    -- Holo das cartas RARAS/LENDÁRIAS (CLAUDE.md §14, v2: aro/realces, 0→0.25 rara, 0.08→0.5 lendária no hover) e
     -- da edition "holo". O módulo nasceu em Abr/2026 (a182eae) documentado
     -- como ativo e NUNCA teve o load() chamado: isAvailable() ficava false,
     -- Card:draw caía no draw cru e a edition holo era descartada em silêncio.

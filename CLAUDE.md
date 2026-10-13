@@ -551,8 +551,8 @@ CRTShader                            -- pós-processamento full-screen
 **Hierarquia por raridade:**
 - `common`: outline ink + borda tipo simples
 - `uncommon`: + cantos decorativos verde-musgo
-- `rare`: + borda interna `BLOOD` + halo rarity seal + HoloShader glow 0.35
-- `legendary`: + borda interna dourada + cantos `AGED_GOLD` com highlight + halo dourado + HoloShader holo 0.75
+- `rare`: + borda interna `BLOOD` + halo rarity seal + HoloShader v2 (kind 0): glint prata-azulado SÓ no aro, 0 em repouso → ~0.25 no hover
+- `legendary`: + borda interna dourada + cantos `AGED_GOLD` com highlight + halo dourado + HoloShader v2 (kind 1): aro ouro + faixa prismática em degraus, 0.08 em repouso → ~0.5 no hover. **Regra (Out/2026):** o holo é REFLEXO aditivo no aro/realces — a ilustração em repouso é pixel-idêntica à crua (`test_holo_shader` trava); a v1 (arco-íris sobre a carta inteira, sempre animado) lavava a arte e foi descartada.
 
 **Hierarquia por tipo:**
 - `attack` → accent `BLOOD` + footer "ATTACK"
