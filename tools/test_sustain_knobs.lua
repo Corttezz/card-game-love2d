@@ -111,10 +111,15 @@ local function body()
     -- deck já com 2 fontes: vaga volta a ser livre
     local g2 = TK.newRunGame("warrior")
     local reg = g2.runManager.cardRegistry
+    -- Carta de DECK (coringa bifurca pra jokers e não conta no deck) e ordem
+    -- determinística: `pairs` já sorteou um coringa aqui e derrubou a suíte.
     local sustainId
+    local ids = {}
     for id, cd in pairs(g2.deckManager.cardDatabase:getAllCards()) do
-        if cd.class == "warrior" and CardRegistry.isSustainCard(cd) then sustainId = id; break end
+        if cd.class == "warrior" and cd.type ~= "joker" and CardRegistry.isSustainCard(cd) then ids[#ids + 1] = id end
     end
+    table.sort(ids)
+    sustainId = ids[1]
     t:truthy("guerreiro tem carta de sustento no catálogo", sustainId)
     if sustainId then
         g2:addCardToRun(sustainId); g2:addCardToRun(sustainId)
