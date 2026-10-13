@@ -85,6 +85,8 @@ WeatherEngine.PRESETS = {
                size = 3.4, windK = 0.17, land = 1.4, fg = 0.04,
                colors = { { 0.95, 0.97, 1.00 }, { 0.84, 0.89, 0.98 } },
                storm = { period = 55, phase = 0.10, dark = 0.06 },
+               -- bruma de tela da névoa de intenção (fogHook): branco-gelo
+               hazeColor = { 0.88, 0.93, 1.00 },
                ff = { count = 14, style = "sparkle", color = { 0.84, 0.94, 1.00 },
                       radius = 5, light = 0.35 } },
     -- pântano: garoa, fogos-fátuos VERDES, relâmpago raro no fim
@@ -100,6 +102,8 @@ WeatherEngine.PRESETS = {
                size = 2.4, windK = 0.22, land = 2.2, fg = 0.06,
                colors = { { 0.88, 0.48, 0.20 }, { 0.78, 0.30, 0.22 },
                           { 0.92, 0.70, 0.30 } },
+               -- bruma de tela da névoa de intenção (fogHook): violeta
+               hazeColor = { 0.62, 0.50, 0.70 },
                ff = { count = 18, style = "mote", color = { 1.00, 0.86, 0.66 },
                       radius = 6, light = 0.40 } },
 }
@@ -178,11 +182,17 @@ local function curProgress() return overrideP or progress end
 -- interruptor de UI. O estado decide e o clima acompanha (o relógio do clima
 -- é visual e não pode ser a regra — src/systems/IntentVisibility.lua).
 -- `fogHook` é instalado por quem sabe o estado e devolve 0..1 de intensidade
--- extra; `veilCur` persegue esse alvo em ~0,7 s (fecha e abre com respiro).
+-- extra; `veilCur` persegue esse alvo a 4/s (~0,5 s pra 85%: quando a vez
+-- volta ao jogador, depois dos beats de upkeep/compra, a bruma já fechou).
+-- O mesmo valor é a opacidade da BRUMA DE TELA (drawHaze, no flushAll): "?"
+-- no HUD nunca aparece sobre céu limpo — renderedFog() é o que a trava mede.
 WeatherEngine.fogHook = nil
 local veilCur = 0
+local VEIL_CHASE = 4.0
+local HAZE_ALPHA = 0.72      -- opacidade da bruma a veilCur = 1 (type_only ≈ 0.32, hidden ≈ 0.54)
 local function veilBoost() return veilCur end
 function WeatherEngine.veilBoost() return veilCur end
+function WeatherEngine.renderedFog() return veilCur end
 
 local function intensityOf(pr)
     if overrideI then return overrideI end
@@ -339,7 +349,7 @@ function WeatherEngine.update(dt, ctx)
             local ok, v = pcall(WeatherEngine.fogHook)
             if ok and type(v) == "number" then target = min(1, max(0, v)) end
         end
-        veilCur = veilCur + (target - veilCur) * min(1, (dt or 0) * 1.5)
+        veilCur = veilCur + (target - veilCur) * min(1, (dt or 0) * VEIL_CHASE)
         if abs(target - veilCur) < 0.002 then veilCur = target end
     end
 
@@ -785,8 +795,90 @@ function WeatherEngine.flushTo(relLow)
     end
 end
 
+-- ----------------------------------------------------------------------------
+-- BRUMA DE TELA da névoa de intenção: bandas de ruído em pixel correndo com o
+-- vento por cima do mundo inteiro (na frente do inimigo da estrada, atrás do
+-- HUD — o flushAll é o último passe do painter). Tingida pelo `hazeColor` do
+-- preset. reducedMotion: parada, nunca ausente (informação, não movimento).
+-- ----------------------------------------------------------------------------
+local hazeImg, hazeQuad = nil, nil
+local HAZE_W, HAZE_H = 128, 48
+local function hazeHash(x, y)
+    local n = (x * 374761393 + y * 668265263) % 4294967296
+    n = (n * 1274126177) % 4294967296
+    return (n % 1000) / 1000
+end
+local function hazeNoise(x, y)
+    local xi, yi = floor(x), floor(y)
+    local fx, fy = x - xi, y - yi
+    fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy)
+    local a, b = hazeHash(xi, yi), hazeHash(xi + 1, yi)
+    local c, d = hazeHash(xi, yi + 1), hazeHash(xi + 1, yi + 1)
+    return (a + (b - a) * fx) * (1 - fy) + (c + (d - c) * fx) * fy
+end
+local function buildHaze()
+    local data = love.image.newImageData(HAZE_W, HAZE_H)
+    for y = 0, HAZE_H - 1 do
+        for x = 0, HAZE_W - 1 do
+            local u = x / HAZE_W
+            local function nz(off)
+                return 0.55 * hazeNoise((u + off) * 5, y / 11) + 0.30 * hazeNoise((u + off) * 11 + 7, y / 6 + 3)
+                    + 0.15 * hazeNoise((u + off) * 23 + 2, y / 3 + 9)
+            end
+            local n = nz(0) * (1 - u) + nz(1) * u          -- costura X
+            -- janela vertical: cada banda some nas bordas (as bandas se
+            -- sobrepõem pela metade — sem isso o corte reto entre bandas
+            -- lia como retângulos, não como bruma)
+            local vwin = sin(3.14159 * (y + 0.5) / HAZE_H)
+            -- posterizado em 4 degraus: bruma de pixel art
+            local a = floor(max(0, (n * vwin - 0.22) / 0.55) * 4 + 0.5) / 4
+            data:setPixel(x, y, 1, 1, 1, min(1, a))
+        end
+    end
+    hazeImg = love.graphics.newImage(data)
+    hazeImg:setFilter("nearest", "nearest")
+    hazeImg:setWrap("repeat", "clamp")
+    hazeQuad = love.graphics.newQuad(0, 0, HAZE_W * 64, HAZE_H, HAZE_W, HAZE_H)
+end
+
+local function drawHaze()
+    if veilCur <= 0.01 or not geo or not cur then return end
+    if not hazeImg then buildHaze() end
+    local col = cur.hazeColor or { 0.9, 0.9, 0.95 }
+    local x, y, w, h = geo.x, geo.y, geo.w, geo.h
+    local a = veilCur * HAZE_ALPHA
+    -- pixel de ARTE: a bruma é chunky como a grama, não fina como a neve
+    local s = max(2, floor(h / 260))
+    local t = reduced() and 0 or time
+    local gust = windP and abs(GrassField.windAt(0.5, camZ0 + 6, time, windP, 0)) or 0
+    local speed = 14 + 30 * gust
+    local bandH = HAZE_H * s
+    local step = floor(bandH / 2)              -- bandas sobrepostas pela metade
+    local nBands = floor(h / step) + 2
+    love.graphics.push("all")
+    love.graphics.setScissor(floor(x), floor(y), floor(w), floor(h))
+    local drawn = 0
+    for i = 0, nBands - 1 do
+        local dir = (i % 2 == 0) and 1 or -1
+        local off = floor((t * speed * (0.6 + 0.25 * (i % 3)) * dir) % (HAZE_W * s) / s) * s
+        local yy = y + i * step - floor(bandH * 0.5)
+        -- mais densa embaixo (o chão some primeiro) e nunca cobre o céu alto
+        local depthK = 0.45 + 0.55 * min(1, (i + 1) / nBands)
+        love.graphics.setColor(col[1], col[2], col[3], a * depthK * (0.75 + 0.25 * ((i * 7) % 3) / 2))
+        love.graphics.draw(hazeImg, hazeQuad, x - HAZE_W * s * 2 + off, yy, 0, s, s)
+        drawn = drawn + 1
+    end
+    -- lavagem uniforme: baixa o contraste do que está atrás
+    love.graphics.setColor(col[1], col[2], col[3], a * 0.35)
+    love.graphics.rectangle("fill", x, y, w, h)
+    love.graphics.pop()
+    WeatherEngine.stats.hazeBands = drawn
+end
+
 function WeatherEngine.flushAll()
     WeatherEngine.flushTo(-math.huge)
+    WeatherEngine.stats.hazeBands = 0
+    drawHaze()
 end
 
 -- ----------------------------------------------------------------------------

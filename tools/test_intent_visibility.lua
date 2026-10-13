@@ -114,6 +114,25 @@ function M.run()
     t:truthy("salão marcado no contexto", ctxAt(8, "boss").hall == true)
     t:eq("densidade sem contexto = 0", IV.density(nil), 0)
 
+    -- "subjetivo, não cego" (lead): o TIPO só some no pico da nevasca
+    local s1 = IV.expectedShares(ctxAt(1))
+    t:eq("frost andar 1: NUNCA some o tipo (hidden = 0)", s1.hidden, 0)
+    t:check("frost andar 1: um terço dos anúncios sem número", s1.type_only > 0.3 and s1.type_only < 0.4)
+    local s7 = IV.expectedShares(ctxAt(7))
+    t:check("frost andar 7 (pico): hidden entre 15% e 30%", s7.hidden >= 0.15 and s7.hidden <= 0.30)
+    local sh = IV.expectedShares(ctxAt(8, "boss"))
+    t:check("frost salão: hidden entre 10% e 25%", sh.hidden >= 0.10 and sh.hidden <= 0.25)
+    for _, bid in ipairs({ "frost", "dusk" }) do
+        local sAct = 0
+        for f = 1, 7 do
+            sAct = sAct + IV.expectedShares(IV.contextFor({ actNumber = (bid == "frost") and 4 or 6,
+                floorInAct = f, currentNode = { type = "battle" } })).hidden
+        end
+        t:check(bid .. ": hidden médio na estrada abaixo de 10%", sAct / 7 < 0.10)
+    end
+    t:eq("stormCurve no salão = 1", IV.stormCurve(ctxAt(8, "boss")), 1)
+    t:eq("stormCurve no andar 1 = 0", IV.stormCurve(ctxAt(1)), 0)
+
     -- endless cicla 4,5,6,1,2,3 (mesmo wrap do EnemyRoster.biomeAct)
     local function endlessCtx(floor)
         return IV.contextFor({ actNumber = 6, endlessMode = true, currentFloor = floor,
@@ -461,9 +480,44 @@ function M.run()
         thick > calm + 0.5)
     t:check("boost nunca passa de 1", thick <= 1)
     t:check("a tempestade fecha junto", WeatherEngine.storm() > 0.5)
+    -- INVARIANTE (lead): "?" nunca sobre céu limpo — assentado o clima, a
+    -- bruma de tela (renderedFog) está acima do limiar sempre que o intent
+    -- está encoberto, e abaixo quando revelado. 15 quadros ≈ 0,5 s: menos
+    -- que os beats entre o anúncio e a vez voltar ao jogador.
+    local TH = IV.FOG_THRESHOLD
+    t:check("renderedFog hidden >= limiar (" .. TH .. ")", WeatherEngine.renderedFog() >= TH)
+    g.enemy.intentVisibility = "type_only"
+    weather(15)
+    t:check("type_only, 0,5 s depois: renderedFog >= limiar", WeatherEngine.renderedFog() >= TH)
     g.enemy.intentVisibility = "full"
-    weather(150)
+    weather(45)
+    t:check("revelado, 1,5 s depois: renderedFog < limiar", WeatherEngine.renderedFog() < TH)
+    weather(105)
     t:near("revelado: a nevasca volta ao normal", WeatherEngine.intensity(), calm, 0.02)
+
+    -- a bruma é DESENHADA (bandas no flushAll) quando há véu, e não há
+    -- banda alguma com o número à mostra
+    do
+        local WorldRoad = require("src.ui.WorldRoad")
+        local W, H = love.graphics.getDimensions()
+        local function frame()
+            WorldRoad.update(1 / 30)
+            WorldRoad.draw(0, 60, W, H - 60, 4)
+            WorldRoad.drawOverlays(0, 60, W, H - 60)
+        end
+        WorldRoad.clearCache()
+        WorldRoad.setBiome(4)
+        WorldRoad._camZ = 5.5
+        g.enemy.intentVisibility = "hidden"
+        IV.noteActive(g.enemy)
+        for _ = 1, 45 do frame() end
+        t:check("bruma de tela desenhada com o intent escondido (bandas > 0)",
+            (WeatherEngine.stats.hazeBands or 0) > 0)
+        t:check("...e o clima da cena fechou (renderedFog >= limiar)", WeatherEngine.renderedFog() >= TH)
+        g.enemy.intentVisibility = "full"
+        for _ = 1, 90 do frame() end
+        t:eq("revelado: nenhuma banda de bruma", WeatherEngine.stats.hazeBands or 0, 0)
+    end
     -- salão: interior não tem clima do domo
     g.enemy.intentVisibility = "hidden"
     g.enemy.fogContext.hall = true

@@ -46,11 +46,31 @@ nevasca fecha quando o número some), não como um interruptor de UI.
   veil_number / veil_all (+ veil_enemy com o nome da criatura quando a causa
   é véu, + veil_hint). `getKnownIntent` devolve só kind/pierce/charge/nomes
   de debuff (type_only) ou `{kind="unknown"}` (hidden).
-- **O mundo acompanha o estado, não o contrário.** O relógio do clima é
-  visual; a regra é a rolagem. `worldBoost` (0.45 / 0.75) soma à intensidade
-  do WeatherEngine quando o inimigo ATIVO (último que resolveu) está vivo,
-  fora do salão e encoberto. Salão não tem clima do domo (a bruma do
-  InteriorFX é da frente chefes-visual).
+- **O mundo acompanha o estado, não o contrário — e "?" NUNCA aparece sobre
+  céu limpo** (revisão do lead, Out/2026: a 1ª versão só engrossava os flocos
+  de 1 px e a captura lia como interruptor de UI). O relógio do clima é
+  visual; a regra é a rolagem. `worldBoost` (0.45 / 0.75) vira `veilCur` no
+  WeatherEngine (persegue a 4/s, ~0,5 s pra 85%): soma à intensidade das
+  partículas, fecha a tempestade E desenha a **BRUMA DE TELA** (`drawHaze`
+  no `flushAll`: bandas de ruído em pixel, sobrepostas pela metade e com
+  janela vertical — corte reto entre bandas lia como retângulo —, correndo
+  com o vento, tingidas pelo `hazeColor` do preset, na frente do inimigo da
+  estrada e atrás do HUD; reducedMotion = parada, nunca ausente).
+  `WeatherEngine.renderedFog()` é a opacidade da bruma e
+  `IntentVisibility.FOG_THRESHOLD` (0.30) o "visível": a trava exige
+  renderedFog ≥ limiar 0,5 s depois de encoberto (menos que os beats entre o
+  anúncio e a vez voltar) e < limiar 1,5 s depois de revelado, e bandas > 0
+  só com véu. Hook ativo quando o inimigo ATIVO (último que resolveu) está
+  vivo, fora do salão e encoberto. Salão não tem clima do domo (a bruma do
+  InteriorFX é da frente chefes-visual; lá fica só o véu do HUD).
+- **Subjetivo, não cego** (lead): o TIPO só some no pico da nevasca —
+  `heavy` é multiplicado por `stormCurve` (smooth 0.60..0.92 do progresso, a
+  janela do `stormFor`; salão = 1). Frações esperadas (frost): andar 1 =
+  35% type_only / 0% hidden; andar 7 = 56% / 21%; salão = 39% / 17%; ato
+  inteiro medido 50% full / 45% type_only / 5% hidden (dusk: 63 / 34 / 3).
+  `love . test_one intent_fog_report` imprime a tabela analítica + medida
+  (N runs × anúncios pela resolução real). Trava: hidden = 0 no andar 1,
+  15-30% no andar 7, média da estrada < 10%.
 - **Densidade pela chegada ao castelo**: `base` no andar 1, `peak` no andar
   8, pela MESMA curva do clima (`fogCurve` == `WeatherEngine.intensityFor`,
   copiada porque este módulo roda sem motor gráfico; a trava exige igualdade).

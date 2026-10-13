@@ -98,6 +98,28 @@ function IntentVisibility.contextFor(run, nodeType)
     return ctx
 end
 
+-- Quanto do "pico" da nevasca o contexto tem (0..1): a MESMA janela do
+-- stormFor do WeatherEngine (tempestade só no trecho final do ato). Salão =
+-- pico cheio. Multiplica a fração `heavy` (tipo escondido).
+function IntentVisibility.stormCurve(ctx)
+    if not ctx then return 0 end
+    if ctx.hall then return 1 end
+    return smooth(0.60, 0.92, ctx.progress or 0)
+end
+
+-- Fração esperada de anúncios por nível num contexto (analítico, pro
+-- relatório e pra trava): { full, type_only, hidden }.
+function IntentVisibility.expectedShares(ctx)
+    local d = IntentVisibility.density(ctx)
+    local rule = ctx and IntentVisibility.ruleFor(ctx.biomeId) or nil
+    local hidden = d * ((rule and rule.heavy) or 0) * IntentVisibility.stormCurve(ctx)
+    return { full = 1 - d, type_only = d - hidden, hidden = hidden }
+end
+
+-- Bruma de tela "visível" (WeatherEngine.renderedFog >= isto) — fonte única
+-- com a trava.
+IntentVisibility.FOG_THRESHOLD = FogData.fogThreshold or 0.3
+
 -- Densidade da névoa do contexto (0..1): fração dos anúncios encobertos.
 function IntentVisibility.density(ctx)
     if not ctx then return 0 end
@@ -136,7 +158,10 @@ function IntentVisibility.resolve(enemy, roll)
         local rule = IntentVisibility.ruleFor(ctx.biomeId) or {}
         local r = roll()
         if r < density then
-            level = (r < density * (rule.heavy or 0)) and "hidden" or "type_only"
+            -- o TIPO só some no pico da nevasca (curva de tempestade do
+            -- clima; salão = pico): "subjetivo, não cego"
+            local heavy = (rule.heavy or 0) * IntentVisibility.stormCurve(ctx)
+            level = (r < density * heavy) and "hidden" or "type_only"
             cause = "fog"
         end
     end
