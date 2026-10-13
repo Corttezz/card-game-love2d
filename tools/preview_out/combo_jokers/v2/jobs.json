@@ -1,0 +1,57 @@
+{
+  "combo_volley_0": {
+    "object_id": "fe5c9f35-06ef-46d1-a794-5648cdd70859",
+    "subject": "hooded knife thrower bust with a fan of five gleaming throwing daggers held between the fingers of a raised gloved hand, more daggers raining down around him, cruel grin under the hood"
+  },
+  "combo_volley_1": {
+    "object_id": "8fcdc106-56ba-4a96-8e52-2a8f7af2b35d",
+    "subject": "storm of steel daggers falling point down from dark storm clouds toward the viewer, blades glinting, dramatic rain of blades"
+  },
+  "combo_volley_2": {
+    "object_id": "66fc9585-6fe8-441e-898f-c65641754ffe",
+    "subject": "masked blade dancer upper body, crimson scarf, throwing a spread of curved knives that fly outward in an arc, blades catching light"
+  },
+  "combo_wall_0": {
+    "object_id": "93ca8d87-c31e-4432-91be-fdba44681b3c",
+    "subject": "grim veteran soldier face with scarred cheek peering over a tight row of overlapping round iron shields, spear tips above the shield wall, helmet with nose guard"
+  },
+  "combo_wall_1": {
+    "object_id": "49767744-d835-448d-b65e-a26f0a8ffcde",
+    "subject": "phalanx of overlapping heraldic round shields locked rim to rim forming an iron wall, spear points rising behind them, one shield with a gleaming bronze boss in the center"
+  },
+  "combo_wall_2": {
+    "object_id": "7e2a3e6d-2d88-4f1e-a2bf-c8275617fdac",
+    "subject": "stern shieldmaiden bust with braided hair and iron helm, holding a huge round shield in front with more shields overlapping behind her, cold glint on the iron rim"
+  },
+  "combo_pair_0": {
+    "object_id": "61281e85-9481-4d43-9e9a-f4ad193d6b3d",
+    "subject": "ornate gilded hand mirror with a cracked glass, in the glass a pale masked face appears doubled, two identical reflections side by side split by the crack"
+  },
+  "combo_pair_1": {
+    "object_id": "932ba970-df8a-453c-8b12-b5b71f344dfb",
+    "subject": "pale twin-faced harlequin bust, the face split down the middle by a cracked mirror line, both halves identical and mirrored, gold filigree collar"
+  },
+  "combo_pair_2": {
+    "object_id": "fb814f8b-f1c2-4308-a558-cdb4bd838bb7",
+    "subject": "tall ornate mirror in a dark gold baroque frame, cracked glass showing a hooded figure and its exact twin reflection facing each other"
+  },
+  "combo_volley_3": {
+    "object_id": "15c80670-5732-4fb9-8ba2-f9830d1723a1",
+    "subject": "hooded assassin bust, face half in shadow, holding three long steel throwing daggers fanned out in one raised hand, blades long and clearly visible, a few more daggers falling around him, crimson cloth mask over the mouth"
+  },
+  "combo_volley_4": {
+    "object_id": "60c8b139-69a8-4fa4-9abc-0169c0c08ae2",
+    "subject": "grinning rogue bust with a wide-brimmed hat, crossing two arms loaded with throwing knives, a bandolier of daggers across the chest, blades glinting"
+  },
+  "combo_wall_3": {
+    "object_id": "1d3c8084-73ca-472b-907e-666242dc5640",
+    "subject": "three helmeted soldiers in a tight shield wall, faces hidden behind a row of three overlapping round iron shields locked rim to rim, spear tips rising above, front view"
+  },
+  "combo_wall_4": {
+    "object_id": "b1ff3c22-c7e0-4cb6-960e-6e309a3e1d27",
+    "subject": "grim bearded veteran warrior in a nasal helmet crouched behind a wall of three overlapping painted round shields, eyes glaring over the rims, a spear resting on top"
+  },
+  "picked_combo_volley": "15c80670-5732-4fb9-8ba2-f9830d1723a1",
+  "picked_combo_wall": "b1ff3c22-c7e0-4cb6-960e-6e309a3e1d27",
+  "picked_combo_pair": "61281e85-9481-4d43-9e9a-f4ad193d6b3d"
+}

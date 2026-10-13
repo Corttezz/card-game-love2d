@@ -108,9 +108,9 @@ SFX = [
         "id": "joker_combo_pair", "dir": "audio/sfx/joker-sig",
         "duration": 0.9,
         "prompt": (
-            "Two magical playing cards snapping down on a table one after "
-            "another, followed by a mirrored twin crystal chime echoing "
-            "twice, mysterious and satisfying, card game"
+            "A cracked magic mirror humming, then a crisp glass chime "
+            "that echoes back as an identical mirrored twin chime a moment "
+            "later, eerie and satisfying, dark fantasy card game"
         ),
     },
 ]

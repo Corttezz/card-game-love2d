@@ -27,25 +27,33 @@ from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ICONS = os.path.join(ROOT, "assets/sprites/icons")
-ANIM = os.path.join(ROOT, "assets/sprites/icons_anim")
+ANIM = os.environ.get("ICON_ANIM_OUT") or os.path.join(ROOT, "assets/sprites/icons_anim")
 
-# icon → material (faixa HSV), direção da varredura, largura da faixa (px),
+# icon → material (faixa HSV) ou `layers` (lista de camadas, incl. mode
+# "points": olhos que acendem sem o rosto mexer), direção da varredura, largura da faixa (px),
 # ganho do brilho, quadros, fps, `stagger`: nº de alvos varridos em
 # sequência (as três adagas uma depois da outra) separados no eixo x.
 SPECS = {
-    # três adagas de aço: brilho desce cada lâmina, esquerda → direita
-    "combo_volley": dict(hue=None, smax=0.25, vmin=0.35, vmax=0.95,
-                         dir=(0.35, 1.0), width=3.5, gain=0.75,
-                         frames=12, fps=8, stagger=3),
-    # escudo-torre de bronze: reflexo morno atravessa a face na diagonal
-    "combo_wall": dict(hue=(10, 40), smin=0.40, smax=0.85, vmin=0.30,
-                       vmax=0.80, dir=(1.0, 1.0), width=5.0, gain=0.45,
-                       frames=12, fps=7, stagger=1),
-    # espelho: o reflexo varre o vidro lilás (o v1 eram duas cartas largas
-    # que o slot da carta cortava ao meio — ícone redesenhado estreito)
-    "combo_pair": dict(hue=(225, 285), smin=0.10, smax=0.55, vmin=0.60,
-                       vmax=1.0, dir=(1.0, 0.6), width=4.0, gain=0.70,
-                       frames=12, fps=7, stagger=1),
+    # combo_volley: idle do PixelLab v3 (aprovado — brilho nas lâminas,
+    # silhueta intacta); não assar aqui por cima.
+    # 2ª volta (arte de personagem): veterano atrás dos escudos — olhos
+    # dourados acendem alternando + reflexo varrendo o ouro dos escudos.
+    # O v3 mexia o rosto (barba/boca ondulando) — reprovado no olho.
+    "combo_wall": dict(frames=12, fps=7, layers=[
+        dict(mode="points", points=[(29, 17), (34, 17)], phase=0.0,
+             glow=(255, 214, 120), gain=0.9),
+        dict(hue=(28, 55), smin=0.45, smax=1.0, vmin=0.55, vmax=1.0,
+             box=(0, 24, 64, 64), dir=(1.0, 0.2), width=4.0, gain=0.6,
+             stagger=1),
+    ]),
+    # espelho rachado: os dois olhos vermelhos das máscaras acendem
+    # alternando (o v3 FECHAVA os olhos e o vermelho sumia — pop no loop).
+    "combo_pair": dict(frames=12, fps=7, layers=[
+        dict(mode="points", points=[(26, 22), (37, 22)], phase=0.5,
+             glow=(255, 60, 50), gain=0.9),
+        dict(hue=(28, 55), smin=0.45, smax=1.0, vmin=0.55, vmax=1.0,
+             dir=(0.3, 1.0), width=4.0, gain=0.5, stagger=1),
+    ]),
 }
 
 
@@ -98,60 +106,86 @@ def small_components(mask, max_side):
     return out
 
 
-def bake(icon, spec):
-    base = np.array(Image.open(os.path.join(ICONS, icon + ".png")).convert("RGBA"))
+def apply_layer(fr, base, spec, i, n):
+    """Aplica UMA camada de movimento no quadro i (fr float32, in-place)."""
     h, w = base.shape[:2]
+    if spec.get("mode") == "points":
+        # olhos: pontos que acendem e apagam, alternando (fase por ponto);
+        # halo de 1px em cruz com metade da força. Rosto PARADO — só a cor
+        # do ponto muda (o v3 abria/fechava olho e mexia boca: reprovado).
+        for k, (x, y) in enumerate(spec["points"]):
+            ph = 2 * math.pi * (i / n + k * spec.get("phase", 0.5))
+            amt = (0.5 - 0.5 * math.cos(ph)) if i > 0 else 0
+            amt = round(amt * 3) / 3 * spec["gain"]
+            g = np.array(spec["glow"], np.float32)
+            for (ox, oy, f) in ((0, 0, 1.0), (1, 0, .45), (-1, 0, .45),
+                                (0, 1, .45), (0, -1, .45)):
+                xx, yy = x + ox, y + oy
+                if 0 <= xx < w and 0 <= yy < h and base[yy, xx, 3] > 0:
+                    fr[yy, xx, :3] += (g - fr[yy, xx, :3]) * amt * f
+        return
     mask = material_mask(base, spec)
     if spec.get("max_comp"):
         mask = small_components(mask, spec["max_comp"])
+    if spec.get("box"):
+        bx0, by0, bx1, by1 = spec["box"]
+        bm = np.zeros_like(mask)
+        bm[by0:by1, bx0:bx1] = True
+        mask &= bm
     ys, xs = np.nonzero(mask)
+    if not len(xs) or i == 0:
+        return
     dx, dy = spec.get("dir", (0, 1))
     norm = math.hypot(dx, dy)
     dx, dy = dx / norm, dy / norm
-    n = spec["frames"]
     k = spec.get("stagger", 1)
-    # alvos = fatias verticais iguais do material (as k adagas)
     x0, x1 = xs.min(), xs.max() + 1
+    slot = (i / n) * (k + 1)
+    t_idx = int(slot)
+    if t_idx >= k:
+        return
+    t = slot - t_idx
+    sx0 = x0 + (x1 - x0) * t_idx / k
+    sx1 = x0 + (x1 - x0) * (t_idx + 1) / k
+    cols = np.arange(w)[None, :]
+    sel = mask & (cols >= sx0) & (cols < sx1)
+    sy, sx = np.nonzero(sel)
+    if not len(sy):
+        return
+    if spec.get("mode") == "pulse":
+        amt = math.sin(math.pi * t)
+        amt = round(amt * 3) / 3 * spec["gain"]
+        g = np.array(spec["glow"], np.float32)
+        px = fr[sy, sx, :3]
+        fr[sy, sx, :3] = px + (g - px) * amt
+        return
+    proj = sx * dx + sy * dy
+    pmin, pmax = proj.min() - spec["width"], proj.max() + spec["width"]
+    c = pmin + (pmax - pmin) * t
+    d = np.abs(proj - c)
+    amt = np.clip(1 - d / spec["width"], 0, 1)
+    amt = np.round(amt * 2) / 2 * spec["gain"]   # degraus (pixel art)
+    px = fr[sy, sx, :3]
+    fr[sy, sx, :3] = px + (255 - px) * amt[:, None]
+
+
+def bake(icon, spec):
+    base = np.array(Image.open(os.path.join(ICONS, icon + ".png")).convert("RGBA"))
+    layers = spec.get("layers", [spec])
+    n = spec["frames"]
     out_dir = os.path.join(ANIM, icon)
     os.makedirs(out_dir, exist_ok=True)
     for f in os.listdir(out_dir):
         os.remove(os.path.join(out_dir, f))
-    frames = []
     for i in range(n):
         fr = base.copy().astype(np.float32)
-        if i > 0:
-            # cada alvo tem sua janela de tempo: k varreduras + 1 pausa
-            slot = (i / n) * (k + 1)
-            t_idx = int(slot)
-            if t_idx < k:
-                t = slot - t_idx
-                sx0 = x0 + (x1 - x0) * t_idx / k
-                sx1 = x0 + (x1 - x0) * (t_idx + 1) / k
-                sel = mask & (np.arange(w)[None, :] >= sx0) & (np.arange(w)[None, :] < sx1)
-                sy, sx = np.nonzero(sel)
-                if len(sy) and spec.get("mode") == "pulse":
-                    # sobe e desce dentro da janela do alvo, em degraus
-                    amt = math.sin(math.pi * t)
-                    amt = round(amt * 3) / 3 * spec["gain"]
-                    g = np.array(spec["glow"], np.float32)
-                    px = fr[sy, sx, :3]
-                    fr[sy, sx, :3] = px + (g - px) * amt
-                elif len(sy):
-                    proj = sx * dx + sy * dy
-                    pmin, pmax = proj.min() - spec["width"], proj.max() + spec["width"]
-                    c = pmin + (pmax - pmin) * t
-                    d = np.abs(proj - c)
-                    amt = np.clip(1 - d / spec["width"], 0, 1)
-                    # degraus (pixel art): 0, meio, cheio
-                    amt = np.round(amt * 2) / 2 * spec["gain"]
-                    px = fr[sy, sx, :3]
-                    fr[sy, sx, :3] = px + (255 - px) * amt[:, None]
-        frames.append(fr.clip(0, 255).astype(np.uint8))
-    for i, fr in enumerate(frames):
-        Image.fromarray(fr).save(os.path.join(out_dir, f"frame_{i:03d}.png"))
+        for layer in layers:
+            apply_layer(fr, base, layer, i, n)
+        Image.fromarray(fr.clip(0, 255).astype(np.uint8)).save(
+            os.path.join(out_dir, f"frame_{i:03d}.png"))
     with open(os.path.join(out_dir, "meta.lua"), "w") as f:
         f.write(f"return {{ fps = {spec['fps']} }}\n")
-    print(f"[bake] {icon}: {n} quadros, {int(mask.sum())} px de material")
+    print(f"[bake] {icon}: {n} quadros, {len(layers)} camada(s)")
 
 
 def sheet(icons, out):

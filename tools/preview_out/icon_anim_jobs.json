@@ -513,5 +513,20 @@
   "rogue_toxin_master": {
     "object_id": "198bbce0-77a9-495c-9c14-fe9c409a4b3b",
     "group": "15d2d99b-ead0-4a83-aa28-f932cc79f863"
+  },
+  "combo_volley": {
+    "object_id": "15c80670-5732-4fb9-8ba2-f9830d1723a1",
+    "group": "58bc2a96-a3c3-42cd-87a5-a675714a958a",
+    "anim_hash": "62e8d35eb2b8"
+  },
+  "combo_wall": {
+    "object_id": "b1ff3c22-c7e0-4cb6-960e-6e309a3e1d27",
+    "group": "7fabcfcb-5f5c-4992-a79c-e761a92a0a9c",
+    "anim_hash": "951a09a70856"
+  },
+  "combo_pair": {
+    "object_id": "61281e85-9481-4d43-9e9a-f4ad193d6b3d",
+    "group": "bfc6b6a9-51a9-4d62-bbdf-6828f63d0dea",
+    "anim_hash": "ba91a3cefbca"
   }
 }

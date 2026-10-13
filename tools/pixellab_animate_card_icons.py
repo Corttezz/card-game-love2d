@@ -43,7 +43,9 @@ import urllib.request
 URL = "https://api.pixellab.ai/mcp"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 JOBS_FILE = os.path.join(ROOT, "tools/preview_out/icon_anim_jobs.json")
-OUT_ROOT = os.path.join(ROOT, "assets/sprites/icons_anim")
+# ICON_ANIM_OUT: pasta de staging (validar ANTES de sobrescrever o que um
+# jogo aberto está lendo — o dono joga enquanto a fábrica roda)
+OUT_ROOT = os.environ.get("ICON_ANIM_OUT") or os.path.join(ROOT, "assets/sprites/icons_anim")
 
 SUFFIX = (", subtle idle motion, seamless loop, colors and silhouette "
           "unchanged, everything else perfectly static")
@@ -1083,10 +1085,28 @@ ANIMS = {
         "fps": 9,
     },
     # ===== Coringas de COMBO (Out/2026, uncommon = sutil, 1 elemento) =====
-    # Os 3 coringas de combo (combo_volley/wall/pair) têm idle ASSADO por
-    # tools/bake_icon_glint.py, não PixelLab: o v3 entortou as adagas e
-    # ondulou a borda das cartas (reprovado no olho, Out/2026). Não
-    # recolocar aqui — um replace_existing apagaria o assado.
+    # ===== Coringas de COMBO, 2ª volta (Out/2026) =====
+    # A 1ª arte (ícones planos de objeto + idle assado) foi reprovada pelo
+    # dono: "básica e fora do nosso design". Ilustrações novas de PERSONAGEM
+    # via tools/pixellab_combo_jokers.py (object_id abaixo). Uncommon =
+    # movimento visível mas calmo. Rostos: whitelist + boca travada.
+    #
+    # Arte olhada: figura de capuz carmim, rosto oculto, leque de LONGAS
+    # lâminas de aço abertas diante do peito; manto vermelho.
+    "combo_volley": {
+        "object_id": "15c80670-5732-4fb9-8ba2-f9830d1723a1",
+        "anim": ("the hooded figure and every steel blade are a frozen "
+                 "statue, the blades never bend, never move, never change "
+                 "shape, the ONLY two moving things are: a thin white glint "
+                 "of light sliding gently along the steel blades one after "
+                 "another, and the lower hem of the crimson cloak swaying "
+                 "softly"),
+        "fps": 7,
+    },
+    # combo_wall e combo_pair: o v3 MEXEU nos rostos (barba/boca do
+    # veterano ondulando; as máscaras do espelho FECHAVAM os olhos e o
+    # vermelho sumia — pop no loop). Idle ASSADO no tools/bake_icon_glint.py
+    # (olhos acendendo + reflexo no ouro, rosto parado por construção).
 }
 
 def token():
@@ -1288,7 +1308,13 @@ def run():
     descarta jobs de interpolação concorrentes — memory/card_icon_animation).
     ~3-6 min por carta; rodar em background e validar por blocos."""
     jobs = load_jobs()
-    todo = [(i, s) for i, s in ANIMS.items() if not _has_frames(i)]
+    only = set(filter(None, os.environ.get("ICON_ANIM_ONLY", "").split(",")))
+    # ICON_ANIM_ONLY=a,b: só esses ícones. Obrigatório com ICON_ANIM_OUT:
+    # staging vazio faria TODO o ANIMS parecer "sem frames" (131 jobs).
+    if os.environ.get("ICON_ANIM_OUT") and not only:
+        raise SystemExit("ICON_ANIM_OUT exige ICON_ANIM_ONLY")
+    todo = [(i, s) for i, s in ANIMS.items()
+            if (not only or i in only) and not _has_frames(i)]
     print(f"[run] fila: {len(todo)} animações", flush=True)
     ok, fail = 0, 0
     for n, (icon, spec) in enumerate(todo, 1):
