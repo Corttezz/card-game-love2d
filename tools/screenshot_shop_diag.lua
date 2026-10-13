@@ -127,6 +127,10 @@ function M.run(arg)
                     local D = s.scene.L.dice
                     mouseX, mouseY = (D.rect.x + D.rect.w / 2) * k, (D.rect.y + D.rect.h * 0.6) * k
                     sim(0.6)
+                elseif state == "hoverpotion" then
+                    local it = itemWhere(function(i) return i.kind == "relic" and i.index == 1 end)
+                    if it then it.offer.id = "health_upgrade"; sim(0.1) end
+                    hoverItem(it)
                 elseif state == "hoverpack" then
                     hoverItem(itemWhere(function(it) return it.kind == "pack" end))
                 elseif state == "hovercard" then

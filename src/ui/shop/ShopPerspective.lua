@@ -440,47 +440,62 @@ function ShopPerspective.drawContactShadow(o, mask, alpha)
     local bottom = prof.y1 + 1
     local fx, fy = floor(o.fx), floor(o.fy)
     local halfW = (prof.x1 - prof.x0 + 1) * s / 2
-    -- v5 r2 (dono: "sombras parecem riscos pretos soltos"): a sombra segue
-    -- o CONTORNO DE BAIXO da silhueta coluna a coluna (livro aberto, cristal
-    -- na base de pedra, tesoura: bases irregulares), contínua, sem buracos:
-    -- coluna cuja base está até `tol` acima do pé recebe sombra NA base dela
-    -- (densidade cai com a altura); acima disso, a coluna pendura sobre a
-    -- mesa e não toca. Os gaps pequenos (1 px) entre colunas são fechados.
-    -- Levantado (dono, Out/2026: "a sombra embaixo da poção não fica
-    -- preenchida"): a sombra fica NO TAMPO como a PEGADA inteira da
-    -- silhueta (toda coluna, sem tolerância de altura), cheia e sem dither,
-    -- 4 linhas (o objeto no ar projeta uma mancha fechada); apoiado, as 2
-    -- linhas de contato em dither de sempre.
+    -- v5 r2c (dono, duas vezes: "a sombra ainda está errada"): a sombra é
+    -- uma PEGADA NO PLANO DA MESA, não o contorno do sprite. Cada coluna da
+    -- silhueta recebe sombra na reta 1:8 que passa pelo pé (yT = fy + k*lx),
+    -- cheia na largura inteira do objeto:
+    --   apoiado   = 2 linhas: a de cima sólida onde a base ENCOSTA (gap <= 2 px)
+    --               e em dither onde o objeto só pende sobre a mesa (livro
+    --               aberto, bojo da poção), a de baixo em dither mais ralo;
+    --   levantado = 4 linhas sólidas (a mancha fechada de um objeto no ar),
+    --               1 coluna a mais de cada lado em dither.
+    -- Seguir o contorno de baixo (versão anterior) fazia a sombra da poção
+    -- virar um arco subindo pelos lados e a do item flutuando sumir.
     local lifted = (o.lift or 0) > 0.5
-    local tol = lifted and 1e9 or math.max(4, 6 * s)
+    local contactTol = math.max(2, 2 * s)
     local n = 0
     local right = nil
     local lightK = 1
-    local rows = lifted and 3 or 1
-    local lastY = nil
-    for dx = floor(fx - halfW) - 1, math.ceil(fx + halfW) + 1 do
+    local lastHad = false
+    local x0c, x1c = floor(fx - halfW) - 1, math.ceil(fx + halfW) + 1
+    for dx = x0c, x1c do
         local lx = dx + 0.5 - fx
         local sx = cx + lx / (o.flip and -s or s)
         local b = prof.bottom[floor(sx)]
-        local by = nil
-        if b then
-            local gap = (bottom - (b + 1)) * s
-            if gap <= tol then by = floor(fy + k * lx - gap) end
-        elseif lastY then
-            by = lastY                      -- buraco de 1 coluna: fecha
+        local has = b ~= nil
+        local edge = false
+        if not has and lifted then
+            -- 1 coluna de borda de cada lado da pegada
+            local bl = prof.bottom[floor(cx + (lx - 1) / (o.flip and -s or s))]
+            local br = prof.bottom[floor(cx + (lx + 1) / (o.flip and -s or s))]
+            if bl or br then has, edge = true, true end
+        elseif not has and lastHad then
+            has = true                          -- buraco de 1 coluna: fecha
         end
-        if by then
-            local gapK = lifted and 1 or (b and clamp(1 - ((bottom - (b + 1)) * s) / (tol + 1), 0.35, 1) or 0.6)
-            for row = 0, rows do
-                local dens = ((row == 0) and 1.0 or (lifted and 0.9 or 0.55)) * gapK
-                if lifted and row < rows then dens = 1 end
-                if dithered(dx, by + row, dens * lightK) and (not mask or inPoly(dx + 0.5, by + row + 0.5, mask)) then
-                    n = n + 1; pts[n] = { dx + 0.5, by + row + 0.5 }
+        if has then
+            local yT = floor(fy + k * lx)
+            local gap = b and (bottom - (b + 1)) * s or contactTol
+            if lifted then
+                for row = 0, 3 do
+                    local dens = edge and 0.5 or 1
+                    if dithered(dx, yT + row, dens * lightK) and (not mask or inPoly(dx + 0.5, yT + row + 0.5, mask)) then
+                        n = n + 1; pts[n] = { dx + 0.5, yT + row + 0.5 }
+                    end
+                end
+            else
+                local touch = gap <= contactTol
+                local d0 = touch and 1 or 0.55
+                local d1 = touch and 0.5 or 0.3
+                for row = 0, 1 do
+                    local dens = (row == 0) and d0 or d1
+                    if dithered(dx, yT + row, dens * lightK) and (not mask or inPoly(dx + 0.5, yT + row + 0.5, mask)) then
+                        n = n + 1; pts[n] = { dx + 0.5, yT + row + 0.5 }
+                    end
                 end
             end
             right = dx
         end
-        lastY = b and by or nil
+        lastHad = b ~= nil
     end
     -- cauda pra direita, ao longo da diagonal (vela à esquerda): rala e curta
     if right then

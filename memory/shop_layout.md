@@ -491,3 +491,18 @@ sino) e `buy` (recorte `shop_scroll` = o pergaminho com a fita COMPRAR);
 a etiqueta de cada peça; `shop_refresh` inclui a etiqueta do sino. Âncoras
 em `CardRewardScreen:_drawShop`; textos nos 5 `locales/tutorial/*.lua`;
 `test_tutorial` tem os recortes `shop_prices`/`shop_scroll` na mesa falsa.
+
+### v5 r2d: sombra = pegada no plano da mesa; pacote abre em fundo próprio
+
+- `drawContactShadow` (dono: "a sombra ainda está errada"): a sombra é a
+  PEGADA da silhueta no plano da mesa (reta 1:8 pelo pé, `yT = fy + k*lx`),
+  coluna a coluna na largura inteira; apoiado = 2 linhas (sólida onde a base
+  encosta a <= 2 px, dither onde o objeto pende), levantado = 4 linhas
+  sólidas + 1 coluna de borda em dither. Seguir o contorno de baixo fazia a
+  da poção virar arco e a do item flutuando sumir. Sonda:
+  `love . test_one probe_shop_shadow` (36 -> 53 pontos em repouso, 146 no ar).
+- PackOpenScreen (dono: a loja escurecida atrás do pacote "fica muito
+  poluída"): fundo PRÓPRIO opaco, sépia escuro com poça de luz em 4 degraus
+  (dither Bayer nas bordas) centrada no pacote (`sleeveCenter`). A loja
+  continua viva atrás (sem slideOut no modo shop) e volta intacta ao fechar.
+- `screenshot_shop_diag`: estado `hoverpotion`.

@@ -880,10 +880,46 @@ function PackOpenScreen:draw()
 
     -- Vinheta sutil pra focar no centro (NÃO é backdrop preto, é gradient leve).
     -- Mantém a loja por trás visível mas levemente escurecida nos cantos.
-    -- (dono: "ele teleportou pro bioma de fora"): a loja fica atrás,
-    -- ESCURECIDA (0,6), em vez de deslizar pra fora e mostrar a estrada
-    love.graphics.setColor(0, 0, 0, 0.6)
-    love.graphics.rectangle("fill", 0, 0, sw, sh)
+    -- FUNDO PRÓPRIO (dono, Out/2026: a loja escurecida atrás do pacote
+    -- "fica muito poluída; um background diferente, mais centralizado"):
+    -- pano sépia escuro OPACO com uma POÇA DE LUZ em degraus (dither Bayer
+    -- nas bordas, sem gradiente contínuo) centrada no pacote. Nada da loja
+    -- nem da estrada aparece atrás; o pacote e as cartas são o único assunto.
+    do
+        local Palette = require("src.ui.Palette")
+        local SP = require("src.ui.shop.ShopPerspective")
+        local cx, cy = sleeveCenter(self:_z())
+        local base = Palette.darken(Palette.INK, 0.55)
+        love.graphics.setColor(base[1], base[2], base[3], 1)
+        love.graphics.rectangle("fill", 0, 0, sw, sh)
+        local warm = Palette.lerp(Palette.INK, Palette.AGED_GOLD_DARK, 0.28)
+        local R = math.min(sw, sh) * 0.52
+        local cell = math.max(2, math.floor(math.min(sw, sh) / 240))
+        local steps = { 0.30, 0.52, 0.74, 0.96 }
+        for ring = #steps, 1, -1 do
+            local k = 1 - (ring - 1) / #steps
+            local c = Palette.lerp(base, warm, k)
+            love.graphics.setColor(c[1], c[2], c[3], 1)
+            local r = R * steps[ring]
+            local rPrev = (ring > 1) and R * steps[ring - 1] or 0
+            local r2, p2 = r * r, rPrev * rPrev
+            local band = r * 0.18
+            for yy = math.floor((cy - r) / cell) * cell, cy + r, cell do
+                for xx = math.floor((cx - r) / cell) * cell, cx + r, cell do
+                    local dx, dy = xx + cell / 2 - cx, (yy + cell / 2 - cy) * 1.15
+                    local d2 = dx * dx + dy * dy
+                    if d2 <= r2 then
+                        local d = math.sqrt(d2)
+                        -- dither só na faixa de transição do degrau
+                        if d < r - band or SP.dithered(xx / cell, yy / cell, 1 - (d - (r - band)) / band) then
+                            love.graphics.rectangle("fill", xx, yy, cell, cell)
+                        end
+                    end
+                end
+            end
+        end
+        love.graphics.setColor(1, 1, 1, 1)
+    end
 
     -- 1) Sleeve no centro. Materializa subindo de dissolve=1 (invisível) pra
     -- 0 (visível). No explode (T=0.7), volta pra 1 com scale up — efeito "estouro".
