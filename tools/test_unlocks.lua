@@ -137,6 +137,15 @@ function M.run()
         ProfileStats._swapForTests({ runs = 0, wins = 0 })
         UnlockSystem.ensure()
         t:falsy("perfil novo não migra", ProfileStats.get().unlocks.migratedLegacy)
+        UnlockSystem.setOverrideAll(false)
+        for _, id in ipairs(CardRegistry.STARTER_DECKS.warrior) do
+            t:truthy("perfil novo: inicial do guerreiro já aparece na Coleção (" .. id .. ")",
+                UnlockSystem.isCardDiscovered(id))
+        end
+        t:falsy("perfil novo: inicial do ladino bloqueado segue escondida",
+            UnlockSystem.isCardDiscovered("rogue_strike"))
+        t:falsy("perfil novo: inicial do mago bloqueado segue escondida",
+            UnlockSystem.isCardDiscovered("mage_zap"))
 
         local Rng = require("src.systems.Rng")
         local BoosterPackSystem = require("src.systems.BoosterPackSystem")

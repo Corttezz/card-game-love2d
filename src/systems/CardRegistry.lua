@@ -41,13 +41,14 @@ function CardRegistry:getClassCardPool(classId)
     }
 end
 
+CardRegistry.STARTER_DECKS = {
+    warrior = { "warrior_strike", "warrior_defend" },
+    mage    = { "mage_zap",       "defense_001" },
+    rogue   = { "rogue_strike",   "rogue_defend" },
+}
+
 function CardRegistry:getStarterDeckForClass(classId)
-    local starterDecks = {
-        warrior = { "warrior_strike", "warrior_defend" },
-        mage    = { "mage_zap",       "defense_001" },
-        rogue   = { "rogue_strike",   "rogue_defend" },
-    }
-    return starterDecks[classId] or { "attack_001", "defense_001" }
+    return CardRegistry.STARTER_DECKS[classId] or { "attack_001", "defense_001" }
 end
 
 local RARITY_ORDER = { "common", "uncommon", "rare", "legendary" }

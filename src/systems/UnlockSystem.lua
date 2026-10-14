@@ -203,13 +203,6 @@ function UnlockSystem.isCardUnlockedReal(cardId)
     return cardUnlockedReal(cardId, u, s)
 end
 
-function UnlockSystem.isCardDiscovered(cardId)
-    if revealAll then return true end
-    local u, s = state()
-    if u.discovered[cardId] then return true end
-    return (s.cardsSeen and s.cardsSeen[cardId]) == true
-end
-
 function UnlockSystem.markDiscovered(cardId)
     if not cardId then return false end
     local u, s = state()
@@ -234,6 +227,26 @@ local function classUnlockedReal(classId, u, s)
     if def.actCleared and u.actsCleared >= clampAct(def.actCleared) then return true end
     if def.orVictory and u.victories > 0 then return true end
     return false
+end
+
+local function isStarterOfUnlockedClass(cardId, u, s)
+    local ok, CardRegistry = pcall(require, "src.systems.CardRegistry")
+    local decks = ok and CardRegistry and CardRegistry.STARTER_DECKS
+    if not decks then return false end
+    for classId, ids in pairs(decks) do
+        for _, id in ipairs(ids) do
+            if id == cardId and classUnlockedReal(classId, u, s) then return true end
+        end
+    end
+    return false
+end
+
+function UnlockSystem.isCardDiscovered(cardId)
+    if revealAll then return true end
+    local u, s = state()
+    if u.discovered[cardId] then return true end
+    if (s.cardsSeen and s.cardsSeen[cardId]) == true then return true end
+    return isStarterOfUnlockedClass(cardId, u, s)
 end
 
 function UnlockSystem.isClassUnlocked(classId)

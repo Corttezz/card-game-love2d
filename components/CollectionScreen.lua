@@ -215,7 +215,8 @@ function CollectionScreen:update(dt)
     local mx, my = love.mouse.getPosition()
     local prevHover = self.hoverCard and self.hoverCard.instance or nil
     self.hoverCard = nil
-    for i, inst in ipairs(self.filtered) do
+    local inGrid = my >= TOP_OFFSET and my <= love.graphics.getHeight() - BOTTOM_PAD
+    for i, inst in ipairs(inGrid and self.filtered or {}) do
         local x, y = cardRect(i)
         y = y - self.scrollY
         if mx >= x and mx <= x + CARD_W and my >= y and my <= y + CARD_H then
@@ -331,7 +332,8 @@ function CollectionScreen:mousepressed(x, y, button)
             end
             tabX = tabX + w + 8
         end
-        for i, inst in ipairs(self.filtered) do
+        local inGrid = y >= TOP_OFFSET and y <= love.graphics.getHeight() - BOTTOM_PAD
+        for i, inst in ipairs(inGrid and self.filtered or {}) do
             local cx, cy = cardRect(i)
             cy = cy - self.scrollY
             if x >= cx and x <= cx + CARD_W and y >= cy and y <= cy + CARD_H then
@@ -942,6 +944,8 @@ function CollectionScreen:draw()
     if hoveringIdx then
         local inst = self.filtered[hoveringIdx]
         local anim = self._cardAnim[inst]
+        local clipped = anim and (anim.ry < TOP_OFFSET or anim.ry + CARD_H > height - BOTTOM_PAD)
+        if clipped then love.graphics.setScissor(0, TOP_OFFSET, width, height - TOP_OFFSET - BOTTOM_PAD) end
         if anim then
             if inst._hidden then
                 drawMystery(self, inst, anim.rx, anim.ry, anim.hs)
@@ -951,6 +955,7 @@ function CollectionScreen:draw()
                 drawCardMini(inst, anim.rx, anim.ry, anim.hs, 1, uv, str)
             end
         end
+        if clipped then love.graphics.setScissor() end
     end
 
     if self._draggingIdx then
