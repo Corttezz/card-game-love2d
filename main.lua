@@ -2069,16 +2069,16 @@ function love.load(loveArgs)
             BootScene._crtWasEnabled = CRTShader.isEnabled()
             CRTShader.setEnabled(false)
         end,
-        onTubeOn = function(seamless)
+        onTubeOn = function()
             if BootScene._crtWasEnabled then CRTShader.setEnabled(true) end
-            if seamless then
-                -- o mergulho terminou com o tubo aceso na abertura do CRT:
-                -- continuidade, sem apagão (dono, 13/Out)
-                CRTShader.setPower(1)
-            else
-                CRTShader.setPower(0)
-                CRTShader.powerOn(1.8)
-            end
+            -- A TV LIGANDO fica (dono, 13/Out: "perdeu o efeito da tela
+            -- ligando, eu quero ele"): o mergulho termina com a tela da arte
+            -- exatamente na abertura do gabinete do CRT e o VIDRO escuro;
+            -- power 0 só apaga o vidro (a TV continua ali), então a borda
+            -- continua e o warm-up v3.6 (ponto → linha → abre → assenta)
+            -- acontece dentro dela.
+            CRTShader.setPower(0)
+            CRTShader.powerOn(1.8)
         end,
         onComplete = function()
             currentState = "menu"

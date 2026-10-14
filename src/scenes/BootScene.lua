@@ -378,20 +378,19 @@ function BootScene.init(callbacks)
         if callbacks.onIntroStart then callbacks.onIntroStart() end
         IntroTube.init({ onDone = function()
             state.phase = "loading"
-            -- mergulho completo = o tubo já está aceso na tela (continuidade
-            -- pixel a pixel); pulo/reducedMotion = liga do apagão como sempre
-            BootScene._tubeOn(IntroTube.endedWithDive and IntroTube.endedWithDive() or false)
+            BootScene._tubeOn()
         end })
     else
-        BootScene._tubeOn(false)
+        BootScene._tubeOn()
     end
 end
 
 -- A TV LIGANDO: som + warm-up do CRT (main.lua passa onTubeOn com o
--- CRTShader.powerOn(1.8): ponto → linha → abre → assenta). `seamless` =
--- veio do mergulho da abertura: o CRT liga já aceso, sem apagão.
-function BootScene._tubeOn(seamless)
-    if state.onTubeOn then state.onTubeOn(seamless and true or false) end
+-- CRTShader.powerOn(1.8): ponto → linha → abre → assenta). Depois do
+-- mergulho da abertura a borda já é a do gabinete (a arte termina na
+-- abertura do CRT) e o vidro liga DENTRO dela — o efeito fica.
+function BootScene._tubeOn()
+    if state.onTubeOn then state.onTubeOn() end
     Sfx.play("bootTvPowerOn")
 end
 

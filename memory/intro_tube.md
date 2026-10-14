@@ -136,8 +136,11 @@ abertura do CRT (janela menos `BEZEL_PX` por lado), escala POR EIXO (a
 tela 4:3 vira 16:9 no caminho) e o centro da tela caminha até o centro da
 janela; (2) durante o mergulho o tubo é renderizado na resolução FINAL
 (canvas W×H, `renderTube`) e encolhido até a tela, então o último quadro
-é pixel a pixel o primeiro do CRT do jogo; (3) `IntroTube.endedWithDive()`
-→ `BootScene._tubeOn(seamless)` → `onTubeOn(true)` no main.lua liga o CRT
-já aceso (`setPower(1)`); pular ou reducedMotion seguem ligando do apagão.
-Trava: `test_intro_tube` (tela × sEndX/sEndY = abertura; endedWithDive só
-pelo mergulho).
+cai na mesma abertura que o CRT do jogo; (3) o CRT liga do apagão como
+sempre (`setPower(0)` + `powerOn(1.8)`): `power` 0 só apaga o VIDRO, o
+gabinete continua, então a borda não salta e o warm-up (ponto → linha →
+abre → assenta) acontece dentro dela. Uma versão intermediária ligava já
+aceso (`setPower(1)`) e o dono reclamou na hora: "perdeu o efeito da tela
+ligando, eu quero ele; também tem que continuar". `IntroTube.endedWithDive()`
+continua existindo (diz se a abertura terminou pelo mergulho) mas ninguém
+decide por ele. Trava: `test_intro_tube` (tela × sEndX/sEndY = abertura).
