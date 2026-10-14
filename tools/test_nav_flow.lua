@@ -114,8 +114,11 @@ function M.script()
     local GS = require("src.scenes.GameplayScene")
     local game = GS.getGame()
     frames(240)
+    local HandDeal = require("src.ui.HandDeal")
     waitFor(function() return game.turn == "player" and #game.hand > 0
-        and not game.combatAnimationSystem:isBlocking() end, 900, "turno do jogador")
+        and not game.combatAnimationSystem:isBlocking()
+        and not HandDeal.hidesHand() and not HandDeal.hidesUI()
+        and GS.isQuiet() end, 1800, "turno do jogador")
     frames(60)
     game.enemy.health = 1
     game.enemy.armor = 0
