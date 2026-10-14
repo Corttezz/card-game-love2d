@@ -593,7 +593,11 @@ Config.Audio = {
     CARD_PLAY_DEFENSE_VOLUME = 0.55,
     CARD_DRAW_VOLUME = 0.35,
     CARD_EXHAUST_VOLUME = 0.5,
-    COMBO_TRIGGER_VOLUME = 0.65,
+    -- 13/Out/2026 (dono: "muito alto, muito estridente, horroroso"): o
+    -- arquivo combo-trigger.mp3 foi suavizado na fonte (passa-baixa 3,8 kHz,
+    -- -9 dB; média -18 -> -29 dB) e o ganho caiu. Ele toca nos combos, na
+    -- conquista e no recorde; a escolha de classe deixou de usá-lo.
+    COMBO_TRIGGER_VOLUME = 0.5,
     JOKER_ACTIVATE_VOLUME = 0.55,
     ORB_CHANNEL_VOLUME = 0.5,
     ORB_EVOKE_VOLUME = 0.6,
@@ -621,7 +625,7 @@ Config.Audio = {
     PLACE_VOLUME = 0.75,          -- ambiente dos lugares (PlaceAudio): camas×0.42, avulsos×0.32 — abaixo da música
     WEATHER_VOLUME = 0.8,         -- clima do WorldRoad (WeatherAudio): camas×0.55, avulsos×0.40, trovão×0.85
     PURCHASE_DENY_VOLUME = 0.4,
-    BATTLE_VICTORY_VOLUME = 0.6,
+    BATTLE_VICTORY_VOLUME = 0.45,   -- arquivo também suavizado (passa-baixa 5 kHz, -7 dB), 13/Out/2026
     GOLD_GAIN_VOLUME = 0.55,
     NODE_SELECT_VOLUME = 0.45,
     REST_COMPLETE_VOLUME = 0.55,

@@ -1423,7 +1423,7 @@ function love.load(loveArgs)
         -- usos repetidos de cardSelect/deckStart/purchaseConfirm).
         audioSystem:loadSound("coinClink",     "audio/sfx/coin-clink.mp3",       0.55)
         audioSystem:loadSound("coinTotalThud", "audio/sfx/coin-total-thud.mp3",  0.65)
-        audioSystem:loadSound("cashOutChime",  "audio/sfx/cash-out-chime.mp3",   0.75)
+        audioSystem:loadSound("cashOutChime",  "audio/sfx/cash-out-chime.mp3",   0.55)  -- arquivo suavizado (passa-baixa 5 kHz, -10 dB), 13/Out/2026
         audioSystem:loadSound("packSealBreak", "audio/sfx/pack-seal-break.mp3",  0.70)
         audioSystem:loadSound("packCardReveal","audio/sfx/pack-card-reveal.mp3", 0.55)
         audioSystem:loadSound("packCardPick",  "audio/sfx/pack-card-pick.mp3",   0.65)
@@ -1433,7 +1433,7 @@ function love.load(loveArgs)
         -- v9.6: hover dos LUGARES do fork (WorldRoad) — som por lugar
         -- (v9.7: volumes reduzidos — feedback "estão muito altas")
         audioSystem:loadSound("forkHoverFire",  "audio/sfx/fork-hover-fire.mp3",  0.40)
-        audioSystem:loadSound("forkHoverDoor",  "audio/sfx/fork-hover-door.mp3",  0.38)
+        audioSystem:loadSound("forkHoverDoor",  "audio/sfx/fork-hover-door.mp3",  0.24)  -- porta da loja mais baixa (dono, 13/Out/2026)
         audioSystem:loadSound("forkHoverFlag",  "audio/sfx/fork-hover-flag.mp3",  0.36)
         audioSystem:loadSound("forkHoverElite", "audio/sfx/fork-hover-elite.mp3", 0.40)
         audioSystem:loadSound("forkHoverTent",  "audio/sfx/fork-hover-tent.mp3",  0.36)

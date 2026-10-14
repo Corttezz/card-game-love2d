@@ -345,7 +345,11 @@ function ClassSelectionScreen:selectClass(classId)
                 })
             end
         end
-        Sfx.play("comboTrigger", { volume = 0.8 })
+        -- Era o stinger de COMBO a 0,8 (dono, 13/Out: "muito alto, muito
+        -- estridente, horroroso"): escolher a classe ganha um brilho suave,
+        -- não uma fanfarra. O embaralhar do deck (deckStart) toca logo em
+        -- seguida, baixo, no startGame.
+        Sfx.play("healShimmerSoft", { volume = 1.0, pitch = 0.95 })
         EM.parallel(0.45, function()
             self._locked = false
             confirm()

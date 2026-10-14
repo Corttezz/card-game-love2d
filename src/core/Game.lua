@@ -720,7 +720,7 @@ function Game:applyClassTurnPassives(turnContext)
             self:addMessage(msg("passive_toxins_grow",
                 { n = self:classPassiveTier() + self._toxinBonus }), "success")
             if love.timer then self._passiveFlashT = love.timer.getTime() end
-            Sfx.play("comboTrigger", { pitch = 1.3, volume = 0.6 })
+            Sfx.play("comboTrigger", { pitch = 1.1, volume = 0.6 })
         end
         return
     end
@@ -728,7 +728,7 @@ function Game:applyClassTurnPassives(turnContext)
         self._impetusFiredThisTurn = true
         self.player:gainStrength(1)
         if love.timer then self._passiveFlashT = love.timer.getTime() end
-        Sfx.play("comboTrigger", { pitch = 1.3, volume = 0.6 })
+        Sfx.play("comboTrigger", { pitch = 1.1, volume = 0.6 })
     end
 end
 
