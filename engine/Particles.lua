@@ -1,34 +1,3 @@
--- engine/Particles.lua
--- Emissor de partículas unificado, inspirado em
--- balatro-source/engine/particles.lua. Substitui o trio anterior:
--- ParticleSystem.Manager / CardParticles.Emitter / (smoke continua independente).
---
--- Diferenças vs Balatro:
---   - Não herda Moveable. Posição própria + opção de `attach` (target com .x/.y).
---   - Suporte a textura sprite opcional (Balatro só desenhava retângulos).
---   - API standalone (sem G.E_MANAGER, G.TIMERS, G.SETTINGS.paused).
---
--- USO:
---   local p = Particles:new(cx, cy, w, h, {
---       fill = true,                       -- spawn em rect; false = no centro
---       attach = card,                     -- opcional: segue card.x/card.y
---       timer = 0.03,                      -- intervalo de spawn (s)
---       lifespan = 0.6,
---       scale = 0.3,
---       speed = 80,
---       colours = { {1,0.5,0,1}, {1,0.2,0,1} },
---       texture = nil,                     -- love.Image opcional
---       max = 200,                         -- pool máximo
---       pulse_max = nil,                   -- nil = contínuo; N = one-shot
---       vel_variation = 1,                 -- 0..1 (1 = velocidade plena)
---       gravity = 0,                       -- px/s² em vy (negativo = sobe: fogo/fumaça)
---       layer = 0,                         -- z-order (maior = mais por cima)
---   })
---   p:fade(0.3)   -- inicia fade-out em 0.3s
---   p:remove()    -- mata imediatamente
---
--- Auto-cleanup: instâncias removidas saem do ParticlesManager no próximo update.
-
 local Utils = require("engine.Utils")
 
 local Particles = {}
@@ -43,7 +12,6 @@ function Particles:new(x, y, w, h, config)
         w = w or 0,
         h = h or 0,
 
-        -- Attach: se setado, x/y seguem este target a cada frame.
         attach          = config.attach,
         attach_offset_x = config.attach_offset_x or 0,
         attach_offset_y = config.attach_offset_y or 0,
@@ -63,7 +31,7 @@ function Particles:new(x, y, w, h, config)
         gravity       = config.gravity or 0,
         colours       = config.colours or { {1, 1, 1, 1} },
         texture       = config.texture,
-        size_jitter   = config.size_jitter or 5, -- aplicado quando texture==nil
+        size_jitter   = config.size_jitter or 5,
         size_base     = config.size_base or 3,
 
         layer         = config.layer or 0,
@@ -77,15 +45,11 @@ function Particles:new(x, y, w, h, config)
     return self
 end
 
--- Atualiza a posição se há `attach`. Recolhe x/y, w/h direto do target
--- (interpretamos `card.x/card.y` como canto superior-esquerdo no projeto;
--- se attach.image existe, calcula bbox).
 local function syncAttach(self)
     local a = self.attach
     if not a then return end
 
     if a._removed then
-        -- Target morreu: marcar para limpeza após esvaziar pool.
         self.dead = true
         return
     end
@@ -104,21 +68,14 @@ local function syncAttach(self)
 end
 
 function Particles:update(dt)
-    -- Só early-return quando totalmente morto (dead E pool vazia). Sem isso,
-    -- quando syncAttach seta dead=true (attach._removed), o NEXT frame congelava
-    -- as partículas existentes — paravam de envelhecer e o fade_alpha travava
-    -- mid-fade, deixando partículas semi-transparentes presas na tela pra sempre.
     if self.dead and #self.particles == 0 then return end
     syncAttach(self)
     self.clock = self.clock + dt
 
-    -- Fade do emitter (visual; partículas continuam vivendo seus lifespans).
     if self.fade_speed > 0 then
         self.fade_alpha = math.min(1, self.fade_alpha + dt * self.fade_speed)
     end
 
-    -- Spawn novas partículas: enquanto não atingiu pulse_max, pool não cheio
-    -- e ainda não estourou fade.
     local canSpawn = (self.pulse_max == nil or self.pulsed < self.pulse_max)
                      and #self.particles < self.max
                      and self.fade_alpha < 1
@@ -158,7 +115,6 @@ function Particles:update(dt)
         end
     end
 
-    -- Atualiza partículas existentes.
     for i = #self.particles, 1, -1 do
         local p = self.particles[i]
         p.age = p.age + dt
@@ -172,13 +128,10 @@ function Particles:update(dt)
         if lifeT >= 1 then
             table.remove(self.particles, i)
         else
-            -- Curva triangular: cresce até meio do lifespan, encolhe até zero.
             p.alpha_factor = math.min(lifeT * 3, (1 - lifeT) * 3, 1)
         end
     end
 
-    -- Pronta pra remover quando: (a) dead manual, ou (b) fade completo + pool vazio,
-    -- ou (c) attach morreu + pool vazio.
     if (self.fade_alpha >= 1 and #self.particles == 0)
        or (self.dead and #self.particles == 0) then
         self.dead = true
@@ -193,7 +146,6 @@ function Particles:draw()
     local cy = self.y + (self.fill and 0 or self.h / 2)
 
     if self.attach and self.attach.image and self.attach.currentScale then
-        -- Centro real do bbox do target.
         cx = self.x + self.w / 2
         cy = self.y + self.h / 2
     end
@@ -229,17 +181,14 @@ function Particles:draw()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Inicia fade-out linear ao longo de `duration` segundos.
 function Particles:fade(duration)
     self.fade_speed = 1 / math.max(0.01, duration or 0.3)
 end
 
--- Para emissão imediatamente; partículas existentes continuam até morrer.
 function Particles:stop()
     self.timer = math.huge
 end
 
--- Remove imediatamente (limpa pool).
 function Particles:remove()
     self.dead = true
     self.particles = {}

@@ -1,28 +1,3 @@
-// shaders/reveal_stage.glsl
-// PALCO da revelação (components/UnlockShowcase.lua): o brilho atrás do item
-// desbloqueado, vivendo na GRADE DE PIXELS da arte — nada de gradiente liso
-// nem triângulo vetorial girando (os "raios dourados" v1 eram isso, e o dono
-// chamou de "muito tosco").
-//
-// Tudo é avaliado POR CÉLULA de `cell` px (2 px virtuais = 1 px da arte das
-// cartas): o halo radial é posterizado em `levels` degraus com dither Bayer
-// 4x4 na célula, e os raios são espinhos de UMA célula de largura com
-// decaimento em 3 degraus (cheio / meio / pontilhado). Girar `rot` move os
-// espinhos em saltos de célula — borda dura, sem anti-alias.
-//
-// Desenhado num quad branco 1x1 escalado pra `size` com blend alpha.
-//
-// Uniforms:
-//   size    (vec2)   — lado do quad em px (locais ao transform corrente)
-//   cell    (number) — célula da grade em px
-//   levels  (number) — degraus do halo (4)
-//   rays    (number) — nº de espinhos (12); rayOn 0 desliga (reducedMotion)
-//   rot     (number) — rotação dos espinhos (rad)
-//   rayOn   (number) — 1 = espinhos ligados
-//   pulse   (number) — multiplicador do halo (respiração; 1 = parado)
-//   glowCol (vec3)   — cor do halo
-//   rayCol  (vec3)   — cor dos espinhos
-
 extern vec2 size;
 extern number cell;
 extern number levels;
@@ -33,7 +8,6 @@ extern number pulse;
 extern vec3 glowCol;
 extern vec3 rayCol;
 
-// Bayer 4x4 por if-chain (o GLSL do LÖVE não aceita array const inicializado).
 float bayer4(vec2 c) {
     int x = int(mod(c.x, 4.0));
     int y = int(mod(c.y, 4.0));
@@ -57,29 +31,24 @@ float bayer4(vec2 c) {
 }
 
 vec4 effect(vec4 color, Image tex, vec2 uv, vec2 sc) {
-    vec2 g = floor(uv * size / cell);              // índice da célula
-    vec2 c = (g + 0.5) * cell - size * 0.5;        // centro da célula, rel. ao centro
+    vec2 g = floor(uv * size / cell);
+    vec2 c = (g + 0.5) * cell - size * 0.5;
     float R = min(size.x, size.y) * 0.5;
     float dist = length(c);
-    float d = dist / R;                            // 0 no centro, 1 na borda
-    if (d > 0.96) discard;                         // o quad é quadrado; o halo não
-    // Bayer COMPRIMIDO (0.125..0.875): o limiar cheio (1.0) acendia 1 célula em
-    // 16 onde o halo já era zero — um pontilhado regular no quad inteiro.
+    float d = dist / R;
+    if (d > 0.96) discard;
     float b = 0.5 + (bayer4(g) - 0.5) * 0.75;
 
-    // halo: (1-d²)² posterizado + dither na célula
     float h = clamp(1.0 - d * d, 0.0, 1.0);
     h = h * h * pulse;
     float hq = floor(h * levels + b) / levels;
 
-    // espinhos: 1 célula de largura, decaem em 3 degraus com dither
     float ray = 0.0;
     if (rayOn > 0.5 && d > 0.16 && d < 0.98) {
         float sector = 6.2831853 / rays;
         float ang = atan(c.y, c.x) + rot;
         float off = mod(ang + sector * 0.5, sector) - sector * 0.5;
-        float perp = abs(off) * dist;              // px até a linha do espinho
-        // 2 células perto do item, 1 na ponta (afina como um raio de sol)
+        float perp = abs(off) * dist;
         if (perp < cell * (d < 0.55 ? 1.5 : 0.75)) {
             float f = clamp((1.0 - d) * 1.25, 0.0, 1.0);
             ray = floor(f * 3.0 + b) / 3.0;

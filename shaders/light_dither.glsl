@@ -1,16 +1,7 @@
-// shaders/light_dither.glsl
-// Sprite de luz do LightEngine: falloff radial (1-d²)² POSTERIZADO em degraus
-// + dither Bayer 4x4 opcional, alinhado ao pixel do LIGHTMAP (canvas 1/4 —
-// screen_coords aqui são os pixels do render target ativo).
-// Desenhado num quad branco 2x2 escalado (UV [0,1]) com blend "add".
-// Bayer via if-chain: o GLSL do LÖVE (compat ES/1.20) não aceita
-// inicializador de array const (padrão glsl-dither/hughsk).
-
-extern number levels;      // degraus de posterização (4 = poça; 2 = pequena)
-extern number useDither;   // 1.0 = Bayer (só poças de chão); 0.0 = sem dither
-extern number ditherAmt;   // amplitude do Bayer (1=cheio; <1 comprime pro
-                           // centro → xadrez mais suave/natural no chão)
-extern number intensity;   // multiplicador 0..1 aplicado ANTES da posterização
+extern number levels;
+extern number useDither;
+extern number ditherAmt;
+extern number intensity;
 
 float bayer4(vec2 sc) {
     int x = int(mod(sc.x, 4.0));
@@ -35,15 +26,13 @@ float bayer4(vec2 sc) {
 }
 
 vec4 effect(vec4 color, Image tex, vec2 uv, vec2 sc) {
-    vec2 p = uv * 2.0 - 1.0;                     // [-1,1] no quad da luz
+    vec2 p = uv * 2.0 - 1.0;
     float i = clamp(1.0 - dot(p, p), 0.0, 1.0);
-    i = i * i;                                   // falloff (1-d²)²
+    i = i * i;
     i = i * intensity;
-    // Bayer comprimido pro centro por ditherAmt: reduz o contraste entre
-    // células vizinhas (xadrez menos gritante), mantendo a quebra de banda
     float b = 0.5 + (bayer4(sc) - 0.5) * ditherAmt;
     float thr = mix(0.5, b, useDither);
-    i = floor(i * levels + thr) / levels;        // quantiza (+ dither)
+    i = floor(i * levels + thr) / levels;
     if (i <= 0.0) discard;
     return vec4(color.rgb * i, 1.0);
 }

@@ -1,6 +1,3 @@
-// shaders/desat.glsl — dessaturação da cena (morte do chefe, BossCinematic).
-// Mistura a cor com a luminância, puxada pra um cinza levemente frio: a vida
-// sai do salão por um instante. `amount` 0 = intacto, 1 = cinza.
 extern float amount;
 
 vec4 effect(vec4 color, Image tex, vec2 uv, vec2 sc)

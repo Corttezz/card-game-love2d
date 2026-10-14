@@ -1,18 +1,9 @@
--- engine/Easing.lua
--- Funções de easing reutilizáveis. Formato: f(t in [0,1]) → [0,1].
--- Um único namespace pra todos os tweens (Event.ease, Moveable.juice,
--- animações ad-hoc). Consolidação do antigo src/ui/Animation.lua:Easing.
---
--- Uso:
---   local Easing = require("engine.Easing")
---   local y = Easing.smooth(progress)
---   local y = Easing.apply("smooth", progress)  -- lookup por nome
+local Debug = require("src.core.Debug")
 
 local Easing = {}
 
 function Easing.linear(t) return t end
 
--- Ease-in-out cúbico (alias "smooth"). Suave no começo e no fim.
 function Easing.smooth(t)
     return t * t * (3 - 2 * t)
 end
@@ -25,7 +16,6 @@ function Easing.easeInOut(t)
     return 1 - 2 * (1 - t) * (1 - t)
 end
 
--- Quad out (padrão do CombatAnimationSystem legado, mantido pra compat).
 function Easing.outQuart(t)
     local u = 1 - t
     return 1 - u * u * u * u
@@ -52,7 +42,6 @@ function Easing.elastic(t)
     return math.pow(2, -10 * t) * math.sin((t - 0.075) * (2 * math.pi) / 0.3) + 1
 end
 
--- Back-out (carta passa do destino e volta). Feel de "settle" Balatro.
 function Easing.backOut(t)
     local c1 = 1.70158
     local c3 = c1 + 1
@@ -60,7 +49,6 @@ function Easing.backOut(t)
     return 1 + c3 * u * u * u + c1 * u * u
 end
 
--- Lookup por nome (string). Default: smooth.
 local byName = {
     linear = Easing.linear,
     smooth = Easing.smooth,
@@ -74,13 +62,6 @@ local byName = {
     backout = Easing.backOut, back_out = Easing.backOut,
 }
 
--- Nomes desconhecidos caem em `smooth` — comportamento mantido de propósito
--- (mudar a resolução agora alteraria animações já afinadas no olho sob smooth).
--- O que mudou (Set/2026): o fallback deixou de ser MUDO. Um nome errado custou
--- caro: `PackOpenScreen` passava "easeOut" em camelCase em 6 lugares e a
--- cinemática inteira rodou com `smooth` por rodadas de polish sem ninguém notar.
--- byName é case-sensitive e só tem minúsculas (easeout, ease_out, outquart...).
--- Avisa UMA vez por nome — Easing.apply roda a cada frame de cada ease.
 local warnedNames = {}
 
 function Easing.apply(name, t)
@@ -88,7 +69,7 @@ function Easing.apply(name, t)
     if not fn then
         if name ~= nil and not warnedNames[name] then
             warnedNames[name] = true
-            print(("[Easing] nome desconhecido '%s' — caindo em smooth. "):format(tostring(name))
+            Debug.warn(("[Easing] nome desconhecido '%s' — caindo em smooth. "):format(tostring(name))
                 .. "Validos: linear, smooth, lerp, easein, easeout, easeinout, "
                 .. "outquart, bounce, elastic, backout (+ variantes com _).")
         end

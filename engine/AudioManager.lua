@@ -1,23 +1,10 @@
--- engine/AudioManager.lua
--- Gerencia reprodução de SFX e música. Inspirado em
--- balatro-source/engine/sound_manager.lua.
---
--- Diferenças vs Balatro:
---   - Síncrono (sem love.thread).
---   - Polifonia automática: cada SFX mantém pool de Source clones; instâncias
---     ociosas são reaproveitadas, e quando todas estão tocando, clona uma nova.
---   - Modulação por grupo (master/music/sfx) aplicada em update(), não em
---     loadSound() — permite mudar volume em runtime sem reload.
---   - API mantém compatibilidade com o AudioSystem antigo (loadSound, playSound,
---     setMusicVolume, setSFXVolume, setVolume, isAudioAvailable, getStatus,
---     printStatus, loadBackgroundMusic, playBackgroundMusic, stopBackgroundMusic,
---     campos .musicVolume / .sfxVolume / .volume).
+local Debug = require("src.core.Debug")
 
 local AudioManager = {}
 AudioManager.__index = AudioManager
 
-local MAX_CLONES_PER_SOUND = 8 -- evita explosão de polifonia em loops descontrolados.
-local warnedMissing = {}       -- code → true: som nao registrado avisa UMA vez, nao a cada play
+local MAX_CLONES_PER_SOUND = 8
+local warnedMissing = {}
 
 local function detectWSL2()
     local file = io.open("/proc/version", "r")
@@ -27,13 +14,10 @@ local function detectWSL2()
     return v:find("microsoft") ~= nil or v:find("WSL2") ~= nil
 end
 
--- Volume final de uma source = base_volume * group_volume * master.
 local function computeFinalVolume(self, entry)
     local groupVol = self.groups[entry.group] or 1
     return (entry.baseVolume or 1) * groupVol * (self.groups.master or 1)
 end
-
--- ============== Lifecycle ==============
 
 function AudioManager:new(opts)
     opts = opts or {}
@@ -42,31 +26,18 @@ function AudioManager:new(opts)
     self.audioAvailable = false
     self.isWSL2 = detectWSL2()
 
-    -- Estrutura central: por code, mantém template (1ª source) + entry com
-    -- pool de clones ativos.
-    -- self.sources[code] = {
-    --   template = Source, baseVolume, group, stream, basePitch, pitchVariation,
-    --   instances = { Source, Source, ... }   -- inclui template como [1]
-    -- }
     self.sources = {}
 
-    -- Volumes por grupo. Tudo em [0,1].
     self.groups = {
         master = opts.masterVolume or 1.0,
         music  = opts.musicVolume  or 0.3,
         sfx    = opts.sfxVolume    or 0.7,
-        -- AMBIENTE (clima da estrada + ambiente dos lugares): grupo próprio,
-        -- slider "Ambiente" em Configurações. 1.0 = nível desenhado (já baixo
-        -- — Config.Audio.AMBIENT_VOLUME entra no volume base de cada som).
         ambient = opts.ambientVolume or 1.0,
     }
 
-    -- Music tracking: nome do code da música atualmente tocando + alvo de
-    -- crossfade (nil = sem fade em curso).
     self.currentMusic = nil
-    self.musicCrossfade = nil   -- { from = code, to = code, t = 0, duration = 1 }
+    self.musicCrossfade = nil
 
-    -- Compat: campos públicos lidos por SettingsMenu.
     self.musicVolume = self.groups.music
     self.sfxVolume   = self.groups.sfx
     self.ambientVolume = self.groups.ambient
@@ -78,25 +49,19 @@ end
 
 function AudioManager:_initializeAudio()
     if self.isWSL2 then
-        print("[AudioManager] WSL2 detectado")
+        Debug.log("[AudioManager] WSL2 detectado")
     end
 
-    -- Tenta acessar love.audio. Se falhar, marca como indisponível.
     local ok = pcall(function() love.audio.setVolume(1.0) end)
     self.audioAvailable = ok
     if not ok then
-        print("[AudioManager] AVISO: love.audio indisponível. Áudio será no-op.")
+        Debug.warn("[AudioManager] AVISO: love.audio indisponível. Áudio será no-op.")
     end
 end
 
--- ============== Loading ==============
-
--- Carrega um SFX/música. opts = { volume=1, group="sfx", stream=false,
---                                   pitch=1, pitchVariation=0 }
 function AudioManager:loadSound(code, path, opts)
     if not self.audioAvailable then return nil end
 
-    -- Permite chamada legada: loadSound(code, path, volumeNumber)
     if type(opts) == "number" then opts = { volume = opts } end
     opts = opts or {}
 
@@ -108,7 +73,7 @@ function AudioManager:loadSound(code, path, opts)
     local sourceType = stream and "stream" or "static"
     local ok, template = pcall(love.audio.newSource, path, sourceType)
     if not ok or not template then
-        print("[AudioManager] falha ao carregar:", code, path)
+        Debug.warn("[AudioManager] falha ao carregar:", code, path)
         return nil
     end
 
@@ -122,8 +87,6 @@ function AudioManager:loadSound(code, path, opts)
         pitchVariation = opts.pitchVariation or 0,
         loop           = opts.loop or false,
         instances      = { template },
-        -- ganho POR INSTÂNCIA (camas de ambiente com crossfade entre vozes
-        -- do mesmo som). Fraco: instância ociosa não segura nada.
         instGain       = setmetatable({}, { __mode = "k" }),
     }
 
@@ -135,24 +98,17 @@ function AudioManager:loadSound(code, path, opts)
     return entry
 end
 
--- ============== Playback ==============
-
--- Procura instância ociosa no pool; clona se necessário (até MAX_CLONES_PER_SOUND).
 local function acquireInstance(self, entry)
     for _, src in ipairs(entry.instances) do
         if not src:isPlaying() then return src end
     end
 
     if #entry.instances >= MAX_CLONES_PER_SOUND then
-        -- Se passou do limite, reusa a primeira (corta a mais antiga). Padrão
-        -- consistente com voice-stealing em engines de áudio.
         local stolen = entry.instances[1]
         stolen:stop()
         return stolen
     end
 
-    -- Streams (música) não devem ser clonadas — clone() de stream é caro e
-    -- raramente é o que se quer (música simultânea é crossfade, não polifonia).
     if entry.stream then
         entry.template:stop()
         return entry.template
@@ -164,24 +120,21 @@ local function acquireInstance(self, entry)
     return clone
 end
 
--- play(code, opts) — opts override por chamada:
---   { volume, pitch, loop, group }
 function AudioManager:play(code, opts)
     if not self.audioAvailable then return nil end
     local entry = self.sources[code]
     if not entry then
         if not warnedMissing[code] then
             warnedMissing[code] = true
-            print("[AudioManager] AVISO: som não carregado:", code)
+            Debug.warn("[AudioManager] AVISO: som não carregado:", code)
         end
         return nil
     end
 
     opts = opts or {}
     local src = acquireInstance(self, entry)
-    entry.instGain[src] = opts.gain   -- instância reusada não herda ganho velho
+    entry.instGain[src] = opts.gain
 
-    -- Pitch com variação opcional (útil em SFX repetitivos: sword, click).
     local pitch = opts.pitch or entry.basePitch
     if entry.pitchVariation > 0 then
         local jitter = (math.random() * 2 - 1) * entry.pitchVariation
@@ -189,7 +142,6 @@ function AudioManager:play(code, opts)
     end
     src:setPitch(pitch)
 
-    -- Volume: opt.volume sobrescreve baseVolume só para este play.
     local saved = entry.baseVolume
     if opts.volume ~= nil then entry.baseVolume = opts.volume end
     src:setVolume(computeFinalVolume(self, entry) * (opts.gain or 1))
@@ -199,16 +151,13 @@ function AudioManager:play(code, opts)
 
     local ok = pcall(function() src:play() end)
     if not ok then
-        print("[AudioManager] falha ao tocar:", code)
+        Debug.warn("[AudioManager] falha ao tocar:", code)
         return nil
     end
 
     return src
 end
 
--- Ganho de UMA instância (0..1) multiplicado sobre base×grupo×master — o
--- update por frame respeita (antes reescrevia o volume de toda instância
--- tocando, o que impedia fade por voz). nil/1 = sem ganho extra.
 function AudioManager:setInstanceGain(code, src, g)
     local entry = self.sources[code]
     if not entry or not src then return end
@@ -216,20 +165,15 @@ function AudioManager:setInstanceGain(code, src, g)
     src:setVolume(computeFinalVolume(self, entry) * (g or 1))
 end
 
--- Compat com a API antiga (Sfx.play -> playSound).
 function AudioManager:playSound(name)
     return self:play(name) ~= nil
 end
 
--- ============== Music ==============
-
--- Toca uma música em loop. Se já há música tocando, faz crossfade.
 function AudioManager:playMusic(code, opts)
     if not self.audioAvailable then return false end
     opts = opts or {}
 
     if self.currentMusic == code then
-        -- Já tocando essa música; só garante que está playing.
         local entry = self.sources[code]
         if entry and entry.template and not entry.template:isPlaying() then
             entry.template:setLooping(true)
@@ -238,44 +182,27 @@ function AudioManager:playMusic(code, opts)
         return true
     end
 
-    -- Inicia nova música.
     local entry = self.sources[code]
     if not entry then
-        print("[AudioManager] música não carregada:", code)
+        Debug.warn("[AudioManager] música não carregada:", code)
         return false
     end
 
     entry.loop = true
     entry.template:setLooping(true)
 
-    -- FAXINA ANTES DE TROCAR — sem isto, música SOBREPÕE música.
-    --
-    -- O defeito (relatado pelo dono, Set/2026: "a música da forja continuou a
-    -- sobrepor a música do ato"): o crossfade é UM só, guardado em
-    -- `musicCrossfade`. Se uma troca nova chega antes de a anterior terminar
-    -- — e isso é o caso comum, porque abrir a forja/picker troca de faixa e
-    -- fechar troca de volta em poucos segundos, com fade de 2,5s — o registro
-    -- do crossfade antigo era SUBSTITUÍDO e a faixa que estava saindo nunca
-    -- recebia `stop()`. Ela ficava tocando para sempre no volume em que parou,
-    -- e a partir daí duas (ou três) faixas somavam.
-    --
-    -- A varredura é sobre TODAS as fontes do grupo `music`, e não só sobre o
-    -- `from` do crossfade anterior, porque a sequência pode ter deixado mais
-    -- de uma órfã (A→B→C rápido deixa A e B). Só sobrevivem a faixa que está
-    -- saindo (vira o `from` do novo fade) e a que está entrando.
     local atual = self.currentMusic
     for outroCode, outroEntry in pairs(self.sources) do
         if outroEntry.group == "music"
             and outroCode ~= code and outroCode ~= atual
             and outroEntry.template and outroEntry.template:isPlaying() then
             outroEntry.template:stop()
-            print("[AudioManager] faixa orfa parada: " .. tostring(outroCode))
+            Debug.log("[AudioManager] faixa orfa parada: " .. tostring(outroCode))
         end
     end
 
     local fadeDuration = opts.fadeDuration or 0
     if self.currentMusic and self.sources[self.currentMusic] then
-        -- Crossfade entre duas músicas.
         self.musicCrossfade = {
             from = self.currentMusic,
             to = code,
@@ -285,7 +212,6 @@ function AudioManager:playMusic(code, opts)
         entry.template:setVolume(0)
         entry.template:play()
     elseif fadeDuration > 0 then
-        -- Fade-in do silêncio. Reusa o crossfade (from=nil, só fade-in do "to").
         self.musicCrossfade = {
             from = nil,
             to = code,
@@ -311,7 +237,6 @@ function AudioManager:stopMusic()
     self.musicCrossfade = nil
 end
 
--- Compat: API antiga assumia 1 música única em self.backgroundMusic.
 function AudioManager:loadBackgroundMusic(path)
     self:loadSound("__bgmusic", path, { volume = self.groups.music, stream = true, loop = true, group = "music" })
     return self.sources["__bgmusic"] ~= nil
@@ -325,12 +250,9 @@ function AudioManager:stopBackgroundMusic()
     if self.currentMusic == "__bgmusic" then self:stopMusic() end
 end
 
--- ============== Volumes ==============
-
 function AudioManager:setGroupVolume(group, value)
     value = math.max(0, math.min(1, value))
     self.groups[group] = value
-    -- Mantém campos de compat sincronizados.
     if group == "master" then self.volume = value end
     if group == "music"  then self.musicVolume = value end
     if group == "sfx"    then self.sfxVolume = value end
@@ -342,17 +264,11 @@ function AudioManager:setMusicVolume(v)  self:setGroupVolume("music",  v) end
 function AudioManager:setSFXVolume(v)    self:setGroupVolume("sfx",    v) end
 function AudioManager:setAmbientVolume(v) self:setGroupVolume("ambient", v) end
 
--- Compat: setVolume = master.
 function AudioManager:setVolume(v) self:setGroupVolume("master", v) end
 
--- ============== Update loop ==============
-
--- Re-aplica volumes em todas instâncias ativas e processa crossfade de música.
--- Também faz cleanup lazy de clones que terminaram.
 function AudioManager:update(dt)
     if not self.audioAvailable then return end
 
-    -- Crossfade de música.
     if self.musicCrossfade then
         local cf = self.musicCrossfade
         cf.t = cf.t + dt
@@ -374,29 +290,22 @@ function AudioManager:update(dt)
         end
     end
 
-    -- Atualiza volumes de todas instâncias ativas (caso volume de grupo mudou).
     for code, entry in pairs(self.sources) do
         local final = computeFinalVolume(self, entry)
         local i = 1
         while i <= #entry.instances do
             local src = entry.instances[i]
             if src:isPlaying() then
-                -- Música em crossfade tem volume gerenciado acima; pular.
                 if not (self.musicCrossfade and (code == self.musicCrossfade.from or code == self.musicCrossfade.to)) then
                     src:setVolume(final * (entry.instGain[src] or 1))
                 end
                 i = i + 1
             else
-                -- Mantém template (i==1) sempre; clones ociosos podem ser
-                -- removidos pra liberar memória — mas só se passaram muitas
-                -- instâncias. Pra simplicidade, mantemos pool inteiro.
                 i = i + 1
             end
         end
     end
 end
-
--- ============== Stop ==============
 
 function AudioManager:stopAll()
     for _, entry in pairs(self.sources) do
@@ -417,8 +326,6 @@ function AudioManager:stopGroup(group)
         end
     end
 end
-
--- ============== Status / Debug ==============
 
 function AudioManager:isAudioAvailable() return self.audioAvailable end
 
@@ -445,16 +352,16 @@ end
 
 function AudioManager:printStatus()
     local s = self:getStatus()
-    print("=== STATUS DO ÁUDIO ===")
-    print("Disponível:", s.available and "✓" or "✗")
-    print("WSL2:", s.isWSL2 and "✓" or "✗")
-    print("Master:", s.master)
-    print("Música:", s.music)
-    print("SFX:", s.sfx)
-    print("Sons carregados:", s.loadedSounds)
-    print("Vozes ativas:", s.activeVoices)
-    print("Música atual:", s.currentMusic or "(nenhuma)")
-    print("========================")
+    Debug.log("=== STATUS DO ÁUDIO ===")
+    Debug.log("Disponível:", s.available and "✓" or "✗")
+    Debug.log("WSL2:", s.isWSL2 and "✓" or "✗")
+    Debug.log("Master:", s.master)
+    Debug.log("Música:", s.music)
+    Debug.log("SFX:", s.sfx)
+    Debug.log("Sons carregados:", s.loadedSounds)
+    Debug.log("Vozes ativas:", s.activeVoices)
+    Debug.log("Música atual:", s.currentMusic or "(nenhuma)")
+    Debug.log("========================")
 end
 
 return AudioManager

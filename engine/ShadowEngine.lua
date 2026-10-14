@@ -1,72 +1,18 @@
--- engine/ShadowEngine.lua
--- ============================================================================
--- SHADOWENGINE v1 — sombras PROJETADAS de silhueta (Jul/2026)
--- ============================================================================
--- Substitui as elipses "círculo nos pés" dos objetos de destaque por uma
--- sombra convincente: a SILHUETA do próprio sprite, virada de cabeça pra
--- baixo a partir dos pés (o sol dos biomas vive no horizonte, atrás do
--- castelo → a sombra projeta pro PRIMEIRO PLANO), achatada e cisalhada:
---
---   COMPRIMENTO ∝ horário do dia (sol baixo no anoitecer = sombra longa)
---   DIREÇÃO     ∝ posição do astro do bioma (ponta foge do sol, por coluna
---                 da tela — árvore à esquerda do sol inclina pra esquerda)
---   OPACIDADE   ∝ luminância do ambiente de luz (luz difusa = sombra suave)
---   TAMANHO     ∝ escala do dono (perspectiva de graça: longe = sombra
---                 pequena, perto = grande — "cada árvore uma sombra")
---
--- REGRA DE PROFUNDIDADE (lei do projeto): a sombra desenha JUNTO do dono
--- no painter — deitada no chão do slot dele, grama mais próxima cobre.
--- NÃO usar nas cartas (sombra de carta é outra linguagem, já aprovada).
--- Zero stencil, zero shader — só transform + tint.
---
--- PEGADA (v9, Out/2026 — dono: "a fogueira é um círculo, e a sombra é o
--- círculo inteiro depois dela"): a silhueta inteira virada a partir do pé
--- trata TODA linha do sprite como altura. Num objeto baixo e largo (anel
--- de pedras, baú, pedra, moita, cadáver) a faixa de baixo do sprite é a
--- PROFUNDIDADE da pegada no chão, não altura — projetá-la punha uma cópia
--- inteira do objeto deitada à frente dele. Perfil (opts):
---   baseK  fração da altura do CONTEÚDO que é pegada (elipse de contato).
---          A sombra nasce no CENTRO da pegada, a faixa da pegada não
---          projeta e o que sobra cai em boa parte DENTRO dela — só uma
---          orla sai pro lado oposto ao sol.
---   riseK  fração (da altura do conteúdo) ACIMA da pegada que projeta.
---          Fogueira: só as pedras — chama não tem sombra. nil = tudo.
---          0 = nada projeta (decalque no chão, ex. fissura).
---   lenK   multiplicador do comprimento (atarracado = curto).
--- Sem perfil (baseK 0, riseK nil) o caminho é o v8.4, pixel por pixel:
--- árvore, poste, estandarte, barraca e criatura em pé não mudam.
--- Trava: tools/test_world_shadows.lua.
---
--- USO:
---   WorldRoad (1x por frame):  ShadowEngine.setFrame(sunX, w, tod, luma)
---   sprite estático:           ShadowEngine.sprite(img, feetX, feetY, s, opts)
---   draw arbitrário (anim):    local tint = ShadowEngine.begin(feetX, feetY)
---                              if tint then <desenha com tint>;
---                                 ShadowEngine.finish() end
--- ============================================================================
+local Debug = require("src.core.Debug")
 
 local ShadowEngine = {}
 
 local frame = {
     sunX = 0, w = 1,
-    len = 0.5,          -- fração da altura do sprite que vira sombra
+    len = 0.5,
     alpha = 0.26,
-    stamp = -1,         -- staleness: frame só vale por ~0.1s (interiores
-                        -- não chamam setFrame → begin() vira no-op)
+    stamp = -1,
 }
 
--- WorldRoad configura 1x por frame de mundo.
--- sunX = x NA TELA do astro do bioma; w = largura da área do mundo;
--- tod = 0(dia)..1(anoitecer); luma = LightEngine.ambientLuma().
 function ShadowEngine.setFrame(sunX, w, tod, luma)
     frame.sunX = sunX or 0
     frame.w = math.max(1, w or 1)
-    -- sol alto (dia) = sombra curta; sol rasante (anoitecer) = comprida.
-    -- v8.1 (feedback: "sem distorção, fiel demais; pode ser maior"):
-    -- 0.34-0.64 → 0.55-1.00 — a sombra ESTICA de verdade
     frame.len = 0.55 + 0.45 * math.max(0, math.min(1, tod or 1))
-    -- ambiente escuro = luz difusa = sombra mais suave (nunca some:
-    -- piso 0.15 mantém o objeto ancorado no chão)
     local l = math.max(0, math.min(1, luma or 1))
     frame.alpha = 0.15 + 0.15 * l
     frame.stamp = love.timer.getTime()
@@ -76,38 +22,19 @@ function ShadowEngine.isActive()
     return (love.timer.getTime() - frame.stamp) < 0.1
 end
 
--- deslocamento normalizado da PONTA pra longe do sol naquela coluna [-1..1]
 local function tipShift(px)
     return math.max(-1, math.min(1, (px - frame.sunX) / (frame.w * 0.5)))
 end
 
--- Mesma direção, exposta: quem FLUTUA precisa deslocar a própria sombra
--- pro lado oposto ao sol (a sombra de um corpo no ar não nasce sob ele).
--- Retorna 0 sem frame ativo (interiores decidem pela luz da cena).
 function ShadowEngine.tipShiftAt(px)
     if not ShadowEngine.isActive() then return 0 end
     return tipShift(px)
 end
 
--- ----------------------------------------------------------------------------
--- Sombra de um SPRITE estático (props do mundo: árvores, marcos, encounter).
--- feetX/feetY = âncora dos pés no chão; s = escala do dono na cena.
--- opts: alphaK (0..1), lenK, flip (espelho do dono: ±1),
---       footPad (px de canvas transparente ABAIXO do conteúdo — a sombra
---       ancora no PÉ DO CONTEÚDO, senão nasce com um vão)
--- ----------------------------------------------------------------------------
--- v8.3 ("silhueta arredondada"): SMEAR de 3 passadas deslocadas funde
--- detalhes finos em massas arredondadas.
--- v8.4 ("não quero camadas de cor — uma cor direta"): as passadas
--- desenham a silhueta OPACA num canvas scratch ⅓-res com blend
--- "lighten" (máximo — sobreposição NÃO acumula) e o canvas compõe UMA
--- vez em preto com o alpha do frame: união arredondada, COR ÚNICA,
--- borda quantizada no pixel lógico. Também elimina o escurecimento
--- duplo onde sombras de árvores vizinhas se cruzam. Zero stencil.
 local SMEAR = { { -1, 0 }, { 0.7, -0.5 }, { 0.35, 0.55 } }
 local SCALE = 3
 local scratch, batching, batchPrev
-local soloAlphaK   -- opacidade do composite de um batch solo (ver endBatch)
+local soloAlphaK
 
 local function ensureScratch()
     local W, H = love.graphics.getDimensions()
@@ -128,8 +55,6 @@ function ShadowEngine.beginBatch()
     love.graphics.setScissor()
     love.graphics.setCanvas(scratch)
     love.graphics.clear(0, 0, 0, 0)
-    -- "lighten" (max por canal) exige premultiplied: branco opaco
-    -- sobreposto continua branco opaco — a união fica CHAPADA
     love.graphics.setBlendMode("lighten", "premultiplied")
     love.graphics.scale(1 / SCALE)
     batching = true
@@ -141,9 +66,6 @@ function ShadowEngine.endBatch()
     love.graphics.pop()
     love.graphics.setCanvas(batchPrev)
     love.graphics.setBlendMode("alpha", "premultiplied")
-    -- alphaK SÓ vale em batch solo (uma silhueta por composite). Numa fila
-    -- com vários donos a cor é única por construção — é o que faz sombras
-    -- cruzadas não escurecerem em dobro (v8.4).
     love.graphics.setColor(0, 0, 0, frame.alpha * (soloAlphaK or 1))
     soloAlphaK = nil
     love.graphics.draw(scratch, 0, 0, 0, SCALE, SCALE)
@@ -153,24 +75,16 @@ end
 
 local NO_OPTS = {}
 
--- Pegada do perfil (ver cabeçalho). contentH e `s` na unidade do chamador
--- (.sprite: px de arte × escala; .silhouette: px de tela × 1). Devolve
---   ay     linha de ORIGEM da sombra (centro da pegada; = feetY sem perfil)
---   baseH  altura da pegada (pivô da virada sobe isso a partir do pé)
---   yCut   fundo do recorte em px de tela (nil = sem recorte)
--- ou false quando nada projeta (riseK 0 = decalque no chão).
 local profWarned = {}
 local function footprint(opts, feetY, contentH, s, lenMul, margin)
     local baseK = opts.baseK or 0
     local riseK = opts.riseK
     if baseK <= 0 and not riseK then return feetY, 0, nil end
     if contentH <= 0 then
-        -- perfil sem altura de conteúdo: avisa UMA vez e desenha como sem
-        -- perfil (nunca some em silêncio)
         local k = tostring(opts.baseK) .. "/" .. tostring(riseK)
         if not profWarned[k] then
             profWarned[k] = true
-            print("[ShadowEngine] perfil de pegada sem contentH (baseK="
+            Debug.warn("[ShadowEngine] perfil de pegada sem contentH (baseK="
                 .. k .. ") — projetando a silhueta inteira")
         end
         return feetY, 0, nil
@@ -182,9 +96,6 @@ local function footprint(opts, feetY, contentH, s, lenMul, margin)
     return ay, baseH, ay + riseH * s * lenMul + margin
 end
 
--- Recorte em px do canvas scratch (⅓): só as linhas entre a origem e o
--- fim do trecho que projeta entram — a faixa da pegada (virada pra cima
--- da origem) fica fora.
 local function cutScissor(ay, yCut)
     local y0 = math.floor(ay / SCALE)
     love.graphics.setScissor(0, y0, scratch:getWidth(),
@@ -197,22 +108,15 @@ function ShadowEngine.sprite(img, feetX, feetY, s, opts)
     local iw, ih = img:getWidth(), img:getHeight()
     local pad = opts.footPad or 0
     local lenK = opts.lenK or 1
-    -- raio do borrão ∝ largura na tela (monstro grande borra mais)
     local d = math.max(1.5, iw * s * 0.035)
     local ay, baseH, yCut = footprint(opts, feetY, ih - pad, s,
         frame.len * lenK, d)
-    if not ay then return true end   -- nada projeta: sem elipse de fallback
+    if not ay then return true end
     local solo = not batching
     if solo then ShadowEngine.beginBatch() end
     local shd = tipShift(feetX)
     if yCut then cutScissor(ay, yCut) end
-    -- branco opaco no scratch (lighten: sobrepor não escurece)
     love.graphics.setColor(1, 1, 1, 1)
-    -- draw args: offset(-ox,-oy) → shear → scale → translate.
-    -- oy nos pés DO CONTEÚDO (ou no topo da pegada, com perfil): topo do
-    -- sprite tem y local negativo → shear kx desloca a ponta ⇒ pra LONGE
-    -- do sol pede kx = -shd·K. sy NEGATIVO espelha verticalmente (sombra
-    -- desce da origem pro primeiro plano). ×1.18: "mais gorda" (v8.2).
     for pi = 1, #SMEAR do
         love.graphics.draw(img,
             math.floor(feetX + SMEAR[pi][1] * d),
@@ -227,24 +131,12 @@ function ShadowEngine.sprite(img, feetX, feetY, s, opts)
     return true
 end
 
--- ----------------------------------------------------------------------------
--- Sombra de um DRAW arbitrário (animação do inimigo): o motor monta o
--- transform projetado nos pés e chama drawFn(tint) UMA VEZ POR PASSADA
--- do smear (v8.3) — o chamador desenha a silhueta relativa à origem
--- (pés em 0,0) com o tint recebido. Retorna false quando inativo
--- (interiores → elipse legada do chamador).
--- opts: alphaK (só em chamada solo), lenK, widthK (estreita a silhueta —
---       corpo no ar projeta sombra MENOR), smear (raio do borrão em px),
---       baseK/riseK + contentH (px de tela) = perfil de pegada do cabeçalho
--- ----------------------------------------------------------------------------
-local silTint = { 1, 1, 1, 1 }   -- branco opaco: a COR vem do composite
+local silTint = { 1, 1, 1, 1 }
 function ShadowEngine.silhouette(feetX, feetY, opts, drawFn)
     if not ShadowEngine.isActive() then return false end
     opts = opts or NO_OPTS
     local d = opts.smear or 4
     local lenK = opts.lenK or 1
-    -- perfil de pegada (cabeçalho): contentH em px DE TELA do conteúdo
-    -- (o drawFn desenha em px de tela, pé em 0,0)
     local ay, baseH, yCut = footprint(opts, feetY, opts.contentH or 0, 1,
         frame.len * lenK, d)
     if not ay then return true end
@@ -261,13 +153,8 @@ function ShadowEngine.silhouette(feetX, feetY, opts, drawFn)
         love.graphics.translate(
             math.floor(feetX + SMEAR[pi][1] * d),
             math.floor(ay + SMEAR[pi][2] * d * 0.5))
-        -- ordem de emissão translate→shear→scale ⇒ no ponto aplica scale
-        -- ANTES do shear: y já flipado (positivo abaixo dos pés) → ponta
-        -- pra longe do sol pede kx = +shd·K (sinal oposto ao .sprite)
         love.graphics.shear(shd * 0.78, 0)
         love.graphics.scale(1.18 * wK, -frame.len * lenK)
-        -- pivô da virada no TOPO da pegada: o drawFn põe o pé em y=0, a
-        -- linha baseH acima dele é a que cai na origem
         if baseH > 0 then love.graphics.translate(0, baseH) end
         love.graphics.setColor(silTint)
         drawFn(silTint)
@@ -278,16 +165,6 @@ function ShadowEngine.silhouette(feetX, feetY, opts, drawFn)
     return true
 end
 
--- ----------------------------------------------------------------------------
--- FILA (props do mundo): sombra cai SOBRE a grama — mas no painter o
--- tapete mais próximo desenha depois do prop e COBRIA a sombra imediata
--- (campo 100% coberto = sombra invisível). Solução: os props ENFILEIRAM;
--- o WorldRoad descarrega a fila depois de props+grama completos — a
--- sombra escurece a grama em que cai (e o pé de quem estiver dentro
--- dela, como sombra real faria). Ordem de submit = far→near (painter).
--- ----------------------------------------------------------------------------
--- (Out/2026: entradas da fila REUSADAS entre frames — era 1 tabela nova
--- por prop por frame; squeueN é o tamanho vivo da fila)
 local squeue, squeueN = {}, 0
 function ShadowEngine.queue(img, feetX, feetY, s, opts)
     if not img or not ShadowEngine.isActive() then return false end
@@ -300,13 +177,11 @@ end
 
 function ShadowEngine.flush()
     if squeueN == 0 then return end
-    -- UM batch pra fila inteira: sombras vizinhas que se cruzam viram
-    -- união chapada (uma cor), não escurecimento duplo (v8.4)
     ShadowEngine.beginBatch()
     for i = 1, squeueN do
         local q = squeue[i]
         ShadowEngine.sprite(q.img, q.x, q.y, q.s, q.o)
-        q.img, q.o = nil, nil   -- não segura sprite/opts até o próximo frame
+        q.img, q.o = nil, nil
     end
     squeueN = 0
     ShadowEngine.endBatch()

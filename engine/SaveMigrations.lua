@@ -1,32 +1,16 @@
--- engine/SaveMigrations.lua
--- Versionamento de save. Cada migration pega o payload em uma versão e
--- transforma in-place para a próxima. Roda em cadeia até CURRENT_VERSION.
---
--- Convenção: chave do dicionário é a versão de origem ("1.0"), função
--- retorna a nova versão depois de transformar (ou raise em caso de save
--- irrecuperável).
-
 local Migrations = {}
 
 Migrations.CURRENT_VERSION = "1.2"
 
--- Cada handler recebe payload (que tem .version, .runData, .savedAt) e
--- muta payload.runData / payload.version para a próxima versão.
 local handlers = {
     ["1.0"] = function(payload)
-        -- 1.0 → 1.1: nada a transformar nos dados (era a versão anterior
-        -- antes do SaveManager existir). Só registra a bump.
         payload.version = "1.1"
     end,
     ["1.1"] = function(payload)
-        -- 1.1 → 1.2: introduz RNG seedável (runData.rngState) e seed da run.
-        -- Save antigo não tem — RunManager.loadRun tolera nil (gera Rng novo).
-        -- Nada a transformar; registra a bump.
         payload.version = "1.2"
     end,
 }
 
--- Roda migrations em cadeia. Retorna true em sucesso, false+err em falha.
 function Migrations.run(payload)
     if type(payload) ~= "table" then
         return false, "payload não é tabela"

@@ -1,62 +1,12 @@
--- engine/LuminaireEngine.lua
--- ============================================================================
--- LUMINAIREENGINE v1 — motor de props DECORATIVOS EMISSORES DE LUZ (Jul/2026)
--- ============================================================================
--- Pedido: "um motor específico para os elementos decorativos que emitem luz
--- (lanterna, pedras com fogo, fogueiras, postes)... reaproveitando as luzes,
--- com 2-3 adaptações por bioma... tem que parecer algo que pertence ao bioma".
---
--- O motor NÃO desenha o sprite do prop (isso é do painter do WorldRoad, que
--- respeita a REGRA DE PROFUNDIDADE). Ele é o dono de:
---
---   CATÁLOGO   — 2-3 tipos de luminária POR BIOMA, cada um com cor/raio/
---                núcleo/intensidade/estilo de flicker próprios (a lanterna
---                do pântano é verde-bruxaria; o braseiro da geleira é a
---                ÚNICA coisa quente do bioma — contraste é identidade).
---   LUZ        — submit no LightEngine (núcleo micro na chama + poça de
---                chão posterizada), com estilos de flicker além do
---                fire/pulse nativos: "wisp" (respiração lenta errante) e
---                "shimmer" (cintilação rápida de cristal) modulados AQUI.
---   ÂNCORA     — onde a chama vive no sprite. Detectada POR CONTEÚDO
---                (centróide dos pixels mais brilhantes do PNG — arte
---                PixelLab não precisa de âncora manual), com fallback do
---                catálogo pra arte procedural. Mesmo scan mede offX/footPad
---                (lição dos monstros: canvas com margem descentra o prop).
---   BRASAS     — partículas de fagulha DETERMINÍSTICAS (função do tempo,
---                zero estado — mesma doutrina do GrassField) desenhadas
---                pelo chamador no slot de profundidade do prop.
---
--- Zero stencil, zero shader novo — reusa LightEngine.submit/submitMicro.
--- ============================================================================
-
 local LightEngine = require("engine.LightEngine")
 
 local LuminaireEngine = {}
 
--- poça de chão só quando o prop está perto (t alto) — de longe vive entre
--- copas e o dither da poça quebrava a silhueta das árvores (lição F-1)
 LuminaireEngine.POOL_MIN_T = 0.50
 
--- ----------------------------------------------------------------------------
--- CATÁLOGO por bioma. Campos por tipo:
---   size    — tamanho de mundo (KIND_SIZE do WorldRoad)
---   lane    — faixa na cunha [colado na estrada .. borda]; emissor vive na
---             BEIRA da estrada (a poça alcança o caminho)
---   anchor  — {xr, yr} fallback da chama (fração do sprite, y do topo)
---   light   — cor/raio(∝ altura na tela)/núcleo/intensidade/flicker
---   embers  — fagulhas subindo (cor própria; só tipos de FOGO vivo)
---   weight  — peso de spawn sugerido (biomes.lua referencia)
--- ----------------------------------------------------------------------------
 local FIRE_AMBER  = { 1.00, 0.62, 0.25 }
 
--- Out/2026 (dono, jogando): fora a fogueira dos Campos e do Crepúsculo e a
--- lanterna de chão das Colinas — "muito feias, não fazem sentido". A remoção
--- de Set/2026 só tirou a fogueira de biomes.lua (propWeights), mas luminária
--- é sorteada DAQUI (cadência do WorldRoad) — por isso ela continuava
--- aparecendo. Tirar um tipo de luminária = tirar do CATALOG.
 local CATALOG = {
-    -- Campos Arruinados: âmbar de fazenda — lampião e santuário de vela
-    -- (mundo rural que ainda acende as luzes)
     fields = {
         lantern = { size = 4.2, face = 1, roadside = true,
             lane = { 0.0, 0.08 }, anchor = { 0.78, 0.46 },
@@ -69,8 +19,6 @@ local CATALOG = {
                       coreK = 0.30, intensity = 0.65, flicker = "pulse" } },
     },
 
-    -- Colinas da Torre: noite de lua — fogo ARCANO azul nos braseiros dos
-    -- monólitos e runas acesas na pedra
     highlands = {
         brazier = { size = 1.50, roadside = true, lane = { 0.01, 0.12 }, anchor = { 0.50, 0.20 },
             weight = 0.9,
@@ -83,8 +31,6 @@ local CATALOG = {
                       coreK = 0.35, intensity = 0.70, flicker = "wisp" } },
     },
 
-    -- Estrada do Abismo: inferno — braseiro de pilar rugindo (referência),
-    -- tocha de estaca carbonizada, fissura de brasa no chão
     abyss = {
         brazier = { size = 1.60, roadside = true, lane = { 0.01, 0.12 }, anchor = { 0.50, 0.18 },
             weight = 1.0,
@@ -102,8 +48,6 @@ local CATALOG = {
                       coreK = 0.30, intensity = 0.75, flicker = "wisp" } },
     },
 
-    -- Geleira Espectral: o braseiro QUENTE é o único calor do bioma
-    -- (contraste); cristal de gelo e lanterna de pedra são a luz fria local
     frost = {
         brazier = { size = 1.50, roadside = true, lane = { 0.01, 0.12 }, anchor = { 0.50, 0.20 },
             weight = 0.8,
@@ -120,8 +64,6 @@ local CATALOG = {
                       coreK = 0.40, intensity = 0.80, flicker = "fire" } },
     },
 
-    -- Pântano da Podridão: bruxaria — lampião torto de fogo-fátuo VERDE,
-    -- cogumelos bioluminescentes, totem musgoso com chama espectral
     marsh = {
         lantern = { size = 4.2, face = 1, roadside = true,
             lane = { 0.0, 0.08 }, anchor = { 0.78, 0.46 },
@@ -138,8 +80,6 @@ local CATALOG = {
                       coreK = 0.40, intensity = 0.75, flicker = "wisp" } },
     },
 
-    -- Campos do Crepúsculo: golden hour eterna — lampião dourado
-    -- (referência) e santuário de velas no trigo
     dusk = {
         lantern = { size = 4.2, face = 1, roadside = true,
             lane = { 0.0, 0.08 }, anchor = { 0.78, 0.46 },
@@ -153,7 +93,6 @@ local CATALOG = {
     },
 }
 
--- conjunto global de kinds (qualquer bioma) — pro WorldRoad reconhecer
 local KIND_SET = {}
 for _, kinds in pairs(CATALOG) do
     for kind in pairs(kinds) do KIND_SET[kind] = true end
@@ -166,17 +105,8 @@ function LuminaireEngine.def(bid, kind)
 end
 function LuminaireEngine.isLuminaire(kind) return KIND_SET[kind] == true end
 
--- ----------------------------------------------------------------------------
--- ÂNCORA POR CONTEÚDO: centróide dos pixels mais brilhantes do PNG (a chama
--- assada É o ponto mais claro da arte) + offX/footPad (margens do canvas).
--- Cache por chave; PNG ausente/procedural → fallback do catálogo.
--- ----------------------------------------------------------------------------
 local anchorCache = {}
 
--- Out/2026 (perf da troca de bioma): leitura dos pixels por FFI direto no
--- buffer rgba8 do ImageData — getPixel por pixel eram ~10-20k chamadas C
--- por PNG, 2 passadas, na hora do 1º frame do bioma novo. Os valores são
--- os MESMOS do getPixel do LÖVE 11 (byte/255 em float): tabela F8.
 local ffi = require("ffi")
 local F8 = {}
 for b = 0, 255 do F8[b] = tonumber(ffi.cast("float", b / 255)) end
@@ -200,7 +130,6 @@ local function scanImage(path, data)
         end
         return data:getPixel(x, y)
     end
-    -- passada 1: bbox do conteúdo + pico de luminância
     for y = 0, h - 1 do
         for x = 0, w - 1 do
             local r, g, b, a = rgba(x, y)
@@ -214,7 +143,6 @@ local function scanImage(path, data)
         end
     end
     if maxX < 0 then return nil end
-    -- passada 2: centróide dos pixels dentro de 88% do pico (a chama)
     local cut = peak * 0.88
     for y = 0, h - 1 do
         for x = 0, w - 1 do
@@ -237,9 +165,8 @@ local function scanImage(path, data)
     end
     return res
 end
-LuminaireEngine._scanImage = scanImage   -- (teste de equivalência)
+LuminaireEngine._scanImage = scanImage
 
--- Retorna { ax, ay, offX, footPad } — ax/ay fração do sprite (y do topo).
 function LuminaireEngine.anchor(bid, kind, variant, path)
     local key = bid .. "|" .. kind .. "|" .. tostring(variant)
     local hit = anchorCache[key]
@@ -254,32 +181,12 @@ function LuminaireEngine.anchor(bid, kind, variant, path)
     return res
 end
 
--- ----------------------------------------------------------------------------
--- LUZ: núcleo micro na chama + poça de chão. Flickers "fire"/"pulse" são
--- nativos do LightEngine; "wisp" e "shimmer" são modulados aqui (noise
--- contínuo, nunca random puro — doutrina do motor de luz).
--- a = { fx, fy (chama em coords de TELA pós-transform), gx, gy (pés),
---       sh (altura do sprite na tela), t, rel, seed }
--- ----------------------------------------------------------------------------
 function LuminaireEngine.submit(bid, kind, a)
     local def = LuminaireEngine.def(bid, kind)
     if not def then return end
     local L = def.light
     local time = love.timer.getTime()
     local seed = (a.seed or 0) % 1000
-    -- v9.2 (feedback: "a luz da lâmpada tem que se mexer, não ficar
-    -- estática"): o flicker é calculado AQUI pra TODOS os tipos e aplicado
-    -- tanto na micro-luz (glow da lâmpada) quanto na poça — antes o "fire"
-    -- só modulava a poça (dentro do LightEngine) e o núcleo ficava fixo.
-    -- fi = multiplicador de intensidade; fr = de raio (a luz "expande e
-    -- fica pequenininha"). Passamos flicker=nil pro LightEngine pra não
-    -- aplicar de novo (dupla modulação).
-    -- v9.2 (feedback: "lâmpada longe fica estática; TODAS deviam pulsar"):
-    -- amplitude do flicker AMPLA (fr swing largo) — o halo "expande e fica
-    -- pequenininho" de forma visível a qualquer distância.
-    -- flicker GENTIL (a versão anterior "piscava rápido demais"): a mesma
-    -- respiração suave que a poça de chão tinha — é ELA que o usuário
-    -- gostou. fi = intensidade, fr = raio (expande/encolhe devagar).
     local fi, fr = 1, 1
     if L.flicker == "fire" then
         local n = love.math.noise(time * 1.4, seed) * 0.75
@@ -300,47 +207,21 @@ function LuminaireEngine.submit(bid, kind, a)
         fi = 0.80 + 0.20 * s
         fr = 0.90 + 0.14 * s
     end
-    -- v9.2 (feedback: "o brilho bom que estava no PÉ deve ir pra CIMA, na
-    -- lâmpada; e escalar com a distância"): UMA luz suave (mesmo shader
-    -- da antiga poça — posterizada + dither) centrada NA CHAMA (a.fx/a.fy),
-    -- não no chão. O raio escala com a ALTURA DA CHAMA na tela (a.flameH:
-    -- longe = pequena, perto = grande — some a sensação de "tamanho fixo").
-    -- Sem halo micro duro e sem poça no chão.
     local base = a.flameH or a.sh
-    -- v10.3: alphaK opcional (1 = normal) — o chamador esvai a luz junto com
-    -- a arte da luminária (cross-dissolve de troca de bioma no WorldRoad),
-    -- pra não sobrar poça órfã de um poste que já sumiu
     local aK = a.alphaK or 1
-    -- v9.2 (feedback: "poste longe o feixe fica grande demais; mais
-    -- proporcional"): fator de distância — o glow encolhe além do que o
-    -- flameH já reduz (a perspectiva sozinha deixava o disco grande
-    -- relativo ao poste minúsculo na dobra da esfera). Perto = 1.0.
     local distK = 0.42 + 0.58 * math.min(1, (a.t or 1) / 0.55)
     LightEngine.submit({
         x = a.fx, y = a.fy,
         radius = math.min(L.radiusK * base * fr * distK, (a.capR or 1e9)),
         color = L.color, intensity = L.intensity * fi * (0.6 + 0.4 * distK) * aK,
-        -- v9.2 (feedback: "ainda pixelado e xadrez"): 8 degraus (gradiente
-        -- bem fino) + dither de amplitude 0.28 (quase imperceptível — só
-        -- quebra a banda). No lightmap ¼ o Bayer cheio virava xadrez de
-        -- 4px; com degraus finos quase não precisa de dither.
         dither = true, ditherAmt = 0.28, levels = 8,
         seed = a.seed, z = a.rel,
     })
-    -- núcleo quente pequeno no centro da chama (hotspot), escala com base,
-    -- SEM piso — longe encolhe junto (nada de dot fixo)
     LightEngine.submitMicro(a.fx, a.fy,
         math.min(L.coreK * base * 0.6 * fr * distK, (a.capR or 1e9) * 0.4),
         L.color, 0.9 * fi * aK, a.rel)
 end
 
--- ----------------------------------------------------------------------------
--- BRASAS: fagulhas subindo da chama. DETERMINÍSTICAS (função pura do tempo,
--- como o GrassField) — cada fagulha tem ciclo/fase próprios derivados do
--- seed; chamador desenha no slot de profundidade do prop (REGRA DE
--- PROFUNDIDADE: brasa na frente da árvore desenha depois dela).
--- fx, fy = chama na tela (coords locais do painter); sh = altura na tela.
--- ----------------------------------------------------------------------------
 local function hash01(n)
     return (math.sin(n * 127.1 + 311.7) * 43758.5453) % 1
 end
@@ -348,7 +229,7 @@ end
 function LuminaireEngine.drawEmbers(bid, kind, fx, fy, sh, seed)
     local def = LuminaireEngine.def(bid, kind)
     local em = def and def.embers
-    if not em or sh < 14 then return end   -- longe demais = 1px, não desenha
+    if not em or sh < 14 then return end
     local time = love.timer.getTime()
     local c = em.color
     for i = 1, em.count do

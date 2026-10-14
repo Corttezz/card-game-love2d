@@ -1,69 +1,22 @@
--- engine/Moveable.lua
--- Mixin de "juice" + T/VT pra qualquer objeto visual. Inspirado em
--- engine/moveable.lua do Balatro.
---
--- DOIS PADRÕES distintos que este módulo provê:
---
--- 1) T/VT (Target vs Visible Transform)
---    Você muda T.x/y (onde quer estar); VT.x/y interpola suavemente por frame.
---    O draw usa VT. Resultado: trocar posição vira animação automática.
---
---    Implementação (Fase 1 — Balatro-style): damping exponencial via
---    *velocity* (com momento + clamp), não tween posicional. Tornou-se padrão
---    pra qualquer obj novo no projeto.
---
---    Obs: Card legacy tem targetX/renderX próprio — não migrar agora pra evitar
---    risco. Use TVT em NOVOS objetos (Button, Tooltip, ShopSlotWidget, etc.).
---
--- 2) juice_up (bounce multiplicativo)
---    Chama `Moveable.juice_up(obj, scale_mod, rot_mod)` quando algo ACONTECE
---    (carta jogada, hit, mana gasto). scaleFactor()/rotOffset() compõem no draw.
---
--- Uso típico (sem herança):
---
---   Moveable.initJuice(self)
---   Moveable.initTVT(self, x, y)
---   ...
---   function obj:update(dt)
---       Moveable.updateJuice(self, dt)
---       Moveable.updateTVT(self, dt)
---   end
---   function obj:draw()
---       local s = self.VT.scale * Moveable.scaleFactor(self)
---       local r = self.VT.r + Moveable.rotOffset(self)
---       love.graphics.draw(..., self.VT.x, self.VT.y, r, s, s)
---   end
-
 local Moveable = {}
 
--- ============ JUICE ============
-
--- Adiciona o campo .juice no objeto. Chame no construtor.
 function Moveable.initJuice(obj)
     obj.juice = obj.juice or {
-        scale = 0,    -- modificador aditivo na escala (tipicamente ±0.5)
-        r = 0,        -- rotação em radianos
+        scale = 0,
+        r = 0,
         scale_amt = 0,
         r_amt = 0,
-        timer = 0,    -- vida restante em segundos
+        timer = 0,
         duration = 0.4,
     }
 end
 
--- Dispara um "kick" de juice. Sobrescreve juice anterior (não empilha).
--- Padrão Balatro: sine wave 50.8/40.8 freq com cubic falloff em 0.4s fixos.
--- scale_mod: 0.1 (sutil) — 0.5 (forte). Multiplicativo no draw via scaleFactor().
--- rot_mod:   0.05–0.2 (radianos). Direção alterna entre kicks consecutivos.
 function Moveable.juice_up(obj, scale_mod, rot_mod)
     Moveable.initJuice(obj)
-    -- Reduced motion (Balatro engine/moveable.lua:251 G.SETTINGS.reduced_motion):
-    -- desliga TODO juice quando flag global ativa, pra acessibilidade ou
-    -- preferência. Usuário marca em SettingsMenu → _G.gameSettings.reducedMotion.
     if _G.gameSettings and _G.gameSettings.reducedMotion then
         return
     end
     scale_mod = scale_mod or 0.4
-    -- Direção alternante quando rot_mod não é dado (mais "vivo" em sequência).
     if not rot_mod then
         local dir = (obj.juice._lastDir or 1) * -1
         obj.juice._lastDir = dir
@@ -74,18 +27,11 @@ function Moveable.juice_up(obj, scale_mod, rot_mod)
     obj.juice.timer = 0
     obj.juice.duration = 0.4
 
-    -- Pre-shrink visual (Balatro): VT.scale começa "comprimido" pra dar pop ao
-    -- soltar. Aplicado se obj tem VT; senão é no-op.
     if obj.VT and obj.VT.scale then
         obj.VT.scale = math.max(0.01, (obj.T and obj.T.scale or 1) - 0.6 * scale_mod)
     end
 end
 
--- ============ HOP + SWELL (game feel v2, Jul/2026) ============
--- Canais independentes do juice de scale/rot — compõem no draw.
-
--- HOP: pulinho vertical (meia-senoide sobe-e-volta). px = altura do pulo.
--- Uso: carta de ataque "investe", joker "pula" no proc.
 function Moveable.hop_up(obj, px, duration)
     Moveable.initJuice(obj)
     if _G.gameSettings and _G.gameSettings.reducedMotion then return end
@@ -94,8 +40,6 @@ function Moveable.hop_up(obj, px, duration)
     obj.juice.hop_duration = duration or 0.32
 end
 
--- SWELL: crescida SEM oscilação (sobe rápido, assenta devagar). Diferente do
--- juice_up que vibra — o swell "incha" (carta de defesa ganhando corpo).
 function Moveable.swell_up(obj, scale_add, duration)
     Moveable.initJuice(obj)
     if _G.gameSettings and _G.gameSettings.reducedMotion then return end
@@ -104,9 +48,6 @@ function Moveable.swell_up(obj, scale_add, duration)
     obj.juice.swell_duration = duration or 0.45
 end
 
--- SHOVE: empurrão HORIZONTAL de aparada (game feel v3.3 — a defesa "apara
--- o golpe": checa pro lado, segura um instante e volta com um TIQUE de
--- mola). px pode ser negativo (lado). Sem dir, alterna a cada uso.
 function Moveable.shove_x(obj, px, duration)
     Moveable.initJuice(obj)
     if _G.gameSettings and _G.gameSettings.reducedMotion then return end
@@ -120,10 +61,6 @@ function Moveable.shove_x(obj, px, duration)
     obj.juice.shove_duration = duration or 0.55
 end
 
--- Offset X atual do shove. Envelope de APARADA: estala pro lado (14%),
--- SEGURA deslocada (até 42% — tempo de LER o desvio), e volta de MOLA
--- amortecida — cruza o centro e dá um tique no lado oposto antes de
--- assentar (o "tique e volta" pedido).
 function Moveable.shoveOffset(obj)
     local j = obj.juice
     if not j or not j.shove_duration or not j.shove_timer
@@ -133,21 +70,16 @@ function Moveable.shoveOffset(obj)
     local k
     if t < 0.14 then
         local u = t / 0.14
-        k = 1 - (1 - u) ^ 3                -- estalo lateral (easeOutCubic)
+        k = 1 - (1 - u) ^ 3
     elseif t < 0.42 then
-        k = 1                               -- segura torta (leitura)
+        k = 1
     else
         local u = (t - 0.42) / 0.58
-        -- mola amortecida: volta, ultrapassa (~-30%) e assenta
         k = math.cos(u * math.pi * 1.45) * (1 - u) ^ 1.3
     end
     return amt * k
 end
 
--- Offset Y atual do hop (negativo = pra cima). Some no offset vertical do draw.
--- v3.2: envelope CHUNKY (feedback do dono "se mexe é mt pouco") — meia-senoide
--- suave lê como flutuação invisível; o olho precisa de ESTALO + PAUSA:
--- sobe num estalo (12%), SEGURA no alto (até 45%), cai rápido, QUICA no fim.
 function Moveable.hopOffset(obj)
     local j = obj.juice
     if not j or not j.hop_duration or not j.hop_timer
@@ -157,27 +89,24 @@ function Moveable.hopOffset(obj)
     local k
     if t < 0.12 then
         local u = t / 0.12
-        k = 1 - (1 - u) ^ 3               -- estalo pra cima (easeOutCubic)
+        k = 1 - (1 - u) ^ 3
     elseif t < 0.45 then
-        k = 1                              -- segura no alto (tempo de LER)
+        k = 1
     elseif t < 0.75 then
         local u = (t - 0.45) / 0.30
-        k = 1 - u * u                      -- cai rápido (easeInQuad)
+        k = 1 - u * u
     else
         local u = (t - 0.75) / 0.25
-        k = 0.22 * math.sin(math.pi * u)   -- quique final
+        k = 0.22 * math.sin(math.pi * u)
     end
     return -amt * k
 end
 
--- Fator multiplicativo do swell. Envelope: ataque rápido (18%), decay quadrático.
 function Moveable.swellFactor(obj)
     local j = obj.juice
     if not j or not j.swell_duration or not j.swell_timer
         or j.swell_timer >= j.swell_duration then return 1 end
     local t = j.swell_timer / j.swell_duration
-    -- v3.2: incha num ESTALO (8%), SEGURA inchada (até 55% — leitura), e só
-    -- então desinfla. O decay suave desde o início lia como "nada mexeu".
     local env
     if t < 0.08 then
         local u = t / 0.08
@@ -190,12 +119,9 @@ function Moveable.swellFactor(obj)
     return 1 + (j.swell_amt or 0) * env
 end
 
--- Atualiza decay. Chame em update(dt). Sine wave * cubic falloff (padrão Balatro).
 function Moveable.updateJuice(obj, dt)
     local j = obj.juice
     if not j then return end
-    -- Hop/swell tickam SEMPRE (independentes do timer do juice scale/rot —
-    -- o early-return abaixo não pode congelá-los no meio do movimento).
     if j.hop_duration and j.hop_timer and j.hop_timer < j.hop_duration then
         j.hop_timer = j.hop_timer + dt
     end
@@ -216,34 +142,25 @@ function Moveable.updateJuice(obj, dt)
         return
     end
 
-    -- Falloff cúbico (1-progress)^3 — padrão Balatro pra scale.
     local falloff_scale = (1 - progress) ^ 3
     local falloff_rot = (1 - progress) ^ 2
 
-    -- Sine waves de alta frequência (50.8 / 40.8 rad/s no Balatro). Em love2d
-    -- usamos timer absoluto, mesma ideia.
     j.scale = j.scale_amt * math.sin(50.8 * j.timer) * falloff_scale
     j.r = j.r_amt * math.sin(40.8 * j.timer) * falloff_rot
 end
 
--- Fator de escala atual do juice. Use no draw multiplicando seu scale base.
--- Curva: oscilação Balatro ao redor de 1.0 com decay cúbico.
 function Moveable.scaleFactor(obj)
     local j = obj.juice
     if not j or j.timer >= j.duration or j.duration <= 0 then return 1 end
     return 1 + j.scale
 end
 
--- Offset de rotação atual. Soma no seu rot base.
 function Moveable.rotOffset(obj)
     local j = obj.juice
     if not j or j.timer >= j.duration or j.duration <= 0 then return 0 end
     return j.r
 end
 
--- ============ T vs VT (velocity-based damping, padrão Balatro) ============
-
--- Inicializa T (target) e VT (visible) + velocity. Chame no construtor.
 function Moveable.initTVT(obj, x, y, scale, rot)
     x = x or 0; y = y or 0; scale = scale or 1; rot = rot or 0
     obj.T = obj.T or { x = x, y = y, scale = scale, r = rot }
@@ -251,16 +168,11 @@ function Moveable.initTVT(obj, x, y, scale, rot)
     obj.velocity = obj.velocity or { x = 0, y = 0, scale = 0, r = 0 }
 end
 
--- Damping exponencial constants (Balatro): rates per second.
--- xy=50, scale=60 (mais lento que xy), r=190 (mais rápido que xy).
--- Velocidade máxima default 70*dt*60 → 4200 px/s a 60fps. Override via obj.MAX_VEL.
 local DAMP_XY    = 50
 local DAMP_SCALE = 60
 local DAMP_R     = 190
 local DEFAULT_MAX_VEL_PER_FRAME = 70
 
--- Atualiza VT em direção a T usando velocity-based exponential damping.
--- Inclui hover/drag scale modifiers se obj.zoom=true e obj.states existir.
 function Moveable.updateTVT(obj, dt)
     if not obj.T or not obj.VT then return end
     obj.velocity = obj.velocity or { x = 0, y = 0, scale = 0, r = 0 }
@@ -270,7 +182,6 @@ function Moveable.updateTVT(obj, dt)
     local exp_r     = math.exp(-DAMP_R     * dt)
     local max_vel   = (obj.MAX_VEL or DEFAULT_MAX_VEL_PER_FRAME) * dt * 60
 
-    -- X/Y: velocity carrega momento; clamp por magnitude.
     local dx = obj.T.x - obj.VT.x
     local dy = obj.T.y - obj.VT.y
     if math.abs(dx) > 0.01 or math.abs(dy) > 0.01
@@ -288,8 +199,6 @@ function Moveable.updateTVT(obj, dt)
         obj.VT.y = obj.VT.y + obj.velocity.y
     end
 
-    -- Scale desejado: T.scale + hover/drag (se obj.zoom). Juice é multiplicado no
-    -- draw via scaleFactor() — não compor aqui.
     local des_scale = obj.T.scale
     if obj.zoom and obj.states then
         if obj.states.drag and obj.states.drag.is then
@@ -306,7 +215,6 @@ function Moveable.updateTVT(obj, dt)
         obj.VT.scale = obj.VT.scale + obj.velocity.scale
     end
 
-    -- Rotação (decay mais rápido, sem velocity cap — rotações são pequenas).
     local dr = obj.T.r - obj.VT.r
     if math.abs(dr) > 0.0005 or math.abs(obj.velocity.r) > 0.001 then
         obj.velocity.r = exp_r * obj.velocity.r + (1 - exp_r) * dr
@@ -314,9 +222,6 @@ function Moveable.updateTVT(obj, dt)
     end
 end
 
--- Tween posicional simples (sem velocity). Mantido pra casos que não querem
--- momento/overshoot (ex: tooltip que precisa "encaixar" instantaneamente).
--- k controla rigidez: 8=flutuante, 16=tátil, 24=snappy.
 function Moveable.simpleEaseTVT(obj, dt, k)
     if not obj.T or not obj.VT then return end
     k = k or 12
@@ -327,7 +232,6 @@ function Moveable.simpleEaseTVT(obj, dt, k)
     obj.VT.r = obj.VT.r + (obj.T.r - obj.VT.r) * ease
 end
 
--- Snap: força VT = T imediatamente (usado em "teleport" / reset de cena).
 function Moveable.snap(obj)
     if obj.T and obj.VT then
         obj.VT.x, obj.VT.y = obj.T.x, obj.T.y
