@@ -60,27 +60,15 @@ Config.Game = {
     ENEMY_HEALTH_SCALING = 15,
     ENEMY_DAMAGE_SCALING = 3,
 
-    -- FORÇA DO INIMIGO na run (Out/2026, combos simples): as 13 regras de
-    -- combo por tag davam ~40% do dano e ~50% do Bloqueio das cartas, e a
-    -- curva de inimigos foi calibrada COM elas. Trocadas por Saraivada/
-    -- Muralha/Par (pequenas e legíveis), o piloto caiu de 55% para 0-5% com o
-    -- guerreiro; compensar do lado do jogador (+60% de Bloqueio, +20% de
-    -- ataque, combos 2x) não voltou. Escalar o inimigo voltou: dano x0,8 e
-    -- vida x0,85 em TODA a run (endless incluso, a curva continua contínua).
-    -- Ponto único: ActSystem.getEnemyStats.
-    -- Out/2026 (Stage 2, sweep contra as bandas do StS — memory/
-    -- balance_curves.md): 0,8/0,85 -> 0,75/0,8. Com 0,8/0,85 o melhor piloto
-    -- (expert_full) estava na banda (53/57/43) mas o A3 era um muro pra todo
-    -- mundo abaixo dele (elites do A3: 47 das 270 mortes dos pilotos
-    -- rapidos). Com 0,75/0,8 + ato 3 x0,9: expert_full 57/53/53, mortes
-    -- concentradas no A5 (Colosso), lutas tardias 7-9 turnos.
-    ENEMY_POWER = { damage = 0.75, health = 0.8 },
-    -- Curva POR ATO em cima da global (compõe e arredonda UMA vez; endless
-    -- herda o último ato). Lida por ActSystem.getEnemyStats; knob
-    -- BALANCE_ENEMY_POWER_ACT do sweep. Ato 3 ("Abismo") era o degrau mais
-    -- duro da run: vida base 150+15f (x2 sobre o fim do A2) com elite x1,7 —
-    -- 280 de vida no 1º andar do ato, mais que o chefe do A2.
-    ENEMY_POWER_BY_ACT = { [3] = { damage = 0.9, health = 0.9 } },
+    ENEMY_POWER = { damage = 1.0, health = 1.0 },
+    ENEMY_POWER_BY_ACT = {
+        [1] = { damage = 1.0, health = 2.0 },
+        [2] = { damage = 0.95, health = 1.8 },
+        [3] = { damage = 0.9, health = 1.45 },
+        [4] = { damage = 0.9, health = 1.15 },
+        [5] = { damage = 0.85, health = 0.95 },
+        [6] = { damage = 0.85, health = 0.85 },
+    },
 
     -- Jogador: Fase 5 reduziu HP inicial (60 vs 100). Deck pequeno + curva mais
     -- apertada cria pressao pra tomar decisoes boas nas escolhas de nos.

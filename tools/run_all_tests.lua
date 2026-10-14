@@ -86,6 +86,7 @@ local SUITES = {
     -- throughput e o registro que o relatorio Python le
     { group = "unit",  name = "test_instant_parity" },
     { group = "unit",  name = "test_balance_pipeline" },
+    { group = "unit",  name = "test_difficulty_floor" },
     { group = "unit",  name = "test_economy_acts" },
     { group = "unit",  name = "test_scribe_dice" },
     -- props vivos da loja v3 (lanterna em degraus, copo dos dados lendo a

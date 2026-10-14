@@ -49,7 +49,7 @@ inimigos tinha sido calibrada com elas. Só trocar os combos derrubou o guerreir
 do piloto de 55% para 0–5% (bisect: só o ComboSystem). Compensar no jogador
 (+60% de Bloqueio, +20% de ataque, combos 2×, +10 de vida) não voltou;
 `Config.Game.ENEMY_POWER = { damage = 0.8, health = 0.85 }` (Stage 2 de Out/2026
-baixou pra 0,75/0,8 + ato 3 ×0,9 — ver [[balance_curves]]) (em
+baixou pra 0,75/0,8 + ato 3 ×0,9; em 14/Out/2026 virou curva por ato, vida ×2,0 no A1 descendo a ×0,85 no A6, ver [[balance_curves]]) (em
 `ActSystem.getEnemyStats`, a run inteira) voltou. Números em
 `memory/balance_curves.md`.
 

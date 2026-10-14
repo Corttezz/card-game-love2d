@@ -478,6 +478,74 @@ assimetria de classe no late game (guerreiro mais frágil que mago/ladino nos
 atos 5–6) é problema de CLASSE, não de curva de inimigo; se for atacar, é
 por kit/passiva do guerreiro ou por Selo, nunca por `ENEMY_POWER` global.
 
+## Dificuldade por ato (14/Out/2026): o jogo estava fácil demais
+
+Pedido do dono (13/Out, literal): *"o jogo está ridiculamente fácil. Eu não
+fiz nenhuma escolha pensada e passei por todos os bichos e o boss sem
+dificuldade. Aumentar um pouco o dano de cada bicho e duplicar ou triplicar a
+vida, para as batalhas durarem mais e quem não escolhe estratégia ser punido
+com a vida"*.
+
+**Adotado:** `Config.Game.ENEMY_POWER = { damage = 1.0, health = 1.0 }` e a
+curva inteira em `ENEMY_POWER_BY_ACT`:
+
+| ato | 1 | 2 | 3 | 4 | 5 | 6 (e endless) |
+|---|---|---|---|---|---|---|
+| vida | ×2,0 | ×1,8 | ×1,45 | ×1,15 | ×0,95 | ×0,85 |
+| dano | ×1,0 | ×0,95 | ×0,9 | ×0,9 | ×0,85 | ×0,85 |
+| antes (0,75/0,8 + A3 ×0,9) | 0,8 / 0,75 | 0,8 / 0,75 | 0,72 / 0,675 | 0,8 / 0,75 | 0,8 / 0,75 | 0,8 / 0,75 |
+
+(linha "antes" = vida / dano efetivos). Comum do andar 1: 11 → 28 de vida;
+chefe do A1: 88 → 220; chefe do A6: 960 → 1020.
+
+### Medições (`python tools/balance.py`, seeds 720000+, selo 0, relógio instantâneo)
+
+Pilotos rápidos com 30 runs por classe; expert_full com 15 por classe nos
+candidatos e 30 na base e no final. Mortes por ato somam as três classes.
+
+| curva (vida A1→A6 / dano A1→A6) | expert_full | average | expert_fast | naive (mortes A1/A2) | turnos/luta A1→A6 (expert_full) |
+|---|---|---|---|---|---|
+| **base** 0,8→0,8 (A3 0,72) / 0,75 (A3 0,675), HEAD 54568be6 | 73% [63-81] (G70 M80 L70), mortes A4 2 · A5 15 · A6 7 | 8% [4-15] | não medido (~17% no HEAD de 13/Out) | 0% (0 / 23) | 2,6 · 4,6 · 5,2 · 6,5 · 7,7 · 8,9 |
+| uniforme 2,0 / 1,0 (sem rebaixo) | 8% [3-22] (12/classe) | 0% | n/m | 0% (60 / 30) | 4,1 · 7,3 · 8,6 · 11,1 · 11,7 · 11,9 (chefe A4 15,5) |
+| c3: 1,8·1,6·1,2·0,95·0,8·0,8 / 1,0·0,95·0,85·0,8·0,75·0,75 | 78% [64-87] | 7% | 9% | 0% (47 / 42) | comum 2,6 · 4,6 · 6,3 · 6,5 · 7,5 · 7,9 |
+| c1: 2,0·1,8·1,4·1,1·0,9·0,85 / idem c3 | 67% [52-79] | 3% | 4% | 0% (60 / 29) | comum 2,7 · 4,7 · 6,3 · 6,5 · 7,3 · 7,7 |
+| c4: 2,0·1,8·1,5·1,25·1,05·1,0 / 1,0·0,95·0,9·0,85·0,8·0,8 | 51% [37-65] (mago: chefes A4-A6 em 16-17 turnos) | 1% | 2% | 0% (60 / 29) | comum 2,7 · 4,7 · 6,9 · 8,0 · 9,1 · 10,2 |
+| c5: 2,0·1,9·1,6·1,35·1,15·1,1 / idem c4 com A2 1,0 | 36% [23-50] | 1% | 1% | 0% (60 / 30) | comum 2,7 · 5,3 · 6,9 · 7,7 · 8,1 · 10,1 |
+| c6: 2,0·1,8·1,45·1,15·0,95·0,9 / 1,0·0,95·0,9·0,9·0,85·0,85 | 51% [37-65] | n/m | n/m | n/m | comum 2,7 · 4,7 · 6,6 · 7,0 · 7,7 · 9,0 |
+| **final** = c6 com A6 vida 0,85, HEAD 38fc5a3a | **48% [38-58]** (G20 [10-37] · M57 [39-73] · L67 [49-81]), mortes A1 6 · A2 1 · A3 16 · A4 2 · A5 16 · A6 6 | **2% [1-8]** (G3 M0 L3) | **3% [1-9]** (G3 M0 L7) | **0%** (60 / 29, A3 1) | 4,1 · 6,7 · 7,4 · 7,9 · 8,5 · 8,8; chefe 7,5 · 10,1 · 9,9 · 10,6 · 9,8 · 11,1 |
+
+Relatórios: `reports/balance/{base_atual,probe_ef_10_20,r1_c1,r1_c3,r1e_c1,r1e_c3,r2_c4,r2_c5,r2e_c4,r2e_c5,r3e_c6,final_fast,final_full}`
+na worktree `card-game-dificuldade2` (fora do git, ver `reports/balance/README.md`).
+
+**Atos 1 e 2 (o pedido):** luta do A1 (todas as lutas) de 2,5 para 4,1
+turnos; a COMUM do A1 de 2,0 para 2,8 a 3,0 (o resto da média é elite e
+chefe). Vida perdida por luta no A1: naive 2,2 → 12,0, average 1,2 → 6,5,
+expert_full 0,4 → 3,4 (de 60). Vida perdida SOMADA ao longo do A1: naive 96%
+(morre), average 52%, expert_fast 47%, expert_full 23%. O chefe do A1
+(Rei Carniça) vira o primeiro filtro: 64 das 91 mortes dos pilotos rápidos
+no A1 são nele.
+
+**Atos 4 a 6 (o freio):** sem suavizar, o expert_full cai a 8% (curva
+uniforme). Com a escada descendo a vida até ×0,85 o expert_full volta a
+48% e o chefe mais longo (mago no A6) fica em 13,9 turnos (teto pedido: 15).
+
+**Registrado, não resolvido:** (1) average e expert_fast caem para 2 a 3%.
+É o custo direto do pedido ("quem não escolhe estratégia ser punido"): os dois
+montam o deck por valor de face. (2) A luta COMUM do A1 não chega a 4 turnos:
+vida ×2,4 ou mais no A1 faz o Rei Carniça matar 60 a 67% dos rápidos (bateria
+`cand_10_24`); levar a comum a 4 a 6 turnos pede vida separada por tipo de
+nó, não `ENEMY_POWER`. (3) Guerreiro expert em 20% contra 57/67 de mago e
+ladino: a assimetria de classe do late game já anotada abaixo, agora maior
+(morre no A3, 10 de 30, e no A5); conserto por kit/passiva do guerreiro, nunca
+pela curva global.
+
+Trava: `love . test_one test_difficulty_floor` (multiplicadores mínimos por
+ato, vida que nunca sobe de um ato pro seguinte, chefe de cada ato mais forte
+que o anterior, entrada de ato ≥ 75% da comum do fim do anterior, e a 1ª luta
+do A1 por classe × inimigo × seed: naive leva ≥ 4/2/3 turnos com G/M/L, nunca
+fecha em 1 turno e ninguém morre nela). `love . test_one test_difficulty_floor measure`
+imprime a tabela de vida/dano por ato e a 1ª luta.
+
 ## Oferta do dia (Loja v3 F4, 13/Out/2026): medida e LIGADA por UX
 
 `Config.Offers.DAILY_SALE` (**true** desde 13/Out/2026, decisão do dono):
