@@ -581,7 +581,7 @@ local GROUND_T = 5
 EnemyRenderer.GROUND_T = GROUND_T
 local function groundOf(data)
     local w, h = data:getWidth(), data:getHeight()
-    local minX, maxX, low = w, -1, -1
+    local minX, maxX, low, top = w, -1, -1, h
     local run = {}
     local solidRows = {}
     for x = 0, w - 1 do run[x] = 0 end
@@ -593,6 +593,7 @@ local function groundOf(data)
                 run[x] = run[x] + 1
                 if x < minX then minX = x end
                 if x > maxX then maxX = x end
+                if y < top then top = y end
                 low = y
                 if run[x] >= GROUND_T then
                     sx = sx or {}
@@ -618,7 +619,9 @@ local function groundOf(data)
         end
     end
     if fr < fl then fl, fr = minX, maxX end
-    return g, fl, fr, low
+    -- top = linha do conteúdo mais alto: g - top + 1 é a ALTURA do corpo
+    -- neste quadro (cadáver deitado mede menos que o bicho em pé)
+    return g, fl, fr, low, top
 end
 EnemyRenderer._groundOf = groundOf
 
@@ -690,6 +693,11 @@ local function clipMetrics(id, animName)
     -- Quem pisa usa o pad DO QUADRO na idle: o pé fica cravado e o que
     -- sobra de movimento é o do corpo em relação ao pé.
     m.framePads = {}
+    -- ALTURA DO CONTEÚDO por quadro (v9 das sombras, Out/2026): topo→chão.
+    -- É o que diz se o corpo está em pé ou DEITADO na death — a sombra de
+    -- um cadáver é a de um objeto baixo (pegada = o corpo), não a
+    -- silhueta inteira virada de novo no chão.
+    m.frameHeights = {}
     if imgPath and fdir and info and info.type == "directory" then
         local files = love.filesystem.getDirectoryItems(fdir)
         table.sort(files, function(a, b)
@@ -701,11 +709,16 @@ local function clipMetrics(id, animName)
             if f:match("%.png$") then
                 local ok, data = pcall(love.image.newImageData, fdir .. "/" .. f)
                 local pad = m.pad
+                local fh = 0
                 if ok and data then
-                    local g = groundOf(data)
-                    if g then pad = (data:getHeight() - 1) - g end
+                    local g, _, _, _, top = groundOf(data)
+                    if g then
+                        pad = (data:getHeight() - 1) - g
+                        fh = g - top + 1
+                    end
                 end
                 m.framePads[#m.framePads + 1] = pad
+                m.frameHeights[#m.frameHeights + 1] = fh
             end
         end
     end
@@ -835,6 +848,29 @@ end
 -- WorldRoad.getRoadAnchor; nos interiores, de src/data/scene_anchors.lua).
 -- opts (interiores): { shadowA, lightXr } — a cena diz o quanto e pra onde
 -- a sombra cai; ver SceneAnchors.get(scene).
+-- PERFIL DE PEGADA da sombra (ShadowEngine v9, puro — tools/test_world_shadows).
+-- Em pé: o que a pose declara (`shadowBaseK`/`shadowRiseK` em enemy_poses;
+-- bicho largo e baixo como o monte de ratos ou o touro). Na MORTE o corpo
+-- vai deitando: a altura do quadro cai em relação à do idle e a pegada
+-- cresce junto — cadáver é objeto baixo (a sombra dele é uma orla, não um
+-- segundo cadáver no chão). lying = 0 em pé .. 1 deitado (altura caiu 35%
+-- ou mais: o touro deitado ainda mede 70% do touro em pé — quadrúpede
+-- deita pouco). Devolve baseK, riseK, lenK.
+function EnemyRenderer.shadowProfile(pose, animName, frameH, idleH)
+    local baseK = (pose and pose.shadowBaseK) or 0
+    local riseK = pose and pose.shadowRiseK or nil
+    -- bicho largo e baixo é atarracado: a sombra encurta junto com a pegada
+    local lenK = 1 - 1.2 * baseK
+    if animName == "death" and frameH and idleH and idleH > 0 then
+        local lying = math.max(0, math.min(1, (1 - frameH / idleH) / 0.35))
+        if lying > 0 then
+            baseK = math.max(baseK, 0.55 * lying)
+            lenK = math.min(lenK, 1 - 0.35 * lying)
+        end
+    end
+    return baseK, riseK, lenK
+end
+
 function EnemyRenderer.draw(game, cx, cy, opts)
     if not game or not game.enemy or not game.enemy.spriteId then return false end
     local id = game.enemy.spriteId
@@ -1081,10 +1117,19 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         -- +footY: a sombra ancora no PE DO CONTEUDO (a margem
         -- transparente do canvas criava um vao entre pe e sombra)
         local sy0 = -(ih * scale) + footY - sink
+        -- v9: pegada (pose + cadáver deitado) — ver shadowProfile
+        local frameH = curM.frameHeights and curM.frameHeights[frameIdx]
+        if not frameH or frameH <= 0 then frameH = ih - footPad end
+        local idleH = idleM.frameHeights and idleM.frameHeights[1]
+        if not idleH or idleH <= 0 then idleH = idleM.h - idleM.pad end
+        local pBaseK, pRiseK, pLenK = EnemyRenderer.shadowProfile(
+            pose, currentAnimName, frameH, idleH)
         local drawn = ShadowEngine.silhouette(shX, shY,
             { smear = iw * scale * 0.035 * smearK,
               widthK = shK,
-              lenK = shK,
+              lenK = shK * pLenK,
+              baseK = pBaseK, riseK = pRiseK,
+              contentH = frameH * scale,
               alphaK = shA * sceneShadowA },
             function(tint)
                 if hasAnim then
@@ -1474,6 +1519,11 @@ function EnemyRenderer.getEncounterBillboard(enemy)
             and clipMetrics(enemy.spriteId, "idle").framePads or nil,
         footSink = EnemyPoses.isFloating(enemy.spriteId) and 0
             or EnemyRenderer.FOOT_SINK,
+        -- v9 das sombras: pegada da criatura (largo e baixo) + altura do
+        -- conteúdo do idle, pro ShadowEngine recortar a faixa da pegada
+        shadowBaseK = EnemyPoses.get(enemy.spriteId).shadowBaseK,
+        shadowRiseK = EnemyPoses.get(enemy.spriteId).shadowRiseK,
+        contentH = clipMetrics(enemy.spriteId, "idle").frameHeights[1],
     }
 end
 

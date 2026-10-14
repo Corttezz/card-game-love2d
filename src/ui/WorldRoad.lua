@@ -143,6 +143,36 @@ local KIND_SIZE = {
     tuft = 0.5, lantern = 1.9, brazier = 1.25,
 }
 
+-- PERFIL DE PEGADA da sombra (ShadowEngine v9, Out/2026 — "a fogueira é um
+-- círculo e a sombra é o círculo inteiro depois dela"). Objeto BAIXO E LARGO
+-- declara que fração da altura do conteúdo é pegada no chão (baseK), que
+-- fração acima dela projeta (riseK; chama não tem sombra) e o quanto a
+-- sombra encurta (lenK). Quem NÃO está aqui — árvore, poste, estandarte,
+-- tenda, loja, obelisco, totem, pilar, cerca, placa — segue a silhueta
+-- inteira (aprovada). Chave = tipo de prop OU chave de marco (a cheia
+-- `<bioma>_landmark_rest` vence a da família, via lmCfg). Frações medidas
+-- no PNG (perfil de opacidade por linha, tools/preview_out/sombras_mundo).
+-- Campo de módulo, não `local`: o escopo do arquivo está no teto de 200.
+WorldRoad.SHADOW_PROFILE = {
+    rock     = { baseK = 0.30, lenK = 0.48 },
+    stump    = { baseK = 0.35, lenK = 0.60 },
+    bush     = { baseK = 0.35, lenK = 0.55 },
+    flowers  = { baseK = 0.55, lenK = 0.45 },
+    tuft     = { baseK = 0.50, lenK = 0.45 },
+    mushroom = { baseK = 0.25, lenK = 0.60 },
+    crystal  = { baseK = 0.30, lenK = 0.55 },
+    fissure  = { baseK = 1.00, riseK = 0 },       -- rachadura NO chão: decalque
+    landmark_chest = { baseK = 0.30, lenK = 0.42 },
+    -- fogueiras: pegada = anel de pedras/toras; só a altura das pedras
+    -- projeta (riseK) — a chama é luz, não corpo
+    landmark_rest           = { baseK = 0.22, riseK = 0.17 },
+    highlands_landmark_rest = { baseK = 0.22, riseK = 0.20, lenK = 0.60 }, -- caldeirão em tripé
+    abyss_landmark_rest     = { baseK = 0.25, riseK = 0.19 },
+    frost_landmark_rest     = { baseK = 0.25, riseK = 0.24 },
+    marsh_landmark_rest     = { baseK = 0.25, riseK = 0.17 },
+    dusk_landmark_rest      = { baseK = 0.17, riseK = 0.20, lenK = 0.60 }, -- braseiro em pé curto
+}
+
 -- v9: luminárias têm tamanho POR BIOMA no catálogo do LuminaireEngine
 -- (lanterna do pântano ≠ cogumelo); resto cai no KIND_SIZE global
 local function kindSize(kind, bid)
@@ -3769,6 +3799,23 @@ local function drawForkMarks(g, x, w, camZ)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
+-- (pool de opts de sombra declarado AQUI porque drawLandmarkFront, logo
+-- abaixo, já usa — local Lua só existe depois da definição)
+local shOptPool, shOptN = {}, 0
+-- prof = entrada de WorldRoad.SHADOW_PROFILE (nil = silhueta inteira)
+local function shadowOpts(alphaK, flip, footPad, prof)
+    shOptN = shOptN + 1
+    local o = shOptPool[shOptN]
+    if not o then o = {}; shOptPool[shOptN] = o end
+    o.alphaK, o.flip, o.footPad = alphaK, flip, footPad
+    if prof then
+        o.baseK, o.riseK, o.lenK = prof.baseK, prof.riseK, prof.lenK
+    else
+        o.baseK, o.riseK, o.lenK = nil, nil, nil
+    end
+    return o
+end
+
 -- Marco "onde chegamos" (pós-convergência): fica plantado no centro da
 -- estrada e desliza naturalmente quando a próxima viagem acontecer.
 local function drawLandmarkFront(g, x, w, camZ)
@@ -3789,7 +3836,9 @@ local function drawLandmarkFront(g, x, w, camZ)
     -- v8: sombra projetada da silhueta (v9.5: ancorada na base da parede)
     local shPad = lmCfg(LANDMARK_SHADOW_PAD, lm.key) or 0
     local shY = py - 1 - shPad * s
-    if not ShadowEngine.sprite(img, lx, shY, s, { footPad = shPad }) then
+    -- v9: fogueira/baú = pegada (SHADOW_PROFILE); o resto, silhueta inteira
+    if not ShadowEngine.sprite(img, lx, shY, s,
+        shadowOpts(nil, nil, shPad, lmCfg(WorldRoad.SHADOW_PROFILE, lm.key))) then
         love.graphics.setColor(0, 0, 0, 0.22)
         love.graphics.ellipse("fill",
             lx + sunShadowDir(g, x, w, lx) * iw * s * 0.14,
@@ -3840,14 +3889,6 @@ end
 local propZDesc = function(a, c) return a.z > c.z end
 local _farPass, _nearPass, _behind, _front = {}, {}, {}, {}
 local function clearList(t) for i = #t, 1, -1 do t[i] = nil end end
-local shOptPool, shOptN = {}, 0
-local function shadowOpts(alphaK, flip, footPad)
-    shOptN = shOptN + 1
-    local o = shOptPool[shOptN]
-    if not o then o = {}; shOptPool[shOptN] = o end
-    o.alphaK, o.flip, o.footPad = alphaK, flip, footPad
-    return o
-end
 local occPool, occN = {}, 0
 local function occluderSlot()
     occN = occN + 1
@@ -3962,7 +4003,8 @@ local function drawProps(g, x, w, camZ)
                 local shPad = lmCfg(LANDMARK_SHADOW_PAD, key) or 0
                 local shY = py - 1 - shPad * s
                 if not ShadowEngine.sprite(img, px, shY, s,
-                    { alphaK = aMul, footPad = shPad }) then
+                    shadowOpts(aMul, nil, shPad,
+                        lmCfg(WorldRoad.SHADOW_PROFILE, key))) then
                     love.graphics.setColor(0, 0, 0, 0.22 * aMul)
                     love.graphics.ellipse("fill",
                         px + sunShadowDir(g, x, w, px) * iw * s * 0.14,
@@ -4134,7 +4176,8 @@ local function drawProps(g, x, w, camZ)
                         if cimg then
                             -- v8: sombra projetada da companheira
                             ShadowEngine.queue(cimg, cx2, cy2 - 1, cs,
-                                shadowOpts(0.8 * fadeA))
+                                shadowOpts(0.8 * fadeA, nil, nil,
+                                    WorldRoad.SHADOW_PROFILE[p.kind]))
                             love.graphics.setColor(0.88, 0.88, 0.88, fadeA)
                             PropCut.draw(cimg, p.kind, math.floor(cx2),
                                 math.floor(cy2), 0, cs, cs)
@@ -4176,7 +4219,8 @@ local function drawProps(g, x, w, camZ)
                 local aFade = math.min(1, 0.72 + t * 1.1)
                 if not ShadowEngine.queue(img, pxX, sy - 1, s,
                     shadowOpts(aFade * fadeA, lumFlip,
-                        lumAnc and lumAnc.footPad or 0)) then
+                        lumAnc and lumAnc.footPad or 0,
+                        WorldRoad.SHADOW_PROFILE[p.kind])) then
                     local shd = sunShadowDir(g, x, w, pxX)
                     love.graphics.setColor(0, 0, 0, 0.20 * aFade * fadeA)
                     love.graphics.ellipse("fill",
@@ -4487,14 +4531,19 @@ local function drawEncounterFront(g, x, w, camZ)
     local dx0 = math.floor(cx - e.iw * s / 2)
     local dy0 = sy - e.ih * s + footY
     -- v8/8.4: sombra projetada do monstro que vem vindo (frame da anim)
+    -- v9: pegada da criatura (enemy_poses.shadowBaseK — rato/touro são
+    -- largos e baixos; sem o campo, silhueta inteira como sempre)
     if e.anim then
-        ShadowEngine.silhouette(cx, sy - 1, { smear = e.iw * s * 0.035 },
+        ShadowEngine.silhouette(cx, sy - 1, { smear = e.iw * s * 0.035,
+                baseK = e.shadowBaseK, riseK = e.shadowRiseK,
+                contentH = (e.contentH or (e.ih - pad)) * s },
             function(tint)
                 e.anim:draw(-(e.iw * s) / 2, -(e.ih * s) + footY, s, tint)
             end)
     else
         ShadowEngine.sprite(e.img, cx, sy - 1, s,
-            { alphaK = 0.9, footPad = e.footPad })
+            { alphaK = 0.9, footPad = e.footPad,
+              baseK = e.shadowBaseK, riseK = e.shadowRiseK })
     end
     love.graphics.setColor(1, 1, 1, 1)
     -- v8.4: vem ANDANDO vivo (idle animada; fallback estático)

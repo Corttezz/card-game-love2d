@@ -41,6 +41,12 @@
 --             apoio (EnemyRenderer: linha mais baixa com coluna opaca grossa,
 --             que ignora rabo/lâmina/farrapo finos). Declarar só quando a
 --             regra erra (rabo GROSSO deitado, base que não é o pé).
+--   shadowBaseK fração da altura do corpo que é PEGADA no chão (ShadowEngine
+--             v9, Out/2026): monte de ratos, touro, lobo — bicho largo e
+--             baixo. A sombra nasce no centro da pegada e a faixa da pegada
+--             não projeta (senão aparece um segundo bicho deitado à frente).
+--             Bípede em pé não declara (pegada = pé, sombra inteira).
+--   shadowRiseK fração acima da pegada que projeta (nil = tudo).
 --   axisX     coluna (px do canvas do idle) do EIXO DO CORPO — OVERRIDE do
 --             eixo automático (EnemyRenderer.bodyAxis, Out/2026). Declarar só
 --             quando o automático erra: escudo largo, quadrúpede de frente,
@@ -77,13 +83,13 @@ EnemyPoses.BY_ID = {
     blood_duke        = { pose = "grounded" },  -- botas sob o manto
     bog_ghoul         = { pose = "grounded" },  -- pés palmados
     cursed_scarecrow  = { pose = "grounded" },  -- botas de couro
-    ember_imp         = { pose = "grounded" },  -- quadrúpede, patas no chão
+    ember_imp         = { pose = "grounded", shadowBaseK = 0.18 },  -- quadrúpede, patas no chão
     frost_wight       = { pose = "grounded" },  -- botas de gelo
     glacier_knight    = { pose = "grounded" },  -- soleretes + espada no chão
-    grave_slime       = { pose = "grounded" },  -- base de lodo assentada
+    grave_slime       = { pose = "grounded", shadowBaseK = 0.30 },  -- base de lodo assentada
     harvest_reaper    = { pose = "grounded" },  -- botas
     mire_hag          = { pose = "grounded" },  -- botas de pântano
-    moon_gargoyle     = { pose = "grounded" },  -- agachada nas garras
+    moon_gargoyle     = { pose = "grounded", shadowBaseK = 0.15 },  -- agachada nas garras
     obsidian_sentinel = { pose = "grounded" },  -- botas de placas
     rot_colossus      = { pose = "grounded",    -- pés de três dedos
                           idle = { fps = 5, cycle = true } },
@@ -105,23 +111,23 @@ EnemyPoses.BY_ID = {
     -- desce até 93 e, com linha grossa deitada na horizontal, a regra do
     -- apoio não o separa do corpo — cravado o rabo, o monte pairava ("os
     -- ratos parecem flutuar", Out/2026). O rabo fica 4px À FRENTE do pé.
-    plague_rats       = { pose = "grounded", groundRow = 89, idle = { fps = 6, cycle = true } },  -- monte de ratos no chão
-    blight_bull       = { pose = "grounded", axisX = 56, idle = { fps = 5, cycle = true } },  -- quatro cascos
+    plague_rats       = { pose = "grounded", groundRow = 89, shadowBaseK = 0.35, idle = { fps = 6, cycle = true } },  -- monte de ratos no chão
+    blight_bull       = { pose = "grounded", axisX = 56, shadowBaseK = 0.18, idle = { fps = 5, cycle = true } },  -- quatro cascos
     wicker_effigy     = { pose = "grounded", idle = { fps = 5, cycle = true } },  -- pés de vime
     ram_cultist       = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- botas sob o manto
     storm_harpy       = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- agachada nos talões
     spectral_knight   = { pose = "grounded", axisX = 44, idle = { fps = 5, cycle = true } },  -- soleretes + escudo no chão
-    storm_griffin     = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- garras e patas no chão
-    hellhound         = { pose = "grounded", axisX = 45, idle = { fps = 6, cycle = true } },  -- quatro patas
+    storm_griffin     = { pose = "grounded", shadowBaseK = 0.15, idle = { fps = 6, cycle = true } },  -- garras e patas no chão
+    hellhound         = { pose = "grounded", axisX = 45, shadowBaseK = 0.18, idle = { fps = 6, cycle = true } },  -- quatro patas
     abyss_acolyte     = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- barra do manto no chão
     pit_brute         = { pose = "grounded", idle = { fps = 5, cycle = true } },  -- cascos + marreta plantada
-    frost_wolf        = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- quatro patas
+    frost_wolf        = { pose = "grounded", shadowBaseK = 0.18, idle = { fps = 6, cycle = true } },  -- quatro patas
     rime_shaman       = { pose = "grounded", axisX = 47, idle = { fps = 6, cycle = true } },  -- botas de pele
     frost_troll       = { pose = "grounded", idle = { fps = 5, cycle = true } },  -- pés + punhos no chão
-    ice_wyrm          = { pose = "grounded", idle = { fps = 5, cycle = true } },  -- espiras assentadas
-    plague_toad       = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- agachado nas patas
+    ice_wyrm          = { pose = "grounded", shadowBaseK = 0.25, idle = { fps = 5, cycle = true } },  -- espiras assentadas
+    plague_toad       = { pose = "grounded", shadowBaseK = 0.25, idle = { fps = 6, cycle = true } },  -- agachado nas patas
     leech_horror      = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- pés de sanguessuga
-    croc_warrior      = { pose = "grounded", axisX = 50, idle = { fps = 6, cycle = true } },  -- pés + cauda no chão
+    croc_warrior      = { pose = "grounded", axisX = 50, shadowBaseK = 0.15, idle = { fps = 6, cycle = true } },  -- pés + cauda no chão
     spore_mother      = { pose = "grounded", idle = { fps = 5, cycle = true } },  -- raízes plantadas
     grave_thrall      = { pose = "grounded", axisX = 41, idle = { fps = 6, cycle = true } },  -- botas + escudo
     dullahan          = { pose = "grounded", idle = { fps = 6, cycle = true } },  -- botas de placa
@@ -233,6 +239,8 @@ function EnemyPoses.get(spriteId)
         drift    = p.drift or 0,
         idle     = p.idle,
         axisX    = p.axisX,
+        shadowBaseK = p.shadowBaseK,   -- pegada (ShadowEngine v9)
+        shadowRiseK = p.shadowRiseK,
     }
 end
 

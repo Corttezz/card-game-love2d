@@ -19,6 +19,24 @@
 -- NÃO usar nas cartas (sombra de carta é outra linguagem, já aprovada).
 -- Zero stencil, zero shader — só transform + tint.
 --
+-- PEGADA (v9, Out/2026 — dono: "a fogueira é um círculo, e a sombra é o
+-- círculo inteiro depois dela"): a silhueta inteira virada a partir do pé
+-- trata TODA linha do sprite como altura. Num objeto baixo e largo (anel
+-- de pedras, baú, pedra, moita, cadáver) a faixa de baixo do sprite é a
+-- PROFUNDIDADE da pegada no chão, não altura — projetá-la punha uma cópia
+-- inteira do objeto deitada à frente dele. Perfil (opts):
+--   baseK  fração da altura do CONTEÚDO que é pegada (elipse de contato).
+--          A sombra nasce no CENTRO da pegada, a faixa da pegada não
+--          projeta e o que sobra cai em boa parte DENTRO dela — só uma
+--          orla sai pro lado oposto ao sol.
+--   riseK  fração (da altura do conteúdo) ACIMA da pegada que projeta.
+--          Fogueira: só as pedras — chama não tem sombra. nil = tudo.
+--          0 = nada projeta (decalque no chão, ex. fissura).
+--   lenK   multiplicador do comprimento (atarracado = curto).
+-- Sem perfil (baseK 0, riseK nil) o caminho é o v8.4, pixel por pixel:
+-- árvore, poste, estandarte, barraca e criatura em pé não mudam.
+-- Trava: tools/test_world_shadows.lua.
+--
 -- USO:
 --   WorldRoad (1x por frame):  ShadowEngine.setFrame(sunX, w, tod, luma)
 --   sprite estático:           ShadowEngine.sprite(img, feetX, feetY, s, opts)
@@ -134,31 +152,77 @@ function ShadowEngine.endBatch()
 end
 
 local NO_OPTS = {}
+
+-- Pegada do perfil (ver cabeçalho). contentH e `s` na unidade do chamador
+-- (.sprite: px de arte × escala; .silhouette: px de tela × 1). Devolve
+--   ay     linha de ORIGEM da sombra (centro da pegada; = feetY sem perfil)
+--   baseH  altura da pegada (pivô da virada sobe isso a partir do pé)
+--   yCut   fundo do recorte em px de tela (nil = sem recorte)
+-- ou false quando nada projeta (riseK 0 = decalque no chão).
+local profWarned = {}
+local function footprint(opts, feetY, contentH, s, lenMul, margin)
+    local baseK = opts.baseK or 0
+    local riseK = opts.riseK
+    if baseK <= 0 and not riseK then return feetY, 0, nil end
+    if contentH <= 0 then
+        -- perfil sem altura de conteúdo: avisa UMA vez e desenha como sem
+        -- perfil (nunca some em silêncio)
+        local k = tostring(opts.baseK) .. "/" .. tostring(riseK)
+        if not profWarned[k] then
+            profWarned[k] = true
+            print("[ShadowEngine] perfil de pegada sem contentH (baseK="
+                .. k .. ") — projetando a silhueta inteira")
+        end
+        return feetY, 0, nil
+    end
+    local baseH = baseK * contentH
+    local riseH = riseK and (riseK * contentH) or (contentH - baseH)
+    if riseH <= 0 then return false end
+    local ay = feetY - baseH * s * 0.5
+    return ay, baseH, ay + riseH * s * lenMul + margin
+end
+
+-- Recorte em px do canvas scratch (⅓): só as linhas entre a origem e o
+-- fim do trecho que projeta entram — a faixa da pegada (virada pra cima
+-- da origem) fica fora.
+local function cutScissor(ay, yCut)
+    local y0 = math.floor(ay / SCALE)
+    love.graphics.setScissor(0, y0, scratch:getWidth(),
+        math.max(1, math.ceil(yCut / SCALE) - y0))
+end
+
 function ShadowEngine.sprite(img, feetX, feetY, s, opts)
     if not img or not ShadowEngine.isActive() then return false end
     opts = opts or NO_OPTS
-    local solo = not batching
-    if solo then ShadowEngine.beginBatch() end
     local iw, ih = img:getWidth(), img:getHeight()
-    local shd = tipShift(feetX)
+    local pad = opts.footPad or 0
+    local lenK = opts.lenK or 1
     -- raio do borrão ∝ largura na tela (monstro grande borra mais)
     local d = math.max(1.5, iw * s * 0.035)
+    local ay, baseH, yCut = footprint(opts, feetY, ih - pad, s,
+        frame.len * lenK, d)
+    if not ay then return true end   -- nada projeta: sem elipse de fallback
+    local solo = not batching
+    if solo then ShadowEngine.beginBatch() end
+    local shd = tipShift(feetX)
+    if yCut then cutScissor(ay, yCut) end
     -- branco opaco no scratch (lighten: sobrepor não escurece)
     love.graphics.setColor(1, 1, 1, 1)
     -- draw args: offset(-ox,-oy) → shear → scale → translate.
-    -- oy nos pés DO CONTEÚDO: topo do sprite tem y local negativo →
-    -- shear kx desloca a ponta ⇒ pra LONGE do sol pede kx = -shd·K.
-    -- sy NEGATIVO espelha verticalmente (sombra desce dos pés pro
-    -- primeiro plano). ×1.18: "mais gorda" (v8.2).
+    -- oy nos pés DO CONTEÚDO (ou no topo da pegada, com perfil): topo do
+    -- sprite tem y local negativo → shear kx desloca a ponta ⇒ pra LONGE
+    -- do sol pede kx = -shd·K. sy NEGATIVO espelha verticalmente (sombra
+    -- desce da origem pro primeiro plano). ×1.18: "mais gorda" (v8.2).
     for pi = 1, #SMEAR do
         love.graphics.draw(img,
             math.floor(feetX + SMEAR[pi][1] * d),
-            math.floor(feetY + SMEAR[pi][2] * d * 0.5), 0,
+            math.floor(ay + SMEAR[pi][2] * d * 0.5), 0,
             s * 1.18 * (opts.flip or 1),
-            -s * frame.len * (opts.lenK or 1),
-            iw / 2, ih - (opts.footPad or 0),
+            -s * frame.len * lenK,
+            iw / 2, ih - pad - baseH,
             -shd * 0.78, 0)
     end
+    if yCut then love.graphics.setScissor() end
     if solo then ShadowEngine.endBatch() end
     return true
 end
@@ -170,34 +234,46 @@ end
 -- (pés em 0,0) com o tint recebido. Retorna false quando inativo
 -- (interiores → elipse legada do chamador).
 -- opts: alphaK (só em chamada solo), lenK, widthK (estreita a silhueta —
---       corpo no ar projeta sombra MENOR), smear (raio do borrão em px)
+--       corpo no ar projeta sombra MENOR), smear (raio do borrão em px),
+--       baseK/riseK + contentH (px de tela) = perfil de pegada do cabeçalho
 -- ----------------------------------------------------------------------------
 local silTint = { 1, 1, 1, 1 }   -- branco opaco: a COR vem do composite
 function ShadowEngine.silhouette(feetX, feetY, opts, drawFn)
     if not ShadowEngine.isActive() then return false end
-    opts = opts or {}
+    opts = opts or NO_OPTS
+    local d = opts.smear or 4
+    local lenK = opts.lenK or 1
+    -- perfil de pegada (cabeçalho): contentH em px DE TELA do conteúdo
+    -- (o drawFn desenha em px de tela, pé em 0,0)
+    local ay, baseH, yCut = footprint(opts, feetY, opts.contentH or 0, 1,
+        frame.len * lenK, d)
+    if not ay then return true end
     local solo = not batching
     if solo then
         soloAlphaK = opts.alphaK
         ShadowEngine.beginBatch()
     end
     local shd = tipShift(feetX)
-    local d = opts.smear or 4
     local wK = opts.widthK or 1
+    if yCut then cutScissor(ay, yCut) end
     for pi = 1, #SMEAR do
         love.graphics.push()
         love.graphics.translate(
             math.floor(feetX + SMEAR[pi][1] * d),
-            math.floor(feetY + SMEAR[pi][2] * d * 0.5))
+            math.floor(ay + SMEAR[pi][2] * d * 0.5))
         -- ordem de emissão translate→shear→scale ⇒ no ponto aplica scale
         -- ANTES do shear: y já flipado (positivo abaixo dos pés) → ponta
         -- pra longe do sol pede kx = +shd·K (sinal oposto ao .sprite)
         love.graphics.shear(shd * 0.78, 0)
-        love.graphics.scale(1.18 * wK, -frame.len * (opts.lenK or 1))
+        love.graphics.scale(1.18 * wK, -frame.len * lenK)
+        -- pivô da virada no TOPO da pegada: o drawFn põe o pé em y=0, a
+        -- linha baseH acima dele é a que cai na origem
+        if baseH > 0 then love.graphics.translate(0, baseH) end
         love.graphics.setColor(silTint)
         drawFn(silTint)
         love.graphics.pop()
     end
+    if yCut then love.graphics.setScissor() end
     if solo then ShadowEngine.endBatch() end
     return true
 end
