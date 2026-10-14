@@ -126,10 +126,11 @@ continuava rodando, o efeito sumia, e ninguém percebia por semanas.
 | `src/ui/BoosterShader.lua` | `load()` com `pcall` — shader que não compila degrada pra "sem efeito". Um agente mediu desvio 0.00 três ciclos seguidos comemorando, enquanto media arte crua sem shader nenhum. |
 | `engine/Moveable.lua` | `reducedMotion` transforma `hop_up`/`swell_up`/`shove_x` em no-op. Correto por acessibilidade — mas a flag ficou ligada num save e custou uma sessão inteira de debug de "o feel sumiu depois do pull". |
 
-**A regra:** quando um lookup falha ou um recurso não carrega, **AVISE**. Um
-`print` uma vez por chave desconhecida basta (o `Easing.apply` já faz isso
-agora). O custo de um aviso no console é zero; o custo de um efeito que some
-sem rastro é uma sessão de debug.
+**A regra (revista em Out/2026, ver [[code_hygiene]]):** quando um lookup falha ou um
+recurso não carrega, **AVISE pelo `Debug.warn`** uma vez por chave desconhecida (o
+`Easing.apply` faz isso). O console fica mudo por padrão, pedido do dono; quem
+investiga roda com `CARDGAME_DEBUG=1` e vê todos os avisos. Em RELEASE eles vão
+para `logs/last_session.log`. `print` direto não entra mais no código do jogo.
 
 **Corolário para acessibilidade:** `reducedMotion` pode remover MOVIMENTO, nunca
 INFORMAÇÃO. Se o jogador precisa do número, do nome ou do estado pra decidir,

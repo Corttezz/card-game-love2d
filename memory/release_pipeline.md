@@ -44,8 +44,10 @@ Tamanho em 0.9.2: .love 58,7 MB, pasta windows 68,4 MB.
    longas `[[ ]]`/`[==[ ]==]`, comentarios longos, shebang). **Quebras de
    linha preservadas**: linha N do pacote = linha N do repo, entao o crash
    log do jogador aponta direto pro fonte. Indentacao e espaco final saem.
-   O REPOSITORIO NUNCA perde comentario — decisao do dono: comentario e a
-   documentacao viva; so a copia de build sai limpa.
+   Desde Out/2026 o REPOSITORIO tambem nao tem comentario (pedido do dono,
+   ver [[code_hygiene]]); o lexer mora em `tools/luastrip.py`, compartilhado
+   com a trava `test_no_comments_no_prints`. O strip do build continua
+   rodando (idempotente) e preserva o numero de linhas.
 3. **Prova de equivalencia**: o proprio lovec compila original e limpo e
    compara `string.dump(f, true)` byte a byte. Diferenca = build reprovado.
    (Testado com adulteracao proposital: pega.)
@@ -82,8 +84,8 @@ DEV em silencio). `test_release` trava que o repo e DEV.
 | save dir | `%APPDATA%/LOVE/card-game` | `%APPDATA%/Grimoire` (fundido: sem `LOVE/`) |
 | argumentos / dispatcher de tools | normal | `Release.filterArgs` → `{}` |
 | atalhos `r`, `0-4` (GameplayScene) | sim | desligados |
-| `print` | console (+ ring buffer) | `logs/last_session.log` (+ `previous_session.log`), buffer, teto 2 MB |
-| `Debug.log/trace` | sim | silenciado (`Debug.warn`/`Debug.err` vao pro log — warn e fallback, e fallback silencioso e proibido; Out/2026) |
+| `print` (so Release.lua/Debug.lua/tools) | console (+ ring buffer) | `logs/last_session.log` (+ `previous_session.log`), buffer, teto 2 MB |
+| `Debug.log/trace/warn/err` | MUDO; `CARDGAME_DEBUG=1` liga (2 = trace) | `warn`/`err` vao pro log sempre; log/trace so com a variavel (Out/2026, [[code_hygiene]]) |
 | feel_debug.log / reward_debug.log | sim | nao gravam |
 | GF_DEBUG (prova magenta da grama) | env var | ignorado (`Release.isDev()` no WorldRoad) |
 | erro fatal | crash log + handler padrao do LOVE | crash log + tela traduzida (`crash.*`) com caminho do log; Esc fecha, C copia |
@@ -279,5 +281,5 @@ Arte da loja (tamanhos atuais do Steamworks — conferir no painel):
   alerta do SmartScreen fora dela.
 - PNG legados enormes (`assets/icons/*.png` ~2 MB cada desenhados a escala
   0.05): reexportar menores reduziria o pacote em ~20 MB.
-- Shaders (.glsl) vao com comentarios (strip de GLSL nao implementado — baixo
-  valor, risco com `#define`).
+- Shaders (.glsl) ja saem sem comentario do proprio repositorio (Out/2026);
+  o build nao faz strip de GLSL e nao precisa.

@@ -1,6 +1,6 @@
 ---
 name: Project Conventions
-description: OOP via metatables, PT-BR, Config responsivo, Theme.Colors, print() como logger, sem deps externas
+description: OOP via metatables, PT-BR, Config responsivo, Theme.Colors, zero comentário e Debug mudo como logger (Out/2026), sem deps externas
 type: feedback
 originSessionId: e544765f-309d-4fc7-89e3-58b3dabfa059
 ---
@@ -22,7 +22,7 @@ Regras de estilo e convenções observadas no código.
    ```
    Não introduzir libs de classe (middleclass, 30log, etc.) — o projeto é deliberadamente zero-dep.
 
-2. **Idioma:** strings de UI, mensagens de jogo (`game:addMessage`), e prints de debug em **português (BR)**. Comentários em PT-BR também. Identificadores e nomes de API ficam em **inglês** (ex.: `playSelectedCards`, não `jogarCartasSelecionadas`).
+2. **Idioma:** strings de UI, mensagens de jogo (`game:addMessage`) e mensagens do `Debug` em **português (BR)**. O código não tem comentários (regra do dono, Out/2026, ver [[code_hygiene]]); a explicação mora em `memory/`. Identificadores e nomes de API ficam em **inglês** (ex.: `playSelectedCards`, não `jogarCartasSelecionadas`).
 
 3. **Layout responsivo:** **nunca** hard-code px absolutos. Use:
    - `Config.Utils.getResponsiveSize(ratio, maxSize, dimension)` para tamanhos.
@@ -38,7 +38,7 @@ Regras de estilo e convenções observadas no código.
 
 7. **Constantes centralizadas:** novas magic numbers de gameplay vão em `Config.Game.*`; de UI em `Config.UI.*`; de cartas (tilt, sombra, etc) em `Config.Cards.*`; de áudio em `Config.Audio.*`.
 
-8. **Logging:** `print()` é o padrão. Não há logger estruturado. Mensagens de usuário no jogo passam por `game:addMessage(text, "info"|"success"|"warning"|"error")`.
+8. **Logging:** nenhum `print()` em caminho de jogo. Diagnóstico por `src/core/Debug.lua` (`log/trace/warn/err`), MUDO por padrão; `CARDGAME_DEBUG=1` liga. Ruído de evento (clique, hover, toast) não se loga. Mensagens de usuário no jogo passam por `game:addMessage(text, "info"|"success"|"warning"|"error")`. Ver [[code_hygiene]].
 
 9. **Validação de assets:** ao carregar imagem use `pcall(love.graphics.newImage, path)` com fallback para `"assets/cards/attack/theRock.png"`. Use `pcall` também para sons.
 

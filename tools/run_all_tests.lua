@@ -1,17 +1,6 @@
--- tools/run_all_tests.lua
--- Runner mestre da suite COMPLETA: testes unit/integração novos + smoke tests
--- de sistema + validação de catálogo + i18n. Cada suite roda em pcall (um crash
--- não derruba as outras) e o resumo final lista o status de cada uma.
---   love . test_all
---
--- Rodar UM teste isolado: love . test_one <nome>
-
 local M = {}
 
--- Ordem: unit/integração primeiro (rápidos, determinísticos), depois smoke
--- (sistema), depois validação. Cada entrada é um módulo com .run() -> bool.
 local SUITES = {
-    -- Novos (esta entrega)
     { group = "unit",  name = "test_entities" },
     { group = "unit",  name = "test_economy" },
     { group = "unit",  name = "test_progression" },
@@ -25,12 +14,8 @@ local SUITES = {
     { group = "unit",  name = "test_beats" },
     { group = "unit",  name = "test_enemy_death" },
     { group = "unit",  name = "test_enemies" },
-    -- névoa de intenção: bioma/véu/revelação, intent segue congelado, HUD "?",
-    -- contadores, clima acompanha, piloto não espia (memory/intent_visibility.md)
     { group = "unit",  name = "test_intent_visibility" },
     { group = "unit",  name = "test_tutorial" },
-    -- tutorial do MAGO: Conduíte, canalizar, pulso, evocar, estouro, Foco
-    -- (gatilhos pelos acontecimentos do OrbRow; memory/onboarding.md)
     { group = "unit",  name = "test_tutorial_mage" },
     { group = "unit",  name = "test_events" },
     { group = "unit",  name = "test_journal" },
@@ -70,27 +55,19 @@ local SUITES = {
     { group = "unit",  name = "test_replay" },
     { group = "unit",  name = "test_combat_reentry" },
     { group = "unit",  name = "test_upgrade_tile" },
-    -- Loja v3 (Balcao do Mercador): geometria pura + tela real em 7 tamanhos x
-    -- 5 idiomas; hover/compra/sino/reducedMotion/alvos do pad
     { group = "unit",  name = "test_shop_layout" },
     { group = "unit",  name = "test_shop_scene" },
-    -- sombra projetada dos objetos da mesa = silhueta deitada (shader == referência Lua)
     { group = "unit",  name = "test_shop_shadows" },
     { group = "unit",  name = "test_status_pills" },
     { group = "unit",  name = "test_orb_anim" },
     { group = "unit",  name = "test_input_focus" },
     { group = "unit",  name = "test_autoplay_pilot" },
     { group = "unit",  name = "test_sim_memory" },
-    -- pipeline de balanceamento: relogio instantaneo == relogio de quadros
-    -- (traco turno a turno), pilotos naive/average/expert, determinismo,
-    -- throughput e o registro que o relatorio Python le
     { group = "unit",  name = "test_instant_parity" },
     { group = "unit",  name = "test_balance_pipeline" },
     { group = "unit",  name = "test_difficulty_floor" },
     { group = "unit",  name = "test_economy_acts" },
     { group = "unit",  name = "test_scribe_dice" },
-    -- props vivos da loja v3 (lanterna em degraus, copo dos dados lendo a
-    -- jogada da visita, mariposa, reducedMotion sem perder informacao)
     { group = "unit",  name = "test_shop_props" },
     { group = "unit",  name = "test_endless_seals" },
     { group = "unit",  name = "test_pause_menu" },
@@ -112,7 +89,6 @@ local SUITES = {
     { group = "unit",  name = "test_unlock_showcase" },
     { group = "valid", name = "check_event_i18n" },
     { group = "valid", name = "audit_feedback" },
-    -- Smoke de sistema (pré-existentes)
     { group = "smoke", name = "smoke_tags" },
     { group = "smoke", name = "smoke_effects" },
     { group = "smoke", name = "smoke_combos" },
@@ -124,19 +100,14 @@ local SUITES = {
     { group = "smoke", name = "smoke_upgrades" },
     { group = "smoke", name = "smoke_shop" },
     { group = "unit",  name = "test_shop_services" },
-    -- oferta do dia (Loja v3 F4): 1 e so 1 etiqueta com a flag, 0 sem,
-    -- reroll re-sorteia, seed reproduz, save preserva
     { group = "unit",  name = "test_shop_sale" },
     { group = "smoke", name = "smoke_packs" },
     { group = "smoke", name = "smoke_turn_order" },
     { group = "smoke", name = "smoke_ui_turn" },
     { group = "smoke", name = "test_worldroad_resume" },
-    -- trava de performance do WorldRoad (draw calls, cache estático, GC,
-    -- troca de bioma sem decodificar PNG) — não mede ms (varia por máquina)
     { group = "smoke", name = "test_perf_budget" },
     { group = "smoke", name = "test_resume" },
     { group = "smoke", name = "smoke_crt_mouse" },
-    -- Validação / conteúdo
     { group = "valid", name = "validate_cards" },
     { group = "valid", name = "test_card_audit" },
     { group = "unit",  name = "test_balance_ai" },
@@ -147,20 +118,11 @@ local SUITES = {
     { group = "valid", name = "test_achievements_i18n" },
     { group = "unit",  name = "test_achievements" },
     { group = "valid", name = "test_locale_glyphs" },
-    -- acento de verdade: glifos das maiusculas, ASCII-ismos por locale, glossario traduzido
     { group = "valid", name = "test_locale_accents" },
     { group = "valid", name = "test_locale_dashes" },
+    { group = "valid", name = "test_no_comments_no_prints" },
 }
 
--- GUARDA DE VAZAMENTO ENTRE SUITES (Out/2026). Suites e tools monkeypatcham
--- funções compartilhadas (relógio, janela falsa, mouse, print, render de
--- carta). O que ainda estiver trocado ao FIM da suite é restaurado aqui e
--- vira uma linha `[leak]` no relatório — porque o sintoma aparece em OUTRA
--- suite, longe da causa: tools/balance_sim.setup (test_instant_parity e
--- test_balance_pipeline) trocava CardFrame.render por um stub e
--- test_class_select, oito suites depois, caía em CardFrame.lua:423 uma vez a
--- cada nove rodadas, conforme o horário (memory/card_icon_animation.md).
--- Restaurar aqui é a rede; a suite que vaza continua sendo a dona do defeito.
 local GUARDED = {
     { "CardFrame.render",            "src.ui.CardFrame",   "render" },
     { "CardFrame.liveImage",         "src.ui.CardFrame",   "liveImage" },
@@ -191,7 +153,6 @@ local function snapshotGuarded()
     return snap
 end
 
--- Restaura o que mudou; devolve a lista de nomes vazados (vazia = limpo).
 local function restoreGuarded(snap)
     local leaked = {}
     for i, g in ipairs(GUARDED) do
@@ -238,7 +199,6 @@ function M.run()
         results[#results + 1] = { name = suite.name, group = suite.group, status = status }
     end
 
-    -- ===== Resumo =====
     print("\n========================================")
     print("  RESUMO DA SUITE COMPLETA")
     print("========================================")
