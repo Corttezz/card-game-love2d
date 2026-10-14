@@ -1,9 +1,4 @@
--- src/ui/FoilShader.lua
--- Wrapper do shaders/foil.glsl. Edition "Foil": brilho metálico frio.
--- Diferente de Holo (rainbow) — Foil é prata-azulada, mais sutil.
---
--- Uso típico em Card:draw quando card.edition == "foil":
---   FoilShader.draw(cardImage, x, y, 0.6)
+local Debug = require("src.core.Debug")
 
 local FoilShader = {}
 
@@ -13,7 +8,7 @@ local loaded = false
 function FoilShader.load()
     local ok, s = pcall(love.graphics.newShader, "shaders/foil.glsl")
     if not ok then
-        print("[FoilShader] falha ao carregar shaders/foil.glsl: " .. tostring(s))
+        Debug.warn("[FoilShader] falha ao carregar shaders/foil.glsl: " .. tostring(s))
         return false
     end
     shader = s

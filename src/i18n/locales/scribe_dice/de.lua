@@ -1,4 +1,3 @@
--- Würfel des Schreibers (optionale Wette im Laden) — de
 return {
     title      = "Würfel des Schreibers",
     subtitle   = "Ein Wurf pro Besuch. Das Haus zahlt, was geschrieben steht.",

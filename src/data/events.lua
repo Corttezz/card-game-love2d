@@ -1,36 +1,12 @@
--- src/data/events.lua
--- Pool de eventos narrativos. Cada evento tem:
---   id (unique), act (1-3 ou "any"), title, body (texto),
---   options = { { label, gains?, costs?, apply = function(game) ... end } }
---
--- gains/costs (listas de strings curtas) viram o sufixo EXPLÍCITO do botão:
---   "Beber da fonte  [+cura 40% HP]" — o jogador SEMPRE sabe a troca antes
---   de clicar (padrão StS: risco informado, nunca pegadinha). Opções neutras
---   ("ir embora") não declaram nada.
---
--- apply pode retornar string com feedback textual para toast.
--- RNG: decisões de evento usam o stream "event" do Rng da run (reprodutível
--- por seed; não contamina os rolls de carta/loja/mapa).
-
 local Rng = require("src.systems.Rng")
 local I18n = require("src.i18n.I18n")
 
--- Texto do evento (title/body/label) vive nos locales sob `events.<id>`; os
--- literais que sobraram aqui sao FALLBACK. Quem resolve e a EventScreen, no
--- DRAW — se resolvesse aqui, no load do modulo, trocar de idioma em runtime
--- nao mudaria nada, porque Events.POOL e construido uma vez so.
---
--- Ja os retornos de `apply` resolvem AQUI mesmo: eles rodam no clique, entao
--- o I18n.t acontece na hora certa.
 local function T(id, key, vars, fb)
     return I18n.t("events." .. id .. "." .. key, vars, fb)
 end
 
 local Events = {}
 
--- Helper: recompensa de carta com contexto do deck (afinidade/anti-duplicata).
--- P0.5/P0.10 (rebalance Jul/2026): tambem passa actNumber (cap de afinidade
--- progressivo por ato) e runManager (dedup de oferta de joker ja possuido).
 local function rewardOpts(game, extra)
     local opts = extra or {}
     if game.runManager and game.runManager.getDeckCardIds then
@@ -40,21 +16,14 @@ local function rewardOpts(game, extra)
     opts.actNumber = (run and run.actNumber) or 1
     opts.runManager = game.runManager
     opts.stream = "event"
-    -- Candidata sorteada não conta como vista: só a carta ENTREGUE é
-    -- descoberta (Game:addCardToRun anuncia a inédita).
     opts.discover = false
     return opts
 end
-
--- ===== Helpers dos eventos de bioma (Out/2026) =====
--- Toda escolha aleatória usa o stream "event" (reprodutível por seed).
 
 local function deckIdOf(entry)
     return type(entry) == "table" and entry.id or entry
 end
 
--- Remove UMA cópia aleatória (por índice — CLAUDE.md: a forja/identidade é
--- POR CÓPIA). Nunca deixa o deck com menos de 2 cartas. Devolve o nome.
 local function removeRandom(game)
     local deck = game.runManager.currentRun.currentDeck
     if #deck <= 2 then return nil end
@@ -65,16 +34,10 @@ local function removeRandom(game)
     return I18n.cardName(id)
 end
 
--- TRANSFORMAR (StS): a cópia sorteada sai e entra uma carta aleatória da
--- classe (mesmo cérebro de oferta das recompensas). Devolve { old, new }
--- prontos pro texto, ou nil se o deck é pequeno demais.
 local function transformRandom(game, n)
     local olds, news = {}, {}
     local db = game.runManager.cardRegistry.cardDatabase
     for _ = 1, n do
-        -- 3 candidatas e fica a primeira que NAO e coringa (coringa vai pra
-        -- colecao, nao pro deck — a troca encolheria o grimorio). A carta so
-        -- sai DEPOIS de haver substituta.
         local rewards = game.runManager.cardRegistry:generateCardRewards(
             game.selectedClass, 3, rewardOpts(game))
         local pick
@@ -93,14 +56,12 @@ local function transformRandom(game, n)
     return { old = table.concat(olds, ", "), new = table.concat(news, ", ") }
 end
 
--- Custo em VIDA MÁXIMA: nunca abaixo de 20, e a vida atual acompanha o teto.
 local function loseMaxHP(game, n)
     local p = game.player
     p.maxHealth = math.max(20, p.maxHealth - n)
     if p.health > p.maxHealth then p.health = p.maxHealth end
 end
 
--- Forja +1 numa cópia aleatória que ainda aceite forja (até 5 tentativas).
 local function forgeRandom(game, eventId)
     local deck = game.runManager.currentRun.currentDeck
     if #deck == 0 then return T(eventId, "r_no_forge", nil, "Nada a forjar.") end
@@ -115,10 +76,6 @@ local function forgeRandom(game, eventId)
     return T(eventId, "r_no_forge", nil, "Nada a forjar.")
 end
 
--- Coringa aleatório incomum/raro (da classe ou neutro, desbloqueado e que a
--- run ainda não tem) — o pacto do abismo, NUNCA lendário e nunca de graça
--- (custa vida máxima): o dono quer que o deck perfeito seja difícil. Entra
--- pela porta canônica (addJokerToRun).
 local function grantRandomJoker(game)
     local UnlockSystem = require("src.systems.UnlockSystem")
     local db = game.runManager.cardRegistry.cardDatabase
@@ -134,7 +91,7 @@ local function grantRandomJoker(game)
             pool[#pool + 1] = id
         end
     end
-    table.sort(pool) -- pairs não é determinístico; o sorteio por seed é
+    table.sort(pool)
     if #pool == 0 then return nil end
     local id = pool[Rng.get():random("event", #pool)]
     game:addJokerToRun(id)
@@ -142,7 +99,6 @@ local function grantRandomJoker(game)
 end
 
 Events.POOL = {
-    -- ========== Eventos de qualquer ato ==========
     {
         id = "altar_proibido",
         act = "any",
@@ -152,8 +108,6 @@ Events.POOL = {
             { label = "Sacrificar sangue",
               gains = { { k = "card_rare", fb = "carta RARA" } }, costs = { { k = "hp", n = 8, fb = "8 HP" } },
               apply = function(game)
-                  -- Custo de SANGUE: loseHealth (armadura não paga sangue) e
-                  -- nunca mata — o botão já fica desabilitado sem vida (Events.canAfford).
                   game.player:loseHealth(math.min(8, game.player.health - 1))
                   local rewards = game.runManager.cardRegistry:generateCardRewards(
                       game.selectedClass, 1, rewardOpts(game, { minRarity = "rare" }))
@@ -178,15 +132,10 @@ Events.POOL = {
               apply = function(game)
                   local deck = game.runManager.currentRun.currentDeck
                   if #deck == 0 then return T("bigorna_antiga", "r_no_cards", nil, "Voce nao tem cartas no deck.") end
-                  -- Tenta até 5 vezes pegar uma carta que ainda não bateu o cap;
-                  -- senão cancela com mensagem (com cap 0/infinito passa de primeira).
                   for _ = 1, 5 do
                       local idx = Rng.get():random("event", #deck)
                       local entry = deck[idx]
                       local picked = type(entry) == "table" and entry.id or entry
-                      -- POR CÓPIA (upgradeCardAt): pelo id, a forja ia pra
-                      -- cópia de menor nível daquele id, não pra sorteada
-                      -- (CLAUDE.md: "A FORJA É POR CÓPIA, NÃO POR ID").
                       local lvl = game.runManager:upgradeCardAt(idx)
                       if lvl then
                           return T("bigorna_antiga", "r_forged",
@@ -309,11 +258,6 @@ Events.POOL = {
                       return T("comerciante_misterioso", "r_need_gold", { n = 150 }, "Precisa de 150 ouro.")
                   end
                   game.economySystem.currentGold = game.economySystem.currentGold - 150
-                  -- P0.8 (rebalance Jul/2026): com legendaries por classe no
-                  -- pool, minRarity='legendary' resolve. FALLBACK: se o pool
-                  -- legendary da classe estiver vazio/esgotado (ex: dedup de
-                  -- jokers ja possuidos), ignora o filtro de classe — NUNCA
-                  -- entregar rare por $150.
                   local registry = game.runManager.cardRegistry
                   local rewards = registry:generateCardRewards(
                       game.selectedClass, 1, rewardOpts(game, { minRarity = "legendary" }))
@@ -326,7 +270,6 @@ Events.POOL = {
                       return T("comerciante_misterioso", "r_bought",
                           { name = I18n.cardName(rewards[1].cardId) }, "Voce adquiriu a carta.")
                   end
-                  -- Sem legendary em lugar nenhum: devolve o ouro (troca honesta).
                   game.economySystem.currentGold = game.economySystem.currentGold + 150
                   return T("comerciante_misterioso", "r_refund", nil, "O comerciante nao encontrou nada adequado. Ouro devolvido.")
               end },
@@ -346,8 +289,6 @@ Events.POOL = {
                   if #deck <= 2 then return T("espelho_quebrado", "r_too_small", nil, "Deck muito pequeno para remover.") end
                   local idx = Rng.get():random("event", #deck)
                   local id = deck[idx]
-                  -- removeCardAt: tira A COPIA sorteada. Por id sairia sempre
-                  -- a primeira do deck, que pode estar noutro nivel de forja.
                   game.runManager:removeCardAt(idx)
                   game:synchronizeRunDeck()
                   return T("espelho_quebrado", "r_removed",
@@ -374,8 +315,6 @@ Events.POOL = {
                       game:addCardToRun("effect_healing_potion")
                       return T("mochila_abandonada", "r_potion", nil, "Pocao de cura!")
                   else
-                      -- Armadilha fere mas não mata fora de combate (morte
-                      -- num evento não tinha tela de derrota: a run seguia a 0 HP).
                       game.player:loseHealth(math.max(0, math.min(6, game.player.health - 1)))
                       return T("mochila_abandonada", "r_trap", { n = 6 }, "Armadilha! -6 HP.")
                   end
@@ -392,7 +331,6 @@ Events.POOL = {
             { label = "Aceitar",
               gains = { { k = "mystery", fb = "efeito misterioso" } },
               apply = function(game)
-                  -- Usa o mystery do EffectSystem
                   local effect = { type = "mystery" }
                   game.effectSystem:processEffectCard(game, effect)
                   return T("mistery_node", "r_accept", nil, "Algo mudou em voce.")
@@ -401,8 +339,6 @@ Events.POOL = {
         },
     },
 
-    -- ========== Eventos de DECK (Jul/2026 — o evento mexe no build, padrão
-    -- StS: remover/duplicar/forjar valem mais que ouro no longo prazo) ==========
     {
         id = "escriba_errante",
         act = "any",
@@ -414,7 +350,6 @@ Events.POOL = {
               apply = function(game)
                   if _G.openCardPicker then
                       _G.openCardPicker("remove")
-                      -- O picker abre POR CIMA; este texto aparece ao voltar.
                       return T("escriba_errante", "r_sealed", nil, "O acordo foi selado.")
                   end
                   return T("escriba_errante", "r_distracted", nil, "O escriba se distrai e parte.")
@@ -492,13 +427,6 @@ Events.POOL = {
         },
     },
 
-    -- ========== Eventos de BIOMA (Out/2026) ==========
-    -- Cada um só aparece nos atos listados em `biomes` (o bioma que a cena
-    -- desenha — no endless, o da rotação 4,5,6,1,2,3; ver Events.roll). A
-    -- auditoria de conteúdo achou 14 eventos genéricos (StS tem ~50) e nenhum
-    -- falava do lugar onde o jogador estava.
-
-    -- ATO 1 — CAMPOS
     {
         id = "espantalho_falante",
         biomes = { 1 },
@@ -548,7 +476,6 @@ Events.POOL = {
         },
     },
 
-    -- ATO 2 — PLANALTOS
     {
         id = "ninho_da_harpia",
         biomes = { 2 },
@@ -604,7 +531,6 @@ Events.POOL = {
         },
     },
 
-    -- ATO 3 — ABISMO
     {
         id = "pacto_infernal",
         biomes = { 3 },
@@ -650,7 +576,6 @@ Events.POOL = {
         },
     },
 
-    -- ATO 4 — CIDADELA GELADA
     {
         id = "lago_congelado",
         biomes = { 4 },
@@ -710,7 +635,6 @@ Events.POOL = {
         },
     },
 
-    -- ATO 5 — CORAÇÃO PÚTRIDO
     {
         id = "cabana_da_bruxa",
         biomes = { 5 },
@@ -759,7 +683,6 @@ Events.POOL = {
         },
     },
 
-    -- ATO 6 — CORTE DO ECLIPSE
     {
         id = "relicario_do_eclipse",
         biomes = { 6 },
@@ -814,11 +737,6 @@ Events.POOL = {
     },
 }
 
--- O jogador PODE pagar a opção? Lido dos custos declarados (os mesmos que
--- montam o rótulo "[+$45 / -12 HP]"): ouro precisa existir, vida precisa
--- SOBRAR (custo de sangue nunca mata). Sem isto o botão de uma opção
--- impagável ficava clicável, gastava o evento e ainda subia "-$20" na tela
--- sem cobrar nada.
 function Events.canAfford(opt, game)
     for _, c in ipairs((opt and opt.costs) or {}) do
         if c.k == "gold" and c.n then
@@ -828,7 +746,6 @@ function Events.canAfford(opt, game)
             local hp = game and game.player and game.player.health or 0
             if hp <= c.n then return false end
         elseif c.k == "max_hp" and c.n then
-            -- teto de vida nunca cai abaixo de 20 (loseMaxHP)
             local mx = game and game.player and game.player.maxHealth or 0
             if mx - c.n < 20 then return false end
         elseif (c.k == "remove_random" or c.k == "transform_random") then
@@ -839,8 +756,6 @@ function Events.canAfford(opt, game)
     return true
 end
 
--- Evento por id (ou nil). O Continuar reabre o MESMO evento em que o jogador
--- salvou (run.stageEventId) em vez de sortear outro.
 function Events.get(id)
     for _, e in ipairs(Events.POOL) do
         if e.id == id then return e end
@@ -848,14 +763,6 @@ function Events.get(id)
     return nil
 end
 
--- Sorteia um evento do pool para um ato especifico (ou "any").
--- `biome` (opcional): bioma que a cena DESENHA (EnemyRoster.biomeAct) — no
--- endless o ato passa de 6 e o bioma roda 4,5,6,1,2,3; eventos de bioma
--- (`biomes = {..}`) seguem o cenario, nao o numero do ato. Sem o argumento,
--- vale o proprio ato (1-6).
--- history: run.eventHistory ({ [id] = actNumber }) — evento visto NO MESMO ATO
--- não repete; pool esgotada no ato libera repetição (melhor que evento nenhum).
--- Stream "event" do Rng da run (reprodutível por seed).
 local function fitsHere(e, actNumber, biome)
     if e.act == "any" or e.act == actNumber then return true end
     for _, b in ipairs(e.biomes or {}) do

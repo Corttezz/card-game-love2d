@@ -1,29 +1,4 @@
--- src/ui/DamagePreviewPanel.lua
--- PREVIA DE DANO na batalha (Out/2026, pedido do dono: "nao fica claro quanto
--- de dano vai dar — o jogador joga as cartas e ve um dano enorme sem entender
--- o que aconteceu").
---
--- Tres lugares, cada um ANCORADO no objeto de que fala (lei do projeto: nada
--- de tarja de rodape):
---   1. PLACA acima do botao JOGAR (banda de ACAO da coluna direita). Dois
---      estados, lembrados em Configuracoes (`previewDetails`):
---        RESUMO (padrao, Out/2026 — dono: "grande e confuso"): so o que o
---        clique produz — dano, Bloqueio, LETAL — e uma linha de combos/
---        coringas em fichas pequenas; em hover numa carta, o total COM ela.
---        DETALHES (clique na placa / tecla V / foco + A no pad): a conta
---        carta a carta — base -> Forca -> combo (dourado) -> coringa
---        (violeta) -> edicao/selo -> Fraco, com tooltip nas linhas.
---      Durante a resolucao a placa congela a previa e mostra o total
---      CORRENDO ate fechar. Bandas da placa em `Panel.layout` (puro, com
---      `validate` — a trava tools/test_preview_plate.lua roda em 5 tamanhos).
---   2. BARRA DE VIDA do inimigo: o trecho que a leva vai arrancar pisca por
---      cima da barra (e o numero "-34" ao lado). Letal = a barra inteira.
---   3. CARTAS DA MAO: a carta que fecharia um combo NOVO com a selecao atual
---      ganha um selo "+COMBO" em cima; em hover, o painel mostra o total COM
---      ela ("+ Pancada: 51").
---
--- A conta vem de src/systems/DamagePreview.lua — a MESMA funcao que o combate
--- usa (previa == resultado; trava em tools/test_damage_preview.lua).
+local Debug = require("src.core.Debug")
 
 local DamagePreview = require("src.systems.DamagePreview")
 local FontManager = require("src.ui.FontManager")
@@ -35,18 +10,14 @@ local utf8 = require("utf8")
 local Panel = {}
 
 local state = {
-    live = nil,      -- previa da selecao atual (fora da resolucao)
-    frozen = nil,    -- { R, hp0 } congelado no clique em Jogar
-    doneT = nil,     -- tempo desde que a resolucao terminou
-    hover = nil,     -- { card, R } previa da selecao + carta em hover
-    badges = {},     -- [card] = combo que ela dispararia
+    live = nil,
+    frozen = nil,
+    doneT = nil,
+    hover = nil,
+    badges = {},
 }
 
-local HOLD_AFTER = 1.6   -- s que o total final fica na tela apos resolver
-
--- ===========================================================================
--- RESUMO x DETALHES (lembrado em _G.gameSettings.previewDetails)
--- ===========================================================================
+local HOLD_AFTER = 1.6
 
 function Panel.detailsOn()
     local gs = _G.gameSettings
@@ -57,8 +28,6 @@ function Panel.setDetails(on)
     on = on and true or false
     _G.gameSettings = _G.gameSettings or {}
     _G.gameSettings.previewDetails = on
-    -- mesmo caminho do Tutorial.disable: le o arquivo, muda UMA chave, grava
-    -- (sem passar pelo snapshot do SettingsMenu, que so roda quando ele fecha)
     local ok, err = pcall(function()
         local SM = require("engine.SaveManager")
         local cur = SM.loadSettings() or {}
@@ -66,7 +35,7 @@ function Panel.setDetails(on)
         local okS, e = SM.saveSettings(cur)
         if not okS then error(e) end
     end)
-    if not ok then print("[DamagePreviewPanel] falha ao salvar previewDetails: " .. tostring(err)) end
+    if not ok then Debug.warn("[DamagePreviewPanel] falha ao salvar previewDetails: " .. tostring(err)) end
     return on
 end
 
@@ -77,9 +46,6 @@ function Panel.toggleDetails()
     return on
 end
 
--- Clique na placa (main.lua, estado playing, ANTES da cena): alterna. `x, y`
--- em pixels reais — a placa guarda o proprio retangulo real no draw (mesmo
--- truque do NavCursor.target: transformPoint dentro do UiScale).
 Panel.hitRect = nil
 function Panel.mousepressed(x, y, button)
     local r = Panel.hitRect
@@ -97,8 +63,6 @@ local function t(key, vars, fb)
     return I18n.t("damage_preview." .. key, vars, fb)
 end
 
--- texto pequeno SEM contorno: o painel ja e escuro, e o contorno de 1px
--- empasta a fonte pixel em corpo pequeno (o "8" virava "&").
 local function plain(text, x, y, c, a)
     love.graphics.setColor(c[1], c[2], c[3], (c[4] or 1) * (a or 1))
     love.graphics.print(text, math.floor(x), math.floor(y))
@@ -112,7 +76,6 @@ local function comboName(combo)
     return I18n.t("combos." .. tostring(combo.id), nil, combo.label or tostring(combo.id))
 end
 
--- corta texto por CARACTERE (UTF-8 seguro) ate caber em maxW
 local function fit(font, text, maxW)
     if font:getWidth(text) <= maxW then return text end
     local chars = {}
@@ -130,12 +93,8 @@ local function isBusy(game)
     return seq and (seq.active or (seq.isBlocking and seq:isBlocking())) or false
 end
 
--- ===========================================================================
--- UPDATE
--- ===========================================================================
-
 function Panel.update(game, hoverCard, dt)
-    Panel.hitRect = nil   -- so vale o retangulo do ULTIMO draw
+    Panel.hitRect = nil
     if not game or not game.enemy or not game.player then
         state.live, state.frozen, state.hover = nil, nil, nil
         return
@@ -149,7 +108,6 @@ function Panel.update(game, hoverCard, dt)
         state.badges = {}
         return
     end
-    -- inimigo novo (a luta acabou durante o "segura o total"): previa velha sai
     if state.frozen and state.frozen.enemy ~= game.enemy then
         state.frozen, state.doneT = nil, nil
     end
@@ -164,7 +122,6 @@ function Panel.update(game, hoverCard, dt)
     local myTurn = game.turn == "player" and game.enemy:isAlive()
     state.live = (myTurn and #sel > 0) and DamagePreview.simulate(game, sel) or nil
 
-    -- carta em hover (nao selecionada e pagavel): previa COM ela
     state.hover = nil
     if myTurn and hoverCard and not game:isCardSelected(hoverCard)
         and game:canPlayCard(hoverCard) and hoverCard.type ~= "joker" then
@@ -175,8 +132,6 @@ function Panel.update(game, hoverCard, dt)
             added = DamagePreview.combosAddedBy(sel, hoverCard, game) }
     end
 
-    -- selo na mao: o bonus de combo que a carta GANHARIA se entrasse agora
-    -- ("Saraivada +4"). So com selecao: e a selecao que define a fila.
     state.badges = {}
     if myTurn and #sel > 0 then
         for _, c in ipairs(game.hand or {}) do
@@ -188,15 +143,10 @@ function Panel.update(game, hoverCard, dt)
     end
 end
 
--- Previa visivel agora (live ou congelada) — usada pela barra do inimigo.
 function Panel.current()
     if state.frozen then return state.frozen.R, true end
     return state.live, false
 end
-
--- ===========================================================================
--- Linhas do painel (medidas e desenhadas pela mesma lista)
--- ===========================================================================
 
 local COL_ATK   = Palette.BLOOD
 local COL_DEF   = Palette.STEEL_LIGHT
@@ -206,7 +156,6 @@ local COL_TEXT  = Palette.PARCHMENT_LIGHT
 local COL_DIM   = Palette.PARCHMENT
 local COL_LETHAL = Palette.MAGENTA
 
--- Converte os passos de uma carta em fichas coloridas { text, color, icon }.
 local function stepChips(steps)
     local chips = {}
     for _, s in ipairs(steps or {}) do
@@ -244,10 +193,8 @@ local function stepChips(steps)
     return chips
 end
 
--- Monta a lista de linhas do painel a partir de uma previa.
 local function buildLines(R, opts)
     local lines = {}
-    -- combos ativos (nome + o que fazem)
     for _, combo in ipairs(R.combos or {}) do
         local b = combo.bonus or {}
         local what = ""
@@ -260,7 +207,6 @@ local function buildLines(R, opts)
         lines[#lines + 1] = { kind = "combo", text = comboName(combo), right = what,
             combo = combo }
     end
-    -- coringas que mexeram no numero (violeta, como as fichas deles)
     local seenJ = {}
     for _, e in ipairs(R.cards or {}) do
         for _, s in ipairs(e.steps or {}) do
@@ -271,7 +217,6 @@ local function buildLines(R, opts)
             end
         end
     end
-    -- carta a carta
     for _, e in ipairs(R.cards or {}) do
         if e.type == "attack" or e.type == "defense" then
             local name = I18n.cardName(e.card)
@@ -280,13 +225,12 @@ local function buildLines(R, opts)
                     dim = true, note = t("skipped", nil, "inimigo ja caiu") }
             else
                 local chips = stepChips(e.steps)
-                if #chips <= 1 then chips = nil end   -- so a base: o numero ja diz tudo
+                if #chips <= 1 then chips = nil end
                 lines[#lines + 1] = { kind = "card", text = name, right = fmtNum(e.value),
                     color = e.type == "attack" and COL_ATK or COL_DEF, chips = chips }
             end
         end
     end
-    -- extras: orbes / magia
     local orb, magic = 0, 0
     for _, x in ipairs(R.extras or {}) do
         if x.kind == "orb" then orb = orb + x.value
@@ -298,7 +242,6 @@ local function buildLines(R, opts)
     if orb > 0 then
         lines[#lines + 1] = { kind = "extra", text = t("orbs", nil, "Orbes evocados"), right = fmtNum(orb) }
     end
-    -- alvo: Vulneravel / Bloqueio do inimigo
     if R.blocked and R.blocked > 0 then
         lines[#lines + 1] = { kind = "note", text = t("absorbed", { n = R.blocked },
             R.blocked .. " no Bloqueio do inimigo") }
@@ -315,7 +258,6 @@ local function buildLines(R, opts)
     if R.uncertain then
         lines[#lines + 1] = { kind = "note", text = t("uncertain", nil, "+ efeito aleatorio") }
     end
-    -- hover: o total com a carta a mais
     if opts and opts.hover then
         local H = opts.hover
         local added = H.added and H.added[1]
@@ -331,11 +273,6 @@ local function buildLines(R, opts)
     return lines
 end
 
--- O que o combo FAZ, montado dos numeros da propria regra (texto e dado nunca
--- divergem). Multiplicador ganha a lei do "maior vence" junto.
--- O que o combo FAZ, montado dos numeros da propria regra (texto e dado nunca
--- divergem): {v} = bonus por carta anterior, {max} = o teto. `game` (opcional)
--- aplica os coringas de combo (ComboSystem.boostFor).
 function Panel.comboDescription(combo, game)
     local rule = combo.rule or combo
     local ComboSystem = require("src.systems.ComboSystem")
@@ -345,7 +282,6 @@ function Panel.comboDescription(combo, game)
         v = fmtNum(step), max = fmtNum(step * (rule.cap or 1)) }, "")
 end
 
--- Hover numa linha de combo/coringa: tooltip com o que ele faz.
 local function rowTooltip(l, x, y, w, h, game)
     if not (l.combo or l.joker) then return end
     local mx, my = love.mouse.getPosition()
@@ -361,10 +297,6 @@ local function rowTooltip(l, x, y, w, h, game)
             { title = I18n.cardName(l.joker), body = I18n.cardDesc(l.joker) or "" })
     end
 end
-
--- ===========================================================================
--- DRAW — painel acima do botao Jogar
--- ===========================================================================
 
 local function chipsWidth(font, chips, iconS, gap)
     local w = 0
@@ -383,15 +315,6 @@ local function drawIcon(name, x, y, size)
     h.draw(x, y, s)
 end
 
--- ===========================================================================
--- LAYOUT (puro): as bandas da placa, empilhadas de cima pra baixo
--- ===========================================================================
--- m = { anchor = {x, y, w}, topLimit, gap, pad, minW, maxW, headH, hintH,
---       rows = { {kind, h}, ... } }
--- Devolve { x, y, w, h, bands = { head, rows[i], hint } } com cada banda em
--- { y, h }. Largura: a do botao (minW), ate maxW. A placa termina `gap` px
--- acima do botao; quem cede quando falta altura sao as LINHAS (o chamador
--- corta antes — ver `fitRows`), nunca o cabecalho nem a dica.
 function Panel.layout(m)
     local pad = m.pad
     local w = math.min(m.maxW, math.max(m.minW, m.anchor.w))
@@ -415,15 +338,11 @@ function Panel.layout(m)
     return L
 end
 
--- Altura disponivel pra linhas (o resto e cabecalho + dica + bordas).
 local function rowsAvail(m)
     return (m.anchor.y - m.gap) - (m.topLimit or 0) - m.pad * 2 - m.headH
         - (m.hintH or 0) - math.floor(m.pad / 2)
 end
 
--- Invariantes da placa (a trava roda isto em varios tamanhos de janela):
--- dentro da tela, acima do botao, abaixo do limite, bandas sem sobreposicao
--- e todas dentro da placa. Devolve (ok, motivo).
 function Panel.validate(L, m)
     if L.x < 0 or L.y < (m.topLimit or 0) then return false, "placa acima do limite / fora da tela" end
     if L.x + L.w > m.anchor.x + m.anchor.w + 0.5 then return false, "placa passa da borda do botao" end
@@ -441,8 +360,6 @@ function Panel.validate(L, m)
     return true
 end
 
--- Corta linhas ate caberem em `avail`: as de CARTA cedem primeiro (vira
--- "+N cartas"), o resto cede do fim. Usa `lineH(l)`.
 local function fitRows(lines, avail, lineH, lh)
     local total = 0
     for _, l in ipairs(lines) do total = total + lineH(l) end
@@ -464,8 +381,6 @@ local function fitRows(lines, avail, lineH, lh)
     return kept
 end
 
--- Fichas da linha de RESUMO: um icone + o bonus por combo (dourado) e por
--- coringa (violeta). Cada ficha guarda combo/joker pro tooltip.
 local function summaryChips(R)
     local chips = {}
     for _, combo in ipairs(R.combos or {}) do
@@ -497,8 +412,6 @@ local function chipTooltip(c, x, y, w, h, game)
     rowTooltip({ combo = c.combo, joker = c.joker }, x, y, w, h, game)
 end
 
--- `anchor` = { x, y, w } (topo e largura do botao Jogar). `topLimit` = y
--- minimo que a placa pode ocupar (abaixo da top bar / quadro de coringas).
 function Panel.draw(game, anchor, topLimit)
     if not game or not anchor then return end
     local R, frozen = Panel.current()
@@ -515,16 +428,14 @@ function Panel.draw(game, anchor, topLimit)
     local lh = font:getHeight() + math.max(3, math.floor(sh * 0.004))
     local slh = small:getHeight() + math.max(2, math.floor(sh * 0.003))
     local iconS = small:getHeight()
-    local chipS = math.floor(small:getHeight() * 1.6)   -- icone da ficha de combo legivel
+    local chipS = math.floor(small:getHeight() * 1.6)
     local bigH = bigFont:getHeight()
     local headH = bigH + math.floor(pad / 2)
     local hintH = tiny:getHeight() + 3
 
-    -- largura: a do botao; detalhes crescem ate 36% da tela, resumo ate 30%
     local maxW = math.floor(math.min(sw * (expanded and 0.36 or 0.30), anchor.x + anchor.w - 8))
     local minW = expanded and math.floor(sw * 0.24) or anchor.w
 
-    -- LETAL cabe no cabecalho? (mede o mesmo que o desenho abaixo)
     local dmgText
     if frozen then
         local dealt = math.max(0, (state.frozen.hp0 or 0) - (game.enemy.health or 0))
@@ -549,7 +460,6 @@ function Panel.draw(game, anchor, topLimit)
         minW = math.max(minW, math.min(maxW, headW + pad))
     end
 
-    -- LINHAS: resumo = fichas + hover; detalhes = a conta inteira
     local lines
     if frozen then
         lines = {}
@@ -590,11 +500,9 @@ function Panel.draw(game, anchor, topLimit)
     local x, y, w, h = L.x, L.y, L.w, L.h
     local innerW = w - pad * 2
 
-    -- hover na placa (afordancia do clique): aro mais claro
     local mx, my = love.mouse.getPosition()
     local over = mx >= x and mx <= x + w and my >= y and my <= y + h
 
-    -- moldura (dialeto do StatusTooltip: pergaminho escuro, tinta, ouro)
     love.graphics.setColor(0, 0, 0, 0.5)
     love.graphics.rectangle("fill", x + 3, y + 4, w, h, 5, 5)
     setColor(Palette.INK, 0.92)
@@ -607,7 +515,6 @@ function Panel.draw(game, anchor, topLimit)
     setColor(R.lethal and COL_LETHAL or (over and Palette.AGED_GOLD_LIGHT or Palette.AGED_GOLD_DARK), 0.9)
     love.graphics.rectangle("line", x + 3, y + 3, w - 6, h - 6, 3, 3)
 
-    -- CABECALHO: dano (espada) e bloqueio (escudo), grandes
     local cx = x + pad
     local cy = L.bands.head.y
     love.graphics.setFont(bigFont)
@@ -625,14 +532,12 @@ function Panel.draw(game, anchor, topLimit)
         FontManager.drawWithOutline(bt, cx, cy, { COL_DEF[1] * 1.3, COL_DEF[2] * 1.3,
             COL_DEF[3] * 1.3, 1 }, 0.95)
     end
-    -- rotulo LETAL a direita do cabecalho (sem espaco: virou linha, la em cima)
     if R.lethal and not lethalRow then
         love.graphics.setFont(font)
         FontManager.drawWithOutline(lethalText, x + w - pad - font:getWidth(lethalText),
             cy + math.floor((bigH - font:getHeight()) / 2), { 1, 0.45, 0.55, 1 }, 0.95)
     end
 
-    -- LINHAS
     if #lines > 0 then
         local sepY = L.bands.rows[1].y - math.floor(pad / 4) - 1
         setColor(Palette.AGED_GOLD_DARK, 0.8)
@@ -641,8 +546,6 @@ function Panel.draw(game, anchor, topLimit)
     for i, l in ipairs(lines) do
         local ly = L.bands.rows[i].y
         if l.kind == "chips" then
-            -- RESUMO: icone + "Nome +18" por combo/coringa; sem espaco cai
-            -- pra "+18"; sem espaco de novo, so os icones (tooltip explica)
             love.graphics.setFont(small)
             local gap = 8
             local function labelOf(c, mode)
@@ -696,7 +599,6 @@ function Panel.draw(game, anchor, topLimit)
             if l.chips and #l.chips > 0 then
                 love.graphics.setFont(small)
                 local gap = 5
-                -- fichas cabem? se nao, as do meio somem atras de "..."
                 local chips = l.chips
                 if chipsWidth(small, chips, iconS, gap) > innerW then
                     local cut = {}
@@ -725,7 +627,6 @@ function Panel.draw(game, anchor, topLimit)
             love.graphics.setFont(small)
             plain(fit(small, l.text, innerW), x + pad, ly, COL_DIM)
         elseif l.kind == "hover" then
-            -- o NUMERO vem primeiro: o nome do combo e que cede espaco
             love.graphics.setFont(small)
             local txt = fit(small, l.text, innerW)
             plain(txt, x + pad, ly, COL_TEXT)
@@ -741,7 +642,6 @@ function Panel.draw(game, anchor, topLimit)
         end
     end
 
-    -- DICA (banda propria, canto inferior direito): como alternar
     do
         local NavCursor = require("src.ui.NavCursor")
         local glyph = NavCursor.device() == "pad" and NavCursor.PAD_LABEL.confirm or "V"
@@ -751,12 +651,10 @@ function Panel.draw(game, anchor, topLimit)
         label = fit(tiny, label, innerW)
         plain(label, x + w - pad - tiny:getWidth(label), L.bands.hint.y + 1,
             over and Palette.AGED_GOLD_LIGHT or COL_DIM, over and 1 or 0.8)
-        -- alvo do cursor de foco (pad: A alterna, pelo MESMO clique do mouse)
         NavCursor.target(Panel, x, y, w, h, { key = "dmg_preview_plate", group = "action" })
     end
     love.graphics.setColor(1, 1, 1, 1)
 
-    -- geometria do ultimo quadro (tools de captura miram o hover por aqui)
     Panel.lastRect = { x = x, y = y, w = w, h = h,
         firstRowY = L.bands.rows[1] and L.bands.rows[1].y or (y + h),
         expanded = expanded, layout = L, metrics = m }
@@ -768,11 +666,6 @@ function Panel.draw(game, anchor, topLimit)
     return Panel.lastRect
 end
 
--- ===========================================================================
--- Barra de vida do inimigo: o trecho que a leva arranca
--- ===========================================================================
-
--- `rect` = { x, y, w, h } da barra (EnemyHud.hpBarRect).
 function Panel.drawEnemyGhost(game, rect)
     local R, frozen = Panel.current()
     if not R or frozen or not rect or not game.enemy then return end
@@ -787,7 +680,6 @@ function Panel.drawEnemyGhost(game, rect)
     if _G.gameSettings and _G.gameSettings.reducedMotion then pulse = 0.8 end
     love.graphics.setColor(1, 0.92, 0.75, pulse)
     love.graphics.rectangle("fill", x1, rect.y, math.max(1, x2 - x1), rect.h)
-    -- numero ao lado da barra
     local font = FontManager.getResponsiveFont(0.022, 16)
     love.graphics.setFont(font)
     local txt = "-" .. R.damage
@@ -796,10 +688,6 @@ function Panel.drawEnemyGhost(game, rect)
         math.floor(rect.y + rect.h / 2 - font:getHeight() / 2), col, 0.95)
     love.graphics.setColor(1, 1, 1, 1)
 end
-
--- ===========================================================================
--- Selos "+COMBO" nas cartas da mao
--- ===========================================================================
 
 function Panel.drawHandBadges(game)
     if not next(state.badges) then return end
@@ -819,7 +707,6 @@ function Panel.drawHandBadges(game)
         if added and c.renderX then
             local cw = (c.image and c.image.getWidth and c.image:getWidth() or 96)
                 * (c.scale or c.baseScale or 1.333)
-            -- mao espremida: o selo nao pode invadir o vizinho — cai pro total
             local room = cw - 4
             local nxt = hand[i + 1]
             if nxt and nxt.renderX and nxt.renderX > c.renderX then

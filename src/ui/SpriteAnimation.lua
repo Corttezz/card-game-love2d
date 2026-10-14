@@ -1,23 +1,6 @@
--- src/ui/SpriteAnimation.lua
--- Animacao frame-by-frame de sprites (gerados via pixellab animate_character).
---
--- Layout esperado em disco:
---   assets/sprites/characters/enemies/<id>/animations/<anim>/<dir>/<frame>.png
--- Ex: .../grave_slime/animations/idle/south/0.png, 1.png, 2.png, ...
---
--- Uso:
---   local anim = SpriteAnimation.new("grave_slime", "idle", "south", 8) -- 8fps
---   anim:update(dt)
---   anim:draw(x, y, scale)
---   anim:play("hurt", { onComplete = function() ... end })  -- troca de animacao
---
--- Fallback: se a pasta da animacao nao existe, retorna nil (caller usa sprite
--- estatico via EnemyRenderer antigo).
-
 local SpriteAnimation = {}
 SpriteAnimation.__index = SpriteAnimation
 
--- Cache global: { enemyId = { anim = { dir = { frames = {img1, img2, ...} } } } }
 local cache = {}
 local missCache = {}
 
@@ -25,10 +8,6 @@ local function enemyKey(id, anim, dir)
     return tostring(id) .. "|" .. tostring(anim) .. "|" .. tostring(dir)
 end
 
--- Raiz em disco por id. Ids simples ("grave_slime") continuam em enemies/
--- (compat). Ids com categoria ("<categoria>/<id>") resolvem direto sob
--- characters/ (os heróis da seleção de classe que usavam isso viraram
--- emblemas em Out/2026 — src/ui/ClassEmblem.lua).
 local function basePath(id)
     if tostring(id):find("/", 1, true) then
         return "assets/sprites/characters/" .. id
@@ -36,7 +15,6 @@ local function basePath(id)
     return "assets/sprites/characters/enemies/" .. id
 end
 
--- Carrega todos os PNGs de uma pasta em ordem alfabetica. Retorna {img1, img2, ...} ou nil.
 local function loadFrames(enemyId, animation, direction)
     local key = enemyKey(enemyId, animation, direction)
     if cache[key] then return cache[key] end
@@ -52,7 +30,6 @@ local function loadFrames(enemyId, animation, direction)
 
     local files = love.filesystem.getDirectoryItems(dir)
     table.sort(files, function(a, b)
-        -- Sort numerico quando filenames sao "0.png", "1.png", "10.png"
         local na = tonumber(a:match("^(%d+)"))
         local nb = tonumber(b:match("^(%d+)"))
         if na and nb then return na < nb end
@@ -79,7 +56,6 @@ local function loadFrames(enemyId, animation, direction)
     return frames
 end
 
--- Cria uma instancia de animacao. fps = frames-por-segundo. loop=true por padrao.
 function SpriteAnimation.new(enemyId, animation, direction, fps, opts)
     opts = opts or {}
     local frames = loadFrames(enemyId, animation, direction)
@@ -91,10 +67,7 @@ function SpriteAnimation.new(enemyId, animation, direction, fps, opts)
     self.direction = direction
     self.fps = fps or 8
     self.frameTime = 1 / self.fps
-    self.loop = opts.loop ~= false -- default true
-    -- Ping-pong (1,2,3,4,3,2,...): elimina o corte do wrap 4→1 nos idles
-    -- de 4 frames (análise Jul/2026: ember_imp/abyss_tyrant/blood_duke
-    -- tinham descontinuidade 1.4-1.7× a diferença média entre frames).
+    self.loop = opts.loop ~= false
     self.pingpong = opts.pingpong or false
     self._dir = 1
     self.onComplete = opts.onComplete
@@ -158,7 +131,6 @@ end
 function SpriteAnimation:isFinished() return self.finished end
 function SpriteAnimation:getFrameCount() return #self.frames end
 
--- Helper: verifica se uma animacao existe no disco sem carregar.
 function SpriteAnimation.exists(enemyId, animation, direction)
     local dir = string.format("%s/animations/%s/%s",
         basePath(enemyId), animation, direction)

@@ -1,35 +1,3 @@
--- src/ui/shop/ShopLayout.lua
--- GEOMETRIA PURA do Balcão do Mercador (Loja v5; v4 em
--- docs/plan/shop-v4-estudo.md; histórico v3b/v3c/reta/v4/v5 em
--- memory/shop_layout.md).
---
--- A cena é UMA PINTURA (assets/sprites/shop/counter_scene.png, montada por
--- tools/shop_v4_compose.py): parede calma em cima e, na frente, DUAS
--- superfícies limpas desenhadas na grade com as arestas em 1:8 (o DEGRAU das
--- cartas e a MESA dos objetos). Desenhada em cover-fit e TUDO que mora nela é
--- posicionado num ESPAÇO DA BANCADA comum (coordenadas da arte):
---   u = ao longo do tampo (a coluna x da arte; as retas sobem 1 px a cada 8)
---   d = profundidade (a reta y0 - x/8 de cada superfície: maior = mais perto)
--- Cartas, cavaletes, plaquinhas, objetos e etiquetas saem desse espaço por
--- parâmetros CENTRAIS (SHELF / TABLE / PLAQUE, abaixo), nunca por coordenada
--- de tela solta:
---   * cartas: um GRUPO de cavaletes com vão constante, centrado na zona da
---     vitrine; base de cada carta encaixada no trilho, trilho apoiado no
---     tampo do degrau; preço numa plaquinha pregada na FACE do degrau, logo
---     abaixo da própria carta (vínculo físico: é o mesmo móvel);
---   * mesa: três grupos com intenção (ferramentas do mercador | serviços |
---     consumível), profundidades levemente diferentes; preço numa plaquinha
---     em pé no tampo, logo À FRENTE do pé do objeto.
--- `validate` confere apoio (pé dentro da superfície pintada), vínculo
--- (plaquinha colada no dono), nada sobreposto, nada perto demais da borda
--- da frente e a coluna da direita (pergaminho, CONTINUAR) livre. Janela
--- estreita (4:3): a fileira desliza e, se não cabe, o VÃO cede e só depois a
--- escala, nunca a ordem.
---
--- Fora da pintura (interface, grade da UI, prioriza leitura): a placa de
--- título com os "?", o PERGAMINHO de detalhe à direita (com o COMPRAR) e o
--- botão CONTINUAR no canto inferior direito.
-
 local ShopLayout = {}
 
 local ShopPerspective = require("src.ui.shop.ShopPerspective")
@@ -41,162 +9,86 @@ end
 
 ShopLayout.TOPBAR_H = 56
 ShopLayout.CARD_RATIO = 1.5
-ShopLayout.CARD_FORESHORTEN = 0.82   -- largura aparente / largura frontal
--- Loja v5 (briefing do dono: "evite que a carta simplesmente suba e pareça
--- levitar sobre o suporte"): o hover NÃO levanta nem cresce a carta. O ponto
--- de apoio (centro da base, no trilho) fica parado; o que responde ao mouse
--- é o tilt 3D (Card.hoverTilt) com a base PRESA (card_perspective.glsl em
--- modo quad) e o destaque (contorno + trilho aceso).
+ShopLayout.CARD_FORESHORTEN = 0.82
 ShopLayout.CARD_HOVER_SCALE = 1.0
 ShopLayout.CARD_LIFT = 0
--- Trilho do cavalete em px de ARTE e quanto dele cobre a carta: só a borda
--- inferior da moldura (o rodapé com tipo e valor é informação, fica à vista).
--- v5 r2 (dono: "os suportes parecem lâminas finas"): o cavalete é um
--- bloco de madeira de 6 linhas (tampo de 2 + face de 3 + pé) com um
--- RESSALTO na frente que segura a carta (cobre 3 px da moldura) e dois
--- encostos de 5 px nas pontas.
 ShopLayout.RAIL_ART = 6
 ShopLayout.RAIL_COVER_ART = 3
-ShopLayout.LIFT = 0                  -- objetos da mesa: hover sem levantar (v5)
-ShopLayout.BADGE_RESERVE = 18        -- etiqueta NOVA pendurada acima do canto da carta
-ShopLayout.POST_H = 5                -- encostos nas pontas (acima do bloco)
+ShopLayout.LIFT = 0
+ShopLayout.BADGE_RESERVE = 18
+ShopLayout.POST_H = 5
 
--- ============================================================================
--- PARÂMETROS DA VITRINE (Loja v5, item 11 do briefing): tudo que posiciona
--- carta, objeto e preço mora AQUI, em px de arte. Mudou a quantidade de
--- ofertas ou a janela? A conta abaixo refaz o grupo a partir destes números.
--- ============================================================================
 ShopLayout.SHELF = {
-    gap = 8,         -- vão entre os cavaletes de duas cartas vizinhas
-    gapMin = 3,      -- janela estreita: o vão cede até aqui antes da escala
-    railPad = 4,     -- o bloco passa railPad px de cada lado da carta (encostos)
-    -- v5 r2 (dono: "a da direita tem que ficar um pouquinho mais pra dentro,
-    -- pela impressão de que está pra trás"): cada carta à direita é 1,2%
-    -- menor que a anterior (3,6% na 4ª: um sopro de profundidade, não
-    -- uma escada de tamanhos)
+    gap = 8,
+    gapMin = 3,
+    railPad = 4,
     depthStep = 0.012,
-    zonePad = 8,     -- respiro das bordas da zona da vitrine
+    zonePad = 8,
 }
 ShopLayout.TABLE = {
-    line = 282,      -- y0 da reta-base dos pés (a aresta da frente é 306)
-    depthStep = 5,   -- um passo de profundidade (arte); + = mais perto
-    -- v5 r2 (dono: "cada produto aparece um pouco mais alto que o anterior"):
-    -- profundidades DESENHADAS, fixas por vaga, que quebram a escada da 1:8:
-    -- copo atrás, sino à frente, relíquias em zigue-zague, pacote recuado.
-    -- Da esquerda pra direita, três grupos: ferramentas do mercador (copo
-    -- de dados, sino), serviços (relíquias) e o consumível (pacote). `gap` =
-    -- distância do pé anterior; o vão ENTRE grupos é maior que o de dentro.
-    -- dados do copo À FRENTE dele ({dx, dy} do pé do dado, relativo ao pé
-    -- do copo): jogados ou o dado de enfeite, longe do sino
+    line = 282,
+    depthStep = 5,
     dice = { gap = 0, depth = -1.2, size = 32, diceAt = { { -11, 12 }, { 7, 14 } } },
     bell = { gap = 44, depth = 1.0, size = 40 },
-    relicGap0 = 64,             -- sino -> 1ª relíquia (separa os grupos)
-    relicGap = 62,              -- entre relíquias
-    relicDepth = { 0.6, -1.4, 0.8 },  -- zigue-zague: a do meio recua
+    relicGap0 = 64,
+    relicGap = 62,
+    relicDepth = { 0.6, -1.4, 0.8 },
     packGap = 72, packDepth = -0.6,
-    objSize = 64,               -- caixa nominal (sprite em ESCALA 1 da grade)
-    objFootprint = 52,          -- largura nominal que dois vizinhos não dividem
-    frontMargin = 6,            -- plaquinha termina >= 6 px antes da aresta
+    objSize = 64,
+    objFootprint = 52,
+    frontMargin = 6,
 }
--- ETIQUETA PENDURADA (v5 r2, gosto do dono): preço dos objetos da mesa e
--- do sino, e o selo NOVA das cartas. O cordão sai do objeto, corre pela
--- mesa até a aresta da frente (drift pra direita) e CAI pela face da
--- bancada; o cartão fica pendurado na face, TAG_DROP linhas abaixo da
--- aresta, e balança no hover (px inteiros, sem rotação).
 ShopLayout.TAG_W, ShopLayout.TAG_H = 16, 9
-ShopLayout.TAG_DROP = 11      -- (dono: "muito pertinho da borda")
+ShopLayout.TAG_DROP = 11
 ShopLayout.CORD_DRIFT = 7
 ShopLayout.SWING = 3
 ShopLayout.PLAQUE = {
-    h = 9,           -- linhas de arte, contorno incluso
-    faceTop = 0,     -- carta: topo NA aresta (pregada no alto da face do degrau)
-    ahead = 3,       -- objeto: topo 3 px à frente do pé (no TAMPO, diante dele)
-    gem = 4,         -- gema de raridade (carta incomum/rara/lendária) + contorno
-    padX = 3,        -- contorno + folga de cada lado do texto
+    h = 9,
+    faceTop = 0,
+    ahead = 3,
+    gem = 4,
+    padX = 3,
     font = 10, fontMin = 8,
 }
 
--- SOMBRA PROJETADA dos objetos da mesa (v5 r4, 13/Out/2026, dono: "elas têm
--- que pelo menos acompanhar o formato de cada coisa"). A sombra é a SILHUETA
--- do sprite deitada no plano da mesa. A luz da cena é a lanterna no ALTO à
--- ESQUERDA, atrás do balcão (ambientAt clareia o canto de cima-esquerda; o
--- pergaminho sombreia a parede pra direita-baixo): a sombra cai pra DIREITA
--- e pra FRENTE (desce na tela, em direção ao jogador). Cada pixel do objeto
--- a `h` px de altura cai em (lean*h, (depth - lean/RUN)*h) px de arte a
--- partir do ponto da base: o `lean/RUN` é a subida da diagonal 1:8 da
--- bancada ao andar pra direita. Um objeto de 60 px projeta ~45 px à direita
--- e ~19 px à frente: lê-se a silhueta inteira na mesa, à frente do vizinho
--- (que fica mais ao fundo), nunca escondida atrás dele.
---   solid = fração da altura com sombra cheia (junto do contato);
---   top   = densidade (dither Bayer) na ponta;
---   alpha = tinta sobre a madeira; liftFade = quanto clareia a liftRef px
---           de altura (objeto flutuando no hover).
 ShopLayout.SHADOW = {
     lean = 0.75, depth = 0.4,
     solid = 0.45, top = 0.4,
     alpha = 0.85, liftFade = 0.35, liftRef = 12,
 }
--- vetor (arte) da sombra por px de altura do objeto
 function ShopLayout.shadowDir()
     local S = ShopLayout.SHADOW
     return S.lean, S.depth - S.lean / ShopLayout.RUN
 end
 
--- ============================================================================
--- Loja v4: UMA inclinação de pixel art, 1:8 (sobe 1 px de arte a cada 8 px
--- pra direita, ~7,1 graus), igual nas duas superfícies e em tudo que mora
--- nelas. Inclinação inteira = degraus todos de 8 px. Projeção oblíqua: as
--- retas são paralelas e a escala não muda ao longo delas (a 4ª carta tem o
--- mesmo tamanho da 1ª: nada encolhe "porque está à direita").
--- ============================================================================
 ShopLayout.RUN = 8
 ShopLayout.K = -1 / ShopLayout.RUN
 function ShopLayout.slopeArt() return ShopLayout.K end
 
--- y (arte) da reta "y0 - x/8" na coluna x, em DEGRAUS (como a pintura é
--- desenhada por tools/shop_v4_compose.py). A contínua difere < 1 px.
 function ShopLayout.lineY(y0, x) return y0 - math.floor(x / ShopLayout.RUN) end
 
--- ============================================================================
--- A ARTE: 640x360 (tools/shop_v4_compose.py). Retas "y = y0 - x/8" (y0 =
--- altura na coluna 0), espelhadas em G do tools/pixellab_shop_v4.py:
--- ============================================================================
 local LINES = {
-    shelfTop = 188,      -- aresta de trás do tampo do degrau
-    shelfEdge = 198,     -- aresta da FRENTE do degrau: base das cartas
-    shelfFace = 206,     -- fim da face da frente do degrau (8 linhas, v5 r2)
-    tableBack = 210,     -- aresta de trás do tampo da mesa (vão de 4 linhas)
-    tableEdge = 306,     -- aresta da frente do tampo
+    shelfTop = 188,
+    shelfEdge = 198,
+    shelfFace = 206,
+    tableBack = 210,
+    tableEdge = 306,
 }
 ShopLayout.LINES = LINES
--- faixa entre duas retas (arte), estendida além das bordas da pintura
 local function band(y0a, y0b, pad)
     pad = pad or 0
     return { -40, y0a + 5 - pad, 680, y0a - 85 - pad, 680, y0b - 85 + pad, -40, y0b + 5 + pad }
 end
 ShopLayout.ART = {
-    -- MIOLO 640x360 (as coordenadas de tudo); o PNG tem `pad` px de pintura
-    -- a mais de cada lado (v5): o cover-fit escolhe escala INTEIRA sempre
-    -- que a pintura inteira cobre a janela (1366x768, 1024x768, 1280x800).
     w = 640, h = 360,
     pad = { x = 24, y = 24 },
-    -- base das cartas: a aresta da frente do degrau (contínua)
     ledgeEdge = { x0 = 0, y0 = LINES.shelfEdge, k = ShopLayout.K },
     ledgeMask = band(LINES.shelfTop, LINES.shelfEdge, 2),
-    -- a plaquinha pode pender da face até o vão (ela é pregada no alto da face)
     faceMask = band(LINES.shelfEdge, LINES.tableBack, 0),
     tableMask = band(LINES.tableBack, LINES.tableEdge, 0),
-    cardH = 96,          -- altura da carta em px da arte (192 px virtuais)
+    cardH = 96,
 }
 
--- cover-fit em MÚLTIPLO INTEIRO (v5, item 10 do briefing: pixel da cena
--- sempre do mesmo tamanho). Ordem:
---   1. o MAIOR inteiro em que a pintura com margem (miolo + pad) ainda
---      cobre a janela: 1366x768 / 1024x768 / 1280x800 virtuais -> 2;
---   2. o inteiro logo acima se o recorte extra é pequeno (<= 20%);
---   3. fracionário (janela de proporção estranha), em vez de cortar meia
---      mesa.
--- O miolo fica centrado; ox/oy = canto do MIOLO na tela.
 local function coverTransform(sw, sh, aw, ah, pad)
     pad = pad or { x = 0, y = 0 }
     local need = math.max(sw / aw, sh / ah)
@@ -252,11 +144,6 @@ ShopLayout.bboxOf = bboxOf
 
 local lineY = ShopLayout.lineY
 
--- LUZ DA CENA (v5): a mesma queda da pintura (tools/shop_v4_compose.py,
--- light(): vela à esquerda, o lado direito cai). Os sprites dos objetos têm
--- luz própria; multiplicados por este tom (suavizado, levemente quente)
--- eles assentam na mesma luz da mesa e o pacote da ponta direita deixa de
--- brilhar mais que a vitrine.
 ShopLayout.AMBIENT = { strength = 0.6, lift = 0.15, warm = { 1.0, 0.96, 0.90 } }
 function ShopLayout.ambientAt(ax, ay)
     local A = ShopLayout.AMBIENT
@@ -265,8 +152,6 @@ function ShopLayout.ambientAt(ax, ay)
     return { k * A.warm[1], k * A.warm[2], k * A.warm[3] }
 end
 
--- Caixa (px de TELA) de um retângulo em degraus: colunas x0..x0+w-1, topo
--- na reta de intercepto y0, h linhas.
 function ShopLayout.stepBox(cv, x0, w, y0, h)
     local yl, yr = lineY(y0, x0), lineY(y0, x0 + w - 1)
     local top, bot = math.min(yl, yr), math.max(yl, yr) + h
@@ -275,29 +160,16 @@ function ShopLayout.stepBox(cv, x0, w, y0, h)
 end
 local stepBox = ShopLayout.stepBox
 
--- ============================================================================
--- PLAQUINHA DE PREÇO (Loja v5). UM tratamento para todo preço da vitrine:
--- latão envelhecido com o valor em tinta clara, desenhado na GRADE da arte
--- (degraus 1:8 na mesma fase das arestas), texto por cima na grade da UI.
--- O vínculo físico é o lugar:
---   card   = pregada na FACE do degrau, centrada sob a própria carta
---   object = em pé no TAMPO, centrada logo à frente do pé do objeto
--- A largura final sai do texto (ShelfItem.plaqueArt); aqui fica a caixa
--- MÁXIMA (validação e hit-test) e o eixo (cx).
--- ============================================================================
 local function plaque(cv, kind, cx, y0, maxW)
     local P = ShopLayout.PLAQUE
     local w = math.max(9, math.floor(maxW))
     local x0 = math.floor(cx - w / 2 + 0.5)
     local pq = { kind = kind, cx = cx, x0 = x0, w = w, y0 = y0, h = P.h, slope = ShopLayout.K }
-    -- caixa: o cartão + 1 linha de sombra embaixo
     pq.box = stepBox(cv, x0, w, y0, P.h + 1)
     return pq
 end
 ShopLayout.plaque = plaque
 
--- Etiqueta pendurada: cordão até o furo no meio do topo do cartão (x0,
--- topo na reta y0). `box` = cartão + balanço + cordão em px de tela.
 local function artTag(cv, cordX, cordY, x0, y0, W)
     local H, S = ShopLayout.TAG_H, ShopLayout.SWING
     W = W or ShopLayout.TAG_W
@@ -311,9 +183,6 @@ local function artTag(cv, cordX, cordY, x0, y0, W)
 end
 ShopLayout.artTag = artTag
 
--- Etiqueta de um objeto da mesa: o cordão vai do objeto até a ARESTA DA
--- FRENTE (ponto `edge`, CORD_DRIFT à direita do pé) e cai pela face; o
--- cartão pende TAG_DROP linhas abaixo da aresta.
 local function objectTag(cv, ax)
     local ex = ax + ShopLayout.CORD_DRIFT
     local ey = lineY(LINES.tableEdge, ex) - 1
@@ -324,24 +193,16 @@ local function objectTag(cv, ax)
 end
 ShopLayout.objectTag = objectTag
 
--- Etiqueta NOVA da carta: pendurada ACIMA do topo, puxada pro canto de
--- fora da fileira (cartas da esquerda: canto direito; da direita: canto
--- esquerdo), SEMPRE dentro da largura da própria carta (a vizinha da
--- direita é 7 px mais alta pela 1:8: fora da largura ela cobria o canto da
--- vizinha). Cordão curto do canto até o furo.
 local function cardNewTag(cv, c, side, ceilingY)
     local x0q, y0q, x1q, y1q = ShopLayout.cardQuad(c, 0, 0)
     local cxs, cys = (side == "left") and x0q or x1q, (side == "left") and y0q or y1q
     local ax, ay = toArt(cv, cxs, cys)
     ax, ay = math.floor(ax + 0.5), math.floor(ay + 0.5)
-    local W = ShopLayout.TAG_W + 6             -- cabe "NOVA"/"NEW"/"NEU" na fonte 8
+    local W = ShopLayout.TAG_W + 6
     local hx = ax + ((side == "left") and (W / 2 + 1) or -(W / 2 + 1))
     local hy = ay - 12
     local x0 = hx - math.floor(W / 2)
     local y0 = hy + math.floor(hx / ShopLayout.RUN)
-    -- (dono: "o NOVA em cima da carta precisa vir do teto"): o cordão desce
-    -- do TETO da cena (alto da pintura visível, `ceilingY` em px de arte)
-    -- até o furo; vermelha, pra não se confundir com as de preço
     local T = artTag(cv, hx, math.min(hy - 6, ceilingY or (hy - 6)), x0, y0, W)
     T.side = side
     T.ceiling = true
@@ -354,12 +215,6 @@ function ShopLayout.frameAtF(f, u, v)
     return f.ox + u, f.oy + f.k * u - (v or 0)
 end
 
--- Os 4 cantos da carta (TL, TR, BR, BL), px de tela, no frame da borda:
--- base sobre a borda (vb acima dela, dentro do trilho), topo PARALELO à
--- base (a mesma reta 1:8: projeção oblíqua, sem ponto de fuga). `hover` e
--- `lift` ficam na assinatura por compatibilidade: com CARD_HOVER_SCALE = 1 e
--- CARD_LIFT = 0 (v5) a pose do hover é a do repouso; o movimento do hover é
--- o tilt do shader, com a base presa.
 function ShopLayout.cardQuad(c, hover, lift)
     hover, lift = hover or 0, lift or 0
     local f = c.frame
@@ -379,8 +234,6 @@ function ShopLayout.cardQuad(c, hover, lift)
     return x0, y0, x1, y1, x2, y2, x3, y3
 end
 
--- A fileira da mesa como LISTA (arte, relativa ao 1º pé): grupos e
--- profundidades saem de ShopLayout.TABLE. nRelics pode ser 0..n.
 function ShopLayout.tableRow(nRelics, withPack)
     local T = ShopLayout.TABLE
     local row = {}
@@ -412,20 +265,16 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
     local wall = rect(0, topBarH, sw, sh - topBarH)
     local cv = coverTransform(sw, sh, A.w, A.h, A.pad)
 
-    -- ===== coluna da direita: pergaminho + CONTINUAR =====
     local scrollW = clamp(math.floor(sw * 0.26), 210, 340)
     local scrollX = sw - margin - scrollW
     local contW = clamp(math.floor(sw * 0.17), 150, 230)
     local contH = 40
     local continueBtn = rect(sw - margin - contW, sh - margin - contH, contW, contH)
-    local limitX = scrollX - 10          -- nada da mesa passa daqui
+    local limitX = scrollX - 10
 
-    -- ===== a ZONA da vitrine em px de arte: da borda visível esquerda até o
-    -- pergaminho (4:3 corta a esquerda da pintura: a zona começa depois) =====
     local zoneL = math.max(0, (6 - cv.ox) / cv.s) + SH.zonePad
     local zoneR = (limitX - cv.ox) / cv.s - SH.zonePad
 
-    -- ===== cavaletes =====
     local lineH = clamp(math.floor(8 * cv.s / 1.875), 8, 11) + 2
     local cardH0 = A.cardH * cv.s
     local cards = {}
@@ -445,21 +294,15 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
             rails[i] = math.floor(qws[i] / cv.s + 0.5) + SH.railPad * 2
             groupW = groupW + rails[i]
         end
-        -- o GRUPO centrado na zona (um conjunto organizado pelo mesmo
-        -- comerciante: vão constante, sem escada de vãos largos)
         local x0 = math.floor(zoneL + math.max(0, (zoneR - zoneL - groupW) / 2) + 0.5)
         local railX0 = x0
         for i = 1, nCards do
             local h, qw, railArt = hs[i], qws[i], rails[i]
             if i > 1 then railX0 = railX0 + rails[i - 1] + gap end
             local ax = railX0 + railArt / 2
-            -- UM frame por carta: origem na borda pintada sob o centro dela
             local c = { kind = "card", art = { x = ax }, depth = 1, qw = qw, qh = h }
             local f = ShopPerspective.edgeFrame(c, cv)
             c.frame, c.art.y, c.slope = f, f.art.y, f.k
-            -- ÂNCORA = centro da base. O trilho (RAIL_ART px de arte) tem a
-            -- quina de baixo da frente SOBRE a aresta; a carta senta nele e
-            -- ele cobre só RAIL_COVER_ART px da moldura: sem fresta.
             c.vb = (ShopLayout.RAIL_ART - ShopLayout.RAIL_COVER_ART) * cv.s
             c.lipH = math.floor(ShopLayout.RAIL_ART * cv.s + 0.5)
             c.footX = f.ox
@@ -468,13 +311,11 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
             c.foot = math.floor(footY)
             local qx0, qy0, qx1, qy1, qx2, qy2, qx3, qy3 = ShopLayout.cardQuad(c, 0, 0)
             c.rect = bboxOf({ qx0, qx1, qx2, qx3 }, { qy0, qy1, qy2, qy3 })
-            -- trilho na GRADE da arte (colunas inteiras), centrado na carta
             c.railX0 = railX0
             c.railX1 = railX0 + railArt - 1
             c.railW = railArt * cv.s
             c.stand = stepBox(cv, c.railX0, railArt, LINES.shelfEdge - ShopLayout.RAIL_ART,
                 ShopLayout.RAIL_ART + 1)
-            -- preço: plaquinha na face do degrau, sob a carta (máx = trilho)
             c.plaque = plaque(cv, "card", ax, LINES.shelfEdge + P.faceTop, railArt - 2)
             local sb, pb = c.stand, c.plaque.box
             local px0, py0 = math.min(sb.x, pb.x), math.min(sb.y, pb.y)
@@ -484,14 +325,12 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
             c.lineH = lineH
             c.lift = 0
             c.depthScale = 1 - (i - 1) * SH.depthStep
-            -- teto = alto da parede visível (logo abaixo da TopBar), em px de arte
             local ceilingY = math.floor((topBarH - cv.oy) / cv.s)
             c.newTag = cardNewTag(cv, c, (i <= nCards / 2) and "right" or "left", ceilingY)
             cards[i] = c
         end
     end
     buildCards(SH.gap, 1)
-    -- janela estreita: primeiro o vão cede, depois a escala
     local function cardsRight()
         local c = cards[#cards]
         return math.max(c.rect.x + c.rect.w, c.plate.x + c.plate.w)
@@ -505,8 +344,6 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
             buildCards(SH.gapMin, math.max(0.6, lastSize * 0.93))
         end
     end
-    -- VERTICAL: a 1:8 sobe a carta da direita; com o selo NOVA ela não pode
-    -- passar da TopBar nem da placa de título. Quem cede é a altura.
     local signBox = { x = margin, y = topBarH + 4, w = math.floor(sw * 0.42), h = 30 }
     for _ = 1, 4 do
         local worst = 1
@@ -522,11 +359,9 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
         buildCards(lastGap, lastSize)
     end
 
-    -- ===== mesa: três grupos, pé na reta-base + profundidade =====
     local hasPack = true
     local row = ShopLayout.tableRow(nRelics, hasPack)
     local first, last = row[1], row[#row]
-    -- extensão à esquerda do 1º pé: metade do copo ou o dado à frente dele
     local leftExt = math.max(first.size * 0.5, -TB.dice.diceAt[1][1] + 10)
     local spanArt = last.dx + last.size * 0.45 + leftExt
     local avail = zoneR - zoneL
@@ -550,7 +385,6 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
             lift = 0, key = e.key,
         }
         if e.key ~= "dice" then
-            -- preço: etiqueta pendurada pela aresta da frente (v5 r2)
             o.tag = objectTag(cv, ax)
             o.plate = o.tag.box
         else
@@ -573,12 +407,10 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
         elseif e.key == "dice" then dice = o end
     end
 
-    -- ===== placa de título (sobre a pintura, canto superior esquerdo) =====
     local sign = rect(margin, topBarH + 4, math.floor(sw * 0.42), 30)
     local help = rect(sign.x + sign.w - 56, sign.y + 4, 22, 22)
     local diceHelp = rect(sign.x + sign.w - 26, sign.y + 4, 22, 22)
 
-    -- ===== pergaminho (prego + rolo + miolo + COMPRAR), altura pelo conteúdo =====
     local nail = rect(scrollX + scrollW / 2 - 4, topBarH + 4, 8, 10)
     local rollerH = clamp(math.floor(scrollW * 0.10), 18, 40)
     local footH = math.floor(rollerH * 1.3)
@@ -597,9 +429,6 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
     scroll.body = rect(scroll.x + inset, scroll.y + rollerH + 6,
         scroll.w - inset * 2, scroll.buy.y - 8 - (scroll.y + rollerH + 6))
 
-    -- v5 r2: a mariposa voltou (dono). Sem lanterna pintada, ela ronda um
-    -- ponto de luz INVISÍVEL no alto à esquerda da vitrine (de onde vem a
-    -- luz da cena); ShopProps só precisa do retângulo.
     local lx, ly = toScreen(cv, 60, 70)
     local lantern = rect(lx - 16 * cv.s, ly - 20 * cv.s, 32 * cv.s, 40 * cv.s)
     lantern.invisible = true
@@ -616,9 +445,6 @@ function ShopLayout.layout(sw, sh, nCards, nRelics, opts)
     }
 end
 
--- ============================================================================
--- VALIDAÇÃO
--- ============================================================================
 local function inside(outer, inner, tol)
     tol = tol or 1
     return inner.x >= outer.x - tol and inner.y >= outer.y - tol
@@ -636,7 +462,6 @@ local function union(a, b)
 end
 ShopLayout.overlaps = overlaps
 
--- Os 4 cantos (arte) de uma plaquinha, nas colunas das pontas.
 function ShopLayout.plaqueCorners(pq)
     local xl, xr = pq.x0, pq.x0 + pq.w - 1
     return {
@@ -652,7 +477,6 @@ function ShopLayout.validate(L)
     local A, cv = L.art, L.cover
     local P = ShopLayout.PLAQUE
 
-    -- cartas: apoio, vínculo da plaquinha, vizinhas
     for i, c in ipairs(L.cards) do
         local ax, ay = toArt(cv, c.frame.ox, c.frame.oy)
         if not pointInPoly(ax, ay, A.ledgeMask) then
@@ -664,7 +488,6 @@ function ShopLayout.validate(L)
         if not inside(L.wall, lifted) then fail("carta %d (com selo) %s escapa da parede", i, fmt(lifted)) end
         if c.plate.x + c.plate.w > L.limitX then fail("placa da carta %d invade o pergaminho", i) end
         if c.rect.w < 40 or c.rect.h < 60 then fail("carta %d ilegivel (%dx%d)", i, c.rect.w, c.rect.h) end
-        -- plaquinha: na FACE do degrau (pintada), sob a carta
         for _, p in ipairs(ShopLayout.plaqueCorners(c.plaque)) do
             if not pointInPoly(p[1], p[2], A.faceMask) then
                 fail("plaquinha da carta %d fora da face do degrau", i)
@@ -678,7 +501,6 @@ function ShopLayout.validate(L)
             if prev.rect.x + prev.rect.w > c.rect.x + 2 then fail("cartas %d e %d se sobrepoem", i - 1, i) end
         end
     end
-    -- mesa: pé no tampo, plaquinha no tampo, longe da aresta da frente
     local all = {}
     local tableItems = {}
     for j, o in ipairs(L.objects) do tableItems[#tableItems + 1] = { "objeto " .. j, o } end
@@ -690,13 +512,10 @@ function ShopLayout.validate(L)
         if not pointInPoly(ax, ay, A.tableMask) then fail("%s: pe (%d,%d na arte) fora do tampo", name, ax, ay) end
         if not inside(L.wall, o.rect) then fail("%s fora da parede", name) end
         if o.plate.x + o.plate.w > L.limitX then fail("placa do %s invade o pergaminho", name) end
-        -- v5 r2: pé longe da aresta da frente (o objeto não atravessa a borda)
         local footGap = lineY(LINES.tableEdge, math.floor(ax)) - ay
         if footGap < ShopLayout.TABLE.frontMargin then fail("%s a %d px da aresta da frente", name, footGap) end
         if o.tag then
             local tg = o.tag
-            -- a etiqueta pende da ARESTA: o ponto de queda está na última
-            -- linha do tampo e o cartão fica abaixo dela, na face
             if tg.edge.y ~= lineY(LINES.tableEdge, tg.edge.x) - 1 then fail("cordao do %s nao cai pela aresta", name) end
             if tg.y0 - LINES.tableEdge < 2 then fail("etiqueta do %s em cima do tampo", name) end
             if math.abs(tg.hole.x - tg.edge.x) > ShopLayout.SWING then fail("etiqueta do %s longe do cordao", name) end
@@ -708,7 +527,6 @@ function ShopLayout.validate(L)
         for b = a + 1, #all do
             local pa, pb = all[a].o.plate, all[b].o.plate
             if overlaps(pa, pb) then fail("placas do %s e do %s se tocam", all[a].name, all[b].name) end
-            -- a plaquinha de um não cai sobre o vizinho
             if all[a].o.plaque and overlaps(pa, all[b].o.rect) then
                 fail("plaquinha do %s cai sobre o %s", all[a].name, all[b].name)
             end
@@ -717,10 +535,6 @@ function ShopLayout.validate(L)
             end
         end
     end
-    -- mesa x cartas: um objeto da mesa não pode cobrir carta nem cavalete.
-    -- O cavalete termina na reta 1:8 de baixo da plaquinha: compara o topo do
-    -- objeto com essa reta na coluna MAIS BAIXA do trecho em comum (a caixa
-    -- alinhada aos eixos acusaria sobreposição que não existe na diagonal).
     for _, e in ipairs(all) do
         for i, c in ipairs(L.cards) do
             local r, pl = e.r, c.plate
@@ -733,7 +547,6 @@ function ShopLayout.validate(L)
         end
     end
 
-    -- coluna da direita
     for _, name in ipairs({ "scroll", "continueBtn", "sign" }) do
         if not inside(L.wall, L[name]) then fail("%s %s fora da parede", name, fmt(L[name])) end
     end
@@ -743,7 +556,6 @@ function ShopLayout.validate(L)
     if L.scroll.body.h < L.scroll.artMaxH + 50 then fail("pergaminho baixo demais pro conteudo (%d)", L.scroll.body.h) end
     if not inside(L.scroll, L.scroll.buy) then fail("COMPRAR fora do pergaminho") end
     if overlaps(L.scroll.buy, L.scroll.body) then fail("COMPRAR invade o texto do pergaminho") end
-    -- CONTINUAR inteiro na tela, com respiro da borda (CRT come a moldura)
     local cb = L.continueBtn
     if cb.x < 0 or cb.y < 0 or cb.x + cb.w > L.sw - 8 or cb.y + cb.h > L.sh - 8 then
         fail("CONTINUAR %s colado/fora da borda", fmt(cb))

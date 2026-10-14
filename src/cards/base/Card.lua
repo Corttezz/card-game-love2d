@@ -26,91 +26,65 @@ function Card:new(name, cost, attack, defense, passive, type, subtype, imagePath
     end
     instance.type = type
     instance.subtype = subtype
-    
-    -- Carrega imagem via cache (fallback automático em caso de erro)
+
     instance.image = ImageCache.get(imagePath)
 
-    -- Propriedades para hover e animação usando Config
-    instance.x = 0 -- Posição X
-    instance.y = 0 -- Posição Y
-    instance.baseScale = Config.Cards.BASE_SCALE -- Tamanho base
-    instance.targetScale = instance.baseScale -- Escala-alvo
-    instance.currentScale = instance.baseScale -- Escala atual
+    instance.x = 0
+    instance.y = 0
+    instance.baseScale = Config.Cards.BASE_SCALE
+    instance.targetScale = instance.baseScale
+    instance.currentScale = instance.baseScale
     instance.width = instance.image:getWidth() * instance.baseScale
     instance.height = instance.image:getHeight() * instance.baseScale
-    instance.isHovered = false -- Estado de hover
-    
-    -- Animação da borda
-    instance.borderAnimationTime = 0 -- Tempo para animação da borda
-    
-    -- Componente para exibir informações da carta
+    instance.isHovered = false
+
+    instance.borderAnimationTime = 0
+
     instance.cardInfoDisplay = CardInfoDisplay:new()
-    -- Configura para cartas na mão (sem raridade por padrão)
     instance.cardInfoDisplay:configure({
         showRarity = false,
         showStats = true,
         showDescription = true
     })
-    
-    -- Ícones compartilhados entre todas as cartas (cache global)
+
     instance.attackIcon = ImageCache.get("assets/icons/attack.png")
     instance.manaIcon = ImageCache.get("assets/icons/mana.png")
     instance.armorIcon = ImageCache.get("assets/icons/armor.png")
 
-    -- Drag state (Balatro-style reorder em hand + collection)
-    instance.dragPending = false  -- mouse-down aconteceu mas não passou threshold
+    instance.dragPending = false
     instance.dragStartMX = 0
     instance.dragStartMY = 0
     instance.isDragging  = false
-    instance.dragOffsetX = 0      -- posição da carta relativa ao mouse
+    instance.dragOffsetX = 0
     instance.dragOffsetY = 0
 
-    -- Posição animada (eases towards targetX/Y pra movimento suave durante reorder)
     instance.targetX = 0
     instance.targetY = 0
-    instance.renderX = 0 -- posição efetivamente desenhada (lerps em direção a targetX)
+    instance.renderX = 0
     instance.renderY = 0
 
-    -- Juice (Moveable engine): kick multiplicativo de scale/rot quando a
-    -- carta é selecionada, jogada, ou vira joker. Decai em ~0.4s.
     Moveable.initJuice(instance)
 
-    -- Ambient tilt: cartas ociosas ondulam levemente (senóide defasada por id).
-    -- ambientSeed garante que cartas da mão não oscilam em sync.
     instance._ambientSeed = love.math.random() * math.pi * 2
     instance._ambientTime = 0
 
-    -- Estado de dissolve (0 = visível, 1 = sumiu). Animado por
-    -- start_dissolve/start_materialize/explode via EventManager.ease.
     instance.dissolve = 0
     instance.dissolve_colours = nil
-    instance._removed = false  -- flag pra CardParticles saber que carta sumiu
+    instance._removed = false
 
-    -- Sistema de upgrade (Fase 3.1): N+ aplicado pelo RunManager:applyUpgradesToInstance.
-    -- 0 = não forjada. >=1 = forjada N vezes (+2 atk/def por level + boost de effect).
-    -- Render: badge "+N" desenhado em Card:_drawUpgradeBadge.
     instance.upgrades = 0
-    -- Edition (Fase 3.2): nil | "foil" | "holo" | "polychrome".
     instance.edition = nil
-    -- Seal (Fase 3.3): nil | "Red" | "Blue" | "Gold" | "Purple".
     instance.seal = nil
 
-    -- Flip state (0 = face pra cima, 1 = face pra baixo). Scale X colapsa
-    -- no meio → ilusão de virada 3D sem shader.
-    instance._flip = 0 -- 0..1..0 durante a anim; 0 estático
+    instance._flip = 0
 
     return instance
 end
 
--- Dispara juice kick. Proxy pro Moveable; usar nos momentos de "algo aconteceu":
---   card:juice_up(0.3, 0.1)  -- selecionada
---   card:juice_up(0.5, 0.15) -- jogada (mais forte)
 function Card:juice_up(scale_mod, rot_mod)
     Moveable.juice_up(self, scale_mod, rot_mod)
 end
 
--- Game feel v2: pulinho vertical (ataque investe, joker proca) e crescida
--- sem oscilação (defesa incha). Proxies pro Moveable, compõem com juice_up.
 function Card:hop_up(px, duration)
     Moveable.hop_up(self, px, duration)
 end
@@ -119,18 +93,10 @@ function Card:swell_up(scale_add, duration)
     Moveable.swell_up(self, scale_add, duration)
 end
 
--- Game feel v3.3: aparada horizontal (defesa checa pro lado e volta de mola).
 function Card:shove_x(px, duration)
     Moveable.shove_x(self, px, duration)
 end
 
--- ============================================================================
--- CARD STATE ANIMATIONS (inspirado em card.lua do Balatro, linhas 1973-2240)
--- ============================================================================
--- Todas coreografadas via _G.EventManager. Chame em resposta a eventos de jogo
--- ("carta exhausted", "joker comprado materializa", "pack abriu → explode").
-
--- Helper: acessa EventManager se disponível (fallback gracioso).
 local function EM()
     return _G.EventManager
 end
@@ -138,16 +104,10 @@ local function Ev()
     return _G.Event
 end
 
--- Marca carta como removida (pra CardParticles fazer cleanup). Callers que
--- removem a carta do mundo (discard, exhaust) devem chamar após a anim.
 function Card:markRemoved()
     self._removed = true
 end
 
--- Cancela qualquer animação de dissolve pendente (ease + markRemoved + fades).
--- Usado em Game:drawCard quando a carta é reciclada de volta pra mão: sem isso,
--- o ease continua rodando e sobrescreve `self.dissolve` após o reset, fazendo
--- a carta "desaparecer" na mão do jogador.
 function Card:cancelDissolveAnim()
     if self._dissolveEvents then
         for _, evt in ipairs(self._dissolveEvents) do
@@ -159,18 +119,7 @@ function Card:cancelDissolveAnim()
     self._removed = false
 end
 
--- ------ start_dissolve ------
--- Animação de destruição: carta queima progressivamente e some. Usar em
--- exhaust, vendida, destruída por efeito.
---
--- @param colours {c1, c2} — burn colors (default: laranja/vermelho)
--- @param silent bool      — não toca som
--- @param timeFac number    — multiplicador de duração (default 1 → 0.7s total)
--- @param noJuice bool      — skip juice_up inicial
--- @param onComplete fn     — chamado ao final (útil pra remover do deck/hand)
 function Card:start_dissolve(colours, silent, timeFac, noJuice, onComplete)
-    -- Se outra dissolve anim já roda (caso raro — replay rápido), cancela
-    -- antes de começar pra não ter 2 eases competindo.
     self:cancelDissolveAnim()
     local em, ev = EM(), Ev()
     local dissolveTime = 0.7 * (timeFac or 1)
@@ -180,7 +129,6 @@ function Card:start_dissolve(colours, silent, timeFac, noJuice, onComplete)
 
     if not noJuice then self:juice_up(0.3, 0.08) end
 
-    -- Partículas "cinzas voando" durante a queima
     local emitter = CardParticles.emit(self, {
         timer = 0.01 * dissolveTime,
         lifespan = 0.7 * dissolveTime,
@@ -193,7 +141,6 @@ function Card:start_dissolve(colours, silent, timeFac, noJuice, onComplete)
 
     if not silent then
         local Sfx = require("src.systems.Sfx")
-        -- Som leve de "papel sendo comprimido". Opcional — não falha se não existir.
         if em and ev then
             em.after(0.0, function()
                 pcall(function() Sfx.play("cardExhaust") end)
@@ -202,8 +149,6 @@ function Card:start_dissolve(colours, silent, timeFac, noJuice, onComplete)
     end
 
     if em and ev then
-        -- Ease do dissolve 0 → 1 ao longo da duração. Evento é trackeado em
-        -- self._dissolveEvents pra poder ser cancelado via cancelDissolveAnim.
         local easeEv = em.add(ev:new({
             trigger = "ease",
             delay = dissolveTime,
@@ -217,7 +162,6 @@ function Card:start_dissolve(colours, silent, timeFac, noJuice, onComplete)
         }))
         table.insert(self._dissolveEvents, easeEv)
 
-        -- Fade particles + cleanup
         table.insert(self._dissolveEvents, em.after(0.7 * dissolveTime, function()
             emitter:fade(0.3 * dissolveTime)
         end))
@@ -226,19 +170,12 @@ function Card:start_dissolve(colours, silent, timeFac, noJuice, onComplete)
             if onComplete then onComplete() end
         end))
     else
-        -- Sem EventManager: snap imediato
         self.dissolve = 1
         self:markRemoved()
         if onComplete then onComplete() end
     end
 end
 
--- ------ start_materialize ------
--- Reverso do dissolve: carta aparece "montando" a partir do nada. Usar em
--- comprar carta, receber recompensa, joker novo.
---
--- @param colours, silent, timeFac mesmos de start_dissolve
--- @param onComplete fn
 function Card:start_materialize(colours, silent, timeFac, onComplete)
     local em, ev = EM(), Ev()
     local dissolveTime = 0.6 * (timeFac or 1)
@@ -246,7 +183,6 @@ function Card:start_materialize(colours, silent, timeFac, onComplete)
     self.dissolve_colours = colours or DissolveShader.palette(self.type or "default")
     self:juice_up(0.2, 0.05)
 
-    -- Partículas coloridas ao redor enquanto materializa
     local emitter = CardParticles.emit(self, {
         timer = 0.025 * dissolveTime,
         lifespan = 0.7 * dissolveTime,
@@ -291,12 +227,6 @@ function Card:start_materialize(colours, silent, timeFac, onComplete)
     end
 end
 
--- ------ explode ------
--- Dissolução dramática com juice intenso, 2 pulsos de partículas, shake.
--- Usar em booster pack opening (carta source estoura → spawn de resultados).
---
--- @param colours, timeFac
--- @param onComplete fn
 function Card:explode(colours, timeFac, onComplete)
     local em, ev = EM(), Ev()
     local explodeTime = 1.3 * (timeFac or 1)
@@ -306,7 +236,6 @@ function Card:explode(colours, timeFac, onComplete)
     local Sfx = require("src.systems.Sfx")
     pcall(function() Sfx.play("cardExhaust") end)
 
-    -- Fase 1: partículas lentas, "carregando"
     local parts1 = CardParticles.emit(self, {
         timer = 0.01 * explodeTime,
         lifespan = 0.2 * explodeTime,
@@ -317,14 +246,12 @@ function Card:explode(colours, timeFac, onComplete)
         max = 50,
     })
 
-    -- Shake contínuo durante o "carregamento" via juice manual
     if em and ev then
         em.add(ev:new({
             blocking = false,
             trigger = "after",
             delay = 0.9 * explodeTime,
             func = function()
-                -- Ease inicial dissolve 0 → 0.3 (textura começa a perder)
                 em.add(ev:new({
                     trigger = "ease",
                     delay = 0.3 * explodeTime,
@@ -335,7 +262,6 @@ function Card:explode(colours, timeFac, onComplete)
             end,
         }))
 
-        -- Fase 2: explosão — partículas rápidas, shake, dissolve completo
         em.after(0.9 * explodeTime, function()
             local parts2 = CardParticles.emit(self, {
                 timer = 0.003 * explodeTime,
@@ -344,16 +270,12 @@ function Card:explode(colours, timeFac, onComplete)
                 speed = 180,
                 colours = self.dissolve_colours,
                 fill = true,
-                pulse_max = 30, -- explosão curta, não contínua
+                pulse_max = 30,
                 max = 40,
             })
             parts1:fade(0.3 * explodeTime)
             self:juice_up(0.5, 0.2)
             if _G.triggerShake then _G.triggerShake(10, 0.3) end
-            -- Som PROPRIO da carta estourando. Antes usava "enemyDeath"
-            -- ("som de boom disponivel") -- emprestado, nao escolhido: carta
-            -- explodindo soava como monstro morrendo. Fallback mantem o
-            -- comportamento antigo enquanto card-explode.mp3 nao existir.
             pcall(function()
                 if Sfx.has and Sfx.has("cardExplode") then
                     Sfx.play("cardExplode")
@@ -362,7 +284,6 @@ function Card:explode(colours, timeFac, onComplete)
                 end
             end)
 
-            -- Dissolve final 0.3 → 1
             em.add(ev:new({
                 trigger = "ease",
                 delay = 0.1 * explodeTime,
@@ -370,11 +291,9 @@ function Card:explode(colours, timeFac, onComplete)
                 ease = { ref_table = self, ref_value = "dissolve", ease_to = 1, type = "smooth" },
             }))
 
-            -- Limpa parts2 após o burst
             em.after(0.4, function() parts2:fade(0.2) end)
         end)
 
-        -- Cleanup final
         em.after(1.5 * explodeTime, function()
             self:markRemoved()
             if onComplete then onComplete() end
@@ -386,8 +305,6 @@ function Card:explode(colours, timeFac, onComplete)
     end
 end
 
--- ------ flip ------
--- Vira a carta (ilusão 3D colapsando scaleX). 0.3s total. Aplica no draw.
 function Card:flip(onHalfway, onComplete)
     local em, ev = EM(), Ev()
     if not em or not ev then
@@ -396,7 +313,6 @@ function Card:flip(onHalfway, onComplete)
         return
     end
 
-    -- Fase 1: scale X → 0 em 0.15s
     em.add(ev:new({
         trigger = "ease",
         delay = 0.15,
@@ -406,7 +322,6 @@ function Card:flip(onHalfway, onComplete)
     em.after(0.15, function()
         if onHalfway then onHalfway() end
     end)
-    -- Fase 2: scale X → 1 em 0.15s
     em.add(ev:new({
         trigger = "ease",
         delay = 0.15,
@@ -428,14 +343,6 @@ function Card:use(target)
     self.passive(target)
 end
 
--- TILT 3D Balatro-style a partir do mouse RELATIVO à carta (relX, relY em
--- 0..1, cortados). Conta PURA e única: a mão/recompensas (updateMouse) e a
--- loja (ShelfItem, carta no cavalete em diagonal) usam a mesma.
---   nx, ny      posição normalizada em [-1, 1]
---   depth       1 no centro, cai pras bordas (sensação de profundidade)
---   tiltX/Y     inclinação (rad); uvX/uvY = tilt normalizado em [-1, 1]
---               (é o `mouse` do card_perspective.glsl)
---   offsetX/Y   parallax (px), shadowX/Y + shadowScale (sombra), rot (z)
 function Card.hoverTilt(relX, relY)
     if relX < 0 then relX = 0 elseif relX > 1 then relX = 1 end
     if relY < 0 then relY = 0 elseif relY > 1 then relY = 1 end
@@ -459,49 +366,30 @@ function Card.hoverTilt(relX, relY)
 end
 
 function Card:updateMouse(mx, my, dt, isHovered)
-    -- Bbox de detecção: UNIÃO da posição home (layoutX/Y) com a renderizada
-    -- (self.x/y animado). Cobrindo as duas, o usuário consegue:
-    -- 1) entrar em hover na posição home da carta na mão;
-    -- 2) seguir a carta com o mouse enquanto ela sobe (ex: cardY-130 em
-    --    GameplayScene) sem perder o hover;
-    -- 3) sair do hover só quando o mouse de fato deixa o caminho inteiro do lift.
-    --
-    -- Sem isso voltavam os dois bugs:
-    -- - se o bbox seguisse só self.y, o lift saía do mouse → flicker.
-    -- - se o bbox ficasse só em layoutY, o usuário não conseguia hoverar a
-    --   versão lifted da carta.
-    --
-    -- targetScale (vs currentScale): evita encolhimento bistável quando offsetY
-    -- pula -DEPTH_OFFSET imediato e a altura ainda está em ease.
     local layoutX = self.layoutX or self.x
     local layoutY = self.layoutY or self.y
     local scaleFactor = self.targetScale or self.currentScale
     local cardWidth = self.image:getWidth() * scaleFactor
     local cardHeight = self.image:getHeight() * scaleFactor
 
-    -- Calcula deslocamento vertical se estiver em hover
     local offsetY = 0
-    -- Margem extra na direção do lift visual interno (liftOffset dentro do
-    -- Card:draw). Sem isso, mouse na borda visível da carta lifted sai do bbox.
     local extraMarginTop = 0
     local extraMarginBottom = 0
     if self.isHovered and not self.noHoverLift then
         if self.isRewardCard then
             offsetY = Config.Cards.DEPTH_OFFSET
-            extraMarginTop = Config.Cards.LIFT_AMOUNT or 0  -- reward sobe
+            extraMarginTop = Config.Cards.LIFT_AMOUNT or 0
         else
             offsetY = -Config.Cards.DEPTH_OFFSET
-            extraMarginBottom = Config.Cards.LIFT_AMOUNT or 0  -- hand desce
+            extraMarginBottom = Config.Cards.LIFT_AMOUNT or 0
         end
     end
 
-    -- União home + render: cobre todo o caminho do lift externo (cardY → cardY-130)
     local minX = math.min(layoutX, self.x)
     local maxX = math.max(layoutX, self.x)
     local minY = math.min(layoutY, self.y)
     local maxY = math.max(layoutY, self.y)
 
-    -- Verifica se o mouse está sobre a carta ajustada
     local wasHovered = self.isHovered
     local bboxLeft = minX
     local bboxRight = maxX + cardWidth
@@ -510,69 +398,41 @@ function Card:updateMouse(mx, my, dt, isHovered)
     if mx >= bboxLeft and mx <= bboxRight and my >= bboxTop and my <= bboxBottom and
         isHovered then
         self.isHovered = true
-        -- cursor "mão" sobre carta (mesmo contrato do Button)
         require("src.ui.CursorManager").request("hand")
-        -- Hover proporcional ao baseScale (não hardcode global). Antes
-        -- usávamos Config.Cards.HOVER_SCALE fixo em 1.466 — quebrava cards
-        -- com baseScale custom (ex: shop com slot maior, baseScale ~2.4).
-        -- Hover bump 1.06× é suficiente pra feedback visual sem dominar a tela.
         self.targetScale = self.baseScale * (Config.Cards.HOVER_SCALE_MULT or 1.06)
         if not wasHovered then
-            -- Pitch random + juice kick: hover-enter Balatro-style
-            -- (engine/text.lua:201 + card.lua:4307). Cada hover soa diferente
-            -- e a carta "salta" sutilmente, dando feedback tátil sem precisar
-            -- de animação extra.
-            -- F12.5: SEM baseVolume aqui — AudioManager usa Config.Audio.HOVER_VOLUME
-            -- (=0.03) carregado em main.lua. Antes 0.5 sobrescrevia, tocando 17x
-            -- mais alto que pretendido (queixa "barulho da carta sai muito alto").
             Sfx.playWithVariation("hoverCard", 0.95, 0.18)
             Moveable.juice_up(self, 0.05, 0.03)
         end
 
-        -- *** Efeito de movimento 3D Balatro-style ***
-        -- Tilt relativo à posição renderizada (animada): cursor "puxa" a carta
-        -- visualmente, mesmo se o mouse estiver fora do bbox visível (clamp).
-        -- (a conta mora em Card.hoverTilt: a loja usa a mesma)
         local ht = Card.hoverTilt((mx - self.x) / cardWidth, (my - (self.y + offsetY)) / cardHeight)
         local depthMultiplier = ht.depth
 
-        -- Deslocamento baseado na profundidade percebida
         self.offsetHoverX = ht.offsetX
         self.offsetHoverY = ht.offsetY
 
-        -- *** Efeito de rotação 3D Balatro-style ***
         self.tiltX = ht.tiltX
         self.tiltY = ht.tiltY
-        
-        -- *** Efeito de elevação (carta "levanta" do fundo) ***
-        -- noHoverLift: usado em shop/relic onde cartas devem ficar paradas
-        -- na posição (Balatro shop pattern — cartas só escalam +6% sem se
-        -- mover). Mantém tilt 3D + scale + halo, mas zero translation Y.
+
         local liftAmount = Config.Cards.LIFT_AMOUNT
         if self.noHoverLift then
             self.liftOffset = 0
         elseif self.isRewardCard then
-            -- Cartas de reward sobem no hover (liftOffset negativo)
             self.liftOffset = -liftAmount * depthMultiplier
         else
-            -- Cartas da mão descem no hover (liftOffset positivo)
             self.liftOffset = liftAmount * depthMultiplier
         end
-        
-        -- *** Sombra dinâmica baseada na profundidade ***
+
         self.shadowOffsetX = ht.shadowX
         self.shadowOffsetY = ht.shadowY
         self.shadowScale = ht.shadowScale
 
-        -- *** Efeito de perspectiva adicional ***
-        -- A carta parece "girar" ligeiramente em 3D
         self.perspectiveRotation = ht.rot
 
     else
         self.isHovered = false
-        self.targetScale = self.baseScale -- Volta ao tamanho normal
+        self.targetScale = self.baseScale
 
-        -- Reseta os deslocamentos quando não estiver em hover
         self.offsetHoverX = 0
         self.offsetHoverY = 0
         self.tiltX = 0
@@ -583,11 +443,6 @@ function Card:updateMouse(mx, my, dt, isHovered)
         self.shadowOffsetY = 0
         self.shadowScale = 0.9
 
-        -- Ambient tilt (Balatro-style): cartas ociosas respiram. Onda senoidal
-        -- defasada por seed (evita sincronia). Amplitude ~0.02 rad (~1°).
-        -- Só roda quando NÃO hovered — hover assume tilt.
-        -- Reduced motion (G.SETTINGS.reduced_motion no Balatro): zera o tilt
-        -- pra acessibilidade.
         if _G.gameSettings and _G.gameSettings.reducedMotion then
             self.tiltX = 0
             self.tiltY = 0
@@ -595,50 +450,37 @@ function Card:updateMouse(mx, my, dt, isHovered)
             self._ambientTime = (self._ambientTime or 0) + dt
             local ambient = math.sin(self._ambientTime * Config.Cards.AMBIENT_TILT_SPEED + self._ambientSeed)
             self.tiltX = ambient * Config.Cards.AMBIENT_TILT_AMOUNT
-            -- Y em segunda harmônica pra movimento não-circular (mais orgânico)
             self.tiltY = math.cos(self._ambientTime * Config.Cards.AMBIENT_TILT_SPEED * 0.7 + self._ambientSeed) * Config.Cards.AMBIENT_TILT_AMOUNT * 0.6
         end
     end
 
-    -- Decay do juice kick (scale/rot bounce disparado por juice_up).
     Moveable.updateJuice(self, dt)
 
-    -- *** Smoother hover (Balatro-style) ***
-    -- 1) Ease-out exponencial no scale (vs lerp linear antigo). Feel parecido
-    --    mas com desaceleração natural no fim.
     local ease = 1 - math.exp(-Config.Cards.SCALE_EASE_K * dt)
     self.currentScale = self.currentScale + (self.targetScale - self.currentScale) * ease
 
-    -- 2) Micro-bob quando hovered: ±HOVER_BOB_AMOUNT px vertical, freq SPEED rad/s.
-    --    Somado ao totalOffsetY do draw via self.hoverBob.
     if self.isHovered then
         self._bobTime = (self._bobTime or 0) + dt
         self.hoverBob = math.sin(self._bobTime * Config.Cards.HOVER_BOB_SPEED) * Config.Cards.HOVER_BOB_AMOUNT
     else
         self._bobTime = 0
-        self.hoverBob = (self.hoverBob or 0) * math.exp(-6 * dt) -- decai suave quando sai
+        self.hoverBob = (self.hoverBob or 0) * math.exp(-6 * dt)
     end
 
-    -- 3) Velocity tilt: carta movendo rápido (drag/reorder) ganha tilt na direção
-    --    do movimento. Damped com exp decay pra settle natural.
     local vx = (self.x - (self._lastX or self.x)) / math.max(dt, 0.001)
     self._lastX = self.x
     local targetTilt = math.max(-Config.Cards.VEL_TILT_MAX, math.min(Config.Cards.VEL_TILT_MAX, vx * Config.Cards.VEL_TILT_GAIN))
     local tiltEase = 1 - math.exp(-Config.Cards.VEL_TILT_DAMP * dt)
     self._velTilt = (self._velTilt or 0) + (targetTilt - (self._velTilt or 0)) * tiltEase
 
-    -- 4) Hover strength (0..1) — intensidade do perspective warp. Suaviza entrada/saída
-    --    via ease-out exp pra evitar pop in do warp.
     local targetHover = self.isHovered and 1 or 0
     local hoverEaseK = Config.Cards.HOVER_STRENGTH_EASE_K or 14
     local hoverEase = 1 - math.exp(-hoverEaseK * dt)
     self.hoverStrength = (self.hoverStrength or 0) + (targetHover - (self.hoverStrength or 0)) * hoverEase
 
-    -- Atualiza animação da borda
     self.borderAnimationTime = self.borderAnimationTime + dt * Config.Cards.BORDER_ANIMATION_SPEED
 end
 
--- Define a posição alvo (reorder animado). Primeira chamada snapa sem anim.
 function Card:setTargetPos(tx, ty)
     self.targetX = tx
     self.targetY = ty
@@ -649,16 +491,13 @@ function Card:setTargetPos(tx, ty)
     end
 end
 
--- Interpola renderX/Y em direção a targetX/Y com ease-out exp. Chamado por frame.
--- Drag force-snapa pro mouse (callers usam setRenderPos pra bypass durante drag).
 function Card:updateRender(dt)
-    local k = 16 -- decel rápida, sensação tátil Balatro
+    local k = 16
     local ease = 1 - math.exp(-k * dt)
     self.renderX = self.renderX + (self.targetX - self.renderX) * ease
     self.renderY = self.renderY + (self.targetY - self.renderY) * ease
 end
 
--- Força posição renderizada (usada durante drag — card gruda no mouse).
 function Card:setRenderPos(rx, ry)
     self.renderX = rx
     self.renderY = ry
@@ -666,8 +505,6 @@ function Card:setRenderPos(rx, ry)
     self.targetY = ry
 end
 
--- Canvas offscreen reusável pra cards com holo/glow (warp + holo composition).
--- Criado lazy com dimensões do canvas da carta; reusa entre frames.
 function Card:_getOffscreenCanvas()
     local w = self.image:getWidth()
     local h = self.image:getHeight()
@@ -679,7 +516,6 @@ function Card:_getOffscreenCanvas()
     return self._offCanvas
 end
 
--- Métodos para compatibilidade com o sistema de jokers
 function Card:getWidth()
     return self.width or (self.image and self.image:getWidth() * (self.currentScale or self.baseScale) or 0)
 end
@@ -689,25 +525,16 @@ function Card:getHeight()
 end
 
 function Card:draw(x, y, showPlayableBorder, isRewardCard)
-    -- Borda azul "playable" desativada (feedback visual substituído por hover/brightness).
     showPlayableBorder = false
-    -- Atualiza posição
     self.x = x
     self.y = y
 
-    -- Ícone animado (icons_anim/): carta VISÍVEL = carta VIVA (regra do
-    -- dono, 13/Out/2026 — revoga o "só na interação" de Jul/2026). A decisão
-    -- (inclusive reducedMotion → estático) mora em CardFrame.displayImage.
-    -- Swap temporário de self.image durante este draw; restaurado no fim.
     local _prevImage = self.image
     do
         local shown = CardFrame.displayImage(self)
         if shown then self.image = shown end
     end
 
-    -- Calcula deslocamentos para hover com efeito 3D
-    -- noHoverLift (shop/relic): zera o baseOffsetY pra carta não saltar pra
-    -- cima/baixo no hover. Mantém scale + tilt + offsetHoverX (parallax suave).
     local baseOffsetY = 0
     if self.isHovered and not self.noHoverLift then
         if isRewardCard then
@@ -718,54 +545,35 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
     end
     local hoverOffsetY = self.liftOffset or 0
     local bobOffset = self.hoverBob or 0
-    -- BASE_LIFT: mesmo idle, carta flutua constante acima da mesa (Balatro).
-    -- Usado pra render da carta: -BASE_LIFT (sobe). Sombra usa valor positivo.
     local baseFloat = Config.Cards.BASE_LIFT or 0
-    -- Ondulação harmônica idle (Fase 6.3 do refactor Balatro): cartas ociosas
-    -- oscilam Y em ~3px com frequência baixa, defasadas pelo seed pra não
-    -- sincronizar. Some quando hovered (lift assume).
     local ambientY = 0
     if not self.isHovered and not self.isDragging then
         ambientY = math.sin(love.timer.getTime() * 0.666 + (self._ambientSeed or 0)) * 3
     end
-    -- hopOffset: pulinho do game feel v2 (negativo = sobe; decai sozinho).
     local totalOffsetY = baseOffsetY + hoverOffsetY + bobOffset + ambientY - baseFloat
         + Moveable.hopOffset(self)
 
-    -- shoveOffset: aparada lateral da defesa (game feel v3.3; decai sozinho)
     local offsetX = (self.offsetHoverX or 0) + Moveable.shoveOffset(self)
 
     local tiltX = self.tiltX or 0
     local tiltY = (self.tiltY or 0) + (self._velTilt or 0)
     local perspectiveRotation = self.perspectiveRotation or 0
 
-    -- Scale uniforme (sem o hack legado de scale não-uniforme por tilt).
-    -- Perspectiva "press" agora vem do shear abaixo.
-    -- Juice: bump multiplicativo de scale quando `juice_up` foi chamado.
-    -- swellFactor: crescida da defesa (game feel v2) — compõe com o juice.
     local s = self.currentScale * Moveable.scaleFactor(self) * Moveable.swellFactor(self)
     local scaleX = s
     local scaleY = s
 
-    -- Flip effect: colapsa scaleX pro meio (0.5 → invisível) e volta.
-    -- Usado em Card:flip() pra simular virada 3D sem shader.
     if self._flip and self._flip > 0 then
-        local flipT = self._flip -- 0..0.5..0
+        local flipT = self._flip
         scaleX = s * (1 - flipT * 2)
-        if scaleX < 0 then scaleX = -scaleX end -- evita inverter draw
+        if scaleX < 0 then scaleX = -scaleX end
     end
 
-    -- Sombra direcional (luz acima do centro da tela) — calcula offset screen-space
-    -- mas aplica DENTRO do push/pop pra herdar o warp do shader (acompanha deformação).
-    -- Componentes:
-    --   dirX  — posição horizontal da carta na tela (bordas → sombra oposta)
-    --   press — lado da carta que o usuário pressionou (direita afunda → sombra esquerda)
     local imgW = self.image:getWidth() * s
     local cardCxAbs = x + offsetX + imgW / 2
     local screenW = love.graphics.getWidth()
     local dirX = (cardCxAbs - screenW / 2) / (screenW / 2)
     if dirX > 1 then dirX = 1 elseif dirX < -1 then dirX = -1 end
-    -- Normaliza tilt pelo range max pra ficar em [-1, 1] (igual ao mouseUV do shader)
     local tiltNormX = (tiltX or 0) / (Config.Cards.TILT_RANGE or 0.15)
     local tiltNormY = (tiltY or 0) / (Config.Cards.TILT_RANGE or 0.15)
     if tiltNormX > 1 then tiltNormX = 1 elseif tiltNormX < -1 then tiltNormX = -1 end
@@ -778,53 +586,35 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
                         - tiltNormY * pressShift * (self.hoverStrength or 0) * 0.7
     local shadowAlpha = Config.Cards.SHADOW_ALPHA + (self.isDragging and 0.15 or 0) + liftTotal * 0.003
     if shadowAlpha > 0.85 then shadowAlpha = 0.85 end
-    -- CRÍTICO: sombra DEVE fade junto com dissolve. Sem isso, durante materialize
-    -- (dissolve 1→0) a sombra chega antes da carta; durante start_dissolve (0→1)
-    -- a sombra fica pairando depois da carta queimar. Visualmente, sombra e carta
-    -- têm que ser uma coisa só.
     if self.dissolve and self.dissolve > 0.001 then
         shadowAlpha = shadowAlpha * (1 - self.dissolve)
     end
 
-    -- *** Carta Principal ***
     love.graphics.setColor(1, 1, 1, 1)
 
     love.graphics.push()
 
     local cardCenterX = x + offsetX + (self.image:getWidth() * scaleX) / 2
     local cardCenterY = y + totalOffsetY + (self.image:getHeight() * scaleY) / 2
-    -- Retângulo desenhado (sem tilt): régua do palco da batalha
-    -- (tools/test_enemy_stage mede o inimigo contra a carta em hover).
     self.lastDrawRect = { x = x + offsetX, y = y + totalOffsetY,
         w = self.image:getWidth() * scaleX, h = self.image:getHeight() * scaleY }
-    -- alvo de navegação (src/ui/NavCursor). O cursor mira o TERÇO DE BAIXO
-    -- da carta: em hover ela sobe, e o ponto continua dentro da caixa de
-    -- repouso — sem isso o foco "soltava" a carta a cada quadro.
     require("src.ui.NavCursor").target(self, self.lastDrawRect.x, self.lastDrawRect.y,
         self.lastDrawRect.w, self.lastDrawRect.h,
         { py = 0.82, group = self.navGroup })
 
     love.graphics.translate(cardCenterX, cardCenterY)
 
-    -- Rotação Z sutil (tombamento lateral quando move rápido) + juice rot
     love.graphics.rotate(perspectiveRotation + Moveable.rotOffset(self))
 
-    -- Escala uniforme (sem hack legado de scale não-uniforme por tilt)
     love.graphics.scale(scaleX, scaleY)
 
-    -- Offset pra desenhar centralizado no origin transladado
     local drawX = -self.image:getWidth() / 2
     local drawY = -self.image:getHeight() / 2
 
-    -- Perspective warp via mesh+shader (Balatro-style). Uniforms:
-    --   mouse:  [tiltX, tiltY] já normalizados em [-1, 1] via TILT_RANGE
-    --   hover:  intensidade suave 0..1
-    --   time:   pro wobble idle
     local mouseUV = {
         (tiltX or 0) / (Config.Cards.TILT_RANGE or 0.15),
         (tiltY or 0) / (Config.Cards.TILT_RANGE or 0.15),
     }
-    -- clamp
     if mouseUV[1] > 1 then mouseUV[1] = 1 elseif mouseUV[1] < -1 then mouseUV[1] = -1 end
     if mouseUV[2] > 1 then mouseUV[2] = 1 elseif mouseUV[2] < -1 then mouseUV[2] = -1 end
 
@@ -833,10 +623,6 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
     local shader = CardMesh.getShader()
     local fx = self.visualEffect
 
-    -- ===== SOMBRA warpada (antes do card principal) =====
-    -- Mesmo mesh+shader do card, mas com tint preto + offset lateral de luz.
-    -- Como estamos dentro do push (scale aplicado), o offset é em coords da
-    -- carta (pré-scale), então dividimos pelo scale pra compensar.
     if shader then
         local mesh = CardMesh.getMesh(self.image:getWidth(), self.image:getHeight())
         mesh:setTexture(self.image)
@@ -852,30 +638,19 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
         love.graphics.setColor(1, 1, 1, 1)
     end
 
-    -- Dissolve/materialize path: bypass mesh warp + holo (eles não compõem
-    -- com dissolve shader sem double-shader pipeline). Usa DissolveShader
-    -- diretamente na textura. Feio? Não — a dissolução esconde a perda de
-    -- warp porque a carta está sumindo/aparecendo de qualquer jeito.
     if self.dissolve and self.dissolve > 0.001 then
         if DissolveShader.isAvailable() then
             DissolveShader.apply(self.image, self.dissolve, self.dissolve_colours)
             love.graphics.draw(self.image, drawX, drawY)
             DissolveShader.clear()
         else
-            -- Fallback sem shader: só apaga com alpha
             local alpha = 1 - self.dissolve
             love.graphics.setColor(1, 1, 1, alpha)
             love.graphics.draw(self.image, drawX, drawY)
             love.graphics.setColor(1, 1, 1, 1)
         end
     elseif self.edition then
-        -- Edition path (Fase 3.2): renderiza mesh warpado num canvas, depois
-        -- aplica o shader da edition (foil/holo/polychrome). Tem prioridade
-        -- sobre o rarity glow legacy (fx=="holo"/"glow").
         local editionShader, editionStrength = self:_getEditionShader()
-        -- Edition holo segue a MESMA régua da lendária (HoloShader v2): tênue e
-        -- estática em repouso, varredura só na interação. As outras editions
-        -- (foil/polychrome) não mudam.
         local holoGate = self:_holoGate(hoverAmt)
         local offCanvas = self:_getOffscreenCanvas()
         local prevCanvas = love.graphics.getCanvas()
@@ -904,28 +679,15 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
             love.graphics.draw(offCanvas, drawX, drawY)
         end
     elseif shader and fx ~= "holo" and fx ~= "glow" then
-        -- Fast path: mesh warp sozinho (sem composição com holo)
         local mesh = CardMesh.getMesh(self.image:getWidth(), self.image:getHeight())
         mesh:setTexture(self.image)
         love.graphics.setShader(shader)
         CardMesh.setUniforms(shader, mouseUV, hoverAmt, timeNow, self.image)
-        -- saleDim (F2 UI Overhaul): item impagável escurece pro tom do fundo
         if self.saleDim then love.graphics.setColor(0.55, 0.52, 0.48, 1) end
         love.graphics.draw(mesh, drawX, drawY)
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.setShader()
     elseif (fx == "holo" or fx == "glow") then
-        -- Composição warp + holo via canvas intermediário.
-        --
-        -- IMPORTANTE: LÖVE NÃO salva transformações em setCanvas. Se a gente só
-        -- mudar canvas, o translate+scale do card center continua ativo, e o
-        -- mesh seria desenhado FORA do offCanvas (que tem só w×h pixels),
-        -- resultando em canvas vazio → HoloShader.draw em nada → carta invisível.
-        -- Fix: push("all") + origin() pra zerar transform dentro do offCanvas.
-        --
-        -- Força GATEADA pela interação (HoloShader v2, Out/2026): rara 0 em
-        -- repouso (carta CRUA) → 0.25 no hover; lendária 0.08 (aro tênue,
-        -- estático) → 0.5. A varredura só corre com anim > 0 — idle = estático.
         local holoGate = self:_holoGate(hoverAmt)
         local strength = HoloShader.strengthFor(fx, holoGate)
         local offCanvas = self:_getOffscreenCanvas()
@@ -946,19 +708,14 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
         end
         love.graphics.pop()
         love.graphics.setCanvas(prevCanvas)
-        -- Agora aplica HoloShader sobre o canvas já warpado (transform externa
-        -- já restaurada — drawX/drawY são coords locais pré-scale).
         HoloShader.draw(offCanvas, drawX, drawY, strength, 0, 1, 1, 0, 0,
             { kind = (fx == "holo") and 1 or 0, anim = holoGate })
     else
-        -- Fallback sem shader (shader não carregou): draw direto
         if self.saleDim then love.graphics.setColor(0.55, 0.52, 0.48, 1) end
         love.graphics.draw(self.image, drawX, drawY)
         love.graphics.setColor(1, 1, 1, 1)
     end
 
-    -- Animation layer (halo, embers, drip, flash, ring...) — pós-canvas.
-    -- Scale já foi aplicado no stack via love.graphics.scale, então passa (1,1).
     if CardAnimationLayer.isEnabled() then
         if not self._cachedArt then
             local okA, a = pcall(CardArt.resolve, self)
@@ -967,59 +724,35 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
         CardAnimationLayer.draw(self, self._cachedArt, drawX, drawY, 1, 1)
     end
 
-    -- Forja (v2 Jul/2026): o badge "+N" foi REMOVIDO daqui — ele cobria o
-    -- valor real do footer (que já mostra o stat upgradado). A evolução agora
-    -- vive NA moldura: valor em verde-forja + gemas por nível (CardFrame).
-
-    -- Seal indicator (Fase 3.3). Disco colorido no canto superior-esquerdo.
     if self.seal then
         self:_drawSealIndicator(drawX, drawY)
     end
 
-    -- Carta INÉDITA na vitrine: luz + marcador "NOVA" (src/ui/DiscoveryMark).
     if self.isNewDiscovery then
         require("src.ui.DiscoveryMark").drawOnCard(self, self.image, drawX, drawY,
             mouseUV, hoverAmt, timeNow)
     end
 
-    -- Restaura transformações
     love.graphics.pop()
 
-    -- Restaura o canvas estático (swap do ícone animado no topo do draw)
     self.image = _prevImage
 
-    -- Texto só aparece no hover e agora está na parte de cima
-    -- Mas não desenha se for uma carta de reward (a descrição será desenhada pela CardRewardScreen)
     if self.isHovered and not isRewardCard then
-        -- Âncora = TOPO REAL da carta (com lift do hover). O offset legado
-        -- -70+20 vinha da era do texto inline e empurrava o tooltip 50px
-        -- acima do necessário ("muito acima da carta", playtest Jul/2026).
-        -- tooltipBelow (coringas ativos no TOPO do combate): painel ABAIXO
-        -- da carta — acima, o clamp cobria o topo dela.
         local anchorY = y + totalOffsetY
         if self.tooltipBelow then
             anchorY = anchorY + (self.image and self.image:getHeight() or 144)
                 * (self.currentScale or 1)
         end
-        -- Opções reaproveitadas (o draw roda todo quadro; sem tabela nova).
         local opts = self._tooltipOpts or {}
         self._tooltipOpts = opts
-        opts.showRarity = false   -- cartas na mão não mostram raridade
+        opts.showRarity = false
         opts.showStats = true
         opts.showDescription = true
         opts.below = self.tooltipBelow
-        -- tooltipSide (mão do combate): painel AO LADO da carta, não
-        -- acima — acima ele cobria o inimigo (GameplayScene, palco).
         opts.side = self.tooltipSide
         opts.cardX = x + offsetX
         opts.cardW = imgW
-        -- tooltipMinY (opcional): teto do painel — a barra superior é camada
-        -- chrome e desenha POR CIMA dele.
         opts.minY = self.tooltipMinY
-        -- deferTooltip (mão do combate): o tooltip é desenhado DEPOIS de
-        -- tudo da mão — selos "+COMBO" das vizinhas, prévia de dano, toasts
-        -- (dono, Out/2026: o selo da carta ao lado cobria o tooltip). A
-        -- cena chama drawDeferredTooltip() no passe final.
         if self.deferTooltip then
             self._tooltipAt = self._tooltipAt or {}
             self._tooltipAt.x, self._tooltipAt.y = x, anchorY
@@ -1030,7 +763,6 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
     end
 end
 
--- Passe final do tooltip adiado (ver deferTooltip). Devolve true se desenhou.
 function Card:drawDeferredTooltip()
     if not self._tooltipPending then return false end
     self._tooltipPending = false
@@ -1039,9 +771,6 @@ function Card:drawDeferredTooltip()
     return true
 end
 
--- Interação que liga o reflexo rara/lendária (HoloShader v2): o hoverStrength
--- (0..1, eased) OU a carta selecionada pra jogar — a mesma regra do ícone
--- animado ("só na interação", dono Jul/2026). Em repouso devolve 0.
 function Card:_holoGate(hoverAmt)
     local gate = hoverAmt or self.hoverStrength or 0
     if self.isSelected then gate = 1 end
@@ -1049,21 +778,12 @@ function Card:_holoGate(hoverAmt)
     return gate
 end
 
--- ===== Editions (Fase 3.2) =====
-
--- Mapping edition → (shader, strength_default).
--- holo: a força vem de HoloShader.strengthFor("holo", gate) no draw (0.08 em
--- repouso → 0.5 na interação); o valor aqui só marca a edition como válida.
 local EDITION_SHADERS = {
     foil       = { shader = FoilShader,       strength = 0.6 },
     holo       = { shader = HoloShader,       strength = 0.5 },
     polychrome = { shader = PolychromeShader, strength = 0.7 },
-    -- "negative" (cor invertida) saiu em Out/2026 a pedido do dono: sem
-    -- entrada aqui, uma cópia antiga desenha como carta comum.
 }
 
--- Retorna (shader, strength) pra edition atual. Nil se sem edition ou shader
--- não disponível (load failed).
 function Card:_getEditionShader()
     if not self.edition then return nil, 0 end
     local entry = EDITION_SHADERS[self.edition]
@@ -1074,16 +794,12 @@ function Card:_getEditionShader()
     return entry.shader, entry.strength
 end
 
--- Aplica edition na carta. Dispara feedback visual (juice + sfx).
--- editionName: "foil" | "holo" | "polychrome" | nil (remove)
--- options: { silent = bool } pra suprimir feedback (ex: durante setup de save load)
 function Card:setEdition(editionName, options)
     options = options or {}
     self.edition = editionName
 
     if options.silent then return end
 
-    -- Juice + sfx por tipo (mesma ideia do Balatro card.lua:set_edition).
     if editionName then
         Moveable.juice_up(self, 0.5)
         local sfxByEdition = {
@@ -1095,7 +811,6 @@ function Card:setEdition(editionName, options)
     end
 end
 
--- Aplica seal na carta. Triggers visuais idem.
 function Card:setSeal(sealName, options)
     options = options or {}
     self.seal = sealName
@@ -1106,13 +821,6 @@ function Card:setSeal(sealName, options)
     end
 end
 
--- ===== Badges (visual) =====
-
--- _drawUpgradeBadge removido (v2 Jul/2026): o badge no canto inferior-direito
--- COBRIA o valor real do footer. A evolução agora é mostrada NA moldura pelo
--- CardFrame (valor verde-forja + gemas por nível) — a carta é o template vivo.
-
--- Seal: disco colorido pequeno no canto superior-esquerdo.
 local SEAL_COLORS = {
     Red    = {0.85, 0.18, 0.18},
     Blue   = {0.30, 0.55, 0.95},
@@ -1131,18 +839,14 @@ function Card:_drawSealIndicator(drawX, drawY)
     local cx = drawX + 8
     local cy = drawY + 8
     local radius = 5
-    -- Pulse leve com tempo (idle "vivo").
     local t = love.timer.getTime() * 2
     local pulse = 1 + 0.08 * math.sin(t + (self._ambientSeed or 0))
     local r = radius * pulse
 
-    -- Halo externo
     love.graphics.setColor(color[1], color[2], color[3], alpha * 0.35)
     love.graphics.circle("fill", cx, cy, r + 2)
-    -- Disco principal
     love.graphics.setColor(color[1], color[2], color[3], alpha)
     love.graphics.circle("fill", cx, cy, r)
-    -- Outline
     love.graphics.setColor(0, 0, 0, alpha * 0.6)
     love.graphics.setLineWidth(1)
     love.graphics.circle("line", cx, cy, r)

@@ -1,6 +1,3 @@
--- Cinemática de chefe (src/ui/BossCinematic): cartão de nome + epíteto e a
--- dica de pular. Sem travessão (test_locale_dashes). Nomes iguais aos de
--- end_screen.enemy.*; o epíteto é o elemento da entrada de cada um.
 return {
     skip = "Pular  {key}",
     carrion_king   = { name = "Rei da Carniça",     epithet = "Soberano dos Corvos" },

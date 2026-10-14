@@ -1,4 +1,3 @@
--- Dés du Scribe (pari facultatif de la boutique) — fr
 return {
     title      = "Dés du Scribe",
     subtitle   = "Un lancer par visite. La maison paie ce qui est écrit.",

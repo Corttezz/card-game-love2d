@@ -1,25 +1,4 @@
--- src/ui/shop/ShopPerspective.lua
--- A INCLINAÇÃO ÚNICA DA MESA do Balcão do Mercador (Loja v4).
---
--- v4 (13/Out/2026, docs/plan/shop-v4-estudo.md): o ponto de fuga da v3c deu
--- uma borda a 6,83 graus, que na grade da arte vira escadinha irregular
--- (degraus de 8 e 9 px misturados). Agora tudo segue UMA inclinação de pixel
--- art, 1:8 (sobe 1 px de arte a cada 8 px pra direita): as arestas das duas
--- superfícies (pintadas na grade por tools/shop_v4_compose.py), a carta, o
--- cavalete, a plaquinha, a etiqueta, as sombras e os objetos. As verticais
--- continuam verticais (projeção oblíqua).
---
--- Os objetos são desenhados num canvas na resolução da ARTE (640x360) em
--- ESCALA 1 (pixel do sprite = pixel da cena) e sobem pro tamanho da tela com
--- nearest, junto da pintura. Arte antiga frontal recebe cisalhamento inteiro
--- (1:8 ou 1:16: degraus regulares); a arte nova (elixir, pacotes) já vem
--- desenhada na diagonal e não é cisalhada.
---
--- SOMBRA (v5 r4): a SILHUETA do sprite projetada no plano da mesa
--- (drawCastShadow: shader que lê o alfa do próprio sprite pela inversa da
--- projeção, dither Bayer por altura, cortada pela faixa do tampo) + uma
--- LINHA DE CONTATO de 1 px sob o contorno de baixo onde o objeto encosta
--- (drawContactShadow). Nada de elipse, nada de faixa na reta do pé.
+local Debug = require("src.core.Debug")
 
 local ShopPerspective = {}
 
@@ -33,30 +12,10 @@ function ShopPerspective.slopeArt()
     return require("src.ui.shop.ShopLayout").K
 end
 
--- slope em coordenadas de TELA (o cover-fit é escala uniforme: o slope é o
--- mesmo; só converte o ponto)
 function ShopPerspective.slopeAt(cv, sx, sy)
     return ShopPerspective.slopeArt((sx - cv.ox) / cv.s, (sy - cv.oy) / cv.s)
 end
 
--- ============================================================================
--- FRAME DA BORDA (Loja "reta", 13/Out/2026). Queixa do dono: "as cartas não
--- estão seguindo a mesma reta". Antes a carta usava uma homografia própria
--- (base girada mais que a borda), o trilho seguia a base, e a faixa de
--- raridade/etiqueta outra conta: três ângulos na mesma carta.
---
--- Agora TUDO da carta (carta, trilho do cavalete, plaquinha de raridade,
--- etiqueta de preço, sombra) mora num frame só:
---   origem  = o ponto da BORDA PINTADA (ShopLayout.ART.ledgeEdge, medida na
---             pintura) sob o centro da carta, em px de tela;
---   k       = inclinação da borda (a MESMA reta para as 4 cartas: as bases
---             são colineares com a borda pintada, não só paralelas);
---   u, n    = vetor unitário da borda e a perpendicular "pra cima";
---   s       = escala do cover-fit (px de tela por px de arte).
--- Local (u, v): u = deslocamento horizontal ao longo da borda, v = altura
--- pra cima (as verticais da pintura continuam verticais). frameAt(f, u, v)
--- = (ox + u, oy + k*u - v): é exatamente translate(origem) + shear(0, k).
--- ============================================================================
 function ShopPerspective.edgeY(ax)
     local E = require("src.ui.shop.ShopLayout").ART.ledgeEdge
     return E.y0 + E.k * (ax - E.x0)
@@ -65,7 +24,6 @@ end
 function ShopPerspective.edgeFrame(slot, cv)
     local E = require("src.ui.shop.ShopLayout").ART.ledgeEdge
     local ax = slot.art and slot.art.x or slot.x
-    -- origem em px de tela inteiro (a passada da arte e a da UI concordam)
     local ox = floor(cv.ox + ax * cv.s + 0.5)
     local axr = (ox - cv.ox) / cv.s
     local ay = E.y0 + E.k * (axr - E.x0)
@@ -74,8 +32,8 @@ function ShopPerspective.edgeFrame(slot, cv)
     local n = math.sqrt(1 + k * k)
     return {
         ox = ox, oy = oy, k = k,
-        ux = 1 / n, uy = k / n,          -- ao longo da borda (pra direita)
-        nx = k / n, ny = -1 / n,         -- perpendicular, pra cima
+        ux = 1 / n, uy = k / n,
+        nx = k / n, ny = -1 / n,
         s = cv.s,
         art = { x = axr, y = ay },
     }
@@ -85,35 +43,23 @@ function ShopPerspective.frameAt(f, u, v)
     return f.ox + u, f.oy + f.k * u - (v or 0)
 end
 
--- Ângulo (graus) do segmento (x0,y0)-(x1,y1): a trava de "uma reta só".
 function ShopPerspective.angleOf(x0, y0, x1, y1)
     return math.deg(math.atan2(y1 - y0, x1 - x0))
 end
 
--- ============================================================================
--- POSE dos objetos:
---   flip  = espelha (sx = -1): a arte vista "da direita" passa a mostrar o
---           lado esquerdo, como a mesa (pedido do dono pra bancada de coringa)
---   shear = fração da inclinação 1:8 aplicada como cisalhamento: SÓ 1 (1:8),
---           0,5 (1:16) ou 0 (arte já desenhada na diagonal). Fração qualquer
---           daria degraus irregulares (o defeito da v3c).
---   size  = escala relativa
--- A MESMA pose vale em repouso, em hover e no pergaminho (só o pergaminho
--- dispensa o cisalhamento: lá a peça é retrato, não está na mesa).
--- ============================================================================
 ShopPerspective.POSE = {
     remove_card       = { flip = false, shear = 1.0 },
     joker_slot        = { flip = true,  shear = 0.5 },
-    health_upgrade    = { flip = false, shear = 0 },     -- arte v4 na diagonal
-    mana_upgrade      = { flip = false, shear = 0 },     -- arte v5 (cristal redondo)
+    health_upgrade    = { flip = false, shear = 0 },
+    mana_upgrade      = { flip = false, shear = 0 },
     card_draw_upgrade = { flip = true,  shear = 0.5 },
     interest_cap      = { flip = true,  shear = 0.5 },
     forge_card        = { flip = true,  shear = 0.5 },
-    duplicate_card    = { flip = false, shear = 0 },     -- arte v5 (prensa já de canto)
+    duplicate_card    = { flip = false, shear = 0 },
     damage_upgrade    = { flip = false, shear = 1.0 },
     defense_upgrade   = { flip = false, shear = 1.0 },
     bell              = { flip = false, shear = 0 },
-    pack              = { flip = false, shear = 0 },     -- arte v4 na diagonal
+    pack              = { flip = false, shear = 0 },
 }
 local DEFAULT_POSE = { flip = false, shear = 1.0 }
 
@@ -123,25 +69,14 @@ function ShopPerspective.poseFor(kind, offer)
     return (offer and ShopPerspective.POSE[offer.id]) or DEFAULT_POSE
 end
 
--- ============================================================================
--- SPRITE de um objeto: a arte ANTIGA (vouchers/ e packs/). A animação de
--- vouchers_anim/ entra no hover (quadro 0 = o PNG estático, conferido): é a
--- MESMA peça na MESMA pose, nunca outra imagem.
---   devolve img, srcKey (srcKey = de onde veio: igual em repouso e hover)
--- ============================================================================
 local warned = {}
 local function warnOnce(key, msg)
     if warned[key] then return end
     warned[key] = true
-    print("[ShopPerspective] " .. msg)
+    Debug.warn("[ShopPerspective] " .. msg)
 end
 
--- Arte v4 desenhada NA DIAGONAL da mesa (assets/sprites/shop/v4/): o elixir
--- e os pacotes. Quando existe, substitui a antiga na mesa E no pergaminho
--- (a mesma peça nos dois lugares).
 ShopPerspective.V4_DIR = "assets/sprites/shop/v4/"
--- v5 (Out/2026): capas de pacote refeitas como pacotes de verdade, cristal e
--- prensa novos. A v5 vale antes da v4.
 ShopPerspective.V5_DIR = "assets/sprites/shop/v5/"
 local function v4Art(id)
     if not id then return nil end
@@ -153,9 +88,6 @@ local function v4Art(id)
 end
 ShopPerspective.v4Art = v4Art
 
--- Animação v5 (PixelLab animate_object sobre a arte v5/v4, quadro 0 = o PNG
--- estático): assets/sprites/shop/v5_anim/<id>/<i>.png, 8 fps. Só no HOVER
--- (regra do dono: animação na interação). Mesmo tamanho de canvas do PNG.
 ShopPerspective.V5_ANIM_DIR = "assets/sprites/shop/v5_anim/"
 ShopPerspective.ANIM_FPS = 8
 local animFrames = {}
@@ -172,11 +104,6 @@ function ShopPerspective.animFrames(id)
     return animFrames[id] or nil
 end
 
--- (dono, Out/2026: "a qualidade da imagem dos do canto está ruim; no hover
--- melhora"): o jogo real NÃO liga o filtro padrão nearest (só os tools),
--- então o PNG estático vinha LINEAR e o cisalhamento 1:8/1:16 borrava;
--- os quadros animados do hover já eram nearest. Toda imagem da mesa passa
--- por aqui antes de desenhar.
 local function crisp(img)
     if img and img.setFilter then
         local mn = img:getFilter()
@@ -227,14 +154,7 @@ function ShopPerspective._spriteFor(kind, offer, animate, t)
     return nil, nil
 end
 
--- ============================================================================
--- PERFIL da silhueta (ImageData lida uma vez por arquivo): caixa opaca e a
--- linha mais baixa de cada coluna (o "pé" real da arte, não o fim do PNG).
--- ============================================================================
 local PROFILES = {}
--- rect = { x, y, w, h } opcional: só esse recorte do PNG (quadro de uma
--- folha, ex. o copo de dados); as coordenadas do perfil saem RELATIVAS ao
--- recorte e o perfil guarda `src = rect` pra sombra amostrar o quadro certo.
 function ShopPerspective.profile(path, img, rect)
     local key = path and (rect and (path .. "#" .. rect.x .. "," .. rect.y .. "," .. rect.w .. "," .. rect.h) or path)
     if key and PROFILES[key] ~= nil then return PROFILES[key] or nil end
@@ -291,9 +211,6 @@ function ShopPerspective.profile(path, img, rect)
     return p
 end
 
--- ============================================================================
--- CANVAS NA RESOLUÇÃO DA ARTE + passada
--- ============================================================================
 local canvas, canvasW, canvasH
 local quadBlit
 local function getCanvas(w, h)
@@ -308,9 +225,6 @@ local function getCanvas(w, h)
     return c
 end
 
--- Desenha `fn()` em coordenadas da ARTE e sobe o recorte `box` (arte) pra
--- tela pelo cover-fit. Sem canvas (falha de driver), desenha direto na tela
--- com a mesma transformação (perde só o pixel quadrado; AVISA).
 function ShopPerspective.artPass(L, box, fn)
     local A, cv = L.art, L.cover
     local c = getCanvas(A.w, A.h)
@@ -346,9 +260,6 @@ function ShopPerspective.artPass(L, box, fn)
     love.graphics.pop()
 end
 
--- ============================================================================
--- SILHUETA (contorno claro de 1 px de arte no hover)
--- ============================================================================
 local silShader, silTried
 local function silhouette()
     if silTried then return silShader end
@@ -364,9 +275,6 @@ local function silhouette()
 end
 ShopPerspective.silhouette = silhouette
 
--- Transformação de um objeto EM PÉ, em coordenadas da arte:
---   pé (fx, fy), escala s (px de arte por px do sprite), slope k já com o
---   fator da pose, espelho. O pé da ARTE (perfil) cai exatamente no ponto.
 local function applyUpright(fx, fy, s, k, flip, prof)
     local cx = (prof.x0 + prof.x1 + 1) / 2
     local bottom = prof.y1 + 1
@@ -376,8 +284,6 @@ local function applyUpright(fx, fy, s, k, flip, prof)
     love.graphics.translate(-cx, -bottom)
 end
 
--- Desenha o objeto em pé (+ contorno de hover) no canvas da arte.
---   o = { img, prof, fx, fy, s, k, flip, lift, outline (0..1), color, alpha }
 function ShopPerspective.drawUpright(o)
     local img, prof = o.img, o.prof
     if not (img and prof) then return end
@@ -407,7 +313,6 @@ function ShopPerspective.drawUpright(o)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Caixa (arte) ocupada pelo objeto em pé (pra recorte da passada e hit-test).
 function ShopPerspective.uprightBox(o)
     local prof = o.prof
     if not prof then return nil end
@@ -419,8 +324,6 @@ function ShopPerspective.uprightBox(o)
              w = w + 4, h = h + skew * 2 + (o.lift or 0) + 6 }
 end
 
--- Ponto (arte) na borda DIREITA da silhueta a `frac` da altura (a partir da
--- base): onde o cordão da etiqueta de preço se amarra no objeto.
 function ShopPerspective.tiePoint(o, frac)
     local prof = o.prof
     if not (prof and prof.left) then return o.fx, o.fy end
@@ -439,27 +342,6 @@ function ShopPerspective.tiePoint(o, frac)
     return o.fx + lx - 1, o.fy - (o.lift or 0) + ly + o.k * lx
 end
 
--- ============================================================================
--- SOMBRA (v5 r4, 13/Out/2026). Três rodadas no mesmo dia (82d32ff5, 84fa4789,
--- 1324c878) desenharam a sombra como LINHAS na reta do pé: 2 a 4 fileiras de
--- pontos, coluna a coluna, variando só a densidade. Qualquer objeto virava
--- um traço/retângulo, porque a altura do sprite nunca entrava na conta: a
--- sombra era função SÓ do contorno de baixo. O dono: "elas têm que pelo
--- menos acompanhar o formato de cada coisa".
---
--- Agora a sombra é a SILHUETA INTEIRA do sprite projetada no plano da mesa.
--- Um pixel do objeto a `h` px de altura (acima da base, + lift se flutua)
--- cai em (lean*h, dy*h) a partir do ponto da base (ShopLayout.shadowDir:
--- pra direita e pra FRENTE, longe da lanterna do alto à esquerda). É uma
--- transformação afim da silhueta: o shader percorre a caixa da sombra e,
--- pra cada pixel de arte, INVERTE a projeção, acha o texel do sprite e lê o
--- alfa dele (a máscara é o próprio sprite: nenhuma cópia por quadro, e a
--- poção borbulhando projeta o quadro atual). Densidade cheia perto do
--- contato e dither Bayer 4x4 (mesma matriz do `dithered`) até a ponta;
--- cortada pela faixa do tampo (a MESMA de ShopLayout.ART.tableMask). Tudo
--- em pixel inteiro do canvas da arte. Trava: tools/test_shop_shadows.lua
--- (referência em Lua pixel a pixel contra o resultado do shader).
--- ============================================================================
 local BAYER = {
     { 0, 8, 2, 10 },
     { 12, 4, 14, 6 },
@@ -473,7 +355,6 @@ local function dithered(x, y, density)
 end
 ShopPerspective.dithered = dithered
 
--- tinta da sombra: madeira escurecida (quente), nunca preto puro
 ShopPerspective.SHADOW_INK = Palette.darken(Palette.PARCHMENT_DARK, 0.3)
 
 local castShader, castTried
@@ -530,8 +411,6 @@ local function castShadowShader()
 end
 ShopPerspective.castShadowShader = castShadowShader
 
--- Caixa (arte) que a sombra projetada ocupa: base do objeto (com o
--- cisalhamento da pose) deslocada pelo vetor da sombra vezes a altura.
 function ShopPerspective.castShadowBox(o)
     local prof = o.prof
     if not prof then return nil end
@@ -549,12 +428,9 @@ function ShopPerspective.castShadowBox(o)
     return { x = floor(x0), y = floor(y0), w = math.ceil(x1) - floor(x0), h = math.ceil(y1) - floor(y0) }
 end
 
--- uniforms reutilizados (nada alocado por quadro)
 local U = { texSize = { 0, 0 }, texRect = { 0, 0, 0, 0 }, foot = { 0, 0 }, base = { 0, 0 },
             dir = { 0, 0 }, band = { 0, 0 }, dens = { 0, 0, 0 } }
 
--- Parâmetros da projeção de um objeto (fonte única pro shader e pra
--- referência em Lua do teste): devolve a tabela U preenchida.
 function ShopPerspective.castParams(o)
     local ShopLayout = require("src.ui.shop.ShopLayout")
     local SH = ShopLayout.SHADOW
@@ -580,7 +456,6 @@ function ShopPerspective.castParams(o)
     return U
 end
 
--- A sombra projetada, no canvas da arte (antes do sprite).
 function ShopPerspective.drawCastShadow(o, alpha)
     local img, prof = o.img, o.prof
     if not (img and prof) then return end
@@ -609,9 +484,6 @@ function ShopPerspective.drawCastShadow(o, alpha)
     love.graphics.pop()
 end
 
--- Referência em Lua da MESMA projeção (pixel a pixel, pro teste e pra
--- sonda): alphaAt(sx, sy) lê o alfa do sprite (px do recorte). Devolve
--- {x, y, ...} planos dos pixels de arte que o shader pinta.
 function ShopPerspective.castShadowRef(o, alphaAt)
     local ShopLayout = require("src.ui.shop.ShopLayout")
     local inPoly = ShopLayout.pointInPoly
@@ -645,10 +517,6 @@ function ShopPerspective.castShadowRef(o, alphaAt)
 end
 
 local pts = {}
--- LINHA DE CONTATO: 1 px sólido logo abaixo do contorno de baixo, só nas
--- colunas em que o objeto encosta (contorno a <= G da reta do pé). Objeto
--- no ar não tem contato (a sombra projetada se separa dele).
--- mask = polígono (arte) onde a linha pode cair; nil = sem corte.
 function ShopPerspective.drawContactShadow(o, mask, alpha)
     local prof = o.prof
     if not prof then return end
@@ -683,14 +551,11 @@ function ShopPerspective.drawContactShadow(o, mask, alpha)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- A sombra completa de um objeto da mesa: projetada + linha de contato.
 function ShopPerspective.drawObjectShadow(o, mask, alpha)
     ShopPerspective.drawCastShadow(o, alpha)
     ShopPerspective.drawContactShadow(o, mask, alpha)
 end
 
--- Pontos de contato (arte) de um objeto: usados pelo teste "nada flutua"
--- (todo pé de coluna encostado tem que estar DENTRO do tampo).
 function ShopPerspective.contactPoints(o)
     local prof = o.prof
     if not prof then return {} end
@@ -711,10 +576,6 @@ function ShopPerspective.contactPoints(o)
     return out
 end
 
--- ============================================================================
--- HOMOGRAFIA (quadrado unitário → quadrilátero): a carta no cavalete.
--- Cantos em ordem TL, TR, BR, BL. Devolve as 3 linhas da matriz.
--- ============================================================================
 function ShopPerspective.homography(x0, y0, x1, y1, x2, y2, x3, y3)
     local sx = x0 - x1 + x2 - x3
     local sy = y0 - y1 + y2 - y3
@@ -735,8 +596,6 @@ function ShopPerspective.homography(x0, y0, x1, y1, x2, y2, x3, y3)
     return { a, b, x0 }, { d, e, y0 }, { g, h, 1 }
 end
 
--- Inversa: ponto (x, y) da tela -> (u, v) do quadrado unitário (o mouse no
--- espaço da carta, pro tilt do hover). nil se a matriz for singular.
 function ShopPerspective.unmapH(r0, r1, r2, x, y)
     local a, b, c = r0[1], r0[2], r0[3]
     local d, e, f = r1[1], r1[2], r1[3]
@@ -753,7 +612,6 @@ function ShopPerspective.unmapH(r0, r1, r2, x, y)
     return u / w, v / w
 end
 
--- Mapeia (u, v) do quadrado unitário pelo resultado de homography().
 function ShopPerspective.mapH(r0, r1, r2, u, v)
     local w = r2[1] * u + r2[2] * v + r2[3]
     return (r0[1] * u + r0[2] * v + r0[3]) / w, (r1[1] * u + r1[2] * v + r1[3]) / w

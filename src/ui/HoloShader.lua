@@ -1,7 +1,4 @@
--- src/ui/HoloShader.lua
--- Wrapper do shader holográfico para cartas (rare/legendary).
--- Aplicado seletivamente: ao desenhar uma carta com effect="holo" ou "glow" raro,
--- chama HoloShader.draw(image, x, y, strength).
+local Debug = require("src.core.Debug")
 
 local HoloShader = {}
 
@@ -11,7 +8,7 @@ local loaded = false
 function HoloShader.load()
     local ok, s = pcall(love.graphics.newShader, "shaders/holo.glsl")
     if not ok then
-        print("[HoloShader] falha ao carregar shaders/holo.glsl: " .. tostring(s))
+        Debug.warn("[HoloShader] falha ao carregar shaders/holo.glsl: " .. tostring(s))
         return false
     end
     shader = s
@@ -23,12 +20,6 @@ function HoloShader.isAvailable()
     return loaded
 end
 
--- Desenha uma imagem aplicando o reflexo com a intensidade dada.
--- Uso: HoloShader.draw(cardCanvas, x, y, 0.5, 0, 1, 1, 0, 0, { kind = 1, anim = hover })
---   opts.kind: 0 = rara (prata-azulado), 1 = lendária (dourado prismático)
---   opts.anim: 0..1 — a faixa de varredura só existe/move com anim > 0
---              (hover/selecionada); em repouso a carta é ESTÁTICA.
--- strength < 0.005 desenha a carta crua (sem shader): pixel-a-pixel igual.
 function HoloShader.draw(image, x, y, strength, rotation, sx, sy, ox, oy, opts)
     strength = math.max(0, math.min(1, strength or 0.5))
     if not loaded or strength < 0.005 then
@@ -46,8 +37,6 @@ function HoloShader.draw(image, x, y, strength, rotation, sx, sy, ox, oy, opts)
     love.graphics.setShader()
 end
 
--- Força do reflexo por raridade/gate (fonte ÚNICA pra Card:draw e testes):
--- rara 0 → 0.25 no hover; lendária 0.08 em repouso → 0.5 no hover.
 HoloShader.REST = { glow = 0, holo = 0.08 }
 HoloShader.FULL = { glow = 0.25, holo = 0.5 }
 function HoloShader.strengthFor(fx, gate)

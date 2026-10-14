@@ -1,11 +1,7 @@
--- Kit de los enemigos (src/data/enemies.lua): nombres de golpes, líneas del
--- tooltip de intención, estados nuevos y mensajes. Archivo propio por locale;
--- entra en el principal como `enemy_kit = require(...)`.
 return {
     moves = {
         attack = { name = "Embestida" }, strong = { name = "Golpe Brutal" },
         defend = { name = "Postura Defensiva" }, buff = { name = "Furia Creciente" },
-        -- Acto 1
         rusty_scythe = { name = "Hoz Oxidada" }, crow_pecks = { name = "Picotazos de Cuervo" },
         dread_stare = { name = "Mirada de Pavor" }, straw_wall = { name = "Muro de Paja" },
         reap = { name = "Segar" }, harvest = { name = "Cosecha" },
@@ -14,7 +10,6 @@ return {
         gorge = { name = "Devorar" }, frenzy = { name = "Frenesí" },
         call_of_crows = { name = "Llamada de la Bandada" }, murder_of_crows = { name = "Bandada" },
         royal_peck = { name = "Picotazo Real" }, carrion_feast = { name = "Festín de Carroña" },
-        -- Acto 2
         stone_talons = { name = "Garras de Piedra" }, dive = { name = "Picado" },
         stone_skin = { name = "Piel de Piedra" }, lunar_shriek = { name = "Chillido Lunar" },
         rune_ward = { name = "Runa de Protección" }, rune_bolt = { name = "Rayo Rúnico" },
@@ -22,7 +17,6 @@ return {
         life_drain = { name = "Drenar Vida" },
         frost_shield = { name = "Escudo de Hielo" }, essence_drain = { name = "Drenar Esencia" },
         necrotic_ray = { name = "Rayo Necrótico" }, bone_volley = { name = "Ráfaga de Huesos" },
-        -- Acto 3
         fireball = { name = "Bola de Fuego" }, scratch = { name = "Arañazos" },
         cackle = { name = "Carcajada" }, ember_jab = { name = "Estocada de Brasa" },
         shadow_blade = { name = "Hoja Sombría" }, fade = { name = "Desvanecerse" },
@@ -33,24 +27,20 @@ return {
         blood_feast = { name = "Festín de Sangre" }, noble_thrust = { name = "Estocada Noble" },
         gather_flames = { name = "Reunir Llamas" }, hellfire = { name = "Fuego Infernal" },
         abyssal_claws = { name = "Garras del Abismo" }, cinder_spray = { name = "Lluvia de Cenizas" },
-        -- Acto 4
         freezing_touch = { name = "Toque Congelante" }, wight_claw = { name = "Garra Espectral" },
         blizzard = { name = "Ventisca" },
         ice_lance = { name = "Lanza de Hielo" }, glacial_aegis = { name = "Égida Glacial" },
         charge = { name = "Carga Glacial" }, rime = { name = "Escarcha" },
         eternal_winter = { name = "Invierno Eterno" }, winter_blade = { name = "Hoja del Invierno" },
         royal_blizzard = { name = "Ventisca Real" }, frozen_crown = { name = "Corona Gélida" },
-        -- Acto 5
         hex = { name = "Maleficio" }, toxic_cauldron = { name = "Caldero Tóxico" },
         crooked_cane = { name = "Bastón Torcido" }, bog_brew = { name = "Brebaje del Fango" },
         plague_cloud = { name = "Nube Pestilente" }, colossal_slam = { name = "Porrazo Colosal" },
         putrid_blow = { name = "Golpe Pútrido" }, regrow = { name = "Regenerar" },
-        -- Acto 6
         waning_light = { name = "Luz Menguante" }, lunar_blades = { name = "Hojas Lunares" },
         veil = { name = "Velo" }, total_eclipse = { name = "Eclipse Total" },
         black_corona = { name = "Corona Negra" }, star_rain = { name = "Lluvia de Estrellas" },
         void_embrace = { name = "Abrazo del Vacío" },
-        -- Criaturas novas (Out/2026)
         pitchfork_jab = { name = "Estocada de Horca" },
         wind_up = { name = "Alzar la Horca" },
         pitchfork_skewer = { name = "Ensarte de Horca" },
@@ -152,7 +142,6 @@ return {
         charge   = "Cargando: el próximo golpe será devastador.",
         debuff   = "Aplica {name} durante {duration} turno(s).",
         dot      = "Aplica {name}: {stacks} de daño por turno durante {duration} turno(s).",
-        -- niebla de intención (src/systems/IntentVisibility.lua)
         veil_title  = "Niebla",
         veil_number = "La niebla esconde el número de este golpe. Ves el tipo, no el peso.",
         veil_all    = "La niebla esconde la intención. Algo viene, y no sabes qué.",

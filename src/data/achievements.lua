@@ -1,29 +1,4 @@
--- src/data/achievements.lua
--- Catalogo das conquistas. DADOS puros — a logica de unlock vive em
--- src/systems/AchievementSystem.lua; a ponte com a Steam em
--- src/systems/SteamBridge.lua.
---
--- Calibracao herdada de Balatro/StS/Monster Train: ~1/3 cai jogando
--- normalmente (JORNADA), ~1/3 exige run dedicada (RESTRICAO + MAESTRIA),
--- poucas sao horizonte de dezenas de horas (LEGADO).
---
--- CAMPOS
---   id       chave do perfil (ProfileStats.achievements[id]) — NUNCA renomear:
---            renomear apaga a conquista de quem ja tinha.
---   steam    API name do Steamworks — CONGELADO (tools/test_achievements
---            guarda a lista). Steam nao deixa renomear depois de publicado.
---   tier     natural | build | skill | collection  (categoria da galeria)
---   hidden   true = secreta: "???" ate liberar (na galeria E na Steam)
---   progress { stat = <nome>, target = N } — conquista com contador; o
---            valor atual vem de AchievementSystem.progressOf (fonte unica).
---   name/desc FALLBACK DE DEV sem acento (o texto exibido vem do i18n,
---            achievements.list.<id>.name/desc nos 5 locales).
---
--- Emblema: assets/sprites/achievements/<id>.png (+ <id>_locked.png). Os dois
--- sao gerados/derivados por tools/achievement_icons.py; o teste exige ambos.
-
 return {
-    -- ===== JORNADA (progresso natural) =====
     { id = "primeiro_chefe",   steam = "ACH_PRIMEIRO_CHEFE",   tier = "natural",
       name = "Coroa Partida", desc = "Derrote seu primeiro chefe." },
     { id = "capitulo_final",   steam = "ACH_CAPITULO_FINAL",   tier = "natural",
@@ -45,7 +20,6 @@ return {
     { id = "coro_coringas",    steam = "ACH_CORO_CORINGAS",    tier = "natural",
       name = "Coro de Coringas", desc = "Venca uma batalha com todos os espacos de coringa ocupados." },
 
-    -- ===== RESTRICAO (run dedicada) =====
     { id = "grimorio_bolso",   steam = "ACH_GRIMORIO_BOLSO",   tier = "build",
       name = "Grimorio de Bolso", desc = "Venca com um deck de 6 cartas ou menos." },
     { id = "enciclopedia",     steam = "ACH_ENCICLOPEDIA",     tier = "build",
@@ -59,7 +33,6 @@ return {
     { id = "sem_rascunhos",    steam = "ACH_SEM_RASCUNHOS",    tier = "build",
       name = "Sem Rascunhos", desc = "Venca sem nunca usar a Forja." },
 
-    -- ===== MAESTRIA (skill) =====
     { id = "relampago",        steam = "ACH_RELAMPAGO",        tier = "skill",
       name = "Relampago Selado", desc = "Venca uma batalha antes de o inimigo agir." },
     { id = "fio_navalha",      steam = "ACH_FIO_NAVALHA",      tier = "skill", hidden = true,
@@ -81,7 +54,6 @@ return {
     { id = "velas_10k",        steam = "ACH_VELAS_10K",        tier = "skill",
       name = "Dez Mil Velas", desc = "Alcance 10.000 pontos numa corrida." },
 
-    -- ===== LEGADO (longo prazo) =====
     { id = "escriba",          steam = "ACH_ESCRIBA",          tier = "collection",
       name = "Escriba Incansavel", desc = "Jogue 2500 cartas (somando corridas).",
       progress = { stat = "cardsPlayed", target = 2500 } },
@@ -98,8 +70,6 @@ return {
       name = "Alem da Ultima Pagina", desc = "Alcance o andar 10 do modo infinito.",
       progress = { stat = "bestEndlessFloor", target = 10 } },
 
-    -- ===== POS-JOGO (Out/2026): endless em ciclos + Selos do Grimorio =====
-    -- Marcos do endless contam ANDARES (8 por ciclo): o ciclo 3 fecha no 24.
     { id = "ciclo_3",          steam = "ACH_CICLO_3",          tier = "collection",
       name = "Tres Voltas", desc = "Feche o ciclo 3 do modo infinito.",
       progress = { stat = "bestEndlessFloor", target = 24 } },

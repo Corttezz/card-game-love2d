@@ -1,23 +1,11 @@
--- src/ui/card/components/joker/JokerHeader.lua
--- Banner ornamentado do nome em tema TAROT (navy + dourado).
--- Compartilha o mesmo padrão de raridade do CardHeader, mas com paleta diferente:
---   - Fundo TAROT_NAVY em vez de INK
---   - Filete TAROT_GOLD em vez de AGED_GOLD
---   - Texto TAROT_CREAM
---   - Ornamentos por raridade (diamond / leaf / ruby / medallion)
-
 local Palette     = require("src.ui.Palette")
 local PixelCanvas = require("src.ui.PixelCanvas")
 local PixelFont   = require("src.ui.PixelFont")
 
 local JokerHeader = {}
 
-JokerHeader.HEIGHT = 16  -- mantido pequeno pra preservar área do art slot
+JokerHeader.HEIGHT = 16
 
--- Cache de fundos PNG de banner joker por raridade.
--- Paths: assets/sprites/ui/banner_joker_<rarity>.png (fallback: banner_<rarity>.png)
--- Retorna { image, quad, srcW, srcH } com bottom 4 rows recortados (mesma razão
--- do CardHeader: a borda inferior do PNG cria "shelf" feio sob o art slot).
 local _bannerCache  = {}
 local _bannerMisses = {}
 function JokerHeader._getBannerBg(rarity)
@@ -91,8 +79,6 @@ local function styleFor(rarity)
     end
 end
 
--- ===== End-cap ornaments =====
-
 local function drawDiamondSimple(cx, cy, st)
     PixelCanvas.pixel(cx,     cy - 1, st.accentHi)
     PixelCanvas.pixel(cx - 1, cy,     st.accent)
@@ -128,13 +114,11 @@ local function drawRuby(cx, cy, st)
 end
 
 local function drawMedallion(cx, cy, st)
-    -- Medalhão compacto 3x3 (menor que CardHeader pra dar espaço pro nome no joker)
     PixelCanvas.pixel(cx,     cy - 1, st.accent)
     PixelCanvas.pixel(cx - 1, cy,     st.accent)
     PixelCanvas.pixel(cx,     cy,     st.accentHi)
     PixelCanvas.pixel(cx + 1, cy,     st.accent)
     PixelCanvas.pixel(cx,     cy + 1, Palette.AGED_GOLD_DARK)
-    -- Halo (4 pixels nos diagonais externos)
     PixelCanvas.pixel(cx - 1, cy - 1, st.gem)
     PixelCanvas.pixel(cx + 1, cy - 1, st.gem)
     PixelCanvas.pixel(cx - 1, cy + 1, Palette.AGED_GOLD_DARK)
@@ -148,8 +132,6 @@ local function drawEndCap(kind, cx, cy, st)
     else                            drawDiamondSimple(cx, cy, st)
     end
 end
-
--- ===== Top trim =====
 
 local function drawTopDotsSimple(bx, by, bw, st)
     for i = 0, 2 do
@@ -235,20 +217,16 @@ end
 function JokerHeader.draw(w, cardName, rarity)
     local h  = JokerHeader.HEIGHT
     local st = styleFor(rarity)
-    local bx, by = 13, 1 + 3   -- + CardFrame.TOP_INSET
+    local bx, by = 13, 1 + 3
     local bw, bh = w - 26, h - 1
 
-    -- Tenta carregar PNG de fundo joker por raridade
     local bgEntry = JokerHeader._getBannerBg(rarity)
     if bgEntry then
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.draw(bgEntry.image, bgEntry.quad, bx, by, 0,
                            bw / bgEntry.srcW, bh / bgEntry.srcH)
-        -- NÃO desenha sombra externa nem ornamentos por cima
     else
-        -- Fallback procedural: sombra + navy + bevel
         PixelCanvas.rect(bx + 1, by + bh, bw, 1, { 0, 0, 0, 0.6 })
-        -- Fallback procedural limpo: navy + bevel duplo + ornamentos por raridade
         PixelCanvas.rect(bx, by, bw, bh, Palette.TAROT_NAVY)
         PixelCanvas.rectOutline(bx, by, bw, bh, st.outer)
         PixelCanvas.rectOutline(bx + 1, by + 1, bw - 2, bh - 2, Palette.TAROT_GOLD_DARK)
@@ -260,8 +238,6 @@ function JokerHeader.draw(w, cardName, rarity)
         drawBottomTrim(rarity, bx, by, bw, bh, st)
     end
 
-    -- ===== TEXTO =====
-    -- Tenta tamanhos 10 → 9 → 8 → 7 antes de truncar (preserva nome quando possivel).
     local utf8 = require("utf8")
     local name = cardName or "?"
     local maxW = bw - 12
@@ -274,7 +250,6 @@ function JokerHeader.draw(w, cardName, rarity)
         end
     end
     if not font then
-        -- Truncate por codepoint UTF-8 no menor tamanho
         font = PixelFont.get(7)
         local out = name
         local suffix = "."
@@ -291,7 +266,6 @@ function JokerHeader.draw(w, cardName, rarity)
     local tx = bx + math.floor((bw - tw) / 2)
     local ty = by + math.floor((bh - font:getHeight()) / 2)
 
-    -- Outline preto
     love.graphics.setColor(0, 0, 0, 1)
     for dx = -1, 1 do
         for dy = -1, 1 do
@@ -300,7 +274,6 @@ function JokerHeader.draw(w, cardName, rarity)
             end
         end
     end
-    -- Texto sempre cream (mantém legibilidade — raridade muda só os ornamentos)
     love.graphics.setColor(Palette.TAROT_CREAM)
     love.graphics.print(name, tx, ty)
 end

@@ -1,40 +1,18 @@
--- src/ui/ClassSelectLayout.lua
--- PLANO DE ZONAS da seleção de classe v4 (Out/2026, "página do grimório").
--- O dono achou a v3 poluída (três painéis iguais, muito rótulo, tudo de uma
--- vez — "cara de IA"). A v4 é ASSIMÉTRICA e mostra UMA classe por vez:
---
---   ┌───────────────────────────────────────────────┐
---   │ ‹ menu      [<] selo [>]    ┌───────────────┐ │
---   │                             │  (cabeçalho)  │ │
---   │         HERÓI               │  NOME         │ │
---   │   (emblema grande,      [▸] │  identidade   │ │
---   │    efeito da classe)  marca │  passiva      │ │
---   │                             │  ♥ ◆ ▤        │ │
---   │   ◇  ◇  ◇                   │   [COMEÇAR]   │ │
---   └─────────────────────────────┴───────────────┘─┘
---      escolha                        página
---
--- Cada elemento mora numa BANDA; quando falta espaço cede a escala do
--- emblema e o tamanho da fonte, não a posição. compute() é PURO (só
--- aritmética sobre sw/sh, no espaço VIRTUAL do UiScale) e validate() é
--- rodado pelo test_class_select e pelo test_endless_seals.
-
 local L = {}
 
 L.BACK_H = 28
-L.CHOOSER_H = 108          -- faixa das três classes (emblemas pequenos)
+L.CHOOSER_H = 108
 L.SEAL_MIN_W = 210
-L.TAB_W, L.TAB_H = 30, 120  -- marcador "detalhes" (fita vertical na borda da página)
+L.TAB_W, L.TAB_H = 30, 120
 L.CTA_H = 40
 L.EMBLEM_MIN = 120
-L.CARD_W_SRC, L.CARD_H_SRC = 96, 144   -- canvas da carta (cartas iniciais nos detalhes)
-L.HELP_R = 13               -- raio do "?" do corvo (HelpBadge), à direita da escolha
+L.CARD_W_SRC, L.CARD_H_SRC = 96, 144
+L.HELP_R = 13
 
 local function rect(x, y, w, h)
     return { x = math.floor(x), y = math.floor(y), w = math.floor(w), h = math.floor(h) }
 end
 
--- Tamanhos de fonte da tela: SÓ DOIS (grande = nome, corpo = o resto).
 function L.fonts(sw, sh)
     local small = sw < 900 or sh < 620
     return small and 20 or 24, small and 10 or 12
@@ -47,8 +25,6 @@ function L.compute(sw, sh, n)
     out.margin = M
     out.bigFont, out.bodyFont = L.fonts(sw, sh)
 
-    -- PÁGINA (direita): 40% da largura, altura quase toda; o pé deixa folga
-    -- pra fita do COMEÇAR, que pende 10 px pra fora do papel.
     local pw = math.floor(math.min(560, math.max(300, sw * 0.40)))
     local ph = sh - 2 * M - 12
     out.page = rect(sw - M - pw, M, pw, ph)
@@ -56,19 +32,14 @@ function L.compute(sw, sh, n)
     out.pageInner = rect(out.page.x + pad, out.page.y + pad, pw - 2 * pad, ph - 2 * pad - L.CTA_H)
     local ctaW = math.floor(pw * 0.72)
     out.start = rect(out.page.x + (pw - ctaW) / 2, out.page.y + ph - L.CTA_H + 2, ctaW, L.CTA_H)
-    -- marcador de DETALHES: fita vertical presa na borda esquerda da página
     out.details = rect(out.page.x - L.TAB_W + 6, out.page.y + math.floor(ph * 0.16), L.TAB_W, L.TAB_H)
 
-    -- ZONA ESQUERDA: voltar no alto, herói no meio, escolha + selo no pé
     local zx, zr = M, out.details.x - 16
     out.back = rect(M, M, (sw < 900) and 170 or 200, L.BACK_H)
     local chooserY = sh - M - L.CHOOSER_H
     local heroTop = M + L.BACK_H + 16
     out.hero = rect(zx, heroTop, zr - zx, chooserY - 12 - heroTop)
 
-    -- Emblemas pequenos: 20% da zona esquerda (era 17%; o dono achou os de
-    -- 1024x768 "pequenos" — lá 89 → 104 px, +17%). O teto de 104 segue o
-    -- mesmo, então de 1280 pra cima nada muda; só as janelas estreitas crescem.
     local md = math.floor(math.max(64, math.min(104, (zr - zx) * 0.20)))
     local gap = math.floor(md * 0.30)
     out.medallions = {}
@@ -77,16 +48,10 @@ function L.compute(sw, sh, n)
     end
     local chooserW = n * md + (n - 1) * gap
     out.chooser = rect(zx, chooserY, chooserW, L.CHOOSER_H)
-    -- "?" do corvo narrador: à direita da faixa das classes (caixa clicável do
-    -- HelpBadge.rect = raio + 3 de folga). Mora no layout pra o validate()
-    -- garantir que o emblema maior não o empurra pra cima do marcador/página.
     local hr = L.HELP_R + 3
     out.help = rect(out.chooser.x + out.chooser.w + 28 + L.HELP_R - hr,
         chooserY + L.CHOOSER_H / 2 - hr, 2 * hr, 2 * hr)
 
-    -- SELO: no alto da zona esquerda, alinhado à direita (o voltar fica na
-    -- ponta oposta). Só existe com selo liberado — a tela decide; a banda é
-    -- reservada sempre.
     local sealH = 40
     local sealW = math.min(400, zr - (M + ((sw < 900) and 190 or 220)))
     out.seal = rect(zr - sealW, M - 6, sealW, sealH)
@@ -104,7 +69,6 @@ local function overlaps(a, b)
     return a.x < b.x + b.w and b.x < a.x + a.w and a.y < b.y + b.h and b.y < a.y + a.h
 end
 
--- Retorna ok, { erros... }
 function L.validate(lay)
     local errs = {}
     local function err(msg) errs[#errs + 1] = msg end

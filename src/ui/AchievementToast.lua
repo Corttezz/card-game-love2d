@@ -1,18 +1,3 @@
--- src/ui/AchievementToast.lua
--- Aviso de conquista desbloqueada, desenhado por cima de QUALQUER estado
--- (main.lua chama update/draw no fim do frame, abaixo so do cursor).
---
--- Antes era uma linha no MessageSystem ("CONQUISTA: X!") misturada com os
--- toasts de combate. Agora e um cartao proprio, no idioma escuro-dourado
--- (UiPanel), com o EMBLEMA da conquista — o momento tem identidade:
---   desce do topo (backOut) → emblema "carimba" (escala 1.35 → 1) com um aro
---   de luz → um brilho atravessa o cartao → segura → sobe.
--- Fila: varias conquistas no mesmo frame (comum na vitoria) aparecem uma
--- por vez, nunca empilhadas por cima uma da outra.
---
--- reducedMotion remove MOVIMENTO, nunca INFORMACAO: sem descida/carimbo, o
--- cartao aparece parado e some com fade.
-
 local Easing = require("engine.Easing")
 local Palette = require("src.ui.Palette")
 
@@ -58,12 +43,11 @@ function AchievementToast.update(dt)
     if current.t >= total() then current = nil end
 end
 
--- Geometria (pura, testavel): retangulo do cartao para a janela atual.
 function AchievementToast.rect(sw, sh)
     local w = math.min(460, math.floor(sw - 32))
     local h = 84
     local x = math.floor((sw - w) / 2)
-    local y = 60   -- abaixo da TopBar (52) + respiro
+    local y = 60
     if sh < 420 then y = 8 end
     return x, y, w, h
 end
@@ -76,7 +60,6 @@ function AchievementToast.draw()
     local t = c.t
     local rm = reducedMotion()
 
-    -- Entrada / saida.
     local alpha, dy = 1, 0
     if t < AchievementToast.IN then
         local k = t / AchievementToast.IN
@@ -89,7 +72,6 @@ function AchievementToast.draw()
     y = math.floor(y + dy)
 
     love.graphics.push("all")
-    -- Cartao (gramatica UiPanel com alpha).
     love.graphics.setColor(0, 0, 0, 0.45 * alpha)
     love.graphics.rectangle("fill", x + 4, y + 4, w, h, 6, 6)
     love.graphics.setColor(0.10, 0.07, 0.05, 0.96 * alpha)
@@ -103,7 +85,6 @@ function AchievementToast.draw()
     love.graphics.setLineWidth(1)
     love.graphics.rectangle("line", x + 4, y + 4, w - 8, h - 8, 4, 4)
 
-    -- Brilho que atravessa o cartao uma vez (logo depois do carimbo).
     local sweepT = (t - AchievementToast.IN) / 0.7
     if not rm and sweepT > 0 and sweepT < 1 then
         love.graphics.setScissor(x, y, w, h)
@@ -113,15 +94,13 @@ function AchievementToast.draw()
         love.graphics.setScissor()
     end
 
-    -- Emblema "carimbado".
-    local icon = 64   -- 1:1 com o PNG (pixel nitido)
+    local icon = 64
     local ex, ey = x + 14 + icon / 2, y + h / 2
     local stamp = 1
     if not rm and t < AchievementToast.IN + 0.25 then
         local k = math.min(1, math.max(0, (t - AchievementToast.IN * 0.6) / 0.35))
         stamp = 1.35 - 0.35 * Easing.backOut(k)
     end
-    -- aro de luz que expande no carimbo
     local ringK = (t - AchievementToast.IN * 0.6) / 0.6
     if not rm and ringK > 0 and ringK < 1 then
         local gl = Palette.AGED_GOLD_LIGHT
@@ -131,7 +110,6 @@ function AchievementToast.draw()
     end
     require("src.ui.AchievementIcons").draw(c.id, false, ex, ey, icon * stamp, alpha)
 
-    -- Texto: rotulo + nome (+ descricao curta).
     local I18n = require("src.i18n.I18n")
     local TextFit = require("src.ui.TextFit")
     local tx = x + 14 + icon + 14
@@ -150,7 +128,6 @@ function AchievementToast.draw()
     love.graphics.pop()
 end
 
--- Testes: estado atual.
 function AchievementToast._current() return current end
 
 return AchievementToast

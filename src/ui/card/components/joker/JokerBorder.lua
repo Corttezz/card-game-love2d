@@ -1,14 +1,8 @@
--- src/ui/card/components/joker/JokerBorder.lua
--- Borda do joker (tarot) — mesma densidade do CardBorder, mas tema navy + gold.
--- Reutiliza os mesmos PNGs ornamentais (corner_flourish, knotwork_strip,
--- vertical_divider, edge_medallion, wear_overlay).
-
 local Palette     = require("src.ui.Palette")
 local PixelCanvas = require("src.ui.PixelCanvas")
 
 local JokerBorder = {}
 
--- Cache de sprites PixelLab
 local _sprites = {}
 local _loaded = false
 local function loadSprites()
@@ -50,7 +44,6 @@ local function drawRotatedSprite(img, rot, x, y, w, h)
     end
 end
 
--- ===== Rarity corner brackets (igual CardBorder mas com paleta tarot) =====
 local function drawCorner(ox, oy, dx, dy, size, mainColor, highlightColor, gem, sparkle)
     for i = 0, size - 1 do
         PixelCanvas.pixel(ox + dx * i, oy, mainColor)
@@ -105,24 +98,15 @@ end
 function JokerBorder.draw(w, h, rarity)
     local sprites = loadSprites()
 
-    -- CAMADAS BASE — tarot navy escuro + filete dourado
-    -- 1) Outline INK
     PixelCanvas.rectOutline(0, 0, w, h, Palette.INK)
-    -- 2) Navy escuro
     PixelCanvas.rectOutline(1, 1, w - 2, h - 2, Palette.TAROT_NAVY_DARK)
     PixelCanvas.rectOutline(2, 2, w - 4, h - 4, Palette.TAROT_NAVY_DARK)
-    -- 3) Navy mid
     PixelCanvas.rectOutline(3, 3, w - 6, h - 6, Palette.TAROT_NAVY)
-    -- 4) Navy escuro (sombra)
     PixelCanvas.rectOutline(4, 4, w - 8, h - 8, Palette.TAROT_NAVY_DARK)
-    -- 5) INK
     PixelCanvas.rectOutline(5, 5, w - 10, h - 10, Palette.INK)
-    -- 6) Gold tarot brilhante
     PixelCanvas.rectOutline(6, 6, w - 12, h - 12, Palette.TAROT_GOLD)
-    -- 7) Gold tarot dark (relevo)
     PixelCanvas.rectOutline(7, 7, w - 14, h - 14, Palette.TAROT_GOLD_DARK)
 
-    -- KNOTWORK STRIP PNG top + bottom
     if sprites.knotwork_strip then
         local strip = sprites.knotwork_strip
         local sw, sh = strip:getWidth(), strip:getHeight()
@@ -135,7 +119,6 @@ function JokerBorder.draw(w, h, rarity)
         love.graphics.draw(strip, 8, h - 1, 0, scaleX, -scaleY)
     end
 
-    -- VERTICAL DIVIDERS laterais
     if sprites.vertical_divider then
         local div = sprites.vertical_divider
         local dw, dh = 6, math.min(h - 32, 60)
@@ -144,7 +127,6 @@ function JokerBorder.draw(w, h, rarity)
         love.graphics.draw(div, w - 1 - dw, 20, 0, dw / sw, dh / sh)
     end
 
-    -- EDGE MEDALLIONS nos meios
     if sprites.edge_medallion then
         local med = sprites.edge_medallion
         local ms = 10
@@ -156,7 +138,6 @@ function JokerBorder.draw(w, h, rarity)
         love.graphics.draw(med, w - ms, math.floor((h - ms) / 2), 0, s, s)
     end
 
-    -- CORNER FLOURISHES
     if sprites.corner_flourish then
         local cw, ch = 18, 18
         drawRotatedSprite(sprites.corner_flourish, 0, 0, 0, cw, ch)
@@ -165,7 +146,6 @@ function JokerBorder.draw(w, h, rarity)
         drawRotatedSprite(sprites.corner_flourish, 3, 0, h - ch, cw, ch)
     end
 
-    -- WEAR OVERLAY (apenas 12% alpha pra joker — tarot card é mais limpo)
     if sprites.wear_overlay then
         love.graphics.setColor(1, 1, 1, 0.12)
         love.graphics.draw(sprites.wear_overlay, 0, 0, 0,
@@ -174,7 +154,6 @@ function JokerBorder.draw(w, h, rarity)
         love.graphics.setColor(1, 1, 1, 1)
     end
 
-    -- Rarity: substitui filete interno por corner brackets ornamentais
     drawRarityCorners(w, h, rarity)
 end
 

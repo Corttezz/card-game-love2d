@@ -1,6 +1,3 @@
--- src/i18n/locales/en.lua
--- English locale (fallback global p/ qualquer chave ausente em outros locales).
-
 return {
     boot = {
         loading         = "LOADING...",
@@ -30,7 +27,6 @@ return {
         master      = "Master",
         fullscreen  = "Fullscreen",
         crt_shader  = "CRT Shader",
-        -- níveis do CRT (Vídeo): Desligado / Baixo / Normal
         crt_off = "Off",
         crt_low = "Low",
         crt_normal = "Normal",
@@ -41,7 +37,6 @@ return {
         on          = "ON",
         off         = "OFF",
         close       = "CLOSE",
-        -- v3 (Oct/2026): tabs + [<] value [>] controls
         tab_audio   = "Audio",
         tab_video   = "Video",
         tab_game    = "Game",
@@ -67,7 +62,6 @@ return {
         record        = "Best {score} pts · Seal {seal} won · Endless floor {floor}",
     },
 
-    -- Requisitos de liberação de classe (UnlockSystem.getClassUnlockInfo.reqKey)
     unlock = {
         class = {
             default   = "Unlocked",
@@ -79,7 +73,6 @@ return {
     battle = {
         your_turn  = "YOUR TURN",
         enemy_turn = "ENEMY TURN",
-        -- ComboBanner: titulo da faixa + ganho do combo de orbe.
         combo       = "COMBO!",
         combo_evoke = "+{n} orb evoked",
     },
@@ -113,7 +106,6 @@ return {
         no_run          = "No journey in progress",
         hint            = "ARROWS move · ENTER selects · ESC resumes",
         hint_confirm    = "ARROWS pick · ENTER confirms · ESC cancels",
-        -- v3 (Oct/2026): run summary + shortcuts
         info_class      = "CLASS",
         info_journey    = "JOURNEY",
         info_journey_value = "Act {act} · {floor}/{total}",
@@ -145,7 +137,6 @@ return {
         take = "Take",
     },
 
-    -- Diálogo de confirmação genérico (src/ui/ConfirmDialog.lua)
     confirm = {
         new_run_title = "Start a new run?",
         new_run_body  = "You have a run in progress. Starting another one erases the saved run forever.",
@@ -159,7 +150,6 @@ return {
         ok = "OK",
     },
 
-    -- Tela de créditos (components/CreditsScreen.lua) — link no rodapé do menu
     credits = {
         link          = "Credits",
         title         = "CREDITS",
@@ -210,7 +200,6 @@ return {
         buff_gain = "+2 DMG",
     },
 
-
     acts = {
         act1      = "Catacombs",
         act2      = "Stone Tower",
@@ -233,7 +222,6 @@ return {
         event     = { label = "Event",     desc = "Mysterious encounter. Take the risk." },
     },
 
-    -- Loja v3 (Balcão do Mercador): objetos do balcão e oferta do dia.
     shop = {
         dice_cup = {
             name        = "Scribe's Dice",
@@ -252,9 +240,6 @@ return {
         pack_arcana    = { name = "Seer's Reliquary",      desc = "3 choice cards; pick 1. The eye already knows which." },
         pack_celestial = { name = "Astrologer's Coffer",   desc = "3 choice cards; pick 1. Kept under a fixed sky." },
         pack_spectral  = { name = "Gravedigger's Shroud",  desc = "2 cards, none common; choose 1. Few, and heavy all the same." },
-        -- RELICS (shop upgrades): `effect` is the number that fits the tile
-        -- chip (uppercase), `desc` explains it in one line, `flavor` is the
-        -- grimoire line shown in the detail panel.
         health_upgrade = {
             name   = "Vital Elixir",
             effect = "+{value} MAX HP",
@@ -273,7 +258,6 @@ return {
             desc   = "Upgrades one card in your deck. You pick which one when you buy.",
             flavor = "The hammer remembers what the page forgot.",
         },
-        -- SERVICES (Sep/2026): relics that alter the run, not a single battle.
         remove_card    = {
             name   = "Shears",
             effect = "-1 CARD",
@@ -312,8 +296,6 @@ return {
     },
 
     achievements = {
-        -- GERADO por tools/achievement_text.py (texto-fonte dos 5
-        -- idiomas e do painel da Steam). Edite la, nao aqui.
         list = {
             primeiro_chefe = { name = "Broken Crown", desc = "Defeat your first boss." },
             capitulo_final = { name = "The Third Chapter", desc = "Defeat the Act 3 boss." },
@@ -379,18 +361,12 @@ return {
         jokers_bench = "+{n} benched",
     },
 
-    -- Short labels for the orb row (src/ui/OrbRow.lua): what the orb DID when it
-    -- left its slot. Evoking is the player's choice; being pushed out is the
-    -- full row making room -- two different events, two labels.
     orb = {
         evoked   = "EVOKED",
         expelled = "PUSHED OUT",
     },
 
-    -- Campfire + card picker (components/RestScreen.lua). The picker serves
-    -- THREE modes: forge (campfire/shop), remove and duplicate (events).
     rest = {
-        -- Campfire menu
         camp_title   = "Campsite",
         camp_sub     = "The fire crackles. Catch your breath or work the steel.",
         camp_hint    = "Choose: rest OR forge (once per campsite)",
@@ -402,35 +378,29 @@ return {
         forge_detail = "Improves what the card HAS (no cap)",
         heal_full    = "Full HP: resting heals nothing",
 
-        -- Picker: forge
         pick_forge_title = "Forge",
         pick_forge_sub   = "Choose a card to upgrade.",
         pick_forge_hint  = "Click a card to forge. Back cancels.",
         pick_forge_empty = "No card in the grimoire can go to the anvil right now.",
 
-        -- Picker: remove
         pick_remove_title = "Remove card",
         pick_remove_sub   = "Choose a card to REMOVE from the grimoire (permanent).",
         pick_remove_hint  = "Click a card to remove. Back cancels.",
         pick_remove_empty = "The grimoire has no pages left to tear out.",
 
-        -- Picker: duplicate
         pick_dup_title = "Duplicate card",
         pick_dup_sub   = "Choose a card to gain a COPY of it.",
         pick_dup_hint  = "Click a card to duplicate. Back cancels.",
         pick_dup_empty = "The grimoire is empty.",
 
-        -- Grid pagination
         page_prev = "< Previous",
         page_next = "Next >",
 
-        -- Anvil panel (hover) + delta plate
         warn_remove = "Leaves the grimoire FOREVER.",
         warn_dup    = "You gain ANOTHER copy of it.",
         hp_abbr     = "HP",
         forge_level = "Forge",
 
-        -- Results
         remove_too_thin = "The grimoire is too thin to lose pages.",
         removed         = "Removed from the grimoire: {name}",
         duplicated      = "Copy created: {name}",
@@ -462,7 +432,6 @@ return {
         unknown = "CARD",
     },
 
-    -- Booster pack opening (kind name, counter, hint, detail chips)
     pack = {
         kind_standard  = "Merchant's Bundle",
         kind_buffoon   = "Harlequin's Case",
@@ -528,9 +497,6 @@ return {
     },
 
     events = {
-        -- Vocabulario COMPARTILHADO dos rotulos [+x / -y]. Uma so
-        -- traducao por conceito, usada por todos os eventos: e o que
-        -- impede 'HP' e 'PV' de conviverem na mesma tela.
         tokens = {
             card_legendary = "LEGENDARY card",
             card_potion    = "Healing Potion card",
@@ -560,7 +526,6 @@ return {
             heal_full = "full heal",
         },
 
-        -- Eventos de bioma (Out/2026)
         espantalho_falante = {
             title = "Talking Scarecrow",
             body = "A scarecrow turns its sack head toward you. 'I'll trade one of your pages for one from the harvest. Or take my straw... for gold.'",
@@ -915,7 +880,6 @@ return {
         final_score  = "Final Score: {score}",
     },
 
-    -- Telas finais v2 (Out/2026): botões, resumo da run e Endless.
     end_screen = {
         defeat_title    = "GAME OVER",
         defeat_sub      = "Defeated by {enemy}",
@@ -963,7 +927,6 @@ return {
         },
     },
 
-    -- Revelações do menu depois da corrida (UnlockShowcase, estilo Balatro).
     unlock_showcase = {
         title_card        = "New card unlocked!",
         title_class       = "New class!",
@@ -984,7 +947,6 @@ return {
     play_button = { label = "Play Cards", end_turn = "End Turn" },
 
     window_title = "Grimoire",
-    -- Tela de erro fatal (src/core/Release.lua). Sem dependencia de fonte do jogo.
     crash = {
         title    = "Something went wrong",
         body     = "The game hit an unexpected error and needs to close. Progress saved up to the last floor is safe.",
@@ -994,9 +956,6 @@ return {
     },
 
     effects = {
-        -- Auditoria de cartas (Out/2026): linha de efeito do painel de detalhe.
-        -- Mesmo vocabulario das descricoes de carta; {pct} = percentual do
-        -- multiplicador; compostos por orbType/debuffName/value (I18n.effectDesc).
         damage_multiplier          = "+{pct}% damage on attack cards",
         defense_multiplier         = "+{pct}% Block on defense cards",
         damage_bonus               = "+{value} damage on attack cards",
@@ -1073,7 +1032,6 @@ return {
         topbar_config = { name = "Pause Menu", desc = "Pauses the journey: settings, save and quit to menu, or abandon the run." },
         scribe_dice_help = { name = "Scribe's Dice", desc = "One bet per visit: click the dice cup on the counter. This button opens the raven's explanation." },
         reward_rules = { name = "How offers work", desc = "Offered cards belong to YOUR class. Quality improves each act, and every offer without a RARE raises the next one's odds (after a long dry streak, a rare is guaranteed). Cards marked AFFINITY match your deck's strong tags. Cards you already own in copies show up less often." },
-        -- Loja v3: tooltips dos objetos do balcão (foco = hover)
         shop_bell   = { name = "Bell: new offers", desc = "Ring the bell and the merchant restocks both shelves. Costs ${n} on this visit and rises by $2 each ring." },
         shop_ledger = { name = "Ledger", desc = "Closes the account and moves on. Leaving the shop pays +${bonus} gold." },
         shop_dice   = { name = "Dice cup", desc = "The Scribe's Dice: one wager per visit. Click to open the table." },
@@ -1090,8 +1048,6 @@ return {
         orb_holy      = { name = "Holy Orb",       desc = "Pulses {stacks} healing at end of your turn. Evoke heals {duration} HP." },
         orb_empty     = { name = "Orb Slot",       desc = "Empty. Channel cards create orbs here (max {stacks}). When full, channeling evokes the oldest." },
         burn       = { name = "Burn",       desc = "Deals {stacks} fire damage at end of turn, for {duration} turn(s)." },
-        -- States that changed the rules without ever showing up on screen.
-        -- `desc_permanent` = source is a joker/passive (no duration to show).
         thorn        = { name = "Thorns",
             desc = "Armed: when the enemy hits you, it takes {stacks} damage back. Lasts {duration} turn(s).",
             desc_permanent = "When the enemy hits you, it takes {stacks} damage back." },
@@ -1208,7 +1164,6 @@ return {
         pack_opened      = "{name} opened",
     },
 
-    -- ======== PRÉVIA DE DANO (Out/2026, src/ui/DamagePreviewPanel.lua) ========
     damage_preview = {
         lethal      = "LETHAL",
         absorbed    = "{n} into enemy Block",
@@ -1220,10 +1175,8 @@ return {
         with_card   = "+ {card}: {n}",
         more_cards  = "+{n} cards",
         combo_badge = "+COMBO",
-        -- placa resumo <-> detalhes (clique / V / foco+A)
         details_show = "show details",
         details_hide = "hide details",
-        -- o que cada combo faz (tooltip no painel; {v}/{max} vem da regra)
         combo_desc  = {
             volley = "Each attack after the first in the same play: +{v} damage per earlier attack (up to +{max}).",
             wall   = "Each defense after the first in the same play: +{v} Block per earlier defense (up to +{max}).",
@@ -1231,8 +1184,6 @@ return {
         },
     },
 
-    -- ======== COMBOS (ComboSystem rule labels) ========
-    -- Rebalance v2 (Jul/2026): includes the new 'tempestade' and 'zero_absoluto'.
     combos = {
         volley = "Volley",
         wall   = "Wall",
@@ -1333,7 +1284,6 @@ return {
         rogue_envenom           = { name = "Envenom",           desc = "Every attack card applies {stacks} Poison for {duration} turns." },
         rogue_storm_of_steel    = { name = "Storm of Steel",    desc = "Deal {atk} damage. Draw {value} card." },
 
-        -- ===== NEW (2026-04-20): orphan icons repurposed =====
         warrior_plate_mail      = { name = "Chain Mail",             desc = "Gain {def} Block. Gain {value} Dexterity." },
         warrior_helm_of_valor   = { name = "Helm of Valor",          desc = "Gain {def} Block. Heal {value} HP." },
         warrior_second_heart    = { name = "Lacerated Heart",        desc = "Regen {value} HP at the start of each turn." },
@@ -1365,7 +1315,6 @@ return {
         joker_combo_wall        = { name = "Shield Wall", desc = "Wall is worth ×{value}." },
         joker_combo_pair        = { name = "Twin Mirror", desc = "Pair is worth ×{value}." },
 
-        -- ===== REBALANCE v2 (Jul/2026): 12 new cards =====
         warrior_taunt           = { name = "Taunt",                  desc = "Gain {def} Block. Apply Weak for {duration} turns." },
         warrior_battle_orders   = { name = "Battle Orders",          desc = "Draw {value} cards. Gain {value2} Strength." },
         warrior_adrenaline_rush = { name = "Adrenaline Rush",        desc = "Lose {value} HP. Restore {value2} mana and draw {value3} card. Exhaust." },
@@ -1380,14 +1329,12 @@ return {
         rogue_toxin_master      = { name = "Toxin Master",           desc = "Every attack card applies {stacks} Poison for {duration} turns." },
     },
 
-    -- Meta-progressão (UnlockSystem — frente progressão, Out/2026).
-    -- NÃO confundir com `unlock.class.*` (requisitos de classe, frente classes).
     unlocks = {
         toast_class = "NEW CLASS UNLOCKED: {name}!",
         toast_card  = "CARD UNLOCKED: {name}",
         locked       = "LOCKED",
         undiscovered = "UNDISCOVERED",
-        new_badge = "NEW",   -- selo da carta inédita na vitrine (DiscoveryMark)
+        new_badge = "NEW",
         discovered_count = "{n}/{total} discovered",
         hint = {
             mastery      = "{class} mastery, level {level}",
@@ -1425,7 +1372,6 @@ return {
         },
     },
 
-    -- Keyword glossary for the card tooltip (src/data/keywords.lua matches the words; this is the text shown)
     keyword = {
         sep = ": ",
         orb_lightning = { name = "Lightning Orb", text = "Channeled, it PULSES damage at the enemy at the end of your turn; evoking unleashes the full value." },
@@ -1446,16 +1392,12 @@ return {
         dexterity     = { name = "Dexterity", text = "+1 Block per point, this battle." },
     },
 
-    -- Kit dos inimigos (golpes nomeados, tooltip do intent, debuffs no jogador)
     enemy_kit = require("src.i18n.locales.enemy_kit.en"),
     boss_cinematics = require("src.i18n.locales.boss_cinematics.en"),
-    -- Onboarding: dicas ancoradas, Guia de combos/glossario, tooltip da mana
     tutorial = require("src.i18n.locales.tutorial.en"),
 
-    -- Dados do Escriba (aposta opcional da loja)
     scribe_dice = require("src.i18n.locales.scribe_dice.en"),
 
-    -- Selos do Grimório e maldições do endless (RunModifiers)
     seals = require("src.i18n.locales.run_modifiers.en").seals,
     seal_ui = require("src.i18n.locales.run_modifiers.en").seal_ui,
     endless_curses = require("src.i18n.locales.run_modifiers.en").endless_curses,

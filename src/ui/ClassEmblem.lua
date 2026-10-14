@@ -1,39 +1,17 @@
--- src/ui/ClassEmblem.lua
--- EMBLEMA da classe (Out/2026): o objeto icônico que representa cada
--- classe no lugar do herói chibi — sem personagem visível (o dono achou que
--- o boneco "abre margem para críticas"). Arte PixelLab 128×128 em
--- assets/sprites/emblems/<classe>.png; o idle é PROCEDURAL, aqui:
---   warrior — espada cravada no escudo: brilho que corre pela lâmina
---   mage    — orbe arcano: flutua, pulsa e solta faíscas em órbita
---   rogue   — adaga: gotas de veneno e sangue pingando da ponta + fio
---             frio correndo pela lâmina
--- Bloqueado = silhueta escura + correntes com cadeado (locked_chains.png),
--- sem animação nenhuma (a classe "dorme").
---
--- Uso:
---   ClassEmblem.update(dt)
---   ClassEmblem.draw("mage", cx, cy, boxH, { hover = 0..1, locked = bool, flash = 0..1,
---                                            tint = {r,g,b} })   -- tint: escurece (escolha pequena)
--- cx/cy = centro da caixa reservada ao emblema; boxH = altura da caixa.
--- O desenho NUNCA sai da caixa (escala quantizada em 1/4, pra a arte pixel
--- não deformar).
+local Debug = require("src.core.Debug")
 
 local RadialGlow = require("src.ui.RadialGlow")
 
 local ClassEmblem = {}
 
 ClassEmblem.PATH = "assets/sprites/emblems/"
-ClassEmblem.CANVAS = 128          -- tamanho de todos os PNGs de emblema
+ClassEmblem.CANVAS = 128
 ClassEmblem.IDS = { "warrior", "mage", "rogue" }
 
-local images = {}                 -- id -> { img, top, bottom, left, right, tipX, tipY } | false
-local states = {}                 -- id -> { t, drops, dropTimer, dropFlip }
+local images = {}
+local states = {}
 local shader, shaderTried = nil, false
 
--- ===== Assets =====
-
--- Mede o conteúdo real do PNG (bbox opaca) e a PONTA (pixel opaco mais
--- baixo) — a gota da adaga nasce ali, não num offset chutado.
 local function measure(data)
     local w, h = data:getDimensions()
     local top, bottom, left, right = h, -1, w, -1
@@ -62,13 +40,13 @@ function ClassEmblem.get(id)
     if images[id] ~= nil then return images[id] end
     local path = ClassEmblem.PATH .. tostring(id) .. ".png"
     if not love.filesystem.getInfo(path) then
-        print("[ClassEmblem] AVISO: emblema ausente: " .. path)
+        Debug.warn("[ClassEmblem] AVISO: emblema ausente: " .. path)
         images[id] = false
         return false
     end
     local okD, data = pcall(love.image.newImageData, path)
     if not okD or not data then
-        print("[ClassEmblem] AVISO: falha ao ler " .. path .. ": " .. tostring(data))
+        Debug.warn("[ClassEmblem] AVISO: falha ao ler " .. path .. ": " .. tostring(data))
         images[id] = false
         return false
     end
@@ -80,16 +58,13 @@ function ClassEmblem.get(id)
     return meta
 end
 
--- GRAVURA (seleção v4): o emblema redesenhado como traço de tinta — só o
--- contorno e as sombras do sprite, meio-tom em dither 2×2. É a "prancha" da
--- folha do grimório; a silhueta chapada lia como mancha.
 local engravings = {}
 function ClassEmblem.engraving(id)
     if engravings[id] ~= nil then return engravings[id] end
     local path = ClassEmblem.PATH .. tostring(id) .. ".png"
     local okD, src = pcall(love.image.newImageData, path)
     if not okD or not src then
-        print("[ClassEmblem] AVISO: gravura sem fonte: " .. path)
+        Debug.warn("[ClassEmblem] AVISO: gravura sem fonte: " .. path)
         engravings[id] = false
         return false
     end
@@ -120,9 +95,6 @@ function ClassEmblem.engraving(id)
     return img
 end
 
--- Shader de luz aditiva: acende só os pixels CLAROS do sprite (metal,
--- núcleo do orbe), opcionalmente numa faixa diagonal (brilho de lâmina).
--- A faixa é DURA (step), não gradiente — é pixel art, não vetor.
 local SHADER_SRC = [[
 extern number sweep;
 extern number bandW;
@@ -149,7 +121,7 @@ local function getShader()
     if ok then
         shader = s
     else
-        print("[ClassEmblem] AVISO: shader de brilho não compilou — emblemas sem brilho: " .. tostring(s))
+        Debug.warn("[ClassEmblem] AVISO: shader de brilho não compilou — emblemas sem brilho: " .. tostring(s))
     end
     return shader
 end
@@ -163,13 +135,6 @@ local function stateOf(id)
     return s
 end
 
--- Escala em meios-pixels que cabe na caixa (pelo conteúdo real).
--- Os emblemas escalam por uma ALTURA DE REFERÊNCIA, não pelo conteúdo de
--- cada um: escalar pelo conteúdo fazia o orbe (74px de altura) ficar 1.6×
--- maior que a espada — três objetos, três tamanhos de pixel. O orbe ganha
--- uma referência menor (fica ~25% maior que o "uniforme") pra não sumir
--- ao lado de objetos altos. Escala em passos de 1/4 (1/2 deixava a banda
--- meio vazia em 720p; 1/4 de pixel não se nota na arte 128px).
 ClassEmblem.EMBLEM_REF = { warrior = 124, rogue = 124, mage = 96 }
 
 function ClassEmblem.scaleFor(id, boxH, boxW)
@@ -184,9 +149,6 @@ function ClassEmblem.scaleFor(id, boxH, boxW)
     return math.max(0.5, s)
 end
 
--- ===== Update =====
-
--- `hovered` (opcional): { [id] = 0..1 } acelera o idle da classe em foco.
 function ClassEmblem.update(dt, hovered)
     for _, id in ipairs(ClassEmblem.IDS) do
         local s = stateOf(id)
@@ -199,15 +161,15 @@ function ClassEmblem.update(dt, hovered)
                 s.dropFlip = not s.dropFlip
                 table.insert(s.drops, {
                     t = 0, y = 0, vy = 0,
-                    poison = s.dropFlip,       -- alterna veneno / sangue
+                    poison = s.dropFlip,
                     dx = (math.random() < 0.5) and 0 or 1,
                 })
             end
             for i = #s.drops, 1, -1 do
                 local d = s.drops[i]
                 d.t = d.t + dt
-                if d.t > 0.45 then             -- pendurada 0.45s, depois cai
-                    d.vy = d.vy + 150 * dt     -- em px do SPRITE (escala fora)
+                if d.t > 0.45 then
+                    d.vy = d.vy + 150 * dt
                     d.y = d.y + d.vy * dt
                 end
                 if d.y > 34 then table.remove(s.drops, i) end
@@ -216,14 +178,11 @@ function ClassEmblem.update(dt, hovered)
     end
 end
 
--- ===== Draw =====
-
 local function drawShadow(cx, y, w, alpha)
     love.graphics.setColor(0, 0, 0, alpha)
     love.graphics.ellipse("fill", math.floor(cx), math.floor(y), w, math.max(2, w * 0.18))
 end
 
--- Retorna true se desenhou o emblema; false se o asset falta (já avisado).
 function ClassEmblem.draw(id, cx, cy, boxH, opts)
     opts = opts or {}
     local m = ClassEmblem.get(id)
@@ -236,7 +195,6 @@ function ClassEmblem.draw(id, cx, cy, boxH, opts)
     local s = ClassEmblem.scaleFor(id, boxH, opts.boxW)
     local cw = (m.right - m.left + 1)
     local ch = (m.bottom - m.top + 1)
-    -- canto do CANVAS tal que o conteúdo fique centrado na caixa
     local ox = math.floor(cx - (m.left + cw / 2) * s)
     local oy = math.floor(cy - (m.top + ch / 2) * s)
     local bob = 0
@@ -247,7 +205,6 @@ function ClassEmblem.draw(id, cx, cy, boxH, opts)
     local img = m.img
 
     if opts.locked then
-        -- SILHUETA: a classe existe, mas ainda não é sua.
         drawShadow(cx, footY + 2, cw * s * 0.36, 0.30)
         love.graphics.setColor(0.34, 0.29, 0.26, 1)
         love.graphics.draw(img, ox, oy, 0, s, s)
@@ -267,7 +224,6 @@ function ClassEmblem.draw(id, cx, cy, boxH, opts)
 
     local sh = getShader()
 
-    -- sombra no chão (o orbe flutua: sombra encolhe quando ele sobe)
     if id == "mage" then
         local k = 1 + bob / (8 * s)
         drawShadow(cx, footY + 6 * s, cw * s * 0.30 * k, 0.28)
@@ -275,7 +231,6 @@ function ClassEmblem.draw(id, cx, cy, boxH, opts)
         drawShadow(cx, footY + 1, cw * s * 0.40, 0.32)
     end
 
-    -- aura por trás (acende no hover)
     local glow = RadialGlow.get()
     love.graphics.setBlendMode("add")
     if id == "mage" then
@@ -292,18 +247,14 @@ function ClassEmblem.draw(id, cx, cy, boxH, opts)
     end
     love.graphics.setBlendMode("alpha")
 
-    -- o sprite
     local tint = opts.tint or { 1, 1, 1 }
     love.graphics.setColor(tint[1], tint[2], tint[3], 1)
     love.graphics.draw(img, ox, oy + bob, 0, s, s)
 
-    -- camada de luz procedural
     if sh then
         love.graphics.setBlendMode("add")
         love.graphics.setShader(sh)
         if id == "warrior" or id == "rogue" then
-            -- brilho correndo pela lâmina: 1 passada a cada ~3.4s (a adaga,
-            -- mais curta e fria, a cada ~2.6s — o "fio" que cintila)
             local period = (id == "rogue") and 2.6 or 3.4
             local ph = (t % period) / period
             if ph < 0.35 then
@@ -329,7 +280,6 @@ function ClassEmblem.draw(id, cx, cy, boxH, opts)
         love.graphics.setBlendMode("alpha")
     end
 
-    -- faíscas em órbita do orbe (pixels, não partículas suaves)
     if id == "mage" then
         local ocx = cx
         local ocy = oy + bob + (m.top + ch * 0.42) * s
@@ -345,10 +295,7 @@ function ClassEmblem.draw(id, cx, cy, boxH, opts)
         end
     end
 
-    -- gotas da adaga (veneno / sangue), em px do sprite
     if id == "rogue" then
-        -- gota = 2×3 px do sprite com contorno ink (lê sobre a lâmina
-        -- ensanguentada e sobre o fundo escuro do salão)
         for _, d in ipairs(st.drops) do
             local a = 1 - math.max(0, (d.y - 18) / 16)
             local grow = math.min(1, d.t / 0.45)
@@ -364,13 +311,11 @@ function ClassEmblem.draw(id, cx, cy, boxH, opts)
                 love.graphics.setColor(0.70, 0.10, 0.10, a)
             end
             love.graphics.rectangle("fill", x, y, math.ceil(gw), math.ceil(gh))
-            -- brilho de 1px (gota é líquido, não pedra)
             love.graphics.setColor(1, 1, 1, a * 0.45)
             love.graphics.rectangle("fill", x, y, math.max(1, math.floor(s * 0.75)), math.max(1, math.floor(s * 0.75)))
         end
     end
 
-    -- FLASH do momento da escolha
     if flash > 0.02 then
         love.graphics.setBlendMode("add")
         love.graphics.setColor(1, 1, 1, flash * 0.85)

@@ -1,19 +1,4 @@
--- src/ui/EnemyRenderer.lua
--- Renderiza o inimigo como sprite animado no canvas de gameplay.
--- Combina MÚLTIPLAS camadas visuais pra maximizar polish:
---
---   1. Sombra no chão — de CONTATO (apoiado) ou de ALTURA (flutuante),
---      conforme src/data/enemy_poses.lua
---   2. Partículas ambientais por ato (poeira/faíscas/névoa)
---   3. Animação pixellab real (frames) OU sprite estático
---   4. Idle bounce sutil (sin wave ±1px) — apoiados; flutuantes usam o bob
---      da pose no lugar dele
---   5. Micro tremor (±1px horizontal, nervosismo constante)
---   6. Pulse de cor (tint varia ±8% em sin lento)
---   7. Flash branco em hurt (overlay)
---   8. Outline glow em hurt (aura vermelha)
---
--- Todas as camadas são baratas (trig + draw) e combinadas criam sensação de "vida".
+local Debug = require("src.core.Debug")
 
 local SpriteAnimation = require("src.ui.SpriteAnimation")
 local LightEngine = require("engine.LightEngine")
@@ -21,25 +6,14 @@ local EnemyEmissives = require("src.data.enemy_emissives")
 local EnemyPoses = require("src.data.enemy_poses")
 local BossAura = require("src.ui.BossAura")
 
--- Acessibilidade: com reducedMotion o BOB do flutuante some, mas o HOVER
--- (a altura em si) permanece — altura diz o que a criatura É; balanço é
--- enfeite. Ver memory/ui_layout_invariants.md, corolário da regra 3.
 local function reducedMotion()
     return (_G.gameSettings and _G.gameSettings.reducedMotion) or false
 end
 
--- LightEngine v1.2: micro-luzes dos pixels EMISSIVOS do monstro (olhos,
--- chamas, cristais — src/data/enemy_emissives.lua). Pulso lento por âncora
--- (fases dessincronizadas), some na morte. sx/sy = topo-esq do sprite na
--- TELA (já transformado); z = profundidade na estrada (rel).
 local function submitEmissives(spriteId, sx, sy, iw, ih, scale, z, boost)
     local anchors = EnemyEmissives[spriteId]
     if not anchors or #anchors == 0 then return end
     local t = love.timer.getTime()
-    -- fase POR MONSTRO (hash do id): a criatura "respira" como um todo.
-    -- Fase por âncora deixava um olho a 72% e o outro a 100% no mesmo
-    -- frame — lia como "só um olho aceso" (feedback Jul/2026). O offset
-    -- por âncora é mínimo (0.3 rad), só pra não ficar mecânico.
     local seed = 0
     for i = 1, #spriteId do seed = (seed + spriteId:byte(i)) % 97 end
     for ai, a in ipairs(anchors) do
@@ -56,45 +30,26 @@ end
 
 local EnemyRenderer = {}
 
--- Cache de sprites estaticos (rotacoes south/east/west/north do create_character).
 local staticCache = {}
--- eixo do corpo por id (EnemyRenderer.bodyAxis) — declarado aqui porque
--- o clearCache, mais acima no arquivo, também o zera
 local axisCache = {}
 local staticMiss = {}
 
--- Estado da animacao corrente por enemyId
 local currentAnim = nil
 local currentEnemyId = nil
 local currentAnimName = nil
 local hurtTime = 0
--- Chefe na tela (spriteId) quando enemy.isBoss — o update da aura precisa
--- saber de quem emitir sem conhecer o game. Setado no draw.
 local auraId = nil
--- QUEDA do flutuante na MORTE (0 = no ar, 1 = no chão). Ver poseOffsetY.
--- Pedido do dono (Out/2026): quem voa, quando morre, CAI — o corpo termina
--- deitado no chão, não evaporando no ar. Era descida LINEAR de 0.7s (lia
--- como elevador); agora é GRAVIDADE: k = (t/dur)², impacto com quique
--- curto + poeira, e a margem de pé passa a ser a do QUADRO da death, com o
--- mesmo FOOT_SINK de quem pisa — o cadáver afunda 2-3px no piso e fica.
 local poseSink = 0
-local fallT = 0              -- s desde o início da death
-local landT = -1             -- s desde o impacto (-1 = ainda no ar)
+local fallT = 0
+local landT = -1
 EnemyRenderer.FALL_DUR = 0.42
-EnemyRenderer.FALL_DUR_REDUCED = 0.18   -- reducedMotion: queda curta, sem quique
+EnemyRenderer.FALL_DUR_REDUCED = 0.18
 local BOUNCE_DUR = 0.24
-local dust = {}              -- poeira do impacto (px de tela relativos ao pé)
+local dust = {}
 local lastDrawFloating = false
--- Quanto o pé de quem PISA afunda no chão, em px de tela. O dono pediu o pé
--- "um pouquinho mais pra baixo do chão" (Out/2026): base do sprite cravada
--- exatamente na linha lia como pairar — o contorno escuro do pé fica por
--- cima da textura do chão em vez de dentro dela. 2px + o respiro {0,+1}
--- deixa o pé sempre 2-3px dentro do chão, nunca acima.
 EnemyRenderer.FOOT_SINK = 2
 local lastFoot = nil
 function EnemyRenderer.getLastFoot() return lastFoot end
--- Testes: fixa o quadro da animação corrente (varrer TODOS os quadros da
--- idle é o que prova que o pé não descola em nenhum deles).
 function EnemyRenderer._debugSetFrame(i)
     if currentAnim and currentAnim.frames and currentAnim.frames[i] then
         currentAnim.currentFrame = i
@@ -106,26 +61,20 @@ function EnemyRenderer._debugFrameCount()
     return currentAnim and currentAnim.frames and #currentAnim.frames or 0
 end
 
--- Ambient particles (fake): partículas locais orbitando o inimigo (poeira/spark/fog).
 local ambientParticles = {}
 local ambientSpawnTimer = 0
 
-local IDLE_FPS = 7   -- ping-pong de 4 frames = ciclo ~0.86s (era loop seco 0.5s)
+local IDLE_FPS = 7
 local HURT_FPS = 12
 local DEATH_FPS = 10
-local ATTACK_FPS = 12 -- 9 frames ≈ 0.75s, casa com a duração da investida
+local ATTACK_FPS = 12
 
--- Pipeline atual usa só direção `south` (combate frontal estático). Outras
--- direções foram removidas em 2026-04-21 — economiza ~75% disco e créditos
--- de geração. Se um dia precisar de rotação, regerar via animate_character
--- com directions=["east","west","north"] específicas.
 local DIRECTIONS = { "south" }
 
--- Cores temáticas por inimigo (pra partículas ambientais)
 local AMBIENT_TINTS = {
-    grave_slime  = { 0.45, 0.55, 0.30 },  -- verde podre
-    stone_golem  = { 0.55, 0.50, 0.55 },  -- pedra roxa
-    abyss_wraith = { 0.55, 0.30, 0.70 },  -- roxo espectral
+    grave_slime  = { 0.45, 0.55, 0.30 },
+    stone_golem  = { 0.55, 0.50, 0.55 },
+    abyss_wraith = { 0.55, 0.30, 0.70 },
 }
 
 local function loadStatic(id)
@@ -152,10 +101,6 @@ local function loadStatic(id)
     return sprites
 end
 
--- Idle de cada inimigo: ping-pong no IDLE_FPS (roster comum, 4 quadros)
--- ou LOOP fechado no fps declarado na pose (chefes, idle assado por
--- tools/bake_boss_idle.py — ciclo que já volta ao quadro 0 sozinho;
--- ping-pong ali faria o pano "rebobinar").
 local function idleSpec(enemyId)
     local p = EnemyPoses.BY_ID[enemyId]
     local spec = p and p.idle
@@ -166,7 +111,6 @@ local function idleSpec(enemyId)
 end
 EnemyRenderer._idleSpec = idleSpec
 
--- fps dos clips de cinemática pedidos por playClip (nome -> fps)
 local clipFps = {}
 
 local function ensureAnim(enemyId, animName)
@@ -175,7 +119,6 @@ local function ensureAnim(enemyId, animName)
         return currentAnim
     end
 
-    -- Volta canônica pro idle (usada por todo clip one-shot).
     local function backToIdle()
         local ifps, iopts = idleSpec(enemyId)
         currentAnim = SpriteAnimation.new(enemyId, "idle", "south", ifps, iopts)
@@ -187,16 +130,12 @@ local function ensureAnim(enemyId, animName)
         fps = HURT_FPS
         opts = { loop = false, onComplete = backToIdle }
     elseif animName == "attack" or animName == "attack_strong" then
-        -- ONE-SHOT (bug playtest Jul/2026: caía no default loop+pingpong e o
-        -- inimigo repetia o golpe pra sempre). Toca uma vez e volta pro idle.
         fps = ATTACK_FPS
         opts = { loop = false, onComplete = backToIdle }
     elseif animName == "death" then
         fps = DEATH_FPS
         opts = { loop = false }
     elseif animName ~= "idle" then
-        -- CLIP DE CINEMÁTICA (pouso, rugido, subida... — BossCinematic via
-        -- playClip): one-shot no fps pedido, volta pro idle ao terminar.
         fps = clipFps[animName] or 10
         opts = { loop = false, onComplete = backToIdle }
     end
@@ -210,13 +149,6 @@ local function ensureAnim(enemyId, animName)
     return anim
 end
 
--- Deslocamento vertical da POSE (negativo = pra cima) + a pose resolvida.
--- Puro: mesma entrada, mesma saida — dá pra testar sem contexto grafico.
--- Com reducedMotion o BOB some e sobra so o HOVER: a criatura continua na
--- ALTURA certa (posicao e informacao; balanco e enfeite).
--- sinkK 0..1: MORTE. O que segurava a criatura no ar deixa de segurar —
--- ela desce ate o chao ao longo do clip de death em vez de evaporar
--- pairando (e a sombra reaparece no tamanho cheio).
 function EnemyRenderer.poseOffsetY(spriteId, spriteH, now, sinkK)
     local pose = EnemyPoses.get(spriteId)
     if pose.pose ~= "floating" then return 0, pose end
@@ -228,9 +160,6 @@ function EnemyRenderer.poseOffsetY(spriteId, spriteH, now, sinkK)
     return -k * (spriteH or 0), pose
 end
 
--- Deriva HORIZONTAL do flutuante (só quem declara `drift` — os chefes que
--- pairam). Ciclo mais lento que o bob (0.53x) pra traçar um oito largo em
--- vez de ir e voltar na mesma linha. reducedMotion: zero (é balanço).
 function EnemyRenderer.poseOffsetX(spriteId, spriteH, now, sinkK)
     local pose = EnemyPoses.get(spriteId)
     if pose.pose ~= "floating" or (pose.drift or 0) == 0 or reducedMotion() then
@@ -251,12 +180,9 @@ function EnemyRenderer.clearCache()
     currentAnimName = nil
     ambientParticles = {}
     BossAura.reset()
-    -- clipMetricsCache é declarado depois; limpo via flag no próximo acesso.
     if EnemyRenderer._clearClipMetrics then EnemyRenderer._clearClipMetrics() end
 end
 
--- Estado interno pra testes de regressão (tools/test_systems.lua valida o
--- ciclo attack→idle e a escala estável — bug do loop/encolhimento Jul/2026).
 function EnemyRenderer.debugState()
     return {
         animName = currentAnimName,
@@ -264,8 +190,6 @@ function EnemyRenderer.debugState()
     }
 end
 
--- Juice de CHEGADA (fim da viagem na estrada): o inimigo "assenta" com
--- duas quicadas rápidas em vez de aparecer num corte seco.
 local arrivalT = 0
 function EnemyRenderer.triggerArrival()
     arrivalT = 0.55
@@ -274,42 +198,27 @@ end
 function EnemyRenderer.getArrivalOffset()
     if arrivalT <= 0 then return 0 end
     local k = arrivalT / 0.55
-    -- duas quicadas decrescentes (abs(sin) com envelope k²)
     return -math.abs(math.sin(k * math.pi * 2.2)) * 14 * k * k
 end
 
--- ===== FX DE COMBATE (Jul/2026 — "o inimigo é uma estátua") =====
--- Camada PROCEDURAL sobre os clips existentes (idle/hurt/death): investida
--- no ataque, knockback no dano, tint de veneno/defesa/fúria. Nenhum sprite
--- novo — física de offsets + cor sobre a base atual.
-local attackFx = nil     -- { t, kind, onApex, apexFired }
+local attackFx = nil
 local poisonTime = 0
 local defendTime = 0
 local buffTime = 0
 local knockTime = 0
--- Telegrafia v2 (Jul/2026 — "não fica claro quando ele defende/ataca/buffa"):
-local slashTime = 0          -- arco de golpe no apex da investida
-local buffParticles = {}     -- fagulhas subindo no buff {ox,oy,vy,life,maxLife,size}
+local slashTime = 0
+local buffParticles = {}
 
--- Durações dos FX de intent executado. defend/buff eram 0.5/0.6s de tint —
--- curtos e sutis demais pra ler (playtest). Agora carregam ícone/partículas.
 local DEFEND_DUR = 0.9
 local BUFF_DUR   = 0.9
 local SLASH_DUR  = 0.20
 
-local ATK_WINDUP = 0.18   -- recua/agacha
-local ATK_LUNGE  = 0.16   -- investida (apex no fim)
-local ATK_RECOIL = 0.42   -- volta suave
+local ATK_WINDUP = 0.18
+local ATK_LUNGE  = 0.16
+local ATK_RECOIL = 0.42
 local ATK_TOTAL  = ATK_WINDUP + ATK_LUNGE + ATK_RECOIL
 
--- RESET DE RUN (bug "abandonei e caí na run antiga", Jul/2026): FX e clip
--- correntes são estado de módulo. O pior caso era um attackFx da run
--- ABANDONADA com onApex pendente — o callback (que fecha o turno inimigo
--- do game morto) dispararia DENTRO da run nova. Chamado pelo rebind da
--- GameplayScene (setGame).
 function EnemyRenderer.resetRun()
-    -- (o `local timeScale` so e declarado mais abaixo: atribuir aqui criava um
-    -- GLOBAL homonimo e nao resetava a camera lenta de verdade)
     EnemyRenderer.setTimeScale(1)
     attackFx = nil
     poisonTime, defendTime, buffTime, knockTime, slashTime = 0, 0, 0, 0, 0
@@ -328,18 +237,9 @@ function EnemyRenderer.resetRun()
     currentAnimName = nil
 end
 
--- O inimigo TELEGRAFA + INVESTE: recua, avança na direção do jogador
--- (baixo-esquerda) e o dano é aplicado NO IMPACTO via onApex.
--- Se o personagem tiver clip "attack" (PixelLab), ele toca junto da investida.
 function EnemyRenderer.triggerAttack(kind, onApex)
     attackFx = { t = 0, kind = kind or "attack", onApex = onApex,
                  apexFired = false }
-    -- Clip do golpe (Out/2026: todos os 45 têm; tools/bake_attack.py): 9
-    -- quadros a 12 fps, golpe no quadro 4 = apex da investida (0,34s). Forte
-    -- usa `attack_strong` (amplitude 1,6x) quando existe. REINICIA a cada
-    -- golpe: no multi-golpe o 2º hit chega com o clip anterior ainda na
-    -- volta, e o ensureAnim reaproveitaria o clip em andamento (golpe
-    -- dessincronizado do apex).
     if currentEnemyId and currentAnimName ~= "death" then
         local clip = nil
         if kind == "strong" and SpriteAnimation.exists(currentEnemyId, "attack_strong", "south") then
@@ -354,8 +254,6 @@ function EnemyRenderer.triggerAttack(kind, onApex)
     end
 end
 
--- CLIP ONE-SHOT da cinemática (BossCinematic): toca `name` no fps dado e
--- volta pro idle. Nunca por cima da morte. hasClip diz se está instalado.
 function EnemyRenderer.hasClip(id, name)
     return id ~= nil and name ~= nil and SpriteAnimation.exists(id, name, "south")
 end
@@ -376,14 +274,11 @@ end
 
 function EnemyRenderer.triggerBuff()
     buffTime = BUFF_DUR
-    -- Fagulhas de fúria: 14 partículas nascem no corpo e SOBEM (a linguagem
-    -- universal de "ele ficou mais forte"). Offsets relativos ao sprite —
-    -- o draw posiciona no corpo real do frame.
     buffParticles = {}
     for _ = 1, 14 do
         table.insert(buffParticles, {
-            ox = (love.math.random() - 0.5) * 0.8,   -- fração da largura
-            oy = love.math.random() * 0.7,           -- fração da altura (0=peito)
+            ox = (love.math.random() - 0.5) * 0.8,
+            oy = love.math.random() * 0.7,
             vy = 40 + love.math.random() * 55,
             life = 0.45 + love.math.random() * 0.45,
             maxLife = 0,
@@ -393,16 +288,11 @@ function EnemyRenderer.triggerBuff()
     for _, p in ipairs(buffParticles) do p.maxLife = p.life end
 end
 
--- true se a investida ainda está no ar (Game pode segurar o próximo passo)
 function EnemyRenderer.isAttacking()
     return attackFx ~= nil
 end
 
--- Última posição desenhada (centro do peito) — pro Game ancorar floating
--- text de veneno sem conhecer o layout.
 local lastCenterX, lastCenterY = nil, nil
--- Volta no espaço da UI (src/ui/UiScale): quem pergunta é texto flutuante/
--- partícula, que desenham com a UI; o inimigo é desenhado na janela real.
 function EnemyRenderer.getLastPos()
     if not lastCenterX then return lastCenterX, lastCenterY end
     local k = require("src.ui.UiScale").k()
@@ -410,10 +300,6 @@ function EnemyRenderer.getLastPos()
 end
 
 function EnemyRenderer.triggerHurt()
-    -- Guard: nao sobrescrever death anim com hurt. A death e "terminal" —
-    -- uma vez acionada, nao volta pra hurt/idle. Sem esse guard, o hurt
-    -- disparado pelo CombatSequence apos o dano fatal reiniciava
-    -- a animacao e a morte nunca aparecia em tela.
     if currentAnimName == "death" then return end
     hurtTime = 0.20
     knockTime = 0.25
@@ -429,7 +315,6 @@ function EnemyRenderer.triggerDeath(enemyId)
     end
 end
 
--- Spawn de uma particula ambiental (poeira/spark/fog) orbitando o inimigo.
 local function spawnAmbientParticle(cx, cy, tint)
     local angle = love.math.random() * math.pi * 2
     local dist = 20 + love.math.random() * 30
@@ -437,7 +322,7 @@ local function spawnAmbientParticle(cx, cy, tint)
         x = cx + math.cos(angle) * dist,
         y = cy - love.math.random() * 120,
         vx = (love.math.random() - 0.5) * 10,
-        vy = -(10 + love.math.random() * 15), -- sobe devagar
+        vy = -(10 + love.math.random() * 15),
         life = 1.0 + love.math.random() * 0.8,
         maxLife = 1.0,
         size = 1 + love.math.random(0, 1),
@@ -445,9 +330,6 @@ local function spawnAmbientParticle(cx, cy, tint)
     })
 end
 
--- CÂMERA LENTA (BossCinematic, morte do chefe): o relógio DESTE módulo —
--- clip, queda, quique, aura — corre a `timeScale`. O resto da cena (beats,
--- partículas da UI) segue normal: é o CORPO que cai devagar, não o jogo.
 local timeScale = 1
 function EnemyRenderer.setTimeScale(k) timeScale = math.max(0.02, k or 1) end
 function EnemyRenderer.getTimeScale() return timeScale end
@@ -455,7 +337,6 @@ function EnemyRenderer.getTimeScale() return timeScale end
 function EnemyRenderer.update(dt)
     dt = dt * timeScale
     if currentAnim then currentAnim:update(dt) end
-    -- morto nao paira: o flutuante CAI (gravidade) enquanto a death toca
     if currentAnimName == "death" then
         fallT = fallT + dt
         local dur = reducedMotion() and EnemyRenderer.FALL_DUR_REDUCED
@@ -465,7 +346,6 @@ function EnemyRenderer.update(dt)
         if k >= 1 then
             if landT < 0 then
                 landT = 0
-                -- poeira só pra quem caiu de verdade (o apoiado já estava no chão)
                 if lastDrawFloating and not reducedMotion() then
                     dust = {}
                     for i = 1, 10 do
@@ -504,39 +384,30 @@ function EnemyRenderer.update(dt)
     if slashTime > 0 then slashTime = math.max(0, slashTime - dt) end
     BossAura.update(dt, auraId, currentAnimName == "death")
 
-    -- Fagulhas de fúria sobem e morrem.
     if #buffParticles > 0 then
         for i = #buffParticles, 1, -1 do
             local p = buffParticles[i]
             p.life = p.life - dt
-            p.oy = p.oy - (p.vy * dt) / 100  -- sobe em fração da altura
+            p.oy = p.oy - (p.vy * dt) / 100
             if p.life <= 0 then table.remove(buffParticles, i) end
         end
     end
 
-    -- Investida de ataque: o dano do jogo é aplicado NO IMPACTO (apex).
     if attackFx then
         attackFx.t = attackFx.t + dt
         if not attackFx.apexFired and attackFx.t >= ATK_WINDUP + ATK_LUNGE then
             attackFx.apexFired = true
-            -- Arco de golpe no ponto do impacto (leitura instantânea do hit).
             slashTime = SLASH_DUR
             if attackFx.onApex then attackFx.onApex() end
         end
         if attackFx.t >= ATK_TOTAL then attackFx = nil end
     end
 
-    -- Spawn partículas ambientais a cada ~0.35s
     ambientSpawnTimer = ambientSpawnTimer - dt
     if ambientSpawnTimer <= 0 and currentEnemyId then
         ambientSpawnTimer = 0.28 + love.math.random() * 0.20
-        -- posição central só pra spawn; o draw usa a posição real do inimigo
-        -- Nota: spawn com placeholder cx=0 cy=0; reajustado em draw via offset
-        -- (hack leve pq update nao sabe a pos; deixa particula nascer em 0,0
-        -- e draw translada pro cx,cy). Mais simples: spawn direto em draw.
     end
 
-    -- Atualiza partículas existentes
     for i = #ambientParticles, 1, -1 do
         local p = ambientParticles[i]
         p.x = p.x + p.vx * dt
@@ -548,35 +419,9 @@ function EnemyRenderer.update(dt)
     end
 end
 
--- v8.1: CENTRALIZAÇÃO POR CONTEÚDO — o crop de instalação usa a UNIÃO
--- dos bboxes de TODAS as animações (a death caindo pro lado estica o
--- canvas), então o idle de alguns monstros fica descentrado no canvas
--- (medido: obsidian_sentinel −19px, glacier_knight −20px, frost_wight
--- −10px — feedback "muito à esquerda"). Offset do centro do conteúdo
--- do 1º frame idle, cacheado por id, aplicado no cx do draw.
--- v8.3 (fix playtest Jul/2026): métricas POR CLIP. Os clips antigos foram
--- CROPADOS na instalação (idle do scarecrow = 96×97), mas clips novos podem
--- vir com canvas cru do PixelLab (attack = 176-256px com margens
--- transparentes). Medimos o CONTEÚDO do 1º frame de cada clip:
---   off = descentramento horizontal do conteúdo no canvas
---   pad = margem transparente abaixo do pé (crava o pé no chão)
---   h/w = tamanho do canvas do clip
--- A ESCALA do personagem deriva SEMPRE do idle (âncora estável) — clip com
--- canvas maior desenha com o MESMO scale e o corpo nunca muda de tamanho.
 local clipMetricsCache = {}
--- Limiar de "pixel de conteúdo" (pé/silhueta). Mesmo valor nas duas
--- varreduras — 1º quadro e por quadro — senão as margens discordam.
 local FOOT_ALPHA = 0.1
 function EnemyRenderer._clearClipMetrics() clipMetricsCache = {} end
--- LINHA DE CHÃO do quadro (Out/2026, dono: "os ratos parecem flutuar").
--- O pé era o pixel opaco MAIS BAIXO — e no monte de ratos esse pixel é a
--- ponta de um rabo enrolado abaixo dos corpos: cravado o rabo no chão, os
--- corpos pairavam. Agora o chão é a linha mais baixa com pelo menos M
--- pixels "sólidos", onde sólido = coluna opaca contínua de >= GROUND_T px
--- terminando ali (bota, casco, pata e base de corpo são verticais e grossos;
--- ponta de rabo, de lâmina e farrapo de capa são finos). Devolve a linha
--- (nil se vazio) e o trecho horizontal do apoio (footL, footR) nas 4 linhas
--- de cima dela — a largura da pegada pra sombra de contato.
 local GROUND_T = 5
 EnemyRenderer.GROUND_T = GROUND_T
 local function groundOf(data)
@@ -619,8 +464,6 @@ local function groundOf(data)
         end
     end
     if fr < fl then fl, fr = minX, maxX end
-    -- top = linha do conteúdo mais alto: g - top + 1 é a ALTURA do corpo
-    -- neste quadro (cadáver deitado mede menos que o bicho em pé)
     return g, fl, fr, low, top
 end
 EnemyRenderer._groundOf = groundOf
@@ -665,16 +508,8 @@ local function clipMetrics(id, animName)
             end
             if maxX >= minX then
                 m.off = (minX + maxX) / 2 - wpx / 2
-                -- largura do CONTEÚDO (canvas cru do PixelLab tem margem
-                -- lateral gorda): a elipse de contato mede o corpo, não a
-                -- folha de papel em que ele foi desenhado.
                 m.cw = maxX - minX + 1
-                -- v8.2: MARGEM DE PÉ — canvas transparente abaixo do conteúdo
-                -- fazia o monstro "flutuar". pad crava o pé do CONTEÚDO no
-                -- chão. Quem flutua por DESIGN (espectros/alados) sobe
-                -- por dado, não por margem de canvas: src/data/enemy_poses.
                 m.pad = (hpx - 1) - maxY
-                -- chão pela regra do apoio (ignora rabo/lâmina/farrapo)
                 local g, fl, fr = groundOf(data)
                 if g then
                     m.pad = (hpx - 1) - g
@@ -683,20 +518,7 @@ local function clipMetrics(id, animName)
             end
         end
     end
-    -- PÉ POR QUADRO (Out/2026, dono: "quando ele fica o corpo inteiro pra
-    -- fora, ainda fica meio que flutuando alguns milímetros do chão"). O
-    -- `pad` acima mede SÓ o 1º quadro, mas a regeração do PixelLab desloca
-    -- a figura INTEIRA (pés junto) 1-2px entre quadros da idle: abyss_tyrant,
-    -- ember_imp e rot_colossus sobem 2px de arte (~5px na tela) em metade
-    -- do ciclo — o pé descolava do chão e voltava, a cada respiração.
-    -- framePads[i] = margem abaixo do conteúdo do quadro i (mesmo limiar).
-    -- Quem pisa usa o pad DO QUADRO na idle: o pé fica cravado e o que
-    -- sobra de movimento é o do corpo em relação ao pé.
     m.framePads = {}
-    -- ALTURA DO CONTEÚDO por quadro (v9 das sombras, Out/2026): topo→chão.
-    -- É o que diz se o corpo está em pé ou DEITADO na death — a sombra de
-    -- um cadáver é a de um objeto baixo (pegada = o corpo), não a
-    -- silhueta inteira virada de novo no chão.
     m.frameHeights = {}
     if imgPath and fdir and info and info.type == "directory" then
         local files = love.filesystem.getDirectoryItems(fdir)
@@ -722,10 +544,6 @@ local function clipMetrics(id, animName)
             end
         end
     end
-    -- OVERRIDE `groundRow` (enemy_poses, linha do canvas do idle) quando a
-    -- regra erra: desloca o chão de TODOS os quadros pelo mesmo tanto (a
-    -- diferença medida no quadro 0 do idle). Vale também na death: o quadro
-    -- 0 dela é o do idle, e o cadáver assenta na mesma régua.
     local gr = (EnemyPoses.BY_ID[id] or {}).groundRow
     if gr then
         local idle = (animName == "idle") and m or clipMetrics(id, "idle")
@@ -741,15 +559,6 @@ local function clipMetrics(id, animName)
     return m
 end
 
--- EIXO DO CORPO (Out/2026, dono: "o 29 e a barra de vida estão à esquerda
--- do corpo"). Centrar pelo BBOX do conteúdo põe arma/cajado/cauda/capa no
--- cálculo: o corpo sai do centro e o HUD (que ancora no cx) fica torto. O
--- eixo é a MEDIANA, nas linhas do meio do corpo (20%-80% da altura do
--- conteúdo), do centro do MAIOR trecho opaco contínuo de cada linha — o
--- tronco é o trecho mais largo na maioria das linhas; cajado e cauda são
--- trechos finos e separados. Erra com escudo largo, quadrúpede de frente e
--- orbe grande: aí vale o override `axisX` de src/data/enemy_poses.lua.
--- Coluna em px do canvas do idle (coordenada de CENTRO de pixel).
 function EnemyRenderer.bodyAxis(id)
     local over = (EnemyPoses.BY_ID[id] or {}).axisX
     if over then return over, "manual" end
@@ -803,63 +612,39 @@ function EnemyRenderer.bodyAxis(id)
             end
         end
     else
-        print("[EnemyRenderer] AVISO: sem quadro 0 do idle pro eixo de " .. tostring(id)
+        Debug.warn("[EnemyRenderer] AVISO: sem quadro 0 do idle pro eixo de " .. tostring(id)
             .. " — usando o centro do bbox")
     end
     axisCache[id] = axis
     return axis, "auto"
 end
 
--- deslocamento horizontal (px do canvas) que leva o EIXO do corpo ao centro
--- do canvas do idle — o que o draw e o billboard subtraem do cx
 local function axisOffset(id)
     local m = clipMetrics(id, "idle")
     if m.w <= 0 then return m.off end
     return (EnemyRenderer.bodyAxis(id) + 0.5) - m.w / 2
 end
 
--- Compat: call sites antigos (billboard da viagem etc.) pedem só o idle.
--- O offset agora é o do EIXO DO CORPO (mesma conta do draw: o handoff
--- viagem→batalha não pode pular de lado).
 local function contentOffsets(id)
     local m = clipMetrics(id, "idle")
     return axisOffset(id), m.pad
 end
 
--- Exposto pra testes de regressão (escala estável entre clips — depois da
--- declaração de clipMetrics, senão a closure capturaria um global nil).
 function EnemyRenderer.debugClipMetrics(id, animName)
     return clipMetrics(id, animName)
 end
 
--- Spawn de particula ambiental na posicao correta (chamado em draw)
 local function tickAmbientSpawn(cx, cy, dt_hint)
     if not currentEnemyId then return end
-    if #ambientParticles > 18 then return end -- cap
-    -- probabilidade baixa por frame; resulta em ~3-5 particulas/sec
+    if #ambientParticles > 18 then return end
     if love.math.random() < 0.08 then
         spawnAmbientParticle(cx, cy, AMBIENT_TINTS[currentEnemyId])
     end
 end
 
--- Retorna bbox { x, y, w, h } do sprite desenhado (em pixels de tela), ou false.
--- EnemyHud usa esse bbox pra ancorar HP bar / intent icon.
--- cx/cy = ponto de CHAO onde a criatura pisa (na estrada vem do
--- WorldRoad.getRoadAnchor; nos interiores, de src/data/scene_anchors.lua).
--- opts (interiores): { shadowA, lightXr } — a cena diz o quanto e pra onde
--- a sombra cai; ver SceneAnchors.get(scene).
--- PERFIL DE PEGADA da sombra (ShadowEngine v9, puro — tools/test_world_shadows).
--- Em pé: o que a pose declara (`shadowBaseK`/`shadowRiseK` em enemy_poses;
--- bicho largo e baixo como o monte de ratos ou o touro). Na MORTE o corpo
--- vai deitando: a altura do quadro cai em relação à do idle e a pegada
--- cresce junto — cadáver é objeto baixo (a sombra dele é uma orla, não um
--- segundo cadáver no chão). lying = 0 em pé .. 1 deitado (altura caiu 35%
--- ou mais: o touro deitado ainda mede 70% do touro em pé — quadrúpede
--- deita pouco). Devolve baseK, riseK, lenK.
 function EnemyRenderer.shadowProfile(pose, animName, frameH, idleH)
     local baseK = (pose and pose.shadowBaseK) or 0
     local riseK = pose and pose.shadowRiseK or nil
-    -- bicho largo e baixo é atarracado: a sombra encurta junto com a pegada
     local lenK = 1 - 1.2 * baseK
     if animName == "death" and frameH and idleH and idleH > 0 then
         local lying = math.max(0, math.min(1, (1 - frameH / idleH) / 0.35))
@@ -874,20 +659,11 @@ end
 function EnemyRenderer.draw(game, cx, cy, opts)
     if not game or not game.enemy or not game.enemy.spriteId then return false end
     local id = game.enemy.spriteId
-    -- CHÃO DO CADÁVER (opts.deathCy, salão com deathYr): quem voa cai pra
-    -- FRENTE e pra baixo até o piso andável — a linha de chão escorrega de
-    -- cy pra deathCy junto da queda (poseSink). Apoiado não se mexe.
     if opts and opts.deathCy and currentAnimName == "death"
         and currentEnemyId == id and EnemyPoses.isFloating(id) then
         cy = cy + (opts.deathCy - cy) * poseSink
     end
 
-    -- Detecta necessidade de re-iniciar a idle:
-    --  1) Inimigo trocou de spriteId (novo ato/node).
-    --  2) Nao ha anim carregada ainda.
-    --  3) Anim de death terminou mas o inimigo atual esta vivo (proxima batalha
-    --     com mesmo spriteId): sem esse reset, a tela continua mostrando o
-    --     ultimo frame de death ("inimigo deitado morto").
     local enemyAlive = game.enemy and game.enemy.health > 0
     local stuckOnDeath = currentAnimName == "death"
         and currentAnim and currentAnim:isFinished()
@@ -896,7 +672,6 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         ensureAnim(id, "idle")
     end
 
-    -- Resolve sprite ou anim
     local iw, ih
     local hasAnim = (currentAnim ~= nil)
     if hasAnim then
@@ -909,47 +684,23 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         iw, ih = staticImg:getWidth(), staticImg:getHeight()
     end
 
-    -- Escala alvo. 250 normal / 330 boss. v5: escala ADAPTATIVA (float).
-    -- v8.3: a escala deriva SEMPRE do canvas do IDLE (âncora estável do
-    -- personagem) — o attack do PixelLab vem com canvas cru maior (176-256px
-    -- vs idle cropado ~100px) e, escalando pelo clip atual, o corpo ENCOLHIA
-    -- durante o golpe (playtest Jul/2026).
     local targetHeight = 250
     if game.enemy and game.enemy.isBoss then targetHeight = 330 end
-    -- sizeK: o PALCO decide o tamanho (na estrada, a perspectiva da
-    -- distância de parada — WorldRoad.battleSizeK; nos salões, 1).
     targetHeight = targetHeight * ((opts and opts.sizeK) or 1)
     local idleM = clipMetrics(id, "idle")
     local refH = (idleM.h > 0) and idleM.h or ih
     local scale = targetHeight / refH
-    if refH <= 80 then scale = math.max(4, math.floor(scale)) end -- roster legado
+    if refH <= 80 then scale = math.max(4, math.floor(scale)) end
 
-    -- v8.1/8.2/8.3: descentramento e margem de pé do CLIP ATUAL — centro
-    -- visual no cx pedido e pé do CONTEÚDO cravado em cy (sombra, HUD e
-    -- emissivos seguem juntos), mesmo quando o canvas do clip difere do idle.
     local curM = hasAnim and clipMetrics(id, currentAnimName or "idle") or idleM
     if curM.h == 0 then curM = idleM end
     local offX = curM.off
-    -- EIXO DO CORPO (automático ou override axisX): troca o centro do bbox
-    -- do idle pelo eixo, preservando o desvio relativo de cada clip. O HUD
-    -- ancora no cx devolvido no bbox — eixo no cx = HUD sobre o corpo.
     if idleM.w > 0 then
         offX = offX + (axisOffset(id) - idleM.off)
     end
-    -- bodyCx: o ponto pedido É onde o EIXO DO CORPO fica. `cx` daqui em
-    -- diante é o centro do CANVAS (o sprite e a silhueta da sombra desenham
-    -- a partir dele). HUD, sombra elíptica, aura e o texto flutuante ancoram
-    -- no CORPO (bodyCx) — devolver o centro do canvas no bbox era o "29 e a
-    -- barra à esquerda do corpo" (Out/2026): o canvas tem margem/arma/capa
-    -- de um lado só, e o centro dele não é o do bicho (medido a 1080p: até
-    -- 36px de diferença no glacier_knight).
     local bodyCx = cx
     cx = cx - math.floor(offX * scale)
 
-    -- POSE (src/data/enemy_poses.lua): apoiado x flutuante. Quem tem pe
-    -- fica com o pe no chao; quem e espectro/alado SOBE de proposito e
-    -- deriva. A sombra (mais abaixo) fica no chao nos dois casos — e o
-    -- vao entre corpo e sombra que comunica altura.
     local hoverY, pose = EnemyRenderer.poseOffsetY(id, ih * scale,
         love.timer.getTime(), poseSink)
     local floating = pose.pose == "floating"
@@ -957,21 +708,12 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         love.timer.getTime(), poseSink)
     auraId = (game.enemy.isBoss and BossAura.has(id)) and id or nil
 
-    -- Pé: margem do QUADRO atual na idle de quem pisa (ver framePads) e
-    -- AFUNDADO FOOT_SINK px no chão. footY = deslocamento que leva a base
-    -- do canvas até o pé, SEM truncar: o SpriteAnimation já faz floor do y
-    -- e um segundo floor aqui somava até 2px pra CIMA — justamente o lado
-    -- que lê como flutuar.
     local footPad = curM.pad
     local frameIdx = hasAnim and currentAnim.currentFrame or 1
     if not floating and (currentAnimName or "idle") == "idle"
         and curM.framePads and curM.framePads[frameIdx] then
         footPad = curM.framePads[frameIdx]
     end
-    -- MORTE de quem pisa: margem DO QUADRO (regra do apoio) — o corpo que
-    -- tomba/desaba tem a base mudando a cada quadro; com a margem só do 1º,
-    -- o cadáver deitado terminava acima do chão ou atravessando a estrada
-    -- ("os ratos morrem e ficam errado no chão", Out/2026).
     if not floating and currentAnimName == "death"
         and curM.framePads and curM.framePads[frameIdx] then
         footPad = curM.framePads[frameIdx]
@@ -980,15 +722,9 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     local fallBounce = 0
     lastDrawFloating = floating
     if floating and currentAnimName == "death" then
-        -- caindo: a margem de pé vai da do 1º quadro (no ar) pra do QUADRO
-        -- corrente da death (o cadáver deitado tem outro ponto mais baixo),
-        -- e o afundamento chega no FOOT_SINK de quem pisa ao tocar o chão.
         local fp = curM.framePads and curM.framePads[frameIdx]
         if fp then footPad = footPad + (fp - footPad) * poseSink end
         sink = EnemyRenderer.FOOT_SINK * poseSink
-        -- quique curto no impacto (meia senoide amortecida); sem quique em
-        -- reducedMotion. Nunca termina acima do chão: em landT >= BOUNCE_DUR
-        -- o deslocamento é zero.
         if landT >= 0 and landT < BOUNCE_DUR and not reducedMotion() then
             local k = landT / BOUNCE_DUR
             fallBounce = -math.sin(k * math.pi) * (1 - k) * ih * scale * 0.035
@@ -996,12 +732,8 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     end
     local footY = footPad * scale + sink + fallBounce
 
-    -- =========================================================
-    -- CAMADAS VISUAIS (aplicadas em ordem)
-    -- =========================================================
     local t = love.timer.getTime()
 
-    -- (2) Partículas ambientais: spawn + draw por baixo do sprite
     tickAmbientSpawn(bodyCx, cy, 0)
     for _, p in ipairs(ambientParticles) do
         local alpha = math.max(0, math.min(1, p.life / (p.maxLife * 2)))
@@ -1009,21 +741,12 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         love.graphics.rectangle("fill", math.floor(p.x), math.floor(p.y), p.size, p.size)
     end
 
-    -- (4) Idle bounce (±1px vertical — respiração; ±2 parecia flutuar)
-    -- Flutuante nao respira em 1px: o bob da pose ja e o movimento dele
-    -- (somar os dois dava tremelique de duas frequencias).
-    -- Out/2026: o floor do seno dava {-1, 0} — meio ciclo 1px ACIMA do
-    -- chão. Agora {0, +1}: respira pra DENTRO do chão, nunca descola.
     local bounce = floating and 0 or (math.sin(t * 1.6) > 0 and 1 or 0)
-    -- (5) Tremor SÓ no impacto (o tremor constante de 13-17Hz era o
-    -- "fricando" apontado pelo dono — monstro parado não treme).
     local jitter = 0
     if hurtTime > 0 then
         jitter = math.floor(math.sin(t * 41) * 2)
     end
 
-    -- FX de combate: investida de ataque (recua → avança pro jogador →
-    -- volta) + knockback ao tomar dano.
     local atkDX, atkDY = 0, 0
     if attackFx then
         local strong = attackFx.kind == "strong"
@@ -1032,11 +755,11 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         local p = attackFx.t
         if p < ATK_WINDUP then
             local k = p / ATK_WINDUP
-            atkDX = 16 * k          -- recua (afasta do jogador)
-            atkDY = -5 * k          -- ergue levemente
+            atkDX = 16 * k
+            atkDY = -5 * k
         elseif p < ATK_WINDUP + ATK_LUNGE then
             local k = (p - ATK_WINDUP) / ATK_LUNGE
-            local kk = k * k        -- acelera até o impacto
+            local kk = k * k
             atkDX = 16 - (16 + lunge) * kk
             atkDY = -5 + (5 + drop) * kk
         else
@@ -1048,20 +771,15 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     end
     local knockDX = 0
     if knockTime > 0 then
-        knockDX = 14 * (knockTime / 0.25)   -- empurrado pra trás no hit
+        knockDX = 14 * (knockTime / 0.25)
     end
 
     local drawX = cx - (iw * scale) / 2 + jitter + atkDX + knockDX + driftX
     local drawY = cy - ih * scale + bounce + EnemyRenderer.getArrivalOffset()
-        + footY + atkDY + hoverY  -- v8.2: pé do conteúdo NO chão (margem do canvas fora)
-    -- Régua do palco (tools/test_enemy_stage): onde o pé DESTE quadro caiu,
-    -- pela mesma conta que o SpriteAnimation usa (floor do y).
+        + footY + atkDY + hoverY
     lastFoot = {
-        -- eixo do corpo NA TELA (régua do HUD: tools/test_enemy_axis)
         bodyX = drawX + (EnemyRenderer.bodyAxis(id) + 0.5 + (idleM.off - curM.off)) * scale,
         hudCx = bodyCx,
-        -- canto do canvas do sprite na tela (BossCinematic pousa o rasante
-        -- EXATAMENTE onde o próximo draw vai desenhar o chefe)
         drawX = drawX,
         groundY = cy,
         footBottom = math.floor(drawY) + (ih - footPad) * scale,
@@ -1069,37 +787,20 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         floating = floating, drawY = drawY, ih = ih,
     }
 
-    -- posição do peito exposta pro Game (floating text de veneno etc.)
     lastCenterX = bodyCx + jitter + atkDX + knockDX + driftX
     lastCenterY = drawY + (ih * scale) * 0.35
 
-    -- (1) v8: SOMBRA PROJETADA da silhueta (ShadowEngine) — a própria
-    -- forma do monstro (frame ATUAL da animação: a sombra respira e ataca
-    -- junto) deitada pro primeiro plano, cisalhada pra longe do sol do
-    -- bioma, comprimento pelo horário. Nos INTERIORES (sem frame de
-    -- sombra do WorldRoad) cai na elipse rasteira legada — luz de tocha
-    -- não tem direção única.
-    -- SOMBRA: de CONTATO pra quem pisa, de ALTURA pra quem flutua.
-    -- Regra que a pose impoe: a sombra NAO sobe com o corpo. Ela fica no
-    -- chao (cy), fica MENOR, mais fraca e mais borrada, e escorrega pro
-    -- lado oposto a luz — a distancia entre corpo e sombra e o que diz
-    -- "isto esta no ar". Colar a elipse de contato embaixo de quem paira
-    -- foi exatamente o defeito reportado (Set/2026).
     do
         local ShadowEngine = require("engine.ShadowEngine")
         local sceneShadowA = (opts and opts.shadowA) or 1
-        -- Enquanto o flutuante DESCE na morte, a sombra volta ao tamanho e
-        -- a forca de contato — quem pousou projeta sombra de quem pousou.
         local sink = math.max(0, math.min(1, poseSink))
         local shK = pose.shadowK + (1 - pose.shadowK) * sink
         local shA = pose.shadowA + (1 - pose.shadowA) * sink
 
         local shDX, shDY, smearK = 0, 0, 1
         if floating then
-            local lift = -hoverY                  -- px acima do chao
-            smearK = 2.4                          -- borda macia (penumbra)
-            -- direcao "pra longe da luz": na estrada o proprio ShadowEngine
-            -- sabe onde esta o astro do bioma; no interior vem da cena.
+            local lift = -hoverY
+            smearK = 2.4
             local dirX = ShadowEngine.tipShiftAt(cx)
             if dirX == 0 then
                 local lx = (opts and opts.lightXr) or 0.5
@@ -1107,17 +808,13 @@ function EnemyRenderer.draw(game, cx, cy, opts)
                 dirX = math.max(-1, math.min(1, (cx / sw - lx) * 2))
             end
             shDX = dirX * lift * 0.55
-            shDY = lift * 0.16                    -- projeta pro 1o plano
+            shDY = lift * 0.16
         end
         local shX = cx + jitter * 0.5 + shDX
-        -- a sombra nasce no PÉ (afundado `sink`), não na linha nominal
         local shY = cy - 1 + sink + shDY
 
         local sx0 = -(iw * scale) / 2
-        -- +footY: a sombra ancora no PE DO CONTEUDO (a margem
-        -- transparente do canvas criava um vao entre pe e sombra)
         local sy0 = -(ih * scale) + footY - sink
-        -- v9: pegada (pose + cadáver deitado) — ver shadowProfile
         local frameH = curM.frameHeights and curM.frameHeights[frameIdx]
         if not frameH or frameH <= 0 then frameH = ih - footPad end
         local idleH = idleM.frameHeights and idleM.frameHeights[1]
@@ -1133,7 +830,6 @@ function EnemyRenderer.draw(game, cx, cy, opts)
               alphaK = shA * sceneShadowA },
             function(tint)
                 if hasAnim then
-                    -- SpriteAnimation:draw ignora setColor sem tint
                     currentAnim:draw(sx0, sy0, scale, tint)
                 else
                     local sprites = loadStatic(id)
@@ -1145,20 +841,12 @@ function EnemyRenderer.draw(game, cx, cy, opts)
                     end
                 end
             end)
-        -- PEGADA (footL..footR do quadro 0 do clip, regra do apoio): onde o
-        -- bicho de fato toca o chão. Bota, casco, monte de ratos — a sombra
-        -- de contato mede ISSO, não o canvas nem o corpo inteiro.
         local footW, footCx = nil, nil
         if curM.footL and curM.footR then
             footW = (curM.footR - curM.footL + 1) * scale
             footCx = cx + ((curM.footL + curM.footR + 1) / 2 - curM.w / 2) * scale
                 + jitter * 0.5
         end
-        -- CONTATO na estrada (Out/2026, "os ratos parecem flutuar"): a
-        -- silhueta projetada vai pra longe do sol e não escurece o chão
-        -- DEBAIXO do pé — bicho largo e baixo ficava sem contato nenhum.
-        -- Três faixas em degrau, na grade do pixel da arte, da largura da
-        -- pegada. Só quem pisa (quem flutua mostra o vão, não contato).
         if drawn and footW and not floating then
             local P = math.max(1, math.floor(scale + 0.5))
             local a = 0.26 * sceneShadowA
@@ -1171,19 +859,12 @@ function EnemyRenderer.draw(game, cx, cy, opts)
             end
         end
         if not drawn then
-            -- Interiores: sem sol unico, elipse rasteira. A largura sai da
-            -- PEGADA (ou do conteúdo), nao do canvas — canvas cru do
-            -- PixelLab tem margem lateral gorda e a elipse saia larga demais.
             local baseW = footW or (((curM.cw > 0) and curM.cw or iw) * scale)
-            -- elipse sob o APOIO (o shX acima é o centro do canvas, que a
-            -- silhueta usa)
             shX = (footCx or (bodyCx + jitter * 0.5)) + shDX
             local rx = baseW * 0.46 * shK
             local ry = math.max(3, baseW * 0.060 * shK)
             local a = 0.30 * shA * sceneShadowA
             if floating then
-                -- duas passadas concentricas = penumbra barata: sombra de
-                -- corpo no ar tem borda macia, nao recorte de tesoura.
                 love.graphics.setColor(0, 0, 0, a * 0.5)
                 love.graphics.ellipse("fill", shX, shY, rx * 1.45, ry * 1.45)
                 love.graphics.setColor(0, 0, 0, a * 0.7)
@@ -1195,9 +876,6 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         end
     end
 
-    -- Poeira do impacto da queda: blocos do pixel da arte saindo rente ao
-    -- chão pros dois lados (fica ATRÁS do corpo caído só no meio; nas
-    -- pontas, aparece — é ali que a poeira lê).
     if #dust > 0 then
         local P = math.max(1, math.floor(scale + 0.5))
         local wBody = ((curM.cw > 0) and curM.cw or iw) * scale
@@ -1212,8 +890,6 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         love.graphics.setColor(1, 1, 1, 1)
     end
 
-    -- Aura do chefe, camada de TRÁS (círculo no chão, eclipse, metade de
-    -- trás das órbitas, fumaça rasteira) — depois da sombra, antes do corpo.
     local auraRect = nil
     if auraId then
         auraRect = { x = drawX, y = drawY, w = iw * scale, h = ih * scale,
@@ -1222,10 +898,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         BossAura.drawBack(auraId, auraRect)
     end
 
-    -- (6) Pulse de tint (cor varia ±6% lentamente, respiração sutil)
     local pulse = 0.94 + (math.sin(t * 1.1) * 0.5 + 0.5) * 0.06
-    -- Tint de status por cima do pulse (clareza: veneno tinge VERDE,
-    -- defesa tinge AÇO, fúria/buff tinge VERMELHO pulsante).
     local tintR, tintG, tintB = pulse, pulse, pulse
     if poisonTime > 0 then
         local k = poisonTime / 0.5
@@ -1243,7 +916,6 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     end
     love.graphics.setColor(tintR, tintG, tintB, 1)
 
-    -- (3) Sprite principal (anim real OR estático)
     if hasAnim then
         currentAnim:draw(drawX, drawY, scale, { tintR, tintG, tintB, 1 })
     else
@@ -1254,7 +926,6 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         end
     end
 
-    -- (8) Aura vermelha durante hurt (outline glow barato: draw com offset + tint)
     if hurtTime > 0 then
         local a = hurtTime / 0.20
         local offsets = { {-2, 0}, {2, 0}, {0, -2}, {0, 2} }
@@ -1271,7 +942,6 @@ function EnemyRenderer.draw(game, cx, cy, opts)
             end
         end
 
-        -- (7) Flash branco por cima
         love.graphics.setColor(1, 1, 1, a * 0.55)
         if hasAnim then
             currentAnim:draw(drawX, drawY, scale)
@@ -1284,19 +954,13 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         end
     end
 
-    -- Aura do chefe, camada da FRENTE (brilhos, metade da frente das
-    -- órbitas, penas/almas/fagulhas) — antes dos FX de intent, que são
-    -- leitura de jogo e não podem ficar por baixo de enfeite.
     if auraRect then BossAura.drawFront(auraId, auraRect) end
 
-    -- DEFESA v2 (telegrafia Jul/2026): dois anéis aço em sequência + ESCUDO
-    -- grande com pop sobre o peito — "ele se protegeu" impossível de perder.
     if defendTime > 0 then
-        local k = 1 - defendTime / DEFEND_DUR   -- 0→1 ao longo do efeito
+        local k = 1 - defendTime / DEFEND_DUR
         local ccx = drawX + (iw * scale) / 2
         local ccy = drawY + (ih * scale) * 0.45
 
-        -- Anel 1 (imediato) + anel 2 (nasce em k=0.25)
         for ring = 0, 1 do
             local rk = k - ring * 0.25
             if rk > 0 and rk < 1 then
@@ -1308,12 +972,11 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         end
         love.graphics.setLineWidth(1)
 
-        -- Escudo central: pop-in (overshoot) e fade-out no último terço.
         local IconLoader = require("src.ui.IconLoader")
         local shield = IconLoader.get("armor_shield") or IconLoader.get("shield_round")
         if shield and shield.draw and shield.size then
             local popK = math.min(1, k / 0.22)
-            local popScale = 1.25 - 0.25 * (1 - (1 - popK) * (1 - popK)) -- 1.25→1.0
+            local popScale = 1.25 - 0.25 * (1 - (1 - popK) * (1 - popK))
             local alpha = 1
             if k > 0.65 then alpha = 1 - (k - 0.65) / 0.35 end
             local targetH = math.max(36, ih * scale * 0.38)
@@ -1325,8 +988,6 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         love.graphics.setColor(1, 1, 1, 1)
     end
 
-    -- BUFF v2: fagulhas vermelhas SOBEM do corpo + ícone de força com pop
-    -- acima da cabeça — a linguagem universal de "ele ficou mais forte".
     if buffTime > 0 then
         local k = 1 - buffTime / BUFF_DUR
         local bodyW = iw * scale
@@ -1358,16 +1019,14 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         love.graphics.setColor(1, 1, 1, 1)
     end
 
-    -- ARCO DE GOLPE no apex da investida: três traços brancos varrendo na
-    -- direção do ataque (baixo-esquerda) — o "corte" que faltava no impacto.
     if slashTime > 0 then
-        local k = 1 - slashTime / SLASH_DUR   -- 0→1
+        local k = 1 - slashTime / SLASH_DUR
         local ccx = drawX + (iw * scale) * 0.18
         local ccy = drawY + (ih * scale) * 0.62
         local len = math.max(46, iw * scale * 0.55)
         love.graphics.push()
         love.graphics.translate(ccx, ccy)
-        love.graphics.rotate(-0.65)  -- diagonal ↙ (direção da investida)
+        love.graphics.rotate(-0.65)
         for i = -1, 1 do
             local off = i * 9
             local a = (1 - k) * (1 - math.abs(i) * 0.35)
@@ -1381,25 +1040,11 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         love.graphics.setColor(1, 1, 1, 1)
     end
 
-    -- LightEngine v1.2: emissivos do monstro (olhos/chamas/cristais) —
-    -- mesma z do corpo: a silhueta oclui a luz de trás, e o tie-break do
-    -- engine desenha a luz DEPOIS da silhueta no mesmo plano (visível).
-    -- Morte apaga os emissivos (o corpo "desliga").
     if currentAnimName ~= "death" then
         local exT, eyT = love.graphics.transformPoint(drawX, drawY)
         submitEmissives(id, exT, eyT, iw, ih, scale, 9)
     end
 
-    -- LightEngine v1.1: o corpo do inimigo OCLUI luzes atrás dele (janelas
-    -- do castelo, poças mais fundas) — silhueta pixel-perfeita no lightmap.
-    -- No-op sem frame de luz (interiores). Lanterna mais PRÓXIMA que ele
-    -- continua iluminando-o.
-    -- v9.2 (bug: "monstro fica todo escuro em alguns momentos"): z tem
-    -- VIÉS +6 — o corpo só oclui luz BEM mais funda (janelas do castelo,
-    -- rel ~26). Poça de luminária logo atrás (rel 9-15) voltou a
-    -- iluminá-lo: sem o viés, a silhueta apagava a poça e o monstro
-    -- virava um buraco preto DENTRO da área iluminada, estrobando com o
-    -- flicker do fogo (a poça cresce/encolhe sobre ele).
     do
         local oxT, oyT = love.graphics.transformPoint(drawX, drawY)
         local animRef = hasAnim and currentAnim or nil
@@ -1409,27 +1054,9 @@ function EnemyRenderer.draw(game, cx, cy, opts)
             staticRef = sprites and (sprites.south or sprites.east
                 or sprites.west or sprites.north)
         end
-        -- v9.2 (feedback: "monstro com luz em volta no bioma 6"): o antigo
-        -- FILL era micro-luz radial → halo no chão, gritante no escuro.
-        -- Agora o LIFT levanta a leitura SÓ nos pixels da silhueta (recorte
-        -- pixel-perfeito, ZERO halo). Escala pelo ambiente: escuro levanta
-        -- mais, claro não mexe (teto 1.6). Igual em todos os biomas.
-        -- mesmo piso do billboard da viagem (drawEncounterFront) — o
-        -- handoff viagem→batalha NÃO pode mudar o brilho do monstro
-        -- alvo 1.0: monstro na COR PADRÃO cheia (lightmap≈1 na silhueta),
-        -- igual ao billboard da viagem — sem escurecer ao ficar estático.
-        -- Lanternas ainda ADICIONAM calor por cima (clampa em 1).
-        -- flat "cor padrão + leve tom do ambiente": o monstro é elemento
-        -- FOCAL (leitura de gameplay) — precisa ficar na cor cheia do sprite
-        -- mesmo sem luz na frente ou com luz vindo de trás. O ambient×lift
-        -- antigo saturava no canal mais forte (teto 1) e travava em ~82% de
-        -- luma no dusk/noite → o corpo escuro do espantalho esmagava pra
-        -- quase preto. Aqui o flat parte do BRANCO e recebe só uma fração
-        -- (tint) do matiz do ambiente → monstro na cor padrão, levemente
-        -- tingido pela hora. Lanternas na frente ainda SOMAM calor por cima.
         local ar, ag, ab = 1, 1, 1
         if LightEngine.ambientColor then ar, ag, ab = LightEngine.ambientColor() end
-        local mx = math.max(ar, ag, ab, 0.001)   -- matiz puro (canal forte = 1)
+        local mx = math.max(ar, ag, ab, 0.001)
         local tint = 0.28
         local flatColor = {
             1 - tint * (1 - ar / mx),
@@ -1438,16 +1065,12 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         }
         if animRef or staticRef then
             LightEngine.submitOccluder({
-                -- BATTLE_REL + viés. Lido via package.loaded: o WorldRoad
-                -- requer este módulo (require direto seria circular).
                 z = (((package.loaded["src.ui.WorldRoad"] or {}).BATTLE_REL)
                     or 9) + 6,
                 flatColor = flatColor,
                 bx = oxT, by = oyT, w = iw * scale, h = ih * scale,
                 fn = function()
                     if animRef then
-                        -- SpriteAnimation:draw ignora setColor sem tint —
-                        -- repassa a cor ambiente que o engine deixou setada
                         local r, g, b = love.graphics.getColor()
                         animRef:draw(oxT, oyT, scale, { r, g, b, 1 })
                     else
@@ -1459,15 +1082,8 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     end
 
     love.graphics.setColor(1, 1, 1, 1)
-    -- Retorna bounding box do sprite pra overlays (HP bar / intent).
-    -- cx = EIXO DO CORPO (não o centro do canvas); pés em cy; topo em drawY.
     return {
         cx = bodyCx,
-        -- topo em REPOUSO: sem respiro (sin do relógio real), sem bob do
-        -- flutuante, sem quicada de chegada nem investida. O HUD não treme
-        -- 1px junto da respiração e a altura medida não depende de em que
-        -- milissegundo o quadro caiu (flake "chefe 5 maior que o comum" no
-        -- test_all, Out/2026). A altura do HOVER (dado da pose) fica.
         topY = cy - ih * scale + footY
             - ((pose.pose == "floating") and pose.hover * (1 - math.max(0, math.min(1, poseSink))) * ih * scale or 0),
         bottomY = cy,
@@ -1476,15 +1092,8 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     }
 end
 
--- Billboard leve pro WorldRoad: o inimigo que vem "lá de trás" na estrada
--- durante a viagem. Retorna { img, iw, ih, targetScale } ou nil.
--- targetScale = mesma escala que draw() usa na batalha (handoff sem pulo).
 function EnemyRenderer.getEncounterBillboard(enemy)
     if not enemy or not enemy.spriteId then return nil end
-    -- v8.4: o billboard usa a ANIMAÇÃO idle (mesmo canvas da batalha) —
-    -- o south.png estático tinha margens DIFERENTES dos frames (por isso
-    -- o monstro "continuava flutuando enquanto vinha" mesmo com footPad)
-    -- e vinha parado ("estático vindo é estranho — deixa animando").
     local bfps, bopts = idleSpec(enemy.spriteId)
     local anim = SpriteAnimation.new(enemy.spriteId, "idle", "south",
         bfps, bopts)
@@ -1500,38 +1109,27 @@ function EnemyRenderer.getEncounterBillboard(enemy)
     end
     local targetHeight = enemy.isBoss and 330 or 250
     local ts = targetHeight / ih
-    if ih <= 80 then ts = math.max(4, math.floor(ts)) end -- roster legado
+    if ih <= 80 then ts = math.max(4, math.floor(ts)) end
     local offX, footPad = contentOffsets(enemy.spriteId)
     return {
-        anim = anim,                 -- v8.4: vem ANDANDO vivo (idle)
-        img = img,                   -- fallback (roster sem anim)
+        anim = anim,
+        img = img,
         iw = iw,
         ih = ih,
         targetScale = ts,
-        spriteId = enemy.spriteId,   -- LightEngine v1.2: emissivos na viagem
-        -- v8.2: o billboard da viagem também crava o pé no chão e centra
-        -- por conteúdo (o espantalho "já surgia flutuando lá do fundo")
+        spriteId = enemy.spriteId,
         offX = offX,
         footPad = footPad,
-        -- Out/2026: pé por quadro + afundado, mesma regra do draw (quem
-        -- flutua não crava: o pad dele é o do 1º quadro, sem afundar)
         framePads = (not EnemyPoses.isFloating(enemy.spriteId))
             and clipMetrics(enemy.spriteId, "idle").framePads or nil,
         footSink = EnemyPoses.isFloating(enemy.spriteId) and 0
             or EnemyRenderer.FOOT_SINK,
-        -- v9 das sombras: pegada da criatura (largo e baixo) + altura do
-        -- conteúdo do idle, pro ShadowEngine recortar a faixa da pegada
         shadowBaseK = EnemyPoses.get(enemy.spriteId).shadowBaseK,
         shadowRiseK = EnemyPoses.get(enemy.spriteId).shadowRiseK,
         contentH = clipMetrics(enemy.spriteId, "idle").frameHeights[1],
     }
 end
 
--- ROSTER: a fonte única agora é src/data/enemies.lua (`ROSTER`, pools por
--- ato × tipo de nó, Out/2026). A batalha usa o inimigo SORTEADO no nó
--- (EnemyRoster, gravado em node.enemyId); este helper devolve o PRIMEIRO do
--- pool — o "rosto" do ato, usado por ferramentas de captura e como prévia
--- de nó antigo sem enemyId. Endless cicla 4,5,6,1,2,3,... (WorldRoad).
 function EnemyRenderer.resolveSpriteId(actNumber, nodeType)
     local effectiveAct = (((actNumber or 1) - 1) % 6) + 1
     local pool = require("src.systems.EnemyRoster").poolFor(effectiveAct, nodeType)

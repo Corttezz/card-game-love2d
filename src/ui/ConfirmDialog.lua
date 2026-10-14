@@ -1,27 +1,3 @@
--- src/ui/ConfirmDialog.lua
--- Diálogo de confirmação MODAL e genérico (singleton).
---
--- Nasceu do known_gaps 25: "Jogar" com uma corrida salva sobrescrevia o save
--- sem perguntar — um clique distraído no menu apagava horas de run. O StS
--- tem slot único também, mas CONFIRMA. Daí uma peça reutilizável em vez de
--- outra confirmação embutida numa tela (a do PauseMenu é inline na row).
---
--- Uso:
---   ConfirmDialog.show({
---       title   = I18n.t("confirm.new_run_title"),
---       body    = I18n.t("confirm.new_run_body"),
---       confirm = I18n.t("confirm.new_run_yes"),
---       cancel  = I18n.t("common.back"),
---       danger  = true,                 -- botão de confirmar vermelho
---       onConfirm = function() ... end,
---       onCancel  = function() ... end, -- opcional
---   })
---
--- É registrado no InputFocus (main.lua) como MODAL: engole mouse/teclado/
--- roda e apaga o hover de trás. ESC = cancelar, ENTER = confirmar.
--- Layout recalculado em show() e resize() (memory/resize_pattern.md) — a
--- altura do painel vem do wrap REAL do corpo, nunca de constante.
-
 local Button      = require("components.Button")
 local FontManager = require("src.ui.FontManager")
 local Palette     = require("src.ui.Palette")
@@ -69,7 +45,6 @@ local function close(confirmed)
     end
 end
 
--- Recalcula painel, wrap do corpo e botões a partir do tamanho ATUAL da tela.
 local function layout()
     local opts = state.opts
     if not opts then return end
@@ -92,7 +67,6 @@ local function layout()
 
     local half = math.floor((innerW - BTN_GAP) / 2)
     local by = py + ph - PAD - BTN_H
-    -- Sem `cancel` = AVISO: um botão só, centralizado (ESC e ENTER fecham).
     if not opts.cancel then
         local okBtn = Button:new(math.floor(px + (pw - half) / 2), by, half, BTN_H,
             opts.confirm or "", function() close(true) end, nil, 11)
@@ -100,8 +74,6 @@ local function layout()
         state.buttons = { okBtn }
         return
     end
-    -- Cancelar à ESQUERDA, confirmar à direita (ação destrutiva longe do
-    -- caminho natural do olho; ENTER confirma, ESC cancela).
     local cancelBtn = Button:new(px + PAD, by, half, BTN_H,
         opts.cancel or "", function() close(false) end, nil, 11)
     local okBtn = Button:new(px + PAD + half + BTN_GAP, by, half, BTN_H,
@@ -120,8 +92,7 @@ end
 
 function ConfirmDialog.hide() close(false) end
 
--- Objeto registrável no InputFocus (precisa de métodos com ':').
-local handle = { ownsNavigation = true }   -- navega sozinha (setas/Enter)
+local handle = { ownsNavigation = true }
 function handle:isVisible() return state.visible end
 function handle:keypressed(key) return ConfirmDialog.keypressed(key) end
 function handle:mousepressed(x, y, b) return ConfirmDialog.mousepressed(x, y, b) end
@@ -184,12 +155,11 @@ end
 
 function ConfirmDialog.mousereleased(x, y, button)
     if not state.visible then return false end
-    -- Cópia: o onClick fecha o diálogo e zera state.buttons no meio do loop.
     local list = { unpack(state.buttons) }
     for _, b in ipairs(list) do
         if b:mousereleased(x, y, button) then return true end
     end
-    return true -- clique fora: continua aberto (não decide por acidente)
+    return true
 end
 
 function ConfirmDialog.keypressed(key)
@@ -202,7 +172,6 @@ function ConfirmDialog.keypressed(key)
     return true
 end
 
--- Teste/tools: estado observável.
 function ConfirmDialog._state() return state end
 
 return ConfirmDialog

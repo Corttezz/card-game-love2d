@@ -1,17 +1,3 @@
--- src/ui/ClassHeroFx.lua
--- Atmosfera do emblema em FOCO na seleção de classe v4 (Out/2026). O idle
--- do próprio objeto (lâmina que brilha, orbe que flutua, gotas da adaga) mora
--- no ClassEmblem; aqui fica o AR em volta, um por classe:
---   warrior — brasas subindo da base e faíscas de aço
---   mage    — poeira arcana em órbita lenta, piscando
---   rogue   — névoa de veneno escorrendo e um brilho de lâmina que corre
--- Tudo em quadradinhos de pixel no tamanho do pixel do emblema (sem
--- partícula suave). `burst` = a classe acabou de entrar em foco.
---
---   ClassHeroFx.update(dt, classId, box)   box = { cx, cy, w, h, px }
---   ClassHeroFx.draw(alpha)
---   ClassHeroFx.burst(classId, box)
-
 local ClassHeroFx = {}
 
 local parts = {}
@@ -70,7 +56,6 @@ end
 
 function ClassHeroFx.update(dt, classId, box)
     if classId ~= current then
-        -- troca de foco: o ar da classe anterior se dissipa rápido
         for _, p in ipairs(parts) do if p.kind ~= "burst" then p.life = math.min(p.life, p.t + 0.25) end end
         current = classId
     end
@@ -112,7 +97,7 @@ function ClassHeroFx.draw(alpha)
             x = box.cx + math.cos(p.a) * p.rr
             y = box.cy - box.h * 0.08 + math.sin(p.a) * p.rr * p.yk - k * 18
             a = a * (0.45 + 0.55 * math.abs(math.sin(p.t * 3 + p.tw)))
-            if math.sin(p.a) < 0 then a = a * 0.5 end   -- atrás do orbe: mais fraca
+            if math.sin(p.a) < 0 then a = a * 0.5 end
         elseif p.kind == "mist" then
             a = a * 0.6
         end

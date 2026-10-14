@@ -1,4 +1,3 @@
--- Dados del Escriba (apuesta opcional de la tienda) — es
 return {
     title      = "Dados del Escriba",
     subtitle   = "Una tirada por visita. La casa paga lo que está escrito.",

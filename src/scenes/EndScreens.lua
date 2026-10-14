@@ -1,32 +1,3 @@
--- src/scenes/EndScreens.lua
--- Telas terminais (gameOver, victory). Extraídas de main.lua.
---
--- v2 (Out/2026 — auditoria de UX): antes as duas telas só aceitavam TECLA
--- ("R"/"ESPAÇO"/"ESC" escritos num rodapé) — o mouse não fazia nada e o
--- gamepad também não. Agora são telas de verdade, no padrão StS (resumo da
--- run + botões) e Balatro (placa escura atrás de todo texto):
---
---   ZONAS (de cima pra baixo; cada elemento pertence a UMA):
---     TÍTULO    título animado + subtítulo (quem te matou / campanha vencida)
---               + pontuação e recorde — tudo sobre placa escura (o título
---               verde da vitória sumia na arte clara)
---     RESUMO    grade classe · alcance · desfecho · turnos · tempo ·
---               baralho · ouro · coringas
---     REVELAÇÃO maestria + desbloqueios (UnlockReveal) — ocupa o que sobra;
---               some se não couber (o conteúdo cede, as zonas não se mexem)
---     AÇÕES     Game over: Tentar de novo / Menu principal
---               Vitória:   Seguir no Endless / Tentar de novo / Menu principal
---
--- Entrada: mouse (clique no release, só se o press nasceu no mesmo botão),
--- teclado e gamepad via src/ui/MenuKit.lua (setas/WASD, Enter/Espaço, ESC =
--- menu; R = tentar de novo). O gamepad chega aqui já traduzido em tecla pelo
--- love.gamepadpressed do main.lua.
---
--- Os callbacks (tentar de novo / menu / endless) são injetados pelo main.lua
--- via EndScreens.setCallbacks — a tela não conhece a máquina de estados.
--- Sem update externo: o relógio tica no draw (love.timer.getDelta), como o
--- título DynaText sempre fez.
-
 local FontManager = require("src.ui.FontManager")
 local Theme = require("src.ui.Theme")
 local Palette = require("src.ui.Palette")
@@ -40,16 +11,14 @@ local TextFit = require("src.ui.TextFit")
 
 local EndScreens = {}
 
--- Segundos depois de a tela aparecer em que a entrada é ignorada: o clique
--- ou a tecla que matou o chefe (ou o jogador) não pode cair num botão.
 EndScreens.INPUT_DELAY = 0.5
 
 local S = {
-    kind = nil,          -- "gameOver" | "victory"
-    t = 0,               -- tempo desde a entrada
+    kind = nil,
+    t = 0,
     lastDraw = nil,
     focus = 1,
-    pressed = nil,       -- índice do botão onde o press do mouse nasceu
+    pressed = nil,
     layout = nil,
     layoutKey = nil,
     callbacks = {},
@@ -59,16 +28,10 @@ function EndScreens.setCallbacks(cb)
     S.callbacks = cb or {}
 end
 
--- ===================================================================
--- DADOS PUROS (testáveis sem desenhar)
--- ===================================================================
-
 local function currentRun(game)
     return game and game.runManager and game.runManager.currentRun or nil
 end
 
--- A vitória pode virar Endless? Só numa run que JÁ registrou a vitória
--- (campaignWon) e ainda não está no endless.
 function EndScreens.canEndless(game)
     local run = currentRun(game)
     return (game and game.isRunMode and run and run.campaignWon
@@ -92,7 +55,6 @@ local function formatTime(secs)
 end
 EndScreens.formatTime = formatTime
 
--- Resumo da run: { subtitle, cells = { {label, value}, ... } }.
 function EndScreens.summary(kind, game)
     local run = currentRun(game) or {}
     local cells = {}
@@ -113,7 +75,6 @@ function EndScreens.summary(kind, game)
             { act = run.actNumber or 1, floor = run.floorInAct or 1 }))
     end
 
-    -- Selo do Grimório / ciclo e maldições: junto do "até onde chegou".
     do
         local mods = require("src.ui.RunModsText").short(run)
         if mods ~= "" then cells[#cells].value = cells[#cells].value .. " · " .. mods end
@@ -124,8 +85,6 @@ function EndScreens.summary(kind, game)
         add("label_fate", I18n.t("end_screen.fate_victory"))
         subtitle = I18n.t("end_screen.victory_sub",
             { acts = require("src.core.Config").TotalActs or 6 })
-        -- Vencer com o selo k abre o k+1 desta classe: o jogador PRECISA ler
-        -- isso aqui, é o convite pra próxima corrida.
         local ur = game and game.unlockResult
         if ur and ur.sealUnlocked then
             subtitle = subtitle .. "  " .. I18n.t("seal_ui.unlocked",
@@ -151,7 +110,6 @@ function EndScreens.summary(kind, game)
     return { subtitle = subtitle, cells = cells }
 end
 
--- Botões da tela, na ordem visual (o primeiro é o primário / foco inicial).
 function EndScreens.actions(kind, game)
     local cb = S.callbacks
     local list = {}
@@ -170,19 +128,12 @@ function EndScreens.actions(kind, game)
     return list
 end
 
--- ===================================================================
--- LAYOUT
--- ===================================================================
-
--- Escala tipográfica: 768 de altura = 1; telas grandes crescem até ~1.9.
 local function uiScale(sh)
     return math.max(1, math.min(1.9, sh / 768))
 end
 
 local GAP = 14
 
--- Monta as zonas e os retângulos dos botões para (kind, game) no tamanho
--- de tela corrente. Puro em relação ao estado de animação.
 function EndScreens.layout(kind, game)
     local sw, sh = love.graphics.getWidth(), love.graphics.getHeight()
     local u = uiScale(sh)
@@ -204,13 +155,11 @@ function EndScreens.layout(kind, game)
     local L = { sizes = sizes, u = u, pad = pad, kind = kind }
     local y = math.max(12, math.floor(sh * 0.035))
 
-    -- TÍTULO
     local titleH = pad + sizes.title + math.floor(10 * u) + fh(sizes.sub)
         + math.floor(8 * u) + fh(sizes.score) + pad
     L.title = { x = x, y = y, w = colW, h = titleH }
     y = y + titleH + GAP
 
-    -- AÇÕES (medidas antes: a revelação fica com o que sobra no meio)
     local acts = EndScreens.actions(kind, game)
     local n = #acts
     local bgap = math.floor(12 * u)
@@ -218,7 +167,6 @@ function EndScreens.layout(kind, game)
     local withDesc = true
     local btnH = pad + fh(sizes.btnTitle) + math.floor(6 * u) + fh(sizes.btnDesc) + pad
 
-    -- RESUMO
     local cells = 8
     local cols = (colW >= 720) and 4 or 2
     local rows = math.ceil(cells / cols)
@@ -226,7 +174,6 @@ function EndScreens.layout(kind, game)
     local rowGap = math.floor(10 * u)
     local sumH = pad * 2 + rows * cellH + (rows - 1) * rowGap
 
-    -- Cabe? Quem cede é o CONTEÚDO: primeiro a descrição dos botões.
     local bottomMargin = math.max(16, math.floor(sh * 0.035))
     local need = y + sumH + GAP + btnH + bottomMargin
     if need > sh then
@@ -248,14 +195,9 @@ function EndScreens.layout(kind, game)
             primary = a.primary, action = a.action }
     end
 
-    -- REVELAÇÃO: o vão entre o resumo e as ações (UnlockReveal pinta a placa
-    -- 8px acima da banda recebida — por isso o +8).
     local revTop = y + 8
     local revBottom = ay - GAP
     if game and game.unlockResult and revBottom - revTop >= math.floor(70 * u) then
-        -- Teto: o conteúdo do UnlockReveal não passa de ~340px (cartas em
-        -- escala 1.6 no máximo); sem teto, em 2560x1440 a placa virava um
-        -- retângulo escuro quase vazio.
         L.reveal = { x = x, y = revTop, w = colW, h = math.min(340, revBottom - revTop) }
     end
     return L
@@ -273,12 +215,10 @@ local function ensureLayout(kind, game)
     return S.layout
 end
 
--- Invalida o layout (love.resize / troca de idioma).
 function EndScreens.resize()
     S.layoutKey = nil
 end
 
--- Checagem geométrica (usada pelo test_end_screens). Lista de problemas.
 function EndScreens.validate(L)
     L = L or S.layout
     local problems = {}
@@ -296,7 +236,6 @@ function EndScreens.validate(L)
         local r = L[name]
         if r then
             onScreen(r, "zona " .. name)
-            -- reveal pinta 8px acima da própria banda: compara com essa borda
             local top = (name == "reveal") and (r.y - 8) or r.y
             if prev and top < prev.r.y + prev.r.h then
                 problems[#problems + 1] = ("zona %s invade %s"):format(name, prev.name)
@@ -311,7 +250,6 @@ function EndScreens.validate(L)
                 problems[#problems + 1] = ("botao %s sobrepoe %s"):format(b.key, L.buttons[j].key)
             end
         end
-        -- textos cabem no botão (TextFit garante; aqui confere a fonte mínima)
         local _, shown = TextFit.fit(b.title, L.sizes.btnTitle, b.w - L.pad * 2, 8)
         if shown ~= b.title then
             problems[#problems + 1] = ("titulo do botao %s truncado (%q)"):format(b.key, shown)
@@ -320,12 +258,6 @@ function EndScreens.validate(L)
     return problems
 end
 
--- ===================================================================
--- ESTADO / ENTRADA
--- ===================================================================
-
--- Chamado pelo draw: detecta re-entrada na tela (outro tipo, ou a tela não
--- era desenhada havia um tempo) e zera relógio e foco.
 local function tickEnter(kind)
     local now = love.timer.getTime()
     if S.kind ~= kind or not S.lastDraw or (now - S.lastDraw > 0.3) then
@@ -340,7 +272,6 @@ local function tickEnter(kind)
     S.lastDraw = now
 end
 
--- Para testes/ferramentas: entra na tela sem desenhar (zera relógio/foco).
 function EndScreens._enter(kind, game, t)
     S.kind = kind
     S.t = t or 0
@@ -417,7 +348,6 @@ function EndScreens.mousereleased(x, y, button)
     return true
 end
 
--- Mouse que MEXE leva o foco (mouse parado não rouba o foco do teclado).
 local function trackHover()
     local mx, my = love.mouse.getPosition()
     local okC, CRT = pcall(require, "src.ui.CRTShader")
@@ -438,13 +368,6 @@ local function trackHover()
     end
 end
 
--- ===================================================================
--- DRAW
--- ===================================================================
-
--- Cache de instâncias DynaText por chave (gameOver/victory). Recriadas se a
--- fonte responsiva muda (resize) ou texto muda (locale). Trackeia lastDrawTime
--- pra detectar "re-entrada" na cena → dispara :pulse() + reset do pop_in.
 local titleDyna = {}
 local function ensureTitle(key, text, size, color)
     local entry = titleDyna[key]
@@ -456,11 +379,7 @@ local function ensureTitle(key, text, size, color)
             dyna = DynaText.new({
                 text = text,
                 fontSize = size,
-                bump = true,                  -- letras "saltam" episodicamente
-                -- Mesma correção do título do pacote e do Round Eval: com o
-                -- default (bump_phase=200) as letras vizinhas defasam ~-1,06
-                -- rad e o título ESPALHA em vez de ondular. Fase pequena faz
-                -- o salto viajar pela palavra.
+                bump = true,
                 bump_phase = 0.42,
                 bump_amount = 0.45,
                 rotate = true,
@@ -489,7 +408,6 @@ local function ensureTitle(key, text, size, color)
     return entry.dyna
 end
 
--- Placa escura com filete dourado: TODO texto da tela final mora numa.
 local function plate(r, alpha)
     Palette.set(Palette.INK, alpha or 0.82)
     love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 4, 4)
@@ -506,7 +424,6 @@ local function drawTitleZone(kind, game, L, sum)
     local titleText = (kind == "victory") and I18n.t("victory.title")
         or I18n.t("end_screen.defeat_title")
     titleText = TextCase.upper(titleText)
-    -- Título cede a fonte até caber na placa (locale de palavra longa).
     local size = s.title
     while size > 16 and FontManager.getFont(size):getWidth(titleText) > z.w - L.pad * 2 do
         size = size - 2
@@ -522,7 +439,6 @@ local function drawTitleZone(kind, game, L, sum)
         { size = s.sub, maxW = z.w - L.pad * 2, align = "center", minSize = 8 })
     y = y + FontManager.getFont(s.sub):getHeight() + math.floor(8 * L.u)
 
-    -- Pontuação + recorde na mesma linha.
     local ProfileStats = require("engine.ProfileStats")
     local best = ProfileStats.get().bestScore or 0
     local isNew = game and game.scoreSystem and game.scoreSystem.recordBroken
@@ -583,7 +499,6 @@ local function drawButton(L, b, focused)
         titleCol = focused and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT_LIGHT
         descCol = Palette.PARCHMENT
     end
-    -- sombra dura + placa + emboss (gramática do Button clean / PauseMenu)
     Palette.set(Palette.INK, 0.6)
     love.graphics.rectangle("fill", x + 3, y + 3, w, h, 3, 3)
     Palette.set(fill)
@@ -632,7 +547,6 @@ local function drawScreen(kind, game)
     for i, b in ipairs(L.buttons) do
         drawButton(L, b, i == S.focus)
     end
-    -- O anel de foco só acende quando a tela já aceita entrada.
     local fb = L.buttons[S.focus]
     if fb and ready() then MenuKit.focusRing(fb.x, fb.y, fb.w, fb.h, S.t) end
 

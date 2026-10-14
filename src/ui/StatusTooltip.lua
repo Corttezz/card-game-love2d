@@ -1,19 +1,4 @@
--- src/ui/StatusTooltip.lua
--- Tooltip global (singleton) pra status effects e elementos de UI. Qualquer
--- componente chama StatusTooltip.show(name, mx, my, ctx) e o main.lua desenha
--- no fim do frame (por cima de tudo) via StatusTooltip.draw().
---
--- Resolve i18n `status.<name>.name` e `status.<name>.desc` com interpolação
--- {stacks}/{duration}/etc. Se a chave não existir, cai em fallback: nome
--- literal capitalizado + "".
---
--- v2 (Jul/2026, playtest): textos vazavam do box em idiomas com palavras
--- longas — a largura era medida só pelo TÍTULO. Agora o box é medido pelo
--- CONTEÚDO real (wrap manual, maior linha define a largura, com teto), o
--- título também quebra linha, e a tipografia ganhou respiro: line-height
--- 1.4, letter spacing de 1px (pixel-art friendly) e padding maior. Pop-in
--- sutil (fade+scale 0.14s) quando o tooltip troca de assunto; cantos
--- ornamentais dourados pra organizar a moldura.
+local Debug = require("src.core.Debug")
 
 local FontManager = require("src.ui.FontManager")
 local Palette = require("src.ui.Palette")
@@ -22,28 +7,21 @@ local utf8 = require("utf8")
 
 local StatusTooltip = {}
 
--- Estado interno (single tooltip por frame; última chamada vence)
 local active = nil
--- Pop-in: rastreia o "assunto" atual entre frames (o tooltip é ephemeral,
--- mas o hover contínuo re-agenda o mesmo name — a animação persiste).
 local shownKey = nil
 local shownAt = 0
 local lastShowTime = 0
 
-local MAX_INNER = 264      -- largura máxima do texto (box = inner + PAD*2)
+local MAX_INNER = 264
 local MIN_INNER = 132
 local PAD = 12
-local LETTER_SPACING = 1   -- px inteiro (fonte pixel; fração borra)
+local LETTER_SPACING = 1
 local LINE_HEIGHT = 1.4
 local POP_DURATION = 0.14
 
 local function setColor(c, a)
     love.graphics.setColor(c[1], c[2], c[3], (c[4] or 1) * (a or 1))
 end
-
--- ===== Tipografia com letter spacing =====
--- LÖVE não tem letter spacing nativo: medimos e desenhamos char a char
--- (UTF-8 safe). Medida e desenho usam a MESMA soma — nunca divergem.
 
 local function measureSpaced(font, text)
     local w, n = 0, 0
@@ -64,7 +42,6 @@ local function printSpaced(font, text, x, y)
     end
 end
 
--- Quebra palavra gigante (compostos alemães etc.) por caracteres.
 local function breakLongWord(font, word, maxW, lines)
     local piece = ""
     for _, code in utf8.codes(word) do
@@ -79,8 +56,6 @@ local function breakLongWord(font, word, maxW, lines)
     return piece
 end
 
--- Wrap por palavras medindo COM letter spacing (getWrap nativo não sabe do
--- spacing — era uma das fontes do vazamento).
 local function wrapSpaced(font, text, maxW)
     local lines = {}
     local line = ""
@@ -102,11 +77,6 @@ local function wrapSpaced(font, text, maxW)
     return lines
 end
 
--- ===== API =====
-
--- Agenda um tooltip pra draw neste frame. Chamar ANTES do final do frame;
--- múltiplas chamadas no mesmo frame: só a última desenha (normal pra hover).
--- ctx: valores usados na interpolação ({stacks}, {duration}, ...).
 function StatusTooltip.show(statusName, mouseX, mouseY, ctx)
     if not statusName then return end
     active = {
@@ -114,12 +84,8 @@ function StatusTooltip.show(statusName, mouseX, mouseY, ctx)
         x = mouseX or 0,
         y = mouseY or 0,
         ctx = ctx or {},
-        -- escala de UI de quem pediu (src/ui/UiScale): o desenho acontece
-        -- depois, fora daquele contexto, e precisa voltar pro mesmo espaço
         k = require("src.ui.UiScale").activeK(),
     }
-    -- Assunto novo OU hover que saiu e voltou (gap > 0.25s) → reinicia o
-    -- pop-in. Hover contínuo no mesmo assunto: animação segue de onde está.
     local now = love.timer.getTime()
     if statusName ~= shownKey or (now - lastShowTime) > 0.25 then
         shownKey = statusName
@@ -137,30 +103,19 @@ function StatusTooltip.isActive()
     return active ~= nil
 end
 
--- Capitaliza primeira letra (fallback quando falta tradução)
 local function capitalize(s)
     if not s or s == "" then return s end
     return string.upper(string.sub(s, 1, 1)) .. string.sub(s, 2)
 end
 
--- Resolve textos via I18n, com fallbacks sãos.
--- ctx.variant escolhe uma VARIAÇÃO da descrição: `status.<x>.desc_<variant>`.
--- Nasceu do estado permanente (joker/passiva), onde interpolar {duration} de
--- um buff de 99 turnos imprimia "dura 99 turno(s)" — mentira com cara de dado.
--- Variante ausente cai na desc normal (e avisa, ui_layout_invariants §3).
 local warnedVariant = {}
 local function resolveTexts(statusName, ctx)
-    -- Texto JÁ composto pelo chamador (tooltip do intent do inimigo: nome do
-    -- golpe + linhas montadas dos números congelados — EnemyHud).
     if ctx and ctx.title then return ctx.title, ctx.body or "" end
     local ns = "status."
-    -- Status do kit dos inimigos (Frágil, Revoada, Eclipse, DoT no jogador)
-    -- moram em `enemy_kit.status` — arquivo próprio por locale.
     if I18n.t("status." .. statusName .. ".name", nil, "") == ""
         and I18n.t("enemy_kit.status." .. statusName .. ".name", nil, "") ~= "" then
         ns = "enemy_kit.status."
     end
-    -- Verbetes do onboarding (mana...) moram em `tutorial.status`.
     if ns == "status." and I18n.t("status." .. statusName .. ".name", nil, "") == ""
         and I18n.t("tutorial.status." .. statusName .. ".name", nil, "") ~= "" then
         ns = "tutorial.status."
@@ -174,7 +129,7 @@ local function resolveTexts(statusName, ctx)
         desc = I18n.t(descKey .. "_" .. variant, ctx, "")
         if desc == "" and not warnedVariant[statusName .. "/" .. variant] then
             warnedVariant[statusName .. "/" .. variant] = true
-            print("[StatusTooltip] sem chave " .. descKey .. "_" .. variant
+            Debug.warn("[StatusTooltip] sem chave " .. descKey .. "_" .. variant
                 .. " — usando a desc padrao")
         end
     end
@@ -206,7 +161,6 @@ function StatusTooltip._draw()
 
     local name, desc = resolveTexts(active.name, active.ctx)
 
-    -- ===== MEDIDA pelo conteúdo real =====
     local headerLines = wrapSpaced(headerFont, name, MAX_INNER)
     local bodyLines = (desc ~= "") and wrapSpaced(bodyFont, desc, MAX_INNER) or {}
 
@@ -228,7 +182,6 @@ function StatusTooltip._draw()
     local boxW = innerW + PAD * 2
     local boxH = PAD + headerH + dividerH + bodyH + PAD
 
-    -- Smart positioning: à direita do mouse por default, espelha se sair da tela
     local x = active.x + 14
     local y = active.y + 14
     if x + boxW > sw - 4 then
@@ -241,44 +194,35 @@ function StatusTooltip._draw()
     if y < 4 then y = 4 end
     x, y = math.floor(x), math.floor(y)
 
-    -- ===== POP-IN (fade + scale sutil; reduced motion pula) =====
     local rm = _G.gameSettings and _G.gameSettings.reducedMotion
     local k = 1
     if not rm then
         k = math.min(1, (love.timer.getTime() - shownAt) / POP_DURATION)
-        k = 1 - (1 - k) * (1 - k) * (1 - k) -- easeOutCubic
+        k = 1 - (1 - k) * (1 - k) * (1 - k)
     end
     local alpha = k
     local scale = 0.94 + 0.06 * k
 
     love.graphics.push()
-    -- Origem do scale no canto do box mais próximo do mouse (cresce "saindo"
-    -- do cursor, não do centro).
     local ox = (x > active.x) and x or (x + boxW)
     local oy = (y > active.y) and y or (y + boxH)
     love.graphics.translate(ox, oy)
     love.graphics.scale(scale, scale)
     love.graphics.translate(-ox, -oy)
 
-    -- ===== RENDER =====
-    -- Sombra
     love.graphics.setColor(0, 0, 0, 0.55 * alpha)
     love.graphics.rectangle("fill", x + 3, y + 4, boxW, boxH, 5, 5)
 
-    -- Fundo pergaminho escuro
     setColor(Palette.PARCHMENT_DARK, 0.98 * alpha)
     love.graphics.rectangle("fill", x, y, boxW, boxH, 5, 5)
 
-    -- Borda tinta externa
     setColor(Palette.INK, alpha)
     love.graphics.setLineWidth(1)
     love.graphics.rectangle("line", x, y, boxW, boxH, 5, 5)
 
-    -- Borda interna dourada
     setColor(Palette.AGED_GOLD_DARK, 0.85 * alpha)
     love.graphics.rectangle("line", x + 3, y + 3, boxW - 6, boxH - 6, 3, 3)
 
-    -- Cantos ornamentais (ticks dourados — moldura de grimório organizada)
     setColor(Palette.AGED_GOLD_LIGHT, 0.9 * alpha)
     love.graphics.setLineWidth(1)
     local tick = 6
@@ -287,7 +231,6 @@ function StatusTooltip._draw()
     love.graphics.line(x + 3, y + boxH - 3 - tick, x + 3, y + boxH - 3, x + 3 + tick, y + boxH - 3)
     love.graphics.line(x + boxW - 3 - tick, y + boxH - 3, x + boxW - 3, y + boxH - 3, x + boxW - 3, y + boxH - 3 - tick)
 
-    -- Header (nome) com sombra de tinta, linha a linha
     love.graphics.setFont(headerFont)
     local hy = y + PAD
     for _, line in ipairs(headerLines) do
@@ -298,13 +241,11 @@ function StatusTooltip._draw()
         hy = hy + headerLH
     end
 
-    -- Separador dourado
     if #bodyLines > 0 then
         setColor(Palette.AGED_GOLD_DARK, 0.9 * alpha)
         love.graphics.line(x + PAD, hy + 3, x + boxW - PAD, hy + 3)
     end
 
-    -- Body (desc) com line-height e letter spacing
     love.graphics.setFont(bodyFont)
     setColor(Palette.PARCHMENT_LIGHT, alpha)
     local by = hy + dividerH
@@ -317,9 +258,6 @@ function StatusTooltip._draw()
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.setLineWidth(1)
 
-    -- Auto-hide: tooltip é ephemeral por frame. Componentes têm que chamar
-    -- show() a cada frame que o hover continua. Sem re-call, some no próximo
-    -- frame automaticamente (shownKey/shownAt guardam a animação do assunto).
     active = nil
 end
 

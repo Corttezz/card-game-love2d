@@ -1,22 +1,4 @@
--- src/data/card_art.lua
--- Atlas visual: cada ID de carta mapeia para uma composição única.
--- Formato de entrada:
---   {
---     icon       = string,    -- nome em PixelIcons (sword_short, bolt, skull, ...)
---     bg         = string,    -- padrão de fundo (ver CardFrame: blood/storm/ice/...)
---     accent     = string,    -- cor de destaque (Palette.<NAME>)
---     effect     = string?,   -- "glow" | "holo" | nil (auto pela raridade se nil)
---     decoration = string?,   -- "sparks" | "dust" | "smoke" | "flash" | nil
---   }
---
--- Cartas sem entrada recebem fallback derivado de (type, class, rarity).
---
--- 2026-04-20: cada carta agora tem ícone único em assets/sprites/icons/<card_id>.png
--- geradas via PixelLab MCP. Cartas listadas que mantêm ícones do pool original
--- (sword_great, axe, skull_crowned, mask, coin, potion_red, joker_*) já eram únicos.
-
 return {
-    -- ===== BASIC =====
     attack_001              = { icon = "attack_001",             bg = "stone",   accent = "ATTACK",       decoration = "sparks" },
     attack_002              = { icon = "attack_002",             bg = "blood",   accent = "MAGENTA_DARK", decoration = "flash"  },
     defense_001             = { icon = "defense_001",            bg = "metal",   accent = "DEFENSE",      decoration = "sparks" },
@@ -30,7 +12,6 @@ return {
     joker_003               = { icon = "joker_vampire",  bg = "abyss",   accent = "AGED_GOLD",  effect = "holo" },
     joker_004               = { icon = "joker_jester",   bg = "abyss",   accent = "AGED_GOLD",  effect = "holo" },
 
-    -- ===== NOVAS (gameplay-overhaul Jul/2026 — scaling/payoffs) =====
     warrior_bastion         = { icon = "warrior_bastion",         bg = "metal",   accent = "AGED_GOLD", effect = "holo" },
     warrior_war_cry         = { icon = "warrior_war_cry",         bg = "rage",    accent = "MAGENTA",   decoration = "flash"  },
     warrior_twin_strike     = { icon = "warrior_twin_strike",     bg = "impact",  accent = "ATTACK",    decoration = "sparks" },
@@ -52,7 +33,6 @@ return {
     attack_cleave           = { icon = "attack_cleave",           bg = "impact",  accent = "ATTACK",    decoration = "sparks" },
     defense_bulwark         = { icon = "defense_bulwark",         bg = "stone",   accent = "DEFENSE",   decoration = "dust"   },
 
-    -- ===== WARRIOR =====
     warrior_flame_barrier   = { icon = "warrior_flame_barrier",  bg = "fire",    accent = "ORANGE",       decoration = "sparks" },
     warrior_ghostly_armor   = { icon = "warrior_ghostly_armor",  bg = "ghost",   accent = "CYAN_PALE",    decoration = "smoke"  },
     warrior_inflame         = { icon = "warrior_inflame",        bg = "fire",    accent = "MAGENTA",      decoration = "sparks" },
@@ -71,7 +51,6 @@ return {
     warrior_immolate        = { icon = "warrior_immolate",       bg = "fire",    accent = "ORANGE",       decoration = "sparks", effect = "glow" },
     warrior_juggernaut      = { icon = "warrior_juggernaut",     bg = "impact",  accent = "YELLOW",       decoration = "sparks", effect = "glow" },
 
-    -- ===== MAGE =====
     mage_zap                = { icon = "mage_zap",               bg = "storm",   accent = "YELLOW",       decoration = "flash" },
     mage_dualcast           = { icon = "mage_dualcast",          bg = "arcane",  accent = "PURPLE",       decoration = "sparks" },
     mage_ball_lightning     = { icon = "mage_ball_lightning",    bg = "storm",   accent = "YELLOW",       decoration = "flash" },
@@ -90,11 +69,10 @@ return {
     mage_fission            = { icon = "mage_fission",           bg = "arcane",  accent = "ORANGE",       decoration = "flash", effect = "glow" },
     mage_machine_learning   = { icon = "mage_machine_learning",  bg = "arcane",  accent = "GREEN_BRIGHT", decoration = "sparks", effect = "glow" },
     mage_meteor_strike      = { icon = "mage_meteor_strike",     bg = "fire",    accent = "MAGENTA",      decoration = "flash", effect = "glow" },
-    mage_rainbow            = { icon = "mage_rainbow",           bg = "arcane",  accent = "PINK",         decoration = "sparks", effect = "holo", artOffsetY = -9 },  -- sujeito no PÉ da arte (CardArtSlot.VALIGN)
+    mage_rainbow            = { icon = "mage_rainbow",           bg = "arcane",  accent = "PINK",         decoration = "sparks", effect = "holo", artOffsetY = -9 },
     effect_healing_potion   = { icon = "potion_red",             bg = "soft",    accent = "MAGENTA",      decoration = "sparks" },
     effect_mana_crystal     = { icon = "effect_mana_crystal",    bg = "arcane",  accent = "CYAN",         decoration = "sparks" },
 
-    -- ===== ROGUE =====
     rogue_strike            = { icon = "rogue_strike",           bg = "impact",  accent = "GREEN_BRIGHT", decoration = "sparks" },
     rogue_defend            = { icon = "rogue_defend",           bg = "wind",    accent = "CYAN",         decoration = "dust"   },
     rogue_survivor          = { icon = "rogue_survivor",         bg = "wind",    accent = "CYAN",         decoration = "dust"   },
@@ -116,15 +94,12 @@ return {
     rogue_envenom           = { icon = "rogue_envenom",          bg = "poison",  accent = "GREEN_BRIGHT", decoration = "smoke", effect = "glow" },
     rogue_storm_of_steel    = { icon = "rogue_storm_of_steel",   bg = "storm",   accent = "CYAN",         decoration = "flash", effect = "glow" },
 
-    -- ===== NOVAS (2026-04-20): reaproveitando icones do pool original =====
-    -- Warrior
     warrior_plate_mail      = { icon = "armor_plate",            bg = "metal",   accent = "CYAN",         decoration = "sparks" },
     warrior_helm_of_valor   = { icon = "helm",                   bg = "metal",   accent = "ORANGE",       decoration = "sparks" },
     warrior_second_heart    = { icon = "heart",                  bg = "blood",   accent = "MAGENTA",      decoration = "flash",  effect = "glow" },
     warrior_shield_slam     = { icon = "shield_round",           bg = "impact",  accent = "ORANGE",       decoration = "sparks" },
     warrior_kite_guard      = { icon = "shield_kite",            bg = "metal",   accent = "YELLOW",       decoration = "sparks" },
     warrior_quick_strike    = { icon = "sword_short",            bg = "impact",  accent = "CYAN",         decoration = "sparks" },
-    -- Mage
     mage_lightning          = { icon = "bolt",                   bg = "storm",   accent = "YELLOW",       decoration = "flash" },
     mage_fireball           = { icon = "fireball",               bg = "fire",    accent = "ORANGE",       decoration = "sparks" },
     mage_flame_tongue       = { icon = "flame",                  bg = "fire",    accent = "ORANGE",       decoration = "sparks" },
@@ -136,7 +111,6 @@ return {
     mage_sages_gem          = { icon = "gem",                    bg = "arcane",  accent = "PURPLE",       decoration = "sparks", effect = "glow" },
     mage_arcane_sight       = { icon = "eye",                    bg = "arcane",  accent = "PURPLE",       decoration = "smoke"  },
     mage_magic_barrier      = { icon = "barrier",                bg = "arcane",  accent = "CYAN",         decoration = "sparks" },
-    -- Rogue
     rogue_stiletto          = { icon = "dagger",                 bg = "impact",  accent = "GREEN_BRIGHT", decoration = "sparks" },
     rogue_rake              = { icon = "claw",                   bg = "rage",    accent = "GREEN_BRIGHT", decoration = "flash"  },
     rogue_venom_fang        = { icon = "fang",                   bg = "poison",  accent = "GREEN_BRIGHT", decoration = "sparks" },
@@ -144,31 +118,21 @@ return {
     rogue_death_mark        = { icon = "skull",                  bg = "shadow",  accent = "PURPLE",       decoration = "smoke",  effect = "glow" },
     rogue_moonshadow        = { icon = "moon",                   bg = "shadow",  accent = "PURPLE",       decoration = "smoke"  },
     rogue_shooting_star     = { icon = "star",                   bg = "wind",    accent = "YELLOW",       decoration = "sparks", effect = "glow" },
-    -- Basic/Effect/Joker
     effect_scroll_wisdom    = { icon = "scroll",                 bg = "soft",    accent = "AGED_GOLD",    decoration = "sparks" },
-    effect_mystery_card     = { icon = "question",               bg = "arcane",  accent = "PURPLE",       decoration = "sparks", artOffsetY = -9 },  -- sujeito no PÉ da arte (CardArtSlot.VALIGN)
+    effect_mystery_card     = { icon = "question",               bg = "arcane",  accent = "PURPLE",       decoration = "sparks", artOffsetY = -9 },
     joker_005               = { icon = "jester_hat",             bg = "abyss",   accent = "AGED_GOLD",    effect = "holo" },
-    -- coringas de combo (Out/2026): arte PixelLab (combo_volley/wall/pair)
     joker_combo_volley      = { icon = "combo_volley",           bg = "storm",   accent = "AGED_GOLD",    decoration = "sparks" },
     joker_combo_wall        = { icon = "combo_wall",             bg = "metal",   accent = "AGED_GOLD",    decoration = "dust" },
     joker_combo_pair        = { icon = "combo_pair",             bg = "arcane",  accent = "AGED_GOLD",    decoration = "sparks" },
 
-    -- ===== ORFAS (2026-09-12): 12 cartas que nao tinham entrada e caiam no
-    -- fallback por tipo do CardArt.resolve — todas do mesmo tipo dividiam o
-    -- MESMO icone (Adrenalina saia identica a Pocao de Cura, Grito de Comando
-    -- idem; os 3 jokers viravam "skull"; os 3 ataques de ladino, "dagger").
-    -- Arte propria gerada via tools/pixellab_generate_missing_art.py.
-    -- Warrior
     warrior_adrenaline_rush = { icon = "warrior_adrenaline_rush", bg = "rage",   accent = "MAGENTA",   decoration = "flash", effect = "glow" },
     warrior_battle_orders   = { icon = "warrior_battle_orders",   bg = "wind",   accent = "AGED_GOLD", decoration = "dust"  },
     warrior_eternal_bulwark = { icon = "warrior_eternal_bulwark", bg = "stone",  accent = "AGED_GOLD", decoration = "dust",  effect = "holo" },
     warrior_taunt           = { icon = "warrior_taunt",           bg = "impact", accent = "PURPLE",    decoration = "smoke" },
-    -- Mage
     mage_dark_harvest       = { icon = "mage_dark_harvest",       bg = "shadow", accent = "PURPLE",    decoration = "smoke" },
     mage_primordial_storm   = { icon = "mage_primordial_storm",   bg = "storm",  accent = "CYAN",      decoration = "flash", effect = "holo" },
-    mage_radiant_prayer     = { icon = "mage_radiant_prayer",     bg = "soft",   accent = "AGED_GOLD", decoration = "sparks", artOffsetY = -9 },  -- sujeito no PÉ da arte (CardArtSlot.VALIGN)
+    mage_radiant_prayer     = { icon = "mage_radiant_prayer",     bg = "soft",   accent = "AGED_GOLD", decoration = "sparks", artOffsetY = -9 },
     mage_sacred_chalice     = { icon = "mage_sacred_chalice",     bg = "arcane", accent = "AGED_GOLD", decoration = "sparks", effect = "glow" },
-    -- Rogue
     rogue_dirty_blade       = { icon = "rogue_dirty_blade",       bg = "poison", accent = "RUST",         decoration = "smoke"  },
     rogue_leech_blade       = { icon = "rogue_leech_blade",       bg = "blood",  accent = "ATTACK",       decoration = "flash"  },
     rogue_poison_dart       = { icon = "rogue_poison_dart",       bg = "poison", accent = "GREEN_BRIGHT", decoration = "sparks" },

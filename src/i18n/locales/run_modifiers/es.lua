@@ -1,4 +1,3 @@
--- Selos do Grimório + maldições do endless (RunModifiers) — es
 return {
     seals = {
         cerco = { name = "Asedio", desc = "Las élites aparecen un 50% más en el mapa." },

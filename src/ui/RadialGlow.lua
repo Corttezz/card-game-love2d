@@ -1,8 +1,3 @@
--- src/ui/RadialGlow.lua
--- Imagem radial 128×128 cacheada (falloff quadrático) pra glows/spotlights
--- baratos: luz de vela do Menu, spotlight dos heróis na seleção de classe.
--- Desenhe com blend "add" e a cor/alpha desejados.
-
 local RadialGlow = {}
 local img
 

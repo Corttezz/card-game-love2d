@@ -1,41 +1,3 @@
--- src/ui/RunJournalLayout.lua
--- PLANO DE ZONAS do Roteiro da jornada (components/RunJournalScreen.lua),
--- versão MAPA À MÃO (Out/2026).
---
--- Pedido do dono: "literalmente um mapa, bem parecido com o mapa do Slay the
--- Spire, que vai mostrando os trilhos que a gente vai seguindo e as decisões
--- que a gente vai tomando. A gente consegue abrir e fechar o mapa para cada
--- ato... como se tivesse sido escrito à mão, apenas com tinta preta e, no
--- máximo, um círculo vermelho... com uma folha envelhecida."
---
--- O layout é uma função PURA da janela + o que cada ato tem (quantas paradas,
--- quantos ramos cada encruzilhada tinha, qual foi tomado, aberto/fechado). O
--- draw só lê o resultado; `validate()` confere as zonas por construção
--- (mesmo molde do src/ui/PackChoiceLayout.lua).
---
---   ┌────────────────────────────────────────────────┐
---   │ CABEÇALHO   título · progresso           [X]   │ altura fixa
---   ├────────────────────────────────────────────────┤
---   │ FOLHAS (rolável)                               │ flex
---   │  ┌ [+] ATO 1 · CAMPOS ARRUINADOS   CONQUISTADO┐│ ato FECHADO = tira
---   │  ┌ [-] ATO 2 · COLINAS DA TORRE      3/8      ┐│ ato ABERTO = folha
---   │  │ nº │        mapa (sobe)        │ anotações ││   bandas: andar /
---   │  │ 8  │          castelo          │           ││   mapa / margem
---   │  │ 3  │   (x)   o                 │ +carta    ││   o = ramo não tomado
---   │  │ 2  │      \  |                 │ vida -7   ││   (x) = círculo vermelho
---   │  │ 1  │    o   #                  │ ouro +19  ││   # = parada tomada
---   │  │ legenda: # luta  ? evento  ...             ││   rodapé da folha
---   │  └────────────────────────────────────────────┘│
---   └────────────────────────────────────────────────┘
---
--- O mapa SOBE (andar 1 embaixo, castelo no topo), como no StS. Cada andar é
--- uma linha; na linha, os ramos que a encruzilhada ofereceu ficam lado a
--- lado, centrados no ponto de onde o jogador veio. O ramo tomado vira o
--- centro da linha seguinte: o caminho serpenteia sozinho.
---
--- Quando aperta, quem cede é a ESCALA (altura da linha, glifo 2x -> 1x,
--- fonte da margem), nunca a posição das bandas.
-
 local RunJournalLayout = {}
 
 local R = RunJournalLayout
@@ -43,30 +5,26 @@ R.HEADER_H     = 60
 R.BOTTOM_PAD   = 10
 R.SHEET_MAX_W  = 840
 R.SHEET_GAP    = 10
-R.CLOSED_H     = 34      -- tira do ato fechado
-R.TITLE_H      = 28      -- banda do título dentro da folha aberta
-R.PAD_X        = 14      -- respiro lateral dentro da folha
+R.CLOSED_H     = 34
+R.TITLE_H      = 28
+R.PAD_X        = 14
 R.PAD_T        = 6
 R.PAD_B        = 8
-R.FLOOR_COL_W  = 24      -- numerais dos andares
+R.FLOOR_COL_W  = 24
 R.COL_GAP      = 8
-R.MAP_FRACTION = 0.44    -- largura do mapa em fração do miolo
+R.MAP_FRACTION = 0.44
 R.ROW_MIN      = 28
 R.ROW_MAX      = 56
-R.ROW_DIV      = 15      -- rowH = sheetW / ROW_DIV (clampado)
-R.GLYPH        = 9       -- lado do glifo (bitmap) em pixels de arte
+R.ROW_DIV      = 15
+R.GLYPH        = 9
 R.CASTLE_W     = 21
 R.CASTLE_H     = 13
-R.LEGEND_H     = 15      -- altura de UMA linha da legenda
+R.LEGEND_H     = 15
 R.TIP_GAP      = 8
 R.TOP_SLACK    = 6
 
 local function clamp(v, lo, hi) return math.max(lo, math.min(hi, v)) end
 
--- Jitter DETERMINÍSTICO (seed da run + ato + linha + ramo): a imperfeição
--- "à mão" é sempre a mesma pra mesma run, então a captura é reproduzível.
--- (xorshift de 32 bits por argumento, via `bit` do LuaJIT: um LCG simples
--- deixava padrões visíveis no pontilhado das manchas do papel)
 local bit = require("bit")
 local bxor, lshift, rshift, band, tobit = bit.bxor, bit.lshift, bit.rshift, bit.band, bit.tobit
 local function hash(...)
@@ -89,20 +47,13 @@ local function noteSizeFor(w)
     return 8
 end
 
--- acts: lista de {
---   open = bool, isEndless = bool, legend = nº de itens da legenda,
---   nodes = { { row = r, n = nº de ramos, pick = índice tomado }, ... } (ordem cronológica)
---   pending = { row = r, n = nº de ramos } ou nil (encruzilhada em aberto)
--- }
--- scroll: deslocamento vertical pedido (clampado; devolvido em L.scroll).
--- seed: inteiro (jitter); opcional.
 function RunJournalLayout.compute(sw, sh, acts, scroll, seed)
     seed = seed or 0
     local margin   = clamp(math.floor(sw * 0.035), 12, 48)
     local sheetW   = math.min(sw - margin * 2, R.SHEET_MAX_W)
     local sheetX   = math.floor((sw - sheetW) / 2)
     local rowH     = clamp(math.floor(sheetW / R.ROW_DIV), R.ROW_MIN, R.ROW_MAX)
-    local gs       = (rowH >= 40) and 2 or 1          -- escala inteira do glifo
+    local gs       = (rowH >= 40) and 2 or 1
     local glyph    = R.GLYPH * gs
     local innerX   = sheetX + R.PAD_X
     local innerW   = sheetW - R.PAD_X * 2
@@ -125,7 +76,6 @@ function RunJournalLayout.compute(sw, sh, acts, scroll, seed)
         sheets = {},
     }
 
-    -- 1ª passada: alturas.
     local contentH = 0
     for i, a in ipairs(acts) do
         local S = { open = a.open and true or false, isEndless = a.isEndless and true or false }
@@ -162,8 +112,6 @@ function RunJournalLayout.compute(sw, sh, acts, scroll, seed)
     L.maxScroll = math.max(0, contentH - zone.h + R.TOP_SLACK)
     L.scroll = clamp(scroll or 0, 0, L.maxScroll)
 
-    -- 2ª passada: posições (scroll embutido: hit-test trivial). Ancorado no
-    -- topo, como página de diário.
     local y = zone.y + R.TOP_SLACK - L.scroll
     for i, S in ipairs(L.sheets) do
         local a = acts[i]
@@ -181,17 +129,12 @@ function RunJournalLayout.compute(sw, sh, acts, scroll, seed)
                     itemW = math.floor(innerW / S.legendCols) }
             end
 
-            -- linhas (sobem): centro vertical da linha r
             S.rowY = {}
             for r = 1, S.rows do
                 S.rowY[r] = S.map.y + mapH - math.floor((r - 0.5) * rowH)
             end
 
-            -- caminho: cada parada ocupa a linha dela; os ramos ficam lado a
-            -- lado centrados no ponto de onde o jogador veio.
             local half = glyph / 2
-            -- (o glyphRect tem 3px de folga em volta do glifo e o jitter
-            -- horizontal chega a 3px: a margem aqui tem que cobrir os dois)
             local minX = S.map.x + half + 4
             local maxX = S.map.x + mapW - half - 4
             local function slotsFor(row, n, fromX, idx)
@@ -210,8 +153,6 @@ function RunJournalLayout.compute(sw, sh, acts, scroll, seed)
             S.nodes, S.stubs, S.segments = {}, {}, {}
             local fromX = S.map.x + math.floor(mapW / 2)
             local prev = nil
-            -- ponto de partida: a borda de baixo do mapa (o caminho "entra"
-            -- na folha por ali)
             S.start = { x = fromX, y = S.map.y + mapH - 1 }
             for ni, nd in ipairs(a.nodes or {}) do
                 local n = math.max(1, nd.n or 1)
@@ -244,8 +185,6 @@ function RunJournalLayout.compute(sw, sh, acts, scroll, seed)
                     S.pending[k] = { x = sl.x, y = sl.y, row = row, slot = k, fromX = prev.x, fromY = prev.y }
                 end
             end
-            -- O castelo do ato (topo do mapa). Se o chefe já foi visitado, o
-            -- castelo fica onde o caminho chegou; senão, centrado e esmaecido.
             if not a.isEndless then
                 local cw, ch = R.CASTLE_W * gs, R.CASTLE_H * gs
                 local top = S.nodes[#S.nodes]
@@ -261,17 +200,13 @@ function RunJournalLayout.compute(sw, sh, acts, scroll, seed)
     return L
 end
 
-R.FLOORS = 8   -- MapManager.FLOORS_PER_ACT (sem require: módulo puro)
+R.FLOORS = 8
 
--- Retângulo do glifo de uma parada (hit-test e validação).
 function RunJournalLayout.glyphRect(L, p)
     local g = L.glyph
     return { x = p.x - math.floor(g / 2) - 3, y = p.y - math.floor(g / 2) - 3, w = g + 6, h = g + 6 }
 end
 
--- Retângulo do detalhe (hover) de uma parada: ao LADO do glifo, dentro da
--- folha ∩ zona visível. Prefere a direita (margem das anotações); vai pra
--- esquerda quando não cabe.
 function RunJournalLayout.tipRect(L, S, p, w, h)
     local gr = RunJournalLayout.glyphRect(L, p)
     local right = gr.x + gr.w + R.TIP_GAP
@@ -302,7 +237,7 @@ function RunJournalLayout.tipRoom(L, S, p)
     return math.max(right, left)
 end
 
-local function inside(a, b)   -- a dentro de b
+local function inside(a, b)
     return a.x >= b.x - 0.5 and a.y >= b.y - 0.5
         and a.x + a.w <= b.x + b.w + 0.5 and a.y + a.h <= b.y + b.h + 0.5
 end
@@ -310,8 +245,6 @@ local function overlaps(a, b)
     return a.x < b.x + b.w and b.x < a.x + a.w and a.y < b.y + b.h and b.y < a.y + a.h
 end
 
--- Confere as invariantes de zona. Devolve lista de problemas (vazia = ok).
--- `tip` opcional: { rect = , sheet = índice, node = ponto } do detalhe aberto.
 function RunJournalLayout.validate(L, tip)
     local problems = {}
     local function bad(msg) problems[#problems + 1] = msg end
@@ -342,7 +275,6 @@ function RunJournalLayout.validate(L, tip)
                 if not inside(S.legend, S) then bad(tag .. ": legenda fora da folha") end
                 if S.legend.y < S.map.y + S.map.h then bad(tag .. ": legenda invade o mapa") end
             end
-            -- paradas dentro do mapa; caminho contínuo
             for ni, p in ipairs(S.nodes) do
                 local gr = RunJournalLayout.glyphRect(L, p)
                 if not inside(gr, S.map) then bad(("%s: parada %d fora do mapa"):format(tag, ni)) end
@@ -353,7 +285,6 @@ function RunJournalLayout.validate(L, tip)
                         bad(("%s: caminho interrompido entre %d e %d"):format(tag, ni - 1, ni))
                     end
                 end
-                -- ramos da mesma linha não se tocam
                 for _, st in ipairs(S.stubs) do
                     if st.node == ni and overlaps(gr, RunJournalLayout.glyphRect(L, st)) then
                         bad(("%s: ramo encosta na parada %d"):format(tag, ni))

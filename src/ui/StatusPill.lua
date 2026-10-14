@@ -1,12 +1,4 @@
--- src/ui/StatusPill.lua
--- Componente visual único pra "pill" de status effect / buff / debuff.
--- Usado tanto por EnemyHud (debuffs do inimigo) quanto PlayerBuffPills (buffs do jogador).
---
--- Formato: círculo com halo colorido + fundo escuro + outlines + ícone central + contador.
--- Comportamento: hover → StatusTooltip.show.
---
--- Config única (STATUS_COLORS + STATUS_ICONS) vive aqui como source of truth.
--- Callers passam opts pra ajustar tamanho, animação e regras de exibição de stacks.
+local Debug = require("src.core.Debug")
 
 local Palette = require("src.ui.Palette")
 local FontManager = require("src.ui.FontManager")
@@ -16,9 +8,6 @@ local StatusTooltip = require("src.ui.StatusTooltip")
 
 local StatusPill = {}
 
--- ===== Tabelas canônicas (fonte única de verdade) =====
--- Toda pill do jogo passa por aqui: quem não tem entrada nestas duas tabelas
--- desenha cinza com a inicial e AVISA no console (ver warnOnce abaixo).
 StatusPill.COLORS = {
     poison       = { 0.45, 0.75, 0.30 },
     weak         = { 0.50, 0.45, 0.70 },
@@ -28,62 +17,39 @@ StatusPill.COLORS = {
     fury         = { 0.95, 0.35, 0.15 },
     dexterity    = { 0.35, 0.75, 0.90 },
     focus        = { 0.80, 0.70, 0.30 },
-    -- Jul/2026 — estados que mudavam regras sem aparecer na tela:
-    -- Cores escolhidas pra serem distinguíveis ENTRE SI na mesma row (a row do
-    -- jogador chega a 8 pills): vermelho=Força, coral=Espinhos, magenta=Roubo
-    -- de Vida, verde=Regeneração, carmim escuro=Sangria.
-    thorn        = { 0.90, 0.50, 0.35 }, -- reflexo ao Bloquear (Barreira de Fogo & cia)
-    lifesteal    = { 0.80, 0.25, 0.60 }, -- cura por ataque
-    regen        = { 0.40, 0.80, 0.55 }, -- cura por turno
-    bleed        = { 0.60, 0.12, 0.18 }, -- HP perdido por turno (custo)
-    retain_armor = { 0.60, 0.72, 0.85 }, -- Bloqueio NÃO zera no turno
-    block        = { 0.55, 0.70, 0.88 }, -- armadura do inimigo
-    enraged      = { 0.95, 0.45, 0.20 }, -- inimigo ferido bate 50% mais forte
-    -- Kit dos inimigos (Out/2026, src/data/enemies.lua): debuffs NO JOGADOR
-    -- (sufixo _self: o tooltip fala com o jogador, "seus ataques...") e
-    -- estados próprios do chefe.
+    thorn        = { 0.90, 0.50, 0.35 },
+    lifesteal    = { 0.80, 0.25, 0.60 },
+    regen        = { 0.40, 0.80, 0.55 },
+    bleed        = { 0.60, 0.12, 0.18 },
+    retain_armor = { 0.60, 0.72, 0.85 },
+    block        = { 0.55, 0.70, 0.88 },
+    enraged      = { 0.95, 0.45, 0.20 },
     weak_self       = { 0.50, 0.45, 0.70 },
     vulnerable_self = { 0.85, 0.55, 0.25 },
-    frail           = { 0.45, 0.62, 0.80 }, -- Bloqueio rende menos
+    frail           = { 0.45, 0.62, 0.80 },
     poison_self     = { 0.45, 0.75, 0.30 },
     burn_self       = { 0.90, 0.40, 0.20 },
-    swarm           = { 0.40, 0.35, 0.45 }, -- corvos invocados (Rei da Carniça)
-    eclipse         = { 0.55, 0.30, 0.75 }, -- 2ª fase da Rainha do Eclipse
+    swarm           = { 0.40, 0.35, 0.45 },
+    eclipse         = { 0.55, 0.30, 0.75 },
 }
 StatusPill.ICONS = {
     poison       = "status_poison",
     weak         = "status_weak",
     vulnerable   = "status_vulnerable",
-    -- QUEIMADURA tem icone PROPRIO (Set/2026). Dividia `flame` com a Furia, e
-    -- as duas sao pills laranja no MESMO inimigo: mesmo simbolo, mesma cor,
-    -- dois estados diferentes. Agora so a Furia usa `flame`.
     burn         = "status_burn",
     strength     = "status_strength",
-    -- FURIA nao e fogo: e o anti-stall do turno 8+, o inimigo escalando +2 de
-    -- dano por turno. A fogueira era interina e, depois que a queimadura ganhou
-    -- chama propria, as duas viravam "duas pills laranja" no MESMO inimigo. O
-    -- icone novo separa por FORMA (cunhas retas subindo x chama gorda e
-    -- arredondada), nao por matiz -- laranja e a cor certa pras duas.
     fury         = "status_fury",
     dexterity    = "status_dexterity",
     focus        = "rune",
-    -- Interinos: reusam ícones existentes até a leva status_* do PixelLab
-    -- (thorn/lifesteal/regen/bleed/retain_armor/enraged pedidos no relatório).
-    -- Leva status_* dedicada (Set/2026) — os interinos de arte de carta saíram.
-    -- Critério de aprovação: legibilidade no TAMANHO DE USO (36px), não a 4x;
-    -- ampliado engana, e foi assim que `dagger` e `heart` passaram na primeira
-    -- rodada e reprovaram na tela.
     thorn        = "status_thorn",
     lifesteal    = "status_lifesteal",
     regen        = "status_regen",
     bleed        = "status_bleed",
     retain_armor = "status_retain_armor",
     enraged      = "status_enraged",
-    block        = "armor_shield", -- mesmo ícone do Bloqueio no painel do jogador
-    -- Kit dos inimigos (Out/2026). Frágil tem ícone próprio (peitoral de aço
-    -- rachado); revoada = garra e eclipse = lua seguem interinos.
-    weak_self       = "status_weak_self",        -- espada partida (24px nativo)
-    vulnerable_self = "status_vulnerable_self",  -- escudo de aço rachado (24px)
+    block        = "armor_shield",
+    weak_self       = "status_weak_self",
+    vulnerable_self = "status_vulnerable_self",
     frail           = "status_frail",
     poison_self     = "status_poison",
     burn_self       = "status_burn",
@@ -91,12 +57,11 @@ StatusPill.ICONS = {
     eclipse         = "moon",
 }
 
--- ===== Avisos (ui_layout_invariants §3: fallback silencioso é proibido) =====
 local warned = {}
 local function warnOnce(key, message)
     if warned[key] then return end
     warned[key] = true
-    print("[StatusPill] " .. message)
+    Debug.warn("[StatusPill] " .. message)
 end
 
 local iconCache = {}
@@ -110,8 +75,6 @@ local function getIcon(name)
         return nil
     end
     local icon = IconLoader.get(iconName)
-    -- IconLoader NUNCA devolve nil: sem PNG e sem matriz ele entrega o "?" de
-    -- PixelIcons.question. Sem este check o ícone errado passaria despercebido.
     if icon and icon.kind == "matrix" and PixelIcons[iconName] == nil then
         warnOnce("asset:" .. iconName,
             "icone '" .. iconName .. "' (status '" .. tostring(name)
@@ -121,7 +84,6 @@ local function getIcon(name)
     return icon
 end
 
--- Limpa caches internos (ícones + avisos). Usado por testes/tools.
 function StatusPill.clearCache()
     iconCache = {}
     warned = {}
@@ -131,7 +93,6 @@ local function setColor(c, a)
     love.graphics.setColor(c[1], c[2], c[3], a or c[4] or 1)
 end
 
--- Dimensões da row horizontal (layout externo).
 function StatusPill.getRowDims(count, size, spacing)
     size = size or 32
     spacing = spacing or 8
@@ -139,9 +100,6 @@ function StatusPill.getRowDims(count, size, spacing)
     return count * (size + spacing) - spacing, size
 end
 
--- Maior tamanho de pill que faz `count` pills caberem em `maxWidth`.
--- Zona (ui_layout_invariants §1): quando o espaço aperta quem cede é a ESCALA
--- do conteúdo — a row nunca quebra linha nem invade a banda de cima.
 function StatusPill.fitSize(count, maxWidth, preferred, spacing)
     preferred = preferred or 32
     spacing = spacing or 8
@@ -152,15 +110,6 @@ function StatusPill.fitSize(count, maxWidth, preferred, spacing)
     return math.max(16, math.min(preferred, fitted))
 end
 
--- Desenha UMA pill. Não gerencia posicionamento da row — cal ler passa (x, y) top-left.
--- opts:
---   size: diâmetro em px (default 32)
---   stacks: número (default 1); contador só aparece se > 1 OU showStacksAlways
---   duration: turnos restantes (passado pro tooltip, não renderizado)
---   showStacksAlways: bool — buffs do player mostram sempre
---   animTime: segundos acumulados (pra halo pulsante)
---   pulseHalo: bool — buffs tem halo mais forte (pulsando)
---   iconTarget: tamanho alvo do ícone em px (default = size * 0.76)
 function StatusPill.render(name, x, y, opts)
     opts = opts or {}
     local size = opts.size or 32
@@ -179,7 +128,6 @@ function StatusPill.render(name, x, y, opts)
     local cy = y + size / 2
     local r = size / 2
 
-    -- Halo colorido (pulsa em buffs, estático em debuffs)
     local haloAlpha = 0.30
     if pulseHalo then
         haloAlpha = 0.30 * (0.75 + math.sin(animTime * 3) * 0.25)
@@ -187,18 +135,15 @@ function StatusPill.render(name, x, y, opts)
     love.graphics.setColor(color[1], color[2], color[3], haloAlpha)
     love.graphics.circle("fill", cx, cy, r + 2)
 
-    -- Fundo escuro
     love.graphics.setColor(0.10, 0.07, 0.05, 0.95)
     love.graphics.circle("fill", cx, cy, r)
 
-    -- Outlines (tinta preta externa + cor interna)
     setColor(Palette.INK, 1)
     love.graphics.setLineWidth(1)
     love.graphics.circle("line", cx, cy, r)
     love.graphics.setColor(color[1], color[2], color[3], 0.9)
     love.graphics.circle("line", cx, cy, r - 1)
 
-    -- Ícone centralizado (fallback: inicial maiúscula)
     local icon = getIcon(name)
     if icon and icon.draw then
         local iconH = (icon.size and icon.size.h) or 16
@@ -216,15 +161,12 @@ function StatusPill.render(name, x, y, opts)
         love.graphics.print(letter, cx - tw / 2, cy - font:getHeight() / 2)
     end
 
-    -- Contador (stacks) no canto inf-dir
     if stacks > 1 or opts.showStacksAlways then
         local font = FontManager.getResponsiveFont(0.02, 12)
         love.graphics.setFont(font)
         local txt = tostring(stacks)
         local tw = font:getWidth(txt)
         local fh = font:getHeight()
-        -- Badge acompanha a escala da pill (row encolhida não ganha contador
-        -- desproporcional).
         local br = math.max(7, math.floor(size * 0.28))
         local stackCx = x + size - math.floor(br * 0.6)
         local stackCy = y + size - math.floor(br * 0.6)
@@ -240,13 +182,6 @@ function StatusPill.render(name, x, y, opts)
     love.graphics.setLineWidth(1)
 end
 
--- Desenha uma row horizontal de pills. Trata hover → tooltip sozinho.
--- effects: array { {name, stacks, duration, showStacks?, variant?}, ... }
---   showStacks: sobrescreve opts.showStacksAlways por pill (estado sem número,
---               tipo "Bloqueio Retido", passa false pra não imprimir "0").
---   variant:    sufixo de desc no tooltip (ex: "permanent" → status.x.desc_permanent).
--- startX, startY: top-left da row
--- opts: mesmas opts de render + spacing
 function StatusPill.drawRow(effects, startX, startY, opts)
     if not effects or #effects == 0 then return end
     opts = opts or {}
@@ -268,10 +203,8 @@ function StatusPill.drawRow(effects, startX, startY, opts)
             showStacksAlways = showStacks,
         }
         StatusPill.render(eff.name, x, startY, pillOpts)
-        -- tooltip alcançável pelo teclado/pad: foco = hover (NavCursor)
         require("src.ui.NavCursor").target("pill:" .. tostring(opts.navPrefix or "") .. eff.name, x, startY, size, size)
 
-        -- Hover → tooltip
         if mx >= x and mx <= x + size and my >= startY and my <= startY + size then
             StatusTooltip.show(eff.name, mx, my, {
                 stacks = eff.stacks or 1,

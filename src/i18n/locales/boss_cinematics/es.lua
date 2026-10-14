@@ -1,5 +1,3 @@
--- Cinemática de jefe (src/ui/BossCinematic): tarjeta de nombre + epíteto y la pista de saltar.
--- Nombres iguales a end_screen.enemy.*; el epíteto es el elemento de cada entrada.
 return {
     skip = "Saltar  {key}",
     carrion_king   = { name = "Rey de la Carroña",    epithet = "Soberano de los Cuervos" },

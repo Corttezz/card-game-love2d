@@ -1,8 +1,4 @@
--- src/data/cards/mage.lua
--- Classe Mago. Fase 7: tags + effects baseados em channel/evoke/magic/heal.
-
 return {
-    -- ========== COMMON ==========
     mage_zap = {
         id = "mage_zap", name = "Descarga",
         type = "attack", subtype = "common",
@@ -17,9 +13,6 @@ return {
     },
     mage_dualcast = {
         id = "mage_dualcast", name = "Conjuracao Dupla",
-        -- Rebalance v2 Jul/2026: era trap no meta pos-pulso (evocar cedo
-        -- destruia pulsos futuros). Agora evoca E repoe o slot — tempo
-        -- neutro com burst, sem engine nova.
         type = "effect", subtype = "common",
         cost = 1, attack = 0, defense = 0,
         description = "Evoca o orbe mais antigo e canaliza 1 Raio (valor 5).",
@@ -33,8 +26,6 @@ return {
     },
     mage_ball_lightning = {
         id = "mage_ball_lightning", name = "Raio Esferico",
-        -- Rebalance v2 Jul/2026: nao superava as commons zap/lightning.
-        -- attack 7->8, pot 4->5 pra valer o slot uncommon.
         type = "attack", subtype = "skill",
         cost = 1, attack = 9, defense = 0,
         description = "Causa 9 de dano. Canaliza 1 Raio (valor 6).",
@@ -60,8 +51,6 @@ return {
     mage_fireball = {
         id = "mage_fireball", name = "Bola de Fogo",
         type = "attack", subtype = "common",
-        -- Rebalance v2 Jul/2026: fix de desc apenas — e type=attack (escala
-        -- com Forca/jokers), "dano magico" mentia; declara a potencia do orbe.
         cost = 2, attack = 12, defense = 0,
         description = "Causa 12 de dano. Canaliza 1 Fogo (valor 4).",
         image = "assets/cards/attack/theRock.png",
@@ -73,8 +62,6 @@ return {
     },
     mage_flame_tongue = {
         id = "mage_flame_tongue", name = "Lingua de Chamas",
-        -- Rebalance v2 Jul/2026: vulnerable 1t morria no onTurnEnd antes de
-        -- pagar; duration 1->2 abre a janela real.
         type = "attack", subtype = "common",
         cost = 1, attack = 6, defense = 0,
         description = "Causa 6 de dano. Aplica Vulnerável por 2 turnos.",
@@ -109,10 +96,6 @@ return {
     },
     mage_healing_drop = {
         id = "mage_healing_drop", name = "Gota Curativa",
-        -- Rebalance v2 Jul/2026: era dominada por effect_healing_potion
-        -- (15 HP pelo mesmo custo). Vira a porta de entrada do orbe HOLY
-        -- (engine completa, 0 cartas usavam): cura menor mas RECICLAVEL
-        -- (sem exhaust) + pulso de cura/3 por turno via orbPassiveTick.
         type = "effect", subtype = "skill",
         cost = 1, attack = 0, defense = 0,
         description = "Cura 7 de HP. Canaliza 1 orbe Sagrado (valor 3).",
@@ -125,7 +108,6 @@ return {
         },
     },
 
-    -- ========== UNCOMMON ==========
     mage_torn_pages = {
         id = "mage_torn_pages", name = "Paginas Rasgadas",
         type = "effect", subtype = "skill",
@@ -166,10 +148,6 @@ return {
     },
     mage_blizzard = {
         id = "mage_blizzard", name = "Nevasca",
-        -- Auditoria Jul/2026: era type="attack" com attack=0 (ganhava Forca
-        -- escondida). Dano magico e effect — nao escala com Forca (identidade).
-        -- Rebalance v2 Jul/2026: dano flat que nao escala com nada precisa de
-        -- numero honesto pro A3 (10->14); tag 'aoe' removida (jogo single-enemy).
         type = "effect", subtype = "skill",
         cost = 2, attack = 0, defense = 0,
         description = "Causa 14 de dano mágico (fixo). Canaliza 1 Gelo (valor 6).",
@@ -211,9 +189,6 @@ return {
     },
     mage_overcharge = {
         id = "mage_overcharge", name = "Sobrecarga",
-        -- Auditoria Jul/2026: era estritamente pior que Descarga (2 mana:
-        -- 9+pot3 vs 1 mana: 7+pot3). Pot 3->6 da identidade de "carga
-        -- pesada" e paga o custo 2.
         type = "attack", subtype = "skill",
         cost = 2, attack = 12, defense = 0,
         description = "Causa 12 de dano. Canaliza 1 Raio (valor 6).",
@@ -226,9 +201,6 @@ return {
     },
     mage_arcane_focus = {
         id = "mage_arcane_focus", name = "Foco Arcano",
-        -- Auditoria Jul/2026: era clone do Grito de Guerra (+2 Forca). Agora
-        -- concede FOCO (+1 potencia por orbe evocado) — o eixo de scaling do
-        -- mago que o nome sempre prometeu. Ver _evokeOrbEffect.
         type = "effect", subtype = "power",
         cost = 1, attack = 0, defense = 0,
         description = "Ganha 3 de Foco.",
@@ -241,8 +213,6 @@ return {
     },
     mage_mind_spike = {
         id = "mage_mind_spike", name = "Estaca Mental",
-        -- Rebalance v2 Jul/2026: attack 10->12, sobe ao meio da banda
-        -- uncommon C2.
         type = "attack", subtype = "skill",
         cost = 2, attack = 12, defense = 0,
         description = "Causa 12 de dano. Compra 1 carta.",
@@ -255,9 +225,6 @@ return {
     },
     mage_twin_bolts = {
         id = "mage_twin_bolts", name = "Raios Gemeos",
-        -- Rebalance v2 Jul/2026: attack 7->9, pot 2->3 (18 efetivo + orbe =
-        -- banda rare C2). Desc corrigida: multi_hit e x2 no base, nao 2
-        -- golpes reais — deixa de prometer multihit que nao existe.
         type = "attack", subtype = "skill",
         cost = 2, attack = 9, defense = 0,
         description = "Causa 9 de dano 2 vezes. Canaliza 1 Raio (valor 3).",
@@ -271,27 +238,6 @@ return {
     },
     mage_arcane_torrent = {
         id = "mage_arcane_torrent", name = "Torrente Arcana",
-        -- Set/2026 — CUSTO 3 -> 2, dano 26 -> 20. O dono jogou e achou a carta
-        -- ruim apesar de ela ter o MELHOR dano por mana do mago (8,7).
-        --
-        -- O erro estava na conta que a justificava, nao no numero: o comentario
-        -- anterior calculava o pico como "26 x1.5 (magic_focus) x1.5 (joker)",
-        -- mas `magic_focus` exige DUAS cartas com tag magic no mesmo turno e
-        -- PLAYER_MAX_MANA e 3. Custo 3 consome o turno inteiro, entao o
-        -- multiplicador que sustentava o balanceamento era INALCANCAVEL na
-        -- configuracao padrao. Ela foi buffada (22->26) e vigiada por tripwire
-        -- pelo lado do excesso; ninguem olhou o lado de baixo.
-        --
-        -- Comparacao que o jogador faz sem saber que faz: com os mesmos 3 de
-        -- mana, tres comuns de 1 (Relampago 8 + Raio Esferico 8 + Descarga 7)
-        -- dao 23 base, viram ~34 com magic_focus ativo E deixam TRES orbes
-        -- canalizados, que ainda pulsam nos turnos seguintes. Uma rare perdia
-        -- para tres comuns.
-        --
-        -- Com custo 2 sobra 1 de mana: o combo passa a ser alcancavel e a
-        -- premissa do balanceamento volta a valer. 20 x1.5 x1.5 = 45 de pico
-        -- real, contra 58 de um pico teorico que nunca acontecia.
-        -- Tripwire: mago >65% de vitoria no autoplay -> baixar attack pra 18.
         type = "attack", subtype = "skill",
         cost = 2, attack = 24, defense = 0,
         description = "Causa 24 de dano.",
@@ -303,8 +249,6 @@ return {
 
     mage_consume = {
         id = "mage_consume", name = "Consumir",
-        -- Auditoria Jul/2026: gain_strength -> Foco (mago escala orbe, nao
-        -- musculo). Ordem: Foco ANTES do evoke pra ja valer nesta evocacao.
         type = "effect", subtype = "skill",
         cost = 2, attack = 0, defense = 0,
         description = "Ganha 3 de Foco. Evoca TODOS os orbes.",
@@ -318,8 +262,6 @@ return {
     },
     mage_doom_and_gloom = {
         id = "mage_doom_and_gloom", name = "Perdicao e Melancolia",
-        -- Rebalance v2 Jul/2026: fix desc/tags — tag 'aoe' removida (jogo
-        -- single-enemy); desc declara a potencia da Sombra. Numeros ficam.
         type = "attack", subtype = "skill",
         cost = 2, attack = 12, defense = 0,
         description = "Causa 12 de dano. Canaliza 1 Sombra (valor 5).",
@@ -332,10 +274,6 @@ return {
     },
     mage_force_field = {
         id = "mage_force_field", name = "Campo de Forca",
-        -- Rebalance v2 Jul/2026: era dominada por auto_shields. defense
-        -- 14->16 e vira o PRIMEIRO payoff de Destreza do jogo: dexterity_
-        -- scaling (Destreza conta em DOBRO via scaledStat, effect que tinha
-        -- 0 usos) no lugar do gain_dexterity +1.
         type = "defense", subtype = "skill",
         cost = 2, attack = 0, defense = 18,
         description = "Ganha 18 de Bloqueio. Destreza conta em DOBRO.",
@@ -372,10 +310,6 @@ return {
     },
     mage_arcane_sight = {
         id = "mage_arcane_sight", name = "Visao Arcana",
-        -- Rebalance v2 Jul/2026 (critica A3): cost 1->0 + Exaurir. Sem
-        -- exhaust, C0 "Compre 2" + reshuffle automatico de Game:drawCard =
-        -- mao contem o deck inteiro de graca. 1x/batalha vira cantrip de
-        -- tempo — nicho distinto de torn_pages (C0 draw2 discard1 reciclavel).
         type = "effect", subtype = "skill",
         cost = 0, attack = 0, defense = 0,
         description = "Compra 2 cartas. Revela a intenção por 2 turnos. Exaurir.",
@@ -384,15 +318,11 @@ return {
         tags = { "draw", "cycle", "utility", "zero_cost", "exhaust" },
         effects = {
             { type = "draw_cards", value = 2 },
-            -- Névoa de intenção (Out/2026): "visão" arcana VÊ através da nevasca
             { type = "reveal_intent", value = 2 },
             { type = "exhaust" },
         },
     },
 
-    -- Rebalance v2 Jul/2026 (nova): segunda fonte de holy — fecha o Clerigo
-    -- Arcano com healing_drop + Calice (pulso = cura/3 por turno, evoke =
-    -- cura cheia).
     mage_radiant_prayer = {
         id = "mage_radiant_prayer", name = "Prece Radiante",
         type = "effect", subtype = "skill",
@@ -406,9 +336,6 @@ return {
             { type = "channel_orb", orbType = "holy", value = 5 },
         },
     },
-    -- Rebalance v2 Jul/2026 (nova): payoff do dark (cresce +2/turno, evoca
-    -- x2) sem esvaziar o tabuleiro; evoke_orb tinha 1 so carta. Tag 'evoke'
-    -- e NAO 'channel' (critica B3: a carta nao canaliza).
     mage_dark_harvest = {
         id = "mage_dark_harvest", name = "Colheita Sombria",
         type = "effect", subtype = "skill",
@@ -423,7 +350,6 @@ return {
         },
     },
 
-    -- ========== RARE ==========
     mage_buffer = {
         id = "mage_buffer", name = "Buffer",
         type = "defense", subtype = "power",
@@ -438,7 +364,6 @@ return {
     },
     mage_creative_ai = {
         id = "mage_creative_ai", name = "IA Criativa",
-        -- Rebalance v2 Jul/2026: era dominada por sages_gem. regen 1->2.
         type = "joker", subtype = "power",
         cost = 3, attack = 0, defense = 0,
         description = "Compra 1 carta extra e regenera 3 de HP no início de cada turno.",
@@ -452,19 +377,6 @@ return {
     },
     mage_echo_form = {
         id = "mage_echo_form", name = "Forma de Eco",
-        -- Set/2026 — REFORMULADA. Era `damage_multiplier attack 1.5`, ou seja,
-        -- um CLONE EXATO do joker_001 (Deus do Abismo), que ainda por cima e
-        -- lendario. Queixa do dono: "qual a diferenca entre deus do abismo e
-        -- forma de eco? nenhuma, e uma e lendaria a outra rara". Pior: com o
-        -- largest-wins do P0.9, ter os dois ativos nao somava NADA —
-        -- max(1.5, 1.5) = 1.5 — entao a segunda copia era ouro no lixo.
-        --
-        -- Agora ela faz o que o NOME promete: ECO. Dobra a PRIMEIRA carta de
-        -- ataque do turno, uma vez por turno. Isso a separa do joker_001 no
-        -- que importa, que e COMO se joga com ela: o lendario e um bonus
-        -- plano que premia muitos ataques; o eco e um pico condicional que
-        -- premia carregar UM golpe grande e bota-lo na frente. Mesma familia
-        -- (dano), decisao diferente na mao.
         type = "joker", subtype = "power",
         cost = 3, attack = 0, defense = 0,
         description = "Dobra o dano da sua primeira carta de ataque do turno.",
@@ -478,11 +390,6 @@ return {
     },
     mage_electrodynamics = {
         id = "mage_electrodynamics", name = "Eletrodinamica",
-        -- Rebalance v2 Jul/2026: era clone pior de rune_of_power. Vira o
-        -- motor infinito de orbes da WC Canalizador. DEPENDE do trigger
-        -- channel_per_turn (engine flagada P2.1 em EffectSystem, turn_start).
-        -- Fallback zero-engine se o trigger for vetado: damage_bonus 2 +
-        -- on_turn_start_draw 1.
         type = "joker", subtype = "power",
         cost = 2, attack = 0, defense = 0,
         description = "Canaliza 1 Raio (valor 3) no início de cada turno.",
@@ -508,8 +415,6 @@ return {
     },
     mage_machine_learning = {
         id = "mage_machine_learning", name = "Aprendizado de Maquina",
-        -- Rebalance v2 Jul/2026: era estritamente pior que sages_gem (C1
-        -- draw1 vs C1 draw1+dano). Agora motor de draw pesado: draw 2, C3.
         type = "joker", subtype = "power",
         cost = 3, attack = 0, defense = 0,
         description = "Compra 2 cartas extras no início de cada turno.",
@@ -574,9 +479,6 @@ return {
         },
     },
 
-    -- Rebalance v2 Jul/2026 (nova): amplificador do Clerigo Arcano —
-    -- heal_multiplier plumbado em todo caminho de cura (com floor via P2.4
-    -- e combo lifesteal_burst roteado via P2.5).
     mage_sacred_chalice = {
         id = "mage_sacred_chalice", name = "Calice do Sabio",
         type = "joker", subtype = "power",
@@ -590,11 +492,6 @@ return {
         },
     },
 
-    -- ========== LEGENDARY ==========
-    -- Rebalance v2 Jul/2026 (nova): LEGENDARY de classe, capstone do
-    -- Canalizador. Desc diz "nesta batalha" (duration=99 e idioma interno,
-    -- cf. mage_arcane_focus — critica B7). VIGIADO (B6): se Foco total >= 5
-    -- antes do A3 no autoplay, remove o +1 Foco.
     mage_primordial_storm = {
         id = "mage_primordial_storm", name = "Tempestade Primordial",
         type = "effect", subtype = "skill",
@@ -611,7 +508,6 @@ return {
         },
     },
 
-    -- ========== EFFECT CARDS (potions) ==========
     effect_healing_potion = {
         id = "effect_healing_potion", name = "Pocao de Cura",
         type = "effect", subtype = "potion",

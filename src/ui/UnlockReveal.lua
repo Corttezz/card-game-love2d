@@ -1,15 +1,4 @@
--- src/ui/UnlockReveal.lua
--- REVELAÇÃO PÓS-RUN (StS UnlockScreen + popup de desbloqueio do Balatro):
--- a barra de MAESTRIA da classe enche com o XP da run (atravessando níveis com
--- flash + som), depois as cartas/classes liberadas aparecem UMA POR VEZ com pop.
---
--- Consumido por src/scenes/EndScreens.lua (gameOver/victory). Sem update
--- externo: tica no draw via love.timer.getDelta, igual ao título DynaText das
--- telas finais. Recomeça sozinho quando recebe um `result` novo (identidade).
---
--- Layout = UMA banda (x,y,w,h) recebida de quem chama; dentro dela, sub-bandas
--- fixas (cabeçalho / barra / vitrine / rodapé). Falta de espaço encolhe a
--- ESCALA das cartas, nunca empurra as bandas (lei de layout do projeto).
+local Debug = require("src.core.Debug")
 
 local FontManager = require("src.ui.FontManager")
 local Palette     = require("src.ui.Palette")
@@ -20,22 +9,20 @@ local CardFrame   = require("src.ui.CardFrame")
 
 local UnlockReveal = {}
 
--- Tempos (s). Uma tabela só pra tunar o ritmo.
 local T = {
-    START_DELAY  = 0.6,   -- respira depois do CRT religar
-    BAR_PER_LVL  = 0.8,   -- tempo pra encher UM nível inteiro
-    LEVEL_HOLD   = 0.3,  -- pausa no flash de nível
-    ITEM_GAP     = 0.24,  -- entre uma carta/classe e a próxima
-    POP          = 0.42,  -- duração do pop de cada carta
+    START_DELAY  = 0.6,
+    BAR_PER_LVL  = 0.8,
+    LEVEL_HOLD   = 0.3,
+    ITEM_GAP     = 0.24,
+    POP          = 0.42,
 }
 
-local st = nil   -- estado da animação corrente
+local st = nil
 
 local function className(id)
     return I18n.t("classes." .. tostring(id) .. ".name", nil, tostring(id))
 end
 
--- Segmentos da barra: lista de { from=0..1, to=0..1, level=n, levelUp=bool }.
 local function buildSegments(before, after)
     local segs = {}
     if not before or not after then return segs end
@@ -58,7 +45,6 @@ function UnlockReveal.start(result)
     }
     if not result then return end
     st.segs = buildSegments(result.before, result.after)
-    -- Duração de cada segmento proporcional ao trecho da barra.
     local t = T.START_DELAY
     for _, sg in ipairs(st.segs) do
         sg.t0 = t
@@ -66,7 +52,6 @@ function UnlockReveal.start(result)
         t = t + sg.dur + (sg.levelUp and T.LEVEL_HOLD or 0)
     end
     st.barEnd = t
-    -- Itens: classes primeiro (é o maior evento), depois cartas.
     for _, c in ipairs(result.newClasses or {}) do
         st.items[#st.items + 1] = { kind = "class", id = c }
     end
@@ -79,10 +64,10 @@ function UnlockReveal.start(result)
             if ok and inst then
                 st.items[#st.items + 1] = { kind = "card", id = id, inst = inst }
             else
-                print("[UnlockReveal] falha ao instanciar " .. tostring(id))
+                Debug.warn("[UnlockReveal] falha ao instanciar " .. tostring(id))
             end
         else
-            print("[UnlockReveal] carta desconhecida no resultado: " .. tostring(id))
+            Debug.warn("[UnlockReveal] carta desconhecida no resultado: " .. tostring(id))
         end
     end
     for i, it in ipairs(st.items) do
@@ -90,7 +75,6 @@ function UnlockReveal.start(result)
     end
 end
 
--- Pra ferramentas de captura: pula a animação pro estado final.
 function UnlockReveal.finish()
     if st then st.t = 1e6 end
 end
@@ -110,20 +94,16 @@ local function printCentered(text, font, cx, y)
     love.graphics.print(text, math.floor(cx - font:getWidth(text) / 2), math.floor(y))
 end
 
--- Banda: x,y,w,h. result = game.unlockResult.
 function UnlockReveal.draw(result, x, y, w, h)
     if not result then return end
     if not st or st.result ~= result then UnlockReveal.start(result) end
     local prevT = st.t
-    -- dtOverride: ferramentas de captura avançam o relógio em passos fixos.
     local dt = UnlockReveal.dtOverride or love.timer.getDelta()
     st.t = st.t + dt
     local t = st.t
     st.flash = math.max(0, st.flash - dt * 2.5)
 
     local cx = x + w / 2
-    -- Placa escura atrás da banda: o fundo das telas finais é ilustração
-    -- cheia de detalhe e a barra/rotulos sumiam nele.
     setC(Palette.INK, 0.72 * math.min(1, t / 0.3))
     love.graphics.rectangle("fill", x, y - 8, w, h + 8)
     setC(Palette.AGED_GOLD_DARK, 0.8 * math.min(1, t / 0.3))
@@ -131,7 +111,6 @@ function UnlockReveal.draw(result, x, y, w, h)
     local headF = FontManager.getFont(h < 260 and 12 or 14)
     local smallF = FontManager.getFont(10)
 
-    -- ===== Banda 1: cabeçalho (classe + XP) =====
     local headH = headF:getHeight() + 8
     if result.classId and result.after then
         local alpha = math.min(1, t / 0.4)
@@ -140,21 +119,18 @@ function UnlockReveal.draw(result, x, y, w, h)
             headF, cx, y)
     end
 
-    -- ===== Banda 2: barra de maestria =====
     local barW = math.min(560, w * 0.8)
     local barH = 16
     local barX = math.floor(cx - barW / 2)
     local barY = math.floor(y + headH + smallF:getHeight() + 6)
     local segs = st.segs
     if #segs > 0 then
-        -- Segmento corrente e fração.
         local cur, frac = segs[1], segs[1].from
         for _, sg in ipairs(segs) do
             if t >= sg.t0 then
                 cur = sg
                 local k = math.min(1, (t - sg.t0) / sg.dur)
                 frac = sg.from + (sg.to - sg.from) * Easing.outQuart(k)
-                -- Som: tick a cada ~12% enchido; nível = acorde grande.
                 local bucket = math.floor(frac * 8)
                 local key = sg.level .. ":" .. bucket
                 if k < 1 and not st.sfxBar[key] and prevT > 0 then
@@ -170,7 +146,6 @@ function UnlockReveal.draw(result, x, y, w, h)
         end
         local after = result.after
         local maxed = after.level >= after.maxLevel and cur == segs[#segs]
-        -- Rótulos sobre a barra: nível à esquerda, xp à direita.
         love.graphics.setFont(smallF)
         local lvlShown = cur.level + ((cur.levelUp and frac >= 1) and 1 or 0)
         local lvlTxt = maxed and I18n.t("unlocks.reveal.max")
@@ -180,7 +155,6 @@ function UnlockReveal.draw(result, x, y, w, h)
         local xpTxt = I18n.t("unlocks.reveal.xp", { xp = result.xpGained or 0 })
         setC(Palette.AGED_GOLD_LIGHT, math.min(1, t / 0.6))
         love.graphics.print(xpTxt, barX + barW - smallF:getWidth(xpTxt), barY - smallF:getHeight() - 3)
-        -- Trilho + preenchimento + brilho de flash.
         setC(Palette.INK, 0.85)
         love.graphics.rectangle("fill", barX - 2, barY - 2, barW + 4, barH + 4)
         setC(Palette.AGED_GOLD_DARK)
@@ -200,7 +174,6 @@ function UnlockReveal.draw(result, x, y, w, h)
         end
     end
 
-    -- ===== Banda 3: vitrine (classes + cartas) =====
     local vitY = barY + barH + 22
     local vitH = (y + h) - vitY
     if vitH <= 20 then return end
@@ -213,7 +186,6 @@ function UnlockReveal.draw(result, x, y, w, h)
         return
     end
 
-    -- Cabeçalho da vitrine (nome dos pacotes liberados nesta run).
     local labelH = smallF:getHeight() + 6
     if t >= st.barEnd then
         local parts = {}
@@ -226,7 +198,6 @@ function UnlockReveal.draw(result, x, y, w, h)
         printCentered(label, smallF, cx, vitY)
     end
 
-    -- Escala das cartas: cabe em altura e em largura (nunca empurra banda).
     local nCards, nClasses = 0, 0
     for _, it in ipairs(items) do
         if it.kind == "card" then nCards = nCards + 1 else nClasses = nClasses + 1 end
@@ -281,7 +252,6 @@ function UnlockReveal.draw(result, x, y, w, h)
         else
             if k > 0 and it.inst and it.inst.image then
                 local e = Easing.backOut(math.min(1, k))
-                -- carta revelada e VIVA como toda carta visivel (dono, 13/Out/2026)
                 local img = CardFrame.displayImage(it.inst) or it.inst.image
                 local s = scale * e
                 local wob = (1 - math.min(1, k)) * 0.25
@@ -292,7 +262,6 @@ function UnlockReveal.draw(result, x, y, w, h)
                 love.graphics.setColor(1, 1, 1, 1)
                 love.graphics.draw(img, px, py, wob, s, s,
                     img:getWidth() / 2, img:getHeight() / 2)
-                -- Brilho de entrada (some em ~0.4s).
                 if k < 1 then
                     love.graphics.setColor(1, 1, 1, (1 - k) * 0.6)
                     love.graphics.rectangle("fill", px - cw / 2 * e, py - ch / 2 * e, cw * e, ch * e)

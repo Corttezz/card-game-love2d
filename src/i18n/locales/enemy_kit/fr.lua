@@ -1,11 +1,7 @@
--- Kit des ennemis (src/data/enemies.lua) : noms des coups, lignes de
--- l'infobulle d'intention, nouveaux états et messages. Fichier propre par
--- locale ; branché dans le principal via `enemy_kit = require(...)`.
 return {
     moves = {
         attack = { name = "Charge" }, strong = { name = "Coup Brutal" },
         defend = { name = "Posture Défensive" }, buff = { name = "Fureur Montante" },
-        -- Acte 1
         rusty_scythe = { name = "Faux Rouillée" }, crow_pecks = { name = "Coups de Bec" },
         dread_stare = { name = "Regard d'Effroi" }, straw_wall = { name = "Mur de Paille" },
         reap = { name = "Faucher" }, harvest = { name = "Moisson" },
@@ -14,7 +10,6 @@ return {
         gorge = { name = "Dévorer" }, frenzy = { name = "Frénésie" },
         call_of_crows = { name = "Appel des Corbeaux" }, murder_of_crows = { name = "Nuée de Corbeaux" },
         royal_peck = { name = "Bec Royal" }, carrion_feast = { name = "Festin de Charogne" },
-        -- Acte 2
         stone_talons = { name = "Serres de Pierre" }, dive = { name = "Piqué" },
         stone_skin = { name = "Peau de Pierre" }, lunar_shriek = { name = "Cri Lunaire" },
         rune_ward = { name = "Rune de Garde" }, rune_bolt = { name = "Éclair Runique" },
@@ -22,7 +17,6 @@ return {
         life_drain = { name = "Drain de Vie" },
         frost_shield = { name = "Bouclier de Givre" }, essence_drain = { name = "Drain d'Essence" },
         necrotic_ray = { name = "Rayon Nécrotique" }, bone_volley = { name = "Salve d'Os" },
-        -- Acte 3
         fireball = { name = "Boule de Feu" }, scratch = { name = "Griffures" },
         cackle = { name = "Ricanement" }, ember_jab = { name = "Estoc de Braise" },
         shadow_blade = { name = "Lame d'Ombre" }, fade = { name = "S'estomper" },
@@ -33,24 +27,20 @@ return {
         blood_feast = { name = "Festin de Sang" }, noble_thrust = { name = "Estoc Noble" },
         gather_flames = { name = "Rassembler les Flammes" }, hellfire = { name = "Feu Infernal" },
         abyssal_claws = { name = "Griffes Abyssales" }, cinder_spray = { name = "Pluie de Cendres" },
-        -- Acte 4
         freezing_touch = { name = "Toucher Gelant" }, wight_claw = { name = "Griffe Spectrale" },
         blizzard = { name = "Blizzard" },
         ice_lance = { name = "Lance de Glace" }, glacial_aegis = { name = "Égide Glaciale" },
         charge = { name = "Charge Glaciale" }, rime = { name = "Givre" },
         eternal_winter = { name = "Hiver Éternel" }, winter_blade = { name = "Lame de l'Hiver" },
         royal_blizzard = { name = "Blizzard Royal" }, frozen_crown = { name = "Couronne Gelée" },
-        -- Acte 5
         hex = { name = "Maléfice" }, toxic_cauldron = { name = "Chaudron Toxique" },
         crooked_cane = { name = "Canne Tordue" }, bog_brew = { name = "Breuvage du Marais" },
         plague_cloud = { name = "Nuage Pestilentiel" }, colossal_slam = { name = "Fracas Colossal" },
         putrid_blow = { name = "Coup Putride" }, regrow = { name = "Régénérer" },
-        -- Acte 6
         waning_light = { name = "Lumière Déclinante" }, lunar_blades = { name = "Lames Lunaires" },
         veil = { name = "Voile" }, total_eclipse = { name = "Éclipse Totale" },
         black_corona = { name = "Couronne Noire" }, star_rain = { name = "Pluie d'Étoiles" },
         void_embrace = { name = "Étreinte du Néant" },
-        -- Criaturas novas (Out/2026)
         pitchfork_jab = { name = "Coup de Fourche" },
         wind_up = { name = "Élan" },
         pitchfork_skewer = { name = "Embrochement" },
@@ -152,7 +142,6 @@ return {
         charge   = "En charge : le prochain coup sera dévastateur.",
         debuff   = "Applique {name} pendant {duration} tour(s).",
         dot      = "Applique {name} : {stacks} dégâts par tour pendant {duration} tour(s).",
-        -- brume d'intention (src/systems/IntentVisibility.lua)
         veil_title  = "Brume",
         veil_number = "La brume cache le nombre de ce coup. Vous voyez le type, pas le poids.",
         veil_all    = "La brume cache l'intention. Quelque chose arrive, et vous ne savez pas quoi.",

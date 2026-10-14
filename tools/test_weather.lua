@@ -1,20 +1,3 @@
--- tools/test_weather.lua
--- Travas do WeatherEngine (clima com profundidade do WorldRoad, Out/2026):
---
---   1. Todo bioma do jogo tem clima declarado (tipo conhecido, cores).
---   2. Densidade limitada pelo preset e nada vira NaN em 2 min simulados.
---   3. PAINTER: o lote sai ordenado do fundo pra frente e o WorldRoad
---      desenha TODAS as partículas montadas no frame (nenhuma sobra fora
---      das fatias de profundidade) — em várias fatias, não numa camada só.
---   4. Multiply-only: tempestade + raio nunca levam o ambiente acima de 1
---      e o clarão nunca escurece além da tempestade.
---   5. Fotossensibilidade: ≥5 s entre raios e ≤3 acendimentos por segundo.
---   6. reducedMotion: sem raio/clarão, densidade cortada.
---   7. Troca de bioma: o clima velho some sozinho (frente de tempo, sem pop).
---   8. Fonte: flush dentro das fatias da grama, zero stencil.
---
--- Roda via: love . test_one test_weather
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -29,7 +12,6 @@ function M.run()
     local savedSettings = _G.gameSettings
     _G.gameSettings = { reducedMotion = false }
 
-    -- 1. preset por bioma
     local list = biomes.list or biomes
     local n = 0
     for _, b in ipairs(list) do
@@ -50,7 +32,6 @@ function M.run()
         WorldRoad.drawOverlays(0, 60, W, H - 60)
     end
 
-    -- 2 + 3. densidade, sanidade e painter em todos os biomas
     for bio = 1, 6 do
         WorldRoad.clearCache()
         WorldRoad.setBiome(bio)
@@ -70,18 +51,12 @@ function M.run()
                     finite = false
                 end
             end
-            -- só o LOTE MONTADO (1..built) tem ordem garantida: folha que a
-            -- rajada arranca DURANTE o draw (emitLeaf, sorteio do RNG global
-            -- do mundo) entra no fim da lista e só é ordenada no frame
-            -- seguinte — era a falha dependente de ordem da suíte (Out/2026)
             if i > 1 and i <= WeatherEngine.built()
                and P[i - 1].sortRel < p.sortRel then sorted = false end
         end
         t:truthy("bioma " .. bio .. ": nenhum campo NaN/inf", finite)
         t:truthy("bioma " .. bio .. ": lote ordenado do fundo pra frente", sorted)
         t:eq("bioma " .. bio .. ": todas as montadas foram desenhadas", WeatherEngine.undrawn(), 0)
-        -- regressão: folha arrancada no meio do frame não quebra o lote
-        -- montado nem a ordem do frame seguinte
         WeatherEngine.emitLeaf(0.1, WorldRoad._camZ + 3, 0.6, 0.3, { 0.5, 0.6, 0.2 })
         frame(bio)
         local P2, n2 = WeatherEngine._particles()
@@ -94,7 +69,6 @@ function M.run()
             WeatherEngine.stats.flushes .. ")", WeatherEngine.stats.flushes >= 3)
     end
 
-    -- 2b. 2 minutos simulados (só update — barato) sem estourar
     do
         WorldRoad.clearCache()
         WorldRoad.setBiome(4)
@@ -116,15 +90,12 @@ function M.run()
             maxN <= WeatherEngine.PRESETS.frost.count + 28)
     end
 
-    -- 4. multiply-only (tempestade + raio)
     do
         WorldRoad.clearCache()
         WorldRoad.setBiome(2)
         frame(2)
         WeatherEngine.setIntensityOverride(1)
         WeatherEngine.update(1 / 30, { biomeId = "highlands", camZ = 5.5, time = 500 })
-        -- (o 1º update pode já ter disparado um raio; 1.5 s depois ele acabou
-        -- e o próximo só vem ≥5 s depois — o ambiente medido é só tempestade)
         WeatherEngine.update(1 / 30, { biomeId = "highlands", camZ = 5.5, time = 501.5 })
         local amb = { 0.67, 0.69, 0.86 }
         local darkest = 1
@@ -146,7 +117,6 @@ function M.run()
         WeatherEngine.setIntensityOverride(nil)
     end
 
-    -- 5. fotossensibilidade
     do
         local edges, prev, maxPerSec = {}, 0, 0
         for i = 0, 120 do
@@ -174,7 +144,6 @@ function M.run()
         WeatherEngine.setIntensityOverride(nil)
     end
 
-    -- 6. reducedMotion
     do
         _G.gameSettings = { reducedMotion = true }
         WorldRoad.clearCache()
@@ -196,7 +165,6 @@ function M.run()
         _G.gameSettings = { reducedMotion = false }
     end
 
-    -- 7. troca de bioma: o clima velho some sozinho
     do
         WorldRoad.clearCache()
         WorldRoad.setBiome(4)
@@ -206,7 +174,7 @@ function M.run()
         local snowLeft0 = 0
         for i = 1, n0 do if P0[i].pr == WeatherEngine.PRESETS.frost then snowLeft0 = snowLeft0 + 1 end end
         t:truthy("logo após a troca a neve ainda está no ar (sem pop)", snowLeft0 > 50)
-        for i = 1, 30 * 7 do   -- RETIRE_FADE (6 s) + folga: determinístico, sem depender do RNG
+        for i = 1, 30 * 7 do
             WeatherEngine.update(1 / 30, { biomeId = "abyss", camZ = 5.5, time = 3000 + i / 30, progress = 1 })
         end
         local P, np = WeatherEngine._particles()
@@ -219,7 +187,6 @@ function M.run()
         t:truthy("e a cinza do abismo chegou (" .. ash .. ")", ash > 50)
     end
 
-    -- 9. v2: FINO — pixel de tela, partículas pequenas
     do
         WorldRoad.clearCache()
         WorldRoad.setBiome(2)
@@ -227,7 +194,6 @@ function M.run()
         t:eq("unidade = 1 px de tela até 1440p", WeatherEngine.stats.unit, 1)
         for id, pr in pairs(WeatherEngine.PRESETS) do
             if pr.kind ~= "rain" then
-                -- maior partícula (perto, fora do 1º plano) em 1080p: ≤ 3 px de tela
                 local px1080 = math.floor(pr.size * (1028 / 1000) + 0.5)
                 t:truthy(id .. ": partícula pequena (" .. px1080 .. " px ≤ 3 em 1080p)", px1080 <= 3)
             else
@@ -236,7 +202,6 @@ function M.run()
         end
     end
 
-    -- 10. v2: densidade pela chegada ao castelo; tempestade só no fim
     do
         local IF = WeatherEngine.intensityFor
         t:truthy("começo do ato é calmo (" .. IF(0) .. ")", IF(0) <= 0.15)
@@ -258,7 +223,6 @@ function M.run()
         local n0 = settle(0, 40)
         local n1 = settle(1, 40)
         t:truthy(string.format("começo %d ≪ castelo %d flocos", n0, n1), n0 < n1 * 0.25)
-        -- raio nunca no começo do ato (60 s de colinas no progresso 0.3)
         WorldRoad.clearCache(); WorldRoad.setBiome(2); frame(2)
         local any = false
         for i = 1, 30 * 60 do
@@ -270,7 +234,6 @@ function M.run()
         t:eq("sem tempestade na primeira metade", WeatherEngine.storm(), 0)
     end
 
-    -- 11. v2: vagalumes pela noite
     do
         local function ffCount(luma)
             WorldRoad.clearCache(); WorldRoad.setBiome(1); frame(1)
@@ -298,7 +261,6 @@ function M.run()
             glowMin, glowMax), glowMax <= 1 and glowMin >= 0)
     end
 
-    -- 12. v2: SOM — camas sem loop fixo, avulsos e trovões sem repetir
     do
         local WA = require("src.systems.WeatherAudio")
         local fakeNow = 0
@@ -334,7 +296,6 @@ function M.run()
             fakeNow = i / 30
             WA.update(1 / 30, st)
         end
-        -- camas: a mesma variante nunca começa duas vezes seguidas na família
         local byFam, repeatOk, nBeds = {}, true, 0
         for _, c in ipairs(started) do
             local fam = c:match("^wx:(rain%-heavy)") or c:match("^wx:(rain%-light)")
@@ -349,7 +310,6 @@ function M.run()
         local maxG = 0
         for _, g in ipairs(gains) do maxG = math.max(maxG, g) end
         t:truthy(string.format("ganho de voz ≤ 1 (%.2f)", maxG), maxG <= 1 + 1e-6)
-        -- trovão: 30 raios seguidos, nunca o mesmo arquivo duas vezes
         local prev, okT = nil, true
         for k = 1, 30 do
             local name = WA.thunder((k % 7) / 7)
@@ -357,7 +317,6 @@ function M.run()
             prev = name
         end
         t:truthy("trovão nunca repete a variante anterior", okT)
-        -- watchdog: mundo parou de atualizar → camas somem
         local beds = WA._state()
         fakeNow = fakeNow + 1
         for _ = 1, 120 do WA.watchdog(1 / 60) end
@@ -367,7 +326,6 @@ function M.run()
         WA._reset()
         _G.audioSystem = saved
         love.timer.getTime = realGet
-        -- todo nome citado nas tabelas existe em audio/sfx/weather/
         local missing = {}
         local function check(n)
             if not love.filesystem.getInfo("audio/sfx/weather/" .. n .. ".mp3") then
@@ -383,11 +341,9 @@ function M.run()
         t:eq("todo som citado existe no disco (" .. table.concat(missing, ",") .. ")", #missing, 0)
     end
 
-    -- 13. LUGARES: fora da estrada o clima cala e entra o ambiente do lugar
     do
         local PA = require("src.systems.PlaceAudio")
         local WA = require("src.systems.WeatherAudio")
-        -- decisão pura
         t:eq("estrada (batalha)", PA.placeFor("playing", {}), "road")
         t:eq("salão do chefe", PA.placeFor("playing", { bossRoom = true }), "boss")
         t:eq("mapa/encruzilhada", PA.placeFor("mapSelection", {}), "road")
@@ -402,7 +358,7 @@ function M.run()
         local fakeNow = 0
         local realGet = love.timer.getTime
         love.timer.getTime = function() return fakeNow end
-        local playing = {}   -- src -> code
+        local playing = {}
         local gainOf = {}
         local function newSrc(code)
             local s = { code = code, t0 = fakeNow, off = 0, pitch = 1, stopped = false }
@@ -444,12 +400,11 @@ function M.run()
                 fakeNow = fakeNow + 1 / 30
                 PA.apply(1 / 30, state, ctx)
                 if roadTicks then WA.update(1 / 30, roadSt) end
-                WA.watchdog(1 / 30)   -- como o love.update faz todo frame
+                WA.watchdog(1 / 30)
             end
         end
         run(6, "playing", {}, true)
         t:truthy(string.format("na estrada a chuva soa (%.2f)", audible("wx:rain")), audible("wx:rain") > 0.3)
-        -- entra na loja COM o mundo ainda atualizando por baixo
         local n0 = #started
         run(1.5, "cardReward", { nodeType = "shop" }, true)
         t:truthy(string.format("loja: chuva da estrada calou em 1.5 s (%.3f)", audible("wx:rain")),
@@ -459,11 +414,9 @@ function M.run()
         local bell = false
         for k = n0 + 1, #started do if started[k]:find("shop%-bell") then bell = true end end
         t:truthy("loja: sino da porta na entrada", bell)
-        -- volta pra estrada
         run(3, "mapSelection", {}, true)
         t:truthy("de volta à estrada: cama da loja sumiu", audible("pl:shop-room") < 0.02)
         t:truthy("de volta à estrada: chuva voltou", audible("wx:rain") > 0.3)
-        -- cada lugar: cama própria
         for _, c in ipairs({ { "rest", { restMode = "choose" }, "pl:rest-camp" },
                              { "rest", { restMode = "forge" }, "pl:forge-fire" },
                              { "event", {}, "pl:event-drone" },
@@ -473,11 +426,9 @@ function M.run()
                 tostring(c[2].restMode or c[2].bossRoom), c[3], audible(c[3])),
                 audible(c[3]) > 0.2 and audible("wx:rain") < 0.02)
         end
-        -- menu: nada
         run(2, "menu", {}, false)
         t:truthy(string.format("menu: nenhum ambiente (%.3f)", audible("pl:") + audible("wx:")),
             audible("pl:") + audible("wx:") < 0.02)
-        -- sem repetição seguida dentro de cada família
         local prevFam, rep = {}, false
         for _, c in ipairs(started) do
             local fam = c:match("^pl:(.-)%-%d+$")
@@ -493,7 +444,6 @@ function M.run()
         PA._reset(); WA._reset()
         _G.audioSystem = saved
         love.timer.getTime = realGet
-        -- todo som citado existe
         local missing = {}
         for _, cfg in pairs(PA.PLACES) do
             local defs = {}
@@ -510,14 +460,11 @@ function M.run()
         t:eq("lugares: todo som citado existe (" .. table.concat(missing, ",") .. ")", #missing, 0)
     end
 
-    -- 14. AMBIENTE BAIXO (dono: "muito alto"): knob único + grupo próprio
     do
         local Config = require("src.core.Config")
         local A = Config.Audio
         t:truthy("AMBIENT_VOLUME é baixo (" .. tostring(A.AMBIENT_VOLUME) .. " ≤ 0.12)",
             A.AMBIENT_VOLUME and A.AMBIENT_VOLUME <= 0.12)
-        -- nível efetivo da cama (arquivos normalizados a −22 dB médio) contra
-        -- o PICO da música do ato (−3.5 dB no arquivo × volume 0.6 × grupo 0.3)
         local function db(x) return 20 * math.log10(x) end
         local bed = -22 + db(A.WEATHER_VOLUME * A.AMBIENT_VOLUME * 0.55)
         local musicPeak = -3.5 + db(0.6 * 0.3)
@@ -544,12 +491,11 @@ function M.run()
         t:truthy("AudioManager tem setAmbientVolume", AM.setAmbientVolume ~= nil)
     end
 
-    -- 8. fonte
     do
         local src = love.filesystem.read("src/ui/WorldRoad.lua") or ""
         local eng = love.filesystem.read("engine/WeatherEngine.lua") or ""
         t:truthy("WorldRoad: flush do clima DENTRO da fatia da grama",
-            src:find("drawGrass%(g, x, w, camZ, relLow, grassRel%)%s*\n%s*grassRel = relLow[^\n]*\n[^\n]*\n[^\n]*\n%s*WeatherEngine%.flushTo%(relLow%)") ~= nil)
+            src:find("drawGrass%(g, x, w, camZ, relLow, grassRel%)%s*\n%s*grassRel = relLow[^\n]*\n%s*WeatherEngine%.flushTo%(relLow%)") ~= nil)
         t:truthy("WorldRoad: clima além da crista antes do domo",
             src:find("WeatherEngine%.flushTo%(REL_CREST%)%s*\n%s*_profMark%('castle'%)%s*\n%s*drawDome") ~= nil)
         t:truthy("WorldRoad: raio entre nuvens e montanhas da frente",

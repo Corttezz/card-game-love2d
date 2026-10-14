@@ -1,44 +1,17 @@
--- src/ui/PixelCanvas.lua
--- Primitivas de desenho pixel-perfect.
--- Toda arte procedural do jogo passa por aqui para garantir nearest-neighbor,
--- ausência de anti-aliasing e posições inteiras.
---
--- Uso típico:
---   local canvas = PixelCanvas.new(64, 96)
---   PixelCanvas.beginDraw(canvas)
---   PixelCanvas.fill(Palette.BG_DEEP)
---   PixelCanvas.drawBitmap(sword16, 0, 0, { [1]=Palette.ORANGE, [2]=Palette.YELLOW })
---   PixelCanvas.endDraw()
---   -- canvas agora é uma love Image (Canvas é drawable).
-
 local Palette = require("src.ui.Palette")
 
 local PixelCanvas = {}
 
--- ===== Setup =====
-
--- Chame uma vez em love.load (ou no início do módulo que cria canvases).
--- Garante filtro nearest em tudo que for criado a partir daqui.
 function PixelCanvas.enableNearest()
     love.graphics.setDefaultFilter("nearest", "nearest", 0)
 end
 
--- ===== Criação =====
-
--- Cria um canvas w×h pronto para receber pixel art.
 function PixelCanvas.new(w, h)
     local c = love.graphics.newCanvas(w, h)
     c:setFilter("nearest", "nearest")
     return c
 end
 
--- Prepara o ambiente para desenhar num canvas (salva estado COMPLETO).
--- push("all") guarda canvas/cor/blend/shader/scissor E a transform;
--- origin() + setScissor() zeram translate/scale/clip do chamador. Sem
--- isso, um render LAZY no meio de um draw transformado (ex.: slide-in da
--- tela de recompensa, scroll com scissor da Coleção) compunha o conteúdo
--- DESLOCADO/CLIPADO pra fora do canvas — frames em branco cacheados =
--- bug "carta piscando no hover" (Jul/2026).
 function PixelCanvas.beginDraw(canvas, clear)
     love.graphics.push("all")
     love.graphics.origin()
@@ -47,62 +20,43 @@ function PixelCanvas.beginDraw(canvas, clear)
     if clear ~= false then
         love.graphics.clear(0, 0, 0, 0)
     end
-    -- alpha blend padrão para camadas compostas
     love.graphics.setBlendMode("alpha")
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Restaura estado anterior (par do push("all") do beginDraw).
 function PixelCanvas.endDraw()
     love.graphics.pop()
 end
 
--- ===== Primitivas (sempre em coordenadas inteiras) =====
-
--- Um único pixel na cor dada.
 function PixelCanvas.pixel(x, y, color)
     Palette.set(color)
     love.graphics.rectangle("fill", math.floor(x), math.floor(y), 1, 1)
 end
 
--- Preenche o canvas atual inteiro (use dentro de beginDraw).
 function PixelCanvas.fill(color)
     Palette.set(color)
     love.graphics.rectangle("fill", 0, 0, love.graphics.getCanvas():getWidth(), love.graphics.getCanvas():getHeight())
 end
 
--- Retângulo sólido.
 function PixelCanvas.rect(x, y, w, h, color)
     Palette.set(color)
     love.graphics.rectangle("fill", math.floor(x), math.floor(y), math.floor(w), math.floor(h))
 end
 
--- Retângulo com outline de 1px (outline desenhado por dentro, pra não vazar).
 function PixelCanvas.rectOutline(x, y, w, h, color)
     Palette.set(color)
     x, y, w, h = math.floor(x), math.floor(y), math.floor(w), math.floor(h)
-    -- 4 linhas em vez de setLineWidth (evita problemas com filter)
-    love.graphics.rectangle("fill", x, y, w, 1)           -- top
-    love.graphics.rectangle("fill", x, y + h - 1, w, 1)   -- bottom
-    love.graphics.rectangle("fill", x, y, 1, h)           -- left
-    love.graphics.rectangle("fill", x + w - 1, y, 1, h)   -- right
+    love.graphics.rectangle("fill", x, y, w, 1)
+    love.graphics.rectangle("fill", x, y + h - 1, w, 1)
+    love.graphics.rectangle("fill", x, y, 1, h)
+    love.graphics.rectangle("fill", x + w - 1, y, 1, h)
 end
 
--- Retângulo com preenchimento + outline (border no 1º arg, preenchimento no 2º).
 function PixelCanvas.rectFramed(x, y, w, h, fill, outline)
     PixelCanvas.rect(x + 1, y + 1, w - 2, h - 2, fill)
     PixelCanvas.rectOutline(x, y, w, h, outline)
 end
 
--- Retângulo sólido com cantos "cortados" (stepped corners) — silhueta arredondada
--- em pixel art. radius=1 tira 1 pixel de cada canto (plus shape), radius=2 tira
--- 2 pixels, etc. Até 3px fica legal; mais que isso vira losango.
---
--- Implementado como 2 retângulos sobrepostos (horizontal + vertical bar):
---   ████  ← y+r..y+h-r: largura total
---   ██████
---   ██████ ← y+0..y+r: largura w-2r
---   ████
 function PixelCanvas.rectRounded(x, y, w, h, radius, color)
     Palette.set(color)
     x, y, w, h = math.floor(x), math.floor(y), math.floor(w), math.floor(h)
@@ -111,15 +65,10 @@ function PixelCanvas.rectRounded(x, y, w, h, radius, color)
         love.graphics.rectangle("fill", x, y, w, h)
         return
     end
-    -- Barra horizontal central (cobre altura total exceto os "cantos" de radius px)
     love.graphics.rectangle("fill", x, y + radius, w, h - 2 * radius)
-    -- Barra vertical central (cobre largura total exceto os "cantos")
     love.graphics.rectangle("fill", x + radius, y, w - 2 * radius, h)
-    -- Não precisa preencher cantos — as duas barras já cobrem o centro e as bordas.
-    -- Resultado: canto cortado quadradinho (stepped), look pixel-perfect.
 end
 
--- Outline com cantos cortados (pair com rectRounded).
 function PixelCanvas.rectRoundedOutline(x, y, w, h, radius, color)
     Palette.set(color)
     x, y, w, h = math.floor(x), math.floor(y), math.floor(w), math.floor(h)
@@ -128,23 +77,18 @@ function PixelCanvas.rectRoundedOutline(x, y, w, h, radius, color)
         PixelCanvas.rectOutline(x, y, w, h, color)
         return
     end
-    -- Top e bottom (horizontais), encolhidos pelos cantos
     love.graphics.rectangle("fill", x + radius, y, w - 2 * radius, 1)
     love.graphics.rectangle("fill", x + radius, y + h - 1, w - 2 * radius, 1)
-    -- Left e right (verticais), encolhidos
     love.graphics.rectangle("fill", x, y + radius, 1, h - 2 * radius)
     love.graphics.rectangle("fill", x + w - 1, y + radius, 1, h - 2 * radius)
-    -- Pixels diagonais nos cantos (dá o "step" visual)
     for i = 1, radius - 1 do
-        -- Corners: cada pixel mais interno do canto é ainda parte do border.
-        love.graphics.rectangle("fill", x + radius - i, y + i,             1, 1) -- top-left diag
-        love.graphics.rectangle("fill", x + w - radius + i - 1, y + i,     1, 1) -- top-right
-        love.graphics.rectangle("fill", x + radius - i, y + h - i - 1,     1, 1) -- bottom-left
-        love.graphics.rectangle("fill", x + w - radius + i - 1, y + h - i - 1, 1, 1) -- bot-right
+        love.graphics.rectangle("fill", x + radius - i, y + i,             1, 1)
+        love.graphics.rectangle("fill", x + w - radius + i - 1, y + i,     1, 1)
+        love.graphics.rectangle("fill", x + radius - i, y + h - i - 1,     1, 1)
+        love.graphics.rectangle("fill", x + w - radius + i - 1, y + h - i - 1, 1, 1)
     end
 end
 
--- Linha reta (horizontal ou vertical apenas, pra garantir pixel-perfect).
 function PixelCanvas.hline(x, y, len, color)
     PixelCanvas.rect(x, y, len, 1, color)
 end
@@ -153,23 +97,12 @@ function PixelCanvas.vline(x, y, len, color)
     PixelCanvas.rect(x, y, 1, len, color)
 end
 
--- ===== Discos pixel-perfect =====
--- Por que existem: todo "selo"/"medalhão" da UI estava sendo desenhado com
--- love.graphics.circle, que é um polígono ANTI-ALIASADO. Num jogo cujo resto
--- é pixel art de borda dura, um disco suave lê como widget de outra engine —
--- foi uma das causas do "cara de IA" reportado pelo dono (Set/2026) nas
--- placas de preço da loja. Aqui o disco é construído por HLINES inteiras a
--- partir da equação do círculo: a borda tem degraus, como um ícone desenhado
--- à mão.
-
--- Meia-largura da linha dy de um disco de raio r (sem AA, arredondada).
 local function discHalfWidth(r, dy)
     local v = r * r - dy * dy
     if v < 0 then return -1 end
     return math.floor(math.sqrt(v) + 0.5)
 end
 
--- Disco sólido com borda escalonada.
 function PixelCanvas.disc(cx, cy, r, color)
     Palette.set(color)
     cx, cy, r = math.floor(cx), math.floor(cy), math.floor(r)
@@ -181,7 +114,6 @@ function PixelCanvas.disc(cx, cy, r, color)
     end
 end
 
--- Anel de 1px (a casca do disco de raio r).
 function PixelCanvas.discOutline(cx, cy, r, color)
     Palette.set(color)
     cx, cy, r = math.floor(cx), math.floor(cy), math.floor(r)
@@ -199,9 +131,6 @@ function PixelCanvas.discOutline(cx, cy, r, color)
     end
 end
 
--- Disco com luz direcional: interpola `top` -> `bottom` linha a linha.
--- É o gradiente que o projeto aceita — por LINHA INTEIRA de pixel, não o
--- degradê contínuo de shader. Dá volume de metal batido sem virar "pillow".
 function PixelCanvas.discShaded(cx, cy, r, top, bottom)
     cx, cy, r = math.floor(cx), math.floor(cy), math.floor(r)
     if r < 0 then return end
@@ -215,13 +144,6 @@ function PixelCanvas.discShaded(cx, cy, r, top, bottom)
     end
 end
 
--- ===== Bitmap drawing (coração do sistema) =====
-
--- Desenha uma matriz 2D de índices de cor em (ox, oy).
--- matrix: tabela de tabelas, ex: {{0,1,0},{1,1,1},{0,1,0}}
---   0 = skip (transparente)
---   qualquer outro valor = índice em `palette` (default: Palette.INDEXED)
--- palette: tabela {[1]=color, [2]=color, ...} — default usa Palette.INDEXED
 function PixelCanvas.drawBitmap(matrix, ox, oy, palette)
     palette = palette or Palette.INDEXED
     ox = math.floor(ox or 0)
@@ -242,7 +164,6 @@ function PixelCanvas.drawBitmap(matrix, ox, oy, palette)
     end
 end
 
--- Desenha bitmap com escala inteira (útil para "upscale" de um ícone 8×8 em 16×16 por ex).
 function PixelCanvas.drawBitmapScaled(matrix, ox, oy, scale, palette)
     palette = palette or Palette.INDEXED
     ox = math.floor(ox or 0)
@@ -267,9 +188,6 @@ function PixelCanvas.drawBitmapScaled(matrix, ox, oy, scale, palette)
     end
 end
 
--- ===== Padrões (backgrounds tileáveis) =====
-
--- Checker 2x2. Útil pra padrões de fundo.
 function PixelCanvas.checker(x, y, w, h, colorA, colorB)
     for row = 0, h - 1 do
         for col = 0, w - 1 do
@@ -280,7 +198,6 @@ function PixelCanvas.checker(x, y, w, h, colorA, colorB)
     end
 end
 
--- Dithering 50% (checker) dentro de um retângulo.
 function PixelCanvas.dither50(x, y, w, h, color)
     Palette.set(color)
     for row = 0, h - 1 do
@@ -292,7 +209,6 @@ function PixelCanvas.dither50(x, y, w, h, color)
     end
 end
 
--- Dithering 25% (pontos esparsos).
 function PixelCanvas.dither25(x, y, w, h, color)
     Palette.set(color)
     for row = 0, h - 1, 2 do

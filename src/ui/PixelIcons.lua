@@ -1,26 +1,5 @@
--- src/ui/PixelIcons.lua
--- Biblioteca de ~30 ícones 16×16 desenhados pixel-a-pixel como matrizes.
--- Formato: cada ícone é tabela 2D {linha = {col1, col2, ...}} com valores:
---   0 = transparente
---   1..17 = índice em Palette.INDEXED (veja Palette.lua)
---
--- Convenção de cores por função:
---   1  = VOID (outline escuro)
---   4  = BG_MID (outline soft / sombra metal)
---   7  = CYAN_PALE (metal claro / steel)
---  13  = YELLOW (dourado, magia, coroa)
---  14  = ORANGE (madeira, fogo quente)
---  15  = MAGENTA (sangue, energia rosa)
---  17  = WHITE (highlight)
---
--- Para desenhar: use PixelCanvas.drawBitmap(PixelIcons.sword_short, ox, oy).
--- Ou escalado 2x: PixelCanvas.drawBitmapScaled(PixelIcons.sword_short, ox, oy, 2).
-
 local PixelIcons = {}
 
--- ===== WEAPONS (ataque) =====
-
--- Espada curta vertical
 PixelIcons.sword_short = {
     {0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0},
     {0,0,0,0,0,0,1,7,17,1,0,0,0,0,0,0},
@@ -40,7 +19,6 @@ PixelIcons.sword_short = {
     {0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0},
 }
 
--- Espada grande diagonal
 PixelIcons.sword_great = {
     {0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0},
     {0,0,0,0,0,0,0,0,0,0,0,0,1,7,17,1},
@@ -60,7 +38,6 @@ PixelIcons.sword_great = {
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 }
 
--- Adaga curta
 PixelIcons.dagger = {
     {0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0},
     {0,0,0,0,0,0,1,7,1,0,0,0,0,0,0,0},
@@ -80,7 +57,6 @@ PixelIcons.dagger = {
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 }
 
--- Machado
 PixelIcons.axe = {
     {0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0},
     {0,0,0,0,0,0,0,1,1,7,7,7,1,1,0,0},
@@ -100,7 +76,6 @@ PixelIcons.axe = {
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 }
 
--- Garra
 PixelIcons.claw = {
     {0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0},
     {0,0,1,7,1,0,0,0,0,1,7,1,0,0,0,0},
@@ -120,7 +95,6 @@ PixelIcons.claw = {
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 }
 
--- Presa (vampírica)
 PixelIcons.fang = {
     {0,0,0,0,0,0,1,17,17,1,0,0,0,0,0,0},
     {0,0,0,0,0,1,17,17,17,17,1,0,0,0,0,0},
@@ -140,7 +114,6 @@ PixelIcons.fang = {
     {0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0},
 }
 
--- Raio
 PixelIcons.bolt = {
     {0,0,0,0,0,0,0,0,1,13,1,0,0,0,0,0},
     {0,0,0,0,0,0,0,1,13,13,1,0,0,0,0,0},
@@ -160,7 +133,6 @@ PixelIcons.bolt = {
     {0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0},
 }
 
--- Bola de fogo
 PixelIcons.fireball = {
     {0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0},
     {0,0,0,0,0,1,1,14,14,1,1,0,0,0,0,0},
@@ -180,9 +152,6 @@ PixelIcons.fireball = {
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 }
 
--- ===== DEFENSE =====
-
--- Escudo redondo
 PixelIcons.shield_round = {
     {0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0},
     {0,0,0,1,8,8,6,6,6,6,8,8,1,0,0,0},
@@ -202,7 +171,6 @@ PixelIcons.shield_round = {
     {0,0,0,0,1,1,8,8,8,8,1,1,0,0,0,0},
 }
 
--- Escudo kite (medieval)
 PixelIcons.shield_kite = {
     {0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0},
     {0,0,1,6,6,7,7,7,7,6,6,1,0,0,0,0},
@@ -222,7 +190,6 @@ PixelIcons.shield_kite = {
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 }
 
--- Armadura peitoral
 PixelIcons.armor_plate = {
     {0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0},
     {0,0,0,0,1,7,7,7,7,7,7,1,0,0,0,0},
@@ -242,7 +209,6 @@ PixelIcons.armor_plate = {
     {0,0,0,0,0,1,1,0,0,1,1,0,0,0,0,0},
 }
 
--- Barreira (energia)
 PixelIcons.barrier = {
     {0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0},
     {0,0,0,1,6,6,6,6,6,6,6,6,1,0,0,0},
@@ -262,7 +228,6 @@ PixelIcons.barrier = {
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 }
 
--- Elmo
 PixelIcons.helm = {
     {0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0},
     {0,0,0,0,1,7,7,7,7,7,7,1,0,0,0,0},
@@ -282,9 +247,6 @@ PixelIcons.helm = {
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 }
 
--- ===== MAGIC =====
-
--- Cristal mágico
 PixelIcons.crystal = {
     {0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0},
     {0,0,0,0,0,0,1,11,12,1,0,0,0,0,0,0},
@@ -304,7 +266,6 @@ PixelIcons.crystal = {
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 }
 
--- Runa (ancient symbol)
 PixelIcons.rune = {
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
     {0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0},
@@ -324,7 +285,6 @@ PixelIcons.rune = {
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 }
 
--- Orbe mágico
 PixelIcons.orb = {
     {0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0},
     {0,0,0,1,1,11,11,17,17,11,11,1,1,0,0,0},
@@ -344,9 +304,6 @@ PixelIcons.orb = {
     {0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0},
 }
 
--- ===== JOKERS / CHARACTERS =====
-
--- Caveira
 PixelIcons.skull = {
     {0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0},
     {0,0,0,1,7,7,7,7,7,7,7,7,1,0,0,0},
@@ -366,7 +323,6 @@ PixelIcons.skull = {
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 }
 
--- Caveira coroada (joker lendário)
 PixelIcons.skull_crowned = {
     {0,1,13,1,0,0,1,13,1,0,0,1,13,1,0,0},
     {0,1,13,13,1,1,13,17,13,1,1,13,13,1,0,0},
@@ -386,7 +342,6 @@ PixelIcons.skull_crowned = {
     {0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0},
 }
 
--- Olho místico
 PixelIcons.eye = {
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
     {0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0},
@@ -406,7 +361,6 @@ PixelIcons.eye = {
     {0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0},
 }
 
--- Máscara
 PixelIcons.mask = {
     {0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0},
     {0,0,1,11,11,11,11,11,11,11,11,11,11,11,1,0},
@@ -426,7 +380,6 @@ PixelIcons.mask = {
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 }
 
--- Chapéu de bobo da corte
 PixelIcons.jester_hat = {
     {0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0},
     {0,1,1,0,0,0,1,13,13,1,0,0,0,1,1,0},
@@ -446,9 +399,6 @@ PixelIcons.jester_hat = {
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 }
 
--- ===== POTIONS & GEMS =====
-
--- Poção vermelha (cura)
 PixelIcons.potion_red = {
     {0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0},
     {0,0,0,0,0,1,3,3,3,1,0,0,0,0,0,0},
@@ -468,7 +418,6 @@ PixelIcons.potion_red = {
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 }
 
--- Poção azul (mana)
 PixelIcons.potion_blue = {
     {0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0},
     {0,0,0,0,0,1,3,3,3,1,0,0,0,0,0,0},
@@ -488,7 +437,6 @@ PixelIcons.potion_blue = {
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 }
 
--- Gema
 PixelIcons.gem = {
     {0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0},
     {0,0,0,0,1,11,11,12,12,11,11,1,0,0,0,0},
@@ -508,7 +456,6 @@ PixelIcons.gem = {
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 }
 
--- Moeda de ouro
 PixelIcons.coin = {
     {0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0},
     {0,0,0,1,1,13,13,13,13,13,1,1,0,0,0,0},
@@ -528,7 +475,6 @@ PixelIcons.coin = {
     {0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0},
 }
 
--- Pergaminho
 PixelIcons.scroll = {
     {0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0},
     {0,0,1,14,14,14,14,14,14,14,14,14,14,1,0,0},
@@ -548,9 +494,6 @@ PixelIcons.scroll = {
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 }
 
--- ===== ELEMENTS =====
-
--- Floco de neve
 PixelIcons.snowflake = {
     {0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0},
     {0,0,0,0,1,0,0,1,7,1,0,0,1,0,0,0},
@@ -570,7 +513,6 @@ PixelIcons.snowflake = {
     {0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0},
 }
 
--- Gota d'água
 PixelIcons.water_drop = {
     {0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0},
     {0,0,0,0,0,0,1,6,6,1,0,0,0,0,0,0},
@@ -590,7 +532,6 @@ PixelIcons.water_drop = {
     {0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0},
 }
 
--- Chama
 PixelIcons.flame = {
     {0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0},
     {0,0,0,0,0,0,1,13,1,0,0,0,0,0,0,0},
@@ -610,7 +551,6 @@ PixelIcons.flame = {
     {0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,0},
 }
 
--- Coração
 PixelIcons.heart = {
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
     {0,0,1,1,1,1,0,0,0,0,1,1,1,1,0,0},
@@ -630,7 +570,6 @@ PixelIcons.heart = {
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 }
 
--- Estrela
 PixelIcons.star = {
     {0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0},
     {0,0,0,0,0,0,1,13,13,1,0,0,0,0,0,0},
@@ -650,7 +589,6 @@ PixelIcons.star = {
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 }
 
--- Lua crescente
 PixelIcons.moon = {
     {0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0},
     {0,0,0,1,1,13,13,13,13,13,1,1,0,0,0,0},
@@ -670,9 +608,6 @@ PixelIcons.moon = {
     {0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0},
 }
 
--- ===== GENERIC/UTILITY =====
-
--- Placeholder genérico (usado como fallback)
 PixelIcons.question = {
     {0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0},
     {0,0,0,0,1,7,7,7,7,7,7,1,0,0,0,0},
@@ -692,9 +627,6 @@ PixelIcons.question = {
     {0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0},
 }
 
--- ===== UI CHROME (ícones de interface: botões, menus, settings) =====
-
--- Engrenagem (settings / config)
 PixelIcons.gear = {
     {0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0},
     {0,0,0,0,0,0,1,13,13,1,0,0,0,0,0,0},
@@ -714,7 +646,6 @@ PixelIcons.gear = {
     {0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0},
 }
 
--- X de fechar (close)
 PixelIcons.x_close = {
     {1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1},
     {1,13,1,0,0,0,0,0,0,0,0,0,0,1,13,1},
@@ -734,7 +665,6 @@ PixelIcons.x_close = {
     {1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1},
 }
 
--- Seta apontando pra esquerda
 PixelIcons.arrow_left = {
     {0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0},
     {0,0,0,0,0,0,1,13,1,0,0,0,0,0,0,0},
@@ -754,7 +684,6 @@ PixelIcons.arrow_left = {
     {0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0},
 }
 
--- Seta apontando pra direita
 PixelIcons.arrow_right = {
     {0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0},
     {0,0,0,0,0,0,0,0,1,13,1,0,0,0,0,0},
@@ -774,7 +703,6 @@ PixelIcons.arrow_right = {
     {0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0},
 }
 
--- Triângulo de play (aponta pra direita)
 PixelIcons.play_triangle = {
     {0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0},
     {0,0,1,13,1,0,0,0,0,0,0,0,0,0,0,0},
@@ -794,7 +722,6 @@ PixelIcons.play_triangle = {
     {0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0},
 }
 
--- Check (tick mark)
 PixelIcons.check = {
     {0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0},
     {0,0,0,0,0,0,0,0,0,0,0,1,13,13,13,1},
@@ -814,9 +741,6 @@ PixelIcons.check = {
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 }
 
--- ===== Acesso por nome (fallback para question) =====
-
--- Retorna o ícone pedido, ou o ícone de fallback se não existir.
 function PixelIcons.get(name)
     return PixelIcons[name] or PixelIcons.question
 end

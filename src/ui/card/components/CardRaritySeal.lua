@@ -1,10 +1,3 @@
--- src/ui/card/components/CardRaritySeal.lua
--- Selo circular de raridade no canto superior direito (11px).
--- Renderiza PNG do PixelLab (assets/sprites/ui/seal_<rarity>.png) quando disponível;
--- fallback procedural simples (disco + cor + halo lendário).
---
--- API: CardRaritySeal.draw(w, rarity)
-
 local Palette     = require("src.ui.Palette")
 local PixelCanvas = require("src.ui.PixelCanvas")
 
@@ -12,7 +5,6 @@ local CardRaritySeal = {}
 
 CardRaritySeal.SIZE = 11
 
--- ===== Cache dos PNG seals =====
 local _sealCache = {}
 local _sealMisses = {}
 local function loadSeal(rarity)
@@ -33,7 +25,6 @@ local function loadSeal(rarity)
     return img
 end
 
--- ===== Fallback procedural =====
 local function drawCircle(ox, oy, size, fill, outline)
     PixelCanvas.rect(ox, oy + 1, size, size - 2, fill)
     PixelCanvas.rect(ox + 1, oy, size - 2, size, fill)
@@ -48,7 +39,6 @@ local function drawCircle(ox, oy, size, fill, outline)
 end
 
 local function drawProcedural(ox, oy, size, rarity, color)
-    -- Halo lendário (faíscas douradas)
     if rarity == "legendary" then
         PixelCanvas.pixel(ox - 1, oy + 1, Palette.AGED_GOLD)
         PixelCanvas.pixel(ox + size, oy + 1, Palette.AGED_GOLD)
@@ -70,16 +60,14 @@ function CardRaritySeal.draw(w, rarity)
     rarity = rarity or "common"
     local size = CardRaritySeal.SIZE
     local ox = w - size - 1
-    local oy = 1 + 3   -- + CardFrame.TOP_INSET
+    local oy = 1 + 3
 
     local png = loadSeal(rarity)
     if png then
-        -- Renderiza PNG escalado para size×size com nearest filter (já está setado no load).
         local sx = size / png:getWidth()
         local sy = size / png:getHeight()
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.draw(png, ox, oy, 0, sx, sy)
-        -- Halo dourado pra legendary fica à mostra fora do PNG
         if rarity == "legendary" then
             PixelCanvas.pixel(ox - 1, oy + 1, Palette.AGED_GOLD)
             PixelCanvas.pixel(ox + size, oy + 1, Palette.AGED_GOLD)
@@ -87,7 +75,6 @@ function CardRaritySeal.draw(w, rarity)
             PixelCanvas.pixel(ox + size, oy + size - 2, Palette.AGED_GOLD)
         end
     else
-        -- Fallback procedural (mesma estética antiga)
         local color = Palette.forRarity(rarity)
         drawProcedural(ox, oy, size, rarity, color)
     end

@@ -1,5 +1,3 @@
--- gerado por tools/intro_computer_import.py: a arte do computador da
--- abertura e o retangulo da TELA dentro dela (px da imagem).
 return {
     image = "assets/sprites/intro/computer.png",
     w = 640, h = 773,

@@ -1,14 +1,4 @@
--- src/ui/CardInfoDisplay.lua
--- Tooltip de carta no hover (mão, rewards, coleção via Card.lua).
---
--- v2 (design system Jul/2026 — playtest: "o tooltip quebra, texto passa do
--- painel, letter spacing ruim"): a fonte 16 era grande demais pro painel, a
--- largura era chutada (não media o conteúdo) e a linha de forja usava print
--- cru. Agora: TODO o conteúdo é MEDIDO antes (a maior linha define a largura,
--- com teto), tipografia na escala do design system (nome 13 / corpo 10 com
--- line-height 1.35 / meta 9), painel escuro-dourado do grimório (era cinza
--- azulado legado) e a forja mostra APENAS os ganhos reais da carta
--- (RunManager.getForgeGains — carta de ataque puro nunca anuncia DEF).
+local Debug = require("src.core.Debug")
 
 local FontManager = require("src.ui.FontManager")
 local I18n = require("src.i18n.I18n")
@@ -20,18 +10,16 @@ CardInfoDisplay.__index = CardInfoDisplay
 local PAD = 12
 local MAX_INNER = 280
 local MIN_INNER = 170
-local LINE_K = 1.35   -- line-height (respiro pedido no playtest)
+local LINE_K = 1.35
 
 function CardInfoDisplay:new()
     local instance = setmetatable({}, CardInfoDisplay)
 
-    -- Configurações padrão (API preservada — Card.lua/CardRewardScreen usam)
     instance.showRarity = true
     instance.showStats = true
     instance.showDescription = false
     instance.textColor = { 1, 1, 1, 1 }
 
-    -- Cores de raridade (fallback se Palette.forRarity não cobrir)
     instance.rarityColors = {
         common = { 0.7, 0.7, 0.7 },
         uncommon = { 0.2, 0.8, 0.2 },
@@ -43,7 +31,6 @@ function CardInfoDisplay:new()
     return instance
 end
 
--- Configura as opções de exibição
 function CardInfoDisplay:configure(options)
     if options.showRarity ~= nil then self.showRarity = options.showRarity end
     if options.showStats ~= nil then self.showStats = options.showStats end
@@ -52,8 +39,6 @@ function CardInfoDisplay:configure(options)
     if options.rarityColors then self.rarityColors = options.rarityColors end
 end
 
--- Linha de forja com os ganhos REAIS da carta (fonte única getForgeGains).
--- nil quando a carta não é forjada.
 local function buildForgeLine(inst)
     if (inst.upgrades or 0) <= 0 then return nil end
     local RunManager = require("src.systems.RunManager")
@@ -70,15 +55,8 @@ local function buildForgeLine(inst)
     return line
 end
 
--- Keywords da descrição (glossário F5) — até 3 hits, texto composto.
--- Casa as palavras do LOCALE ATUAL contra a descrição já traduzida, e o
--- verbete exibido vem do i18n (`keyword.<id>.name/text`). Antes o glossário
--- era português em todo idioma (Out/2026).
 local TextCase = require("src.i18n.TextCase")
 
--- Palavra começa aqui? (antes dela não pode haver letra ASCII: "gelo" não
--- casa dentro de "Congelar", "ice" não casa dentro de "twice"). O fim fica
--- livre para pegar plural/flexão ("Raios", "Orbs").
 local function hasWord(lower, word)
     local from = 1
     while true do
@@ -104,23 +82,16 @@ function CardInfoDisplay.collectKeywords(desc)
     local lower = TextCase.lower(desc)
     local ok, Keywords = pcall(require, "src.data.keywords")
     if not ok then
-        -- Chamado a cada hover: require quebrado avisaria todo quadro.
         if not CardInfoDisplay._warnedKeywords then
             CardInfoDisplay._warnedKeywords = true
-            print("[CardInfoDisplay] AVISO: glossario nao carregou: " .. tostring(Keywords))
+            Debug.warn("[CardInfoDisplay] AVISO: glossario nao carregou: " .. tostring(Keywords))
         end
         return hits
     end
     local loc = I18n.getLocale()
-    -- group: no maximo UM verbete por grupo (orbes por elemento — a carta
-    -- de Fogo explica so o orbe de Fogo, e o generico "Orbes" vira
-    -- fallback em vez de segundo verbete; feedback Jul/2026).
     local groupHit = {}
     for _, kw in ipairs(Keywords) do
         if not (kw.group and groupHit[kw.group]) then
-            -- requires: verbete só vale se a desc TAMBÉM contém uma das
-            -- palavras-contexto (ex: "fogo" sozinho não é orbe de Fogo —
-            -- precisa de "canaliza/evoca/orbe/valor" junto).
             local ctxOk = (kw.requires == nil) or anyWord(lower, kw.requires, loc)
             if ctxOk and anyWord(lower, kw.match, loc) then
                 table.insert(hits, {
@@ -137,7 +108,6 @@ function CardInfoDisplay.collectKeywords(desc)
 end
 local collectKeywords = CardInfoDisplay.collectKeywords
 
--- Desenha as informações da carta.
 function CardInfoDisplay:draw(cardInstance, x, y, options)
     if not cardInstance then return end
 
@@ -149,7 +119,6 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
     local sw = love.graphics.getWidth()
     local sh = love.graphics.getHeight()
 
-    -- Fontes (escala do design system)
     local nameFont = FontManager.getFont(13)
     local forgeFont = FontManager.getFont(9)
     local bodyFont = FontManager.getFont(10)
@@ -160,7 +129,6 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
     local bodyLH = math.floor(bodyFont:getHeight() * LINE_K)
     local kwLH = math.floor(kwFont:getHeight() * LINE_K)
 
-    -- ===== 1. CONTEÚDO =====
     local name = I18n.cardName(cardInstance)
     local desc = showDescription and I18n.cardDesc(cardInstance) or nil
     if desc == "" then desc = nil end
@@ -172,7 +140,6 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
         rarityText = require("src.i18n.TextCase").upper(I18n.t("rarity." .. cardInstance.rarity, nil, cardInstance.rarity))
     end
 
-    -- ===== 2. MEDIDA (a maior linha define a largura; nada vaza) =====
     local _, nameLines = nameFont:getWrap(name or "", MAX_INNER)
     local descLines = {}
     if desc then _, descLines = bodyFont:getWrap(desc, MAX_INNER) end
@@ -199,7 +166,7 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
     panelH = panelH + #nameLines * nameLH
     if forgeLine then panelH = panelH + kwLH + 2 end
     if #descLines > 0 then
-        panelH = panelH + 7 + #descLines * bodyLH   -- 7 = separador + gap
+        panelH = panelH + 7 + #descLines * bodyLH
     end
     for _, block in ipairs(kwBlocks) do
         panelH = panelH + 4 + #block * kwLH
@@ -210,17 +177,7 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
 
     local panelW = innerW + PAD * 2
 
-    -- ===== 3. POSIÇÃO (gap ADAPTATIVO — playtest Jul/2026: o painel gruda
-    -- a 6px da carta; clamp segura dentro da tela). Default ACIMA (cartas
-    -- da mão, no rodapé). options.below = ABAIXO — para cartas no TOPO da
-    -- tela (coringas ativos do combate, 1ª fileira do Gerenciador): acima,
-    -- o clamp fazia o painel COBRIR o topo da própria carta (feedback
-    -- Jul/2026 "o topo deles tá sendo cortado"). No modo below, y é a
-    -- âncora INFERIOR da carta.
     local GAP = 6
-    -- options.minY: teto do painel (espólios: a TopBar é camada chrome e
-    -- desenha DEPOIS — painel preso no topo da tela ficava com o nome
-    -- escondido atrás dela). Sem a opção, 8 px da borda como sempre.
     local topMin = localOptions.minY or 8
     local panelX = math.floor(x - panelW / 2 + 70)
     local panelY
@@ -232,14 +189,6 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
         if panelY < topMin then panelY = topMin end
     end
     if localOptions.side and localOptions.cardW then
-        -- AO LADO da carta (mão do combate, Out/2026): acima da carta
-        -- levantada o painel caía sobre o tronco do inimigo, que fica no
-        -- meio da tela. De lado, topo alinhado ao topo da carta: o painel
-        -- ocupa a faixa da própria carta levantada e não sobe pro palco.
-        -- Lado preferido = ESQUERDO: à direita moram Jogar/Encerrar, que
-        -- desenham DEPOIS da mão e engoliam o painel (visto em 1024x768).
-        -- Sem espaço (cartas da ponta esquerda), vira pra direita — perto do
-        -- centro, longe dos botões.
         local cx0 = localOptions.cardX or x
         local cw = localOptions.cardW
         local right = cx0 + cw + GAP
@@ -252,11 +201,8 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
     end
     if panelX < 10 then panelX = 10 end
     if panelX + panelW > sw - 10 then panelX = sw - panelW - 10 end
-    -- Retângulo efetivamente desenhado: a régua do palco da batalha
-    -- (tools/test_enemy_stage) mede o inimigo contra ESTE painel.
     self.lastRect = { x = panelX, y = panelY, w = panelW, h = panelH }
 
-    -- ===== 4. RENDER (painel grimório escuro — era cinza azulado legado) =====
     love.graphics.setColor(0, 0, 0, 0.5)
     love.graphics.rectangle("fill", panelX + 3, panelY + 4, panelW, panelH, 6, 6)
     love.graphics.setColor(Palette.PANEL_FILL and Palette.PANEL_FILL[1] or 0.10,
@@ -273,7 +219,6 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
     local tx = panelX + PAD
     local cy = panelY + PAD
 
-    -- Nome (dourado claro, com sombra de tinta)
     love.graphics.setFont(nameFont)
     for _, line in ipairs(nameLines) do
         love.graphics.setColor(0, 0, 0, 0.9)
@@ -283,7 +228,6 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
         cy = cy + nameLH
     end
 
-    -- Forja: só os ganhos REAIS (verde, com fit — nunca vaza)
     if forgeLine then
         love.graphics.setColor(0.55, 0.85, 0.45, 1)
         require("src.ui.TextFit").print(forgeLine, tx, cy + 2,
@@ -291,7 +235,6 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
         cy = cy + kwLH + 2
     end
 
-    -- Descrição (pergaminho claro com line-height)
     if #descLines > 0 then
         Palette.set(Palette.AGED_GOLD_DARK, 0.9)
         love.graphics.rectangle("fill", tx, cy + 3, innerW, 1)
@@ -304,14 +247,9 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
         end
     end
 
-    -- Glossário de keywords (nome dourado, corpo pergaminho)
     for i, kw in ipairs(kwHits) do
         cy = cy + 4
         love.graphics.setFont(kwFont)
-        -- Nome dourado + corpo pergaminho, a partir do bloco pré-wrapado.
-        -- O wrap apara o espaço do fim da linha, então compara sem ele; e só
-        -- corta quando o nome inteiro está na linha (nunca no meio de um
-        -- caractere UTF-8). Nome quebrado no wrap sai todo em pergaminho.
         local head = (kw.name .. kwSep):gsub("%s+$", "")
         local block = kwBlocks[i]
         for j, line in ipairs(block) do
@@ -328,7 +266,6 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
         end
     end
 
-    -- Raridade (pill compacta na cor da raridade)
     if rarityText then
         cy = cy + 8
         local rc = (Palette.forRarity and Palette.forRarity(cardInstance.rarity))
@@ -344,9 +281,6 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
         cy = cy + 18
     end
 
-    -- Stats (ícones + valores reais da instância — forjada mostra o número real).
-    -- Ícone escalado pra MESMA altura do número e ambos no MESMO topo de linha
-    -- (playtest: o scale fixo 0.022 deixava ícone e valor desalinhados).
     if showStats then
         cy = cy + 8
         love.graphics.setFont(statFont)
@@ -369,7 +303,6 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
         if cardInstance.defense and cardInstance.defense > 0 then
             statPair(cardInstance.armorIcon, cardInstance.defense, { 0.6, 0.75, 0.95, 1 })
         end
-        -- Coringa nao tem custo de mana — regra unica em CardFrame.showsManaCost.
         if require("src.ui.CardFrame").showsManaCost(cardInstance) then
             statPair(cardInstance.manaIcon, cardInstance.cost or 0, { 0.55, 0.75, 1, 1 })
         end

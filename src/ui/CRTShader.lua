@@ -1,82 +1,50 @@
--- src/ui/CRTShader.lua
--- Wrapper do shader CRT pós-processamento (Balatro-style).
--- Uso típico:
---   CRTShader.load()
---   CRTShader.setStrength(0.8)
---   function love.draw()
---     CRTShader.beginScene()
---     ...draw all game stuff...
---     CRTShader.endScene()
---   end
+local Debug = require("src.core.Debug")
 
 local CRTShader = {}
 
 local shader
 local sceneCanvas
-local strength = 0.75  -- identidade CRT v2 FORTE (pedido do dono): tubo de verdade.
+local strength = 0.75
 local enabled = true
 
--- ===== ESTADO FÍSICO DO TUBO (identidade CRT v2, Jul/2026) =====
--- power 0..1: 0 = TV desligada, 1 = ligada. powerOn/powerOff animam com
--- animador PRÓPRIO (não EventManager: o desligar precisa rodar até
--- durante transições de estado e no caminho do quit).
 local power = 1
-local powerAnim = nil   -- { from, to, dur, t, cb, ease }
--- Coreografia do power (v3.6): o shader tem DUAS coreografias distintas —
--- ligar (ponto → linha → abre rolando → assenta) e desligar (colapso →
--- linha → ponto de fósforo que esfria e apaga). powerDirection escolhe.
-local powerDirection = 1   -- 1 = ligando/estável, -1 = desligando
+local powerAnim = nil
+local powerDirection = 1
 
--- Tremidinha ocasional (sync jitter): evento raro de instabilidade de
--- sinal — banda horizontal treme por ~0.15s a cada 4-9s. Agendado aqui,
--- executado no shader (uniforms glitch/glitchY).
 local glitchAmount = 0
 local glitchBandY = 0.5
-local glitchTimer = 3.0   -- primeiro evento cedo (o jogador percebe a identidade)
+local glitchTimer = 3.0
 local glitchActive = 0
 
--- SURTO de TV velha (v3.8, pedido do dono): o baseline é limpo/legível,
--- mas a cada 8-20s o sinal "degrada" por 0.6-2s — vinheta/CA/ruído/
--- flicker sobem e uma hum bar rola pela tela. Envelope: ataque rápido
--- (0.12s), decaimento suave (0.35s). Intensidade de pico varia por evento.
 local degradeAmount = 0
-local degradeTimer = 6.0      -- primeiro surto cedo, mas não imediato
-local degradeActive = 0       -- tempo restante do surto corrente
-local degradeDur = 1.0        -- duração total do surto corrente
-local degradePeak = 1.0       -- pico 0.55..1.0 sorteado por evento
--- Zona de leitura (Loja v5): retângulo em px do conteúdo onde a aberração e
--- o surto somem. Quem desenha texto miúdo pede A CADA QUADRO; endScene zera.
+local degradeTimer = 6.0
+local degradeActive = 0
+local degradeDur = 1.0
+local degradePeak = 1.0
 local calmRect = { 0, 0, 0, 0 }
 local calmRect2 = { 0, 0, 0, 0 }
 local caScale = 1
 
--- Carrega o shader e cria canvas de cena. Chamar em love.load.
 function CRTShader.load()
     local ok, s = pcall(love.graphics.newShader, "shaders/crt.glsl")
     if not ok then
-        print("[CRTShader] falha ao carregar shaders/crt.glsl: " .. tostring(s))
+        Debug.warn("[CRTShader] falha ao carregar shaders/crt.glsl: " .. tostring(s))
         shader = nil
         return false
     end
     shader = s
     sceneCanvas = love.graphics.newCanvas()
-    sceneCanvas:setFilter("linear", "linear")  -- barrel em nearest serrilha; linear = vidro
+    sceneCanvas:setFilter("linear", "linear")
     return true
 end
 
--- ===== NÍVEIS (Out/2026: Configurações → Vídeo → CRT) =====
--- Desligado / Baixo / Normal. "Baixo" mantém o gabinete e a coreografia do
--- tubo, mas curvatura, scanlines, grille, aberração e vinheta caem pra
--- metade — texto nítido em 1080p/1440p pra quem acha o tubo cheio pesado.
--- A ordem do ciclo é off → low → normal (Normal + 1 dá a volta pro Off:
--- Enter no Normal DESLIGA, como o toggle antigo fazia).
 CRTShader.LEVELS = { "off", "low", "normal" }
 CRTShader.LEVEL_STRENGTH = { off = 0, low = 0.35, normal = 0.75 }
 local level = "normal"
 
 function CRTShader.setLevel(name)
     if not CRTShader.LEVEL_STRENGTH[name] then
-        print("[CRTShader] nível desconhecido '" .. tostring(name) .. "' — usando normal")
+        Debug.warn("[CRTShader] nível desconhecido '" .. tostring(name) .. "' — usando normal")
         name = "normal"
     end
     level = name
@@ -90,7 +58,6 @@ function CRTShader.getLevel()
     return level == "off" and "normal" or level
 end
 
--- Próximo nível no ciclo (dir ±1), com volta.
 function CRTShader.nextLevel(name, dir)
     local idx = 3
     for i, n in ipairs(CRTShader.LEVELS) do if n == name then idx = i end end
@@ -98,8 +65,6 @@ function CRTShader.nextLevel(name, dir)
     return CRTShader.LEVELS[idx]
 end
 
--- Nível a partir dos settings salvos: `crtLevel` novo; save antigo só tinha
--- o booleano `crtShader` (false = desligado).
 function CRTShader.levelFromSettings(s)
     s = s or {}
     if s.crtLevel and CRTShader.LEVEL_STRENGTH[s.crtLevel] then return s.crtLevel end
@@ -107,7 +72,6 @@ function CRTShader.levelFromSettings(s)
     return "normal"
 end
 
--- Toggle liga/desliga (API antiga; ligar volta ao nível que estava).
 function CRTShader.setEnabled(v)
     enabled = v and true or false
     if enabled then
@@ -124,9 +88,6 @@ function CRTShader.toggle()
     enabled = not enabled
 end
 
--- ===== API do power =====
--- dir opcional: força a coreografia (1 ligando, -1 desligando) — usado
--- pelas ferramentas de captura pra congelar um estágio específico.
 function CRTShader.setPower(p, dir)
     power = math.max(0, math.min(1, p or 1))
     if dir then powerDirection = dir end
@@ -136,29 +97,21 @@ function CRTShader.getPower() return power end
 function CRTShader.isPowering() return powerAnim ~= nil end
 
 local function animatePower(to, dur, cb)
-    -- Acessibilidade: com CRT desligado, corte seco (o fluxo não espera).
     if not enabled or not shader then
         power = to
         if cb then cb() end
         return
     end
-    -- Desligar DE VERDADE (to≈0) usa a coreografia do colapso; qualquer
-    -- outra animação (ligar, blip de canal) usa a do warm-up.
     local turningOff = to <= 0.01
     powerDirection = turningOff and -1 or 1
     powerAnim = { from = power, to = to, dur = math.max(0.05, dur or 0.8),
                   t = 0, cb = cb,
-                  -- desligar: colapso RÁPIDO no começo, ponto de fósforo
-                  -- demorando pra apagar no fim (easeOutQuad no k)
                   ease = turningOff and "outquad" or nil }
 end
 
--- TV ligando (boot, religar após game over).
 function CRTShader.powerOn(dur, cb)  animatePower(1, dur or 1.2, cb) end
--- TV desligando (morte, sair).
 function CRTShader.powerOff(dur, cb) animatePower(0, dur or 0.6, cb) end
 
--- "Pulo de canal": dip rápido 1 → 0.86 → 1 (transições leves).
 function CRTShader.blip()
     if not enabled or not shader then return end
     powerAnim = { from = 1, to = 0.86, dur = 0.09, t = 0, cb = function()
@@ -166,9 +119,6 @@ function CRTShader.blip()
     end }
 end
 
--- SOLAVANCO externo (BossCinematic, pouso do chefe): a faixa de glitch do
--- agendador, só que AGORA. Sem tubo ligado, nada (o tool de captura não
--- usa o CRT).
 function CRTShader.jolt(dur)
     if not enabled or not shader then return end
     glitchActive = dur or 0.16
@@ -176,9 +126,7 @@ function CRTShader.jolt(dur)
     glitchAmount = 1.0
 end
 
--- Tick do animador (chamar no love.update).
 function CRTShader.update(dt)
-    -- agendador da tremidinha (só com o tubo ligado e estável)
     if enabled and shader and power > 0.99 then
         if glitchActive > 0 then
             glitchActive = glitchActive - dt
@@ -199,12 +147,10 @@ function CRTShader.update(dt)
         glitchAmount = 0
     end
 
-    -- agendador do SURTO (mesma condição: tubo ligado e estável)
     if enabled and shader and power > 0.99 then
         if degradeActive > 0 then
             degradeActive = degradeActive - dt
             local elapsed = degradeDur - degradeActive
-            -- envelope: ataque 0.12s, decaimento 0.35s
             local env = math.min(1, elapsed / 0.12)
                 * math.min(1, math.max(0, degradeActive) / 0.35)
             degradeAmount = degradePeak * math.max(0, math.min(1, env))
@@ -218,7 +164,6 @@ function CRTShader.update(dt)
                 degradeDur = 0.6 + love.math.random() * 1.4
                 degradeActive = degradeDur
                 degradePeak = 0.55 + love.math.random() * 0.45
-                -- surto costuma vir com uma tremidinha junto (TV real)
                 if glitchActive <= 0 and love.math.random() < 0.6 then
                     glitchActive = 0.10 + love.math.random() * 0.14
                     glitchBandY = 0.15 + love.math.random() * 0.7
@@ -243,30 +188,21 @@ function CRTShader.update(dt)
     end
 end
 
--- Pede a ZONA DE LEITURA deste quadro (px REAIS do conteúdo: quem desenha
--- dentro do UiScale multiplica por UiScale.activeK()). Uma por quadro; a
--- última chamada vence. Zerada em endScene.
 function CRTShader.setCalmRect(x, y, w, h)
     calmRect[1], calmRect[2], calmRect[3], calmRect[4] = x or 0, y or 0, w or 0, h or 0
 end
 function CRTShader.getCalmRect() return calmRect[1], calmRect[2], calmRect[3], calmRect[4] end
--- 2ª zona (botão com texto miúdo perto do canto, onde a aberração é maior)
 function CRTShader.setCalmRect2(x, y, w, h)
     calmRect2[1], calmRect2[2], calmRect2[3], calmRect2[4] = x or 0, y or 0, w or 0, h or 0
 end
 function CRTShader.getCalmRect2() return calmRect2[1], calmRect2[2], calmRect2[3], calmRect2[4] end
--- Escala da aberração cromática neste quadro (telas de leitura: a loja
--- pede 0,45; curvatura/scanlines ficam). Volta a 1 em endScene.
 function CRTShader.setChromaScale(k) caScale = math.max(0, math.min(1, k or 1)) end
 function CRTShader.getChromaScale() return caScale end
 
--- Intensidade do efeito (0..1).
 function CRTShader.setStrength(s)
     strength = math.max(0, math.min(1, s or 0))
 end
 
--- Força o surto (ferramentas de captura/preview — não usar no gameplay,
--- o agendador do update cuida do timing aleatório).
 function CRTShader.setDegrade(v)
     degradeAmount = math.max(0, math.min(1, v or 0))
     degradeActive = 0
@@ -276,49 +212,29 @@ function CRTShader.getStrength()
     return strength
 end
 
--- ===== MOUSE ATRAVÉS DO VIDRO (Jul/2026) =====
--- O shader distorce a IMAGEM (gabinete come borda, domo curva o resto),
--- mas o mouse chega em coordenadas físicas da janela — perto do topo e da
--- base o pixel clicado não é o pixel mostrado (bug do dono: filtros da
--- Coleção "clicam acima de onde aparecem"). Esta função replica EXATAMENTE
--- a matemática de amostragem do crt.glsl (tela → conteúdo): é o mesmo
--- caminho que o pixel percorre, então o clique cai onde o olho vê.
--- MANTENHA EM SINCRONIA com shaders/crt.glsl (BEZEL_PX, halfExt, domo).
 function CRTShader.screenToContent(x, y)
-    -- passthrough: CRT desligado, sem shader, ou strength ~0 (o shader
-    -- também faz passthrough nesse caso)
     if not shader or not enabled or strength < 0.01 then return x, y end
     local w, h = love.graphics.getDimensions()
     if w <= 0 or h <= 0 then return x, y end
 
     local ar = w / h
-    -- pp: espaço centrado com aspecto (idem shader)
     local ppx = (x / w - 0.5) * ar
     local ppy = (y / h - 0.5)
-    -- interior do tubo (gabinete de BEZEL_PX descontado)
-    local bezelU = 20.0 / h                 -- = BEZEL_PX do crt.glsl
+    local bezelU = 20.0 / h
     local hex = 0.5 * ar - bezelU
     local hey = 0.5 - bezelU
     if hex <= 0 or hey <= 0 then return x, y end
-    -- tuv: 0..1 dentro da abertura
     local tx = (ppx / hex) * 0.5 + 0.5
     local ty = (ppy / hey) * 0.5 + 0.5
-    -- domo r² + r⁴ (o shader desloca a AMOSTRA — replicamos igual)
     local cx, cy = tx - 0.5, ty - 0.5
     local r2 = cx * cx + cy * cy
     local kx = 0.060 * strength
     local ky = 0.080 * strength
     local sx = tx + cx * (kx * r2 * 1.6 + kx * r2 * r2 * 7.0)
     local sy = ty + cy * (ky * r2 * 1.6 + ky * r2 * r2 * 7.0)
-    -- sem clamp: clique no gabinete extrapola pra fora do conteúdo e
-    -- naturalmente não acerta UI (não inventa hits na borda)
     return sx * w, sy * h
 end
 
--- ABERTURA (Out/2026): desenha `src` dentro de `dst` passando pelo MESMO
--- shader do tubo (gabinete, curvatura, scanlines), com a resolução do
--- canvas de destino: é o nosso televisor em tamanho pequeno, na página.
--- Tubo ligado e estável, sem surto nem tremidinha. false = sem shader.
 function CRTShader.renderTube(src, dst)
     if not shader or not src or not dst then return false end
     local w, h = dst:getDimensions()
@@ -346,22 +262,17 @@ function CRTShader.renderTube(src, dst)
     return true
 end
 
--- Abre uma "cena" — tudo que desenhar depois é capturado no canvas.
 function CRTShader.beginScene()
     if not shader or not enabled then return end
-    -- Se a janela redimensionar, recria canvas.
     local w, h = love.graphics.getDimensions()
     if sceneCanvas:getWidth() ~= w or sceneCanvas:getHeight() ~= h then
         sceneCanvas = love.graphics.newCanvas(w, h)
-        sceneCanvas:setFilter("linear", "linear")  -- barrel em nearest serrilha; linear = vidro
+        sceneCanvas:setFilter("linear", "linear")
     end
     love.graphics.setCanvas(sceneCanvas)
     love.graphics.clear(0, 0, 0, 1)
 end
 
--- Fecha a cena e desenha com o shader aplicado. `target` (opcional): canvas
--- de destino em vez da tela — ferramentas de captura sem janela renderizam
--- o tubo num canvas falsificado (screenshot_crt_levels, test_crt_levels).
 function CRTShader.endScene(target)
     if not shader or not enabled then return end
     love.graphics.setCanvas(target)

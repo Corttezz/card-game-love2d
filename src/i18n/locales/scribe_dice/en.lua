@@ -1,4 +1,3 @@
--- Scribe's Dice (optional shop wager) — en
 return {
     title      = "Scribe's Dice",
     subtitle   = "One throw per visit. The house pays what is written.",

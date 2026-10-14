@@ -1,15 +1,3 @@
--- src/ui/IconLoader.lua
--- Resolve um nome de ícone para um "handle" desenhável.
--- Prefere PNGs em assets/sprites/icons/<name>.png (alta qualidade via pixel-mcp).
--- Fallback: matrizes em PixelIcons.lua (arte base feita a mão).
---
--- Handle retornado:
---   {
---     kind = "image" | "matrix",
---     draw = function(x, y, scale?) -- desenha o ícone em (x, y) com escala opcional
---     size = { w, h }               -- dimensões naturais (antes da escala)
---   }
-
 local PixelIcons  = require("src.ui.PixelIcons")
 local PixelCanvas = require("src.ui.PixelCanvas")
 
@@ -17,7 +5,6 @@ local IconLoader = {}
 
 local handleCache = {}
 
--- Tenta carregar PNG; retorna Image ou nil.
 local function tryLoadPNG(name)
     local path = "assets/sprites/icons/" .. name .. ".png"
     if not love.filesystem.getInfo(path) then return nil end
@@ -29,7 +16,6 @@ local function tryLoadPNG(name)
     return nil
 end
 
--- Retorna um handle para o ícone `name`.
 function IconLoader.get(name)
     if handleCache[name] then return handleCache[name] end
 
@@ -38,7 +24,7 @@ function IconLoader.get(name)
         local h = {
             kind = "image",
             image = png,
-            path = "assets/sprites/icons/" .. name .. ".png",   -- CardArtSlot lê o bbox
+            path = "assets/sprites/icons/" .. name .. ".png",
             size = { w = png:getWidth(), h = png:getHeight() },
             draw = function(x, y, scale)
                 scale = scale or 1
@@ -50,7 +36,6 @@ function IconLoader.get(name)
         return h
     end
 
-    -- Fallback: matriz
     local matrix = PixelIcons.get(name)
     local size = #matrix > 0 and { w = #matrix[1], h = #matrix } or { w = 16, h = 16 }
     local h = {
@@ -65,16 +50,10 @@ function IconLoader.get(name)
     return h
 end
 
--- Invalida cache (ex: após novo PNG aparecer no disco).
 function IconLoader.clearCache()
     handleCache = {}
 end
 
--- Calcula o scale pra desenhar um ícone `iconH` px de altura cabendo em `targetSize` px.
--- - Se source é menor/igual ao target: usa inteiro pra manter pixel art sharp.
--- - Se source é maior: scale fracional (nearest filter mantém qualidade).
--- PNGs do projeto são tipicamente 64×64; a maioria dos targets é < 64, então cai no
--- branch fracional. Matrix icons são 16×16 e ganham scale inteiro.
 function IconLoader.computeScale(iconH, targetSize)
     if iconH <= targetSize then
         return math.max(1, math.floor(targetSize / iconH))

@@ -1,20 +1,4 @@
--- src/scenes/IntroTube.lua
--- ABERTURA "a página e o televisor" (Out/2026, pedido do dono a partir de
--- heyparker.ai: "gostei do começo: a tela, a fita; quero o nosso visual").
---
--- Antes do boot de sempre (sintonia do canal, lua, redemoinho), a tela é
--- uma PÁGINA de pergaminho com o NOSSO televisor pequeno no meio (o mesmo
--- gabinete/tubo do crt.glsl, renderizado numa tela menor por
--- CRTShader.renderTube). Na tela do televisor o título e o subtítulo são
--- DATILOGRAFADOS com o blip do corvo e um cursor piscando; depois a câmera
--- MERGULHA no tubo (o televisor cresce até a abertura do tubo encher a
--- janela) e, nesse instante, o boot normal assume: o CRT de tela cheia liga
--- (powerOn) e a sintonia começa dentro do tubo.
---
--- Regras: qualquer tecla/clique pula; reducedMotion = texto inteiro na
--- hora, sem mergulho (corte); sem shader (driver sem GLSL) o televisor é
--- uma moldura plana de pixel art, AVISADA uma vez. Nada aqui é regra de
--- jogo: só coreografia. Tempos em IntroTube.T (segundos).
+local Debug = require("src.core.Debug")
 
 local Palette     = require("src.ui.Palette")
 local FontManager = require("src.ui.FontManager")
@@ -23,37 +7,26 @@ local I18n        = require("src.i18n.I18n")
 local IntroTube = {}
 
 IntroTube.T = {
-    fadeIn = 0.35,        -- página aparece
-    tvPop  = 0.45,        -- televisor "pousa" (escala 0,92 -> 1)
-    typeAt = 0.80,        -- começa a datilografar o título
-    gapSub = 0.35,        -- pausa entre título e subtítulo
-    hold   = 0.90,        -- segura com o texto completo
-    insert = 1.10,        -- a CARTA viaja até a fenda do disquete (só com a arte)
-    insertHold = 0.35,    -- clique + flash da tela depois de entrar
-    dive   = 1.00,        -- mergulho no tubo
-    cps    = 22,          -- caracteres por segundo (mais lento que o corvo: é cena)
+    fadeIn = 0.35,
+    tvPop  = 0.45,
+    typeAt = 0.80,
+    gapSub = 0.35,
+    hold   = 0.90,
+    insert = 1.10,
+    insertHold = 0.35,
+    dive   = 1.00,
+    cps    = 22,
 }
-IntroTube.TV_FRAC  = 0.46   -- largura do televisor / largura da janela
--- ARTE DO COMPUTADOR (dono, Out/2026: "gerar literalmente o computador do
--- site da Parker, nas nossas cores; o primeiro quadro é ele e depois dá
--- zoom"). Quando src/data/intro_computer.lua existe (gerado por
--- tools/intro_computer_import.py, ver docs/plan/intro-computer-prompt.md),
--- a abertura desenha ESSA arte no lugar do televisor do shader: o tubo
--- (sem o gabinete do shader, só a abertura curva com scanlines) vai DENTRO
--- do retângulo da tela da arte e o mergulho é na tela.
+IntroTube.TV_FRAC  = 0.46
 IntroTube.DATA_PATH = "src/data/intro_computer.lua"
-IntroTube.ART_FRAC  = 0.70   -- altura do computador / altura da janela
--- A FENDA do disquete: no site uma mão enfia um disquete antes do mergulho;
--- aqui uma CARTA (o verso, src/ui/CardBack) entra pela fenda. `slot` vem
--- do importador (faixa escura abaixo da tela); sem ele, esta fração da arte.
+IntroTube.ART_FRAC  = 0.70
 IntroTube.SLOT_FALLBACK = { x = 0.52, y = 0.80, w = 0.34, h = 0.03 }
-IntroTube.BEZEL_PX = 20     -- = BEZEL_PX do crt.glsl (gabinete dentro do canvas)
-IntroTube.CORNER   = 0.012  -- raio relativo da abertura (= cornerR do shader)
+IntroTube.BEZEL_PX = 20
+IntroTube.CORNER   = 0.012
 
 local S = {}
 local utf8 = require("utf8")
 
--- carrega a arte do computador (nil = usar o televisor do shader)
 local artCache = { path = nil, data = false }
 function IntroTube.computerArt()
     local path = IntroTube.DATA_PATH
@@ -63,17 +36,17 @@ function IntroTube.computerArt()
     if not (path and love.filesystem.getInfo(path)) then return nil end
     local ok, chunk = pcall(love.filesystem.load, path)
     if not ok or not chunk then
-        print("[IntroTube] dados do computador ilegiveis: " .. tostring(chunk))
+        Debug.warn("[IntroTube] dados do computador ilegiveis: " .. tostring(chunk))
         return nil
     end
     local okR, d = pcall(chunk)
     if not okR or type(d) ~= "table" or not d.image or not d.screen then
-        print("[IntroTube] dados do computador invalidos em " .. path)
+        Debug.warn("[IntroTube] dados do computador invalidos em " .. path)
         return nil
     end
     local okI, img = pcall(love.graphics.newImage, d.image)
     if not okI then
-        print("[IntroTube] arte do computador nao carregou: " .. tostring(img))
+        Debug.warn("[IntroTube] arte do computador nao carregou: " .. tostring(img))
         return nil
     end
     img:setFilter("nearest", "nearest")
@@ -102,16 +75,13 @@ local warned = {}
 local function warnOnce(k, msg)
     if warned[k] then return end
     warned[k] = true
-    print("[IntroTube] " .. msg)
+    Debug.warn("[IntroTube] " .. msg)
 end
 
--- ===================================================================
--- Estado
--- ===================================================================
 function IntroTube.init(opts)
     opts = opts or {}
     S = {
-        phase = "page",            -- page | insert | dive | done
+        phase = "page",
         t = 0, diveT = 0, insT = 0, insSfx = 0,
         title = opts.title or I18n.t("menu.title"),
         sub = opts.subtitle or I18n.t("menu.subtitle"),
@@ -130,8 +100,6 @@ function IntroTube.init(opts)
 end
 
 function IntroTube.phase() return S.phase end
--- true quando a abertura terminou PELO mergulho (não por pular nem por
--- reducedMotion): o CRT do jogo pode ligar já aceso, sem o apagão.
 function IntroTube.endedWithDive() return S.dove == true end
 function IntroTube.isDone() return S.phase == "done" end
 function IntroTube.typed() return S.shownTitle, S.shownSub end
@@ -151,9 +119,6 @@ function IntroTube.skip()
     finish()
 end
 
--- ===================================================================
--- Update: datilografia + mergulho
--- ===================================================================
 local function blip()
     local ok, Narrator = pcall(require, "src.ui.Narrator")
     if ok and Narrator.playBlip then Narrator.playBlip() end
@@ -213,13 +178,6 @@ function IntroTube.update(dt)
     end
 end
 
--- ===================================================================
--- Draw
--- ===================================================================
--- Geometria do televisor na janela (px): canvas do tubo e escala do mergulho.
--- Com a ARTE: `art` = escala da imagem, `ax/ay` = canto dela, `sx/sy/sw/sh`
--- = a tela em px da janela; o tubo é renderizado no tamanho da tela mais o
--- gabinete do shader (que fica de fora, recortado).
 function IntroTube.geometry(W, H)
     local d = IntroTube.computerArt()
     if d then
@@ -230,8 +188,6 @@ function IntroTube.geometry(W, H)
         local sx, sy = ax + d.screen.x * k, ay + d.screen.y * k
         local sw, sh = d.screen.w * k, d.screen.h * k
         local tw, th = math.max(8, math.floor(sw)), math.max(8, math.floor(sh))
-        -- fim do mergulho: a TELA da arte cai EXATAMENTE na abertura do CRT
-        -- de tela cheia (janela menos o gabinete de B px), eixo a eixo
         local B = IntroTube.BEZEL_PX
         local sEndX, sEndY = (W - 2 * B) / sw, (H - 2 * B) / sh
         local sEnd = math.max(sEndX, sEndY)
@@ -246,8 +202,6 @@ function IntroTube.geometry(W, H)
     local tw = math.floor(W * IntroTube.TV_FRAC)
     local th = math.floor(tw * 0.75)
     local cx, cy = W / 2, H * 0.47
-    -- a ABERTURA do tubo (canvas menos o gabinete) tem que encher a janela
-    -- no fim do mergulho: escala pela maior razão (cobre, não cabe)
     local B = IntroTube.BEZEL_PX
     local innerW, innerH = tw - 2 * B, th - 2 * B
     local sEnd = math.max(W / innerW, H / innerH)
@@ -276,9 +230,6 @@ local function sub(str, n)
     return off and str:sub(1, off - 1) or str
 end
 
--- O texto some ANTES do zoom (dono, Out/2026: "antes do zoom apague o que
--- tá escrito"): com a arte, apaga junto com o flash da carta; no televisor
--- do shader, nos últimos 0,3 s da espera. No mergulho a tela está vazia.
 local function textAlpha()
     local T = IntroTube.T
     if S.phase == "page" then
@@ -293,13 +244,10 @@ local function textAlpha()
     return 0
 end
 
--- O programa que passa na tela do televisor: fósforo escuro + texto
--- datilografado + cursor. Em px do canvas do tubo.
 local function drawTubeContent(tw, th, alpha)
     local ta = alpha * textAlpha()
     local ink = Palette.INK
     love.graphics.clear(ink[1] * 0.55, ink[2] * 0.55, ink[3] * 0.6, 1)
-    -- brilho frio do fósforo no centro (degraus, sem gradiente contínuo)
     for i = 3, 1, -1 do
         local k = i / 3
         love.graphics.setColor(0.10, 0.11, 0.10, 0.22 * (1 - k) + 0.06)
@@ -320,9 +268,6 @@ local function drawTubeContent(tw, th, alpha)
     Palette.set(Palette.PARCHMENT_LIGHT, ta)
     love.graphics.print(t1 .. (typingTitle and cur or ""), x1, y1)
     if S.shownTitle >= S.lenTitle then
-        -- o subtítulo cabe na ABERTURA do tubo: encolhe a fonte e, se ainda
-        -- não couber, quebra em linhas (a largura do texto completo decide a
-        -- quebra, pra não pular de linha enquanto datilografa)
         local inner = tw - 2 * IntroTube.BEZEL_PX - 28
         local TextFit = require("src.ui.TextFit")
         local f2 = TextFit.fit(S.sub, math.max(8, math.floor(tw / 30)), inner * 2, 7)
@@ -339,7 +284,6 @@ local function drawTubeContent(tw, th, alpha)
             end
         end
     end
-    -- a carta entrou: a tela "lê" o disco num flash de fósforo que apaga
     if S.phase == "insert" and S.insT > IntroTube.T.insert then
         local k = 1 - (S.insT - IntroTube.T.insert) / IntroTube.T.insertHold
         Palette.set(Palette.PARCHMENT_LIGHT, 0.85 * math.max(0, math.min(1, k)) * alpha)
@@ -348,11 +292,6 @@ local function drawTubeContent(tw, th, alpha)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- A CARTA entra na fenda do disquete (o disquete do site, no nosso visual):
--- vem do canto inferior direito já girada, endireita no caminho e some pela
--- FENDA. O truque é um recorte na linha da fenda: tudo acima dela está
--- "dentro" do gabinete, então a carta desaparece conforme sobe. Em px da
--- janela (durante a fase insert o computador está em escala 1).
 local function drawInsertCard(G, W, H)
     if S.phase ~= "insert" or not G.slot then return end
     local T = IntroTube.T
@@ -384,7 +323,6 @@ local function drawInsertCard(G, W, H)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Moldura plana de pixel art (sem shader): gabinete INK + aro + tubo.
 local function drawFlatTube(content, tw, th)
     local B = IntroTube.BEZEL_PX
     local c = Palette.darken(Palette.INK, 0.6)
@@ -396,7 +334,6 @@ local function drawFlatTube(content, tw, th)
     love.graphics.draw(content, B, B, 0, (tw - 2 * B) / tw, (th - 2 * B) / th)
 end
 
--- A página: pergaminho com grão e vinheta de tinta em degraus (Bayer).
 local pageCanvas, pageKey
 local function drawPage(W, H, alpha)
     local key = W .. "x" .. H
@@ -410,7 +347,6 @@ local function drawPage(W, H, alpha)
             love.graphics.origin()
             local P = Palette.PARCHMENT
             love.graphics.clear(P[1], P[2], P[3], 1)
-            -- grão fixo (hash) e vinheta em 5 degraus com dither
             local D = Palette.PARCHMENT_DARK
             local cell = math.max(2, math.floor(math.min(W, H) / 240))
             local BAYER = { { 0, 8, 2, 10 }, { 12, 4, 14, 6 }, { 3, 11, 1, 9 }, { 15, 7, 13, 5 } }
@@ -456,7 +392,6 @@ function IntroTube.draw()
     local dive = (S.phase == "dive") and easeInOutCubic(S.diveT / T.dive) or 0
     if reducedMotion() then fade = 1 end
 
-    -- página (escurece no mergulho: a sala some, só o tubo fica)
     drawPage(W, H, 1)
     if dive > 0 then
         love.graphics.setColor(0, 0, 0, dive)
@@ -467,18 +402,8 @@ function IntroTube.draw()
     local scale = pop * (1 + (G.sEnd - 1) * dive)
     local tvAlpha = fade
     if G.mode == "art" then
-        -- a ARTE do computador: tubo (recortado, sem gabinete) dentro da
-        -- tela, a imagem por cima; tudo escala em torno do centro da tela
         local B = IntroTube.BEZEL_PX
         local d = IntroTube.computerArt()
-        -- MERGULHO (dono, 13/Out: "a transição da borda do zoom para a do
-        -- jogo tem que ficar melhor"): a tela da arte termina EXATAMENTE na
-        -- abertura do CRT de tela cheia: escala por eixo (a tela 4:3 vira a
-        -- janela 16:9 no caminho), o centro da tela caminha até o centro da
-        -- janela e o tubo é renderizado na resolução FINAL (W×H) e encolhido
-        -- até a tela, de modo que o último quadro do mergulho é, pixel a
-        -- pixel, o primeiro do CRT do jogo (que liga já aceso, sem apagão:
-        -- BootScene._tubeOn(seamless)).
         local sxK = pop * (1 + (G.sEndX - 1) * dive)
         local syK = pop * (1 + (G.sEndY - 1) * dive)
         local px, py = G.cx + (W / 2 - G.cx) * dive, G.cy + (H / 2 - G.cy) * dive
@@ -517,7 +442,6 @@ function IntroTube.draw()
         love.graphics.pop()
         love.graphics.setColor(1, 1, 1, 1)
     end
-    -- o televisor do shader (sem a arte): conteúdo -> tubo (shader) -> na página
     local c = (G.mode == "tube") and ensureCanvases(G.tw, G.th) or nil
     if c then
         love.graphics.push("all")
@@ -536,7 +460,6 @@ function IntroTube.draw()
             love.graphics.pop()
             warnOnce("shader", "crt.glsl indisponivel: televisor da abertura em moldura plana")
         end
-        -- sombra dura do televisor na página (luz do alto à esquerda)
         if dive < 1 then
             local sh = Palette.INK
             love.graphics.setColor(sh[1], sh[2], sh[3], 0.45 * tvAlpha * (1 - dive))
@@ -547,7 +470,6 @@ function IntroTube.draw()
         love.graphics.draw(c.tube, G.cx, G.cy, 0, scale, scale, G.tw / 2, G.th / 2)
     end
 
-    -- dica de pular (some no mergulho)
     if dive <= 0 and S.t > 0.6 then
         local font = FontManager.getFont(10)
         love.graphics.setFont(font)

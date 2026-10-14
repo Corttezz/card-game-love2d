@@ -1,12 +1,3 @@
--- src/ui/card/BackgroundLoader.lua
--- Carrega PNGs de fundo (patterns) gerados via PixelLab.
--- Preferência: PNG em assets/sprites/backgrounds/patterns/<name>.png
--- Fallback: nil (o compositor então desenha o pattern procedural legado).
---
--- Uso:
---   local img = BackgroundLoader.get("stone")  -- love.Image ou nil
---   if img then love.graphics.draw(img, x, y) end
-
 local BackgroundLoader = {}
 
 local cache = {}

@@ -1,24 +1,4 @@
--- src/ui/shop/ShopScene.lua
--- O BALCÃO DO MERCADOR EM PERSPECTIVA (Loja v3b, docs/plan/shop-v3-balcao.md
--- §12, referência docs/plan/shop_reference_gpt.png): a CENA da loja.
---
--- Camadas, do fundo pra frente:
---   a PINTURA (assets/sprites/shop/counter_scene.png em cover-fit, como os
---   salões de chefe) → pulso da lanterna pintada (ShopProps.lightLevel) →
---   placa de título com os dois "?" → CARTAS nos cavaletes da borda do fundo
---   (perspectiva fixa, placa de latão sob cada uma) → OBJETOS sobre a mesa em
---   diagonal (relíquias, pacote, sino, copo de dados), ordenados pelo pé
---   (mais fundo primeiro), cada um com a placa → marcas de poeira dos
---   vendidos → PERGAMINHO de detalhe à direita (CardDetailPanel em tinta
---   sobre papel + o botão COMPRAR da tela) → vida de frente (mariposa).
---   O CONTINUAR é um Button da tela no canto inferior direito; os objetos
---   que VOAM na compra são desenhados pela tela fora do slide (drawFlies).
---
--- O que NÃO mora aqui: regra de economia. A cena recebe ofertas e avisos
--- (onPurchased/onDenied/reroll/select) e só ANIMA. Geometria: ShopLayout
--- (arte→tela), validada por test_shop_layout. Vida ambiente: ShopProps
--- (loja-vida), chamado pelo contrato opcional — a lanterna pintada dispensa
--- o sprite, então só flameAnchor/lightLevel/drawDiceCup/drawFront/update.
+local Debug = require("src.core.Debug")
 
 local ShopScene = {}
 ShopScene.__index = ShopScene
@@ -60,7 +40,7 @@ local function art(name)
     if img and img.setFilter and img:getFilter() ~= "nearest" then img:setFilter("nearest", "nearest") end
     if not img and not artWarned[name] then
         artWarned[name] = true
-        print("[ShopScene] assets/sprites/shop/" .. name .. ".png ausente — desenho procedural")
+        Debug.warn("[ShopScene] assets/sprites/shop/" .. name .. ".png ausente — desenho procedural")
     end
     return img
 end
@@ -74,10 +54,10 @@ local function getProps()
         props = mod
         if props.load then
             local okL, err = pcall(props.load)
-            if not okL then print("[ShopScene] ShopProps.load falhou: " .. tostring(err)) end
+            if not okL then Debug.warn("[ShopScene] ShopProps.load falhou: " .. tostring(err)) end
         end
     else
-        print("[ShopScene] src/ui/shop/ShopProps.lua ausente — copo de dados em placeholder")
+        Debug.warn("[ShopScene] src/ui/shop/ShopProps.lua ausente — copo de dados em placeholder")
     end
     return props
 end
@@ -92,12 +72,11 @@ local function playFirst(codes, opts)
         local key = table.concat(codes, "/")
         if not sfxWarned[key] then
             sfxWarned[key] = true
-            print("[ShopScene] nenhum sfx registrado em: " .. key)
+            Debug.warn("[ShopScene] nenhum sfx registrado em: " .. key)
         end
     end
 end
 
--- ============================================================================
 function ShopScene.new(screen)
     local self = setmetatable({}, ShopScene)
     self.screen = screen
@@ -109,7 +88,7 @@ function ShopScene.new(screen)
     self.dice = { hover = 0, hot = false }
     self.flies = {}
     self.sparks = {}
-    self.scrollOpen = 1        -- 0 = enrolado, 1 = aberto (anima ao trocar de oferta)
+    self.scrollOpen = 1
     self.hovered = nil
     return self
 end
@@ -196,9 +175,6 @@ function ShopScene:clear()
     self.hovered = nil
 end
 
--- ============================================================================
--- UPDATE
--- ============================================================================
 function ShopScene:_mouseLocal()
     local mx, my = love.mouse.getPosition()
     return mx, my - (self.screen.slideOffsetY or 0)
@@ -218,7 +194,6 @@ function ShopScene:update(dt)
 
     local hovered = nil
     if not blocked then
-        -- objetos da frente primeiro (quem está na frente ganha o mouse)
         for k = #self.items, 1, -1 do
             local it = self.items[k]
             if it.rect and it:hit(mx, my) then hovered = it break end
@@ -235,7 +210,6 @@ function ShopScene:update(dt)
     end
     for _, it in ipairs(self.outgoing or {}) do it:update(dt, false) end
 
-    -- sino e copo
     local function hoverOf(obj, r, on)
         if on and not obj.hot then
             obj.hot = true
@@ -250,7 +224,6 @@ function ShopScene:update(dt)
     local bellWasHot, diceWasHot = self.bell.hot, self.dice.hot
     hoverOf(self.bell, L.bell, overBell)
     hoverOf(self.dice, L.dice, overDice)
-    -- sininho no hover do sino, chocalho no hover do copo (dono)
     if self.bell.hot and not bellWasHot then playFirst({ "shopBellHover", "hoverRelic" }) end
     if self.dice.hot and not diceWasHot then playFirst({ "shopDicePickup", "hoverRelic" }) end
     self.bell.tagSwing = self.bell.tagSwing or { angle = 0, vel = 0 }
@@ -264,7 +237,6 @@ function ShopScene:update(dt)
     for i = #self.flies, 1, -1 do
         if self.flies[i]._done then table.remove(self.flies, i) end
     end
-    -- faíscas da compra (pixel art: quadradinhos com gravidade)
     for i = #self.sparks, 1, -1 do
         local sp = self.sparks[i]
         sp.t = sp.t + dt
@@ -272,7 +244,6 @@ function ShopScene:update(dt)
         sp.x, sp.y = sp.x + sp.vx * dt, sp.y + sp.vy * dt
         if sp.t >= sp.life then table.remove(self.sparks, i) end
     end
-    -- pergaminho: enrola e desenrola ao trocar a oferta mostrada
     local shown = self.screen._detailShownOffer
     if shown ~= self._scrollShown then
         self._scrollShown = shown
@@ -288,13 +259,10 @@ function ShopScene:update(dt)
         if hovered and hovered.rect then hx, hy = hovered:center() end
         local ok, err = pcall(P.update, dt, L, { t = self.t, reduced = reducedMotion(), hoverX = hx, hoverY = hy,
             run = run, cupHover = self.dice.hover })
-        if not ok then print("[ShopScene] ShopProps.update: " .. tostring(err)) end
+        if not ok then Debug.warn("[ShopScene] ShopProps.update: " .. tostring(err)) end
     end
 end
 
--- ============================================================================
--- EVENTOS (chamados pela tela)
--- ============================================================================
 function ShopScene:_flyTarget(offer, kind)
     local sw, sh = love.graphics.getWidth(), love.graphics.getHeight()
     local tb = _G.topBar
@@ -315,11 +283,8 @@ end
 function ShopScene:onPurchased(offer)
     local it = offer and self.bySlot[offer._slot]
     if not it then return end
-    -- o pacote não voa: ele ABRE (PackOpenScreen) no lugar
     local payload = (it.kind ~= "pack") and it:flyPayload() or nil
     it:markSold()
-    -- som e FAÍSCAS por objeto (dono: "animação de compra pra cada item"):
-    -- a cor vem do tema da relíquia (UpgradeTile.theme) ou do tipo
     playFirst(it:buySfx())
     if it.kind == "card" then playFirst({ "sceneWoodKnock" }, { pitch = 1.1, volume = 0.5 }) end
     if not reducedMotion() then
@@ -358,7 +323,6 @@ function ShopScene:onPurchased(offer)
     end
 end
 
--- Sem ouro: a placa treme (preço vermelho), o ouro da TopBar pisca. Sem toast.
 function ShopScene:onDenied(offer)
     local it = offer and self.bySlot[offer._slot]
     if it then it:denyPurchase() end
@@ -366,8 +330,6 @@ function ShopScene:onDenied(offer)
     if tb and tb.flashGold then tb:flashGold(-1) end
 end
 
--- Sino: os objetos antigos deslizam pra fora da mesa (esquerda) e os novos
--- entram deslizando pela direita, um a um. Dados já trocaram.
 function ShopScene:reroll(newOffers)
     self.bell.ringing = 0.9
     playFirst({ "shopBellRing", "shopReroll" })
@@ -401,7 +363,6 @@ function ShopScene:reroll(newOffers)
     EventManager.parallel(0.36, function() self.outgoing = nil end, REROLLQ)
 end
 
--- Entrada da loja: os objetos deslizam pra mesa um a um.
 function ShopScene:enter()
     if reducedMotion() or not self.L then
         for _, it in ipairs(self.items) do it.entry.v = 1; it.slide.x = 0 end
@@ -432,9 +393,6 @@ function ShopScene:itemAt(mx, my)
     return nil
 end
 
--- ============================================================================
--- DRAW
--- ============================================================================
 function ShopScene:_drawPainting()
     local L = self.L
     local img = art("counter_scene")
@@ -443,13 +401,11 @@ function ShopScene:_drawPainting()
         local cv = L.cover
         local pad = L.art.pad or { x = 0, y = 0 }
         love.graphics.setColor(1, 1, 1, 1)
-        -- o PNG tem margem (pad) em volta do miolo: o canto do miolo é (ox, oy)
         love.graphics.draw(img, cv.ox - pad.x * cv.s, cv.oy - pad.y * cv.s, 0, cv.s, cv.s)
     else
         Palette.set(Palette.darken(Palette.INK, 0.6))
         love.graphics.rectangle("fill", 0, 0, w, h)
     end
-    -- pulso da lanterna pintada (nível em degraus do ShopProps)
     local P = getProps()
     local level = 1
     if P and P.lightLevel then
@@ -470,7 +426,6 @@ end
 function ShopScene:_drawSign()
     local L = self.L
     local s = L.sign
-    -- tábua escura atrás do título (lê sobre qualquer trecho da pintura)
     Palette.set(Palette.INK, 0.72)
     love.graphics.rectangle("fill", s.x, s.y, s.w, s.h)
     Palette.set(Palette.AGED_GOLD_DARK, 0.9)
@@ -484,8 +439,6 @@ function ShopScene:_drawSign()
     local ty = math.floor(s.y + (s.h - font:getHeight()) / 2)
     FontManager.drawWithOutline(title, tx, ty, Palette.AGED_GOLD_LIGHT, 0.9)
     local midY = ty + math.floor(font:getHeight() / 2)
-    -- v5: o 2º "?" é o dos DADOS do Escriba; sem rótulo ele parecia um "?"
-    -- repetido. Um dado de 16 px à esquerda dele diz de quê é a ajuda.
     local faces = ImageCache.tryGet("assets/sprites/shop/die_faces.png")
     if faces and L.diceHelp then
         if not self._dieQuad then self._dieQuad = love.graphics.newQuad(64, 0, 16, 16, faces:getDimensions()) end
@@ -517,7 +470,6 @@ function ShopScene:_itemCtx(it)
     return { t = self.t, afford = afford, alpha = 1, reduced = reducedMotion() }
 end
 
--- caixa (arte) da união das caixas de tela dadas, com folga
 local function artBoxOf(L, rects, pad)
     local cv = L.cover
     local x0, y0, x1, y1 = math.huge, math.huge, -math.huge, -math.huge
@@ -531,9 +483,6 @@ local function artBoxOf(L, rects, pad)
              w = (x1 - x0) / cv.s + pad * 2, h = (y1 - y0) / cv.s + pad * 2 }
 end
 
--- Cartas nos cavaletes: carta (homografia, tela) → trilho, batentes, sombra
--- de contato, plaquinha e etiqueta (arte, na grade da cena) → texto das
--- placas (UI, cisalhado na mesma inclinação).
 function ShopScene:_drawCards(list)
     local NavCursor = require("src.ui.NavCursor")
     local L = self.L
@@ -546,8 +495,6 @@ function ShopScene:_drawCards(list)
             rects[#rects + 1] = { x = r.x + sx - 12, y = r.y - 16, w = r.w + 30, h = r.h + 30 }
             local g = it.geom
             if g and g.plate then rects[#rects + 1] = { x = g.plate.x + sx - 8, y = g.plate.y, w = g.plate.w + 24, h = g.plate.h + 4 } end
-            -- etiqueta NOVA + cordão até o teto (dono: "a ficha está cortada":
-            -- o recorte da passada só subia 16 px acima da carta)
             if g and g.newTag then
                 local b = g.newTag.box
                 local cv = L.cover
@@ -558,7 +505,6 @@ function ShopScene:_drawCards(list)
     end
     if #cards == 0 then return end
     local box = artBoxOf(L, rects, 4)
-    -- sombras das cartas na parede (pixel art, grade da cena) ANTES delas
     ShopPerspective.artPass(L, box, function()
         for _, it in ipairs(cards) do it:drawCardShadowArt(L, 1) end
     end)
@@ -585,7 +531,6 @@ function ShopScene:_drawCards(list)
     end
 end
 
--- Contato de um objeto simples (copo, dados): faixa dither colada na base.
 local function contactBand(L, fx, fy, halfW, slope, alpha)
     local prof = { x0 = 0, x1 = math.max(1, math.floor(halfW * 2)) - 1, y0 = 0, y1 = 0, bottom = {} }
     for x = prof.x0, prof.x1 do prof.bottom[x] = 0 end
@@ -593,9 +538,6 @@ local function contactBand(L, fx, fy, halfW, slope, alpha)
         L.art.tableMask, alpha)
 end
 
--- Tudo que está sobre a mesa, numa passada só na resolução da ARTE,
--- ordenado pelo pé (fundo → frente); depois, na grade da UI, as etiquetas,
--- o VENDIDO a giz e o nome do objeto em hover (por cima de tudo).
 function ShopScene:_drawTable(list)
     local NavCursor = require("src.ui.NavCursor")
     local L = self.L
@@ -605,13 +547,10 @@ function ShopScene:_drawTable(list)
             order[#order + 1] = { foot = it.foot, item = it }
             local r = it.rect
             rects[#rects + 1] = { x = r.x + (it.slide.x or 0) - 16, y = r.y - 24, w = r.w + 60, h = r.h + 36 }
-            -- a sombra projetada sai pra direita e pro fundo do objeto
             local sb = it:shadowScreenRect(L)
             if sb then rects[#rects + 1] = { x = sb.x + (it.slide.x or 0), y = sb.y, w = sb.w, h = sb.h } end
             local pb = it.geom and (it.geom.tag or it.geom.plaque)
             if pb then
-                -- folga larga: a etiqueta CRESCE no hover (rótulo até 92 px de
-                -- arte) e desce 8 linhas; recorte curto cortava o rótulo
                 local b = pb.box
                 local cv = L.cover
                 rects[#rects + 1] = { x = b.x + (it.slide.x or 0) - 50 * cv.s, y = b.y - 8, w = b.w + 100 * cv.s, h = b.h + 12 * cv.s }
@@ -623,7 +562,6 @@ function ShopScene:_drawTable(list)
     for _, o in ipairs({ L.bell, L.dice }) do
         local r = o.rect
         rects[#rects + 1] = { x = r.x - 16, y = r.y - 24, w = r.w + 90, h = r.h + 36 }
-        -- sombra projetada (até 0,7 x altura pra direita e 0,45 x altura pro fundo)
         rects[#rects + 1] = { x = r.x, y = r.y - r.h * 0.5, w = r.w + r.h * 0.8, h = r.h * 1.5 }
         local pb = o.tag or o.plaque
         if pb then rects[#rects + 1] = { x = pb.box.x - 50 * L.cover.s, y = pb.box.y - 8, w = pb.box.w + 100 * L.cover.s, h = pb.box.h + 12 * L.cover.s } end
@@ -632,8 +570,6 @@ function ShopScene:_drawTable(list)
     table.sort(order, function(a, b) return a.foot < b.foot end)
     local box = artBoxOf(L, rects, 4)
     ShopPerspective.artPass(L, box, function()
-        -- 1. SOMBRAS de tudo (silhueta projetada + contato), antes de qualquer
-        --    objeto: a sombra do vizinho da esquerda cai atrás do da direita
         for _, e in ipairs(order) do
             if e.item then
                 e.item:drawShadowArt(L, self:_itemCtx(e.item))
@@ -643,7 +579,6 @@ function ShopScene:_drawTable(list)
                 self:_drawDiceShadowArt()
             end
         end
-        -- 2. os objetos, do fundo pra frente
         for _, e in ipairs(order) do
             if e.item then
                 local it = e.item
@@ -685,11 +620,6 @@ function ShopScene:_bellCost()
     return cost, (not eco) or eco:canAfford(cost)
 end
 
--- Sino: a arte de sempre (objects/bell.png), em pé na diagonal, contato na
--- base; sem ouro, apagado. Hover = mesmo sprite + contorno (v5: sem
--- levantar). Escala 1 da grade (v5: era 0,755 do sprite: pixel fracionário
--- ao lado de objetos em escala 1; um sino de balcão ~ 40% da altura da
--- carta, que é o que o sprite dá em escala 1).
 function ShopScene:_bellParams()
     local L = self.L
     local B = L.bell
@@ -725,7 +655,6 @@ function ShopScene:_drawBellArt()
     self.bell.tieArt = { math.floor(tx), math.floor(ty) }
 end
 
--- etiqueta pendurada do sino (cordão do sino até a aresta e pela face)
 function ShopScene:_drawBellPlaqueArt()
     local B = self.L.bell
     if not B.tag then return end
@@ -746,8 +675,6 @@ function ShopScene:_drawBellPlaqueText()
         I18n.t("shop.bell_plate"), math.max(0, (k - 0.6) / 0.4))
 end
 
--- Copo de dados (ShopProps) na resolução da arte, com contato na base e os
--- dados jogados ao longo da diagonal.
 function ShopScene:_drawDiceArt()
     local L, sc = self.L, self.screen
     local D = L.dice
@@ -759,7 +686,6 @@ function ShopScene:_drawDiceArt()
     local fx, fy = (D.footX - cv.ox) / cv.s, (D.foot - cv.oy) / cv.s
     local lift = reducedMotion() and 0 or (self.dice.hover * ShopLayout.LIFT) / cv.s
     local hArt = D.rect.h / cv.s
-    -- +1: a última linha do frame do copo é vazia (base real na linha 30 de 32)
     local artRect = { x = fx - hArt / 2, y = fy + 1 - hArt - lift, w = hArt, h = hArt }
     local drawn = false
     if P and P.drawDiceCup then
@@ -767,7 +693,7 @@ function ShopScene:_drawDiceArt()
             total = st and st.total or nil, run = run, t = self.t, reduced = reducedMotion(),
             slope = D.slope, outline = self.dice.hover * 0.8, silhouette = ShopPerspective.silhouette(),
             dicePos = ShopLayout.TABLE.dice.diceAt, idleDie = 5 })
-        if ok then drawn = true else print("[ShopScene] ShopProps.drawDiceCup: " .. tostring(err)) end
+        if ok then drawn = true else Debug.warn("[ShopScene] ShopProps.drawDiceCup: " .. tostring(err)) end
     end
     if not drawn then
         local cup = Palette.lerp(Palette.RUST, Palette.INK, 0.35)
@@ -777,9 +703,6 @@ function ShopScene:_drawDiceArt()
     end
 end
 
--- Parâmetros da sombra do copo: o quadro PARADO da folha (dice_cup.png,
--- quadro 0) em pé no pé do copo (o DiceCup:draw usa a mesma base: rect.y +
--- rect.h = fy + 1, última linha do quadro vazia).
 function ShopScene:_diceShadowParams()
     local L = self.L
     local D = L.dice
@@ -794,7 +717,6 @@ function ShopScene:_diceShadowParams()
     local img = require("src.ui.ImageCache").tryGet(path)
     if not img then return nil end
     ShopPerspective.crisp(img)
-    -- perfil do quadro 0 lido uma vez (a chave do recorte é uma string: não montar por quadro)
     if self._diceProf == nil then
         self._diceProf = ShopPerspective.profile(path, img, { x = 0, y = 0, w = FW, h = FH }) or false
     end
@@ -804,8 +726,6 @@ function ShopScene:_diceShadowParams()
              k = 0, flip = false, lift = lift }
 end
 
--- Sombra do copo: silhueta projetada + contato; os dados à frente só a
--- faixa de contato.
 function ShopScene:_drawDiceShadowArt()
     local L, sc = self.L, self.screen
     local D = L.dice
@@ -816,8 +736,6 @@ function ShopScene:_drawDiceShadowArt()
     local fx, fy = (D.footX - cv.ox) / cv.s, (D.foot - cv.oy) / cv.s
     local o = self:_diceShadowParams()
     if o then ShopPerspective.drawObjectShadow(o, L.art.tableMask, 1) end
-    -- dados À FRENTE do copo (ShopLayout.TABLE.dice.diceAt): jogados, os
-    -- dois; parado, um de enfeite (o copo sozinho lia como caneca sem preço)
     local lying = st and st.used and st.dice
     local at = ShopLayout.TABLE.dice.diceAt
     for i = 1, (lying and 2 or 1) do
@@ -826,8 +744,6 @@ function ShopScene:_drawDiceShadowArt()
     end
 end
 
--- Copo de dados: não tem preço, mas no hover uma etiqueta "DADOS" pende da
--- aresta na frente dele (mesmo objeto físico das outras; some ao sair).
 function ShopScene:_diceTag()
     local D = self.L.dice
     if self.dice.hover <= 0.02 then return nil end
@@ -845,41 +761,25 @@ function ShopScene:_drawDiceTagArt()
     ShelfItem.drawTagArt(tg, 0, 0, true, false, a, tie)
 end
 
--- rótulos do balcão: tudo mora nas etiquetas (sino = 2ª linha; copo = etiqueta de hover)
 function ShopScene:_drawCounterLabels()
     local tg, a = self:_diceTag()
     if not tg then return end
     ShelfItem.drawTagText(self.L, tg, 0, 0, I18n.t("shop.dice_plate"), true, false, a, 0)
 end
 
--- ============================================================================
--- PERGAMINHO (Loja v3c, queixa do dono: "o papel parece fora dos rolos; não
--- está coeso com o ambiente"). UM rolo só, pixel art procedural no TAMANHO
--- DE PIXEL DA PINTURA (cover-fit arredondado):
---   * o papel começa ENROLADO no rolo de cima e termina enrolado no de baixo:
---     os rolos são cilindros do MESMO papel, com a mesma largura; só as
---     pontas do bastão de madeira (com a ponteira) saem pros lados;
---   * cordão do prego da parede até as duas pontas do bastão de cima;
---   * papel na luz da cena: bordas mais escuras em degraus (dither), a
---     lanterna (à esquerda, no alto) aquece o canto de cima-esquerda, o canto
---     de baixo-direita cai na sombra; grão fixo;
---   * COMPRAR é uma FITA vermelha com selo de cera, no rodapé DO papel.
--- Cache por tamanho (o papel é estático: 1 draw por quadro).
--- ============================================================================
 local scrollCache = { key = nil, canvas = nil }
 
 local function scrollPx(L)
     return math.max(1, math.floor(L.cover.s + 0.5))
 end
 
--- geometria do rolo em CÉLULAS (px de arte)
 function ShopScene.scrollCells(S, px)
     local W, H = math.floor(S.w / px), math.floor(S.h / px)
     local knob = math.max(4, math.floor(W * 0.06))
     local roll = math.max(6, math.floor(S.rollerH / px))
     return { W = W, H = H, knob = knob, roll = roll,
-             x0 = knob, x1 = W - knob - 1,          -- papel (inclusive)
-             top = roll, bot = H - roll - 1 }       -- papel plano (inclusive)
+             x0 = knob, x1 = W - knob - 1,
+             top = roll, bot = H - roll - 1 }
 end
 
 local function hash01(x, y)
@@ -893,8 +793,6 @@ local function buildScroll(S, px)
     if not ok then return nil, C end
     canvas:setFilter("nearest", "nearest")
     local P = Palette
-    -- luz âmbar da cena, um degrau abaixo do papel cru (v5, briefing item
-    -- 8: o pergaminho dominava a tela; o texto em tinta segue >= 7:1)
     local warm = { 0.93, 0.86, 0.74 }
     local function tint(c, k)
         return { c[1] * warm[1] * k, c[2] * warm[2] * k, c[3] * warm[3] * k }
@@ -913,44 +811,36 @@ local function buildScroll(S, px)
         love.graphics.rectangle("fill", x, y, w or 1, h or 1)
     end
     local dith = ShopPerspective.dithered
-    -- ===== papel plano =====
-    local lx, ly = C.x0 - C.W * 0.3, C.top - C.H * 0.15     -- lanterna (fora, à esquerda no alto)
+    local lx, ly = C.x0 - C.W * 0.3, C.top - C.H * 0.15
     local R = math.sqrt(C.W * C.W + C.H * C.H)
     for y = C.top, C.bot do
         for x = C.x0, C.x1 do
-            local d = math.min(x - C.x0, C.x1 - x)          -- distância da borda lateral
+            local d = math.min(x - C.x0, C.x1 - x)
             local dy = math.min(y - C.top, C.bot - y)
-            -- luz: degraus da distância até a lanterna
             local l = 1 - math.sqrt((x - lx) ^ 2 + (y - ly) ^ 2) / R
             local base = tint(paperL, 0.96)
             if l > 0.62 then base = tint(paperL, 1.0)
             elseif l > 0.56 and dith(x, y, (l - 0.56) / 0.06) then base = tint(paperL, 1.0) end
-            -- bordas mais escuras em degraus (papel velho); o lado direito,
-            -- longe da lanterna, um degrau a mais
             local far = (x - C.x0) / math.max(1, C.x1 - C.x0)
             if d == 0 then base = tint(paperD, 0.6)
             elseif d == 1 then base = tint(paperD, 0.82)
             elseif d == 2 then base = tint(paperM, 0.86)
             elseif d <= 4 and dith(x, y, far > 0.5 and 0.6 or 0.35) then base = tint(paperM, 0.9) end
             if dy == 0 then base = tint(paperD, 0.55) end
-            -- grão fixo
             local g = hash01(x, y)
             if g > 0.94 then base = { base[1] * 0.93, base[2] * 0.93, base[3] * 0.93 } end
             cell(base, x, y)
         end
     end
-    -- sombra do rolo de cima no papel (o papel SAI de dentro dele)
     for x = C.x0, C.x1 do
         cell(tint(paperD, 0.6), x, C.top, 1, 1, 0.9)
         if dith(x, C.top + 1, 0.5) then cell(tint(paperD, 0.75), x, C.top + 1, 1, 1, 0.8) end
         cell(tint(paperD, 0.62), x, C.bot, 1, 1, 0.9)
     end
-    -- ===== rolos (cilindro do MESMO papel, mesma largura) + bastão =====
     local function roller(y0)
         local h = C.roll
         local rodT = math.max(3, math.floor(h * 0.45))
         local rodY = y0 + math.floor((h - rodT) / 2)
-        -- bastão: ponta esquerda e direita (fora do papel) com ponteira de latão
         for _, side in ipairs({ { 0, C.x0 - 1 }, { C.x1 + 1, C.W - 1 } }) do
             local a0, a1 = side[1], side[2]
             for x = a0, a1 do
@@ -962,7 +852,6 @@ local function buildScroll(S, px)
                     cell(woodDark, x, rodY + rodT - 1, 1, 1)
                 end
             end
-            -- ponteira (bola de latão um pouco mais alta que o bastão)
             local bw = math.max(2, C.knob - 1)
             local bx = (a0 == 0) and 0 or (C.W - bw)
             cell(woodDeep, bx, rodY - 2, bw, rodT + 4)
@@ -970,7 +859,6 @@ local function buildScroll(S, px)
             cell(brassD, bx, rodY + rodT, bw, 1)
             cell(P.AGED_GOLD_LIGHT, bx + (a0 == 0 and 0 or bw - 1), rodY - 1, 1, 2)
         end
-        -- cilindro de papel: degraus de luz por linha (claro no meio)
         for i = 0, h - 1 do
             local t = (i + 0.5) / h
             local k
@@ -985,14 +873,12 @@ local function buildScroll(S, px)
             cell(tint(paperD, 0.55), C.x0, y0 + i, 1, 1)
             cell(tint(paperD, 0.55), C.x1, y0 + i, 1, 1)
         end
-        -- volta do papel: a borda enrolada (espiral) nas pontas
         for i = 1, h - 2 do
             if i % 2 == 0 then
                 cell(tint(paperD, 0.7), C.x0 + 1, y0 + i, 1, 1)
                 cell(tint(paperD, 0.7), C.x1 - 1, y0 + i, 1, 1)
             end
         end
-        -- contorno
         cell(woodDeep, C.x0, y0 - 1, C.x1 - C.x0 + 1, 1, 0.9)
         cell(woodDeep, C.x0, y0 + h, C.x1 - C.x0 + 1, 1, 0.6)
     end
@@ -1014,7 +900,6 @@ function ShopScene:_drawScroll()
     local C = scrollCache.cells or ShopScene.scrollCells(S, px)
     local ox = S.x + math.floor((S.w - C.W * px) / 2)
     local oy = S.y
-    -- cordão do prego até as duas pontas do bastão de cima
     local n = S.nail
     local nx, ny = n.x + n.w / 2, n.y + n.h - 2
     local rodY = oy + (math.floor((C.roll - math.max(2, math.floor(C.roll * 0.4))) / 2)) * px
@@ -1028,17 +913,13 @@ function ShopScene:_drawScroll()
         love.graphics.line(nx, ny, ex, rodY)
     end
     love.graphics.setLineWidth(1)
-    -- sombra do rolo na parede (deslocada pra direita-baixo: luz à esquerda)
     love.graphics.setColor(0, 0, 0, 0.35)
     love.graphics.rectangle("fill", ox + (C.x0 + 2) * px, oy + 3 * px, (C.x1 - C.x0 + 1) * px, (C.H - 2) * px)
-    -- v5 r2 (dono: "o pergaminho pode abrir e fechar ao trocar de carta"):
-    -- openK = quanto do papel está desenrolado; o rolo de baixo SOBE até o
-    -- de cima enquanto o papel some, e o texto é recortado pelo papel visível
     local openK = self.scrollOpen or 1
     openK = openK * openK * (3 - 2 * openK)
     local paperRows = C.bot - C.top + 1
     local visRows = math.floor(paperRows * openK + 0.5)
-    local bottomY = oy + (C.top + visRows) * px      -- topo do rolo de baixo agora
+    local bottomY = oy + (C.top + visRows) * px
     if scrollCache.canvas then
         love.graphics.setColor(1, 1, 1, 1)
         if visRows >= paperRows then
@@ -1069,8 +950,6 @@ function ShopScene:_drawScroll()
             self.screen:_drawDetailPanel(S.body, true, S.artMaxH, ShopScene.portrait)
         end
     end
-    -- ZONA DE LEITURA do CRT (v5): o texto miúdo do pergaminho fica sem
-    -- aberração cromática nem surto (a curvatura e as scanlines continuam)
     local okC, CRT = pcall(require, "src.ui.CRTShader")
     if okC and CRT.setCalmRect then
         local k = require("src.ui.UiScale").activeK()
@@ -1078,21 +957,14 @@ function ShopScene:_drawScroll()
         CRT.setCalmRect(S.x * k, (S.y + oy) * k, S.w * k, S.h * k)
         local cb = L.continueBtn
         if CRT.setCalmRect2 then CRT.setCalmRect2(cb.x * k, (cb.y + oy) * k, cb.w * k, cb.h * k) end
-        -- a loja inteira é leitura miúda (preços, nomes das cartas): a
-        -- aberração cai a 45% (v5 r2); o tubo continua curvo e com scanlines
         if CRT.setChromaScale then CRT.setChromaScale(0.45) end
     end
     if openK > 0.98 then self:_drawBuyRibbon() end
 end
 
--- COMPRAR = fita vermelha atravessada no rodapé do papel, com selo de cera à
--- esquerda (o Button da tela vira hitbox invisível: clique, teclado e pad
--- continuam nele). Sem ouro: fita desbotada e selo apagado.
 function ShopScene:_drawBuyRibbon()
     local L = self.L
     local S = L.scroll
-    -- estado do COMPRAR lido AGORA (ouro pode ter mudado desde o último
-    -- refresh: antes a fita seguia acesa sem ouro até a próxima compra)
     if self.screen._refreshBuyButton then self.screen:_refreshBuyButton() end
     local b = self.screen.buyButton
     local r = S.buy
@@ -1105,15 +977,13 @@ function ShopScene:_drawBuyRibbon()
     local redD = disabled and Palette.lerp(Palette.BLOOD_DARK, Palette.INK, 0.4) or Palette.BLOOD_DARK
     local redL = hot and Palette.lighten(Palette.BLOOD, 0.25) or Palette.lerp(Palette.BLOOD, Palette.PARCHMENT_LIGHT, 0.18)
     local notch = 2 * px
-    -- sombra no papel
     love.graphics.setColor(0, 0, 0, 0.25)
     love.graphics.rectangle("fill", x + px, y + 2 * px, w, h)
-    -- fita: corpo + rabos em V nas pontas (degraus de pixel)
     local rows = math.floor(h / px)
     for i = 0, rows - 1 do
         local yy = y + i * px
         local t = i / math.max(1, rows - 1)
-        local cut = math.floor((1 - math.abs(t - 0.5) * 2) * notch / px + 0.5) * px  -- V no meio
+        local cut = math.floor((1 - math.abs(t - 0.5) * 2) * notch / px + 0.5) * px
         local c = (i == 0) and redL or ((i >= rows - 1) and redD or red)
         love.graphics.setColor(c[1], c[2], c[3], 1)
         love.graphics.rectangle("fill", x + cut, yy, w - cut * 2, px)
@@ -1121,7 +991,6 @@ function ShopScene:_drawBuyRibbon()
     Palette.set(Palette.INK, 0.7)
     love.graphics.rectangle("fill", x + notch, y - px, w - notch * 2, px)
     love.graphics.rectangle("fill", x + notch, y + rows * px, w - notch * 2, px)
-    -- selo de cera à esquerda, sobre a fita
     local sr = math.floor(h * 0.55)
     local scx, scy = x + notch + sr, y + h / 2
     local wax = disabled and Palette.lerp(Palette.BLOOD_DARK, Palette.INK, 0.5) or Palette.lerp(Palette.BLOOD, Palette.ORANGE, 0.12)
@@ -1129,7 +998,6 @@ function ShopScene:_drawBuyRibbon()
     for yy = -sr, sr, step do
         for xx = -sr, sr, step do
             local d = math.sqrt(xx * xx + yy * yy)
-            -- borda irregular da cera (pingos)
             local edge = sr - ((math.floor((xx + yy) / step) % 3 == 0) and step or 0)
             if d <= edge then
                 local c = wax
@@ -1143,9 +1011,6 @@ function ShopScene:_drawBuyRibbon()
             end
         end
     end
-    -- texto gravado na fita
-    -- v5 r2 (briefing item 6): apagada, a fita DIZ o motivo (vendido / sem
-    -- ouro) em vez de só desbotar; o preço continua visível
     local txt = (b and b.text) or I18n.t("reward.detail_buy", nil, "COMPRAR")
     if disabled then
         local offer = self.screen.selectedOffer
@@ -1168,10 +1033,6 @@ function ShopScene:_drawBuyRibbon()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Retrato do objeto no pergaminho: o MESMO sprite (e o mesmo espelho) da
--- mesa. A queixa "na bancada está de um jeito e, quando passo o mouse, fica
--- de outro" era o pergaminho desenhando a arte com pedestal e halo do
--- UpgradeTile ao lado do objeto novo da mesa.
 function ShopScene.portrait(payload, x, y, w, h, alpha)
     local offer = payload and payload.offer
     if not offer then return false end
@@ -1188,20 +1049,16 @@ function ShopScene:draw()
     self:_drawPainting()
     self:_drawCards(self.outgoing or self.items)
     if self.outgoing then
-        -- objetos saindo e entrando ao mesmo tempo (deslize do sino)
         self:_drawTable(self.outgoing)
         self:_drawTable(self.items)
     else
         self:_drawTable(self.items)
     end
-    -- a placa de título é INTERFACE: fica por cima da cena (os cordões das
-    -- etiquetas NOVA descem do teto e passam atrás dela); o validate garante
-    -- que nenhuma peça da vitrine invade a placa
     self:_drawSign()
     self:_drawScroll()
     if P and P.drawFront then
         local ok, err = pcall(P.drawFront, L, ctx)
-        if not ok then print("[ShopScene] ShopProps.drawFront: " .. tostring(err)) end
+        if not ok then Debug.warn("[ShopScene] ShopProps.drawFront: " .. tostring(err)) end
     end
     love.graphics.setColor(1, 1, 1, 1)
 end

@@ -1,42 +1,3 @@
--- src/ui/BossCinematic.lua
--- CINEMÁTICA DE CHEFE: entrada no salão e morte — runner dos roteiros de
--- src/data/boss_cinematics.lua.
---
--- Pedido do dono (Out/2026): a porta do castelo abre (cerimônia já existente,
--- WorldRoad.enterCastle) → o salão abre VAZIO (sem chefe, sem HUD) → a entrada
--- toca dentro do salão com o cenário do próprio salão → nome do chefe → HUD →
--- luta. Na morte: colapso em câmera lenta, luz saindo dos olhos, rajada de
--- penas e corvos, dessaturação breve, o corpo fica no salão e SÓ DEPOIS os
--- espólios entram.
---
--- COMO SE ENCAIXA (ver GameplayScene):
---   * `startIntro(game)` é chamado pelo onComplete da porta (bossEntered=true).
---     O Continuar (ResumeFlow → _debugForceBossEntered) NÃO passa por aqui:
---     retomar dentro da luta é retomar na luta, sem repetir a entrada.
---   * A cena pergunta `hidesBoss()` (chefe ainda não pousou → o EnemyRenderer
---     desenha num canvas descartado só pra MEDIR onde ele vai ficar) e
---     `hidesHud()` (HUD do inimigo, painel do herói, mão e botões esperam).
---   * `drawBack()` roda no espaço do MUNDO logo depois do salão + InteriorFX
---     (escuridão, olhos, rasantes, vento, penas); `drawFront()` depois do chefe
---     (poeira do pouso, corvos espantados, penas da morte); `drawUI()` no
---     espaço da UI (cartão de nome, dica de pular).
---   * `beginWorldPass()/endWorldPass()` embrulham o mundo num canvas quando a
---     dessaturação da morte está ativa (shaders/desat.glsl).
---   * `holdsEnd()` segura espólios/vitória enquanto a morte toca.
---   * `overlay` é registrado no InputFocus (main.lua, PRIMEIRO da lista = menor
---     prioridade: pausa e companhia continuam ganhando). Com ele visível o
---     clique/tecla/A vêm pra cá (pular depois de SKIP_AFTER), o NavCursor não
---     reclama o Enter (ownsNavigation) e o combate NÃO congela (exceção em
---     main.lua: a cinemática é a única captora que deixa o relógio correr).
---
--- Tempo: a sequência é uma LINHA DO TEMPO própria (dt acumulado), não uma fila
--- do EventManager — pular é saltar pro estado final, e o teste roda sem
--- EventManager. Efeitos com envelope (gust das luminárias, slowmo, desat)
--- continuam vivos depois que o passo que os disparou passou.
---
--- reducedMotion: usa `introReduced`/`deathReduced` do dado (mesma linguagem,
--- sem varrer a tela); informação (nome do chefe) fica.
-
 local Data            = require("src.data.boss_cinematics")
 local I18n            = require("src.i18n.I18n")
 local FontManager     = require("src.ui.FontManager")
@@ -49,31 +10,21 @@ local DynaText        = require("src.ui.DynaText")
 
 local BossCinematic = {}
 
--- Depois de quanto tempo clique/A/Enter PULA (segundos).
 BossCinematic.SKIP_AFTER = 1.0
 
--- Passos conhecidos por fase. Kind desconhecido AVISA e é pulado (fallback
--- silencioso é proibido — CLAUDE.md §9).
 BossCinematic.INTRO_KINDS = { dark = true, eyes = true, flyby = true, land = true,
                               title = true, hud = true,
-                              -- outros chefes (elemento de cada um)
                               runes = true, rise = true, whiteout = true, silhouette = true,
                               settle = true, door_burst = true, firewall = true, chains = true,
                               walk_in = true, heartbeat = true, roots = true, eclipse = true,
                               descend = true,
-                              -- rainha do eclipse v2 (pressentimento, manifestação, coroação)
                               omen = true, unveil = true, coronation = true,
-                              -- colosso: o corpo se MONTA de pedaços puxados do chão
                               assemble = true }
 BossCinematic.DEATH_KINDS = { slowmo = true, burst = true, desat = true, hold = true,
-                              -- elemento engolindo o corpo (tirano: poça de lava)
                               lava = true,
-                              -- colosso: as raízes soltam e o corpo desaba em pedaços
                               crumble = true,
-                              -- a luz volta na abertura do fundo (rainha: o eclipse abre)
                               dawn = true }
 
--- Sons (audio/sfx/boss/, registrados sob demanda; fallback por Sfx.has).
 local SOUNDS = {
     bossEyesIgnite     = { "audio/sfx/boss/boss_eyes_ignite.mp3",     0.70 },
     bossEyesRumble     = { "audio/sfx/boss/boss_eyes_rumble.mp3",     0.55, loop = true },
@@ -87,7 +38,6 @@ local SOUNDS = {
     bossFeatherBurst   = { "audio/sfx/boss/boss_feather_burst.mp3",   0.70 },
     bossCrowsFlee      = { "audio/sfx/boss/boss_crows_flee.mp3",      0.60 },
     bossHoldAmbience   = { "audio/sfx/boss/boss_hold_ambience.mp3",   0.45, loop = true },
-    -- outros chefes (elemento)
     bossRuneIgnite     = { "audio/sfx/boss/boss_rune_ignite.mp3",      0.65 },
     bossFrostStorm     = { "audio/sfx/boss/boss_frost_storm.mp3",      0.60, loop = true },
     bossFrostShatter   = { "audio/sfx/boss/boss_frost_shatter.mp3",    0.80 },
@@ -104,79 +54,60 @@ local SOUNDS = {
     bossEclipseHum     = { "audio/sfx/boss/boss_eclipse_hum.mp3",      0.55, loop = true },
     bossDescendWings   = { "audio/sfx/boss/boss_descend_wings.mp3",    0.75 },
     bossEclipseBreak   = { "audio/sfx/boss/boss_eclipse_break.mp3",    0.80 },
-    -- rainha do eclipse v2 (frente rainha-eclipse, Out/2026)
     bossEclipseOmen    = { "audio/sfx/boss/boss_eclipse_omen.mp3",    0.75 },
     bossEclipseUnveil  = { "audio/sfx/boss/boss_eclipse_unveil.mp3",  0.75 },
     bossCrownTick      = { "audio/sfx/boss/boss_crown_tick.mp3",      0.55 },
     bossEclipseCrown   = { "audio/sfx/boss/boss_eclipse_crown.mp3",   0.90 },
     bossEclipsePhase   = { "audio/sfx/boss/boss_eclipse_phase.mp3",   0.85 },
     bossEclipseFade    = { "audio/sfx/boss/boss_eclipse_fade.mp3",    0.80 },
-    -- colosso v2 (Out/2026): madeira rangendo + ossos se juntando, chão
-    -- rachando, corpo desabando em pedaços
     colossusAssemble   = { "audio/sfx/boss/colossus_assemble.mp3",     0.80 },
     colossusCrack      = { "audio/sfx/boss/colossus_crack.mp3",        0.85 },
     colossusCrumble    = { "audio/sfx/boss/colossus_crumble.mp3",      0.85 },
-    -- monarca v2 (Out/2026): o cajado bate no gelo ainda em silhueta
     monarchStrike      = { "audio/sfx/boss/monarch_strike.mp3",        0.85 },
-    -- tirano v2 (Out/2026): correntes do salão arrastadas, esticando, arrebentando
     tyrantChainDrag    = { "audio/sfx/boss/tyrant_chain_drag.mp3",     0.70 },
     tyrantChainTaut    = { "audio/sfx/boss/tyrant_chain_taut.mp3",     0.80 },
     tyrantChainSnap    = { "audio/sfx/boss/tyrant_chain_snap.mp3",     0.85 },
     tyrantUnchained    = { "audio/sfx/boss/tyrant_unchained.mp3",      0.85 },
 }
 local soundsLoaded = false
-BossCinematic.SOUNDS = SOUNDS   -- teste confere que todo arquivo existe
+BossCinematic.SOUNDS = SOUNDS
 
--- ---------------------------------------------------------------------------
--- ESTADO (módulo: uma cinemática por vez, como a cena)
--- ---------------------------------------------------------------------------
-local seq = nil        -- { phase, steps, idx, stepT, t, bossId, reduced }
-local stage = nil      -- { cx, cy, bbox, foot, hall, w, h, tr } (GameplayScene, por frame)
-local dark = 0         -- escuridão corrente do salão (0..1)
-local darkEase = nil   -- { from, to, t, dur }
-local eyes = nil       -- { u, v, size, blinks, t, dur }
-local fly = nil        -- { from, v, ghosts, arc, land, lights, t, dur, startDark, trail }
-local title = nil      -- { t, dur, name, epithet, dyna }
-local slowmo = nil     -- { scale, dur, release, t }
-local desat = nil      -- { peak, rise, fall, total, t }
+local seq = nil
+local stage = nil
+local dark = 0
+local darkEase = nil
+local eyes = nil
+local fly = nil
+local title = nil
+local slowmo = nil
+local desat = nil
 local bossHidden = false
 local hudHidden = false
 local landed = false
-local mist = nil       -- névoa colorida do salão { puffs, a, target, speed }
-local mistGustDir = 1  -- pra onde a rajada do rasante empurra a névoa
-local hit = nil        -- efeito de tela do pouso { t, dur, cx, cy }
-local edge = nil       -- whoosh na borda da tela { side, t, dur }
-local loops = {}       -- sons em loop tocando (code -> source)
-local sfxQueue = {}    -- sons agendados { t, code, pitch }
-local spawnMist        -- definida na seção NÉVOA (startIntro fica acima dela)
--- PALETA do chefe (cor da névoa, do brilho, do flash, das partículas) — vem
--- de `palette` no dado; sem ela, a do rei-carniça (violeta/brasa).
+local mist = nil
+local mistGustDir = 1
+local hit = nil
+local edge = nil
+local loops = {}
+local sfxQueue = {}
+local spawnMist
 local DEFAULT_PALETTE = {
     body = { 0.22, 0.13, 0.38 }, glow = { 0.58, 0.36, 0.98 }, ember = { 1.00, 0.50, 0.16 },
     flash = { 0.72, 0.52, 1.00 }, ghost = { 0.56, 0.46, 0.86 }, rim = { 0.62, 0.50, 0.95 },
     particle = { 0.20, 0.16, 0.32 }, particle2 = { 0.58, 0.50, 0.90 },
 }
 local PAL = DEFAULT_PALETTE
--- estados dos kinds dos outros chefes (runas, subida, nevasca, portão...)
 local fx = {}
 local flakes = {}
 local ownAnims = {}
-local deathFor = nil   -- inimigo cuja morte já foi encenada (não repete)
--- TIRANO: correntes do salão presas ao chefe — fora de `fx`, vivem a luta
--- inteira (bond) + inimigo pra quem ensureBond já tentou (triedFor). Numa
--- TABELA, não em locais soltos: LuaJIT aceita 200 locais por função e este
--- arquivo passou de 200 no escopo de arquivo (boot quebra na compilação).
-local T3 = { bond = nil, triedFor = nil }   -- (ver seção TIRANO)
--- RAINHA DO ECLIPSE v2 (seção própria mais abaixo): estado do eclipse que
--- SOBREVIVE ao fim da entrada (luta + cash out) e o cartão da coroação
-local eclipse = nil    -- { level, cur, dawn, t, gaze, lastPhase, active }
-local crownCard = nil  -- { t, dur, name, chars, cadence, shown, ... }
-local hallEyes = nil   -- olhos demais em volta do salão { list, t, turned, turnAt, close }
-local flyAnim = nil    -- SpriteAnimation idle do chefe pros rasantes
+local deathFor = nil
+local T3 = { bond = nil, triedFor = nil }
+local eclipse = nil
+local crownCard = nil
+local hallEyes = nil
+local flyAnim = nil
 local flyAnimId = nil
--- partículas (px de tela)
 local feathers, dust, crows, wind = {}, {}, {}, {}
--- canvases: dummy (medição) e passe de dessaturação
 local dummy = nil
 local worldCanvas = nil
 local desatShader = nil
@@ -204,7 +135,6 @@ local function loadSounds()
     end
 end
 
--- som em LOOP (rumor dos olhos, ambiente do corpo): guarda a fonte pra parar
 local function playLoop(code)
     if loops[code] then return end
     local a = _G.audioSystem
@@ -220,7 +150,6 @@ end
 local function stopAllLoops()
     for code in pairs(loops) do stopLoop(code) end
 end
--- som agendado (relógio da cinemática, não o EventManager)
 local function queueSfx(delay, code, fallback, pitch)
     sfxQueue[#sfxQueue + 1] = { t = delay, code = code, fallback = fallback, pitch = pitch }
 end
@@ -235,9 +164,6 @@ local function play(code, fallback, pitch, pitchVar)
     end
 end
 
--- ---------------------------------------------------------------------------
--- DADOS
--- ---------------------------------------------------------------------------
 function BossCinematic.data(id)
     return id and Data[id] or nil
 end
@@ -252,15 +178,12 @@ function BossCinematic.hasDeath(id)
     return d ~= nil and d.death ~= nil and #d.death > 0
 end
 
--- Soma dos `dur` de uma lista de passos (limite nominal da sequência).
 function BossCinematic.duration(steps)
     local s = 0
     for _, st in ipairs(steps or {}) do s = s + (st.dur or 0) end
     return s
 end
 
--- Valida um roteiro: kinds conhecidos pra fase, dur numérico >= 0.
--- Devolve lista de problemas (vazia = ok). Usada pelo teste e no start.
 function BossCinematic.validate(id)
     local d = Data[id]
     local errs = {}
@@ -282,15 +205,10 @@ function BossCinematic.validate(id)
     return errs
 end
 
--- ---------------------------------------------------------------------------
--- CICLO DE VIDA
--- ---------------------------------------------------------------------------
 local function clearFx()
     feathers, dust, crows, wind = {}, {}, {}, {}
 end
 
--- Estado final (tudo visível, nada pendente). Partículas em voo podem
--- terminar sozinhas.
 local function finish()
     seq = nil
     dark = 0
@@ -322,7 +240,7 @@ function BossCinematic.reset()
     T3.bond = nil
     stage = nil
     eclipse = nil
-    if InteriorFX.setEclipse then InteriorFX.setEclipse(0, 0) end   -- rainha: salão limpo
+    if InteriorFX.setEclipse then InteriorFX.setEclipse(0, 0) end
 end
 
 local function copySteps(list)
@@ -345,10 +263,6 @@ local function begin(phase, steps, bossId, reduced, data)
     flakes = {}
 end
 
--- ENTRADA GENÉRICA — chefe SEM roteiro próprio (chefe novo que ainda não
--- ganhou o dele). O salão abre VAZIO, um compasso de escuro, o chefe aparece
--- no palco com impacto, cartão com o nome. Nunca mais "luta como antes" com
--- a mão já na tela (bug do dono, Out/2026). Paleta neutra (pedra/âmbar).
 BossCinematic.GENERIC = {
     intro = {
         { kind = "dark",  dur = 0.70, to = 0.60 },
@@ -369,8 +283,6 @@ BossCinematic.GENERIC = {
     },
 }
 
--- ENTRADA. Chefe com roteiro usa o dele; chefe sem roteiro usa o GENÉRICO.
--- Quem não é chefe não tem entrada (devolve false).
 function BossCinematic.startIntro(game)
     local e = game and game.enemy
     local id = e and e.spriteId
@@ -379,10 +291,10 @@ function BossCinematic.startIntro(game)
     if d and not BossCinematic.hasIntro(id) then d = nil end
     if d then
         for _, err in ipairs(BossCinematic.validate(id)) do
-            print("[BossCinematic] " .. err)
+            require("src.core.Debug").warn("[BossCinematic] " .. err)
         end
     else
-        print("[BossCinematic] chefe sem roteiro próprio: " .. tostring(id) .. " — entrada genérica")
+        require("src.core.Debug").warn("[BossCinematic] chefe sem roteiro próprio: " .. tostring(id) .. " — entrada genérica")
         d = BossCinematic.GENERIC
     end
     local reduced = reducedMotion()
@@ -391,10 +303,9 @@ function BossCinematic.startIntro(game)
     clearFx()
     landed = false
     deathFor = nil
-    eclipse = nil   -- salão novo: o eclipse da luta anterior não vale aqui
+    eclipse = nil
     begin("intro", steps, id, reduced, d)
-    T3.bond = nil   -- as correntes nascem no passo `chains` da entrada
-    -- o salão nasce ESCURO: a cena ainda está no fade do preto
+    T3.bond = nil
     dark = 0.86
     bossHidden = true
     hudHidden = true
@@ -402,8 +313,6 @@ function BossCinematic.startIntro(game)
     return true
 end
 
--- MORTE. Chamada pelo update ao detectar `_deathHandled` do chefe no salão
--- (ou direto por teste/ferramenta).
 function BossCinematic.startDeath(game)
     local e = game and game.enemy
     local id = e and e.spriteId
@@ -413,15 +322,11 @@ function BossCinematic.startDeath(game)
     local d = Data[id]
     local reduced = reducedMotion()
     local steps = (reduced and d.deathReduced) or d.death
-    -- a entrada ainda tocando (morte instantânea por ferramenta): encerra
     if seq then finish() end
     begin("death", steps, id, reduced)
     return true
 end
 
--- Continuar no cash out/espólios de um chefe: o inimigo é montado JÁ morto
--- (`_deathHandled`) — a morte NÃO se reencena (retomar é retomar onde
--- estava). Marca o inimigo como "morte já vista".
 function BossCinematic.markDeathSeen(game)
     local e = game and game.enemy
     if e then deathFor = e end
@@ -431,8 +336,6 @@ function BossCinematic.isActive() return seq ~= nil end
 function BossCinematic.phase() return seq and seq.phase or nil end
 function BossCinematic.hidesBoss() return seq ~= nil and bossHidden end
 function BossCinematic.hidesHud() return seq ~= nil and hudHidden end
--- mão, botões, coringas e prévia somem em QUALQUER fase (na morte o HUD de
--- vida/TopBar fica, mas não há o que jogar)
 function BossCinematic.hidesHand() return seq ~= nil end
 function BossCinematic.holdsEnd() return seq ~= nil and seq.phase == "death" end
 function BossCinematic.lockInput() return seq ~= nil end
@@ -442,7 +345,6 @@ function BossCinematic.canSkip()
 end
 function BossCinematic.darkness() return dark end
 
--- Introspecção pra testes.
 function BossCinematic._debug()
     return { seq = seq, dark = dark, eyes = eyes, fly = fly, title = title,
              slowmo = slowmo, desat = desat, landed = landed,
@@ -452,8 +354,6 @@ function BossCinematic._debug()
              feathers = #feathers, dust = #dust, crows = #crows, wind = #wind }
 end
 
--- PULAR: salta pro estado final. Antes de SKIP_AFTER é ignorado (evita o
--- clique de aproximação da porta engolir a entrada).
 function BossCinematic.skip()
     if not BossCinematic.canSkip() then return false end
     if seq.phase == "intro" then
@@ -464,19 +364,14 @@ function BossCinematic.skip()
     return true
 end
 
--- Posição/medidas do palco, vindas da cena a cada frame (espaço do mundo).
 function BossCinematic.setStage(st) stage = st end
 
--- ---------------------------------------------------------------------------
--- PARTÍCULAS
--- ---------------------------------------------------------------------------
 local CROW_BODY     = { 0.09, 0.07, 0.13 }
 local CROW_SHEEN    = { 0.36, 0.31, 0.56 }
 local WIND_COLOR    = { 0.78, 0.74, 0.90 }
 local EYE_CORE      = { 1.00, 0.78, 0.32 }
 local EYE_HALO      = { 1.00, 0.46, 0.10 }
 
--- bloco = pixel da ARTE (escala do sprite ou do salão), nunca 1px de tela
 local function px()
     local s = (stage and stage.foot and stage.foot.scale) or (stage and stage.tr and stage.tr.scale) or 2
     return math.max(2, math.floor(s + 0.5))
@@ -490,7 +385,6 @@ local function spawnFeather(x, y, vx, vy, kind)
         sway = love.math.random() * math.pi * 2,
         life = 1.4 + love.math.random() * 1.2, max = 0,
         light = love.math.random() < 0.35,
-        -- brasa/esporo/cinza FLUTUAM (sobem devagar); pena/lasca/pétala caem
         float = (kind == "ember" or kind == "spore" or kind == "ash"),
     }
     local f = feathers[#feathers]
@@ -559,7 +453,7 @@ local function updateFx(dt)
         local c = crows[i]
         c.life = c.life - dt
         c.flap = c.flap + dt * 14
-        c.vy = c.vy - 60 * dt            -- ganham altura
+        c.vy = c.vy - 60 * dt
         c.x = c.x + c.vx * dt
         c.y = c.y + c.vy * dt
         if c.life <= 0 or c.y < -60 then table.remove(crows, i) end
@@ -572,18 +466,6 @@ local function updateFx(dt)
     end
 end
 
--- ---------------------------------------------------------------------------
--- NÉVOA COLORIDA (revisão do dono: "algo nebuloso, com cor, mais drama").
--- Puffs = texturas de névoa GERADAS (value noise + 3 degraus de alpha com
--- dither Bayer 4×4, borda esfarelada — nada de retângulo, nada de gradiente
--- liso), desenhadas na GRADE DA ARTE do salão (posição truncada em px da
--- PNG, escala = cover-fit × tamanho do puff), em 3 camadas com paralaxe:
--- duas atrás do chefe (fundas/rentes) e uma na frente, fina. Cada puff
--- desenha o CORPO (alpha, violeta escuro) e um BRILHO aditivo (violeta ou
--- brasa) — é esse brilho que "sangra" cor na pedra. A rajada do rasante
--- empurra a névoa (InteriorFX.gustLevel × direção do voo). reducedMotion:
--- névoa parada.
--- ---------------------------------------------------------------------------
 local BAYER4 = { 0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5 }
 local function bayer(x, y)
     return (BAYER4[(y % 4) * 4 + (x % 4) + 1] + 0.5) / 16
@@ -633,8 +515,6 @@ local function ensureFog()
     return fogImgs
 end
 
-
--- layer 1 = fundo (lento, pequeno), 2 = rente ao chefe, 3 = frente (fino)
 spawnMist = function()
     ensureFog()
     mist = { puffs = {}, a = 0, target = 0, speed = 1 }
@@ -680,19 +560,13 @@ local function updateMist(dt)
     end
 end
 
--- POSTERIZAÇÃO da névoa (revisão do lead, Out/2026): a soma de dezenas de
--- puffs translúcidos dava um gradiente LISO ("forma vetorial suave" = cara
--- de IA em pixel art). As camadas vão pra um canvas e voltam pela
--- shaders/posterize.glsl: 4 degraus por canal + dither Bayer na grade da
--- arte. Sem canvas/shader (headless, falha de compilação) desenha direto e
--- AVISA uma vez.
 local mistCanvas, posterShader, posterTried = nil, nil, false
 local function ensurePoster(w, h)
     if not posterTried then
         posterTried = true
         local ok, sh = pcall(love.graphics.newShader, "shaders/posterize.glsl")
         if ok then posterShader = sh else
-            print("[BossCinematic] shaders/posterize.glsl não carregou: " .. tostring(sh)
+            require("src.core.Debug").warn("[BossCinematic] shaders/posterize.glsl não carregou: " .. tostring(sh)
                 .. " — névoa sem degraus")
         end
     end
@@ -707,7 +581,6 @@ local function ensurePoster(w, h)
 end
 
 local drawMistRaw
--- Desenha as camadas `layers` (tabela de booleanos por layer) em coords da arte.
 local function drawMist(layers)
     if not mist or mist.a <= 0.01 or not stage or not stage.tr then return end
     local w, h = stage.w or love.graphics.getWidth(), stage.h or love.graphics.getHeight()
@@ -756,8 +629,6 @@ drawMistRaw = function(layers)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Blob de brilho (névoa aditiva) centrado em (cx, cy), largura w, altura h —
--- substitui qualquer "retângulo de luz": a borda é a da textura esfarelada.
 local function glowBlob(cx, cy, w, h, color, a, idx)
     local img = ensureFog()[idx or 1]
     love.graphics.setBlendMode("add")
@@ -766,15 +637,6 @@ local function glowBlob(cx, cy, w, h, color, a, idx)
     love.graphics.setBlendMode("alpha")
 end
 
--- ---------------------------------------------------------------------------
--- EFEITO DE TELA DO POUSO: flash na cor do chefe (3 degraus no tempo, sem
--- gradiente), onda de choque em anel pontilhado (blocos na grade, dither
--- Bayer no esvaecer), pulso de vinheta em bandas, solavanco no CRT e soco
--- de zoom no MUNDO (1.0 → 1.06 → 1.0, translação inteira). reducedMotion:
--- só o pulso de vinheta, suave.
--- ---------------------------------------------------------------------------
--- Cores dos dois anéis da onda de choque por ESTILO (`land.ring` no dado):
--- sem estilo, a paleta do chefe (brasa + flash).
 local RING_STYLES = {
     ice    = { { 0.78, 0.94, 1.00 }, { 0.42, 0.78, 1.00 } },
     frost  = { { 0.90, 0.97, 1.00 }, { 0.62, 0.86, 1.00 } },
@@ -784,7 +646,7 @@ local RING_STYLES = {
 }
 local function startHit(cx, cy, ring)
     if ring and not RING_STYLES[ring] then
-        print("[BossCinematic] land.ring desconhecido: " .. tostring(ring) .. " — paleta do chefe")
+        require("src.core.Debug").warn("[BossCinematic] land.ring desconhecido: " .. tostring(ring) .. " — paleta do chefe")
     end
     hit = { t = 0, dur = 0.60, cx = cx, cy = cy, ring = ring and RING_STYLES[ring] or nil }
     if not reducedMotion() then
@@ -793,7 +655,6 @@ local function startHit(cx, cy, ring)
     end
 end
 
--- (k, cx, cy) do soco de zoom em px do MUNDO, ou nil.
 function BossCinematic.worldZoom()
     if not hit or reducedMotion() then return nil end
     local k = clamp01(hit.t / 0.32)
@@ -803,8 +664,6 @@ end
 
 local heartVig = nil
 local HV_W, HV_H = 192, 108
--- vinheta do coração: alpha elíptico quantizado em 4 degraus com dither
--- Bayer no limiar (borda esfarelada, sem aresta reta)
 local function ensureHeartVignette()
     if heartVig then return heartVig end
     local data = love.image.newImageData(HV_W, HV_H)
@@ -826,9 +685,6 @@ end
 local function drawScreenFx()
     local hf = BossCinematic.heartFlash and BossCinematic.heartFlash() or 0
     if hf > 0.01 then
-        -- vinheta ELÍPTICA em 4 degraus com dither (textura gerada uma vez,
-        -- nearest, esticada na tela): nada de moldura retangular (lia como
-        -- borda de debug — revisão do lead)
         local w, h = love.graphics.getWidth(), love.graphics.getHeight()
         local img = ensureHeartVignette()
         love.graphics.setColor(PAL.flash[1], PAL.flash[2], PAL.flash[3], hf * 1.6)
@@ -843,13 +699,11 @@ local function drawScreenFx()
     local cx, cy = hit.cx / uk, hit.cy / uk
     local P = math.max(2, math.floor(2 * uk + 0.5))
     if not reduced then
-        -- FLASH na cor do chefe, 3 degraus
         local fa = (t < 0.06) and 0.55 or ((t < 0.13) and 0.30 or ((t < 0.22) and 0.12 or 0))
         if fa > 0 then
             love.graphics.setColor(PAL.flash[1], PAL.flash[2], PAL.flash[3], fa)
             love.graphics.rectangle("fill", 0, 0, w, h)
         end
-        -- ONDA DE CHOQUE: dois anéis de blocos, o de dentro atrasado
         for ring = 0, 1 do
             local rt = t - ring * 0.08
             if rt > 0 then
@@ -860,7 +714,6 @@ local function drawScreenFx()
                     or ((ring == 0) and PAL.ember or PAL.flash)
                 local n = math.max(24, math.floor(2 * math.pi * r / P))
                 for i = 0, n - 1 do
-                    -- dither: cada bloco cai fora conforme o anel esvaece
                     if bayer(i, ring + math.floor(i / 4)) < a then
                         local ang = i / n * math.pi * 2
                         local bx = math.floor((cx + math.cos(ang) * r) / P) * P
@@ -872,7 +725,6 @@ local function drawScreenFx()
             end
         end
     end
-    -- VINHETA em bandas (3 molduras), esvaece com o tempo
     local va = (1 - clamp01(t / hit.dur)) * (reduced and 0.35 or 0.6)
     if va > 0.02 then
         for i, bw in ipairs({ 48, 28, 12 }) do
@@ -887,13 +739,6 @@ local function drawScreenFx()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- ---------------------------------------------------------------------------
--- OS OUTROS CHEFES — kinds por ELEMENTO. Todos desenham o chefe "fora do
--- lugar" com um clip PRÓPRIO (ownAnim: clip PixelLab do chefe se instalado,
--- senão o idle) e terminam exatamente onde o EnemyRenderer vai desenhá-lo
--- (stage.foot, medido pelo passe no canvas descartado). Tudo na grade:
--- blobs pontilhados, blocos, níveis em degraus.
--- ---------------------------------------------------------------------------
 local function ownAnim(clip, dur)
     local id = seq and seq.bossId
     if not id then return nil end
@@ -903,7 +748,6 @@ local function ownAnim(clip, dur)
     if clip and SpriteAnimation.exists(id, clip, "south") then
         a = SpriteAnimation.new(id, clip, "south", 10, { loop = false })
         if dur and a then
-            -- o clip ocupa o passo inteiro
             a.fps = math.max(2, a:getFrameCount() / dur)
             a.frameTime = 1 / a.fps
         end
@@ -915,7 +759,6 @@ local function ownAnim(clip, dur)
     return a
 end
 
--- posição/escala reais do chefe no palco (do passe de medição)
 local function footInfo()
     if not (stage and stage.foot and stage.foot.drawX) then return nil end
     return stage.foot.drawX, stage.foot.drawY, stage.foot.scale
@@ -931,7 +774,6 @@ local function drawOwn(anim, x, y, s, tint, rimA)
     end
 end
 
--- anel pontilhado (corona do eclipse, runas): blocos na grade, dither no esvaecer
 local function dotRing(cx, cy, r, ry, P, col, a)
     local n = math.max(16, math.floor(2 * math.pi * r / P))
     for i = 0, n - 1 do
@@ -950,10 +792,6 @@ local RUNE_GLYPHS = {
     { "#.#", "###", "#.#", ".#.", ".#." },
 }
 
--- Runas no chão em volta do palco: bloco = ~1.6 px da ARTE do salão (3×5
--- blocos por glifo, legível a 1080p), halo em blob, e o círculo pontilhado
--- que as liga fecha quando todas acenderam — e FICA aceso durante a subida
--- (o passo seguinte é que o apaga, ver `land`).
 local function drawRunes()
     local r = fx.runes
     if not r or not stage or not stage.bbox then return end
@@ -982,7 +820,6 @@ local function drawRunes()
             end
         end
     end
-    -- o círculo que liga as runas fecha quando todas acenderam
     local all = clamp01((r.t - r.dur) / 0.4 + 1)
     if r.t > r.dur * 0.9 then
         local breathe = 0.8 + 0.2 * math.sin(r.t * 4)
@@ -1003,13 +840,11 @@ local function drawRise(w, h)
     local x = dx
     local y = dy + sh * (1 - e)
     local floorY = math.floor((stage.cy or (dy + sh)) + 2)
-    -- brilho do elemento atrás do corpo e vapor na linha do chão
     glowBlob(x + sw / 2, y + sh * 0.5, sw * 1.7, sh * 1.1, PAL.glow, 0.35 * e, 2)
     for i = -2, 2 do
         glowBlob(x + sw / 2 + i * sw * 0.22, floorY - 6, sw * 0.5, sh * 0.16, PAL.glow,
             0.28 * (0.7 + 0.3 * math.sin(r.t * 13 + i)), 1 + (i + 2) % 3)
     end
-    -- RECORTE NA LINHA DO CHÃO: o que está abaixo do piso ainda não existe
     local sx, sy, sww, shh = love.graphics.getScissor()
     love.graphics.intersectScissor(0, 0, w, floorY)
     drawOwn(r.anim, x, y, s, { 1, 1, 1, 1 }, 0.25 * (1 - e) + 0.08)
@@ -1030,7 +865,6 @@ local function drawWalk(w, h)
     local padBelow = (dy + ih * s) - (stage.cy or (dy + ih * s))
     local x = bodyCx - (bodyCx - dx) * (sk / s)
     local y = groundY + padBelow * (sk / s) - ih * sk
-    -- sombra de contato cresce com ele
     love.graphics.setColor(0, 0, 0, 0.35 * e)
     love.graphics.ellipse("fill", bodyCx, groundY, iw * sk * 0.3, math.max(3, iw * sk * 0.05))
     glowBlob(bodyCx, y + ih * sk * 0.6, iw * sk * 1.5, ih * sk * 0.9, PAL.glow, 0.22, 2)
@@ -1050,26 +884,18 @@ local function drawDescend(w, h)
     local x0 = (tr and (tr.ox + d.u * 400 * tr.scale) or (w * d.u)) - sw / 2
     local y0 = (tr and (tr.oy + d.v * 256 * tr.scale) or (h * d.v)) - sh * 0.5
     local x, y = lerp(x0, dx, e), lerp(y0, dy, e) + math.sin(d.t * 2.2) * 3
-    -- contraluz: preto na abertura, cor cheia ao pousar; asas com brilho de borda
     local lit = d.backlit and (0.08 + 0.92 * e) or 1
     glowBlob(x + sw / 2, y + sh * 0.5, sw * 1.9, sh * 1.3, PAL.glow, 0.30 * (1 - e * 0.5), 1)
     drawOwn(d.anim, x, y, s, { lit, lit, lit, 1 }, 0.3 * (1 - e) + 0.05)
 end
 
--- SILHUETA v2 (monarca; dono: "poderia durar mais tempo, mais marcada"):
--- vulto preto SÓLIDO com borda fria de 1 px da arte, que aparece LONGE e
--- pequeno no branco (`far` × escala, na borda de trás do piso) e cresce
--- andando (clip `clip` em loop, mesma geometria do walk_in) até o palco; em
--- `strike` o cajado bate AINDA em silhueta (clip `strikeClip`: flash frio,
--- onda de geada, tremor, lascas no pé) e só o `settle` deixa a neve
--- assentar e a cor entrar. Nada de transparência que lave o vulto.
 local function enterSilhouette(st)
     local id = seq.bossId
     local walk
     if st.clip and SpriteAnimation.exists(id, st.clip, "south") then
-        walk = SpriteAnimation.new(id, st.clip, "south", st.fps or 9)      -- em loop
+        walk = SpriteAnimation.new(id, st.clip, "south", st.fps or 9)
     else
-        if st.clip then print("[BossCinematic] silhouette: clip '" .. tostring(st.clip) .. "' ausente — idle") end
+        if st.clip then require("src.core.Debug").warn("[BossCinematic] silhouette: clip '" .. tostring(st.clip) .. "' ausente — idle") end
         walk = ownAnim(nil, nil)
     end
     local dur = math.max(0.3, st.dur or 1.2)
@@ -1083,7 +909,7 @@ local function enterSilhouette(st)
             sil.strikeAnim.fps = math.max(4, n / math.max(0.3, dur - strikeAt))
             sil.strikeAnim.frameTime = 1 / sil.strikeAnim.fps
         else
-            print("[BossCinematic] silhouette: strikeClip '" .. tostring(st.strikeClip) .. "' ausente — bate no idle")
+            require("src.core.Debug").warn("[BossCinematic] silhouette: strikeClip '" .. tostring(st.strikeClip) .. "' ausente — bate no idle")
         end
     end
     fx.sil = sil
@@ -1120,7 +946,6 @@ local function drawSilhouette(w, h)
     local anim = (striking and si.strikeAnim) or si.anim
     if not anim then return end
     local P = px()
-    -- entra em 0,35 s (sai do branco) e fica SÓLIDO
     local a = smooth(clamp01(si.t / 0.35))
     local walkDur = si.strikeAt or si.dur
     local e = smooth(clamp01(si.t / walkDur))
@@ -1134,7 +959,6 @@ local function drawSilhouette(w, h)
     local y = groundY + padBelow * (sk / s) - ih * sk
     if not striking then x = x + math.sin(si.t * 3) * 2 * (0.4 + 0.6 * e) end
     x, y = math.floor(x), math.floor(y)
-    -- borda fria de 1 px: a própria silhueta deslocada em 4 direções
     local cold = { 0.70, 0.86, 1.00, a }
     for _, off in ipairs({ { -P, 0 }, { P, 0 }, { 0, -P }, { 0, P } }) do
         anim:draw(x + off[1], y + off[2], sk, cold)
@@ -1160,26 +984,10 @@ local function drawFirewall(w, h)
         glowBlob(x, y, 48 * S, hh * S, PAL.ember, 0.55 * env * fl, 1 + i % 3)
         glowBlob(x, y + hh * 0.3 * S, 30 * S, hh * 0.5 * S, { 1, 0.85, 0.4 }, 0.35 * env * fl, 3)
     end
-    -- brilho de lava no chão
     glowBlob(w / 2, tr.oy + (f.v * 256 + 30) * S, w * 1.1, 40 * S, PAL.ember, 0.25 * env, 2)
 end
 
--- ---------------------------------------------------------------------------
--- COLOSSO PÚTRIDO v2 (Out/2026, veredito do dono: "do nada surgindo, não
--- fez sentido"). O salão É ele: o coração acelera, raízes descem das
--- PAREDES e do teto (bocas pintadas em InteriorFX.HALLS[5].rootMouths, em
--- px da arte) até o palco e AGARRAM; ossos e entulho do chão são puxados e
--- se juntam formando a silhueta DE BAIXO PRA CIMA (`assemble`: blocos do
--- próprio quadro 0 do idle voando de pontos do piso até o lugar EXATO onde
--- o EnemyRenderer vai desenhá-lo). As raízes se RETRAEM, ele ergue a
--- cabeça (clip `roar` no `land`) e o chão racha em volta (`land.cracks`).
--- Morte = o processo ao contrário (`crumble`): as raízes agarram, soltam, e
--- o corpo desaba em pedaços com gravidade, vira monte e esporos, e o monte
--- esvaece sobre o cadáver real. Tudo na grade do sprite (blocos de `block`
--- px da arte), nada de gradiente.
--- ---------------------------------------------------------------------------
 local frame0Cache = {}
--- quadro 0 do idle: Image (desenho por quad) + ImageData (quais blocos têm pixel)
 local function spriteFrame0(id)
     if frame0Cache[id] ~= nil then return frame0Cache[id] or nil end
     local dir = "assets/sprites/characters/enemies/" .. tostring(id) .. "/animations/idle/south"
@@ -1194,7 +1002,7 @@ local function spriteFrame0(id)
     local okD, data = false, nil
     if first then okD, data = pcall(love.image.newImageData, dir .. "/" .. first) end
     if not (okD and data) then
-        print("[BossCinematic] sem quadro 0 do idle em " .. dir .. " — sem pedaços")
+        require("src.core.Debug").warn("[BossCinematic] sem quadro 0 do idle em " .. dir .. " — sem pedaços")
         frame0Cache[id] = false
         return nil
     end
@@ -1204,8 +1012,6 @@ local function spriteFrame0(id)
     return frame0Cache[id]
 end
 
--- Blocos B×B do quadro 0 com pixel: { qx, qy, w, h, quad, row } — `row` =
--- 0 no topo do CORPO, 1 no pé (ordem de montagem/queda).
 local function spritePieces(id, B)
     local f0 = spriteFrame0(id)
     if not f0 then return nil end
@@ -1236,10 +1042,6 @@ local function spritePieces(id, B)
     return pieces, f0
 end
 
--- Raízes: `from="walls"` nascem nas bocas pintadas do salão (InteriorFX.
--- HALLS[hall].rootMouths) e vão AGARRAR o corpo (`grasp`: alvo dentro do
--- bbox do palco, em px da arte); sem isso, do ponto (u,v) pra pontos do
--- chão (v1). Retração por `retractT` (crescimento ao contrário, 0.7 s).
 local function startRoots(st)
     local n = st.n or 6
     fx.roots = { t = 0, dur = math.max(0.3, st.dur or 1.2), list = {} }
@@ -1247,9 +1049,8 @@ local function startRoots(st)
     local mouths = (st.from == "walls") and stage and stage.hall
         and InteriorFX.HALLS[stage.hall] and InteriorFX.HALLS[stage.hall].rootMouths or nil
     if st.from == "walls" and not mouths then
-        print("[BossCinematic] roots from=walls: salão sem rootMouths — saindo de (u,v)")
+        require("src.core.Debug").warn("[BossCinematic] roots from=walls: salão sem rootMouths — saindo de (u,v)")
     end
-    -- alvo: o corpo (bbox em px da arte) ou o chão
     local bx0, bx1, by0, by1
     if st.grasp and stage and stage.bbox and tr then
         local b = stage.bbox
@@ -1275,8 +1076,6 @@ local function startRoots(st)
             tx = 20 + (i - 0.5) / n * 360 + (love.math.random() - 0.5) * 30
             ty = 236 + love.math.random() * 16
         end
-        -- caminho em SEGMENTOS de 12-20 px da arte com cotovelos (±25°),
-        -- nó em cada junta e raminho curto em algumas: raiz, não vetor
         local pts = { { ox, oy } }
         local twigs = {}
         local cx, cy = ox, oy
@@ -1303,15 +1102,8 @@ local function startRoots(st)
     playLoop("bossRootsCrawl")
 end
 
--- Raízes rastejando: segmentos de 3 blocos com nós claros; crescem em
--- `dur` e, quando `retractT` liga, encolhem de volta pra boca (0,7 s).
--- cores das raízes: as do próprio castle_hall_5 (marrom-esverdeado escuro),
--- tom de dither um degrau acima, aresta clara só do lado da luz (o centro do
--- salão, onde o coração bate); o verde do elemento fica SÓ na ponta que agarra
 local ROOT_A, ROOT_B, ROOT_EDGE = { 0.09, 0.14, 0.08 }, { 0.13, 0.20, 0.11 }, { 0.25, 0.39, 0.18 }
 
--- um PINCEL de `wcells` células (px da arte) perpendicular ao caminho:
--- dither em xadrez entre dois tons, aresta clara na célula do lado da luz
 local function rootBrush(tr, x, y, nx, ny, wcells, lightSide, tipK)
     local S = tr.scale
     local cell = math.ceil(S)
@@ -1329,7 +1121,6 @@ local function rootBrush(tr, x, y, nx, ny, wcells, lightSide, tipK)
             col = ROOT_B
         end
         if tipK and tipK > 0 then
-            -- ponta que agarra: vai pro verde do elemento
             col = { lerp(col[1], PAL.glow[1], tipK), lerp(col[2], PAL.glow[2], tipK), lerp(col[3], PAL.glow[3], tipK) }
         end
         love.graphics.setColor(col[1], col[2], col[3], 1)
@@ -1337,9 +1128,6 @@ local function rootBrush(tr, x, y, nx, ny, wcells, lightSide, tipK)
     end
 end
 
--- Raízes GROSSAS v3: largura 5 → 2 células da arte da boca à ponta (+1 nos
--- nós), caminho com cotovelos, raminhos nas juntas, textura por dither, sem
--- brilho aditivo. Crescem em `dur` e, com `retractT`, encolhem de volta.
 local function drawRoots()
     local r = fx.roots
     if not r or not stage or not stage.tr then return end
@@ -1350,7 +1138,7 @@ local function drawRoots()
     for _, root in ipairs(r.list) do
         local nseg = #root.pts - 1
         local grown = k * nseg
-        local lightSide = -(root.side or 1)   -- a luz vem do centro do salão
+        local lightSide = -(root.side or 1)
         for i = 1, nseg do
             local segK = clamp01(grown - (i - 1))
             if segK > 0 then
@@ -1364,14 +1152,12 @@ local function drawRoots()
                     local q = st2 / math.max(1, steps)
                     local along = ((i - 1) + segK * q) / nseg
                     local wcells = math.floor(lerp(5, 2, along) + 0.5)
-                    -- nó: a junta é um degrau mais grossa
                     if (st2 <= 1 or st2 >= steps - 1) and i > 1 then wcells = wcells + 1 end
                     local tipK = (along > 0.88) and (along - 0.88) / 0.12 or 0
                     rootBrush(tr, lerp(a[1], ex, q), lerp(a[2], ey, q), nx, ny, wcells, lightSide, tipK)
                 end
             end
         end
-        -- raminhos curtos nas juntas já crescidas
         for _, tw in ipairs(root.twigs or {}) do
             if grown >= tw.at - 1 then
                 local o = root.pts[tw.at]
@@ -1386,16 +1172,12 @@ local function drawRoots()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- MONTAGEM (colosso): cada bloco do quadro 0 sai de um ponto do piso
--- (px da arte, faixa do chão do salão) e voa até o seu lugar no sprite;
--- pés primeiro, cabeça por último. Em voo é escuro como osso velho e ganha
--- a cor ao encaixar; um brilho do elemento cresce atrás do corpo montado.
 local function enterAssemble(st)
     local id = seq.bossId
     local pieces, f0 = spritePieces(id, st.block or 5)
     local dur = math.max(0.6, st.dur or 2.4)
     if not pieces then
-        print("[BossCinematic] assemble: sem sprite pra " .. tostring(id) .. " — o chefe aparece no land")
+        require("src.core.Debug").warn("[BossCinematic] assemble: sem sprite pra " .. tostring(id) .. " — o chefe aparece no land")
         fx.asm = { t = 0, dur = dur, pieces = {}, flight = 0.5, arrived = 0 }
         return
     end
@@ -1403,7 +1185,7 @@ local function enterAssemble(st)
     local asm = { t = 0, dur = dur, pieces = pieces, f0 = f0, flight = flight, arrived = 0 }
     for _, p in ipairs(pieces) do
         p.t0 = (1 - p.row) * (dur - flight) * 0.9 + love.math.random() * (dur - flight) * 0.1
-        p.ax = 60 + love.math.random() * 280          -- de onde é puxado (chão da arte)
+        p.ax = 60 + love.math.random() * 280
         p.ay = 206 + love.math.random() * 42
         p.lift = 16 + love.math.random() * 50
     end
@@ -1444,7 +1226,6 @@ local function drawAssemble()
             love.graphics.setColor(lit, lit, lit, 0.6 + 0.4 * e)
             love.graphics.draw(img, p.quad, x, y, 0, s, s)
             if not seq.reduced then
-                -- rastro curto: um bloco de brilho atrás do pedaço puxado
                 love.graphics.setColor(PAL.glow[1], PAL.glow[2], PAL.glow[3], 0.4 * (1 - e))
                 love.graphics.rectangle("fill", math.floor(lerp(sx, x, 0.88) / P) * P,
                     math.floor(lerp(sy, y, 0.88) / P) * P, P, P)
@@ -1455,10 +1236,6 @@ local function drawAssemble()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- RACHADURAS no chão em volta do pé (land.cracks): 7 fendas em blocos
--- escuros na grade, crescendo em 0,45 s (achatadas em y: chão visto de
--- frente), ponta recém-aberta com um bloco de brilho. Ficam até o cartão e
--- esmaecem com ele.
 local function startCracks(gx, gy, wdt)
     local list = {}
     local n = 7
@@ -1498,8 +1275,6 @@ local function drawCracks()
                     local q = st2 / steps
                     local bx = math.floor(lerp(a[1], ex, q) / P) * P
                     local by = math.floor(lerp(a[2], ey, q) / P) * P
-                    -- fenda escura com a luz do coração vazando por baixo
-                    -- (chão do salão 5 é escuro: só o escuro não se lia)
                     love.graphics.setColor(0.02, 0.03, 0.02, 0.95 * fade)
                     love.graphics.rectangle("fill", bx, by, P, P)
                     if i <= 2 then love.graphics.rectangle("fill", bx, by + P, P, P) end
@@ -1518,17 +1293,12 @@ local function drawCracks()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- DESABAMENTO (morte do colosso): o chefe real some, o corpo em pé fica como
--- blocos; as raízes das paredes agarram e, no `delay`, soltam — os blocos
--- caem (cabeça primeiro) com gravidade, quicam uma vez, viram um monte na
--- linha do chão e soltam esporos; ao fim o monte esvaece sobre o cadáver
--- que o EnemyRenderer já desenha.
 local function enterCrumble(st)
     local id = seq.bossId
     local pieces, f0 = spritePieces(id, st.block or 5)
     local dx, dy, s = footInfo()
     if not (pieces and dx) then
-        print("[BossCinematic] crumble: sem sprite/palco pra " .. tostring(id) .. " — morte sem pedaços")
+        require("src.core.Debug").warn("[BossCinematic] crumble: sem sprite/palco pra " .. tostring(id) .. " — morte sem pedaços")
         return
     end
     bossHidden = true
@@ -1544,7 +1314,6 @@ local function enterCrumble(st)
         p.vx = (love.math.random() - 0.5) * 70
         p.vy = -20 - love.math.random() * 40
         local off = (p.x + p.w * s / 2 - cx) / math.max(1, f0.iw * s / 2)
-        -- monte: mais alto no meio
         p.ground = groundY - (1 - math.min(1, math.abs(off))) * f0.ih * s * 0.12 * love.math.random()
         p.state = "held"
         p.bounced = false
@@ -1611,23 +1380,6 @@ local function drawCrumble()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- ---------------------------------------------------------------------------
--- TIRANO DO ABISMO v2 — CORRENTES DO SALÃO (Out/2026; dono: "as correntes
--- saem do céu; poderiam se manter dentro da fase com esse boneco, ser parte
--- de alguma mecânica ligando ele"). As correntes pertencem ao castle_hall_3
--- E a ele: ancoradas nas argolas pintadas dos pilares e nas pontas dos
--- chifres do portão-caveira (InteriorFX.HALLS[3].chainAnchors, px da arte)
--- e presas aos PULSOS e ao PESCOÇO (`bonds` no dado: grip = fração do canvas
--- do sprite). Na entrada ele chega ARRASTANDO as correntes (frouxas,
--- balançando) e elas se ESTICAM com um tranco quando ele para no palco. Na
--- luta, a cada limiar de vida (`breakAt`: 0.72 / 0.52 / 0.38 e o ENFURECIDO
--- de 30%, estado que o jogo já tem) uma corrente ARREBENTA (faísca, som,
--- tremor) e fica pendurada da argola, com o toco na algema; com todas
--- rompidas ele está SOLTO (aura maior, brasas subindo do chão). Nada disso
--- muda dano ou vida: é leitura. O estado (`T3.bond`) mora fora de `fx`:
--- sobrevive ao fim da cinemática e nasce pronto no Continuar (T3.ensureBond:
--- correntes já rompidas pela vida atual, sem faísca).
--- ---------------------------------------------------------------------------
 T3.CHAIN_DARK, T3.CHAIN_LIT, T3.CHAIN_DIM = { 0.30, 0.28, 0.32 }, { 0.66, 0.62, 0.66 }, { 0.48, 0.46, 0.50 }
 
 function T3.makeBond(id, enemy, state)
@@ -1636,14 +1388,14 @@ function T3.makeBond(id, enemy, state)
     local cfg = stage and stage.hall and InteriorFX.HALLS[stage.hall]
     local anchors = cfg and cfg.chainAnchors
     if not anchors then
-        print("[BossCinematic] bonds: salão " .. tostring(stage and stage.hall) .. " sem chainAnchors — sem correntes")
+        require("src.core.Debug").warn("[BossCinematic] bonds: salão " .. tostring(stage and stage.hall) .. " sem chainAnchors — sem correntes")
         return nil
     end
     local b = { id = id, enemy = enemy, state = state or "taut", chains = {}, loose = false, looseT = 0, t = 0 }
     for i, spec in ipairs(d.bonds) do
         local a = anchors[spec.anchor]
         if not a then
-            print("[BossCinematic] bonds: âncora '" .. tostring(spec.anchor) .. "' não existe no salão")
+            require("src.core.Debug").warn("[BossCinematic] bonds: âncora '" .. tostring(spec.anchor) .. "' não existe no salão")
         else
             b.chains[#b.chains + 1] = { ax = a[1], ay = a[2], gx = spec.grip[1], gy = spec.grip[2],
                 breakAt = spec.breakAt, front = spec.front ~= false, broken = false,
@@ -1667,8 +1419,6 @@ function T3.chainShouldBreak(ch, enemy)
     return T3.hpRatio(enemy) <= (ch.breakAt or 0)
 end
 
--- ponto do punho/pescoço na tela: segue o walker da entrada; depois o
--- EnemyRenderer (último quadro); antes de ele entrar, espera no fundo
 function T3.bondGrip(ch)
     local f0 = spriteFrame0(T3.bond.id)
     local iw, ih = (f0 and f0.iw) or 120, (f0 and f0.ih) or 120
@@ -1700,7 +1450,6 @@ function T3.snapChain(ch, loud)
     end
 end
 
--- vínculo fora da entrada (Continuar na luta, troca de inimigo)
 function T3.ensureBond(game, ctx)
     local e = game and game.enemy
     local id = e and e.spriteId
@@ -1713,7 +1462,7 @@ function T3.ensureBond(game, ctx)
         if T3.bond.enemy == e then return end
     end
     if seq and seq.phase == "intro" then return end
-    if not (stage and stage.hall) then return end   -- sem palco medido ainda: tenta no próximo quadro
+    if not (stage and stage.hall) then return end
     if T3.triedFor == e then return end
     T3.triedFor = e
     T3.bond = T3.makeBond(id, e, "taut")
@@ -1735,7 +1484,7 @@ function T3.updateBond(dt, game)
         if ch.snapT then ch.snapT = ch.snapT + dt end
     end
     if T3.bond.loose then T3.bond.looseT = T3.bond.looseT + dt end
-    if seq and seq.phase == "intro" then return end   -- na entrada a vida ainda não conta
+    if seq and seq.phase == "intro" then return end
     local e = T3.bond.enemy or (game and game.enemy)
     if not e then return end
     local dead = (game and game._deathHandled) or ((e.health or 1) <= 0)
@@ -1765,7 +1514,6 @@ function T3.updateBond(dt, game)
             end
         end
     end
-    -- SOLTO: brasas sobem do chão em volta dele enquanto vive
     if T3.bond.loose and not dead and stage and stage.bbox and not reducedMotion()
         and love.math.random() < dt * 6 then
         local b = stage.bbox
@@ -1775,8 +1523,6 @@ function T3.updateBond(dt, game)
     end
 end
 
--- elos ao longo de uma bezier quadrática (controle no meio, caído `sag`):
--- elo = 2×3 blocos, claro/escuro alternando (1 bloco lia como fio)
 function T3.drawChainLinks(x0, y0, x1, y1, sag, P, swayK, phase)
     local mx = (x0 + x1) / 2 + math.sin(T3.bond.t * 1.7 + phase) * swayK
     local my = (y0 + y1) / 2 + sag
@@ -1806,37 +1552,31 @@ function T3.drawBond(front)
             local gx, gy = T3.bondGrip(ch)
             ch.sx, ch.sy = gx, gy
             local len = math.sqrt((gx - ax) ^ 2 + (gy - ay) ^ 2)
-            -- argola na âncora pintada
             love.graphics.setColor(T3.CHAIN_LIT[1], T3.CHAIN_LIT[2], T3.CHAIN_LIT[3], 0.95)
             love.graphics.rectangle("fill", math.floor(ax / P) * P - P, math.floor(ay / P) * P - P, 3 * P, 3 * P)
             love.graphics.setColor(0.12, 0.10, 0.12, 1)
             love.graphics.rectangle("fill", math.floor(ax / P) * P, math.floor(ay / P) * P, P, P)
             if not ch.broken then
                 local slack = (T3.bond.state == "drag") and 0.32 or 0.05
-                -- ao esticar (pouso) a corrente dá um TRANCO e assenta
                 if T3.bond.state == "taut" and T3.bond.tautT and T3.bond.tautT < 0.5 then
                     slack = slack + 0.22 * (1 - T3.bond.tautT / 0.5) * math.abs(math.cos(T3.bond.tautT * 20))
                 end
                 T3.drawChainLinks(ax, ay, gx, gy, len * slack, P, (T3.bond.state == "drag") and 12 or 2, ch.phase)
             else
-                -- ponta pendurada da argola: pêndulo que amortece
                 local st = ch.snapT or 10
                 local L = len * 0.28
                 local th = 0.9 * math.exp(-st * 0.9) * math.sin(st * 6) + math.sin(T3.bond.t * 0.9 + ch.phase) * 0.06
                 local dirX = (gx > ax) and 1 or -1
                 local ex, ey = ax + math.sin(th) * L * dirX, ay + math.cos(th) * L
                 T3.drawChainLinks(ax, ay, ex, ey, 0, P, 0, ch.phase)
-                -- toco na algema: elos curtos balançando com o corpo
                 local cx2 = gx + math.sin(T3.bond.t * 2.3 + ch.phase) * 2 * P
                 T3.drawChainLinks(gx, gy, cx2, gy + 8 * P, 0, P, 0, ch.phase)
                 if st < 0.35 then
-                    -- faísca do rompimento no punho
                     local a = 1 - st / 0.35
                     glowBlob(gx, gy, 26 * P, 16 * P, PAL.ember, 0.8 * a, 3)
                     glowBlob(gx, gy, 12 * P, 8 * P, { 1, 0.95, 0.7 }, 0.9 * a, 1)
                 end
             end
-            -- algema no punho/pescoço
             love.graphics.setColor(T3.CHAIN_LIT[1], T3.CHAIN_LIT[2], T3.CHAIN_LIT[3], 0.95)
             love.graphics.rectangle("fill", math.floor(gx / P) * P - P, math.floor(gy / P) * P - P, 3 * P, 2 * P)
         end
@@ -1844,7 +1584,6 @@ function T3.drawBond(front)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- aura do tirano SOLTO (atrás do corpo): brilho maior pulsando na cor da brasa
 function T3.drawLooseAura()
     if not (T3.bond and T3.bond.loose and stage and stage.bbox) then return end
     local e = T3.bond.enemy
@@ -1866,7 +1605,6 @@ local function drawEclipse(w, h)
     local cx = tr.ox + e.u * 400 * tr.scale
     local cy = tr.oy + e.v * 256 * tr.scale
     local r = 14 * tr.scale * (1 + 0.15 * math.sin(e.t * 3))
-    -- disco negro cobrindo + coroa pontilhada que respira
     love.graphics.setColor(0.02, 0.0, 0.04, 0.9 * smooth(k))
     love.graphics.circle("fill", cx, cy, r * 0.95, 24)
     dotRing(cx, cy, r + 2 * P, r + 2 * P, P, PAL.glow, 0.85 * smooth(k))
@@ -1882,15 +1620,9 @@ local function drawWhiteout()
     if wo.fade then level = level * (1 - smooth(clamp01(wo.fade.t / wo.fade.dur))) end
     wo.level = level
     if level <= 0.01 then return end
-    -- 5 degraus (sem gradiente), teto 0.8: o salão nunca some de todo — a
-    -- nevasca é TEXTURA (rajadas de névoa correndo), não uma chapa branca
-    -- (teto 0,72: a 0,82 as colunas do salão já não se liam a 1:1 — revisão do lead)
     local q = math.min(0.72, math.floor(level * 5) / 5)
     love.graphics.setColor(0.90, 0.95, 1.0, q)
     love.graphics.rectangle("fill", 0, 0, w, h)
-    -- RAJADAS: as texturas de névoa (3 degraus de alpha com dither) correndo
-    -- da direita pra esquerda em duas camadas, azul-gelo sobre o branco e
-    -- branco aditivo por cima — é o vento que se vê
     local imgs = ensureFog()
     local t = wo.t
     local gw = w * 0.42
@@ -1915,7 +1647,6 @@ local function drawWhiteout()
         end
     end
     love.graphics.setBlendMode("alpha")
-    -- flocos: blocos azul-gelo esticados na direção do vento (riscos curtos)
     local P = px()
     for _, fl in ipairs(flakes) do
         local bx, by = math.floor(fl.x / P) * P, math.floor(fl.y / P) * P
@@ -1927,7 +1658,6 @@ local function drawWhiteout()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- pulso do coração (vinheta da cor do chefe por batida) — na UI
 function BossCinematic.heartFlash()
     local hb = fx.heart
     if not hb then return 0 end
@@ -1935,17 +1665,10 @@ function BossCinematic.heartFlash()
     return math.max(0, 1 - ph * 4) * 0.28
 end
 
--- ---------------------------------------------------------------------------
--- GEOMETRIA DO RASANTE
--- ---------------------------------------------------------------------------
--- Canto superior esquerdo do sprite do rasante no parâmetro k (0..1).
--- `land=true`: termina EXATAMENTE onde o EnemyRenderer vai desenhar o chefe
--- (medido pelo passe no canvas descartado: stage.foot.drawX/drawY).
 local function flyPos(f, k, w, h)
     local tr = stage and stage.tr
     local iw, ih = 0, 0
     if flyAnim then iw, ih = flyAnim:getSize() end
-    -- passagens cada vez mais PERTO da câmera: `scale` multiplica o sprite
     local s = ((stage and stage.foot and stage.foot.scale) or 2) * (f.land and 1 or (f.scale or 1))
     local sw, sh = iw * s, ih * s
     local yArt = tr and (tr.oy + f.v * 256 * tr.scale) or (h * f.v)
@@ -1963,9 +1686,6 @@ local function flyPos(f, k, w, h)
     return x, y, sw, sh, s
 end
 
--- ---------------------------------------------------------------------------
--- PASSOS
--- ---------------------------------------------------------------------------
 local function remainingDuration(fromIdx)
     local s = 0
     for i = fromIdx, #seq.steps do s = s + (seq.steps[i].dur or 0) end
@@ -1975,8 +1695,6 @@ end
 local function ensureFlyAnim(id)
     if flyAnim and flyAnimId == id then return end
     flyAnimId = id
-    -- clip de MERGULHO (PixelLab, tools/pixellab_boss_cine.py) quando existe;
-    -- senão o idle com as asas batendo bem mais rápido
     if SpriteAnimation.exists(id, "dive", "south") then
         flyAnim = SpriteAnimation.new(id, "dive", "south", 14)
         return
@@ -1986,7 +1704,6 @@ local function ensureFlyAnim(id)
     flyAnim = SpriteAnimation.new(id, "idle", "south", fps * 2.6)
 end
 
--- clip one-shot do chefe JÁ no palco (pouso, rugido) — só se instalado
 local function bossClip(name, fps)
     local id = seq and seq.bossId
     if not id or not name then return false end
@@ -1997,36 +1714,6 @@ local function bossClip(name, fps)
     return false
 end
 
--- ---------------------------------------------------------------------------
--- RAINHA DO ECLIPSE v2 (Out/2026, frente rainha-eclipse) — o chefe FINAL.
--- Pedido do dono: "algo mais macabro, mais estiloso, entradas mais marcantes,
--- música tipo Radagon/Besta Prístina". Três atos próprios na entrada:
---   1. PRESSENTIMENTO (`omen`): o salão muda antes de ela existir — a luz do
---      vão morre em DEGRAUS (um tique por degrau, silêncio entre eles), o
---      eclipse pintado vira uma ÍRIS que olha o jogador (pupila em fenda que
---      acompanha), a coroa SANGRA (gotas magenta caem em blocos), pétalas
---      pretas (cinzas) começam a cair, a névoa magenta sobe.
---   2. MANIFESTAÇÃO (`unveil` + `descend`): ela não entra, se REVELA — olhos
---      demais acendem no escuro do vão (pares que não são dela), a silhueta
---      aparece em casulo de asas (clip `unveil`) e se abre em contraluz, com a
---      SOMBRA no mármore maior que ela e um halo QUEBRADO sobre a cabeça; o
---      `descend` existente a traz ao palco.
---   3. COROAÇÃO (`coronation`): cartão ÚNICO — as letras chegam uma a uma com
---      um tique de sino por letra (pitch subindo), halos quebrados ladeando,
---      stinger coral na última letra, flash magenta, o eclipse pulsa.
--- Durante a LUTA (sem seq) o módulo OBSERVA a fase do kit (`_phaseIdx`,
--- dado em src/data/enemies.lua, nunca alterado aqui) e muda SÓ o visual:
--- `InteriorFX.setEclipse(level, dawn)` fecha o vão do salão 6, a íris olha
--- de vez em quando, o halo quebrado fica sobre a cabeça dela na 2ª fase, e a
--- virada de fase tem um instante próprio (`phaseShift`). Na MORTE o `dawn`
--- v2 abre o eclipse em degraus pelo vão, as pétalas viram CINZAS que sobem e
--- a voz dela se apaga (`bossEclipseFade`); o estado de alvorada persiste no
--- cash out/espólios (e no Continuar, via markDeathSeen).
--- reducedMotion = roteiro curto com TODA a informação (dados em
--- src/data/boss_cinematics.lua, introReduced/deathReduced).
--- ---------------------------------------------------------------------------
--- (`eclipse` e `crownCard` são declarados no bloco de ESTADO do topo: o
--- finish()/_debug() ficam acima desta seção e precisam enxergá-los)
 local QUEEN_ID = "eclipse_queen"
 local GOLD   = { 0.96, 0.80, 0.42 }
 local MAGENTA = { 0.92, 0.28, 0.78 }
@@ -2043,21 +1730,17 @@ end
 
 function BossCinematic.eclipseLevel() return eclipse and eclipse.cur or 0 end
 function BossCinematic.eclipseDawn() return eclipse and eclipse.dawn or 0 end
--- ferramenta/prova visual: a íris olha AGORA (shot_boss_cinematic phases)
 function BossCinematic._debugGaze()
     local e = ensureEclipse()
     e.gaze = { t = 0, dur = 1.6 }
 end
 
--- Centro do eclipse PINTADO na arte do salão 6 (200,58 da PNG 400×256).
 local function eclipseCenter()
     local tr = stage and stage.tr
     if not tr then return nil end
     return tr.ox + 0.5 * 400 * tr.scale, tr.oy + 0.2266 * 256 * tr.scale, 14 * tr.scale
 end
 
--- Halo QUEBRADO: anel pontilhado com falhas (hash estável por dente), gira
--- devagar, e "sangra": alguns dentes escorrem pra baixo. Blocos na grade.
 local function drawBrokenHalo(cx, cy, r, ry, P, col, a, t, seed)
     local n = math.max(14, math.floor(2 * math.pi * r / P))
     for i = 0, n - 1 do
@@ -2068,7 +1751,6 @@ local function drawBrokenHalo(cx, cy, r, ry, P, col, a, t, seed)
             local by = math.floor((cy + math.sin(ang) * ry) / P) * P
             love.graphics.setColor(col[1], col[2], col[3], 0.9)
             love.graphics.rectangle("fill", bx, by, P, P)
-            -- sangra: dentes da metade de baixo escorrem (1 a 3 blocos)
             if math.sin(ang) > 0.2 and h > 0.78 then
                 local drip = 1 + math.floor(((t or 0) * 1.5 + h * 7) % 3)
                 for d = 1, drip do
@@ -2080,8 +1762,6 @@ local function drawBrokenHalo(cx, cy, r, ry, P, col, a, t, seed)
     end
 end
 
--- A ÍRIS: pupila em fenda magenta dentro do disco negro, acompanha
--- (deriva lenta + sacadas). `open` 0..1 = quanto a fenda está aberta.
 local function drawIris(cx, cy, r, P, open, t)
     if open <= 0.02 then return end
     local w = math.max(P, math.floor(r * 0.22 / P) * P)
@@ -2099,8 +1779,6 @@ local function drawIris(cx, cy, r, P, open, t)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Disco do eclipse FECHANDO com coroa que sangra (omen/fase 2): `k` = quanto
--- cobre (0 = só a pintura, 1 = disco cheio + coroa larga).
 local function drawEclipseClosing(k, t, irisOpen)
     local cx, cy, r = eclipseCenter()
     if not cx then return end
@@ -2114,15 +1792,9 @@ local function drawEclipseClosing(k, t, irisOpen)
         drawBrokenHalo(cx, cy, rr + 6 * P, rr + 5 * P, P, PAL.flash, 0.45 * k * breathe, -t * 0.6, 9)
         glowBlob(cx, cy, rr * 6, rr * 4, PAL.glow, 0.30 * k, 2)
     end
-    -- a íris olha mesmo com o eclipse aberto (luta, fase 1: o disco pintado)
     drawIris(cx, cy, rr, P, irisOpen or 0, t)
 end
 
--- Sombra MAIOR que ela no mármore: o eclipse atrás projeta a silhueta no
--- chão em direção à câmera — o quadro atual espelhado a partir da linha do
--- chão, 1,6× mais largo e ACHATADO (0,55×: cabe entre o pé e a borda da
--- tela), corpo violeta escuro + cópia aditiva magenta (no salão a 0,8 de
--- escuro só o aditivo se lê).
 local function drawBigShadow(anim, bodyCx, floorY, s, a)
     if not anim or not anim.frames then return end
     local img = anim.frames[anim.currentFrame]
@@ -2139,9 +1811,6 @@ local function drawBigShadow(anim, bodyCx, floorY, s, a)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Pares de olhos QUE NÃO SÃO DELA no escuro do vão (unveil): posição em
--- fração da arte em volta da silhueta, cada par acende num instante e some
--- quando ela se ilumina. Olho = 3×2 blocos magenta com fenda escura.
 local STRAY_EYES = {
     { u = 0.445, v = 0.19, at = 0.25, gap = 2.5, size = 1 },
     { u = 0.555, v = 0.42, at = 0.55, gap = 2.0, size = 1 },
@@ -2150,12 +1819,6 @@ local STRAY_EYES = {
     { u = 0.425, v = 0.36, at = 1.30, gap = 1.8, size = 0.8 },
     { u = 0.575, v = 0.27, at = 1.50, gap = 2.2, size = 1 },
 }
--- OLHOS DEMAIS v2 (lead): 20-40 pares de 4-8 px EM VOLTA do salão (colunas,
--- atrás das estátuas, teto), gerados no omen; cada par abre num instante
--- próprio, TODOS viram pro jogador no mesmo instante (`turnAt`, pouco antes
--- da manifestação — um acontecimento por instante) e fecham quando ela se
--- revela. Olho = 2×1 blocos (B = pixel da arte) com pupila de 1 bloco.
--- (`hallEyes` é declarado no bloco de ESTADO do topo, pro _debug/finish)
 local function spawnHallEyes(omenDur)
     local n = 20 + love.math.random(0, 20)
     hallEyes = { list = {}, t = 0, turned = false, turnAt = omenDur - 0.35, close = nil }
@@ -2178,10 +1841,8 @@ local function drawHallEyes()
     local t = he.t
     local closeK = he.close and smooth(clamp01(he.close / 0.3)) or 0
     if closeK >= 1 then return end
-    -- brilho de UM quadro no instante em que todos viram (he.flash > 0)
     local flash = (he.flash or 0) > 0
     for i, e in ipairs(he.list) do
-        -- abre em 2 quadros: fechado → fresta (1 linha) → aberto (2 linhas)
         local age = t - e.openAt
         local rows = (age < 0) and 0 or ((age < 0.09) and 1 or 2)
         if closeK > 0 then rows = (closeK < 0.5) and math.min(rows, 1) or 0 end
@@ -2189,11 +1850,10 @@ local function drawHallEyes()
         rows = math.min(rows, blink)
         if rows > 0 then
             local B = P
-            local W = (e.size >= 2) and 4 or 3        -- perto = 4×2, longe = 3×2
+            local W = (e.size >= 2) and 4 or 3
             local ex = tr.ox + e.u * 400 * tr.scale
             local ey = tr.oy + e.v * 256 * tr.scale
             local gap = (W + 1 + e.gap) * B
-            -- viraram pro jogador: pupila no centro; antes, cada par olha pra um lado
             local pupilCol = he.turned and math.floor((W - 1) / 2) or math.max(0, math.min(W - 1, 1 + e.look))
             local hh = rows * B
             local yTop = math.floor(ey / B) * B - (rows == 2 and B or 0)
@@ -2204,13 +1864,10 @@ local function drawHallEyes()
             end
             for side = -1, 1, 2 do
                 local x0 = math.floor((ex + side * gap / 2) / B) * B - math.floor(W / 2) * B
-                -- halo magenta de 1 px em volta do núcleo
                 love.graphics.setColor(MAGENTA[1], MAGENTA[2], MAGENTA[3], 0.95)
                 love.graphics.rectangle("fill", x0 - 1, yTop - 1, W * B + 2, hh + 2)
-                -- núcleo magenta quase branco
                 love.graphics.setColor(1.0, 0.86, 0.97, 1)
                 love.graphics.rectangle("fill", x0, yTop, W * B, hh)
-                -- pupila escura de 1 bloco (fresta: só a linha de baixo)
                 love.graphics.setColor(0.10, 0.01, 0.12, 1)
                 love.graphics.rectangle("fill", x0 + pupilCol * B, yTop, B, hh)
             end
@@ -2225,7 +1882,6 @@ local function drawStrayEyes(t, fade)
     local P = px()
     for i, e in ipairs(STRAY_EYES) do
         local open = clamp01((t - e.at) / 0.35)
-        -- pisca de vez em quando (hash do tempo)
         local blink = (math.floor((t * 3 + i * 1.3)) % 7 == 0) and 0.2 or 1
         local a = open * fade * blink
         if a > 0.02 then
@@ -2247,18 +1903,14 @@ local function drawStrayEyes(t, fade)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- ===== OMEN (pressentimento) =====
 local function drawOmen(w, h)
     local o = fx.omen
     if not o or not stage or not stage.tr then return end
     local k = clamp01(o.t / o.dur)
-    -- degraus: a cobertura do eclipse e a luz morrendo saltam juntos
     local stepK = math.floor(k * o.steps + 1e-6) / o.steps
     local irisOpen = (o.t > o.dur * 0.45) and smooth(clamp01((o.t - o.dur * 0.45) / 0.5)) or 0
     if seq and seq.reduced then irisOpen = (o.t > o.dur * 0.4) and 1 or 0 end
     drawEclipseClosing(0.25 + 0.75 * stepK, o.t, irisOpen)
-    -- a luz do vão morre em DEGRAUS: faixa escura sobre o feixe pintado
-    -- (x 160..240 da arte: as bordas caem na parede escura, nunca no branco)
     local tr = stage.tr
     local cover = stepK * 0.85
     if cover > 0.01 then
@@ -2269,7 +1921,6 @@ local function drawOmen(w, h)
     end
 end
 
--- ===== UNVEIL (manifestação) =====
 local function drawUnveil(w, h)
     local u = fx.unveil
     local dx, dy, s = footInfo()
@@ -2281,19 +1932,13 @@ local function drawUnveil(w, h)
     local x = (tr and (tr.ox + u.u * 400 * tr.scale) or (w * u.u)) - sw / 2
     local y = (tr and (tr.oy + u.v * 256 * tr.scale) or (h * u.v)) - sh * 0.5 + math.sin(u.t * 1.6) * 2
     local bodyCx = x + sw / 2
-    -- silhueta aparece (0..0.35), fica preta, e ganha contraluz de borda
     local appear = smooth(clamp01(k / 0.3))
-    local lit = smooth(clamp01((k - 0.55) / 0.4)) * 0.10     -- quase preta: a cor cheia é do descend
+    local lit = smooth(clamp01((k - 0.55) / 0.4)) * 0.10
     local rim = 0.15 + 0.55 * smooth(clamp01((k - 0.4) / 0.4))
-    -- o eclipse fechado continua sangrando atrás dela
     drawEclipseClosing(1, u.t + 10, 0)
-    -- olhos demais no escuro, somem quando ela acende
     drawStrayEyes(u.t, 1 - smooth(clamp01((k - 0.6) / 0.25)))
-    -- sombra no mármore maior que ela (cresce com a revelação)
     local floorY = stage.cy or (dy + sh)
     drawBigShadow(u.anim, bodyCx, floorY, s, 0.55 * appear)
-    -- brilho magenta atrás do casulo; CONTRALUZ = a silhueta deslocada em
-    -- 4 direções em aditivo (borda de luz) e o corpo quase preto por cima
     glowBlob(bodyCx, y + sh * 0.5, sw * 2.0, sh * 1.4, PAL.glow, 0.28 * appear, 1)
     local P = px()
     love.graphics.setBlendMode("add")
@@ -2302,7 +1947,6 @@ local function drawUnveil(w, h)
     end
     love.graphics.setBlendMode("alpha")
     u.anim:draw(x, y, s, { 0.03 + lit, 0.01 + lit * 0.6, 0.05 + lit, appear })
-    -- halo quebrado sobre a cabeça (chega no fim)
     local halo = smooth(clamp01((k - 0.7) / 0.3))
     if halo > 0.02 then
         drawBrokenHalo(bodyCx, y + sh * 0.14, sw * 0.22, sw * 0.08, px(), GOLD, 0.8 * halo, u.t, 5)
@@ -2310,7 +1954,6 @@ local function drawUnveil(w, h)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- ===== CORONATION (cartão de nome ÚNICO) =====
 local utf8lib = require("utf8")
 local function splitChars(s)
     local out = {}
@@ -2328,13 +1971,11 @@ local function drawCrownCard(w, h)
     local uk = require("src.ui.UiScale").activeK()
     local P = math.max(2, math.floor(2 * uk + 0.5))
     local cy = math.floor(h * 0.79)
-    -- faixa de tinta NEGRA com borda magenta fina (não a sépia dos outros)
     love.graphics.setColor(0.03, 0.01, 0.05, 0.80 * a)
     love.graphics.rectangle("fill", 0, cy - c.size * 1.1, w, c.size * 2.7)
     love.graphics.setColor(MAGENTA[1], MAGENTA[2], MAGENTA[3], 0.55 * a)
     love.graphics.rectangle("fill", 0, cy - c.size * 1.1, w, P)
     love.graphics.rectangle("fill", 0, cy + c.size * 1.6 - P, w, P)
-    -- NOME: letra a letra, cada uma cai 6px e assenta
     local font = FontManager.getFont(c.size)
     love.graphics.setFont(font)
     local total = font:getWidth(c.name)
@@ -2352,13 +1993,11 @@ local function drawCrownCard(w, h)
         love.graphics.print(ch, x, cy + dy)
         x = x + font:getWidth(ch)
     end
-    -- halos quebrados ladeando o nome (giram em sentidos opostos)
     local hr = c.size * 1.25
     local hx = total / 2 + hr + c.size * 0.7
     local ha = a * smooth(clamp01((c.t - 0.3) / 0.5))
     drawBrokenHalo(w / 2 - hx, cy + c.size * 0.5, hr, hr * 0.45, P, GOLD, 0.8 * ha, c.t, 21)
     drawBrokenHalo(w / 2 + hx, cy + c.size * 0.5, hr, hr * 0.45, P, GOLD, 0.8 * ha, -c.t, 33)
-    -- EPÍTETO: letra a letra depois do nome, magenta claro
     local nameDone = #c.chars * c.cadence
     if c.epithet ~= "" and c.t > nameDone + 0.25 then
         local ef = FontManager.getFont(math.max(12, math.floor(c.size * 0.42)))
@@ -2377,7 +2016,6 @@ local function drawCrownCard(w, h)
             ex = ex + ef:getWidth(ch)
         end
     end
-    -- FLASH da coroação (última letra): 3 degraus, magenta
     if c.flashT then
         local ft = c.flashT
         local fa = (ft < 0.06) and 0.5 or ((ft < 0.14) and 0.28 or ((ft < 0.24) and 0.10 or 0))
@@ -2389,14 +2027,12 @@ local function drawCrownCard(w, h)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- ===== VIRADA DE FASE (luta) e ALVORADA v2 (morte) =====
 local function drawPhaseShift()
     local ps = fx.phaseShift
     if not ps then return end
     local k = clamp01(ps.t / ps.dur)
     local cx, cy, r = eclipseCenter()
     if not cx then return end
-    -- o eclipse SALTA fechado: coroa larga que esvaece e pétalas
     local P = px()
     local env = 1 - k
     drawBrokenHalo(cx, cy, r * (1.6 + 1.6 * easeOut(k)) + 2 * P, r * (1.4 + 1.4 * easeOut(k)), P,
@@ -2411,7 +2047,6 @@ local function drawDawnV2(w, h)
     local tr = stage.tr
     local k = smooth(clamp01(d.t / d.dur))
     local cx, cy, r = eclipseCenter()
-    -- 1) o disco pintado ABRE: um crescente de luz cresce pelo lado direito
     local P = px()
     local open = clamp01(k * 1.3)
     if open > 0.02 then
@@ -2430,7 +2065,6 @@ local function drawDawnV2(w, h)
             end
         end
     end
-    -- 2) a luz chega em DEGRAUS pelo vão: 5 bandas, uma por vez, de cima pra baixo
     local bands = 5
     local lit = math.floor(k * bands + 1e-6)
     for b = 0, lit - 1 do
@@ -2440,27 +2074,23 @@ local function drawDawnV2(w, h)
     end
     glowBlob(cx, cy, r * 7 * (0.6 + 0.4 * k), r * 5 * (0.6 + 0.4 * k), WARM, 0.45 * k, 1)
     glowBlob(cx, cy, r * 3.2, r * 2.6, { 1, 0.95, 0.85 }, 0.55 * k, 3)
-    -- 3) o chão de mármore acende em volta do corpo
     if stage.bbox then
         local by = (stage.cy or stage.bbox.bottomY)
         glowBlob(stage.bbox.cx, by, (stage.bbox.width or 120) * 2.2, 40 * tr.scale, WARM, 0.25 * k, 2)
     end
 end
 
--- ===== passos da rainha (enter/exit) =====
 local function queenEnter(st)
     local kind = st.kind
     if kind == "omen" then
         fx.omen = { t = 0, dur = math.max(0.3, st.dur or 3.5), steps = st.steps or 4, nextStep = 1 }
         ensureEclipse().active = true
         spawnHallEyes(fx.omen.dur)
-        -- o instante em que TODOS os olhos viram pro jogador
         queueSfx(math.max(0.1, fx.omen.dur - 0.35), "bossBlinkClick", nil, 0.6)
         darkEase = { from = dark, to = st.to or 0.80, t = 0, dur = fx.omen.dur }
         play("bossEclipseOmen", nil)
         playLoop("bossEclipseHum")
         mistTarget(1, fx.omen.dur * 0.8)
-        -- um tique por degrau de luz morrendo (silêncio entre eles)
         for i = 1, fx.omen.steps do
             queueSfx(i * fx.omen.dur / (fx.omen.steps + 0.5), "bossBlinkClick", nil, 0.7 + i * 0.05)
         end
@@ -2496,7 +2126,6 @@ local function queenExit(st)
     if st.kind == "coronation" then hallEyes = nil end
     if st.kind == "unveil" then
         fx.unveil = nil
-        -- sem `descend` depois: mostra o chefe
         if not (seq.steps[seq.idx + 1] and seq.steps[seq.idx + 1].kind == "descend") then
             bossHidden = false
             landed = true
@@ -2505,7 +2134,6 @@ local function queenExit(st)
     if st.kind == "coronation" then crownCard = nil end
 end
 
--- gancho do kind `dawn` (existente): a rainha ganha a alvorada v2
 local function queenDawnStart(st)
     if not (seq and seq.bossId == QUEEN_ID) then return end
     local e = ensureEclipse()
@@ -2520,7 +2148,6 @@ local function startPhaseShift()
     play("bossEclipsePhase", nil)
     if _G.triggerShake and not reducedMotion() then _G.triggerShake(10, 0.4) end
     InteriorFX.gust(0.8, 0.8)
-    -- pétalas pretas despencam do vão
     if stage and stage.tr and not reducedMotion() then
         local cx, cy = eclipseCenter()
         for _ = 1, 16 do
@@ -2530,8 +2157,6 @@ local function startPhaseShift()
     end
 end
 
--- Observador da LUTA: fase do kit → visual do salão (só visual; o kit e os
--- números são de src/data/enemies.lua e não se mexe neles aqui).
 local function queenUpdate(dt, game, ctx)
     local en = game and game.enemy
     local isQueen = en and en.spriteId == QUEEN_ID and ctx and ctx.inHall
@@ -2546,9 +2171,8 @@ local function queenUpdate(dt, game, ctx)
         e.lastPhase = phase
         e.level = (phase > 0) and 1 or 0
         if en.health and en.health <= 0 and e.dawn <= 0 and not e.dawnEase and (deathFor == en) then
-            e.dawn = 1   -- Continuar com a rainha morta: alvorada pronta
+            e.dawn = 1
         end
-        -- a íris olha o jogador de vez em quando (luta, sem cinemática)
         if not seq and e.dawn <= 0 and not reducedMotion() then
             e.nextGaze = e.nextGaze - dt
             if e.nextGaze <= 0 and not e.gaze then
@@ -2579,14 +2203,12 @@ local function queenUpdate(dt, game, ctx)
         he.t = he.t + dt
         if not he.turned and he.t >= he.turnAt then he.turned = true; he.flash = 2 end
         if he.flash and he.flash > 0 then he.flash = he.flash - 1 end
-        -- fecham quando ela se revela (meio do unveil); somem no fim do passo
         if fx.unveil and not he.close and fx.unveil.t > fx.unveil.dur * 0.6 then he.close = 0 end
         if he.close then he.close = he.close + dt end
     end
     if fx.unveil then
         fx.unveil.t = fx.unveil.t + dt
         if fx.unveil.anim then fx.unveil.anim:update(dt) end
-        -- cinzas caindo do vão durante a manifestação
         if stage and stage.tr and not reducedMotion() and love.math.random() < 0.35 then
             local cx, cy = eclipseCenter()
             spawnFeather(cx + (love.math.random() - 0.5) * 50 * px(), cy + 10 * px(),
@@ -2619,7 +2241,6 @@ local function queenUpdate(dt, game, ctx)
         end
         if c.flashT then c.flashT = c.flashT + dt end
     end
-    -- cinzas subindo do corpo durante a alvorada (morte)
     if fx.dawn and seq and seq.bossId == QUEEN_ID and stage and stage.bbox
         and not reducedMotion() then
         local wdt = (stage.bbox.width or 120)
@@ -2638,7 +2259,6 @@ local function queenDrawBack(w, h)
     local e = eclipse
     drawOmen(w, h)
     drawHallEyes()
-    -- fase 2 na luta: o eclipse fechado + íris olhando de vez em quando
     if not seq and e.dawn <= 0 then
         local gazeOpen = 0
         if e.gaze then
@@ -2651,8 +2271,6 @@ local function queenDrawBack(w, h)
     end
     drawPhaseShift()
     drawUnveil(w, h)
-    -- COROAÇÃO: no instante do nome o eclipse FLAREIA e o halo sobre a
-    -- cabeça dela sangra (compensa o clip `crown` modesto com LUZ)
     if crownCard and crownCard.flashT and stage.bbox then
         local env = 1 - clamp01(crownCard.flashT / 1.6)
         if env > 0.02 then
@@ -2671,7 +2289,6 @@ end
 local function queenDrawFront()
     if not (eclipse and eclipse.active and stage and stage.bbox) then return end
     local e = eclipse
-    -- halo quebrado sobre a cabeça dela na 2ª fase (viva, no palco)
     if e.cur > 0.05 and e.dawn <= 0 and not bossHidden and landed then
         local bb = stage.bbox
         local hx = bb.cx
@@ -2689,7 +2306,6 @@ end
 local function enterStep(st)
     local kind = st.kind
     if queenEnter(st) then
-        -- (rainha v2: omen / unveil / coronation — seção acima)
     elseif kind == "dark" then
         darkEase = { from = dark, to = st.to or 0, t = 0, dur = math.max(0.01, st.dur or 0.3) }
     elseif kind == "eyes" then
@@ -2711,10 +2327,8 @@ local function enterStep(st)
         end
         mistGustDir = (fly.from == "left") and 1 or -1
         InteriorFX.gust(1.0, fly.dur + 0.35)
-        -- whoosh na borda por onde ele ENTRA e, no fim, por onde sai
         edge = { side = fly.from, t = 0, dur = fly.dur + 0.25, out = (fly.from == "left") and "right" or "left" }
         stopLoop("bossEyesRumble")
-        -- passagem perto da câmera soa mais grave e mais alta
         play("bossWingPass", "sceneRustle", (fly.near and 0.78 or 0.95) + love.math.random() * 0.12, 0)
         if st.caw then play("bossCrowsCaw", nil, 0.95, 0.08) end
     elseif kind == "land" then
@@ -2737,7 +2351,6 @@ local function enterStep(st)
         if st.clip ~= false then bossClip(st.clip or "land", 12) end
         if _G.triggerShake and (st.shake or 0) > 0 then _G.triggerShake(st.shake, 0.38) end
         if _G.jiggleScreen and not seq.reduced then _G.jiggleScreen(1.0) end
-        -- som do impacto por chefe (`sound`); corvos/penas só pra quem os tem
         play(st.sound or "bossLandImpact", "bootImpact")
         local crowsN = st.crows or 5
         if crowsN > 0 then
@@ -2751,11 +2364,7 @@ local function enterStep(st)
             spawnDust(gx, gy, st.dust or 12, stage.bbox.width or 120)
             local body = stage.bbox.topY + (stage.bbox.bottomY - stage.bbox.topY) * 0.45
             if crowsN > 0 then spawnCrows(gx, body, crowsN, 260) end
-            -- `hit=false`: o impacto de tela já aconteceu antes (monarca: o
-            -- golpe do cajado ainda em silhueta)
             if st.hit ~= false then startHit(gx, body, st.ring) end
-            -- lascas do impacto: pena (rei-carniça), lasca de gelo, brasa,
-            -- esporo, pétala — `particle` do passo
             for _ = 1, (st.burst or 12) do
                 spawnFeather(gx + (love.math.random() - 0.5) * (stage.bbox.width or 120),
                     body + (love.math.random() - 0.5) * 40,
@@ -2807,17 +2416,13 @@ local function enterStep(st)
         desat = { peak = st.peak or 0.7, rise = st.rise or 0.4, fall = st.fall or 1.2,
                   total = remainingDuration(seq.idx), t = 0 }
     elseif kind == "hold" then
-        -- o corpo fica, espólios esperam (holdsEnd); ambiente quieto por cima
         playLoop("bossHoldAmbience")
     elseif kind == "lava" then
-        -- poça de lava cresce sob o corpo até o fim da morte (bolhas no update)
         fx.lava = { t = 0, dur = math.max(0.5, remainingDuration(seq.idx)), bubble = 0 }
     elseif kind == "dawn" then
-        -- o eclipse abre: luz morna cresce na abertura do fundo até o fim da morte
         fx.dawn = { t = 0, dur = math.max(0.5, remainingDuration(seq.idx)),
                     u = st.u or 0.5, v = st.v or 0.23 }
-        queenDawnStart(st)   -- rainha: alvorada v2 (degraus, cinzas, voz apagando)
-    -- ===== outros chefes =====
+        queenDawnStart(st)
     elseif kind == "runes" then
         fx.runes = { n = st.n or 5, t = 0, dur = math.max(0.3, st.dur or 1.5) }
         mistTarget(1, 1.0)
@@ -2868,8 +2473,6 @@ local function enterStep(st)
         playLoop("bossHellfireWall")
         InteriorFX.gust(0.7, fx.fire.total)
     elseif kind == "chains" then
-        -- as correntes do salão: ele entra ARRASTANDO (frouxas) e elas esticam no pouso
-        -- (sem palco medido — ferramenta sem draw — o T3.ensureBond cria depois, já esticadas)
         T3.bond = (stage and stage.hall) and T3.makeBond(seq.bossId, nil, "drag") or nil
         if T3.bond then play("tyrantChainDrag", "bossChainsRattle") end
     elseif kind == "walk_in" then
@@ -2899,7 +2502,7 @@ local function enterStep(st)
     else
         if not warnedKind[kind or "nil"] then
             warnedKind[kind or "nil"] = true
-            print("[BossCinematic] passo desconhecido '" .. tostring(kind) .. "' — pulado")
+            require("src.core.Debug").warn("[BossCinematic] passo desconhecido '" .. tostring(kind) .. "' — pulado")
         end
     end
 end
@@ -2909,7 +2512,6 @@ local function exitStep(st)
     if st.kind == "eyes" then eyes = nil; stopLoop("bossEyesRumble") end
     if st.kind == "flyby" then
         if st.land then
-            -- pousou: o passo `land` assume; se não houver, mostra o chefe
             if not (seq.steps[seq.idx + 1] and seq.steps[seq.idx + 1].kind == "land") then
                 bossHidden = false
                 landed = true
@@ -2924,23 +2526,16 @@ local function exitStep(st)
     end
     if st.kind == "walk_in" then fx.walker = nil; bossHidden = false; landed = true end
     if st.kind == "assemble" then fx.asm = nil; bossHidden = false; landed = true end
-    -- o monte esvaece sobre o cadáver real (que volta a ser desenhado agora)
     if st.kind == "crumble" then
         bossHidden = false
         if fx.crumble then fx.crumble.fadeT = 0 end
     end
     if st.kind == "descend" then fx.desc = nil; bossHidden = false; landed = true
         stopLoop("bossEclipseHum") end
-    -- runas ficam acesas até o chefe pousar (`land` as apaga)
     if st.kind == "roots" then stopLoop("bossRootsCrawl") end
     if st.kind == "firewall" and (st.hold or 0) == 0 then fx.fire = nil; stopLoop("bossHellfireWall") end
 end
 
--- ---------------------------------------------------------------------------
--- UPDATE
--- ---------------------------------------------------------------------------
--- ctx.inHall: a cena de combate É o salão do chefe (só aí a morte do chefe
--- vira cinemática — o mini-boss também tem isBoss, mas luta na estrada).
 function BossCinematic.update(dt, game, ctx)
     ctx = ctx or {}
     if not dummy and love.graphics and love.graphics.newCanvas then
@@ -2948,8 +2543,6 @@ function BossCinematic.update(dt, game, ctx)
         if ok then dummy = c end
     end
 
-    -- MORTE do chefe no salão: detecta o acontecimento (Game._onEnemyDeath
-    -- já encenou clip/som/shake; aqui entra a câmera lenta e o resto).
     if game and game.enemy and game.enemy.isBoss and game._deathHandled
         and ctx.inHall and not (seq and seq.phase == "death") then
         BossCinematic.startDeath(game)
@@ -2980,7 +2573,6 @@ function BossCinematic.update(dt, game, ctx)
         if seq and seq.idx > #seq.steps then finish() end
     end
 
-    -- envelopes
     if darkEase then
         darkEase.t = darkEase.t + dt
         local k = clamp01(darkEase.t / darkEase.dur)
@@ -3011,17 +2603,14 @@ function BossCinematic.update(dt, game, ctx)
     if fly then
         fly.t = fly.t + dt
         if flyAnim then flyAnim:update(dt) end
-        -- rastro: posições recentes (cópias fantasmas = borrão de movimento)
         if stage then
             local x, y, sw, sh = flyPos(fly, clamp01(fly.t / fly.dur), stage.w, stage.h)
             local tr = fly.trail
             tr[#tr + 1] = { x = x, y = y, t = fly.t }
             if #tr > 12 then table.remove(tr, 1) end
-            -- vento e penas saem da borda de trás da asa
             local dirX = (fly.from == "left") and 1 or -1
             local backX = (dirX > 0) and x or (x + sw)
             if not seq.reduced then
-                -- riscos de velocidade: muitos, longos, pela faixa inteira do voo
                 local nW = fly.near and 7 or 5
                 for _ = 1, nW do
                     local wx = x + love.math.random() * sw
@@ -3059,15 +2648,11 @@ function BossCinematic.update(dt, game, ctx)
         if desat.t >= desat.total then desat = nil end
     end
 
-    -- kinds dos outros chefes
     if fx.runes then fx.runes.t = fx.runes.t + dt end
     if fx.riser then
         local r = fx.riser
         r.t = r.t + dt
         if r.anim then r.anim:update(dt) end
-        -- a tempestade em volta do corpo que sobe: fagulhas do elemento
-        -- (kind "ember" FLUTUA e usa PAL.ember — geada branca no lich) saindo
-        -- da linha do chão, mais densas no começo da subida
         if stage and stage.bbox and not reducedMotion() then
             local n = (r.t < r.dur * 0.6) and 3 or 1
             local gy = stage.cy or stage.bbox.bottomY
@@ -3137,7 +2722,6 @@ function BossCinematic.update(dt, game, ctx)
     if fx.asm then
         local a = fx.asm
         a.t = a.t + dt
-        -- esporos soltos do corpo que se monta
         if stage and stage.bbox and not reducedMotion() and love.math.random() < dt * 5 then
             local b = stage.bbox
             spawnFeather(b.cx + (love.math.random() - 0.5) * (b.width or 120) * 0.6,
@@ -3161,7 +2745,6 @@ function BossCinematic.update(dt, game, ctx)
     if fx.lava then
         local lv = fx.lava
         lv.t = lv.t + dt
-        -- bolhas de lava estourando na poça (brasas que sobem e apagam)
         lv.bubble = lv.bubble + dt
         if stage and stage.bbox and not reducedMotion() and lv.bubble > 0.09 then
             lv.bubble = 0
@@ -3184,7 +2767,6 @@ function BossCinematic.update(dt, game, ctx)
     updateFx(dt)
 end
 
--- Envelope da dessaturação (0..1).
 function BossCinematic.desatAmount()
     if not desat then return 0 end
     local t = desat.t
@@ -3194,10 +2776,6 @@ function BossCinematic.desatAmount()
     return desat.peak * smooth(up) * (1 - smooth(down))
 end
 
--- ---------------------------------------------------------------------------
--- MEDIÇÃO: desenha o chefe num canvas descartado (nada chega à tela) e
--- devolve o que a função devolver (o bbox do EnemyRenderer.draw).
--- ---------------------------------------------------------------------------
 function BossCinematic.measure(drawFn)
     if not dummy then return nil end
     local prev = love.graphics.getCanvas()
@@ -3206,29 +2784,24 @@ function BossCinematic.measure(drawFn)
     if prev then love.graphics.setCanvas(prev) else love.graphics.setCanvas() end
     love.graphics.setColor(1, 1, 1, 1)
     if not ok then
-        print("[BossCinematic] medição falhou: " .. tostring(res))
+        require("src.core.Debug").warn("[BossCinematic] medição falhou: " .. tostring(res))
         return nil
     end
     return res
 end
 
--- ---------------------------------------------------------------------------
--- PASSE DE DESSATURAÇÃO (mundo → canvas → shader)
--- ---------------------------------------------------------------------------
 local function ensureDesatShader()
     if desatShader or desatTried then return desatShader end
     desatTried = true
     local ok, sh = pcall(love.graphics.newShader, "shaders/desat.glsl")
     if ok then desatShader = sh else
-        print("[BossCinematic] shaders/desat.glsl não carregou: " .. tostring(sh)
+        require("src.core.Debug").warn("[BossCinematic] shaders/desat.glsl não carregou: " .. tostring(sh)
             .. " — morte sem dessaturação")
     end
     return desatShader
 end
 
 local worldPrev = nil
--- Chamado DENTRO do UiScale.outside (transform identidade da janela real).
--- Devolve true quando o mundo está sendo capturado.
 function BossCinematic.beginWorldPass()
     local amt = BossCinematic.desatAmount()
     if amt <= 0.005 then return false end
@@ -3256,16 +2829,6 @@ function BossCinematic.endWorldPass()
     love.graphics.setShader()
 end
 
--- ---------------------------------------------------------------------------
--- DRAW — mundo (atrás do chefe)
--- ---------------------------------------------------------------------------
--- Olho = amêndoa de 8×5 blocos (pixel da arte do salão), pupila em fenda,
--- halo aditivo. Abre do meio (fenda → cheio), pisca fechando as fileiras.
--- OLHOS v3 (dono: "mais detalhe, aterrorizante"): amêndoa 12×7 com aro de
--- brasa escura, íris laranja, núcleo claro; pupila em FENDA que ACOMPANHA
--- (deriva lenta + sacadas), halo em blob pontilhado, calor subindo em
--- blobs finos tremendo, rumor grave enquanto estão abertos (loop) e clique
--- a cada piscada. Abrem DEVAGAR do meio (fenda → cheio).
 local EYE_ROWS = {
     "...######...",
     ".##iiiiii##.",
@@ -3284,7 +2847,6 @@ local function drawEyes(w, h)
     local ex = tr.ox + eyes.u * 400 * tr.scale
     local ey = tr.oy + eyes.v * 256 * tr.scale
     local t = eyes.t
-    -- abertura LENTA (0.6s) do meio; piscadas = sino de 0.12s; fecha no fim
     local open = smooth(clamp01(t / 0.6))
     for _, bt in ipairs(eyes.blinks) do
         local d = math.abs(t - bt)
@@ -3295,7 +2857,6 @@ local function drawEyes(w, h)
     local rows = math.floor(open * 7 + 0.5)
     if rows <= 0 then return end
     local glow = 0.80 + 0.20 * math.sin(t * 7.3)
-    -- PUPILA acompanha: deriva senoidal lenta + sacada ocasional (hash do tempo)
     local track = 0
     if eyes.track then
         local saccade = math.floor(t * 0.9) % 3 - 1
@@ -3309,7 +2870,6 @@ local function drawEyes(w, h)
     for side = -1, 1, 2 do
         local cx = math.floor(ex + side * gap / 2)
         local x0, y0 = cx - ew / 2, ey - eh / 2
-        -- halo pontilhado + CALOR subindo (blobs finos tremendo acima do olho)
         local ha = 0.6 * glow * (rows / 7)
         glowBlob(cx, ey, ew * 3.0, eh * 3.2, EYE_HALO, ha * 0.5, 1 + (side + 1) / 2)
         glowBlob(cx, ey, ew * 1.7, eh * 1.9, EYE_CORE, ha * 0.4, 3)
@@ -3335,7 +2895,6 @@ local function drawEyes(w, h)
                 end
             end
         end
-        -- pupila: fenda vertical de 2 blocos, deslocada pelo rastreio
         local pc = 6 + track
         love.graphics.setColor(0.22, 0.04, 0.02, 1)
         for r = math.max(lo, 2), math.min(hi, 6) do
@@ -3345,7 +2904,6 @@ local function drawEyes(w, h)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Olhos do chefe no sprite (fração do canvas), pra acendê-los no rasante.
 local EYE_ANCHORS = { { 0.435, 0.24 }, { 0.545, 0.24 } }
 
 local function drawFly(w, h)
@@ -3354,9 +2912,6 @@ local function drawFly(w, h)
     local x, y, sw, sh, s = flyPos(fly, k, w, h)
     local tr = fly.trail
     local n = fly.ghosts or 0
-    -- RASTRO: blobs de névoa aditiva (violeta, uma brasa de vez em quando)
-    -- deixados ao longo do caminho — a trilha do voo é nebulosa, sem
-    -- retângulo nem quadro visível (revisão do dono: "efeito de túnel")
     for i = 1, #tr, 2 do
         local p = tr[i]
         local a = 0.26 * (i / #tr)
@@ -3364,8 +2919,6 @@ local function drawFly(w, h)
         glowBlob(p.x + sw * 0.5, p.y + sh * 0.5, sw * 1.15, sh * 0.75, col, a, 1 + i % 3)
     end
     love.graphics.setBlendMode("add")
-    -- fantasmas: cópias ATRÁS no tempo, claras (violeta de corvo em aditivo).
-    -- Perto da câmera o atraso é de 1 quadro: o vulto fica "borrado".
     local lag = fly.near and 1 or 2
     for g = n, 1, -1 do
         local p = tr[#tr - g * lag]
@@ -3374,18 +2927,14 @@ local function drawFly(w, h)
             flyAnim:draw(p.x, p.y, s, { PAL.ghost[1] + 0.15, PAL.ghost[2] + 0.1, PAL.ghost[3] + 0.15, a })
         end
     end
-    -- RIM LIGHT: a silhueta deslocada em 4 direções, aditiva, antes do corpo
     local P = math.max(1, math.floor(s + 0.5))
     for _, off in ipairs({ { -P, 0 }, { P, 0 }, { 0, -P }, { 0, P } }) do
         flyAnim:draw(x + off[1], y + off[2], s, { PAL.rim[1], PAL.rim[2], PAL.rim[3], 0.32 })
     end
     love.graphics.setBlendMode("alpha")
-    -- o chefe em si, AUTO-ILUMINADO (não escurece com o salão) + brilho
-    -- próprio aditivo (a silhueta, de novo, em violeta-branco fraco)
     flyAnim:draw(x, y, s, { 1, 0.98, 1.04, 1 })
     love.graphics.setBlendMode("add")
     flyAnim:draw(x, y, s, { 0.55, 0.45, 0.80, 0.22 })
-    -- olhos acesos (blobs de brasa nas âncoras dos olhos)
     love.graphics.setBlendMode("alpha")
     local glow = 0.8 + 0.2 * math.sin(fly.t * 23)
     for _, e in ipairs(EYE_ANCHORS) do
@@ -3397,8 +2946,6 @@ local function drawFly(w, h)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- WHOOSH DE BORDA: blobs de névoa empilhados na borda por onde o vulto
--- entra (e, no fim, por onde sai) — a tela "sente" a passagem.
 local function drawEdge(w, h)
     if not edge or reducedMotion() then return end
     local k = clamp01(edge.t / edge.dur)
@@ -3412,8 +2959,6 @@ local function drawEdge(w, h)
     end
 end
 
--- RISCOS DE VELOCIDADE: linhas na grade da arte, claras, que esmaecem em
--- 3 degraus (a ponta de trás some primeiro — lê como rastro, não régua)
 local function drawWind()
     local P = px()
     for _, wv in ipairs(wind) do
@@ -3422,7 +2967,6 @@ local function drawWind()
         local len = math.floor(wv.len * (0.4 + 0.6 * k) / P) * P
         local x0 = (wv.vx < 0) and (wv.x - len) or wv.x
         local y = math.floor(wv.y / P) * P
-        -- 3 segmentos: cabeça clara, meio, cauda fraca
         local seg = math.max(P, math.floor(len / 3 / P) * P)
         for i = 0, 2 do
             local a = (0.75 - i * 0.22) * k
@@ -3441,7 +2985,6 @@ local function drawFeathers()
         local c = f.light and PAL.particle2 or PAL.particle
         local kind = f.kind or "feather"
         if kind == "ember" or kind == "spore" then
-            -- 1 bloco (brasa quente / esporo fosco) + halo aditivo pequeno
             local col = (kind == "ember") and PAL.ember or PAL.glow
             love.graphics.setColor(col[1], col[2], col[3], a)
             love.graphics.rectangle("fill", math.floor(f.x), math.floor(f.y), P, P)
@@ -3452,8 +2995,6 @@ local function drawFeathers()
                 love.graphics.setBlendMode("alpha")
             end
         elseif kind == "ash" or kind == "ash_fall" then
-            -- CINZA (rainha): pétala que vira cinza — 2×2 que esmaece de
-            -- magenta pra cinza conforme vive, com um bloco mais claro
             local q = 1 - clamp01(f.life / f.max)
             local gr, gg, gb = lerp(PAL.particle[1], 0.62, q), lerp(PAL.particle[2], 0.58, q), lerp(PAL.particle[3], 0.60, q)
             love.graphics.setColor(gr, gg, gb, a)
@@ -3471,11 +3012,9 @@ local function drawFeathers()
             love.graphics.translate(math.floor(f.x), math.floor(f.y))
             love.graphics.rotate(f.rot)
             if kind == "shard" then
-                -- lasca = 2 blocos em diagonal, clara
                 love.graphics.rectangle("fill", -P, -P * 0.5, P, P)
                 love.graphics.rectangle("fill", 0, -P * 0.5, P, P)
             else
-                -- pena = diagonal de 3 blocos que tomba (traço reto lê como glitch)
                 love.graphics.rectangle("fill", -P * 1.5, -P * 0.5, P, P)
                 love.graphics.rectangle("fill", -P * 0.5, -P * 0.5, P, P)
                 love.graphics.rectangle("fill", P * 0.5, -P * 0.5, P, P)
@@ -3497,11 +3036,10 @@ local function drawDust()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Silhueta de corvo de frente ("m" de 3 quadros), em blocos da arte.
 local CROW_FRAMES = {
-    { "#.....#", ".#...#.", "..###..", "...#..." },      -- asas em cima
-    { ".......", "###.###", "...#...", "...#..." },      -- planando
-    { ".......", "...#...", ".##.##.", "#.....#" },      -- asas embaixo
+    { "#.....#", ".#...#.", "..###..", "...#..." },
+    { ".......", "###.###", "...#...", "...#..." },
+    { ".......", "...#...", ".##.##.", "#.....#" },
 }
 local function drawCrows()
     local P = px()
@@ -3523,8 +3061,6 @@ local function drawCrows()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- O eclipse ABRE (morte da rainha): luz morna crescendo na abertura do
--- fundo, em blobs, com um feixe fraco descendo sobre o corpo.
 local function drawDawn(w, h)
     local d = fx.dawn
     if not d or not stage or not stage.tr then return end
@@ -3537,7 +3073,6 @@ local function drawDawn(w, h)
     glowBlob(cx, cy, r * 7 * (0.6 + 0.4 * k), r * 5 * (0.6 + 0.4 * k), warm, 0.45 * k, 1)
     glowBlob(cx, cy, r * 3.2, r * 2.6, { 1, 0.95, 0.85 }, 0.55 * k, 3)
     if stage.bbox then
-        -- feixe em degraus até o corpo
         local by = (stage.cy or stage.bbox.bottomY)
         for i = 0, 3 do
             local q = (i + 0.5) / 4
@@ -3547,7 +3082,6 @@ local function drawDawn(w, h)
     end
 end
 
--- Atrás do chefe: escuridão, olhos, rasante com rastro, vento, penas em voo.
 function BossCinematic.drawBack()
     local w = (stage and stage.w) or love.graphics.getWidth()
     local h = (stage and stage.h) or love.graphics.getHeight()
@@ -3561,7 +3095,6 @@ function BossCinematic.drawBack()
     drawRunes()
     drawFirewall(w, h)
     drawEclipse(w, h)
-    -- a rainha tem a alvorada v2 (seção RAINHA): o dawn genérico fica pros outros
     if not (seq and seq.bossId == QUEEN_ID) then drawDawn(w, h) end
     queenDrawBack(w, h)
     drawEyes(w, h)
@@ -3579,10 +3112,6 @@ function BossCinematic.drawBack()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Na frente do chefe: poeira do pouso, corvos espantados, penas da morte.
--- Poça de lava engolindo o corpo (morte do tirano): blobs de brasa na
--- linha do chão, crescendo com o tempo, núcleo mais claro tremendo —
--- na FRENTE do corpo, pra cobrir a base dele.
 local function drawLavaPool()
     local lv = fx.lava
     if not lv or not stage or not stage.bbox then return end
@@ -3609,15 +3138,11 @@ function BossCinematic.drawFront()
     if not (seq and seq.phase == "intro") then drawFeathers() end
     drawCrows()
     queenDrawFront()
-    -- nevasca por cima de tudo do mundo, e a silhueta DENTRO do branco
     drawWhiteout()
     drawSilhouette(stage.w, stage.h)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- ---------------------------------------------------------------------------
--- DRAW — UI (cartão de nome + dica de pular)
--- ---------------------------------------------------------------------------
 local function titleAlpha()
     if not title then return 0 end
     local t, d = title.t, title.dur
@@ -3634,10 +3159,8 @@ function BossCinematic.drawUI()
         local a = titleAlpha()
         local cy = math.floor(h * 0.80)
         local lineW = math.floor(w * 0.34)
-        -- faixa de tinta atrás (sépia), fina
         love.graphics.setColor(0.07, 0.05, 0.04, 0.72 * a)
         love.graphics.rectangle("fill", 0, cy - title.size * 1.05, w, title.size * 2.55)
-        -- linhas de ouro envelhecido com losango-guarda
         love.graphics.setColor(0.72, 0.58, 0.32, 0.9 * a)
         local ly = cy + title.size * 0.75
         love.graphics.rectangle("fill", math.floor(w / 2 - lineW / 2), ly, lineW, 2)
@@ -3645,11 +3168,9 @@ function BossCinematic.drawUI()
             local gx = math.floor(w / 2 + side * (lineW / 2 + 10))
             love.graphics.polygon("fill", gx, ly - 3, gx + 4, ly + 1, gx, ly + 5, gx - 4, ly + 1)
         end
-        -- NOME (DynaText: pop_in em cascata, ondulação discreta)
         love.graphics.setColor(1, 1, 1, a)
         title.dyna.colours[1][4] = a
         title.dyna:draw(w / 2, cy)
-        -- EPÍTETO, abaixo, em vermelho-pergaminho, chega um pouco depois
         if title.epithet ~= "" then
             local ea = a * smooth(clamp01((title.t - 0.35) / 0.3))
             local font = FontManager.getFont(math.max(12, math.floor(title.size * 0.42)))
@@ -3664,7 +3185,6 @@ function BossCinematic.drawUI()
         love.graphics.setColor(1, 1, 1, 1)
     end
     queenDrawUI(w, h)
-    -- dica de pular: pequena, canto inferior direito, só depois de SKIP_AFTER
     if BossCinematic.canSkip() then
         local k = clamp01((seq.t - BossCinematic.SKIP_AFTER) / 0.4)
         local NavCursor = require("src.ui.NavCursor")
@@ -3684,13 +3204,9 @@ function BossCinematic.drawUI()
     end
 end
 
--- ---------------------------------------------------------------------------
--- OVERLAY do InputFocus: enquanto a cinemática toca, a entrada é dela.
--- ---------------------------------------------------------------------------
 BossCinematic.overlay = {
     ownsNavigation = true,
     isVisible = function() return seq ~= nil end,
-    -- voltar ao menu / abandonar: a cinemática morre junto
     hide = function() BossCinematic.reset() end,
 }
 function BossCinematic.overlay:keypressed(key)

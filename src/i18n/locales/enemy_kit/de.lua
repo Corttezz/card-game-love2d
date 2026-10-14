@@ -1,11 +1,7 @@
--- Gegner-Kit (src/data/enemies.lua): Angriffsnamen, Zeilen des
--- Absichts-Tooltips, neue Zustände und Meldungen. Eigene Datei pro Locale;
--- im Haupt-Locale eingebunden als `enemy_kit = require(...)`.
 return {
     moves = {
         attack = { name = "Ansturm" }, strong = { name = "Brutaler Hieb" },
         defend = { name = "Abwehrhaltung" }, buff = { name = "Wachsende Wut" },
-        -- Akt 1
         rusty_scythe = { name = "Rostige Sense" }, crow_pecks = { name = "Krähenhiebe" },
         dread_stare = { name = "Grauenblick" }, straw_wall = { name = "Strohwall" },
         reap = { name = "Ernten" }, harvest = { name = "Erntezeit" },
@@ -14,7 +10,6 @@ return {
         gorge = { name = "Verschlingen" }, frenzy = { name = "Raserei" },
         call_of_crows = { name = "Ruf der Krähen" }, murder_of_crows = { name = "Krähenschwarm" },
         royal_peck = { name = "Königlicher Hieb" }, carrion_feast = { name = "Aasfestmahl" },
-        -- Akt 2
         stone_talons = { name = "Steinkrallen" }, dive = { name = "Sturzflug" },
         stone_skin = { name = "Steinhaut" }, lunar_shriek = { name = "Mondschrei" },
         rune_ward = { name = "Schutzrune" }, rune_bolt = { name = "Runenblitz" },
@@ -22,7 +17,6 @@ return {
         life_drain = { name = "Lebensentzug" },
         frost_shield = { name = "Frostschild" }, essence_drain = { name = "Essenzentzug" },
         necrotic_ray = { name = "Nekrotischer Strahl" }, bone_volley = { name = "Knochensalve" },
-        -- Akt 3
         fireball = { name = "Feuerball" }, scratch = { name = "Kratzer" },
         cackle = { name = "Gackern" }, ember_jab = { name = "Glutstoß" },
         shadow_blade = { name = "Schattenklinge" }, fade = { name = "Verblassen" },
@@ -33,24 +27,20 @@ return {
         blood_feast = { name = "Blutfestmahl" }, noble_thrust = { name = "Edler Stoß" },
         gather_flames = { name = "Flammen Sammeln" }, hellfire = { name = "Höllenfeuer" },
         abyssal_claws = { name = "Abgrundklauen" }, cinder_spray = { name = "Ascheregen" },
-        -- Akt 4
         freezing_touch = { name = "Eisige Berührung" }, wight_claw = { name = "Geisterklaue" },
         blizzard = { name = "Schneesturm" },
         ice_lance = { name = "Eislanze" }, glacial_aegis = { name = "Gletscherägide" },
         charge = { name = "Gletscheransturm" }, rime = { name = "Raureif" },
         eternal_winter = { name = "Ewiger Winter" }, winter_blade = { name = "Winterklinge" },
         royal_blizzard = { name = "Königlicher Schneesturm" }, frozen_crown = { name = "Eiskrone" },
-        -- Akt 5
         hex = { name = "Fluch" }, toxic_cauldron = { name = "Giftkessel" },
         crooked_cane = { name = "Krummer Stock" }, bog_brew = { name = "Sumpfgebräu" },
         plague_cloud = { name = "Pestwolke" }, colossal_slam = { name = "Kolossaler Schlag" },
         putrid_blow = { name = "Fauliger Hieb" }, regrow = { name = "Nachwachsen" },
-        -- Akt 6
         waning_light = { name = "Schwindendes Licht" }, lunar_blades = { name = "Mondklingen" },
         veil = { name = "Schleier" }, total_eclipse = { name = "Totale Finsternis" },
         black_corona = { name = "Schwarze Korona" }, star_rain = { name = "Sternenregen" },
         void_embrace = { name = "Umarmung der Leere" },
-        -- Criaturas novas (Out/2026)
         pitchfork_jab = { name = "Gabelstoß" },
         wind_up = { name = "Ausholen" },
         pitchfork_skewer = { name = "Aufspießen" },
@@ -152,7 +142,6 @@ return {
         charge   = "Lädt auf: der nächste Angriff wird verheerend.",
         debuff   = "Verursacht {name} für {duration} Runde(n).",
         dot      = "Verursacht {name}: {stacks} Schaden pro Runde für {duration} Runde(n).",
-        -- Absichtsnebel (src/systems/IntentVisibility.lua)
         veil_title  = "Nebel",
         veil_number = "Der Nebel verbirgt die Zahl dieses Zugs. Die Art siehst du, das Gewicht nicht.",
         veil_all    = "Der Nebel verbirgt die Absicht. Etwas kommt, und du weißt nicht was.",

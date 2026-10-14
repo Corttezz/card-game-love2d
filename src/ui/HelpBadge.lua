@@ -1,20 +1,12 @@
--- src/ui/HelpBadge.lua
--- O "?" de ajuda no estilo do grimório: disco tinta + aro dourado + "?"
--- (o MESMO desenho do "?" de regras da loja). Uma peça só pra todo "?" que
--- abre explicação sob demanda — dados da loja, modal dos dados.
-
 local FontManager = require("src.ui.FontManager")
 local Palette = require("src.ui.Palette")
 
 local HelpBadge = {}
 
--- Retângulo clicável (com folga de 3px) de um "?" de raio r em (cx, cy).
 function HelpBadge.rect(cx, cy, r)
     return { x = cx - r - 3, y = cy - r - 3, w = r * 2 + 6, h = r * 2 + 6 }
 end
 
--- `font` (opcional): a tela que tem orçamento de tamanhos de fonte (seleção
--- de classe: só dois) passa a fonte de corpo dela.
 function HelpBadge.draw(cx, cy, r, hot, font)
     love.graphics.setColor(0.10, 0.08, 0.05, 1)
     love.graphics.circle("fill", cx, cy, r)

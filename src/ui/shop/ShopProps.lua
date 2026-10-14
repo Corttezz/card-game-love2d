@@ -1,53 +1,4 @@
--- src/ui/shop/ShopProps.lua
--- PROPS VIVOS do Balcão do Mercador (Loja v3, F3, Out/2026). Módulo PURO de
--- desenho: não sabe de layout, de ofertas nem de input — a cena
--- (src/ui/shop/ShopScene.lua, frente loja-cena) decide ONDE cada prop fica
--- e chama update/draw. Zero regra de economia aqui.
---
--- API
---   ShopProps.lantern.new()                      -> lanterna
---     :update(dt, lookX)   lookX em [-1, 1]: a poça de luz "olha" pro objeto
---                          em hover, em DEGRAUS (LOOK_STEPS) perseguidos a
---                          LOOK_RATE passos/s. nil = volta ao centro.
---     :draw(x, y, scale)   x,y = ponto do GANCHO (topo-centro do sprite).
---                          Desenha poça de luz + poeira + sprite, nessa ordem.
---     :drawLight(x, y, s)  só a luz (poça em 3 degraus aditivos + halo da
---                          chama + poeira no feixe, 1 SpriteBatch) — pra cena
---                          que quer a luz ATRÁS das prateleiras e a lanterna
---                          na frente.
---     :drawSprite(x, y, s) só a lanterna.
---     :lightCenter(x,y,s)  -> cx, cy, r da poça (pra cena alinhar sombras).
---     campos lidos por teste/preview: frame (1..3), level (índice em
---     LEVELS), lookStep (inteiro em -LOOK_STEPS..LOOK_STEPS).
---
---   ShopProps.diceCup.new()                      -> copo dos Dados do Escriba
---     :setState("idle" | "shake" | "rolled", { a = 1..6, b = 1..6 })
---                          shake = hover (3 quadros + `sceneWoodKnock`
---                          baixo UMA vez por entrada); rolled = copo DEITADO
---                          e os dois dados JOGADOS no balcão com as faces.
---     :syncRun(run)        lê currentRun.scribeDice (ScribeDice.state) e
---                          entra em rolled com a soma da visita, ou idle.
---     :update(dt) / :draw(x, y, scale)   x,y = PÉ do copo (base-centro).
---     :width(scale)        largura ocupada (copo + dados quando rolled).
---
---   ShopProps.moth.new()                         -> mariposa
---     :update(dt)          agenda uma travessia a cada MOTH_MIN..MOTH_MAX s.
---     :draw(fx, fy, scale) fx,fy = centro da CHAMA (ShopProps.lantern.flameAt).
---     :isFlying() / :cross()   (preview e teste forçam a travessia)
---
---   ShopProps.cobweb.draw(x, y, scale)           teia estática, canto sup-esq.
---   ShopProps.saleTag.draw(x, y, scale)          etiqueta vermelha torta da
---                          oferta do dia (o TEXTO do preço é da cena).
---   ShopProps.missingAssets()                    -> lista de PNGs ausentes
---                          (fallback silencioso é proibido: cada miss AVISA
---                          uma vez e o teste falha se a lista não for vazia).
---
--- reducedMotion (_G.gameSettings.reducedMotion): chama no quadro 1, luz no
--- nível médio, poeira parada, copo sem chacoalho, mariposa POUSADA na
--- lanterna. Dados jogados e copo deitado continuam: são informação.
---
--- Doutrina: tudo em DEGRAUS (quadro, nível de luz, passo da poça, pulso da
--- poeira) — mesma vida do menu v3 e do LuminaireEngine; nada interpola.
+local Debug = require("src.core.Debug")
 
 local ImageCache = require("src.ui.ImageCache")
 local Palette    = require("src.ui.Palette")
@@ -56,21 +7,18 @@ local Sfx        = require("src.systems.Sfx")
 local ShopProps = {}
 
 ShopProps.ASSETS = {
-    lantern  = "assets/sprites/shop/lantern.png",         -- 32x48 x3
-    diceCup  = "assets/sprites/shop/dice_cup.png",        -- 32x32 x5
-    dieFaces = "assets/sprites/shop/die_faces.png",       -- 16x16 x6
-    moth     = "assets/sprites/shop/moth.png",            -- 16x16 x4
-    cobweb   = "assets/sprites/shop/cobweb.png",          -- 32x32
-    saleTag  = "assets/sprites/shop/price_tag_sale.png",  -- 24x16
+    lantern  = "assets/sprites/shop/lantern.png",
+    diceCup  = "assets/sprites/shop/dice_cup.png",
+    dieFaces = "assets/sprites/shop/die_faces.png",
+    moth     = "assets/sprites/shop/moth.png",
+    cobweb   = "assets/sprites/shop/cobweb.png",
+    saleTag  = "assets/sprites/shop/price_tag_sale.png",
 }
 
 local function reducedMotion()
     return (_G.gameSettings and _G.gameSettings.reducedMotion) and true or false
 end
 
--- ---------------------------------------------------------------------------
--- Sheets horizontais: quadro i em x = (i-1)*fw. Miss avisa UMA vez.
--- ---------------------------------------------------------------------------
 local sheets = {}
 local warned = {}
 
@@ -82,7 +30,7 @@ local function sheet(key, fw, fh)
     if not img then
         if not warned[key] then
             warned[key] = true
-            print("[ShopProps] asset ausente: " .. tostring(path) .. " (prop '" .. key .. "' não desenha)")
+            Debug.warn("[ShopProps] asset ausente: " .. tostring(path) .. " (prop '" .. key .. "' não desenha)")
         end
         return nil
     end
@@ -91,7 +39,7 @@ local function sheet(key, fw, fh)
     fw, fh = fw or iw, fh or ih
     local n = math.max(1, math.floor(iw / fw))
     if iw % fw ~= 0 or ih ~= fh then
-        print(("[ShopProps] %s tem %dx%d, esperado múltiplo de %dx%d"):format(path, iw, ih, fw, fh))
+        Debug.warn(("[ShopProps] %s tem %dx%d, esperado múltiplo de %dx%d"):format(path, iw, ih, fw, fh))
     end
     local quads = {}
     for i = 1, n do
@@ -117,7 +65,6 @@ function ShopProps.missingAssets()
     return out
 end
 
--- textura 1x1 branca pro SpriteBatch da poeira (um só pra todas as lanternas)
 local dot
 local function dotImage()
     if dot then return dot end
@@ -128,23 +75,20 @@ local function dotImage()
     return dot
 end
 
--- ===========================================================================
--- LANTERNA
--- ===========================================================================
 local Lantern = {}
 Lantern.__index = Lantern
 
 Lantern.FW, Lantern.FH = 32, 48
-Lantern.FLAME = { x = 15.5, y = 31 }   -- centro da chama no sprite (cand_0)
-Lantern.LEVELS = { 0.82, 1.00, 1.14 }  -- intensidade da luz, só estes 3 valores
-Lantern.HOLDS = { 0.08, 0.12, 0.18, 0.26 } -- quanto um quadro/nível SEGURA (s)
-Lantern.LOOK_STEPS = 2                 -- a poça anda -2..2 passos
-Lantern.LOOK_PX = 7                    -- px (de sprite) por passo
-Lantern.LOOK_RATE = 4                  -- passos por segundo (perseguição)
-Lantern.POOL_DY = 30                   -- centro da poça abaixo da chama
+Lantern.FLAME = { x = 15.5, y = 31 }
+Lantern.LEVELS = { 0.82, 1.00, 1.14 }
+Lantern.HOLDS = { 0.08, 0.12, 0.18, 0.26 }
+Lantern.LOOK_STEPS = 2
+Lantern.LOOK_PX = 7
+Lantern.LOOK_RATE = 4
+Lantern.POOL_DY = 30
 Lantern.POOL_RX, Lantern.POOL_RY = 34, 19
 Lantern.DUST_N = 18
-Lantern.DUST_DEPTH = 72                -- feixe: da chama até POOL_DY+... (px de sprite)
+Lantern.DUST_DEPTH = 72
 Lantern.AMBER = { 1.00, 0.72, 0.36 }
 
 local function newMote(i)
@@ -152,7 +96,7 @@ local function newMote(i)
     return {
         y = depth,
         x = (love.math.random() - 0.5) * 2 * (5 + depth * 0.45),
-        speed = 2.5 + love.math.random() * 4.5,  -- px/s (sobe devagar)
+        speed = 2.5 + love.math.random() * 4.5,
         drift = (love.math.random() - 0.5) * 2.0,
         phase = i * 0.37,
         size = love.math.random() < 0.3 and 2 or 1,
@@ -176,7 +120,6 @@ end
 
 function Lantern:update(dt, lookX)
     self.clock = self.clock + dt
-    -- alvo da poça em degraus (nil/0 = centro)
     local target = 0
     if lookX then
         lookX = math.max(-1, math.min(1, lookX))
@@ -184,13 +127,10 @@ function Lantern:update(dt, lookX)
     end
     self.lookTarget = target
     if reducedMotion() then
-        -- sem movimento: chama parada, luz no nível médio, poça vai direto
-        -- pro alvo (informação de "qual objeto" continua), poeira parada.
         self.frame, self.level = 1, 2
         self.lookStep = target
         return
     end
-    -- perseguição a LOOK_RATE passos/s, um passo por vez (nunca contínua)
     if self.lookStep ~= target then
         self.lookTimer = self.lookTimer + dt
         if self.lookTimer >= 1 / Lantern.LOOK_RATE then
@@ -200,7 +140,6 @@ function Lantern:update(dt, lookX)
     else
         self.lookTimer = 0
     end
-    -- flicker em degraus: segura um quadro/nível por HOLDS[k] e troca seco
     self.hold = self.hold - dt
     if self.hold <= 0 then
         local r = love.math.random()
@@ -209,7 +148,6 @@ function Lantern:update(dt, lookX)
         self.level = lv < 0.6 and 2 or (lv < 0.85 and 1 or 3)
         self.hold = Lantern.HOLDS[love.math.random(#Lantern.HOLDS)]
     end
-    -- poeira: sobe devagar dentro do feixe, pulso de brilho a 4 Hz (degrau)
     for _, m in ipairs(self.motes) do
         m.y = m.y - m.speed * dt
         m.x = m.x + m.drift * dt
@@ -227,7 +165,6 @@ function Lantern:intensity()
     return Lantern.LEVELS[self.level] or 1
 end
 
--- centro da chama na tela
 function Lantern:flameAt(x, y, scale)
     return x + (Lantern.FLAME.x - Lantern.FW / 2) * scale, y + Lantern.FLAME.y * scale
 end
@@ -247,19 +184,16 @@ function Lantern:drawLight(x, y, scale, opts)
     local fx, fy = self:flameAt(x, y, scale)
     local cx, cy = self:lightCenter(x, y, scale)
     love.graphics.setBlendMode("add")
-    -- poça: 3 elipses DEGRAU (nada de gradiente), deslocadas pelo lookStep
     for step = 0, (pool and 2 or -1) do
         local f = 1 - step * 0.30
         love.graphics.setColor(a[1], a[2], a[3], (0.05 + 0.025 * step) * k)
         love.graphics.ellipse("fill", math.floor(cx), math.floor(cy),
             Lantern.POOL_RX * scale * f, Lantern.POOL_RY * scale * f, 24)
     end
-    -- halo da chama: 2 anéis curtos
     for step = 0, 1 do
         love.graphics.setColor(a[1], a[2] + 0.1, a[3], (0.06 + 0.05 * step) * k)
         love.graphics.circle("fill", math.floor(fx), math.floor(fy), (14 - step * 6) * scale, 16)
     end
-    -- poeira no feixe: 1 SpriteBatch, posição inteira, brilho em degrau
     local batch = self.batch
     batch:clear()
     local pulse = math.floor(self.clock * 4) % 2 == 0 and 1 or 0
@@ -291,9 +225,6 @@ ShopProps.lantern = { new = ShopProps.newLantern, flameAt = function(x, y, s)
     return x + (Lantern.FLAME.x - Lantern.FW / 2) * s, y + Lantern.FLAME.y * s
 end, Lantern = Lantern }
 
--- ===========================================================================
--- COPO DE DADOS
--- ===========================================================================
 local DiceCup = {}
 DiceCup.__index = DiceCup
 DiceCup.FW, DiceCup.FH = 32, 32
@@ -313,19 +244,18 @@ end
 
 function DiceCup:setState(state, opts)
     if not DiceCup.STATES[state] then
-        print("[ShopProps] estado de copo desconhecido: " .. tostring(state))
+        Debug.warn("[ShopProps] estado de copo desconhecido: " .. tostring(state))
         return
     end
     if state == "rolled" then
         local a = opts and tonumber(opts.a)
         local b = opts and tonumber(opts.b)
         if not a or not b or a < 1 or a > 6 or b < 1 or b > 6 then
-            print("[ShopProps] rolled sem faces válidas (a=" .. tostring(a) .. ", b=" .. tostring(b) .. ")")
+            Debug.warn("[ShopProps] rolled sem faces válidas (a=" .. tostring(a) .. ", b=" .. tostring(b) .. ")")
             return
         end
         self.dice = { math.floor(a), math.floor(b) }
     elseif self.state == "rolled" then
-        -- copo deitado só levanta quando a visita muda (syncRun com mesa livre)
         self.dice = nil
     end
     if state == "shake" and self.state ~= "shake" and not reducedMotion() then
@@ -336,8 +266,6 @@ function DiceCup:setState(state, opts)
     self.frame = state == "rolled" and DiceCup.FRAME_LYING or DiceCup.FRAME_IDLE
 end
 
--- Lê o estado da visita (memory/scribe_dice.md): jogada feita neste nó →
--- copo deitado com as faces; senão, de pé.
 function DiceCup:syncRun(run)
     local ScribeDice = require("src.systems.ScribeDice")
     local st = ScribeDice.state(run)
@@ -376,10 +304,6 @@ function DiceCup:width(scale)
     return DiceCup.FW * scale
 end
 
--- x,y = PÉ do copo (base-centro). Dados jogados à direita, ao longo da
--- diagonal da mesa (`opts.slope`). Sem sombra aqui: a loja desenha a sombra
--- de CONTATO (ShopPerspective, dither colado na base; elipse = flutuando).
--- `opts.outline` 0..1 = contorno claro de 1 px (hover).
 function DiceCup:draw(x, y, scale, opts)
     scale = scale or 1
     opts = opts or {}
@@ -399,10 +323,6 @@ function DiceCup:draw(x, y, scale, opts)
     end
     love.graphics.setColor(1, 1, 1, 1)
     drawFrame(s, self.frame, cx, cy, scale)
-    -- dados: jogados (rolled) ou um dado de enfeite parado (opts.idleDie,
-    -- Loja v5: o copo sozinho lia como uma CANECA sem preço). opts.dicePos =
-    -- posições {dx, dy} do PÉ de cada dado relativas ao pé do copo (a loja
-    -- põe os dados À FRENTE do copo, longe do sino); sem ela, à direita.
     local show = (self.state == "rolled" and self.dice) and self.dice
         or (opts.idleDie and { opts.idleDie }) or nil
     if show then
@@ -430,17 +350,14 @@ end
 
 ShopProps.diceCup = { new = ShopProps.newDiceCup, DiceCup = DiceCup }
 
--- ===========================================================================
--- MARIPOSA
--- ===========================================================================
 local Moth = {}
 Moth.__index = Moth
 Moth.FW, Moth.FH = 16, 16
 Moth.MIN_WAIT, Moth.MAX_WAIT = 20, 40
-Moth.SPAN = 110        -- px de sprite de cada lado da chama
-Moth.SPEED = 46        -- px/s
+Moth.SPAN = 110
+Moth.SPEED = 46
 Moth.FPS = 14
-Moth.PERCH = { x = 14, y = 6 }  -- pouso em reducedMotion (relativo à chama)
+Moth.PERCH = { x = 14, y = 6 }
 
 function ShopProps.newMoth()
     local m = setmetatable({}, Moth)
@@ -479,8 +396,6 @@ function Moth:update(dt)
     end
 end
 
--- fx,fy = centro da chama. Voo em arco raso que passa pela chama, com
--- ziguezague em degraus de 1 px (mariposa não voa reto).
 function Moth:draw(fx, fy, scale)
     scale = scale or 1
     local s = sheet("moth", Moth.FW, Moth.FH)
@@ -492,9 +407,9 @@ function Moth:draw(fx, fy, scale)
         return
     end
     if not self.flying then return end
-    local d = self.t * Moth.SPEED - Moth.SPAN          -- -SPAN..SPAN
+    local d = self.t * Moth.SPEED - Moth.SPAN
     local x = fx + d * self.dir * scale
-    local arc = -(1 - (d / Moth.SPAN) ^ 2) * 10        -- sobe até rente ao vidro
+    local arc = -(1 - (d / Moth.SPAN) ^ 2) * 10
     local zig = math.floor(math.sin(self.t * 9) * 3)
     local y = fy + (arc + zig) * scale
     drawFrame(s, self.frame, math.floor(x), math.floor(y), scale, 0, Moth.FW / 2, Moth.FH / 2)
@@ -502,9 +417,6 @@ end
 
 ShopProps.moth = { new = ShopProps.newMoth, Moth = Moth }
 
--- ===========================================================================
--- TEIA e ETIQUETA (estáticas)
--- ===========================================================================
 ShopProps.cobweb = {}
 function ShopProps.cobweb.draw(x, y, scale)
     local s = sheet("cobweb")
@@ -522,28 +434,7 @@ function ShopProps.saleTag.draw(x, y, scale)
     drawFrame(s, 1, math.floor(x), math.floor(y), scale or 1)
 end
 
--- ===========================================================================
--- FACHADA PRA CENA (contrato combinado com a frente loja-cena, Out/2026)
--- A cena não instancia nada: chama estas funções na ordem do frame.
---   ShopProps.load()                      cria os props e AVISA asset ausente
---   ShopProps.update(dt, L, ctx)          L = ShopLayout.layout(); ctx = { t,
---                                         reduced, hoverX, hoverY, run | dice,
---                                         cupHover }  (run = currentRun, pra
---                                         ler os dados da visita; ou dice={a,b})
---   ShopProps.drawBack(L, ctx)            teia no canto da estante de cima +
---                                         halo e poeira no feixe (a POÇA/cone
---                                         na parede é da cena: use lookDx())
---   ShopProps.drawLantern(rect, ctx)      sprite da lanterna no rect (escala
---                                         inteira que cabe)
---   ShopProps.flameAnchor(rect) -> x, y   centro da chama no rect da lanterna
---   ShopProps.lookDx() -> px              deslocamento em DEGRAUS da luz
---                                         (já em px de tela, segue o hover)
---   ShopProps.drawDiceCup(rect, ctx)      copo apoiado no tampo (pé = y+h);
---                                         ctx.hover 0..1 chacoalha; o estado
---                                         jogado vem do update (run/dice)
---   ShopProps.drawFront(L, ctx)           mariposa (por cima de tudo)
--- ===========================================================================
-local S = nil   -- singletons da cena
+local S = nil
 
 local function lanternScale(rect)
     return math.max(1, math.floor(math.min(rect.w / Lantern.FW, rect.h / Lantern.FH)))
@@ -557,7 +448,7 @@ end
 function ShopProps.load()
     S = { lantern = ShopProps.newLantern(), cup = ShopProps.newDiceCup(), moth = ShopProps.newMoth() }
     for _, path in ipairs(ShopProps.missingAssets()) do
-        print("[ShopProps] asset ausente: " .. path)
+        Debug.warn("[ShopProps] asset ausente: " .. path)
     end
     return S
 end
@@ -645,7 +536,6 @@ end
 
 function ShopProps.scene() return S end
 
--- pra testes: esquece sheets (depois de trocar um PNG), avisos e a cena
 function ShopProps._reset()
     sheets, warned, S = {}, {}, nil
 end

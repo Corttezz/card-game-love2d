@@ -1,19 +1,8 @@
--- src/ui/HintBar.lua
--- Barra de dicas PADRONIZADA (F1 do UI Overhaul — docs/plan/ui-ux-overhaul-v1.md §3.6).
--- Regra: a dica SEMPRE cabe na tela — encolhe a fonte em degraus e, se ainda
--- não couber, trunca com reticências. Mata a classe de bug "hint estourando
--- dos dois lados" (loja). Pill centralizado, cores da paleta grimoire.
---
--- Uso:  HintBar.draw("CLIQUE pra inspecionar · ESC volta")            -- rodapé
---       HintBar.draw(texto, { y = 500, sizes = {14, 12, 10} })
-
 local FontManager = require("src.ui.FontManager")
 local Palette = require("src.ui.Palette")
 
 local HintBar = {}
 
--- Encaixa o texto na largura: tenta cada tamanho de fonte; no menor,
--- trunca com "…" se preciso. Retorna font, texto final.
 local function fit(text, maxW, sizes)
     local font
     for _, size in ipairs(sizes) do
@@ -22,12 +11,8 @@ local function fit(text, maxW, sizes)
             return font, text
         end
     end
-    -- menor fonte e ainda largo: trunca
     local out = text
     while #out > 4 and font:getWidth(out .. "…") > maxW do
-        -- remove UM CARACTERE inteiro (não um byte). A versão antiga parava
-        -- no byte-líder de um caractere acentuado e deixava-o órfão: UTF-8
-        -- inválido, e a LÖVE derruba o jogo no getWidth/print.
         local cut = require("utf8").offset(out, -1)
         if not cut or cut <= 1 then out = "" break end
         out = out:sub(1, cut - 1)
@@ -35,14 +20,8 @@ local function fit(text, maxW, sizes)
     return font, out .. "…"
 end
 
-HintBar._fit = fit   -- exposto pro teste de truncamento UTF-8
+HintBar._fit = fit
 
--- DESLIGADA no jogo (pedido do dono, Out/2026: "tirar esses textos
--- informativos... estão poluindo coisa demais"). As faixas de rodapé
--- ("Passe o mouse pra ler · CLIQUE seleciona...") repetiam o que a própria
--- tela já ensina pelo hover/botões. Um interruptor só, aqui, em vez de
--- arrancar as 9 chamadas: religar é trocar pra true. Informação que o
--- jogador PRECISA pra decidir não pode morar aqui — vai ancorada no objeto.
 HintBar.ENABLED = false
 
 function HintBar.draw(text, opts)
@@ -61,7 +40,6 @@ function HintBar.draw(text, opts)
     local x = math.floor((W - tw) / 2)
     local y = opts.y or (H - th - 14)
 
-    -- pill de fundo (ink translúcido — véu pequeno de rodapé, padrão aceito)
     love.graphics.setColor(0.08, 0.06, 0.05, 0.72)
     love.graphics.rectangle("fill", x - padX, y - 5, tw + padX * 2, th + 10, 6, 6)
     Palette.set(Palette.PARCHMENT)

@@ -1,7 +1,3 @@
--- Onboarding v2 (src/systems/Tutorial + src/ui/Narrator + components/GuideScreen):
--- roteiro do corvo narrador (script.<conversa>.<fala>, *ênfase* em sangue),
--- rodapé do balão, Guia de combos/glossário, tooltip da mana. Arquivo próprio
--- por locale; plugado no principal como `tutorial = require(...)`.
 return {
     narrator = { name = "Pena" },
     footer = {

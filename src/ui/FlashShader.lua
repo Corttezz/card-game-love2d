@@ -1,14 +1,4 @@
--- src/ui/FlashShader.lua
--- Wrapper do shaders/flash.glsl. Overlay branco pixelado pra impactos,
--- booster opening, buffs aplicados. Desenha um quad fullscreen ou per-card
--- com alfa modulado.
---
--- Uso típico (fullscreen flash, via EventManager):
---   FlashShader.trigger(0.6)  -- intensidade 0..1
--- Em love.draw (depois de tudo):
---   FlashShader.draw()
--- Em love.update:
---   FlashShader.update(dt)
+local Debug = require("src.core.Debug")
 
 local FlashShader = {}
 
@@ -21,7 +11,7 @@ local decayDuration = 0.3
 function FlashShader.load()
     local ok, s = pcall(love.graphics.newShader, "shaders/flash.glsl")
     if not ok then
-        print("[FlashShader] falha ao carregar shaders/flash.glsl: " .. tostring(s))
+        Debug.warn("[FlashShader] falha ao carregar shaders/flash.glsl: " .. tostring(s))
         return false
     end
     shader = s
@@ -33,8 +23,6 @@ function FlashShader.isAvailable()
     return loaded
 end
 
--- Dispara um flash. Intensidade 0..1 (0 desliga; 0.5 médio; 1 ofuscante).
--- duration em segundos (decay linear até 0).
 function FlashShader.trigger(i, duration)
     intensity = math.max(intensity, math.max(0, math.min(1, i or 0.5)))
     decayDuration = duration or 0.3
@@ -53,7 +41,6 @@ function FlashShader.update(dt)
     end
 end
 
--- Desenha overlay fullscreen. Chame DEPOIS de todo o resto no love.draw.
 function FlashShader.draw()
     if not loaded or intensity <= 0.001 then return end
     local w, h = love.graphics.getDimensions()
@@ -65,8 +52,6 @@ function FlashShader.draw()
     love.graphics.setShader()
 end
 
--- Flash simples sem shader (fallback / uso leve): alpha branco fullscreen.
--- Use quando só quer "piscar" sem o look pixelado do flash shader.
 function FlashShader.drawPlain(alpha)
     alpha = math.max(0, math.min(1, alpha or 0))
     if alpha <= 0 then return end

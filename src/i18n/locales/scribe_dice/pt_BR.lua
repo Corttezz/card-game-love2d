@@ -1,4 +1,3 @@
--- Dados do Escriba (aposta opcional da loja) — pt_BR
 return {
     title      = "Dados do Escriba",
     subtitle   = "Uma jogada por visita. A casa paga o que está escrito.",

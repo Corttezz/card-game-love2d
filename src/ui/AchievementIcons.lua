@@ -1,10 +1,4 @@
--- src/ui/AchievementIcons.lua
--- Emblemas das conquistas: assets/sprites/achievements/<id>.png (liberada) e
--- <id>_locked.png (bloqueada — silhueta escurecida, derivada do emblema por
--- tools/achievement_icons.py, a MESMA receita que exporta pra Steam).
---
--- Cache por caminho, filtro nearest. Arquivo ausente AVISA (uma vez por id)
--- e cai num medalhao procedural — nunca some em silencio.
+local Debug = require("src.core.Debug")
 
 local AchievementIcons = {}
 
@@ -18,7 +12,6 @@ function AchievementIcons.path(id, locked)
     return AchievementIcons.DIR .. id .. (locked and "_locked" or "") .. ".png"
 end
 
--- Image ou nil (com aviso).
 function AchievementIcons.get(id, locked)
     local p = AchievementIcons.path(id, locked)
     local hit = cache[p]
@@ -30,16 +23,15 @@ function AchievementIcons.get(id, locked)
             cache[p] = img
             return img
         end
-        print("[AchievementIcons] AVISO: falha ao carregar " .. p .. ": " .. tostring(img))
+        Debug.warn("[AchievementIcons] AVISO: falha ao carregar " .. p .. ": " .. tostring(img))
     elseif not warned[p] then
         warned[p] = true
-        print("[AchievementIcons] AVISO: emblema ausente " .. p)
+        Debug.warn("[AchievementIcons] AVISO: emblema ausente " .. p)
     end
     cache[p] = false
     return nil
 end
 
--- Desenha o emblema centrado em (cx, cy) com lado `size`. Fallback: disco.
 function AchievementIcons.draw(id, locked, cx, cy, size, alpha)
     local img = AchievementIcons.get(id, locked)
     alpha = alpha or 1

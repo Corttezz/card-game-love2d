@@ -1,71 +1,5 @@
--- src/data/enemies.lua
--- ============================================================================
--- INIMIGOS — roster por ato + kit de golpes por criatura (Out/2026)
--- ============================================================================
--- Auditoria de conteúdo (Out/2026): TODO inimigo jogava igual. Havia uma
--- tabela de intents só (atacar / golpe forte ×1.6 / defender / +2 de dano)
--- dividida pelas 21 criaturas, e a identidade de cada uma morava apenas no
--- sprite. Ninguém debuffava o jogador, ninguém batia várias vezes, nenhum
--- golpe tinha nome, e o chefe era um saco de vida maior.
---
--- Este arquivo é DADO PURO (sem lógica). Quem lê: src/systems/EnemyRoster.lua
--- (sorteio do roster) e src/entities/Enemy.lua (rolagem e execução do golpe).
---
--- ── KIT (chave = id do sprite, a mesma do EnemyRenderer) ───────────────────
---   hpMul / dmgMul   escala sobre a curva do ato (ActSystem). Gosma = parruda
---                    e fraca; diabrete = frágil e venenoso.
---   opener           golpe do PRIMEIRO turno (o cartão de visita da criatura).
---   moves            golpes sorteáveis (ver abaixo).
---   phases           { { at = 0.5, id, dmgMul, moves, opener } } — troca de
---                    kit ao cruzar a fração de vida (Rainha do Eclipse).
---   passive          { regenPct } — estado permanente desde o 1º turno.
---   veil             { level = "type_only" | "hidden", chance = 0..1 } — a
---                    criatura ESCONDE o próprio intent (Out/2026): o HUD mostra
---                    o ícone sem número (type_only) ou só "?" (hidden), em
---                    `chance` dos anúncios (padrão 1). Combina com a névoa do
---                    bioma (src/data/intent_fog.lua) pelo pior nível; cartas
---                    de Revelar e o pulso do orbe de Raio dissipam. Vale
---                    também dentro de uma fase (Rainha no Eclipse). O golpe
---                    continua congelado: só a LEITURA muda.
---
--- ── GOLPE ───────────────────────────────────────────────────────────────────
---   id        chave i18n `enemy_kit.moves.<id>` (nome + descrição no tooltip).
---   kind      categoria de LEITURA (ícone do HUD): attack | strong | multi |
---             defend | buff | debuff | heal | charge | summon.
---             A execução lê os CAMPOS, não o kind — um golpe pode ter dano,
---             bloqueio e debuff juntos ("bloqueia e golpeia").
---   weight    peso no sorteio (stream "enemy" do Rng).
---   mult      dano POR GOLPE = floor(dano do inimigo × mult).
---   hits      quantos golpes (multi). Bloqueio absorve cada um, mas o teto de
---             Bloqueio por ato faz a soma vazar.
---   swarm     hits += pilhas do status `swarm` do inimigo (revoada).
---   pierce    ignora o Bloqueio do jogador.
---   armor     bloqueio ganho = getDefendAmount() × armor.
---   strength  +dano PERMANENTE = max(2, floor(dano base × strength)).
---   heal      cura = floor(vida máxima × heal).
---   debuff    { name, duration, stacks } NO JOGADOR: weak (−25% no dano dos
---             seus ataques), frail (−25% no Bloqueio das suas defesas),
---             vulnerable (+50% de dano recebido), poison / burn (dano por
---             turno que ignora Bloqueio). Pode ser lista (vários debuffs).
---   summon    pilhas de `swarm` somadas ao inimigo.
---   next      id do golpe FORÇADO no turno seguinte (carga → golpe).
---   every     forçado a cada N turnos (turno % every == 0).
---   minTurn   não sai antes deste turno.
---   maxRow    máximo de usos seguidos (padrão 2; o 3º igual é proibido).
---
--- INVARIANTE (CLAUDE.md §6): o intent é CONGELADO no anúncio. O número que o
--- jogador vê no HUD é o teto do que acontece — Fúria/buff entre o anúncio e a
--- execução só valem no próximo intent.
--- ============================================================================
-
 local Enemies = {}
 
--- ── ROSTER POR ATO ──────────────────────────────────────────────────────────
--- Cada ato: 3 comuns, 2 elites, mini-chefe DISTINTO dos elites, 1 chefe.
--- Sorteio pelo stream "enemy", sem repetir o último inimigo enfrentado.
--- REGRA (dono, Out/2026): só criatura DO BIOMA do ato — nada de emprestar
--- sprite de outro ato ("monstros sem relação com o bioma"). A fonte da
--- pertença é HOME_BIOME abaixo; test_enemies cruza as duas tabelas.
 Enemies.ROSTER = {
     [1] = { battle = { "cursed_scarecrow", "hollow_farmer", "plague_rats" },
             elite = { "harvest_reaper", "blight_bull" },
@@ -93,8 +27,6 @@ Enemies.ROSTER = {
             boss = { "eclipse_queen" } },
 }
 
--- Bioma de ORIGEM de cada criatura (o ato cuja arte/cenário ela habita).
--- Declarado à parte do ROSTER de propósito: é o que impede o "empréstimo".
 Enemies.HOME_BIOME = {
     cursed_scarecrow = 1, hollow_farmer = 1, plague_rats = 1, harvest_reaper = 1,
     blight_bull = 1, wicker_effigy = 1, carrion_king = 1,
@@ -110,26 +42,13 @@ Enemies.HOME_BIOME = {
     dullahan = 6, fallen_angel = 6, eclipse_queen = 6,
 }
 
--- ── ESCALA DE DANO POR ATO (calibrada pela bateria do piloto, Out/2026) ─────
--- As curvas de dano do Config.Acts foram afinadas para o kit ANTIGO, cujo
--- golpe médio valia ~0,76× o dano base (50% ataque, 16% forte ×1,6, resto
--- sem dano). Os kits batem em média ~1,0–1,1× e ainda debuffam — sem esta
--- escala o guerreiro do piloto caiu de 60% para 15% de vitória (morrendo nos
--- chefes dos atos 3-4). O começo SOBE um pouco de propósito: a auditoria
--- mediu 0,0–0,2 de dano sofrido por turno nos atos 1-2 (zero tensão).
 Enemies.DAMAGE_SCALE_BY_ACT = { 1.15, 1.10, 0.92, 0.88, 0.84, 0.84 }
 
--- Chefes por cima da escala do ato: a mecânica-assinatura (carga, perfurante,
--- revoada, peste, eclipse) já é o perigo — com o dano cheio, os chefes dos
--- atos 4-6 respondiam por ~2/3 das mortes do piloto (bateria v4, Out/2026).
 Enemies.BOSS_DAMAGE_SCALE = 0.90
 
--- ── KITS ────────────────────────────────────────────────────────────────────
 local W, F, V = "weak", "frail", "vulnerable"
 
 Enemies.KITS = {
-    -- Kit legado: os quatro intents de antes, para Enemy:new sem kit (testes,
-    -- modo clássico). Mesmos pesos e mesma regra de pressão.
     generic = {
         moves = {
             { id = "attack", kind = "attack", weight = 50, mult = 1.0 },
@@ -139,7 +58,6 @@ Enemies.KITS = {
         },
     },
 
-    -- ===================== ATO 1 — CATACUMBAS =====================
     cursed_scarecrow = {
         opener = "dread_stare",
         moves = {
@@ -174,8 +92,6 @@ Enemies.KITS = {
             { id = "frenzy",        kind = "multi",  weight = 15, mult = 0.4, hits = 4 },
         },
     },
-    -- CHEFE A1 — invoca a revoada: cada Chamado soma corvos, e a Revoada bate
-    -- uma vez por corvo. Quanto mais a luta demora, mais golpes por turno.
     carrion_king = {
         opener = "call_of_crows",
         moves = {
@@ -189,7 +105,6 @@ Enemies.KITS = {
         },
     },
 
-    -- ===================== ATO 2 — TORRE DE PEDRA =====================
     moon_gargoyle = {
         opener = "lunar_shriek",
         moves = {
@@ -212,8 +127,6 @@ Enemies.KITS = {
             { id = "slam",       kind = "attack", weight = 30, mult = 1.2 },
         },
     },
-    -- CHEFE A2 — escudo de gelo a cada 3º turno (a janela de burst é o turno
-    -- SEGUINTE, quando o escudo cai) e drena: Fragilidade + cura.
     tower_lich = {
         opener = "essence_drain",
         moves = {
@@ -226,7 +139,6 @@ Enemies.KITS = {
         },
     },
 
-    -- ===================== ATO 3 — ABISMO =====================
     ember_imp = {
         hpMul = 0.85, dmgMul = 1.0,
         opener = "fireball",
@@ -240,7 +152,6 @@ Enemies.KITS = {
     },
     dusk_shade = {
         opener = "whisper",
-        -- sombra: a silhueta some na bruma — o golpe é visto, o peso não
         veil = { level = "type_only", chance = 0.7 },
         moves = {
             { id = "shadow_blade", kind = "attack", weight = 35, mult = 1.1 },
@@ -274,8 +185,6 @@ Enemies.KITS = {
             { id = "noble_thrust",   kind = "strong", weight = 20, mult = 1.5 },
         },
     },
-    -- CHEFE A3 — carrega o Fogo Infernal: um turno inteiro telegrafando, o
-    -- golpe seguinte é o maior da luta e queima.
     abyss_tyrant = {
         opener = "abyssal_claws",
         moves = {
@@ -289,10 +198,8 @@ Enemies.KITS = {
         },
     },
 
-    -- ===================== ATO 4 — CIDADELA GELADA =====================
     frost_wight = {
         opener = "freezing_touch",
-        -- espectro da neve: anda DENTRO da nevasca — o número nunca aparece
         veil = { level = "type_only", chance = 1 },
         moves = {
             { id = "freezing_touch", kind = "attack", weight = 30, mult = 0.8,
@@ -312,8 +219,6 @@ Enemies.KITS = {
               debuff = { name = F, duration = 2 }, maxRow = 1 },
         },
     },
-    -- CHEFE A4 — lâminas que atravessam o Bloqueio e um inverno que fragiliza
-    -- tudo a cada 3º turno.
     winter_monarch = {
         opener = "winter_blade",
         moves = {
@@ -326,7 +231,6 @@ Enemies.KITS = {
         },
     },
 
-    -- ===================== ATO 5 — CORAÇÃO PÚTRIDO =====================
     mire_hag = {
         hpMul = 1.05,
         opener = "hex",
@@ -341,8 +245,6 @@ Enemies.KITS = {
               maxRow = 1, minTurn = 2 },
         },
     },
-    -- CHEFE A5 — nuvens de peste no jogador e regeneração própria: a luta
-    -- longa é dele.
     rot_colossus = {
         hpMul = 1.0,
         passive = { regenPct = 0.015 },
@@ -358,9 +260,6 @@ Enemies.KITS = {
         },
     },
 
-    -- ===================== ATO 6 — CORTE DO ECLIPSE =====================
-    -- CHEFE A6 — duas lutas numa: abaixo de 50% de vida o ECLIPSE fecha, o
-    -- kit troca e o dano sobe.
     eclipse_queen = {
         opener = "waning_light",
         moves = {
@@ -370,7 +269,6 @@ Enemies.KITS = {
             { id = "veil",         kind = "defend", weight = 30, armor = 1.3, maxRow = 1 },
         },
         phases = {
-            -- no ECLIPSE a corte escurece: metade dos anúncios some por inteiro
             { at = 0.5, id = "eclipse", dmgMul = 1.15, opener = "total_eclipse",
               veil = { level = "hidden", chance = 0.5 },
               moves = {
@@ -386,11 +284,7 @@ Enemies.KITS = {
         },
     },
 
-    -- ===================== CRIATURAS NOVAS (Out/2026, frente inimigos-arte) =====================
-    -- A silhueta já anuncia o golpe: o kit segue o conceito que veio com a arte.
-
-    -- ATO 1 — CAMPOS
-    hollow_farmer = {   -- camponês oco: ergue o forcado um turno e crava no seguinte
+    hollow_farmer = {
         moves = {
             { id = "pitchfork_jab",    kind = "attack", weight = 40, mult = 1.1 },
             { id = "wind_up",          kind = "charge", weight = 25, armor = 0.5,
@@ -401,7 +295,7 @@ Enemies.KITS = {
               debuff = { name = W, duration = 2 }, maxRow = 1 },
         },
     },
-    plague_rats = {     -- ninhada: muitas mordidas fracas + peste
+    plague_rats = {
         hpMul = 0.9,
         opener = "infected_bite",
         moves = {
@@ -412,7 +306,7 @@ Enemies.KITS = {
             { id = "scatter",       kind = "defend", weight = 15, armor = 0.8, maxRow = 1 },
         },
     },
-    blight_bull = {     -- touro podre: couro grosso e investida
+    blight_bull = {
         hpMul = 1.15,
         opener = "bellow",
         moves = {
@@ -422,7 +316,7 @@ Enemies.KITS = {
             { id = "bellow",      kind = "buff",   weight = 20, strength = 0.2, maxRow = 1 },
         },
     },
-    wicker_effigy = {   -- gigante de vime em brasa: queima e se atiça
+    wicker_effigy = {
         opener = "kindle",
         moves = {
             { id = "ember_lash",   kind = "attack", weight = 35, mult = 0.8,
@@ -433,8 +327,7 @@ Enemies.KITS = {
         },
     },
 
-    -- ATO 2 — PLANALTOS
-    ram_cultist = {     -- cultista do incensário: enfraquece e expõe
+    ram_cultist = {
         opener = "dark_hymn",
         moves = {
             { id = "dark_hymn",    kind = "debuff", weight = 25,
@@ -446,7 +339,7 @@ Enemies.KITS = {
               maxRow = 1, minTurn = 2 },
         },
     },
-    storm_harpy = {     -- garras à frente: duas, três garradas
+    storm_harpy = {
         hpMul = 0.9,
         moves = {
             { id = "talon_flurry", kind = "multi",  weight = 45, mult = 0.4, hits = 3 },
@@ -456,7 +349,7 @@ Enemies.KITS = {
             { id = "gust",         kind = "defend", weight = 15, armor = 0.9, maxRow = 1 },
         },
     },
-    spectral_knight = { -- escudo-torre: bloqueio alto e contra-golpe
+    spectral_knight = {
         hpMul = 1.1,
         opener = "tower_shield",
         moves = {
@@ -466,7 +359,7 @@ Enemies.KITS = {
             { id = "ghost_charge",   kind = "strong", weight = 20, mult = 1.5 },
         },
     },
-    storm_griffin = {   -- grifo da tempestade: rajada de garras e trovão
+    storm_griffin = {
         opener = "thunder_roar",
         moves = {
             { id = "lightning_talons", kind = "multi",  weight = 35, mult = 0.45, hits = 3 },
@@ -478,8 +371,7 @@ Enemies.KITS = {
         },
     },
 
-    -- ATO 3 — ABISMO
-    hellhound = {       -- duas cabeças: duas mordidas e bafo de brasa
+    hellhound = {
         hpMul = 0.95,
         moves = {
             { id = "twin_bite",       kind = "multi",  weight = 45, mult = 0.55, hits = 2 },
@@ -489,7 +381,7 @@ Enemies.KITS = {
             { id = "pounce",          kind = "strong", weight = 10, mult = 1.4 },
         },
     },
-    abyss_acolyte = {   -- acólito do tomo: amaldiçoa e se fortalece
+    abyss_acolyte = {
         opener = "curse",
         moves = {
             { id = "curse",     kind = "debuff", weight = 25,
@@ -500,7 +392,7 @@ Enemies.KITS = {
             { id = "tome_slam", kind = "attack", weight = 20, mult = 0.8, armor = 0.8 },
         },
     },
-    pit_brute = {       -- marreta: ergue um turno, desaba no outro
+    pit_brute = {
         hpMul = 1.15,
         moves = {
             { id = "raise_hammer", kind = "charge", weight = 25, armor = 0.8,
@@ -510,7 +402,7 @@ Enemies.KITS = {
             { id = "brute_punch",  kind = "attack", weight = 35, mult = 1.1 },
         },
     },
-    abyss_watcher = {   -- massa de sete olhos: loucura e raio
+    abyss_watcher = {
         opener = "gaze_of_madness",
         moves = {
             { id = "gaze_of_madness", kind = "debuff", weight = 25,
@@ -522,8 +414,7 @@ Enemies.KITS = {
         },
     },
 
-    -- ATO 4 — CIDADELA GELADA
-    frost_wolf = {      -- matilha: mordidas rápidas
+    frost_wolf = {
         hpMul = 0.9,
         moves = {
             { id = "frost_fangs", kind = "multi",  weight = 45, mult = 0.4, hits = 3 },
@@ -531,9 +422,8 @@ Enemies.KITS = {
             { id = "pack_howl",   kind = "buff",   weight = 20, strength = 0.2, maxRow = 1 },
         },
     },
-    rime_shaman = {     -- xamã do totem: enfraquece e se protege
+    rime_shaman = {
         opener = "chill_hex",
-        -- o totem sopra geada por cima do anúncio: metade dos turnos sem número
         veil = { level = "type_only", chance = 0.5 },
         moves = {
             { id = "chill_hex", kind = "attack", weight = 30, mult = 0.6,
@@ -543,7 +433,7 @@ Enemies.KITS = {
             { id = "blizzard",  kind = "multi",  weight = 10, mult = 0.35, hits = 3 },
         },
     },
-    frost_troll = {     -- troll das neves: aguenta e regenera
+    frost_troll = {
         hpMul = 1.2,
         passive = { regenPct = 0.02 },
         moves = {
@@ -553,7 +443,7 @@ Enemies.KITS = {
             { id = "regenerate", kind = "heal",   weight = 15, heal = 0.08, maxRow = 1, minTurn = 2 },
         },
     },
-    ice_wyrm = {        -- serpe: puxa o ar e sopra gelo
+    ice_wyrm = {
         moves = {
             { id = "deep_breath",  kind = "charge", weight = 20, armor = 0.8,
               next = "frost_breath", maxRow = 1, minTurn = 2 },
@@ -564,8 +454,7 @@ Enemies.KITS = {
         },
     },
 
-    -- ATO 5 — CORAÇÃO PÚTRIDO
-    plague_toad = {     -- sapo inchado: cospe veneno
+    plague_toad = {
         hpMul = 1.05,
         opener = "toxic_spit",
         moves = {
@@ -578,7 +467,7 @@ Enemies.KITS = {
               maxRow = 1 },
         },
     },
-    leech_horror = {    -- massa de sanguessugas: drena
+    leech_horror = {
         moves = {
             { id = "life_drain",  kind = "attack", weight = 45, mult = 0.9, heal = 0.08 },
             { id = "leech_swarm", kind = "multi",  weight = 30, mult = 0.35, hits = 3, heal = 0.04 },
@@ -587,7 +476,7 @@ Enemies.KITS = {
               debuff = { name = W, duration = 1 } },
         },
     },
-    croc_warrior = {    -- homem-crocodilo: casco e mordida
+    croc_warrior = {
         hpMul = 1.1,
         moves = {
             { id = "shell_guard",   kind = "attack", weight = 30, mult = 0.6, armor = 1.5, maxRow = 1 },
@@ -596,7 +485,7 @@ Enemies.KITS = {
             { id = "crushing_jaws", kind = "strong", weight = 10, mult = 0.9, pierce = true },
         },
     },
-    spore_mother = {    -- matriarca-fungo: esporos e rebrota
+    spore_mother = {
         passive = { regenPct = 0.02 },
         opener = "spore_cloud",
         moves = {
@@ -610,8 +499,7 @@ Enemies.KITS = {
         },
     },
 
-    -- ATO 6 — CORTE DO ECLIPSE
-    dusk_bat = {        -- morcego gigante: rajada que suga
+    dusk_bat = {
         hpMul = 0.9,
         moves = {
             { id = "wing_flurry", kind = "multi",  weight = 45, mult = 0.35, hits = 3, heal = 0.04 },
@@ -621,7 +509,7 @@ Enemies.KITS = {
             { id = "flutter",     kind = "defend", weight = 10, armor = 1.0, maxRow = 1 },
         },
     },
-    grave_thrall = {    -- esqueleto blindado: parede de escudo
+    grave_thrall = {
         hpMul = 1.15,
         opener = "shield_wall",
         moves = {
@@ -632,7 +520,7 @@ Enemies.KITS = {
               debuff = { name = F, duration = 2 }, maxRow = 1 },
         },
     },
-    dullahan = {        -- cavaleiro sem cabeça: golpes pesados e pavor
+    dullahan = {
         hpMul = 1.05,
         opener = "dread_stare",
         moves = {
@@ -643,7 +531,7 @@ Enemies.KITS = {
             { id = "spine_whip",      kind = "multi",  weight = 25, mult = 0.45, hits = 3 },
         },
     },
-    fallen_angel = {    -- anjo caído: lâmina alta e asas profanas
+    fallen_angel = {
         opener = "unholy_wings",
         moves = {
             { id = "fallen_blade",  kind = "strong", weight = 30, mult = 1.35 },
@@ -655,7 +543,6 @@ Enemies.KITS = {
     },
 }
 
--- Status que o inimigo põe no JOGADOR (fonte única do contrato com Player/HUD).
 Enemies.PLAYER_DEBUFFS = { weak = true, frail = true, vulnerable = true,
     poison = true, burn = true }
 

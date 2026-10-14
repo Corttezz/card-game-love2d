@@ -1,9 +1,4 @@
--- src/data/cards/basic.lua
--- Cartas basicas (sem classe especifica) e jokers lendarios compartilhados.
--- Fase 7 rebalance: toda carta tem tags explicitas e effects significativos.
-
 return {
-    -- ========== BASIC ATTACKS / DEFENSES ==========
     attack_001 = {
         id = "attack_001", name = "The Rock",
         type = "attack", subtype = "iron",
@@ -37,7 +32,6 @@ return {
         effects = {},
     },
 
-    -- ========== WARRIOR-COLORED BASICS (no basic.lua por legado) ==========
     warrior_seeing_red = {
         id = "warrior_seeing_red", name = "Ver Vermelho",
         type = "effect", subtype = "common",
@@ -92,7 +86,6 @@ return {
         rarity = "uncommon", class = "warrior",
         tags = { "discard", "armor", "cycle" },
         effects = {
-            -- Rebalance Jul/2026: descarte 2 -> 1 (tira o tempo negativo e diferencia de power_through)
             { type = "discard_cards", value = 1 },
             { type = "add_armor", value = 8, description = "+8 armor" },
         },
@@ -108,12 +101,10 @@ return {
         effects = {
             { type = "apply_debuff", value = "vulnerable", stacks = 1, duration = 2 },
             { type = "gain_strength", value = 2, description = "+2 Forca" },
-            -- Névoa de intenção (Out/2026): achar a brecha é VER o golpe
             { type = "reveal_intent", value = 2 },
         },
     },
 
-    -- ========== JOKERS LENDARIOS (sempre disponiveis) ==========
     joker_001 = {
         id = "joker_001", name = "Deus do Abismo",
         type = "joker", subtype = "legendary",
@@ -138,8 +129,6 @@ return {
         effects = {
             { type = "defense_multiplier", target = "defense", value = 1.5,
               description = "+50% de Bloqueio em defesas" },
-            -- Rebalance Jul/2026: reflexo agregado ao x1.5 (que colide com o cap de bloqueio 30/40/50);
-            -- como e JOKER, on_defend_damage dispara 1x/turno (regra P2.3, engine em EffectSystem/Game)
             { type = "on_defend_damage", value = 4, description = "Arma Espinhos 4 no primeiro Bloqueio do turno" },
         },
     },
@@ -181,9 +170,6 @@ return {
         },
     },
 
-    -- ========== CORINGAS DE COMBO (Out/2026, combos simples) ==========
-    -- Cada um DOBRA uma das tres regras do ComboSystem (combo_boost). Neutros:
-    -- servem a qualquer classe, porque Saraivada/Muralha/Par sao de todos.
     joker_combo_volley = {
         id = "joker_combo_volley", name = "Chuva de Laminas",
         type = "joker", subtype = "uncommon",
@@ -215,7 +201,6 @@ return {
         effects = { { type = "combo_boost", combo = "pair", value = 2 } },
     },
 
-    -- ========== EFFECTS BASICOS ==========
     effect_mystery_card = {
         id = "effect_mystery_card", name = "Carta Misterio",
         type = "effect", subtype = "mystery",
@@ -234,14 +219,10 @@ return {
         cost = 1, attack = 0, defense = 0,
         description = "Compra 3 cartas do deck. Revela a intenção por 2 turnos.",
         image = "assets/cards/effect/manaCrystal.png",
-        -- Rebalance Jul/2026: common -> uncommon (nerf preventivo — pos-fix do pool volta a ser
-        -- ofertavel; draw 3 por 1 mana em common dominaria mage_arcane_sight e viraria auto-include)
         rarity = "uncommon", class = "basic",
         tags = { "draw", "cycle" },
         effects = {
             { type = "draw_cards", value = 3, description = "Compra 3 cartas" },
-            -- Névoa de intenção (Out/2026): o contador NEUTRO — toda classe
-            -- tem acesso a uma leitura da nevasca
             { type = "reveal_intent", value = 2 },
         },
     },

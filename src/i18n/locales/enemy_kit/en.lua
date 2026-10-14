@@ -1,11 +1,7 @@
--- Enemy kit (src/data/enemies.lua): move names, intent tooltip lines, new
--- statuses and messages. Own file per locale; plugged into the main locale
--- as `enemy_kit = require(...)`.
 return {
     moves = {
         attack = { name = "Lunge" }, strong = { name = "Brutal Blow" },
         defend = { name = "Defensive Stance" }, buff = { name = "Rising Fury" },
-        -- Act 1
         rusty_scythe = { name = "Rusty Scythe" }, crow_pecks = { name = "Crow Pecks" },
         dread_stare = { name = "Dread Stare" }, straw_wall = { name = "Straw Wall" },
         reap = { name = "Reap" }, harvest = { name = "Harvest" },
@@ -14,7 +10,6 @@ return {
         gorge = { name = "Gorge" }, frenzy = { name = "Frenzy" },
         call_of_crows = { name = "Call of Crows" }, murder_of_crows = { name = "Murder of Crows" },
         royal_peck = { name = "Royal Peck" }, carrion_feast = { name = "Carrion Feast" },
-        -- Act 2
         stone_talons = { name = "Stone Talons" }, dive = { name = "Dive" },
         stone_skin = { name = "Stone Skin" }, lunar_shriek = { name = "Lunar Shriek" },
         rune_ward = { name = "Rune Ward" }, rune_bolt = { name = "Rune Bolt" },
@@ -22,7 +17,6 @@ return {
         life_drain = { name = "Life Drain" },
         frost_shield = { name = "Frost Shield" }, essence_drain = { name = "Essence Drain" },
         necrotic_ray = { name = "Necrotic Ray" }, bone_volley = { name = "Bone Volley" },
-        -- Act 3
         fireball = { name = "Fireball" }, scratch = { name = "Scratches" },
         cackle = { name = "Cackle" }, ember_jab = { name = "Ember Jab" },
         shadow_blade = { name = "Shadow Blade" }, fade = { name = "Fade" },
@@ -33,24 +27,20 @@ return {
         blood_feast = { name = "Blood Feast" }, noble_thrust = { name = "Noble Thrust" },
         gather_flames = { name = "Gather Flames" }, hellfire = { name = "Hellfire" },
         abyssal_claws = { name = "Abyssal Claws" }, cinder_spray = { name = "Cinder Spray" },
-        -- Act 4
         freezing_touch = { name = "Freezing Touch" }, wight_claw = { name = "Wight Claw" },
         blizzard = { name = "Blizzard" },
         ice_lance = { name = "Ice Lance" }, glacial_aegis = { name = "Glacial Aegis" },
         charge = { name = "Glacial Charge" }, rime = { name = "Rime" },
         eternal_winter = { name = "Eternal Winter" }, winter_blade = { name = "Winter Blade" },
         royal_blizzard = { name = "Royal Blizzard" }, frozen_crown = { name = "Frozen Crown" },
-        -- Act 5
         hex = { name = "Hex" }, toxic_cauldron = { name = "Toxic Cauldron" },
         crooked_cane = { name = "Crooked Cane" }, bog_brew = { name = "Bog Brew" },
         plague_cloud = { name = "Plague Cloud" }, colossal_slam = { name = "Colossal Slam" },
         putrid_blow = { name = "Putrid Blow" }, regrow = { name = "Regrow" },
-        -- Act 6
         waning_light = { name = "Waning Light" }, lunar_blades = { name = "Lunar Blades" },
         veil = { name = "Veil" }, total_eclipse = { name = "Total Eclipse" },
         black_corona = { name = "Black Corona" }, star_rain = { name = "Star Rain" },
         void_embrace = { name = "Void Embrace" },
-        -- Criaturas novas (Out/2026)
         pitchfork_jab = { name = "Pitchfork Jab" },
         wind_up = { name = "Wind Up" },
         pitchfork_skewer = { name = "Pitchfork Skewer" },
@@ -152,7 +142,6 @@ return {
         charge   = "Charging: the next attack will be devastating.",
         debuff   = "Applies {name} for {duration} turn(s).",
         dot      = "Applies {name}: {stacks} damage per turn for {duration} turn(s).",
-        -- intent fog (src/systems/IntentVisibility.lua)
         veil_title  = "Fog",
         veil_number = "The fog hides this move's number. You see the type, not the weight.",
         veil_all    = "The fog hides the intent. Something is coming, and you cannot tell what.",

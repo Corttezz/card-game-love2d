@@ -1,28 +1,13 @@
--- src/ui/BossAura.lua
--- Aura ASSINATURA dos chefes (Out/2026): corvos, almas, fagulhas, neve,
--- moscas, eclipse — o tema de cada chefe em volta dele. Dados em
--- src/data/boss_auras.lua; chamado SÓ pelo EnemyRenderer e SÓ com
--- enemy.isBoss.
---
--- Regras:
---   * PIXEL DA ARTE: tudo é desenhado em múltiplos inteiros do pixel do
---     sprite na tela (`scale`) e alinhado à grade dele — partícula de 1px de
---     tela ao lado de um chefe de pixel 2.6x lê como outro dialeto.
---   * PROFUNDIDADE: drawBack antes do sprite, drawFront depois. Órbita usa o
---     seno do ângulo (metade de baixo = mais perto = na frente).
---   * reducedMotion tira MOVIMENTO (órbita congela, emissor para, coroa e
---     círculo não giram) e mantém INFORMAÇÃO (brilhos, círculo, coroa).
---   * Chefe sem entrada nos dados AVISA uma vez (sem fallback mudo).
---   * Barato: só retângulos + um sprite de brilho 16x16 posterizado.
+local Debug = require("src.core.Debug")
 
 local AURAS = require("src.data.boss_auras")
 
 local BossAura = {}
 
 local warned = {}
-local state = {}           -- [id] = { t, parts = {back={}, front={}}, timers }
+local state = {}
 local glowImg = nil
-local edgeCache = {}       -- [id] = { left = {[row]=x}, right = {...}, h }
+local edgeCache = {}
 
 local function reducedMotion()
     return (_G.gameSettings and _G.gameSettings.reducedMotion) or false
@@ -36,14 +21,12 @@ function BossAura.get(id)
     local a = AURAS[id]
     if not a and id and not warned[id] then
         warned[id] = true
-        print("[BossAura] AVISO: chefe sem aura declarada: " .. tostring(id)
+        Debug.warn("[BossAura] AVISO: chefe sem aura declarada: " .. tostring(id)
             .. " (src/data/boss_auras.lua)")
     end
     return a
 end
 
--- Brilho posterizado (4 degraus), filtro nearest: luz em pixel art é
--- anel, não degradê liso — mesma linguagem do light_dither.
 local function getGlow()
     if glowImg then return glowImg end
     local n = 16
@@ -80,8 +63,6 @@ local function getState(id)
     return s
 end
 
--- Borda externa da silhueta por linha (quadro 0 do idle), pro brilho que
--- corre pelas asas. Pixels da arte.
 local function edges(id)
     if edgeCache[id] ~= nil then return edgeCache[id] end
     local path = "assets/sprites/characters/enemies/" .. id
@@ -104,7 +85,7 @@ local function edges(id)
         end
     end
     if not e then
-        print("[BossAura] AVISO: sem quadro 0 do idle pra borda de " .. id)
+        Debug.warn("[BossAura] AVISO: sem quadro 0 do idle pra borda de " .. id)
     end
     edgeCache[id] = e
     return e
@@ -114,13 +95,6 @@ function BossAura.reset()
     state = {}
 end
 
--- ---------------------------------------------------------------------------
--- ENXAME (moscas): cada mosca é um agente que persegue um alvo sorteado em
--- volta do corpo e troca de alvo em intervalos irregulares. Aceleração
--- limitada + amortecimento = trajeto ERRÁTICO mas CONTÍNUO (zigue-zague que
--- faz curva), velocidade própria por mosca. A órbita em elipse de antes era
--- um carrossel — "não natural" (dono, Out/2026). Posições em px da arte.
--- ---------------------------------------------------------------------------
 local function pickTarget(w, f, iw, ih)
     local a = love.math.random() * 6.283
     local d = 0.35 + 0.65 * math.sqrt(love.math.random())
@@ -132,7 +106,7 @@ end
 
 function BossAura._updateSwarm(w, s, dt)
     local iw, ih = s.iw or 0, s.ih or 0
-    if iw == 0 then return end            -- ainda sem draw (canvas desconhecido)
+    if iw == 0 then return end
     if not s.flies then
         s.flies = {}
         for i = 1, w.n do
@@ -153,7 +127,6 @@ function BossAura._updateSwarm(w, s, dt)
         local acc = f.maxV * 6
         f.vx = f.vx + dx / d * acc * dt
         f.vy = f.vy + dy / d * acc * dt
-        -- tremido lateral (zumbido) perpendicular ao voo
         local j = math.sin(s.t * 23 + f.ph) * f.maxV * 0.8
         f.vx = f.vx - dy / d * j * dt * 4
         f.vy = f.vy + dx / d * j * dt * 4
@@ -164,10 +137,6 @@ function BossAura._updateSwarm(w, s, dt)
     end
 end
 
--- ---------------------------------------------------------------------------
--- UPDATE: emissores + vida das partículas. `id` = chefe na tela (ou nil).
--- dying = clip de death tocando: para de emitir e esvai em 0.6s.
--- ---------------------------------------------------------------------------
 function BossAura.update(dt, id, dying)
     if not id then return end
     local spec = AURAS[id]
@@ -186,7 +155,6 @@ function BossAura.update(dt, id, dying)
             local n = 0
             local spot = nil
             if em.kind == "ooze" then
-                -- cada PONTO pintado pinga no seu próprio ritmo, irregular
                 s.spots = s.spots or {}
                 s.spots[i] = s.spots[i] or {}
                 for si, sp in ipairs(em.spots) do
@@ -199,16 +167,12 @@ function BossAura.update(dt, id, dying)
                     s.spots[i][si] = tm
                 end
             elseif em.every then
-                -- rajada com intervalo IRREGULAR (±35%): metrônomo lê máquina
                 s.timers[i] = (s.timers[i] or (em.every * 0.5)) - dt
                 if s.timers[i] <= 0 then
                     s.timers[i] = em.every * (0.65 + 0.7 * love.math.random())
                     n = em.burst or 1
                 end
             else
-                -- chegada de POISSON: intervalo exponencial entre partículas.
-                -- O acumulador antigo soltava uma a cada 1/rate segundos
-                -- exatos — cadência de esteira (revisão do dono, Out/2026).
                 s.acc[i] = (s.acc[i] or (-math.log(1 - love.math.random()) / (em.rate or 1))) - dt
                 while s.acc[i] <= 0 and n < 6 do
                     n = n + 1
@@ -236,7 +200,6 @@ function BossAura.update(dt, id, dying)
                         life = life, max = life,
                         ph = love.math.random() * 6.283,
                         big = love.math.random() < (em.big or 0),
-                        -- balanço com frequência PRÓPRIA (todas iguais = coreografia)
                         sf = 1.2 + love.math.random() * 1.8,
                         state = (em.kind == "ooze") and "form" or nil,
                         st = 0, formDur = rnd(em.form or { 0.8, 1.6 }),
@@ -259,13 +222,11 @@ function BossAura.update(dt, id, dying)
             elseif not still then
                 local em = p.em
                 if em.kind == "ooze" then
-                    -- gota: FORMA pendurada no ponto (cresce e estica), SOLTA
-                    -- e cai com gravidade, ESPIRRA uma vez no chão e some
                     p.st = p.st + dt
                     if p.state == "form" then
                         if p.st >= p.formDur then
                             p.state, p.st, p.vy = "fall", 0, 4
-                            p.ay = 2          -- sai da ponta da gota esticada
+                            p.ay = 2
                         end
                     elseif p.state == "fall" then
                         p.vy = p.vy + (em.gravity or 90) * dt
@@ -292,22 +253,13 @@ function BossAura.update(dt, id, dying)
     end
 end
 
--- ---------------------------------------------------------------------------
--- DESENHO
--- r = { x, y, w, h, iw, ih, scale, groundY, cx }
--- ---------------------------------------------------------------------------
 local floor = math.floor
 
--- BLOCO: a partícula/corpo corrente desenha com pixels de K x K pixels da
--- arte, ampliada em torno da âncora (KX, KY). Um chefe a 2x na tela tem
--- pixel da arte de ~2px — corvo de 7 pixels da arte virava cisco. K=2 dobra
--- o desenho e continua na grade da arte (múltiplo inteiro, mesmo dialeto).
 local KX, KY, K = 0, 0, 1
 local function setK(ax, ay, k)
     KX, KY, K = ax, ay, k or 1
 end
 
--- retângulo de n x m pixels da ARTE na posição de arte (ax, ay)
 local function artRect(r, ax, ay, nw, nh)
     if K ~= 1 then
         ax = KX + (ax - KX) * K
@@ -331,7 +283,6 @@ local function drawGlows(r, spec, s, fade)
     for i, g in ipairs(spec.glows) do
         local k = 1
         if g.beat then
-            -- tum-tum: duas pancadas e pausa, período `beat` segundos
             local ph = (t % g.beat) / g.beat
             local b1 = math.max(0, 1 - math.abs(ph - 0.10) / 0.08)
             local b2 = math.max(0, 1 - math.abs(ph - 0.30) / 0.08)
@@ -350,11 +301,6 @@ local function drawGlows(r, spec, s, fade)
     love.graphics.setBlendMode("alpha")
 end
 
--- Corvo: silhueta de pássaro de FRENTE (o "m" clássico de pássaro ao
--- longe), 9x5 pixels da arte, 3 quadros de batida. CORPO de 3 pixels no
--- meio e asa de 2 pixels de espessura — a versão anterior tinha asa de 1
--- pixel com ponta clara e lia como risquinhos soltos (revisão Out/2026).
--- '#' = pena escura, 'o' = único pixel de brilho (dorso).
 local function parseShape(rows)
     local pts = {}
     local h, w = #rows, #rows[1]
@@ -369,21 +315,21 @@ local function parseShape(rows)
     return pts
 end
 local CROW = {
-    parseShape({                 -- asas em cima
+    parseShape({
         "#.......#",
         "##.....##",
         ".##.#.##.",
         "..##o##..",
         "....#....",
     }),
-    parseShape({                 -- planando
+    parseShape({
         ".........",
         "....#....",
         "###.o.###",
         "..##o##..",
         "....#....",
     }),
-    parseShape({                 -- asas embaixo
+    parseShape({
         ".........",
         "....#....",
         "..##o##..",
@@ -393,7 +339,6 @@ local CROW = {
 }
 local CROW_SEQ = { 1, 2, 3, 2 }
 
--- Runa flutuante 3x3 (quatro glifos alternando).
 local RUNES = {
     { { 0, -1 }, { 0, 0 }, { 0, 1 }, { -1, -1 }, { 1, 1 } },
     { { -1, -1 }, { 1, -1 }, { 0, 0 }, { -1, 1 }, { 1, 1 } },
@@ -406,10 +351,6 @@ local function orbitOne(r, o, s, front)
     local t = still and 0 or s.t
     local fade = s.fade
     for i = 1, o.n do
-        -- cada corpo com raio, velocidade, fase e oscilação PRÓPRIOS (hash
-        -- do índice: estável entre quadros). Espaçamento igual + velocidade
-        -- igual = carrossel; o dono lê como mecânico. `o.regular = true`
-        -- mantém a geometria exata (runas: são feitiço, não bicho).
         local h1, h2, h3 = 0.5, 0.5, 0
         if not o.regular then
             h1 = (math.sin(i * 12.9898) * 43758.5453) % 1
@@ -425,7 +366,6 @@ local function orbitOne(r, o, s, front)
             local ru, rv = o.ru, o.rv
             local u, v
             if o.kind == "fly" then
-                -- Lissajous + tremido: mosca não faz órbita limpa
                 u = cu + ru * math.cos(ang) * (0.6 + 0.4 * math.sin(t * 1.7 + i))
                 v = cv + rv * math.sin(ang * 1.6 + i)
                 if not still then
@@ -433,7 +373,6 @@ local function orbitOne(r, o, s, front)
                     v = v + (love.math.random() - 0.5) * 0.012
                 end
             elseif o.kind == "flake" then
-                -- redemoinho: cada floco sobe devagar e volta pro pé
                 local rise = ((t * (o.rise or 0.05) * (0.7 + 0.6 * h2) + h1 + i * 0.137) % 1)
                 v = cv + 0.40 - rise * 0.85 + rv * sn
                 u = cu + ru * math.cos(ang) * (0.75 + 0.25 * rise)
@@ -442,7 +381,6 @@ local function orbitOne(r, o, s, front)
                 u = cu + ru * rk * math.cos(ang)
                 v = cv + rv * rk * sn
                 if not o.regular then
-                    -- planar: sobe e desce devagar, cada um no seu tempo
                     v = v + 0.025 * math.sin(t * (0.6 + h2) + i * 2.1)
                 end
             end
@@ -479,7 +417,6 @@ local function orbitOne(r, o, s, front)
                 local c = isFront and o.color or o.color2
                 love.graphics.setColor(c[1], c[2], c[3], fade * (isFront and 0.95 or 0.55))
                 if isFront and i % 3 == 0 then
-                    -- floco grande em cruz (perto da câmera)
                     artRect(r, ax, ay, 1, 1)
                     love.graphics.setColor(c[1], c[2], c[3], fade * 0.55)
                     artRect(r, ax - 1, ay, 1, 1); artRect(r, ax + 1, ay, 1, 1)
@@ -491,8 +428,6 @@ local function orbitOne(r, o, s, front)
                 local c = isFront and o.color or o.color2
                 love.graphics.setColor(c[1], c[2], c[3], fade * (isFront and 1 or 0.7))
                 artRect(r, ax, ay, 1, 1)
-                -- asinhas claras piscando: sem elas a mosca preta some
-                -- em cima do corpo escuro do colosso
                 local wing = (floor(s.t * 30 + i) % 2 == 0) and -1 or 1
                 love.graphics.setColor(0.82, 0.88, 0.74, 0.75 * fade)
                 artRect(r, ax + wing * 0.5, ay - 1, 1, 1)
@@ -510,7 +445,6 @@ local function drawSwarm(r, spec, s, front)
             local c = front and w.color or w.color2
             love.graphics.setColor(c[1], c[2], c[3], s.fade * (front and 1 or 0.7))
             artRect(r, f.x, f.y, 1, 1)
-            -- asinhas claras batendo (alternam rápido, fase própria)
             if floor(s.t * 28 + f.ph * 3) % 2 == 0 then
                 love.graphics.setColor(w.wing[1], w.wing[2], w.wing[3], 0.55 * s.fade)
                 artRect(r, f.x, f.y - 1, 1, 1)
@@ -533,7 +467,7 @@ local function drawParticles(r, list, fade)
     for _, p in ipairs(list) do
         setK(0, 0, 1)
         local em = p.em
-        local k = p.life / p.max             -- 1 nasceu → 0 morre
+        local k = p.life / p.max
         local ax = p.u * r.iw + p.ax
         local ay = p.v * r.ih + p.ay
         if em.sway then ax = ax + math.sin(p.ph + (p.max - p.life) * (p.sf or 2.2)) * em.sway * 0.3 end
@@ -546,8 +480,6 @@ local function drawParticles(r, list, fade)
         local a = (em.a or 1) * math.min(1, k * 2.5) * math.min(1, (1 - k) * 8 + 0.2) * fade
         local kind = em.kind
         if kind == "feather" then
-            -- pena: 3 pixels em DIAGONAL que tomba de "/" pra "\" conforme
-            -- balança; risco horizontal/vertical lia como pixel solto
             local dir = (math.sin(p.ph + (p.max - p.life) * 3) > 0) and 1 or -1
             love.graphics.setColor(cr, cg, cb, a)
             artRect(r, ax - dir, ay - 1, 1, 1)
@@ -555,8 +487,6 @@ local function drawParticles(r, list, fade)
             love.graphics.setColor(c2[1], c2[2], c2[3], a)
             artRect(r, ax, ay, 1, 1)
         elseif kind == "petal" then
-            -- pétala: gota 2x2 com um pixel claro que gira em volta — o
-            -- traço de 3 pixels de antes lia como risco, não como pétala
             local f = floor(p.ph + (p.max - p.life) * 2.5) % 4
             love.graphics.setColor(cr, cg, cb, a)
             artRect(r, ax, ay, 2, 2)
@@ -571,7 +501,6 @@ local function drawParticles(r, list, fade)
             local sz = p.big and 2 or 1
             artRect(r, ax, ay, sz, sz)
             if kind == "wisp" then
-                -- rastro de 2 pixels esmaecendo pra baixo
                 love.graphics.setColor(cr, cg, cb, a * 0.45)
                 artRect(r, ax, ay + 1, 1, 1)
                 love.graphics.setColor(cr, cg, cb, a * 0.2)
@@ -593,7 +522,6 @@ local function drawParticles(r, list, fade)
             end
             love.graphics.setBlendMode("alpha")
         elseif kind == "ooze" then
-            -- cor FOSCA da gosma (sem pop saturado), brilho só na ponta
             local base, hi = em.color, em.color2 or em.color
             if p.state == "form" then
                 local k2 = math.min(1, p.st / p.formDur)
@@ -609,7 +537,6 @@ local function drawParticles(r, list, fade)
                 love.graphics.setColor(hi[1], hi[2], hi[3], 0.9 * fade)
                 artRect(r, ax, ay, 1, 1)
             else
-                -- espirro: poça achatando + dois pingos em arco
                 local tt = p.st
                 local kk = math.max(0, 1 - tt / 0.55)
                 love.graphics.setColor(base[1], base[2], base[3], 0.9 * kk * fade)
@@ -625,7 +552,6 @@ local function drawParticles(r, list, fade)
     end
 end
 
--- Círculo rúnico no chão (elipse pontilhada que gira + marcas de runa).
 local function drawFloor(r, spec, s)
     local f = spec.floor
     if not f then return end
@@ -645,12 +571,10 @@ local function drawFloor(r, spec, s)
         local c = (i % 11 == 0) and f.color2 or f.color
         love.graphics.setColor(c[1], c[2], c[3], a * ((i % 2 == 0) and 1 or 0.45))
         artRect(r, cxArt + math.cos(ang) * rx, cyArt + math.sin(ang) * ry, 1, 1)
-        -- runas: traço radial a cada 11 pontos
         if i % 11 == 0 then
             artRect(r, cxArt + math.cos(ang) * rx * 0.86, cyArt + math.sin(ang) * ry * 0.86, 1, 1)
         end
     end
-    -- anel interno contra-rotativo, mais fraco
     for i = 0, 27 do
         local ang = i / 28 * 6.283 - rot * 1.4
         love.graphics.setColor(f.color2[1], f.color2[2], f.color2[3], a * 0.4)
@@ -661,8 +585,6 @@ local function drawFloor(r, spec, s)
     love.graphics.setBlendMode("alpha")
 end
 
--- Eclipse: coroa de raios que gira atrás da cabeça (+ disco escuro e anel,
--- a menos que `disc = false`).
 local function drawCorona(r, spec, s)
     local c = spec.corona
     if not c then return end
@@ -671,9 +593,6 @@ local function drawCorona(r, spec, s)
     local cxA, cyA = c.u * r.iw, c.v * r.ih
     local R = c.r
     local fade = s.fade
-    -- raios: 24 setores, comprimento oscilando, girando devagar. Mistura
-    -- NORMAL, não aditiva: a sala 6 é um feixe de luz BRANCA — luz somada
-    -- em branco some; cor pintada por cima lê.
     local rot = still and 0 or t * c.speed
     local nr = c.rays or 24
     for i = 0, nr - 1 do
@@ -688,18 +607,12 @@ local function drawCorona(r, spec, s)
         end
         end
     end
-    -- Sem disco nem anel (`disc = false`): a sala 6 já tem o eclipse
-    -- pintado na abertura do fundo; dois eclipses empilhados liam como
-    -- cópia. Fica só a coroa de raios em volta da cabeça.
     if c.disc == false then return end
-    -- anel de luz colado no disco
     for i = 0, 71 do
         local ang = i / 72 * 6.283
         love.graphics.setColor(c.color[1], c.color[2], c.color[3], 0.85 * fade)
         artRect(r, cxA + math.cos(ang) * R, cyA + math.sin(ang) * R, 1, 1)
     end
-    -- disco (lua cobrindo o sol): uma linha por pixel da arte, OPACA —
-    -- linhas translúcidas se sobrepõem no arredondamento e listram o disco
     love.graphics.setColor(c.dark[1], c.dark[2], c.dark[3], fade)
     for dy = -R + 1, R - 1 do
         local half = floor(math.sqrt(math.max(0, (R - 0.6) ^ 2 - dy * dy)) + 0.5)
@@ -707,7 +620,6 @@ local function drawCorona(r, spec, s)
     end
 end
 
--- Brilho correndo pela borda externa da silhueta (dos dois lados).
 local function drawGlint(r, spec, s)
     local g = spec.glint
     if not g or reducedMotion() then return end
@@ -734,7 +646,6 @@ function BossAura.drawBack(id, r)
     local s = getState(id)
     if s.fade <= 0 then return end
     r.id = id
-    -- chão em pixels da arte, pro update pousar as gotas
     s.groundArt = (r.groundY - r.y) / r.scale
     s.ih = r.ih
     s.iw = r.iw
@@ -762,7 +673,6 @@ function BossAura.drawFront(id, r)
     love.graphics.pop()
 end
 
--- Testes: contagem de partículas vivas (o emissor emite e o morto para).
 function BossAura._debugCount(id)
     local s = state[id]
     if not s then return 0 end

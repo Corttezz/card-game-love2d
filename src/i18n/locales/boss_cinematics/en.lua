@@ -1,5 +1,3 @@
--- Boss cinematic (src/ui/BossCinematic): name card + epithet and the skip hint.
--- Names match end_screen.enemy.*; the epithet is each boss's element.
 return {
     skip = "Skip  {key}",
     carrion_king   = { name = "Carrion King",   epithet = "Sovereign of Crows" },

@@ -1,6 +1,3 @@
--- src/data/decks.lua
--- Decks predefinidos (modo classico). Formato: {cards = {{id, quantity}, ...}}.
-
 return {
                 starter = {
                     name = "Deck Iniciante",

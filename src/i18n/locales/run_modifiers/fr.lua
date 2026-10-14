@@ -1,4 +1,3 @@
--- Selos do Grimório + maldições do endless (RunModifiers) — fr
 return {
     seals = {
         cerco = { name = "Siège", desc = "Les élites apparaissent 50 % plus souvent sur la carte." },

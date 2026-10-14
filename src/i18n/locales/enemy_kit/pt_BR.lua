@@ -1,11 +1,7 @@
--- Kit dos inimigos (src/data/enemies.lua): nomes de golpe, linhas do tooltip
--- do intent, status novos e mensagens. Arquivo próprio por locale para não
--- disputar o locale principal; entra nele como `enemy_kit = require(...)`.
 return {
     moves = {
         attack = { name = "Investida" }, strong = { name = "Golpe Brutal" },
         defend = { name = "Postura Defensiva" }, buff = { name = "Fúria Crescente" },
-        -- Ato 1
         rusty_scythe = { name = "Foice Enferrujada" }, crow_pecks = { name = "Bicadas de Corvo" },
         dread_stare = { name = "Olhar de Pavor" }, straw_wall = { name = "Muralha de Palha" },
         reap = { name = "Ceifar" }, harvest = { name = "Colheita" },
@@ -14,7 +10,6 @@ return {
         gorge = { name = "Devorar" }, frenzy = { name = "Frenesi" },
         call_of_crows = { name = "Chamado da Revoada" }, murder_of_crows = { name = "Revoada" },
         royal_peck = { name = "Bicada Real" }, carrion_feast = { name = "Banquete de Carniça" },
-        -- Ato 2
         stone_talons = { name = "Garras de Pedra" }, dive = { name = "Mergulho" },
         stone_skin = { name = "Pele de Pedra" }, lunar_shriek = { name = "Grito Lunar" },
         rune_ward = { name = "Runa de Proteção" }, rune_bolt = { name = "Raio Rúnico" },
@@ -22,7 +17,6 @@ return {
         life_drain = { name = "Drenar Vida" },
         frost_shield = { name = "Escudo de Gelo" }, essence_drain = { name = "Drenar Essência" },
         necrotic_ray = { name = "Raio Necrótico" }, bone_volley = { name = "Rajada de Ossos" },
-        -- Ato 3
         fireball = { name = "Bola de Fogo" }, scratch = { name = "Arranhões" },
         cackle = { name = "Gargalhada" }, ember_jab = { name = "Estocada de Brasa" },
         shadow_blade = { name = "Lâmina Sombria" }, fade = { name = "Esvanecer" },
@@ -33,24 +27,20 @@ return {
         blood_feast = { name = "Banquete de Sangue" }, noble_thrust = { name = "Estocada Nobre" },
         gather_flames = { name = "Reunir Chamas" }, hellfire = { name = "Fogo Infernal" },
         abyssal_claws = { name = "Garras do Abismo" }, cinder_spray = { name = "Chuva de Cinzas" },
-        -- Ato 4
         freezing_touch = { name = "Toque Congelante" }, wight_claw = { name = "Garra Espectral" },
         blizzard = { name = "Nevasca" },
         ice_lance = { name = "Lança de Gelo" }, glacial_aegis = { name = "Égide Glacial" },
         charge = { name = "Investida Glacial" }, rime = { name = "Geada" },
         eternal_winter = { name = "Inverno Eterno" }, winter_blade = { name = "Lâmina do Inverno" },
         royal_blizzard = { name = "Nevasca Real" }, frozen_crown = { name = "Coroa Gélida" },
-        -- Ato 5
         hex = { name = "Maldição" }, toxic_cauldron = { name = "Caldeirão Tóxico" },
         crooked_cane = { name = "Bengala Torta" }, bog_brew = { name = "Poção do Lodo" },
         plague_cloud = { name = "Nuvem Pestilenta" }, colossal_slam = { name = "Pancada Colossal" },
         putrid_blow = { name = "Golpe Pútrido" }, regrow = { name = "Regenerar" },
-        -- Ato 6
         waning_light = { name = "Luz Minguante" }, lunar_blades = { name = "Lâminas Lunares" },
         veil = { name = "Véu" }, total_eclipse = { name = "Eclipse Total" },
         black_corona = { name = "Coroa Negra" }, star_rain = { name = "Chuva de Estrelas" },
         void_embrace = { name = "Abraço do Vazio" },
-        -- Criaturas novas (Out/2026)
         pitchfork_jab = { name = "Estocada de Forcado" },
         wind_up = { name = "Erguer o Forcado" },
         pitchfork_skewer = { name = "Espeto de Forcado" },
@@ -141,7 +131,6 @@ return {
         feather_storm = { name = "Tempestade de Penas" },
     },
 
-    -- Linhas do tooltip do intent, montadas dos números CONGELADOS.
     intent = {
         hit      = "Ataca causando {value} de dano.",
         multi    = "Ataca {hits} vezes: {value} de dano cada ({total} no total).",
@@ -153,7 +142,6 @@ return {
         charge   = "Carregando: o próximo golpe será devastador.",
         debuff   = "Aplica {name} por {duration} turno(s).",
         dot      = "Aplica {name}: {stacks} de dano por turno, por {duration} turno(s).",
-        -- névoa de intenção (src/systems/IntentVisibility.lua)
         veil_title  = "Névoa",
         veil_number = "A névoa esconde o número deste golpe. O tipo você vê; o peso, não.",
         veil_all    = "A névoa esconde a intenção. Algo vem, e você não sabe o quê.",

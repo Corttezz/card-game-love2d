@@ -1,19 +1,3 @@
--- src/ui/CardInspectModal.lua
--- Modal de INSPEÇÃO de carta (carta grande com warp 3D + painel lateral com
--- nome/tipo/classe/raridade/stats/descrição/efeitos), navegável por setas.
--- Extraído do drawInspectModal da CollectionScreen (Jul/2026) pra ser
--- COMPARTILHADO — o Deck Viewer da run abre a MESMA visão ao clicar numa carta,
--- ficando idêntico à aba de Coleção do menu (pedido do Daniel).
---
--- Uso:
---   modal = CardInspectModal:new()
---   modal:show(instance, list, index)   -- list/index opcionais (setas navegam)
---   modal:update(dt); modal:draw()
---   modal:mousepressed(x,y,b) / :keypressed(key)   -- consomem enquanto aberto
---
--- Instância deve ter .image (canvas do CardFrame). Se vier com forja aplicada,
--- os stats/gemas já refletem isso (o Deck Viewer passa instâncias upgradadas).
-
 local CardInspectModal = {}
 CardInspectModal.__index = CardInspectModal
 
@@ -28,11 +12,11 @@ local Sfx                 = require("src.systems.Sfx")
 
 function CardInspectModal:new()
     local self = setmetatable({}, CardInspectModal)
-    self.card = nil      -- instância inspecionada (nil = fechado)
-    self.list = nil      -- lista pra navegar com setas (opcional)
-    self.index = nil     -- índice atual em list
-    self.anim = 0        -- 0..1 (fade/zoom in)
-    self.last = nil      -- última carta (pra desenhar durante o fade-out)
+    self.card = nil
+    self.list = nil
+    self.index = nil
+    self.anim = 0
+    self.last = nil
     return self
 end
 
@@ -57,7 +41,7 @@ function CardInspectModal:_neighbor(delta)
     if n <= 1 then return end
     self.index = ((self.index - 1 + delta) % n) + 1
     self.card = self.list[self.index]
-    self.anim = 0.3   -- leve "pop" ao trocar
+    self.anim = 0.3
 end
 
 function CardInspectModal:update(dt)
@@ -80,7 +64,6 @@ function CardInspectModal:keypressed(key)
     return true
 end
 
--- Mesma geometria da CollectionScreen pra clique nas setas / fora fechar.
 function CardInspectModal:mousepressed(x, y, button)
     if not self.card then return false end
     if button ~= 1 then return true end
@@ -89,15 +72,12 @@ function CardInspectModal:mousepressed(x, y, button)
     local cardX = (w - cardW) / 2 - 140
     local cardY = (h - cardH) / 2
     local arrowY = h / 2 - 30
-    -- seta esquerda
     if x >= 20 and x <= 100 and y >= arrowY and y <= arrowY + 60 then
         Sfx.play("collectionFlip"); self:_neighbor(-1); return true
     end
-    -- seta direita
     if x >= w - 100 and x <= w - 20 and y >= arrowY and y <= arrowY + 60 then
         Sfx.play("collectionFlip"); self:_neighbor(1); return true
     end
-    -- clique em qualquer outro lugar fecha
     if x < cardX or x > cardX + cardW + 320 or y < cardY - 20 or y > cardY + cardH + 20 then
         self:hide()
     end
@@ -105,7 +85,7 @@ function CardInspectModal:mousepressed(x, y, button)
 end
 
 function CardInspectModal:mousereleased(x, y, button)
-    return self.card ~= nil   -- consome enquanto aberto
+    return self.card ~= nil
 end
 
 local function drawArrows(self, width, height)
@@ -130,20 +110,15 @@ function CardInspectModal:draw()
     local width, height = love.graphics.getDimensions()
     local anim = self.anim
 
-    -- Backdrop escurecido
     love.graphics.setColor(0, 0, 0, 0.82 * anim)
     love.graphics.rectangle("fill", 0, 0, width, height)
 
-    -- Carta em escala grande (4x = 384×576)
     local scale = 4 * (0.85 + 0.15 * anim)
     local cardW = 96 * scale
     local cardH = 144 * scale
-    local cardX = (width - cardW) / 2 - 140  -- desloca pra esquerda pra caber painel
+    local cardX = (width - cardW) / 2 - 140
     local cardY = (height - cardH) / 2
 
-    -- Ícone animado: a inspeção desenha o quadro vivo como toda carta visível
-    -- (CardFrame.displayImage decide; reducedMotion = estática). Swap
-    -- temporário de inst.image, restaurado logo após o bloco de desenho.
     local _prevImage = inst.image
     do
         local shown = CardFrame.displayImage(inst)
@@ -192,9 +167,8 @@ function CardInspectModal:draw()
         end
         CardAnimationLayer.draw(inst, inst._cachedArt, cardX, cardY, scale, scale)
     end
-    inst.image = _prevImage   -- desfaz o swap do ícone vivo
+    inst.image = _prevImage
 
-    -- Painel lateral com info detalhada
     local panelX = cardX + cardW + 30
     local panelY = cardY
     local panelW = 340
@@ -222,7 +196,6 @@ function CardInspectModal:draw()
     local typeColor = Palette.forCardType(inst.type) or Palette.PARCHMENT
     local rarityColor = Palette.forRarity(inst.rarity) or Palette.PARCHMENT
     local typeLabel = I18n.t("card_type." .. (inst.type or "unknown"), nil, I18n.t("card_type.unknown"))
-    -- class "basic" (neutras) não tem entrada em classes.* — caía no id cru.
     local classLabel = (inst.class and inst.class ~= "basic")
         and I18n.t("classes." .. inst.class .. ".name", nil, inst.class)
         or I18n.t("card_info.class_basic")
@@ -243,7 +216,6 @@ function CardInspectModal:draw()
     local statY = metaY + lineH * 3 + 12
     love.graphics.print(I18n.t("card_info.cost") .. tostring(inst.cost or 0), panelX + PAD, statY)
     statY = statY + 20
-    -- destaque VERDE se forjada (padrão StS de stat aumentado)
     local upgraded = (inst.upgrades or 0) > 0
     if inst.type == "attack" then
         if upgraded then love.graphics.setColor(0.55, 0.92, 0.45, anim)
@@ -295,7 +267,6 @@ function CardInspectModal:draw()
     local closeFont = FontManager.getFont(13)
     love.graphics.setFont(closeFont)
     love.graphics.setColor(Palette.AGED_GOLD_LIGHT[1], Palette.AGED_GOLD_LIGHT[2], Palette.AGED_GOLD_LIGHT[3], anim)
-    -- dica no idioma do aparelho (pad: D-pad + B; mouse/teclado: setas/ESC/clique)
     local closeMsg = I18n.t(require("src.ui.NavCursor").device() == "pad"
         and "collection.inspect_help_pad" or "collection.inspect_help")
     love.graphics.print(closeMsg, (width - closeFont:getWidth(closeMsg)) / 2, height - 30)

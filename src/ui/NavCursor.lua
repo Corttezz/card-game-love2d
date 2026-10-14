@@ -1,49 +1,18 @@
--- src/ui/NavCursor.lua
--- NAVEGAÇÃO POR TECLADO E GAMEPAD EM TODAS AS TELAS (Out/2026 — meta Steam
--- Deck Verified).
---
--- Em vez de ensinar 20 telas a navegar, o cursor de foco se apoia no que
--- elas JÁ fazem: o hover deste jogo é por POLLING (`love.mouse.getPosition`,
--- 40+ call sites) e o clique é `mousepressed/mousereleased`. Então:
---
---   1. ALVOS: quem desenha algo clicável registra o retângulo no quadro
---      (`NavCursor.target`). Button:draw e Card:draw já registram — o resto
---      (tiles da loja, nós do mapa, quadros...) chama `target` no draw. O
---      retângulo é convertido pra PIXELS DA TELA na hora (transformPoint),
---      então escala de UI, slide-in e scissor não importam pra navegação.
---      A camada de foco (InputFocus) de quem registrou vai junto: só valem
---      os alvos da camada que tem o foco (modal por cima apaga os de trás).
---   2. FOCO: no modo teclado/pad, o mouse "mora" no centro do alvo focado
---      (InputFocus.setPositionOverride): hover, tooltip, lift de carta — tudo
---      que já reage ao mouse reage ao foco, de graça. Foco = hover.
---   3. AÇÕES: A/Enter sintetiza o clique no foco (o MESMO caminho do mouse);
---      gatilho = clique direito (inspecionar); B/Esc = a tecla Esc; X/Y e
---      ombros = ações de contexto que a tela publica (`NavCursor.action`).
---   4. MOUSE E PAD CONVIVEM: mexer o mouse desliga o modo (some o anel);
---      apertar tecla/botão religa, focando o que estava sob o mouse.
---
--- Telas com navegação PRÓPRIA (pausa, configurações, confirmação, dados do
--- escriba, fim de jogo, conquistas — MenuKit) declaram `ownsNavigation` e
--- recebem as teclas como antes; o pad vira tecla pra elas.
-
 local NavCursor = {}
 
-local targets, prev = {}, {}     -- alvos do quadro corrente / do último completo
+local targets, prev = {}, {}
 local actions, prevActions = {}, {}
 local active = false
-local device = "mouse"            -- "mouse" | "keyboard" | "pad"
+local device = "mouse"
 local focusKey = nil
-local focusPt = nil               -- último ponto focado (pra reescolher)
-local focusExplicit = false       -- o jogador ANDOU até ele (vs. escolha automática)
+local focusPt = nil
+local focusExplicit = false
 local lastMouseX, lastMouseY
-NavCursor.synthesizing = false    -- main.lua: clique sintético não passa pela lente do CRT
+NavCursor.synthesizing = false
 
 function NavCursor.isActive() return active end
 function NavCursor.device() return device end
 
--- ===== registro (durante o draw) =====
--- opts: key (identidade estável; default = obj/retângulo), group ("hand"...),
---       px, py (ponto do cursor em fração do retângulo; default 0.5/0.5)
 function NavCursor.target(obj, x, y, w, h, opts)
     if not (x and y and w and h) or w <= 1 or h <= 1 then return end
     local g = love.graphics
@@ -51,8 +20,6 @@ function NavCursor.target(obj, x, y, w, h, opts)
     local x2, y2 = g.transformPoint(x + w, y + h)
     if x2 < x1 then x1, x2 = x2, x1 end
     if y2 < y1 then y1, y2 = y2, y1 end
-    -- recorte do scissor corrente (em pixels reais — o UiScale devolve o
-    -- scissor no espaço virtual: volta pra tela multiplicando pelo k)
     local sx, sy, sw, sh = g.getScissor()
     if sx then
         local k = require("src.ui.UiScale").activeK()
@@ -62,7 +29,7 @@ function NavCursor.target(obj, x, y, w, h, opts)
     end
     local W, H = require("src.ui.UiScale").realDimensions()
     x1, y1, x2, y2 = math.max(0, x1), math.max(0, y1), math.min(W, x2), math.min(H, y2)
-    if x2 - x1 < 4 or y2 - y1 < 4 then return end   -- fora da tela / recortado
+    if x2 - x1 < 4 or y2 - y1 < 4 then return end
     opts = opts or {}
     targets[#targets + 1] = {
         key = opts.key or obj, x = x1, y = y1, w = x2 - x1, h = y2 - y1,
@@ -71,9 +38,6 @@ function NavCursor.target(obj, x, y, w, h, opts)
     }
 end
 
--- Ação de contexto publicada pela tela neste quadro.
---   button: "x" | "y" | "lb" | "rb"; fn: o que faz; rect opcional: onde
---   desenhar o glifo (canto do botão que a ação aciona — nada de rodapé).
 function NavCursor.action(button, fn, x, y, w, h)
     local r
     if x then
@@ -86,7 +50,6 @@ function NavCursor.action(button, fn, x, y, w, h)
         layer = require("src.ui.InputFocus").current() }
 end
 
--- Começo do draw: o quadro anterior vira a referência de navegação.
 function NavCursor.beginFrame()
     prev, targets = targets, {}
     prevActions, actions = actions, {}
@@ -108,18 +71,14 @@ local function find(list, key)
 end
 
 local function under(list, x, y)
-    for i = #list, 1, -1 do   -- desenhado por último = por cima
+    for i = #list, 1, -1 do
         local t = list[i]
         if x >= t.x and x <= t.x + t.w and y >= t.y and y <= t.y + t.h then return t end
     end
 end
 
--- Alvo inicial: o que está sob o mouse; senão o mais perto do último foco;
--- senão o primeiro em ordem de leitura (cima→baixo, esquerda→direita).
 local function pickDefault(list)
     if #list == 0 then return nil end
-    -- a barra do topo (camada chrome) só ganha o foco se não houver mais nada:
-    -- o conteúdo da tela é o que o jogador veio usar
     local IF = require("src.ui.InputFocus")
     local main = {}
     for _, t in ipairs(list) do
@@ -148,13 +107,9 @@ local function pickDefault(list)
     return best
 end
 
--- Foco atual (revalidado contra os alvos do último quadro).
 local function current()
     local list = eligible()
     local t = focusKey and find(list, focusKey)
-    -- foco AUTOMÁTICO parado na barra do topo enquanto o conteúdo da tela
-    -- ainda não existia (botão que surge depois de uma animação): quando o
-    -- conteúdo aparece, o foco vai pra ele
     if t and not focusExplicit and t.layer == require("src.ui.InputFocus").CHROME then
         for _, c in ipairs(list) do
             if c.layer ~= t.layer then t = nil break end
@@ -170,12 +125,11 @@ local function current()
 end
 NavCursor.focused = function() return (current()) end
 
--- ===== modo =====
 local function activate(dev)
     device = dev
     if not active then
         active = true
-        focusKey = nil       -- reescolhe a partir do que está sob o mouse
+        focusKey = nil
     end
 end
 
@@ -184,14 +138,12 @@ function NavCursor.deactivate()
     device = "mouse"
 end
 
--- Mouse físico se mexeu (love.mousemoved real): devolve o controle ao mouse.
 function NavCursor.mouseMoved(x, y)
     if NavCursor.synthesizing then return end
     lastMouseX, lastMouseY = x, y
     if active then NavCursor.deactivate() end
 end
 
--- Posição do "mouse" no modo foco (InputFocus consulta isto). nil = mouse real.
 function NavCursor.position()
     if not active then return nil end
     local t = current()
@@ -199,12 +151,6 @@ function NavCursor.position()
     return center(t)
 end
 
--- ===== navegação =====
--- Vizinho espacial: menor distância na direção, desvio lateral pesa 2x.
--- Duas passadas: primeiro só dentro do cone de 45° (o que está "naquela
--- direção" de verdade); sem ninguém no cone, qualquer um à frente — senão um
--- alvo quase alinhado longe perdia pra um vizinho de outra fileira e havia
--- botão que a seta nunca alcançava (Continuar da loja vindo do pacote).
 local function neighbor(list, from, dx, dy)
     local fx, fy = center(from)
     local function pass(cone)
@@ -243,7 +189,6 @@ function NavCursor.move(dir)
         if ok then Sfx.playWithVariation("menuHover", 1.0, 0.12) end
         return true
     end
-    -- nada naquela direção: a tela rola (grade comprida — coleção, deck...)
     if (dir == "up" or dir == "down") and love.wheelmoved then
         NavCursor.synthesizing = true
         local ok, err = pcall(love.wheelmoved, 0, dir == "up" and 1 or -1)
@@ -253,8 +198,6 @@ function NavCursor.move(dir)
     return false
 end
 
--- Ombros: anda dentro do GRUPO do foco (a mão no combate); sem grupo, é
--- esquerda/direita.
 function NavCursor.cycle(step)
     local t, list = current()
     if not t then return false end
@@ -273,7 +216,6 @@ function NavCursor.cycle(step)
     return n ~= nil
 end
 
--- Clique sintético no foco (botão 1 = escolher, 2 = inspecionar).
 function NavCursor.click(button)
     local t = current()
     if not t then return false end
@@ -297,16 +239,13 @@ function NavCursor.runAction(button)
     return false
 end
 
--- ===== entrada =====
--- Intenções: up/down/left/right/confirm/back/inspect/x/y/lb/rb
--- Devolve true se consumiu.
 function NavCursor.intent(it, dev)
     if not it then return false end
     dev = dev or "keyboard"
     if DIRS[it] then
         local wasActive = active
         activate(dev)
-        if not wasActive then current(); return true end   -- 1º toque só mostra o anel
+        if not wasActive then current(); return true end
         NavCursor.move(it)
         return true
     elseif it == "confirm" then
@@ -314,9 +253,7 @@ function NavCursor.intent(it, dev)
         activate(dev)
         local t = current()
         if not t then return false end
-        if not wasActive then return true end   -- 1º toque só mostra o anel
-        -- a barra do topo só recebe Enter se o jogador ANDOU até ela (o foco
-        -- automático cai nela quando a tela ainda não tem conteúdo)
+        if not wasActive then return true end
         if t.layer == require("src.ui.InputFocus").CHROME and not focusExplicit then
             return true
         end
@@ -325,7 +262,6 @@ function NavCursor.intent(it, dev)
         if not active then activate(dev) end
         return NavCursor.click(2)
     elseif it == "lb" or it == "rb" or it == "x" or it == "y" then
-        -- ação de contexto publicada pela tela (JOGAR, ENCERRAR, reroll...)
         if NavCursor.runAction(it) then device = dev; return true end
         if it == "lb" or it == "rb" then
             activate(dev)
@@ -335,11 +271,8 @@ function NavCursor.intent(it, dev)
     return false
 end
 
--- Último aparelho usado (glifo de pad × tecla), sem ligar o anel.
 function NavCursor.noteDevice(dev) device = dev end
 
--- Telas que NAVEGAM SOZINHAS (MenuKit/setas próprias): o cursor não toma
--- as teclas delas. `extraOwned`: caso pontual do main (zoom da coleção).
 NavCursor.STATE_OWNS = { boot = true, gameOver = true, victory = true, achievements = true }
 function NavCursor.claimsInput(state, extraOwned)
     if extraOwned then return false end
@@ -348,24 +281,20 @@ function NavCursor.claimsInput(state, extraOwned)
     return not NavCursor.STATE_OWNS[state]
 end
 
--- Teclado → intenção (setas, Enter/Espaço, e as letras de contexto).
 NavCursor.KEYS = {
     up = "up", down = "down", left = "left", right = "right",
     ["return"] = "confirm", kpenter = "confirm", space = "confirm",
     e = "y", q = "x", z = "lb", c = "rb", i = "inspect",
 }
--- Glifo de teclado de cada ação (o que aparece no botão em modo teclado).
 NavCursor.KEY_LABEL = { confirm = "ENTER", y = "E", x = "Q", lb = "Z", rb = "C", inspect = "I", back = "ESC" }
 NavCursor.PAD_LABEL = { confirm = "A", y = "Y", x = "X", lb = "LB", rb = "RB", inspect = "RT", back = "B" }
 
--- Gamepad → intenção.
 NavCursor.PAD = {
     dpup = "up", dpdown = "down", dpleft = "left", dpright = "right",
     a = "confirm", b = "back", x = "x", y = "y",
     leftshoulder = "lb", rightshoulder = "rb",
 }
 
--- Analógico esquerdo (repetição com zona morta). Chamado do love.update.
 local stick = { dir = nil, t = 0 }
 function NavCursor.updateStick(dt, joystick)
     if not joystick or not joystick.isGamepad or not joystick:isGamepad() then return end
@@ -374,7 +303,6 @@ function NavCursor.updateStick(dt, joystick)
     local dir
     if math.abs(ax) > 0.55 and math.abs(ax) >= math.abs(ay) then dir = ax < 0 and "left" or "right"
     elseif math.abs(ay) > 0.55 then dir = ay < 0 and "up" or "down" end
-    -- gatilhos: inspecionar (borda de subida)
     local rt = joystick:getGamepadAxis("triggerright") or 0
     local lt = joystick:getGamepadAxis("triggerleft") or 0
     local trig = (rt > 0.6 or lt > 0.6)
@@ -392,9 +320,6 @@ function NavCursor.updateStick(dt, joystick)
     end
 end
 
--- ===== desenho =====
--- Glifo de botão: pad = círculo com a letra (cores Xbox/Deck); teclado =
--- tecla com o rótulo. Pixel art: retângulos e degraus, sem anti-alias.
 local PAD_COLORS = {
     A = { 0.30, 0.62, 0.30 }, B = { 0.72, 0.24, 0.20 },
     X = { 0.25, 0.45, 0.78 }, Y = { 0.85, 0.68, 0.20 },
@@ -437,20 +362,14 @@ local function labelFor(action)
 end
 NavCursor.labelFor = labelFor
 
--- Anel de foco (gramática do MenuKit) + glifo de confirmação no canto do
--- foco + glifos das ações de contexto nos botões que elas acionam. Desenha
--- em PIXELS DA TELA, fora de qualquer escala (chamado no fim do love.draw).
 function NavCursor.draw()
     if not active then return end
     local t = current()
     local k = require("src.ui.UiScale").k()
-    -- glifo legível no Deck (7"): nunca menor que 26px de tela
     local size = math.max(26, math.floor(22 * k))
     if t then
         local MenuKit = require("src.ui.MenuKit")
         MenuKit.focusRing(t.x, t.y, t.w, t.h, love.timer.getTime(), math.floor(3 * k))
-        -- glifo de confirmar POR FORA do canto superior direito (dentro ele
-        -- cobria o selo de preço/custo das cartas)
         local lw = math.max(size, math.floor(size * 0.55) * #labelFor("confirm") + 8)
         NavCursor.drawGlyph(labelFor("confirm"), t.x + t.w - lw * 0.5, t.y - size * 0.85, size)
     end
@@ -463,7 +382,6 @@ function NavCursor.draw()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Testes/tools: estado interno.
 function NavCursor._reset()
     targets, prev, actions, prevActions = {}, {}, {}, {}
     active, device, focusKey, focusPt = false, "mouse", nil, nil

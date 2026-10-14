@@ -1,16 +1,8 @@
--- src/ui/RunModsText.lua
--- TEXTO dos modificadores da run (Selo do Grimório + maldições do endless)
--- pra TopBar, pausa, roteiro e tela final. Um lugar só: as quatro telas
--- dizem a MESMA coisa com as mesmas palavras (ver RunModifiers).
-
 local I18n = require("src.i18n.I18n")
 local RunModifiers = require("src.systems.RunModifiers")
 
 local M = {}
 
--- Curto, pra caber numa linha de 9px: "Selo 3 · Ciclo 2 · maldições: 3".
--- `compact` (TopBar) deixa as maldições de fora — a lista mora no tooltip.
--- Vazio quando a run é o jogo base.
 function M.short(run, compact)
     if not run then return "" end
     local parts = {}
@@ -24,9 +16,6 @@ function M.short(run, compact)
     return table.concat(parts, " · ")
 end
 
--- Longo, pra tooltip / resumo: "Selo 3: Mercado Caro. Maldições: Fome x1 ·
--- Dízimo x2. Pontos x1.75". Começa com espaço quando não é vazio (vai
--- colado no fim de outra frase).
 function M.long(run)
     if not run then return "" end
     local out = {}

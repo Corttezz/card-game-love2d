@@ -1,19 +1,3 @@
--- src/ui/TextFit.lua
--- Helper ÚNICO de "texto que cabe" (design system Jul/2026). Toda string de
--- UI dentro de um retângulo de largura fixa passa por aqui — a mesma receita
--- do Button e da HintBar, exportada pra labels soltos:
---   1) tenta o tamanho pedido; desce de 1 em 1 até minSize;
---   2) se nem no mínimo couber, TRUNCA com "..." (UTF-8 safe).
--- Contrato: o retorno NUNCA é mais largo que maxW. Chega de texto vazando
--- por idioma (playtest Jul/2026 — DE/FR estouravam labels de coluna fixa).
---
--- Uso:
---   local font, text = TextFit.fit(label, 12, colW)
---   love.graphics.setFont(font); love.graphics.print(text, x, y)
--- ou direto:
---   TextFit.print(label, x, y, { size = 12, maxW = colW })
---   TextFit.print(label, x, y, { size = 12, maxW = colW, align = "center" })
-
 local FontManager = require("src.ui.FontManager")
 local utf8 = require("utf8")
 
@@ -21,7 +5,6 @@ local TextFit = {}
 
 TextFit.MIN_SIZE = 8
 
--- Trunca text com "..." pra caber em maxW na fonte dada (UTF-8 safe).
 local function ellipsize(font, text, maxW)
     if font:getWidth(text) <= maxW then return text end
     local ell = "..."
@@ -35,7 +18,6 @@ local function ellipsize(font, text, maxW)
     return out .. ell
 end
 
--- Retorna (font, drawText, size). drawText SEMPRE cabe em maxW.
 function TextFit.fit(text, desiredSize, maxW, minSize)
     text = tostring(text or "")
     minSize = minSize or TextFit.MIN_SIZE
@@ -52,10 +34,6 @@ function TextFit.fit(text, desiredSize, maxW, minSize)
     return font, ellipsize(font, text, maxW), minSize
 end
 
--- Print protegido: seta a fonte fitted e imprime. opts:
---   size (default 12), maxW (obrigatório pra proteger), minSize,
---   align = "left" (default) | "center" | "right"  — relativo a x..x+maxW
---   shadow = {r,g,b,a} opcional (imprime 1px offset antes)
 function TextFit.print(text, x, y, opts)
     opts = opts or {}
     local font, drawText = TextFit.fit(text, opts.size, opts.maxW, opts.minSize)
