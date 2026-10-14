@@ -142,8 +142,10 @@ end
 local function setc(c, a) love.graphics.setColor(c[1], c[2], c[3], a) end
 
 -- Marcador "NOVA" em coords da carta: (x, y) = canto sup-esq da carta, w =
--- largura dela. Sai da borda de cima pra fora (não cobre o nome) e entra
--- 3 px na moldura, como fita presa entre as páginas.
+-- largura dela. Sai da borda de cima pra fora INTEIRO e só toca 1 px da
+-- linha da moldura, como fita presa entre as páginas. (Entrava 3 px e, na
+-- escala da tela de espólios, isso virava a fita em cima do nome da carta:
+-- dono, 13/Out, "tudo tampando ali em cima".)
 function DiscoveryMark.drawBadge(x, y, w, t, alpha)
     alpha = alpha or 1
     if alpha <= 0.01 then return end
@@ -156,7 +158,7 @@ function DiscoveryMark.drawBadge(x, y, w, t, alpha)
     bw = bw + (bw % 2)
     local bh = th + 3
     local bx = x + math.floor((w - bw) / 2)
-    local by = y - bh + 3
+    local by = y - bh + 1
     -- carimbo: desce 4 px até a borda e acende
     local drop = 0
     if not reduced() and t < DiscoveryMark.STAMP_DUR then

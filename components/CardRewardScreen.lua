@@ -2402,7 +2402,11 @@ function CardRewardScreen:drawOfferBadges(cardInstance, slot)
     else
         if offer.rarity then
             local label = require("src.i18n.TextCase").upper(I18n.t("rarity." .. offer.rarity, nil, offer.rarity))
-            marker(cx, pos.y - 15, label, Palette.forRarity(offer.rarity), 9, 4)
+            -- ZONAS acima da carta: raridade / fita NOVA / carta. Com a fita
+            -- (que agora sai inteira pra fora da moldura, DiscoveryMark), a
+            -- raridade sobe mais 12 px pra não encostar nela (dono, 13/Out:
+            -- "tudo tampando ali em cima").
+            marker(cx, pos.y - (offer.isNew and 27 or 15), label, Palette.forRarity(offer.rarity), 9, 4)
         end
         if offer.affinity then
             marker(cx, pos.y + h + 15,
