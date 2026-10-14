@@ -4175,8 +4175,11 @@ local function drawProps(g, x, w, camZ)
                         local cimg = getSprite(p.kind, cvar, p.bid)
                         if cimg then
                             -- v8: sombra projetada da companheira
+                            -- footPad = raiz enterrada (PropCut): a sombra
+                            -- nasce no pé VISÍVEL, não na raiz recortada
                             ShadowEngine.queue(cimg, cx2, cy2 - 1, cs,
-                                shadowOpts(0.8 * fadeA, nil, nil,
+                                shadowOpts(0.8 * fadeA, nil,
+                                    PropCut.cutOf(cimg, p.kind),
                                     WorldRoad.SHADOW_PROFILE[p.kind]))
                             love.graphics.setColor(0.88, 0.88, 0.88, fadeA)
                             PropCut.draw(cimg, p.kind, math.floor(cx2),
@@ -4216,10 +4219,15 @@ local function drawProps(g, x, w, camZ)
                 -- comprimento pelo horário. ENFILEIRADA: desenha depois
                 -- de props+grama (a sombra cai SOBRE a grama — imediata,
                 -- o tapete mais próximo cobria). Fallback: elipse legada.
+                -- footPad: margem da luminária OU raiz enterrada da árvore
+                -- (PropCut, Out/2026) — o sprite é desenhado sem as linhas
+                -- de raiz, então a sombra ancora no pé VISÍVEL; com o canvas
+                -- inteiro as linhas da raiz viravam pra cima do contato e
+                -- escureciam a base do tronco por cima do sprite.
                 local aFade = math.min(1, 0.72 + t * 1.1)
                 if not ShadowEngine.queue(img, pxX, sy - 1, s,
                     shadowOpts(aFade * fadeA, lumFlip,
-                        lumAnc and lumAnc.footPad or 0,
+                        lumAnc and lumAnc.footPad or PropCut.cutOf(img, p.kind),
                         WorldRoad.SHADOW_PROFILE[p.kind])) then
                     local shd = sunShadowDir(g, x, w, pxX)
                     love.graphics.setColor(0, 0, 0, 0.20 * aFade * fadeA)
