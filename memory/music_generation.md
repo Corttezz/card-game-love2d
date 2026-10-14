@@ -209,3 +209,73 @@ Duas ferramentas, porque medem coisas diferentes:
 ## Ligações
 
 [[sfx_generation]] · [[audio_system]] · [[ui_layout_invariants]] · [[project_overview]]
+
+## Silêncio antes do chefe e faixa POR CHEFE (14/Out/2026, pedido do dono)
+
+Pedido: "imersão". Quando a bandeira do chefe aparece, a música do ato morre
+devagar; nada toca na viagem, na porta e na entrada ("cerimônia") do chefe;
+a trilha DELE só começa quando a entrada termina, e cada chefe tem a sua.
+
+Linha do tempo no andar do chefe (decisão inteira em `MusicDirector.pick`,
+pura; `apply` só executa):
+
+| momento | estado / sinal | música |
+|---|---|---|
+| luta do mini-chefe, cash out, espólios | `playing` / `roundEval` / `cardReward` | ato (nil = mantém) |
+| encruzilhada com nó `boss` em `run.pendingNodes` | `mapSelection` + `forkOffersBoss` | `SILENCE`: fade-out de `FADE_SILENCE` = 5 s |
+| clique na bandeira, viagem, castelo, porta | `playing`, nó boss, `inHall == false` | silêncio |
+| salão vazio + cinemática de entrada | `BossCinematic.phase() == "intro"` | silêncio (SFX da cinemática tocam) |
+| fim da entrada ou pular | `inHall` e sem intro | `bossTrack(run)`, fade-in 1,2 s |
+| luta, morte (fase `death`), cash out, espólios | mantém | faixa do chefe |
+| encruzilhada do ato novo | `mapSelection` | faixa do ato novo |
+
+- O silêncio é ESTADO EXPLÍCITO (`MusicDirector.SILENCE`), não nil: nil
+  continua significando "mantém o que toca". `apply` chama
+  `Sfx.silenceMusic` → `AudioManager:fadeOutMusic(d)`, que zera
+  `currentMusic` na hora e deixa a faixa morrer pelo `musicCrossfade` com
+  `to = nil`. `playMusic` por cima de um fade-out cruza a partir do ganho
+  atual (`fromGain`); voltar à MESMA faixa no meio do fade a retoma do
+  volume em que estava; `stopMusic` corta o fade-out. Ambiente
+  (`PlaceAudio`/`WeatherAudio`) é grupo à parte e não é tocado.
+- O tutorial (o corvo) já espera `GameplayScene.isQuiet`, que é falso
+  enquanto a cinemática roda e a mão é dada, então ele fala depois da
+  música começar sem nenhuma mudança.
+- Continuar no meio da luta: `ResumeFlow` força `bossEntered` sem
+  cinemática → `inHall` e sem intro → faixa do chefe direto.
+- `inHall == nil` (quem chama `pick` sem cena) conta como salão; sem
+  WorldRoad (`SCENE_MODE ~= "worldroad"`) também.
+- Tabela única `MusicDirector.BOSS_TRACKS` (id → código). Arquivo por scan:
+  `audio/music/boss-<id>.mp3` (`MusicDirector.bossFile`), registrado por
+  `registerTracks` se existir; ausente → `FALLBACK` para `musicBoss` com
+  `Debug.warn` uma vez. Chefe sem `enemyId` (save antigo) é deduzido do
+  roster do ato; no endless sem `enemyId` cai na genérica. Mini-chefe e
+  elite seguem com a faixa do ato.
+- `eclipse_queen` usa o código `musicBossEclipse`: hoje toca o placeholder
+  `music-boss-eclipse.mp3`; um `boss-eclipse_queen.mp3` carregado depois o
+  substitui sem mudar código.
+- Travas: `test_music` (pick puro de cada momento, 6 chefes, Continuar,
+  morte, mini-chefe, endless; e no AudioManager real com master 0: fade de
+  5 s ainda soa em 1 s e some no fim, faixa nova por cima do fade, retomar,
+  stopMusic) + `test_resume`. `love . boss_rooms N` segue a mesma regra
+  (chama `apply` por quadro; I = silêncio até o fim da entrada).
+
+### As 6 faixas longas: BLOQUEADAS (14/Out/2026)
+
+Pedido: 2 a 3 min por chefe, com seções e camadas (nada de loop de 28 s).
+Nenhum caminho desta máquina gera isso:
+- `POST /v1/music` → **402 `paid_plan_required`** ("Music API is not
+  available for free users"), conta free com 747/10000 créditos usados.
+- `runcomfy` não instalado e sem `RUNCOMFY_TOKEN`.
+- `sound-generation` (o que fez as faixas atuais) vai a ~22-30 s; costurar
+  seções independentes não garante tom/andamento.
+
+Destrava com plano pago ElevenLabs (libera `/v1/music`, até 5 min, e uso
+comercial) ou um token RunComfy. Quando gerar: salvar em
+`audio/music/boss-<id>.mp3` (já registra sozinho), loudnorm -15 como o
+`music-boss`, emenda pelo ponto de RMS igual e `love . check_loop boss-`.
+Direção por chefe pedida pelo dono: rei-carniça (osso seco, coro grave de
+monges, cordas sujas), lich (órgão, cravo dissonante, coro etéreo), tirano
+(tambores de guerra, metais pesados, correntes como percussão), monarca
+(sinos de gelo, cordas em tremolo, coro feminino frio), colosso (percussão
+orgânica, drone grave/didgeridoo, metais abafados), rainha (coro grande,
+órgão, cordas épicas, referência Radagon/Elden Beast).

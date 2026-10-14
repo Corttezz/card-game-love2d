@@ -73,8 +73,7 @@ function M.run(startAct)
         GameplayScene._debugForceBossEntered()
         WorldRoad.setBiome(a)
         WorldRoad.setTimeOfDay(1, true)
-        local code = require("src.systems.MusicDirector").pick("playing", run, "boss", true)
-        if code then require("src.systems.Sfx").playMusic(code, { fadeDuration = 0.8 }) end
+        run.currentNode.enemyId = game.enemy.spriteId
         print(string.format("[boss_rooms] ato %d  chefe=%s", a,
             tostring(game.enemy.spriteId)))
     end
@@ -92,6 +91,11 @@ function M.run(startAct)
         end
         if _G.EventManager.update then _G.EventManager.update(dt) end
         require("src.ui.BossCinematic").update(dt, _G.game, { inHall = true })
+        do
+            local g = _G.game
+            local r = g and g.runManager and g.runManager.currentRun
+            require("src.systems.MusicDirector").apply("playing", r, "boss")
+        end
         require("src.systems.ScreenShake").update(dt)
         WorldRoad.update(dt)
         EnemyRenderer.update(dt)

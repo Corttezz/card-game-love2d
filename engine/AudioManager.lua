@@ -169,6 +169,24 @@ function AudioManager:playSound(name)
     return self:play(name) ~= nil
 end
 
+local function crossfadeGain(cf, code)
+    local p = math.min(1, (cf.t or 0) / (cf.duration or 1))
+    if cf.to == code then return p end
+    if cf.from == code then return (cf.fromGain or 1) * (1 - p) end
+    return 0
+end
+
+local function stopOrphans(self, keep, keep2)
+    for outroCode, outroEntry in pairs(self.sources) do
+        if outroEntry.group == "music"
+            and outroCode ~= keep and outroCode ~= keep2
+            and outroEntry.template and outroEntry.template:isPlaying() then
+            outroEntry.template:stop()
+            Debug.log("[AudioManager] faixa orfa parada: " .. tostring(outroCode))
+        end
+    end
+end
+
 function AudioManager:playMusic(code, opts)
     if not self.audioAvailable then return false end
     opts = opts or {}
@@ -191,17 +209,26 @@ function AudioManager:playMusic(code, opts)
     entry.loop = true
     entry.template:setLooping(true)
 
-    local atual = self.currentMusic
-    for outroCode, outroEntry in pairs(self.sources) do
-        if outroEntry.group == "music"
-            and outroCode ~= code and outroCode ~= atual
-            and outroEntry.template and outroEntry.template:isPlaying() then
-            outroEntry.template:stop()
-            Debug.log("[AudioManager] faixa orfa parada: " .. tostring(outroCode))
+    local fadeDuration = opts.fadeDuration or 0
+    local cf0 = self.musicCrossfade
+    if not self.currentMusic and cf0 and cf0.to == nil and cf0.from and self.sources[cf0.from] then
+        local dur = fadeDuration > 0 and fadeDuration or 1.0
+        local g = crossfadeGain(cf0, cf0.from)
+        if cf0.from == code then
+            self.musicCrossfade = { from = nil, to = code, t = g * dur, duration = dur }
+        else
+            stopOrphans(self, code, cf0.from)
+            self.musicCrossfade = { from = cf0.from, to = code, t = 0, duration = dur, fromGain = g }
+            entry.template:setVolume(0)
+            entry.template:play()
         end
+        self.currentMusic = code
+        return true
     end
 
-    local fadeDuration = opts.fadeDuration or 0
+    local atual = self.currentMusic
+    stopOrphans(self, code, atual)
+
     if self.currentMusic and self.sources[self.currentMusic] then
         self.musicCrossfade = {
             from = self.currentMusic,
@@ -230,11 +257,38 @@ function AudioManager:playMusic(code, opts)
 end
 
 function AudioManager:stopMusic()
-    if not self.currentMusic then return end
+    if not self.currentMusic then
+        local cf = self.musicCrossfade
+        local e = cf and cf.from and self.sources[cf.from]
+        if e and e.template then e.template:stop() end
+        self.musicCrossfade = nil
+        return
+    end
     local entry = self.sources[self.currentMusic]
     if entry and entry.template then entry.template:stop() end
     self.currentMusic = nil
     self.musicCrossfade = nil
+end
+
+function AudioManager:fadeOutMusic(duration)
+    if not self.audioAvailable then return false end
+    local code = self.currentMusic
+    if not code or not self.sources[code] then
+        self.currentMusic = nil
+        return false
+    end
+    local cf = self.musicCrossfade
+    local g = 1
+    if cf and cf.to == code then
+        g = crossfadeGain(cf, code)
+        local old = cf.from and self.sources[cf.from]
+        if old and old.template then old.template:stop() end
+    end
+    duration = duration or 0
+    self.musicCrossfade = { from = code, to = nil, t = 0,
+                            duration = duration > 0 and duration or 1.0, fromGain = g }
+    self.currentMusic = nil
+    return true
 end
 
 function AudioManager:loadBackgroundMusic(path)
@@ -278,7 +332,7 @@ function AudioManager:update(dt)
         local toEntry   = self.sources[cf.to]
 
         if fromEntry and fromEntry.template then
-            fromEntry.template:setVolume(computeFinalVolume(self, fromEntry) * (1 - progress))
+            fromEntry.template:setVolume(computeFinalVolume(self, fromEntry) * (cf.fromGain or 1) * (1 - progress))
         end
         if toEntry and toEntry.template then
             toEntry.template:setVolume(computeFinalVolume(self, toEntry) * progress)

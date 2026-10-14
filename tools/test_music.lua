@@ -24,24 +24,69 @@ function M.run()
 
     t:eq("sem run assume ato 1", MD.pick("playing", nil, nil), "musicAct1")
 
-    t:eq("boss do ato 1", MD.pick("playing", { actNumber = 1 }, "boss"), "musicBoss")
-    t:eq("boss do ato 3", MD.pick("playing", { actNumber = 3 }, "boss"), "musicBoss")
-    t:eq("elite nao usa tema de boss", MD.pick("playing", { actNumber = 1 }, "elite"), "musicAct1")
+    local S = MD.SILENCE
+    local function chefe(id, act) return { actNumber = act, currentNode = { type = "boss", enemyId = id } } end
+    local rainha = chefe("eclipse_queen", Config.TotalActs)
+    local rei = chefe("carrion_king", 1)
 
-    local rainha = { actNumber = Config.TotalActs, currentNode = { type = "boss", enemyId = "eclipse_queen" } }
-    local rei = { actNumber = 1, currentNode = { type = "boss", enemyId = "carrion_king" } }
-    t:eq("rainha no salao = faixa do chefe final", MD.pick("playing", rainha, "boss", true), "musicBossEclipse")
-    t:eq("rainha na estrada (porta fechada) = tema comum", MD.pick("playing", rainha, "boss", false), "musicBoss")
-    t:eq("outro chefe no salao = tema comum", MD.pick("playing", rei, "boss", true), "musicBoss")
-    t:eq("save antigo sem enemyId no ultimo ato = chefe final",
-         MD.pick("playing", { actNumber = Config.TotalActs, currentNode = { type = "boss" } }, "boss", true),
-         "musicBossEclipse")
-    t:eq("endless sem enemyId nao e o chefe final",
+    t:eq("elite nao usa tema de boss", MD.pick("playing", { actNumber = 1 }, "elite"), "musicAct1")
+    t:eq("mini-chefe segue com a faixa do ato",
+         MD.pick("playing", { actNumber = 1, currentNode = { type = "mini_boss", enemyId = "wicker_effigy" } }, "mini_boss"),
+         "musicAct1")
+
+    t:eq("encruzilhada comum segue o ato",
+         MD.pick("mapSelection", { actNumber = 1, pendingNodes = { { type = "battle" }, { type = "shop" } } }, nil),
+         "musicAct1")
+    t:eq("encruzilhada com a bandeira do chefe = silencio",
+         MD.pick("mapSelection", { actNumber = 1, pendingNodes = { { type = "boss" } } }, nil), S)
+    t:eq("chefe entre outras opcoes tambem silencia",
+         MD.pick("mapSelection", { actNumber = 3, pendingNodes = { { type = "rest" }, { type = "boss" } } }, nil), S)
+    t:eq("cash out do mini-chefe ainda nao silencia", MD.pick("roundEval", { actNumber = 1 }, "mini_boss"), nil)
+    t:eq("espolios do mini-chefe ainda nao silenciam", MD.pick("cardReward", { actNumber = 1 }, "mini_boss"), nil)
+
+    t:eq("viagem ate o castelo = silencio", MD.pick("playing", rei, "boss", false, false), S)
+    t:eq("porta abrindo (salao nao entrado) = silencio", MD.pick("playing", rainha, "boss", false, false), S)
+    t:eq("salao vazio / entrada do chefe = silencio", MD.pick("playing", rei, "boss", true, true), S)
+    t:eq("entrada da rainha = silencio", MD.pick("playing", rainha, "boss", true, true), S)
+
+    local esperado = {
+        carrion_king = "musicBossCarrionKing", tower_lich = "musicBossTowerLich",
+        abyss_tyrant = "musicBossAbyssTyrant", winter_monarch = "musicBossWinterMonarch",
+        rot_colossus = "musicBossRotColossus", eclipse_queen = "musicBossEclipse",
+    }
+    local Enemies = require("src.data.enemies")
+    for act = 1, Config.TotalActs do
+        local id = Enemies.ROSTER[act].boss[1]
+        t:truthy("chefe do ato " .. act .. " (" .. id .. ") tem faixa na tabela", MD.BOSS_TRACKS[id] ~= nil)
+        t:eq("fim da entrada de " .. id .. " = faixa dele",
+             MD.pick("playing", chefe(id, act), "boss", true, false), esperado[id])
+        t:eq("Continuar na luta de " .. id .. " (salao, sem entrada) = faixa dele",
+             MD.pick("playing", chefe(id, act), "boss", true), esperado[id])
+        t:eq("save antigo sem enemyId no ato " .. act .. " = faixa do chefe do ato",
+             MD.pick("playing", { actNumber = act, currentNode = { type = "boss" } }, "boss", true), esperado[id])
+    end
+    local vistos = {}
+    for _, code in pairs(MD.BOSS_TRACKS) do
+        t:falsy("faixa de chefe nao repete: " .. code, vistos[code])
+        vistos[code] = true
+    end
+
+    t:eq("endless sem enemyId cai na faixa generica",
          MD.pick("playing", { actNumber = Config.TotalActs, endlessMode = true, currentNode = { type = "boss" } }, "boss", true),
-         "musicBoss")
+         MD.GENERIC_BOSS)
+    t:eq("endless com enemyId toca a faixa do chefe",
+         MD.pick("playing", { actNumber = Config.TotalActs + 2, endlessMode = true, currentNode = { type = "boss", enemyId = "tower_lich" } }, "boss", true),
+         "musicBossTowerLich")
+    t:eq("chefe desconhecido cai na faixa generica",
+         MD.pick("playing", chefe("chefe_inexistente", 2), "boss", true, false), MD.GENERIC_BOSS)
+
+    t:eq("morte do chefe (fase death, salao) mantem a faixa dele",
+         MD.pick("playing", rei, "boss", true, false), "musicBossCarrionKing")
     t:eq("cash out no salao da rainha mantem a faixa", MD.pick("roundEval", rainha, "boss", true), nil)
     t:eq("espolios no salao da rainha mantem a faixa", MD.pick("cardReward", rainha, "boss", true), nil)
-    t:eq("sem probe de salao, boss = tema comum (apply sem cena)", MD.pick("playing", rainha, "boss"), "musicBoss")
+    t:eq("encruzilhada do ato seguinte volta ao tema do ato",
+         MD.pick("mapSelection", { actNumber = 2, pendingNodes = { { type = "battle" } } }, nil), "musicAct2")
+    t:eq("sem probe de salao (sem cena) toca o chefe", MD.pick("playing", rainha, "boss"), "musicBossEclipse")
 
     t:eq("descanso", MD.pick("rest", { actNumber = 2 }, "rest"), "musicRest")
     t:eq("loja",     MD.pick("cardReward", { actNumber = 2 }, "shop"), "musicShop")
@@ -58,20 +103,22 @@ function M.run()
     local produced = {}
     local casos = {
         { "menu", nil, nil },
-        { "playing", { actNumber = 1 }, "boss" }, { "rest", { actNumber = 1 }, "rest" },
+        { "playing", { actNumber = 1, endlessMode = true }, "boss" }, { "rest", { actNumber = 1 }, "rest" },
         { "cardReward", { actNumber = 1 }, "shop" },
-        { "playing", { actNumber = Config.TotalActs, currentNode = { type = "boss", enemyId = "eclipse_queen" } }, "boss", true },
     }
+    for id in pairs(MD.BOSS_TRACKS) do
+        casos[#casos + 1] = { "playing", { actNumber = 1, currentNode = { type = "boss", enemyId = id } }, "boss", true }
+    end
     for a = 1, Config.TotalActs do
         casos[#casos + 1] = { "playing", { actNumber = a }, "battle" }
     end
     for _, case in ipairs(casos) do
         local code = MD.pick(case[1], case[2], case[3], case[4])
-        if code then produced[code] = true end
+        if code and code ~= MD.SILENCE then produced[code] = true end
     end
     for code in pairs(produced) do
         t:truthy("codigo '" .. code .. "' e uma faixa registravel",
-                 code == "menuMusic" or MD.TRACKS[code] ~= nil)
+                 code == "menuMusic" or MD.TRACKS[code] ~= nil or MD.isBossCode(code))
     end
 
     for code in pairs(MD.TRACKS) do
@@ -168,6 +215,58 @@ function M.run()
         t:eq("nao redispara a faixa que ja toca", audio2.currentMusic, "musicAct1")
         t:eq("e o espelho se corrige sozinho", MD._current, "musicAct1")
 
+        local function tocandoMusica()
+            local n = 0
+            for _, e in pairs(audio2.sources) do
+                if e.group == "music" and e.template and e.template:isPlaying() then n = n + 1 end
+            end
+            return n
+        end
+        local prevHall, prevIntro = MD.hallProbe, MD.introProbe
+        local hall, intro = false, false
+        MD.hallProbe = function() return hall end
+        MD.introProbe = function() return intro end
+
+        local forkRun = { actNumber = 1, pendingNodes = { { type = "boss" } } }
+        MD.apply("mapSelection", forkRun, nil)
+        t:eq("bandeira do chefe: nenhuma faixa atual", audio2.currentMusic, nil)
+        t:eq("bandeira do chefe: estado de silencio explicito", MD._current, MD.SILENCE)
+        t:truthy("o ato some DEVAGAR (ainda tocando logo depois)", tocandoMusica() == 1)
+        for _ = 1, 60 do audio2:update(1 / 60); MD.apply("mapSelection", forkRun, nil) end
+        t:truthy("depois de 1 s ainda soa (fade de " .. MD.FADE_SILENCE .. " s)", tocandoMusica() == 1)
+        for _ = 1, math.ceil(MD.FADE_SILENCE * 60) do audio2:update(1 / 60) end
+        t:eq("no fim do fade, silencio de verdade", tocandoMusica(), 0)
+
+        local bossRun = { actNumber = 1, currentNode = { type = "boss", enemyId = "carrion_king" } }
+        MD.apply("playing", bossRun, "boss")
+        t:eq("viagem/porta: segue o silencio", audio2.currentMusic, nil)
+        hall, intro = true, true
+        MD.apply("playing", bossRun, "boss")
+        t:eq("entrada do chefe: segue o silencio", audio2.currentMusic, nil)
+        hall, intro = true, false
+        MD.apply("playing", bossRun, "boss")
+        local esperado = audio2.sources["musicBossCarrionKing"] and "musicBossCarrionKing" or MD.GENERIC_BOSS
+        t:eq("fim da entrada: entra a faixa do chefe", audio2.currentMusic, esperado)
+
+        MD.apply("mapSelection", forkRun, nil)
+        for _ = 1, 30 do audio2:update(1 / 60) end
+        MD.apply("playing", { actNumber = 1 }, "battle")
+        for _ = 1, 400 do audio2:update(1 / 60) end
+        t:eq("faixa nova por cima de um fade-out: so ela toca", tocandoMusica(), 1)
+        t:eq("e e a certa (" .. tostring(audio2.currentMusic) .. ")", audio2.currentMusic, "musicAct1")
+
+        audio2:fadeOutMusic(2)
+        for _ = 1, 30 do audio2:update(1 / 60) end
+        audio2:playMusic("musicAct1", { fadeDuration = 1 })
+        for _ = 1, 200 do audio2:update(1 / 60) end
+        t:eq("voltar a mesma faixa no meio do fade a retoma", audio2.currentMusic, "musicAct1")
+        t:eq("sem duplicar", tocandoMusica(), 1)
+
+        audio2:fadeOutMusic(2)
+        audio2:stopMusic()
+        t:eq("stopMusic corta um fade-out em andamento", tocandoMusica(), 0)
+
+        MD.hallProbe, MD.introProbe = prevHall, prevIntro
         audio2:stopMusic()
     else
         t:truthy("audio indisponivel: espelho nao pode ser medido aqui", true)

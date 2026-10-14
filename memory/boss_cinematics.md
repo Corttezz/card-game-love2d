@@ -175,10 +175,12 @@ em aditivo morno), `bossEclipseFade` (a voz dela apagando), slowmo 1,7 s, hold
 morta nasce em alvorada (`queenUpdate`: `deathFor == enemy` e vida 0).
 
 **Música:** `musicBossEclipse` (`audio/music/music-boss-eclipse.mp3`, coral +
-órgão + sinos + taiko com virada dissonante, 28 s em loop) só no salão dela:
-`MusicDirector.pick(state, run, nodeType, inHall)` — na caminhada toca a
-`musicBoss`; a porta abre → `GameplayScene.inBossRoom` → faixa dela com fade
-rápido, segue por luta, morte e cash out (`roundEval` → nil). Validação:
+órgão + sinos + taiko com virada dissonante, 28 s em loop; placeholder até a
+faixa longa `boss-eclipse_queen.mp3`). Desde 14/Out/2026 vale a regra do
+silêncio para TODO chefe (ver "Silêncio antes do chefe" em
+[[music_generation]]): bandeira, viagem, porta e entrada sem música; a faixa
+do chefe entra no fim da entrada (ou no pular) e segue por luta, morte e
+cash out (`roundEval` → nil). Validação:
 `love . check_loop eclipse` (salto 0,0013, razão 1,04x, DC 0,0014, brilho 0,78k).
 
 Clips PixelLab (`tools/pixellab_boss_cine.py run eclipse_queen`): `unveil`

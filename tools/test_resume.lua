@@ -83,8 +83,8 @@ function M.run()
     t:noerror("plan sem run", function() ResumeFlow.plan(nil) end)
     t:falsy("sem run não há salão", ResumeFlow.plan(nil).bossInterior)
 
-    t:eq("o nó do save pede a trilha do CHEFE",
-        MusicDirector.pick("playing", runB, runB.currentNode.type), "musicBoss")
+    t:eq("o nó do save pede a trilha do CHEFE do ato",
+        MusicDirector.pick("playing", runB, runB.currentNode.type, true), MusicDirector.BOSS_TRACKS.tower_lich)
     t:eq("perdido o nó, cairia no tema do ATO (o sintoma do relatório)",
         MusicDirector.pick("playing", runB, nil), "musicAct2")
 
@@ -100,9 +100,15 @@ function M.run()
 
         audio:playMusic("menuMusic")
         MusicDirector.markCurrent("menuMusic")
+        local prevHall, prevIntro = MusicDirector.hallProbe, MusicDirector.introProbe
+        MusicDirector.hallProbe = function() return true end
+        MusicDirector.introProbe = function() return false end
         MusicDirector.apply("playing", runB, runB.currentNode.type)
+        MusicDirector.hallProbe, MusicDirector.introProbe = prevHall, prevIntro
+        local trilha = audio.sources[MusicDirector.BOSS_TRACKS.tower_lich]
+            and MusicDirector.BOSS_TRACKS.tower_lich or MusicDirector.GENERIC_BOSS
         t:eq("Continuar num chefe troca a música do menu pela do chefe",
-            audio.currentMusic, "musicBoss")
+            audio.currentMusic, trilha)
 
         audio:stopMusic()
         _G.audioSystem = prevAudio

@@ -43,6 +43,11 @@ function Sfx.stopMusic()
     if a then a:stopMusic() end
 end
 
+function Sfx.silenceMusic(duration)
+    local a = audio()
+    if a and a.fadeOutMusic then a:fadeOutMusic(duration) end
+end
+
 function Sfx.setMasterVolume(v) local a = audio(); if a then a:setMasterVolume(v) end end
 function Sfx.setMusicVolume(v)  local a = audio(); if a then a:setMusicVolume(v)  end end
 function Sfx.setSfxVolume(v)    local a = audio(); if a then a:setSFXVolume(v)    end end

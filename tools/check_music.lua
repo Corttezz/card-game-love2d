@@ -9,6 +9,7 @@ local CONTEXTOS = {
     { "cardReward",   { actNumber = 1 }, "shop",   "Loja de reliquias" },
     { "rest",         { actNumber = 1 }, "rest",   "Fogueira / descanso" },
     { "playing",      { actNumber = 1 }, "elite",  "Elite do ato 1" },
+    { "mapSelection", { actNumber = 1, pendingNodes = { { type = "boss" } } }, nil, "Bandeira do chefe" },
     { "playing",      { actNumber = 1 }, "boss",   "Boss do ato 1" },
     { "playing",      { actNumber = 2 }, "battle", "Ato 2 - combate" },
     { "playing",      { actNumber = 2 }, "boss",   "Boss do ato 2" },
@@ -55,13 +56,14 @@ function M.run()
         local obs = ""
         if now == before then obs = "(mantem)" end
 
-        if now ~= audio.currentMusic then
+        local ouvindo = audio.currentMusic or MD.SILENCE
+        if now ~= ouvindo then
             obs = obs .. "  DIVERGE! audioSystem=" .. tostring(audio.currentMusic)
             fails = fails + 1
         end
 
         local wanted = MD.pick(c[1], c[2], c[3])
-        if wanted and wanted ~= now then
+        if wanted and wanted ~= now and now ~= MD.SILENCE then
             obs = obs .. "  fallback de " .. wanted
         end
 
