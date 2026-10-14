@@ -519,8 +519,17 @@ end
 function GameplayScene.worldOnlyMode()
     local run = game and game.runManager and game.runManager.currentRun
     local nt = run and run.currentNode and run.currentNode.type
-    if GameplayScene.SCENE_MODE == "worldroad" and GameplayScene.inBossRoom(nt)
-        and not WorldRoad.isEntering() then
+    if GameplayScene.SCENE_MODE ~= "worldroad" then return "road" end
+    -- ENCRUZILHADA ATIVA = o nó do chefe já foi deixado: showMapSelection
+    -- avançou andar/ato e abriu o fork, e a escolha acontece NA ESTRADA —
+    -- só lá os marcos existem (WorldRoad.drawOverlays). O nó em si só troca
+    -- quando o jogador ESCOLHE, então esperar por ele aqui deixava o jogador
+    -- preso: salão do ato NOVO (actNumber já virou), cadáver no chão, fork
+    -- invisível (dono, 13/Out: "não foi para a sala correta... não tô
+    -- conseguindo jogar"). Cash out e espólios continuam no salão: o fork
+    -- ainda não existe nessas etapas.
+    if WorldRoad.isForkActive() then return "road" end
+    if GameplayScene.inBossRoom(nt) and not WorldRoad.isEntering() then
         return "hall"
     end
     return "road"

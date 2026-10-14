@@ -2222,14 +2222,28 @@ function CardRewardScreen:draw()
     -- no painel de detalhe FIXO da terceira coluna, desenhado junto com o
     -- resto do painel (dentro do slide) — leitura em posição estável.
 
-    -- REWARDS: tooltip canônico do jogo (o mesmo da mão/deck viewer) acima
-    -- da carta em hover — some quando há seleção ativa (os botões mandam).
+    -- REWARDS: tooltip canônico do jogo (o mesmo da mão/deck viewer) para a
+    -- carta em hover — some quando há seleção ativa (os botões mandam).
+    -- Card:draw NÃO desenha tooltip aqui (recebe isRewardCard=true); este
+    -- passe é a única fonte. Dono, 13/Out/2026 ("não pode ficar o tooltip
+    -- assim"): a carta de espólio é GRANDE e começa a 28% da tela — ACIMA
+    -- dela o painel não cabia, o clamp o prendia no topo e a TopBar
+    -- (camada chrome, desenhada depois) cobria o nome. Agora abre AO LADO,
+    -- topo alinhado ao topo da carta (o mesmo da mão do combate), sobre o
+    -- retângulo REAL desenhado (_drawRect) e nunca acima da barra superior.
     if self.mode == "rewards" and self.hoveredInst and not self.selectedOffer then
         local inst = self.hoveredInst
-        self.cardInfoDisplay:draw(inst, inst.x or 0, inst.y or 0, {
+        local r = inst._drawRect
+        local rx = r and r.x or inst.x or 0
+        local ry = r and r.y or inst.y or 0
+        local rw = r and r.w or self.cardWidth or 0
+        local disp = inst.cardInfoDisplay or self.cardInfoDisplay
+        disp:draw(inst, rx, ry, {
             showRarity = false,   -- o pill de raridade já está acima da carta
             showStats = true,
             showDescription = true,
+            side = true, cardX = rx, cardW = rw,
+            minY = ((_G.topBar and _G.topBar.height) or 52) + 6,
         })
     end
 

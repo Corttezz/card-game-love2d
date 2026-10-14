@@ -218,6 +218,10 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
     -- Jul/2026 "o topo deles tá sendo cortado"). No modo below, y é a
     -- âncora INFERIOR da carta.
     local GAP = 6
+    -- options.minY: teto do painel (espólios: a TopBar é camada chrome e
+    -- desenha DEPOIS — painel preso no topo da tela ficava com o nome
+    -- escondido atrás dela). Sem a opção, 8 px da borda como sempre.
+    local topMin = localOptions.minY or 8
     local panelX = math.floor(x - panelW / 2 + 70)
     local panelY
     if localOptions.below then
@@ -225,7 +229,7 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
         if panelY + panelH > sh - 8 then panelY = sh - 8 - panelH end
     else
         panelY = math.floor(y - panelH - GAP)
-        if panelY < 8 then panelY = 8 end
+        if panelY < topMin then panelY = topMin end
     end
     if localOptions.side and localOptions.cardW then
         -- AO LADO da carta (mão do combate, Out/2026): acima da carta
@@ -243,7 +247,7 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
         panelX = (left >= 10) and left or right
         panelY = math.floor(y)
         if panelY + panelH > sh - 8 then panelY = sh - 8 - panelH end
-        if panelY < 8 then panelY = 8 end
+        if panelY < topMin then panelY = topMin end
         panelX = math.floor(panelX)
     end
     if panelX < 10 then panelX = 10 end

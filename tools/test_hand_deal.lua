@@ -221,6 +221,19 @@ function M.run()
     t:truthy("chefe morto: mesa fechada (sem mão por cima do corpo)", HandDeal.hidesHand())
     local okDraw, errDraw = pcall(GS.drawWorldOnly)
     t:truthy("drawWorldOnly no salão desenha sem erro: " .. tostring(errDraw), okDraw)
+    -- A ENCRUZILHADA abre ANTES de o nó trocar (showMapSelection avança o
+    -- ato e chama showFork; o nó só muda quando o jogador escolhe). Com o
+    -- fork ativo o mundo-só é a ESTRADA — é lá que os marcos são desenhados.
+    -- Regressão do dono (13/Out): preso no salão do ato 2 com o cadáver do
+    -- chefe do ato 1 e o fork invisível.
+    local WorldRoad = require("src.ui.WorldRoad")
+    t:truthy("fixture: fork abre com o nó ainda = chefe",
+        WorldRoad.showFork({ { type = "battle" }, { type = "rest" } }, function() end))
+    t:eq("encruzilhada ativa no nó do chefe: mundo-só = estrada", GS.worldOnlyMode(), "road")
+    local okFork, errFork = pcall(GS.drawWorldOnly)
+    t:truthy("drawWorldOnly na encruzilhada pós-chefe desenha sem erro: " .. tostring(errFork), okFork)
+    WorldRoad._fork = nil
+    t:eq("fork fechado sem trocar o nó: volta ao salão", GS.worldOnlyMode(), "hall")
     run.currentNode = { type = "battle" }   -- a encruzilhada trocou o nó
     t:eq("nó deixado: mundo-só = estrada", GS.worldOnlyMode(), "road")
     run.currentNode = { type = "boss" }

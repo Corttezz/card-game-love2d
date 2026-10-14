@@ -1014,6 +1014,9 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
         opts.side = self.tooltipSide
         opts.cardX = x + offsetX
         opts.cardW = imgW
+        -- tooltipMinY (opcional): teto do painel — a barra superior é camada
+        -- chrome e desenha POR CIMA dele.
+        opts.minY = self.tooltipMinY
         -- deferTooltip (mão do combate): o tooltip é desenhado DEPOIS de
         -- tudo da mão — selos "+COMBO" das vizinhas, prévia de dano, toasts
         -- (dono, Out/2026: o selo da carta ao lado cobria o tooltip). A
