@@ -12,6 +12,8 @@ da barra + painéis de combate) · [[STS Metagame]] (menu, 48 achievements, unlo
 [[STS Run Economy]] (pity systems, gold, shop, fogueira, Neow, eventos, atos) · [[STS Progression & Config]]
 (ascension 1-20, save/RNG counters, seed, settings) · [[STS Gap Analysis]] (confronto com o NOSSO jogo +
 sugestões priorizadas — insumo do documento de melhorias).
+**Balanceamento (Out/2026):** [[STS Balance Study]] (REA + parser das cartas: curva por raridade,
+escala de inimigos, motores e freios, confronto com o Grimoire e o porquê do guerreiro fraco).
 
 **Local:** `E:\dev\projects\slay-the-spire-source\`
 - `src/com/megacrit/cardcrawl/` — 2.008 arquivos .java descompilados (CFR 0.152 a partir do
