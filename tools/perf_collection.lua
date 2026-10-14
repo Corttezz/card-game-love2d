@@ -39,6 +39,36 @@ function M.run(frames)
     local origGetPos = love.mouse.getPosition
     local results = {}
 
+    -- AQUECIMENTO (Out/2026, carta visível = viva): quantos quadros até TODA
+    -- carta animada visível estar com o set montado, e o pior quadro (ms)
+    -- enquanto isso — é o custo de abrir a Coleção com a regra nova.
+    do
+        love.mouse.getPosition = function() return 5, 5 end
+        screen.scrollY = 0
+        -- 2 quadros de aquecimento da TELA (fontes, canvases) ficam de fora
+        -- do pior quadro: o que se mede aqui e a montagem dos sets
+        local worst, lastGrow, visibleAnimated = 0, 0, 0
+        for f = 1, 300 do
+            local before = CardFrame._liveCount()
+            local t0 = love.timer.getTime()
+            CardFrame.update()
+            screen:update(1 / 60)
+            love.graphics.clear(0, 0, 0, 1)
+            screen:draw()
+            local ms = (love.timer.getTime() - t0) * 1000
+            if f > 2 and ms > worst then worst = ms end
+            love.graphics.present()
+            if CardFrame._liveCount() > before then lastGrow = f end
+            if f - lastGrow >= 20 and f > 20 then break end   -- 20 quadros sem carta nova = pronto
+        end
+        visibleAnimated = CardFrame._liveCount()
+        local line = string.format(
+            "[perf_collection] warmup  %d cartas vivas em %d quadros | pior quadro %.2fms | BUILD_PER_FRAME %d | camadas em espera %d",
+            visibleAnimated, lastGrow, worst, CardFrame.BUILD_PER_FRAME, CardFrame._layerCount())
+        print(line)
+        results[#results + 1] = line
+    end
+
     local function scenario(name, setup)
         local cpu, tot = {}, {}
         local stats = { drawcalls = 0, canvasswitches = 0, shaderswitches = 0 }

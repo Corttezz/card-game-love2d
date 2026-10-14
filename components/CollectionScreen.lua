@@ -543,14 +543,13 @@ local function drawCardMini(instance, x, y, hoverScale, alpha, mouseUV, hoverStr
     mouseUV = mouseUV or { 0, 0 }
     hoverStrength = hoverStrength or 0
 
-    -- Grid idle = estatico; HOVER anima o icone (regra do dono, Jul/2026).
+    -- Carta VISIVEL = carta VIVA (dono, 13/Out/2026): a grade inteira anima,
+    -- com ou sem hover. A regra (e o reducedMotion) mora em
+    -- CardFrame.displayImage — nunca inline aqui (foi um limiar cravado aqui
+    -- que deixou o Deck Viewer sem animacao em Set/2026).
     -- Swap temporario de instance.image, restaurado no fim da funcao.
-    -- O LIMIAR mora em CardFrame.isInteracting: ele estava cravado aqui como
-    -- numero magico e faltava no CardGridRender, que e o renderizador do Deck
-    -- Viewer — foi assim que o deck da run ficou sem animacao no hover.
     local _prevImage = instance.image
-    instance.image = CardFrame.imageFor(instance, hoverScale, hoverStrength)
-        or instance.image
+    instance.image = CardFrame.displayImage(instance) or instance.image
 
     local baseScale = CARD_W / instance.image:getWidth()
     local drawScale = baseScale * hoverScale
@@ -830,11 +829,12 @@ local function drawInspectModal(self)
     local cardY = (height - cardH) / 2
 
     -- Render da carta com perspective warp + sombra direcional.
-    -- Visualização ampliada SEMPRE anima o ícone (regra do dono, Jul/2026).
+    -- Inspeção ampliada anima o ícone como toda carta visível
+    -- (CardFrame.displayImage decide; reducedMotion = estática).
     local _prevImage = inst.image
     do
-        local live = CardFrame.liveImage(inst)
-        if live then inst.image = live end
+        local shown = CardFrame.displayImage(inst)
+        if shown then inst.image = shown end
     end
     if inst.image then
         local mx, my = love.mouse.getPosition()

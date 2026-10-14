@@ -77,10 +77,10 @@ Causas achadas:
 4. ~30 shader switches/frame: o warp roda em carta parada, onde é identidade.
 
 Correções: `has()` só olha o frame 0; `IconFramesLoader.getIncremental` (1 PNG
-por chamada) + `CardFrame.liveImage` progressivo (1 composição por chamada; até
-lá mostra o estático = frame 0); `update` só blita animação pedida nos últimos
-0,35s + teto LRU de 24 sets; carta parada sem shader/mesh. Carta "?" não compõe
-canvas.
+por chamada) + `CardFrame.liveImage` progressivo (até lá mostra o estático =
+frame 0); teto macio do cache de sets; carta parada sem shader/mesh. Carta "?"
+não compõe canvas. (Out/2026, carta visível = viva: montagem por camadas sob
+orçamento global por quadro e sem blit — ver [[card_icon_animation]] §Performance v11.)
 
 | cenário | antes (p95 / máx) | depois (p95 / máx) | shader sw/f |
 |---|---|---|---|

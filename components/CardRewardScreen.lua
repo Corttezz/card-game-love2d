@@ -1456,6 +1456,7 @@ function CardRewardScreen:_startFlyToDeck(offer)
 
     local fly = {
         img = inst.image,
+        inst = inst,   -- a carta voando segue VIVA (CardFrame.displayImage no draw)
         x = inst.x, y = inst.y,
         scale = inst.currentScale or inst.baseScale or 1,
         alpha = 1,
@@ -1558,7 +1559,9 @@ function CardRewardScreen:_drawPurchaseFx()
         -- ox/oy: a carta voa pelo canto (origem 0,0 — é como ela é desenhada
         -- na grade); a relíquia sobe pelo CENTRO, senão crescer a escala a
         -- empurra pro canto inferior-direito em vez de inflar no lugar.
-        love.graphics.draw(fly.img, fly.x, fly.y, fly.rot, fly.scale, fly.scale,
+        -- Carta comprada continua animando no voo (dono, 13/Out/2026).
+        local img = fly.inst and require("src.ui.CardFrame").displayImage(fly.inst) or fly.img
+        love.graphics.draw(img, fly.x, fly.y, fly.rot, fly.scale, fly.scale,
             fly.ox or 0, fly.oy or 0)
     end
     local font = FontManager.getFont(13)

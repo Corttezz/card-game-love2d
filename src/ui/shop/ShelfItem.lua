@@ -1037,9 +1037,9 @@ function ShelfItem:drawCard(ctx)
     local alpha = (ctx.alpha or 1) * self:entered()
     if alpha <= 0.01 then return end
     local img = inst.image
-    if (self.hover > 0.5 or self.selected) then
+    do  -- carta no cavalete e VIVA sempre (dono, 13/Out/2026); regra em CardFrame.displayImage
         local okCF, CardFrame = pcall(require, "src.ui.CardFrame")
-        if okCF and CardFrame.liveImage then img = CardFrame.liveImage(inst) or img end
+        if okCF and CardFrame.displayImage then img = CardFrame.displayImage(inst) or img end
     end
     local x0, y0, x1, y1, x2, y2, x3, y3 = self:cardCorners()
     local dim = ctx.afford and 1 or 0.8   -- v5: sem ouro escurece pouco (a arte segue legível); o preço vermelho é o aviso

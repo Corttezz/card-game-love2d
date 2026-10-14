@@ -85,15 +85,17 @@ end
 function JokerSlot:drawOccupiedSlot()
     -- IMAGEM DA CARTA (principal)
     if self.joker and self.joker.image then
+        -- icone vivo como toda carta visivel (dono, 13/Out/2026)
+        local img = require("src.ui.CardFrame").displayImage(self.joker) or self.joker.image
         -- Calcula o tamanho da imagem para caber no slot
-        local imageWidth = self.joker.image:getWidth()
-        local imageHeight = self.joker.image:getHeight()
+        local imageWidth = img:getWidth()
+        local imageHeight = img:getHeight()
         local scale = math.min(self.size / imageWidth, self.size / imageHeight) -- 80% do slot
         
         -- Desenha a imagem da carta centralizada
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.draw(
-            self.joker.image, 
+            img, 
             0, -5, -- Ligeiramente acima do centro
             0, -- Sem rotação
             scale, scale, -- Escala

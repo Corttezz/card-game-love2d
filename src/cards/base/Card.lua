@@ -695,14 +695,14 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
     self.x = x
     self.y = y
 
-    -- Ícone animado (icons_anim/): idle mostra o canvas ESTÁTICO; a
-    -- animação (canvas vivo do CardFrame) entra SÓ na interação — hover ou
-    -- carta selecionada pra jogar (regra do dono, Jul/2026). Swap temporário
-    -- de self.image durante este draw; restaurado no fim da função.
+    -- Ícone animado (icons_anim/): carta VISÍVEL = carta VIVA (regra do
+    -- dono, 13/Out/2026 — revoga o "só na interação" de Jul/2026). A decisão
+    -- (inclusive reducedMotion → estático) mora em CardFrame.displayImage.
+    -- Swap temporário de self.image durante este draw; restaurado no fim.
     local _prevImage = self.image
-    if self.isHovered or self.isSelected then
-        local live = CardFrame.liveImage(self)
-        if live then self.image = live end
+    do
+        local shown = CardFrame.displayImage(self)
+        if shown then self.image = shown end
     end
 
     -- Calcula deslocamentos para hover com efeito 3D

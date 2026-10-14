@@ -28,24 +28,21 @@ function M.draw(instance, x, y, cardW, cardH, hoverScale, alpha, mouseUV, hoverS
     mouseUV = mouseUV or { 0, 0 }
     hoverStrength = hoverStrength or 0
 
-    -- ICONE VIVO NO HOVER — isto FALTAVA (Set/2026).
+    -- ICONE VIVO — em TODA carta visivel (dono, 13/Out/2026), nao so no hover.
     --
-    -- O cabecalho deste arquivo sempre AFIRMOU que o caminho era identico ao
-    -- da Colecao, "ícone vivo" incluso, e nao era: a troca pela imagem viva
-    -- morava inline na CollectionScreen e nunca foi extraida junto. Como este
-    -- modulo e o renderizador do Deck Viewer e do Gerenciador de Coringas, as
-    -- duas telas desenhavam sempre o canvas estatico — "na tela de seu deck,
-    -- ao fazer hover ou clicar numa carta, nao fica com animacao" (dono).
-    --
-    -- Comentario que promete paridade nao a garante; so o codigo garante.
+    -- Historico: em Set/2026 este modulo (renderizador do Deck Viewer e do
+    -- Gerenciador de Coringas) nao animava nem no hover, porque a troca pela
+    -- imagem viva morava inline na CollectionScreen e nunca fora extraida —
+    -- embora o cabecalho AFIRMASSE paridade. Comentario que promete paridade
+    -- nao a garante; so o codigo garante. Por isso a regra mora num lugar so:
+    -- CardFrame.displayImage (inclusive reducedMotion = estatica).
     --
     -- Swap TEMPORARIO de `instance.image` (mesmo idioma da Colecao), restaurado
     -- no fim: assim as ~8 leituras de `instance.image` abaixo — inclusive a
     -- malha do warp e as uniforms do shader — enxergam o frame vivo sem que
     -- nenhuma delas precise saber que ele existe.
     local _prevImage = instance.image
-    instance.image = CardFrame.imageFor(instance, hoverScale, hoverStrength)
-        or instance.image
+    instance.image = CardFrame.displayImage(instance) or instance.image
 
     local baseScale = cardW / instance.image:getWidth()
     local drawScale = baseScale * hoverScale

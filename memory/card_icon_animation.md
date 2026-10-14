@@ -27,24 +27,44 @@ CardFrame.update()      → chamado no love.update (main.lua, TODOS os estados):
                           no canvas vivo (replace+premultiplied, 1 draw)
 ```
 
-**GATING POR INTERAÇÃO (regra do dono, Jul/2026 v2 — substitui o "anima em
-tudo sempre"):** `instance.image` é o canvas ESTÁTICO (frame 0);
-`CardFrame.liveImage(card)` devolve o canvas vivo. A animação SÓ aparece:
-- mão/loja/rewards/jokers ativos: hover OU carta selecionada pra jogar
-  (`Card:draw` faz o swap sozinho via `self.isHovered or self.isSelected`;
-  GameplayScene seta `card.isSelected` por frame);
-- coleção: hover no grid (drawCardMini) + modal de inspeção (sempre);
-- seleção de classe: hover no painel da classe (`hover > 0.35`);
-- deck viewer: carta hovered.
-Idle em qualquer tela = estático. Padrão de código: swap TEMPORÁRIO de
-`instance.image` durante o draw, restaurar no fim (nunca deixar o live
-vazar pro estado).
+**CARTA VISÍVEL = CARTA VIVA (regra do dono, 13/Out/2026 — revoga o gating
+por interação de Jul/2026):** "a todo momento as cartas que estão sendo
+exibidas na tela eu quero que elas fiquem com a animação sendo mostrada.
+Elas não podem estar estáticas em NENHUM tipo de visualização em nenhum
+local." `instance.image` continua sendo o canvas ESTÁTICO (frame 0);
+`CardFrame.displayImage(card)` é a REGRA (o que desenhar agora) e
+`CardFrame.liveImage(card)` o MECANISMO (o canvas do quadro corrente).
+Toda tela pergunta `displayImage` e troca `instance.image` por ele
+TEMPORARIAMENTE durante o draw (restaura no fim — o estado nunca guarda o
+quadro vivo): `Card:draw` (mão, coringas ativos, espólios, loja no cavalete
+e no pergaminho, pacote, cartas iniciais da classe, revelação de desbloqueio,
+voo do combate, pickers), `CollectionScreen.drawCardMini` + inspeção,
+`CardGridRender` (Deck Viewer, Gerenciador de Coringas), `CardDetailPanel`,
+`ShelfItem`, `CardInspectModal`, `UnlockReveal`, `UnlockShowcase`,
+`JokerSlot`, carta voando pro deck na `CardRewardScreen`. Hover e seleção
+continuam valendo (lift, tilt, tooltip) — só não são mais condição.
+
+**Única exceção: `reducedMotion`** (Configurações → Jogo). A opção remove
+MOVIMENTO: `CardFrame.liveEnabled()` fica falso, `displayImage` devolve o
+estático em todo lugar (hover NÃO reanima) e os overlays procedurais do
+`CardAnimationLayer` (brasas, gotas, halo) somem junto. Informação nunca
+sai: o frame 0 é a ilustração inteira.
+
+Trava: `tools/test_cards_always_live.lua` — nenhum arquivo de `components/`
+ou `src/` chama `liveImage` (só o CardFrame); sem hover `Card:draw`,
+`CardGridRender` e a grade da Coleção desenham o quadro corrente e o quadro
+avança com o relógio simulado; com reducedMotion desenham o estático; o
+frame 0 composto pelas camadas é pixel a pixel o render direto; 20 cartas
+pedidas no mesmo quadro ganham vida em ondas. Prova visual:
+`love . screenshot_cartas_vivas` (duas capturas por cena sem hover + imagem
+da diferença, em `tools/preview_out/cartas_vivas/`).
 
 Por que não overlay por cima do canvas: ficava FORA do mesh warp 3D do
 hover (ícone "flutuando" reto sobre carta entortada), fora do HoloShader/
 editions, e cobria o recess shadow do art slot. Com o frame dentro da
 imagem, warp + holo + editions + CRT pegam a animação de graça.
-Custo: 9 canvases 96×144 + 1 blit ~8×/s por carta animada — desprezível.
+Custo: 9 canvases 96×144 (~0,5 MB) por carta animada em uso; não há blit —
+`liveImage` devolve direto o canvas do quadro corrente (ver Performance v11).
 
 **Pontos de código:**
 - `src/ui/IconFramesLoader.lua` — frames + fps (meta.lua opcional, default 8).
@@ -246,9 +266,53 @@ Coleção por segundos. Corrigido em duas camadas:
 - **Coleção INCREMENTAL**: `_buildInstances` com orçamento de 6ms/frame
   (1ª leva 12ms no show) — a tela abre instantânea, cartas fluem em ondas
   na ordem do grid. `_applyFilter` re-roda por chunk (grid parcial ok).
-- REGRA: pontos de render usam `instance.image` (estático) e SÓ pedem
-  `liveImage()` sob gate de interação (hover/seleção/inspeção) — é isso
-  que faz o lazy disparar na hora certa. Validado: test_all 22/22.
+- REGRA (até 13/Out/2026): pontos de render usavam `instance.image` e SÓ
+  pediam `liveImage()` sob gate de interação. Revogada — ver v11 abaixo.
+
+## Performance (v11, Out/2026 — "carta visível = viva")
+
+Com a regra nova a Coleção pede 15-20 sets de uma vez e o Deck Viewer/mão
+mais uns 10-25. Medido (`love . test_one perf_card_anim_units`): decodificar
+um PNG de frame 0,32-0,36 ms; compor a carta INTEIRA (texto, moldura) 0,7-0,8
+ms; o antigo `liveImage` montava 1 composição completa por chamada SEM teto
+global — 20 cartas = 20 composições (14 ms) num quadro. Três mudanças:
+
+1. **Camadas** (`renderLayers`/`composeFrame` no CardFrame): a carta é
+   `base (cor + textura) + ícone + chrome (decoração, sombra de recesso,
+   moldura, banner, selos, rodapé, gemas de forja)`. O chrome é renderizado
+   UMA vez por carta num canvas transparente (pré-multiplicado, composto com
+   `("alpha", "premultiplied")`) e cada frame vira `base + frame + chrome`:
+   ~0,3 ms (é o `newCanvas`, não os draws). Carta animada já NASCE assim no
+   `render` (frame 0 = composição; paridade com o render direto: max 1/255,
+   0 px fora de ±2 — travado no teste); o chrome fica em `layerCache` até o
+   set montar e expira em 3 s sem uso (a Coleção instancia 131 cartas, só as
+   visíveis montam o set).
+2. **Orçamento GLOBAL por quadro**: 1 unidade = 1 PNG decodificado ou 1
+   frame composto; o quadro para em `BUILD_PER_FRAME` (8) unidades OU
+   `BUILD_BUDGET_MS` (2,5 ms) — a contagem é o que mantém o teste
+   determinístico sob relógio simulado (spent = 0), o tempo é o que protege
+   uma máquina lenta. Reposto em `CardFrame.update()` (e por janela de 1/30 s
+   pra quem roda sem o update). As cartas ganham vida em ondas, na ordem em
+   que foram pedidas; até lá desenham o frame 0.
+3. **Sem canvas vivo nem blit**: `liveImage` devolve direto
+   `canvases[frameIndex(t)]`; `update()` só repõe o orçamento e faz a higiene
+   (teto macio 64 sets; só expulsa quem não foi pedido há 0,35 s). `cacheKey`
+   memoizada por instância (tabela fraca) — era uma string nova por carta
+   por quadro.
+
+Números (`perf_collection`, 1024×768, 15 cartas animadas visíveis):
+
+| cena | antes (hover-only) | depois (sempre viva) |
+|---|---|---|
+| aquecimento da grade | — | 15 sets em 36 quadros (0,6 s), pior quadro 3,97 ms |
+| idle cpu avg / p95 | 0,34 / 0,43 ms | 0,31 / 0,40 ms |
+| hover cpu avg / p95 | 0,87 / 1,38 ms | 0,39 / 0,50 ms |
+| scroll cpu avg / p95 / max | 0,71 / 1,35 / 2,3 ms | 1,26 / 2,83 / 3,3 ms |
+
+`test_perf_budget` (WorldRoad) inalterado: 427 draw calls, 30,3 KB/quadro.
+O scroll paga as composições das fileiras que entram (limitadas a 2,5 ms);
+instanciar uma carta animada ficou ~0,4 ms mais caro (2 canvases em vez de
+1) — a abertura da Coleção já é incremental (6 ms/quadro) e absorve.
 
 ## O que salvou as 3 reprovadas na TERCEIRA tentativa (Set/2026)
 

@@ -313,6 +313,10 @@ end
 
 function CardAnimationLayer.draw(card, art, x, y, scaleX, scaleY, t)
     if not enabled then return end
+    -- reducedMotion REMOVE MOVIMENTO (CLAUDE.md): brasas, gotas, halo e
+    -- glifos sao movimento puro — somem junto com o icone animado
+    -- (CardFrame.liveEnabled). Nenhuma informacao mora aqui.
+    if _G.gameSettings and _G.gameSettings.reducedMotion then return end
     scaleX = scaleX or 1
     scaleY = scaleY or 1
     t = t or love.timer.getTime()

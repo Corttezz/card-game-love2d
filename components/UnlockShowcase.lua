@@ -37,6 +37,7 @@ local I18n        = require("src.i18n.I18n")
 local Easing      = require("engine.Easing")
 local Sfx         = require("src.systems.Sfx")
 local UnlockQueue = require("src.systems.UnlockQueue")
+local CardFrame   = require("src.ui.CardFrame")
 
 local Showcase = {}
 Showcase.__index = Showcase
@@ -755,12 +756,16 @@ function Showcase:draw()
         love.graphics.translate(-cx, -cy)
         inst:draw(cr.x, cr.y, false, false)
         inst._showcaseLaid = true
-        require("src.ui.DiscoveryMark").drawSweep(inst.image, cr.x, cr.y, cr.s, t, 1, true)
+        -- varredura e clarao usam o MESMO quadro que a carta desenhou: com o
+        -- icone vivo (dono, 13/Out/2026) a estatica aqui seria um fantasma
+        -- parado por cima da animacao
+        local shown = CardFrame.displayImage(inst) or inst.image
+        require("src.ui.DiscoveryMark").drawSweep(shown, cr.x, cr.y, cr.s, t, 1, true)
         local flash = math.max(0, 1 - t / 0.35)
         if flash > 0 then
             love.graphics.setBlendMode("add")
             love.graphics.setColor(1, 1, 1, 0.85 * flash)
-            love.graphics.draw(inst.image, cr.x, cr.y, 0, cr.s, cr.s)
+            love.graphics.draw(shown, cr.x, cr.y, 0, cr.s, cr.s)
             love.graphics.setBlendMode("alpha")
         end
         love.graphics.pop()

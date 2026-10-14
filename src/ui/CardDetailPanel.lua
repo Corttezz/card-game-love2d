@@ -141,12 +141,11 @@ local function drawCardArt(inst, ax, ay, aw, ah, alpha)
     local img = inst and inst.image
     if not img then return end
 
-    -- Ícone animado (icons_anim/): a inspeção CONTA como interação — regra do
-    -- dono "a animação só aparece na interação" (ver memory/card_icon_animation.md).
+    -- Ícone animado (icons_anim/): carta visível = carta viva; a regra (e o
+    -- reducedMotion) mora em CardFrame.displayImage (memory/card_icon_animation.md).
     local okCF, CardFrame = pcall(require, "src.ui.CardFrame")
-    if okCF and CardFrame and CardFrame.liveImage then
-        local live = CardFrame.liveImage(inst)
-        if live then img = live end
+    if okCF and CardFrame and CardFrame.displayImage then
+        img = CardFrame.displayImage(inst) or img
     end
 
     local iw, ih = img:getWidth(), img:getHeight()

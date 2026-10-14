@@ -47,44 +47,63 @@ function CardFrame.showsManaCost(card)
     return card ~= nil and card.type ~= "joker"
 end
 
--- A CARTA ESTA SENDO INTERAGIDA? (hover ou selecao)
+-- ============================================================================
+-- CARTA VISIVEL = CARTA VIVA (regra do dono, 13/Out/2026)
+-- ============================================================================
+-- "A todo momento as cartas que estao sendo exibidas na tela eu quero que
+-- elas fiquem com a animacao sendo mostrada. Elas nao podem estar estaticas
+-- em NENHUM tipo de visualizacao em nenhum local."
 --
--- E a regra do dono "idle = estatico, interacao = vivo": a ilustracao so
--- anima quando o jogador esta mexendo naquela carta. Mora AQUI porque os dois
--- limiares abaixo estavam escritos inline, como numeros magicos, dentro da
--- CollectionScreen — e faltavam no `CardGridRender`, que e o renderizador
--- COMPARTILHADO do Deck Viewer e do Gerenciador de Coringas. Resultado: a
--- Colecao animava no hover e o deck da run nao ("na tela de seu deck dentro
--- do jogo, ao fazer hover ou clicar em uma carta, nao fica com animacao" —
--- dono, Set/2026), apesar de o cabecalho do CardGridRender AFIRMAR que o
--- caminho era identico ao da Colecao.
+-- Isto REVOGA a regra de Jul/2026 ("idle = estatico, interacao = vivo"), que
+-- morava aqui como `isInteracting`/`imageFor(card, hoverScale, hoverStrength)`.
+-- A animacao do icone agora aparece em TODA renderizacao de carta: mao,
+-- coringas ativos, espolios, loja (bancada e pergaminho), pacote, Colecao
+-- (grade e inspecao), Deck Viewer, Gerenciador de Coringas, cartas iniciais
+-- da classe, revelacoes de desbloqueio, pickers, cartas voando no combate.
 --
--- Ver defect_doctrine 16: regra de dominio repetida em N telas volta na
--- tela N+1. Pergunte aqui em vez de repetir o `if`.
-function CardFrame.isInteracting(hoverScale, hoverStrength)
-    return (hoverScale or 1) > 1.001 or (hoverStrength or 0) > 0.05
+-- A UNICA excecao e `reducedMotion` (Configuracoes -> Jogo): a opcao remove
+-- MOVIMENTO, e o loop do icone e movimento. Com ela ligada a carta fica no
+-- frame 0, que e pixel a pixel a arte estatica — e hover/selecao NAO reabrem
+-- a animacao (seria movimento de novo). Informacao nunca e removida: o frame
+-- 0 e a ilustracao completa.
+--
+-- A decisao mora SO aqui. Toda tela pergunta `CardFrame.displayImage(card)`
+-- (ver defect_doctrine 16: regra repetida em N telas volta na tela N+1 — foi
+-- assim que o Deck Viewer ficou sem animacao em Set/2026). `liveImage` e o
+-- mecanismo (monta e devolve o quadro corrente); `displayImage` e a REGRA.
+-- Trava: tools/test_cards_always_live.lua (nenhum arquivo de tela chama
+-- `liveImage` direto).
+function CardFrame.liveEnabled()
+    local s = _G.gameSettings
+    return not (s and s.reducedMotion)
 end
 
--- A imagem que a carta deve desenhar AGORA: a viva quando interagida (se ela
--- tiver animacao), a estatica caso contrario. Devolver `card.image` no
--- fallback e de proposito — carta sem frames animados nunca deixa de desenhar.
-function CardFrame.imageFor(card, hoverScale, hoverStrength)
-    if card and CardFrame.isInteracting(hoverScale, hoverStrength) then
+-- A imagem que a carta deve desenhar AGORA: o quadro corrente da animacao
+-- quando ela existe (e o movimento esta ligado), a estatica caso contrario.
+-- Devolver `card.image` no fallback e de proposito — carta sem frames
+-- animados (ou com o set ainda montando) nunca deixa de desenhar: o
+-- estatico E o frame 0, entao nao ha salto visual quando o set termina.
+function CardFrame.displayImage(card)
+    if not card then return nil end
+    if CardFrame.liveEnabled() then
         local live = CardFrame.liveImage(card)
         if live then return live end
     end
-    return card and card.image or nil
+    return card.image
 end
 
 local cache = {}
 -- Cartas com ícone animado (icons_anim/): key → { canvases = {...}, fps,
--- live = Canvas, lastIdx }. `canvases` = a carta COMPLETA pré-renderizada uma
--- vez por frame; `live` = o canvas ÚNICO que todo mundo segura como
--- instance.image. CardFrame.update() (chamado no love.update) blita o frame
--- corrente no live quando o índice muda — assim TODA renderização (mão,
--- coleção, loja, deck viewer, tooltips) anima sem saber de nada, e hover
--- warp/holo/editions/CRT aplicam na animação de graça.
+-- lastReq }. `canvases` = a carta COMPLETA pré-renderizada uma vez por frame
+-- do ícone; `liveImage` devolve o canvas do quadro corrente e as telas o
+-- desenham no lugar de `instance.image` (swap temporário no draw). Como o
+-- frame está DENTRO da imagem da carta, hover warp/holo/editions/CRT aplicam
+-- na animação de graça. Regra de quando usar: `displayImage` (topo).
 local animCache = {}
+-- Camadas base/chrome de uma carta animada (ver renderLayers), guardadas
+-- entre o render ESTÁTICO e a montagem do set — assim o set custa só as
+-- composições. key → { under, over, t }. Expiram em LAYER_TTL s sem uso.
+local layerCache = {}
 
 -- Textura de pergaminho global
 local _parchmentTex
@@ -182,14 +201,14 @@ local function drawRecessShadow(ax, ay, aw, ah, bannerX, bannerW, rarity)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-local function renderStandard(card, w, h, iconOverride)
+local function renderStandard(card, w, h, iconOverride, skipIcon)
     local rarity = card.rarity or "common"
     local art    = CardArt.resolve(card)
     local name   = I18n.cardName(card)
 
     local ax, ay, aw, ah = artSlotBounds(card)
     CardArtSlot.draw(ax, ay, aw, ah, art, "parchment",
-        { iconOverride = iconOverride, clipTop = CardFrame.TOP_INSET })
+        { iconOverride = iconOverride, clipTop = CardFrame.TOP_INSET, skipIcon = skipIcon })
 
     CardDecoration.draw(ax, ay, aw, ah, art.decoration, art.accent)
     local autoDec = CardDecoration.autoForBackground(art.bgPattern)
@@ -208,14 +227,14 @@ local function renderStandard(card, w, h, iconOverride)
     CardStatsFooter.draw(w, h, card)
 end
 
-local function renderJoker(card, w, h, iconOverride)
+local function renderJoker(card, w, h, iconOverride, skipIcon)
     local rarity = card.rarity or "common"
     local art    = CardArt.resolve(card)
     local name   = I18n.cardName(card)
 
     local ax, ay, aw, ah = artSlotBounds(card)
     CardArtSlot.draw(ax, ay, aw, ah, art, "tarot",
-        { iconOverride = iconOverride, clipTop = CardFrame.TOP_INSET })
+        { iconOverride = iconOverride, clipTop = CardFrame.TOP_INSET, skipIcon = skipIcon })
     CardDecoration.draw(ax, ay, aw, ah, art.decoration or "flash", art.accent)
     -- Aplica decoração auto pelo bg pattern (mesmo comportamento de renderStandard)
     -- — ex: joker_001 tem bg=abyss → abyss_tendrils por cima do tarot card.
@@ -238,9 +257,19 @@ local function renderJoker(card, w, h, iconOverride)
     JokerFooter.draw(w, h)
 end
 
+-- Chave do cache por (id, nível de forja). Memoizada por instância numa
+-- tabela de chaves FRACAS: com toda carta visível pedindo a imagem viva a
+-- cada draw (Out/2026), montar a string por chamada eram dezenas de
+-- alocações por quadro — lixo que o GC paga.
+local keyMemo = setmetatable({}, { __mode = "k" })
 local function cacheKey(card)
-    return (card.id or (tostring(card.name) .. "_" .. tostring(card.type)))
-        .. "+" .. tostring(card.upgrades or 0)
+    local up = card.upgrades or 0
+    local m = keyMemo[card]
+    if m and m.up == up then return m.key end
+    local key = (card.id or (tostring(card.name) .. "_" .. tostring(card.type)))
+        .. "+" .. tostring(up)
+    keyMemo[card] = { key = key, up = up }
+    return key
 end
 
 -- Adapta um love.Image de frame animado pro contrato de handle do IconLoader
@@ -256,11 +285,19 @@ local function frameHandle(img)
     }
 end
 
-local function renderOne(card, iconOverride)
-    local w, h = CardFrame.WIDTH, CardFrame.HEIGHT
-    local canvas = PixelCanvas.new(w, h)
-    PixelCanvas.beginDraw(canvas, true)
-
+-- A carta é composta em TRÊS camadas, nesta ordem:
+--   base   — pergaminho sólido + textura (opaco, sem nada da carta)
+--   ícone  — a ilustração (estática, ou um frame da animação), recortada ao slot
+--   chrome — decoração, sombra de recesso, moldura, banner do nome, gemas,
+--            selo, rodapé, gemas de forja (tudo que fica POR CIMA do ícone)
+-- e os cantos são recortados por último. `renderOne` desenha as três direto
+-- num canvas (o render ESTÁTICO). Pra ANIMAÇÃO (Out/2026, carta visível =
+-- viva) a base e o chrome são renderizados UMA vez em canvases próprios e
+-- cada frame do ícone vira `base + frame + chrome` (3 draws, ~0,1 ms) em vez
+-- de recompor a carta inteira (texto, moldura, ~0,7 ms medido) — era isso
+-- que fazia a Coleção gaguejar com dezenas de cartas ganhando vida ao mesmo
+-- tempo. Paridade pixel a pixel com o render direto: test_cards_always_live.
+local function drawBase(card, w, h)
     -- Parchment base sólido
     local baseColor = (card.type == "joker") and (Palette.TAROT_CREAM or Palette.PARCHMENT_LIGHT)
                                               or Palette.PARCHMENT_LIGHT
@@ -274,10 +311,13 @@ local function renderOne(card, iconOverride)
         love.graphics.setColor(1, 1, 1, 1)
     end
 
+end
+
+local function drawChrome(card, w, h, iconOverride, skipIcon)
     if card.type == "joker" then
-        renderJoker(card, w, h, iconOverride)
+        renderJoker(card, w, h, iconOverride, skipIcon)
     else
-        renderStandard(card, w, h, iconOverride)
+        renderStandard(card, w, h, iconOverride, skipIcon)
     end
 
     -- GEMAS DE FORJA (v2 Jul/2026 — substitui o selo "+N" que duplicava
@@ -315,6 +355,9 @@ local function renderOne(card, iconOverride)
         end
     end
 
+end
+
+local function cutCorners(w, h)
     -- Stepped pixel-art corner cut (3px em L) — aplicado por último pra recortar
     -- tudo: base + texture + borda + header + footer + seals. setBlendMode("replace")
     -- sobrescreve alpha pra 0, criando transparência real nos cantos.
@@ -335,8 +378,49 @@ local function renderOne(card, iconOverride)
     love.graphics.setBlendMode("alpha")
     love.graphics.setColor(1, 1, 1, 1)
 
-    PixelCanvas.endDraw()
+end
 
+local function renderOne(card, iconOverride)
+    local w, h = CardFrame.WIDTH, CardFrame.HEIGHT
+    local canvas = PixelCanvas.new(w, h)
+    PixelCanvas.beginDraw(canvas, true)
+    drawBase(card, w, h)
+    drawChrome(card, w, h, iconOverride, false)
+    cutCorners(w, h)
+    PixelCanvas.endDraw()
+    return canvas
+end
+
+-- Camada reutilizável da animação: { over }. O chrome nasce num canvas
+-- TRANSPARENTE (fica pré-multiplicado) e é composto com
+-- ("alpha", "premultiplied") — matematicamente o mesmo "over" do desenho
+-- direto, a menos de arredondamento de 8 bits. A BASE (cor + textura, 2
+-- draws) é redesenhada direto em cada composição: canvas a menos por carta.
+local function renderLayers(card)
+    local w, h = CardFrame.WIDTH, CardFrame.HEIGHT
+    local over = PixelCanvas.new(w, h)
+    PixelCanvas.beginDraw(over, true)
+    drawChrome(card, w, h, nil, true)
+    PixelCanvas.endDraw()
+    return { over = over }
+end
+
+-- Um frame da animação a partir das camadas: base + ícone + chrome + cantos.
+local function composeFrame(card, layers, iconOverride)
+    local w, h = CardFrame.WIDTH, CardFrame.HEIGHT
+    local canvas = PixelCanvas.new(w, h)
+    PixelCanvas.beginDraw(canvas, true)
+    drawBase(card, w, h)
+    local art = CardArt.resolve(card)
+    local ax, ay, aw, ah = artSlotBounds(card)
+    CardArtSlot.draw(ax, ay, aw, ah, art, (card.type == "joker") and "tarot" or "parchment",
+        { iconOverride = iconOverride, clipTop = CardFrame.TOP_INSET })
+    love.graphics.setBlendMode("alpha", "premultiplied")
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(layers.over, 0, 0)
+    love.graphics.setBlendMode("alpha")
+    cutCorners(w, h)
+    PixelCanvas.endDraw()
     return canvas
 end
 
@@ -350,15 +434,23 @@ function CardFrame.render(card)
     if cache[key] then return cache[key] end
 
     -- v10.6 (perf — "engasgada ao abrir a Coleção"): na INSTANCIAÇÃO só o
-    -- render ESTÁTICO com o frame 0 da animação (idle = frame 0, regra do
-    -- dono). Os demais frames + canvas vivo ficam LAZY em getAnimation()
-    -- — chamado no primeiro hover/inspeção, que é onde a animação aparece.
-    -- Antes: 116 cartas × (~9 PNGs do disco + ~9 composições completas)
-    -- num frame só = travada de segundos na primeira abertura.
+    -- render ESTÁTICO com o frame 0 da animação. Os demais frames ficam
+    -- LAZY (liveImage sob orçamento / getAnimation). Antes: 116 cartas ×
+    -- (~9 PNGs do disco + ~9 composições completas) num frame só = travada
+    -- de segundos na primeira abertura.
+    --
+    -- v11 (Out/2026, carta visível = viva): carta com ícone animado nasce
+    -- pelas CAMADAS — base e chrome renderizados uma vez e o frame 0 composto
+    -- por cima (mesmo caminho dos outros frames: o set nunca "pisca" na volta
+    -- do loop). As camadas ficam em layerCache até o set ser montado, então
+    -- animar custa só as composições (~0,1 ms cada), não a carta inteira.
     local art = CardArt.resolve(card)
     local first = art.iconName and IconFramesLoader.first(art.iconName)
     if first then
-        cache[key] = renderOne(card, frameHandle(first))
+        local layers = renderLayers(card)
+        layers.t = love.timer.getTime()
+        layerCache[key] = layers
+        cache[key] = composeFrame(card, layers, frameHandle(first))
         return cache[key]
     end
 
@@ -377,7 +469,7 @@ local function warnOnce(key, msg)
 end
 
 -- Set de frames VÁLIDO = canvases 1..n todos presentes, n ≥ 1. Um buraco
--- aqui não dá erro na hora: `#` ainda devolve n e o blit cai no slot vazio
+-- aqui não dá erro na hora: `#` ainda devolve n e o draw cai no slot vazio
 -- só quando o relógio aponta pra ele — defeito de 1 em n quadros, por
 -- horário (Out/2026: CardFrame.render estubado por tools/balance_sim.setup
 -- vazava pras suites seguintes; o set nascia {nil, c2..c9} e test_class_select
@@ -391,54 +483,72 @@ local function validSet(canvases)
     return true
 end
 
--- Retorna { canvases, fps, live } se a carta tem ícone animado; nil caso
--- contrário. v10.6: é AQUI que o set completo é construído (lazy, no
--- primeiro hover/inspeção) — ~9 composições de UMA carta ≈ poucos ms,
--- imperceptível. O frame 0 reusa o canvas estático já composto no render.
-function CardFrame.getAnimation(card)
-    local key = cacheKey(card)
-    if animCache[key] then return animCache[key] end
-    local art = CardArt.resolve(card)
-    local frames = art.iconName and IconFramesLoader.get(art.iconName)
-    if not frames then return nil end
-    local canvases = {}
-    for i, img in ipairs(frames.frames) do
-        if i == 1 and cache[key] then
-            canvases[1] = cache[key]   -- estático = frame 0, já composto
-        else
-            canvases[i] = renderOne(card, frameHandle(img))
-        end
-    end
-    cache[key] = cache[key] or canvases[1]
-    if not validSet(canvases) then
-        warnOnce(key, "getAnimation: set de frames incompleto")
-        return nil
-    end
-    local live = PixelCanvas.new(CardFrame.WIDTH, CardFrame.HEIGHT)
-    animCache[key] = { canvases = canvases, fps = frames.fps,
-                       live = live, lastIdx = 0, lastReq = love.timer.getTime() }
-    CardFrame.update()  -- blit inicial (lastIdx=0 força o primeiro copy)
-    return animCache[key]
+-- ===== Ciclo de vida das animações (v3, Out/2026 — "carta visível = viva") =====
+-- Cada carta animada tem um SET de canvases (a carta completa composta uma
+-- vez por frame do ícone). `liveImage` devolve DIRETO o canvas do quadro
+-- corrente — não existe mais um "canvas vivo" intermediário blitado a cada
+-- mudança de frame: com dezenas de cartas vivas no mesmo quadro (Coleção,
+-- Deck Viewer) isso eram dezenas de trocas de canvas por segundo pra copiar
+-- um canvas em outro. Quem desenha já pede a imagem a cada draw (swap
+-- temporário de `instance.image`), então devolver o quadro certo basta.
+--
+-- Custo controlado em TRÊS lugares:
+--   1. ORÇAMENTO GLOBAL por quadro, somado em TODAS as cartas: abrir a
+--      Coleção pede 15-20 cartas vivas de uma vez = ~90 ms de trabalho
+--      (decodificar 9 PNGs a ~0,36 ms + compor 8 frames a ~0,34 ms por
+--      carta, medido em tools/perf_card_anim_units); sem teto isso é um engasgo num
+--      quadro só. Cada UNIDADE é um PNG decodificado ou um frame composto;
+--      o quadro para quando gastou BUILD_BUDGET_MS de relógio OU
+--      BUILD_PER_FRAME unidades (o teto por contagem é o que torna o
+--      comportamento determinístico sob relógio simulado nos testes). As
+--      cartas ganham vida em ondas, na ordem em que foram pedidas, em
+--      ~0,5 s pra grade inteira; até lá desenham o estático = frame 0, sem
+--      salto visual.
+--   2. SÓ QUEM FOI PEDIDO fica em memória: animação que ninguém desenhou há
+--      STALE_SECS é candidata a sair quando o cache passa de MAX_LIVE sets.
+--      O teto é MACIO: nunca descarta uma animação em uso (seria recomposta
+--      no quadro seguinte — thrash que piscava o estático).
+--   3. Nada acontece em `update()` além de higiene: zero blits.
+-- Memória: um set = 9 canvases 96×144 ≈ 0,5 MB; MAX_LIVE 64 ≈ 32 MB de VRAM
+-- no pior caso (≈3× a grade visível da Coleção, pra rolar sem recompor).
+local BUILD_PER_FRAME = 8      -- unidades (PNG ou frame) por quadro
+local BUILD_BUDGET_MS = 2.5    -- relógio gasto montando, por quadro
+local STALE_SECS = 0.35
+local MAX_LIVE = 64
+local LAYER_TTL = 3.0
+-- Régua dos testes (test_card_live_hover / test_cards_always_live).
+CardFrame.MAX_LIVE, CardFrame.STALE_SECS = MAX_LIVE, STALE_SECS
+CardFrame.BUILD_PER_FRAME, CardFrame.BUILD_BUDGET_MS = BUILD_PER_FRAME, BUILD_BUDGET_MS
+local building = {}   -- key → { frames, fps, canvases, i, layers }
+
+-- Orçamento do quadro: reposto em CardFrame.update() (love.update) e, como
+-- rede pra quem roda sem o update (tools antigos), quando o relógio andou
+-- mais que BUDGET_WINDOW desde a última reposição.
+local BUDGET_WINDOW = 1 / 30
+local budget = { left = BUILD_PER_FRAME, spentMs = 0, t0 = -math.huge }
+
+local function budgetReset(now)
+    budget.left = BUILD_PER_FRAME
+    budget.spentMs = 0
+    budget.t0 = now
 end
 
--- ===== Construção PROGRESSIVA + ciclo de vida das animações (perf Out/2026) =====
--- MEDIDO (tools/perf_collection.lua): cada PRIMEIRO hover numa carta montava o
--- set inteiro de uma vez (9 PNGs do disco + 8 composições completas da carta)
--- = engasgo de 8-23ms NO FRAME do hover. Na Coleção, varrer o grid com o mouse
--- é uma sequência de "primeiros hovers": a lista inteira gaguejava. E o
--- animCache crescia sem teto: toda carta já hoverada continuava sendo blitada
--- pra sempre no CardFrame.update, então a tela ficava mais lenta quanto mais
--- o jogador olhava.
--- Agora: (1) liveImage monta o set aos poucos (BUILD_PER_CALL composições por
--- chamada; até lá a carta segue no estático = frame 0, sem salto visual);
--- (2) update só blita animação PEDIDA nos últimos STALE_SECS; (3) teto LRU de
--- MAX_LIVE sets em memória (o resto é recomposto sob demanda).
-local BUILD_PER_CALL = 1
-local STALE_SECS = 0.35
-local MAX_LIVE = 24
--- Régua dos testes (test_card_live_hover): teto e janela de "em uso".
-CardFrame.MAX_LIVE, CardFrame.STALE_SECS = MAX_LIVE, STALE_SECS
-local building = {}   -- key → { frames, fps, canvases, i }
+local function budgetTick(now)
+    -- `now < t0`: o relógio ANDOU PRA TRÁS (suites com relógio simulado em
+    -- sequência) — sem isto o orçamento nunca mais era reposto e a montagem
+    -- parava: test_class_select falhava SÓ dentro do test_all.
+    if now < budget.t0 or now - budget.t0 >= BUDGET_WINDOW then budgetReset(now) end
+end
+
+local function budgetOk()
+    return budget.left > 0 and budget.spentMs < BUILD_BUDGET_MS
+end
+
+-- Uma unidade de trabalho gasta: conta e relógio (t0 = antes do trabalho).
+local function budgetSpend(t0)
+    budget.left = budget.left - 1
+    budget.spentMs = budget.spentMs + (love.timer.getTime() - t0) * 1000
+end
 
 -- Índice do frame no instante t. Nunca NaN: n = 0 ou t não-finito → 1.
 local function frameIndex(anim, t)
@@ -449,35 +559,47 @@ local function frameIndex(anim, t)
     return math.floor(x) % n + 1
 end
 
--- Devolve false (e marca a animação) se o slot pedido estiver vazio — quem
--- chama descarta o set e volta pro estático. Jamais derruba o quadro.
-local function blitFrame(anim, idx)
-    local src = anim.canvases[idx]
-    if not src then
-        anim.broken = true
-        return false
+-- Quadro corrente de uma animação pronta (também usado por tools/preview).
+function CardFrame.frameAt(anim, t)
+    return anim and anim.canvases[frameIndex(anim, t)] or nil
+end
+
+-- Retorna { canvases, fps } se a carta tem ícone animado; nil caso contrário.
+-- Monta o set INTEIRO agora (sem orçamento) — é o caminho dos tools/testes e
+-- da inspeção que quer a animação completa num só passo. O frame 0 reusa o
+-- canvas estático já composto no render.
+function CardFrame.getAnimation(card)
+    local key = cacheKey(card)
+    if animCache[key] then return animCache[key] end
+    local art = CardArt.resolve(card)
+    local frames = art.iconName and IconFramesLoader.get(art.iconName)
+    if not frames then return nil end
+    local canvases = {}
+    local layers = layerCache[key] or renderLayers(card)
+    for i, img in ipairs(frames.frames) do
+        if i == 1 and cache[key] then
+            canvases[1] = cache[key]   -- estático = frame 0, já composto
+        else
+            canvases[i] = composeFrame(card, layers, frameHandle(img))
+        end
     end
-    anim.lastIdx = idx
-    -- push("all") preserva canvas/blend/cor de quem chamou (update global OU
-    -- liveImage no meio de um draw com canvas ativo).
-    love.graphics.push("all")
-    love.graphics.origin()
-    love.graphics.setCanvas(anim.live)
-    -- Cópia byte-a-byte do frame (replace+premultiplied evita recombinar
-    -- alpha — o conteúdo já veio de um canvas).
-    love.graphics.setBlendMode("replace", "premultiplied")
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.draw(src, 0, 0)
-    love.graphics.pop()
-    return true
+    cache[key] = cache[key] or canvases[1]
+    layerCache[key] = nil
+    if not validSet(canvases) then
+        warnOnce(key, "getAnimation: set de frames incompleto")
+        return nil
+    end
+    building[key] = nil
+    animCache[key] = { canvases = canvases, fps = frames.fps,
+                       lastReq = love.timer.getTime() }
+    return animCache[key]
 end
 
 -- Teto MACIO: só descarta animação que ninguém pediu há STALE_SECS. Com mais
--- de MAX_LIVE cartas animadas interagidas no MESMO quadro (coleção com a
--- inspeção + grid, mão cheia + coringas), descartar uma viva a faria ser
--- recomposta no quadro seguinte (8 composições) pra ser descartada de novo —
+-- de MAX_LIVE cartas animadas visíveis no MESMO quadro, descartar uma viva a
+-- faria ser recomposta no quadro seguinte pra ser descartada de novo —
 -- thrash que piscava o estático no lugar do vivo. Passar do teto por um
--- instante custa só memória; o excesso sai assim que fica parado.
+-- instante custa só memória; o excesso sai assim que sai da tela.
 local function evictLRU(now)
     local n = 0
     for _ in pairs(animCache) do n = n + 1 end
@@ -493,38 +615,40 @@ local function evictLRU(now)
     end
 end
 
--- Canvas VIVO (animado) da carta, ou nil se ela não tem animação (ou se o
--- set ainda está sendo montado — quem chama desenha o estático, que É o
--- frame 0).
--- Contrato de uso (regra do dono, Jul/2026): os pontos de renderização
--- desenham instance.image (estático) por padrão e trocam pra este canvas
--- SÓ na interação — hover, carta selecionada pra jogar, inspeção ampliada.
+-- Canvas do QUADRO CORRENTE da animação da carta, ou nil se ela não tem
+-- animação (ou se o set ainda está sendo montado — quem chama desenha o
+-- estático, que É o frame 0).
+--
+-- Este é o MECANISMO. A REGRA de quando usar mora em `displayImage`
+-- (topo do arquivo): telas não chamam `liveImage` direto — assim o
+-- `reducedMotion` vale em todo lugar de uma vez.
 function CardFrame.liveImage(card)
     local key = cacheKey(card)
     local now = love.timer.getTime()
     local anim = animCache[key]
     if anim then
-        local stale = (now - (anim.lastReq or 0)) > STALE_SECS
         anim.lastReq = now
-        if stale then
-            -- update() parou de blitar enquanto ninguém olhava: sincroniza já.
-            blitFrame(anim, frameIndex(anim, now))
-        end
-        if anim.broken then
-            -- slot vazio achado no blit: fora do cache, carta segue estática.
+        local cv = anim.canvases[frameIndex(anim, now)]
+        if not cv then
+            -- slot vazio: fora do cache, carta segue estática (e avisa).
             warnOnce(key, "animação com frame vazio descartada")
             animCache[key] = nil
             return nil
         end
-        return anim.live
+        return cv
     end
+
+    budgetTick(now)
+    if not budgetOk() then return nil end   -- quadro cheio: próxima leva
 
     local b = building[key]
     if not b then
         local okA, art = pcall(CardArt.resolve, card)
         if not okA or not art or not art.iconName then return nil end
         if not IconFramesLoader.has(art.iconName) then return nil end
+        local t0 = love.timer.getTime()
         local frames = IconFramesLoader.getIncremental(art.iconName, 1)
+        budgetSpend(t0)
         if not frames or #frames.frames == 0 then return nil end
         if not cache[key] then
             local okR, err = pcall(CardFrame.render, card)
@@ -543,60 +667,96 @@ function CardFrame.liveImage(card)
         b = { frames = frames.frames, fps = frames.fps,
               canvases = { cache[key] }, i = 1 }
         building[key] = b
-        return nil
     end
 
-    local made = 0
-    while b.i < #b.frames and made < BUILD_PER_CALL do
+    if not b.layers then
+        if layerCache[key] then
+            b.layers = layerCache[key]
+        else
+            local t0 = love.timer.getTime()
+            local okL, layers = pcall(renderLayers, card)
+            budgetSpend(t0)
+            if not okL then
+                print("[CardFrame] falha nas camadas de " .. key .. ": " .. tostring(layers))
+                building[key] = nil
+                return nil
+            end
+            b.layers = layers
+        end
+    end
+
+    while b.i < #b.frames and budgetOk() do
         b.i = b.i + 1
-        local ok, cv = pcall(renderOne, card, frameHandle(b.frames[b.i]))
+        local t0 = love.timer.getTime()
+        local ok, cv = pcall(composeFrame, card, b.layers, frameHandle(b.frames[b.i]))
+        budgetSpend(t0)
         if not ok then
             print("[CardFrame] falha compondo frame " .. b.i .. " de " .. key .. ": " .. tostring(cv))
             building[key] = nil
             return nil
         end
         b.canvases[b.i] = cv
-        made = made + 1
     end
     if b.i < #b.frames then return nil end
 
     building[key] = nil
+    layerCache[key] = nil   -- set pronto: as camadas já cumpriram o papel
     if not validSet(b.canvases) then
         warnOnce(key, "set de frames incompleto; sem animação")
         return nil
     end
-    anim = { canvases = b.canvases, fps = b.fps, lastIdx = 0, lastReq = now,
-             live = PixelCanvas.new(CardFrame.WIDTH, CardFrame.HEIGHT) }
+    anim = { canvases = b.canvases, fps = b.fps, lastReq = now }
     animCache[key] = anim
-    blitFrame(anim, frameIndex(anim, now))
     evictLRU(now)
-    return anim.live
+    return anim.canvases[frameIndex(anim, now)]
 end
 
--- Tick global (main.lua love.update, todos os estados): quando o frame
--- corrente de uma animação EM USO muda, blita o canvas pré-renderizado no
--- canvas vivo. Animação que ninguém pediu nos últimos STALE_SECS não custa
--- nada (liveImage ressincroniza quando ela volta a ser pedida).
+-- Tick global (main.lua love.update, todos os estados): repõe o orçamento
+-- de composição do quadro e faz a higiene do cache. NÃO blita nada — o
+-- quadro corrente é escolhido na hora do draw (liveImage).
 function CardFrame.update()
     local t = love.timer.getTime()
+    budgetReset(t)
     local n = 0
-    for key, anim in pairs(animCache) do
-        n = n + 1
-        if anim.broken then
-            animCache[key] = nil
-        elseif (t - (anim.lastReq or t)) <= STALE_SECS then
-            local idx = frameIndex(anim, t)
-            if idx ~= anim.lastIdx then blitFrame(anim, idx) end
-        end
-    end
-    -- o excesso sobre o teto macio sai quando as cartas ficam paradas
+    for _ in pairs(animCache) do n = n + 1 end
+    -- o excesso sobre o teto macio sai quando as cartas saem da tela
     if n > MAX_LIVE then evictLRU(t) end
+    -- camadas de carta que nasceu mas nunca ganhou vida (Coleção instancia
+    -- o catálogo inteiro; só as visíveis montam o set) expiram
+    for k, L in pairs(layerCache) do
+        if not building[k] and (t - (L.t or t)) > LAYER_TTL then layerCache[k] = nil end
+    end
 end
 
 -- Quantos sets de animação estão vivos em memória (régua/teste de perf).
 function CardFrame._liveCount()
     local n = 0
     for _ in pairs(animCache) do n = n + 1 end
+    return n
+end
+
+-- Paridade das camadas (teste): o frame 0 pelo caminho da ANIMAÇÃO (base +
+-- ícone estático + chrome, o que `render` devolve pra carta animada) contra
+-- a carta DESENHADA DIRETO num canvas só — os dois têm que bater pixel a
+-- pixel (a menos de ±1 de arredondamento do pré-multiplicado).
+function CardFrame._renderDirectForParity(card)
+    local art = CardArt.resolve(card)
+    local first = art.iconName and IconFramesLoader.first(art.iconName)
+    if not first then return nil end
+    return renderOne(card, frameHandle(first))
+end
+
+-- Camadas em espera (régua de memória transitória).
+function CardFrame._layerCount()
+    local n = 0
+    for _ in pairs(layerCache) do n = n + 1 end
+    return n
+end
+
+-- Quantas cartas ainda estão com o set em montagem (régua de perf).
+function CardFrame._buildingCount()
+    local n = 0
+    for _ in pairs(building) do n = n + 1 end
     return n
 end
 
@@ -612,6 +772,9 @@ function CardFrame.invalidate(card)
     for k in pairs(building) do
         if k:sub(1, #prefix) == prefix then building[k] = nil end
     end
+    for k in pairs(layerCache) do
+        if k:sub(1, #prefix) == prefix then layerCache[k] = nil end
+    end
 end
 
 -- Invalida os canvases. Chamar SEMPRE que algo invalidar o contexto grafico —
@@ -625,6 +788,7 @@ function CardFrame.clearCache()
     cache = {}
     animCache = {}
     building = {}
+    layerCache = {}
 end
 
 -- Quando o idioma muda, todas as cartas precisam ser re-renderizadas pra

@@ -176,6 +176,7 @@ function M.run()
                 love.timer.getTime = function() return simNow end
                 love.graphics.setCanvas(canvas)
                 local okF, errF = pcall(function()
+                    require("src.ui.CardFrame").update()   -- como o love.update faz
                     s3:update(1 / 60)
                     s3:draw()
                 end)
@@ -198,9 +199,11 @@ function M.run()
             t:truthy("hover levanta a carta (sobe da folha)", (c1.liftOffset or 0) < 0)
             t:truthy("hover abre o tooltip (CardInfoDisplay)",
                 c1.cardInfoDisplay and c1.cardInfoDisplay.lastRect ~= nil)
-            -- CARTA VIVA no hover: o set monta 1 frame por quadro (9 PNGs + 8
+            -- CARTA VIVA: o set monta sob orçamento por quadro (9 PNGs + 8
             -- composições ≈ 20 quadros) e a imagem estática VOLTA ao fim de
-            -- cada draw (swap temporário — regra do dono, idle = estático).
+            -- cada draw (swap temporário de instance.image — a carta é viva
+            -- em toda tela desde 13/Out/2026, mas o estado nunca guarda o
+            -- quadro vivo).
             -- Era aqui que o test_all caía em CardFrame.lua:423 quando o
             -- CardFrame.render chegava estubado de uma suite anterior.
             do
@@ -212,7 +215,7 @@ function M.run()
                     art.iconName and IFL.has(art.iconName) or false)
                 local static1 = c1.image
                 for _ = 1, 40 do frame() end
-                t:truthy("hover longo: carta inicial animada tem canvas vivo",
+                t:truthy("carta inicial animada tem quadro vivo",
                     CardFrame.liveImage(c1) ~= nil)
                 t:eq("fora do draw a carta volta à imagem estática", c1.image, static1)
             end

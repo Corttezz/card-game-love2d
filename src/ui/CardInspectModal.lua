@@ -22,6 +22,7 @@ local Palette             = require("src.ui.Palette")
 local CardMesh            = require("src.ui.CardMesh")
 local CardArt             = require("src.ui.CardArt")
 local CardAnimationLayer  = require("src.ui.card.CardAnimationLayer")
+local CardFrame           = require("src.ui.CardFrame")
 local I18n                = require("src.i18n.I18n")
 local Sfx                 = require("src.systems.Sfx")
 
@@ -140,6 +141,14 @@ function CardInspectModal:draw()
     local cardX = (width - cardW) / 2 - 140  -- desloca pra esquerda pra caber painel
     local cardY = (height - cardH) / 2
 
+    -- Ícone animado: a inspeção desenha o quadro vivo como toda carta visível
+    -- (CardFrame.displayImage decide; reducedMotion = estática). Swap
+    -- temporário de inst.image, restaurado logo após o bloco de desenho.
+    local _prevImage = inst.image
+    do
+        local shown = CardFrame.displayImage(inst)
+        if shown then inst.image = shown end
+    end
     if inst.image then
         local mx, my = love.mouse.getPosition()
         local cx = cardX + cardW / 2
@@ -183,6 +192,7 @@ function CardInspectModal:draw()
         end
         CardAnimationLayer.draw(inst, inst._cachedArt, cardX, cardY, scale, scale)
     end
+    inst.image = _prevImage   -- desfaz o swap do ícone vivo
 
     -- Painel lateral com info detalhada
     local panelX = cardX + cardW + 30

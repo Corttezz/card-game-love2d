@@ -81,17 +81,18 @@ function M.run(cardId)
     print("[preview] salvou " .. love.filesystem.getSaveDirectory()
         .. "/preview_card_anim.png")
 
-    -- Verificação do canvas VIVO (o que as telas seguram como instance.image):
-    -- espera 1.5 frames de animação e confere que CardFrame.update() mudou
-    -- o conteúdo. Pega regressão do tipo "anima no preview mas não no jogo".
-    if anim and anim.live then
-        local d1 = anim.live:newImageData():getString()
+    -- Verificação do QUADRO VIVO (o que as telas desenham via
+    -- CardFrame.displayImage): espera 1.5 frames de animação e confere que
+    -- liveImage devolve outro canvas. Pega regressão do tipo "anima no
+    -- preview mas não no jogo".
+    if anim then
+        local c1 = CardFrame.liveImage(cd)
         local t0 = love.timer.getTime()
         while love.timer.getTime() - t0 < (1.5 / fps) do end
         CardFrame.update()
-        local d2 = anim.live:newImageData():getString()
-        print("[preview_card_anim] canvas vivo atualiza via CardFrame.update(): "
-            .. (d1 ~= d2 and "SIM" or "NAO (BUG!)"))
+        local c2 = CardFrame.liveImage(cd)
+        print("[preview_card_anim] quadro vivo avança com o relógio (liveImage): "
+            .. ((c1 and c2 and c1 ~= c2) and "SIM" or "NAO (BUG!)"))
     end
 end
 

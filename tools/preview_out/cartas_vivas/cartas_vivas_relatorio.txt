@@ -1,0 +1,7 @@
+colecao          pixels diferentes entre t1 e t2 (sem hover): 46049 de 786432 (5.86%)  vivas=15
+colecao_reduzido pixels diferentes entre t1 e t2 (sem hover): 0 de 786432 (0.00%)  vivas=15
+mao_carddraw     pixels diferentes entre t1 e t2 (sem hover): 29239 de 786432 (3.72%)  vivas=21
+deck_viewer      pixels diferentes entre t1 e t2 (sem hover): 5349 de 786432 (0.68%)  vivas=22
+espolios         pixels diferentes entre t1 e t2 (sem hover): 31198 de 786432 (3.97%)  vivas=25
+RESUMO: colecao=46049 deck_viewer=5349 mao_carddraw=29239 espolios=31198 | reducedMotion colecao=0 (esperado 0)
+VEREDITO: cartas vivas sem hover em todas as cenas; estaticas com reducedMotion

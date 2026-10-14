@@ -33,7 +33,7 @@
 - [Pixel Art System](pixel_art_system.md) — arte procedural (Palette → CardFrame → CRTShader)
 - [UI Pixel Chrome](ui_pixel_system.md) — botões/menus pixel, Press Start 2P
 - [Sprite Design Queue](sprite_design_queue.md) — fila de sprites via pixel-mcp
-- ⚠️ [Card Icon Animation](card_icon_animation.md) — **PARTE DO PIPELINE de carta nova**: olhar a arte ANTES de escrever a animação; intensidade segue raridade (basic=quase imperceptível → legendary=vivo); PixelLab animate_object v3 → icons_anim/ → canvas vivo no CardFrame; `love . preview_card_anim` + `screenshot_collection`
+- ⚠️ [Card Icon Animation](card_icon_animation.md) — **PARTE DO PIPELINE de carta nova**: olhar a arte ANTES de escrever a animação; intensidade segue raridade (basic=quase imperceptível → legendary=vivo); PixelLab animate_object v3 → icons_anim/ → quadro vivo no CardFrame; **13/Out/2026: carta VISÍVEL = carta VIVA em toda tela (só `reducedMotion` deixa estática), regra única em `CardFrame.displayImage`, montagem por camadas sob orçamento por quadro**; `love . preview_card_anim` + `screenshot_collection` + `screenshot_cartas_vivas`
 - [PixelLab Queue: Pack Sleeves](pixellab_queue_packs.md) — prompts prontos pros 5 sleeves de booster + banner. Aguarda MCP reconectar.
 - ⚠️ [Combat Beats](combat_beats.md) — **Set/2026: a batalha e uma FILA DE BEATS (um acontecimento por instante, bloqueando o proximo); tabela de tempos unica em CombatBeats.HOLD; espinhos viraram ESTADO (dano so quando o inimigo ataca)**
 - [Combat Animation](combat_animation.md) — Balatro-style, isBlocking() pausa jogo

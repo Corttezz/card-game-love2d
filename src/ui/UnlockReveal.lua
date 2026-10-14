@@ -16,6 +16,7 @@ local Palette     = require("src.ui.Palette")
 local I18n        = require("src.i18n.I18n")
 local Easing      = require("engine.Easing")
 local Sfx         = require("src.systems.Sfx")
+local CardFrame   = require("src.ui.CardFrame")
 
 local UnlockReveal = {}
 
@@ -280,7 +281,8 @@ function UnlockReveal.draw(result, x, y, w, h)
         else
             if k > 0 and it.inst and it.inst.image then
                 local e = Easing.backOut(math.min(1, k))
-                local img = it.inst.image
+                -- carta revelada e VIVA como toda carta visivel (dono, 13/Out/2026)
+                local img = CardFrame.displayImage(it.inst) or it.inst.image
                 local s = scale * e
                 local wob = (1 - math.min(1, k)) * 0.25
                 local px, py = ix + cw / 2, iy + ch / 2
