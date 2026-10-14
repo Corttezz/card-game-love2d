@@ -116,6 +116,32 @@ ShopLayout.PLAQUE = {
     font = 10, fontMin = 8,
 }
 
+-- SOMBRA PROJETADA dos objetos da mesa (v5 r4, 13/Out/2026, dono: "elas têm
+-- que pelo menos acompanhar o formato de cada coisa"). A sombra é a SILHUETA
+-- do sprite deitada no plano da mesa. A luz da cena é a lanterna no ALTO à
+-- ESQUERDA, atrás do balcão (ambientAt clareia o canto de cima-esquerda; o
+-- pergaminho sombreia a parede pra direita-baixo): a sombra cai pra DIREITA
+-- e pra FRENTE (desce na tela, em direção ao jogador). Cada pixel do objeto
+-- a `h` px de altura cai em (lean*h, (depth - lean/RUN)*h) px de arte a
+-- partir do ponto da base: o `lean/RUN` é a subida da diagonal 1:8 da
+-- bancada ao andar pra direita. Um objeto de 60 px projeta ~45 px à direita
+-- e ~19 px à frente: lê-se a silhueta inteira na mesa, à frente do vizinho
+-- (que fica mais ao fundo), nunca escondida atrás dele.
+--   solid = fração da altura com sombra cheia (junto do contato);
+--   top   = densidade (dither Bayer) na ponta;
+--   alpha = tinta sobre a madeira; liftFade = quanto clareia a liftRef px
+--           de altura (objeto flutuando no hover).
+ShopLayout.SHADOW = {
+    lean = 0.75, depth = 0.4,
+    solid = 0.45, top = 0.4,
+    alpha = 0.85, liftFade = 0.35, liftRef = 12,
+}
+-- vetor (arte) da sombra por px de altura do objeto
+function ShopLayout.shadowDir()
+    local S = ShopLayout.SHADOW
+    return S.lean, S.depth - S.lean / ShopLayout.RUN
+end
+
 -- ============================================================================
 -- Loja v4: UMA inclinação de pixel art, 1:8 (sobe 1 px de arte a cada 8 px
 -- pra direita, ~7,1 graus), igual nas duas superfícies e em tudo que mora

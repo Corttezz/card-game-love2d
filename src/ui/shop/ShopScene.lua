@@ -605,6 +605,9 @@ function ShopScene:_drawTable(list)
             order[#order + 1] = { foot = it.foot, item = it }
             local r = it.rect
             rects[#rects + 1] = { x = r.x + (it.slide.x or 0) - 16, y = r.y - 24, w = r.w + 60, h = r.h + 36 }
+            -- a sombra projetada sai pra direita e pro fundo do objeto
+            local sb = it:shadowScreenRect(L)
+            if sb then rects[#rects + 1] = { x = sb.x + (it.slide.x or 0), y = sb.y, w = sb.w, h = sb.h } end
             local pb = it.geom and (it.geom.tag or it.geom.plaque)
             if pb then
                 -- folga larga: a etiqueta CRESCE no hover (rótulo até 92 px de
@@ -620,6 +623,8 @@ function ShopScene:_drawTable(list)
     for _, o in ipairs({ L.bell, L.dice }) do
         local r = o.rect
         rects[#rects + 1] = { x = r.x - 16, y = r.y - 24, w = r.w + 90, h = r.h + 36 }
+        -- sombra projetada (até 0,7 x altura pra direita e 0,45 x altura pro fundo)
+        rects[#rects + 1] = { x = r.x, y = r.y - r.h * 0.5, w = r.w + r.h * 0.8, h = r.h * 1.5 }
         local pb = o.tag or o.plaque
         if pb then rects[#rects + 1] = { x = pb.box.x - 50 * L.cover.s, y = pb.box.y - 8, w = pb.box.w + 100 * L.cover.s, h = pb.box.h + 12 * L.cover.s } end
         if o.hoverTag then local b = o.hoverTag.box; rects[#rects + 1] = { x = b.x - 50 * L.cover.s, y = b.y - 8, w = b.w + 100 * L.cover.s, h = b.h + 12 * L.cover.s } end
@@ -627,6 +632,18 @@ function ShopScene:_drawTable(list)
     table.sort(order, function(a, b) return a.foot < b.foot end)
     local box = artBoxOf(L, rects, 4)
     ShopPerspective.artPass(L, box, function()
+        -- 1. SOMBRAS de tudo (silhueta projetada + contato), antes de qualquer
+        --    objeto: a sombra do vizinho da esquerda cai atrás do da direita
+        for _, e in ipairs(order) do
+            if e.item then
+                e.item:drawShadowArt(L, self:_itemCtx(e.item))
+            elseif e.bell then
+                self:_drawBellShadowArt()
+            elseif e.dice then
+                self:_drawDiceShadowArt()
+            end
+        end
+        -- 2. os objetos, do fundo pra frente
         for _, e in ipairs(order) do
             if e.item then
                 local it = e.item
@@ -673,18 +690,18 @@ end
 -- levantar). Escala 1 da grade (v5: era 0,755 do sprite: pixel fracionário
 -- ao lado de objetos em escala 1; um sino de balcão ~ 40% da altura da
 -- carta, que é o que o sprite dá em escala 1).
-function ShopScene:_drawBellArt()
+function ShopScene:_bellParams()
     local L = self.L
     local B = L.bell
     local cv = L.cover
     local _, canRing = self:_bellCost()
     local img, src = ShopPerspective.spriteFor("bell")
-    if not img then return end
+    if not img then return nil end
     local prof = ShopPerspective.profile(src, img)
-    if not prof then return end
+    if not prof then return nil end
     local pz = ShopPerspective.poseFor("bell")
     local lift = reducedMotion() and 0 or (self.bell.hover * ShopLayout.LIFT - Moveable.hopOffset(self.bell))
-    local o = {
+    return {
         img = img, prof = prof,
         fx = (B.footX - cv.ox) / cv.s, fy = (B.foot - cv.oy) / cv.s,
         s = 1,
@@ -693,7 +710,16 @@ function ShopScene:_drawBellArt()
         color = canRing and ShopLayout.ambientAt((B.footX - cv.ox) / cv.s, (B.foot - cv.oy) / cv.s)
             or { 0.55, 0.5, 0.45 },
     }
-    ShopPerspective.drawContactShadow(o, L.art.tableMask, 1)
+end
+
+function ShopScene:_drawBellShadowArt()
+    local o = self:_bellParams()
+    if o then ShopPerspective.drawObjectShadow(o, self.L.art.tableMask, 1) end
+end
+
+function ShopScene:_drawBellArt()
+    local o = self:_bellParams()
+    if not o then return end
     ShopPerspective.drawUpright(o)
     local tx, ty = ShopPerspective.tiePoint(o, 0.06)
     self.bell.tieArt = { math.floor(tx), math.floor(ty) }
@@ -735,16 +761,6 @@ function ShopScene:_drawDiceArt()
     local hArt = D.rect.h / cv.s
     -- +1: a última linha do frame do copo é vazia (base real na linha 30 de 32)
     local artRect = { x = fx - hArt / 2, y = fy + 1 - hArt - lift, w = hArt, h = hArt }
-    -- o copo (frame 32 px, corpo de 22) encosta na mesa pela base inteira
-    local lying = st and st.used and st.dice
-    contactBand(L, fx, fy, lying and 15 or 11, D.slope, 1)
-    -- dados À FRENTE do copo (ShopLayout.TABLE.dice.diceAt): jogados, os
-    -- dois; parado, um de enfeite (o copo sozinho lia como caneca sem preço)
-    local at = ShopLayout.TABLE.dice.diceAt
-    for i = 1, (lying and 2 or 1) do
-        local p = at[i]
-        contactBand(L, fx + p[1], fy + p[2] + D.slope * p[1], 8, D.slope, 1)
-    end
     local drawn = false
     if P and P.drawDiceCup then
         local ok, err = pcall(P.drawDiceCup, artRect, { hover = self.dice.hover, used = ScribeDice.isUsed(run),
@@ -758,6 +774,55 @@ function ShopScene:_drawDiceArt()
         Palette.set(cup)
         love.graphics.rectangle("fill", math.floor(fx - 5), math.floor(fy - 12 - lift), 10, 12)
         love.graphics.setColor(1, 1, 1, 1)
+    end
+end
+
+-- Parâmetros da sombra do copo: o quadro PARADO da folha (dice_cup.png,
+-- quadro 0) em pé no pé do copo (o DiceCup:draw usa a mesma base: rect.y +
+-- rect.h = fy + 1, última linha do quadro vazia).
+function ShopScene:_diceShadowParams()
+    local L = self.L
+    local D = L.dice
+    local cv = L.cover
+    local fx, fy = (D.footX - cv.ox) / cv.s, (D.foot - cv.oy) / cv.s
+    local lift = reducedMotion() and 0 or (self.dice.hover * ShopLayout.LIFT) / cv.s
+    local hArt = D.rect.h / cv.s
+    local P = getProps()
+    local DiceCup = P and P.diceCup and P.diceCup.DiceCup
+    local FW, FH = DiceCup and DiceCup.FW or 32, DiceCup and DiceCup.FH or 32
+    local path = "assets/sprites/shop/dice_cup.png"
+    local img = require("src.ui.ImageCache").tryGet(path)
+    if not img then return nil end
+    ShopPerspective.crisp(img)
+    -- perfil do quadro 0 lido uma vez (a chave do recorte é uma string: não montar por quadro)
+    if self._diceProf == nil then
+        self._diceProf = ShopPerspective.profile(path, img, { x = 0, y = 0, w = FW, h = FH }) or false
+    end
+    local prof = self._diceProf
+    if not prof then return nil end
+    return { img = img, prof = prof, fx = fx, fy = fy + 1, s = math.max(1, math.floor(hArt / FH)),
+             k = 0, flip = false, lift = lift }
+end
+
+-- Sombra do copo: silhueta projetada + contato; os dados à frente só a
+-- faixa de contato.
+function ShopScene:_drawDiceShadowArt()
+    local L, sc = self.L, self.screen
+    local D = L.dice
+    local cv = L.cover
+    local run = sc._run and sc:_run() or nil
+    local ScribeDice = require("src.systems.ScribeDice")
+    local st = ScribeDice.state(run)
+    local fx, fy = (D.footX - cv.ox) / cv.s, (D.foot - cv.oy) / cv.s
+    local o = self:_diceShadowParams()
+    if o then ShopPerspective.drawObjectShadow(o, L.art.tableMask, 1) end
+    -- dados À FRENTE do copo (ShopLayout.TABLE.dice.diceAt): jogados, os
+    -- dois; parado, um de enfeite (o copo sozinho lia como caneca sem preço)
+    local lying = st and st.used and st.dice
+    local at = ShopLayout.TABLE.dice.diceAt
+    for i = 1, (lying and 2 or 1) do
+        local p = at[i]
+        contactBand(L, fx + p[1], fy + p[2] + D.slope * p[1], 8, D.slope, 1)
     end
 end
 

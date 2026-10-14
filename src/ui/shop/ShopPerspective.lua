@@ -15,10 +15,11 @@
 -- (1:8 ou 1:16: degraus regulares); a arte nova (elixir, pacotes) já vem
 -- desenhada na diagonal e não é cisalhada.
 --
--- Sombra de CONTATO (nada flutua): faixa curta e escura colada na base de
--- cada coluna que toca a mesa, cauda pra direita ao longo da diagonal (a luz
--- vem da esquerda), dither Bayer, sem borda suave, cortada pela máscara do
--- tampo. Nada de elipse.
+-- SOMBRA (v5 r4): a SILHUETA do sprite projetada no plano da mesa
+-- (drawCastShadow: shader que lê o alfa do próprio sprite pela inversa da
+-- projeção, dither Bayer por altura, cortada pela faixa do tampo) + uma
+-- LINHA DE CONTATO de 1 px sob o contorno de baixo onde o objeto encosta
+-- (drawContactShadow). Nada de elipse, nada de faixa na reta do pé.
 
 local ShopPerspective = {}
 
@@ -231,27 +232,33 @@ end
 -- linha mais baixa de cada coluna (o "pé" real da arte, não o fim do PNG).
 -- ============================================================================
 local PROFILES = {}
-function ShopPerspective.profile(path, img)
-    if path and PROFILES[path] ~= nil then return PROFILES[path] or nil end
+-- rect = { x, y, w, h } opcional: só esse recorte do PNG (quadro de uma
+-- folha, ex. o copo de dados); as coordenadas do perfil saem RELATIVAS ao
+-- recorte e o perfil guarda `src = rect` pra sombra amostrar o quadro certo.
+function ShopPerspective.profile(path, img, rect)
+    local key = path and (rect and (path .. "#" .. rect.x .. "," .. rect.y .. "," .. rect.w .. "," .. rect.h) or path)
+    if key and PROFILES[key] ~= nil then return PROFILES[key] or nil end
     local data
     if path and love.filesystem.getInfo(path) then
         local ok, d = pcall(love.image.newImageData, path)
         if ok then data = d end
     end
     if not data then
-        if path then PROFILES[path] = false end
+        if key then PROFILES[key] = false end
         if img then
             local w, h = img:getWidth(), img:getHeight()
             return { x0 = 0, y0 = 0, x1 = w - 1, y1 = h - 1, w = w, h = h, bottom = {}, left = {}, right = {} }
         end
         return nil
     end
+    local ox, oy = 0, 0
     local w, h = data:getWidth(), data:getHeight()
+    if rect then ox, oy, w, h = rect.x, rect.y, rect.w, rect.h end
     local x0, y0, x1, y1 = w, h, -1, -1
     local bottom, left, right = {}, {}, {}
     for x = 0, w - 1 do
         for y = h - 1, 0, -1 do
-            local _, _, _, a = data:getPixel(x, y)
+            local _, _, _, a = data:getPixel(ox + x, oy + y)
             if a > 0.5 then
                 bottom[x] = y
                 if x < x0 then x0 = x end
@@ -261,7 +268,7 @@ function ShopPerspective.profile(path, img)
             end
         end
         for y = 0, h - 1 do
-            local _, _, _, a = data:getPixel(x, y)
+            local _, _, _, a = data:getPixel(ox + x, oy + y)
             if a > 0.5 then
                 if y < y0 then y0 = y end
                 break
@@ -271,15 +278,16 @@ function ShopPerspective.profile(path, img)
     if x1 < 0 then x0, y0, x1, y1 = 0, 0, w - 1, h - 1 end
     for y = 0, h - 1 do
         for x = 0, w - 1 do
-            local _, _, _, a = data:getPixel(x, y)
+            local _, _, _, a = data:getPixel(ox + x, oy + y)
             if a > 0.5 then
                 if not left[y] then left[y] = x end
                 right[y] = x
             end
         end
     end
-    local p = { x0 = x0, y0 = y0, x1 = x1, y1 = y1, w = w, h = h, bottom = bottom, left = left, right = right }
-    if path then PROFILES[path] = p end
+    local p = { x0 = x0, y0 = y0, x1 = x1, y1 = y1, w = w, h = h, bottom = bottom, left = left, right = right,
+                src = rect and { x = rect.x, y = rect.y, w = rect.w, h = rect.h } or nil }
+    if key then PROFILES[key] = p end
     return p
 end
 
@@ -432,7 +440,25 @@ function ShopPerspective.tiePoint(o, frac)
 end
 
 -- ============================================================================
--- SOMBRA DE CONTATO (dither Bayer 4x4, sem borda suave)
+-- SOMBRA (v5 r4, 13/Out/2026). Três rodadas no mesmo dia (82d32ff5, 84fa4789,
+-- 1324c878) desenharam a sombra como LINHAS na reta do pé: 2 a 4 fileiras de
+-- pontos, coluna a coluna, variando só a densidade. Qualquer objeto virava
+-- um traço/retângulo, porque a altura do sprite nunca entrava na conta: a
+-- sombra era função SÓ do contorno de baixo. O dono: "elas têm que pelo
+-- menos acompanhar o formato de cada coisa".
+--
+-- Agora a sombra é a SILHUETA INTEIRA do sprite projetada no plano da mesa.
+-- Um pixel do objeto a `h` px de altura (acima da base, + lift se flutua)
+-- cai em (lean*h, dy*h) a partir do ponto da base (ShopLayout.shadowDir:
+-- pra direita e pra FRENTE, longe da lanterna do alto à esquerda). É uma
+-- transformação afim da silhueta: o shader percorre a caixa da sombra e,
+-- pra cada pixel de arte, INVERTE a projeção, acha o texel do sprite e lê o
+-- alfa dele (a máscara é o próprio sprite: nenhuma cópia por quadro, e a
+-- poção borbulhando projeta o quadro atual). Densidade cheia perto do
+-- contato e dither Bayer 4x4 (mesma matriz do `dithered`) até a ponta;
+-- cortada pela faixa do tampo (a MESMA de ShopLayout.ART.tableMask). Tudo
+-- em pixel inteiro do canvas da arte. Trava: tools/test_shop_shadows.lua
+-- (referência em Lua pixel a pixel contra o resultado do shader).
 -- ============================================================================
 local BAYER = {
     { 0, 8, 2, 10 },
@@ -447,94 +473,220 @@ local function dithered(x, y, density)
 end
 ShopPerspective.dithered = dithered
 
+-- tinta da sombra: madeira escurecida (quente), nunca preto puro
+ShopPerspective.SHADOW_INK = Palette.darken(Palette.PARCHMENT_DARK, 0.3)
+
+local castShader, castTried
+local function castShadowShader()
+    if castTried then return castShader end
+    castTried = true
+    local ok, sh = pcall(love.graphics.newShader, [[
+        extern Image sprite;    // o sprite do objeto (filtro nearest)
+        extern vec2 texSize;    // tamanho do PNG
+        extern vec4 texRect;    // recorte usado (x, y, w, h): quadro de uma folha
+        extern vec2 foot;       // pé (fx, fy) em px de arte, inteiros
+        extern float lift;      // px de arte acima da mesa (objeto flutuando)
+        extern float poseK;     // cisalhamento da pose (base do sprite em pé)
+        extern float scale;     // px de arte por px do sprite
+        extern float flip;      // 1 ou -1 (espelho)
+        extern vec2 base;       // (cx, bottom) do perfil, em px do sprite
+        extern vec2 dir;        // deslocamento por px de altura (ShopLayout.shadowDir)
+        extern vec2 band;       // interceptos da faixa do tampo (tableBack, tableEdge)
+        extern float run;       // ShopLayout.RUN (8)
+        extern vec3 dens;       // (altura com sombra cheia, altura total, densidade da ponta)
+
+        float m2(float x, float y) { return 2.0 * x + 3.0 * y - 4.0 * x * y; }
+        // Bayer 4x4 = 4*M2(x%2, y%2) + M2((x/2)%2, (y/2)%2): a mesma matriz do dithered()
+        float bayer(float px, float py) {
+            return 4.0 * m2(mod(px, 2.0), mod(py, 2.0))
+                 + m2(mod(floor(px / 2.0), 2.0), mod(floor(py / 2.0), 2.0));
+        }
+        vec4 effect(vec4 color, Image tex, vec2 uv, vec2 sc) {
+            float px = floor(sc.x);
+            float py = floor(sc.y);
+            float xc = px + 0.5;
+            float yc = py + 0.5;
+            // faixa do tampo (ShopLayout.ART.tableMask: y0a - x/run < y < y0b - x/run)
+            if (yc <= band.x - xc / run || yc >= band.y - xc / run) discard;
+            // inversa da projeção: (X, Y) -> altura H sobre a mesa e lx na base
+            float den = dir.y - poseK * dir.x;
+            float H = (yc - foot.y - poseK * (xc - foot.x)) / den;
+            float h = H - lift;
+            if (h < 0.0) discard;
+            float lx = xc - foot.x - dir.x * H;
+            float sx = base.x + lx / (flip * scale);
+            float sy = base.y - h / scale;
+            if (sx < 0.0 || sy < 0.0 || sx >= texRect.z || sy >= texRect.w) discard;
+            vec2 t = (texRect.xy + vec2(floor(sx) + 0.5, floor(sy) + 0.5)) / texSize;
+            if (Texel(sprite, t).a <= 0.5) discard;
+            float d = 1.0;
+            if (H > dens.x) d = mix(1.0, dens.z, clamp((H - dens.x) / max(1.0, dens.y - dens.x), 0.0, 1.0));
+            if (bayer(px, py) >= d * 16.0) discard;
+            return color;
+        }
+    ]])
+    if ok then castShader = sh else warnOnce("cast", "shader da sombra projetada falhou: " .. tostring(sh)) end
+    return castShader
+end
+ShopPerspective.castShadowShader = castShadowShader
+
+-- Caixa (arte) que a sombra projetada ocupa: base do objeto (com o
+-- cisalhamento da pose) deslocada pelo vetor da sombra vezes a altura.
+function ShopPerspective.castShadowBox(o)
+    local prof = o.prof
+    if not prof then return nil end
+    local ShopLayout = require("src.ui.shop.ShopLayout")
+    local ax, ay = ShopLayout.shadowDir()
+    local s = o.s
+    local w = (prof.x1 - prof.x0 + 1) * s
+    local H = (prof.y1 - prof.y0 + 1) * s + (o.lift or 0)
+    local fx, fy = floor(o.fx), floor(o.fy)
+    local skew = math.abs(o.k or 0) * w / 2
+    local x0 = fx - w / 2 + math.min(0, ax * H) - 1
+    local x1 = fx + w / 2 + math.max(0, ax * H) + 1
+    local y0 = fy - skew + math.min(0, ay * H) - 1
+    local y1 = fy + skew + math.max(0, ay * H) + 2
+    return { x = floor(x0), y = floor(y0), w = math.ceil(x1) - floor(x0), h = math.ceil(y1) - floor(y0) }
+end
+
+-- uniforms reutilizados (nada alocado por quadro)
+local U = { texSize = { 0, 0 }, texRect = { 0, 0, 0, 0 }, foot = { 0, 0 }, base = { 0, 0 },
+            dir = { 0, 0 }, band = { 0, 0 }, dens = { 0, 0, 0 } }
+
+-- Parâmetros da projeção de um objeto (fonte única pro shader e pra
+-- referência em Lua do teste): devolve a tabela U preenchida.
+function ShopPerspective.castParams(o)
+    local ShopLayout = require("src.ui.shop.ShopLayout")
+    local SH = ShopLayout.SHADOW
+    local img, prof = o.img, o.prof
+    local s = o.s
+    local src = prof.src
+    local H = (prof.y1 - prof.y0 + 1) * s
+    local lift = o.lift or 0
+    U.texSize[1], U.texSize[2] = img:getWidth(), img:getHeight()
+    U.texRect[1], U.texRect[2] = src and src.x or 0, src and src.y or 0
+    U.texRect[3], U.texRect[4] = src and src.w or img:getWidth(), src and src.h or img:getHeight()
+    U.foot[1], U.foot[2] = floor(o.fx), floor(o.fy)
+    U.lift = lift
+    U.poseK = o.k or 0
+    U.scale = s
+    U.flip = o.flip and -1 or 1
+    U.base[1], U.base[2] = (prof.x0 + prof.x1 + 1) / 2, prof.y1 + 1
+    U.dir[1], U.dir[2] = ShopLayout.shadowDir()
+    U.band[1], U.band[2] = ShopLayout.LINES.tableBack, ShopLayout.LINES.tableEdge
+    U.run = ShopLayout.RUN
+    U.dens[1], U.dens[2], U.dens[3] = SH.solid * H, H + lift, SH.top
+    U.alpha = SH.alpha * (1 - SH.liftFade * clamp(lift / SH.liftRef, 0, 1))
+    return U
+end
+
+-- A sombra projetada, no canvas da arte (antes do sprite).
+function ShopPerspective.drawCastShadow(o, alpha)
+    local img, prof = o.img, o.prof
+    if not (img and prof) then return end
+    local sh = castShadowShader()
+    if not sh then return end
+    local box = ShopPerspective.castShadowBox(o)
+    local u = ShopPerspective.castParams(o)
+    sh:send("sprite", img)
+    sh:send("texSize", u.texSize)
+    sh:send("texRect", u.texRect)
+    sh:send("foot", u.foot)
+    sh:send("lift", u.lift)
+    sh:send("poseK", u.poseK)
+    sh:send("scale", u.scale)
+    sh:send("flip", u.flip)
+    sh:send("base", u.base)
+    sh:send("dir", u.dir)
+    sh:send("band", u.band)
+    sh:send("run", u.run)
+    sh:send("dens", u.dens)
+    local ink = ShopPerspective.SHADOW_INK
+    love.graphics.push("all")
+    love.graphics.setShader(sh)
+    love.graphics.setColor(ink[1], ink[2], ink[3], u.alpha * (alpha or 1))
+    love.graphics.rectangle("fill", box.x, box.y, box.w, box.h)
+    love.graphics.pop()
+end
+
+-- Referência em Lua da MESMA projeção (pixel a pixel, pro teste e pra
+-- sonda): alphaAt(sx, sy) lê o alfa do sprite (px do recorte). Devolve
+-- {x, y, ...} planos dos pixels de arte que o shader pinta.
+function ShopPerspective.castShadowRef(o, alphaAt)
+    local ShopLayout = require("src.ui.shop.ShopLayout")
+    local inPoly = ShopLayout.pointInPoly
+    local u = ShopPerspective.castParams(o)
+    local box = ShopPerspective.castShadowBox(o)
+    local out = {}
+    local den = u.dir[2] - u.poseK * u.dir[1]
+    for py = box.y, box.y + box.h - 1 do
+        for px = box.x, box.x + box.w - 1 do
+            local xc, yc = px + 0.5, py + 0.5
+            if inPoly(xc, yc, ShopLayout.ART.tableMask) then
+                local H = (yc - u.foot[2] - u.poseK * (xc - u.foot[1])) / den
+                local h = H - u.lift
+                if h >= 0 then
+                    local lx = xc - u.foot[1] - u.dir[1] * H
+                    local sx = u.base[1] + lx / (u.flip * u.scale)
+                    local sy = u.base[2] - h / u.scale
+                    if sx >= 0 and sy >= 0 and sx < u.texRect[3] and sy < u.texRect[4]
+                        and alphaAt(floor(sx), floor(sy)) > 0.5 then
+                        local d = 1
+                        if H > u.dens[1] then
+                            d = 1 + (u.dens[3] - 1) * clamp((H - u.dens[1]) / math.max(1, u.dens[2] - u.dens[1]), 0, 1)
+                        end
+                        if dithered(px, py, d) then out[#out + 1] = px; out[#out + 1] = py end
+                    end
+                end
+            end
+        end
+    end
+    return out
+end
+
 local pts = {}
--- mask = polígono (arte) onde a sombra pode cair; nil = sem corte.
+-- LINHA DE CONTATO: 1 px sólido logo abaixo do contorno de baixo, só nas
+-- colunas em que o objeto encosta (contorno a <= G da reta do pé). Objeto
+-- no ar não tem contato (a sombra projetada se separa dele).
+-- mask = polígono (arte) onde a linha pode cair; nil = sem corte.
 function ShopPerspective.drawContactShadow(o, mask, alpha)
     local prof = o.prof
     if not prof then return end
+    if (o.lift or 0) > 0.5 then return end
     local ShopLayout = require("src.ui.shop.ShopLayout")
     local inPoly = ShopLayout.pointInPoly
-    local s, k = o.s, o.k
+    local s, k = o.s, o.k or 0
     local cx = (prof.x0 + prof.x1 + 1) / 2
     local bottom = prof.y1 + 1
     local fx, fy = floor(o.fx), floor(o.fy)
-    local halfW = (prof.x1 - prof.x0 + 1) * s / 2
-    -- v5 r3 (dono, 13/Out: "as sombras da loja ainda estão MUITO estranhas"):
-    -- a versão r2c punha uma LINHA na reta do pé (yT = fy + k*lx) na largura
-    -- inteira do objeto. Como quase todo sprite v5 tem base em perspectiva
-    -- (prato do forjador, pé do cavalete, bojo da poção), o contorno de
-    -- baixo fica ACIMA dessa reta na maior parte das colunas e a linha
-    -- aparecia solta, descolada do objeto: um sublinhado flutuando por
-    -- baixo. Agora:
-    --   apoiado   = a sombra ABRAÇA o contorno de baixo (2 linhas coladas
-    --               nele, a primeira sólida) só onde o contorno está perto
-    --               da reta do pé (gap <= G): é onde o objeto encosta. Entre
-    --               o contorno e a reta, um dither ralo preenche a pequena
-    --               folga (o objeto fica SENTADO, sem buraco claro). Onde o
-    --               contorno sobe além de G (lados do bojo da poção), nada:
-    --               a sombra não vira arco subindo pelos lados.
-    --   levantado = mancha fechada na reta do pé (4 linhas que esmaecem),
-    --               1 coluna de borda de cada lado em dither.
-    -- Cauda rala pra direita (vela à esquerda) nos dois casos.
-    local lifted = (o.lift or 0) > 0.5
     local objW = (prof.x1 - prof.x0 + 1) * s
-    local G = math.max(4, floor(objW * 0.22))
+    local halfW = objW / 2
+    local G = math.max(3, floor(objW * 0.22))
     local n = 0
-    local right, rightY = nil, nil
-    local lightK = 1
-    local x0c, x1c = floor(fx - halfW) - 1, math.ceil(fx + halfW) + 1
-    local function put(x, y, dens)
-        if dithered(x, y, dens * lightK) and (not mask or inPoly(x + 0.5, y + 0.5, mask)) then
-            n = n + 1; pts[n] = { x + 0.5, y + 0.5 }
-        end
-    end
-    for dx = x0c, x1c do
+    for dx = floor(fx - halfW) - 1, math.ceil(fx + halfW) + 1 do
         local lx = dx + 0.5 - fx
-        local sx = cx + lx / (o.flip and -s or s)
-        local b = prof.bottom[floor(sx)]
-        local yG = floor(fy + k * lx)
-        if lifted then
-            local has, edge = b ~= nil, false
-            if not has then
-                local bl = prof.bottom[floor(cx + (lx - 1) / (o.flip and -s or s))]
-                local br = prof.bottom[floor(cx + (lx + 1) / (o.flip and -s or s))]
-                if bl or br then has, edge = true, true end
+        local b = prof.bottom[floor(cx + lx / (o.flip and -s or s))]
+        if b ~= nil then
+            local yG = floor(fy + k * lx)
+            local yB = floor(fy + k * lx + (b + 1 - bottom) * s)
+            if yG - yB <= G and (not mask or inPoly(dx + 0.5, yB + 1.5, mask)) then
+                pts[n + 1], pts[n + 2] = dx + 0.5, yB + 1.5
+                n = n + 2
             end
-            if has then
-                local fadeRows = { 1, 0.8, 0.55, 0.3 }
-                for row = 0, 3 do put(dx, yG + row, fadeRows[row + 1] * (edge and 0.5 or 1)) end
-                right, rightY = dx, yG
-            end
-        elseif b ~= nil then
-            -- contorno de baixo desta coluna, em px da janela (sem o lift: apoiado)
-            local yB = floor(fy + (b + 1 - bottom) * s)
-            local gap = yG - yB
-            if gap <= G then
-                put(dx, yB, 1)
-                put(dx, yB + 1, 0.55)
-                for yy = yB + 2, yG do put(dx, yy, 0.3) end
-                put(dx, yG + 1, 0.3)
-                right, rightY = dx, math.max(yB + 1, yG)
-            end
-        end
-    end
-    -- cauda pra direita, ao longo da diagonal (vela à esquerda): rala e curta
-    if right then
-        local tail = math.max(3, floor(halfW * 0.4))
-        for i = 1, tail do
-            local dx = right + i
-            local yy = rightY + floor(k * i)
-            local dens = (0.95 - 0.7 * (i / (tail + 1))) * lightK
-            put(dx, yy, dens)
-            put(dx, yy - 1, dens * 0.6)
         end
     end
     for i = n + 1, #pts do pts[i] = nil end
     if n == 0 then return end
-    local ink = Palette.darken and Palette.darken(Palette.INK, 0.35) or Palette.INK
-    love.graphics.setColor(ink[1], ink[2], ink[3], (lifted and 0.95 or 0.9) * (alpha or 1))
+    local ink = ShopPerspective.SHADOW_INK
+    love.graphics.setColor(ink[1], ink[2], ink[3], 0.9 * (alpha or 1))
     love.graphics.points(pts)
     love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- A sombra completa de um objeto da mesa: projetada + linha de contato.
+function ShopPerspective.drawObjectShadow(o, mask, alpha)
+    ShopPerspective.drawCastShadow(o, alpha)
+    ShopPerspective.drawContactShadow(o, mask, alpha)
 end
 
 -- Pontos de contato (arte) de um objeto: usados pelo teste "nada flutua"

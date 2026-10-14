@@ -1115,8 +1115,33 @@ function ShelfItem:drawCard(ctx)
 end
 
 -- ---------------------------------------------------------------------------
--- OBJETO da mesa (no canvas da ARTE): sombra de contato + sprite em pé.
+-- OBJETO da mesa (no canvas da ARTE): sombra (passada própria, ANTES de
+-- todos os objetos: a sombra de um cai atrás do vizinho) + sprite em pé.
 -- ---------------------------------------------------------------------------
+-- Sombra projetada (silhueta no plano da mesa) + linha de contato. Usa o
+-- MESMO sprite/quadro/pose do objeto (poção borbulhando projeta o quadro
+-- atual; objeto flutuando no hover projeta mais longe e mais claro).
+function ShelfItem:drawShadowArt(L, ctx)
+    if self.sold then return end
+    local alpha = (ctx.alpha or 1) * self:entered()
+    if alpha <= 0.01 then return end
+    local o = self:uprightParams(L, self.hover > 0.5 or self.selected, ctx.t or 0)
+    if not o then return end
+    ShopPerspective.drawObjectShadow(o, L.art.tableMask, alpha)
+end
+
+-- Caixa (px de TELA) que a sombra projetada ocupa: entra no recorte da
+-- passada da mesa (sem ela a sombra era cortada à direita do objeto).
+function ShelfItem:shadowScreenRect(L)
+    if self.sold then return nil end
+    local o = self:uprightParams(L, false, 0)
+    if not o then return nil end
+    local b = ShopPerspective.castShadowBox(o)
+    if not b then return nil end
+    local cv = L.cover
+    return { x = cv.ox + b.x * cv.s, y = cv.oy + b.y * cv.s, w = b.w * cv.s, h = b.h * cv.s }
+end
+
 function ShelfItem:drawObjectArt(L, ctx)
     if self.sold then return end
     local alpha = (ctx.alpha or 1) * self:entered()
@@ -1135,7 +1160,6 @@ function ShelfItem:drawObjectArt(L, ctx)
     o.outlineColor = (self.selected and Palette.AGED_GOLD_LIGHT)
         or (sale and Palette.lerp(Palette.AGED_GOLD_LIGHT, Palette.ORANGE, 0.5))
         or Palette.PARCHMENT_LIGHT
-    ShopPerspective.drawContactShadow(o, L.art.tableMask, alpha)
     ShopPerspective.drawUpright(o)
     self._artBox = ShopPerspective.uprightBox(o)
     -- onde o cordão da etiqueta se amarra (borda direita da silhueta, 1/3

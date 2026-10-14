@@ -176,9 +176,8 @@ cartas "apontadas pra frente", suporte feio e fora da diagonal.
 - **Canvas na resolução da arte** (`ShopPerspective.artPass`): objetos,
   sombras e cavaletes são rasterizados em 688x384 e sobem com nearest junto
   da pintura: o cisalhamento sai em pixel quadrado, na grade do cenário.
-- **Sombra de CONTATO** (`drawContactShadow`): perfil da silhueta (base real
-  de cada coluna), dither Bayer, cauda curta pra direita (vela à esquerda),
-  cortada pelo `tableMask`. Elipse proibida (`test_shop_scene` conta).
+- **Sombra**: elipse proibida (`test_shop_scene` conta); o que a sombra é
+  hoje está na seção «Sombras dos objetos» no fim deste arquivo.
 - **Hover** = mesmo sprite/pose/espelho/cisalhamento, +5 px e contorno claro
   de 1 px de arte (shader de silhueta). `ShelfItem:pose()` travado no teste.
   O pergaminho usa `CardDetailPanel opts.objectArt` = o mesmo sprite.
@@ -430,9 +429,6 @@ e nomes de carta.
 - **Mesa**: profundidades DESENHADAS por vaga (`TABLE.*depth`, passo 5):
   copo -1,2, sino +1, relíquias +0,6/-1,4/+0,8, pacote -0,6. Pé ≥ 6 px da
   aresta (trava).
-- **Sombra de contato contínua** (`drawContactShadow`): segue o contorno de
-  baixo coluna a coluna, tolerância 6 px com densidade caindo, buracos de 1
-  coluna fechados.
 - **Etiquetas** (recado de voz, gosto do dono): objetos e sino voltaram à
   ETIQUETA PENDURADA, agora com o cordão amarrado na BASE do objeto, correndo
   pela mesa até a aresta da frente (`CORD_DRIFT` 7 à direita) e caindo pela
@@ -474,9 +470,6 @@ e nomes de carta.
   aresta com 4).
 - **NOVA**: VERMELHA (estilo `sale`), pendurada de um PREGO na parede 6 px
   acima dela (`newTag.nail`), não mais do canto da carta.
-- **Sombra sob item levantado** (`drawContactShadow`, `lifted`): fica no
-  tampo, CHEIA e sem dither (3 linhas, alpha 0,75); apoiado continua as 2
-  linhas de contato em dither.
 - **Pacote abre DENTRO da loja**: `_G.openBoosterPack` (main.lua) não desliza
   a loja pra fora no modo shop (mostrava a estrada do bioma atrás do
   pacote); o PackOpenScreen escurece a loja a 0,6 e abre a capa v5 quadro a
@@ -492,15 +485,10 @@ a etiqueta de cada peça; `shop_refresh` inclui a etiqueta do sino. Âncoras
 em `CardRewardScreen:_drawShop`; textos nos 5 `locales/tutorial/*.lua`;
 `test_tutorial` tem os recortes `shop_prices`/`shop_scroll` na mesa falsa.
 
-### v5 r2d: sombra = pegada no plano da mesa; pacote abre em fundo próprio
+### v5 r2d: pacote abre em fundo próprio
 
-- `drawContactShadow` (dono: "a sombra ainda está errada"): a sombra é a
-  PEGADA da silhueta no plano da mesa (reta 1:8 pelo pé, `yT = fy + k*lx`),
-  coluna a coluna na largura inteira; apoiado = 2 linhas (sólida onde a base
-  encosta a <= 2 px, dither onde o objeto pende), levantado = 4 linhas
-  sólidas + 1 coluna de borda em dither. Seguir o contorno de baixo fazia a
-  da poção virar arco e a do item flutuando sumir. Sonda:
-  `love . test_one probe_shop_shadow` (36 -> 53 pontos em repouso, 146 no ar).
+- (a sombra desta rodada, "pegada na reta do pé", saiu na r4: ver «Sombras
+  dos objetos» no fim.)
 - PackOpenScreen (dono: a loja escurecida atrás do pacote "fica muito
   poluída"): fundo PRÓPRIO opaco, sépia escuro com poça de luz em 4 degraus
   (dither Bayer nas bordas) centrada no pacote (`sleeveCenter`). A loja
@@ -523,3 +511,88 @@ em `CardRewardScreen:_drawShop`; textos nos 5 `locales/tutorial/*.lua`;
 - **Ficha cortada**: o recorte da passada das cartas só subia 16 px acima da
   carta; agora inclui a caixa da NOVA e a coluna do cordão até o teto.
 - `screenshot_shop_diag`: `SHOP_NEW=1` força a etiqueta NOVA nas 4 cartas.
+
+## Sombras dos objetos (v5 r4, 13/Out/2026): a silhueta deitada na mesa
+
+Dono, com captura: "vc tá validando as sombras depois? elas têm que pelo
+menos acompanhar o formato de cada coisa". Na captura dele a tesoura tinha um
+borrão grosso ao lado, a bancada um retângulo chato, a prensa uma faixa, o
+pacote uma linha fina, o sino uma mancha genérica.
+
+**Por que três rodadas no mesmo dia falharam** (82d32ff5 "contato contínuo",
+84fa4789/a0f9e952 "pegada na reta do pé", 1324c878 "abraça o contorno"): as
+três eram a MESMA ideia com densidades diferentes: `drawContactShadow`
+percorria as colunas da silhueta e punha 2 a 4 FILEIRAS de pontos na reta
+do pé (ou no contorno de baixo), coluna a coluna. A altura do sprite nunca
+entrava na conta: a sombra era função só do contorno de baixo, e o contorno
+de baixo de qualquer objeto é uma linha. Daí faixa, retângulo, mancha. E
+validar com `love.graphics.points` contados (a sonda antiga) só media
+quantos pontos saíam, não o formato.
+
+**O que é agora** (`ShopPerspective.drawCastShadow` + `drawContactShadow`,
+chamados por `drawObjectShadow`):
+
+- **Sombra projetada = silhueta inteira do sprite deitada no plano da mesa.**
+  Luz da cena: lanterna no ALTO à ESQUERDA, atrás do balcão (`ambientAt`
+  clareia o canto de cima-esquerda; o pergaminho sombreia a parede pra
+  direita-baixo; a carta tem a faixa à direita). Um pixel do objeto a `h`
+  px de altura cai em `(lean*h, (depth - lean/8)*h)` a partir do ponto da
+  base: pra DIREITA e pra FRENTE (desce na tela). `ShopLayout.SHADOW` =
+  lean 0,75 · depth 0,4 · solid 0,45 · top 0,4 · alpha 0,85 · liftFade 0,35
+  (`ShopLayout.shadowDir()` dá o vetor). Um objeto de 60 px projeta ~45 px à
+  direita e ~19 px à frente: a silhueta fica NA FRENTE do vizinho da direita
+  (que está mais ao fundo), nunca escondida atrás dele. A direção pro FUNDO
+  foi testada primeiro e descartada: a sombra sumia atrás do próprio sprite
+  e do vizinho (sobrava uma lasca).
+- **Shader, não cópia**: a máscara é o alfa do PRÓPRIO sprite. O shader
+  percorre `castShadowBox(o)` e, por pixel de arte, INVERTE a projeção
+  (`H = (Y - fy - poseK*(X - fx)) / (dy - poseK*lean)`, `lx = X - fx -
+  lean*H`), acha o texel (pose: escala, espelho, cisalhamento 1:8/1:16, e
+  `texRect` pra quadro de folha, usado pelo copo de dados) e lê o alfa.
+  Nada por quadro: sem ImageData, sem tabela de pontos, uniforms numa tabela
+  reutilizada (`castParams`). A poção borbulhando projeta o quadro ATUAL
+  de graça (é o mesmo `o.img` do `uprightParams`).
+- **Densidade**: cheia até `solid` da altura, depois dither Bayer 4x4
+  (mesma matriz do `dithered` em Lua, fórmula `4*M2(x%2,y%2) +
+  M2((x/2)%2,(y/2)%2)`) até `top` na ponta. Tinta = `SHADOW_INK`
+  (`PARCHMENT_DARK` escurecido: madeira, não preto). Cortada pela faixa do
+  tampo (os MESMOS interceptos de `ART.tableMask`, `band` no shader). Tudo
+  pixel inteiro no canvas da arte.
+- **Levantado** (poção/cristal/pacote flutuando no hover): `lift` entra na
+  altura: a sombra inteira se desloca `(lean, dy) x lift`, começa já no
+  dither (mais clara) e o alpha cai `liftFade` a `liftRef` px; sem linha de
+  contato.
+- **Linha de contato** (`drawContactShadow`, agora SÓ isso): 1 px sólido
+  logo abaixo do contorno de baixo, nas colunas em que o contorno está a
+  <= 22% da largura da reta do pé. O `k*lx` da pose entra no contorno (a
+  versão anterior esquecia).
+- **Passada própria**: `ShopScene:_drawTable` desenha as sombras de TODOS
+  (relíquias `ShelfItem:drawShadowArt`, sino `_drawBellShadowArt`, copo
+  `_drawDiceShadowArt`) antes de qualquer objeto; o recorte da passada
+  inclui `ShelfItem:shadowScreenRect` (sem isso a sombra era cortada à
+  direita). Sino e copo têm `_bellParams`/`_diceShadowParams` (fonte única
+  de sombra e sprite; o perfil do quadro 0 do copo fica em `self._diceProf`).
+- **Validação objetiva** (`test_shop_shadows`, 137 asserts): pra 10
+  relíquias + pacote + sino + copo, a sombra renderizada sozinha num canvas
+  640x360 é comparada pixel a pixel com `castShadowRef` (a MESMA conta em
+  Lua): IoU >= 0,97 (medido 1,000 em todos); toda a sombra dentro do
+  `tableMask` e da `castShadowBox`; nenhum pixel acima da base da própria
+  coluna (o "arco" da poção) nem à esquerda da pegada; altura 20..45% da do
+  objeto, alcance à direita >= 25%, preenchimento da caixa < 90% (não é
+  retângulo); larguras distintas entre objetos (tesoura != sino != pacote);
+  poção levantada desloca `(lean, dy) x 12`, fica mais rala, sem contato;
+  contato do sino exatamente 1 px sob o contorno; shader compilado uma vez,
+  <= 0,5 KB por sombra; na cena real 6 sombras, todas antes do 1º objeto.
+  Sonda: `love . test_one probe_shop_shadow` (gpu/ref/IoU/caixa por objeto).
+  Capturas: `SHOP_STATES=rest,hoverpack,hoverpotion,hoverrelic1,hoverrelic2,
+  hoverrelic3,hoverbell,hoverdice,table love . test_one screenshot_shop_diag`
+  (`table` = recorte 1:1 da mesa inteira), guardadas em
+  `tools/preview_out/shop_v5/sombras/`.
+- **Perf** (`SHOP_W=2560 SHOP_H=1440 SHOP_FRAMES=400 love . screenshot_shop
+  perf`): 3,41/3,20 ms (repouso/hover) antes -> 3,88/3,63 depois (+0,47 ms:
+  6 trocas de shader + 13 uniforms por objeto). `test_perf_budget` (estrada)
+  inalterado: 427 draw calls, 30,6 KB/quadro.
+- **Não regredir**: sombra de objeto NUNCA volta a ser "linhas na reta do
+  pé". Mudou a projeção, a pose (`uprightParams`) ou as retas (`LINES`)?
+  O shader e `castShadowRef` mudam JUNTOS (o teste compara os dois) e a
+  captura `table` é olhada antes de commitar.

@@ -17,6 +17,12 @@
 --   hoverjoker  mouse sobre a bancada de coringa (MESMO sprite, levantado + contorno)
 --   selectjoker bancada selecionada: o pergaminho mostra o MESMO sprite
 --   hoverdice   mouse sobre o copo de dados (contorno + nome no hover)
+--   hoverrelic1..3  mouse sobre a 1ª/2ª/3ª relíquia da mesa (sombra projetada
+--               com o quadro animado; objeto que flutua sobe e a sombra se
+--               separa)
+--   hoverbell   mouse sobre o sino
+--   table       recorte 1:1 da MESA inteira em repouso (sombras de todos os
+--               objetos) -> diag_table_<W>x<H>_<loc>.png
 --
 --   love . test_one screenshot_shop_diag pt_BR
 --   SHOP_SIZES=1280x720 love . test_one screenshot_shop_diag en
@@ -139,6 +145,13 @@ function M.run(arg)
                     hoverItem(it)
                 elseif state == "hoverpack" then
                     hoverItem(itemWhere(function(it) return it.kind == "pack" end))
+                elseif state:match("^hoverrelic%d$") then
+                    local idx = tonumber(state:match("%d"))
+                    hoverItem(itemWhere(function(it) return it.kind == "relic" and it.index == idx end))
+                elseif state == "hoverbell" and s.scene and s.scene.L then
+                    local B = s.scene.L.bell
+                    mouseX, mouseY = (B.rect.x + B.rect.w / 2) * k, (B.rect.y + B.rect.h * 0.6) * k
+                    sim(0.6)
                 elseif state == "hovercard" then
                     hoverItem(itemWhere(function(it) return it.kind == "card" and it.index == 2 end))
                 elseif state == "hoverjoker" or state == "selectjoker" then
@@ -270,6 +283,16 @@ function M.run(arg)
                     end)
                     img:encode("png", name)
                     print("[shop_diag] " .. name)
+                elseif state == "table" then
+                    -- a mesa inteira 1:1: da aresta de trás do tampo à aresta da frente + etiquetas
+                    local Lw = s.scene.L
+                    local cv = Lw.cover
+                    local LINES = require("src.ui.shop.ShopLayout").LINES
+                    local y0 = cv.oy + (LINES.tableBack - 640 / 8 - 70) * cv.s
+                    local y1 = cv.oy + (LINES.tableEdge + 30) * cv.s
+                    local X0, Y0 = 0, math.max(0, math.floor(y0 * k))
+                    local X1, Y1 = w, math.min(h, math.ceil(y1 * k))
+                    crop(render(), X0, Y0, X1 - X0, Y1 - Y0):encode("png", name)
                 elseif state == "stand" then
                     -- recorte 1:1 (px reais) do cavalete da carta 2: trilho,
                     -- batentes, plaquinha, etiqueta; sem nada por cima

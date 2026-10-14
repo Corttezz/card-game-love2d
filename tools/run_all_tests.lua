@@ -73,6 +73,8 @@ local SUITES = {
     -- 5 idiomas; hover/compra/sino/reducedMotion/alvos do pad
     { group = "unit",  name = "test_shop_layout" },
     { group = "unit",  name = "test_shop_scene" },
+    -- sombra projetada dos objetos da mesa = silhueta deitada (shader == referência Lua)
+    { group = "unit",  name = "test_shop_shadows" },
     { group = "unit",  name = "test_status_pills" },
     { group = "unit",  name = "test_orb_anim" },
     { group = "unit",  name = "test_input_focus" },
