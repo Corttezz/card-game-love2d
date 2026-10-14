@@ -1,11 +1,12 @@
 -- tools/preview_editions.lua
--- As TRES editions na MESMA carta, lado a lado com a carta limpa.
+-- As DUAS editions com shader proprio (Foil e Polychrome) na MESMA carta, lado
+-- a lado com a carta limpa. (A Negative saiu do jogo em Out/2026.)
 --
 --   love . preview_editions            -- 1024x768, pt_BR
 --   love . preview_editions <card_id>  -- outra cobaia
 --
 -- Por que existe: edition e hierarquia. Julgar o Polychrome sozinho nao diz
--- nada -- a pergunta e se ele le como MAIS raro que Foil e Negative sem sair
+-- nada -- a pergunta e se ele le como MAIS raro que Foil sem sair
 -- da paleta do jogo. So o lado a lado responde isso.
 --
 -- Saida: <save dir>/editions_comparativo.png
@@ -17,7 +18,6 @@ local LABELS = {
     { key = nil,          name = "LIMPA" },
     { key = "foil",       name = "FOIL" },
     { key = "polychrome", name = "POLYCHROME" },
-    { key = "negative",   name = "NEGATIVE" },
 }
 
 -- Gera SEMPRE as duas variantes (normal e reducedMotion). Nao e preguica de
@@ -34,7 +34,6 @@ function M.run(cardId)
     require("src.ui.HoloShader").load()
     require("src.ui.FoilShader").load()
     require("src.ui.PolychromeShader").load()
-    require("src.ui.NegativeShader").load()
 
     local FontManager = require("src.ui.FontManager")
     local CardDatabase = require("src.systems.CardDatabase")
@@ -88,8 +87,6 @@ function M.run(cardId)
             require("src.ui.FoilShader").draw(card.image, cx, cy, 0.7, 0, scale, scale)
         elseif card.edition == "polychrome" then
             require("src.ui.PolychromeShader").draw(card.image, cx, cy, 0.7, 0, scale, scale)
-        elseif card.edition == "negative" then
-            require("src.ui.NegativeShader").draw(card.image, cx, cy, 0.7, 0, scale, scale)
         else
             love.graphics.draw(card.image, cx, cy, 0, scale, scale)
         end
@@ -114,8 +111,6 @@ function M.run(cardId)
             require("src.ui.FoilShader").draw(card.image, 0, 0, 0.7)
         elseif card.edition == "polychrome" then
             require("src.ui.PolychromeShader").draw(card.image, 0, 0, 0.7)
-        elseif card.edition == "negative" then
-            require("src.ui.NegativeShader").draw(card.image, 0, 0, 0.7)
         else
             love.graphics.draw(card.image, 0, 0)
         end

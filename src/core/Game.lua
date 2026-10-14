@@ -161,7 +161,7 @@ function Game:startGame()
     self:syncArmorCap()
     self:syncInterestCap()
     self:initializeDeck()
-    -- Cartas com edition "negative" no deck adicionam slots de joker (Fase 3.2).
+    -- Teto de coringas ativos = base + bancadas compradas na loja.
     self:recomputeMaxJokerSlots()
 
     -- Restaura jokers da run (em saves antigos vinham de currentDeck → migrados
@@ -813,11 +813,11 @@ end
 
 -- ===== Editions (Fase 3.2) / Seals (Fase 3.3) =====
 -- As tabelas de valor (Foil +5, Holo x1.2, Polychrome x1.5, selo Red x2)
--- moram em DamagePreview (fonte unica da conta da carta). Negative nao mexe
--- no valor: o efeito e +1 slot de joker (recomputeMaxJokerSlots).
+-- moram em DamagePreview (fonte unica da conta da carta). A edition Negative
+-- (+1 vaga de coringa por carta de cor invertida) SAIU em Out/2026 a pedido
+-- do dono: ninguem via a mecanica, so a carta "bugada". Copias em saves
+-- antigos viram carta comum em RunManager:buildPlayableDeck.
 
--- Conta cartas Negative no deck atual e ajusta maxJokerSlots = base + N.
--- Chamar após startGame, addCardToRun, e qualquer mudança de deck.
 -- Quantas vezes um SERVIÇO da loja foi comprado nesta run (bancada extra de
 -- coringa, grimório de compra extra). Fonte única: o ledger do RunManager,
 -- que viaja no save. Fora de run mode não existe loja persistente → 0.
@@ -829,25 +829,13 @@ function Game:getShopServiceCount(id)
     return 0
 end
 
+-- Teto de coringas ATIVOS = base do Config + bancadas COMPRADAS na loja
+-- (serviço `joker_slot`). Chamar após startGame e após comprar bancada.
 function Game:recomputeMaxJokerSlots()
-    -- Base do Config + bancadas COMPRADAS na loja (serviço `joker_slot`).
-    local base = (Config.Game.MAX_JOKER_SLOTS or 3)
+    self.maxJokerSlots = (Config.Game.MAX_JOKER_SLOTS or 3)
         + self:getShopServiceCount("joker_slot")
-    local negCount = 0
-    for _, card in ipairs(self.deck or {}) do
-        if card and card.edition == "negative" then
-            negCount = negCount + 1
-        end
-    end
-    -- Inclui também cartas na mão (em jogo elas existem como instâncias).
-    for _, card in ipairs(self.hand or {}) do
-        if card and card.edition == "negative" then
-            negCount = negCount + 1
-        end
-    end
-    self.maxJokerSlots = base + negCount
     -- Espelha no run pra o teto de ATIVOS (RunManager:getMaxJokerSlots) seguir
-    -- os bônus de slot (Negative) — senão a bancada usaria só o base fixo.
+    -- as bancadas compradas — senão a bancada usaria só o base fixo.
     if self.isRunMode and self.runManager and self.runManager.currentRun then
         self.runManager.currentRun.maxJokerSlots = self.maxJokerSlots
         self:rebuildJokerSlots()

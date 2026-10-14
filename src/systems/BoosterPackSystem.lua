@@ -1,7 +1,10 @@
 -- src/systems/BoosterPackSystem.lua
 -- Gera o conteúdo de um booster pack baseado no kind. Aplica edition/seal
--- probabilisticamente em Standard packs (Balatro feel: foil/holo/poly/negative
--- + Red/Blue/Gold/Purple seals).
+-- probabilisticamente em Standard packs (Balatro feel: foil/holo/poly
+-- + Red/Blue/Gold/Purple seals). A edition "negative" (cor invertida, +1 vaga
+-- de coringa) SAIU em Out/2026 (dono: "essa mecânica não é usada em lugar
+-- nenhum, tire isso"): nunca mais é sorteada, e cópias em saves antigos
+-- viram carta comum (RunManager:buildPlayableDeck).
 --
 -- P0.6 (rebalance Jul/2026):
 --   (a) TODO roll de pack usa o stream "shop" do Rng seedado — packs são
@@ -37,9 +40,8 @@ local CardDatabase = require("src.systems.CardDatabase")
 local Rng = require("src.systems.Rng")
 
 -- Rates "garantidas" pra Standard pack (Balatro: base × 25 multiplier
--- aplicado quando o pack força roll). Soma ~30% chance de ter edition.
+-- aplicado quando o pack força roll). Soma 22,5% de chance de ter edition.
 local EDITION_RATES = {
-    { name = "negative",   rate = 0.075 },
     { name = "polychrome", rate = 0.075 },
     { name = "holo",       rate = 0.05 },
     { name = "foil",       rate = 0.10 },

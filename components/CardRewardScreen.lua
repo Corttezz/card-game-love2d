@@ -1705,8 +1705,8 @@ function CardRewardScreen:applyUpgrade(upgrade)
 
     elseif upgrade.effect == "add_joker_slot" then
         -- BANCADA EXTRA: sobe o teto de coringas ATIVOS pelo resto da run.
-        -- O ledger é a fonte; recomputeMaxJokerSlots (base + Negative +
-        -- comprados) reescreve o espelho em currentRun.maxJokerSlots e
+        -- O ledger é a fonte; recomputeMaxJokerSlots (base + comprados)
+        -- reescreve o espelho em currentRun.maxJokerSlots e
         -- reconstrói jokerSlots — sem isso o coringa que estava na bancada
         -- não subiria pro tabuleiro até a próxima batalha.
         if rm and rm.registerService then rm:registerService(upgrade.id) end

@@ -41,10 +41,10 @@ function M.run()
     t:eq("getDeckCardIds conta todas", #ids, 3)
 
     -- addCardToDeck com meta (edition) guarda tabela {id, edition}
-    rm:addCardToDeck("warrior_strike", { edition = "negative" })
+    rm:addCardToDeck("warrior_strike", { edition = "foil" })
     local last = run.currentDeck[#run.currentDeck]
     t:eq("carta com meta é tabela {id,...}", type(last), "table")
-    t:eq("meta.edition preservada", last.edition, "negative")
+    t:eq("meta.edition preservada", last.edition, "foil")
 
     -- jokers: separados do deck (invariante Balatro)
     local deckSizeBefore = #run.currentDeck

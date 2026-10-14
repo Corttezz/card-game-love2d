@@ -32,8 +32,7 @@ local TagSystem    = require("src.systems.TagSystem")
 local DamagePreview = {}
 
 -- ===== Edicao e selo (Fase 3.2/3.3) — fonte unica, o Game usa daqui =====
--- Foil e plano; Holo/Polychrome multiplicam; Negative nao mexe no valor (o
--- efeito dele e +1 slot de coringa, em Game:recomputeMaxJokerSlots).
+-- Foil e plano; Holo/Polychrome multiplicam. (A Negative saiu em Out/2026.)
 DamagePreview.EDITION_FLAT = { foil = 5 }
 DamagePreview.EDITION_MULT = { holo = 1.2, polychrome = 1.5 }
 -- Red: x2 valor (retrigger via mult). Outros selos sao efeito pos-jogada.

@@ -4,7 +4,6 @@ local ImageCache = require("src.ui.ImageCache")
 local HoloShader = require("src.ui.HoloShader")
 local FoilShader = require("src.ui.FoilShader")
 local PolychromeShader = require("src.ui.PolychromeShader")
-local NegativeShader = require("src.ui.NegativeShader")
 local CardAnimationLayer = require("src.ui.card.CardAnimationLayer")
 local CardArt = require("src.ui.CardArt")
 local CardFrame = require("src.ui.CardFrame")
@@ -91,7 +90,7 @@ function Card:new(name, cost, attack, defense, passive, type, subtype, imagePath
     -- 0 = não forjada. >=1 = forjada N vezes (+2 atk/def por level + boost de effect).
     -- Render: badge "+N" desenhado em Card:_drawUpgradeBadge.
     instance.upgrades = 0
-    -- Edition (Fase 3.2): nil | "foil" | "holo" | "polychrome" | "negative".
+    -- Edition (Fase 3.2): nil | "foil" | "holo" | "polychrome".
     instance.edition = nil
     -- Seal (Fase 3.3): nil | "Red" | "Blue" | "Gold" | "Purple".
     instance.seal = nil
@@ -871,12 +870,12 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
         end
     elseif self.edition then
         -- Edition path (Fase 3.2): renderiza mesh warpado num canvas, depois
-        -- aplica o shader da edition (foil/holo/polychrome/negative). Tem prioridade
+        -- aplica o shader da edition (foil/holo/polychrome). Tem prioridade
         -- sobre o rarity glow legacy (fx=="holo"/"glow").
         local editionShader, editionStrength = self:_getEditionShader()
         -- Edition holo segue a MESMA régua da lendária (HoloShader v2): tênue e
         -- estática em repouso, varredura só na interação. As outras editions
-        -- (foil/polychrome/negative) não mudam.
+        -- (foil/polychrome) não mudam.
         local holoGate = self:_holoGate(hoverAmt)
         local offCanvas = self:_getOffscreenCanvas()
         local prevCanvas = love.graphics.getCanvas()
@@ -1059,7 +1058,8 @@ local EDITION_SHADERS = {
     foil       = { shader = FoilShader,       strength = 0.6 },
     holo       = { shader = HoloShader,       strength = 0.5 },
     polychrome = { shader = PolychromeShader, strength = 0.7 },
-    negative   = { shader = NegativeShader,   strength = 1.0 },
+    -- "negative" (cor invertida) saiu em Out/2026 a pedido do dono: sem
+    -- entrada aqui, uma cópia antiga desenha como carta comum.
 }
 
 -- Retorna (shader, strength) pra edition atual. Nil se sem edition ou shader
@@ -1075,7 +1075,7 @@ function Card:_getEditionShader()
 end
 
 -- Aplica edition na carta. Dispara feedback visual (juice + sfx).
--- editionName: "foil" | "holo" | "polychrome" | "negative" | nil (remove)
+-- editionName: "foil" | "holo" | "polychrome" | nil (remove)
 -- options: { silent = bool } pra suprimir feedback (ex: durante setup de save load)
 function Card:setEdition(editionName, options)
     options = options or {}
@@ -1088,7 +1088,7 @@ function Card:setEdition(editionName, options)
         Moveable.juice_up(self, 0.5)
         local sfxByEdition = {
             foil = "deckStart", holo = "deckStart",
-            polychrome = "deckStart", negative = "swordSound",
+            polychrome = "deckStart",
         }
         local sfxName = sfxByEdition[editionName]
         if sfxName then Sfx.play(sfxName) end

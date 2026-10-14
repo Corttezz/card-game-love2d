@@ -26,7 +26,7 @@ function M.run(arg)
     I18n.setLocale(loc, true)
     require("src.ui.PixelCanvas").enableNearest()
     for _, sh in ipairs({ "CRTShader", "DissolveShader", "FlashShader", "BoosterShader",
-        "FoilShader", "PolychromeShader", "NegativeShader" }) do
+        "FoilShader", "PolychromeShader" }) do
         pcall(function() require("src.ui." .. sh).load() end)
     end
 

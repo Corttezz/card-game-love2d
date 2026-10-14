@@ -35,7 +35,6 @@ local FlashShader = require("src.ui.FlashShader")
 local BoosterShader = require("src.ui.BoosterShader")
 local FoilShader = require("src.ui.FoilShader")
 local PolychromeShader = require("src.ui.PolychromeShader")
-local NegativeShader = require("src.ui.NegativeShader")
 local Debug = require("src.core.Debug")
 local PackOpenScreen = require("components.PackOpenScreen")
 local FloatingText = require("src.ui.FloatingText")
@@ -1947,13 +1946,12 @@ function love.load(loveArgs)
 
     -- FX pipeline (shaders próprios, copyright-safe — Fase 2 do refactor Balatro).
     -- Dissolve: exhaust/destroy. Flash: impactos. Booster: pacotes selados.
-    -- Foil/Polychrome/Negative: editions de carta (Fase 3).
+    -- Foil/Polychrome: editions de carta (Fase 3). A Negative saiu (Out/2026).
     DissolveShader.load()
     FlashShader.load()
     BoosterShader.load()
     FoilShader.load()
     PolychromeShader.load()
-    NegativeShader.load()
     -- Holo das cartas RARAS/LENDÁRIAS (CLAUDE.md §14, v2: aro/realces, 0→0.25 rara, 0.08→0.5 lendária no hover) e
     -- da edition "holo". O módulo nasceu em Abr/2026 (a182eae) documentado
     -- como ativo e NUNCA teve o load() chamado: isAvailable() ficava false,

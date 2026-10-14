@@ -28,9 +28,11 @@ Três frentes de UX pedidas pelo Daniel, baseadas no Balatro source
   (evita stack). Se um dia criar joker com passive permanente → precisa de hook
   de activate/deactivate.
 - **Teto**: `RunManager:getMaxJokerSlots()` = `currentRun.maxJokerSlots or
-  Config.Game.MAX_JOKER_SLOTS(3)`. `Game:recomputeMaxJokerSlots` espelha o
-  bônus da edition **Negative** em `currentRun.maxJokerSlots` (senão a bancada
-  usaria o base fixo). `setJokerActive(i, true)` barra com motivo `"cap"`.
+  Config.Game.MAX_JOKER_SLOTS(3)`. `Game:recomputeMaxJokerSlots` espelha
+  base + bancadas compradas na loja em `currentRun.maxJokerSlots` (senão a
+  bancada usaria o base fixo). A edition **Negative** (+1 vaga por carta de
+  cor invertida) saiu em Out/2026 a pedido do dono. `setJokerActive(i, true)`
+  barra com motivo `"cap"`.
 - **Save**: `jokerActive` viaja junto (currentRun serializado inteiro).
   `_ensureJokerActive` tolera save antigo (nil → primeiros cap ativos) e
   normaliza tamanho/cap. `_migrateJokersFromDeck` mantém jokerActive em lockstep.

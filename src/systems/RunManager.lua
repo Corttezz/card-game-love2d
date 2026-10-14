@@ -177,7 +177,7 @@ end
 
 function RunManager:getMaxJokerSlots()
     -- currentRun.maxJokerSlots é espelhado por Game:recomputeMaxJokerSlots
-    -- (bônus de slot da edition Negative + bancadas compradas na loja).
+    -- (bancadas compradas na loja).
     -- Sem espelho (save recém-carregado, antes do primeiro startGame) o teto
     -- ainda tem que CONTAR as bancadas compradas, senão o jogador perde
     -- coringas ativos ao reabrir o jogo.
@@ -317,7 +317,7 @@ function RunManager:_instanceFromJokerEntry(entry)
         return nil
     end
     local instance = self.cardDatabase:createCardInstance(cardData)
-    if edition then instance.edition = edition end
+    if edition and edition ~= "negative" then instance.edition = edition end
     if seal then instance.seal = seal end
     return instance
 end
@@ -1072,8 +1072,9 @@ function RunManager:buildPlayableDeck()
             if lvl > 0 then
                 self:applyUpgradesToInstance(cardInstance, lvl)
             end
-            -- Edition/seal por cópia (vindo de booster pack).
-            if edition then cardInstance.edition = edition end
+            -- Edition/seal por cópia (vindo de booster pack). "negative"
+            -- saiu do jogo (Out/2026): cópia de save antigo vira carta comum.
+            if edition and edition ~= "negative" then cardInstance.edition = edition end
             if seal then cardInstance.seal = seal end
             table.insert(playableCards, cardInstance)
         else
