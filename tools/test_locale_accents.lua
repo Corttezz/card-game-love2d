@@ -31,7 +31,6 @@ local ASCIIISMS = {
 
 local TITLES = {
     { "pt_BR", "settings.title", "CONFIGURAÇÕES" },
-    { "pt_BR", "credits.title",  "CRÉDITOS" },
 }
 
 local function walk(tbl, path, out)

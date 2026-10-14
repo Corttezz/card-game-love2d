@@ -163,25 +163,6 @@ return {
         ok = "Entendi",
     },
 
-    credits = {
-        link          = "Créditos",
-        title         = "CRÉDITOS",
-        hint          = "Clique ou ESC para voltar",
-        thanks        = "Obrigado por jogar!",
-        role_design   = "Criação, design e programação",
-        name_design   = "Daniel Cortez",
-        role_art      = "Pixel art",
-        name_art      = "Gerada com PixelLab e editada pelo desenvolvedor",
-        role_audio    = "Música e efeitos sonoros",
-        name_audio    = "Gerados com ElevenLabs",
-        role_engine   = "Motor",
-        name_engine   = "LÖVE 11, licença zlib",
-        role_font     = "Fonte",
-        name_font     = "Grimoire Pixel, baseada na Press Start 2P de CodeMan38 (SIL Open Font License 1.1)",
-        role_inspired = "Inspirado por",
-        name_inspired = "Slay the Spire · Balatro",
-    },
-
     score = {
         points_total    = "+{n} PONTOS",
         pts             = "{n} pts",

@@ -214,7 +214,7 @@ end
 UiScale.SCREENS = {
     "components.Menu", "components.ClassSelectionScreen",
     "components.CardRewardScreen", "components.CollectionScreen",
-    "components.AchievementsScreen", "components.CreditsScreen",
+    "components.AchievementsScreen",
     "components.DeckViewerScreen", "components.JokerManagerScreen",
     "components.RunJournalScreen", "components.ScribeDiceScreen",
     "components.MapScreen", "components.RestScreen",

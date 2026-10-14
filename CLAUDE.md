@@ -52,7 +52,6 @@ card-game-love2d/
 │   ├── TopBar.lua              # Barra superior (ouro, deck, ícone config)
 │   ├── SettingsMenu.lua        # Abas Áudio/Vídeo/Jogo/Idioma em altura fixa, controles [<] valor [>] (Idioma = LISTA direta, nunca ciclo); VOLTAR retorna ao Pause; SettingsMenu.applyRuntime(settings) no boot (vsync, combatSpeed → CombatBeats.speed)
 │   ├── PauseMenu.lua           # Pausa v4 limpa (classe·jornada + semente miúda, atalhos D/J/M em ícone, Continuar primário, abandono = link discreto em 2 etapas); teclado/gamepad via src/ui/MenuKit.lua; _G.togglePauseMenu
-│   ├── CreditsScreen.lua       # Créditos (LÖVE/zlib, fonte/OFL) — substituiu o "Sobre" placeholder
 │   ├── UnlockShowcase.lua      # Revelações no MENU pós-corrida estilo Balatro (carta/classe/selo/conquista/maestria, um painel por vez); fila persistida no perfil por `src/systems/UnlockQueue.lua` (sobrevive a fechar o jogo)
 │   ├── JokerSlot.lua           # Slot visual de joker ativo
 │   ├── DeckViewerScreen.lua    # Deck da run em TELA CHEIA (estilo Coleção); abre por clique no deck da TopBar OU tecla D; hover c/ tooltip + forja aplicada

@@ -562,23 +562,9 @@ function Menu:_drawVersionFooter()
     love.graphics.setFont(f)
     love.graphics.setColor(Palette.PARCHMENT_DARK[1], Palette.PARCHMENT_DARK[2],
         Palette.PARCHMENT_DARK[3], a)
-    local ver = "v" .. (Config.VERSION or "?") .. " · LOVE2D"
+    local ver = "v" .. (Config.VERSION or "?")
     local y = love.graphics.getHeight() - 22
     love.graphics.print(ver, 12, y)
-
-    local label = I18n.t("credits.link")
-    local lx = 12 + f:getWidth(ver) + 18
-    local lw, lh = f:getWidth(label), f:getHeight()
-    self._creditsRect = { x = lx - 6, y = y - 6, w = lw + 12, h = lh + 12 }
-    local mx, my = love.mouse.getPosition()
-    local r = self._creditsRect
-    local hover = mx >= r.x and mx <= r.x + r.w and my >= r.y and my <= r.y + r.h
-    if hover then
-        love.graphics.setColor(Palette.AGED_GOLD_LIGHT[1], Palette.AGED_GOLD_LIGHT[2],
-            Palette.AGED_GOLD_LIGHT[3], math.min(1, a / 0.65))
-    end
-    love.graphics.print(label, lx, y)
-    love.graphics.rectangle("fill", lx, y + lh + 1, lw, 1)
 end
 
 local BG_SEQ = {
@@ -847,7 +833,6 @@ function Menu:setCollectionCallback(cb) self.onCollectionCallback = cb end
 function Menu:setAchievementsCallback(cb) self.onAchievementsCallback = cb end
 function Menu:setContinueCallback(cb) self.onContinueCallback = cb end
 function Menu:setSettingsCallback(cb) self.onSettingsCallback = cb end
-function Menu:setCreditsCallback(cb) self.onCreditsCallback = cb end
 
 function Menu:requestQuit()
     local ConfirmDialog = require("src.ui.ConfirmDialog")
@@ -937,13 +922,6 @@ function Menu:mousepressed(x, y, button)
     local consumed = false
     for name, btn in pairs(self.buttons) do
         if btn:mousepressed(x, y, button) then consumed = true end
-    end
-
-    local r = self._creditsRect
-    if not consumed and button == 1 and r and self.onCreditsCallback
-        and x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h then
-        self.onCreditsCallback()
-        return
     end
 
     if not consumed and button == 1 then

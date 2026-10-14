@@ -1133,15 +1133,6 @@ function love.load(loveArgs)
     menu:setSettingsCallback(function()
         settingsMenu:toggle()
     end)
-    menu:setCreditsCallback(function()
-        _G.creditsScreen = _G.creditsScreen or require("components.CreditsScreen"):new()
-        currentState = "credits"
-        menu:hide()
-        _G.creditsScreen:show(function()
-            currentState = "menu"
-            menu:show()
-        end)
-    end)
     menu:setAchievementsCallback(function()
         currentState = "achievements"
         menu:hide()
@@ -1565,8 +1556,6 @@ function love.draw()
         collectionScreen:draw()
     elseif currentState == "achievements" then
         achievementsScreen:draw()
-    elseif currentState == "credits" then
-        _G.creditsScreen:draw()
     elseif currentState == "gameOver" then
         EndScreens.drawGameOver(game)
     elseif currentState == "victory" then
@@ -1757,10 +1746,6 @@ function love.keypressed(key)
         achievementsScreen:keypressed(key)
         return
     end
-    if currentState == "credits" then
-        _G.creditsScreen:keypressed(key)
-        return
-    end
     if currentState == "collection" then
         local wasInspecting = collectionScreen.inspectedCard ~= nil
         if collectionScreen.keypressed then collectionScreen:keypressed(key) end
@@ -1898,8 +1883,6 @@ function love.mousereleased(x, y, button)
         if collectionScreen.mousereleased then collectionScreen:mousereleased(x, y, button) end
     elseif currentState == "achievements" then
         achievementsScreen:mousereleased(x, y, button)
-    elseif currentState == "credits" then
-        _G.creditsScreen:mousereleased(x, y, button)
     elseif currentState == "gameOver" or currentState == "victory" then
         EndScreens.mousereleased(x, y, button)
     end
@@ -1962,8 +1945,6 @@ function love.mousepressed(x, y, button)
         collectionScreen:mousepressed(x, y, button)
     elseif currentState == "achievements" then
         achievementsScreen:mousepressed(x, y, button)
-    elseif currentState == "credits" then
-        _G.creditsScreen:mousepressed(x, y, button)
     elseif currentState == "gameOver" or currentState == "victory" then
         EndScreens.mousepressed(x, y, button)
     end

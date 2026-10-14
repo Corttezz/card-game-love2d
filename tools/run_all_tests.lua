@@ -81,7 +81,6 @@ local SUITES = {
     { group = "unit",  name = "test_discovery_mark" },
     { group = "unit",  name = "test_toast_audit" },
     { group = "unit",  name = "test_confirm_dialog" },
-    { group = "unit",  name = "test_credits" },
     { group = "unit",  name = "test_lifecycle" },
     { group = "unit",  name = "test_saveflow" },
     { group = "unit",  name = "test_save_integrity" },

@@ -142,7 +142,7 @@ end
 function MusicDirector.pick(state, run, nodeType, inHall, introPlaying)
     if state == "boot" then return nil end
     if state == "menu" or state == "classSelection"
-        or state == "collection" or state == "achievements" or state == "credits"
+        or state == "collection" or state == "achievements"
         or state == "gameOver" or state == "victory" then
         return "menuMusic"
     end
