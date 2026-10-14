@@ -686,12 +686,12 @@ function BootScene._finish()
 end
 
 function BootScene.keypressed(_)
-    if state.phase == "intro" then IntroTube.skip() return end
+    if state.phase == "intro" then IntroTube.press() return end
     if state.phase ~= "done" then BootScene.skip() end
 end
 
 function BootScene.mousepressed(_, _, _)
-    if state.phase == "intro" then IntroTube.skip() return end
+    if state.phase == "intro" then IntroTube.press() return end
     if state.phase ~= "done" then BootScene.skip() end
 end
 

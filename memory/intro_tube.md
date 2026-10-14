@@ -144,3 +144,6 @@ aceso (`setPower(1)`) e o dono reclamou na hora: "perdeu o efeito da tela
 ligando, eu quero ele; também tem que continuar". `IntroTube.endedWithDive()`
 continua existindo (diz se a abertura terminou pelo mergulho) mas ninguém
 decide por ele. Trava: `test_intro_tube` (tela × sEndX/sEndY = abertura).
+
+## Espera pela carta (14/Out/2026)
+Pedido do dono: em vez de "aperte para pular", a abertura convida "aperte qualquer tecla para inserir a carta" e nada acontece até a tecla. No modo arte (computador instalado), depois de datilografar o título a abertura entra na fase `await` e fica parada, com o texto na tela e o convite pulsando no rodapé (`boot.insert_hint`, 5 idiomas, fonte 16 em tinta). Tecla ou clique durante a datilografia ou na espera completa o texto e começa a fase `insert` (`IntroTube.press`); tecla durante insert/dive pula o resto. Sem a arte (televisor do shader) e com reducedMotion o comportamento antigo segue (`boot.skip_hint`, termina sozinho). BootScene repassa tecla e clique para `IntroTube.press`. Trava: test_intro_tube (espera sem tecla nunca insere; tecla e clique inserem; texto completo ao inserir).

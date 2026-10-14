@@ -2,6 +2,7 @@ return {
     boot = {
         loading         = "CARREGANDO...",
         skip_hint       = "Pressione qualquer tecla para pular",
+        insert_hint     = "Pressione qualquer tecla para inserir a carta",
     },
 
     menu = {

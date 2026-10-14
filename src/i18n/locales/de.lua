@@ -2,6 +2,7 @@ return {
     boot = {
         loading         = "LADEN...",
         skip_hint       = "Beliebige Taste zum Überspringen",
+        insert_hint     = "Beliebige Taste drücken, um die Karte einzulegen",
     },
 
     menu = {

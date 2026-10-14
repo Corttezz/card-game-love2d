@@ -104,6 +104,12 @@ function M.run()
         end
         IntroTube.init({})
         t:noerror("draw com a arte (pagina)", function() IntroTube.draw() end)
+        for _ = 1, 60 * 10 do IntroTube.update(dt) end
+        t:eq("com a arte, depois do texto a abertura ESPERA a tecla", IntroTube.phase(), "await")
+        t:truthy("na espera, o texto inteiro ja esta na tela", select(1, IntroTube.typed()) == IntroTube._state().lenTitle)
+        t:noerror("draw na espera (convite pra inserir a carta)", function() IntroTube.draw() end)
+        IntroTube.keypressed("space")
+        t:eq("tecla na espera insere a carta (nao pula)", IntroTube.phase(), "insert")
         for _ = 1, 60 * 10 do IntroTube.update(dt); if IntroTube.phase() == "dive" then break end end
         IntroTube.update(IntroTube.T.dive / 2)
         t:noerror("draw com a arte (mergulho)", function() IntroTube.draw() end)
@@ -116,9 +122,19 @@ function M.run()
         t:truthy("pular nao conta como mergulho", not IntroTube.endedWithDive())
 
         IntroTube.init({})
+        for _ = 1, 20 do IntroTube.update(dt) end
+        IntroTube.mousepressed(1, 1, 1)
+        local a3, b3 = IntroTube.typed()
+        local S3 = IntroTube._state()
+        t:eq("clique durante a datilografia insere a carta", IntroTube.phase(), "insert")
+        t:truthy("o texto se completa ao inserir", a3 == S3.lenTitle and b3 == S3.lenSub)
+        IntroTube.init({})
         local sawInsert = false
         for _ = 1, 60 * 10 do IntroTube.update(dt); if IntroTube.phase() == "insert" then sawInsert = true break end end
-        t:truthy("com a arte, depois do texto vem a fase insert (carta na fenda)", sawInsert)
+        t:falsy("sem tecla a carta nunca entra sozinha", sawInsert)
+        IntroTube.press()
+        sawInsert = IntroTube.phase() == "insert"
+        t:truthy("com a arte, a tecla leva a fase insert (carta na fenda)", sawInsert)
         local G2 = IntroTube.geometry(1280, 720)
         t:truthy("a fenda dos dados fica abaixo da tela e dentro do computador",
             G2.slot and G2.slot.y > G2.sy + G2.sh and G2.slot.y + G2.slot.h <= G2.ay + G2.ah + 0.5)

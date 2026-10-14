@@ -163,7 +163,7 @@ function IntroTube.update(dt)
             S.holdT = S.holdT + dt
             if S.holdT >= IntroTube.T.hold then
                 if reducedMotion() then finish()
-                elseif IntroTube.computerArt() then S.phase = "insert"; S.insT = 0
+                elseif IntroTube.computerArt() then S.phase = "await"
                 else S.phase = "dive"; S.diveT = 0 end
             end
         end
@@ -236,6 +236,8 @@ local function textAlpha()
         if S.doneTyping and not IntroTube.computerArt() and not reducedMotion() then
             return math.max(0, math.min(1, (T.hold - S.holdT) / 0.3))
         end
+        return 1
+    elseif S.phase == "await" then
         return 1
     elseif S.phase == "insert" then
         if S.insT <= T.insert then return 1 end
@@ -470,20 +472,42 @@ function IntroTube.draw()
         love.graphics.draw(c.tube, G.cx, G.cy, 0, scale, scale, G.tw / 2, G.th / 2)
     end
 
-    if dive <= 0 and S.t > 0.6 then
-        local font = FontManager.getFont(10)
+    local artMode = IntroTube.computerArt() ~= nil and not reducedMotion()
+    if dive <= 0 and S.t > 0.6 and not (artMode and S.phase == "insert") then
+        local font = FontManager.getFont(artMode and 16 or 10)
         love.graphics.setFont(font)
-        local label = I18n.t("boot.skip_hint")
-        local pulse = 0.5 + math.sin(love.timer.getTime() * 2) * 0.2
-        local D = Palette.PARCHMENT_DARK
+        local label = I18n.t(artMode and "boot.insert_hint" or "boot.skip_hint")
+        local pulse
+        if artMode then
+            pulse = (S.phase == "await") and (0.78 + math.sin(love.timer.getTime() * 2.4) * 0.22) or 0.45
+        else
+            pulse = 0.5 + math.sin(love.timer.getTime() * 2) * 0.2
+        end
+        local D = artMode and Palette.INK or Palette.PARCHMENT_DARK
         love.graphics.setColor(D[1], D[2], D[3], pulse * fade)
-        love.graphics.print(label, math.floor((W - font:getWidth(label)) / 2), H - 28)
+        love.graphics.print(label, math.floor((W - font:getWidth(label)) / 2),
+            artMode and math.floor(H - font:getHeight() - 40) or H - 28)
     end
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-function IntroTube.keypressed() if S.phase ~= "done" then IntroTube.skip() end end
-function IntroTube.mousepressed() if S.phase ~= "done" then IntroTube.skip() end end
+function IntroTube.awaitsInsert()
+    return (S.phase == "page" or S.phase == "await") and not reducedMotion()
+        and IntroTube.computerArt() ~= nil
+end
+
+function IntroTube.press()
+    if S.phase == "done" then return end
+    if IntroTube.awaitsInsert() then
+        S.shownTitle, S.shownSub, S.doneTyping = S.lenTitle, S.lenSub, true
+        S.phase = "insert"; S.insT = 0
+        return
+    end
+    IntroTube.skip()
+end
+
+function IntroTube.keypressed() IntroTube.press() end
+function IntroTube.mousepressed() IntroTube.press() end
 function IntroTube.resize() S.canvases = nil; pageKey = nil end
 function IntroTube.mode() return IntroTube.geometry(love.graphics.getWidth(), love.graphics.getHeight()).mode end
 function IntroTube._state() return S end

@@ -38,6 +38,10 @@ function M.run(arg)
     run(1.2);  shot("2_titulo")
     for _ = 1, 60 * 8 do IntroTube.update(dt); if IntroTube.phase() ~= "page" then break end end
     shot("3_texto")
+    if IntroTube.phase() == "await" then
+        run(1.0); shot("3a_espera")
+        IntroTube.press()
+    end
     if IntroTube.phase() == "insert" then
         IntroTube.update(IntroTube.T.insert * 0.55); shot("3b_carta")
         IntroTube.update(IntroTube.T.insert * 0.45 + IntroTube.T.insertHold * 0.15); shot("3c_flash")
