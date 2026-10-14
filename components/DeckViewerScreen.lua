@@ -1,14 +1,3 @@
--- components/DeckViewerScreen.lua
--- DECK VIEWER GLOBAL — tela CHEIA (não-modal) do deck da run, no estilo da
--- aba de Coleção. Pesquisa (StS mods): "ver o deck inteiro numa tela ampla,
--- passar o mouse pra ver descrição/nível de forja" é o QoL mais pedido do
--- gênero. Reescrito Jul/2026 (feedback: "ocupar praticamente a tela inteira,
--- tipo a aba de coleção, não um modal").
---
--- Abrir: clique no deck da TopBar OU tecla D (combate). ESC/D/X fecha.
--- Mostra o deck COM forja aplicada (valor verde + gemas), grid rolável,
--- hover levanta a carta + moldura dourada + tooltip completo.
-
 local DeckViewerScreen = {}
 DeckViewerScreen.__index = DeckViewerScreen
 
@@ -21,10 +10,9 @@ local CardGridRender = require("src.ui.CardGridRender")
 local Sfx          = require("src.systems.Sfx")
 local I18n         = require("src.i18n.I18n")
 
--- dimensões da carta renderizada (mesmas da Coleção pra coerência visual)
 local CARD_W, CARD_H = 128, 192
 local GAP_X, GAP_Y   = 18, 22
-local TOP_OFFSET     = 118   -- espaço pro título + contagens
+local TOP_OFFSET     = 118
 local BOTTOM_PAD     = 46
 
 function DeckViewerScreen:new()
@@ -37,15 +25,11 @@ function DeckViewerScreen:new()
     instance.maxScroll = 0
     instance._openedAt = 0
     instance._cardRects = {}
-    -- Tooltip completo no hover (StS-style: descrição + raridade + forja)
     instance.cardInfo = require("src.ui.CardInfoDisplay"):new()
-    -- Modal de inspeção completo (igual à aba de Coleção): clicar numa carta
-    -- abre a carta grande + painel detalhado, navegável por setas.
     instance.inspectModal = require("src.ui.CardInspectModal"):new()
     return instance
 end
 
--- Ordena por tipo (attack→defense→effect→joker) e custo dentro do tipo.
 local TYPE_ORDER = { attack = 1, defense = 2, effect = 3, joker = 4 }
 
 function DeckViewerScreen:_build()
@@ -57,13 +41,9 @@ function DeckViewerScreen:_build()
 
     local list = {}
     for _, entry in ipairs(run.currentDeck or {}) do
-        -- currentDeck guarda id string OU {id, edition, seal} (booster com
-        -- edition/seal). Normaliza pro id — senão a carta some do visualizador.
         local id = type(entry) == "table" and entry.id or entry
         local cd = id and CardDatabase:getCard(id)
         if cd then
-            -- Nivel POR COPIA (RunManager, secao "Forja POR COPIA"): duas
-            -- copias da mesma carta podem estar em niveis diferentes.
             local lvl = self.game.runManager:getEntryLevel(entry)
             table.insert(list, { id = id, cd = cd, lvl = lvl })
         end
@@ -86,7 +66,6 @@ function DeckViewerScreen:_build()
             inst._deckViewerId = e.id
             local lvl = e.lvl or 0
             if lvl > 0 and self.game.runManager.applyUpgradesToInstance then
-                -- stats + valor verde + gemas na própria moldura (CardFrame re-render)
                 self.game.runManager:applyUpgradesToInstance(inst, lvl)
             end
             table.insert(self.instances, inst)
@@ -102,7 +81,6 @@ function DeckViewerScreen:show(game)
     self.game = game
     self.scroll = 0
     self._openedAt = love.timer.getTime()
-    -- garante que o modal de inspeção não reaparece de uma abertura anterior
     self.inspectModal.card = nil
     self.inspectModal.anim = 0
     self:_build()
@@ -121,16 +99,11 @@ end
 
 function DeckViewerScreen:isVisible() return self.visible end
 
--- Resize NÃO zera a rolagem: o draw recalcula maxScroll e reclampa a cada
--- frame, então a posição de leitura sobrevive a fullscreen/arrasto de borda
--- (antes voltava pro topo — mesmo padrão do RunJournalScreen).
 function DeckViewerScreen:resize()
     self.scroll = math.max(0, math.min(self.scroll or 0, self.maxScroll or 0))
 end
 
 function DeckViewerScreen:update(dt) end
-
--- ===== Layout helpers (tudo dinâmico da window size) =====
 
 local function columnsFor(width)
     local cols = math.floor((width - 120 + GAP_X) / (CARD_W + GAP_X))
@@ -155,14 +128,13 @@ end
 
 function DeckViewerScreen:wheelmoved(dx, dy)
     if not self.visible then return false end
-    if self.inspectModal:isVisible() then return true end   -- modal trava scroll
+    if self.inspectModal:isVisible() then return true end
     self.scroll = math.max(0, math.min(self.maxScroll, self.scroll - dy * 48))
     return true
 end
 
 function DeckViewerScreen:keypressed(key)
     if not self.visible then return false end
-    -- Modal de inspeção consome teclado primeiro (setas navegam, ESC fecha ele)
     if self.inspectModal:isVisible() then
         self.inspectModal:keypressed(key)
         return true
@@ -175,12 +147,11 @@ function DeckViewerScreen:keypressed(key)
     elseif key == "down" or key == "pagedown" then
         self.scroll = math.min(self.maxScroll, self.scroll + 120)
     end
-    return true   -- consome tudo enquanto aberto
+    return true
 end
 
 function DeckViewerScreen:mousepressed(x, y, button)
     if not self.visible then return false end
-    -- Modal aberto: cliques vão pras setas / fora-fecha (igual à Coleção).
     if self.inspectModal:isVisible() then
         self.inspectModal:mousepressed(x, y, button)
         return true
@@ -190,24 +161,18 @@ end
 
 function DeckViewerScreen:mousereleased(x, y, button)
     if not self.visible then return false end
-    -- BUG playtest Jul/2026: o RELEASE do MESMO clique que abriu (press na
-    -- TopBar) era roteado pra cá e fechava no mesmo frame. Ignora releases
-    -- logo após a abertura.
     if love.timer.getTime() - (self._openedAt or 0) < 0.25 then
         return true
     end
-    -- Modal aberto consome o release (navegação foi no press).
     if self.inspectModal:isVisible() then
         return true
     end
     if button ~= 1 then return true end
-    -- botão X (fechar)
     local cx, cy, cw, ch = self:_closeRect()
     if x >= cx and x <= cx + cw and y >= cy and y <= cy + ch then
         self:hide()
         return true
     end
-    -- Clique numa carta → abre a inspeção completa (igual à Coleção).
     for _, r in ipairs(self._cardRects) do
         if x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h then
             self.inspectModal:show(self.instances[r.i], self.instances, r.i)
@@ -217,18 +182,13 @@ function DeckViewerScreen:mousereleased(x, y, button)
     return true
 end
 
--- ===== Render =====
-
 function DeckViewerScreen:draw()
     if not self.visible then return end
-    -- DeckViewer não é atualizado pelo main.lua (só desenhado) — tico o fade do
-    -- modal aqui mesmo, com o delta do frame.
     self.inspectModal:update(love.timer.getDelta())
     local sw = love.graphics.getWidth()
     local sh = love.graphics.getHeight()
     local modalOpen = self.inspectModal:isVisible()
 
-    -- Fundo cheio: cena de coleção (mesma vibe) + escurecida; fallback = véu.
     if not SceneBackground.draw("collection", sw, sh, 0.30) then
         love.graphics.setColor(0.05, 0.04, 0.03, 0.96)
         love.graphics.rectangle("fill", 0, 0, sw, sh)
@@ -237,14 +197,12 @@ function DeckViewerScreen:draw()
         love.graphics.rectangle("fill", 0, 0, sw, sh)
     end
 
-    -- ===== Header =====
     local tf = FontManager.getResponsiveFont(0.045, 32)
     love.graphics.setFont(tf)
     local title = I18n.t("deck_viewer.title", nil, "SEU DECK")
     Palette.set(Palette.AGED_GOLD_LIGHT)
     love.graphics.print(title, math.floor((sw - tf:getWidth(title)) / 2), 22)
 
-    -- contagens por tipo (reconhecimento > memorização)
     local c = self.counts
     local cf = FontManager.getFont(11)
     love.graphics.setFont(cf)
@@ -257,7 +215,6 @@ function DeckViewerScreen:draw()
     Palette.set(Palette.PARCHMENT_LIGHT)
     love.graphics.print(countsText, math.floor((sw - cf:getWidth(countsText)) / 2), 66)
 
-    -- estado das pilhas da batalha atual (se em combate)
     if self.game and self.game.deck then
         local piles = I18n.t("deck_viewer.piles", {
             draw = #self.game.deck,
@@ -272,13 +229,10 @@ function DeckViewerScreen:draw()
         love.graphics.print(piles, math.floor((sw - pf:getWidth(piles)) / 2), 90)
     end
 
-    -- botão X (fechar)
     do
         local cx, cy, cw, ch = self:_closeRect()
         require("src.ui.NavCursor").target("close", cx, cy, cw, ch)
         local mx, my = love.mouse.getPosition()
-        -- Modal de inspeção aberto suprime o hover do X (igual ao grid) — o
-        -- botão acendia POR BAIXO da carta ampliada.
         local hot = (not modalOpen)
             and mx >= cx and mx <= cx + cw and my >= cy and my <= cy + ch
         Palette.set(hot and Palette.BLOOD or Palette.PANEL_FILL)
@@ -292,25 +246,19 @@ function DeckViewerScreen:draw()
         love.graphics.print("X", cx + (cw - xf:getWidth("X")) / 2, cy + (ch - xf:getHeight()) / 2)
     end
 
-    -- ===== Grid =====
     local cols, gx0, gridTop, gridH = self:_gridMetrics()
     local rows = math.ceil(#self.instances / cols)
     local contentH = rows * (CARD_H + GAP_Y)
     self.maxScroll = math.max(0, contentH - gridH)
     if self.scroll > self.maxScroll then self.scroll = self.maxScroll end
 
-    -- Render IDÊNTICO à Coleção (CardGridRender + interpolação _cardAnim):
-    -- hover levanta/inclina a carta com warp 3D + sombra direcional + ícone
-    -- vivo — SEM borda (a borda anterior estava errada; a Coleção não tem).
     local dt = love.timer.getDelta()
     local mx, my = love.mouse.getPosition()
-    -- Modal aberto suprime o hover do grid (igual à Coleção).
     local mouseInGrid = (not modalOpen) and my >= gridTop and my <= gridTop + gridH
     self._cardRects = {}
     self._cardAnim = self._cardAnim or {}
     local ease = 1 - math.exp(-18 * dt)
 
-    -- 1) alvos + detecção de hover na posição de GRID (estável, igual Coleção)
     local hovered, hx, hy = nil, 0, 0
     local targetX, targetY = {}, {}
     for i, inst in ipairs(self.instances) do
@@ -322,7 +270,6 @@ function DeckViewerScreen:draw()
         if ty + CARD_H > gridTop and ty < gridTop + gridH then
             self._cardRects[#self._cardRects + 1] =
                 { i = i, x = tx, y = ty, w = CARD_W, h = CARD_H }
-            -- foco de teclado/pad (NavCursor): a carta da grade
             require("src.ui.NavCursor").target("deck:" .. i, tx, ty, CARD_W, CARD_H)
             if mouseInGrid and mx >= tx and mx < tx + CARD_W
                 and my >= ty and my < ty + CARD_H then
@@ -331,7 +278,6 @@ function DeckViewerScreen:draw()
         end
     end
 
-    -- 2) interpola posição + hover-scale de cada carta (ease igual Coleção)
     for i, inst in ipairs(self.instances) do
         local anim = self._cardAnim[inst]
         if not anim then
@@ -355,7 +301,6 @@ function DeckViewerScreen:draw()
     end
     local function hoverStr(hs) return math.max(0, math.min(1, (hs - 1.0) / 0.08)) end
 
-    -- 3) não-hovered no scissor; hovered por cima COM warp (fora do scissor)
     love.graphics.setScissor(0, gridTop, sw, gridH)
     for i, inst in ipairs(self.instances) do
         if inst ~= hovered then
@@ -375,7 +320,6 @@ function DeckViewerScreen:draw()
         end
     end
 
-    -- Barra de scroll à direita
     if self.maxScroll > 0 then
         local barX = sw - 12
         local frac = self.scroll / self.maxScroll
@@ -386,7 +330,6 @@ function DeckViewerScreen:draw()
         love.graphics.rectangle("fill", barX, gridTop + frac * (gridH - knobH), 6, knobH)
     end
 
-    -- Tooltip completo no hover (só quando o modal NÃO está aberto).
     if hovered and not modalOpen then
         hovered.currentScale = CARD_W / 96
         self.cardInfo:draw(hovered, hx, hy - 8, {
@@ -399,7 +342,6 @@ function DeckViewerScreen:draw()
     HintBar.draw(I18n.t("deck_viewer.hint", nil,
         "CLIQUE pra inspecionar  ·  RODA rola  ·  D ou ESC fecha"))
 
-    -- Modal de inspeção completo por cima de TUDO (igual à aba de Coleção).
     self.inspectModal:draw()
     love.graphics.setColor(1, 1, 1, 1)
 end

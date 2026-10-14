@@ -1,18 +1,3 @@
--- components/ScribeDiceScreen.lua
--- Tela do mini-jogo DADOS DO ESCRIBA (Out/2026). Modal sobre a loja; a
--- regra, as odds e o save moram em src/systems/ScribeDice.lua.
---
--- LAYOUT = ZONAS (CLAUDE.md §9): título → mesa (copo + dados) → linha de
--- estado → apostas → fichas → ações. Cada elemento pertence a UMA banda;
--- quando falta altura, quem cede é a ESCALA da mesa, nunca a posição das
--- bandas. `ScribeDiceScreen.layout(sw, sh)` é puro e `validate()` confere
--- (tools/test_scribe_dice roda os dois em vários tamanhos). O layout é
--- recalculado a cada frame a partir da janela ATUAL, então resize é de graça.
---
--- ENTRADA: mouse, e teclado/gamepad via MenuKit (cima/baixo troca de
--- fileira, esquerda/direita escolhe, Enter confirma, Esc sai). O gamepad
--- chega aqui já traduzido em tecla pelo main.lua.
-
 local Button      = require("components.Button")
 local FontManager = require("src.ui.FontManager")
 local Palette     = require("src.ui.Palette")
@@ -25,11 +10,10 @@ local ScribeDice  = require("src.systems.ScribeDice")
 
 local ScribeDiceScreen = {}
 ScribeDiceScreen.__index = ScribeDiceScreen
--- navega sozinha (MenuKit): o cursor de foco do teclado/pad não toma as teclas
 ScribeDiceScreen.ownsNavigation = true
 
-local ROLL_DUR = 1.15      -- duração da rolagem (s)
-local FACE_SWAP = 0.075    -- troca de face durante a rolagem (s)
+local ROLL_DUR = 1.15
+local FACE_SWAP = 0.075
 local PAD = 22
 local GAP = 12
 
@@ -47,13 +31,8 @@ local function fitFont(text, maxW, startSize, minSize)
     return FontManager.getFont(minSize)
 end
 
--- ===========================================================================
--- LAYOUT PURO
--- ===========================================================================
 function ScribeDiceScreen.layout(sw, sh)
     local small = sw < 900 or sh < 700
-    -- Tela grande: o modal cresce junto (em 1920 o texto das odds a 8px era
-    -- o número mais importante da tela e o menor).
     local big = sw >= 1600 and sh >= 900
     local pw = math.min(big and 820 or 640, sw - 32)
     local inner = pw - PAD * 2
@@ -66,7 +45,6 @@ function ScribeDiceScreen.layout(sw, sh)
 
     local fixed = PAD + titleH + 8 + subH + GAP + GAP + statusH + GAP + betH
         + GAP + stakeH + GAP * 2 + btnH + PAD
-    -- A MESA cede: entre 70 e 180px conforme a altura disponível.
     local tableH = math.max(70, math.min(180, sh - 32 - fixed))
     local ph = math.min(sh - 16, fixed + tableH)
     local px = math.floor((sw - pw) / 2)
@@ -75,8 +53,6 @@ function ScribeDiceScreen.layout(sw, sh)
     local L = { panel = { x = px, y = py, w = pw, h = ph }, small = small, big = big }
     local x0, y = px + PAD, py + PAD
     L.title = { x = x0, y = y, w = inner, h = titleH }; y = y + titleH + 8
-    -- "?" da explicação (Tutorial "dice_help") no canto direito da banda do
-    -- título; o título centraliza no que sobra dos dois lados.
     local hr = big and 12 or 9
     L.help = { cx = x0 + inner - hr - 3, cy = L.title.y + math.floor(titleH / 2), r = hr }
     L.titleText = { x = x0 + hr * 2 + 12, y = L.title.y, w = inner - 2 * (hr * 2 + 12), h = titleH }
@@ -89,7 +65,6 @@ function ScribeDiceScreen.layout(sw, sh)
         L.bets[i] = { x = x0 + (i - 1) * (bw + GAP), y = y, w = bw, h = betH }
     end
     y = y + betH + GAP
-    -- Fichas: rótulo "Aposta" à esquerda, três fichas à direita.
     local labelW = math.floor(inner * 0.28)
     L.stakeLabel = { x = x0, y = y, w = labelW - GAP, h = stakeH }
     local cw = math.floor((inner - labelW - GAP * 2) / 3)
@@ -104,8 +79,6 @@ function ScribeDiceScreen.layout(sw, sh)
     return L
 end
 
--- Problemas do layout (lista vazia = ok): tudo dentro do painel e da tela,
--- e nenhuma banda invade outra.
 function ScribeDiceScreen.validate(L, sw, sh)
     local probs = {}
     local p = L.panel
@@ -143,19 +116,16 @@ function ScribeDiceScreen.validate(L, sw, sh)
     return probs
 end
 
--- ===========================================================================
--- CICLO
--- ===========================================================================
 function ScribeDiceScreen:new()
     local s = setmetatable({}, ScribeDiceScreen)
     s.visible = false
     s.time = 0
-    s.bet = 3          -- índice em ScribeDice.BET_IDS (Alto)
-    s.stake = 1        -- índice da ficha
-    s.row = 1          -- foco: 1 apostas, 2 fichas, 3 ações
+    s.bet = 3
+    s.stake = 1
+    s.row = 1
     s.col = 3
-    s.rolling = nil    -- { t, faces = {a,b}, swap, bounces }
-    s.flash = nil      -- aviso curto na linha de estado
+    s.rolling = nil
+    s.flash = nil
     s.leaveBtn = Button:new(0, 0, 10, 10, "", function() s:hide() end, nil, 12)
     s.rollBtn = Button:new(0, 0, 10, 10, "", function() s:_roll() end, nil, 12)
     s.rollBtn:setColorScheme("red")
@@ -172,7 +142,6 @@ function ScribeDiceScreen:show(game, onClose)
     self.rolling = nil
     self.flash = nil
     self.row, self.col = 1, self.bet
-    -- Ficha inicial: a maior que cabe no bolso (sem ouro nenhum, a menor).
     local stakes = self:_stakes()
     self.stake = 1
     local gold = self:_gold()
@@ -185,8 +154,6 @@ end
 
 function ScribeDiceScreen:hide()
     if not self.visible then return end
-    -- O jogador não fecha no meio da rolagem (botão e teclado travam lá);
-    -- se alguém de fora fechar (voltar ao menu), o resultado já está salvo.
     self.rolling = nil
     self.visible = false
     Sfx.play("menuClose")
@@ -195,7 +162,7 @@ function ScribeDiceScreen:hide()
     if cb then cb() end
 end
 
-function ScribeDiceScreen:resize() end -- layout é recalculado por frame
+function ScribeDiceScreen:resize() end
 
 function ScribeDiceScreen:_run()
     local rm = self.game and self.game.runManager
@@ -228,8 +195,6 @@ function ScribeDiceScreen:_roll()
         Sfx.play("purchaseDeny")
         return
     end
-    -- O RESULTADO VAI PRO SAVE AGORA, antes de qualquer pixel revelar a
-    -- soma: fechar o jogo no meio da rolagem não desfaz a aposta.
     if self.game and self.game.checkpointRun then self.game:checkpointRun() end
 
     Sfx.play("coinClink", { pitch = 0.9 })
@@ -267,9 +232,8 @@ function ScribeDiceScreen:update(dt)
         r.swap = r.swap + dt
         if r.t < ROLL_DUR - 0.25 and r.swap >= FACE_SWAP then
             r.swap = 0
-            r.faces = { love.math.random(6), love.math.random(6) } -- cosmético
+            r.faces = { love.math.random(6), love.math.random(6) }
         end
-        -- Batidas na mesa: três quiques, cada um mais baixo.
         local knocks = { 0.18, 0.52, 0.80 }
         if r.knock < #knocks and r.t >= knocks[r.knock + 1] then
             r.knock = r.knock + 1
@@ -281,7 +245,6 @@ function ScribeDiceScreen:update(dt)
     local L = ScribeDiceScreen.layout(love.graphics.getWidth(), love.graphics.getHeight())
     local used = self:_used()
     local stake = self:_stakes()[self.stake] or 0
-    -- Mesa usada: só sobra "Sair", centralizado na banda de ações.
     local leaveR = L.leave
     if used and not self.rolling then
         leaveR = { x = math.floor(L.panel.x + (L.panel.w - L.leave.w) / 2),
@@ -301,9 +264,6 @@ function ScribeDiceScreen:update(dt)
     self.leaveBtn:setEnabled(not self.rolling)
 end
 
--- ===========================================================================
--- DESENHO
--- ===========================================================================
 local function printCentered(text, r, font, color, alpha)
     love.graphics.setFont(font)
     local tx = math.floor(r.x + r.w / 2 - font:getWidth(text) / 2)
@@ -315,7 +275,6 @@ local function printCentered(text, r, font, color, alpha)
 end
 
 function ScribeDiceScreen:_drawTable(r, st)
-    -- Feltro da mesa: superfície interna escura com filete dourado.
     UiPanel.draw(r.x, r.y, r.w, r.h, { depth = "inner", fill = { 0.09, 0.13, 0.08, 0.92 } })
     local cup = ImageCache.tryGet("assets/sprites/minigame/dice_cup.png")
     local cupS = math.max(1, math.floor((r.h - 12) / 64))
@@ -325,7 +284,6 @@ function ScribeDiceScreen:_drawTable(r, st)
         love.graphics.draw(cup, r.x + 10, math.floor(r.y + r.h / 2 - 32 * cupS), 0, cupS, cupS)
     end
 
-    -- Dados: faces finais (estado salvo) ou as cosméticas da rolagem.
     local faces = (self.rolling and self.rolling.faces) or (st and st.dice) or { 6, 6 }
     local dieS = math.max(2, math.floor((r.h * 0.55) / 22))
     local size = 22 * dieS
@@ -341,7 +299,6 @@ function ScribeDiceScreen:_drawTable(r, st)
             dy = baseY - math.floor(math.abs(math.sin(t * math.pi * 3.2 + i)) * r.h * 0.28 * damp)
             rot = math.sin(t * 18 + i * 2) * 0.35 * damp
         end
-        -- sombra no feltro
         love.graphics.setColor(0, 0, 0, 0.35)
         love.graphics.ellipse("fill", dx + size / 2, baseY + size + 3, size * 0.45, 4)
         love.graphics.setColor(1, 1, 1, (st or self.rolling) and 1 or 0.45)
@@ -374,7 +331,6 @@ function ScribeDiceScreen:_drawBet(i, r, used)
     local rangeT = I18n.t("scribe_dice.range_" .. id)
     printCentered(rangeT, { x = r.x, y = r.y + lineH, w = r.w, h = lineH },
         fitFont(rangeT, r.w - 10, r.h > 90 and 14 or (r.h > 66 and 10 or 8), 7), Palette.PARCHMENT_LIGHT, a)
-    -- Decimal no costume do idioma: "x2.5" em inglês, "x2,5" no resto.
     local mult = string.format("%g", ScribeDice.payoutMult(id))
     if I18n.getLocale() ~= "en" then mult = (mult:gsub("%.", ",")) end
     local odds = I18n.t("scribe_dice.chance", { n = pct }) .. " · "
@@ -388,8 +344,6 @@ end
 
 function ScribeDiceScreen:_drawStake(i, r, value, used)
     local sel = (self.stake == i)
-    -- Depois da jogada a ficha escolhida é HISTÓRICO, não oferta: não pinta
-    -- de vermelho "sem ouro" o valor que o jogador acabou de pagar.
     local afford = used or self:_gold() >= value
     love.graphics.setColor(sel and { 0.30, 0.20, 0.06, 0.95 } or { 0.07, 0.05, 0.04, 0.9 })
     love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, r.h / 2, r.h / 2)
@@ -426,7 +380,6 @@ function ScribeDiceScreen:draw()
     local used = st ~= nil and st.used
     self:_drawTable(L.table, used and st or nil)
 
-    -- Linha de estado: resultado (só depois da rolagem), aviso ou instrução.
     local text, color = I18n.t("scribe_dice.pick"), Palette.PARCHMENT
     if self.flash then
         text, color = I18n.t(self.flash.key), (Palette.BLOOD_LIGHT or Palette.BLOOD)
@@ -446,11 +399,9 @@ function ScribeDiceScreen:draw()
     end
 
     for i = 1, 3 do self:_drawBet(i, L.bets[i], used) end
-    -- âncoras do narrador do tutorial: a mesa e as apostas
     require("src.systems.Tutorial").anchor("dice_table", L.table.x, L.table.y, L.table.w, L.table.h)
     require("src.systems.Tutorial").anchorList("dice_bets", L.bets)
     require("src.systems.Tutorial").anchorList("dice_stakes", L.stakes)
-    -- "?" (explicação sob demanda): clique, H, ou Y no controle.
     do
         local HelpBadge = require("src.ui.HelpBadge")
         local hr = HelpBadge.rect(L.help.cx, L.help.cy, L.help.r)
@@ -482,9 +433,6 @@ function ScribeDiceScreen:draw()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- ===========================================================================
--- ENTRADA
--- ===========================================================================
 function ScribeDiceScreen:mousepressed(x, y, button)
     if not self.visible then return false end
     self.leaveBtn:mousepressed(x, y, button)
@@ -492,8 +440,6 @@ function ScribeDiceScreen:mousepressed(x, y, button)
     return true
 end
 
--- Abre a explicação dos dados (conversa do corvo "dice_help"), a qualquer
--- momento: antes, depois da jogada, com as dicas desligadas.
 function ScribeDiceScreen:openHelp()
     local ok = require("src.systems.Tutorial").explain("dice_help", self.game)
     if not ok then Sfx.play("purchaseDeny") end
@@ -534,7 +480,6 @@ function ScribeDiceScreen:wheelmoved() return true end
 function ScribeDiceScreen:keypressed(key)
     if not self.visible then return false end
     if self.rolling then return true end
-    -- H no teclado / Y no controle (chega como "e"): explicação dos dados.
     if key == "h" or key == "e" then self:openHelp(); return true end
     local it = MenuKit.intent(key, MenuKit.shiftDown())
     local used = self:_used()
@@ -565,7 +510,6 @@ function ScribeDiceScreen:keypressed(key)
     else
         return true
     end
-    -- Ao trocar de fileira, o foco cai no item já escolhido dela.
     if it == "up" or it == "down" then
         self.col = (self.row == 1 and self.bet) or (self.row == 2 and self.stake) or 2
     end

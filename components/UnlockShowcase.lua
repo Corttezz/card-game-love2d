@@ -1,32 +1,4 @@
--- components/UnlockShowcase.lua
--- REVELAÇÕES NO MENU (Out/2026, pedido do dono: "igual ao Balatro: terminou
--- a run e voltou pro menu, mostra tudo o que desbloqueou").
---
--- Um painel por vez sobre o menu escurecido, na ordem da fila
--- (src/systems/UnlockQueue.lua): carta nova (com a moldura, grande), classe
--- nova (emblema), nível de maestria, Selo liberado, conquista. Cada painel tem
--- título curto, o item grande com um efeito de revelação, nome, uma linha do
--- que ele significa, o contador "2 de 5" e os botões Continuar (clique / A /
--- Enter) e Pular tudo (Esc / B).
---
--- REVELAÇÃO NA GRADE DA ARTE (v2, Out/2026 — o dono achou os raios v1,
--- triângulos vetoriais translúcidos girando, "muito tosco"): o palco é um
--- shader por célula de 2 px (shaders/reveal_stage.glsl — halo posterizado com
--- dither Bayer + espinhos de 1 célula girando em saltos), faíscas de 1-2
--- células que piscam, e o item desenhado num canvas de MEIA resolução (1 px
--- do canvas = 1 célula) — assim selo, emblema, ícone e carta nascem na mesma
--- grade, a varredura de luz da carta inédita (DiscoveryMark) passa por todos
--- com a mesma faixa chunky, e o clarão é a SILHUETA do item em aditivo, não
--- um retângulo branco. Cartas raras/lendárias mantêm o holo delas.
--- reducedMotion: halo parado, sem espinhos, faíscas, varredura nem pop.
---
--- Abre SOZINHO: watch() roda todo frame e, com o jogador no menu, nenhum
--- outro modal na frente e fila não vazia, mostra. A fila mora no perfil, então
--- o que não foi visto (jogo fechado no meio) aparece no próximo boot.
---
--- Layout em ZONAS puro (layout + validate) no espaço virtual do UiScale
--- (a classe é adotada no fim do arquivo). reducedMotion tira o movimento
--- (pop, giro, flutuação), nunca a informação.
+local Debug = require("src.core.Debug")
 
 local FontManager = require("src.ui.FontManager")
 local Palette     = require("src.ui.Palette")
@@ -42,13 +14,9 @@ local CardFrame   = require("src.ui.CardFrame")
 local Showcase = {}
 Showcase.__index = Showcase
 
--- Navega sozinha (MenuKit): o NavCursor não toma as teclas; o pad chega
--- como tecla. Os botões ainda publicam alvos pro anel de foco.
 Showcase.ownsNavigation = true
 
--- Respiro do menu antes do primeiro painel (a intro do menu assenta).
 Showcase.OPEN_DELAY = 0.6
--- Cada painel ignora entrada no começo: Enter segurado/duplo não pula dois.
 Showcase.INPUT_DELAY = 0.25
 
 local PAD, GAP = 22, 12
@@ -56,10 +24,6 @@ local PAD, GAP = 22, 12
 local function reducedMotion()
     return (_G.gameSettings and _G.gameSettings.reducedMotion) or false
 end
-
--- ===================================================================
--- DADOS DO PAINEL (puro: textos do item)
--- ===================================================================
 
 local function className(id)
     return I18n.t("classes." .. tostring(id) .. ".name")
@@ -70,7 +34,6 @@ local function sealDef(n)
     return RM.SEALS and RM.SEALS[n]
 end
 
--- { title, name, sub } de um item da fila.
 function Showcase.texts(it)
     if not it then return { title = "", name = "", sub = "" } end
     if it.kind == "card" then
@@ -81,7 +44,6 @@ function Showcase.texts(it)
                  name = className(it.id), sub = I18n.t("unlock_showcase.class_sub") }
     elseif it.kind == "mastery" then
         local sub = I18n.t("unlock_showcase.mastery_sub", { class = className(it.classId) })
-        -- "novas cartas" só quando o nível traz pacote (nível vazio não mente)
         local bundles = require("src.data.unlocks").CLASS_BUNDLES[it.classId or ""]
         local b = bundles and bundles[it.level or 0]
         if b and b.cards and #b.cards > 0 then
@@ -101,13 +63,9 @@ function Showcase.texts(it)
         return { title = I18n.t("unlock_showcase.title_achievement"),
                  name = AS.nameOf(it.id), sub = AS.descOf(it.id) }
     end
-    print("[UnlockShowcase] AVISO: tipo de item desconhecido: " .. tostring(it.kind))
+    Debug.warn("[UnlockShowcase] AVISO: tipo de item desconhecido: " .. tostring(it.kind))
     return { title = "", name = tostring(it.id), sub = "" }
 end
-
--- ===================================================================
--- LAYOUT (puro)
--- ===================================================================
 
 function Showcase.layout(sw, sh)
     local pw = math.min(660, sw - 32)
@@ -158,16 +116,9 @@ function Showcase.validate(L, sw, sh)
     return probs
 end
 
--- ===================================================================
--- CICLO
--- ===================================================================
-
 function Showcase:new()
     local self = setmetatable({ visible = false, t = 0, idx = 0, total = 0,
         focus = 1, menuTime = 0, item = nil, cardFocus = false }, Showcase)
-    -- Inspeção da Coleção (carta grande + descrição) por cima do painel; Esc/B
-    -- fecha SÓ ela — o painel continua. A revelação é o captor do InputFocus,
-    -- então o roteamento é interno (mousepressed/keypressed abaixo).
     self.inspectModal = require("src.ui.CardInspectModal"):new()
     return self
 end
@@ -193,7 +144,6 @@ function Showcase:_enterItem()
     if s then Sfx.play(s[1], s[2]) end
 end
 
--- Abre na primeira revelação da fila. false = fila vazia.
 function Showcase:show()
     if UnlockQueue.count() == 0 then return false end
     self.visible = true
@@ -216,7 +166,6 @@ end
 
 function Showcase:resize() end
 
--- Chamado todo frame pelo main: no menu, sem outro modal, com fila → abre.
 function Showcase:watch(state, dt)
     if self.visible then return end
     if state ~= "menu" then self.menuTime = 0 return end
@@ -226,17 +175,14 @@ function Showcase:watch(state, dt)
     self:show()
 end
 
--- Continuar: o painel atual sai da fila (visto) e vem o próximo.
 function Showcase:advance()
     UnlockQueue.pop()
     if UnlockQueue.count() == 0 then self:hide() return end
     self.idx = self.idx + 1
-    -- coisa nova entrou na fila com o painel aberto (raro): o total acompanha
     self.total = math.max(self.total, self.idx + UnlockQueue.count() - 1)
     self:_enterItem()
 end
 
--- Pular tudo: esvazia a fila (tudo conta como visto).
 function Showcase:skipAll()
     UnlockQueue.clear()
     self:hide()
@@ -255,10 +201,6 @@ function Showcase:update(dt)
     local L = Showcase.layout(love.graphics.getWidth(), love.graphics.getHeight())
     local mx, my = love.mouse.getPosition()
     self.inspectModal:update(dt or 0)
-    -- A carta revelada é uma Card DE VERDADE: hover levanta/inclina, anima o
-    -- ícone e abre o tooltip ao lado (Card:draw cuida). O hover vale desde o
-    -- começo — só o CLIQUE espera o INPUT_DELAY — e cede à inspeção aberta.
-    -- Com o foco do teclado/pad na carta, o "mouse" mora no centro dela.
     if self.item and self.item.kind == "card" then
         local inst = self:_card()
         if inst and inst.image then
@@ -269,9 +211,6 @@ function Showcase:update(dt)
             inst.layoutX, inst.layoutY = r.x, r.y
             local hx, hy = mx, my
             if self.cardFocus then hx, hy = r.x + r.w / 2, r.y + r.h * 0.6 end
-            -- só vira alvo de hover depois de DESENHADA no lugar: antes disso
-            -- self.x/y = 0 e a caixa de hover (união home+render) ia do canto
-            -- da tela até a carta (mesma armadilha do _csLaid da seleção de classe)
             local allowed = self.t > 0.1 and inst._showcaseLaid == true
                 and not self.inspectModal:isVisible()
             inst:updateMouse(hx, hy, dt or 0, allowed)
@@ -289,17 +228,12 @@ function Showcase:update(dt)
     end
 end
 
--- ===================================================================
--- ENTRADA
--- ===================================================================
-
 local function buttonAt(L, x, y)
     for i, b in ipairs(L.buttons) do
         if MenuKit.hit(b, x, y) then return i end
     end
 end
 
--- A carta revelada está sob (x, y)? (hover já em curso conta — a carta sobe)
 function Showcase:_cardAt(x, y)
     if not (self.item and self.item.kind == "card") then return false end
     local inst = self:_card()
@@ -309,8 +243,6 @@ function Showcase:_cardAt(x, y)
     return r ~= nil and x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
 end
 
--- Abre a inspeção da Coleção na carta revelada (clique / botão direito /
--- A com a carta em foco / gatilho). Devolve true se abriu.
 function Showcase:openInspect()
     if not self:_ready() or self.inspectModal:isVisible() then return false end
     local inst = self.item and self.item.kind == "card" and self:_card()
@@ -363,7 +295,6 @@ function Showcase:wheelmoved() return true end
 
 function Showcase:keypressed(key)
     if not self.visible then return false end
-    -- inspeção aberta: as teclas são dela (Esc/B fecha SÓ a inspeção)
     if self.inspectModal:isVisible() then
         self.inspectModal:keypressed(key)
         return true
@@ -372,11 +303,9 @@ function Showcase:keypressed(key)
     local hasCard = self.item and self.item.kind == "card"
     local it = MenuKit.intent(key, MenuKit.shiftDown())
     if key == "i" then
-        -- gatilho do pad / tecla I: inspeciona a carta sob o mouse ou em foco
         local inst = hasCard and self:_card()
         if inst and (self.cardFocus or inst.isHovered) then self:openInspect() end
     elseif it == "up" then
-        -- pra cima sai dos botões e põe o foco na carta revelada
         if hasCard and not self.cardFocus then
             self.cardFocus = true
             Sfx.playWithVariation("menuHover", 1.0, 0.12)
@@ -408,12 +337,7 @@ function Showcase:keypressed(key)
     return true
 end
 
--- ===================================================================
--- DRAW
--- ===================================================================
-
 local cardDb = nil
--- A Card DE VERDADE do item revelado (lazy; false = não montou).
 function Showcase:_card()
     if self.cardInst == nil then
         self.cardInst = false
@@ -425,25 +349,21 @@ function Showcase:_card()
             local ok, inst = pcall(function() return cardDb:createCardInstance(cd) end)
             if ok and inst then
                 self.cardInst = inst
-                inst.isRewardCard = true      -- hover SOBE (sai da folha)
+                inst.isRewardCard = true
                 inst.tooltipSide, inst.deferTooltip = true, true
                 inst.navGroup = "showcase"
             else
-                print("[UnlockShowcase] AVISO: falha ao montar a carta " .. tostring(id))
+                Debug.warn("[UnlockShowcase] AVISO: falha ao montar a carta " .. tostring(id))
             end
         else
-            print("[UnlockShowcase] AVISO: carta desconhecida na fila: " .. tostring(id))
+            Debug.warn("[UnlockShowcase] AVISO: carta desconhecida na fila: " .. tostring(id))
         end
     end
     return self.cardInst or nil
 end
 
--- Retângulo de REPOUSO da carta no palco (coords virtuais) + escala.
--- Escala inteira a partir de 2x (a arte é pixel); abaixo disso, livre.
 function Showcase:_cardRect(L)
     local st = L.stage
-    -- folga pro LIFT do hover (a carta sobe isto): sem ela, em 1024x768 a carta
-    -- levantada cobria o título e o contador "1 de 5"
     local Config = require("src.core.Config")
     local lift = (Config.Cards.LIFT_AMOUNT or 25) + (Config.Cards.DEPTH_OFFSET or 15)
     local s = math.min((st.h - lift) / 144, st.w / 96)
@@ -461,11 +381,6 @@ local function cardImage(self, id)
     return inst and inst.image
 end
 
--- ===================================================================
--- PALCO na grade da arte
--- ===================================================================
-
--- Célula da grade (px virtuais): 1 px da arte das cartas em 1024x768.
 Showcase.CELL = 2
 
 local stageShader, stageShaderTried, whitePx
@@ -474,7 +389,7 @@ local function getStageShader()
     stageShaderTried = true
     local ok, s = pcall(love.graphics.newShader, "shaders/reveal_stage.glsl")
     if ok then stageShader = s
-    else print("[UnlockShowcase] AVISO: shader do palco falhou: " .. tostring(s)) end
+    else Debug.warn("[UnlockShowcase] AVISO: shader do palco falhou: " .. tostring(s)) end
     local data = love.image.newImageData(1, 1)
     data:setPixel(0, 0, 1, 1, 1, 1)
     whitePx = love.graphics.newImage(data)
@@ -484,7 +399,6 @@ end
 
 local function rgb(c) return { c[1], c[2], c[3] } end
 
--- Halo posterizado + espinhos girando, tudo por célula (o shader).
 local function drawGlow(cx, cy, r, t, alpha)
     local sh = getStageShader()
     if not sh then return end
@@ -506,8 +420,6 @@ local function drawGlow(cx, cy, r, t, alpha)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Faíscas douradas: pontos de 1 célula que piscam (cruz de 3 no pico), em
--- posições fixas por item (hash do seed) — nunca por cima do centro do palco.
 local function hash(seed, i, k)
     local v = math.sin(i * 127.1 + k * 311.7 + seed * 74.7) * 43758.5453
     return v - math.floor(v)
@@ -539,8 +451,6 @@ local function drawSparkles(cx, cy, r, t, alpha, seed)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Disco em DEGRAUS (coords do canvas do palco, 1 px = 1 célula): linhas
--- horizontais de largura inteira — círculo vetorial liso destoava da grade.
 local function steppedDisc(cx, cy, r)
     cx, cy, r = math.floor(cx), math.floor(cy), math.floor(r)
     for dy = -r, r do
@@ -549,7 +459,6 @@ local function steppedDisc(cx, cy, r)
     end
 end
 
--- Selo de cera (os selos não têm arte própria): disco sangue + número.
 local function drawSeal(n, cx, cy, size)
     local r = size / 2
     Palette.set(Palette.INK, 0.6)
@@ -571,8 +480,6 @@ local function drawSeal(n, cx, cy, size)
     love.graphics.print(s, math.floor(cx - f:getWidth(s) / 2), math.floor(cy - f:getHeight() / 2))
 end
 
--- Desenha o item no CANVAS do palco (coords do canvas: 1 px = 1 célula);
--- devolve o retângulo da arte nessas coords. Escalas inteiras quando ≥ 1.
 function Showcase:_drawItem(it, st)
     local cx, cy = st.x + st.w / 2, st.y + st.h / 2
     if it.kind == "card" then
@@ -587,8 +494,6 @@ function Showcase:_drawItem(it, st)
             love.graphics.setColor(1, 1, 1, 1)
             local fx = self.cardInst and self.cardInst.visualEffect
             if fx == "holo" or fx == "glow" then
-                -- Palco de revelação = interação plena: força de hover e a
-                -- varredura correndo (HoloShader v2; rara prata, lendária ouro).
                 local HoloShader = require("src.ui.HoloShader")
                 HoloShader.draw(img, x, y, HoloShader.strengthFor(fx, 1), 0, s, s, 0, 0,
                     { kind = (fx == "holo") and 1 or 0, anim = 1 })
@@ -619,7 +524,6 @@ function Showcase:_drawItem(it, st)
     return nil
 end
 
--- Canvas do palco em meia resolução (1 px = 1 célula), reaproveitado.
 local stageCanvas, snapCanvas, stageCW, stageCH
 local function getStageCanvas(w, h)
     if not stageCanvas or stageCW ~= w or stageCH ~= h then
@@ -632,7 +536,6 @@ local function getStageCanvas(w, h)
     return stageCanvas, snapCanvas
 end
 
--- Item + varredura + clarão de silhueta, com o pop. `st` = zona do palco.
 function Showcase:_drawStageItem(it, st, t)
     local cell = Showcase.CELL
     local cw, ch = math.floor(st.w / cell), math.floor(st.h / cell)
@@ -646,14 +549,11 @@ function Showcase:_drawStageItem(it, st, t)
     love.graphics.setBlendMode("alpha")
     love.graphics.setColor(1, 1, 1, 1)
     local art = self:_drawItem(it, { x = 0, y = 0, w = cw, h = ch })
-    -- varredura de luz (a mesma da carta inédita) por cima do item, na grade
     if art then
         local DiscoveryMark = require("src.ui.DiscoveryMark")
         if art.image then
             DiscoveryMark.drawSweep(art.image, art.x, art.y, art.scale, t, 1, true)
         else
-            -- itens sem imagem única (emblema, selo, ícone): varre uma cópia
-            -- do canvas do palco; a faixa segue a silhueta do que foi desenhado
             love.graphics.setCanvas(snap)
             love.graphics.clear(0, 0, 0, 0)
             love.graphics.draw(cv, 0, 0)
@@ -675,7 +575,6 @@ function Showcase:_drawStageItem(it, st, t)
     local dx, dy = math.floor(cx - cw * cell / 2), math.floor(cy - ch * cell / 2)
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.draw(cv, dx, dy, 0, cell, cell)
-    -- clarão: a silhueta do item em aditivo (não um retângulo por cima)
     local flash = math.max(0, 1 - t / 0.35)
     if flash > 0 then
         love.graphics.setBlendMode("add")
@@ -728,7 +627,6 @@ function Showcase:draw()
     UiPanel.draw(p.x, p.y, p.w, p.h)
     local tx = Showcase.texts(it)
 
-    -- título + contador
     Palette.set(Palette.AGED_GOLD_LIGHT)
     TextFit.print(tx.title, L.title.x, L.title.y, { size = 22, maxW = L.title.w, align = "center",
         minSize = 10, shadow = { 0, 0, 0, 0.8 } })
@@ -736,7 +634,6 @@ function Showcase:draw()
     TextFit.print(I18n.t("unlock_showcase.counter", { i = self.idx, n = self.total }),
         L.counter.x, L.counter.y, { size = 10, maxW = L.counter.w, align = "center", minSize = 8 })
 
-    -- palco: halo + espinhos na grade, item com pop, varredura e clarão, faíscas
     local st = L.stage
     local cx, cy = st.x + st.w / 2, st.y + st.h / 2
     local r = math.min(st.w, st.h) * 0.62
@@ -744,9 +641,6 @@ function Showcase:draw()
     drawGlow(cx, cy, r, t, math.min(1, t / 0.3))
     local inst = (it.kind == "card") and self:_card() or nil
     if inst and inst.image then
-        -- carta DE VERDADE (Card:draw): hover levanta/inclina, ícone vivo,
-        -- tooltip ao lado (adiado pro fim), alvo do NavCursor. Pop em volta
-        -- do centro do palco; varredura e clarão na posição de repouso.
         local cr = self:_cardRect(L)
         local motion = not reducedMotion()
         local e = motion and Easing.backOut(math.min(1, t / 0.45)) or 1
@@ -756,9 +650,6 @@ function Showcase:draw()
         love.graphics.translate(-cx, -cy)
         inst:draw(cr.x, cr.y, false, false)
         inst._showcaseLaid = true
-        -- varredura e clarao usam o MESMO quadro que a carta desenhou: com o
-        -- icone vivo (dono, 13/Out/2026) a estatica aqui seria um fantasma
-        -- parado por cima da animacao
         local shown = CardFrame.displayImage(inst) or inst.image
         require("src.ui.DiscoveryMark").drawSweep(shown, cr.x, cr.y, cr.s, t, 1, true)
         local flash = math.max(0, 1 - t / 0.35)
@@ -778,7 +669,6 @@ function Showcase:draw()
     end
     drawSparkles(cx, cy, r, t, math.min(1, math.max(0, (t - 0.2) / 0.4)), seed)
 
-    -- nome + descrição (até 2 linhas)
     Palette.set(Palette.PARCHMENT_LIGHT)
     TextFit.print(tx.name, L.name.x, L.name.y, { size = 18, maxW = L.name.w, align = "center",
         minSize = 9, shadow = { 0, 0, 0, 0.8 } })
@@ -793,7 +683,6 @@ function Showcase:draw()
             L.sub.y + (i - 1) * lh)
     end
 
-    -- botões
     local labels = { I18n.t("unlock_showcase.continue"), I18n.t("unlock_showcase.skip") }
     local NavCursor = require("src.ui.NavCursor")
     for i, b in ipairs(L.buttons) do
@@ -805,14 +694,12 @@ function Showcase:draw()
         MenuKit.focusRing(b.x, b.y, b.w, b.h, t)
     end
 
-    -- tooltip da carta por cima de tudo do painel; a inspeção por cima do tooltip
     if inst and not self.inspectModal:isVisible() then inst:drawDeferredTooltip() end
     love.graphics.pop()
     self.inspectModal:draw()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Escala de UI: a tela vive no espaço virtual (layout, hit-test e mouse).
 require("src.ui.UiScale").adopt(Showcase)
 
 return Showcase

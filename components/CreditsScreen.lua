@@ -1,18 +1,3 @@
--- components/CreditsScreen.lua
--- Créditos do jogo (aberto pelo link "Créditos" no rodapé do menu).
---
--- Substitui o placeholder "Sobre" (known_gaps 6): jogo publicado na Steam
--- precisa dizer quem fez e de onde vêm motor/fonte/ferramentas de asset —
--- e a licença zlib do LÖVE e a SIL OFL da fonte PEDEM atribuição.
---
--- Conteúdo é DADO (CREDITS abaixo) apontando pra chaves i18n: papel e nome
--- vêm dos 5 locales (nome próprio repetido em cada um é intencional — a
--- convenção do projeto não deixa literal de UI no código).
---
--- Layout calculado A CADA draw a partir da tela atual: não há rect cacheado,
--- então resize é de graça (memory/resize_pattern.md). Se a lista não cabe,
--- a fonte encolhe (zona de conteúdo cede ESCALA, nunca posição).
-
 local FontManager = require("src.ui.FontManager")
 local Palette     = require("src.ui.Palette")
 local Panel9      = require("src.ui.Panel9")
@@ -22,7 +7,6 @@ local Sfx         = require("src.systems.Sfx")
 local CreditsScreen = {}
 CreditsScreen.__index = CreditsScreen
 
--- Ordem de exibição. Cada entrada: chave do papel + chave do nome.
 CreditsScreen.CREDITS = {
     { role = "credits.role_design",   name = "credits.name_design" },
     { role = "credits.role_art",      name = "credits.name_art" },
@@ -66,7 +50,6 @@ function CreditsScreen:panelRect()
     return math.floor((sw - pw) / 2), math.floor((sh - ph) / 2), pw, ph
 end
 
--- Mede o bloco com uma escala de fonte; devolve altura total + fontes.
 local function measure(innerW, roleSize, nameSize)
     local rf, nf = FontManager.getFont(roleSize), FontManager.getFont(nameSize)
     local h = 0
@@ -78,7 +61,6 @@ local function measure(innerW, roleSize, nameSize)
     return h, rf, nf
 end
 
--- Layout puro (sem desenhar) — usado pelo draw e pelo teste de geometria.
 function CreditsScreen:layout()
     local px, py, pw, ph = self:panelRect()
     local innerW = pw - 80
@@ -111,7 +93,6 @@ function CreditsScreen:draw()
     Panel9.draw("panel_main", L.px, L.py, L.pw, L.ph)
     local cx = L.px + L.pw / 2
 
-    -- Título
     local title = I18n.t("credits.title")
     love.graphics.setFont(L.titleF)
     Palette.set(Palette.INK)
@@ -119,7 +100,6 @@ function CreditsScreen:draw()
     Palette.set(Palette.AGED_GOLD_DARK or Palette.RUST)
     love.graphics.rectangle("fill", L.px + 60, L.top - 12, L.pw - 120, 1)
 
-    -- Lista centralizada verticalmente na zona de conteúdo.
     local y = L.top + math.max(0, math.floor((L.bottom - L.top - L.listH) / 2))
     for _, c in ipairs(self.CREDITS) do
         love.graphics.setFont(L.roleF)
@@ -140,7 +120,6 @@ function CreditsScreen:draw()
         y = y + 18
     end
 
-    -- Agradecimento + dica de saída (zona de rodapé, fixa).
     local thanks = I18n.t("credits.thanks")
     local tf = FontManager.getFont(11)
     love.graphics.setFont(tf)
@@ -161,9 +140,6 @@ function CreditsScreen:keypressed(key)
     return true
 end
 
--- Qualquer clique fecha (tela de leitura, sem nada clicável dentro) — mas
--- só um clique INTEIRO dado aqui: o release do clique que ABRIU a tela (o
--- press foi no link do menu) não pode fechá-la no mesmo instante.
 function CreditsScreen:mousepressed(x, y, button)
     if not self.visible then return false end
     self._pressed = true

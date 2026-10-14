@@ -1,31 +1,4 @@
--- components/RoundEvalScreen.lua
--- Tela de "Cash Out" pós-batalha estilo Balatro.
--- Mapeamento direto de:
---   /home/cortez/projects/balatro-source/functions/UI_definitions.lua:1612-1627 (UIBox)
---   /home/cortez/projects/balatro-source/functions/common_events.lua:927-1095 (add_round_eval_row + animação coins)
---   /home/cortez/projects/balatro-source/functions/state_events.lua:1135-1208 (G.FUNCS.evaluate_round)
---
--- Layout (overlay sobre gameplay congelado):
---   ┌────────────────── PAINEL CENTRAL ──────────────────┐
---   │  AVALIAÇÃO DA RODADA  (DynaText pop-in cascade)     │
---   ├──────────────────────────────────────────────────────┤
---   │  Vitória              $$$$$       (5 coins)          │
---   │  HP cheio             $$$         (3 coins)          │
---   │  Juros                $$          (variable)         │
---   ├──── separator ──────────────────────────────────────┤
---   │             TOTAL: $N                                 │
---   │       ┌────────────────────────────┐                 │
---   │       │  RESGATAR: $N (orange)     │                 │
---   │       └────────────────────────────┘                 │
---   └──────────────────────────────────────────────────────┘
---
--- Timeline:
---   T=0     show() chamado. Painel slide-in do bottom (slideOffsetY: H → 0).
---   T=0.5   Painel settled. jiggle 0.8 + sfx cardSelect.
---   T=0.7+  Cada source aparece (label + coins anim) com stagger 0.5s.
---           Cada coin individual: 0.10s delay, sfx coinPickup pitch random.
---   T=last  Botão "RESGATAR: $N" pop-in laranja com flash.
---   <click> earnGold + slide-out + onCashOut callback.
+local Debug = require("src.core.Debug")
 
 local RoundEvalScreen = {}
 RoundEvalScreen.__index = RoundEvalScreen
@@ -40,25 +13,15 @@ local DynaText     = require("src.ui.DynaText")
 local FlashShader  = require("src.ui.FlashShader")
 local I18n         = require("src.i18n.I18n")
 
--- Fila PRÓPRIA pros beats desta tela.
---
--- Ela agendava TUDO na `base` — e esta tela abre no instante seguinte à
--- vitória, que e justamente quando a base esta mais cheia com o rabo do
--- combate (morte do inimigo, shakes, transicoes). Pela semantica do
--- EventManager (memory/eventmanager_queues.md) um `parallel` na base e
--- BLOCKABLE: ele nao roda enquanto houver evento bloqueante na frente. Ou
--- seja, o cash out inteiro — inclusive o callback que leva pra loja — podia
--- ficar preso atras do combate. Mesmo defeito que a saida da loja teve.
 local FXQ = "round_eval_fx"
 
--- Constantes da timeline (segundos). Padrão Balatro common_events.lua:1141+.
 local PHASES = {
-    SLIDE_IN      = 0.5,    -- Painel desliza do bottom
-    PRE_ROW_DELAY = 0.20,   -- Espera após settle pra primeira row
-    ROW_DELAY     = 0.45,   -- Entre cada source (após coins terminarem)
-    COIN_STAGGER  = 0.10,   -- Entre cada $ individual
-    BIG_THRESHOLD = 60,     -- > 60 dollars: text único, senão coins individuais
-    BUTTON_DELAY  = 0.35,   -- Após últimas coins, antes do botão Resgatar
+    SLIDE_IN      = 0.5,
+    PRE_ROW_DELAY = 0.20,
+    ROW_DELAY     = 0.45,
+    COIN_STAGGER  = 0.10,
+    BIG_THRESHOLD = 60,
+    BUTTON_DELAY  = 0.35,
 }
 
 function RoundEvalScreen:new()
@@ -76,14 +39,12 @@ function RoundEvalScreen:new()
     instance.titleText = nil
     instance.totalText = nil
     instance.rowDynas = {}
-    instance._rowVisible = {}      -- bool por index (true após pop-in)
-    instance._rowCoins = {}        -- count de coins exibidas por row
-    instance._totalPulseTimer = 0  -- pulse no total a cada coin
+    instance._rowVisible = {}
+    instance._rowCoins = {}
+    instance._totalPulseTimer = 0
     return instance
 end
 
--- show(game, sources, onCashOut)
---   sources = { { label="Vitória", dollars=5, color={r,g,b,a} }, ... }
 function RoundEvalScreen:show(game, sources, onCashOut)
     self.visible = true
     self.game = game
@@ -105,20 +66,17 @@ function RoundEvalScreen:show(game, sources, onCashOut)
     end
     self._totalPulseTimer = 0
 
-    -- F3: breakdown TINTA×SELO da batalha que acabou (celebração de score).
     self.scoreData = game and game.scoreSystem
         and game.scoreSystem.lastBattle or nil
     self._scoreVisible = false
 
-    -- Eventos zumbis de uma abertura anterior morrem aqui (a fila e so nossa).
     EventManager.clear(FXQ)
 
     self:_buildDynaTexts()
     self:_scheduleTimeline()
 
-    Sfx.play("shopOpen")  -- F11.5: substituiu deckStart genérico por shop chime warm.
+    Sfx.play("shopOpen")
     if _G.jiggleScreen then _G.jiggleScreen(0.8) end
-    Debug.log("[RoundEvalScreen] open with", #self.sources, "sources, total $" .. self.totalDollars)
 end
 
 function RoundEvalScreen:hide()
@@ -147,18 +105,9 @@ end
 
 function RoundEvalScreen:_buildDynaTexts()
     self.titleText = DynaText.new({
-        -- i18n: o botao "Resgatar" ja era traduzido e o titulo nao, entao a
-        -- tela saia bilingue em qualquer locale que nao fosse PT.
         text = I18n.t("round_eval.title", nil, "AVALIACAO DA RODADA"),
         fontSize = 22,
         bump = true,
-        -- MESMA correção do título do pacote (PackOpenScreen): o default
-        -- bump_phase=200 defasa letras vizinhas em ~-1,06 rad e ESPALHA o
-        -- texto — num frame parado lia "RUND E NAUSW E RTUNG", com duas
-        -- letras no ar e o resto na linha. Fase pequena faz o salto VIAJAR
-        -- pela palavra (ondulação), e a amplitude cai porque agora várias
-        -- letras sobem ao mesmo tempo. Palavra longa alemã é o pior caso e
-        -- foi onde o defeito ficou evidente.
         bump_phase = 0.42,
         bump_amount = 0.45,
         rotate = true,
@@ -209,11 +158,6 @@ function RoundEvalScreen:_buildDynaTexts()
         text = I18n.t("round_eval.total", { n = self.totalDollars },
             "TOTAL: $" .. self.totalDollars),
         fontSize = 18,
-        -- SEM bump: este é o número que o jogador vai resgatar — INFORMAÇÃO,
-        -- e informação quer linha de base estável. Com o bump ligado saía
-        -- "GESA M T: $1 ³", com o algarismo pulando acima da linha bem na
-        -- hora de ler o valor. Mesma decisão do subtítulo "Escolha N" do
-        -- pacote. O pop_in continua: a ENTRADA pode ser animada, a leitura não.
         bump = false,
         pop_in = 0.5,
         pop_in_rate = 4,
@@ -224,12 +168,9 @@ function RoundEvalScreen:_buildDynaTexts()
     })
 end
 
--- Agenda toda a timeline via EventManager (não-blocking, paralelo).
 function RoundEvalScreen:_scheduleTimeline()
-    -- 1) Slide-in painel.
     EventManager.parallelEase(self, "slideOffsetY", 0, PHASES.SLIDE_IN, "smooth", FXQ)
 
-    -- 1.5) Banner de score (F3) pop logo após o painel assentar.
     if self.scoreData then
         EventManager.parallel(PHASES.SLIDE_IN + 0.10, function()
             self._scoreVisible = true
@@ -238,32 +179,25 @@ function RoundEvalScreen:_scheduleTimeline()
         end, FXQ)
     end
 
-    -- 2) Cada source aparece em cascata.
     local t = PHASES.SLIDE_IN + PHASES.PRE_ROW_DELAY
         + (self.scoreData and 0.35 or 0)
     for i, src in ipairs(self.sources) do
         local rowAt = t
 
-        -- Label entra (DynaText pop-in inicia).
         EventManager.parallel(rowAt, function()
             self._rowVisible[i] = true
-            -- F11.5: row entry usa coinTotalThud (chunky thump), pitch crescente
-            -- por source pra dar sensação de cascade.
             local pitch = 0.95 + (i - 1) * 0.06
             Sfx.play("coinTotalThud", { pitch = pitch })
             if _G.jiggleScreen then _G.jiggleScreen(0.18) end
         end, FXQ)
 
-        -- Coins individuais (se dollars <= 60). Caso contrário, valor único.
         local dollars = src.dollars or 0
         if dollars <= PHASES.BIG_THRESHOLD then
             for c = 1, dollars do
                 EventManager.parallel(rowAt + 0.20 + c * PHASES.COIN_STAGGER, function()
                     self.coinsAccumulated = self.coinsAccumulated + 1
                     self._rowCoins[i] = (self._rowCoins[i] or 0) + 1
-                    self._totalPulseTimer = 0.25  -- pulse no TOTAL
-                    -- F11.5: cada coin individual usa coinClink (warm wooden thock).
-                    -- Pitch random pra cada uma soar levemente diferente.
+                    self._totalPulseTimer = 0.25
                     Sfx.play("coinClink", {
                         pitch = 0.85 + math.random() * 0.3,
                         volume = 0.6,
@@ -277,14 +211,12 @@ function RoundEvalScreen:_scheduleTimeline()
                 self.coinsAccumulated = self.coinsAccumulated + dollars
                 self._rowCoins[i] = dollars
                 self._totalPulseTimer = 0.4
-                -- F11.5: pile big = thud com volume cheio.
                 Sfx.play("coinTotalThud", { pitch = 1.0, volume = 0.85 })
             end, FXQ)
             t = rowAt + 0.4 + PHASES.ROW_DELAY
         end
     end
 
-    -- 3) Botão "RESGATAR" pop-in laranja após últimas coins.
     EventManager.parallel(t + PHASES.BUTTON_DELAY, function()
         self:_buildCashOutButton()
         self.cashOutReady = true
@@ -292,7 +224,6 @@ function RoundEvalScreen:_scheduleTimeline()
             FlashShader.trigger(0.45, 0.35)
         end
         if _G.jiggleScreen then _G.jiggleScreen(0.8) end
-        -- F11.5: cashOutChime (warm brass swell) anuncia que botão Resgatar entrou.
         Sfx.play("cashOutChime")
     end, FXQ)
 end
@@ -300,8 +231,6 @@ end
 function RoundEvalScreen:_buildCashOutButton()
     local sw = love.graphics.getWidth()
     local sh = love.graphics.getHeight()
-    -- Reduzido de 360×64 → 240×42 (F11.2). Estava grande demais e visualmente
-    -- desproporcional ao painel.
     local btnW = 240
     local btnH = 42
     local btnX = sw * 0.5 - btnW * 0.5
@@ -318,32 +247,20 @@ end
 function RoundEvalScreen:_onCashOutClick()
     if self._closing then return end
     self._closing = true
-    -- F12.2: cashOutChime já toca quando o botão Resgatar entra (signal "ready").
-    -- Tocar de novo no click duplicava o som. Click usa coinTotalThud + flash
-    -- + jiggle pra feedback distinto.
     Sfx.play("coinTotalThud", { pitch = 1.2, volume = 0.85 })
     if _G.jiggleScreen then _G.jiggleScreen(1.2) end
     if FlashShader and FlashShader.trigger then
         FlashShader.trigger(0.65, 0.4)
     end
 
-    -- MOEDAS VOANDO (pedido do dono: "animação da moeda sendo resgatada").
-    -- Antes o ouro simplesmente aparecia no contador: o número do painel
-    -- sumia e o da barra mudava, sem nada ligando um ao outro. Agora o valor
-    -- VIAJA — sai de baixo do total e entra no cofre da TopBar.
     local landAt = self:_launchCoins()
 
-    -- O ouro entra quando a ÚLTIMA moeda pousa, não no clique. É o que faz a
-    -- TopBar reagir (som + "+N" subindo) no instante em que o dinheiro
-    -- chega, em vez de meio segundo antes das moedas — causalidade visível,
-    -- mesma regra do dissolve que espera os procs do coringa.
     EventManager.parallel(landAt, function()
         if self.game and self.game.economySystem and self.game.economySystem.earnGold then
             self.game.economySystem:earnGold(self.totalDollars, "round_eval")
         end
     end, FXQ)
 
-    -- Slide-out + callback, depois do pouso.
     local cb = self.onCashOut
     EventManager.parallelEase(self, "slideOffsetY", love.graphics.getHeight(),
         0.45, "smooth", FXQ)
@@ -353,16 +270,10 @@ function RoundEvalScreen:_onCashOutClick()
     end, FXQ)
 end
 
--- ============================================================================
--- VOO DAS MOEDAS
--- ============================================================================
-
 local COIN_FLY_DUR   = 0.42
 local COIN_STAGGER   = 0.045
-local COIN_MAX       = 10   -- $50 não vira 50 moedas; a leitura satura muito antes
+local COIN_MAX       = 10
 
--- Alvo: o bloco de ouro da TopBar. Pergunta a ELA em vez de repetir o número,
--- senão mudar o layout da barra faz as moedas voarem pro vazio caladas.
 local _targetWarned = false
 local function goldCounterPos()
     local topBar = _G.topBar
@@ -372,10 +283,6 @@ local function goldCounterPos()
             return slots.gold.x + slots.gold.w * 0.5, (topBar.height or 52) * 0.5
         end
     end
-    -- Sem TopBar: acontece de verdade em tool/headless, e aí o centro do topo
-    -- serve. Mas se sumir NO JOGO (alguém tirou o _G.topBar num refactor), as
-    -- moedas passariam a voar pro lugar errado sem ninguém notar — então o
-    -- caso anômalo avisa, e o esperado fica quieto.
     if _G.audioSystem and not _targetWarned then
         _targetWarned = true
         Debug.warn("[RoundEvalScreen] _G.topBar ausente: moedas voam pro centro")
@@ -383,20 +290,17 @@ local function goldCounterPos()
     return love.graphics.getWidth() * 0.5, 26
 end
 
--- Dispara as moedas e devolve o instante em que a ÚLTIMA pousa.
 function RoundEvalScreen:_launchCoins()
     self._coins = {}
 
     local reduced = _G.gameSettings and _G.gameSettings.reducedMotion
     if reduced or not love.graphics then
-        -- reducedMotion tira o MOVIMENTO, não a informação nem o som: o ouro
-        -- entra na hora e a TopBar anuncia igual.
         return 0.02
     end
 
     local n = math.max(1, math.min(COIN_MAX, self.totalDollars))
     local sw, sh = love.graphics.getWidth(), love.graphics.getHeight()
-    local sx, sy = sw * 0.5, sh * 0.62      -- logo abaixo do TOTAL
+    local sx, sy = sw * 0.5, sh * 0.62
     local tx, ty = goldCounterPos()
 
     for i = 1, n do
@@ -409,17 +313,12 @@ function RoundEvalScreen:_launchCoins()
         local d = (i - 1) * COIN_STAGGER
         EventManager.parallel(d, function()
             EventManager.parallelEase(coin, "x", tx, COIN_FLY_DUR, "smooth", FXQ)
-            -- Y com ease_in: a moeda sobe devagar e ACELERA no fim, o que dá
-            -- o arco de sucção. Se as duas coordenadas usassem a mesma curva
-            -- o voo sairia em linha reta, que lê como teleporte lento.
             EventManager.parallelEase(coin, "y", ty, COIN_FLY_DUR, "ease_in", FXQ)
             EventManager.parallelEase(coin, "s", 0.45, COIN_FLY_DUR, "ease_in", FXQ)
             EventManager.parallelEase(coin, "rot", 1.6, COIN_FLY_DUR, "smooth", FXQ)
         end, FXQ)
         EventManager.parallel(d + COIN_FLY_DUR, function()
             coin.a = 0
-            -- Clink no POUSO, pitch subindo pela fileira — o mesmo vocabulário
-            -- que as moedas das linhas já usam na contagem acima.
             Sfx.play("coinClink", {
                 pitch = 0.94 + (i - 1) * 0.05,
                 volume = 0.38,
@@ -430,8 +329,6 @@ function RoundEvalScreen:_launchCoins()
     return (n - 1) * COIN_STAGGER + COIN_FLY_DUR
 end
 
--- Desenhadas em SCREEN-SPACE, fora do slide do painel: elas saem DELE mas
--- pertencem à tela, e têm que continuar visíveis depois que ele desliza.
 function RoundEvalScreen:_drawCoins()
     if not self._coins then return end
     local icon = require("src.ui.IconLoader").get("coin")
@@ -443,8 +340,6 @@ function RoundEvalScreen:_drawCoins()
                 love.graphics.draw(icon.image, c.x, c.y, c.rot,
                     c.s, c.s, iw * 0.5, icon.image:getHeight() * 0.5)
             else
-                -- Sem o PNG: disco dourado. Uma moeda que some porque o ícone
-                -- não resolveu seria o fallback silencioso de novo.
                 love.graphics.setColor(0.95, 0.80, 0.28, c.a)
                 love.graphics.circle("fill", c.x, c.y, 7 * (c.s or 1))
             end
@@ -475,40 +370,31 @@ function RoundEvalScreen:draw()
     if not self.visible then return end
     local sw, sh = love.graphics.getWidth(), love.graphics.getHeight()
 
-    -- Backdrop sépia escuro (não preto puro pra não sumir o gameplay atrás).
     love.graphics.setColor(0.05, 0.04, 0.08, 0.65)
     love.graphics.rectangle("fill", 0, 0, sw, sh)
 
-    -- Painel central (slide com offset).
     love.graphics.push()
     love.graphics.translate(0, self.slideOffsetY or 0)
 
-    -- Painel principal (Balatro pattern: dark bg, gold border, embossed).
     local panelW = math.floor(sw * 0.55)
     local panelH = math.floor(sh * 0.62)
     local panelX = math.floor((sw - panelW) * 0.5)
     local panelY = math.floor(sh * 0.10)
 
-    -- Sombra do painel.
     love.graphics.setColor(0, 0, 0, 0.5)
     love.graphics.rectangle("fill", panelX + 6, panelY + 6, panelW, panelH, 8, 8)
-    -- Painel.
     love.graphics.setColor(0.12, 0.10, 0.08, 0.96)
     love.graphics.rectangle("fill", panelX, panelY, panelW, panelH, 8, 8)
-    -- Highlight bevel topo (linha clara fina) — F11.2 detalhe profissional.
     love.graphics.setColor(1, 0.88, 0.55, 0.18)
     love.graphics.setLineWidth(1)
     love.graphics.line(panelX + 8, panelY + 2, panelX + panelW - 8, panelY + 2)
-    -- Borda dourada externa.
     love.graphics.setColor(Palette.AGED_GOLD or {0.78, 0.65, 0.20, 1})
     love.graphics.setLineWidth(3)
     love.graphics.rectangle("line", panelX, panelY, panelW, panelH, 8, 8)
-    -- Borda interna mais escura.
     love.graphics.setColor(Palette.AGED_GOLD_DARK or {0.45, 0.32, 0.10, 1})
     love.graphics.setLineWidth(1)
     love.graphics.rectangle("line", panelX + 4, panelY + 4, panelW - 8, panelH - 8, 6, 6)
 
-    -- Corner ornaments (F11.2): 4 cantos com triângulos dourados.
     do
         local cornerSize = 14
         love.graphics.setColor(Palette.AGED_GOLD_LIGHT or {1, 0.92, 0.55, 1})
@@ -517,28 +403,20 @@ function RoundEvalScreen:draw()
         local py = panelY
         local pw = panelW
         local ph = panelH
-        -- Top-left
         love.graphics.line(px + 3, py + cornerSize, px + 3, py + 3, px + cornerSize, py + 3)
-        -- Top-right
         love.graphics.line(px + pw - cornerSize, py + 3, px + pw - 3, py + 3, px + pw - 3, py + cornerSize)
-        -- Bottom-left
         love.graphics.line(px + 3, py + ph - cornerSize, px + 3, py + ph - 3, px + cornerSize, py + ph - 3)
-        -- Bottom-right
         love.graphics.line(px + pw - cornerSize, py + ph - 3, px + pw - 3, py + ph - 3, px + pw - 3, py + ph - cornerSize)
     end
 
-    -- Título DynaText.
     if self.titleText then
         self.titleText:draw(sw * 0.5, panelY + 32)
     end
 
-    -- Linha separadora dourada após título.
     love.graphics.setColor(0.78, 0.65, 0.20, 0.6)
     love.graphics.setLineWidth(1)
     love.graphics.line(panelX + 24, panelY + 60, panelX + panelW - 24, panelY + 60)
 
-    -- F3: bloco de pontuação da batalha — total grande + recibo do que o
-    -- jogador FEZ pra ganhar cada bônus (feedback: fórmula era críptica).
     local scoreBlockH = 0
     if self.scoreData and self._scoreVisible then
         if self.scoreText then
@@ -558,7 +436,6 @@ function RoundEvalScreen:draw()
             else
                 love.graphics.setColor(0.82, 0.78, 0.70, 0.95)
             end
-            -- Label com fit até o value (labels longos colidiam à direita).
             TextFit.print(item.label, lx, ly,
                 { size = 10, maxW = math.max(40, rx - lx - valueW - 12) })
             if item.bad then
@@ -571,7 +448,6 @@ function RoundEvalScreen:draw()
             ly = ly + 16
         end
         scoreBlockH = 34 + #lines * 16
-        -- separador fecha o bloco de score antes das rows de ouro
         love.graphics.setColor(0.78, 0.65, 0.20, 0.4)
         love.graphics.setLineWidth(1)
         love.graphics.line(panelX + 24, ly + 4, panelX + panelW - 24, ly + 4)
@@ -579,7 +455,6 @@ function RoundEvalScreen:draw()
         scoreBlockH = 34 + #(self.scoreData.breakdown or {}) * 16
     end
 
-    -- Rows de ouro: descem pra abrir espaço pro bloco de score.
     local rowY = panelY + 90 + scoreBlockH
     local rowH = 36
     local labelX = panelX + 36
@@ -587,16 +462,13 @@ function RoundEvalScreen:draw()
 
     for i, src in ipairs(self.sources) do
         if self._rowVisible[i] then
-            -- Label esquerda.
             if self.rowDynas[i] then
                 self.rowDynas[i]:draw(labelX + 70, rowY + rowH * 0.5)
             end
 
-            -- Coins/dollars direita: cada $ é um pequeno disco animado.
             local coinsCount = self._rowCoins[i] or 0
             local dollars = src.dollars or 0
             if dollars <= PHASES.BIG_THRESHOLD then
-                -- Render N $ como string crescente.
                 local coinsTxt = string.rep("$", coinsCount)
                 local font = FontManager.getFont(15)
                 love.graphics.setFont(font)
@@ -605,7 +477,6 @@ function RoundEvalScreen:draw()
                 local tw = font:getWidth(coinsTxt)
                 love.graphics.print(coinsTxt, coinsX - tw, rowY + rowH * 0.5 - font:getHeight() * 0.5)
             else
-                -- Render valor único "$N".
                 local txt = "$" .. coinsCount
                 local font = FontManager.getFont(18)
                 love.graphics.setFont(font)
@@ -618,23 +489,19 @@ function RoundEvalScreen:draw()
         rowY = rowY + rowH + 4
     end
 
-    -- Linha separadora antes do total.
     love.graphics.setColor(0.78, 0.65, 0.20, 0.7)
     love.graphics.setLineWidth(2)
     love.graphics.line(panelX + 60, rowY + 8, panelX + panelW - 60, rowY + 8)
 
-    -- TOTAL grande.
     if self.totalText then
         self.totalText:setText(I18n.t("round_eval.total",
             { n = self.coinsAccumulated }, "TOTAL: $" .. self.coinsAccumulated))
         self.totalText:draw(sw * 0.5, rowY + 36)
     end
 
-    love.graphics.pop()  -- fim do slide
+    love.graphics.pop()
 
-    -- Botão Resgatar (FORA do slide — sempre na posição absoluta).
     if self.cashOutButton and self.cashOutReady then
-        -- Glow laranja ao redor do botão (Balatro G.C.ORANGE).
         local btn = self.cashOutButton
         love.graphics.setColor(0.99, 0.64, 0.0, 0.4)
         love.graphics.rectangle("fill", btn.x - 6, btn.y - 6, btn.width + 12, btn.height + 12, 12, 12)
@@ -642,9 +509,6 @@ function RoundEvalScreen:draw()
         btn:draw()
     end
 
-    -- Moedas por último: elas atravessam a tela inteira, inclusive por cima
-    -- do botão que acabou de ser clicado, e não podem acompanhar o slide do
-    -- painel (o destino é a barra do topo, que está parada).
     self:_drawCoins()
 
     love.graphics.setColor(1, 1, 1, 1)
@@ -655,7 +519,7 @@ function RoundEvalScreen:mousepressed(x, y, button)
     if self.cashOutButton and self.cashOutReady then
         if self.cashOutButton:mousepressed(x, y, button) then return true end
     end
-    return true  -- consome cliques na área
+    return true
 end
 
 function RoundEvalScreen:mousereleased(x, y, button)

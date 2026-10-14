@@ -1,17 +1,3 @@
--- components/JokerManagerScreen.lua
--- GERENCIADOR DE CORINGAS — tela cheia (Jul/2026). Mostra TODOS os coringas
--- possuídos na run (coleção + bancada) e deixa o jogador escolher quais 3
--- ficam ATIVOS. Nasceu do feedback: "posso comprar vários jokers e eles
--- somem; queria acessar todos e escolher os ativos, trocando ao longo da run".
---
--- Regras:
---   • Coleção ilimitada; até MAX_JOKER_SLOTS ativos (o resto na bancada).
---   • Clique num coringa alterna ativo/bancada (respeitando o teto).
---   • Ativos: moldura dourada + selo "ATIVO N". Bancada: esmaecido + "BANCADA".
---   • Hover mostra o tooltip completo. ESC / J / X fecha.
---
--- Abrir: clique no painel de coringas (topo-esquerdo do combate) OU tecla J.
-
 local JokerManagerScreen = {}
 JokerManagerScreen.__index = JokerManagerScreen
 
@@ -23,13 +9,9 @@ local CardGridRender  = require("src.ui.CardGridRender")
 local Sfx             = require("src.systems.Sfx")
 local I18n            = require("src.i18n.I18n")
 
--- MESMAS métricas do DeckViewer/Coleção (feedback Jul/2026: "o gerenciador
--- não está parecido com o deck e a coleção") — carta, gaps e header iguais;
--- a única diferença de layout é a LINHA DE ESTADO sob cada carta (ATIVO n /
--- BANCADA), que é a informação própria desta tela.
 local CARD_W, CARD_H = 128, 192
 local GAP_X, GAP_Y   = 18, 22
-local LABEL_H        = 20    -- linha de estado sob a carta
+local LABEL_H        = 20
 local TOP_OFFSET     = 118
 local BOTTOM_PAD     = 46
 
@@ -74,9 +56,6 @@ function JokerManagerScreen:toggle(game)
 end
 
 function JokerManagerScreen:isVisible() return self.visible end
--- Resize NÃO zera a rolagem: o draw recalcula maxScroll e reclampa a cada
--- frame, então a posição de leitura sobrevive a fullscreen/arrasto de borda
--- (antes voltava pro topo — mesmo padrão do RunJournalScreen).
 function JokerManagerScreen:resize()
     self.scroll = math.max(0, math.min(self.scroll or 0, self.maxScroll or 0))
 end
@@ -128,7 +107,7 @@ function JokerManagerScreen:_toggleAt(index)
     local ok, reason = self.game:setJokerActive(index, not wasActive)
     if ok then
         Sfx.play(wasActive and "cardDeselect" or "jokerActivate")
-        self:_build()   -- refresh flags
+        self:_build()
     else
         if reason == "cap" then
             self.game:addMessage(I18n.t("joker_manager.cap_reached", {
@@ -143,17 +122,14 @@ end
 function JokerManagerScreen:mousereleased(x, y, button)
     if not self.visible then return false end
     if button ~= 1 then return true end
-    -- ignora o release do clique que abriu (mesmo padrão do DeckViewer)
     if love.timer.getTime() - (self._openedAt or 0) < 0.25 then
         return true
     end
-    -- X fecha
     local cx, cy, cw, ch = self:_closeRect()
     if x >= cx and x <= cx + cw and y >= cy and y <= cy + ch then
         self:hide()
         return true
     end
-    -- clique num coringa → alterna ativo/bancada
     for _, r in ipairs(self._cardRects) do
         if x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h then
             self:_toggleAt(r.index)
@@ -180,7 +156,6 @@ function JokerManagerScreen:draw()
     local cap = (rm and rm.getMaxJokerSlots and rm:getMaxJokerSlots()) or 3
     local activeN = (rm and rm.getActiveJokerCount and rm:getActiveJokerCount()) or 0
 
-    -- Header
     local tf = FontManager.getResponsiveFont(0.045, 32)
     love.graphics.setFont(tf)
     local title = I18n.t("joker_manager.title", nil, "CORINGAS")
@@ -201,7 +176,6 @@ function JokerManagerScreen:draw()
     Palette.set(Palette.RUST)
     love.graphics.print(hintTop, math.floor((sw - hf:getWidth(hintTop)) / 2), 92)
 
-    -- X fechar
     do
         local cx, cy, cw, ch = self:_closeRect()
         require("src.ui.NavCursor").target("close", cx, cy, cw, ch)
@@ -217,7 +191,6 @@ function JokerManagerScreen:draw()
         love.graphics.print("X", cx + (cw - xf:getWidth("X")) / 2, cy + (ch - xf:getHeight()) / 2)
     end
 
-    -- Vazio
     if #self.instances == 0 then
         local ef = FontManager.getFont(14)
         love.graphics.setFont(ef)
@@ -230,10 +203,6 @@ function JokerManagerScreen:draw()
         return
     end
 
-    -- ===== Grid — render IDÊNTICO ao DeckViewer/Coleção (CardGridRender:
-    -- warp 3D no hover + sombra direcional + ícone vivo + interpolação
-    -- suave). A identidade DESTA tela fica nos rótulos ATIVO n / BANCADA
-    -- e no alpha da bancada — sem molduras que a Coleção não usa. =====
     local cols, gx0, gridTop, gridH = self:_gridMetrics()
     local rowH = CARD_H + LABEL_H + GAP_Y
     local rows = math.ceil(#self.instances / cols)
@@ -248,7 +217,6 @@ function JokerManagerScreen:draw()
     self._cardAnim = self._cardAnim or {}
     local ease = 1 - math.exp(-18 * dt)
 
-    -- 1) alvos + hover na posição de GRID (estável) + numeração dos ativos
     local hovered, hx, hy = nil, 0, 0
     local targetX, targetY, slotOf = {}, {}, {}
     local slotNum = 0
@@ -265,7 +233,6 @@ function JokerManagerScreen:draw()
         if ty + CARD_H > gridTop and ty < gridTop + gridH then
             self._cardRects[#self._cardRects + 1] =
                 { index = inst._ownedIndex, x = tx, y = ty, w = CARD_W, h = CARD_H }
-            -- foco de teclado/pad (NavCursor): o coringa da grade
             require("src.ui.NavCursor").target("joker:" .. tostring(inst._ownedIndex), tx, ty, CARD_W, CARD_H)
             if mouseInGrid and mx >= tx and mx < tx + CARD_W
                 and my >= ty and my < ty + CARD_H then
@@ -274,7 +241,6 @@ function JokerManagerScreen:draw()
         end
     end
 
-    -- 2) interpola posição + hover-scale (mesma receita da Coleção)
     for i, inst in ipairs(self.instances) do
         local anim = self._cardAnim[inst]
         if not anim then
@@ -297,13 +263,11 @@ function JokerManagerScreen:draw()
         return { uvx, uvy }
     end
     local function hoverStr(hs) return math.max(0, math.min(1, (hs - 1.0) / 0.08)) end
-    -- bancada esmaecida; hover devolve presença (convite ao clique)
     local function alphaOf(inst)
         if inst._active then return 1 end
         return inst == hovered and 0.92 or 0.58
     end
 
-    -- rótulo de estado sob a carta (a informação própria desta tela)
     local function drawStateLabel(i, inst, x, y)
         local lf = FontManager.getFont(9)
         love.graphics.setFont(lf)
@@ -321,14 +285,12 @@ function JokerManagerScreen:draw()
         love.graphics.print(label, lx + 1, y + CARD_H + 5)
         Palette.set(inst._active and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT_DARK)
         love.graphics.print(label, lx, y + CARD_H + 4)
-        -- filete dourado sob os ativos (selo discreto, não moldura)
         if inst._active then
             Palette.set(Palette.AGED_GOLD)
             love.graphics.rectangle("fill", x + 16, y + CARD_H + 16, CARD_W - 32, 2)
         end
     end
 
-    -- 3) não-hovered no scissor; hovered por cima COM warp
     love.graphics.setScissor(0, gridTop, sw, gridH)
     for i, inst in ipairs(self.instances) do
         if inst ~= hovered then
@@ -354,7 +316,6 @@ function JokerManagerScreen:draw()
         end
     end
 
-    -- Barra de scroll
     if self.maxScroll > 0 then
         local barX = sw - 12
         local frac = self.scroll / self.maxScroll
@@ -365,8 +326,6 @@ function JokerManagerScreen:draw()
         love.graphics.rectangle("fill", barX, gridTop + frac * (gridH - knobH), 6, knobH)
     end
 
-    -- Tooltip completo — ABAIXO da carta (coringas moram nas fileiras de
-    -- cima; acima, o clamp cobria o topo da carta — feedback Jul/2026)
     if hovered then
         hovered.currentScale = CARD_W / 96
         self.cardInfo:draw(hovered, hx, hy + CARD_H + LABEL_H, {

@@ -1,4 +1,3 @@
--- components/GameUI.lua
 local JokerSlot = require("components.JokerSlot")
 local Config = require("src.core.Config")
 local HudManager = require("src.ui.HudManager")
@@ -21,12 +20,12 @@ end
 
 function GameUI:createJokerSlots()
     local width = love.graphics.getWidth()
-    local slotSize = Config.Utils.getResponsiveSize(0.06, 60, "width") -- Slots menores
-    local spacing = Config.Utils.getResponsiveSize(0.015, 15, "width") -- Espaçamento menor
+    local slotSize = Config.Utils.getResponsiveSize(0.06, 60, "width")
+    local spacing = Config.Utils.getResponsiveSize(0.015, 15, "width")
     local totalWidth = (slotSize * Config.Game.MAX_JOKER_SLOTS) + (spacing * (Config.Game.MAX_JOKER_SLOTS - 1))
     local startX = (width - totalWidth) / 2
-    local startY = Config.Utils.getResponsiveSize(0.08, 80, "height") -- Posicionado no topo
-    
+    local startY = Config.Utils.getResponsiveSize(0.08, 80, "height")
+
     for i = 1, Config.Game.MAX_JOKER_SLOTS do
         local x = startX + (i - 1) * (slotSize + spacing)
         self.jokerSlots[i] = JokerSlot:new(x, startY, slotSize)

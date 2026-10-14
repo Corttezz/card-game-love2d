@@ -1,27 +1,3 @@
--- components/AchievementsScreen.lua
--- Galeria de conquistas. Abre pelo botao Conquistas do menu; ESC/clique fora
--- fecha.
---
--- LAYOUT POR ZONAS (CLAUDE.md, "layout de tela = zonas"):
---   CABECALHO  titulo + contador global x/N + barra de progresso
---   GRADE      emblemas agrupados por categoria (Jornada / Restricao /
---              Maestria / Legado), cada grupo com o seu x/N
---   DETALHE    a conquista em foco: emblema grande, nome, categoria, tags
---              (SECRETA), condicao, barra de progresso "1840 / 2500" e a data
---              de desbloqueio. NUNCA vazio: sem hover, mostra a selecionada
---              (padrao = a bloqueada mais perto de sair).
---   RODAPE     HintBar
--- Janela larga: GRADE | DETALHE lado a lado. Estreita: DETALHE embaixo.
--- Falta espaco -> quem cede e o TAMANHO do emblema, nunca a posicao das zonas.
---
--- Referencias: grade de icones + tooltip do StS (screens/stats/AchievementGrid)
--- e o painel de detalhe fixo das colecoes do Balatro. Bloqueada = o proprio
--- emblema em silhueta (o alvo e reconhecivel); secreta = silhueta + "?".
---
--- O layout e PURO (`layout(sw, sh)`): draw e mouse leem a mesma geometria,
--- entao resize nao precisa de cache (tools/test_achievements audita em varios
--- tamanhos).
-
 local AchievementsScreen = {}
 AchievementsScreen.__index = AchievementsScreen
 
@@ -36,8 +12,8 @@ local AchievementSystem = require("src.systems.AchievementSystem")
 local Sfx               = require("src.systems.Sfx")
 
 local HEADER_H = 74
-local FOOTER_H = 30   -- borda inferior do Panel9 (~24px) + respiro
-local HINT_H = 36      -- faixa da HintBar, FORA do painel (rodape da tela)
+local FOOTER_H = 30
+local HINT_H = 36
 local PAD = 36
 local GAP = 18
 local TIER_HEAD_H = 20
@@ -54,14 +30,11 @@ function AchievementsScreen:new()
     return instance
 end
 
--- `entries` guarda TEXTO JA TRADUZIDO, valido so pro idioma em que foi
--- montado: o draw remonta se o jogador trocou de idioma.
 function AchievementsScreen:_refresh()
     self.entries = AchievementSystem.all()
     self._builtLocale = I18n.getLocale()
 end
 
--- Bloqueada com maior fracao de progresso; senao a primeira bloqueada.
 function AchievementsScreen:_defaultSelection()
     local best, bestF = nil, -1
     for i, e in ipairs(self.entries) do
@@ -92,9 +65,6 @@ function AchievementsScreen:hide()
 end
 
 function AchievementsScreen:isVisible() return self.visible end
--- Hover lido aqui (main.lua nao repassa mousemoved a esta tela). So conta
--- quando o mouse MEXE: parado em cima de um emblema, nao rouba o foco de
--- quem esta navegando pelas setas.
 function AchievementsScreen:update(dt)
     self.t = self.t + dt
     if not self.visible then return end
@@ -106,10 +76,8 @@ function AchievementsScreen:update(dt)
         self.hovered = i
     end
 end
--- Layout e derivado da janela a cada frame (layout() puro) — nada a refazer.
 function AchievementsScreen:resize() end
 
--- ===== Geometria =====
 function AchievementsScreen.panelRect(sw, sh)
     sw = sw or love.graphics.getWidth()
     sh = sh or love.graphics.getHeight()
@@ -130,7 +98,6 @@ local function tierGroups(entries)
     return groups
 end
 
--- Altura que a grade ocupa com celula `cell` numa largura `w`.
 local function gridHeight(groups, w, cell, gap)
     local cols = math.max(1, math.floor((w + gap) / (cell + gap)))
     local h = 0
@@ -140,12 +107,9 @@ local function gridHeight(groups, w, cell, gap)
     return h, cols
 end
 
--- Layout completo (puro): rects das zonas + posicao de cada celula.
 function AchievementsScreen.layout(entries, sw, sh)
     local px, py, pw, ph = AchievementsScreen.panelRect(sw, sh)
     local L = { panel = { px, py, pw, ph } }
-    -- X de fechar no canto do cabeçalho (como o Deck Viewer): ESC sozinho não
-    -- se descobre, e o rodapé de dica está desligado (HintBar.ENABLED).
     local closeS = 28
     L.close = { px + pw - PAD - closeS, py + 28, closeS, closeS }
     L.header = { px + PAD, py + 30, pw - PAD * 2 - closeS - 14, HEADER_H - 30 }
@@ -164,8 +128,6 @@ function AchievementsScreen.layout(entries, sw, sh)
         L.detail = { innerX, bodyY + bodyH - dH, innerW, dH }
     end
 
-    -- Maior celula que cabe (a ESCALA cede, nao as zonas). 64 = 1:1 com o
-    -- PNG (pixel nitido) e o preferido; abaixo disso encolhe de 2 em 2.
     local groups = tierGroups(entries)
     local gx, gy, gw, gh = L.grid[1], L.grid[2], L.grid[3], L.grid[4]
     local cell, gap, cols = CELL_MAX, 10, 1
@@ -187,7 +149,6 @@ function AchievementsScreen.layout(entries, sw, sh)
     for _, g in ipairs(groups) do
         table.insert(L.tierHeads, { tier = g.tier, x = gx, y = y, w = gw, idx = g.idx })
         y = y + TIER_HEAD_H
-        -- Linhas BALANCEADAS: 9 em 8 colunas vira 5+4, nao 8+1 com orfa.
         local rows = math.ceil(#g.idx / cols)
         local per = math.ceil(#g.idx / rows)
         for k, i in ipairs(g.idx) do
@@ -218,9 +179,6 @@ function AchievementsScreen:_cellAt(x, y)
     return nil
 end
 
--- Vizinho ESPACIAL (as linhas sao balanceadas, entao "indice +- colunas" nao
--- e mais a celula de cima/baixo). Escolhe a celula na direcao pedida com
--- menor distancia, pesando o desvio lateral em dobro.
 function AchievementsScreen.neighbor(L, from, dir)
     local a = L.cells[from]
     if not a then return nil end
@@ -240,7 +198,6 @@ function AchievementsScreen.neighbor(L, from, dir)
     return best
 end
 
--- ===== Input =====
 function AchievementsScreen:keypressed(key)
     if not self.visible then return false end
     if key == "escape" then self:hide(); return true end
@@ -276,7 +233,6 @@ function AchievementsScreen:mousereleased(x, y, button)
     return true
 end
 
--- ===== Desenho =====
 local function setC(c, a) love.graphics.setColor(c[1], c[2], c[3], a or 1) end
 
 local function fmtNum(n)
@@ -297,7 +253,6 @@ local function drawBar(x, y, w, h, frac)
     love.graphics.rectangle("line", x, y, w, h, 2, 2)
 end
 
--- "?" grande sobre a silhueta da secreta.
 local function drawSecretMark(cx, cy, size)
     local f = FontManager.getFont(math.max(8, math.floor(size * 0.42)))
     love.graphics.setFont(f)
@@ -313,7 +268,6 @@ function AchievementsScreen:_drawCell(i, r, focus)
     local x, y, s = r[1], r[2], r[3]
     local cx, cy = x + s / 2, y + s / 2
     if focus then
-        -- moldura de foco + pulso discreto (sem mexer na posicao)
         local k = 0.5 + 0.5 * math.sin(self.t * 4)
         setC(Palette.AGED_GOLD_LIGHT, 0.55 + 0.35 * k)
         love.graphics.setLineWidth(2)
@@ -321,14 +275,11 @@ function AchievementsScreen:_drawCell(i, r, focus)
     end
     AchievementIcons.draw(e.id, not e.unlocked, cx, cy, s, 1)
     if e.secret then drawSecretMark(cx, cy, s) end
-    -- progresso em andamento: filete sob o emblema
     if not e.unlocked and e.progress and e.progress.cur > 0 then
         drawBar(x + 4, y + s - 4, s - 8, 4, e.progress.cur / math.max(1, e.progress.target))
     end
 end
 
--- Texto da condicao: Press Start 2P com entrelinha 1.0 encosta as linhas;
--- 1.45 e o respiro usado nas outras telas de leitura.
 local DESC_LH = 1.45
 
 local function statusText(e)
@@ -342,8 +293,6 @@ local function statusText(e)
     return I18n.t("achievements.locked", nil, "Bloqueada")
 end
 
--- Bloco de texto do detalhe (nome, categoria, condicao, progresso, status).
--- `dry` so mede: o layout largo centraliza o bloco inteiro na vertical.
 local function detailText(e, tx, ty, tw, dry)
     local y0 = ty
     if not dry then
@@ -403,15 +352,12 @@ function AchievementsScreen:_drawDetail(L, e)
     local pad = 16
     love.graphics.setScissor(x, y, w, h)
     if L.wide then
-        -- Emblema grande (128 = 2:1 nitido; 64 quando a zona e baixa) e o
-        -- bloco de texto, centralizados juntos na vertical (leve vies pro topo).
         local big = (math.min(w - pad * 2, h * 0.42) >= 128) and 128 or 64
         local tw = w - pad * 2
         local textH = detailText(e, 0, 0, tw, true)
         local total = big + 18 + textH
         local top = y + math.max(pad, math.floor((h - total) * 0.4))
         local cx, cy = x + w / 2, top + big / 2
-        -- aro dourado atras do emblema liberado (o "trofeu" em destaque)
         if e.unlocked then
             setC(Palette.AGED_GOLD, 0.25)
             love.graphics.circle("fill", cx, cy, big * 0.56)
@@ -445,7 +391,6 @@ function AchievementsScreen:draw()
     local px, py, pw, ph = L.panel[1], L.panel[2], L.panel[3], L.panel[4]
     Panel9.draw("panel_main", px, py, pw, ph)
 
-    -- CABECALHO: titulo | contador global + barra
     local hx, hy, hw = L.header[1], L.header[2], L.header[3]
     local unlocked, total = AchievementSystem.countUnlocked()
     local counter = I18n.t("achievements.total", { n = unlocked, total = total },
@@ -463,7 +408,6 @@ function AchievementsScreen:draw()
     love.graphics.setLineWidth(1)
     love.graphics.line(hx, py + HEADER_H - 2, hx + hw, py + HEADER_H - 2)
 
-    -- GRADE: cabecalho de categoria + emblemas
     for _, th in ipairs(L.tierHeads) do
         local n = 0
         for _, i in ipairs(th.idx) do if self.entries[i].unlocked then n = n + 1 end end
@@ -477,10 +421,8 @@ function AchievementsScreen:draw()
         self:_drawCell(i, r, i == focus)
     end
 
-    -- DETALHE
     self:_drawDetail(L, self.entries[focus])
 
-    -- FECHAR (X) — mesmo desenho do Deck Viewer
     do
         local c = L.close
         local mx, my = love.mouse.getPosition()

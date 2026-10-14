@@ -1,33 +1,4 @@
--- components/SettingsMenu.lua
--- CONFIGURAÇÕES — overlay modal aberto pelo menu principal ou pela PAUSA.
---
--- v3 (Out/2026 — "seguir o padrão de hoje"). Estrutura do create_UIBox_settings
--- do Balatro (functions/UI_definitions.lua:2265): ABAS com conteúdo de altura
--- FIXA (o painel não pula ao trocar de aba — tab_h do Balatro) e um botão
--- VOLTAR que devolve pra quem abriu (back_func = 'options': aberto da pausa,
--- volta pra pausa; aberto do menu, fecha).
---
---   ÁUDIO   Geral · Música · Efeitos                          (sliders 0-100%)
---   VÍDEO   Tela cheia · VSync · Shader CRT · Iluminação       (toggles)
---   JOGO    Ritmo do combate · Tremor de tela · Movimento reduzido
---   IDIOMA  os 5 idiomas pelo nome nativo — 1 clique/Enter escolhe
---
--- Todo controle de ajuste tem a MESMA forma: [<] valor [>] — o "option
--- cycle" do Balatro (←/→ ajusta, ↑/↓ escolhe a linha, Tab/Q/E troca aba,
--- ESC volta). O IDIOMA não: no ciclo o dono tinha que passar idioma por
--- idioma até chegar no seu (Out/2026, "piorou"). Agora é lista direta com
--- o atual aceso, numa aba própria — não o dropdown da v2, que abria pra
--- fora do painel em janela pequena.
---
--- Visual: painel escuro-dourado canônico (UiPanel) + título dourado, igual à
--- pausa/loja/roteiro. A v2 misturava o OSD âmbar de TV com os botões sépia
--- ("dois dialetos na mesma tela") e tinha linhas de altura FIXA que, em
--- 800x600, punham o botão FECHAR por cima da linha do Idioma.
---
--- Persistência: toda mudança grava via engine/SaveManager.saveSettings e
--- espelha em _G.gameSettings (lido por ScreenShake/Moveable/WorldRoad).
--- SettingsMenu.applyRuntime(settings) aplica no boot o que não vive em
--- módulo próprio (ritmo do combate, vsync).
+local Debug = require("src.core.Debug")
 
 local FontManager = require("src.ui.FontManager")
 local Palette     = require("src.ui.Palette")
@@ -42,16 +13,12 @@ local MenuKit     = require("src.ui.MenuKit")
 
 local SettingsMenu = {}
 SettingsMenu.__index = SettingsMenu
--- navega sozinha (MenuKit): o cursor de foco do teclado/pad não toma as teclas
 SettingsMenu.ownsNavigation = true
 
-local STEP = 0.1   -- passo dos sliders (10%)
+local STEP = 0.1
 
--- Ritmo do combate: multiplicador de VELOCIDADE exibido ao jogador. O
--- CombatBeats.speed é multiplicador de DURAÇÃO, então speed = 1 / x.
 SettingsMenu.COMBAT_SPEEDS = { 1, 1.5, 2, 3 }
 
--- Métricas
 local PAD       = 22
 local TITLE_H   = 50
 local TAB_H     = 32
@@ -61,19 +28,12 @@ local ZONE_GAP  = 12
 local BACK_H    = 36
 local ARROW_W   = 28
 
--- Escala do painel (padrão das EndScreens/pausa): 768 de altura = 1, até
--- 1.75 em telas grandes. Uma instância visível por vez, então mora no módulo
--- e o rebuild a atualiza; S() vale pra layout E desenho.
 local U = 1
 local function S(v) return math.floor(v * U + 0.5) end
-local MAX_ROWS  = 5   -- a aba Idioma tem 5 linhas
+local MAX_ROWS  = 5
 
--- Selo curto ao lado do nome nativo (código, não bandeira: idioma não é país).
 local LANG_BADGE = { pt_BR = "PT", en = "EN", es = "ES", fr = "FR", de = "DE" }
 
--- ===================================================================
--- RUNTIME (estático): aplica settings que não moram em módulo próprio.
--- ===================================================================
 local function speedLabel(x)
     if x == math.floor(x) then return ("%dx"):format(x) end
     return ("%.1fx"):format(x)
@@ -83,16 +43,15 @@ function SettingsMenu.applyRuntime(settings)
     settings = settings or _G.gameSettings or {}
     local x = tonumber(settings.combatSpeed) or 1
     if x <= 0 then
-        print("[SettingsMenu] combatSpeed invalido (" .. tostring(settings.combatSpeed) .. "), usando 1")
+        Debug.warn("[SettingsMenu] combatSpeed invalido (" .. tostring(settings.combatSpeed) .. "), usando 1")
         x = 1
     end
     require("src.systems.CombatBeats").speed = 1 / x
     require("src.ui.UiScale").setUserMultiplier(settings.uiScale or 1)
-    -- VSync: só fora das ferramentas (captura tem que ser reproduzível).
     if not _G.HEADLESS_TOOL and settings.vsync ~= nil
         and love.window and love.window.setVSync then
         local ok, err = pcall(love.window.setVSync, settings.vsync and 1 or 0)
-        if not ok then print("[SettingsMenu] setVSync falhou: " .. tostring(err)) end
+        if not ok then Debug.warn("[SettingsMenu] setVSync falhou: " .. tostring(err)) end
     end
 end
 
@@ -104,7 +63,6 @@ end
 local function clamp01(v) return math.max(0, math.min(1, v)) end
 local function round1(v) return math.floor(v * 10 + 0.5) / 10 end
 
--- ===== volumes (AudioManager quando há áudio; gameSettings sempre) =====
 local VOL_FIELD = { master = "masterVolume", music = "musicVolume", sfx = "sfxVolume",
                     ambient = "ambientVolume" }
 local VOL_DEFAULT = { master = 1.0, music = 0.3, sfx = 0.7, ambient = 1.0 }
@@ -132,9 +90,7 @@ local function setVolume(kind, v)
         elseif kind == "ambient" then a:setAmbientVolume(v)
         else a:setVolume(v) end
     end
-    -- AMOSTRA no volume novo: a música se ouve sozinha (já está tocando);
-    -- sfx/master tocam um clique pelo próprio grupo ajustado.
-    if kind ~= "music" and kind ~= "ambient" then   -- ambiente se ouve sozinho (cama tocando)
+    if kind ~= "music" and kind ~= "ambient" then
         Sfx.play("buttonClick", { pitch = 1.0 + v * 0.12 })
     end
 end
@@ -155,15 +111,6 @@ local function speedIndex()
     return 1
 end
 
--- ===================================================================
--- DEFINIÇÃO DAS ABAS (dados → linhas). Cada linha:
---   kind  "slider" | "toggle" | "cycle"
---   get() → valor (slider 0..1, toggle bool, cycle texto)
---   step(dir) muda um passo (dir = -1/+1); slider também tem set(v)
--- ===================================================================
--- Uma linha "choice" por idioma: get() = é o atual?; step() = escolhe.
--- I18n.setLocale já persiste (I18n.saveSetting); o snapshot do _persist
--- leva o locale junto pro settings.
 local function languageRows(menu)
     local rows = {}
     for _, code in ipairs(I18n.getAvailable()) do
@@ -175,9 +122,9 @@ local function languageRows(menu)
                 if I18n.setLocale(code) then
                     gs().locale = code
                     FontManager.clearCache()
-                    menu:rebuild()   -- rótulos no idioma novo
+                    menu:rebuild()
                 else
-                    print("[SettingsMenu] idioma indisponivel: " .. tostring(code))
+                    Debug.warn("[SettingsMenu] idioma indisponivel: " .. tostring(code))
                 end
             end }
     end
@@ -210,7 +157,6 @@ function SettingsMenu:_tabs()
                     love.window.setFullscreen(v)
                     gs().fullscreen = v
                     FontManager.clearCache()
-                    -- love.resize reposiciona TODAS as telas (inclusive esta).
                     if love.resize then
                         local UiScale = require("src.ui.UiScale")
                         UiScale.outside(love.resize, UiScale.realDimensions())
@@ -223,7 +169,7 @@ function SettingsMenu:_tabs()
                     gs().vsync = v
                     if love.window and love.window.setVSync then
                         local ok, err = pcall(love.window.setVSync, v and 1 or 0)
-                        if not ok then print("[SettingsMenu] setVSync falhou: " .. tostring(err)) end
+                        if not ok then Debug.warn("[SettingsMenu] setVSync falhou: " .. tostring(err)) end
                     end
                 end),
             { key = "ui_scale", kind = "cycle", label = I18n.t("settings.ui_scale"),
@@ -238,11 +184,10 @@ function SettingsMenu:_tabs()
                   for i, v in ipairs(opts) do
                       if math.abs(v - cur) < 0.01 then idx = i end
                   end
-                  idx = math.max(1, math.min(#opts, idx + dir))   -- sem dar a volta: é um tamanho
+                  idx = math.max(1, math.min(#opts, idx + dir))
                   gs().uiScale = opts[idx]
                   require("src.ui.UiScale").setUserMultiplier(opts[idx])
                   FontManager.clearCache()
-                  -- love.resize reposiciona TODAS as telas no espaço novo
                   if love.resize then
                       local UiScale = require("src.ui.UiScale")
                       UiScale.outside(love.resize, UiScale.realDimensions())
@@ -250,8 +195,6 @@ function SettingsMenu:_tabs()
                       menu:rebuild()
                   end
               end },
-            -- CRT em 3 níveis (Out/2026): Desligado / Baixo / Normal. Mesma
-            -- linha do toggle antigo; Enter no Normal dá a volta pro Desligado.
             { key = "crt", kind = "cycle", label = I18n.t("settings.crt_shader"),
               get = function() return I18n.t("settings.crt_" .. CRTShader.getLevel()) end,
               step = function(dir)
@@ -281,8 +224,6 @@ function SettingsMenu:_tabs()
             toggle("reduced_motion", "settings.reduced_motion",
                 function() return gs().reducedMotion and true or false end,
                 function(v) gs().reducedMotion = v end),
-            -- Onboarding (src/systems/Tutorial): liga/desliga as dicas e
-            -- "Rever as dicas" esquece as já vistas (perfil).
             { key = "tips", kind = "toggle", label = I18n.t("tutorial.settings_tips"),
               get = function() return gs().tipsEnabled ~= false end,
               step = function() gs().tipsEnabled = not (gs().tipsEnabled ~= false) end },
@@ -301,14 +242,11 @@ function SettingsMenu:_tabs()
     }
 end
 
--- ===================================================================
--- CICLO DE VIDA
--- ===================================================================
 function SettingsMenu:new()
     local instance = setmetatable({}, SettingsMenu)
     instance.visible = false
     instance.tab = 1
-    instance.focus = 1          -- linha focada (1..#rows; #rows+1 = VOLTAR)
+    instance.focus = 1
     instance.rows = {}
     instance.tabs = {}
     instance.onClose = nil
@@ -316,7 +254,6 @@ function SettingsMenu:new()
     return instance
 end
 
--- opts.onClose: chamado ao VOLTAR (a pausa usa pra se reabrir).
 function SettingsMenu:show(opts)
     self.visible = true
     self.onClose = opts and opts.onClose or nil
@@ -328,7 +265,6 @@ function SettingsMenu:show(opts)
     Sfx.play("menuOpen")
 end
 
--- Fecha. `skipCallback` = fechamento forçado (sem voltar pra pausa).
 function SettingsMenu:hide(skipCallback)
     if self.visible then Sfx.play("menuClose") end
     self.visible = false
@@ -356,22 +292,17 @@ function SettingsMenu:setTab(i)
     end
 end
 
--- ===================================================================
--- LAYOUT
--- ===================================================================
 function SettingsMenu:rebuild()
     self.tabs = self:_tabs()
     if self.tab > #self.tabs then self.tab = 1 end
 
     local sw, sh = love.graphics.getWidth(), love.graphics.getHeight()
-    U = 1   -- a escala mora no UiScale (espaço virtual); aqui é sempre 1:1
+    U = 1
     local PAD, TITLE_H, TAB_H, ROW_H = S(PAD), S(TITLE_H), S(TAB_H), S(ROW_H)
     local ROW_GAP, ZONE_GAP, BACK_H, ARROW_W = S(ROW_GAP), S(ZONE_GAP), S(BACK_H), S(ARROW_W)
     local pw = math.max(300, math.min(S(600), sw - 32))
     local innerW = pw - PAD * 2
 
-    -- Altura: conteúdo de altura FIXA (MAX_ROWS) — a aba não muda o painel.
-    -- Janela baixa: quem cede é a altura da linha (até 30px), não as zonas.
     local rowH = ROW_H
     local function total(rh)
         return PAD + TITLE_H + TAB_H + ZONE_GAP + MAX_ROWS * (rh + ROW_GAP) - ROW_GAP
@@ -398,7 +329,6 @@ function SettingsMenu:rebuild()
     y = y + TAB_H + ZONE_GAP
     z.content = { x = x, y = y, w = innerW, h = MAX_ROWS * (rowH + ROW_GAP) - ROW_GAP }
 
-    -- Coluna de controle à direita, larga o bastante pro "DESLIGADO" em DE.
     local ctrlW = math.min(S(300), math.floor(innerW * 0.56))
     self.rows = {}
     for i, def in ipairs(self.tabs[self.tab].rows) do
@@ -413,7 +343,6 @@ function SettingsMenu:rebuild()
         r.value = { x = cx + ARROW_W + m, y = ry + m, w = ctrlW - ARROW_W * 2 - m * 2, h = ah }
         r.label = { x = x + 12, y = ry, w = cx - (x + 12) - 12, h = rowH }
         if def.kind == "choice" then
-            -- a linha inteira é o alvo; sem setas
             r.left, r.right = nil, nil
             r.ctrl = { x = x, y = ry, w = innerW, h = rowH }
             r.value = r.ctrl
@@ -437,7 +366,6 @@ function SettingsMenu:resize()
     if self.visible then self:rebuild() end
 end
 
--- Não-sobreposição + tudo dentro do painel/janela (test_pause_menu).
 function SettingsMenu:validate()
     local problems = {}
     local p, z = self._panel, self._zones
@@ -491,10 +419,6 @@ function SettingsMenu:validate()
     return problems
 end
 
--- ===================================================================
--- AÇÕES
--- ===================================================================
--- Snapshot completo → disco (e espelho em _G.gameSettings).
 function SettingsMenu:_persist()
     local g = gs()
     local snapshot = {
@@ -517,11 +441,10 @@ function SettingsMenu:_persist()
     }
     for k, v in pairs(snapshot) do g[k] = v end
     local ok, err = SaveManager.saveSettings(snapshot)
-    if not ok then print("[SettingsMenu] falha ao salvar settings: " .. tostring(err)) end
+    if not ok then Debug.warn("[SettingsMenu] falha ao salvar settings: " .. tostring(err)) end
     return ok
 end
 
--- Muda a linha i um passo (dir -1/+1). Persiste.
 function SettingsMenu:stepRow(i, dir)
     local r = self.rows[i]
     if not r then return end
@@ -532,7 +455,6 @@ function SettingsMenu:stepRow(i, dir)
     self:_persist()
 end
 
--- Clique no corpo do valor: slider pula pro ponto; toggle/cycle avançam.
 function SettingsMenu:_clickValue(i, mx)
     local r = self.rows[i]
     if not r then return end
@@ -547,9 +469,6 @@ function SettingsMenu:_clickValue(i, mx)
     end
 end
 
--- ===================================================================
--- UPDATE / INPUT
--- ===================================================================
 function SettingsMenu:update(dt)
     if not self.visible then return end
     self._t = (self._t or 0) + (dt or 0)
@@ -599,7 +518,7 @@ function SettingsMenu:mousepressed(x, y, button)
         self._pressed = partAt(self, x, y)
         if self.backButton then self.backButton:mousepressed(x, y, button) end
     end
-    return true   -- modal
+    return true
 end
 
 function SettingsMenu:mousereleased(x, y, button)
@@ -655,9 +574,6 @@ function SettingsMenu:keypressed(key)
     return true
 end
 
--- ===================================================================
--- DRAW
--- ===================================================================
 local function drawSegments(r, value)
     local segs = 10
     local gap = 2
@@ -700,8 +616,6 @@ local function drawArrow(r, glyph, hot)
         math.floor(r.y + (r.h - f:getHeight()) / 2))
 end
 
--- Linha de idioma: selo do código + nome nativo; a ATUAL fica acesa
--- (placa dourada + lâmpada cheia), as outras são só texto sobre o painel.
 local function drawChoice(r, focused)
     local current = r.def.get()
     if current then
@@ -718,7 +632,6 @@ local function drawChoice(r, focused)
         Palette.set(Palette.AGED_GOLD_DARK, 0.45)
         love.graphics.rectangle("fill", r.x + 8, r.y + r.h + math.floor(S(ROW_GAP) / 2) - 1, r.w - 16, 1)
     end
-    -- selo do código
     local bw, bh = S(36), math.min(S(22), r.h - 10)
     local bx, by = r.x + S(14), r.y + math.floor((r.h - bh) / 2)
     Palette.set(current and Palette.INK or Palette.lerp(Palette.INK, Palette.PARCHMENT_DARK, 0.3))
@@ -727,11 +640,9 @@ local function drawChoice(r, focused)
     love.graphics.rectangle("line", bx + 0.5, by + 0.5, bw - 1, bh - 1, 2, 2)
     Palette.set(current and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT)
     TextFit.print(r.def.badge, bx, by + math.floor((bh - S(9)) / 2), { size = S(9), maxW = bw, align = "center" })
-    -- nome nativo
     Palette.set(current and Palette.INK or (focused and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT_LIGHT))
     TextFit.print(r.def.label, r.label.x, r.y + math.floor((r.h - S(12)) / 2),
         { size = S(12), maxW = r.label.w })
-    -- lâmpada à direita: cheia = atual (lê o estado sem depender do idioma)
     local d = S(10)
     local lx, ly = r.x + r.w - S(14) - d, r.y + math.floor((r.h - d) / 2)
     Palette.set(current and Palette.INK or Palette.AGED_GOLD_DARK)
@@ -772,8 +683,6 @@ function SettingsMenu:_drawRow(i, r, focused, mx, my)
         love.graphics.rectangle("fill", r.value.x, r.value.y, r.value.w, r.value.h, 3, 3)
         local ty = r.value.y + math.floor((r.value.h - S(10)) / 2)
         if kind == "toggle" then
-            -- lâmpada acesa/apagada COLADA no texto (grupo centralizado):
-            -- lê o estado antes da palavra, sem depender do idioma.
             local d, gapL = S(8), S(8)
             local font, shown = TextFit.fit(text, S(10), r.value.w - d - gapL - 12)
             local groupW = d + gapL + font:getWidth(shown)
@@ -802,7 +711,6 @@ function SettingsMenu:draw()
     UiPanel.draw(p.x, p.y, p.w, p.h)
     local mx, my = love.mouse.getPosition()
 
-    -- CABEÇALHO (mesma gramática da pausa)
     local title = I18n.t("settings.title")
     local tf, shown = TextFit.fit(title, S(22), z.title.w, 12)
     love.graphics.setFont(tf)
@@ -814,7 +722,6 @@ function SettingsMenu:draw()
     Palette.set(Palette.AGED_GOLD_DARK)
     love.graphics.rectangle("fill", z.title.x + 24, z.title.y + z.title.h - S(14), z.title.w - 48, 1)
 
-    -- ABAS
     for i, r in ipairs(self._tabRects) do
         local active = i == self.tab
         local hot = MenuKit.hit(r, mx, my)
@@ -832,19 +739,15 @@ function SettingsMenu:draw()
         TextFit.print(self.tabs[i].label, r.x + 6, r.y + math.floor((r.h - S(11)) / 2),
             { size = S(11), maxW = r.w - 12, align = "center" })
     end
-    -- base da aba ativa liga a aba ao conteúdo
     Palette.set(Palette.AGED_GOLD)
     love.graphics.rectangle("fill", z.tabs.x, z.tabs.y + z.tabs.h + 3, z.tabs.w, 2)
 
-    -- LINHAS
     for i, r in ipairs(self.rows) do
         self:_drawRow(i, r, i == self.focus, mx, my)
     end
 
-    -- VOLTAR
     if self.backButton then self.backButton:draw() end
 
-    -- anel de foco (por cima de tudo, item focado)
     if self.focus > #self.rows then
         MenuKit.focusRing(z.back.x, z.back.y, z.back.w, z.back.h, t)
     elseif self.rows[self.focus] then

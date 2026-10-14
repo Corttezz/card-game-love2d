@@ -1,31 +1,3 @@
--- tools/testkit.lua
--- Kit compartilhado da suite de testes automatizados (love . test_all).
---
--- Estilo: cada suite faz
---     local TK = require("tools.testkit")
---     local M = {}
---     function M.run()
---         local t = TK.new("nome da suite")
---         t:eq("descricao", obtido, esperado)
---         ...
---         return t:done()
---     end
---     return M
---
--- Helpers de assercao (t:*):
---   check(name, cond)          -- booleano cru
---   eq(name, got, want)        -- igualdade estrita (imprime got/want no fail)
---   near(name, got, want, eps) -- igualdade de float com tolerancia
---   truthy/falsy(name, v)
---   throws(name, fn)           -- espera que fn LANCE erro
---   noerror(name, fn)          -- espera que fn NAO lance
---
--- Fabricas:
---   TK.newRunGame(class)       -- Game de RUN pronto (deck, mao, combate pumpavel)
---   TK.pump(game, secs)        -- avanca EventManager + animacoes por `secs`
---   TK.mockGame(opts)          -- game leve pra testar EffectSystem isolado
---   TK.seedRng(seed)           -- Rng determinístico ativo (default 12345)
-
 local TK = {}
 
 local function fmt(v)
@@ -81,16 +53,16 @@ function Tester:noerror(name, fn)
     return self:check(name .. (ok and "" or ("  ERRO: " .. tostring(err))), ok)
 end
 
+function TK.verdict(ok)
+    print(ok and "\n== ALL GREEN ==" or "\n== SOME FAILED ==")
+    return ok
+end
+
 function Tester:done()
     print(string.format("\n  TOTAL: %d pass / %d fail", self.pass, self.fail))
     return self.fail == 0
 end
 
--- ============================================================================
--- Fabricas de ambiente
--- ============================================================================
-
--- Rng determinístico ativo (para ofertas/mapa/eventos/economia reproduzíveis).
 function TK.seedRng(seed)
     local Rng = require("src.systems.Rng")
     local r = Rng.new(seed or 12345)
@@ -98,13 +70,9 @@ function TK.seedRng(seed)
     return r
 end
 
--- Bootstrap mínimo do runtime que o Game espera (idempotente).
 function TK.bootstrap()
     _G.EventManager = _G.EventManager or require("engine.EventManager")
     _G.Event = _G.Event or require("engine.Event")
-    -- Escala de UI congelada em 1: os testes injetam cliques em coordenadas
-    -- de layout com janela falsificada; o espaço escalado tem teste próprio
-    -- (test_ui_scale, que desliga isto e restaura).
     require("src.ui.UiScale").force(1)
     local I18n = require("src.i18n.I18n")
     if I18n.init and not TK._i18nDone then
@@ -113,7 +81,6 @@ function TK.bootstrap()
     end
 end
 
--- Game de RUN pronto pra combate. Warrior por padrão.
 function TK.newRunGame(class)
     TK.bootstrap()
     local Game = require("src.core.Game")
@@ -123,8 +90,6 @@ function TK.newRunGame(class)
     return g
 end
 
--- Avança EventManager + animações por `secs` (dt fixo 1/30). Espelha o `pump`
--- de smoke_turn_order: é assim que o combate diferido (apex ~0.34s) avança.
 function TK.pump(game, secs)
     local dt = 1 / 30
     local EnemyRenderer = require("src.ui.EnemyRenderer")
@@ -136,8 +101,6 @@ function TK.pump(game, secs)
     end
 end
 
--- Game leve (sem combate/animação) pra exercitar EffectSystem em isolamento.
--- Espelha o mock de smoke_effects, com drawCard/addMessage funcionais.
 function TK.mockGame(opts)
     opts = opts or {}
     local Player = require("src.entities.Player")
@@ -157,7 +120,6 @@ function TK.mockGame(opts)
     function g:addMessage(text, level)
         self.messages[#self.messages + 1] = { text = text, level = level }
     end
-    -- drawCard stub: empilha uma carta genérica na mão (draw_cards/triggers).
     function g:drawCard(_delay)
         self.hand[#self.hand + 1] = { id = "stub_draw", type = "attack", attack = 1, cost = 0 }
         return true
@@ -166,7 +128,6 @@ function TK.mockGame(opts)
     return g
 end
 
--- Conta itens de uma lista que satisfazem pred.
 function TK.count(list, pred)
     local n = 0
     for _, v in ipairs(list) do if pred(v) then n = n + 1 end end

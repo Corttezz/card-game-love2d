@@ -1,7 +1,3 @@
--- components/TopBar.lua
--- Barra superior com informações do jogo (ouro, deck, config).
--- Pixel chrome: ink fill + borda dourada + ícones via IconLoader.
-
 local FontManager = require("src.ui.FontManager")
 local ImageCache  = require("src.ui.ImageCache")
 local IconLoader  = require("src.ui.IconLoader")
@@ -19,20 +15,17 @@ function TopBar:new()
     instance.visible = true
     instance.height = 52
 
-    -- Ícones PNG legados (coin/deck ainda carregam do assets/icons/)
     instance.coinIcon = ImageCache.get("assets/icons/coin.png")
     instance.deckIcon = ImageCache.get("assets/icons/deck.png")
 
-    -- Gear (pixel) via IconLoader — substitui config.png
     instance.gearIcon = IconLoader.get("gear")
 
     instance.game = nil
 
-    instance.configHover = 0   -- 0..1 suavizado (fade do hover)
-    instance.configSpin = 0    -- ângulo acumulado da engrenagem (nunca snapa)
+    instance.configHover = 0
+    instance.configSpin = 0
     instance.isConfigHovered = false
 
-    -- Valores eased pra display de gold/deck suavemente mutando.
     instance.disp = {}
 
     return instance
@@ -48,42 +41,25 @@ function TopBar:update(dt, game)
     local mx, my = love.mouse.getPosition()
     self.isConfigHovered = self:isConfigIconClicked(mx, my)
 
-    -- Hover da engrenagem: valor SUAVIZADO 0..1 (placa/escala fazem fade)
-    -- e giro ACUMULADO — acelera no hover, desacelera ao sair (sem snap).
     local hoverTarget = self.isConfigHovered and 1 or 0
     self.configHover = self.configHover
         + (hoverTarget - self.configHover) * math.min(1, dt * 12)
     self.configSpin = self.configSpin + dt * 3.2 * self.configHover
 
-    -- Ease gold toward real (ease_dollars-style do Balatro). Counter sobe/desce
-    -- suave em vez de saltar quando ganhar/gastar ouro.
     local g = game or self.game
-    -- Adota o game ATUAL (returnToMenu recria o Game — sem isto a barra fica
-    -- presa na instância morta: ouro congelado e engrenagem no aviso).
     if g and g ~= self.game then self.game = g end
     if g and g.economySystem then
         local realGold = g.economySystem.currentGold or 0
-        -- Detecta delta de gold (ganho/gasto) e dispara micro-jiggle Balatro-style
-        -- (engine/ui.lua:990 pattern: cada evento monetário empurra o accumulator).
-        -- Skip primeiro frame onde _lastGold é nil pra não jigglar no boot.
         if self._lastGold and self._lastGold ~= realGold then
             local delta = realGold - self._lastGold
             if _G.jiggleScreen then
-                local amt = math.min(0.6, 0.05 + math.abs(delta) * 0.02) -- cap pra não enjoar em ganhos grandes
+                local amt = math.min(0.6, 0.05 + math.abs(delta) * 0.02)
                 _G.jiggleScreen(amt)
             end
-            -- Flash direcional no NÚMERO (padrão TopPanel do StS: verde ao
-            -- ganhar, vermelho ao gastar — a direção da mudança é informação).
             self._goldFlash = {
                 dir = (delta > 0) and 1 or -1,
                 t = 0.6,
             }
-            -- SOM + número subindo no cofre. `goldGain` estava registrado
-            -- desde sempre e NUNCA tinha sido tocado por ninguém (auditoria
-            -- Set/2026); a barra já detectava o delta e só faltava soar.
-            -- Ancorar aqui — e não em quem paga — faz TODA fonte de ouro
-            -- (cash out, pular loja, evento, venda) celebrar no mesmo lugar:
-            -- o cofre. É a "moeda sendo resgatada" chegando ao destino.
             self:_onGoldDelta(delta)
         end
         if self._goldFlash then
@@ -95,18 +71,6 @@ function TopBar:update(dt, game)
     end
 end
 
--- Toca o som do cofre e sobe o número no bloco de ouro.
---
--- Dosagem deliberada (o dono pediu "efeitos sutis"): o pitch sobe com o
--- tamanho do ganho, mas satura — 3 de ouro e 40 de ouro soam diferentes sem
--- que 40 vire festa. Gasto NÃO ganha som próprio: quem gastou (compra,
--- reroll, forja) já toca o seu, e dobrar viraria eco.
---
--- O FloatingText é global (atualizado/desenhado em main.lua:1333/1462), então
--- funciona em QUALQUER estado — inclusive por cima da loja e do cash out.
--- Pisca o NÚMERO do ouro na direção dada (+1 ganho, -1 gasto/recusa) sem
--- que o valor mude — a loja usa quando o jogador tenta comprar sem ouro
--- (Loja v3: etiqueta treme, cofre pisca, nada de toast).
 function TopBar:flashGold(dir)
     self._goldFlash = { dir = ((dir or -1) > 0) and 1 or -1, t = 0.6 }
 end
@@ -118,20 +82,11 @@ function TopBar:_onGoldDelta(delta)
         Sfx.play("goldGain", { pitch = 0.94 + mag * 0.18, volume = 0.45 + mag * 0.2 })
     end
 
-    -- O slot do ouro é o alvo dos DOIS efeitos abaixo.
     local slots = self:_layout()
     local slot = slots and slots.gold
     if not slot then return end
     local alvoX = slot.x + slot.w * 0.5
 
-    -- Ganho de ouro chove moedas até o contador. Mora AQUI, e não nas telas,
-    -- porque este é o funil por onde todo delta passa — ligar tela por tela
-    -- deixaria a próxima fonte de ouro sem animação e ninguém perceberia
-    -- (era o caso do "Continuar" da loja). Ver src/ui/CoinBurst.lua.
-    --
-    -- Vem ANTES do FloatingText de propósito: os dois são independentes, e
-    -- pendurar as moedas depois do early-return dele faria uma falha no texto
-    -- levar a animação junto, calada.
     if delta > 0 then
         local okCB, CoinBurst = pcall(require, "src.ui.CoinBurst")
         if okCB then CoinBurst.spawn(delta, alvoX, self.height - 10) end
@@ -141,9 +96,6 @@ function TopBar:_onGoldDelta(delta)
     if not okFT or not FloatingText.spawn then return end
 
     local sign = (delta > 0) and "+" or ""
-    -- kind "gold" já existe no catálogo do FloatingText (dourado, 14px); só o
-    -- gasto sobrescreve a cor, pra manter a mesma leitura verde/vermelho do
-    -- flash direcional que roda logo acima.
     FloatingText.spawn(sign .. delta, alvoX, self.height - 6, {
         kind = "gold",
         color = (delta > 0) and nil or { 0.90, 0.35, 0.30, 1 },
@@ -151,21 +103,12 @@ function TopBar:_onGoldDelta(delta)
     })
 end
 
--- Layout CENTRALIZADO da barra: o tubo CRT distorce os cantos em telas
--- largas — todo o conteúdo (ouro/deck/score/progresso/engrenagem) vive num
--- grupo central, onde o vidro é plano e legível (pedido playtest Jul/2026).
--- FONTE ÚNICA de posições: draw, hover zones e mousepressed leem daqui.
---
--- Larguras MEDIDAS pelos textos do locale atual com números-modelo largos:
--- nenhum idioma estoura o bloco e o layout não "dança" quando o valor muda.
 function TopBar:_layout()
     local sw = love.graphics.getWidth()
     local f14 = FontManager.getFont(14)
     local f9 = FontManager.getFont(9)
-    -- 50 = offset REAL onde o texto é desenhado nos blocos (x+50 no draw) —
-    -- com 36 o texto invadia ~14px do gap do bloco vizinho.
     local ICON_W = 50
-    local PAD_R = 14    -- respiro à direita do texto
+    local PAD_R = 14
 
     local blocks = {}
     local function add(key, line1, line2)
@@ -191,12 +134,10 @@ function TopBar:_layout()
     if run then
         local l1 = run.endlessMode and I18n.t("top_bar.endless")
             or I18n.t("top_bar.act", { n = 8 })
-        -- Linha 2 mede com o sufixo REAL de selo/endless (RunModsText.short).
         local mods = require("src.ui.RunModsText").short(run, true)
         add("progress", l1, I18n.t("top_bar.floor", { x = 8, total = 8 })
             .. (mods ~= "" and (" · " .. mods) or ""))
     end
-    -- (engrenagem fica FORA do grupo: fixa no canto direito — _getConfigRect)
 
     local gap = 22
     local total = gap * math.max(0, #blocks - 1)
@@ -211,11 +152,7 @@ function TopBar:_layout()
     return out
 end
 
--- Zona interativa da barra: highlight dourado sutil no hover + tooltip via
--- StatusTooltip (show() agenda; main.lua desenha no fim do frame, por cima).
--- Chamar ANTES de desenhar o conteúdo do bloco (o highlight fica por baixo).
 function TopBar:_hoverZone(x0, w, tipName, ctx)
-    -- cada bloco com dica é alvo do foco do teclado/pad (foco = hover)
     require("src.ui.NavCursor").target("topbar:" .. tostring(tipName), x0, 0, w, self.height)
     local mx, my = love.mouse.getPosition()
     local hovered = mx >= x0 and mx <= x0 + w and my >= 0 and my <= self.height
@@ -238,14 +175,10 @@ function TopBar:draw()
 
     local screenWidth = love.graphics.getWidth()
 
-    -- Fundo pixel: ink fill + borda dourada dupla
-    -- Fundo mais ESCURO que PANEL_FILL: sob o CRT (scanlines+vinheta) o
-    -- dourado precisa de mais contraste (feedback: "difícil de enxergar").
     PixelCanvas.rect(0, 0, screenWidth, self.height, { 0.07, 0.055, 0.04, 0.98 })
     PixelCanvas.hline(0, self.height,     screenWidth, Palette.AGED_GOLD)
     PixelCanvas.hline(0, self.height + 1, screenWidth, Palette.AGED_GOLD_DARK)
 
-    -- Rivets dourados espaçados (rectangles 4x4 inteiros)
     for i = 0, 4 do
         local x = 20 + math.floor(i * (screenWidth - 40) / 4)
         PixelCanvas.rect(x - 2, self.height - 6, 4, 4, Palette.AGED_GOLD)
@@ -261,12 +194,10 @@ function TopBar:drawGameInfo()
     local centerY = math.floor(self.height / 2)
     local L = self:_layout()
 
-    -- Moeda
     if self.game and self.game.economySystem and L.gold then
         local coinX = L.gold.x
         local coinY = centerY - 22
 
-        -- Zona interativa (highlight + tooltip com breakdown dos juros).
         local interestGold = self.game.economySystem:calculateInterest()
         self:_hoverZone(coinX - 6, L.gold.w, "topbar_gold", {
             gold = self.game.economySystem.currentGold or 0,
@@ -274,9 +205,6 @@ function TopBar:drawGameInfo()
         })
 
         love.graphics.setColor(1, 1, 1, 1)
-        -- Ambient pulse Balatro-style (engine/text.lua:228 pulse pattern):
-        -- ícone ondula scale ±3% em sin lento (0.7 rad/s) pra não ficar estático.
-        -- Reduced motion zera a oscilação.
         local rm = _G.gameSettings and _G.gameSettings.reducedMotion
         local pulse = rm and 1 or (1 + math.sin(love.timer.getTime() * 0.7) * 0.03)
         local cw, ch = self.coinIcon:getWidth(), self.coinIcon:getHeight()
@@ -284,14 +212,12 @@ function TopBar:drawGameInfo()
         love.graphics.draw(self.coinIcon, coinX + cw * iconScale * 0.5, coinY + ch * iconScale * 0.5, 0,
                            scaledIcon, scaledIcon, cw / 2, ch / 2)
 
-        -- Cor do número: flash direcional (verde subiu / vermelho desceu)
-        -- decaindo de volta pro dourado — padrão TopPanel do StS.
         local base = Palette.AGED_GOLD_LIGHT
         if self._goldFlash then
             local k = math.min(1, self._goldFlash.t / 0.6)
             local flash = self._goldFlash.dir > 0
-                and { 0.45, 0.90, 0.40 }   -- verde: ganhou
-                or  { 0.95, 0.35, 0.30 }   -- vermelho: gastou/perdeu
+                and { 0.45, 0.90, 0.40 }
+                or  { 0.95, 0.35, 0.30 }
             love.graphics.setColor(
                 base[1] + (flash[1] - base[1]) * k,
                 base[2] + (flash[2] - base[2]) * k,
@@ -300,7 +226,6 @@ function TopBar:drawGameInfo()
             Palette.set(base)
         end
         love.graphics.setFont(FontManager.getFont(14))
-        -- Display eased pra counter Balatro-style (sobe/desce número suave)
         local goldDisp = math.floor((self.disp.gold or self.game.economySystem.currentGold or 0) + 0.001)
         local goldText = "$" .. goldDisp
         love.graphics.print(goldText, coinX + 50, centerY - 10)
@@ -313,7 +238,6 @@ function TopBar:drawGameInfo()
         end
     end
 
-    -- Deck
     if self.game and self.game.deck and L.deck then
         local deckX = L.deck.x
         local deckY = centerY - 22
@@ -341,14 +265,10 @@ function TopBar:drawGameInfo()
         end
     end
 
-    -- Score da run (F3 gameplay-overhaul): TINTA×SELO acumulado, sempre
-    -- visível — o "quero bater meu recorde" do Balatro. Vira dourado pulsante
-    -- pelo resto da run quando o recorde histórico é cruzado.
     if self.game and self.game.scoreSystem and L.score then
         local scoreX = L.score.x
         local IconLoader = require("src.ui.IconLoader")
 
-        -- Zona interativa (tooltip de score já existente, agora com highlight).
         local okPS, ProfileStats = pcall(require, "engine.ProfileStats")
         self:_hoverZone(scoreX - 6, L.score.w, "score", {
             best = (okPS and ProfileStats.get().bestScore) or 0,
@@ -376,8 +296,6 @@ function TopBar:drawGameInfo()
             or I18n.t("top_bar.score_label"), scoreX + 34, centerY + 6)
     end
 
-    -- Progresso da run: "ATO N" + "andar X/8" (StS TopPanel: onde estou e o
-    -- que vem por aí SEMPRE visíveis). Some fora do run mode (modo clássico).
     local run = self.game and self.game.runManager
         and self.game.runManager.currentRun
     if run and L.progress then
@@ -409,7 +327,6 @@ function TopBar:drawGameInfo()
 
         Palette.set(Palette.PARCHMENT)
         love.graphics.setFont(FontManager.getFont(9))
-        -- Selo do Grimório / ciclo e maldições do endless: sufixo na linha 2.
         local mods = RunModsText.short(run, true)
         love.graphics.print(I18n.t("top_bar.floor", { x = floorIn, total = total })
             .. (mods ~= "" and (" · " .. mods) or ""), progressX + 34, centerY + 6)
@@ -418,21 +335,14 @@ function TopBar:drawGameInfo()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Alvo do foco de teclado/pad (src/ui/NavCursor): a engrenagem — o MESMO
--- retângulo do hit-test do clique (mousepressed).
 function TopBar:_navTargets()
-    -- (ouro/deck/pontos/roteiro registram no _hoverZone: o MESMO bloco do
-    -- clique e da dica)
     local NavCursor = require("src.ui.NavCursor")
     local cx, cy, sz = self:_getConfigRect()
     NavCursor.target("topbar:gear", cx - 4, cy - 4, sz + 8, sz + 8)
 end
 
 function TopBar:_getConfigRect()
-    local iconPxSize = 32                                -- pixel size on screen
-    -- Engrenagem FIXA no canto direito (pedido do dono Jul/2026). Margem de
-    -- 30px: bezel do CRT come 20px e a placa de hover cresce +5px além do
-    -- ícone — assim nada fica atrás do gabinete.
+    local iconPxSize = 32
     local configX = love.graphics.getWidth() - iconPxSize - 30
     local configY = math.floor((self.height - iconPxSize) / 2)
     return configX, configY, iconPxSize
@@ -444,10 +354,8 @@ function TopBar:drawConfigIcon()
     local centerY = configY + iconPxSize / 2
     local hover = self.configHover or 0
 
-    -- Placa de hover FIXA (fora da rotação — só a engrenagem gira):
-    -- rounded plate dourada + aro claro, ambos com fade pelo hover suave.
     if hover > 0.02 then
-        local pad = 5  -- respiro pro gear girado não encostar no aro
+        local pad = 5
         local gd, gl = Palette.AGED_GOLD_DARK, Palette.AGED_GOLD_LIGHT
         PixelCanvas.rectRounded(configX - pad, configY - pad,
             iconPxSize + pad * 2, iconPxSize + pad * 2, 3,
@@ -464,9 +372,6 @@ function TopBar:drawConfigIcon()
         end
     end
 
-    -- Só a ENGRENAGEM roda (e cresce um tico no hover). Escala pelo
-    -- tamanho REAL do handle (PNG 64×64 do PixelLab ou matriz 16×16
-    -- fallback — o hard-code de 16 estouraria o PNG pra 128px).
     local drawSize = iconPxSize * (1 + 0.12 * hover)
     local scale = drawSize / (self.gearIcon.size and self.gearIcon.size.w or 16)
     love.graphics.push()
@@ -479,17 +384,12 @@ end
 
 function TopBar:setDeckClickCallback(cb) self.onDeckClick = cb end
 
--- Clique no indicador de ATO abre o ROTEIRO da run (mesmo molde do deck →
--- DeckViewer e do quadro de coringas → Gerenciador).
 function TopBar:setActClickCallback(cb) self.onActClick = cb end
 
 function TopBar:mousepressed(x, y, button)
     if not self.visible then return false end
     if y <= self.height then
         if self:isConfigIconClicked(x, y) then
-            -- Engrenagem abre o MENU DE PAUSA (StS-style: continuar /
-            -- configurações / salvar e sair / abandonar). Fallback legado:
-            -- toggleMenu do game (settings direto) se o pause não existir.
             if _G.togglePauseMenu then
                 _G.togglePauseMenu()
             elseif self.game and self.game.toggleMenu then
@@ -497,14 +397,12 @@ function TopBar:mousepressed(x, y, button)
             end
             return true
         end
-        -- F5 do UI Overhaul: área do deck abre o Deck Viewer global
         local L = self:_layout()
         if self.onDeckClick and L.deck
             and x >= L.deck.x - 6 and x <= L.deck.x + L.deck.w then
             self.onDeckClick()
             return true
         end
-        -- Bloco "ATO N / andar X" abre o Roteiro da jornada.
         if self.onActClick and L.progress
             and x >= L.progress.x - 6 and x <= L.progress.x + L.progress.w then
             self.onActClick()

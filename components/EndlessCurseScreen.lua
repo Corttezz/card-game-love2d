@@ -1,18 +1,3 @@
--- components/EndlessCurseScreen.lua
--- ESCOLHA DE MALDIÇÃO do endless (Out/2026). A cada ciclo de 8 andares
--- (RunManager:advanceFloorInAct → RunModifiers.beginEndlessCycle) duas
--- maldições ficam ABERTAS em run.endless.pending; esta tela obriga a escolher
--- uma (não tem "pular" — StS: Neow impõe a praga; aqui o jogador escolhe QUAL).
---
--- Quem abre: EndlessCurseScreen.watch(game, state), chamado todo frame pelo
--- love.update. Observar o ESTADO em vez de ser chamado por quem gira o ciclo
--- é o que torna a escolha à prova de Continuar: a pendência viaja no save e,
--- ao voltar pro mapa, a tela reabre sozinha.
---
--- Layout em ZONAS puro (layout + validate), recalculado por frame. Entrada:
--- mouse e teclado/gamepad via MenuKit (esquerda/direita escolhe, Enter
--- confirma).
-
 local FontManager = require("src.ui.FontManager")
 local Palette     = require("src.ui.Palette")
 local UiPanel     = require("src.ui.UiPanel")
@@ -37,7 +22,6 @@ local function fitFont(text, maxW, startSize, minSize)
     return FontManager.getFont(minSize)
 end
 
--- ===== layout puro =====
 function Screen.layout(sw, sh)
     local big = sw >= 1600 and sh >= 900
     local pw = math.min(big and 860 or 680, sw - 32)
@@ -82,7 +66,6 @@ function Screen.validate(L, sw, sh)
     return probs
 end
 
--- ===== ciclo =====
 function Screen:new()
     return setmetatable({ visible = false, time = 0, focus = 1 }, Screen)
 end
@@ -103,15 +86,12 @@ function Screen:show(game)
     Sfx.play("menuOpen")
 end
 
--- Fechar SEM escolher só acontece de fora (voltar ao menu); a pendência
--- continua no save e a tela reabre no próximo mapa.
 function Screen:hide()
     self.visible = false
 end
 
 function Screen:resize() end
 
--- Observa o estado: escolha pendente + mapa na tela = abre.
 function Screen.watch(screen, game, state)
     if not screen or screen.visible or not game then return end
     if state ~= "mapSelection" then return end
@@ -126,7 +106,6 @@ function Screen:choose(i)
     local id = pend and pend[i]
     if not id then return end
     if RunModifiers.chooseCurse(run, id) then
-        -- Escolha é estado da run: grava na hora (anti save-scum).
         if self.game.checkpointRun then self.game:checkpointRun() end
         Sfx.play("debuffApplied")
         Sfx.play("coinTotalThud")
@@ -147,7 +126,6 @@ function Screen:update(dt)
     end
 end
 
--- Texto da regra de uma maldição com o acúmulo que ela TERIA ao ser escolhida.
 local function curseLines(run, id)
     local c = RunModifiers.getCurse(id)
     local stacks = RunModifiers.curseStacks(run, id)
@@ -226,13 +204,11 @@ function Screen:draw()
     for i = 1, 2 do
         if pend[i] then
             self:_drawCard(i, L.cards[i], pend[i], run, L.big)
-            -- alvo do foco de teclado/pad (NavCursor): A escolhe = clique
             local r = L.cards[i]
             require("src.ui.NavCursor").target("curse:" .. i, r.x, r.y, r.w, r.h)
         end
     end
     require("src.systems.Tutorial").anchorList("curse_options", L.cards)
-    -- Maldições já carregadas (o peso que se acumula).
     local list = RunModifiers.curseList(run)
     local parts = {}
     for _, c in ipairs(list) do
@@ -248,7 +224,6 @@ function Screen:draw()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- ===== entrada =====
 function Screen:mousepressed() return true end
 
 function Screen:mousereleased(x, y, button)
@@ -274,8 +249,6 @@ function Screen:keypressed(key)
     elseif it == "confirm" then
         self:choose(self.focus)
     end
-    -- "back" não fecha: a escolha é obrigatória (o modal captura o teclado,
-    -- então nem a pausa abre por cima — decide-se primeiro).
     return true
 end
 

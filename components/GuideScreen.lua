@@ -1,18 +1,4 @@
--- components/GuideScreen.lua
--- GUIA DO GRIMÓRIO (onboarding, Out/2026): a referência que faltava.
---
--- Auditoria de jogabilidade: 13 combos e nenhuma lista deles no jogo; o
--- glossário de palavras-chave só existia em pedaços, dentro do tooltip da
--- carta. Duas abas, ambas GERADAS dos dados (texto e regra nunca divergem):
---   Combos     ComboSystem.RULES → nome (combos.<id>), regra + efeito
---              (DamagePreviewPanel.comboDescription — o MESMO texto da prévia
---              de dano, que já diz o requisito) e cartas de exemplo com a tag,
---              da classe da run primeiro.
---   Glossário  src/data/keywords.lua → keyword.<id>.name / .text.
---
--- Abre pelo atalho "Guia" da Pausa ou pela tecla G em qualquer tela da run
--- (main.lua). Navega sozinha (ownsNavigation): ←/→ ou LB/RB trocam a aba,
--- ↑/↓ e a roda rolam, Esc/B/G fecham.
+local Debug = require("src.core.Debug")
 
 local I18n = require("src.i18n.I18n")
 local FontManager = require("src.ui.FontManager")
@@ -28,15 +14,13 @@ local PAD = 24
 local ROW_GAP = 12
 local SCROLL_STEP = 48
 
--- Alvo do foco de teclado/pad (src/ui/NavCursor). O módulo é de outra frente;
--- se faltar, o Guia segue funcionando pelo teclado próprio e AVISA uma vez.
 local navWarned = false
 local function navTarget(id, x, y, w, h)
     local ok, NC = pcall(require, "src.ui.NavCursor")
     if ok and NC.target then return NC.target(id, x, y, w, h) end
     if not navWarned then
         navWarned = true
-        print("[GuideScreen] AVISO: src.ui.NavCursor indisponível — sem alvos de foco")
+        Debug.warn("[GuideScreen] AVISO: src.ui.NavCursor indisponível — sem alvos de foco")
     end
 end
 
@@ -77,9 +61,6 @@ end
 function GuideScreen:resize() self.scroll = math.min(self.scroll, self.maxScroll or 0) end
 function GuideScreen:update() end
 
--- ===== Conteúdo (gerado dos dados) =====
-
--- Até 3 cartas (não-coringa) com a tag, da classe da run primeiro.
 local function exampleCards(tag, classId)
     local CardDatabase = require("src.systems.CardDatabase")
     local TagSystem = require("src.systems.TagSystem")
@@ -141,7 +122,6 @@ function GuideScreen.glossaryEntries()
     return out
 end
 
--- ===== Layout (puro: zonas título / abas / conteúdo) =====
 function GuideScreen:layout()
     local W, H = love.graphics.getWidth(), love.graphics.getHeight()
     local fTitle = FontManager.getFont(20)
@@ -163,7 +143,6 @@ function GuideScreen:layout()
     return L
 end
 
--- Linhas do conteúdo medidas na largura dada.
 function GuideScreen:_rows(L)
     local classId = self.game and self.game.selectedClass
     local entries = (TABS[self.tab] == "combos") and GuideScreen.comboEntries(classId)
@@ -193,7 +172,6 @@ function GuideScreen:_rows(L)
     return rows
 end
 
--- ===== Input =====
 function GuideScreen:setTab(i)
     local n = #TABS
     i = ((i - 1) % n) + 1
@@ -227,7 +205,6 @@ function GuideScreen:mousepressed() return self.visible end
 
 function GuideScreen:mousereleased(x, y, button)
     if not self.visible then return false end
-    -- o release do clique que abriu (atalho da pausa) não fecha a tela
     if love.timer.getTime() - self._openedAt < 0.25 or button ~= 1 then return true end
     local L = self:layout()
     if hit(L.close, x, y) then self:hide() return true end
@@ -237,7 +214,6 @@ function GuideScreen:mousereleased(x, y, button)
     return true
 end
 
--- ===== Desenho =====
 function GuideScreen:draw()
     if not self.visible then return end
     local L = self:layout()
@@ -252,14 +228,12 @@ function GuideScreen:draw()
     love.graphics.rectangle("line", p.x, p.y, p.w, p.h, 8, 8)
     love.graphics.setLineWidth(1)
 
-    -- título
     local fTitle = FontManager.getFont(20)
     love.graphics.setFont(fTitle)
     local title = I18n.t("tutorial.guide.title")
     setColor(Palette.AGED_GOLD_LIGHT)
     love.graphics.print(title, math.floor(L.title.x + (L.title.w - fTitle:getWidth(title)) / 2), L.title.y)
 
-    -- fechar
     local c = L.close
     local ch = hit(c, mx, my)
     setColor(ch and Palette.BLOOD or Palette.PARCHMENT, 0.95)
@@ -269,7 +243,6 @@ function GuideScreen:draw()
     love.graphics.setLineWidth(1)
     navTarget("guide:close", c.x, c.y, c.w, c.h)
 
-    -- abas
     local fTab = FontManager.getFont(12)
     love.graphics.setFont(fTab)
     for i, r in ipairs(L.tabs) do
@@ -290,7 +263,6 @@ function GuideScreen:draw()
     setColor(Palette.PARCHMENT, 0.75)
     love.graphics.print(I18n.t("tutorial.guide.close_hint"), L.hint.x, L.hint.y + 4)
 
-    -- conteúdo rolável
     local z = L.content
     local rows = self:_rows(L)
     local total = 0

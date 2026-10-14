@@ -1,11 +1,3 @@
--- components/MapScreen.lua
--- Tela imersiva de escolha de caminho. Tela inteira dividida em N painéis
--- verticais (N = #nodes). Cada painel mostra uma scene full-height ilustrada
--- (assets/sprites/scenes/path_<type>.png) com overlay de número, nome e descrição.
---
--- Hover: painel ganha brilho + leve zoom. Outros painéis ficam dim.
--- Atalhos: 1/2/3 escolhem painel correspondente.
-
 local MapScreen = {}
 MapScreen.__index = MapScreen
 
@@ -15,10 +7,6 @@ local EnemyRenderer = require("src.ui.EnemyRenderer")
 local Sfx           = require("src.systems.Sfx")
 local I18n          = require("src.i18n.I18n")
 
--- Cache de sprites estáticos do inimigo (south.png) reaproveitando os assets
--- já gerados pelo enemy pipeline. Mostrados como preview no MapScreen pra
--- jogador antecipar qual inimigo vai enfrentar — uso real das rotações que
--- antes eram só geradas e nunca renderizadas.
 local enemyPreviewCache = {}
 local enemyPreviewMiss = {}
 local function loadEnemySouthSprite(spriteId)
@@ -37,7 +25,6 @@ local function loadEnemySouthSprite(spriteId)
     return img
 end
 
--- Cache local de scenes path_*.png pra não recarregar a cada draw
 local sceneCache = {}
 local sceneMiss = {}
 
@@ -67,11 +54,9 @@ function MapScreen:new()
     instance.onNodeChosen = nil
     instance.hoverIndex = nil
     instance.panelRects = {}
-    instance.title = nil   -- resolvido no draw (o locale pode mudar depois do :new)
-    -- Fade-out animation: ao escolher node, outros ease alpha → 0.25 em 0.28s
-    -- antes do callback disparar (Balatro decision-feedback pattern).
+    instance.title = nil
     instance.chosenIdx = nil
-    instance.dimOthers = 0  -- 0 (todos full) → 1 (não-escolhidos a 25%)
+    instance.dimOthers = 0
     return instance
 end
 
@@ -98,8 +83,6 @@ function MapScreen:updateLayout()
     local sh = love.graphics.getHeight()
     local n = math.max(1, #self.nodes)
 
-    -- Cada painel ocupa toda a altura e (sw / n) da largura.
-    -- Reservar topo pra título (~10%) e bottom pra hint (~5%).
     local titleH = math.floor(sh * 0.10)
     local hintH = math.floor(sh * 0.05)
     local panelTop = titleH
@@ -130,18 +113,15 @@ function MapScreen:update(dt)
     end
 end
 
--- Desenha bg da scene cobrindo o painel (cover-fit), com tint dim quando não-hover.
 local function drawPanelBackground(node, r, isHover)
     local img = loadPathScene(node.type)
     if not img then
-        -- Fallback: gradient escuro no painel
         love.graphics.setColor(Palette.PARCHMENT_DARK[1], Palette.PARCHMENT_DARK[2],
                                Palette.PARCHMENT_DARK[3], 1)
         love.graphics.rectangle("fill", r.x, r.y, r.w, r.h)
         return
     end
 
-    -- Cover-fit: maior fator preenche painel inteiro, sobra é cortada
     local iw, ih = img:getWidth(), img:getHeight()
     local sx = r.w / iw
     local sy = r.h / ih
@@ -151,11 +131,8 @@ local function drawPanelBackground(node, r, isHover)
     local ox = r.x + (r.w - dw) / 2
     local oy = r.y + (r.h - dh) / 2
 
-    -- Scissor pra clipar dentro do painel (mais simples que stencil + funciona
-    -- com Canvas do CRTShader sem precisar de stencil enabled).
     love.graphics.setScissor(r.x, r.y, r.w, r.h)
 
-    -- Tint: hover = full brightness, outros = 60% pra criar contraste
     if isHover then
         love.graphics.setColor(1, 1, 1, 1)
     else
@@ -163,17 +140,14 @@ local function drawPanelBackground(node, r, isHover)
     end
     love.graphics.draw(img, ox, oy, 0, s, s)
 
-    love.graphics.setScissor() -- reseta clip
+    love.graphics.setScissor()
 
-    -- Borda lateral entre painéis (linha vertical sutil)
     love.graphics.setColor(Palette.INK[1], Palette.INK[2], Palette.INK[3], 0.7)
     love.graphics.setLineWidth(2)
     love.graphics.rectangle("line", r.x, r.y, r.w, r.h)
 end
 
--- Overlay com gradient bottom (escurece pra texto ficar legível) + número + label + desc
 local function drawPanelOverlay(node, index, r, isHover)
-    -- Gradient bottom (escuro pra texto legível)
     local gradH = math.floor(r.h * 0.40)
     for i = 0, gradH do
         local alpha = (i / gradH) * 0.85
@@ -181,7 +155,6 @@ local function drawPanelOverlay(node, index, r, isHover)
         love.graphics.rectangle("fill", r.x, r.y + r.h - gradH + i, r.w, 1)
     end
 
-    -- Top: número grande "1" "2" "3" em círculo
     local circleSize = math.floor(r.w * 0.12)
     local circleX = r.x + math.floor(r.w / 2)
     local circleY = r.y + math.floor(r.h * 0.08) + circleSize
@@ -204,7 +177,6 @@ local function drawPanelOverlay(node, index, r, isHover)
     love.graphics.setColor(isHover and Palette.INK or Palette.PARCHMENT_LIGHT)
     love.graphics.print(numStr, circleX - nw / 2, circleY - nh / 2)
 
-    -- Bottom: label grande + descrição
     local labelFont = FontManager.getResponsiveFont(0.038, 28)
     local descFont  = FontManager.getResponsiveFont(0.020, 14)
 
@@ -216,8 +188,6 @@ local function drawPanelOverlay(node, index, r, isHover)
                        (isHover and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT_LIGHT)
     love.graphics.setFont(labelFont)
     love.graphics.setColor(labelColor)
-    -- labelFor/descFor e não node.label: um nó vindo do save carrega o texto
-    -- do idioma em que foi gerado.
     local MapManager = require("src.systems.MapManager")
     love.graphics.printf(MapManager.labelFor(node.type), r.x + 8, labelY, r.w - 16, "center")
 
@@ -226,7 +196,6 @@ local function drawPanelOverlay(node, index, r, isHover)
                            Palette.PARCHMENT_LIGHT[3], 0.92)
     love.graphics.printf(MapManager.descFor(node.type), r.x + 12, descY, r.w - 24, "center")
 
-    -- Hover: borda dourada brilhante destacando o painel selecionado
     if isHover then
         love.graphics.setColor(Palette.AGED_GOLD_LIGHT[1], Palette.AGED_GOLD_LIGHT[2],
                                Palette.AGED_GOLD_LIGHT[3], 0.85)
@@ -240,34 +209,25 @@ function MapScreen:draw()
     local sw = love.graphics.getWidth()
     local sh = love.graphics.getHeight()
 
-    -- Fundo geral preto (caso scenes não cubram)
     love.graphics.setColor(0, 0, 0, 1)
     love.graphics.rectangle("fill", 0, 0, sw, sh)
 
-    -- Título no topo
     local titleFont = FontManager.getResponsiveFont(0.042, 32)
     love.graphics.setFont(titleFont)
     love.graphics.setColor(Palette.AGED_GOLD_LIGHT)
-    -- Titulo resolvido AQUI (nao no :new): a tela e criada uma vez no boot e
-    -- sobrevive a troca de idioma nas configuracoes.
     local title = self.title or I18n.t("map.title", nil, "Escolha o proximo caminho")
     local tw = titleFont:getWidth(title)
     love.graphics.print(title, math.floor((sw - tw) / 2), math.floor(sh * 0.025))
 
-    -- Painéis (com dim ease nos não-escolhidos quando dimOthers > 0)
     for i, r in ipairs(self.panelRects) do
         local node = self.nodes[i]
         if node then
             local isHover = (self.hoverIndex == i)
             drawPanelBackground(node, r, isHover)
 
-            -- PREVIEW DO INIMIGO: pra nodes de combate, sobrepor sprite south
-            -- do inimigo que será enfrentado (usa os assets já gerados).
             local isCombat = (node.type == "battle" or node.type == "elite"
                 or node.type == "mini_boss" or node.type == "boss")
             if isCombat then
-                -- O inimigo do nó já foi sorteado (EnemyRoster) — a prévia
-                -- mostra exatamente quem vai lutar.
                 local spriteId = node.enemyId
                     or EnemyRenderer.resolveSpriteId(node.actNumber, node.type)
                 local img = loadEnemySouthSprite(spriteId)
@@ -278,12 +238,10 @@ function MapScreen:draw()
                     local px = r.x + math.floor((r.w - iw * scale) / 2)
                     local py = r.y + math.floor(r.h * 0.32)
 
-                    -- Sombra elíptica no chão pra grudar no painel
                     love.graphics.setColor(0, 0, 0, 0.55)
                     love.graphics.ellipse("fill", r.x + r.w / 2,
                         py + ih * scale + 4, iw * scale * 0.35, 5)
 
-                    -- Sprite com tint segundo hover state
                     if isHover then
                         love.graphics.setColor(1, 1, 1, 1)
                     else
@@ -296,9 +254,6 @@ function MapScreen:draw()
 
             drawPanelOverlay(node, i, r, isHover)
 
-            -- Dim overlay sobre nodes NÃO-escolhidos enquanto a transição roda.
-            -- Desenhado por cima de tudo que esse panel pintou, simulando "o
-            -- jogador escolheu, esses caminhos ficam pra trás" (Balatro feel).
             if self.chosenIdx and self.chosenIdx ~= i and (self.dimOthers or 0) > 0 then
                 love.graphics.setColor(0, 0, 0, 0.65 * self.dimOthers)
                 love.graphics.rectangle("fill", r.x, r.y, r.w, r.h)
@@ -307,21 +262,15 @@ function MapScreen:draw()
         end
     end
 
-    -- foco de teclado/pad (NavCursor): cada painel de node é um alvo
     for i, r in ipairs(self.panelRects or {}) do
         require("src.ui.NavCursor").target("node:" .. i, r.x, r.y, r.w, r.h)
     end
-
-    -- Sem faixa de dica no rodapé (pedido do dono, Out/2026: textos
-    -- informativos poluíam a tela). Os marcos já se explicam no hover e as
-    -- teclas 1/2/3 continuam funcionando — ver HintBar.ENABLED.
 
     love.graphics.setColor(1, 1, 1, 1)
 end
 
 function MapScreen:mousepressed(x, y, button)
     if not self.visible or button ~= 1 then return end
-    -- Bloqueia segundo clique enquanto a transição de saída roda.
     if self.chosenIdx then return true end
     for i, r in ipairs(self.panelRects) do
         if x >= r.x and x < r.x + r.w and y >= r.y and y < r.y + r.h then
@@ -336,9 +285,6 @@ function MapScreen:mousepressed(x, y, button)
     return false
 end
 
--- Marca o node escolhido, ease alpha dos outros pra 0.25, e dispara callback
--- após 0.28s. Replica decision-feedback Balatro: o jogador VÊ a escolha "afundar"
--- antes do flow seguir, em vez de cortar abrupto.
 function MapScreen:_chooseNode(node, idx)
     self.chosenIdx = idx
     local EM = _G.EventManager
@@ -355,7 +301,7 @@ end
 function MapScreen:mousereleased(x, y, button) return false end
 
 function MapScreen:keypressed(key)
-    if self.chosenIdx then return end -- bloqueia keyboard durante transição
+    if self.chosenIdx then return end
     if key == "1" or key == "2" or key == "3" or key == "4" then
         local i = tonumber(key)
         local node = self.nodes[i]

@@ -1,33 +1,3 @@
--- components/RunJournalScreen.lua
--- ROTEIRO DA JORNADA — um MAPA DESENHADO À MÃO, por ato, numa folha de
--- pergaminho envelhecida.
---
--- Pedido do dono (13/Out/2026): "Quero que ele seja literalmente um mapa, bem
--- parecido com o mapa do Slay the Spire, que vai mostrando ali os trilhos que
--- a gente vai seguindo e as decisões que a gente vai tomando. A gente
--- consegue abrir e fechar o mapa para cada ato... como se tivesse sido
--- escrito à mão, apenas com tinta preta e, no máximo, um círculo vermelho.
--- Bem cara de mapa mesmo, com uma folha envelhecida."
---
--- Daí as leis desta tela:
---   1. UMA FOLHA POR ATO, empilhadas; cada uma ABRE e FECHA (o ato em
---      andamento nasce aberto, os anteriores fechados numa tira com o título).
---   2. O mapa SOBE (andar 1 embaixo, castelo no topo), como no StS. Em cada
---      encruzilhada aparecem os ramos que EXISTIAM: o tomado em traço cheio,
---      os outros em pontilhado esmaecido terminando curto (não explorado).
---      A encruzilhada ainda em aberto (pendingNodes) aparece à frente.
---   3. SÓ TINTA PRETA no papel, e no máximo UM círculo vermelho: onde o
---      jogador está. Nada de ícone PNG, foto de castelo nem cor de acento.
---      Os símbolos são glifos de pena (src/ui/RunJournalInk.lua), o traço
---      ondula por seed da run (sempre igual pra mesma run).
---   4. O resultado de cada parada vira ANOTAÇÃO À MARGEM, em letra miúda.
---   5. ATO NÃO JOGADO NÃO APARECE.
---
--- Layout por ZONAS em src/ui/RunJournalLayout.lua (puro, validate()).
--- Abrir: clique no indicador de ATO da TopBar OU tecla M. ESC/M/X fecha.
--- Teclado/pad: setas rolam, Enter/A abre ou fecha o ato focado (NavCursor),
--- 1..9 abre ou fecha o ato N.
-
 local RunJournalScreen = {}
 RunJournalScreen.__index = RunJournalScreen
 
@@ -48,8 +18,6 @@ local SCROLL_STEP = 48
 local KEY_STEP    = 120
 local INK, RED    = Ink.INK, Ink.RED
 
--- Avisos de dado faltando saem UMA vez por chave (nada de fallback silencioso
--- — mas também nada de spam a 60fps).
 local warned = {}
 local function warnOnce(key, msg)
     if warned[key] then return end
@@ -68,9 +36,6 @@ local function setAlpha(color, a)
     love.graphics.setColor(color[1], color[2], color[3], a)
 end
 
--- Opção escolhida num evento, no idioma ATUAL: pela chave do evento
--- (events.<id>.optN). O texto gravado no save (`optionLabel`) é do idioma
--- daquela hora — fica só de fallback (evento sem chave, save antigo).
 function RunJournalScreen.optionText(e)
     if not e then return nil end
     if e.eventId and e.optionIndex then
@@ -91,8 +56,6 @@ local function signed(n)
     return (n > 0 and "+" or "") .. tostring(n)
 end
 
--- ===== Ciclo de vida =====================================================
-
 function RunJournalScreen:new()
     local instance = setmetatable({}, RunJournalScreen)
     instance.visible = false
@@ -101,14 +64,11 @@ function RunJournalScreen:new()
     instance.scroll = 0
     instance.maxScroll = 0
     instance._openedAt = 0
-    instance._hover = nil      -- { sheet = i, node = j } | { sheet = i, stub = k } | { sheet = i, title = true }
+    instance._hover = nil
     instance._seed = 0
     return instance
 end
 
--- Agrupa os nós visitados em atos, na ordem em que foram visitados, e decide
--- a LINHA de cada parada no mapa: andar (ato normal) ou índice (endless, em
--- que o par ato/andar se repete).
 function RunJournalScreen:_build()
     self.acts = {}
     self.totals = { cards = 0, forges = 0, jokers = 0, removed = 0 }
@@ -136,15 +96,11 @@ function RunJournalScreen:_build()
         end
     end
 
-    -- Ato concluído = o jogador já cruzou pra um ato posterior. O ato corrente
-    -- fica "em progresso" mesmo com o boss no fim da lista, porque a travessia
-    -- só acontece no advanceFloorInAct seguinte.
     local curAct = run.actNumber or 1
     for i, b in ipairs(self.acts) do
         b.conquered = b.act < curAct
         b.isEndless = run.endlessMode and b.act >= curAct
-        b.open = (i == #self.acts)     -- o ato em andamento nasce aberto
-        -- linhas
+        b.open = (i == #self.acts)
         local lastRow = 0
         for j, e in ipairs(b.nodes) do
             local row
@@ -157,7 +113,6 @@ function RunJournalScreen:_build()
             e._row = row
             lastRow = row
         end
-        -- a encruzilhada ainda em aberto só existe no ÚLTIMO ato
         b.pending = nil
         if i == #self.acts and run.pendingNodes and #run.pendingNodes > 0 then
             local row = lastRow + 1
@@ -166,7 +121,6 @@ function RunJournalScreen:_build()
                 for k, nd in ipairs(run.pendingNodes) do b.pending.types[k] = nd.type end
             end
         end
-        -- legenda: os tipos que aparecem na folha (tomados, ramos e à frente)
         local seen, list = {}, {}
         local function note(t)
             t = glyphFor(t)
@@ -187,7 +141,6 @@ function RunJournalScreen:show(game)
     self._hover = nil
     self._openedAt = love.timer.getTime()
     self:_build()
-    -- Abre com o ato em andamento (a última folha) visível por inteiro.
     self.scroll = 0
     local L = self:_layout()
     local last = L.sheets[#L.sheets]
@@ -211,9 +164,6 @@ end
 
 function RunJournalScreen:isVisible() return self.visible end
 
--- O layout inteiro é DERIVADO da janela a cada frame (_layout()); nenhuma
--- coordenada sobrevive a um resize. O único estado de posição guardado é o
--- scroll, e a janela nova pode ter um maxScroll menor — _layout reclampa.
 function RunJournalScreen:resize()
     self._hover = nil
     Ink.clearPaperCache()
@@ -221,8 +171,6 @@ function RunJournalScreen:resize()
 end
 
 function RunJournalScreen:update(dt) end
-
--- ===== Layout =============================================================
 
 function RunJournalScreen:_closeRect()
     local sw = love.graphics.getWidth()
@@ -253,7 +201,6 @@ function RunJournalScreen:_layout()
     return L
 end
 
--- Abre/fecha a folha do ato i. Ao abrir, rola pra ela aparecer do topo.
 function RunJournalScreen:toggleAct(i)
     local b = self.acts[i]
     if not b then return false end
@@ -273,15 +220,12 @@ function RunJournalScreen:isActOpen(i)
     return self.acts[i] and self.acts[i].open or false
 end
 
--- ===== Input ==============================================================
-
 function RunJournalScreen:wheelmoved(dx, dy)
     if not self.visible then return false end
     self.scroll = math.max(0, math.min(self.maxScroll, self.scroll - dy * SCROLL_STEP))
     return true
 end
 
--- Índice do ato cujo título está sob (x, y), ou nil.
 function RunJournalScreen:_titleAt(x, y)
     local L = self:_layout()
     if y < L.zone.y or y > L.zone.y + L.zone.h then return nil end
@@ -309,7 +253,6 @@ function RunJournalScreen:keypressed(key)
     elseif key == "end" then
         self.scroll = self.maxScroll
     elseif key == "return" or key == "kpenter" or key == "space" then
-        -- o ato FOCADO (NavCursor) ou, sem foco de teclado, o sob o mouse
         local NavCursor = require("src.ui.NavCursor")
         local fk = NavCursor.focusKey and NavCursor.focusKey()
         local i = type(fk) == "string" and tonumber(fk:match("^act:(%d+)$"))
@@ -318,7 +261,7 @@ function RunJournalScreen:keypressed(key)
     elseif key:match("^%d$") and key ~= "0" then
         self:toggleAct(tonumber(key))
     end
-    return true   -- consome tudo enquanto aberta
+    return true
 end
 
 function RunJournalScreen:mousepressed(x, y, button)
@@ -328,8 +271,6 @@ end
 
 function RunJournalScreen:mousereleased(x, y, button)
     if not self.visible then return false end
-    -- O RELEASE do mesmo clique que abriu (press na TopBar) chega aqui e
-    -- fecharia a tela no mesmo frame — mesma armadilha do DeckViewerScreen.
     if love.timer.getTime() - (self._openedAt or 0) < 0.25 then return true end
     if button ~= 1 then return true end
     local cx, cy, cw, ch = self:_closeRect()
@@ -342,14 +283,9 @@ function RunJournalScreen:mousereleased(x, y, button)
     return true
 end
 
--- ===== Conteúdo de uma parada =============================================
-
--- A anotação à margem: o ganho mais importante, ou a opção do evento.
--- Devolve texto, quantos ganhos ficaram de fora, e se é remoção (riscada).
 local function primaryOutcome(e)
     local gains = e.gains or {}
     if #gains > 0 then
-        -- Prioridade: coringa > carta > forja > remoção (o que mais muda a run).
         local order = { joker = 1, card = 2, forge = 3, remove = 4 }
         local best = gains[1]
         for _, g in ipairs(gains) do
@@ -370,8 +306,6 @@ local function primaryOutcome(e)
     return nil
 end
 
--- Linhas do detalhe completo (hover). Linha só aparece quando o valor MUDOU:
--- "Vida 56 -> 56" numa loja é ruído.
 local function detailLines(e)
     local lines = {
         { t = MapManager.labelFor(e.type), big = true },
@@ -424,8 +358,6 @@ local function detailLines(e)
     return lines
 end
 
--- ===== Render =============================================================
-
 function RunJournalScreen:_drawHeader(L)
     local sw = L.sw
     local run = self.game and self.game.runManager and self.game.runManager.currentRun
@@ -447,16 +379,14 @@ function RunJournalScreen:_drawHeader(L)
             total = MapManager.FLOORS_PER_ACT,
             stops = #(run.mapHistory or {}),
         }, "ato " .. (run.actNumber or 1) .. " - andar " .. (run.floorInAct or 1))
-            -- Selo do Grimório / ciclo e maldições do endless
             .. ((function() local m = require("src.ui.RunModsText").short(run)
                 return m ~= "" and ("  ·  " .. m) or "" end)()),
             70, ty + tf:getHeight() + 8, { size = 9, maxW = maxW, align = "center" })
     end
 
-    -- botão fechar (tinta + papel, sem cor de acento)
     local mx, my = love.mouse.getPosition()
     local cx, cy, cw, ch = self:_closeRect()
-    require("src.ui.NavCursor").target("close", cx, cy, cw, ch)   -- foco de teclado/pad
+    require("src.ui.NavCursor").target("close", cx, cy, cw, ch)
     local hot = mx >= cx and mx <= cx + cw and my >= cy and my <= cy + ch
     setAlpha(hot and Palette.PARCHMENT or Palette.INK, 1)
     love.graphics.rectangle("fill", cx, cy, cw, ch)
@@ -469,8 +399,6 @@ function RunJournalScreen:_drawHeader(L)
     love.graphics.print("X", cx + (cw - xf:getWidth("X")) / 2, cy + (ch - xf:getHeight()) / 2)
 end
 
--- Título da folha (aberta ou fechada): marca de dobra [+]/[-], nome do ato,
--- estado à direita. Toda a banda é o alvo do clique.
 function RunJournalScreen:_drawTitle(L, S, i, hovered)
     local b = S.src
     local t = S.title
@@ -495,7 +423,6 @@ function RunJournalScreen:_drawTitle(L, S, i, hovered)
     end
 
     local ty = t.y + math.floor((t.h - 10) / 2)
-    -- marca de dobra: quadradinho com + (fechado) ou - (aberto)
     local bx, by = t.x, ty
     Ink.line(bx, by, bx + 9, by, INK, 1, seed + 1, { wobble = 0.3 })
     Ink.line(bx + 9, by, bx + 9, by + 9, INK, 1, seed + 2, { wobble = 0.3 })
@@ -512,10 +439,8 @@ function RunJournalScreen:_drawTitle(L, S, i, hovered)
     setAlpha(INK, 1)
     local lw = TextFit.print(label, t.x + 16, ty, { size = 11, maxW = t.w - stateW - 28 })
     if hovered then
-        -- sublinhado de pena no hover (foco = hover)
         Ink.line(t.x + 16, ty + 13, t.x + 16 + lw, ty + 13, INK, 0.9, seed + 5, { wobble = 0.6 })
     end
-    -- filete sob o título da folha aberta
     if b.open then
         Ink.line(t.x, t.y + t.h - 2, t.x + t.w, t.y + t.h - 2, INK, 0.55, seed + 6, { wobble = 0.5 })
     end
@@ -529,8 +454,6 @@ function RunJournalScreen:_drawMap(L, S, i)
     local mx, my = love.mouse.getPosition()
     local NavCursor = require("src.ui.NavCursor")
 
-    -- numerais dos andares (ato normal: 1..8 sempre; endless: o andar de cada
-    -- parada na linha dela)
     local nf = FontManager.getFont(8)
     love.graphics.setFont(nf)
     setAlpha(INK, 0.8)
@@ -545,12 +468,10 @@ function RunJournalScreen:_drawMap(L, S, i)
         end
     end
 
-    -- castelo do ato: alcançado = traço cheio; ainda não = esmaecido
     if S.castle then
         Ink.castle(S.castle.x, S.castle.y, gs, INK, S.castle.reached and 1 or 0.4, seed + 3, not S.castle.reached)
     end
 
-    -- trilha de entrada e o caminho percorrido (traço cheio, contínuo)
     local first = S.nodes[1]
     if first then
         Ink.line(S.start.x, S.start.y, first.x, first.y, INK, 0.9, seed + 11, { wobble = 0.8 })
@@ -559,8 +480,6 @@ function RunJournalScreen:_drawMap(L, S, i)
         Ink.line(seg.x1, seg.y1, seg.x2, seg.y2, INK, 1, seed + 100 + k, { wobble = 1.2 })
     end
 
-    -- ramos NÃO tomados: pontilhado esmaecido até o símbolo, e hachura curta
-    -- acima dele ("não explorado")
     for k, st in ipairs(S.stubs) do
         local e = b.nodes[st.node]
         local t = e and e.branches and e.branches[st.slot] or "unknown"
@@ -574,14 +493,12 @@ function RunJournalScreen:_drawMap(L, S, i)
         end
     end
 
-    -- a encruzilhada em aberto (à frente): pontilhado ainda mais fraco
     for k, pd in ipairs(S.pending or {}) do
         local t = b.pending and b.pending.types[k] or "unknown"
         Ink.line(pd.fromX, pd.fromY, pd.x, pd.y, INK, 0.35, seed + 600 + k, { wobble = 0.6, dash = 2, gap = 4 })
         Ink.glyph(glyphFor(t), pd.x, pd.y, gs, INK, 0.35, seed + 700 + k, true)
     end
 
-    -- paradas tomadas: glifo cheio (o chefe do ato é o próprio castelo)
     local lineH = L.noteSize + 3
     for j, p in ipairs(S.nodes) do
         local e = b.nodes[j]
@@ -595,7 +512,6 @@ function RunJournalScreen:_drawMap(L, S, i)
             self._hover = { sheet = i, node = j }
         end
 
-        -- o ÚNICO círculo vermelho: onde o jogador está
         local isCurrent = rm and rm.isJournalEntryOpen and rm:isJournalEntryOpen(e) or false
         if isCurrent then
             local r = math.floor(L.glyph / 2) + 4 + gs
@@ -603,7 +519,6 @@ function RunJournalScreen:_drawMap(L, S, i)
             Ink.ring(p.x, p.y, r, RED, 1, seed + 900, 1)
         end
 
-        -- anotação à margem: resultado + vida/ouro, em letra miúda
         local nx = S.noteCol.x
         local maxW = S.noteCol.w - 4
         local y1 = p.y - lineH + 1
@@ -616,7 +531,6 @@ function RunJournalScreen:_drawMap(L, S, i)
                 Ink.line(nx, y1 + math.floor(L.noteSize / 2), nx + w, y1 + math.floor(L.noteSize / 2),
                     INK, 0.9, seed + 950 + j, { wobble = 0.4 })
             end
-            -- ganhos além do principal: risquinhos de contagem
             for k = 1, math.min(3, extra or 0) do
                 Ink.px(nx + w + 3 + (k - 1) * 3, y1 + 1, INK, 0.8, 1, L.noteSize - 2)
             end
@@ -640,7 +554,6 @@ function RunJournalScreen:_drawMap(L, S, i)
         end
     end
 
-    -- legenda: glifo + nome, pros tipos que aparecem nesta folha
     if S.legend and b.legend then
         local lf = FontManager.getFont(8)
         love.graphics.setFont(lf)
@@ -657,8 +570,6 @@ function RunJournalScreen:_drawMap(L, S, i)
     end
 end
 
--- Monta as linhas do detalhe cortadas à altura disponível e devolve o
--- retângulo já resolvido pelo layout. Exposto pros testes (validate do hover).
 function RunJournalScreen:_tipFor(L, si, hover)
     local S = L.sheets[si]
     if not S or not S.open then return nil end
@@ -712,7 +623,6 @@ function RunJournalScreen:_tipFor(L, si, hover)
              padX = padX, padY = padY, gap = gap }
 end
 
--- O detalhe é um pedacinho de papel com moldura de pena, texto em tinta.
 function RunJournalScreen:_drawTip(tip)
     local r = tip.rect
     local seed = self._seed + 31337
@@ -741,7 +651,6 @@ function RunJournalScreen:draw()
     local mx, my = love.mouse.getPosition()
     local NavCursor = require("src.ui.NavCursor")
 
-    -- superfície lisa (mesa) em tinta; as folhas ficam por cima
     love.graphics.setColor(Ink.BACKDROP[1], Ink.BACKDROP[2], Ink.BACKDROP[3], 1)
     love.graphics.rectangle("fill", 0, 0, sw, sh)
     self:_drawHeader(L)
@@ -754,7 +663,6 @@ function RunJournalScreen:draw()
         return
     end
 
-    -- ===== ZONA FOLHAS =====
     local z = L.zone
     local mouseInZone = my >= z.y and my <= z.y + z.h
     self._hover = nil
@@ -776,7 +684,6 @@ function RunJournalScreen:draw()
     end
     love.graphics.setScissor()
 
-    -- barra de rolagem (só existe quando há o que rolar), em papel
     if L.maxScroll > 0 then
         local barX = sw - 9
         local frac = L.scroll / L.maxScroll

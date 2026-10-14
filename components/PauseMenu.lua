@@ -1,30 +1,3 @@
--- components/PauseMenu.lua
--- Menu de pausa (engrenagem da TopBar / ESC) — padrão Slay the Spire +
--- estrutura do create_UIBox_options do Balatro (seed visível, atalhos, ação
--- primária no topo).
---
--- v4 (Out/2026 — dono: "muita coisinha", feio). Hierarquia de StS/Balatro:
--- poucas coisas, grandes e legíveis, véu escuro atrás.
---   • ZONAS fixas (memory/ui_layout_invariants.md §1), de cima pra baixo:
---       CABEÇALHO  título com filetes
---       RESUMO     "classe · jornada" + semente miúda (vida/ouro/baralho
---                  saíram: a TopBar já mostra)
---       ATALHOS    três ícones — Baralho [D] · Coringas [J] · Roteiro [M]
---       AÇÕES      Continuar (PRIMÁRIA) · Configurações · Salvar e sair —
---                  placas centradas, sem descrição
---       PERIGO     "Abandonar" como link discreto; armado, vira pergunta +
---                  Sim/Não no mesmo lugar (2 etapas, foco no Não)
---     Sem rodapé de dica (regra do projeto). Quando falta altura quem CEDE é
---     o conteúdo (placas mais baixas, depois somem atalhos e semente) —
---     nunca a posição das zonas. `validate()` roda no test_pause_menu.
---   • Navegação por teclado/gamepad (src/ui/MenuKit.lua): setas/WASD, Enter,
---     ESC; foco começa em Continuar.
---   • Entrada animada (painel cai no lugar + véu), som de hover/clique.
---
--- Overlay modal global: main.lua instancia, injeta callbacks via
--- show(game, callbacks) e roteia update/draw/input. _G.togglePauseMenu abre/
--- fecha de qualquer lugar. Registrado no InputFocus como "pause".
-
 local FontManager = require("src.ui.FontManager")
 local Palette     = require("src.ui.Palette")
 local Button      = require("components.Button")
@@ -36,20 +9,18 @@ local MenuKit     = require("src.ui.MenuKit")
 
 local PauseMenu = {}
 PauseMenu.__index = PauseMenu
--- navega sozinha (MenuKit): o cursor de foco do teclado/pad não toma as teclas
 PauseMenu.ownsNavigation = true
 
--- Métricas (px). Alturas de texto são MEDIDAS em cima destas.
-local PAD          = 22     -- respiro interno do painel
+local PAD          = 22
 local PAD_BOTTOM   = 18
 local PANEL_MAX_W  = 440
-local MAIN_MAX_W   = 340    -- placas de ação: largas o bastante, não a parede toda
-local TITLE_H      = 50     -- zona do título (inclui o ornamento)
-local INFO_H       = 36     -- linha da jornada + semente miúda
+local MAIN_MAX_W   = 340
+local TITLE_H      = 50
+local INFO_H       = 36
 local INFO_H_LINE  = 20
 local ROW_GAP      = 8
 local ZONE_GAP     = 14
-local SHORTCUT_H   = 58     -- ícone + rótulo curto
+local SHORTCUT_H   = 58
 local SHORTCUT_MAX_W = 120
 local DANGER_H     = 24
 local CONFIRM_BTN_H = 28
@@ -61,11 +32,11 @@ function PauseMenu:new()
     instance.visible = false
     instance.game = nil
     instance.callbacks = {}
-    instance.rows = {}            -- ações: {x,y,w,h,btn,key,title,...}
-    instance.shortcuts = {}       -- {x,y,w,h,btn,key}
-    instance.confirmButtons = {}  -- Sim/Não do abandono
+    instance.rows = {}
+    instance.shortcuts = {}
+    instance.confirmButtons = {}
     instance.confirmingAbandon = false
-    instance.lines = {}           -- navegação: lista de linhas, cada uma com itens
+    instance.lines = {}
     instance.focusLine, instance.focusItem = 1, 1
     instance._t = 0
     instance._panel = nil
@@ -76,7 +47,6 @@ end
 
 function PauseMenu:isVisible() return self.visible end
 
--- opts.quiet: reabertura vinda das Configurações (sem o "menuOpen" duplicado)
 function PauseMenu:show(game, callbacks, opts)
     self.visible = true
     self.game = game or self.game
@@ -108,10 +78,6 @@ local function hasRun(game)
         and game.runManager:hasActiveRun() and true or false
 end
 
--- ===================================================================
--- RESUMO DA RUN — dados puros (testável sem desenhar)
--- ===================================================================
--- Retorna lista de células {label, value} na ordem de leitura (2 linhas × 3).
 function PauseMenu:runSummary()
     local game = self.game
     if not hasRun(game) then return nil end
@@ -132,7 +98,6 @@ function PauseMenu:runSummary()
             total = MapManager.FLOORS_PER_ACT,
         })
     end
-    -- Selo do Grimório / ciclo e maldições do endless (RunModsText).
     local mods = require("src.ui.RunModsText").short(run)
     if mods ~= "" then journey = journey .. " · " .. mods end
     local p = game.player
@@ -151,9 +116,6 @@ function PauseMenu:runSummary()
     }
 end
 
--- ===================================================================
--- LAYOUT
--- ===================================================================
 local function actionDefs(self, runActive)
     local defs = {
         { key = "resume", primary = true,
@@ -195,21 +157,16 @@ local function shortcutDefs(self)
           action = open(self.callbacks.onOpenJokers) },
         { key = "journal", hotkey = "m", icon = "scroll", label = I18n.t("pause.shortcut_journal"),
           action = open(self.callbacks.onOpenJournal) },
-        -- Guia de combos + glossário (onboarding, Out/2026)
         { key = "guide",   hotkey = "g", icon = "question", label = I18n.t("tutorial.guide.pause_shortcut"),
           action = open(self.callbacks.onOpenGuide) },
     }
 end
 
--- Monta zonas, rows, atalhos e linhas de navegação. Idempotente: roda em
--- show/resize/confirmação/troca de idioma.
 function PauseMenu:rebuild()
     self.rows, self.shortcuts, self.confirmButtons = {}, {}, {}
 
     local sw = love.graphics.getWidth()
     local sh = love.graphics.getHeight()
-    -- Escala: mora no UiScale (espaço virtual ~1280x720, scale(k) no
-    -- desenho). Aqui é 1:1; S() fica pra um ajuste fino futuro.
     local u = 1
     self._u = u
     local function S(v) return math.floor(v * u + 0.5) end
@@ -225,14 +182,11 @@ function PauseMenu:rebuild()
     local defs = actionDefs(self, runActive)
     local maxH = sh - 24
 
-    -- Pedido de confirmação do abandono: pergunta quebrada + Sim/Não.
     local qFont = FontManager.getFont(S(11))
     local _, qLines = qFont:getWrap(I18n.t("pause.abandon_confirm"), innerW - 16)
     local qLH = math.floor(qFont:getHeight() * 1.3)
     local confirmH = S(8) + #qLines * qLH + S(8) + CONFIRM_BTN_H + S(8)
 
-    -- Modos em ordem de preferência: quem cede é o CONTEÚDO (altura das
-    -- placas, depois os atalhos, depois a semente) — nunca a ordem das zonas.
     local modes = {
         { name = "full",    primaryH = S(50), rowH = S(42), shortcuts = true,  seed = true },
         { name = "nodesc",  primaryH = S(42), rowH = S(34), shortcuts = true,  seed = true },
@@ -265,8 +219,6 @@ function PauseMenu:rebuild()
         mode = runActive and (chosen.seed and "full" or "line") or "none" }
     y = y + chosen.infoH + ZONE_GAP
 
-    -- ATALHOS: três placas de ícone (os MESMOS ícones dos blocos da TopBar
-    -- que eles abrem), rótulo curto embaixo. Centradas, largura contida.
     if runActive and chosen.shortcuts then
         zones.shortcuts = { x = x, y = y, w = innerW, h = SHORTCUT_H }
         local defsS = shortcutDefs(self)
@@ -283,7 +235,6 @@ function PauseMenu:rebuild()
         y = y + SHORTCUT_H + ZONE_GAP
     end
 
-    -- AÇÕES: placas grandes, texto centrado, SEM descrição (o nome basta).
     local mainW = math.min(innerW, MAIN_MAX_W)
     local mainX = x + math.floor((innerW - mainW) / 2)
     zones.actions = { x = mainX, y = y, w = mainW, h = chosen.actionsH }
@@ -303,8 +254,6 @@ function PauseMenu:rebuild()
     end
     y = zones.actions.y + chosen.actionsH + ZONE_GAP
 
-    -- PERIGO: "Abandonar" é um link discreto no pé do painel; armado, vira
-    -- a pergunta + Sim/Não no MESMO lugar (o resto do painel não mexe).
     if dangerDef then
         local h = self.confirmingAbandon and confirmH or DANGER_H
         zones.danger = { x = x, y = y, w = innerW, h = h }
@@ -336,7 +285,6 @@ function PauseMenu:rebuild()
     end
     self._zones = zones
 
-    -- Linhas de navegação (ordem visual, de cima pra baixo).
     self.lines = {}
     if #self.shortcuts > 0 then
         local items = {}
@@ -368,8 +316,6 @@ function PauseMenu:resize()
     if key then self:_focusKey(key) end
 end
 
--- Checagem geométrica das zonas (usada pelo test_pause_menu). Lista de
--- problemas; vazia = layout válido.
 function PauseMenu:validate()
     local problems = {}
     local p, z = self._panel, self._zones
@@ -413,9 +359,6 @@ function PauseMenu:validate()
     return problems
 end
 
--- ===================================================================
--- FOCO / NAVEGAÇÃO
--- ===================================================================
 function PauseMenu:_clampFocus()
     local n = #self.lines
     if n == 0 then self.focusLine, self.focusItem = 1, 1 return end
@@ -445,7 +388,6 @@ end
 function PauseMenu:_moveFocus(dl, di)
     local before = self:focusedKey()
     if dl ~= 0 and #self.lines > 0 then
-        -- linha seguinte com wrap (menu curto: dar a volta é o esperado)
         self.focusLine = ((self.focusLine - 1 + dl) % #self.lines) + 1
     end
     if di ~= 0 then
@@ -472,7 +414,7 @@ end
 function PauseMenu:armAbandon()
     self.confirmingAbandon = true
     self:rebuild()
-    self:_focusKey("abandon_no")   -- default SEGURO
+    self:_focusKey("abandon_no")
 end
 
 function PauseMenu:disarmAbandon()
@@ -481,9 +423,6 @@ function PauseMenu:disarmAbandon()
     self:_focusKey("abandon")
 end
 
--- ===================================================================
--- UPDATE / INPUT
--- ===================================================================
 function PauseMenu:update(dt)
     if not self.visible then return end
     self._t = (self._t or 0) + (dt or 0)
@@ -491,8 +430,6 @@ function PauseMenu:update(dt)
     for _, s in ipairs(self.shortcuts) do s.btn:update(dt) end
     for _, b in ipairs(self.confirmButtons) do b:update(dt) end
 
-    -- Mouse MEXEU → o foco segue o mouse. Mouse parado não rouba o foco do
-    -- teclado (quem navega nas setas com o cursor esquecido sobre uma row).
     local mx, my = love.mouse.getPosition()
     if mx ~= self._lastMX or my ~= self._lastMY then
         local first = self._lastMX == nil
@@ -503,8 +440,6 @@ function PauseMenu:update(dt)
                     if MenuKit.hit(it.rect, mx, my)
                         and (li ~= self.focusLine or ii ~= self.focusItem) then
                         self.focusLine, self.focusItem = li, ii
-                        -- Rows de ação usam Button invisível (mudo): o som
-                        -- de hover sai daqui. Atalhos/confirmação já tocam.
                         if it.rect.btn and it.rect.btn.variant == "invisible" then
                             Sfx.playWithVariation("menuHover", 1.0, 0.12)
                         end
@@ -526,15 +461,13 @@ end
 function PauseMenu:mousepressed(x, y, button)
     if not self.visible then return false end
     if button == 1 then self._pressed = itemAt(self, x, y) end
-    return true -- modal: consome tudo (ação acontece no release)
+    return true
 end
 
 function PauseMenu:mousereleased(x, y, button)
     if not self.visible then return false end
     if button ~= 1 then return true end
     local it = itemAt(self, x, y)
-    -- Só ativa se o PRESS também nasceu neste item (o release do clique que
-    -- ABRIU a pausa pela engrenagem não dispara nada por acidente).
     if it and it == self._pressed and it.action then
         self._pressed = nil
         Sfx.playWithVariation("buttonClick", 1.0, 0.08)
@@ -542,12 +475,11 @@ function PauseMenu:mousereleased(x, y, button)
         return true
     end
     self._pressed = nil
-    return true -- clique fora: continua modal (não fecha por acidente)
+    return true
 end
 
 function PauseMenu:keypressed(key)
     if not self.visible then return false end
-    -- Atalhos de tela da run (mesmas letras do jogo).
     if not self.confirmingAbandon then
         for _, s in ipairs(self.shortcuts) do
             if key == s.hotkey then
@@ -566,17 +498,11 @@ function PauseMenu:keypressed(key)
     elseif it == "right" then self:_moveFocus(0, 1)
     elseif it == "confirm" then self:_activateFocused()
     end
-    return true -- modal: engole teclas (nada de atalho vazando pro jogo)
+    return true
 end
 
--- ===================================================================
--- DRAW
--- ===================================================================
--- Métrica escalada pelo fator do último rebuild (fonte e respiro do desenho).
 local function S(self, v) return math.floor(v * (self._u or 1) + 0.5) end
 
--- Uma linha "classe · jornada" e a semente miúda embaixo. Vida/ouro/baralho
--- NÃO entram: a TopBar já mostra, e repetir é ruído (v3 tinha 6 células).
 function PauseMenu:_drawInfo(z)
     if z.mode == "none" then
         Palette.set(Palette.PARCHMENT)
@@ -595,8 +521,6 @@ function PauseMenu:_drawInfo(z)
     end
 end
 
--- Placa de atalho: ícone grande + rótulo curto. Sem moldura em repouso
--- (respiro separa); focada ganha a placa escura e o rótulo acende.
 function PauseMenu:_drawShortcut(s, focused)
     if focused then
         Palette.set(Palette.lerp(Palette.INK, Palette.PARCHMENT_DARK, 0.45))
@@ -619,8 +543,6 @@ function PauseMenu:_drawShortcut(s, focused)
     love.graphics.setColor(1, 1, 1, focused and 1 or 0.78)
     icon(ix, iy)
     Palette.set(focused and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT)
-    -- rótulo apertado (4 atalhos em painel estreito, Steam Deck): sai o
-    -- "[J]" antes de virar "Coringa..." — a tecla é atalho, o nome é a info
     local label = s.label
     local lf = FontManager.getFont(S(self, 8))
     if lf:getWidth(label) > s.w - 4 then
@@ -646,7 +568,6 @@ function PauseMenu:_drawRow(row, focused, t)
         return
     end
     if row.danger then
-        -- link discreto: texto vermelho apagado; foco acende + sublinha.
         Palette.set(focused and DANGER_TEXT or Palette.lerp(Palette.BLOOD, Palette.PARCHMENT_DARK, 0.35))
         local f = FontManager.getFont(S(self, 10))
         love.graphics.setFont(f)
@@ -659,7 +580,6 @@ function PauseMenu:_drawRow(row, focused, t)
     end
     local fill, outline, titleCol
     if row.primary then
-        -- PRIMÁRIA: placa dourada cheia, texto tinta (a única no menu).
         fill = focused and Palette.AGED_GOLD_LIGHT or Palette.AGED_GOLD
         outline = Palette.AGED_GOLD_LIGHT
         titleCol = Palette.INK
@@ -669,7 +589,6 @@ function PauseMenu:_drawRow(row, focused, t)
         outline = focused and Palette.AGED_GOLD or Palette.AGED_GOLD_DARK
         titleCol = focused and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT_LIGHT
     end
-    -- sombra dura + placa + emboss (gramática do Button clean)
     Palette.set(Palette.INK, 0.6)
     love.graphics.rectangle("fill", x + 3, y + 3, w, h, 3, 3)
     Palette.set(fill)
@@ -702,7 +621,6 @@ function PauseMenu:draw()
     UiPanel.draw(p.x, p.y, p.w, p.h)
     local z = self._zones or {}
 
-    -- CABEÇALHO: título + filetes com losango (mesma gramática da loja)
     if z.title then
         local title = I18n.t("pause.title")
         local tf, shown = TextFit.fit(title, S(self, 24), z.title.w - 80, 14)

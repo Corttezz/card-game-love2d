@@ -1,23 +1,9 @@
--- components/CardRewardScreen.lua
--- Tela de recompensas de cartas após vitória em batalha.
-
 local CardRewardScreen = {}
 CardRewardScreen.__index = CardRewardScreen
 
--- FILA DEDICADA das animações desta tela (fix DEFINITIVO Jul/2026 do bug
--- "cartas invisíveis até o hover"): os helpers parallel/parallelEase são
--- blocking=false mas BLOCKABLE=true — na fila "base" eles ficavam PRESOS
--- atrás do rabo bloqueante da sequência de combate que acabou de terminar
--- (EM.after do Game/CombatSequence é blocking). A entrada das cartas só
--- rodava quando a base destravava, segundos depois. Fila própria = o combate
--- nunca trava as animações da loja/recompensa. Limpa a cada show().
 local FXQ = "reward_fx"
 
--- ============ DEBUG (caça ao bug "cartas não renderizam") ============
--- Loga em print E em arquivo (save dir: reward_debug.log) — o arquivo é
--- sobrescrito a cada show(), então contém sempre a ÚLTIMA abertura.
--- Desligar depois: REWARD_DBG = false.
-local REWARD_DBG = require("src.core.Release").isDev()  -- release: sem reward_debug.log
+local REWARD_DBG = require("src.core.Debug").enabled
 local _dbgStart = 0
 
 local function dbg(fmt, ...)
@@ -26,14 +12,9 @@ local function dbg(fmt, ...)
     if not ok then line = fmt .. " (fmt err)" end
     local t = love.timer.getTime() - _dbgStart
     line = string.format("[RDBG %+7.2fs] %s", t, line)
-    print(line)
     pcall(love.filesystem.append, "reward_debug.log", line .. "\n")
 end
 
--- Radiografia da fila do EventManager (trigger/blocking/timer de cada evento).
--- ⚠️ require PRÓPRIO: este bloco vive ANTES dos requires do arquivo — o local
--- `EventManager` de baixo não está em escopo aqui (upvalue só existe abaixo
--- da declaração; o global não existe nos tools).
 local function dbgQueue(name)
     if not REWARD_DBG then return end
     local okEM, EM = pcall(require, "engine.EventManager")
@@ -49,7 +30,6 @@ local function dbgQueue(name)
     end
 end
 
--- Snapshot por carta: tudo que decide se ela aparece e onde.
 local function dbgCards(self, tag)
     if not REWARD_DBG then return end
     for i, inst in ipairs(self.cardInstances or {}) do
@@ -85,22 +65,13 @@ local EventManager = require("engine.EventManager")
 local DissolveShader = require("src.ui.DissolveShader")
 local ImageCache = require("src.ui.ImageCache")
 local ShopServices = require("src.systems.ShopServices")
--- Loja v3 (Balcão do Mercador): o modo "shop" DELEGA cena/animação a
--- src/ui/shop/ShopScene; a geometria pura mora em ShopLayout.
 local ShopScene = require("src.ui.shop.ShopScene")
 local ShopLayout = require("src.ui.shop.ShopLayout")
 
--- Acessibilidade: com reducedMotion ligado, transições da tela resolvem
--- instantaneamente (o conteúdo continua idêntico, só não desliza/piscando).
 local function reducedMotion()
     return (_G.gameSettings and _G.gameSettings.reducedMotion) or false
 end
 
--- Toca o PRIMEIRO código registrado da lista. Contrato do projeto pra som que
--- ainda não existe no disco (mesmo padrão de RestScreen:585 e dos sons-
--- assinatura de joker): o call site nasce pronto, o arquivo chega depois e
--- passa a tocar sozinho. Avisa uma única vez se NENHUM resolver — fallback
--- silencioso é proibido (memory/ui_layout_invariants §3).
 local _sfxWarned = {}
 local function playFirstSfx(codes, opts)
     for _, code in ipairs(codes) do
@@ -109,10 +80,6 @@ local function playFirstSfx(codes, opts)
             return code
         end
     end
-    -- Só avisa se HÁ sistema de áudio: sem ele (headless, tools, WSL2 mudo)
-    -- nenhum código resolve e o aviso seria ruído garantido a cada run — o
-    -- que treina a ignorar exatamente o aviso que deveria pegar um código
-    -- escrito errado.
     if _G.audioSystem then
         local key = table.concat(codes, "/")
         if not _sfxWarned[key] then
@@ -123,8 +90,6 @@ local function playFirstSfx(codes, opts)
     return nil
 end
 
--- Puladinha da carta em hover na grade da loja (px). Cresce do RODAPÉ do slot
--- pra cima e sobe mais um tanto — nunca invade o rótulo de raridade abaixo.
 local SHOP_HOVER_LIFT = 12
 
 local function offerKind(offer)
@@ -134,8 +99,6 @@ local function offerKind(offer)
     return "card"
 end
 
--- shopSystem: instância singleton injetada (ver Game:new). Param opcional pra
--- compatibilidade com chamadas antigas — fallback gera warning.
 function CardRewardScreen:new(shopSystem)
     local instance = setmetatable({}, CardRewardScreen)
 
@@ -148,26 +111,18 @@ function CardRewardScreen:new(shopSystem)
     instance.onCardPurchased = nil
     instance.onSkipped = nil
 
-    -- Confirmação de compra
-    -- Selection (CLICK): mini-buttons Balatro-style (Buy + Cancel) attached
-    -- compactos sob a carta clicada.
     instance.selectedOffer = nil
     instance.selectedIdx = nil
     instance._selectionAnim = 0
     instance._selectionButtons = {}
-    -- Hover (mouse-over sem clicar): alimenta o painel de DETALHE FIXO do
-    -- split-view (terceira coluna da loja). Vale pra carta, voucher e pack.
     instance.hoveredOffer = nil
     instance.hoveredIdx = nil
     instance.hoveredInst = nil
     instance.hoveredKind = nil
-    -- Painel de detalhe: conteúdo atual + memória do último olhado (o painel
-    -- nunca fica vazio depois do primeiro hover) + fade da troca de conteúdo.
     instance.detailPayload = nil
     instance._lastDetailPayload = nil
     instance._detailStale = false
     instance._detailAnim = 1
-    -- LEGACY: showConfirmation/confirmButton/cancelButton removidos (modal antigo).
 
     if not shopSystem then
         Debug.warn("CardRewardScreen criado sem ShopSystem injetado — caindo em fallback (Game:new deve passar shopSystem)")
@@ -187,29 +142,9 @@ function CardRewardScreen:new(shopSystem)
     return instance
 end
 
--- Layout fiel ao Balatro source (UI_definitions.lua:637-740):
---   ROOT
---   └─ COLUMN (BOSS_MAIN bg)
---      ├─ ROW1 — Buttons | Cards
---      │   ├─ COL: [Next Round] + [Reroll]
---      │   └─ COL: shop_jokers (4 slots)
---      ├─ spacer
---      └─ ROW2 — Voucher | Boosters
---          ├─ COL: voucher (label vertical "Ato X")
---          └─ COL: 2 boosters (cardW × 1.27)
---
--- ⚠️ O diagrama Balatro acima descreve o layout ANTIGO do modo "shop"
--- (row1 = botões | cartas, row2 = voucher | packs). Desde o redesign
--- split-view de Jul/2026 a loja é 3 COLUNAS (ações | grade | detalhe fixo) —
--- ver o bloco comentado dentro do branch `self.mode == "shop"` abaixo.
--- Modo "rewards": 3 cartas grandes flutuando, sem painel (StS-style).
 function CardRewardScreen:updateLayout()
     local sw = love.graphics.getWidth()
     local sh = love.graphics.getHeight()
-    -- Estado CACHEADO novo tem que morrer no resize, no mesmo commit
-    -- (ui_layout_invariants, secao 2): as placas gravadas sao bitmaps
-    -- rasterizados na largura da banda. A chave ja inclui as dimensoes, mas
-    -- sem isto os canvases do tamanho antigo ficariam vivos pra sempre.
     ShopEngraving.clearCache()
     local cfg = self.modeConfig or { cards = 3, upgrades = 0, boosters = 0 }
     self.layoutMode = self.mode
@@ -217,14 +152,6 @@ function CardRewardScreen:updateLayout()
     self.cardPositions = {}
 
     if self.mode == "shop" then
-        -- ================= BALCÃO DO MERCADOR (Loja v3, Out/2026) =================
-        -- A geometria inteira sai de ShopLayout.layout() (puro, validado em
-        -- test_shop_layout): estante de cima (cartas em suportes), prateleira
-        -- de baixo (relíquias + pacote no gancho), balcão (sino / dados /
-        -- livro-razão), pergaminho de inspeção e lanterna. Aqui só se espelha
-        -- o resultado nos campos históricos da tela (panel, cardPositions,
-        -- slotCount, gridArea, detailPanel, actionBar) que tools, testes e o
-        -- tutorial ainda leem.
         self.scene = self.scene or ShopScene.new(self)
         local L = self.scene:layout()
         self.panel = L.wall
@@ -257,8 +184,6 @@ function CardRewardScreen:updateLayout()
         end
         self.slotCount = nCards + nVouchers + nPacks
 
-        -- zonas no vocabulário antigo: vitrine = a mesa (até o pergaminho);
-        -- detalhe = miolo do pergaminho; rodapé de ações = o CONTINUAR
         self.gridArea = { x = L.wall.x, y = L.wall.y, w = L.limitX - L.wall.x, h = L.wall.h }
         self.detailPanel = L.scroll.body
         self.detailFooterH = 0
@@ -273,19 +198,13 @@ function CardRewardScreen:updateLayout()
         self.skipButtonY = L.continueBtn.y
 
     else
-        -- ========== Modo rewards v3 "StS FLUTUANTE" (Jul/2026) ==========
-        -- Feedback do dono: o painel parecia descentralizado, pills eram "só
-        -- um quadrado com texto", tudo apertado. Como no Slay the Spire: SEM
-        -- painel — o mundo (limpo) escurece atrás, um BANNER ornamental no
-        -- topo, 3 cartas GRANDES flutuando centralizadas, marcadores sem
-        -- caixa e o botão Seguir embaixo. Centralização é na TELA inteira.
         self.panel = nil
         self.cardsContainer = nil
         self.buttonsContainer = nil
         self.voucherContainer = nil
         self.packsContainer = nil
         self.gridArea = nil
-        self.detailPanel = nil   -- split-view é EXCLUSIVO da loja
+        self.detailPanel = nil
         self.actionBar = nil
         self.buttonsColX = nil
         self.buttonsColY = nil
@@ -311,35 +230,17 @@ function CardRewardScreen:updateLayout()
         self.bannerY = math.floor(sh * 0.105)
         self.slotCount = nCards
 
-        self.skipButtonX = math.floor(sw * 0.5) - 100   -- recentrado na criação
+        self.skipButtonX = math.floor(sw * 0.5) - 100
         self.skipButtonY = sh - 96
     end
 
-    -- Rodapé de ações reposicionado AQUI, não só no detector de resize do
-    -- update(): main.lua:love.resize chama updateLayout() direto (sem passar
-    -- pelo detector), e sem isto os botões ficavam um frame nas coordenadas
-    -- do tamanho ANTIGO. Regra de memory/ui_layout_invariants.md — "resize
-    -- tem que cobrir o estado NOVO": o rodapé é estado novo desta sessão.
-    -- No-op quando os botões ainda não existem (chamada vinda do show()).
     self:_layoutActionButtons()
-    -- Botões de compra: largura depende do painel de detalhe, que acabou de
-    -- mudar. Reconstrói (rótulo + largura) em vez de só reposicionar.
     if self.selectedOffer then
         self:_buildSelectionButtons(self.selectedOffer, self.selectedIdx)
     end
 
-    Debug.trace("[CardRewardScreen] Layout", self.mode, sw, "x", sh,
-                "slots", self.slotCount, "card", self.cardWidth, "x", self.cardHeight)
 end
 
--- ============================================================================
--- VALIDAÇÃO GEOMÉTRICA — o teste que layout por acumulação nunca tem
--- ============================================================================
--- Devolve uma lista de violações (vazia = layout íntegro). Roda em qualquer
--- tamanho de janela, então os tools conseguem exercitar o caminho que os
--- screenshots não pegam: NASCER grande ≠ CRESCER (ver
--- memory/ui_layout_invariants.md). Barato o bastante pra rodar por frame se
--- precisar, mas o uso previsto é em ferramenta.
 function CardRewardScreen:validateLayout()
     local bad = {}
     local function contains(outer, inner, label)
@@ -359,10 +260,6 @@ function CardRewardScreen:validateLayout()
     contains(screen, self.panel, "painel")
 
     if self.mode == "shop" then
-        -- A prova geométrica do balcão mora em ShopLayout.validate (zonas
-        -- disjuntas, pé de todo objeto na tábua, pacote pendurado sem tocar
-        -- a prateleira, nada fora da tela). Aqui só o que é da tela: os
-        -- botões invisíveis do balcão têm que estar sobre os objetos.
         local L = self.scene and self.scene.L
         if not L then
             bad[#bad + 1] = "loja sem layout (updateLayout nao rodou)"
@@ -393,9 +290,6 @@ function CardRewardScreen:validateLayout()
         end
     end
 
-    -- Slots da mesma fileira nunca se sobrepõem (espólios: a fileira é
-    -- reta; na loja v3b os objetos ficam numa DIAGONAL em perspectiva e a
-    -- prova de sobreposição mora em ShopLayout.validate).
     for i = 1, (self.mode ~= "shop") and ((self.slotCount or 0) - 1) or 0 do
         local a, b = self.cardPositions[i], self.cardPositions[i + 1]
         if a and b and a.row == b.row then
@@ -410,17 +304,6 @@ function CardRewardScreen:validateLayout()
     return bad
 end
 
--- mode: "rewards" | "shop"   (default "rewards" pra back-compat com chamadas antigas).
---   "rewards" = pós-batalha, 3 cartas, sem reroll. Skip = continuar sem bônus.
---   "shop"    = SHOP node, 4 cartas + 1 voucher + 2 packs, reroll exponencial,
---               Skip dá +3 ouro de bônus.
--- ============================================================================
--- VITRINE NO SAVE (anti-save-scum, Out/2026)
--- ============================================================================
--- A loja/recompensa gerada para um nó mora em `currentRun.shopState`, com a
--- chave do nó. Continuar no mesmo nó RESTAURA (nunca regera); sair do nó
--- limpa. Chave = modo + ato + andar + nº de nós já escolhidos (mapHistory
--- cresce a cada nó, então dois nós nunca colidem).
 local function offerNodeKey(run, mode)
     return ("%s|%d|%d|%d"):format(tostring(mode), run.actNumber or 1,
         run.floorInAct or 1, #(run.mapHistory or {}))
@@ -436,16 +319,14 @@ function CardRewardScreen:_restoreOffers(run)
     local st = run and run.shopState
     if not st then return false end
     if st.key ~= offerNodeKey(run, self.mode) then
-        run.shopState = nil -- resíduo de outro nó
+        run.shopState = nil
         return false
     end
     self.shopSystem:importState(st)
-    print("[CardRewardScreen] vitrine restaurada do save (" .. st.key .. ")")
+    Debug.log("[CardRewardScreen] vitrine restaurada do save (" .. st.key .. ")")
     return true
 end
 
--- Espelha a vitrine viva no currentRun. `writeNow` grava o checkpoint na
--- hora; sem ele, o próximo checkpoint (Salvar e sair) leva o estado.
 function CardRewardScreen:_persistOffers(writeNow)
     local run = self:_run()
     if not run then return end
@@ -468,54 +349,34 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
     self.animationTime = 0
     self.mode = mode or "rewards"
 
-    -- Contexto da run pro cérebro de ofertas (classe filtra pool; deck liga
-    -- afinidade e anti-duplicata — "as escolhas anteriores importam"). P0.7:
-    -- elite/chefe pisam a raridade só em modo rewards; P0.3/P0.4: pesos de
-    -- raridade por ato; P0.5: cap de afinidade por ato. A conta mora em
-    -- ShopSystem.runContext — a MESMA que o piloto usa (wip/sustain).
     local run = game.runManager and game.runManager.currentRun
     local ShopSystem = require("src.systems.ShopSystem")
     self.shopSystem:setContext(ShopSystem.runContext(game, self.mode))
 
     self.shopSystem:setMode(self.mode)
-    -- Vitrine JÁ gerada para este nó (Continuar após "Salvar e sair") volta
-    -- idêntica — ofertas, VENDIDO, preços e reroll. Só gera se não houver.
     local restored = self:_restoreOffers(run)
     if not restored then self.shopSystem:generateOffers() end
     self.shopOffers = self.shopSystem:getCurrentOffers()
     self.modeConfig = self.shopSystem:getModeConfig()
 
-    -- Slot FIXO por oferta (F2): comprada uma carta, as demais NÃO trocam de
-    -- lugar. Antes, draw/hover/selection indexavam shopOffers[i] contra
-    -- cardInstances compactado — hover mostrava info da carta errada e os
-    -- botões de compra apareciam no slot errado após a 1ª compra.
     for i, o in ipairs(self.shopOffers) do o._slot = i end
 
-    -- FX de compra (carta voando pro deck + popups de ouro).
     self._flyCards = {}
     self._goldPopups = {}
-    -- Regra "escolha 1" (rewards): flag zera a cada abertura — sem isto a
-    -- SEGUNDA recompensa da run nasceria travada.
     self._rewardTaken = false
     if restored and self.mode == "rewards" then
         for _, o in ipairs(self.shopOffers) do
             if o.purchased and o.type == "card" then self._rewardTaken = true end
         end
     end
-    -- Vitrine nova: entra no save JÁ (checkpoint com o RNG pós-geração), pra
-    -- que nem um fechamento abrupto da janela permita re-sortear.
     if not restored then self:_persistOffers(true) end
-
-    Debug.log("[CardRewardScreen] Aberta em modo", self.mode, "com", #self.shopOffers, "ofertas")
 
     self:updateLayout()
     self:createCardInstances()
     self:createOfferButtons()
     self:_resetDetail()
-    -- Loja v3: os objetos pousam na prateleira um a um (a cena cuida).
     if self.mode == "shop" and self.scene then self.scene:enter() end
 
-    -- ===== DEBUG: arquivo novo por abertura + radiografia do momento =====
     if REWARD_DBG then
         _dbgStart = love.timer.getTime()
         self._dbgNext = 0
@@ -529,35 +390,21 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
         dbgQueue(FXQ)
     end
 
-    -- Zera as filas dedicadas: eventos zumbis de uma abertura anterior morrem
-    -- aqui (o close atrasado do "escolha 1" já é guardado por self.visible).
-    -- A de SAÍDA entra junto: um fechamento pendente de uma abertura passada
-    -- fecharia esta tela recém-aberta. Nenhum callback legítimo se perde —
-    -- a saída sempre termina ANTES de qualquer caminho que reabra a loja.
     EventManager.clear(FXQ)
     EventManager.clear("reward_exit")
     self._closing = false
 
-    -- Slide-in animation (Fase 4.4): painel desce do topo da tela em 0.43s.
-    -- Padrão Balatro: easing 'smooth' (cubic in-out) chega "encaixando".
     self.slideOffsetY = -love.graphics.getHeight()
     EventManager.ease(self, "slideOffsetY", 0, 0.43, "smooth", FXQ)
 
-    -- A LOJA abria em silêncio absoluto. `shopOpen` (chime quente) já existia
-    -- registrado e só era usado pelo pack e pelo cash out — é o som da porta
-    -- da loja, e é aqui que ele pertence. Rewards NÃO ganha som próprio de
-    -- abertura: o battleVictory ainda está soando quando esta tela entra.
     if self.mode == "shop" then
         Sfx.play("shopOpen")
     end
 
-    -- ENTRADA v3 (rewards): cada carta CAI de cima com back_out (stagger) +
-    -- tick sonoro em pitch crescente + juice ao pousar — fluidez pedida no
-    -- feedback ("animações, coisas legais, jogo satisfatório").
     if self.mode == "rewards" then
         local Moveable = require("engine.Moveable")
         for i, inst in ipairs(self.cardInstances) do
-            inst._entryOy = -70   -- de CIMA pra baixo (negativo = acima do lugar)
+            inst._entryOy = -70
             local d = 0.15 + (i - 1) * 0.13
             dbg("entry AGENDADA carta %d: ease em t=+%.2fs (fila %s)", i, d, FXQ)
             EventManager.parallel(d, function()
@@ -572,13 +419,6 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
         dbgCards(self, "pos-show")
     end
 
-    -- Materialize cascade nas cartas: cada cardInstance arranca em dissolve=1
-    -- e tweena pra 0 com stagger de 80ms — Balatro pack-opening style.
-    -- ⚠️ SÓ NA LOJA (fix Jul/2026): em rewards, deixar dissolve=1 esperando o
-    -- start_materialize agendado deixou as cartas INVISÍVEIS no jogo real
-    -- (print do dono: só banner+marcadores). A entrada do rewards é a QUEDA
-    -- (_entryOy) — dissolve fica 0 desde o início, visibilidade garantida
-    -- sem corrida com o EventManager.
     if self.mode ~= "rewards" and self.mode ~= "shop" then
         local stagger = 0.08
         for i, cardInstance in ipairs(self.cardInstances) do
@@ -590,67 +430,41 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
                 else
                     cardInstance.dissolve = 0
                 end
-                -- A cascata materializava MUDA (queixa do dono: "falta um som
-                -- suave de cada carta entrando"). Uma carta pousando na
-                -- prateleira, pitch subindo pela fileira — mesmo padrão do
-                -- modo rewards acima. `cardShelfPlace` é o som dedicado; até
-                -- ele existir, cai no cardDraw baixinho (contrato Sfx.has).
-                -- Sem `volume` de propósito: cada código já é registrado no
-                -- seu volume calibrado (main.lua) e um número aqui valeria
-                -- pros DOIS, que têm picos de amostra bem diferentes. A
-                -- calibração mora num lugar só.
                 playFirstSfx({ "cardShelfPlace", "cardDraw" },
                     { pitch = 0.94 + (i - 1) * 0.05 })
             end, FXQ)
         end
     end
 
-    -- Skip/Continue. Em modo shop dá +N ouro de bônus (configurado em MODE_CONFIG).
-    -- F2: em modo shop vira o botão PRINCIPAL da coluna esquerda (Balatro:
-    -- "Next Round" vermelho grande no topo da column), não um botãozinho no
-    -- rodapé. Em rewards continua compacto no rodapé.
     local skipBonus = (self.modeConfig and self.modeConfig.skipBonus) or 0
     local skipLabel = I18n.t("reward.continue")
     if self.mode == "rewards" then
-        -- Clareza: "Continuar" não dizia O QUE acontecia (perder a carta).
         skipLabel = I18n.t("reward.skip_no_card")
     end
     if self.mode == "shop" and skipBonus > 0 then
         skipLabel = skipLabel .. " (+$" .. skipBonus .. ")"
     end
-    -- Reforma Jul/2026 (feedback "Seguir ..."): 130px NÃO cabia "Seguir sem
-    -- carta" (~190px em Press Start 2P 12) e o TextFit truncava com "...".
-    -- Largura agora é MEDIDA pelo texto (+ícone/padding) e o botão recentra.
     local skipFont = 12
     local skipW = FontManager.getFont(skipFont):getWidth(skipLabel) + 64
     skipW = math.max(200, skipW)
     local skipX = (self.panel and (self.panel.x + self.panel.w / 2) or (love.graphics.getWidth() / 2)) - skipW / 2
     local skipY, skipH = self.skipButtonY, 40
-    -- Em shop a geometria definitiva vem de _layoutActionButtons() (medida);
-    -- estes valores são só provisórios até lá.
     self.skipButton = Button:new(
         skipX, skipY, skipW, skipH,
         skipLabel,
         function()
-            -- Saída JÁ em curso: cada clique extra na janela da cerimônia
-            -- pagava o bônus de novo (e o _closing só era checado depois).
             if self._closing then return end
             if self.mode == "shop" and skipBonus > 0 and self.game.economySystem then
                 self.game.economySystem:earnGold(skipBonus, "shop_skip")
             end
-            -- Saída pela porta da frente: cartas queimam, painel desliza,
-            -- som anuncia. _exitWithFlourish chama hide + onSkipped no fim.
             self:_exitWithFlourish()
         end, nil, skipFont
     )
     self.skipButton:setIcon("arrow_right")
     if self.mode == "shop" then self.skipButton:setColorScheme("red") end
 
-    -- Refresh button só existe se o modo permitir (rewards = false).
     if self.modeConfig and self.modeConfig.canReroll then
     local refreshCost = self.shopSystem:getRefreshCost()
-    -- Em modo shop a posição/largura vem de _layoutActionButtons() (rodapé,
-    -- largura medida pelo rótulo). Em rewards fica ao lado do Skip (legacy).
     local rerollX = self.skipButtonX + 145
     local rerollY = self.skipButtonY
     local rerollW = 130
@@ -662,7 +476,7 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
             local currentRefreshCost = self.shopSystem:getRefreshCost()
             if self.game.economySystem:canAfford(currentRefreshCost) then
                 self.game.economySystem:spendGold(currentRefreshCost, "refresh", "shop")
-                Sfx.play("shopReroll")  -- F11.5: dedicado pra reroll (riffle paper).
+                Sfx.play("shopReroll")
                 self:_spawnGoldPopup(self.refreshButton.x + self.refreshButton.width / 2,
                     self.refreshButton.y, "-$" .. currentRefreshCost)
                 self.shopSystem:refreshOffers()
@@ -671,9 +485,6 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
                 self:_persistOffers()
 
                 if self.scene then
-                    -- Loja v3: as prateleiras deslizam pra fora e voltam
-                    -- repostas (os DADOS já trocaram acima: quem lê
-                    -- shopOffers depois do clique vê a vitrine nova).
                     self.scene:reroll(self.shopOffers)
                     self:_mirrorScene()
                 else
@@ -695,11 +506,8 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
 
                 local newCost = self.shopSystem:getRefreshCost()
                 self.refreshButton.text = I18n.t("reward.refresh", { n = newCost })
-                -- Custo novo = rótulo novo = largura nova (o "($12)" é mais
-                -- largo que "($5)"). Re-mede antes que o fitText trunque.
                 self:_layoutActionButtons()
             elseif self.scene then
-                -- sino sem badalo: nada de toast, o ouro da TopBar pisca
                 self.scene:onDenied(nil)
                 Sfx.play("purchaseDeny")
             else
@@ -708,10 +516,8 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
             end
         end
     )
-    end  -- end if canReroll
+    end
 
-    -- COMPRAR (Loja v3b): clicar no objeto SELECIONA; a compra é confirmada
-    -- aqui, no rodapé do pergaminho (ou Enter/A com o foco nele).
     self.buyButton = nil
     if self.mode == "shop" then
         self.buyButton = Button:new(0, 0, 160, 38, "", function()
@@ -722,9 +528,6 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
         self.buyButton:setColorScheme("red")
     end
 
-    -- DADOS DO ESCRIBA (Out/2026): a aposta opcional mora no rodapé de ações,
-    -- ao lado do reroll — é uma AÇÃO da loja, não uma oferta da vitrine.
-    -- Abre o modal (components/ScribeDiceScreen); regra em ScribeDice.lua.
     self.diceButton = nil
     if self.mode == "shop" and _G.openScribeDice then
         self.diceButton = Button:new(0, 0, 130, 32, "", function()
@@ -733,8 +536,6 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
         self:_refreshDiceButton()
     end
 
-    -- Geometria definitiva do rodapé de ações (larguras medidas pelos rótulos
-    -- já finais, incluindo o custo do reroll e o bônus do skip).
     self:_layoutActionButtons()
 
     for i = 1, #self.shopOffers do
@@ -747,9 +548,6 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
     end
 end
 
--- Uma instância de Card pra oferta (loja e espólios usam a MESMA fábrica).
--- Posição/escala são de quem chama: na loja o ShelfItem apoia a carta no
--- suporte; nos espólios createCardInstances centraliza no slot.
 function CardRewardScreen:_makeCardInstance(offer)
     local cardData = self.cardDatabase:getCard(offer.id)
     if not cardData then
@@ -775,9 +573,6 @@ function CardRewardScreen:_makeCardInstance(offer)
     return inst
 end
 
--- Espelha a cena nos campos históricos (cardInstances / offer.cardInstance):
--- a cerimônia de saída dissolve as instâncias, o selo de descoberta e os
--- testes leem daqui.
 function CardRewardScreen:_mirrorScene()
     if not self.scene then return end
     self.cardInstances = self.scene:cardInstances()
@@ -785,9 +580,6 @@ end
 
 function CardRewardScreen:createCardInstances()
     if self.mode == "shop" then
-        -- Loja v3: os objetos da prateleira (ShelfItem) são donos das cartas.
-        -- updateLayout() já criou a cena; sem ela (chamada fora de ordem)
-        -- cria aqui — layout vem no primeiro draw/update.
         self.scene = self.scene or ShopScene.new(self)
         self.scene:setOffers(self.shopOffers)
         self:_mirrorScene()
@@ -795,9 +587,6 @@ function CardRewardScreen:createCardInstances()
     end
     self.cardInstances = {}
 
-    -- F2: itera pelas ofertas usando o _slot FIXO de cada uma — depois de uma
-    -- compra as cartas restantes ficam onde estavam (slot comprado vira vazio
-    -- com stamp VENDIDO, desenhado em draw()).
     local maxSlots = self.slotCount or 3
     for _, offer in ipairs(self.shopOffers) do
         if offer.type == "card" and not offer.purchased
@@ -811,14 +600,9 @@ function CardRewardScreen:createCardInstances()
         local cardInstance = self.cardDatabase:createCardInstance(cardData)
 
         if cardInstance then
-            -- Inédita (offer.isNew, gravado no sorteio): selo + luz no draw.
             cardInstance.isNewDiscovery = offer.isNew or nil
             local pos = self.cardPositions[offer._slot] or { x = 0, y = 0 }
 
-            -- Fill do slot: em "rewards" a carta é a estrela e sobra folga
-            -- pros marcadores (86%). No split-view da loja o slot já é
-            -- pequeno e os rótulos moram na faixa DE FORA (slotLabelH) — aqui
-            -- a carta usa quase tudo, senão vira uma miniatura ilegível.
             local imgW = cardInstance.image and cardInstance.image:getWidth() or 96
             local imgH = cardInstance.image and cardInstance.image:getHeight() or 144
             local slotW = pos.w or self.cardWidth
@@ -827,35 +611,15 @@ function CardRewardScreen:createCardInstances()
             local fitScale = math.min(slotW / imgW, slotH / imgH) * fill
             local renderW = imgW * fitScale
             local renderH = imgH * fitScale
-            -- Centraliza a carta DENTRO do slot. Slot continua sendo a área
-            -- clicável (cardButton); o sprite visualmente ocupa apenas o centro.
             cardInstance.x = math.floor(pos.x + (slotW - renderW) / 2)
             cardInstance.y = math.floor(pos.y + (slotH - renderH) / 2)
-            -- ÂNCORA IMUTÁVEL do layout (fix Jul/2026 do feedback loop):
-            -- Card:draw grava self.y = y a cada frame; desenhar a partir de
-            -- self.y + entryOy fazia y ACUMULAR o offset (70px/frame — as
-            -- cartas estabilizavam em y≈-1900, fora da tela; era o bug
-            -- "não renderizam até o hover"). O draw parte SEMPRE daqui.
             cardInstance.homeX = cardInstance.x
             cardInstance.homeY = cardInstance.y
 
             cardInstance.baseScale = fitScale
             cardInstance.currentScale = fitScale
-            -- targetScale começa = baseScale; Card:updateMouse aplica hover bump
-            -- proporcional (HOVER_SCALE_MULT) automaticamente.
             cardInstance.targetScale = fitScale
-            -- SEM deslocamento vertical no hover — nos dois modos.
-            -- Tentei ligar o lift na grade (o feedback fica mais vivo), mas na
-            -- captura ficou evidente o porquê de ele estar desligado: tudo que
-            -- decora o slot é ancorado no RETÂNGULO DO SLOT, não na carta —
-            -- medalhão de preço, marcador de raridade, halo de seleção. Com a
-            -- carta deslocada, o preço descola e o marcador some atrás dela.
-            -- O hover continua legível por SCALE (+6%) e, principalmente, pelo
-            -- painel de detalhe inteiro trocando de conteúdo.
             cardInstance.noHoverLift = true
-
-            -- Rarity border pulsante removida em F10.1 (poluía visualmente).
-            -- offer.rarity ainda existe pra ordenar/filtrar; só não desenhamos halo.
 
             if not cardInstance.description and offer.description then
                 cardInstance.description = offer.description
@@ -872,8 +636,6 @@ function CardRewardScreen:createCardInstances()
                 })
             end
 
-            -- Link bidirecional: purchaseOffer usa offer.cardInstance pro FX
-            -- de compra (antes NUNCA era atribuído — o feedback não disparava).
             offer.cardInstance = cardInstance
             table.insert(self.cardInstances, cardInstance)
         else
@@ -886,18 +648,15 @@ end
 
 function CardRewardScreen:createOfferButtons()
     self.cardButtons = {}
-    -- Loja v3: clicar no OBJETO compra (ShopScene:itemAt no mousereleased).
     if self.mode == "shop" then return end
 
-    -- F2: botão invisível ancorado no _slot fixo da oferta.
     local maxSlots = self.slotCount or 3
     for _, offer in ipairs(self.shopOffers) do
         if not offer.purchased and (offer._slot or math.huge) <= maxSlots then
             local pos = self.cardPositions[offer._slot] or { x = 0, y = 0 }
-            -- Voucher/pack podem ter w/h custom no layout (pos.w/pos.h).
             local btnW = pos.w or self.cardWidth
             local btnH = pos.h or self.cardHeight
-            local capturedOffer = offer  -- closure capture
+            local capturedOffer = offer
             local button = Button:new(
                 pos.x, pos.y, btnW, btnH,
                 "",
@@ -912,16 +671,11 @@ function CardRewardScreen:createOfferButtons()
 end
 
 function CardRewardScreen:purchaseOffer(offer, offerId)
-    Debug.log("[CardRewardScreen] Purchasing", offer.name, "($" .. offer.cost .. ")")
 
-    -- REGRA "ESCOLHA 1" (fix Jul/2026 — dava pra pegar as 3): depois da
-    -- primeira carta, cliques atrasados durante o fade/close são ignorados.
     if self.mode == "rewards" and self._rewardTaken then return end
 
     if not self.game.economySystem:canAfford(offer.cost) then
         if self.mode == "shop" and self.scene then
-            -- Loja v3: a etiqueta treme vermelha e o ouro da TopBar pisca.
-            -- Sem toast (decisão do plano §4.4).
             self.scene:onDenied(offer)
         else
             self.game:addMessage(I18n.t("reward.insufficient_gold"), "error")
@@ -930,16 +684,9 @@ function CardRewardScreen:purchaseOffer(offer, offerId)
         return
     end
 
-    -- Pre-check: joker com slots cheios não pode ser comprado (evita gold drain).
     if offer.type == "card" then
         local cd = self.game.deckManager.cardDatabase:getCard(offer.id)
         if cd and cd.type == "joker" and not self.game:canAcceptJoker() then
-            -- O texto falava em "slots cheios", mas quem barra aqui é
-            -- `canAcceptJoker`, que hoje só testa `isRunMode` (Game.lua:383)
-            -- — a rejeição por slots morreu no refactor coleção+bancada de
-            -- Jul/2026 e é anti-pattern documentado no CLAUDE.md. A mensagem
-            -- tinha ficado pra trás e mentia sobre a causa; agora diz o que a
-            -- condição de fato verifica.
             self.game:addMessage(
                 I18n.t("reward.joker_run_only", nil,
                     "Coringas so podem ser adquiridos durante uma corrida"),
@@ -950,24 +697,16 @@ function CardRewardScreen:purchaseOffer(offer, offerId)
     end
 
     if self.game.economySystem:spendGold(offer.cost, offer.type, offer.id) then
-        -- Marca purchased ANTES de qualquer side-effect (pack open, addCardToRun)
-        -- pra evitar duplo-buy caso input leak durante overlay/animação.
         offer.purchased = true
-        -- VENDIDO entra no currentRun na hora: qualquer save daqui em diante
-        -- (Salvar e sair, toggle de coringa) já leva o slot vendido junto
-        -- com o ouro gasto e a carta no deck.
         self:_persistOffers()
 
-        -- F4 (Voto de Pobreza): qualquer compra em LOJA marca a run.
         if self.mode == "shop" and self.game.runManager
             and self.game.runManager.currentRun then
             self.game.runManager.currentRun._usedShop = true
         end
 
-        -- Screen jiggle no momento da compra (Fase 6.4) — feedback tátil leve.
         if _G.jiggleScreen then _G.jiggleScreen(0.25) end
 
-        -- Popup de ouro "-$N" flutuando do slot comprado (todo tipo de oferta).
         do
             local pos = self.cardPositions[offer._slot or 0]
             if pos then
@@ -976,31 +715,20 @@ function CardRewardScreen:purchaseOffer(offer, offerId)
             end
         end
 
-        -- Loja v3: etiqueta arrancada + objeto voando pro destino + poeira e
-        -- VENDIDO no lugar — tudo na cena, ANTES do rebuild dos itens (que
-        -- lê offer.purchased e troca o objeto pela marca de poeira).
         if self.mode == "shop" and self.scene then
             self.scene:onPurchased(offer)
         end
 
         if offer.type == "card" then
-            -- Feedback visual F2 (Balatro): a carta VOA até o ícone de deck na
-            -- TopBar, encolhendo — comunica "foi pro seu deck" sem texto.
             if not (self.mode == "shop" and self.scene) then self:_startFlyToDeck(offer) end
             self.game:addCardToRun(offer.id)
         elseif offer.type == "upgrade" then
-            -- Floreio ANTES do applyUpgrade: a forja abre o picker por cima
-            -- da loja, e o gesto tem que já estar no ar quando ele entrar.
             self:_startRelicFlourish(offer)
             self:applyUpgrade(offer)
         elseif offer.type == "booster_pack" then
-            -- Fase 5: abre o pack imediatamente via PackOpenScreen overlay.
-            -- main.lua expõe _G.openBoosterPack(packData, onComplete) que orquestra.
             local BoosterPackSystem = require("src.systems.BoosterPackSystem")
             local run = self.game.runManager and self.game.runManager.currentRun
             local classId = run and run.classId
-            -- P0.6/P0.10: runManager liga o dedup de joker possuído (Buffoon)
-            -- e actNumber os pesos de raridade por ato (Arcana/Celestial/Spectral).
             local pack = BoosterPackSystem.expandPackRecord({
                 id = offer.id, kind = offer.kind,
                 size = offer.size, choose = offer.choose,
@@ -1011,8 +739,6 @@ function CardRewardScreen:purchaseOffer(offer, offerId)
 
             if _G.openBoosterPack then
                 _G.openBoosterPack(pack, function(selected)
-                    -- Cards escolhidas vão pro deck — passa edition/seal via meta
-                    -- pra que essa cópia específica preserve o modifier (Fase 5.4).
                     for _, card in ipairs(selected or {}) do
                         if card.id then
                             self.game:addCardToRun(card.id, {
@@ -1026,10 +752,7 @@ function CardRewardScreen:purchaseOffer(offer, offerId)
                 Debug.warn("[CardRewardScreen] _G.openBoosterPack não setado — pack ignorado")
             end
         end
-        -- Loja v3: a cena já tocou o baque da moeda + madeira.
         if not (self.mode == "shop" and self.scene) then Sfx.play("purchaseConfirm") end
-
-        -- offer.purchased já foi setado antes do side-effect
 
         self:createCardInstances()
         self:createOfferButtons()
@@ -1038,40 +761,24 @@ function CardRewardScreen:purchaseOffer(offer, offerId)
             self.onCardPurchased(offer)
         end
 
-        -- Loja v3b: o pergaminho passa pra próxima oferta disponível
         if self.mode == "shop" then
             self.selectedOffer, self.selectedIdx = nil, nil
             self:_prefocusDetail()
         end
 
-        -- REGRA "ESCOLHA 1" (rewards, StS): pegar UMA carta ENCERRA os
-        -- espólios — os botões morrem na hora, as cartas restantes DISSOLVEM
-        -- (queima Balatro) e a tela fecha sozinha seguindo o fluxo (mesmo
-        -- caminho do Seguir). Antes dava pra pegar as 3.
         if self.mode == "rewards" and offer.type == "card" then
             self._rewardTaken = true
             self.cardButtons = {}
             self:clearSelection()
             self.hoveredOffer, self.hoveredInst = nil, nil
-            -- A queima das não-escolhidas + o fechamento agora moram no
-            -- mesmo gesto de saída da loja (_exitWithFlourish): as cartas
-            -- queimam, o painel desliza e o som anuncia. A carta PEGA não
-            -- queima — ela já voou pro deck.
             self:_exitWithFlourish(offer.cardInstance)
         end
     end
 end
 
--- Marca uma oferta como "selecionada" — dispara o overlay 3-zone (info-left,
--- carta-com-buttons-attached, preview-right). Substitui o modal centralizado
--- antigo (showPurchaseConfirmation + drawPurchaseConfirmation, removidos).
--- Pattern Balatro: create_shop_card_ui (UI_definitions.lua:802-880) cria
--- buy_button como CHILD da carta, popup info side-anchored via align_h_popup.
 function CardRewardScreen:setSelectedOffer(offer, idx)
     if not offer then return end
     if self.mode == "shop" then
-        -- Loja v3b: selecionar foca o pergaminho e arma o COMPRAR; clicar de
-        -- novo não desfaz (a leitura fica estável até outra escolha).
         if self.selectedOffer == offer then return end
         self.selectedOffer = offer
         self.selectedIdx = idx
@@ -1081,7 +788,6 @@ function CardRewardScreen:setSelectedOffer(offer, idx)
         Sfx.play("cardSelect", { pitch = 1.05 + (math.random() * 2 - 1) * 0.06 })
         return
     end
-    -- Re-clicar na mesma → toggle off (Balatro card.lua:4610-4623).
     if self.selectedOffer == offer then
         self:clearSelection()
         return
@@ -1091,42 +797,24 @@ function CardRewardScreen:setSelectedOffer(offer, idx)
     self.selectedIdx = idx
     self:_buildSelectionButtons(offer, idx)
 
-    -- Slide-in dos painéis laterais (anim 0→1 em 0.18s smooth).
     if EventManager and EventManager.parallelEase then
         EventManager.parallelEase(self, "_selectionAnim", 1, 0.18, "smooth", "shop_select")
     else
         self._selectionAnim = 1
     end
 
-    -- Selecao tem som PROPRIO: cardSelect, no volume do registro
-    -- (Config.Audio.CLICK_SELECT_VOLUME = 0.2). Antes era o hoverCard com
-    -- `volume = 0.5` cravado aqui -- 16x o hover da carta, com a MESMA
-    -- amostra. Corrigido o hover (ver _playSlotHoverSfx), manter o select em
-    -- 0.5 deixaria um degrau de 17:1 entre passar o mouse e clicar; e emprestar
-    -- o som de hover pra confirmar selecao ja era o gesto errado.
     Sfx.play("cardSelect", { pitch = 1.05 + (math.random() * 2 - 1) * 0.06 })
 end
 
--- Mini-buttons Balatro-style (UI_definitions.lua:382 card_focus_button) attached
--- compactos sob a carta. Sem texto verbal — apenas cor semântica:
---   Buy: verde-grimório com "$N" (custo é a única info necessária)
---   Cancel: vermelho-crimson com ícone X
--- Largura ~50% da carta dividida em 2; altura 32px.
 function CardRewardScreen:_buildSelectionButtons(offer, idx)
     self._selectionButtons = {}
-    -- Loja v3: não há botão de confirmação; a oferta selecionada só fica
-    -- travada no pergaminho (tools/testes antigos ainda chamam).
     if self.mode == "shop" then return end
     if not self.cardPositions[idx] then return end
 
-    -- Reforma Jul/2026 (feedback "aquele P e aquele X"): 90px + fonte 12 NÃO
-    -- cabia "PEGAR" e o TextFit degradava até virar UMA LETRA. Largura agora
-    -- é MEDIDA pelo texto (rewards) ou ocupa o rodapé do painel (loja).
     local bx0, by0, buyW, cancelW, btnH, gap = self:_selectionButtonsRect(idx)
     if not bx0 then return end
     local buyLabel = (offer.cost or 0) > 0 and ("$" .. tostring(offer.cost))
         or require("src.i18n.TextCase").upper(I18n.t("common.take"))
-    -- Na loja o botão é largo: cabe o verbo + o preço ("COMPRAR $12").
     if self.mode == "shop" and (offer.cost or 0) > 0 then
         local verb = I18n.t("reward.detail_buy", nil, "COMPRAR")
         if FontManager.getFont(12):getWidth(verb .. " " .. buyLabel) + 24 <= buyW then
@@ -1134,7 +822,6 @@ function CardRewardScreen:_buildSelectionButtons(offer, idx)
         end
     end
 
-    -- Buy button: "$N" (loja) ou "PEGAR" (recompensa grátis). Verde-grimório.
     local buyBtn = Button:new(bx0, by0, buyW, btnH, buyLabel, function()
         local toBuy = self.selectedOffer
         self:clearSelection()
@@ -1146,7 +833,6 @@ function CardRewardScreen:_buildSelectionButtons(offer, idx)
     end
     table.insert(self._selectionButtons, buyBtn)
 
-    -- Cancel button: QUADRADO só com o ícone X (nada de texto pra truncar).
     local cancelBtn = Button:new(bx0 + buyW + gap, by0, cancelW, btnH, "", function()
         self:clearSelection()
     end, nil, 14)
@@ -1155,28 +841,6 @@ function CardRewardScreen:_buildSelectionButtons(offer, idx)
     table.insert(self._selectionButtons, cancelBtn)
 end
 
--- ============================================================================
--- RETÂNGULO REAL DA CARTA — a âncora de TUDO que decora o slot
--- ============================================================================
--- O problema que fez o hover ficar feio não era o lift: era a ÂNCORA.
--- Card:draw(x, y) desenha o topo-esquerda em (x, y) e escala a partir DALI —
--- então a carta em hover crescia pra BAIXO e pra DIREITA, invadindo o rótulo
--- de raridade (que fica em Y fixo sob o slot) enquanto o medalhão de preço,
--- preso ao retângulo estático do slot, ficava pra trás.
---
--- Aqui a carta é ancorada no CENTRO-X e no RODAPÉ do seu retângulo de repouso:
--- crescer só empurra o topo pra cima. Somado ao lift, vira a "puladinha pra
--- cima" pedida. Este método devolve o retângulo EFETIVAMENTE desenhado no
--- frame — medalhão de preço e halo de seleção leem daqui, então acompanham a
--- carta em vez de descolar.
---
--- Os offsets internos do Card:draw (BASE_LIFT constante, ondulação idle,
--- parallax horizontal) são recompostos aqui pra o retângulo bater pixel a
--- pixel. Na carta em HOVER a ondulação é zero por definição, que é justamente
--- o caso em que o alinhamento tem que ser exato.
--- Devolve { drawX, drawY, x, y, w, h }:
---   drawX/drawY — o que passar pro Card:draw (ele soma os offsets internos)
---   x/y/w/h     — o retângulo VISÍVEL resultante (âncora das decorações)
 function CardRewardScreen:_cardDrawRect(inst)
     local img = inst.image
     if not img then
@@ -1195,9 +859,6 @@ function CardRewardScreen:_cardDrawRect(inst)
     local homeY = inst.homeY or inst.y or 0
     local baseW, baseH = iw * baseS, ih * baseS
 
-    -- Âncora nova (centro-X + rodapé) é EXCLUSIVA da loja. Em "rewards" o
-    -- marcador de raridade fica ACIMA da carta (pos.y - 15): crescer pra cima
-    -- bateria nele. Lá a âncora segue sendo o topo-esquerda de sempre.
     local x, y = homeX, homeY
     if self.mode == "shop" then
         x = homeX + (baseW - w) / 2
@@ -1207,11 +868,8 @@ function CardRewardScreen:_cardDrawRect(inst)
         end
     end
 
-    -- Entrada animada do modo rewards.
     y = y + (inst._entryOy or 0)
 
-    -- Offsets que o Card:draw soma por dentro — entram só no retângulo
-    -- visível, NUNCA na posição passada pro draw (senão contam duas vezes).
     local baseFloat = Config.Cards.BASE_LIFT or 0
     local ambientY = 0
     if not inst.isHovered and not inst.isDragging then
@@ -1225,13 +883,6 @@ function CardRewardScreen:_cardDrawRect(inst)
     }
 end
 
--- ============================================================================
--- RODAPÉ DE AÇÕES (loja) — larguras MEDIDAS, nunca chutadas
--- ============================================================================
--- Largura que um Button precisa pro rótulo inteiro caber sem o fitText
--- degradar pra "...": texto + ícone + padding interno (12 de cada lado no
--- variante clean) + folga. Medida no locale ATUAL, então "Novas ofertas ($5)"
--- e "Erneuern ($5)" recebem cada um o que precisam.
 local function measuredButtonWidth(btn, minW)
     if not btn then return 0 end
     local font = FontManager.getFont(btn.fontSize or 12)
@@ -1240,18 +891,10 @@ local function measuredButtonWidth(btn, minW)
     return math.max(minW or 130, math.ceil(textW + iconW + 34))
 end
 
--- Reroll à esquerda, ouro no meio, Continuar à direita. Se a soma não couber
--- (janela minúscula / locale gigante), as larguras encolhem proporcionalmente
--- e o fitText do Button reduz a fonte — degradação suave, sem estourar a faixa.
 function CardRewardScreen:_layoutActionButtons()
     local bar = self.actionBar
     if not bar then return end
 
-    -- Loja v3: sino / copo de dados / livro-razão são OBJETOS no balcão
-    -- (ShopScene desenha). Os Buttons continuam existindo como hitbox
-    -- invisível sobre cada objeto: mantêm o clique, o onClick que tools e
-    -- testes chamam, e o alvo do NavCursor (Button:draw registra mesmo
-    -- invisível). O texto deles vira o rótulo a giz sob o objeto.
     if self.mode == "shop" and self.scene and self.scene.L then
         local L = self.scene.L
         local function place(btn, r, invisible)
@@ -1261,10 +904,7 @@ function CardRewardScreen:_layoutActionButtons()
         end
         place(self.refreshButton, L.bell.rect, true)
         place(self.diceButton, L.dice.rect, true)
-        -- CONTINUAR: botão de verdade no canto inferior direito (referência)
         place(self.skipButton, L.continueBtn, false)
-        -- COMPRAR: fita com selo de cera no rodapé do pergaminho (o
-        -- ShopScene desenha; o Button vira hitbox + alvo do NavCursor)
         place(self.buyButton, L.scroll.buy, true)
         self:_refreshBuyButton()
         return
@@ -1278,7 +918,6 @@ function CardRewardScreen:_layoutActionButtons()
     local rerollW = measuredButtonWidth(self.refreshButton)
     local skipW = measuredButtonWidth(self.skipButton)
     local diceW = self.diceButton and measuredButtonWidth(self.diceButton) or 0
-    -- + o "?" da explicação logo à direita do botão dos dados
     local diceGap = self.diceButton and (gap + 26) or 0
     local avail = bar.w - edge * 2
     if rerollW + diceW + diceGap + skipW + gap > avail then
@@ -1309,14 +948,11 @@ function CardRewardScreen:_layoutActionButtons()
 
 end
 
--- "?" dos dados (no gap à direita do botão, reservado em _layoutActionButtons).
 function CardRewardScreen:_diceHelpRect()
     local b = self.diceButton
     local r = 9
     local cx = b.x + b.width + 13
     local cy = b.y + math.floor(b.height / 2)
-    -- Loja v3: o "?" dos dados mora no canto da placa do cabeçalho, ao lado
-    -- do título (nunca solto no balcão).
     if self.mode == "shop" and self.scene and self.scene.L and self.scene.L.diceHelp then
         local d = self.scene.L.diceHelp
         cx, cy = d.x + math.floor(d.w / 2), d.y + math.floor(d.h / 2)
@@ -1326,8 +962,6 @@ function CardRewardScreen:_diceHelpRect()
     return rect
 end
 
--- Explicação dos Dados do Escriba (conversa "dice_help" do corvo), a
--- qualquer momento — o dono achou a mesa confusa sem isso.
 function CardRewardScreen:openDiceHelp()
     if not self.diceButton then return false end
     local ok = require("src.systems.Tutorial").explain("dice_help", self.game)
@@ -1335,7 +969,6 @@ function CardRewardScreen:openDiceHelp()
     return ok
 end
 
--- Rótulo do botão dos dados: muda depois da jogada (uma por visita).
 function CardRewardScreen:_refreshDiceButton()
     if not self.diceButton then return end
     local ScribeDice = require("src.systems.ScribeDice")
@@ -1344,18 +977,6 @@ function CardRewardScreen:_refreshDiceButton()
     self:_layoutActionButtons()
 end
 
--- Pré-foca a primeira oferta de carta ao abrir a loja.
---
--- Defeito reportado: sem hover, ~29% da tela ficava preta com 3 linhas de
--- texto no meio — a loja parecia inacabada em repouso. Das três saídas
--- possíveis (brasão decorativo / resumo do estoque / pré-focar), pré-focar é
--- a única que não inventa conteúdo novo: o painel já nasce mostrando uma
--- oferta REAL e, ao fazer isso, ensina sozinho pra que ele serve. Brasão
--- seria enfeite ocupando o lugar da informação; resumo do estoque duplicaria
--- o que a grade ao lado já mostra.
---
--- É PRÉ-FOCO, não pré-seleção: nada de halo nem de botão de compra armado —
--- o jogador continua tendo que clicar pra comprar.
 function CardRewardScreen:_prefocusDetail()
     if self.mode ~= "shop" then return end
     for _, offer in ipairs(self.shopOffers or {}) do
@@ -1365,8 +986,6 @@ function CardRewardScreen:_prefocusDetail()
             }
             self._detailPrefocus = true
             self._detailShownOffer = offer
-            -- Loja v3b: o pergaminho nasce com uma oferta SELECIONADA (COMPRAR
-            -- armado), como na referência; o jogador troca clicando noutra.
             self.selectedOffer = offer
             self.selectedIdx = offer._slot
             if self.scene then self.scene:_syncSelection() end
@@ -1376,8 +995,6 @@ function CardRewardScreen:_prefocusDetail()
     end
 end
 
--- Rótulo e estado do COMPRAR: "COMPRAR · $N" da oferta selecionada; apagado
--- sem seleção ou sem ouro (o preço fica vermelho na placa, sem toast).
 function CardRewardScreen:_refreshBuyButton()
     local b = self.buyButton
     if not b then return end
@@ -1393,9 +1010,6 @@ function CardRewardScreen:_refreshBuyButton()
     b:setEnabled(afford ~= false)
 end
 
--- Zera a memória do painel de detalhe. Obrigatório sempre que o CONJUNTO de
--- ofertas muda (abertura, reroll): segurar a "última olhada" apontando pra uma
--- oferta que não existe mais mostraria uma carta fantasma.
 function CardRewardScreen:_resetDetail()
     self.detailPayload = nil
     self._lastDetailPayload = nil
@@ -1407,7 +1021,6 @@ function CardRewardScreen:_resetDetail()
     self:_prefocusDetail()
 end
 
--- Limpa estado de seleção e anima fade-out dos painéis laterais.
 function CardRewardScreen:clearSelection()
     self.selectedOffer = nil
     self.selectedIdx = nil
@@ -1419,10 +1032,7 @@ function CardRewardScreen:clearSelection()
     end
 end
 
--- Aliases legacy mantidos pra eventual call site externo. Internamente apenas
--- delegam pra setSelectedOffer/clearSelection.
 function CardRewardScreen:showPurchaseConfirmation(offer)
-    -- Encontra idx da offer pra build dos buttons.
     local idx = nil
     for i, o in ipairs(self.shopOffers or {}) do
         if o == offer then idx = i; break end
@@ -1437,18 +1047,10 @@ function CardRewardScreen:confirmPurchase()
     self:purchaseOffer(toBuy, toBuy.id)
 end
 
--- Legacy alias: agora apenas delega pra clearSelection.
 function CardRewardScreen:cancelPurchase()
     self:clearSelection()
 end
 
--- ============================================================================
--- FX DE COMPRA (F2) — carta voa pro deck + popups de ouro + stamp VENDIDO
--- ============================================================================
-
--- Carta comprada voa até o ícone de deck da TopBar (x≈200), encolhendo com
--- ease_in (sucção). Entry vive em self._flyCards; desenhada em screen-space
--- (fora do slide do painel) no fim do draw().
 function CardRewardScreen:_startFlyToDeck(offer)
     local inst = offer.cardInstance
     if not inst or not inst.image then return end
@@ -1456,7 +1058,7 @@ function CardRewardScreen:_startFlyToDeck(offer)
 
     local fly = {
         img = inst.image,
-        inst = inst,   -- a carta voando segue VIVA (CardFrame.displayImage no draw)
+        inst = inst,
         x = inst.x, y = inst.y,
         scale = inst.currentScale or inst.baseScale or 1,
         alpha = 1,
@@ -1464,7 +1066,6 @@ function CardRewardScreen:_startFlyToDeck(offer)
     }
     table.insert(self._flyCards, fly)
 
-    -- Alvo: ícone de deck da TopBar (padding 20 + 180 — ver TopBar.lua).
     local targetX, targetY = 205, 6
     local dur = 0.45
     if EventManager and EventManager.parallelEase then
@@ -1481,20 +1082,12 @@ function CardRewardScreen:_startFlyToDeck(offer)
     end
 end
 
--- Popup "-$N" que flutua pra cima e some (age controlada em update()).
--- `color`/`centered` são opcionais: a compra de relíquia reusa este mesmo
--- popup pra subir o EFEITO ganho ("+10 VIDA MAX") na cor do efeito.
 function CardRewardScreen:_spawnGoldPopup(x, y, text, color, centered)
     self._goldPopups = self._goldPopups or {}
     table.insert(self._goldPopups,
         { text = text, x = x, y = y, age = 0, color = color, centered = centered })
 end
 
--- Compra de RELÍQUIA: a peça sobe do pedestal crescendo e se apaga, e o
--- EFEITO sobe escrito atrás dela. Antes o feedback era idêntico ao de
--- qualquer oferta (popup "-$N" + carimbo VENDIDO): a tela cobrava e não
--- dizia o que você tinha acabado de ganhar — que é justamente o que um
--- upgrade vende. Com reducedMotion sobra o texto, que é a INFORMAÇÃO.
 function CardRewardScreen:_startRelicFlourish(offer)
     local pos = offer._slot and self.cardPositions[offer._slot]
     if not pos then return end
@@ -1511,8 +1104,6 @@ function CardRewardScreen:_startRelicFlourish(offer)
 
     local fx = self:_slotFx(offer._slot)
     Moveable.juice_up(fx, 0.35, 0.08)
-    -- Loja v3: o objeto voa pelo ShopScene (onPurchased); aqui fica só o
-    -- EFEITO escrito subindo — a informação que a compra vende.
     if self.scene then return end
 
     local sprite = ImageCache.tryGet(
@@ -1552,14 +1143,9 @@ function CardRewardScreen:_updatePurchaseFx(dt)
     end
 end
 
--- Desenhados em SCREEN-SPACE (após o pop do slide) — voam por cima de tudo.
 function CardRewardScreen:_drawPurchaseFx()
     for _, fly in ipairs(self._flyCards or {}) do
         love.graphics.setColor(1, 1, 1, fly.alpha)
-        -- ox/oy: a carta voa pelo canto (origem 0,0 — é como ela é desenhada
-        -- na grade); a relíquia sobe pelo CENTRO, senão crescer a escala a
-        -- empurra pro canto inferior-direito em vez de inflar no lugar.
-        -- Carta comprada continua animando no voo (dono, 13/Out/2026).
         local img = fly.inst and require("src.ui.CardFrame").displayImage(fly.inst) or fly.img
         love.graphics.draw(img, fly.x, fly.y, fly.rot, fly.scale, fly.scale,
             fly.ox or 0, fly.oy or 0)
@@ -1580,8 +1166,6 @@ function CardRewardScreen:_drawPurchaseFx()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Slot de carta comprada: moldura vazia esmaecida + stamp "VENDIDO" diagonal
--- (Balatro deixa o buraco no shelf — comunicar "você JÁ comprou isto aqui").
 function CardRewardScreen:_drawSoldSlot(pos)
     local w = pos.w or self.cardWidth
     local h = pos.h or self.cardHeight
@@ -1606,22 +1190,6 @@ function CardRewardScreen:_drawSoldSlot(pos)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- ============================================================================
--- SERVIÇOS DE DECK (forja / tesoura / prensa)
--- ============================================================================
--- Os três compram a MESMA coisa: o direito de apontar uma carta do deck. A
--- diferença é só o modo do picker, então o caminho é um só.
---
--- ⚠️ PAGO ANTES, APLICADO DEPOIS. `purchaseOffer` já debitou o ouro quando
--- esta função roda, e o picker é uma tela SEPARADA que o jogador pode fechar
--- no "Voltar" sem escolher carta nenhuma. Sem o estorno abaixo o jogador paga
--- e não leva — e o slot na vitrine já está carimbado VENDIDO. A forja tinha
--- esse buraco desde sempre; ele só não incomodava porque a forja aparecia em
--- metade das lojas. Com a tesoura FIXA na prateleira viraria rotina.
---
--- Como se sabe se o serviço foi usado: a ASSINATURA DO DECK
--- (ShopServices.deckFingerprint) muda quando uma carta entra, sai ou sobe de
--- nível. Se ela não mudou entre abrir e fechar o picker, nada aconteceu.
 local DECK_SERVICE_PICKER = {
     forge_card     = "forge",
     remove_card    = "remove",
@@ -1631,8 +1199,6 @@ local DECK_SERVICE_PICKER = {
 function CardRewardScreen:_openDeckService(offer, pickerMode)
     local rm = self.game.runManager
 
-    -- Ledger: o custo da PRÓXIMA compra deste serviço cresce a partir de
-    -- agora. Desfeito no estorno se o jogador não escolher carta.
     if offer.effect == "forge_card" then
         if rm and rm.registerPaidForge then rm:registerPaidForge() end
     elseif rm and rm.registerService then
@@ -1654,9 +1220,6 @@ function CardRewardScreen:_openDeckService(offer, pickerMode)
     end)
 end
 
--- Desfaz a compra de um serviço de deck: devolve o ouro, desfaz o ledger e
--- RECOLOCA a oferta na vitrine (o slot deixa de ser VENDIDO). O jogador sai
--- exatamente como entrou — é isso que faz "Voltar" significar cancelar.
 function CardRewardScreen:_refundDeckService(offer)
     local rm = self.game.runManager
 
@@ -1678,8 +1241,6 @@ function CardRewardScreen:_refundDeckService(offer)
         "gold")
     Sfx.play("purchaseDeny")
 
-    -- A tela pode ter fechado enquanto o picker estava aberto (não acontece
-    -- no fluxo atual, mas o estorno não pode ressuscitar layout morto).
     if not self.visible then return end
     self:createCardInstances()
     self:createOfferButtons()
@@ -1694,10 +1255,6 @@ function CardRewardScreen:applyUpgrade(upgrade)
 
     local rm = self.game.runManager
 
-    -- P3.2 (rebalance Jul/2026): os branches toast-only (increase_card_draw /
-    -- increase_attack_damage / increase_defense) foram REMOVIDOS junto com as
-    -- ofertas correspondentes (ShopSystem:initializeShopPools) — upgrade
-    -- comprado tem que aplicar efeito real, nunca só mensagem.
     if upgrade.effect == "increase_max_health" then
         self.game.player.maxHealth = self.game.player.maxHealth + upgrade.value
         self.game.player.health = self.game.player.health + upgrade.value
@@ -1707,11 +1264,6 @@ function CardRewardScreen:applyUpgrade(upgrade)
         self.game.player.mana = self.game.player.mana + upgrade.value
 
     elseif upgrade.effect == "add_joker_slot" then
-        -- BANCADA EXTRA: sobe o teto de coringas ATIVOS pelo resto da run.
-        -- O ledger é a fonte; recomputeMaxJokerSlots (base + comprados)
-        -- reescreve o espelho em currentRun.maxJokerSlots e
-        -- reconstrói jokerSlots — sem isso o coringa que estava na bancada
-        -- não subiria pro tabuleiro até a próxima batalha.
         if rm and rm.registerService then rm:registerService(upgrade.id) end
         if self.game.recomputeMaxJokerSlots then
             self.game:recomputeMaxJokerSlots()
@@ -1723,10 +1275,6 @@ function CardRewardScreen:applyUpgrade(upgrade)
                 "Slots de coringa: " .. tostring(total)), "success")
 
     elseif upgrade.effect == "raise_interest_cap" then
-        -- COFRE: levanta o teto dos juros pelo resto da run. O ledger é a
-        -- fonte; syncInterestCap reescreve o espelho no EconomySystem — e a
-        -- TopBar, que lê calculateInterest todo frame, mostra o número novo
-        -- no frame seguinte sem precisar saber que algo foi comprado.
         if rm and rm.registerService then rm:registerService(upgrade.id) end
         if self.game.syncInterestCap then self.game:syncInterestCap() end
         local teto = (self.game.economySystem and self.game.economySystem.getInterestCap
@@ -1736,8 +1284,6 @@ function CardRewardScreen:applyUpgrade(upgrade)
                 "Teto de juros: " .. tostring(teto)), "gold")
 
     elseif upgrade.effect == "increase_draw" then
-        -- GRIMÓRIO: +1 carta comprada por turno, pelo resto da run. O ledger
-        -- é lido por Game:drawForTurn e pela mão inicial da batalha.
         if rm and rm.registerService then rm:registerService(upgrade.id) end
         local n = (rm and rm.getServiceCount and rm:getServiceCount(upgrade.id)) or 1
         self.game:addMessage(I18n.t("reward.extra_draw", { n = n }), "success")
@@ -1748,36 +1294,6 @@ function CardRewardScreen:applyUpgrade(upgrade)
     end
 end
 
--- ============================================================================
--- SAÍDA COM CERIMÔNIA (queixa do dono: "sair da loja e voltar pro mapa não tem
--- transição nenhuma ... queria as cartas voltando, com som que indique isso")
--- ============================================================================
---
--- Antes, TODO caminho de saída era `self:hide()` seco — a tela simplesmente
--- deixava de existir no frame seguinte. Agora a saída é um gesto em 3 tempos,
--- todo ele com peças que já existiam na tela:
---
---   1. as cartas QUEIMAM em cascata (`start_dissolve`, o mesmo efeito que o
---      modo rewards já usava ao pegar uma carta) — "as cartas voltando";
---   2. o painel desliza pra fora (`slideOut`, escrito na Fase 7.4 e até hoje
---      só chamado pelo pack opening);
---   3. som de saída + o callback do fluxo, DEPOIS da animação.
---
--- `keepInst` é a carta comprada: ela não queima junto (já voou pro deck).
--- Com reducedMotion resolve na hora — mas o SOM toca igual: a flag remove
--- movimento, nunca informação (CLAUDE.md / ui_layout_invariants §3).
---
--- ⚠️ FILA PRÓPRIA, e não a `base` (memory/eventmanager_queues.md, regra de
--- ouro): na base os eventos de tela ficam presos atrás do rabo BLOQUEANTE do
--- combate — e `parallel` não salva, porque é blockable também. Foi assim que
--- nasceu o bug das "cartas invisíveis até o hover". Primeira versão deste
--- código caiu exatamente nessa armadilha e o test_shop_exit pegou: com a base
--- suja, o callback de continuar a run simplesmente não vinha.
---
--- Fila SEPARADA da FXQ de propósito: a FXQ é limpa a cada `show()` (é a fila
--- da ENTRADA) e a saída tem ciclo de vida próprio. Limpamos a nossa no início
--- da saída (mata zumbi de uma saída anterior) e o callback ainda guarda em
--- `self.visible`, como a regra manda pra evento com efeito de fluxo.
 local EXITQ = "reward_exit"
 local EXIT_DISSOLVE_STAGGER = 0.07
 local EXIT_HOLD = 0.55
@@ -1805,17 +1321,12 @@ function CardRewardScreen:_exitWithFlourish(keepInst)
         end
     end
 
-    -- O whoosh e o slide são UM gesto: o som sobe durante os 0,45s do
-    -- deslize e o riffle assenta em 0,48s — medido, é quando o painel acabou
-    -- de sair. Disparar junto é o que faz os dois lerem como a mesma coisa.
     self:slideOut()
     playFirstSfx({ "shopLeaveWhoosh", "menuClose" })
 
     EventManager.parallel(EXIT_HOLD, function()
         if not self.visible then return end
         self:hide()
-        -- Saiu do nó: a vitrine deixa de existir (o próximo save, na
-        -- encruzilhada, já não a carrega).
         self:_clearPersistedOffers()
         if cb then cb() end
     end, EXITQ)
@@ -1855,11 +1366,8 @@ function CardRewardScreen:update(dt)
         if #self.shopOffers > 0 then
             self:createCardInstances()
             self:createOfferButtons()
-            -- Na loja, updateLayout() já remediu o rodapé e reconstruiu os
-            -- botões de compra; só as recompensas têm botão pra recentrar.
             if self.mode ~= "shop" then
                 if self.skipButton then
-                    -- rewards: recentra pela LARGURA MEDIDA (não o -90 fixo)
                     self.skipButton.x = math.floor(love.graphics.getWidth() / 2
                         - self.skipButton.width / 2)
                     self.skipButton.y = self.skipButtonY
@@ -1874,8 +1382,6 @@ function CardRewardScreen:update(dt)
 
     self.animationTime = self.animationTime + dt
 
-    -- DEBUG: snapshot a cada 0.5s nos primeiros 6s da tela (o suficiente
-    -- pra pegar a entrada travada sem inundar o log).
     if REWARD_DBG and self.animationTime < 6 then
         self._dbgNext = self._dbgNext or 0
         if self.animationTime >= self._dbgNext then
@@ -1902,15 +1408,9 @@ function CardRewardScreen:update(dt)
         end
     end
 
-    -- Hover/click nas cartas e seus invisible-buttons sempre rodam
-    -- (sem modal bloqueando entrada). Selection overlay coexiste com hover.
     if self.mode == "shop" and self.scene then
-        -- Loja v3: a cena move os objetos (hover das cartas incluso).
         self.scene:update(dt)
     else
-        -- Cartas são desenhadas DENTRO do translate do slide — o mouse vai
-        -- pro espaço local antes do hit-test (em repouso o offset é 0, então
-        -- isso só muda o comportamento durante o slide-in/slideOut).
         local mx, my = love.mouse.getPosition()
         my = my - (self.slideOffsetY or 0)
         for _, cardInstance in ipairs(self.cardInstances) do
@@ -1920,7 +1420,6 @@ function CardRewardScreen:update(dt)
         end
     end
 
-    -- Hover → alimenta o pergaminho de detalhe.
     self:_updateHoverState()
     self:_resolveDetailPayload()
     self._detailAnim = math.min(1, (self._detailAnim or 1) + dt * 7)
@@ -1939,7 +1438,6 @@ function CardRewardScreen:update(dt)
     if self.diceButton then self.diceButton:update(dt) end
     if self.buyButton then self.buyButton:update(dt) end
 
-    -- Buttons attached da carta selecionada (Balatro pattern: filhos da carta).
     if self._selectionButtons then
         for _, b in ipairs(self._selectionButtons) do b:update(dt) end
     end
@@ -1953,10 +1451,6 @@ function CardRewardScreen:easeOutBack(t)
     return 1 + c3 * math.pow(t - 1, 3) + c1 * math.pow(t - 1, 2)
 end
 
--- ============================================================================
--- DRAW DA LOJA (Balcão do Mercador) — a cena desenha; a tela só junta os
--- botões invisíveis do balcão, as ações do pad, o FX de compra e o tutorial.
--- ============================================================================
 function CardRewardScreen:_drawShop()
     local NavCursor = require("src.ui.NavCursor")
     love.graphics.push()
@@ -1964,8 +1458,6 @@ function CardRewardScreen:_drawShop()
 
     self.scene:draw()
 
-    -- hitboxes invisíveis (registram o alvo do NavCursor) + ações do pad:
-    -- X = sino (novas ofertas), Y = livro-razão (seguir viagem)
     if self.refreshButton then
         self.refreshButton:draw()
         local rb = self.refreshButton
@@ -1986,7 +1478,6 @@ function CardRewardScreen:_drawShop()
     end
     if self.diceButton then
         self.diceButton:draw()
-        -- "?" dos dados: explicação sob demanda (clique, H, ou LB no controle)
         local r = self:_diceHelpRect()
         local HelpBadge = require("src.ui.HelpBadge")
         local mx, my = love.mouse.getPosition()
@@ -1994,7 +1485,6 @@ function CardRewardScreen:_drawShop()
         local hotDice = mx >= r.x and mx < r.x + r.w and my >= r.y and my < r.y + r.h
         HelpBadge.draw(r.cx, r.cy, r.r, hotDice)
         if hotDice then
-            -- v5 r2: diz DE QUÊ é esta ajuda (o "?" parecia repetido)
             local okST, StatusTooltip = pcall(require, "src.ui.StatusTooltip")
             if okST and StatusTooltip.show then StatusTooltip.show("scribe_dice_help", mx, my + (self.slideOffsetY or 0)) end
         end
@@ -2004,7 +1494,6 @@ function CardRewardScreen:_drawShop()
 
     love.graphics.pop()
 
-    -- âncoras do narrador do tutorial (ofertas, sino, dados)
     do
         local T = require("src.systems.Tutorial")
         local occupied, prices = {}, {}
@@ -2012,9 +1501,6 @@ function CardRewardScreen:_drawShop()
             local p = (offer._slot and self.cardPositions[offer._slot]) or self.cardPositions[i]
             if p then occupied[#occupied + 1] = { x = p.x, y = p.y, w = p.w, h = p.h } end
         end
-        -- v5: o recorte das ofertas inclui o CAVALETE/etiqueta de cada peça, e
-        -- as placas de preço (plaquinha da carta, etiqueta pendurada do
-        -- objeto e do sino) têm recorte próprio pra fala do preço
         local L = self.scene and self.scene.L
         for _, it in ipairs(self.scene and self.scene.items or {}) do
             local g = it.geom
@@ -2034,8 +1520,6 @@ function CardRewardScreen:_drawShop()
         if self.diceButton then T.anchorList("shop_dice", { self.diceButton }) end
     end
 
-    -- FX por cima de tudo: popups "-$N" / efeito ganho + objeto voando pro
-    -- destino (TopBar é o destino da carta, então fora do slide).
     self:_drawPurchaseFx()
     self.scene:drawFlies()
 
@@ -2050,32 +1534,19 @@ function CardRewardScreen:draw()
     if self.mode == "shop" and self.scene then return self:_drawShop() end
 
     local w, h = love.graphics.getDimensions()
-    -- Backdrop FIXO (não desliza com o conteúdo) — fica sempre cobrindo o
-    -- gameplay atrás. Só o conteúdo (título + slots + botões) entra pelo topo.
     if self.mode == "rewards" then
-        -- IMERSÃO (feedback Jul/2026): espólios de batalha acontecem NO LUGAR
-        -- da batalha — main.lua já desenha o mundo vivo atrás (GameplayScene
-        -- antes deste draw; WorldRoad continua tickando). Só um véu escuro
-        -- pra dar foco ao painel — nada de interior de loja aqui.
         love.graphics.setColor(0.02, 0.015, 0.01, 0.60)
         love.graphics.rectangle("fill", 0, 0, w, h)
         love.graphics.setColor(1, 1, 1, 1)
     end
 
-    -- Slide-in: tudo dentro deste push é translado pelo offset animado em show().
     love.graphics.push()
     love.graphics.translate(0, self.slideOffsetY or 0)
 
-    -- Modo rewards v3 não tem painel (banner flutuante estilo StS).
     if self.mode == "rewards" then
         self:_drawRewardsBanner()
     end
 
-    -- Vitrine e rodapé de ações NÃO têm caixa: eram duas das cinco molduras
-    -- aninhadas. Os retângulos gridArea/actionBar seguem existindo como
-    -- ZONAS do layout (validateLayout), só não são desenhados.
-
-    -- DEBUG: por 6s, loga o GATE de draw de cada carta a cada 0.5s.
     local dbgDrawTick = false
     if REWARD_DBG and self.animationTime < 6 then
         if self.animationTime >= (self._dbgDrawNext or 0) then
@@ -2086,8 +1557,6 @@ function CardRewardScreen:draw()
 
     for _, cardInstance in ipairs(self.cardInstances) do
         if cardInstance and cardInstance.draw then
-            -- F2: anim e affordability vêm da OFERTA da própria instância
-            -- (indexar shopOffers[i] quebrava após a 1ª compra).
             local offer = cardInstance.shopOffer
             local slot = offer and offer._slot
             local anim = slot and self.cardAnimations[slot]
@@ -2106,20 +1575,13 @@ function CardRewardScreen:draw()
             end
 
             if scale > 0 then
-                -- Impagável = carta escurecida (2º canal além do preço
-                -- vermelho; pesquisa: nunca comunicar só por cor do número)
                 cardInstance.saleDim = (self.mode == "shop") and offer
                     and offer.cost and self.game
                     and not self.game.economySystem:canAfford(offer.cost)
                     or false
-                -- _cardDrawRect parte de homeX/homeY (âncora IMUTÁVEL) — nunca
-                -- de self.x/y, que o Card:draw sobrescreve a cada frame (o
-                -- feedback loop y+=entryOy mandava as cartas pra y≈-1900; era
-                -- o bug "não renderizam") — e já aplica a puladinha do hover.
                 local r = self:_cardDrawRect(cardInstance)
-                cardInstance._drawRect = r   -- lido pelo halo de seleção
+                cardInstance._drawRect = r
                 cardInstance:draw(r.drawX, r.drawY, false, true)
-                -- Medalhão ancorado no retângulo REAL: acompanha a carta.
                 self:drawPriceOverlay(cardInstance, r)
             end
         end
@@ -2134,15 +1596,7 @@ function CardRewardScreen:draw()
 
             if scale > 0 then
                 local pos = self.cardPositions[slot] or {x = 0, y = 0}
-                -- ENTRADA: `anim.scale` já era calculado pra TODOS os slots no
-                -- update, mas só as cartas o usavam (elas materializam em
-                -- cascata). Voucher e pacote simplesmente APARECIAM no meio da
-                -- cascata, quebrando a leitura de "a prateleira está sendo
-                -- montada". Agora a mesma curva easeOutBack os traz, crescendo
-                -- a partir do CENTRO do slot. O hop/juice do hover compõe aqui.
                 local fx = self:_slotFx(slot)
-                -- relíquia/pacote: alvo do foco de teclado/pad (NavCursor); a
-                -- carta se registra sozinha no Card:draw
                 require("src.ui.NavCursor").target("offer:" .. slot, pos.x, pos.y,
                     pos.w or self.cardWidth, pos.h or self.cardHeight)
                 local s = scale * Moveable.scaleFactor(fx) * Moveable.swellFactor(fx)
@@ -2161,16 +1615,11 @@ function CardRewardScreen:draw()
                 end
             end
         end
-        -- Slot já comprado: buraco com stamp VENDIDO (posições estáveis).
         if offer.purchased and slot <= slotCount and self.cardPositions[slot] then
             self:_drawSoldSlot(self.cardPositions[slot])
         end
     end
 
-    -- Marcadores (raridade + afinidade) em PASSE PRÓPRIO, depois de todas as
-    -- cartas: assim a carta vizinha em hover nunca passa por cima deles. Eles
-    -- ficam na faixa FIXA sob o slot — a carta é que pula pra cima, liberando
-    -- o rótulo (pedido do dono).
     for _, cardInstance in ipairs(self.cardInstances) do
         local offer = cardInstance and cardInstance.shopOffer
         local slot = offer and offer._slot
@@ -2180,13 +1629,6 @@ function CardRewardScreen:draw()
         end
     end
 
-    -- Relíquia e pacote NÃO levam etiqueta de categoria ("◆ RELÍQUIA ◆",
-    -- "◆ PACOTE ◆"): o objeto já diz o que é — a placa com efeito gravado e o
-    -- envelope. A etiqueta repetida sob cada slot era ruído (Out/2026).
-
-    -- ===== Painel de DETALHE FIXO (3ª coluna, só na loja) =====
-    -- Desenhado DENTRO do slide, junto com o resto do painel: ele é parte da
-    -- janela da loja, não um popup por cima dela.
     if self.detailPanel then
         self:_drawDetailPanel()
     end
@@ -2197,7 +1639,6 @@ function CardRewardScreen:draw()
 
     if self.refreshButton then
         self.refreshButton:draw()
-        -- X/Q do teclado/pad = Novas ofertas (glifo no canto do botão)
         local rb = self.refreshButton
         require("src.ui.NavCursor").action("x", function()
             if rb.visible ~= false and not rb.disabled and rb.onClick then rb.onClick() end
@@ -2205,7 +1646,6 @@ function CardRewardScreen:draw()
     end
     if self.diceButton then
         self.diceButton:draw()
-        -- "?" dos dados: explicação sob demanda (clique, H, ou Y no controle)
         local r = self:_diceHelpRect()
         local HelpBadge = require("src.ui.HelpBadge")
         local mx, my = love.mouse.getPosition()
@@ -2217,23 +1657,8 @@ function CardRewardScreen:draw()
 
     self:drawInstructions()
 
-    -- Fecha o push do slide.
     love.graphics.pop()
 
-    -- ========== SEGUNDA PASS: overlays acima de tudo ==========
-    -- LOJA: nenhum tooltip/popup flutuante. Toda a informação da oferta vive
-    -- no painel de detalhe FIXO da terceira coluna, desenhado junto com o
-    -- resto do painel (dentro do slide) — leitura em posição estável.
-
-    -- REWARDS: tooltip canônico do jogo (o mesmo da mão/deck viewer) para a
-    -- carta em hover — some quando há seleção ativa (os botões mandam).
-    -- Card:draw NÃO desenha tooltip aqui (recebe isRewardCard=true); este
-    -- passe é a única fonte. Dono, 13/Out/2026 ("não pode ficar o tooltip
-    -- assim"): a carta de espólio é GRANDE e começa a 28% da tela — ACIMA
-    -- dela o painel não cabia, o clamp o prendia no topo e a TopBar
-    -- (camada chrome, desenhada depois) cobria o nome. Agora abre AO LADO,
-    -- topo alinhado ao topo da carta (o mesmo da mão do combate), sobre o
-    -- retângulo REAL desenhado (_drawRect) e nunca acima da barra superior.
     if self.mode == "rewards" and self.hoveredInst and not self.selectedOffer then
         local inst = self.hoveredInst
         local r = inst._drawRect
@@ -2242,7 +1667,7 @@ function CardRewardScreen:draw()
         local rw = r and r.w or self.cardWidth or 0
         local disp = inst.cardInfoDisplay or self.cardInfoDisplay
         disp:draw(inst, rx, ry, {
-            showRarity = false,   -- o pill de raridade já está acima da carta
+            showRarity = false,
             showStats = true,
             showDescription = true,
             side = true, cardX = rx, cardW = rw,
@@ -2250,19 +1675,14 @@ function CardRewardScreen:draw()
         })
     end
 
-    -- Selection overlay (CLICK): halo pulsante + mini-buttons Balatro-style
-    -- (UI_definitions.lua:382 card_focus_button) attached compactos sob a carta.
     self:_drawSelectionOverlay()
 
-    -- âncoras do narrador do tutorial (ofertas, pular, renovar, dados)
     do
         local T = require("src.systems.Tutorial")
-        -- só os slots que TÊM oferta (cardPositions guarda o layout inteiro)
         local occupied = {}
         for i, offer in ipairs(self.shopOffers or {}) do
             local p = (offer._slot and self.cardPositions[offer._slot]) or self.cardPositions[i]
             if p then
-                -- recompensas: o slot não guarda tamanho (é o cardWidth/Height)
                 occupied[#occupied + 1] = { x = p.x, y = p.y,
                     w = p.w or self.cardWidth, h = p.h or self.cardHeight }
             end
@@ -2275,24 +1695,14 @@ function CardRewardScreen:draw()
         end
     end
 
-    -- FX de compra por cima de tudo (carta voando pro deck + popups -$N).
     self:_drawPurchaseFx()
 
-    -- Inspeção completa (clique DIREITO numa oferta): mesma visão da Coleção
-    -- — carta grande + painel de detalhes. Por cima de tudo.
     if self.inspectModal then
         self.inspectModal:update(love.timer.getDelta())
         self.inspectModal:draw()
     end
 end
 
--- (_drawShopAmbience / _drawShopShelves / _drawShopHeader saíram na Loja v3:
--- a parede, a luz, as tábuas e a placa com o "?" das regras moram no
--- ShopScene.)
-
--- Banner flutuante do modo rewards (v3 StS): título grande com outline ink,
--- filetes ornamentais com losango dos dois lados, subtítulo com respiro e o
--- "?" das regras (pity/afinidade/raridade) à direita do título.
 function CardRewardScreen:_drawRewardsBanner()
     local sw = love.graphics.getWidth()
     local y = self.bannerY or 80
@@ -2304,7 +1714,6 @@ function CardRewardScreen:_drawRewardsBanner()
     local tw = tf:getWidth(title)
     local th = tf:getHeight()
 
-    -- filetes ornamentais: linha dupla desvanecendo pra fora + losango interno
     local lineY = y + math.floor(th / 2)
     local gap = math.floor(tw / 2) + 26
     local lineW = math.min(190, math.floor(sw * 0.17))
@@ -2318,7 +1727,6 @@ function CardRewardScreen:_drawRewardsBanner()
             love.graphics.rectangle("fill", math.min(sx0, sx0 + side * (lineW / 8)),
                 lineY - 1, lineW / 8, 2)
         end
-        -- losango na ponta interna
         local px = x0 - side * 4
         love.graphics.setColor(0, 0, 0, 0.8)
         love.graphics.polygon("fill", px, lineY - 5 + 1, px + 5, lineY + 1,
@@ -2328,7 +1736,6 @@ function CardRewardScreen:_drawRewardsBanner()
             px, lineY + 5, px - 5, lineY)
     end
 
-    -- título: outline ink 4-direções + face dourada (mesma linguagem do boot)
     local tx = cx - math.floor(tw / 2)
     love.graphics.setColor(0, 0, 0, 0.85)
     for _, o in ipairs({ {2, 0}, {-2, 0}, {0, 2}, {0, -2}, {2, 2} }) do
@@ -2337,7 +1744,6 @@ function CardRewardScreen:_drawRewardsBanner()
     Palette.set(Palette.AGED_GOLD_LIGHT)
     love.graphics.print(title, tx, y)
 
-    -- subtítulo com RESPIRO (feedback: "texto meio apertado")
     local sub = I18n.t("reward.rewards_subtitle")
     local sf = FontManager.getFont(9)
     love.graphics.setFont(sf)
@@ -2346,7 +1752,6 @@ function CardRewardScreen:_drawRewardsBanner()
     Palette.set(Palette.PARCHMENT_LIGHT)
     love.graphics.print(sub, cx - math.floor(sf:getWidth(sub) / 2), y + th + 14)
 
-    -- "?" das regras à direita do filete (tooltip de pity/afinidade)
     local hx = cx + gap + lineW + 22
     local hy = lineY
     local hr = 10
@@ -2358,7 +1763,7 @@ function CardRewardScreen:_drawRewardsBanner()
     Palette.set(Palette.AGED_GOLD_LIGHT)
     love.graphics.setFont(FontManager.getFont(11))
     love.graphics.print("?", hx - 3, hy - 8)
-    require("src.ui.NavCursor").target("rules", hx - hr - 3, hy - hr - 3, hr * 2 + 6, hr * 2 + 6)   -- foco = hover
+    require("src.ui.NavCursor").target("rules", hx - hr - 3, hy - hr - 3, hr * 2 + 6, hr * 2 + 6)
     local mx, my = love.mouse.getPosition()
     local myLocal = my - (self.slideOffsetY or 0)
     if mx >= hx - hr - 3 and mx <= hx + hr + 3
@@ -2371,33 +1776,13 @@ function CardRewardScreen:_drawRewardsBanner()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- Reforma v3 (feedback: "só um quadrado com texto, feio"): marcador SEM
--- caixa — texto colorido com outline ink e LOSANGOS dos dois lados
--- (◆ RARA ◆), mesma linguagem ornamental do banner.
---
--- Era um closure dentro de drawOfferBadges; virou função de arquivo quando a
--- faixa de rótulos passou a servir TAMBÉM os slots que não são carta (o
--- voucher e os pacotes tinham uma faixa reservada e VAZIA embaixo deles —
--- "zona vazia é pior que zona ausente", ui_layout_invariants §1).
--- Marcador "losango . TEXTO . losango". A implementacao vive em
--- src/ui/ShopEngraving.marker, compartilhada com a tela de abertura de pacote
--- (que antes desenhava a MESMA etiqueta como caixinha com contorno).
 local function drawMarker(cx, cy, text, color, fontSize, dia)
     ShopEngraving.marker(cx, cy, text, color, fontSize, dia)
 end
 
--- Marcadores de clareza da oferta: raridade NOMEADA + "AFINIDADE" quando a
--- carta foi puxada pelas tags fortes do deck. Clareza: raridade não é só uma
--- borda colorida; afinidade não é mágica.
---
--- Posicionamento por modo:
---   rewards → folgas do slot (a carta ocupa 86%, sobra espaço real)
---   shop    → faixa de rótulos SOB o slot (slotLabelH), em escala menor:
---             linha 1 = raridade, linha 2 = afinidade.
 function CardRewardScreen:drawOfferBadges(cardInstance, slot)
     local offer = cardInstance.shopOffer
     if not offer or offer.purchased then return end
-    -- Carta ainda caindo (entrada animada): marcadores esperam ela pousar.
     if (cardInstance._entryOy or 0) > 1 then return end
     local pos = self.cardPositions[slot]
     if not pos then return end
@@ -2407,7 +1792,6 @@ function CardRewardScreen:drawOfferBadges(cardInstance, slot)
 
     local cx = pos.x + math.floor(w / 2)
     if self.mode == "shop" then
-        -- Faixa de rótulos abaixo do slot (slotLabelH reservado no layout).
         if offer.rarity then
             local label = require("src.i18n.TextCase").upper(I18n.t("rarity." .. offer.rarity, nil, offer.rarity))
             marker(cx, pos.y + h + 13, label, Palette.forRarity(offer.rarity), 8, 3)
@@ -2419,10 +1803,6 @@ function CardRewardScreen:drawOfferBadges(cardInstance, slot)
     else
         if offer.rarity then
             local label = require("src.i18n.TextCase").upper(I18n.t("rarity." .. offer.rarity, nil, offer.rarity))
-            -- ZONAS acima da carta: raridade / fita NOVA / carta. Com a fita
-            -- (que agora sai inteira pra fora da moldura, DiscoveryMark), a
-            -- raridade sobe mais 12 px pra não encostar nela (dono, 13/Out:
-            -- "tudo tampando ali em cima").
             marker(cx, pos.y - (offer.isNew and 27 or 15), label, Palette.forRarity(offer.rarity), 9, 4)
         end
         if offer.affinity then
@@ -2433,11 +1813,6 @@ function CardRewardScreen:drawOfferBadges(cardInstance, slot)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- ============================================================================
--- PAINEL DE DETALHE FIXO — a coluna que explica a oferta em foco
--- ============================================================================
--- `rect`/`parchment` (Loja v3): o ShopScene chama com o miolo do pergaminho
--- e a paleta tinta-sobre-papel; sem argumentos é a coluna escura de sempre.
 function CardRewardScreen:_drawDetailPanel(rect, parchment, artMaxH, objectArt)
     local dp = rect or self.detailPanel
     if not dp then return end
@@ -2449,22 +1824,15 @@ function CardRewardScreen:_drawDetailPanel(rect, parchment, artMaxH, objectArt)
         canAfford = self.game.economySystem:canAfford(offer.cost)
     end
 
-    -- Rodapé reservado só quando há seleção ativa (os botões moram lá).
     local footerH = self.selectedOffer and (self.detailFooterH or 58) or 0
 
-    -- Rodapé de contexto: no pré-foco ENSINA (o painel nasce cheio, mas o
-    -- jogador ainda não sabe que ele responde ao mouse); depois só avisa que
-    -- está segurando a última oferta observada.
     local hint = nil
     if self._detailPrefocus then
-        -- Curto DE PROPÓSITO: cabe numa linha só na coluna mais estreita
-        -- (230px), então não há wrap nem risco de entrelinha apertada.
         hint = I18n.t("reward.detail_prefocus", nil, "Passe o mouse pra comparar")
     elseif self._detailStale then
         hint = I18n.t("reward.detail_stale", nil, "ultima oferta observada")
     end
 
-    -- v5: guarda a medida (test_shop_scene: nada sai do pergaminho)
     self._detailFit = CardDetailPanel.draw(dp, payload, {
         priceOnButton = parchment and true or false,
         alpha     = math.max(0, math.min(1, self._detailAnim or 1)),
@@ -2481,14 +1849,9 @@ function CardRewardScreen:_drawDetailPanel(rect, parchment, artMaxH, objectArt)
     })
 end
 
--- Tooltip de carta em pass separado pra ficar acima de tudo (F10.2). Calcula
--- posição relativa à carta, idêntico ao que Card:draw fazia inline.
 function CardRewardScreen:_drawCardTooltipOverlay(cardInstance)
     if not cardInstance.cardInfoDisplay then return end
 
-    -- Posição: ABAIXO da carta (smart positioning fará fallback acima se
-    -- ultrapassar bottom da tela). Usa renderX/Y se Card tem interpolação,
-    -- senão x/y direto.
     local px = cardInstance.renderX or cardInstance.x or 0
     local py = cardInstance.renderY or cardInstance.y or 0
 
@@ -2503,24 +1866,12 @@ function CardRewardScreen:drawOffer(offer, x, y, index, customW, customH)
     local canAfford = self.game and self.game.economySystem:canAfford(offer.cost)
     local w = customW or self.cardWidth
     local h = customH or self.cardHeight
-    -- Slot pequeno = tile do split-view: o texto longo sai (o painel de
-    -- detalhe carrega a descrição) e as faixas encolhem pra sobrar arte.
     local compact = h < 250
 
-    -- Booster pack: usa o sleeve PixelLab via PackSleeve em vez de retângulo plano.
-    -- Sleeve preenche o slot inteiro, preço fica overlaid embaixo.
     if offer.type == "booster_pack" then
         local PackSleeve = require("src.ui.PackSleeve")
         local sleeveW, sleeveH = PackSleeve.getDimensions()
 
-        -- Header (nome) ocupa o topo; o resto e do SLEEVE.
-        --
-        -- O preço deixou de ser uma barra no rodapé (Set/2026, "cara de IA"):
-        -- era um retângulo de 1px flutuando sob a arte, a 40px de cartas que
-        -- mostravam o preço como MOEDA cunhada no canto. Duas gramáticas pra
-        -- mesma informação na mesma fileira — e a barra ainda roubava ~22px de
-        -- altura do envelope. Agora o pacote usa a moeda de ShopEngraving,
-        -- carimbada no canto do SLEEVE (o objeto), não do slot.
         local headerH = compact and 13 or 16
         local availH = h - headerH - 10
         local availW = w - 8
@@ -2531,10 +1882,6 @@ function CardRewardScreen:drawOffer(offer, x, y, index, customW, customH)
         local cy = math.floor(y + headerH + 4 + drawH * 0.5)
         PackSleeve.drawAt(offer.id, offer.kind, cx, cy, scale, 1)
 
-        -- Nome do pack no topo do slot (dentro). Quebra em 2 linhas quando
-        -- cada PALAVRA cabe; uma palavra maior que o slot (alemão:
-        -- "Totengräbertuch") era cortada no meio pelo printf — aí o nome vai
-        -- numa linha só, reduzido/truncado pelo TextFit.
         Palette.set(Palette.AGED_GOLD_LIGHT)
         local nameFont = FontManager.getFont(compact and 8 or 9)
         local wordTooLong = false
@@ -2561,9 +1908,6 @@ function CardRewardScreen:drawOffer(offer, x, y, index, customW, customH)
         return
     end
 
-    -- Upgrade (voucher) = RELÍQUIA na prateleira: placa iluminada com pedestal,
-    -- halo na cor do efeito, chip com o número e placa de preço. Tudo em
-    -- src/ui/UpgradeTile.lua, que fatia o slot em bandas validáveis.
     if offer.type == "upgrade" then
         local fx = self:_slotFx(index or 0)
         UpgradeTile.draw(offer, { x = x, y = y, w = w, h = h }, {
@@ -2574,7 +1918,6 @@ function CardRewardScreen:drawOffer(offer, x, y, index, customW, customH)
         return
     end
 
-    -- Qualquer outro tipo: card-style frame (rede de segurança).
     PixelCanvas.rect(math.floor(x), math.floor(y), math.floor(w), math.floor(h), Palette.PANEL_FILL)
     PixelCanvas.rectOutline(math.floor(x), math.floor(y), math.floor(w), math.floor(h),
         canAfford and Palette.AGED_GOLD or Palette.BLOOD)
@@ -2589,34 +1932,20 @@ function CardRewardScreen:drawOffer(offer, x, y, index, customW, customH)
     love.graphics.setFont(FontManager.getFont(8))
     love.graphics.printf(displayDesc, x + 8, y + 36, w - 16, "center")
 
-    -- Tag visual no header: raridade p/ cards.
     if offer.type == "card" and offer.rarity then
         Palette.set(Palette.forRarity(offer.rarity))
         love.graphics.rectangle("fill", math.floor(x + 6), math.floor(y + 4), math.floor(w - 12), 3)
     end
 
     Palette.set(canAfford and Palette.AGED_GOLD_LIGHT or Palette.BLOOD)
-    -- Fonte 11/9: no tamanho 10 o glifo "6" da fonte pixel rasteriza como "G".
     love.graphics.setFont(FontManager.getFont(compact and 9 or 11))
     love.graphics.printf("$" .. offer.cost, x + 8, y + h - (compact and 18 or 24),
         w - 16, "center")
 end
 
--- Moeda de preço no canto superior-direito da carta. Inspirado em Balatro
--- create_shop_card_ui (UI_definitions.lua:802-880), que flutua um UIBox com
--- DynaText `$<cost>` sobre a carta.
---
--- O desenho mora em src/ui/ShopEngraving.priceSeal, compartilhado com pacote e
--- relíquia. Antes vivia aqui, com dez `setColor` de RGB literal e discos do
--- `love.graphics.circle` — anti-aliasados, num jogo de borda dura. Centralizar
--- resolveu as duas coisas: paleta e degraus.
---
--- rect: retângulo REAL da carta neste frame (_cardDrawRect). A moeda é parte
--- da carta — sobe junto com ela no hover, não fica presa ao slot estático.
 function CardRewardScreen:drawPriceOverlay(cardInstance, rect)
     local offer = cardInstance.shopOffer
     if not offer or offer.purchased then return end
-    -- Recompensa grátis (rewards mode): sem medalhão de preço.
     if (offer.cost or 0) <= 0 then return end
 
     local canAfford = self.game and self.game.economySystem:canAfford(offer.cost)
@@ -2626,19 +1955,8 @@ function CardRewardScreen:drawPriceOverlay(cardInstance, rect)
     })
 end
 
--- LEGACY: drawPurchaseConfirmation (modal centralizado) removido. Substituído
--- pelo _drawSelectionOverlay (3-zone Balatro pattern). Mantido como stub no-op
--- caso algum call site externo ainda chame.
 function CardRewardScreen:drawPurchaseConfirmation() end
 
--- ============================================================================
--- SELECTION (CLICK) — mini-buttons Balatro-style sob a carta
--- ============================================================================
--- Quando uma carta é clicada (setSelectedOffer), desenha:
---   1) Halo dourado pulsante na carta (feedback visual de selecionada).
---   2) Mini-buttons compactos (COMPRAR $N + X). Na LOJA eles ancoram no
---      rodapé do painel de detalhe; em "rewards", sob a carta.
--- A descrição da oferta NÃO é parte deste overlay — mora no painel fixo.
 function CardRewardScreen:_drawSelectionOverlay()
     local anim = self._selectionAnim or 0
     if anim < 0.01 and not self.selectedOffer then return end
@@ -2650,8 +1968,6 @@ function CardRewardScreen:_drawSelectionOverlay()
     local anchorH = pos.h or self.cardHeight
     local anchorX = pos.x
     local anchorY = pos.y
-    -- Se a oferta selecionada é uma CARTA, o halo abraça o retângulo REAL
-    -- dela (com a puladinha do hover) em vez do retângulo estático do slot.
     local selInst = self.selectedOffer and self.selectedOffer.cardInstance
     local selRect = selInst and selInst._drawRect
     if selRect and selRect.w > 0 then
@@ -2659,7 +1975,6 @@ function CardRewardScreen:_drawSelectionOverlay()
         anchorW, anchorH = selRect.w, selRect.h
     end
 
-    -- Halo dourado pulsante na carta selecionada.
     local haloAlpha = 0.55 * anim * (0.7 + 0.3 * math.sin(love.timer.getTime() * 3.5))
     love.graphics.setColor(Palette.AGED_GOLD[1], Palette.AGED_GOLD[2], Palette.AGED_GOLD[3], haloAlpha)
     love.graphics.setLineWidth(2)
@@ -2668,10 +1983,6 @@ function CardRewardScreen:_drawSelectionOverlay()
     love.graphics.setLineWidth(1)
     love.graphics.rectangle("line", anchorX - 1, anchorY - 1, anchorW + 2, anchorH + 2)
 
-    -- Buttons attached (criados em _buildSelectionButtons). Reposiciona a cada
-    -- frame pra acompanhar mudanças de layout. Na LOJA eles moram no rodapé do
-    -- painel de detalhe (é lá que a oferta está sendo lida — confirmar do lado
-    -- do que se lê); em "rewards" continuam colados sob a carta.
     if self._selectionButtons and #self._selectionButtons > 0 then
         local bx0, by0, _, _, _, gap = self:_selectionButtonsRect(self.selectedIdx)
         if bx0 then
@@ -2688,17 +1999,6 @@ function CardRewardScreen:_drawSelectionOverlay()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- LEGACY: _drawHoverInfoPanels (2 painéis FLUTUANTES fora da janela da loja)
--- foi REMOVIDO no split-view de Jul/2026. Era a causa raiz da reclamação do
--- dono: a informação da oferta vivia num popup que saltava de posição e
--- cobria as cartas vizinhas. Substituído pelo painel de detalhe FIXO
--- (src/ui/CardDetailPanel.lua) na terceira coluna. Em "rewards" esses painéis
--- já estavam desligados — lá o hover usa o tooltip canônico (CardInfoDisplay).
-
--- Atualiza estado de hover lendo cardInstance.isHovered. Chamado em :update.
--- Split-view: voucher e booster pack TAMBÉM entram no hover (antes só cartas
--- tinham instância com isHovered) — o painel de detalhe explica qualquer
--- oferta, não só as cartas.
 function CardRewardScreen:_updateHoverState()
     local newHovered, newInst, newKind = nil, nil, nil
 
@@ -2716,8 +2016,6 @@ function CardRewardScreen:_updateHoverState()
 
     for _, inst in ipairs(self.cardInstances or {}) do
         if inst and inst.isHovered then
-            -- F2: a oferta vem da própria instância (shopOffers[i] mostrava
-            -- a info da carta ERRADA depois de uma compra).
             local offer = inst.shopOffer
             if offer and not offer.purchased then
                 newHovered, newInst, newKind = offer, inst, "card"
@@ -2727,8 +2025,6 @@ function CardRewardScreen:_updateHoverState()
     end
 
     if not newHovered and self.mode == "shop" then
-        -- Hit-test por retângulo do slot. O layout vive dentro do translate do
-        -- slide, então o mouse precisa ir pro espaço local antes de comparar.
         local mx, my = love.mouse.getPosition()
         my = my - (self.slideOffsetY or 0)
         for _, offer in ipairs(self.shopOffers or {}) do
@@ -2753,17 +2049,6 @@ function CardRewardScreen:_updateHoverState()
     end
 end
 
--- ============================================================================
--- FX DOS SLOTS NAO-CARTA (voucher / booster pack)
--- ============================================================================
--- A carta tem hover próprio (Card:updateMouse faz lift, tilt e escala). O
--- voucher e o pacote eram DESENHOS PARADOS: passar o mouse por cima não mexia
--- um pixel — só o painel da direita trocava de conteúdo. Aqui eles ganham o
--- mesmo vocabulário da carta: destaque contínuo (hover interpolado) + estalo
--- ao entrar (hop + juice do Moveable) + kick na compra.
---
--- Nenhum estado GEOMÉTRICO mora aqui (só hover 0..1 e o juice), então o resize
--- não tem o que invalidar: a geometria sai de cardPositions a cada frame.
 function CardRewardScreen:_slotFx(slot)
     self.slotFx = self.slotFx or {}
     local fx = self.slotFx[slot]
@@ -2775,22 +2060,6 @@ function CardRewardScreen:_slotFx(slot)
     return fx
 end
 
--- (_playSlotHoverSfx / _updateSlotFx saíram na Loja v3: o hover da relíquia
--- e do pacote — som na borda de entrada, nunca durante o deslize — mora no
--- ShopScene:update / ShelfItem:update.)
-
--- ============================================================================
--- PAINEL DE DETALHE FIXO (split-view da loja)
--- ============================================================================
--- Decide O QUE o painel da direita mostra, por prioridade:
---   1) a oferta SELECIONADA — trava enquanto o jogador confirma a compra
---      (o que ele vai pagar não pode sumir porque o mouse escorregou);
---   2) a oferta sob o mouse;
---   3) a ÚLTIMA que ele olhou, marcada como "stale".
--- Escolha de design pro estado "sem hover" (pedido explícito): o painel NÃO
--- pisca vazio. Ele segura a última carta olhada com um rodapé discreto; o
--- estado neutro com instrução só aparece na ABERTURA, antes do 1º hover —
--- ali ele ensina em vez de mostrar um buraco.
 function CardRewardScreen:_resolveDetailPayload()
     if self.mode ~= "shop" then
         self.detailPayload, self._lastDetailPayload = nil, nil
@@ -2810,21 +2079,16 @@ function CardRewardScreen:_resolveDetailPayload()
         self.detailPayload = { kind = kind or "card", offer = offer, instance = inst }
         self._lastDetailPayload = self.detailPayload
         self._detailStale = false
-        self._detailPrefocus = false   -- o jogador assumiu o controle
+        self._detailPrefocus = false
     else
         self.detailPayload = self._lastDetailPayload
         self._detailStale = self._lastDetailPayload ~= nil
-        -- Re-amarra a instância: createCardInstances() reconstrói tudo a cada
-        -- compra, e a referência guardada viraria um objeto órfão.
         if self.detailPayload and self.detailPayload.offer then
             self.detailPayload.instance = self.detailPayload.offer.cardInstance
                 or self.detailPayload.instance
         end
     end
 
-    -- Oferta comprada não fica presa no painel (o slot dela virou VENDIDO) —
-    -- mas o painel TAMBÉM não pode virar buraco preto depois de uma compra:
-    -- re-foca a próxima oferta disponível. Só fica neutro se acabou o estoque.
     if self.detailPayload and self.detailPayload.offer
         and self.detailPayload.offer.purchased then
         self.detailPayload, self._lastDetailPayload = nil, nil
@@ -2834,10 +2098,6 @@ function CardRewardScreen:_resolveDetailPayload()
         self._detailStale = self._lastDetailPayload ~= nil
     end
 
-    -- Cross-fade curto quando o conteúdo troca (evita "corte seco" ao varrer
-    -- o mouse pela grade). Instantâneo com reducedMotion. Deliberadamente NÃO
-    -- usa EventManager: se a fila estiver pausada o painel ficaria parado em
-    -- meio-fade — a legibilidade da loja não pode depender disso.
     local shown = self.detailPayload and self.detailPayload.offer or nil
     if shown ~= self._detailShownOffer then
         self._detailShownOffer = shown
@@ -2845,9 +2105,6 @@ function CardRewardScreen:_resolveDetailPayload()
     end
 end
 
--- Retângulo onde os botões Comprar/Cancelar moram na LOJA: o rodapé do painel
--- de detalhe. Em "rewards" eles continuam colados embaixo da carta (aquele
--- modo não foi alvo da reclamação e não tem painel).
 function CardRewardScreen:_selectionButtonsRect(idx)
     local btnH = 40
     local gap = 8
@@ -2876,12 +2133,8 @@ function CardRewardScreen:_selectionButtonsRect(idx)
 end
 
 function CardRewardScreen:drawInstructions()
-    -- F1 do UI Overhaul: HintBar padronizada — SEMPRE cabe na tela (o texto
-    -- antigo estourava dos dois lados e atropelava o botão Pular)
     local text = I18n.t("reward.instructions")
     if self.mode == "shop" then
-        -- Split-view: o hint ensina a gramática nova (passar o mouse LÊ, o
-        -- clique SELECIONA e a compra é confirmada no painel).
         text = I18n.t("reward.instructions_shop", nil,
             "Passe o mouse pra ler - CLIQUE seleciona - confirme no painel - DIREITO inspeciona")
     end
@@ -2890,18 +2143,13 @@ end
 
 function CardRewardScreen:mousepressed(x, y, button)
     if not self.visible then return false end
-    -- Durante a cerimônia de saída nada mais é clicável: comprar uma Forja
-    -- nessa janela abria o picker e o callback da saída o atropelava (ouro
-    -- gasto, forja perdida). Engole o clique.
     if self._closing then return true end
 
-    -- Inspeção aberta consome tudo (clique nas setas/fora fecha — igual Coleção).
     if self.inspectModal and self.inspectModal:isVisible() then
         self.inspectModal:mousepressed(x, y, button)
         return true
     end
 
-    -- Clique DIREITO numa oferta → inspeção completa (mesma da Coleção).
     if button == 2 then
         if self.mode == "shop" and self.scene then
             local it = self.scene:itemAt(x, y - (self.slideOffsetY or 0))
@@ -2922,8 +2170,6 @@ function CardRewardScreen:mousepressed(x, y, button)
         end
     end
 
-    -- Selection buttons attached na carta selecionada têm prioridade —
-    -- consomem o click antes dos cardButtons (que ficariam re-selecionando).
     if self._selectionButtons then
         for _, b in ipairs(self._selectionButtons) do
             if b:mousepressed(x, y, button) then return true end
@@ -2947,8 +2193,6 @@ function CardRewardScreen:mousepressed(x, y, button)
         return true
     end
     if self.buyButton and self.buyButton:mousepressed(x, y, button) then return true end
-    -- Loja v3b: pressionar sobre um objeto da mesa arma a seleção (o
-    -- release confirma, como os botões).
     if self.mode == "shop" and self.scene and button == 1 then
         local it = self.scene:itemAt(x, y - (self.slideOffsetY or 0))
         if it then
@@ -2958,8 +2202,6 @@ function CardRewardScreen:mousepressed(x, y, button)
     end
     self._armedItem = nil
 
-    -- Click fora de qualquer card/button enquanto há seleção → desselleciona
-    -- (Balatro: re-clicar na mesma carta também alterna; aqui aceitamos ambos).
     if self.selectedOffer then
         self:clearSelection()
         return true
@@ -2972,7 +2214,6 @@ function CardRewardScreen:mousereleased(x, y, button)
     if not self.visible then return false end
     if self._closing then return true end
 
-    -- Inspeção aberta: engole releases (nada atrás pode reagir).
     if self.inspectModal and self.inspectModal:isVisible() then
         return true
     end
@@ -3000,7 +2241,6 @@ function CardRewardScreen:mousereleased(x, y, button)
         return true
     end
     if self.buyButton and self.buyButton:mousereleased(x, y, button) then return true end
-    -- Loja v3b: soltar sobre o MESMO objeto SELECIONA (pergaminho + COMPRAR).
     if self.mode == "shop" and self.scene and button == 1 and self._armedItem then
         local armed = self._armedItem
         self._armedItem = nil
@@ -3021,24 +2261,16 @@ function CardRewardScreen:mousereleased(x, y, button)
     return false
 end
 
--- drawRarityBorder removida em F10.1 (poluição visual). Cards agora não têm
--- halo pulsante de raridade. Se voltar a precisar, recriar dentro do CardFrame
--- como acabamento sutil de borda (não animação fullscreen).
-
 function CardRewardScreen:isVisible()
     return self.visible
 end
 
--- Desliza loja pra fora da tela (Fase 7.4 do refactor Balatro). Chamado quando
--- pack opening assume o foco. Padrão Balatro: shop fica off-screen embaixo
--- (não usa backdrop preto sobre ela).
 function CardRewardScreen:slideOut()
     if not self.visible then return end
     local h = love.graphics.getHeight()
     EventManager.parallelEase(self, "slideOffsetY", h, 0.45, "smooth", FXQ)
 end
 
--- Volta a loja pro lugar quando pack fecha.
 function CardRewardScreen:slideIn()
     if not self.visible then return end
     EventManager.parallelEase(self, "slideOffsetY", 0, 0.45, "smooth", FXQ)

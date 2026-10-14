@@ -1,24 +1,3 @@
--- components/ClassSelectionScreen.lua
--- Seleção de classe v4 — "a página do grimório" (Out/2026).
--- O dono achou a v3 poluída e com "cara de IA": três painéis iguais lado a
--- lado, cada um com nome, maestria, barra, descrição, vida, passiva longa e
--- duas cartas — tudo de uma vez. A v4 mostra UMA classe por vez:
---   • à esquerda, o EMBLEMA da classe em foco, grande e vivo (ClassEmblem +
---     o ar em volta, ClassHeroFx) e, no pé, as três classes pequenas pra
---     trocar o foco; ao lado delas o Selo do Grimório (só se já liberado);
---   • à direita, uma folha de grimório (GrimoirePage) com o essencial —
---     nome, uma linha de identidade, a passiva em uma linha, vida/mana/
---     baralho em ícones — e a fita COMEÇAR. O resto (passiva completa,
---     cartas iniciais, maestria, recordes) mora atrás do marcador DETALHES.
--- Classe bloqueada: silhueta acorrentada + a condição de liberação, só.
--- Tipografia: DUAS fontes (nome e corpo); ênfase por cor, não por tamanho.
--- Layout = ZONAS (src/ui/ClassSelectLayout.lua, com validate()).
---
--- Contrato com o main/tools/testes: new/show/hide/update/draw/keypressed/
--- mousepressed/mousereleased/resize/updatePositions, selectClass(id) inicia a
--- run (bloqueada recusa), focusClass(id) só troca o foco, sealFor(id),
--- buttons[classId] = o emblema pequeno da classe, _panelOf(id).
-
 local Button = require("components.Button")
 local Config = require("src.core.Config")
 local FontManager = require("src.ui.FontManager")
@@ -41,14 +20,12 @@ local I18n = require("src.i18n.I18n")
 local TextCase = require("src.i18n.TextCase")
 local Sfx = require("src.systems.Sfx")
 
--- Cor de identidade por classe (traço sob o nome + luz atrás do emblema).
 local CLASS_COLORS = {
-    warrior = { 0.78, 0.25, 0.18 },   -- carmim
-    mage    = { 0.45, 0.55, 0.95 },   -- azul arcano
-    rogue   = { 0.42, 0.72, 0.34 },   -- verde veneno
+    warrior = { 0.78, 0.25, 0.18 },
+    mage    = { 0.45, 0.55, 0.95 },
+    rogue   = { 0.42, 0.72, 0.34 },
 }
 
--- Ordem FIXA de exibição (pairs() embaralhava a ordem entre sessões)
 local CLASS_ORDER = { "warrior", "mage", "rogue" }
 
 local ClassSelectionScreen = {}
@@ -59,23 +36,19 @@ function ClassSelectionScreen:new()
     local instance = setmetatable({}, ClassSelectionScreen)
     instance.visible = false
     instance.buttons = {}
-    instance.panels = {}          -- { classId, info, cards, unlocked, unlock, mastery, shake }
+    instance.panels = {}
     instance.cardRegistry = CardRegistry:new()
     instance.selectedClass = nil
-    instance.focus = nil          -- classe em foco (a da página)
-    instance.pageMode = "summary" -- "summary" | "details"
+    instance.focus = nil
+    instance.pageMode = "summary"
     instance._starterCache = {}
-    instance._locked = false      -- input travado durante o FX de escolha
+    instance._locked = false
     instance._sparks = {}
-    instance._flash = 0           -- emblema "acende" ao entrar em foco
-    instance._fade = 1            -- texto da página reaparece na troca
-    instance._pick = 0            -- anel do momento da escolha
-    instance._sealTip = 0         -- regra do selo visível por um instante
+    instance._flash = 0
+    instance._fade = 1
+    instance._pick = 0
+    instance._sealTip = 0
     instance.seal = 0
-    -- Inspeção das cartas iniciais (a MESMA da Coleção/Deck). O handle é
-    -- registrado no InputFocus (main.lua): aberto, ele captura teclado/pad/
-    -- mouse e o NavCursor não anda por trás. Tudo passa pelos métodos da tela
-    -- (adotados pelo UiScale: coordenadas virtuais).
     instance.inspectModal = require("src.ui.CardInspectModal"):new()
     instance.inspectHandle = {
         ownsNavigation = true,
@@ -93,7 +66,6 @@ function ClassSelectionScreen:new()
     return instance
 end
 
--- Instâncias visuais das cartas iniciais (CardFrame real, cacheado).
 function ClassSelectionScreen:_starterCards(classId)
     if self._starterCache[classId] then return self._starterCache[classId] end
     local out = {}
@@ -104,17 +76,16 @@ function ClassSelectionScreen:_starterCards(classId)
             if ok and inst then
                 table.insert(out, inst)
             else
-                print("[ClassSelection] AVISO: carta inicial não instanciou: " .. tostring(id))
+                Debug.warn("[ClassSelection] AVISO: carta inicial não instanciou: " .. tostring(id))
             end
         else
-            print("[ClassSelection] AVISO: carta inicial inexistente: " .. tostring(id))
+            Debug.warn("[ClassSelection] AVISO: carta inicial inexistente: " .. tostring(id))
         end
     end
     self._starterCache[classId] = out
     return out
 end
 
--- Estado de liberação/maestria (relido a cada show/resize).
 function ClassSelectionScreen:_refreshUnlock(panel)
     panel.unlock = UnlockSystem.getClassUnlockInfo(panel.classId)
     panel.unlocked = UnlockSystem.isClassUnlocked(panel.classId)
@@ -151,7 +122,7 @@ function ClassSelectionScreen:createClassButtons()
             table.insert(self.panels, panel)
             self.buttons[classId] = panel.btn
         else
-            print("[ClassSelection] AVISO: getClassInfo sem dados para " .. classId)
+            Debug.warn("[ClassSelection] AVISO: getClassInfo sem dados para " .. classId)
         end
     end
     if not self.focus or not self:_panelOf(self.focus) then
@@ -163,9 +134,6 @@ function ClassSelectionScreen:createClassButtons()
     self.buttons.sealPrev = invisible(lay.sealPrev, function() self:changeSeal(-1) end)
     self.buttons.sealNext = invisible(lay.sealNext, function() self:changeSeal(1) end)
     self.buttons.back = invisible(lay.back, function() self:goBackToMenu() end)
-    -- "?" do corvo narrador: à direita da escolha de classe (a banda do pé
-    -- tem folga até o marcador; junto do "voltar" ele brigaria com o selo).
-    -- Reabre a conversa da seleção a qualquer momento (Tutorial.explain).
     do
         local h, r = lay.help, Layout.HELP_R
         self._help = { cx = h.x + math.floor(h.w / 2), cy = h.y + math.floor(h.h / 2), r = r }
@@ -182,8 +150,6 @@ function ClassSelectionScreen:createClassButtons()
     end
 end
 
--- Botões que dependem do estado (classe bloqueada não tem COMEÇAR nem
--- DETALHES; sem selo liberado o seletor some).
 function ClassSelectionScreen:_syncButtons()
     local p = self:_panelOf(self.focus)
     local open = p and p.unlocked
@@ -193,7 +159,6 @@ function ClassSelectionScreen:_syncButtons()
     if self.buttons.sealPrev then self.buttons.sealPrev:setVisible(sealOn) end
     if self.buttons.sealNext then self.buttons.sealNext:setVisible(sealOn) end
     if self.buttons.back then
-        -- área clicável = o texto do link (a fonte só existe no draw)
         local f = FontManager.getFont(self.layout.bodyFont)
         self.buttons.back.width = math.min(f:getWidth(self:_backLabel()) + 12,
             self.layout.seal.x - self.layout.back.x - 8)
@@ -217,7 +182,6 @@ end
 function ClassSelectionScreen:updatePositions() self:createClassButtons() end
 function ClassSelectionScreen:resize() self:createClassButtons() end
 
--- ===== Selos do Grimório =====
 function ClassSelectionScreen:_sealCap()
     local cap = 0
     for _, classId in ipairs(CLASS_ORDER) do
@@ -251,7 +215,6 @@ function ClassSelectionScreen:sealFor(classId)
     return math.min(self.seal or 0, UnlockSystem.getMaxSeal(classId))
 end
 
--- ===== Foco / detalhes =====
 function ClassSelectionScreen:focusClass(classId)
     if self._locked or not self:_panelOf(classId) then return end
     if classId == self.focus then return end
@@ -281,7 +244,6 @@ end
 
 function ClassSelectionScreen:keypressed(key)
     if self.inspectModal:isVisible() then
-        -- Esc/Enter/A/B fecham, setas (A/D) passam entre as cartas iniciais
         local k = (key == "backspace") and "escape" or key
         self.inspectModal:keypressed(k)
         return
@@ -303,13 +265,11 @@ function ClassSelectionScreen:_panelOf(classId)
     end
 end
 
--- Retorna true se a escolha foi aceita (classe liberada).
 function ClassSelectionScreen:selectClass(classId)
     if self._locked then return false end
     classId = classId or self.focus
     local panel = self:_panelOf(classId)
 
-    -- BLOQUEADA: nega com som + tremor; nunca inicia run.
     if not UnlockSystem.isClassUnlocked(classId) then
         if panel then panel.shake = 1 end
         if classId ~= self.focus then self:focusClass(classId) end
@@ -327,8 +287,6 @@ function ClassSelectionScreen:selectClass(classId)
             Debug.warn("onClassSelected callback nil em selectClass(" .. tostring(classId) .. ")")
         end
     end
-    -- O MOMENTO da escolha: emblema acende, anel, faíscas, som; a
-    -- confirmação vem 0.45s depois (fila própria e não-bloqueante).
     local EM = _G.EventManager
     if EM then
         self._locked = true
@@ -345,10 +303,6 @@ function ClassSelectionScreen:selectClass(classId)
                 })
             end
         end
-        -- Era o stinger de COMBO a 0,8 (dono, 13/Out: "muito alto, muito
-        -- estridente, horroroso"): escolher a classe ganha um brilho suave,
-        -- não uma fanfarra. O embaralhar do deck (deckStart) toca logo em
-        -- seguida, baixo, no startGame.
         Sfx.play("healShimmerSoft", { volume = 1.0, pitch = 0.95 })
         EM.parallel(0.45, function()
             self._locked = false
@@ -382,7 +336,6 @@ function ClassSelectionScreen:hide()
     self.visible = false
 end
 
--- Caixa do emblema grande (centro, tamanho desenhado, pixel do sprite).
 function ClassSelectionScreen:_heroGeometry()
     local h = self.layout.hero
     local boxH = math.floor(math.min(h.h * 0.62, h.w * 0.55))
@@ -400,7 +353,6 @@ function ClassSelectionScreen:update(dt)
     if not self.visible then return end
     for _, button in pairs(self.buttons) do button:update(dt) end
 
-    -- backdrop vivo — parallax suavizado
     do
         local W, H = love.graphics.getWidth(), love.graphics.getHeight()
         local mx, my = love.mouse.getPosition()
@@ -411,7 +363,6 @@ function ClassSelectionScreen:update(dt)
         self._parY = (self._parY or 0) + (ty - (self._parY or 0)) * k
     end
 
-    -- brasas dos braseiros do salão
     self._embers = self._embers or {}
     self._emberTimer = (self._emberTimer or 0) - dt
     if self._emberTimer <= 0 and #self._embers < 8 then
@@ -459,10 +410,6 @@ function ClassSelectionScreen:update(dt)
     end
 end
 
--- ===== Texto =====
-
--- Parágrafo quebrado na largura, na fonte dada (sem encolher: a tela tem só
--- duas fontes). Devolve a altura usada; `maxLines` corta o excedente com "...".
 local function paragraph(text, x, y, w, size, maxLines)
     local font = FontManager.getFont(size)
     local _, lines = font:getWrap(tostring(text or ""), w)
@@ -482,7 +429,6 @@ end
 
 local function ink(c, a) love.graphics.setColor(c[1], c[2], c[3], a or 1) end
 
--- Barra de pixel em tinta (trilho + preenchimento + contorno).
 local function inkBar(x, y, w, h, frac, fill, alpha)
     frac = math.max(0, math.min(1, frac or 0))
     ink(Palette.PARCHMENT_DARK, 0.35 * alpha)
@@ -495,8 +441,6 @@ local function inkBar(x, y, w, h, frac, fill, alpha)
     love.graphics.rectangle("line", x + 0.5, y + 0.5, w - 1, h - 1)
 end
 
--- ===== Desenho =====
-
 function ClassSelectionScreen:draw()
     if not self.visible then return end
     local W, H = love.graphics.getWidth(), love.graphics.getHeight()
@@ -504,7 +448,6 @@ function ClassSelectionScreen:draw()
     local NavCursor = require("src.ui.NavCursor")
 
     self:_drawLivingBackdrop(W, H)
-    -- o salão recua: a cena é o emblema e a página
     love.graphics.setColor(0.02, 0.015, 0.01, 0.42)
     love.graphics.rectangle("fill", 0, 0, W, H)
 
@@ -514,7 +457,6 @@ function ClassSelectionScreen:draw()
     self:_drawPage()
     self:_drawBack()
 
-    -- alvos do foco (teclado/pad): a ordem de leitura da tela
     for _, p in ipairs(self.panels) do
         local b = p.btn
         if b then NavCursor.target(b, b.x, b.y, b.width, b.height) end
@@ -534,14 +476,11 @@ function ClassSelectionScreen:draw()
             NavCursor.action(dir < 0 and "lb" or "rb", function() self:changeSeal(dir) end,
                 b.x, b.y, b.width, b.height)
         end
-        -- âncora do narrador do tutorial (Pena): a faixa do selo
         local r = lay.seal
         require("src.systems.Tutorial").anchor("seal_band", r.x, r.y, r.w, r.h)
     end
     self:_drawHelp()
     self:_reportTutorialAnchors()
-    -- tooltip da carta inicial: UM dono só (a carta sob o mouse/foco, como
-    -- a mão do combate); com a inspeção aberta, nenhum
     local owner = self:tooltipOwner()
     for _, p in ipairs(self.panels) do
         for _, inst in ipairs(p.cards) do
@@ -564,7 +503,6 @@ function ClassSelectionScreen:_drawHero()
     local shakeX = p.shake > 0 and math.floor(math.sin(p.shake * 40) * 8 * p.shake) or 0
 
     if p.unlocked then
-        -- luz da classe atrás do objeto + chão quente
         local glow = RadialGlow.get()
         love.graphics.setBlendMode("add")
         love.graphics.setColor(col[1], col[2], col[3], 0.20 + 0.25 * self._flash)
@@ -583,7 +521,6 @@ function ClassSelectionScreen:_drawHero()
         love.graphics.rectangle("line", b.cx - b.boxH / 2, b.cy - b.boxH / 2, b.boxH, b.boxH)
     end
 
-    -- anel do momento da escolha
     if self._pick > 0.02 then
         local k = 1 - self._pick
         love.graphics.setLineStyle("rough")
@@ -599,12 +536,9 @@ function ClassSelectionScreen:_drawHero()
     end
 end
 
--- As três classes pequenas: em foco = cor plena e marcador dourado embaixo;
--- as outras recuam (escurecidas); bloqueada = silhueta acorrentada.
 function ClassSelectionScreen:_drawChooser()
     local lay = self.layout
     local c = lay.chooser
-    -- traço de tinta: a "estante" onde as classes repousam
     ink(Palette.AGED_GOLD_DARK, 0.55)
     love.graphics.rectangle("fill", c.x, c.y + c.h - 6, c.w, 2)
     for _, p in ipairs(self.panels) do
@@ -617,7 +551,6 @@ function ClassSelectionScreen:_drawChooser()
         ClassEmblem.draw(p.classId, m.x + m.w / 2 + shakeX, m.y + m.h / 2 + lift, boxH,
             { hover = 0, locked = not p.unlocked, boxW = m.w, tint = { k, k, k } })
         if p.hover > 0.05 and not focus then
-            -- nome sob demanda: só quando o mouse/foco passa pela classe
             local f = FontManager.getFont(self.layout.bodyFont)
             local label = p.info.name or p.classId
             local lx = math.floor(m.x + m.w / 2 - f:getWidth(label) / 2)
@@ -631,7 +564,6 @@ function ClassSelectionScreen:_drawChooser()
             love.graphics.print(label, lx, ly)
         end
         if focus then
-            -- marcador: losango dourado sob a classe escolhida
             local mx, my = m.x + math.floor(m.w / 2), c.y + c.h - 5
             ink(Palette.AGED_GOLD_LIGHT)
             love.graphics.polygon("fill", mx, my - 5, mx + 5, my, mx, my + 5, mx - 5, my)
@@ -643,14 +575,13 @@ end
 
 function ClassSelectionScreen:_drawSealBand()
     local cap = self:_sealCap()
-    if cap <= 0 then return end          -- nada a escolher ainda: nada na tela
+    if cap <= 0 then return end
     local lay = self.layout
     local r = lay.seal
     local body = lay.bodyFont
     local p = self:_panelOf(self.focus)
     local capped = p and p.unlocked and UnlockSystem.getMaxSeal(p.classId) < self.seal
 
-    -- faixa de couro escuro com costura dourada
     love.graphics.setColor(0.07, 0.045, 0.03, 0.88)
     love.graphics.rectangle("fill", r.x, r.y, r.w, r.h)
     ink(capped and Palette.BLOOD or Palette.AGED_GOLD_DARK)
@@ -680,15 +611,12 @@ function ClassSelectionScreen:_drawSealBand()
     end
     ink(self.seal > 0 and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT)
     local f = FontManager.getFont(body)
-    -- sem caber, o título encurta pra "Selo N" (o nome vai pra dica) — nunca "..."
     if f:getWidth(title) > inner.x + inner.w - tx then
         title = I18n.t("seal_ui.label", { n = self.seal })
     end
     TextFit.print(title, tx, r.y + math.floor((r.h - f:getHeight()) / 2),
         { size = body, minSize = body, maxW = inner.x + inner.w - tx })
 
-    -- a REGRA do selo (e o teto da classe em foco) aparece sob demanda:
-    -- mouse/foco na faixa, ou logo depois de trocar o selo
     local mx, my = love.mouse.getPosition()
     local hot = mx >= r.x and mx < r.x + r.w and my >= r.y and my < r.y + r.h
     if hot or self._sealTip > 0 or capped then
@@ -706,7 +634,7 @@ function ClassSelectionScreen:_drawSealBand()
         local _, lines = f:getWrap(sub, r.w - 20)
         local lh = math.ceil(f:getHeight() * 1.5)
         local th = #lines * lh + 12
-        local ty = r.y + r.h + 6          -- a faixa mora no alto: a dica desce
+        local ty = r.y + r.h + 6
         love.graphics.setColor(0.07, 0.045, 0.03, 0.94)
         love.graphics.rectangle("fill", r.x, ty, r.w, th)
         ink(Palette.AGED_GOLD_DARK)
@@ -728,7 +656,6 @@ function ClassSelectionScreen:_drawSealArrow(r, dir, enabled)
     love.graphics.polygon("fill", cx + dir * a, cy, cx - dir * a, cy - a - 2, cx - dir * a, cy + a + 2)
 end
 
--- A FOLHA: essencial (resumo) | detalhes | bloqueada.
 function ClassSelectionScreen:_drawPage()
     local lay = self.layout
     local pg = lay.page
@@ -743,12 +670,10 @@ function ClassSelectionScreen:_drawPage()
     local a = 0.25 + 0.75 * self._fade
     local y = r.y
 
-    -- cabeçalho do capítulo
     ink(Palette.PARCHMENT_DARK, a)
     TextFit.print(I18n.t("class_select.title"), r.x, y, { size = body, minSize = body, maxW = r.w })
     y = y + lh + math.floor(lh * 0.8)
 
-    -- NOME + traço de pincel na cor da classe
     local col = CLASS_COLORS[p.classId] or { 1, 0.72, 0.22 }
     local name = TextCase.upper(p.info.name or p.classId)
     ink(Palette.INK, p.unlocked and a or 0.55 * a)
@@ -782,11 +707,9 @@ function ClassSelectionScreen:_drawSummaryPage(p, r, y, a)
     local fb = FontManager.getFont(body)
     local lh = math.ceil(fb:getHeight() * 1.5)
     self:_drawPlate(p, r, a)
-    -- identidade (uma ideia, no máximo 3 linhas)
     ink(Palette.INK, a)
     y = y + paragraph(p.info.description, r.x, y, r.w, body, 3) + lh
 
-    -- passiva: nome em sangue, a regra numa linha curta
     ink(Palette.BLOOD, a)
     TextFit.print(p.info.passiveName or "", r.x, y, { size = body, minSize = body, maxW = r.w })
     y = y + lh
@@ -794,7 +717,6 @@ function ClassSelectionScreen:_drawSummaryPage(p, r, y, a)
     local short = I18n.t("classes." .. p.classId .. ".passive_short", nil, p.info.passiveDesc)
     y = y + paragraph(short, r.x, y, r.w, body, 3) + lh
 
-    -- vida · mana · baralho, em ícones
     local items = {
         { icon = "heart", n = Config.Game.PLAYER_MAX_HEALTH },
         { icon = "crystal", n = Config.Game.PLAYER_MAX_MANA },
@@ -817,8 +739,6 @@ function ClassSelectionScreen:_drawSummaryPage(p, r, y, a)
     end
 end
 
--- GRAVURA: o objeto da classe desenhado em tinta, apagado, no pé da folha
--- (as pranchas dos grimórios). Ocupa o papel que sobra sem dizer nada.
 function ClassSelectionScreen:_drawPlate(p, r, a)
     local m = ClassEmblem.get(p.classId)
     local img = ClassEmblem.engraving(p.classId)
@@ -842,19 +762,14 @@ function ClassSelectionScreen:_drawDetailsPage(p, r, y, a)
     ink(Palette.INK, a)
     y = y + paragraph(p.info.passiveDesc, r.x, y, r.w, body, 5) + math.floor(lh * 0.8)
 
-    -- cartas iniciais (as de verdade, animadas)
     ink(Palette.PARCHMENT_DARK, a)
     TextFit.print(I18n.t("class_select.starter_label"), r.x, y, { size = body, minSize = body, maxW = r.w })
-    -- folga pro LIFT do hover: a carta sobe nesse vão, sem cobrir o rótulo
     y = y + lh + (Config.Cards.LIFT_AMOUNT or 25) + (Config.Cards.DEPTH_OFFSET or 15)
     local masteryH = lh * 3
     local availH = r.y + r.h - masteryH - y
     local n = #p.cards
     local s = math.min(availH / Layout.CARD_H_SRC, (r.w - (n - 1) * 14) / (n * Layout.CARD_W_SRC))
     s = math.max(0.4, math.floor(s * 4) / 4)
-    -- cartas DE VERDADE (Card:draw): hover levanta/inclina, anima o ícone e
-    -- abre o tooltip ao lado; clique/A/botão direito = inspeção. O foco do
-    -- NavCursor vem do próprio Card:draw.
     local cx = r.x
     self._starterRects = {}
     for i, inst in ipairs(p.cards) do
@@ -865,11 +780,8 @@ function ClassSelectionScreen:_drawDetailsPage(p, r, y, a)
                 inst.baseScale, inst.currentScale, inst.targetScale = s, s, s
             end
             inst.layoutX, inst.layoutY = cx, y
-            -- só vira alvo de hover depois de desenhada no lugar: antes disso
-            -- self.x/y = 0 e a caixa de hover (união home+render) ia do
-            -- canto da tela até a carta
             inst._csLaid = true
-            inst.isRewardCard = true          -- hover SOBE (a carta sai da folha)
+            inst.isRewardCard = true
             inst.tooltipSide, inst.deferTooltip = true, true
             inst.navGroup = "class_starters"
             inst:draw(cx, y, false, false)
@@ -880,7 +792,6 @@ function ClassSelectionScreen:_drawDetailsPage(p, r, y, a)
         require("src.systems.Tutorial").anchorList("class_starters", self._starterRects)
     end
 
-    -- maestria + recorde, no pé da folha
     local my = r.y + r.h - masteryH
     local m = p.mastery or { level = 0, maxLevel = 0, xp = 0, xpToNext = 0 }
     local isMax = (m.maxLevel or 0) > 0 and (m.level or 0) >= m.maxLevel
@@ -919,7 +830,6 @@ function ClassSelectionScreen:_drawLockedPage(p, r, y, a)
     love.graphics.print(txt, r.x + barW + 10, y)
 end
 
--- Marcador DETALHES / RESUMO: fita presa na borda esquerda da folha.
 function ClassSelectionScreen:_drawDetailsTab()
     local t = self.layout.details
     local b = self.buttons.details
@@ -930,7 +840,6 @@ function ClassSelectionScreen:_drawDetailsTab()
     ink(Palette.INK, 0.6)
     love.graphics.rectangle("fill", x + 3, t.y + 3, t.w, t.h)
     ink(hot and Palette.AGED_GOLD_LIGHT or base)
-    -- corpo da fita com ponta em V à esquerda (rabo de andorinha)
     love.graphics.rectangle("fill", x + 8, t.y, t.w - 8, t.h)
     love.graphics.polygon("fill", x + 8, t.y, x, t.y, x + 8, t.y + 14)
     love.graphics.polygon("fill", x + 8, t.y + t.h, x, t.y + t.h, x + 8, t.y + t.h - 14)
@@ -948,7 +857,6 @@ function ClassSelectionScreen:_drawDetailsTab()
         t.y + math.floor((t.h + tw) / 2), -math.pi / 2)
 end
 
--- Fita COMEÇAR pendurada no pé da folha (a ação principal da tela).
 function ClassSelectionScreen:_drawStartRibbon()
     local r = self.layout.start
     local b = self.buttons.start
@@ -957,7 +865,6 @@ function ClassSelectionScreen:_drawStartRibbon()
     local notch = 12
     ink(Palette.INK, 0.55)
     love.graphics.rectangle("fill", r.x + 4, y + 5, r.w, r.h)
-    -- pontas em rabo de andorinha (mais escuras: a fita dobra por trás)
     ink(Palette.BLOOD_DARK)
     love.graphics.polygon("fill", r.x - notch, y + 6, r.x + 10, y + 6, r.x + 10, y + r.h + 4,
         r.x - notch, y + r.h + 4, r.x - notch + 8, y + r.h / 2 + 5)
@@ -968,7 +875,6 @@ function ClassSelectionScreen:_drawStartRibbon()
     ink(Palette.AGED_GOLD_LIGHT, hot and 1 or 0.75)
     love.graphics.rectangle("fill", r.x, y + 3, r.w, 1)
     love.graphics.rectangle("fill", r.x, y + r.h - 4, r.w, 1)
-    -- brilho que corre a fita de tempos em tempos (convite, não alarme)
     local t = love.timer.getTime() % 3.2
     if t < 0.6 and not (_G.gameSettings and _G.gameSettings.reducedMotion) then
         local gx = r.x + math.floor((t / 0.6) * (r.w + 20)) - 10
@@ -986,15 +892,12 @@ function ClassSelectionScreen:_drawStartRibbon()
         { size = size, minSize = size - 2, maxW = r.w - 16, align = "center" })
 end
 
--- "?" do narrador (HelpBadge, o mesmo dos dados da loja).
 function ClassSelectionScreen:_drawHelp()
     local h, b = self._help, self.buttons.help
     if not (h and b) then return end
     HelpBadge.draw(h.cx, h.cy, h.r, b.hover, FontManager.getFont(self.layout.bodyFont))
 end
 
--- Âncoras do corvo narrador (conversa "class_select" em src/systems/Tutorial):
--- emblema grande, fita do COMEÇAR, marcador DETALHES, as classes acorrentadas.
 function ClassSelectionScreen:_reportTutorialAnchors()
     local T = require("src.systems.Tutorial")
     local lay = self.layout
@@ -1022,9 +925,6 @@ function ClassSelectionScreen:_drawBack()
     love.graphics.print(self:_backLabel(), b.x + 4, b.y + math.floor((b.height - f:getHeight()) / 2))
 end
 
--- ===== backdrop vivo =====
--- Âncoras dos 2 BRASEIROS na imagem do salão (coords relativas ao PNG
--- 400×256, v2 "limpo" Jul/2026 — ajuste se regenerar).
 local BRAZIER_ANCHORS = {
     { xr = 0.380, yr = 0.735, phase = 0.0 },
     { xr = 0.618, yr = 0.735, phase = 2.9 },
@@ -1077,7 +977,6 @@ function ClassSelectionScreen:mousepressed(x, y, button)
         return
     end
     if self._locked then return end
-    -- carta inicial: clique esquerdo OU direito (gatilho do pad) inspeciona
     local idx = self:_starterAt(x, y)
     if idx and (button == 1 or button == 2) then
         self:openInspect(idx)
@@ -1096,9 +995,6 @@ function ClassSelectionScreen:mousereleased(x, y, button)
     for _, btn in pairs(self.buttons) do btn:mousereleased(x, y, button) end
 end
 
--- ===== Cartas iniciais (DETALHES) =====
-
--- Índice da carta inicial sob (x, y), só com os detalhes abertos.
 function ClassSelectionScreen:_starterAt(x, y)
     if self.pageMode ~= "details" then return nil end
     local p = self:_panelOf(self.focus)
@@ -1111,9 +1007,6 @@ function ClassSelectionScreen:_starterAt(x, y)
     return nil
 end
 
--- A carta inicial dona do tooltip: a que está sob o mouse/foco agora. Se a
--- caixa de hover de duas se tocar (a que sobe invade a vizinha), vence a que
--- contém o ponteiro; sem ponteiro dentro, nenhuma.
 function ClassSelectionScreen:tooltipOwner()
     if self.pageMode ~= "details" or self.inspectModal:isVisible() then return nil end
     local p = self:_panelOf(self.focus)
@@ -1143,8 +1036,6 @@ function ClassSelectionScreen:_updateStarters(dt)
     end
 end
 
--- Abre a inspeção (a da Coleção) na carta i da classe em foco; as setas
--- passam pelas outras iniciais. Nunca por cima de uma fala do corvo.
 function ClassSelectionScreen:openInspect(i)
     local p = self:_panelOf(self.focus)
     if not (p and p.unlocked and p.cards[i]) then return false end

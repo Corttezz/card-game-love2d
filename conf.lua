@@ -1,54 +1,35 @@
--- DEV x RELEASE vem de src/core/Release.lua (flag unica: build_info.lua, que
--- so o tools/build_release.py escreve). conf.lua roda antes dos modulos
--- love.*, e o Release nao toca nenhum no carregamento.
 local okRelease, Release = pcall(require, "src.core.Release")
 if not okRelease then
-    print("[conf] src.core.Release falhou: " .. tostring(Release))
     Release = nil
 end
 
 function love.conf(t)
-    -- Save dir: DEV "card-game" (historico), RELEASE "Grimoire".
-    -- CARDGAME_IDENTITY sobrepoe (frentes paralelas/smoke nao pisam no save real).
     t.identity = Release and Release.identity() or (os.getenv("CARDGAME_IDENTITY") or "card-game")
-    t.version = "11.5"                          -- The LÖVE version this game was made for (string)
-    -- Console so em DEV: o executavel publicado nao abre janela preta junto.
+    t.version = "11.5"
     t.console = not (Release and Release.isRelease())
-    t.accelerometerjoystick = false            -- Enable the accelerometer on iOS and Android by exposing it as a Joystick (boolean)
-    t.externalstorage = false                   -- True to save files (and read from the save directory) in external storage on Android (boolean) 
-    t.gammacorrect = false                      -- Enable gamma-correct rendering, when supported by the system (boolean)
+    t.accelerometerjoystick = false
+    t.externalstorage = false
+    t.gammacorrect = false
 
-    t.window.title = "Grimoire"                  -- The window title (string)
-    t.window.icon = "assets/branding/icon.png"  -- Icone da janela/barra de tarefas (o .exe usa assets/branding/icon.ico via rcedit)
-    t.window.width = 1024                       -- The window width (number)
-    t.window.height = 768                       -- The window height (number)
-    t.window.minwidth = 800                     -- Minimum window width if resizable (number)
-    t.window.minheight = 600                    -- Minimum window height if resizable (number)
-    t.window.resizable = true                   -- Let the window be user-resizable (boolean)
-    t.window.fullscreen = false                 -- Enable fullscreen (boolean)
-    t.window.fullscreentype = "desktop"         -- Choose between "desktop" fullscreen or "exclusive" fullscreen mode (string)
-    t.window.vsync = true                       -- Enable vertical sync (boolean)
-    t.window.msaa = 0                           -- The number of samples to use with multi-sampled antialiasing (number)
-    t.window.depth = nil                        -- The number of bits per sample in the depth buffer (number)
-    t.window.stencil = nil                      -- The number of bits per sample in the stencil buffer (number)
-    t.window.display = 1                        -- Index of the monitor to show the window in (number)
-    t.window.highdpi = false                    -- Enable high-DPI support for the window on a Retina display (boolean)
-    t.window.usedpiscale = true                 -- Enable automatic DPI scaling when highdpi is set to true as well (boolean)
-    t.window.x = nil                            -- The x-coordinate of the window's position in the specified display (number)
-    t.window.y = nil                            -- The y-coordinate of the window's position in the specified display (number)
+    t.window.title = "Grimoire"
+    t.window.icon = "assets/branding/icon.png"
+    t.window.width = 1024
+    t.window.height = 768
+    t.window.minwidth = 800
+    t.window.minheight = 600
+    t.window.resizable = true
+    t.window.fullscreen = false
+    t.window.fullscreentype = "desktop"
+    t.window.vsync = true
+    t.window.msaa = 0
+    t.window.depth = nil
+    t.window.stencil = nil
+    t.window.display = 1
+    t.window.highdpi = false
+    t.window.usedpiscale = true
+    t.window.x = nil
+    t.window.y = nil
 
-    -- SIMULACAO SEM JANELA (Out/2026, pipeline de balanceamento): o dono viu
-    -- "varias janelas do Grimoire" abrindo durante as baterias paralelas.
-    -- Com CARDGAME_HEADLESS=1 (tools/balance.py seta; `love . balance_sim`
-    -- aceita tambem) a janela nasce com 1x1, sem borda e fora de qualquer
-    -- monitor; tools/headless_window.lua (balance_sim.setup) ainda a esconde
-    -- via user32 pra sumir da barra de tarefas. Nao da pra tirar a janela de
-    -- vez (t.window = nil): o jogo e os tools criam canvas/imagem, que exigem
-    -- contexto grafico. O que importa e que NADA fica visivel.
-    -- (love.window.minimize() no load NAO serve: o SDL re-mostra a janela e
-    -- ela volta pra barra de tarefas — medido.)
-    -- So em DEV: no pacote a variavel de ambiente do jogador nao pode sumir
-    -- com a janela (o dispatcher de tools nem existe la).
     if os.getenv("CARDGAME_HEADLESS") == "1" and not (Release and Release.isRelease()) then
         t.window.width, t.window.height = 1, 1
         t.window.minwidth, t.window.minheight = 1, 1
@@ -60,22 +41,22 @@ function love.conf(t)
         t.console = false
     end
 
-    t.modules.audio = true                      -- Enable the audio module (boolean)
-    t.modules.data = true                       -- Enable the data module (boolean)
-    t.modules.event = true                      -- Enable the event module (boolean)
-    t.modules.font = true                       -- Enable the font module (boolean)
-    t.modules.graphics = true                   -- Enable the graphics module (boolean)
-    t.modules.image = true                      -- Enable the image module (boolean)
-    t.modules.joystick = true                   -- Enable the joystick module (boolean)
-    t.modules.keyboard = true                   -- Enable the keyboard module (boolean)
-    t.modules.math = true                       -- Enable the math module (boolean)
-    t.modules.mouse = true                      -- Enable the mouse module (boolean)
-    t.modules.physics = false                   -- Enable the physics module (boolean)
-    t.modules.sound = true                      -- Enable the sound module (boolean)
-    t.modules.system = true                     -- Enable the system module (boolean)
-    t.modules.thread = true                     -- Enable the thread module (boolean)
-    t.modules.timer = true                      -- Enable the timer module (boolean)
-    t.modules.touch = false                     -- Enable the touch module (boolean)
-    t.modules.video = false                     -- Enable the video module (boolean)
-    t.modules.window = true                     -- Enable the window module (boolean)
+    t.modules.audio = true
+    t.modules.data = true
+    t.modules.event = true
+    t.modules.font = true
+    t.modules.graphics = true
+    t.modules.image = true
+    t.modules.joystick = true
+    t.modules.keyboard = true
+    t.modules.math = true
+    t.modules.mouse = true
+    t.modules.physics = false
+    t.modules.sound = true
+    t.modules.system = true
+    t.modules.thread = true
+    t.modules.timer = true
+    t.modules.touch = false
+    t.modules.video = false
+    t.modules.window = true
 end

@@ -1,7 +1,4 @@
--- components/CollectionScreen.lua
--- Tela de coleção: grid com todas as cartas do CardDatabase.
--- Scroll vertical com mouse wheel, filtros por classe, tooltip no hover.
--- Acessível pelo botão "COLEÇÃO" no menu principal, ESC volta.
+local Debug = require("src.core.Debug")
 
 local Debug        = require("src.core.Debug")
 local FontManager  = require("src.ui.FontManager")
@@ -25,7 +22,6 @@ CollectionScreen.__index = CollectionScreen
 local RARITY_ORDER = { basic = 1, common = 2, uncommon = 3, rare = 4, legendary = 5 }
 local CLASS_ORDER  = { warrior = 1, mage = 2, rogue = 3, [""] = 4 }
 
--- Filtros: id estável + chave I18n p/ label. Resolvido a cada draw via _filters().
 local FILTERS = {
     { id = "all",     i18n = "collection.filter_all" },
     { id = "warrior", i18n = "collection.filter_warrior" },
@@ -39,10 +35,10 @@ local FILTERS = {
 
 local function filterLabel(f) return I18n.t(f.i18n) end
 
-local CARD_W, CARD_H = 128, 192   -- tamanho renderizado na tela (96×144 × 1.333)
+local CARD_W, CARD_H = 128, 192
 local GAP_X, GAP_Y = 18, 24
 local COLS = 5
-local TOP_OFFSET = 120            -- espaço pro título + filtros
+local TOP_OFFSET = 120
 local BOTTOM_PAD = 40
 
 function CollectionScreen:new()
@@ -52,16 +48,14 @@ function CollectionScreen:new()
     self.maxScrollY = 0
     self.hoverCard = nil
     self.filter = "all"
-    self.cardInstances = {}       -- lazy init em show()
+    self.cardInstances = {}
     self.filtered = {}
     self.onCloseCallback = nil
-    self.inspectedCard = nil      -- carta em modal de zoom
-    self.inspectAnim = 0          -- 0..1 (fade/zoom in)
+    self.inspectedCard = nil
+    self.inspectAnim = 0
     return self
 end
 
--- Ordena cartas: class > rarity > name (ordena pelo nome localizado pra ficar
--- alfabético no idioma atual)
 local function sortCards(list)
     table.sort(list, function(a, b)
         local ca = CLASS_ORDER[a.class or ""] or 99
@@ -74,12 +68,6 @@ local function sortCards(list)
     end)
 end
 
--- Converte cartas raw → instâncias renderizadas (com CardFrame aplicado).
--- v10.6 (perf — "engasgada ao clicar em COLEÇÃO"): INCREMENTAL com
--- orçamento de tempo por frame. A tela abre instantânea e as cartas
--- aparecem em ondas na ordem do grid (topo primeiro); ~0.3-0.6s pra
--- completar, sem travar frame nenhum. show() constrói a 1ª leva,
--- update() consome o resto.
 function CollectionScreen:_buildInstances(budgetSecs)
     if self._buildDone then return end
     if not self._buildList then
@@ -99,16 +87,13 @@ function CollectionScreen:_buildInstances(budgetSecs)
         local cd = self._buildList[self._buildIdx]
         local db = self._buildDb
         if not UnlockSystem.isCardDiscovered(cd.id) then
-            -- NÃO DESCOBERTA (Balatro): ocupa o slot mas aparece como verso
-            -- "?". Stub leve — nem compõe o canvas da carta (que o jogador
-            -- não vai ver), o que também barateia a abertura da tela.
             self.cardInstances[#self.cardInstances + 1] = self:_makeHidden(cd)
         else
             local ok, instance = pcall(function() return db:createCardInstance(cd) end)
             if ok and instance then
                 self.cardInstances[#self.cardInstances + 1] = instance
             else
-                print("[CollectionScreen] falha ao instanciar carta: " .. tostring(cd.id))
+                Debug.warn("[CollectionScreen] falha ao instanciar carta: " .. tostring(cd.id))
             end
         end
         if (love.timer.getTime() - t0) >= budget then break end
@@ -117,9 +102,7 @@ function CollectionScreen:_buildInstances(budgetSecs)
         self._buildDone = true
         self._buildList = nil
         self._buildDb = nil
-        Debug.log("[CollectionScreen] " .. #self.cardInstances .. " cartas carregadas")
     end
-    -- mantém grid/scroll coerentes com a lista parcial que cresce
     self:_applyFilter()
 end
 
@@ -131,8 +114,6 @@ function CollectionScreen:_makeHidden(cd)
     }
 end
 
--- Reabrir a Coleção depois de uma run: o que foi descoberto nesse meio-tempo
--- vira carta de verdade (e o que estava liberado-mas-oculto atualiza o selo).
 function CollectionScreen:_refreshDiscovery()
     if not self._buildDone then return end
     local db
@@ -145,7 +126,7 @@ function CollectionScreen:_refreshDiscovery()
                 if ok and real then
                     self.cardInstances[i] = real
                 else
-                    print("[CollectionScreen] falha ao revelar carta: " .. tostring(inst.id))
+                    Debug.warn("[CollectionScreen] falha ao revelar carta: " .. tostring(inst.id))
                 end
             else
                 inst._locked = not UnlockSystem.isCardUnlockedReal(inst.id)
@@ -155,7 +136,6 @@ function CollectionScreen:_refreshDiscovery()
 end
 
 function CollectionScreen:_applyFilter()
-    -- Trocar filtro reseta a ordem manual (usuário volta pra sort padrão)
     self._hasManualOrder = false
     self.filtered = {}
     for _, inst in ipairs(self.cardInstances) do
@@ -170,13 +150,11 @@ function CollectionScreen:_applyFilter()
         end
         if match then self.filtered[#self.filtered + 1] = inst end
     end
-    -- Contador "x/y descobertas" da aba (calculado aqui, não no draw).
     local disc = 0
     for _, inst in ipairs(self.filtered) do
         if not inst._hidden then disc = disc + 1 end
     end
     self.discoveredCount = disc
-    -- Recalcula scroll máximo
     local rows = math.ceil(#self.filtered / COLS)
     local contentH = rows * (CARD_H + GAP_Y)
     local viewH = love.graphics.getHeight() - TOP_OFFSET - BOTTOM_PAD
@@ -188,10 +166,7 @@ function CollectionScreen:show(onClose)
     self.visible = true
     self.scrollY = 0
     self.onCloseCallback = onClose
-    -- 1ª leva um pouco maior (preenche o que está na tela de cara);
-    -- o resto flui no update sem travar
     self:_refreshDiscovery()
-    -- descobertas desde a última visita: pulsam quando entram na tela
     self._fresh = UnlockSystem.takeFreshInCollection()
     self:_buildInstances(0.012)
     self:_applyFilter()
@@ -206,16 +181,10 @@ function CollectionScreen:isVisible()
     return self.visible
 end
 
--- gridOrigin/cardRect calculam dinamicamente da window size a cada frame, então
--- o CollectionScreen já é responsivo sem cache de layout. resize() é stub
--- pra contrato uniforme com outras overlay screens.
 function CollectionScreen:resize()
-    -- O canvas do verso "?" perde o conteúdo em setMode: recompõe sob demanda.
     self._mysteryCanvas = nil
     self:_applyFilter()
 end
-
--- ===== Layout helpers =====
 
 local function gridOrigin()
     local width = love.graphics.getWidth()
@@ -231,19 +200,14 @@ local function cardRect(index)
     return ox + col * (CARD_W + GAP_X), oy + row * (CARD_H + GAP_Y)
 end
 
--- ===== Eventos =====
-
 function CollectionScreen:update(dt)
     if not self.visible then return end
-    -- v10.6: consome a fila de instanciação (orçamento por frame)
     if not self._buildDone then self:_buildInstances() end
-    -- Anima entrada/saída do modal de inspeção
     if self.inspectedCard then
         self.inspectAnim = math.min(1, self.inspectAnim + dt * 6)
     else
         self.inspectAnim = math.max(0, self.inspectAnim - dt * 8)
     end
-    -- No modal ou durante drag, não processa hover do grid
     if self.inspectedCard or self._draggingIdx then
         self.hoverCard = nil
         return
@@ -259,10 +223,6 @@ function CollectionScreen:update(dt)
             break
         end
     end
-    -- Tick sutil quando o card em hover muda. Hover de carta usa hoverCard
-    -- (sound de carta), não menuHover (sound de UI). Pitch random pra evitar
-    -- fadiga ao percorrer a grid rápido. SEM baseVolume — usa Config.Audio.HOVER_VOLUME
-    -- (=0.03) carregado em main.lua, ficando baixinho como esperado.
     local newHover = self.hoverCard and self.hoverCard.instance or nil
     if newHover and newHover ~= prevHover then
         Sfx.playWithVariation("hoverCard", 0.95, 0.18)
@@ -271,13 +231,12 @@ end
 
 function CollectionScreen:wheelmoved(x, y)
     if not self.visible then return end
-    if self.inspectedCard then return end -- scroll desabilitado no modal
+    if self.inspectedCard then return end
     self.scrollY = math.max(0, math.min(self.maxScrollY, self.scrollY - y * 40))
 end
 
 function CollectionScreen:keypressed(key)
     if not self.visible then return end
-    -- Modal de inspeção consome ESC primeiro
     if self.inspectedCard then
         if key == "escape" or key == "space" or key == "return" then
             Sfx.play("menuClose")
@@ -301,7 +260,6 @@ function CollectionScreen:keypressed(key)
     end
 end
 
--- Navega entre cartas filtradas no modal (setas ← →)
 function CollectionScreen:_inspectNeighbor(delta)
     if not self.inspectedCard then return end
     local idx = nil
@@ -316,12 +274,9 @@ function CollectionScreen:_inspectNeighbor(delta)
         if not self.filtered[newIdx]._hidden then break end
     end
     self.inspectedCard = self.filtered[newIdx]
-    self.inspectAnim = 0.3 -- leve "pop" ao trocar
+    self.inspectAnim = 0.3
 end
 
--- X de fechar (mesmo lugar e desenho do Deck Viewer). Substitui a faixa de
--- dica do rodapé ("CLIQUE pra inspecionar · RODA pra rolar · ESC volta"):
--- regra do projeto, sem rodapé de instruções — a saída mora num objeto.
 local function closeRect()
     return love.graphics.getWidth() - 52, 24, 30, 30
 end
@@ -339,35 +294,28 @@ function CollectionScreen:mousepressed(x, y, button)
         return
     end
     if button == 1 then
-        -- Modal de inspeção: clique fora fecha, clique em setas navega
         if self.inspectedCard then
             local w, h = love.graphics.getDimensions()
-            -- Área da carta grande (centralizada)
-            local cardW, cardH = 384, 576 -- 96×144 × 4
-            local cardX = (w - cardW) / 2 - 140 -- empurra à esquerda pra caber texto
+            local cardW, cardH = 384, 576
+            local cardX = (w - cardW) / 2 - 140
             local cardY = (h - cardH) / 2
-            -- Setas de navegação (clique em 80px nas laterais)
             local arrowY = h / 2 - 30
-            -- Esquerda
             if x >= 20 and x <= 100 and y >= arrowY and y <= arrowY + 60 then
                 Sfx.play("collectionFlip")
                 self:_inspectNeighbor(-1)
                 return
             end
-            -- Direita
             if x >= w - 100 and x <= w - 20 and y >= arrowY and y <= arrowY + 60 then
                 Sfx.play("collectionFlip")
                 self:_inspectNeighbor(1)
                 return
             end
-            -- Clique em qualquer outro lugar fecha
             if x < cardX or x > cardX + cardW + 320 or y < cardY - 20 or y > cardY + cardH + 20 then
                 Sfx.play("menuClose")
                 self.inspectedCard = nil
             end
             return
         end
-        -- Filtro tabs no topo
         local font = FontManager.getFont(14)
         local tabY = 70
         local tabX = 20
@@ -383,7 +331,6 @@ function CollectionScreen:mousepressed(x, y, button)
             end
             tabX = tabX + w + 8
         end
-        -- Carta na grid: inicia dragPending (click + drag unificados; resolve em release)
         for i, inst in ipairs(self.filtered) do
             local cx, cy = cardRect(i)
             cy = cy - self.scrollY
@@ -393,17 +340,13 @@ function CollectionScreen:mousepressed(x, y, button)
                 self._dragStartMY = y
                 self._dragOffsetX = cx - x
                 self._dragOffsetY = cy - y
-                self._draggingIdx = nil -- promovido em mousemoved se cruzar threshold
+                self._draggingIdx = nil
                 return
             end
         end
     end
 end
 
--- ===== Drag helpers =====
-
--- Computa o índice 1..#filtered pra onde uma carta cairia, baseado em (mx, my).
--- Ignora zonas fora da grid (retorna nil quando clampa pros extremos óbvios).
 function CollectionScreen:_computeDropIndex(mx, my)
     local total = #self.filtered
     if total <= 1 then return 1 end
@@ -411,7 +354,6 @@ function CollectionScreen:_computeDropIndex(mx, my)
     local totalW = COLS * CARD_W + (COLS - 1) * GAP_X
     local ox = (w - totalW) / 2
     local oy = TOP_OFFSET
-    -- Clamp col/row pra dentro da grid (considerando scroll)
     local col = math.floor((mx - ox + GAP_X / 2) / (CARD_W + GAP_X))
     col = math.max(0, math.min(COLS - 1, col))
     local row = math.floor((my - oy + self.scrollY + GAP_Y / 2) / (CARD_H + GAP_Y))
@@ -437,22 +379,17 @@ function CollectionScreen:mousereleased(x, y, button)
     if not self.visible then return end
     if button ~= 1 then return end
 
-    -- Drag ativo → reorder (session-only via manualOrder)
     if self._draggingIdx then
         local dropIdx = self:_computeDropIndex(x, y)
         if dropIdx ~= self._draggingIdx then
             local inst = table.remove(self.filtered, self._draggingIdx)
             table.insert(self.filtered, dropIdx, inst)
             Sfx.play("collectionFlip")
-            -- Salva a ordem manual atual (vive enquanto a coleção está aberta)
             self._hasManualOrder = true
         end
     elseif self._dragPendingIdx then
-        -- Só click (sem drag) → abre modal de inspeção, como era antes
         local inst = self.filtered[self._dragPendingIdx]
         if inst and inst._hidden then
-            -- Carta não descoberta não abre zoom (não há o que mostrar); a
-            -- dica de como liberar já está no tooltip do hover.
             Sfx.play("buttonClick", { pitch = 0.7 })
         elseif inst then
             Sfx.play("collectionFlip")
@@ -465,12 +402,9 @@ function CollectionScreen:mousereleased(x, y, button)
     self._draggingIdx = nil
 end
 
--- ===== Render =====
-
 local function drawBackground()
     local w, h = love.graphics.getDimensions()
     if SceneBackground.draw("collection", w, h, 0.55) then return end
-    -- Fallback
     local bg = PixelBackground.voidStars(w, h)
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.draw(bg, 0, 0)
@@ -481,14 +415,12 @@ end
 local function drawTitleAndFilters(self)
     local width = love.graphics.getWidth()
 
-    -- Título
     local titleFont = FontManager.getResponsiveFont(0.05, 36)
     love.graphics.setFont(titleFont)
     local title = I18n.t("collection.title")
     love.graphics.setColor(Palette.AGED_GOLD_LIGHT)
     love.graphics.print(title, (width - titleFont:getWidth(title)) / 2, 12)
 
-    -- Subtítulo: count
     local subFont = FontManager.getFont(14)
     love.graphics.setFont(subFont)
     local sub = I18n.t("unlocks.discovered_count",
@@ -496,7 +428,6 @@ local function drawTitleAndFilters(self)
     love.graphics.setColor(Palette.PARCHMENT_LIGHT)
     love.graphics.print(sub, (width - subFont:getWidth(sub)) / 2, 50)
 
-    -- Filtros (tabs horizontais)
     local font = FontManager.getFont(14)
     love.graphics.setFont(font)
     local tabX = 20
@@ -511,7 +442,7 @@ local function drawTitleAndFilters(self)
             love.graphics.setColor(Palette.INK[1], Palette.INK[2], Palette.INK[3], 0.6)
         end
         love.graphics.rectangle("fill", tabX, tabY, w, 28, 4, 4)
-        require("src.ui.NavCursor").target("filter:" .. f.id, tabX, tabY, w, 28)   -- foco teclado/pad
+        require("src.ui.NavCursor").target("filter:" .. f.id, tabX, tabY, w, 28)
         love.graphics.setColor(Palette.PARCHMENT_DARK)
         love.graphics.rectangle("line", tabX, tabY, w, 28, 4, 4)
         love.graphics.setColor(active and Palette.INK or Palette.PARCHMENT_LIGHT)
@@ -519,7 +450,6 @@ local function drawTitleAndFilters(self)
         tabX = tabX + w + 8
     end
 
-    -- Barra de scroll à direita
     if self.maxScrollY > 0 then
         local barX = width - 12
         local barH = love.graphics.getHeight() - TOP_OFFSET - BOTTOM_PAD
@@ -532,10 +462,6 @@ local function drawTitleAndFilters(self)
     end
 end
 
--- Desenha card mini no grid com perspective warp (mesh+shader) + sombra direcional.
--- Luz fixa acima do centro da tela → sombra cai pro lado oposto à posição + press.
---   mouseUV: vec2 [-1,1] relativa ao centro da carta (0,0 = sem press)
---   hoverStrength: 0..1 (usa pro warp + pro offset tilt da sombra)
 local function drawCardMini(instance, x, y, hoverScale, alpha, mouseUV, hoverStrength)
     if not instance.image then return end
     hoverScale = hoverScale or 1
@@ -543,11 +469,6 @@ local function drawCardMini(instance, x, y, hoverScale, alpha, mouseUV, hoverStr
     mouseUV = mouseUV or { 0, 0 }
     hoverStrength = hoverStrength or 0
 
-    -- Carta VISIVEL = carta VIVA (dono, 13/Out/2026): a grade inteira anima,
-    -- com ou sem hover. A regra (e o reducedMotion) mora em
-    -- CardFrame.displayImage — nunca inline aqui (foi um limiar cravado aqui
-    -- que deixou o Deck Viewer sem animacao em Set/2026).
-    -- Swap temporario de instance.image, restaurado no fim da funcao.
     local _prevImage = instance.image
     instance.image = CardFrame.displayImage(instance) or instance.image
 
@@ -555,12 +476,10 @@ local function drawCardMini(instance, x, y, hoverScale, alpha, mouseUV, hoverStr
     local drawScale = baseScale * hoverScale
     local drawW = instance.image:getWidth() * drawScale
     local drawH = instance.image:getHeight() * drawScale
-    -- Lift visual quando hover (carta sobe em direção ao cursor)
     local lift = (hoverScale - 1) * 30
     local cx = x + CARD_W / 2
     local cy = y + CARD_H / 2 - lift
 
-    -- Sombra direcional (luz acima do centro + press shift oposto)
     local Config = require("src.core.Config")
     local screenW = love.graphics.getWidth()
     local dirX = (cx - screenW / 2) / (screenW / 2)
@@ -580,10 +499,6 @@ local function drawCardMini(instance, x, y, hoverScale, alpha, mouseUV, hoverStr
     local px = math.floor(cx - drawW / 2)
     local py = math.floor(cy - drawH / 2)
 
-    -- Desenha sombra (pode usar mesh pra acompanhar warp)
-    -- Perf (Out/2026): em repouso (hoverStrength 0) o warp é IDENTIDADE —
-    -- o vertex shader não move nada e o fragment é passthrough. Pular shader+
-    -- mesh+uniforms nas cartas paradas tira ~30 shader switches por frame.
     local shader = (hoverStrength > 0.001) and CardMesh.getShader() or nil
     local timeNow = love.timer.getTime()
     if shader then
@@ -591,17 +506,14 @@ local function drawCardMini(instance, x, y, hoverScale, alpha, mouseUV, hoverStr
         mesh:setTexture(instance.image)
         love.graphics.setShader(shader)
         CardMesh.setUniforms(shader, mouseUV, hoverStrength, timeNow, instance.image)
-        -- Sombra primeiro (tint preto + offset)
         love.graphics.setColor(0, 0, 0, shAlpha)
         love.graphics.draw(mesh,
             px + shadowDx, py + shadowDy,
             0, drawScale, drawScale)
-        -- Card principal
         love.graphics.setColor(1, 1, 1, alpha)
         love.graphics.draw(mesh, px, py, 0, drawScale, drawScale)
         love.graphics.setShader()
     else
-        -- Fallback sem shader: desenho direto
         love.graphics.setColor(0, 0, 0, shAlpha)
         love.graphics.draw(instance.image,
             math.floor(px + shadowDx), math.floor(py + shadowDy),
@@ -610,13 +522,11 @@ local function drawCardMini(instance, x, y, hoverScale, alpha, mouseUV, hoverStr
         love.graphics.draw(instance.image, px, py, 0, drawScale, drawScale)
     end
 
-    -- Icon animations por cima
     if not instance._cachedArt then
         local ok, a = pcall(CardArt.resolve, instance)
         instance._cachedArt = ok and a or { bgPattern = nil }
     end
     CardAnimationLayer.draw(instance, instance._cachedArt, px, py, drawScale, drawScale)
-    -- Descoberta desde a última visita: pulsa UMA vez (src/ui/DiscoveryMark)
     if instance._freshPulse and not require("src.ui.DiscoveryMark")
             .drawCollectionPulse(instance.id, instance.image, px, py, drawScale) then
         instance._freshPulse = nil
@@ -625,9 +535,6 @@ local function drawCardMini(instance, x, y, hoverScale, alpha, mouseUV, hoverStr
     instance.image = _prevImage
 end
 
--- Verso da carta NÃO DESCOBERTA, composto UMA vez num canvas 96×144 (mesma
--- resolução do canvas da carta → mesma escala/nitidez no grid). Plain draw no
--- grid, sem shader: em repouso o warp é identidade.
 local function getMysteryCanvas(self)
     if self._mysteryCanvas then return self._mysteryCanvas end
     local W, H = CardFrame.WIDTH, CardFrame.HEIGHT
@@ -635,8 +542,6 @@ local function getMysteryCanvas(self)
     c:setFilter("nearest", "nearest")
     love.graphics.push("all")
     love.graphics.origin()
-    -- O 1º uso acontece DENTRO do scissor do grid: sem limpar, o recorte de
-    -- tela vale também pro canvas e o verso sai cortado.
     love.graphics.setScissor()
     love.graphics.setShader()
     love.graphics.setCanvas(c)
@@ -646,13 +551,12 @@ local function getMysteryCanvas(self)
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.draw(img, 0, 0, 0, W / img:getWidth(), H / img:getHeight())
     else
-        print("[CollectionScreen] verso da carta ausente (assets/cards/back.png) — usando fallback chapado")
+        Debug.warn("[CollectionScreen] verso da carta ausente (assets/cards/back.png) — usando fallback chapado")
         love.graphics.setColor(Palette.INK)
         love.graphics.rectangle("fill", 0, 0, W, H)
         love.graphics.setColor(Palette.AGED_GOLD)
         love.graphics.rectangle("line", 1.5, 1.5, W - 3, H - 3)
     end
-    -- Véu escuro + "?" dourado no centro.
     love.graphics.setColor(Palette.INK[1], Palette.INK[2], Palette.INK[3], 0.45)
     love.graphics.rectangle("fill", 0, 0, W, H)
     local f = FontManager.getFont(32)
@@ -678,8 +582,6 @@ local function drawMystery(self, inst, x, y, hoverScale)
     local py = math.floor(y + CARD_H / 2 - lift - drawH / 2)
     love.graphics.setColor(0, 0, 0, 0.45)
     love.graphics.draw(img, px + 4, py + 7, 0, drawScale, drawScale)
-    -- Bloqueada = mais apagada que a liberada-mas-não-vista: o jogador lê de
-    -- relance o que já pode cair numa run e o que ainda depende de maestria.
     local k = inst._locked and 0.55 or 0.9
     love.graphics.setColor(k, k, k, 1)
     love.graphics.draw(img, px, py, 0, drawScale, drawScale)
@@ -720,7 +622,7 @@ local function drawHoverTooltip(self)
     local TIP_W = 320
     local TIP_H = 180
     local PAD = 10
-    local TEXT_W = TIP_W - PAD * 2   -- largura útil pra printf wrap
+    local TEXT_W = TIP_W - PAD * 2
 
     local cx = self.hoverCard.x + CARD_W + 10
     local cy = self.hoverCard.y
@@ -728,26 +630,21 @@ local function drawHoverTooltip(self)
         cx = self.hoverCard.x - TIP_W - 10
     end
     if cx < 0 then cx = 0 end
-    -- Clamp vertical pra não vazar pelo rodapé
     if cy + TIP_H > love.graphics.getHeight() then
         cy = love.graphics.getHeight() - TIP_H - 10
     end
 
-    -- Fundo pixel (sem cantos arredondados)
     PixelCanvas.rect(cx, cy, TIP_W, TIP_H, Palette.PANEL_FILL)
     PixelCanvas.rectOutline(cx, cy, TIP_W, TIP_H, Palette.AGED_GOLD)
     PixelCanvas.rectOutline(cx + 2, cy + 2, TIP_W - 4, TIP_H - 4, Palette.AGED_GOLD_DARK)
 
-    -- Nome (Press Start 2P size 12) com wrap
     local nameFont = FontManager.getFont(12)
     love.graphics.setFont(nameFont)
     Palette.set(Palette.AGED_GOLD_LIGHT)
     love.graphics.printf(I18n.cardName(inst), cx + PAD, cy + PAD, TEXT_W)
 
-    -- Separador fino
     PixelCanvas.hline(cx + PAD, cy + PAD + 30, TEXT_W, Palette.AGED_GOLD_DARK)
 
-    -- Type / Class / Rarity em 3 linhas separadas (evita overflow horizontal)
     local metaFont = FontManager.getFont(8)
     love.graphics.setFont(metaFont)
     local typeColor = Palette.forCardType(inst.type) or Palette.PARCHMENT
@@ -758,8 +655,6 @@ local function drawHoverTooltip(self)
     local rarityLabel = I18n.t("rarity." .. (inst.rarity or "common"), nil, inst.rarity or "")
 
     local mY = cy + PAD + 36
-    -- Colunas DINÂMICAS com fit (design system Jul/2026): os offsets fixos
-    -- 72/172 colidiam entre si e vazavam do tooltip em idiomas longos.
     local TextFit = require("src.ui.TextFit")
     local mX = cx + PAD
     local mEnd = cx + TIP_W - PAD
@@ -774,7 +669,6 @@ local function drawHoverTooltip(self)
     Palette.set(rarityColor)
     TextFit.print(rarityLabel, mX, mY, { size = 8, maxW = mEnd - mX })
 
-    -- Descrição (wrap)
     local descFont = FontManager.getFont(8)
     love.graphics.setFont(descFont)
     Palette.set(Palette.PARCHMENT_LIGHT)
@@ -782,7 +676,6 @@ local function drawHoverTooltip(self)
     if not descText or descText == "" then descText = I18n.t("card_info.no_desc") end
     love.graphics.printf(descText, cx + PAD, cy + PAD + 54, TEXT_W)
 
-    -- Stats (rodapé)
     local statFont = FontManager.getFont(10)
     love.graphics.setFont(statFont)
     Palette.set(Palette.AGED_GOLD_LIGHT)
@@ -817,20 +710,15 @@ local function drawInspectModal(self)
     local width, height = love.graphics.getDimensions()
     local anim = self.inspectAnim
 
-    -- Backdrop escurecido
     love.graphics.setColor(0, 0, 0, 0.82 * anim)
     love.graphics.rectangle("fill", 0, 0, width, height)
 
-    -- Carta em escala grande (4x = 384×576)
     local scale = 4 * (0.85 + 0.15 * anim)
     local cardW = 96 * scale
     local cardH = 144 * scale
-    local cardX = (width - cardW) / 2 - 140  -- desloca pra esquerda pra caber painel
+    local cardX = (width - cardW) / 2 - 140
     local cardY = (height - cardH) / 2
 
-    -- Render da carta com perspective warp + sombra direcional.
-    -- Inspeção ampliada anima o ícone como toda carta visível
-    -- (CardFrame.displayImage decide; reducedMotion = estática).
     local _prevImage = inst.image
     do
         local shown = CardFrame.displayImage(inst)
@@ -838,7 +726,6 @@ local function drawInspectModal(self)
     end
     if inst.image then
         local mx, my = love.mouse.getPosition()
-        -- mouseUV relativo ao centro da carta grande
         local cx = cardX + cardW / 2
         local cy = cardY + cardH / 2
         local uvx = (mx - cx) / (cardW / 2)
@@ -849,8 +736,7 @@ local function drawInspectModal(self)
         local mouseUV = uvInside and { uvx, uvy } or { 0, 0 }
         local hoverStrength = uvInside and anim or 0
 
-        -- Sombra: cai oposta à posição do card na tela + oposta ao press
-        local shadowPressShift = 40 -- modal é grande, offset maior fica natural
+        local shadowPressShift = 40
         local dirX = (cx - width / 2) / (width / 2)
         if dirX > 1 then dirX = 1 elseif dirX < -1 then dirX = -1 end
         local shDx = -dirX * 30 - uvx * shadowPressShift * hoverStrength
@@ -863,10 +749,8 @@ local function drawInspectModal(self)
             mesh:setTexture(inst.image)
             love.graphics.setShader(shader)
             CardMesh.setUniforms(shader, mouseUV, hoverStrength, timeNow, inst.image)
-            -- Sombra
             love.graphics.setColor(0, 0, 0, 0.55 * anim)
             love.graphics.draw(mesh, cardX + shDx, cardY + shDy, 0, scale, scale)
-            -- Card
             love.graphics.setColor(1, 1, 1, anim)
             love.graphics.draw(mesh, cardX, cardY, 0, scale, scale)
             love.graphics.setShader()
@@ -877,7 +761,6 @@ local function drawInspectModal(self)
             love.graphics.draw(inst.image, cardX, cardY, 0, scale, scale)
         end
 
-        -- Animações do ícone (shine/drip/sparkle/etc) no modal de zoom
         if not inst._cachedArt then
             local ok, a = pcall(CardArt.resolve, inst)
             inst._cachedArt = ok and a or { bgPattern = nil }
@@ -886,7 +769,6 @@ local function drawInspectModal(self)
     end
     inst.image = _prevImage
 
-    -- Painel lateral com info detalhada — pixel chrome (sem cantos arredondados)
     local panelX = cardX + cardW + 30
     local panelY = cardY
     local panelW = 340
@@ -894,7 +776,6 @@ local function drawInspectModal(self)
     local PAD = 16
     local TEXT_W = panelW - PAD * 2
 
-    -- Fundo pixel com dual outline. rectangle simples respeita anim (alpha fade-in).
     love.graphics.setColor(Palette.INK[1], Palette.INK[2], Palette.INK[3], 0.92 * anim)
     love.graphics.rectangle("fill", panelX, panelY, panelW, panelH)
     love.graphics.setColor(Palette.AGED_GOLD[1], Palette.AGED_GOLD[2], Palette.AGED_GOLD[3], anim)
@@ -902,17 +783,14 @@ local function drawInspectModal(self)
     love.graphics.setColor(Palette.AGED_GOLD_DARK[1], Palette.AGED_GOLD_DARK[2], Palette.AGED_GOLD_DARK[3], anim)
     love.graphics.rectangle("line", panelX + 2, panelY + 2, panelW - 4, panelH - 4)
 
-    -- Nome (Press Start 2P é larga; size 16 com wrap cabe em 308px)
     local nameFont = FontManager.getFont(16)
     love.graphics.setFont(nameFont)
     love.graphics.setColor(Palette.AGED_GOLD_LIGHT[1], Palette.AGED_GOLD_LIGHT[2], Palette.AGED_GOLD_LIGHT[3], anim)
     love.graphics.printf(I18n.cardName(inst), panelX + PAD, panelY + 18, TEXT_W)
 
-    -- Separador dourado
     love.graphics.setColor(Palette.AGED_GOLD[1], Palette.AGED_GOLD[2], Palette.AGED_GOLD[3], 0.6 * anim)
     love.graphics.rectangle("fill", panelX + PAD, panelY + 72, TEXT_W, 1)
 
-    -- Type / Class / Rarity em 3 linhas separadas (cada uma com sua cor)
     local metaFont = FontManager.getFont(10)
     love.graphics.setFont(metaFont)
     local typeColor = Palette.forCardType(inst.type) or Palette.PARCHMENT
@@ -931,7 +809,6 @@ local function drawInspectModal(self)
     love.graphics.setColor(rarityColor[1], rarityColor[2], rarityColor[3], anim)
     love.graphics.print(rarityLabel, panelX + PAD, metaY + lineH * 2)
 
-    -- Stats box
     local statFont = FontManager.getFont(12)
     love.graphics.setFont(statFont)
     love.graphics.setColor(Palette.PARCHMENT_LIGHT[1], Palette.PARCHMENT_LIGHT[2], Palette.PARCHMENT_LIGHT[3], anim)
@@ -951,7 +828,6 @@ local function drawInspectModal(self)
         statY = statY + 20
     end
 
-    -- Descrição
     love.graphics.setColor(Palette.AGED_GOLD[1], Palette.AGED_GOLD[2], Palette.AGED_GOLD[3], 0.6 * anim)
     love.graphics.rectangle("fill", panelX + PAD, statY + 4, TEXT_W, 1)
     statY = statY + 14
@@ -962,7 +838,6 @@ local function drawInspectModal(self)
     if not fullDesc or fullDesc == "" then fullDesc = I18n.t("card_info.no_desc") end
     love.graphics.printf(fullDesc, panelX + PAD, statY, TEXT_W)
 
-    -- Efeitos listados
     if inst.effects and #inst.effects > 0 then
         local effY = statY + 80
         love.graphics.setColor(Palette.AGED_GOLD[1], Palette.AGED_GOLD[2], Palette.AGED_GOLD[3], anim)
@@ -976,20 +851,16 @@ local function drawInspectModal(self)
         end
     end
 
-    -- ID no rodapé do painel (debug-friendly)
     local idFont = FontManager.getFont(8)
     love.graphics.setFont(idFont)
     love.graphics.setColor(Palette.PARCHMENT[1], Palette.PARCHMENT[2], Palette.PARCHMENT[3], 0.4 * anim)
     love.graphics.printf(inst.id or "", panelX + PAD, panelY + panelH - 16, TEXT_W)
 
-    -- Setas de navegação se há mais cartas
     drawInspectArrows(self, width, height)
 
-    -- Dica de fechar no rodapé
     local closeFont = FontManager.getFont(13)
     love.graphics.setFont(closeFont)
     love.graphics.setColor(Palette.AGED_GOLD_LIGHT[1], Palette.AGED_GOLD_LIGHT[2], Palette.AGED_GOLD_LIGHT[3], anim)
-    -- dica no idioma do aparelho (pad: D-pad + B; mouse/teclado: setas/ESC/clique)
     local closeMsg = I18n.t(require("src.ui.NavCursor").device() == "pad"
         and "collection.inspect_help_pad" or "collection.inspect_help")
     love.graphics.print(closeMsg, (width - closeFont:getWidth(closeMsg)) / 2, height - 30)
@@ -1006,10 +877,8 @@ function CollectionScreen:draw()
     local dt = love.timer.getDelta()
     local mx, my = love.mouse.getPosition()
 
-    -- self.hoverCard atualizado em update(); usa .index pra identificar
     local hoveringIdx = self.hoverCard and self.hoverCard.index or nil
 
-    -- Interpola posições + hover scales de cada card
     self._cardAnim = self._cardAnim or {}
     local ease = 1 - math.exp(-18 * dt)
     for i, inst in ipairs(self.filtered) do
@@ -1019,7 +888,6 @@ function CollectionScreen:draw()
         if not anim.inited then
             anim.rx = tx; anim.ry = ty; anim.inited = true
         end
-        -- Target = slot position (ou mouse se dragging)
         if self._draggingIdx == i then
             anim.rx = mx + (self._dragOffsetX or 0)
             anim.ry = my + (self._dragOffsetY or 0)
@@ -1027,14 +895,12 @@ function CollectionScreen:draw()
             anim.rx = anim.rx + (tx - anim.rx) * ease
             anim.ry = anim.ry + (ty - anim.ry) * ease
         end
-        -- Hover scale target
         local targetHs = (i == hoveringIdx) and 1.08 or 1.0
         if self._draggingIdx == i then targetHs = 1.10 end
         anim.hs = anim.hs + (targetHs - anim.hs) * ease
         self._cardAnim[inst] = anim
     end
 
-    -- Computa mouseUV relativo à carta em hover (pra passar pro shader warp)
     local function computeMouseUV(anim)
         local cx = anim.rx + CARD_W / 2
         local cy = anim.ry + CARD_H / 2
@@ -1045,10 +911,8 @@ function CollectionScreen:draw()
         return { uvx, uvy }
     end
 
-    -- hoverStrength = proporção do warp. Só o card em hover tem warp.
     local hoverStrFromScale = function(hs) return math.max(0, math.min(1, (hs - 1.0) / 0.08)) end
 
-    -- Grid com clip (cards não-draged + não-hovered primeiro)
     love.graphics.setScissor(0, TOP_OFFSET, width, height - TOP_OFFSET - BOTTOM_PAD)
     for i, inst in ipairs(self.filtered) do
         if i ~= self._draggingIdx and i ~= hoveringIdx then
@@ -1061,14 +925,11 @@ function CollectionScreen:draw()
                         inst._freshPulse = true
                         self._fresh[inst.id] = nil
                     end
-                    -- Cards não-hover: sem warp (mouseUV zero, hoverStrength zero)
                     drawCardMini(inst, anim.rx, anim.ry, anim.hs, 1, { 0, 0 }, 0)
                 end
             end
         end
     end
-    -- foco de teclado/pad (NavCursor): a posição de GRADE de cada carta (a
-    -- mesma do hit-test do clique), recortada pelo scissor da grade
     do
         local NavCursor = require("src.ui.NavCursor")
         for i in ipairs(self.filtered) do
@@ -1078,7 +939,6 @@ function CollectionScreen:draw()
     end
     love.graphics.setScissor()
 
-    -- Hovered card por cima com warp ativo
     if hoveringIdx then
         local inst = self.filtered[hoveringIdx]
         local anim = self._cardAnim[inst]
@@ -1093,7 +953,6 @@ function CollectionScreen:draw()
         end
     end
 
-    -- Drag card por cima — mouse sempre no centro (carta segue mouse), sem warp adicional
     if self._draggingIdx then
         local inst = self.filtered[self._draggingIdx]
         local anim = self._cardAnim[inst]
@@ -1104,12 +963,10 @@ function CollectionScreen:draw()
         end
     end
 
-    -- Hover tooltip por cima (fora do scissor, apenas quando modal não está ativo)
     if not self.inspectedCard and self.inspectAnim < 0.1 then
         drawHoverTooltip(self)
     end
 
-    -- Fechar (X) no canto superior direito
     if not self.inspectedCard then
         local cx, cy, cw, ch = closeRect()
         require("src.ui.NavCursor").target("close", cx, cy, cw, ch)
@@ -1128,7 +985,6 @@ function CollectionScreen:draw()
         if hot then require("src.ui.CursorManager").request("hand") end
     end
 
-    -- Modal de inspeção (por cima de tudo)
     drawInspectModal(self)
 
     love.graphics.setColor(1, 1, 1, 1)
