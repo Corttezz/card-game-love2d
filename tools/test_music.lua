@@ -7,7 +7,8 @@ local M = {}
 function M.run()
     local t = TK.new("music")
 
-    for _, s in ipairs({ "boot", "menu", "classSelection", "collection",
+    t:eq("abertura sem trilha", MD.pick("boot", nil, nil), nil)
+    for _, s in ipairs({ "menu", "classSelection", "collection",
                          "achievements", "gameOver", "victory" }) do
         t:eq("tela fora da run: " .. s, MD.pick(s, nil, nil), "menuMusic")
     end

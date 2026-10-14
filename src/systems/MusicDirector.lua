@@ -73,7 +73,8 @@ local function isFinalBoss(run)
 end
 
 function MusicDirector.pick(state, run, nodeType, inHall)
-    if state == "boot" or state == "menu" or state == "classSelection"
+    if state == "boot" then return nil end
+    if state == "menu" or state == "classSelection"
         or state == "collection" or state == "achievements" or state == "credits"
         or state == "gameOver" or state == "victory" then
         return "menuMusic"

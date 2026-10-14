@@ -2,7 +2,7 @@ local Debug = require("src.core.Debug")
 
 local I18n = {}
 
-local DEFAULT_LOCALE  = "pt_BR"
+local DEFAULT_LOCALE  = "en"
 local FALLBACK_LOCALE = "en"
 local function settingsFile()
     return _G.HEADLESS_TOOL and "i18n_settings.tool.lua" or "i18n_settings.lua"
