@@ -1,35 +1,7 @@
--- src/core/Release.lua
--- Modo DEV x RELEASE, log em arquivo, tela de erro amigavel e self-test.
---
--- FLAG UNICA: a presenca do arquivo `build_info.lua` na RAIZ do jogo. Ele nao
--- existe no repositorio (esta no .gitignore) — so o `tools/build_release.py`
--- o escreve dentro da copia de release. Sem ele, o jogo e DEV. Assim nao ha
--- "esqueci de desligar o debug antes de publicar": o build e quem decide.
---
--- Este modulo e carregado pelo conf.lua (antes de qualquer modulo love.*
--- existir) — por isso nada aqui toca `love.*` no escopo do arquivo.
---
--- O que muda em RELEASE:
---   * conf.lua: sem console, identidade "Grimoire" (save dir proprio);
---   * argumentos de linha de comando sao ignorados (dispatcher de tools/
---     testes inacessivel — e tools/ nem vai no pacote);
---   * atalhos de dev desligados (Release.isDev() nos pontos de teclado);
---   * print() vira log em arquivo no save dir (logs/last_session.log);
---   * erro fatal mostra tela traduzida + caminho do crash log, nao o
---     stacktrace azul do LOVE (o crash log tem o stacktrace completo).
---
--- Self-test (qualquer modo): variavel de ambiente GRIMOIRE_SELFTEST=1. O
--- jogo boota de verdade, pula o splash, renderiza todas as cartas, abre uma
--- run de cada classe, desenha o menu por alguns segundos e sai com codigo
--- 0 (ok) ou 1 (falha), gravando selftest_result.txt no save dir. E o que o
--- smoke do executavel fundido usa (sem console nao ha stdout pra ler).
-
 local Release = {}
 
 local okInfo, info = pcall(require, "build_info")
 if not okInfo then
-    -- Ausente = DEV (estado normal do repositorio). Presente mas quebrado
-    -- NAO pode virar DEV em silencio: o pacote sairia com console e atalhos.
     if not tostring(info):find("build_info' not found", 1, true)
        and not tostring(info):find("module 'build_info' not found", 1, true) then
         print("[Release] build_info.lua existe mas falhou ao carregar: " .. tostring(info))
@@ -44,10 +16,7 @@ Release.info    = info
 Release.RELEASE = info.release == true
 Release.DEV     = not Release.RELEASE
 
--- Nome do jogo (janela, save dir de release, pasta do build).
 Release.GAME_NAME = "Grimoire"
--- Identidade (pasta de save). DEV mantem a historica pra nao orfanar os
--- saves de quem ja joga pelo `love .`; RELEASE usa o nome do jogo.
 Release.IDENTITY_DEV     = "card-game"
 Release.IDENTITY_RELEASE = "Grimoire"
 
@@ -65,9 +34,6 @@ function Release.selftestRequested()
     return v ~= nil and v ~= "" and v ~= "0"
 end
 
--- Em release, NENHUM argumento chega ao dispatcher do love.load: o Steam e o
--- Windows podem passar flags proprias, e o dispatcher inteiro (tools/testes)
--- nao existe no pacote — um `require("tools.x")` derrubaria o jogo.
 function Release.filterArgs(args)
     if Release.DEV then return args end
     if args and #args > 0 then
@@ -76,16 +42,9 @@ function Release.filterArgs(args)
     return {}
 end
 
----------------------------------------------------------------------------
--- LOG
----------------------------------------------------------------------------
--- Ring buffer das ultimas linhas impressas (dev e release): o crash log
--- anexa o que aconteceu logo antes do erro.
 local RING_MAX = 300
 local ring, ringHead = {}, 0
 
--- Release: buffer em memoria, descarregado em lote (abrir arquivo a cada
--- print custaria I/O por frame nos pontos ruidosos).
 local LOG_FILE      = "logs/last_session.log"
 local LOG_PREV      = "logs/previous_session.log"
 local LOG_CAP_BYTES = 2 * 1024 * 1024
@@ -124,7 +83,6 @@ end
 local function openLog()
     if logReady or not (love and love.filesystem and love.filesystem.getSaveDirectory) then return end
     pcall(love.filesystem.createDirectory, "logs")
-    -- Guarda a sessao anterior (um crash relatado "ontem" ainda tem log).
     if love.filesystem.getInfo(LOG_FILE) then
         local data = love.filesystem.read(LOG_FILE)
         if data then pcall(love.filesystem.write, LOG_PREV, data) end
@@ -135,8 +93,6 @@ local function openLog()
     logReady = true
 end
 
--- Troca o print global. DEV: continua no console + ring. RELEASE: ring +
--- arquivo (nao ha console).
 function Release.installLogging()
     if Release._logInstalled then return end
     Release._logInstalled = true
@@ -166,13 +122,6 @@ function Release.version()
     return info.version or "?"
 end
 
----------------------------------------------------------------------------
--- MIGRACAO DE SAVE (release)
----------------------------------------------------------------------------
--- O jogo fundido salva em %APPDATA%/Grimoire; o `love .` de desenvolvimento
--- salva em %APPDATA%/LOVE/card-game. Quem jogou a versao de teste nao deve
--- perder perfil/conquistas/configuracoes no primeiro boot do executavel.
--- Copia UMA vez, so se o save dir novo estiver vazio dos arquivos conhecidos.
 Release.MIGRATE_FILES = {
     "settings.lua", "i18n_settings.lua", "run.save.lua", "profile.lua",
     "unlocks.lua", "achievements.lua",
@@ -206,9 +155,6 @@ function Release.migrateDevSaves()
     end
 end
 
----------------------------------------------------------------------------
--- CRASH
----------------------------------------------------------------------------
 local function tr(key, fallback, vars)
     local ok, I18n = pcall(require, "src.i18n.I18n")
     if ok and type(I18n) == "table" and I18n.t then
@@ -239,7 +185,6 @@ local function systemInfo()
     return table.concat(lines, "\n")
 end
 
--- Grava o crash log; devolve (nomeRelativo, caminhoAbsoluto) ou nil.
 function Release.writeCrashLog(msg, trace)
     if not (love and love.filesystem and love.filesystem.write) then return nil end
     pcall(love.filesystem.createDirectory, "crashes")
@@ -271,9 +216,6 @@ local function utf8safe(s)
     return s
 end
 
--- love.errorhandler. DEV delega ao handler padrao do LOVE (stacktrace na
--- tela e no console e o que o desenvolvedor quer), mas grava o crash log
--- antes. RELEASE mostra a tela amigavel.
 function Release.errorhandler(msg)
     msg = tostring(msg)
     local trace = debug.traceback("Error: " .. msg, 3)
@@ -285,12 +227,6 @@ function Release.errorhandler(msg)
         return function() return 1 end
     end
 
-    -- Tool/teste (`love . <arg>`) que quebra SAI com codigo 1: o handler
-    -- padrao abre a tela azul e espera alguem fechar — uma suite quebrada
-    -- ficava pendurada ate o timeout de quem a chamou.
-    -- Erro ANTES do love.load (require quebrado no topo do main.lua) ainda
-    -- nao tem HEADLESS_TOOL: olha o argumento cru — senao o build de release
-    -- ficava 30 min pendurado na tela azul do test_all da copia limpa.
     local okArgs, gameArgs = pcall(function() return love.arg.parseGameArguments(arg) end)
     local toolRun = _G.HEADLESS_TOOL or (okArgs and type(gameArgs) == "table" and gameArgs[1] ~= nil)
     if Release.DEV and toolRun then
@@ -361,8 +297,6 @@ function Release.errorhandler(msg)
         love.graphics.present()
     end
 
-    -- Validacao automatica da tela (o smoke nao enxerga janela): com
-    -- GRIMOIRE_CRASH_SHOT=1 grava crash_screen.png no save dir e fecha.
     local shotFrames = os.getenv("GRIMOIRE_CRASH_SHOT") and 0 or nil
 
     return function()
@@ -385,13 +319,8 @@ function Release.errorhandler(msg)
     end
 end
 
----------------------------------------------------------------------------
--- SELF-TEST
----------------------------------------------------------------------------
 local function selftestDeep()
     local report = {}
-    -- 1) Todas as cartas instanciam e renderizam a moldura (pega PNG que
-    --    faltou no pacote).
     local CardDatabase = require("src.systems.CardDatabase")
     local db = CardDatabase:new()
     local n = 0
@@ -401,8 +330,6 @@ local function selftestDeep()
     end
     assert(n > 0, "catalogo de cartas vazio")
     report[#report + 1] = "cards=" .. n
-    -- 2) Uma run de cada classe sobe e entra em batalha. Saves no sandbox
-    --    *.tool.lua (o SaveManager le a flag na hora da escrita).
     local prev = _G.HEADLESS_TOOL
     _G.HEADLESS_TOOL = true
     local okRun, errRun = pcall(function()
@@ -421,10 +348,6 @@ local function selftestDeep()
     return table.concat(report, " ")
 end
 
--- Envolve o love.run padrao: roda o jogo de verdade e injeta o roteiro.
--- GRIMOIRE_SELFTEST=crash: em vez de passar, provoca um erro depois do boot
--- pra exercitar a tela de erro e o crash log do PACOTE (com
--- GRIMOIRE_CRASH_SHOT=1 a tela vira crash_screen.png e o processo sai com 1).
 local function installSelftest()
     Release._selftest = (os.getenv("GRIMOIRE_SELFTEST") == "crash") and "crash" or true
     local baseRun = love.run
@@ -461,8 +384,6 @@ local function installSelftest()
     end
 end
 
--- Chamado na PRIMEIRA linha do main.lua (antes dos requires do jogo), pra
--- que um erro ja no carregamento dos modulos passe pelo handler.
 function Release.install()
     if Release._installed then return end
     Release._installed = true
@@ -470,8 +391,6 @@ function Release.install()
     love.errorhandler = Release.errorhandler
     Release.installLogging()
     if Release.RELEASE then pcall(Release.migrateDevSaves) end
-    -- Laco com teto de quadros fora de foco + shutdown ordenado. ANTES do
-    -- selftest, que envolve o love.run vigente (o smoke roda o laco real).
     require("src.core.AppLoop").install()
     if Release.selftestRequested() then installSelftest() end
 end

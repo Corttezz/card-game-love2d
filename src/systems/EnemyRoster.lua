@@ -1,15 +1,4 @@
--- src/systems/EnemyRoster.lua
--- QUEM o jogador enfrenta em cada nó (Out/2026).
---
--- Auditoria de conteúdo: o roster era UM monstro comum por ato pra toda
--- batalha, e o sprite do elite servia de mini-chefe — uma run enfrentou o
--- Ceifador do ato 1 cinco vezes. Agora cada ato tem um POOL por tipo de nó
--- (src/data/enemies.lua, `ROSTER`), sorteado pelo stream "enemy" do Rng (a
--- seed reproduz o combate) e sem repetir o último inimigo enfrentado.
---
--- O inimigo é decidido quando o NÓ nasce (RunManager:generateNextNodes) e
--- gravado nele (`node.enemyId`): a prévia da encruzilhada, a batalha e o
--- Continuar leem o MESMO inimigo — o save não re-sorteia.
+local Debug = require("src.core.Debug")
 
 local EnemyKits = require("src.data.enemies")
 local Rng = require("src.systems.Rng")
@@ -22,8 +11,6 @@ function EnemyRoster.isCombat(nodeType)
     return COMBAT[nodeType] == true
 end
 
--- Ato do BIOMA (1..6). Endless cicla 4,5,6,1,2,3,... — mesmo wrap do
--- WorldRoad.rawBiome e do EnemyRenderer.resolveSpriteId de antes.
 function EnemyRoster.biomeAct(run)
     if not run then return 1 end
     local a = run.actNumber or 1
@@ -38,8 +25,6 @@ function EnemyRoster.poolFor(act, nodeType)
     return byAct[nodeType or "battle"] or byAct.battle
 end
 
--- Sorteia o inimigo de um nó. `recent` = ids enfrentados por último (o mais
--- recente no fim); o último nunca repete, o penúltimo só se não houver outro.
 function EnemyRoster.pick(act, nodeType, recent)
     local pool = EnemyRoster.poolFor(act, nodeType)
     if #pool == 1 then return pool[1] end
@@ -59,8 +44,6 @@ function EnemyRoster.pick(act, nodeType, recent)
     return Rng.get():pick("enemy", cand)
 end
 
--- Grava o inimigo nos nós de combate recém-gerados. Dois nós da MESMA
--- encruzilhada também não repetem entre si (quando o pool deixa).
 function EnemyRoster.assignNodes(run, nodes)
     if not nodes then return end
     local act = EnemyRoster.biomeAct(run)
@@ -74,8 +57,6 @@ function EnemyRoster.assignNodes(run, nodes)
     end
 end
 
--- Inimigo do nó corrente. Save antigo (nó sem enemyId) sorteia AGORA e
--- grava no nó — o Continuar seguinte lê o mesmo.
 function EnemyRoster.resolveNode(run, node, nodeType)
     nodeType = nodeType or (node and node.type) or "battle"
     if node and node.enemyId then return node.enemyId end
@@ -85,8 +66,6 @@ function EnemyRoster.resolveNode(run, node, nodeType)
     return id
 end
 
--- Anota o inimigo enfrentado (alimenta o "sem repetir"). Guarda só os 4
--- últimos — o filtro olha dois.
 function EnemyRoster.remember(run, id)
     if not run or not id then return end
     run.recentEnemies = run.recentEnemies or {}
@@ -95,15 +74,10 @@ function EnemyRoster.remember(run, id)
     while #r > 4 do table.remove(r, 1) end
 end
 
--- Monta o inimigo: escala vida/dano pelo kit e instala o kit (rola o 1º
--- intent). `Enemy` vem por parâmetro pra este módulo não depender da
--- entidade (testes injetam a classe real).
--- `act` (opcional) aplica a escala de dano do ato (DAMAGE_SCALE_BY_ACT);
--- endless usa a do último ato.
 function EnemyRoster.spawn(Enemy, id, stats, act)
     local kit = EnemyKits.KITS[id]
     if not kit then
-        print("[EnemyRoster] sem kit para '" .. tostring(id) .. "' — inimigo genérico")
+        Debug.warn("[EnemyRoster] sem kit para '" .. tostring(id) .. "' — inimigo genérico")
     end
     local scales = EnemyKits.DAMAGE_SCALE_BY_ACT or {}
     local actScale = 1

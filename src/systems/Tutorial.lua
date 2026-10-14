@@ -1,63 +1,27 @@
--- src/systems/Tutorial.lua
--- ONBOARDING v2 (Out/2026): a 1ª corrida GUIADA pelo corvo narrador.
---
--- v1 eram placas soltas ancoradas no objeto. O dono: "precisa ser bem mais
--- claro, chamar atenção, a tela FOCAR no que é explicado — e aparecer em
--- momentos que façam sentido (no chefe apareceu numa hora sem sentido)".
--- v2 é um ROTEIRO: conversas curtas do Pena (src/ui/Narrator — corvo,
--- máquina de escrever com blip, véu com recorte no objeto), disparadas pelo
--- momento certo da 1ª corrida.
---
--- Peças:
---   ROTEIRO (SCRIPT)  ordem = prioridade. Cada conversa diz em que estado vale,
---                     quando dispara (`when`) e as FALAS; cada fala diz o que
---                     ilumina (`spot` = âncoras) e, se for o caso, a AÇÃO que o
---                     jogador faz pra seguir ("selecione uma carta").
---   ÂNCORAS           quem desenha o objeto reporta o retângulo no draw
---                     (`Tutorial.anchor(id, x, y, w, h)` / `anchorList`),
---                     convertido pra pixels reais com transformPoint.
---   ENTRADA           FALA: a conversa é o modal mais alto do InputFocus —
---                     clique/A/Enter/Espaço avança (1º completa o texto), Esc/B
---                     pula a conversa, X/Q (ou o link) desliga o tutorial; o
---                     combate congela por baixo. AÇÃO: a conversa larga o
---                     modal e o main.lua consulta `blocksPointer`/`blocksKey`:
---                     só passa o que cai DENTRO do recorte.
---   ACONTECIMENTOS    quem desenha o objeto reporta o FATO (OrbRow: canalizou,
---                     pulsou, evocou, expulsou → Tutorial.noteEvent); gatilho
---                     de conversa preso ao fato, com a chave da batalha.
---   MOMENTO           batalha só com a cena QUIETA (GameplayScene.isQuiet: sem
---                     viagem, sem cerimônia da porta, sem banner de turno, sem
---                     investida) na vez do jogador; telas só com a tela parada.
---                     Condição precisa se manter STABLE_FOR antes de disparar.
---                     Uma conversa por vez; respiro entre elas.
---   PERSISTÊNCIA      ProfileStats.tipsSeen (por conversa); Configurações → Jogo
---                     liga/desliga (gameSettings.tipsEnabled) e recomeça.
+local Debug = require("src.core.Debug")
 
 local Tutorial = {}
 
 local Narrator = require("src.ui.Narrator")
 
-local STABLE_FOR = 0.45   -- condição precisa valer por este tempo (s)
-local GAP_AFTER = 0.40    -- respiro depois de fechar uma conversa (s)
-local ANCHOR_TTL = 0.25   -- âncora reportada há mais que isto = sumiu
+local STABLE_FOR = 0.45
+local GAP_AFTER = 0.40
+local ANCHOR_TTL = 0.25
 local FADE_IN, FADE_OUT = 0.22, 0.20
-local HOLD_MAX = 3.0      -- dica de luta armada segura o auto-encerrar até isto
+local HOLD_MAX = 3.0
 
-local anchors = {}        -- id -> { x, y, w, h, t }
-local screens = {}        -- telas de estado (main.lua: setScreens)
-local active = nil        -- conversa em curso
-local closing = nil       -- { L, size, t } — painel saindo
+local anchors = {}
+local screens = {}
+local active = nil
+local closing = nil
 local pendingId, pendingSince = nil, 0
 local cooldown = 0
-local latched = {}        -- id -> { t = hora do gatilho, turn = battleTurn }
-local forceTest = false   -- testes: ignora gameSettings/headless
+local latched = {}
+local forceTest = false
 local blockedPress = false
-local events = {}         -- nome -> { t, count, key, info } (Tutorial.noteEvent)
-local lastGame = nil      -- último game visto por update/_start (chave da batalha)
+local events = {}
+local lastGame = nil
 
--- ===================================================================
--- Âncoras
--- ===================================================================
 local function store(id, x1, y1, x2, y2)
     anchors[id] = { x = math.min(x1, x2), y = math.min(y1, y2),
         w = math.abs(x2 - x1), h = math.abs(y2 - y1), t = love.timer.getTime() }
@@ -71,7 +35,6 @@ function Tutorial.anchor(id, x, y, w, h)
     store(id, x1, y1, x2, y2)
 end
 
--- União de uma lista de retângulos ({x,y,w|width,h|height}) no espaço corrente.
 function Tutorial.anchorList(id, list)
     local x1, y1, x2, y2
     for _, b in pairs(list or {}) do
@@ -94,7 +57,6 @@ function Tutorial.anchorRect(id)
     return a
 end
 
--- Retângulo de um `spot` (id ou lista de ids → união; função → chamada).
 local function spotRect(spot)
     if spot == nil then return nil end
     if type(spot) == "function" then return spot() end
@@ -114,9 +76,6 @@ Tutorial.spotRect = spotRect
 
 function Tutorial.setScreens(t) screens = t or {} end
 
--- ===================================================================
--- Estado do jogo (predicados)
--- ===================================================================
 local function realDims()
     local ok, UiScale = pcall(require, "src.ui.UiScale")
     if ok and UiScale.realDimensions then return UiScale.realDimensions() end
@@ -138,8 +97,6 @@ local function nodeType(game)
     return r and r.currentNode and r.currentNode.type
 end
 
--- Cena quieta: sem viagem, porta, banner, investida (GameplayScene.isQuiet).
--- Testes injetam `Tutorial._quiet` pra não depender da cena.
 local function sceneQuiet()
     if Tutorial._quiet ~= nil then return Tutorial._quiet end
     local ok, GS = pcall(require, "src.scenes.GameplayScene")
@@ -147,7 +104,6 @@ local function sceneQuiet()
     return true
 end
 
--- Combate parado na vez do jogador: a única hora de ensinar na luta.
 local function battleIdle(game)
     if not game or game.gameState ~= "playing" then return false end
     if game.turn ~= "player" or game._enemyActing then return false end
@@ -161,8 +117,6 @@ local function battleIdle(game)
 end
 Tutorial.battleIdle = battleIdle
 
--- Hora quieta pras dicas de CONTEXTO: igual à de cima, mas mão vazia vale
--- (jogou a última carta — o Bloqueio dela ainda pede explicação).
 local function battleQuiet(game)
     if not game or game.gameState ~= "playing" then return false end
     if game.turn ~= "player" or game._enemyActing then return false end
@@ -177,7 +131,6 @@ Tutorial.battleQuiet = battleQuiet
 
 local function firstTurn(game) return (game.battleTurn or 0) == 0 end
 
--- A mão tem um combo montável? (mesma detecção do turno, sobre a mão toda)
 local function handHasCombo(game)
     local ok, res = pcall(function()
         local TagSystem = require("src.systems.TagSystem")
@@ -202,7 +155,6 @@ local function forkActive()
     return ok and WorldRoad.isForkActive and WorldRoad.isForkActive() or false
 end
 
--- Marcos da encruzilhada (WorldRoad em pixels reais).
 local function forkRect()
     if not forkActive() then return nil end
     local f = require("src.ui.WorldRoad")._fork
@@ -224,14 +176,6 @@ local function anyAnchor(...)
     return false
 end
 
--- ===================================================================
--- Acontecimentos reportados por quem os DESENHA (OrbRow: canalizou, pulsou,
--- evocou, expulsou). O gatilho de uma conversa de contexto fica preso ao fato,
--- não a uma inferência sobre o estado — "o pulso aconteceu" é o OrbRow
--- dizendo, não "há orbe e o turno mudou". Cada evento guarda a CHAVE da
--- batalha em que caiu: a conversa só vale nessa batalha (acabou a luta antes
--- da hora quieta? o gatilho cai e re-arma só no próximo acontecimento).
--- ===================================================================
 local function battleKey(g)
     local r = run(g)
     if not r then return "classic" end
@@ -260,7 +204,6 @@ local function focusStacks(g)
     return (p and p.getBuffStacks and p:getBuffStacks("focus")) or 0
 end
 
--- Foco INICIAL que o Conduíte dá neste ato (Game.applyClassBattleStartPassive).
 local function conduitFocus(g)
     if not (g and g.classPassiveTier) then return 0 end
     local ok, Game = pcall(require, "src.core.Game")
@@ -282,10 +225,6 @@ local function handHasChannel(g) return handHasEffect(g, "channel_orb") end
 local function handHasEvoke(g) return handHasEffect(g, "evoke_orb", "evoke_all_orbs") end
 local function handHasEvokeAll(g) return handHasEffect(g, "evoke_all_orbs") end
 
--- Variáveis VIVAS das falas do mago: nenhum número cravado no texto.
--- {passive} nome da passiva · {slots} vagas da fileira · {pulse}/{evoke} do
--- orbe mais antigo (fórmula canônica do EffectSystem) · {focus} Foco atual ·
--- {f} Foco inicial do Conduíte neste ato.
 function Tutorial.orbVars(g)
     local I18n = require("src.i18n.I18n")
     local v = { passive = I18n.t("classes.mage.passive_name"),
@@ -302,19 +241,10 @@ function Tutorial.orbVars(g)
     return v
 end
 
--- Recorte do Foco: a pill (se desenhada) junto da fileira; só a fileira se não.
 local function focusSpot()
     return spotRect({ "buff_focus", "orbs" })
 end
 
--- ===================================================================
--- Ações (falas que pedem que o jogador FAÇA algo)
--- ===================================================================
--- done(game, base) → bool, onde `base` é a foto tirada no COMEÇO da conversa
--- ({ hand = nº de cartas }): se o jogador já fez a coisa antes da fala pedir
--- (jogou a carta direto na fala de "selecione"), a fala de jogar passa
--- sozinha em vez de esperar uma 2ª jogada. keys = teclas/intenções liberadas
--- além da navegação; label = rótulo no rodapé do balão.
 local function played(g, base)
     return base and base.hand and #(g.hand or {}) < base.hand
 end
@@ -337,13 +267,7 @@ Tutorial.ACTIONS = {
     },
 }
 
--- ===================================================================
--- Roteiro (ordem = prioridade)
--- ===================================================================
--- Fala: { id, spot = âncora|lista|função, action = nome em ACTIONS }.
--- Texto: tutorial.script.<conversa>.<fala> (5 locales).
 Tutorial.SCRIPT = {
-    -- ===== 1ª batalha, passo a passo =====
     { id = "intro", state = "playing",
       when = function(g) return battleIdle(g) and firstTurn(g)
           and anyAnchor("hand") and anyAnchor("enemy") end,
@@ -357,17 +281,6 @@ Tutorial.SCRIPT = {
           { id = "preview", spot = "preview" },
           { id = "play", spot = "play", action = "play" },
       } },
-    -- ===== Dicas de CONTEXTO da luta: armam na 1ª ocorrência =====
-    -- `latch` = o gatilho (a coisa ACONTECEU — sem exigir cena quieta);
-    -- `ready` = a hora de falar (cena quieta + objeto desenhado). O gatilho
-    -- fica ARMADO com a hora em que aconteceu e a conversa sai no 1º momento
-    -- quieto seguinte, em ordem de gatilho — nunca "quando der" numa luta
-    -- futura. `sameTurn`: o assunto é do turno (Bloqueio, combo na mão) e o
-    -- gatilho cai se o turno passar sem hora de falar. Defeito que isto mata
-    -- (playtest do dono, Out/2026): a dica do Bloqueio só chegava depois de o
-    -- jogador já ter usado Bloqueio várias vezes — ela exigia "ENCERRAR já
-    -- visto" E armadura > 0 numa hora quieta, e a armadura zera no turno
-    -- seguinte; o ENCERRAR ganhava a vez e a janela fechava.
     { id = "end_turn", state = "playing", after = "intro",
       latch = function(g)
           return battleQuiet(g) and #(g.selectedCards or {}) == 0
@@ -382,7 +295,6 @@ Tutorial.SCRIPT = {
       latch = function(g) return g.turn == "player" and (g.battleTurn or 0) >= 1 end,
       ready = function(g) return battleQuiet(g) end,
       lines = { { id = "kept", spot = "intent" }, { id = "loop", spot = "hand" } } },
-    -- ===== Batalhas especiais (no 1º turno, depois da entrada) =====
     { id = "boss", state = "playing", after = "intro",
       latch = function(g) return firstTurn(g) and nodeType(g) == "boss" end,
       ready = function(g) return battleQuiet(g) end,
@@ -391,8 +303,6 @@ Tutorial.SCRIPT = {
       latch = function(g) return firstTurn(g) and nodeType(g) == "elite" end,
       ready = function(g) return battleQuiet(g) end,
       lines = { { id = "warn", spot = { "enemy", "enemy_hp" } } } },
-    -- NÉVOA DE INTENÇÃO (Out/2026): a 1ª vez que o número do intent some
-    -- (nevasca do bioma ou véu da criatura — src/systems/IntentVisibility).
     { id = "fog", state = "playing", after = "intro",
       latch = function(g)
           local e = g.enemy
@@ -404,7 +314,6 @@ Tutorial.SCRIPT = {
               and g.enemy and g.enemy:getIntentVisibility() ~= "full"
       end,
       lines = { { id = "veil", spot = "intent" }, { id = "counter", spot = "intent" } } },
-    -- ===== Assuntos que chegam com a corrida =====
     { id = "block", state = "playing", after = "intro", sameTurn = true,
       latch = function(g) return g.turn == "player" and (g.player.armor or 0) > 0 end,
       ready = function(g) return battleQuiet(g) and anyAnchor("player_panel") end,
@@ -413,12 +322,6 @@ Tutorial.SCRIPT = {
       latch = function(g) return battleIdle(g) and handHasCombo(g) end,
       ready = function(g) return battleIdle(g) and anyAnchor("hand") end,
       lines = { { id = "seal", spot = "hand" }, { id = "guide" } } },
-    -- ===== MAGO: orbes do zero (Out/2026, pedido do dono: "explicar tudo
-    -- do zero, é bem complexo"). Cada conversa nasce no instante em que o
-    -- objeto aparece pela 1ª vez, ancorada nele; os números vêm do código
-    -- (Tutorial.orbVars) e os gatilhos de acontecimento vêm do OrbRow
-    -- (Tutorial.noteEvent: canalizou/pulsou/evocou/expulsou). =====
-    -- Conduíte + a fileira: a 1ª luta do mago já abre com um orbe de Raio.
     { id = "conduit", state = "playing", after = "intro",
       latch = function(g) return isMage(g) and g.turn == "player" and #orbs(g) >= 1 end,
       ready = function(g) return battleQuiet(g) and anyAnchor("orbs") and #orbs(g) >= 1 end,
@@ -427,8 +330,6 @@ Tutorial.SCRIPT = {
           { id = "row", spot = "orbs", vars = Tutorial.orbVars },
           { id = "number", spot = "orb_next", vars = Tutorial.orbVars },
       } },
-    -- Canalizar: a 1ª carta de orbe na mão (antes de jogar) OU o 1º orbe que
-    -- uma carta criou (depois) — as duas falas se excluem pela cond.
     { id = "channel", state = "playing", after = "intro",
       latch = function(g)
           return g.turn == "player" and (eventThisBattle(g, "orb_channel") or handHasChannel(g))
@@ -444,8 +345,6 @@ Tutorial.SCRIPT = {
           { id = "oldest", spot = "orb_next", cond = function(g) return #orbs(g) >= 1 end },
           { id = "hover", spot = "orbs" },
       } },
-    -- O pulso: só DEPOIS de acontecer (beat do fim do turno, reportado pelo
-    -- OrbRow) e na 1ª hora quieta seguinte — a vez do jogador no turno 2.
     { id = "pulse", state = "playing", after = "second_turn",
       latch = function(g) return g.turn == "player" and eventThisBattle(g, "orb_pulse") end,
       ready = function(g) return battleQuiet(g) and anyAnchor("orbs") end,
@@ -454,7 +353,6 @@ Tutorial.SCRIPT = {
           { id = "kinds", spot = "orbs" },
           { id = "reveal", spot = "intent", cond = function() return anyAnchor("intent") end },
       } },
-    -- Evocar: a 1ª carta de Evocar na mão.
     { id = "evoke_card", state = "playing", after = "intro",
       latch = function(g) return g.turn == "player" and handHasEvoke(g) end,
       ready = function(g) return battleIdle(g) and anyAnchor("hand_evoke") end,
@@ -463,8 +361,6 @@ Tutorial.SCRIPT = {
           { id = "preview", spot = "orbs", cond = function(g) return #orbs(g) >= 1 and anyAnchor("orbs") end },
           { id = "all", spot = "hand_evoke", cond = handHasEvokeAll },
       } },
-    -- Fileira cheia: canalizou com as vagas cheias e o mais antigo foi expulso
-    -- (EffectSystem._stepChannelOrb: o expulso EVOCA com o valor cheio).
     { id = "overflow", state = "playing", after = "intro",
       latch = function(g) return eventThisBattle(g, "orb_overflow") end,
       ready = function(g) return battleQuiet(g) and anyAnchor("orbs") end,
@@ -472,8 +368,6 @@ Tutorial.SCRIPT = {
           { id = "full", spot = "orbs" },
           { id = "plan", spot = "orbs", vars = Tutorial.orbVars },
       } },
-    -- Foco: a 1ª vez que o jogador tem Foco (Conduíte a partir do ato 3, ou
-    -- carta de Foco antes disso).
     { id = "focus", state = "playing", after = "intro",
       latch = function(g) return g.turn == "player" and focusStacks(g) > 0 end,
       ready = function(g) return battleQuiet(g) and anyAnchor("orbs") and focusStacks(g) > 0 end,
@@ -489,17 +383,12 @@ Tutorial.SCRIPT = {
       end,
       ready = function(g) return battleQuiet(g) and anyAnchor("jokers") end,
       lines = { { id = "passive", spot = "jokers" }, { id = "bench", spot = "jokers" } } },
-    -- ===== Telas da jornada =====
     { id = "rewards", state = "cardReward",
       when = function() return screenVisible("cardReward", "rewards") and anyAnchor("offers") end,
       lines = { { id = "pick", spot = "offers" }, { id = "skip", spot = "reward_skip" } } },
     { id = "dice", state = "cardReward",
       when = function() return screenVisible("dice") and anyAnchor("dice_table") end,
       lines = { { id = "odds", spot = "dice_table" }, { id = "bet", spot = "dice_bets" } } },
-    -- SOB DEMANDA (Out/2026, queixa do dono: "os dados estão confusos"):
-    -- nunca dispara sozinha (`when` falso); quem abre é o "?" dos dados
-    -- (botão da loja e o próprio modal) via Tutorial.explain, a qualquer
-    -- momento, mesmo depois de vista ou com as dicas desligadas.
     { id = "dice_help", state = "cardReward", onDemand = true,
       when = function() return false end,
       lines = {
@@ -509,9 +398,6 @@ Tutorial.SCRIPT = {
           { id = "stakes", spot = "dice_stakes" },
           { id = "once" },
       } },
-    -- Loja v5 (Out/2026): a conversa segue a vitrine nova: ofertas nos
-    -- cavaletes/balcão, PREÇO em cada peça (plaquinha sob a carta, etiqueta
-    -- pendurada na frente do balcão), clique = pergaminho + fita COMPRAR.
     { id = "shop", state = "cardReward",
       when = function() return screenVisible("cardReward", "shop") and anyAnchor("offers") end,
       lines = { { id = "offers", spot = "offers" }, { id = "price", spot = "shop_prices" },
@@ -532,9 +418,6 @@ Tutorial.SCRIPT = {
     { id = "endless", state = "*",
       when = function() return screenVisible("endless") and anyAnchor("curse_options") end,
       lines = { { id = "cycle", spot = "curse_options" }, { id = "grow" } } },
-    -- Seleção de classe, 1ª visita: o Guerreiro (única aberta), a fita de
-    -- começar, as acorrentadas (requisito LIDO do UnlockSystem) e o marcador
-    -- de detalhes. Reabre pelo "?" da tela (Tutorial.explain).
     { id = "class_select", state = "classSelection",
       when = function() return anyAnchor("class_hero") and anyAnchor("class_start") end,
       lines = {
@@ -554,8 +437,6 @@ Tutorial.SCRIPT = {
       lines = { { id = "unlocked", spot = "seal_band" }, { id = "score", spot = "seal_band" } } },
 }
 
--- "*Mago*: Vença o chefe do Ato 2. *Ladino*: ..." — classes bloqueadas
--- com o requisito REAL (UnlockSystem.getClassUnlockInfo); "" se nenhuma.
 function Tutorial.lockedClassesText()
     local I18n = require("src.i18n.I18n")
     local US = require("src.systems.UnlockSystem")
@@ -580,12 +461,8 @@ local function scriptIndex(id)
     return math.huge
 end
 
--- As conversas do mago (orbes), na ordem em que entram na 1ª corrida.
 Tutorial.MAGE_CONVERSATIONS = { "conduit", "channel", "pulse", "evoke_card", "overflow", "focus" }
 
--- ===================================================================
--- Persistência / ligar-desligar
--- ===================================================================
 local function PS() return require("engine.ProfileStats") end
 
 function Tutorial.enabled()
@@ -603,35 +480,27 @@ function Tutorial.resetAll()
     return PS().resetTips()
 end
 
--- ===================================================================
--- Ciclo
--- ===================================================================
 local function stateMatches(def, state)
     return def.state == "*" or def.state == state
 end
 
 local function eligible(def, state, game)
-    if def.latch or def.onDemand then return false end   -- essas saem pela fila de gatilhos
+    if def.latch or def.onDemand then return false end
     if not stateMatches(def, state) then return false end
     if Tutorial.isSeen(def.id) then return false end
     if def.after and not Tutorial.isSeen(def.after) then return false end
     local ok, res = pcall(def.when, game, screens)
     if not ok then
-        print("[Tutorial] condicao da conversa '" .. def.id .. "' falhou: " .. tostring(res))
+        Debug.warn("[Tutorial] condicao da conversa '" .. def.id .. "' falhou: " .. tostring(res))
         return false
     end
     return res and true or false
 end
 
--- `line.vars()` (opcional) preenche a fala com dado VIVO (requisito de
--- classe do UnlockSystem, passiva da classe): o texto nunca crava número.
--- Gatilhos: arma (1ª ocorrência) e expira. Roda TODO quadro, inclusive com
--- outra conversa aberta ou outro modal — a ocorrência no meio da apresentação
--- conta, e sai logo depois dela.
 local function safeCall(fn, def, game)
     local ok, res = pcall(fn, game, screens)
     if not ok then
-        print("[Tutorial] gatilho da conversa '" .. def.id .. "' falhou: " .. tostring(res))
+        Debug.warn("[Tutorial] gatilho da conversa '" .. def.id .. "' falhou: " .. tostring(res))
         return false
     end
     return res and true or false
@@ -657,15 +526,10 @@ local function updateLatches(state, game)
     end
 end
 
--- A próxima conversa: roteiro fixo primeiro (apresentação, telas), depois os
--- gatilhos armados que estão prontos, do mais antigo pro mais novo.
 local function nextCandidate(state, game)
     for _, def in ipairs(Tutorial.SCRIPT) do
         if eligible(def, state, game) then return def end
     end
-    -- Empate de hora (dois gatilhos no mesmo quadro, como Conduíte e a
-    -- canalização logo depois da apresentação) sai pela ordem do roteiro —
-    -- `pairs` sozinho deixaria a ordem ao acaso.
     local best, bestT, bestI
     for id, l in pairs(latched) do
         local def = byId(id)
@@ -678,14 +542,9 @@ local function nextCandidate(state, game)
     return best
 end
 
--- A luta espera o corvo: com dica de luta ARMADA (ou falando), o turno não
--- passa sozinho (GameplayScene: auto-encerrar). Sem isto, jogar a última
--- carta encerrava o turno em 0,2s e a dica do Bloqueio perdia a vez.
 function Tutorial.holdsTurn()
     if not Tutorial.enabled() then return false end
     if active and active.def.state == "playing" then return true end
-    -- teto: gatilho armado segura no máximo HOLD_MAX s se a dica não fica
-    -- pronta (objeto que não chegou a ser desenhado nunca trava a luta)
     local now = love.timer.getTime()
     for id, l in pairs(latched) do
         local def = byId(id)
@@ -709,7 +568,7 @@ local function lineText(conv, line, game)
     local vars
     if line.vars then
         local ok, v = pcall(line.vars, game or (active and active.game))
-        if ok then vars = v else print("[Tutorial] vars da fala '" .. line.id .. "' falharam: " .. tostring(v)) end
+        if ok then vars = v else Debug.warn("[Tutorial] vars da fala '" .. line.id .. "' falharam: " .. tostring(v)) end
     end
     return I18n.t("tutorial.script." .. conv.id .. "." .. line.id, vars, conv.id .. "." .. line.id)
 end
@@ -724,7 +583,7 @@ local function startLine(game)
     Narrator.say(lineText(active.def, line, game or active.game))
     active.lineShownAt = love.timer.getTime()
     if line.action and not Tutorial.ACTIONS[line.action] then
-        print("[Tutorial] acao desconhecida: " .. tostring(line.action))
+        Debug.warn("[Tutorial] acao desconhecida: " .. tostring(line.action))
     end
 end
 
@@ -733,18 +592,15 @@ local function finish(markSeen)
     if markSeen then PS().markTipSeen(active.def.id) end
     closing = { L = active.L, size = active.size, t = 0, spot = active.lastSpot }
     active = nil
-    Narrator.releaseVoice()   -- solta as vozes do corvo (pool fixo)
+    Narrator.releaseVoice()
     cooldown = GAP_AFTER
     blockedPress = false
 end
 
--- Próxima fala (ou fim da conversa).
--- `line.cond()` (opcional) falso = a fala não se aplica agora (ex.: nenhuma
--- classe bloqueada) e é pulada.
 local function lineApplies(line, game)
     if not line.cond then return true end
     local ok, res = pcall(line.cond, game or (active and active.game))
-    if not ok then print("[Tutorial] cond da fala '" .. tostring(line.id) .. "' falhou: " .. tostring(res)) end
+    if not ok then Debug.warn("[Tutorial] cond da fala '" .. tostring(line.id) .. "' falhou: " .. tostring(res)) end
     return ok and res and true or false
 end
 
@@ -760,7 +616,6 @@ local function nextLine(game)
     end
 end
 
--- A fala corrente espera uma ação do jogador (e o texto já terminou)?
 function Tutorial.inAction()
     local line = curLine()
     return line ~= nil and line.action ~= nil and not Narrator.isRevealing()
@@ -771,7 +626,6 @@ function Tutorial.mode()
     return Tutorial.inAction() and "action" or "talk"
 end
 
--- Chamado todo frame pelo main.lua (love.update).
 function Tutorial.update(dt, state, game)
     Narrator.update(dt)
     if game then lastGame = game end
@@ -782,7 +636,6 @@ function Tutorial.update(dt, state, game)
     end
     if active then
         active.game = game
-        -- Estado mudou (fim da luta, troca de tela): fecha SEM marcar vista.
         if not stateMatches(active.def, state) then
             finish(false)
             return
@@ -797,11 +650,9 @@ function Tutorial.update(dt, state, game)
     end
     if not Tutorial.enabled() then pendingId = nil return end
     if cooldown > 0 then cooldown = cooldown - dt return end
-    -- Outro modal aberto (pausa, deck, confirmação): espera.
     local IF = require("src.ui.InputFocus")
     local cap = IF.captor and IF.captor()
     if cap and cap ~= Tutorial.overlay then
-        -- exceção: modais que TÊM conversa própria (dados, maldição do Sem Fim)
         local okD = screens.dice and cap == screens.dice
         local okE = screens.endless and cap == screens.endless
         if not (okD or okE) then pendingId = nil return end
@@ -821,14 +672,13 @@ end
 
 function Tutorial._start(id, game)
     local def = byId(id)
-    if not def then print("[Tutorial] conversa desconhecida: " .. tostring(id)) return false end
-    latched[id] = nil   -- o gatilho foi atendido
+    if not def then Debug.warn("[Tutorial] conversa desconhecida: " .. tostring(id)) return false end
+    latched[id] = nil
     lastGame = game or lastGame
     active = { def = def, line = 1, shownAt = love.timer.getTime(), game = game,
         base = { hand = game and #(game.hand or {}) or nil } }
     pendingId = nil
     closing = nil
-    -- a 1ª fala também pode não se aplicar (cond): começa na 1ª que vale
     while active.line <= #def.lines and not lineApplies(def.lines[active.line], game) do
         active.line = active.line + 1
     end
@@ -842,9 +692,6 @@ function Tutorial._start(id, game)
     return true
 end
 
--- Explicação SOB DEMANDA (o "?" de uma tela): abre a conversa `id` agora,
--- ignorando "já vista" e o liga/desliga das dicas — foi o jogador que pediu.
--- Recusa se outra conversa está aberta (não atropela). Devolve true se abriu.
 function Tutorial.explain(id, game)
     if active then return false end
     return Tutorial._start(id, game)
@@ -853,8 +700,6 @@ end
 function Tutorial.activeId() return active and active.def.id end
 function Tutorial.activeLine() local l = curLine() return l and l.id end
 
--- Clique/A/Enter: completa o texto; texto completo → próxima fala.
--- Em fala de AÇÃO não avança (o jogador tem que fazer a coisa).
 function Tutorial.advance()
     if not active then return false end
     if Narrator.isRevealing() then
@@ -866,14 +711,12 @@ function Tutorial.advance()
     return true
 end
 
--- Esc/B: pula a conversa inteira (fica vista).
 function Tutorial.skipConversation()
     if not active then return false end
     finish(true)
     return true
 end
 
--- X/Q ou link: desliga o tutorial (Configurações → Jogo religa).
 function Tutorial.disable()
     _G.gameSettings = _G.gameSettings or {}
     _G.gameSettings.tipsEnabled = false
@@ -883,17 +726,12 @@ function Tutorial.disable()
         local cur = SM.loadSettings() or {}
         cur.tipsEnabled = false
         local ok, err = SM.saveSettings(cur)
-        if not ok then print("[Tutorial] falha ao salvar settings: " .. tostring(err)) end
+        if not ok then Debug.warn("[Tutorial] falha ao salvar settings: " .. tostring(err)) end
     end)
 end
 
--- Compat v1: fechar = pular a conversa.
 Tutorial.dismiss = Tutorial.skipConversation
 
--- ===================================================================
--- Testes/tools
--- ===================================================================
--- Mostra uma conversa direto (sem esperar a condição), na fala `lineId`.
 function Tutorial._show(id, lineId, game)
     if not Tutorial._start(id, game) then return false end
     if lineId then
@@ -902,7 +740,7 @@ function Tutorial._show(id, lineId, game)
         end
     end
     Narrator.finishReveal()
-    active.shownAt = love.timer.getTime() - 1   -- já assentada (captura)
+    active.shownAt = love.timer.getTime() - 1
     return true
 end
 function Tutorial._forceForTests(b) forceTest = b and true or false end
@@ -917,22 +755,18 @@ function Tutorial._reset()
     Narrator.releaseVoice()
 end
 
--- ===================================================================
--- Layout (puro, pros testes) e desenho
--- ===================================================================
 function Tutorial.avoidZones()
     local W = realDims()
     return { { x = 0, y = 0, w = W, h = 80 * uiK() } }
 end
 
--- Rodapé do balão conforme o dispositivo e o tipo de fala.
 local function footerFor(line, isFirstOfRun)
     local I18n = require("src.i18n.I18n")
     local okNC, NC = pcall(require, "src.ui.NavCursor")
     local dev = okNC and NC.device and NC.device() or "mouse"
     if not okNC and not Tutorial._navWarned then
         Tutorial._navWarned = true
-        print("[Tutorial] AVISO: src.ui.NavCursor indisponível — glifos ficam no do teclado")
+        Debug.warn("[Tutorial] AVISO: src.ui.NavCursor indisponível — glifos ficam no do teclado")
     end
     local lab = (okNC and NC.labelFor) or function(a) return ({ confirm = "ENTER", back = "ESC", x = "Q" })[a] end
     local f = {}
@@ -944,8 +778,6 @@ local function footerFor(line, isFirstOfRun)
     if line and line.action then
         f.right = { glyph = nil, label = I18n.t(Tutorial.ACTIONS[line.action].label), gold = true }
     else
-        -- neutro: "Continuar"; no teclado/pad ganha o glifo do botão
-        -- (ENTER / A) pelo último dispositivo usado
         f.right = { glyph = dev ~= "mouse" and lab("confirm") or nil,
             label = I18n.t("tutorial.footer.continue") }
     end
@@ -953,7 +785,6 @@ local function footerFor(line, isFirstOfRun)
 end
 Tutorial.footerFor = footerFor
 
--- Layout da fala corrente pra um texto/recorte (puro).
 function Tutorial.layoutFor(text, spot, line, isFirst, keep)
     local W, H = realDims()
     local k = uiK()
@@ -963,7 +794,6 @@ function Tutorial.layoutFor(text, spot, line, isFirst, keep)
     return L, size, footer
 end
 
--- Chamado pelo main.lua no fim do love.draw (pixels reais, fora do UiScale).
 function Tutorial.draw()
     local W, H = realDims()
     local k = uiK()
@@ -989,7 +819,6 @@ function Tutorial.draw()
     local inAct = Tutorial.inAction()
     local towards = { x = L.bubble.x + L.bubble.w / 2, y = L.bubble.y + L.bubble.h / 2 }
     Narrator.drawSpotlight(spot, W, H, k, alpha, inAct and 0.50 or 0.62, towards)
-    -- entra deslizando pelo lado dele
     local slide = math.floor((1 - alpha) * 40 * k) * (L.flip and 1 or -1)
     love.graphics.push()
     love.graphics.translate(slide, 0)
@@ -998,14 +827,10 @@ function Tutorial.draw()
     love.graphics.pop()
 end
 
--- ===================================================================
--- Entrada
--- ===================================================================
 local function inRect(r, x, y)
     return r and x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
 end
 
--- Clique no rodapé (pular/desligar). true = consumiu.
 local function footerClick(x, y)
     local f = active and active.footer
     if f and f.left and f.left.rect and inRect(f.left.rect, x, y) then
@@ -1015,8 +840,6 @@ local function footerClick(x, y)
     return false
 end
 
--- main.lua: na fala de AÇÃO, clique fora do recorte não passa (e o release
--- de um clique barrado também não). phase = "pressed" | "released".
 function Tutorial.blocksPointer(x, y, phase)
     if not (active and Tutorial.inAction()) then
         if phase == "released" and blockedPress then blockedPress = false return true end
@@ -1035,8 +858,6 @@ function Tutorial.blocksPointer(x, y, phase)
     return false
 end
 
--- main.lua: na fala de AÇÃO, atalhos que não são a ação pedida não passam
--- (Q/E e X/Y do pad encerram turno/jogam). Navegação e Esc passam.
 function Tutorial.blocksKey(key)
     if not (active and Tutorial.inAction()) then return false end
     local A = Tutorial.ACTIONS[curLine().action]
@@ -1045,7 +866,6 @@ function Tutorial.blocksKey(key)
     return false
 end
 
--- Overlay do InputFocus: dono da entrada só na FALA (na ação, larga).
 local overlay = { ownsNavigation = true }
 function overlay:isVisible() return active ~= nil and not Tutorial.inAction() end
 function overlay:hide() if active then finish(false) end end

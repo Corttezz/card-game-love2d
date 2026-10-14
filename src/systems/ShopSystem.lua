@@ -1,10 +1,4 @@
--- src/systems/ShopSystem.lua
--- Sistema de loja inspirado no TFT e Balatro. Pós-redesign Fase 4:
---   • Modo "rewards": gera 3 cartas (post-battle).
---   • Modo "shop":    gera 4 cartas + 3 relíquias (tesoura e bancada fixas
---                     + 1 sorteada) + 1 booster pack.
---   • Reroll linear 4→6→8→...→30 (base + 2 por reroll, teto 30).
---   • Booster packs como ofertas próprias (Fase 5 implementa abertura).
+local Debug = require("src.core.Debug")
 
 local ShopSystem = {}
 ShopSystem.__index = ShopSystem
@@ -15,18 +9,6 @@ local Rng           = require("src.systems.Rng")
 local I18n          = require("src.i18n.I18n")
 local ShopServices  = require("src.systems.ShopServices")
 
--- Catálogo de booster packs disponíveis na loja. Custo + tamanho do conteúdo.
--- Fase 5 vai usar `size` (cards mostrados) e `choose` (cards escolhidos)
--- ao abrir o pack pra renderizar a UI.
--- Nome/descricao EXIBIDOS de um item da loja. O texto das tabelas de dados
--- abaixo e so FALLBACK de dev: a vitrine e traduzida, e o nome do pacote/
--- upgrade saia cravado em PT no meio dela. A resolucao acontece na CONSTRUCAO
--- da oferta (ofertas sao geradas a cada visita e nao viajam no save, entao nao
--- ha risco de string congelada no idioma antigo).
---
--- DECLARADOS AQUI NO TOPO de proposito: local de Lua so existe ABAIXO da
--- definicao, e generateUpgradeOffer usa estes helpers antes do meio do
--- arquivo (mesma armadilha do notifyOrbUI no EffectSystem).
 local function itemName(id, fallback)
     return I18n.t("shop_items." .. tostring(id) .. ".name", nil, fallback or id)
 end
@@ -35,9 +17,6 @@ local function itemDesc(id, fallback, vars)
     return I18n.t("shop_items." .. tostring(id) .. ".desc", vars, fallback or "")
 end
 
--- NOTA: `name`/`description` aqui sao FALLBACK DE DEV (sem acento de
--- proposito, pra trava tools/test_no_hardcoded_pt nao precisar abrir excecao
--- pro arquivo). O texto que o jogador le vem de `shop_items.<id>` no i18n.
 local BOOSTER_PACK_TYPES = {
     {
         id = "pack_standard",
@@ -70,16 +49,12 @@ local BOOSTER_PACK_TYPES = {
     {
         id = "pack_spectral",
         name = "Mortalha do Coveiro",
-        -- Menos cartas que os irmaos, mas nenhuma comum (piso de raridade
-        -- em BoosterPackSystem). A descricao PRECISA dizer isso, senao o
-        -- jogador so ve "2 em vez de 3 pelo mesmo preco".
         description = "2 cartas, nenhuma comum; escolha 1.",
         kind = "Spectral", cost = 4, weight = 0.3,
         size = 2, choose = 1,
     },
 }
 
--- Configurações por modo (Fase 4.2). "rewards" = post-battle; "shop" = SHOP node.
 local MODE_CONFIG = {
     rewards = {
         cards = 3,
@@ -91,81 +66,48 @@ local MODE_CONFIG = {
     },
     shop = {
         cards = 4,
-        -- 2 (era 1): com os SERVIÇOS (tesoura, prensa, bancada de coringa,
-        -- grimório de compra) o slot único virava gargalo — seis relíquias
-        -- disputando uma vaga fazem cada mecânica aparecer em ~1 de cada 6
-        -- lojas. Duas vagas: uma é FIXA da tesoura (remoção, StS-style) e a
-        -- outra sorteia entre forja/vida/mana/prensa/bancada/grimório.
-        --
-        -- O layout absorve isso sozinho: a fileira 2 da vitrine é montada de
-        -- `upgrades + boosters` células dividindo o MESMO vão da fileira 1
-        -- (CardRewardScreen:updateLayout) — com 2+2 as duas fileiras passam a
-        -- ter 4 colunas e ficam alinhadas coluna a coluna, o que antes (3
-        -- contra 4) não acontecia.
-        -- 3 (Out/2026): tesoura e bancada de coringa são FIXAS; a terceira
-        -- vaga sorteia o resto. Fixa indisponível (deck no osso, bancada no
-        -- teto) devolve a vaga ao sorteio — sempre 3 relíquias na prateleira.
-        -- Pacotes 2 -> 1 pra fileira 2 continuar com 4 células alinhadas à
-        -- fileira 1: com 3+2 as 5 células encolhiam TODAS as cartas da loja
-        -- e cortavam o nome das relíquias ("Ban...") em 1024x768.
         upgrades = 3,
         boosters = 1,
         canReroll = true,
         canSkip = true,
-        skipBonus = 3,  -- ouro extra ao pular a loja
+        skipBonus = 3,
     },
 }
 
--- Upgrades GLOBAIS sorteáveis que não são serviço (custo fixo, aplicam direto
--- no Player). O peso decide a chance relativa dentro do slot rotativo.
 local CLASSIC_UPGRADE_WEIGHT = {
     health_upgrade = 1.0,
     mana_upgrade   = 0.7,
 }
 local FORGE_WEIGHT = 1.2
 
--- 4 (era 5, Out/2026): o reroll custava mais que uma carta comum ($3) e
--- o piloto rerolava em ~0 lojas por corrida — a ação existia só no papel.
-local REROLL_BASE = 4   -- custo = REROLL_BASE + 2*n (ver updateRefreshCost)
--- Cap pra reroll cost: sem isso o jogador pode trapar gold infinitamente em
--- rerolls (5→7→10→...→2.4M após 20 cliques). Balatro tem cap análogo.
+local REROLL_BASE = 4
 local REROLL_MAX = 30
 
 function ShopSystem:new()
     local instance = setmetatable({}, ShopSystem)
 
-    -- Estado da loja
     instance.isOpen = false
     instance.currentOffers = {}
     instance.refreshCost = REROLL_BASE
     instance.refreshCount = 0
-    instance.mode = "shop"  -- "shop" | "rewards"
+    instance.mode = "shop"
 
-    -- Configurações da loja
     instance.cardCostBase = 3
     instance.upgradeCostBase = 5
 
-    -- Pool de upgrades da loja (cartas vêm do CardRegistry.pickRewardCard).
     instance.shopUpgradePool = {}
 
-    -- Fallback de raridade (só quando ninguém injeta contexto — P0.3 liga os
-    -- pesos POR ATO via context.rarityWeights, incluindo legendary no A2/A3).
     instance.rarityWeights = {
         common = 0.7,
         uncommon = 0.25,
         rare = 0.05,
     }
 
-    -- Cérebro de oferta compartilhado com as recompensas (pity + afinidade +
-    -- anti-duplicata moram no CardRegistry.pickRewardCard — uma regra só).
     instance.cardRegistry = CardRegistry:new()
     instance.cardDatabase = CardDatabase:new()
 
-    -- Contexto da run (classe + deck) injetado por quem abre a loja
-    -- (CardRewardScreen:show). Sem contexto: pool global, sem afinidade.
     instance.context = {}
     instance._offeredCardIds = {}
-    -- Dedup da vitrine de upgrades (uma relíquia por loja).
     instance._offeredUpgradeIds = {}
 
     instance:initializeShopPools()
@@ -173,25 +115,10 @@ function ShopSystem:new()
     return instance
 end
 
--- Injeta o contexto da run atual antes de gerar ofertas.
--- ctx = {
---   classId       = "warrior",
---   deckIds       = { "id1", "id2", ... },
---   runManager    = runManager,  -- forja (custo crescente) + dedup de joker (P0.10)
---   actNumber     = 2,           -- P0.5: cap de afinidade progressivo por ato
---   rarityWeights = {...},       -- P0.3/P0.4: pesos POR ATO (ActSystem.getRarityWeights)
---   minRarity     = "uncommon",  -- P0.7: piso por node (elite/boss)
--- }
 function ShopSystem:setContext(ctx)
     self.context = ctx or {}
 end
 
--- Contexto da run pro cérebro de ofertas — FONTE ÚNICA entre a tela
--- (CardRewardScreen:show) e o piloto (tools/autoplay primeShopContext). Antes
--- o piloto montava o seu sem o piso de raridade de elite/chefe nem os pesos
--- por ato, e media uma vitrine diferente da do jogador (wip/sustain, Out/2026).
---   mode "rewards": elite → piso uncommon, boss → piso rare (P0.7); nodeType
---   viaja no contexto pra vaga de sustento (Config.Offers.SUSTAIN_GUARANTEE).
 function ShopSystem.runContext(game, mode)
     local run = game.runManager and game.runManager.currentRun
     local actNumber = (run and run.actNumber) or 1
@@ -207,40 +134,27 @@ function ShopSystem.runContext(game, mode)
         classId = (run and run.classId) or game.selectedClass,
         deckIds = (game.runManager and game.runManager.getDeckCardIds)
             and game.runManager:getDeckCardIds() or nil,
-        runManager = game.runManager, -- forja (custo crescente) + dedup de joker (P0.10)
-        actNumber = actNumber,        -- P0.5: cap de afinidade progressivo por ato
+        runManager = game.runManager,
+        actNumber = actNumber,
         rarityWeights = ActSystem.getRarityWeights(actNumber),
         minRarity = minRarity,
         nodeType = mode == "rewards" and nodeType or nil,
     }
 end
 
--- Inicializa o pool de upgrades disponíveis na loja.
--- (O pool de CARTAS por raridade foi aposentado: ofertas de carta saem do
--- CardRegistry.pickRewardCard, que filtra por classe e aplica pity/afinidade.)
 function ShopSystem:initializeShopPools()
-    -- P3.2 (rebalance Jul/2026): card_draw_upgrade, damage_upgrade e
-    -- defense_upgrade eram TOAST-ONLY — CardRewardScreen:applyUpgrade só
-    -- imprimia mensagem, zero efeito real ("ouro queimado"). Removidos da
-    -- vitrine até serem implementados de verdade. Ficam só os upgrades que
-    -- aplicam no Player (health/mana).
     self.shopUpgradePool = {
-        -- name/description aqui sao FALLBACK DE DEV (sem acento). O texto que
-        -- o jogador le sai de `shop_items.<id>` no i18n, que desde Set/2026
-        -- tambem carrega `effect` (o numero do chip do tile) e `flavor`.
         { id = "health_upgrade",     name = "Elixir Vital",    description = "+10 de vida maxima",  cost = 5,  effect = "increase_max_health", value = 10 },
         { id = "mana_upgrade",       name = "Cristal de Eter", description = "+1 de mana maxima",   cost = 25, effect = "increase_base_mana",  value = 1  },
     }
 end
 
--- Define o modo antes de gerar ofertas. "rewards" pra post-battle; "shop" pra SHOP node.
 function ShopSystem:setMode(mode)
     if not MODE_CONFIG[mode] then
-        print("[ShopSystem] modo desconhecido '" .. tostring(mode) .. "' — usando 'shop'")
+        Debug.warn("[ShopSystem] modo desconhecido '" .. tostring(mode) .. "' — usando 'shop'")
         mode = "shop"
     end
     self.mode = mode
-    -- Reset de reroll por sessão da loja.
     self.refreshCount = 0
     self.refreshCost = REROLL_BASE
 end
@@ -260,23 +174,17 @@ function ShopSystem:closeShop()
     self.currentOffers = {}
 end
 
--- Gera ofertas aleatórias seguindo o config do modo atual.
 function ShopSystem:generateOffers()
     self.currentOffers = {}
-    -- Dedup por geração: a mesma carta nunca aparece 2x na mesma vitrine.
     self._offeredCardIds = {}
     local cfg = self:getModeConfig()
     local RunModifiers = require("src.systems.RunModifiers")
     local run = self.context.runManager and self.context.runManager.currentRun
 
-    -- Selo "Escolha Curta": recompensa pós-batalha com uma carta a menos.
     local nCards = cfg.cards
     if self.mode == "rewards" then
         nCards = math.max(1, nCards + RunModifiers.rewardCardsDelta(run))
     end
-    -- wip/sustain (Config.Offers.SUSTAIN_GUARANTEE): na recompensa de
-    -- elite/chefe, enquanto o deck tem < SUSTAIN_MIN_SOURCES fontes de
-    -- sustento, a 1ª vaga é reservada a uma carta de sustento.
     local Offers = require("src.core.Config").Offers or {}
     local sustainSlot = false
     if self.mode == "rewards" and Offers.SUSTAIN_GUARANTEE
@@ -290,9 +198,6 @@ function ShopSystem:generateOffers()
         if offer then table.insert(self.currentOffers, offer) end
     end
 
-    -- Vitrine de upgrades: a primeira vaga é FIXA dos serviços marcados
-    -- `fixture` (hoje só a tesoura), as demais rotacionam. Dedup por geração:
-    -- a mesma relíquia nunca ocupa duas vagas da mesma loja.
     self._offeredUpgradeIds = {}
     local upgradesLeft = cfg.upgrades
     if upgradesLeft > 0 then
@@ -322,28 +227,13 @@ function ShopSystem:generateOffers()
         if offer then table.insert(self.currentOffers, offer) end
     end
 
-    -- Selo "Mercado Caro" / maldição "Dízimo": UM ponto de ajuste pra toda a
-    -- vitrine (carta, relíquia, forja, pacote). Ofertas restauradas do save
-    -- vêm por importState e não passam aqui — nunca encarecem duas vezes.
     for _, o in ipairs(self.currentOffers) do
         o.cost = RunModifiers.price(run, o.cost)
     end
 
-    -- Oferta do dia (Config.Offers.DAILY_SALE): depois do multiplicador do
-    -- selo, pra desconto ser sobre o preco que o jogador veria.
     self:applyDailySale()
 end
 
--- OFERTA DO DIA (Loja v3 F4, Out/2026). So no modo "shop" (a recompensa e
--- gratis), so com a flag ligada. UMA oferta com preco > 0 e sorteada no
--- stream "shop" do Rng da run (reprodutivel por seed; nunca love.math.random)
--- e marcada:
---   offer.saleDiscount = pct      (0.25)
---   offer.basePrice    = preco cheio (a cena risca este)
---   offer.cost         = floor(preco x (1 - pct))
--- Chamado no fim de generateOffers, entao o reroll sorteia OUTRA oferta;
--- as ofertas vao pro save por exportState (plainCopy leva numeros), logo
--- Continuar devolve a mesma etiqueta no mesmo objeto.
 function ShopSystem:applyDailySale()
     local Offers = require("src.core.Config").Offers or {}
     if not Offers.DAILY_SALE or self.mode ~= "shop" then return nil end
@@ -362,19 +252,14 @@ function ShopSystem:applyDailySale()
 end
 
 function ShopSystem:generateCardOffer(extra)
-    -- Delegado pro CardRegistry (pity + afinidade + anti-duplicata + filtro de
-    -- classe). Stream "shop": rolls da loja não mexem na sequência de rewards.
     local pick = self.cardRegistry:pickRewardCard({
-        requireSustain = extra and extra.requireSustain or nil, -- wip/sustain: vaga reservada
+        requireSustain = extra and extra.requireSustain or nil,
         classId = self.context.classId,
-        -- P0.3/P0.4: pesos de raridade POR ATO injetados via contexto
-        -- (CardRewardScreen:show → ActSystem.getRarityWeights). O fixo
-        -- 70/25/5 antigo vira só fallback pra chamadas sem contexto.
         rarityWeights = self.context.rarityWeights or self.rarityWeights,
-        minRarity = self.context.minRarity,       -- P0.7: piso elite/boss
+        minRarity = self.context.minRarity,
         deckIds = self.context.deckIds,
-        actNumber = self.context.actNumber,       -- P0.5: cap de afinidade por ato
-        runManager = self.context.runManager,     -- P0.10: dedup de joker possuído
+        actNumber = self.context.actNumber,
+        runManager = self.context.runManager,
         excludeIds = self._offeredCardIds,
         stream = "shop",
     })
@@ -385,9 +270,6 @@ function ShopSystem:generateCardOffer(extra)
     if not cardData then return nil end
 
     local cost = self:calculateCardCost(cardData.rarity)
-    -- Recompensa pós-batalha é GRÁTIS (StS: escolha 1 de 3; pagar
-    -- é papel da LOJA). Autoplay B: recompensas pagas travavam o
-    -- crescimento do deck (~40% puladas por falta de ouro).
     if self.mode == "rewards" then cost = 0 end
     return {
         type = "card",
@@ -397,22 +279,18 @@ function ShopSystem:generateCardOffer(extra)
         cost = cost,
         rarity = cardData.rarity,
         image = cardData.image,
-        -- Afinidade (badge na UI): a oferta foi puxada por tags fortes do deck.
         affinity = pick.affinity or nil,
         affinityTags = pick.affinityTags,
         fromPity = pick.fromPity,
-        isNew = pick.isNew,       -- carta inédita: selo "NOVA" (vai pro save junto)
-        sustainSlot = (extra and extra.requireSustain) and true or nil, -- wip/sustain (contagem do piloto)
+        isNew = pick.isNew,
+        sustainSlot = (extra and extra.requireSustain) and true or nil,
     }
 end
 
--- Monta a oferta de um SERVIÇO (tesoura, prensa, bancada de coringa,
--- grimório). Devolve nil quando o serviço não está disponível nesta run —
--- teto de compras batido ou deck curto demais pra tesoura.
 function ShopSystem:buildServiceOffer(id)
     local svc = ShopServices.get(id)
     if not svc then
-        print("[ShopSystem] servico desconhecido: " .. tostring(id))
+        Debug.warn("[ShopSystem] servico desconhecido: " .. tostring(id))
         return nil
     end
     local runManager = self.context and self.context.runManager
@@ -425,26 +303,16 @@ function ShopSystem:buildServiceOffer(id)
     return {
         type = "upgrade",
         id = id,
-        -- Fallback de dev sem acento (mesma regra do resto do arquivo): o
-        -- texto do jogador sai de `shop_items.<id>` nos 5 locales.
         name = itemName(id, id),
         description = itemDesc(id, "", { value = value }),
         cost = cost,
         effect = svc.effect,
         value = value,
-        -- A UI não precisa saber COMO o serviço funciona, mas o picker sim.
         picker = svc.picker,
         isService = true,
     }
 end
 
--- Uma vaga ROTATIVA da vitrine de upgrades.
---
--- Antes eram dois caminhos costurados na mão: "50% de chance de ser forja,
--- senão sorteia o pool clássico". Com seis relíquias possíveis isso não
--- escala — e a chance de cada uma ficava escondida num `if`. Agora todos os
--- candidatos DISPONÍVEIS entram numa lista ponderada única e o sorteio é um
--- só, no stream `shop` do Rng da run (reprodutível por seed).
 function ShopSystem:generateUpgradeOffer()
     local runManager = self.context and self.context.runManager
     local offered = self._offeredUpgradeIds or {}
@@ -456,8 +324,6 @@ function ShopSystem:generateUpgradeOffer()
         end
     end
 
-    -- FORJA: +1 nível numa carta à escolha; custo cresce por forja COMPRADA
-    -- na run (RunManager:getPaidForgeCost). Ledger próprio, herdado.
     if runManager and runManager.getPaidForgeCost then
         candidate({
             type = "upgrade",
@@ -472,7 +338,6 @@ function ShopSystem:generateUpgradeOffer()
         }, FORGE_WEIGHT)
     end
 
-    -- Upgrades globais de custo fixo (vida/mana máxima).
     for _, pick in ipairs(self.shopUpgradePool) do
         candidate({
             type = "upgrade",
@@ -485,9 +350,6 @@ function ShopSystem:generateUpgradeOffer()
         }, CLASSIC_UPGRADE_WEIGHT[pick.id] or 1.0)
     end
 
-    -- Serviços não-fixos (a tesoura já ocupou a vaga fixa em generateOffers).
-    -- O peso é PERGUNTADO ao ShopServices, não lido do catálogo: a bancada de
-    -- coringa pesa mais quando o jogador tem coringa parado na bancada.
     for _, svc in ipairs(ShopServices.CATALOG) do
         if not svc.fixture then
             candidate(self:buildServiceOffer(svc.id),
@@ -499,7 +361,6 @@ function ShopSystem:generateUpgradeOffer()
     return Rng.get():weighted("shop", entries)
 end
 
--- Sorteia booster pack ponderado por weight (stream "shop" do Rng da run).
 function ShopSystem:generateBoosterOffer()
     local entries = {}
     for _, p in ipairs(BOOSTER_PACK_TYPES) do
@@ -521,23 +382,13 @@ end
 
 function ShopSystem:calculateCardCost(rarity)
     local rarityMultipliers = {
-        -- legendary 7 (era 10 = $30, Out/2026): o salto rara $9 → lendária
-        -- $30 tirava a lendária da loja na prática (ouro na porta ~$26 no A1).
         common = 1, uncommon = 2, rare = 3, legendary = 7,
     }
     return self.cardCostBase * (rarityMultipliers[rarity] or 1)
 end
 
--- rollRarity local removido: a raridade da loja agora sai do MESMO roll das
--- recompensas (CardRegistry:rollRarity via pickRewardCard) — com pity
--- compartilhado e ordem determinística (o pairs() antigo nem era estável).
-
--- Refresha ofertas. Custo cresce exponencialmente (Balatro feel) — não linear como antes.
--- Cap em REROLL_MAX pra impedir trap de gold drain.
 function ShopSystem:refreshOffers()
     self.refreshCount = self.refreshCount + 1
-    -- Linear Balatro-style (base + 2/reroll): o exponencial punia demais o
-    -- segundo reroll e o cap ficava irrelevante.
     local raw = REROLL_BASE + 2 * self.refreshCount
     self.refreshCost = math.min(raw, REROLL_MAX)
     self:generateOffers()
@@ -559,8 +410,6 @@ function ShopSystem:getCurrentOffers()
     return self.currentOffers
 end
 
--- Cópia só-dados de uma oferta (sem cardInstance, funções ou objetos com
--- metatable): é o que cabe no save via SaveManager.serialize.
 local function plainCopy(v, depth)
     local t = type(v)
     if t == "number" or t == "string" or t == "boolean" then return v end
@@ -575,11 +424,6 @@ local function plainCopy(v, depth)
     return out
 end
 
--- VITRINE NO SAVE (anti-save-scum, Out/2026): a loja/recompensa gerada para
--- um nó é estado da run. Antes, "Salvar e sair" + Continuar regerava as
--- ofertas com o RNG já avançado — restock grátis, reroll zerado e itens
--- comprados de volta à prateleira. exportState/importState levam ofertas
--- (com `purchased`), preços (forja inclusa) e o contador/custo de reroll.
 function ShopSystem:exportState()
     local offers = {}
     for i, o in ipairs(self.currentOffers or {}) do offers[i] = plainCopy(o, 0) end
@@ -600,13 +444,10 @@ function ShopSystem:importState(st)
 end
 
 function ShopSystem:getRefreshCost()
-    -- O contador cru fica no estado (save); o preço exibido/cobrado passa pelo
-    -- mesmo multiplicador da vitrine.
     local rm = self.context and self.context.runManager
     return require("src.systems.RunModifiers").price(rm and rm.currentRun, self.refreshCost)
 end
 
--- Tabela de tipos de booster pack — exposta pra Fase 5 (BoosterPackSystem) ler.
 function ShopSystem.getBoosterTypes()
     return BOOSTER_PACK_TYPES
 end

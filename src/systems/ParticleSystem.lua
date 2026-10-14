@@ -1,19 +1,3 @@
--- src/systems/ParticleSystem.lua
--- Compat layer + presets sobre o ParticlesManager unificado.
---
--- Antes deste refactor, este arquivo continha sua própria classe Emitter +
--- ParticleManager (singleton em ParticleSystem.Manager) que NUNCA recebia
--- emitters spawnados — ficava só atualizando uma lista vazia em GameUI.
--- Removido. Os Presets agora retornam instâncias Particles vivas no
--- ParticlesManager global.
---
--- USO:
---   local p = ParticleSystem.Presets.JOKER_ACTIVATED(x, y)  -- spawna
---   p:fade(0.4)                                             -- ou :remove()
---
--- ParticleSystem.Manager.update/draw são alias pro ParticlesManager pra back-compat
--- com call sites antigos em GameUI.lua etc.
-
 local ParticlesManager = require("engine.ParticlesManager")
 
 local ParticleSystem = {}
@@ -24,10 +8,7 @@ ParticleSystem.Manager = {
     clear  = function(_)     ParticlesManager.clear() end,
 }
 
--- Presets comuns. Cada um retorna a instância Particles spawnada (chamável
--- com :fade(duration) ou :remove() pelo caller).
 ParticleSystem.Presets = {
-    -- Brilho dourado de joker ativando (burst pra cima).
     JOKER_ACTIVATED = function(x, y)
         return ParticlesManager.spawn(x, y, 0, 0, {
             timer         = 0.04,
@@ -41,7 +22,6 @@ ParticleSystem.Presets = {
         })
     end,
 
-    -- Faísca dourada saindo de carta jogada.
     CARD_PLAYED = function(x, y)
         return ParticlesManager.spawn(x, y, 0, 0, {
             timer         = 0.05,
@@ -55,7 +35,6 @@ ParticleSystem.Presets = {
         })
     end,
 
-    -- Halo azul claro de hover.
     HOVER_EFFECT = function(x, y)
         return ParticlesManager.spawn(x, y, 0, 0, {
             timer         = 0.06,
@@ -68,7 +47,6 @@ ParticleSystem.Presets = {
         })
     end,
 
-    -- Pulso vermelho de impacto/dano.
     DAMAGE_EFFECT = function(x, y)
         return ParticlesManager.spawn(x, y, 0, 0, {
             timer         = 0.03,

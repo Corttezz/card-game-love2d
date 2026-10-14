@@ -1,31 +1,5 @@
--- src/systems/ScoreSystem.lua
--- Pontuação "TINTA × SELO" (F3 do gameplay-overhaul-v1) — o chips×mult do
--- grimório, na gramática do Balatro:
---
---   ScoreBatalha = floor(TINTA × SELO)
---   TINTA (base)  = maxHP do inimigo + 10·andar + 50·(ato−1)
---                   ×2 boss · ×1.25 elite · ×1.18^n no endless
---   SELO (mult)   = 1.0
---     + 0.30 por turno ABAIXO do par (par = 3 + ato)      [eficiência]
---     − 0.10 por turno acima (piso 0.5)
---     + 0.25 por combo de tag DISTINTO na batalha          [estilo]
---     + 0.50 se 3+ combos dispararam no MESMO turno
---     + 0.50 se terminou com HP ≤ 25%                      [risco]
---     + 1.00 flawless (nenhum dano tomado)
---
--- O score da RUN é a soma das batalhas (+ bônus de ato via caller).
--- Recorde histórico vive no ProfileStats (bestScore).
---
--- Integração (Game.lua):
---   startBattle()            — startGame / nextPhase / resumeRun
---   recordTurnCombos(ctx)    — playSelectedCards (turnContext.activeCombos)
---   recordDamageTaken(n)     — enemyTurn (dano que chegou no player)
---   finishBattle(game)       — _onEnemyDeath → retorna breakdown pro RoundEval
-
 local I18n = require("src.i18n.I18n")
 
--- Recibo traduzido (score.*). As linhas do breakdown sao exibidas na
--- RoundEvalScreen; saiam em PT cravado dentro da tela ja traduzida.
 local function sl(key, vars, fallback)
     return I18n.t("score." .. key, vars, fallback)
 end
@@ -38,7 +12,7 @@ function ScoreSystem:new()
     instance.runScore = 0
     instance.lastBattle = nil
     instance._battle = nil
-    instance.recordBroken = false  -- true quando a run cruza o bestScore
+    instance.recordBroken = false
     return instance
 end
 
@@ -57,7 +31,6 @@ function ScoreSystem:startBattle()
     }
 end
 
--- turnContext.activeCombos = lista de combos detectados neste turno.
 function ScoreSystem:recordTurnCombos(activeCombos)
     local b = self._battle
     if not b then return end
@@ -77,8 +50,6 @@ function ScoreSystem:recordDamageTaken(dmg)
     end
 end
 
--- Fecha a batalha vencida e soma no score da run.
--- Retorna { tinta, selo, total, turns, combos, flawless, lowHp }.
 function ScoreSystem:finishBattle(game)
     local b = self._battle or {}
     self._battle = nil
@@ -88,7 +59,6 @@ function ScoreSystem:finishBattle(game)
     local act = (run and run.actNumber) or 1
     local floorN = (run and run.floorInAct) or math.min(8, game.currentPhase or 1)
 
-    -- ===== TINTA =====
     local tinta = (game.enemy and game.enemy.maxHealth or 0)
         + 10 * floorN + 50 * (act - 1)
     local nodeType = run and run.currentNode and run.currentNode.type
@@ -100,15 +70,11 @@ function ScoreSystem:finishBattle(game)
     if run and run.endlessMode then
         tinta = math.floor(tinta * (1.18 ^ (run.floorsInEndless or 0)))
     end
-    -- Selo do Grimório (+10%/nível) e maldições do endless (+N% por acúmulo):
-    -- quem aceita a regra mais dura pontua mais (RunModifiers.scoreMul).
     if run then
         tinta = math.floor(tinta * require("src.systems.RunModifiers").scoreMul(run))
     end
 
-    -- ===== SELO =====
     local selo = 1.0
-    -- battleTurn conta turnos do INIMIGO; o do jogador que matou soma +1.
     local turnsUsed = (game.battleTurn or 0) + 1
     local par = 3 + act
     if turnsUsed < par then
@@ -134,8 +100,6 @@ function ScoreSystem:finishBattle(game)
     selo = math.floor(selo * 100 + 0.5) / 100
     local total = math.floor(tinta * selo)
 
-    -- Recibo LEGÍVEL (feedback do dono: "TINTA×SELO não ficou claro").
-    -- Cada linha nomeia O QUE o jogador fez; a matemática fica implícita.
     local breakdown = {}
     table.insert(breakdown, {
         label = sl("enemy_defeated", nil, "Inimigo derrotado"),
@@ -181,7 +145,6 @@ function ScoreSystem:finishBattle(game)
     return self.lastBattle
 end
 
--- Bônus fixo por completar um ato (chamado pelo Game na virada de ato).
 function ScoreSystem:addActBonus(actNumber)
     self.runScore = self.runScore + 500 * (actNumber or 1)
 end

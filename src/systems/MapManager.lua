@@ -1,14 +1,3 @@
--- src/systems/MapManager.lua
--- Gera escolhas de nos entre batalhas (MVP sem mapa visual global).
--- Cada escolha e uma lista de 2-3 NodeType distintos.
---
--- A probabilidade de cada tipo de no e funcao do floorInAct (posicao dentro
--- do ato). Fase 5 refinara pesos por ato; por ora, floorsPerAct fixo=8.
---
--- Contrato:
---   MapManager.generate(floorInAct, actNumber, numNodes, opts) -> { node1, node2, ... }
---   Cada node = { type, label, icon, rewardHint, payload }
-
 local MapManager = {}
 
 local Rng = require("src.systems.Rng")
@@ -23,32 +12,23 @@ MapManager.NODE_TYPES = {
     EVENT     = "event",
 }
 
--- Floors por ato. Fase 5 mudara para tabela por ato em Config.Acts.
 MapManager.FLOORS_PER_ACT = 8
 
--- Metadata humana para cada tipo.
--- `icon`: fallback 64×64 de assets/sprites/icons/ (IconLoader)
--- `sprite`: sprite 96×96 ilustrado de assets/sprites/map_nodes/ (preferencial)
--- `label`/`desc`: FALLBACK de dev. O texto exibido vem do i18n
--- (`node_type.<tipo>.label` / `.desc`) via MapManager.labelFor/descFor —
--- antes o PT saia cravado daqui e a tela de mapa ficava bilingue.
 MapManager.NODE_META = {
     [MapManager.NODE_TYPES.BATTLE] = {
         label = "Batalha",
         icon = "sword_short",
-        sprite = nil, -- backlog: gerar sprite de "arena" pra battle node
+        sprite = nil,
         desc = "Combate padrao. Recompensa: 1 carta + ouro.",
     },
     [MapManager.NODE_TYPES.ELITE] = {
         label = "Elite",
         icon = "skull",
-        sprite = nil, -- backlog
+        sprite = nil,
         desc = "Inimigo forte. Recompensa: carta garantida uncommon+.",
     },
     [MapManager.NODE_TYPES.MINI_BOSS] = {
         label = "Mini-Boss",
-        -- crânio CHIFRUDO (Out/2026, known_gaps #16): antes dividia o
-        -- skull_crowned com o chefe e os dois liam igual no mapa/roteiro.
         icon = "skull_horned",
         sprite = nil,
         desc = "Meio do ato. Recompensa rara.",
@@ -74,14 +54,11 @@ MapManager.NODE_META = {
     [MapManager.NODE_TYPES.EVENT] = {
         label = "Evento",
         icon = "scroll",
-        sprite = "altar", -- mais tematico que chest
+        sprite = "altar",
         desc = "Encontro misterioso. Arrisque.",
     },
 }
 
--- Texto exibido de um tipo de nó, traduzido. Sempre prefira estes helpers a
--- ler `node.label`/`node.desc` direto — um nó SALVO carrega o texto do idioma
--- em que foi gerado.
 function MapManager.labelFor(nodeType)
     local meta = MapManager.NODE_META[nodeType] or {}
     return require("src.i18n.I18n").t(
@@ -96,9 +73,6 @@ function MapManager.descFor(nodeType)
         nil, meta.desc or "")
 end
 
--- Helper: pesca um tipo dado um vetor { {type=, weight=}, ... }
--- Stream "map" do Rng da run: a sequência de nodes é reprodutível por seed
--- e independente dos rolls de carta/loja.
 local function rollWeighted(weights)
     local total = 0
     for _, e in ipairs(weights) do total = total + (e.weight or 1) end
@@ -111,10 +85,7 @@ local function rollWeighted(weights)
     return weights[#weights].type
 end
 
--- Pesos base para um floorInAct dentro de um ato padrao.
--- Fase 5 vai permitir override por ato via Config.Acts[N].nodeWeights.
 function MapManager.weightsFor(floorInAct, actNumber)
-    -- Pisos finais do ato: mini-boss no penultimo, boss no ultimo
     if floorInAct == MapManager.FLOORS_PER_ACT then
         return { { type = MapManager.NODE_TYPES.BOSS, weight = 1 } }
     end
@@ -122,7 +93,6 @@ function MapManager.weightsFor(floorInAct, actNumber)
         return { { type = MapManager.NODE_TYPES.MINI_BOSS, weight = 1 } }
     end
 
-    -- Pesos progressivos: atos mais avancados tem mais elites/shops.
     local base = {
         { type = MapManager.NODE_TYPES.BATTLE, weight = 55 },
         { type = MapManager.NODE_TYPES.ELITE,  weight = 10 },
@@ -131,14 +101,11 @@ function MapManager.weightsFor(floorInAct, actNumber)
         { type = MapManager.NODE_TYPES.EVENT,  weight = 13 },
     }
 
-    -- Ajustes por posicao no ato
     if floorInAct <= 2 then
-        -- Inicio do ato: mais batalhas normais, menos elites
         base[1].weight = 70
         base[2].weight = 4
         base[4].weight = 8
     elseif floorInAct >= 5 then
-        -- Final do ato: mais elites
         base[2].weight = 18
         base[3].weight = 14
     end
@@ -146,21 +113,16 @@ function MapManager.weightsFor(floorInAct, actNumber)
     return base
 end
 
--- Gera N nos distintos (sem repeticao) para a proxima escolha.
--- Boss/mini-boss unicos nunca tem alternativas.
 function MapManager.generate(floorInAct, actNumber, numNodes, opts)
     numNodes = numNodes or 3
     opts = opts or {}
     local weights = MapManager.weightsFor(floorInAct, actNumber)
-    -- Selo "Cerco" / maldição "Caçada": elite mais frequente (opts.eliteMul,
-    -- injetado pelo RunManager a partir de RunModifiers).
     if opts.eliteMul and opts.eliteMul ~= 1 then
         for _, w in ipairs(weights) do
             if w.type == MapManager.NODE_TYPES.ELITE then w.weight = w.weight * opts.eliteMul end
         end
     end
 
-    -- Floor boss/mini-boss: um unico no, nao ha escolha
     if floorInAct == MapManager.FLOORS_PER_ACT or floorInAct == MapManager.FLOORS_PER_ACT - 1 then
         local t = weights[1].type
         return {
@@ -179,7 +141,6 @@ function MapManager.generate(floorInAct, actNumber, numNodes, opts)
             table.insert(nodes, MapManager._makeNode(t, floorInAct, actNumber))
         end
     end
-    -- Se ainda faltam (pool unicos < numNodes), repete permitindo duplicatas
     while #nodes < numNodes do
         local t = rollWeighted(weights)
         table.insert(nodes, MapManager._makeNode(t, floorInAct, actNumber))
@@ -187,25 +148,19 @@ function MapManager.generate(floorInAct, actNumber, numNodes, opts)
     return nodes
 end
 
--- Cria um node com payload minimo. Campos extras populados no handler do tipo.
 function MapManager._makeNode(nodeType, floorInAct, actNumber)
     local meta = MapManager.NODE_META[nodeType] or {}
     return {
         type = nodeType,
-        -- Já traduzidos na criação para que consumidores que leem node.label
-        -- direto (ex: a bifurcação da estrada no WorldRoad) não precisem saber
-        -- do i18n. Quem desenha uma tela nova deve usar MapManager.labelFor.
         label = MapManager.labelFor(nodeType),
         icon = meta.icon,
-        sprite = meta.sprite, -- nil se não gerado ainda
+        sprite = meta.sprite,
         desc = MapManager.descFor(nodeType),
         floorInAct = floorInAct,
         actNumber = actNumber,
     }
 end
 
--- Dado um floor global (1, 2, ...), converte para (actNumber, floorInAct).
--- Usado pelo Game quando so temos o contador global.
 function MapManager.floorToAct(globalFloor)
     local act = math.floor((globalFloor - 1) / MapManager.FLOORS_PER_ACT) + 1
     local inAct = ((globalFloor - 1) % MapManager.FLOORS_PER_ACT) + 1

@@ -1,44 +1,13 @@
--- src/systems/DamagePreview.lua
--- PREVIA DE DANO (Out/2026, pedido do dono: "o combo de muitas cartas da
--- dano demais — o problema nao e o dano, e que NAO FICA CLARO quanto vai dar.
--- O jogador seleciona um milhao de cartas e pronto, nao precisa pensar").
---
--- Duas pecas, as duas PURAS (nao tocam em game/player/enemy):
---
---   DamagePreview.cardValue(game, card, turnContext, st)
---     -> valor, passos, jokerEntries, ecoUsado
---     O valor de UMA carta de ataque/defesa: efeitos proprios -> Forca/
---     Destreza (por golpe; scaling = dobro) -> combos -> coringas (maior
---     multiplicador vence + planos) -> edicao -> selo -> Fraco/Fragil.
---     E a FONTE UNICA: Game:_resolveCardInCombat chama esta mesma funcao e so
---     acrescenta os efeitos colaterais (toast, proc de coringa, banner). Previa
---     e resultado nao podem divergir porque sao a mesma conta.
---
---   DamagePreview.simulate(game, cards)
---     -> { damage, blocked, block, heal, thorn, lethal, combos, cards = {...},
---          extras = {...}, uncertain }
---     A leva INTEIRA, carta a carta, na ordem em que o combate resolve
---     (ordem de selecao): Impeto do guerreiro antes de tudo, Forca/Foco/
---     Vulneravel ganhos no meio da leva valendo pras cartas seguintes, orbes
---     canalizando/estourando, armadura do inimigo absorvendo, inimigo morto
---     no meio da leva (os ataques seguintes nao saem), premio de combo no fim.
---     Trava: tools/test_damage_preview.lua joga centenas de levas aleatorias
---     pelo combate de verdade e compara.
-
 local EffectSystem = require("src.systems.EffectSystem")
 local ComboSystem  = require("src.systems.ComboSystem")
 local TagSystem    = require("src.systems.TagSystem")
 
 local DamagePreview = {}
 
--- ===== Edicao e selo (Fase 3.2/3.3) — fonte unica, o Game usa daqui =====
--- Foil e plano; Holo/Polychrome multiplicam. (A Negative saiu em Out/2026.)
 DamagePreview.EDITION_FLAT = { foil = 5 }
 DamagePreview.EDITION_MULT = { holo = 1.2, polychrome = 1.5 }
--- Red: x2 valor (retrigger via mult). Outros selos sao efeito pos-jogada.
 DamagePreview.SEAL_VALUE_MULT = { Red = 2.0 }
 
--- Enfraquecido/Fragil (debuffs do INIMIGO no jogador): -25%, por ultimo.
 local DEBUFF_CUT = 0.75
 
 local function hasEff(card, t)
@@ -48,7 +17,6 @@ local function hasEff(card, t)
     return nil
 end
 
--- Estado do turno que a leva enxerga. Sem `st`, le do jogo AGORA.
 local function liveState(game)
     local p = game.player
     return {
@@ -61,18 +29,12 @@ local function liveState(game)
 end
 DamagePreview.liveState = liveState
 
--- Valor de UMA carta attack/defense. `st` = { strength, dexterity, echoFired,
--- weak, frail }. Devolve (valor, passos, jokerEntries, ecoUsado).
--- Passos (lidos pela UI): { kind, value/delta/mult, after, label? }
---   base · effects (multi-golpe/bonus proprio) · stat · combo · joker ·
---   edition · seal · weak/frail
 function DamagePreview.cardValue(game, card, turnContext, st)
     st = st or liveState(game)
     local isAtk = card.type == "attack"
     local base = (isAtk and card.attack or card.defense) or 0
     local steps = { { kind = "base", value = base, after = base } }
 
-    -- 1. efeitos da propria carta (multi_hit, damage_bonus_self)
     local v = game.effectSystem and game.effectSystem:applyCardEffects(game, card, base)
         or EffectSystem.applyCardEffects(nil, game, card, base)
     local hits = EffectSystem.hitCount(card)
@@ -80,8 +42,6 @@ function DamagePreview.cardValue(game, card, turnContext, st)
         steps[#steps + 1] = { kind = "effects", hits = hits, delta = v - base, after = v }
     end
 
-    -- 2. Forca/Destreza — por golpe; carta com *_scaling conta o stat em DOBRO
-    -- (auditoria Jul/2026, fonte unica do statBonus).
     local stat = isAtk and (st.strength or 0) or (st.dexterity or 0)
     if stat ~= 0 and hasEff(card, isAtk and "strength_scaling" or "dexterity_scaling") then
         stat = stat * 2
@@ -93,7 +53,6 @@ function DamagePreview.cardValue(game, card, turnContext, st)
             delta = statDelta, after = v }
     end
 
-    -- 3. combos da leva
     local comboSteps
     v, comboSteps = ComboSystem.cardSteps(card, v, turnContext, game)
     for _, cs in ipairs(comboSteps) do
@@ -101,7 +60,6 @@ function DamagePreview.cardValue(game, card, turnContext, st)
             value = cs.value, after = cs.after }
     end
 
-    -- 4. coringas (maior multiplicador vence + planos somam + Eco)
     local entries, echoUsed = {}, false
     if game.effectSystem then
         v, entries, echoUsed = game.effectSystem:jokerSteps(game, card, v,
@@ -112,7 +70,6 @@ function DamagePreview.cardValue(game, card, turnContext, st)
             value = e.value, after = e.after }
     end
 
-    -- 5. edicao
     local ed = card.edition
     if ed and (DamagePreview.EDITION_FLAT[ed] or DamagePreview.EDITION_MULT[ed]) then
         local flat = DamagePreview.EDITION_FLAT[ed]
@@ -122,7 +79,6 @@ function DamagePreview.cardValue(game, card, turnContext, st)
         steps[#steps + 1] = { kind = "edition", edition = ed, after = v }
     end
 
-    -- 6. selo
     local sm = card.seal and DamagePreview.SEAL_VALUE_MULT[card.seal]
     if sm then
         v = v * sm
@@ -132,7 +88,6 @@ function DamagePreview.cardValue(game, card, turnContext, st)
 
     v = math.floor(v)
 
-    -- 7. Fraco (ataque) / Fragil (defesa): por ultimo, como no StS.
     if isAtk and st.weak then
         v = math.floor(v * DEBUFF_CUT)
         steps[#steps + 1] = { kind = "weak", op = "mult", value = DEBUFF_CUT, after = v }
@@ -144,11 +99,6 @@ function DamagePreview.cardValue(game, card, turnContext, st)
     return v, steps, entries, echoUsed
 end
 
--- ============================================================================
--- Simulacao da leva
--- ============================================================================
-
--- turnContext igual ao de Game:playSelectedCards (combos detectados).
 function DamagePreview.buildContext(cards, game)
     local snapshot = {}
     for _, c in ipairs(cards or {}) do snapshot[#snapshot + 1] = c end
@@ -163,7 +113,6 @@ function DamagePreview.buildContext(cards, game)
     return ctx
 end
 
--- Inimigo/jogador SIMULADOS (copias rasas dos campos que a conta le).
 local function simEnemy(enemy)
     local vuln = enemy and enemy.hasStatus and enemy:hasStatus("vulnerable") or false
     return { health = (enemy and enemy.health) or 0, armor = (enemy and enemy.armor) or 0,
@@ -183,11 +132,6 @@ local function simPlayer(game)
     return st
 end
 
--- Cura com os coringas de cura, SEM efeito colateral. A previa roda todo
--- quadro (hover/selecao); EffectSystem:applyHealMultiplier sem sink dispara
--- o proc DIRETO no JokerProcFx — foi assim que o Calice do Sabio ficou
--- soltando "×1.5 PV" do nada enquanto o jogador so passava o mouse (bug do
--- dono, Out/2026). O sink descartavel engole o proc; a conta e a mesma.
 local function previewHeal(game, v)
     local es = game.effectSystem
     if not (es and es.applyHealMultiplier) then return v end
@@ -208,7 +152,6 @@ function DamagePreview.simulate(game, cards)
     local P = simPlayer(game)
     R.enemyHealth = E.health
 
-    -- dano no inimigo: Vulneravel (x1.5, floor) antes da armadura, que absorve
     local function hitEnemy(dmg, source)
         if dmg <= 0 then return 0 end
         if E.vuln then dmg = math.floor(dmg * 1.5) end
@@ -232,7 +175,6 @@ function DamagePreview.simulate(game, cards)
         end
     end
 
-    -- evocar um orbe (espelho de EffectSystem:_evokeOrbEffect)
     local function evoke(orb, why)
         if not orb then return end
         local v = (orb.value or 1) + P.focus
@@ -251,7 +193,6 @@ function DamagePreview.simulate(game, cards)
         P.orbs[#P.orbs + 1] = orb
     end
 
-    -- efeito secundario / de carta de efeito (espelho de processEffectCard)
     local function effect(e)
         local t, v = e.type, e.value or 0
         if t == "magic_damage" or t == "aoe_magic_damage" then
@@ -289,7 +230,6 @@ function DamagePreview.simulate(game, cards)
             end
         end
     end
-    -- gatilhos on_attack / on_defend: coringas primeiro, depois a propria carta
     local function triggers(card, kind)
         local function one(e, fromJoker, joker)
             if kind == "attack" and e.type == "on_attack_heal" then
@@ -299,7 +239,6 @@ function DamagePreview.simulate(game, cards)
                 if name == "vulnerable" then E.vuln = true end
                 if name == "poison" then R.poison = R.poison + (e.stacks or 1) end
             elseif kind == "defend" and e.type == "on_defend_damage" then
-                -- coringa arma 1x por turno (P2.3); carta arma por carta
                 if fromJoker then
                     local jid = joker.id or joker
                     P.thornFired = P.thornFired or {}
@@ -319,8 +258,6 @@ function DamagePreview.simulate(game, cards)
         for _, e in ipairs(card.effects or {}) do one(e, false) end
     end
 
-    -- Impeto do guerreiro: IMPETUS_ATTACKS (3) ataques no turno (somando levas) = +1 Forca
-    -- ANTES das cartas resolverem (Game:applyClassTurnPassives).
     if game.selectedClass == "warrior" and not game._impetusFiredThisTurn then
         local attacks = game._attacksThisTurn or 0
         for _, c in ipairs(cards) do
@@ -331,8 +268,6 @@ function DamagePreview.simulate(game, cards)
             R.impetus = true
         end
     end
-    -- Toxinas do ladino: o 1o ataque do turno envenena (so informativo); a
-    -- passiva cresce (Game.TOXIN_GROWTH) se esta leva fecha 2+ ataques no turno
     local toxinsUsed = game._toxinAppliedThisTurn
     local toxinBonus = game._toxinBonus or 0
     if game.selectedClass == "rogue" and not game._toxinGrowFiredThisTurn then
@@ -347,7 +282,7 @@ function DamagePreview.simulate(game, cards)
         local entry = { card = card, type = card.type }
         if card.type == "attack" then
             if E.health <= 0 then
-                entry.skipped = true   -- inimigo ja caiu: o golpe nao sai
+                entry.skipped = true
             else
                 local v, steps, _, echoUsed = DamagePreview.cardValue(game, card, ctx, P)
                 if echoUsed then P.echoFired = true end
@@ -363,7 +298,6 @@ function DamagePreview.simulate(game, cards)
                 triggers(card, "attack")
                 additionalEffects(card)
                 if card.seal == "Purple" then
-                    -- Player:addOrb: transborda o mais antigo SEM evocar
                     if #P.orbs >= P.orbSlots then table.remove(P.orbs, 1) end
                     P.orbs[#P.orbs + 1] = { type = "lightning", value = 1 }
                 end
@@ -389,13 +323,6 @@ function DamagePreview.simulate(game, cards)
     return R
 end
 
--- ============================================================================
--- Dicas de combo (o que a selecao dispara e o que falta pra disparar)
--- ============================================================================
-
--- O que `card` GANHARIA de combo se entrasse agora no fim da selecao:
--- lista de { combo = regra, value = bonus } (Saraivada/Muralha/Par). O selo da
--- mao e a linha de hover do painel leem daqui.
 function DamagePreview.combosAddedBy(selected, card, game)
     local with = {}
     for _, c in ipairs(selected or {}) do with[#with + 1] = c end

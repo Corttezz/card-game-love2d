@@ -1,16 +1,11 @@
--- src/systems/CardDatabase.lua
--- Loader de cartas e decks. Os dados vivem em src/data/cards/*.lua e src/data/decks.lua.
--- Esta camada apenas: (1) merge dos módulos, (2) queries, (3) criação de instâncias de Card.
+local Debug = require("src.core.Debug")
 
 local CardDatabase = {}
 CardDatabase.__index = CardDatabase
 
--- Caches (escopo do módulo — singleton natural).
 local cardData = nil
 local deckData = nil
 
--- Fontes de dados por classe/categoria. Ordem determina precedência em colisão de ID
--- (a última sobrescreve), mas os IDs são prefixados por classe, então não há colisão real.
 local CARD_MODULES = {
     "src.data.cards.basic",
     "src.data.cards.warrior",
@@ -35,7 +30,7 @@ function CardDatabase:loadData()
                 merged[id] = card
             end
         else
-            print("[CardDatabase] erro ao carregar modulo: " .. modPath)
+            Debug.err("[CardDatabase] erro ao carregar modulo: " .. modPath)
         end
     end
 
@@ -44,8 +39,6 @@ function CardDatabase:loadData()
     local okDecks, decks = pcall(require, "src.data.decks")
     deckData = { decks = (okDecks and type(decks) == "table") and decks or {} }
 end
-
--- ===== Queries =====
 
 function CardDatabase:getCard(cardId)
     self:loadData()
@@ -57,7 +50,6 @@ function CardDatabase:getAllCards()
     return cardData and cardData.cards or {}
 end
 
--- Total de cartas do catálogo (Bibliotecário — AchievementSystem).
 function CardDatabase:getTotalCardCount()
     local n = 0
     for _ in pairs(self:getAllCards()) do n = n + 1 end
@@ -90,8 +82,6 @@ function CardDatabase:getCardsByRarity(rarity)
     return filtered
 end
 
--- ===== Instanciação =====
-
 function CardDatabase:buildDeckCards(deckId)
     local deck = self:getDeck(deckId)
     if not deck then error("Deck nao encontrado: " .. tostring(deckId)) end
@@ -104,15 +94,12 @@ function CardDatabase:buildDeckCards(deckId)
                 table.insert(cards, self:createCardInstance(cardDataEntry))
             end
         else
-            print("[CardDatabase] carta nao encontrada no deck " .. deckId .. ": " .. cardEntry.id)
+            Debug.warn("[CardDatabase] carta nao encontrada no deck " .. deckId .. ": " .. cardEntry.id)
         end
     end
     return cards
 end
 
--- Cria instância de carta (Attack/Defense/Joker/Effect) a partir dos dados.
--- Injeta `description`, `rarity`, `effects` na instância e **substitui a imagem**
--- pelo canvas procedural gerado via CardFrame.
 function CardDatabase:createCardInstance(cd)
     local AttackCard = require("src.cards.types.AttackCard")
     local DefenseCard = require("src.cards.types.DefenseCard")
@@ -134,20 +121,9 @@ function CardDatabase:createCardInstance(cd)
         error("Tipo de carta desconhecido: " .. tostring(cd.type))
     end
 
-    -- Dados auxiliares usados em runtime (tooltip, EffectSystem, CardFrame).
     instance.id = cd.id
     instance.description = cd.description
     instance.rarity = cd.rarity
-    -- CÓPIA, nunca a referência do catálogo (fix Set/2026).
-    -- `cardData` é cache de PROCESSO (carregado 1x, nunca recarregado), então
-    -- `cd.effects` é a tabela viva do catálogo. Apontar a instância pra ela
-    -- fazia `RunManager:applyUpgradesToInstance` (RunManager.lua:546, a única
-    -- escrita de `eff.value` do projeto) mutar o CATÁLOGO: forjar uma carta de
-    -- efeito somava o ganho a CADA `buildPlayableDeck` — ou seja a cada andar,
-    -- a cada carta adicionada e a cada abertura do visualizador de deck —
-    -- crescendo sem limite e contaminando todas as cartas daquele id, inclusive
-    -- em runs novas, até fechar o jogo. Efeitos são tabelas planas
-    -- ({type=..., value=...}), então cópia de 2 níveis basta.
     if cd.effects then
         local copy = {}
         for i, eff in ipairs(cd.effects) do
@@ -160,26 +136,15 @@ function CardDatabase:createCardInstance(cd)
             end
         end
         instance.effects = copy
-        -- O `passive` compilado acima fechava sobre `cd.effects` (o CATALOGO):
-        -- quem resolvesse a carta pelo passive (caminho sem fila de beats)
-        -- ignorava a FORJA, que so escreve na copia. Recompila sobre a copia
-        -- (auditoria de cartas Out/2026: a descricao forjada tem que valer
-        -- em qualquer caminho).
         if cd.type == "effect" or cd.type == "joker" then
             instance.passive = self:createEffectFunction(instance.effects)
         end
     end
     instance.class = cd.class
-    -- Normaliza tags na criacao: carrega do card-data ou deriva do tipo.
-    -- TagSystem.getCardTags ja faz merge com tag implicita e remove duplicados.
     local TagSystem = require("src.systems.TagSystem")
     instance.tags = TagSystem.getCardTags(cd)
-    -- Flags opcionais de cartas especiais (preenchidos no pass de rebalance da Fase 7).
     instance.innate = cd.innate
     instance.retain = cd.retain
-    -- Exhaust: Game.lua checa instance.exhaust (top-level), mas os dados
-    -- declaram {type="exhaust"} dentro de effects — sem esta derivação
-    -- NENHUMA carta exauria (bug F0 do gameplay-overhaul-v1).
     instance.exhaust = cd.exhaust or nil
     for _, eff in ipairs(cd.effects or {}) do
         if eff.type == "exhaust" then
@@ -188,34 +153,25 @@ function CardDatabase:createCardInstance(cd)
         end
     end
 
-    -- Substitui imagem pela arte procedural pixel-perfect.
-    -- Mantém o fallback original se CardFrame falhar (ex: em ambiente sem love).
     local ok, proceduralImg = pcall(CardFrame.render, instance)
     if ok and proceduralImg then
         instance.image = proceduralImg
         instance.width = proceduralImg:getWidth() * (Config.Cards.BASE_SCALE or 2)
         instance.height = proceduralImg:getHeight() * (Config.Cards.BASE_SCALE or 2)
     else
-        -- CardFrame.render usa PixelCanvas.beginDraw (seta canvas) e endDraw (restaura).
-        -- Se o crash for ENTRE os dois, o canvas fica preso ativo — isso bloqueia
-        -- o love.graphics.present() do próximo frame ("Canvas is active"). Reset forçado:
         love.graphics.setCanvas()
-        print("[CardDatabase] CardFrame.render falhou para " .. tostring(cd.id) .. ": " .. tostring(proceduralImg))
+        Debug.warn("[CardDatabase] CardFrame.render falhou para " .. tostring(cd.id) .. ": " .. tostring(proceduralImg))
     end
 
-    -- Marca flags visuais consumidas por Card:draw (efeito holo/glow via shader).
     local CardArt = require("src.ui.CardArt")
     local okArt, art = pcall(CardArt.resolve, instance)
     if okArt and art then
-        instance.visualEffect = art.effect  -- nil | "shine" | "glow" | "holo"
+        instance.visualEffect = art.effect
     end
 
     return instance
 end
 
--- Compila a função `passive(game)` executada quando a carta é jogada.
--- Delega para EffectSystem:processEffectCard. Se o efeito não for reconhecido,
--- mostra a descrição traduzida via I18n.effectDesc (fallback: effect.description).
 function CardDatabase:createEffectFunction(effects)
     local I18n = require("src.i18n.I18n")
     return function(game)

@@ -1,41 +1,12 @@
--- src/systems/PlaceAudio.lua
--- ============================================================================
--- PLACEAUDIO — o som AMBIENTE de cada lugar da run (Out/2026, dono: "ao
--- entrar na loja, forja, descanso, evento, o som da estrada não pode
--- continuar — no máximo o ambiente do lugar novo")
--- ============================================================================
--- Mesmo desenho do MusicDirector: OBSERVA o estado todo frame (apply) em vez
--- de ser avisado por cada tela — transição esquecida não vira "som errado".
---
--- Decide o LUGAR (road / shop / forge / rest / event / reward / boss / nil)
--- e:
---   1. abre ou fecha o portão do clima da estrada (WeatherAudio.roadActive);
---   2. toca a cama do lugar + avulsos raros, com o MESMO motor de camas do
---      WeatherAudio (vozes em crossfade de variantes, ponto de início e pitch
---      sorteados, nunca a mesma variante seguida — nada de loop fixo);
---   3. um avulso de CHEGADA (sino da porta da loja) uma vez por entrada.
---
--- Volume bem abaixo da música: PLACE_VOLUME × AMBIENT_VOLUME × categoria,
--- grupo "ambient" (slider próprio em Configurações).
--- Não duplica SFX de UI: a batida da forja (forgeStrike) continua sendo da
--- RestScreen; aqui a bigorna é DISTANTE, rara e para enquanto a cerimônia de
--- forja toca (forgeBusy).
---
--- Sons em audio/sfx/place/ (ElevenLabs FREE — lista pra regenerar em
--- memory/weather_engine.md) + reuso de audio/sfx/weather/ (grilos, brasa,
--- vento, coruja). Registro por SCAN (código "pl:<nome>").
--- ============================================================================
-
 local PlaceAudio = {}
 local WeatherAudio = require("src.systems.WeatherAudio")
 
 local DIR = "audio/sfx/place"
 local CAT_VOL = { bed = 0.42, one = 0.32 }
-local IN_RATE, OUT_RATE = 0.9, 1.1     -- ganho/s: chega em ~1 s, sai em ~1 s
+local IN_RATE, OUT_RATE = 0.9, 1.1
 
-local P, W = "pl:", "wx:"   -- prefixos: sons do lugar × reuso do clima
+local P, W = "pl:", "wx:"
 
--- cama(s) + avulsos por lugar. every = intervalo sorteado (s).
 PlaceAudio.PLACES = {
     shop = {
         beds = { { family = "pl-shop", prefix = P, vars = { "shop-room-1", "shop-room-2" }, gain = 0.85 } },
@@ -87,8 +58,8 @@ PlaceAudio.PLACES = {
     },
 }
 
-local beds = {}       -- [family] = estado de cama (motor do WeatherAudio)
-local onesT = {}      -- [place..idx] = s até o próximo avulso
+local beds = {}
+local onesT = {}
 local cur = nil
 local rng = love.math.newRandomGenerator(6151)
 
@@ -114,11 +85,6 @@ function PlaceAudio.registerSounds(a)
     return n
 end
 
--- ----------------------------------------------------------------------------
--- QUAL LUGAR — pura, testável sem áudio.
---   state   = currentState do main.lua
---   ctx     = { nodeType, restMode, bossRoom (bool) }
--- ----------------------------------------------------------------------------
 function PlaceAudio.placeFor(state, ctx)
     ctx = ctx or {}
     if state == "playing" then
@@ -134,7 +100,7 @@ function PlaceAudio.placeFor(state, ctx)
     elseif state == "event" then
         return "event"
     end
-    return nil   -- menu, coleção, game over, vitória: silêncio de ambiente
+    return nil
 end
 
 local function playOne(def, gainK)
@@ -147,7 +113,6 @@ local function playOne(def, gainK)
     })
 end
 
--- chamado TODO frame pelo main.lua
 function PlaceAudio.apply(dt, state, ctx)
     local place = PlaceAudio.placeFor(state, ctx)
     WeatherAudio.roadActive = (place == "road")
@@ -156,12 +121,9 @@ function PlaceAudio.apply(dt, state, ctx)
         cur = place
         onesT = {}
         local cfg = place and PlaceAudio.PLACES[place]
-        -- avulso de CHEGADA (sino da loja) — só na entrada, não na volta do
-        -- pause/deck viewer (o estado não muda nesses casos)
         if cfg and cfg.enter and prev ~= place then playOne(cfg.enter, 1) end
     end
     local cfg = place and PlaceAudio.PLACES[place]
-    -- camas: as do lugar sobem, as demais descem
     local wanted = {}
     if cfg then
         for _, def in ipairs(cfg.beds) do
@@ -175,7 +137,6 @@ function PlaceAudio.apply(dt, state, ctx)
             WeatherAudio.tickBed(bed, { family = fam, vars = {} }, 0, dt, OUT_RATE)
         end
     end
-    -- avulsos
     if cfg and audio() then
         for idx, def in ipairs(cfg.ones) do
             local key = place .. idx

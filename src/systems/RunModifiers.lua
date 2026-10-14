@@ -1,28 +1,4 @@
--- src/systems/RunModifiers.lua
--- REGRAS QUE MULTIPLICAM A CORRIDA (Out/2026): Selos do Grimório (dificuldade
--- escolhida antes da run, cumulativa 1-10) e Maldições do endless (1-de-2 a
--- cada ciclo de 8 andares, empilháveis). Dados em src/data/run_modifiers.lua;
--- desenho e pesquisa em memory/endless_and_seals.md.
---
--- REGRA DE OURO: isto só MULTIPLICA por cima dos números base. Nenhum valor
--- de Config.Acts / cartas / inimigos muda aqui — o balanço base é das frentes
--- de combate; um selo 0 sem maldição devolve exatamente o jogo base (os
--- multiplicadores neutros são 1 e os somatórios 0).
---
--- Estado na run (viaja no save, sem migração — leitura com default):
---   run.seal    = 0..10
---   run.endless = { cycle = n, curses = { [id] = acúmulos },
---                   order = { id, ... },          -- ordem de escolha (UI)
---                   pending = { idA, idB } | nil } -- escolha aberta do ciclo
---
--- Quem consulta (um ponto de entrada por sistema):
---   ActSystem/Game  → enemyStats + decorateEnemy (vida, dano, Bloqueio)
---   MapManager      → eliteWeightMul
---   ShopSystem      → priceMul
---   RestScreen/Game → healMul("rest"|"act")
---   Game            → startingGold, victoryGoldDelta
---   ShopSystem      → rewardCardsDelta
---   ScoreSystem     → scoreMul
+local Debug = require("src.core.Debug")
 
 local Data = require("src.data.run_modifiers")
 
@@ -44,8 +20,6 @@ function RunModifiers.seal(run)
     return math.max(0, math.min(RunModifiers.SEAL_MAX, math.floor((run and run.seal) or 0)))
 end
 
--- Todas as regras ativas, já compostas: multiplicativas em produto,
--- aditivas em soma, startGold = o menor pedido (o mais duro vence).
 function RunModifiers.rules(run)
     local out = {}
     local function apply(rules, times)
@@ -57,7 +31,7 @@ function RunModifiers.rules(run)
             elseif k == "startGold" then
                 out[k] = math.min(out[k] or math.huge, v)
             else
-                print("[RunModifiers] regra desconhecida: " .. tostring(k))
+                Debug.warn("[RunModifiers] regra desconhecida: " .. tostring(k))
             end
         end
     end
@@ -66,7 +40,7 @@ function RunModifiers.rules(run)
     for id, n in pairs((e and e.curses) or {}) do
         local c = CURSE_BY_ID[id]
         if c then apply(c.rules, n)
-        else print("[RunModifiers] maldicao desconhecida no save: " .. tostring(id)) end
+        else Debug.warn("[RunModifiers] maldicao desconhecida no save: " .. tostring(id)) end
     end
     return out
 end
@@ -74,7 +48,6 @@ end
 local function mul(run, k) return RunModifiers.rules(run)[k] or 1 end
 local function add(run, k) return RunModifiers.rules(run)[k] or 0 end
 
--- ===== Inimigo =====
 function RunModifiers.enemyStats(run, stats, nodeType)
     if not stats then return stats end
     local r = RunModifiers.rules(run)
@@ -93,9 +66,6 @@ function RunModifiers.enemyStats(run, stats, nodeType)
     return out
 end
 
--- Bloqueio inicial (maldição Couraça Abissal), em fração da vida máxima.
--- Passa por cima do teto de armadura do inimigo de propósito: é o "escudo"
--- com que ele entra na luta, não um ganho de turno.
 function RunModifiers.decorateEnemy(run, enemy)
     if not enemy then return end
     local frac = add(run, "enemyBlock")
@@ -104,11 +74,6 @@ function RunModifiers.decorateEnemy(run, enemy)
         enemy.armor = (enemy.armor or 0) + b
         enemy.maxArmor = math.max(enemy.maxArmor or 0, enemy.armor)
     end
-    -- NÉVOA DE INTENÇÃO (Out/2026): o bioma do ato decide quanto do intent o
-    -- HUD mostra (src/data/intent_fog.lua). O 1º golpe já rolou dentro do
-    -- setKit, antes de o inimigo saber onde nasceu — re-resolve com o contexto.
-    -- É o único ponto por onde TODO inimigo de run passa (batalha nova e
-    -- Continuar), por isso mora aqui e não nos dois spawns do Game.
     if enemy.refreshIntentVisibility then
         local IntentVisibility = require("src.systems.IntentVisibility")
         enemy.fogContext = IntentVisibility.contextFor(run)
@@ -116,16 +81,13 @@ function RunModifiers.decorateEnemy(run, enemy)
     end
 end
 
--- ===== Mapa / loja / cura / ouro =====
 function RunModifiers.eliteWeightMul(run) return mul(run, "eliteWeight") end
 function RunModifiers.priceMul(run) return mul(run, "price") end
 
--- kind = "rest" (fogueira) | "act" (entre atos / ciclos do endless)
 function RunModifiers.healMul(run, kind)
     return mul(run, kind == "rest" and "restHeal" or "actHeal")
 end
 
--- Preço com o multiplicador (arredonda pra cima: a casa nunca perde centavo).
 function RunModifiers.price(run, cost)
     if not cost or cost <= 0 then return cost end
     local m = RunModifiers.priceMul(run)
@@ -142,8 +104,6 @@ end
 function RunModifiers.victoryGoldDelta(run) return add(run, "victoryGold") end
 function RunModifiers.rewardCardsDelta(run) return add(run, "rewardCards") end
 
--- ===== Pontuação =====
--- Selo +10%/nível; cada acúmulo de maldição soma o `score` dela.
 function RunModifiers.scoreMul(run)
     local m = 1 + Data.SEAL_SCORE * RunModifiers.seal(run)
     local e = run and run.endless
@@ -154,7 +114,6 @@ function RunModifiers.scoreMul(run)
     return m
 end
 
--- ===== Endless: ciclos e maldições =====
 function RunModifiers.endlessState(run)
     if not run then return nil end
     run.endless = run.endless or { cycle = 0, curses = {}, order = {} }
@@ -183,7 +142,6 @@ function RunModifiers.totalCurseStacks(run)
     return n
 end
 
--- Lista ordenada { {id, stacks} } pra UI (TopBar, pausa, roteiro).
 function RunModifiers.curseList(run)
     local out = {}
     local e = run and run.endless
@@ -194,10 +152,6 @@ function RunModifiers.curseList(run)
     return out
 end
 
--- Abre o ciclo seguinte: cycle+1 e sorteia 2 maldições DIFERENTES que ainda
--- não bateram o teto (stream "event" do Rng da run — reprodutível por seed e
--- salva junto). Chamado por RunManager:advanceFloorInAct ao entrar/girar o
--- endless. Idempotente se já há escolha aberta.
 function RunModifiers.beginEndlessCycle(run)
     local e = RunModifiers.endlessState(run)
     if not e then return nil end
@@ -215,14 +169,13 @@ function RunModifiers.beginEndlessCycle(run)
     return e.pending
 end
 
--- Escolhe uma das maldições abertas. Devolve true se aplicou.
 function RunModifiers.chooseCurse(run, id)
     local e = run and run.endless
     if not e or not e.pending then return false end
     local ok = false
     for _, p in ipairs(e.pending) do if p == id then ok = true end end
     if not ok then
-        print("[RunModifiers] maldicao fora da escolha aberta: " .. tostring(id))
+        Debug.warn("[RunModifiers] maldicao fora da escolha aberta: " .. tostring(id))
         return false
     end
     if (e.curses[id] or 0) == 0 then table.insert(e.order, id) end

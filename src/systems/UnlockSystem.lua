@@ -1,34 +1,4 @@
--- src/systems/UnlockSystem.lua
--- Desbloqueio de CARTAS e CLASSES (meta-progressão fora da run).
--- Dados em src/data/unlocks.lua; estado persistido em ProfileStats
--- (profile.lua → campo `unlocks`). Documentação: memory/unlocks.md.
---
--- Três conceitos DIFERENTES (Balatro separa assim e o jogador sente a diferença):
---   * DESBLOQUEADA  — pode aparecer em ofertas (recompensa/loja/pacote/evento).
---   * DESCOBERTA    — o jogador já VIU a carta (ofertada ou possuída); só então
---                     ela aparece revelada na Coleção. Desbloqueada-mas-não-vista
---                     continua "?" (Balatro: "undiscovered").
---   * CLASSE        — guerreiro sempre; mago/ladino por feitos.
---
--- Contrato público (a tela de seleção de classe e as conquistas programam
--- contra ESTA lista — não mude assinatura sem avisar as frentes):
---   UnlockSystem.isCardUnlocked(cardId) -> bool
---   UnlockSystem.isCardDiscovered(cardId) -> bool
---   UnlockSystem.markDiscovered(cardId) -> bool   (true = era inédita)
---   UnlockSystem.takeFreshInCollection() -> { [id]=true }
---   UnlockSystem.isClassUnlocked(classId) -> bool
---   UnlockSystem.isClassUnlockedReal(classId) -> bool   (ignora override)
---   UnlockSystem.getClassUnlockInfo(classId) -> { unlocked, reqKey, vars, progress, goal }
---   UnlockSystem.getClassMastery(classId) -> { level, maxLevel, xp, xpToNext }
---   UnlockSystem.onRunEnded(summary) -> { newCards, newClasses, levelsGained, ... }
---   UnlockSystem.onBossDefeated(actNumber, game)
---   UnlockSystem.unlockedCount() -> cardsUnlocked, totalCards, classesUnlocked, totalClasses
---   UnlockSystem.onUnlock(fn)            -- fn(kind "card"|"class", id)
---   UnlockSystem.setOverrideAll(bool)    -- tools/autoplay: catálogo inteiro
---   UnlockSystem.setRevealAll(bool)      -- tools de captura: coleção toda revelada
---   UnlockSystem.getMaxSeal(classId) -> 0..10   (maior Selo SELECIONÁVEL)
---   UnlockSystem.getSealWon(classId) -> -1..10  (maior Selo VENCIDO; -1 = nunca venceu)
---   UnlockSystem.getClassRecord(classId) -> { bestScore, bestEndless }  (recordes por classe)
+local Debug = require("src.core.Debug")
 
 local ProfileStats = require("engine.ProfileStats")
 local Data = require("src.data.unlocks")
@@ -38,15 +8,10 @@ local UnlockSystem = {}
 local overrideAll = false
 local revealAll = false
 local listeners = {}
--- Desbloqueios ocorridos NESTA run antes do fim (chefe vencido no meio da
--- run libera classe na hora — o reveal do fim de run mostra também).
 local pendingRun = { cards = {}, classes = {} }
 
-UnlockSystem.lastResult = nil   -- último retorno de onRunEnded (reveal lê)
+UnlockSystem.lastResult = nil
 
--- ===== Índices derivados dos dados =====
-
--- lockedBy[cardId] = { kind="mastery", classId, level } | { kind=<marco>, n }
 local lockedBy = {}
 for classId, bundles in pairs(Data.CLASS_BUNDLES) do
     for level, b in ipairs(bundles) do
@@ -67,36 +32,27 @@ local function totalActs()
     return Config.TotalActs or 3
 end
 
--- Metas de ato são escritas pensando em 6 atos; num jogo de N atos o alvo
--- nunca passa de N (senão "complete o ato 4" seria impossível sem endless).
 local function clampAct(n)
     return math.min(n or 1, totalActs())
 end
 
--- ===== Estado persistido =====
-
 local function emptyState()
     return {
         version = 1,
-        mastery = { warrior = 0, mage = 0, rogue = 0 },  -- XP TOTAL por classe
-        actsCleared = 0,     -- maior ato cujo chefe já foi vencido (qualquer classe)
-        bestActReached = 0,  -- maior ato alcançado (contador PRÓPRIO: o do perfil
-                             -- é atualizado antes do onRunEnded e mascararia o "novo")
-        victories = 0,       -- idem (ProfileStats.wins sobe antes do onRunEnded)
-        cards = {},          -- { [id]=true } concedidos (persistem mesmo se os dados mudarem)
-        classes = {},        -- { [id]=true }
-        discovered = {},     -- { [id]=true }
+        mastery = { warrior = 0, mage = 0, rogue = 0 },
+        actsCleared = 0,
+        bestActReached = 0,
+        victories = 0,
+        cards = {},
+        classes = {},
+        discovered = {},
     }
 end
 
--- Migração de perfis antigos (antes do UnlockSystem existir). Regra do dono:
--- NÃO punir quem já jogou. O perfil antigo só guarda agregados (runs, wins,
--- bestAct, winsByClass, cardsSeen), então o XP é ESTIMADO e generoso.
 local function migrateLegacy(s, u)
     local runs = s.runs or 0
     local wins = s.wins or 0
     local bestAct = s.bestAct or 0
-    -- Chegar no ato k implica ter vencido os chefes 1..k-1.
     local cleared = math.max(0, bestAct - 1)
     if wins > 0 then cleared = math.max(cleared, totalActs()) end
     u.actsCleared = cleared
@@ -113,7 +69,7 @@ local function migrateLegacy(s, u)
     end
     for id in pairs(s.cardsSeen or {}) do u.discovered[id] = true end
     u.migratedLegacy = true
-    print(string.format("[UnlockSystem] perfil antigo migrado: runs=%d wins=%d bestAct=%d -> atos=%d xp/classe=%d",
+    Debug.log(string.format("[UnlockSystem] perfil antigo migrado: runs=%d wins=%d bestAct=%d -> atos=%d xp/classe=%d",
         runs, wins, bestAct, cleared, retro))
 end
 
@@ -134,9 +90,6 @@ local function state()
     u.actsCleared = u.actsCleared or 0
     u.bestActReached = u.bestActReached or 0
     u.victories = u.victories or 0
-    -- Selos do Grimório (Out/2026): maior selo VENCIDO por classe. Ausente =
-    -- nunca venceu. Perfil antigo com vitória da classe conta como selo 0
-    -- vencido (não punir quem já jogou — mesma regra do migrateLegacy).
     if type(u.sealsWon) ~= "table" then
         u.sealsWon = {}
         for classId, won in pairs(s.winsByClass or {}) do
@@ -146,9 +99,6 @@ local function state()
     return u, s
 end
 
--- ===== Selos do Grimório =====
--- Desbloqueio POR CLASSE, um degrau por vitória (StS: Ascensão N+1 só depois
--- de vencer a N com o MESMO personagem). Vencer com o selo k libera o k+1.
 local SEAL_MAX = 10
 
 function UnlockSystem.getSealWon(classId)
@@ -157,8 +107,6 @@ function UnlockSystem.getSealWon(classId)
     return w == nil and -1 or w
 end
 
--- Recordes POR CLASSE (pós-jogo, Out/2026): melhor pontuação e andar mais
--- fundo do endless. Gravados em onRunEnded (toda run termina por lá).
 function UnlockSystem.getClassRecord(classId)
     local u = state()
     u.records = u.records or {}
@@ -171,13 +119,9 @@ function UnlockSystem.getMaxSeal(classId)
     return math.min(SEAL_MAX, UnlockSystem.getSealWon(classId) + 1)
 end
 
--- Garante o estado (e a migração) ANTES de qualquer contador do perfil mudar.
--- Chamado no boot e no começo de cada run.
 function UnlockSystem.ensure()
     state()
 end
-
--- ===== Maestria =====
 
 local function levelFromXP(xp)
     local level, acc = 0, 0
@@ -200,8 +144,6 @@ function UnlockSystem.getClassMastery(classId)
              totalXP = xpTotal }
 end
 
--- XP de uma run. summary: { actNumber, floorInAct, victory, endlessMode,
--- floorsInEndless, actsCleared? }.
 function UnlockSystem.computeRunXP(summary)
     summary = summary or {}
     local X = Data.XP
@@ -210,8 +152,6 @@ function UnlockSystem.computeRunXP(summary)
     local act = summary.actNumber or 1
     local floor = summary.floorInAct or 1
     local endlessFloors = 0
-    -- Morte NO endless: a parte "normal" da run já pagou XP na vitória
-    -- (checkVictory chamou onRunEnded). Aqui só conta o que veio depois.
     if summary.endlessMode and not summary.victory then
         return math.max(X.MINIMUM, (summary.floorsInEndless or 0) * X.PER_ENDLESS)
     end
@@ -232,8 +172,6 @@ function UnlockSystem.computeRunXP(summary)
     return math.max(X.MINIMUM, math.floor(xp))
 end
 
--- ===== Consultas =====
-
 local function milestoneMet(lb, u, s)
     if lb.kind == "act_cleared" then return u.actsCleared >= clampAct(lb.n) end
     if lb.kind == "reach_act" then
@@ -243,7 +181,6 @@ local function milestoneMet(lb, u, s)
     return false
 end
 
--- Versão SEM override (é o que conta pra detectar "novo" e pras conquistas).
 local function cardUnlockedReal(cardId, u, s)
     local lb = lockedBy[cardId]
     if not lb then return true end
@@ -273,13 +210,6 @@ function UnlockSystem.isCardDiscovered(cardId)
     return (s.cardsSeen and s.cardsSeen[cardId]) == true
 end
 
--- Marca como vista. NÃO grava em disco (seria 1 write por oferta): o perfil é
--- descarregado nos pontos de flush já existentes (fim de batalha, fim de run).
--- Devolve true quando a carta era INÉDITA: quem mostra a oferta usa isso pro
--- selo "NOVA" (src/ui/DiscoveryMark.lua) — a descoberta já virou, então a
--- pergunta tem que ser feita AQUI, no instante da virada, e não depois.
--- A carta inédita também entra em `freshInCollection` (persistido): a Coleção
--- pulsa a entrada uma vez na próxima visita (takeFreshInCollection).
 function UnlockSystem.markDiscovered(cardId)
     if not cardId then return false end
     local u, s = state()
@@ -290,7 +220,6 @@ function UnlockSystem.markDiscovered(cardId)
     return true
 end
 
--- Coleção: cartas descobertas desde a última visita (e esvazia a lista).
 function UnlockSystem.takeFreshInCollection()
     local u = state()
     local fresh = u.freshInCollection or {}
@@ -338,7 +267,6 @@ function UnlockSystem.getClassUnlockInfo(classId)
              progress = progress, goal = goal }
 end
 
--- Dica de como liberar uma carta (Coleção). Retorna (i18nKey, vars).
 function UnlockSystem.getCardHint(cardId)
     local lb = lockedBy[cardId]
     if not lb or UnlockSystem.isCardUnlockedReal(cardId) then
@@ -376,13 +304,9 @@ function UnlockSystem.getBundles(classId)
     return Data.CLASS_BUNDLES[classId] or {}
 end
 
--- ===== Override (tools/autoplay/balanceamento) =====
-
 function UnlockSystem.setOverrideAll(v) overrideAll = v and true or false end
 function UnlockSystem.isOverrideAll() return overrideAll end
 function UnlockSystem.setRevealAll(v) revealAll = v and true or false end
-
--- ===== Eventos =====
 
 function UnlockSystem.onUnlock(fn)
     if type(fn) == "function" then listeners[#listeners + 1] = fn end
@@ -391,11 +315,10 @@ end
 local function notify(kind, id)
     for _, fn in ipairs(listeners) do
         local ok, err = pcall(fn, kind, id)
-        if not ok then print("[UnlockSystem] listener falhou: " .. tostring(err)) end
+        if not ok then Debug.warn("[UnlockSystem] listener falhou: " .. tostring(err)) end
     end
 end
 
--- Snapshot de tudo que está liberado (sem override) — diff antes/depois.
 local function snapshot()
     local u, s = state()
     local cards, classes = {}, {}
@@ -408,7 +331,6 @@ local function snapshot()
     return cards, classes
 end
 
--- Ordem estável (dados) pra reveal e testes.
 local function orderedCardIds()
     local out = {}
     for _, c in ipairs(Data.CLASS_ORDER) do
@@ -426,7 +348,7 @@ local function diffAndGrant(beforeCards, beforeClasses)
     local newCards, newClasses = {}, {}
     for _, id in ipairs(orderedCardIds()) do
         if afterCards[id] and not beforeCards[id] then
-            u.cards[id] = true          -- grava: sobrevive a mudança de dados
+            u.cards[id] = true
             newCards[#newCards + 1] = id
             notify("card", id)
         end
@@ -441,7 +363,6 @@ local function diffAndGrant(beforeCards, beforeClasses)
     return newCards, newClasses
 end
 
--- Começo de run: zera os pendentes e registra o deck inicial como visto.
 function UnlockSystem.onRunStarted(classId, deckIds)
     state()
     pendingRun = { cards = {}, classes = {} }
@@ -451,8 +372,6 @@ function UnlockSystem.onRunStarted(classId, deckIds)
     end
 end
 
--- Chefe de ato vencido (Game:_onEnemyDeath). Libera na HORA o que dependia
--- disso (classe/marco) com toast — o reveal do fim de run repete em destaque.
 function UnlockSystem.onBossDefeated(actNumber, game)
     local u = state()
     actNumber = actNumber or 0
@@ -482,10 +401,6 @@ function UnlockSystem.onBossDefeated(actNumber, game)
     return newCards, newClasses
 end
 
--- Fim de run (vitória OU derrota). summary:
---   { classId, victory, actNumber, floorInAct, endlessMode, floorsInEndless, score }
--- Retorna { newCards, newClasses, levelsGained, xpGained, classId,
---           before = mastery, after = mastery, bundles = { {level, theme, cards} } }.
 function UnlockSystem.onRunEnded(summary)
     summary = summary or {}
     local u = state()
@@ -497,7 +412,6 @@ function UnlockSystem.onRunEnded(summary)
     if classId and Data.CLASS_BUNDLES[classId] then
         u.mastery[classId] = (u.mastery[classId] or 0) + xp
     end
-    -- Vitória: chefe do último ato vencido (onBossDefeated normalmente já fez).
     if classId then
         u.records = u.records or {}
         local rec = u.records[classId] or {}
@@ -524,7 +438,6 @@ function UnlockSystem.onRunEnded(summary)
     local after = classId and UnlockSystem.getClassMastery(classId) or nil
     local newCards, newClasses = diffAndGrant(bc, bcl)
 
-    -- Junta o que já tinha sido liberado no meio da run (chefe de ato).
     local seen = {}
     for _, id in ipairs(newCards) do seen[id] = true end
     for i = #pendingRun.cards, 1, -1 do
@@ -554,19 +467,15 @@ function UnlockSystem.onRunEnded(summary)
         newCards = newCards, newClasses = newClasses, levelsGained = levelsGained,
         xpGained = xp, classId = classId, before = before, after = after,
         bundles = bundles, victory = summary.victory and true or false,
-        sealUnlocked = sealUnlocked,   -- novo Selo liberado pra esta classe (ou nil)
+        sealUnlocked = sealUnlocked,
     }
     UnlockSystem.lastResult = result
-    -- Revelações do menu (Balatro): o que esta run liberou entra na fila do
-    -- perfil e aparece, um painel por vez, quando o jogador voltar ao menu.
     require("src.systems.UnlockQueue").addRunResult(result)
-    print(string.format("[UnlockSystem] fim de run (%s): +%d XP, +%d nivel(is), %d carta(s), %d classe(s) novas",
+    Debug.log(string.format("[UnlockSystem] fim de run (%s): +%d XP, +%d nivel(is), %d carta(s), %d classe(s) novas",
         tostring(classId), xp, levelsGained, #newCards, #newClasses))
     return result
 end
 
--- Só pra testes: esquece pendentes/flags. NÃO apaga listeners: as conquistas
--- assinam onUnlock no boot e a suite roda tudo no mesmo processo.
 function UnlockSystem._resetForTests()
     overrideAll = false
     revealAll = false

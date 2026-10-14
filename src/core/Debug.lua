@@ -1,40 +1,29 @@
--- src/core/Debug.lua
--- Logger condicional. Use em vez de print() direto para poder silenciar em release.
---
--- Niveis:
---   log   — info de desenvolvimento (boot, "tela aberta", compras). So em DEV.
---   trace — rastreamento denso (hover, posicoes). So em DEV com Debug.verbose.
---   warn  — FALLBACK: algo faltou e o jogo seguiu de outro jeito. Vai pro log
---           tambem em RELEASE (CLAUDE.md §9: fallback silencioso e proibido —
---           o log do jogador e o unico rastro que sobra num bug report).
---   err   — erro recuperado. Sempre.
+local Release = require("src.core.Release")
 
 local Debug = {}
 
--- master switch de log/trace: desligado em RELEASE (warn/err continuam).
-Debug.enabled = require("src.core.Release").isDev()
-Debug.verbose = false     -- logs de hover/mouse/draw (muito ruidoso)
+local level = tonumber(os.getenv("CARDGAME_DEBUG") or "") or 0
+Debug.enabled = level >= 1
+Debug.verbose = level >= 2
 
--- Log normal (info).
-function Debug.log(...)
-    if Debug.enabled then
-        print(...)
-    end
+function Debug.setEnabled(on)
+    Debug.enabled = on and true or false
 end
 
--- Log opcional para rastreamento denso (hover, posições).
+function Debug.log(...)
+    if Debug.enabled then print(...) end
+end
+
 function Debug.trace(...)
-    if Debug.enabled and Debug.verbose then
-        print(...)
-    end
+    if Debug.enabled and Debug.verbose then print(...) end
 end
 
 function Debug.warn(...)
-    print("[WARN]", ...)
+    if Debug.enabled or Release.isRelease() then print("[WARN]", ...) end
 end
 
 function Debug.err(...)
-    print("[ERR]", ...)
+    if Debug.enabled or Release.isRelease() then print("[ERR]", ...) end
 end
 
 return Debug

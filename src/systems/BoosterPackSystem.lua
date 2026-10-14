@@ -1,60 +1,21 @@
--- src/systems/BoosterPackSystem.lua
--- Gera o conteúdo de um booster pack baseado no kind. Aplica edition/seal
--- probabilisticamente em Standard packs (Balatro feel: foil/holo/poly
--- + Red/Blue/Gold/Purple seals). A edition "negative" (cor invertida, +1 vaga
--- de coringa) SAIU em Out/2026 (dono: "essa mecânica não é usada em lugar
--- nenhum, tire isso"): nunca mais é sorteada, e cópias em saves antigos
--- viram carta comum (RunManager:buildPlayableDeck).
---
--- P0.6 (rebalance Jul/2026):
---   (a) TODO roll de pack usa o stream "shop" do Rng seedado — packs são
---       decisão de RUN (love.math.random quebrava a reprodutibilidade por seed
---       e o anti-save-scum).
---   (b) Estojo do Saltimbanco (kind Buffoon): pool = jokers da classe +
---       neutros (class 'basic'/nil),
---       pesado por raridade; dedup dentro do pack E contra jokers já
---       possuídos (P0.10 — a posse/coleção fica intocada, a vitrine é que
---       não repete).
---   (c) Arcana/Celestial/Spectral: o fallback deixa de ser o pool GLOBAL e
---       vira classe do jogador + neutras, com pesos de raridade por ato.
---
--- ATENÇÃO — OS TRÊS SÃO O MESMO PACOTE (auditoria Set/2026): Arcana,
--- Celestial e Spectral caem no MESMO gerador, com o MESMO pool e os MESMOS
--- pesos; só o `size` muda (3/3/2). Arcana e Celestial são gêmeos idênticos:
--- dois nomes, duas artes, um conteúdo. Os nomes antigos (Arcano/Celestial/
--- Espectral, com descrições prometendo "tarôs", "planetas" e "espectrais")
--- eram herança do Balatro e MENTIAM sobre o conteúdo — foram trocados pela
--- família do mercador (Relicário do Vidente / Cofre do Astrólogo / Mortalha
--- do Coveiro) e as descrições passaram a dizer a verdade ("cartas seletas").
--- O nome agora é honesto, mas a DUPLICAÇÃO continua: se for dar identidade
--- mecânica a cada um, é aqui que ela mora. `kind` é a chave que separa.
---
--- Uso:
---   local pack = { kind = "Standard", size = 3, classId = "warrior" }
---   local contents = BoosterPackSystem.generateContents(pack)
---   -- contents = { cardInstance, cardInstance, cardInstance }
+local Debug = require("src.core.Debug")
 
 local BoosterPackSystem = {}
 
 local CardDatabase = require("src.systems.CardDatabase")
 local Rng = require("src.systems.Rng")
 
--- Rates "garantidas" pra Standard pack (Balatro: base × 25 multiplier
--- aplicado quando o pack força roll). Soma 22,5% de chance de ter edition.
 local EDITION_RATES = {
     { name = "polychrome", rate = 0.075 },
     { name = "holo",       rate = 0.05 },
     { name = "foil",       rate = 0.10 },
 }
 
-local SEAL_RATE = 0.20  -- 20% chance de ter qualquer seal
+local SEAL_RATE = 0.20
 local SEAL_TYPES = { "Red", "Blue", "Gold", "Purple" }
 
--- Peso por raridade dos jokers no Estojo do Saltimbanco (P0.6b): legendaries são
--- raros de sair mesmo no pack dedicado.
 local BUFFOON_RARITY_WEIGHT = { common = 1.0, uncommon = 1.0, rare = 0.6, legendary = 0.15 }
 
--- Retorna nome de edition (foil/holo/...) ou nil se nada rolou.
 local function pollEdition()
     local r = Rng.get():random("shop")
     local cumulative = 0
@@ -71,10 +32,6 @@ local function pollSeal()
     return SEAL_TYPES[rng:random("shop", #SEAL_TYPES)]
 end
 
--- IDs ordenados: pairs() não tem ordem estável e o pool alimenta rolls
--- seedados — sem sort, a mesma seed daria packs diferentes por sessão
--- (mesma razão do sort em CardRegistry:getCardsByClassAndRarity).
--- Só cartas DESBLOQUEADAS (UnlockSystem): pacote é oferta como qualquer outra.
 local function sortedIds(all)
     local UnlockSystem = require("src.systems.UnlockSystem")
     local ids = {}
@@ -85,15 +42,10 @@ local function sortedIds(all)
     return ids
 end
 
--- Neutra ofertável = class nil OU 'basic' (espelha o P0.1 do CardRegistry).
 local function classOk(c, classId)
     return classId == nil or c.class == nil or c.class == "basic" or c.class == classId
 end
 
--- pack: { kind, size, classId, choose, ownedJokerIds?, rarityWeights? }
---   ownedJokerIds — set { [jokerId]=true } (P0.10, só Buffoon usa)
---   rarityWeights — pesos por ato (P0.6c, Arcana/Celestial/Spectral usam)
--- Retorna lista de instances.
 function BoosterPackSystem.generateContents(pack)
     local kind = pack.kind or "Standard"
     local size = pack.size or 3
@@ -109,12 +61,10 @@ function BoosterPackSystem.generateContents(pack)
         local cardData = cardId and cd:getCard(cardId)
         if not cardData then return end
         local instance = cd:createCardInstance(cardData)
-        -- Pacote aberto = carta vista (Coleção revela). Inédita ganha o
-        -- selo "NOVA" + varredura de luz (src/ui/DiscoveryMark.lua).
         if require("src.systems.UnlockSystem").markDiscovered(cardId) then
             instance.isNewDiscovery = true
         end
-        instance.shopOffer = nil  -- contraste com cards na shop
+        instance.shopOffer = nil
         if withModifiers then
             local edition = pollEdition()
             if edition then instance.edition = edition end
@@ -125,8 +75,6 @@ function BoosterPackSystem.generateContents(pack)
     end
 
     if kind == "Buffoon" then
-        -- P0.6b: jokers da classe + neutros, pesados por raridade, sem repetir
-        -- dentro do pack nem oferecer joker já possuído (P0.10).
         local owned = pack.ownedJokerIds or {}
         local pickedInPack = {}
         for _ = 1, size do
@@ -138,7 +86,7 @@ function BoosterPackSystem.generateContents(pack)
                     table.insert(entries, { item = id, weight = BUFFOON_RARITY_WEIGHT[c.rarity] or 1.0 })
                 end
             end
-            if #entries == 0 then break end  -- pool esgotada: pack sai menor
+            if #entries == 0 then break end
             local cardId = rng:weighted("shop", entries)
             pickedInPack[cardId] = true
             addInstance(cardId, false)
@@ -146,9 +94,6 @@ function BoosterPackSystem.generateContents(pack)
         return instances
     end
 
-    -- Standard / Arcana / Celestial / Spectral: attack/defense/effect da
-    -- classe + neutras (P0.6c: o fallback dos packs "especiais" não vaza mais
-    -- carta de outra classe).
     local pool = {}
     for _, id in ipairs(allIds) do
         local c = all[id]
@@ -157,8 +102,6 @@ function BoosterPackSystem.generateContents(pack)
     end
     if #pool == 0 then return instances end
 
-    -- P0.6c: packs não-Standard sorteiam pesado pelos pesos de raridade do ato
-    -- (legendary peso 0 no A1 simplesmente não sai; rarity 'basic' fica fora).
     local rarityWeights = (kind ~= "Standard") and pack.rarityWeights or nil
     local weightedEntries = nil
     if rarityWeights then
@@ -166,32 +109,16 @@ function BoosterPackSystem.generateContents(pack)
         for _, id in ipairs(pool) do
             local c = all[id]
             local w = rarityWeights[c.rarity] or 0
-            -- ESPECTRAL (Mortalha do Coveiro): PISO DE RARIDADE.
-            --
-            -- Ele dá 2 cartas onde os irmãos dão 3, pelo MESMO $4, e ainda é o
-            -- mais raro de aparecer na loja (weight 0.3). Sem contrapartida
-            -- isso é simplesmente um pacote pior — o jogador que entendesse a
-            -- matemática nunca o compraria, e quem não entendesse seria punido
-            -- por comprar. Decisão do dono (Set/2026): quem dá menos tem que
-            -- dar MELHOR.
-            --
-            -- A contrapartida é raridade, não edição, de propósito: edição e
-            -- selo são o que torna o Fardo do Mercador único, e duplicar isso
-            -- aqui apagaria a identidade dele — que é o mesmo erro dos packs
-            -- gêmeos, um nível acima.
             if kind == "Spectral" and (c.rarity == "common" or c.rarity == "basic") then
                 w = 0
             end
             table.insert(weightedEntries, { item = id, weight = w })
         end
-        -- Rede: se o piso esvaziou a pool (ato/classe sem incomum+), volta aos
-        -- pesos normais. Pack vazio seria muito pior que pack comum, e o
-        -- jogador pagou. Avisa, porque isto não deveria acontecer.
         if kind == "Spectral" then
             local soma = 0
             for _, e in ipairs(weightedEntries) do soma = soma + (e.weight or 0) end
             if soma <= 0 then
-                print("[BoosterPack] Espectral sem incomum+ na pool — caindo nos pesos normais")
+                Debug.warn("[BoosterPack] Espectral sem incomum+ na pool — caindo nos pesos normais")
                 weightedEntries = {}
                 for _, id in ipairs(pool) do
                     local c = all[id]
@@ -208,17 +135,12 @@ function BoosterPackSystem.generateContents(pack)
         else
             cardId = pool[rng:random("shop", #pool)]
         end
-        -- Standard packs aplicam edition + seal.
         addInstance(cardId, kind == "Standard")
     end
 
     return instances
 end
 
--- Helper: dado um pack record (vindo de pendingPacks), retorna metadata pronta
--- pra PackOpenScreen consumir.
--- opts (P0.6/P0.10, opcional): { runManager=, actNumber= } — liga o dedup de
--- joker possuído (Buffoon) e os pesos de raridade por ato (packs especiais).
 function BoosterPackSystem.expandPackRecord(packRecord, classId, opts)
     opts = opts or {}
     local pack = {
@@ -229,7 +151,6 @@ function BoosterPackSystem.expandPackRecord(packRecord, classId, opts)
         classId = classId,
     }
 
-    -- P0.10: jokers já possuídos nunca reaparecem na vitrine do pack.
     local run = opts.runManager and opts.runManager.currentRun
     if run and run.jokers then
         local owned = {}
@@ -240,7 +161,6 @@ function BoosterPackSystem.expandPackRecord(packRecord, classId, opts)
         pack.ownedJokerIds = owned
     end
 
-    -- P0.6c: pesos de raridade por ato pros packs de fallback.
     if opts.actNumber then
         local ActSystem = require("src.systems.ActSystem")
         pack.rarityWeights = ActSystem.getRarityWeights(opts.actNumber)

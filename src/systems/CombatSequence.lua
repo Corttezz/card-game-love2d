@@ -1,20 +1,4 @@
--- src/systems/CombatSequence.lua
--- Coreografa o combate via EventManager. Substitui CombatAnimationSystem.lua
--- (530 LOC → ~180 LOC).
---
--- PRINCÍPIO-CHAVE: cartas voam pelo PRÓPRIO renderer (Card:draw via setTargetPos).
--- Herdam sombras dinâmicas, warp do mesh, juice, ambient tilt, dissolve.
--- Nada de `love.graphics.draw(card.image)` flat que o sistema antigo fazia.
---
--- PIPELINE (Set/2026): o VOO é agendado em tempo absoluto na fila "base"
--- (animação pura); a RESOLUÇÃO é uma cadeia de BEATS (src/systems/CombatBeats)
--- em que cada acontecimento ocupa um instante e segura o próximo:
---   cartas pousam → carta 1 impacta → jokers dela ticam → efeitos secundários
---   dela (veneno/cura/orbe/espinhos) → dissolve → carta 2 → ... → fim
---
--- API pública compatível com CombatAnimationSystem:
---   :startCombat(cards, onComplete, onCardProcessed)
---   :update(dt)  :draw()  :isBlocking()  :isAnimating()
+local Debug = require("src.core.Debug")
 
 local Sfx = require("src.systems.Sfx")
 local FontManager = require("src.ui.FontManager")
@@ -22,21 +6,13 @@ local DissolveShader = require("src.ui.DissolveShader")
 local CardFeel = require("src.systems.CardFeel")
 local JokerProcFx = require("src.ui.JokerProcFx")
 
--- O RITMO mora todo em CombatBeats.HOLD (tabela unica, comentada). O antigo
--- PROC_TICK local virou CombatBeats.HOLD.JOKER_PROC; o stagger/procHold que
--- ESTICAVA o agendamento morreu com a fila de beats: agora a proxima carta
--- literalmente espera a anterior terminar, em vez de reservar tempo por
--- estimativa (EffectSystem:predictJokerProcs nao pauta mais nada).
 local CombatBeats = require("src.systems.CombatBeats")
 
 local CombatSequence = {}
 CombatSequence.__index = CombatSequence
 
--- DEBUG FEEL (temporário, caça "carta parada no impacto" — mesmo método do
--- RDBG que achou a RAIZ dos espólios): loga em feel_debug.log no save dir o
--- que o DRAW recebe de hop/juice/swell na sessão REAL do jogador.
 local Moveable = require("engine.Moveable")
-local FEEL_LOG = require("src.core.Release").isDev()  -- release: sem log de caca
+local FEEL_LOG = Debug.enabled
 local function flog(fmt, ...)
     if not FEEL_LOG then return end
     pcall(love.filesystem.append, "feel_debug.log",
@@ -47,53 +23,27 @@ end
 function CombatSequence:new()
     local self = setmetatable({}, CombatSequence)
     self.active = false
-    -- Cartas atualmente voando. Desenhadas por draw() usando Card:draw (full fidelity).
     self.flyingCards = {}
-    -- Damage numbers flutuantes (apenas sobem+fade; não é MessageSystem porque é spatial).
     self.damageNumbers = {}
 
     self.timings = {
-        preFlight       = 0.05,  -- delay antes de cartas saírem
-        flightDuration  = 0.5,   -- tempo até chegarem ao centro (ease já no renderer)
-        -- v3.1: 0.15→0.35 — a carta SEGURA no centro tempo suficiente pra
-        -- reação física dela ser LIDA (0.15s junto de shake+partículas era
-        -- invisível — "tão totalmente estáticas", feedback do dono).
+        preFlight       = 0.05,
+        flightDuration  = 0.5,
         impactHold      = 0.35,
-        dissolveTime    = 0.7,   -- duração do start_dissolve
-        cardStagger     = 0.22,  -- gap entre cartas consecutivas (combo feel)
+        dissolveTime    = 0.7,
+        cardStagger     = 0.22,
     }
     return self
 end
 
--- Compatibilidade: startCombat(cards, onComplete, onCardProcessed)
---
--- DUAS LINHAS DO TEMPO (Set/2026):
---   1. VOO — animacao pura, agendada na fila "base" em tempo ABSOLUTO. Todas
---      as cartas caem na mesa quase juntas ("mao na mesa", modelo Balatro).
---   2. RESOLUCAO — a espinha CAUSAL, na fila de beats (CombatBeats). Um
---      acontecimento por instante, cada um segurando o proximo:
---        carta 1 impacta > jokers dela ticam um a um > efeitos secundarios
---        dela (veneno, cura, orbe, espinhos) um a um > dissolve > carta 2...
---      A cadeia e empurrada DE DENTRO do beat anterior (regra do CombatBeats):
---      so assim os passos dinamicos de uma carta entram antes da proxima.
 function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
     if self.active or not cards or #cards == 0 then
         if onComplete then onComplete() end
         return
     end
     self.active = true
-    -- Guardado pra REDE do watchdog (ver :update): se a cadeia quebrar no meio,
-    -- alguem precisa poder chamar _finish com o callback certo.
     self._onComplete = onComplete
     self._starvedFor = 0
-    -- CÓPIA, nunca a lista viva do chamador. `Game:startCombat` passa
-    -- `self.selectedCards` direto, e a resolução dura SEGUNDOS agora que cada
-    -- acontecimento tem seu beat. Nessa janela o jogador clicar numa carta da
-    -- mão fazia `table.insert` na MESMA tabela que esta função percorre: a
-    -- carta nova existia em `cards[idx]` mas não em `geom[idx]` (montado uma
-    -- vez, lá em cima) e o combate morria com "attempt to index local 'g'".
-    -- Desselecionar era pior e silencioso: `table.remove` desalinhava os
-    -- índices e a geometria passava a pertencer a outra carta.
     local pending = {}
     for _, c in ipairs(cards) do table.insert(pending, c) end
     cards = pending
@@ -104,7 +54,6 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
     local EM = _G.EventManager
     local Ev = _G.Event
     if not EM or not Ev then
-        -- Fallback sync: processa tudo sem animacao
         for _, card in ipairs(cards) do
             if onCardProcessed then onCardProcessed(card) end
         end
@@ -112,20 +61,15 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
         return
     end
 
-    -- Layout: centraliza cartas no meio da tela com spacing responsivo
     local screenW = love.graphics.getWidth()
     local screenH = love.graphics.getHeight()
     local centerX = screenW * 0.5
-    local centerY = screenH * 0.45  -- levemente acima do centro (space pro HUD)
-    local spacing = screenW * 0.12  -- ~120 px em 1024 wide
+    local centerY = screenH * 0.45
+    local spacing = screenW * 0.12
 
     local n = #cards
     local offsetStart = -((n - 1) / 2) * spacing
 
-    -- Helper: agenda ANIMACAO em delay absoluto (nao-blocking, paralelo) na
-    -- fila base. EM.after cria eventos BLOCKING que serializam a fila; pra
-    -- keyframes visuais precisamos de tempo ABSOLUTO. blockable=false porque
-    -- Card:start_dissolve enfileira um ease BLOQUEANTE na base.
     local function scheduleAt(delay, fn)
         EM.add(Ev:new({
             trigger = "after",
@@ -136,7 +80,6 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
         }))
     end
 
-    -- ===== Linha 1: VOO (estetico, todas quase juntas) =====
     local launchStagger = 0.08
     local geom = {}
     for idx, card in ipairs(cards) do
@@ -150,8 +93,6 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
         local g = geom[idx]
         local launchPitchIdx = idx
         scheduleAt((idx - 1) * launchStagger + self.timings.preFlight, function()
-            -- SFX dedicado de "jogar carta" no lancamento (whoosh), antes do
-            -- impacto (sword/armor). Pitch crescente por carta no combo.
             local pitch = math.min(1.4, 0.95 + (launchPitchIdx - 1) * 0.06)
             self:_playLaunchSfx(card, pitch)
             if card.setTargetPos then
@@ -164,7 +105,6 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
     local allLandedAt = self.timings.preFlight + (n - 1) * launchStagger
         + self.timings.flightDuration
 
-    -- ===== Linha 2: RESOLUCAO (cadeia causal) =====
     local function removeFlying(card)
         for i, c in ipairs(self.flyingCards) do
             if c == card then table.remove(self.flyingCards, i) break end
@@ -175,8 +115,6 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
     resolveCard = function(idx)
         local card = cards[idx]
         if not card then
-            -- Ultima carta dissolvendo: o combate so "termina" quando ela some,
-            -- senao _finish arranca as cartas da tela no meio do dissolve.
             CombatBeats.push("combat.settle", nil, self.timings.dissolveTime * 0.6)
             CombatBeats.push("combat.end", function()
                 self:_finish(onComplete)
@@ -185,11 +123,7 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
         end
         local g = geom[idx]
         if not g then
-            -- Não deveria acontecer (a lista é copiada e `geom` cobre todos os
-            -- índices). Se acontecer, encerra a cadeia em vez de derrubar o
-            -- jogo no meio do turno — mas AVISA, porque é sintoma de alguém ter
-            -- mexido na lista depois do layout.
-            print("[CombatSequence] sem geometria para a carta " .. tostring(idx)
+            Debug.warn("[CombatSequence] sem geometria para a carta " .. tostring(idx)
                 .. " de " .. tostring(#cards) .. " — encerrando a resolucao")
             CombatBeats.push("combat.end", function()
                 self:_finish(onComplete)
@@ -203,25 +137,15 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
             self:_playImpactSfx(card, pitch)
             self:_spawnImpactParticles(card, cx, cy)
 
-            -- `sink` coleta os efeitos SECUNDARIOS da carta (Game os empurra
-            -- ali em vez de executar tudo no mesmo instante do dano).
             local sink = {}
             local result = onCardProcessed and onCardProcessed(card, sink) or {}
             self:_handleResult(card, result, cx, cy)
 
-            -- Game feel v2/v3.1: reacao FISICA por tipo no impacto — AMPLA e
-            -- LONGA o bastante pra sobreviver ao ruido do momento (shake de
-            -- tela + particulas + numero acontecem juntos e mascaravam a
-            -- reacao curta). Cada tipo ganha um SEGUNDO pulso de assentamento.
             if card.type == "attack" then
-                -- v3.2: pulo CHUNKY (estala-segura-cai-quica) + pop de escala
-                -- (swell curto le melhor que vibracao de 50rad/s) + tilt.
                 if card.hop_up then card:hop_up(44, 0.50) end
                 if card.swell_up then card:swell_up(0.20, 0.35) end
                 if card.juice_up then card:juice_up(0.4, -0.24) end
             elseif card.type == "defense" then
-                -- v3.3: a defesa APARA o golpe — checa pro lado torta (shove
-                -- horizontal + tilt), segura, e volta com um TIQUE de mola.
                 if card.shove_x then card:shove_x(nil, 0.55) end
                 if card.juice_up then card:juice_up(0.10, 0.22) end
                 if card.swell_up then card:swell_up(0.14, 0.40) end
@@ -231,8 +155,6 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
                 scheduleAt(0.18, function()
                     if card.juice_up then card:juice_up(0.32, -0.2) end
                 end)
-                -- 3a camada sonora do efeito (cast no voo -> chime no impacto
-                -- -> resolve fechando). Ver _playLaunchSfx/_playImpactSfx.
                 scheduleAt(0.16, function()
                     Sfx.play("effectResolve", { pitch = pitch })
                 end)
@@ -240,9 +162,6 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
                 if card.juice_up then card:juice_up(0.5, 0.15) end
             end
 
-            -- Procs de joker (Balatro): cada joker que contribuiu tica em
-            -- SEQUENCIA — juice no slot + popup do valor + som com pitch
-            -- crescente. UM BEAT CADA: o jogador conta os jokers.
             for k, proc in ipairs(result and result.jokerProcs or {}) do
                 local kk, pp = k, proc
                 CombatBeats.push("joker.proc", function()
@@ -250,13 +169,8 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
                 end, "JOKER_PROC")
             end
 
-            -- Efeitos secundarios coletados no sink (veneno, cura, orbe,
-            -- espinhos armados, gatilhos de joker): um acontecimento por vez.
             CombatBeats.pushAll(sink)
 
-            -- A carta so queima DEPOIS de tudo que ela causou ter acontecido
-            -- (causalidade Balatro: o jogador ve o joker reagir com a carta
-            -- ainda na tela).
             CombatBeats.push("card.dissolve", function()
                 if card.start_dissolve then
                     local palette = DissolveShader.palette(card.type or "default")
@@ -271,7 +185,6 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
         end, "CARD_IMPACT")
     end
 
-    -- A resolucao so comeca quando TODAS as cartas pousaram.
     CombatBeats.push("combat.cards_landed", function()
         resolveCard(1)
     end, allLandedAt + 0.10)
@@ -282,8 +195,6 @@ function CombatSequence:_finish(onComplete)
     self._onComplete = nil
     self._starvedFor = 0
     self.damageNumbers = {}
-    -- flyingCards pode ainda ter resíduo se dissolve não completou — limpa.
-    -- Se houver cartas sobrando, marca como removidas pra CardParticles fazer cleanup.
     for _, card in ipairs(self.flyingCards) do
         if card.markRemoved then card:markRemoved() end
     end
@@ -291,12 +202,6 @@ function CombatSequence:_finish(onComplete)
     if onComplete then onComplete() end
 end
 
--- ============================================================================
--- IMPACT HANDLERS
--- ============================================================================
-
--- SFX de lançamento da carta (whoosh de "jogar"), tocado na Fase 1 antes do
--- impacto. Só attack/defense têm som dedicado; joker/effect já soam no impacto.
 function CombatSequence:_playLaunchSfx(card, pitch)
     local t = card.type
     local opts = pitch and { pitch = pitch } or nil
@@ -305,14 +210,11 @@ function CombatSequence:_playLaunchSfx(card, pitch)
     elseif t == "defense" then
         Sfx.play("cardPlayDefense", opts)
     elseif t == "effect" then
-        -- 1ª camada do efeito: whoosh de conjuração no lançamento (v2).
         Sfx.play("effectCast", opts)
     end
 end
 
 function CombatSequence:_playImpactSfx(card, pitch)
-    -- Game feel v1: tema da carta (fire/ice/poison/...) tem SOM PRÓPRIO —
-    -- a Bola de Fogo soa fogo, não espada. Sem tema → identidade física.
     if CardFeel.playImpact(card, pitch) then return end
     local t = card.type
     local opts = pitch and { pitch = pitch } or nil
@@ -323,9 +225,6 @@ function CombatSequence:_playImpactSfx(card, pitch)
     elseif t == "joker" then
         Sfx.play("jokerActivate", opts)
     elseif t == "effect" then
-        -- 2ª camada do efeito: chime de ativação (a 3ª, effectResolve, é
-        -- agendada no impacto). Cartas de efeito TEMÁTICAS já retornaram
-        -- no CardFeel.playImpact acima — aqui é o fallback sem tema.
         Sfx.play("effectChime", opts)
     else
         Sfx.play("cardSelect", opts)
@@ -333,8 +232,6 @@ function CombatSequence:_playImpactSfx(card, pitch)
 end
 
 function CombatSequence:_spawnImpactParticles(card, cx, cy)
-    -- Game feel v1: burst com a paleta/física do TEMA (fogo sobe laranja,
-    -- gelo cai azul, veneno borbulha verde). Sem tema → presets por tipo.
     local theme = CardFeel.themeOf(card)
     if theme then
         CardFeel.burst(theme, cx, cy, 1.0)
@@ -344,14 +241,11 @@ function CombatSequence:_spawnImpactParticles(card, cx, cy)
     local ok, ParticleSystem = pcall(require, "src.systems.ParticleSystem")
     if not ok or not ParticleSystem then return end
 
-    -- Presets já registram a instância no ParticlesManager (spawn). Caller só
-    -- precisa invocar — o retorno é a instância pra opcional :fade/:remove.
     local t = card.type
     if t == "attack" then
         ParticleSystem.Presets.DAMAGE_EFFECT(cx, cy)
     elseif t == "defense" then
         local p = ParticleSystem.Presets.CARD_PLAYED(cx, cy)
-        -- Tinge de azul claro pra defesa (override da paleta padrão).
         if p then p.colours = { {0.4, 0.7, 1.0, 1} } end
     elseif t == "joker" then
         ParticleSystem.Presets.JOKER_ACTIVATED(cx, cy)
@@ -369,15 +263,12 @@ function CombatSequence:_handleResult(card, result, cx, cy)
         end
         local okER, ER = pcall(require, "src.ui.EnemyRenderer")
         if okER and ER.triggerHurt then ER.triggerHurt() end
-        -- O golpe estoura NO INIMIGO (StS): burst temático no sprite dele —
-        -- o jogador vê o fogo/raio/veneno CHEGANDO, não só saindo da carta.
         CardFeel.burstAtEnemy(CardFeel.themeOf(card) or "physical",
             math.min(1.6, 0.8 + result.damage * 0.03))
     end
 
     if result.defense and result.defense > 0 then
         self:_addDamageNumber("+" .. result.defense, cx, cy - 60, {0.3, 0.7, 1})
-        -- Escudo sobe no PAINEL do jogador (onde a barra de armor vive).
         CardFeel.burstAtPlayer("armor", 0.8)
     end
 end
@@ -394,33 +285,16 @@ function CombatSequence:_addDamageNumber(text, x, y, color)
     })
 end
 
--- ============================================================================
--- UPDATE / DRAW
--- ============================================================================
-
--- Quanto tempo a cadeia pode ficar SEM NENHUM beat pendente antes de a rede
--- declarar que ela quebrou. Mid-cadeia isso e impossivel por construcao: cada
--- beat empurra o proximo elo no INICIO da propria execucao (trigger "before"),
--- entao sempre ha um beat na fila. Fila vazia com o combate ativo = alguem
--- limpou a fila ou um elo nao foi empurrado.
 local STARVE_TIMEOUT = 0.75
 
 function CombatSequence:update(dt)
-    -- ===== REDE: o combate NAO PODE ficar ativo pra sempre =====
-    -- `isBlocking()` e `self.active or CombatBeats.isBusy()`, e o jogo inteiro
-    -- espera por ele: turno do inimigo, espolios, vitoria, botoes da mao. Se a
-    -- cadeia quebrar, o jogador fica com a tela travada e os botoes cinzas —
-    -- foi o que aconteceu ao matar o boss (Set/2026). Morte do inimigo no meio
-    -- da resolucao e caminho COMUM: nao pode depender de tudo dar certo.
-    -- Travar o jogo e muito pior que encerrar cedo — mas encerrar em silencio
-    -- tambem e proibido (CLAUDE.md), entao a rede AVISA.
     if self.active then
         if CombatBeats.isBusy() then
             self._starvedFor = 0
         else
             self._starvedFor = (self._starvedFor or 0) + dt
             if self._starvedFor >= STARVE_TIMEOUT then
-                print("[CombatSequence] cadeia de resolucao morreu sem chegar ao "
+                Debug.warn("[CombatSequence] cadeia de resolucao morreu sem chegar ao "
                     .. "fim (fila de beats vazia por " .. string.format("%.2f", self._starvedFor)
                     .. "s com o combate ativo) — encerrando pela rede. "
                     .. "Isto e BUG: algum elo da cadeia nao foi empurrado.")
@@ -433,19 +307,14 @@ function CombatSequence:update(dt)
         return
     end
 
-    -- Tick do render das cartas voando (ease renderX→targetX)
     for _, card in ipairs(self.flyingCards) do
         if card.updateRender then card:updateRender(dt) end
-        -- Hover é falso durante voo (clique não deve selecionar carta no ar).
-        -- updateMouse ainda roda no main pra ambient tilt, então setamos isHovered = false.
         card.isHovered = false
         if card.updateMouse then
-            -- Chama updateMouse com mouse fora (mx=-999) pra ambient tilt tickar
             card:updateMouse(-999, -999, dt, false)
         end
     end
 
-    -- Damage numbers: sobem e somem
     for i = #self.damageNumbers, 1, -1 do
         local d = self.damageNumbers[i]
         d.life = d.life - dt
@@ -460,7 +329,6 @@ end
 function CombatSequence:draw()
     if #self.flyingCards == 0 and #self.damageNumbers == 0 then return end
 
-    -- DEBUG FEEL: amostra a cada ~0.08s o que o draw REAL recebe.
     local now = love.timer and love.timer.getTime() or 0
     local sample = false
     if now - (self._dbgLast or 0) > 0.08 then
@@ -468,8 +336,6 @@ function CombatSequence:draw()
         sample = true
     end
 
-    -- Desenha cartas voando COM O PRÓPRIO RENDERER: herda sombras, warp,
-    -- juice, ambient tilt, dissolve. Isso é o grande ganho vs sistema antigo.
     for _, card in ipairs(self.flyingCards) do
         if card.draw and card.image then
             local x = (card.renderX and card.renderX ~= 0) and card.renderX or card.x
@@ -485,17 +351,12 @@ function CombatSequence:draw()
         end
     end
 
-    -- (o overlay FDBG magenta saiu — cumpriu o papel na caça ao bug de
-    -- feel; o diagnóstico continua no feel_debug.log, invisível em jogo)
-
-    -- Damage numbers (por cima)
     if #self.damageNumbers > 0 then
         local font = FontManager.getResponsiveFont(0.04, 32, "height")
         love.graphics.setFont(font)
         for _, d in ipairs(self.damageNumbers) do
             love.graphics.setColor(d.color[1], d.color[2], d.color[3], d.alpha)
             local w = font:getWidth(d.text)
-            -- Contorno preto leve pra legibilidade
             love.graphics.setColor(0, 0, 0, d.alpha * 0.7)
             love.graphics.print(d.text, d.x - w / 2 + 2, d.y + 2)
             love.graphics.setColor(d.color[1], d.color[2], d.color[3], d.alpha)
@@ -505,15 +366,6 @@ function CombatSequence:draw()
     end
 end
 
--- ============================================================================
--- STATUS QUERIES (compat com CombatAnimationSystem)
--- ============================================================================
-
--- Contrato critico: enquanto isto for true, main/GameplayScene NAO dispara
--- turno do inimigo, game over, victory nem nextPhase. Agora inclui a FILA DE
--- BEATS — o jogo nao avanca enquanto houver acontecimento de combate pendente
--- (o dano do veneno, o orbe pulsando, o coringa ticando). Sem isso a tela de
--- espolios abriria por cima da resolucao.
 function CombatSequence:isBlocking()
     return self.active or CombatBeats.isBusy()
 end

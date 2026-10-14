@@ -1,7 +1,3 @@
--- src/systems/CardRegistry.lua
--- Sistema centralizado para gestão de cartas e classes.
--- Consolida consultas por classe/raridade, starter decks e rolagem de raridade.
-
 local CardRegistry = {}
 CardRegistry.__index = CardRegistry
 
@@ -17,33 +13,24 @@ function CardRegistry:new()
     return instance
 end
 
--- Retorna cartas filtradas por classe e raridade
 function CardRegistry:getCardsByClassAndRarity(classId, rarity)
     local allCards = self.cardDatabase:getAllCards()
     local filtered = {}
-    
+
     for id, card in pairs(allCards) do
-        -- Verifica se pertence à classe (ou é básica)
-        -- P0.1 (rebalance Jul/2026): class=='basic' e NEUTRA OFERTAVEL — devolve
-        -- 9 cartas ao jogo (attack_cleave, defense_bulwark, scroll_wisdom,
-        -- mystery_card, joker_004/005 e os 3 legendarios joker_001/002/003).
-        -- O clause antigo por rarity=='basic' era codigo morto e foi removido.
         local belongsToClass = (card.class == classId) or
-                              (not card.class) or -- Cartas sem classe são consideradas básicas
+                              (not card.class) or
                               (card.class == "basic")
-        
+
         if belongsToClass and (not rarity or card.rarity == rarity) then
             table.insert(filtered, id)
         end
     end
 
-    -- Ordena por id: pairs() não tem ordem estável e a pool alimenta rolls
-    -- seedados — sem sort, a mesma seed daria ofertas diferentes por sessão.
     table.sort(filtered)
     return filtered
 end
 
--- Retorna pool de cartas para uma classe específica
 function CardRegistry:getClassCardPool(classId)
     return {
         common = self:getCardsByClassAndRarity(classId, "common"),
@@ -54,10 +41,6 @@ function CardRegistry:getClassCardPool(classId)
     }
 end
 
--- Retorna deck inicial para uma classe.
--- Fase 5: deck minimo de 2 cartas (1 attack + 1 defense da classe). O resto e
--- construido via recompensas/loja/eventos. Cada batalha puxa as 2 cartas direto
--- na mao inicial (INITIAL_HAND_SIZE=4 garante folga mesmo com deck curto).
 function CardRegistry:getStarterDeckForClass(classId)
     local starterDecks = {
         warrior = { "warrior_strike", "warrior_defend" },
@@ -70,26 +53,11 @@ end
 local RARITY_ORDER = { "common", "uncommon", "rare", "legendary" }
 local RARITY_MIN_ORDER = { common = 1, uncommon = 2, rare = 3, legendary = 4 }
 
--- ===== Afinidade de ofertas (P0.5, rebalance Jul/2026) =====
--- Tags genericas demais para sinalizar arquetipo (quase toda carta as tem):
--- conta-las fazia a afinidade puxar "mais do mesmo" em vez de build.
 local AFFINITY_TAG_BLACKLIST = { strike = true, defend = true, armor = true, magic = true }
--- Peso por tag forte. SUPERSEDE Config.Offers.AFFINITY_PER_TAG=0.20 (handoff:
--- centralizar em Config.Offers junto com o cap por ato e a blacklist).
 local AFFINITY_PER_TAG = 0.45
--- Cap PROGRESSIVO por ato (era 0.60 flat em Config.Offers.AFFINITY_CAP):
--- A1 baixo preserva a variedade do draft inicial (2 primeiros picks nao
--- travam a run); A2/A3 entregam densidade de arquetipo onde importa.
--- Endless (ato > 3) usa o cap do A3.
 local AFFINITY_CAP_BY_ACT = { [1] = 0.9, [2] = 1.2, [3] = 1.5 }
--- P0.2: cartas neutras (class nil ou 'basic') ofertam com peso reduzido —
--- a vitrine continua majoritariamente da classe.
 local NEUTRAL_CARD_WEIGHT = 0.6
 
--- P0.10: set { [jokerId]=true } dos jokers ja POSSUIDOS pela run (colecao +
--- bancada). Dedup e de OFERTA apenas: a posse/colecao fica intocada (lei do
--- projeto) — a vitrine e que nao repete joker (flat duplicado e valor
--- marginal; multiplicador duplicado vale zero pos-largest-wins P0.9).
 local function buildOwnedJokerSet(runManager)
     local owned = {}
     local run = runManager and runManager.currentRun
@@ -102,8 +70,6 @@ local function buildOwnedJokerSet(runManager)
     return owned
 end
 
--- Pity de raridade vive em rng.meta (serializado no save junto com o RNG e
--- compartilhado entre recompensas E loja — uma sequência de azar só).
 local function getPity(rng)
     rng.meta.cardPity = rng.meta.cardPity or 0
     return rng.meta.cardPity
@@ -113,11 +79,6 @@ local function setPity(rng, v)
     rng.meta.cardPity = v
 end
 
--- Conta as tags do deck atual (por cópia — 3 cartas de veneno = veneno forte).
--- Alimenta a afinidade das ofertas: escolhas anteriores importam.
--- wip/sustain: carta de SUSTENTO = devolve vida ao longo da run (cura
--- instantânea, roubo de vida, regeneração). Fonte única pra oferta garantida
--- (Config.Offers.SUSTAIN_*) e pro peso extra; o piloto tem a própria leitura.
 local SUSTAIN_EFFECTS = { instant_heal = true, on_attack_heal = true, regen_per_turn = true }
 function CardRegistry.isSustainCard(cd)
     if not cd then return false end
@@ -148,18 +109,6 @@ function CardRegistry:countDeckTags(deckIds)
     return counts
 end
 
--- Sorteia UMA carta de oferta com pity + afinidade + anti-duplicata.
--- opts:
---   classId       — filtra pool da classe (nil = todas as cartas com raridade)
---   rarityWeights — pesos { common=, uncommon=, rare=, legendary= } (qualquer escala)
---   minRarity     — piso ("uncommon"/"rare" pra elites/bosses)
---   deckIds       — ids do deck atual (afinidade + penalidade de cópia)
---   excludeIds    — set { [cardId]=true } já oferecidos (dedup na mesma oferta)
---   actNumber     — ato atual (P0.5: cap progressivo de afinidade 0.9/1.2/1.5)
---   runManager    — P0.10: dedup de joker já possuído (ou passe ownedJokerIds)
---   ownedJokerIds — set { [jokerId]=true } pré-construído (opcional)
---   rng, stream   — default Rng.get() / "card" (loja usa "shop")
--- Retorna { cardId, rarity, affinity, affinityTags, fromPity } ou nil.
 function CardRegistry:pickRewardCard(opts)
     opts = opts or {}
     local rng = opts.rng or Rng.get()
@@ -171,8 +120,6 @@ function CardRegistry:pickRewardCard(opts)
         rarity = opts.minRarity
     end
 
-    -- Pool da raridade (fallback desce a escada se vazia — ex: legendary numa
-    -- classe sem lendárias não pode travar a oferta).
     local pool = self:_poolFor(opts.classId, rarity)
     if #pool == 0 then
         for _, r in ipairs({ "rare", "uncommon", "common" }) do
@@ -180,9 +127,6 @@ function CardRegistry:pickRewardCard(opts)
             if #pool > 0 then rarity = r; break end
         end
     end
-    -- wip/sustain: vaga RESERVADA a sustento (opts.requireSustain) — filtra a
-    -- pool; se a raridade sorteada não tem sustento, desce a escada; se a
-    -- classe não tem nenhum, a vaga volta a ser comum (nunca trava a oferta).
     if opts.requireSustain then
         local function onlySustain(ids)
             local out = {}
@@ -201,7 +145,6 @@ function CardRegistry:pickRewardCard(opts)
         if #filtered > 0 then pool = filtered end
     end
     if #pool == 0 then return nil end
-    -- wip/sustain: peso extra pra sustento enquanto o deck tem poucas fontes.
     local sustainBonus = 0
     if (cfg.SUSTAIN_WEIGHT_BONUS or 0) > 0
         and self:countSustain(opts.deckIds) < (cfg.SUSTAIN_MIN_SOURCES or 2) then
@@ -214,11 +157,9 @@ function CardRegistry:pickRewardCard(opts)
         copies[id] = (copies[id] or 0) + 1
     end
 
-    -- P0.5: cap de afinidade progressivo por ato (endless herda o do A3).
     local actNumber = opts.actNumber or 1
     local affinityCap = AFFINITY_CAP_BY_ACT[math.min(actNumber, 3)] or 1.5
 
-    -- P0.10: jokers já possuídos saem da vitrine (posse intocada).
     local ownedJokers = opts.ownedJokerIds or buildOwnedJokerSet(opts.runManager)
 
     local entries = {}
@@ -227,13 +168,10 @@ function CardRegistry:pickRewardCard(opts)
         local excluded = (opts.excludeIds and opts.excludeIds[cardId])
             or (cd and cd.type == "joker" and ownedJokers[cardId])
         if not excluded then
-            -- P0.2: neutras (class nil/'basic') entram com peso base 0.6.
             local weight = (cd and (cd.class == nil or cd.class == "basic"))
                 and NEUTRAL_CARD_WEIGHT or 1.0
             local affinityTags = nil
 
-            -- Afinidade: cada tag da carta que é "forte" no deck puxa a oferta.
-            -- P0.5: tags genéricas (blacklist) não contam; 0.45/tag com cap por ato.
             if cd and cd.tags then
                 local bonus = 0
                 for _, tag in ipairs(cd.tags) do
@@ -248,7 +186,6 @@ function CardRegistry:pickRewardCard(opts)
                 weight = weight * (1 + bonus)
             end
 
-            -- Anti-saturação: cópias demais no deck ⇒ oferta perde peso.
             if (copies[cardId] or 0) >= cfg.DUPE_THRESHOLD then
                 weight = weight * cfg.DUPE_PENALTY
             end
@@ -265,14 +202,11 @@ function CardRegistry:pickRewardCard(opts)
     if #entries == 0 then return nil end
 
     local picked = rng:weighted(stream, entries)
-    -- Ofertada = vista: passa a aparecer revelada na Coleção. discover=false
-    -- (eventos): a candidata só é vista se o evento a ENTREGAR — aí quem
-    -- descobre é o Game:addCardToRun, que anuncia a carta inédita.
     local isNew = false
     if opts.discover ~= false then isNew = UnlockSystem.markDiscovered(picked.cardId) end
     return {
         cardId = picked.cardId,
-        isNew = isNew or nil,     -- inédita: selo "NOVA" na oferta (DiscoveryMark)
+        isNew = isNew or nil,
         rarity = rarity,
         affinity = picked.affinityTags ~= nil,
         affinityTags = picked.affinityTags,
@@ -280,10 +214,6 @@ function CardRegistry:pickRewardCard(opts)
     }
 end
 
--- Pool ordenada por classe+raridade; classId nil = todas as cartas da raridade.
--- SÓ cartas DESBLOQUEADAS (UnlockSystem, meta-progressão): esta é a porta
--- única de rewards, loja e eventos — carta bloqueada nunca entra numa oferta.
--- (Pacotes têm pool própria em BoosterPackSystem, com o mesmo filtro.)
 function CardRegistry:_poolFor(classId, rarity)
     local ids
     if classId then
@@ -302,10 +232,6 @@ function CardRegistry:_poolFor(classId, rarity)
     return out
 end
 
--- Gera recompensas de cartas para uma classe (sem duplicata na mesma oferta).
--- opts.rarityWeights: pesos customizados (ActSystem passa por ato).
--- opts.minRarity: "uncommon"/"rare" para forcar piso (elites/bosses).
--- opts.deckIds: deck atual — liga afinidade e anti-duplicata.
 function CardRegistry:generateCardRewards(classId, numCards, opts)
     opts = opts or {}
     local rewards = {}
@@ -319,8 +245,8 @@ function CardRegistry:generateCardRewards(classId, numCards, opts)
             minRarity = opts.minRarity,
             deckIds = opts.deckIds,
             excludeIds = exclude,
-            actNumber = opts.actNumber,       -- P0.5: cap de afinidade por ato
-            runManager = opts.runManager,     -- P0.10: dedup de joker possuído
+            actNumber = opts.actNumber,
+            runManager = opts.runManager,
             ownedJokerIds = opts.ownedJokerIds,
             rng = opts.rng,
             stream = opts.stream or "card",
@@ -336,15 +262,6 @@ function CardRegistry:generateCardRewards(classId, numCards, opts)
     return rewards
 end
 
--- Sistema de raridade com pesos customizaveis + PITY acumulativo.
--- weights: { common=N, uncommon=N, rare=N, legendary=N } (qualquer escala).
--- opts: { rng=, stream= }. Retorna (rarity, fromPity).
---
--- Pity ("blizzard" adaptado do StS): cada roll SEM rare/legendary incrementa
--- um contador que infla o peso de rare+legendary em PITY_STEP por nível;
--- na HARD_PITY-ésima oferta seca, rare é garantida. Sair rare+ zera. O
--- contador só se move quando rare é POSSÍVEL no peso (pools 100/0/0/0 dos
--- testes não inflam nada).
 function CardRegistry:rollRarity(weights, opts)
     weights = weights or { common = 37, uncommon = 37, rare = 25, legendary = 1 }
     opts = opts or {}
@@ -357,7 +274,6 @@ function CardRegistry:rollRarity(weights, opts)
     local rarePossible = rareW > 0 or legW > 0
     local pity = getPity(rng)
 
-    -- Hard pity: garantia absoluta de rare+ (proporcional entre rare/legendary).
     if rarePossible and pity >= cfg.HARD_PITY then
         setPity(rng, 0)
         if legW > 0 and rng:random(stream) * (rareW + legW) > rareW then
@@ -366,7 +282,6 @@ function CardRegistry:rollRarity(weights, opts)
         return "rare", true
     end
 
-    -- Pesos efetivos: pity infla rare/legendary multiplicativamente.
     local mult = rarePossible and (1 + cfg.PITY_STEP * pity) or 1
     local eff = {
         common    = weights.common or 0,
@@ -397,9 +312,6 @@ function CardRegistry:rollRarity(weights, opts)
     return rolled, false
 end
 
--- Verifica se uma carta pertence a uma classe
--- P0.1: mesmo critério de belongsToClass — class=='basic' é neutra (o clause
--- antigo por rarity=='basic' foi removido).
 function CardRegistry:isClassCard(cardId, classId)
     local cardData = self.cardDatabase:getCard(cardId)
     if not cardData then return false end
@@ -409,14 +321,12 @@ function CardRegistry:isClassCard(cardId, classId)
            not cardData.class
 end
 
--- Informações das classes (nome/descricao traduzidos via I18n).
 function CardRegistry:getClassInfo(classId)
     local classes = {
         warrior = {
             id = "warrior",
             name = I18n.t("classes.warrior.name"),
             description = I18n.t("classes.warrior.desc"),
-            -- Passiva de classe (identidade de gameplay — Jul/2026)
             passiveName = I18n.t("classes.warrior.passive_name"),
             passiveDesc = I18n.t("classes.warrior.passive_desc"),
             color = {0.8, 0.2, 0.2, 1.0},
@@ -431,7 +341,6 @@ function CardRegistry:getClassInfo(classId)
             id = "mage",
             name = I18n.t("classes.mage.name"),
             description = I18n.t("classes.mage.desc"),
-            -- Passiva de classe (identidade de gameplay — Jul/2026)
             passiveName = I18n.t("classes.mage.passive_name"),
             passiveDesc = I18n.t("classes.mage.passive_desc"),
             color = {0.2, 0.2, 0.8, 1.0},
@@ -446,7 +355,6 @@ function CardRegistry:getClassInfo(classId)
             id = "rogue",
             name = I18n.t("classes.rogue.name"),
             description = I18n.t("classes.rogue.desc"),
-            -- Passiva de classe (identidade de gameplay — Jul/2026)
             passiveName = I18n.t("classes.rogue.passive_name"),
             passiveDesc = I18n.t("classes.rogue.passive_desc"),
             color = {0.2, 0.8, 0.2, 1.0},
@@ -462,7 +370,6 @@ function CardRegistry:getClassInfo(classId)
     return classes[classId]
 end
 
--- Retorna todas as classes
 function CardRegistry:getAllClasses()
     return {
         warrior = self:getClassInfo("warrior"),
@@ -471,7 +378,6 @@ function CardRegistry:getAllClasses()
     }
 end
 
--- Delegate methods para manter compatibilidade com CardDatabase
 function CardRegistry:getCard(cardId)
     return self.cardDatabase:getCard(cardId)
 end
