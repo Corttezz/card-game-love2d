@@ -96,6 +96,7 @@ function M.run(startAct)
             local r = g and g.runManager and g.runManager.currentRun
             require("src.systems.MusicDirector").apply("playing", r, "boss")
         end
+        if _G.audioSystem then _G.audioSystem:update(dt) end
         require("src.systems.ScreenShake").update(dt)
         WorldRoad.update(dt)
         EnemyRenderer.update(dt)
