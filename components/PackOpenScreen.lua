@@ -46,7 +46,9 @@ function PackOpenScreen:_computeZones()
     local imgW = (inst and inst.image and inst.image:getWidth()) or 96
     local imgH = (inst and inst.image and inst.image:getHeight()) or 144
     local n = (self.pack and self.pack.instances and #self.pack.instances) or 3
-    self._zones = Layout.compute(n, imgW, imgH)
+    local tb = _G.topBar
+    local inset = (tb and tb.visible ~= false and tb.game) and (tb.height or 52) or 0
+    self._zones = Layout.compute(n, imgW, imgH, nil, nil, inset)
     return self._zones
 end
 
@@ -823,7 +825,9 @@ function PackOpenScreen:_drawHeaderBand()
 
     local nameCx = h.x + h.w * 0.42
     if self.titleText then self.titleText:draw(nameCx, h.y + 24) end
-    if self.chooseText then self.chooseText:draw(nameCx, h.y + 46) end
+    if self.chooseText and (self.choicesRemaining or 1) > 1 then
+        self.chooseText:draw(nameCx, h.y + 46)
+    end
 
     if self.skipButton and fa > 0.75 then
         self.skipButton.x = math.floor(h.x + h.w - self.skipButton.width - 12)

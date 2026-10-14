@@ -31,10 +31,12 @@ function PackChoiceLayout.cardScale(n, imgW, imgH, sw, sh)
     return math.max(L.CARD_SCALE_MIN, math.min(ceiling, fitW, fitH))
 end
 
-function PackChoiceLayout.compute(n, imgW, imgH, sw, sh)
+function PackChoiceLayout.compute(n, imgW, imgH, sw, sh, topInset)
     local L = PackChoiceLayout
     sw = sw or love.graphics.getWidth()
     sh = sh or love.graphics.getHeight()
+    topInset = math.max(0, math.floor(topInset or 0))
+    sh = sh - topInset
 
     local scale = L.cardScale(n, imgW, imgH, sw, sh)
     local cardW, cardH = imgW * scale, imgH * scale
@@ -48,7 +50,7 @@ function PackChoiceLayout.compute(n, imgW, imgH, sw, sh)
 
     local gapI  = math.floor(gap)
     local cardHi = math.ceil(cardH)
-    local y = math.floor(topPad)
+    local y = math.floor(topPad) + topInset
 
     local header = { x = bandX, y = y, w = bandW, h = L.HEADER_H }
     y = y + L.HEADER_H + gapI
