@@ -1876,6 +1876,60 @@ clareira", "reconstrói a cada frame da convergência", "assentado → volta a
 reusar o lote"). Captura: `love . screenshot_worldroad forkfade<N>` (N
 ticks de 1/30 s após escolher o braço do meio; o rastro aparecia em 40-48).
 
+## Raízes no chão + variantes de árvore por bioma (13/Out/2026)
+
+Pedido do dono: "no primeiro ato as árvores ficam com as raízes muito
+expostas; enfiar um pouquinho mais no chão" + "gerar mais árvores parecidas
+com cada ato, se ficar bom".
+
+**Diagnóstico:** o sink do ciclo 27 (4% da altura, igual pra toda vegetação)
+só DESLOCAVA o sprite pra baixo. O chão é textura: a raiz continuava
+desenhada por cima dela, e só a fatia de capim da frente escondia alguma
+coisa. Medido no PNG (perfil de largura das linhas de baixo), a leva mais
+larga das raízes de `fields_tree_0/1` fica ACIMA da linha de contato.
+
+**Mecanismo (`PropCut` no topo do WorldRoad, dados em
+`src/data/world_props.lua`):** `sink[<png>]` = linhas de ARTE enterradas,
+medidas sprite a sprite (enterra a leva mais larga da raiz, deixa o
+alargamento de cima à vista). O sprite é desenhado por um **Quad sem essas
+linhas**, com a linha recortada apoiada em `sy` (origem `ih - sink`); a
+grama na frente continua cobrindo o pé (painter intercalado). Sem entrada
+= `SINK_DEFAULT_FRAC` (4%, arbustos/procedurais); teto `SINK_MAX_FRAC` 15%.
+A chave segue a cascata de variante do `getSprite` (variante sem PNG herda
+a 0), porque o metadata pendura na IMAGEM (`PropCut.px[img]`, tabela fraca,
+registrado no `tryLoadPng`). Sombra (ShadowEngine) continua ancorada em
+`sy - 1` com o sprite inteiro: a sombra da raiz sai do pé, fica natural.
+Hitbox e oclusor do LightEngine usam a altura visível (`ihv`); no lightmap
+as linhas recortadas caem sob o pé (¼ res, invisível). Emersão na crista
+usa o mesmo quad (continuidade ao cruzar). `sizeK[<png>]` = escala
+relativa por sprite: o `scaleAt` normaliza toda variante de um kind pra
+MESMA altura de tela, então espécie menor (abeto jovem, toco partido)
+precisa de fator < 1. Medidas: fields_tree_0/1 11 px, abyss_deadtree_0 11,
+highlands_pine_0 9, dusk_tree_0 9, marsh_deadtree_0 7, frost_pine_0 5.
+
+**Variantes novas (`tools/pixellab_trees.py`):** `create_image_pro` com a
+árvore do bioma como `style_image` + `reference_images` (base64 lido do
+disco), 4 candidatas por chamada (≤170 px; 16 abaixo de 85 px), 10
+gerações por chamada. `poll` monta as urls `?index=0..N-1` a partir de
+"frames: N" (o texto só traz o índice 0). `process` = alpha binário +
+crop + preenchimento de furos internos (ciclo 34) + contagem de cores;
+`sheet` = prancha referência × candidatas por bioma
+(`tools/preview_out/arvores/variantes_bioma_N_<id>.png`), julgada a olho:
+entra só o que lê como o mesmo artista/bioma. Instaladas 14: fields_tree_2,
+highlands_pine_1/2 + highlands_deadtree_0, abyss_deadtree_1/2 + abyss_bush_0,
+frost_pine_1/2 + frost_deadtree_0, marsh_deadtree_1/2, dusk_tree_1/2
+(deadtree/bush de highlands/frost/abyss eram sorteados em propWeights SEM
+PNG → procedural). Sorteio inalterado (`p.variant = rng:random(0, 2)`,
+cluster `(variant+ci)%3`): só o PNG que a variante carrega mudou.
+Descartes: cópias quase idênticas da referência (frost_a 0-3), copas de
+bolha arredondada (frost_b 0/3), gradientes de render com 200-370 cores e
+bolsões escuros (marsh_a 0/2/3, abyss_a 0/3, fields_a 1/3), paleta de
+outro bioma (marsh_b 1), tronco em espiral (dusk_a 2); o resto só perdeu
+a vaga (3 variantes por kind). Trava: `test_world_props` (PNG da espécie
+da parede por bioma, sink dentro do teto, tronco opaco na linha de
+contato, sem margem transparente, cascata de variante). Perf: draw calls
+idênticos (427/453/444/467/475/418 por bioma), texmem +0.3 MB.
+
 ## Backlog
 
 - [ ] **Validação visual v3.3 nativa** (precisa driver resetado; testar em

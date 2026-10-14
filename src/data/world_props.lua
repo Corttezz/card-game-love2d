@@ -1,0 +1,89 @@
+-- src/data/world_props.lua
+-- ============================================================================
+-- METADATA POR SPRITE dos props do mundo (WorldRoad). Tabela pura, sem lógica.
+-- ============================================================================
+-- `sink` = quantas linhas de ARTE (px do PNG) ficam ENTERRADAS no chão: o
+-- WorldRoad recorta essas linhas (quad) e apoia a linha recortada na
+-- latitude do chão, e a fatia de capim na frente do pé desenha por cima.
+--
+-- Origem (13/Out/2026, pedido do dono): "no primeiro ato as árvores ficam
+-- com as raízes muito expostas; enfiar um pouquinho mais no chão". Até
+-- então toda vegetação afundava 4% da altura (ciclo 27), medida pensada
+-- pra esconder raiz CORTADA no canvas, não pra assentar raiz desenhada.
+--
+-- Régua (medida sprite a sprite, perfil de largura das linhas de baixo):
+-- enterra a LEVA mais larga das raízes e deixa o alargamento de cima
+-- aparecendo, pra ler como tronco saindo da terra, sem cortar o tronco.
+-- Chave = nome do PNG sem extensão (variante 1/2 sem PNG cai na 0 pelo
+-- getSprite e herda a entrada da 0). Sprite sem entrada = SINK_DEFAULT_FRAC.
+-- Trava: tools/test_world_props.lua (PNG existe, sink dentro do teto,
+-- tronco opaco na linha de contato).
+
+return {
+    -- fração da altura enterrada quando o sprite não está na tabela
+    -- (arbustos, procedurais): a regra antiga do ciclo 27
+    SINK_DEFAULT_FRAC = 0.04,
+    -- teto: acima disso a árvore perde tronco, não raiz
+    SINK_MAX_FRAC = 0.15,
+
+    sink = {
+        -- ATO 1 (fields): raízes em leque, ponta de raiz solta embaixo.
+        -- tree_0 60x89: larguras de baixo pra cima 2,3,7,12,19,30,42,48,47,
+        -- 43,38 → tronco ~18. 11 linhas enterram a leva de 48 px e deixam
+        -- um alargamento de 33 px à vista.
+        fields_tree_0 = 11,
+        -- tree_1 104x106: 9,22,44,76,94,86,81,70,66,54,47 → tronco ~20.
+        -- 11 linhas enterram a leva de 94 px; sobra o contraforte de 45 px.
+        fields_tree_1 = 11,
+
+        -- ATO 2 (highlands): pinheiro com montinho de raiz/neve nas 9
+        -- linhas de baixo (29,57,88,83,74,68,59,52,43 → tronco ~16).
+        highlands_pine_0 = 9,
+
+        -- ATO 3 (abyss): garras de raiz em brasa (2,8,18,35,79,100,95,91,
+        -- 88,83,73 → tronco ~34). 11 linhas enterram a leva de 100 px.
+        abyss_deadtree_0 = 11,
+
+        -- ATO 4 (frost): a base é a ponta fina do tronco sob a saia de neve
+        -- (5,14,27,39,48) — não há raiz exposta; mantém ~4%.
+        frost_pine_0 = 5,
+
+        -- ATO 5 (marsh): a arte já traz o montinho de musgo (8,32,63,75,81,
+        -- 95,97) — o montinho É o chão; só a ponta de baixo afunda.
+        marsh_deadtree_0 = 7,
+
+        -- ATO 6 (dusk): torrão de terra pintado nas 4 linhas de baixo
+        -- (33,70,87,106,101,93,86,81,74 → tronco ~20). 9 linhas enterram o
+        -- torrão e a leva de raiz.
+        dusk_tree_0 = 9,
+
+        -- VARIANTES NOVAS (Out/2026, tools/pixellab_trees.py — geradas com a
+        -- árvore do bioma como referência de estilo; julgadas lado a lado em
+        -- tools/preview_out/arvores/variantes_bioma_N.png). Perfil medido
+        -- do mesmo jeito: enterra a leva mais larga da raiz.
+        fields_tree_2 = 9,          -- carvalho bifurcado 84x106 (…43,50,55,53)
+        highlands_pine_1 = 11,      -- abeto esguio 75x176 (raiz fina + leque 40)
+        highlands_pine_2 = 7,       -- pinheiro cheio 95x168 (5,13,22,43,50,46)
+        highlands_deadtree_0 = 8,   -- árvore seca cinza-azul 91x153
+        abyss_deadtree_1 = 11,      -- tronco duplo torcido 110x164 (mesmo perfil da 0)
+        abyss_deadtree_2 = 8,       -- toco partido em brasa 105x142
+        frost_pine_1 = 3,           -- abeto jovem 77x95 (tronco fino à vista)
+        frost_pine_2 = 4,           -- abeto cheio 87x104 (tronco 13 px)
+        frost_deadtree_0 = 7,       -- árvore seca com neve 90x126
+        marsh_deadtree_1 = 9,       -- tronco torto com musgo 105x148
+        marsh_deadtree_2 = 8,       -- massa de raízes 107x147
+        dusk_tree_1 = 9,            -- tufos em camadas 82x112
+        dusk_tree_2 = 7,            -- copa larga e baixa 114x94
+    },
+
+    -- Escala RELATIVA por sprite (padrão 1): o WorldRoad normaliza toda
+    -- variante de um kind pra MESMA altura de tela (scaleAt divide pela
+    -- altura do PNG), então um abeto jovem desenhado menor que o adulto
+    -- nasceria do tamanho dele. Fator < 1 = espécie menor de verdade.
+    sizeK = {
+        frost_pine_1 = 0.72,        -- abeto jovem
+        frost_pine_2 = 0.80,        -- abeto cheio, mais baixo
+        abyss_deadtree_2 = 0.85,    -- toco partido
+        dusk_tree_2 = 0.90,         -- copa baixa
+    },
+}

@@ -43,6 +43,7 @@ local SUITES = {
     { group = "unit",  name = "test_enemy_stage" },
     { group = "unit",  name = "test_interior_fx" },
     { group = "unit",  name = "test_weather" },
+    { group = "unit",  name = "test_world_props" },
     { group = "unit",  name = "test_boss_visuals" },
     { group = "unit",  name = "test_boss_cinematic" },
     { group = "unit",  name = "test_hand_deal" },

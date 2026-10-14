@@ -43,6 +43,56 @@ local EnemyEmissives = require("src.data.enemy_emissives")
 -- do mouse; mesma lição do ciclo 41)
 local GrassField = require("engine.GrassField")
 
+-- Out/2026 (pedido do dono: "raízes muito expostas"): RAÍZES NO CHÃO.
+-- Metadata por sprite em src/data/world_props.lua (`sink` = linhas de arte
+-- enterradas). O sprite é desenhado por um QUAD sem as linhas de baixo, com
+-- a linha recortada apoiada na latitude do chão; a fatia de capim na frente
+-- do pé (flushGrassTo) cobre o contato. Desenhar o sprite mais baixo (o
+-- sink2 do ciclo 27) não enterrava nada: o chão é uma textura e a raiz
+-- continuava por cima dela. Tudo numa tabela só (teto de 200 locals do
+-- arquivo); caches fracos por imagem — zero alocação por quadro.
+local PropCut = {
+    data = require("src.data.world_props"),
+    px = setmetatable({}, { __mode = "k" }),     -- img → linhas (tabela)
+    quad = setmetatable({}, { __mode = "k" }),   -- img → Quad | false
+    vis = setmetatable({}, { __mode = "k" }),    -- img → altura visível
+    sizeK = setmetatable({}, { __mode = "k" }),  -- img → escala relativa
+    kinds = { tree = true, pine = true, deadtree = true, bush = true },
+}
+-- linhas enterradas de um sprite (0 pra kind que não enterra)
+function PropCut.cutOf(img, kind)
+    if not PropCut.kinds[kind] then return 0 end
+    local ih = img:getHeight()
+    local cut = PropCut.px[img]
+    if cut == nil then
+        cut = math.floor(ih * PropCut.data.SINK_DEFAULT_FRAC + 0.5)
+    end
+    return math.max(0, math.min(cut, math.floor(ih * PropCut.data.SINK_MAX_FRAC)))
+end
+-- (quad|nil, altura visível) — cacheado por imagem
+function PropCut.get(img, kind)
+    if not PropCut.kinds[kind] then return nil, img:getHeight() end
+    local q = PropCut.quad[img]
+    if q == nil then
+        local iw, ih = img:getWidth(), img:getHeight()
+        local cut = PropCut.cutOf(img, kind)
+        q = cut > 0 and love.graphics.newQuad(0, 0, iw, ih - cut, iw, ih) or false
+        PropCut.quad[img] = q
+        PropCut.vis[img] = ih - cut
+    end
+    return q or nil, PropCut.vis[img]
+end
+-- desenha com origem (meio, linha de contato): x,y = pé no chão
+function PropCut.draw(img, kind, x, y, rot, sx, sy, kx)
+    local q, ihv = PropCut.get(img, kind)
+    local iw = img:getWidth()
+    if q then
+        love.graphics.draw(img, q, x, y, rot, sx, sy, iw / 2, ihv, kx or 0, 0)
+    else
+        love.graphics.draw(img, x, y, rot, sx, sy, iw / 2, ihv, kx or 0, 0)
+    end
+end
+
 local WorldRoad = {}
 
 -- ============================================================================
@@ -320,6 +370,8 @@ local function tryLoadPng(name)
     if not ok or not img then return nil end
     img:setFilter("nearest", "nearest")
     scanContentRect(img, path, data)
+    PropCut.px[img] = PropCut.data.sink[name]   -- raízes enterradas (tabela)
+    PropCut.sizeK[img] = PropCut.data.sizeK[name]   -- espécie menor (tabela)
     return img
 end
 
@@ -777,6 +829,15 @@ local function getSprite(kind, variant, bid)
     end
     WorldRoad._spriteCache[key] = img
     return img
+end
+
+-- Linhas de arte enterradas e altura visível do sprite de um prop (segue a
+-- MESMA cascata de variante do getSprite). Pra trava/ferramenta.
+function WorldRoad.propCutInfo(kind, variant, bid)
+    local img = getSprite(kind, variant or 0, bid)
+    if not img then return nil end
+    local cut = PropCut.cutOf(img, kind)
+    return cut, img:getHeight() - cut, img:getHeight()
 end
 
 -- ============================================================================
@@ -2849,6 +2910,7 @@ local function drawPropsBehind(g, x, w, camZ)
                 end
                 local iw, ih = img:getWidth(), img:getHeight()
                 local size = kindSize(p.kind, p.bid) * (p.big or 1)
+                    * (PropCut.sizeK[img] or 1)   -- espécie menor (world_props)
                 local s = g.scaleAt(size, 0, ih)
                 local px2 = pxX - (lumAnc.offX or 0) * s * lumFlip
                 local sink = (1 - em) * ih * s
@@ -2887,8 +2949,10 @@ local function drawPropsBehind(g, x, w, camZ)
             if crest and img and math.abs(pxX - g.cx) < w * 0.26 then
                 local iw, ih = img:getWidth(), img:getHeight()
                 local size = kindSize(p.kind, p.bid) * (p.big or 1)
+                    * (PropCut.sizeK[img] or 1)   -- espécie menor (world_props)
                 local s = g.scaleAt(size, 0, ih)
-                local sink = (1 - em) * ih * s
+                local _, ihv = PropCut.get(img, p.kind)
+                local sink = (1 - em) * ihv * s
                 -- companheiras de cluster emergem junto (senão pipocam)
                 if p.cluster then
                     for ci = 1, p.cluster do
@@ -2899,17 +2963,16 @@ local function drawPropsBehind(g, x, w, camZ)
                         if cimg then
                             local cs = s * (0.5 + 0.13 * ci)
                             local ccrest = g.crestYAt(pxX + off) or crest
+                            local _, cihv = PropCut.get(cimg, p.kind)
                             love.graphics.setColor(0.6, 0.6, 0.6, fadeA)
-                            love.graphics.draw(cimg,
-                                math.floor(pxX + off - cimg:getWidth() * cs / 2),
-                                math.floor(ccrest + (1 - em) * cimg:getHeight() * cs
-                                    - cimg:getHeight() * cs), 0, cs, cs)
+                            PropCut.draw(cimg, p.kind, math.floor(pxX + off),
+                                math.floor(ccrest + (1 - em) * cihv * cs), 0, cs, cs)
                         end
                     end
                 end
                 love.graphics.setColor(0.66, 0.66, 0.66, fadeA)  -- distante/na sombra
-                love.graphics.draw(img, math.floor(pxX - iw * s / 2),
-                    math.floor(crest + sink - ih * s), 0, s, s)
+                PropCut.draw(img, p.kind, math.floor(pxX),
+                    math.floor(crest + sink), 0, s, s)
             end
         end
         ::continue_emerge::
@@ -4012,6 +4075,7 @@ local function drawProps(g, x, w, camZ)
             if img then
                 local iw, ih = img:getWidth(), img:getHeight()
                 local size = kindSize(p.kind, p.bid) * (p.big or 1)
+                    * (PropCut.sizeK[img] or 1)   -- espécie menor (world_props)
                 local s = g.scaleAt(size, t, ih)
 
                 -- LuminaireEngine v9: centragem POR CONTEÚDO (offX/footPad
@@ -4044,6 +4108,9 @@ local function drawProps(g, x, w, camZ)
                     end
                 end
 
+                -- altura VISÍVEL (linhas de raiz enterradas recortadas — PropCut)
+                local _, ihv = PropCut.get(img, p.kind)
+
                 -- CLUSTER natural (feedback: "muito solto"): árvores vêm em
                 -- grupos de 2-3, companheiras menores atrás/ao lado — como
                 -- vegetação de verdade, não pontos isolados
@@ -4069,11 +4136,8 @@ local function drawProps(g, x, w, camZ)
                             ShadowEngine.queue(cimg, cx2, cy2 - 1, cs,
                                 shadowOpts(0.8 * fadeA))
                             love.graphics.setColor(0.88, 0.88, 0.88, fadeA)
-                            love.graphics.draw(cimg,
-                                math.floor(cx2 - cimg:getWidth() * cs / 2),
-                                math.floor(cy2 - cimg:getHeight() * cs
-                                    + cimg:getHeight() * cs * 0.04),
-                                0, cs, cs)
+                            PropCut.draw(cimg, p.kind, math.floor(cx2),
+                                math.floor(cy2), 0, cs, cs)
                         end
                     end
                 end
@@ -4152,10 +4216,10 @@ local function drawProps(g, x, w, camZ)
                                   math.min(1, gA[3] * 1.1) })
                         end
                     end
-                    -- ciclo 27: base ENTERRADA ~4% no gramado — sprites do
-                    -- PixelLab às vezes têm a raiz cortada reta na borda do
-                    -- canvas; afundar esconde o corte (raiz "sai do chão")
-                    sink2 = ih * s * 0.04
+                    -- base ENTERRADA: o ciclo 27 afundava 4% desenhando o
+                    -- sprite abaixo do chão (sink2) — a raiz seguia por cima
+                    -- da textura. Agora PropCut RECORTA as linhas de raiz
+                    -- (world_props.sink) e a linha de contato fica em sy.
                 elseif p.kind == "tuft" or p.kind == "flowers" then
                     -- v5.4: capim/flores balançam mais rápido e mais soltos
                     -- que árvores (massa menor) — "grama balançando"
@@ -4178,8 +4242,8 @@ local function drawProps(g, x, w, camZ)
                     aFade * ((1 - mixK) + mixK * math.min(1.6, lt[2] * 1.9)),
                     aFade * ((1 - mixK) + mixK * math.min(1.6, lt[3] * 1.9)),
                     fadeA)   -- v10.3: alpha só varia no cross-dissolve
-                love.graphics.draw(img, math.floor(pxX), math.floor(sy + sink2),
-                    rot, s * lumFlip, s, iw / 2, ih, gustKx * lumFlip, 0)
+                PropCut.draw(img, p.kind, math.floor(pxX), math.floor(sy + sink2),
+                    rot, s * lumFlip, s, gustKx * lumFlip)
 
                 -- v9.7: mapa interativo — área clicável (ordem do painter)
                 -- + folhinhas do clique no MESMO slot de profundidade.
@@ -4201,10 +4265,10 @@ local function drawProps(g, x, w, camZ)
                         local rx1 = (cr.x1 + 1 - iw * 0.5) * s * flip
                         bx1 = pxX + math.min(rx0, rx1)
                         bx2 = pxX + math.max(rx0, rx1)
-                        by1 = sy + sink2 + (cr.y0 - ih) * s
-                        by2 = sy + sink2 + (cr.y1 + 1 - ih) * s
+                        by1 = sy + sink2 + (cr.y0 - ihv) * s
+                        by2 = sy + sink2 + (math.min(cr.y1 + 1, ihv) - ihv) * s
                     else
-                        bx1, by1 = pxX - iw * s * 0.5, sy + sink2 - ih * s
+                        bx1, by1 = pxX - iw * s * 0.5, sy + sink2 - ihv * s
                         bx2, by2 = pxX + iw * s * 0.5, sy + sink2
                     end
                     local hidx = #hsn + 1
@@ -4240,8 +4304,10 @@ local function drawProps(g, x, w, camZ)
                     local oc = occluderSlot()
                     oc.z, oc.lift = rel, liftT
                     oc.img, oc.x, oc.y, oc.rot = img, oxT, oyT, rot
-                    oc.sx, oc.sy, oc.ox, oc.oy = s, s, iw / 2, ih
-                    oc.bx, oc.by = oxT - iw * s / 2, oyT - ih * s
+                    -- origem na linha de contato (ihv): as linhas de raiz
+                    -- recortadas caem sob o pé no lightmap (¼ res, invisível)
+                    oc.sx, oc.sy, oc.ox, oc.oy = s, s, iw / 2, ihv
+                    oc.bx, oc.by = oxT - iw * s / 2, oyT - ihv * s
                     oc.w, oc.h = iw * s, ih * s
                     LightEngine.submitOccluder(oc)
                 end
