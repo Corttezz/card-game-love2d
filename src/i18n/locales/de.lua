@@ -893,11 +893,13 @@ return {
         gain_forge   = "Schmiede: {name} +{lvl}",
         gain_remove  = "Entfernt: {name}",
         empty        = "Noch kein Weg zurückgelegt.",
-        summary      = "Karten +{cards}  ·  Schmieden {forges}  ·  Joker {jokers}  ·  Entfernt {removed}",
         now          = "JETZT",
         more         = "+{n} weitere",
         stops        = "{n} Stationen",
-        hint         = "ZEIGE auf eine Station für alle Details  ·  MAUSRAD oder PFEILE scrollen  ·  M oder ESC schließt",
+        not_taken      = "Nicht gewählter Weg",
+        not_taken_list = "Nicht gewählt: {list}",
+        delta_hp       = "Leben {n}",
+        delta_gold     = "Gold {n}",
     },
 
     game_over = {

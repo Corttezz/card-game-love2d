@@ -60,6 +60,17 @@ playing → enemy dies
 
 `CardRegistry:getStarterDeckForClass` retorna **2 cartas**: 1 attack + 1 defense da classe. Deck cresce via recompensas, loja, eventos, forge.
 
+## Roteiro da jornada (journal)
+
+Cada escolha de nó passa por `RunManager:chooseNode`, que abre uma entrada
+em `currentRun.journal` com `act/floor/gfloor/type`, o snapshot de vida e
+ouro, e (Out/2026) `branches` = os TIPOS de todos os ramos oferecidos na
+encruzilhada e `pick` = o índice tomado. O Roteiro (tecla M) desenha isso
+como MAPA À MÃO por ato: caminho em traço cheio, ramos não tomados
+pontilhados, encruzilhada em aberto (`pendingNodes`) esmaecida à frente.
+Save anterior ao campo desenha só o caminho. Detalhes em
+[[run_journal]] (memory/run_journal.md).
+
 ## Fim da run
 
 - Vitória: `Game:checkVictory` só retorna true quando o jogador está em `actNumber >= TotalActs` (3) E `floorInAct >= FLOORS_PER_ACT` (8) E `currentNode.type == "boss"` E `enemy.health <= 0`.

@@ -891,11 +891,13 @@ return {
         gain_forge   = "Forge: {name} +{lvl}",
         gain_remove  = "Removed: {name}",
         empty        = "No path travelled yet.",
-        summary      = "Cards +{cards}  ·  Forges {forges}  ·  Jokers {jokers}  ·  Removed {removed}",
         now          = "NOW",
         more         = "+{n} more",
         stops        = "{n} stops",
-        hint         = "HOVER a stop to see everything  ·  WHEEL or ARROWS scroll  ·  M or ESC closes",
+        not_taken      = "Path not taken",
+        not_taken_list = "Not taken: {list}",
+        delta_hp       = "health {n}",
+        delta_gold     = "gold {n}",
     },
 
     ["end"] = {

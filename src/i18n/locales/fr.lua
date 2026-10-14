@@ -893,11 +893,13 @@ return {
         gain_forge   = "Forge : {name} +{lvl}",
         gain_remove  = "Retirée : {name}",
         empty        = "Aucun chemin parcouru pour l'instant.",
-        summary      = "Cartes +{cards}  ·  Forges {forges}  ·  Jokers {jokers}  ·  Retirées {removed}",
         now          = "EN COURS",
         more         = "+{n} de plus",
         stops        = "{n} étapes",
-        hint         = "SURVOLEZ une étape pour tout voir  ·  MOLETTE ou FLÈCHES défilent  ·  M ou ÉCHAP ferme",
+        not_taken      = "Chemin non pris",
+        not_taken_list = "Non pris : {list}",
+        delta_hp       = "vie {n}",
+        delta_gold     = "or {n}",
     },
 
     game_over = {

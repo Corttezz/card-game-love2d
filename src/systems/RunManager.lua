@@ -408,6 +408,10 @@ function RunManager:chooseNode(index, snapshot)
     local node = self.currentRun.pendingNodes[index]
     if not node then return nil end
 
+    -- Os ramos da encruzilhada (TODAS as opções, inclusive as não tomadas)
+    -- vão pro roteiro ANTES de pendingNodes sumir: o mapa desenha os trilhos
+    -- que existiam e qual foi seguido (Out/2026, mapa à mão).
+    local options = self.currentRun.pendingNodes
     self.currentRun.currentNode = node
     self.currentRun.pendingNodes = nil
     table.insert(self.currentRun.mapHistory, {
@@ -416,7 +420,7 @@ function RunManager:chooseNode(index, snapshot)
         type = node.type,
     })
 
-    self:journalBegin(node, snapshot)
+    self:journalBegin(node, snapshot, options, index)
 
     return node
 end
@@ -518,11 +522,26 @@ function RunManager:_openJournalEntry()
 end
 
 -- Abre a entrada do nó. snapshot = { hp, maxHp, gold } (opcional).
-function RunManager:journalBegin(node, snapshot)
+-- options/pick (opcionais): a lista de nós oferecidos na encruzilhada e o
+-- índice escolhido. Viram `branches` (só os TIPOS, em ordem) e `pick` na
+-- entrada: é o que o mapa usa pra desenhar os ramos não tomados. Entrada
+-- sem `branches` (save anterior a Out/2026, backfill, teste) desenha só o
+-- caminho percorrido: o campo é aditivo, nenhuma migration.
+function RunManager:journalBegin(node, snapshot, options, pick)
     local run = self.currentRun
     if not run or not node then return nil end
     run.journal = run.journal or {}
     snapshot = snapshot or {}
+    local branches = nil
+    if type(options) == "table" and #options > 0 then
+        branches = {}
+        for i, opt in ipairs(options) do branches[i] = tostring(opt.type or "?") end
+        if not pick or not options[pick] then
+            -- índice fora da lista: acha o escolhido pelo próprio objeto
+            pick = nil
+            for i, opt in ipairs(options) do if opt == node then pick = i end end
+        end
+    end
 
     -- Fecha uma entrada esquecida em aberto (nó que resolveu por um caminho
     -- que não passou pelo journalEnd) em vez de empilhar entradas zumbis.
@@ -537,6 +556,8 @@ function RunManager:journalBegin(node, snapshot)
         -- totalActs+1 e floor cicla 1..8), então ele não identifica um nó.
         gfloor = run.currentFloor or 1,
         type   = node.type,
+        branches = branches,
+        pick   = branches and pick or nil,
         hpIn   = snapshot.hp,
         maxHp  = snapshot.maxHp,
         goldIn = snapshot.gold,

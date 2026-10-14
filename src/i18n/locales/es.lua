@@ -892,11 +892,13 @@ return {
         gain_forge   = "Forja: {name} +{lvl}",
         gain_remove  = "Eliminada: {name}",
         empty        = "Aún no has recorrido ningún camino.",
-        summary      = "Cartas +{cards}  ·  Forjas {forges}  ·  Comodines {jokers}  ·  Eliminadas {removed}",
         now          = "AHORA",
         more         = "+{n} más",
         stops        = "{n} paradas",
-        hint         = "PASA EL RATÓN por una parada para ver todo  ·  RUEDA o FLECHAS desplazan  ·  M o ESC cierra",
+        not_taken      = "Camino no tomado",
+        not_taken_list = "No tomados: {list}",
+        delta_hp       = "vida {n}",
+        delta_gold     = "oro {n}",
     },
 
     game_over = {

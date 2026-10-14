@@ -92,6 +92,48 @@ function M.run()
         t:truthy("entrada do nó atual em aberto", rm:isJournalEntryOpen(run.journal[1]))
     end
 
+    -- ===== encruzilhada: os ramos NÃO tomados ficam gravados (Out/2026) =====
+    -- O mapa à mão desenha os trilhos que existiam; sem isto só o caminho
+    -- percorrido sobreviveria. Só os TIPOS viajam (save pequeno, aditivo).
+    do
+        local game = TK.newRunGame("warrior")
+        local rm = game.runManager
+        local run = rm.currentRun
+        run.mapHistory, run.journal, run.journalOpen = {}, {}, nil
+        local pending = rm:generateNextNodes(3)
+        t:eq("três ramos oferecidos", #pending, 3)
+        local node = rm:chooseNode(2, { hp = 60, maxHp = 60, gold = 10 })
+        local e = run.journal[1]
+        t:truthy("entrada gravou os ramos", e.branches ~= nil)
+        t:eq("gravou os três tipos", #e.branches, 3)
+        for i = 1, 3 do
+            t:eq("ramo " .. i .. " é o tipo oferecido", e.branches[i], pending[i].type)
+        end
+        t:eq("gravou qual foi tomado", e.pick, 2)
+        t:eq("o tomado bate com o nó", e.branches[e.pick], node.type)
+
+        -- journalBegin sem opções (fluxo antigo/testes): sem ramos, sem erro
+        rm:journalEnd({ hp = 55, gold = 20 })
+        rm:journalBegin({ type = "rest" }, { hp = 55, maxHp = 60, gold = 20 })
+        t:falsy("sem opções não inventa ramos", run.journal[2].branches)
+        t:falsy("sem opções não inventa pick", run.journal[2].pick)
+
+        -- pick inválido: acha o nó pelo objeto
+        rm:journalEnd({ hp = 60, gold = 20 })
+        local opts = { { type = "battle" }, { type = "shop" } }
+        rm:journalBegin(opts[2], { hp = 60, maxHp = 60, gold = 20 }, opts, 9)
+        t:eq("pick fora da lista cai no nó escolhido", run.journal[3].pick, 2)
+
+        -- viaja no save
+        t:truthy("saveRun ok", rm:saveRun())
+        local game2 = TK.newRunGame("warrior")
+        t:truthy("loadRun ok", game2.runManager:loadRun())
+        local j2 = game2.runManager:getJournal()
+        t:eq("ramos sobreviveram ao save/load", #(j2[1].branches or {}), 3)
+        t:eq("pick sobreviveu", j2[1].pick, 2)
+        game2.runManager:deleteSave()
+    end
+
     -- ===== nó que resolve sem passar pelo journalEnd =====
     -- O autoplay (tools/autoplay.lua) chama chooseNode direto e nunca fecha a
     -- entrada. Sem o auto-fecho do journalBegin isso empilharia entradas
@@ -200,6 +242,7 @@ function M.run()
         t:noerror("RunJournalScreen abre", function() screen:show(game) end)
         t:truthy("fica visível", screen:isVisible())
         t:noerror("layout resolve", function() screen:_layout() end)
+        t:eq("mapa à mão: uma folha por ato visitado", #screen.acts, #screen:_layout().sheets)
         t:noerror("RunJournalScreen fecha", function() screen:hide() end)
         t:falsy("fica invisível", screen:isVisible())
     end

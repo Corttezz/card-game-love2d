@@ -912,11 +912,13 @@ return {
         gain_forge   = "Forja: {name} +{lvl}",
         gain_remove  = "Removida: {name}",
         empty        = "Nenhum caminho percorrido ainda.",
-        summary      = "Cartas +{cards}  ·  Forjas {forges}  ·  Coringas {jokers}  ·  Removidas {removed}",
         now          = "AGORA",
         more         = "+{n} mais",
         stops        = "{n} paradas",
-        hint         = "PASSE O MOUSE numa parada pra ver tudo  ·  RODA ou SETAS rolam  ·  M ou ESC fecha",
+        not_taken      = "Caminho não tomado",
+        not_taken_list = "Não tomados: {list}",
+        delta_hp       = "vida {n}",
+        delta_gold     = "ouro {n}",
     },
 
     ["end"] = {

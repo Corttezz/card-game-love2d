@@ -1,41 +1,76 @@
 -- tools/screenshot_journal.lua
--- Capturas do ROTEIRO DA JORNADA (components/RunJournalScreen.lua).
+-- Capturas do ROTEIRO DA JORNADA (components/RunJournalScreen.lua), versão
+-- MAPA À MÃO (Out/2026).
 --
---   love . screenshot_journal               → run_journal_short_<WxH>_<loc>[_hover].png
+--   love . screenshot_journal               → run curta (2 atos), pt_BR e de, 1920x1080 e 1024x768
 --   love . screenshot_journal long          → run longa: 6 atos + endless
---   love . screenshot_journal small         → janela estreita 760x560
---   love . screenshot_journal - de          → outro idioma (3º arg)
+--   love . screenshot_journal - de          → só o idioma do 3º arg
+--   JOURNAL_SIZES=1280x720,640x480          → outros tamanhos
 --
--- Tamanho da janela por ambiente: JOURNAL_W / JOURNAL_H (um setMode por
--- processo — a memória de invariantes registra que setMode repetido dentro de
--- um tool TRAVA). Pedir janela maior que o desktop também trava: fique em
--- até 1920x1080.
+-- Sem love.window.setMode: a janela é FALSIFICADA (getWidth/getHeight) e o
+-- quadro vai pra um canvas do tamanho pedido (mesmo molde do
+-- tools/screenshot_uiscale.lua) — nenhuma janela aparece, e vários tamanhos
+-- saem do mesmo processo. A escala de UI é a REAL (k=1.5 em 1080p).
 --
--- Run CURTA: ato 1 fechado (CONQUISTADO) + ato 2 em andamento. Os dois
--- primeiros nós entram SÓ no mapHistory — é o backfill das runs anteriores à
--- feature ("Sem detalhes registrados").
--- Run LONGA: os 6 atos da campanha + uma faixa de endless com 11 paradas; é a
--- que exercita a rolagem e as linhas de 8 do endless.
+-- Saída: tools/preview_out/journal_map/run_journal_<modo>_<WxH>_<loc>[_hover|_closed].png
+--
+-- Run CURTA: ato 1 fechado (CONQUISTADO) + ato 2 em andamento, com
+-- encruzilhadas de 2 e 3 ramos, dois nós só no mapHistory (backfill, sem
+-- ramos) e a encruzilhada seguinte em aberto (pendingNodes).
+-- Run LONGA: os 6 atos + endless com 11 paradas; exercita a rolagem.
 
 local M = {}
 
-local function capture(name)
-    love.graphics.captureScreenshot(function(imageData)
-        imageData:encode("png", name)
-        print("[roteiro] " .. name .. " salvo")
-    end)
-    love.graphics.present()
+local OUT_DIR = "tools/preview_out/journal_map/"
+
+local function fakeWindow(w, h)
+    local rw, rh, rd = love.graphics.getWidth, love.graphics.getHeight, love.graphics.getDimensions
+    love.graphics.getWidth = function() return w end
+    love.graphics.getHeight = function() return h end
+    love.graphics.getDimensions = function() return w, h end
+    return function()
+        love.graphics.getWidth, love.graphics.getHeight, love.graphics.getDimensions = rw, rh, rd
+    end
 end
 
--- Visita um nó como o jogo visitaria: mapHistory + journalBegin/Note/End.
--- Sem snapOut a entrada fica ABERTA — é o "você está aqui" (aro pulsando).
-local function visit(rm, act, floor, ntype, snapIn, snapOut, notes, ev)
+-- Mouse FALSO (nunca love.mouse.setPosition: a janela escondida fica fora do
+-- monitor e o cursor REAL do dono, que está jogando, iria junto).
+local fakeMX, fakeMY = -100, -100
+local function fakeMouse()
+    local gp, gx, gy = love.mouse.getPosition, love.mouse.getX, love.mouse.getY
+    love.mouse.getPosition = function() return fakeMX, fakeMY end
+    love.mouse.getX = function() return fakeMX end
+    love.mouse.getY = function() return fakeMY end
+    return function() love.mouse.getPosition, love.mouse.getX, love.mouse.getY = gp, gx, gy end
+end
+
+local function savePng(canvas, name)
+    local fd = canvas:newImageData():encode("png")
+    local path = OUT_DIR .. name
+    local f = io.open(path, "wb")
+    if not f then
+        -- pasta ausente: cria pelo Python? Não — avisa e grava no save dir.
+        print("[roteiro] nao consegui abrir " .. path .. " (pasta existe?) — gravando no save dir")
+        love.filesystem.write(name, fd)
+        return
+    end
+    f:write(fd:getString())
+    f:close()
+    print("[roteiro] " .. path .. " salvo")
+end
+
+-- Visita um nó como o jogo visitaria: mapHistory + journalBegin(options, pick)
+-- + Note/End. Sem snapOut a entrada fica ABERTA (o círculo vermelho).
+local function visit(rm, act, floor, options, pick, snapIn, snapOut, notes, ev)
     local run = rm.currentRun
     run.actNumber = act
     run.floorInAct = floor
     run.currentFloor = (act - 1) * 8 + floor
-    table.insert(run.mapHistory, { actNumber = act, floorInAct = floor, type = ntype })
-    rm:journalBegin({ type = ntype }, snapIn)
+    local opts = {}
+    for i, t in ipairs(options) do opts[i] = { type = t } end
+    local node = opts[pick]
+    table.insert(run.mapHistory, { actNumber = act, floorInAct = floor, type = node.type })
+    rm:journalBegin(node, snapIn, opts, pick)
     if ev then rm:journalEvent(ev.id, ev.idx, ev.label) end
     for _, n in ipairs(notes or {}) do rm:journalNote(n) end
     if snapOut then rm:journalEnd(snapOut) end
@@ -57,49 +92,52 @@ local function pickIds()
     return cards, jokers
 end
 
-local function seedShort(rm, cards, jokers)
+function M.seedShort(rm, cards, jokers)
     local run = rm.currentRun
     local c1 = cards[1] or "warrior_strike"
     local c2 = cards[2] or "warrior_defend"
     local c3 = cards[3] or c1
     local j1 = jokers[1]
 
+    -- dois nós anteriores ao roteiro: só mapHistory (backfill, sem ramos)
     table.insert(run.mapHistory, { actNumber = 1, floorInAct = 1, type = "battle" })
     table.insert(run.mapHistory, { actNumber = 1, floorInAct = 2, type = "battle" })
 
-    visit(rm, 1, 3, "event", { hp = 52, maxHp = 60, gold = 28 },
+    visit(rm, 1, 3, { "event", "battle", "shop" }, 1, { hp = 52, maxHp = 60, gold = 28 },
         { hp = 45, gold = 28 }, { { kind = "card", id = c2 } },
         { id = "evt_altar", idx = 2, label = "Tocar o altar" })
-    visit(rm, 1, 4, "battle", { hp = 45, maxHp = 60, gold = 28 },
+    visit(rm, 1, 4, { "battle", "rest" }, 1, { hp = 45, maxHp = 60, gold = 28 },
         { hp = 38, gold = 47 }, { { kind = "card", id = c3 } })
-    visit(rm, 1, 5, "rest", { hp = 38, maxHp = 60, gold = 47 },
+    visit(rm, 1, 5, { "shop", "rest", "elite" }, 2, { hp = 38, maxHp = 60, gold = 47 },
         { hp = 56, gold = 47 }, { { kind = "forge", id = c1, lvl = 1 } })
     local shopNotes = {}
     if j1 then table.insert(shopNotes, { kind = "joker", id = j1, active = true }) end
     table.insert(shopNotes, { kind = "remove", id = c2 })
-    visit(rm, 1, 6, "shop", { hp = 56, maxHp = 60, gold = 47 },
+    visit(rm, 1, 6, { "battle", "shop" }, 2, { hp = 56, maxHp = 60, gold = 47 },
         { hp = 56, gold = 9 }, shopNotes)
-    visit(rm, 1, 7, "mini_boss", { hp = 56, maxHp = 60, gold = 9 },
+    visit(rm, 1, 7, { "mini_boss" }, 1, { hp = 56, maxHp = 60, gold = 9 },
         { hp = 41, gold = 34 }, { { kind = "card", id = c1 } })
-    visit(rm, 1, 8, "boss", { hp = 41, maxHp = 60, gold = 34 },
+    visit(rm, 1, 8, { "boss" }, 1, { hp = 41, maxHp = 60, gold = 34 },
         { hp = 22, gold = 68 }, { { kind = "card", id = c3 } })
 
-    visit(rm, 2, 1, "battle", { hp = 40, maxHp = 60, gold = 68 },
+    visit(rm, 2, 1, { "battle", "event", "shop" }, 1, { hp = 40, maxHp = 60, gold = 68 },
         { hp = 33, gold = 85 }, { { kind = "card", id = c2 } })
-    visit(rm, 2, 2, "elite", { hp = 33, maxHp = 60, gold = 85 },
+    visit(rm, 2, 2, { "elite", "battle" }, 1, { hp = 33, maxHp = 60, gold = 85 },
         { hp = 18, gold = 112 }, { { kind = "card", id = c1 },
                                    { kind = "forge", id = c3, lvl = 2 } })
-    visit(rm, 2, 3, "rest", { hp = 18, maxHp = 60, gold = 112 },
+    visit(rm, 2, 3, { "rest", "event", "battle" }, 1, { hp = 18, maxHp = 60, gold = 112 },
         { hp = 36, gold = 112 }, { { kind = "forge", id = c1, lvl = 2 } })
-    visit(rm, 2, 4, "shop", { hp = 36, maxHp = 60, gold = 112 }, nil,
+    visit(rm, 2, 4, { "battle", "shop" }, 2, { hp = 36, maxHp = 60, gold = 112 }, nil,
         { { kind = "card", id = c3 } })
     run.actNumber, run.floorInAct = 2, 4
-    return 1, 6   -- faixa/parada do hover (a loja com coringa + remoção)
+    -- a encruzilhada seguinte, ainda em aberto
+    run.pendingNodes = { { type = "event" }, { type = "battle" }, { type = "elite" } }
+    return 2, 2   -- folha/parada do hover (a elite com carta + forja)
 end
 
--- 6 atos completos + endless. Tipos variam por ato pra a grade não virar
--- papel de parede; ganhos ciclam pelo catálogo.
-local function seedLong(rm, cards, jokers)
+-- 6 atos completos + endless. Tipos variam por ato pra o mapa não virar
+-- papel de parede; ganhos ciclam pelo catálogo; nº de ramos alterna 3/2.
+function M.seedLong(rm, cards, jokers)
     local run = rm.currentRun
     local plans = {
         { "battle", "battle", "event", "battle", "rest", "shop", "elite", "boss" },
@@ -109,8 +147,19 @@ local function seedLong(rm, cards, jokers)
         { "battle", "battle", "rest", "elite", "event", "shop", "elite", "boss" },
         { "battle", "elite", "event", "battle", "rest", "shop", "mini_boss", "boss" },
     }
+    local alt = { "shop", "rest", "event", "battle", "elite" }
     local hp, gold, k = 60, 20, 0
     local function nextCard() k = k + 1; return cards[(k % #cards) + 1] end
+    local function options(t, fl, act)
+        if fl >= 7 then return { t }, 1 end
+        local n = ((fl + act) % 2 == 0) and 3 or 2
+        local pick = ((fl * 3 + act) % n) + 1
+        local list = {}
+        for i = 1, n do
+            if i == pick then list[i] = t else list[i] = alt[((fl + i + act) % #alt) + 1] end
+        end
+        return list, pick
+    end
     for act, plan in ipairs(plans) do
         for fl, t in ipairs(plan) do
             local notes = {}
@@ -137,7 +186,8 @@ local function seedLong(rm, cards, jokers)
                 hpOut = hp - 5
                 notes[1] = { kind = "card", id = nextCard() }
             end
-            visit(rm, act, fl, t, { hp = hp, maxHp = 70, gold = gold },
+            local list, pick = options(t, fl, act)
+            visit(rm, act, fl, list, pick, { hp = hp, maxHp = 70, gold = gold },
                 { hp = hpOut, gold = goldOut }, notes,
                 t == "event" and { id = "evt_x", idx = 1, label = "Beber da fonte" } or nil)
             hp, gold = math.max(20, hpOut), goldOut
@@ -150,7 +200,8 @@ local function seedLong(rm, cards, jokers)
     for i, t in ipairs(types) do
         local fl = ((i - 1) % 8) + 1
         local last = (i == #types)
-        visit(rm, 7, fl, t, { hp = hp, maxHp = 70, gold = gold },
+        local list, pick = options(t, fl, 7)
+        visit(rm, 7, fl, list, pick, { hp = hp, maxHp = 70, gold = gold },
             (not last) and { hp = hp - 4, gold = gold + 20 } or nil,
             { { kind = "card", id = nextCard() } })
         hp, gold = hp - 4, gold + 20
@@ -159,65 +210,95 @@ local function seedLong(rm, cards, jokers)
     return 7, 6
 end
 
-function M.run(mode, locale)
-    _G.EventManager = require("engine.EventManager")
-    _G.Event = require("engine.Event")
-    local I18n = require("src.i18n.I18n")
-    I18n.init()
-    -- Locale FIXO: o sandbox herda settings.tool.lua, que pode estar em
-    -- qualquer idioma — a captura viraria alemão sem aviso.
-    I18n.setLocale(locale or "pt_BR")
-    require("src.ui.PixelCanvas").enableNearest()
-
-    local W, H = tonumber(os.getenv("JOURNAL_W")), tonumber(os.getenv("JOURNAL_H"))
-    if mode == "small" then W, H = 760, 560 end
-    if W and H then love.window.setMode(W, H, { resizable = true }) end
-
+-- Monta o jogo com a run do cenário. Exposto pros testes.
+function M.setupGame(mode)
     local Game = require("src.core.Game")
     local game = Game:new()
     game:startNewRun("warrior")
     game:startGame()
     _G.game = game
-
     local rm = game.runManager
     local run = rm.currentRun
     run.mapHistory, run.journal, run.journalOpen = {}, {}, nil
-
     local cards, jokers = pickIds()
     local hb, hn
-    if mode == "long" then
-        hb, hn = seedLong(rm, cards, jokers)
-    else
-        hb, hn = seedShort(rm, cards, jokers)
+    if mode == "long" then hb, hn = M.seedLong(rm, cards, jokers)
+    else hb, hn = M.seedShort(rm, cards, jokers) end
+    return game, hb, hn
+end
+
+function M.run(mode, locale)
+    _G.EventManager = require("engine.EventManager")
+    _G.Event = require("engine.Event")
+    local I18n = require("src.i18n.I18n")
+    I18n.init()
+    require("src.ui.PixelCanvas").enableNearest()
+    local FontManager = require("src.ui.FontManager")
+    local UiScale = require("src.ui.UiScale")
+    UiScale.force(nil)
+    if mode == "-" or mode == "" then mode = nil end
+
+    local sizes = {}
+    for w, h in tostring(os.getenv("JOURNAL_SIZES") or "1920x1080,1024x768"):gmatch("(%d+)x(%d+)") do
+        sizes[#sizes + 1] = { tonumber(w), tonumber(h) }
     end
+    local locales = locale and { locale } or { "pt_BR", "de" }
 
-    -- JOURNAL_PROTO: outro módulo de tela (protótipos/antes-depois).
-    local proto = os.getenv("JOURNAL_PROTO")
-    local screen = require(proto or "components.RunJournalScreen"):new()
-    screen:show(game)
+    local game, hb, hn = M.setupGame(mode)
+    local Screen = require("components.RunJournalScreen")
+    local restoreMouse = fakeMouse()
 
-    local sw, sh = love.graphics.getWidth(), love.graphics.getHeight()
-    local tag = ("%s_%dx%d_%s"):format(mode or "short", sw, sh, locale or "pt_BR")
-    if proto then tag = tag .. "_" .. (os.getenv("JOURNAL_PROTO_TAG") or "proto") end
-
-    love.mouse.setPosition(-100, -100)
-    love.graphics.clear(0, 0, 0, 1)
-    screen:draw()
-    capture("run_journal_" .. tag .. ".png")
-
-    local L = screen:_layout()
-    local band = L.bands[hb]
-    local cell = band and (band.cells or band.nodes)[hn]
-    if cell then
-        love.mouse.setPosition(cell.cx, cell.cy)
-    else
-        print("[roteiro] AVISO: parada alvo do hover não encontrada")
+    for _, loc in ipairs(locales) do
+        I18n.setLocale(loc)
+        for _, sz in ipairs(sizes) do
+            local w, h = sz[1], sz[2]
+            local restore = fakeWindow(w, h)
+            FontManager.clearCache()
+            local ok, err = pcall(function()
+                local screen = Screen:new()
+                screen:show(game)
+                local tag = ("%s_%dx%d_%s"):format(mode or "short", w, h, loc)
+                local function shot(suffix)
+                    local canvas = love.graphics.newCanvas(w, h)
+                    love.graphics.setCanvas(canvas)
+                    love.graphics.clear(0, 0, 0, 1)
+                    screen:draw()
+                    love.graphics.setCanvas()
+                    savePng(canvas, "run_journal_" .. tag .. suffix .. ".png")
+                    canvas:release()
+                end
+                fakeMX, fakeMY = -100, -100
+                shot("")
+                -- hover numa parada (o detalhe)
+                local L = screen:_layout()
+                local S = L.sheets[hb]
+                local p = S and S.nodes and S.nodes[hn]
+                if p then
+                    local k = UiScale.k(w, h)
+                    fakeMX, fakeMY = p.x * k, p.y * k
+                    shot("_hover")
+                else
+                    print("[roteiro] AVISO: parada alvo do hover nao encontrada")
+                end
+                fakeMX, fakeMY = -100, -100
+                -- todos os atos abertos (acordeão)
+                for i = 1, #screen.acts do if not screen:isActOpen(i) then screen:toggleAct(i) end end
+                screen:keypressed("home")
+                shot("_allopen")
+                screen:hide()
+            end)
+            if not ok then
+                love.graphics.setCanvas()
+                UiScale.reset()
+                print("[roteiro] " .. w .. "x" .. h .. " " .. loc .. " FALHOU: " .. tostring(err))
+            end
+            restore()
+        end
     end
-    love.graphics.clear(0, 0, 0, 1)
-    screen:draw()
-    capture("run_journal_" .. tag .. "_hover.png")
-
+    restoreMouse()
+    FontManager.clearCache()
     love.event.quit()
+    return true
 end
 
 return M
