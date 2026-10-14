@@ -10,8 +10,11 @@
 --   BOSS_ROOMS_SEQ=6 ... shots   (+6 quadros seguidos por sala: animação)
 --
 --   1-6 / ← →  troca de ato (sala + chefe)
---   H          animação de dano     K  animação de morte (J reaparece)
---   ESC        sai
+--   I          ENTRADA do chefe (salão vazio → cinemática, com som e trilha)
+--   K          MORTE pelo pipeline real (câmera lenta, rajada, corpo no salão)
+--   H          animação de dano     J  remonta a sala
+--   Enter/Espaço  pula a cinemática     ESC  sai
+-- Com som: o main.lua despacha este tool DEPOIS de registrar os sons.
 
 local M = {}
 
@@ -98,6 +101,11 @@ function M.run(startAct)
         GameplayScene._debugForceBossEntered()
         WorldRoad.setBiome(a)
         WorldRoad.setTimeOfDay(1, true)
+        -- Trilha do chefe (a do ato; no 6 a faixa do eclipse): o despacho
+        -- deste tool no main.lua é DEPOIS do registro dos sons justamente
+        -- pra entrada (I) e morte (K) tocarem com som e música de verdade.
+        local code = require("src.systems.MusicDirector").pick("playing", run, "boss", true)
+        if code then require("src.systems.Sfx").playMusic(code, { fadeDuration = 0.8 }) end
         print(string.format("[boss_rooms] ato %d  chefe=%s", a,
             tostring(game.enemy.spriteId)))
     end

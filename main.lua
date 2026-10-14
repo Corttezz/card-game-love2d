@@ -685,12 +685,7 @@ function love.load(loveArgs)
         require("tools.screenshot_resume_boss").run(loveArgs[2])
         return
     end
-    -- Galeria interativa das salas de chefe (1-6 / setas troca o ato).
-    --   love . boss_rooms [ato]
-    if loveArgs and loveArgs[1] == "boss_rooms" then
-        require("tools.boss_rooms").run(loveArgs[2])
-        return
-    end
+    -- (boss_rooms despacha no FIM do love.load: precisa do áudio registrado)
     if loveArgs and loveArgs[1] == "screenshot_worldroad" then
         require("tools.screenshot_worldroad").run(loveArgs[2])
         return
@@ -2095,6 +2090,16 @@ function love.load(loveArgs)
     -- love.load): `love . nav_flow` — sai com 0/1 (tools/test_nav_flow.lua).
     if loveArgs and loveArgs[1] == "nav_flow" then
         _G.NAV_FLOW = require("tools.test_nav_flow").start()
+    end
+
+    -- Galeria interativa das salas de chefe (1-6 / setas troca o ato; I =
+    -- entrada, K = morte, com SOM e trilha). Despachada AQUI, depois do
+    -- registro dos sons e da trilha — no topo do love.load (onde morava) o
+    -- audioSystem ainda não existia e a cinemática rodava muda (dono,
+    -- 13/Out: "como vejo cada entrada e morte de chefe com som?").
+    --   love . boss_rooms [ato]
+    if loveArgs and loveArgs[1] == "boss_rooms" then
+        require("tools.boss_rooms").run(loveArgs[2])
     end
 end
 
