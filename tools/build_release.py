@@ -60,6 +60,18 @@ VERIFY_EXTRA_PREFIXES = ("tools/", "steam/achievements/")
 STEAM_VENDOR_DIR = os.path.join(ROOT, "vendor", "steam")
 STEAM_DLLS = ["luasteam.dll", "steam_api64.dll"]
 RCEDIT_VENDOR = os.path.join(ROOT, "tools", "vendor", "rcedit-x64.exe")
+
+
+def _main_checkout_rcedit():
+    try:
+        common = subprocess.run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+                                cwd=ROOT, capture_output=True, text=True).stdout.strip()
+    except Exception:
+        return None
+    if not common:
+        return None
+    cand = os.path.join(os.path.dirname(common), "tools", "vendor", "rcedit-x64.exe")
+    return cand if os.path.isfile(cand) else None
 # Ja comprimidos: zip STORED (deflate nao ganha nada e so atrasa o load).
 STORED_EXT = {".png", ".mp3", ".ogg", ".wav", ".jpg", ".jpeg", ".ttf", ".otf"}
 LOVE_RUNTIME = ["love.dll", "lua51.dll", "mpg123.dll", "msvcp120.dll",
@@ -348,7 +360,8 @@ def main():
     exe_base = os.path.join(BUILD, "_love_base.exe")
     shutil.copy2(love_exe, exe_base)
     rcedit = (os.environ.get("RCEDIT") or shutil.which("rcedit") or shutil.which("rcedit-x64")
-              or (RCEDIT_VENDOR if os.path.isfile(RCEDIT_VENDOR) else None))
+              or (RCEDIT_VENDOR if os.path.isfile(RCEDIT_VENDOR) else None)
+              or _main_checkout_rcedit())
     icon = os.path.join(ROOT, "assets", "branding", "icon.ico")
     if rcedit and os.path.isfile(icon):
         code, outp = run([rcedit, exe_base, "--set-icon", icon,
