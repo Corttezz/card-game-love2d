@@ -50,9 +50,34 @@ return {
             seal = "Jogue várias cartas JUNTAS: cada ataque depois do primeiro ganha dano (*Saraivada*), cada defesa depois da primeira ganha Bloqueio (*Muralha*) e cartas iguais valem mais (*Par*).",
             guide = "O selo em cima da carta mostra o bônus que ela ganharia agora. A lista completa está no *Guia*, no menu de Pausa.",
         },
-        orbs = {
-            pulse = "Seus *orbes*! Cada um pulsa no fim do seu turno, e o número escrito nele é o efeito.",
-            evoke = "Canalizar com a fileira cheia *evoca* o mais antigo, o da seta, num efeito maior.",
+        conduit = {
+            passive = "Você é um *Mago*. Sua passiva, *{passive}*, abre toda luta com um *orbe de Raio* já na fileira. Orbe é um feitiço que fica armado e age sozinho.",
+            row = "Esta é a sua *fileira de orbes*: {slots} vagas. Vaga vazia é um aro apagado. Orbe novo entra pela direita.",
+            number = "O número sob o orbe diz o que ele faz sozinho no fim de cada turno seu: o *pulso*. Este Raio pulsa *{pulse}* de dano.",
+        },
+        channel = {
+            card = "Esta carta *canaliza*: além do efeito escrito, cria um orbe novo na fileira. Passe o mouse nela e a vaga que vai recebê-lo pisca.",
+            made = "Você *canalizou*: a carta fez o efeito escrito E criou um orbe novo, que entrou pela direita da fileira.",
+            oldest = "O da esquerda, com a moldura clara, é o *mais antigo*. A seta no trilho marca a saída: quando um orbe sai, é sempre ele primeiro.",
+            hover = "Passe o mouse num orbe para ver os números exatos: quanto ele pulsa por turno e quanto rende ao *evocar*. Já chego lá.",
+        },
+        pulse = {
+            happened = "Viu o fim do seu turno? Os orbes *pulsaram*: cada um fez o que o número dizia, sem gastar carta nem mana. É assim todo turno, enquanto estiverem na fileira.",
+            kinds = "Cada elemento pulsa de um jeito: *Raio* e *Fogo* ferem o inimigo, *Gelo* dá Bloqueio, *Sagrado* cura. *Sombra* não pulsa: cresce a cada turno e evoca em dobro.",
+            reveal = "E o clarão do *Raio* tem um bônus: quando a intenção do inimigo estiver escondida pela névoa, o pulso dele revela o próximo anúncio.",
+        },
+        evoke_card = {
+            card = "Esta carta *evoca*: o orbe mais antigo, o da moldura, sai da fileira e dispara de uma vez o efeito *cheio*. Mais forte que o pulso, mas o orbe se vai.",
+            preview = "Passe o mouse na carta: o orbe que vai sair acende em *ciano* e o número vira o valor da evocação.",
+            all = "*Evocar todos* esvazia a fileira inteira, um orbe por vez, do mais antigo ao mais novo.",
+        },
+        overflow = {
+            full = "Fileira cheia e você canalizou mais um: o orbe *mais antigo* foi expulso e, ao sair, *evocou* com o valor cheio. Nada se perde.",
+            plan = "Ou seja: com as {slots} vagas cheias, cada canalização nova também é uma evocação. Encha a fileira e cada carta vira um disparo.",
+        },
+        focus = {
+            what = "Você tem *Foco*: cada ponto soma no valor de todos os seus orbes, no pulso e na evocação. Os números nos orbes já contam o Foco.",
+            conduit = "Daqui em diante o *{passive}* também dá {f} de Foco no começo de cada luta. Quanto mais fundo na jornada, mais Foco.",
         },
         jokers = {
             passive = "Um *Coringa*! Ele age sozinho pela jornada inteira, sem gastar mana.",

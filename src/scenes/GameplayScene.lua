@@ -1570,6 +1570,9 @@ function GameplayScene._reportTutorialAnchors()
     if not game then return end
     local Tutorial = require("src.systems.Tutorial")
     local x1, y1, x2, y2
+    -- Mago: a 1ª carta que CANALIZA e a 1ª que EVOCA ganham recorte próprio
+    -- (conversas `channel`/`evoke_card`), união das cartas com o efeito.
+    local channelCards, evokeCards = {}, {}
     for _, c in ipairs(game.hand or {}) do
         if c.renderX and c.renderY then
             local cw = (c.image and c.image.getWidth and c.image:getWidth() or 96)
@@ -1580,9 +1583,18 @@ function GameplayScene._reportTutorialAnchors()
             y1 = math.min(y1 or c.renderY, c.renderY)
             x2 = math.max(x2 or (c.renderX + cw), c.renderX + cw)
             y2 = math.max(y2 or (c.renderY + ch), c.renderY + ch)
+            local box = { x = c.renderX, y = c.renderY, w = cw, h = ch }
+            for _, e in ipairs(c.effects or {}) do
+                if e.type == "channel_orb" then channelCards[#channelCards + 1] = box end
+                if e.type == "evoke_orb" or e.type == "evoke_all_orbs" then
+                    evokeCards[#evokeCards + 1] = box
+                end
+            end
         end
     end
     if x1 then Tutorial.anchor("hand", x1, y1, x2 - x1, y2 - y1) end
+    if #channelCards > 0 then Tutorial.anchorList("hand_channel", channelCards) end
+    if #evokeCards > 0 then Tutorial.anchorList("hand_evoke", evokeCards) end
     if playButton then
         Tutorial.anchor("play", playButton.x, playButton.y, playButton.width, playButton.height)
     end

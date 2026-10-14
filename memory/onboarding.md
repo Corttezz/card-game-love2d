@@ -1,6 +1,6 @@
 ---
 name: Onboarding v2 — o corvo narrador (Pena), roteiro da 1ª corrida, foco com recorte, Guia
-description: Out/2026. Tutorial guiado por um corvo narrador (PixelLab + quadros pintados), máquina de escrever com blip sintetizado, véu com recorte no objeto, falas de AÇÃO que só deixam passar o clique no recorte, roteiro por momento (chefe só depois da porta), vistas no perfil; Guia (G/Pausa) e tooltip da mana.
+description: Out/2026. Tutorial guiado por um corvo narrador (PixelLab + quadros pintados), máquina de escrever com blip sintetizado, véu com recorte no objeto, falas de AÇÃO que só deixam passar o clique no recorte, roteiro por momento (chefe só depois da porta), vistas no perfil; Guia (G/Pausa) e tooltip da mana. Mago: 6 conversas de orbe (Conduíte, canalizar, pulso, evocar, estouro, Foco) disparadas pelos ACONTECIMENTOS do OrbRow (Tutorial.noteEvent), números interpolados do EffectSystem.
 type: project
 ---
 
@@ -21,11 +21,12 @@ sem sentido".
 | arte do corvo | `assets/sprites/narrator/raven_{idle,talk,blink}[_breathe].png` — base PixelLab (`tools/pixellab_raven.py base/pick`), bico aberto/olho fechado/respiro PINTADOS da base (`frames`, rig medido no PNG): zero deriva |
 | voz | `audio/sfx/narrator/blip_1..6.wav` sintetizados (`tools/synth_narrator_blips.py`) — sem serviço externo, sem pendência de licença. POOL FIXO de 6 fontes no Narrator (stop+play, volume = master×sfx do AudioManager), solto no fim da conversa (`Narrator.releaseVoice`). NÃO usar o pool do AudioManager pra blip: lá cada som cresce até 8 clones e nunca devolve — 48 vozes presas esgotavam o OpenAL e a música calava (test_music falhava na suíte cheia) |
 | textos | `src/i18n/locales/tutorial/<loc>.lua` → `script.<conversa>.<fala>` (`*ênfase*` sai em sangue), `footer`, `act`, `narrator.name` (Pena/Quill/Pluma/Plume/Feder) |
-| âncoras | `Tutorial.anchor/anchorList` no draw do objeto: HudManager (mana, painel, orbes), EnemyHud (intent), GameplayScene (mão, JOGAR, ENCERRAR, coringas, inimigo + barra de vida), DamagePreviewPanel (prévia), CardRewardScreen (ofertas, pular, renovar, dados), RestScreen (opções / forja), EventScreen, ScribeDiceScreen, EndlessCurseScreen, ClassSelectionScreen (faixa de selos) |
+| âncoras | `Tutorial.anchor/anchorList` no draw do objeto: HudManager (mana, painel), OrbRow (`orbs` = fileira inteira com o trilho, `orb_next` = célula do mais antigo, geometria real das células), PlayerBuffPills (`buff_focus`), EnemyHud (intent), GameplayScene (mão, `hand_channel` = cartas que canalizam, `hand_evoke` = cartas que evocam, JOGAR, ENCERRAR, coringas, inimigo + barra de vida), DamagePreviewPanel (prévia), CardRewardScreen (ofertas, pular, renovar, dados), RestScreen (opções / forja), EventScreen, ScribeDiceScreen, EndlessCurseScreen, ClassSelectionScreen (faixa de selos) |
+| acontecimentos | `Tutorial.noteEvent(nome, info)` chamado por quem DESENHA o fato: OrbRow (`orb_channel`, `orb_pulse`, `orb_evoke`, `orb_overflow`, nos `notify*` que o EffectSystem já chama). Cada evento guarda a chave da batalha (ato:andar); gatilho só vale na batalha em que caiu |
 | persistência / config | `ProfileStats.tipsSeen` por CONVERSA; Configurações → Jogo: "Tutorial do corvo" (gameSettings.tipsEnabled) e "Recomeçar o tutorial" |
 | Guia | `components/GuideScreen.lua` (combos gerados do ComboSystem + glossário), tecla G / "Guia [G]" na Pausa |
-| trava | `tools/test_tutorial.lua` (roteiro, chefe pós-porta, entrada, pular/desligar/recomeçar, disco, layout de 37 falas × 4 tamanhos × pt/de, Guia) |
-| capturas | batalha: `TUT_TIP=<conv>:<fala> [TUT_SELECT=1] [TUT_LOCALE=de] [ENEMY_SCENE_VIRTUAL=WxH] [ENEMY_SCENE_CLASS=mage] love . screenshot_enemy_scene 1_battle`; telas: `love . test_one screenshot_tutorial <rewards|shop|dice|rest|forge|endless|seals>:<loc>:<WxH>`; evento: `TUT_TIP=event:read love . screenshot_event pt_BR`; encruzilhada: `TUT_TIP=fork:paths love . screenshot_worldroad fork` |
+| trava | `tools/test_tutorial.lua` (roteiro, chefe pós-porta, entrada, pular/desligar/recomeçar, disco, layout de toda fala × 4 tamanhos × pt/de, Guia) + `tools/test_tutorial_mage.lua` (mago: texto × código, 1ª corrida na ordem e uma vez cada, cena em movimento cala, guerreiro/ladino sem conversa de orbe, âncoras reais do OrbRow e da mão) |
+| capturas | batalha: `TUT_TIP=<conv>:<fala> [TUT_SELECT=1] [TUT_LOCALE=de] [ENEMY_SCENE_VIRTUAL=WxH] [ENEMY_SCENE_CLASS=mage] love . screenshot_enemy_scene 1_battle`; telas: `love . test_one screenshot_tutorial <rewards|shop|dice|rest|forge|endless|seals>:<loc>:<WxH>`; **mago, fala a fala com o estado que dispara cada uma**: `love . test_one screenshot_tutorial mage:pt_BR:1920x1080` → `tools/preview_out/tutorial_mago/` (17 PNGs); evento: `TUT_TIP=event:read love . screenshot_event pt_BR`; encruzilhada: `TUT_TIP=fork:paths love . screenshot_worldroad fork` |
 
 ## Roteiro (ordem = prioridade)
 
@@ -33,8 +34,30 @@ sem sentido".
 [AÇÃO selecionar] → mana → prévia → JOGAR [AÇÃO]) · `end_turn` (ENCERRAR
 [AÇÃO]) · `second_turn` (a intenção se cumpriu; o ciclo). Depois, cada um na
 1ª vez: `boss` e `elite` (1º turno, depois da entrada), `block` (zera no seu
-turno), `combo`, `orbs` (mago), `jokers`, `rewards`, `dice`, `shop`, `forge`,
+turno), `combo`, `jokers`, `rewards`, `dice`, `shop`, `forge`,
 `rest`, `event`, `fork`, `endless`, `seals` (com selo liberado).
+
+**Mago, orbes do zero** (Out/2026, dono: "explicar tudo do zero, é bem
+complexo"; `Tutorial.MAGE_CONVERSATIONS`, todas `after = "intro"`, números
+por `Tutorial.orbVars` = `EffectSystem.orbPulseValue/orbEvokeValue`,
+`player.orbSlots`, `classes.mage.passive_name`, Foco inicial do Conduíte =
+`classPassiveTier + Game.MAGE_FOCUS_OFFSET`):
+
+| conversa | gatilho (latch) | hora (ready) | falas (recorte) |
+|---|---|---|---|
+| `conduit` | mago, vez do jogador, orbe na fileira (o do Conduíte) | cena quieta + `orbs` | passiva (`orb_next`) → fileira: {slots} vagas, aro apagado, entra pela direita (`orbs`) → número = pulso, {pulse} (`orb_next`) |
+| `channel` | carta que canaliza na mão OU evento `orb_channel` desta batalha | quieta + `orbs` (+ `hand_channel` se for a carta) | `card` (antes de jogar; cond: ainda não canalizou) OU `made` (depois; cond: canalizou) → `oldest` (moldura + seta do trilho, `orb_next`) → `hover` (tooltip) |
+| `pulse` | evento `orb_pulse` desta batalha, vez do jogador (`after = "second_turn"`) | quieta + `orbs` (= turno 2) | aconteceu → elementos (Raio/Fogo ferem, Gelo Bloqueio, Sagrado cura, Sombra cresce e evoca em dobro) → Raio revela a intenção na névoa (`intent`) |
+| `evoke_card` | carta de Evocar na mão | `battleIdle` + `hand_evoke` | carta (`hand_evoke`) → prévia em ciano (`orbs`, cond: há orbe) → `all` (cond: Evocar todos na mão) |
+| `overflow` | evento `orb_overflow` (fileira cheia + canalizou: o mais antigo é EXPULSO e evoca com o valor cheio) | quieta + `orbs` | cheia → plano ({slots}) |
+| `focus` | Foco > 0 (carta no ato 1-2; Conduíte do ato 3 em diante) | quieta + `orbs` | o que é Foco (`buff_focus`+`orbs`) → Conduíte dá {f} por luta (cond: mago e f > 0) |
+
+Dois gatilhos no mesmo quadro (Conduíte + Descarga na mão logo depois da
+apresentação) saem pela ordem do roteiro (`nextCandidate` desempata pelo
+índice do SCRIPT). O pulso só fala DEPOIS do beat: o OrbRow conta o fato,
+a conversa espera a vez do jogador voltar (vez do inimigo e banner não são
+hora quieta). `vars(game)`/`cond(game)` recebem o game; a 1ª fala também pode
+não se aplicar (`_start` pula até a 1ª que vale).
 Na seleção de classe (1ª visita): `class_select` (emblema grande → passiva
 do Guerreiro lida de `classes.warrior.passive_*` → fita COMEÇAR → classes
 acorrentadas com o requisito LIDO de `UnlockSystem.getClassUnlockInfo`, fala
@@ -87,5 +110,10 @@ escolha reabre (`Tutorial.explain`). Falas aceitam `vars()` (dado vivo) e
   na 1ª escrita ficou fora do repo); sem travessão (`test_locale_dashes`).
 - Conversa nova = entrada no `SCRIPT` + `script.<conv>.<fala>` nos 5 locales
   + âncora reportada no draw do objeto + linha no recorte do teste de layout.
+- Texto que cita número usa `vars` lido do código (nunca cravado): quando o
+  balanceamento mudar, a fala acompanha. Divergência conhecida FORA do
+  tutorial (Out/2026): `classes.mage.passive_short` ("orbes rendem Foco") e
+  `status.focus.desc` ("+N em cada pulso": o Foco entra ANTES da divisão) não
+  batem mais com o código.
 
 Ver também: [[combo_rules]], [[ui_layout_invariants]], [[nav_cursor]].

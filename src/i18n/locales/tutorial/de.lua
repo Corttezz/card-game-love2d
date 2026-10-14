@@ -50,9 +50,34 @@ return {
             seal = "Spiel mehrere Karten ZUSAMMEN: Jeder Angriff nach dem ersten macht mehr Schaden (*Salve*), jede Verteidigung nach der ersten gibt mehr Block (*Bollwerk*), und gleiche Karten zählen mehr (*Paar*).",
             guide = "Das Siegel über einer Karte zeigt den Bonus, den sie jetzt bekäme. Die ganze Liste steht im *Leitfaden*, im Pausenmenü.",
         },
-        orbs = {
-            pulse = "Deine *Orbs*! Jeder pulsiert am Ende deines Zugs, und die Zahl darauf ist der Effekt.",
-            evoke = "Kanalisierst du bei voller Reihe, wird der älteste *ausgelöst*. Das ist der mit dem Pfeil, und sein Effekt ist stärker.",
+        conduit = {
+            passive = "Du bist ein *Magier*. Deine Passive, *{passive}*, beginnt jeden Kampf mit einem *Blitz-Orb*, der schon in der Reihe liegt. Ein Orb ist ein Zauber, der gespannt bleibt und von selbst wirkt.",
+            row = "Das ist deine *Orb-Reihe*: {slots} Plätze. Ein leerer Platz ist ein erloschener Ring. Ein neuer Orb kommt von rechts herein.",
+            number = "Die Zahl unter dem Orb sagt, was er am Ende jedes deiner Züge von selbst tut: sein *Puls*. Dieser Blitz pulsiert *{pulse}* Schaden.",
+        },
+        channel = {
+            card = "Diese Karte *kanalisiert*: Neben dem geschriebenen Effekt erschafft sie einen neuen Orb in der Reihe. Fahr mit der Maus darüber, und der Platz, der ihn aufnimmt, blinkt.",
+            made = "Du hast *kanalisiert*: Die Karte hat ihren Effekt getan UND einen neuen Orb erschaffen, der rechts in die Reihe kam.",
+            oldest = "Der linke, mit dem hellen Rahmen, ist der *älteste*. Der Pfeil auf der Schiene zeigt den Ausgang: Wenn ein Orb geht, ist es immer zuerst dieser.",
+            hover = "Fahr mit der Maus über einen Orb, um die genauen Zahlen zu sehen: wie viel er pro Zug pulsiert und wie viel er beim *Auslösen* bringt. Dazu komme ich gleich.",
+        },
+        pulse = {
+            happened = "Hast du das Ende deines Zugs gesehen? Die Orbs haben *pulsiert*: Jeder tat, was seine Zahl sagte, ohne Karte und ohne Mana. So geht es jeden Zug, solange sie in der Reihe liegen.",
+            kinds = "Jedes Element pulsiert anders: *Blitz* und *Feuer* verletzen den Gegner, *Eis* gibt Block, *Heilig* heilt. *Schatten* pulsiert nicht: Er wächst jeden Zug und löst doppelt aus.",
+            reveal = "Und der *Blitz* hat einen Bonus: Wenn die Absicht des Gegners im Nebel verborgen ist, enthüllt sein Puls die nächste Ankündigung.",
+        },
+        evoke_card = {
+            card = "Diese Karte *löst aus*: Der älteste Orb, der mit dem Rahmen, verlässt die Reihe und entlädt auf einmal seinen *vollen* Effekt. Stärker als der Puls, aber der Orb ist weg.",
+            preview = "Fahr mit der Maus über die Karte: Der Orb, der gehen wird, leuchtet *cyan* auf, und seine Zahl wird zum Auslöse-Wert.",
+            all = "*Alle auslösen* leert die ganze Reihe, einen Orb nach dem anderen, vom ältesten zum neuesten.",
+        },
+        overflow = {
+            full = "Volle Reihe, und du hast noch einen kanalisiert: Der *älteste* Orb wurde verdrängt und hat sich beim Hinausgehen mit vollem Wert *ausgelöst*. Nichts geht verloren.",
+            plan = "Das heißt: Sind alle {slots} Plätze voll, ist jedes neue Kanalisieren auch ein Auslösen. Füll die Reihe, und jede Karte wird zum Schuss.",
+        },
+        focus = {
+            what = "Du hast *Fokus*: Jeder Punkt zählt zum Wert all deiner Orbs dazu, im Puls wie beim Auslösen. Die Zahlen auf den Orbs rechnen den Fokus schon mit.",
+            conduit = "Von jetzt an gibt *{passive}* auch {f} Fokus zu Beginn jedes Kampfs. Je tiefer die Reise, desto mehr Fokus.",
         },
         jokers = {
             passive = "Ein *Joker*! Er wirkt den ganzen Lauf von selbst, ganz ohne Mana.",

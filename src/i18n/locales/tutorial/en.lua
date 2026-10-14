@@ -50,9 +50,34 @@ return {
             seal = "Play several cards TOGETHER: each attack after the first deals more damage (*Volley*), each defense after the first gives more Block (*Wall*), and matching cards are worth more (*Pair*).",
             guide = "The seal above a card shows the bonus it would get right now. The full list is in the *Guide*, in the Pause menu.",
         },
-        orbs = {
-            pulse = "Your *orbs*! Each one pulses at the end of your turn, and the number written on it is the effect.",
-            evoke = "Channeling with a full row *evokes* the oldest one, under the arrow, for a bigger effect.",
+        conduit = {
+            passive = "You are a *Mage*. Your passive, *{passive}*, opens every fight with a *Lightning orb* already in the row. An orb is a spell that stays armed and acts on its own.",
+            row = "This is your *orb row*: {slots} slots. An empty slot is a dim ring. A new orb enters from the right.",
+            number = "The number under the orb says what it does on its own at the end of each of your turns: its *pulse*. This Lightning pulses *{pulse}* damage.",
+        },
+        channel = {
+            card = "This card *channels*: besides the written effect, it creates a new orb in the row. Hover over it and the slot that will receive it blinks.",
+            made = "You *channeled*: the card did its written effect AND created a new orb, which entered from the right of the row.",
+            oldest = "The one on the left, with the bright frame, is the *oldest*. The arrow on the rail marks the exit: when an orb leaves, it is always that one first.",
+            hover = "Hover over an orb to see the exact numbers: how much it pulses per turn and how much it yields when *evoked*. I will get there.",
+        },
+        pulse = {
+            happened = "Did you see the end of your turn? The orbs *pulsed*: each one did what its number said, with no card and no mana spent. It happens every turn while they sit in the row.",
+            kinds = "Each element pulses its own way: *Lightning* and *Fire* hurt the enemy, *Ice* gives Block, *Holy* heals. *Shadow* does not pulse: it grows each turn and evokes for double.",
+            reveal = "And the *Lightning* flash has a bonus: when the enemy's intent is hidden by the fog, its pulse reveals the next announcement.",
+        },
+        evoke_card = {
+            card = "This card *evokes*: the oldest orb, the framed one, leaves the row and fires its *full* effect at once. Stronger than the pulse, but the orb is gone.",
+            preview = "Hover over the card: the orb about to leave lights up in *cyan* and its number becomes the evoke value.",
+            all = "*Evoke all* empties the whole row, one orb at a time, from oldest to newest.",
+        },
+        overflow = {
+            full = "Full row and you channeled one more: the *oldest* orb was pushed out and, on its way out, it *evoked* at full value. Nothing is lost.",
+            plan = "So with all {slots} slots full, every new channel is also an evoke. Fill the row and every card becomes a shot.",
+        },
+        focus = {
+            what = "You have *Focus*: each point adds to the value of all your orbs, in the pulse and in the evoke. The numbers on the orbs already count the Focus.",
+            conduit = "From here on, *{passive}* also grants {f} Focus at the start of each fight. The deeper the journey, the more Focus.",
         },
         jokers = {
             passive = "A *Joker*! It works on its own for the whole run, at no mana cost.",

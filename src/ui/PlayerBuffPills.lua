@@ -202,6 +202,14 @@ function PlayerBuffPills:draw(player, panelX, panelY, panelW, game)
         pulseHalo = true,           -- buffs pulsam pra chamar atenção
         showStacksAlways = true,    -- valor numérico é a info principal (Força 3)
     })
+    -- Âncora do corvo (src/systems/Tutorial, conversa `focus` do mago): a
+    -- pill de Foco, na mesma geometria que o drawRow acabou de usar.
+    for i, b in ipairs(buffs) do
+        if b.name == "focus" then
+            require("src.systems.Tutorial").anchor("buff_focus",
+                startX + (i - 1) * (size + BADGE_SPACING), y, size, size)
+        end
+    end
 end
 
 return PlayerBuffPills

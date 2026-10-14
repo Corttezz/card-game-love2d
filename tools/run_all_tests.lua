@@ -29,6 +29,9 @@ local SUITES = {
     -- contadores, clima acompanha, piloto não espia (memory/intent_visibility.md)
     { group = "unit",  name = "test_intent_visibility" },
     { group = "unit",  name = "test_tutorial" },
+    -- tutorial do MAGO: Conduíte, canalizar, pulso, evocar, estouro, Foco
+    -- (gatilhos pelos acontecimentos do OrbRow; memory/onboarding.md)
+    { group = "unit",  name = "test_tutorial_mage" },
     { group = "unit",  name = "test_events" },
     { group = "unit",  name = "test_journal" },
     { group = "unit",  name = "test_journal_resize" },

@@ -259,6 +259,14 @@ local function reducedMotion()
     return (_G.gameSettings and _G.gameSettings.reducedMotion) or false
 end
 
+-- O corvo do tutorial (src/systems/Tutorial) aprende os FATOS da fileira por
+-- aqui: canalizou, pulsou, evocou, expulsou. Sem isto a conversa do pulso
+-- teria que ADIVINHAR pelo estado ("há orbe e o turno virou"); com isto ela
+-- nasce do acontecimento. pcall: a fileira nunca pode cair por causa do corvo.
+local function tutNote(ev, info)
+    pcall(function() require("src.systems.Tutorial").noteEvent(ev, info) end)
+end
+
 -- Relógio do loop idle da gema do slot i (fase própria por slot — ver a nota
 -- de GEMA VIVA lá em cima). reducedMotion devolve nil: a pedra congela no
 -- quadro de repouso, com a mesma cor, o mesmo tamanho e o mesmo número.
@@ -286,6 +294,7 @@ end
 -- Orbe entrou no slot i: ele VIAJA do feitiço até o slot e só então nasce
 -- (pop-in). `orb` opcional dá a cor do elemento ao cometa.
 function OrbRow.notifyChannel(i, orb)
+    tutNote("orb_channel", { slot = i, type = orb and orb.type })
     if reducedMotion() then
         -- Tira o MOVIMENTO, nunca a INFORMAÇÃO: sem viagem, mas o orbe ainda
         -- nasce no instante do beat dele (a ordem continua legível).
@@ -302,6 +311,7 @@ end
 -- Orbe do slot i pulsou: flash + número flutuante saindo DO orbe.
 -- kind: "damage" | "armor" | "heal" | "grow"
 function OrbRow.notifyPulse(i, text, kind)
+    tutNote("orb_pulse", { slot = i, text = text, kind = kind })
     pulseFlash[i] = 1.0
     if slotPos and slotPos[i] then
         local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
@@ -334,6 +344,7 @@ end
 function OrbRow.notifyEvoke(i, orb, reason)
     local I18n = require("src.i18n.I18n")
     local isOverflow = (reason == "overflow")
+    tutNote(isOverflow and "orb_overflow" or "orb_evoke", { slot = i, type = orb and orb.type })
     local label = isOverflow
         and I18n.t("orb.expelled", nil, "EXPULSO")
         or I18n.t("orb.evoked", nil, "EVOCADO")
@@ -622,6 +633,19 @@ function OrbRow.draw(game, panelX, panelY)
                     stacks = p.orbSlots or 3, duration = 0,
                 })
             end
+        end
+    end
+
+    -- Âncoras do corvo (src/systems/Tutorial): a fileira inteira com o trilho
+    -- e a célula do mais antigo, na MESMA geometria que acabou de ser desenhada
+    -- (antes era um retângulo fixo no HudManager que não batia com as células).
+    do
+        local Tutorial = require("src.systems.Tutorial")
+        local n = p.orbSlots or 3
+        local rowW = (n - 1) * (SIZE + SPACING) + SIZE
+        Tutorial.anchor("orbs", startX - 4, y - 4, rowW + 8, cellHeight() + 16)
+        if #(p.orbs or {}) > 0 then
+            Tutorial.anchor("orb_next", startX - 4, y - 4, SIZE + 8, cellHeight() + 8)
         end
     end
 

@@ -3,12 +3,18 @@
 -- jornada — uma PNG por fala da conversa, num tamanho de janela FALSIFICADO.
 --
 --   love . test_one screenshot_tutorial <cena>:<locale>:<WxH>
---   cenas: rewards · shop · dice · rest · forge · endless · seals · class
+--   cenas: rewards · shop · dice · rest · forge · endless · seals · class · mage
 --   ex.:   love . test_one screenshot_tutorial shop:de:1920x1080
 --
 -- Saída (save dir): tut_<cena>_<fala>_<locale>_<W>x<H>.png
 -- A batalha (intro, chefe, elite...) captura pelo screenshot_enemy_scene
 -- (TUT_TIP=<conversa>:<fala>) e o evento pelo screenshot_event (TUT_TIP).
+--
+-- `mage`: a 1ª batalha do MAGO pelo GameplayScene real, uma PNG por fala das
+-- conversas de orbe (Tutorial.MAGE_CONVERSATIONS), cada uma com o estado que a
+-- dispara (orbe do Conduíte, Descarga na mão, 2 orbes canalizados, carta de
+-- Evocar, fileira cheia, Foco). Saída em tools/preview_out/tutorial_mago/
+-- (gravada por io.open: fora do save dir, pra ficar junto das outras provas).
 
 local M = {}
 
@@ -94,6 +100,8 @@ function M.run(arg)
         screen:show(function() end, function() end)
         convId = "seals"
         drawScreen = function() screen:draw() end
+    elseif scene == "mage" then
+        return M.mageScene(loc, w, h)
     else
         print("[screenshot_tutorial] cena desconhecida: " .. tostring(scene))
         return false
@@ -131,6 +139,130 @@ function M.run(arg)
         cv:newImageData():encode("png", name)
         print("[screenshot_tutorial] " .. name)
     end
+    Tutorial._reset()
+    return true
+end
+
+-- ===========================================================================
+-- MAGO: a batalha real (GameplayScene.draw) com o corvo por cima, fala a fala.
+-- ===========================================================================
+function M.mageScene(loc, w, h)
+    local Game = require("src.core.Game")
+    local GameplayScene = require("src.scenes.GameplayScene")
+    local EnemyRenderer = require("src.ui.EnemyRenderer")
+    local WorldRoad = require("src.ui.WorldRoad")
+    local TopBar = require("components.TopBar")
+    local GameUI = require("components.GameUI")
+    local Button = require("components.Button")
+    local Tutorial = require("src.systems.Tutorial")
+    local EM = require("engine.EventManager")
+    _G.gameSettings = _G.gameSettings or {}
+    _G.gameSettings.reducedMotion = false
+
+    local game = Game:new()
+    game:startNewRun("mage")
+    game:startGame()
+    _G.game = game
+    local run = game.runManager.currentRun
+    run.actNumber, run.floorInAct = 1, 2
+    run.currentNode = { type = "battle" }
+    game.enemy.spriteId = EnemyRenderer.resolveSpriteId(1, "battle")
+    if game.messageSystem then game.messageSystem.messages = {} end
+
+    local topBar = TopBar:new()
+    topBar:setGame(game)
+    local playButton = Button:new(w * 0.80, h * 0.80, 150, 46, "Jogar")
+    local endTurnButton = Button:new(w * 0.80, h * 0.87, 150, 33, "Encerrar")
+    GameplayScene.init({ game = game, topBar = topBar, gameUI = GameUI:new(),
+        playButton = playButton, endTurnButton = endTurnButton })
+    WorldRoad.setBiome(1)
+    WorldRoad.setTimeOfDay(0.75, true)
+    for _ = 1, 90 do
+        WorldRoad.update(1 / 30)
+        EnemyRenderer.update(1 / 30)
+    end
+
+    local cv = love.graphics.newCanvas(w, h)
+    local db = game.deckManager.cardDatabase
+    local function instance(id) return db:createCardInstance(db:getCard(id)) end
+    local function setHand(ids)
+        game.hand = {}
+        for _, id in ipairs(ids) do game.hand[#game.hand + 1] = instance(id) end
+        game.selectedCards = {}
+    end
+    -- Assenta a cena (cartas voam até o lugar) sem HandDeal nem cinemática.
+    local function settle(frames)
+        for _ = 1, frames or 45 do
+            EM.update(1 / 30)
+            pcall(GameplayScene.update, 1 / 30)
+            topBar:update(1 / 30, game)
+            love.graphics.setCanvas(cv)
+            love.graphics.origin()
+            love.graphics.clear(0, 0, 0, 1)
+            GameplayScene.draw()
+            love.graphics.setCanvas()
+        end
+    end
+
+    local outDir = love.filesystem.getSource() .. "/tools/preview_out/tutorial_mago/"
+    local function shot(conv, lineId)
+        love.graphics.setCanvas(cv)
+        love.graphics.origin()
+        love.graphics.clear(0, 0, 0, 1)
+        GameplayScene.draw()              -- âncoras reportadas aqui
+        Tutorial._show(conv, lineId, game)
+        love.graphics.clear(0, 0, 0, 1)
+        GameplayScene.draw()
+        Tutorial.draw()
+        love.graphics.setCanvas()
+        local spot
+        for _, l in ipairs(Tutorial.byId(conv).lines) do
+            if l.id == lineId then spot = Tutorial.spotRect(l.spot) end
+        end
+        local name = ("tut_mage_%s_%s_%s_%dx%d.png"):format(conv, lineId, loc, w, h)
+        local data = cv:newImageData():encode("png"):getString()
+        local f = assert(io.open(outDir .. name, "wb"))
+        f:write(data); f:close()
+        print(("[screenshot_tutorial] %s  recorte=%s"):format(name,
+            spot and ("%d,%d %dx%d"):format(spot.x, spot.y, spot.w, spot.h) or "nenhum"))
+        Tutorial._reset()
+    end
+
+    -- 1. Conduíte: 1ª luta, orbe de Raio já na fileira, Descarga + Defender na mão
+    setHand({ "mage_zap", "defense_001" })
+    game.player.orbs = { { type = "lightning", value = 4 } }
+    settle()
+    shot("conduit", "passive"); shot("conduit", "row"); shot("conduit", "number")
+    -- 2. Canalizar: a carta na mão (antes) ...
+    shot("channel", "card")
+    -- ... e o orbe criado (depois): 2 orbes
+    game.player.orbs = { { type = "lightning", value = 4 }, { type = "lightning", value = 5 } }
+    setHand({ "defense_001" })
+    settle(20)
+    for _, line in ipairs({ "made", "oldest", "hover" }) do
+        Tutorial.noteEvent("orb_channel", { slot = 2, type = "lightning" })
+        shot("channel", line)
+    end
+    -- 3. Pulso: turno 2, mão nova
+    game.battleTurn = 1
+    setHand({ "mage_zap", "defense_001" })
+    settle(20)
+    shot("pulse", "happened"); shot("pulse", "kinds"); shot("pulse", "reveal")
+    -- 4. Evocar: Conjuração Dupla (e Fissão pra "todos")
+    setHand({ "mage_dualcast", "defense_001", "mage_fission" })
+    settle(20)
+    shot("evoke_card", "card"); shot("evoke_card", "preview"); shot("evoke_card", "all")
+    -- 5. Fileira cheia
+    game.player.orbs = { { type = "ice", value = 3 }, { type = "lightning", value = 5 }, { type = "lightning", value = 5 } }
+    setHand({ "mage_zap", "defense_001" })
+    settle(20)
+    shot("overflow", "full"); shot("overflow", "plan")
+    -- 6. Foco (ato 3: o Conduíte também dá Foco)
+    run.actNumber = 3
+    game.player:addBuff("focus", 99, 1)
+    settle(20)
+    shot("focus", "what"); shot("focus", "conduit")
+
     Tutorial._reset()
     return true
 end

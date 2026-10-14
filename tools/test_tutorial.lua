@@ -311,9 +311,14 @@ function M.run()
             -- névoa de intenção: o número do intent sumiu (IntentVisibility)
             { "fog", "playing", { "intro" }, function() g.enemy.intentVisibility = "type_only" end,
               function() g.enemy.intentVisibility = "full" end },
-            { "orbs", "playing", { "intro" }, function()
-                g.player.orbs = { { type = "lightning" } }; Tutorial.anchor("orbs", 14, 500, 170, 78)
-                Tutorial._scenarioAnchors = nil end, function() g.player.orbs = {} end },
+            -- Conduíte (mago): o 1º orbe na fileira. O resto do roteiro do mago
+            -- (canalizar, pulso, evocar, estouro, Foco) mora em test_tutorial_mage.
+            { "conduit", "playing", { "intro" }, function()
+                g._cls = g.selectedClass; g.selectedClass = "mage"
+                g.player.orbs = { { type = "lightning", value = 4 } }
+                Tutorial.anchor("orbs", 14, 500, 180, 84); Tutorial.anchor("orb_next", 14, 500, 56, 76)
+                Tutorial._scenarioAnchors = nil end,
+              function() g.selectedClass = g._cls; g.player.orbs = {} end },
             { "jokers", "playing", { "intro" }, function() run.jokers = { "joker_x" } end,
               function() run.jokers = {} end },
             { "rewards", "cardReward", {}, function()
@@ -385,7 +390,7 @@ function M.run()
     t:eq("chefe: a conversa vem depois da porta, no 1º turno", Tutorial.activeId(), "boss")
     Tutorial.skipConversation()
     ProfileStats.resetTips()
-    for _, id in ipairs({ "intro", "end_turn", "second_turn", "block", "combo", "orbs", "jokers" }) do
+    for _, id in ipairs({ "intro", "end_turn", "second_turn", "block", "combo", "conduit", "jokers" }) do
         ProfileStats.markTipSeen(id)
     end
     g.battleTurn = 2
@@ -561,7 +566,11 @@ function M.run()
             player_panel = { x = 14 * k, y = H - 110 * k, w = 220 * k, h = 90 * k },
             preview = { x = W * 0.74, y = H * 0.62, w = 230 * k, h = 90 * k },
             jokers = { x = 14 * k, y = 88 * k, w = 290 * k, h = 160 * k },
-            orbs = { x = 14 * k, y = H - 200 * k, w = 174 * k, h = 78 * k },
+            orbs = { x = 10 * k, y = H - 210 * k, w = 184 * k, h = 84 * k },
+            orb_next = { x = 10 * k, y = H - 210 * k, w = 56 * k, h = 76 * k },
+            buff_focus = { x = 14 * k, y = H - 150 * k, w = 36 * k, h = 36 * k },
+            hand_channel = { x = W * 0.30, y = H - 200 * k, w = 130 * k, h = 190 * k },
+            hand_evoke = { x = W * 0.44, y = H - 200 * k, w = 130 * k, h = 190 * k },
             offers = { x = W * 0.25, y = H * 0.28, w = W * 0.50, h = H * 0.36 },
             reward_skip = { x = W / 2 - 80 * k, y = H * 0.70, w = 160 * k, h = 36 * k },
             shop_refresh = { x = W * 0.62, y = H * 0.84, w = 170 * k, h = 36 * k },

@@ -50,9 +50,34 @@ return {
             seal = "Jouez plusieurs cartes ENSEMBLE : chaque attaque après la première frappe plus fort (*Salve*), chaque défense après la première donne plus de Blocage (*Rempart*), et les cartes identiques valent plus (*Paire*).",
             guide = "Le sceau au-dessus d'une carte montre le bonus qu'elle gagnerait maintenant. La liste complète est dans le *Guide*, dans le menu Pause.",
         },
-        orbs = {
-            pulse = "Vos *orbes* ! Chacun pulse à la fin de votre tour, et le chiffre inscrit dessus est l'effet.",
-            evoke = "Canaliser avec la rangée pleine *évoque* le plus ancien, celui de la flèche, avec un effet plus fort.",
+        conduit = {
+            passive = "Vous êtes un *Mage*. Votre passive, *{passive}*, ouvre chaque combat avec un *orbe de Foudre* déjà dans la rangée. Un orbe est un sort qui reste armé et agit tout seul.",
+            row = "Voici votre *rangée d'orbes* : {slots} emplacements. Un emplacement vide est un anneau éteint. Un nouvel orbe entre par la droite.",
+            number = "Le chiffre sous l'orbe dit ce qu'il fait tout seul à la fin de chacun de vos tours : sa *pulsation*. Cette Foudre pulse *{pulse}* dégâts.",
+        },
+        channel = {
+            card = "Cette carte *canalise* : en plus de l'effet écrit, elle crée un nouvel orbe dans la rangée. Survolez-la et l'emplacement qui va le recevoir clignote.",
+            made = "Vous avez *canalisé* : la carte a fait son effet écrit ET créé un nouvel orbe, entré par la droite de la rangée.",
+            oldest = "Celui de gauche, avec le cadre clair, est le *plus ancien*. La flèche sur le rail marque la sortie : quand un orbe part, c'est toujours lui d'abord.",
+            hover = "Survolez un orbe pour voir les chiffres exacts : combien il pulse par tour et combien il rend quand on l'*évoque*. J'y arrive.",
+        },
+        pulse = {
+            happened = "Vous avez vu la fin de votre tour ? Les orbes ont *pulsé* : chacun a fait ce que son chiffre disait, sans carte ni mana. C'est ainsi à chaque tour, tant qu'ils sont dans la rangée.",
+            kinds = "Chaque élément pulse à sa façon : *Foudre* et *Feu* blessent l'ennemi, *Glace* donne du Blocage, *Sacré* soigne. *Ombre* ne pulse pas : elle grandit chaque tour et s'évoque en double.",
+            reveal = "Et l'éclair de la *Foudre* a un bonus : quand l'intention de l'ennemi est cachée par la brume, sa pulsation révèle la prochaine annonce.",
+        },
+        evoke_card = {
+            card = "Cette carte *évoque* : l'orbe le plus ancien, celui du cadre, quitte la rangée et libère d'un coup son effet *complet*. Plus fort que la pulsation, mais l'orbe s'en va.",
+            preview = "Survolez la carte : l'orbe qui va partir s'allume en *cyan* et son chiffre devient la valeur d'évocation.",
+            all = "*Tout évoquer* vide la rangée entière, un orbe à la fois, du plus ancien au plus récent.",
+        },
+        overflow = {
+            full = "Rangée pleine et vous en avez canalisé un de plus : l'orbe *le plus ancien* a été expulsé et, en sortant, il s'est *évoqué* à pleine valeur. Rien n'est perdu.",
+            plan = "Autrement dit : avec les {slots} emplacements pleins, chaque nouvelle canalisation est aussi une évocation. Remplissez la rangée et chaque carte devient un tir.",
+        },
+        focus = {
+            what = "Vous avez du *Focus* : chaque point s'ajoute à la valeur de tous vos orbes, à la pulsation comme à l'évocation. Les chiffres des orbes le comptent déjà.",
+            conduit = "Désormais, *{passive}* donne aussi {f} de Focus au début de chaque combat. Plus le voyage est profond, plus il y en a.",
         },
         jokers = {
             passive = "Un *Joker* ! Il agit tout seul pendant toute la partie, sans coûter de mana.",
