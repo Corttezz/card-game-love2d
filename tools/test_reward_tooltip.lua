@@ -1,19 +1,3 @@
--- tools/test_reward_tooltip.lua
--- Trava do tooltip da carta nos ESPÓLIOS (dono, 13/Out/2026: "não pode ficar
--- o tooltip assim" — o painel subia por cima da barra superior e o nome da
--- carta ficava escondido atrás dela).
---
--- O que garante, em 4 tamanhos de janela (janela falsificada, UiScale=1):
---   • hover numa carta de espólio abre o tooltip canônico (CardInfoDisplay)
---     no passe final da tela, AO LADO da carta;
---   • o painel nunca sobe acima da barra superior (TopBar.height + 6);
---   • o painel não cobre a carta em hover e fica inteiro dentro da janela;
---   • só UM tooltip por quadro (o da carta em hover);
---   • com uma oferta SELECIONADA o tooltip some e a pendência não atravessa
---     quadros.
---
---   love . test_one test_reward_tooltip
-
 local TK = require("tools.testkit")
 local FontManager = require("src.ui.FontManager")
 
@@ -70,14 +54,12 @@ function M.run()
                 love.graphics.setCanvas()
                 if not okF then error(errF, 0) end
             end
-            for _ = 1, 90 do frame() end   -- entrada das cartas (1,5 s)
+            for _ = 1, 90 do frame() end
 
             local insts = {}
             for _, inst in ipairs(screen.cardInstances or {}) do insts[#insts + 1] = inst end
             t:truthy(tag .. ": há cartas de espólio", #insts >= 2)
 
-            -- espião: quantos tooltips cada quadro desenha (qualquer
-            -- CardInfoDisplay — o da tela ou o da instância)
             local CardInfoDisplay = require("src.ui.CardInfoDisplay")
             local drawn = 0
             local realDraw = CardInfoDisplay.draw
@@ -113,7 +95,6 @@ function M.run()
                 end
             end
 
-            -- seleção ativa: tooltip some e nada fica pendente
             local first = insts[1]
             if first and first.shopOffer and first._drawRect then
                 screen:setSelectedOffer(first.shopOffer, first.shopOffer._slot)

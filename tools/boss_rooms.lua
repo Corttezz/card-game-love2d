@@ -1,21 +1,3 @@
--- tools/boss_rooms.lua
--- Galeria INTERATIVA das salas de chefe: cada ato com o chefe dele dentro,
--- pelo caminho real de desenho (GameplayScene.draw), já depois da cerimônia
--- da porta. Mesma montagem do screenshot_enemy_scene, mas ao vivo.
---
---   love . boss_rooms [ato|shots]
---   BOSS_ROOMS_SIZE=1920x1080 love . boss_rooms shots   (tamanho da janela:
---   o cover-fit corta a arte diferente em 4:3 e em 16:9 — confira os dois)
---   BOSS_ROOMS_VIRTUAL=2560x1440 ... shots  (tela maior que o monitor)
---   BOSS_ROOMS_SEQ=6 ... shots   (+6 quadros seguidos por sala: animação)
---
---   1-6 / ← →  troca de ato (sala + chefe)
---   I          ENTRADA do chefe (salão vazio → cinemática, com som e trilha)
---   K          MORTE pelo pipeline real (câmera lenta, rajada, corpo no salão)
---   H          animação de dano     J  remonta a sala
---   Enter/Espaço  pula a cinemática     ESC  sai
--- Com som: o main.lua despacha este tool DEPOIS de registrar os sons.
-
 local M = {}
 
 function M.run(startAct)
@@ -37,13 +19,9 @@ function M.run(startAct)
     _G.EventManager = _G.EventManager or require("engine.EventManager")
     _G.Event = _G.Event or require("engine.Event")
 
-    -- UM setMode só, antes de montar (setMode repetido dentro de tool trava)
     local sw, sh = (os.getenv("BOSS_ROOMS_SIZE") or ""):match("^(%d+)x(%d+)$")
     if sw then love.window.setMode(tonumber(sw), tonumber(sh)) end
 
-    -- BOSS_ROOMS_VIRTUAL=2560x1440: tela FALSIFICADA maior que o monitor
-    -- (setMode acima do desktop trava). Desenha num canvas desse tamanho com
-    -- getWidth/getHeight mentindo e a captura sai do canvas.
     local vw, vh = (os.getenv("BOSS_ROOMS_VIRTUAL") or ""):match("^(%d+)x(%d+)$")
     local vcanvas, pendingCap
     if vw then
@@ -57,7 +35,7 @@ function M.run(startAct)
     end
 
     local total = Config.TotalActs or 6
-    local shots = (startAct == "shots")   -- verificação: captura os 6 e sai
+    local shots = (startAct == "shots")
     local act = math.max(1, math.min(total, tonumber(startAct) or 1))
     local frames = 0
     local pendingKey = nil
@@ -66,11 +44,6 @@ function M.run(startAct)
 
     local function mount(a)
         act = a
-        -- Linha do tempo NOVA pra cada sala. A fila de eventos é global e
-        -- sobrevive ao Game antigo: trocar de ato antes da mão terminar de
-        -- materializar (ou depois de H/K) deixava eventos órfãos da sala
-        -- anterior na frente, e as cartas da mão nova nasciam invisíveis
-        -- (dissolve=1) — "a mão só aparece no ato 1".
         _G.EventManager.clear()
         require("src.ui.InteriorDepth").reset()
         local game = Game:new()
@@ -80,11 +53,10 @@ function M.run(startAct)
         run.actNumber = a
         run.floorInAct = 8
         run.currentNode = { type = "boss" }
-        -- vida/dano reais do chefe do ato (o startGame montou um inimigo comum)
         local stats = require("src.systems.ActSystem").getEnemyStats(a, 8, "boss")
         game.enemy = require("src.entities.Enemy"):new(stats.health, stats.damage)
         if game.enemy.rollNextIntent then pcall(game.enemy.rollNextIntent, game.enemy) end
-        game.messageSystem = nil   -- sem os toasts de início de run por cima da sala
+        game.messageSystem = nil
         game.enemy.spriteId = EnemyRenderer.resolveSpriteId(a, "boss")
         game.enemy.isBoss = true
         EnemyRenderer.clearCache()
@@ -97,13 +69,10 @@ function M.run(startAct)
             game = game, topBar = topBar, gameUI = GameUI:new(),
             playButton = Button:new(w * 0.80, h * 0.80, 150, 46, "Jogar"),
         })
-        GameplayScene.setGame(game)   -- zera cinemática/turno da sala anterior
+        GameplayScene.setGame(game)
         GameplayScene._debugForceBossEntered()
         WorldRoad.setBiome(a)
         WorldRoad.setTimeOfDay(1, true)
-        -- Trilha do chefe (a do ato; no 6 a faixa do eclipse): o despacho
-        -- deste tool no main.lua é DEPOIS do registro dos sons justamente
-        -- pra entrada (I) e morte (K) tocarem com som e música de verdade.
         local code = require("src.systems.MusicDirector").pick("playing", run, "boss", true)
         if code then require("src.systems.Sfx").playMusic(code, { fadeDuration = 0.8 }) end
         print(string.format("[boss_rooms] ato %d  chefe=%s", a,
@@ -122,8 +91,6 @@ function M.run(startAct)
             frames = 0
         end
         if _G.EventManager.update then _G.EventManager.update(dt) end
-        -- cinemática do chefe (I = entrada, K = morte): relógio dela ANTES do
-        -- EnemyRenderer (câmera lenta = escala do dt dele)
         require("src.ui.BossCinematic").update(dt, _G.game, { inHall = true })
         require("src.systems.ScreenShake").update(dt)
         WorldRoad.update(dt)
@@ -164,8 +131,6 @@ function M.run(startAct)
         love.graphics.rectangle("fill", 0, y - 6, font:getWidth(label) + 24, font:getHeight() + 12)
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.print(label, 12, y)
-        -- BOSS_ROOMS_SEQ=n: além do quadro principal, n quadros seguidos
-        -- (a cada 4 frames) pra conferir animação — boss_room_<ato>_<k>.png
         if shots and seqLeft > 0 and frames >= 4 then
             frames = -1e9
             local a, k = act, seqN - seqLeft + 1
@@ -182,7 +147,6 @@ function M.run(startAct)
                 img:encode("png", "boss_room_" .. a .. ".png")
                 print("[boss_rooms] salvo boss_room_" .. a .. ".png")
                 if seqN > 0 then seqLeft = seqN; frames = 0; return end
-                -- troca pelo MESMO caminho da tecla (é ele que o dono usa)
                 if a >= total then love.event.quit() else pendingKey = tostring(a + 1) end
             end)
         end
@@ -201,12 +165,9 @@ function M.run(startAct)
         elseif key == "h" then
             EnemyRenderer.triggerHurt()
         elseif key == "i" then
-            -- ENTRADA do chefe a partir do salão VAZIO (sala remontada)
             mount(act)
             GameplayScene._debugStartBossIntro()
         elseif key == "k" then
-            -- MORTE pelo pipeline real (beat enemy.death → _onEnemyDeath →
-            -- clip + cinemática de morte no salão)
             local g = _G.game
             if g.enemy:isAlive() then
                 g.enemy.armor = 0

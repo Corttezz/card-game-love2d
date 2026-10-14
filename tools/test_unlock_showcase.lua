@@ -1,20 +1,3 @@
--- tools/test_unlock_showcase.lua
--- Revelações do menu (UnlockQueue + UnlockShowcase), pedido do dono:
--- "igual ao Balatro: terminou a run e voltou pro menu, mostra tudo o que
--- desbloqueou".
---
--- Trava:
---   1. a fila nasce de uma run que libera várias coisas, na ordem de leitura
---      (classe, nível de maestria + cartas do pacote, demais cartas, selo) e
---      as conquistas entram quando acontecem;
---   2. a fila mora no PERFIL em disco (fechar o jogo antes de ver não perde);
---   3. o painel abre sozinho só no menu, mostra um por vez na ordem,
---      Continuar (Enter / A / clique) avança e Pular tudo (Esc / B) esvazia;
---   4. o caminho REAL (UnlockSystem.onRunEnded) enche a fila;
---   5. layout em zonas válido e todo tipo de item tem texto nos 5 idiomas.
---
---   love . test_one test_unlock_showcase
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -48,7 +31,6 @@ function M.run()
         if SaveManager.quarantined then SaveManager.quarantined[P] = nil end
         PS._setPathForTests(P)
 
-        -- ===== 1. Fila de uma run que libera várias coisas =====
         UQ.clear()
         t:truthy("conquista entra na fila quando acontece", UQ.addAchievement("primeiro_chefe"))
         t:falsy("a mesma conquista nao entra duas vezes", UQ.addAchievement("primeiro_chefe"))
@@ -64,12 +46,10 @@ function M.run()
             "achievement:primeiro_chefe,class:mage,mastery:2,card:carta_a,card:carta_b,"
             .. "mastery:3,card:carta_marco,seal:1")
 
-        -- ===== 2. Persistida no perfil em disco =====
-        PS._setPathForTests(P)   -- relê do disco (o "próximo boot")
+        PS._setPathForTests(P)
         t:eq("a fila sobrevive a fechar o jogo", UQ.count(), 8)
         t:eq("e na mesma ordem", UQ.peek().kind, "achievement")
 
-        -- ===== 3. Painel: abre no menu, um por vez, pula =====
         local s = Showcase:new()
         s:watch("playing", 5)
         t:falsy("fora do menu nao abre", s:isVisible())
@@ -113,7 +93,6 @@ function M.run()
             gp:find('IF.register("unlockShowcase", _G.unlockShowcase)', 1, true))
         t:truthy("navega sozinho (B vira Esc, A vira Enter)", Showcase.ownsNavigation)
 
-        -- ===== 4. Caminho real: fim de run enche a fila =====
         clean()
         PS._setPathForTests(P)
         US._resetForTests()
@@ -130,7 +109,6 @@ function M.run()
         PS._setPathForTests(P)
         t:eq("fila do fim de run gravada no perfil", UQ.count(), #q)
 
-        -- painel de cada tipo desenha sem erro
         local canvas = love.graphics.newCanvas(1024, 768)
         UQ.clear()
         UQ.push({ kind = "achievement", id = "primeiro_chefe" })
@@ -154,9 +132,6 @@ function M.run()
             saw.card and saw.mastery and saw.seal and saw.achievement)
         t:eq("Continuar ate o fim esvazia a fila", UQ.count(), 0)
 
-        -- ===== 4b. A carta revelada e uma Card de verdade (dono, Out/2026) =====
-        -- hover = sobe + tooltip ao lado; clique / botao direito / I / Enter
-        -- com a carta em foco = inspecao da Colecao; Esc fecha SO a inspecao.
         do
             UQ.clear()
             UQ.push({ kind = "card", id = "warrior_bastion" })
@@ -176,7 +151,7 @@ function M.run()
                 end
             end
             local okI, errI = pcall(function()
-                frame(12)                       -- pop assentado, INPUT_DELAY passado
+                frame(12)
                 local inst, r = s3:_card(), s3._cardBox
                 t:truthy("carta montada e posicionada no palco", inst ~= nil and r ~= nil)
                 t:truthy("carta e alvo de hover (isRewardCard: sobe)", inst and inst.isRewardCard)
@@ -186,7 +161,6 @@ function M.run()
                 t:truthy("hover levanta a carta", (inst.liftOffset or 0) < 0)
                 t:truthy("hover abre o tooltip (CardInfoDisplay)",
                     inst.cardInfoDisplay and inst.cardInfoDisplay.lastRect ~= nil)
-                -- clique esquerdo abre a inspecao; Esc fecha SO ela
                 s3:mousepressed(mx, my, 1); s3:mousereleased(mx, my, 1)
                 t:truthy("clique na carta abre a inspecao", s3.inspectModal:isVisible())
                 t:eq("inspecao na carta revelada", s3.inspectModal.card, inst)
@@ -196,17 +170,14 @@ function M.run()
                 t:falsy("Esc fecha a inspecao", s3.inspectModal:isVisible())
                 t:truthy("...e o painel continua aberto", s3:isVisible())
                 t:eq("...sem esvaziar a fila", UQ.count(), 2)
-                -- botao direito (gatilho do pad)
                 frame(6)
                 s3:mousepressed(mx, my, 2)
                 t:truthy("botao direito inspeciona", s3.inspectModal:isVisible())
                 s3:keypressed("escape")
-                -- tecla I com a carta em hover
                 frame(6)
                 s3:keypressed("i")
                 t:truthy("tecla I (gatilho) inspeciona a carta em hover", s3.inspectModal:isVisible())
                 s3:keypressed("escape")
-                -- teclado/pad: pra cima poe o foco na carta, Enter/A inspeciona
                 mx, my = 1, 1
                 frame(6)
                 s3:keypressed("up")
@@ -218,7 +189,6 @@ function M.run()
                 s3:keypressed("escape")
                 s3:keypressed("down")
                 t:falsy("seta pra baixo devolve o foco aos botoes", s3.cardFocus)
-                -- Continuar segue funcionando (clique no botao, fora da carta)
                 frame(6)
                 local L3 = Showcase.layout(love.graphics.getWidth(), love.graphics.getHeight())
                 local b1 = L3.buttons[1]
@@ -235,7 +205,6 @@ function M.run()
             t:truthy("4b sem excecao" .. (okI and "" or (": " .. tostring(errI))), okI)
         end
 
-        -- ===== 5. Layout e textos =====
         for _, sz in ipairs({ { 1024, 768 }, { 1280, 720 }, { 1366, 768 }, { 1280, 800 } }) do
             local probs = Showcase.validate(Showcase.layout(sz[1], sz[2]), sz[1], sz[2])
             t:eq(("layout %dx%d valido%s"):format(sz[1], sz[2],
@@ -264,7 +233,7 @@ function M.run()
         I18n.setLocale(prev or "pt_BR", true)
     end)
     PS._setPathForTests(nil)
-    US.setOverrideAll(true)   -- padrão de ferramenta (qualquer arg liga)
+    US.setOverrideAll(true)
     clean()
     t:truthy("suite sem erro" .. (ok and "" or (": " .. tostring(err))), ok)
     return t:done()

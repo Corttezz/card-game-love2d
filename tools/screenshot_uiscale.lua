@@ -1,21 +1,9 @@
--- tools/screenshot_uiscale.lua
--- Capturas da ESCALA DE UI (src/ui/UiScale.lua) em vários tamanhos, num só
--- processo, com a janela FALSIFICADA (getWidth/getHeight) e render em
--- canvas — sem love.window.setMode (repetido dentro de tool trava).
---
---   love . test_one screenshot_uiscale             → pt_BR, todas as telas, 5 tamanhos
---   love . test_one screenshot_uiscale de          → outro idioma
---   love . test_one screenshot_uiscale pt_BR:shop  → só uma tela
---
--- Saída: uiscale_<tela>_<W>x<H>_<loc>.png no save dir.
-
 local M = {}
 
 local SIZES = {
     { 1024, 768 }, { 1366, 768 }, { 1920, 1080 }, { 2560, 1440 }, { 3840, 2160 },
-    { 1280, 800, deck = true },   -- Steam Deck: Auto em 125% (UiScale deviceMul)
+    { 1280, 800, deck = true },
 }
--- DECK=1 no ambiente: só o tamanho do Steam Deck
 if os.getenv("DECK") == "1" then SIZES = { { 1280, 800, deck = true } } end
 
 local function fakeWindow(w, h)
@@ -85,8 +73,6 @@ function M.run(arg)
         local p = require("components.PauseMenu"):new(); p:show(game, {}); simulate(p, 0.5); return p
     end)
     add("shop", function()
-        -- Dados do Escriba: o tool não passa pelo love.load; o stub deixa a
-        -- loja registrar o botão (o copo é desenhado mesmo sem ele)
         _G.openScribeDice = _G.openScribeDice or function() end
         local s = require("components.CardRewardScreen"):new(game.shopSystem)
         s:show(game, function() end, function() end, "shop"); simulate(s, 1.4)

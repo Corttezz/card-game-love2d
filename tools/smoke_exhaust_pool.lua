@@ -1,8 +1,3 @@
--- tools/smoke_exhaust_pool.lua — regressao da anomalia "cartas sumiram"
--- (autoplay v3): carta EXHAUST jogada apos o inimigo morrer na mesma leva
--- caia no guard "batendo no cadaver" sem bookkeeping — sumia de todas as
--- pilhas e escapava da remocao permanente da run.
--- Roda isolado: lovec . test_one smoke_exhaust_pool
 local TK = require("tools.testkit")
 
 local M = {}
@@ -25,13 +20,11 @@ local function body()
     TK.seedRng(42)
     local g = TK.newRunGame("rogue")
 
-    -- injeta 2 backstabs na run e reinicia a batalha pra virem no deck
     g:addCardToRun("rogue_backstab")
     g:addCardToRun("rogue_backstab")
     g:startGame()
     TK.pump(g, 1)
 
-    -- garante as 2 na mão (innate já promove; se faltar, compra)
     local guard = 0
     local function inHand()
         local n = 0
@@ -52,10 +45,8 @@ local function body()
     local before = pool(g)
     dump(g, "antes")
 
-    -- LETHAL: as runs reais só anomalizam quando o inimigo MORRE na leva
     g.enemy.health = 5
 
-    -- seleciona as duas backstabs
     for _, c in ipairs(g.hand) do
         if c.id == "rogue_backstab" then g:selectCard(c) end
     end
@@ -80,7 +71,6 @@ local function body()
 end
 
 function M.run()
-    -- pcall: erro Lua NUNCA pode cair no error screen do LÖVE (trava headless)
     local ok, result = pcall(body)
     if not ok then
         print("ERRO no repro: " .. tostring(result))

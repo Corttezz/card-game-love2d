@@ -1,9 +1,3 @@
--- tools/preview_rareglow.lua
--- Renderiza uma carta RARA pelo caminho AO VIVO (Card:draw) pra capturar o
--- rareGlow (filtro vermelho) da CardAnimationLayer, que não entra no canvas
--- estático do CardFrame. Usar: love . preview_rareglow
--- Saída: rareglow_live.png no saveDir.
-
 local M = {}
 
 function M.run()
@@ -18,7 +12,6 @@ function M.run()
     local db = CardDatabase:new()
     local CardFrame = require("src.ui.CardFrame")
 
-    -- Cobaia fria (escudo azul) forçada RARA — o filtro vermelho fica óbvio.
     local base = db:getCard("warrior_defend")
     if not base then print("[rareglow] warrior_defend não encontrada"); return end
     local cd = {}
@@ -29,7 +22,6 @@ function M.run()
     pcall(function() CardFrame.invalidate(cd) end)
     inst.image = CardFrame.render(cd)
 
-    -- Estado neutro (sem warp/hover) pra ver a carta reta.
     inst.isDragging = false
     inst.isHovered = false
     inst.liftOffset = 0
@@ -40,9 +32,8 @@ function M.run()
     local W, H = 360, 520
     local canvas = love.graphics.newCanvas(W, H)
     love.graphics.setCanvas(canvas)
-    love.graphics.clear(0.12, 0.10, 0.09, 1)  -- fundo escuro neutro
+    love.graphics.clear(0.12, 0.10, 0.09, 1)
     love.graphics.setColor(1, 1, 1, 1)
-    -- draw centraliza pela própria lógica; posiciona no meio do canvas
     inst:draw(W / 2, H / 2, false, false)
     love.graphics.setCanvas()
 

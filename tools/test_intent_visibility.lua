@@ -1,31 +1,3 @@
--- tools/test_intent_visibility.lua
--- TRAVA da NÉVOA DE INTENÇÃO (Out/2026, src/systems/IntentVisibility.lua).
---
--- Ideia do dono: nos biomas do fim da jornada a nevasca esconde parte do que
--- o inimigo anuncia (tipo sem número; na névoa fechada nem o tipo). Esta
--- suíte trava o que não pode quebrar:
---   1. DADOS: toda regra de névoa aponta pra um bioma real; frost e dusk
---      ligados, os outros limpos; a curva de densidade É a do clima na tela;
---      densidade cresce com o andar, o salão tem a sua, o endless cicla.
---   2. RESOLUÇÃO: a mesma rolagem dá o mesmo nível; sem névoa nem véu o Rng
---      NÃO anda; a rolagem usa o stream "misc" (o "enemy" fica intocado);
---      a mesma seed reproduz a sequência.
---   3. VÉU do inimigo (kit/fase) combina pelo pior nível; chance parcial.
---   4. REVELAÇÃO: carta revela agora + N; pulso do Raio revela o PRÓXIMO.
---   5. CONGELADO: o golpe escondido acerta EXATAMENTE o número congelado
---      (CLAUDE.md §6) — a névoa só muda a leitura.
---   6. HUD: intentSpec mostra "?" / desconhecido, tooltip da névoa nos 5
---      idiomas, nenhum número vaza; drawIntent + véu desenham sem erro.
---   7. CONTADORES: efeito `reveal_intent` existe, 4 cartas o carregam
---      (uma por classe + a neutra), o orbe de Raio revela o próximo anúncio.
---   8. MUNDO: o WeatherEngine engrossa quando o número some e volta quando
---      aparece; salão e inimigo morto não empurram o clima; reset zera.
---   9. PILOTO: getKnownIntent / getKnownIncomingDamage nunca entregam número
---      escondido.
---  10. TUTORIAL: conversa `fog` no roteiro, textos nos 5 idiomas.
---
---   love . test_one test_intent_visibility
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -53,9 +25,6 @@ function M.run()
     local savedLocale = I18n.getLocale and I18n.getLocale() or "pt_BR"
     I18n.setLocale("pt_BR", true)
 
-    -- ======================================================================
-    -- 1. DADOS
-    -- ======================================================================
     local list = biomes.list or biomes
     local byId = {}
     for _, b in ipairs(list) do byId[b.id] = b end
@@ -78,13 +47,11 @@ function M.run()
     t:check("hidden empurra o clima mais que type_only",
         Fog.worldBoost.hidden > Fog.worldBoost.type_only)
 
-    -- a curva da névoa É a do clima (copiada de propósito: roda sem motor)
     for _, p in ipairs({ 0, 0.2, 0.5, 0.8, 1 }) do
         t:near("curva(" .. p .. ") = WeatherEngine.intensityFor", IV.fogCurve(p),
             WeatherEngine.intensityFor(p), 1e-9)
     end
 
-    -- contexto por ato: só os biomas da tabela recebem névoa
     for act = 1, 6 do
         local run = { actNumber = act, floorInAct = 3, currentNode = { type = "battle" } }
         local bid = IV.biomeIdFor(run)
@@ -95,7 +62,6 @@ function M.run()
     end
     t:eq("sem run = sem contexto", IV.contextFor(nil), nil)
 
-    -- densidade: 1º andar = base, porta do castelo = peak, monótona
     local function ctxAt(floor, nodeType)
         return IV.contextFor({ actNumber = 4, floorInAct = floor, currentNode = { type = nodeType or "battle" } })
     end
@@ -114,7 +80,6 @@ function M.run()
     t:truthy("salão marcado no contexto", ctxAt(8, "boss").hall == true)
     t:eq("densidade sem contexto = 0", IV.density(nil), 0)
 
-    -- "subjetivo, não cego" (lead): o TIPO só some no pico da nevasca
     local s1 = IV.expectedShares(ctxAt(1))
     t:eq("frost andar 1: NUNCA some o tipo (hidden = 0)", s1.hidden, 0)
     t:check("frost andar 1: um terço dos anúncios sem número", s1.type_only > 0.3 and s1.type_only < 0.4)
@@ -133,7 +98,6 @@ function M.run()
     t:eq("stormCurve no salão = 1", IV.stormCurve(ctxAt(8, "boss")), 1)
     t:eq("stormCurve no andar 1 = 0", IV.stormCurve(ctxAt(1)), 0)
 
-    -- endless cicla 4,5,6,1,2,3 (mesmo wrap do EnemyRoster.biomeAct)
     local function endlessCtx(floor)
         return IV.contextFor({ actNumber = 6, endlessMode = true, currentFloor = floor,
             floorInAct = 2, currentNode = { type = "battle" } })
@@ -143,12 +107,9 @@ function M.run()
     t:eq("endless andar 49 = campos (sem névoa)", endlessCtx(49), nil)
     t:truthy("endless andar 25 tem névoa", endlessCtx(25) ~= nil)
 
-    -- ======================================================================
-    -- 2. RESOLUÇÃO (rolagem injetada)
-    -- ======================================================================
-    local wolf = Enemy:new(100, 10, "frost_wolf")   -- kit SEM véu
+    local wolf = Enemy:new(100, 10, "frost_wolf")
     t:eq("inimigo sem contexto nasce com visibilidade cheia", wolf:getIntentVisibility(), "full")
-    wolf.fogContext = ctxAt(8)                       -- densidade = peak (0.80)
+    wolf.fogContext = ctxAt(8)
     local dens = IV.density(wolf.fogContext)
     local function roll(v) return function() return v end end
     local lvl, cause = IV.resolve(wolf, roll(0.99))
@@ -161,14 +122,12 @@ function M.run()
     t:eq("rolagem dentro da fração `heavy` = hidden", lvl, "hidden")
     t:eq("causa hidden = névoa", cause, "fog")
 
-    -- sem névoa e sem véu o Rng não anda (a rolagem nem é chamada)
     wolf.fogContext = nil
     local called = false
     lvl = IV.resolve(wolf, function() called = true; return 0 end)
     t:eq("sem névoa/véu: full", lvl, "full")
     t:falsy("sem névoa/véu: a rolagem NÃO é chamada", called)
 
-    -- stream: "misc" anda, "enemy" fica intocado
     wolf.fogContext = ctxAt(8)
     local rng = TK.seedRng(9001)
     local function snap(stream)
@@ -180,7 +139,6 @@ function M.run()
     t:eq("resolver não mexe no stream 'enemy'", snap("enemy"), enemyBefore)
     t:check("resolver anda o stream 'misc'", snap("misc") ~= miscBefore)
 
-    -- mesma seed = mesma sequência de níveis
     local function sequence(seed)
         TK.seedRng(seed)
         local e = Enemy:new(100, 10, "frost_wolf")
@@ -196,9 +154,6 @@ function M.run()
     t:eq("mesma seed: mesma sequência de visibilidade", sA, sB)
     t:truthy("a sequência tem clareira E névoa (andar 5)", sA:find("full") and (sA:find("type_only") or sA:find("hidden")))
 
-    -- ======================================================================
-    -- 3. VÉU do inimigo
-    -- ======================================================================
     t:eq("worst(type_only, hidden) = hidden", IV.worst("type_only", "hidden"), "hidden")
     t:eq("worst(full, type_only) = type_only", IV.worst("full", "type_only"), "type_only")
     t:eq("worst(nil, full) = full", IV.worst(nil, "full"), "full")
@@ -225,7 +180,7 @@ function M.run()
     t:eq("Rainha do Eclipse fase 2: véu hidden", eq.phases[1].veil and eq.phases[1].veil.level, "hidden")
 
     TK.seedRng(11)
-    local wight = Enemy:new(100, 10, "frost_wight")   -- véu type_only, chance 1, SEM névoa
+    local wight = Enemy:new(100, 10, "frost_wight")
     local allVeiled = true
     for _ = 1, 12 do
         wight:rollIntent()
@@ -235,27 +190,23 @@ function M.run()
     end
     t:truthy("espectro do gelo: TODO anúncio sem número, causa = véu", allVeiled)
 
-    local shaman = Enemy:new(100, 10, "rime_shaman")  -- chance 0.5
+    local shaman = Enemy:new(100, 10, "rime_shaman")
     t:eq("xamã: rolagem alta = número aparece", (IV.resolve(shaman, roll(0.9))), "full")
     t:eq("xamã: rolagem baixa = type_only", (IV.resolve(shaman, roll(0.1))), "type_only")
 
-    -- véu + névoa: o pior vence
-    local shade = Enemy:new(100, 10, "dusk_shade")     -- véu type_only 0.7
+    local shade = Enemy:new(100, 10, "dusk_shade")
     shade.fogContext = IV.contextFor({ actNumber = 6, floorInAct = 8, currentNode = { type = "battle" } })
     local dd = IV.density(shade.fogContext)
     local hv = Fog.biomes.dusk.heavy
-    -- 1ª rolagem (névoa) cai no `heavy` → hidden; 2ª (véu) cai → type_only; fica hidden
     local seq = { dd * hv * 0.5, 0.1 }
     local i = 0
     lvl = IV.resolve(shade, function() i = i + 1; return seq[i] end)
     t:eq("névoa hidden + véu type_only = hidden (o pior)", lvl, "hidden")
-    -- névoa clareira (0.99) + véu (0.1) → type_only por causa do véu
     i = 0; seq = { 0.99, 0.1 }
     lvl, cause = IV.resolve(shade, function() i = i + 1; return seq[i] end)
     t:eq("clareira + véu = type_only", lvl, "type_only")
     t:eq("causa = véu", cause, "veil")
 
-    -- fase: a Rainha só esconde depois do Eclipse
     local queen = Enemy:new(100, 10, "eclipse_queen")
     t:eq("Rainha fase 1: sem véu", queen:veilSpec(), nil)
     queen.health = 40
@@ -263,9 +214,6 @@ function M.run()
     t:truthy("Rainha fase 2: véu ativo", queen:veilSpec() ~= nil)
     t:eq("Rainha fase 2: rolagem baixa = hidden", (IV.resolve(queen, roll(0.1))), "hidden")
 
-    -- ======================================================================
-    -- 4. REVELAÇÃO
-    -- ======================================================================
     wight:rollIntent()
     t:eq("(pré) espectro escondido", wight:getIntentVisibility(), "type_only")
     wight:revealIntent(2)
@@ -282,9 +230,6 @@ function M.run()
     wight:rollIntent()
     t:eq("...e depois o véu volta", wight:getIntentVisibility(), "type_only")
 
-    -- ======================================================================
-    -- 5. CONGELADO: o golpe escondido acerta o número congelado
-    -- ======================================================================
     TK.seedRng(2024)
     local g = TK.newRunGame("warrior")
     TK.pump(g, 0.3)
@@ -328,9 +273,6 @@ function M.run()
     t:eq("depois do turno o inimigo anunciou de novo (visibilidade válida)",
         IV.RANK[g.enemy:getIntentVisibility()] ~= nil, true)
 
-    -- ======================================================================
-    -- 6. HUD: intentSpec e desenho
-    -- ======================================================================
     local EnemyHud = require("src.ui.EnemyHud")
     local IntentVeil = require("src.ui.IntentVeil")
     g.enemy:forceIntent("wight_claw", g.player)
@@ -375,7 +317,6 @@ function M.run()
     end
     I18n.setLocale("pt_BR", true)
 
-    -- desenho: box + véu num canvas, o véu aparece depois de alguns quadros
     local realTime = love.timer.getTime
     local base = realTime()
     local fake = 0
@@ -407,9 +348,6 @@ function M.run()
     love.timer.getTime = realTime
     IntentVeil.reset()
 
-    -- ======================================================================
-    -- 7. CONTADORES
-    -- ======================================================================
     g.enemy.intentVisibility, g.enemy.intentVeilCause = "type_only", "fog"
     g.enemy._revealTurns = 0
     g.effectSystem:processEffectCard(g, { type = "reveal_intent", value = 2 })
@@ -433,7 +371,6 @@ function M.run()
         t:truthy("classe " .. c .. " tem um contador", classes[c])
     end
 
-    -- pulso do Raio revela o PRÓXIMO anúncio
     g.enemy.intentVisibility = "type_only"
     g.enemy._revealTurns = 0
     g.player.orbs = { { type = "lightning", value = 4 } }
@@ -450,9 +387,6 @@ function M.run()
     t:eq("o pulso de Gelo não revela nada", g.enemy._revealTurns, 0)
     g.player.orbs = {}
 
-    -- ======================================================================
-    -- 8. MUNDO: o clima acompanha o estado
-    -- ======================================================================
     IV.noteActive(g.enemy)
     g.enemy.intentVisibility = "hidden"
     t:near("worldFog hidden = boost da tabela", IV.worldFog(), Fog.worldBoost.hidden, 1e-9)
@@ -480,10 +414,6 @@ function M.run()
         thick > calm + 0.5)
     t:check("boost nunca passa de 1", thick <= 1)
     t:check("a tempestade fecha junto", WeatherEngine.storm() > 0.5)
-    -- INVARIANTE (lead): "?" nunca sobre céu limpo — assentado o clima, a
-    -- bruma de tela (renderedFog) está acima do limiar sempre que o intent
-    -- está encoberto, e abaixo quando revelado. 15 quadros ≈ 0,5 s: menos
-    -- que os beats entre o anúncio e a vez voltar ao jogador.
     local TH = IV.FOG_THRESHOLD
     t:check("renderedFog hidden >= limiar (" .. TH .. ")", WeatherEngine.renderedFog() >= TH)
     g.enemy.intentVisibility = "type_only"
@@ -495,10 +425,6 @@ function M.run()
     weather(105)
     t:near("revelado: a nevasca volta ao normal", WeatherEngine.intensity(), calm, 0.02)
 
-    -- CADEIA REAL (lead): o anúncio escondido acontece no turno do inimigo
-    -- (beat enemy.next_intent) e a bruma precisa ter fechado ANTES de a vez
-    -- voltar ao jogador (turn.player_ready). O espectro do gelo tem véu com
-    -- chance 1: todo anúncio sai type_only, sem depender da rolagem.
     do
         local CombatBeats = require("src.systems.CombatBeats")
         g.enemy.intentVisibility = "full"
@@ -534,8 +460,6 @@ function M.run()
         t:truthy("o anúncio passou pelo beat enemy.next_intent", sawNext)
     end
 
-    -- a bruma é DESENHADA (bandas no flushAll) quando há véu, e não há
-    -- banda alguma com o número à mostra
     do
         local WorldRoad = require("src.ui.WorldRoad")
         local W, H = love.graphics.getDimensions()
@@ -557,8 +481,6 @@ function M.run()
         for _ = 1, 90 do frame() end
         t:eq("revelado: nenhuma banda de bruma", WeatherEngine.stats.hazeBands or 0, 0)
     end
-    -- salão: o clima do domo não responde; quem responde é o InteriorFX
-    -- (hook de chefes-visual-3, e37a148) — mesmo limiar, mesma propriedade
     g.enemy.intentVisibility = "hidden"
     g.enemy.fogContext.hall = true
     t:eq("salão do chefe não empurra o clima do domo", IV.worldFog(), 0)
@@ -585,7 +507,6 @@ function M.run()
         t:eq("InteriorFX.clear zera a névoa", InteriorFX.renderedFog(), 0)
         g.enemy.fogContext.hall = false
     end
-    -- inimigo morto não empurra
     local hp0 = g.enemy.health
     g.enemy.health = 0
     t:eq("inimigo morto não empurra o clima", IV.worldFog(), 0)
@@ -597,9 +518,6 @@ function M.run()
     t:eq("IV.reset: sem inimigo ativo = 0", IV.worldFog(), 0)
     _G.gameSettings = savedSettings
 
-    -- ======================================================================
-    -- 9. PILOTO não enxerga número escondido
-    -- ======================================================================
     local NUMERIC = { "perHit", "hits", "armor", "strength", "heal", "raw", "summon" }
     for _, lvl2 in ipairs({ "type_only", "hidden" }) do
         g.enemy.intentVisibility = lvl2
@@ -614,7 +532,6 @@ function M.run()
     g.enemy.intentVisibility = "full"
     t:eq("full: getKnownIntent carrega visibility", g.enemy:getKnownIntent(g.player).visibility, "full")
 
-    -- o piloto de verdade (tools/balance_ai.knownThreat) decide pelo conhecido
     local AI = require("tools.balance_ai")
     g.enemy:forceIntent("wight_claw", g.player)
     local realHit = g.enemy:intentHitDamage(g.player)
@@ -632,20 +549,16 @@ function M.run()
     t:falsy("piloto hidden: NÃO é conhecido", th.known)
     t:eq("piloto hidden: estima pela média do kit", th.perHit * th.hits, expected)
     t:eq("piloto hidden: sem bloqueio nem perfurante", (th.armor or 0) + (th.pierce and 1 or 0), 0)
-    g.enemy:forceIntent("freezing_touch", g.player)   -- golpe de dano que aplica Frágil
+    g.enemy:forceIntent("freezing_touch", g.player)
     g.enemy.intentVisibility = "type_only"
     th = AI.knownThreat(g.enemy, g.player)
     t:eq("piloto type_only (ataque): dano estimado", th.perHit * th.hits, expected)
     g.enemy.intentVisibility = "full"
-    -- e o autoplay escolhe cartas por esse caminho (fonte, não só a API)
     local src = love.filesystem.read("tools/autoplay.lua") or ""
     t:truthy("autoplay.chooseBatch decide por AI.knownThreat", src:find("AI.knownThreat(enemy, p)", 1, true))
     t:truthy("autoplay mantém a MEDIÇÃO (diag) no dano real",
         src:find("game.enemy:getIncomingDamage(game.player)", 1, true))
 
-    -- ======================================================================
-    -- 10. TUTORIAL
-    -- ======================================================================
     local Tutorial = require("src.systems.Tutorial")
     local conv = Tutorial.byId and Tutorial.byId("fog")
     t:truthy("conversa `fog` no roteiro", conv ~= nil)

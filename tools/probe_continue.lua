@@ -1,7 +1,3 @@
--- tools/probe_continue.lua — reproduz o caminho do CONTINUAR e diz, passo a
--- passo, o que o MusicDirector ve e decide. Existe porque o defeito "a musica
--- do menu continua tocando ao Continuar" ja sobreviveu a duas correcoes
--- baseadas em deducao.
 local M = {}
 function M.run()
     local AudioManager = require("engine.AudioManager")
@@ -21,14 +17,12 @@ function M.run()
     end
     print("")
 
-    -- 1) MENU tocando, como no jogo
     Sfx.playMusic("menuMusic", { fadeDuration = 1.5 })
     MD.markCurrent("menuMusic")
     audio:update(0.1)
     print(("[1] menu    -> _current=%s  audioSystem=%s"):format(
         tostring(MD._current), tostring(audio.currentMusic)))
 
-    -- 2) CONTINUAR: monta uma run como o loadRun faria
     local game = Game:new()
     game:startNewRun("warrior")
     local run = game.runManager.currentRun
@@ -39,7 +33,6 @@ function M.run()
         tostring(run.actNumber), tostring(run.floorInAct),
         tostring(run.currentNode and run.currentNode.type)))
 
-    -- 3) o estado vira "playing" e o update roda o apply
     local estado = "playing"
     local node = run.currentNode
     print(("[3] pick    -> %s"):format(tostring(MD.pick(estado, run, node and node.type))))
@@ -50,7 +43,6 @@ function M.run()
     print(("[4] depois  -> _current=%s  audioSystem=%s"):format(
         tostring(MD._current), tostring(audio.currentMusic)))
 
-    -- 5) e no caminho da ENCRUZILHADA (pendingNodes), que vira mapSelection
     run.pendingNodes = { { type = "battle" }, { type = "shop" } }
     estado = "mapSelection"
     print(("[5] pick(mapSelection) -> %s"):format(tostring(MD.pick(estado, run, nil))))

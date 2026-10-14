@@ -1,8 +1,3 @@
--- tools/smoke_combos.lua
--- Smoke dos COMBOS SIMPLES (Out/2026): Saraivada (ataques), Muralha
--- (defesas), Par (copias da mesma carta) e os coringas de combo.
--- Roda via: love . smoke_combos
-
 local TagSystem = require("src.systems.TagSystem")
 local ComboSystem = require("src.systems.ComboSystem")
 
@@ -32,11 +27,9 @@ function M.run()
     check("tres regras: volley, wall, pair", #ComboSystem.RULES == 3
         and R.volley and R.wall and R.pair)
 
-    -- 1. carta sozinha nao tem combo
     local solo = { id = "a", type = "attack" }
     check("1 carta: sem combo", #ctxOf({ solo }).activeCombos == 0)
 
-    -- 2. Saraivada: 2o ataque +step, 3o +2*step, teto em cap
     local atks = {}
     for i = 1, 6 do atks[i] = { id = "atk" .. i, type = "attack" } end
     local c = ctxOf(atks)
@@ -49,32 +42,27 @@ function M.run()
     check("Saraivada detectada com o total da jogada", has(c, "volley")
         and has(c, "volley").bonus.value == s * (1 + 2 + 3 + 3 + 3))
 
-    -- 3. Muralha: so defesas; ataque no meio nao conta
     local d1, a1, d2 = { id = "d1", type = "defense" }, { id = "x", type = "attack" },
         { id = "d2", type = "defense" }
     local cw = ctxOf({ d1, a1, d2 })
     check("Muralha: 2a defesa +step", ComboSystem.applyToCardValue(d2, 5, cw) == 5 + R.wall.step)
     check("Muralha nao toca ataque", ComboSystem.applyToCardValue(a1, 5, cw) == 5)
 
-    -- 4. Par: copias da MESMA carta
     local p1, p2, p3 = { id = "same", type = "attack" }, { id = "same", type = "attack" },
         { id = "same", type = "attack" }
     local cp = ctxOf({ p1, p2, p3 })
-    -- p2: Saraivada +step, Par +pstep; p3: Saraivada +2step, Par +2pstep
     check("Par: 2a copia +step do par", ComboSystem.applyToCardValue(p2, 10, cp)
         == 10 + R.volley.step + R.pair.step)
     check("Par: 3a copia +2*step do par", ComboSystem.applyToCardValue(p3, 10, cp)
         == 10 + 2 * R.volley.step + 2 * R.pair.step)
     check("Par detectado", has(cp, "pair") ~= nil)
 
-    -- 5. tag `combo` pesa 2 na fila
     local q = { id = "q", type = "attack", tags = { "strike", "combo" } }
     local after = { id = "z", type = "attack" }
     local cq = ctxOf({ q, after })
     check("carta `combo` conta como 2 ataques", ComboSystem.applyToCardValue(after, 10, cq)
         == 10 + 2 * R.volley.step)
 
-    -- 6. coringa de combo dobra a regra (e so ela)
     local game = { jokerSlots = { { effects = {
         { type = "combo_boost", combo = "volley", value = 2 } } } } }
     local cj = ctxOf({ atks[1], atks[2] }, game)
@@ -83,7 +71,6 @@ function M.run()
     check("coringa da Saraivada nao mexe na Muralha",
         ComboSystem.applyToCardValue(d2, 5, cjw) == 5 + R.wall.step)
 
-    -- 7. linear: 5 ataques de 6 = 30 + step*(0+1+2+3+3)
     local five = {}
     for i = 1, 5 do five[i] = { id = "f" .. i, type = "attack" } end
     local cf = ctxOf(five)
@@ -91,7 +78,6 @@ function M.run()
     for _, card in ipairs(five) do total = total + ComboSystem.applyToCardValue(card, 6, cf) end
     check("5 ataques de 6 = 30 + bonus plano", total == 30 + s * 9)
 
-    -- 8. sem efeito de fim de jogada (eventos sairam com as regras por tag)
     local g8 = { enemy = { addStatusEffect = function() error("nao devia") end } }
     local ok = pcall(ComboSystem.applyOnceEffects, g8, ctxOf(atks))
     check("applyOnceEffects nao aplica nada", ok)

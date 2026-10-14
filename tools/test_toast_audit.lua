@@ -1,21 +1,7 @@
--- tools/test_toast_audit.lua
--- Avisos do combate (MessageSystem) = SÓ o que o jogador precisa e não vê em
--- outro lugar (dono, Out/2026: "muita informação que não precisa aparecer,
--- tipo os de início de batalha"). Três travas:
---
---   1. LISTA FECHADA: toda chamada de addMessage do jogo usa uma chave desta
---      lista. Aviso novo entra aqui de propósito (com o motivo), nunca por
---      acidente — o feed lateral não volta a virar log de depuração.
---   2. Uma batalha roteirizada (início + um turno inteiro do guerreiro)
---      não gera aviso nenhum: dano, bloqueio, veneno, golpe do inimigo e
---      andar já têm número/selo/barra próprios.
---   3. MessageSystem: vazio não entra, repetido não empilha, no máximo 3,
---      cor por tipo.
 local TK = require("tools.testkit")
 
 local M = {}
 
--- chave → por que FICA (não há outro lugar que mostre)
 M.ALLOWED = {
     ["messages.not_in_run"]          = "erro de fluxo (só fora de run)",
     ["messages.card_discovered"]     = "carta inédita entregue sem vitrine (evento)",
@@ -65,7 +51,6 @@ local function listLua(dir, out)
     return out
 end
 
--- Chave de cada chamada addMessage do arquivo (nil = não reconhecida).
 local function scan(path)
     local src = love.filesystem.read(path) or ""
     local lines = {}
@@ -93,7 +78,6 @@ function M.run()
     local I18n = require("src.i18n.I18n")
 
     local ok, err = pcall(function()
-        -- ===== 1. Lista fechada =====
         local files = { "main.lua" }
         for _, d in ipairs(FILES_DIRS) do listLua(d, files) end
         local total, bad = 0, {}
@@ -108,8 +92,6 @@ function M.run()
         t:truthy(("%d chamadas de aviso no jogo"):format(total), total > 20)
         t:truthy("toda chamada usa chave da lista" .. (#bad == 0 and "" or (": " .. table.concat(bad, " | "))),
             #bad == 0)
-        -- chaves da lista existem nos 5 idiomas (as de fase/fallback são dinâmicas;
-        -- travessão nos textos é trava do test_locale_dashes)
         for key in pairs(M.ALLOWED) do
             if not key:find("%*") and key ~= "effect_desc_fallback" then
                 for _, loc in ipairs({ "pt_BR", "en", "es", "fr", "de" }) do
@@ -121,7 +103,6 @@ function M.run()
         end
         I18n.setLocale("pt_BR")
 
-        -- ===== 2. Batalha roteirizada: nenhum aviso =====
         TK.seedRng(4242)
         local Game = require("src.core.Game")
         local g = Game:new()
@@ -145,7 +126,6 @@ function M.run()
         play("attack")
         play("defense")
         g:endTurn()
-        -- golpe garantido (o inimigo do roteiro poderia abrir defendendo)
         g.enemy.nextIntent = "attack"
         g.enemy.nextIntentDamage = 6
         g.battleTurn = 1
@@ -157,7 +137,6 @@ function M.run()
         t:eq("turno inteiro (ataque, defesa, golpe do inimigo): nenhum aviso"
             .. (#got > 0 and (" (" .. table.concat(got, " | ") .. ")") or ""), #got, 0)
 
-        -- ===== 3. MessageSystem =====
         local MessageSystem = require("src.systems.MessageSystem")
         local ms = MessageSystem:new()
         ms:addMessage("", "info")

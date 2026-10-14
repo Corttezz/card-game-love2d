@@ -1,16 +1,3 @@
--- tools/screenshot_boot_entry.lua
--- A ENTRADA do jogo (BootScene, redemoinho v14) SEM JANELA: roda o boot com
--- dt fixo numa tela falsificada (canvas W×H, getWidth/getHeight mentindo),
--- grava quadros PNG da cascade e uma prancha de contato. O GIF é montado
--- fora (PIL) a partir dos quadros — ver scratchpad/ui3_boot_gif.py.
---
---   CARDGAME_HEADLESS=1 BOOT_SEED=7 BOOT_W=960 BOOT_H=540 \
---     love . test_one screenshot_boot_entry
---
--- Saída (save dir): boot_entry/frame_NNN.png (15 fps, do 1º nascimento ao
--- flash) + boot_entry_sheet.png (12 instantes lado a lado) + imprime a
--- semente e quantas cartas voaram.
-
 local M = {}
 
 function M.run()
@@ -35,7 +22,7 @@ function M.run()
     love.filesystem.createDirectory("boot_entry")
     local dt = 1 / 60
     local t = 0
-    local frameEvery = 4          -- 60/4 = 15 fps no GIF
+    local frameEvery = 4
     local step = 0
     local nFrames = 0
     local maxInFlight = 0
@@ -71,7 +58,6 @@ function M.run()
         end
     end
 
-    -- prancha: 4 colunas × 3 linhas, miniaturas 1/2
     if #sheet > 0 then
         local tw, th = math.floor(W / 2), math.floor(H / 2)
         local cols = 4

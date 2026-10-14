@@ -1,22 +1,3 @@
--- tools/test_card_audit.lua
--- TRAVA da auditoria carta a carta (tools/audit_cards.lua, Out/2026).
---
--- Falha se QUALQUER carta do catalogo:
---   * fizer algo diferente do que os DADOS prometem quando jogada num Game de
---     verdade (sozinha, com Forca/Destreza, e forjada +1/+2);
---   * tiver descricao (5 idiomas, base e forjada) com placeholder cru, numero
---     que nao existe nos dados, numero cravado no template, efeito sem palavra,
---     palavra sem efeito, vocabulario fora do padrao ou formato divergente;
---   * tiver efeito sem linha traduzida no painel de detalhe.
---
--- Verificada VERMELHA com defeitos reais reintroduzidos (Out/2026):
---   * Forca somada 1x em multi_hit -> 4 falhas (Golpe Duplo, Raios Gemeos,
---     Presas Gemeas, Medalhao Estelar: "dano medido 17, dados prometem 20");
---   * descricao antiga dos espinhos de joker ("Quando o inimigo atacar, ele
---     sofre 4") -> falha "nao menciona 'thorn'" nos 5 idiomas.
---
---   love . test_one test_card_audit
-
 local TK = require("tools.testkit")
 local Audit = require("tools.audit_cards")
 
@@ -29,7 +10,6 @@ function M.run()
         return t:done()
     end
 
-    -- contagem: um loop que nao mediu nada passaria em todas as asserções
     t:check(("mediu >= 100 cartas nao-joker (mediu %d)"):format(res.counted.cards),
         res.counted.cards >= 100)
     t:check(("mediu >= 25 jokers (mediu %d)"):format(res.counted.jokers),

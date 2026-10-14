@@ -1,16 +1,3 @@
--- tools/smoke_crt_mouse.lua
--- Regressão do MOUSE ATRAVÉS DO VIDRO (nasceu do bug "os filtros da
--- Coleção clicam acima de onde aparecem" — o domo do CRT desloca a imagem
--- perto do topo/base e o hit-test usava o mouse cru).
---
--- Teste FIM-A-FIM pelo shader REAL (não contra uma cópia da matemática):
---   1. desenha um marcador branco em posição conhecida do canvas
---   2. renderiza pela lente do CRT (beginScene/endScene de verdade)
---   3. screenshot → acha onde o marcador foi parar na TELA (centróide)
---   4. CRTShader.screenToContent(tela) tem que devolver o canvas original
--- Se a réplica Lua divergir do GLSL, o erro aparece em pixels aqui.
---   love . smoke_crt_mouse
-
 local M = {}
 
 function M.run()
@@ -25,12 +12,11 @@ function M.run()
     local CRTShader = require("src.ui.CRTShader")
     CRTShader.load()
     CRTShader.setEnabled(true)
-    CRTShader.setStrength(0.75)   -- default do jogo
+    CRTShader.setStrength(0.75)
     CRTShader.setPower(1)
 
     local w, h = love.graphics.getDimensions()
 
-    -- ===== 1. propriedades básicas =====
     CRTShader.setEnabled(false)
     local ix, iy = CRTShader.screenToContent(123, 456)
     check("CRT desligado: passthrough exato", ix == 123 and iy == 456)
@@ -40,16 +26,11 @@ function M.run()
     check("centro fisico ~ centro do conteudo",
         math.abs(cx - w / 2) < 1 and math.abs(cy - h / 2) < 1)
 
-    -- direção do bug: perto do TOPO a imagem desce → o conteúdo sob o
-    -- mouse está ACIMA do pixel físico (mapped y < physical y)
     local _, topY = CRTShader.screenToContent(w / 2, 60)
     check("topo: conteudo mapeado ACIMA do pixel fisico", topY < 60)
     local _, botY = CRTShader.screenToContent(w / 2, h - 60)
     check("base: conteudo mapeado ABAIXO do pixel fisico", botY > h - 60)
 
-    -- ===== 2. fim-a-fim: marcador pelo shader real =====
-    -- pontos nas zonas do bug: faixa de filtros da Coleção (topo), HintBar
-    -- (base), laterais e centro
     local points = {
         { w * 0.50, 60,       "topo-centro (filtros da Colecao)" },
         { w * 0.20, 110,      "topo-esquerda" },
@@ -71,8 +52,6 @@ function M.run()
 
         local result = nil
         love.graphics.captureScreenshot(function(imageData)
-            -- centróide do marcador no canal VERDE (o shader sampleia o
-            -- verde sem offset de aberração cromática)
             local sw, sh = imageData:getWidth(), imageData:getHeight()
             local sumX, sumY, n = 0, 0, 0
             for yy = 0, sh - 1 do

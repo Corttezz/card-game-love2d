@@ -1,13 +1,3 @@
--- tools/test_navcursor.lua
--- Cursor de foco do teclado/pad (src/ui/NavCursor.lua), isolado: registro de
--- alvos em pixels da tela, vizinho espacial, camadas do InputFocus, foco
--- automático fora da barra do topo, clique sintético no foco, mouse que
--- devolve o controle, recorte por scissor/janela.
---
---   love . test_one test_navcursor
---
--- O fluxo de run inteiro (jogo de verdade) é `love . nav_flow`.
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -25,8 +15,6 @@ function M.run()
     local ok, err = pcall(function()
         NC._reset()
         IF.resetLayers()
-        -- grade 2x2 + item da barra do topo
-        -- registra e "fecha" o quadro (beginFrame do próximo)
         NC.beginFrame()
         IF.push(IF.SCENE)
         NC.target("a", 100, 100, 50, 50)
@@ -76,20 +64,17 @@ function M.run()
         t:truthy("Y roda a ação publicada", clicks[1] and clicks[1][1] == "acao-y")
         t:eq("glifo de pad depois do botão do pad", NC.labelFor("y"), "Y")
 
-        -- barra do topo: só com navegação explícita
         NC.intent("up", "keyboard")
         t:eq("cima → a", NC.focusKey(), "a")
         NC.intent("up", "keyboard")
         t:eq("andando pra cima chega na barra do topo", NC.focusKey(), "topo")
 
-        -- modal por cima: alvos da cena saem
         local modal = { visible = true, isVisible = function(s) return s.visible end }
         IF.clear()
         IF.register("modalTeste", modal)
         t:eq("modal por cima apaga os alvos de trás", #NC._targets(), 0)
         IF.clear()
 
-        -- mouse físico devolve o controle
         NC.mouseMoved(500, 500)
         t:falsy("mexer o mouse desliga o modo foco", NC.isActive())
         t:eq("sem foco, o mouse é o mouse", NC.position(), nil)

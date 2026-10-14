@@ -1,22 +1,3 @@
--- tools/test_save_integrity.lua
--- INTEGRIDADE DE SAVE + ANTI-SAVE-SCUM DA VITRINE (Out/2026).
---
--- O QUE ESTA SUITE TRAVA
---  1. ESCRITA ATÔMICA (SaveManager.writeFile): .tmp verificado, rotação de
---     UMA geração .bak (só de arquivo BOM), promoção por rename com fallback
---     — e cada estado intermediário de um crash continua legível.
---  2. PERFIL NUNCA É APAGADO: principal ilegível → recupera do .bak; sem
---     backup válido → modo recuperação, e o arquivo danificado NÃO é
---     sobrescrito pelos defaults (era assim que conquistas/desbloqueios/
---     vitórias sumiam).
---  3. RUN: save corrompido volta do .bak; deleteRun apaga TODAS as gerações
---     (senão a run abandonada ressuscitaria pelo fallback).
---  4. LOJA: "Salvar e sair" + Continuar devolve a MESMA vitrine — ofertas,
---     VENDIDO, preços e custo de reroll. Antes regerava (restock grátis).
---  5. RECOMPENSA: idem — e a carta já pega não libera uma segunda.
---
---   love . test_one test_save_integrity
-
 local TK = require("tools.testkit")
 local SaveManager = require("engine.SaveManager")
 
@@ -38,7 +19,7 @@ local function valueOf(path)
     return v and v.v
 end
 
-local TRUNCATED = "return {\n  v = 9,\n  nested = {"   -- write interrompido
+local TRUNCATED = "return {\n  v = 9,\n  nested = {"
 
 local function testAtomic(t)
     local P = "ti_atomic.lua"
@@ -55,13 +36,10 @@ local function testAtomic(t)
     t:eq("1b. principal = v2", valueOf(P), 2)
     t:eq("1b. .bak = geração anterior (v1)", valueOf(P .. ".bak"), 1)
 
-    -- Texto inválido nunca é promovido.
     local ok = SaveManager.writeFile(P, "return 5")
     t:falsy("1c. conteúdo que não devolve tabela é recusado", ok)
     t:eq("1c. principal intacto", valueOf(P), 2)
 
-    -- Crash no meio da escrita do principal (fallback sem rename): bytes
-    -- truncados no principal, .bak bom.
     fs.write(P, TRUNCATED)
     v, info = SaveManager.readDataFile(P)
     t:eq("1d. principal truncado → recupera do .bak", info.source, "bak")
@@ -69,14 +47,12 @@ local function testAtomic(t)
     t:truthy("1d. cópia .corrupt-<ts> preservada",
         info.corruptCopy and fs.getInfo(info.corruptCopy))
 
-    -- Crash ENTRE a rotação e a promoção: principal sumiu, .tmp novo válido.
     fs.remove(P)
     fs.write(P .. ".tmp", "return { v = 3 }")
     v, info = SaveManager.readDataFile(P)
     t:eq("1e. sem principal → lê o .tmp (mais novo que o .bak)", info.source, "tmp")
     t:eq("1e. valor do .tmp", v and v.v, 3)
 
-    -- Principal corrompido NUNCA vira .bak.
     fs.remove(P .. ".tmp")
     fs.write(P .. ".bak", "return { v = 1 }")
     fs.write(P, TRUNCATED)
@@ -85,7 +61,6 @@ local function testAtomic(t)
     t:eq("1f. principal = v4", valueOf(P), 4)
     t:eq("1f. .bak segue sendo o último BOM (v1)", valueOf(P .. ".bak"), 1)
 
-    -- Rename indisponível (Windows com caminho não-ASCII): fallback.
     local realRename = SaveManager._rename
     SaveManager._rename = function() return false end
     local okF = SaveManager.writeFile(P, "return { v = 5 }")
@@ -108,11 +83,10 @@ local function testProfile(t)
     ProfileStats._setPathForTests(P)
     ProfileStats.recordRunStart("warrior")
     ProfileStats.recordVictory(6, 8, "warrior")
-    ProfileStats.recordVictory(6, 8, "mage")   -- 2ª gravação → .bak existe
+    ProfileStats.recordVictory(6, 8, "mage")
     t:truthy("2a. perfil gravado (sandbox de teste)", fs.getInfo(P))
     t:truthy("2a. .bak gerado", fs.getInfo(P .. ".bak"))
 
-    -- Principal corrompido → recupera do .bak (1 vitória) e não perde tudo.
     fs.write(P, TRUNCATED)
     ProfileStats._setPathForTests(P)
     local s = ProfileStats.get()
@@ -123,7 +97,6 @@ local function testProfile(t)
     local healed = SaveManager.decodeData(fs.read(P), P)
     t:eq("2b. próximo save cura o principal", healed and healed.wins, 1)
 
-    -- Sem backup válido: modo recuperação, nada grava por cima.
     clean(P)
     SaveManager.quarantined[P] = nil
     fs.write(P, TRUNCATED)
@@ -160,7 +133,6 @@ local function testRunSave(t)
     SaveManager.quarantined[base] = nil
 end
 
--- Snapshot comparável de uma vitrine.
 local function shelf(offers)
     local out = {}
     for i, o in ipairs(offers) do
@@ -203,7 +175,6 @@ local function testShop(t)
     local offer = firstCard(screen.shopOffers)
     t:truthy("4a. há carta comprável", offer)
     if offer then screen:purchaseOffer(offer) end
-    -- Reroll pago pelo botão real (custo cresce).
     if screen.refreshButton then screen.refreshButton.onClick() end
     local offer2 = firstCard(screen.shopOffers)
     if offer2 then screen:purchaseOffer(offer2) end
@@ -212,9 +183,7 @@ local function testShop(t)
     local goldBefore = game.economySystem.currentGold
     t:truthy("4a. reroll encareceu", costBefore > 5)
 
-    -- Salvar e sair (onSaveQuit: checkpoint) → Continuar.
     game:checkpointRun()
-    -- O RNG avança no meio (qualquer coisa que role): regerar daria outra loja.
     require("src.systems.Rng").get():random("shop")
     local g2, ok = reload()
     t:truthy("4b. save carregou", ok)
@@ -225,7 +194,6 @@ local function testShop(t)
     t:eq("4b. custo de reroll preservado", g2.shopSystem:getRefreshCost(), costBefore)
     t:eq("4b. ouro preservado", g2.economySystem.currentGold, goldBefore)
 
-    -- Sair do nó limpa a vitrine.
     local left = false
     screen2:_exitWithFlourish()
     screen2.onSkipped = nil
@@ -256,7 +224,6 @@ local function testRewards(t)
     screen2:show(g2, nil, nil, "rewards")
     t:eq("5a. recompensa idêntica após Continuar", shelf(screen2.shopOffers), first)
 
-    -- Pega uma carta e sai antes do fechamento: a 2ª não pode ser pega.
     local offer = firstCard(screen2.shopOffers)
     if offer then screen2:purchaseOffer(offer) end
     local deckAfter = #g2.runManager.currentRun.currentDeck

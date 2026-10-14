@@ -1,8 +1,3 @@
--- tools/screenshot_turnbanner.lua
--- Valida o TurnBanner v2 (placa grimório):  love . screenshot_turnbanner
--- Renderiza a batalha da estrada (bioma 1) e captura o banner nos dois
--- estados, no meio do hold: turnbanner_player.png / turnbanner_enemy.png.
-
 local M = {}
 
 function M.run()
@@ -32,10 +27,10 @@ function M.run()
     end
 
     local shots = {
-        { kind = "player", t = 0.15, tag = "player_in" },   -- meio da queima
-        { kind = "player", t = 0.50, tag = "player" },      -- hold cheio
+        { kind = "player", t = 0.15, tag = "player_in" },
+        { kind = "player", t = 0.50, tag = "player" },
         { kind = "enemy",  t = 0.50, tag = "enemy" },
-        { kind = "enemy",  t = 0.90, tag = "enemy_out" },   -- dissolvendo
+        { kind = "enemy",  t = 0.90, tag = "enemy_out" },
     }
     for _, sp in ipairs(shots) do
         local kind = sp.kind

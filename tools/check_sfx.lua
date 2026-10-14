@@ -1,30 +1,3 @@
--- tools/check_sfx.lua
--- Mede o ENVELOPE de um SFX: duração, pico, e em quanto tempo a energia cai.
--- Existe porque validar som gerado por IA olhando só o header do MP3 não diz
--- nada sobre o que importa no design. Caso concreto (Set/2026): `forgeStrike`
--- é tocado TRÊS vezes com ~0.28s de espaçamento — se a cauda for longa, as
--- três se somam e viram lama. O header não revela isso; o envelope revela.
---
--- Uso:
---   love . check_sfx                      -- todos os audio/sfx/*.mp3
---   love . check_sfx forge                -- só os que casam com "forge"
---
--- Lê: pico absoluto, RMS, e o tempo até a energia cair a 50%/10%/1% do pico
--- (decay times). Para percussivo seco, t10 curto é o que se quer.
---
--- ATENÇÃO — `ataque` NÃO é o início do som. É o instante do PICO.
--- Um `ataque` de 0,10s pode ser (a) 100ms de silêncio antes do evento, ou
--- (b) um envelope legítimo que sobe até o pico. A coluna não distingue, e
--- essa ambiguidade quase fez descartar um arquivo bom (`event-choice-seal`,
--- Set/2026: ataque 0,10s, mas onset audível em 0,01s — o carimbo dispara
--- junto com o clique e só atinge o pico 90ms depois).
---
--- Quem responde "o som começa QUANDO?" é `tools/sfx_envelope.lua`, que
--- desenha a curva janela a janela e imprime o onset audível:
---     love . sfx_envelope <substring>
--- Regra prática: este tool diz QUANTO; o sfx_envelope diz ONDE. Som que
--- responde a clique precisa de ONSET ~0; ambiente pode ter swell à vontade.
-
 local M = {}
 
 local function analyze(path)
@@ -36,7 +9,6 @@ local function analyze(path)
     local channels = sd:getChannelCount()
     local dur      = n / rate
 
-    -- Envelope por janelas de 10ms (pico absoluto dentro da janela).
     local WIN = math.max(1, math.floor(rate * 0.01))
     local env, peak = {}, 0
     local sumSq, total = 0, 0
@@ -61,8 +33,6 @@ local function analyze(path)
 
     local rms = total > 0 and math.sqrt(sumSq / total) or 0
 
-    -- Índice do pico e quanto tempo leva pra cair abaixo de cada limiar
-    -- DEPOIS do pico (é o decay que interessa, não o ataque).
     local peakIdx = 1
     for k, v in ipairs(env) do if v >= peak then peakIdx = k; break end end
 
@@ -71,7 +41,7 @@ local function analyze(path)
         for k = peakIdx, #env do
             if env[k] <= target then return (k - peakIdx) * 0.01 end
         end
-        return nil   -- nunca cai até esse nível dentro do arquivo
+        return nil
     end
 
     return {
@@ -83,9 +53,6 @@ local function analyze(path)
 end
 
 function M.run(filter)
-    -- Varre audio/sfx E as subpastas (joker-sig/ mora lá). Sem isso os sons
-    -- assinatura de coringa ficavam invisíveis pro checador — e foi justamente
-    -- um deles (warrior_standard_bearer) que o dono apontou como alto demais.
     local files = {}
     local function collect(dir, prefix)
         for _, item in ipairs(love.filesystem.getDirectoryItems(dir)) do
@@ -123,7 +90,6 @@ function M.run(filter)
     end
 
     print(string.format("\n%d arquivo(s). t10 = tempo até cair a 10%% do pico.", shown))
-    print("Percussivo seco quer t10 BAIXO; sustentado/ambiente quer alto.")
     return true
 end
 

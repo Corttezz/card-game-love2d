@@ -1,23 +1,3 @@
--- tools/test_boss_cinematic.lua
--- TRAVA da cinemática do chefe (src/ui/BossCinematic + src/data/boss_cinematics).
---
--- O que ela fixa:
---   * roteiro válido (kinds conhecidos, dur numérico) em todo chefe com dado;
---   * ENTRADA: chefe escondido até POUSAR, HUD escondido até o FIM, duração =
---     soma nominal dos passos, escuro zerado e relógio do inimigo normal no fim;
---   * PULAR: ignorado antes de SKIP_AFTER, salta pro estado final depois;
---   * reducedMotion usa o roteiro curto;
---   * MORTE: detectada pelo update (chefe no SALÃO com _deathHandled), segura
---     espólios (holdsEnd), câmera lenta no EnemyRenderer e volta a 1; não
---     reencena a mesma morte; mini-boss NA ESTRADA (isBoss sem salão) não
---     vira cinemática; chefe sem roteiro não inicia nada;
---   * CENA: a porta (GameplayScene._onBossEntered) inicia a entrada e a cena
---     deixa de estar quieta (tutorial espera); o CONTINUAR (ResumeFlow.apply)
---     abre o salão SEM entrada; setGame zera tudo;
---   * i18n: nome + epíteto + dica de pular nos 5 locales.
---
---   love . test_one test_boss_cinematic
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -56,8 +36,6 @@ function M.run()
         end
         return el
     end
-    -- palco falso (o GameplayScene passa um por frame; aqui a geometria do
-    -- rasante só precisa de números coerentes)
     local stage = {
         cx = 960, cy = 840,
         bbox = { cx = 960, topY = 500, bottomY = 840, width = 300, height = 340 },
@@ -65,7 +43,6 @@ function M.run()
         hall = 1, w = 1920, h = 1080, tr = { scale = 4.8, ox = 0, oy = -74 },
     }
 
-    -- ===== 1. dados =====
     local nData = 0
     for id in pairs(Data) do
         nData = nData + 1
@@ -78,7 +55,6 @@ function M.run()
     t:eq("kind desconhecido e apontado",
         #BC.validate("__nope__") > 0 and true or false, true)
 
-    -- ===== 2. entrada =====
     BC.reset()
     local g = fakeBoss("carrion_king")
     t:truthy("startIntro aceita chefe com roteiro", BC.startIntro(g))
@@ -119,7 +95,6 @@ function M.run()
     t:eq("relogio do inimigo normal", ER.getTimeScale(), 1)
     t:falsy("entrada nao segura espolios (fim)", BC.holdsEnd())
 
-    -- ===== 3. pular =====
     BC.reset()
     BC.startIntro(g)
     BC.setStage(stage)
@@ -133,7 +108,6 @@ function M.run()
     t:falsy("skip mostra o HUD", BC.hidesHud())
     t:near("skip zera o escuro", BC.darkness(), 0, 1e-3)
 
-    -- ===== 4. reducedMotion =====
     _G.gameSettings.reducedMotion = true
     BC.reset()
     BC.startIntro(g)
@@ -152,7 +126,6 @@ function M.run()
         BC.duration(Data.carrion_king.introReduced), 0.1)
     _G.gameSettings.reducedMotion = false
 
-    -- ===== 5. morte =====
     BC.reset()
     BC.setStage(stage)
     local gd = fakeBoss("carrion_king")
@@ -176,8 +149,6 @@ function M.run()
     t:near("dessaturacao zerada", BC.desatAmount(), 0, 1e-3)
     BC.update(DT, gd, { inHall = true })
     t:falsy("nao reencena a MESMA morte", BC.isActive())
-    -- Continuar no cash out/espólios: o inimigo já nasce morto e a morte
-    -- NÃO se reencena (markDeathSeen, chamado pelo __resumeRunStage)
     BC.reset()
     local gr = fakeBoss("carrion_king")
     gr._deathHandled = true
@@ -185,14 +156,11 @@ function M.run()
     BC.update(DT, gr, { inHall = true })
     t:falsy("Continuar com o chefe morto: morte nao reencena", BC.isActive())
     t:falsy("Continuar com o chefe morto: espolios livres", BC.holdsEnd())
-    -- mini-boss na estrada: isBoss sem salao
     BC.reset()
     local gm = fakeBoss("carrion_king")
     gm._deathHandled = true
     BC.update(DT, gm, { inHall = false })
     t:falsy("fora do salao nao ha cinematica", BC.isActive())
-    -- chefe sem roteiro próprio: entrada GENÉRICA (salão vazio → impacto →
-    -- nome); quem não é chefe não tem entrada
     BC.reset()
     t:truthy("chefe sem roteiro ganha a entrada generica", BC.startIntro(fakeBoss("__nobody__")))
     t:truthy("generica: ativa", BC.isActive())
@@ -205,12 +173,10 @@ function M.run()
     common.enemy.isBoss = false
     t:falsy("inimigo comum nao inicia entrada", BC.startIntro(common))
     t:falsy("inimigo comum: inativo", BC.isActive())
-    -- vivo: nao e morte
     BC.reset()
     BC.update(DT, fakeBoss("carrion_king"), { inHall = true })
     t:falsy("chefe vivo nao dispara morte", BC.isActive())
 
-    -- ===== 6. cena: porta inicia, Continuar nao =====
     local game = TK.newRunGame("warrior")
     local run = game.runManager.currentRun
     run.actNumber, run.floorInAct = 1, 8
@@ -226,9 +192,8 @@ function M.run()
     t:falsy("cena NAO esta quieta durante a entrada (tutorial espera)", GS.isQuiet())
     BC.setStage(stage)
     runUntilDone(game, 20)
-    ER.update(1.0)   -- assenta a quicada do pouso (triggerArrival)
+    ER.update(1.0)
     t:truthy("depois da entrada a cena volta a ficar quieta", GS.isQuiet())
-    -- Continuar
     GS.setGame(game)
     local plan = ResumeFlow.apply(game, GS)
     t:truthy("Continuar: plano pede o salao", plan.bossInterior)
@@ -236,16 +201,11 @@ function M.run()
     t:falsy("Continuar: SEM entrada (retomar e retomar NA luta)", BC.isActive())
     GS.setGame(game)
 
-    -- ===== 6b. sons da cinemática: todo arquivo declarado existe =====
     for code, spec in pairs(BC.SOUNDS) do
         t:truthy("som " .. code .. " existe em " .. spec[1],
             love.filesystem.getInfo(spec[1]) ~= nil)
     end
 
-    -- ===== 6c. TODO chefe com roteiro: entrada e morte tocam inteiras =====
-    -- (chefe escondido no começo e visível antes do fim, HUD só depois do
-    -- chefe, duração = soma nominal, escuro zerado, relógio normal; morte
-    -- segura espólios e solta; reducedMotion usa o roteiro curto)
     local ids = {}
     for id in pairs(Data) do ids[#ids + 1] = id end
     table.sort(ids)
@@ -273,7 +233,6 @@ function M.run()
             t:near(tag .. ": duracao = soma nominal", elB, nom, 0.1)
             t:near(tag .. ": escuro zerado", BC.darkness(), 0, 1e-3)
             t:eq(tag .. ": relogio normal", ER.getTimeScale(), 1)
-            -- morte
             BC.reset()
             BC.setStage(stage)
             local gdb = fakeBoss(id)
@@ -293,13 +252,6 @@ function M.run()
     _G.gameSettings.reducedMotion = false
     BC.reset()
 
-    -- ===== 6d. RAINHA DO ECLIPSE v2 (chefe final, frente rainha-eclipse) =====
-    -- Escala: entrada de 12 a 18 s com os três atos (omen → unveil →
-    -- coronation); reducedMotion curta mas com os três; letras do cartão
-    -- chegam uma a uma e TODAS aparecem; a luta observa a fase do kit e
-    -- fecha o eclipse do salão (InteriorFX.setEclipse) sem virar cinemática;
-    -- a morte deixa a alvorada ligada (persiste no cash out) e o Continuar
-    -- com a rainha morta nasce em alvorada.
     do
         local IFX = require("src.ui.InteriorFX")
         local function hasKind(steps, kind)
@@ -321,7 +273,6 @@ function M.run()
         t:truthy("rainha: morte vira cinzas (particle=ash)", qd.death[1].particle == "ash")
         t:truthy("rainha: morte abre o eclipse (dawn)", hasKind(qd.death, "dawn") and hasKind(qd.deathReduced, "dawn"))
 
-        -- entrada inteira: fases observadas e letras todas
         _G.gameSettings.reducedMotion = false
         BC.reset()
         local gq = fakeBoss("eclipse_queen")
@@ -343,7 +294,6 @@ function M.run()
                 if d.crown.shown > maxShown then maxShown = d.crown.shown end
             end
             if not tReveal and not BC.hidesBoss() then tReveal = elq end
-            -- olhos demais em volta do salão (lead): contagem, viram no omen, fecham na revelação
             if d.hallEyes then
                 nEyes = #d.hallEyes.list
                 if d.fx.omen and d.hallEyes.turned then sawTurnInOmen = true end
@@ -366,7 +316,6 @@ function M.run()
 
     end
 
-    -- ===== 6d-b. RAINHA: luta por fases + alvorada no SALAO (InteriorFX) =====
     do
         local IFX = require("src.ui.InteriorFX")
         local qd = Data.eclipse_queen
@@ -379,10 +328,9 @@ function M.run()
         pump(BC.SKIP_AFTER + 0.2, gq)
         t:truthy("rainha (luta): entrada pulada", BC.skip())
 
-        -- LUTA: a fase do kit fecha o eclipse do salao SEM cinematica
         for _ = 1, 30 do BC.update(DT, gq, { inHall = true }) end
         t:falsy("rainha: luta nao e cinematica", BC.isActive())
-        gq.enemy._phaseIdx = 1      -- Enemy:_checkPhase marcou a 2a fase (kit intocado)
+        gq.enemy._phaseIdx = 1
         BC.update(DT, gq, { inHall = true })
         t:truthy("rainha: virada de fase tem instante proprio (phaseShift)", BC._debug().fx.phaseShift ~= nil)
         t:falsy("rainha: a virada nao trava a entrada do jogador", BC.lockInput())
@@ -394,7 +342,6 @@ function M.run()
         t:near("rainha: sem alvorada enquanto viva", dawn0, 0, 1e-3)
         t:falsy("rainha: instante da virada acabou sozinho", BC._debug().fx.phaseShift ~= nil)
 
-        -- MORTE: cinzas + alvorada, e a alvorada FICA (cash out no salao)
         gq.enemy.health = 0
         gq._deathHandled = true
         BC.update(DT, gq, { inHall = true })
@@ -406,7 +353,6 @@ function M.run()
         local _, dawn1 = IFX.eclipseState()
         t:truthy("rainha: alvorada persiste no salao depois da cinematica", dawn1 > 0.99)
 
-        -- CONTINUAR com a rainha morta: nasce em alvorada, sem reencenar
         BC.reset()
         local gc = fakeBoss("eclipse_queen")
         gc.enemy.health, gc.enemy.maxHealth, gc.enemy._phaseIdx = 0, 300, 1
@@ -417,7 +363,6 @@ function M.run()
         t:falsy("rainha: Continuar morta nao reencena", BC.isActive())
         t:near("rainha: Continuar morta = alvorada pronta", BC.eclipseDawn(), 1, 1e-3)
 
-        -- reset zera o estado do salao (outro chefe/outra run nao herda)
         BC.reset()
         local lvl2, dawn2 = IFX.eclipseState()
         t:near("rainha: reset zera o eclipse do salao (nivel)", lvl2, 0, 1e-3)
@@ -425,12 +370,6 @@ function M.run()
         IFX.clear()
     end
 
-    -- ===== 6e. COLOSSO PÚTRIDO v2 (frente chefes-ajustes) =====
-    -- O salão É ele: raízes descem das bocas pintadas do salão 5 e agarram,
-    -- o corpo se MONTA de blocos do próprio sprite (pés → cabeça) e só então
-    -- aparece; o chão racha no `land`. Morte: o chefe real some, as raízes
-    -- agarram e soltam, o corpo desaba em pedaços e o monte esvaece sobre o
-    -- cadáver (chefe visível de novo no fim).
     do
         local IFX = require("src.ui.InteriorFX")
         local function hasKind(steps, kind)
@@ -473,7 +412,6 @@ function M.run()
             if d.fx.asm then
                 pieces = math.max(pieces, #d.fx.asm.pieces)
                 if not BC.hidesBoss() then hiddenWhileAssembling = false end
-                -- ultimo instante da montagem: todo bloco ja partiu e chegou
                 if d.fx.asm.t >= d.fx.asm.dur - DT then
                     local ok = true
                     for _, p in ipairs(d.fx.asm.pieces) do
@@ -492,7 +430,6 @@ function M.run()
         t:truthy("colosso: chao rachou no land", sawCracks)
         t:truthy("colosso: aparece so depois de raizes + montagem (>4s)", tShow ~= nil and tShow > 4)
         t:falsy("colosso: rachaduras esmaeceram ate o fim", BC._debug().fx.cracks ~= nil)
-        -- morte
         BC.reset()
         BC.setStage(stage5)
         local gcd = fakeBoss("rot_colossus")
@@ -522,10 +459,6 @@ function M.run()
         BC.reset()
     end
 
-    -- ===== 6f. MONARCA DO INVERNO v2 (frente chefes-ajustes) =====
-    -- A silhueta na nevasca dura 3,5 a 4 s (era 1,2), cresce de longe, o
-    -- cajado bate AINDA em silhueta (impacto de tela enquanto o chefe real
-    -- está escondido) e só depois a neve assenta; o `land` não bate de novo.
     do
         local md = Data.winter_monarch
         local silStep
@@ -567,12 +500,6 @@ function M.run()
         BC.reset()
     end
 
-    -- ===== 6g. TIRANO DO ABISMO v2: correntes do salão (frente chefes-ajustes) =====
-    -- As correntes são do castle_hall_3 (âncoras pintadas) e dele (pulsos/
-    -- pescoço): nascem frouxas no `chains`, esticam no `land`, e na LUTA
-    -- arrebentam nos limiares de vida (0.72 / 0.52 / 0.38 / ENFURECIDO);
-    -- todas rompidas = solto. Continuar nasce com as correntes já rompidas
-    -- pela vida; morte solta todas; inimigo sem `bonds` não tem corrente.
     do
         local IFX = require("src.ui.InteriorFX")
         local td = Data.abyss_tyrant
@@ -608,7 +535,6 @@ function M.run()
         local stage3 = {}
         for k2, v2 in pairs(stage) do stage3[k2] = v2 end
         stage3.hall = 3
-        -- ENTRADA: nascem frouxas, esticam no pouso, chegam inteiras
         _G.gameSettings.reducedMotion = false
         BC.reset()
         local gt = tyrant(100)
@@ -627,7 +553,6 @@ function M.run()
         t:truthy("tirano: correntes esticam no pouso (taut)", sawTaut)
         t:truthy("tirano: correntes sobrevivem ao fim da entrada", BC._debug().bond ~= nil)
         t:eq("tirano: todas inteiras no comeco da luta", brokenCount(), 0)
-        -- LUTA: limiares de vida arrebentam uma a uma
         BC.update(DT, gt, { inHall = true })
         t:eq("tirano: 100% de vida = 0 rompidas", brokenCount(), 0)
         gt.enemy.health = 70
@@ -646,9 +571,7 @@ function M.run()
         t:eq("tirano: ENFURECIDO = 4 rompidas", brokenCount(), 4)
         t:truthy("tirano: SOLTO com todas rompidas", BC._debug().bond.loose)
         t:falsy("tirano: nada disso e cinematica (luta segue)", BC.isActive())
-        -- a vida continua a mesma: so leitura
         t:eq("tirano: vida intocada pelas correntes", gt.enemy.health, 36)
-        -- CONTINUAR no meio da luta: nasce com as correntes ja rompidas, sem entrada
         BC.reset()
         BC.setStage(stage3)
         local gr2 = tyrant(45)
@@ -658,12 +581,10 @@ function M.run()
         t:eq("tirano (Continuar): 45% = 2 ja rompidas", brokenCount(), 2)
         t:eq("tirano (Continuar): esticadas", BC._debug().bond.state, "taut")
         t:falsy("tirano (Continuar): sem faisca ao nascer", BC._debug().feathers > 0)
-        -- MORTE: solta todas
         gr2._deathHandled = true
         gr2.enemy.health = 0
         BC.update(DT, gr2, { inHall = true })
         t:eq("tirano: morte solta todas as correntes", brokenCount(), 4)
-        -- fora do salao / outro chefe: sem correntes
         BC.reset()
         BC.setStage(stage3)
         BC.update(DT, tyrant(80), { inHall = false })
@@ -675,7 +596,6 @@ function M.run()
         BC.reset()
     end
 
-    -- ===== 7. i18n: todo chefe com roteiro tem nome + epiteto nos 5 locales =====
     for _, loc in ipairs({ "pt_BR", "en", "es", "fr", "de" }) do
         local ok, tbl = pcall(require, "src.i18n.locales.boss_cinematics." .. loc)
         t:truthy("locale " .. loc .. " carrega", ok and type(tbl) == "table")

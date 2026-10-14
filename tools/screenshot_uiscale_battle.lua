@@ -1,23 +1,9 @@
--- tools/screenshot_uiscale_battle.lua
--- A BATALHA com a escala de UI (src/ui/UiScale.lua): mão, carta em hover com
--- descrição ao lado, prévia de dano, intent/pills do inimigo, orbes, toast e
--- TopBar — em 5 tamanhos, janela FALSIFICADA + canvas (sem setMode).
---
---   love . test_one screenshot_uiscale_battle          → pt_BR
---   love . test_one screenshot_uiscale_battle de       → outro idioma
---
--- Saída: uiscale_battle_<cena>_<W>x<H>_<loc>.png
---   warrior  2 cartas selecionadas + hover numa 3ª + toast
---   mage     orbes canalizados + 3 selecionadas
---   boss     salão do chefe do ato 2 (laje baixa) + hover
-
 local M = {}
 
 local SIZES = {
     { 1024, 768 }, { 1366, 768 }, { 1920, 1080 }, { 2560, 1440 }, { 3840, 2160 },
-    { 1280, 800, deck = true },   -- Steam Deck: Auto em 125% (UiScale deviceMul)
+    { 1280, 800, deck = true },
 }
--- DECK=1 no ambiente: só o tamanho do Steam Deck
 if os.getenv("DECK") == "1" then SIZES = { { 1280, 800, deck = true } } end
 
 function M.run(locale)
@@ -50,7 +36,7 @@ function M.run(locale)
 
     TK.seedRng(777)
     local game = TK.newRunGame("warrior")
-    UiScale.force(nil)   -- o testkit congela em 1; aqui queremos a escala real
+    UiScale.force(nil)
     _G.game = game
     local topBar = TopBar:new()
     topBar:setGame(game)
@@ -96,7 +82,6 @@ function M.run(locale)
         local k = UiScale.k()
         mx, my = ((c.layoutX or 0) + 60) * k, ((c.layoutY or 0) + 60) * k
     end
-    -- mede o inimigo (bbox em pixels da tela) pra tabela de proporção
     local realERDraw = EnemyRenderer.draw
     local lastBbox
     EnemyRenderer.draw = function(...)
@@ -140,7 +125,6 @@ function M.run(locale)
             WorldRoad.clearCache()
             initScene()
 
-            -- guerreiro: seleção + hover + toast
             game.selectedClass = "warrior"
             game.player.orbs = {}
             scene(1, "battle")
@@ -148,7 +132,7 @@ function M.run(locale)
                 "warrior_defend", "warrior_quick_strike", "warrior_iron_wave" }, 2)
             mx, my = 5, 5
             frames(25)
-            GameplayScene.draw()   -- o hover mede o retângulo do último desenho
+            GameplayScene.draw()
             hover(3)
             frames(12)
             if game.messageSystem then
@@ -157,11 +141,10 @@ function M.run(locale)
                 game:addMessage(I18n.t("messages.card_discovered",
                     { name = I18n.cardName("warrior_iron_wave") }, "!"), "success")
                 game:addMessage(I18n.t("messages.armor_capped", { max = 30, wasted = 4 }, "!"), "warning")
-                game.messageSystem:update(0.3)   -- entrada assentada
+                game.messageSystem:update(0.3)
             end
             capture("warrior")
 
-            -- mago: orbes
             game.selectedClass = "mage"
             game.player.orbs = { { type = "lightning", value = 4 }, { type = "dark", value = 5 } }
             setupHand({ "mage_zap", "mage_twin_bolts", "mage_dualcast",
@@ -170,7 +153,6 @@ function M.run(locale)
             frames(20)
             capture("mage")
 
-            -- chefe no salão (ato 2: laje baixa — o caso apertado do palco)
             game.selectedClass = "warrior"
             game.player.orbs = {}
             scene(2, "boss")

@@ -1,12 +1,3 @@
--- tools/screenshot_menu_v2.lua
--- Valida o Menu+Entrada v2 (docs/plan/menu-crt-v2.md):
---   menu_v2_osd.png       — menu com OSD do aparelho + hover CRT no botão
---   menu_v2_boot_tune.png — boot logo após sintonia (chuvisco forte)
---   menu_v2_boot_casc.png — boot no auge da cascade espiral + glitch título
---   menu_v2_settings.png  — settings com barras de segmento OSD
--- Capturas SEM CRT (doutrina — o shader é validado por screenshot_crt).
---   love . screenshot_menu_v2
-
 local M = {}
 
 local function capture(name)
@@ -26,7 +17,6 @@ function M.run()
     local EM = _G.EventManager
     local dt = 1 / 30
 
-    -- ===== 1. MENU com OSD + hover =====
     local Menu = require("components.Menu")
     local menu = Menu:new()
     menu:enterWithIntro()
@@ -34,16 +24,13 @@ function M.run()
         EM.update(dt)
         menu:update(dt)
     end
-    -- força hover no botão Jogar (pra fotografar a estética CRT do hover)
     if menu.buttons.play then menu.buttons.play.hover = true end
     love.graphics.clear(0, 0, 0, 1)
     menu:draw()
     capture("menu_v2_osd.png")
 
-    -- ===== 2/3. BOOT: sintonia + cascade =====
     local BootScene = require("src.scenes.BootScene")
     BootScene.init({ onComplete = function() end })
-    -- pump até o splash começar + 0.12s (chuvisco ainda forte)
     local elapsed = 0
     while elapsed < 0.65 do
         EM.update(dt)
@@ -54,7 +41,6 @@ function M.run()
     BootScene.draw()
     capture("menu_v2_boot_tune.png")
 
-    -- pump até o MEIO do redemoinho v13 (cartas espalhadas na espiral)
     while elapsed < 0.5 + 3.10 do
         EM.update(dt)
         BootScene.update(dt)
@@ -64,7 +50,6 @@ function M.run()
     BootScene.draw()
     capture("menu_v2_boot_casc.png")
 
-    -- pump até o MERGULHO (arcos apertando na lua)
     while elapsed < 0.5 + 3.85 do
         EM.update(dt)
         BootScene.update(dt)
@@ -74,7 +59,6 @@ function M.run()
     BootScene.draw()
     capture("menu_v2_boot_dive.png")
 
-    -- ===== 4. SETTINGS com barras OSD =====
     local SettingsMenu = require("components.SettingsMenu")
     local settings = SettingsMenu:new()
     settings:show()

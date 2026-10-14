@@ -1,23 +1,3 @@
--- tools/test_balance_pipeline.lua
--- Trava da PIPELINE de balanceamento (Out/2026): pilotos, determinismo,
--- throughput e o registro que alimenta tools/balance.py.
---
---   1. Os tres pilotos existem como PERFIL (dado) e jogam uma run sem crash
---      no relogio instantaneo.
---   2. Sanidade NAIVE < AVERAGE < EXPERT: medida em BATALHAS IGUAIS (mesmo
---      retrato, mesma seed, vida cheia — o banco do balance_bench), nao em
---      winrate de poucas runs (que e sorteio). O naive tem que perder mais
---      vida que o expert_fast no agregado dos retratos.
---   3. Determinismo: mesma seed → mesmo registro (resultado, batalhas, deck).
---   4. Throughput: run do piloto `average` no relogio instantaneo em menos de
---      N segundos de CPU (teto FOLGADO — mede regressao de ordem de grandeza,
---      nao ms; o numero real vai no relatorio da bateria).
---   5. Registro: campos que o relatorio Python le estao presentes e coerentes
---      (battleLog soma as batalhas, dano por fonte > 0, deck por batalha).
---   6. jsonlite codifica o registro e o Lua le de volta o mesmo numero de runs.
---
---   love . test_one test_balance_pipeline
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -39,7 +19,6 @@ local function body()
     Instant.install(Autoplay)
     Instant.resetStats()
 
-    -- 1) perfis
     for _, name in ipairs({ "naive", "average", "expert", "expert_fast" }) do
         local prof = Autoplay.PILOTS[name]
         t:truthy("perfil '" .. name .. "' existe", type(prof) == "table")
@@ -48,7 +27,6 @@ local function body()
     end
     t:truthy("nome legado v6 = expert", Autoplay.PILOTS.v6 == Autoplay.PILOTS.expert)
 
-    -- runs curtas por piloto (sem crash) + registro
     local recs = {}
     for _, name in ipairs({ "naive", "average", "expert_fast" }) do
         Autoplay.setPilot(name)
@@ -57,7 +35,6 @@ local function body()
         if ok then recs[name] = rec end
     end
 
-    -- 5) registro coerente (piloto average)
     do
         local r = recs.average
         if r then
@@ -71,7 +48,6 @@ local function body()
             t:eq("registro: piloto gravado", r.pilot, "average")
             t:truthy("registro: cada batalha nomeia o inimigo",
                 r.battleLog[1] and r.battleLog[1].enemy ~= nil)
-            -- dano do livro bate com a vida tirada do inimigo em cada batalha
             local okSum = true
             for _, b in ipairs(r.battleLog) do
                 local s = 0
@@ -82,7 +58,6 @@ local function body()
         end
     end
 
-    -- 3) determinismo
     do
         Autoplay.setPilot("average")
         local _, a = silent(Autoplay.playRunRecord, "rogue", 1, 910007, { maxBattles = 8 })
@@ -94,8 +69,6 @@ local function body()
         t:eq("determinismo: mesmos turnos", a and a.turns, b and b.turns)
     end
 
-    -- 2) sanidade por BATALHAS IGUAIS: retratos de uma run do average,
-    -- rejogados por naive e expert_fast com a mesma seed, vida cheia.
     do
         local snaps = {}
         Autoplay.setPilot("average")
@@ -103,7 +76,6 @@ local function body()
         silent(Autoplay.playRunRecord, "warrior", 1, 910011, { maxBattles = 10 })
         silent(Autoplay.playRunRecord, "mage", 1, 910012, { maxBattles = 10 })
         Autoplay.onBattleStart = nil
-        -- so batalhas com algum peso (fora as 2 primeiras do A1, que qualquer um vence)
         local picked = {}
         for _, s in ipairs(snaps) do
             if (s.act or 1) > 1 or (s.floorInAct or 1) >= 3 then picked[#picked + 1] = s end
@@ -131,7 +103,6 @@ local function body()
         t:check("sanidade: AVERAGE nao perde mais que o NAIVE", lostA <= lostN)
     end
 
-    -- 4) throughput (teto folgado)
     do
         Autoplay.setPilot("average")
         local t0 = os.clock()
@@ -143,7 +114,6 @@ local function body()
     end
     t:eq("relogio instantaneo: nenhum dreno estourou o teto", Instant.stats.stalls, 0)
 
-    -- 6) jsonlite
     do
         local J = require("tools.jsonlite")
         local s = J.encode({ records = { recs.average or {}, recs.naive or {} }, meta = { n = 2, label = "x\"y" } })
@@ -157,8 +127,6 @@ local function body()
     return t:done()
 end
 
--- Os stubs do balance_sim.setup() sao desfeitos mesmo se o corpo falhar:
--- as suites seguintes do test_all rodam no mesmo processo.
 function M.run()
     local ok, res = pcall(body)
     require("tools.balance_sim").teardown()

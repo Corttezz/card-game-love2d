@@ -1,11 +1,3 @@
--- tools/test_tooltip_order.lua
--- ORDEM DE DESENHO DA MÃO (dono, Out/2026: "o +COMBO da carta ao lado fica
--- POR CIMA do tooltip da carta em hover"). O tooltip da carta em hover é o
--- ÚLTIMO desenho da mão: depois dos selos +COMBO, da prévia de dano e dos
--- toasts. Mede a ordem real no GameplayScene.draw instrumentando as funções.
---
---   love . test_one test_tooltip_order
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -49,23 +41,23 @@ function M.run()
         end
         game.player.mana, game.player.maxMana = 9, 9
         game.turn = "player"
-        game:selectCard(game.hand[1])   -- seleção → selos +COMBO nas vizinhas
+        game:selectCard(game.hand[1])
         game:addMessage("toast de teste", "info")
         local cv = love.graphics.newCanvas(1024, 768)
         love.graphics.setCanvas({ cv, stencil = true })
         for _ = 1, 30 do GameplayScene.update(1 / 30) end
         local sx, sp, cy = GameplayScene.handLayout()
-        local mx, my = sx + 2 * sp + 50, cy + 70     -- hover na 3ª carta
+        local mx, my = sx + 2 * sp + 50, cy + 70
         love.mouse.getPosition = function() return mx, my end
         for _ = 1, 20 do GameplayScene.update(1 / 30) end
-        GameplayScene.draw()   -- aquece o hover (retângulo do último desenho)
+        GameplayScene.draw()
         GameplayScene.update(1 / 30)
         log = {}
         GameplayScene.draw()
         love.graphics.setCanvas()
 
         local pos = {}
-        for i, k in ipairs(log) do pos[k] = i end   -- última ocorrência
+        for i, k in ipairs(log) do pos[k] = i end
         t:truthy("houve tooltip de carta no quadro", pos.tooltip ~= nil)
         t:truthy("houve selos +COMBO no quadro", pos.badges ~= nil)
         t:truthy("tooltip DEPOIS dos selos +COMBO", pos.tooltip and pos.badges and pos.tooltip > pos.badges)

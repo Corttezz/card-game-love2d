@@ -1,19 +1,3 @@
--- tools/test_confirm_dialog.lua
--- Trava do diálogo de confirmação do menu (src/ui/ConfirmDialog.lua).
---
--- Defeitos que ele mata (known_gaps 25 + revisão de lançamento, Out/2026):
---   1. "Jogar" com uma corrida salva começava outra SEM PERGUNTAR — e a run
---      nova sobrescreve o slot único no primeiro checkpoint. Um clique no
---      botão errado apagava a corrida.
---   2. ESC no menu principal fechava o jogo NA HORA.
---
--- Também verifica o contrato do modal: ESC cancela, ENTER confirma, clique
--- fora não decide, confirmar dispara UMA vez, e o painel cabe na tela em
--- todos os tamanhos e idiomas.
---
--- Roda: love . test_one test_confirm_dialog
---       love . test_one test_confirm_dialog shots   (salva PNGs pra olhar)
-
 local M = {}
 local TK = require("tools.testkit")
 
@@ -32,7 +16,6 @@ function M.run(arg)
     local CD = require("src.ui.ConfirmDialog")
     local I18n = require("src.i18n.I18n")
 
-    -- 1. Sem save: Jogar vai direto (nada de pergunta à toa).
     do
         local menu, calls = newMenu(false)
         menu:onPlayClick()
@@ -40,13 +23,11 @@ function M.run(arg)
         t:eq("sem save: Jogar segue pra selecao de classe", calls.play, 1)
     end
 
-    -- 2. Com save: Jogar PERGUNTA e não começa nada ainda.
     do
         local menu, calls = newMenu(true)
         menu:onPlayClick()
         t:truthy("com save: Jogar abre a confirmacao", CD.isVisible())
         t:eq("com save: a corrida salva NAO e descartada antes da resposta", calls.play, 0)
-        -- clique fora do painel não decide
         CD.mousepressed(2, 2, 1); CD.mousereleased(2, 2, 1)
         t:truthy("clique fora do painel nao fecha nem decide", CD.isVisible())
         CD.keypressed("escape")
@@ -61,7 +42,6 @@ function M.run(arg)
         t:falsy("trava de confirmacao nao vaza pro proximo clique", menu._newRunConfirmed)
     end
 
-    -- 3. ESC no menu pergunta antes de sair.
     do
         local menu = newMenu(false)
         local quit = 0
@@ -77,7 +57,6 @@ function M.run(arg)
         t:eq("confirmar sai", quit, 1)
     end
 
-    -- 3b. Aviso (sem `cancel`): um botão só; ENTER/ESC fecham.
     do
         local fired = 0
         CD.show({ title = "x", body = "y", confirm = I18n.t("confirm.ok"),
@@ -88,7 +67,6 @@ function M.run(arg)
         t:eq("e confirma uma vez", fired, 1)
     end
 
-    -- 3c. Save ilegível sai do caminho (Continuar não fica morto no menu).
     do
         local SaveManager = require("engine.SaveManager")
         SaveManager.saveRun({ classId = "warrior" })
@@ -98,7 +76,6 @@ function M.run(arg)
         t:falsy("sem save, quarantine e no-op", SaveManager.quarantineRun())
     end
 
-    -- 4. Geometria: painel e botões cabem na tela em todo idioma e tamanho.
     do
         local realW, realH = love.graphics.getWidth, love.graphics.getHeight
         local sizes = { { 800, 600 }, { 1024, 768 }, { 1280, 720 }, { 1920, 1080 }, { 640, 480 } }
@@ -138,7 +115,6 @@ function M.run(arg)
         t:check("geometria verificada em " .. cases .. " combinacoes (25)", cases == 25)
     end
 
-    -- 5. Capturas pra olhar (opcional).
     if arg == "shots" then
         local menu = newMenu(true)
         menu:onPlayClick()

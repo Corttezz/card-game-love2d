@@ -1,19 +1,3 @@
--- tools/test_hand_deal.lua
--- TRAVA da cortina da mão + distribuição das cartas (src/ui/HandDeal) e do
--- jeito que o GameplayScene a usa.
---
--- Bug do dono (Out/2026): a mão, os botões, os coringas e o HUD apareciam
--- no meio da porta do castelo e da entrada do chefe. Regra fixada:
---   * ZERO carta visível da viagem/porta até o FIM da cinemática;
---   * depois as cartas são DADAS uma a uma (escalonadas), da pilha do deck;
---   * botões/coringas/prévia e (no salão) o HUD só DEPOIS da última carta;
---   * na estrada: inimigo chega → cartas; o HUD do herói fica (é o status
---     dele, não cutscene);
---   * chefe SEM roteiro próprio ganha a entrada genérica (salão vazio →
---     impacto → nome) — nunca mais "luta como antes" com a mão na tela.
---
---   love . test_one test_hand_deal
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -42,7 +26,6 @@ function M.run()
     _G.gameSettings = { reducedMotion = false }
     local DT = 1 / 30
 
-    -- ===== 1. módulo puro (sem EventManager: a carta aparece no instante) =====
     local savedEM, savedEv = _G.EventManager, _G.Event
     _G.EventManager, _G.Event = nil, nil
     HandDeal.reset()
@@ -84,7 +67,6 @@ function M.run()
     t:falsy("respiro passou: UI volta", HandDeal.hidesUI())
     t:falsy("HUD volta", HandDeal.hidesHud())
     t:falsy("não ocupado", HandDeal.isBusy())
-    -- interrupção: cortina abaixa no meio → quem faltava fica na pilha
     HandDeal.setCurtain(true, g)
     HandDeal.setCurtain(false, g)
     HandDeal.update(HandDeal.STAGGER * 1.2, g)
@@ -94,14 +76,11 @@ function M.run()
     t:eq("cortina: nada visível", HandDeal.visibleCount(g), 0)
     HandDeal.setCurtain(false, g)
     t:truthy("sobe de novo: redistribui do zero", HandDeal.holds(g.hand[1]))
-    -- carta jogada no meio da distribuição não quebra nada
     HandDeal.update(0, g)
     table.remove(g.hand, 2)
     HandDeal.update(HandDeal.STAGGER * 5 + HandDeal.TAIL, g)
     t:eq("carta que saiu da mão é ignorada", HandDeal.visibleCount(g), 3)
     t:falsy("termina mesmo assim", HandDeal.isDealing())
-    -- inimigo morto atrás da cortina (morte do chefe): MESA FECHADA — nada
-    -- de carta nem botão por cima do corpo; a próxima cortina reabre
     local gd = { hand = { fakeCard() }, enemy = { isAlive = function() return false end } }
     HandDeal.setCurtain(true, gd, { hud = true })
     HandDeal.setCurtain(false, gd)
@@ -119,7 +98,6 @@ function M.run()
     t:truthy("e distribui de novo", HandDeal.isDealing())
     _G.EventManager, _G.Event = savedEM, savedEv
 
-    -- ===== 2. cena: viagem → porta → entrada do chefe → distribuição =====
     local function mountScene(game)
         GS.setGame(game)
         GS.init({
@@ -148,8 +126,8 @@ function M.run()
     game.enemy.spriteId = "carrion_king"
     game.enemy.isBoss = true
     mountScene(game)
-    GS.update(DT)            -- ancora o andar
-    run.floorInAct = 8       -- andar novo → a cena caminha até o castelo
+    GS.update(DT)
+    run.floorInAct = 8
     GS.update(DT)
     t:truthy("chefe: a cena viaja", WorldRoad.isTraveling())
     t:truthy("viagem: cortina abaixada", HandDeal.hidesHand())
@@ -209,10 +187,6 @@ function M.run()
         t:falsy("carta fora da pilha", HandDeal.holds(c))
     end
 
-    -- ===== 2b. depois do chefe: cash out e espólios DENTRO do salão =====
-    -- (dono, Out/2026): o "só o mundo" atrás das telas de espólios é o
-    -- salão com o cadáver enquanto o nó for o do chefe; a estrada só volta
-    -- quando a encruzilhada troca o nó.
     t:eq("salão aberto: mundo-só = salão", GS.worldOnlyMode(), "hall")
     game.enemy.health = 0
     game._deathHandled = true
@@ -221,11 +195,6 @@ function M.run()
     t:truthy("chefe morto: mesa fechada (sem mão por cima do corpo)", HandDeal.hidesHand())
     local okDraw, errDraw = pcall(GS.drawWorldOnly)
     t:truthy("drawWorldOnly no salão desenha sem erro: " .. tostring(errDraw), okDraw)
-    -- A ENCRUZILHADA abre ANTES de o nó trocar (showMapSelection avança o
-    -- ato e chama showFork; o nó só muda quando o jogador escolhe). Com o
-    -- fork ativo o mundo-só é a ESTRADA — é lá que os marcos são desenhados.
-    -- Regressão do dono (13/Out): preso no salão do ato 2 com o cadáver do
-    -- chefe do ato 1 e o fork invisível.
     local WorldRoad = require("src.ui.WorldRoad")
     t:truthy("fixture: fork abre com o nó ainda = chefe",
         WorldRoad.showFork({ { type = "battle" }, { type = "rest" } }, function() end))
@@ -234,13 +203,12 @@ function M.run()
     t:truthy("drawWorldOnly na encruzilhada pós-chefe desenha sem erro: " .. tostring(errFork), okFork)
     WorldRoad._fork = nil
     t:eq("fork fechado sem trocar o nó: volta ao salão", GS.worldOnlyMode(), "hall")
-    run.currentNode = { type = "battle" }   -- a encruzilhada trocou o nó
+    run.currentNode = { type = "battle" }
     t:eq("nó deixado: mundo-só = estrada", GS.worldOnlyMode(), "road")
     run.currentNode = { type = "boss" }
     game.enemy.health = 10
     game._deathHandled = false
 
-    -- ===== 3. salão sem roteiro próprio: entrada genérica =====
     local g2 = TK.newRunGame("warrior")
     local run2 = g2.runManager.currentRun
     run2.actNumber, run2.floorInAct = 2, 8
@@ -263,12 +231,10 @@ function M.run()
     t:truthy("genérica: cartão com o nome", sawTitle)
     t:truthy("genérica: distribuição depois", HandDeal.isDealing())
     t:eq("genérica: 1 carta no primeiro instante", HandDeal.visibleCount(g2), 1)
-    -- quem não é chefe não tem entrada
     local g3 = TK.newRunGame("warrior")
     g3.enemy.isBoss = false
     t:falsy("inimigo comum não tem entrada", BC.startIntro(g3))
 
-    -- ===== 4. estrada: inimigo chega → cartas; HUD do herói fica =====
     local g4 = TK.newRunGame("warrior")
     local run4 = g4.runManager.currentRun
     run4.actNumber, run4.floorInAct = 1, 2
@@ -297,15 +263,10 @@ function M.run()
     t:eq("estrada: todas dadas", HandDeal.visibleCount(g4), #g4.hand)
     t:falsy("estrada: HUD nunca esteve escondido", HandDeal.hidesHud())
 
-    -- ===== 5. input fechado atrás da cortina =====
     HandDeal.setCurtain(true, g4)
     t:falsy("clique na mão atrás da cortina não consome", GS.mousepressed(700, 560, 1))
     HandDeal.setCurtain(false, g4)
 
-    -- ===== 6. run NOVA: a 1ª luta CHEGA pela estrada (dono, 13/Out) =====
-    -- "quando clica em Jogar a tela já é o inimigo com as cartas, sem
-    -- animação": startGame pede requestArrival e o 1º andar viaja como
-    -- qualquer outro; Continuar (resumeWorld) nunca repete a chegada.
     local g5 = TK.newRunGame("warrior")
     local run5 = g5.runManager.currentRun
     run5.actNumber, run5.floorInAct = 1, 1
@@ -329,7 +290,6 @@ function M.run()
     t:truthy("run nova: inimigo chegou", arrived5 ~= nil)
     t:eq("run nova: 0 cartas antes da chegada", vis5Before, 0)
     t:eq("run nova: todas dadas no fim", HandDeal.visibleCount(g5), #g5.hand)
-    -- Continuar: sem pedido, ancorado, nada viaja
     local g6 = TK.newRunGame("warrior")
     local run6 = g6.runManager.currentRun
     run6.actNumber, run6.floorInAct = 1, 1
@@ -340,7 +300,6 @@ function M.run()
     t:falsy("Continuar limpa o pedido de chegada", GS.hasPendingArrival())
     GS.update(DT); GS.update(DT)
     t:falsy("Continuar: a 1ª luta nao viaja", WorldRoad.isTraveling())
-    -- sem pedido (testes/tools): como sempre, nasce pronta
     local g7 = TK.newRunGame("warrior")
     g7.runManager.currentRun.currentNode = { type = "battle" }
     mountScene(g7)
@@ -349,8 +308,6 @@ function M.run()
 
     GS.setGame(game)
     _G.gameSettings = savedSettings
-    -- higiene: cada cena montada deixa ~8 eventos pendentes pra sempre no
-    -- EventManager (quicada/distribuição); não vazar pras suítes seguintes
     if _G.EventManager and _G.EventManager.clear then _G.EventManager.clear() end
     return t:done()
 end

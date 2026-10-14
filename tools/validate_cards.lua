@@ -1,12 +1,3 @@
--- tools/validate_cards.lua
--- Validacao ofline do catalogo de cartas. Roda via:
---   love . validate_cards
--- Checa:
---   - Toda carta tem tags (array nao-vazio apos normalizacao) e deriva do tipo
---   - Todo effect.type e processado pelo EffectSystem (ou e placeholder conhecido)
---   - Histograma custo x raridade x classe
---   - Cartas com effects = {} (vazio) sao listadas como debito
-
 local CardDatabase = require("src.systems.CardDatabase")
 local TagSystem = require("src.systems.TagSystem")
 local CardArtAtlas = require("src.data.card_art")
@@ -14,17 +5,6 @@ local PixelIcons = require("src.ui.PixelIcons")
 
 local M = {}
 
--- ---------------------------------------------------------------------------
--- Trava de arte (2026-09): a arte da carta vem do atlas `src/data/card_art.lua`,
--- NAO do campo legado `image`. Carta sem entrada no atlas cai no fallback por
--- tipo do CardArt.resolve e passa a dividir o mesmo icone com todas as outras
--- cartas do mesmo tipo (foi assim que Adrenalina virou Pocao de Cura).
--- Estas checagens falham a suite pra impedir a regressao.
--- ---------------------------------------------------------------------------
-
--- Um nome de icone so e valido se existe PNG em assets/sprites/icons OU uma
--- matriz real em PixelIcons. PixelIcons.get devolve `question` pra nome
--- desconhecido, entao dois icones invalidos renderizariam iguais em silencio.
 local function iconExists(name)
     if not name or name == "" then return false end
     if love.filesystem.getInfo("assets/sprites/icons/" .. name .. ".png") then
@@ -33,7 +13,6 @@ local function iconExists(name)
     return PixelIcons[name] ~= nil
 end
 
--- Retorna { missingEntry, duplicateIcons, brokenIcons, deadEntries }
 local function auditCardArt(all)
     local missingEntry, brokenIcons, deadEntries = {}, {}, {}
     local iconToIds = {}
@@ -52,7 +31,6 @@ local function auditCardArt(all)
         end
     end
 
-    -- Entradas do atlas que nao correspondem a nenhuma carta (lixo/typo).
     for id, _ in pairs(CardArtAtlas) do
         if not all[id] then table.insert(deadEntries, id) end
     end
@@ -73,21 +51,13 @@ local function auditCardArt(all)
     return missingEntry, duplicateIcons, brokenIcons, deadEntries
 end
 
--- Tipos de effect.type que o EffectSystem resolve (fase 2+).
--- Mantenha em sync com src/systems/EffectSystem.lua.
 local PROCESSED_EFFECT_TYPES = {
-    -- jokers / card-effects
     damage_multiplier = true, defense_multiplier = true,
-    -- Eco: dobra a PRIMEIRA carta de ataque do turno (mage_echo_form).
-    -- Fica fora do largest-wins — ver EffectSystem:applyJokerEffects.
     echo_first_attack = true,
-    -- Coringas de combo (Out/2026): dobram Saraivada/Muralha/Par
-    -- (ComboSystem.boostFor).
     combo_boost = true,
     damage_bonus = true, defense_bonus = true,
     strength_scaling = true, dexterity_scaling = true,
     multi_hit = true, damage_bonus_self = true,
-    -- card passives
     instant_heal = true, self_damage = true, strength_per_turn = true,
     retain_armor = true,
     restore_mana = true, increase_max_mana = true,
@@ -98,20 +68,12 @@ local PROCESSED_EFFECT_TYPES = {
     channel_orb = true, evoke_orb = true, evoke_all_orbs = true,
     aoe_magic_damage = true, mystery = true,
     exhaust = true, innate = true, retain = true,
-    -- triggers (jokers)
     on_attack_heal = true, on_defend_damage = true,
     on_attack_debuff = true, on_turn_start_draw = true,
     regen_per_turn = true, damage_per_turn = true,
     heal_multiplier = true,
-    -- P2.1 (Jul/2026, rebalance v2): trigger turn_start que canaliza orbe
-    -- (mage_electrodynamics). Ver EffectSystem:processTriggerEffect.
     channel_per_turn = true,
-    -- Névoa de intenção (Out/2026): revela o anúncio do inimigo por N turnos
-    -- (src/systems/IntentVisibility.lua). Ver EffectSystem:processEffectCard.
     reveal_intent = true,
-    -- Removidos: tag_observer_multiplier / tag_stack_bonus (declarados em
-    -- versão anterior do plano combo-aware mas nunca implementados em
-    -- EffectSystem). Reintroduzir só quando algum joker realmente precisar.
 }
 
 function M.run()
@@ -120,12 +82,12 @@ function M.run()
 
     local report = {
         total = 0,
-        byClass = {},       -- class -> count
-        byRarity = {},      -- rarity -> count
-        emptyEffects = {},  -- lista de IDs com effects={}
-        unknownTypes = {},  -- lista de { id, type }
-        missingImplicitTag = {}, -- IDs onde tags nao serao derivadas
-        histogram = {},     -- rarity x cost
+        byClass = {},
+        byRarity = {},
+        emptyEffects = {},
+        unknownTypes = {},
+        missingImplicitTag = {},
+        histogram = {},
     }
 
     for id, card in pairs(all) do
@@ -135,22 +97,17 @@ function M.run()
         local rar = card.rarity or "_none"
         report.byRarity[rar] = (report.byRarity[rar] or 0) + 1
 
-        -- histograma rarity+cost
         local key = rar .. ":cost" .. tostring(card.cost or 0)
         report.histogram[key] = (report.histogram[key] or 0) + 1
 
-        -- empty effects
         if type(card.effects) == "table" and #card.effects == 0
            and card.type ~= "attack" and card.type ~= "defense" then
-            -- attack/defense podem legitimamente ser "so dano" se stats sao balanceados
             table.insert(report.emptyEffects, id)
         elseif type(card.effects) == "table" and #card.effects == 0
                and (card.type == "attack" or card.type == "defense") then
-            -- Lista separada: debito de "so dano base" sem efeito sinergico
             table.insert(report.emptyEffects, id .. " (" .. card.type .. " vazio)")
         end
 
-        -- unknown effect types
         if card.effects then
             for _, e in ipairs(card.effects) do
                 if e.type and not PROCESSED_EFFECT_TYPES[e.type] then
@@ -159,12 +116,10 @@ function M.run()
             end
         end
 
-        -- tags derivadas
         local tags = TagSystem.getCardTags(card)
         if #tags == 0 then table.insert(report.missingImplicitTag, id) end
     end
 
-    -- Print report
     print("==== Card Catalog Validation ====")
     print("TOTAL: " .. report.total)
 
@@ -189,7 +144,6 @@ function M.run()
     print("\n-- cards without derivable tags (" .. #report.missingImplicitTag .. ") --")
     for _, id in ipairs(report.missingImplicitTag) do print("  " .. id) end
 
-    -- ===== Trava de arte =====
     local missingArt, dupIcons, brokenIcons, deadEntries = auditCardArt(all)
 
     print("\n-- cards WITHOUT card_art atlas entry (" .. #missingArt .. ") --")
@@ -210,12 +164,6 @@ function M.run()
     print("\n-- atlas entries without a matching card (" .. #deadEntries .. ") --")
     for _, id in ipairs(deadEntries) do print("  " .. id) end
 
-    -- ===== Trava de CARTA VIVA e de ASSINATURA SONORA (Out/2026) =====
-    -- Doutrina de criação de carta (memory/card_icon_animation.md,
-    -- memory/card_feel.md): toda carta tem ícone ANIMADO (icons_anim/<icon>/
-    -- com frames) e todo coringa tem assinatura em audio/sfx/joker-sig/<id>.
-    -- Os 3 coringas de combo entraram sem nenhum dos dois — nada pegou,
-    -- porque a cobertura (128/128) era só convenção.
     local noAnim, noSig = {}, {}
     for id, card in pairs(all) do
         local entry = CardArtAtlas[id]
@@ -239,18 +187,6 @@ function M.run()
                   and #brokenIcons == 0 and #deadEntries == 0
                   and #noAnim == 0 and #noSig == 0
 
-    -- ===== Trava de CORINGA CLONADO (Set/2026) =====
-    -- O dono achou jogando: "qual a diferenca entre deus do abismo e forma de
-    -- eco? nenhuma, e uma e lendaria a outra rara". Eram dois jokers com
-    -- `damage_multiplier attack 1.5` identico — e, com o largest-wins, ter os
-    -- dois ativos nao somava NADA (max(1.5,1.5)=1.5): o segundo era ouro no
-    -- lixo, com cara de premio.
-    --
-    -- Carta normal repetir efeito e DESIGN (o ataque e a defesa da carta
-    -- diferenciam, e o custo tambem). Coringa nao tem nem custo nem stats —
-    -- se a assinatura de efeito e igual, nao sobra NENHUMA decisao separando
-    -- os dois. So conta quando a mesma run pode oferecer os dois: coringas de
-    -- classes diferentes sao paridade entre classes, nao clone.
     local cloneJokers = {}
     do
         local porSig = {}
@@ -276,8 +212,6 @@ function M.run()
         end
         for sig, lista in pairs(porSig) do
             if #lista > 1 then
-                -- Co-ofertaveis: mesma classe, ou um dos dois e neutro
-                -- (class="basic" aparece pra todo mundo).
                 for i = 1, #lista do
                     for j = i + 1, #lista do
                         local a, b = lista[i], lista[j]

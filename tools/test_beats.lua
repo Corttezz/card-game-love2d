@@ -1,39 +1,13 @@
--- tools/test_beats.lua
--- TRAVA DO RITMO DO COMBATE (Set/2026).
---
--- POR QUE ESTE TESTE EXISTE
--- O dono jogou e disse: "muitas coisas so saem acontecendo e fica dificil de
--- entender e acompanhar". O defeito nao era visual — era TEMPO e ORDEM: dano,
--- debuff no inimigo, proc de coringa, pulso de orbe e compra de carta caiam no
--- mesmo instante. A correcao foi transformar o combate numa fila de BEATS
--- (src/systems/CombatBeats.lua), um acontecimento por instante, cada um
--- segurando o proximo.
---
--- "Nao crashou" nao prova nada aqui. Os asserts abaixo checam a ORDEM CAUSAL
--- executada (CombatBeats grava o trace) e o BLOQUEIO (nada anda na frente do
--- que ainda nao aconteceu). Se alguem reverter o mecanismo, cada bloco falha:
---   1. beat sem bloqueio  -> "um beat por vez" cai (tudo roda no 1o frame)
---   2. espinhos na jogada -> "espinhos NAO ferem ao jogar" cai
---   3. reflexo removido   -> "o golpe do inimigo cobra os espinhos" cai
---   4. ordem do turno     -> os indices do trace saem fora de ordem
---   5. orbes agregados    -> "um pulso por orbe" cai (1 beat em vez de 3)
---   6. heal_multiplier mudo -> "coringa de cura tica" cai
---
---   love . test_one test_beats
---   love . test_all
-
 local TK = require("tools.testkit")
 local CombatBeats = require("src.systems.CombatBeats")
 local EffectSystem = require("src.systems.EffectSystem")
 
 local M = {}
 
--- Indice do beat `label` no trace (nil se nunca rodou).
 local function at(label)
     return CombatBeats.indexOf(label)
 end
 
--- Indice do primeiro beat cujo label comeca com `prefix`.
 local function atPrefix(prefix)
     for i, l in ipairs(CombatBeats.log) do
         if l:sub(1, #prefix) == prefix then return i end
@@ -69,9 +43,6 @@ function M.run()
     local t = TK.new("ritmo do combate: beats, ordem causal e espinhos")
     TK.bootstrap()
 
-    -- ========================================================================
-    -- 1. A FILA SEGURA: um beat por vez
-    -- ========================================================================
     CombatBeats.clear()
     CombatBeats.startTrace()
     local ran = {}
@@ -87,12 +58,6 @@ function M.run()
     t:eq("ordem preservada", table.concat(ran, ","), "a,b,c")
     t:eq("fila vazia no fim", CombatBeats.pending(), 0)
 
-    -- SEMANTICA MEDIDA: push joga no FIM da fila mesmo chamado de dentro de um
-    -- beat. E por isso que resolucao de carta e turno do inimigo sao escritos
-    -- como CADEIA (o beat corrente empurra os passos dele e, por ultimo, o elo
-    -- seguinte) — pre-agendar carta 1 e carta 2 juntas jogaria os efeitos da
-    -- carta 1 pra depois da carta 2. Este assert existe pra que a regra nao
-    -- seja "descoberta" de novo na marra.
     ran = {}
     CombatBeats.push("outer", function()
         ran[#ran + 1] = "outer"
@@ -104,11 +69,6 @@ function M.run()
         table.concat(ran, ","), "outer,after,inner")
     CombatBeats.stopTrace()
 
-    -- ========================================================================
-    -- 2. ESPINHOS: a carta ARMA, o GOLPE DO INIMIGO cobra
-    --    (pedido do dono: "esse dano nao deveria ser so quando o inimigo
-    --     atacar?" — antes o reflexo saia no instante em que a carta era jogada)
-    -- ========================================================================
     local g = TK.newRunGame("warrior")
     TK.pump(g, 0.5)
     local hpEnemy = g.enemy.health
@@ -117,7 +77,6 @@ function M.run()
     t:eq("a carta armou 7 de espinhos", g.player:getBuffStacks("thorn"), 7)
     t:eq("bloqueio da carta entrou normalmente", g.player.armor, 5)
 
-    -- O inimigo ATACA -> o reflexo acontece.
     g.enemy.nextIntent = "attack"
     g.enemy.damage = 6; g.enemy.baseDamage = 6; g.enemy.nextIntentDamage = 6
     g.battleTurn = 1
@@ -129,7 +88,6 @@ function M.run()
         g.player:getBuffStacks("thorn"), 0)
     t:eq("a vez voltou pro jogador", g.turn, "player")
 
-    -- CONTROLE: inimigo que NAO ataca nao leva reflexo nenhum.
     local g2 = TK.newRunGame("warrior")
     TK.pump(g2, 0.5)
     local hp2 = g2.enemy.health
@@ -141,16 +99,6 @@ function M.run()
     TK.pump(g2, 3.5)
     t:eq("inimigo que DEFENDE nao leva reflexo", g2.enemy.health, hp2)
 
-    -- ========================================================================
-    -- 2b. O CORINGA QUE ARMOU ESPINHOS FALA QUANDO ELES SAEM
-    --     (dono: "JOKER BALUARTE ETERNO TAMBEM TEM Q FAZER BARULHO QUANDO
-    --      RECEBER DANO")
-    --
-    -- Espinhos sao ESTADO: o coringa arma quando a defesa e jogada e o
-    -- reflexo so sai no golpe do inimigo. O proc visual/sonoro existia so no
-    -- ARMAR, entao o lendario ficava MUDO no instante em que faz o que
-    -- promete — o inimigo levava dano "do nada".
-    -- ========================================================================
     local gj = TK.newRunGame("warrior")
     TK.pump(gj, 0.5)
 
@@ -161,11 +109,6 @@ function M.run()
     }
     gj.jokerSlots = { bulwark }
 
-    -- Espia os procs SEM depender da UI (o tick de verdade mora no
-    -- JokerProcFx, que precisa de geometria de cena).
-    -- Nota: isto ve so o proc DIRETO. O proc do ARMAR sai por outro caminho
-    -- (`procSink` da carta, consumido pelo CombatSequence) e nao passa por
-    -- aqui — o que interessa neste bloco e justamente o do REFLEXO.
     local procs = {}
     gj.effectSystem.notifyJokerProc = function(_, _, joker, label, kind)
         procs[#procs + 1] = { id = joker and joker.id, label = label, kind = kind }
@@ -177,16 +120,12 @@ function M.run()
           cost = 1, attack = 0, defense = 5, effects = {} }, nil)
     t:eq("o coringa armou os 8 espinhos", gj.player:getBuffStacks("thorn"), 8)
 
-    -- P2.3: o MESMO coringa nao arma duas vezes no mesmo turno.
     gj:processCardInCombat(
         { id = "tk_def2", name = "Defesa 2", type = "defense",
           cost = 1, attack = 0, defense = 5, effects = {} }, nil)
     t:eq("segunda defesa NAO rearma (teto 1x/turno do P2.3)",
         gj.player:getBuffStacks("thorn"), 8)
 
-    -- E o teto tem que sobreviver a `rebuildJokerSlots` (abrir o Gerenciador
-    -- de Coringas no meio da luta recria as instancias). Antes a chave era a
-    -- INSTANCIA: com a referencia orfa o teto reabria sozinho.
     gj.jokerSlots = { {
         id = "warrior_eternal_bulwark", name = "Baluarte Eterno",
         type = "joker",
@@ -198,7 +137,6 @@ function M.run()
     t:eq("nem depois de recriar a instancia do coringa (chave e o ID)",
         gj.player:getBuffStacks("thorn"), 8)
 
-    -- Agora o inimigo ataca: o reflexo sai E o coringa tem que falar.
     local procsAntes = #procs
     gj.enemy.nextIntent = "attack"
     gj.enemy.damage = 6; gj.enemy.baseDamage = 6; gj.enemy.nextIntentDamage = 6
@@ -218,7 +156,6 @@ function M.run()
     t:eq("e o proc mostra o dano refletido",
         falouNoReflexo and falouNoReflexo.label, "-8")
 
-    -- CONTROLE: sem ataque do inimigo nao ha reflexo — logo nao ha proc.
     local gk = TK.newRunGame("warrior")
     TK.pump(gk, 0.5)
     gk.jokerSlots = { {
@@ -241,31 +178,15 @@ function M.run()
     t:eq("inimigo que DEFENDE nao faz o coringa falar (nada refletiu)",
         #procsK, nK)
 
-    -- ========================================================================
-    -- 2c. O ANDAR NOVO SEMPRE COMECA NA VEZ DO JOGADOR
-    --     (dono: "teve um turno de batalha que o inimigo ja chegou me dando
-    --      dano enquanto andava, antes mesmo de chegar na tela pra eu jogar
-    --      minha carta, ou seja atacou antes de mim")
-    --
-    -- `endTurn` poe turn="enemy" e SO ENTAO enfileira o pulso dos orbes. Se o
-    -- pulso mata o inimigo, o portao da GameplayScene — que exige
-    -- `enemy:isAlive()` — nunca chama `enemyTurn()`, e quem devolvia a vez era
-    -- o beat final DELE. A vez ficava com o inimigo pela recompensa, pelo
-    -- descanso e pelo mapa; no andar seguinte o portao via inimigo novo VIVO
-    -- + vez do inimigo e mandava ele golpear antes da primeira carta.
-    -- ========================================================================
     do
         local gp = TK.newRunGame("mage")
         TK.pump(gp, 0.5)
 
-        -- Reproduz a morte que vem DO FIM DO TURNO (e nao das cartas): a vez
-        -- ja passou pro inimigo quando ele cai.
         gp.turn = "enemy"
         gp.enemy.health = 0
         t:truthy("cenario montado: fase limpa com a vez do inimigo",
             gp:isPhaseCleared() and gp.turn == "enemy")
 
-        -- O jogador atravessa recompensa/descanso/mapa e entra no andar novo.
         gp:nextPhase()
         TK.pump(gp, 0.5)
 
@@ -273,19 +194,14 @@ function M.run()
         t:truthy("e o inimigo do andar novo esta vivo (senao o teste nao prova nada)",
             gp.enemy and gp.enemy:isAlive())
 
-        -- A condicao exata do portao da cena (GameplayScene): com ela
-        -- verdadeira, o inimigo age antes do jogador.
         local portaoAbriria = (gp.turn == "enemy") and gp.enemy:isAlive()
         t:falsy("o portao do turno do inimigo NAO abre no primeiro frame do andar",
             portaoAbriria)
     end
 
-    -- ========================================================================
-    -- 3. ORDEM CAUSAL DO TURNO DO INIMIGO
-    -- ========================================================================
     local g3 = TK.newRunGame("warrior")
     TK.pump(g3, 0.5)
-    g3:processCardInCombat(thornCard(4), nil)      -- espinhos armados
+    g3:processCardInCombat(thornCard(4), nil)
     g3.enemy:addStatusEffect({ name = "poison", stacks = 3, duration = 3 })
     g3.enemy.nextIntent = "attack"
     g3.enemy.damage = 4; g3.enemy.baseDamage = 4; g3.enemy.nextIntentDamage = 4
@@ -296,7 +212,6 @@ function M.run()
     CombatBeats.startTrace()
     g3:enemyTurn()
 
-    -- BLOQUEIO: o turno inteiro NAO pode caber num piscar de olhos.
     TK.pump(g3, 0.2)
     local early = #CombatBeats.log
     t:truthy("turno do inimigo NAO resolve tudo em 0.2s (bloqueia mesmo)",
@@ -328,9 +243,6 @@ function M.run()
     t:truthy("nenhum beat do turno se repetiu (re-entrancia bloqueada)",
         countExact("enemy.telegraph") == 1 and countExact("enemy.attack") == 1)
 
-    -- ========================================================================
-    -- 4. ORBES DO MAGO: um pulso por orbe, cada um no instante dele
-    -- ========================================================================
     local gm = TK.newRunGame("mage")
     TK.pump(gm, 0.5)
     gm.player.orbs = {}
@@ -348,9 +260,6 @@ function M.run()
     CombatBeats.stopTrace()
     t:eq("um beat de pulso POR ORBE (3 orbes = 3 beats)",
         countPrefix("orb.pulse."), 3)
-    -- Valor esperado pela formula CANONICA (a mesma que a UI exibe) — o mago
-    -- comeca com Foco 2 (passiva Conduite), entao cravar "2 de dano" no teste
-    -- seria testar um numero desatualizado em vez da mecanica.
     local focusM = gm.player:getBuffStacks("focus") or 0
     local expectedPulse = 0
     for _, o in ipairs({ { type = "lightning", value = 4 }, { type = "lightning", value = 4 } }) do
@@ -360,7 +269,6 @@ function M.run()
         gm.enemy.health, enemyHpM - expectedPulse)
     t:truthy("o pulso de gelo virou bloqueio", gm.player.armor >= 2)
 
-    -- evoke_all_orbs tambem evoca UM DE CADA VEZ
     local gm2 = TK.newRunGame("mage")
     TK.pump(gm2, 0.5)
     gm2.player.orbs = {}
@@ -378,23 +286,9 @@ function M.run()
     t:eq("evoke_all_orbs: um beat de evoke por orbe", countExact("orb.evoke"), 2)
     t:eq("evoke_all_orbs esvaziou os orbes", #gm2.player.orbs, 0)
 
-    -- ========================================================================
-    -- 4b. CANALIZACAO MULTIPLA: N orbes = N acontecimentos CONTAVEIS, e
-    --     nenhum deles no instante do DANO.
-    --     (pedido do dono, Set/2026, jogando de mago: "Chuva de Meteoros
-    --      canaliza muitas ao mesmo tempo, fica confuso se esta dando dano ou
-    --      se canalizando uma nova")
-    --
-    --     O BUG QUE ESTE BLOCO PEGA: os beats de orbe ja existiam, mas a
-    --     MUTACAO nao. `player:addOrb` rodava na COLETA -- dentro do beat de
-    --     impacto da carta -- entao a fileira ia de 0 a 3 orbes no MESMO frame
-    --     do numero de dano, e os beats seguintes so tocavam som em cima de
-    --     orbes que ja estavam la. Reverter isso derruba as asserções de
-    --     "a fileira passou por 1 e por 2": com o bug ela pula de 0 pra 3.
-    -- ========================================================================
     local gmc = TK.newRunGame("mage")
     TK.pump(gmc, 0.5)
-    gmc.player.orbs = {}                       -- limpa o orbe da passiva Conduite
+    gmc.player.orbs = {}
     local meteor = {
         id = "tk_meteor", name = "Teste Chuva de Meteoros", type = "attack",
         cost = 0, attack = 6, defense = 0,
@@ -413,8 +307,6 @@ function M.run()
     CombatBeats.startTrace()
     gmc:playSelectedCards()
 
-    -- Amostra a cada 1/20s: quantos orbes a FILEIRA mostrava e se o dano ja
-    -- tinha saido. E a leitura do JOGADOR quadro a quadro, nao o estado final.
     local sawCount, orbsAtImpact, dmgLanded = {}, nil, false
     for _ = 1, 160 do
         TK.pump(gmc, 0.05)
@@ -444,11 +336,6 @@ function M.run()
         at("card.dissolve") and at("orb.channel")
         and at("card.dissolve") > at("orb.channel"))
 
-    -- ========================================================================
-    -- 4c. OVERFLOW e um TERCEIRO acontecimento, com instante proprio.
-    --     Canalizar com a fileira cheia EXPULSA o mais antigo (evocando-o).
-    --     Sem instante proprio o jogador ve um orbe sumir e nao entende por que.
-    -- ========================================================================
     local gof = TK.newRunGame("mage")
     TK.pump(gof, 0.5)
     gof.player.orbs = {}
@@ -462,8 +349,6 @@ function M.run()
     gof._beatSink = steps
     gof.effectSystem:processEffectCard(gof, { type = "channel_orb", orbType = "ice", value = 5 })
     gof._beatSink = nil
-    -- ANTES de tocar os beats nada pode ter mudado: o estado mora DENTRO do
-    -- acontecimento. Com o bug antigo a fileira ja estaria com o orbe de gelo.
     t:eq("a fileira NAO muda na coleta, so quando o beat toca",
         gof.player.orbs[3].type, "lightning")
     t:eq("o inimigo NAO leva o dano do overflow na coleta", gof.enemy.health, hpOf)
@@ -484,8 +369,6 @@ function M.run()
     t:truthy("o orbe expulso EVOCOU de verdade (o dano dele saiu)",
         gof.enemy.health < hpOf)
 
-    -- Controle: com vaga na fileira NAO existe expulsao (o beat condicional
-    -- orb.make_room custa MICRO e nao vira acontecimento).
     local gro = TK.newRunGame("mage")
     TK.pump(gro, 0.5)
     gro.player.orbs = {}
@@ -501,10 +384,6 @@ function M.run()
     t:eq("com vaga livre nao ha expulsao nenhuma", countExact("orb.overflow"), 0)
     t:eq("mesmo assim o orbe foi canalizado", #gro.player.orbs, 1)
 
-    -- ========================================================================
-    -- 4d. EVOCAR tambem muda o estado DENTRO do beat -- senao o orbe some no
-    --     impacto e o flash cai depois, num slot que ja e de outro orbe.
-    -- ========================================================================
     local gev = TK.newRunGame("mage")
     TK.pump(gev, 0.5)
     gev.player.orbs = {}
@@ -520,22 +399,6 @@ function M.run()
     t:eq("o orbe sai quando o beat de evoke toca", #gev.player.orbs, 1)
     t:eq("saiu o MAIS ANTIGO (FIFO)", gev.player.orbs[1].type, "ice")
 
-    -- ========================================================================
-    -- 4f. CADA PULSO ATERRISSA ONDE O EFEITO DELE ACONTECE -- e com a
-    --     assinatura do ELEMENTO, nao um efeito generico.
-    --     (pedido do dono, Set/2026: "os orbes, quando dao dano ao final do
-    --      turno, eles poderiam refletir algo no inimigo visualmente tambem,
-    --      cada um de uma forma sabe, visual e som")
-    --
-    --     A METADE PERIGOSA e a que o pedido NAO cobre: gelo da Bloqueio e
-    --     sagrado CURA -- se eles estourarem no inimigo, o jogo ensina que
-    --     defender fere, que e exatamente o defeito dos espinhos (doutrina de
-    --     defeitos, §3: feedback certo no lugar errado deixa o jogador convicto
-    --     do errado). Sombra nem sai da fileira: engorda o proprio orbe.
-    --
-    --     Como se observa isso num teste headless: interceptando as chamadas de
-    --     som e de burst. E o contrato real -- quem toca o que, e ONDE.
-    -- ========================================================================
     do
         local Sfx = require("src.systems.Sfx")
         local CardFeel = require("src.systems.CardFeel")
@@ -547,13 +410,12 @@ function M.run()
 
         local log
         local function resetLog() log = { sfx = {}, enemy = {}, player = {}, slot = {} } end
-        resetLog()   -- criar o Game ja toca sons: o coletor precisa existir antes
+        resetLog()
         Sfx.play = function(name) log.sfx[#log.sfx + 1] = name end
         CardFeel.burstAtEnemy  = function(theme) log.enemy[#log.enemy + 1] = theme end
         CardFeel.burstAtPlayer = function(theme) log.player[#log.player + 1] = theme end
         OrbRow.burstAtSlot     = function(_, theme) log.slot[#log.slot + 1] = theme end
 
-        -- Dispara o pulso de UM orbe isolado e devolve o que foi tocado/estourado.
         local function pulseOf(orbType, value)
             local g = TK.newRunGame("mage")
             TK.pump(g, 0.5)
@@ -576,7 +438,6 @@ function M.run()
 
         local sounds = {}
 
-        -- RAIO: fere -> marca no INIMIGO
         local g, b = pulseOf("lightning", 4)
         t:truthy("pulso de RAIO fere o inimigo", g.enemy.health < b.enemyHp)
         t:eq("raio estoura NO INIMIGO", #log.enemy, 1)
@@ -585,14 +446,12 @@ function M.run()
         t:eq("raio toca UM som", #log.sfx, 1)
         sounds.lightning = log.sfx[1]
 
-        -- FOGO: fere -> marca no INIMIGO, com outro som e outra paleta
         g, b = pulseOf("fire", 6)
         t:truthy("pulso de FOGO fere o inimigo", g.enemy.health < b.enemyHp)
         t:eq("fogo estoura NO INIMIGO", #log.enemy, 1)
         t:eq("fogo usa a paleta de fogo", log.enemy[1], "fire")
         sounds.fire = log.sfx[1]
 
-        -- GELO: da Bloqueio -> marca no JOGADOR, NUNCA no inimigo
         g, b = pulseOf("ice", 4)
         t:truthy("pulso de GELO da Bloqueio", g.player.armor > b.armor)
         t:eq("o inimigo NAO leva dano do pulso de gelo", g.enemy.health, b.enemyHp)
@@ -601,7 +460,6 @@ function M.run()
         t:eq("gelo usa a paleta de gelo", log.player[1], "ice")
         sounds.ice = log.sfx[1]
 
-        -- SAGRADO: cura -> marca no JOGADOR, NUNCA no inimigo
         g, b = pulseOf("holy", 6)
         t:truthy("pulso SAGRADO cura o heroi", g.player.health > b.hp)
         t:eq("o inimigo NAO leva dano do pulso sagrado", g.enemy.health, b.enemyHp)
@@ -610,7 +468,6 @@ function M.run()
         t:eq("sagrado usa a paleta sagrada", log.player[1], "holy")
         sounds.holy = log.sfx[1]
 
-        -- SOMBRA: cresce no proprio orbe -> marca NO ORBE
         g, b = pulseOf("dark", 5)
         t:eq("pulso de SOMBRA engorda o proprio orbe",
             g.player.orbs[1].value, b.orbVal + 2)
@@ -621,8 +478,6 @@ function M.run()
         t:eq("sombra usa a paleta de sombra", log.slot[1], "dark")
         sounds.dark = log.sfx[1]
 
-        -- CADA UM DE UMA FORMA: os 5 sons tem que ser DIFERENTES entre si.
-        -- (Reverter pra um som generico unico derruba esta asserção.)
         local uniq, names = {}, {}
         for k, v in pairs(sounds) do
             names[#names + 1] = k .. "=" .. tostring(v)
@@ -640,31 +495,10 @@ function M.run()
         OrbRow.burstAtSlot = realAtSlot
     end
 
-    -- ========================================================================
-    -- 4g. A FILEIRA TEM QUE SE LER: silhueta = elemento, glifo = unidade.
-    --     (pedido do dono, Set/2026: "esta meio dificil de entender esses
-    --      circulos ali, podemos pensar em algo diferente")
-    --
-    --     A captura `lovec . preview_battle_hud orbs` mostrou o defeito: cinco
-    --     DISCOS iguais, quatro deles exibindo o mesmo "3", e o icone do
-    --     elemento a ~14px virava mancha. O redesenho deu SILHUETA propria a
-    --     cada elemento e um GLIFO DE UNIDADE ao lado do numero.
-    --
-    --     O que este bloco trava nao e "esta bonito" -- e que o orbe nao MINTA:
-    --     a unidade que ele anuncia tem que ser a que o EffectSystem de fato
-    --     aplica. Se alguem mudar o pulso do gelo pra dano e esquecer o glifo,
-    --     a fileira passa a ensinar causalidade errada em silencio.
-    -- ========================================================================
     do
         local OrbRow = require("src.ui.OrbRow")
         local TYPES = { "lightning", "ice", "fire", "dark", "holy" }
 
-        -- (a) cada elemento tem a SUA gema, e nenhuma se repete.
-        -- Set/2026: a arte era silhueta vetorial e virou gema pixel
-        -- (assets/sprites/orbs/) -- o dono reprovou o contorno vazio, "meio
-        -- feio", e tinha razao: wireframe nao e objeto. O que o teste trava nao
-        -- e o material, e a REGRA que sobreviveu aos dois: cinco elementos,
-        -- cinco leituras distintas.
         local byPath, byPixels = {}, {}
         for _, ty in ipairs(TYPES) do
             local path = OrbRow.ART[ty]
@@ -678,9 +512,6 @@ function M.run()
             t:truthy("o arquivo de " .. ty .. " existe no disco (" .. tostring(path) .. ")",
                 info ~= nil)
 
-            -- Arte NATIVA no tamanho de uso: 48x48. Se alguem trocar por um
-            -- PNG maior, ele seria reduzido em tempo de desenho -- que e
-            -- exatamente o defeito que matou o icone DENTRO do orbe.
             if info then
                 local ok, data = pcall(love.image.newImageData, path)
                 if ok and data then
@@ -688,8 +519,6 @@ function M.run()
                         data:getWidth(), 48)
                     t:eq("a gema de " .. ty .. " e 48x48 nativa (altura)",
                         data:getHeight(), 48)
-                    -- Assinatura esparsa: pega dois arquivos IGUAIS com nomes
-                    -- diferentes, que o teste de caminho sozinho deixaria passar.
                     local sig = 0
                     for py = 0, 47, 4 do
                         for px = 0, 47, 4 do
@@ -705,7 +534,6 @@ function M.run()
             end
         end
 
-        -- (b) o que o EffectSystem REALMENTE faz com cada pulso, observado
         local function observedPulseUnit(orbType)
             local g = TK.newRunGame("mage")
             TK.pump(g, 0.5)
@@ -747,9 +575,6 @@ function M.run()
                 OrbRow.UNIT_OF.evoke[ty], observedEvokeUnit(ty))
         end
 
-        -- (c) o numero nao pode ser mentira: SOMBRA nao pulsa, entao o que ela
-        --     mostra e o valor ACUMULADO (o que dobra ao evocar), nunca o zero
-        --     do pulso.
         local EffectSystem2 = require("src.systems.EffectSystem")
         local darkOrb = { type = "dark", value = 7 }
         t:eq("sombra nao pulsa (valor de pulso e zero)",
@@ -761,23 +586,11 @@ function M.run()
         t:eq("no preview de evoke o numero vira o dobro", vEv, 14)
         t:eq("e o glifo vira DANO (e o que evocar sombra faz)", uEv, "damage")
 
-        -- (d) Foco entra na conta que a fileira exibe (senao o numero na tela
-        --     diverge do dano que sai).
         local vFocus = OrbRow.readout({ type = "lightning", value = 4 }, 2, "pulse")
         t:eq("o numero exibido ja inclui o Foco",
             vFocus, EffectSystem2.orbPulseValue({ type = "lightning", value = 4 }, 2))
     end
 
-    -- ========================================================================
-    -- 4h. O MAGO NAO ENVENENA NINGUEM (ponta a ponta, numa run de verdade)
-    --     Queixa do dono, jogando: "por que o inimigo esta ficando com veneno
-    --     na minha run de mago? nao faz muito sentido". Estava certo — o ramo
-    --     `fire` de _evokeOrbEffect aplicava `poison` como atalho.
-    --
-    --     Os blocos de tools/test_effects_full cobrem a unidade; ESTE cobre a
-    --     CADEIA inteira, que e onde o jogador vive: evocar fogo -> queimadura
-    --     entra -> turno do inimigo -> o beat do DoT tica -> a vida cai.
-    -- ========================================================================
     do
         local gf = TK.newRunGame("mage")
         TK.pump(gf, 0.5)
@@ -791,12 +604,8 @@ function M.run()
         t:falsy("e NAO deixa veneno (o mago nao tem carta de veneno no deck)",
             gf.enemy:hasStatus("poison"))
 
-        -- O turno do inimigo tica o DoT: a queimadura tem que DOER.
         local hpBefore = gf.enemy.health
         gf.enemy.armor = 0
-        -- `buff`, nao `defend`: defender da armadura ANTES do beat do DoT e a
-        -- armadura absorveria a queimadura inteira -- o teste passaria a medir
-        -- a armadura em vez do DoT.
         gf.enemy.nextIntent = "buff"
         gf.battleTurn = 1
         gf.turn = "enemy"
@@ -812,19 +621,6 @@ function M.run()
             gf.enemy.health < hpBefore)
     end
 
-    -- MORRER QUEIMADO tem que encenar a morte igual a morrer envenenado: no
-    -- beat do tick que matou, e nao tres passos adiante com a barra zerada e o
-    -- monstro em pe. (`_applyDot` -> `_markDeathIfCrossed` -> o `enemy.dot`
-    -- chama `announceDeathIfPending`, que reivindica o instante corrente.)
-    --
-    -- MEDIDO, pra ninguem se enganar: este bloco continua VERDE se alguem
-    -- tirar o `_markDeathIfCrossed` do `_applyDot` -- a REDE de
-    -- announceDeathIfPending ("morto e nao encenado conta como pendente")
-    -- recolhe a morte assim mesmo. Quem guarda a marcacao e a asserção unitaria
-    -- `morrer QUEIMADO marca a morte` em tools/test_effects_full.lua. Os dois
-    -- testes cobrem coisas diferentes: aqui, que a morte por queimadura E
-    -- encenada e cai no beat certo; la, que a marcacao existe -- que e o que
-    -- mantem a morte correta quando a checagem nao acontece no mesmo beat.
     do
         local gk = TK.newRunGame("mage")
         TK.pump(gk, 0.5)
@@ -848,10 +644,6 @@ function M.run()
             and at("enemy.death") >= at("enemy.dot"))
     end
 
-    -- ========================================================================
-    -- 4e. O CASO REAL: quantas cartas do catalogo canalizam em rajada?
-    --     Asserção de CONTAGEM pra nao passar verde por nao ter exercitado nada.
-    -- ========================================================================
     do
         local CardDatabase = require("src.systems.CardDatabase")
         local all = CardDatabase.getAllCards and CardDatabase:getAllCards() or {}
@@ -878,10 +670,6 @@ function M.run()
             .. #mixed .. ")", #mixed >= 8)
     end
 
-    -- ========================================================================
-    -- 5. CORINGA QUE MUDA UM NUMERO TEM QUE TICAR
-    --    (Abraco Sombrio: defense_bonus ticava, heal_multiplier era MUDO)
-    -- ========================================================================
     local gj = TK.newRunGame("warrior")
     TK.pump(gj, 0.5)
     gj:addJokerToRun("warrior_dark_embrace")
@@ -894,7 +682,6 @@ function M.run()
     t:truthy("o proc aponta o slot do coringa certo",
         procs[1] and procs[1].joker == jk)
 
-    -- Cobertura: TODO tipo continuo de coringa do catalogo empurra proc.
     do
         local gAll = TK.newRunGame("warrior")
         TK.pump(gAll, 0.5)
@@ -912,13 +699,8 @@ function M.run()
         t:eq("defense_multiplier + defense_bonus ticam (2 procs)", #p2, 2)
     end
 
-    -- ========================================================================
-    -- 6. RESOLUCAO DE CARTA: impacto > coringas > efeitos > dissolve > proxima
-    -- ========================================================================
     local gc = TK.newRunGame("rogue")
     TK.pump(gc, 0.5)
-    -- Carta de ataque com efeito secundario (veneno): o debuff no inimigo tem
-    -- que acontecer DEPOIS do dano, num instante proprio.
     local atk = {
         id = "tk_atk", name = "Teste Golpe", type = "attack",
         cost = 0, attack = 6, defense = 0,
@@ -942,14 +724,9 @@ function M.run()
         iDissolve and iEffect and iDissolve > iEffect)
     t:truthy("o veneno chegou no inimigo", gc.enemy:hasStatus("poison"))
 
-    -- ========================================================================
-    -- 7. ENFURECIDO: o inimigo cruzar os 30% de vida e um ACONTECIMENTO
-    --    (era mudo: +50% de dano permanente sem toast, som, pill ou instante —
-    --     acontecia em TODA batalha e mudava a conta de dano do jogador)
-    -- ========================================================================
     local ge = TK.newRunGame("warrior")
     TK.pump(ge, 0.5)
-    ge.enemy.health = 10                 -- 30% de 18 = 5.4: ainda acima
+    ge.enemy.health = 10
     ge.enemy.damage = 6; ge.enemy.baseDamage = 6
     ge.enemy:rollIntent()
     local intentBefore = ge.enemy.nextIntentDamage
@@ -977,11 +754,9 @@ function M.run()
     t:truthy("o enfurecimento vem DEPOIS do golpe que o causou",
         iImpactE and iRage and iRage > iImpactE)
     t:eq("o dano dele subiu 50%", ge.enemy.damage, math.floor(6 * 1.5))
-    -- INVARIANTE (CLAUDE.md 6): o golpe JA anunciado no HUD nao muda.
     t:eq("o intent ja telegrafado NAO fica mais forte",
         ge.enemy.nextIntentDamage, intentBefore)
 
-    -- so anuncia na VIRADA: ferir de novo nao repete o acontecimento
     CombatBeats.clear()
     CombatBeats.startTrace()
     ge.enemy:takeDamage(1)
@@ -991,11 +766,10 @@ function M.run()
     t:eq("enfurecer e evento de VIRADA, nao se repete a cada dano",
         countExact("enemy.enraged"), 0)
 
-    -- checkpoint no turno do inimigo: fonte fora da carta nunca fica muda
     local ge2 = TK.newRunGame("warrior")
     TK.pump(ge2, 0.5)
-    ge2.enemy.health = 4                 -- ja abaixo do limiar
-    ge2.enemy:takeDamage(0)              -- cruza pelo caminho canonico
+    ge2.enemy.health = 4
+    ge2.enemy:takeDamage(0)
     t:truthy("dano de qualquer fonte marca o enfurecimento pendente",
         ge2.enemy._pendingEnrage == true)
     ge2.enemy.nextIntent = "defend"
@@ -1012,10 +786,6 @@ function M.run()
         at("enemy.enraged") and at("enemy.defend")
         and at("enemy.enraged") < at("enemy.defend"))
 
-    -- ========================================================================
-    -- 8. CONTRATO: todo trigger de processTriggerEffect esta em TRIGGER_OF
-    --    (esquecer de registrar = o trigger nunca mais dispara, em silencio)
-    -- ========================================================================
     do
         local src = love.filesystem.read("src/systems/EffectSystem.lua")
         local missing = {}

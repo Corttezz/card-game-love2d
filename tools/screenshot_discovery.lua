@@ -1,14 +1,3 @@
--- tools/screenshot_discovery.lua
--- Carta INÉDITA na vitrine (src/ui/DiscoveryMark.lua): recompensa, loja e
--- pacote, cada um em dois instantes — no meio da varredura de luz e em
--- repouso (só o marcador "NOVA") — mais a recompensa com reducedMotion.
---
---   DISC_SIZE=1920x1080 love . test_one screenshot_discovery
---   DISC_LOCALE=fr ...   (marcador mais largo: "NOUVELLE")
---
--- Grava disc_<WxH>_<cena>_<instante>.png no save dir. O relógio do
--- DiscoveryMark é trocado pelo tempo SIMULADO: o instante da captura é
--- exato, não depende da velocidade da máquina.
 local M = {}
 
 function M.run()
@@ -54,8 +43,6 @@ function M.run()
         FloatingText.draw()
         love.graphics.setCanvas()
     end
-    -- O draw de cada quadro importa: é nele que a carta "aparece" e a
-    -- revelação começa (pacote: só depois de materializar).
     local function simulate(screen, secs)
         local dt, t = 1 / 60, 0
         while t < secs do
@@ -74,7 +61,6 @@ function M.run()
         canvas:newImageData():encode("png", path)
         print("[screenshot_discovery] " .. path)
     end
-    -- Instante da 1ª revelação: meio da faixa / repouso
     local MID = DiscoveryMark.SWEEP_DELAY + DiscoveryMark.SWEEP_DUR * 0.45
 
     local function newGame()
@@ -90,7 +76,6 @@ function M.run()
         return game
     end
 
-    -- Recompensa / loja: o caminho real — offer.isNew → createCardInstances.
     local function offerScene(mode, newSlots, tag, reduced)
         local game = newGame()
         _G.gameSettings.reducedMotion = reduced or nil
@@ -105,7 +90,6 @@ function M.run()
             end
         end
         screen:createCardInstances()
-        -- a revelação começa no 1º draw: espera a entrada e mede dali
         simulate(screen, 0.02)
         simulate(screen, MID - 0.02)
         shoot(screen, tag .. "_sweep")
@@ -118,8 +102,6 @@ function M.run()
     offerScene("shop", { true, false, false, true }, "shop")
     offerScene("rewards", { true, false, true }, "rewards_reduced", true)
 
-    -- Pacote: generateContents marca isNewDiscovery na carta inédita; aqui
-    -- forçamos 2 de 3 (o perfil do tool pode já ter visto todas).
     do
         newGame()
         local pack = BoosterPackSystem.expandPackRecord({
@@ -129,8 +111,6 @@ function M.run()
         pack.instances[3].isNewDiscovery = true
         local screen = PackOpenScreen:new()
         screen:show(pack, function() end)
-        -- 1.3s até as cartas nascerem + materialize; captura logo depois
-        -- que a 1ª carta revela e com tudo em repouso
         local t0
         local dt = 1 / 60
         for _ = 1, 600 do

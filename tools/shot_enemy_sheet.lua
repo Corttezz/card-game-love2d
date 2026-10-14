@@ -1,21 +1,5 @@
--- tools/shot_enemy_sheet.lua
--- Prancha de TODOS os inimigos (assets/sprites/characters/enemies/*) na
--- estrada do bioma deles, pelo caminho real (GameplayScene.draw), com o HUD
--- (intent, vida, pills). Serve pra conferir de olho se o HUD está centrado
--- no CORPO (Out/2026: "o 29 e a barra estão à esquerda do corpo").
---
---   SHOT_SIZE=1920x1080 love . test_one shot_enemy_sheet [id1,id2,...]
---
--- SHEET_MODE=feet: recorte 2x no PÉ de cada um (contato com o chão), com
--- tiques magenta na linha de chão → enemy_feet_sheet.png.
--- SHEET_MODE=death: o mesmo recorte no ÚLTIMO quadro da morte (cadáver)
--- → enemy_death_sheet.png.
--- Saída: enemy_sheet.png no save dir (recortes lado a lado, com o nome e
--- uma marca amarela no eixo do corpo, abaixo do pé).
-
 local M = {}
 
--- bioma de cada inimigo: ROSTER quando ele está lá; senão pelo nome
 local KEYWORDS = {
     { 4, { "frost", "ice", "rime", "glacier", "winter" } },
     { 3, { "ember", "hell", "abyss", "obsidian", "pit", "tyrant" } },
@@ -73,19 +57,13 @@ function M.run(which)
 
     local w, h = love.graphics.getDimensions()
     local canvas = love.graphics.newCanvas(w, h)
-    -- SHEET_MODE=feet: recorte AMPLIADO 2x no pé (contato com o chão), com
-    -- tiques magenta na linha de chão pedida, fora do corpo
     local mode = os.getenv("SHEET_MODE")
-    -- death: mata o inimigo e fotografa o ÚLTIMO quadro (cadáver) no pé
     local death = mode == "death"
     local feet = mode == "feet" or death
     local cw, ch = math.floor(w * 0.30), math.floor(h * 0.56)
     local fw, fh = 340, 150
     if feet then cw, ch = fw * 2, fh * 2 end
     local feetCanvas = feet and love.graphics.newCanvas(cw, ch) or nil
-    -- strip: 6 instantes do idle por inimigo (uma linha cada) — prova de
-    -- que fumaça/raio/gota/brilho pintados SE MEXEM na cena real
-    -- attack: 6 instantes do GOLPE (preparo → apex → volta), na cena real
     local attackMode = mode == "attack" or mode == "attack_strong"
     local stripMode = mode == "strip" or attackMode
     if stripMode then cw, ch = math.floor(w * 0.20), math.floor(h * 0.42) end
@@ -125,12 +103,11 @@ function M.run(which)
         if stripMode then
             if attackMode then
                 love.graphics.setCanvas(canvas)
-                GameplayScene.draw()          -- carrega a idle deste id
+                GameplayScene.draw()
                 love.graphics.setCanvas()
                 EnemyRenderer.triggerAttack(mode == "attack_strong" and "strong" or "attack",
                     function() end)
             end
-            -- golpe: t = 0.06 0.18 0.30 0.36 0.50 0.76 s (apex em 0.34)
             local steps = attackMode and { 2, 4, 4, 2, 4, 8 } or { 8, 8, 8, 8, 8, 8 }
             for i = 1, 6 do
                 for _ = 1, steps[i] do EnemyRenderer.update(1 / 30) end
@@ -149,7 +126,7 @@ function M.run(which)
         end
         if death then
             love.graphics.setCanvas(canvas)
-            GameplayScene.draw()          -- carrega a idle deste id
+            GameplayScene.draw()
             love.graphics.setCanvas()
             game.enemy.health = 0
             EnemyRenderer.triggerDeath(id)
@@ -158,8 +135,6 @@ function M.run(which)
         love.graphics.setCanvas(canvas)
         love.graphics.clear(0, 0, 0, 1)
         GameplayScene.draw()
-        -- marca: eixo do corpo (amarelo) abaixo do pé — o HUD (desenhado pelo
-        -- jogo) tem que estar centrado nesta mesma coluna
         local foot = EnemyRenderer.getLastFoot()
         if foot and death then
             print(string.format("[cadaver] %-20s gap=%.1f frame=%s pad=%s",

@@ -1,11 +1,3 @@
--- tools/test_systems.lua
--- Valida a entrega STS-improvements v1 (docs/plan/sts-improvements-v1.md):
---   Step 1 — Rng seedável com streams (determinismo + roundtrip getState)
---   Step 2 — pity de raridade + afinidade/anti-duplicata nas ofertas
---   Step 3 — upgrade infinito + custo crescente da forja paga
---   Step 6 — Events.roll com histórico por ato
--- Rodar: love . test_systems   (headless-ish; sai com exit code)
-
 local Rng = require("src.systems.Rng")
 local Config = require("src.core.Config")
 local CardRegistry = require("src.systems.CardRegistry")
@@ -24,9 +16,6 @@ function M.run()
 
     print("---- STS-improvements v1: systems test ----")
 
-    -- ===== Step 1: Rng =====
-
-    -- 1. Determinismo por seed: mesma seed → mesma sequência por stream.
     local a = Rng.new(12345)
     local b = Rng.new(12345)
     local same = true
@@ -35,7 +24,6 @@ function M.run()
     end
     check("mesma seed => mesma sequencia (stream card)", same)
 
-    -- 2. Streams independentes: card e shop divergem entre si.
     local c = Rng.new(777)
     local cardSeq, shopSeq = {}, {}
     for i = 1, 10 do
@@ -48,7 +36,6 @@ function M.run()
     end
     check("streams card/shop divergem", diverge)
 
-    -- 3. Roundtrip getState/setState: salvar e restaurar continua a sequência.
     local r1 = Rng.new(999)
     for _ = 1, 17 do r1:random("map", 100) end
     local snapshot = r1:getState()
@@ -64,15 +51,11 @@ function M.run()
     check("roundtrip getState/setState continua identico", rtOk)
     check("counters serializados", snapshot.counters and snapshot.counters.map == 17)
 
-    -- 4. Estado ausente/corrompido não crasha (save antigo).
     local r3 = Rng.fromState(nil)
     check("fromState(nil) devolve Rng novo utilizavel", r3:random("misc", 10) >= 1)
 
-    -- ===== Step 2: pity + ofertas =====
-
     local reg = CardRegistry:new()
 
-    -- 5. Peso 100/0/0/0: sempre common e o pity NÃO se move (rare impossível).
     local r5 = Rng.new(42)
     local onlyCommon = true
     for _ = 1, 200 do
@@ -83,7 +66,6 @@ function M.run()
     check("peso 100/0/0/0 => sempre common", onlyCommon)
     check("pity nao se move sem rare possivel", (r5.meta.cardPity or 0) == 0)
 
-    -- 6. Hard pity: com contador no limite, o próximo roll é rare+.
     local r6 = Rng.new(4242)
     r6.meta.cardPity = Config.Offers.HARD_PITY
     local forced = reg:rollRarity({ common = 90, uncommon = 9, rare = 1, legendary = 0 },
@@ -91,9 +73,6 @@ function M.run()
     check("hard pity forca rare", forced == "rare" or forced == "legendary")
     check("hard pity reseta o contador", (r6.meta.cardPity or 0) == 0)
 
-    -- 7. Janela de pity: com pesos do ato 1 (rare 5%), nunca passa de HARD_PITY
-    --    ofertas sem rare+ — e o crescimento do peso segura a janela real bem
-    --    abaixo do teto na prática.
     local r7 = Rng.new(31337)
     local maxDry, dry = 0, 0
     for _ = 1, 400 do
@@ -109,11 +88,8 @@ function M.run()
     check("pity limita jejum de rare a <= HARD_PITY (" .. maxDry .. ")",
         maxDry <= Config.Offers.HARD_PITY)
 
-    -- 8. Ofertas sem duplicata + estrutura de afinidade coerente.
     Rng.setActive(Rng.new(2026))
     local deckIds = {}
-    -- Monta um deck com 3 cópias da primeira carta common do warrior que tenha
-    -- tags (afinidade precisa de tag presente 2+ vezes).
     local pool = reg:getCardsByClassAndRarity("warrior", "common")
     local tagged = nil
     for _, id in ipairs(pool) do
@@ -132,9 +108,6 @@ function M.run()
         seen[rw.cardId] = true
     end
     check("sem duplicata na mesma oferta", not dupFound)
-    -- Coerência do flag: affinity ⟺ carta tem tag forte NÃO-genérica do deck.
-    -- P0.5 (rebalance Jul/2026): tags genéricas {strike, defend, armor, magic}
-    -- saíram da contagem de afinidade (blacklist em CardRegistry.pickRewardCard).
     local AFFINITY_BLACKLIST = { strike = true, defend = true, armor = true, magic = true }
     local tagCounts = reg:countDeckTags(deckIds)
     local coherent = true
@@ -153,7 +126,6 @@ function M.run()
     end
     check("flag de afinidade coerente com as tags do deck", coherent)
 
-    -- 9. minRarity continua respeitado (piso de elite/boss).
     local floorRw = reg:generateCardRewards("warrior", 5, { minRarity = "rare" })
     local allRare = #floorRw > 0
     for _, rw in ipairs(floorRw) do
@@ -161,13 +133,10 @@ function M.run()
     end
     check("minRarity=rare nunca entrega abaixo", allRare)
 
-    -- ===== Step 3: upgrade infinito + custo de forja =====
-
     local rm = RunManager:new()
     rm:startNewRun("warrior")
     local anyCard = rm:getDeckCardIds()[1]
 
-    -- 10. Cap 0 = infinito: 7 forjas seguidas funcionam.
     check("Config.Game.UPGRADE_LEVEL_CAP == 0 (infinito)", Config.Game.UPGRADE_LEVEL_CAP == 0)
     local lastLvl = 0
     for _ = 1, 7 do
@@ -176,7 +145,6 @@ function M.run()
     check("7 forjas na mesma carta => nivel 7", lastLvl == 7)
     check("canUpgrade continua true sem cap", rm:canUpgrade(anyCard))
 
-    -- 11. Stats da instância refletem o nível (fonte única Config.Offers).
     local deck = rm:buildPlayableDeck()
     local upgraded = nil
     for _, inst in ipairs(deck) do
@@ -190,8 +158,6 @@ function M.run()
     check("instancia forjada +7 tem stats corretos", statOk)
     check("instancia marca upgrades=7", upgraded and upgraded.upgrades == 7)
 
-    -- 11b. Regra de forja por CENÁRIO (playtest: ataque puro ganhava DEF
-    -- fantasma — defense=0 é truthy). getForgeGains é a fonte única.
     local gAtk = RunManager.getForgeGains({ attack = 8, defense = 0 })
     check("forja: ataque puro ganha SO ATQ",
         gAtk.atk ~= nil and gAtk.def == nil and gAtk.effect == nil)
@@ -205,13 +171,11 @@ function M.run()
         gEff.effect ~= nil and gEff.effectIndex == 1)
     local gNone = RunManager.getForgeGains({ attack = 0, defense = 0 })
     check("forja: carta sem nada nao e forjavel", next(gNone) == nil)
-    -- Instância real: a carta forjada +7 não pode ter DEF fantasma.
     if upgraded and cdBase and (cdBase.defense or 0) == 0 then
         check("instancia atk-only forjada mantem DEF 0",
             (upgraded.defense or 0) == 0)
     end
 
-    -- 12. Custo da forja paga cresce: base 5 -> 7 -> 9 (x1.35, arredondado).
     local c0 = rm:getPaidForgeCost()
     rm:registerPaidForge()
     local c1 = rm:getPaidForgeCost()
@@ -220,9 +184,6 @@ function M.run()
     check("custo forja paga cresce (" .. c0 .. "->" .. c1 .. "->" .. c2 .. ")",
         c0 == Config.Offers.FORGE_COST_BASE and c1 > c0 and c2 > c1)
 
-    -- ===== Steps 1+2: reprodutibilidade ponta-a-ponta =====
-
-    -- 13. Mapa: mesma seed => mesma sequência de nodes.
     Rng.setActive(Rng.new(555))
     local nodesA = {}
     for f = 1, 6 do
@@ -237,9 +198,6 @@ function M.run()
     end
     check("mapa reprodutivel por seed", table.concat(nodesA, ",") == table.concat(nodesB, ","))
 
-    -- ===== Step 6: eventos =====
-
-    -- 14. Histórico: evento visto no ato não repete (com pool > 1).
     Rng.setActive(Rng.new(88))
     local history = {}
     local ev1 = Events.roll(1, history)
@@ -250,7 +208,6 @@ function M.run()
         if e and e.id == ev1.id then repeated = true break end
     end
     check("evento nao repete no mesmo ato", not repeated)
-    -- Ato diferente libera o evento de novo.
     local freedElsewhere = false
     for _ = 1, 60 do
         local e = Events.roll(2, history)
@@ -258,10 +215,6 @@ function M.run()
     end
     check("evento visto no ato 1 pode sair no ato 2", freedElsewhere)
 
-    -- ===== Fix Jul/2026: attack anim (loop infinito + encolhimento) =====
-
-    -- 14b. Ciclo attack→idle: o clip de ataque é ONE-SHOT e volta pro idle
-    -- sozinho (bug: caía no default loop+pingpong e repetia pra sempre).
     local okER, ER = pcall(require, "src.ui.EnemyRenderer")
     if okER and ER.debugState then
         local fakeGame = { enemy = { spriteId = "cursed_scarecrow", health = 10 } }
@@ -277,21 +230,17 @@ function M.run()
             ER.triggerAttack("attack", nil)
             check("triggerAttack toca o clip attack",
                 ER.debugState().animName == "attack")
-            -- 3s simulados >> 9 frames a 12fps (~0.75s): tem que ter voltado.
             for _ = 1, 180 do ER.update(1 / 60) end
             check("attack e ONE-SHOT e volta pro idle",
                 ER.debugState().animName == "idle")
         end
 
-        -- 14c. Escala estável: a referência de escala é o IDLE; o canvas cru
-        -- do attack (PixelLab sem crop) é maior mas NÃO pode mudar o corpo.
         local mi = ER.debugClipMetrics("cursed_scarecrow", "idle")
         local ma = ER.debugClipMetrics("cursed_scarecrow", "attack")
         check("clip metrics: idle medido", mi.h > 0)
         check("clip metrics: attack canvas maior (cru)", ma.h > mi.h)
     end
 
-    -- 15. Save do RunManager carrega rngState (roundtrip via serialize).
     local SaveManager = require("engine.SaveManager")
     rm.currentRun.rngState = Rng.get():getState()
     local serialized = "return " .. SaveManager.serialize(rm.currentRun)
@@ -300,9 +249,6 @@ function M.run()
     check("run com rngState serializa e parseia", okParse and type(revived) == "table"
         and revived.rngState and revived.rngState.seed == Rng.get().seed)
 
-    -- ===== Jokers: modelo coleção + bancada (Jul/2026) =====
-    -- Bug morto: comprar o 4º joker o fazia SUMIR. Agora entra na bancada e o
-    -- jogador escolhe quais MAX_JOKER_SLOTS ativar.
     local rmJ = RunManager:new()
     rmJ:startNewRun("warrior")
     local cap = rmJ:getMaxJokerSlots()
@@ -319,16 +265,13 @@ function M.run()
     check("buildAllJokerInstances devolve todos (4)",
         #rmJ:buildAllJokerInstances() == 4)
 
-    -- Troca de ativos: desativa o slot 1, ativa o benchado (índice 4).
     local okOff = rmJ:setJokerActive(1, false)
     check("desativar reduz ativos", okOff and rmJ:getActiveJokerCount() == cap - 1)
     local okOn = rmJ:setJokerActive(4, true)
     check("ativar benchado sobe ativos", okOn and rmJ:getActiveJokerCount() == cap)
-    -- Com slots cheios, ativar o índice 1 de novo deve barrar por "cap".
     local okCap, reason = rmJ:setJokerActive(1, true)
     check("ativar com slots cheios barra (cap)", (not okCap) and reason == "cap")
 
-    -- Roundtrip: jokerActive sobrevive ao serialize.
     do
         local SaveManager = require("engine.SaveManager")
         local s = "return " .. SaveManager.serialize(rmJ.currentRun)

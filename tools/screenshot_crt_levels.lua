@@ -1,13 +1,3 @@
--- tools/screenshot_crt_levels.lua
--- Os 3 NÍVEIS do CRT (Desligado / Baixo / Normal) SEM JANELA, em 1080p e
--- 1440p, sobre uma tela cheia de TEXTO (o menu principal) — pra julgar
--- legibilidade: scanlines, grille, aberração, curvatura, vinheta.
---
---   CARDGAME_HEADLESS=1 love . test_one screenshot_crt_levels
---
--- Saída (save dir): crt_<nivel>_<W>x<H>.png (6 arquivos) + crt_levels_sheet.png
--- (recortes 1:1 do título e de um botão, lado a lado por nível/resolução).
-
 local M = {}
 
 function M.run()
@@ -23,7 +13,7 @@ function M.run()
     local FontManager = require("src.ui.FontManager")
     local Menu = require("components.Menu")
     _G.gameSettings = _G.gameSettings or {}
-    _G.gameSettings.reducedMotion = true   -- cena parada: só a lente muda entre capturas
+    _G.gameSettings.reducedMotion = true
 
     local crops = {}
     for _, sz in ipairs({ { 1920, 1080 }, { 2560, 1440 } }) do
@@ -54,8 +44,6 @@ function M.run()
             local name = ("crt_%s_%dx%d.png"):format(lv, W, H)
             data:encode("png", name)
             print("[crt_levels] " .. name)
-            -- recortes 1:1: título (centro-alto) e botão SAIR (centro-baixo)
-            -- título centrado em (W/2, 0.22H); JOGAR começa em 0.5H (Menu:createButtons)
             crops[#crops + 1] = { data = data, W = W, H = H, lv = lv,
                 title = { x = math.floor(W / 2 - 330), y = math.floor(H * 0.22 - 70), w = 660, h = 140 },
                 btn = { x = math.floor(W / 2 - 330), y = math.floor(H * 0.5 - 12), w = 660, h = 90 } }
@@ -66,7 +54,6 @@ function M.run()
     love.graphics.getWidth, love.graphics.getHeight, love.graphics.getDimensions = realW, realH, realD
     FontManager.clearCache()
 
-    -- prancha: 6 colunas (nível × resolução), 2 linhas (título, botão), 1:1
     local colW, rowH = 660, 150
     local sheet = love.graphics.newCanvas(colW * #crops, rowH * 2 + 20)
     love.graphics.push("all")

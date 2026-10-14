@@ -1,18 +1,3 @@
--- tools/screenshot_event_anim.lua
--- Contact sheet da ENTRADA e da SAÍDA da EventScreen.
---
--- A entrada dura 0,34s e a saída 0,30s: num screenshot único elas ou já
--- acabaram ou nem começaram. Captura em instantes fixos e monta lado a lado —
--- é a única forma de julgar dosagem ("efeitos sutis") sem assistir ao jogo.
---
--- Também exercita o caminho que mais quebra: `screen:draw()` é chamado A CADA
--- frame simulado, não só no instante da captura. Draw MUTA estado (lição das
--- "cartas invisíveis até o hover": Card:draw grava self.x/y), então simular só
--- o update esconde feedback loops de draw.
---
--- Roda: love . screenshot_event_anim
--- Saída: event_anim_enter.png e event_anim_exit.png
-
 local M = {}
 
 local ENTER_AT = { 0.00, 0.06, 0.14, 0.24, 0.40 }
@@ -20,7 +5,7 @@ local EXIT_AT  = { 0.00, 0.08, 0.16, 0.24, 0.32 }
 
 local function sheet(frames, name, labels)
     local W, H = frames[1]:getWidth(), frames[1]:getHeight()
-    local S = 0.34                       -- miniatura
+    local S = 0.34
     local tw, th = math.floor(W * S), math.floor(H * S)
     local pad = 6
     local out = love.graphics.newCanvas(tw * #frames + pad * (#frames + 1), th + pad * 2 + 16)
@@ -75,7 +60,6 @@ function M.run()
     local screen = EventScreen:new()
     local DT = 1 / 60
 
-    -- ===== ENTRADA =====
     screen:show(ev, game, function() end)
     local frames, labels, t, idx = {}, {}, 0, 1
     while idx <= #ENTER_AT do
@@ -87,14 +71,12 @@ function M.run()
         else
             EM.update(DT)
             screen:update(DT)
-            capture(screen)          -- draw TODO frame: expõe feedback loop
+            capture(screen)
             t = t + DT
         end
     end
     sheet(frames, "event_anim_enter.png", labels)
 
-    -- ===== SAÍDA =====
-    -- Deixa assentar, dispara o fechamento e acompanha.
     for _ = 1, 40 do EM.update(DT); screen:update(DT); capture(screen) end
     screen:_closeWithFade()
     frames, labels, t, idx = {}, {}, 0, 1

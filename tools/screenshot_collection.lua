@@ -1,15 +1,6 @@
--- tools/screenshot_collection.lua
--- Captura a tela de coleção: grid (rolada até a carta alvo) + modal de
--- inspeção da carta alvo. Validação visual das cartas animadas em TODAS
--- as renderizações.
--- Roda: love . screenshot_collection [card_id]   (default warrior_standard_bearer)
--- Saída: ~/.local/share/love/card-game/collection_grid.png + collection_inspect.png
-
 local M = {}
 
 function M.run(cardId)
-    -- Default: carta que existe na coleção (warrior_standard_bearer é joker —
-    -- jokers não aparecem no grid da coleção; default antigo pendurava o tool).
     cardId = cardId or "warrior_iron_wave"
 
     local I18n = require("src.i18n.I18n")
@@ -18,17 +9,11 @@ function M.run(cardId)
     local CardFrame = require("src.ui.CardFrame")
     local CollectionScreen = require("components.CollectionScreen")
 
-    -- STORE_REVEAL=1: catálogo inteiro DESCOBERTO (o sandbox de tool não
-    -- tem perfil — sem isso a grade sai toda "?"; screenshots da loja)
     if os.getenv("STORE_REVEAL") == "1" then
         require("src.systems.UnlockSystem").setRevealAll(true)
     end
     local screen = CollectionScreen:new()
     screen:show(function() end)
-    -- COLLECTION_FILTER=joker|attack|...: aba da coleção (coringa só aparece
-    -- na aba de coringas)
-    -- a coleção monta as instâncias em ONDAS (orçamento por frame); a carta
-    -- alvo pode estar no fim da lista (coringas) — termina a montagem antes
     for _ = 1, 200 do
         if screen._buildDone then break end
         screen:_buildInstances(1)
@@ -39,12 +24,10 @@ function M.run(cardId)
         screen:_applyFilter()
     end
 
-    -- Acha a carta alvo na lista filtrada e rola até ela
     local target, targetIdx
     for i, inst in ipairs(screen.filtered or {}) do
         if inst.id == cardId then target = inst; targetIdx = i; break end
     end
-    -- loja: qualquer carta serve de âncora (a ordem do grid muda com o idioma)
     if not target and os.getenv("STORE_REVEAL") == "1" and screen.filtered
         and screen.filtered[1] then
         print("[screenshot_collection] AVISO: " .. cardId
@@ -57,8 +40,6 @@ function M.run(cardId)
         for i, inst in ipairs(screen.filtered or {}) do
             if i <= 5 then print("  ex: " .. tostring(inst.id)) end
         end
-        -- Fix Jul/2026: sem o quit, o tool ficava PENDURADO com a janela
-        -- aberta pra sempre (timeout de quem chama) em vez de falhar rapido.
         love.event.quit(1)
         return
     end
@@ -75,8 +56,6 @@ function M.run(cardId)
         end
     end
 
-    -- Rola o grid pra linha da carta alvo ficar visível
-    -- (CARD_H=192, GAP_Y=24, COLS=5 — constantes locais do CollectionScreen)
     local row = math.floor((targetIdx - 1) / 5)
     screen.scrollY = math.min(screen.maxScrollY or 0,
         math.max(0, row * (192 + 24) - 60))
@@ -91,7 +70,6 @@ function M.run(cardId)
     end)
     love.graphics.present()
 
-    -- Modal de inspeção
     screen.inspectedCard = target
     screen.inspectAnim = 0
     simulate(0.5)

@@ -1,13 +1,3 @@
--- tools/test_unlocks.lua
--- Meta-progressão (src/systems/UnlockSystem.lua + src/data/unlocks.lua):
--- regras de classe/carta, XP/maestria, persistência no perfil, migração de
--- perfil antigo, ofertas NUNCA rolando carta bloqueada (N seeds, rewards +
--- loja + pacotes), override de ferramenta e descoberta.
---   love . test_one test_unlocks
---
--- Perfil é FALSO (ProfileStats._swapForTests) e o override de ferramenta é
--- desligado só aqui dentro — ambos restaurados no fim.
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -30,7 +20,6 @@ function M.run()
         local db = CardDatabase:new()
         local all = db:getAllCards()
 
-        -- ===== Integridade dos dados =====
         local reg = CardRegistry:new()
         local starters = {}
         for _, c in ipairs(Data.CLASS_ORDER) do
@@ -55,8 +44,6 @@ function M.run()
             end
         end
 
-        -- Núcleo saudável: perfil NOVO tem pool liberada em toda raridade
-        -- que a oferta usa (common/uncommon/rare) pra cada classe.
         for _, classId in ipairs(Data.CLASS_ORDER) do
             for _, r in ipairs({ "common", "uncommon", "rare" }) do
                 local pool = reg:_poolFor(classId, r)
@@ -65,7 +52,6 @@ function M.run()
             end
         end
 
-        -- ===== Classes =====
         t:truthy("guerreiro liberado de início", UnlockSystem.isClassUnlocked("warrior"))
         t:falsy("mago bloqueado de início", UnlockSystem.isClassUnlocked("mage"))
         t:falsy("ladino bloqueado de início", UnlockSystem.isClassUnlocked("rogue"))
@@ -81,13 +67,11 @@ function M.run()
         local unlockedEvents = {}
         UnlockSystem.onUnlock(function(kind, id) unlockedEvents[#unlockedEvents + 1] = kind .. ":" .. id end)
 
-        -- Chefe do ato 1: libera o marco joker_001, não libera classe.
         t:falsy("joker_001 bloqueado antes", UnlockSystem.isCardUnlocked("joker_001"))
         local nc1, ncl1 = UnlockSystem.onBossDefeated(1, nil)
         t:truthy("chefe ato 1 libera joker_001", UnlockSystem.isCardUnlocked("joker_001"))
         t:eq("chefe ato 1 não libera classe", #ncl1, 0)
         t:eq("info mago: progress 1 após ato 1", UnlockSystem.getClassUnlockInfo("mage").progress, 1)
-        -- Chefe do ato 2: mago.
         local _, ncl2 = UnlockSystem.onBossDefeated(2, nil)
         t:eq("chefe ato 2 libera exatamente o mago", ncl2[1], "mage")
         t:truthy("mago liberado", UnlockSystem.isClassUnlocked("mage"))
@@ -97,7 +81,6 @@ function M.run()
         end)())
         t:eq("chefe repetido não reprocessa", #(select(1, UnlockSystem.onBossDefeated(2, nil))), 0)
 
-        -- ===== XP / maestria / fim de run =====
         t:eq("XP morte no andar 1 do ato 1 = piso", UnlockSystem.computeRunXP({ actNumber = 1, floorInAct = 1 }), Data.XP.MINIMUM)
         local xpA2 = UnlockSystem.computeRunXP({ actNumber = 2, floorInAct = 4 })
         t:eq("XP morte ato 2 andar 4 = 12 andares + 1 ato", xpA2, 12 * Data.XP.PER_FLOOR + Data.XP.PER_ACT)
@@ -114,8 +97,6 @@ function M.run()
         t:falsy("pacote do MAGO não liberou com XP do guerreiro",
             UnlockSystem.isCardUnlocked(Data.CLASS_BUNDLES.mage[1].cards[1]))
 
-        -- Vitória: ladino + marco de vitória; contadores próprios (não dependem
-        -- da ordem com ProfileStats.recordVictory).
         local r2 = UnlockSystem.onRunEnded({ classId = "warrior", victory = true,
             actNumber = Config.TotalActs or 3, floorInAct = 8 })
         t:truthy("vitória libera ladino", UnlockSystem.isClassUnlocked("rogue"))
@@ -123,12 +104,10 @@ function M.run()
             for _, c in ipairs(r2.newClasses) do if c == "rogue" then return true end end
         end)())
         t:truthy("vitória libera joker_003", UnlockSystem.isCardUnlocked("joker_003"))
-        -- Morte no endless não paga a run de novo.
         t:eq("morte no endless só paga o endless",
             UnlockSystem.computeRunXP({ actNumber = 5, floorInAct = 2, endlessMode = true, floorsInEndless = 4 }),
             math.max(Data.XP.MINIMUM, 4 * Data.XP.PER_ENDLESS))
 
-        -- ===== Persistência: o estado mora no perfil =====
         local prof = ProfileStats.get()
         t:truthy("estado salvo em profile.unlocks", type(prof.unlocks) == "table")
         t:truthy("XP do guerreiro persistido", (prof.unlocks.mastery.warrior or 0) > 0)
@@ -141,7 +120,6 @@ function M.run()
         t:truthy("recarregado: mago segue liberado", UnlockSystem.isClassUnlocked("mage"))
         t:truthy("recarregado: pacote 1 segue liberado", UnlockSystem.isCardUnlocked(lvl1[1]))
 
-        -- ===== Migração de perfil antigo =====
         ProfileStats._swapForTests({ runs = 12, wins = 0, bestAct = 3, bestFloor = 4,
             cardsSeen = { warrior_bash = true } })
         UnlockSystem.ensure()
@@ -156,12 +134,10 @@ function M.run()
         t:truthy("migração com vitória: ladino liberado", UnlockSystem.isClassUnlocked("rogue"))
         t:eq("migração: classe vencedora ganha maestria máxima",
             UnlockSystem.getClassMastery("rogue").level, 5)
-        -- Perfil novo não é tratado como antigo.
         ProfileStats._swapForTests({ runs = 0, wins = 0 })
         UnlockSystem.ensure()
         t:falsy("perfil novo não migra", ProfileStats.get().unlocks.migratedLegacy)
 
-        -- ===== Ofertas nunca rolam carta bloqueada =====
         local Rng = require("src.systems.Rng")
         local BoosterPackSystem = require("src.systems.BoosterPackSystem")
         local ActSystem = require("src.systems.ActSystem")
@@ -191,7 +167,6 @@ function M.run()
         t:eq("nenhuma carta bloqueada em rewards/loja/pacotes (60 seeds x 3 classes)", #leaks, 0)
         if #leaks > 0 then print("    vazou: " .. table.concat(leaks, ", ", 1, math.min(#leaks, 8))) end
 
-        -- Loja de verdade (ShopSystem) também.
         local ShopSystem = require("src.systems.ShopSystem")
         local shop = ShopSystem:new()
         local shopLeaks, shopCards = 0, 0
@@ -213,12 +188,10 @@ function M.run()
         t:truthy("loja gerou cartas (" .. shopCards .. ")", shopCards > 100)
         t:eq("ShopSystem não oferta carta bloqueada", shopLeaks, 0)
 
-        -- Ofertada = descoberta.
         Rng.setActive(Rng.new(7))
         local pick = reg:pickRewardCard({ classId = "warrior" })
         t:truthy("carta ofertada vira descoberta", pick and UnlockSystem.isCardDiscovered(pick.cardId))
 
-        -- ===== Override de ferramenta =====
         UnlockSystem.setOverrideAll(true)
         t:truthy("override: carta de maestria 5 liberada",
             UnlockSystem.isCardUnlocked(Data.CLASS_BUNDLES.rogue[5].cards[3]))
@@ -235,7 +208,6 @@ function M.run()
         end
         t:truthy(("override abre o catálogo inteiro (%d raras vs %d)"):format(full, partial), full > partial)
 
-        -- Contagem pública.
         local nc, tot, ncls, totCls = UnlockSystem.unlockedCount()
         t:eq("unlockedCount: total = catálogo", tot, db:getTotalCardCount())
         t:truthy("unlockedCount: perfil novo < total", nc < tot)

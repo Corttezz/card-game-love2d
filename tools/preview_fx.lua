@@ -1,7 +1,3 @@
--- tools/preview_fx.lua
--- Renderiza uma carta representante de CADA decoração/efeito pra análise visual.
--- Usar: love . preview_fx  (salva no saveDir do LÖVE)
-
 local M = {}
 
 function M.run()
@@ -13,7 +9,6 @@ function M.run()
     local db = CardDatabase:new()
     local CardFrame = require("src.ui.CardFrame")
 
-    -- id -> tag do efeito demonstrado (pro nome do arquivo)
     local jobs = {
         { "warrior_twin_strike",   "sparks" },
         { "warrior_heavy_blade",   "dust" },
@@ -27,7 +22,6 @@ function M.run()
         { "rogue_shadow_dance",    "shadow_wisps" },
         { "joker_002",             "abyss_tendrils" },
         { "mage_mind_spike",       "void_stars" },
-        -- "filtro vermelho": fundo fire/blood + accent quente
         { "warrior_inflame",       "redfilter_fire" },
         { "warrior_brutality",     "redfilter_blood" },
     }

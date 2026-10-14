@@ -1,12 +1,3 @@
--- tools/preview_card_anim.lua
--- Contact sheet de carta com ícone ANIMADO (icons_anim/): renderiza a carta
--- em N instantes do loop (canvas estático do CardFrame + CardAnimationLayer
--- com t fixo) pra validar geometria (cover-fit/crop) e vida do movimento
--- sem abrir o jogo.
---
--- Uso:  love . preview_card_anim [card_id]     (default: warrior_standard_bearer)
--- Saída: ~/.local/share/love/card-game/preview_card_anim.png
-
 local M = {}
 
 function M.run(cardId)
@@ -32,7 +23,6 @@ function M.run(cardId)
     local cardCanvas = CardFrame.render(cd)
     local art = CardArt.resolve(cd)
 
-    -- Animação = canvases pré-renderizados por frame (CardFrame.getAnimation)
     local anim = CardFrame.getAnimation(cd)
     local nShots, fps
     if anim then
@@ -65,7 +55,6 @@ function M.run(cardId)
         local row = math.floor(i / cols)
         local x = pad + col * (cw + pad)
         local y = pad + row * (ch + pad + 14)
-        -- t escolhido pra cair exatamente no frame i do loop
         local t = i / fps
         local frameCanvas = anim and anim.canvases[i + 1] or cardCanvas
         love.graphics.setColor(1, 1, 1, 1)
@@ -81,10 +70,6 @@ function M.run(cardId)
     print("[preview] salvou " .. love.filesystem.getSaveDirectory()
         .. "/preview_card_anim.png")
 
-    -- Verificação do QUADRO VIVO (o que as telas desenham via
-    -- CardFrame.displayImage): espera 1.5 frames de animação e confere que
-    -- liveImage devolve outro canvas. Pega regressão do tipo "anima no
-    -- preview mas não no jogo".
     if anim then
         local c1 = CardFrame.liveImage(cd)
         local t0 = love.timer.getTime()

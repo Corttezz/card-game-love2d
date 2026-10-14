@@ -1,19 +1,3 @@
--- tools/screenshot_combobanner.lua
--- Valida o ComboBanner:  love . screenshot_combobanner
---
--- v2 (feedback do dono Set/2026): a versao 1 desenhava o banner ISOLADO
--- sobre o cenario, o que nao testava nada do que ele reclamou. Agora o tool
--- dirige o GameplayScene DE VERDADE — mesma ordem de painter do jogo — com
--- cartas na MAO e cartas VOANDO pro centro, que era exatamente quem estava
--- cobrindo o banner.
---
--- Saidas:
---   combobanner_impact.png    banner + cartas voando + mao (prova de z-order)
---   combobanner_impact_in.png meio da queima de entrada
---   combobanner_multi.png     3 combos no mesmo turno (banner unico)
---   combobanner_reduced.png   com reducedMotion (aparece igual, sem queima)
---   combobanner_small.png     janela estreita (zona aperta → conteudo cede)
-
 local M = {}
 
 local function shot(name)
@@ -24,9 +8,6 @@ local function shot(name)
     love.graphics.present()
 end
 
--- ---------------------------------------------------------------------------
--- Cena de gameplay real (mesmas deps que main.lua passa pro GameplayScene)
--- ---------------------------------------------------------------------------
 local function buildScene()
     local TK = require("tools.testkit")
     TK.bootstrap()
@@ -42,7 +23,7 @@ local function buildScene()
     local GameplayScene = require("src.scenes.GameplayScene")
     local I18n = require("src.i18n.I18n")
 
-    I18n.setLocale("pt_BR")   -- captura deterministica (o save pode estar noutro idioma)
+    I18n.setLocale("pt_BR")
 
     local game = TK.newRunGame("warrior")
     game.enemy.spriteId = "cursed_scarecrow"
@@ -72,7 +53,6 @@ local function buildScene()
     })
     GameplayScene.setGame(game)
 
-    -- deixa a estrada assentar (camera/vegetacao) antes de qualquer captura
     local WorldRoad = require("src.ui.WorldRoad")
     WorldRoad.clearCache()
     WorldRoad._camZ = 6
@@ -84,7 +64,6 @@ local function buildScene()
     return game, GameplayScene
 end
 
--- Monta a mao com cartas que garantem o combo pedido e joga `nPlay` delas.
 local function playCombo(game, ids, nPlay)
     local CardDatabase = require("src.systems.CardDatabase")
     local db = CardDatabase:new()
@@ -95,7 +74,6 @@ local function playCombo(game, ids, nPlay)
         local cd = db:getCard(id)
         if cd then table.insert(game.hand, db:createCardInstance(cd)) end
     end
-    -- mana de sobra: o teste e visual, nao economico
     game.player.mana = 10
     game.player.maxMana = 10
     game.selectedCards = {}
@@ -108,16 +86,11 @@ local function playCombo(game, ids, nPlay)
     game:playSelectedCards()
 end
 
--- Um frame do jogo: o love.update do main tica o EventManager ANTES da
--- scene (o combate inteiro e diferido pra fila de eventos). Sem isso as
--- cartas nunca voam e o impacto — que e quem levanta o banner — nao chega.
 local function frame(GameplayScene, dt)
     _G.EventManager.update(dt)
     GameplayScene.update(dt)
 end
 
--- Espera a jogada anterior terminar: playSelectedCards e ignorado enquanto o
--- combatAnimationSystem estiver bloqueando (mesma guarda do jogo).
 local function drain(GameplayScene, game)
     for _ = 1, 60 * 12 do
         if not game.combatAnimationSystem:isBlocking() then break end
@@ -126,8 +99,6 @@ local function drain(GameplayScene, game)
     for _ = 1, 30 do frame(GameplayScene, 1 / 60) end
 end
 
--- Avanca a cena ate o banner subir (ele sobe no IMPACTO, nao no clique),
--- e depois mais `extra` segundos. Retorna false se nunca subiu.
 local function pumpUntilBanner(GameplayScene, extra)
     local ComboBanner = require("src.ui.ComboBanner")
     local dt = 1 / 60
@@ -146,7 +117,6 @@ function M.run()
     local game, GameplayScene = buildScene()
     local ComboBanner = require("src.ui.ComboBanner")
 
-    -- 1 e 2. strike_combo (x1.4): 2 golpes jogados, 2 cartas ficam na mao
     local strikeHand = { "warrior_strike", "warrior_strike",
                          "warrior_defend", "warrior_strike" }
     playCombo(game, strikeHand, 2)
@@ -162,8 +132,6 @@ function M.run()
     GameplayScene.draw()
     shot("combobanner_impact")
 
-    -- 3. tres combos no mesmo turno: 3 golpes (strike_combo + triple_strike)
-    --    + uma carta de lifesteal (lifesteal_burst)
     drain(GameplayScene, game)
     ComboBanner.clear()
     game._currentTurnContext = nil
@@ -176,7 +144,6 @@ function M.run()
         print("[AVISO] combo multiplo nao disparou")
     end
 
-    -- 4. reducedMotion: mesma informacao, sem queima
     _G.gameSettings = _G.gameSettings or {}
     local prev = _G.gameSettings.reducedMotion
     _G.gameSettings.reducedMotion = true
@@ -190,9 +157,6 @@ function M.run()
     end
     _G.gameSettings.reducedMotion = prev
 
-    -- 5. ZONA APERTADA: janela baixa (o conteudo cede, a banda nao).
-    --    Falsifica a janela em vez de setMode — padrao de
-    --    memory/ui_layout_invariants.md (setMode repetido em tool nao retorna).
     local realH = love.graphics.getHeight
     love.graphics.getHeight = function() return 520 end
     require("src.ui.FontManager").clearCache()

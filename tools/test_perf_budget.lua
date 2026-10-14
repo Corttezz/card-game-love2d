@@ -1,27 +1,10 @@
--- tools/test_perf_budget.lua
--- TRAVA DE REGRESSÃO DE PERFORMANCE do WorldRoad (Out/2026).
---
--- Não mede milissegundo (varia por máquina e por carga — numa máquina
--- compartilhada o ruído é maior que a regressão). Trava as CAUSAS que a
--- otimização removeu, todas determinísticas:
---   1. orçamento de DRAW CALLS por frame (era ~800-1000; hoje ~400);
---   2. câmera PARADA não reconstrói nada: a grama reusa o lote (vento no
---      shader) e o chão do domo reusa a malha — 0 sprites escritos pela
---      CPU por frame em batalha;
---   3. o cache NÃO fica velho: câmera andando, fork abrindo e troca de
---      bioma reconstroem (otimização que congela a cena é bug pior);
---   4. ALOCAÇÃO por frame (GC) abaixo de um teto;
---   5. troca de bioma PRÉ-AQUECIDA: o 1º frame do bioma novo não
---      decodifica PNG (era o engasgo de 100-370 ms da troca de ato).
--- Medir ms de verdade: love . test_one perf_probe [WxH[:phases|:switch]]
-
 local TK = require("tools.testkit")
 
 local M = {}
 
-local DRAWCALL_BUDGET = 600      -- por frame, câmera parada, bioma 1
-local ALLOC_BUDGET_KB = 40       -- por frame, GC parado (era ~130; hoje ~30)
-local SWITCH_DECODE_BUDGET = 0   -- PNGs decodificados no 1º frame do bioma novo
+local DRAWCALL_BUDGET = 600
+local ALLOC_BUDGET_KB = 40
+local SWITCH_DECODE_BUDGET = 0
 
 function M.run()
     local t = TK.new("perf budget (WorldRoad: draw calls, cache, GC, troca de bioma)")
@@ -48,7 +31,6 @@ function M.run()
     end
 
     local ok, err = pcall(function()
-        -- 1º draw instala o bioma; pré-aquecimento síncrono (orçamento grande)
         frame(1)
         for _ = 1, 4000 do
             if WorldRoad.isPrewarmed(1) and WorldRoad.isPrewarmed(2) then break end
@@ -57,10 +39,8 @@ function M.run()
         t:truthy("pré-aquecimento termina (bioma atual e o próximo)",
             WorldRoad.isPrewarmed(1) and WorldRoad.isPrewarmed(2))
 
-        -- passa o broto das fileiras (animação de CPU de ~1.4s)
         for _ = 1, 110 do frame(1) end
 
-        -- ---- 1+2: câmera parada --------------------------------------
         GrassField.resetStats()
         local domeBefore = WorldRoad._domeBuilds or 0
         local s0 = love.graphics.getStats().drawcalls
@@ -78,7 +58,6 @@ function M.run()
         t:eq("chão do domo com câmera parada: malha não reconstruída",
             WorldRoad._domeBuilds or 0, domeBefore)
 
-        -- ---- 4: alocação ----------------------------------------------
         collectgarbage("collect")
         collectgarbage("stop")
         local k0 = collectgarbage("count")
@@ -88,7 +67,6 @@ function M.run()
         t:check(("alocação por frame ≤ %d KB (obtido %.1f KB)"):format(ALLOC_BUDGET_KB, perKB),
             perKB <= ALLOC_BUDGET_KB)
 
-        -- ---- 3: o cache não fica velho --------------------------------
         WorldRoad._camZ = WorldRoad._camZ + 0.37
         GrassField.resetStats()
         domeBefore = WorldRoad._domeBuilds or 0
@@ -97,7 +75,7 @@ function M.run()
             GrassField.stats.builds > 0 and GrassField.stats.replays == 0)
         t:check("câmera andou → chão do domo reconstrói",
             (WorldRoad._domeBuilds or 0) > domeBefore)
-        for _ = 1, 3 do frame(1) end     -- assenta de novo
+        for _ = 1, 3 do frame(1) end
 
         WorldRoad.showFork({ { type = "battle" }, { type = "rest" },
             { type = "shop" } }, function() end)
@@ -105,16 +83,12 @@ function M.run()
         frame(1); frame(1)
         t:check("fork abrindo → grama reconstrói (clareira dos braços)",
             GrassField.stats.builds > 0)
-        for _ = 1, 40 do frame(1) end     -- animIn chega em 1
+        for _ = 1, 40 do frame(1) end
         GrassField.resetStats()
         for _ = 1, 5 do frame(1) end
         t:check("fork aberto e parado → grama volta a reusar o lote",
             GrassField.stats.builds == 0 and GrassField.stats.replays > 0)
 
-        -- fork FECHANDO (bug do dono, Out/2026: "rastro liso sem grama onde
-        -- os braços não escolhidos estavam"): a clareira de cada braço tem
-        -- que encolher junto com o fade dele, e a grama reconstrói até
-        -- assentar. Espia o ctx que o WorldRoad entrega ao GrassField.
         local realDraw, lastCtx = GrassField.draw, nil
         GrassField.draw = function(ctx, ...)
             lastCtx = ctx
@@ -161,7 +135,6 @@ function M.run()
         WorldRoad._fork = nil
         WorldRoad._landmark = nil
 
-        -- ---- 5: troca de bioma pré-aquecida ---------------------------
         local decodes = 0
         local realNewImage, realNewImageData = love.graphics.newImage,
             love.image.newImageData
@@ -170,7 +143,6 @@ function M.run()
             return realNewImage(...)
         end
         love.image.newImageData = function(a, ...)
-            -- só conta DECODIFICAÇÃO de arquivo (string = caminho)
             if type(a) == "string" then decodes = decodes + 1 end
             return realNewImageData(a, ...)
         end
@@ -187,8 +159,6 @@ function M.run()
     end)
     t:check("cenário roda sem erro" .. (ok and "" or (": " .. tostring(err))), ok)
 
-    -- ---- 6: seleção de classe aquece o bioma 1 mesmo com o mundo parado
-    -- em outro ato (run anterior terminou no ato 4) ----------------------
     do
         local WR = require("src.ui.WorldRoad")
         WR.clearCache()

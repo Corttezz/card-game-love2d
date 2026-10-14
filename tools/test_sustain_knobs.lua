@@ -1,8 +1,3 @@
--- tools/test_sustain_knobs.lua
--- wip/sustain (Out/2026): os flags das 3 propostas de sustento DISPARAM de
--- verdade (senão a bateria mede um no-op) e, desligados, o jogo é o de antes.
---   love . test_one test_sustain_knobs
-
 local TK = require("tools.testkit")
 local M = {}
 
@@ -13,17 +8,13 @@ local function body()
     local ActSystem = require("src.systems.ActSystem")
     local CG, CO = Config.Game, Config.Offers
 
-    -- 1) defaults = jogo atual
     t:eq("REST_HEAL_PCT default 0,30", CG.REST_HEAL_PCT, 0.30)
     t:falsy("POTIONS desligadas por padrão", CG.POTIONS)
     t:falsy("ELITE_RAMP desligado por padrão", CG.ELITE_RAMP)
-    -- Sustento garantido foi ADOTADO (13/Out/2026): o default é LIGADO.
     t:truthy("SUSTAIN_GUARANTEE ligado por padrão", CO.SUSTAIN_GUARANTEE)
     t:eq("SUSTAIN_WEIGHT_BONUS 1.0 por padrão", CO.SUSTAIN_WEIGHT_BONUS, 1.0)
-    -- Daqui em diante o teste controla os dois knobs à mão (o teardown restaura).
     CO.SUSTAIN_GUARANTEE, CO.SUSTAIN_WEIGHT_BONUS = false, 0
 
-    -- 2) elite por andar: só rebaixa, 1º andar = START, 8º = eliteHPMul
     local off1 = ActSystem.getEnemyStats(3, 1, "elite").health
     local off8 = ActSystem.getEnemyStats(3, 8, "elite").health
     local base1 = ActSystem.getEnemyStats(3, 1, "battle").health
@@ -39,7 +30,6 @@ local function body()
     t:check("ramp: andar do meio fica entre os dois", on4 > on1 and on4 < off8)
     t:eq("ramp desligado volta ao valor antigo", ActSystem.getEnemyStats(3, 1, "elite").health, off1)
 
-    -- 3) poção: cai de elite, cura 20%, 1 vaga, só com o flag
     local game = TK.newRunGame("warrior")
     local run = game.runManager.currentRun
     run.currentNode = { type = "elite" }
@@ -68,7 +58,6 @@ local function body()
     t:eq("batalha comum não deixa poção", run.potions, 0)
     CG.POTIONS = false
 
-    -- 4) vaga de sustento na recompensa de elite/chefe (contexto único)
     local ShopSystem = require("src.systems.ShopSystem")
     local CardRegistry = require("src.systems.CardRegistry")
     run.currentNode = { type = "elite" }
@@ -108,11 +97,8 @@ local function body()
         end
     end
     t:eq("com flag: 1ª vaga de elite é sustento nas 3 classes", hits, tries)
-    -- deck já com 2 fontes: vaga volta a ser livre
     local g2 = TK.newRunGame("warrior")
     local reg = g2.runManager.cardRegistry
-    -- Carta de DECK (coringa bifurca pra jokers e não conta no deck) e ordem
-    -- determinística: `pairs` já sorteou um coringa aqui e derrubou a suíte.
     local sustainId
     local ids = {}
     for id, cd in pairs(g2.deckManager.cardDatabase:getAllCards()) do
@@ -134,7 +120,6 @@ local function body()
     end
     CO.SUSTAIN_GUARANTEE = false
 
-    -- 5) peso extra: sustento sai mais com o bônus (amostra grande, mesma seed)
     local function sustainShare(bonus)
         CO.SUSTAIN_WEIGHT_BONUS = bonus
         TK.seedRng(4242)

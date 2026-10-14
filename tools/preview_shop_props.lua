@@ -1,21 +1,3 @@
--- tools/preview_shop_props.lua
--- Prancha HEADLESS dos props vivos da loja (src/ui/shop/ShopProps.lua), sem
--- depender da cena da loja: renderiza cada prop num canvas em instantes
--- escolhidos e salva PNGs no diretório de save (e copia pra
--- tools/preview_out/shop_props/ quando o caminho do projeto é gravável).
---
---   lovec . test_one preview_shop_props            -- prancha completa
---   PROPS_SCALE=3 lovec . test_one preview_shop_props
---
--- Saída:
---   shop_props_sheet.png   lanterna (3 quadros + luz nos 3 níveis + poça nos
---                          5 passos), copo (repouso / chacoalho / deitado com
---                          os dados 3+4), mariposa em 4 instantes da
---                          travessia, teia, etiqueta — em movimento normal
---   shop_props_reduced.png a mesma prancha com reducedMotion ligado
---   shop_props_scene.png   a FACHADA (update/drawBack/drawLantern/
---                          drawDiceCup/drawFront) num layout fake de balcão
-
 local M = {}
 
 local function newCanvas(w, h)
@@ -56,7 +38,6 @@ local function board(ShopProps, scale, reduced)
     love.graphics.clear(0.11, 0.085, 0.07, 1)
     love.graphics.setFont(love.graphics.newFont(11))
 
-    -- ===== lanterna: 3 quadros x 3 níveis de luz =====
     local l = ShopProps.lantern.new()
     label(reduced and "lanterna (reducedMotion)" or "lanterna: quadros 1..3, niveis de luz", 10, 6)
     local col = 40 * S
@@ -68,7 +49,6 @@ local function board(ShopProps, scale, reduced)
             l:draw(x + 16 * S, 22, S)
         end
     end
-    -- poça olhando: 5 passos
     label("poca da luz: passos -2..2", 10, 22 + 54 * S)
     for step = -2, 2 do
         l.lookStep = step
@@ -82,7 +62,6 @@ local function board(ShopProps, scale, reduced)
         love.graphics.setScissor()
     end
 
-    -- ===== copo =====
     local cy0 = 36 + 54 * S + 78 * S
     label("copo: repouso / chacoalho (3) / deitado com 3+4", 10, cy0 - 14)
     local cup = ShopProps.diceCup.new()
@@ -97,14 +76,11 @@ local function board(ShopProps, scale, reduced)
     end
     cup:setState("rolled", { a = 3, b = 4 }); cup:update(0)
     cup:draw(x + 16 * S, foot, S); x = x + cup:width(S) + 16
-    -- syncRun com uma run falsa (dados 6 e 1)
     local fake = { actNumber = 1, floorInAct = 2, mapHistory = {},
         scribeDice = { key = "dice|1|2|0", used = true, dice = { 6, 1 }, sum = 7 } }
     cup:syncRun(fake); cup:update(0)
     cup:draw(x + 16 * S, foot, S)
 
-    -- ===== mariposa: 4 instantes da travessia =====
-    -- d = posição ao longo do voo (px de sprite, -SPAN..SPAN); t = d/velocidade
     local my = foot + 24
     label("mariposa: 4 instantes da travessia (pousada em reducedMotion)", 10, my - 4)
     local moth = ShopProps.moth.new()
@@ -121,7 +97,6 @@ local function board(ShopProps, scale, reduced)
         moth:draw(fx, fy, S)
     end
 
-    -- ===== teia e etiqueta =====
     local ty = my + 44 * S
     label("teia / etiqueta da oferta do dia", 10, ty - 2)
     ShopProps.cobweb.draw(24, ty + 12, S)
@@ -131,7 +106,6 @@ local function board(ShopProps, scale, reduced)
     return cv
 end
 
--- A fachada que a cena usa, num layout fake (parede/estantes/balcão).
 local function sceneBoard(ShopProps, S)
     _G.gameSettings = _G.gameSettings or {}
     _G.gameSettings.reducedMotion = false
@@ -185,7 +159,6 @@ function M.run()
         print("[preview_shop_props] assets ausentes: " .. table.concat(missing, ", "))
     end
     love.graphics.setColor(1, 1, 1, 1)
-    print("[preview_shop_props] escala " .. S)
     save(board(ShopProps, S, false), "shop_props_sheet.png")
     save(board(ShopProps, S, true), "shop_props_reduced.png")
     save(sceneBoard(ShopProps, S), "shop_props_scene.png")

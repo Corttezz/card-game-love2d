@@ -1,41 +1,6 @@
--- tools/audit_cards.lua
--- AUDITORIA CARTA A CARTA (Out/2026, frente de balanceamento).
---
--- Pergunta que esta ferramenta responde, para CADA carta do catalogo:
---   "o que a carta DIZ (descricao exibida, nos 5 idiomas, com a forja
---    aplicada) e EXATAMENTE o que ela FAZ quando jogada?"
---
--- Tres camadas, cada uma com sua propria lista de defeitos:
---
---   1. COMPORTAMENTO — joga a carta num Game de verdade (mesmo caminho do
---      jogador: selectCard -> playSelectedCards -> fila de beats), mede os
---      deltas reais (dano no inimigo, bloqueio, vida, mana, Forca/Destreza/
---      Foco/Espinhos, orbes, compra/descarte, exaurir, debuffs) e compara com
---      o MODELO derivado so dos DADOS da carta. Jokers sao medidos com cartas-
---      sonda (ataque 10 / defesa 10 / cura 15) e um ciclo de turno completo
---      (gatilhos de inicio de turno, espinhos refletidos, bloqueio retido).
---      Repete com a carta FORJADA (+1 e +2): o ganho tem que aparecer no efeito.
---   2. DESCRICAO — renderiza a descricao nos 5 locales (base e forjada) e
---      checa: placeholder cru, numero que nao existe nos dados, numero cravado
---      no template (apodrece na forja), efeito dos dados sem palavra na
---      descricao, palavra-chave na descricao sem efeito nos dados, e o
---      VOCABULARIO canonico por idioma (um termo por conceito).
---   3. CURVA DE PODER — pontos por mana por raridade/classe, com outliers.
---      Informativa (heuristica): o veredito de forca vem do simulador
---      (tools/balance_sim.lua), nao daqui.
---
---   love . test_one test_card_audit        -> trava (falha com qualquer defeito)
---   love . test_one audit_cards            -> relatorio completo no console
---   AUDIT_CARDS_OUT=docs/balance/card_audit.md love . test_one audit_cards
---                                          -> tambem grava o relatorio em arquivo
-
 local TK = require("tools.testkit")
 
 local M = {}
-
--- ============================================================================
--- Catalogo
--- ============================================================================
 
 local function catalog()
     local CardDatabase = require("src.systems.CardDatabase")
@@ -59,16 +24,10 @@ local function hasEff(cd, t)
     return nil
 end
 
--- ============================================================================
--- 1. COMPORTAMENTO
--- ============================================================================
-
 local FILLER_ID = "defense_001"
 local HAND_FILLERS = 5
 local DECK_FILLERS = 12
 
--- Orbes pre-semeados para cartas que EVOCAM (sem eles o evoke e no-op e a
--- medicao nao diria nada). Valores escolhidos pra serem distinguiveis.
 local SEED_ORBS = {
     { type = "lightning", value = 5 },
     { type = "ice", value = 4 },
@@ -89,7 +48,6 @@ local function mkInst(CardDatabase, id)
     return CardDatabase:createCardInstance(cd)
 end
 
--- Estado neutro e conhecido. Nada de passiva de classe, nada de joker.
 local function neutralGame(cls, CardDatabase)
     local g = TK.newRunGame(cls)
     TK.pump(g, 0.4)
@@ -110,8 +68,8 @@ local function neutralGame(cls, CardDatabase)
     g.hand, g.deck, g.discard = {}, {}, {}
     g._exhaustedThisBattle = {}
     g.selectedCards = {}
-    g._toxinAppliedThisTurn = true   -- silencia a passiva do ladino
-    g._impetusFiredThisTurn = true   -- silencia a passiva do guerreiro
+    g._toxinAppliedThisTurn = true
+    g._impetusFiredThisTurn = true
     g._attacksThisTurn = 0
     g._echoFiredThisTurn = false
     g._jokerThornFiredThisTurn = {}
@@ -151,11 +109,7 @@ local function playOne(g, inst)
     drain(g)
 end
 
--- Modelo puro de DADOS (o que a carta promete), carta jogada SOZINHA,
--- Forca/Destreza/Foco 0, sem joker. `inst` ja vem forjada quando for o caso.
--- Combos: so os que a PROPRIA carta dispara sozinha (tag `combo` conta em
--- dobro — regra documentada do ComboSystem, anunciada por banner).
-local STAT = 3   -- Forca/Destreza do cenario "com stats"
+local STAT = 3
 
 local function expectedFor(inst, seeded, withStats)
     local TagSystem = require("src.systems.TagSystem")
@@ -193,7 +147,6 @@ local function expectedFor(inst, seeded, withStats)
     local orbs = {}
     for _, o in ipairs(seeded or {}) do orbs[#orbs + 1] = { type = o.type, value = o.value } end
     local function evokeOrb(o)
-        -- Foco ja ganho NESTA carta (Consumir: Foco antes de evocar) conta
         local v = o.value + ex.focus
         if o.type == "lightning" then hitEnemy(v)
         elseif o.type == "dark" then hitEnemy(v * 2)
@@ -203,7 +156,6 @@ local function expectedFor(inst, seeded, withStats)
         elseif o.type == "holy" then ex.hpDelta = ex.hpDelta + v end
     end
 
-    -- valor principal (ataque/defesa)
     if inst.type == "attack" then
         local v = inst.attack or 0
         local hits = 1
@@ -214,13 +166,11 @@ local function expectedFor(inst, seeded, withStats)
             end
         end
         if withStats then
-            -- Forca vale POR GOLPE; strength_scaling = Forca em DOBRO
             local s = STAT * (hasEff(inst, "strength_scaling") and 2 or 1)
             v = v + s * hits
         end
         v = comboApply(v)
         hitEnemy(math.floor(v))
-        -- gatilhos da propria carta (sourceCard) no ataque
         for _, e in ipairs(inst.effects or {}) do
             if e.type == "on_attack_heal" then ex.hpDelta = ex.hpDelta + (e.value or 0)
             elseif e.type == "on_attack_debuff" then
@@ -239,7 +189,6 @@ local function expectedFor(inst, seeded, withStats)
         end
     end
 
-    -- efeitos secundarios, na ordem
     if inst.type ~= "joker" then
         for _, e in ipairs(inst.effects or {}) do
             local t, v = e.type, e.value
@@ -292,7 +241,6 @@ local function statusStr(st)
     return "{" .. table.concat(p, ", ") .. "}"
 end
 
--- Mede uma carta NAO-joker jogada sozinha (opcionalmente forjada).
 local function measureCard(CardDatabase, RunManager, id, level, withStats)
     local cd = CardDatabase:getCard(id)
     local g = neutralGame(classOf(cd), CardDatabase)
@@ -323,7 +271,6 @@ local function measureCard(CardDatabase, RunManager, id, level, withStats)
         enemyDmg = before.enemyHp - after.enemyHp,
         armor = after.armor - before.armor,
         hpDelta = after.hp - before.hp,
-        -- mana: o custo sai na selecao, entao o liquido do efeito e +custo
         mana = after.mana - before.mana + (inst.cost or 0),
         maxMana = after.maxMana - before.maxMana,
         str = after.str - before.str, dex = after.dex - before.dex,
@@ -343,7 +290,6 @@ local CMP_FIELDS = { "enemyDmg", "armor", "hpDelta", "mana", "maxMana", "str", "
 
 local function compare(id, label, got, ex, issues)
     if ex.mystery then
-        -- aleatorio por design: so exige que ALGO tenha acontecido
         local any = got.enemyDmg ~= 0 or got.armor ~= 0 or got.hpDelta ~= 0 or got.drawn ~= 0
             or got.str ~= 0 or #got.orbs > 0
         if not any then issues[#issues + 1] = id .. label .. ": Carta Misterio nao fez nada" end
@@ -363,7 +309,6 @@ local function compare(id, label, got, ex, issues)
         issues[#issues + 1] = string.format("%s%s: orbes medidos %s, dados %s",
             id, label, orbsStr(got.orbs), orbsStr(ex.orbs))
     end
-    -- debuffs no inimigo: so os declarados (ignora `enraged`, que nao vem da carta)
     local gs, es = {}, {}
     for k, v in pairs(got.status or {}) do if k ~= "enraged" then gs[k] = v end end
     for k, v in pairs(ex.status or {}) do es[k] = v end
@@ -373,17 +318,13 @@ local function compare(id, label, got, ex, issues)
     end
 end
 
--- ----- Jokers -------------------------------------------------------------
-
 local function probe(CardDatabase, id, field, value)
     local inst = mkInst(CardDatabase, id)
     if field then inst[field] = value end
-    inst.tags = { inst.type == "attack" and "strike" or "defend" } -- sem combo
+    inst.tags = { inst.type == "attack" and "strike" or "defend" }
     return inst
 end
 
--- Roda o turno do inimigo INTEIRO (golpe de 1, espinhos, DoT, upkeep, compra,
--- gatilhos de inicio de turno) e devolve o snapshot depois.
 local function fullEnemyCycle(g)
     g.enemy.nextIntent = "attack"
     g.enemy.nextIntentDamage = 1
@@ -411,7 +352,6 @@ local function jokerScenario(CardDatabase, id)
         end
     end
 
-    -- A) ataque-sonda 10
     do
         local g = neutralGame(cls, CardDatabase); withJoker(g)
         local s0 = snapshot(g)
@@ -420,12 +360,10 @@ local function jokerScenario(CardDatabase, id)
         res.atkDmg = s0.enemyHp - s1.enemyHp
         res.atkHeal = s1.hp - s0.hp
         res.atkStatus = s1.status
-        -- segundo ataque no MESMO turno (Eco so vale no primeiro)
         local s2a = snapshot(g)
         playOne(g, probe(CardDatabase, "warrior_strike", "attack", 10))
         res.atkDmg2 = s2a.enemyHp - snapshot(g).enemyHp
     end
-    -- B) defesa-sonda 10, depois o turno do inimigo inteiro
     do
         local g = neutralGame(cls, CardDatabase); withJoker(g)
         local s0 = snapshot(g)
@@ -438,13 +376,12 @@ local function jokerScenario(CardDatabase, id)
         fullEnemyCycle(g)
         local s2 = snapshot(g)
         res.reflect = enemyBefore - s2.enemyHp
-        res.turnHp = s2.hp - hpBeforeTurn            -- regen / custo / golpe absorvido
+        res.turnHp = s2.hp - hpBeforeTurn
         res.turnStr = s2.str - strBefore
         res.turnHand = s2.hand
         res.turnOrbs = s2.orbs
         res.armorKept = s2.armor
     end
-    -- C) cura-sonda: Pocao de Cura (15)
     do
         local g = neutralGame(cls, CardDatabase); withJoker(g)
         g.player.health = 10
@@ -495,11 +432,10 @@ local function jokerExpected(cd, base)
     ex.atkDmg = atk(10, true)
     ex.atkDmg2 = atk(10, false)
     ex.defArmor = math.floor(10 * defMult + defFlat)
-    -- regen/heal passam pelo multiplicador de cura do proprio joker
     if healMult ~= 1 then
         ex.heal = math.floor(15 * healMult)
     end
-    if ex.retain then ex.armorKept = math.max(0, ex.defArmor - 1) end -- golpe de 1
+    if ex.retain then ex.armorKept = math.max(0, ex.defArmor - 1) end
     return ex
 end
 
@@ -554,9 +490,6 @@ function M.behaviorAudit(opts)
             end
             counted.cards = counted.cards + 1
             rows[#rows + 1] = { id = id, kind = "card", got = got, ex = ex, inst = inst }
-            -- Inato: embaralhada no FUNDO do baralho, tem que voltar ao topo
-            -- (o caminho real: reembaralhar promove as inatas).
-            -- Retencao: fica na mao no fim do turno; as outras vao pro descarte.
             if cd.innate or cd.retain then
                 local g = neutralGame(classOf(cd), CardDatabase)
                 local inst2 = mkInst(CardDatabase, id)
@@ -579,14 +512,12 @@ function M.behaviorAudit(opts)
                 end
                 counted.flags = (counted.flags or 0) + 1
             end
-            -- forja: o ganho declarado TEM que aparecer no efeito medido
             local gains = RunManager.getForgeGains(cd)
             if next(gains) ~= nil and not hasEff(cd, "mystery") then
                 for _, lvl in ipairs({ 1, 2 }) do
                     local g2, e2 = measureCard(CardDatabase, RunManager, id, lvl)
                     compare(id, " (forja +" .. lvl .. ")", g2, e2, issues)
                     counted.forged = counted.forged + 1
-                    -- e o ganho e REAL (nao so o modelo acompanhando o modelo)
                     local delta = (g2.enemyDmg - got.enemyDmg) + (g2.armor - got.armor)
                         + (g2.hpDelta - got.hpDelta) + (g2.str - got.str) + (g2.dex - got.dex)
                     if delta <= 0 then
@@ -600,14 +531,8 @@ function M.behaviorAudit(opts)
     return issues, rows, counted
 end
 
--- ============================================================================
--- 2. DESCRICAO
--- ============================================================================
-
 local LOCALES = { "pt_BR", "en", "es", "fr", "de" }
 
--- Termos canonicos (minusculo, sem acento). Um conceito = um termo por idioma.
--- `any` = qualquer um basta pra "mencionar" o conceito.
 local VOCAB = {
     damage    = { pt_BR = { "dano" }, en = { "damage" }, es = { "dano" }, fr = { "degat" }, de = { "schaden" } },
     block     = { pt_BR = { "bloqueio" }, en = { "block" }, es = { "bloqueo" }, fr = { "blocage" }, de = { "block" } },
@@ -641,7 +566,6 @@ local VOCAB = {
     double    = { pt_BR = { "dobra" }, en = { "double" }, es = { "duplica" }, fr = { "double" }, de = { "verdoppel" } },
 }
 
--- Sinonimos PROIBIDOS (vocabulario fora do padrao): termo -> canonico.
 local FORBIDDEN = {
     pt_BR = { ["armor"] = "Bloqueio", ["armadura"] = "Bloqueio", ["escuridao"] = "Sombra",
               ["lifesteal"] = "cura ao atacar", ["stacks"] = "de Veneno", ["exaure"] = "Exaurir",
@@ -654,14 +578,9 @@ local FORBIDDEN = {
     de    = { ["ruestung"] = "Block", ["dunkelheit"] = "Schatten", ["frost"] = "Eis", ["fuer diesen kampf"] = "(gilt den Kampf)" },
 }
 
--- "nesta batalha" e informacao REAL so onde o efeito some no fim da batalha
--- e o jogador poderia achar que nao (mana maxima). Forca/Destreza/Foco sempre
--- duram a batalha — repetir isso em umas cartas e nao em outras e ruido.
 local BATTLE_PHRASE = { ["nesta batalha"] = true, ["this battle"] = true,
     ["en esta batalla"] = true, ["pour ce combat"] = true, ["fuer diesen kampf"] = true }
 
--- Padroes de FORMATO (Lua patterns sobre o texto normalizado): a mesma ideia
--- escrita sempre do mesmo jeito dentro de um idioma.
 local STYLE = {
     pt_BR = { { "%d+ hp", "use \"N de HP\"" }, { "em ataques", "use \"em cartas de ataque\"" },
               { "em defesas", "use \"em cartas de defesa\"" }, { "voce perde", "use \"Perde\"" },
@@ -681,7 +600,6 @@ local STYLE = {
 
 local ORB_CONCEPT = { lightning = "lightning", ice = "ice", dark = "dark", fire = "fire", holy = "holy" }
 
--- Conceitos que os DADOS exigem que a descricao mencione.
 local function requiredConcepts(cd)
     local req = {}
     local function need(c, why) req[c] = req[c] or why end
@@ -727,7 +645,6 @@ local function requiredConcepts(cd)
     return req
 end
 
--- Conceitos que, se aparecem na descricao, PRECISAM existir nos dados.
 local CLAIM_CHECK = { "poison", "vulnerable", "weak", "strength", "dexterity", "focus",
     "exhaust", "innate", "retain", "thorn", "evoke", "channel", "discard", "draw",
     "lose_hp", "multi" }
@@ -753,12 +670,10 @@ end
 local function cardHasConcept(cd, concept)
     local req = requiredConcepts(cd)
     if req[concept] then return true end
-    -- descreve um efeito que de fato existe por outro caminho
     if concept == "lose_hp" then return false end
     return false
 end
 
--- Valores numericos legitimos que podem aparecer no texto.
 local function allowedNumbers(inst)
     local ok = { [1] = true }
     local function add(n)
@@ -807,7 +722,6 @@ function M.descAudit()
                     issues[#issues + 1] = string.format("%s [%s]: placeholder cru: %s", id, loc, text)
                 end
                 local n = norm(text)
-                -- (a) todo efeito dos dados tem palavra na descricao
                 for concept, why in pairs(requiredConcepts(cd)) do
                     if not mentions(n, loc, concept) then
                         issues[#issues + 1] = string.format(
@@ -815,12 +729,9 @@ function M.descAudit()
                             id, loc, concept, why, text)
                     end
                 end
-                -- (b) toda palavra-chave da descricao existe nos dados
                 local req = requiredConcepts(cd)
                 for _, concept in ipairs(CLAIM_CHECK) do
                     if not req[concept] and mentions(n, loc, concept) then
-                        -- "Conta em DOBRO para combos" e "2 vezes" nao sao multi_hit
-                        -- "Retencao: nao e descartada" explica a palavra-chave, nao e descarte
                         local skip = (concept == "discard" and cd.retain)
                         if not skip then
                             issues[#issues + 1] = string.format(
@@ -829,7 +740,6 @@ function M.descAudit()
                         end
                     end
                 end
-                -- (c) numeros: so os que existem nos dados
                 local okNum = allowedNumbers(inst)
                 for num in text:gmatch("%d+") do
                     local v = tonumber(num)
@@ -838,8 +748,6 @@ function M.descAudit()
                             "%s [%s]: numero %s nao existe nos dados: \"%s\"", id, loc, num, text)
                     end
                 end
-                -- (d) numero CRAVADO no template que coincide com um valor dos
-                -- dados (apodrece no proximo rebalance/forja)
                 local rawNoPh = raw:gsub("{%w+}", "")
                 for num in rawNoPh:gmatch("%d+") do
                     local v = tonumber(num)
@@ -856,7 +764,6 @@ function M.descAudit()
                             id, loc, num, raw)
                     end
                 end
-                -- (e) vocabulario proibido
                 for bad, good in pairs(FORBIDDEN[loc] or {}) do
                     local exempt = BATTLE_PHRASE[bad] and hasEff(cd, "increase_max_mana")
                     if not exempt and n:find(bad, 1, true) then
@@ -871,9 +778,6 @@ function M.descAudit()
                             "%s [%s]: formato fora do padrao (%s): \"%s\"", id, loc, st[2], text)
                     end
                 end
-                -- (h) LINHAS DE EFEITO (painel de detalhe / colecao / inspecao):
-                -- todo efeito tem chave traduzida — sem cair no `description`
-                -- PT dos dados nem no tipo cru — e nenhum numero inventado.
                 for _, e in ipairs(cd.effects or {}) do
                     local MISS = "\0MISS"
                     local q = (type(e.value) == "string" and e.value) or e.orbType or e.debuffName or e.combo
@@ -904,7 +808,6 @@ function M.descAudit()
                         end
                     end
                 end
-                -- (f) forja: o numero novo aparece na descricao forjada
                 local gains = RunManager.getForgeGains(cd)
                 if next(gains) ~= nil then
                     local f = CardDatabase:createCardInstance(cd)
@@ -929,7 +832,6 @@ function M.descAudit()
         end
     end
     I18n.setLocale(saved, true)
-    -- (g) PARALELISMO entre idiomas: o mesmo conjunto de placeholders
     for _, id in ipairs(ids) do
         local base = rawByLocale.pt_BR and rawByLocale.pt_BR[id]
         if base then
@@ -954,11 +856,6 @@ function M.descAudit()
     return issues
 end
 
--- ============================================================================
--- 3. CURVA DE PODER (heuristica — o veredito e do simulador)
--- ============================================================================
-
--- Pesos em "pontos" (~1 ponto = 1 de dano imediato num inimigo do A1-A2).
 M.WEIGHTS = {
     damage = 1.0, block = 0.85, heal = 0.9, draw = 3.5, discard = -0.5,
     mana = 5.5, max_mana = 12, strength = 4.5, dexterity = 3.5, focus = 5,
@@ -1020,8 +917,6 @@ function M.powerCurve()
         if cd.type ~= "joker" then
             local pts = M.cardPoints(cd)
             local denom = math.max(0.5, cd.cost or 0)
-            -- exaurir = carta de uso unico na batalha: vale o mesmo por mana,
-            -- mas aparece marcada (comparar so dentro do mesmo perfil)
             local r = { id = id, cls = cd.class or "basic", rarity = cd.rarity or "common",
                 cost = cd.cost or 0, pts = pts, ppm = pts / denom,
                 exhaust = (cd.exhaust or hasEff(cd, "exhaust")) and true or false }
@@ -1046,10 +941,6 @@ function M.powerCurve()
     table.sort(rows, function(a, b) return a.ppm > b.ppm end)
     return rows, stats
 end
-
--- ============================================================================
--- Relatorio
--- ============================================================================
 
 function M.collect()
     TK.bootstrap()

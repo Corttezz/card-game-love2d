@@ -1,26 +1,3 @@
--- tools/test_crt_levels.lua
--- CRT em NÍVEIS (Out/2026): Desligado / Baixo / Normal, lembrado em
--- settings.crtLevel; texto legível em 1080p e 1440p.
---
--- Dono: "esses efeitos CRT" — o tubo cheio (0.75) era o único estado além
--- de desligado, e a aberração cromática era medida em fração da tela: em
--- 1440p virava 1,5-6 px e borrava o texto.
---
--- O que trava aqui:
---   • setLevel/getLevel/nextLevel: ordem off → low → normal (Normal + 1
---     dá a volta pro Off — Enter no Normal desliga, como o toggle antigo);
---   • levelFromSettings: crtLevel novo; save antigo crtShader=false → off;
---   • screenToContent é passthrough com o CRT desligado;
---   • o shader compila e endScene(target) renderiza num canvas (sem janela);
---   • ABERRAÇÃO EM PIXELS: uma linha branca de 2 px no centro, pela lente,
---     ganha franja de cor de no máximo 4 px — EM 1080p E EM 1440p (mesma
---     largura em px, não em fração da tela); no nível Baixo, ≤ 2 px;
---   • Desligado: a lente é identidade (pixel a pixel);
---   • o chuvisco (TvOsd) e a varredura do botão do menu só existem com o
---     tubo ligado; main.lua aplica o nível salvo; SaveManager tem default.
---
---   love . test_one test_crt_levels
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -35,7 +12,6 @@ local function restoreWindow()
     love.graphics.getWidth, love.graphics.getHeight, love.graphics.getDimensions = realW, realH, realD
 end
 
--- Renderiza uma cena (função) pela lente num canvas W×H e devolve ImageData.
 local function throughTube(CRTShader, W, H, drawScene)
     local target = love.graphics.newCanvas(W, H)
     love.graphics.push("all")
@@ -48,11 +24,6 @@ local function throughTube(CRTShader, W, H, drawScene)
     return data
 end
 
--- Franja colorida numa linha horizontal: quantos pixels têm R e B
--- divergentes (extensão do borrão) e o MAIOR desvio |R−B| (intensidade).
--- Uma linha de 2 px com deslocamento sub-pixel já pinta os 2 px dela e 1
--- de cada lado (filtro linear) — por isso a extensão mede o "até onde" e a
--- intensidade mede o "quanto" (o nível Baixo cai na intensidade).
 local function fringe(data, y, x0, x1)
     local n, amp = 0, 0
     for x = x0, x1 do
@@ -71,7 +42,6 @@ function M.run()
     local SM = require("engine.SaveManager")
 
     local okRun, err = pcall(function()
-        -- 1. níveis e ciclo
         t:eq("LEVELS = off, low, normal", table.concat(CRTShader.LEVELS, ","), "off,low,normal")
         t:eq("setLevel normal -> 0.75", (CRTShader.setLevel("normal") and CRTShader.getStrength()), 0.75)
         t:truthy("normal: ligado", CRTShader.isEnabled())
@@ -90,7 +60,6 @@ function M.run()
         CRTShader.setEnabled(true)
         t:eq("setEnabled(true) depois de off volta ao normal", CRTShader.getLevel(), "normal")
 
-        -- 2. settings
         t:eq("levelFromSettings({}) = normal", CRTShader.levelFromSettings({}), "normal")
         t:eq("save antigo crtShader=false -> off", CRTShader.levelFromSettings({ crtShader = false }), "off")
         t:eq("crtLevel=low vence", CRTShader.levelFromSettings({ crtLevel = "low", crtShader = true }), "low")
@@ -106,7 +75,6 @@ function M.run()
         local menu = love.filesystem.read("components/Menu.lua") or ""
         t:truthy("Menu: varredura do botao so com o tubo ligado", menu:find('if require("src.ui.CRTShader").isEnabled() then', 1, true) ~= nil)
 
-        -- i18n nos 5 locales
         local I18n = require("src.i18n.I18n")
         local cur = I18n.getLocale()
         for _, loc in ipairs({ "pt_BR", "en", "es", "de", "fr" }) do
@@ -118,13 +86,11 @@ function M.run()
         end
         I18n.setLocale(cur, true)
 
-        -- 3. lente: passthrough desligado; shader compila
         t:truthy("load() compila shaders/crt.glsl", CRTShader.load())
         CRTShader.setLevel("off")
         local px, py = CRTShader.screenToContent(123, 456)
         t:truthy("off: screenToContent e identidade", px == 123 and py == 456)
 
-        -- 4. aberração em PIXELS: linha branca de 2 px no centro, 1080p e 1440p
         CRTShader.setPower(1)
         local function scene(W, H)
             return function()
@@ -146,7 +112,6 @@ function M.run()
                 widths[lv .. W], amps[lv .. W] = fw, amp
                 t:truthy(("%s %dx%d: franja de cor <= 4 px (obtido %d, desvio max %.2f)"):format(lv, W, H, fw, amp),
                     fw <= 4)
-                -- a linha continua lá (não some na lente)
                 local r, g, b = data:getPixel(cx, math.floor(H / 2))
                 t:truthy(("%s %dx%d: a linha segue visivel"):format(lv, W, H), (r + g + b) / 3 > 0.45)
             end
@@ -158,15 +123,14 @@ function M.run()
         t:truthy(("low: desvio de cor menor que normal (%.2f < %.2f)"):format(amps.low1920, amps.normal1920),
             amps.low1920 < amps.normal1920 - 0.05)
 
-        -- 5. off: lente identidade pixel a pixel
         fakeWindow(1920, 1080)
         CRTShader.setLevel("off")
         local target = love.graphics.newCanvas(1920, 1080)
         love.graphics.push("all")
         love.graphics.setCanvas(target)
-        CRTShader.beginScene()     -- no-op desligado: desenha direto no target
+        CRTShader.beginScene()
         scene(1920, 1080)()
-        CRTShader.endScene(target) -- no-op
+        CRTShader.endScene(target)
         love.graphics.pop()
         local d = target:newImageData()
         target:release()

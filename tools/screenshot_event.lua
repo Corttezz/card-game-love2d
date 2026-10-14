@@ -1,19 +1,3 @@
--- tools/screenshot_event.lua
--- Captura a EventScreen em todos os locales — a tela não tinha cobertura
--- visual nenhuma.
---
--- POR QUE POR LOCALE: chave de i18n errada não quebra nada. `I18n.t` cai no
--- fallback, que é justamente o texto PT, então em português a tela fica
--- PERFEITA e só quebra em inglês/alemão — onde ninguém olha. Renderizar nos 5
--- é o único jeito de provar que a chave resolve, e é mais barato que descobrir
--- em produção (foi assim que duas telas saíram bilíngues, ver
--- tools/test_no_hardcoded_pt.lua).
---
--- Roda: love . screenshot_event [locale]
---   sem argumento  → um PNG por locale (pt_BR, en, es, fr, de)
---   com argumento  → só aquele
--- Saída: event_<locale>.png no diretório de save do LÖVE.
-
 local M = {}
 
 local LOCALES = { "pt_BR", "en", "es", "fr", "de" }
@@ -25,8 +9,6 @@ function M.run(only)
     local Game        = require("src.core.Game")
     local Rng         = require("src.systems.Rng")
 
-    -- EVENT_SIZE=1920x1080: tela FALSIFICADA (mesmo truque do
-    -- screenshot_enemy_scene — setMode acima do desktop trava o tool).
     local fw, fh = (os.getenv("EVENT_SIZE") or ""):match("^(%d+)x(%d+)$")
     if fw then
         fw, fh = tonumber(fw), tonumber(fh)
@@ -38,14 +20,12 @@ function M.run(only)
     require("src.ui.PixelCanvas").enableNearest()
     _G.EventManager = _G.EventManager or require("engine.EventManager")
 
-    -- Seed fixa: o MESMO evento nos 5 idiomas, senão a comparação não vale.
     Rng.setActive(Rng.new(20260912))
 
     local game = Game:new()
     game:startNewRun("warrior")
     game:startGame()
 
-    -- EVENT_ID=<id> captura um evento específico (eventos de bioma, Out/2026).
     local ev = os.getenv("EVENT_ID") and Events.get(os.getenv("EVENT_ID")) or Events.roll(1, {})
     if not ev then
         print("[screenshot_event] nenhum evento sorteado")
@@ -63,28 +43,18 @@ function M.run(only)
 
         screen:show(ev, game, function() end)
 
-        -- ASSENTA a entrada antes de capturar. O tool é anterior à animação
-        -- (Set/2026) e capturava em t≈0 — quando a cortina do fade ainda está
-        -- fechada, ou seja, PNG preto nos 5 idiomas. Um tool que não avança o
-        -- relógio da tela mede o frame errado e não avisa; foi só olhar a
-        -- imagem que apareceu. Pump do EventManager + update, como no jogo.
         local EM = require("engine.EventManager")
         for _ = 1, 60 do
             EM.update(1 / 60)
             screen:update(1 / 60)
         end
 
-        -- Canvas em vez de love.graphics.captureScreenshot: o capture é
-        -- ASSÍNCRONO (resolve no fim do frame), então num laço de 5 as
-        -- capturas se atropelam e saem todas iguais — ou nenhuma. O canvas
-        -- resolve na hora e o laço fica determinístico.
         local W, H = love.graphics.getWidth(), love.graphics.getHeight()
         local canvas = love.graphics.newCanvas(W, H)
         love.graphics.setCanvas(canvas)
         love.graphics.origin()
         love.graphics.clear(0, 0, 0, 1)
         screen:draw()
-        -- TUT_TIP=<conversa>[:<fala>]: o narrador do tutorial por cima
         if os.getenv("TUT_TIP") then
             local Tutorial = require("src.systems.Tutorial")
             Tutorial.setScreens({ event = screen })

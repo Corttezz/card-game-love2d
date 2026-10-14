@@ -1,17 +1,3 @@
--- tools/test_interior_fx.lua
--- Regressões dos salões de chefe (Out/2026, dono: "remove todas essas bolas
--- de luz das salas de chefe"):
---
---   1. Draw e update usam o MESMO salão (InteriorFX.hallFor). A v1 tickava
---      as brasas com math.min(3, ato) e desenhava o salão real — nos atos
---      4-6 as brasas saíam da lava do hall 3 ("veias esquisitas").
---   2. Toda chama declarada cai em cima de FOGO PINTADO (pixels claros
---      dentro do retângulo) — âncora vem do que está desenhado.
---   3. Nada de disco: InteriorFX não desenha círculo.
---   4. update/draw/drawFront rodam nos 6 salões em 4:3 e 16:9 sem erro.
---
--- Roda via: love . test_one test_interior_fx
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -26,7 +12,6 @@ function M.run()
     local Config = require("src.core.Config")
     local total = Config.TotalActs or 6
 
-    -- 1. fonte única do salão
     for act = 1, total do
         t:eq("ato " .. act .. " usa o próprio salão", InteriorFX.hallFor(act), act)
         t:truthy("salão " .. act .. " tem atmosfera declarada",
@@ -42,7 +27,6 @@ function M.run()
             readSrc(tool):find("update%([^\n]*math%.min%(3") ~= nil)
     end
 
-    -- 2. chama declarada = fogo pintado
     for hall, cfg in pairs(InteriorFX.HALLS) do
         local ok, data = pcall(love.image.newImageData,
             "assets/sprites/scenes/castle_hall_" .. hall .. ".png")
@@ -70,7 +54,6 @@ function M.run()
         end
     end
 
-    -- 2b. cascata animada só onde há lava PINTADA (HallAnim.flows)
     for hall, cfg in pairs(InteriorFX.HALLS) do
         local flows = cfg.anim and cfg.anim.flows or {}
         if #flows > 0 then
@@ -89,7 +72,6 @@ function M.run()
         end
     end
 
-    -- 2c. chefe acompanha a sala em tela grande (fullscreen nativo 1440p)
     do
         local GS = require("src.scenes.GameplayScene")
         t:eq("4:3 não muda o chefe", GS.hallScreenK("castle_hall_3", 1024, 768), 1)
@@ -103,7 +85,6 @@ function M.run()
         t:eq("cena que não é salão não muda", GS.hallScreenK("gameplay", 2560, 1440), 1)
     end
 
-    -- 2d. poça de contato roda (apoiado) e some pra quem flutua
     do
         local D = require("src.ui.InteriorDepth")
         local canvas = love.graphics.newCanvas(32, 32)
@@ -117,11 +98,9 @@ function M.run()
         D.reset()
     end
 
-    -- 3. sem discos
     t:falsy("InteriorFX não desenha círculo (as 'bolas de luz')",
         readSrc("src/ui/InteriorFX.lua"):find("graphics.circle", 1, true) ~= nil)
 
-    -- 4. smoke nos dois aspectos (janela falsificada — setMode em tool trava)
     local realW, realH = love.graphics.getWidth, love.graphics.getHeight
     local canvas = love.graphics.newCanvas(64, 64)
     for _, size in ipairs({ { 1024, 768 }, { 1920, 1080 } }) do
@@ -142,10 +121,6 @@ function M.run()
     love.graphics.getWidth, love.graphics.getHeight = realW, realH
     InteriorFX.clear()
 
-    -- ===== névoa de intenção no salão (fogHook / renderedFog) =====
-    -- Mesmo contrato do WeatherEngine.fogHook: o véu persegue o alvo a 4/s,
-    -- engrossa a névoa do chão e põe uma camada NA FRENTE do chefe; clear()
-    -- zera; sem hook, zero. A trava de limiar mora em test_intent_visibility.
     t:eq("sem hook: véu zero", InteriorFX.renderedFog(), 0)
     InteriorFX.fogHook = function() return 1 end
     for _ = 1, 60 do InteriorFX.update(1 / 30, 4) end

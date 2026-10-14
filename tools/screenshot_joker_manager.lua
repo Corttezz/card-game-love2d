@@ -1,10 +1,3 @@
--- tools/screenshot_joker_manager.lua
--- Valida o Gerenciador de Coringas alinhado ao DeckViewer/Coleção
--- (feedback Jul/2026: "não está parecido com o deck e a coleção").
---   joker_manager.png       — grid parado (ativos + bancada)
---   joker_manager_hover.png — hover num coringa da bancada
---   love . screenshot_joker_manager
-
 local M = {}
 
 local function capture(name)
@@ -28,7 +21,6 @@ function M.run()
     game:startGame()
     _G.game = game
 
-    -- coleção de 6 coringas (3 ativos pelo cap + 3 na bancada)
     local jokerIds = {}
     for id, cd in pairs(CardDatabase:getAllCards()) do
         if cd.type == "joker" then
@@ -49,8 +41,6 @@ function M.run()
     screen:draw()
     capture("joker_manager.png")
 
-    -- hover num card da 1ª FILEIRA (posiciona o mouse de verdade):
-    -- valida o tooltip ABAIXO da carta (feedback: acima cobria o topo)
     if #screen._cardRects >= 2 then
         local r = screen._cardRects[2]
         love.mouse.setPosition(r.x + r.w / 2, r.y + r.h / 2)

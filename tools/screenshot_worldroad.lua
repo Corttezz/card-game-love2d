@@ -1,15 +1,8 @@
--- tools/screenshot_worldroad.lua
--- Captura o WorldRoad (mundo rolante) nos 3 biomas, empilhados verticalmente,
--- pra validação visual. Roda via: love . screenshot_worldroad
--- Saída: worldroad_screenshot.png no save dir.
-
 local M = {}
 
 local WorldRoad = require("src.ui.WorldRoad")
 local LightEngine = require("engine.LightEngine")
 
--- LightEngine v1: overlays (composite multiply + fork marks) — mesma ordem
--- do GameplayScene. Helper local pra manter os modos legíveis.
 local function overlays(x, y, w, h)
     WorldRoad.drawOverlays(x, y, w, h)
 end
@@ -17,14 +10,11 @@ end
 function M.run(mode)
     require("src.ui.PixelCanvas").enableNearest()
 
-    -- prefixo "nolight_": baseline A/B com o motor de luz DESLIGADO
     if mode and mode:match("^nolight_") then
         LightEngine.setEnabled(false)
         mode = mode:gsub("^nolight_", "")
     end
 
-    -- prefixos F6.1: "day_" = andar 1 (dia), "mid_" = meio do ato.
-    -- Default = 1 (anoitecer/boss — mood cheio, o look validado).
     if mode and mode:match("^day_") then
         WorldRoad.setTimeOfDay(0, true)
         mode = mode:gsub("^day_", "")
@@ -33,23 +23,17 @@ function M.run(mode)
         mode = mode:gsub("^mid_", "")
     end
 
-    -- prefixo "dark_": cenário BEM escuro (revisão de emissivos/olhos —
-    -- ambiente a 55% do noturno; é onde luz mal posicionada aparece)
     if mode and mode:match("^dark_") then
         LightEngine.debugAmbientScale = 0.55
         WorldRoad.setTimeOfDay(1, true)
         mode = mode:gsub("^dark_", "")
     end
 
-    -- prefixo "wide_": valida em aspect de monitor grande (1914x1011)
     if mode and mode:match("^wide_") then
         love.window.setMode(1914, 1011)
         mode = mode:gsub("^wide_", "")
     end
 
-    -- prefixo "b<N>_": força o BIOMA/ATO do modo (fork etc. nasciam sempre
-    -- no bioma 1). Necessário pra validar arte de lugar POR ATO — a mesma
-    -- encruzilhada no chão de gelo, de pântano, de abismo.
     local biomeOverride = nil
     if mode and mode:match("^b%d_") then
         biomeOverride = tonumber(mode:match("^b(%d)_"))
@@ -61,8 +45,6 @@ function M.run(mode)
     love.graphics.clear(0, 0, 0, 1)
 
     if mode == "interior" or (mode and mode:match("^interior%d$")) then
-        -- Interior de castelo (BOSS): SceneBackground + chefe do ato.
-        -- "interior2" = hall/chefe do ato 2 (tower_lich) etc.
         local SceneBackground = require("src.ui.SceneBackground")
         local EnemyRenderer = require("src.ui.EnemyRenderer")
         local I18n = require("src.i18n.I18n")
@@ -89,21 +71,14 @@ function M.run(mode)
             width, height)
         EnemyRenderer.draw(game, ax, ay)
     elseif mode == "gate" or (mode and mode:match("^gate%d$")) then
-        -- FIM DE TRECHO: castelo grande com o portão visível (validação da
-        -- curva de aproximação v5). camZ a 92% do segmento. "gate3" = bioma 3.
         local topBarH = 80
         local bio = tonumber(mode:match("%d")) or 1
         WorldRoad.clearCache()
         WorldRoad.setBiome(bio)
         local segLen = WorldRoad.TRAVEL_DISTANCE * 8
-        -- v10.2: máximo NATURAL da caminhada (sem boost de câmera) —
-        -- calibra CASTLE_APPROACH pra caber sem cortar/sair da esfera
         WorldRoad._camZ = segLen * 1.0
         WorldRoad._segBase = 0
         for _ = 1, 30 do WorldRoad.update(1 / 30) end
-        -- mata o blend residual do setBiome (paleta pura, igual ao modo
-        -- endless) e passa o MESMO bioma no draw — o 1 hardcoded criava
-        -- blend invertido fields→bioma que a mountains_front do v5.8 expôs
         WorldRoad._blend = nil
         WorldRoad._prevBiomeIndex = nil
         WorldRoad.draw(0, topBarH, width, height - topBarH, bio)
@@ -111,9 +86,6 @@ function M.run(mode)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
     elseif mode and mode:match("^grow%d+$") then
-        -- v10.4: castelo num PROGRESS específico (grow50 = 50%) pra provar
-        -- crescimento MONOTÔNICO (sem encolher ao aproximar). segBase=0,
-        -- camZ = SEGMENT_LEN * (NN/100). Bioma fixo 1 (fields).
         local topBarH = 80
         local pct = tonumber(mode:match("%d+")) or 50
         WorldRoad.clearCache()
@@ -128,8 +100,6 @@ function M.run(mode)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
     elseif mode and mode:match("^entry%d?$") then
-        -- v10: CERIMÔNIA DA PORTA congelada no meio (fase door, ~0.7) —
-        -- valida frames da porta + boost do clamp em cena. "entry3" = bioma 3
         local topBarH = 80
         local bio = tonumber(mode:match("%d")) or 1
         WorldRoad.clearCache()
@@ -139,7 +109,7 @@ function M.run(mode)
         WorldRoad._segBase = 0
         WorldRoad._entry = { phase = "door", t = 0,
                              doorK = 0, fade = 0, sound = nil }
-        for _ = 1, 30 do WorldRoad.update(1 / 30) end   -- ~1s → doorK ≈ 0.7
+        for _ = 1, 30 do WorldRoad.update(1 / 30) end
         WorldRoad._blend = nil
         WorldRoad._prevBiomeIndex = nil
         WorldRoad.draw(0, topBarH, width, height - topBarH, bio)
@@ -149,24 +119,12 @@ function M.run(mode)
     elseif mode == "fork" or mode == "fork2" or mode == "forkhover"
         or mode == "forkb" or mode == "forkmini"
         or (mode and mode:match("^forkfade%d+$")) then
-        -- A ENCRUZILHADA (v5): estrada bifurcada com 3 marcos + hover no 2.
-        -- "fork2" captura o MEIO da convergência (braço escolhido virando
-        -- a estrada central).
-        -- STORE_NOTOPBAR=1: mundo em tela cheia (screenshot de loja; a faixa
-        -- da top bar ficava preta sem o componente desenhado)
         local topBarH = os.getenv("STORE_NOTOPBAR") == "1" and 0 or 80
         WorldRoad.clearCache()
         WorldRoad.setBiome(biomeOverride or 1)
-        WorldRoad._blend = nil            -- paleta PURA do bioma pedido
+        WorldRoad._blend = nil
         WorldRoad._camZ = 5.5
         for _ = 1, 30 do WorldRoad.update(1 / 30) end
-        -- showFork trava em 3 braços (regra do jogo, não mexo nela), e são 5
-        -- tipos de lugar: "forkb" mostra os outros dois pra conferência.
-        -- "forkmini": o marco PRÓPRIO do mini-chefe (Out/2026) entre a
-        -- batalha e o elite, pra conferir que os três leem diferente.
-        -- rótulos pelo i18n (mesma fonte do jogo: MapManager.labelFor/
-        -- descFor) — cravados em PT a captura saía em português em
-        -- qualquer idioma (screenshots da loja: tools/store_art.py)
         require("src.i18n.I18n").init()
         local MM = require("src.systems.MapManager")
         local function nodes(types)
@@ -179,27 +137,18 @@ function M.run(mode)
         WorldRoad.showFork(mode == "forkmini" and nodes({ "battle", "mini_boss", "elite" })
             or mode == "forkb" and nodes({ "elite", "event", "battle" })
             or nodes({ "battle", "rest", "shop" }), function() end)
-        -- alguns frames pra animIn assentar + registrar markBoxes (precisa
-        -- de draw pra calcular as hitboxes)
         for _ = 1, 20 do
             WorldRoad.update(1 / 30)
             WorldRoad.draw(0, topBarH, width, height - topBarH, biomeOverride or 1)
             overlays(0, topBarH, width, height - topBarH)
         end
         if WorldRoad._fork then WorldRoad._fork.hover = 2 end
-        -- "forkhover": a LOJA com o mouse em cima — é o único jeito de ver a
-        -- porta ABERTA (anim de estado indexada por _hoverK). Não dá pra
-        -- forjar via f.hover: o update RECALCULA hover pelo mouse real a cada
-        -- tick e o progresso decairia. Crava o progresso no fim, direto.
         if mode == "forkhover" and WorldRoad._fork then
             local f = WorldRoad._fork
             f._hoverK = f._hoverK or {}
             f._hoverK[3] = 1
             f.hover = 3
         end
-        -- "forkfade<N>": escolhe o braço DO MEIO e captura N ticks (1/30 s)
-        -- depois — o sumiço dos braços não escolhidos. Trava visual do bug
-        -- "rastro liso sem grama onde os braços estavam" (Out/2026).
         local fadeTicks = mode and tonumber(mode:match("^forkfade(%d+)$"))
         if fadeTicks then
             local f = WorldRoad._fork
@@ -219,8 +168,8 @@ function M.run(mode)
             if b then
                 WorldRoad.forkMousePressed((b.x1 + b.x2) / 2, (b.y1 + b.y2) / 2)
             end
-            for _ = 1, 85 do   -- atravessa a convergência INTEIRA (2.4s)
-                WorldRoad.update(1 / 30)   -- exercita onChosen + _landmark
+            for _ = 1, 85 do
+                WorldRoad.update(1 / 30)
                 WorldRoad.draw(0, topBarH, width, height - topBarH, biomeOverride or 1)
                 overlays(0, topBarH, width, height - topBarH)
             end
@@ -230,7 +179,6 @@ function M.run(mode)
         overlays(0, topBarH, width, height - topBarH)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
-        -- TUT_TIP=fork:paths — o narrador do tutorial apontando os marcos
         if os.getenv("TUT_TIP") then
             local Tutorial = require("src.systems.Tutorial")
             local conv, line = os.getenv("TUT_TIP"):match("^([%w_]+):?([%w_]*)$")
@@ -238,9 +186,6 @@ function M.run(mode)
             Tutorial.draw()
         end
     elseif mode == "poke" then
-        -- v9.7: CENÁRIO INTERATIVO — varre cliques fora dos marcos
-        -- (árvores/postes/cercas/nuvens) e captura ~0.17s depois, no meio
-        -- da mexidinha (pêndulo + folhinhas + squash de nuvem + rajada)
         local topBarH = 80
         WorldRoad.clearCache()
         WorldRoad.setBiome(1)
@@ -279,20 +224,17 @@ function M.run(mode)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
     elseif mode == "blend6" then
-        -- Reproduz a chegada no bioma 6 vindo do 5: blend de crossfade
-        -- ATIVO + viagem + encounter (condição real de gameplay que os
-        -- modos estáticos não exercitam)
         local EnemyRenderer = require("src.ui.EnemyRenderer")
         local topBarH = 80
         WorldRoad.clearCache()
         WorldRoad.setBiome(5)
         WorldRoad._camZ = 5 * 7.3
         for _ = 1, 30 do WorldRoad.update(1 / 30) end
-        WorldRoad.setBiome(6)                      -- dispara o blend (2.2s)
+        WorldRoad.setBiome(6)
         WorldRoad.travel({
             encounter = EnemyRenderer.getEncounterBillboard({ spriteId = "cursed_scarecrow" }),
         })
-        for _ = 1, 34 do                            -- ~1.1s: meio do blend
+        for _ = 1, 34 do
             WorldRoad.update(1 / 30)
             WorldRoad.draw(0, topBarH, width, height - topBarH, nil)
         end
@@ -302,11 +244,6 @@ function M.run(mode)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
     elseif mode == "actswap" then
-        -- TROCA DE ATO (v10.3): 3 painéis do MESMO mundo — ANTES, no MEIO
-        -- do cross-dissolve e DEPOIS. Valida o bug do dono ("ao trocar de
-        -- ato, as antigas árvores do ato anterior começam aparecendo, só
-        -- saem depois"): no painel 3 não pode sobrar nenhuma árvore/poste
-        -- do bioma 1 (fields = árvore folhosa) no cenário do bioma 2.
         local panelH = math.floor(height / 3)
         WorldRoad.clearCache()
         WorldRoad.setBiome(1)
@@ -314,11 +251,8 @@ function M.run(mode)
         for _ = 1, 30 do WorldRoad.update(1 / 30) end
         WorldRoad._blend = nil
         WorldRoad._prevBiomeIndex = nil
-        -- painel 1: bioma 1 assentado (referência do "antes")
         WorldRoad.draw(0, 0, width, panelH, 1)
         overlays(0, 0, width, panelH)
-        -- painel 2: ~0.6s depois da troca — longe já virou bioma 2, perto
-        -- ainda esvaindo (o escalonamento por profundidade em ação)
         WorldRoad.setBiome(2)
         for _ = 1, 18 do
             WorldRoad.update(1 / 30)
@@ -326,7 +260,6 @@ function M.run(mode)
         end
         WorldRoad.draw(0, panelH, width, panelH, nil)
         overlays(0, panelH, width, panelH)
-        -- painel 3: ~2.6s depois — onda concluída, mundo 100% bioma 2
         for _ = 1, 60 do
             WorldRoad.update(1 / 30)
             WorldRoad.draw(0, panelH * 2, width, panelH, nil)
@@ -334,18 +267,12 @@ function M.run(mode)
         WorldRoad.draw(0, panelH * 2, width, panelH, nil)
         overlays(0, panelH * 2, width, panelH)
     elseif mode == "grassanim" then
-        -- SEQUÊNCIA TEMPORAL (v7.4.x): 24 frames consecutivos com câmera
-        -- PARADA — análise numérica de ondas/bandas coerentes no gramado
-        -- (diff por linha frame a frame localiza artefato de movimento)
         local topBarH = 80
         WorldRoad.clearCache()
         WorldRoad.setBiome(1)
         WorldRoad._camZ = 5.5
         WorldRoad._blend = nil
         WorldRoad._prevBiomeIndex = nil
-        -- warmup COM draw: o cache de fileiras (e o broto de entrada) só
-        -- existe quando desenha — sem isso a captura mede o broto, não o
-        -- regime (lição: a 1ª análise mediu a animação de entrada)
         for _ = 1, 90 do
             WorldRoad.update(1 / 30)
             love.graphics.clear(0, 0, 0, 1)
@@ -365,9 +292,6 @@ function M.run(mode)
         love.event.quit()
         return
     elseif mode and mode:match("^lumanim%d$") then
-        -- v9.1: PROVA do fogo animado das luminárias — converte os props
-        -- do bioma em luminárias (ciclo pelo catálogo) e salva 2 instantes
-        -- (lum_a/lum_b.png); diff das duas mostra SÓ chama/lâmpada mexendo
         local LuminaireEngine = require("engine.LuminaireEngine")
         local bio = tonumber(mode:match("%d")) or 1
         local topBarH = 80
@@ -410,9 +334,6 @@ function M.run(mode)
         love.event.quit()
         return
     elseif mode == "bench" or mode == "bench0" then
-        -- BENCHMARK de CPU (v7.4): 200 frames de VIAGEM simulada (camZ
-        -- avançando = pior caso do tapete de grama). Mede update+draw sem
-        -- present (CPU puro; GPU com 7k sprites pequenos é trivial).
         local topBarH = 80
         WorldRoad.clearCache()
         WorldRoad.setBiome(1)
@@ -420,14 +341,14 @@ function M.run(mode)
         for _ = 1, 30 do WorldRoad.update(1 / 30) end
         WorldRoad._blend = nil
         WorldRoad._prevBiomeIndex = nil
-        WorldRoad.draw(0, topBarH, width, height - topBarH, 1)  -- aquece caches
+        WorldRoad.draw(0, topBarH, width, height - topBarH, 1)
         local GrassField = require("engine.GrassField")
-        GrassField.disabled = (mode == "bench0")   -- A/B: sem grama
+        GrassField.disabled = (mode == "bench0")
         local N = 200
         local tStart = love.timer.getTime()
         for _ = 1, N do
             WorldRoad.update(1 / 60)
-            WorldRoad._camZ = WorldRoad._camZ + 0.045   -- ritmo de viagem
+            WorldRoad._camZ = WorldRoad._camZ + 0.045
             love.graphics.clear(0, 0, 0, 1)
             WorldRoad.draw(0, topBarH, width, height - topBarH, 1)
             overlays(0, topBarH, width, height - topBarH)
@@ -440,8 +361,6 @@ function M.run(mode)
         love.event.quit()
         return
     elseif mode == "grass" then
-        -- VALIDAÇÃO DE VENTO (v7.1): mesmo bioma em 2 instantes (Δ1.1s) —
-        -- diff das capturas prova que as lâminas do GrassField balançam.
         local topBarH = 80
         WorldRoad.clearCache()
         WorldRoad.setBiome(1)
@@ -467,9 +386,6 @@ function M.run(mode)
         love.event.quit()
         return
     elseif mode == "all" then
-        -- TODOS os 6 biomas em UM processo (protocolo anti-wedge do driver:
-        -- 1 contexto GL, não 6 — ver memory nvidia-driver-love-crash).
-        -- Salva worldroad_full1.png .. worldroad_full6.png no save dir.
         local topBarH = 80
         for bio = 1, 6 do
             love.graphics.clear(0, 0, 0, 1)
@@ -493,8 +409,6 @@ function M.run(mode)
         love.event.quit()
         return
     elseif mode == "full" or (mode and mode:match("^full%d$")) then
-        -- Um bioma em tela cheia (proporção real de gameplay, com topbar fake)
-        -- "full" = bioma 1; "full5" = bioma 5, etc.
         local topBarH = 80
         local bio = tonumber(mode:match("%d")) or 1
         WorldRoad.clearCache()
@@ -508,18 +422,12 @@ function M.run(mode)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
     elseif mode and mode:match("^postgate%d?") then
-        -- v9.2: MARGEM TOTAL de postes — a beira do caminho INTEIRA (perto
-        -- até a crista) forrada de postes nos dois lados, pra VALIDAR cada
-        -- posição possível (flip do braço, glow, sombra, sumir na dobra).
-        -- Sem monstro: foco na cobertura da margem. "postgate3" = bioma 3.
         local bio = tonumber(mode:match("%d")) or 1
         local topBarH = 80
         WorldRoad.clearCache(); WorldRoad.setBiome(bio)
         local camZ = 4; WorldRoad._camZ = camZ
         for _ = 1, 30 do WorldRoad.update(1/30) end
         WorldRoad._blend = nil; WorldRoad._prevBiomeIndex = nil
-        -- força SÓ postes, DENSO: um par a cada 0.7 unidade, de perto (rel
-        -- ~0.5) até além da crista (emersão) — cobre a margem inteira
         WorldRoad._props = {}
         local bid = require("src.data.biomes")[bio].id
         local rel = 0.5
@@ -537,8 +445,6 @@ function M.run(mode)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
     elseif mode and mode:match("^enemy%d_") then
-        -- Monstro PLANTADO na estrada do bioma: "enemy4_winter_monarch"
-        -- (valida roster endless no cenário certo, com HUD desligado)
         local bio = tonumber(mode:match("^enemy(%d)_"))
         local sid = mode:match("^enemy%d_(.+)$")
         local EnemyRenderer = require("src.ui.EnemyRenderer")
@@ -562,7 +468,6 @@ function M.run(mode)
         end
         WorldRoad._blend = nil
         WorldRoad._prevBiomeIndex = nil
-        -- v9.2: inimigo via callback do painter (props próximos na frente)
         local cx, cy = WorldRoad.getRoadAnchor(WorldRoad.BATTLE_REL,
             0, topBarH, width, height - topBarH)
         WorldRoad.setBattleEnemyDraw(function()
@@ -573,7 +478,6 @@ function M.run(mode)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
     elseif mode == "travel" then
-        -- Meio de uma viagem: herói andando + poeira + inimigo vindo lá de trás
         local EnemyRenderer = require("src.ui.EnemyRenderer")
         local topBarH = 80
         WorldRoad.clearCache()
@@ -583,8 +487,6 @@ function M.run(mode)
         WorldRoad.travel({
             encounter = EnemyRenderer.getEncounterBillboard({ spriteId = "cursed_scarecrow" }),
         })
-        -- avança até ~65% da viagem (inimigo já emergiu da crista e cresce).
-        -- draw a cada tick pra _heroScreenPos existir e a poeira spawnar.
         for _ = 1, 70 do
             WorldRoad.update(1 / 30)
             WorldRoad.draw(0, topBarH, width, height - topBarH, 1)
@@ -595,13 +497,12 @@ function M.run(mode)
         love.graphics.setColor(0.1, 0.08, 0.06, 1)
         love.graphics.rectangle("fill", 0, 0, width, topBarH)
     elseif mode == "endless" then
-        -- Biomas endless (4-6: frost/marsh/dusk) empilhados
         local panelH = math.floor(height / 3)
         for i = 1, 3 do
             local act = i + 3
             WorldRoad.clearCache()
             WorldRoad.setBiome(act)
-            WorldRoad._blend = nil       -- paleta pura (sem meio-blend)
+            WorldRoad._blend = nil
             WorldRoad._camZ = act * 7.3
             for _ = 1, 30 do WorldRoad.update(1 / 30) end
             WorldRoad._blend = nil
@@ -613,11 +514,8 @@ function M.run(mode)
         for act = 1, 3 do
             WorldRoad.clearCache()
             WorldRoad.setBiome(act)
-            -- distâncias diferentes pra mostrar pontos distintos da serpentina
             WorldRoad._camZ = act * 7.3
-            -- simula tempo pra nuvens/props assentarem
             for _ = 1, 30 do WorldRoad.update(1 / 30) end
-            -- simula viagem em andamento no painel 2 (bob ativo)
             if act == 2 then WorldRoad.travel({ distance = 10, duration = 3 }) ; WorldRoad.update(0.5) end
 
             WorldRoad.draw(0, (act - 1) * panelH, width, panelH, act)

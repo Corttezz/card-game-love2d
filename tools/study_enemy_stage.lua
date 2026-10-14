@@ -1,29 +1,7 @@
--- tools/study_enemy_stage.lua
--- ESTUDO do palco da batalha: onde o inimigo para na estrada e o quanto ele
--- colide com a mão (carta em hover + tooltip da carta) em 3 tamanhos.
---
---   love . test_one study_enemy_stage            -> distâncias 9,10,11,12,13
---   love . test_one study_enemy_stage 9,11,13    -> lista própria
---   love . test_one study_enemy_stage auto,shots -> + PNG de toda cena
---
--- Pra cada (tamanho × distância × ato × tipo de nó) desenha o GameplayScene
--- REAL num canvas com a janela FALSIFICADA (setMode repetido trava tool —
--- CLAUDE.md), com o mouse falso sobre a carta do meio, e mede:
---   enemy  = sprite + cluster do EnemyHud (EnemyHud.layout().rect)
---   card   = Card.lastDrawRect da carta em hover
---   tip    = CardInfoDisplay.lastRect (descrição da carta)
--- Saída: tabela no console + stage_<W>x<H>_rel<R>_<ato>_<no>.png no save dir
--- (só as cenas da prancha, ou todas com "shots").
---
--- Distância 'rel' é a WorldRoad.BATTLE_REL candidata; o tamanho do inimigo
--- segue a perspectiva do mundo (WorldRoad.battleSizeK). Chefe luta no salão:
--- lá a distância não se aplica, só entra pra medir.
-
 local M = {}
 
 local SIZES = { { 1024, 768 }, { 1280, 720 }, { 1920, 1080 } }
 local NODES = { "battle", "elite", "boss" }
--- cenas que vão pra prancha mesmo sem "shots"
 local PRANCHA = { ["1_battle"] = true, ["3_elite"] = true, ["2_boss"] = true }
 
 local function inter(a, b)
@@ -40,14 +18,12 @@ function M.run(relArg, shotsArg)
     for r in tostring(relArg or "9,11,13,15,auto"):gmatch("[%w%.]+") do
         if r ~= "shots" then rels[#rels + 1] = tonumber(r) or r end
     end
-    -- test_one só repassa UM argumento: "auto,shots" liga as capturas
     local allShots = (shotsArg == "shots")
         or tostring(relArg or ""):find("shots", 1, true) ~= nil
 
     _G.EventManager = _G.EventManager or require("engine.EventManager")
     local I18n = require("src.i18n.I18n")
     I18n.init()
-    -- outras suites do sandbox deixam o idioma trocado no settings.tool
     if I18n.setLocale then I18n.setLocale("pt_BR") end
     require("src.ui.PixelCanvas").enableNearest()
 
@@ -66,7 +42,6 @@ function M.run(relArg, shotsArg)
     game:startGame()
     _G.game = game
 
-    -- mão de 5 cartas com descrição de verdade (tooltip de tamanho real)
     local db = game.deckManager.cardDatabase
     local ids = { "warrior_cleave", "warrior_shield_wall", "warrior_bash",
         "warrior_iron_skin", "warrior_rampage" }
@@ -98,7 +73,6 @@ function M.run(relArg, shotsArg)
     GameplayScene.init({ game = game, topBar = topBar, gameUI = gameUI,
         playButton = playButton, endTurnButton = endTurnButton })
 
-    -- captura o bbox que a cena entrega ao HUD
     local realDraw = EnemyRenderer.draw
     local lastBbox
     EnemyRenderer.draw = function(...)
@@ -116,7 +90,6 @@ function M.run(relArg, shotsArg)
     local origRel = WorldRoad.BATTLE_REL
     local origNear, origFar = WorldRoad.BATTLE_REL_NEAR, WorldRoad.BATTLE_REL_FAR
     local origExp = WorldRoad.ENEMY_SIZE_PERSP
-    -- STAGE_PERSP=0.5 → o monstro encolhe com a raiz da perspectiva
     if os.getenv("STAGE_PERSP") then
         WorldRoad.ENEMY_SIZE_PERSP = tonumber(os.getenv("STAGE_PERSP"))
     end
@@ -130,8 +103,6 @@ function M.run(relArg, shotsArg)
         local canvas = love.graphics.newCanvas(W, H)
 
         for _, rel in ipairs(rels) do
-            -- número = palco FIXO (near = far = rel); "auto" = o palco real
-            -- (battleRelFor pela zona da mão em hover)
             if type(rel) == "number" then
                 WorldRoad.BATTLE_REL_NEAR, WorldRoad.BATTLE_REL_FAR = rel, rel
             else
@@ -150,7 +121,6 @@ function M.run(relArg, shotsArg)
                     if nodeType == "boss" then GameplayScene._debugForceBossEntered() end
                     WorldRoad.setBiome(act)
 
-                    -- mouse sobre a carta do MEIO, em repouso
                     local sx, sp, cy = GameplayScene.handLayout()
                     local mid = math.ceil(#hand / 2)
                     local mx = sx + (mid - 1) * sp + 60
@@ -214,10 +184,8 @@ function M.run(relArg, shotsArg)
 
                     local key = act .. "_" .. nodeType
                     if allShots or PRANCHA[key] then
-                        -- debug: contorno das três réguas
                         love.graphics.setCanvas(canvas)
                         love.graphics.setLineWidth(2)
-                        -- STAGE_NORECT=1: sem as réguas (pra olhar o pé)
                         if os.getenv("STAGE_NORECT") then er, card, tip = nil, nil, nil end
                         if er then love.graphics.setColor(1, 0.2, 0.2, 1)
                             love.graphics.rectangle("line", er.x, er.y, er.w, er.h) end
@@ -242,7 +210,6 @@ function M.run(relArg, shotsArg)
     love.mouse.getPosition, love.mouse.getX, love.mouse.getY = realMouse, realMX, realMY
     EnemyRenderer.draw = realDraw
 
-    -- resumo por (tamanho, rel), separando estrada (battle/elite) de salão
     print("\n[estudo] RESUMO — estrada (battle+elite, 12 cenas por linha)")
     for _, sz in ipairs(SIZES) do
         for _, rel in ipairs(rels) do

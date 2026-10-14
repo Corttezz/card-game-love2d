@@ -1,8 +1,3 @@
--- tools/screenshot_intro.lua
--- Capturas da ABERTURA (página + televisor + mergulho) quadro a quadro,
--- numa janela falsificada, e a fita do menu.
---   love . test_one screenshot_intro [locale] [WxH]
--- Saída: intro_<fase>_<W>x<H>_<loc>.png e intro_menu_ribbon_<W>x<H>_<loc>.png
 local M = {}
 
 function M.run(arg)
@@ -23,8 +18,6 @@ function M.run(arg)
     love.graphics.getHeight = function() return H end
     love.graphics.getDimensions = function() return W, H end
     local IntroTube = require("src.scenes.IntroTube")
-    -- INTRO_DATA=<caminho relativo à fonte> força outra arte de computador
-    -- (ex.: tools/preview_out/intro_synth/intro_computer.lua)
     if os.getenv("INTRO_DATA") then IntroTube.DATA_PATH = os.getenv("INTRO_DATA"); IntroTube.reloadArt() end
     _G.gameSettings = _G.gameSettings or {}
     _G.gameSettings.reducedMotion = false
@@ -46,14 +39,12 @@ function M.run(arg)
     for _ = 1, 60 * 8 do IntroTube.update(dt); if IntroTube.phase() ~= "page" then break end end
     shot("3_texto")
     if IntroTube.phase() == "insert" then
-        -- com a arte: a carta entra pela fenda e a tela pisca antes do mergulho
         IntroTube.update(IntroTube.T.insert * 0.55); shot("3b_carta")
         IntroTube.update(IntroTube.T.insert * 0.45 + IntroTube.T.insertHold * 0.15); shot("3c_flash")
         for _ = 1, 60 * 2 do IntroTube.update(dt); if IntroTube.phase() == "dive" then break end end
     end
     IntroTube.update(IntroTube.T.dive * 0.45); shot("4_mergulho")
     IntroTube.update(IntroTube.T.dive * 0.45); shot("5_tubo")
-    -- fita do menu
     local Menu = require("components.Menu")
     local menu = Menu:new()
     menu:show(function() end, function() end)

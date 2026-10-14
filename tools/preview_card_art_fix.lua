@@ -1,16 +1,5 @@
--- tools/preview_card_art_fix.lua
--- Contact sheet de validacao do fix de arte repetida (2026-09).
--- Renderiza as 12 cartas que estavam ORFAS no atlas `src/data/card_art.lua`
--- lado a lado com as 4 cartas com que elas colidiam no fallback por tipo
--- (potion_red / skull / dagger / shield_kite). Se alguma dupla ainda parecer
--- a mesma foto, aparece no mesmo contact sheet.
---
--- Roda: love . preview_card_art_fix
--- Saida: <saveDir>/cardartfix_sheet.png
-
 local M = {}
 
--- {id, legenda} — as 4 ultimas sao as "vitimas" da colisao antiga.
 local IDS = {
     { "warrior_adrenaline_rush", "ORFA" },
     { "warrior_battle_orders",   "ORFA" },

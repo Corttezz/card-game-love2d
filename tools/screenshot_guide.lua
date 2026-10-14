@@ -1,9 +1,3 @@
--- tools/screenshot_guide.lua
--- Captura o GUIA (combos + glossário) num tamanho de janela FALSIFICADO.
---   love . test_one screenshot_guide pt_BR:1920x1080:1
---   (locale : WxH : aba 1=combos 2=glossário) — PNG no save dir:
---   guide_<locale>_<W>x<H>_<aba>.png
-
 local M = {}
 
 function M.run(arg)

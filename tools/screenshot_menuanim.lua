@@ -1,11 +1,3 @@
--- tools/screenshot_menuanim.lua
--- Valida a ANIMAÇÃO DE VELA do menu (ciclo de crossfade entre frames).
---   love . screenshot_menuanim
--- Monkeypatcha love.timer.getTime pra amostrar o ciclo inteiro em pontos
--- controlados, renderiza o Menu REAL em cada ponto e monta um grid pra ver
--- a sequência (7 "holds") + um crossfade intermediário numa imagem só.
--- Salva menuanim_grid.png no save dir.
-
 local M = {}
 
 function M.run()
@@ -21,20 +13,17 @@ function M.run()
 
     local Menu = require("components.Menu")
     local menu = Menu:new()
-    for _ = 1, math.floor(2.4 * 30) do menu:update(1 / 30) end  -- passa a intro
+    for _ = 1, math.floor(2.4 * 30) do menu:update(1 / 30) end
 
-    -- mesma matemática do Menu (BG_SEG = FADE+HOLD, 7 estados)
     local FADE, HOLD = 0.65, 0.55
     local SEG = FADE + HOLD
     local N = 7
     local labels = { "menu", "menu_normal", "menu", "menu_1", "menu_2", "menu_normal", "menu" }
 
-    -- pontos de amostragem: o "hold" (alvo cheio) de cada um dos 7 estados,
-    -- + 2 crossfades no meio (menu→normal e menu_1→menu_2) pra ver o blend.
     local samples = {}
     for i = 0, N - 1 do
         samples[#samples + 1] = {
-            t = i * SEG + FADE + HOLD * 0.5,        -- meio do hold do "to"
+            t = i * SEG + FADE + HOLD * 0.5,
             tag = "hold: " .. labels[(i % N) + 1] .. "->" .. labels[((i + 1) % N) + 1],
         }
     end
@@ -51,7 +40,6 @@ function M.run()
 
     love.graphics.clear(0, 0, 0, 1)
     for i, sp in ipairs(samples) do
-        -- render do menu REAL num canvas full-size, no tempo amostrado
         local canvas = love.graphics.newCanvas(W, H)
         love.timer.getTime = function() return sp.t end
         love.graphics.setCanvas(canvas)
@@ -60,7 +48,6 @@ function M.run()
         love.graphics.setCanvas()
         love.timer.getTime = realGetTime
 
-        -- desenha reduzido na célula do grid
         local col = (i - 1) % cols
         local row = math.floor((i - 1) / cols)
         local x, y = col * cw, row * ch

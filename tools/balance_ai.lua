@@ -1,35 +1,8 @@
--- tools/balance_ai.lua
--- CEREBRO v6 do piloto (Out/2026, frente de balanceamento).
---
--- O v5 (tools/autoplay.lua) decidia o turno por PASSOS heuristicos em ordem
--- fixa (lethal > scaling > cura > emergencia > dano > defesa > orbes > sobra).
--- Cada passo era sensato isolado, mas a ORDEM decidia por ele: um turno em que
--- valia mais aplicar Fraco do que socar, ou evocar em vez de canalizar, so
--- acontecia se a heuristica certa estivesse na frente.
---
--- O v6 troca a ordem fixa por BUSCA: enumera TODOS os subconjuntos jogaveis da
--- mao dentro da mana, simula cada um com o pipeline do jogo (combos reais,
--- coringas com largest-wins, Forca por golpe, Vulneravel amplificando o resto
--- da leva, orbes canalizando/estourando/pulsando, espinhos, veneno tickando
--- DEPOIS do golpe inimigo, Fraco reduzindo o golpe congelado) e escolhe o de
--- maior VALOR.
---
--- O VALOR fala uma lingua so: HP. O turno custa o HP que o golpe anunciado
--- tira agora, e o que resta da luta custa o HP que o inimigo ainda vai tirar
--- ate morrer: (vida restante do inimigo / dano por turno) x (dano liquido que
--- ele causa por turno). Dano, Forca, veneno, Vulneravel e orbes reduzem o
--- primeiro termo; Bloqueio, Fraco e Destreza reduzem o segundo; matar zera
--- tudo. Sem pesos arbitrarios entre "atacar" e "defender" — a conta decide.
-
 local TagSystem   = require("src.systems.TagSystem")
 local ComboSystem = require("src.systems.ComboSystem")
 local EffectSystem = require("src.systems.EffectSystem")
 
 local AI = {}
-
--- ============================================================
--- helpers
--- ============================================================
 
 local function hasEff(card, t)
     for _, e in ipairs(card.effects or {}) do
@@ -53,7 +26,6 @@ end
 
 local function jokerList(game) return game.jokerSlots or {} end
 
--- multiplicador de cura dos coringas (produto, com floor no fim — EffectSystem)
 local function healMult(game)
     local m = 1
     for _, j in ipairs(jokerList(game)) do
@@ -91,9 +63,6 @@ local function hasJokerEffect(game, t)
     return nil
 end
 
--- Valor final de UMA carta ataque/defesa (espelho de Game:_resolveCardInCombat
--- computeCardValue): efeitos proprios -> stat (por golpe; scaling = dobro) ->
--- combos do conjunto -> coringas (largest-wins + flats) -> edition -> seal.
 function AI.cardValue(game, card, ctx, stat)
     local base, scalingType
     if card.type == "attack" then base, scalingType = card.attack or 0, "strength_scaling"
@@ -115,9 +84,6 @@ function AI.cardValue(game, card, ctx, stat)
     elseif card.edition == "holo" then v = v * 1.2
     elseif card.edition == "polychrome" then v = v * 1.5 end
     if card.seal == "Red" then v = v * 2 end
-    -- Debuffs do INIMIGO no jogador (kit Out/2026): Fraco corta o ataque,
-    -- Frágil corta a defesa — mesma conta (e mesma ordem: por último) do
-    -- Game:_resolveCardInCombat.
     local pl = game and game.player
     if pl and pl.hasDebuff then
         if card.type == "attack" and pl:hasDebuff("weak") then
@@ -129,10 +95,6 @@ function AI.cardValue(game, card, ctx, stat)
     return math.floor(v)
 end
 
--- Ordem de jogada dentro da leva: quem PREPARA vem antes de quem COLHE.
--- debuff (Vulneravel/Fraco) > buff (Forca/Destreza/Foco/mana) > canalizar >
--- resto (defesa, cura, compra) > ataques (maior primeiro: Eco dobra o 1o) >
--- evocar.
 local function playRank(c)
     if hasEff(c, "apply_debuff") and (c.attack or 0) <= 0 then return 0 end
     if hasEff(c, "gain_strength") or hasEff(c, "gain_dexterity")
@@ -160,10 +122,6 @@ function AI.sortForPlay(set)
     return out
 end
 
--- ============================================================
--- Contexto de BATALHA: estimativas do deck que alimentam o "custo do resto"
--- ============================================================
-
 local function allBattleCards(game)
     local list = {}
     for _, src in ipairs({ game.hand or {}, game.deck or {}, game.discard or {} }) do
@@ -172,7 +130,6 @@ local function allBattleCards(game)
     return list
 end
 
--- Estimativa de dano/bloqueio por turno do DECK (sem estado de batalha).
 function AI.deckProfile(game)
     local cards = allBattleCards(game)
     local n = math.max(1, #cards)
@@ -203,7 +160,6 @@ function AI.deckProfile(game)
     local defShare = nDef / n
     local avgDmgPM = nAtk > 0 and dmgPerMana / nAtk or 5
     local avgBlkPM = nDef > 0 and blkPerMana / nDef or 5
-    -- mana dividida entre ataque e defesa ~ pela composicao do deck
     local atkMana = mana * math.min(1, atkShare / math.max(0.01, atkShare + defShare) + 0.15)
     local prof = {
         dpt = math.max(3, avgDmgPM * atkMana),
@@ -212,12 +168,9 @@ function AI.deckProfile(game)
         hitsPerAttack = nAtk > 0 and math.max(1, hits / math.max(1, nAtk)) or 1,
         defsPerTurn = math.min(hand * defShare, mana),
         deckSize = n,
-        -- Bloqueio que o deck consegue por turno se PRIORIZAR defesa (limitado
-        -- pelas cartas de defesa que chegam na mao e pela mana).
         maxBlock = (function()
             local defs = math.min(mana, math.max(0.5, hand * defShare) * 1.2)
             local b = avgBlkPM * defs
-            -- 2+ defesas na mesma leva: Muralha x1.4 + Torre +6 por carta
             if defs >= 1.8 then b = b * 1.4 + 6 * defs end
             return b
         end)(),
@@ -229,15 +182,10 @@ function AI.newBattle(game)
     return {
         prof = AI.deckProfile(game),
         dealt = 0, turns = 0,
-        -- vazamento medido: HP perdido / golpe anunciado, nos turnos de ataque
         hitTurns = 0, incSum = 0, lostSum = 0,
     }
 end
 
--- Fracao do golpe medio que passa nos turnos futuros: estimada pelo bloqueio
--- que o deck consegue (deck de muralha vaza pouco, deck de ataque vaza muito)
--- e corrigida pelo que a batalha MEDIU. Uma constante unica (0.65) fazia o
--- guerreiro de muralha correr atras de dano no A3+ em vez de segurar o golpe.
 function AI.leakOf(bctx, inc)
     local est = 1 - 0.8 * (bctx.prof.maxBlock or 0) / math.max(1, inc)
     est = math.max(0.15, math.min(0.9, est))
@@ -248,7 +196,6 @@ function AI.leakOf(bctx, inc)
     return est
 end
 
--- dano por turno usado no custo do resto: blend do perfil com o medido
 local function dptOf(bctx)
     local est = bctx.prof.dpt
     if bctx.turns >= 2 then
@@ -258,22 +205,12 @@ local function dptOf(bctx)
     return math.max(3, est)
 end
 
--- dano esperado por turno do inimigo (mistura de intents: 50% attack, 16%
--- strong x1.6, 34% defend/buff) — so o FUTURO usa isto; o turno atual usa o
--- intent congelado de verdade.
 local function avgIncoming(enemy)
-    -- Kit do inimigo (Out/2026): media ponderada dos golpes dele — o kit
-    -- define quanto cada criatura bate (multi-golpe, perfurante, carga).
     if enemy.expectedDamagePerTurn then
         return enemy:expectedDamagePerTurn() + 0.3
     end
-    -- (Buff soma +2 permanente: ~0.3/turno de crescimento medio.)
     return (enemy.damage or 0) * (0.50 + 0.16 * 1.6) + 0.3
 end
-
--- ============================================================
--- SIMULACAO de um conjunto (uma leva + fim do turno + golpe inimigo)
--- ============================================================
 
 local function copyOrbs(list)
     local out = {}
@@ -281,17 +218,6 @@ local function copyOrbs(list)
     return out
 end
 
--- NÉVOA DE INTENÇÃO (Out/2026, src/systems/IntentVisibility.lua): o piloto
--- DECIDE com o que o jogador VÊ. Devolve o golpe que vem como ele é
--- conhecido: { perHit, hits, pierce, armor, known }.
---   full       números congelados (Vulnerável congelado entra, como no HUD);
---   type_only  o TIPO é conhecido: golpe de dano vira a média do kit
---              (expectedDamagePerTurn) em 1 golpe; defender vira o bloqueio
---              padrão; buff/cura/debuff/carga = 0 de dano; perfurante é tipo,
---              então segue conhecido;
---   hidden     média do kit, sem perfurante nem bloqueio.
--- MEDIÇÃO (diag/incSum do autoplay) continua lendo o real — só a escolha de
--- cartas passa por aqui. Sem kit (testes antigos) cai no contrato legado.
 local DAMAGE_KINDS = { attack = true, strong = true, multi = true }
 function AI.knownThreat(e, p)
     local th = { perHit = 0, hits = 0, pierce = false, armor = 0, known = true }
@@ -386,17 +312,14 @@ function AI.simulate(game, set, bctx, opts)
         S.orbs[#S.orbs + 1] = { type = t, value = v }
     end
 
-    -- combos do conjunto (modulo real)
     local ctx = { allSelectedCards = set, tagCounts = TagSystem.countAllTags(set), game = game }
     ComboSystem.detect(ctx, game)
 
-    -- Impeto do guerreiro: decide ANTES de resolver (applyClassTurnPassives)
     if game.selectedClass == "warrior" and not game._impetusFiredThisTurn then
         local atks = game._attacksThisTurn or 0
         for _, c in ipairs(set) do if (c.attack or 0) > 0 then atks = atks + 1 end end
         if atks >= require("src.core.Game").IMPETUS_ATTACKS then S.str = S.str + 1; S.strGain = S.strGain + 1 end
     end
-    -- Toxinas do ladino (Out/2026): 2+ ataques no turno = +TOXIN_GROWTH na passiva
     local toxin = math.max(1, (game.classPassiveTier and game:classPassiveTier() or 1)
         + (require("src.core.Game").ROGUE_POISON_OFFSET or 0)) + (game._toxinBonus or 0)
     if game.selectedClass == "rogue" and not game._toxinGrowFiredThisTurn then
@@ -458,7 +381,6 @@ function AI.simulate(game, set, bctx, opts)
                 end
             end
         end
-        -- efeitos secundarios (ataque/defesa/efeito), na ordem dos dados
         for _, ef in ipairs(c.effects or {}) do
             local t, v = ef.type, ef.value
             if t == "instant_heal" then heal(v or 0)
@@ -488,7 +410,6 @@ function AI.simulate(game, set, bctx, opts)
         end
     end
 
-    -- combos de EVENTO (uma vez por leva)
     for _, combo in ipairs(ctx.activeCombos or {}) do
         local b = combo.bonus
         if b then
@@ -504,7 +425,6 @@ function AI.simulate(game, set, bctx, opts)
     S.preEndHp = S.eHp
     local endsTurn = not opts.noEndTurn
     if endsTurn and S.eHp > 0 then
-        -- pulso dos orbes (fim do turno do jogador, ANTES do inimigo)
         for _, o in ipairs(S.orbs) do
             local pv = EffectSystem.orbPulseValue({ type = o.type, value = o.value }, S.focus)
             if o.type == "lightning" or o.type == "fire" then hit(pv)
@@ -515,15 +435,11 @@ function AI.simulate(game, set, bctx, opts)
     end
     S.lethal = S.eHp <= 0
 
-    -- golpe inimigo (intent CONGELADO) + espinhos + DoT
     S.hpLoss = 0
     S.killedAfterHit = false
     if endsTurn and not S.lethal then
-        local eArmorAtk = 0  -- armadura do inimigo EXPIRA no inicio do turno dele
+        local eArmorAtk = 0
         S.eArmor = eArmorAtk
-        -- Intent CONGELADO do kit (Out/2026): golpes x dano por golpe,
-        -- perfurante, bloqueio do proprio inimigo e debuffs no jogador — como
-        -- o JOGADOR o conhece (névoa de intenção: AI.knownThreat).
         local th = AI.knownThreat(e, p)
         local perHit, hits, pierce = th.perHit, th.hits, th.pierce
         S.eArmor = th.armor
@@ -538,14 +454,11 @@ function AI.simulate(game, set, bctx, opts)
                 S.armorLeft = math.max(0, S.armor - dmg)
             end
             if S.thorn > 0 then
-                -- reflexo nao passa pelo Vulneravel? passa: takeDamage
                 hit(S.thorn)
             end
         else
             S.armorLeft = S.armor
         end
-        -- Veneno/queimadura NO JOGADOR ticam no upkeep seguinte (ignoram o
-        -- Bloqueio): o que ja esta nele + o que este golpe aplica.
         if p.getDebuffStacks then
             local pdot = p:getDebuffStacks("poison") + p:getDebuffStacks("burn")
             for _, d in ipairs((it and it.debuffs) or {}) do
@@ -553,7 +466,6 @@ function AI.simulate(game, set, bctx, opts)
             end
             S.hpLoss = S.hpLoss + pdot
         end
-        -- DoT no fim do turno do inimigo (IGNORA a armadura — Enemy:_applyDot)
         if S.eHp > 0 then
             local dot = (S.poisonDur > 0 and S.poison or 0) + (S.burnDur > 0 and S.burn or 0)
             S.eHp = S.eHp - dot
@@ -565,28 +477,19 @@ function AI.simulate(game, set, bctx, opts)
     return S
 end
 
--- ============================================================
--- VALOR (em HP) de um resultado simulado
--- ============================================================
-
 function AI.score(game, set, S, bctx)
     local p, e = game.player, game.enemy
     local dpt = dptOf(bctx)
     local inc = avgIncoming(e)
     local prof = bctx.prof
 
-    -- morte do jogador neste turno = pior resultado possivel
     if S.hp - S.hpLoss <= 0 then return -1e9 + S.eHp end
 
     if S.lethal then
-        -- todos os lethais sao bons; prefere gastar menos recurso de uso unico
         return 1e6 + S.hp - S.exhausts * 3 - #set * 0.01
     end
 
-    -- ---- o resto da luta ----
     local eLeft = math.max(0, S.eHp)
-    -- orbes: pulso por turno (raio/fogo) entra no dpt; o evoke eventual
-    -- e a sombra crescendo descontam da vida
     local orbDpt, orbBlk, orbHeal = 0, 0, 0
     for _, o in ipairs(S.orbs) do
         local pv = EffectSystem.orbPulseValue({ type = o.type, value = o.value }, S.focus)
@@ -600,17 +503,11 @@ function AI.score(game, set, S, bctx)
         end
     end
     local strBonus = S.strGain * prof.attacksPerTurn * prof.hitsPerAttack
-    -- Vulneravel que ainda vale no PROXIMO turno amplia o proximo turno de dano
     local vulnNext = (S.vulnAdd > 1) and 0.5 * dpt * math.min(S.vulnAdd - 1, 2) or 0
     eLeft = eLeft - vulnNext
     local futDpt = dpt + strBonus + orbDpt
     local manaPerTurn = math.max(1, p.maxMana or 3)
     if S.maxManaGain > 0 then futDpt = futDpt * (1 + S.maxManaGain / manaPerTurn) end
-    -- TEMPO ATE MATAR, turno a turno. O DoT NAO e um desconto instantaneo
-    -- da vida: veneno empilha stacks E duracao (Enemy:addStatusEffect), entao
-    -- 12 stacks x 12 turnos "valem" 144 mas chegam 12 por turno. A 1a versao
-    -- descontava tudo de uma vez, achava a luta ganha (T=0) e o ladino
-    -- PASSAVA o turno com 5 de mana e 5 cartas na mao.
     local T
     do
         local hpLeft = math.max(0, eLeft)
@@ -633,17 +530,10 @@ function AI.score(game, set, S, bctx)
         T = t
     end
 
-    -- dano liquido por turno que o inimigo ainda causa
-    -- Fracao do golpe medio que PASSA nos turnos futuros. Nao sai do perfil
-    -- do deck: bloquear custa a MESMA mana que atacar, e a conta "dpt do
-    -- ataque + bpt da defesa" contava a mana duas vezes (a 1a versao do v6
-    -- achava a luta quase gratis e trocava dano por cura inutil).
     local LEAK = AI.leakOf(bctx, inc)
     local blkExtra = S.dexGain * prof.defsPerTurn + orbBlk
     local netIn = math.max(0.15 * inc, inc * LEAK - 0.75 * blkExtra) - orbHeal
-    -- o inimigo ESCALA: Buff (+2 permanente) e a Furia do turno 8+
     local growth = 0.16 * 2 * LEAK
-    -- Fraco que ainda vale nos proximos turnos
     local weakFuture = (S.weakAdd > 1) and 0.25 * inc * math.min(S.weakAdd - 1, 2) or 0
 
     local futureLoss = 0
@@ -651,27 +541,19 @@ function AI.score(game, set, S, bctx)
         futureLoss = math.max(0, netIn * T + 0.5 * growth * T * T - weakFuture)
     end
 
-    -- ---- o que sobrou pra este turno ----
     local cardVal = (dpt / math.max(1, prof.attacksPerTurn + prof.defsPerTurn)) * (inc / math.max(1, dpt))
     local bonus = 0
     bonus = bonus + S.drawn * cardVal * 0.6
     bonus = bonus + S.manaGain * (dpt / manaPerTurn) * (inc / math.max(1, dpt)) * 0.5
     bonus = bonus + S.mystery * 4
-    -- Bloqueio retido (Bastiao) vale no proximo golpe
     if p.retainArmor and S.armorLeft then
         bonus = bonus + math.min(S.armorLeft, inc) * 0.7
     end
-    -- carta de uso unico gasta sem necessidade custa um pouco
     bonus = bonus - S.exhausts * 1.5
-    -- desempate: entre planos de mesmo valor, o que causa mais dano AGORA
     bonus = bonus + 0.05 * math.max(0, (e.health or 0) - S.eHp)
 
     return (S.hp - S.hpLoss) - futureLoss + bonus
 end
-
--- ============================================================
--- BUSCA: melhor subconjunto da mao
--- ============================================================
 
 local function playable(game)
     local out = {}
@@ -681,13 +563,8 @@ local function playable(game)
     return out
 end
 
--- Enumera subconjuntos com custo <= mana (podando por custo). Limite de mao
--- grande: a partir de 12 cartas, so as 12 de maior "valor bruto" entram na
--- busca (2^12 = 4096 avaliacoes ja e o teto razoavel por leva).
 function AI.bestSet(game, bctx, opts)
     local cards = playable(game)
-    -- orcamento de motor esgotado: carta de PURO ciclo sai da busca (senao
-    -- uma Sosia que se paga vira loop infinito de "comprar e comprar")
     if opts and opts.excludeMotor then
         local keep = {}
         for _, c in ipairs(cards) do
@@ -736,19 +613,8 @@ function AI.bestSet(game, bctx, opts)
     return best, bestScore, bestS, evals
 end
 
--- ============================================================
--- DECK BUILDING: quanto uma carta VALE pra ESTE deck
--- ============================================================
--- Moeda: "pontos" da curva de poder da auditoria (tools/audit_cards.lua,
--- ~1 ponto = 1 de dano imediato). Uma carta ocupa MANA e ocupa um ESPACO na
--- mao: o que ela rende acima do que a mesma mana renderia "na media" e o
--- SUPERAVIT. Entra no deck quem melhora a media do deck (deck enxuto compra
--- a carta boa mais vezes — diluir e perder).
+local LAMBDA = 5.5
 
-local LAMBDA = 5.5   -- pontos que 1 de mana rende numa carta media
-
--- Combos simples (Out/2026): a Saraivada/Muralha pagam densidade de ATAQUE/
--- DEFESA na mao, o Par paga COPIAS da mesma carta no deck.
 local COMBO_TYPE_W = { attack = 0.25, defense = 0.2 }
 local PAIR_W = 0.6
 
@@ -784,7 +650,6 @@ function AI.deckContext(game)
     local ctx = { ids = ids, n = n, tags = tags, blockCards = blockCards,
         attackCards = attackCards, scaling = scaling, strSrc = strSrc,
         act = run.actNumber or 1, class = game.selectedClass }
-    -- jokers possuidos: flat por ataque/defesa mudam o valor de carta barata
     ctx.atkFlat, ctx.defFlat = 0, 0
     for _, e in ipairs(run.jokers or {}) do
         local jid = type(e) == "table" and e.id or e
@@ -795,7 +660,6 @@ function AI.deckContext(game)
             if ef.type == "on_attack_debuff" then ctx.atkFlat = ctx.atkFlat + 1.5 end
         end
     end
-    -- media do deck (a referencia de "melhora o deck?")
     local sum = 0
     for _, id in ipairs(ids) do
         local cd = CardDatabase:getCard(id)
@@ -805,36 +669,29 @@ function AI.deckContext(game)
     return ctx
 end
 
--- Superavit da carta pra ESTE deck. `inDeck` = avaliando carta que ja esta
--- no deck (nao conta a propria carta como "sinergia consigo mesma").
 function AI.cardWorth(game, cd, dctx, inDeck)
     if not cd then return -99 end
-    if cd.type == "joker" then return 99 end   -- coringa nao dilui (bancada)
+    if cd.type == "joker" then return 99 end
     local Audit = require("tools.audit_cards")
     local pts = Audit.cardPoints(cd)
     local hits = 1
     for _, e in ipairs(cd.effects or {}) do
         if e.type == "multi_hit" then hits = e.value or 1 end
     end
-    -- coringas de bonus fixo pagam POR carta de ataque/defesa
     if cd.type == "attack" then pts = pts + dctx.atkFlat * hits end
     if cd.type == "defense" then pts = pts + dctx.defFlat end
-    -- Forca escala por golpe: quem tem fonte de Forca valoriza ataque multiplo
     if cd.type == "attack" then
         local strExp = math.min(4, dctx.strSrc * 1.5)
         if hasEff(cd, "strength_scaling") then strExp = strExp * 2 end
         pts = pts + strExp * hits * 0.6
     end
-    -- passivas de classe
     if dctx.class == "warrior" and cd.type == "attack" and (cd.cost or 0) <= 1 then
-        pts = pts + 1.0   -- Impeto: 2 ataques/turno
+        pts = pts + 1.0
     elseif dctx.class == "mage" and hasEff(cd, "channel_orb") then
-        pts = pts + 1.0   -- Foco da Conduite multiplica orbes
+        pts = pts + 1.0
     elseif dctx.class == "rogue" and cd.type == "attack" and (cd.cost or 0) == 0 then
-        pts = pts + 0.8   -- Toxinas no 1o ataque, carta gratis abre o turno
+        pts = pts + 0.8
     end
-    -- sinergia dos combos simples: densidade do tipo (Saraivada/Muralha) e
-    -- copias da mesma carta (Par)
     local tw = COMBO_TYPE_W[cd.type]
     if tw then
         local c = ((cd.type == "attack") and dctx.attackCards or dctx.blockCards)
@@ -845,7 +702,6 @@ function AI.cardWorth(game, cd, dctx, inDeck)
         if inDeck then copies = copies - 1 end
         pts = pts + PAIR_W * math.min(2, copies)
     end
-    -- necessidades do deck
     local n = math.max(1, dctx.n)
     local isBlock = cd.type == "defense" or hasEff(cd, "add_armor") ~= nil
     if isBlock and dctx.blockCards / n < 0.30 then pts = pts + 2.5 end
@@ -853,17 +709,10 @@ function AI.cardWorth(game, cd, dctx, inDeck)
     local isScaling = hasEff(cd, "gain_strength") or hasEff(cd, "apply_buff")
         or hasEff(cd, "strength_per_turn") or hasEff(cd, "channel_orb")
     if isScaling and dctx.act >= 2 and dctx.scaling < 3 then pts = pts + 2.0 end
-    -- exaurir: so 1x por batalha — vale menos em luta longa (atos altos)
     if cd.exhaust or hasEff(cd, "exhaust") then pts = pts * (dctx.act >= 3 and 0.75 or 0.85) end
     return pts - LAMBDA * (cd.cost or 0) + ((cd.cost or 0) == 0 and -1.0 or 0)
 end
 
--- Entra no deck? (recompensa/loja). Margem: deck pequeno aceita carta "media";
--- deck grande so aceita quem MELHORA a media.
--- `marginMul` (pipeline Out/2026): o piloto expert_fast usa a MESMA conta
--- com margem maior — medido, a margem 1x deixa o deck em 16-19 cartas onde a
--- simulacao (expert) para em 10-13, e e o tamanho do deck que separa as
--- taxas de vitoria dos dois.
 function AI.wantsCard(game, cd, dctx, marginMul)
     dctx = dctx or AI.deckContext(game)
     if not cd then return false, -99 end
@@ -879,7 +728,6 @@ function AI.wantsCard(game, cd, dctx, marginMul)
     return w >= dctx.avg + margin, w
 end
 
--- Pior carta do deck (alvo da tesoura). Nunca a ultima defesa.
 function AI.worstCard(game, dctx)
     local CardDatabase = require("src.systems.CardDatabase")
     dctx = dctx or AI.deckContext(game)
@@ -900,23 +748,17 @@ function AI.worstCard(game, dctx)
     return worst, worstW
 end
 
--- Carta de MOTOR: compra/mana que, jogada sozinha primeiro, revela a mao nova
--- antes de decidir o resto.
 local function isMotor(c)
     return hasEff(c, "draw_cards") ~= nil
         or (hasEff(c, "restore_mana") ~= nil and c.type == "effect")
 end
 
--- Decide a PROXIMA leva do turno. Retorna (picks, motivo) ou ({}, "") pra
--- encerrar o turno.
 function AI.planLeva(game, bctx, opts)
     opts = opts or {}
     local best, sc, S = AI.bestSet(game, bctx, { excludeMotor = opts.noMotorSplit })
     if #best == 0 then return {}, "" end
     if S and S.lethal then return best, "LETHAL" end
     if opts.noMotorSplit then return best, "plano" end
-    -- motor primeiro: se o melhor plano compra/gera mana, joga SO o motor e
-    -- replaneja com a mao nova (o resto do plano pode mudar).
     local motor = {}
     for _, c in ipairs(best) do if isMotor(c) then motor[#motor + 1] = c end end
     if #motor > 0 and #motor < #best then

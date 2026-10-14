@@ -1,15 +1,8 @@
--- tools/probe_shop_shadow.lua
--- Sonda da SOMBRA PROJETADA da loja (v5 r4): pra cada objeto da mesa,
--- renderiza a sombra sozinha num canvas na resolução da arte e compara com
--- a referência em Lua da mesma projeção (ShopPerspective.castShadowRef):
--- pixels pintados, IoU, caixa, altura/largura relativas ao objeto.
---   CARDGAME_HEADLESS=1 lovec . test_one probe_shop_shadow
 local M = {}
 
 local ShopPerspective = require("src.ui.shop.ShopPerspective")
 local ShopLayout = require("src.ui.shop.ShopLayout")
 
--- alfa de um PNG (ou de um recorte dele), lido uma vez
 function M.alphaReader(path, rect)
     local data = love.image.newImageData(path)
     local ox, oy = rect and rect.x or 0, rect and rect.y or 0
@@ -22,8 +15,6 @@ function M.alphaReader(path, rect)
     end
 end
 
--- Desenha SÓ a sombra projetada de `o` num canvas 640x360 (arte) e devolve
--- o conjunto de pixels pintados ({[y*4096+x]=true}), a contagem e a caixa.
 function M.render(o, what)
     local A = ShopLayout.ART
     local c = love.graphics.newCanvas(A.w, A.h)
@@ -62,7 +53,6 @@ function M.render(o, what)
     return set, n, (n > 0) and { x0 = x0, y0 = y0, x1 = x1, y1 = y1 } or nil
 end
 
--- Conjunto da referência em Lua + contagem + caixa
 function M.reference(o, alphaAt)
     local ref = ShopPerspective.castShadowRef(o, alphaAt)
     local set, n = {}, 0
@@ -87,7 +77,6 @@ function M.iou(a, b)
     return inter / union
 end
 
--- Abre a loja numa janela falsa 1280x720 e devolve screen, scene, restore()
 function M.openShop()
     local TK = require("tools.testkit")
     TK.bootstrap()
@@ -113,8 +102,6 @@ end
 M.RELICS = { "remove_card", "joker_slot", "health_upgrade", "mana_upgrade", "duplicate_card",
              "forge_card", "card_draw_upgrade", "interest_cap", "damage_upgrade", "defense_upgrade" }
 
--- Lista de objetos a sondar: {name, o, alphaAt} (relíquias com cada arte,
--- o pacote, o sino e o copo)
 function M.objects(scene)
     local L = scene.L
     local out = {}
@@ -164,7 +151,6 @@ function M.run()
             box and ("%d..%d x %d..%d"):format(box.x0, box.x1, box.y0, box.y1) or "-",
             rbox and ("%d..%d x %d..%d"):format(rbox.x0, rbox.x1, rbox.y0, rbox.y1) or "-"))
     end
-    -- pacote levantado (hover: flutua)
     for _, ob in ipairs(objs) do
         if ob.name == "health_upgrade" then
             local o = {}

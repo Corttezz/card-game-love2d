@@ -1,21 +1,3 @@
--- tools/screenshot_tutorial.lua
--- Captura o NARRADOR do tutorial (src/systems/Tutorial) sobre as telas da
--- jornada — uma PNG por fala da conversa, num tamanho de janela FALSIFICADO.
---
---   love . test_one screenshot_tutorial <cena>:<locale>:<WxH>
---   cenas: rewards · shop · dice · rest · forge · endless · seals · class · mage
---   ex.:   love . test_one screenshot_tutorial shop:de:1920x1080
---
--- Saída (save dir): tut_<cena>_<fala>_<locale>_<W>x<H>.png
--- A batalha (intro, chefe, elite...) captura pelo screenshot_enemy_scene
--- (TUT_TIP=<conversa>:<fala>) e o evento pelo screenshot_event (TUT_TIP).
---
--- `mage`: a 1ª batalha do MAGO pelo GameplayScene real, uma PNG por fala das
--- conversas de orbe (Tutorial.MAGE_CONVERSATIONS), cada uma com o estado que a
--- dispara (orbe do Conduíte, Descarga na mão, 2 orbes canalizados, carta de
--- Evocar, fileira cheia, Foco). Saída em tools/preview_out/tutorial_mago/
--- (gravada por io.open: fora do save dir, pra ficar junto das outras provas).
-
 local M = {}
 
 function M.run(arg)
@@ -83,8 +65,6 @@ function M.run(arg)
         Tutorial.setScreens({ endless = screen })
         assert(RM.pending(run), "sem maldição pendente")
     elseif scene == "class" then
-        -- 1ª visita de verdade: perfil novo, sem o override de ferramenta
-        -- (mago e ladino acorrentados)
         local US = require("src.systems.UnlockSystem")
         require("engine.ProfileStats")._swapForTests({ runs = 0, wins = 0 })
         US.setOverrideAll(false)
@@ -95,7 +75,7 @@ function M.run(arg)
         drawScreen = function() screen:draw() end
     elseif scene == "seals" then
         local CSS = require("components.ClassSelectionScreen")
-        CSS._sealCap = function() return 3 end   -- selos já liberados
+        CSS._sealCap = function() return 3 end
         screen = CSS:new()
         screen:show(function() end, function() end)
         convId = "seals"
@@ -107,7 +87,6 @@ function M.run(arg)
         return false
     end
 
-    -- assenta as entradas (slide/fade) como no jogo
     for _ = 1, 90 do
         EM.update(1 / 60)
         if screen.update then screen:update(1 / 60) end
@@ -121,7 +100,7 @@ function M.run(arg)
         love.graphics.setCanvas(cv)
         love.graphics.origin()
         love.graphics.clear(0.18, 0.13, 0.09, 1)
-        drawScreen()              -- 1ª passada: as âncoras são reportadas
+        drawScreen()
         Tutorial._show(convId, line.id, game)
         if os.getenv("TUT_DEBUG") then
             local r = Tutorial.spotRect(line.spot)
@@ -143,9 +122,6 @@ function M.run(arg)
     return true
 end
 
--- ===========================================================================
--- MAGO: a batalha real (GameplayScene.draw) com o corvo por cima, fala a fala.
--- ===========================================================================
 function M.mageScene(loc, w, h)
     local Game = require("src.core.Game")
     local GameplayScene = require("src.scenes.GameplayScene")
@@ -190,7 +166,6 @@ function M.mageScene(loc, w, h)
         for _, id in ipairs(ids) do game.hand[#game.hand + 1] = instance(id) end
         game.selectedCards = {}
     end
-    -- Assenta a cena (cartas voam até o lugar) sem HandDeal nem cinemática.
     local function settle(frames)
         for _ = 1, frames or 45 do
             EM.update(1 / 30)
@@ -209,7 +184,7 @@ function M.mageScene(loc, w, h)
         love.graphics.setCanvas(cv)
         love.graphics.origin()
         love.graphics.clear(0, 0, 0, 1)
-        GameplayScene.draw()              -- âncoras reportadas aqui
+        GameplayScene.draw()
         Tutorial._show(conv, lineId, game)
         love.graphics.clear(0, 0, 0, 1)
         GameplayScene.draw()
@@ -228,14 +203,11 @@ function M.mageScene(loc, w, h)
         Tutorial._reset()
     end
 
-    -- 1. Conduíte: 1ª luta, orbe de Raio já na fileira, Descarga + Defender na mão
     setHand({ "mage_zap", "defense_001" })
     game.player.orbs = { { type = "lightning", value = 4 } }
     settle()
     shot("conduit", "passive"); shot("conduit", "row"); shot("conduit", "number")
-    -- 2. Canalizar: a carta na mão (antes) ...
     shot("channel", "card")
-    -- ... e o orbe criado (depois): 2 orbes
     game.player.orbs = { { type = "lightning", value = 4 }, { type = "lightning", value = 5 } }
     setHand({ "defense_001" })
     settle(20)
@@ -243,21 +215,17 @@ function M.mageScene(loc, w, h)
         Tutorial.noteEvent("orb_channel", { slot = 2, type = "lightning" })
         shot("channel", line)
     end
-    -- 3. Pulso: turno 2, mão nova
     game.battleTurn = 1
     setHand({ "mage_zap", "defense_001" })
     settle(20)
     shot("pulse", "happened"); shot("pulse", "kinds"); shot("pulse", "reveal")
-    -- 4. Evocar: Conjuração Dupla (e Fissão pra "todos")
     setHand({ "mage_dualcast", "defense_001", "mage_fission" })
     settle(20)
     shot("evoke_card", "card"); shot("evoke_card", "preview"); shot("evoke_card", "all")
-    -- 5. Fileira cheia
     game.player.orbs = { { type = "ice", value = 3 }, { type = "lightning", value = 5 }, { type = "lightning", value = 5 } }
     setHand({ "mage_zap", "defense_001" })
     settle(20)
     shot("overflow", "full"); shot("overflow", "plan")
-    -- 6. Foco (ato 3: o Conduíte também dá Foco)
     run.actNumber = 3
     game.player:addBuff("focus", 99, 1)
     settle(20)

@@ -1,9 +1,3 @@
--- tools/preview_cards.lua
--- Renderiza algumas cartas e salva PNGs pra inspeção. Usar: love . preview_cards
---
--- Inclui pelo menos uma carta de cada raridade (common/uncommon/rare/legendary)
--- pra validar o styling ornamentado do CardHeader.
-
 local M = {}
 
 function M.run()
@@ -18,10 +12,7 @@ function M.run()
 
     local CardFrame = require("src.ui.CardFrame")
 
-    -- Cada entry: {id, rarityOverride?} — rarityOverride permite testar a mesma
-    -- carta em raridades diferentes (já que não existem attack/defense legendary).
     local jobs = {
-        -- NOVAS (gameplay-overhaul Jul/2026)
         { "warrior_bastion",         nil },
         { "warrior_war_cry",         nil },
         { "warrior_twin_strike",     nil },
@@ -40,7 +31,6 @@ function M.run()
         { "rogue_executioner",       nil },
         { "attack_cleave",           nil },
         { "defense_bulwark",         nil },
-        -- COMMON real
         { "warrior_strike",        nil },
         { "warrior_defend",        nil },
         { "warrior_iron_wave",     nil },
@@ -53,21 +43,15 @@ function M.run()
         { "warrior_brutality",     nil },
         { "rogue_bouncing_flask",  nil },
         { "mage_zap",              nil },
-        -- UNCOMMON real
         { "warrior_flame_barrier", nil },
         { "warrior_inflame",       nil },
-        -- RARE real
         { "warrior_berserk",       nil },
         { "rogue_backstab",        nil },
         { "mage_blizzard",         nil },
-        -- LEGENDARY jokers (real)
         { "joker_001",             nil },
         { "joker_004",             nil },
-        -- WRAP test
         { "rogue_doppelganger",    nil },
-        -- EFFECT
         { "effect_healing_potion", nil },
-        -- OVERRIDES — mesma carta em raridades fake pra testar header standard
         { "warrior_strike",        "uncommon" },
         { "warrior_strike",        "rare" },
         { "warrior_strike",        "legendary" },
@@ -78,17 +62,14 @@ function M.run()
         local id, override = job[1], job[2]
         local cd = db:getCard(id)
         if cd then
-            -- Clona dados pra aplicar override sem mutar cache global
             local cloned = {}
             for k, v in pairs(cd) do cloned[k] = v end
             if override then
                 cloned.rarity = override
-                cloned.id = id .. "_AS_" .. override   -- evita cache hit
+                cloned.id = id .. "_AS_" .. override
             end
             local ok, inst = pcall(function() return db:createCardInstance(cloned) end)
             if ok and inst then
-                -- Bypass cache do CardFrame quando há override (ID modificado já evita,
-                -- mas garantimos chamando invalidate antes).
                 if override then CardFrame.invalidate(cloned) end
                 inst.image = CardFrame.render(cloned)
                 local okData, data = pcall(function() return inst.image:newImageData() end)

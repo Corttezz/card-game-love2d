@@ -1,24 +1,3 @@
--- tools/test_shop_scene.lua
--- Trava de COMPORTAMENTO do Balcão do Mercador em perspectiva (Loja v3b,
--- src/ui/shop/ShopScene + ShelfItem + CardRewardScreen modo shop).
---
---   1. entrada: os objetos deslizam pra mesa e a tela espelha as cartas; o
---      pergaminho nasce com a primeira oferta SELECIONADA e o COMPRAR armado;
---   2. hover (v5): NADA levanta (carta nem objeto): o ponto de apoio fica
---      parado; a carta gira em torno da base (tilt com a base presa); som de
---      hover UMA vez na borda, nunca durante o deslize da tela;
---   3. clique SELECIONA (não compra): pergaminho + brilho + COMPRAR · $N;
---   4. sem ouro: COMPRAR apagado e a compra pelo botão não passa, a placa
---      treme (deny), sem toast;
---   5. compra pelo COMPRAR: objeto some (VENDIDO), voa pro destino certo
---      (carta → deck na TopBar; relíquia → painel do jogador; pacote → abre a
---      tela do pacote, sem voo); o pergaminho passa pra próxima oferta;
---   6. sino: objetos saem deslizando e os novos entram; VENDIDO não sobrevive;
---   7. reducedMotion: nada se move, mas preço, VENDIDO e foco continuam;
---   8. teclado: alvos do NavCursor pra cada objeto, COMPRAR, CONTINUAR, sino.
---
---   love . test_one test_shop_scene
-
 local TK = require("tools.testkit")
 local M = {}
 
@@ -95,7 +74,6 @@ function M.run()
     _G.gameSettings.reducedMotion = false
 
     local okRun, err = pcall(function()
-        -- ================= 1. entrada =================
         TK.seedRng(4242)
         local screen, game, toasts = openShop(t, 60)
         local scene = screen.scene
@@ -115,7 +93,6 @@ function M.run()
         t:truthy("COMPRAR armado com o preco", screen.buyButton and screen.buyButton.text:find("%$") ~= nil)
         t:falsy("COMPRAR ligado com ouro", screen.buyButton.disabled)
 
-        -- ================= 2. hover =================
         local card2 = itemOf(screen, function(it) return it.kind == "card" and it.index == 2 end)
         t:truthy("ha uma segunda carta", card2 ~= nil)
         local rec = {}
@@ -132,8 +109,6 @@ function M.run()
         t:eq("tela espelha hoveredOffer", screen.hoveredOffer, card2.offer)
         t:near("v5: carta em hover NAO sai do cavalete (sem levitar)", card2:liftPx(), 0, 1e-9)
         do
-            -- Loja "reta": hover sem torção (ângulo da base igual ao repouso) e
-            -- sem salto: passo por quadro limitado, ida e volta pelo mesmo caminho
             local ShelfItem = require("src.ui.shop.ShelfItem")
             local ShopPerspective = require("src.ui.shop.ShopPerspective")
             local probe = ShelfItem.new("card", card2.offer, 99)
@@ -157,10 +132,8 @@ function M.run()
                 maxStep = math.max(maxStep, math.abs(outs[f] - prev)); prev = outs[f]
                 maxTwist = math.max(maxTwist, math.abs(baseDeg() - rest))
             end
-            -- v5: o hover não move a carta (nenhum quadro, nenhum px)
             t:truthy(("hover: apoio parado em todos os quadros (maior passo %.3f px)"):format(maxStep), maxStep <= 1e-9)
             t:truthy(("hover sem torcao (%.3f graus)"):format(maxTwist), maxTwist <= 0.01)
-            -- a curva do destaque continua simétrica (entra e sai pelo mesmo caminho)
             local hv = {}
             local p2 = ShelfItem.new("card", card2.offer, 97)
             p2:setGeometry(card2.geom)
@@ -172,8 +145,6 @@ function M.run()
             end
             t:truthy("hover: destaque entra suave (1o quadro < 5%)", hv[1] < 0.05)
             t:truthy(("hover: destaque sai pelo mesmo caminho (%.4f)"):format(sym), sym <= 1e-6)
-            -- PLAQUINHA DE PREÇO: um latão só; comum sem gema; valor legível
-            -- (contraste >= 4,5) com e sem ouro
             t:falsy("comum sem gema", ShelfItem.showsGem("common"))
             for _, rar in ipairs({ "uncommon", "rare", "legendary" }) do
                 t:truthy(rar .. " com gema de raridade", ShelfItem.showsGem(rar))
@@ -182,14 +153,10 @@ function M.run()
                 local cr = ShelfItem.contrast(ShelfItem.priceInk(af, false), ShelfItem.plaqueFace(af))
                 t:truthy(("preco %s: contraste %.2f >= 4,5 no latao"):format(af and "normal" or "sem ouro", cr), cr >= 4.5)
             end
-            -- a plaquinha final cabe no que o layout reservou e mostra o preço exato
             local Q = ShelfItem.plaqueArt(card2.geom.plaque, card2:priceText(), card2.offer.rarity, scene.L.cover)
             t:eq("plaquinha mostra o preco exato da oferta", Q.text, "$" .. tostring(card2.offer.cost))
             t:truthy("plaquinha final dentro da reservada",
                 Q.x0 >= card2.geom.plaque.x0 and Q.x0 + Q.w <= card2.geom.plaque.x0 + card2.geom.plaque.w)
-            -- Loja v4: TILT 3D do hover por cima da pose (a conta da mão,
-            -- Card.hoverTilt). Mouse levado pro espaço da carta pela homografia
-            -- de repouso: canto sup. direito -> (+1, -1); centro -> 0; sai -> 0.
             local Card = require("src.cards.base.Card")
             local ht = Card.hoverTilt(1, 0)
             t:truthy("Card.hoverTilt: canto sup. direito = (+1, -1) no shader", ht.uvX == 1 and ht.uvY == -1)
@@ -212,14 +179,11 @@ function M.run()
             hoverAt(0.08, 0.92, 1.0)
             t:truthy(("tilt: canto inf. esquerdo (%.2f, %.2f)"):format(tp.tilt.x, tp.tilt.y),
                 tp.tilt.x < -0.8 and tp.tilt.y > 0.8)
-            -- amortecido: um quadro depois de trocar de canto ainda não chegou
             hoverAt(0.92, 0.92, 1 / 60)
             t:truthy(("tilt amortecido (1 quadro: %.2f)"):format(tp.tilt.x), tp.tilt.x < 0)
             hoverAt(0.5, 0.5, 1.0)
             t:truthy(("tilt: centro = carta reta (%.3f, %.3f)"):format(tp.tilt.x, tp.tilt.y),
                 math.abs(tp.tilt.x) < 0.05 and math.abs(tp.tilt.y) < 0.05)
-            -- v5: BASE PRESA. O press do shader (espelho ShelfItem.warpUV) não
-            -- mexe nenhum ponto da base em modo quad; o topo, sim.
             local worstBase, topMove = 0, 0
             for _, m in ipairs({ { 1, -1 }, { -1, 1 }, { 1, 1 }, { -1, -1 }, { 0, 1 } }) do
                 for _, u in ipairs({ 0, 0.25, 0.5, 0.75, 1 }) do
@@ -245,7 +209,6 @@ function M.run()
         local relic = itemOf(screen, function(it) return it.kind == "relic" and not it:floats() end)
         t:truthy("ha uma reliquia na mesa", relic ~= nil)
         rec = {}
-        -- v3c: hover = o MESMO sprite (fonte, espelho, cisalhamento), só levantado
         local L = scene.L
         local restPose = relic:pose()
         local restParams = relic:uprightParams(L, false, 0)
@@ -264,12 +227,10 @@ function M.run()
         t:near("hover: mesma escala", hovParams.s, restParams.s, 1e-9)
         t:near("v5: hover do objeto sem levantar (apoio na mesa)", relic:liftPx(), 0, 1e-9)
 
-        -- quadro da animação no hover tem o MESMO tamanho do PNG estático
         t:eq("hover: quadro animado do mesmo tamanho", hovParams.img:getWidth(), restParams.img:getWidth())
         local joker = itemOf(screen, function(it) return it.offer and it.offer.id == "joker_slot" end)
         if joker then t:truthy("bancada de coringa espelhada (segue a bancada)", joker:pose().flip) end
 
-        -- nada flutua: todo pé de coluna encostado (e a sombra) DENTRO do tampo pintado
         local ShopPerspective = require("src.ui.shop.ShopPerspective")
         local ShopLayout = require("src.ui.shop.ShopLayout")
         for _, it in ipairs(scene.items) do
@@ -284,7 +245,6 @@ function M.run()
                 t:eq(("objeto %s: contato dentro do tampo"):format(it.offer.id), out, 0)
             end
         end
-        -- sombra de contato, nunca elipse
         local realEllipse = love.graphics.ellipse
         local ellipses = 0
         love.graphics.ellipse = function(...) ellipses = ellipses + 1 return realEllipse(...) end
@@ -298,7 +258,6 @@ function M.run()
         for _, c in ipairs(rec) do names[#names + 1] = tostring(c.name); if c.tb and os.getenv("SHOP_TB") then print(c.name, c.tb) end end
         t:eq("hover-enter da reliquia toca UMA vez [" .. table.concat(names, ",") .. "]", hovers, 1)
         t:falsy("call site nao crava volume", rec[1] and rec[1].opts and rec[1].opts.volume ~= nil)
-        -- v5 r2: o pacote FLUTUA no hover (dono); a etiqueta balança
         local packIt = itemOf(screen, function(it) return it.kind == "pack" end)
         if packIt then
             mouseX, mouseY = packIt:center()
@@ -309,12 +268,10 @@ function M.run()
             pump(screen, 1.2)
             t:near("pacote volta a mesa", packIt:liftPx(), 0, 1e-6)
         end
-        -- som de hover por objeto: poção/cristal/pacote têm código próprio
         local probeP = require("src.ui.shop.ShelfItem").new("relic", { id = "health_upgrade", cost = 1 }, 90)
         t:eq("hover da pocao toca o som dela", probeP:hoverSfx()[1], "shopPotionBubble")
         t:truthy("pocao flutua", probeP:floats())
         t:eq("compra da pocao toca o som dela", probeP:buySfx()[1], "shopPotionDrink")
-        -- pergaminho enrola/desenrola ao trocar a oferta mostrada
         local before = screen.selectedOffer
         local other = itemOf(screen, function(it) return it.kind == "card" and it.offer ~= before end)
         screen:setSelectedOffer(other.offer)
@@ -340,7 +297,6 @@ function M.run()
         pump(screen, 0.3)
         _G.audioSystem = realAudio
 
-        -- ================= 3. clique seleciona =================
         local goldBefore = game.economySystem.currentGold
         click(screen, card2)
         t:eq("clique SELECIONA (nao compra): ouro intacto", game.economySystem.currentGold, goldBefore)
@@ -354,20 +310,16 @@ function M.run()
         pump(screen, 0.3)
         t:eq("selecao fica depois do mouse sair", screen.selectedOffer, card2.offer)
 
-        -- ================= 4. sem ouro =================
         game.economySystem.currentGold = 0
         local before = toasts()
         pump(screen, 0.1)
         screen:_refreshBuyButton()
         t:truthy("sem ouro: COMPRAR apagado", screen.buyButton.disabled)
-        -- v5: a plaquinha sem ouro troca de TOM (latão oxidado), não só a cor
-        -- do texto; e a fita do COMPRAR lê o ouro no próprio desenho
         t:truthy("sem ouro: latao da plaquinha muda de tom",
             ShelfItemM.plaqueFace(false)[1] < ShelfItemM.plaqueFace(true)[1] - 0.1)
         screen.buyButton:setEnabled(true)
         screen:draw()
         t:truthy("sem ouro: a fita COMPRAR se apaga no proprio quadro", screen.buyButton.disabled)
-        -- papel: legenda (tipo/raridade) com contraste >= 4,5 no pergaminho
         local CDP = require("src.ui.CardDetailPanel")
         for _, rar in ipairs({ "common", "uncommon", "rare", "legendary" }) do
             local c = CDP.onPaper(require("src.ui.Palette").darken(require("src.ui.Palette").forRarity(rar), 0.55))
@@ -380,7 +332,6 @@ function M.run()
         t:eq("sem ouro: nenhum toast", toasts() - before, 0)
         pump(screen, 0.6)
 
-        -- ================= 5. compra pelo COMPRAR =================
         game.economySystem.currentGold = 60
         local added = 0
         local realAddCard = game.addCardToRun
@@ -442,7 +393,6 @@ function M.run()
         _G.openBoosterPack = realOpen
         pump(screen, 0.3)
 
-        -- ================= 6. sino =================
         local rerollCost = game.shopSystem:getRefreshCost()
         game.economySystem.currentGold = 100
         screen.refreshButton.onClick()
@@ -471,7 +421,6 @@ function M.run()
         t:eq("sino sem ouro: nenhum toast", toasts() - tb, 0)
         t:falsy("sino sem ouro: nada desliza", scene.outgoing ~= nil)
 
-        -- ================= 8. teclado: alvos =================
         game.economySystem.currentGold = 100
         pump(screen, 0.1)
         local NavCursor = require("src.ui.NavCursor")
@@ -492,7 +441,6 @@ function M.run()
         t:truthy("teclado: '?' das regras e alvo", has(function(tg) return tg.key == "rules" end))
         screen:hide()
 
-        -- ================= 7. reducedMotion =================
         _G.gameSettings.reducedMotion = true
         TK.seedRng(4243)
         local screen2, game2 = openShop(t, 60)
@@ -520,12 +468,6 @@ function M.run()
         t:eq("reducedMotion: objetos parados", sc2.items[1].slide.x, 0)
         screen2:hide()
 
-        -- ================= 9. pergaminho (v5): textos longos nos 5 idiomas =================
-        -- Para cada idioma e tamanho, as ofertas da vitrine + as 12 cartas de
-        -- DESCRIÇÃO mais longa do jogo naquele idioma: o conteúdo inteiro
-        -- cabe no miolo do pergaminho (acima do COMPRAR), sem cortar texto e
-        -- sem descer a descrição abaixo de 8 px. O preço não se repete na
-        -- legenda (está no COMPRAR). O CRT recebe a zona de leitura.
         _G.gameSettings.reducedMotion = false
         local CardDetailPanel = require("src.ui.CardDetailPanel")
         local ShopScene = require("src.ui.shop.ShopScene")
@@ -570,7 +512,6 @@ function M.run()
                             tostring(pl.offer.id), tostring(r and r.contentBottom), L3.scroll.buy.y)
                     end
                 end
-                -- a legenda não repete o preço (a fita COMPRAR mostra)
                 sc3:draw()
                 local fit = sc3._detailFit
                 t:truthy(("%s %dx%d: pergaminho da loja mede e cabe"):format(code, sz[1], sz[2]), fit ~= nil and fit.fits)

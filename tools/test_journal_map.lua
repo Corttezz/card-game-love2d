@@ -1,30 +1,8 @@
--- tools/test_journal_map.lua
--- TRAVA do Roteiro como MAPA À MÃO (components/RunJournalScreen.lua +
--- src/ui/RunJournalLayout.lua + src/ui/RunJournalInk.lua), Out/2026.
---
--- O que fixa (pedido do dono: "literalmente um mapa... à mão, só tinta preta
--- e no máximo um círculo vermelho, folha envelhecida, abre e fecha por ato"):
---   • a encruzilhada grava os ramos NÃO tomados e o mapa os DESENHA
---     (pixels de tinta no retângulo de cada ramo);
---   • o caminho percorrido é CONTÍNUO: cada parada liga à anterior (estrutura
---     do layout + amostragem de pixels ao longo de cada trecho);
---   • exatamente UM círculo vermelho, em volta da parada atual;
---   • nenhuma cor fora da família papel/tinta/vermelho na captura inteira;
---   • atos anteriores nascem FECHADOS e o atual ABERTO; clique e teclado
---     abrem/fecham; o layout valida em todo estado;
---   • entrada sem `branches` (save antigo) desenha só o caminho.
---
--- Render em canvas com janela FALSIFICADA (sem setMode), como o
--- tools/screenshot_journal.lua; a escala de UI fica em 1 (testkit).
---
---   love . test_one test_journal_map
-
 local TK = require("tools.testkit")
 local FontManager = require("src.ui.FontManager")
 
 local M = {}
 
--- ===== janela e mouse falsos =====
 local realW, realH, realD = love.graphics.getWidth, love.graphics.getHeight, love.graphics.getDimensions
 local fakeW, fakeH = 1024, 768
 local function installFakeWindow()
@@ -59,9 +37,6 @@ local function render(screen)
     return id
 end
 
--- ===== classificação de cor =====
--- papel/tinta: família sépia (r >= g >= b, com as razões do PARCHMENT ao INK);
--- vermelho: r dominante (BLOOD); preto: a mesa. Fora disso é cor estranha.
 local function classify(r, g, b)
     local mx_ = math.max(r, g, b)
     if mx_ < 0.13 then return "ink" end
@@ -73,7 +48,7 @@ local function classify(r, g, b)
     return "foreign"
 end
 
-local function isInk(r, g, b)   -- tinta (cheia ou esmaecida) sobre papel
+local function isInk(r, g, b)
     return math.max(r, g, b) < 0.5
 end
 
@@ -95,7 +70,6 @@ function M.run()
         local rm = game.runManager
         local screen = Screen:new()
 
-        -- ===== dado: os ramos foram gravados =====
         local j = rm:getJournal()
         local withBranches = 0
         for _, e in ipairs(j) do if e.branches and #e.branches > 1 then withBranches = withBranches + 1 end end
@@ -109,7 +83,6 @@ function M.run()
             screen:show(game)
             local tag = ("%dx%d"):format(fakeW, fakeH)
 
-            -- ===== acordeão: anteriores fechados, atual aberto =====
             t:eq(tag .. " duas folhas (dois atos)", #screen.acts, 2)
             t:falsy(tag .. " ato anterior nasce fechado", screen:isActOpen(1))
             t:truthy(tag .. " ato atual nasce aberto", screen:isActOpen(2))
@@ -125,7 +98,6 @@ function M.run()
             t:truthy(tag .. " encruzilhada em aberto desenhada à frente", S and S.pending and #S.pending == 3)
             t:eq(tag .. " castelo ainda não alcançado", S and S.castle and S.castle.reached, false)
 
-            -- ===== pixels =====
             local id = render(screen)
             local counts = { ink = 0, red = 0, sepia = 0, foreign = 0 }
             local redMinX, redMinY, redMaxX, redMaxY = 1e9, 1e9, -1, -1
@@ -149,7 +121,6 @@ function M.run()
             if foreignSample then print("      -> primeira cor estranha em " .. foreignSample) end
             t:truthy(tag .. " há papel na captura", counts.sepia > fakeW * fakeH * 0.2)
 
-            -- ===== exatamente um círculo vermelho, na parada atual =====
             t:truthy(tag .. " há tinta vermelha", counts.red >= 20)
             local cur, curIdx
             for k, e in ipairs(S.src.nodes) do
@@ -165,7 +136,6 @@ function M.run()
                     redMaxX - redMinX >= L.glyph and redMaxY - redMinY >= L.glyph)
             end
 
-            -- ===== caminho contínuo: tinta ao longo de cada trecho =====
             t:eq(tag .. " um trecho por par de paradas", #S.segments, #S.nodes - 1)
             local total, hit = 0, 0
             for _, seg in ipairs(S.segments) do
@@ -191,7 +161,6 @@ function M.run()
             t:truthy(tag .. " caminho percorrido contínuo (tinta em todo o trecho)",
                 total > 0 and hit / total >= 0.95)
 
-            -- ===== ramos não tomados desenhados =====
             local drawn = 0
             for _, st in ipairs(S.stubs) do
                 local gr = Layout.glyphRect(L, st)
@@ -208,7 +177,6 @@ function M.run()
             end
             t:eq(tag .. " todo ramo não tomado tem tinta", drawn, #S.stubs)
 
-            -- ===== detalhe (hover) de cada parada e ramo cabe nas zonas =====
             for k, p in ipairs(S.nodes) do
                 local tip = screen:_tipFor(L, 2, { node = k })
                 t:truthy(tag .. " parada " .. k .. " tem detalhe", tip ~= nil)
@@ -220,9 +188,6 @@ function M.run()
             local tipS = screen:_tipFor(L, 2, { stub = 1 })
             t:truthy(tag .. " ramo não tomado tem detalhe", tipS ~= nil)
 
-            -- ===== abrir/fechar: clique e teclado =====
-            -- (abre no ato atual; em janela baixa o título do ato 1 está
-            -- rolado pra fora da zona, então primeiro HOME)
             screen._openedAt = 0
             screen:keypressed("home")
             L = screen:_layout()
@@ -235,7 +200,6 @@ function M.run()
             t:truthy(tag .. " ato conquistado chega ao castelo", S1.castle and S1.castle.reached)
             t:eq(tag .. " ato 1 tem as 8 paradas", #S1.nodes, 8)
             t:truthy(tag .. " ato 1 aberto rolou pra ficar visível", S1.y >= L.zone.y - 1)
-            -- nenhum círculo vermelho no ato conquistado
             local id2 = render(screen)
             local redInS1 = 0
             for y = math.max(0, S1.y), math.min(fakeH - 1, S1.y + S1.h) do
@@ -249,7 +213,6 @@ function M.run()
             screen:mousereleased(t1.x + 20, t1.y + t1.h / 2, 1)
             t:falsy(tag .. " segundo clique fecha o ato 1", screen:isActOpen(1))
 
-            -- teclado: Enter sobre o título (sem foco do NavCursor, vale o mouse)
             screen:keypressed("home")
             L = screen:_layout()
             t1 = L.sheets[1].title
@@ -266,12 +229,10 @@ function M.run()
             L = screen:_layout()
             t:eq(tag .. " layout válido depois do teclado", #Layout.validate(L), 0)
 
-            -- Esc fecha a tela
             screen:keypressed("escape")
             t:falsy(tag .. " Esc fecha o roteiro", screen:isVisible())
         end
 
-        -- ===== save antigo: entrada sem ramos desenha só o caminho =====
         do
             local g2 = TK.newRunGame("warrior")
             local r2 = g2.runManager

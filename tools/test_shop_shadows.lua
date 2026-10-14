@@ -1,28 +1,3 @@
--- tools/test_shop_shadows.lua
--- Trava da SOMBRA PROJETADA dos objetos do Balcão do Mercador (Loja v5 r4):
--- a sombra É a silhueta do sprite deitada no plano da mesa, não uma faixa.
---
---   1. shader == referência em Lua (ShopPerspective.castShadowRef) pixel a
---      pixel: IoU >= 0,97 pra cada objeto (10 relíquias, pacote, sino, copo);
---   2. toda a sombra DENTRO da máscara do tampo (tableMask) e da caixa
---      castShadowBox (o recorte da passada cobre a sombra);
---   3. sem "arco": nenhum pixel de sombra acima da reta da base da própria
---      coluna, nada à esquerda da pegada (a luz vem da esquerda);
---   4. achatada e deitada: altura da sombra entre 20% e 45% da altura do
---      objeto, comprimento pra direita >= 40% da altura; nunca retângulo
---      (preenchimento da caixa < 90%);
---   5. a sombra VARIA com o objeto: larguras e contagens distintas
---      (tesoura != sino != pacote);
---   6. objeto levantado (poção no hover): a sombra se desloca pela mesma
---      projeção (lean*lift, dy*lift), fica mais rala e sem linha de contato;
---   7. linha de contato: 1 px sólido logo abaixo do contorno de baixo, só
---      onde o objeto encosta;
---   8. performance: shader compilado uma vez, ~0 KB alocados por sombra
---      (uniforms reutilizados), e na cena real as sombras saem TODAS antes
---      do primeiro objeto da mesa (passada própria).
---
---   CARDGAME_HEADLESS=1 love . test_one test_shop_shadows
-
 local TK = require("tools.testkit")
 local M = {}
 
@@ -59,7 +34,6 @@ function M.run()
                 local x = key - y * 4096
                 if not ShopLayout.pointInPoly(x + 0.5, y + 0.5, L.art.tableMask) then outMask = outMask + 1 end
                 if x < cb.x or x >= cb.x + cb.w or y < cb.y or y >= cb.y + cb.h then outBox = outBox + 1 end
-                -- reta da base desta coluna (cisalhamento da pose): nada acima dela
                 local lx = x + 0.5 - fx
                 local baseY = math.floor(fy + (o.k or 0) * lx)
                 if y < baseY - 1 then aboveBase = aboveBase + 1 end
@@ -73,8 +47,6 @@ function M.run()
             local reach = box.x1 - (fx + W / 2)
             t:truthy(("%s: achatada: altura %d = %.0f%% do objeto (20..45)"):format(name, shH, 100 * shH / H),
                 shH / H >= 0.2 and shH / H <= 0.45)
-            -- (o alcance é o do ponto mais alto da silhueta, que raramente fica na
-            -- borda direita do sprite: por isso 25%, não lean*H)
             t:truthy(("%s: deitada pra direita: alcance %d >= 25%% da altura %d"):format(name, reach, H),
                 reach >= 0.25 * H)
             local fill = n / ((box.x1 - box.x0 + 1) * (box.y1 - box.y0 + 1))
@@ -83,7 +55,6 @@ function M.run()
             counts[#counts + 1] = n
         end
     end
-    -- 5. varia com o objeto
     local distinct = {}
     for _, w in ipairs(widths) do distinct[w] = true end
     local nd = 0
@@ -103,7 +74,6 @@ function M.run()
         t:check("tesoura, sino e pacote sondados", false)
     end
 
-    -- 6. levantado
     local pot = byName("health_upgrade")
     if pot then
         local o0 = pot.o
@@ -115,21 +85,18 @@ function M.run()
         local rset1, rn1 = P.reference(o1, pot.alphaAt)
         t:truthy(("pocao levantada: shader == referencia (IoU %.3f)"):format(P.iou(set1, rset1)), P.iou(set1, rset1) >= 0.97)
         t:truthy(("pocao levantada: sombra mais rala (%d < %d px)"):format(n1, n0), n1 < n0)
-        -- o canto de cima-esquerda da sombra (base do objeto) anda (lean, dy) x lift;
-        -- a ponta de baixo não serve de medida: a aresta da frente corta
         local dx, dy = b1.x0 - b0.x0, b1.y0 - b0.y0
         t:truthy(("pocao levantada: desloca pela projecao (dx %d ~ %.0f, dy %d ~ %.0f)"):format(dx, ax * 12, dy, ay * 12),
             math.abs(dx - ax * 12) <= 2 and math.abs(dy - ay * 12) <= 2)
         local _, nc1 = P.render(o1, "contact")
         t:eq("pocao levantada: sem linha de contato", nc1, 0)
-        local alpha1 = ShopPerspective.castParams(o1).alpha   -- (castParams devolve a MESMA tabela: copie antes)
+        local alpha1 = ShopPerspective.castParams(o1).alpha
         local alpha0 = ShopPerspective.castParams(o0).alpha
         t:truthy(("pocao levantada: tinta mais clara (%.2f < %.2f)"):format(alpha1, alpha0), alpha1 < alpha0)
     else
         t:check("pocao sondada", false)
     end
 
-    -- 7. linha de contato do sino: 1 px abaixo do contorno de baixo, dentro do tampo
     if bl then
         local o = bl.o
         local cset, cn = P.render(o, "contact")
@@ -152,7 +119,6 @@ function M.run()
         t:eq("sino: contato dentro do tampo", outMask, 0)
     end
 
-    -- 8. performance
     local sh1 = ShopPerspective.castShadowShader()
     local sh2 = ShopPerspective.castShadowShader()
     t:truthy("shader da sombra compilado", sh1 ~= nil)
@@ -173,7 +139,6 @@ function M.run()
         c:release()
         t:truthy(("alocacao por sombra <= 0.5 KB (obtido %.3f KB)"):format(per), per <= 0.5)
     end
-    -- na cena real: todas as sombras antes do primeiro objeto da mesa
     local order = {}
     local realCast, realUp = ShopPerspective.drawCastShadow, ShopPerspective.drawUpright
     ShopPerspective.drawCastShadow = function(...) order[#order + 1] = "shadow" return realCast(...) end

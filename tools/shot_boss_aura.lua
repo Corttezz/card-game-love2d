@@ -1,17 +1,3 @@
--- tools/shot_boss_aura.lua
--- Prancha dos CHEFES vivos: cada sala com o chefe dela, pelo caminho real de
--- desenho (GameplayScene.draw), em 4 instantes seguidos — prova que o idle
--- assado mexe, que a aura (src/data/boss_auras.lua) aparece e em que
--- profundidade. Sem janela própria: desenha num Canvas e salva.
---
---   love . test_one shot_boss_aura [ato|all][:hurt|:death]
---   (ex.: `1:death` — o test_one só repassa UM argumento)
---   SHOT_SIZE=1920x1080 muda o tamanho da janela (um setMode só).
---   `:death` captura 6 instantes da queda/morte + boss_full_<ato>_death_last.
---
--- Saída no save dir: boss_aura_<ato>.png (4 recortes lado a lado) e
--- boss_full_<ato>.png (tela inteira do 1º instante).
-
 local M = {}
 
 local function mountAndShoot(act, mode)
@@ -66,8 +52,6 @@ local function mountAndShoot(act, mode)
         return canvas:newImageData()
     end
 
-    -- assenta: aura cheia de partículas e idle no meio do ciclo. Um draw
-    -- ANTES: é o draw que diz ao EnemyRenderer quem é o chefe da aura.
     render()
     step(3.0)
     if mode == "hurt" then EnemyRenderer.triggerHurt() end
@@ -77,10 +61,6 @@ local function mountAndShoot(act, mode)
     end
     local shots = {}
     if mode == "death" then
-        -- queda do flutuante: início, meio da queda, impacto, quique,
-        -- assentado e o cadáver 2s depois (não pode voltar a pairar)
-        -- desenha a cada passo: a mão (que desce quando o cadáver cai atrás
-        -- dela) anima no draw, com o dt do quadro
         local marks = { 0.0, 0.18, 0.32, 0.45, 0.8, 2.6 }
         local now = 0
         for i, m in ipairs(marks) do
@@ -103,7 +83,6 @@ local function mountAndShoot(act, mode)
     shots[1]:encode("png", "boss_full_" .. tag .. ".png")
     shots[#shots]:encode("png", "boss_full_" .. tag .. "_last.png")
 
-    -- recorte em volta do chefe (centro horizontal, faixa do palco)
     local cw, ch = math.floor(w * 0.46), math.floor(h * 0.62)
     local x0 = math.floor((w - cw) / 2)
     local y0 = math.floor(h * 0.16)
@@ -124,7 +103,6 @@ function M.run(which, mode)
     require("src.ui.PixelCanvas").enableNearest()
     _G.EventManager = _G.EventManager or require("engine.EventManager")
     _G.Event = _G.Event or require("engine.Event")
-    -- SHOT_SIZE=1920x1080: UM setMode antes de tudo (repetido trava em tool)
     local sw, sh = (os.getenv("SHOT_SIZE") or ""):match("^(%d+)x(%d+)$")
     if sw then love.window.setMode(tonumber(sw), tonumber(sh)) end
     local acts = {}

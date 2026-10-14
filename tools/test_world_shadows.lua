@@ -1,33 +1,9 @@
--- tools/test_world_shadows.lua
--- TRAVA das sombras do mundo (ShadowEngine v9 — pegada, Out/2026).
---
--- Defeito do dono: "a fogueira é um círculo, e a sombra é o círculo inteiro
--- depois dela" — a silhueta inteira do sprite virada a partir do pé punha uma
--- cópia do objeto deitada à frente de tudo que é baixo e largo (fogueira,
--- baú, pedra, cadáver). O perfil de pegada (baseK/riseK/lenK) corrige no
--- MOTOR; este teste mede o resultado por classe, em canvas, sem janela:
---
---   ALTO-FINO   (árvore, pinheiro, placa, poste, estandarte, loja, tenda,
---               obelisco, totem): PIXEL A PIXEL igual ao v8.4 — o teste
---               carrega uma reimplementação do caminho antigo e compara.
---   BAIXO/LARGO (fogueiras dos 6 biomas, baú, pedras, toco, moita, flores,
---               tufo): nasce DENTRO da pegada, ≥ 70% dos pixels dentro
---               dela, só uma orla curta abaixo da linha de contato.
---   CRIATURA    em pé (bípede) = igual ao v8.4; larga e baixa (ratos) =
---               pegada; cadáver (death deitada) = orla; flutuante = sombra
---               solta igual ao v8.4.
---   DECALQUE    (fissura: riseK 0) não projeta nada.
---
--- Rode: love . test_one test_world_shadows
-
 local TK = require("tools.testkit")
 local ShadowEngine = require("engine.ShadowEngine")
 
 local M = {}
 
--- Frame de sombra fixo: sol no centro, meio do dia (len 0.775), luz cheia
 local SUNX, FW, TOD, LUMA = 512, 1024, 0.5, 1
--- constantes do v8.4 (setFrame): len = 0.55 + 0.45·tod; alpha = 0.15 + 0.15·luma
 local LEN, ALPHA = 0.55 + 0.45 * TOD, 0.15 + 0.15 * LUMA
 local SMEAR = { { -1, 0 }, { 0.7, -0.5 }, { 0.35, 0.55 } }
 local SCALE = 3
@@ -43,10 +19,6 @@ local function tipShift(px)
     return math.max(-1, math.min(1, (px - SUNX) / (FW * 0.5)))
 end
 
--- ---------------------------------------------------------------------------
--- REIMPLEMENTAÇÃO do v8.4 (a referência "antes"): 3 passadas de smear no
--- scratch ⅓ com lighten/premultiplied, composto UMA vez em preto.
--- ---------------------------------------------------------------------------
 local function legacyBatch(body, alphaK)
     local W, H = love.graphics.getDimensions()
     local scratch = love.graphics.newCanvas(math.ceil(W / SCALE), math.ceil(H / SCALE),
@@ -105,9 +77,6 @@ local function legacySilhouette(feetX, feetY, opts, drawFn)
     end, opts.alphaK)
 end
 
--- ---------------------------------------------------------------------------
--- Render em canvas (tamanho da janela — o scratch do motor é dela) + medida
--- ---------------------------------------------------------------------------
 local function render(fn)
     local W, H = love.graphics.getDimensions()
     local cv = love.graphics.newCanvas(W, H)
@@ -120,8 +89,6 @@ local function render(fn)
     return cv:newImageData()
 end
 
--- Varre uma janela em volta do objeto: n = pixels de sombra; inside = os
--- que caem na pegada [x0..x1]×[footTop..feetY]; minY/maxY da sombra.
 local function measure(id, fx, fy, halfW, footTop, spanX, spanY)
     local W, H = id:getDimensions()
     local x0, x1 = math.max(0, math.floor(fx - spanX)), math.min(W - 1, math.ceil(fx + spanX))
@@ -146,7 +113,6 @@ end
 
 local function pct(a, b) return (b > 0) and math.floor(100 * a / b + 0.5) or 0 end
 
--- ---------------------------------------------------------------------------
 function M.run()
     local t = TK.new("sombras do mundo (pegada: fogueira, baú, pedra, cadáver × árvore, estandarte, loja)")
     local W, H = love.graphics.getDimensions()
@@ -154,16 +120,15 @@ function M.run()
     local WR = require("src.ui.WorldRoad")
     local PROF = WR.SHADOW_PROFILE
 
-    -- ===== 1) ALTO-FINO e BARRACA/LOJA: pixel a pixel iguais ao v8.4 =====
     local TALL = {
         { "fields_tree_0", 2.5, 0 }, { "highlands_pine_0", 1.6, 0 },
         { "dusk_sign_0", 2.5, 0 }, { "fields_lantern_0", 3, 2 },
-        { "fields_lantern_0", 3, 2, -1 },           -- espelhado (braço do poste)
-        { "landmark_battle", 3, 0 },                -- ESTANDARTE (aprovado)
+        { "fields_lantern_0", 3, 2, -1 },
+        { "landmark_battle", 3, 0 },
         { "highlands_landmark_battle", 3, 0 },
-        { "landmark_shop", 3, 3 },                  -- LOJA (aprovada)
+        { "landmark_shop", 3, 3 },
         { "highlands_landmark_shop", 3, 4 }, { "abyss_landmark_shop", 3, 11 },
-        { "landmark_event", 3, 3 }, { "marsh_landmark_event", 3, 5 },   -- tenda
+        { "landmark_event", 3, 3 }, { "marsh_landmark_event", 3, 5 },
         { "landmark_elite", 3, 2 }, { "landmark_miniboss", 3, 0 },
         { "abyss_ruin_0", 1.2, 0 },
     }
@@ -181,14 +146,10 @@ function M.run()
         local n, _, minY, maxY = measure(new, FX, FY, iw * s, FY, iw * s * 2, ih * s * 1.5)
         t:truthy(key .. ": sombra existe e é LONGA (" .. (maxY - FY) .. "px, conteúdo "
             .. math.floor((ih - pad) * s) .. "px)", n > 0 and (maxY - FY) >= 0.5 * (ih - pad) * s)
-        -- (footPad > 0: as linhas da saliência — degrau, deck — viram pra
-        -- cima do pé, como sempre fizeram; ficam atrás do sprite)
         t:truthy(key .. ": nasce na linha de contato (topo " .. (minY - FY) .. "px)",
             minY >= FY - pad * s - 4 and minY <= FY + 2)
     end
 
-    -- ===== 2) BAIXO/LARGO: dentro da pegada, orla curta =====
-    -- { chave do PNG, escala, footPad, chave do perfil }
     local LOW = {
         { "landmark_rest", 3, 1, "landmark_rest" },
         { "highlands_landmark_rest", 3, 1, "highlands_landmark_rest" },
@@ -217,7 +178,6 @@ function M.run()
             local halfW = iw * s * 0.59 + d
             local n, inside, minY, maxY = measure(new, FX, FY, halfW, FY - baseH,
                 iw * s * 2, ih * s * 1.5)
-            -- a mesma peça no v8.4 (documenta o defeito: quase tudo FORA)
             local old = render(function() legacySprite(img, FX, FY, s, pad) end)
             local n0, in0, _, maxY0 = measure(old, FX, FY, halfW, FY - baseH,
                 iw * s * 2, ih * s * 1.5)
@@ -237,7 +197,6 @@ function M.run()
         end
     end
 
-    -- fila (props do campo) aplica o MESMO perfil que a chamada solo
     do
         local img = loadImg("assets/sprites/world/fields_rock_0.png")
         local opts = { baseK = PROF.rock.baseK, lenK = PROF.rock.lenK }
@@ -250,7 +209,6 @@ function M.run()
             solo:getString() == queued:getString())
     end
 
-    -- ===== 3) DECALQUE: riseK 0 não projeta (e não cai em elipse) =====
     do
         local img = loadImg("assets/sprites/world/fields_rock_0.png")
         local id = render(function()
@@ -261,7 +219,6 @@ function M.run()
         t:eq("fissura (riseK 0): zero pixels de sombra", n, 0)
     end
 
-    -- ===== 4) CRIATURAS (caminho silhouette) =====
     local EnemyRenderer = require("src.ui.EnemyRenderer")
     local EnemyPoses = require("src.data.enemy_poses")
     local function frameOf(id, clip, idx)
@@ -283,7 +240,6 @@ function M.run()
         end
     end
 
-    -- 4a) bípede em pé: sem perfil → igual ao v8.4
     do
         local img, pad = frameOf("hollow_farmer", "idle", 0)
         local s = 2
@@ -295,14 +251,13 @@ function M.run()
         t:truthy("shadowProfile bípede em pé = sem pegada", bk == 0 and rk == nil and lk == 1)
     end
 
-    -- 4b) flutuante: sombra solta (widthK/lenK/alphaK da pose) igual ao v8.4
     do
         local img, pad = frameOf("dusk_shade", "idle", 0)
         local pose = EnemyPoses.get("dusk_shade")
         local s = 2
         local o = silOpts(img:getWidth(), s, { widthK = pose.shadowK, lenK = pose.shadowK,
             alphaK = pose.shadowA })
-        local dx = ShadowEngine.tipShiftAt(FX + 200) -- longe do sol: desloca
+        local dx = ShadowEngine.tipShiftAt(FX + 200)
         local new = render(function()
             ShadowEngine.silhouette(FX + 200 + 20, FY, o, drawer(img, s, pad)) end)
         local old = render(function()
@@ -311,7 +266,6 @@ function M.run()
         t:truthy("flutuante: pose sem pegada", (pose.shadowBaseK or 0) == 0 and dx ~= nil)
     end
 
-    -- 4c) larga e baixa em pé (monte de ratos): pegada
     do
         local id = "plague_rats"
         local img, pad, fh = frameOf(id, "idle", 0)
@@ -333,7 +287,6 @@ function M.run()
             maxY - FY < 0.6 * (maxY0 - FY))
     end
 
-    -- 4d) CADÁVER (death deitada): orla, ≥ 70% dentro
     for _, id in ipairs({ "blight_bull", "hollow_farmer", "plague_rats" }) do
         local dir = "assets/sprites/characters/enemies/" .. id .. "/animations/death/south"
         local files = love.filesystem.getDirectoryItems(dir)
@@ -368,7 +321,6 @@ function M.run()
         t:truthy(id .. " cadáver: era segundo cadáver no v8.4 (" .. pct(in0, n0) .. "% dentro)", in0 < 0.5 * n0)
     end
 
-    -- ===== 5) shadowProfile (puro) =====
     do
         local sp = EnemyRenderer.shadowProfile
         local gr = { shadowBaseK = 0.35 }
@@ -388,17 +340,15 @@ function M.run()
         t:truthy("perfil: pegada maior da pose vence", b == 0.7)
     end
 
-    -- ===== 6) perfil sem contentH AVISA e projeta a silhueta inteira (sem sumir) =====
     do
         local img, pad = frameOf("hollow_farmer", "idle", 0)
         local s = 2
-        local o = silOpts(img:getWidth(), s, { baseK = 0.3 })   -- sem contentH
+        local o = silOpts(img:getWidth(), s, { baseK = 0.3 })
         local n = select(1, measure(render(function()
             ShadowEngine.silhouette(FX, FY, o, drawer(img, s, pad)) end), FX, FY, 1, FY, 300, 300))
         t:truthy("perfil sem contentH não some (desenhou " .. n .. " px)", n > 0)
     end
 
-    -- ===== 7) todo PNG de fogueira tem perfil (cheio ou da família) =====
     for _, f in ipairs(love.filesystem.getDirectoryItems("assets/sprites/world")) do
         local key = f:match("^(.*landmark_rest)%.png$")
         if key then

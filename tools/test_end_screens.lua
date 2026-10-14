@@ -1,13 +1,3 @@
--- tools/test_end_screens.lua
--- Telas finais v2 (auditoria Out/2026): botões que respondem a mouse,
--- teclado e gamepad, e layout por zonas que não se sobrepõe em nenhum
--- tamanho (janela falsificada, como test_journal_resize) nem idioma.
---
--- Antes: game over e vitória só aceitavam TECLA (o clique não fazia nada e o
--- gamepad também não), e o texto do rodapé era a única instrução.
---
---   love . test_one test_end_screens
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -40,7 +30,6 @@ function M.run()
     local prevLocale = I18n.current
 
     local ok, err = pcall(function()
-        -- Run vencida (oferece Endless) + run perdida.
         local gv = TK.newRunGame("warrior")
         local rv = gv.runManager.currentRun
         rv.actNumber, rv.floorInAct = Config.TotalActs, MapManager.FLOORS_PER_ACT
@@ -59,7 +48,6 @@ function M.run()
             onEndless = function() calls[#calls + 1] = "endless" end,
         })
 
-        -- ===== Layout: zonas sem sobreposição em todo tamanho e idioma =====
         for _, loc in ipairs(LOCALES) do
             I18n.setLocale(loc)
             for _, sz in ipairs(SIZES) do
@@ -75,7 +63,6 @@ function M.run()
         end
         I18n.setLocale("pt_BR")
 
-        -- Textos: título de derrota traduzido, chaves novas presentes.
         for _, loc in ipairs(LOCALES) do
             I18n.setLocale(loc)
             local miss = {}
@@ -91,7 +78,6 @@ function M.run()
         t:truthy("pt_BR: titulo da derrota NAO e mais o ingles 'GAME OVER'",
             I18n.t("end_screen.defeat_title") ~= "GAME OVER")
 
-        -- Resumo da run: célula do assassino e alcance.
         local sum = EndScreens.summary("gameOver", gd)
         t:eq("resumo tem 8 celulas", #sum.cells, 8)
         t:truthy("subtitulo nomeia quem matou", sum.subtitle:find(I18n.t("end_screen.enemy.tower_lich"), 1, true))
@@ -101,12 +87,10 @@ function M.run()
         t:eq("tempo curto", EndScreens.formatTime(75), "1:15")
 
         withSize(1024, 768, function()
-            -- ===== Atraso de entrada: a tecla do golpe final não vaza =====
             EndScreens._enter("victory", gv, 0)
             EndScreens.keypressed("return")
             t:eq("tecla no instante da entrada e ignorada", #calls, 0)
 
-            -- ===== Teclado =====
             EndScreens._enter("victory", gv, 1)
             local L = EndScreens._state().layout
             t:eq("vitoria tem 3 botoes", #L.buttons, 3)
@@ -127,13 +111,12 @@ function M.run()
             EndScreens.keypressed("escape")
             t:eq("ESC = menu principal", calls[#calls], "menu")
 
-            -- ===== Gamepad (main.lua traduz botão → tecla) =====
             EndScreens._enter("gameOver", gd, 1)
             t:eq("game over tem 2 botoes", #EndScreens._state().layout.buttons, 2)
             t:eq("foco inicial: tentar de novo", EndScreens.focusedKey(), "retry")
-            EndScreens.keypressed("right")   -- dpright
+            EndScreens.keypressed("right")
             t:eq("dpad move o foco", EndScreens.focusedKey(), "menu")
-            EndScreens.keypressed("return")  -- botão A
+            EndScreens.keypressed("return")
             t:eq("botao A ativa", calls[#calls], "menu")
             local src = love.filesystem.read("main.lua") or ""
             local gp = src:match("function love%.gamepadpressed.-\nend")
@@ -144,7 +127,6 @@ function M.run()
             t:truthy("love.mousereleased roteia as telas finais",
                 src:find("EndScreens.mousereleased(x, y, button)", 1, true))
 
-            -- ===== Mouse =====
             EndScreens._enter("gameOver", gd, 1)
             local Lg = EndScreens._state().layout
             local n0 = #calls
@@ -163,14 +145,12 @@ function M.run()
             EndScreens.mousereleased(mx, my, 2)
             t:eq("botao direito nao ativa", #calls, n0 + 1)
 
-            -- Sem vitória registrada (modo clássico): vitória sem Endless.
             local gc = TK.newRunGame("rogue")
             gc.isRunMode = false
             EndScreens._enter("victory", gc, 1)
             t:eq("vitoria sem run vencida: so 2 botoes", #EndScreens._state().layout.buttons, 2)
         end)
 
-        -- resize() invalida o layout (resize pattern)
         withSize(1024, 768, function() EndScreens._enter("gameOver", gd, 1) end)
         local before = EndScreens._state().layout.actions.y
         withSize(1920, 1080, function()

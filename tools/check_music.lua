@@ -1,18 +1,3 @@
--- tools/check_music.lua
--- Percorre os contextos do jogo e diz QUAL faixa tocaria em cada um, usando o
--- caminho REAL: AudioManager de verdade, `MusicDirector.registerTracks` de
--- verdade, `MusicDirector.apply` de verdade.
---
--- Existe porque `tools/test_music.lua` testa só a decisão (`pick`, que é pura)
--- e a suíte nunca executa `love.update` — ou seja, nada na suíte exercita o
--- registro, o `resolve` com fallback, nem o `playMusic`. Foi assim que um
--- `local` a mais no topo do main.lua passou verde em 35 suites e derrubou o
--- jogo no boot ("more than 60 upvalues").
---
--- Roda com o MASTER EM ZERO: valida sem tocar som na máquina de ninguém.
---
---   love . check_music
-
 local M = {}
 
 local CONTEXTOS = {
@@ -39,7 +24,7 @@ function M.run()
 
     local audio = AudioManager:new()
     _G.audioSystem = audio
-    audio:setGroupVolume("master", 0)   -- mudo: isto e teste, nao playtest
+    audio:setGroupVolume("master", 0)
 
     print("")
     print("=== TRILHA POR CONTEXTO ===")
@@ -70,15 +55,11 @@ function M.run()
         local obs = ""
         if now == before then obs = "(mantem)" end
 
-        -- A faixa que o diretor diz estar tocando tem que ser a que o
-        -- AudioManager realmente pegou. Divergir aqui significa que o
-        -- playMusic falhou em silencio.
         if now ~= audio.currentMusic then
             obs = obs .. "  DIVERGE! audioSystem=" .. tostring(audio.currentMusic)
             fails = fails + 1
         end
 
-        -- Contexto caindo em fallback é legítimo, mas tem que aparecer.
         local wanted = MD.pick(c[1], c[2], c[3])
         if wanted and wanted ~= now then
             obs = obs .. "  fallback de " .. wanted

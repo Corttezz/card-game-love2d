@@ -1,15 +1,3 @@
--- tools/screenshot_upgrades.lua
--- Vitrine de UPGRADES (vouchers) da loja: forja, vida maxima, mana maxima.
---
--- Captura o MESMO slot com os 3 upgrades do catalogo, em repouso e em hover,
--- mais um zoom 3x do tile (o defeito mora no detalhe fino: hierarquia de
--- nome/efeito/preco) e o painel de detalhe correspondente.
---
---   love . test_one screenshot_upgrades
---
--- Saida: save dir do LOVE (~/AppData/Roaming/LOVE/card-game/).
--- Nomes: upg_<id>_repouso.png / upg_<id>_hover.png / upg_<id>_zoom.png
-
 local M = {}
 
 local Game             = require("src.core.Game")
@@ -26,7 +14,6 @@ local CardParticles    = require("src.systems.CardParticles")
 local CardRewardScreen = require("components.CardRewardScreen")
 local I18n             = require("src.i18n.I18n")
 
--- Os 3 upgrades que a loja pode ofertar (ShopSystem:generateUpgradeOffer).
 local VARIANTS = {
     { id = "forge_card",     effect = "forge_card",           value = 1,  cost = 5 },
     { id = "health_upgrade", effect = "increase_max_health",  value = 10, cost = 5 },
@@ -34,9 +21,6 @@ local VARIANTS = {
 }
 
 function M.run(locale)
-    -- Captura DETERMINISTICA no idioma (o force tem que vir antes do init --
-    -- ver o comentario em I18n.init). Roda por `test_one`, entao o force que
-    -- o main.lua aplica aos tools screenshot_* nao chega aqui.
     _G.TOOL_FORCE_LOCALE = (locale and locale ~= "-") and locale or "pt_BR"
     I18n.init()
     require("src.ui.PixelCanvas").enableNearest()
@@ -110,7 +94,6 @@ function M.run(locale)
         love.graphics.present()
     end
 
-    -- Slot do voucher: o unico offer.type == "upgrade" da vitrine.
     local voucher, vslot
     for _, o in ipairs(screen.shopOffers) do
         if o.type == "upgrade" then voucher, vslot = o, o._slot break end
@@ -124,8 +107,6 @@ function M.run(locale)
     simulate(1.4)
 
     for _, v in ipairs(VARIANTS) do
-        -- Reescreve a oferta em cima do MESMO slot: o tile e o painel sao os
-        -- mesmos, so muda o conteudo (e assim se compara maca com maca).
         voucher.id = v.id
         voucher.effect = v.effect
         voucher.value = v.value
@@ -153,13 +134,10 @@ function M.run(locale)
         snap("upg_" .. v.id .. "_hover.png")
     end
 
-    -- Selecionado (botoes de compra no rodape do painel de detalhe).
     screen:setSelectedOffer(voucher, vslot)
     simulate(0.5)
     snap("upg_selecionado.png")
 
-    -- Sem ouro: o tile inteiro escurece (2o canal, alem do preco vermelho) --
-    -- mesma regra do saleDim das cartas.
     screen:clearSelection()
     local savedGold = game.economySystem and game.economySystem.currentGold
     if game.economySystem then game.economySystem.currentGold = 0 end
@@ -168,9 +146,6 @@ function M.run(locale)
     snap("upg_sem_ouro.png")
     if game.economySystem then game.economySystem.currentGold = savedGold or 30 end
 
-    -- ESCALAS: o mesmo tile nos tamanhos que a janela produz, lado a lado.
-    -- Mostra ONDE o chip cai e se o texto continua legivel sem depender de
-    -- redimensionar a janela de verdade (setMode repetido trava o tool).
     do
         local UpgradeTile = require("src.ui.UpgradeTile")
         local sizes = { { 260, 300 }, { 206, 220 }, { 150, 170 }, { 120, 140 }, { 90, 96 } }
@@ -194,9 +169,6 @@ function M.run(locale)
         love.graphics.present()
     end
 
-    -- reducedMotion: sem bob, sem brasas, sem pulinho -- MAS nome, chip,
-    -- preco e destaque de foco continuam todos la (a flag remove movimento,
-    -- nunca informacao).
     do
         local UpgradeTile = require("src.ui.UpgradeTile")
         _G.gameSettings = _G.gameSettings or {}
@@ -218,9 +190,7 @@ function M.run(locale)
         _G.gameSettings.reducedMotion = prev
     end
 
-    -- COMPRA: a reliquia sobe e se apaga, o efeito sobe escrito, o slot vira
-    -- VENDIDO. Tres paradas pra ver o gesto inteiro.
-    voucher.effect = "increase_max_health"   -- sem abrir o picker da forja
+    voucher.effect = "increase_max_health"
     voucher.id = "health_upgrade"
     voucher.value = 10
     voucher.cost = 5

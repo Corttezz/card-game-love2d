@@ -1,14 +1,3 @@
--- tools/screenshot_relic_art.lua
--- Confere a ARTE das 4 reliquias de servico que nasceram sem PNG (o tile
--- mostrava so o halo): bancada, tesoura, duplicar e cofre. Mesmo slot da
--- vitrine, repouso + zoom 3x + hover (hover liga o loop de vouchers_anim).
--- Derivado de screenshot_upgrades.lua (so troca as variantes).
---
---   love . test_one screenshot_relic_art
---
--- Saida: save dir do LOVE (~/AppData/Roaming/LOVE/card-game/).
--- Nomes: upg_<id>_repouso.png / upg_<id>_hover.png / upg_<id>_zoom.png
-
 local M = {}
 
 local Game             = require("src.core.Game")
@@ -25,7 +14,6 @@ local CardParticles    = require("src.systems.CardParticles")
 local CardRewardScreen = require("components.CardRewardScreen")
 local I18n             = require("src.i18n.I18n")
 
--- Servicos do ShopServices.CATALOG que faltavam arte.
 local VARIANTS = {
     { id = "joker_slot",     effect = "add_joker_slot",     value = 1, cost = 20 },
     { id = "remove_card",    effect = "remove_card",        value = 1, cost = 8 },
@@ -34,9 +22,6 @@ local VARIANTS = {
 }
 
 function M.run(locale)
-    -- Captura DETERMINISTICA no idioma (o force tem que vir antes do init --
-    -- ver o comentario em I18n.init). Roda por `test_one`, entao o force que
-    -- o main.lua aplica aos tools screenshot_* nao chega aqui.
     _G.TOOL_FORCE_LOCALE = (locale and locale ~= "-") and locale or "pt_BR"
     I18n.init()
     require("src.ui.PixelCanvas").enableNearest()
@@ -110,7 +95,6 @@ function M.run(locale)
         love.graphics.present()
     end
 
-    -- Slot do voucher: o unico offer.type == "upgrade" da vitrine.
     local voucher, vslot
     for _, o in ipairs(screen.shopOffers) do
         if o.type == "upgrade" then voucher, vslot = o, o._slot break end
@@ -124,8 +108,6 @@ function M.run(locale)
     simulate(1.4)
 
     for _, v in ipairs(VARIANTS) do
-        -- Reescreve a oferta em cima do MESMO slot: o tile e o painel sao os
-        -- mesmos, so muda o conteudo (e assim se compara maca com maca).
         voucher.id = v.id
         voucher.effect = v.effect
         voucher.value = v.value

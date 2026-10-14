@@ -1,30 +1,15 @@
--- tools/perf_visual_diff.lua
--- PROVA VISUAL de otimização do WorldRoad: renderiza casos DETERMINÍSTICOS
--- (relógio congelado, RNGs semeados) e compara pixel a pixel com uma
--- referência gravada ANTES da mudança. Otimização de desenho que muda
--- pixel não é otimização, é regressão.
---
---   love . test_one perf_visual_diff ref            (grava referência)
---   love . test_one perf_visual_diff cmp            (compara; PNG de diff)
---   love . test_one perf_visual_diff ref:1920x1080  (idem noutro tamanho)
---
--- Saída: <save dir>/perfdiff/<WxH>/{ref,cur,diff}_<caso>.png + resumo no
--- console (px diferentes, maior delta por canal). Não roda no test_all:
--- a referência é da máquina/driver de quem mede.
-
 local M = {}
 
 local CASES = {
-    -- nome, bioma, nº de updates antes do frame, extra(state)
     { "b1_static", 1, 200 },
     { "b2_static", 2, 200 },
     { "b3_static", 3, 200 },
     { "b4_static", 4, 200 },
     { "b5_static", 5, 200 },
     { "b6_static", 6, 200 },
-    { "b3_blend",  3, 50 },                  -- meio do crossfade de bioma
-    { "b1_travel", 1, 200, "travel" },       -- câmera andando
-    { "b2_fork",   2, 200, "fork" },         -- encruzilhada (3 braços)
+    { "b3_blend",  3, 50 },
+    { "b1_travel", 1, 200, "travel" },
+    { "b2_fork",   2, 200, "fork" },
 }
 
 local function setupCase(WorldRoad, c)
@@ -66,13 +51,8 @@ function M.run(arg)
     for _, c in ipairs(CASES) do
         local name, bio, n, extra = c[1], c[2], c[3], c[4]
         setupCase(WorldRoad, c)
-        -- relógio de parede congelado: flicker de luminária/brasas usam
-        -- love.timer.getTime (o resto é o relógio do mundo)
         love.timer.getTime = function() return 1000 end
-        -- mouse fora da janela: o hover do fork (fogo acelera, marco
-        -- clareia) lê a posição REAL do cursor de quem roda a ferramenta
         love.mouse.getPosition = function() return -10000, -10000 end
-        -- 1º draw instala bioma/props; depois os updates avançam o mundo
         love.graphics.setCanvas(canvas)
         WorldRoad.draw(0, topBarH, W, H - topBarH, bio)
         love.graphics.setCanvas()
@@ -84,8 +64,6 @@ function M.run(arg)
         end
         for i = 1, n do
             WorldRoad.update(1 / 60)
-            -- frames intermediários desenhados: o motor tem estado por
-            -- frame (cache de fileiras, broto) que só evolui no draw
             if i % 10 == 0 or i > n - 3 then
                 love.graphics.setCanvas(canvas)
                 love.graphics.clear(0, 0, 0, 1)

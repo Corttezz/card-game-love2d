@@ -1,18 +1,3 @@
--- tools/test_nav_flow2.lua
--- 2º roteiro SÓ POR GAMEPAD (D-pad/A/B/Y/RB) — as telas que o 1º não passa:
---   coleção (grade, rolagem, zoom) → conquistas → run → gerenciador de
---   coringas (ativa/bancada) → deck pela TopBar → roteiro pela TopBar →
---   vitória da luta → loja → PACOTE (compra, abre, escolhe) → batalha final
---   → tela de VITÓRIA → endless.
---
---   NAV_PART=2 love . nav_flow        (sai com 0/1; NAV_W/NAV_H/NAV_SHOTS)
---
--- Cobre também: troca de Selo na seleção de classe (LB/RB) e a escolha de
--- maldição do ciclo do endless.
--- Trapaças declaradas (não são navegação): coleção toda revelada, coringa entregue, inimigo
--- com 1 de vida, encruzilhadas forçadas (loja, batalha) e a batalha final
--- marcada como chefe do último ato.
-
 local H = require("tools.test_nav_flow")
 local M = {}
 
@@ -31,8 +16,6 @@ function M.script()
     end, 600, "menu")
     sleep(2.5)
 
-    -- COLEÇÃO (trapaça declarada: todas as cartas "descobertas" — o perfil do
-    -- tool nasce vazio e carta "?" não abre zoom)
     require("src.systems.UnlockSystem").setRevealAll(true)
     check("menu: D-pad chega na Coleção",
         navigateTo(isButtonText(I18n.t("menu.collection")), "Coleção", false))
@@ -41,10 +24,9 @@ function M.script()
     check("coleção aberta pelo pad", state() == "collection")
     sleep(0.8)
     check("coleção: D-pad foca uma carta", navigateTo(isKey("col:"), "carta da coleção", false))
-    pad("dpdown"); pad("dpdown"); pad("dpdown"); pad("dpdown")   -- rola a grade
+    pad("dpdown"); pad("dpdown"); pad("dpdown"); pad("dpdown")
     sleep(0.3)
     snap("collection")
-    -- volta pra 1ª carta (a inicial, sempre descoberta) e abre o zoom
     check("coleção: D-pad volta à 1ª carta",
         navigateTo(function(t) return t.key == "col:1" end, "1ª carta", false))
     pad("a"); sleep(0.4)
@@ -55,7 +37,6 @@ function M.script()
     check("coleção: B volta ao menu", state() == "menu")
     require("src.systems.UnlockSystem").setRevealAll(false)
 
-    -- CONQUISTAS (navega sozinha)
     sleep(0.5)
     check("menu: D-pad chega em Conquistas",
         navigateTo(isButtonText(I18n.t("menu.achievements")), "Conquistas", false))
@@ -67,14 +48,12 @@ function M.script()
     pad("b"); sleep(0.5)
     check("conquistas: B volta ao menu", state() == "menu")
 
-    -- RUN
     sleep(0.5)
     navigateTo(isButtonText(I18n.t("menu.play")), "Jogar", false)
     pad("a"); sleep(0.5)
     if require("src.ui.ConfirmDialog").isVisible() then pad("dpleft"); pad("a"); sleep(0.3) end
     waitFor(function() return state() == "classSelection" end, 300, "classe")
     sleep(1)
-    -- SELO DO GRIMÓRIO: RB (= C no teclado) sobe um selo, glifo na seta
     pad("rightshoulder"); pad("rightshoulder"); pad("leftshoulder")
     snap("class_seal")
     navigateTo(function(t)
@@ -90,7 +69,6 @@ function M.script()
     waitFor(function() return game.turn == "player" and #game.hand > 0
         and not game.combatAnimationSystem:isBlocking() end, 900, "turno do jogador")
 
-    -- GERENCIADOR DE CORINGAS
     local jokerId
     for id, cd in pairs(require("src.systems.CardDatabase"):new():getAllCards()) do
         if cd.type == "joker" then jokerId = cd.id or id break end
@@ -111,7 +89,6 @@ function M.script()
     pad("b"); sleep(0.3)
     check("B fecha o gerenciador", IF.activeName() ~= "jokerManager")
 
-    -- DECK pela TopBar
     check("batalha: D-pad sobe até o deck na TopBar",
         navigateTo(function(t) return t.key == "topbar:topbar_deck" end, "deck na TopBar", false))
     pad("a"); sleep(0.4)
@@ -121,7 +98,6 @@ function M.script()
     pad("b"); sleep(0.3)
     check("B fecha o deck", IF.activeName() ~= "deckViewer")
 
-    -- ROTEIRO pela TopBar
     check("D-pad chega no bloco do ato",
         navigateTo(function(t) return t.key == "topbar:topbar_progress" end, "ato na TopBar", false))
     pad("a"); sleep(0.4)
@@ -130,7 +106,6 @@ function M.script()
     pad("b"); sleep(0.3)
     check("B fecha o Roteiro", IF.activeName() ~= "runJournal")
 
-    -- vence a luta → espólio sem carta → encruzilhada (loja forçada)
     local MapManager = require("src.systems.MapManager")
     local realGen = MapManager.generate
     local forced = { "shop", "battle" }
@@ -171,7 +146,6 @@ function M.script()
     check("loja aberta", state() == "cardReward")
     sleep(2)
 
-    -- PACOTE (último slot de oferta)
     game.economySystem.currentGold = 999
     local packKey
     for _, t in ipairs(NavCursor._targets()) do
@@ -191,8 +165,6 @@ function M.script()
     sleep(3)
     local deckBefore = #run.currentDeck
     snap("pack_open")
-    -- A numa carta = prévia; A de novo na MESMA carta = escolhe (o pacote
-    -- fecha). É o "clique de novo pra confirmar" do mouse, pelo pad.
     for _ = 1, 4 do
         if IF.activeName() ~= "packOpen" then break end
         if navigateTo(function(t) return type(t.key) == "table" and t.key.type ~= nil end,
@@ -207,8 +179,7 @@ function M.script()
     check("pacote: escolha pelo pad fecha e a carta entra (" .. deckBefore .. " → " .. #run.currentDeck .. ")",
         IF.activeName() ~= "packOpen" and #run.currentDeck > deckBefore)
 
-    -- batalha final (último ato, chefe, 1 de vida) → VITÓRIA → endless
-    sleep(2.5)   -- a loja volta deslizando depois do pacote
+    sleep(2.5)
     local contLabel = I18n.t("reward.continue")
     local okCont = navigateTo(function(t)
         local b = type(t.key) == "table" and t.key
@@ -238,8 +209,6 @@ function M.script()
     check("vitória alcançada", state() == "victory")
     sleep(1.5)
     snap("victory")
-    -- tela final navega sozinha (MenuKit): 1º item = Endless. Ela segura a
-    -- entrada enquanto a barra de maestria anima — A de novo se ignorado.
     for _ = 1, 8 do
         if state() ~= "victory" then break end
         pad("a"); sleep(0.6)
@@ -248,8 +217,6 @@ function M.script()
     check("vitória: A entra no endless (" .. tostring(state()) .. ")",
         state() ~= "victory" and run.endlessMode == true)
 
-    -- MALDIÇÃO DO CICLO (endless): cash out → espólio → a encruzilhada abre
-    -- a escolha obrigatória; D-pad até a 2ª maldição, A escolhe
     for _ = 1, 30 do
         if state() ~= "roundEval" then break end
         pad("a"); sleep(0.3)

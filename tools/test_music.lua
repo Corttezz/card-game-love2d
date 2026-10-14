@@ -1,13 +1,3 @@
--- tools/test_music.lua
--- Testa a DECISÃO do MusicDirector — qual faixa cada contexto pede.
---
--- Roda sem áudio: `pick()` é pura, não toca em `Sfx`. O que se protege aqui
--- não é "a música tocou" (isso ninguém verifica em CI), é a REGRA — e a regra
--- que mais corre risco é a do `cardReward`, que serve dois contextos
--- diferentes com o mesmo state. Se alguém simplificar aquilo para "reward =
--- musicShop", a recompensa pós-batalha passa a trocar de música por quatro
--- segundos e voltar. Ninguém abre um bug com esse título.
-
 local TK = require("tools.testkit")
 local MD = require("src.systems.MusicDirector")
 local Config = require("src.core.Config")
@@ -17,35 +7,26 @@ local M = {}
 function M.run()
     local t = TK.new("music")
 
-    -- Telas fora da run: sempre o tema do menu.
     for _, s in ipairs({ "boot", "menu", "classSelection", "collection",
                          "achievements", "gameOver", "victory" }) do
         t:eq("tela fora da run: " .. s, MD.pick(s, nil, nil), "menuMusic")
     end
 
-    -- Ato manda no combate e no mapa.
     t:eq("ato 1 em combate", MD.pick("playing", { actNumber = 1 }, "battle"), "musicAct1")
     t:eq("ato 2 em combate", MD.pick("playing", { actNumber = 2 }, "battle"), "musicAct2")
     t:eq("ato 3 em combate", MD.pick("playing", { actNumber = 3 }, "battle"), "musicAct3")
     t:eq("mapa segue o ato",  MD.pick("mapSelection", { actNumber = 2 }, nil), "musicAct2")
 
-    -- Endless passa do ultimo ato e TRAVA na faixa dele (nao volta pro ato 1).
     t:eq("endless fica no tema do ultimo ato",
          MD.pick("playing", { actNumber = Config.TotalActs + 4 }, "battle"),
          "musicAct" .. Config.TotalActs)
 
-    -- Sem run, não estoura: assume ato 1.
     t:eq("sem run assume ato 1", MD.pick("playing", nil, nil), "musicAct1")
 
-    -- Boss tem tema próprio em QUALQUER ato.
     t:eq("boss do ato 1", MD.pick("playing", { actNumber = 1 }, "boss"), "musicBoss")
     t:eq("boss do ato 3", MD.pick("playing", { actNumber = 3 }, "boss"), "musicBoss")
-    -- Elite NÃO é boss (já foi confundido com boss uma vez, no destino de cena).
     t:eq("elite nao usa tema de boss", MD.pick("playing", { actNumber = 1 }, "elite"), "musicAct1")
 
-    -- CHEFE FINAL (Rainha do Eclipse, Out/2026): faixa própria SÓ no salão
-    -- dela — na caminhada até o castelo é o tema comum; os outros chefes
-    -- nunca a pegam; cash out e espólios dentro do salão mantêm.
     local rainha = { actNumber = Config.TotalActs, currentNode = { type = "boss", enemyId = "eclipse_queen" } }
     local rei = { actNumber = 1, currentNode = { type = "boss", enemyId = "carrion_king" } }
     t:eq("rainha no salao = faixa do chefe final", MD.pick("playing", rainha, "boss", true), "musicBossEclipse")
@@ -61,36 +42,25 @@ function M.run()
     t:eq("espolios no salao da rainha mantem a faixa", MD.pick("cardReward", rainha, "boss", true), nil)
     t:eq("sem probe de salao, boss = tema comum (apply sem cena)", MD.pick("playing", rainha, "boss"), "musicBoss")
 
-    -- Descanso e loja.
     t:eq("descanso", MD.pick("rest", { actNumber = 2 }, "rest"), "musicRest")
     t:eq("loja",     MD.pick("cardReward", { actNumber = 2 }, "shop"), "musicShop")
 
-    -- A regra que este arquivo existe para proteger.
     t:eq("recompensa pos-batalha NAO troca de musica",
          MD.pick("cardReward", { actNumber = 2 }, "battle"), nil)
     t:eq("recompensa pos-boss NAO troca de musica",
          MD.pick("cardReward", { actNumber = 1 }, "boss"), nil)
-    -- Cash out no salão do chefe: o tema do chefe segue (o salão persiste até
-    -- a encruzilhada); cash out comum também não troca.
     t:eq("cash out pos-boss NAO troca de musica",
          MD.pick("roundEval", { actNumber = 1 }, "boss"), nil)
     t:eq("cash out pos-batalha NAO troca de musica",
          MD.pick("roundEval", { actNumber = 2 }, "battle"), nil)
 
-    -- Todo código que `pick` pode devolver precisa existir de verdade: ou na
-    -- tabela de faixas, ou como o `menuMusic` que o main.lua registra à parte.
-    -- Um typo ("musicAct1" vs "musicact1") não trava nada em runtime — o
-    -- `resolve` cai no fallback e a tela fica com a música do ato anterior.
     local produced = {}
     local casos = {
         { "menu", nil, nil },
         { "playing", { actNumber = 1 }, "boss" }, { "rest", { actNumber = 1 }, "rest" },
         { "cardReward", { actNumber = 1 }, "shop" },
-        -- chefe final DENTRO do salão (4º arg = inHall)
         { "playing", { actNumber = Config.TotalActs, currentNode = { type = "boss", enemyId = "eclipse_queen" } }, "boss", true },
     }
-    -- Um caso de combate POR ATO: assim a varredura cresce junto com a
-    -- campanha e uma faixa de ato novo nunca fica orfa por esquecimento.
     for a = 1, Config.TotalActs do
         casos[#casos + 1] = { "playing", { actNumber = a }, "battle" }
     end
@@ -103,28 +73,19 @@ function M.run()
                  code == "menuMusic" or MD.TRACKS[code] ~= nil)
     end
 
-    -- E o inverso: faixa registrada que nenhum contexto pede é asset morto.
     for code in pairs(MD.TRACKS) do
         t:truthy("faixa '" .. code .. "' e alcancavel por algum contexto", produced[code])
     end
 
-    -- Os arquivos precisam estar no disco. Ausência é legítima por contrato
-    -- (o fallback cobre), mas no repo do jogo é regressão — alguém apagou.
     for code, file in pairs(MD.TRACKS) do
         t:truthy("audio/music/" .. file .. " existe",
                  love.filesystem.getInfo("audio/music/" .. file) ~= nil)
     end
 
-    -- ===== SOBREPOSICAO DE FAIXAS (regressao Set/2026) =====
-    -- O dono ouviu duas musicas juntas: "a musica da forja continuou a
-    -- sobrepor a musica do ato". Causa: o crossfade e UM so; uma troca nova
-    -- antes de a anterior terminar substituia o registro e a faixa que estava
-    -- saindo nunca recebia stop(). A→B→C rapido deixava A e B tocando para
-    -- sempre. Abrir a forja e fechar faz exatamente A→B→A em segundos.
     local AudioManager = require("engine.AudioManager")
     local audio = AudioManager:new()
     if audio:isAudioAvailable() then
-        audio:setGroupVolume("master", 0)   -- mudo: teste, nao playtest
+        audio:setGroupVolume("master", 0)
         MD.registerTracks(audio)
         audio:loadSound("menuMusic", "audio/music.mp3", {
             volume = 0.6, group = "music", stream = true, loop = true })
@@ -140,33 +101,21 @@ function M.run()
             return n, table.concat(quais, "+")
         end
 
-        -- Encadeia trocas SEM deixar nenhum fade terminar: e o caso real.
         audio:playMusic("musicAct1", { fadeDuration = 2.5 })
         audio:update(0.1)
-        audio:playMusic("musicShop", { fadeDuration = 2.5 })   -- entrou na loja
+        audio:playMusic("musicShop", { fadeDuration = 2.5 })
         audio:update(0.1)
-        audio:playMusic("musicRest", { fadeDuration = 2.5 })   -- abriu a forja
+        audio:playMusic("musicRest", { fadeDuration = 2.5 })
         audio:update(0.1)
         local n, quais = tocando()
         t:truthy("no meio da cadeia, no maximo 2 faixas (" .. quais .. ")", n <= 2)
 
-        audio:playMusic("musicAct1", { fadeDuration = 2.5 })   -- fechou a forja
-        for _ = 1, 200 do audio:update(1 / 60) end             -- deixa assentar
+        audio:playMusic("musicAct1", { fadeDuration = 2.5 })
+        for _ = 1, 200 do audio:update(1 / 60) end
         local n2, quais2 = tocando()
         t:eq("depois de assentar, UMA faixa so (" .. quais2 .. ")", n2, 1)
         t:eq("e e a certa", audio.currentMusic, "musicAct1")
 
-        -- ===== O "CONTINUAR" (regressao Set/2026, reincidente) =====
-        -- Dono: "ainda tocando a musica do menu dps que clico em continuar".
-        -- O log dele mostra o diretor fazendo a coisa certa
-        -- ("menuMusic -> musicAct3"), entao a suspeita nao e mais a DECISAO e
-        -- sim a EXECUCAO: a faixa do menu tem que parar de verdade.
-        --
-        -- Dois tempos de clique, porque sao caminhos DIFERENTES no playMusic:
-        -- clicar depois do fade do menu terminar cai no ramo de crossfade
-        -- normal; clicar EM CIMA do fade-in (from=nil) substitui um crossfade
-        -- que ainda nao acabou — e foi assim que a faixa orfa nasceu da outra
-        -- vez.
         for _, caso in ipairs({
             { nome = "menu ja assentado", framesAntes = 200 },
             { nome = "clique em cima do fade-in do menu", framesAntes = 3 },
@@ -176,11 +125,11 @@ function M.run()
                 if e.group == "music" and e.template then e.template:stop() end
             end
 
-            audio:playMusic("menuMusic", { fadeDuration = 1.5 })  -- Menu:show
+            audio:playMusic("menuMusic", { fadeDuration = 1.5 })
             for _ = 1, caso.framesAntes do audio:update(1 / 60) end
 
-            audio:playMusic("musicAct3", { fadeDuration = 2.5 })  -- Continuar
-            for _ = 1, 400 do audio:update(1 / 60) end            -- ~6.7s
+            audio:playMusic("musicAct3", { fadeDuration = 2.5 })
+            for _ = 1, 400 do audio:update(1 / 60) end
 
             local nc, quaisC = tocando()
             t:eq("Continuar (" .. caso.nome .. "): so a faixa do ato toca ("
@@ -198,12 +147,6 @@ function M.run()
         t:truthy("audio indisponivel: sobreposicao nao pode ser medida aqui", true)
     end
 
-    -- ===== ESPELHO DESSINCRONIZADO (regressao Set/2026) =====
-    -- "Abro o jogo, clico em continuar e a musica de fundo continua sendo a
-    -- do menu." O diretor guardava `_current` como espelho do que tocava; se
-    -- o espelho desencontrasse do AudioManager (o menu chama playMusic
-    -- direto, e ha markCurrent), ele passava a achar que ja estava tocando a
-    -- faixa certa e nunca mais trocava. Agora a decisao le o estado REAL.
     local AM = require("engine.AudioManager")
     local audio2 = AM:new()
     if audio2:isAudioAvailable() then
@@ -213,16 +156,12 @@ function M.run()
         audio2:loadSound("menuMusic", "audio/music.mp3", {
             volume = 0.6, group = "music", stream = true, loop = true })
 
-        -- menu tocando de verdade
         audio2:playMusic("menuMusic")
-        -- ... e o espelho do diretor MENTINDO que a faixa do ato ja entrou
         MD.markCurrent("musicAct1")
 
         MD.apply("playing", { actNumber = 1 }, nil)
         t:eq("troca acontece mesmo com o espelho mentindo", audio2.currentMusic, "musicAct1")
 
-        -- E o inverso: espelho dizendo "menu" com o ato ja tocando nao
-        -- redispara a mesma faixa.
         MD.markCurrent("menuMusic")
         MD.apply("playing", { actNumber = 1 }, nil)
         t:eq("nao redispara a faixa que ja toca", audio2.currentMusic, "musicAct1")

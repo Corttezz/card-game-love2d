@@ -1,14 +1,3 @@
--- tools/screenshot_menu_life.lua
--- O MENU PRINCIPAL com a vida ambiente v3 (Out/2026), SEM JANELA: tela
--- falsificada (canvas W×H), Menu real, intro passada, mouse FALSO em cima
--- do JOGAR (hover + glint). Também captura a variante em MOVIMENTO REDUZIDO
--- (cena estática) pra conferir que nada some, só o movimento.
---
---   CARDGAME_HEADLESS=1 MENU_W=1920 MENU_H=1080 love . test_one screenshot_menu_life
---
--- Saída (save dir): menu_life_<W>x<H>.png, menu_life_<W>x<H>_hover.png,
--- menu_life_<W>x<H>_reduced.png
-
 local M = {}
 
 function M.run()
@@ -52,17 +41,15 @@ function M.run()
     end
     local prefix = ("menu_life_%dx%d"):format(W, H)
 
-    pump(4.2)                       -- intro + OSD sumindo
-    menu._candleFlare = 0.5         -- um instante de flare visível
+    pump(4.2)
+    menu._candleFlare = 0.5
     shot(prefix .. ".png")
 
-    -- hover no JOGAR (glint + varredura + seta)
     local b = menu.buttons.play
     fake.x, fake.y = b.x + b.width / 2, b.y + b.height / 2
     pump(0.4)
     shot(prefix .. "_hover.png")
 
-    -- movimento reduzido: cena estática
     fake.x, fake.y = W * 0.92, H * 0.92
     _G.gameSettings.reducedMotion = true
     pump(0.5)

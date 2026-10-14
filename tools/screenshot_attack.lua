@@ -1,8 +1,3 @@
--- tools/screenshot_attack.lua
--- Valida a INVESTIDA do inimigo (FX procedural Jul/2026): captura windup,
--- apex (impacto — dano aplicado aqui) e recoil, + um frame do tick de veneno.
---   love . screenshot_attack
-
 local M = {}
 
 local Game = require("src.core.Game")
@@ -32,8 +27,6 @@ function M.run()
     local apexHit = false
     EnemyRenderer.triggerAttack("strong", function() apexHit = true end)
 
-    -- momentos: fim do windup (0.16), apex (0.34), meio do recoil (0.55),
-    -- e depois um frame de veneno (1.2)
     local moments = { 0.16, 0.335, 0.55, 1.2 }
     local outFiles = { "attack_windup.png", "attack_apex.png",
                        "attack_recoil.png", "attack_poison.png" }

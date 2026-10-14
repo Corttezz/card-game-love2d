@@ -1,14 +1,3 @@
--- tools/test_ui_scale.lua
--- ESCALA GLOBAL DE UI (src/ui/UiScale.lua): fator por janela, espaço virtual
--- dentro do contexto (dimensões, mouse, scissor, fonte), adoção das telas
--- (layout + clique no mesmo espaço), higiene de vazamento e a opção
--- "Escala da interface" das Configurações.
---
---   love . test_one test_ui_scale
---
--- Janela e mouse FALSIFICADOS; tudo restaurado no fim (inclusive o force(1)
--- que o testkit liga pros outros testes).
-
 local TK = require("tools.testkit")
 local FontManager = require("src.ui.FontManager")
 
@@ -42,7 +31,6 @@ function M.run()
     I18n.setLocale("pt_BR")
 
     local ok, err = pcall(function()
-        -- ===== 1. fator =====
         UiScale.setUserMultiplier(1)
         local cases = { { 1024, 768, 1 }, { 1366, 768, 1 }, { 1920, 1080, 1.5 },
                         { 2560, 1440, 2 }, { 3840, 2160, 2.5 }, { 800, 600, 1 } }
@@ -57,7 +45,6 @@ function M.run()
         t:eq("80% em 1024 nunca abaixo de 0.75", UiScale.k(1024, 768), 0.75)
         UiScale.setUserMultiplier(1)
 
-        -- ===== 2. contexto =====
         fw, fh = 2560, 1440
         mx, my = 1000, 500
         UiScale.begin()
@@ -77,15 +64,13 @@ function M.run()
         t:eq("fora: mouse real de volta", (love.mouse.getPosition()), 1000)
         t:eq("fora: fonte 1:1", UiScale.fontDpi(), 1)
 
-        -- vazamento: begin sem finish é consertado pelo reset do frame
         UiScale.begin(); UiScale.begin()
         UiScale.reset()
         t:eq("reset restaura dimensoes apos vazamento", love.graphics.getWidth(), 2560)
         t:falsy("reset zera o contexto", UiScale.isActive())
 
-        -- ===== 3. tela adotada: layout + clique no mesmo espaço =====
         local game = TK.newRunGame("warrior")
-        UiScale.force(nil)   -- newRunGame passa pelo bootstrap, que congela em 1
+        UiScale.force(nil)
         local PauseMenu = require("components.PauseMenu")
         local closedBy
         local pause = PauseMenu:new()
@@ -95,23 +80,20 @@ function M.run()
         t:truthy("painel da pausa cabe no espaco virtual 1280x720",
             p.x >= 0 and p.y >= 0 and p.x + p.w <= 1280 and p.y + p.h <= 720)
         t:eq("validate da pausa em 1440p", #pause:validate(), 0)
-        -- clique em pixels REAIS no centro da linha "Configurações"
         local row = pause.rows[2]
         mx, my = (row.x + row.w / 2) * 2, (row.y + row.h / 2) * 2
         pause:mousepressed(mx, my, 1)
         pause:mousereleased(mx, my, 1)
         t:eq("clique real cai na linha virtual certa", closedBy, "settings")
-        -- hover por polling dentro do update
         pause:show(game, {})
         local r1 = pause.rows[1]
         mx, my = (r1.x + 4) * 2, (r1.y + 4) * 2
-        pause:update(1 / 60)   -- primeiro update só registra o mouse
+        pause:update(1 / 60)
         mx = mx + 2
         pause:update(1 / 60)
         t:eq("hover por polling acha a linha (mouse virtual)", pause:focusedKey(), "resume")
         pause:hide()
 
-        -- ===== 4. opção nas Configurações =====
         local SettingsMenu = require("components.SettingsMenu")
         _G.gameSettings.uiScale = 1
         UiScale.setUserMultiplier(1)
@@ -137,7 +119,6 @@ function M.run()
         end
         sm:hide(true)
 
-        -- chaves nos 5 idiomas
         for _, loc in ipairs({ "pt_BR", "en", "es", "fr", "de" }) do
             local chunk = love.filesystem.load("src/i18n/locales/" .. loc .. ".lua")
             local data = chunk and chunk() or {}

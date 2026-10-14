@@ -1,7 +1,3 @@
--- tools/smoke_packs.lua
--- Valida BoosterPackSystem + persistência de edition/seal por cópia.
--- love . smoke_packs
-
 local BoosterPackSystem = require("src.systems.BoosterPackSystem")
 local RunManager = require("src.systems.RunManager")
 
@@ -16,7 +12,6 @@ function M.run()
 
     print("---- BoosterPackSystem (Fase 5.1) ----")
 
-    -- Standard pack: 3 cartas, deve gerar instances.
     local pack = { kind = "Standard", size = 3, choose = 1, classId = "warrior" }
     local instances = BoosterPackSystem.generateContents(pack)
     check("Standard pack gera 3 instances", #instances == 3)
@@ -26,18 +21,14 @@ function M.run()
         check("instance " .. i .. " tem id", c and c.id ~= nil)
     end
 
-    -- Buffoon pack: jokers.
     local buffoon = BoosterPackSystem.generateContents({ kind = "Buffoon", size = 2 })
     check("Buffoon pack gera 2 instances", #buffoon == 2)
-    -- Cartas devem ser do tipo joker.
     local allJokers = true
     for _, c in ipairs(buffoon) do
         if c.type ~= "joker" then allJokers = false; break end
     end
     check("Buffoon só gera jokers", allJokers)
 
-    -- Edition + seal probabilísticos (Standard só).
-    -- Roda muitos packs e conta — deve haver alguma carta com edition.
     math.randomseed(42); love.math.setRandomSeed(42)
     local hasEdition = false
     local hasSeal = false
@@ -52,7 +43,6 @@ function M.run()
     check("Standard pack eventualmente gera edition em alguma carta", hasEdition)
     check("Standard pack eventualmente gera seal em alguma carta", hasSeal)
 
-    -- expandPackRecord: helper.
     local pkr = BoosterPackSystem.expandPackRecord({
         id = "pack_standard", kind = "Standard", size = 3, choose = 1
     }, "warrior")
@@ -65,12 +55,9 @@ function M.run()
     local rm = RunManager:new()
     rm:startNewRun("warrior")
 
-    -- Adiciona uma carta normal (sem meta).
     rm:addCardToDeck("warrior_strike")
-    -- Adiciona MESMA carta com edition foil + seal Red.
     rm:addCardToDeck("warrior_strike", { edition = "foil", seal = "Red" })
 
-    -- buildPlayableDeck deve ter 2 cópias: uma normal, uma com edition+seal.
     local deck = rm:buildPlayableDeck()
     local normal, modified = nil, nil
     for _, c in ipairs(deck) do
@@ -84,11 +71,6 @@ function M.run()
     check("cópia foil tem seal Red", modified and modified.seal == "Red")
     check("cópia normal não tem seal", normal and normal.seal == nil)
 
-    -- ===== ESPECTRAL: piso de raridade (decisao do dono, Set/2026) =====
-    -- Ele da 2 cartas onde Arcano/Celestial dao 3, pelo mesmo $4, e e o mais
-    -- raro de aparecer. A contrapartida e NENHUMA COMUM. Sem esta trava, uma
-    -- refatoracao futura no gerador o devolve a condicao de "pacote pior",
-    -- que e um defeito que so aparece pra quem faz a conta.
     local BPS = require("src.systems.BoosterPackSystem")
     require("tools.testkit").seedRng(20260914)
     local pesosA3 = { basic = 0, common = 15, uncommon = 45, rare = 32, legendary = 8 }
@@ -106,8 +88,6 @@ function M.run()
     check("Espectral gerou cartas (" .. total .. ")", total > 0)
     check("Espectral NAO traz comum nem basic (" .. comuns .. " de " .. total .. ")", comuns == 0)
 
-    -- E o irmao de 3 cartas CONTINUA podendo trazer comum: o piso e do
-    -- Espectral, nao do gerador inteiro.
     local comunsArcana = 0
     for _ = 1, 40 do
         for _, c in ipairs(BPS.generateContents({

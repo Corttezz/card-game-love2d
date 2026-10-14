@@ -1,34 +1,7 @@
--- tools/test_cards_always_live.lua
--- CARTA VISIVEL = CARTA VIVA (regra do dono, 13/Out/2026):
---   "a todo momento as cartas que estao sendo exibidas na tela eu quero que
---    elas fiquem com a animacao sendo mostrada. Elas nao podem estar
---    estaticas em NENHUM tipo de visualizacao em nenhum local."
--- Revoga o "idle = estatico, interacao = vivo" de Jul/2026.
---
--- O que esta suite trava:
---   1. A REGRA mora num lugar so (CardFrame.displayImage) e nenhuma tela
---      chama o mecanismo (liveImage) direto — assim o reducedMotion vale em
---      todo lugar de uma vez.
---   2. SEM hover, uma carta com icone animado desenha o quadro VIVO em
---      Card:draw (mao, espolios, loja, pacote, classe, voo do combate), no
---      CardGridRender (Deck Viewer, Gerenciador de Coringas) e na grade da
---      Colecao — e o quadro AVANCA com o relogio simulado.
---   3. reducedMotion REMOVE MOVIMENTO: com a opcao ligada a carta fica no
---      frame 0 (a arte estatica), com ou sem hover.
---   4. PARIDADE DAS CAMADAS: a animacao e composta como base + icone + chrome
---      (3 draws por frame em vez da carta inteira); o frame 0 composto assim
---      tem que ser pixel a pixel o render direto — senao a carta "pisca" a
---      cada volta do loop.
---   5. ORCAMENTO: dezenas de cartas pedindo vida no mesmo quadro ganham vida
---      em ondas (orcamento global por quadro), nunca todas num quadro so.
---
---   love . test_one test_cards_always_live
-
 local TK = require("tools.testkit")
 
 local M = {}
 
--- Textura de verdade por tras de um drawable (Mesh → sua textura).
 local function textureOf(d)
     if type(d) == "userdata" and d.typeOf and d:typeOf("Mesh") then
         return d:getTexture()
@@ -36,8 +9,6 @@ local function textureOf(d)
     return d
 end
 
--- Executa fn com love.graphics.draw espiao; devolve o conjunto de texturas
--- desenhadas ({ [tex] = true }).
 local function spyDraw(fn)
     local real = love.graphics.draw
     local seen = {}
@@ -52,8 +23,6 @@ local function spyDraw(fn)
     return seen
 end
 
--- Diferenca entre dois canvases: maior desvio de canal (0..255) e quantos
--- pixels divergem por mais de `tol` niveis em algum canal.
 local function canvasDiff(a, b, tol)
     local da, db = a:newImageData(), b:newImageData()
     local w, h = da:getWidth(), da:getHeight()
@@ -82,9 +51,6 @@ function M.run()
     local IconFramesLoader = require("src.ui.IconFramesLoader")
     local db = CardDatabase:new()
 
-    -- ===================================================================
-    -- 1. A REGRA num lugar so — travada no FONTE
-    -- ===================================================================
     local function fonte(caminho)
         return love.filesystem.read(caminho) or ""
     end
@@ -105,7 +71,6 @@ function M.run()
         t:falsy(path .. " nao usa a regra antiga (imageFor/isInteracting)",
             src:find("imageFor") ~= nil or src:find("isInteracting") ~= nil)
     end
-    -- varredura ampla: NENHUM arquivo de tela chama liveImage
     local function scan(dir, hits)
         for _, item in ipairs(love.filesystem.getDirectoryItems(dir)) do
             local p = dir .. "/" .. item
@@ -125,9 +90,6 @@ function M.run()
     t:falsy("CardFrame nao exporta mais a regra antiga", CardFrame.imageFor ~= nil
         or CardFrame.isInteracting ~= nil)
 
-    -- ===================================================================
-    -- Fixture: cartas animadas de cada tipo
-    -- ===================================================================
     local byType, animated = {}, {}
     for _, cd in pairs(db:getAllCards()) do
         local art = CardArt.resolve(cd)
@@ -144,21 +106,16 @@ function M.run()
     t:truthy("catalogo tem cartas animadas", #animated >= 10)
     t:truthy("fixture: ha coringa animado", byType.joker and #byType.joker > 0)
 
-    -- Relogio SIMULADO: o indice do frame e o orcamento por quadro dependem
-    -- dele; sob carga o relogio de parede mudaria o resultado de rodada pra
-    -- rodada (licao do test_class_select).
     local realGetTime = love.timer.getTime
     local simNow = 1000
     love.timer.getTime = function() return simNow end
     local prevSettings = _G.gameSettings
     _G.gameSettings = { reducedMotion = false }
 
-    -- avanca um quadro de jogo: love.update (CardFrame.update) + relogio
     local function tick()
         simNow = simNow + 1 / 60
         CardFrame.update()
     end
-    -- pede a imagem viva ate o set ficar pronto (orcamento por quadro)
     local function warm(inst, maxFrames)
         for _ = 1, maxFrames or 200 do
             tick()
@@ -168,20 +125,17 @@ function M.run()
     end
 
     local okAll, errAll = pcall(function()
-        -- ===============================================================
-        -- 4. PARIDADE DAS CAMADAS (frame 0 composto == render direto)
-        -- ===============================================================
         local amostras = {}
         for _, ty in ipairs({ "attack", "defense", "effect", "joker" }) do
             if byType[ty] and byType[ty][1] then amostras[#amostras + 1] = { cd = byType[ty][1], up = 0 } end
         end
-        amostras[#amostras + 1] = { cd = animated[1], up = 2 }   -- gemas de forja no chrome
+        amostras[#amostras + 1] = { cd = animated[1], up = 2 }
         for _, s in ipairs(amostras) do
             local inst = db:createCardInstance(s.cd)
             inst.upgrades = s.up
             CardFrame.invalidate(inst)
-            local camadas = CardFrame.render(inst)            -- caminho da animacao (camadas)
-            local direto = CardFrame._renderDirectForParity(inst)   -- carta inteira num canvas
+            local camadas = CardFrame.render(inst)
+            local direto = CardFrame._renderDirectForParity(inst)
             t:truthy(s.cd.id .. " +" .. s.up .. ": carta animada rende pelas camadas", direto ~= nil)
             if camadas then
                 local maxd, n, total = canvasDiff(direto, camadas, 2)
@@ -191,22 +145,18 @@ function M.run()
             CardFrame.invalidate(inst)
         end
 
-        -- ===============================================================
-        -- 2. SEM HOVER a carta e VIVA — e o quadro avanca com o relogio
-        -- ===============================================================
         local cd = animated[1]
         local inst = db:createCardInstance(cd)
         inst.isHovered, inst.isSelected = false, false
         CardFrame.invalidate(inst)
-        inst.image = CardFrame.render(inst)   -- estatico novo (invalidate nao toca instancias)
+        inst.image = CardFrame.render(inst)
         t:truthy("set da carta fica pronto sob orcamento", warm(inst))
         local anim = CardFrame.getAnimation(inst)
         t:truthy("animacao tem mais de um frame", anim and #anim.canvases > 1)
         local fps = anim and anim.fps or 8
         local n = anim and #anim.canvases or 9
 
-        -- instante cujo frame NAO e o 0 (o frame 0 E o canvas estatico)
-        local function gotoFrame(idx)   -- idx 1-based
+        local function gotoFrame(idx)
             simNow = math.floor(simNow) + (idx - 1 + 0.5) / fps
         end
         gotoFrame(3)
@@ -215,7 +165,6 @@ function M.run()
         t:eq("displayImage sem hover devolve o frame corrente (3)", CardFrame.displayImage(inst), f3)
         t:eq("liveImage == displayImage sem reducedMotion", CardFrame.liveImage(inst), f3)
 
-        -- Card:draw (mao, espolios, loja, pacote, classe, combate)
         local seen = spyDraw(function() inst:draw(200, 200, false, false) end)
         t:truthy("Card:draw SEM hover desenha o quadro vivo (frame 3)", seen[f3] == true)
         t:falsy("Card:draw SEM hover nao desenha a estatica", seen[inst.image] == true)
@@ -229,13 +178,11 @@ function M.run()
         t:truthy("Card:draw acompanha o relogio (frame 6)", seen[f6] == true)
         t:falsy("Card:draw nao segura o frame antigo", seen[f3] == true)
 
-        -- hover CONTINUA valendo (nao tira nada)
         inst.isHovered = true
         seen = spyDraw(function() inst:draw(200, 200, false, false) end)
         t:truthy("Card:draw COM hover tambem desenha o quadro vivo", seen[f6] == true)
         inst.isHovered = false
 
-        -- CardGridRender (Deck Viewer, Gerenciador de Coringas) em repouso
         local CardGridRender = require("src.ui.CardGridRender")
         gotoFrame(2)
         local f2 = CardFrame.frameAt(anim, simNow)
@@ -246,7 +193,6 @@ function M.run()
         t:falsy("CardGridRender em repouso nao desenha a estatica", seen[inst.image] == true)
         t:eq("CardGridRender restaura instance.image", inst.image, anim.canvases[1])
 
-        -- loop fecha: n quadros depois, o mesmo frame
         gotoFrame(1)
         local f1 = CardFrame.frameAt(anim, simNow)
         simNow = simNow + n / fps
@@ -258,9 +204,6 @@ function M.run()
             return false
         end)())
 
-        -- ===============================================================
-        -- 3. reducedMotion REMOVE MOVIMENTO: frame 0, com ou sem hover
-        -- ===============================================================
         _G.gameSettings.reducedMotion = true
         gotoFrame(4)
         t:falsy("reducedMotion: liveEnabled() e falso", CardFrame.liveEnabled())
@@ -282,14 +225,10 @@ function M.run()
         t:eq("movimento de volta: displayImage volta ao quadro vivo",
             CardFrame.displayImage(inst), CardFrame.frameAt(anim, simNow))
 
-        -- ===============================================================
-        -- 5. ORCAMENTO: muitas cartas no mesmo quadro ganham vida em ondas
-        -- ===============================================================
         CardFrame.clearCache()
         local N = math.min(#animated, 20)
         local insts = {}
         for i = 1, N do insts[i] = db:createCardInstance(animated[i]) end
-        -- (createCardInstance ja renderizou o estatico de cada uma)
         local liveAfter = {}
         local frames = 0
         local allLive = false
@@ -306,22 +245,15 @@ function M.run()
         t:truthy(("%d cartas pedidas por quadro: todas vivas em %d quadros"):format(N, frames), allLive)
         t:truthy("nao e tudo num quadro so (orcamento espalha a montagem)",
             frames > 1 and (liveAfter[1] or 0) < N)
-        -- por carta: n PNGs decodificados + (n-1) composicoes (+ camadas quando
-        -- nao estao em cache), BUILD_PER_FRAME unidades por quadro; sob relogio
-        -- simulado o teto de tempo nao morde (spent = 0), so a contagem
         local teto = math.ceil(N * 2 * n / CardFrame.BUILD_PER_FRAME) + N + 2
         t:truthy(("montagem termina dentro do teto do orcamento (%d <= %d quadros)"):format(frames, teto),
             frames <= teto)
-        -- em uso no mesmo quadro: nenhuma e expulsa
         t:truthy("todas continuam vivas no quadro seguinte", (function()
             tick()
             for i = 1, N do if not CardFrame.liveImage(insts[i]) then return false end end
             return true
         end)())
 
-        -- ===============================================================
-        -- 2b. COLECAO: a grade inteira viva sem hover (desenho real da tela)
-        -- ===============================================================
         local UnlockSystem = require("src.systems.UnlockSystem")
         if UnlockSystem.setRevealAll then UnlockSystem.setRevealAll(true) end
         local CollectionScreen = require("components.CollectionScreen")
@@ -333,11 +265,10 @@ function M.run()
         end
         screen:_applyFilter()
         local realMouse = love.mouse.getPosition
-        love.mouse.getPosition = function() return 2, 2 end   -- longe da grade
+        love.mouse.getPosition = function() return 2, 2 end
         local W, H = love.graphics.getDimensions()
         local canvas = love.graphics.newCanvas(W, H)
         local okC, errC = pcall(function()
-            -- deixa as visiveis ganharem vida
             for _ = 1, 120 do
                 tick()
                 screen:update(1 / 60)
@@ -352,9 +283,6 @@ function M.run()
                 screen:draw()
                 love.graphics.setCanvas()
             end)
-            -- cartas animadas DESENHADAS neste quadro (algum canvas do set
-            -- apareceu no draw): TODAS desenharam o frame corrente, NENHUMA
-            -- a estatica
             local desenhadas, vivas, estaticas = 0, 0, 0
             for _, ci in ipairs(screen.filtered or {}) do
                 local artC = CardArt.resolve(ci)

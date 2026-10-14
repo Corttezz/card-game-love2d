@@ -1,25 +1,3 @@
--- tools/test_preview_plate.lua
--- A PLACA da previa de dano (src/ui/DamagePreviewPanel, Out/2026): resumo
--- por padrao, detalhes sob demanda, lembrado em settings, e as bandas nunca
--- se sobrepoem em nenhum tamanho de janela.
---
--- Historico: o painel nasceu mostrando a conta inteira (carta a carta, fichas,
--- combos, coringas) o tempo todo — o dono: "grande e confuso". Agora:
---   • RESUMO (default): dano, Bloqueio, LETAL + fichas de combo/coringa;
---   • DETALHES: a conta inteira — clique na placa, tecla V (main.lua) ou
---     foco + A no pad (a placa e alvo do NavCursor);
---   • a escolha persiste em `previewDetails` (SaveManager/SettingsMenu).
---
--- O que trava aqui:
---   • Panel.layout + Panel.validate em 6 tamanhos (janela falsificada), pelo
---     caminho REAL (Panel.draw com uma leva de verdade), resumo e detalhes;
---   • resumo e mais BAIXO que detalhes com a mesma leva;
---   • toggle persiste no arquivo de settings (sandbox *.tool.lua);
---   • clique dentro da placa alterna; fora nao; sem draw no quadro, nao;
---   • chaves i18n nos 5 locales.
---
---   love . test_one test_preview_plate
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -37,7 +15,6 @@ local function restoreWindow()
     require("src.ui.FontManager").clearCache()
 end
 
--- Ancora do JOGAR como GameplayScene.updatePlayButtonPosition a calcula.
 local function playAnchor()
     local Config = require("src.core.Config")
     local bw = Config.Utils.getResponsiveSize(Config.UI.PLAY_BUTTON_WIDTH_RATIO, 180, "width")
@@ -65,7 +42,6 @@ function M.run()
     local SM = require("engine.SaveManager")
     local I18n = require("src.i18n.I18n")
 
-    -- leva de verdade: 5 golpes do guerreiro (Saraivada + Par), 2 de Forca
     TK.seedRng(4242)
     local game = TK.newRunGame("warrior")
     local db = require("src.systems.CardDatabase"):new()
@@ -83,12 +59,10 @@ function M.run()
     game.jokerSlots = { db:createCardInstance(db:getCard("joker_001")) }
 
     local okRun, err = pcall(function()
-        -- 1. default = resumo
         _G.gameSettings = _G.gameSettings or {}
         _G.gameSettings.previewDetails = nil
         t:falsy("default: detalhes desligados", Panel.detailsOn())
 
-        -- 2. bandas validas em 6 tamanhos, resumo e detalhes
         local sizes = { { 640, 480 }, { 800, 600 }, { 1024, 768 }, { 1366, 768 },
             { 1920, 1080 }, { 2560, 1440 } }
         for _, sz in ipairs(sizes) do
@@ -121,7 +95,6 @@ function M.run()
         end
         restoreWindow()
 
-        -- 3. toggle persiste (sandbox: settings.tool.lua)
         Panel.setDetails(false)
         t:falsy("setDetails(false)", Panel.detailsOn())
         Panel.toggleDetails()
@@ -132,7 +105,6 @@ function M.run()
         t:truthy("persistiu o desligar", (SM.loadSettings() or {}).previewDetails == false)
         t:truthy("DEFAULT_SETTINGS conhece previewDetails", SM.DEFAULT_SETTINGS.previewDetails == false)
 
-        -- 4. clique: dentro alterna, fora nao, sem draw nao
         fakeWindow(1024, 768)
         Panel.update(game, nil, 1 / 60)
         local rect = drawPlate(game, Panel)
@@ -144,22 +116,18 @@ function M.run()
         t:truthy("clique na placa: consome", Panel.mousepressed(hr.x + hr.w / 2, hr.y + hr.h / 2, 1))
         t:truthy("clique na placa: alternou", Panel.detailsOn() ~= before)
         Panel.setDetails(false)
-        Panel.update(game, nil, 1 / 60)   -- sem draw depois: retangulo some
+        Panel.update(game, nil, 1 / 60)
         t:falsy("update sem draw: hitRect vazio", Panel.hitRect)
         t:falsy("sem draw no quadro: clique nao consome", Panel.mousepressed(hr.x + 5, hr.y + 5, 1))
         restoreWindow()
 
-        -- 5. main.lua: tecla V e clique roteados (fonte)
         local src = love.filesystem.read("main.lua") or ""
         t:truthy("main.lua: tecla V alterna", src:find('key == "v" and currentState == "playing"', 1, true) ~= nil)
         t:truthy("main.lua: clique na placa antes da cena",
             src:find('require("src.ui.DamagePreviewPanel").mousepressed(x, y, button)', 1, true) ~= nil)
-        -- (sem linha em Configuracoes: a aba Jogo tem altura fixa e 5 linhas
-        -- — test_pause_menu trava isso; a placa e a tecla V sao o controle)
         local sm = love.filesystem.read("components/SettingsMenu.lua") or ""
         t:truthy("SettingsMenu: snapshot persiste previewDetails", sm:find("previewDetails = g.previewDetails", 1, true) ~= nil)
 
-        -- 6. i18n nos 5 locales
         local cur = I18n.getLocale()
         for _, loc in ipairs({ "pt_BR", "en", "es", "de", "fr" }) do
             I18n.setLocale(loc, true)

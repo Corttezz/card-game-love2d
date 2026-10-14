@@ -1,16 +1,3 @@
--- tools/intent_fog_report.lua
--- RELATÓRIO da névoa de intenção (src/data/intent_fog.lua): fração de
--- anúncios full / type_only / hidden por andar de cada bioma com névoa.
---   1. analítico (IntentVisibility.expectedShares);
---   2. medido: N runs simuladas × 8 andares × T anúncios pela resolução REAL
---      (Rng stream "misc"), sem véu de criatura.
---
---   love . test_one intent_fog_report            (10 runs × 6 anúncios/andar)
---   FOG_REPORT_RUNS=30 FOG_REPORT_TURNS=8 love . test_one intent_fog_report
---
--- Pra responder "quanto do ato o jogador passa sem ver o tipo?" sem
--- adivinhar. Devolve true sempre (é relatório, não trava).
-
 local TK = require("tools.testkit")
 
 local M = {}

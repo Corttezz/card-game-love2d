@@ -1,22 +1,3 @@
--- tools/demo_worldroad.lua
--- Demo do WorldRoad com o VISUAL REAL de batalha (game + enemy + HUD).
---
--- Interativo (love . demo_worldroad):
---   SPACE = viagem com encounter (inimigo vem lá de trás)
---   1-6   = troca bioma (com blend)
---   V     = pula pra perto do marco (vista alta)
---   R     = reset camZ
---   ESC   = sair
---
--- Tour (love . demo_worldroad tour): captura 6 keyframes automáticos no save
--- dir (worldroad_k1..k6.png) e sai — pipeline de validação visual da LLM.
---   k1 battle    — inimigo PLANTADO na estrada (getRoadAnchor) + HUD
---   k2 depart    — viagem 15%: herói surge, encounter na crista
---   k3 mid       — viagem 55%: inimigo desce a estrada crescendo
---   k4 arrive    — viagem 92%: quase em posição de batalha
---   k5 blend     — transição bioma 1→2 no meio (cores lerpando)
---   k6 vista     — perto do marco: castelo da vista totalmente revelado
-
 local M = {}
 
 local WorldRoad = require("src.ui.WorldRoad")
@@ -25,9 +6,6 @@ local EnemyHud = require("src.ui.EnemyHud")
 local LightEngine = require("engine.LightEngine")
 local LuminaireEngine = require("engine.LuminaireEngine")
 
--- POSTGATE: força TODO prop a virar luminária da beira da estrada, pra
--- validar a margem inteira ao vivo (viajando, trocando bioma). Escolhe um
--- kind roadside do catálogo do bioma (lantern se houver, senão o 1º).
 local _postKindCache = {}
 local function postKindFor(bid)
     local hit = _postKindCache[bid]
@@ -55,9 +33,6 @@ end
 
 local game, topBar, gameUI
 
--- v9.7.2: áudio mínimo do demo (o love.load do main.lua NÃO roda em modo
--- tool) — registra só os sons do cenário interativo + fork, pra validar
--- o MATERIAL de cada elemento por bioma ao vivo
 local function setupAudio()
     if _G.audioSystem then return end
     local AudioManager = require("engine.AudioManager")
@@ -101,16 +76,12 @@ local function setupGame()
     _G.topBar, _G.gameUI = topBar, gameUI
 end
 
--- Frame de batalha completo (mesma composição do GameplayScene).
--- LightEngine v1: mundo → inimigo → composite/fork overlay → HUD/UI
 local function drawBattleFrame(showEnemy)
     local width, height = love.graphics.getDimensions()
     local topBarH = topBar.height or 80
 
     love.graphics.clear(0, 0, 0, 1)
 
-    -- v9.2: inimigo via callback do painter (mesma ordem do GameplayScene —
-    -- postes mais próximos que ele ficam na frente)
     local bbox, cx, cy
     if showEnemy and not WorldRoad.isTraveling() then
         cx, cy = WorldRoad.getRoadAnchor(WorldRoad.BATTLE_REL,
@@ -136,14 +107,9 @@ local function sim(ticks)
     end
 end
 
--- ============================================================================
--- TOUR: keyframes automáticos (frame-driven — captureScreenshot só funciona
--- de forma confiável dentro do loop real de frames, não em presents manuais)
--- ============================================================================
 local function runTour()
     setupGame()
 
-    -- Cada step: setup() roda 1x, simTicks de aquecimento, showEnemy no draw.
     local steps = {
         { name = "worldroad_k1_battle", simTicks = 40, showEnemy = true,
           setup = function()
@@ -161,13 +127,12 @@ local function runTour()
           simTicks = math.floor(0.37 * WorldRoad.TRAVEL_DURATION * 30) },
         { name = "worldroad_k5_blend", simTicks = 33, showEnemy = true,
           setup = function()
-              -- garante viagem terminada antes do blend
               for _ = 1, 150 do WorldRoad.update(1 / 30) end
               WorldRoad.setBiome(2)
           end },
         { name = "worldroad_k6_vista", simTicks = 40, showEnemy = true,
           setup = function()
-              for _ = 1, 80 do WorldRoad.update(1 / 30) end   -- termina blend
+              for _ = 1, 80 do WorldRoad.update(1 / 30) end
               WorldRoad._camZ = WorldRoad.TRAVEL_DISTANCE * 8 * 0.92
               WorldRoad._props = {}
           end },
@@ -202,7 +167,6 @@ local function runTour()
             love.graphics.captureScreenshot(function(imageData)
                 imageData:encode("png", name .. ".png")
                 print("[tour] " .. name .. ".png salvo")
-                -- avança pro próximo step
                 idx = idx + 1
                 ticksLeft = nil
                 captured = false
@@ -216,11 +180,6 @@ local function runTour()
     end
 end
 
--- ============================================================================
--- INTERATIVO
--- ============================================================================
--- GALERIA DE MONSTROS (tecla M): roster completo v5, idle rodando no
--- cenário real; setas trocam, H = hurt, K = morte, J = revive.
 local MONSTER_ROSTER = {
     { id = "cursed_scarecrow",  label = "Espantalho Maldito  (Ato 1 - comum)" },
     { id = "harvest_reaper",    label = "Ceifador da Colheita  (Ato 1 - elite)" },
@@ -242,9 +201,6 @@ local MONSTER_ROSTER = {
     { id = "eclipse_queen",     label = "Rainha do Eclipse  (Endless Anoitecer - BOSS)", boss = true },
 }
 
--- v9.7.2: F cicla conjuntos de fork — os 6 tipos de lugar testáveis em
--- qualquer bioma (hover acelera anim + som, porta da casa abre, clique
--- converge de verdade)
 local FORK_SETS = {
     { { type = "battle", label = "Batalha",  desc = "Um inimigo bloqueia a estrada" },
       { type = "rest",   label = "Descanso", desc = "Fogueira acolhedora" },
@@ -258,31 +214,29 @@ local function runInteractive(postgate)
     setupGame()
     WorldRoad.setBiome(1)
     WorldRoad._camZ = 6
-    WorldRoad._segBase = 0   -- v10.4: progress do castelo conta daqui
+    WorldRoad._segBase = 0
 
     local gallery = false
     local gIdx = 1
     local forkSet = 0
-    local demoFadeIn = 0   -- v10: revela do preto após a cerimônia (B)
+    local demoFadeIn = 0
 
     local function applyGalleryMonster()
         local e = MONSTER_ROSTER[gIdx]
         game.enemy.spriteId = e.id
         game.enemy.isBoss = e.boss or false
-        EnemyRenderer.clearCache()   -- reseta anim (revive) e troca sprite
+        EnemyRenderer.clearCache()
     end
 
     love.update = function(dt)
         WorldRoad.update(dt)
         EnemyRenderer.update(dt)
         if demoFadeIn > 0 then demoFadeIn = demoFadeIn - dt / 0.8 end
-        if postgate then forcePosts() end   -- margem inteira em postes
+        if postgate then forcePosts() end
     end
 
     love.draw = function()
-        -- v10: durante a cerimônia da porta o inimigo não fica na estrada
         drawBattleFrame(not WorldRoad.isEntering())
-        -- fade da fase "push" (entrando) + revelação pós-cerimônia
         local ef = (WorldRoad.entryFade and WorldRoad.entryFade() or 0)
         local fk = math.max(ef * ef, math.max(0, demoFadeIn))
         if fk > 0 then
@@ -327,7 +281,6 @@ local function runInteractive(postgate)
             if gallery then
                 applyGalleryMonster()
             else
-                -- restaura o inimigo do contexto atual da run
                 game.enemy.spriteId = EnemyRenderer.resolveSpriteId(1, "battle")
                 game.enemy.isBoss = false
                 EnemyRenderer.clearCache()
@@ -355,59 +308,43 @@ local function runInteractive(postgate)
             return
         end
         if key == "f" then
-            -- v9.7.2: encruzilhada de teste — cicla os conjuntos de lugares
             forkSet = forkSet % #FORK_SETS + 1
             WorldRoad.showFork(FORK_SETS[forkSet], function(node)
-                print("[demo] fork escolhido: " .. tostring(node and node.type))
             end)
         elseif key == "b" and not WorldRoad.isEntering() then
-            -- v10.2: ENTRADA DO BOSS INSTANTÂNEA — pula pro ponto de chegada
-            -- e abre a porta direto (atalho pra testar a cutscene isolada).
             WorldRoad._segBase = 0
             WorldRoad._camZ = WorldRoad.TRAVEL_DISTANCE * 8
             WorldRoad.enterCastle({
                 onComplete = function()
                     demoFadeIn = 1
-                    print("[demo] entrada no castelo completa")
                 end,
             })
         elseif key == "space" and not WorldRoad.isTraveling()
                and not WorldRoad.isEntering() then
-            -- v10.4: SIMULA O FLUXO REAL — cada SPACE anda um passo rumo ao
-            -- castelo (a esfera avança, o castelo CRESCE, monotônico). Quando
-            -- chega PERTO o suficiente, a cerimônia de entrada dispara SOZINHA
-            -- (porta abrindo + som + fade). Ao terminar, reseta pra andar de
-            -- novo. É exatamente o fluxo do jogo (andar → perto → entrar).
             WorldRoad.travel({
                 onComplete = function()
                     local seg = WorldRoad.TRAVEL_DISTANCE * 8
                     local prog = (WorldRoad._camZ - (WorldRoad._segBase or 0)) / seg
-                    print(string.format("[demo] andou -> progress %.2f", prog))
                     if prog >= 0.92 then
                         WorldRoad.enterCastle({
                             onComplete = function()
                                 demoFadeIn = 1
                                 WorldRoad._camZ = 6
                                 WorldRoad._segBase = 0
-                                print("[demo] chegou perto -> entrada AUTOMATICA")
                             end,
                         })
                     end
                 end,
             })
         elseif key == "l" then
-            -- LightEngine v1: toggle do motor (validação A/B ao vivo)
             LightEngine.setEnabled(not LightEngine.isEnabled())
         elseif key == "o" then
-            -- calibração: escurece o ambiente (debug — não persiste)
             LightEngine.debugAmbientScale =
                 math.max(0.30, LightEngine.debugAmbientScale - 0.05)
         elseif key == "p" then
             LightEngine.debugAmbientScale =
                 math.min(1.30, LightEngine.debugAmbientScale + 0.05)
         elseif key == "t" then
-            -- F6.1: cicla o tempo do dia (dia → tarde → anoitecer), com
-            -- a transição ease real do jogo
             local cur = WorldRoad._timeOfDayTarget or 1
             local nxt = cur >= 1 and 0 or (cur >= 0.5 and 1 or 0.5)
             WorldRoad.setTimeOfDay(nxt)
@@ -425,9 +362,6 @@ local function runInteractive(postgate)
         end
     end
 
-    -- v9.7.2: mouse REAL no demo — fork clicável + cenário interativo
-    -- (árvore/poste/cerca/nuvem reagem; rajada da grama já polla o mouse
-    -- dentro do WorldRoad.update)
     love.mousepressed = function(mx, my, button)
         if WorldRoad.isForkActive() then
             WorldRoad.forkMousePressed(mx, my)
@@ -444,7 +378,7 @@ function M.run(mode)
     if mode == "tour" then
         runTour()
     elseif mode == "postgate" then
-        runInteractive(true)   -- margem inteira em postes (validação ao vivo)
+        runInteractive(true)
     else
         runInteractive()
     end

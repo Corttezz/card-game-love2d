@@ -1,11 +1,3 @@
--- tools/test_effects_full.lua
--- Cobertura ampla do EffectSystem além do smoke_effects: appliers contínuos de
--- joker (multiplicadores/bônus com gating), applyCardEffects (multi_hit,
--- damage_bonus_self), todos os processEffectCard, orbs por tipo (lightning/ice/
--- dark/fire/holy + overflow), triggers (attack/defend/turn_start), heal_multiplier.
--- Conferido em src/systems/EffectSystem.lua.
---   love . test_effects_full
-
 local TK = require("tools.testkit")
 local EffectSystem = require("src.systems.EffectSystem")
 
@@ -17,7 +9,6 @@ function M.run()
     local t = TK.new("efeitos: EffectSystem (completo)")
     local es = EffectSystem:new()
 
-    -- ===== processEffect: appliers contínuos de joker (com gating) =====
     local atkCard, defCard = { type = "attack" }, { type = "defense" }
     local v = es:processEffect({ type = "damage_multiplier", target = "attack", value = 2 }, atkCard, 10, {})
     t:eq("damage_multiplier x2 em attack", v, 20)
@@ -30,17 +21,14 @@ function M.run()
     v = es:processEffect({ type = "defense_bonus", value = 3 }, defCard, 10, {})
     t:eq("defense_bonus +3 em defense", v, 13)
 
-    -- ===== applyCardEffects: só multi_hit e damage_bonus_self =====
     local g0 = TK.mockGame()
     local mh = { type = "attack", effects = { { type = "multi_hit", value = 3 } } }
     t:eq("multi_hit x3", es:applyCardEffects(g0, mh, 5), 15)
     local dbs = { type = "attack", effects = { { type = "damage_bonus_self", value = 4 } } }
     t:eq("damage_bonus_self +4", es:applyCardEffects(g0, dbs, 10), 14)
-    -- strength_scaling é flag-only aqui (não altera valor)
     local ss = { type = "attack", effects = { { type = "strength_scaling" } } }
     t:eq("strength_scaling é flag-only (não altera)", es:applyCardEffects(g0, ss, 10), 10)
 
-    -- ===== processEffectCard: cada tipo =====
     local function fresh() return TK.mockGame({ enemyHp = 100 }) end
 
     local g = fresh(); g.player.health = 40
@@ -81,9 +69,6 @@ function M.run()
     g.discard = {}
     es:processEffectCard(g, { type = "discard_cards", value = 2 })
     t:eq("discard_cards remove 2 da mão", #g.hand, 1)
-    -- REGRESSÃO (Jul/2026): a carta descartada TEM que ir pro discard, não
-    -- sumir. Antes table.remove só arrancava da mão → o deck de batalha
-    -- degenerava (Sobrevivente comia 1 carta/turno até sobrar só as 3 jogadas).
     t:eq("discard_cards move as 2 pro discard (não deleta)", #g.discard, 2)
 
     g = fresh()
@@ -101,11 +86,9 @@ function M.run()
     es:processEffectCard(g, { type = "apply_buff", value = "focus", stacks = 2, duration = 3 })
     t:eq("apply_buff focus stacks", g.player:getBuffStacks("focus"), 2)
 
-    -- retorno de fallback: efeito desconhecido -> handled=false
     g = fresh()
     t:falsy("efeito desconhecido -> handled false", es:processEffectCard(g, { type = "xyz_nao_existe", value = 1 }))
 
-    -- ===== Orbs: channel/evoke por tipo =====
     g = fresh()
     es:processEffectCard(g, { type = "channel_orb", orbType = "lightning", value = 7 })
     t:eq("channel_orb empilha 1", #g.player.orbs, 1)
@@ -114,24 +97,16 @@ function M.run()
     t:eq("evoke lightning = dano direto", g.enemy.health, 93)
     t:eq("evoke esvazia orb", #g.player.orbs, 0)
 
-    -- ice -> armor
     g = fresh()
     es:processEffectCard(g, { type = "channel_orb", orbType = "ice", value = 5 })
     es:processEffectCard(g, { type = "evoke_orb" })
     t:eq("evoke ice = +armor", g.player.armor, 5)
 
-    -- dark -> dano dobrado
     g = fresh()
     es:processEffectCard(g, { type = "channel_orb", orbType = "dark", value = 5 })
     es:processEffectCard(g, { type = "evoke_orb" })
     t:eq("evoke dark = 2x dano", g.enemy.health, 90)
 
-    -- fire -> dano + QUEIMADURA (status proprio; NAO veneno)
-    -- Set/2026: o dono, jogando de MAGO, viu veneno empilhando no inimigo e
-    -- estranhou com razao -- veneno e o eixo do LADINO e nenhuma carta de mago
-    -- aplica. O ramo `fire` de _evokeOrbEffect usava "poison" como atalho
-    -- ("via poison por ora; refinar"), e o "por ora" ficou. Este par de
-    -- asserções e o que impede o atalho de voltar.
     g = fresh()
     es:processEffectCard(g, { type = "channel_orb", orbType = "fire", value = 6 })
     es:processEffectCard(g, { type = "evoke_orb" })
@@ -140,11 +115,6 @@ function M.run()
     t:falsy("evoke fire NAO aplica veneno (veneno e identidade do ladino)",
         g.enemy:hasStatus("poison"))
 
-    -- ===== QUEIMADURA: o DoT proprio do fogo =====
-    -- Mecanica IGUAL a do veneno (stacks de dano por turno, pela duracao,
-    -- absorvido pela armadura) com status SEPARADO -- o pedido nao era
-    -- rebalancear, era parar de mentir. Estas asserções travam as duas metades:
-    -- que a queimadura queima de verdade, e que ela nao e veneno.
     do
         local Enemy = require("src.entities.Enemy")
         local e = Enemy:new(50, 5)
@@ -152,8 +122,6 @@ function M.run()
         t:truthy("queimadura entra como status proprio", e:hasStatus("burn"))
         t:falsy("queimadura NAO e veneno", e:hasStatus("poison"))
 
-        -- Tica no MESMO lugar que o veneno (Enemy:onTurnEnd), com a mesma
-        -- cadencia: o dano sai ANTES do decremento de duration.
         local _, b1 = e:onTurnEnd()
         t:eq("1a queimadura tica os stacks", b1, 3)
         local _, b2 = e:onTurnEnd()
@@ -163,8 +131,6 @@ function M.run()
         t:eq("total queimado = stacks x duracao (igual ao veneno)",
             50 - e.health, 6)
 
-        -- O 1o retorno continua sendo o VENENO (chamadas antigas nao mudam) e
-        -- os dois DoTs sao numeros SEPARADOS, nunca somados num so.
         local e4 = Enemy:new(50, 5)
         e4:addStatusEffect({ name = "poison", duration = 1, stacks = 2 })
         e4:addStatusEffect({ name = "burn", duration = 1, stacks = 3 })
@@ -180,13 +146,6 @@ function M.run()
         t:eq("queimadura IGNORA a armadura, como o veneno (padrao StS)", e2.health, 45)
         t:eq("e a armadura fica intacta", e2.armor, 2)
 
-        -- MORTE POR DoT: os dois DoTs atravessam `_markDeathIfCrossed`, que e
-        -- o que faz a morte cair NO tick que a causou (com animacao) em vez de
-        -- ser recolhida pela rede de seguranca beats adiante. A aritmetica crua
-        -- do DoT nao passa por takeDamage, entao a marcacao tem que ser
-        -- explicita -- foi o caminho que o `morte-e-vitoria` consertou.
-        -- As duas asserções juntas provam a EQUIVALENCIA: queimar e envenenar
-        -- matam igual.
         local e3 = Enemy:new(3, 5)
         e3:addStatusEffect({ name = "burn", duration = 1, stacks = 9 })
         e3:onTurnEnd()
@@ -202,11 +161,6 @@ function M.run()
             e5._pendingDeath, e3._pendingDeath)
     end
 
-    -- ===== VENENO E IDENTIDADE DO LADINO =====
-    -- Varredura do catalogo inteiro. Foi ESTA fronteira que o atalho do fogo
-    -- furava: o mago via a pill de Veneno e ia procurar no proprio deck uma
-    -- carta que nao existe -- alem de disparar a conquista de 15+ veneno e o
-    -- combo `poison_stack`, que sao do ladino.
     do
         local CardDatabase = require("src.systems.CardDatabase")
         local offenders, sources = {}, 0
@@ -231,19 +185,16 @@ function M.run()
             #offenders, 0)
     end
 
-    -- holy -> cura
     g = fresh(); g.player.health = 40
     es:processEffectCard(g, { type = "channel_orb", orbType = "holy", value = 8 })
     es:processEffectCard(g, { type = "evoke_orb" })
     t:eq("evoke holy = cura", g.player.health, 48)
 
-    -- overflow: 4o orb evoca o mais antigo automaticamente
     g = fresh()
     for _ = 1, 4 do es:processEffectCard(g, { type = "channel_orb", orbType = "lightning", value = 5 }) end
     t:eq("orbs mantêm cap 3", #g.player.orbs, 3)
     t:eq("overflow auto-evocou o mais antigo (-5)", g.enemy.health, 95)
 
-    -- evoke_all_orbs
     g = fresh()
     es:processEffectCard(g, { type = "channel_orb", orbType = "ice", value = 3 })
     es:processEffectCard(g, { type = "channel_orb", orbType = "lightning", value = 4 })
@@ -252,25 +203,18 @@ function M.run()
     t:eq("evoke_all: lightning deu dano", g.enemy.health, 96)
     t:eq("evoke_all esvazia orbs", #g.player.orbs, 0)
 
-    -- mystery: sempre resolvido (handled), sem crash
     g = fresh()
     t:truthy("mystery é handled", es:processEffectCard(g, { type = "mystery" }))
 
-    -- ===== applyHealMultiplier (joker heal_multiplier) =====
     g = fresh()
     g.jokerSlots = { { effects = { { type = "heal_multiplier", value = 2 } } } }
     t:eq("heal_multiplier dobra cura", es:applyHealMultiplier(g, 10), 20)
 
-    -- ===== Triggers =====
-    -- on_attack_heal (lifesteal) via joker
     g = fresh(); g.player.health = 50
     g.jokerSlots = { { effects = { { type = "on_attack_heal", value = 3 } } } }
     es:applyTriggerEffects(g, "attack", { target = g.enemy })
     t:eq("on_attack_heal cura no ataque", g.player.health, 53)
 
-    -- on_defend_damage ARMA ESPINHOS (Set/2026) — nao causa dano na hora.
-    -- Contrato novo: a carta/joker vira o buff "thorn"; quem dispara o dano
-    -- e o GOLPE do inimigo (Game:enemyTurn -> fireThornReflect). Ver test_beats.
     g = fresh()
     g.jokerSlots = { { effects = { { type = "on_defend_damage", value = 4 } } } }
     es:applyTriggerEffects(g, "defend", { target = g.enemy })
@@ -281,7 +225,6 @@ function M.run()
     es:fireThornReflect(g)
     t:eq("fireThornReflect cobra os 4 no inimigo", g.enemy.health, 96)
 
-    -- regen_per_turn / damage_per_turn no turn_start
     g = fresh(); g.player.health = 50
     g.jokerSlots = { { effects = { { type = "regen_per_turn", value = 5 } } } }
     es:applyTriggerEffects(g, "turn_start", {})
@@ -292,7 +235,6 @@ function M.run()
     es:applyTriggerEffects(g, "turn_start", {})
     t:eq("damage_per_turn fere no início do turno", g.player.health, 47)
 
-    -- trigger via sourceCard (carta non-joker) — on_defend_damage numa defense card
     g = fresh()
     local reflectCard = { type = "defense", effects = { { type = "on_defend_damage", value = 6 } } }
     es:applyTriggerEffects(g, "defend", { target = g.enemy, sourceCard = reflectCard })
@@ -300,9 +242,6 @@ function M.run()
         g.player:getBuffStacks("thorn"), 6)
     t:eq("sourceCard: inimigo intacto ate ele atacar", g.enemy.health, 100)
 
-    -- ===== P0.9 (rebalance v2): LARGEST-MULTIPLIER-WINS entre jokers =====
-    -- 2 jokers x1.5 NAO compõem (x2.25) — só o maior multiplicador conta;
-    -- bônus flat continuam somando todos. Regressão exigida pela crítica A1.
     g = fresh()
     g.jokerSlots = {
         { effects = { { type = "damage_multiplier", target = "attack", value = 1.5 } } },
@@ -319,9 +258,6 @@ function M.run()
     t:eq("bônus flat somam TODOS por cima do maior x",
         es:applyJokerEffects(g, atkCard, 10), 25)
 
-    -- ===== Game feel v1: applyJokerEffects retorna PROCS (ticks Balatro) =====
-    -- Cada joker que MUDOU o valor gera um proc {slotIndex, joker, label, kind}
-    -- pro tick sequencial no slot. Previsão (predictJokerProcs) deve bater.
     do
         local finalV, procs = es:applyJokerEffects(g, atkCard, 10)
         t:eq("procs: valor inalterado (25)", finalV, 25)
@@ -332,8 +268,6 @@ function M.run()
         t:eq("predictJokerProcs bate com o real", es:predictJokerProcs(g, atkCard), 3)
         t:eq("predictJokerProcs: carta de efeito não proca", es:predictJokerProcs(g, { type = "effect" }), 0)
 
-        -- Previa de dano (Out/2026): jokerSteps e o NUCLEO PURO de
-        -- applyJokerEffects — mesmo valor, nada mexido no game.
         local msgs = #(g.messages or {})
         local pv, entries, echoUsed = es:jokerSteps(g, atkCard, 10, nil, false)
         t:eq("jokerSteps: mesmo valor do combate (25)", pv, 25)
@@ -343,11 +277,6 @@ function M.run()
         t:eq("jokerSteps: nao emite toast (puro)", #(g.messages or {}), msgs)
     end
 
-    -- ===== ECO: dobra a PRIMEIRA carta de ataque do turno (Set/2026) =====
-    -- "Forma de Eco" era um CLONE do "Deus do Abismo" (os dois
-    -- damage_multiplier attack 1.5) — e, com o largest-wins acima, ter os
-    -- dois ativos nao somava nada. Queixa do dono: "qual a diferenca entre
-    -- deus do abismo e forma de eco? nenhuma". Agora e um PICO condicional.
     do
         local ge = fresh()
         ge.jokerSlots = { { effects = { { type = "echo_first_attack", value = 2 } } } }
@@ -362,10 +291,9 @@ function M.run()
         t:eq("e o predict para de prometer um tick que nao vem",
             es:predictJokerProcs(ge, atk), 0)
 
-        ge._echoFiredThisTurn = false   -- (o Game zera isto no drawForTurn)
+        ge._echoFiredThisTurn = false
         t:eq("turno novo, o eco volta", es:applyJokerEffects(ge, atk, 10), 20)
 
-        -- Defesa nao ecoa, e o eco nao gasta a janela numa carta de defesa.
         local gd = fresh()
         gd.jokerSlots = { { effects = { { type = "echo_first_attack", value = 2 } } } }
         t:eq("carta de DEFESA nao ecoa",
@@ -373,9 +301,6 @@ function M.run()
         t:eq("e a janela do eco continua de pe pro ataque",
             es:applyJokerEffects(gd, { type = "attack" }, 10), 20)
 
-        -- Fica FORA do largest-wins: eco e multiplicador de joker COMPÕEM.
-        -- (E de proposito — sao camadas diferentes; o eco custa a condicao
-        -- de ser a primeira carta do turno.)
         local gm = fresh()
         gm.jokerSlots = {
             { effects = { { type = "echo_first_attack", value = 2 } } },
@@ -385,10 +310,6 @@ function M.run()
             es:applyJokerEffects(gm, { type = "attack" }, 10), 30)
     end
 
-    -- ===== P2.3 (rebalance v2): thorn de JOKER ARMA 1x/turno =====
-    -- A intencao de balanceamento sobreviveu a migracao pro modelo de ESTADO
-    -- (Set/2026): o TETO por turno e o mesmo de antes — joker contribui uma
-    -- vez, carta contribui por carta jogada. O que mudou e QUANDO o dano sai.
     g = fresh()
     g.jokerSlots = { { effects = { { type = "on_defend_damage", value = 4 } } } }
     es:applyTriggerEffects(g, "defend", { target = g.enemy })

@@ -1,13 +1,3 @@
--- tools/screenshot_end_screens.lua
--- Captura as telas finais (game over + vitória) em vários idiomas e tamanhos,
--- desenhando num canvas com getWidth/getHeight FALSIFICADOS (o mesmo truque
--- do BOSS_ROOMS_VIRTUAL — setMode maior que o desktop trava).
---
---   love . test_one screenshot_end_screens            → pt_BR + de, 3 tamanhos
---   love . test_one screenshot_end_screens fr         → só um idioma
---
--- Saída: end_<tipo>_<idioma>_<WxH>.png no diretório de save.
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -27,7 +17,6 @@ function M.run(only)
     local PS = require("engine.ProfileStats")
     local prevProfile = PS._swapForTests({ runs = 4, wins = 0, losses = 3, bestScore = 4210 })
 
-    -- Run perdida no ato 3 contra o Tirano do Abismo
     local gd = TK.newRunGame("rogue")
     local rd = gd.runManager.currentRun
     rd.actNumber, rd.floorInAct = 3, 8
@@ -40,7 +29,6 @@ function M.run(only)
     gd.player.health = 0
     gd:checkGameOver()
 
-    -- Run vencida (6 atos), oferece Endless
     local gv = TK.newRunGame("warrior")
     local rv = gv.runManager.currentRun
     rv.actNumber, rv.floorInAct = Config.TotalActs, MapManager.FLOORS_PER_ACT

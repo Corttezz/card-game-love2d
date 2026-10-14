@@ -1,19 +1,3 @@
--- tools/test_enemies.lua
--- TRAVA do kit dos inimigos (Out/2026, src/data/enemies.lua).
---
--- Auditoria de conteúdo: todo inimigo jogava igual (uma tabela de intents só),
--- ninguém debuffava o jogador, o roster era um monstro por ato e o chefe era
--- um saco de vida. Esta suíte trava o que a frente consertou:
---   1. todo sprite do roster tem kit; todo golpe tem nome nos 5 idiomas;
---   2. todo golpe de todo kit resolve pela fila de beats (e a vez volta);
---   3. o intent é CONGELADO — inclusive multi-golpe e Vulnerável;
---   4. Fraco/Frágil do jogador fazem a conta certa e duram o combinado;
---   5. o roster não repete o último inimigo (seed fixa);
---   6. cada chefe dispara a mecânica-assinatura;
---   7. a mesma seed reproduz o combate (intents + embaralhamento).
---
---   love . test_one test_enemies
-
 local TK = require("tools.testkit")
 local Enemy = require("src.entities.Enemy")
 local Player = require("src.entities.Player")
@@ -25,8 +9,6 @@ local M = {}
 
 local LOCALES = { "pt_BR", "en", "es", "fr", "de" }
 
--- Monta uma batalha de run com o inimigo `id` (vida alta pra ninguém morrer
--- no meio da asserção) e o golpe `moveId` anunciado.
 local function battleWith(id, moveId, hp, dmg)
     local g = TK.newRunGame("warrior")
     TK.pump(g, 0.3)
@@ -57,9 +39,6 @@ function M.run()
     TK.bootstrap()
     TK.seedRng(4242)
 
-    -- ======================================================================
-    -- 1. DADOS: roster -> kit -> golpes -> i18n -> sprite
-    -- ======================================================================
     local seenIds = {}
     for act = 1, 6 do
         local r = EnemyKits.ROSTER[act]
@@ -78,8 +57,6 @@ function M.run()
             for _, id in ipairs(list) do seenIds[id] = true end
         end
     end
-    -- REGRA DO DONO (Out/2026): só criatura DO BIOMA do ato. Emprestar sprite
-    -- de outro ato fazia aparecer "monstros sem relação com o bioma".
     local foreign = {}
     for act = 1, 6 do
         for nt, list in pairs(EnemyKits.ROSTER[act]) do
@@ -92,8 +69,6 @@ function M.run()
         end
     end
     t:eq("todo inimigo do roster pertence ao bioma do ato", table.concat(foreign, ","), "")
-    -- Endless: o bioma do inimigo é o MESMO que a cena desenha (fórmula do
-    -- GameplayScene: 4 + floor((andar - 25) / 8), embrulhado em 6).
     local endlessOk = true
     for floor = 25, 120 do
         local shown = (((4 + math.floor((floor - 25) / 8)) - 1) % 6) + 1
@@ -116,7 +91,6 @@ function M.run()
     t:eq("todo sprite do roster tem kit", table.concat(missingKit, ","), "")
     t:eq("todo sprite do roster existe em disco", table.concat(missingSprite, ","), "")
 
-    -- Referências internas do kit + nomes nos 5 idiomas.
     local badRef, missingName = {}, {}
     local I18n = require("src.i18n.I18n")
     local function allMoves(kit)
@@ -154,9 +128,6 @@ function M.run()
     t:check("I18n enxerga enemy_kit no locale ativo",
         I18n.t("enemy_kit.moves.hellfire.name", nil, "") ~= "")
 
-    -- ======================================================================
-    -- 2. TODO golpe de TODO kit resolve pela fila de beats
-    -- ======================================================================
     local broken = {}
     for kid, kit in pairs(EnemyKits.KITS) do
         if kid ~= "generic" then
@@ -172,7 +143,6 @@ function M.run()
                 if (it.armor or 0) > 0 and traceCount("enemy.defend") ~= 1 then ok = false end
                 for _, d in ipairs(it.debuffs or {}) do
                     if traceCount("enemy.debuff." .. d.name) ~= 1 then ok = false end
-                    -- o debuff ficou no jogador (DoT ainda não decaiu: acabou de entrar)
                     if not g.player:hasDebuff(d.name) and d.duration > 0 then ok = false end
                 end
                 if (it.strength or 0) > 0 and traceCount("enemy.buff") ~= 1 then ok = false end
@@ -184,9 +154,6 @@ function M.run()
     end
     t:eq("todo golpe resolve pelos beats e devolve a vez", table.concat(broken, " | "), "")
 
-    -- ======================================================================
-    -- 3. INTENT CONGELADO (CLAUDE.md §6) — multi-golpe e Vulnerável
-    -- ======================================================================
     do
         local g = battleWith("cursed_scarecrow", "crow_pecks", 500, 20)
         local it = g.enemy:getIntent()
@@ -194,16 +161,14 @@ function M.run()
         local shownTotal = g.enemy:getIncomingDamage(g.player)
         t:eq("multi-golpe: 3 golpes anunciados", it.hits, 3)
         t:eq("multi-golpe: total = por golpe × golpes", shownTotal, shownPerHit * 3)
-        -- Entre o anúncio e a execução: buff + enfurecido + Fúria.
         g.enemy:gainStrength(10)
-        g.enemy:takeDamage(400)  -- cruza 30%: enfurecido
+        g.enemy:takeDamage(400)
         local hp0 = g.player.health
         runEnemyTurn(g)
         t:eq("multi-golpe executa EXATAMENTE o anunciado (buffs depois não valem)",
             hp0 - g.player.health, shownTotal)
     end
     do
-        -- Vulnerável aplicado ANTES do anúncio amplia; o HUD já mostra.
         local g = battleWith("dusk_shade", nil, 500, 20)
         g.player:addDebuff("vulnerable", 2)
         g.player.debuffs[1].fresh = nil
@@ -213,7 +178,6 @@ function M.run()
         local hp0 = g.player.health
         runEnemyTurn(g)
         t:eq("golpe vulnerável = número do HUD", hp0 - g.player.health, shown)
-        -- Vulnerável que aparece DEPOIS do anúncio não amplia o golpe já visto.
         local g2 = battleWith("dusk_shade", "shadow_blade", 500, 20)
         local shown2 = g2.enemy:intentHitDamage(g2.player)
         g2.player:addDebuff("vulnerable", 2)
@@ -222,7 +186,6 @@ function M.run()
         t:eq("Vulnerável posterior ao anúncio NÃO amplia", hp2 - g2.player.health, shown2)
     end
     do
-        -- Perfurante ignora o Bloqueio.
         local g = battleWith("winter_monarch", "winter_blade", 500, 20)
         local shown = g.enemy:intentHitDamage(g.player)
         g.player.armor = 99
@@ -232,20 +195,16 @@ function M.run()
         t:eq("perfurante não consome o Bloqueio", g.player.armor >= 0, true)
     end
 
-    -- ======================================================================
-    -- 4. FRACO / FRÁGIL / DoT NO JOGADOR
-    -- ======================================================================
     do
         local p = Player:new()
         p:addDebuff("weak", 2)
         p:addDebuff("frail", 1)
         t:eq("Fraco: ataque 10 -> 7", p:applyWeakToAttack(10), 7)
         t:eq("Frágil: bloqueio 10 -> 7", p:applyFrailToBlock(10), 7)
-        -- Fraco 2 aplicado no turno do inimigo vale 2 turnos do jogador.
-        p:decayDebuffs()  -- fim do turno em que foi aplicado: pula
+        p:decayDebuffs()
         t:truthy("Fraco sobrevive ao fim do turno em que foi aplicado", p:hasDebuff("weak"))
         t:truthy("Frágil 1 também", p:hasDebuff("frail"))
-        p:decayDebuffs()  -- fim do 1º turno inimigo seguinte
+        p:decayDebuffs()
         t:truthy("Fraco 2: ainda ativo no 2º turno do jogador", p:hasDebuff("weak"))
         t:falsy("Frágil 1: acabou depois de 1 turno do jogador", p:hasDebuff("frail"))
         p:decayDebuffs()
@@ -257,13 +216,11 @@ function M.run()
         local poison = q:tickDebuffDots()
         t:eq("veneno no jogador tica as pilhas", poison, 4)
         t:eq("veneno ignora o Bloqueio", q.health, q.maxHealth - 4)
-        -- DoT no jogador: pilhas SOMAM, duração fica a MAIOR (não compõe).
         q:addDebuff("poison", 1, 2)
         t:eq("2º veneno soma pilhas", q:getDebuffStacks("poison"), 6)
         t:eq("2º veneno não soma duração (fica a maior)", q.debuffs[1].duration, 2)
     end
     do
-        -- Integração: carta de ataque com o jogador Fraco causa 75%.
         local g = battleWith("cursed_scarecrow", "rusty_scythe", 500, 5)
         g.player:addDebuff("weak", 2)
         local hp0 = g.enemy.health
@@ -277,7 +234,6 @@ function M.run()
         t:eq("defesa do jogador Frágil: 20 -> 15", g.player.armor, 15)
     end
     do
-        -- Veneno do kit tica no upkeep do jogador (beat próprio).
         local g = battleWith("bog_ghoul", "infected_bite", 500, 10)
         CombatBeats.startTrace()
         runEnemyTurn(g)
@@ -291,9 +247,6 @@ function M.run()
         t:eq("o veneno entrou e já ticou 1x (3 pilhas)", g.player:getDebuffStacks("poison"), 3)
     end
 
-    -- ======================================================================
-    -- 5. ROSTER: sorteio seedado, sem repetir o último
-    -- ======================================================================
     do
         TK.seedRng(777)
         local run = { actNumber = 1 }
@@ -308,7 +261,6 @@ function M.run()
             picks[#picks + 1] = id
         end
         t:eq("200 sorteios: nunca repete o último", repeats, 0)
-        -- mesmo ato seguido: alterna entre os comuns
         TK.seedRng(778)
         local r2, alt = { actNumber = 2 }, true
         local prev
@@ -319,7 +271,6 @@ function M.run()
             prev = id
         end
         t:truthy("mesmo ato 30x: sem repetição consecutiva", alt)
-        -- o inimigo vai pro nó e o nó manda
         TK.seedRng(779)
         local run3 = { actNumber = 3, recentEnemies = { "ember_imp" } }
         local nodes = { { type = "battle" }, { type = "elite" }, { type = "rest" } }
@@ -333,11 +284,7 @@ function M.run()
             nodes[1].enemyId)
     end
 
-    -- ======================================================================
-    -- 6. MECÂNICAS DOS CHEFES
-    -- ======================================================================
     do
-        -- A1 Rei da Carniça: Chamado soma corvos, a Revoada bate por corvo.
         local g = battleWith("carrion_king", nil, 500, 10)
         t:eq("Rei da Carniça abre com o Chamado", g.enemy:getIntent().id, "call_of_crows")
         runEnemyTurn(g)
@@ -346,7 +293,6 @@ function M.run()
         t:eq("Revoada: 2 + 2 corvos = 4 golpes", g.enemy:getIntent().hits, 4)
     end
     do
-        -- A2 Lich: Escudo de Gelo a cada 3º turno.
         local g = battleWith("tower_lich", nil, 500, 10)
         local ids = { g.enemy:getIntent().id }
         for _ = 2, 6 do g.enemy:rollIntent(g.player); ids[#ids + 1] = g.enemy:getIntent().id end
@@ -356,7 +302,6 @@ function M.run()
             and ids[4] ~= "frost_shield" and ids[5] ~= "frost_shield")
     end
     do
-        -- A3 Tirano: carga telegrafada -> Fogo Infernal no turno seguinte.
         local g = battleWith("abyss_tyrant", "gather_flames", 500, 10)
         CombatBeats.startTrace()
         runEnemyTurn(g)
@@ -375,7 +320,6 @@ function M.run()
         t:check("Fogo Infernal queima o jogador", g.player:getDebuffStacks("burn") > 0)
     end
     do
-        -- A4 Monarca: perfurante (coberto acima) + inverno a cada 3º turno.
         local g = battleWith("winter_monarch", nil, 500, 10)
         g.enemy:rollIntent(g.player); g.enemy:rollIntent(g.player)
         t:eq("Monarca: Inverno Eterno no 3º turno", g.enemy:getIntent().id, "eternal_winter")
@@ -384,7 +328,6 @@ function M.run()
         t:truthy("Inverno Eterno: jogador Fraco", g.player:hasDebuff("weak"))
     end
     do
-        -- A5 Colosso: regenera sozinho + nuvem de veneno.
         local g = battleWith("rot_colossus", "plague_cloud", 1000, 10)
         t:truthy("Colosso nasce com Regeneração", g.enemy:hasStatus("regen"))
         g.enemy.health = 500
@@ -395,7 +338,6 @@ function M.run()
         t:check("Nuvem Pestilenta envenena o jogador", g.player:getDebuffStacks("poison") >= 4)
     end
     do
-        -- A6 Rainha: abaixo de 50% vira o ECLIPSE (beat, kit novo, dano sobe).
         local g = battleWith("eclipse_queen", "lunar_blades", 1000, 20)
         local frozen = g.enemy:getIncomingDamage(g.player)
         CombatBeats.startTrace()
@@ -417,16 +359,12 @@ function M.run()
         t:truthy("golpes seguintes vêm do kit da fase 2", inPhase2)
     end
 
-    -- ======================================================================
-    -- 7. A MESMA SEED REPRODUZ O COMBATE
-    -- ======================================================================
     do
         local function sample(seed)
             local g = TK.newRunGame("rogue")
-            -- deck maior que o inicial, pra o embaralhamento ter o que provar
             g.deck = {}
             for i = 1, 12 do g.deck[i] = { id = "c" .. i } end
-            TK.seedRng(seed)   -- a run nova cria Rng próprio: fixa DEPOIS
+            TK.seedRng(seed)
             g:shuffleDeck()
             local hand = {}
             for _, c in ipairs(g.deck) do hand[#hand + 1] = c.id end

@@ -1,20 +1,3 @@
--- tools/orb_anim_compare.lua
--- A imagem de aprovação do loop idle das gemas: PARADO x VIVO, no tamanho de
--- uso (48px, 1:1) e sobre o fundo escuro da HUD — porque ampliado tudo parece
--- bom, e é a 48px que o dono olha.
---
---   love . orb_anim_compare [zoom]   -> <save>/orbes_animacao.png
---
--- Cada linha é um elemento:
---   PARADO   a arte de hoje (assets/sprites/orbs/<t>.png), 1:1;
---   VIVO     os frames do loop, 1:1, na ordem em que passam — a fileira
---            inteira é o ciclo de 2s;
---   ZOOM     frame parado x frame de pico, ampliados, pra conferir que a
---            silhueta e a borda escura não mexeram;
---   ONDE     mapa do que muda: pixel alterado marcado em branco sobre a
---            silhueta apagada. É a medida honesta da dosagem — numa imagem
---            parada não dá pra "ver" sutileza, mas dá pra ver QUANTO muda.
-
 local M = {}
 
 local ELEMS = { "lightning", "ice", "fire", "dark", "holy" }
@@ -43,8 +26,6 @@ function M.run(zoomArg)
             framesData[i + 1] = love.image.newImageData(
                 string.format("%s/%s/frame_%03d.png", OrbRow.ANIM_ROOT, el, i))
         end
-        -- Frame de PICO: o que mais difere do parado. É o pior caso da dosagem,
-        -- e é ele que tem que continuar parecendo a mesma pedra.
         local pico, picoN = 1, -1
         local mapa = love.image.newImageData(SIZE, SIZE)
         for i, fd in ipairs(framesData) do
@@ -61,7 +42,6 @@ function M.run(zoomArg)
             end
             if n > picoN then pico, picoN = i, n end
         end
-        -- Silhueta apagada por baixo do mapa, pra saber ONDE na pedra é.
         for y = 0, SIZE - 1 do
             for x = 0, SIZE - 1 do
                 local _, _, _, ma = mapa:getPixel(x, y)

@@ -1,17 +1,3 @@
--- tools/test_card_top_frame.lua
--- O TOPO DA CARTA NÃO PODE SUMIR (dono, Out/2026: "o topo das cartas está
--- cortado — não é só na loja"). Duas réguas:
---
---   1. CANVAS (CardFrame): as 3 linhas do topo, no vão do banner do nome,
---      são a MOLDURA — idênticas a um render só da CardBorder. Antes o banner
---      nascia em y=0 e cobria a faixa de nó (y=1); a gema de custo colava na
---      borda. Vale pra carta comum e pra coringa.
---   2. TELA (Card:draw): a carta desenhada em escala inteira, em repouso, tem
---      as linhas do topo do canvas presentes no lugar certo — nenhum
---      recorte/deslocamento no caminho de desenho (mesh/shader, lift, escala).
---
---   love . test_one test_card_top_frame
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -49,21 +35,19 @@ function M.run()
             if cd then
                 local inst = db:createCardInstance(cd)
                 local full = inst.image:newImageData()
-                -- só a moldura
                 local bc = PixelCanvas.new(W, H)
                 PixelCanvas.beginDraw(bc)
                 CardBorder.draw(W, H, inst.type, inst.rarity or "common", inst.id)
                 PixelCanvas.endDraw()
                 local border = bc:newImageData()
                 local bad = 0
-                for y = 0, 2 do   -- 3 linhas fixas: com o banner em y=0 isto falha
-                    for x = 16, W - 17 do   -- vão do banner (bx=15, bw=w-30)
+                for y = 0, 2 do
+                    for x = 16, W - 17 do
                         if not same(full, border, x, y) then bad = bad + 1 end
                     end
                 end
                 t:eq(id .. ": linhas do topo no vão do banner = moldura (pixels diferentes)", bad, 0)
 
-                -- 2. Card:draw em escala 2, repouso: topo presente e alinhado
                 local s = 2
                 inst.baseScale, inst.currentScale, inst.targetScale = s, s, s
                 inst.isHovered, inst.hoverStrength = false, 0
@@ -90,11 +74,6 @@ function M.run()
                     miss <= 4)
             end
         end
-        -- 3. ENQUADRAMENTO (dono: "onde começa a sombra do título ela corta"):
-        --    NENHUMA linha do sujeito pode ficar acima do topo do slot — a
-        --    primeira linha com conteúdo do ícone (bbox) cai dentro do slot;
-        --    o corte do cover-fit vai pro pé. Exceção declarada: carta com
-        --    artOffsetY/artScale no atlas (sujeito no pé da arte).
         do
             local CardArtSlot = require("src.ui.card.components.CardArtSlot")
             local CardArt = require("src.ui.CardArt")
@@ -117,7 +96,6 @@ function M.run()
                 :format(n, #bad == 0 and "nenhuma" or table.concat(bad, ", ")), n > 50 and #bad == 0)
         end
 
-        -- coringa
         for id, cd in pairs(db:getAllCards()) do
             if cd.type == "joker" then
                 local inst = db:createCardInstance(cd)

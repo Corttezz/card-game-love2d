@@ -1,12 +1,3 @@
--- tools/sheet_card_art.lua
--- Folha de contato de TODAS as cartas (canvas estático do CardFrame) em 2x,
--- pra revisar o enquadramento da ilustração no slot (topo × base cortados).
---
---   love . test_one sheet_card_art [tag]   → card_art_sheet_<tag>_<n>.png
---   SHEET_IDS=a,b,c SHEET_SCALE=4 → só essas cartas, na escala pedida
---
--- 10 colunas × 5 linhas por folha (50 cartas), ordem por id.
-
 local M = {}
 
 function M.run(tag)

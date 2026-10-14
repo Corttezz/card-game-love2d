@@ -1,18 +1,3 @@
--- tools/screenshot_cartas_vivas.lua
--- PROVA VISUAL da regra "carta visível = carta viva" (dono, 13/Out/2026):
--- cada cena é capturada DUAS vezes, com o relógio simulado avançado entre as
--- capturas e o mouse LONGE das cartas (sem hover), e a diferença de pixels
--- entre as duas capturas é contada e gravada como imagem. Ícone animado em
--- repouso = diferença > 0; com reducedMotion = diferença 0.
---
--- Cenas: grade da Coleção, Deck Viewer (CardGridRender), fileira de cartas
--- pelo Card:draw (mão/espólios/loja/pacote passam por ele), espólios
--- (CardRewardScreen) e a Coleção com reducedMotion.
---
---   CARDGAME_HEADLESS=1 love . screenshot_cartas_vivas
--- Saída: <save dir>/cartas_vivas_<cena>_t1.png, _t2.png, _diff.png
---        + cartas_vivas_relatorio.txt (contagem por cena)
-
 local M = {}
 
 local function capture(name)
@@ -23,7 +8,6 @@ local function capture(name)
     return data
 end
 
--- Conta pixels que mudaram e grava a imagem da diferença (branco = mudou).
 local function diff(a, b, name)
     local w, h = a:getWidth(), a:getHeight()
     local out = love.image.newImageData(w, h)
@@ -68,7 +52,6 @@ function M.run()
     local report = {}
     local function log(s) print("[cartas_vivas] " .. s); report[#report + 1] = s end
 
-    -- roda `frames` quadros de update+draw (aquecimento: sets ganham vida)
     local function warm(update, draw, frames)
         for _ = 1, frames do
             simNow = simNow + 1 / 60
@@ -93,7 +76,6 @@ function M.run()
     end
 
     local ok, err = pcall(function()
-        -- ================= A. Coleção (grade) =================
         local CollectionScreen = require("components.CollectionScreen")
         local col = CollectionScreen:new()
         col:show(function() end)
@@ -107,14 +89,12 @@ function M.run()
         warm(upd, drw, 90)
         local nCol = shoot("colecao", upd, drw)
 
-        -- ================= E. Coleção com reducedMotion =================
         _G.gameSettings.reducedMotion = true
         warm(upd, drw, 5)
         local nRed = shoot("colecao_reduzido", upd, drw)
         _G.gameSettings.reducedMotion = false
         if col.hide then pcall(col.hide, col) end
 
-        -- ================= D. Fileira pelo Card:draw (mão) =================
         local db = CardDatabase:new()
         local animated = {}
         for _, cd in pairs(db:getAllCards()) do
@@ -139,11 +119,8 @@ function M.run()
             end
         end
         warm(function() end, drawRow, 60)
-        -- Δt = UM período exato do balanço idle da carta (sin(t*0.666)): o
-        -- balanço volta ao mesmo pixel e só o ícone muda entre as capturas.
         local nRow = shoot("mao_carddraw", function() end, drawRow, 2 * math.pi / 0.666)
 
-        -- ================= B/C. Run: espólios + Deck Viewer =================
         local Game = require("src.core.Game")
         local game = Game:new()
         game:startNewRun("mage")
@@ -174,8 +151,6 @@ function M.run()
             rw:draw()
         end
         warm(updRw, drwRw, 120)
-        -- (aqui o balanço idle das cartas também entra na diferença: a prova
-        -- limpa do ícone é a da fileira acima; esta mostra a tela real)
         local nRw = shoot("espolios", updRw, drwRw)
 
         log(("RESUMO: colecao=%d deck_viewer=%d mao_carddraw=%d espolios=%d | reducedMotion colecao=%d (esperado 0)")

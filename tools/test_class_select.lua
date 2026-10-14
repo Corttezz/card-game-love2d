@@ -1,26 +1,3 @@
--- tools/test_class_select.lua
--- Trava da seleção de classe v4 ("página do grimório": uma classe em foco,
--- detalhes sob demanda, Out/2026 — memory/class_emblems.md).
---
--- O que garante:
---   • o layout de ZONAS (ClassSelectLayout) é válido em todo tamanho de
---     janela suportado (800×600 até 2560×1440) — nenhuma banda encosta;
---   • o resize() de verdade (janela falsificada, cache de fonte limpo)
---     reposiciona os botões no layout novo e o draw não explode;
---   • a tela usa no máximo DUAS fontes (nome e corpo);
---   • foco × início: o emblema pequeno só troca o foco, COMEÇAR inicia;
---   • classe BLOQUEADA: selectClass devolve false e o callback NUNCA roda —
---     nem por clique direto (mousepressed/released no painel);
---   • classe LIBERADA: o callback roda com o id certo;
---   • os assets dos emblemas e das correntes existem e carregam;
---   • nenhuma referência sobrou aos heróis chibi aposentados.
---
--- O UnlockSystem é dirigido por monkeypatch das 3 funções do CONTRATO —
--- vale pro stub e pra versão real da frente progressão.
---
---   love . test_one test_class_select
---   love . test_all
-
 local TK = require("tools.testkit")
 local FontManager = require("src.ui.FontManager")
 
@@ -63,7 +40,6 @@ function M.run()
     local US = require("src.systems.UnlockSystem")
     local orig = { US.isClassUnlocked, US.getClassUnlockInfo, US.getClassMastery }
 
-    -- 0. contrato do UnlockSystem (stub ou real) responde pras 3 classes
     for _, id in ipairs({ "warrior", "mage", "rogue" }) do
         local info = US.getClassUnlockInfo(id)
         local m = US.getClassMastery(id)
@@ -74,7 +50,6 @@ function M.run()
     end
     t:truthy("guerreiro liberado por padrão", US.isClassUnlocked("warrior"))
 
-    -- 1. assets
     local ClassEmblem = require("src.ui.ClassEmblem")
     for _, id in ipairs({ "warrior", "mage", "rogue", "locked_chains" }) do
         t:truthy("emblema carrega: " .. id, ClassEmblem.get(id) and true or false)
@@ -82,8 +57,6 @@ function M.run()
     t:falsy("heróis chibi aposentados (pasta removida)",
         love.filesystem.getInfo("assets/sprites/characters/heroes"))
 
-    -- 2. layout puro em todos os tamanhos (no espaço VIRTUAL do UiScale,
-    --    que é onde a tela desenha)
     local UiScale = require("src.ui.UiScale")
     for _, sz in ipairs(SIZES) do
         local k = UiScale.k(sz[1], sz[2])
@@ -100,7 +73,6 @@ function M.run()
     local okRun, err = pcall(function()
         local Screen = require("components.ClassSelectionScreen")
 
-        -- 3. bloqueada não inicia run; liberada inicia
         lockOnly(US, { rogue = true })
         fakeW, fakeH = 1280, 720
         FontManager.clearCache()
@@ -119,7 +91,6 @@ function M.run()
         t:falsy("bloqueada não tem COMEÇAR", screen.buttons.start.visible)
         t:falsy("bloqueada não tem DETALHES", screen.buttons.details.visible)
 
-        -- clique de verdade no emblema pequeno: só troca o foco
         local function click(b)
             local k = UiScale.k()
             mx, my = (b.x + b.width / 2) * k, (b.y + b.height / 2) * k
@@ -133,7 +104,6 @@ function M.run()
         t:eq("trocar o foco não inicia run", #started, 0)
         t:truthy("liberada tem COMEÇAR", screen.buttons.start.visible)
 
-        -- DETALHES sob demanda
         t:eq("página abre no resumo", screen.pageMode, "summary")
         screen:toggleDetails()
         t:eq("marcador abre os detalhes", screen.pageMode, "details")
@@ -144,14 +114,10 @@ function M.run()
         screen:keypressed("a")
         t:eq("tecla A volta", screen.focus, "mage")
 
-        -- COMEÇAR (o clique de verdade na fita)
         click(screen.buttons.start)
         TK.pump(nil, 0.6)
         t:eq("COMEÇAR inicia a run da classe em foco", started[1], "mage")
 
-        -- 3b. CARTAS INICIAIS nos DETALHES: carta de verdade (hover = lift +
-        --     tooltip ao lado), clique/botão direito = inspeção da Coleção,
-        --     Esc fecha sem voltar ao menu, setas passam entre as iniciais.
         do
             lockOnly(US, {})
             fakeW, fakeH = 1280, 720
@@ -159,16 +125,9 @@ function M.run()
             local backs = 0
             local s3 = Screen:new()
             s3:show(function() end, function() backs = backs + 1 end)
-            -- mago em foco: as iniciais dele têm ícone ANIMADO (o canvas vivo
-            -- do CardFrame entra no hover — é o que a trava abaixo mede)
             s3:focusClass("mage")
             TK.pump(nil, 0.6)
             local canvas = love.graphics.newCanvas(1280, 720)
-            -- TUDO em tempo SIMULADO (padrão do test_discovery_mark, e8ff073):
-            -- o relógio de parede entrava pelo CardFrame (índice do frame,
-            -- ressincronização "stale") e pela ondulação da carta; sob carga
-            -- (test_all com a máquina ocupada) o resultado mudava de rodada
-            -- pra rodada. Aqui cada frame() avança 1/60 s, sempre.
             local simNow = 1000
             local realGetTime = love.timer.getTime
             local function frame()
@@ -176,7 +135,7 @@ function M.run()
                 love.timer.getTime = function() return simNow end
                 love.graphics.setCanvas(canvas)
                 local okF, errF = pcall(function()
-                    require("src.ui.CardFrame").update()   -- como o love.update faz
+                    require("src.ui.CardFrame").update()
                     s3:update(1 / 60)
                     s3:draw()
                 end)
@@ -190,7 +149,6 @@ function M.run()
             t:truthy("detalhes: cartas iniciais posicionadas", #rects >= 2)
             local p3 = s3:_panelOf(s3.focus)
             local c1 = p3.cards[1]
-            -- mouse (coords FÍSICAS: o UiScale divide por k) sobre a 1ª carta
             local k = UiScale.k()
             local r1 = rects[1]
             mx, my = (r1.x + r1.w / 2) * k, (r1.y + r1.h * 0.6) * k
@@ -199,13 +157,6 @@ function M.run()
             t:truthy("hover levanta a carta (sobe da folha)", (c1.liftOffset or 0) < 0)
             t:truthy("hover abre o tooltip (CardInfoDisplay)",
                 c1.cardInfoDisplay and c1.cardInfoDisplay.lastRect ~= nil)
-            -- CARTA VIVA: o set monta sob orçamento por quadro (9 PNGs + 8
-            -- composições ≈ 20 quadros) e a imagem estática VOLTA ao fim de
-            -- cada draw (swap temporário de instance.image — a carta é viva
-            -- em toda tela desde 13/Out/2026, mas o estado nunca guarda o
-            -- quadro vivo).
-            -- Era aqui que o test_all caía em CardFrame.lua:423 quando o
-            -- CardFrame.render chegava estubado de uma suite anterior.
             do
                 local CardFrame = require("src.ui.CardFrame")
                 local CardArt = require("src.ui.CardArt")
@@ -219,7 +170,6 @@ function M.run()
                     CardFrame.liveImage(c1) ~= nil)
                 t:eq("fora do draw a carta volta à imagem estática", c1.image, static1)
             end
-            -- UM tooltip só: passa pra 2ª carta → só ela tem tooltip
             local drawn = {}
             local function spy(inst, i)
                 local real = inst.drawDeferredTooltip
@@ -241,7 +191,6 @@ function M.run()
             t:falsy("a 1ª saiu do hover", c1.isHovered)
             mx, my = (r1.x + r1.w / 2) * k, (r1.y + r1.h * 0.6) * k
             for _ = 1, 12 do frame() end
-            -- clique esquerdo abre a inspeção
             s3:mousepressed(mx, my, 1)
             s3:mousereleased(mx, my, 1)
             t:truthy("clique abre a inspeção", s3.inspectModal:isVisible())
@@ -256,20 +205,17 @@ function M.run()
             s3.inspectHandle:keypressed("escape")
             t:falsy("Esc fecha a inspeção", s3.inspectModal:isVisible())
             t:eq("Esc com a inspeção aberta não volta ao menu", backs, 0)
-            -- botão direito (gatilho do pad / tecla I via NavCursor.click(2))
             for _ = 1, 3 do frame() end
             s3:mousepressed(mx, my, 2)
             t:truthy("botão direito também inspeciona", s3.inspectModal:isVisible())
             s3.inspectHandle:keypressed("return")
             t:falsy("A/Enter fecha", s3.inspectModal:isVisible())
-            -- com a fala do corvo na tela, nada abre por cima
             local T = require("src.systems.Tutorial")
             local ov = T.overlay
             local prevVis = ov and ov.isVisible
             if ov then ov.isVisible = function() return true end end
             t:falsy("corvo falando: inspeção não abre", s3:openInspect(1))
             if ov then ov.isVisible = prevVis end
-            -- no resumo as cartas não existem pro mouse
             s3:toggleDetails()
             for _ = 1, 3 do frame() end
             t:falsy("resumo: sem hover em carta inicial", c1.isHovered)
@@ -280,8 +226,6 @@ function M.run()
             mx, my = 1, 1
         end
 
-        -- 4. resize real: botões acompanham o layout + draw sem erro +
-        --    só DUAS fontes na tela (nome e corpo)
         lockOnly(US, { mage = true, rogue = true })
         local s2 = Screen:new()
         s2:show(function() end, function() end)
@@ -303,7 +247,6 @@ function M.run()
             t:check(("resize %dx%d: COMEÇAR na fita"):format(sz[1], sz[2]),
                 st.x == s2.layout.start.x and st.y == s2.layout.start.y)
             local sizes = {}
-            -- ícones com letra (o "?" do narrador) não contam como TEXTO
             local paused = false
             local okHB, HB = pcall(require, "src.ui.HelpBadge")
             local realHB = okHB and HB.draw
@@ -346,7 +289,6 @@ function M.run()
     FontManager.clearCache()
     t:check("sem exceção" .. (okRun and "" or (": " .. tostring(err))), okRun)
 
-    -- 5. nenhuma referência de código aos heróis
     local hits = {}
     for _, f in ipairs({ "components/ClassSelectionScreen.lua", "main.lua", "src/ui/SpriteAnimation.lua" }) do
         local src = love.filesystem.read(f) or ""

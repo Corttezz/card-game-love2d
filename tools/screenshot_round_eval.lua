@@ -1,13 +1,3 @@
--- tools/screenshot_round_eval.lua
--- Captura screenshot da RoundEvalScreen (cash out estilo Balatro).
--- Roda: love . screenshot_round_eval [phase]
--- phase: 0..3 — diferentes momentos da timeline.
---   0 = slide-in (0.4s)
---   1 = primeira coin saiu (1.0s)
---   2 = todas coins (2.5s)
---   3 = botão Resgatar pronto (3.5s)
--- Saída: ~/.local/share/love/card-game/round_eval_phase_<n>.png
-
 local M = {}
 
 local Game             = require("src.core.Game")
@@ -26,9 +16,6 @@ local I18n             = require("src.i18n.I18n")
 
 local PHASE_TIMES = { [0] = 0.6, [1] = 1.2, [2] = 2.6, [3] = 5.0 }
 
--- locale opcional (2o arg): a tela era BILINGUE — titulo e TOTAL cravados em
--- PT com o botao traduzido. Capturar em idioma estrangeiro e o que prova o
--- conserto; em pt_BR os dois casos ficam iguais.
 function M.run(phase, locale)
     phase = tonumber(phase or 3) or 3
     local targetT = PHASE_TIMES[phase] or 3.6
@@ -47,26 +34,19 @@ function M.run(phase, locale)
     local game = Game:new()
     game:startNewRun("warrior")
     game:startGame()
-    -- Simula gold acumulado pra ter juros visível.
     if game.economySystem then
         game.economySystem.currentGold = 25
     end
 
-    -- ROUND_NODE=elite|boss|mini_boss: folha com o bônus de risco do nó.
     if os.getenv("ROUND_NODE") then
         game.runManager.currentRun.currentNode = { type = os.getenv("ROUND_NODE") }
     end
-    -- Sources de teste com 3 fontes (Vitória + HP cheio + Juros).
     local sources = game:_buildRoundEvalSources()
 
     local screen = RoundEvalScreen:new()
-    -- F3: semeia um breakdown TINTA×SELO pra validar o banner de score.
     game.scoreSystem.lastBattle = {
         tinta = 240, selo = 2.3, total = 552,
         turns = 3, combos = 2, flawless = true, lowHp = false,
-        -- MESMAS chaves que ScoreSystem:finishBattle usa. Com os rotulos
-        -- cravados em PT aqui a captura MENTIA: mostrava o recibo em portugues
-        -- mesmo depois do codigo real ja estar traduzido.
         breakdown = {
             { label = I18n.t("score.enemy_defeated"),
               value = I18n.t("score.pts", { n = 240 }) },
@@ -91,7 +71,6 @@ function M.run(phase, locale)
 
     love.graphics.clear(0.05, 0.04, 0.08, 1)
     local sw, sh = love.graphics.getDimensions()
-    -- Backdrop simulando gameplay congelado por trás.
     love.graphics.setColor(0.20, 0.16, 0.12, 1)
     love.graphics.rectangle("fill", 0, 0, sw, sh)
     love.graphics.setColor(1, 1, 1, 1)

@@ -1,24 +1,5 @@
--- tools/screenshot_damage_preview.lua
--- Valida a PREVIA DE DANO na batalha real (GameplayScene, mesma ordem de
--- painter do jogo), com 2..5 cartas SELECIONADAS e uma carta em hover.
---
---   CARDGAME_IDENTITY=x PREVIEW_W=1920 PREVIEW_H=1080 PREVIEW_LOCALE=de \
---     love . test_one screenshot_damage_preview
---
--- Saidas (save dir), prefixo dmgprev_<W>x<H>_<locale>_:
---   sel2.png      2 golpes (combo de ataques) + hover numa 3a carta
---   sel3.png      3 cartas: golpes + defesa (ataque e bloqueio juntos)
---   sel5.png      5 cartas com coringa, Forca e armadura no inimigo (RESUMO)
---   sel5_details.png  a mesma leva com DETALHES (clique na placa / tecla V)
---   combo_tooltip.png  hover numa ficha de combo da placa (o que ele faz)
---   lethal.png    leva que mata (rotulo LETAL)
---   resolving.png no meio da resolucao (total correndo + combo)
-
 local M = {}
 
--- Sem janela (CARDGAME_HEADLESS=1, dono jogando): PREVIEW_W/H viram uma
--- tela FALSIFICADA — canvas desse tamanho com getWidth/getHeight mentindo
--- (mesmo truque de screenshot_enemy_scene) e o PNG sai do canvas.
 local vcanvas
 
 local function shot(name)
@@ -93,7 +74,6 @@ local function settle(GameplayScene, secs)
     for _ = 1, math.floor((secs or 0.5) * 60) do frame(GameplayScene, 1 / 60) end
 end
 
--- Mao com estas cartas; seleciona as `nSel` primeiras pelo caminho do jogo.
 local function setupHand(game, ids, nSel, keepHp)
     local db = require("src.systems.CardDatabase"):new()
     db:loadData()
@@ -110,16 +90,12 @@ local function setupHand(game, ids, nSel, keepHp)
     for i = 1, nSel do game:selectCard(game.hand[i]) end
 end
 
--- Sem janela, love.mouse.setPosition nao alcanca nada (janela 1x1 fora da
--- tela): o mouse vira um ponto FALSO injetado no portao do InputFocus — e o
--- que todo hover do jogo le (love.mouse.getPosition).
 local fakeMouse
 local function mouseTo(x, y)
     if fakeMouse then fakeMouse.x, fakeMouse.y = x, y else love.mouse.setPosition(x, y) end
 end
 
 local function hoverOn(GameplayScene, card)
-    -- move o mouse pro centro da carta em repouso
     local x = (card.layoutX or card.x or 0) + 64
     local y = (card.layoutY or card.y or 0) + 60
     mouseTo(x, y)
@@ -152,11 +128,10 @@ function M.run()
         if vcanvas then love.graphics.setCanvas(vcanvas) end
         love.graphics.clear(0, 0, 0, 1)
         GS.draw()
-        require("src.ui.StatusTooltip").draw()   -- o main desenha no fim do quadro
+        require("src.ui.StatusTooltip").draw()
         shot(prefix .. name)
     end
 
-    -- 1. dois golpes (combo) + hover num terceiro
     setupHand(game, { "warrior_strike", "warrior_strike", "warrior_bash",
         "warrior_defend", "warrior_quick_strike" }, 2)
     settle(GS, 0.6)
@@ -164,22 +139,18 @@ function M.run()
     settle(GS, 0.4)
     capture("sel2")
 
-    -- 2. golpes + defesa
     mouseTo(5, 5); GS.mousemoved(5, 5, 0, 0)
     setupHand(game, { "warrior_strike", "warrior_defend", "warrior_shield_slam",
         "warrior_strike", "warrior_iron_wave" }, 3)
     settle(GS, 0.6)
     capture("sel3")
 
-    -- 3. cinco cartas, coringa multiplicador, Forca e Bloqueio no inimigo
     game.player.strength = 2
     game.enemy.armor = 8
     game.jokerSlots = { db:createCardInstance(db:getCard("joker_001")) }
     setupHand(game, { "warrior_strike", "warrior_twin_strike", "warrior_bash",
         "warrior_heavy_blade", "warrior_defend", "warrior_quick_strike" }, 5)
     settle(GS, 0.6)
-    -- RESUMO (default) e DETALHES (clique na placa / V) da MESMA leva
-    -- (detalhes primeiro: o lastRect que o hover abaixo mira e o do RESUMO)
     local Panel = require("src.ui.DamagePreviewPanel")
     Panel.setDetails(true)
     capture("sel5_details")
@@ -187,16 +158,13 @@ function M.run()
     settle(GS, 0.1)
     capture("sel5")
 
-    -- 3b. hover numa FICHA de combo da placa (resumo): tooltip com o que ele faz
     local PR = Panel.lastRect
     if PR then
         local fy = PR.firstRowY + 6
         local fx = PR.x + 14
-        -- a 1a linha pode ser LETAL; desce uma linha se for o caso
         mouseTo(fx, fy)
         GS.mousemoved(fx, fy, 0, 0)
         settle(GS, 0.3)
-        -- o tooltip tem pop-in por TEMPO REAL: agenda um quadro e espera
         for _ = 1, 3 do
             GS.draw(); require("src.ui.StatusTooltip").draw()
             love.timer.sleep(0.08)
@@ -205,7 +173,6 @@ function M.run()
         mouseTo(5, 5); GS.mousemoved(5, 5, 0, 0)
     end
 
-    -- 4. leva letal
     game.enemy.armor = 0
     game.enemy.health = 18
     setupHand(game, { "warrior_strike", "warrior_heavy_blade", "warrior_defend",
@@ -213,7 +180,6 @@ function M.run()
     settle(GS, 0.6)
     capture("lethal")
 
-    -- 4b. mago: orbes canalizando/evocando e cartas magicas (extras do painel)
     game.selectedClass = "mage"
     game.player.strength = 0
     game.jokerSlots = {}
@@ -225,7 +191,6 @@ function M.run()
     game.selectedClass = "warrior"
     game.player.orbs = {}
 
-    -- 5. no meio da resolucao
     game.enemy.health = game.enemy.maxHealth
     setupHand(game, { "warrior_strike", "warrior_twin_strike", "warrior_bash",
         "warrior_defend" }, 3)

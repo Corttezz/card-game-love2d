@@ -1,9 +1,3 @@
--- tools/test_journal.lua
--- Roteiro da run (RunManager journal*): abertura/fecho por nó, captura das
--- escolhas pelos sinks, idempotência do journalEnd, backfill de mapHistory,
--- endless (o par ato/andar repete) e sobrevivência ao save/load.
---   love . test_one test_journal
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -13,14 +7,12 @@ function M.run()
     TK.seedRng(11)
     local t = TK.new("roteiro da run")
 
-    -- ===== ciclo de vida de uma entrada =====
     do
         local game = TK.newRunGame("warrior")
         local rm = game.runManager
         local run = rm.currentRun
         run.mapHistory, run.journal, run.journalOpen = {}, {}, nil
 
-        -- Fora de nó: no-op legítimo (deck inicial), não cria entrada.
         rm:journalNote({ kind = "card", id = "warrior_strike" })
         t:eq("nota fora de nó não cria entrada", #rm:getJournal(), 0)
 
@@ -42,17 +34,14 @@ function M.run()
         t:eq("hp de saída gravado", run.journal[1].hpOut, 44)
         t:eq("ouro de saída gravado", run.journal[1].goldOut, 12)
 
-        -- Idempotente: showMapSelection pode rodar duas vezes.
         t:falsy("journalEnd repetido é no-op", rm:journalEnd({ hp = 1, gold = 1 }))
         t:eq("segundo journalEnd não sobrescreve", run.journal[1].hpOut, 44)
         t:eq("nenhuma entrada extra criada", #run.journal, 1)
 
-        -- Depois de fechado, nota volta a ser no-op.
         rm:journalNote({ kind = "card", id = "warrior_strike" })
         t:eq("nota após o fecho não entra no nó", #run.journal[1].gains, 2)
     end
 
-    -- ===== os sinks do RunManager alimentam o nó aberto =====
     do
         local game = TK.newRunGame("warrior")
         local rm = game.runManager
@@ -72,13 +61,11 @@ function M.run()
         t:eq("upgradeCard anotou a forja", kinds.forge, 1)
         t:eq("removeCardFromDeck anotou a remoção", kinds.remove, 1)
 
-        -- registerPaidForge NÃO anota (duplicaria a forja de upgradeCard).
         local before = #run.journal[1].gains
         rm:registerPaidForge()
         t:eq("registerPaidForge não duplica a forja", #run.journal[1].gains, before)
     end
 
-    -- ===== chooseNode abre a entrada =====
     do
         local game = TK.newRunGame("warrior")
         local rm = game.runManager
@@ -92,9 +79,6 @@ function M.run()
         t:truthy("entrada do nó atual em aberto", rm:isJournalEntryOpen(run.journal[1]))
     end
 
-    -- ===== encruzilhada: os ramos NÃO tomados ficam gravados (Out/2026) =====
-    -- O mapa à mão desenha os trilhos que existiam; sem isto só o caminho
-    -- percorrido sobreviveria. Só os TIPOS viajam (save pequeno, aditivo).
     do
         local game = TK.newRunGame("warrior")
         local rm = game.runManager
@@ -112,19 +96,16 @@ function M.run()
         t:eq("gravou qual foi tomado", e.pick, 2)
         t:eq("o tomado bate com o nó", e.branches[e.pick], node.type)
 
-        -- journalBegin sem opções (fluxo antigo/testes): sem ramos, sem erro
         rm:journalEnd({ hp = 55, gold = 20 })
         rm:journalBegin({ type = "rest" }, { hp = 55, maxHp = 60, gold = 20 })
         t:falsy("sem opções não inventa ramos", run.journal[2].branches)
         t:falsy("sem opções não inventa pick", run.journal[2].pick)
 
-        -- pick inválido: acha o nó pelo objeto
         rm:journalEnd({ hp = 60, gold = 20 })
         local opts = { { type = "battle" }, { type = "shop" } }
         rm:journalBegin(opts[2], { hp = 60, maxHp = 60, gold = 20 }, opts, 9)
         t:eq("pick fora da lista cai no nó escolhido", run.journal[3].pick, 2)
 
-        -- viaja no save
         t:truthy("saveRun ok", rm:saveRun())
         local game2 = TK.newRunGame("warrior")
         t:truthy("loadRun ok", game2.runManager:loadRun())
@@ -134,10 +115,6 @@ function M.run()
         game2.runManager:deleteSave()
     end
 
-    -- ===== nó que resolve sem passar pelo journalEnd =====
-    -- O autoplay (tools/autoplay.lua) chama chooseNode direto e nunca fecha a
-    -- entrada. Sem o auto-fecho do journalBegin isso empilharia entradas
-    -- zumbis e todas as escolhas seguintes cairiam no nó errado.
     do
         local game = TK.newRunGame("warrior")
         local rm = game.runManager
@@ -147,7 +124,6 @@ function M.run()
         run.actNumber, run.floorInAct, run.currentFloor = 1, 1, 1
         rm:journalBegin({ type = "battle" }, { hp = 60, maxHp = 60, gold = 10 })
         rm:journalNote({ kind = "card", id = "warrior_bash" })
-        -- (sem journalEnd — o nó "some")
         run.floorInAct, run.currentFloor = 2, 2
         rm:journalBegin({ type = "shop" }, { hp = 52, maxHp = 60, gold = 30 })
         rm:journalNote({ kind = "card", id = "warrior_strike" })
@@ -159,12 +135,10 @@ function M.run()
         t:eq("nó 2 continua aberto", run.journal[2].hpOut, nil)
     end
 
-    -- ===== backfill: run que começou antes do roteiro existir =====
     do
         local game = TK.newRunGame("warrior")
         local rm = game.runManager
         local run = rm.currentRun
-        -- Save legado: mapHistory cheio, journal inexistente.
         run.journal, run.journalOpen = nil, nil
         run.mapHistory = {
             { actNumber = 1, floorInAct = 1, type = "battle" },
@@ -175,7 +149,6 @@ function M.run()
         t:truthy("entrada de backfill marcada como parcial", j[1].partial)
         t:eq("tipo preservado no backfill", j[2].type, "shop")
 
-        -- Run em andamento: os nós novos entram completos e NÃO duplicam.
         run.journal = {}
         run.actNumber, run.floorInAct, run.currentFloor = 1, 3, 3
         table.insert(run.mapHistory, { actNumber = 1, floorInAct = 3, type = "rest" })
@@ -190,7 +163,6 @@ function M.run()
         t:eq("nó novo carrega o resultado", j[3].hpOut, 60)
     end
 
-    -- ===== endless: (ato, andar) repete e o roteiro não perde nós =====
     do
         local game = TK.newRunGame("warrior")
         local rm = game.runManager
@@ -206,10 +178,6 @@ function M.run()
         t:eq("três nós no mesmo (ato, andar) sobrevivem", #rm:getJournal(), 3)
     end
 
-    -- ===== gatilho: clique no bloco de ATO da TopBar =====
-    -- O bloco "ATO N / andar X" não tinha clique nenhum; a TopBar engolia o
-    -- evento e devolvia true. Este teste fixa a zona: clicar no progresso
-    -- chama o callback do Roteiro, e clicar no DECK continua chamando o dele.
     do
         local game = TK.newRunGame("warrior")
         local TopBar = require("components.TopBar")
@@ -232,12 +200,10 @@ function M.run()
             t:eq("clique no DECK continua abrindo o deck", hits.deck, 1)
             t:eq("clique no DECK não dispara o Roteiro", hits.act, 1)
 
-            -- Abaixo da barra não é zona da TopBar.
             bar:mousepressed(L.progress.x + L.progress.w / 2, bar.height + 40, 1)
             t:eq("clique fora da barra não abre nada", hits.act, 1)
         end
 
-        -- A tela em si tem que abrir/fechar sem estado de run montado à mão.
         local screen = require("components.RunJournalScreen"):new()
         t:noerror("RunJournalScreen abre", function() screen:show(game) end)
         t:truthy("fica visível", screen:isVisible())
@@ -247,7 +213,6 @@ function M.run()
         t:falsy("fica invisível", screen:isVisible())
     end
 
-    -- ===== persistência: o roteiro viaja no save sem migration =====
     do
         local game = TK.newRunGame("warrior")
         local rm = game.runManager

@@ -1,13 +1,3 @@
--- tools/screenshot_holo.lua
--- Prancha do reflexo das cartas raras/lendárias, sem janela: desenha pelo
--- caminho AO VIVO (Card:draw) uma rara "glow", uma rara "holo", uma lendária
--- e uma comum com edition "holo" — em REPOUSO (tem que ser a carta crua, ou
--- quase) e no HOVER em três instantes da varredura. Canvas 1920x1080.
---
---   love . test_one screenshot_holo
---
--- Saída: holo_rest_hover_1920x1080.png no save dir.
-
 local M = {}
 
 function M.run()
@@ -35,7 +25,7 @@ function M.run()
         inst.isHovered, inst.hoverStrength, inst.liftOffset = hover, hover and 1 or 0, 0
         if hover then inst.tiltX, inst.tiltY = 0.03, -0.02 end
         inst.baseScale, inst.currentScale, inst.targetScale = SCALE, SCALE, SCALE
-        inst.deferTooltip = true          -- sem tooltip por cima da prancha
+        inst.deferTooltip = true
         if col.edition then inst.edition = col.edition end
         return inst
     end
@@ -49,8 +39,6 @@ function M.run()
     local realGetTime = love.timer.getTime
     local cardW, cardH = 96 * SCALE, 144 * SCALE
     local colW = math.floor(W / 4)
-    -- Instantes escolhidos pela posicao da faixa (34 px/s, ciclo ~6.7 s):
-    -- t=1.5 canto superior esquerdo, t=2.9 meio da carta, t=4.2 canto inferior.
     local ROWS = { { label = "REPOUSO (estatica)", time = 1.0, hover = false },
                    { label = "HOVER t=1.5 (faixa no topo)", time = 1.5, hover = true },
                    { label = "HOVER t=2.9 (faixa no meio)", time = 2.9, hover = true },
@@ -63,7 +51,6 @@ function M.run()
         love.graphics.print(row.label, 16, y + 8)
         for c, col in ipairs(COLS) do
             local inst = make(col, row.hover)
-            -- Card:draw recebe o canto SUPERIOR ESQUERDO (nao o centro).
             local cx = colW * (c - 1) + colW / 2
             local left, top = math.floor(cx - cardW / 2), y + 58
             love.graphics.setColor(1, 1, 1, 1)

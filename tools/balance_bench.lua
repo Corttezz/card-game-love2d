@@ -1,19 +1,3 @@
--- tools/balance_bench.lua
--- BANCO DE BATALHAS (Out/2026): mede a qualidade do COMBATE do piloto sem o
--- ruido da run inteira.
---
--- Por que existe: uma run tem ~10-30 batalhas, decisoes de deck, mapa e loja
--- — comparar duas politicas de combate pelo winrate de 30 runs e medir
--- sorteio. Aqui: (1) grava o RETRATO do comeco de cada batalha de runs reais
--- (deck, forja, coringas, ato/andar/no), (2) rejoga CADA retrato com cada
--- politica, mesma seed, vida cheia, e (3) compara HP perdido e mortes.
--- Mesma batalha, mesmo embaralhamento, mesmos intents: so a decisao muda.
---
---   love . balance_bench [runsGravadas] [classes] [seed] [politicas]
---   ex: love . balance_bench 6 all 700000 v5,v6
---
--- Saida: console + BALANCE_OUT (ou <save>/balance_bench_report.md).
-
 local M = {}
 
 function M.run(runsArg, classArg, seedArg, policiesArg)
@@ -34,7 +18,6 @@ function M.run(runsArg, classArg, seedArg, policiesArg)
     Autoplay.quiet = true
     local realPrint = print
 
-    -- 1) grava retratos jogando runs com a politica de referencia (v5)
     local snaps = {}
     Autoplay.policy = "v5"
     Autoplay.onBattleStart = function(snap) snaps[#snaps + 1] = snap end
@@ -48,15 +31,12 @@ function M.run(runsArg, classArg, seedArg, policiesArg)
     Autoplay.onBattleStart = nil
     realPrint(("[balance_bench] %d batalhas gravadas"):format(#snaps))
 
-    -- 2) rejoga cada retrato com cada politica (2 seeds por retrato)
-    local res = {}  -- res[pol][class][act] = {n, lost, deaths, turns}
+    local res = {}
     for _, pol in ipairs(policies) do
         Autoplay.policy = pol
         res[pol] = {}
         for si, snap in ipairs(snaps) do
             for k = 1, 2 do
-                -- BENCH_TRACE=classe:ato liga o diario so dessas batalhas
-                -- (diagnostico: ver turno a turno ONDE a politica perde HP)
                 local trace = os.getenv("BENCH_TRACE")
                 local traced = trace and trace == (snap.class .. ":" .. tostring(snap.act))
                 Autoplay.quiet = not traced
@@ -86,7 +66,6 @@ function M.run(runsArg, classArg, seedArg, policiesArg)
         realPrint("[balance_bench] politica " .. pol .. " ok")
     end
 
-    -- 3) relatorio
     local out = {}
     local function p(fmt, ...) out[#out + 1] = select("#", ...) > 0 and fmt:format(...) or fmt end
     p("# Banco de batalhas — combate do piloto")

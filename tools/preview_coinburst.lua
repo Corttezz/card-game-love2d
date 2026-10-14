@@ -1,9 +1,3 @@
--- tools/preview_coinburst.lua
--- Congela a chuva de moedas em 4 instantes e salva um contact sheet.
--- Números provam que a moeda converge; só a imagem prova que ela tem o
--- tamanho e a cor certos na tela.
---   love . preview_coinburst
-
 local M = {}
 
 function M.run()
@@ -26,7 +20,6 @@ function M.run()
             local cv = love.graphics.newCanvas(W, H)
             love.graphics.setCanvas(cv)
             love.graphics.clear(0.10, 0.08, 0.07, 1)
-            -- marca o destino (o contador da TopBar)
             love.graphics.setColor(0.35, 0.30, 0.22, 1)
             love.graphics.rectangle("fill", 0, 0, W, 40)
             love.graphics.setColor(0.95, 0.80, 0.28, 1)

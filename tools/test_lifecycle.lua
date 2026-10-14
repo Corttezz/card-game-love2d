@@ -1,10 +1,3 @@
--- tools/test_lifecycle.lua
--- Ciclo de vida da RUN: o que o save guarda, o que o Continuar reabre, e as
--- portas que deixavam a run num estado impossível. Cada bloco é um defeito
--- achado na revisão de lançamento (Out/2026), descrito como o jogador o vê.
---
---   love . test_one test_lifecycle
-
 local TK = require("tools.testkit")
 local M = {}
 
@@ -18,11 +11,10 @@ function M.run()
     local SaveManager = require("engine.SaveManager")
     local Config     = require("src.core.Config")
 
-    -- 1. "A batalha seguinte começou com o inimigo atacando primeiro."
     do
         local g = TK.newRunGame("mage")
-        g.turn = "enemy"            -- golpe final veio do pulso de orbe do fim de turno
-        g._endTurnQueued = true     -- ou de um "Encerrar turno" enfileirado
+        g.turn = "enemy"
+        g._endTurnQueued = true
         g.runManager.currentRun.currentNode = { type = "battle" }
         g:nextPhase()
         t:eq("batalha nova SEMPRE abre no turno do jogador", g.turn, "player")
@@ -31,8 +23,6 @@ function M.run()
             g.runManager.currentRun.stage, "battle")
     end
 
-    -- 2. "Morri com o menu de pausa aberto, salvei, e o Continuar me trouxe de
-    --    volta com 1 de vida."
     do
         local g = TK.newRunGame("warrior")
         g:checkpointRun()
@@ -42,7 +32,6 @@ function M.run()
         t:falsy("jogador MORTO nao grava save (nada de ressuscitar)", SaveManager.hasRun())
     end
 
-    -- 3. "Venci o jogo e o menu ainda oferecia Continuar — de volta ao chefe."
     do
         local g = TK.newRunGame("rogue")
         local run = g.runManager.currentRun
@@ -58,8 +47,6 @@ function M.run()
         t:falsy("e nenhum checkpoint posterior o recria", SaveManager.hasRun())
     end
 
-    -- 4. "Salvei no acampamento/evento/loja e o Continuar abriu uma LUTA."
-    --    "Saí no cash out e refiz a batalha já vencida com o ouro no bolso."
     do
         local cases = {
             { stage = nil,          want = "battle", why = "save antigo sem estagio = luta (compat)" },
@@ -82,7 +69,6 @@ function M.run()
         t:eq("sem run, nada a reabrir alem da luta padrao", ResumeFlow.stageAction(nil), "battle")
     end
 
-    -- 5. O estágio VIAJA no save (sem isto o item 4 seria decoração).
     do
         local g = TK.newRunGame("warrior")
         local run = g.runManager.currentRun
@@ -95,7 +81,6 @@ function M.run()
         SaveManager.deleteRun()
     end
 
-    -- 6. Evento salvo é encontrável por id.
     do
         local Events = require("src.data.events")
         local any = Events.POOL[1]
@@ -103,7 +88,6 @@ function M.run()
         t:falsy("Events.get de id inexistente devolve nil", Events.get("nao_existe"))
     end
 
-    -- 7. Escolher a opção do evento / usar a fogueira marca o nó como feito.
     do
         local g = TK.newRunGame("warrior")
         local run = g.runManager.currentRun
@@ -132,8 +116,6 @@ function M.run()
         es:hide()
     end
 
-    -- 7b. "O evento me matou e a run seguiu a 0 HP" / "cliquei numa opção
-    --     sem ouro, ela subiu -$20 e gastou o evento sem cobrar nada".
     do
         local Events = require("src.data.events")
         local g = TK.newRunGame("warrior")
@@ -161,7 +143,6 @@ function M.run()
         es:hide()
     end
 
-    -- 7b2. Bigorna forja a CÓPIA sorteada (forja é por cópia, não por id).
     do
         local Events = require("src.data.events")
         local anvil = Events.get("bigorna_antiga").options[1]
@@ -179,7 +160,6 @@ function M.run()
         TK.seedRng(20261010)
     end
 
-    -- 7c. "Comprei a Forja, apertei Voltar e perdi o ouro."
     do
         local g = TK.newRunGame("warrior")
         local CardRewardScreen = require("components.CardRewardScreen")
@@ -189,15 +169,13 @@ function M.run()
         run.paidForges = 2
         local offer = { id = "forge", effect = "forge_card", cost = 7, purchased = true, type = "upgrade" }
         local gold0 = g.economySystem.currentGold
-        -- A loja abre o picker generico (_G.openCardPicker) e decide o estorno
-        -- pela assinatura do deck: se nada mudou, o jogador saiu pelo Voltar.
         local prev = _G.openCardPicker
-        _G.openCardPicker = function(_, onDone) onDone(false) end   -- jogador apertou Voltar
+        _G.openCardPicker = function(_, onDone) onDone(false) end
         scr:applyUpgrade(offer)
         t:eq("Voltar sem forjar devolve o ouro", g.economySystem.currentGold - gold0, 7)
         t:falsy("e a oferta volta a ficar a venda", offer.purchased)
         t:eq("e o preco da proxima forja nao sobe por uma forja que nao houve", run.paidForges, 2)
-        _G.openCardPicker = function(_, onDone)                      -- forjou de verdade
+        _G.openCardPicker = function(_, onDone)
             g.runManager:upgradeCardAt(1)
             onDone(true)
         end
@@ -209,14 +187,11 @@ function M.run()
         scr:hide()
     end
 
-    -- 7d. Abandonar pelo pause rende XP de maestria uma vez e apaga o save.
     do
         local g = TK.newRunGame("warrior")
         local run = g.runManager.currentRun
         run.actNumber, run.floorInAct = 2, 4
         local UnlockSystem = require("src.systems.UnlockSystem")
-        -- Perfil FALSO: o XP acumulado pelas suites anteriores pode ter
-        -- maxado o guerreiro, e no nivel maximo o XP nao cresce mais.
         local ProfileStats = require("engine.ProfileStats")
         local prevProfile = ProfileStats._swapForTests({ runs = 0, wins = 0 })
         UnlockSystem._resetForTests()
@@ -230,10 +205,9 @@ function M.run()
         t:eq("abandonar de novo nao paga XP duas vezes", UnlockSystem.getClassMastery("warrior").xp, after)
         ProfileStats._swapForTests(prevProfile)
         UnlockSystem._resetForTests()
-        UnlockSystem.setOverrideAll(true)   -- todo arg de tool roda com o catalogo inteiro
+        UnlockSystem.setOverrideAll(true)
     end
 
-    -- 8. advanceFloorInAct sem argumento usa a fonte única de atos.
     do
         local g = TK.newRunGame("warrior")
         local run = g.runManager.currentRun
@@ -246,7 +220,6 @@ function M.run()
         t:eq("ato 1 completo vira ato 2", g.runManager:advanceFloorInAct(), "act_complete")
     end
 
-    -- 9. InputFocus.hideAll fecha toda tela registrada (menu nunca nasce morto).
     do
         local IF = require("src.ui.InputFocus")
         IF.clear()
@@ -263,7 +236,6 @@ function M.run()
         t:falsy("modal (pausa) fechada", b:isVisible())
         t:eq("sem tela visivel, o foco volta pro menu", IF.activeName(), nil)
 
-        -- "Morri com o menu de pausa aberto": modal sobre a luta CONGELA o combate.
         b.v = true
         t:truthy("pausa aberta na luta congela o combate", IF.freezesCombat("playing"))
         t:falsy("pausa fora da luta nao congela nada", IF.freezesCombat("mapSelection"))

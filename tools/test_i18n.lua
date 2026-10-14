@@ -1,16 +1,3 @@
--- tools/test_i18n.lua
--- Smoke test do sistema de i18n. Roda dentro do LOVE com:
---   love . tools/test_i18n.lua
--- ou via main.lua trocando o entry. Aqui implementamos uma love.load minima
--- que so executa os asserts e fecha.
---
--- Verifica:
---   - todos os locales carregam
---   - todas as chaves de UI existem em todos os locales
---   - troca de locale funciona
---   - I18n.cardName/cardDesc retornam strings nao vazias
---   - substituicao de variaveis funciona
-
 local I18n = require("src.i18n.I18n")
 
 local M = {}
@@ -27,14 +14,12 @@ function M.run()
     end
     local okAll = pcall(function()
 
--- 1. Carrega todos os locales conhecidos
 local locales = I18n.getAvailable()
 print("Locales disponiveis:", table.concat(locales, ", "))
 
 I18n.init()
 ok("init() concluiu (locale atual: " .. I18n.getLocale() .. ")")
 
--- 2. Chaves criticas que precisam existir em todos os locales
 local CRITICAL_KEYS = {
     "menu.title", "menu.play", "menu.collection", "menu.settings", "menu.quit",
     "settings.title", "settings.music", "settings.language", "settings.close",
@@ -64,7 +49,6 @@ for _, code in ipairs(locales) do
     end
 end
 
--- 3. Substituicao de variaveis
 I18n.setLocale("pt_BR")
 local out = I18n.t("reward.bought", { name = "TestCard" })
 if not out:find("TestCard") then
@@ -78,7 +62,6 @@ if not out2:find("42") then
 end
 ok("substituicao numerica: " .. out2)
 
--- 4. cardName/cardDesc com tabela real (inclui stats pra exercitar auto-inject)
 local card = { id = "warrior_strike", name = "Fallback", description = "Fallback desc",
                 attack = 6, defense = 0, cost = 1 }
 I18n.setLocale("en")
@@ -93,46 +76,38 @@ local nameDe = I18n.cardName(card)
 if nameDe ~= "Schlag" then fail("cardName(de) esperado 'Schlag', recebido: " .. nameDe) end
 ok("cardName em DE: " .. nameDe)
 
--- 5. Fallback p/ ID inexistente -> usa fallback do parametro
 I18n.setLocale("pt_BR")
 local nameUnknown = I18n.cardName({ id = "carta_que_nao_existe", name = "Default" })
 if nameUnknown ~= "Default" then fail("fallback de cardName falhou: " .. nameUnknown) end
 ok("fallback p/ id inexistente OK: " .. nameUnknown)
 
--- 5b. Auto-injecao de variaveis em cardDesc ({atk}/{def}/{value}/{stacks})
--- A descricao de warrior_strike usa {atk}; em PT deve resolver pra "Causa 6 de dano."
 I18n.setLocale("pt_BR")
 local atkCard = { id = "warrior_strike", attack = 6, defense = 0, cost = 1 }
 local atkDesc = I18n.cardDesc(atkCard)
 if not atkDesc:find("6") then fail("auto-inject {atk} falhou: " .. atkDesc) end
 ok("auto-inject {atk}: " .. atkDesc)
 
--- Se o gameplay buffar attack, a descricao deve refletir
 atkCard.attack = 11
 local atkDescBuffed = I18n.cardDesc(atkCard)
 if not atkDescBuffed:find("11") then fail("auto-inject dinamico falhou: " .. atkDescBuffed) end
 ok("auto-inject dinamico (atk=11): " .. atkDescBuffed)
 
--- {def} via warrior_defend
 local defCard = { id = "warrior_defend", attack = 0, defense = 5, cost = 1 }
 local defDesc = I18n.cardDesc(defCard)
 if not defDesc:find("5") then fail("auto-inject {def} falhou: " .. defDesc) end
 ok("auto-inject {def}: " .. defDesc)
 
--- {value} via effect (effect_healing_potion)
 local healCard = { id = "effect_healing_potion", cost = 1, effects = { { type = "instant_heal", value = 15 } } }
 local healDesc = I18n.cardDesc(healCard)
 if not healDesc:find("15") then fail("auto-inject {value} falhou: " .. healDesc) end
 ok("auto-inject {value}: " .. healDesc)
 
--- {atk} + {duration} via warrior_bash (espelha a carta real: stacks=1, duration=2)
 local bashCard = { id = "warrior_bash", attack = 8, cost = 2, effects = { { type = "apply_debuff", value = "vulnerable", stacks = 1, duration = 2 } } }
 local bashDesc = I18n.cardDesc(bashCard)
 if not (bashDesc:find("8") and bashDesc:find("2")) then fail("auto-inject combo falhou: " .. bashDesc) end
 if bashDesc:find("{", 1, true) then fail("placeholder sem interpolar: " .. bashDesc) end
 ok("auto-inject {atk}+{duration}: " .. bashDesc)
 
--- 5d. I18n.effectDesc traduz efeitos declarados em cartas
 I18n.setLocale("pt_BR")
 local heal = { type = "on_attack_heal", value = 3 }
 local healStr = I18n.effectDesc(heal)
@@ -154,29 +129,24 @@ local orbStr = I18n.effectDesc(orbLightning)
 if not orbStr:lower():find("lightning") then fail("effectDesc channel_orb_lightning (en): " .. orbStr) end
 ok("effectDesc channel_orb: " .. orbStr)
 
--- messages.* (toasts do EffectSystem)
 I18n.setLocale("pt_BR")
 local toast = I18n.t("messages.healed", { value = 10 })
 if not toast:find("10") then fail("messages.healed: " .. toast) end
 ok("messages.healed: " .. toast)
 
--- 5c. Locale.font + FontManager.setFontPath integrados
 local FontManager = require("src.ui.FontManager")
 local before = FontManager.getFontPath()
 if not before then fail("FontManager.getFontPath() retornou nil inicialmente") end
 ok("FontManager.getFontPath inicial: " .. before)
--- Locales atuais nao especificam font, entao deve ficar no default mesmo trocando
 I18n.setLocale("de")
 local afterDe = FontManager.getFontPath()
 if afterDe ~= before then fail("font path mudou sem locale especificar: " .. afterDe) end
 ok("locale sem `font` mantem default: " .. afterDe)
--- Simula adicao de fonte custom via override direto
-I18n.data.de.font = "assets/fonts/pixel.ttf"  -- mesmo caminho, mas exercita o code path
+I18n.data.de.font = "assets/fonts/pixel.ttf"
 I18n.setLocale("pt_BR"); I18n.setLocale("de")
 ok("locale com `font` aplica via FontManager.setFontPath")
-I18n.data.de.font = nil   -- limpa
+I18n.data.de.font = nil
 
--- 6. cycleLocale gira pelos disponiveis
 local startLocale = I18n.getLocale()
 local seen = { [startLocale] = true }
 for i = 1, #locales do
@@ -188,10 +158,6 @@ for _ in pairs(seen) do count = count + 1 end
 if count ~= #locales then fail("cycleLocale nao visitou todos os locales (" .. count .. "/" .. #locales .. ")") end
 ok("cycleLocale visita todos os " .. #locales .. " locales")
 
--- 7. REGRESSAO (bug Jul/2026 "valor {value}" cru na loja): cardDesc de TODA
--- carta, em TODO locale, nao pode conter placeholder nao-substituido — tanto
--- pelo caminho id-string quanto pelo caminho tabela-minima {id, description}
--- (o que a CardRewardScreen passa). O fix busca a carta no CardDatabase.
 do
     local CardDatabase = require("src.systems.CardDatabase")
     local db = CardDatabase:new()
@@ -215,7 +181,7 @@ do
 end
 
     print("\n=== TODOS OS TESTES I18N PASSARAM ===")
-    end)  -- fim do corpo protegido
+    end)
     return okAll and not failed
 end
 

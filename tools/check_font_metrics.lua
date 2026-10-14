@@ -1,18 +1,5 @@
--- tools/check_font_metrics.lua
--- Mede a fonte do projeto: altura REPORTADA vs altura DESENHADA.
---
--- Existe porque a entrelinha do corpo de texto do evento sobrepunha as linhas
--- em alemão e o palpite "multiplica por 1.1" não resolveu. Fonte pixel via TTF
--- costuma reportar `getHeight()` menor que a caixa real dos glifos (acentos e
--- descendentes ficam fora da métrica), e aí `printf` empilha linhas curtas
--- demais. Medir a MANCHA DE PIXELS é o único jeito honesto de achar o fator.
---
--- Roda: love . check_font_metrics [tamanhos separados por virgula]
-
 local M = {}
 
--- Desenha `txt` num canvas e devolve a primeira e a última linha de pixel
--- efetivamente pintada.
 local function inkBounds(font, txt, w)
     local h = font:getHeight() * 4 + 40
     local c = love.graphics.newCanvas(w, h)
@@ -48,7 +35,6 @@ function M.run(sizes)
         list[#list + 1] = tonumber(s)
     end
 
-    -- Amostra com ascendente, descendente e acento: é o pior caso real.
     local SAMPLE = "Agjq ÁÇÃõ Klares"
 
     print("")
@@ -65,8 +51,6 @@ function M.run(sizes)
             sz, reported, ink, factor, verdict))
     end
     print("")
-    print("fator = quanto a tinta real excede getHeight(). A entrelinha segura")
-    print("e o MAIOR fator entre os tamanhos usados, com uma folga pequena.")
     return true
 end
 

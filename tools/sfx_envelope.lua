@@ -1,20 +1,3 @@
--- tools/sfx_envelope.lua
--- Desenha a CURVA do envelope de um sfx em ASCII, janela a janela.
---
--- Complementa o tools/check_sfx.lua: aquele dá os números-resumo (pico, t10),
--- este mostra a FORMA. A diferença importa quando o número-resumo engana —
--- caso real (Set/2026): `card-shelf-place` media "ataque em 0,41s" num arquivo
--- de 0,60s, e só a curva responde a pergunta que decide o uso: os 0,41s antes
--- do pico são SILÊNCIO (defeito de geração, o som chega atrasado) ou são som
--- de verdade subindo (envelope legítimo, é só antecipar o disparo)?
---
--- Isso é crítico pra som tocado em CASCATA: se o evento audível não coincide
--- com o evento visual, o jogador ouve a carta 2 quando vê a carta 5.
---
--- Uso:
---   love . sfx_envelope card-shelf-place
---   love . sfx_envelope shop-leave-whoosh 0.02   (janela de 20ms)
-
 local M = {}
 
 local BARS = 54
@@ -60,8 +43,6 @@ function M.run(name, winSec)
     print(string.format("=== %s  (%.2fs, pico %.3f, janela %.0fms) ===",
         path, n / rate, peak, winSec * 1000))
 
-    -- Onset AUDÍVEL: primeira janela acima de 5% do pico. É esta — não o
-    -- instante do pico — que define quando o jogador ouve o som começar.
     local onset
     for k, v in ipairs(env) do
         if v >= peak * 0.05 then onset = (k - 1) * winSec; break end
@@ -76,8 +57,6 @@ function M.run(name, winSec)
 
     print(string.format("\nonset audivel (>=5%% do pico): %s",
         onset and string.format("%.2fs", onset) or "nao encontrado"))
-    print("Se o onset for ~0.00s o som dispara junto com o evento visual.")
-    print("Se for tardio, o arquivo tem lead-in: ou antecipa o disparo, ou corta.")
     return true
 end
 

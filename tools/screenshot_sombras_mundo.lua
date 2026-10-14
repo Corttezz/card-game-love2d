@@ -1,22 +1,3 @@
--- tools/screenshot_sombras_mundo.lua
--- Capturas de PROVA das sombras do mundo (Out/2026, "a fogueira é um
--- círculo e a sombra é o círculo inteiro depois dela"). Mesmo processo,
--- mesmos casos antes e depois da mudança no ShadowEngine — a comparação
--- é lado a lado, por caso.
---
---   love . test_one screenshot_sombras_mundo antes
---   love . test_one screenshot_sombras_mundo depois
---
--- Casos (relógio congelado, RNG semeado, tod 0.5 = sombra média):
---   rest<b>    fogueira do descanso plantada na estrada do bioma b (1..6)
---   chest1     baú (marco baixo e largo)
---   props<b>   campo do bioma b (pedras, tocos, moitas, árvores, luminárias)
---   fork       encruzilhada com estandarte + loja + tenda (NÃO podem mudar)
---   up_<id>    criatura apoiada em pé na estrada (rato, touro, lavrador)
---   dead_<id>  cadáver da mesma criatura (clip death terminado)
---   float      criatura flutuante (dusk_shade)
--- Saída: sombras_<tag>_<caso>.png no save dir.
-
 local M = {}
 
 local CREATURES = { "plague_rats", "blight_bull", "hollow_farmer" }
@@ -33,11 +14,6 @@ function M.run(tag)
     local WorldRoad = require("src.ui.WorldRoad")
     local EnemyRenderer = require("src.ui.EnemyRenderer")
     local biomes = require("src.data.biomes")
-    -- relógio REAL congelado: flicker das luminárias e balanço de pose leem
-    -- love.timer.getTime; sem isso o par com/sem sombra difere no campo
-    -- inteiro (lightmap) e a máscara da sombra vira ruído.
-    -- (constante, não a hora real: assim duas rodadas — antes/depois de uma
-    -- mudança no motor — saem byte a byte comparáveis)
     local T0 = 1000
     love.timer.getTime = function() return T0 end
     local width, height = love.graphics.getDimensions()
@@ -63,10 +39,6 @@ function M.run(tag)
         WorldRoad._prevBiomeIndex = nil
     end
 
-    -- cada caso sai em DOIS quadros: com sombra e com o ShadowEngine mudo
-    -- (sprite/queue/silhouette devolvem true sem desenhar — o fallback de
-    -- elipse também não entra). A diferença entre os dois É a sombra, e é
-    -- o que a prancha de revisão pinta por cima.
     local ShadowEngine = require("engine.ShadowEngine")
     local origSprite, origQueue, origSil =
         ShadowEngine.sprite, ShadowEngine.queue, ShadowEngine.silhouette
@@ -82,8 +54,6 @@ function M.run(tag)
     end
 
     local shoot
-    -- pre: re-arma o que o draw CONSOME (WorldRoad.draw zera o callback
-    -- do inimigo a cada quadro — sem re-armar, o 2º quadro do par sai vazio)
     shoot = function(name, bio, pre)
         if not name:match("_ns$") then
             mute(true)
@@ -106,7 +76,6 @@ function M.run(tag)
         out[#out + 1] = path
     end
 
-    -- 1) fogueira do descanso em cada bioma + baú
     for bio = 1, 6 do
         freeze()
         settle(bio, 5.5)
@@ -121,14 +90,12 @@ function M.run(tag)
     shoot("chest1", 1)
     WorldRoad._landmark = nil
 
-    -- 2) campo de props por bioma
     for bio = 1, 6 do
         freeze()
         settle(bio, 5.5)
         shoot("props" .. bio, bio)
     end
 
-    -- 3) encruzilhada: estandarte + loja + tenda (prova de que NÃO mudam)
     freeze()
     settle(2, 5.5)
     WorldRoad.showFork({ { type = "battle" }, { type = "shop" }, { type = "event" } },
@@ -137,8 +104,6 @@ function M.run(tag)
     shoot("fork", 2)
     WorldRoad._fork = nil
 
-    -- 3b) encruzilhadas SEM props (só os marcos projetam): prova de que
-    -- estandarte, loja, tenda, obelisco e totem ficam pixel a pixel iguais
     for i, nodes in ipairs({
         { { type = "battle" }, { type = "shop" }, { type = "event" } },
         { { type = "elite" }, { type = "mini_boss" }, { type = "treasure" } },
@@ -153,7 +118,6 @@ function M.run(tag)
         WorldRoad._fork = nil
     end
 
-    -- 4) criaturas: em pé, cadáver, flutuante
     local I18n = require("src.i18n.I18n")
     I18n.init()
     local Game = require("src.core.Game")
@@ -197,9 +161,6 @@ function M.run(tag)
     return true
 end
 
--- Modo auxiliar: despeja os sprites PROCEDURAIS dos props (makeShrine etc.)
--- como PNG, pra classificar a pegada de cada tipo olhando a arte.
---   love . test_one screenshot_sombras_mundo dump
 function M.dump()
     require("src.ui.PixelCanvas").enableNearest()
     local WorldRoad = require("src.ui.WorldRoad")

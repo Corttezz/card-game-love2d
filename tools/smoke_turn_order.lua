@@ -1,10 +1,3 @@
--- tools/smoke_turn_order.lua
--- Regressão da ORDEM DO TURNO (nasceu do bug do escudo, Jul/2026):
--- o dano do inimigo é diferido pro apex da investida — TUDO que roda
--- depois do golpe (expiração do bloqueio, mana, compra) precisa esperar.
--- Este teste teria pego o bug que o dono encontrou jogando.
---   love . smoke_turn_order
-
 local M = {}
 
 function M.run()
@@ -16,7 +9,6 @@ function M.run()
 
     print("---- smoke: ordem do turno (escudo vs apex) ----")
 
-    -- Guarda anti-'--' em GLSL (3 incidentes): todo shader precisa COMPILAR.
     for _, f in ipairs(love.filesystem.getDirectoryItems("shaders")) do
         if f:match("%.glsl$") then
             local okS = pcall(love.graphics.newShader, "shaders/" .. f)
@@ -40,7 +32,6 @@ function M.run()
         end
     end
 
-    -- ===== 1. ESCUDO ABSORVE O GOLPE DIFERIDO (o bug do playtest) =====
     local game = Game:new()
     game:startNewRun("warrior")
     game:startGame()
@@ -49,28 +40,20 @@ function M.run()
     game.enemy.nextIntent = "attack"
     game.enemy.damage = 8
     game.enemy.baseDamage = 8
-    game.enemy.nextIntentDamage = 8   -- telegraph congelado (contrato v2)
-    game.battleTurn = 1               -- longe da Fúria
+    game.enemy.nextIntentDamage = 8
+    game.battleTurn = 1
     game.player.armor = 20
     local hpBefore = game.player.health
 
     game.turn = "enemy"
     game:enemyTurn()
 
-    -- ANTES do apex (~0.34s): o golpe ainda não aterrissou — o escudo NÃO
-    -- pode ter expirado e o HP não pode ter mudado.
     pump(game, 0.15)
     check("pré-apex: escudo ainda de pé (não expirou antes do golpe)",
         game.player.armor >= 20)
     check("pré-apex: HP intacto (dano não aplicado ainda)",
         game.player.health == hpBefore)
 
-    -- DEPOIS do apex + continuação: golpe absorvido pelo escudo, HP intacto,
-    -- e SÓ ENTÃO o escudo expira (início do turno do jogador).
-    -- Pump 1.0 -> 3.5 (Set/2026): o turno do inimigo virou uma CADEIA de
-    -- beats (telegrafia > golpe > espinhos > veneno > intent > upkeep >
-    -- compra > gatilhos > a vez volta) — ~2.4s em vez de ~1s. Dar menos
-    -- pump nao testa o fim do turno, testa o meio dele.
     pump(game, 3.5)
     check("pós-golpe: HP intacto (20 de escudo absorveu 8 de dano)",
         game.player.health == hpBefore)
@@ -78,7 +61,6 @@ function M.run()
         game.player.armor == 0)
     check("turno voltou pro jogador", game.turn == "player")
 
-    -- ===== 2. GOLPE SEM ESCUDO FERE =====
     local game2 = Game:new()
     game2:startNewRun("warrior")
     game2:startGame()
@@ -87,7 +69,7 @@ function M.run()
     game2.enemy.nextIntent = "attack"
     game2.enemy.damage = 8
     game2.enemy.baseDamage = 8
-    game2.enemy.nextIntentDamage = 8  -- telegraph congelado (contrato v2)
+    game2.enemy.nextIntentDamage = 8
     game2.battleTurn = 1
     game2.player.armor = 0
     local hp2 = game2.player.health
@@ -97,13 +79,12 @@ function M.run()
     check("sem escudo: dano integral chegou no HP",
         game2.player.health == hp2 - 8)
 
-    -- ===== 3. BASTIÃO: escudo NÃO expira =====
     local game3 = Game:new()
     game3:startNewRun("warrior")
     game3:startGame()
     pump(game3, 0.5)
-    game3.player.retainArmor = true    -- flag do joker
-    game3.enemy.nextIntent = "defend"  -- inimigo não ataca (escudo intocado)
+    game3.player.retainArmor = true
+    game3.enemy.nextIntent = "defend"
     game3.battleTurn = 1
     game3.player.armor = 12
     game3.turn = "enemy"
@@ -112,7 +93,6 @@ function M.run()
     check("Bastião: escudo sobrevive à virada do turno",
         game3.player.armor == 12)
 
-    -- ===== 4. endTurn descarta e passa a vez =====
     local game4 = Game:new()
     game4:startNewRun("warrior")
     game4:startGame()

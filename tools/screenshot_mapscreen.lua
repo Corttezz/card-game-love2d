@@ -1,7 +1,3 @@
--- tools/screenshot_mapscreen.lua
--- Renderiza o MapScreen com 3 nodes (battle/rest/shop) pra debug visual.
--- love . screenshot_mapscreen → ~/.local/share/love/card-game/mapscreen_screenshot.png
-
 local M = {}
 
 function M.run()
@@ -16,7 +12,6 @@ function M.run()
     local MapManager = require("src.systems.MapManager")
     local screen = MapScreen:new()
 
-    -- Cria 3 nodes mock pra teste visual (battle/rest/elite pra ver preview)
     local nodes = {
         MapManager._makeNode(MapManager.NODE_TYPES.BATTLE, 3, 1),
         MapManager._makeNode(MapManager.NODE_TYPES.REST,   3, 1),
@@ -24,7 +19,6 @@ function M.run()
     }
     screen:show(nodes, function() end, "Escolha o proximo caminho")
 
-    -- Força hover no painel central pra validar destaque visual
     screen.hoverIndex = 2
 
     love.graphics.clear(0, 0, 0, 1)

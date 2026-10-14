@@ -1,21 +1,3 @@
--- tools/test_shop_sale.lua
--- Trava da OFERTA DO DIA (Loja v3 F4, Out/2026 — ShopSystem:applyDailySale,
--- Config.Offers.DAILY_SALE):
---   1. flag DESLIGADA (setada à mão: o default é LIGADA desde 13/Out/2026,
---      decisão de UX do dono após a bateria shop-sale): nenhuma oferta traz
---      saleDiscount e os streams do Rng não andam;
---   2. flag LIGADA (default): UMA e só uma oferta da loja com saleDiscount = pct,
---      preço = floor(preço cheio × (1 - pct)), basePrice guardado;
---   3. a recompensa pós-batalha (grátis) NUNCA ganha etiqueta;
---   4. o reroll sorteia de novo (continua 1 e só 1; muda de objeto ao longo
---      das seeds); mesma seed → mesma oferta e mesmo preço;
---   5. a etiqueta viaja no save: exportState/importState e o checkpoint
---      real (RunManager save → load) devolvem a mesma oferta com o mesmo
---      preço e a mesma marca;
---   6. o asset da etiqueta (price_tag_sale.png) existe;
---   7. o knob BALANCE_SHOP_SALE do balance_sim liga a flag.
---   love . test_one test_shop_sale
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -46,7 +28,6 @@ function M.run()
     local g = TK.newRunGame("warrior")
     local Rng = require("src.systems.Rng")
 
-    -- ===== 1) desligada =====
     Offers.DAILY_SALE = false
     TK.seedRng(31337)
     local shop = openShop(g, "shop")
@@ -59,7 +40,6 @@ function M.run()
         Rng.get():getState().states.shop, stateOff)
     t:eq("desligada: mesma vitrine por seed", shopOff2:getCurrentOffers()[1].id, shop:getCurrentOffers()[1].id)
 
-    -- ===== 2) ligada =====
     Offers.DAILY_SALE = true
     Offers.DAILY_SALE_PCT = 0.25
     TK.seedRng(31337)
@@ -74,8 +54,6 @@ function M.run()
         t:truthy("preço é inteiro", sale.cost == math.floor(sale.cost))
         t:truthy("preço com desconto < preço cheio", sale.cost < sale.basePrice)
     end
-    -- toda oferta sem etiqueta ficou com o preço de antes (comparando com a
-    -- vitrine gerada com a flag desligada na mesma seed, até a etiqueta)
     local same = true
     for i, o in ipairs(shop:getCurrentOffers()) do
         local ref = shopOff2:getCurrentOffers()[i]
@@ -83,12 +61,10 @@ function M.run()
     end
     t:truthy("quem não é a oferta do dia custa o mesmo de sempre", same)
 
-    -- ===== 3) recompensa nunca =====
     TK.seedRng(31337)
     local rew = openShop(g, "rewards")
     t:eq("recompensa pós-batalha: 0 etiquetas", #sales(rew:getCurrentOffers()), 0)
 
-    -- ===== 4) reroll e seed =====
     TK.seedRng(777)
     shop = openShop(g, "shop")
     local firstId = sales(shop:getCurrentOffers())[1].o.id
@@ -118,7 +94,6 @@ function M.run()
     t:truthy("12 seeds: sempre exatamente 1 etiqueta", okCount)
     t:truthy("12 seeds: a etiqueta não cai sempre na 1ª vaga", differs)
 
-    -- ===== 5) save =====
     TK.seedRng(4242)
     shop = openShop(g, "shop")
     local before = sales(shop:getCurrentOffers())[1]
@@ -131,7 +106,6 @@ function M.run()
         after and before and after.i == before.i and after.o.id == before.o.id
         and after.o.cost == before.o.cost and after.o.basePrice == before.o.basePrice
         and after.o.saleDiscount == before.o.saleDiscount)
-    -- checkpoint real: a vitrine mora em currentRun.shopState (CardRewardScreen)
     local run = g.runManager.currentRun
     st.key = "shop|1|1|0"
     run.shopState = st
@@ -151,10 +125,8 @@ function M.run()
     run.shopState = nil
     g.runManager:deleteSave()
 
-    -- ===== 6) asset =====
     t:truthy("asset price_tag_sale.png existe", love.filesystem.getInfo("assets/sprites/shop/price_tag_sale.png") ~= nil)
 
-    -- ===== 7) knob e default =====
     Offers.DAILY_SALE = false
     local src = love.filesystem.read("tools/balance_sim.lua") or ""
     t:truthy("balance_sim lê BALANCE_SHOP_SALE", src:find('BALANCE_SHOP_SALE', 1, true) ~= nil)

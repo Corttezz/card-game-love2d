@@ -1,18 +1,3 @@
--- tools/test_endless_seals.lua
--- Trava do PÓS-JOGO (Out/2026): Selos do Grimório + endless em ciclos com
--- maldições. memory/endless_and_seals.md tem o desenho.
---
---   1. Selo 0 sem maldição = JOGO BASE (todo multiplicador neutro).
---   2. Selos são CUMULATIVOS e cada regra chega no sistema certo (mapa, loja,
---      cura, ouro, recompensa, inimigo) pelo Game de verdade.
---   3. Desbloqueio por classe: vencer no selo k abre o k+1, só dessa classe.
---   4. Endless: ciclo novo abre escolha 1-de-2 (distintas, reprodutível por
---      seed), escolha empilha e respeita o teto, viaja no save; curva cresce
---      e é justa no começo e impiedosa depois.
---   5. Telas: layout da escolha de maldição e da banda de selo sem
---      sobreposição; tela de maldição escolhe por teclado e grava.
---   love . test_one test_endless_seals
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -24,7 +9,6 @@ function M.run()
     local Config = require("src.core.Config")
     local ActSystem = require("src.systems.ActSystem")
 
-    -- ===== 1) neutro =====
     local base = { seal = 0 }
     local st = { health = 100, damage = 10 }
     local same = RM.enemyStats(base, st, "battle")
@@ -36,7 +20,6 @@ function M.run()
     t:eq("selo 0: ouro inicial padrao", RM.startingGold(base, 10), 10)
     t:eq("selo 0: pontos x1", RM.scoreMul(base), 1)
 
-    -- ===== 2) cumulativos =====
     local s3 = { seal = 3 }
     t:near("selo 3 traz o 1 (elite x1.5)", RM.eliteWeightMul(s3), 1.5, 1e-9)
     t:near("selo 3 traz o 2 (fogueira x0.75)", RM.healMul(s3, "rest"), 0.75, 1e-9)
@@ -53,7 +36,6 @@ function M.run()
     t:eq("selo 10: recompensa -1 carta", RM.rewardCardsDelta(s10), -1)
     t:near("selo 10: pontos x2", RM.scoreMul(s10), 2.0, 1e-9)
 
-    -- Pelo Game de verdade
     local g = TK.newRunGame("warrior")
     local g7 = (function()
         local Game = require("src.core.Game")
@@ -67,13 +49,11 @@ function M.run()
     local v0 = g:_buildRoundEvalSources()[1].dollars
     local v7 = g7:_buildRoundEvalSources()[1].dollars
     t:eq("Bolsa Leve: vitoria paga $1 a menos", v7, v0 - 1)
-    -- Escolha Curta: recompensa com 2 cartas
     TK.seedRng(77)
     g7.shopSystem:setContext({ classId = "warrior", runManager = g7.runManager })
     g7.shopSystem:setMode("rewards")
     g7.shopSystem:generateOffers()
     t:eq("Escolha Curta: recompensa com 2 cartas", #g7.shopSystem:getCurrentOffers(), 2)
-    -- Mercado Caro: mesma seed, loja mais cara
     local function shopTotal(game)
         TK.seedRng(4242)
         game.shopSystem:setContext({ classId = "warrior", runManager = game.runManager })
@@ -87,14 +67,12 @@ function M.run()
     local p9, r9 = shopTotal(g7)
     t:truthy(("Mercado Caro: vitrine mais cara ($%d > $%d)"):format(p9, p0), p9 > p0)
     t:truthy("Mercado Caro: reroll mais caro", r9 > r0)
-    -- Cura da fogueira pela tela
     local RestScreen = require("components.RestScreen")
     local rs = RestScreen.new and RestScreen:new() or setmetatable({}, { __index = RestScreen })
     rs.game = g7
     t:near("fogueira com Cura Escassa = 22.5%", rs:_healPct(), 0.225, 1e-9)
     rs.game = g
     t:near("fogueira base = 30%", rs:_healPct(), 0.30, 1e-9)
-    -- Elite mais frequente no mapa
     local MapManager = require("src.systems.MapManager")
     local function eliteCount(mul)
         TK.seedRng(9)
@@ -109,7 +87,6 @@ function M.run()
     local e1, e3 = eliteCount(1), eliteCount(3)
     t:truthy(("elite x3 aparece mais (%d > %d)"):format(e3, e1), e3 > e1)
 
-    -- ===== 3) desbloqueio por classe =====
     local PS = require("engine.ProfileStats")
     local US = require("src.systems.UnlockSystem")
     local prev = PS._swapForTests({ runs = 0, wins = 0 })
@@ -129,9 +106,8 @@ function M.run()
     PS._swapForTests(prev)
     US._resetForTests()
 
-    -- ===== 4) endless =====
     local ge = TK.newRunGame("warrior")
-    TK.seedRng(1234) -- DEPOIS da run nova (startNewRun troca o Rng ativo)
+    TK.seedRng(1234)
     local run = ge.runManager.currentRun
     run.actNumber, run.floorInAct = Config.TotalActs, 8
     run.currentFloor = Config.TotalActs * 8
@@ -148,13 +124,11 @@ function M.run()
     t:falsy("sem escolha aberta depois de escolher", RM.pending(run))
     t:truthy("pontos sobem com maldicao", RM.scoreMul(run) > 1)
 
-    -- determinismo
     TK.seedRng(1234)
     local r2 = { endless = nil }
     local again = RM.beginEndlessCycle(r2)
     t:eq("mesma seed, mesma escolha", again[1] .. again[2], pend[1] .. pend[2])
 
-    -- teto de acumulo
     local rt = { endless = { cycle = 0, curses = { fome = 3 }, order = { "fome" } } }
     local voltou = false
     for _ = 1, 30 do
@@ -164,7 +138,6 @@ function M.run()
     end
     t:falsy("maldicao no teto nao volta ao sorteio (30 ciclos)", voltou)
 
-    -- save/load com escolha aberta
     for _ = 1, 8 do ge.runManager:advanceFloorInAct() end
     t:eq("8 andares depois: ciclo 2", RM.cycle(run), 2)
     t:truthy("ciclo 2 com escolha aberta", RM.pending(run) ~= nil)
@@ -175,13 +148,11 @@ function M.run()
     t:truthy("escolha aberta viaja no save", RM.pending(rmL.currentRun) ~= nil)
     t:eq("maldicoes viajam no save", RM.totalCurseStacks(rmL.currentRun), 1)
 
-    -- Couraca: bloqueio inicial
     local Enemy = require("src.entities.Enemy")
     local en = Enemy:new(200, 10)
     RM.decorateEnemy({ endless = { curses = { couraca_abissal = 2 } } }, en)
     t:eq("Couraca x2: bloqueio 16% da vida", en.armor, 32)
 
-    -- curva: justa no inicio, impiedosa depois
     local h8 = ActSystem.endlessFactors(8)
     local h40 = ActSystem.endlessFactors(40)
     local _, d8 = ActSystem.endlessFactors(8)
@@ -195,7 +166,6 @@ function M.run()
         prevF = f
     end
     t:truthy("curva sempre crescente", mono)
-    -- Chefe escala pelo INÍCIO do ciclo: o do ciclo 1 é o chefe do ato 6.
     local A = Config.TotalActs
     local b6 = ActSystem.getEnemyStats(A, 8, "boss")
     local bc1 = ActSystem.getEnemyStats(A + 1, 8, "boss", 8)
@@ -203,7 +173,6 @@ function M.run()
     t:eq("chefe do ciclo 1 = chefe do ato 6", bc1.health, b6.health)
     t:truthy("chefe do ciclo 2 mais forte", bc2.health > bc1.health)
 
-    -- ===== 5) telas =====
     local ECS = require("components.EndlessCurseScreen")
     local sizes = { { 800, 600 }, { 1024, 768 }, { 1280, 720 }, { 1920, 1080 }, { 2560, 1440 } }
     for _, s in ipairs(sizes) do

@@ -1,14 +1,3 @@
--- tools/test_toasts.lua
--- Toasts (src/systems/MessageSystem.lua) como PLACA numa zona definida:
--- coluna esquerda entre o pé do quadro de coringas e o topo da mão.
--- Antes eram texto cru de 12px em x=10,y=244, sem fundo e sem quebra —
--- uma frase longa atravessava a tela por cima do inimigo.
---
---   love . test_one test_toasts            → só asserções
---   love . test_one test_toasts shots      → + capturas toasts_<W>x<H>.png
---
--- Janela FALSIFICADA (getWidth/getHeight), sem setMode.
-
 local TK = require("tools.testkit")
 local FontManager = require("src.ui.FontManager")
 
@@ -61,7 +50,7 @@ function M.run(arg)
                 if arg == "shots" then
                     local canvas = love.graphics.newCanvas(w, h)
                     love.graphics.setCanvas(canvas)
-                    love.graphics.clear(0.55, 0.50, 0.40, 1)   -- cenário CLARO: pior caso de leitura
+                    love.graphics.clear(0.55, 0.50, 0.40, 1)
                     love.graphics.setColor(0.2, 0.15, 0.1, 1)
                     love.graphics.rectangle("fill", 0, h * 0.62, w, h * 0.38)
                     ms:update(0.3)

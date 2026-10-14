@@ -1,14 +1,3 @@
--- tools/test_enemy_pose.lua
--- Regressões dos defeitos de Set/2026 (cena do elite + chefe flutuando):
---
---   1. ELITE não briga no salão do chefe (isInteriorNode é a fonte única).
---   2. Toda cena de interior tem LINHA DE CHÃO declarada, e ela cai na laje
---      — `height * 0.68` fixo punha o pé do chefe do ato 2 na PAREDE.
---   3. Todo inimigo do roster tem POSE declarada, e a âncora não depende da
---      resolução (o mesmo ponto da arte em qualquer janela).
---
--- Roda via: love . test_one test_enemy_pose
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -22,9 +11,6 @@ function M.run()
     local EnemyRenderer = require("src.ui.EnemyRenderer")
     local GameplayScene = require("src.scenes.GameplayScene")
 
-    -- ===================================================================
-    -- 1. Cenário por tipo de node
-    -- ===================================================================
     t:truthy("boss depois da cutscene luta DENTRO do castelo",
         GameplayScene.isInteriorNode("boss", true))
     t:falsy("boss ANTES da cutscene ainda esta na estrada",
@@ -36,13 +22,6 @@ function M.run()
     t:falsy("batalha comum briga na estrada",
         GameplayScene.isInteriorNode("battle", true))
 
-    -- ===================================================================
-    -- 2. Linha de chão das cenas de interior
-    -- ===================================================================
-    -- v11: varre TODOS os atos da campanha, não os 3 que tinham arte quando
-    -- o teste nasceu. O ato novo sem salão (ou com salão sem âncora) passa a
-    -- FALHAR aqui em vez de aparecer na cara do dono — foi exatamente assim
-    -- que os atos 4-6 ficaram reusando o cenário do ato 1 sem ninguém ver.
     local Config = require("src.core.Config")
     local totalAtos = Config.TotalActs or 3
     t:truthy("campanha tem ao menos 3 atos (sanidade do proprio teste)",
@@ -54,16 +33,10 @@ function M.run()
         t:truthy(key .. " tem linha de chao declarada",
             SceneAnchors.BY_SCENE[key] ~= nil)
         local a = SceneAnchors.get(key)
-        -- Toda laje destes salões mora na metade de baixo da arte; acima
-        -- disso é parede (o caso do hall 2) e abaixo de 0.95 some atrás do
-        -- HUD. Fora dessa faixa é bug de dado, não de gosto.
         t:truthy(key .. " ancora na laje (yr=" .. tostring(a.yr) .. ")",
             a.yr > 0.60 and a.yr < 0.95)
     end
 
-    -- Cada ato tem o SEU salão: dois atos apontando pro mesmo PNG é o defeito
-    -- que o dono pegou jogando ("o cenário do boss de alguns atos está igual
-    -- o do primeiro ato"). Comparação por conteúdo, não por nome de arquivo.
     do
         local vistos, repetido = {}, nil
         for act = 1, totalAtos do
@@ -80,15 +53,10 @@ function M.run()
             .. (repetido and (" (" .. repetido .. ")") or ""), repetido ~= nil)
     end
 
-    -- O hall do ato 2 é o do defeito: a laje dele é MAIS BAIXA que a dos
-    -- irmãos. Se alguém "uniformizar" os três valores, o chefe volta a
-    -- flutuar — este assert existe pra isso.
     t:truthy("hall 2 ancora MAIS BAIXO que o hall 1 (laje mais baixa na arte)",
         SceneAnchors.get("castle_hall_2").yr
         > SceneAnchors.get("castle_hall_1").yr)
 
-    -- Âncora independe da resolução: mesmo ponto da ARTE em qualquer
-    -- janela (o cover-fit corta na vertical em telas largas).
     do
         local key = "castle_hall_2"
         local tr1 = SceneBg.getCoverTransform(key, 1024, 768)
@@ -97,7 +65,6 @@ function M.run()
         if tr1 and tr2 then
             local _, y1 = SceneAnchors.groundAnchor(key, 1024, 768)
             local _, y2 = SceneAnchors.groundAnchor(key, 1920, 1080)
-            -- de volta pra linha da PNG
             local row1 = (y1 - tr1.oy) / tr1.scale
             local row2 = (y2 - tr2.oy) / tr2.scale
             t:near("mesma linha da arte em 1024x768 e 1920x1080",
@@ -105,9 +72,6 @@ function M.run()
         end
     end
 
-    -- ===================================================================
-    -- 3. Pose de todo inimigo do roster
-    -- ===================================================================
     local nodeTypes = { "battle", "elite", "mini_boss", "boss" }
     local seen = {}
     for act = 1, 6 do
@@ -121,8 +85,6 @@ function M.run()
         end
     end
 
-    -- Arte nova sem pose declarada é o caminho de volta pro defeito: o
-    -- sprite entra no jogo, cai no default grounded e ninguém percebe.
     local dir = "assets/sprites/characters/enemies"
     if love.filesystem.getInfo(dir) then
         for _, name in ipairs(love.filesystem.getDirectoryItems(dir)) do
@@ -134,7 +96,6 @@ function M.run()
         end
     end
 
-    -- Flutuante sem altura é grounded com nome bonito.
     for id, p in pairs(EnemyPoses.BY_ID) do
         t:truthy(id .. ": pose valida",
             p.pose == "floating" or p.pose == "grounded")
@@ -146,9 +107,6 @@ function M.run()
         end
     end
 
-    -- ===================================================================
-    -- 4. reducedMotion: tira o BALANCO, nunca a ALTURA
-    -- ===================================================================
     do
         local H = 300
         local prev = _G.gameSettings
@@ -162,7 +120,6 @@ function M.run()
         t:near("reducedMotion: altura = hover puro", a, -hover * H, 1e-9)
         t:truthy("reducedMotion: flutuante CONTINUA no ar", a < 0)
 
-        -- com movimento: oscila, mas nunca encosta no chao nem foge da faixa
         _G.gameSettings = { reducedMotion = false }
         local bob = EnemyPoses.get("dusk_shade").bob
         local lo, hi = -(hover + bob) * H, -(hover - bob) * H
@@ -177,11 +134,6 @@ function M.run()
         t:truthy("bob de verdade oscila", (maxV - minV) > 1)
         t:truthy("flutuante nunca encosta no chao", maxV < 0)
 
-        -- quem pisa nao se mexe, com ou sem reducedMotion.
-        -- O exemplo era `tower_lich`, que virou FLUTUANTE por decisao de
-        -- design (Set/2026, ver o comentario dele em enemy_poses). Trocado
-        -- por um apoiado que nao esta em disputa — e a assercao agora varre
-        -- TODOS os grounded, pra nao quebrar de novo quando um mudar de lado.
         local apoiados = 0
         for id, spec in pairs(EnemyPoses.BY_ID) do
             if spec.pose == "grounded" then
@@ -197,17 +149,8 @@ function M.run()
         _G.gameSettings = prev
     end
 
-    -- ===================================================================
-    -- 5. A ARTE do clip, nao so o dado da pose (Set/2026, 2a leva do dono:
-    --    "o pezinho dele precisa ficar inclinado para baixo. A capa tambem
-    --    precisa ficar mexendo um pouquinho, coisas sutis")
-    -- ===================================================================
     local ART = "assets/sprites/characters/enemies"
 
-    -- Margem transparente abaixo do conteudo do 1o frame de um clip. E
-    -- exatamente o que `EnemyRenderer.clipMetrics` chama de `pad`, e o que
-    -- posiciona o sprite na tela. Varre de baixo pra cima e para na 1a
-    -- linha com conteudo — barato o bastante pra rodar em 21 inimigos.
     local function padDoClip(id, clip)
         local p = ART .. "/" .. id .. "/animations/" .. clip .. "/south/0.png"
         if not love.filesystem.getInfo(p) then return nil end
@@ -223,17 +166,6 @@ function M.run()
         return nil
     end
 
-    -- (a) O PE DO CONTEUDO tem que cair no mesmo lugar em idle/hurt/death.
-    --
-    -- `clipMetrics` mede o pad do 1o frame DE CADA CLIP e o usa pra
-    -- posicionar o sprite. Se so um clip for regerado, o monstro PULA na
-    -- vertical ao levar dano ou ao morrer. Foi o defeito que quase entrou
-    -- nesta leva: corrigir o pe so no idle deixava idle=1 e hurt=4, ou seja
-    -- ~7px de pulo na tela a cada golpe recebido.
-    --
-    -- `attack` fica FORA de proposito: esses clips vem com o canvas cru do
-    -- PixelLab (176-256px, margem gorda) e o proprio EnemyRenderer conta
-    -- com isso — a escala sai sempre do idle.
     do
         local checados = 0
         for _, id in ipairs(love.filesystem.getDirectoryItems(ART)) do
@@ -249,9 +181,6 @@ function M.run()
                                 .. "' na mesma linha do idle", p, base)
                         end
                     end
-                    -- (b) Conteudo encostando na ultima linha do canvas =
-                    -- arte CORTADA. Aconteceu duas vezes ao desenhar o bico
-                    -- da bota do lich: a ponta ficou sem fechar.
                     t:truthy(id .. ": idle nao encosta na borda de baixo",
                         base >= 1)
                 end
@@ -261,16 +190,6 @@ function M.run()
             checados > 15)
     end
 
-    -- (c) Quem flutua tem PANO, e pano se mexe. O idle do lich era
-    -- silhueta parada: media do deslocamento da borda entre frames = 1px,
-    -- e o que sobrava era chuvisco de regeracao, nao balanco. Foi
-    -- exatamente a queixa ("a capa precisa ficar mexendo um pouquinho").
-    --
-    -- A metrica soma tres deslocamentos da SILHUETA entre os frames do
-    -- idle: o extremo direito do corpo e a barra de cada aba da capa.
-    -- Medido nesta sessao: arte antiga = 3, arte nova = 7. O teto existe
-    -- porque a outra metade do pedido foi "coisas sutis, bem pequenas" —
-    -- capa esvoacando seria tao errado quanto capa parada.
     do
         local dir = ART .. "/tower_lich/animations/idle/south"
         local frames = {}
@@ -299,15 +218,12 @@ function M.run()
             local _, _, _, a = data:getPixel(x, y)
             return a > 0.1
         end
-        -- extremo direito do corpo
         local bordaDir = amplitude(function(d)
             local w, h = d:getWidth(), d:getHeight()
             for x = w - 1, 0, -1 do
                 for y = 0, h - 1 do if opaco(d, x, y) then return x end end
             end
         end)
-        -- barra (ponto mais baixo) de cada aba da capa, em fracoes da
-        -- largura pra nao cravar pixel de um canvas especifico
         local function barra(x0r, x1r)
             return amplitude(function(d)
                 local w, h = d:getWidth(), d:getHeight()
@@ -325,10 +241,6 @@ function M.run()
             total <= 14)
     end
 
-    -- (d) REGRA DO APOIO (Out/2026, "os ratos parecem flutuar"): o chao e a
-    -- linha mais baixa com coluna opaca GROSSA, nao o pixel mais baixo. Um
-    -- corpo 20x20 com um rabo de 2px pendurado 6px abaixo pisa na base do
-    -- CORPO; e o override groundRow dos ratos vale (rabo grosso deitado).
     do
         local ER = require("src.ui.EnemyRenderer")
         local d = love.image.newImageData(40, 40)
@@ -345,7 +257,6 @@ function M.run()
             (m.h - 1) - m.pad, 89)
     end
 
-    -- get() normaliza e nunca devolve nil (fallback anunciado, nao mudo).
     local unknown = EnemyPoses.get("nao_existe_no_roster")
     t:eq("id desconhecido cai em grounded", unknown.pose, "grounded")
     t:eq("id desconhecido nao flutua", unknown.hover, 0)

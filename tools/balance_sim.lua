@@ -1,49 +1,3 @@
--- tools/balance_sim.lua
--- BATERIA DE BALANCEAMENTO (Out/2026): muitas runs seedadas por classe pelo
--- piloto (tools/autoplay.lua + tools/balance_ai.lua) e um relatorio
--- AGREGADO — winrate por classe, onde se morre e contra o que, impacto de
--- cada carta e coringa.
---
---   love . balance_sim [runsPorClasse] [classes] [seedBase] [piloto]
---     classes   = all | warrior | mage | rogue | warrior,rogue
---     piloto    = expert (padrao) | expert_fast | average | naive | expert_full
---                 (v5/v6/v6b/v6c legados continuam valendo)
---   ex: love . balance_sim 40 all 500000 average
---
--- Saida: console + arquivo (BALANCE_OUT, padrao balance_sim_report.md no save
--- dir). Com BALANCE_OUT apontando pra um caminho do projeto, grava la.
--- BALANCE_JSON=<arquivo>: grava TODOS os registros de run em JSON (uma
--- lista) — e o que tools/balance.py junta de varios processos.
---
--- RELOGIO: por padrao a bateria roda no relogio INSTANTANEO
--- (tools/instant_engine.lua — fila drenada por saltos, mesma regra, paridade
--- travada em test_instant_parity). BALANCE_CLOCK=frames volta ao avanco por
--- quadros (1/30 s) do piloto original.
---
--- KNOBS de A/B sem editar o jogo (lidos no setup; o sweep de
--- tools/balance_tune.py usa todos):
---   BALANCE_ENEMY_POWER="dano,vida"    Config.Game.ENEMY_POWER (ex: "0.8,0.85")
---   BALANCE_BOSS_HP=<mult>             vida de chefe e mini-chefe (ex: 1.15)
---   BALANCE_COMBO="volley=3:3,wall=5"  `step[:cap]` das regras de combo por id
---   BALANCE_COMBO_JOKER=<mult>         multiplicador dos coringas de combo (combo_boost)
---   BALANCE_ENEMY_POWER_ACT="2:0.9,0.9;3:0.85,0.85"  Config.Game.ENEMY_POWER_BY_ACT (ato:dano,vida)
---   BALANCE_BOSS_HP_ID="tower_lich=0.8" multiplica o hpMul do kit (chefe/criatura por id)
---   BALANCE_MAGE_FOCUS=<n> / BALANCE_ROGUE_POISON=<n>  Game.MAGE_FOCUS_OFFSET / ROGUE_POISON_OFFSET
---   BALANCE_PLAYER_HP=<n>              vida inicial do jogador
---   BALANCE_HAND=<n> / BALANCE_MANA=<n>  mao+compra por turno / mana maxima
---   BALANCE_SEAL=<n> / BALANCE_ENDLESS=<n>   selo da run / andares de endless
---   BALANCE_SHOP_SALE=0 | 1[:pct]      oferta do dia (Config.Offers.DAILY_SALE, ligada por padrao): 0 desliga, 1[:pct] liga/ajusta
---
--- O CATALOGO INTEIRO e medido: se o UnlockSystem (frente de progressao)
--- existir, a bateria liga o override "tudo desbloqueado" — senao a amostra
--- mediria so as cartas iniciais e o veredito de forca seria de outro jogo.
---
--- Metodo do IMPACTO de carta (o vies obvio e "quem vai mais longe compra mais
--- cartas"): compara so runs VIVAS num mesmo andar de corte. Para cada carta,
--- entre as runs que chegaram ao andar F, separa quem a tinha adquirido ATE F
--- de quem nao tinha e compara vitoria e profundidade final. F = 9 (fim do A1)
--- e F = 17 (fim do A2).
-
 local M = {}
 
 local function fmtPct(a, b) return b > 0 and string.format("%.0f%%", 100 * a / b) or "-" end
@@ -52,10 +6,8 @@ local function enableFullCatalog()
     local ok, US = pcall(require, "src.systems.UnlockSystem")
     if ok and type(US) == "table" and type(US.setOverrideAll) == "function" then
         US.setOverrideAll(true)
-        print("[balance_sim] UnlockSystem: override 'tudo desbloqueado' LIGADO (catalogo inteiro)")
         return true
     end
-    print("[balance_sim] UnlockSystem ausente — catalogo inteiro ja e o padrao")
     return false
 end
 
@@ -69,10 +21,6 @@ local function writeOut(text)
     love.filesystem.write("balance_sim_report.md", text)
     print("[balance_sim] relatorio: <save dir>/balance_sim_report.md")
 end
-
--- ============================================================
--- Agregacao
--- ============================================================
 
 local CUTS = { 9, 17 }
 
@@ -98,7 +46,6 @@ function M.aggregate(records)
         end
     end
 
-    -- impacto por carta (condicionado a estar vivo no corte)
     local impact = {}
     for _, cut in ipairs(CUTS) do
         local alive = {}
@@ -113,13 +60,11 @@ function M.aggregate(records)
             end
             r._has = has
         end
-        -- universo de cartas vistas nesta faixa
         local ids = {}
         for _, r in ipairs(alive) do for id in pairs(r._has) do ids[id] = true end end
         for id in pairs(ids) do
             local w, n, fw, wo, no, fwo = 0, 0, 0, 0, 0, 0
             for _, r in ipairs(alive) do
-                -- so compara dentro da MESMA classe que poderia pegar a carta
                 local cd = CardDatabase:getCard(id)
                 local cls = cd and cd.class
                 if cls == r.class or cls == "basic" or cls == nil then
@@ -141,7 +86,6 @@ function M.aggregate(records)
         impact[cut] = { alive = #alive, list = stats }
     end
 
-    -- pick rate: ofertado x adquirido
     local offered, picked = {}, {}
     for _, r in ipairs(records) do
         for id, n in pairs(r.offered or {}) do offered[id] = (offered[id] or 0) + n end
@@ -180,8 +124,6 @@ function M.report(records, agg, meta)
             s.floors / math.max(1, s.runs - s.crashes), deckSum / math.max(1, deckN), s.crashes)
     end
     p("")
-    -- Ritmo do combate (kit dos inimigos, Out/2026): turnos por luta, dano
-    -- SOFRIDO por turno (tensao) e duracao das lutas de chefe, por ato.
     p("## Combate por ato (todas as classes)")
     p("")
     p("| ato | batalhas | turnos/luta | dano sofrido/turno | chefes | turnos/chefe |")
@@ -206,9 +148,6 @@ function M.report(records, agg, meta)
                 x.bosses > 0 and string.format("%.1f", x.bossTurns / x.bosses) or "-")
         end
     end
-    -- JOGADAS (Out/2026, combo-clareza): o tamanho da leva e quanto do valor
-    -- das cartas veio de COMBO. "Spam" = muitas cartas por leva + combo
-    -- carregando o dano.
     p("")
     p("## Jogadas por classe")
     p("")
@@ -303,9 +242,6 @@ function M.report(records, agg, meta)
     for _, s in ipairs(pr) do
         p("| %s | %d | %d | %s |", nameOf(s.id), s.off, s.pick, fmtPct(s.pick, s.off))
     end
-    -- ECONOMIA (Out/2026): renda e gasto por ato, ouro na porta da loja e o
-    -- alcance da bancada extra de coringa. Medias sobre as runs que CHEGARAM
-    -- ao ato (quem morreu no A2 nao puxa a media do A4 pra zero).
     p("")
     p("## Economia por ato (media por run que chegou ao ato)")
     p("")
@@ -364,8 +300,6 @@ function M.report(records, agg, meta)
     local parts = {}
     for _, e in ipairs(bt) do parts[#parts + 1] = string.format("%s $%.0f", e.k, e.n / math.max(1, #records)) end
     p("- Gasto medio por run, por item: %s", table.concat(parts, " · "))
-    -- ENDLESS (BALANCE_ENDLESS=N): ate onde os vencedores chegam depois da
-    -- vitoria — o ciclo em que a curva exponencial encerra a corrida.
     local endl = {}
     for _, r in ipairs(records) do
         if r.endless then endl[#endl + 1] = r end
@@ -416,15 +350,7 @@ function M.report(records, agg, meta)
     return table.concat(out, "\n")
 end
 
--- ============================================================
--- Entrada
--- ============================================================
-
--- Prepara o processo pra bateria (tambem usado por tools/leak_probe.lua).
--- Devolve o modulo do piloto pronto.
 function M.setup(policy)
-    -- CARDGAME_HEADLESS=1: janela 1x1 fora da tela (conf.lua) + escondida da
-    -- barra de tarefas (tools/headless_window.lua). Primeiro de tudo.
     require("tools.headless_window").hide()
     _G.EventManager = require("engine.EventManager")
     _G.Event = require("engine.Event")
@@ -432,50 +358,29 @@ function M.setup(policy)
     I18n.init()
     enableFullCatalog()
 
-    -- A bateria nao desenha nada: a moldura procedural de cada carta (um
-    -- canvas por instancia, refeito a cada replay da simulacao de deck)
-    -- era o maior custo de CPU e de memoria. Uma moldura unica compartilhada
-    -- mantem largura/altura validas pra geometria do CombatSequence.
-    -- Os originais ficam guardados pra M.teardown(): as suites que chamam
-    -- setup() (test_instant_parity, test_balance_pipeline) rodam no MESMO
-    -- processo que as seguintes, e um render que nunca enche o cache do
-    -- CardFrame vazava pra elas (test_class_select flake, Out/2026).
     M._saved = M._saved or {}
     do
         local CardFrame = require("src.ui.CardFrame")
         local shared = love.graphics.newCanvas(96, 144)
         M._saved.cardFrameRender = M._saved.cardFrameRender or CardFrame.render
         CardFrame.render = function() return shared end
-        print("[balance_sim] moldura de carta compartilhada (bateria sem render)")
     end
-    -- A faixa de combo pre-renderiza um canvas por combo anunciado. Sem
-    -- love.graphics.present (a bateria nunca apresenta frame), o driver
-    -- acumulava esses comandos de desenho e o processo crescia em degraus de
-    -- dezenas de MB por run ate passar de 1 GB — com o heap Lua em ~10 MB.
-    -- Medido: com a faixa desligada o working set fica plano entre runs.
     local ComboBanner = require("src.ui.ComboBanner")
     M._saved.comboBannerShow = M._saved.comboBannerShow or ComboBanner.show
     ComboBanner.show = function() end
 
     local Autoplay = require("tools.autoplay")
-    -- TURBO (BALANCE_TURBO=1): relogio em passos de 0,1s e beats do combate
-    -- 4x mais curtos. So muda QUANTAS vezes a fila e bombeada, nao a regra.
-    -- A/B rapido da forca do inimigo sem editar o Config:
-    -- BALANCE_ENEMY_POWER="dano,vida" (ex: "0.72,0.8")
     local ep = os.getenv("BALANCE_ENEMY_POWER")
     if ep and ep ~= "" then
         local d, h = ep:match("([%d%.]+),([%d%.]+)")
         if d then
             require("src.core.Config").Game.ENEMY_POWER = { damage = tonumber(d), health = tonumber(h) }
-            print("[balance_sim] ENEMY_POWER dano " .. d .. " vida " .. h)
         end
     end
     if os.getenv("BALANCE_TURBO") == "1" then
         Autoplay.pumpDt = 0.1
         require("src.systems.CombatBeats").speed = 0.25
-        print("[balance_sim] TURBO ligado (pumpDt 0.1, beats x0.25)")
     end
-    -- Knobs do sweep (tools/balance_tune.py). Cada um AVISA o valor aplicado.
     do
         local bh = tonumber(os.getenv("BALANCE_BOSS_HP") or "")
         if bh and bh ~= 1 then
@@ -488,9 +393,7 @@ function M.setup(policy)
                 end
                 return st
             end
-            print("[balance_sim] BOSS_HP x" .. bh)
         end
-        -- BALANCE_COMBO="volley=1:2,wall=1:2,pair=3" — step[:cap] por regra
         local combo = os.getenv("BALANCE_COMBO")
         if combo and combo ~= "" then
             local CS = require("src.systems.ComboSystem")
@@ -499,15 +402,11 @@ function M.setup(policy)
                 if rule then
                     rule.step = tonumber(v)
                     if cap ~= "" then rule.cap = tonumber(cap) end
-                    print("[balance_sim] COMBO " .. id .. ".step = " .. v
-                        .. (cap ~= "" and (" cap = " .. cap) or ""))
                 else
                     print("[balance_sim] AVISO: combo desconhecido '" .. id .. "'")
                 end
             end
         end
-        -- BALANCE_COMBO_JOKER=<mult>: os coringas de combo (combo_boost) passam
-        -- a valer este multiplicador em vez do da carta (ComboSystem.boostFor).
         local cj = tonumber(os.getenv("BALANCE_COMBO_JOKER") or "")
         if cj then
             local CS = require("src.systems.ComboSystem")
@@ -516,116 +415,85 @@ function M.setup(policy)
                 local best = orig(game, ruleId)
                 return best > 1 and cj or 1
             end
-            print("[balance_sim] COMBO_JOKER x" .. cj)
         end
-        -- BALANCE_ENEMY_POWER_ACT="2:0.9,0.9;3:0.85,0.85" — Config.Game.ENEMY_POWER_BY_ACT
         local epa = os.getenv("BALANCE_ENEMY_POWER_ACT")
         if epa and epa ~= "" then
             local t = {}
             for a, d, h in epa:gmatch("(%d+):([%d%.]+),([%d%.]+)") do
                 t[tonumber(a)] = { damage = tonumber(d), health = tonumber(h) }
-                print("[balance_sim] ENEMY_POWER ato " .. a .. ": dano " .. d .. " vida " .. h)
             end
             require("src.core.Config").Game.ENEMY_POWER_BY_ACT = t
         end
-        -- BALANCE_BOSS_HP_ID="tower_lich=0.8,storm_griffin=0.9" — hpMul do kit
         local bid = os.getenv("BALANCE_BOSS_HP_ID")
         if bid and bid ~= "" then
             local Kits = require("src.data.enemies").KITS
             for id, m in bid:gmatch("([%w_]+)=([%d%.]+)") do
                 if Kits[id] then
                     Kits[id].hpMul = (Kits[id].hpMul or 1) * tonumber(m)
-                    print("[balance_sim] BOSS_HP_ID " .. id .. " hpMul = " .. Kits[id].hpMul)
                 else
                     print("[balance_sim] AVISO: kit desconhecido '" .. id .. "'")
                 end
             end
         end
-        -- BALANCE_MAGE_FOCUS / BALANCE_ROGUE_POISON: deslocamento das passivas
-        -- que crescem com a run (Game.MAGE_FOCUS_OFFSET / ROGUE_POISON_OFFSET).
         local mf = tonumber(os.getenv("BALANCE_MAGE_FOCUS") or "")
         if mf then
             require("src.core.Game").MAGE_FOCUS_OFFSET = mf
-            print("[balance_sim] MAGE_FOCUS_OFFSET = " .. mf)
         end
         local rp = tonumber(os.getenv("BALANCE_ROGUE_POISON") or "")
         if rp then
             require("src.core.Game").ROGUE_POISON_OFFSET = rp
-            print("[balance_sim] ROGUE_POISON_OFFSET = " .. rp)
         end
         local php = tonumber(os.getenv("BALANCE_PLAYER_HP") or "")
         if php then
             require("src.core.Config").Game.PLAYER_MAX_HEALTH = php
-            print("[balance_sim] PLAYER_MAX_HEALTH = " .. php)
         end
-        -- BALANCE_HAND=<n>: mao inicial = compra por turno (sao o mesmo numero
-        -- por design); BALANCE_MANA=<n>: mana maxima do jogador.
         local hand = tonumber(os.getenv("BALANCE_HAND") or "")
         if hand then
             local CG = require("src.core.Config").Game
             CG.INITIAL_HAND_SIZE, CG.CARDS_PER_TURN = hand, hand
-            print("[balance_sim] HAND/CARDS_PER_TURN = " .. hand)
         end
         local mana = tonumber(os.getenv("BALANCE_MANA") or "")
         if mana then
             require("src.core.Config").Game.PLAYER_MAX_MANA = mana
-            print("[balance_sim] PLAYER_MAX_MANA = " .. mana)
         end
-        -- wip/sustain (Out/2026): as 3 propostas de sustento, cada uma por flag.
-        -- BALANCE_REST_HEAL=0.4 (fogueira), BALANCE_POTIONS=1 (poção de elite),
-        -- BALANCE_ELITE_RAMP=1 (vida da elite cresce com o andar),
-        -- BALANCE_SUSTAIN=1[:bonus] (vaga de sustento em elite/chefe + peso
-        -- extra pra sustento com < 2 fontes; bonus default 1.0).
         do
             local CG = require("src.core.Config").Game
             local CO = require("src.core.Config").Offers
             local rh = tonumber(os.getenv("BALANCE_REST_HEAL") or "")
-            if rh then CG.REST_HEAL_PCT = rh; print("[balance_sim] REST_HEAL_PCT = " .. rh) end
+            if rh then CG.REST_HEAL_PCT = rh end
             if os.getenv("BALANCE_POTIONS") == "1" then
                 CG.POTIONS = true
-                print(("[balance_sim] POTIONS ligadas (%d vaga, cura %d%%)"):format(CG.POTION_SLOTS or 1, (CG.POTION_HEAL_PCT or 0.2) * 100))
             end
             if os.getenv("BALANCE_ELITE_RAMP") == "1" then
                 CG.ELITE_RAMP = true
-                print("[balance_sim] ELITE_RAMP ligado (" .. tostring(CG.ELITE_RAMP_START) .. " -> eliteHPMul)")
             end
             local su = os.getenv("BALANCE_SUSTAIN")
             if su and su ~= "" and su ~= "0" then
                 local bonus = tonumber(su:match(":([%d%.]+)")) or 1.0
                 CO.SUSTAIN_GUARANTEE = true
                 CO.SUSTAIN_WEIGHT_BONUS = bonus
-                print("[balance_sim] SUSTAIN: vaga garantida em elite/chefe + peso x" .. (1 + bonus) .. " com < " .. (CO.SUSTAIN_MIN_SOURCES or 2) .. " fontes")
             end
-            -- Loja v3 F4: BALANCE_SHOP_SALE=0 desliga a oferta do dia (ligada
-            -- por padrao desde 13/Out); 1[:pct] liga/ajusta o desconto.
             local ss = os.getenv("BALANCE_SHOP_SALE")
             if ss == "0" then
                 CO.DAILY_SALE = false
-                print("[balance_sim] SHOP_SALE: oferta do dia DESLIGADA")
             elseif ss and ss ~= "" then
                 local pct = tonumber(ss:match(":([%d%.]+)"))
                 CO.DAILY_SALE = true
                 if pct then CO.DAILY_SALE_PCT = pct end
-                print(("[balance_sim] SHOP_SALE: oferta do dia ligada (%d%% de desconto em 1 oferta por loja)"):format(
-                    (CO.DAILY_SALE_PCT or 0.25) * 100))
             end
         end
     end
     Autoplay.setPilot(policy or os.getenv("BALANCE_PILOT") or "expert")
     Autoplay.quiet = true
     Autoplay.installHooks()
-    -- Relogio instantaneo por padrao (ver cabecalho).
     if (os.getenv("BALANCE_CLOCK") or "instant") == "frames" then
         require("tools.instant_engine").uninstall(Autoplay)
-        print("[balance_sim] relogio de QUADROS")
     else
         require("tools.instant_engine").install(Autoplay)
     end
     return Autoplay
 end
 
--- Desfaz os stubs de setup() (CardFrame.render, ComboBanner.show) — pra suite
--- que roda outros testes depois no mesmo processo. Idempotente.
 function M.teardown()
     local s = M._saved
     if not s then return end
@@ -634,9 +502,6 @@ function M.teardown()
     M._saved = nil
 end
 
--- Grava os registros em JSON (BALANCE_JSON). Cada registro e o `runRec` do
--- piloto: resultado, morte, batalhas (battleLog), dano por fonte, deck,
--- coringas, ofertas/aquisicoes, forjas, compras, economia por ato.
 local function writeJson(records, meta)
     local path = os.getenv("BALANCE_JSON")
     if not path or path == "" then return end
@@ -665,9 +530,6 @@ function M.run(runsArg, classArg, seedArg, policyArg)
     local Instant = require("tools.instant_engine")
     local wall0 = os.time()
 
-    -- silencia o print do jogo durante a bateria (milhares de toasts por run
-    -- deixavam a bateria lenta e o log ilegivel); o resumo por run sai aqui.
-    -- progresso visivel em bateria longa (stdout em arquivo e bufferizado)
     pcall(function() io.stdout:setvbuf("line") end)
     local realPrint = print
     local records = {}

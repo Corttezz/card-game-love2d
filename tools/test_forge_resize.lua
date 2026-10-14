@@ -1,20 +1,3 @@
--- tools/test_forge_resize.lua
--- Auditoria de RESIZE da tela de forja (components/RestScreen.lua, modo picker).
---
--- POR QUE ESTE TESTE EXISTE
--- memory/ui_layout_invariants.md §2: "NASCER grande ≠ CRESCER". Criar a tela já
--- no tamanho final não exercita o bug — ele mora em "layout calculado num
--- tamanho, janela muda, layout reaproveitado". A mesma memória registra que
--- `love.window.setMode` repetido dentro de um tool TRAVA, então aqui a janela
--- é FALSIFICADA: monkey-patch em love.graphics.getWidth/getHeight. Isso
--- exercita exatamente o caminho do defeito (todo o layout desta tela deriva
--- dessas duas funções) sem tocar na janela de verdade.
---
--- A validação VISUAL continua sendo manual, pelo roteiro da memória.
---
---   love . test_one test_forge_resize
---   love . test_all               (registrado em tools/run_all_tests.lua)
-
 local TK = require("tools.testkit")
 local M = {}
 
@@ -23,7 +6,6 @@ local CardDatabase = require("src.systems.CardDatabase")
 local EventManager = require("engine.EventManager")
 local FontManager  = require("src.ui.FontManager")
 
--- ===== Janela falsa =====
 local realW, realH = love.graphics.getWidth, love.graphics.getHeight
 local fakeW, fakeH = nil, nil
 local function installFakeWindow()
@@ -34,9 +16,6 @@ local function restoreWindow()
     love.graphics.getWidth, love.graphics.getHeight = realW, realH
 end
 
--- Simula o que love.resize faz de verdade (main.lua:1479): limpa o cache de
--- fontes ANTES de avisar as telas. Sem isso o teste seria mais leniente que o
--- jogo — larguras medidas ficariam cacheadas do tamanho anterior.
 local function resizeTo(screen, w, h)
     fakeW, fakeH = w, h
     FontManager.clearCache()
@@ -53,7 +32,6 @@ local function pump(screen, secs)
     end
 end
 
--- Todas as entries cabem dentro do retângulo da grade?
 local function entriesInsideGrid(screen)
     local gx, gy, gw, gh = screen:_gridRect()
     for _, e in ipairs(screen.cardEntries) do
@@ -72,8 +50,6 @@ local function makeScreen(game, mode)
     return screen
 end
 
--- Enche o deck com cartas forjáveis do catálogo (determinístico: ordenado por
--- id). `want` = quantas cartas distintas queremos na bigorna.
 local function stockDeck(game, want)
     local pool = {}
     for id in pairs(CardDatabase:getAllCards()) do table.insert(pool, id) end
@@ -82,7 +58,6 @@ local function stockDeck(game, want)
     for _, id in ipairs(pool) do
         if added >= want then break end
         local cd = CardDatabase:getCard(id)
-        -- Joker nunca entra em currentDeck (invariante do projeto).
         if cd and cd.type ~= "joker" and game.runManager:canUpgrade(id) then
             game.runManager:addCardToDeck(id)
             added = added + 1
@@ -99,10 +74,6 @@ function M.run()
         local game = TK.newRunGame("warrior")
         stockDeck(game, 14)
 
-        -- ================================================================
-        -- 1. GRADE: nasce pequena, cresce. A escala e as posições têm que
-        --    acompanhar — este é o caminho do defeito.
-        -- ================================================================
         fakeW, fakeH = 800, 600
         local screen = makeScreen(game, "forge")
         t:truthy("grade pequena tem cartas", #screen.cardEntries > 0)
@@ -118,14 +89,12 @@ function M.run()
         t:truthy("posição X da carta MUDOU ao crescer",
             screen.cardEntries[1].x ~= smallX)
 
-        -- E de volta pra pequena (o caminho de "apertar f duas vezes").
         resizeTo(screen, 800, 600)
         t:truthy("cartas dentro da grade ao voltar p/ 800x600",
             (entriesInsideGrid(screen)))
         t:near("escala volta ao valor da janela pequena",
             screen.cardEntries[1].w, smallW, 0.001)
 
-        -- Botões de rodapé acompanham o painel.
         local px, py, pw, ph = screen:panelRect()
         local backOk = false
         for _, b in ipairs(screen.buttons) do
@@ -136,9 +105,6 @@ function M.run()
         end
         t:truthy("botões de rodapé dentro do painel após resize", backOk)
 
-        -- ================================================================
-        -- 2. PAGINAÇÃO: a página atual continua válida e ancorada.
-        -- ================================================================
         fakeW, fakeH = 640, 480
         local paged = makeScreen(game, "forge")
         t:truthy("janela pequena pagina o grimório", paged.pageCount >= 1)
@@ -150,7 +116,6 @@ function M.run()
                 paged.page >= 1 and paged.page <= paged.pageCount)
             t:truthy("página não aponta pra vazio após crescer",
                 #paged.cardEntries > 0)
-            -- A âncora garante que a carta que abria a página continua na tela.
             local stillThere = false
             for _, e in ipairs(paged.cardEntries) do
                 if e.idx == anchorId then stillThere = true break end
@@ -163,22 +128,15 @@ function M.run()
             t:check("pageCount==1 nesta janela — paginação não exercitada", true)
         end
 
-        -- ================================================================
-        -- 3. CERIMÔNIA: resize NO MEIO da subida pra pose herói.
-        --    Armadilha do PackOpenScreen: resize que "reposiciona do zero"
-        --    teleporta a animação. Aqui tem que RECALCULAR O DESTINO.
-        -- ================================================================
         fakeW, fakeH = 800, 600
         local cer = makeScreen(game, "forge")
         local target = cer.cardEntries[1]
         local instBefore = target.inst
-        -- _onPickCard recebe a ENTRY (a copia), nao o id: duas copias do
-        -- mesmo id sao escolhas diferentes (RunManager, "Forja POR COPIA").
         cer:_onPickCard(target)
         t:truthy("cerimônia iniciou (busy)", cer.busy)
         t:truthy("estado da cerimônia existe", cer.forge ~= nil)
 
-        pump(cer, 0.18)  -- meio da Fase A (lift = 0.34s)
+        pump(cer, 0.18)
         local f = cer.forge
         local poseMid = f.pose
         t:truthy("pose em progresso antes do resize (0<pose<1)",
@@ -197,7 +155,6 @@ function M.run()
             f.plate.x >= gx - 1 and f.plate.x + f.plate.w <= gx + gw + 1)
         t:truthy("placa abaixo da carta (não sobrepõe)",
             f.plate.y >= f.heroY + f.heroH)
-        -- cx tem que estar ENTRE berço e palco, coerente com a pose.
         local lo = math.min(f.startX, f.heroX)
         local hi = math.max(f.startX, f.heroX)
         t:truthy("posição atual coerente com a pose após resize",
@@ -205,15 +162,11 @@ function M.run()
         t:truthy("berço = posição da carta na grade NOVA",
             math.abs(f.startX - f.entry.x) < 0.001)
 
-        -- Termina a cerimônia na janela nova: tem que virar o valor e fechar.
         pump(cer, 1.2)
         t:truthy("a virada aconteceu mesmo com resize no meio",
             cer.forge.lines[1].newA > 0.9)
         t:truthy("nível da carta subiu", cer.forge.entry.level >= 1)
 
-        -- ================================================================
-        -- 4. CERIMÔNIA: resize DEPOIS da virada preserva o estado animado.
-        -- ================================================================
         local plateXBefore = cer.forge.plate.x
         local plateWBefore = cer.forge.plate.w
         resizeTo(cer, 1024, 768)
@@ -221,9 +174,6 @@ function M.run()
             cer.forge.lines[1].newA > 0.9)
         t:truthy("valor antigo continua cedido após resize pós-virada",
             cer.forge.lines[1].oldA < 0.9)
-        -- A LARGURA da placa depende só do conteúdo e das fontes (tamanhos
-        -- fixos, como no resto desta tela) — ela deve ser ESTÁVEL. O que tem
-        -- que acompanhar a janela é a POSIÇÃO: re-centrada na grade nova.
         t:eq("largura da placa estável p/ o mesmo conteúdo",
             cer.forge.plate.w, plateWBefore)
         t:truthy("placa RE-CENTRADA na janela nova", cer.forge.plate.x ~= plateXBefore)
@@ -234,9 +184,6 @@ function M.run()
         t:truthy("decalques guardam fração, não coordenada",
             #cer.forge.clangs == 0 or cer.forge.clangs[1].fx ~= nil)
 
-        -- ================================================================
-        -- 5. Painel de hover: ancorado na carta, com flip/clamp na tela nova.
-        -- ================================================================
         fakeW, fakeH = 1280, 720
         local hov = makeScreen(game, "forge")
         resizeTo(hov, 700, 560)
@@ -248,12 +195,9 @@ function M.run()
             hov:_drawHoverPanel(last)
         end)
 
-        -- ================================================================
-        -- 6. Modo "choose" (fogueira) também tem que acompanhar.
-        -- ================================================================
         fakeW, fakeH = 800, 600
         local fire = RestScreen:new()
-        fire:show(game, function() end)   -- sem mode = "choose"
+        fire:show(game, function() end)
         local cardX = fire.choiceCards[1] and fire.choiceCards[1].x
         resizeTo(fire, 1600, 900)
         t:truthy("escolhas da fogueira reposicionadas no resize",

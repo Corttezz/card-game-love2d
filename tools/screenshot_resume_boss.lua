@@ -1,19 +1,3 @@
--- tools/screenshot_resume_boss.lua
--- Prova VISUAL do Continuar dentro da luta do chefe (bug do dono, Set/2026).
---
--- Diferente de `screenshot_enemy_scene 2_boss`, que FORÇA o salão chamando
--- `_debugForceBossEntered` (prova que a arte existe, não que o jogo escolhe
--- a cena certa), este tool percorre o caminho do jogador:
---
---   salva numa luta de chefe → Game novo → loadRun → resumeRun
---   → setGame (zera o estado de módulo da cena, como o menu faz)
---   → ResumeFlow.apply → GameplayScene.draw
---
---   love . screenshot_resume_boss          → com a correção  (salão)
---   love . screenshot_resume_boss antes    → sem a correção  (estrada: o bug)
---
--- Saída: resume_boss_<modo>.png no save-dir.
-
 local M = {}
 
 function M.run(modo)
@@ -33,7 +17,6 @@ function M.run(modo)
     local GameUI        = require("components.GameUI")
     local Button        = require("components.Button")
 
-    -- ===== 1. Uma run salva DENTRO da luta do chefe do ato 2 =============
     local gA = Game:new()
     gA:startNewRun("warrior")
     gA:startGame()
@@ -44,7 +27,6 @@ function M.run(modo)
     runA.currentNode = { type = "boss", label = "Chefe", actNumber = 2, floorInAct = 8 }
     gA:checkpointRun()
 
-    -- ===== 2. CONTINUAR (espelho de menu:setContinueCallback) ============
     local game = Game:new()
     assert(game.runManager:loadRun(), "save do chefe nao carregou")
     game:resumeRun()
@@ -56,15 +38,12 @@ function M.run(modo)
     local gameUI = GameUI:new()
     local playButton = Button:new(width * 0.80, height * 0.80, 150, 46, "Jogar")
 
-    -- setGame é o que o menu faz ao trocar de Game: zera turnStage E
-    -- bossEntered. É exatamente o estado em que o Continuar cai.
     GameplayScene.setGame(game)
     GameplayScene.init({
         game = game, topBar = topBar, gameUI = gameUI, playButton = playButton,
     })
 
     if antes then
-        -- Comportamento ANTERIOR à correção: só o mundo voltava.
         GameplayScene.resumeWorld(game)
     else
         ResumeFlow.apply(game, GameplayScene)

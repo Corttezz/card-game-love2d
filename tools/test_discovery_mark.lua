@@ -1,12 +1,3 @@
--- tools/test_discovery_mark.lua
--- Carta INÉDITA na vitrine (src/ui/DiscoveryMark.lua):
---   * markDiscovered devolve true só na virada (e a lista da Coleção enche)
---   * a oferta (recompensa/loja) carrega isNew → instância isNewDiscovery
---   * pacote marca a instância inédita; evento só descobre o que ENTREGA
---   * o marcador desenha só com a flag; reducedMotion tira a varredura e
---     mantém o marcador; estado persiste no perfil
--- Perfil FALSO (ProfileStats._swapForTests), override de ferramenta desligado.
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -27,7 +18,6 @@ function M.run()
     local prevReduced = _G.gameSettings.reducedMotion
 
     local ok, err = pcall(function()
-        -- ===== Virada da descoberta =====
         t:falsy("perfil novo: carta não descoberta", UnlockSystem.isCardDiscovered("warrior_iron_wave"))
         t:truthy("1ª vista devolve true", UnlockSystem.markDiscovered("warrior_iron_wave"))
         t:falsy("2ª vista devolve false", UnlockSystem.markDiscovered("warrior_iron_wave"))
@@ -37,7 +27,6 @@ function M.run()
             return UnlockSystem.markDiscovered("warrior_bash")
         end)())
 
-        -- ===== Persistência =====
         local SaveManager = require("engine.SaveManager")
         local okSer, txt = pcall(SaveManager.serialize, ProfileStats.get())
         local reloaded = okSer and load("return " .. txt)() or nil
@@ -46,13 +35,11 @@ function M.run()
         t:truthy("recarregado: segue descoberta", UnlockSystem.isCardDiscovered("warrior_iron_wave"))
         t:falsy("recarregado: não volta a ser inédita", UnlockSystem.markDiscovered("warrior_iron_wave"))
 
-        -- ===== Coleção: pulsa uma vez =====
         local fresh = UnlockSystem.takeFreshInCollection()
         t:truthy("Coleção recebe a descoberta (persistida)", fresh.warrior_iron_wave)
         t:falsy("descoberta antiga (cardsSeen) não pulsa", fresh.warrior_bash)
         t:eq("2ª visita: lista vazia", next(UnlockSystem.takeFreshInCollection()), nil)
 
-        -- ===== Oferta de recompensa/loja =====
         local game = TK.newRunGame("warrior")
         local reg = game.runManager.cardRegistry
         TK.seedRng(777)
@@ -63,26 +50,21 @@ function M.run()
             t:truthy("oferta descobre a carta (" .. p.cardId .. ")", UnlockSystem.isCardDiscovered(p.cardId))
         end
         t:truthy("perfil novo: a recompensa traz inédita", anyNew)
-        -- tudo já visto: nenhuma oferta é inédita
         for id in pairs(CardDatabase:new():getAllCards()) do UnlockSystem.markDiscovered(id) end
         local again = reg:generateCardRewards("warrior", 3, { stream = "card" })
         local anyAgain = false
         for _, p in ipairs(again) do if p.isNew then anyAgain = true end end
         t:truthy("re-oferta existe", #again > 0)
         t:falsy("catálogo visto: nenhuma oferta inédita", anyAgain)
-        -- volta a um perfil com só as vistas de antes (o resto do teste
-        -- precisa de cartas inéditas)
         local u = ProfileStats.get().unlocks
         u.discovered = { warrior_iron_wave = true }
         for _, p in ipairs(picks) do u.discovered[p.cardId] = true end
 
-        -- evento: discover=false não descobre a candidata
         local ev = reg:pickRewardCard({ classId = "warrior", stream = "event", discover = false })
         if ev then
             t:falsy("evento: candidata NÃO vira vista", ev.isNew)
         end
 
-        -- loja → instância
         local CardRewardScreen = require("components.CardRewardScreen")
         local screen = CardRewardScreen:new(game.shopSystem)
         screen:show(game, function() end, function() end, "shop")
@@ -103,7 +85,6 @@ function M.run()
         end)())
         screen:hide()
 
-        -- ===== Evento entrega carta inédita: toast de descoberta =====
         local target
         for id, cd in pairs(CardDatabase:new():getAllCards()) do
             if cd.class == "warrior" and cd.type ~= "joker" and not UnlockSystem.isCardDiscovered(id) then
@@ -119,19 +100,13 @@ function M.run()
         local want = I18n.t("messages.card_discovered", { name = I18n.cardName(target) })
         t:eq("evento: carta inédita anuncia a descoberta", msgs[1], want)
 
-        -- ===== Desenho: marcador e varredura =====
         local db = CardDatabase:new()
         local card = db:createCardInstance(db:getCard("warrior_iron_wave"))
         card.currentScale = 2
-        card.isDragging = true          -- sem o balanço idle (ambientY)
+        card.isDragging = true
         local canvas = love.graphics.newCanvas(400, 480)
         local now = 0
         DiscoveryMark.clock = function() return now end
-        -- TUDO no tempo simulado: o relógio do DiscoveryMark é injetado e o
-        -- love.timer congela durante o draw (ícone animado, camada de
-        -- animação da carta, wobble do shader). Antes o teste dependia do
-        -- relógio de parede e falhava no test_all sob carga. reducedMotion
-        -- explícito: outra suite pode ter deixado ligado.
         _G.gameSettings.reducedMotion = false
         local realGetTime = love.timer.getTime
         local function render()
@@ -161,7 +136,7 @@ function M.run()
         t:eq("sem a flag: nada acima da carta", aboveTop(render()), 0)
         DiscoveryMark.reset()
         card.isNewDiscovery = true
-        render()                         -- 1ª revelação em t=0
+        render()
         now = 3.0
         local rest = render()
         t:truthy("com a flag: marcador NOVA acima da carta", aboveTop(rest) > 4)
@@ -183,7 +158,6 @@ function M.run()
         t:truthy("reducedMotion: marcador fica", aboveTop(reducedMid) > 4)
         _G.gameSettings.reducedMotion = false
 
-        -- Coleção: o pulso acontece e termina (uma vez só)
         now = 0
         love.graphics.setCanvas(canvas)
         local live = DiscoveryMark.drawCollectionPulse("x", card.image, 10, 10, 1)

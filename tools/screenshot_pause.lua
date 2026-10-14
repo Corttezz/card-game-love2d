@@ -1,15 +1,3 @@
--- tools/screenshot_pause.lua
--- Capturas do MENU DE PAUSA e das CONFIGURAÇÕES (components/PauseMenu.lua +
--- components/SettingsMenu.lua) em VÁRIOS tamanhos de janela num só processo.
---
---   love . screenshot_pause            → pause_<estado>_<W>x<H>.png
---   love . screenshot_pause - de       → mesmo, em outro idioma
---
--- Truque de captura: em vez de love.window.setMode (repetido dentro de tool
--- TRAVA — memory/ui_layout_invariants.md §2), renderiza num CANVAS do tamanho
--- alvo com love.graphics.getWidth/getHeight FALSIFICADOS. Todo layout das
--- duas telas deriva dessas funções, então a captura é fiel ao jogo.
-
 local M = {}
 
 local SIZES = {
@@ -28,8 +16,6 @@ local function fakeWindow(w, h)
     return function() love.graphics.getWidth, love.graphics.getHeight = realW, realH end
 end
 
--- Fundo "de jogo" barato: gradiente escuro + faixas, pra o véu do modal ter
--- algo atrás (preto liso esconde se o véu está forte/fraco demais).
 local function drawBackdrop(w, h)
     for i = 0, 15 do
         local t = i / 15
@@ -52,8 +38,6 @@ local function capture(name, w, h, drawFn)
     print("[pause] " .. name .. " salvo")
 end
 
--- Avança animação de entrada até assentar (as telas usam love.timer.getTime
--- só pra ruído; o estado de animação é do update(dt)).
 local function settle(screen, secs)
     for _ = 1, math.floor((secs or 1) * 60) do screen:update(1 / 60) end
 end
@@ -91,12 +75,10 @@ function M.run(locale)
         settle(pause, 1.0)
         capture("pause_main_" .. suffix .. ".png", w, h, function() pause:draw() end)
 
-        -- Foco de teclado na 2ª opção (o estado "hover" sem mouse).
         if pause.keypressed then pause:keypressed("down") end
         settle(pause, 0.4)
         capture("pause_focus_" .. suffix .. ".png", w, h, function() pause:draw() end)
 
-        -- Confirmação de abandono armada.
         if pause.armAbandon then pause:armAbandon() else
             pause.confirmingAbandon = true; pause:rebuild()
         end
@@ -104,7 +86,7 @@ function M.run(locale)
         capture("pause_confirm_" .. suffix .. ".png", w, h, function() pause:draw() end)
 
         local settings = SettingsMenu:new()
-        settings:show({ onClose = function() end })   -- aberta pela pausa (VOLTAR)
+        settings:show({ onClose = function() end })
         settle(settings, 1.0)
         capture("settings_" .. suffix .. ".png", w, h, function() settings:draw() end)
         if settings.setTab then

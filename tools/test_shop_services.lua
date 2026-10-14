@@ -1,44 +1,3 @@
--- tools/test_shop_services.lua
--- SERVIÇOS DA LOJA (Set/2026): tesoura (remover), prensa (duplicar), bancada
--- de coringa (+1 slot ativo) e grimório (+1 compra por turno).
---
--- O QUE ESTA SUITE TRAVA (e por que cada trava existe)
---
---  1. CUSTO CRESCENTE + TETO. Serviço barato pra sempre é serviço que zera a
---     decisão econômica: com remoção a $8 fixa o jogador compra todas e o
---     deck vira uma faca. O custo tem que subir por compra NA MESMA RUN.
---
---  2. DISPONIBILIDADE É ESTADO, NÃO SORTE. A tesoura some quando o deck está
---     no osso (RestScreen:doRemove recusa deixar o deck abaixo de 2 cartas —
---     vender ali é vender algo que a tela seguinte nega), e os serviços com
---     teto somem da vitrine quando o teto é batido. Sem isso a loja cobra por
---     nada.
---
---  3. A TESOURA É FIXA NA PRATELEIRA. Com seis relíquias disputando as vagas,
---     uma remoção sorteada apareceria em ~1 de cada 6 lojas e a mecânica
---     viraria decoração. O teste prova que ela está em TODA vitrine de loja
---     (e em NENHUMA recompensa pós-batalha, que não vende serviço).
---
---  4. O EFEITO ACONTECE DE VERDADE. Slot comprado tem que deixar um QUARTO
---     coringa ficar ativo; compra extra tem que aparecer no draw do turno E
---     na mão inicial da batalha. Esta é a lição do P3.2 (rebalance Jul/2026):
---     três upgrades ficaram meses na vitrine aplicando só um toast.
---
---  5. PAGOU E NÃO LEVOU = ESTORNO. Os serviços de deck cobram ANTES de abrir
---     o picker de carta, e o picker pode ser fechado no "Voltar". Sem estorno
---     o ouro some e o slot fica carimbado VENDIDO. (A forja tinha esse buraco
---     desde sempre; ele entra na mesma trava.)
---
---  6. O LEDGER SOBREVIVE AO SAVE. Slot de coringa e compra extra são
---     permanentes: se `currentRun.services` não viajasse no save, fechar o
---     jogo devolveria os coringas pra bancada.
---
---  7. A VITRINE DE 2 RELÍQUIAS AINDA CABE. `upgrades` foi de 1 pra 2; a
---     fileira 2 da loja agora tem 4 células. A geometria é provada em vários
---     tamanhos de janela, não olhada numa captura.
---
---   love . test_one test_shop_services
-
 local TK = require("tools.testkit")
 
 local Config       = require("src.core.Config")
@@ -48,7 +7,6 @@ local RunManager   = require("src.systems.RunManager")
 
 local M = {}
 
--- Conta ofertas de upgrade por id numa vitrine.
 local function upgradeIds(offers)
     local out = {}
     for _, o in ipairs(offers) do
@@ -57,7 +15,6 @@ local function upgradeIds(offers)
     return out
 end
 
--- Loja pronta pra gerar ofertas com o contexto de uma run real.
 local function openShop(game, mode)
     local shop = ShopSystem:new()
     shop:setContext({
@@ -74,9 +31,6 @@ function M.run()
     local t = TK.new("servicos da loja (remover/duplicar/slot de coringa/compra)")
     TK.seedRng(90210)
 
-    -- ========================================================================
-    -- 1. CUSTO: cresce por compra e bate no teto
-    -- ========================================================================
     local rm = RunManager:new()
     rm:startNewRun("warrior")
 
@@ -89,12 +43,10 @@ function M.run()
     t:truthy("tesoura: 2a compra custa mais que a 1a", c2 > cfgRemove.base)
     t:eq("ledger conta a compra", rm:getServiceCount("remove_card"), 1)
 
-    -- Teto: muitas compras não deixam o custo explodir.
     for _ = 1, 20 do rm:registerService("remove_card") end
     t:eq("tesoura: custo bate no teto e para",
         ShopServices.cost("remove_card", rm), cfgRemove.max)
 
-    -- Estorno desfaz o ledger (compra cancelada não encarece a próxima).
     local antes = rm:getServiceCount("remove_card")
     rm:unregisterService("remove_card")
     t:eq("estorno desfaz uma compra no ledger",
@@ -103,9 +55,6 @@ function M.run()
     t:eq("estorno de servico nunca comprado nao vira negativo",
         rm:getServiceCount("nao_existe"), 0)
 
-    -- ========================================================================
-    -- 2. DISPONIBILIDADE por estado da run
-    -- ========================================================================
     local rm2 = RunManager:new()
     rm2:startNewRun("warrior")
     local deck = rm2.currentRun.currentDeck
@@ -129,11 +78,7 @@ function M.run()
     t:falsy("grimorio de compra some depois do teto",
         ShopServices.isAvailable("card_draw_upgrade", rm2))
 
-    -- ========================================================================
-    -- 3. VITRINE: tesoura fixa na loja, ausente na recompensa, sem repetida
-    -- ========================================================================
     local game = TK.newRunGame("warrior")
-    -- Deck acima do minimo pra tesoura poder aparecer.
     for _ = 1, 4 do game.runManager:addCardToDeck("warrior_strike") end
 
     local semTesoura, semBancada, repetida = 0, 0, 0
@@ -145,11 +90,8 @@ function M.run()
         for _, n in pairs(ids) do if n > 1 then repetida = repetida + 1 end end
     end
     t:eq("tesoura aparece em TODA vitrine de loja", semTesoura, 0)
-    -- Out/2026 (queixa do dono: "nao consigo alcancar a bancada"): FIXA.
     t:eq("bancada de coringa aparece em TODA vitrine de loja", semBancada, 0)
 
-    -- Teto de compras batido: a bancada SOME e a vaga volta pro sorteio
-    -- (a prateleira continua com 3 reliquias, nenhuma delas a bancada).
     for _ = 1, Config.Offers.SERVICES.joker_slot.maxPerRun do
         game.runManager:registerService("joker_slot")
     end
@@ -162,7 +104,6 @@ function M.run()
     end
     t:eq("bancada no teto: some da vitrine", comBancada, 0)
     t:eq("bancada no teto: vaga devolvida ao sorteio (3 por loja)", nUpg, 8 * 3)
-    -- devolve o estado pros asserts abaixo
     game = TK.newRunGame("warrior")
     for _ = 1, 4 do game.runManager:addCardToDeck("warrior_strike") end
     t:eq("nenhuma reliquia aparece duas vezes na mesma loja", repetida, 0)
@@ -179,13 +120,11 @@ function M.run()
     end
     t:truthy("recompensa pos-batalha nao vende reliquia nenhuma", semServico)
 
-    -- Tesoura some da vitrine quando o deck fica curto demais.
     local gameCurto = TK.newRunGame("warrior")
     local shopCurto = openShop(gameCurto, "shop")
     t:falsy("tesoura fora da vitrine com deck no osso",
         upgradeIds(shopCurto:getCurrentOffers()).remove_card)
 
-    -- Oferta montada carrega o que a tela precisa pra aplicar.
     local ofertaTesoura
     for _, o in ipairs(openShop(game, "shop"):getCurrentOffers()) do
         if o.id == "remove_card" then ofertaTesoura = o end
@@ -201,13 +140,6 @@ function M.run()
             ofertaTesoura.name ~= nil and ofertaTesoura.name ~= "remove_card")
     end
 
-    -- ========================================================================
-    -- 3b. A VITRINE OLHA A RUN: coringa parado na bancada puxa a oferta
-    -- ========================================================================
-    -- Sem isso a bancada de coringa disputa a vaga rotativa em pé de igualdade
-    -- com outras cinco relíquias e aparece em ~1 de cada 6 lojas — quem
-    -- acumulou coringas pode terminar a corrida sem nunca ver a coisa que
-    -- resolveria o problema dele.
     local rmPeso = RunManager:new()
     rmPeso:startNewRun("warrior")
     local pesoLivre = ShopServices.weight("joker_slot", rmPeso)
@@ -215,8 +147,6 @@ function M.run()
         rmPeso:addJokerToRun("joker_001")
     end
     local pesoComBancada = ShopServices.weight("joker_slot", rmPeso)
-    -- Desde Out/2026 a bancada e FIXA (peso 0, fora do sorteio); o
-    -- multiplicador de pressao continua valendo se ela voltar a rotacionar.
     t:truthy("bancada de coringa nunca pesa MENOS com coringa parado",
         pesoComBancada >= pesoLivre)
     t:eq("sem coringa parado, o peso e o do catalogo",
@@ -224,14 +154,10 @@ function M.run()
     t:truthy("bancada de coringa e fixa na prateleira",
         ShopServices.get("joker_slot").fixture == true)
 
-    -- ========================================================================
-    -- 4. EFEITO REAL: slot de coringa e compra extra
-    -- ========================================================================
     local gj = TK.newRunGame("warrior")
     local rmj = gj.runManager
     local baseSlots = Config.Game.MAX_JOKER_SLOTS
 
-    -- Enche a colecao com 1 coringa a mais do que cabe.
     for _ = 1, baseSlots + 1 do rmj:addJokerToRun("joker_001") end
     gj:recomputeMaxJokerSlots()
     t:eq("sem compra, so o teto base fica ativo",
@@ -249,7 +175,6 @@ function M.run()
     t:eq("jokerSlots passa a ter o coringa extra",
         #gj.jokerSlots, baseSlots + 1)
 
-    -- Compra extra por turno.
     local gd = TK.newRunGame("warrior")
     for _ = 1, 12 do gd.runManager:addCardToDeck("warrior_strike") end
     gd:synchronizeRunDeck()
@@ -270,23 +195,11 @@ function M.run()
     t:eq("grimorio tambem vale pra mao inicial da batalha",
         #gd.hand, maoBase + 1)
 
-    -- ========================================================================
-    -- 4b. COFRE: o teto dos juros sobe, e sobe de verdade
-    -- ========================================================================
-    -- Diferente das outras relíquias, esta REALIMENTA a fonte de ouro. As
-    -- travas aqui são três:
-    --   • o teto efetivo sai do LEDGER, não de um campo solto que alguém
-    --     esqueceria de salvar;
-    --   • calculateInterest (que a TopBar lê todo frame e o cash-out usa pra
-    --     PAGAR) enxerga o teto novo — número prometido e número pago são o
-    --     mesmo, que foi a razão de existir do calculateInterest;
-    --   • o guarda-corpo do Config segura, pra que nenhum caminho futuro
-    --     transforme juros em motor infinito.
     local EconomySystem = require("src.systems.EconomySystem")
     local gi = TK.newRunGame("warrior")
     local porCompra = Config.Offers.INTEREST_CAP_PER_BUY
 
-    gi.economySystem.currentGold = 500   -- cofre farto: o teto é quem limita
+    gi.economySystem.currentGold = 500
     local jurosBase = gi.economySystem:calculateInterest()
     t:eq("sem compra, juros no teto base", jurosBase, 5)
 
@@ -302,12 +215,10 @@ function M.run()
     t:eq("2a compra sobe de novo (repetivel)",
         gi.economySystem:getInterestCap(), 5 + porCompra * 2)
 
-    -- O teto NÃO dá dinheiro sozinho: continua limitado por floor(ouro/5).
     gi.economySystem.currentGold = 10
     t:eq("cofre vazio: teto alto nao inventa juros",
         gi.economySystem:calculateInterest(), 2)
 
-    -- Guarda-corpo: nem 999 compras estouram o teto do teto.
     local eco = EconomySystem:new()
     eco:setBonusInterestCap(999)
     t:eq("guarda-corpo limita o teto total",
@@ -315,12 +226,10 @@ function M.run()
     eco:setBonusInterestCap(-5)
     t:eq("bonus negativo nao baixa o teto base", eco:getInterestCap(), 5)
 
-    -- Corrida nova volta ao base (o bônus é da RUN, não do objeto).
     eco:setBonusInterestCap(6)
     eco:resetForNewRun()
     t:eq("corrida nova volta ao teto base", eco:getInterestCap(), 5)
 
-    -- O preço sobe a cada compra — é o freio principal do composto.
     local rmJuros = RunManager:new()
     rmJuros:startNewRun("warrior")
     local p1 = ShopServices.cost("interest_cap", rmJuros)
@@ -331,11 +240,9 @@ function M.run()
     t:truthy("cofre encarece a cada compra", p3 > p2 and p2 > p1)
     t:truthy("as 3 primeiras compras custam mais que uma lendaria (30)",
         p1 + p2 + p3 > 30 * 3)
-    -- Sem teto de compras: o pedido foi "aumentar sempre".
     t:truthy("cofre continua ofertavel depois de 2 compras",
         ShopServices.isAvailable("interest_cap", rmJuros))
 
-    -- A placa do tile mostra o MESMO numero que o efeito aplica.
     local ofertaCofre
     do
         local shopC = ShopSystem:new()
@@ -353,9 +260,6 @@ function M.run()
                 and not placa:find("{value}", 1, true))
     end
 
-    -- ========================================================================
-    -- 5. ESTORNO: pagou, fechou o picker sem escolher, recebe de volta
-    -- ========================================================================
     local CardRewardScreen = require("components.CardRewardScreen")
     local ge = TK.newRunGame("warrior")
     for _ = 1, 4 do ge.runManager:addCardToDeck("warrior_strike") end
@@ -363,11 +267,10 @@ function M.run()
 
     local tela = CardRewardScreen:new(ge.shopSystem)
     tela.game = ge
-    tela.visible = false   -- sem layout: o estorno nao pode depender de desenho
+    tela.visible = false
     tela.shopOffers = {}
     tela.cardPositions = {}
 
-    -- O picker que NAO escolhe carta nenhuma (o "Voltar" do jogador).
     local origPicker = _G.openCardPicker
     _G.openCardPicker = function(_mode, onDone) if onDone then onDone() end end
 
@@ -396,7 +299,6 @@ function M.run()
     t:eq("forja cancelada nao conta como forja paga",
         ge.runManager.currentRun.paidForges or 0, forjasAntes)
 
-    -- O picker que ESCOLHE (remove uma carta): nada é estornado.
     _G.openCardPicker = function(_mode, onDone)
         ge.runManager:removeCardAt(1)
         if onDone then onDone() end
@@ -413,7 +315,6 @@ function M.run()
         ge.runManager:getServiceCount("remove_card"), 1)
     t:truthy("oferta usada continua vendida", oferta2.purchased)
 
-    -- A prensa (duplicar) muda o deck pra CIMA: a assinatura tem que enxergar.
     _G.openCardPicker = function(_mode, onDone)
         ge.runManager:duplicateCardAt(1)
         if onDone then onDone() end
@@ -428,8 +329,6 @@ function M.run()
     t:eq("prensa usada NAO devolve ouro",
         ge.economySystem.currentGold, ouroPre3 - oferta3.cost)
 
-    -- A forja não mexe no TAMANHO do deck, só no nível: a assinatura também
-    -- tem que enxergar isso (senão toda forja usada seria estornada).
     _G.openCardPicker = function(_mode, onDone)
         ge.runManager:upgradeCardAt(1)
         if onDone then onDone() end
@@ -446,9 +345,6 @@ function M.run()
 
     _G.openCardPicker = origPicker
 
-    -- ========================================================================
-    -- 6. LEDGER sobrevive ao save/load
-    -- ========================================================================
     local gs = TK.newRunGame("warrior")
     gs.runManager:registerService("joker_slot")
     gs.runManager:registerService("card_draw_upgrade")
@@ -463,20 +359,12 @@ function M.run()
         rmLoad:getServiceCount("joker_slot"), 1)
     t:eq("compras extras sobrevivem ao save",
         rmLoad:getServiceCount("card_draw_upgrade"), 2)
-    -- Antes do primeiro startGame não existe espelho em currentRun.maxJokerSlots:
-    -- o teto ainda tem que contar as bancadas compradas, senão o jogador
-    -- reabre o jogo com coringas rebaixados pra bancada.
     rmLoad.currentRun.maxJokerSlots = nil
     t:eq("teto de coringas conta a bancada mesmo sem espelho",
         rmLoad:getMaxJokerSlots(), Config.Game.MAX_JOKER_SLOTS + 1)
     t:eq("cofre (teto de juros) sobrevive ao save",
         rmLoad:getServiceCount("interest_cap"), 2)
 
-    -- O CAMINHO INTEIRO do Continuar: carregar a run e remontar o jogo tem
-    -- que devolver o teto de juros comprado. O espelho vive no EconomySystem,
-    -- que `startGame` reseta — é exatamente aqui que um teto comprado
-    -- sumiria sem ninguém perceber (o jogador só veria "meus juros
-    -- diminuíram" umas batalhas depois).
     local Game = require("src.core.Game")
     local gResume = Game:new()
     gResume.runManager = rmLoad
@@ -490,15 +378,11 @@ function M.run()
         gResume.economySystem:calculateInterest(),
         5 + Config.Offers.INTEREST_CAP_PER_BUY * 2)
 
-    -- Run recém-criada não herda ledger de outra run.
     local rmNovo = RunManager:new()
     rmNovo:startNewRun("mage")
     t:eq("run nova comeca com ledger zerado",
         rmNovo:getServiceCount("joker_slot"), 0)
 
-    -- ========================================================================
-    -- 7. GEOMETRIA: a vitrine de 2 relíquias cabe em qualquer janela
-    -- ========================================================================
     local tela2 = CardRewardScreen:new(game.shopSystem)
     tela2.game = game
     tela2.mode = "shop"
@@ -523,21 +407,10 @@ function M.run()
     end
     love.graphics.getWidth, love.graphics.getHeight = gw, gh
 
-    -- ========================================================================
-    -- 7b. ARTE: quem tem PNG usa o PNG; quem não tem, DIZ que não tem
-    -- ========================================================================
-    -- O grimório de compra extra reaproveita `card_draw_upgrade` — o id (e o
-    -- PNG do livro) que existia desde sempre em assets/sprites/vouchers/ e
-    -- ficou órfão quando o P3.2 tirou da vitrine o upgrade que só soltava
-    -- toast. Reusar o id devolve arte E animação de graça; a trava garante
-    -- que um rename futuro não volte a deixá-lo sem sprite em silêncio.
     local UpgradeTile = require("src.ui.UpgradeTile")
     t:truthy("grimorio reaproveita o PNG de voucher que ja existia",
         UpgradeTile.staticSprite("card_draw_upgrade") ~= nil)
 
-    -- Débito de arte declarado: os demais serviços caem no selo ornamental do
-    -- UpgradeTile (que nunca deixa buraco). Não é falha — é lista de pendência
-    -- impressa no log, pra não virar "ninguém percebeu".
     local semArte = {}
     for _, svc in ipairs(ShopServices.CATALOG) do
         if not UpgradeTile.staticSprite(svc.id) then
@@ -547,9 +420,6 @@ function M.run()
     print("  [info] servicos ainda sem PNG em assets/sprites/vouchers/: "
         .. (#semArte > 0 and table.concat(semArte, ", ") or "nenhum"))
 
-    -- ========================================================================
-    -- 8. i18n: cada serviço tem texto nos 5 locales
-    -- ========================================================================
     local I18n = require("src.i18n.I18n")
     local locAtual = I18n.getLocale()
     for _, code in ipairs(I18n.getAvailable()) do

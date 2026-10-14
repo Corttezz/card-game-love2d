@@ -1,21 +1,3 @@
--- tools/screenshot_achievements.lua
--- Galeria de conquistas + toast, em varios tamanhos e idiomas.
---
---   love . screenshot_achievements            -> pt_BR, 4 tamanhos + toast
---   love . screenshot_achievements de         -> um idioma, 4 tamanhos
---   love . screenshot_achievements all        -> os 5 idiomas em 1280x720
---
--- Saida: achievements_<locale>_<W>x<H>.png e achievements_toast_<locale>.png
--- no save dir (CARDGAME_IDENTITY isola).
---
--- Tamanho FALSIFICADO: desenha num Canvas WxH com love.graphics.getWidth/
--- getHeight sobrescritos — love.window.setMode repetido dentro de tool trava
--- (CLAUDE.md, resize). A galeria e o toast leem a janela so por essas duas
--- funcoes, entao o resultado e o mesmo de uma janela real desse tamanho.
---
--- Estado: ~metade liberada (com data), contadores parciais (barras), e uma
--- secreta bloqueada + uma secreta liberada — todos os estados de celula.
-
 local M = {}
 
 local I18n              = require("src.i18n.I18n")
@@ -39,9 +21,9 @@ local function seedProfile()
             s.achievementDates[d.id] = now - i * 86400
         end
     end
-    s.achievements.fio_navalha = true          -- secreta liberada
+    s.achievements.fio_navalha = true
     s.achievementDates.fio_navalha = now
-    s.achievements.maos_limpas = nil           -- secreta bloqueada
+    s.achievements.maos_limpas = nil
 end
 
 local function withSize(w, h, fn)
@@ -84,7 +66,6 @@ function M.run(arg)
     for _, loc in ipairs(locales) do
         I18n.setLocale(loc)
         screen:_refresh()
-        -- foco numa conquista com contador (mostra barra + numero)
         for i, e in ipairs(screen.entries) do
             if e.id == "escriba" then screen.selected = i end
         end
@@ -92,7 +73,6 @@ function M.run(arg)
             save(withSize(sz[1], sz[2], function() screen:draw() end),
                 ("achievements_%s_%dx%d.png"):format(loc, sz[1], sz[2]))
         end
-        -- toast: congelado no meio do HOLD (carimbo assentado)
         local Toast = require("src.ui.AchievementToast")
         Toast.clear()
         Toast.push({ id = "golpe_tinta", name = AchievementSystem.nameOf("golpe_tinta"),

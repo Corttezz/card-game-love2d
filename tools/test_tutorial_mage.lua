@@ -1,23 +1,3 @@
--- tools/test_tutorial_mage.lua
--- TRAVA do tutorial do corvo para o MAGO (Out/2026, pedido do dono: "explicar
--- tudo do zero, é bem complexo"). As conversas de orbe (Tutorial.MAGE_CONVERSATIONS):
---   conduit    Conduíte + fileira + número do pulso (1ª luta, orbe já na fileira)
---   channel    canalizar (carta na mão ANTES / orbe criado DEPOIS, falas excludentes)
---   pulse      o pulso do fim do turno (só DEPOIS do beat, na hora quieta seguinte)
---   evoke_card evocar (carta de Evocar na mão; Evocar todos só se houver)
---   overflow   fileira cheia: o mais antigo é EXPULSO e evoca com o valor cheio
---   focus      Foco (cartas antes do ato 3; Conduíte a partir dele)
---
---   1. texto: toda fala nos 5 idiomas, {var} resolvida, sem travessão;
---   2. o que o texto PROMETE é o que o código FAZ (pulso, evoke, estouro, Foco);
---   3. a 1ª corrida do mago, na ordem e UMA vez cada, com as falas certas e
---      nenhuma no meio de um beat / cena em movimento;
---   4. guerreiro e ladino nunca ouvem conversa de orbe;
---   5. âncoras REAIS: OrbRow reporta fileira/célula do mais antigo; a mão
---      reporta a carta que canaliza e a que evoca.
---
---   love . test_one test_tutorial_mage
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -46,8 +26,6 @@ function M.run()
     local g = TK.newRunGame("mage")
     TK.pump(g, 0.5)
     g.turn, g._enemyActing, g.battleTurn, g.selectedCards = "player", false, 0, {}
-    -- o inimigo do ato 1 morreria no meio do roteiro (pulso + evocações):
-    -- a luta precisa durar o tutorial inteiro
     g.enemy.maxHealth, g.enemy.health = 900, 900
     local db = g.deckManager.cardDatabase
     local function instance(id) return db:createCardInstance(db:getCard(id)) end
@@ -59,7 +37,6 @@ function M.run()
         for _, c in ipairs(g.hand) do if hasEffect(c, ty) then return c end end
     end
 
-    -- ===== 1. textos =====
     local missing, dashes, unresolved = {}, {}, {}
     for _, loc in ipairs(LOCALES) do
         local data = require("src.i18n.locales.tutorial." .. loc)
@@ -86,7 +63,6 @@ function M.run()
     t:eq("nenhum travessão nas falas do mago", table.concat(dashes, ","), "")
     t:eq("toda {variável} das falas resolve (nada cravado, nada solto)", table.concat(unresolved, ","), "")
 
-    -- ===== 2. o texto promete o que o código faz =====
     t:eq("Conduíte: o mago abre a 1ª luta com UM orbe", #g.player.orbs, 1)
     t:eq("...e ele é de Raio", g.player.orbs[1] and g.player.orbs[1].type, "lightning")
     local v = Tutorial.orbVars(g)
@@ -99,7 +75,6 @@ function M.run()
     t:eq("ato 1: o Conduíte não dá Foco ({f} = 0)", v.f, 0)
     t:eq("...e o jogador não tem Foco", v.focus, 0)
     do
-        -- "fileira cheia: o mais antigo é expulso e EVOCA com o valor cheio"
         local mg = TK.mockGame({ class = "mage", enemyHp = 200 })
         mg.player.orbs = { { type = "lightning", value = 7 }, { type = "ice", value = 3 }, { type = "fire", value = 3 } }
         local before = mg.enemy.health
@@ -109,21 +84,17 @@ function M.run()
             before - mg.enemy.health, EffectSystem.orbEvokeValue({ type = "lightning", value = 7 }, 0))
         t:eq("estouro: o novo é o último da fila (entra pela direita)", mg.player.orbs[3].type, "lightning")
         t:eq("estouro: o 2º antigo virou o mais antigo", mg.player.orbs[1].type, "ice")
-        -- "evocar: o mais antigo sai e dispara o efeito cheio"
         before = mg.enemy.health
         mg.player.orbs = { { type = "lightning", value = 6 }, { type = "ice", value = 3 } }
         mg.effectSystem:_stepEvokeOrb(mg, nil, 1)
         t:eq("evocar: só o mais antigo sai", #mg.player.orbs, 1)
         t:eq("evocar: dano = valor cheio", before - mg.enemy.health, 6)
-        -- "Foco soma no valor, no pulso e na evocação"
         mg.player:addBuff("focus", 99, 2)
         t:eq("Foco entra no pulso", EffectSystem.orbPulseValue({ type = "lightning", value = 4 }, 2),
             math.ceil((4 + 2) / 2))
         t:eq("Foco entra na evocação", EffectSystem.orbEvokeValue({ type = "lightning", value = 4 }, 2), 6)
-        -- "Sombra não pulsa, evoca em dobro"
         t:eq("Sombra: pulso 0", EffectSystem.orbPulseValue({ type = "dark", value = 5 }, 0), 0)
         t:eq("Sombra: evoca em dobro", EffectSystem.orbEvokeValue({ type = "dark", value = 5 }, 0), 10)
-        -- Conduíte: Foco inicial por ato (texto da conversa `focus`)
         local run = g.runManager.currentRun
         local act0 = run.actNumber
         local byAct = {}
@@ -136,7 +107,6 @@ function M.run()
             table.concat(byAct, "/"), "0/0/1/1/2/2")
     end
 
-    -- ===== 3. a 1ª corrida do mago =====
     local function anchorsNow()
         love.graphics.origin()
         Tutorial.anchor("hand", 300, 560, 400, 180)
@@ -160,8 +130,6 @@ function M.run()
         local n = math.max(1, math.floor((secs or 0.5) / (1 / 30)))
         for _ = 1, n do anchorsNow(); Tutorial.update(1 / 30, "playing", g) end
     end
-    -- Espera a jogada/fim de turno RESOLVER por inteiro (voo, impacto, beats de
-    -- orbe, dissolve): o mesmo relógio do jogo, até a fila esvaziar.
     local CombatBeats = require("src.systems.CombatBeats")
     local function settle()
         for _ = 1, 40 do
@@ -171,15 +139,14 @@ function M.run()
         end
         error("a jogada não resolveu em 20s")
     end
-    -- Percorre a conversa aberta e devolve "fala1>fala2>..."; a conversa fecha.
     local function walk()
         local seq = {}
         for _ = 1, 10 do
             local l = Tutorial.activeLine()
             if not l then break end
             seq[#seq + 1] = l
-            Tutorial.overlay:keypressed("return")   -- completa o texto
-            Tutorial.overlay:keypressed("return")   -- próxima fala
+            Tutorial.overlay:keypressed("return")
+            Tutorial.overlay:keypressed("return")
         end
         return table.concat(seq, ">")
     end
@@ -188,17 +155,12 @@ function M.run()
         for _, id in ipairs({ ... }) do ProfileStats.markTipSeen(id) end
     end
 
-    -- (a) a apresentação ainda não foi vista: nenhuma conversa de orbe passa
-    --     na frente dela (intro é a 1ª coisa que o jogador ouve)
     seen()
     Tutorial._reset()
     step(1.0)
     t:eq("antes da apresentação, o corvo abre com a apresentação (não com orbes)", Tutorial.activeId(), "intro")
     Tutorial.skipConversation()
 
-    -- (b) depois da apresentação: Conduíte primeiro, depois a canalização.
-    --     Os dois gatilhos armam no MESMO quadro (orbe do Conduíte na fileira,
-    --     Descarga na mão): a ordem sai do roteiro, não do acaso.
     seen("intro", "end_turn", "second_turn")
     Tutorial._reset()
     g.turn, g.battleTurn, g.selectedCards = "player", 0, {}
@@ -218,7 +180,6 @@ function M.run()
     t:eq("antes de jogar: a fala é a da CARTA, não a do orbe criado", Tutorial.activeLine(), "card")
     t:eq("canalizar (carta na mão): carta > mais antigo > hover", walk(), "card>oldest>hover")
 
-    -- (c) o mesmo gatilho pelo OUTRO caminho: a carta já canalizou
     seen("intro", "end_turn", "second_turn", "conduit")
     Tutorial._reset()
     local zap = handCard("channel_orb")
@@ -227,7 +188,7 @@ function M.run()
     local hpBefore = g.enemy.health
     g:selectCard(zap)
     g:playSelectedCards()
-    Tutorial._quiet = false          -- a jogada está resolvendo
+    Tutorial._quiet = false
     step(0.3)
     settle()
     t:eq("Descarga canalizou: 2 orbes na fileira", #g.player.orbs, 2)
@@ -239,7 +200,6 @@ function M.run()
     t:eq("depois de jogar: a fala é a do orbe CRIADO (a da carta não se aplica)", Tutorial.activeLine(), "made")
     t:eq("canalizar (orbe criado): criado > mais antigo > hover", walk(), "made>oldest>hover")
 
-    -- (d) o pulso: só depois do beat, e só na hora quieta seguinte
     seen("intro", "end_turn", "second_turn", "conduit", "channel")
     Tutorial._reset()
     t:eq("antes do fim do turno nenhum pulso foi contado", Tutorial.eventInfo("orb_pulse"), nil)
@@ -264,7 +224,6 @@ function M.run()
     t:eq("turno 2, cena quieta: a conversa do pulso", Tutorial.activeId(), "pulse")
     t:eq("pulso: aconteceu > elementos > Raio revela a intenção", walk(), "happened>kinds>reveal")
 
-    -- (e) evocar: a 1ª carta de Evocar na mão
     seen("intro", "end_turn", "second_turn", "conduit", "channel", "pulse")
     Tutorial._reset()
     g.player.mana = g.player.maxMana or 3
@@ -273,13 +232,11 @@ function M.run()
     step(1.0)
     t:eq("carta de Evocar na mão: a conversa de evocar", Tutorial.activeId(), "evoke_card")
     t:eq("evocar: carta > prévia em ciano (sem 'todos', a carta evoca um)", walk(), "card>preview")
-    -- com Evocar TODOS na mão a 3ª fala entra
     seen("intro", "end_turn", "second_turn", "conduit", "channel", "pulse")
     Tutorial._reset()
     table.insert(g.hand, instance("mage_fission"))
     step(1.0)
     t:eq("Evocar todos na mão: a fala extra aparece", walk(), "card>preview>all")
-    -- sem orbe na fileira a prévia não tem o que mostrar: fala pulada
     seen("intro", "end_turn", "second_turn", "conduit", "channel", "pulse")
     Tutorial._reset()
     local savedOrbs = g.player.orbs
@@ -291,7 +248,6 @@ function M.run()
         if hasEffect(g.hand[i], "evoke_orb") or hasEffect(g.hand[i], "evoke_all_orbs") then table.remove(g.hand, i) end
     end
 
-    -- (f) fileira cheia: canalizar expulsa o mais antigo (acontecimento real)
     seen("intro", "end_turn", "second_turn", "conduit", "channel", "pulse", "evoke_card")
     Tutorial._reset()
     g.player.orbs = { { type = "lightning", value = 4 }, { type = "ice", value = 3 }, { type = "fire", value = 3 } }
@@ -299,7 +255,7 @@ function M.run()
     table.insert(g.hand, zap2)
     g.player.mana = g.player.maxMana or 3
     g.selectedCards = {}
-    step(0.1)                        -- o corvo viu o jogo (chave da batalha)
+    step(0.1)
     hpBefore = g.enemy.health
     g:selectCard(zap2)
     g:playSelectedCards()
@@ -320,7 +276,6 @@ function M.run()
         Tutorial.lineText(od, od.lines[2], g):find(tostring(g.player.orbSlots), 1, true))
     t:eq("estouro: cheia > plano", walk(), "full>plan")
 
-    -- (g) Foco: por carta no ato 1 (sem a fala do Conduíte), pelo Conduíte no ato 3
     seen("intro", "end_turn", "second_turn", "conduit", "channel", "pulse", "evoke_card", "overflow")
     Tutorial._reset()
     g.player:addBuff("focus", 99, 2)
@@ -340,7 +295,6 @@ function M.run()
         Tutorial.lineText(fd, fd.lines[2], g):find(" 1 ", 1, true))
     run.actNumber = act0
 
-    -- (h) UMA vez cada: tudo visto, acontecimentos novos não reabrem nada
     seen("intro", "end_turn", "second_turn", unpack(MAGE))
     Tutorial._reset()
     g.player.orbs = { { type = "lightning", value = 4 }, { type = "ice", value = 3 }, { type = "fire", value = 3 } }
@@ -353,8 +307,6 @@ function M.run()
         if hasEffect(g.hand[i], "evoke_orb") then table.remove(g.hand, i) end
     end
 
-    -- (i) acontecimento de OUTRA batalha não vale: o pulso da luta passada
-    --     não abre a conversa na luta seguinte (re-arma só no próximo pulso)
     seen("intro", "end_turn", "second_turn", "conduit", "channel", "evoke_card", "overflow", "focus")
     Tutorial._reset()
     step(0.1)
@@ -364,7 +316,6 @@ function M.run()
     t:eq("pulso de outra batalha: a conversa do pulso não abre", Tutorial.activeId(), nil)
     run.currentFloor = run.currentFloor - 1
 
-    -- ===== 4. guerreiro e ladino nunca ouvem conversa de orbe =====
     local leaks = {}
     for _, cls in ipairs({ "warrior", "rogue" }) do
         seen("intro", "end_turn", "second_turn", "block", "combo", "jokers")
@@ -378,7 +329,6 @@ function M.run()
         for _, id in ipairs(Tutorial.latchedIds()) do
             if MAGE_SET[id] then leaks[#leaks + 1] = cls .. ":armado:" .. id end
         end
-        -- joga a 1ª carta e encerra: continua sem orbe, sem conversa
         Tutorial.skipConversation()
         g.player.mana = g.player.maxMana or 3
         g:selectCard(g.hand[1]); g:playSelectedCards(); settle()
@@ -392,7 +342,6 @@ function M.run()
     end
     t:eq("guerreiro e ladino: nenhuma conversa de orbe (ativa ou armada)", table.concat(leaks, ","), "")
 
-    -- ===== 5. âncoras REAIS =====
     do
         Tutorial._reset()
         g.player.orbs = { { type = "lightning", value = 4 }, { type = "ice", value = 3 } }
@@ -412,7 +361,6 @@ function M.run()
             t:truthy("a fileira cobre as 3 vagas (largura >= 3 gemas)", row.w >= 3 * 48)
             t:truthy("a célula é uma gema só", nextA.w < row.w / 2)
         end
-        -- mago sem orbe: a fileira (vagas vazias) continua ancorada; o mais antigo não
         Tutorial._reset()
         g.player.orbs = {}
         love.graphics.setCanvas(cv); love.graphics.origin()
@@ -422,7 +370,6 @@ function M.run()
         t:eq("mago sem orbe: sem 'mais antigo'", Tutorial.anchorRect("orb_next"), nil)
         g.player.orbs = { { type = "lightning", value = 4 } }
 
-        -- a mão: a carta que canaliza e a que evoca ganham recorte próprio
         local GameplayScene = require("src.scenes.GameplayScene")
         local prevSceneGame = GameplayScene.getGame()
         GameplayScene.init({ game = g })
@@ -430,7 +377,7 @@ function M.run()
             if hasEffect(g.hand[i], "evoke_orb") or hasEffect(g.hand[i], "evoke_all_orbs")
                 or hasEffect(g.hand[i], "channel_orb") then table.remove(g.hand, i) end
         end
-        table.insert(g.hand, instance("defense_001"))   -- não canaliza nem evoca
+        table.insert(g.hand, instance("defense_001"))
         table.insert(g.hand, instance("mage_zap"))
         table.insert(g.hand, instance("mage_dualcast"))
         for i, c in ipairs(g.hand) do c.renderX, c.renderY = 300 + (i - 1) * 140, 560 end

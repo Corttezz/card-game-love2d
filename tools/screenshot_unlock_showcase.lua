@@ -1,16 +1,3 @@
--- tools/screenshot_unlock_showcase.lua
--- Capturas das REVELAÇÕES DO MENU (components/UnlockShowcase.lua): um painel
--- de cada tipo (carta, classe, maestria, selo, conquista) sobre o menu, com a
--- janela FALSIFICADA (mesmo truque do screenshot_uiscale).
---
---   love . test_one screenshot_unlock_showcase          → pt_BR + de
---   love . test_one screenshot_unlock_showcase fr       → um idioma
---   SHOWCASE_T=0.45 …                                   → instante da captura
---     (segundos desde a entrada do painel; padrão 1.0 = assentado. Um valor
---     no meio da revelação mostra pop, varredura de luz e clarão.)
---
--- Saída: showcase_<tipo>_<W>x<H>_<loc>[_t<ms>].png no save dir.
-
 local M = {}
 
 local SIZES = { { 1024, 768 }, { 1920, 1080 } }
@@ -35,7 +22,6 @@ function M.run(arg)
         { kind = "seal", classId = "warrior", n = 1 },
         { kind = "achievement", id = "primeiro_chefe" },
     }
-    -- carta existente com arte (a primeira do pacote 2 do guerreiro)
     do
         local Data = require("src.data.unlocks")
         local b = Data.CLASS_BUNDLES.warrior and Data.CLASS_BUNDLES.warrior[2]
@@ -64,11 +50,8 @@ function M.run(arg)
                 local s = Showcase:new()
                 s:watch("menu", 1)
                 s.idx, s.total = i, #ITEMS
-                -- assentado (t = 1 s) por padrão; SHOWCASE_T captura no meio
                 local tCap = tonumber(os.getenv("SHOWCASE_T") or "") or 1.0
                 for _ = 1, math.max(1, math.floor(tCap * 30 + 0.5)) do s:update(1 / 30) end
-                -- SHOWCASE_HOVER=1: mouse sobre a carta revelada (sobe + tooltip);
-                -- SHOWCASE_INSPECT=1: a inspeção da Coleção aberta nela.
                 local mode = ""
                 if it.kind == "card" and (os.getenv("SHOWCASE_HOVER") == "1" or os.getenv("SHOWCASE_INSPECT") == "1") then
                     love.graphics.setCanvas(canvas); s:draw(); love.graphics.setCanvas()

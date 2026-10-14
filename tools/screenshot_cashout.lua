@@ -1,15 +1,3 @@
--- tools/screenshot_cashout.lua
--- Contact sheet do VOO DAS MOEDAS do cash out (item "animação da moeda sendo
--- resgatada").
---
--- O voo dura ~0,83s e passa por cima do painel enquanto ele desliza — num
--- screenshot único não se vê nada. Captura em instantes fixos e monta lado a
--- lado. Também confirma que as moedas MIRAM no bloco de ouro da TopBar (o
--- alvo vem de _G.topBar; sem ele iriam pro centro e ninguém notaria).
---
--- Roda: love . screenshot_cashout
--- Saída: cashout_fly.png
-
 local M = {}
 
 local AT = { 0.00, 0.12, 0.28, 0.46, 0.70, 0.95 }
@@ -32,7 +20,6 @@ function M.run()
     game:startNewRun("warrior")
     game:startGame()
 
-    -- TopBar real: e ela quem define o alvo das moedas.
     local topBar = TopBar:new()
     topBar:setGame(game)
     _G.topBar = topBar
@@ -51,7 +38,6 @@ function M.run()
         screen:update(DT)
     end
 
-    -- Adianta ate o botao Resgatar estar pronto, depois clica.
     for _ = 1, 60 * 6 do step() end
     print("[cashout] botao pronto: " .. tostring(screen.cashOutReady))
     screen:_onCashOutClick()

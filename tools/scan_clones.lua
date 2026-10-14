@@ -1,29 +1,10 @@
--- tools/scan_clones.lua
--- Varredura EXPLORATORIA: cartas com a MESMA assinatura de efeitos.
---
--- Nasceu da queixa do dono (Set/2026): "qual a diferenca entre deus do abismo
--- e forma de eco? nenhuma, e uma e lendaria a outra rara". Eram dois jokers
--- com `damage_multiplier attack 1.5` identico. Achar UM assim significa que
--- pode haver outros — e a regra do projeto e construir a varredura em vez de
--- confiar na memoria (memory/defect_doctrine.md §10).
---
---   love . scan_clones
-
 local M = {}
 
--- A assinatura tem que incluir TODO campo escalar do efeito, nao so
--- type/target/value. A primeira versao olhava esses tres e acusou
--- rogue_envenom (raro) e rogue_toxin_master (lendario) como clones — eles
--- diferem em `stacks` (1 vs 2), que e exatamente a escada de raridade
--- legitima. Varredura que mente gera trabalho a toa e, pior, ensina a
--- ignora-la.
 local function assinatura(cd)
     local partes = {}
     for _, e in ipairs(cd.effects or {}) do
         local campos = {}
         for k, v in pairs(e) do
-            -- `description` e texto de apoio, nao mecanica: duas cartas com a
-            -- mesma mecanica e descricoes diferentes continuam clones.
             if k ~= "description" and type(v) ~= "table" and type(v) ~= "function" then
                 campos[#campos + 1] = tostring(k) .. "=" .. tostring(v)
             end
@@ -75,10 +56,6 @@ function M.run()
 
     print("")
     print(string.format("%d grupo(s) com assinatura repetida.", grupos))
-    print("Repetir assinatura NAO e sempre bug: cartas do mesmo arquetipo em")
-    print("custos/raridades diferentes sao design. Vira bug quando os DOIS")
-    print("lados sao JOKER (passivo, sem custo pra diferenciar) — ai nao")
-    print("sobra nenhuma decisao distinguindo um do outro.")
 
     love.event.quit(0)
     return true

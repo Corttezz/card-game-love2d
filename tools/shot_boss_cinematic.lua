@@ -1,35 +1,8 @@
--- tools/shot_boss_cinematic.lua
--- PROVA VISUAL da cinemática do chefe (src/ui/BossCinematic) pelo caminho
--- REAL da cena: GameplayScene.update/draw com o salão do ato 1, o rei-carniça
--- e a sequência de entrada + morte tocando, quadro a quadro, num canvas
--- falsificado (nada precisa aparecer na janela — roda com CARDGAME_HEADLESS=1).
---
---   love . test_one shot_boss_cinematic [intro|death|both|arrival|phases]
---     phases = a LUTA por fases do chefe (rainha do eclipse): fase 1, íris
---     olhando, virada pelo funil real de dano, eclipse fechado + halo
---     (pelo test_one: não há entrada própria no dispatcher do main.lua —
---     `love . shot_boss_cinematic` abre o JOGO normal e fica esperando)
---     arrival = o caminho REAL do andar do chefe: a cena caminha até o
---     castelo, a PORTA abre, a entrada toca e as cartas são DADAS (HandDeal)
---     — grava da porta ao fim da distribuição (prova do bug "mão/HUD no
---     meio da cutscene")
---   BOSS_CINE_ACT=3            ato/chefe (default 1 = rei-carniça)
---   BOSS_CINE_SIZE=1920x1080   tamanho do canvas (default 1920x1080)
---   BOSS_CINE_FPS=15           quadros gravados por segundo simulado
---   BOSS_CINE_REDUCED=1        versão reducedMotion
---   BOSS_CINE_LOCALE=de        idioma do cartão de nome
---   BOSS_CINE_SKIP=2.0         pula a entrada em t=2.0s (prova do pular)
---
--- Saída: boss_cine_<fase>_NNN.png no save dir (impresso no fim) + um
--- boss_cine_<fase>_timeline.txt com o instante de cada quadro. A prancha e o
--- GIF saem de tools/boss_cinematic_sheet.py.
-
 local M = {}
 
 function M.run(mode)
     mode = mode or "both"
-    io.stdout:setvbuf("no")   -- progresso visível mesmo com stdout redirecionado
-    -- também no save dir (shot_log.txt): sem console o print some
+    io.stdout:setvbuf("no")
     local function log(s)
         print("[shot_boss_cinematic] " .. s)
         pcall(love.filesystem.append, "shot_log.txt", s .. "\n")
@@ -58,10 +31,6 @@ function M.run(mode)
     require("src.ui.PixelCanvas").enableNearest()
     require("src.systems.ScreenShake").install()
 
-    -- relógio SIMULADO: bob, flicker e DynaText leem love.timer.getTime —
-    -- quadros reproduzíveis independem da velocidade da máquina. DENTRO de um
-    -- quadro o relógio ainda anda em tempo real: laços com orçamento de tempo
-    -- (prewarm do WorldRoad) travariam pra sempre com um relógio parado.
     local DT = 1 / 30
     local simT = 100
     local realTime = love.timer.getTime
@@ -103,7 +72,7 @@ function M.run(mode)
     end
     game.enemy.spriteId = bossId
     game.enemy.isBoss = true
-    game.messageSystem = nil   -- sem toasts de início de run por cima da cena
+    game.messageSystem = nil
     _G.game = game
 
     log("ui")
@@ -192,9 +161,6 @@ function M.run(mode)
     end
 
     if mode == "arrival" then
-        -- caminho REAL: andar 7 → 8 dispara a caminhada; a câmera chega, a
-        -- porta abre (WorldRoad.enterCastle), a entrada toca e as cartas
-        -- são dadas. A caminhada (6.5 s) não é gravada; da porta em diante é.
         log("arrival: ancora o andar")
         step()
         run.floorInAct = 8
@@ -220,10 +186,6 @@ function M.run(mode)
     end
 
     if mode == "phases" then
-        -- LUTA por fases (rainha do eclipse, ato 6): salão direto, luta
-        -- QUIETA (fase 1), a íris olhando, a VIRADA de fase pelo funil real
-        -- de dano (Enemy:_checkPhase marca, BossCinematic observa) e o
-        -- eclipse fechado — boss_cine_phases_NNN.png + timeline.
         GameplayScene._debugForceBossEntered()
         for _ = 1, 60 do step() end
         local lines, n = {}, 0
@@ -241,7 +203,6 @@ function M.run(mode)
         run(0.7)
         shot("fase1_iris")
         run(1.2)
-        -- virada: dano até cruzar a fração da fase (kit intocado: o dado diz onde)
         local e = game.enemy
         local ph = e.kit and e.kit.phases and e.kit.phases[1]
         local at = (ph and ph.at) or 0.5
@@ -265,14 +226,10 @@ function M.run(mode)
     end
 
     if mode == "fight" then
-        -- LUTA do tirano (ato 3): correntes do salão inteiras, arrebentando
-        -- nos limiares de vida (0.72 / 0.52 / 0.38) e SOLTO no ENFURECIDO —
-        -- boss_cine_fight_NNN.png + timeline. Entrada tocada inteira antes.
         GameplayScene._debugStartBossIntro()
         local guardI = 0
         while BossCinematic.isActive() and guardI < 30 * 20 do
             step(); guardI = guardI + 1
-            -- desenha (sem gravar): o palco medido é o que ancora as correntes
             love.graphics.setCanvas(vcanvas); GameplayScene.draw(); love.graphics.setCanvas()
         end
         for _ = 1, 45 do step() end
@@ -322,8 +279,6 @@ function M.run(mode)
     end
 
     if mode == "death" or mode == "both" then
-        -- 1 turno de respiro pra HUD/mão assentarem, depois o golpe fatal pelo
-        -- pipeline (marcação _pendingDeath → beat enemy.death → _onEnemyDeath)
         for _ = 1, 20 do step() end
         game.enemy.armor = 0
         game.enemy.health = 1
@@ -332,8 +287,6 @@ function M.run(mode)
         record("death", function()
             return not BossCinematic.isActive() and game:isDeathSettled()
         end, 0.8)
-        -- o fundo do cash out/espólios do chefe: só o mundo = o SALÃO com o
-        -- cadáver (GameplayScene.worldOnlyMode == "hall"), nunca a estrada
         love.graphics.setCanvas(vcanvas)
         love.graphics.clear(0, 0, 0, 1)
         GameplayScene.drawWorldOnly()
@@ -341,9 +294,6 @@ function M.run(mode)
         vcanvas:newImageData():encode("png", "boss_cine_death_hall.png")
         print("[shot_boss_cinematic] fundo dos espólios: worldOnlyMode="
             .. tostring(GameplayScene.worldOnlyMode()) .. " -> boss_cine_death_hall.png")
-        -- as DUAS telas pós-chefe DENTRO do salão, como o main.lua as desenha
-        -- (roundEval: GameplayScene.draw + painel; cardReward: drawWorldOnly +
-        -- espólios), com a TopBar por cima — boss_cine_{cashout,rewards}_hall.png
         local UiScale = require("src.ui.UiScale")
         _G.topBar = topBar
         local function shotUI(path, world, ui)
@@ -360,8 +310,6 @@ function M.run(mode)
             local re = RoundEvalScreen:new()
             local sources = game:_buildRoundEvalSources()
             re:show(game, sources, function() end)
-            -- captura com a CONTAGEM FECHADA (linha a linha + voo das moedas):
-            -- a linha do tempo roda na fila do EventManager, que o step() tica
             local guardRE = 0
             repeat
                 step(); UiScale.begin(); re:update(DT); UiScale.finish()

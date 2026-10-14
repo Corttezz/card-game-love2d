@@ -1,40 +1,3 @@
--- tools/test_upgrade_tile.lua
--- Trava do tile de RELIQUIA da loja (src/ui/UpgradeTile.lua) em tres frentes.
---
--- 1) GEOMETRIA POR CONSTRUCAO (memory/ui_layout_invariants.md, secao 1)
---    As bandas nome/arte/efeito nao podem se sobrepor nem escapar do
---    tile em NENHUM tamanho -- e a MOEDA de preco, que e overlay carimbado
---    na moldura, nao pode passar por cima do nome -- nem no slot largo de 1920x1080 nem no aperto
---    de 800x600. O defeito de origem desta familia (PackChoiceLayout) foi
---    exatamente dois elementos ancorados no mesmo Y sem saber um do outro.
---
--- 2) RESIZE (secao 2 -- "nascer grande != crescer")
---    A loja NASCE num tamanho e a janela MUDA com ela aberta. A janela e
---    FALSIFICADA (monkey-patch em love.graphics.getWidth/getHeight) porque
---    love.window.setMode repetido dentro de um tool nao retorna. O caminho
---    imitado e o do jogo (main.lua:love.resize): limpa FontManager/CardFrame
---    e chama updateLayout().
---
--- 3) I18N (memory/i18n_discipline.md)
---    As quatro camadas de texto da reliquia (name/effect/desc/flavor) tem que
---    existir nos 5 locales -- e o chip precisa interpolar {value}. A vitrine
---    ja mostrou "Reliquia" em PT no meio de uma tela em alemao porque a chave
---    so existia como fallback no codigo; isto impede a reincidencia.
---
--- 4) SOM DE HOVER DO SLOT — mudou de dono na Loja v3 (ShopScene); a trava
---    vive em tools/test_shop_scene.lua.
---
--- 5) SPRITE ANIMADO COM FALLBACK
---    O tile consome assets/sprites_anim opcionais (vouchers_anim/<id>/
---    frame_NNN.png). A faixa de animacao pode nao existir -- e o codigo tem
---    que funcionar NOS DOIS ESTADOS. O teste exercita os dois de verdade:
---    escreve uma pasta de frames falsa no save dir (que o love.filesystem
---    monta por cima do source) e confere que o handle aparece; depois remove
---    e confere que volta pro PNG estatico sem erro nenhum.
---
---   love . test_one test_upgrade_tile
---   love . test_all
-
 local TK = require("tools.testkit")
 local M = {}
 
@@ -45,7 +8,6 @@ local EventManager     = require("engine.EventManager")
 local FontManager      = require("src.ui.FontManager")
 local ShopEngraving    = require("src.ui.ShopEngraving")
 
--- ===== Janela falsa (mesmo padrao de tools/test_forge_resize.lua) =====
 local realW, realH = love.graphics.getWidth, love.graphics.getHeight
 local fakeW, fakeH = nil, nil
 local function installFakeWindow()
@@ -66,9 +28,6 @@ local function pump(screen, secs)
     end
 end
 
--- O que o jogo REALMENTE faz no love.resize (main.lua). Espelhar isso importa:
--- um teste que limpa menos que o jogo acusa bug inexistente; que limpa mais,
--- deixa passar um que existe.
 local function resizeTo(screen, w, h)
     fakeW, fakeH = w, h
     FontManager.clearCache()
@@ -88,15 +47,12 @@ function M.run()
     I18n.init()
     local t = TK.new("upgrade tile: zonas, resize e i18n da reliquia")
 
-    -- ======================================================================
-    -- 1. Geometria pura
-    -- ======================================================================
     local RECTS = {
-        { 0, 0, 206, 220 },   -- slot tipico em 1024x768
-        { 40, 30, 260, 300 }, -- fullscreen
-        { 5, 5, 120, 140 },   -- janela pequena
-        { 0, 0, 90, 96 },     -- aperto extremo
-        { 0, 0, 64, 60 },     -- degenerado: ainda nao pode quebrar
+        { 0, 0, 206, 220 },
+        { 40, 30, 260, 300 },
+        { 5, 5, 120, 140 },
+        { 0, 0, 90, 96 },
+        { 0, 0, 64, 60 },
     }
     for _, r in ipairs(RECTS) do
         for _, cost in ipairs({ 5, 25, 120 }) do
@@ -104,13 +60,11 @@ function M.run()
             t:eq(("bandas validas em %dx%d por $%d (%s)"):format(r[3], r[4], cost,
                 #bad > 0 and bad[1] or "ok"), #bad, 0)
         end
-        -- Sem custo conhecido: reserva o pior caso; tambem tem que fechar.
         local bad = UpgradeTile.validate(r[1], r[2], r[3], r[4])
         t:eq(("bandas validas em %dx%d sem custo (%s)"):format(r[3], r[4],
             #bad > 0 and bad[1] or "ok"), #bad, 0)
     end
 
-    -- Bandas obrigatorias existem SEMPRE; o efeito e o unico que pode cair.
     local tiny = UpgradeTile.layout(0, 0, 64, 60, 5)
     t:truthy("tile minusculo mantem a banda de nome", tiny.name ~= nil)
     t:truthy("tile minusculo mantem a banda de arte", tiny.art ~= nil)
@@ -122,15 +76,10 @@ function M.run()
     t:truthy("tile normal mantem a placa de efeito", roomy.effect ~= nil)
     t:truthy("arte e a maior banda do tile",
         roomy.art.h > roomy.name.h and roomy.art.h > roomy.effect.h)
-    -- Quando a altura cresce, quem cresce e o CONTEUDO (a arte), nao o cromo.
     local tall = UpgradeTile.layout(0, 0, 206, 300, 5)
     t:truthy("altura extra vai pra arte, nao pro cromo",
         (tall.art.h - roomy.art.h) > (tall.effect.h - roomy.effect.h))
 
-    -- O PRECO nao ocupa banda nenhuma: e moeda carimbada na moldura. A regra
-    -- que substituiu a antiga "placa de preco embaixo da placa de efeito" --
-    -- precisa continuar valendo pra nao voltar a empilhar dois retangulos
-    -- iguais (o defeito "cara de IA" de Set/2026).
     t:falsy("preco nao e mais uma banda empilhada", roomy.price ~= nil)
     t:truthy("a moeda fica no canto superior DIREITO",
         roomy.seal.x > roomy.frame.x + roomy.frame.w * 0.5
@@ -138,17 +87,11 @@ function M.run()
     t:truthy("o nome termina antes da moeda comecar",
         roomy.name.x + roomy.name.w <= roomy.seal.x)
 
-    -- Moeda maior pra numero maior: e o que garante que o preco continua
-    -- LEGIVEL. Com raio fixo, "$25" desabava pro minimo da fonte e virava dois
-    -- pontinhos no disco (visto na captura antes da correcao).
     t:truthy("moeda de 2 digitos e maior que a de 1",
         ShopEngraving.sealRadius(206, 25) > ShopEngraving.sealRadius(206, 5))
     t:truthy("sem custo, o raio reserva o pior caso",
         ShopEngraving.sealRadius(206) >= ShopEngraving.sealRadius(206, 999))
 
-    -- ======================================================================
-    -- 2. i18n das quatro camadas, nos 5 locales
-    -- ======================================================================
     local locales = I18n.getAvailable()
     for _, code in ipairs(locales) do
         I18n.setLocale(code)
@@ -165,7 +108,6 @@ function M.run()
             local val = I18n.t(key, nil, "__missing__")
             t:truthy(code .. " tem " .. key, val ~= "__missing__" and val ~= key)
         end
-        -- O chip e etiqueta: caixa alta e curta o bastante pro tile.
         for _, id in ipairs({ "health_upgrade", "mana_upgrade" }) do
             local chip = UpgradeTile.effectLabel({ id = id, value = 7 })
             t:truthy(code .. "/" .. id .. ": chip interpola {value}",
@@ -176,11 +118,9 @@ function M.run()
     end
     I18n.setLocale("pt_BR")
 
-    -- Oferta sem chave de efeito: o chip some, mas nada quebra.
     t:falsy("id desconhecido nao inventa chip",
         UpgradeTile.effectLabel({ id = "nao_existe", value = 1 }) ~= nil)
 
-    -- Tema por EFEITO (data-driven), nunca por nome.
     local a = UpgradeTile.theme({ effect = "increase_max_health" })
     local b = UpgradeTile.theme({ effect = "increase_base_mana" })
     t:truthy("efeitos diferentes tem cores diferentes",
@@ -188,21 +128,6 @@ function M.run()
     t:truthy("efeito desconhecido cai num tema valido",
         UpgradeTile.theme({ effect = "nada" }).accent ~= nil)
 
-    -- ======================================================================
-    -- 3. Som do hover no slot nao-carta (reliquia / pacote)
-    -- ======================================================================
-    -- Loja v3 (Out/2026): a reliquia virou um OBJETO na prateleira
-    -- (src/ui/shop/ShelfItem) e o hover — som UMA vez na borda de entrada, no
-    -- volume do registro, nunca durante o deslize — e do ShopScene. A trava
-    -- mora em tools/test_shop_scene.lua (secao 2).
-
-    -- ======================================================================
-    -- 4. Sprite animado do voucher: anima quando ha faixa, estatico quando nao
-    -- ======================================================================
-    -- A pasta de animacao e escrita no SAVE DIR: o love.filesystem procura ali
-    -- antes do source, entao o loader enxerga como se o asset existisse no
-    -- projeto -- sem sujar o repo e sem depender de arte que pode nao ter sido
-    -- gerada ainda.
     do
         local FramesLoader = require("src.ui.IconFramesLoader")
         local FAKE = "nao_existe_de_verdade"
@@ -213,9 +138,6 @@ function M.run()
             UpgradeTile.animationFor(FAKE) ~= nil)
         t:falsy("e sem PNG estatico tambem nao inventa imagem",
             (UpgradeTile.spriteFor(FAKE, true, 0)) ~= nil)
-        -- Oferta REAL: com ou sem faixa de animacao gerada, SEMPRE sai imagem.
-        -- Os dois estados sao validos e o teste nao exige nenhum dos dois --
-        -- so que a escolha seja coerente com o que existe no disco.
         for _, id in ipairs(UPGRADE_IDS) do
             local img, animated = UpgradeTile.spriteFor(id, true, 0)
             t:truthy("voucher " .. id .. " sempre tem imagem", img ~= nil)
@@ -242,16 +164,12 @@ function M.run()
         if anim then
             t:eq("le os 4 frames", #anim.frames, 4)
             t:eq("meta.lua manda no fps", anim.fps, 4)
-            -- fps 4, 4 frames: t=0 e t=0.5 caem em frames diferentes.
             t:truthy("frameAt anda no tempo",
                 anim:frameAt(0) ~= anim:frameAt(0.5))
         end
         local frame, animated = UpgradeTile.spriteFor(FAKE, true, 0)
         t:truthy("spriteFor devolve o frame animado na interacao", frame ~= nil)
         t:truthy("e marca que veio da faixa", animated == true)
-        -- IDLE e ESTATICO (regra do projeto): sem interacao, nem consulta a
-        -- faixa. Aqui nao ha PNG estatico, entao cai no frame 0 -- que e o
-        -- comportamento desejado: parado, nunca buraco.
         local idle, idleAnimated = UpgradeTile.spriteFor(FAKE, false, 0)
         t:falsy("idle nao anima", idleAnimated == true)
         t:truthy("idle ainda mostra alguma coisa", idle ~= nil)
@@ -273,9 +191,6 @@ function M.run()
             UpgradeTile.animationFor(FAKE) ~= nil)
     end
 
-    -- A placa gravada e cacheada como bitmap: o cache tem que aceitar ser
-    -- zerado a qualquer momento (e o que o resize da loja faz) sem quebrar o
-    -- desenho seguinte.
     t:noerror("clearCache no meio do uso nao quebra o proximo draw", function()
         ShopEngraving.effectStrip(0, 0, 180, 16, "+1 MANA MAX",
             { accent = { 0.5, 0.5, 0.5, 1 }, seed = 3 })
@@ -284,9 +199,6 @@ function M.run()
             { accent = { 0.5, 0.5, 0.5, 1 }, seed = 3 })
     end)
 
-    -- ======================================================================
-    -- 5. Resize da loja com a reliquia na vitrine
-    -- ======================================================================
     installFakeWindow()
     local okRun, err = pcall(function()
         local game = TK.newRunGame("warrior")
@@ -297,7 +209,6 @@ function M.run()
         screen:show(game, function() end, function() end, "shop")
         pump(screen, 0.5)
 
-        -- Garante uma RELIQUIA na vitrine (o roll e 50/50 entre forja e pool).
         local voucher
         for _, o in ipairs(screen.shopOffers) do
             if o.type == "upgrade" then voucher = o break end
@@ -308,7 +219,6 @@ function M.run()
         t:eq("800x600: layout limpo ao NASCER (" ..
             (#bad0 > 0 and bad0[1] or "ok") .. ")", #bad0, 0)
 
-        -- Agora CRESCE/ENCOLHE com a tela aberta, sem recriar nada.
         for _, s in ipairs(SIZES) do
             resizeTo(screen, s[1], s[2])
             pump(screen, 0.1)
@@ -317,8 +227,6 @@ function M.run()
                 #bad > 0 and bad[1] or "ok"), #bad, 0)
         end
 
-        -- E com uma oferta SELECIONADA (o estado com mais geometria derivada:
-        -- botoes de compra ancorados no rodape do painel de detalhe).
         if voucher then
             screen:setSelectedOffer(voucher, voucher._slot)
             for _, s in ipairs({ { 800, 600 }, { 1920, 1080 }, { 1024, 768 } }) do
@@ -330,9 +238,6 @@ function M.run()
             end
         end
 
-        -- Loja em TELA CHEIA (Out/2026): as zonas sem moldura continuam
-        -- separadas em todo tamanho E em todo idioma — o rodape mede o rotulo
-        -- dos botoes no locale atual (alemao e o mais longo em varias telas).
         screen:clearSelection()
         for _, code in ipairs(I18n.getAvailable()) do
             I18n.setLocale(code)
@@ -353,8 +258,6 @@ function M.run()
         end
         I18n.setLocale("pt_BR")
 
-        -- O tile e desenhavel em qualquer tamanho (o draw le as MESMAS bandas
-        -- que o validate; um erro de nil aqui seria crash na loja real).
         if voucher then
             resizeTo(screen, 800, 600)
             local pos = screen.cardPositions[voucher._slot]
@@ -370,15 +273,8 @@ function M.run()
     FontManager.clearCache()
     t:truthy("suite de resize rodou sem erro (" .. tostring(err) .. ")", okRun)
 
-    -- ===== ANIMACAO DA RELIQUIA: SEMPRE, nao so no hover =====
-    -- Pedido do dono (Set/2026): "na loja, a aba de upgrade, o preview dos
-    -- itens na direita precisa ter a animacao tambem; a animacao deles nao
-    -- precisa ser so no hover". Excecao deliberada a regra dos icones de
-    -- carta (que so animam na interacao) — la sao dezenas na tela, aqui sao
-    -- 1 a 3 objetos numa prateleira.
     do
         local UT = require("src.ui.UpgradeTile")
-        -- Escolhe um voucher que TENHA pasta de animacao instalada.
         local comAnim = nil
         for _, id in ipairs({ "forge_card", "health_upgrade", "mana_upgrade",
                               "damage_upgrade", "defense_upgrade",
@@ -387,20 +283,17 @@ function M.run()
         end
 
         if comAnim then
-            -- Em tempos diferentes o frame tem que MUDAR sem hover nenhum.
             local a = UT.spriteFor(comAnim, true, 0.0)
             local b = UT.spriteFor(comAnim, true, 0.5)
             t:truthy("voucher com animacao resolve sprite", a ~= nil)
             t:truthy("o frame MUDA ao longo do tempo (anima de verdade)", a ~= b)
 
-            -- E o estatico continua acessivel para quem pedir.
             local est = UT.spriteFor(comAnim, false, 0.5)
             t:truthy("frame estatico ainda existe", est ~= nil)
         else
             t:truthy("nenhum voucher tem pasta de animacao instalada", false)
         end
 
-        -- Sem pasta de animacao, animar nao pode quebrar: cai no estatico.
         t:noerror("voucher sem animacao nao estoura ao animar", function()
             UT.spriteFor("voucher_inexistente_xyz", true, 0.3)
         end)

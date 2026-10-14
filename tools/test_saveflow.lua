@@ -1,12 +1,3 @@
--- tools/test_saveflow.lua
--- Reproduz o fluxo de save/abandono reportado como bugado:
---   love . test_saveflow
--- Cenários:
---   A) abandonar run → save some do disco → run nova nasce LIMPA
---   B) "restart" do app (novos objetos) → sem save → run nova limpa
---   C) save de run antiga presente → Jogar (não Continuar) → run nova limpa
--- Sai com código de erro e [FAIL] no stdout se qualquer invariante quebrar.
-
 local M = {}
 
 local function fail(msg)
@@ -33,7 +24,6 @@ function M.run()
     local g1 = Game:new()
     g1:startNewRun("warrior")
     g1:startGame()
-    -- progresso artificial: andar 5, carta extra, ouro
     local run1 = g1.runManager.currentRun
     run1.currentFloor = 5
     run1.actNumber = 2
@@ -41,7 +31,6 @@ function M.run()
     g1:checkpointRun()
     okp(SaveManager.hasRun(), "checkpoint salvou run A no disco")
 
-    -- ABANDONO (mesma sequência do onAbandon + returnToMenu do main.lua)
     g1.runManager:deleteSave()
     g1.runManager.currentRun = nil
     g1.runManager.isRunActive = false
@@ -64,7 +53,6 @@ function M.run()
     g2.runManager.currentRun.currentFloor = 3
     g2:checkpointRun()
     okp(SaveManager.hasRun(), "run B checkpointada")
-    -- simula reabrir o app: objetos novos, nada em memória
     local g3 = Game:new()
     okp(not (g3.runManager:hasActiveRun()),
         "app reaberto: nenhuma run ativa em memória")
@@ -78,7 +66,6 @@ function M.run()
     okp(run4.classId == "rogue", "Jogar com save antigo presente: classe nova vale")
     okp((run4.currentFloor or 0) == 1, "Jogar com save antigo: andar 1")
     okp(#run4.currentDeck <= 3, "Jogar com save antigo: deck starter")
-    -- primeira checkpoint da run nova sobrescreve o save antigo
     g4:checkpointRun()
     local data = SaveManager.loadRun()
     okp(data and data.classId == "rogue",
@@ -88,15 +75,12 @@ function M.run()
     g4.runManager:deleteSave()
     g4.runManager.currentRun = nil
     g4.runManager.isRunActive = false
-    -- checkpoint retardatário (callback velho): deve ser NO-OP sem run ativa
     g4:checkpointRun()
     okp(not SaveManager.hasRun(),
         "checkpoint retardatário pós-abandono NÃO ressuscita o save")
 
     SaveManager.deleteRun()
     print(M._failed and "=== RESULTADO: FALHOU ===" or "=== RESULTADO: TUDO OK ===")
-    -- Devolve o resultado (contrato do run_all_tests) em vez de fechar o
-    -- processo: com love.event.quit aqui, a suite inteira parava neste teste.
     return not M._failed
 end
 

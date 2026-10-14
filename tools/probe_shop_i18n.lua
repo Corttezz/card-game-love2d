@@ -1,5 +1,3 @@
--- tools/probe_shop_i18n.lua: chaves I18n usadas pela loja que caem no fallback
--- em algum dos 5 idiomas. love . test_one probe_shop_i18n
 local M = {}
 function M.run()
     local I18n = require("src.i18n.I18n")

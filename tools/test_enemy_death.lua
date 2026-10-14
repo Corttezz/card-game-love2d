@@ -1,29 +1,3 @@
--- tools/test_enemy_death.lua
--- TRAVA DO FIM DA LUTA (Set/2026).
---
--- POR QUE ESTE TESTE EXISTE
--- Duas queixas do dono jogando, que sao o mesmo assunto:
---   1. "em alguns cenarios, o mob nao esta tendo a animacao de morrer, cair no
---      chao etc. Acho que e quando se buffa"
---   2. "a tela de vitoria ta aparecendo rapido demais, so aparece quando a
---      gente tem a confirmacao que ele morreu"
---
--- A causa de (1) nao era o buff: era a FONTE do golpe final. A morte so era
--- encenada no caminho da carta de ATAQUE. Magia, pulso e evocacao de orbe,
--- veneno e reflexo de espinhos zeravam a vida e a tela de espolios abria por
--- cima de um inimigo em pe. A causa de (2) era o gate: a vitoria so esperava
--- `isBlocking()`, nunca o relogio da morte.
---
--- "Nao crashou" nao prova nada aqui. Cada bloco afere o TRACE de beats
--- (CombatBeats grava a ordem executada) e o clip corrente do EnemyRenderer.
--- Revertendo as correcoes, cai:
---   * marcacao no Enemy (`_pendingDeath`)        -> 5 fontes sem morte
---   * gate da vitoria (`isReadyForEndScreen`)    -> "vitoria espera a morte" cai
---   * morte no beat do veneno                    -> a morte sai fora de ordem
---
---   love . test_one test_enemy_death
---   love . test_all
-
 local TK = require("tools.testkit")
 local CombatBeats = require("src.systems.CombatBeats")
 local EnemyRenderer = require("src.ui.EnemyRenderer")
@@ -40,8 +14,6 @@ local function countExact(label)
     return n
 end
 
--- Estado limpo de renderizacao: sem isto o clip "death" de um caso anterior
--- ficaria de pe e o proximo bloco passaria sem ter animado nada (falso verde).
 local function freshRenderer()
     EnemyRenderer.resetRun()
 end
@@ -51,8 +23,6 @@ local function animName()
     return st and st.animName
 end
 
--- Um caso de "matou por X": roda `kill(game)` com o trace ligado e cobra os
--- tres sinais da morte encenada.
 local function assertDied(t, who, game)
     t:truthy(who .. ": a morte virou acontecimento na fila ("
         .. CombatBeats.traceString() .. ")", at("enemy.death") ~= nil)
@@ -67,9 +37,6 @@ function M.run()
     local t = TK.new("fim da luta: a morte acontece, depois a vitoria")
     TK.bootstrap()
 
-    -- ========================================================================
-    -- 1. CARTA DE ATAQUE (o unico caminho que ja funcionava — controle)
-    -- ========================================================================
     do
         freshRenderer()
         local g = TK.newRunGame("warrior")
@@ -91,9 +58,6 @@ function M.run()
             iImpact and iDeath and iDeath > iImpact)
     end
 
-    -- ========================================================================
-    -- 2. MAGIA (effect card) — carta que nao e do tipo "attack"
-    -- ========================================================================
     do
         freshRenderer()
         local g = TK.newRunGame("mage")
@@ -113,11 +77,6 @@ function M.run()
         assertDied(t, "dano magico", g)
     end
 
-    -- ========================================================================
-    -- 3. PULSO DE ORBE (fim do turno do jogador — o "mago com as orbes")
-    --    Era o caso mais descoberto: o proprio comentario do endTurn dizia
-    --    "se o pulso matar, isPhaseCleared transiciona no proximo frame".
-    -- ========================================================================
     do
         freshRenderer()
         local g = TK.newRunGame("mage")
@@ -136,9 +95,6 @@ function M.run()
             iPulse and at("enemy.death") and at("enemy.death") >= iPulse)
     end
 
-    -- ========================================================================
-    -- 4. EVOCAR ORBE
-    -- ========================================================================
     do
         freshRenderer()
         local g = TK.newRunGame("mage")
@@ -158,10 +114,6 @@ function M.run()
         assertDied(t, "evocar orbe", g)
     end
 
-    -- ========================================================================
-    -- 5. VENENO (DoT no fim do turno do inimigo) — aritmetica crua, fora do
-    --    takeDamage: e por isso que a marcacao mora no Enemy e nao no caminho.
-    -- ========================================================================
     do
         freshRenderer()
         local g = TK.newRunGame("rogue")
@@ -182,17 +134,9 @@ function M.run()
             iDot and iDeath and iDeath >= iDot)
         t:truthy("a morte vem ANTES de a vez voltar pro jogador",
             iDeath and at("turn.player_ready") and iDeath < at("turn.player_ready"))
-        -- O intent ficou como estava: `enemy.next_intent` nao rolou um golpe
-        -- novo pra quem acabou de cair (o HUD chegava a piscar a intencao de
-        -- um cadaver).
         t:eq("cadaver nao telegrafa o proximo golpe", g.enemy.nextIntent, "defend")
     end
 
-    -- ========================================================================
-    -- 6. ESPINHOS (reflexo no golpe do inimigo) — a leitura mais provavel do
-    --    "quando se buffa": a carta de defesa ARMA um buff `thorn` no jogador
-    --    e quem mata e o reflexo, nao a carta.
-    -- ========================================================================
     do
         freshRenderer()
         local g = TK.newRunGame("warrior")
@@ -218,10 +162,6 @@ function M.run()
             iRef and iDeath and iDeath >= iRef)
     end
 
-    -- ========================================================================
-    -- 7. REDE: morto sem marcacao nenhuma tambem cai na tela
-    --    (fonte futura que mexa na vida por fora do Enemy)
-    -- ========================================================================
     do
         freshRenderer()
         local g = TK.newRunGame("warrior")
@@ -235,11 +175,6 @@ function M.run()
         assertDied(t, "rede (morto sem marcacao)", g)
     end
 
-    -- ========================================================================
-    -- 8. A VITORIA ESPERA A MORTE
-    --    Queixa 2 do dono. O gate vive em Game:isReadyForEndScreen — e aqui
-    --    que se prova que ele SEGURA, e nao so que existe.
-    -- ========================================================================
     do
         freshRenderer()
         local MapManager = require("src.systems.MapManager")
@@ -261,7 +196,6 @@ function M.run()
         CombatBeats.clear()
         g:playSelectedCards()
 
-        -- Amostra frame a frame: em que instante cada coisa vira verdade.
         local dt = 1 / 30
         local frames, deathAtFrame, readyAtFrame = 0, nil, nil
         local victoryTrueAtFrame = nil
@@ -270,7 +204,6 @@ function M.run()
             frames = i
             if g:checkVictory() and not victoryTrueAtFrame then victoryTrueAtFrame = i end
             if g._deathHandled and not deathAtFrame then deathAtFrame = i end
-            -- O relogio da morte corre na cena; aqui reproduzimos o mesmo passo.
             if g._deathPauseTimer and g._deathPauseTimer > 0 then
                 g._deathPauseTimer = math.max(0, g._deathPauseTimer - dt)
             end
@@ -285,7 +218,6 @@ function M.run()
             and readyAtFrame > victoryTrueAtFrame)
         t:truthy("a vitoria so libera DEPOIS de a morte ter acontecido na tela",
             readyAtFrame ~= nil and deathAtFrame ~= nil and readyAtFrame > deathAtFrame)
-        -- Quanto de respiro, em segundos, entre "morreu" e "pode trocar de tela".
         local breath = readyAtFrame and deathAtFrame
             and (readyAtFrame - deathAtFrame) * dt or 0
         t:truthy(string.format(
@@ -297,19 +229,12 @@ function M.run()
             frames > 1)
     end
 
-    -- ========================================================================
-    -- 8b. O RELOGIO DA MORTE VALE PRA VITORIA TAMBEM
-    --     Este e o assert que separa o gate novo do antigo: antes, a vitoria
-    --     so olhava `isBlocking()` e o `_deathPauseTimer` valia so pros
-    --     espolios — a tela final entrava mais cedo que a tela de recompensa
-    --     do inimigo comum, que e exatamente o "rapido demais" do dono.
-    -- ========================================================================
     do
         freshRenderer()
         local g = TK.newRunGame("warrior")
         TK.pump(g, 0.5)
         g.enemy.health = 0
-        CombatBeats.clear()          -- fila vazia: sobra so o relogio da morte
+        CombatBeats.clear()
         TK.pump(g, 0.5)
         g._deathPauseTimer = 0.5
         t:falsy("morte ainda rolando: nenhuma tela de desfecho entra",
@@ -319,9 +244,6 @@ function M.run()
             g:isReadyForEndScreen())
     end
 
-    -- ========================================================================
-    -- 9. INIMIGO COMUM: os espolios esperam a mesma coisa
-    -- ========================================================================
     do
         freshRenderer()
         local g = TK.newRunGame("warrior")
@@ -334,9 +256,6 @@ function M.run()
         g:selectCard(card)
         g:playSelectedCards()
 
-        -- Instante EXATO em que a vida zera: os espolios ja poderiam abrir
-        -- (isPhaseCleared e so "health <= 0") e e justamente aqui que o gate
-        -- tem que segurar — primeiro pela fila de beats, depois pelo relogio.
         local dt = 1 / 30
         local clearedAt
         for i = 1, 300 do
@@ -359,25 +278,13 @@ function M.run()
         t:truthy("a morte ja tinha sido encenada quando abriram", g._deathHandled)
     end
 
-    -- ========================================================================
-    -- 10. MORREU NO MEIO DA RESOLUCAO, COM O CHECKPOINT DA CENA RODANDO
-    --     O TRAVAMENTO de Set/2026 ("matei o boss e o jogo parou, botoes
-    --     cinzas"). Nenhum teste pegava porque nenhum rodava o checkpoint por
-    --     frame da GameplayScene — e era a REPETICAO dele, entre AGENDAR e
-    --     EXECUTAR o beat da morte, que enchia a fila de beats de 1,1s.
-    --     Medido antes da correcao: 11 beats `enemy.death` numa jogada de 2
-    --     cartas (~12s de fila morta); com mais cartas/procs, minutos.
-    -- ========================================================================
     do
         freshRenderer()
         local g = TK.newRunGame("mage")
         TK.pump(g, 0.5)
         g.enemy.maxHealth = 120
-        g.enemy.health = 6      -- morre no MEIO da 1a carta, com a 2a por vir
+        g.enemy.health = 6
 
-        -- Chuva de Meteoros: ataque + 3 canalizacoes de orbe na MESMA carta —
-        -- a carta do log do dono. Os passos de orbe sao o que alonga a janela
-        -- entre o agendamento da morte e a execucao dele.
         local db = g.deckManager.cardDatabase
         local c1 = db:createCardInstance(db:getCard("mage_meteor_strike"))
         local c2 = db:createCardInstance(db:getCard("mage_meteor_strike"))
@@ -391,10 +298,9 @@ function M.run()
         CombatBeats.clear(); CombatBeats.startTrace()
         g:playSelectedCards()
 
-        -- Pump COM o checkpoint da cena, como o jogo de verdade.
         local dt, peak, frames = 1 / 30, 0, 0
         for i = 1, 600 do
-            g:announceDeathIfPending(nil)            -- GameplayScene.update
+            g:announceDeathIfPending(nil)
             if g._deathPauseTimer and g._deathPauseTimer > 0 then
                 g._deathPauseTimer = math.max(0, g._deathPauseTimer - dt)
             end
@@ -419,12 +325,6 @@ function M.run()
             frames * dt <= 6.0)
     end
 
-    -- ========================================================================
-    -- 11. A REDE: cadeia quebrada nao pode deixar o combate ativo pra sempre
-    --     `isBlocking()` e o que segura o jogo INTEIRO. Se a cadeia morrer no
-    --     meio (fila limpa por fora, elo nao empurrado), a sequencia tem que
-    --     se encerrar e AVISAR — travar e muito pior que encerrar cedo.
-    -- ========================================================================
     do
         freshRenderer()
         local g = TK.newRunGame("warrior")
@@ -441,8 +341,6 @@ function M.run()
         TK.pump(g, 0.1)
         t:truthy("combate ativo depois de comecar", g.combatAnimationSystem.active)
 
-        -- SABOTAGEM: a fila some no meio (é o que `CombatBeats.clear` de uma
-        -- batalha nova faz, e o que um elo esquecido causaria).
         CombatBeats.clear()
         TK.pump(g, 0.3)
         t:truthy("logo depois da fila sumir, a rede ainda nao agiu (da tempo)",

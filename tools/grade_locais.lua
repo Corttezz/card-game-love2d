@@ -1,17 +1,3 @@
--- tools/grade_locais.lua
--- GRADE DE CONFERÊNCIA dos lugares da encruzilhada: 5 locais × 6 atos numa
--- imagem só. Roda via: love . grade_locais
---
--- Cada célula é um recorte da encruzilhada RENDERIZADA naquele ato — chão,
--- luz e céu do bioma de verdade, não sprite colado em fundo inventado. É o
--- único jeito honesto de julgar o que o dono pediu ("se atente ao chão"),
--- porque o defeito que ele apontou (grama verde sobre gelo) só aparece
--- quando o pé do lugar encosta no piso da cena.
---
--- Como showFork trava em 3 braços (regra do jogo), a grade usa DUAS
--- encruzilhadas por ato: batalha/descanso/loja e elite/evento. Os pills de
--- UI ficam de fora — aqui o rótulo é da grade, não do jogo.
-
 local M = {}
 
 local WorldRoad = require("src.ui.WorldRoad")
@@ -22,7 +8,6 @@ local ATOS = {
     { 3, "Estrada do Abismo" }, { 4, "Geleira Espectral" },
     { 5, "Pântano da Podridão" }, { 6, "Campos do Crepúsculo" },
 }
--- coluna = { rótulo, conjunto de nós, índice do braço }
 local COLUNAS = {
     { "Batalha",  "a", 1 }, { "Elite", "b", 1 }, { "Evento", "b", 2 },
     { "Descanso", "a", 2 }, { "Loja",  "a", 3 },
@@ -32,11 +17,10 @@ local NOS = {
     b = { { type = "elite" }, { type = "event" }, { type = "battle" } },
 }
 
-local CEL_W, CEL_H = 132, 150     -- recorte por célula, em pixel de tela
-local ESC = 2                     -- ampliação (nearest) na grade
+local CEL_W, CEL_H = 132, 150
+local ESC = 2
 local ESQ, TOPO, GAP = 150, 34, 5
 
--- renderiza uma encruzilhada num canvas e devolve o canvas
 local function cenaDe(ato, conjunto, w, h)
     WorldRoad.clearCache()
     WorldRoad.setBiome(ato)
@@ -51,7 +35,6 @@ local function cenaDe(ato, conjunto, w, h)
         love.graphics.setCanvas(cv)
         love.graphics.clear(0, 0, 0, 1)
         WorldRoad.draw(0, 0, w, h, ato)
-        -- SÓ o composite de luz: os pills da encruzilhada ficam de fora
         WorldRoad.drawLightComposite(0, 0, w, h)
         love.graphics.setCanvas()
     end
@@ -62,7 +45,6 @@ end
 function M.run()
     require("src.ui.PixelCanvas").enableNearest()
     local TW, TH = 1024, 700
-    -- x do centro de cada braço na cena (medido: o fork abre 0.15w por lado)
     local BRACO = { TW * 0.5 - 0.157 * TW, TW * 0.5, TW * 0.5 + 0.157 * TW }
     local Y0 = 300
 

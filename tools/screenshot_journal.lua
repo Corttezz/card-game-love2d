@@ -1,24 +1,3 @@
--- tools/screenshot_journal.lua
--- Capturas do ROTEIRO DA JORNADA (components/RunJournalScreen.lua), versão
--- MAPA À MÃO (Out/2026).
---
---   love . screenshot_journal               → run curta (2 atos), pt_BR e de, 1920x1080 e 1024x768
---   love . screenshot_journal long          → run longa: 6 atos + endless
---   love . screenshot_journal - de          → só o idioma do 3º arg
---   JOURNAL_SIZES=1280x720,640x480          → outros tamanhos
---
--- Sem love.window.setMode: a janela é FALSIFICADA (getWidth/getHeight) e o
--- quadro vai pra um canvas do tamanho pedido (mesmo molde do
--- tools/screenshot_uiscale.lua) — nenhuma janela aparece, e vários tamanhos
--- saem do mesmo processo. A escala de UI é a REAL (k=1.5 em 1080p).
---
--- Saída: tools/preview_out/journal_map/run_journal_<modo>_<WxH>_<loc>[_hover|_closed].png
---
--- Run CURTA: ato 1 fechado (CONQUISTADO) + ato 2 em andamento, com
--- encruzilhadas de 2 e 3 ramos, dois nós só no mapHistory (backfill, sem
--- ramos) e a encruzilhada seguinte em aberto (pendingNodes).
--- Run LONGA: os 6 atos + endless com 11 paradas; exercita a rolagem.
-
 local M = {}
 
 local OUT_DIR = "tools/preview_out/journal_map/"
@@ -33,8 +12,6 @@ local function fakeWindow(w, h)
     end
 end
 
--- Mouse FALSO (nunca love.mouse.setPosition: a janela escondida fica fora do
--- monitor e o cursor REAL do dono, que está jogando, iria junto).
 local fakeMX, fakeMY = -100, -100
 local function fakeMouse()
     local gp, gx, gy = love.mouse.getPosition, love.mouse.getX, love.mouse.getY
@@ -49,7 +26,6 @@ local function savePng(canvas, name)
     local path = OUT_DIR .. name
     local f = io.open(path, "wb")
     if not f then
-        -- pasta ausente: cria pelo Python? Não — avisa e grava no save dir.
         print("[roteiro] nao consegui abrir " .. path .. " (pasta existe?) — gravando no save dir")
         love.filesystem.write(name, fd)
         return
@@ -59,8 +35,6 @@ local function savePng(canvas, name)
     print("[roteiro] " .. path .. " salvo")
 end
 
--- Visita um nó como o jogo visitaria: mapHistory + journalBegin(options, pick)
--- + Note/End. Sem snapOut a entrada fica ABERTA (o círculo vermelho).
 local function visit(rm, act, floor, options, pick, snapIn, snapOut, notes, ev)
     local run = rm.currentRun
     run.actNumber = act
@@ -76,8 +50,6 @@ local function visit(rm, act, floor, options, pick, snapIn, snapOut, notes, ev)
     if snapOut then rm:journalEnd(snapOut) end
 end
 
--- Ids reais do catálogo (carta inventada faria o tooltip avisar e a captura
--- mentir).
 local function pickIds()
     local CardDatabase = require("src.systems.CardDatabase")
     local cards, jokers = {}, {}
@@ -99,7 +71,6 @@ function M.seedShort(rm, cards, jokers)
     local c3 = cards[3] or c1
     local j1 = jokers[1]
 
-    -- dois nós anteriores ao roteiro: só mapHistory (backfill, sem ramos)
     table.insert(run.mapHistory, { actNumber = 1, floorInAct = 1, type = "battle" })
     table.insert(run.mapHistory, { actNumber = 1, floorInAct = 2, type = "battle" })
 
@@ -130,13 +101,10 @@ function M.seedShort(rm, cards, jokers)
     visit(rm, 2, 4, { "battle", "shop" }, 2, { hp = 36, maxHp = 60, gold = 112 }, nil,
         { { kind = "card", id = c3 } })
     run.actNumber, run.floorInAct = 2, 4
-    -- a encruzilhada seguinte, ainda em aberto
     run.pendingNodes = { { type = "event" }, { type = "battle" }, { type = "elite" } }
-    return 2, 2   -- folha/parada do hover (a elite com carta + forja)
+    return 2, 2
 end
 
--- 6 atos completos + endless. Tipos variam por ato pra o mapa não virar
--- papel de parede; ganhos ciclam pelo catálogo; nº de ramos alterna 3/2.
 function M.seedLong(rm, cards, jokers)
     local run = rm.currentRun
     local plans = {
@@ -194,7 +162,6 @@ function M.seedLong(rm, cards, jokers)
             if fl == 8 then hp = math.min(70, hp + 25) end
         end
     end
-    -- Endless: o ato trava em totalActs+1 e o andar cicla 1..8.
     local types = { "battle", "elite", "shop", "battle", "rest", "event", "elite", "boss",
                     "battle", "elite", "battle" }
     for i, t in ipairs(types) do
@@ -210,7 +177,6 @@ function M.seedLong(rm, cards, jokers)
     return 7, 6
 end
 
--- Monta o jogo com a run do cenário. Exposto pros testes.
 function M.setupGame(mode)
     local Game = require("src.core.Game")
     local game = Game:new()
@@ -269,7 +235,6 @@ function M.run(mode, locale)
                 end
                 fakeMX, fakeMY = -100, -100
                 shot("")
-                -- hover numa parada (o detalhe)
                 local L = screen:_layout()
                 local S = L.sheets[hb]
                 local p = S and S.nodes and S.nodes[hn]
@@ -281,7 +246,6 @@ function M.run(mode, locale)
                     print("[roteiro] AVISO: parada alvo do hover nao encontrada")
                 end
                 fakeMX, fakeMY = -100, -100
-                -- todos os atos abertos (acordeão)
                 for i = 1, #screen.acts do if not screen:isActOpen(i) then screen:toggleAct(i) end end
                 screen:keypressed("home")
                 shot("_allopen")

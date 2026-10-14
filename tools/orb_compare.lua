@@ -1,8 +1,3 @@
--- tools/orb_compare.lua
--- UMA imagem comparando o design ATUAL da fileira de orbes com as propostas,
--- no tamanho de uso E ampliado, sobre o fundo real da tela.
--- Existe porque aprovacao de arte se faz OLHANDO, e o dono precisa do arquivo.
---   love . orb_compare  ->  orbes_comparacao.png no save dir
 local M = {}
 
 local ELEMS   = { "lightning", "ice", "fire", "dark", "holy" }
@@ -18,7 +13,7 @@ function M.run()
     local FontManager = require("src.ui.FontManager")
     local Palette = require("src.ui.Palette")
 
-    local SIZE, GAP, Z = 46, 16, 3          -- Z = zoom da imagem inteira
+    local SIZE, GAP, Z = 46, 16, 3
     local COLW = SIZE + GAP
     local W = #ELEMS * COLW + GAP
     local ROWH = SIZE + 62
@@ -38,7 +33,6 @@ function M.run()
         love.graphics.print(txt, GAP, y)
     end
 
-    -- ===== 1: como esta hoje — contorno colorido, interior vazio =====
     titulo("AGORA  (contorno vazio)", 6)
     for i, el in ipairs(ELEMS) do
         local x, y = GAP + (i - 1) * COLW, 24
@@ -64,7 +58,6 @@ function M.run()
         love.graphics.draw(img, x, y, 0, s, s)
     end
 
-    -- ===== 2: gema com o numero POR CIMA =====
     titulo("GEMA  ·  numero sobre a pedra", ROWH + 2)
     for i, el in ipairs(ELEMS) do
         local x, y = GAP + (i - 1) * COLW, ROWH + 20
@@ -75,7 +68,6 @@ function M.run()
             { 1, 1, 1, 1 }, 1.0)
     end
 
-    -- ===== 3: gema com o numero numa placa ABAIXO =====
     titulo("GEMA  ·  numero em placa embaixo", ROWH * 2 + 2)
     for i, el in ipairs(ELEMS) do
         local x, y = GAP + (i - 1) * COLW, ROWH * 2 + 18
@@ -94,7 +86,6 @@ function M.run()
 
     love.graphics.setCanvas()
 
-    -- salva AMPLIADO (o defeito e a leitura, e o dono precisa enxergar)
     local big = love.graphics.newCanvas(cvW * Z, cvH * Z)
     love.graphics.setCanvas(big)
     love.graphics.clear(0.10, 0.08, 0.07, 1)

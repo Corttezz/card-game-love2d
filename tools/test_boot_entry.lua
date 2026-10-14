@@ -1,23 +1,3 @@
--- tools/test_boot_entry.lua
--- ENTRADA v14 (BootScene) + vida ambiente v3 do menu (Out/2026).
---
--- Dono: "as cartas entram coordenadas demais, pouco aleatórias" e "muito
--- mais detalhe e efeitos especiais" no menu. O redemoinho virou física por
--- carta SEMEADA por boot; o menu ganhou feixe da lanterna, poeira no feixe,
--- vinheta respirando, página que levanta, velas que reagem e glint no hover.
---
--- O que trava aqui:
---   • mesma semente → mesmas trajetórias (reprodutível); semente diferente
---     → trajetórias diferentes (não é mais uma curva fixa);
---   • nascimentos NÃO são um metrônomo (intervalos variam);
---   • toda carta é absorvida (nenhuma fica orbitando) e o boot termina;
---   • sem NaN nas poses;
---   • movimento reduzido no boot: nenhuma carta voa, termina do mesmo jeito;
---   • menu em movimento reduzido: dois quadros 0,7 s apart são IDÊNTICOS
---     (cena estática) — e com movimento ligado, não são.
---
---   love . test_one test_boot_entry
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -34,7 +14,6 @@ local function restoreWindow()
     require("src.ui.FontManager").clearCache()
 end
 
--- Roda um boot inteiro com dt fixo; amostra poses em `sampleAt` (splashTime).
 local function runBoot(seed, sampleAt, drawToo)
     local EM = _G.EventManager
     local BootScene = require("src.scenes.BootScene")
@@ -53,7 +32,6 @@ local function runBoot(seed, sampleAt, drawToo)
         local n = BootScene.cardsInFlight()
         maxInFlight = math.max(maxInFlight, n)
         local absorbed = BootScene.absorbedCount()
-        -- nascimento = (em voo + absorvidas) cresceu
         if n + absorbed > prevCount then
             for _ = 1, n + absorbed - prevCount do spawnTimes[#spawnTimes + 1] = BootScene.splashTime() end
             prevCount = n + absorbed
@@ -120,7 +98,6 @@ function M.run()
     local okRun, err = pcall(function()
         fakeWindow(960, 540)
 
-        -- 1. reprodutível por semente; diferente entre sementes
         local a = runBoot(7, 3.0, true)
         local b = runBoot(7, 3.0, false)
         local c = runBoot(8, 3.0, false)
@@ -130,13 +107,11 @@ function M.run()
         t:falsy("semente diferente: poses diferentes", samePoses(a.poses, c.poses))
         t:falsy("sem NaN nas poses", a.nan)
 
-        -- 2. todas absorvidas; nenhuma orbitando no fim
         t:eq("34 cartas nasceram", #a.spawnTimes, 34)
         t:eq("34 cartas absorvidas", a.absorbed, 34)
         t:eq("nenhuma carta no ar no fim", a.inFlightAtEnd, 0)
         t:truthy("duracao total razoavel (< 11 s)", a.t < 11)
 
-        -- 3. nascimentos NAO sao metronomo: intervalos variam
         local gaps, minG, maxG = {}, math.huge, 0
         for i = 2, #a.spawnTimes do
             local g = a.spawnTimes[i] - a.spawnTimes[i - 1]
@@ -146,14 +121,12 @@ function M.run()
         t:truthy(("intervalos de nascimento variam (min %.3f, max %.3f)"):format(minG, maxG),
             maxG - minG > 0.05)
 
-        -- 4. movimento reduzido: nada voa, mas termina
         _G.gameSettings.reducedMotion = true
         local r = runBoot(7, 3.0, false)
         t:truthy("movimento reduzido: boot termina", r.done)
         t:eq("movimento reduzido: nenhuma carta nasce", #r.spawnTimes, 0)
         _G.gameSettings.reducedMotion = false
 
-        -- 5. menu: estatico em movimento reduzido, vivo sem
         local Menu = require("components.Menu")
         local fake = { x = 900, y = 500 }
         require("src.ui.InputFocus").installMouseGate(nil, function() return fake.x, fake.y end)

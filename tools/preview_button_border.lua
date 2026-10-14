@@ -1,15 +1,3 @@
--- tools/preview_button_border.lua
--- Comparação controlada da borda do Button: versão ANTIGA (traço interno
--- quadrado em meio-pixel) vs ATUAL (traço interno seguindo a curva, em pixel
--- inteiro). Nasceu da queixa "o botão Resgatar tem uma borda estranha".
---
--- Desenha as duas na MESMA tela, nos 3 estados que mudam a paleta (normal /
--- hover / disabled), e amplia 6x com nearest — a única forma honesta de julgar
--- 1px de borda (memory/card_feel §v3.1: validar por PIXEL, não por código).
---
--- Roda: love . preview_button_border
--- Saída: button_border_cmp.png no diretório de save do LÖVE.
-
 local M = {}
 
 local Button      = require("components.Button")
@@ -19,8 +7,6 @@ local Palette     = require("src.ui.Palette")
 local ZOOM = 6
 local BW, BH = 150, 34
 
--- Reprodução FIEL do traço interno como era antes do fix (Button.lua:451-454
--- no commit anterior): rectangle("line") QUADRADO, ancorado em .5.
 local function drawLegacyInner(x, y, w, h, border)
     love.graphics.setColor(border[1] * 0.55, border[2] * 0.55, border[3] * 0.55, 0.8)
     love.graphics.rectangle("line", x + 2.5, y + 2.5, w - 5, h - 5)
@@ -47,9 +33,6 @@ function M.run()
             btn.hover    = (state == "hover")
             btn.disabled = (state == "disabled")
             btn:draw()
-            -- Coluna 1 = ANTES: repinta o traço interno legado por cima. A
-            -- borda nova fica embaixo, mas o legado é mais claro e grosso, e
-            -- é exatamente a camada em disputa — é ela que se quer comparar.
             if col == 1 then
                 local c = { Palette.AGED_GOLD[1], Palette.AGED_GOLD[2], Palette.AGED_GOLD[3] }
                 if state == "disabled" then c = { 0.35, 0.32, 0.28 } end
@@ -59,7 +42,6 @@ function M.run()
     end
     love.graphics.setCanvas()
 
-    -- Amplia com nearest pra inspeção 1:ZOOM.
     local W, H = canvas:getWidth() * ZOOM, canvas:getHeight() * ZOOM
     local big = love.graphics.newCanvas(W, H)
     big:setFilter("nearest", "nearest")

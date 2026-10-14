@@ -1,16 +1,3 @@
--- tools/test_scribe_dice.lua
--- Trava do mini-jogo DADOS DO ESCRIBA (Out/2026):
---   1. odds CONTADAS batem com a regra e o EV fica justo (0,9..1,1) —
---      se alguém mexer no pagamento e a aposta virar mina ou imposto, vermelho;
---   2. as fichas escalam por ato e são pares (pagamento inteiro);
---   3. UMA jogada por loja: a segunda é recusada, e a próxima loja libera;
---   4. ouro cobrado/pago certo; mesma seed → mesmos dados (stream "shop");
---   5. o resultado SOBREVIVE a salvar-e-carregar (anti save-scum): a mesa
---      volta usada e com a mesma soma, sem novo sorteio;
---   6. layout da tela sem sobreposição em 6 tamanhos, e a tela abre/rola/
---      fecha headless sem erro.
---   love . test_one test_scribe_dice
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -20,7 +7,6 @@ function M.run()
     TK.bootstrap()
     local ScribeDice = require("src.systems.ScribeDice")
 
-    -- ===== 1) odds e EV =====
     t:near("Baixo = 15/36", ScribeDice.chance("low"), 15 / 36, 1e-9)
     t:near("Sete = 6/36", ScribeDice.chance("seven"), 6 / 36, 1e-9)
     t:near("Alto = 15/36", ScribeDice.chance("high"), 15 / 36, 1e-9)
@@ -29,7 +15,6 @@ function M.run()
         t:truthy(("EV de %s justo (%.3f em 0,9..1,1)"):format(id, ev), ev >= 0.9 and ev <= 1.1)
     end
 
-    -- ===== 2) fichas =====
     local a1, a6 = ScribeDice.stakes(1), ScribeDice.stakes(6)
     t:eq("3 fichas", #a1, 3)
     local pares, crescem = true, true
@@ -43,7 +28,6 @@ function M.run()
     t:truthy("fichas pares (pagamento x2,5 inteiro)", pares)
     t:truthy("fichas crescem do ato 1 ao 6", crescem)
 
-    -- ===== 3/4) jogada =====
     local g = TK.newRunGame("warrior")
     local rm, eco = g.runManager, g.economySystem
     local run = rm.currentRun
@@ -62,7 +46,6 @@ function M.run()
     local st2, why = ScribeDice.roll(run, eco, "low", stake)
     t:truthy("segunda jogada na MESMA loja recusada", st2 == nil and why == "used")
 
-    -- determinismo: mesma seed → mesma soma
     TK.seedRng(4242)
     local run2 = { actNumber = 1, floorInAct = 1, mapHistory = {} }
     local eco2 = { currentGold = 100, canAfford = function(s, n) return s.currentGold >= n end,
@@ -71,7 +54,6 @@ function M.run()
     local again = ScribeDice.roll(run2, eco2, "high", stake)
     t:eq("mesma seed, mesma soma", again and again.sum, st.sum)
 
-    -- ouro curto: recusa sem cobrar
     local run3 = { actNumber = 1, floorInAct = 2, mapHistory = {} }
     eco2.currentGold = stake - 1
     local poor, whyPoor = ScribeDice.roll(run3, eco2, "high", stake)
@@ -79,7 +61,6 @@ function M.run()
     t:eq("sem ouro: nada cobrado", eco2.currentGold, stake - 1)
     t:truthy("ficha inválida recusada", select(2, ScribeDice.canRoll(run3, eco2, "high", 7)) == "bad_stake")
 
-    -- ===== 5) save/load =====
     g:checkpointRun()
     local soma, ouro = st.sum, eco.currentGold
     local RunManager = require("src.systems.RunManager")
@@ -92,12 +73,10 @@ function M.run()
     local again2, whyAgain = ScribeDice.roll(rm2.currentRun, eco, "seven", stake)
     t:truthy("depois de carregar não há segunda jogada", again2 == nil and whyAgain == "used")
 
-    -- próxima loja (outro nó): libera
     run.mapHistory = run.mapHistory or {}
     table.insert(run.mapHistory, { type = "shop" })
     t:falsy("nó seguinte: mesa livre de novo", ScribeDice.isUsed(run))
 
-    -- ===== 6) tela =====
     local Screen = require("components.ScribeDiceScreen")
     local sizes = { { 800, 600 }, { 1024, 768 }, { 1280, 720 }, { 1366, 768 }, { 1920, 1080 }, { 2560, 1440 } }
     for _, s in ipairs(sizes) do
@@ -116,7 +95,6 @@ function M.run()
     t:falsy("fechou", scr:isVisible())
     t:truthy("a tela gravou a jogada no nó", ScribeDice.isUsed(run))
 
-    -- ===== 7) "?" explica os dados (conversa do corvo sob demanda) =====
     local Tutorial = require("src.systems.Tutorial")
     Tutorial._reset()
     local scr2 = Screen:new()
@@ -130,7 +108,6 @@ function M.run()
     t:eq("Y do controle (tecla e) tambem abre", Tutorial.activeId(), "dice_help")
     Tutorial._reset()
     scr2:hide()
-    -- O texto nao pode mentir sobre os numeros da regra (todos os idiomas).
     local I18n = require("src.i18n.I18n")
     local cur = I18n.getLocale()
     local lowPct = math.floor(ScribeDice.chance("low") * 100 + 0.5)

@@ -1,18 +1,3 @@
--- tools/leak_probe.lua
--- SONDA DE VAZAMENTO (Out/2026): roda runs do piloto em sequencia no MESMO
--- processo (como a bateria de balanceamento) e, depois de cada run, mede:
---   • heap Lua apos collect completo;
---   • memoria de textura + contagem de canvases/imagens (love.graphics.getStats);
---   • filas do EventManager;
---   • um CENSO do grafo alcancavel a partir de package.loaded/_G/registry
---     (atravessando upvalues de funcoes e metatables), com o caminho de cada
---     tabela grande — a diferenca entre dois censos aponta QUEM cresce.
---
---   love . leak_probe [runs] [classe] [seedBase] [politica]
---
--- Saida em tempo real (flush por linha) em <save dir>/leak_probe.log — o stdout
--- do lovec redirecionado e bufferizado em blocos.
-
 local M = {}
 
 local logf
@@ -22,8 +7,6 @@ local function out(fmt, ...)
     if logf then logf:write(line, "\n"); logf:flush() end
 end
 
--- Censo: BFS do grafo alcancavel. Devolve { total = n, paths = {path = size} }
--- onde paths guarda o numero de entradas diretas de cada tabela com >= minSize.
 function M.census(minSize)
     minSize = minSize or 200
     local seen = setmetatable({}, { __mode = "k" })
@@ -81,7 +64,6 @@ function M.census(minSize)
     return { total = total, paths = paths, ud = udTypes }
 end
 
--- Working set / commit privado do proprio processo (Windows, via FFI).
 local wsMB
 do
     local okF, ffi = pcall(require, "ffi")
@@ -135,7 +117,6 @@ function M.snapshot()
     }
 end
 
--- Marca cada evento com o lugar que o criou (primeiro frame fora do engine/).
 local function tagEventSites()
     local EM = _G.EventManager
     local orig = EM.add
@@ -179,7 +160,6 @@ function M.run(runsArg, classArg, seedArg, policyArg)
 
     local Autoplay = require("tools.balance_sim").setup(policyArg or "v6")
     tagEventSites()
-    -- quem cria objetos graficos/de dados durante a run (por origem)
     local created = {}
     M.created = created
     for _, fname in ipairs({ "newCanvas", "newImage", "newText", "newMesh", "newSpriteBatch",
@@ -201,7 +181,6 @@ function M.run(runsArg, classArg, seedArg, policyArg)
             return orig(...)
         end
     end
-    -- amostra NO MEIO da run (sem collect): heap Lua vivo+lixo x textura
     if os.getenv("LEAK_MIDRUN") then
         local EM, n, upd = _G.EventManager, 0, _G.EventManager.update
         local peak = 0

@@ -1,6 +1,3 @@
--- tools/probe_locale_keys.lua: chaves presentes em pt_BR e ausentes em cada
--- outro idioma (texto que cai no fallback = "não traduzido").
--- love . test_one probe_locale_keys
 local M = {}
 local function flatten(t, prefix, out)
     for k, v in pairs(t) do

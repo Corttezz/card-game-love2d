@@ -1,23 +1,3 @@
--- tools/test_instant_parity.lua
--- PARIDADE do relogio instantaneo (tools/instant_engine.lua) com o relogio de
--- quadros do piloto: as MESMAS seeds, jogadas pelas MESMAS decisoes, tem que
--- produzir o MESMO jogo — vida, escudo, mana, intent, status, mao, ouro e o
--- estado exato dos 6 streams do Rng, no inicio de cada turno de cada
--- batalha — e o mesmo resultado final.
---
--- Por que o teste existe: o instant_engine so vale se "mais rapido" nao
--- significar "outro jogo". Qualquer coisa cosmetica que contamine regra
--- (random global alimentando embaralhamento, animacao que aplica dano fora
--- de ordem, timeout de beat disparando cedo) aparece aqui como divergencia
--- no primeiro turno em que o estado se separa — com a linha exata.
---
--- Tambem cobre DETERMINISMO: a mesma seed duas vezes no relogio instantaneo
--- da o mesmo traco, e seeds diferentes dao tracos diferentes (senao a seed
--- nao estaria mandando em nada).
---
---   love . test_one test_instant_parity
---   PARITY_BATTLES=12 PARITY_SEEDS=3 love . test_one test_instant_parity   (mais fundo)
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -34,7 +14,6 @@ local function playTraced(Autoplay, class, seed, maxBattles)
     local trace = Autoplay.traceSink
     Autoplay.traceSink = nil
     if not ok then return nil, tostring(rec) end
-    -- resultado final tambem entra no traco
     trace[#trace + 1] = ("END %s floors=%d hp=%d gold=%d deck=%d"):format(
         tostring(rec.outcome), rec.floors or 0, rec.hpEnd or -1, rec.gold or -1,
         rec.deck and #rec.deck or -1)
@@ -52,14 +31,11 @@ local function body()
     local t = TK.new("relogio instantaneo: paridade com o relogio de quadros")
     TK.bootstrap()
     local BS = require("tools.balance_sim")
-    -- AVERAGE (heuristica, sem simulacao de deck): o teste mede o RELOGIO, nao
-    -- o cerebro; o piloto por simulacao faria cada run custar minutos no
-    -- relogio de quadros.
     local Autoplay = BS.setup("average")
     local Instant = require("tools.instant_engine")
     local CombatBeats = require("src.systems.CombatBeats")
     local savedSpeed, savedDt = CombatBeats.speed, Autoplay.pumpDt
-    CombatBeats.speed = 1.0     -- o relogio de quadros no ritmo REAL do jogo
+    CombatBeats.speed = 1.0
     Autoplay.pumpDt = nil
 
     local maxBattles = tonumber(os.getenv("PARITY_BATTLES") or "5") or 5
@@ -90,7 +66,6 @@ local function body()
                     print("    instante: " .. tostring(lb))
                 end
                 t:check(label .. ": traco identico em " .. #a .. " turnos", i == nil)
-                -- determinismo do relogio instantaneo
                 local c = playTraced(Autoplay, class, seed, maxBattles)
                 local j = c and firstDiff(b, c)
                 t:check(label .. ": mesma seed duas vezes = mesmo jogo", c ~= nil and j == nil)
@@ -98,7 +73,6 @@ local function body()
         end
     end
 
-    -- seed diferente muda o jogo (senao a seed nao manda em nada)
     do
         Instant.install(Autoplay)
         local a = playTraced(Autoplay, "warrior", 880001 + 7, maxBattles)
@@ -108,10 +82,6 @@ local function body()
 
     print(("  tempo: quadros %.2fs x instantaneo %.2fs (x%.1f)"):format(
         tFrames, tInstant, tFrames / math.max(1e-6, tInstant)))
-    -- Tempo e BENCHMARK, nao trava: com outras suites em paralelo a medida
-    -- oscila (0,83 s x 1,28 s numa rodada de 3 suites) e a asserção flipava.
-    -- A paridade (acima) e o que o teste garante; throughput mora no
-    -- tools/balance.py (runs/s/core no rodape do relatorio).
     if tInstant > tFrames then
         print(("  AVISO: instantaneo %.2fs > quadros %.2fs nesta rodada (carga da maquina?)")
             :format(tInstant, tFrames))
@@ -123,8 +93,6 @@ local function body()
     return t:done()
 end
 
--- Os stubs do balance_sim.setup() sao desfeitos mesmo se o corpo falhar:
--- as suites seguintes do test_all rodam no mesmo processo.
 function M.run()
     local ok, res = pcall(body)
     require("tools.balance_sim").teardown()

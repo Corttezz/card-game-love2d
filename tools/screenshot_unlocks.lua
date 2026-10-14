@@ -1,13 +1,3 @@
--- tools/screenshot_unlocks.lua
--- Capturas da META-PROGRESSÃO (UnlockSystem):
---   unlocks_reveal_mid.png   — tela de derrota com a barra de maestria enchendo
---   unlocks_reveal_end.png   — mesma tela com cartas/classe já reveladas
---   unlocks_victory_end.png  — vitória (vários níveis + classe nova)
---   unlocks_collection.png   — Coleção de um perfil novo (maioria "?")
---   unlocks_collection_hover.png — tooltip de carta bloqueada
--- Roda: love . screenshot_unlocks
--- Perfil é FALSO (ProfileStats._swapForTests) — nada toca o disco.
-
 local M = {}
 
 local function capture(name)
@@ -31,7 +21,6 @@ function M.run()
     local EndScreens = require("src.scenes.EndScreens")
     UnlockSystem.setOverrideAll(false)
 
-    -- ===== 1) Derrota no ato 2: sobe 1 nível, libera pacote + mago =====
     local prev = ProfileStats._swapForTests({ runs = 0 })
     UnlockSystem.ensure()
     local Game = require("src.core.Game")
@@ -39,7 +28,7 @@ function M.run()
     game:startNewRun("warrior")
     game:startGame()
     game.score = 3120
-    UnlockSystem.onBossDefeated(2, game)   -- mago libera no meio da run
+    UnlockSystem.onBossDefeated(2, game)
     game.unlockResult = UnlockSystem.onRunEnded({
         classId = "warrior", victory = false, actNumber = 3, floorInAct = 2 })
 
@@ -58,7 +47,6 @@ function M.run()
     UnlockReveal.finish()
     run(EndScreens.drawGameOver, 0.6, "unlocks_reveal_end.png")
 
-    -- ===== 2) Vitória: vários níveis + ladino =====
     game.unlockResult = UnlockSystem.onRunEnded({
         classId = "warrior", victory = true, actNumber = 3, floorInAct = 8 })
     run(EndScreens.drawVictory, 0.2, "unlocks_victory_start.png")
@@ -66,7 +54,6 @@ function M.run()
     run(EndScreens.drawVictory, 0.6, "unlocks_victory_end.png")
     UnlockReveal.dtOverride = nil
 
-    -- ===== 3) Coleção de perfil novo =====
     ProfileStats._swapForTests({ runs = 0 })
     UnlockSystem.ensure()
     for _, id in ipairs({ "warrior_strike", "warrior_defend", "warrior_bash",
@@ -88,7 +75,6 @@ function M.run()
     screen:draw()
     capture("unlocks_collection.png")
 
-    -- hover numa carta bloqueada (procura a 1ª oculta+bloqueada visível)
     local W = love.graphics.getWidth()
     local ox = (W - (5 * 128 + 4 * 18)) / 2
     for i, inst in ipairs(screen.filtered) do

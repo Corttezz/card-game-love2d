@@ -1,11 +1,3 @@
--- tools/jsonlite.lua
--- Encoder JSON minimo pros registros da bateria de balanceamento
--- (tools/balance_sim.lua → tools/balance.py). So ENCODE: quem le e o Python.
---
--- Regras: tabela com [1] ou vazia = array; senao objeto com chaves em string
--- (chave numerica vira "n"). NaN/inf viram null. Chaves ordenadas pra saida
--- estavel (diff de dois relatorios da mesma seed e vazio).
-
 local J = {}
 
 local function esc(s)

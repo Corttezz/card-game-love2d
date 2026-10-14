@@ -1,97 +1,23 @@
--- tools/autoplay.lua
--- PILOTO DE IA v5: joga o jogo de verdade, sozinho, pelos MESMOS sistemas do
--- jogador (Game:selectCard/playSelectedCards/enemyTurn, RunManager:chooseNode,
--- ShopSystem, Events.apply, forja) — e escreve um DIARIO de tudo que decidiu
--- e por que, mais metricas de experiencia por run.
---
---   love . autoplay [runs] [classe|all]
---   ex: love . autoplay 2 all      → 2 runs por classe (6 runs)
---       love . autoplay 3 warrior  → 3 runs de guerreiro
---
--- Saida: autoplay_report.md no save dir (~/Library/Application Support/LOVE/
--- card-game/). O relatorio e o insumo pra analise de game feel: decisoes
--- reais vs automaticas, causa das mortes, curva de HP/ouro, uso de cura,
--- combos, duracao de batalhas.
---
--- v5 (rebalance Jul/2026, plano pilot_changes V5.1-V5.16):
---   V5.1  loja com whitelist de upgrades reais + mana_upgrade prioridade maxima
---   V5.2  cerebro de orbes (channel juntos, dark segurado, evoke com proposito)
---   V5.3  simulador de lethal FIEL ao pipeline do Game (inclui P0.9 max-mult)
---   V5.4  dano gratis (poison liq. da armor do DEFEND + pulso) desconta antes
---   V5.5  turno em 2 fases: MOTOR (draw/mana sozinhas) → BATCH unico (combos)
---   V5.6  gate de cura anti-desperdicio (missing >= 0.6*cura efetiva)
---   V5.7  weak como defesa virtual (25% do golpe anunciado)
---   V5.8  passo SCALING quando a batalha vai ser longa (>= 4 turnos)
---   V5.9  forja por score (copias x ciclos / custo x ganho real x arquetipo)
---   V5.10 reroll de loja (ate 2x) quando a vitrine nao vale
---   V5.11 bancada de coringas: pontua e ativa o top via Game:setJokerActive
---   V5.12 defesa como alocacao de sobra + modo emergencia
---   V5.13 politica de caixa (reserva p/ juros; libera perto do boss)
---   V5.14 canElite com dano/turno MEDIDO (byAct) em vez de face value
---   V5.16 tripwires no diario (foco A3, jokers mult, thorn/turno)
---
--- IMPORTANTE: roda com _G.HEADLESS_TOOL (main.lua) — perfil real intocado.
-
 local M = {}
 
--- Politica de batalha: "v6" (busca, tools/balance_ai.lua) ou "v5" (passos
--- heuristicos, mantida pra A/B de qualidade do piloto).
 M.policy = "v6"
--- Diario detalhado (uma linha por turno). Desligado pelas baterias grandes
--- (tools/balance_sim.lua) — o relatorio delas e agregado.
 M.quiet = false
 
--- ============================================================
--- PILOTOS (Out/2026, pipeline de balanceamento): o mesmo harness joga com
--- tres niveis de jogador, e cada nivel e um PERFIL de decisoes (dado, nao
--- codigo espalhado). O relatorio compara os tres com as bandas-alvo de
--- memory/sts_difficulty_targets.md.
---   combat : "naive" (soca o que der, ignora o intent) | "steps" (passos
---            heuristicos v5: lethal > cura > emergencia > dano > defesa) |
---            "search" (v6: busca sobre os subconjuntos da mao, balance_ai)
---   build  : "greedy" (pega sempre uma carta, a mais rara/cara) | "v5"
---            (raridade + afinidade + arquetipo; so pula com deck > 18 e
---            carta comum — o jogador que "pega sempre algo") | "normal"
---            (mesmo score, mas pula quando o score fica abaixo de uma barra
---            que sobe `pickBar` por carta acima de 6 — pega ~60-70% das
---            ofertas; tira carta na loja a partir de `trimAt`) | "heuristic"
---            (AI.wantsCard: entra quem melhora a media do deck, margem
---            cresce com o tamanho) | "sim" (v6: joga as proximas lutas com
---            e sem a carta — o jogador que SENTE o deck inchar)
---   path   : "random" | "heuristic" (vida/ouro/elite compensa)
---   shop   : "impulsive" (compra o primeiro que cabe) | "policy" (reserva de
---            caixa, servicos, reroll, forja por score)
---   rest   : "always_rest" | "policy" (cura abaixo do limiar, senao forja)
---   event  : "first" (primeira opcao) | "policy" (valor esperado por chave)
---   bench  : coringas na bancada otimizados (true) ou ativados na ordem
---            em que chegaram (false)
--- Os nomes legados (v5, v6, v6b, v6c) continuam valendo pros A/B antigos.
--- ============================================================
 M.PILOTS = {
     naive = { combat = "naive", build = "greedy", path = "random", shop = "impulsive",
         rest = "always_rest", event = "first", bench = false },
-    -- AVERAGE = o jogador NORMAL (Out/2026, pedido do lead): pega ~60-70% das
-    -- cartas (a barra sobe com o deck: `pickBar` por carta acima de 6), usa a
-    -- raridade/afinidade da oferta, tira uma carta na loja a partir de
-    -- `trimAt` cartas, forja na fogueira quando esta de vida (rest=policy).
     average = { combat = "steps", build = "normal", path = "heuristic", shop = "policy",
         rest = "policy", event = "policy", bench = true,
         pickBase = 0, pickBar = 0.35, shopCards = 1, trimAt = 12 },
-    -- O average antigo ("pega sempre algo"; so pula com deck > 18 e carta
-    -- comum) fica como referencia do que o jogo faz com um deck de 18-19.
     average_v5 = { combat = "steps", build = "v5", path = "heuristic", shop = "policy",
         rest = "policy", event = "policy", bench = true },
     expert = { combat = "search", build = "sim", path = "heuristic", shop = "policy",
         rest = "policy", event = "policy", bench = true },
-    -- EXPERT sem a simulacao de deck (deck por heuristica): ~20x mais barato,
-    -- pra baterias grandes e pro sweep de knobs.
     expert_fast = { combat = "search", build = "heuristic", path = "heuristic", shop = "policy",
         rest = "policy", event = "policy", bench = true, buildMargin = 2.0 },
-    -- O v6 original, sem pre-filtro e com 2 replays por luta (referencia).
     expert_full = { combat = "search", build = "sim", path = "heuristic", shop = "policy",
         rest = "policy", event = "policy", bench = true, simPerFight = 2, simCandidates = 99 },
 }
--- legados → perfil
 M.PILOTS.v6 = M.PILOTS.expert
 M.PILOTS.v5 = M.PILOTS.average_v5
 M.PILOTS.v6c = { combat = "search", build = "v5", path = "heuristic", shop = "policy",
@@ -99,9 +25,6 @@ M.PILOTS.v6c = { combat = "search", build = "v5", path = "heuristic", shop = "po
 M.PILOTS.v6b = { combat = "steps", build = "sim", path = "heuristic", shop = "policy",
     rest = "policy", event = "policy", bench = true }
 
--- Perfil ativo: M.policy e um nome de M.PILOTS (ou um perfil inline em
--- M.profile). Nome desconhecido AVISA e cai no expert (fallback silencioso e
--- proibido).
 local function prof()
     if M.profile then return M.profile end
     local p = M.PILOTS[M.policy]
@@ -118,8 +41,6 @@ function M.setPilot(name)
 end
 M.pilotName = function() return M.policy end
 
--- A/B por METADE do cerebro: "v6c" = combate v6 + deck v5; "v6b" = deck v6 +
--- combate v5. Sem separar, uma melhora numa metade escondia a piora da outra.
 local function v6Combat() return prof().combat == "search" end
 local function v6Build() return prof().build == "sim" end
 local function naiveCombat() return prof().combat == "naive" end
@@ -131,12 +52,8 @@ local MapManager   = require("src.systems.MapManager")
 local TagSystem    = require("src.systems.TagSystem")
 local ComboSystem  = require("src.systems.ComboSystem")
 
--- ============================================================
--- Diario
--- ============================================================
-
 local report = {}
-local anomalies = {}   -- invariantes violadas (o "grito" que faltou no bug do escudo)
+local anomalies = {}
 local function anomaly(fmt, ...)
     local line = select("#", ...) > 0 and fmt:format(...) or fmt
     table.insert(anomalies, line)
@@ -149,16 +66,6 @@ local function log(fmt, ...)
     table.insert(report, line)
 end
 
--- ============================================================
--- Helpers de simulacao
--- ============================================================
-
--- FX de APRESENTACAO (texto flutuante, particulas, faixa de combo, cometas de
--- orbe, moedas) so esvaziam no update deles, que o love.update/HUD chama todo
--- frame. O piloto nao desenha nem chama esses updates: sem esvaziar aqui, cada
--- batalha simulada empilhava ~100 mil particulas presas a cartas (e, por elas,
--- Games inteiros) e a bateria longa chegava a 9 GB. Nenhuma regra do jogo le
--- esses singletons — limpar e invisivel pro resultado.
 local function drainPresentation()
     require("src.ui.FloatingText").clear()
     require("src.systems.CardParticles").clear()
@@ -169,29 +76,17 @@ end
 M.drainPresentation = drainPresentation
 
 local function pump(game, secs)
-    -- RELOGIO PLUGAVEL (Out/2026): tools/instant_engine.lua troca o avanco por
-    -- quadros por um dreno em saltos (mesma regra, fila ate esvaziar). Quem
-    -- instala e balance_sim/testes; sem pumpImpl o relogio de quadros abaixo
-    -- continua sendo o padrao (e o caminho que o teste de paridade compara).
     if M.pumpImpl then return M.pumpImpl(game, secs) end
     drainPresentation()
-    -- TURBO (Out/2026): a bateria pode avancar o relogio em passos maiores
-    -- (M.pumpDt, ver balance_sim BALANCE_TURBO) — a regra nao depende do
-    -- tempo, so a animacao; menos iteracoes = bateria mais rapida.
     local dt = M.pumpDt or (1 / 30)
     for _ = 1, math.max(1, math.floor(secs / dt + 1e-6)) do
         EventManager.update(dt)
         if game.combatAnimationSystem and game.combatAnimationSystem.update then
             game.combatAnimationSystem:update(dt)
         end
-        -- Enemy.attackCooldown decrementa em update(dt) — sem bombear isso o
-        -- inimigo trava em cooldown eterno e a batalha congela (1a rodada de
-        -- autoplay pegou exatamente esse sintoma).
         if game.enemy and game.enemy.update then
             game.enemy:update(dt)
         end
-        -- Investida do inimigo: o dano e aplicado no APEX via
-        -- EnemyRenderer.update — sem bombear, o hit nunca acontece.
         do
             local okER, ER = pcall(require, "src.ui.EnemyRenderer")
             if okER and ER.update then ER.update(dt) end
@@ -199,11 +94,6 @@ local function pump(game, secs)
     end
 end
 
--- Assinatura do estado de REGRA (nada visual): vida/escudo/mana dos dois
--- lados, intent anunciado, status do inimigo, buffs do jogador, mao em ordem,
--- ouro e o estado EXATO dos 6 streams do Rng. E o que o teste de paridade
--- compara entre relogios — se algo cosmetico contaminasse a regra, aparece
--- aqui como divergencia.
 function M.stateSignature(game, label, turn, kind, value)
     local p, e = game.player, game.enemy
     local hand = {}
@@ -279,18 +169,6 @@ local function getFocus(p)
     return (p.getBuffStacks and p:getBuffStacks("focus")) or 0
 end
 
--- ============================================================
--- V5.3: SIMULADOR DE VALOR FIEL — replica computeCardValue do Game na ordem
--- EXATA: applyCardEffects (bonus_self/multi_hit, na ordem do card.effects)
--- → statBonus (scaling conta o stat em DOBRO) → ComboSystem.applyToCardValue
--- (modulo REAL, com o ctx do conjunto) → jokers com a regra P0.9
--- largest-multiplier-wins (flats somam TODOS) → edition (foil +5 / holo x1.2
--- / poly x1.5) → Red seal x2 → floor. O MESMO simulador serve o lethal e o
--- sort de valor/mana — o bot nunca mais superestima com produto em cadeia.
--- ============================================================
-
--- Melhor multiplicador + soma dos flats dos jokers ATIVOS (espelho fiel de
--- EffectSystem:applyJokerEffects pos-P0.9).
 local function jokerMods(game, ctype)
     local bestMult, flat = nil, 0
     for _, joker in ipairs(game.jokerSlots or {}) do
@@ -315,7 +193,6 @@ local function jokerMods(game, ctype)
     return bestMult or 1, flat
 end
 
--- Contexto de combos REAL para um conjunto (usa TagSystem+ComboSystem do jogo).
 local function buildCtx(set)
     local ctx = { allSelectedCards = set, tagCounts = TagSystem.countAllTags(set) }
     ComboSystem.detect(ctx)
@@ -329,7 +206,6 @@ local function withCard(set, extra)
     return out
 end
 
--- Valor final de UMA carta attack/defense dentro de um conjunto (ctx).
 local function simulateCardValue(game, card, ctx)
     local base, stat, scalingType
     if card.type == "attack" then
@@ -345,7 +221,6 @@ local function simulateCardValue(game, card, ctx)
     end
     if base <= 0 then return 0 end
     local v = base
-    -- 1. applyCardEffects (ordem do proprio card.effects, como no EffectSystem)
     for _, e in ipairs(card.effects or {}) do
         if e.type == "damage_bonus_self" and card.type == "attack" then
             v = v + (e.value or 1)
@@ -353,28 +228,21 @@ local function simulateCardValue(game, card, ctx)
             v = v * math.max(1, e.value or 1)
         end
     end
-    -- 2. statBonus (scaling = stat em DOBRO, fonte unica processCardInCombat)
     local s = stat
     for _, e in ipairs(card.effects or {}) do
         if e.type == scalingType then s = s * 2; break end
     end
     v = v + s
-    -- 3. combos (modulo real do jogo)
     if ctx then v = ComboSystem.applyToCardValue(card, v, ctx) end
-    -- 4. jokers: P0.9 largest-multiplier-wins + flats somam
     local mult, flat = jokerMods(game, card.type)
     v = v * mult + flat
-    -- 5. edition
     if card.edition == "foil" then v = v + 5
     elseif card.edition == "holo" then v = v * 1.2
     elseif card.edition == "polychrome" then v = v * 1.5 end
-    -- 6. Red seal
     if card.seal == "Red" then v = v * 2 end
     return math.floor(v)
 end
 
--- Ordem de jogada dentro da leva (V5.2: debuff → scaling → channel → resto →
--- ataques → evoke; channel SEMPRE antes de evoke).
 local function playRank(c)
     if hasEffect(c, "apply_debuff") then return 0 end
     if hasEffect(c, "gain_strength") or hasEffect(c, "gain_dexterity")
@@ -394,19 +262,14 @@ local function sortedForPlay(set)
     return out
 end
 
--- Dano de evocar um orb (com foco), espelho de _evokeOrbEffect.
 local function evokeDmgOfOrb(orb, focus)
     local v = (orb.value or 1) + focus
     if orb.type == "lightning" then return v
     elseif orb.type == "dark" then return v * 2
     elseif orb.type == "fire" then return v end
-    return 0  -- ice/holy nao causam dano
+    return 0
 end
 
--- Dano TOTAL simulado de um conjunto: ataques (simulador fiel) + magic_damage
--- + evokes (fila FIFO simulada, incluindo channels do proprio set e overflow)
--- + x1.5 de vulnerable quando o PROPRIO set inclui o applier (debuffs jogam
--- primeiro na ordenacao, entao TODO o dano posterior amplifica).
 local function simulateSetDamage(game, set)
     if #set == 0 then return 0 end
     local p = game.player
@@ -418,7 +281,6 @@ local function simulateSetDamage(game, set)
             if hasDebuffEffect(c, "vulnerable") then vuln = true; break end
         end
     end
-    -- copia da fila de orbes (evoke/channel do set mudam o estado)
     local orbs = {}
     for _, o in ipairs(p.orbs or {}) do
         orbs[#orbs + 1] = { type = o.type, value = o.value }
@@ -427,7 +289,7 @@ local function simulateSetDamage(game, set)
     local total = 0
     local function addDmg(d)
         if d > 0 then
-            if vuln then d = math.floor(d * 1.5) end  -- Enemy:takeDamage aplica antes da armor
+            if vuln then d = math.floor(d * 1.5) end
             total = total + d
         end
     end
@@ -440,7 +302,6 @@ local function simulateSetDamage(game, set)
                 addDmg(e.value or 0)
             elseif e.type == "channel_orb" then
                 if #orbs >= slots then
-                    -- overflow FIFO: orb mais antigo evoca automaticamente
                     addDmg(evokeDmgOfOrb(table.remove(orbs, 1), focus))
                 end
                 orbs[#orbs + 1] = { type = e.orbType or "lightning", value = e.value or 1 }
@@ -458,17 +319,9 @@ local function simulateSetDamage(game, set)
     return total
 end
 
--- V5.4: dano GRATIS que chega neste turno sem jogar carta nenhuma:
---   poison liquido = stacks - armor prevista do intent DEFEND congelado
---   (veneno e ABSORVIDO pela armor do inimigo em Enemy:onTurnEnd — a armor
---   do defend e ganha ANTES do tick; sem o desconto o bot superestimava
---   sempre que o inimigo telegrafava DEFEND)
---   + pulso passivo dos orbes (orbPassiveTick no fim do turno do jogador).
 local function freeDamageThisTurn(game)
     local enemy = game.enemy
     local poison = enemy:hasStatus("poison") and enemy:getStatusStacks("poison") or 0
-    -- DoT ignora a armadura do inimigo (Out/2026, Enemy:_applyDot): o
-    -- bloqueio do intent nao desconta mais o veneno.
     local freePoison = poison
     local p = game.player
     local focus = getFocus(p)
@@ -481,8 +334,6 @@ local function freeDamageThisTurn(game)
     return freePoison + pulse, freePoison, pulse
 end
 
--- Cura efetiva de uma carta (instant_heal x heal_multiplier de jokers, com
--- floor — mesma conta do EffectSystem pos-P2.4).
 local function healValue(game, card)
     local v = 0
     for _, e in ipairs(card.effects or {}) do
@@ -498,8 +349,6 @@ local function healValue(game, card)
     return math.floor(v * mult)
 end
 
--- V5.6: gate de cura — so joga se missingHP >= 60% da cura efetiva.
--- Vale em QUALQUER passo, inclusive sobra.
 local function healPassesGate(game, card)
     local v = healValue(game, card)
     if v <= 0 then return false end
@@ -507,8 +356,6 @@ local function healPassesGate(game, card)
     return missing >= v * 0.6
 end
 
--- V5.16(b): quantos jokers multiplicadores ativos + multiplicador efetivo
--- (deve ser sempre o MAX — nunca o produto; deteta regressao do P0.9).
 local function multJokerStats(game)
     local n, best = 0, 1
     for _, j in ipairs(game.jokerSlots or {}) do
@@ -522,37 +369,13 @@ local function multJokerStats(game)
     return n, best
 end
 
--- ============================================================
--- POLITICA DE BATALHA v5 (o "cerebro")
--- ============================================================
--- V5.5: o turno tem DUAS fases —
---   FASE MOTOR: cartas de draw/restore_mana jogadas SOZINHAS em loop enquanto
---   renderem (a mao cresce / a mana rende), respeitando exhaust natural.
---   FASE BATCH: UM conjunto unico com ataques/defesas/debuffs/channels na
---   MESMA leva (batch maximiza tagCounts → strike_combo/triple_strike/
---   magic_focus/poison_stack/channel_burst).
+local battleStats
 
-local battleStats -- metricas agregadas (setado em M.run)
-
--- REGISTRO ESTRUTURADO da run (Out/2026): o diario e texto pra gente ler; a
--- bateria grande (tools/balance_sim.lua) precisa de DADOS — o que foi
--- oferecido, o que entrou no deck e em que andar, onde e contra o que morreu.
 local runRec = nil
 local function recOffer(id)
     if runRec and id then runRec.offered[id] = (runRec.offered[id] or 0) + 1 end
 end
 
--- ============================================================
--- MEDIDOR: quanto do VENENO a armadura do inimigo come (Set/2026)
--- ============================================================
--- `Enemy:_applyDot` faz `eff = max(0, dano - armor)` e CONSOME a armadura: o
--- veneno nao ignora Bloqueio como no Slay the Spire, ele e absorvido. Isso e
--- citado como suspeito da fraqueza do ladino — entao vira NUMERO, nao palpite.
---
--- O gancho e do INSTRUMENTO, nao do jogo: embrulha o metodo em memoria durante
--- a bateria e soma declarado x efetivo. `_applyDot` DEVOLVE o valor declarado
--- (nao o efetivo), entao a unica forma honesta de medir e olhar a vida antes e
--- depois — que e exatamente o que o jogador ve.
 local dotMeter = { declared = 0, effective = 0, absorbedTicks = 0, ticks = 0 }
 local function installDotMeter()
     local Enemy = require("src.entities.Enemy")
@@ -575,16 +398,8 @@ local function installDotMeter()
     end
 end
 
--- ============================================================
--- LIVRO DE DANO POR FONTE (Out/2026, pipeline): quanto do dano no inimigo
--- veio da carta (base / Forca / combo / coringa), de orbe, de magia, de
--- veneno+queimadura e de espinhos. Nenhuma regra muda: o ledger observa
--- Enemy:takeDamage/_applyDot e le o ROTULO do beat em execucao
--- (CombatBeats.push) pra saber de onde o golpe veio. Fora de beat (caminho
--- sincrono) a fonte e "card".
--- ============================================================
-local ledger = nil          -- da batalha corrente: { card=, orb=, magic=, dot=, thorn=, other= }
-local curBeat = nil         -- rotulo do beat rodando agora
+local ledger = nil
+local curBeat = nil
 local function sourceOf(label)
     if not label then return "card" end
     if label:find("^orb%.") or label:find("^effect%.evoke") or label:find("^effect%.channel")
@@ -630,21 +445,6 @@ local function installDamageLedger()
     end
 end
 
--- Carta de motor pagavel: effect com draw_cards, ou restore_mana que rende
--- mais mana do que custa.
---
--- Out/2026 — O MOTOR AINDA PODIA COMER A MANA INTEIRA. O teto de 3 levas
--- (conserto Set/2026) vale 3 mana — a mana base. Flagrado pelo banco do
--- test_balance_pipeline com o deck normal de 5 cartas no elite A1-F4
--- (harvest_reaper): a mao JA tinha o deck inteiro, Grito de Comando
--- (compra 2, +1 Forca, custo 1) voltava do reembaralho a cada leva, o
--- steps gastava 3x1 mana nele por turno, Forca chegou a +24 e o inimigo
--- ficou em 35/35 por 9 turnos ate o jogador morrer — o naive mata em 2.
--- Duas regras de jogador: (a) nao se compra de um baralho VAZIO (deck +
--- descarte sem nada alem da propria carta e um reembaralho em vao);
--- (b) a ULTIMA mana nunca vai numa compra pura — compra e meio, e o que
--- se compra ainda precisa de mana pra ser jogado. Quem rende mana
--- (restore_mana > custo) continua passando.
 local function chooseMotorCard(game)
     local pool = #(game.deck or {}) + #(game.discard or {})
     for _, c in ipairs(game.hand) do
@@ -665,8 +465,6 @@ local function chooseMotorCard(game)
     return nil
 end
 
--- Conjunto de dano guloso com o simulador fiel (V5.3). perMana=true ordena o
--- greedy por ganho/mana (passo VALOR); false por ganho bruto (LETHAL).
 local function bestDamageSet(game, budget, isPicked, perMana)
     local pool = {}
     for _, c in ipairs(game.hand) do
@@ -709,17 +507,11 @@ local function bestDamageSet(game, budget, isPicked, perMana)
     return set, cost
 end
 
--- FASE BATCH: monta o conjunto unico do turno. turnState carrega estado
--- por-turno (healsUsed). Retorna (picks, why).
 local function chooseBatch(game, turnState)
     local p = game.player
     local hand = game.hand
     local enemy = game.enemy
     local manaLeft = p.mana
-    -- Dano TOTAL do intent (multi-golpe soma; Vulneravel congelado entra) —
-    -- como o JOGADOR o conhece: com a névoa de intenção (Out/2026) o número
-    -- escondido vira a média do kit (AI.knownThreat). A medição (diag)
-    -- continua lendo o real.
     local threat = AI.knownThreat(enemy, p)
     local incoming = threat.perHit * threat.hits
     local hpRatio = p.health / p.maxHealth
@@ -744,16 +536,10 @@ local function chooseBatch(game, turnState)
         return table.concat(why, "+")
     end
 
-    -- V5.4: dano gratis DESCONTA do necessario ANTES de escolher cartas.
     local free = freeDamageThisTurn(game)
     local targetHP = enemy.health + (enemy.armor or 0)
     local need = targetHP - free
 
-    -- ----- plano de defesa (usado por emergencia / sobra / dano-gratis) -----
-    -- V5.12: cobre min(incoming, cap do ato); requireEff = eficiencia minima
-    -- armor/mana (nil = emergencia, cobre a qualquer custo).
-    -- V5.7: weak-applier vale floor(incoming*0.25) de defesa virtual e entra
-    -- no MESMO sort de eficiencia (rank 0 na leva = joga antes dos blocos).
     local function planDefense(requireEff, why)
         if incoming <= 0 then return end
         local target = math.min(incoming, armorCap)
@@ -800,8 +586,6 @@ local function chooseBatch(game, turnState)
         end
     end
 
-    -- ----- V5.4: dano gratis ja mata? NAO gastar mana em ataque — rotear
-    -- tudo pra defesa (ate min(incoming, cap)) + scaling/channel. -----
     if need <= 0 then
         planDefense(nil, "dano-gratis")
         for _, c in ipairs(hand) do
@@ -815,20 +599,15 @@ local function chooseBatch(game, turnState)
         return picks, (#picks > 0 and whyStr() or "")
     end
 
-    -- ----- 1. LETHAL (V5.2/V5.3): conjunto guloso com simulador fiel,
-    -- incluindo evoke/channel/magic + vulnerable do proprio set. -----
     do
         local set = bestDamageSet(game, manaLeft, picked, false)
         if #set > 0 and simulateSetDamage(game, set) >= need then
             for _, c in ipairs(set) do pick(c, "LETHAL") end
-            -- seguranca: se o simulador otimista errar, a sobra vira bloco
             planDefense(5)
             return picks, whyStr()
         end
     end
 
-    -- ----- 2. SCALING (V5.8): batalha longa (>=4 turnos no ritmo atual)?
-    -- Investir ANTES do passo VALOR. Nunca em turno de lethal (ja retornou). -----
     do
         local fullSet = bestDamageSet(game, manaLeft, picked, false)
         local dpt = simulateSetDamage(game, fullSet) + free
@@ -843,8 +622,6 @@ local function chooseBatch(game, turnState)
         end
     end
 
-    -- ----- 3. CURAR (V5.6): threshold 35% (50% com boss a vista, F7+, e ai
-    -- ate 2 curas no turno). Gate anti-desperdicio em qualquer caso. -----
     local nearBossFloor = floorInAct >= 7
     local healThreshold = nearBossFloor and 0.50 or 0.35
     local maxHeals = nearBossFloor and 2 or 1
@@ -859,15 +636,10 @@ local function chooseBatch(game, turnState)
         end
     end
 
-    -- ----- 4. EMERGENCIA (V5.12): defesa ANTES do dano quando o golpe
-    -- anunciado machuca de verdade. -----
     local emergency = incoming >= p.health * 0.25
         or (hpRatio < 0.6 and incoming >= p.health * 0.15)
     if emergency then planDefense(nil) end
 
-    -- ----- 5. VALOR: resto da mana em dano pelo MESMO simulador (V5.3),
-    -- greedy por ganho/mana. Anti-muro: a armor do inimigo EXPIRA no turno
-    -- dele — socar um muro maior que o output e jogada fora. -----
     local wallBlocked = false
     do
         local set = bestDamageSet(game, manaLeft, picked, true)
@@ -875,28 +647,21 @@ local function chooseBatch(game, turnState)
         local total = simulateSetDamage(game, set)
         if #set > 0 then
             if wall > 0 and total <= wall then
-                wallBlocked = true  -- mana vai pra defesa/orbes abaixo
+                wallBlocked = true
             else
                 for _, c in ipairs(set) do pick(c, "dano") end
             end
         end
     end
 
-    -- ----- 6. defesa como alocacao de sobra (V5.12, modo normal):
-    -- eficiencia minima 5 armor/mana. -----
     if not emergency then planDefense(5) end
 
-    -- ----- 7. ORBES (V5.2): channels tem prioridade sobre a sobra e vao
-    -- JUNTOS na mesma leva (3+ channel = combo channel_burst). -----
     for _, c in ipairs(hand) do
         if not picked(c) and (c.cost or 0) <= manaLeft and c.type ~= "joker"
             and hasEffect(c, "channel_orb") and (c.attack or 0) <= 0 then
             pick(c, "channel")
         end
     end
-    -- Evoke fora de lethal: (a) orbes cheios + channel na mao (overflow ia
-    -- descartar); (b) orbe dark "maduro" ((v+foco)*2 >= alvo). evoke_all so
-    -- com 2+ orbes de dano acumulados (Consumir/Fissao nao se desperdicam).
     do
         local orbs = p.orbs or {}
         local channelPending = false
@@ -926,9 +691,6 @@ local function chooseBatch(game, turnState)
         end
     end
 
-    -- ----- 8. SOBRA: dois passes (nao-ataque primeiro; anti-muro segura os
-    -- ataques). Gates: defesa no cap e morta; cura respeita o gate V5.6 e o
-    -- limite de curas; evoke ja foi decidido acima. -----
     for pass = 1, 2 do
         for _, c in ipairs(hand) do
             local wantPass = (pass == 1 and c.type ~= "attack")
@@ -938,19 +700,19 @@ local function chooseBatch(game, turnState)
                 local skip = false
                 if c.type == "defense"
                     and (p.armor or 0) >= armorCap then
-                    skip = true  -- cap-aware: defesa alem do cap evapora
+                    skip = true
                 end
                 if hasEffect(c, "evoke_orb") or hasEffect(c, "evoke_all_orbs") then
-                    skip = true  -- decisao de evoke e do passo 7 (V5.2)
+                    skip = true
                 end
                 if hasEffect(c, "instant_heal") then
                     if not healPassesGate(game, c)
                         or turnState.healsUsed >= maxHeals then
-                        skip = true  -- V5.6: gate vale em QUALQUER passo
+                        skip = true
                     end
                 end
                 if pass == 2 and wallBlocked then
-                    skip = true  -- anti-muro
+                    skip = true
                 end
                 if not skip then
                     pick(c, "sobra")
@@ -962,8 +724,6 @@ local function chooseBatch(game, turnState)
         end
     end
 
-    -- ----- 9. joker na mao (leak arquitetural — o Game roteia pra colecao):
-    -- jogar cedo, valor passivo pro resto da run. -----
     for _, c in ipairs(hand) do
         if not picked(c) and c.type == "joker" and (c.cost or 0) <= manaLeft
             and game.canAcceptJoker and game:canAcceptJoker() then
@@ -974,12 +734,6 @@ local function chooseBatch(game, turnState)
     return picks, whyStr()
 end
 
--- ============================================================
--- BATALHA
--- ============================================================
-
--- Executa uma leva: loga, ordena pra jogada (debuff→scaling→channel→resto→
--- ataque→evoke), seleciona, joga e bombeia ate a animacao liberar.
 local function playLeva(game, picks, why, levaNum)
     local pickNames = {}
     for _, c in ipairs(picks) do table.insert(pickNames, c.name or c.id) end
@@ -990,9 +744,6 @@ local function playLeva(game, picks, why, levaNum)
     else
         table.sort(picks, function(x, y) return playRank(x) < playRank(y) end)
     end
-    -- JOGADAS (Out/2026, combo-clareza): quantas cartas por leva e quanto do
-    -- valor das cartas (dano/bloqueio) veio de COMBO — a pergunta do dono
-    -- "jogar um milhao de cartas e o melhor?" precisa de numero.
     if battleStats and battleStats.plays then
         local ps = battleStats.plays
         local n = #picks
@@ -1012,10 +763,6 @@ local function playLeva(game, picks, why, levaNum)
                 ps[k .. "Combo"] = ps[k .. "Combo"] + (combo - plain)
             end
         end
-        -- COMPOSICAO do valor da carta (pipeline): quanto do ataque veio da
-        -- base, dos efeitos proprios, da Forca, do combo, dos coringas, da
-        -- edicao/selo e quanto Fraco/Fragil tiraram. Mesma funcao que a previa
-        -- do jogador usa (DamagePreview.cardValue) — fonte unica da conta.
         if battleStats.dmgParts then
             local okDP, DP = pcall(require, "src.systems.DamagePreview")
             if okDP then
@@ -1055,9 +802,6 @@ local function deepcopy(v)
     return o
 end
 
--- Retrato do comeco de UMA batalha (banco do tools/balance_bench.lua): tudo
--- que a batalha herda da run — deck com forja/edicao, coringas e quais estao
--- ativos, servicos (compra extra), ato/andar/no, vida e mana base.
 local function snapshotBattle(game)
     local run = game.runManager.currentRun
     return {
@@ -1078,10 +822,6 @@ local function playBattle(game, label)
     local dmgTakenBefore = game.player.health
     local realDecisions = 0
 
-    -- v3: DETECTOR DE INTEGRIDADE DO DECK — o grito que faltou no bug do
-    -- Sobrevivente (discard_cards deletava a carta em vez de descartar).
-    -- Invariante: mao + deck + descarte + exauridas + jokers jogados = pool
-    -- inicial da batalha. Qualquer vazamento vira ANOMALIA no relatorio.
     local jokersPlayed = 0
     local battlePool = #game.hand + #game.deck + #game.discard
         + #(game._exhaustedThisBattle or {})
@@ -1090,7 +830,6 @@ local function playBattle(game, label)
     log("### %s — inimigo %d HP (dmg %d)", label,
         game.enemy.maxHealth, game.enemy.damage)
 
-    -- V5.16(b): jokers multiplicadores ativos no inicio da batalha
     do
         local n, eff = multJokerStats(game)
         if n > (battleStats.multJokersMax or 0) then battleStats.multJokersMax = n end
@@ -1098,17 +837,11 @@ local function playBattle(game, label)
     end
 
     local bctx = AI.newBattle(game)
-    -- livro de dano desta batalha (fonte → dano efetivo no inimigo)
     ledger = {}
-    -- DIAGNOSTICO DE COMBATE (Out/2026, pedido do lead): por turno, o que o
-    -- piloto fez contra o intent anunciado — escudo x golpe quando o intent e
-    -- ataque (cobriu? furou quanto?), mana sobrando, carta pagavel nao jogada,
-    -- escudo gasto em turno sem golpe. Vai no battleLog (`diag`) e o
-    -- balance_report/diag.py compara pilotos por ato.
     local diag = { atkTurns = 0, inc = 0, armorOnAtk = 0, unblocked = 0, blockedTurns = 0,
         manaLeft = 0, leftover = 0, wastedBlock = 0, dealt = 0, enemyDealt = 0 }
     local deckSizeAtStart = #((game.runManager.currentRun or {}).currentDeck or {})
-    local potionsBefore = ((game.runManager.currentRun or {}).potions) or 0 -- wip/sustain
+    local potionsBefore = ((game.runManager.currentRun or {}).potions) or 0
     while game.enemy:isAlive() and game.player:isAlive() do
         turnCount = turnCount + 1
         if turnCount > 40 then
@@ -1118,16 +851,11 @@ local function playBattle(game, label)
 
         local kind, value, itLog = game.enemy:getIntentPreview(game.player)
         if itLog and (itLog.hits or 0) > 1 then value = tostring(value) .. "x" .. itLog.hits end
-        -- névoa de intenção: o diário mostra o que o jogador viu ("?"); a
-        -- assinatura de paridade abaixo segue com o valor real (é de regra)
         local shownValue = value
         if game.enemy.getKnownIncomingDamage and game.enemy:getKnownIncomingDamage(game.player) == nil then
             shownValue = "?"
         end
 
-        -- TRACO DE PARIDADE (tools/test_instant_parity.lua): assinatura do
-        -- estado de REGRA no inicio de cada turno. Dois relogios diferentes
-        -- (quadros x instantaneo) tem que produzir a mesma sequencia.
         if M.traceSink then
             M.traceSink[#M.traceSink + 1] = M.stateSignature(game, label, turnCount, kind, value)
         end
@@ -1137,9 +865,6 @@ local function playBattle(game, label)
             game.player.armor, game.player.mana,
             kind:upper(), tostring(shownValue or ""), handSummary(game))
 
-        -- wip/sustain: POÇÃO (Config.Game.POTIONS). Regra de jogador: bebe
-        -- quando a vida está baixa ou quando o golpe anunciado a deixaria
-        -- baixa — naive só abaixo de 30% (quem abriu o jogo esquece a poção).
         do
             local run = game.runManager and game.runManager.currentRun
             if game.usePotion and run and (run.potions or 0) > 0 then
@@ -1164,32 +889,9 @@ local function playBattle(game, label)
         local thornCardReflect = 0
         local defensePlayedThisTurn = false
 
-        -- ===== FASE MOTOR (V5.5): draw/restore_mana SOZINHAS em loop
-        -- enquanto renderem — a leva seguinte enxerga mao e mana novas.
-        --
-        -- CONSERTO Set/2026 — O BOT PODIA PASSAR A BATALHA INTEIRA CICLANDO.
-        -- O orcamento de levas era UM SO, compartilhado com a fase BATCH:
-        -- `while levas < 6` no motor e `while levas < 6` no batch. Uma carta
-        -- que se auto-sustenta em mana (Sosia: custa 1, compra 2, devolve 1)
-        -- num deck pequeno volta pra mao a cada reembaralhamento e o guard de
-        -- nao-progresso NAO dispara — porque ela PROGRIDE mesmo: a mao cresce.
-        -- O motor gastava as 6 levas, o batch nunca rodava, e o bot ficava
-        -- parado sem atacar ate morrer. Medido no diario: run de ladino que
-        -- morreu em A1-F5 com 8 turnos seguidos de "leva 1..6: [Sosia] (motor)"
-        -- e "dano causado 0" — score 64 contra ~12.000 das runs vizinhas.
-        -- Como o ladino e a classe com MAIS cartas de ciclo (Sosia, Adrenalina,
-        -- Aposta Calculada, Acrobacias, Elixir Azul, Tempo-bala), o defeito
-        -- penalizava justamente a classe que se estava tentando medir.
-        --
-        -- A correcao e dar ao motor um orcamento PROPRIO: ciclar e meio, nunca
-        -- fim. O batch fica com o resto garantido.
         local MOTOR_MAX_LEVAS = 3
         local motorLevas = 0
         if naiveCombat() then
-            -- NAIVE: joga o que cabe na mana, ATAQUE primeiro, na ordem da
-            -- mao; nao olha o intent, nao raciocina orbe, nao guarda mana.
-            -- Replaneja so porque uma compra pode ter aumentado a mao (um
-            -- jogador assim tambem joga a carta que acabou de comprar).
             while levas < 4 and game.enemy:isAlive() and game.player:isAlive() do
                 local picks, m = {}, game.player.mana
                 for pass = 1, 2 do
@@ -1208,15 +910,10 @@ local function playBattle(game, label)
                 if #game.hand >= handBefore and game.player.mana <= 0 then break end
             end
         elseif v6Combat() then
-            -- v6 (tools/balance_ai.lua): BUSCA sobre os subconjuntos da mao.
-            -- Motor tem orcamento proprio (mesma licao do conserto Set/2026):
-            -- depois de 3 levas de compra, o plano vai inteiro.
             while levas < 8 and game.enemy:isAlive() and game.player:isAlive() do
                 local picks, why = AI.planLeva(game, bctx,
                     { noMotorSplit = motorLevas >= MOTOR_MAX_LEVAS })
                 if #picks == 0 then
-                    -- Passar com mana e carta na mao e DECISAO — o diario
-                    -- mostra por que (score do vazio x do "joga tudo").
                     local afford = {}
                     local m = game.player.mana
                     for _, c in ipairs(game.hand) do
@@ -1244,10 +941,6 @@ local function playBattle(game, label)
                         end
                     end
                 end
-                -- Guard de nao-progresso por ASSINATURA do estado inteiro: a 1a
-                -- versao comparava so vida/escudo/mao/mana e encerrava o turno
-                -- depois de uma Sangria (custo 0, compra 1: mao e mana iguais)
-                -- — o guerreiro passava turnos inteiros sem atacar.
                 local function sig()
                     local p, e = game.player, game.enemy
                     local hand = {}
@@ -1258,8 +951,6 @@ local function playBattle(game, label)
                 end
                 local before = sig()
                 playLeva(game, picks, why, levas)
-                -- leva de MOTOR pode devolver a mesma mao (reembaralha e recompra as
-                -- mesmas cartas): o orcamento de motor ja a limita, o guard nao.
                 if why ~= "motor" and sig() == before then break end
             end
         end
@@ -1272,14 +963,11 @@ local function playBattle(game, label)
             if motor.type == "joker" then jokersPlayed = jokersPlayed + 1 end
             playLeva(game, { motor }, "motor", levas)
             if not game.enemy:isAlive() or not game.player:isAlive() then break end
-            -- guard de nao-progresso: nem a mao cresceu nem a mana rendeu
             if #game.hand <= handBefore - 1 and game.player.mana < manaBefore then
                 break
             end
         end
 
-        -- ===== FASE BATCH (V5.5): conjunto unico maximizando combos.
-        -- Cap total de levas 4 → 6 com guard de nao-progresso.
         while not v6Combat() and not naiveCombat() and levas < 6 and game.enemy:isAlive()
             and game.player:isAlive() do
             local picks, why = chooseBatch(game, turnState)
@@ -1288,8 +976,6 @@ local function playBattle(game, label)
 
             for _, c in ipairs(picks) do
                 if c.type == "joker" then jokersPlayed = jokersPlayed + 1 end
-                -- V5.16(c): reflexo de thorn — carta de defesa com o trigger
-                -- reflete POR JOGADA; joker reflete 1x/turno (P2.3).
                 if c.type == "defense" then
                     defensePlayedThisTurn = true
                     for _, e in ipairs(c.effects or {}) do
@@ -1307,11 +993,10 @@ local function playBattle(game, label)
             playLeva(game, picks, why, levas)
             if game.enemy.health == snapHP and game.player.armor == snapArmor
                 and #game.hand >= snapHand and game.player.mana >= snapMana then
-                break  -- guard de nao-progresso (leva nao mudou nada)
+                break
             end
         end
 
-        -- V5.16(c): estimativa de thorn refletido no turno
         if defensePlayedThisTurn or thornCardReflect > 0 then
             local jokerThorn = 0
             if defensePlayedThisTurn then
@@ -1329,7 +1014,6 @@ local function playBattle(game, label)
                 battleStats.thornTurns = (battleStats.thornTurns or 0) + 1
             end
         end
-        -- V5.16(a): foco maximo visto por ato (tripwire do mago no A3)
         do
             local act = (game.runManager.currentRun
                 and game.runManager.currentRun.actNumber) or 1
@@ -1338,7 +1022,6 @@ local function playBattle(game, label)
                 math.max(battleStats.focusMaxByAct[act] or 0, f)
         end
 
-        -- "Decisao real": sobrou carta pagavel NAO jogada (houve trade-off)
         local leftoverPlayable = 0
         for _, c in ipairs(game.hand) do
             if (c.cost or 0) <= game.player.mana then
@@ -1347,27 +1030,21 @@ local function playBattle(game, label)
         end
         if leftoverPlayable > 0 then realDecisions = realDecisions + 1 end
 
-        -- v3: integridade do deck (pos-levas, pre-turno-inimigo)
         do
             local nowPool = #game.hand + #game.deck + #game.discard
                 + #(game._exhaustedThisBattle or {}) + jokersPlayed
             if nowPool ~= battlePool then
                 anomaly("cartas sumiram/apareceram na batalha: pool %d -> %d (T%d)",
                     battlePool, nowPool, turnCount)
-                battlePool = nowPool -- re-ancora pra nao spammar todo turno
+                battlePool = nowPool
             end
         end
-        -- v3: metrica de Bloqueio no cap (defesa desperdicada e sintoma)
         if (game.player.armor or 0) >= (game.player.maxArmor or 30) then
             battleStats.armorCapHits = (battleStats.armorCapHits or 0) + 1
         end
 
-        -- INVARIANTES pre-turno-inimigo (detectores de anomalia):
         local armorBeforeEnemy = game.player.armor or 0
         local nextKind = game.enemy:getIntentPreview(game.player)
-        -- Total do intent (multi-golpe soma) e se ele fura o Bloqueio de
-        -- proposito (perfurante) — o detector abaixo nao pode acusar o golpe
-        -- que ATRAVESSA o escudo por design.
         local nextIt = game.enemy:getIntent()
         local nextVal = game.enemy:getIncomingDamage(game.player)
         local nextPierce = nextIt.pierce and true or false
@@ -1375,8 +1052,6 @@ local function playBattle(game, label)
         for _, d in ipairs(nextIt.debuffs or {}) do
             if d.name == "poison" or d.name == "burn" then dotNext = dotNext + (d.stacks or 0) end
         end
-        -- usa o contador do ScoreSystem (so dano DO INIMIGO) — HP bruto
-        -- pega custo de sangue de Berserk/Sangria (ignora armor por design)
         local dmgTakenBeforeEnemy =
             (game.scoreSystem._battle and game.scoreSystem._battle.damageTaken) or 0
         diag.manaLeft = diag.manaLeft + (game.player.mana or 0)
@@ -1393,13 +1068,6 @@ local function playBattle(game, label)
 
         if game.enemy:isAlive() and game.turn == "player" then
             game:endTurn()
-            -- O PULSO DOS ORBES vira beats na fila (endTurn so ENFILEIRA).
-            -- A cena real so chama enemyTurn com a fila VAZIA e o inimigo
-            -- vivo (GameplayScene: `not isBlocking() and enemy:isAlive()`).
-            -- O piloto chamava na hora: quando o pulso matava o inimigo, o
-            -- golpe ja estava enfileirado e o mago levava dano de um cadaver
-            -- (Out/2026, medido: "inimigo 0 HP, dano sofrido 11"). Drena
-            -- antes, como a cena.
             local guardP = 0
             while game.combatAnimationSystem:isBlocking() and guardP < 600 do
                 pump(game, 1 / 30)
@@ -1408,10 +1076,6 @@ local function playBattle(game, label)
         end
         if game.enemy:isAlive() and game.turn == "enemy" then
             game:enemyTurn()
-            -- Set/2026: o turno do inimigo virou uma CADEIA de beats
-            -- (telegrafia > golpe > espinhos > veneno > upkeep > compra >
-            -- gatilhos > a vez volta) e nao tem mais duracao fixa. Pumpar um
-            -- numero magico mediria meio turno: esperamos a fila DRENAR.
             local guardET = 0
             while game.combatAnimationSystem:isBlocking() and guardET < 600 do
                 pump(game, 1 / 30)
@@ -1420,9 +1084,6 @@ local function playBattle(game, label)
             pump(game, 0.2)
         end
 
-        -- DETECTOR "escudo furado" (o bug que o dono pegou jogando e o
-        -- piloto engoliu): escudo cobria o golpe anunciado (+4 de margem
-        -- pra Furia) mas o HP caiu mesmo assim.
         local dmgTakenAfterEnemy =
             (game.scoreSystem._battle and game.scoreSystem._battle.damageTaken) or 0
         local enemyDealt = dmgTakenAfterEnemy - dmgTakenBeforeEnemy
@@ -1448,9 +1109,8 @@ local function playBattle(game, label)
             math.max(0, game.enemy.health))
     end
 
-    pump(game, 1.5) -- death anim / eventos pendentes
+    pump(game, 1.5)
 
-    -- metricas por ato (post-mortem: onde o output deixa de acompanhar)
     do
         local act = (game.runManager.currentRun
             and game.runManager.currentRun.actNumber) or 1
@@ -1460,7 +1120,6 @@ local function playBattle(game, label)
         ba.taken = ba.taken + math.max(0, dmgTakenBefore - game.player.health)
         ba.turns = ba.turns + turnCount
         ba.battles = ba.battles + 1
-        -- chefe separado (kit Out/2026: meta de 7-10 turnos no fim de jogo)
         local cn = game.runManager.currentRun and game.runManager.currentRun.currentNode
         if cn and cn.type == "boss" then
             ba.bossTurns = (ba.bossTurns or 0) + turnCount
@@ -1476,7 +1135,6 @@ local function playBattle(game, label)
     battleStats.totalTurns = battleStats.totalTurns + turnCount
     battleStats.dmgTaken = battleStats.dmgTaken
         + math.max(0, dmgTakenBefore - game.player.health)
-    -- livro de dano por fonte (acumulado na run) + registro desta batalha
     if battleStats.dmg and ledger then
         for k, v in pairs(ledger) do battleStats.dmg[k] = (battleStats.dmg[k] or 0) + v end
     end
@@ -1495,7 +1153,7 @@ local function playBattle(game, label)
             dmg = ledger, diag = diag,
         }
     end
-    do -- wip/sustain: poção que caiu desta luta (elite)
+    do
         local pots = ((game.runManager.currentRun or {}).potions) or 0
         if pots > potionsBefore then battleStats.potionsFound = (battleStats.potionsFound or 0) + (pots - potionsBefore) end
     end
@@ -1517,11 +1175,6 @@ local function playBattle(game, label)
     return won, turnCount
 end
 
--- ============================================================
--- POS-BATALHA: recompensas + scoring de deck-building
--- ============================================================
-
--- Ids do deck da run normalizados (entries podem ser tabela {id, edition}).
 local function deckIdList(game)
     local out = {}
     local deck = (game.runManager.currentRun
@@ -1533,7 +1186,6 @@ local function deckIdList(game)
 end
 
 local function classTagAffinity(game, cardData)
-    -- afinidade simples: tags da carta que ja existem no deck contam
     local deckTags = {}
     for _, id in ipairs(deckIdList(game)) do
         local cd = game.deckManager.cardDatabase:getCard(id)
@@ -1550,14 +1202,6 @@ end
 
 local RARITY_SCORE = { common = 1, uncommon = 3, rare = 6, legendary = 10 }
 
--- Arquetipo por classe (prior de deck-building): o bot compra pra FOCAR,
--- nao pra colecionar — combos exigem densidade da mesma tag.
--- V5.17 (re-baseline Jul/2026): mago/ladino ganharam afinidade de DEFESA.
--- A bateria 15x3 mostrou mago 0/15 morrendo de chip (sofrido 2-16/turno,
--- decks sem NENHUMA defesa alem do starter) enquanto o guerreiro (unico
--- prior com defend/armor) zerava o dano inimigo — vies de compra do bot,
--- nao (so) desbalanceio do jogo. Humano de mago compra Amuleto/Campo de
--- Forca; o bot agora tambem.
 local CLASS_ARCHETYPE = {
     warrior = { strike = 3, armor = 2, defend = 2, strength = 2 },
     mage    = { channel = 3, magic = 3, lightning = 2, evoke = 2,
@@ -1576,24 +1220,6 @@ local function archetypeScore(game, cardData)
     return s
 end
 
--- Piloto NORMAL (build = "normal"): a carta so entra (recompensa OU loja) se o
--- score NORMALIZADO passa de uma barra que sobe com o deck. A afinidade crua
--- cresce com o deck (cada copia da tag soma), o que faria a barra nunca
--- morder — aqui vale no maximo 3. Escala medida no diario: comum do arquetipo
--- 12-14, incomum 16-18, rara 20+, comum fora do arquetipo 2-5. Barra =
--- pickBase + pickBar por carta acima de 6 (perfil `average`: 12 + 0,5/carta
--- -> com 6 cartas entra a comum boa do arquetipo, com 10 so incomum+, com 16
--- incomum com afinidade ou rara, com 22 so rara).
---
--- v2 (mesma sessao): o score por TAG era o defeito — Conjuracao Dupla (4 tags
--- do arquetipo do mago) pontuava 20 e entrou 83x em 90 runs; o expert_full,
--- que decide por simulacao, pega cura, basicas baratas e forja 3x mais. O
--- normal agora le a carta como um jogador le: VALOR (AI.cardWorth = pontos
--- de auditoria da carta + necessidades do deck: defesa abaixo de 30%,
--- ataque abaixo de 35%, escalada no A2+) + um empurrao de raridade (humano
--- gosta de rara). Barra = media do deck + margem que sobe com o tamanho
--- (pickBar por carta acima de 8; pickBase e a folga inicial, negativa =
--- aceita carta mediana enquanto o deck e pequeno).
 local function normalBar(game, dctx)
     local p = prof()
     dctx = dctx or AI.deckContext(game)
@@ -1611,10 +1237,6 @@ local function normalCardScore(game, offer, cd, dctx)
     dctx = dctx or AI.deckContext(game)
     local s = AI.cardWorth(game, cd, dctx, false)
         + (RARITY_SCORE[offer.rarity or (cd and cd.rarity) or "common"] or 1) * 0.5
-    -- SUSTENTO: o diagnostico (s2-diag) mostrou o expert_full perdendo 6,9 de
-    -- vida por luta no A3 contra 18,8 do average com a MESMA cobertura de
-    -- escudo — a diferenca e cura no deck (Gota Curativa 49x, Pocao 33x em 36
-    -- runs). Um jogador normal tambem pega cura quando nao tem nenhuma.
     if hasHeal(cd) then
         local heals = 0
         for _, id in ipairs(dctx.ids or {}) do
@@ -1622,24 +1244,12 @@ local function normalCardScore(game, offer, cd, dctx)
         end
         if heals < 2 then s = s + 3 end
     end
-    -- PROPORCAO: o jogador normal mantem ~1/3 de defesa (o deck vencedor do
-    -- expert_full fecha em 50% ataque / 29% defesa / 20% efeito). So pelo
-    -- valor, o deck virava 68% ataque e cobria 23% dos golpes no A3 — e o
-    -- test_balance_pipeline flagrou o steps perdendo mais que o naive com
-    -- esse deck (sem escudo na mao nao ha intent que salve).
     local n = math.max(1, dctx.n)
     local isBlock = cd and (cd.type == "defense")
     if isBlock and dctx.blockCards / n < 0.35 then s = s + 3 end
     if cd and cd.type == "attack" and dctx.attackCards / n > 0.55 then s = s - 3 end
     return s
 end
-
--- ============================================================
--- V5.9: FORJA POR SCORE — score = (copias x ciclosPorBatalha / max(1,custo))
--- x ganhoReal (getForgeGains, fonte unica com a UI) x (1 + arquetipo*0.3),
--- com priors por classe e sinal de morte-por-chip (taken/turno alto sem
--- nunca bater no cap de armor → dobra o peso de defesa).
--- ============================================================
 
 local function forgeScore(game, cardId, counts)
     local RunManager = require("src.systems.RunManager")
@@ -1653,28 +1263,25 @@ local function forgeScore(game, cardId, counts)
     local deckN = math.max(1, #deckIdList(game))
     local avgTurns = (battleStats and battleStats.battles > 0)
         and (battleStats.turns / battleStats.battles) or 6
-    -- ciclos do deck por batalha ~ (turnos x 4 compradas) / tamanho do deck
     local cycles = math.max(1, (avgTurns * 4) / deckN)
     local cost = math.max(1, cd.cost or 1)
     local s = (copies * cycles / cost) * realGain
         * (1 + archetypeScore(game, cd) * 0.3)
-    -- priors por classe (V5.9)
     local classId = game.selectedClass or "warrior"
     if classId == "warrior" and (cd.attack or 0) > 0 then
-        s = s * 1.5  -- warrior: o ataque mais jogado
+        s = s * 1.5
     elseif classId == "rogue" and (cd.attack or 0) > 0 and (cd.cost or 0) <= 1 then
-        s = s * 1.5  -- rogue: strikes custo 0-1
+        s = s * 1.5
     elseif classId == "mage" then
         for _, e in ipairs(cd.effects or {}) do
             local t = e.type
             if t == "magic_damage" or t == "aoe_magic_damage" or t == "add_armor"
                 or t == "draw_cards" or t == "restore_mana" then
-                s = s * 1.5  -- mage: magic_damage/add_armor/motor
+                s = s * 1.5
                 break
             end
         end
     end
-    -- morte por chip sem armorCapHits → defesa vale o dobro
     if battleStats then
         local act = (game.runManager.currentRun
             and game.runManager.currentRun.actNumber) or 1
@@ -1688,11 +1295,6 @@ local function forgeScore(game, cardId, counts)
     return s
 end
 
--- Melhor alvo de forja do deck atual (usado por fogueira, loja e picker).
--- Indice da copia que a forja VAI pegar: a de MENOR nivel entre as
--- forjaveis daquele id. Espelha a escolha de `RunManager:upgradeCard`, e
--- existe pra que o detector de "ouro queimado" meca a MESMA copia antes e
--- depois (a forja e por copia, nao por id — CLAUDE.md).
 local function forgeIndexFor(game, cardId)
     local rm = game.runManager
     local run = rm and rm.currentRun
@@ -1721,17 +1323,9 @@ local function bestForgeTarget(game)
     return bestId, bestS or 0
 end
 
--- ============================================================
--- V5.11: BANCADA DE CORINGAS — pontua todos os owned e ativa o top via
--- Game:setJokerActive. REGRA P0.9: multiplicadores de MESMO tipo nao
--- compoem — o SEGUNDO damage_multiplier pontua ~0 (so o maior conta);
--- thorn de joker pontua como valor flat/turno (1x/turno via P2.3), nao
--- multiplicado por defesas jogadas.
--- ============================================================
-
 local JOKER_EFFECT_SCORE = {
     damage_bonus = 8, defense_bonus = 6, on_attack_heal = 6,
-    on_defend_damage = 4,   -- P2.3: 1x/turno — flat, NAO x defesas
+    on_defend_damage = 4,
     regen_per_turn = 5, strength_per_turn = 12, on_turn_start_draw = 15,
     channel_per_turn = 10, on_attack_debuff = 8,
     damage_per_turn = -8,
@@ -1750,7 +1344,7 @@ local function scoreJokerParts(inst)
         elseif JOKER_EFFECT_SCORE[t] then
             flat = flat + JOKER_EFFECT_SCORE[t] * (tonumber(e.value) or 1)
         else
-            flat = flat + 2  -- efeito desconhecido: valor simbolico
+            flat = flat + 2
         end
     end
     return flat, dmgMult, defMult
@@ -1758,7 +1352,7 @@ end
 
 local function optimizeJokerBench(game, whenLabel)
     local rm = game.runManager
-    if not prof().bench then return end   -- NAIVE: coringa fica como chegou
+    if not prof().bench then return end
     if not (game.isRunMode and rm.hasActiveRun and rm:hasActiveRun()) then return end
     if not game.setJokerActive then return end
     local all = rm:buildAllJokerInstances()
@@ -1773,7 +1367,6 @@ local function optimizeJokerBench(game, whenLabel)
             flat = flat, dmgMult = dm, defMult = dfm, score = flat,
         })
     end
-    -- so o MAIOR multiplicador de cada tipo recebe valor (P0.9)
     local function grantBest(field)
         local best
         for _, en in ipairs(entries) do
@@ -1791,7 +1384,6 @@ local function optimizeJokerBench(game, whenLabel)
     for i = 1, math.min(cap, #entries) do want[entries[i].idx] = true end
 
     local changed = false
-    -- desativa os fora do top primeiro (libera slots), depois ativa o top
     for _, en in ipairs(entries) do
         if not want[en.idx] and rm:isJokerActive(en.idx) then
             game:setJokerActive(en.idx, false)
@@ -1813,12 +1405,6 @@ local function optimizeJokerBench(game, whenLabel)
     end
 end
 
--- Injeta o contexto real da run na loja (classe + deck → afinidade/pity e
--- oferta de Forja, que exige context.runManager — sem isso o bot via uma
--- vitrine diferente da do jogador).
--- wip/sustain (Out/2026): a conta e a de ShopSystem.runContext — a MESMA da
--- CardRewardScreen. Antes o piloto nao passava o piso de raridade de
--- elite/chefe nem os pesos por ato: media uma vitrine diferente da do jogador.
 local function primeShopContext(game, mode)
     if game.shopSystem.setContext then
         local ShopSystem = require("src.systems.ShopSystem")
@@ -1826,14 +1412,6 @@ local function primeShopContext(game, mode)
     end
 end
 
--- ============================================================
--- v4: PICKER HEADLESS — eventos de deck (remover/duplicar/forjar) usam
--- _G.openCardPicker (UI). Sem shim, o piloto ganhava a opcao e recebia
--- um NO-OP ("o escriba se distrai") — as melhores ferramentas de
--- consistencia de deck eram inacessiveis ao bot.
--- ============================================================
-
--- Valor de uma carta DO DECK pro build atual (quanto maior, mais sagrada).
 local function cardValueScore(game, cardId)
     local cd = game.deckManager.cardDatabase:getCard(cardId)
     if not cd then return 0 end
@@ -1852,8 +1430,6 @@ local function installHeadlessPicker(game)
                 log("  (picker: deck %d ja enxuto — nao removi)", #ids)
                 return
             end
-            -- guard: defesa pontua baixo em arquetipo ofensivo, mas remover
-            -- a ultima Esquiva do rogue e suicidio — piso de 3 defesas.
             local defCount = 0
             for _, id in ipairs(ids) do
                 local cd = game.deckManager.cardDatabase:getCard(id)
@@ -1861,9 +1437,6 @@ local function installHeadlessPicker(game)
             end
             local worst, worstS
             if v6Build() then
-                -- v6: as 3 piores pela heuristica viram CANDIDATAS; a
-                -- simulacao escolhe qual tirar (tirar a "pior" no papel as
-                -- vezes tira a unica defesa que segura o chefe).
                 local dctx = AI.deckContext(game)
                 local cands = {}
                 for _, id in ipairs(ids) do
@@ -1920,7 +1493,6 @@ local function installHeadlessPicker(game)
             game:addCardToRun(best)
             log("  (picker: DUPLIQUEI a melhor carta: %s)", best)
         elseif mode == "forge" then
-            -- V5.9: mesmo score de forja da fogueira/loja
             local bestId, bestS = bestForgeTarget(game)
             if bestId then
                 local lvl = game.runManager:upgradeCard(bestId)
@@ -1937,12 +1509,10 @@ local function doRewards(game)
     game.shopSystem:generateOffers()
     local offers = game.shopSystem:getCurrentOffers()
     for _, o in ipairs(offers) do if o.type == "card" then recOffer(o.id) end end
-    for _, o in ipairs(offers) do if o.sustainSlot then battleStats.sustainSlots = (battleStats.sustainSlots or 0) + 1 end end -- wip/sustain
+    for _, o in ipairs(offers) do if o.sustainSlot then battleStats.sustainSlots = (battleStats.sustainSlots or 0) + 1 end end
 
     local best, bestScore = nil, -1
     if prof().build == "greedy" then
-        -- NAIVE: nunca pula; leva a mais rara (desempate: a mais cara). O
-        -- deck incha — e exatamente o erro que se quer medir.
         for _, o in ipairs(offers) do
             if o.type == "card" and game.economySystem:canAfford(o.cost) then
                 local s = (RARITY_SCORE[o.rarity or "common"] or 1) * 10 + (o.cost or 0)
@@ -1950,8 +1520,6 @@ local function doRewards(game)
             end
         end
     elseif v6Build() then
-        -- v6: entra quem MELHORA a media do deck (AI.wantsCard); coringa
-        -- sempre (bancada nao dilui). Pular e uma jogada, nao um fracasso.
         local ids, byId = {}, {}
         for _, o in ipairs(offers) do
             if o.type == "card" and game.economySystem:canAfford(o.cost) then
@@ -1961,9 +1529,6 @@ local function doRewards(game)
         local pickId, gain = M.pickBySim(game, M.simCandidates(game, ids))
         if pickId then best, bestScore = byId[pickId], gain end
     elseif prof().build == "heuristic" then
-        -- EXPERT_FAST: a heuristica do v6 sem a simulacao — entra quem
-        -- melhora a MEDIA do deck (AI.wantsCard, margem cresce com o tamanho
-        -- do deck). Pular e decisao normal. Coringa sempre entra.
         local dctx = AI.deckContext(game)
         for _, o in ipairs(offers) do
             if o.type == "card" and game.economySystem:canAfford(o.cost) then
@@ -1973,10 +1538,6 @@ local function doRewards(game)
             end
         end
     else
-    -- v5 e NORMAL: raridade + afinidade + arquetipo. O NORMAL ainda compara o
-    -- score com uma barra que sobe com o deck (pickBar por carta acima de 6):
-    -- ate 6 cartas entra tudo; com 10, uma comum sem afinidade ja fica;
-    -- com 14 so incomum com afinidade ou rara. Coringa sempre entra.
     for _, o in ipairs(offers) do
         if o.type == "card" and game.economySystem:canAfford(o.cost) then
             local cd = game.deckManager.cardDatabase:getCard(o.id)
@@ -1987,8 +1548,6 @@ local function doRewards(game)
         end
     end
     if prof().build == "normal" then
-        -- NORMAL escolhe pelo VALOR (nao pelo score por tag acima): a melhor
-        -- carta pagavel pelo cardWorth + raridade, e so entra se passa a barra.
         local dctx = AI.deckContext(game)
         best, bestScore = nil, -math.huge
         for _, o in ipairs(offers) do
@@ -2011,7 +1570,6 @@ local function doRewards(game)
     end
 
     local deckSize = #deckIdList(game)
-    -- deck gordo dilui: acima de 18 cartas, so rare+ entra
     if prof().build == "v5" and best and deckSize > 18 and (RARITY_SCORE[best.rarity] or 1) < 6 then
         best = nil
     end
@@ -2027,7 +1585,6 @@ local function doRewards(game)
         log("- Recompensa: comprei **%s** (%s, $%d) → ouro $%d",
             best.name, best.rarity or "?", best.cost,
             game.economySystem.currentGold)
-        -- V5.11: aquisicao de joker → re-otimiza a bancada
         local cd = game.deckManager.cardDatabase:getCard(best.id)
         if cd and cd.type == "joker" then
             optimizeJokerBench(game, "recompensa")
@@ -2039,10 +1596,6 @@ local function doRewards(game)
 
 end
 
--- ============================================================
--- NODES: escolha de caminho + rest/event/shop
--- ============================================================
-
 local function chooseNode(game, pending)
     local hpRatio = game.player.health / game.player.maxHealth
     local gold = game.economySystem.currentGold
@@ -2050,15 +1603,10 @@ local function chooseNode(game, pending)
     local run = game.runManager.currentRun
 
     if prof().path == "random" then
-        -- NAIVE: caminho ao acaso (RNG proprio do piloto, seedado pela run).
         local i = M._pilotRng and M._pilotRng:random(1, #pending) or 1
         return i, pending[i]
     end
 
-    -- V5.14: elite compensa? usa o dano/turno MEDIDO nas batalhas do ato
-    -- (battleStats.byAct) — face value do deck so como fallback na primeira
-    -- batalha do ato (estimativa cega superestimava decks de motor e
-    -- subestimava scaling/orbes).
     local dptEstimate
     local ba = battleStats and battleStats.byAct
         and battleStats.byAct[run.actNumber]
@@ -2081,10 +1629,6 @@ local function chooseNode(game, pending)
         math.min(8, run.floorInAct + 1), "elite")
     local canElite = dptEstimate * 6 >= (eliteStats.health or 60)
 
-    -- prioridade situacional
-    -- v4 boss-aware: F7=mini_boss e F8=boss — chegar neles meio-morto era a
-    -- causa nº1 de morte medida (10/33 no boss A2-F8). Perto do muro, o
-    -- descanso vale mais que qualquer loja/evento.
     local nearBoss = (run.floorInAct or 1) >= 6
     local want
     if nearBoss and hpRatio < 0.7 then
@@ -2100,8 +1644,6 @@ local function chooseNode(game, pending)
         want = { BT.BATTLE, BT.EVENT, BT.REST, BT.SHOP, BT.ELITE }
     end
 
-    -- V5.13: chegando no F7 com caixa (>= $30), SHOP passa na frente de
-    -- EVENT — e a ultima chance de converter ouro em poder pro boss.
     if nearBoss and gold >= 30 then
         local si, ei
         for i, t in ipairs(want) do
@@ -2124,21 +1666,15 @@ end
 
 local function doRest(game)
     local p = game.player
-    -- v4 boss-aware: com mini_boss/boss a 1-2 andares, curar vale mais que
-    -- forjar mesmo acima do threshold normal de 60%.
     local floorInAct = game.runManager.currentRun.floorInAct or 1
     local nearBoss = floorInAct >= 6
-    -- NAIVE: sempre descansa (nunca forja), mesmo com a vida cheia.
     if prof().rest == "always_rest" or p.health <= p.maxHealth * (nearBoss and 0.75 or 0.6) then
-        -- Mesma conta da fogueira do jogo (Selo/maldição reduzem a cura).
         local restPct = require("src.core.Config").Game.REST_HEAL_PCT or 0.30
         local amt = math.floor(p.maxHealth * restPct * require("src.systems.RunModifiers")
             .healMul(game.runManager.currentRun, "rest"))
         p:heal(amt)
         log("- Acampamento: **descansei** +%d HP → %d/%d", amt, p.health, p.maxHealth)
     else
-        -- V5.9: forja por SCORE (copias x ciclos / custo x ganho real x
-        -- arquetipo) — substitui a heuristica "ataque com mais copias".
         local bestId, bestS = bestForgeTarget(game)
         if bestId then
             local lvl = game.runManager:upgradeCard(bestId)
@@ -2151,19 +1687,6 @@ local function doRest(game)
     end
 end
 
--- Pontua UMA entrada de gain/cost declarada pelo evento.
---
--- CONSERTO Set/2026 — O PILOTO CRASHAVA EM TODO EVENTO COM CUSTO/GANHO.
--- A v4 recebia STRING e fazia `s:lower()`; os eventos passaram a declarar
--- TABELAS estruturadas (`{ k = "gold", n = 30, fb = "$30" }`) e a chamada
--- morria com "attempt to call method 'lower' (a nil value)". O pcall de
--- playRun engolia a run inteira: 3 de 8 corridas da bateria de ladino
--- terminaram em CRASH em vez de em morte medida — e o diario nao media
--- ganho nenhum de evento nas outras.
---
--- A correcao nao e so "aceitar tabela": e parar de LER TEXTO. O `fb` e o
--- fallback de exibicao em PT; ler ele faria o bot decidir diferente em
--- outro idioma. A chave `k` e o contrato estavel — o bot pontua por ela.
 local function scoreEventEntry(game, entry, isCost)
     local p = game.player
     local hp, maxHp = p.health, p.maxHealth
@@ -2174,7 +1697,6 @@ local function scoreEventEntry(game, entry, isCost)
     if type(entry) ~= "table" or not entry.k then return 0 end
     local k, n, pct = entry.k, tonumber(entry.n) or 0, tonumber(entry.pct) or 0
 
-    -- ===== custos que nao podemos pagar = veto =====
     if isCost and k == "hp" then
         if hp - n <= 4 then return -1000 end
         return -n * (hp < maxHp * 0.4 and 1.6 or 0.6)
@@ -2187,11 +1709,9 @@ local function scoreEventEntry(game, entry, isCost)
         return -(pct / 100) * n * 1.2
     end
     if k == "remove_random" then
-        -- remocao ALEATORIA: boa com deck gordo de commons, ruim com deck afiado
         return (deckN > 16) and 3 or -6
     end
 
-    -- ===== ganhos =====
     if k == "remove_choice"  then return sign * ((deckN >= 14) and 12 or 5) end
     if k == "dup_choice"     then return sign * 8 end
     if k == "forge_choice" or k == "forge_random" then return sign * 7 end
@@ -2199,7 +1719,7 @@ local function scoreEventEntry(game, entry, isCost)
     if k == "max_hp"         then return sign * 7 end
     if k == "card_legendary" then return sign * 10 end
     if k == "card_rare"      then return sign * ((deckN > 18) and 3 or 6) end
-    if k == "cards_random"   then return sign * ((deckN > 16) and -2 or 2) end -- diluicao
+    if k == "cards_random"   then return sign * ((deckN > 16) and -2 or 2) end
     if k == "card_potion" or k == "chance_potion" then return sign * 2 end
     if k == "mystery"        then return sign * 1 end
     if k == "heal_pct" then
@@ -2210,14 +1730,11 @@ local function scoreEventEntry(game, entry, isCost)
         local heal = math.min(n, maxHp - hp)
         return sign * (heal / maxHp) * 30
     end
-    -- valor esperado de ouro probabilistico ("50% de ganhar $50", "40% $25")
     if k == "gamble" or k == "chance_gold" then
         return sign * (pct / 100) * n / 6
     end
     if k == "gold" then return sign * n / 6 end
 
-    -- Chave DESCONHECIDA grita (fallback silencioso e proibido no projeto):
-    -- evento novo com chave nova passaria a valer 0 e o bot nunca a escolheria.
     anomaly("evento com chave de %s desconhecida: '%s' — o piloto pontuou 0",
         isCost and "custo" or "ganho", tostring(k))
     return 0
@@ -2230,12 +1747,8 @@ local function doEvent(game)
         log("- Evento: nenhum disponivel")
         return
     end
-    -- v4: pontua CADA opcao pelos gains/costs declarados; "ir embora" = 0.
-    -- Escolhe a de maior valor esperado pro estado atual (HP/ouro/deck).
-    local bestIdx, bestScore = #ev.options, 0.5  -- neutro levemente > 0: so
+    local bestIdx, bestScore = #ev.options, 0.5
     if prof().event == "first" then
-        -- NAIVE: a primeira opcao que da pra pagar (custo em ouro/vida que
-        -- nao mata); senao vai embora.
         bestIdx = #ev.options
         for i, opt in ipairs(ev.options) do
             local ok = true
@@ -2249,7 +1762,7 @@ local function doEvent(game)
         end
         bestScore = 0
     end
-    for i, opt in ipairs(ev.options) do          -- aposta se valer a pena
+    for i, opt in ipairs(ev.options) do
         if prof().event == "first" then break end
         local s = 0
         for _, g in ipairs(opt.gains or {}) do s = s + scoreEventEntry(game, g, false) end
@@ -2264,48 +1777,23 @@ local function doEvent(game)
         bestScore, okApply and (feedback or "ok") or ("ERRO: " .. tostring(feedback)))
 end
 
--- ============================================================
--- LOJA v5 (V5.1 whitelist / V5.9 forja / V5.10 reroll / V5.13 caixa)
--- ============================================================
-
--- V5.1: upgrades que aplicam efeito REAL. damage/defense/card_draw sao
--- toast-only (P3.2) — comprar e queimar ouro; o bot nao compra.
 local REAL_UPGRADES = {
     increase_base_mana = true,
     increase_max_health = true,
     forge_card = true,
 }
 
--- Servicos SEM picker (mexem no ledger da run, nao no deck). A tesoura e a
--- prensa ficam de fora de proposito: elas tem politica propria mais abaixo,
--- porque so fazem sentido em funcao do TAMANHO do deck.
 local SERVICE_EFFECTS = {
     add_joker_slot    = true,
     raise_interest_cap = true,
     increase_draw     = true,
 }
 
--- V5.1: o harness APLICA o efeito do upgrade (a UI real faz isso na
--- CardRewardScreen) + detector "ouro queimado": upgrade comprado que nao
--- altera estado observavel = anomalia.
--- Aplica um upgrade/servico comprado, ESPELHANDO CardRewardScreen:applyUpgrade
--- (a tela real). Set/2026: antes daqui so saiam mana e vida maxima — os cinco
--- SERVICOS da loja (tesoura, prensa, bancada de coringa, grimorio, cofre) nao
--- tinham caminho nenhum no piloto, e por isso a metade cara da loja NUNCA era
--- comprada numa bateria inteira. Qualquer conclusao de economia tirada dali
--- media o bot, nao a economia.
---
--- O detector de "ouro queimado" tambem estava errado para servicos: ele
--- perguntava se mana OU vida maxima mudou, e nenhum servico mexe nesses dois.
--- Ligar os servicos sem consertar o detector encheria o relatorio de alarme
--- falso — que e pior do que nao ter detector. Agora cada efeito declara QUAL
--- e o seu observavel.
 local function applyUpgradeOffer(game, o)
     local p = game.player
     local rm = game.runManager
     local efeito = o.effect
 
-    -- observador(game) -> valor comparavel antes/depois
     local OBSERVAVEL = {
         increase_base_mana  = function() return p.maxMana end,
         increase_max_health = function() return p.maxHealth end,
@@ -2342,23 +1830,13 @@ local function applyUpgradeOffer(game, o)
 
     elseif efeito == "remove_card" or efeito == "duplicate_card"
         or efeito == "forge_card" then
-        -- Servicos de PICKER: quem muda o deck e o _G.openCardPicker headless
-        -- (installHeadlessPicker), igual a tela real.
-        --
-        -- O LEDGER VEM ANTES DO PICKER, e isso nao e detalhe: e ele que faz o
-        -- preco da PROXIMA compra subir (8, 12, 17, 25, 36, 45 na tesoura).
-        -- Sem registrar, o servico fica eternamente no preco base — a primeira
-        -- bateria com servicos ligados comprou a tesoura 40 vezes e TODAS as
-        -- 40 sairam por $8, o que faria a economia parecer barata por um
-        -- defeito do medidor. CardRewardScreen:_openDeckService registra na
-        -- mesma ordem.
         if efeito == "forge_card" then
             if rm and rm.registerPaidForge then rm:registerPaidForge() end
         elseif rm and rm.registerService then
             rm:registerService(o.id)
         end
         if _G.openCardPicker then _G.openCardPicker(o.picker) end
-        return  -- o observavel destes e o deck, checado pelo proprio picker
+        return
 
     else
         anomaly("upgrade sem caminho no piloto: %s (efeito '%s') — ouro gasto "
@@ -2380,8 +1858,6 @@ local function doShop(game)
     local run = game.runManager.currentRun
     local act = run.actNumber or 1
     local floorInAct = run.floorInAct or 1
-    -- Livro-caixa: ouro na entrada + se a bancada de coringa estava na
-    -- vitrine e cabia no bolso (a pergunta do dono: "da pra alcancar?").
     if runRec and runRec.eco then
         local visit = { act = act, gold = game.economySystem.currentGold }
         for _, o in ipairs(game.shopSystem:getCurrentOffers()) do
@@ -2392,9 +1868,6 @@ local function doShop(game)
         end
         table.insert(runRec.eco.shops, visit)
     end
-    -- V5.13: politica de caixa — reserva alvo min(50, 15*ato) rendendo
-    -- juros; a partir do F6 a reserva e liberada (boss a vista: ouro parado
-    -- e poder desperdicado).
     local reserve = (floorInAct >= 6) and 0 or math.min(50, 15 * act)
     local function spendable()
         return game.economySystem.currentGold - reserve
@@ -2406,15 +1879,12 @@ local function doShop(game)
     local function scoreCardOffer(o)
         local cd = game.deckManager.cardDatabase:getCard(o.id)
         if v6Build() then
-            -- v6: >= 6 = compra (limiar do laco de compra abaixo)
             local want, w = AI.wantsCard(game, cd)
             if not want then return -1 end
             return 6 + w
         end
         local s = (RARITY_SCORE[o.rarity or "common"] or 1) * 2
             + classTagAffinity(game, cd) + archetypeScore(game, cd) * 2
-        -- NORMAL: a mesma conta da recompensa vale na loja (coringa passa);
-        -- >= 6 = compra (limiar do laco de compra abaixo), ordenado pelo valor.
         if prof().build == "normal" then
             if cd and cd.type == "joker" then return 99 end
             local dctx = AI.deckContext(game)
@@ -2422,7 +1892,6 @@ local function doShop(game)
             if w < bar then return -1 end
             return 6 + (w - bar)
         end
-        -- disciplina de deck: >18 cartas, so rare+ entra
         local deckSize = #deckIdList(game)
         if deckSize > 18 and (RARITY_SCORE[o.rarity or "common"] or 1) < 6 then
             s = -1
@@ -2430,8 +1899,6 @@ local function doShop(game)
         return s
     end
 
-    -- V5.1: mana_upgrade tem prioridade MAXIMA (acima de qualquer carta)
-    -- quando gold >= 25 — e o unico ganho de teto permanente da loja.
     local function tryManaUpgrade()
         for _, o in ipairs(game.shopSystem:getCurrentOffers()) do
             if o.type == "upgrade" and o.effect == "increase_base_mana"
@@ -2451,8 +1918,6 @@ local function doShop(game)
     tryManaUpgrade()
 
     if prof().shop == "impulsive" then
-        -- NAIVE: compra na ORDEM DA VITRINE enquanto o ouro der (ate 3 itens),
-        -- sem reserva, sem reroll, sem perguntar se o servico tem uso agora.
         for _, o in ipairs(game.shopSystem:getCurrentOffers()) do
             if bought >= 3 then break end
             if o.type == "card" then recOffer(o.id) end
@@ -2463,7 +1928,6 @@ local function doShop(game)
                     bought = bought + 1
                     log("- Loja (impulsiva): comprei **%s** ($%d)", o.name, o.cost)
                 elseif o.type == "upgrade" and o.effect ~= "remove_card" then
-                    -- (a tesoura fica de fora: o naive nao tira carta do deck)
                     game.economySystem:spendGold(o.cost, o.type, o.id)
                     applyUpgradeOffer(game, o)
                     bought = bought + 1
@@ -2478,7 +1942,6 @@ local function doShop(game)
         return
     end
 
-    -- V5.10: reroll ate 2x se nenhuma CARTA com score >= 6 e sobra caixa.
     local rerolls = 0
     while rerolls < 2 do
         local bestCardScore = -1
@@ -2503,36 +1966,18 @@ local function doShop(game)
     local offers = game.shopSystem:getCurrentOffers()
     for _, o in ipairs(offers) do if o.type == "card" then recOffer(o.id) end end
 
-    -- ===== SERVICOS DA LOJA (Set/2026) =====
-    -- Tesoura, prensa, bancada de coringa, grimorio e cofre: as compras CARAS
-    -- e permanentes. O piloto nao tinha caminho nenhum pra elas, entao a
-    -- metade cara da vitrine ficava intocada a corrida inteira e a economia
-    -- media do relatorio era a de um jogador que so compra carta de $3.
-    --
-    -- A politica abaixo nao tenta ser otima — tenta ser um jogador RAZOAVEL,
-    -- que e o que um instrumento de balanco precisa representar:
-    --   • so compra o que tem uso AGORA (bancada de coringa so com coringa
-    --     parado; tesoura so com deck inchado);
-    --   • o cofre e decisao de ABERTURA — ele rende por batalha RESTANTE, e
-    --     comprado tarde e prejuizo (o proprio Config.Offers explica isso);
-    --   • nunca fura a reserva de caixa nem o teto de 3 compras por loja.
     local rm = game.runManager
     local Config = require("src.core.Config")
     local function serviceWorth(o)
         local ef = o.effect
         if ef == "increase_draw" then
-            -- +1 carta por turno e motor puro e nao depende de estado.
             return 10
         elseif ef == "add_joker_slot" then
-            -- So vale com coringa PARADO na bancada — senao e slot vazio.
             local possuidos = #((run.jokers) or {})
             local ativos = (rm and rm.getMaxJokerSlots and rm:getMaxJokerSlots())
                 or (game.maxJokerSlots or 3)
             return (possuidos > ativos) and 9 or -1
         elseif ef == "raise_interest_cap" then
-            -- Rende +N por batalha restante, e so se realiza mantendo
-            -- 5x(teto) parado no bolso. Decisao de abertura: A1-A2 apenas, e
-            -- so com caixa que aguente a imobilizacao.
             local eco = game.economySystem
             local tetoNovo = (eco:getInterestCap() or 5)
                 + ((Config.Offers and Config.Offers.INTEREST_CAP_PER_BUY) or 2)
@@ -2560,8 +2005,6 @@ local function doShop(game)
         end
     end
 
-    -- TESOURA (remove_card): deck inchado e o gatilho, igual ao guard do
-    -- picker headless (que se recusa a remover abaixo de 8 cartas).
     for _, o in ipairs(offers) do
         if bought >= 3 then break end
         if o.type == "upgrade" and o.effect == "remove_card"
@@ -2577,7 +2020,6 @@ local function doShop(game)
         end
     end
 
-    -- Forja paga (score V5.9 decide o alvo; so compra se ha alvo que rende)
     for _, o in ipairs(offers) do
         if bought >= 3 then break end
         if o.type == "upgrade" and o.effect == "forge_card"
@@ -2587,22 +2029,6 @@ local function doShop(game)
             if target and ts > 0 then
                 game.economySystem:spendGold(o.cost, o.type, o.id)
 
-                -- O DETECTOR PRECISA OLHAR A MESMA COPIA ANTES E DEPOIS.
-                --
-                -- A versao anterior comparava `getUpgrades(id)` com o retorno
-                -- de `upgradeCard(id)` — e essas duas funcoes respondem a
-                -- perguntas DIFERENTES: a primeira devolve o MAIOR nivel entre
-                -- as copias daquela carta, a segunda forja a de MENOR nivel e
-                -- devolve o nivel DELA. Com duas copias (uma ja forjada), o
-                -- "antes" era 1 e o "depois" era 1, e o detector gritava "ouro
-                -- queimado" numa forja que tinha funcionado. Era ALARME FALSO,
-                -- e ele apareceu 3x na bateria de 6 corridas.
-                --
-                -- Isso importa alem do ruido: este harness e o que mede
-                -- BALANCO. Tripwire que mente faz anomalia de verdade se
-                -- perder no meio do barulho — e a forja e POR COPIA desde
-                -- Set/2026 (CLAUDE.md), entao perguntar por ID e o erro de
-                -- origem. Resolve-se o INDICE e usam-se as APIs `...At`.
                 local idx = forgeIndexFor(game, target)
                 local before = idx and game.runManager:getUpgradesAt(idx) or nil
                 local lvl = idx and game.runManager:upgradeCardAt(idx) or nil
@@ -2624,15 +2050,11 @@ local function doShop(game)
         end
     end
 
-    -- Cartas por score (melhores primeiro), respeitando a reserva de caixa
     local cardOffers = {}
     for _, o in ipairs(offers) do
         if o.type == "card" then table.insert(cardOffers, o) end
     end
     if v6Build() then
-        -- v6: a SIMULACAO decide (mesma pergunta da recompensa: o deck sofre
-        -- menos com a carta?). Ate 2 cartas por visita, a melhor primeiro;
-        -- so compra o que melhora >= 1 HP-equivalente nas lutas a frente.
         for _ = 1, 2 do
             if bought >= 3 then break end
             local ids, byId = {}, {}
@@ -2660,10 +2082,6 @@ local function doShop(game)
     table.sort(cardOffers, function(a, b)
         return scoreCardOffer(a) > scoreCardOffer(b)
     end)
-    -- NORMAL: no maximo `shopCards` cartas (nao coringa) por visita — o
-    -- jogador normal nao leva a vitrine inteira (ate 5 cartas numa loja do
-    -- A1 na bateria s2-avg-n3: era a loja, mais que a recompensa, que
-    -- inchava o deck).
     local cardsThisVisit, cardCap = 0, prof().shopCards or 99
     for _, o in ipairs(cardOffers) do
         if bought >= 3 then break end
@@ -2682,7 +2100,6 @@ local function doShop(game)
         end
     end
 
-    -- V5.1: increase_max_health como filler barato (sobrou caixa e vitrine)
     for _, o in ipairs(offers) do
         if bought >= 3 then break end
         if o.type == "upgrade" and o.effect == "increase_max_health"
@@ -2697,7 +2114,6 @@ local function doShop(game)
         end
     end
 
-    -- V5.11: aquisicao de joker → re-otimiza a bancada
     if boughtJoker then
         optimizeJokerBench(game, "compra na loja")
     end
@@ -2708,36 +2124,19 @@ local function doShop(game)
     end
 end
 
--- ============================================================
--- UMA RUN COMPLETA
--- ============================================================
-
 local function playRun(classId, runIdx, maxEndlessFloors, seed, opts)
     opts = opts or {}
     local Game = require("src.core.Game")
-    -- Run nova num processo que ja jogou outras (bateria): nada da run
-    -- anterior — eventos pendentes, FX — pode atravessar pra esta.
     EventManager.clear()
     drainPresentation()
     local game = Game:new()
-    -- BALANCE_SEAL=N: mede a corrida no Selo do Grimório N (0 = jogo base).
     game:startNewRun(classId, { seal = tonumber(os.getenv("BALANCE_SEAL") or "0") or 0 })
 
-    -- SEED FIXA (Set/2026) — sem isto, medir "antes x depois" de uma mudanca
-    -- de balanco compara duas amostras DIFERENTES e o ruido engole o efeito.
-    -- Duas fontes precisam ser fixadas, nao uma:
-    --   • Rng (streams card/shop/map/event/enemy) → ofertas, mapa, eventos;
-    --   • love.math → o EMBARALHAMENTO do deck (Game:shuffleDeck), que decide
-    --     a mao de cada turno e pesa tanto quanto a oferta.
-    -- Fixar so o Rng deixaria metade da run solta.
     if seed then
         local Rng = require("src.systems.Rng")
         Rng.setActive(Rng.new(seed))
         game.runManager.currentRun.runSeed = seed
         love.math.setRandomSeed(seed)
-        -- TERCEIRA fonte (Out/2026): o intent do inimigo (Enemy:rollIntent)
-        -- sorteia com math.random do Lua. Sem fixar, duas baterias com a
-        -- mesma seed lutavam contra inimigos que golpeavam diferente.
         math.randomseed(seed)
     end
 
@@ -2747,11 +2146,7 @@ local function playRun(classId, runIdx, maxEndlessFloors, seed, opts)
         deckByBattle = {}, forges = {}, purchases = {},
     }
     M.lastRecord = runRec
-    -- RNG PROPRIO do piloto (escolhas "aleatorias" do NAIVE): nunca o
-    -- love.math global — cosmeticos consomem dele por quadro e o relogio
-    -- instantaneo e o de quadros divergiriam. Seedado pela seed da run.
     M._pilotRng = love.math.newRandomGenerator(seed or 1)
-    -- forjas (fogueira, loja, evento): qual carta, qual nivel, em que andar
     do
         local rm = game.runManager
         local origAt = rm.upgradeCardAt
@@ -2782,9 +2177,6 @@ local function playRun(classId, runIdx, maxEndlessFloors, seed, opts)
             return origJoker(self, id, meta)
         end
     end
-    -- LIVRO-CAIXA (Out/2026, auditoria da economia): ouro ganho/gasto POR ATO
-    -- e por categoria, mais as visitas a loja. Sem isto o relatorio so tinha
-    -- o ouro FINAL — e "a loja e cara?" e pergunta sobre o meio da corrida.
     runRec.eco = { earned = {}, spent = {}, byType = {}, shops = {}, slot = {} }
     do
         local eco, rm = game.economySystem, game.runManager
@@ -2814,24 +2206,19 @@ local function playRun(classId, runIdx, maxEndlessFloors, seed, opts)
 
     game:startGame()
     pump(game, 0.5)
-    -- v4: picker headless — sem isso os eventos de deck (remover/duplicar/
-    -- forjar a escolha) eram NO-OP no piloto (dependem de UI).
     installHeadlessPicker(game)
 
     battleStats = {
         battles = 0, turns = 0, dmgTaken = 0,
         realDecisionTurns = 0, totalTurns = 0,
-        armorCapHits = 0, -- v3: turnos em que o Bloqueio bateu no cap
-        byAct = {},   -- [act] = { dealt, taken, turns, battles }
-        -- V5.16: tripwires
-        focusMaxByAct = {},   -- [act] = foco maximo visto (mago)
+        armorCapHits = 0,
+        byAct = {},
+        focusMaxByAct = {},
         thornReflect = 0, thornTurns = 0,
         multJokersMax = 0, multEffective = 1,
-        potionsUsed = 0, potionsFound = 0, sustainSlots = 0, -- wip/sustain
+        potionsUsed = 0, potionsFound = 0, sustainSlots = 0,
         plays = { n = 0, cards = 0, max = 0, hist = {}, withCombo = 0,
             atk = 0, atkCombo = 0, def = 0, defCombo = 0 },
-        -- pipeline (Out/2026): dano por fonte, composicao do valor da carta,
-        -- uma linha por batalha
         dmg = {}, dmgParts = {}, battleLog = {},
     }
 
@@ -2843,7 +2230,6 @@ local function playRun(classId, runIdx, maxEndlessFloors, seed, opts)
     local floors = 0
     local lastAct = 1
 
-    -- primeira batalha (startGame ja criou o inimigo do A1-F1)
     while true do
         floors = floors + 1
         runRec.floors = floors
@@ -2853,7 +2239,6 @@ local function playRun(classId, runIdx, maxEndlessFloors, seed, opts)
         local label = ("A%d-F%d [%s]"):format(
             run.actNumber, run.floorInAct, nodeType)
 
-        -- V5.11: inicio de ato → re-otimiza a bancada de coringas
         if (run.actNumber or 1) ~= lastAct then
             lastAct = run.actNumber or 1
             optimizeJokerBench(game, ("inicio do A%d"):format(lastAct))
@@ -2872,8 +2257,6 @@ local function playRun(classId, runIdx, maxEndlessFloors, seed, opts)
         if game:checkVictory() then
             outcome = ("VENCEU O JOGO em %s (score %d)"):format(label, game.score)
             runRec.won = true
-            -- Endless medido (BALANCE_ENDLESS > 0): segue pelo mesmo botão da
-            -- tela de vitória. Vitória já contada; a run continua.
             if (maxEndlessFloors or 0) > 0 and game.enterEndless and game:enterEndless() then
                 runRec.endless = true
                 log("- Vitoria: **seguindo no endless** (ate %d andares)", maxEndlessFloors)
@@ -2887,16 +2270,12 @@ local function playRun(classId, runIdx, maxEndlessFloors, seed, opts)
             runRec.endlessFloors = run.floorsInEndless or 0
             break
         end
-        -- Corte por batalhas (testes de paridade/determinismo: run curta e
-        -- reproduzivel sem jogar a campanha inteira).
         if opts.maxBattles and floors >= opts.maxBattles then
             outcome = ("CORTE em %s apos %d batalhas (score %d)"):format(label, floors, game.score)
             runRec.cut = true
             break
         end
 
-        -- Cash-out do RoundEval (headless): o pagamento da batalha vive na
-        -- tela de RoundEval — sem simular o resgate o bot morre de fome.
         if game._buildRoundEvalSources then
             local sources = game:_buildRoundEvalSources()
             local total = 0
@@ -2914,7 +2293,6 @@ local function playRun(classId, runIdx, maxEndlessFloors, seed, opts)
 
         doRewards(game)
 
-        -- mapa: gera opcoes e escolhe caminho ate cair numa batalha
         local safety = 0
         repeat
             safety = safety + 1
@@ -2922,8 +2300,6 @@ local function playRun(classId, runIdx, maxEndlessFloors, seed, opts)
                 game.runManager:advanceFloorInAct()
                 game.runManager:generateNextNodes(3)
             end
-            -- Endless: ciclo novo abre escolha de maldição (a tela do jogo
-            -- obriga). Piloto pega a de MENOR bônus de pontos = a mais branda.
             do
                 local RM = require("src.systems.RunModifiers")
                 local pend = RM.pending(game.runManager.currentRun)
@@ -2959,7 +2335,6 @@ local function playRun(classId, runIdx, maxEndlessFloors, seed, opts)
             elseif node.type == BT.SHOP then
                 doShop(game)
             else
-                -- battle/elite/mini_boss/boss → proxima batalha
                 game:nextPhase()
                 pump(game, 0.5)
                 break
@@ -2978,7 +2353,6 @@ local function playRun(classId, runIdx, maxEndlessFloors, seed, opts)
         end
     end
 
-    -- metricas da run
     local run = game.runManager.currentRun
     runRec.outcome = outcome
     runRec.act, runRec.floorInAct = run.actNumber, run.floorInAct
@@ -2988,7 +2362,7 @@ local function playRun(classId, runIdx, maxEndlessFloors, seed, opts)
     runRec.endlessFloors = run.endlessMode and (run.floorsInEndless or 0) or 0
     runRec.curses = require("src.systems.RunModifiers").totalCurseStacks(run)
     runRec.battles = battleStats.battles
-    runRec.potionsUsed, runRec.potionsFound, runRec.sustainSlots = battleStats.potionsUsed, battleStats.potionsFound, battleStats.sustainSlots -- wip/sustain
+    runRec.potionsUsed, runRec.potionsFound, runRec.sustainSlots = battleStats.potionsUsed, battleStats.potionsFound, battleStats.sustainSlots
     runRec.turns = battleStats.turns
     runRec.byAct = battleStats.byAct
     runRec.plays = battleStats.plays
@@ -3022,7 +2396,6 @@ local function playRun(classId, runIdx, maxEndlessFloors, seed, opts)
     log("- Deck final: %d cartas | Ouro final: $%d | Score: %d",
         #(run.currentDeck or {}), game.economySystem.currentGold, game.score)
 
-    -- POST-MORTEM: output vs pressao por ato + composicao do deck
     for act, ba in pairs(battleStats.byAct) do
         if ba.turns > 0 then
             log("- A%d: dano/turno %.1f | sofrido/turno %.1f | %.1f turnos/batalha",
@@ -3031,7 +2404,6 @@ local function playRun(classId, runIdx, maxEndlessFloors, seed, opts)
         end
     end
 
-    -- V5.16: TRIPWIRES do rebalance v2 (alimentam a secao Validacao do plano)
     log("- Tripwires v5:")
     log("  - jokers multiplicadores ativos (max simultaneo): %d | efetivo x%.2f (P0.9: max, nunca produto)",
         battleStats.multJokersMax or 0, battleStats.multEffective or 1)
@@ -3059,14 +2431,6 @@ local function playRun(classId, runIdx, maxEndlessFloors, seed, opts)
     return outcome
 end
 
--- ============================================================
--- ENTRY
--- ============================================================
-
--- love . autoplay [runs] [classe|all] [seedBase]
--- Com seedBase, a run i da classe C usa seed = seedBase + i (mesma seed por
--- indice em qualquer execucao) — e o unico jeito de um A/B de balanco medir a
--- MUDANCA em vez do sorteio.
 function M.run(runsArg, classArg, seedArg)
     local runsPerClass = tonumber(runsArg or "2") or 2
     local classes = { "warrior", "mage", "rogue" }
@@ -3074,18 +2438,14 @@ function M.run(runsArg, classArg, seedArg)
     local seedBase = tonumber(seedArg)
 
     _G.EventManager = EventManager
-    _G.Event = require("engine.Event")  -- CombatSequence usa _G.Event
+    _G.Event = require("engine.Event")
     local I18n = require("src.i18n.I18n")
     I18n.init()
     installDotMeter()
-    -- AUTOPLAY_PILOT=<perfil>: diario de UM piloto especifico (o padrao e o
-    -- expert). E o jeito de ler o que o average/naive decidiu em cada no.
     if os.getenv("AUTOPLAY_PILOT") and os.getenv("AUTOPLAY_PILOT") ~= "" then
         M.setPilot(os.getenv("AUTOPLAY_PILOT"))
     end
     log("- Piloto: **%s**", tostring(M.policy))
-
-    -- silencia print interno do jogo? nao — deixa no console, o diario e a parte.
 
     log("# Diario do Piloto de IA — autoplay v5")
     log("")
@@ -3140,11 +2500,7 @@ function M.run(runsArg, classArg, seedArg)
     love.event.quit()
 end
 
--- ===== Superficie da bateria (tools/balance_sim.lua) =====
--- Roda UMA run e devolve o registro estruturado. pcall por fora fica com quem
--- chama (a bateria conta CRASH como resultado proprio).
 function M.playRunRecord(classId, runIdx, seed, opts)
-    -- BALANCE_ENDLESS=N: depois da vitória, segue N andares no endless.
     local outcome = playRun(classId, runIdx,
         tonumber(os.getenv("BALANCE_ENDLESS") or "0") or 0, seed, opts)
     local rec = M.lastRecord or {}
@@ -3155,9 +2511,6 @@ function M.installHooks() installDotMeter(); installDamageLedger() end
 function M.getAnomalies() return anomalies end
 function M.getReport() return report end
 
--- Rejoga UMA batalha a partir do retrato, com a politica atual, vida CHEIA
--- (mede so o combate: HP perdido e turnos). Mesma seed = mesmo embaralhamento
--- e mesmos intents pra qualquer politica.
 function M.replayBattle(snap, seed)
     local Game = require("src.core.Game")
     local game = Game:new()
@@ -3192,28 +2545,9 @@ function M.replayBattle(snap, seed)
 end
 M.snapshotBattle = snapshotBattle
 
--- ============================================================
--- v6: DECK BUILDING POR SIMULACAO
--- ============================================================
--- Heuristica de "quanto vale uma carta" erra justamente onde o balanceamento
--- precisa acertar (sinergia, escala, o que falta no deck). A pergunta certa e
--- empirica: COM esta carta, o deck sofre menos nas proximas lutas? Cada opcao
--- (incluindo PULAR) e jogada contra o CHEFE do ato e uma luta comum logo a
--- frente, com as mesmas seeds pra todas as opcoes (numeros aleatorios comuns:
--- a diferenca medida e a carta, nao o sorteio).
---
--- `mutate(snap)` altera o retrato (adiciona/remove carta). Devolve a perda
--- media em HP-equivalente: HP perdido + derrota pesada pelo quanto faltou.
--- Replays por luta de referencia. O v6 original jogava 2 (x2 lutas = 4
--- replays por candidata); o perfil `expert` joga 1 e so leva a simulacao as
--- `SIM_CANDIDATES` melhores candidatas da heuristica (+ pular). Medido
--- (Out/2026, warrior seed 720001): 892 → ~300 replays por run, mesma
--- vitoria. `expert_full` restaura o v6 inteiro pra conferir.
 M.SIM_PER_FIGHT = 1
 M.SIM_CANDIDATES = 2
 local function simPerFight() return prof().simPerFight or M.SIM_PER_FIGHT end
--- Pre-filtro das candidatas que vao a simulacao: coringas sempre entram
--- (bancada nao dilui), e as demais na ordem do valor heuristico (AI.cardWorth).
 function M.simCandidates(game, ids)
     local cap = prof().simCandidates or M.SIM_CANDIDATES
     if not cap or #ids <= cap then return ids end
@@ -3248,11 +2582,6 @@ function M.evalDeckSim(game, mutate)
     }
     if mutate then mutate(base) end
     evalCounter = evalCounter + 1
-    -- FILAS ISOLADAS: cada replay monta um Game descartavel que deixa eventos
-    -- pendentes (materializar carta, fim de dissolve — "after" BLOQUEANTES) na
-    -- fila GLOBAL. Sem isolar, milhares deles se acumulavam, serializados, e
-    -- ainda rodavam por cima da run real. Cada replay ganha filas novas; as da
-    -- run voltam intactas no fim.
     local savedQueues = EventManager.queues
 
     local total, n = 0, 0
@@ -3274,7 +2603,6 @@ function M.evalDeckSim(game, mutate)
             end
         end
     end
-    -- devolve o mundo da run como estava
     EventManager.queues = savedQueues
     Rng.setActive(savedRng)
     love.math.setRandomState(savedLove)
@@ -3283,7 +2611,6 @@ function M.evalDeckSim(game, mutate)
     return n > 0 and total / n or 999
 end
 
--- Melhor opcao entre `ids` (cartas candidatas) e PULAR. Devolve (id|nil, ganho)
 function M.pickBySim(game, ids)
     local cdb = game.deckManager.cardDatabase
     local baseLoss = M.evalDeckSim(game, nil)
@@ -3307,11 +2634,6 @@ function M.pickBySim(game, ids)
     return best, baseLoss - bestLoss, baseLoss
 end
 
--- ===== Superficie de teste =====
--- `tools/test_autoplay_pilot.lua` conduz UMA batalha pelo cerebro real do
--- piloto. Sem isto a unica forma de testar a politica de turno seria rodar uma
--- corrida inteira — caro demais pra suite e vago demais pra apontar defeito.
--- `battleStats` normalmente e montado por playRun; o teste precisa monta-lo.
 M._playBattle = playBattle
 function M._resetBattleStats()
     battleStats = {
@@ -3320,7 +2642,7 @@ function M._resetBattleStats()
         armorCapHits = 0, byAct = {},
         focusMaxByAct = {}, thornReflect = 0, thornTurns = 0,
         multJokersMax = 0, multEffective = 1,
-        potionsUsed = 0, potionsFound = 0, sustainSlots = 0, -- wip/sustain
+        potionsUsed = 0, potionsFound = 0, sustainSlots = 0,
         plays = { n = 0, cards = 0, max = 0, hist = {}, withCombo = 0,
             atk = 0, atkCombo = 0, def = 0, defCombo = 0 },
         dmg = {}, dmgParts = {}, battleLog = {},

@@ -1,25 +1,3 @@
--- tools/screenshot_class_select.lua
--- Seleção de classe v4 ("página do grimório", Out/2026 — memory/class_emblems.md).
--- Renderiza cada estado num CANVAS do tamanho pedido com a janela
--- FALSIFICADA (getWidth/getHeight) — setMode repetido dentro de tool trava
--- (memory/ui_layout_invariants.md). Passa pelo UiScale de verdade (a tela é
--- adotada no love.load). Gera, no save dir:
---   class_select_<W>x<H>_<estado>.png
--- estados:
---   fresh    — perfil novo: só o guerreiro liberado, foco nele
---   locked   — perfil novo, foco no ladino bloqueado (silhueta + condição)
---   all      — todas liberadas, foco no mago (resumo)
---   details  — mago com o marcador DETALHES aberto
---   starter_hover — carta inicial em hover (lift + tooltip ao lado)
---   inspect  — a inspeção da Coleção aberta na carta inicial
---   seal     — Selo 7, foco no guerreiro, mouse na faixa do selo (regra)
---   seal_cap — Selo 7, foco no ladino que só vai até o 1 (aviso de teto)
---   pick     — momento da escolha (anel + faíscas)
---   denied   — clique em COMEÇAR numa bloqueada (tremor; NÃO inicia run)
--- 1280x800 sai com o multiplicador do Steam Deck (125%), como no aparelho.
--- CS_LOCALE=de troca o idioma; CS_SIZES=1024x768,1920x1080 filtra tamanhos.
---   love . test_one screenshot_class_select
-
 local M = {}
 
 local SIZES = { { 1024, 768 }, { 1280, 800 }, { 1920, 1080 } }
@@ -41,15 +19,12 @@ local function restore()
     love.mouse.getPosition = realMouse
 end
 
--- Mouse num retângulo VIRTUAL da tela (o UiScale divide o mouse real por k).
 local function hoverRect(r)
     if not r then mouseX, mouseY = 2, 2 return end
     local k = require("src.ui.UiScale").k()
     mouseX, mouseY = (r.x + r.w / 2) * k, (r.y + r.h / 2) * k
 end
 
--- Cenários do UnlockSystem (monkeypatch das 3 funções do contrato — vale
--- tanto pro stub quanto pra versão real da frente progressão).
 local function scenario(US, name)
     local orig = M._orig
     if name == "fresh" then
@@ -70,7 +45,7 @@ local function scenario(US, name)
             if id == "mage" then return { level = 3, maxLevel = 5, xp = 140, xpToNext = 200 } end
             return { level = 5, maxLevel = 5, xp = 0, xpToNext = 0 }
         end
-    else -- all
+    else
         US.isClassUnlocked = function() return true end
         US.getClassUnlockInfo = function() return { unlocked = true, reqKey = "unlock.class.default", vars = {}, progress = 1, goal = 1 } end
         US.getClassMastery = function() return { level = 2, maxLevel = 5, xp = 50, xpToNext = 150 } end
@@ -113,8 +88,6 @@ function M.run()
     M._orig = { US.isClassUnlocked, US.getClassUnlockInfo, US.getClassMastery,
         US.getMaxSeal, US.getSealWon, US.getClassRecord }
 
-    -- TIRA DE ANIMAÇÃO: cada emblema em 8 instantes (0.15s) + versão
-    -- acorrentada — valida o idle procedural sem precisar de vídeo.
     do
         local ClassEmblem = require("src.ui.ClassEmblem")
         local ids = { "warrior", "mage", "rogue" }
@@ -169,7 +142,6 @@ function M.run()
             s3:toggleDetails()
             pump(s3, 0.6)
             shoot(s3, sz[1], sz[2], "details")
-            -- carta inicial em hover (lift + tooltip ao lado) e a inspeção
             local r1 = s3._starterRects and s3._starterRects[1]
             if r1 then
                 hoverRect({ x = r1.x, y = r1.y + r1.h * 0.2, w = r1.w, h = r1.h * 0.6 })
@@ -188,7 +160,6 @@ function M.run()
                 s3.inspectModal:hide()
             end
 
-            -- Selos: guerreiro liberou até o 10, mago até o 4, ladino até o 1.
             local caps = { warrior = 10, mage = 4, rogue = 1 }
             US.getMaxSeal = function(id) return caps[id] or 0 end
             US.getSealWon = function(id) return (caps[id] or 0) - 1 end

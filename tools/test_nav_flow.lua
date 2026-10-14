@@ -1,21 +1,3 @@
--- tools/test_nav_flow.lua
--- RUN INTEIRA SÓ POR TECLADO/PAD (meta Steam Deck Verified): o jogo de
--- verdade (main.lua depois do love.load), sem mouse nenhum —
---   menu → classe → batalha (seleciona e joga) → cash out → espólio →
---   encruzilhada → loja (compra) → encruzilhada → descanso → encruzilhada →
---   evento → pausa → configurações → volta.
--- Cada passo navega com SETAS/D-PAD de verdade (o motorista escolhe a
--- direção que aproxima o foco do alvo e aperta a tecla), confirma com
--- Enter/A, e confere que o foco nunca cai fora da tela.
---
---   love . nav_flow                (sai com 0/1)
---   NAV_PART=2 love . nav_flow     (2º roteiro: coleção, conquistas, coringas,
---                                   deck, roteiro, pacote, vitória → endless)
---
--- Trapaças declaradas (não são navegação): inimigo com 1 de vida (a luta não
--- é o que se testa) e o tipo dos nós da encruzilhada forçado (loja, descanso,
--- evento) pra o roteiro ser determinístico.
-
 local M = {}
 
 local pass, fail = 0, 0
@@ -28,17 +10,14 @@ local NavCursor = require("src.ui.NavCursor")
 local function state() return _G.getCurrentState and _G.getCurrentState() end
 
 local function frames(n) for _ = 1, n or 1 do coroutine.yield() end end
--- espera TEMPO de jogo (sem vsync o tool roda a centenas de quadros/s: contar
--- quadros não espera animação nenhuma)
 local function sleep(secs)
     local t = 0
     while t < secs do t = t + (coroutine.yield() or 0) end
 end
 
--- Capturas com o anel de foco (NAV_SHOTS=1): nav_<nome>_<W>x<H>.png
 local function snap(name)
     if not os.getenv("NAV_SHOTS") then return end
-    sleep(1.2)   -- entradas/cascatas assentam
+    sleep(1.2)
     local file = ("nav_%s_%dx%d.png"):format(name, love.graphics.getWidth(), love.graphics.getHeight())
     love.graphics.captureScreenshot(function(img)
         img:encode("png", file)
@@ -58,7 +37,6 @@ local function waitFor(pred, maxFrames, label)
     return false
 end
 
--- foco dentro da tela (pixels reais)
 local function focusOnScreen()
     local t = NavCursor.focused()
     if not t then return true end
@@ -70,8 +48,6 @@ local function noteFocus()
     if NavCursor.isActive() and not focusOnScreen() then offscreen = offscreen + 1 end
 end
 
--- Navega com SETAS até o alvo que satisfaz `match(target)`; devolve true se
--- o foco chegou nele. Escolhe a direção pelo vetor foco→alvo.
 local function navigateTo(match, label, useKeys)
     local press = useKeys == false and function(d) pad("dp" .. d) end or key
     if not NavCursor.isActive() then press("down") end
@@ -108,27 +84,23 @@ function M.script()
     local I18n = require("src.i18n.I18n")
     print("---- fluxo de run só por teclado/pad ----")
     frames(10)
-    -- boot → menu
     waitFor(function()
         if state() == "boot" then love.keypressed("return") end
         return state() == "menu"
     end, 600, "menu")
-    frames(150)   -- intro do menu (cascata dos botões)
+    frames(150)
     check("menu alcançado", state() == "menu")
 
-    -- Jogar (setas até o botão + Enter)
     local playLabel = I18n.t("menu.play")
     check("menu: setas chegam no Jogar", navigateTo(isButtonText(playLabel), "Jogar"))
     snap("menu")
     key("return")
     frames(30)
-    -- confirmação de "jogar com save" (se existir): Enter confirma
     if require("src.ui.ConfirmDialog").isVisible() then key("left"); key("return"); frames(10) end
     waitFor(function() return state() == "classSelection" end, 300, "classSelection")
     check("classe: tela aberta pelo teclado", state() == "classSelection")
     frames(60)
 
-    -- classe: foco num painel (pad: D-pad) e A
     local ok = navigateTo(function(t)
         local b = type(t.key) == "table" and t.key
         return b and b.text == "" and b.width > 150
@@ -141,15 +113,13 @@ function M.script()
 
     local GS = require("src.scenes.GameplayScene")
     local game = GS.getGame()
-    frames(240)   -- viagem/chegada do inimigo
+    frames(240)
     waitFor(function() return game.turn == "player" and #game.hand > 0
         and not game.combatAnimationSystem:isBlocking() end, 900, "turno do jogador")
     frames(60)
     game.enemy.health = 1
     game.enemy.armor = 0
-    -- LB/RB andam na mão; A seleciona; Y joga
     pad("rightshoulder")
-    -- RB anda pela mão até uma carta de ATAQUE (a de defesa não mata)
     for _ = 1, 6 do
         local c = NavCursor.focused()
         if c and type(c.key) == "table" and c.key.type == "attack" then break end
@@ -162,7 +132,7 @@ function M.script()
     snap("battle_hand")
     pad("a")
     snap("battle_selected")
-    pad("a"); pad("a")   -- desmarca e marca de novo (A alterna)
+    pad("a"); pad("a")
     check("batalha: A seleciona a carta focada", card and game:isCardSelected(card))
     noteFocus()
     waitFor(function() return not game.combatAnimationSystem:isBlocking() end, 300, "jogar liberado")
@@ -174,7 +144,6 @@ function M.script()
     check("batalha: vitória leva adiante (" .. tostring(state()) .. ")",
         state() == "roundEval" or state() == "cardReward")
 
-    -- cash out: Enter até sair
     for i = 1, 30 do
         if state() ~= "roundEval" then break end
         key("return"); frames(20)
@@ -183,7 +152,6 @@ function M.script()
     check("espólio aberto pelo teclado", state() == "cardReward")
     frames(90)
 
-    -- força a próxima encruzilhada: loja / descanso / evento
     local MapManager = require("src.systems.MapManager")
     local realGen = MapManager.generate
     local forced = { "shop", "rest", "event" }
@@ -198,7 +166,6 @@ function M.script()
         return nodes
     end
 
-    -- espólio: escolhe a 1ª carta (foco + Enter) e confirma pelo botão
     ok = navigateTo(function(t) return type(t.key) == "table" and t.key.shopOffer ~= nil end, "carta do espólio")
     check("espólio: setas chegam numa carta", ok)
     key("return"); frames(20)
@@ -221,7 +188,6 @@ function M.script()
         key("return")
     end
 
-    -- LOJA
     chooseFork("loja")
     waitFor(function() return state() == "cardReward" end, 900, "loja")
     check("loja aberta pela encruzilhada", state() == "cardReward")
@@ -237,7 +203,7 @@ function M.script()
     local buy = navigateTo(function(t)
         local b = type(t.key) == "table" and t.key
         return b and b.text and b.text:find("%$") and b.width and b.width < 400
-            and b.text:upper() == b.text   -- "COMPRAR $N"
+            and b.text:upper() == b.text
     end, "comprar")
     if buy then key("return") end
     frames(40)
@@ -245,7 +211,6 @@ function M.script()
         .. #(game.runManager.currentRun.currentDeck or {}) .. ")",
         #(game.runManager.currentRun.currentDeck or {}) > deckBefore)
     game.economySystem.currentGold = gold0
-    -- sai da loja: X/Q é o reroll; o Continuar é botão — navega até ele
     local cont = navigateTo(function(t)
         local b = type(t.key) == "table" and t.key
         return b and b.text and b.text:find("%(%+%$")
@@ -255,7 +220,6 @@ function M.script()
     check("loja → encruzilhada", state() == "mapSelection")
     frames(120)
 
-    -- DESCANSO
     chooseFork("descanso")
     waitFor(function() return state() == "rest" end, 900, "descanso")
     check("descanso aberto", state() == "rest")
@@ -270,7 +234,6 @@ function M.script()
     check("descanso → encruzilhada", state() == "mapSelection")
     frames(120)
 
-    -- EVENTO
     chooseFork("evento")
     waitFor(function() return state() == "event" end, 900, "evento")
     check("evento aberto", state() == "event")
@@ -290,7 +253,6 @@ function M.script()
     check("evento resolvido pelo teclado (" .. tostring(state()) .. ")", state() ~= "event")
     MapManager.generate = realGen
 
-    -- PAUSA → CONFIGURAÇÕES → volta (pad: START, D-pad, A, B)
     frames(60)
     pad("start")
     local IF = require("src.ui.InputFocus")
@@ -311,16 +273,13 @@ function M.finish()
     love.event.quit(fail == 0 and 0 or 1)
 end
 
--- ajudantes pro 2º roteiro (tools/test_nav_flow2.lua)
 M.frames, M.sleep, M.key, M.pad = frames, sleep, key, pad
 M.waitFor, M.navigateTo, M.check, M.snap = waitFor, navigateTo, check, snap
 M.isButtonText, M.isKey, M.state = isButtonText, isKey, state
 
 function M.start()
-    -- tamanho da janela por ambiente (uma chamada só, no começo)
     local W, H = tonumber(os.getenv("NAV_W")), tonumber(os.getenv("NAV_H"))
     if W and H then love.window.setMode(W, H, { resizable = true }) ; if love.resize then love.resize(W, H) end end
-    -- NAV_PART=2: o 2º roteiro (tools/test_nav_flow2.lua)
     local script = os.getenv("NAV_PART") == "2" and require("tools.test_nav_flow2").script or M.script
     local co = coroutine.create(script)
     local self = {}

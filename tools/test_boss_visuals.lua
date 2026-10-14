@@ -1,18 +1,3 @@
--- tools/test_boss_visuals.lua
--- Trava do VISUAL DOS CHEFES (Out/2026 — "o boss 2 é meio estático
--- flutuando, não intimida"; "o boss 1 não tem nada de especial"; "o boss 4
--- tá meio torto"). Ver memory/boss_visuals.md.
---
---   love . test_one test_boss_visuals
---
--- (a) idle de chefe é LOOP assado de >= 8 quadros, mesmo canvas, e MEXE
---     (os idles antigos de 4 quadros eram chuvisco de regeração)
--- (b) o idle nasce do quadro base: quadro 0 do idle ≈ quadro 0 do hurt/death
---     (identidade do chefe não deriva ao apanhar/morrer)
--- (c) todo chefe tem aura com brilho PEQUENO e sem contorno; o emissor emite; a morte
---     esvai; reducedMotion para o movimento
--- (d) winter_monarch centra pelo EIXO DO CORPO, não pelo bbox
-
 local TK = require("tools.testkit")
 local M = {}
 
@@ -29,7 +14,6 @@ local function frames(id, clip)
     return out
 end
 
--- fração de pixels que diferem (alpha ou cor) entre duas ImageData iguais
 local function diffFrac(a, b)
     if a:getWidth() ~= b:getWidth() or a:getHeight() ~= b:getHeight() then
         return 1
@@ -62,7 +46,6 @@ function M.run()
     t:eq("seis chefes no roster", #bosses, 6)
 
     for _, id in ipairs(bosses) do
-        -- (a) idle assado
         local idle = frames(id, "idle")
         t:truthy(id .. ": idle com >= 8 quadros (" .. #idle .. ")", #idle >= 8)
         local spec = (EnemyPoses.BY_ID[id] or {}).idle
@@ -86,16 +69,11 @@ function M.run()
             maxD = math.max(maxD, diffFrac(datas[1], datas[i]))
             maxStep = math.max(maxStep, diffFrac(datas[i - 1], datas[i]))
         end
-        -- mexe (> 1.5% dos pixels no quadro mais distante do base) e NÃO é
-        -- chuvisco de regeração: entre quadros VIZINHOS os idles antigos
-        -- mudavam 37-46%; o assado fica em 11-22% (tronco inteiro subindo
-        -- 1px já muda muito pixel de textura)
         t:truthy(string.format("%s: idle MEXE (pico %.1f%%)", id, maxD * 100),
             maxD > 0.015)
         t:truthy(string.format("%s: ...sem chuvisco de regeração (passo %.1f%%)",
             id, maxStep * 100), maxStep < 0.30)
 
-        -- (b) mesmo chefe nos três clips
         for _, clip in ipairs({ "hurt", "death" }) do
             local c = frames(id, clip)
             if c[1] and datas[1] then
@@ -105,12 +83,9 @@ function M.run()
             end
         end
 
-        -- (c) aura
         local a = AURAS[id]
         t:truthy(id .. ": tem aura declarada", a ~= nil)
         if a then
-            -- contorno colorido foi REJEITADO pelo dono ("a arte já tem o
-            -- contorno dela") e brilho grande lê como bola de luz
             t:falsy(id .. ": aura sem contorno colorido", a.rim)
             t:truthy(id .. ": aura tem brilho", a.glows and #a.glows > 0)
             local maxR = 0
@@ -119,11 +94,6 @@ function M.run()
         end
     end
 
-    -- emissor emite, morte esvai, reducedMotion congela
-    -- DETERMINÍSTICO (flake no test_all, Out/2026): o emissor é Poisson no
-    -- RNG global e para com reducedMotion — outra suíte da bateria pode ter
-    -- deixado _G.gameSettings com reducedMotion ligado ou o RNG num ponto
-    -- qualquer. Fixa os dois aqui e restaura no fim.
     local savedGS = _G.gameSettings
     _G.gameSettings = { reducedMotion = false }
     local savedState = love.math.getRandomState()
@@ -144,8 +114,6 @@ function M.run()
     love.math.setRandomState(savedState)
     BossAura.reset()
 
-    -- (d) eixo do monarca: dentro do conteúdo e à ESQUERDA do centro do bbox
-    -- (o cajado à esquerda e a capa à direita puxavam o bbox pra direita)
     local wm = EnemyPoses.BY_ID.winter_monarch
     local m = EnemyRenderer.debugClipMetrics("winter_monarch", "idle")
     t:truthy("winter_monarch declara axisX", wm and wm.axisX)

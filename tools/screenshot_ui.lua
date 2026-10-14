@@ -1,13 +1,5 @@
--- tools/screenshot_ui.lua
--- Captura as telas de UI SEM harness próprio (levantamento do redesign UI/UX):
---   love . screenshot_ui menu|class|settings|rest|event|collection|all
--- Salva ui_<tela>.png no save dir. Segue o pipeline de validação visual do
--- memory/balatro_fidelity_directive.md ("ver com os olhos").
-
 local M = {}
 
--- padrão do screenshot_worldroad "all": loop SÍNCRONO draw→capture→present
--- (encadear present dentro do callback de captura não dispara o próximo)
 local function capture(name)
     love.graphics.captureScreenshot(function(imageData)
         imageData:encode("png", "ui_" .. name .. ".png")
@@ -43,8 +35,6 @@ function M.run(mode)
     end
 
     addShot("menu", function()
-        -- Seed TEMPORÁRIO de perfil (plaque só aparece com histórico). Só se
-        -- não existe perfil real — removido no fim pra não poluir o do jogador.
         local seeded = false
         if not love.filesystem.getInfo("profile.lua") then
             love.filesystem.write("profile.lua",
@@ -53,23 +43,18 @@ function M.run(mode)
         end
         local Menu = require("components.Menu")
         local menu = Menu:new()
-        simulate(menu, 2.4)              -- intro stagger termina
+        simulate(menu, 2.4)
         love.graphics.clear(0, 0, 0, 1)
         menu:draw()
         if seeded then love.filesystem.remove("profile.lua") end
     end)
 
     addShot("boot", function()
-        -- Splash no auge da cascade (título visível). BootScene é module-level
-        -- state — init + simula 2.3s manualmente com EventManager.
-        -- BootScene consome _G.EventManager (sem ele, pula direto pro fim).
         local EventManager = require("engine.EventManager")
         _G.EventManager = EventManager
         local BootScene = require("src.scenes.BootScene")
         BootScene.init({ onComplete = function() end })
         local dt = 1 / 60
-        -- 2.8s: título já em alpha 1 (ease termina em splash+2.05 = 2.55s
-        -- total) e cascade ainda no ar; flash só em splash+2.70.
         for _ = 1, math.floor(2.8 * 60) do
             EventManager.update(dt)
             BootScene.update(dt)
@@ -94,7 +79,7 @@ function M.run(mode)
         simulate(menu, 2.4)
         local sm = SettingsMenu:new()
         sm:show()
-        simulate(sm, 0.5)   -- véu e entrada assentados (sem update o véu fica em 0)
+        simulate(sm, 0.5)
         love.graphics.clear(0, 0, 0, 1)
         menu:draw()
         sm:draw()
@@ -113,7 +98,6 @@ function M.run(mode)
         local Events = require("src.data.events")
         local EventScreen = require("components.EventScreen")
         local ev = Events.roll(1)
-        -- prefere evento COM ilustração (valida o slot de arte do redesign)
         for _ = 1, 30 do
             if ev and love.filesystem.getInfo(
                 "assets/sprites/ui/event_" .. tostring(ev.id) .. ".png") then
@@ -130,7 +114,6 @@ function M.run(mode)
     end)
 
     addShot("deck", function()
-        -- Deck Viewer global (F5): deck com cartas variadas + forja no badge
         local run = game.runManager.currentRun
         for _, id in ipairs({ "warrior_strike", "attack_001", "defense_001",
                               "warrior_defend", "mage_zap", "rogue_strike" }) do
@@ -146,8 +129,6 @@ function M.run(mode)
     end)
 
     addShot("achievements", function()
-        -- Galeria de conquistas (F4). Seed em memória: HEADLESS_TOOL impede
-        -- gravação no profile.lua real.
         local ProfileStats = require("engine.ProfileStats")
         local s = ProfileStats.get()
         s.achievements = { primeira_pagina = true, relampago = true,
@@ -160,7 +141,6 @@ function M.run(mode)
     end)
 
     addShot("tooltip", function()
-        -- Glossário de keywords no tooltip (F5): carta com veneno + exaurir.
         I18n.setLocale("pt_BR")
         local CardDatabase = require("src.systems.CardDatabase")
         local CardInfoDisplay = require("src.ui.CardInfoDisplay")
@@ -178,13 +158,11 @@ function M.run(mode)
     end)
 
     addShot("turnbanner", function()
-        -- Banners de turno (clareza do ritmo): captura os dois no hold.
         local TurnBanner = require("src.ui.TurnBanner")
         love.graphics.clear(0.10, 0.08, 0.06, 1)
         TurnBanner.show("enemy")
-        for _ = 1, 12 do TurnBanner.update(1 / 30) end   -- 0.4s = hold
+        for _ = 1, 12 do TurnBanner.update(1 / 30) end
         TurnBanner.draw()
-        -- desenha o do jogador mais abaixo na MESMA captura (offset via translate)
         love.graphics.push()
         love.graphics.translate(0, 120)
         TurnBanner.show("player")

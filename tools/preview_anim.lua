@@ -1,8 +1,3 @@
--- tools/preview_anim.lua
--- Renderiza cada overlay animado do CardAnimationLayer em 3 amostras de tempo
--- (frames) lado a lado, pra avaliar o MOVIMENTO. Usar: love . preview_anim
--- Saída: anim_<label>.png no saveDir.
-
 local M = {}
 
 function M.run()
@@ -16,7 +11,6 @@ function M.run()
     local CardArt   = require("src.ui.CardArt")
     local Layer     = require("src.ui.card.CardAnimationLayer")
 
-    -- id, override(rarity/type), label
     local jobs = {
         { "joker_002",           nil, "joker_ring+abyss" },
         { "joker_001",           nil, "legendary_joker" },
@@ -30,8 +24,8 @@ function M.run()
         { "mage_mind_spike",     nil, "void_twinkle" },
     }
 
-    local S = 3                         -- escala de render
-    local ts = { 0.30, 1.30, 2.52 }     -- amostras (2.52%2.5≈0.02 pega storm flash; 0.30 pega shooting star/ripple)
+    local S = 3
+    local ts = { 0.30, 1.30, 2.52 }
     local cw, ch = 96 * S, 144 * S
     local pad = 12
 

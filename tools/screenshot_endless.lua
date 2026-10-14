@@ -1,10 +1,3 @@
--- tools/screenshot_endless.lua
--- Captura do PÓS-JOGO (Out/2026): escolha de maldição do ciclo do endless e
--- a TopBar com Selo + ciclo + maldições. memory/endless_and_seals.md.
---
---   END_W=1920 END_H=1080 END_LOCALE=de END_TAG=x_ love . test_one screenshot_endless
--- Saída (save dir): <tag>endless_1_escolha.png, <tag>endless_2_topbar.png
-
 local M = {}
 
 function M.run()
@@ -29,9 +22,9 @@ function M.run()
     run.actNumber, run.floorInAct = Config.TotalActs, 8
     run.currentFloor = Config.TotalActs * 8
     run.campaignWon = true
-    game.runManager:advanceFloorInAct()          -- ciclo 1: escolha aberta
-    RM.chooseCurse(run, RM.pending(run)[1])      -- já carrega uma maldição
-    for _ = 1, 8 do game.runManager:advanceFloorInAct() end -- ciclo 2 aberto
+    game.runManager:advanceFloorInAct()
+    RM.chooseCurse(run, RM.pending(run)[1])
+    for _ = 1, 8 do game.runManager:advanceFloorInAct() end
     game.economySystem.currentGold = 87
 
     local topBar = require("components.TopBar"):new()
@@ -48,8 +41,6 @@ function M.run()
             screen:draw()
         end
     end
-    -- Canvas + encode síncrono: roda dentro do test_one sem depender do
-    -- callback do captureScreenshot.
     local function snap(name, withModal)
         for _ = 1, 30 do screen.time = screen.time + 1 / 60 end
         local cv = love.graphics.newCanvas(love.graphics.getWidth(), love.graphics.getHeight())

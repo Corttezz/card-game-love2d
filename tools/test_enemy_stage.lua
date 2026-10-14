@@ -1,32 +1,11 @@
--- tools/test_enemy_stage.lua
--- Regressões do PALCO da batalha (pedidos do dono, Out/2026):
---
---   1. "quando ele fica o corpo inteiro pra fora, ainda fica meio que
---      flutuando alguns milímetros do chão" — todo inimigo APOIADO, em TODO
---      quadro da idle, tem o pé entre 0 e 3px DENTRO do chão (gap ∈ [-3, 0];
---      gap = linha do chão − base do pé). Quem flutua por design continua no
---      ar. A margem do pé é medida AQUI, de forma independente do renderer.
---   2. "os inimigos param muito na frente da tela; a carta em hover e a
---      descrição ficam à frente do inimigo" — na estrada, inimigo + HUD não
---      encostam na carta levantada NEM no tooltip dela, em 1024x768, 1280x720
---      e 1920x1080 (janela falsificada; caminho REAL da cena com mouse falso).
---      No salão do chefe o recuo é limitado pela borda do piso: cobra-se que
---      ele recue sem sair da laje e continue MAIOR que o inimigo comum.
---
---   love . test_one test_enemy_stage
-
 local TK = require("tools.testkit")
 
 local M = {}
 
--- { W, H, escalada? } — as escaladas rodam com a ESCALA DE UI ligada
--- (src/ui/UiScale): mão/HUD crescem k vezes, o mundo não. A régua é a mesma,
--- tudo convertido pra pixels da tela (Out/2026, a mão cresceu em 1440p/4K).
 local SIZES = { { 1024, 768 }, { 1280, 720 }, { 1920, 1080 },
                 { 1920, 1080, true }, { 2560, 1440, true }, { 3840, 2160, true } }
 local ROOT = "assets/sprites/characters/enemies/"
 
--- margem de cada quadro da idle, varrida aqui (não pelo renderer)
 local function framePadsOf(id)
     local dir = ROOT .. id .. "/animations/idle/south"
     if not love.filesystem.getInfo(dir) then return nil end
@@ -37,11 +16,6 @@ local function framePadsOf(id)
     table.sort(files, function(a, b)
         return tonumber(a:match("%d+")) < tonumber(b:match("%d+"))
     end)
-    -- REGRA DO APOIO (Out/2026, "os ratos parecem flutuar"), reimplementada
-    -- AQUI de forma independente do renderer: o chão é a linha mais baixa
-    -- com >= M pixels "sólidos" (coluna opaca contínua de >= 5px terminando
-    -- ali). Ponta de rabo/lâmina/farrapo fina não conta. Override
-    -- `groundRow` da pose desloca todos os quadros pela diferença do 1º.
     local function groundRow(data)
         local w, h = data:getWidth(), data:getHeight()
         local run, rows, minX, maxX, low = {}, {}, w, -1, -1
@@ -116,9 +90,6 @@ function M.run()
     local game = TK.newRunGame("warrior")
     local canvas = love.graphics.newCanvas(640, 480)
 
-    -- ===================================================================
-    -- 1. PÉ NO CHÃO — todo inimigo, todo quadro da idle
-    -- ===================================================================
     local ids = {}
     for _, id in ipairs(love.filesystem.getDirectoryItems(ROOT)) do
         if love.filesystem.getInfo(ROOT .. id .. "/animations/idle/south") then
@@ -139,18 +110,15 @@ function M.run()
         for _, boss in ipairs({ false, true }) do
             game.enemy.isBoss = boss
             love.graphics.setCanvas(canvas)
-            EnemyRenderer.draw(game, 320, 400)   -- carrega a idle deste id
+            EnemyRenderer.draw(game, 320, 400)
             local n = EnemyRenderer._debugFrameCount()
             for i = 1, n do
                 EnemyRenderer._debugSetFrame(i)
                 EnemyRenderer.draw(game, 320, 400, { sizeK = 0.8 })
                 local lf = EnemyRenderer.getLastFoot()
-                -- base do pé recalculada com a margem INDEPENDENTE
                 local foot = math.floor(lf.drawY) + (lf.ih - pads[i]) * lf.scale
                 local gap = lf.groundY - foot
                 gmin = math.min(gmin, gap); gmax = math.max(gmax, gap)
-                -- antes (Set/2026): margem só do 1º quadro, truncada, e o
-                -- respiro {-1,0} — o pior quadro descolava isto:
                 local before = (pads[i] - pads[1]) * lf.scale + 1
                 worstBefore = math.max(worstBefore, before)
             end
@@ -167,7 +135,6 @@ function M.run()
                 id, gmin, gmax), gmin >= -3 and gmax <= 0)
         end
 
-        -- a VIAGEM (billboard que vem lá de trás) usa a mesma régua
         local bb = EnemyRenderer.getEncounterBillboard(game.enemy)
         if floating then
             t:truthy(id .. ": billboard de quem flutua não afunda",
@@ -182,9 +149,6 @@ function M.run()
         end
     end
 
-    -- ===================================================================
-    -- 2. DISTÂNCIA DE PARADA — caminho real da cena, 3 tamanhos
-    -- ===================================================================
     local TopBar = require("components.TopBar")
     local GameUI = require("components.GameUI")
     local Button = require("components.Button")
@@ -213,7 +177,7 @@ function M.run()
     end
     local realMouse = love.mouse.getPosition
     local UiScale = require("src.ui.UiScale")
-    local uiK = 1   -- escala de UI do tamanho corrente (1 nos não-escalados)
+    local uiK = 1
     local function scaleRect(r, k)
         if not r or k == 1 then return r end
         return { x = r.x * k, y = r.y * k, w = r.w * k, h = r.h * k }
@@ -226,23 +190,16 @@ function M.run()
         run.currentNode = { type = nodeType }
         game.enemy.spriteId = EnemyRenderer.resolveSpriteId(act, nodeType)
         game.enemy.isBoss = (nodeType == "boss")
-        -- estado de animação do inimigo (quicada de chegada, golpe, morte)
-        -- vem limpo: herdado de outra suíte do test_all ele mudava a altura
-        -- medida em alguns px e a comparação chefe×comum virava sorte
         EnemyRenderer.resetRun()
         GameplayScene.resetTurnState()
         if nodeType == "boss" then GameplayScene._debugForceBossEntered() end
         WorldRoad.setBiome(act)
         local sx, sp, cy = GameplayScene.handLayout()
         local mid = math.ceil(#hand / 2)
-        -- mouse em pixels da TELA (o contexto da UI divide por k)
         local mx, my = (sx + (mid - 1) * sp + 60) * uiK, (cy + 60) * uiK
         love.mouse.getPosition = function() return mx, my end
         local cv = love.graphics.newCanvas(W, H)
         love.graphics.setCanvas({ cv, stencil = true })
-        -- o hover da carta mede o retângulo do ÚLTIMO desenho: quando a escala
-        -- de UI muda entre um tamanho e outro, um quadro de aquecimento
-        -- (só depois de a mão assentar no layout do tamanho atual)
         for _ = 1, 20 do GameplayScene.update(1 / 30) end
         GameplayScene.draw()
         for _ = 1, 3 do GameplayScene.update(1 / 30) end
@@ -251,7 +208,6 @@ function M.run()
         love.graphics.setCanvas()
         love.mouse.getPosition = realMouse
         local hc = hand[mid]
-        -- o HUD é desenhado na UI com o bbox ÷ k; a régua compara na tela
         local L
         if type(lastBbox) == "table" then
             local b = lastBbox
@@ -286,7 +242,6 @@ function M.run()
                     if r.bbox then
                         local h = r.bbox.bottomY - r.bbox.topY
                         maxRoadH = math.max(maxRoadH, h)
-                        -- legível: nunca menor que a própria carta da mão
                         t:truthy(string.format("%s: inimigo ainda grande (%.0fpx >= 140)",
                             name, h), h >= 140)
                         t:truthy(name .. ": HUD inteiro dentro da tela",
@@ -299,7 +254,6 @@ function M.run()
             t:truthy(tag .. ": palco nunca mais perto que o histórico (rel 9)",
                 WorldRoad.BATTLE_REL >= WorldRoad.BATTLE_REL_NEAR)
 
-            -- salão do chefe: recua sem sair da laje e segue o maior da tela
             for act = 1, 6 do
                 local r = scene(W, H, act, "boss")
                 local key = "castle_hall_" .. act
@@ -310,11 +264,6 @@ function M.run()
                 local name = string.format("%s chefe %d", tag, act)
                 t:truthy(string.format("%s: não avança além da arte (pé %d <= %d)",
                     name, foot, artY), foot <= artY)
-                -- O TETO DA MÃO (pé nunca abaixo do topo da mão em repouso,
-                -- GameplayScene ENEMY_HAND_CLEARANCE=12) pode erguer o pé
-                -- acima da borda nos salões de laje baixa (2 e 5) — é a
-                -- limitação de enquadramento já registrada em
-                -- memory/enemy_pose_and_scene_anchor.md, não recuo do palco.
                 local _, _, cardY = GameplayScene.handLayout()
                 local floorY = math.min(backY, math.floor((cardY - 12) * uiK))
                 t:truthy(string.format("%s: não sai da laje (pé %d >= borda %d)",
@@ -331,7 +280,6 @@ function M.run()
     EnemyRenderer.draw = realDraw
     EnemyRenderer.resetRun()
 
-    -- a inversão pura da geometria: o pé cai EXATAMENTE no limite pedido
     local x, y, w, h = 0, 60, 1280, 660
     local rel = WorldRoad.battleRelFor(x, y, w, h, 430)
     local _, fy = WorldRoad.getRoadAnchor(rel, x, y, w, h)
@@ -341,10 +289,8 @@ function M.run()
         WorldRoad.battleRelFor(x, y, w, h, 5000), WorldRoad.BATTLE_REL_NEAR)
     t:near("tamanho no palco histórico é 1.0",
         WorldRoad.battleSizeK(WorldRoad.ENEMY_SIZE_REF_REL), 1, 1e-9)
-    -- tela grande (v2, Out/2026): o inimigo cresce mais que a área — com a
-    -- mão escalada ele precisa ser a estrela; o 4:3 fica exatamente igual
     t:eq("1024x768: escala de tela 1", WorldRoad.enemyScreenK(768 - 52), 1)
-    local k1080 = WorldRoad.enemyScreenK(1080 - 78)   -- TopBar 52 x k 1.5
+    local k1080 = WorldRoad.enemyScreenK(1080 - 78)
     t:truthy(string.format("1920x1080: inimigo cresce (%.2f)", k1080),
         k1080 > 1.4 and k1080 < 1.7)
     local k1440 = WorldRoad.enemyScreenK(1440 - 104)

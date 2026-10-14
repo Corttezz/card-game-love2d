@@ -1,9 +1,3 @@
--- tools/screenshot_crt.lua
--- Valida a identidade CRT v2: renderiza o MENU dentro do tubo com power
--- em 4 estágios (linha quente, abertura, assentando, ligado) + strength
--- cheio. As demais capturas do projeto continuam SEM CRT (doutrina).
---   love . screenshot_crt
-
 local M = {}
 
 function M.run()
@@ -18,22 +12,18 @@ function M.run()
     local menu = Menu:new()
     for _ = 1, 60 do menu:update(1 / 30) end
 
-    -- v3.6: as DUAS coreografias — ligar (ponto → linha → abre → rolo de
-    -- sync → assenta) e desligar (colapso → linha → ponto de fósforo).
     local stages = {
-        { 0.06, 1,  "crt_on_dot.png" },      -- ponto azulado do canhão
-        { 0.20, 1,  "crt_on_line.png" },     -- linha quente crescendo
-        { 0.45, 1,  "crt_on_opening.png" },  -- abrindo (lavado + estática)
-        { 0.70, 1,  "crt_on_roll.png" },     -- v-hold rolando + blanking
-        { 0.86, 1,  "crt_on_settle.png" },   -- cores assentando
-        { 1.00, 1,  "crt_on.png" },          -- ligado estável
-        { 0.80, -1, "crt_off_collapse.png" },-- colapso vertical + surto
-        { 0.45, -1, "crt_off_line.png" },    -- linha encolhendo
-        { 0.15, -1, "crt_off_dot.png" },     -- ponto laranja apagando
+        { 0.06, 1,  "crt_on_dot.png" },
+        { 0.20, 1,  "crt_on_line.png" },
+        { 0.45, 1,  "crt_on_opening.png" },
+        { 0.70, 1,  "crt_on_roll.png" },
+        { 0.86, 1,  "crt_on_settle.png" },
+        { 1.00, 1,  "crt_on.png" },
+        { 0.80, -1, "crt_off_collapse.png" },
+        { 0.45, -1, "crt_off_line.png" },
+        { 0.15, -1, "crt_off_dot.png" },
     }
 
-    -- REVISÃO DE TELAS: HUD de batalha (mana canto inf-dir, vida inf-esq,
-    -- TopBar) através do tubo — nada pode ser escondido pela máscara.
     local Game = require("src.core.Game")
     local game = Game:new()
     game:startNewRun("warrior")
@@ -77,7 +67,6 @@ function M.run()
         love.graphics.present()
     end
 
-    -- SURTO no pico (v3.8): vinheta/CA/ruído/hum bar no máximo.
     CRTShader.setPower(1, 1)
     CRTShader.setDegrade(1)
     CRTShader.beginScene()

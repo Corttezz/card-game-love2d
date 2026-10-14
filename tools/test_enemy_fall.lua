@@ -1,21 +1,3 @@
--- tools/test_enemy_fall.lua
--- Quem VOA, quando morre, CAI e fica deitado no chão (pedido do dono,
--- Out/2026). Ver memory/boss_visuals.md e enemy_pose_and_scene_anchor §3.
---
---   love . test_one test_enemy_fall
---
--- Para TODO inimigo flutuante declarado em src/data/enemy_poses.lua, em cada
--- linha de chão possível (os 6 salões em 3 tamanhos de tela + a estrada) e
--- em 3 escalas de palco (sizeK da estrada / hallScreenK 1.3 em 1080p):
---   (a) no meio da queda o corpo ainda está ACIMA do chão (caiu, não teleportou)
---   (b) o quadro final repousa com o pixel opaco mais baixo FOOT_SINK px
---       dentro do chão (± 1px de arredondamento) — a mesma régua de quem pisa.
---       Salão com `deathYr` (scene_anchors): o chão é o do CADÁVER, no piso
---       andável à frente (o do vivo no salão 2 é a faixa colada na parede)
---   (c) e CONTINUA lá 3s depois (não volta a pairar)
---   (d) reducedMotion: queda mais curta, mesmo repouso
--- Apoiados não mudam: o pé da death continua na linha de antes.
-
 local TK = require("tools.testkit")
 local M = {}
 
@@ -26,14 +8,12 @@ function M.run()
     local SceneAnchors = require("src.data.scene_anchors")
     local SpriteAnimation = require("src.ui.SpriteAnimation")
 
-    -- linhas de chão (y de tela) a cobrir
     local floors = {}
     local sizes = { { 1024, 768 }, { 1920, 1080 }, { 2560, 1440 } }
     for hall = 1, 6 do
         for _, sz in ipairs(sizes) do
             local scene = "castle_hall_" .. hall
             local x, y = SceneAnchors.groundAnchor(scene, sz[1], sz[2])
-            -- chão do CADÁVER (deathYr): onde o corpo tem que terminar
             local a = SceneAnchors.get(scene)
             local deathY = nil
             if a.deathYr then
@@ -45,12 +25,11 @@ function M.run()
         end
     end
     for _, sz in ipairs(sizes) do
-        -- estrada: o pé pousa em ~76% da altura (WorldRoad.getRoadAnchor)
         floors[#floors + 1] = { name = "estrada@" .. sz[1],
             x = math.floor(sz[1] / 2), y = math.floor(sz[2] * 0.76) }
     end
 
-    local canvas = love.graphics.newCanvas(64, 64)   -- desenho descartável
+    local canvas = love.graphics.newCanvas(64, 64)
     local SINK = EnemyRenderer.FOOT_SINK
     local floating = {}
     for id, p in pairs(EnemyPoses.BY_ID) do
@@ -80,7 +59,6 @@ function M.run()
             tt = tt + dt
             EnemyRenderer.draw(game, fl.x, fl.y, opts)
             local f = EnemyRenderer.getLastFoot()
-            -- régua contra o chão FINAL esperado (cadáver), não o do vivo
             samples[#samples + 1] = { t = tt, gap = f.footBottom - (fl.deathY or fl.y) }
         end
         love.graphics.setCanvas()
@@ -119,7 +97,6 @@ function M.run()
                 end
             end
         end
-        -- reducedMotion: mesmo repouso, sem quique
         local s = dieAt(id, floors[1], 1.0, true)
         local rest = at(s, 1.0)
         t:truthy(string.format("%s: reducedMotion repousa no chão (gap %.1f)", id, rest),
@@ -128,11 +105,6 @@ function M.run()
     t:truthy(string.format("flutuantes caem e repousam com o pé %dpx no chão em todo salão/estrada/escala (%d casos, %d falhas)",
         SINK, checked, fails), fails == 0)
 
-    -- APOIADOS: o CADÁVER também repousa no chão (Out/2026, "os ratos
-    -- morrem e ficam errado no chão" — o monte afundava atravessando a
-    -- estrada). A margem de pé da death é a do QUADRO pela regra do apoio;
-    -- o último quadro tem que terminar FOOT_SINK px dentro do chão, sem
-    -- pairar nem atravessar, em todo inimigo que pisa e tem death.
     do
         local ROOT = "assets/sprites/characters/enemies"
         local grounded, badG = 0, 0

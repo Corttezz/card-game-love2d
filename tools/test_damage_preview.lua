@@ -1,18 +1,3 @@
--- tools/test_damage_preview.lua
--- PREVIA == RESULTADO (Out/2026). A previa de dano (src/systems/DamagePreview)
--- e o que o jogador le antes de jogar; se ela errar, ensina a conta errada —
--- pior que nao ter previa. Este teste joga centenas de levas ALEATORIAS pelo
--- combate de verdade (selectCard -> playSelectedCards -> fila de beats) e
--- confere carta a carta: vida que o inimigo perdeu, Bloqueio dele consumido e
--- Bloqueio que o jogador ganhou batem com a previa.
---
--- Cobre: Forca/Destreza (e scaling em dobro), multi-golpe, combos, coringas
--- (maior multiplicador vence, planos, Eco), edicoes e selos, Fraco/Fragil,
--- Vulneravel (ja ativo e aplicado NO MEIO da leva), armadura do inimigo,
--- orbes (canalizar com fileira cheia, evocar, evocar todos, Foco), inimigo
--- morrendo no meio da leva, Impeto do guerreiro.
---   love . test_one test_damage_preview
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -26,7 +11,6 @@ function M.run()
     local CardDatabase = require("src.systems.CardDatabase")
     local db = CardDatabase:new()
 
-    -- catalogo jogavel (sem joker; sem `mystery`, que e sorteio por definicao)
     local pool, jokers = {}, {}
     for id, cd in pairs(db:getAllCards()) do
         local mystery = false
@@ -53,7 +37,6 @@ function M.run()
         TK.pump(g, 0.6)
         local p, e = g.player, g.enemy
 
-        -- estado aleatorio do turno
         p.strength = rng:random(0, 4)
         p.dexterity = rng:random(0, 3)
         p.armor = rng:random(0, 10)
@@ -72,14 +55,12 @@ function M.run()
         if rng:random() < 0.25 then
             e:addStatusEffect({ name = "vulnerable", stacks = 1, duration = 2 })
         end
-        -- coringas ativos
         g.jokerSlots = {}
         for _ = 1, rng:random(0, 3) do
             local inst = db:createCardInstance(db:getCard(pick(jokers)))
             g.jokerSlots[#g.jokerSlots + 1] = inst
         end
 
-        -- a leva (2-6 cartas), com edicao/selo as vezes
         local hand = {}
         for _ = 1, rng:random(2, 6) do
             local c = db:createCardInstance(db:getCard(pick(pool)))
@@ -136,7 +117,6 @@ function M.run()
     t:truthy("amostra tem orbe evocado causando dano (" .. orbTrials .. ")", orbTrials > 10)
     t:truthy("amostra causa dano de verdade (" .. totalDmg .. ")", totalDmg > 3000)
 
-    -- ===== cardValue e a conta do combate (passos somam o valor) =====
     local g = TK.newRunGame("warrior"); TK.pump(g, 0.5)
     local c = db:createCardInstance(db:getCard("warrior_strike"))
     local c2 = db:createCardInstance(db:getCard("warrior_strike"))
@@ -149,7 +129,6 @@ function M.run()
     t:truthy("passo de Forca presente", kinds.stat)
     t:truthy("passo de combo presente (2o golpe: Saraivada e Par)", kinds.combo)
 
-    -- ===== dica de combo: o que a proxima carta ganharia =====
     local added = DamagePreview.combosAddedBy({ c }, c2, g)
     local ids = {}
     for _, a in ipairs(added) do ids[a.combo.id] = a.value end
@@ -157,11 +136,6 @@ function M.run()
     t:truthy("2o golpe igual ganharia Par", ids.pair ~= nil)
     t:eq("1a carta nao ganha nada", #DamagePreview.combosAddedBy({}, c, g), 0)
 
-    -- ===== PREVIA SEM EFEITO COLATERAL (bug do dono, Out/2026) =====
-    -- Calice do Sabio (heal_multiplier 1.5) soltava "×1.5 PV" do nada no
-    -- hover: a previa chamava applyHealMultiplier SEM sink e o proc disparava
-    -- direto no JokerProcFx, todo quadro. A previa roda N vezes = 0 procs;
-    -- jogar a carta de verdade = exatamente 1.
     do
         local gm = TK.newRunGame("mage"); TK.pump(gm, 0.5)
         gm:addJokerToRun("mage_sacred_chalice")
@@ -176,7 +150,7 @@ function M.run()
             DamagePreview.simulate(gm, { potion })
             DamagePreview.cardValue(gm, potion, DamagePreview.buildContext({ potion }, gm))
         end
-        TK.pump(gm, 1.0)  -- proc direto agendado no EventManager apareceria aqui
+        TK.pump(gm, 1.0)
         t:eq("previa 120x com o Calice equipado: zero procs", #ticks, 0)
         gm.hand[#gm.hand + 1] = potion
         gm.player.mana = 3

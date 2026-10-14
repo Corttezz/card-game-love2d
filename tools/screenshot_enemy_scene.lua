@@ -1,24 +1,3 @@
--- tools/screenshot_enemy_scene.lua
--- Captura o CENÁRIO DE COMBATE real (GameplayScene.draw) pra um node
--- específico: prova em que cena cada tipo de encontro acontece e onde o pé
--- do inimigo pousa.
---
---   love . screenshot_enemy_scene <ato>_<nodeType>
---   love . screenshot_enemy_scene 2_elite      → elite do ato 2 (estrada)
---   love . screenshot_enemy_scene 2_boss       → chefe do ato 2 (hall)
---   love . screenshot_enemy_scene 1_boss
---   love . screenshot_enemy_scene 6_battle     → dusk_shade (flutuante)
---
--- ENEMY_SCENE_ID=<id> força o sprite (vale pra arte nova fora do roster).
--- ENEMY_SCENE_INTENT="kind=multi,perHit=5,hits=3" força o intent do HUD.
--- Sufixo "_hud" desenha a cena SEM o HUD/mão (default inclui tudo, que é o
--- que o jogador vê). Saída: enemy_scene_<modo>.png no save dir.
---
--- Por que existe: `screenshot_worldroad interior` só sabia desenhar o hall
--- com um inimigo colado no meio da tela — não passava pelo `GameplayScene`
--- e por isso não provava NADA sobre qual cena o jogo escolhe. Este tool
--- roda o caminho real.
-
 local M = {}
 
 function M.run(mode)
@@ -26,9 +5,6 @@ function M.run(mode)
     local act = tonumber(mode:match("^(%d+)")) or 1
     local nodeType = mode:match("^%d+_(%a[%a_]*)") or "boss"
 
-    -- ENEMY_SCENE_VIRTUAL=2560x1440: tela FALSIFICADA maior que o monitor
-    -- (setMode acima do desktop trava — mesmo truque do boss_rooms). Desenha
-    -- num canvas desse tamanho com getWidth/getHeight mentindo.
     local vw, vh = (os.getenv("ENEMY_SCENE_VIRTUAL") or ""):match("^(%d+)x(%d+)$")
     local vcanvas
     if vw then
@@ -56,24 +32,16 @@ function M.run(mode)
     game:startNewRun(os.getenv("ENEMY_SCENE_CLASS") or "warrior")
     game:startGame()
 
-    -- Força o node/ato pedidos (o mapa normalmente decide isto).
     local run = game.runManager.currentRun
     run.actNumber = act
     run.floorInAct = (nodeType == "boss") and 8 or 3
     run.currentNode = { type = nodeType }
-    -- ENEMY_SCENE_ID=<id>: força o sprite (arte nova ainda fora do roster)
     local forcedId = os.getenv("ENEMY_SCENE_ID")
     if forcedId and forcedId ~= "" then mode = mode .. "_" .. forcedId end
     game.enemy.spriteId = (forcedId and forcedId ~= "") and forcedId
         or EnemyRenderer.resolveSpriteId(act, nodeType)
     game.enemy.isBoss = (nodeType == "boss")
 
-
-    -- KIT DO INIMIGO (Out/2026): monta o inimigo pelo roster (kit + stats do
-    -- ato) e, com ENEMY_SCENE_MOVE=<id do golpe>, anuncia aquele golpe — é o
-    -- que prova na tela o intent novo (multi-golpe, debuff, perfurante...).
-    -- ENEMY_SCENE_DEBUFFS=weak,frail,poison põe debuffs no jogador (pills).
-    -- ENEMY_SCENE_HOVER=1 posiciona o mouse no intent (tooltip do golpe).
     do
         local EnemyRoster = require("src.systems.EnemyRoster")
         local ActSystem = require("src.systems.ActSystem")
@@ -90,13 +58,6 @@ function M.run(mode)
         for name in (os.getenv("ENEMY_SCENE_DEBUFFS") or ""):gmatch("[^,]+") do
             game.player:addDebuff(name, 2, (name == "poison" or name == "burn") and 4 or 1)
         end
-        -- ENEMY_SCENE_VISIBILITY=full|type_only|hidden[:veil]: NÉVOA DE
-        -- INTENÇÃO (src/systems/IntentVisibility). Dá ao inimigo o contexto
-        -- do bioma (como RunModifiers.decorateEnemy faria) e força o nível —
-        -- a captura prova o box com "?", o véu correndo e a nevasca
-        -- engrossando pelo hook do WeatherEngine (o loop de update abaixo
-        -- deixa o clima perseguir o alvo). ":veil" marca a causa como véu
-        -- da criatura (tooltip cita o nome dela).
         local vis = os.getenv("ENEMY_SCENE_VISIBILITY")
         if vis and vis ~= "" then
             local IV = require("src.systems.IntentVisibility")
@@ -121,8 +82,6 @@ function M.run(mode)
         playButton = playButton,
     })
 
-    -- BOSS: o jogo só mostra o interior DEPOIS da cutscene da porta. O tool
-    -- pula a cerimônia (é o estado de combate que interessa aqui).
     if nodeType == "boss" then GameplayScene._debugForceBossEntered() end
 
     WorldRoad.setBiome(act)
@@ -133,13 +92,11 @@ function M.run(mode)
         local IFX = require("src.ui.InteriorFX"); IFX.update(1 / 30, IFX.hallFor(act))
     end
     if os.getenv("ENEMY_SCENE_VISIBILITY") then
-        -- prova numérica do hook: a nevasca engrossou junto com a névoa?
         local WE = require("engine.WeatherEngine")
         print(string.format("[screenshot] clima: intensidade=%.2f (boost da névoa=%.2f) partículas=%d",
             WE.intensity(), WE.veilBoost(), WE.count()))
     end
 
-    -- Layout real do cluster do intent, capturado do próprio draw.
     local EnemyHud = require("src.ui.EnemyHud")
     local lastL
     local origLayout = EnemyHud.layout
@@ -148,8 +105,6 @@ function M.run(mode)
         lastL = L
         return L
     end
-    -- ENEMY_SCENE_INTENT="kind=multi,perHit=5,hits=3,pierce=1,debuff=frail":
-    -- força o intent mostrado no HUD (validação dos ícones de intent).
     local intentSpec = os.getenv("ENEMY_SCENE_INTENT")
     if intentSpec and intentSpec ~= "" then
         local it = { perHit = 0, hits = 0, armor = 0, strength = 0, heal = 0,
@@ -169,15 +124,11 @@ function M.run(mode)
         game.enemy.nextIntentDamage = it.raw
     end
 
-    -- ENEMY_SCENE_PLAYER_DEBUFFS="weak,frail,vulnerable": debuffs no jogador
-    -- (pills do HUD dele) — validação dos ícones de status do lado do herói.
     local pdeb = os.getenv("ENEMY_SCENE_PLAYER_DEBUFFS")
     if pdeb and pdeb ~= "" and game.player.addDebuff then
         for name in pdeb:gmatch("[%w_]+") do game.player:addDebuff(name, 2, 2) end
     end
 
-    -- ENEMY_SCENE_WORLD_ONLY=1: só mundo + inimigo, sem HUD (arte de loja).
-    -- ENEMY_SCENE_TOD=0..1: hora do dia (0 = dia, 1 = anoitecer).
     if os.getenv("ENEMY_SCENE_WORLD_ONLY") == "1" then
         GameplayScene.WORLD_ONLY = true
         mode = mode .. "_world"
@@ -188,25 +139,18 @@ function M.run(mode)
         for _ = 1, 30 do WorldRoad.update(1 / 30); EnemyRenderer.update(1 / 30) end
     end
 
-    -- ENEMY_SCENE_CLEAN=1: sem os toasts de início de run ("Jogo
-    -- iniciado!", ouro inicial) — quadro limpo pra screenshot de loja.
     if os.getenv("ENEMY_SCENE_CLEAN") == "1" and game.messageSystem then
         game.messageSystem.messages = {}
     end
 
-    -- TUT_SELECT=1: uma carta selecionada (a prévia de dano aparece)
     if os.getenv("TUT_SELECT") then
         game.selectedCards = { game.hand[1] }
         if game.hand[1] then game.hand[1].isSelected = true end
-        -- a prévia só existe depois do update dela (o jogo roda isto todo quadro)
         require("src.ui.DamagePreviewPanel").update(game, nil, 1)
     end
     if vcanvas then love.graphics.setCanvas(vcanvas) end
     love.graphics.clear(0, 0, 0, 1)
     GameplayScene.draw()
-    -- TUT_TIP=<conversa>[:<fala>]: o narrador do tutorial por cima (as
-    -- âncoras acabaram de ser reportadas por este draw). TUT_LOCALE troca o
-    -- idioma.
     if os.getenv("TUT_TIP") then
         local Tutorial = require("src.systems.Tutorial")
         local conv, line = os.getenv("TUT_TIP"):match("^([%w_]+):?([%w_]*)$")
@@ -215,8 +159,6 @@ function M.run(mode)
         mode = mode .. "_tut_" .. conv .. "_" .. (line or "") .. "_" .. (os.getenv("TUT_LOCALE") or "pt_BR")
             .. "_" .. love.graphics.getWidth() .. "x" .. love.graphics.getHeight()
     end
-    -- Tooltip do golpe: 2ª passada com o mouse em cima do intent (a 1ª
-    -- passada calcula o layout real do cluster).
     if os.getenv("ENEMY_SCENE_HOVER") == "1" then
         local L = lastL
         if L and L.iw > 0 then
@@ -225,8 +167,6 @@ function M.run(mode)
             love.mouse.getPosition = function() return hx, hy end
             love.graphics.clear(0, 0, 0, 1)
             GameplayScene.draw()
-            -- o tooltip é desenhado pelo main.lua no fim do frame
-            -- (relógio adiantado: o pop-in do tooltip já assentou)
             local ST = require("src.ui.StatusTooltip")
             local realTime = love.timer.getTime
             love.timer.getTime = function() return realTime() + 2 end

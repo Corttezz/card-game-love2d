@@ -1,17 +1,3 @@
--- tools/preview_editions.lua
--- As DUAS editions com shader proprio (Foil e Polychrome) na MESMA carta, lado
--- a lado com a carta limpa. (A Negative saiu do jogo em Out/2026.)
---
---   love . preview_editions            -- 1024x768, pt_BR
---   love . preview_editions <card_id>  -- outra cobaia
---
--- Por que existe: edition e hierarquia. Julgar o Polychrome sozinho nao diz
--- nada -- a pergunta e se ele le como MAIS raro que Foil sem sair
--- da paleta do jogo. So o lado a lado responde isso.
---
--- Saida: <save dir>/editions_comparativo.png
---        <save dir>/editions_1to1_<nome>.png  (recorte 1:1 pra medicao)
-
 local M = {}
 
 local LABELS = {
@@ -20,11 +6,6 @@ local LABELS = {
     { key = "polychrome", name = "POLYCHROME" },
 }
 
--- Gera SEMPRE as duas variantes (normal e reducedMotion). Nao e preguica de
--- fazer argumento: `test_one` nao repassa argumentos pro run(), e enquanto este
--- tool nao tiver despacho proprio em main.lua e a unica forma de invoca-lo.
--- Duas imagens tambem e o certo pra um tool de comparacao: reducedMotion faz
--- parte do que precisa ser julgado, nao e um caso especial escondido.
 function M.run(cardId)
     local PixelCanvas = require("src.ui.PixelCanvas")
     PixelCanvas.enableNearest()
@@ -47,8 +28,6 @@ function M.run(cardId)
         return
     end
 
-    -- Uma instancia POR edition, todas da mesma carta: a unica variavel e o
-    -- shader. Sem isso a comparacao mede arte diferente, nao edition.
     local shots = {}
     for _, L in ipairs(LABELS) do
         local cd = {}
@@ -67,8 +46,6 @@ function M.run(cardId)
     local sw, sh = love.graphics.getDimensions()
     local canvas = love.graphics.newCanvas(sw, sh)
     love.graphics.setCanvas(canvas)
-    -- Fundo sepia do jogo: o teste e "destoa da tela?", entao o fundo tem que
-    -- ser o da tela, nao preto neutro.
     love.graphics.clear(0.20, 0.16, 0.12, 1)
 
     local img = shots[1].inst.image
@@ -99,8 +76,6 @@ function M.run(cardId)
     canvas:newImageData():encode("png", "editions_comparativo" .. suffix .. ".png")
     print("[editions] editions_comparativo" .. suffix .. ".png")
 
-    -- Recortes 1:1 (sem escala, sem reamostragem) pra medir desvio vs a arte
-    -- crua pixel a pixel -- mesmo teste objetivo que validou o foil do sleeve.
     for _, sdef in ipairs(shots) do
         local one = love.graphics.newCanvas(img:getWidth(), img:getHeight())
         love.graphics.setCanvas(one)

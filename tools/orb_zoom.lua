@@ -1,4 +1,3 @@
--- tools/orb_zoom.lua — recorta a fileira de orbes de uma captura e amplia.
 local M = {}
 function M.run(src, escala)
     src = src or "preview_battle_hud_orbs.png"
@@ -7,7 +6,6 @@ function M.run(src, escala)
     if not ok then print("[orb_zoom] nao abriu " .. src); love.event.quit(1); return false end
     local img = love.graphics.newImage(data)
     img:setFilter("nearest", "nearest")
-    -- a fileira fica no terco inferior esquerdo do HUD falso
     local x, y, w, h = 0, math.floor(data:getHeight() * 0.71), math.floor(data:getWidth() * 0.45), math.floor(data:getHeight() * 0.13)
     local cv = love.graphics.newCanvas(w * escala, h * escala)
     love.graphics.setCanvas(cv)

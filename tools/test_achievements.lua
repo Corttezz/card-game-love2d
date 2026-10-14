@@ -1,20 +1,7 @@
--- tools/test_achievements.lua
--- Conquistas: CADA gatilho dispara (e nao dispara fora da condicao),
--- persistencia, API names da Steam unicos e CONGELADOS, emblemas existentes
--- (liberado + bloqueado, jogo + Steam 256x256), chaves de UI nos 5 idiomas,
--- ponte Steam (no-op avisado / backend fake) e a geometria da galeria.
---
---   love . test_one test_achievements
---
--- Sandbox: qualquer arg de tool seta HEADLESS_TOOL -> ProfileStats.flush() e
--- no-op. Mexemos no perfil EM MEMORIA e zeramos entre casos.
-
 local TK = require("tools.testkit")
 
 local M = {}
 
--- API names publicados NAO podem mudar (a Steam nao renomeia). Conquista nova
--- entra aqui; remover/renomear uma daqui e decisao consciente.
 local FROZEN = {
     primeiro_chefe = "ACH_PRIMEIRO_CHEFE", capitulo_final = "ACH_CAPITULO_FINAL",
     primeira_pagina = "ACH_PRIMEIRA_PAGINA", vitoria_guerreiro = "ACH_VITORIA_GUERREIRO",
@@ -30,7 +17,6 @@ local FROZEN = {
     velas_10k = "ACH_VELAS_10K", escriba = "ACH_ESCRIBA", ferreiro = "ACH_FERREIRO",
     veterano = "ACH_VETERANO", bibliotecario = "ACH_BIBLIOTECARIO",
     alem_da_pagina = "ACH_ALEM_DA_PAGINA",
-    -- Out/2026: pos-jogo (ciclos do endless + Selos do Grimorio)
     ciclo_3 = "ACH_CICLO_3", ciclo_5 = "ACH_CICLO_5", ciclo_10 = "ACH_CICLO_10",
     primeiro_selo = "ACH_PRIMEIRO_SELO", selo_max_guerreiro = "ACH_SELO_MAX_GUERREIRO",
     selo_max_mago = "ACH_SELO_MAX_MAGO", selo_max_ladino = "ACH_SELO_MAX_LADINO",
@@ -53,7 +39,6 @@ end
 
 local function has(id) return AS.isUnlocked(id) end
 
--- Game minimo de RUN pros checks que so leem estado.
 local function fakeRun(over)
     local run = { currentDeck = {}, jokers = {}, classId = "warrior", actNumber = 1,
                   floorInAct = 1, currentFloor = 1, currentNode = { type = "battle" } }
@@ -78,7 +63,6 @@ function M.run()
     Defs = require("src.data.achievements")
     local SteamBridge = require("src.systems.SteamBridge")
 
-    -- ===== Catalogo / API names =====
     local seenApi, seenId, count = {}, {}, 0
     for _, d in ipairs(Defs) do
         count = count + 1
@@ -95,7 +79,6 @@ function M.run()
     end
     t:truthy("ate 100 conquistas (limite padrao Steam)", count <= 100)
 
-    -- ===== Emblemas (jogo + Steam) =====
     local AI = require("src.ui.AchievementIcons")
     for _, d in ipairs(Defs) do
         for _, locked in ipairs({ false, true }) do
@@ -122,7 +105,6 @@ function M.run()
         end
     end
 
-    -- ===== Chaves de UI nos 5 locales =====
     local I18n = require("src.i18n.I18n")
     local entry = I18n.getLocale()
     for _, loc in ipairs({ "pt_BR", "en", "es", "fr", "de" }) do
@@ -134,7 +116,6 @@ function M.run()
     end
     I18n.setLocale(entry)
 
-    -- ===== Persistencia =====
     fresh()
     t:truthy("unlock novo devolve true", AS.unlock("primeira_pagina", nil))
     t:falsy("unlock repetido devolve false", AS.unlock("primeira_pagina", nil))
@@ -153,7 +134,6 @@ function M.run()
     t:falsy("unlock de id desconhecido recusa", AS.unlock("nao_existe", nil))
     t:truthy("unlock empurra toast", require("src.ui.AchievementToast").pending() >= 1)
 
-    -- Secreta: name/desc escondidos ate liberar.
     fresh()
     local function entryOf(id)
         for _, e in ipairs(AS.all()) do if e.id == id then return e end end
@@ -164,7 +144,6 @@ function M.run()
     sec = entryOf("fio_navalha")
     t:truthy("secreta liberada mostra nome", not sec.secret and sec.name ~= I18n.t("achievements.secret_name"))
 
-    -- ===== Gatilhos de batalha =====
     fresh()
     local g, run = fakeRun({ currentNode = { type = "boss" }, actNumber = 1 })
     g.battleTurn = 3
@@ -192,7 +171,6 @@ function M.run()
     AS.onBattleWon(g)
     t:falsy("maos_limpas: ataque jogado nesta batalha", has("maos_limpas"))
     t:falsy("fio_navalha: vida cheia", has("fio_navalha"))
-    -- batalha NOVA (inimigo novo) sem ataque libera
     g.enemy = require("src.entities.Enemy"):new(10, 1)
     AS.onBattleWon(g)
     t:truthy("maos_limpas: inimigo novo sem ataque", has("maos_limpas"))
@@ -222,7 +200,6 @@ function M.run()
     g.jokerSlots = { {}, {}, {} }; AS.onBattleWon(g)
     t:truthy("coro_coringas: slots cheios", has("coro_coringas"))
 
-    -- Infinito: andar derivado de currentFloor (6 atos x 8 andares).
     fresh()
     local Config = require("src.core.Config")
     local MapManager = require("src.systems.MapManager")
@@ -236,10 +213,8 @@ function M.run()
     AS.onBattleWon(g)
     t:truthy("alem_da_pagina: andar 10", has("alem_da_pagina"))
 
-    -- ===== Gatilhos de turno / efeito =====
     fresh()
     g = fakeRun()
-    -- combos simples (Out/2026): sao 3 regras — Tinta Viva = as 3 na jogada
     AS.onCardsPlayed(g, { allSelectedCards = {}, activeCombos = { 1, 2 } })
     t:falsy("tinta_viva: 2 combos", has("tinta_viva"))
     AS.onCardsPlayed(g, { allSelectedCards = {}, activeCombos = { 1, 2, 3 } })
@@ -289,20 +264,18 @@ function M.run()
     AS.onForge(g)
     t:truthy("ferreiro: 25", has("ferreiro"))
 
-    -- Bibliotecario: todas as cartas do catalogo vistas.
     fresh()
     local CardDatabase = require("src.systems.CardDatabase")
     local ids = {}
     for id in pairs(CardDatabase:getAllCards()) do ids[#ids + 1] = id end
     table.sort(ids)
     for i = 1, #ids - 1 do PS.markSeen(ids[i]) end
-    PS.get().cardsSeen.carta_que_nao_existe = true   -- nao conta
+    PS.get().cardsSeen.carta_que_nao_existe = true
     AS.onCardSeen(g, ids[#ids - 1])
     t:falsy("bibliotecario: falta 1 carta", has("bibliotecario"))
     AS.onCardSeen(g, ids[#ids])
     t:truthy("bibliotecario: catalogo completo", has("bibliotecario"))
 
-    -- ===== Gatilhos de vitoria =====
     local function victory(over, setup)
         fresh()
         local vg, vrun = fakeRun(over)
@@ -332,7 +305,7 @@ function M.run()
 
     local big = {}
     for i = 1, 30 do big[i] = common end
-    big[30] = { id = rare, up = 1 }   -- entrada-TABELA (forja por copia)
+    big[30] = { id = rare, up = 1 }
     victory({ classId = "rogue", currentDeck = big, _usedShop = true, _forged = true,
               jokers = { "joker_001" } })
     t:truthy("vitoria_ladino", has("vitoria_ladino"))
@@ -359,7 +332,6 @@ function M.run()
     t:falsy("trindade: 2 classes", has("trindade"))
     t:falsy("veterano: 9 vitorias", has("veterano"))
 
-    -- despertar: UnlockSystem FAKE (a frente progressao e dona do real).
     local realUS = package.loaded["src.systems.UnlockSystem"]
     local unlocked = { warrior = true }
     package.loaded["src.systems.UnlockSystem"] = {
@@ -374,7 +346,6 @@ function M.run()
     t:truthy("despertar: 3 de 3 classes", has("despertar"))
     package.loaded["src.systems.UnlockSystem"] = realUS
 
-    -- ===== Fiacao REAL (Game chama os hooks) =====
     fresh()
     local rg = TK.newRunGame("rogue")
     local rrun = rg.runManager.currentRun
@@ -400,7 +371,6 @@ function M.run()
     local rest = love.filesystem.read("components/RestScreen.lua")
     t:truthy("RestScreen chama onForge", rest:find("onForge(", 1, true) ~= nil)
 
-    -- ===== Ponte Steam =====
     SteamBridge._setBackend(nil)
     fresh()
     t:falsy("sem Steam: init falha avisando (headless)", SteamBridge.init())
@@ -423,7 +393,7 @@ function M.run()
         table.concat(calls, ","):find("set:ACH_MURALHA,store", 1, true) ~= nil)
     calls = {}
     PS.get().counters.forges = 5
-    AS.onForge(nil)   -- 6 = cruza 25% de 25
+    AS.onForge(nil)
     t:truthy("progresso 25% vai pra Steam (IndicateAchievementProgress)",
         table.concat(calls, ","):find("prog:ACH_FERREIRO:6/25", 1, true) ~= nil)
     calls = {}
@@ -433,7 +403,6 @@ function M.run()
         table.concat(calls, ","):find("set:ACH_PRIMEIRA_PAGINA", 1, true) ~= nil)
     SteamBridge._setBackend(nil)
 
-    -- ===== Geometria da galeria (zonas, varios tamanhos) =====
     local Screen = require("components.AchievementsScreen")
     local entries = AS.all()
     local function inside(r, box)
@@ -466,7 +435,6 @@ function M.run()
             end
         end
         t:falsy(tag .. ": celulas nao se sobrepoem", clash)
-        -- navegacao por setas: direita anda na linha, baixo desce de linha
         local right = Screen.neighbor(L, 1, { 1, 0 })
         t:truthy(tag .. ": seta direita vai pra celula a direita",
             right and L.cells[right][1] > L.cells[1][1] and L.cells[right][2] == L.cells[1][2])

@@ -1,19 +1,3 @@
--- tools/test_release.lua
--- Trava do modo DEV/RELEASE e da leitura segura de save.
---
--- O que se protege aqui:
---   * o REPOSITORIO e sempre DEV (build_info.lua so existe no pacote — se
---     alguem commitar um, o jogo de desenvolvimento perde console e tools);
---   * em DEV os argumentos chegam intactos ao dispatcher (senao test_all
---     deixaria de rodar sem ninguem perceber);
---   * save do usuario e DADO: bytecode recusado e chunk sem acesso a os/io
---     (Steam Cloud / save baixado da internet nao executa codigo);
---   * crash log grava stacktrace + ultimas linhas do log no save dir.
---
---   love . test_one test_release
--- O pacote em si (sem console, sem argumentos, tela de erro) e validado pelo
--- smoke de tools/build_release.py, que boota o executavel fundido.
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -30,7 +14,6 @@ function M.run()
     local args = { "test_one", "x" }
     t:eq("DEV: argumentos passam intactos", Release.filterArgs(args), args)
 
-    -- Em RELEASE, nenhum argumento chega ao dispatcher.
     Release.DEV, Release.RELEASE = false, true
     local okF, filtered = pcall(Release.filterArgs, { "test_all" })
     Release.DEV, Release.RELEASE = true, false
@@ -39,7 +22,6 @@ function M.run()
 
     t:eq("identidade de release", Release.IDENTITY_RELEASE, "Grimoire")
 
-    -- Leitura segura de save.
     local SaveManager = require("engine.SaveManager")
     local path = "release_probe.tool.lua"
     love.filesystem.write(path, "return { ok = true, n = 3 }")
@@ -57,7 +39,6 @@ function M.run()
     t:falsy("save em bytecode e recusado", chunk)
     love.filesystem.remove(path)
 
-    -- Crash log.
     print("release-probe linha de contexto")
     local rel, abs = Release.writeCrashLog("erro de teste", "stack de teste")
     t:truthy("crash log gravado", rel and love.filesystem.getInfo(rel))

@@ -1,27 +1,3 @@
--- tools/test_screen_exits.lua
--- Regressão do CONTRATO DE SAÍDA das telas que agora saem com animação
--- (Set/2026): loja/recompensa (CardRewardScreen) e evento (EventScreen).
---
--- O nome é do INVARIANTE, não de uma tela: toda tela cujo fechamento virou
--- uma cerimônia com duração passa a ter um evento agendado entre o clique do
--- jogador e a continuação da run. Quem adicionar a terceira põe o caso aqui.
---
--- A saída deixou de ser `self:hide()` seco e virou uma cerimônia com duração
--- (`CardRewardScreen:_exitWithFlourish`): cartas queimam, painel desliza, som
--- toca e SÓ ENTÃO o callback do fluxo roda. Isso põe um evento agendado entre
--- o clique do jogador e a continuação da run — e evento agendado que não
--- vence é soft-lock: a tela fica visível pra sempre e o mapa nunca aparece.
---
--- Este teste trava isso pelos dois lados que importam:
---   1. o callback SEMPRE roda, e roda UMA vez só (double-click no Seguir não
---      pode avançar dois nós do mapa);
---   2. a tela fica visível DURANTE a cerimônia (senão ela some antes da
---      animação, que é o defeito que se foi consertar);
---   3. com reducedMotion o caminho resolve NA HORA — sem depender do
---      EventManager — porque a flag remove movimento, não o fluxo.
---
--- Roda: love . test_one test_screen_exits
-
 local M = {}
 
 local TK = require("tools.testkit")
@@ -33,16 +9,10 @@ local function pumpEM(secs)
     end
 end
 
--- A fila `base` fica suja entre os casos (cada TK.newRunGame agenda compra de
--- carta, e Card:start_dissolve agenda ease BLOQUEANTE lá — a "pegadinha
--- remanescente" de memory/eventmanager_queues.md). A saída da loja roda em
--- fila própria justamente pra não depender disso; limpar a base entre casos
--- garante que o teste meça a fila CERTA e não o acúmulo do caso anterior.
 local function resetQueues()
     _G.EventManager.clear()
 end
 
--- Abre a tela em modo shop com um onSkipped instrumentado.
 local function openShop(t)
     local game = TK.newRunGame("warrior")
     local CardRewardScreen = require("components.CardRewardScreen")
@@ -58,7 +28,6 @@ function M.run()
     TK.seedRng(4242)
     local t = TK.new("test_screen_exits")
 
-    -- ---- 1. caminho normal: cerimônia roda, callback vem DEPOIS ----------
     do
         local screen, calls = openShop(t)
         screen:_exitWithFlourish()
@@ -74,20 +43,16 @@ function M.run()
         t:falsy("tela fechou junto com o callback", screen:isVisible())
     end
 
-    -- ---- 2. double-click não avança dois nós -----------------------------
     do
         resetQueues()
         local screen, calls = openShop(t)
         screen:_exitWithFlourish()
-        screen:_exitWithFlourish()  -- jogador impaciente
+        screen:_exitWithFlourish()
         screen:_exitWithFlourish()
         pumpEM(1.0)
         t:eq("3 cliques no Seguir = 1 avanço só (guard _closing)", calls.n, 1)
     end
 
-    -- ---- 2b. o BÔNUS de pular a loja paga uma vez só ----------------------
-    -- (revisão de lançamento, Out/2026: o bônus era pago ANTES do guard
-    -- _closing — cada clique na janela da cerimônia pagava de novo.)
     do
         resetQueues()
         local screen, calls = openShop(t)
@@ -105,7 +70,6 @@ function M.run()
         t:eq("e a loja avanca uma vez so", calls.n, 1)
     end
 
-    -- ---- 3. reducedMotion resolve na hora, sem EventManager --------------
     do
         resetQueues()
         local prev = _G.gameSettings and _G.gameSettings.reducedMotion
@@ -120,7 +84,6 @@ function M.run()
         _G.gameSettings.reducedMotion = prev
     end
 
-    -- ---- 4. reabrir depois da saída deixa a tela sã ----------------------
     do
         resetQueues()
         local screen, calls = openShop(t)
@@ -128,8 +91,6 @@ function M.run()
         pumpEM(1.0)
         t:eq("saída completou", calls.n, 1)
 
-        -- Reabrir: o _closing tem que estar limpo, senão a PRÓXIMA saída
-        -- vira no-op e a run trava na loja seguinte.
         local game2 = TK.newRunGame("mage")
         local calls2 = 0
         screen:show(game2, function() end, function() calls2 = calls2 + 1 end, "shop")
@@ -138,17 +99,10 @@ function M.run()
         t:eq("segunda abertura também sai (guard foi resetado)", calls2, 1)
     end
 
-    -- ---- 5. A REGRESSÃO QUE IMPORTA: base SUJA não pode travar a saída ---
-    -- Condição real: o jogador sai da loja logo depois de uma batalha, e o
-    -- rabo do combate ainda ocupa a fila `base` com eventos BLOQUEANTES. Se a
-    -- saída agendar lá (como a primeira versão deste código fazia), o
-    -- callback que devolve o jogador ao mapa fica preso atrás do combate — a
-    -- loja congela na tela. Fila própria = imune.
     do
         resetQueues()
         local screen, calls = openShop(t)
 
-        -- 5 segundos de evento bloqueante na base, como um combate longo.
         _G.EventManager.after(5.0, function() end)
 
         screen:_exitWithFlourish()
@@ -157,12 +111,6 @@ function M.run()
         t:falsy("tela fechou apesar da base travada", screen:isVisible())
     end
 
-    -- ======================================================================
-    -- EventScreen: mesmo contrato, mesma armadilha
-    -- ======================================================================
-    -- A saída do evento ganhou fade (`_closeWithFade`). Se o evento agendado
-    -- não vencer, o jogador fica preso na tela de evento — pior que na loja,
-    -- porque ali não sobra nem botão (eles são limpos ao escolher).
     local EventScreen = require("components.EventScreen")
     local Events      = require("src.data.events")
 
@@ -200,7 +148,6 @@ function M.run()
     end
 
     do
-        -- A regressão que importa, de novo: base suja não pode prender a saída.
         resetQueues()
         local screen, calls = openEvent()
         _G.EventManager.after(5.0, function() end)
@@ -210,10 +157,6 @@ function M.run()
     end
 
     do
-        -- Input ENGOLIDO durante a animação: o painel é transladado no draw
-        -- mas o Button faz hit-test na posição real. Aceitar clique enquanto
-        -- os dois discordam deixaria o jogador escolher a opção errada numa
-        -- decisão irreversível.
         resetQueues()
         local screen = openEvent()
         t:truthy("entrada em curso conta como animando", screen:_isAnimating())
@@ -221,12 +164,6 @@ function M.run()
         t:falsy("depois de assentar, aceita input", screen:_isAnimating())
     end
 
-    -- ======================================================================
-    -- RoundEvalScreen: saída diferida + ouro que só entra no POUSO
-    -- ======================================================================
-    -- Terceira tela com o mesmo contrato, e a de maior risco: aqui o evento
-    -- agendado não move só pixels, ele APLICA O OURO. Se não vencer, o
-    -- jogador não recebe o pagamento da batalha e fica preso na tela.
     local RoundEvalScreen = require("components.RoundEvalScreen")
 
     local function openEval()
@@ -270,8 +207,6 @@ function M.run()
     end
 
     do
-        -- A armadilha ORIGINAL desta tela: ela abre no frame seguinte à
-        -- vitória, com a base cheia do rabo do combate, e agendava TUDO lá.
         resetQueues()
         local screen, calls, game = openEval()
         local before = game.economySystem.currentGold
@@ -284,7 +219,6 @@ function M.run()
     end
 
     do
-        -- reducedMotion: sem voo, mas o ouro entra e o fluxo segue.
         resetQueues()
         _G.gameSettings = _G.gameSettings or {}
         local prev = _G.gameSettings.reducedMotion

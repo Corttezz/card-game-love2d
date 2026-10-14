@@ -1,20 +1,3 @@
--- tools/test_shop_props.lua
--- Trava dos PROPS VIVOS da loja (src/ui/shop/ShopProps.lua, F3 Out/2026):
---   1. nenhum asset ausente (fallback silencioso é proibido) e cada sheet
---      tem o número de quadros do contrato;
---   2. lanterna: chama e nível de luz só assumem valores do catálogo (quadro
---      1..3, LEVELS), a poça anda em DEGRAUS inteiros perseguindo o hover a
---      4 passos/s, nunca interpola;
---   3. copo: estados idle/shake/rolled, rolled exige faces 1..6, syncRun lê
---      a jogada da visita (ScribeDice.state) e volta a idle em nó novo;
---   4. mariposa agenda travessia entre 20 e 40 s, atravessa e some;
---   5. reducedMotion: chama/nível/poeira parados, copo sem chacoalho, a
---      mariposa nunca voa — mas dados jogados e copo deitado CONTINUAM
---      (informação não some);
---   6. fachada da cena (update/drawBack/drawLantern/drawDiceCup/drawFront)
---      desenha num canvas sem erro e lê a run.
---   love . test_one test_shop_props
-
 local TK = require("tools.testkit")
 
 local M = {}
@@ -33,7 +16,6 @@ function M.run()
     _G.gameSettings.reducedMotion = false
     ShopProps._reset()
 
-    -- ===== 1) assets =====
     local missing = ShopProps.missingAssets()
     t:eq("nenhum asset ausente" .. (#missing > 0 and (": " .. table.concat(missing, ", ")) or ""), #missing, 0)
     local expect = {
@@ -49,7 +31,6 @@ function M.run()
         end
     end
 
-    -- ===== 2) lanterna =====
     local Lantern = ShopProps.lantern.Lantern
     local l = ShopProps.lantern.new()
     local framesSeen, levelsSeen, badFrame, badLevel = {}, {}, false, false
@@ -67,17 +48,16 @@ function M.run()
     t:truthy("em 10 s a chama passou pelos 3 quadros", framesSeen[1] and framesSeen[2] and framesSeen[3])
     t:truthy("em 10 s a luz passou por 2+ níveis", (levelsSeen[1] and 1 or 0) + (levelsSeen[2] and 1 or 0) + (levelsSeen[3] and 1 or 0) >= 2)
     t:eq("sem hover a poça fica no centro", l.lookStep, 0)
-    -- hover à direita: alvo +2, perseguição 1 passo a cada 1/4 s
     l:update(1 / 60, 1.0)
     t:eq("primeiro frame com hover: alvo 2, passo ainda 0", l.lookStep, 0)
-    for _ = 1, 18 do l:update(1 / 60, 1.0) end          -- 0,3 s (> 1/4 s)
+    for _ = 1, 18 do l:update(1 / 60, 1.0) end
     t:eq("depois de ~1/4 s: 1 passo", l.lookStep, 1)
     for _ = 1, 18 do l:update(1 / 60, 1.0) end
     t:eq("depois de ~1/2 s: 2 passos (teto)", l.lookStep, 2)
     for _ = 1, 30 do l:update(1 / 60, 1.0) end
     t:eq("não passa do teto", l.lookStep, 2)
     t:falsy("passo nunca fracionário", fracStep)
-    for _ = 1, 18 do l:update(1 / 60, -0.3) end        -- alvo -1
+    for _ = 1, 18 do l:update(1 / 60, -0.3) end
     t:eq("hover à esquerda (-0.3): desce um passo por vez", l.lookStep, 1)
     for _ = 1, 60 do l:update(1 / 60, -0.3) end
     t:eq("alvo -1 alcançado e segurado", l.lookStep, -1)
@@ -86,7 +66,6 @@ function M.run()
     local cx1 = select(1, l:lightCenter(100, 50, 1))
     t:eq("cada passo move a poça LOOK_PX", cx1 - cx0, Lantern.LOOK_PX)
 
-    -- ===== 3) copo =====
     local cup = ShopProps.diceCup.new()
     t:eq("copo nasce em repouso", cup.state, "idle")
     cup:setState("rolled", { a = 9, b = 2 })
@@ -110,11 +89,10 @@ function M.run()
     run.scribeDice = { key = "dice|1|1|0", used = true, dice = { 6, 1 }, sum = 7 }
     t:truthy("syncRun com jogada da visita", cup:syncRun(run))
     t:truthy("mostra as faces salvas (6 e 1)", cup.state == "rolled" and cup.dice[1] == 6 and cup.dice[2] == 1)
-    table.insert(run.mapHistory, { type = "shop" })   -- nó novo: resíduo
+    table.insert(run.mapHistory, { type = "shop" })
     t:falsy("nó seguinte: resíduo descartado", cup:syncRun(run))
     t:eq("nó seguinte: copo de pé outra vez", cup.state, "idle")
 
-    -- ===== 4) mariposa =====
     local Moth = ShopProps.moth.Moth
     local m = ShopProps.moth.new()
     t:truthy("espera inicial entre 20 e 40 s", m.wait >= Moth.MIN_WAIT and m.wait <= Moth.MAX_WAIT)
@@ -126,7 +104,6 @@ function M.run()
     t:truthy("a travessia termina (" .. flew .. " s)", not m:isFlying() and flew > 1 and flew < 20)
     t:truthy("reagenda entre 20 e 40 s", m.wait >= Moth.MIN_WAIT and m.wait <= Moth.MAX_WAIT)
 
-    -- ===== 5) reducedMotion =====
     _G.gameSettings.reducedMotion = true
     local lr = ShopProps.lantern.new()
     lr:update(1 / 60, nil)
@@ -148,7 +125,6 @@ function M.run()
     t:falsy("reduzido: a mariposa não voa", mr:isFlying())
     _G.gameSettings.reducedMotion = false
 
-    -- ===== 6) desenho + fachada =====
     local cv = love.graphics.newCanvas(640, 400)
     local L = {
         wall = { x = 0, y = 0, w = 640, h = 400 },

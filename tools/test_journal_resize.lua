@@ -1,36 +1,8 @@
--- tools/test_journal_resize.lua
--- Auditoria de RESIZE do Roteiro da jornada (components/RunJournalScreen.lua,
--- versão MAPA À MÃO, Out/2026).
---
--- memory/ui_layout_invariants.md §2: "NASCER grande ≠ CRESCER". A tela é
--- criada num tamanho e o layout é REAPROVEITADO noutro — é aí que o defeito
--- mora. A mesma memória registra que `love.window.setMode` repetido dentro de
--- um tool TRAVA, então a janela é FALSIFICADA (monkey-patch em
--- love.graphics.getWidth/getHeight), igual ao tools/test_forge_resize.lua.
---
--- O que este teste garante, em 7 tamanhos × 5 idiomas × run curta (2 atos) e
--- longa (6 atos + endless), com o acordeão no estado inicial (só o ato atual
--- aberto), todo aberto e todo fechado, no fim e no topo da rolagem — via
--- RunJournalLayout.validate (src/ui/RunJournalLayout.lua):
---   • as zonas não se cruzam (folhas abaixo do cabeçalho, uma por ato, sem
---     encostar na seguinte); numerais / mapa / margem / legenda dentro da folha;
---   • toda parada e todo ramo (tomado, não tomado, à frente) dentro do mapa;
---     o caminho percorrido contínuo; o castelo dentro do mapa;
---   • o detalhe (hover) de TODA parada visível cabe na folha ∩ zona ∩ janela
---     sem tapar a própria parada;
---   • o scroll nunca aponta pra fora do conteúdo recém-medido;
---   • a altura da linha do mapa fica entre ROW_MIN e ROW_MAX (quem cede é a
---     escala, nunca a posição das bandas).
---
---   love . test_one test_journal_resize
---   love . test_all
-
 local TK = require("tools.testkit")
 local FontManager = require("src.ui.FontManager")
 
 local M = {}
 
--- ===== Janela falsa =====
 local realW, realH, realD = love.graphics.getWidth, love.graphics.getHeight, love.graphics.getDimensions
 local fakeW, fakeH = nil, nil
 local function installFakeWindow()
@@ -42,15 +14,12 @@ local function restoreWindow()
     love.graphics.getWidth, love.graphics.getHeight, love.graphics.getDimensions = realW, realH, realD
 end
 
--- Espelha o que love.resize faz de verdade: limpa o cache de fontes ANTES de
--- avisar a tela. Teste mais leniente que o jogo não vale nada.
 local function resizeTo(screen, w, h)
     fakeW, fakeH = w, h
     FontManager.clearCache()
     screen:resize()
 end
 
--- Invariantes do layout resolvido + o detalhe de CADA parada e ramo visível.
 local function auditLayout(screen)
     local Layout = require("src.ui.RunJournalLayout")
     local L = screen:_layout()
@@ -102,13 +71,13 @@ function M.run()
         local screen, long = Screen:new(), Screen:new()
 
         local sizes = {
-            { 800, 600 },    -- nasce
-            { 1920, 1080 },  -- cresce (fullscreen)
-            { 800, 600 },    -- volta
-            { 1024, 768 },   -- padrão
-            { 640, 480 },    -- mínimo suportado
-            { 1280, 400 },   -- largo e baixo: força o scroll
-            { 420, 900 },    -- estreito e alto: espreme o mapa
+            { 800, 600 },
+            { 1920, 1080 },
+            { 800, 600 },
+            { 1024, 768 },
+            { 640, 480 },
+            { 1280, 400 },
+            { 420, 900 },
         }
         local states = { { "inicial", nil }, { "tudo aberto", true }, { "tudo fechado", false } }
 
@@ -122,7 +91,7 @@ function M.run()
                     local scr = sc[1]
                     for _, st in ipairs(states) do
                         if scr:isVisible() then scr:hide() end
-                        fakeW, fakeH = 800, 600            -- NASCE pequeno (o caminho do bug)
+                        fakeW, fakeH = 800, 600
                         FontManager.clearCache()
                         scr:show(sc[2])
                         if st[2] ~= nil then setAll(scr, st[2]) end
@@ -144,7 +113,6 @@ function M.run()
         I18n.setLocale(prevLocale)
         screen:hide(); long:hide()
 
-        -- ===== rolagem: a run longa com tudo aberto em janela pequena =====
         fakeW, fakeH = 640, 480
         FontManager.clearCache()
         long:show(gLong)
@@ -182,20 +150,17 @@ function M.run()
         t:truthy("scroll de fato encolheu", long.scroll <= deep)
         t:eq("sem violação de zona no roteiro longo em 1080p", #auditLayout(long), 0)
 
-        -- abrir um ato rola até ele ficar visível do topo (em janela baixa,
-        -- onde há o que rolar: com tudo cabendo o scroll fica em zero)
         resizeTo(long, 640, 480)
         setAll(long, true)
         long:keypressed("end")
-        long:toggleAct(2)      -- fecha
-        long:toggleAct(2)      -- reabre: tem que rolar até ela
+        long:toggleAct(2)
+        long:toggleAct(2)
         local L = long:_layout()
         local Layout = require("src.ui.RunJournalLayout")
         t:truthy("abrir um ato rola pra ele aparecer", L.sheets[2].y >= L.zone.y - 1
             and L.sheets[2].y <= L.zone.y + Layout.TOP_SLACK + 1)
         long:hide()
 
-        -- Roteiro vazio não pode explodir em nenhum tamanho.
         local empty = Screen:new()
         local g2 = TK.newRunGame("warrior")
         g2.runManager.currentRun.mapHistory = {}

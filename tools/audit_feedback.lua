@@ -1,49 +1,8 @@
--- tools/audit_feedback.lua
--- AUDITORIA DE FEEDBACK DE COMBATE (Set/2026).
---
--- Pergunta que esta ferramenta responde SEM depender de ninguem lembrar:
---   "para cada TIPO DE EFEITO que existe no catalogo, o codigo que o processa
---    chama alguma coisa que o jogador OUVE ou VE no instante em que acontece?"
---
--- Como MEDE (nao supoe):
---   1. VARRE o codigo-fonte que processa efeitos (EffectSystem, Game,
---      ComboSystem), segmentando por branch `<algo>.type == "<tipo>"`.
---   2. Dentro de cada branch procura CHAMADAS DE FEEDBACK conhecidas
---      (Sfx.play, FloatingText, CardFeel.burst, pushJokerProc, notifyOrbUI,
---      addMessage, juice_up/hop_up/swell_up, triggerShake, ER.trigger*).
---   3. Segue UM nivel de DELEGACAO declarada (ex: `draw_cards` chama
---      game:drawCard, e o feedback mora la dentro) — ver DELEGATION.
---   4. INSTANCIA o catalogo inteiro e cruza: quais cartas/jokers usam cada
---      tipo — a lista NOMINAL de quem e afetado por cada lacuna.
---
--- Limitacoes declaradas (o relatorio e um mapa, nao um oraculo):
---   - escaneamento estatico por proximidade textual dentro do branch;
---   - funcao cujo corpo NAO e um if-chain por tipo entra em
---     FUNCTION_ATTRIBUTION (hoje so applyJokerEffects);
---   - feedback que mora fora de qualquer branch por tipo (ex: `exhaust`, cujo
---     som esta em `if card.exhaust` no Game) aparece como mudo aqui e esta
---     anotado na linha de base.
---
--- CRITERIO DE FALHA (proposital): a ferramenta NAO falha por lacuna ja
--- existente — elas estao documentadas em docs/auditoria-feedback-combate.md e
--- em correcao por outros agentes. Ela e uma CATRACA: falha se aparecer um tipo
--- de efeito MUDO que nao esta na linha de base BASELINE_SILENT (tipo novo sem
--- feedback, ou tipo que PERDEU o feedback que tinha).
---
--- Rodar:
---   love . test_one audit_feedback     (relatorio completo)
---   love . test_all                    (entra na suite, grupo `valid`)
-
 local CardDatabase = require("src.systems.CardDatabase")
 local TK = require("tools.testkit")
 
 local M = {}
 
--- ===========================================================================
--- 1. Sinais de feedback procurados no codigo
--- ===========================================================================
-
--- classe -> padroes Lua. A classe e o que o JOGADOR percebe.
 local SIGNALS = {
     som       = { "Sfx%.play", "Sfx%.playWithVariation" },
     particula = { "CardFeel%.burst", "ParticleSystem%.Presets" },
@@ -57,9 +16,6 @@ local SIGNALS = {
     toast     = { "addMessage" },
 }
 
--- Classes que contam como "o jogador PERCEBE no instante em que acontece".
--- `toast` fica de fora DE PROPOSITO: o feed lateral e historico, nao evento —
--- foi exatamente a queixa do dono ("sai acontecendo e fica dificil acompanhar").
 local PERCEIVED = { "som", "particula", "numero", "proc", "orbe", "fisica",
                     "tela", "inimigo" }
 
@@ -69,50 +25,25 @@ local SOURCES = {
     "src/systems/ComboSystem.lua",
 }
 
--- Funcoes cujo corpo NAO e um if-chain por tipo, mas cujo feedback pertence a
--- tipos especificos. Atribuicao explicita e declarada.
 local FUNCTION_ATTRIBUTION = {
-    -- Out/2026 (previa de dano): a CONTA dos coringas foi pro nucleo puro
-    -- EffectSystem:jokerSteps (sem feedback, por definicao); o proc/toast de
-    -- cada entrada — Eco incluso — sai daqui.
     ["EffectSystem:applyJokerEffects"] = {
         "damage_multiplier", "defense_multiplier",
         "damage_bonus", "defense_bonus", "echo_first_attack",
     },
 }
 
--- DELEGACAO: se o branch de um tipo chama uma destas funcoes, o feedback dela
--- conta pro tipo. Um nivel so, e declarado aqui (nada implicito).
 local DELEGATION = {
     ["drawCard"]          = "Game:drawCard",
     ["_evokeOrbEffect"]   = "EffectSystem:_evokeOrbEffect",
     ["processEffectCard"] = "EffectSystem:processEffectCard",
-    -- Set/2026: canalizar e evocar viraram BEATS proprios e o corpo saiu do
-    -- if-chain pra estes dois helpers (a mutacao do estado precisa morar
-    -- DENTRO do beat, nao na coleta). Sem declarar a delegacao a ferramenta le
-    -- os tres tipos de orbe como MUDOS e acusa regressao onde houve correcao.
     ["_stepChannelOrb"]   = "EffectSystem:_stepChannelOrb",
     ["_stepEvokeOrb"]     = "EffectSystem:_stepEvokeOrb",
-    -- Numero de dano + reacao do inimigo pra magia/evoke, que antes so tinham
-    -- burst (o jogador via a MESMA explosao pra "levou dano" e "ganhou orbe").
     ["showEnemyDamage"]   = "showEnemyDamage",
-    -- A reacao FISICA do inimigo saiu de showEnemyDamage pra ca quando o pulso
-    -- de orbe passou a precisar dela SEM numero (o valor ja sai do orbe).
     ["enemyHurt"]         = "enemyHurt",
-    -- Aterrissagem do pulso: som do elemento + burst no alvo certo.
     ["landPulse"]         = "landPulse",
 }
 
--- ===========================================================================
--- 2. Linha de base (catraca). Tipos HOJE sem nenhum sinal percebido.
---    Corrigiu um? Tire da lista NO MESMO COMMIT (o tool avisa se esquecer).
---    Precisa ADICIONAR um? Entao esta introduzindo mudez nova — justifique.
--- ===========================================================================
 local BASELINE_SILENT = {
-    -- CURADO EM VOO (ritmo-combate, Set/2026): applyHealMultiplier agora empurra
-    -- proc. Mantido na lista de proposito enquanto a correcao assenta, pra que
-    -- esta ferramenta NUNCA seja o motivo de o test_all ficar vermelho no meio
-    -- de uma edicao de terceiro. O [INFO] "tipos CURADOS" cobra a remocao.
     heal_multiplier   = "multiplica a cura em silencio: sem proc, sem som, sem toast",
     apply_buff        = "so toast (Foco do mago nao soa nem brilha)",
     restore_mana      = "so toast (o ManaOrb nao reage ao ganho)",
@@ -121,9 +52,6 @@ local BASELINE_SILENT = {
     discard_cards     = "so toast (a carta some da mao sem animacao de descarte)",
     strength_scaling  = "invisivel: dobra o stat dentro do numero final da carta",
     dexterity_scaling = "invisivel: dobra o stat dentro do numero final da carta",
-    -- Coringas de combo (Out/2026): dobram Saraivada/Muralha/Par dentro do
-    -- bonus da carta — o efeito aparece na ficha dourada da previa e no
-    -- numero do banner, nao num proc proprio (como o *_scaling acima).
     combo_boost       = "invisivel: dobra o bonus de combo dentro do numero da carta",
     multi_hit         = "invisivel: vira 1 numero, a descricao promete 2 golpes",
     add_armor         = "so toast (nao usa o caminho visual da carta de defesa)",
@@ -131,10 +59,6 @@ local BASELINE_SILENT = {
                         .. "fora de qualquer branch por tipo",
     innate            = "flag de montagem de mao, sem feedback proprio",
 }
-
--- ===========================================================================
--- 3. Varredura estatica
--- ===========================================================================
 
 local function typesInLine(line)
     local found = nil
@@ -160,8 +84,6 @@ end
 local function delegatesInLine(line)
     local hits = nil
     for pat, fname in pairs(DELEGATION) do
-        -- Fronteira de palavra em vez de exigir `:`/`.`: helpers LOCAIS
-        -- (showEnemyDamage) sao chamados sem prefixo e ficariam invisiveis.
         if line:find("[^%w_]" .. pat .. "%s*%(") then
             hits = hits or {}; hits[fname] = true
         end
@@ -169,11 +91,9 @@ local function delegatesInLine(line)
     return hits
 end
 
--- Retorna sig = { [tipo] = { seen=true, [classe]=true, _where={...},
---                           _delegates={fname=true} } }
 local function scanSources()
-    local sig = {}          -- por tipo de efeito
-    local funcSig = {}      -- por funcao (pra resolver delegacao)
+    local sig = {}
+    local funcSig = {}
 
     local function ensure(ty)
         sig[ty] = sig[ty] or { seen = true, _where = {}, _delegates = {} }
@@ -202,8 +122,6 @@ local function scanSources()
                 lineNo = lineNo + 1
 
                 if line:match("^function%s") or line:match("^local function%s") then
-                    -- Indexa tambem `local function nome(...)`: helper local e
-                    -- destino de delegacao valido (showEnemyDamage nasceu assim).
                     local fname = line:match("^function%s+([%w_]+[:%.][%w_]+)")
                         or line:match("^local function%s+([%w_]+)")
                     current = nil
@@ -240,7 +158,6 @@ local function scanSources()
         end
     end
 
-    -- Resolve delegacao (um nivel).
     for _, e in pairs(sig) do
         for fname in pairs(e._delegates) do
             for c in pairs(funcSig[fname] or {}) do
@@ -254,10 +171,6 @@ local function scanSources()
 
     return sig
 end
-
--- ===========================================================================
--- 4. Catalogo: quem usa cada tipo
--- ===========================================================================
 
 local function scanCatalog()
     local db = CardDatabase:new()
@@ -279,10 +192,6 @@ local function scanCatalog()
     end
     return byType, total
 end
-
--- ===========================================================================
--- 5. Relatorio + catraca
--- ===========================================================================
 
 local function perceivedClasses(entry)
     local out = {}
@@ -343,11 +252,6 @@ function M.run()
         dump(silentNow, "BRANCH EXISTE MAS SO TOAST OU NADA")
     end
 
-    -- ----- Simultaneidade: quantos efeitos resolvem no MESMO instante -----
-    -- Game:processCardInCombat roda processAdditionalEffects() em UM frame, no
-    -- impacto da carta: todo efeito secundario da carta acontece junto do
-    -- numero de dano/bloqueio, do burst e dos procs de joker. Quanto maior a
-    -- contagem, mais coisa o jogador precisa ler no mesmo piscar de olhos.
     local FLAGS = { exhaust = true, innate = true, retain = true }
     local db2 = CardDatabase:new()
     local heavy, multi = {}, 0
@@ -356,7 +260,6 @@ function M.run()
         for _, eff in ipairs(card.effects or {}) do
             if eff.type and not FLAGS[eff.type] then n = n + 1 end
         end
-        -- ataque/defesa ja resolvem 1 "efeito" implicito (o dano/bloqueio).
         if card.type == "attack" or card.type == "defense" then n = n + 1 end
         if n >= 2 then
             multi = multi + 1
@@ -374,7 +277,6 @@ function M.run()
         print(("     %dx  %-26s %s"):format(heavy[i].n, heavy[i].id, heavy[i].name))
     end
 
-    -- ----- Catraca -----
     print("\n  ===== CATRACA =====")
     local novos = {}
     for _, ty in ipairs(silentNow) do
@@ -390,8 +292,6 @@ function M.run()
             .. " em BASELINE_SILENT")
     end
 
-    -- Linha de base obsoleta: tipo que ganhou feedback e continua listado.
-    -- Nao falha (as correcoes estao em voo), mas avisa em alto e bom som.
     local curados = {}
     for ty in pairs(BASELINE_SILENT) do
         if sig[ty] and #perceivedClasses(sig[ty]) > 0 then

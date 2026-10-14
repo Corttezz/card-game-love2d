@@ -1,11 +1,3 @@
--- tools/test_credits.lua
--- Tela de créditos (components/CreditsScreen.lua): o conteúdo cabe no painel
--- em todo idioma e tamanho, cada linha é texto traduzido (nunca a chave
--- crua), e o ciclo abrir/fechar devolve o controle ao menu.
---
--- Roda: love . test_one test_credits
---       love . test_one test_credits shots   (credits_<loc>.png pra olhar)
-
 local M = {}
 local TK = require("tools.testkit")
 
@@ -16,7 +8,6 @@ function M.run(arg)
     local CreditsScreen = require("components.CreditsScreen")
     local scr = CreditsScreen:new()
 
-    -- 1. Nenhuma chave crua em idioma nenhum.
     local raw = 0
     for _, loc in ipairs({ "pt_BR", "en", "es", "fr", "de" }) do
         I18n.setLocale(loc, true)
@@ -31,7 +22,6 @@ function M.run(arg)
     end
     t:eq("toda linha dos creditos traduzida nos 5 idiomas", raw, 0)
 
-    -- 2. A lista cabe na zona de conteúdo (fonte encolhe, nunca transborda).
     local realW, realH = love.graphics.getWidth, love.graphics.getHeight
     local cases, bad = 0, 0
     for _, loc in ipairs({ "pt_BR", "en", "es", "fr", "de" }) do
@@ -52,7 +42,6 @@ function M.run(arg)
     t:check("geometria verificada em " .. cases .. " combinacoes (20)", cases == 20)
     t:eq("combinacoes em que a lista transborda o painel", bad, 0)
 
-    -- 3. Ciclo: o release do clique que abriu NÃO fecha; um clique inteiro fecha.
     local closed = 0
     scr:show(function() closed = closed + 1 end)
     scr:mousereleased(10, 10, 1)

@@ -1,14 +1,3 @@
--- tools/balance_sync_desc.lua
--- Reescreve o campo `description` (fallback PT) de cada carta em
--- src/data/cards/*.lua com a descricao pt_BR RENDERIZADA dos locales.
---
--- Por que: o `description` dos dados so aparece se a chave de traducao
--- faltar — e por isso apodrecia a cada rebalance ("7 de dano" com attack 8).
--- A fonte da verdade do texto e o locale; este campo vira espelho dele.
--- Rodar depois de mexer em numero de carta:
---   love . test_one balance_sync_desc
--- (a trava test_card_audit cobra o espelho em dia).
-
 local M = {}
 
 local FILES = { "basic", "warrior", "mage", "rogue" }

@@ -1,13 +1,3 @@
--- tools/perf_collection.lua
--- MEDIÇÃO da Coleção (queixa do dono: "lag na coleção"). Abre a tela, termina
--- a instanciação e roda N frames de update+draw+present em 3 cenários
--- (idle, hover varrendo o grid, scroll contínuo). Reporta frame time médio/p95
--- (CPU do update+draw e total com present, vsync desligado) e os contadores
--- de love.graphics.getStats() por frame (drawcalls, canvas/shader switches).
---
--- Roda: love . perf_collection [frames]
--- Não é teste (não falha): é régua. Números entram no memory/unlocks.md.
-
 local M = {}
 
 local function pct(sorted, p)
@@ -24,7 +14,6 @@ function M.run(frames)
     pcall(love.window.setVSync, 0)
     local CardFrame = require("src.ui.CardFrame")
     local CollectionScreen = require("components.CollectionScreen")
-    -- Régua mede o PIOR caso visual: tudo descoberto (sem verso "?").
     local okU, UnlockSystem = pcall(require, "src.systems.UnlockSystem")
     if okU and UnlockSystem.setRevealAll then UnlockSystem.setRevealAll(true) end
 
@@ -39,14 +28,9 @@ function M.run(frames)
     local origGetPos = love.mouse.getPosition
     local results = {}
 
-    -- AQUECIMENTO (Out/2026, carta visível = viva): quantos quadros até TODA
-    -- carta animada visível estar com o set montado, e o pior quadro (ms)
-    -- enquanto isso — é o custo de abrir a Coleção com a regra nova.
     do
         love.mouse.getPosition = function() return 5, 5 end
         screen.scrollY = 0
-        -- 2 quadros de aquecimento da TELA (fontes, canvases) ficam de fora
-        -- do pior quadro: o que se mede aqui e a montagem dos sets
         local worst, lastGrow, visibleAnimated = 0, 0, 0
         for f = 1, 300 do
             local before = CardFrame._liveCount()
@@ -59,7 +43,7 @@ function M.run(frames)
             if f > 2 and ms > worst then worst = ms end
             love.graphics.present()
             if CardFrame._liveCount() > before then lastGrow = f end
-            if f - lastGrow >= 20 and f > 20 then break end   -- 20 quadros sem carta nova = pronto
+            if f - lastGrow >= 20 and f > 20 then break end
         end
         visibleAnimated = CardFrame._liveCount()
         local line = string.format(
@@ -84,7 +68,7 @@ function M.run(frames)
             local t1 = love.timer.getTime()
             love.graphics.present()
             local t2 = love.timer.getTime()
-            if f > 10 then  -- descarta aquecimento (lazy de animação/canvas)
+            if f > 10 then
                 cpu[#cpu + 1] = (t1 - t0) * 1000
                 tot[#tot + 1] = (t2 - t0) * 1000
                 stats.drawcalls = stats.drawcalls + s.drawcalls
@@ -106,7 +90,6 @@ function M.run(frames)
 
     screen.scrollY = 0
     scenario("idle", function() return 5, 5 end)
-    -- hover varre as cartas visíveis (troca de carta a cada 6 frames)
     scenario("hover", function(f)
         local i = math.floor(f / 6) % 15
         local col, row = i % 5, math.floor(i / 5)
